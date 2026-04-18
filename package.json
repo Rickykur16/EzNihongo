@@ -1,0 +1,7 @@
+{
+  "name": "eznihongo-landing",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "browser-sync start --server . --files \"**/*.html, src/**/*.jsx\" --no-notify --open"
+  }
+}

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kelas N4 - EzNihongo</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="course.css"/>
+</head>
+<body data-level="n4">
+
+<nav class="c-nav">
+  <a href="../index.html"><img src="../Logo.png" alt="EzNihongo"/></a>
+  <a href="../index.html#pricing" class="c-back">← Kembali ke harga</a>
+</nav>
+
+<main class="c-main">
+  <div class="c-wrap">
+
+    <header class="c-header">
+      <div class="c-eyebrow">Checkout Kelas</div>
+      <h1 class="c-title" id="c-name">Kelas</h1>
+      <p class="c-subtitle" id="c-tagline"></p>
+    </header>
+
+    <section class="c-card">
+      <h2>Yang kamu dapatkan</h2>
+      <ul class="c-features" id="c-features"></ul>
+
+      <h2 style="margin-top:28px;">Garis besar kurikulum</h2>
+      <div class="c-modules" id="c-modules"></div>
+    </section>
+
+    <aside class="c-card">
+      <h2>Ringkasan Pesanan</h2>
+      <p class="c-price-main" id="c-price"></p>
+
+      <div class="c-summary-row"><span>Subtotal</span><span id="c-summary-price"></span></div>
+      <div class="c-summary-row"><span>Biaya admin</span><span>Rp 0</span></div>
+      <div class="c-summary-row total"><span>Total</span><span id="c-summary-total"></span></div>
+
+      <form id="c-checkout-form" style="margin-top:20px;">
+        <p style="font-size:13px;color:#485f84;margin:0 0 10px;font-weight:600;">Metode Pembayaran</p>
+        <div class="c-payment-options">
+          <button type="button" class="c-pay-option active">Transfer Bank</button>
+          <button type="button" class="c-pay-option">GoPay / OVO</button>
+          <button type="button" class="c-pay-option">QRIS</button>
+          <button type="button" class="c-pay-option">Kartu Kredit</button>
+        </div>
+        <button type="submit" class="c-submit" id="c-submit">Lanjut ke Pembayaran →</button>
+      </form>
+
+      <p class="c-help">
+        Butuh bantuan? <a href="https://wa.me/6281294894557" target="_blank" rel="noopener noreferrer">Chat WhatsApp</a>
+      </p>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="c-footer">
+  <p>© 2026 <strong>EzNihongo</strong>.</p>
+</footer>
+
+<script src="course.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /tmp/design_extract)",
+      "Bash(cp \"/c/Users/ricky/.claude/projects/C--Users-ricky-OneDrive-Desktop-EzNihongo-new-landing-page/30b5095b-876c-4bef-b18c-412d5f932d18/tool-results/webfetch-1776475737468-r6peiu.bin\" /tmp/design.tar.gz)",
+      "Bash(tar -xzf /tmp/design.tar.gz -C /tmp/design_extract)",
+      "Read(//tmp/**)"
+    ]
+  }
+}

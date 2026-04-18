@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Dashboard - EzNihongo</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Manrope', sans-serif;
+    background: #f8f9fa;
+    color: #191c1d;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.02em; }
+
+  /* ── Top Nav ── */
+  .dash-nav {
+    background: #fff;
+    border-bottom: 1px solid #e5e5e5;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .dash-nav-left { display: flex; align-items: center; gap: 20px; min-width: 0; flex: 1; }
+  .dash-nav img { height: 36px; mix-blend-mode: multiply; flex-shrink: 0; }
+
+  /* ── Course Tabs ── */
+  .course-tabs {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding: 4px 0;
+    min-width: 0;
+  }
+  .course-tabs::-webkit-scrollbar { height: 4px; }
+  .course-tabs::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 4px; }
+
+  .course-tab {
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    color: #666;
+    background: transparent;
+    border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .course-tab:hover { background: #f8f9fa; color: #191c1d; }
+  .course-tab.active {
+    background: #191c1d;
+    color: #fff;
+  }
+  .course-tab.active:hover { background: #2e3132; color: #fff; }
+  .course-tab.locked {
+    color: #a8a8a8;
+    background: #fafafa;
+  }
+  .course-tab.locked:hover {
+    color: #b20024;
+    background: #fff0f2;
+    border-color: #ffccd5;
+  }
+  .course-tab .lock-icon {
+    font-size: 10px;
+    opacity: 0.7;
+  }
+  .course-tab .price-hint {
+    font-family: 'Manrope', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0;
+    opacity: 0.8;
+  }
+  @media (max-width: 600px) {
+    .course-tab .price-hint { display: none; }
+  }
+  .dash-nav-right {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 13px; color: #485f84;
+  }
+  .logout-btn {
+    background: transparent;
+    border: 1px solid #e5e5e5;
+    color: #191c1d;
+    padding: 7px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Manrope', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  .logout-btn:hover { border-color: #b20024; color: #b20024; }
+
+  /* ── Success banner ── */
+  .banner {
+    background: #e8f5e9;
+    border-bottom: 1px solid #16a34a33;
+    color: #166534;
+    padding: 10px 24px;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    display: none;
+  }
+  .banner.show { display: block; }
+
+  /* ── Greeting Banner ── */
+  .greeting-banner {
+    padding: 28px 40px 24px;
+    background: #fff;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .greeting-jp {
+    font-family: 'Noto Sans JP', 'Plus Jakarta Sans', sans-serif;
+    font-size: clamp(22px, 3vw, 30px);
+    font-weight: 500;
+    color: #191c1d;
+    margin: 0 0 4px;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+  .greeting-jp .name {
+    color: #b20024;
+    font-weight: 700;
+  }
+  .greeting-jp .san {
+    color: #999;
+    font-weight: 400;
+    font-size: 0.65em;
+    margin-left: 3px;
+    font-family: 'Noto Sans JP', sans-serif;
+  }
+  .greeting-id {
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    color: #485f84;
+    margin: 0;
+    line-height: 1.5;
+  }
+  .greeting-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #999;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .greeting-time .kanji {
+    font-family: 'Noto Sans JP', sans-serif;
+    color: #b20024;
+    font-size: 16px;
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+  @media (max-width: 600px) {
+    .greeting-banner { padding: 20px; }
+    .greeting-time { display: none; }
+  }
+
+  /* ── Learning Layout ── */
+  .learning-layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    min-height: 0;
+  }
+  @media (max-width: 860px) {
+    .learning-layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .sidebar.mobile-open { display: block; }
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    background: #fff;
+    border-right: 1px solid #e5e5e5;
+    padding: 24px;
+    overflow-y: auto;
+  }
+  .sidebar-header {
+    padding-bottom: 18px;
+    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: 18px;
+  }
+  .sidebar-header h3 {
+    font-size: 15px;
+    font-weight: 800;
+    margin: 0 0 10px;
+  }
+  .progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: #666;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .progress-bar {
+    flex: 1;
+    height: 6px;
+    background: #f0f0f0;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: #b20024;
+    border-radius: 999px;
+    transition: width 0.4s;
+  }
+
+  .module {
+    margin-bottom: 4px;
+  }
+  .module-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: transparent;
+    border: none;
+    padding: 10px 8px;
+    cursor: pointer;
+    font-family: 'Manrope', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #191c1d;
+    text-align: left;
+    border-radius: 6px;
+  }
+  .module-header:hover { background: #f8f9fa; }
+  .module-header .caret {
+    font-size: 10px;
+    color: #999;
+    transition: transform 0.2s;
+  }
+  .module.open .module-header .caret { transform: rotate(90deg); }
+  .module-num {
+    font-family: 'JetBrains Mono', monospace;
+    color: #b20024;
+    font-size: 11px;
+    margin-right: 8px;
+  }
+
+  .lessons {
+    list-style: none;
+    padding: 0 0 0 12px;
+    margin: 0 0 8px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+  .module.open .lessons { max-height: 500px; }
+
+  .lesson-item {
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #485f84;
+    border-left: 2px solid transparent;
+    margin-left: 4px;
+  }
+  .lesson-item:hover { background: #fafafa; }
+  .lesson-item.current {
+    background: #fff0f2;
+    color: #b20024;
+    font-weight: 600;
+    border-left-color: #b20024;
+  }
+  .lesson-item.done { color: #166534; }
+  .lesson-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    flex-shrink: 0;
+    border: 1px solid currentColor;
+  }
+  .lesson-item.done .lesson-icon {
+    background: #16a34a;
+    border-color: #16a34a;
+    color: #fff;
+  }
+  .lesson-item.current .lesson-icon {
+    background: #b20024;
+    border-color: #b20024;
+    color: #fff;
+  }
+  .lesson-meta {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #999;
+  }
+
+  /* ── Main Content ── */
+  .main-content {
+    padding: 32px 40px;
+    overflow-y: auto;
+  }
+  @media (max-width: 600px) { .main-content { padding: 20px; } }
+
+  .lesson-breadcrumb {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+  .lesson-breadcrumb span { color: #b20024; }
+  .lesson-title {
+    font-size: clamp(24px, 3.5vw, 36px);
+    font-weight: 800;
+    margin: 0 0 10px;
+    line-height: 1.15;
+  }
+  .lesson-subtitle {
+    font-size: 15px;
+    color: #485f84;
+    margin: 0 0 24px;
+  }
+
+  /* Video placeholder */
+  .video-player {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: linear-gradient(135deg, #191c1d 0%, #2e3132 100%);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .video-player::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(#ffffff08 1px, transparent 1px), linear-gradient(90deg, #ffffff08 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .play-btn {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #b20024;
+    border: none;
+    color: #fff;
+    font-size: 28px;
+    cursor: pointer;
+    box-shadow: 0 10px 40px rgba(178, 0, 36, 0.4);
+    position: relative;
+    z-index: 1;
+    transition: transform 0.2s;
+  }
+  .play-btn:hover { transform: scale(1.08); }
+  .video-meta {
+    position: absolute;
+    bottom: 16px;
+    left: 20px;
+    color: rgba(255,255,255,0.7);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    z-index: 1;
+  }
+
+  /* Lesson text content */
+  .lesson-body {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 14px;
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+  .lesson-body h2 {
+    font-size: 17px;
+    font-weight: 800;
+    margin: 0 0 14px;
+  }
+  .lesson-body p {
+    font-size: 15px;
+    line-height: 1.7;
+    color: #2e3132;
+    margin: 0 0 14px;
+  }
+  .lesson-body .jp {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 22px;
+    color: #191c1d;
+    background: #fff0f2;
+    padding: 14px 18px;
+    border-left: 3px solid #b20024;
+    border-radius: 6px;
+    margin: 18px 0;
+  }
+  .lesson-body .jp span { color: #b20024; font-weight: 700; }
+
+  /* Lesson nav */
+  .lesson-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 8px;
+  }
+  .btn-secondary, .btn-primary {
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+  }
+  .btn-secondary {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    color: #191c1d;
+  }
+  .btn-secondary:hover { border-color: #191c1d; }
+  .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary {
+    background: #b20024;
+    color: #fff;
+  }
+  .btn-primary:hover { background: #8a0b20; }
+
+  /* ── Paywall ── */
+  .paywall {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 24px;
+  }
+  .paywall-inner {
+    max-width: 560px;
+    text-align: center;
+  }
+  .paywall-lock {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #fff0f2;
+    color: #b20024;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    margin: 0 auto 20px;
+  }
+  .paywall h1 {
+    font-size: clamp(24px, 4vw, 32px);
+    font-weight: 800;
+    margin: 0 0 12px;
+    line-height: 1.15;
+  }
+  .paywall p {
+    font-size: 15px;
+    color: #485f84;
+    line-height: 1.6;
+    margin: 0 0 28px;
+  }
+  .paywall-cta {
+    display: inline-block;
+    background: #b20024;
+    color: #fff;
+    padding: 14px 28px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 4px 0 #8a0b20, 0 10px 30px rgba(178, 0, 36, 0.25);
+    transition: transform 0.15s;
+  }
+  .paywall-cta:hover { transform: translateY(1px); }
+
+  .paywall-plans {
+    margin-top: 48px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    text-align: left;
+  }
+  .mini-plan {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  .mini-plan:hover {
+    border-color: #b20024;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+  }
+  .mini-plan .level {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #b20024;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .mini-plan .plan-name {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    margin: 6px 0 4px;
+  }
+  .mini-plan .plan-price {
+    font-size: 13px;
+    color: #485f84;
+    font-weight: 500;
+  }
+
+  /* ── Discord Card ── */
+  .discord-card {
+    margin: 16px 12px 12px;
+    background: #5865F2;
+    border-radius: 14px;
+    padding: 16px;
+    color: #fff;
+  }
+  .discord-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .discord-logo { flex-shrink: 0; }
+  .discord-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+  .discord-desc {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: rgba(255,255,255,0.8);
+    margin: 0 0 12px;
+  }
+  .discord-btn {
+    display: block;
+    background: #fff;
+    color: #5865F2;
+    text-align: center;
+    padding: 8px 0;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+  .discord-btn:hover { opacity: 0.9; }
+
+  /* Footer */
+  footer {
+    padding: 16px;
+    text-align: center;
+    background: #fff;
+    border-top: 1px solid #e5e5e5;
+    font-size: 12px;
+    color: #485f84;
+  }
+  footer strong { color: #b20024; }
+</style>
+</head>
+<body>
+
+<nav class="dash-nav">
+  <div class="dash-nav-left">
+    <a href="welcome.html"><img src="Logo.png" alt="EzNihongo"/></a>
+    <nav class="course-tabs" id="course-tabs"></nav>
+  </div>
+  <div class="dash-nav-right">
+    <span id="user-email">—</span>
+    <button class="logout-btn" onclick="logout()">Keluar</button>
+  </div>
+</nav>
+
+<div class="banner" id="success-banner">
+  ✓ Pembayaran berhasil! Selamat datang di <strong id="new-course-name"></strong>. Mulai belajar di bawah.
+</div>
+
+<div id="app-root"></div>
+
+<footer>
+  © 2026 <strong>EzNihongo</strong>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════
+// AUTH GUARD
+// ═══════════════════════════════════════════════
+const session = JSON.parse(localStorage.getItem('ez_user') || 'null');
+if (!session) {
+  window.location.replace('login.html?next=welcome.html');
+}
+
+// ═══════════════════════════════════════════════
+// COURSE CONTENT DATA
+// ═══════════════════════════════════════════════
+const COURSE_CONTENT = {
+  n5: {
+    name: "Kelas N5",
+    tagline: "Dari nol — hiragana & dasar",
+    price: "Rp 349rb/bln",
+    modules: [
+      { id: "m1", num: "01", title: "Hiragana", lessons: [
+        { id: "l1", title: "Vokal: あ・い・う・え・お", type: "video", duration: "12 min", body: "Mari mulai dari 5 vokal dasar. Lidah rileks, vokal Jepang lebih pendek dari Indonesia.", jp: "<span>あ</span> a · <span>い</span> i · <span>う</span> u · <span>え</span> e · <span>お</span> o" },
+        { id: "l2", title: "K-row: か・き・く・け・こ", type: "video", duration: "15 min", body: "Menggabungkan vokal dengan konsonan K. Perhatikan bahwa く sering lebih dekat ke 'ku' pendek.", jp: "<span>か</span>ka · <span>き</span>ki · <span>く</span>ku · <span>け</span>ke · <span>こ</span>ko" },
+        { id: "l3", title: "S-row: さ・し・す・せ・そ", type: "video", duration: "14 min", body: "し dibaca 'shi' bukan 'si'. Ini satu dari sedikit pengecualian yang perlu dihafal.", jp: "<span>さ</span>sa · <span>し</span>shi · <span>す</span>su · <span>せ</span>se · <span>そ</span>so" },
+        { id: "q1", title: "Kuis Hiragana 1", type: "quiz", duration: "10 soal", body: "Latihan pengenalan 15 karakter hiragana pertama." },
+      ]},
+      { id: "m2", num: "02", title: "Salam & Perkenalan Diri", lessons: [
+        { id: "l1", title: "Sapaan Dasar", type: "video", duration: "10 min", body: "Sapaan yang paling sering dipakai dalam keseharian orang Jepang.", jp: "<span>おはようございます</span> — selamat pagi<br/><span>こんにちは</span> — selamat siang<br/><span>こんばんは</span> — selamat malam" },
+        { id: "l2", title: "Memperkenalkan Diri", type: "video", duration: "13 min", body: "Struktur perkenalan sederhana: nama, asal, senang berkenalan.", jp: "<span>はじめまして</span>。ricky <span>です</span>。インドネシアから来ました。" },
+        { id: "q2", title: "Kuis Salam", type: "quiz", duration: "8 soal", body: "Cek kemampuan sapaan dan perkenalan dasar." },
+      ]},
+      { id: "m3", num: "03", title: "Kosakata Harian", lessons: [
+        { id: "l1", title: "Angka 1—100", type: "video", duration: "16 min", body: "Angka dasar sangat penting untuk bertanya harga, waktu, dan umur.", jp: "<span>いち</span>, <span>に</span>, <span>さん</span>, <span>よん</span>, <span>ご</span>..." },
+        { id: "l2", title: "Hari & Waktu", type: "video", duration: "12 min", body: "Hari dalam seminggu, konsep pagi/siang/malam." },
+        { id: "l3", title: "Keluarga", type: "text", duration: "8 min", body: "Perbedaan panggilan keluarga sendiri vs keluarga orang lain." },
+      ]},
+      { id: "m4", num: "04", title: "Pola Kalimat Dasar", lessons: [
+        { id: "l1", title: "です / ます form", type: "video", duration: "18 min", body: "Bentuk sopan yang akan kamu pakai 90% waktu saat bicara dengan orang Jepang." },
+        { id: "l2", title: "Partikel は・を・に", type: "video", duration: "22 min", body: "3 partikel paling fundamental. Kuasai ini, tata bahasa Jepang jadi jauh lebih mudah." },
+      ]},
+      { id: "m5", num: "05", title: "Persiapan JLPT N5", lessons: [
+        { id: "l1", title: "Strategi Soal N5", type: "video", duration: "15 min", body: "Cara membaca soal JLPT efisien, kelola waktu per section." },
+        { id: "q1", title: "Try-Out JLPT N5 Lengkap", type: "quiz", duration: "60 soal", body: "Simulasi ujian penuh setara JLPT N5 resmi." },
+      ]},
+    ],
+  },
+  n4: {
+    name: "Kelas N4", tagline: "Lanjut dari dasar", price: "Rp 449rb/bln",
+    modules: [
+      { id: "m1", num: "01", title: "Kanji N4 (~300 karakter)", lessons: [
+        { id: "l1", title: "Kanji Dasar: 人・日・月・火・水", type: "video", duration: "18 min", body: "Belajar membaca On-yomi dan Kun-yomi dengan konteks kalimat nyata." },
+        { id: "l2", title: "Kanji Angka & Waktu", type: "video", duration: "14 min", body: "Kanji terkait waktu: 年・月・日・時・分" },
+      ]},
+      { id: "m2", num: "02", title: "Tata Bahasa Menengah", lessons: [
+        { id: "l1", title: "Te-form (て-form)", type: "video", duration: "20 min", body: "Bentuk te adalah kunci untuk menyambung kalimat dan membuat perintah halus." },
+        { id: "l2", title: "Potential form", type: "video", duration: "15 min", body: "Cara bilang 'bisa', 'mampu', dalam bahasa Jepang natural." },
+      ]},
+      { id: "m3", num: "03", title: "Percakapan Sehari-hari", lessons: [
+        { id: "l1", title: "Bertanya Arah", type: "video", duration: "12 min", body: "Cara bertanya ke orang lokal saat kamu tersesat di Jepang." },
+        { id: "l2", title: "Belanja & Order", type: "video", duration: "14 min", body: "Kosakata dan pola untuk situasi restoran, toko, konbini." },
+      ]},
+      { id: "m4", num: "04", title: "Menulis Email & Pesan", lessons: [
+        { id: "l1", title: "Email Casual", type: "text", duration: "10 min", body: "Struktur email ke teman dan rekan dekat." },
+      ]},
+      { id: "m5", num: "05", title: "Persiapan JLPT N4", lessons: [
+        { id: "q1", title: "Try-Out JLPT N4", type: "quiz", duration: "90 menit", body: "Simulasi full N4." },
+      ]},
+    ],
+  },
+  n3: {
+    name: "Kelas N3", tagline: "Menengah — kerja siap", price: "Rp 549rb/bln",
+    modules: [
+      { id: "m1", num: "01", title: "Kanji N3 (~650 karakter)", lessons: [
+        { id: "l1", title: "Kanji Bisnis Dasar", type: "video", duration: "20 min", body: "Kanji yang paling sering muncul di lingkungan kerja Jepang." },
+      ]},
+      { id: "m2", num: "02", title: "Tata Bahasa Kerja", lessons: [
+        { id: "l1", title: "Ekspresi Formal", type: "video", duration: "18 min", body: "Pola kalimat yang wajib kamu kuasai sebelum pertama kali bicara dengan atasan Jepang." },
+      ]},
+      { id: "m3", num: "03", title: "Kaiwa Profesional", lessons: [
+        { id: "l1", title: "Laporan ke Atasan", type: "video", duration: "15 min", body: "Struktur 報告 (houkoku) yang diharapkan di tempat kerja Jepang." },
+      ]},
+      { id: "m4", num: "04", title: "Membaca Artikel", lessons: [
+        { id: "l1", title: "Membaca Berita Ekonomi", type: "text", duration: "25 min", body: "Latihan membaca dengan materi autentik dari NHK News Easy." },
+      ]},
+      { id: "m5", num: "05", title: "Persiapan JLPT N3", lessons: [
+        { id: "q1", title: "Try-Out JLPT N3", type: "quiz", duration: "105 menit", body: "Simulasi N3 lengkap." },
+      ]},
+    ],
+  },
+  n2: {
+    name: "Kelas N2", tagline: "Mahir — bisnis-ready", price: "Rp 649rb/bln",
+    modules: [
+      { id: "m1", num: "01", title: "Kanji & Kosakata N2", lessons: [
+        { id: "l1", title: "Kanji Media & Politik", type: "video", duration: "22 min", body: "Kanji yang mendominasi koran dan berita TV Jepang." },
+      ]},
+      { id: "m2", num: "02", title: "Keigo (敬語)", lessons: [
+        { id: "l1", title: "Sonkeigo — bahasa hormat", type: "video", duration: "24 min", body: "Bentuk paling formal untuk merujuk ke atasan atau klien." },
+        { id: "l2", title: "Kenjougo — merendah diri", type: "video", duration: "20 min", body: "Cara bicara yang merendahkan diri sendiri untuk menunjukkan hormat." },
+      ]},
+      { id: "m3", num: "03", title: "Business Japanese", lessons: [
+        { id: "l1", title: "Meeting & Presentasi", type: "video", duration: "18 min", body: "Struktur presentasi bisnis ala Jepang." },
+      ]},
+      { id: "m4", num: "04", title: "Listening Lanjutan", lessons: [
+        { id: "l1", title: "Podcast Bisnis", type: "video", duration: "30 min", body: "Latihan dengan podcast aktual untuk profesional Jepang." },
+      ]},
+      { id: "m5", num: "05", title: "Persiapan JLPT N2", lessons: [
+        { id: "q1", title: "Try-Out JLPT N2", type: "quiz", duration: "155 menit", body: "Simulasi N2 penuh." },
+      ]},
+    ],
+  },
+  ssw: {
+    name: "Kelas SSW", tagline: "Tokutei Ginou — jalur kerja Jepang", price: "Rp 699rb/bln",
+    modules: [
+      { id: "m1", num: "01", title: "Pengenalan SSW / Tokutei Ginou", lessons: [
+        { id: "l1", title: "14 Sektor Industri", type: "video", duration: "25 min", body: "Overview semua bidang yang terbuka untuk SSW: kaigo, manufaktur, konstruksi, hingga F&B." },
+        { id: "l2", title: "Persyaratan & Visa", type: "text", duration: "15 min", body: "Apa saja dokumen yang perlu disiapkan." },
+      ]},
+      { id: "m2", num: "02", title: "Japanese Foundation Test (JFT)", lessons: [
+        { id: "l1", title: "Format JFT-Basic", type: "video", duration: "18 min", body: "Struktur ujian JFT, perbedaannya dengan JLPT." },
+        { id: "q1", title: "Simulasi JFT Full", type: "quiz", duration: "60 menit", body: "Try-out JFT lengkap dengan kunci jawaban." },
+      ]},
+      { id: "m3", num: "03", title: "Bahasa Industri Pilihan", lessons: [
+        { id: "l1", title: "Kaigo (介護) — Perawatan Lansia", type: "video", duration: "30 min", body: "Kosakata spesifik industri kaigo yang wajib dihafal." },
+        { id: "l2", title: "Gaishoku (外食) — F&B", type: "video", duration: "22 min", body: "Istilah restoran Jepang dan dialog customer service." },
+      ]},
+      { id: "m4", num: "04", title: "Mock Interview & Budaya Kerja", lessons: [
+        { id: "l1", title: "Etika Wawancara Jepang", type: "video", duration: "20 min", body: "Cara masuk ruangan, salam, duduk, cara menjawab pertanyaan sulit." },
+        { id: "l2", title: "Mock Interview 1-on-1", type: "video", duration: "Live", body: "Dijadwalkan terpisah dengan sensei kami yang sudah lama berkarier di Jepang." },
+      ]},
+      { id: "m5", num: "05", title: "Penempatan & Agensi Mitra", lessons: [
+        { id: "l1", title: "List Agensi Mitra", type: "text", duration: "10 min", body: "Daftar agensi penyalur kerja yang kami kerjasama, plus tips memilih." },
+      ]},
+    ],
+  },
+};
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+function getEnrolledCourses() {
+  try { return JSON.parse(localStorage.getItem('ez_courses') || '[]'); }
+  catch { return []; }
+}
+function getProgress() {
+  try { return JSON.parse(localStorage.getItem('ez_progress') || '{}'); }
+  catch { return {}; }
+}
+function setProgress(obj) {
+  localStorage.setItem('ez_progress', JSON.stringify(obj));
+}
+
+function handleNewEnrollment() {
+  const params = new URLSearchParams(window.location.search);
+  const newCourse = params.get('new');
+  if (!newCourse || !COURSE_CONTENT[newCourse]) return null;
+
+  const enrolled = getEnrolledCourses();
+  if (!enrolled.includes(newCourse)) {
+    enrolled.push(newCourse);
+    localStorage.setItem('ez_courses', JSON.stringify(enrolled));
+  }
+
+  const banner = document.getElementById('success-banner');
+  document.getElementById('new-course-name').textContent = COURSE_CONTENT[newCourse].name;
+  banner.classList.add('show');
+  setTimeout(() => banner.classList.remove('show'), 6000);
+
+  history.replaceState({}, '', `welcome.html?course=${newCourse}`);
+  return newCourse;
+}
+
+function logout() {
+  localStorage.removeItem('ez_user');
+  window.location.href = 'index.html';
+}
+
+// ═══════════════════════════════════════════════
+// TIME-BASED GREETING
+// ═══════════════════════════════════════════════
+function getTimeGreeting() {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 11)  return { jp: 'おはようございます', id: 'Selamat pagi',  msg: 'Mari mulai hari dengan bahasa Jepang.',         kanji: '朝', period: 'PAGI'    };
+  if (h >= 11 && h < 15) return { jp: 'こんにちは',        id: 'Selamat siang', msg: 'Istirahat sejenak — luangkan waktu belajar.',    kanji: '昼', period: 'SIANG'   };
+  if (h >= 15 && h < 18) return { jp: 'こんにちは',        id: 'Selamat sore',  msg: 'Sore yang baik untuk review pelajaran.',         kanji: '夕', period: 'SORE'    };
+  if (h >= 18 && h < 22) return { jp: 'こんばんは',        id: 'Selamat malam', msg: 'Akhiri hari dengan progress baru.',              kanji: '夜', period: 'MALAM'   };
+  return                        { jp: 'お疲れ様です',      id: 'Sudah larut',    msg: 'Jaga kesehatan ya — belajar sebentar saja.',     kanji: '深', period: 'DINI HARI' };
+}
+
+function getUserName() {
+  if (!session || !session.email) return 'teman';
+  const local = session.email.split('@')[0];
+  const clean = local.replace(/[._-]+/g, ' ').trim();
+  return clean.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+function greetingBannerHtml() {
+  const g = getTimeGreeting();
+  const name = getUserName();
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  return `
+    <div class="greeting-banner">
+      <div>
+        <h1 class="greeting-jp">${g.jp}、<span class="name">${name}</span><span class="san">さん</span></h1>
+        <p class="greeting-id">${g.id} — ${g.msg}</p>
+      </div>
+      <div class="greeting-time">
+        <span class="kanji">${g.kanji}</span>
+        ${g.period} · ${hh}:${mm}
+      </div>
+    </div>
+  `;
+}
+
+function refreshGreetingBanner() {
+  const existing = document.querySelector('.greeting-banner');
+  if (existing) existing.outerHTML = greetingBannerHtml();
+}
+
+setInterval(refreshGreetingBanner, 60 * 1000);
+
+// ═══════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════
+function renderPaywall() {
+  const miniPlans = Object.entries(COURSE_CONTENT).map(([slug, c]) => `
+    <a href="courses/${slug}.html" class="mini-plan">
+      <div class="level">${slug.toUpperCase()}</div>
+      <div class="plan-name">${c.name}</div>
+      <div class="plan-price">${c.price}</div>
+    </a>
+  `).join('');
+
+  document.getElementById('app-root').innerHTML = `
+    <main class="paywall">
+      <div class="paywall-inner">
+        <div class="paywall-lock">🔒</div>
+        <h1>Kamu belum memiliki akses kelas</h1>
+        <p>Untuk mulai belajar, pilih kelas dan selesaikan pembayaran terlebih dahulu. Sekali bayar, akses konten 1 tahun penuh.</p>
+        <a href="index.html#pricing" class="paywall-cta">Pilih Kelas Sekarang →</a>
+
+        <div class="paywall-plans">
+          ${miniPlans}
+        </div>
+      </div>
+    </main>
+  `;
+}
+
+let currentState = { course: null, moduleId: null, lessonId: null };
+
+function renderLearning(courseSlug) {
+  const course = COURSE_CONTENT[courseSlug];
+  if (!course) return renderPaywall();
+
+  if (!currentState.moduleId) {
+    const progress = getProgress()[courseSlug] || {};
+    let found = false;
+    for (const m of course.modules) {
+      for (const l of m.lessons) {
+        const key = `${m.id}:${l.id}`;
+        if (!progress[key]) {
+          currentState.moduleId = m.id;
+          currentState.lessonId = l.id;
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+    if (!found) {
+      currentState.moduleId = course.modules[0].id;
+      currentState.lessonId = course.modules[0].lessons[0].id;
+    }
+  }
+  currentState.course = courseSlug;
+
+  document.getElementById('app-root').innerHTML = `
+    ${greetingBannerHtml()}
+    <div class="learning-layout">
+      <aside class="sidebar" id="sidebar"></aside>
+      <main class="main-content" id="main-content"></main>
+    </div>
+  `;
+
+  renderSidebar();
+  renderLesson();
+}
+
+function renderSidebar() {
+  const course = COURSE_CONTENT[currentState.course];
+  const progress = getProgress()[currentState.course] || {};
+
+  const totalLessons = course.modules.reduce((s, m) => s + m.lessons.length, 0);
+  const doneLessons = Object.values(progress).filter(v => v).length;
+  const pct = Math.round((doneLessons / totalLessons) * 100);
+
+  const modulesHtml = course.modules.map(m => {
+    const lessonsHtml = m.lessons.map(l => {
+      const key = `${m.id}:${l.id}`;
+      const isDone = !!progress[key];
+      const isCurrent = m.id === currentState.moduleId && l.id === currentState.lessonId;
+      const icon = l.type === 'quiz' ? '?' : (isDone ? '✓' : '▶');
+      return `
+        <li class="lesson-item ${isCurrent ? 'current' : ''} ${isDone ? 'done' : ''}"
+            onclick="selectLesson('${m.id}', '${l.id}')">
+          <span class="lesson-icon">${icon}</span>
+          <span>${l.title}</span>
+          <span class="lesson-meta">${l.duration}</span>
+        </li>
+      `;
+    }).join('');
+
+    const isOpen = m.id === currentState.moduleId;
+    return `
+      <div class="module ${isOpen ? 'open' : ''}" data-module="${m.id}">
+        <button class="module-header" onclick="toggleModule('${m.id}')">
+          <span><span class="module-num">${m.num}</span>${m.title}</span>
+          <span class="caret">▶</span>
+        </button>
+        <ul class="lessons">${lessonsHtml}</ul>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('sidebar').innerHTML = `
+    <div class="sidebar-header">
+      <h3>${course.name}</h3>
+      <div class="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <span>${pct}%</span>
+      </div>
+    </div>
+    ${modulesHtml}
+    <div class="discord-card">
+      <div class="discord-top">
+        <svg class="discord-logo" viewBox="0 0 24 24" fill="white" width="18" height="18">
+          <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+        </svg>
+        <span class="discord-title">Discord Premium</span>
+      </div>
+      <p class="discord-desc">Komunitas eksklusif siswa aktif. Diskusi, tanya jawab, dan live session bareng sensei.</p>
+      <a href="https://discord.gg/GANTI_LINK_INI" target="_blank" rel="noopener" class="discord-btn">Bergabung →</a>
+    </div>
+  `;
+}
+
+function renderLesson() {
+  const course = COURSE_CONTENT[currentState.course];
+  const module = course.modules.find(m => m.id === currentState.moduleId);
+  const lesson = module.lessons.find(l => l.id === currentState.lessonId);
+  const progress = getProgress()[currentState.course] || {};
+  const key = `${module.id}:${lesson.id}`;
+  const isDone = !!progress[key];
+
+  const allLessons = course.modules.flatMap(m => m.lessons.map(l => ({ m, l })));
+  const idx = allLessons.findIndex(x => x.m.id === module.id && x.l.id === lesson.id);
+  const prev = allLessons[idx - 1];
+  const next = allLessons[idx + 1];
+
+  const videoBlock = lesson.type === 'quiz' ? `
+    <div class="video-player" style="background:linear-gradient(135deg, #b20024 0%, #8a0b20 100%);">
+      <button class="play-btn" style="background:#fff;color:#b20024;font-size:22px;">?</button>
+      <span class="video-meta">KUIS · ${lesson.duration.toUpperCase()}</span>
+    </div>
+  ` : `
+    <div class="video-player">
+      <button class="play-btn" onclick="alert('Video player belum terintegrasi.')">▶</button>
+      <span class="video-meta">VIDEO · ${lesson.duration.toUpperCase()}</span>
+    </div>
+  `;
+
+  document.getElementById('main-content').innerHTML = `
+    <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · ${lesson.type.toUpperCase()}</p>
+    <h1 class="lesson-title">${lesson.title}</h1>
+    <p class="lesson-subtitle">${module.title} — ${lesson.duration}</p>
+
+    ${videoBlock}
+
+    <div class="lesson-body">
+      <h2>Catatan Pelajaran</h2>
+      <p>${lesson.body}</p>
+      ${lesson.jp ? `<div class="jp">${lesson.jp}</div>` : ''}
+      <p style="color:#999;font-size:13px;margin-top:18px;">Materi lengkap: video tutorial, contoh audio, dan worksheet PDF tersedia saat belajar.</p>
+    </div>
+
+    <div class="lesson-footer">
+      <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">
+        ← Sebelumnya
+      </button>
+      <button class="btn-primary" onclick="markCompleteAndNext()">
+        ${isDone ? (next ? 'Lanjut →' : 'Selesai ✓') : (next ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓')}
+      </button>
+    </div>
+  `;
+}
+
+window.selectLesson = (moduleId, lessonId) => {
+  currentState.moduleId = moduleId;
+  currentState.lessonId = lessonId;
+  renderSidebar();
+  renderLesson();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.toggleModule = (moduleId) => {
+  const el = document.querySelector(`.module[data-module="${moduleId}"]`);
+  if (el) el.classList.toggle('open');
+};
+
+window.markCompleteAndNext = () => {
+  const course = COURSE_CONTENT[currentState.course];
+  const key = `${currentState.moduleId}:${currentState.lessonId}`;
+  const allProgress = getProgress();
+  const courseProgress = allProgress[currentState.course] || {};
+  courseProgress[key] = true;
+  allProgress[currentState.course] = courseProgress;
+  setProgress(allProgress);
+
+  const allLessons = course.modules.flatMap(m => m.lessons.map(l => ({ m, l })));
+  const idx = allLessons.findIndex(x => x.m.id === currentState.moduleId && x.l.id === currentState.lessonId);
+  const next = allLessons[idx + 1];
+  if (next) {
+    currentState.moduleId = next.m.id;
+    currentState.lessonId = next.l.id;
+  }
+  renderSidebar();
+  renderLesson();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+function renderCourseTabs(activeSlug) {
+  const enrolled = getEnrolledCourses();
+  const tabs = Object.entries(COURSE_CONTENT).map(([slug, c]) => {
+    const isEnrolled = enrolled.includes(slug);
+    const isActive = slug === activeSlug;
+    const classes = ['course-tab'];
+    if (isActive) classes.push('active');
+    if (!isEnrolled) classes.push('locked');
+    const lockIcon = !isEnrolled ? '<span class="lock-icon">🔒</span>' : '';
+    return `<button class="${classes.join(' ')}" onclick="switchCourse('${slug}')" title="${c.name} — ${c.tagline}">${slug.toUpperCase()}${lockIcon}</button>`;
+  }).join('');
+  const nav = document.getElementById('course-tabs');
+  if (nav) nav.innerHTML = tabs;
+}
+
+window.switchCourse = (slug) => {
+  const enrolled = getEnrolledCourses();
+  if (!enrolled.includes(slug)) {
+    window.location.href = `courses/${slug}.html`;
+    return;
+  }
+  if (slug === currentState.course) return;
+  currentState.moduleId = null;
+  currentState.lessonId = null;
+  history.replaceState({}, '', `welcome.html?course=${slug}`);
+  renderLearning(slug);
+  renderCourseTabs(slug);
+};
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+if (session) {
+  document.getElementById('user-email').textContent = session.email;
+
+  handleNewEnrollment();
+
+  const enrolled = getEnrolledCourses();
+  const params = new URLSearchParams(window.location.search);
+  const requested = params.get('course');
+
+  if (enrolled.length === 0) {
+    renderPaywall();
+  } else {
+    const selected = enrolled.includes(requested) ? requested : enrolled[0];
+    renderCourseTabs(selected);
+    renderLearning(selected);
+  }
+}
+</script>
+
+</body>
+</html>

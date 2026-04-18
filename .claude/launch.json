@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "eznihongo",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["-y", "browser-sync", "start", "--server", ".", "--no-open", "--no-notify", "--port", "3737"],
+      "port": 3737
+    }
+  ]
+}
