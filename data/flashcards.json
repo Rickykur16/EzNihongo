@@ -1,0 +1,38 @@
+{
+  "n5": [
+    { "id": "fc1", "front": "あ", "reading": "a", "back": "Vokal \"a\"", "category": "Hiragana" },
+    { "id": "fc2", "front": "こんにちは", "reading": "konnichiwa", "back": "Selamat siang", "category": "Salam" },
+    { "id": "fc3", "front": "ありがとう", "reading": "arigatou", "back": "Terima kasih", "category": "Salam" },
+    { "id": "fc4", "front": "学生", "reading": "gakusei", "back": "Pelajar / Mahasiswa", "category": "Kosakata" },
+    { "id": "fc5", "front": "水", "reading": "mizu", "back": "Air", "category": "Kosakata" },
+    { "id": "fc6", "front": "本", "reading": "hon", "back": "Buku", "category": "Kosakata" },
+    { "id": "fc7", "front": "はじめまして", "reading": "hajimemashite", "back": "Senang berkenalan", "category": "Salam" },
+    { "id": "fc8", "front": "一 ・ 二 ・ 三", "reading": "ichi · ni · san", "back": "Satu · Dua · Tiga", "category": "Angka" },
+    { "id": "fc9", "front": "日本", "reading": "nihon", "back": "Jepang", "category": "Kosakata" },
+    { "id": "fc10", "front": "さようなら", "reading": "sayounara", "back": "Selamat tinggal", "category": "Salam" }
+  ],
+  "n4": [
+    { "id": "fc1", "front": "書いて", "reading": "kaite", "back": "Menulis (te-form)", "category": "Tata Bahasa" },
+    { "id": "fc2", "front": "食べられる", "reading": "taberareru", "back": "Bisa makan (potential)", "category": "Tata Bahasa" },
+    { "id": "fc3", "front": "どこ", "reading": "doko", "back": "Di mana", "category": "Percakapan" },
+    { "id": "fc4", "front": "いくらですか", "reading": "ikura desu ka", "back": "Berapa harganya?", "category": "Percakapan" },
+    { "id": "fc5", "front": "時間", "reading": "jikan", "back": "Waktu / Jam", "category": "Kosakata" }
+  ],
+  "n3": [
+    { "id": "fc1", "front": "報告", "reading": "houkoku", "back": "Laporan", "category": "Bisnis" },
+    { "id": "fc2", "front": "お疲れ様です", "reading": "otsukaresama desu", "back": "Salam profesional", "category": "Bisnis" },
+    { "id": "fc3", "front": "会議", "reading": "kaigi", "back": "Rapat / Meeting", "category": "Bisnis" },
+    { "id": "fc4", "front": "〜と思います", "reading": "~to omoimasu", "back": "Saya pikir ~", "category": "Tata Bahasa" }
+  ],
+  "n2": [
+    { "id": "fc1", "front": "召し上がる", "reading": "meshiagaru", "back": "Makan (hormat)", "category": "Keigo" },
+    { "id": "fc2", "front": "参る", "reading": "mairu", "back": "Pergi (merendah)", "category": "Keigo" },
+    { "id": "fc3", "front": "恐れ入ります", "reading": "osoreirimasu", "back": "Permisi dengan hormat", "category": "Keigo" }
+  ],
+  "ssw": [
+    { "id": "fc1", "front": "介護", "reading": "kaigo", "back": "Perawatan lansia", "category": "Industri" },
+    { "id": "fc2", "front": "外食", "reading": "gaishoku", "back": "Industri F&B", "category": "Industri" },
+    { "id": "fc3", "front": "面接", "reading": "mensetsu", "back": "Wawancara kerja", "category": "Kerja" },
+    { "id": "fc4", "front": "特定技能", "reading": "tokutei ginou", "back": "Specified Skilled Worker", "category": "Visa" }
+  ]
+}

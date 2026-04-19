@@ -1,0 +1,254 @@
+{
+  "n5": {
+    "name": "Kelas N5",
+    "tagline": "Dari nol — hiragana & dasar",
+    "price": "Rp 349rb/bln",
+    "modules": [
+      {
+        "id": "m1",
+        "num": "01",
+        "title": "Hiragana",
+        "lessons": [
+          { "id": "l1", "title": "Vokal: あ・い・う・え・お", "type": "video", "duration": "12 min", "body": "Mari mulai dari 5 vokal dasar. Lidah rileks, vokal Jepang lebih pendek dari Indonesia.", "jp": "<span>あ</span> a · <span>い</span> i · <span>う</span> u · <span>え</span> e · <span>お</span> o" },
+          { "id": "l2", "title": "K-row: か・き・く・け・こ", "type": "video", "duration": "15 min", "body": "Menggabungkan vokal dengan konsonan K. Perhatikan bahwa く sering lebih dekat ke 'ku' pendek.", "jp": "<span>か</span>ka · <span>き</span>ki · <span>く</span>ku · <span>け</span>ke · <span>こ</span>ko" },
+          { "id": "l3", "title": "S-row: さ・し・す・せ・そ", "type": "video", "duration": "14 min", "body": "し dibaca 'shi' bukan 'si'. Ini satu dari sedikit pengecualian yang perlu dihafal.", "jp": "<span>さ</span>sa · <span>し</span>shi · <span>す</span>su · <span>せ</span>se · <span>そ</span>so" },
+          { "id": "q1", "title": "Kuis Hiragana 1", "type": "quiz", "duration": "10 soal", "body": "Latihan pengenalan 15 karakter hiragana pertama." }
+        ]
+      },
+      {
+        "id": "m2",
+        "num": "02",
+        "title": "Salam & Perkenalan Diri",
+        "lessons": [
+          { "id": "l1", "title": "Sapaan Dasar", "type": "video", "duration": "10 min", "body": "Sapaan yang paling sering dipakai dalam keseharian orang Jepang.", "jp": "<span>おはようございます</span> — selamat pagi<br/><span>こんにちは</span> — selamat siang<br/><span>こんばんは</span> — selamat malam" },
+          { "id": "l2", "title": "Memperkenalkan Diri", "type": "video", "duration": "13 min", "body": "Struktur perkenalan sederhana: nama, asal, senang berkenalan.", "jp": "<span>はじめまして</span>。ricky <span>です</span>。インドネシアから来ました。" },
+          { "id": "q2", "title": "Kuis Salam", "type": "quiz", "duration": "8 soal", "body": "Cek kemampuan sapaan dan perkenalan dasar." }
+        ]
+      },
+      {
+        "id": "m3",
+        "num": "03",
+        "title": "Kosakata Harian",
+        "lessons": [
+          { "id": "l1", "title": "Angka 1—100", "type": "video", "duration": "16 min", "body": "Angka dasar sangat penting untuk bertanya harga, waktu, dan umur.", "jp": "<span>いち</span>, <span>に</span>, <span>さん</span>, <span>よん</span>, <span>ご</span>..." },
+          { "id": "l2", "title": "Hari & Waktu", "type": "video", "duration": "12 min", "body": "Hari dalam seminggu, konsep pagi/siang/malam." },
+          { "id": "l3", "title": "Keluarga", "type": "text", "duration": "8 min", "body": "Perbedaan panggilan keluarga sendiri vs keluarga orang lain." }
+        ]
+      },
+      {
+        "id": "m4",
+        "num": "04",
+        "title": "Pola Kalimat Dasar",
+        "lessons": [
+          { "id": "l1", "title": "です / ます form", "type": "video", "duration": "18 min", "body": "Bentuk sopan yang akan kamu pakai 90% waktu saat bicara dengan orang Jepang." },
+          { "id": "l2", "title": "Partikel は・を・に", "type": "video", "duration": "22 min", "body": "3 partikel paling fundamental. Kuasai ini, tata bahasa Jepang jadi jauh lebih mudah." }
+        ]
+      },
+      {
+        "id": "m5",
+        "num": "05",
+        "title": "Persiapan JLPT N5",
+        "lessons": [
+          { "id": "l1", "title": "Strategi Soal N5", "type": "video", "duration": "15 min", "body": "Cara membaca soal JLPT efisien, kelola waktu per section." },
+          { "id": "q1", "title": "Try-Out JLPT N5 Lengkap", "type": "quiz", "duration": "60 soal", "body": "Simulasi ujian penuh setara JLPT N5 resmi." }
+        ]
+      }
+    ]
+  },
+  "n4": {
+    "name": "Kelas N4",
+    "tagline": "Lanjut dari dasar",
+    "price": "Rp 449rb/bln",
+    "modules": [
+      {
+        "id": "m1",
+        "num": "01",
+        "title": "Kanji N4 (~300 karakter)",
+        "lessons": [
+          { "id": "l1", "title": "Kanji Dasar: 人・日・月・火・水", "type": "video", "duration": "18 min", "body": "Belajar membaca On-yomi dan Kun-yomi dengan konteks kalimat nyata." },
+          { "id": "l2", "title": "Kanji Angka & Waktu", "type": "video", "duration": "14 min", "body": "Kanji terkait waktu: 年・月・日・時・分" }
+        ]
+      },
+      {
+        "id": "m2",
+        "num": "02",
+        "title": "Tata Bahasa Menengah",
+        "lessons": [
+          { "id": "l1", "title": "Te-form (て-form)", "type": "video", "duration": "20 min", "body": "Bentuk te adalah kunci untuk menyambung kalimat dan membuat perintah halus." },
+          { "id": "l2", "title": "Potential form", "type": "video", "duration": "15 min", "body": "Cara bilang 'bisa', 'mampu', dalam bahasa Jepang natural." }
+        ]
+      },
+      {
+        "id": "m3",
+        "num": "03",
+        "title": "Percakapan Sehari-hari",
+        "lessons": [
+          { "id": "l1", "title": "Bertanya Arah", "type": "video", "duration": "12 min", "body": "Cara bertanya ke orang lokal saat kamu tersesat di Jepang." },
+          { "id": "l2", "title": "Belanja & Order", "type": "video", "duration": "14 min", "body": "Kosakata dan pola untuk situasi restoran, toko, konbini." }
+        ]
+      },
+      {
+        "id": "m4",
+        "num": "04",
+        "title": "Menulis Email & Pesan",
+        "lessons": [
+          { "id": "l1", "title": "Email Casual", "type": "text", "duration": "10 min", "body": "Struktur email ke teman dan rekan dekat." }
+        ]
+      },
+      {
+        "id": "m5",
+        "num": "05",
+        "title": "Persiapan JLPT N4",
+        "lessons": [
+          { "id": "q1", "title": "Try-Out JLPT N4", "type": "quiz", "duration": "90 menit", "body": "Simulasi full N4." }
+        ]
+      }
+    ]
+  },
+  "n3": {
+    "name": "Kelas N3",
+    "tagline": "Menengah — kerja siap",
+    "price": "Rp 549rb/bln",
+    "modules": [
+      {
+        "id": "m1",
+        "num": "01",
+        "title": "Kanji N3 (~650 karakter)",
+        "lessons": [
+          { "id": "l1", "title": "Kanji Bisnis Dasar", "type": "video", "duration": "20 min", "body": "Kanji yang paling sering muncul di lingkungan kerja Jepang." }
+        ]
+      },
+      {
+        "id": "m2",
+        "num": "02",
+        "title": "Tata Bahasa Kerja",
+        "lessons": [
+          { "id": "l1", "title": "Ekspresi Formal", "type": "video", "duration": "18 min", "body": "Pola kalimat yang wajib kamu kuasai sebelum pertama kali bicara dengan atasan Jepang." }
+        ]
+      },
+      {
+        "id": "m3",
+        "num": "03",
+        "title": "Kaiwa Profesional",
+        "lessons": [
+          { "id": "l1", "title": "Laporan ke Atasan", "type": "video", "duration": "15 min", "body": "Struktur 報告 (houkoku) yang diharapkan di tempat kerja Jepang." }
+        ]
+      },
+      {
+        "id": "m4",
+        "num": "04",
+        "title": "Membaca Artikel",
+        "lessons": [
+          { "id": "l1", "title": "Membaca Berita Ekonomi", "type": "text", "duration": "25 min", "body": "Latihan membaca dengan materi autentik dari NHK News Easy." }
+        ]
+      },
+      {
+        "id": "m5",
+        "num": "05",
+        "title": "Persiapan JLPT N3",
+        "lessons": [
+          { "id": "q1", "title": "Try-Out JLPT N3", "type": "quiz", "duration": "105 menit", "body": "Simulasi N3 lengkap." }
+        ]
+      }
+    ]
+  },
+  "n2": {
+    "name": "Kelas N2",
+    "tagline": "Mahir — bisnis-ready",
+    "price": "Rp 649rb/bln",
+    "modules": [
+      {
+        "id": "m1",
+        "num": "01",
+        "title": "Kanji & Kosakata N2",
+        "lessons": [
+          { "id": "l1", "title": "Kanji Media & Politik", "type": "video", "duration": "22 min", "body": "Kanji yang mendominasi koran dan berita TV Jepang." }
+        ]
+      },
+      {
+        "id": "m2",
+        "num": "02",
+        "title": "Keigo (敬語)",
+        "lessons": [
+          { "id": "l1", "title": "Sonkeigo — bahasa hormat", "type": "video", "duration": "24 min", "body": "Bentuk paling formal untuk merujuk ke atasan atau klien." },
+          { "id": "l2", "title": "Kenjougo — merendah diri", "type": "video", "duration": "20 min", "body": "Cara bicara yang merendahkan diri sendiri untuk menunjukkan hormat." }
+        ]
+      },
+      {
+        "id": "m3",
+        "num": "03",
+        "title": "Business Japanese",
+        "lessons": [
+          { "id": "l1", "title": "Meeting & Presentasi", "type": "video", "duration": "18 min", "body": "Struktur presentasi bisnis ala Jepang." }
+        ]
+      },
+      {
+        "id": "m4",
+        "num": "04",
+        "title": "Listening Lanjutan",
+        "lessons": [
+          { "id": "l1", "title": "Podcast Bisnis", "type": "video", "duration": "30 min", "body": "Latihan dengan podcast aktual untuk profesional Jepang." }
+        ]
+      },
+      {
+        "id": "m5",
+        "num": "05",
+        "title": "Persiapan JLPT N2",
+        "lessons": [
+          { "id": "q1", "title": "Try-Out JLPT N2", "type": "quiz", "duration": "155 menit", "body": "Simulasi N2 penuh." }
+        ]
+      }
+    ]
+  },
+  "ssw": {
+    "name": "Kelas SSW",
+    "tagline": "Tokutei Ginou — jalur kerja Jepang",
+    "price": "Rp 699rb/bln",
+    "modules": [
+      {
+        "id": "m1",
+        "num": "01",
+        "title": "Pengenalan SSW / Tokutei Ginou",
+        "lessons": [
+          { "id": "l1", "title": "14 Sektor Industri", "type": "video", "duration": "25 min", "body": "Overview semua bidang yang terbuka untuk SSW: kaigo, manufaktur, konstruksi, hingga F&B." },
+          { "id": "l2", "title": "Persyaratan & Visa", "type": "text", "duration": "15 min", "body": "Apa saja dokumen yang perlu disiapkan." }
+        ]
+      },
+      {
+        "id": "m2",
+        "num": "02",
+        "title": "Japanese Foundation Test (JFT)",
+        "lessons": [
+          { "id": "l1", "title": "Format JFT-Basic", "type": "video", "duration": "18 min", "body": "Struktur ujian JFT, perbedaannya dengan JLPT." },
+          { "id": "q1", "title": "Simulasi JFT Full", "type": "quiz", "duration": "60 menit", "body": "Try-out JFT lengkap dengan kunci jawaban." }
+        ]
+      },
+      {
+        "id": "m3",
+        "num": "03",
+        "title": "Bahasa Industri Pilihan",
+        "lessons": [
+          { "id": "l1", "title": "Kaigo (介護) — Perawatan Lansia", "type": "video", "duration": "30 min", "body": "Kosakata spesifik industri kaigo yang wajib dihafal." },
+          { "id": "l2", "title": "Gaishoku (外食) — F&B", "type": "video", "duration": "22 min", "body": "Istilah restoran Jepang dan dialog customer service." }
+        ]
+      },
+      {
+        "id": "m4",
+        "num": "04",
+        "title": "Mock Interview & Budaya Kerja",
+        "lessons": [
+          { "id": "l1", "title": "Etika Wawancara Jepang", "type": "video", "duration": "20 min", "body": "Cara masuk ruangan, salam, duduk, cara menjawab pertanyaan sulit." },
+          { "id": "l2", "title": "Mock Interview 1-on-1", "type": "video", "duration": "Live", "body": "Dijadwalkan terpisah dengan sensei kami yang sudah lama berkarier di Jepang." }
+        ]
+      },
+      {
+        "id": "m5",
+        "num": "05",
+        "title": "Penempatan & Agensi Mitra",
+        "lessons": [
+          { "id": "l1", "title": "List Agensi Mitra", "type": "text", "duration": "10 min", "body": "Daftar agensi penyalur kerja yang kami kerjasama, plus tips memilih." }
+        ]
+      }
+    ]
+  }
+}

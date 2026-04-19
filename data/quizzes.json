@@ -1,0 +1,42 @@
+{
+  "n5:m1:q1": [
+    { "q": "Bagaimana membaca karakter ini?", "jp": "あ", "options": ["a", "i", "u", "e"], "correct": 0, "explain": "あ dibaca \"a\" — vokal pertama dalam hiragana." },
+    { "q": "Bagaimana membaca karakter ini?", "jp": "き", "options": ["ka", "ki", "ku", "ke"], "correct": 1, "explain": "き dibaca \"ki\" — K-row + vokal い." },
+    { "q": "Karakter mana yang dibaca \"shi\"?", "options": ["さ", "し", "す", "そ"], "correct": 1, "explain": "し adalah pengecualian — dibaca \"shi\" bukan \"si\"." },
+    { "q": "Bagaimana membaca karakter ini?", "jp": "く", "options": ["ki", "ku", "ko", "ke"], "correct": 1, "explain": "く dibaca \"ku\", tapi sering terdengar pendek hampir seperti \"k\"." },
+    { "q": "Karakter mana yang dibaca \"so\"?", "options": ["さ", "し", "す", "そ"], "correct": 3, "explain": "そ dibaca \"so\" — S-row + vokal お." }
+  ],
+  "n5:m2:q2": [
+    { "q": "Apa arti \"おはようございます\"?", "options": ["Selamat pagi", "Selamat siang", "Selamat malam", "Terima kasih"], "correct": 0, "explain": "おはようございます adalah sapaan formal untuk pagi hari." },
+    { "q": "Apa arti \"はじめまして\"?", "options": ["Selamat tinggal", "Senang berkenalan", "Apa kabar", "Permisi"], "correct": 1, "explain": "はじめまして digunakan saat pertama kali bertemu seseorang." },
+    { "q": "Kapan \"こんばんは\" digunakan?", "options": ["Pagi", "Siang", "Sore", "Malam"], "correct": 3, "explain": "こんばんは = selamat malam. Dipakai setelah jam 6 sore." },
+    { "q": "\"〜から来ました\" artinya?", "options": ["Akan pergi ke", "Berasal dari", "Tinggal di", "Bekerja di"], "correct": 1, "explain": "〜から来ました = \"berasal dari\". Contoh: インドネシアから来ました (berasal dari Indonesia)." }
+  ],
+  "n5:m5:q1": [
+    { "q": "Partikel yang menandakan subjek adalah?", "options": ["を", "は", "に", "で"], "correct": 1, "explain": "は (dibaca \"wa\" saat jadi partikel) menandakan subjek/topik kalimat." },
+    { "q": "Bentuk sopan dari 食べる (makan) adalah?", "options": ["食べます", "食べた", "食べて", "食べない"], "correct": 0, "explain": "〜ます adalah bentuk sopan (polite form) yang umum dipakai." },
+    { "q": "「学生です」artinya?", "options": ["Saya guru", "Saya pelajar", "Saya dokter", "Saya pegawai"], "correct": 1, "explain": "学生 (gakusei) = pelajar/mahasiswa. です = adalah." },
+    { "q": "Cara bilang \"buku\" dalam bahasa Jepang?", "options": ["本 (hon)", "車 (kuruma)", "家 (ie)", "水 (mizu)"], "correct": 0, "explain": "本 (hon) = buku. Kanji dasar N5." },
+    { "q": "Partikel \"を\" digunakan untuk menandai?", "options": ["Waktu", "Tempat", "Objek", "Tujuan"], "correct": 2, "explain": "を menandai objek langsung (direct object) dari kata kerja." }
+  ],
+  "n4:m5:q1": [
+    { "q": "Te-form dari 書く (menulis)?", "options": ["書いて", "書った", "書きて", "書んで"], "correct": 0, "explain": "Kata kerja berakhiran く menjadi いて dalam te-form. 書く → 書いて." },
+    { "q": "Arti \"食べられる\" adalah?", "options": ["Harus makan", "Bisa makan", "Tidak makan", "Sudah makan"], "correct": 1, "explain": "Potential form (〜られる) = bisa/mampu melakukan sesuatu." },
+    { "q": "「〜てもいいですか」artinya?", "options": ["Tolong jangan", "Boleh ~kan?", "Harus ~kan", "Sudah ~kan"], "correct": 1, "explain": "〜てもいいですか = meminta izin dengan sopan. Contoh: 入ってもいいですか (boleh masuk?)." }
+  ],
+  "n3:m5:q1": [
+    { "q": "報告 (houkoku) artinya?", "options": ["Rapat", "Laporan", "Presentasi", "Tugas"], "correct": 1, "explain": "報告 = laporan. Kata penting di dunia kerja Jepang." },
+    { "q": "「お疲れ様です」digunakan kapan?", "options": ["Pagi hari", "Saat bertemu bos", "Salam di tempat kerja", "Saat pamit pulang"], "correct": 2, "explain": "お疲れ様です adalah sapaan umum di tempat kerja Jepang, bisa dipakai kapan saja." },
+    { "q": "〜と思います artinya?", "options": ["Saya tahu", "Saya pikir", "Saya dengar", "Saya lihat"], "correct": 1, "explain": "〜と思います = \"saya pikir / menurut saya\". Ekspresi pendapat yang sopan." }
+  ],
+  "n2:m5:q1": [
+    { "q": "Contoh sonkeigo dari 食べる?", "options": ["召し上がる", "いただく", "食べております", "食べます"], "correct": 0, "explain": "召し上がる (meshiagaru) = bentuk hormat dari 食べる untuk menghormati lawan bicara." },
+    { "q": "Kenjougo dari 行く?", "options": ["いらっしゃる", "参る", "行きます", "お行きになる"], "correct": 1, "explain": "参る (mairu) = bentuk merendah dari 行く untuk merendahkan diri sendiri." },
+    { "q": "「恐れ入ります」artinya?", "options": ["Maaf", "Terima kasih", "Permisi dengan hormat", "Tidak apa-apa"], "correct": 2, "explain": "恐れ入ります = ungkapan sangat sopan untuk \"permisi/maaf mengganggu\" di konteks bisnis." }
+  ],
+  "ssw:m2:q1": [
+    { "q": "JFT singkatan dari?", "options": ["Japanese Foreign Test", "Japan Foundation Test", "Japanese Fluency Training", "Job Field Test"], "correct": 1, "explain": "JFT-Basic = Japan Foundation Test for Basic Japanese, ujian bahasa untuk SSW." },
+    { "q": "JFT menguji kemampuan setara?", "options": ["N5", "N4-N5", "N3", "N2"], "correct": 1, "explain": "JFT-Basic setara level N4-N5, minimum untuk visa SSW." },
+    { "q": "Tokutei Ginou dibagi jadi berapa sektor?", "options": ["5", "10", "14", "20"], "correct": 2, "explain": "14 sektor industri tersedia untuk SSW, dari kaigo, manufaktur, F&B, hingga konstruksi." }
+  ]
+}
