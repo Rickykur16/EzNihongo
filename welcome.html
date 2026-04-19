@@ -2219,7 +2219,8 @@ window.switchCourse = (slug) => {
     return;
   }
 
-  document.getElementById('user-email').textContent = session.email;
+  const userEmailEl = document.getElementById('user-email');
+  if (userEmailEl) userEmailEl.textContent = session.email;
 
   handleNewEnrollment();
 
