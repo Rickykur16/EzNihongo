@@ -554,46 +554,410 @@
     font-weight: 500;
   }
 
+  /* ── Stats Bar ── */
+  .stats-bar {
+    max-width: 900px;
+    margin: 0 auto 28px;
+    padding: 0 24px;
+  }
+  .stats-strip {
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 14px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    overflow: hidden;
+  }
+  @media (max-width: 640px) { .stats-strip { grid-template-columns: 1fr; } }
+  .stat-cell {
+    padding: 16px 22px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-right: 1px solid #f0f0f0;
+    transition: background 0.15s;
+  }
+  .stat-cell:last-child { border-right: none; }
+  .stat-cell:hover { background: #fafafa; }
+  .stat-icon-wrap {
+    width: 36px; height: 36px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #485f84;
+  }
+  .stat-body { flex: 1; min-width: 0; }
+  .stat-label {
+    font-size: 10px; color: #999;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    font-family: 'JetBrains Mono', monospace; font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .stat-value {
+    font-size: 18px; font-weight: 800; color: #191c1d; line-height: 1.1;
+  }
+  .stat-value.accent { color: #b20024; }
+  .stat-sub { font-size: 11px; color: #bbb; margin-top: 2px; }
+  .goal-ring { position: relative; width: 36px; height: 36px; flex-shrink: 0; }
+  .goal-ring svg { transform: rotate(-90deg); }
+  .goal-ring-bg { fill: none; stroke: #f0f0f0; stroke-width: 3; }
+  .goal-ring-fill { fill: none; stroke: #191c1d; stroke-width: 3; stroke-linecap: round; transition: stroke-dashoffset 0.6s; }
+  .goal-ring-text {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; color: #191c1d;
+  }
+
+  /* ── Flashcard Button in Sidebar ── */
+  .flashcard-cta {
+    margin: 12px 0 4px;
+    background: #f5f5f7;
+    color: #191c1d;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #e8e8e8;
+    width: 100%;
+    cursor: pointer;
+    font-family: 'Manrope', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s;
+    letter-spacing: 0.01em;
+  }
+  .flashcard-cta:hover { background: #191c1d; color: #fff; border-color: #191c1d; }
+  .flashcard-cta .icon { opacity: 0.5; }
+  .flashcard-cta .count {
+    margin-left: auto;
+    background: #e8e8e8;
+    color: #485f84;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+  }
+  .flashcard-cta:hover .count { background: rgba(255,255,255,0.15); color: #fff; }
+
+  /* ── Interactive Quiz ── */
+  .quiz-container {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 18px;
+    padding: 32px;
+    margin-top: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+  }
+  @media (max-width: 600px) { .quiz-container { padding: 20px; } }
+  .quiz-progress-wrap {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 24px;
+  }
+  .quiz-progress-bar {
+    flex: 1; height: 6px; background: #f0f0f0; border-radius: 999px; overflow: hidden;
+  }
+  .quiz-progress-fill {
+    height: 100%; background: linear-gradient(90deg, #b20024, #e11d48); transition: width 0.4s;
+  }
+  .quiz-progress-text {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: #485f84; font-weight: 700; white-space: nowrap;
+  }
+  .quiz-question {
+    font-size: 20px; font-weight: 800; color: #191c1d;
+    line-height: 1.4; margin-bottom: 20px;
+  }
+  .quiz-question .jp {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: clamp(28px, 5vw, 40px);
+    color: #b20024; display: block; margin: 12px 0;
+  }
+  .quiz-options { display: grid; gap: 10px; }
+  .quiz-option {
+    padding: 13px 16px;
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-left: 3px solid transparent;
+    border-radius: 8px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px; font-weight: 500; color: #191c1d;
+    text-align: left; cursor: pointer;
+    transition: all 0.12s;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .quiz-option:hover:not(.disabled) { border-left-color: #191c1d; background: #fafafa; }
+  .quiz-option.correct { border-left-color: #16a34a; background: #f0fdf4; color: #166534; border-color: #bbf7d0; border-left-color: #16a34a; }
+  .quiz-option.wrong { border-left-color: #dc2626; background: #fff8f8; color: #7f1d1d; border-color: #fecaca; border-left-color: #dc2626; }
+  .quiz-option.disabled { cursor: not-allowed; }
+  .quiz-option-letter {
+    width: 22px; height: 22px; border-radius: 4px;
+    background: #f5f5f5; border: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; flex-shrink: 0;
+    color: #999; font-family: 'JetBrains Mono', monospace;
+  }
+  .quiz-option.correct .quiz-option-letter { background: #16a34a; color: #fff; }
+  .quiz-option.wrong .quiz-option-letter { background: #dc2626; color: #fff; }
+  .quiz-explanation {
+    margin-top: 16px; padding: 14px 18px;
+    background: #f8f9fa; border-left: 3px solid #b20024;
+    border-radius: 8px; font-size: 14px; color: #485f84; line-height: 1.6;
+    animation: slideDown 0.3s;
+  }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  .quiz-next-btn {
+    margin-top: 20px; padding: 14px 28px;
+    background: #b20024; color: #fff; border: none;
+    border-radius: 10px; font-family: 'Manrope', sans-serif;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .quiz-next-btn:hover { background: #8a0b20; }
+
+  /* Quiz Results */
+  .quiz-results { text-align: center; padding: 32px 24px; }
+  .quiz-results .trophy { font-size: 64px; margin-bottom: 12px; animation: bounce 0.6s; }
+  @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  .quiz-results h2 { font-size: 26px; font-weight: 800; margin: 0 0 4px; }
+  .quiz-results .subtitle { color: #485f84; font-size: 14px; margin-bottom: 24px; }
+  .quiz-results .score-circle {
+    width: 140px; height: 140px; border-radius: 50%;
+    background: #fff; border: 8px solid #b20024;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 36px; font-weight: 800; color: #b20024;
+    box-shadow: 0 10px 30px rgba(178, 0, 36, 0.15);
+  }
+  .quiz-results .xp-earned {
+    display: inline-block; padding: 10px 22px;
+    background: linear-gradient(135deg, #b20024, #e11d48);
+    color: #fff; border-radius: 999px;
+    font-weight: 700; font-size: 14px; margin-bottom: 24px;
+  }
+  .quiz-results-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+  /* ── Flashcard ── */
+  .flashcard-wrap { max-width: 520px; margin: 0 auto; padding: 20px 0; }
+  .flashcard-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .flashcard-counter {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: #485f84; font-weight: 700;
+  }
+  .flashcard-category {
+    font-size: 11px; color: #b20024;
+    text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700;
+  }
+  .flashcard {
+    perspective: 1000px; height: 320px; margin-bottom: 24px; cursor: pointer;
+  }
+  .flashcard-inner {
+    position: relative; width: 100%; height: 100%;
+    transform-style: preserve-3d; transition: transform 0.6s;
+  }
+  .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+  .flashcard-face {
+    position: absolute; inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 20px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 32px; text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+  }
+  .flashcard-face.front {
+    background: #fff; border: 1px solid #e5e5e5;
+  }
+  .flashcard-face.front .flashcard-text {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: clamp(40px, 8vw, 64px); color: #191c1d;
+    font-weight: 700; line-height: 1.2;
+  }
+  .flashcard-face.front .flashcard-hint {
+    margin-top: 24px; font-size: 12px; color: #999;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .flashcard-face.back {
+    transform: rotateY(180deg);
+    background: linear-gradient(135deg, #fff0f2, #fff);
+    border: 1px solid #b20024;
+  }
+  .flashcard-face.back .flashcard-reading {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 22px; color: #b20024;
+    margin-bottom: 12px; font-weight: 600;
+  }
+  .flashcard-face.back .flashcard-meaning {
+    font-size: 26px; font-weight: 800; color: #191c1d; line-height: 1.3;
+  }
+  .flashcard-ratings {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  }
+  .rating-btn {
+    padding: 12px 16px; border: 1px solid #e8e8e8; background: #fff;
+    border-radius: 8px; font-family: 'Manrope', sans-serif;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    transition: all 0.12s;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    letter-spacing: 0.03em; text-transform: uppercase; color: #485f84;
+  }
+  .rating-btn .bar {
+    width: 20px; height: 3px; border-radius: 2px; background: currentColor; opacity: 0.3;
+  }
+  .rating-btn.hard:hover { background: #fff5f5; border-color: #dc2626; color: #dc2626; }
+  .rating-btn.hard:hover .bar { opacity: 1; }
+  .rating-btn.medium:hover { background: #fffbf0; border-color: #d97706; color: #d97706; }
+  .rating-btn.medium:hover .bar { opacity: 1; }
+  .rating-btn.easy:hover { background: #f0fdf4; border-color: #16a34a; color: #16a34a; }
+  .rating-btn.easy:hover .bar { opacity: 1; }
+  .flashcard-empty { text-align: center; padding: 60px 24px; color: #485f84; }
+  .flashcard-empty .check {
+    font-size: 56px; margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: center;
+    width: 96px; height: 96px; margin-left: auto; margin-right: auto;
+    background: #dcfce7; color: #16a34a; border-radius: 50%;
+  }
+  .back-to-lesson-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; background: transparent; border: 1px solid #e5e5e5;
+    border-radius: 8px; color: #485f84; font-size: 12px; font-weight: 600;
+    cursor: pointer; margin-bottom: 20px;
+  }
+  .back-to-lesson-btn:hover { border-color: #191c1d; color: #191c1d; }
+
+  /* ── Pronunciation Button ── */
+  .pronounce-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    background: #fff; border: 1px solid #b20024; color: #b20024;
+    border-radius: 999px; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s;
+    font-family: 'Manrope', sans-serif;
+  }
+  .pronounce-btn:hover { background: #b20024; color: #fff; }
+  .pronounce-btn.playing { background: #b20024; color: #fff; animation: pulse 0.8s infinite; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(178, 0, 36, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(178, 0, 36, 0); }
+  }
+
+  /* ── Completion Modal ── */
+  .completion-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: none; align-items: center; justify-content: center;
+    z-index: 1000; animation: fadeIn 0.3s;
+  }
+  .completion-overlay.show { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .completion-modal {
+    background: #fff; border-radius: 24px;
+    padding: 44px 32px; max-width: 420px; width: calc(100% - 32px);
+    text-align: center; position: relative;
+    animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes popIn {
+    from { transform: scale(0.6); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .completion-modal .check-circle {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: linear-gradient(135deg, #16a34a, #22c55e);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 38px; color: #fff;
+    margin: 0 auto 20px;
+    box-shadow: 0 10px 30px rgba(22, 163, 74, 0.35);
+  }
+  .completion-modal h2 { font-size: 24px; font-weight: 800; margin: 0 0 8px; }
+  .completion-modal p { color: #485f84; margin: 0 0 20px; line-height: 1.5; }
+  .completion-xp {
+    display: inline-block; padding: 10px 22px;
+    background: linear-gradient(135deg, #b20024, #e11d48);
+    color: #fff; border-radius: 999px;
+    font-weight: 700; font-size: 15px; margin-bottom: 20px;
+  }
+  .completion-actions { display: flex; gap: 10px; }
+  .completion-actions .btn-primary, .completion-actions .btn-secondary { flex: 1; }
+
+  /* ── Confetti ── */
+  .confetti-piece {
+    position: fixed;
+    width: 10px; height: 10px;
+    top: -10px; z-index: 1001;
+    pointer-events: none;
+    animation: confettiFall 3s linear forwards;
+  }
+  @keyframes confettiFall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* ── XP Toast ── */
+  .xp-toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: #191c1d; color: #fff;
+    padding: 12px 18px; border-radius: 12px;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    z-index: 999;
+    transform: translateX(400px); opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
+  }
+  .xp-toast.show { transform: translateX(0); opacity: 1; }
+  .xp-toast .bolt {
+    width: 30px; height: 30px;
+    background: linear-gradient(135deg, #b20024, #e11d48);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+  }
+  .xp-toast .text { font-weight: 700; font-size: 14px; }
+
   /* ── Discord Card ── */
   .discord-card {
-    margin: 16px 12px 12px;
-    background: #5865F2;
-    border-radius: 14px;
-    padding: 16px;
-    color: #fff;
+    margin: 16px 0 12px;
+    background: #f8f9fa;
+    border: 1px solid #e8e8e8;
+    border-radius: 12px;
+    padding: 14px;
   }
   .discord-top {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
-  .discord-logo { flex-shrink: 0; }
+  .discord-logo { flex-shrink: 0; opacity: 0.7; }
   .discord-title {
     font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 13px;
-    font-weight: 800;
+    font-size: 12px;
+    font-weight: 700;
+    color: #191c1d;
     letter-spacing: 0.01em;
   }
   .discord-desc {
-    font-size: 11.5px;
+    font-size: 11px;
     line-height: 1.5;
-    color: rgba(255,255,255,0.8);
-    margin: 0 0 12px;
+    color: #999;
+    margin: 0 0 10px;
   }
   .discord-btn {
     display: block;
-    background: #fff;
-    color: #5865F2;
+    background: #191c1d;
+    color: #fff;
     text-align: center;
     padding: 8px 0;
-    border-radius: 8px;
-    font-size: 12px;
+    border-radius: 7px;
+    font-size: 11px;
     font-weight: 700;
     text-decoration: none;
     transition: opacity 0.15s;
+    letter-spacing: 0.03em;
   }
-  .discord-btn:hover { opacity: 0.9; }
+  .discord-btn:hover { opacity: 0.8; }
 
   /* Footer */
   footer {
@@ -765,6 +1129,95 @@ const COURSE_CONTENT = {
 };
 
 // ═══════════════════════════════════════════════
+// QUIZ DATA — pertanyaan untuk lesson bertipe "quiz"
+// Key: `${courseSlug}:${moduleId}:${lessonId}`
+// ═══════════════════════════════════════════════
+const QUIZ_DATA = {
+  "n5:m1:q1": [
+    { q: 'Bagaimana membaca karakter ini?', jp: 'あ', options: ['a', 'i', 'u', 'e'], correct: 0, explain: 'あ dibaca "a" — vokal pertama dalam hiragana.' },
+    { q: 'Bagaimana membaca karakter ini?', jp: 'き', options: ['ka', 'ki', 'ku', 'ke'], correct: 1, explain: 'き dibaca "ki" — K-row + vokal い.' },
+    { q: 'Karakter mana yang dibaca "shi"?', options: ['さ', 'し', 'す', 'そ'], correct: 1, explain: 'し adalah pengecualian — dibaca "shi" bukan "si".' },
+    { q: 'Bagaimana membaca karakter ini?', jp: 'く', options: ['ki', 'ku', 'ko', 'ke'], correct: 1, explain: 'く dibaca "ku", tapi sering terdengar pendek hampir seperti "k".' },
+    { q: 'Karakter mana yang dibaca "so"?', options: ['さ', 'し', 'す', 'そ'], correct: 3, explain: 'そ dibaca "so" — S-row + vokal お.' },
+  ],
+  "n5:m2:q2": [
+    { q: 'Apa arti "おはようございます"?', options: ['Selamat pagi', 'Selamat siang', 'Selamat malam', 'Terima kasih'], correct: 0, explain: 'おはようございます adalah sapaan formal untuk pagi hari.' },
+    { q: 'Apa arti "はじめまして"?', options: ['Selamat tinggal', 'Senang berkenalan', 'Apa kabar', 'Permisi'], correct: 1, explain: 'はじめまして digunakan saat pertama kali bertemu seseorang.' },
+    { q: 'Kapan "こんばんは" digunakan?', options: ['Pagi', 'Siang', 'Sore', 'Malam'], correct: 3, explain: 'こんばんは = selamat malam. Dipakai setelah jam 6 sore.' },
+    { q: '"〜から来ました" artinya?', options: ['Akan pergi ke', 'Berasal dari', 'Tinggal di', 'Bekerja di'], correct: 1, explain: '〜から来ました = "berasal dari". Contoh: インドネシアから来ました (berasal dari Indonesia).' },
+  ],
+  "n5:m5:q1": [
+    { q: 'Partikel yang menandakan subjek adalah?', options: ['を', 'は', 'に', 'で'], correct: 1, explain: 'は (dibaca "wa" saat jadi partikel) menandakan subjek/topik kalimat.' },
+    { q: 'Bentuk sopan dari 食べる (makan) adalah?', options: ['食べます', '食べた', '食べて', '食べない'], correct: 0, explain: '〜ます adalah bentuk sopan (polite form) yang umum dipakai.' },
+    { q: '「学生です」artinya?', options: ['Saya guru', 'Saya pelajar', 'Saya dokter', 'Saya pegawai'], correct: 1, explain: '学生 (gakusei) = pelajar/mahasiswa. です = adalah.' },
+    { q: 'Cara bilang "buku" dalam bahasa Jepang?', options: ['本 (hon)', '車 (kuruma)', '家 (ie)', '水 (mizu)'], correct: 0, explain: '本 (hon) = buku. Kanji dasar N5.' },
+    { q: 'Partikel "を" digunakan untuk menandai?', options: ['Waktu', 'Tempat', 'Objek', 'Tujuan'], correct: 2, explain: 'を menandai objek langsung (direct object) dari kata kerja.' },
+  ],
+  "n4:m5:q1": [
+    { q: 'Te-form dari 書く (menulis)?', options: ['書いて', '書った', '書きて', '書んで'], correct: 0, explain: 'Kata kerja berakhiran く menjadi いて dalam te-form. 書く → 書いて.' },
+    { q: 'Arti "食べられる" adalah?', options: ['Harus makan', 'Bisa makan', 'Tidak makan', 'Sudah makan'], correct: 1, explain: 'Potential form (〜られる) = bisa/mampu melakukan sesuatu.' },
+    { q: '「〜てもいいですか」artinya?', options: ['Tolong jangan', 'Boleh ~kan?', 'Harus ~kan', 'Sudah ~kan'], correct: 1, explain: '〜てもいいですか = meminta izin dengan sopan. Contoh: 入ってもいいですか (boleh masuk?).' },
+  ],
+  "n3:m5:q1": [
+    { q: '報告 (houkoku) artinya?', options: ['Rapat', 'Laporan', 'Presentasi', 'Tugas'], correct: 1, explain: '報告 = laporan. Kata penting di dunia kerja Jepang.' },
+    { q: '「お疲れ様です」digunakan kapan?', options: ['Pagi hari', 'Saat bertemu bos', 'Salam di tempat kerja', 'Saat pamit pulang'], correct: 2, explain: 'お疲れ様です adalah sapaan umum di tempat kerja Jepang, bisa dipakai kapan saja.' },
+    { q: '〜と思います artinya?', options: ['Saya tahu', 'Saya pikir', 'Saya dengar', 'Saya lihat'], correct: 1, explain: '〜と思います = "saya pikir / menurut saya". Ekspresi pendapat yang sopan.' },
+  ],
+  "n2:m5:q1": [
+    { q: 'Contoh sonkeigo dari 食べる?', options: ['召し上がる', 'いただく', '食べております', '食べます'], correct: 0, explain: '召し上がる (meshiagaru) = bentuk hormat dari 食べる untuk menghormati lawan bicara.' },
+    { q: 'Kenjougo dari 行く?', options: ['いらっしゃる', '参る', '行きます', 'お行きになる'], correct: 1, explain: '参る (mairu) = bentuk merendah dari 行く untuk merendahkan diri sendiri.' },
+    { q: '「恐れ入ります」artinya?', options: ['Maaf', 'Terima kasih', 'Permisi dengan hormat', 'Tidak apa-apa'], correct: 2, explain: '恐れ入ります = ungkapan sangat sopan untuk "permisi/maaf mengganggu" di konteks bisnis.' },
+  ],
+  "ssw:m2:q1": [
+    { q: 'JFT singkatan dari?', options: ['Japanese Foreign Test', 'Japan Foundation Test', 'Japanese Fluency Training', 'Job Field Test'], correct: 1, explain: 'JFT-Basic = Japan Foundation Test for Basic Japanese, ujian bahasa untuk SSW.' },
+    { q: 'JFT menguji kemampuan setara?', options: ['N5', 'N4-N5', 'N3', 'N2'], correct: 1, explain: 'JFT-Basic setara level N4-N5, minimum untuk visa SSW.' },
+    { q: 'Tokutei Ginou dibagi jadi berapa sektor?', options: ['5', '10', '14', '20'], correct: 2, explain: '14 sektor industri tersedia untuk SSW, dari kaigo, manufaktur, F&B, hingga konstruksi.' },
+  ],
+};
+
+// ═══════════════════════════════════════════════
+// FLASHCARD DATA — per course
+// ═══════════════════════════════════════════════
+const FLASHCARD_DATA = {
+  n5: [
+    { id: 'fc1', front: 'あ', reading: 'a', back: 'Vokal "a"', category: 'Hiragana' },
+    { id: 'fc2', front: 'こんにちは', reading: 'konnichiwa', back: 'Selamat siang', category: 'Salam' },
+    { id: 'fc3', front: 'ありがとう', reading: 'arigatou', back: 'Terima kasih', category: 'Salam' },
+    { id: 'fc4', front: '学生', reading: 'gakusei', back: 'Pelajar / Mahasiswa', category: 'Kosakata' },
+    { id: 'fc5', front: '水', reading: 'mizu', back: 'Air', category: 'Kosakata' },
+    { id: 'fc6', front: '本', reading: 'hon', back: 'Buku', category: 'Kosakata' },
+    { id: 'fc7', front: 'はじめまして', reading: 'hajimemashite', back: 'Senang berkenalan', category: 'Salam' },
+    { id: 'fc8', front: '一 ・ 二 ・ 三', reading: 'ichi · ni · san', back: 'Satu · Dua · Tiga', category: 'Angka' },
+    { id: 'fc9', front: '日本', reading: 'nihon', back: 'Jepang', category: 'Kosakata' },
+    { id: 'fc10', front: 'さようなら', reading: 'sayounara', back: 'Selamat tinggal', category: 'Salam' },
+  ],
+  n4: [
+    { id: 'fc1', front: '書いて', reading: 'kaite', back: 'Menulis (te-form)', category: 'Tata Bahasa' },
+    { id: 'fc2', front: '食べられる', reading: 'taberareru', back: 'Bisa makan (potential)', category: 'Tata Bahasa' },
+    { id: 'fc3', front: 'どこ', reading: 'doko', back: 'Di mana', category: 'Percakapan' },
+    { id: 'fc4', front: 'いくらですか', reading: 'ikura desu ka', back: 'Berapa harganya?', category: 'Percakapan' },
+    { id: 'fc5', front: '時間', reading: 'jikan', back: 'Waktu / Jam', category: 'Kosakata' },
+  ],
+  n3: [
+    { id: 'fc1', front: '報告', reading: 'houkoku', back: 'Laporan', category: 'Bisnis' },
+    { id: 'fc2', front: 'お疲れ様です', reading: 'otsukaresama desu', back: 'Salam profesional', category: 'Bisnis' },
+    { id: 'fc3', front: '会議', reading: 'kaigi', back: 'Rapat / Meeting', category: 'Bisnis' },
+    { id: 'fc4', front: '〜と思います', reading: '~to omoimasu', back: 'Saya pikir ~', category: 'Tata Bahasa' },
+  ],
+  n2: [
+    { id: 'fc1', front: '召し上がる', reading: 'meshiagaru', back: 'Makan (hormat)', category: 'Keigo' },
+    { id: 'fc2', front: '参る', reading: 'mairu', back: 'Pergi (merendah)', category: 'Keigo' },
+    { id: 'fc3', front: '恐れ入ります', reading: 'osoreirimasu', back: 'Permisi dengan hormat', category: 'Keigo' },
+  ],
+  ssw: [
+    { id: 'fc1', front: '介護', reading: 'kaigo', back: 'Perawatan lansia', category: 'Industri' },
+    { id: 'fc2', front: '外食', reading: 'gaishoku', back: 'Industri F&B', category: 'Industri' },
+    { id: 'fc3', front: '面接', reading: 'mensetsu', back: 'Wawancara kerja', category: 'Kerja' },
+    { id: 'fc4', front: '特定技能', reading: 'tokutei ginou', back: 'Specified Skilled Worker', category: 'Visa' },
+  ],
+};
+
+// ═══════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════
 function getEnrolledCourses() {
@@ -778,6 +1231,432 @@ function getProgress() {
 function setProgress(obj) {
   localStorage.setItem('ez_progress', JSON.stringify(obj));
 }
+
+// ═══════════════════════════════════════════════
+// GAMIFICATION — XP, Streak, Daily Goal
+// ═══════════════════════════════════════════════
+const DAILY_GOAL_XP = 30;
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function yesterdayStr() {
+  const d = new Date(Date.now() - 86400000);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function getStats() {
+  try {
+    const s = JSON.parse(localStorage.getItem('ez_stats') || '{}');
+    return { xp: s.xp || 0, streak: s.streak || 0, lastActive: s.lastActive || null, dailyXP: s.dailyXP || 0, dailyDate: s.dailyDate || null };
+  } catch { return { xp: 0, streak: 0, lastActive: null, dailyXP: 0, dailyDate: null }; }
+}
+function saveStats(s) { localStorage.setItem('ez_stats', JSON.stringify(s)); }
+
+function tickActivityAndStreak() {
+  const s = getStats();
+  const today = todayStr();
+  if (s.lastActive === today) return s;
+  if (s.lastActive === yesterdayStr()) s.streak = (s.streak || 0) + 1;
+  else s.streak = 1;
+  s.lastActive = today;
+  if (s.dailyDate !== today) { s.dailyXP = 0; s.dailyDate = today; }
+  saveStats(s);
+  return s;
+}
+
+function addXP(amount, reason) {
+  const s = tickActivityAndStreak();
+  s.xp = (s.xp || 0) + amount;
+  s.dailyXP = (s.dailyXP || 0) + amount;
+  saveStats(s);
+  showXPToast(amount, reason);
+  refreshStatsBar();
+}
+
+function showXPToast(amount, reason) {
+  const existing = document.getElementById('xp-toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.id = 'xp-toast';
+  toast.className = 'xp-toast';
+  toast.innerHTML = `<span class="bolt">⚡</span><span class="text">+${amount} XP${reason ? ' · ' + reason : ''}</span>`;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 400);
+  }, 2400);
+}
+
+function renderStatsBar() {
+  const s = getStats();
+  const today = todayStr();
+  const dailyXP = s.dailyDate === today ? (s.dailyXP || 0) : 0;
+  const pct = Math.min(100, Math.round((dailyXP / DAILY_GOAL_XP) * 100));
+  const C = 2 * Math.PI * 14;
+  const dashOffset = C * (1 - pct / 100);
+  const streakIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
+  const xpIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+  return `
+    <div class="stats-bar">
+      <div class="stats-strip">
+        <div class="stat-cell">
+          <div class="stat-icon-wrap">${streakIcon}</div>
+          <div class="stat-body">
+            <div class="stat-label">Streak Belajar</div>
+            <div class="stat-value${s.streak >= 3 ? ' accent' : ''}">${s.streak || 0} hari</div>
+            <div class="stat-sub">${s.streak >= 1 ? 'Konsisten!' : 'Mulai hari ini'}</div>
+          </div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-icon-wrap">${xpIcon}</div>
+          <div class="stat-body">
+            <div class="stat-label">Total XP</div>
+            <div class="stat-value">${s.xp || 0}</div>
+            <div class="stat-sub">+${dailyXP} hari ini</div>
+          </div>
+        </div>
+        <div class="stat-cell">
+          <div class="goal-ring">
+            <svg width="36" height="36" viewBox="0 0 36 36">
+              <circle class="goal-ring-bg" cx="18" cy="18" r="14"/>
+              <circle class="goal-ring-fill" cx="18" cy="18" r="14"
+                stroke-dasharray="${C.toFixed(2)}" stroke-dashoffset="${dashOffset.toFixed(2)}"/>
+            </svg>
+            <div class="goal-ring-text">${pct}%</div>
+          </div>
+          <div class="stat-body">
+            <div class="stat-label">Target Harian</div>
+            <div class="stat-value">${dailyXP}<span style="font-size:13px;font-weight:500;color:#999;">/${DAILY_GOAL_XP} XP</span></div>
+            <div class="stat-sub">${pct >= 100 ? 'Target tercapai' : `Sisa ${Math.max(0, DAILY_GOAL_XP - dailyXP)} XP`}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function refreshStatsBar() {
+  const el = document.querySelector('.stats-bar');
+  if (el) el.outerHTML = renderStatsBar();
+}
+
+// ═══════════════════════════════════════════════
+// CONFETTI + COMPLETION MODAL
+// ═══════════════════════════════════════════════
+function fireConfetti() {
+  const colors = ['#b20024', '#e11d48', '#16a34a', '#f59e0b', '#3b82f6', '#8b5cf6'];
+  for (let i = 0; i < 60; i++) {
+    const p = document.createElement('div');
+    p.className = 'confetti-piece';
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+    p.style.animationDelay = (Math.random() * 0.5) + 's';
+    p.style.animationDuration = (2.5 + Math.random() * 1.5) + 's';
+    if (Math.random() > 0.5) p.style.borderRadius = '50%';
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 4500);
+  }
+}
+
+function showCompletion({ title, message, xp, continueLabel, onContinue, onSecondary, secondaryLabel }) {
+  const overlay = document.createElement('div');
+  overlay.className = 'completion-overlay show';
+  overlay.innerHTML = `
+    <div class="completion-modal">
+      <div class="check-circle">✓</div>
+      <h2>${title}</h2>
+      <p>${message}</p>
+      ${xp ? `<div class="completion-xp">⚡ +${xp} XP</div>` : ''}
+      <div class="completion-actions">
+        ${secondaryLabel ? `<button class="btn-secondary" id="completion-sec">${secondaryLabel}</button>` : ''}
+        <button class="btn-primary" id="completion-cont">${continueLabel || 'Lanjut'}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  fireConfetti();
+  overlay.querySelector('#completion-cont').onclick = () => {
+    overlay.remove();
+    if (onContinue) onContinue();
+  };
+  const secBtn = overlay.querySelector('#completion-sec');
+  if (secBtn) secBtn.onclick = () => {
+    overlay.remove();
+    if (onSecondary) onSecondary();
+  };
+}
+
+// ═══════════════════════════════════════════════
+// PRONUNCIATION (Web Speech API)
+// ═══════════════════════════════════════════════
+function speakJapanese(text, btn) {
+  if (!('speechSynthesis' in window)) { alert('Browser kamu tidak mendukung audio TTS.'); return; }
+  const plain = text.replace(/<[^>]*>/g, '');
+  const u = new SpeechSynthesisUtterance(plain);
+  u.lang = 'ja-JP';
+  u.rate = 0.9;
+  if (btn) btn.classList.add('playing');
+  u.onend = () => { if (btn) btn.classList.remove('playing'); };
+  u.onerror = () => { if (btn) btn.classList.remove('playing'); };
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+window.speakJapanese = speakJapanese;
+
+// ═══════════════════════════════════════════════
+// QUIZ ENGINE
+// ═══════════════════════════════════════════════
+let quizState = null;
+
+function getQuizKey(courseSlug, moduleId, lessonId) {
+  return `${courseSlug}:${moduleId}:${lessonId}`;
+}
+
+function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
+  const key = getQuizKey(courseSlug, moduleId, lessonId);
+  const questions = QUIZ_DATA[key];
+  if (!questions || questions.length === 0) {
+    container.innerHTML = `<div class="quiz-container"><p style="color:#485f84;">Kuis belum tersedia.</p></div>`;
+    return;
+  }
+  quizState = { key, questions, idx: 0, correct: 0, answered: false, selected: -1 };
+  renderQuizQuestion(container);
+}
+
+function renderQuizQuestion(container) {
+  const { questions, idx } = quizState;
+  const total = questions.length;
+  const q = questions[idx];
+  const letters = ['A', 'B', 'C', 'D', 'E'];
+  const pctProgress = Math.round(((idx) / total) * 100);
+
+  container.innerHTML = `
+    <div class="quiz-container">
+      <div class="quiz-progress-wrap">
+        <div class="quiz-progress-bar"><div class="quiz-progress-fill" style="width:${pctProgress}%"></div></div>
+        <span class="quiz-progress-text">Soal ${idx + 1} / ${total}</span>
+      </div>
+      <h2 class="quiz-question">
+        ${q.q}
+        ${q.jp ? `<span class="jp">${q.jp} <button class="pronounce-btn" onclick="speakJapanese('${q.jp}', this)">🔊 Dengar</button></span>` : ''}
+      </h2>
+      <div class="quiz-options" id="quiz-options">
+        ${q.options.map((opt, i) => `
+          <button class="quiz-option" data-idx="${i}" onclick="window.pickQuizAnswer(${i})">
+            <span class="quiz-option-letter">${letters[i]}</span>
+            <span>${opt}</span>
+          </button>
+        `).join('')}
+      </div>
+      <div id="quiz-feedback"></div>
+    </div>
+  `;
+}
+
+window.pickQuizAnswer = (i) => {
+  if (quizState.answered) return;
+  quizState.answered = true;
+  quizState.selected = i;
+  const q = quizState.questions[quizState.idx];
+  const isCorrect = i === q.correct;
+  if (isCorrect) quizState.correct++;
+
+  const opts = document.querySelectorAll('.quiz-option');
+  opts.forEach((btn, bi) => {
+    btn.classList.add('disabled');
+    if (bi === q.correct) btn.classList.add('correct');
+    if (bi === i && !isCorrect) btn.classList.add('wrong');
+  });
+
+  const feedback = document.getElementById('quiz-feedback');
+  const isLast = quizState.idx === quizState.questions.length - 1;
+  feedback.innerHTML = `
+    <div class="quiz-explanation">
+      <strong>${isCorrect ? '✓ Benar!' : '✗ Belum tepat'}</strong> — ${q.explain}
+    </div>
+    <button class="quiz-next-btn" onclick="window.nextQuizQuestion()">
+      ${isLast ? 'Lihat Hasil →' : 'Soal Berikutnya →'}
+    </button>
+  `;
+
+  if (isCorrect) addXP(5, 'jawaban benar');
+};
+
+window.nextQuizQuestion = () => {
+  if (quizState.idx < quizState.questions.length - 1) {
+    quizState.idx++;
+    quizState.answered = false;
+    quizState.selected = -1;
+    renderQuizQuestion(document.getElementById('main-content'));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    finishQuiz();
+  }
+};
+
+function finishQuiz() {
+  const { questions, correct, key } = quizState;
+  const total = questions.length;
+  const pct = Math.round((correct / total) * 100);
+  const passed = pct >= 70;
+  const bonusXP = passed ? 20 : 10;
+
+  // save best score
+  const scores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
+  scores[key] = Math.max(scores[key] || 0, pct);
+  localStorage.setItem('ez_quiz_scores', JSON.stringify(scores));
+
+  // mark lesson as done if passed
+  if (passed) {
+    const [slug, mId, lId] = key.split(':');
+    const allProgress = getProgress();
+    const cp = allProgress[slug] || {};
+    cp[`${mId}:${lId}`] = true;
+    allProgress[slug] = cp;
+    setProgress(allProgress);
+  }
+
+  addXP(bonusXP, passed ? 'lulus kuis' : 'mencoba kuis');
+  if (passed) fireConfetti();
+
+  document.getElementById('main-content').innerHTML = `
+    <div class="quiz-container">
+      <div class="quiz-results">
+        <div class="trophy">${passed ? '🏆' : '💪'}</div>
+        <h2>${passed ? 'Lulus!' : 'Coba Lagi'}</h2>
+        <p class="subtitle">${passed ? 'Pemahaman kamu sudah cukup bagus.' : 'Minimal 70% untuk lulus. Ayo ulang!'}</p>
+        <div class="score-circle">${pct}%</div>
+        <p style="color:#485f84;margin:0 0 12px;">Benar ${correct} dari ${total} soal</p>
+        <div class="xp-earned">⚡ +${bonusXP} XP</div>
+        <div class="quiz-results-btns">
+          <button class="btn-secondary" onclick="window.retryQuiz()">Ulang Kuis</button>
+          <button class="btn-primary" onclick="window.continueAfterQuiz()">${passed ? 'Lanjut →' : 'Kembali ke Materi'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+  renderSidebar();
+}
+
+window.retryQuiz = () => {
+  const [slug, mId, lId] = quizState.key.split(':');
+  renderQuizLesson(document.getElementById('main-content'), slug, mId, lId);
+};
+
+window.continueAfterQuiz = () => {
+  const [slug, mId, lId] = quizState.key.split(':');
+  const course = COURSE_CONTENT[slug];
+  const allLessons = course.modules.flatMap(m => m.lessons.map(l => ({ m, l })));
+  const idx = allLessons.findIndex(x => x.m.id === mId && x.l.id === lId);
+  const next = allLessons[idx + 1];
+  if (next) {
+    currentState.moduleId = next.m.id;
+    currentState.lessonId = next.l.id;
+    renderSidebar();
+    renderLesson();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    renderLesson();
+  }
+};
+
+// ═══════════════════════════════════════════════
+// FLASHCARD MODE
+// ═══════════════════════════════════════════════
+let flashState = null;
+
+window.openFlashcards = (courseSlug) => {
+  const cards = FLASHCARD_DATA[courseSlug];
+  if (!cards || cards.length === 0) {
+    document.getElementById('main-content').innerHTML = `
+      <div class="flashcard-empty">
+        <div class="check">📭</div>
+        <h2 style="margin:0 0 8px;">Belum ada flashcard</h2>
+        <p style="margin:0;">Flashcard untuk kelas ini akan segera ditambahkan.</p>
+        <button class="btn-secondary" style="margin-top:20px;" onclick="renderLesson()">← Kembali ke Materi</button>
+      </div>
+    `;
+    return;
+  }
+  flashState = { course: courseSlug, cards: [...cards].sort(() => Math.random() - 0.5), idx: 0, flipped: false };
+  renderFlashcard();
+};
+
+function renderFlashcard() {
+  const { cards, idx, flipped } = flashState;
+  const card = cards[idx];
+  if (!card) {
+    document.getElementById('main-content').innerHTML = `
+      <div class="flashcard-wrap">
+        <div class="flashcard-empty">
+          <div class="check">✓</div>
+          <h2 style="margin:0 0 8px;">Semua kartu selesai!</h2>
+          <p style="margin:0 0 20px;">Kamu sudah review ${cards.length} kartu hari ini.</p>
+          <button class="btn-primary" onclick="window.restartFlashcards()">Ulang</button>
+          <button class="btn-secondary" style="margin-left:8px;" onclick="renderLesson()">Kembali ke Materi</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  document.getElementById('main-content').innerHTML = `
+    <div class="flashcard-wrap">
+      <button class="back-to-lesson-btn" onclick="renderLesson()">← Kembali ke Materi</button>
+      <div class="flashcard-header">
+        <span class="flashcard-category">${card.category}</span>
+        <span class="flashcard-counter">${idx + 1} / ${cards.length}</span>
+      </div>
+      <div class="flashcard ${flipped ? 'flipped' : ''}" id="flash-card" onclick="window.flipFlashcard()">
+        <div class="flashcard-inner">
+          <div class="flashcard-face front">
+            <div class="flashcard-text">${card.front}</div>
+            <button class="pronounce-btn" onclick="event.stopPropagation(); window.speakJapanese('${card.front}', this)">🔊 Dengar</button>
+            <div class="flashcard-hint">Klik kartu untuk lihat arti</div>
+          </div>
+          <div class="flashcard-face back">
+            <div class="flashcard-reading">${card.reading}</div>
+            <div class="flashcard-meaning">${card.back}</div>
+          </div>
+        </div>
+      </div>
+      <div class="flashcard-ratings">
+        <button class="rating-btn hard" onclick="window.rateFlashcard('hard')">
+          <span class="bar"></span><span>Sulit</span>
+        </button>
+        <button class="rating-btn medium" onclick="window.rateFlashcard('medium')">
+          <span class="bar"></span><span>Sedang</span>
+        </button>
+        <button class="rating-btn easy" onclick="window.rateFlashcard('easy')">
+          <span class="bar"></span><span>Mudah</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+window.flipFlashcard = () => {
+  flashState.flipped = !flashState.flipped;
+  const el = document.getElementById('flash-card');
+  if (el) el.classList.toggle('flipped');
+};
+
+window.rateFlashcard = (rating) => {
+  const xp = rating === 'easy' ? 2 : rating === 'medium' ? 3 : 5;
+  addXP(xp, 'review kartu');
+  flashState.idx++;
+  flashState.flipped = false;
+  renderFlashcard();
+};
+
+window.restartFlashcards = () => {
+  flashState.idx = 0;
+  flashState.flipped = false;
+  flashState.cards = [...flashState.cards].sort(() => Math.random() - 0.5);
+  renderFlashcard();
+};
 
 function handleNewEnrollment() {
   const params = new URLSearchParams(window.location.search);
@@ -908,6 +1787,7 @@ function renderLearning(courseSlug) {
 
   document.getElementById('app-root').innerHTML = `
     ${greetingBannerHtml()}
+    ${renderStatsBar()}
     <div class="learning-layout">
       <aside class="sidebar" id="sidebar"></aside>
       <main class="main-content" id="main-content"></main>
@@ -954,6 +1834,8 @@ function renderSidebar() {
     `;
   }).join('');
 
+  const flashCount = (FLASHCARD_DATA[currentState.course] || []).length;
+
   document.getElementById('sidebar').innerHTML = `
     <div class="sidebar-header">
       <h3>${course.name}</h3>
@@ -962,6 +1844,13 @@ function renderSidebar() {
         <span>${pct}%</span>
       </div>
     </div>
+    ${flashCount > 0 ? `
+      <button class="flashcard-cta" onclick="openFlashcards('${currentState.course}')">
+        <span class="icon">🎴</span>
+        <span>Flashcard</span>
+        <span class="count">${flashCount}</span>
+      </button>
+    ` : ''}
     ${modulesHtml}
     <div class="discord-card">
       <div class="discord-top">
@@ -989,15 +1878,44 @@ function renderLesson() {
   const prev = allLessons[idx - 1];
   const next = allLessons[idx + 1];
 
-  const videoBlock = lesson.type === 'quiz' ? `
-    <div class="video-player" style="background:linear-gradient(135deg, #b20024 0%, #8a0b20 100%);">
-      <button class="play-btn" style="background:#fff;color:#b20024;font-size:22px;">?</button>
-      <span class="video-meta">KUIS · ${lesson.duration.toUpperCase()}</span>
-    </div>
-  ` : `
+  // Handle interactive quiz
+  if (lesson.type === 'quiz') {
+    const quizKey = getQuizKey(currentState.course, module.id, lesson.id);
+    const hasQuestions = !!QUIZ_DATA[quizKey];
+    const scores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
+    const bestScore = scores[quizKey] || 0;
+
+    document.getElementById('main-content').innerHTML = `
+      <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · KUIS</p>
+      <h1 class="lesson-title">${lesson.title}</h1>
+      <p class="lesson-subtitle">${module.title} — ${lesson.duration}</p>
+
+      <div class="quiz-container">
+        <div style="text-align:center;padding:20px 0;">
+          <div style="font-size:48px;margin-bottom:12px;">📝</div>
+          <h2 style="font-size:22px;font-weight:800;margin:0 0 8px;">Siap untuk kuis?</h2>
+          <p style="color:#485f84;margin:0 0 20px;">${lesson.body || 'Tes pemahaman kamu di bab ini.'}</p>
+          ${bestScore > 0 ? `<div style="display:inline-block;padding:8px 18px;background:#fff0f2;color:#b20024;border-radius:999px;font-weight:700;font-size:13px;margin-bottom:20px;">Skor terbaik: ${bestScore}%</div><br/>` : ''}
+          <button class="btn-primary" onclick="window.startQuizNow()" ${!hasQuestions ? 'disabled style="opacity:0.5"' : ''}>
+            ${hasQuestions ? (bestScore > 0 ? 'Ulang Kuis →' : 'Mulai Kuis →') : 'Kuis segera hadir'}
+          </button>
+        </div>
+      </div>
+
+      <div class="lesson-footer" style="margin-top:20px;">
+        <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">
+          ← Sebelumnya
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  // Regular lesson (video/text)
+  const videoBlock = `
     <div class="video-player">
       <button class="play-btn" onclick="alert('Video player belum terintegrasi.')">▶</button>
-      <span class="video-meta">VIDEO · ${lesson.duration.toUpperCase()}</span>
+      <span class="video-meta">${lesson.type.toUpperCase()} · ${lesson.duration.toUpperCase()}</span>
     </div>
   `;
 
@@ -1009,9 +1927,9 @@ function renderLesson() {
     ${videoBlock}
 
     <div class="lesson-body">
-      <h2>Catatan Pelajaran</h2>
+      <h2>Catatan Pelajaran ${lesson.jp ? `<button class="pronounce-btn" style="vertical-align:middle;font-size:11px;" onclick="window.speakLessonJP(this)">🔊 Putar Jepang</button>` : ''}</h2>
       <p>${lesson.body}</p>
-      ${lesson.jp ? `<div class="jp">${lesson.jp}</div>` : ''}
+      ${lesson.jp ? `<div class="jp" id="lesson-jp">${lesson.jp}</div>` : ''}
       <p style="color:#999;font-size:13px;margin-top:18px;">Materi lengkap: video tutorial, contoh audio, dan worksheet PDF tersedia saat belajar.</p>
     </div>
 
@@ -1025,6 +1943,18 @@ function renderLesson() {
     </div>
   `;
 }
+
+window.startQuizNow = () => {
+  renderQuizLesson(document.getElementById('main-content'), currentState.course, currentState.moduleId, currentState.lessonId);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.speakLessonJP = (btn) => {
+  const el = document.getElementById('lesson-jp');
+  if (!el) return;
+  const text = el.textContent || '';
+  speakJapanese(text, btn);
+};
 
 window.selectLesson = (moduleId, lessonId) => {
   currentState.moduleId = moduleId;
@@ -1044,20 +1974,58 @@ window.markCompleteAndNext = () => {
   const key = `${currentState.moduleId}:${currentState.lessonId}`;
   const allProgress = getProgress();
   const courseProgress = allProgress[currentState.course] || {};
+  const wasAlreadyDone = !!courseProgress[key];
   courseProgress[key] = true;
   allProgress[currentState.course] = courseProgress;
   setProgress(allProgress);
 
+  if (!wasAlreadyDone) addXP(10, 'lesson selesai');
+
   const allLessons = course.modules.flatMap(m => m.lessons.map(l => ({ m, l })));
   const idx = allLessons.findIndex(x => x.m.id === currentState.moduleId && x.l.id === currentState.lessonId);
   const next = allLessons[idx + 1];
-  if (next) {
-    currentState.moduleId = next.m.id;
-    currentState.lessonId = next.l.id;
+
+  // Check if this was the last lesson of the module
+  const currentModule = course.modules.find(m => m.id === currentState.moduleId);
+  const moduleDoneLessons = currentModule.lessons.filter(l => courseProgress[`${currentModule.id}:${l.id}`]).length;
+  const justFinishedModule = !wasAlreadyDone && moduleDoneLessons === currentModule.lessons.length;
+
+  // Check if entire course completed
+  const totalLessons = course.modules.reduce((s, m) => s + m.lessons.length, 0);
+  const totalDone = Object.values(courseProgress).filter(v => v).length;
+  const courseComplete = !wasAlreadyDone && totalDone === totalLessons;
+
+  const advance = () => {
+    if (next) {
+      currentState.moduleId = next.m.id;
+      currentState.lessonId = next.l.id;
+    }
+    renderSidebar();
+    renderLesson();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  if (courseComplete) {
+    showCompletion({
+      title: '🎌 Selamat! Kelas Selesai',
+      message: `Kamu telah menyelesaikan semua materi ${course.name}. 素晴らしい！`,
+      xp: 50,
+      continueLabel: 'Tutup',
+      onContinue: advance,
+    });
+    addXP(50, 'kelas selesai');
+  } else if (justFinishedModule) {
+    showCompletion({
+      title: 'Bab Selesai!',
+      message: `Kamu sudah tamatkan "${currentModule.title}". Lanjut ke materi berikutnya?`,
+      xp: 15,
+      continueLabel: 'Lanjut →',
+      onContinue: advance,
+    });
+    addXP(15, 'bab selesai');
+  } else {
+    advance();
   }
-  renderSidebar();
-  renderLesson();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 function renderCourseTabs(activeSlug) {
