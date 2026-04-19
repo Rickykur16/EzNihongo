@@ -63,7 +63,8 @@
   <p class="footer-text">© 2026 <span class="footer-brand">EzNihongo</span>.</p>
 </footer>
 
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
 <script>
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('reset') === '1') {
@@ -76,34 +77,34 @@
     return next ? decodeURIComponent(next) : 'welcome.html';
   }
 
-  function saveSession(email) {
-    localStorage.setItem('ez_user', JSON.stringify({ email, loggedInAt: Date.now() }));
+  // If already signed in, skip login page
+  (async () => {
+    const sb = await ensureSupabase();
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) { mirrorSessionToLocal(session); location.replace(getNextUrl()); }
+  })();
+
+  async function loginWithGoogle() {
+    const btn = document.querySelector('.google-btn');
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; }
+    await ezLoginWithGoogle(getNextUrl());
   }
 
-  function loginWithGoogle() {
-    google.accounts.oauth2.initTokenClient({
-      client_id: 'YOUR_GOOGLE_CLIENT_ID',
-      scope: 'email profile',
-      callback: (response) => {
-        if (response.access_token) {
-          fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-            headers: { Authorization: 'Bearer ' + response.access_token }
-          })
-          .then(r => r.json())
-          .then(user => {
-            saveSession(user.email);
-            window.location.href = getNextUrl();
-          });
-        }
-      }
-    }).requestAccessToken();
-  }
-
-  document.getElementById('login-form').addEventListener('submit', function(e) {
+  document.getElementById('login-form').addEventListener('submit', async function(e) {
     e.preventDefault();
-    const email = document.getElementById('email').value;
-    saveSession(email);
-    window.location.href = getNextUrl();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const submitBtn = e.target.querySelector('.auth-submit-btn');
+    submitBtn.disabled = true; submitBtn.textContent = 'Masuk...';
+    const sb = await ensureSupabase();
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) {
+      submitBtn.disabled = false; submitBtn.textContent = 'Masuk';
+      alert(error.message || 'Gagal masuk. Periksa email dan kata sandi.');
+      return;
+    }
+    mirrorSessionToLocal(data.session);
+    location.href = getNextUrl();
   });
 </script>
 </body>

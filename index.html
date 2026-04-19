@@ -20,12 +20,24 @@
     }
   } catch (e) {}
 })();
+
+// Keep ez_user in sync with Supabase session once SDK loads
+window.addEventListener('load', async () => {
+  try {
+    if (typeof ensureSupabase !== 'function') return;
+    const sb = await ensureSupabase();
+    const { data: { session } } = await sb.auth.getSession();
+    mirrorSessionToLocal(session);
+  } catch (e) {}
+});
 </script>
 <div id="root"></div>
 
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
 
 <script type="text/babel">
 // ============ SHARED DATA & COMPONENTS ============
@@ -241,12 +253,31 @@ function PhotoPlaceholder({ caption, aspectRatio = "4/3", tone = "warm", style =
 
 function ModernNav() {
   const [scrolled, setScrolled] = React.useState(false);
+  const [user, setUser] = React.useState(null);
+  const [loaded, setLoaded] = React.useState(false);
 
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  React.useEffect(() => {
+    let sub = null;
+    (async () => {
+      const sb = await window.ensureSupabase();
+      const { data: { session } } = await sb.auth.getSession();
+      const u = window.mirrorSessionToLocal(session);
+      setUser(u); setLoaded(true);
+      sub = sb.auth.onAuthStateChange((_e, s) => {
+        const m = window.mirrorSessionToLocal(s);
+        setUser(m);
+      });
+    })();
+    return () => { try { sub?.data?.subscription?.unsubscribe?.(); } catch(e){} };
+  }, []);
+
+  const initial = user ? (user.name || user.email || 'U').charAt(0).toUpperCase() : '';
 
   return (
     <nav style={{
@@ -261,25 +292,43 @@ function ModernNav() {
           <img src="logo.png" alt="EzNihongo" style={{ height: 52 }} />
         </a>
 
-
-        {/* Login + Sign Up — always visible */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button style={{ fontSize: 14, color: '#404040', fontWeight: 500, padding: '9px 16px', borderRadius: 8, border: '1.5px solid #e5e5e5', transition: 'all 0.15s', background: '#fff' }}
-            onMouseOver={e => { e.currentTarget.style.borderColor = '#C8102E'; e.currentTarget.style.color = '#C8102E'; }}
-            onMouseOut={e => { e.currentTarget.style.borderColor = '#e5e5e5'; e.currentTarget.style.color = '#404040'; }}
-            onClick={() => window.location.href = 'login.html'}>
-            Login
-          </button>
-          <button style={{
-            background: '#C8102E', color: '#fff',
-            padding: '9px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600,
-            boxShadow: '0 2px 0 #8a0b20', transition: 'all 0.15s', whiteSpace: 'nowrap',
-          }}
-          onMouseOver={e => { e.currentTarget.style.transform = 'translateY(1px)'; e.currentTarget.style.boxShadow = '0 1px 0 #8a0b20'; }}
-          onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 0 #8a0b20'; }}
-          onClick={() => window.location.href = 'register.html'}>
-            Sign Up
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 40 }}>
+          {loaded && user && (
+            <>
+              <a href="welcome.html" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', padding: '6px 10px', borderRadius: 999 }}>
+                {user.avatar ? (
+                  <img src={user.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#C8102E', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700 }}>{initial}</div>
+                )}
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#0a0a0a', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name}</span>
+              </a>
+              <button style={{ fontSize: 13, color: '#525252', fontWeight: 500, padding: '8px 14px', borderRadius: 8, border: '1.5px solid #e5e5e5', background: '#fff', cursor: 'pointer' }}
+                onClick={() => window.ezLogout()}>
+                Keluar
+              </button>
+            </>
+          )}
+          {loaded && !user && (
+            <>
+              <button style={{ fontSize: 14, color: '#404040', fontWeight: 500, padding: '9px 16px', borderRadius: 8, border: '1.5px solid #e5e5e5', transition: 'all 0.15s', background: '#fff' }}
+                onMouseOver={e => { e.currentTarget.style.borderColor = '#C8102E'; e.currentTarget.style.color = '#C8102E'; }}
+                onMouseOut={e => { e.currentTarget.style.borderColor = '#e5e5e5'; e.currentTarget.style.color = '#404040'; }}
+                onClick={() => window.location.href = 'login.html'}>
+                Masuk
+              </button>
+              <button style={{
+                background: '#C8102E', color: '#fff',
+                padding: '9px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600,
+                boxShadow: '0 2px 0 #8a0b20', transition: 'all 0.15s', whiteSpace: 'nowrap',
+              }}
+              onMouseOver={e => { e.currentTarget.style.transform = 'translateY(1px)'; e.currentTarget.style.boxShadow = '0 1px 0 #8a0b20'; }}
+              onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 0 #8a0b20'; }}
+              onClick={() => window.location.href = 'register.html'}>
+                Daftar
+              </button>
+            </>
+          )}
         </div>
       </div>
     </nav>
@@ -996,80 +1045,157 @@ const BENEFITS = [
   "Komunitas orang Indonesia yang sudah dan sedang di Jepang — tanya langsung, jawab jujur",
 ];
 
+const PAIN_HOOK = {
+  text: "Ini yang LPK tidak mau kamu baca.",
+  sub: "Tahan scroll-mu. 20 detik saja.",
+  duration: 2300,
+};
+
+const SOLUTION_HOOK = {
+  text: "Tarik napas.",
+  sub: "Sekarang, versi yang seharusnya kamu dengar.",
+  duration: 2200,
+};
+
+const PAIN_SCENES = [
+  { lines: ["Kamu mau kerja di Jepang."], tone: 'default', hold: 1000 },
+  { lines: ["Gaji 20–30 juta sebulan."], tone: 'red', hold: 1400 },
+  { lines: ["Tapi LPK minta Rp 15–30 juta —", "di depan."], tone: 'cold', hold: 1700 },
+  { lines: ['Belum biaya ini-itu.', '"Uang jaminan" entah ke mana.'], tone: 'whisper', hold: 1900 },
+  { lines: ["Kamu bukan malas.", "Kamu bukan tidak mampu."], tone: 'final', hold: 1900 },
+  { lines: ["Kamu terjebak di sistem", "yang memang dirancang", "untuk menguras kantongmu."], tone: 'final', last: true },
+];
+
+const SOLUTION_SCENES = [
+  { lines: ["Saya dari Lampung.", "Tiga tahun di industri Jepang."], tone: 'hope', hold: 1700 },
+  { lines: ["Ke Jepang itu tidak harus", "semahal yang mereka bilang."], tone: 'declare', hold: 1900 },
+  { lines: ["Yang mahal bukan prosesnya.", "Yang mahal — adalah ketidaktahuan."], tone: 'warm', hold: 2200 },
+  { lines: ["EzNihongo ada", "untuk menghapus ketidaktahuan itu."], tone: 'declare', hold: 2000 },
+  { lines: ["Roadmap lengkap.", "Bahasa kerja yang nyata dipakai.", "Dokumen & visa, transparan."], tone: 'hope', hold: 2400 },
+  { lines: ["Dan komunitas yang sudah", "lebih dulu di Jepang."], tone: 'hope', hold: 1900 },
+  { lines: ["Kamu tidak sendirian.", "Jalan ke Jepang — sudah ada."], tone: 'dawn', last: true },
+];
+
+function CinematicSequence({ scenes, badge, badgeTone, progressTone, hook }) {
+  const [idx, setIdx] = React.useState(-1);
+  const [phase, setPhase] = React.useState('hidden');
+  const [hookPhase, setHookPhase] = React.useState('hidden');
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && idx === -1 && hookPhase === 'hidden') {
+        if (hook) {
+          setHookPhase('enter');
+        } else {
+          setIdx(0);
+          setPhase('enter');
+        }
+        obs.disconnect();
+      }
+    }, { threshold: 0.4, rootMargin: '-20% 0px -20% 0px' });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [idx, hookPhase, hook]);
+
+  React.useEffect(() => {
+    if (hookPhase === 'hidden' || hookPhase === 'done') return;
+    if (hookPhase === 'enter') {
+      const t = setTimeout(() => setHookPhase('hold'), 900);
+      return () => clearTimeout(t);
+    }
+    if (hookPhase === 'hold') {
+      const t = setTimeout(() => setHookPhase('exit'), (hook && hook.duration) || 2200);
+      return () => clearTimeout(t);
+    }
+    if (hookPhase === 'exit') {
+      const t = setTimeout(() => {
+        setHookPhase('done');
+        setIdx(0);
+        setPhase('enter');
+      }, 600);
+      return () => clearTimeout(t);
+    }
+  }, [hookPhase, hook]);
+
+  React.useEffect(() => {
+    if (idx < 0) return;
+    const scene = scenes[idx];
+    if (phase === 'enter') {
+      const t = setTimeout(() => setPhase('hold'), 900);
+      return () => clearTimeout(t);
+    }
+    if (phase === 'hold') {
+      if (scene.last) return;
+      const t = setTimeout(() => setPhase('exit'), scene.hold || 1400);
+      return () => clearTimeout(t);
+    }
+    if (phase === 'exit') {
+      const t = setTimeout(() => {
+        setIdx((i) => Math.min(i + 1, scenes.length - 1));
+        setPhase('enter');
+      }, 700);
+      return () => clearTimeout(t);
+    }
+  }, [idx, phase, scenes]);
+
+  const active = idx >= 0 ? scenes[idx] : null;
+  const hookActive = hookPhase !== 'hidden' && hookPhase !== 'done';
+
+  return (
+    <div ref={ref} className="ez-cinematic">
+      {badge && <div className={`ez-cinematic-badge${badgeTone ? ' tone-' + badgeTone : ''}`}>{badge}</div>}
+      <div className="ez-cinematic-stage">
+        {hookActive && hook && (
+          <div className={`ez-cinematic-hook phase-${hookPhase}${badgeTone === 'warm' ? ' warm' : ''}`}>
+            <div className="ez-cinematic-hook-text">{hook.text}</div>
+            {hook.sub && <div className="ez-cinematic-hook-sub">{hook.sub}</div>}
+            <div className="ez-cinematic-hook-hint">▼</div>
+          </div>
+        )}
+        {active && (
+          <div
+            key={idx}
+            className={`ez-cinematic-scene ${phase}`}
+            data-tone={active.tone || 'default'}
+          >
+            {active.lines.map((l, i) => (
+              <div className="ez-cinematic-line" key={i}>{l}</div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className={`ez-cinematic-progress${progressTone ? ' tone-' + progressTone : ''}`}>
+        {scenes.map((_, i) => (
+          <span
+            key={i}
+            className={`ez-cinematic-dot ${i < idx ? 'done' : i === idx ? 'active' : ''}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ModernStory() {
   return (
     <section style={{ background: 'transparent', color: '#f5f0e8', paddingTop: 'clamp(60px, 10vw, 120px)', paddingBottom: 'clamp(60px, 10vw, 120px)', position: 'relative', overflow: 'hidden' }}>
 
       <div className="ez-container" style={{ position: 'relative', zIndex: 2, maxWidth: 900 }}>
 
-        {/* Pain block */}
-        <div className="reveal" style={{ marginBottom: 64 }}>
-          <div style={{ display: 'inline-block', padding: '5px 14px', background: 'rgba(200,16,46,0.2)', color: '#E8414F', borderRadius: 6, fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', marginBottom: 28, textTransform: 'uppercase' }}>
-            Jujur saja.
-          </div>
-          <h2 style={{ fontSize: 'clamp(26px, 4vw, 44px)', fontWeight: 800, lineHeight: 1.2, letterSpacing: '-0.025em', marginBottom: 32, textWrap: 'balance' }}>
-            Kamu mau kerja di Jepang.<br/>
-            <span style={{ color: '#E8414F' }}>Gaji 20–30 juta sebulan.</span><br/>
-            Pengalaman internasional. Masa depan berubah.
-          </h2>
-          <p style={{ fontSize: 17, color: '#a09880', lineHeight: 1.7, marginBottom: 20 }}>Tapi setiap kali cari info, yang muncul?</p>
-          <div style={{ borderLeft: '3px solid #C8102E', paddingLeft: 24, marginBottom: 32 }}>
-            {[
-              "LPK minta Rp 15–30 juta di depan.",
-              "Belum termasuk biaya ini-itu yang tiba-tiba muncul.",
-              'Belum termasuk "uang jaminan" yang entah ke mana.',
-              "Dan setelah bayar semua itu — belum tentu bisa segera berangkat.",
-            ].map((line, i) => (
-              <p key={i} style={{ fontSize: 16, color: '#c8bfb0', lineHeight: 1.7, marginBottom: 8 }}>{line}</p>
-            ))}
-          </div>
-          <p style={{ fontSize: 18, fontWeight: 600, color: '#f5f0e8', lineHeight: 1.7 }}>
-            Kamu bukan malas. Kamu bukan tidak mampu.<br/>
-            <span style={{ color: '#a09880', fontWeight: 400 }}>Kamu cuma terjebak di sistem yang memang dirancang untuk menguras kantongmu.</span>
-          </p>
+        {/* Pain block — cinematic sequence */}
+        <div style={{ marginBottom: 64 }}>
+          <CinematicSequence scenes={PAIN_SCENES} badge="Jujur saja." hook={PAIN_HOOK} />
         </div>
 
         {/* Divider */}
         <div style={{ borderTop: '1px solid #2a2218', marginBottom: 64 }} />
 
-        {/* Personal story */}
-        <div className="reveal" style={{ marginBottom: 64 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, marginBottom: 24 }}>
-            <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'linear-gradient(135deg, #C8102E, #E8414F)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>🇮🇩</div>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#f5f0e8', marginBottom: 2 }}>Founder, EzNihongo</div>
-              <div style={{ fontSize: 13, color: '#a09880' }}>Dari Lampung · 3 tahun di industri hospitality Jepang</div>
-            </div>
-          </div>
-          <blockquote style={{ fontSize: 'clamp(16px, 2.2vw, 19px)', lineHeight: 1.8, color: '#c8bfb0', fontStyle: 'normal' }}>
-            "Saya orang Indonesia dari Lampung. Sudah 3 tahun kerja di industri hospitality Jepang.
-            Dan saya bisa bilang satu hal dengan yakin:{' '}
-            <strong style={{ color: '#f5f0e8' }}>ke Jepang itu tidak harus semahal yang mereka bilang.</strong>"
-          </blockquote>
-          <div style={{ marginTop: 28, padding: '24px 28px', background: 'rgba(200,16,46,0.08)', border: '1px solid rgba(200,16,46,0.2)', borderRadius: 12 }}>
-            <p style={{ fontSize: 16, color: '#c8bfb0', lineHeight: 1.75, marginBottom: 0 }}>
-              Yang mahal bukan prosesnya — <strong style={{ color: '#f5f0e8' }}>yang mahal adalah ketidaktahuan.</strong><br/>
-              Tidak tahu jalur yang benar. Tidak tahu dokumen apa saja yang dibutuhkan.<br/>
-              Tidak tahu cara lulus ujian Tokutei Ginou. Tidak tahu hak-hakmu sebagai pekerja di Jepang.
-            </p>
-          </div>
-          <p style={{ marginTop: 24, fontSize: 17, fontWeight: 600, color: '#E8414F' }}>EzNihongo ada untuk menghapus ketidaktahuan itu.</p>
-        </div>
-
-        {/* Divider */}
-        <div style={{ borderTop: '1px solid #2a2218', marginBottom: 64 }} />
-
-        {/* Benefits */}
-        <div className="reveal" style={{ marginBottom: 64 }}>
-          <h3 style={{ fontSize: 'clamp(20px, 3vw, 28px)', fontWeight: 800, marginBottom: 28, letterSpacing: '-0.02em' }}>Apa yang kamu dapat di sini:</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {BENEFITS.map((b, i) => (
-              <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                <span style={{ color: '#28c840', fontSize: 18, flexShrink: 0, marginTop: 1 }}>✅</span>
-                <span style={{ fontSize: 16, color: '#c8bfb0', lineHeight: 1.65 }}>{b}</span>
-              </div>
-            ))}
-          </div>
+        {/* Solution block — cinematic sequence */}
+        <div style={{ marginBottom: 64 }}>
+          <CinematicSequence scenes={SOLUTION_SCENES} badge="Tapi ada jalan lain." badgeTone="warm" progressTone="warm" hook={SOLUTION_HOOK} />
         </div>
 
         {/* Divider */}
@@ -1152,7 +1278,7 @@ function App() {
       <FloatingWA />
       <ModernNav />
       <ModernHero />
-      <div style={{ background: '#0f0a07' }}>
+      <div style={{ background: 'linear-gradient(180deg, #fafafa 0px, #efe3d0 64px, #2a1a12 240px, #0f0a07 360px)', backgroundColor: '#0f0a07' }}>
         <ModernFeatures />
         <ModernStory />
       </div>

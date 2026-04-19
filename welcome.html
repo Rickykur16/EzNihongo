@@ -1231,14 +1231,37 @@
   © 2026 <strong>EzNihongo</strong>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
 <script>
 // ═══════════════════════════════════════════════
-// AUTH GUARD
+// AUTH GUARD — Supabase session (fallback: localStorage)
 // ═══════════════════════════════════════════════
-const session = JSON.parse(localStorage.getItem('ez_user') || 'null');
+let session = JSON.parse(localStorage.getItem('ez_user') || 'null');
 if (!session) {
   window.location.replace('login.html?next=welcome.html');
 }
+
+// Verify with Supabase in background; if signed out remotely, bounce to login
+(async () => {
+  try {
+    const sb = await ensureSupabase();
+    const { data: { session: sbSession } } = await sb.auth.getSession();
+    if (!sbSession) {
+      localStorage.removeItem('ez_user');
+      location.replace('login.html?next=welcome.html');
+      return;
+    }
+    const mirrored = mirrorSessionToLocal(sbSession);
+    if (mirrored) session = mirrored;
+    sb.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        localStorage.removeItem('ez_user');
+        location.replace('login.html?next=welcome.html');
+      }
+    });
+  } catch (e) {}
+})();
 
 // ═══════════════════════════════════════════════
 // CONTENT DATA (loaded from data/*.json at startup)
@@ -1718,7 +1741,9 @@ function handleNewEnrollment() {
 }
 
 function logout() {
+  if (typeof ezLogout === 'function') { ezLogout(); return; }
   localStorage.removeItem('ez_user');
+  localStorage.removeItem('ez_courses');
   window.location.href = 'index.html';
 }
 
