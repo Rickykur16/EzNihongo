@@ -1,5 +1,5 @@
 // EzNihongo App Service Worker
-const CACHE = 'eznihongo-app-v1';
+const CACHE = 'eznihongo-app-v2';
 const SHELL = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const SHELL = [
   './style.css',
   './level.css',
   './nav.js',
+  './analytics.js',
   './fsrs.js',
   './modules.js',
   './modules.json',

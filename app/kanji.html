@@ -1465,6 +1465,7 @@
   <div class="kd-counter" id="kd-counter">1/120</div>
 </div>
 
+<script src="analytics.js"></script>
 <script src="nav.js"></script>
 <script src="fsrs.js"></script>
 <script>
@@ -9484,11 +9485,11 @@ document.querySelectorAll('.ks-tab').forEach(tab => {
 
 // ─── HOME EVENTS ──────────────────────────────────────────────────────────────
 document.getElementById('kh-search').addEventListener('click', showSearch);
-document.getElementById('kh-n5').addEventListener('click', () => showSets('N5'));
-document.getElementById('kh-n4').addEventListener('click', () => { if (requireLogin('Level N4')) showSets('N4'); });
-document.getElementById('kh-n3').addEventListener('click', () => { if (requireLogin('Level N3')) showSets('N3'); });
-document.getElementById('kh-n2').addEventListener('click', () => { if (requireLogin('Level N2')) showSets('N2'); });
-document.getElementById('kh-n1').addEventListener('click', () => { if (requireLogin('Level N1')) showSets('N1'); });
+document.getElementById('kh-n5').addEventListener('click', () => { window.track?.('level_click',{level:'N5'}); showSets('N5'); });
+document.getElementById('kh-n4').addEventListener('click', () => { window.track?.('level_click',{level:'N4'}); if (requireLogin('Level N4')) showSets('N4'); });
+document.getElementById('kh-n3').addEventListener('click', () => { window.track?.('level_click',{level:'N3'}); if (requireLogin('Level N3')) showSets('N3'); });
+document.getElementById('kh-n2').addEventListener('click', () => { window.track?.('level_click',{level:'N2'}); if (requireLogin('Level N2')) showSets('N2'); });
+document.getElementById('kh-n1').addEventListener('click', () => { window.track?.('level_click',{level:'N1'}); if (requireLogin('Level N1')) showSets('N1'); });
 document.getElementById('kh-kana').addEventListener('click', showKana);
 
 // ─── SET EVENTS ───────────────────────────────────────────────────────────────
@@ -9809,6 +9810,7 @@ const FREE_LEVELS = new Set(['N5', 'kana']);
 function isFree(level) { return FREE_LEVELS.has(level); }
 
 function openLoginModal(feature) {
+  window.track?.('login_modal_shown', { feature });
   const existing = document.getElementById('login-modal');
   if (existing) existing.remove();
   const modal = document.createElement('div');
@@ -9972,9 +9974,12 @@ async function checkAuth() {
   const { data: { session } } = await window._supabase.auth.getSession();
   if (session) {
     window._isLoggedIn = true;
+    window.identifyUser?.(session.user.id, { email: session.user.email });
+    window.track?.('session_active', { logged_in: true });
     await loadProgressFromCloud(session.user.id);
   } else {
     window._isLoggedIn = false;
+    window.track?.('session_active', { logged_in: false });
     showLoginCta();
   }
 }
@@ -10226,10 +10231,13 @@ if ('serviceWorker' in navigator) {
     deferredPrompt = e;
     if (!document.body.contains(banner)) document.body.appendChild(banner);
     show();
+    window.track?.('install_banner_shown');
     document.getElementById('ib-install').onclick = async () => {
       if (!deferredPrompt) return;
+      window.track?.('install_prompt_clicked');
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
+      window.track?.('install_prompt_result', { outcome });
       if (outcome === 'dismissed') {
         localStorage.setItem(DISMISS_KEY, String(Date.now()));
       }
@@ -10237,12 +10245,14 @@ if ('serviceWorker' in navigator) {
       hide();
     };
     document.getElementById('ib-close').onclick = () => {
+      window.track?.('install_banner_dismissed');
       localStorage.setItem(DISMISS_KEY, String(Date.now()));
       hide();
     };
   });
 
   window.addEventListener('appinstalled', () => {
+    window.track?.('app_installed');
     localStorage.removeItem(DISMISS_KEY);
     hide();
   });
