@@ -49,7 +49,7 @@
       if (session && !redirected) {
         redirected = true;
         setStatus('Masuk...');
-        location.href = 'index.html';
+        location.href = 'kanji.html';
       }
     });
 
@@ -58,7 +58,7 @@
       if (event === 'SIGNED_IN' && session && !redirected) {
         redirected = true;
         setStatus('Masuk...');
-        location.href = 'index.html';
+        location.href = 'kanji.html';
       }
       if (event === 'SIGNED_OUT') {
         setStatus('Gagal masuk. Mengalihkan...');
