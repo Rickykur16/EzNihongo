@@ -9990,6 +9990,116 @@ checkAuth();
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
+
+// ─── PWA INSTALL PROMPT ───────────────────────────────────────────────────────
+(function initInstallPrompt() {
+  let deferredPrompt = null;
+  const DISMISS_KEY = 'eznihongo_install_dismissed_at';
+  const DISMISS_COOLDOWN_DAYS = 7;
+
+  const isStandalone = () =>
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+
+  if (isStandalone()) return;
+
+  const dismissedAt = parseInt(localStorage.getItem(DISMISS_KEY) || '0', 10);
+  if (dismissedAt && Date.now() - dismissedAt < DISMISS_COOLDOWN_DAYS * 86400000) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'install-banner';
+  banner.innerHTML = `
+    <style>
+      #install-banner {
+        position: fixed;
+        bottom: 16px;
+        left: 16px;
+        right: 16px;
+        max-width: 420px;
+        margin: 0 auto;
+        background: #fff;
+        border: 1px solid #e6e2d8;
+        border-radius: 14px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        padding: 14px 16px;
+        display: none;
+        align-items: center;
+        gap: 12px;
+        z-index: 9999;
+        font-family: inherit;
+      }
+      [data-theme="dark"] #install-banner {
+        background: #1E1C19;
+        border-color: #2E2C27;
+        color: #EDEAE4;
+      }
+      #install-banner img { width: 40px; height: 40px; border-radius: 8px; flex-shrink: 0; }
+      #install-banner .ib-text { flex: 1; min-width: 0; }
+      #install-banner .ib-title { font-size: 14px; font-weight: 600; margin: 0 0 2px; }
+      #install-banner .ib-sub { font-size: 12px; color: #6b6b6b; margin: 0; }
+      [data-theme="dark"] #install-banner .ib-sub { color: #9b9b9b; }
+      #install-banner button {
+        border: none;
+        border-radius: 999px;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      #ib-install { background: #C41B1B; color: #fff; }
+      #ib-install:hover { background: #a61717; }
+      #ib-close {
+        background: transparent;
+        color: #6b6b6b;
+        padding: 4px 8px;
+        font-size: 18px;
+      }
+      #ib-close:hover { color: #C41B1B; }
+      @media (max-width: 380px) {
+        #install-banner img { width: 32px; height: 32px; }
+        #install-banner .ib-title { font-size: 13px; }
+        #install-banner .ib-sub { font-size: 11px; }
+      }
+    </style>
+    <img src="icon-192.png" alt="">
+    <div class="ib-text">
+      <p class="ib-title">Install EzNihongo</p>
+      <p class="ib-sub">Akses cepat offline dari home screen</p>
+    </div>
+    <button id="ib-install" type="button">Install</button>
+    <button id="ib-close" type="button" aria-label="Tutup">&times;</button>
+  `;
+
+  function show() { banner.style.display = 'flex'; }
+  function hide() { banner.style.display = 'none'; }
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (!document.body.contains(banner)) document.body.appendChild(banner);
+    show();
+    document.getElementById('ib-install').onclick = async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'dismissed') {
+        localStorage.setItem(DISMISS_KEY, String(Date.now()));
+      }
+      deferredPrompt = null;
+      hide();
+    };
+    document.getElementById('ib-close').onclick = () => {
+      localStorage.setItem(DISMISS_KEY, String(Date.now()));
+      hide();
+    };
+  });
+
+  window.addEventListener('appinstalled', () => {
+    localStorage.removeItem(DISMISS_KEY);
+    hide();
+  });
+})();
 </script>
 </body>
 </html>

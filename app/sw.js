@@ -1,11 +1,22 @@
-// EzNihongo Service Worker v5
-const CACHE = 'eznihongo-v6';
+// EzNihongo App Service Worker
+const CACHE = 'eznihongo-app-v1';
 const SHELL = [
-  './', './index.html', './kanji.html', './style.css', './nav.js', './fsrs.js',
-  './logo.png', './manifest.json', './level.css', './level.js',
-  './login.html', './register.html', './dashboard.html',
-  './n5.html', './n4.html', './n3.html', './n2.html', './n1.html',
-  './404.html',
+  './',
+  './index.html',
+  './kanji.html',
+  './login.html',
+  './register.html',
+  './auth-callback.html',
+  './style.css',
+  './level.css',
+  './nav.js',
+  './fsrs.js',
+  './modules.js',
+  './modules.json',
+  './logo.png',
+  './icon-192.png',
+  './icon-512.png',
+  './manifest.json',
 ];
 
 self.addEventListener('install', e => {
@@ -26,7 +37,6 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  // Biarkan Supabase & request eksternal lewat network langsung
   const url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;
 
@@ -38,7 +48,6 @@ self.addEventListener('fetch', e => {
         }
         return res;
       }).catch(() => cached || caches.match('./kanji.html'));
-      // Cache-first untuk shell, network-first untuk halaman lain
       return cached || network;
     })
   );

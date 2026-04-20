@@ -1,27 +1,22 @@
 {
-  "name": "EzNihongo — Belajar Bahasa Jepang",
+  "name": "EzNihongo — Flashcard Kanji",
   "short_name": "EzNihongo",
-  "description": "Belajar kanji Jepang N5–N3 dengan flashcard interaktif",
+  "description": "Hafal kanji Jepang N5–N1 dengan flashcard spaced repetition (FSRS)",
   "start_url": "./kanji.html",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#ffffff",
   "theme_color": "#C41B1B",
   "lang": "id",
   "icons": [
-    {
-      "src": "logo.png",
-      "sizes": "any",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    {
-      "name": "Flashcard Kanji",
-      "url": "./kanji.html",
-      "description": "Latihan kanji dengan flashcard"
-    }
+    { "name": "Flashcard Kanji", "url": "./kanji.html", "description": "Latihan kanji dengan flashcard" }
   ],
   "categories": ["education", "language"]
 }
