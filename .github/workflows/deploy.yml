@@ -9,12 +9,17 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Decode SSH key
+        run: |
+          echo "${{ secrets.VPS_SSH_KEY }}" | base64 -d > /tmp/deploy_key
+          chmod 600 /tmp/deploy_key
+
       - name: SSH and pull latest code
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: 168.144.107.34
           username: root
-          key: ${{ secrets.VPS_SSH_KEY }}
+          key_path: /tmp/deploy_key
           script: |
             cd /var/www/eznihongo
             git pull origin main
