@@ -9248,6 +9248,7 @@ document.getElementById('fcm-back').addEventListener('click', () => showOnly('vi
 
 // Flashcard menu: semua level
 document.getElementById('fcm-all').addEventListener('click', () => {
+  if (!requireLogin('Flashcard Semua Level')) return;
   activeLevel = 'all';
   buildDeck();
   fcIdx = deck.findIndex(d => !known.has(d.k));
@@ -9260,6 +9261,7 @@ document.getElementById('fcm-grid').addEventListener('click', e => {
   const card = e.target.closest('.fcm-card');
   if(!card) return;
   const lv = card.dataset.lv;
+  if (!isFree(lv) && !requireLogin('Flashcard ' + lv)) return;
   activeLevel = lv;
   buildDeck();
   fcIdx = deck.findIndex(d => !known.has(d.k));
@@ -9483,10 +9485,10 @@ document.querySelectorAll('.ks-tab').forEach(tab => {
 // ─── HOME EVENTS ──────────────────────────────────────────────────────────────
 document.getElementById('kh-search').addEventListener('click', showSearch);
 document.getElementById('kh-n5').addEventListener('click', () => showSets('N5'));
-document.getElementById('kh-n4').addEventListener('click', () => showSets('N4'));
-document.getElementById('kh-n3').addEventListener('click', () => showSets('N3'));
-document.getElementById('kh-n2').addEventListener('click', () => showSets('N2'));
-document.getElementById('kh-n1').addEventListener('click', () => showSets('N1'));
+document.getElementById('kh-n4').addEventListener('click', () => { if (requireLogin('Level N4')) showSets('N4'); });
+document.getElementById('kh-n3').addEventListener('click', () => { if (requireLogin('Level N3')) showSets('N3'); });
+document.getElementById('kh-n2').addEventListener('click', () => { if (requireLogin('Level N2')) showSets('N2'); });
+document.getElementById('kh-n1').addEventListener('click', () => { if (requireLogin('Level N1')) showSets('N1'); });
 document.getElementById('kh-kana').addEventListener('click', showKana);
 
 // ─── SET EVENTS ───────────────────────────────────────────────────────────────
@@ -9799,37 +9801,182 @@ window.addEventListener('beforeunload', () => {
   if (window._supabase) syncProgressToCloud();
 });
 
+// ─── FREE-TRIAL AUTH MODEL ───────────────────────────────────────────────────
+// App usable tanpa login. Free: N5 + Kana. Login untuk N4-N1 + Semua Level + cloud sync.
+window._isLoggedIn = false;
+const FREE_LEVELS = new Set(['N5', 'kana']);
+
+function isFree(level) { return FREE_LEVELS.has(level); }
+
+function openLoginModal(feature) {
+  const existing = document.getElementById('login-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'login-modal';
+  modal.innerHTML = `
+    <style>
+      #login-modal {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.55);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 10000; padding: 20px;
+        animation: lm-fade 0.2s ease;
+      }
+      @keyframes lm-fade { from { opacity: 0; } to { opacity: 1; } }
+      .lm-card {
+        background: #fff; border-radius: 16px;
+        max-width: 380px; width: 100%;
+        padding: 28px 24px 22px; text-align: center;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      }
+      [data-theme="dark"] .lm-card { background: #1E1C19; color: #EDEAE4; }
+      .lm-icon { font-size: 40px; margin-bottom: 10px; }
+      .lm-title { font-size: 18px; font-weight: 700; margin: 0 0 8px; }
+      .lm-desc { font-size: 14px; color: #6b6b6b; line-height: 1.5; margin: 0 0 20px; }
+      [data-theme="dark"] .lm-desc { color: #9b9b9b; }
+      .lm-btn {
+        display: block; width: 100%;
+        padding: 12px; border-radius: 999px;
+        font-size: 14px; font-weight: 600;
+        border: none; cursor: pointer; font-family: inherit;
+        margin-bottom: 10px; text-decoration: none;
+      }
+      .lm-primary { background: #C41B1B; color: #fff; }
+      .lm-primary:hover { background: #a61717; }
+      .lm-secondary {
+        background: transparent; color: #6b6b6b;
+        border: 1px solid #e6e2d8;
+      }
+      [data-theme="dark"] .lm-secondary { color: #9b9b9b; border-color: #2E2C27; }
+      .lm-secondary:hover { background: #f5f3ed; }
+      [data-theme="dark"] .lm-secondary:hover { background: #2A2825; }
+      .lm-bullets {
+        text-align: left; font-size: 13px; color: #4a4a4a;
+        margin: 0 0 18px; padding: 0 4px; list-style: none;
+      }
+      [data-theme="dark"] .lm-bullets { color: #C7C3BA; }
+      .lm-bullets li { padding: 4px 0; }
+      .lm-bullets li::before { content: "✓ "; color: #2E7D32; font-weight: 700; }
+    </style>
+    <div class="lm-card">
+      <div class="lm-icon">🔓</div>
+      <h3 class="lm-title">${feature || 'Fitur ini'} butuh akun</h3>
+      <p class="lm-desc">Login gratis — akun dibuat otomatis dengan Google.</p>
+      <ul class="lm-bullets">
+        <li>Akses semua level N5 sampai N1 (2229 kanji)</li>
+        <li>Progress tersimpan di cloud, sync antar device</li>
+        <li>Backup otomatis — data tidak hilang</li>
+      </ul>
+      <a class="lm-btn lm-primary" href="login.html?redirect=kanji.html">Masuk / Daftar dengan Google</a>
+      <button class="lm-btn lm-secondary" id="lm-close">Nanti aja</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById('lm-close').onclick = () => modal.remove();
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
+function requireLogin(feature) {
+  if (window._isLoggedIn) return true;
+  openLoginModal(feature);
+  return false;
+}
+
+function applyLockedUi() {
+  const style = document.createElement('style');
+  style.id = 'locked-ui-style';
+  style.textContent = `
+    .kh-item.locked .kh-name::after,
+    .fcm-card.locked .fcm-name::after,
+    .fcm-all-card.locked .fcm-all-name::after {
+      content: ' 🔒';
+      font-size: 0.85em;
+      opacity: 0.7;
+    }
+    .kh-item.locked { opacity: 0.92; }
+  `;
+  if (!document.getElementById('locked-ui-style')) document.head.appendChild(style);
+
+  ['kh-n4','kh-n3','kh-n2','kh-n1'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('locked');
+  });
+  const fcmAll = document.getElementById('fcm-all');
+  if (fcmAll) fcmAll.classList.add('locked');
+
+  document.querySelectorAll('#fcm-grid .fcm-card').forEach(card => {
+    const lv = card.dataset.lv;
+    if (lv && !isFree(lv)) card.classList.add('locked');
+  });
+}
+
+function removeLockedUi() {
+  document.querySelectorAll('.locked').forEach(el => el.classList.remove('locked'));
+  document.getElementById('locked-ui-style')?.remove();
+}
+
+function showLoginCta() {
+  applyLockedUi();
+  if (document.getElementById('login-cta')) return;
+  const cta = document.createElement('div');
+  cta.id = 'login-cta';
+  cta.innerHTML = `
+    <style>
+      #login-cta {
+        background: linear-gradient(90deg, #C41B1B, #E85858);
+        color: #fff; padding: 10px 14px;
+        display: flex; align-items: center; gap: 10px;
+        font-size: 13px; font-weight: 500;
+        position: sticky; top: 0; z-index: 100;
+      }
+      #login-cta .lc-text { flex: 1; min-width: 0; }
+      #login-cta a {
+        background: #fff; color: #C41B1B;
+        padding: 6px 12px; border-radius: 999px;
+        font-size: 12px; font-weight: 700;
+        text-decoration: none; white-space: nowrap;
+      }
+      #login-cta .lc-close {
+        background: transparent; color: #fff;
+        border: none; font-size: 18px; cursor: pointer;
+        padding: 0 4px; opacity: 0.8;
+      }
+    </style>
+    <span class="lc-text">💾 Login untuk sync progress antar device</span>
+    <a href="login.html?redirect=kanji.html">Login</a>
+    <button class="lc-close" aria-label="Tutup">&times;</button>
+  `;
+  const home = document.getElementById('view-home') || document.body;
+  home.insertBefore(cta, home.firstChild);
+  cta.querySelector('.lc-close').onclick = () => {
+    cta.remove();
+    sessionStorage.setItem('login_cta_dismissed', '1');
+  };
+  if (sessionStorage.getItem('login_cta_dismissed')) cta.remove();
+}
+
 async function checkAuth() {
-  // BYPASS: skip auth on localhost for local preview
+  document.getElementById('auth-gate').remove();
+  showHome();
+
   if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-    document.getElementById('auth-gate').remove();
-    showHome();
+    window._isLoggedIn = true;
     return;
   }
 
-  // Wait for nav.js to finish loading the Supabase client
   await new Promise(resolve => {
     const poll = () => window._supabase ? resolve() : setTimeout(poll, 50);
     poll();
   });
 
   const { data: { session } } = await window._supabase.auth.getSession();
-
-  if (!session) {
-    // Not logged in — show login/register prompt
-    document.getElementById('ag-spinner').style.display = 'none';
-    document.getElementById('ag-locked').style.display  = 'block';
-    document.getElementById('ag-desc').textContent =
-      'Masuk atau buat akun gratis untuk menggunakan aplikasi Kanji EzNihongo.';
-    document.getElementById('ag-actions').innerHTML = `
-      <a class="ag-btn-primary" href="login.html?redirect=kanji.html">Masuk / Daftar</a>`;
-    return;
+  if (session) {
+    window._isLoggedIn = true;
+    await loadProgressFromCloud(session.user.id);
+  } else {
+    window._isLoggedIn = false;
+    showLoginCta();
   }
-
-  // Logged in — load cloud progress lalu tampilkan home
-  document.getElementById('auth-gate').remove();
-  await loadProgressFromCloud(session.user.id);
-  showHome();
 }
 
 // ─── REVIEW MODE ─────────────────────────────────────────────────────────────
