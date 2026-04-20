@@ -10629,10 +10629,11 @@ if ('serviceWorker' in navigator) {
           Dengan <b id="ob-stats-min">15</b> menit/hari, lo bisa selesaikan <b id="ob-stats-days">~7 bulan</b> untuk N5 (103 kanji).
         </div>
         <div class="ob-actions">
-          <button class="ob-btn ob-btn-ghost" onclick="(function(){ document.getElementById('ob-step'); })(); (${renderStep1.toString()})()">‹ Kembali</button>
+          <button class="ob-btn ob-btn-ghost" id="ob-back-2">‹ Kembali</button>
           <button class="ob-btn ob-btn-primary" id="ob-next-2" disabled>Lanjut →</button>
         </div>
       `;
+      document.getElementById('ob-back-2').onclick = renderStep1;
       document.getElementById('ob-min-opts').addEventListener('click', (e) => {
         const b = e.target.closest('.ob-opt'); if (!b) return;
         document.querySelectorAll('#ob-min-opts .ob-opt').forEach(x => x.classList.remove('selected'));
