@@ -226,7 +226,7 @@
       btn.style.opacity = '0.7';
       await _supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin + '/auth-callback.html' }
+        options: { redirectTo: window.location.origin + '/app/auth-callback.html' }
       });
     }
   </script>
