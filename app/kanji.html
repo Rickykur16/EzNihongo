@@ -9830,7 +9830,8 @@ window.addEventListener('beforeunload', () => {
 // ─── FREE-TRIAL AUTH MODEL ───────────────────────────────────────────────────
 // App usable tanpa login. Free: N5 + Kana. Login untuk N4-N1 + Semua Level + cloud sync.
 window._isLoggedIn = false;
-window._isPremium = false;
+// Dev bypass: `localStorage.ez_dev_premium = '1'` unlocks all levels without Midtrans.
+window._isPremium = (() => { try { return localStorage.getItem('ez_dev_premium') === '1'; } catch(e) { return false; } })();
 const FREE_LEVELS = new Set(['N5', 'kana']);
 const PREMIUM_PRICE_IDR = 99000;
 const PREMIUM_PRICE_LABEL = 'Rp 99.000/tahun';
@@ -10149,20 +10150,22 @@ async function checkAuth() {
     }
   } else {
     window._isLoggedIn = false;
-    window._isPremium = false;
+    window._isPremium = _devPremiumFlag();
     window.track?.('session_active', { logged_in: false });
     showLoginCta();
   }
 }
 
+function _devPremiumFlag() { try { return localStorage.getItem('ez_dev_premium') === '1'; } catch(e) { return false; } }
+
 async function loadPremiumStatus() {
   try {
     const { data, error } = await window._supabase.from('me_is_premium').select('is_premium').maybeSingle();
-    if (error) { window._isPremium = false; return; }
-    window._isPremium = !!data?.is_premium;
+    if (error) { window._isPremium = _devPremiumFlag(); return; }
+    window._isPremium = !!data?.is_premium || _devPremiumFlag();
     if (window._isPremium) removeLockedUi();
   } catch (e) {
-    window._isPremium = false;
+    window._isPremium = _devPremiumFlag();
   }
 }
 
