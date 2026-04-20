@@ -9830,7 +9830,14 @@ window.addEventListener('beforeunload', () => {
 // ─── FREE-TRIAL AUTH MODEL ───────────────────────────────────────────────────
 // App usable tanpa login. Free: N5 + Kana. Login untuk N4-N1 + Semua Level + cloud sync.
 window._isLoggedIn = false;
-// Dev bypass: `localStorage.ez_dev_premium = '1'` unlocks all levels without Midtrans.
+// Dev bypass: open `?dev=1` in URL OR set `localStorage.ez_dev_premium='1'` to unlock all levels.
+(() => {
+  try {
+    if (new URLSearchParams(location.search).get('dev') === '1') {
+      localStorage.setItem('ez_dev_premium', '1');
+    }
+  } catch(e) {}
+})();
 window._isPremium = (() => { try { return localStorage.getItem('ez_dev_premium') === '1'; } catch(e) { return false; } })();
 const FREE_LEVELS = new Set(['N5', 'kana']);
 const PREMIUM_PRICE_IDR = 99000;
