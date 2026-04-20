@@ -45,10 +45,21 @@
 
     let redirected = false;
 
+    function markJustLoggedIn(session) {
+      try {
+        const md = session?.user?.user_metadata || {};
+        const full = md.full_name || md.name || session?.user?.email || '';
+        const first = String(full).trim().split(/\s+/)[0] || '';
+        sessionStorage.setItem('ez_just_logged_in', '1');
+        if (first) sessionStorage.setItem('ez_login_name', first);
+      } catch(e) {}
+    }
+
     // Cek session langsung (untuk user yang koneksinya cepat)
     sb.auth.getSession().then(({ data: { session } }) => {
       if (session && !redirected) {
         redirected = true;
+        markJustLoggedIn(session);
         setStatus('Masuk...');
         location.href = 'kanji.html';
       }
@@ -58,6 +69,7 @@
     sb.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session && !redirected) {
         redirected = true;
+        markJustLoggedIn(session);
         setStatus('Masuk...');
         location.href = 'kanji.html';
       }

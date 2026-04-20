@@ -355,12 +355,15 @@
     }
     .kd-bottom-bar.on{display:flex;}
     .kd-nav-btn{
-      width:40px;height:40px;border-radius:50%;
+      height:46px;padding:0 20px;border-radius:999px;
       border:1.5px solid var(--gray-border);background:var(--white);
-      cursor:pointer;display:flex;align-items:center;justify-content:center;
-      font-size:18px;font-weight:700;color:var(--text-primary);transition:all .15s;flex-shrink:0;
+      cursor:pointer;display:flex;align-items:center;gap:6px;
+      font-size:14px;font-weight:600;color:var(--text-primary);transition:all .15s;flex-shrink:0;
     }
-    .kd-nav-btn:hover{border-color:var(--red);color:var(--red);}
+    .kd-nav-btn:hover{border-color:var(--red);color:var(--red);background:#fff5f5;}
+    .kd-nav-btn:active{transform:scale(0.96);}
+    .kd-nav-arrow{font-size:20px;line-height:1;}
+    .kd-nav-label{font-size:13px;}
     .kd-action-btns{display:flex;gap:8px;flex:1;justify-content:center;}
     .kd-btn-review{
       padding:9px 16px;border-radius:20px;font-size:13px;font-weight:600;
@@ -374,7 +377,7 @@
       color:#3B6D11;font-family:inherit;transition:all .15s;
     }
     .kd-btn-know:hover{background:#d4edba;}
-    .kd-counter{font-size:11px;color:var(--text-muted);min-width:32px;text-align:right;flex-shrink:0;}
+    .kd-counter{font-size:12px;color:var(--text-muted);font-weight:600;flex:1;text-align:center;}
 
     /* ── DARK MODE ── */
     [data-theme="dark"] .kapp-toolbar,
@@ -1652,9 +1655,9 @@
 
 <!-- ── BOTTOM BAR ── -->
 <div class="kd-bottom-bar" id="kd-bottom-bar">
-  <button class="kd-nav-btn" id="kd-prev">‹</button>
-  <button class="kd-nav-btn" id="kd-next">›</button>
+  <button class="kd-nav-btn" id="kd-prev"><span class="kd-nav-arrow">‹</span><span class="kd-nav-label">Sebelumnya</span></button>
   <div class="kd-counter" id="kd-counter">1/120</div>
+  <button class="kd-nav-btn" id="kd-next"><span class="kd-nav-label">Berikutnya</span><span class="kd-nav-arrow">›</span></button>
 </div>
 
 <script src="analytics.js"></script>
@@ -10333,6 +10336,7 @@ async function checkAuth() {
     await loadPremiumStatus();
     window.track?.('session_active', { logged_in: true, premium: window._isPremium });
     await loadProgressFromCloud(session.user.id);
+    showWelcomeIfJustLoggedIn(session);
 
     // Auto-open upgrade modal if user came back from login expecting to upgrade
     if (new URLSearchParams(location.search).get('upgrade') === '1' && !window._isPremium) {
@@ -10351,6 +10355,20 @@ async function checkAuth() {
 }
 
 function _devPremiumFlag() { try { return localStorage.getItem('ez_dev_premium') === '1'; } catch(e) { return false; } }
+
+function showWelcomeIfJustLoggedIn(session) {
+  try {
+    if (sessionStorage.getItem('ez_just_logged_in') !== '1') return;
+    sessionStorage.removeItem('ez_just_logged_in');
+    const md = session?.user?.user_metadata || {};
+    const stored = sessionStorage.getItem('ez_login_name') || '';
+    sessionStorage.removeItem('ez_login_name');
+    const full = stored || md.full_name || md.name || session?.user?.email || '';
+    const first = String(full).trim().split(/\s+/)[0] || '';
+    const greet = first ? `Hai, ${first}! 👋` : 'Hai! 👋';
+    setTimeout(() => showToast(greet, 3200), 350);
+  } catch(e) {}
+}
 
 async function loadPremiumStatus() {
   try {

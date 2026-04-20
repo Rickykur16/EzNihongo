@@ -2,9 +2,728 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="refresh" content="0; url=./kanji.html" />
-  <title>EzNihongo</title>
-  <script>location.replace('./kanji.html');</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>EzNihongo — Kuasai Kanji JLPT N5-N1. Rp 99k/tahun.</title>
+  <meta name="description" content="Aplikasi kanji JLPT N5-N1 dengan FSRS spaced repetition. 2229 kanji, Bahasa Indonesia, 14x lebih murah dari WaniKani. PWA — install tanpa App Store." />
+  <meta name="theme-color" content="#C41B1B" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="EzNihongo — Kuasai Kanji JLPT N5-N1" />
+  <meta property="og:description" content="2229 kanji, FSRS algorithm, Bahasa Indonesia. Rp 99k/tahun — 14x lebih murah dari WaniKani." />
+  <meta property="og:image" content="logo.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://app.eznihongo.com/" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="EzNihongo — Kuasai Kanji JLPT N5-N1" />
+  <meta name="twitter:description" content="2229 kanji JLPT N5-N1 dengan FSRS. Rp 99k/tahun." />
+
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --red: #C41B1B;
+      --red-dark: #a61717;
+      --red-light: #FFE4E4;
+      --text: #1a1a18;
+      --text-2: #6b6b6b;
+      --text-3: #9b9b9b;
+      --bg: #fffaf5;
+      --white: #ffffff;
+      --border: #e6e2d8;
+      --green: #2E7D32;
+      --amber: #F59E0B;
+    }
+    html, body {
+      margin: 0; padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.55;
+    }
+    a { color: inherit; }
+    img { max-width: 100%; display: block; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+
+    /* NAV */
+    .nav {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(255,250,245,0.85);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; max-width: 1100px; margin: 0 auto;
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; }
+    .nav-logo img { height: 28px; }
+    .nav-logo b { font-size: 17px; font-weight: 800; color: var(--red); letter-spacing: -0.01em; }
+    .nav-cta {
+      background: var(--red); color: var(--white);
+      padding: 8px 16px; border-radius: 999px;
+      font-size: 13px; font-weight: 600; text-decoration: none;
+      transition: background 0.15s;
+    }
+    .nav-cta:hover { background: var(--red-dark); }
+
+    .nav-links {
+      display: flex; align-items: center; gap: 24px;
+      list-style: none; margin: 0; padding: 0;
+    }
+    .nav-links a {
+      font-size: 14px; font-weight: 500; text-decoration: none;
+      color: var(--text-2); transition: color 0.15s;
+    }
+    .nav-links a:hover { color: var(--red); }
+
+    .nav-hamburger {
+      display: none;
+      flex-direction: column; gap: 5px;
+      cursor: pointer; background: none; border: none; padding: 4px;
+    }
+    .nav-hamburger span {
+      display: block; width: 22px; height: 2px;
+      background: var(--text); border-radius: 2px;
+      transition: transform 0.2s, opacity 0.2s;
+    }
+    .nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .nav-hamburger.open span:nth-child(2) { opacity: 0; }
+    .nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    .nav-mobile-menu {
+      display: none;
+      flex-direction: column;
+      background: rgba(255,250,245,0.97);
+      border-top: 1px solid var(--border);
+      padding: 16px 20px;
+      gap: 4px;
+    }
+    .nav-mobile-menu.open { display: flex; }
+    .nav-mobile-menu a {
+      font-size: 15px; font-weight: 500;
+      color: var(--text); text-decoration: none;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-mobile-menu a:last-child { border-bottom: none; color: var(--red); font-weight: 700; }
+    .nav-mobile-menu a:hover { color: var(--red); }
+
+    @media (max-width: 700px) {
+      .nav-links { display: none; }
+      .nav-hamburger { display: flex; }
+      .nav-cta { display: none; }
+    }
+
+    /* HERO */
+    .hero {
+      padding: 60px 20px 40px;
+      text-align: center;
+      background: linear-gradient(180deg, #fffaf5 0%, #fff 100%);
+    }
+    .hero-badge {
+      display: inline-block;
+      background: var(--red-light); color: var(--red);
+      padding: 5px 14px; border-radius: 999px;
+      font-size: 12px; font-weight: 700;
+      margin-bottom: 20px;
+      letter-spacing: 0.02em;
+    }
+    .hero h1 {
+      font-size: clamp(30px, 5.5vw, 52px);
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      margin: 0 0 18px;
+    }
+    .hero h1 .accent { color: var(--red); }
+    .hero-sub {
+      font-size: clamp(15px, 2vw, 19px);
+      color: var(--text-2);
+      max-width: 620px;
+      margin: 0 auto 34px;
+    }
+    .hero-ctas {
+      display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+    .btn {
+      padding: 14px 28px;
+      border-radius: 999px;
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      border: none; cursor: pointer;
+      font-family: inherit;
+      transition: transform 0.12s, background 0.15s;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      background: var(--red); color: var(--white);
+      box-shadow: 0 8px 22px rgba(196,27,27,0.25);
+    }
+    .btn-primary:hover { background: var(--red-dark); }
+    .btn-ghost {
+      background: transparent; color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--white); border-color: var(--text); }
+
+    .hero-proof {
+      font-size: 13px; color: var(--text-2);
+      display: flex; align-items: center; gap: 12px;
+      justify-content: center; flex-wrap: wrap;
+    }
+    .hero-proof b { color: var(--red); font-weight: 700; }
+
+    /* KANJI FLOAT */
+    .hero-kanji-row {
+      display: flex; gap: 8px; justify-content: center;
+      margin-top: 40px;
+      font-family: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+      user-select: none;
+    }
+    .hero-kanji-row span {
+      font-size: clamp(28px, 5vw, 44px);
+      font-weight: 700;
+      opacity: 0.2;
+      animation: floaty 4s ease-in-out infinite;
+    }
+    .hero-kanji-row span:nth-child(1) { animation-delay: 0s; }
+    .hero-kanji-row span:nth-child(2) { animation-delay: 0.4s; }
+    .hero-kanji-row span:nth-child(3) { animation-delay: 0.8s; }
+    .hero-kanji-row span:nth-child(4) { animation-delay: 1.2s; }
+    .hero-kanji-row span:nth-child(5) { animation-delay: 1.6s; }
+    .hero-kanji-row span:nth-child(6) { animation-delay: 2s; }
+    @keyframes floaty {
+      0%, 100% { transform: translateY(0); opacity: 0.15; }
+      50% { transform: translateY(-8px); opacity: 0.35; }
+    }
+
+    /* SECTION base */
+    .section { padding: 60px 20px; }
+    .section-head { text-align: center; margin-bottom: 40px; }
+    .section-eyebrow {
+      font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--red);
+      margin-bottom: 10px;
+    }
+    .section-title {
+      font-size: clamp(24px, 3.5vw, 38px);
+      font-weight: 800; letter-spacing: -0.02em;
+      margin: 0 0 10px;
+    }
+    .section-sub {
+      font-size: 15px; color: var(--text-2);
+      max-width: 560px; margin: 0 auto;
+    }
+
+    /* FEATURES GRID */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+    }
+    .feature {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .feature:hover { border-color: var(--red); transform: translateY(-2px); }
+    .feature-ico {
+      font-size: 28px;
+      margin-bottom: 12px;
+      display: inline-block;
+    }
+    .feature h3 {
+      font-size: 17px; font-weight: 700;
+      margin: 0 0 6px;
+    }
+    .feature p { font-size: 14px; color: var(--text-2); margin: 0; line-height: 1.55; }
+
+    /* COMPARISON */
+    .compare-wrap {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      max-width: 820px; margin: 0 auto;
+    }
+    .compare-table {
+      width: 100%; border-collapse: collapse;
+      font-size: 14px;
+    }
+    .compare-table th, .compare-table td {
+      padding: 14px 16px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .compare-table th:first-child, .compare-table td:first-child {
+      text-align: left; font-weight: 600;
+    }
+    .compare-table thead th {
+      background: #faf7f0;
+      font-size: 13px; font-weight: 700;
+    }
+    .compare-table thead th.us {
+      background: var(--red); color: var(--white);
+    }
+    .compare-table tbody tr:last-child td { border-bottom: none; }
+    .compare-table .yes { color: var(--green); font-weight: 700; }
+    .compare-table .no  { color: #999; }
+    .compare-table .part { color: var(--amber); font-weight: 700; }
+    .compare-price { font-weight: 800; font-size: 15px; }
+
+    /* PRICING */
+    .pricing {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+      max-width: 720px; margin: 0 auto;
+    }
+    .plan {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 24px;
+      position: relative;
+    }
+    .plan.featured {
+      border-color: var(--red);
+      border-width: 2px;
+      box-shadow: 0 12px 32px rgba(196,27,27,0.12);
+    }
+    .plan-badge {
+      position: absolute;
+      top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--red); color: var(--white);
+      padding: 5px 14px; border-radius: 999px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+    }
+    .plan-name {
+      font-size: 14px; font-weight: 700;
+      color: var(--text-2); margin: 0 0 10px;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .plan-price {
+      font-size: 36px; font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0 0 6px;
+    }
+    .plan-price-sub {
+      font-size: 13px; color: var(--text-2);
+      margin: 0 0 20px;
+    }
+    .plan-features {
+      list-style: none; padding: 0; margin: 0 0 22px;
+      font-size: 14px;
+    }
+    .plan-features li {
+      padding: 6px 0;
+      display: flex; align-items: flex-start; gap: 8px;
+    }
+    .plan-features li::before {
+      content: "✓"; color: var(--green); font-weight: 700;
+      flex-shrink: 0;
+    }
+    .plan-features li.no::before { content: "×"; color: var(--text-3); }
+    .plan .btn { width: 100%; justify-content: center; }
+
+    /* FAQ */
+    .faq { max-width: 720px; margin: 0 auto; }
+    .faq details {
+      border-bottom: 1px solid var(--border);
+      padding: 18px 0;
+    }
+    .faq details[open] summary::after { transform: rotate(45deg); }
+    .faq summary {
+      list-style: none; cursor: pointer;
+      font-size: 16px; font-weight: 600;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px;
+    }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary::after {
+      content: "+"; font-size: 22px; color: var(--red);
+      transition: transform 0.2s;
+    }
+    .faq details p {
+      margin: 12px 0 0; font-size: 14px; color: var(--text-2);
+      line-height: 1.65;
+    }
+
+    /* FINAL CTA */
+    .final-cta {
+      background: linear-gradient(135deg, #1a1a18 0%, #2a1a1a 100%);
+      color: var(--white);
+      padding: 60px 20px;
+      text-align: center;
+    }
+    .final-cta h2 {
+      font-size: clamp(26px, 4vw, 40px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0 0 14px;
+      color: var(--white);
+    }
+    .final-cta p {
+      font-size: 15px; color: rgba(255,255,255,0.75);
+      margin: 0 0 28px;
+    }
+    .final-cta .btn-primary {
+      background: var(--red);
+      box-shadow: 0 12px 28px rgba(196,27,27,0.4);
+    }
+
+    /* DISCORD */
+    .discord-section {
+      padding: 60px 20px;
+      background: #5865F2;
+      text-align: center;
+    }
+    .discord-inner {
+      max-width: 640px; margin: 0 auto;
+    }
+    .discord-icon {
+      font-size: 48px; margin-bottom: 16px; display: block;
+    }
+    .discord-section h2 {
+      font-size: clamp(24px, 3.5vw, 36px);
+      font-weight: 800; letter-spacing: -0.02em;
+      color: #fff; margin: 0 0 12px;
+    }
+    .discord-section p {
+      font-size: 15px; color: rgba(255,255,255,0.8);
+      margin: 0 0 28px; line-height: 1.6;
+    }
+    .btn-discord {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: #fff; color: #5865F2;
+      padding: 14px 28px; border-radius: 999px;
+      font-size: 15px; font-weight: 700; text-decoration: none;
+      transition: transform 0.12s, box-shadow 0.15s;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    .btn-discord:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,0.2); }
+    .btn-discord:active { transform: scale(0.97); }
+    .discord-members {
+      margin-top: 16px; font-size: 13px; color: rgba(255,255,255,0.65);
+    }
+
+    /* FOOTER */
+    footer {
+      padding: 32px 20px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-3);
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--text-2); text-decoration: none; }
+    footer a:hover { color: var(--red); }
+
+    /* MOBILE TWEAKS */
+    @media (max-width: 640px) {
+      .hero { padding: 40px 20px 20px; }
+      .section { padding: 40px 20px; }
+      .feature { padding: 20px; }
+    }
+  </style>
 </head>
-<body></body>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="nav-logo" href="/">
+      <img src="logo.png" alt="EzNihongo" />
+    </a>
+    <ul class="nav-links">
+      <li><a href="#features">Fitur</a></li>
+      <li><a href="#compare">Bandingkan</a></li>
+      <li><a href="#pricing">Harga</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ul>
+    <a href="kanji.html" class="nav-cta" id="nav-open-app">Buka App</a>
+    <button class="nav-hamburger" id="nav-hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="nav-mobile-menu" id="nav-mobile-menu">
+    <a href="#features">Fitur</a>
+    <a href="#compare">Bandingkan</a>
+    <a href="#pricing">Harga</a>
+    <a href="#faq">FAQ</a>
+    <a href="kanji.html" id="nav-open-app-mobile">Buka App →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">🔥 14x LEBIH MURAH DARI WANIKANI</div>
+    <h1>Kuasai <span class="accent">2229 Kanji</span><br>JLPT N5 sampai N1.</h1>
+    <p class="hero-sub">
+      Aplikasi kanji dengan algoritma FSRS (Spaced Repetition modern) dalam Bahasa Indonesia.
+      Rp 99.000 setahun. Install di HP tanpa App Store.
+    </p>
+    <div class="hero-ctas">
+      <a href="kanji.html" class="btn btn-primary" id="hero-try">
+        Coba Gratis →
+      </a>
+      <a href="#pricing" class="btn btn-ghost">Lihat Harga</a>
+    </div>
+    <div class="hero-proof">
+      <span>✓ N5 &amp; Kana <b>gratis</b></span>
+      <span>✓ Offline after install</span>
+      <span>✓ Sync antar device</span>
+    </div>
+    <div class="hero-kanji-row" aria-hidden="true">
+      <span>日</span><span>本</span><span>語</span><span>勉</span><span>強</span><span>頑</span><span>張</span><span>れ</span>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section" id="features" style="background:#fff;">
+  <div class="container">
+    <div class="section-head">
+      <div class="section-eyebrow">Kenapa EzNihongo</div>
+      <h2 class="section-title">Dibuat untuk pelajar JLPT Indonesia yang <span style="color:var(--red);">serius meningkatkan hafalan</span>.</h2>
+      <p class="section-sub">Bukan aplikasi gamifikasi yang hanya terasa menyenangkan. Ini alat belajar serius untuk yang ingin lulus JLPT.</p>
+    </div>
+    <div class="features">
+      <div class="feature">
+        <div class="feature-ico">🧠</div>
+        <h3>Hafalan Otomatis yang Cerdas</h3>
+        <p>Sistem pengulangan otomatis yang tahu kapan Anda hampir lupa, lalu memunculkan kartunya tepat waktu. Hafalkan lebih banyak dengan waktu belajar yang lebih singkat.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-ico">✍️</div>
+        <h3>Stroke Order Animation</h3>
+        <p>Setiap kanji dilengkapi animasi urutan coretan. Sangat membantu bagi pelajar visual maupun yang ingin berlatih menulis.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-ico">🇮🇩</div>
+        <h3>Bahasa Indonesia Natural</h3>
+        <p>Terjemahan ditulis manual oleh native speaker Indonesia — bukan Google Translate. Contoh kalimat dari konteks nyata.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-ico">📱</div>
+        <h3>PWA — Tanpa App Store</h3>
+        <p>Install langsung dari browser ke home screen HP. Ukuran kecil, offline-first, tidak makan kuota.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-ico">☁️</div>
+        <h3>Cloud Sync Otomatis</h3>
+        <p>Masuk sekali dengan akun Google, progres belajar Anda tersimpan otomatis. Ganti perangkat kapan saja, semua tetap ada.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-ico">🔥</div>
+        <h3>Streak &amp; Daily Goal</h3>
+        <p>Target harian dan streak counter membangun kebiasaan belajar yang konsisten — cukup 15 menit setiap hari.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARISON -->
+<section class="section" id="compare">
+  <div class="container">
+    <div class="section-head">
+      <div class="section-eyebrow">Bandingkan</div>
+      <h2 class="section-title">EzNihongo vs WaniKani vs Duolingo</h2>
+      <p class="section-sub">Untuk pelajar JLPT Indonesia — mana yang paling tepat?</p>
+    </div>
+    <div class="compare-wrap">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Fitur</th>
+            <th class="us">EzNihongo</th>
+            <th>WaniKani</th>
+            <th>Duolingo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Bahasa UI</td><td class="yes">Indonesia</td><td class="no">English</td><td class="part">Parsial</td></tr>
+          <tr><td>Harga per tahun</td><td class="compare-price" style="color:var(--red)">Rp 99k</td><td class="compare-price">Rp 1.450k</td><td class="compare-price">Rp 900k</td></tr>
+          <tr><td>Kanji JLPT N5-N1</td><td class="yes">2229</td><td class="yes">2000+</td><td class="no">Terbatas</td></tr>
+          <tr><td>FSRS Modern SRS</td><td class="yes">✓</td><td class="part">Custom SRS</td><td class="no">✗</td></tr>
+          <tr><td>Stroke Order</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td></tr>
+          <tr><td>Offline (PWA)</td><td class="yes">✓</td><td class="no">✗</td><td class="part">Web+App</td></tr>
+          <tr><td>Fokus JLPT</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="section" id="pricing" style="background:#fff;">
+  <div class="container">
+    <div class="section-head">
+      <div class="section-eyebrow">Harga</div>
+      <h2 class="section-title">Transparan. Terjangkau. Sekali bayar untuk setahun.</h2>
+      <p class="section-sub">Tidak ada trial 7 hari yang menyesatkan. Tidak ada auto-renew. Bayar setahun, gunakan setahun penuh.</p>
+    </div>
+    <div class="pricing">
+      <div class="plan">
+        <h3 class="plan-name">Free</h3>
+        <div class="plan-price">Rp 0</div>
+        <div class="plan-price-sub">Selamanya gratis</div>
+        <ul class="plan-features">
+          <li>Akses Level N5 (103 kanji)</li>
+          <li>Hiragana + Katakana lengkap</li>
+          <li>FSRS spaced repetition</li>
+          <li>Stroke order animation</li>
+          <li>Cloud sync progress</li>
+          <li class="no">Level N4-N1 (2126 kanji)</li>
+          <li class="no">Mnemonic &amp; radical teaching</li>
+        </ul>
+        <a href="kanji.html" class="btn btn-ghost">Mulai Gratis</a>
+      </div>
+      <div class="plan featured">
+        <div class="plan-badge">REKOMENDASI</div>
+        <h3 class="plan-name">Premium</h3>
+        <div class="plan-price">Rp 99.000</div>
+        <div class="plan-price-sub">Per tahun · Rp 8.250/bulan</div>
+        <ul class="plan-features">
+          <li><b>Semua fitur Free</b></li>
+          <li>Akses Level N5-N1 <b>(2229 kanji)</b></li>
+          <li>Contoh vocab &amp; kalimat lengkap</li>
+          <li>Mnemonic &amp; radical teaching</li>
+          <li>Priority support via WhatsApp</li>
+          <li>Update fitur baru duluan</li>
+          <li>No ads. Selamanya.</li>
+        </ul>
+        <a href="kanji.html#upgrade" class="btn btn-primary" id="pricing-upgrade">Upgrade ke Premium</a>
+      </div>
+    </div>
+    <p style="text-align:center;font-size:12px;color:var(--text-3);margin-top:24px;">
+      Pembayaran via Midtrans (BCA, Mandiri, BRI, BNI, GoPay, OVO, DANA, QRIS). Refund 7 hari kalau tidak puas.
+    </p>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section" id="faq">
+  <div class="container">
+    <div class="section-head">
+      <div class="section-eyebrow">FAQ</div>
+      <h2 class="section-title">Pertanyaan yang sering ditanya</h2>
+    </div>
+    <div class="faq">
+      <details>
+        <summary>Apa beda FSRS dengan SRS biasa?</summary>
+        <p>FSRS adalah algoritma pengulangan modern yang memprediksi kapan Anda akan lupa sebuah kartu, lalu menjadwalkan ulangan tepat sebelum itu terjadi. Hasilnya lebih banyak hafalan dengan waktu belajar yang lebih efisien.</p>
+      </details>
+      <details>
+        <summary>Kenapa harganya murah sekali?</summary>
+        <p>Kami percaya bahwa belajar bahasa Jepang seharusnya tidak mahal. EzNihongo dibangun khusus untuk pelajar Indonesia, bukan untuk pasar ekspat yang siap membayar ratusan ribu per bulan. Dengan Rp 99.000 per tahun, tidak ada alasan finansial untuk menunda belajar.</p>
+      </details>
+      <details>
+        <summary>Bagaimana cara menginstal PWA-nya?</summary>
+        <p><b>Android Chrome:</b> Tap titik 3 kanan atas → "Install app" atau "Tambah ke layar utama". <b>iPhone Safari:</b> Tap tombol Share (kotak panah bawah) → scroll → "Add to Home Screen". Icon EzNihongo muncul di home screen — buka seperti app biasa.</p>
+      </details>
+      <details>
+        <summary>Apa bedanya dengan WaniKani?</summary>
+        <p>WaniKani lebih dikenal di pasar internasional dan menggunakan mnemonic berbahasa Inggris yang kurang relevan bagi pelajar Indonesia. EzNihongo sepenuhnya berbahasa Indonesia, 14x lebih terjangkau (Rp 99k vs Rp 1,4jt), tersedia sebagai PWA tanpa perlu App Store, dan menggunakan algoritma FSRS modern. Kualitas konten kami terus dikembangkan.</p>
+      </details>
+      <details>
+        <summary>Bisa dipakai tanpa internet?</summary>
+        <p>Bisa. Setelah aplikasi diinstal, semua konten tersimpan di perangkat Anda. Belajar tetap bisa dilakukan tanpa internet, dan progres akan otomatis tersinkronisasi ke akun Anda begitu terhubung kembali.</p>
+      </details>
+      <details>
+        <summary>Apa saja metode pembayaran?</summary>
+        <p>Via Midtrans: transfer bank (BCA, Mandiri, BRI, BNI), e-wallet (GoPay, OVO, DANA, ShopeePay), QRIS, dan kartu kredit. Instant activation setelah pembayaran.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- DISCORD -->
+<section class="discord-section">
+  <div class="discord-inner">
+    <span class="discord-icon">💬</span>
+    <h2>Bergabung dengan komunitas belajar kami</h2>
+    <p>Tanya soal kanji, berbagi progress JLPT, dan belajar bareng ribuan pelajar Indonesia di server Discord EzNihongo.</p>
+    <a href="https://discord.gg/eznihongo" class="btn-discord" target="_blank" rel="noopener">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+      Gabung Discord Gratis
+    </a>
+    <div class="discord-members">Komunitas pelajar bahasa Jepang Indonesia</div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta">
+  <div class="container">
+    <h2>Mulai belajar kanji hari ini.</h2>
+    <p>Gratis untuk N5 + Kana. Rp 99k/tahun untuk akses N5-N1 penuh.</p>
+    <a href="kanji.html" class="btn btn-primary" id="final-cta-btn">Coba Gratis Sekarang →</a>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>
+      © 2026 EzNihongo ·
+      <a href="https://eznihongo.com">Website utama</a> ·
+      <a href="mailto:hi@eznihongo.com">Kontak</a>
+    </p>
+  </div>
+</footer>
+
+<script src="analytics.js"></script>
+<script>
+  // Auto-redirect installed PWA to kanji.html (standalone mode)
+  // Escape hatch: ?landing=1 forces showing the landing page (used for Midtrans KYC review).
+  const _forceLanding = new URLSearchParams(location.search).get('landing') === '1';
+  if (!_forceLanding && (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true)) {
+    location.replace('./kanji.html');
+  }
+
+  // Returning users (have progress) — offer quick access
+  if (localStorage.getItem('eznihongo_fsrs_v1')) {
+    document.getElementById('nav-open-app').textContent = 'Lanjut Belajar →';
+  }
+
+  // Track landing CTAs
+  ['hero-try', 'pricing-upgrade', 'final-cta-btn', 'nav-open-app'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', () => {
+      window.track?.('landing_cta_click', { cta: id });
+    });
+  });
+
+  window.track?.('landing_view');
+
+  // Hamburger menu
+  const hamburger = document.getElementById('nav-hamburger');
+  const mobileMenu = document.getElementById('nav-mobile-menu');
+  hamburger.addEventListener('click', () => {
+    hamburger.classList.toggle('open');
+    mobileMenu.classList.toggle('open');
+  });
+  mobileMenu.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      hamburger.classList.remove('open');
+      mobileMenu.classList.remove('open');
+    });
+  });
+
+  // Register SW for install-ability
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+</script>
+
+</body>
 </html>
