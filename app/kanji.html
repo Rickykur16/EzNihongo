@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="style.css"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Noto+Serif+JP:wght@500;700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
     .kapp{max-width:480px;margin:0 auto;min-height:100vh;}
     @media(min-width:640px){.kapp{border-left:1px solid var(--gray-border);border-right:1px solid var(--gray-border);}}
@@ -400,18 +400,206 @@
       .fc-card{height:300px;}
     }
 
-    /* ══ HOME VIEW ══ */
-    .kh-header{
-      padding:24px 20px 16px;
-      display:flex;align-items:flex-start;justify-content:space-between;
+    /* ══ HOME VIEW — redesign 2026-04 ══ */
+    /* Hero header */
+    .kh-hero{
+      position:relative;padding:28px 20px 18px;
+      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+      overflow:hidden;
     }
-    .kh-title{font-size:22px;font-weight:700;color:var(--text-primary);letter-spacing:-.3px;}
-    .kh-subtitle{font-size:12px;color:var(--text-muted);margin-top:2px;}
+    .kh-hero::before{
+      content:"漢";position:absolute;right:-28px;top:-22px;
+      font-family:'Noto Serif JP','Yuji Syuku',serif;font-weight:900;font-size:180px;
+      color:var(--red);opacity:.06;line-height:1;pointer-events:none;letter-spacing:-.04em;
+    }
+    .kh-hero-title-wrap{display:flex;align-items:center;gap:14px;z-index:1;}
+    .kh-hero-kanji{
+      font-family:'Noto Serif JP',serif;font-weight:900;font-size:44px;line-height:1;
+      color:var(--red);letter-spacing:-.04em;
+    }
+    .kh-hero-title{
+      font-family:'Inter','DM Sans',sans-serif;
+      font-size:26px;font-weight:800;color:var(--text-primary);
+      letter-spacing:-.028em;line-height:1.1;
+    }
+    .kh-hero-sub{
+      font-size:12px;color:var(--text-muted);margin-top:4px;
+      font-weight:500;letter-spacing:.01em;
+    }
+    .kh-hero-right{display:flex;align-items:center;gap:8px;z-index:1;}
+    /* Progress ring card */
+    .kh-progress{
+      margin:4px 16px 14px;padding:18px 18px 18px 14px;
+      background:linear-gradient(135deg,#ffffff 0%,#fbfaf7 100%);
+      border:1px solid var(--gray-border);border-radius:18px;
+      display:flex;align-items:center;gap:16px;
+      box-shadow:0 1px 2px rgba(0,0,0,.02),0 8px 24px -12px rgba(196,27,27,.08);
+    }
+    [data-theme="dark"] .kh-progress{background:linear-gradient(135deg,#252522 0%,#1e1d1a 100%);}
+    .kh-ring-wrap{position:relative;width:88px;height:88px;flex-shrink:0;}
+    .kh-ring{width:100%;height:100%;transform:rotate(-90deg);}
+    .kh-ring-track{fill:none;stroke:var(--gray-border);stroke-width:8;}
+    .kh-ring-fill{
+      fill:none;stroke:url(#kh-ring-grad);stroke-width:8;stroke-linecap:round;
+      transition:stroke-dasharray .8s cubic-bezier(.22,1,.36,1);
+    }
+    .kh-ring-center{
+      position:absolute;inset:0;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;gap:1px;
+    }
+    .kh-ring-pct{
+      font-family:'Inter',sans-serif;font-size:22px;font-weight:800;
+      color:var(--red);letter-spacing:-.04em;line-height:1;
+    }
+    .kh-ring-lbl{font-size:10px;color:var(--text-muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase;}
+    .kh-progress-text{flex:1;min-width:0;}
+    .kh-progress-heading{
+      font-size:11px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;
+      color:var(--text-muted);margin-bottom:4px;
+    }
+    .kh-progress-count{
+      font-family:'Inter',sans-serif;font-size:20px;font-weight:700;
+      color:var(--text-primary);letter-spacing:-.02em;line-height:1.1;
+    }
+    .kh-progress-count strong{color:var(--red);font-weight:800;}
+    .kh-progress-slash{color:var(--text-muted);font-weight:500;margin:0 3px;}
+    .kh-progress-count span:not(.kh-progress-slash){color:var(--text-secondary);font-weight:600;}
+    .kh-progress-unit{font-size:13px;color:var(--text-muted);font-weight:500;margin-left:4px;}
+    .kh-total-pbar-wrap{height:4px;background:var(--gray-border);border-radius:4px;overflow:hidden;margin-top:10px;}
+    .kh-total-pbar{height:100%;background:linear-gradient(90deg,#C41B1B,#e85555);border-radius:4px;width:0%;transition:width .6s cubic-bezier(.22,1,.36,1);}
+    /* Legacy aliases for JS compatibility */
+    .kh-total-pct{font-size:22px;font-weight:800;color:var(--red);letter-spacing:-.02em;}
+    /* Review due pill */
+    .kh-review-pill{
+      margin:0 16px 14px;padding:13px 14px;
+      background:linear-gradient(135deg,#FFF5F5 0%,#FFEAEA 100%);
+      border:1px solid rgba(196,27,27,.18);border-radius:14px;
+      display:flex;align-items:center;gap:12px;cursor:pointer;
+      transition:transform .15s,box-shadow .15s;
+    }
+    .kh-review-pill:hover{transform:translateY(-1px);box-shadow:0 6px 18px -8px rgba(196,27,27,.3);}
+    .kh-review-pill:active{transform:translateY(0);}
+    [data-theme="dark"] .kh-review-pill{background:linear-gradient(135deg,rgba(196,27,27,.12) 0%,rgba(196,27,27,.06) 100%);}
+    .kh-review-icon{
+      width:40px;height:40px;border-radius:50%;
+      background:var(--red);color:#fff;font-size:18px;
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;
+      box-shadow:0 4px 12px -2px rgba(196,27,27,.4);
+    }
+    .kh-review-text{flex:1;min-width:0;}
+    .kh-review-title-new{font-size:14px;font-weight:700;color:var(--red);letter-spacing:-.01em;}
+    .kh-review-sub-new{font-size:12px;color:var(--text-secondary);margin-top:2px;}
+    .kh-review-btn-new{
+      font-size:13px;font-weight:700;padding:8px 16px;border-radius:99px;
+      background:var(--red);color:#fff;border:none;cursor:pointer;font-family:inherit;
+      white-space:nowrap;transition:background .15s;
+    }
+    .kh-review-btn-new:hover{background:var(--red-dark);}
+    /* Quick actions row */
+    .kh-quick{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+      padding:0 16px;margin-bottom:22px;
+    }
+    .kh-q{
+      display:flex;flex-direction:column;align-items:center;gap:8px;
+      padding:16px 10px;background:var(--white);
+      border:1px solid var(--gray-border);border-radius:14px;
+      cursor:pointer;font-family:inherit;
+      transition:transform .15s,border-color .15s,box-shadow .15s;
+    }
+    .kh-q:hover{border-color:var(--red);transform:translateY(-2px);box-shadow:0 6px 16px -8px rgba(0,0,0,.1);}
+    .kh-q:active{transform:translateY(0);}
+    [data-theme="dark"] .kh-q{background:#252522;}
+    .kh-q-ico{
+      width:42px;height:42px;border-radius:12px;
+      display:flex;align-items:center;justify-content:center;
+      font-size:20px;background:var(--gray-bg);
+    }
+    .kh-q-ja{
+      font-family:'Noto Serif JP',serif;font-weight:700;font-size:20px;
+      background:#EAF1FA;color:#1B4FA8;
+    }
+    .kh-q-lbl{font-size:12px;font-weight:600;color:var(--text-primary);letter-spacing:-.01em;}
+    /* Section header */
+    .kh-section{
+      padding:0 20px;margin-bottom:12px;
+      display:flex;align-items:baseline;justify-content:space-between;
+    }
+    .kh-section-title{
+      font-family:'Inter',sans-serif;
+      font-size:17px;font-weight:800;color:var(--text-primary);letter-spacing:-.02em;
+    }
+    .kh-section-hint{font-size:11px;color:var(--text-muted);font-weight:500;}
+    /* Legacy section label (for compat with old markup) */
     .kh-section-lbl{
       font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
       color:var(--text-muted);padding:0 4px;margin:4px 0 8px;
     }
-    .kh-list{padding:0 16px 80px;}
+    /* Level grid */
+    .kh-levels{
+      display:grid;grid-template-columns:repeat(2,1fr);gap:10px;
+      padding:0 16px 100px;
+    }
+    .kh-level{
+      position:relative;background:var(--white);
+      border:1px solid var(--gray-border);border-radius:16px;
+      padding:14px 14px 12px;cursor:pointer;
+      display:flex;flex-direction:column;gap:12px;
+      transition:transform .18s,box-shadow .18s,border-color .18s;
+      overflow:hidden;
+    }
+    .kh-level::before{
+      content:"";position:absolute;inset:0;border-radius:16px;
+      background:linear-gradient(135deg,transparent 60%,var(--kh-level-tint,transparent) 100%);
+      opacity:.6;pointer-events:none;
+    }
+    .kh-level:hover{transform:translateY(-2px);box-shadow:0 10px 24px -10px rgba(0,0,0,.12);border-color:var(--kh-level-border,var(--red));}
+    .kh-level:active{transform:translateY(0);}
+    [data-theme="dark"] .kh-level{background:#252522;}
+    .kh-level[data-lv="N5"]{--kh-level-tint:#EAF3DE;--kh-level-border:#84b845;}
+    .kh-level[data-lv="N4"]{--kh-level-tint:#FAEEDA;--kh-level-border:#c88a34;}
+    .kh-level[data-lv="N3"]{--kh-level-tint:#EAF1FA;--kh-level-border:#3a6fbe;}
+    .kh-level[data-lv="N2"]{--kh-level-tint:#F0E6FF;--kh-level-border:#8b45cc;}
+    .kh-level[data-lv="N1"]{--kh-level-tint:#FFE4E4;--kh-level-border:#c13a3a;}
+    .kh-level-head{display:flex;align-items:center;gap:10px;z-index:1;}
+    .kh-level-badge{
+      width:44px;height:44px;border-radius:12px;
+      display:flex;align-items:center;justify-content:center;
+      font-family:'Inter',sans-serif;font-size:14px;font-weight:800;letter-spacing:-.02em;
+      flex-shrink:0;
+    }
+    .kh-level-meta{flex:1;min-width:0;}
+    .kh-level-name{
+      font-family:'Inter',sans-serif;font-size:15px;font-weight:700;
+      color:var(--text-primary);letter-spacing:-.02em;line-height:1.1;
+    }
+    .kh-level-desc{
+      font-size:11px;color:var(--text-muted);margin-top:2px;font-weight:500;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    }
+    .kh-level-foot{z-index:1;}
+    .kh-level-stats{
+      display:flex;align-items:center;justify-content:space-between;gap:6px;
+      margin-top:6px;
+    }
+    .kh-pbar-wrap{height:5px;background:var(--gray-border);border-radius:4px;overflow:hidden;}
+    .kh-pbar{
+      height:100%;border-radius:4px;width:0%;
+      background:linear-gradient(90deg,var(--kh-level-border,var(--red)),color-mix(in srgb,var(--kh-level-border,var(--red)) 65%,#fff));
+      transition:width .8s cubic-bezier(.22,1,.36,1);
+    }
+    .kh-count{font-size:12px;font-weight:700;color:var(--text-secondary);letter-spacing:-.01em;}
+    .kh-due-badge{
+      font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
+      background:var(--red);color:#fff;white-space:nowrap;letter-spacing:.01em;
+    }
+    /* Locked state for premium levels */
+    .kh-level.locked{opacity:.78;}
+    .kh-level.locked::after{
+      content:"🔒";position:absolute;top:10px;right:10px;
+      font-size:13px;opacity:.7;z-index:2;
+    }
+    /* Legacy list-item rules kept for other views (.kh-item outside home) */
     .kh-item{
       display:flex;align-items:center;gap:14px;
       padding:13px 14px;background:var(--white);
@@ -428,42 +616,9 @@
     .kh-name{font-size:15px;font-weight:600;color:var(--text-primary);}
     .kh-sub{font-size:12px;color:var(--text-muted);margin-top:1px;}
     .kh-right{display:flex;align-items:center;gap:6px;}
-    .kh-count{font-size:13px;font-weight:600;color:var(--text-muted);}
     .kh-arrow{font-size:18px;color:var(--gray-border);line-height:1;}
     .kh-divider{height:1px;background:var(--gray-border);margin:4px 0 16px;}
     [data-theme="dark"] .kh-item{background:#252522;}
-    /* Progress bar per level */
-    .kh-pbar-wrap{height:3px;background:var(--gray-border);border-radius:2px;margin-top:6px;overflow:hidden;}
-    .kh-pbar{height:100%;border-radius:2px;background:var(--red);width:0%;transition:width .5s ease;}
-    .kh-due-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:#FEF2F2;color:#B91C1C;white-space:nowrap;}
-    /* Kartu progress total kanji */
-    .kh-total-card{
-      margin:0 16px 12px;padding:16px 18px;
-      background:var(--white);border:1px solid var(--gray-border);
-      border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.04);
-    }
-    .kh-total-top{display:flex;align-items:center;gap:14px;margin-bottom:12px;}
-    .kh-total-kanji{font-family:'Noto Sans JP',sans-serif;font-size:36px;font-weight:700;color:var(--red);line-height:1;flex-shrink:0;}
-    .kh-total-info{flex:1;}
-    .kh-total-title{font-size:13px;font-weight:600;color:var(--text-primary);}
-    .kh-total-count{font-size:12px;color:var(--text-muted);margin-top:2px;}
-    .kh-total-pct{font-size:26px;font-weight:700;color:var(--red);flex-shrink:0;line-height:1;}
-    .kh-total-pbar-wrap{height:8px;background:var(--gray-border);border-radius:4px;overflow:hidden;}
-    .kh-total-pbar{height:100%;background:linear-gradient(90deg,#C41B1B,#e85555);border-radius:4px;width:0%;transition:width .6s ease;}
-    [data-theme="dark"] .kh-total-card{background:#252522;}
-    /* Kartu ulasan hari ini */
-    .kh-review-card{
-      margin:0 16px 12px;padding:14px 16px;
-      background:var(--red-light);border:1.5px solid rgba(196,27,27,0.18);
-      border-radius:12px;display:flex;align-items:center;gap:12px;cursor:pointer;
-      transition:background .15s;
-    }
-    .kh-review-card:hover{background:rgba(196,27,27,0.12);}
-    .kh-review-card-info{flex:1;}
-    .kh-review-card-title{font-size:14px;font-weight:600;color:var(--red);}
-    .kh-review-card-sub{font-size:12px;color:var(--text-secondary);margin-top:2px;}
-    .kh-review-card-btn{font-size:13px;font-weight:600;padding:7px 14px;border-radius:8px;background:var(--red);color:#fff;border:none;cursor:pointer;font-family:inherit;white-space:nowrap;}
-    [data-theme="dark"] .kh-review-card{background:rgba(196,27,27,0.12);}
 
     /* ══ REVIEW MODE ══ */
     .rv-view{
@@ -949,131 +1104,161 @@
 
 <!-- ── HOME VIEW ── -->
 <div id="view-home" class="kapp">
-  <div class="kh-header">
-    <div>
-      <div class="kh-title">Kanji JLPT</div>
-      <div class="kh-subtitle">EzNihongo · N5 – N1</div>
+  <!-- Hero header -->
+  <div class="kh-hero">
+    <div class="kh-hero-title-wrap">
+      <div class="kh-hero-kanji">漢</div>
+      <div>
+        <div class="kh-hero-title">Kanji JLPT</div>
+        <div class="kh-hero-sub">EzNihongo · N5 — N1 · 2229 kanji</div>
+      </div>
     </div>
-    <div class="kh-header-right">
+    <div class="kh-hero-right">
       <div class="kh-streak" id="kh-streak" style="display:none">🔥<span id="kh-streak-n">1</span></div>
-      <button class="kh-gear" id="kh-gear" title="Pengaturan">⚙️</button>
-    </div>
-  </div>
-  <!-- Kartu progress total kanji -->
-  <div class="kh-total-card">
-    <div class="kh-total-top">
-      <div class="kh-total-kanji">漢</div>
-      <div class="kh-total-info">
-        <div class="kh-total-title">Total Hafalan Kanji</div>
-        <div class="kh-total-count"><span id="kh-total-known">0</span> / <span id="kh-total-all">0</span> kanji</div>
-      </div>
-      <div class="kh-total-pct" id="kh-total-pct">0%</div>
-    </div>
-    <div class="kh-total-pbar-wrap">
-      <div class="kh-total-pbar" id="kh-total-pbar"></div>
+      <button class="kh-gear" id="kh-gear" title="Pengaturan">⚙</button>
     </div>
   </div>
 
-  <!-- Kartu ulasan hari ini (tampil jika ada yang due) -->
-  <div class="kh-review-card" id="kh-review-card" style="display:none">
-    <span style="font-size:22px;">🔔</span>
-    <div class="kh-review-card-info">
-      <div class="kh-review-card-title" id="kh-review-title">0 kanji perlu diulang</div>
-      <div class="kh-review-card-sub">Ulangi sekarang untuk memperkuat hafalan</div>
+  <!-- Progress ring card -->
+  <div class="kh-progress">
+    <div class="kh-ring-wrap">
+      <svg class="kh-ring" viewBox="0 0 88 88" aria-hidden="true">
+        <defs>
+          <linearGradient id="kh-ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#C41B1B"/>
+            <stop offset="100%" stop-color="#e85555"/>
+          </linearGradient>
+        </defs>
+        <circle class="kh-ring-track" cx="44" cy="44" r="38"/>
+        <circle class="kh-ring-fill" id="kh-ring-circle" cx="44" cy="44" r="38"
+                pathLength="100" stroke-dasharray="0 100"/>
+      </svg>
+      <div class="kh-ring-center">
+        <div class="kh-ring-pct" id="kh-total-pct">0%</div>
+        <div class="kh-ring-lbl">dikuasai</div>
+      </div>
     </div>
-    <button class="kh-review-card-btn" id="kh-review-btn">Mulai</button>
+    <div class="kh-progress-text">
+      <div class="kh-progress-heading">Hafalan keseluruhan</div>
+      <div class="kh-progress-count">
+        <strong id="kh-total-known">0</strong><span class="kh-progress-slash">/</span><span id="kh-total-all">0</span><span class="kh-progress-unit">kanji</span>
+      </div>
+      <div class="kh-total-pbar-wrap"><div class="kh-total-pbar" id="kh-total-pbar"></div></div>
+    </div>
   </div>
 
-  <div class="kh-list">
-    <div class="kh-item" id="kh-search">
-      <div class="kh-icon" style="background:#FEF3E8;">🔍</div>
-      <div class="kh-info">
-        <div class="kh-name">Pencarian</div>
-        <div class="kh-sub">Cari kanji dari arti atau bacaan</div>
-      </div>
-      <div class="kh-arrow">›</div>
+  <!-- Due review pill (conditional) -->
+  <div class="kh-review-pill" id="kh-review-card" style="display:none">
+    <div class="kh-review-icon">🔔</div>
+    <div class="kh-review-text">
+      <div class="kh-review-title-new" id="kh-review-title">0 kanji perlu diulang</div>
+      <div class="kh-review-sub-new">Perkuat hafalan sekarang</div>
     </div>
-    <div class="kh-item" id="kh-kana">
-      <div class="kh-icon" style="background:#EAF1FA;font-family:'Noto Sans JP',sans-serif;font-weight:700;font-size:17px;color:#1B4FA8;">ア</div>
-      <div class="kh-info">
-        <div class="kh-name">Kana</div>
-        <div class="kh-sub">Hiragana &amp; Katakana referensi cepat</div>
+    <button class="kh-review-btn-new" id="kh-review-btn">Mulai →</button>
+  </div>
+
+  <!-- Quick actions -->
+  <div class="kh-quick">
+    <button class="kh-q" id="kh-search">
+      <div class="kh-q-ico" style="background:#FEF3E8;">🔍</div>
+      <div class="kh-q-lbl">Cari</div>
+    </button>
+    <button class="kh-q" id="kh-kana">
+      <div class="kh-q-ico kh-q-ja">ア</div>
+      <div class="kh-q-lbl">Kana</div>
+    </button>
+    <button class="kh-q" id="kh-flashcard">
+      <div class="kh-q-ico" style="background:#FFF3E0;">⚡</div>
+      <div class="kh-q-lbl">Latihan</div>
+    </button>
+  </div>
+
+  <!-- Level section header -->
+  <div class="kh-section">
+    <div class="kh-section-title">Level JLPT</div>
+    <div class="kh-section-hint">Tap untuk mulai</div>
+  </div>
+
+  <!-- Level grid -->
+  <div class="kh-levels">
+    <div class="kh-level" id="kh-n5" data-lv="N5">
+      <div class="kh-level-head">
+        <div class="kh-level-badge lv-N5">N5</div>
+        <div class="kh-level-meta">
+          <div class="kh-level-name">Pemula</div>
+          <div class="kh-level-desc" id="kh-n5-sub">103 kanji</div>
+        </div>
       </div>
-      <div class="kh-arrow">›</div>
-    </div>
-    <div class="kh-item" id="kh-flashcard">
-      <div class="kh-icon" style="background:#FFF3E0;">⚡</div>
-      <div class="kh-info">
-        <div class="kh-name">Flashcard</div>
-        <div class="kh-sub">Latihan hafal kanji dengan kartu</div>
-      </div>
-      <div class="kh-arrow">›</div>
-    </div>
-    <div class="kh-divider"></div>
-    <div class="kh-section-lbl">Level JLPT</div>
-    <div class="kh-item" id="kh-n5">
-      <div class="kh-icon lv-N5" style="font-size:13px;font-weight:800;">N5</div>
-      <div class="kh-info">
-        <div class="kh-name">N5</div>
-        <div class="kh-sub" id="kh-n5-sub">Level pemula</div>
+      <div class="kh-level-foot">
         <div class="kh-pbar-wrap"><div class="kh-pbar" id="kh-n5-pbar"></div></div>
-      </div>
-      <div class="kh-right">
-        <span class="kh-due-badge" id="kh-n5-due" style="display:none"></span>
-        <span class="kh-count" id="kh-n5-known"></span>
-        <span class="kh-arrow">›</span>
+        <div class="kh-level-stats">
+          <span class="kh-count" id="kh-n5-known"></span>
+          <span class="kh-due-badge" id="kh-n5-due" style="display:none"></span>
+        </div>
       </div>
     </div>
-    <div class="kh-item" id="kh-n4">
-      <div class="kh-icon lv-N4" style="font-size:13px;font-weight:800;">N4</div>
-      <div class="kh-info">
-        <div class="kh-name">N4</div>
-        <div class="kh-sub" id="kh-n4-sub">Level dasar</div>
+    <div class="kh-level" id="kh-n4" data-lv="N4">
+      <div class="kh-level-head">
+        <div class="kh-level-badge lv-N4">N4</div>
+        <div class="kh-level-meta">
+          <div class="kh-level-name">Dasar</div>
+          <div class="kh-level-desc" id="kh-n4-sub">180 kanji</div>
+        </div>
+      </div>
+      <div class="kh-level-foot">
         <div class="kh-pbar-wrap"><div class="kh-pbar" id="kh-n4-pbar"></div></div>
-      </div>
-      <div class="kh-right">
-        <span class="kh-due-badge" id="kh-n4-due" style="display:none"></span>
-        <span class="kh-count" id="kh-n4-known"></span>
-        <span class="kh-arrow">›</span>
+        <div class="kh-level-stats">
+          <span class="kh-count" id="kh-n4-known"></span>
+          <span class="kh-due-badge" id="kh-n4-due" style="display:none"></span>
+        </div>
       </div>
     </div>
-    <div class="kh-item" id="kh-n3">
-      <div class="kh-icon lv-N3" style="font-size:13px;font-weight:800;">N3</div>
-      <div class="kh-info">
-        <div class="kh-name">N3</div>
-        <div class="kh-sub" id="kh-n3-sub">Level menengah</div>
+    <div class="kh-level" id="kh-n3" data-lv="N3">
+      <div class="kh-level-head">
+        <div class="kh-level-badge lv-N3">N3</div>
+        <div class="kh-level-meta">
+          <div class="kh-level-name">Menengah</div>
+          <div class="kh-level-desc" id="kh-n3-sub">345 kanji</div>
+        </div>
+      </div>
+      <div class="kh-level-foot">
         <div class="kh-pbar-wrap"><div class="kh-pbar" id="kh-n3-pbar"></div></div>
-      </div>
-      <div class="kh-right">
-        <span class="kh-due-badge" id="kh-n3-due" style="display:none"></span>
-        <span class="kh-count" id="kh-n3-known"></span>
-        <span class="kh-arrow">›</span>
+        <div class="kh-level-stats">
+          <span class="kh-count" id="kh-n3-known"></span>
+          <span class="kh-due-badge" id="kh-n3-due" style="display:none"></span>
+        </div>
       </div>
     </div>
-    <div class="kh-item" id="kh-n2">
-      <div class="kh-icon" style="background:#F0E6FF;color:#6B21A8;font-size:13px;font-weight:800;">N2</div>
-      <div class="kh-info">
-        <div class="kh-name">N2</div>
-        <div class="kh-sub" id="kh-n2-sub">Level lanjutan</div>
+    <div class="kh-level" id="kh-n2" data-lv="N2">
+      <div class="kh-level-head">
+        <div class="kh-level-badge lv-N2">N2</div>
+        <div class="kh-level-meta">
+          <div class="kh-level-name">Lanjutan</div>
+          <div class="kh-level-desc" id="kh-n2-sub">359 kanji</div>
+        </div>
+      </div>
+      <div class="kh-level-foot">
         <div class="kh-pbar-wrap"><div class="kh-pbar" id="kh-n2-pbar"></div></div>
-      </div>
-      <div class="kh-right">
-        <span class="kh-due-badge" id="kh-n2-due" style="display:none"></span>
-        <span class="kh-count" id="kh-n2-known"></span>
-        <span class="kh-arrow">›</span>
+        <div class="kh-level-stats">
+          <span class="kh-count" id="kh-n2-known"></span>
+          <span class="kh-due-badge" id="kh-n2-due" style="display:none"></span>
+        </div>
       </div>
     </div>
-    <div class="kh-item" id="kh-n1">
-      <div class="kh-icon" style="background:#FFE4E4;color:#9B1C1C;font-size:13px;font-weight:800;">N1</div>
-      <div class="kh-info">
-        <div class="kh-name">N1</div>
-        <div class="kh-sub" id="kh-n1-sub">Level mahir</div>
-        <div class="kh-pbar-wrap"><div class="kh-pbar" id="kh-n1-pbar"></div></div>
+    <div class="kh-level" id="kh-n1" data-lv="N1">
+      <div class="kh-level-head">
+        <div class="kh-level-badge lv-N1">N1</div>
+        <div class="kh-level-meta">
+          <div class="kh-level-name">Mahir</div>
+          <div class="kh-level-desc" id="kh-n1-sub">1235 kanji</div>
+        </div>
       </div>
-      <div class="kh-right">
-        <span class="kh-due-badge" id="kh-n1-due" style="display:none"></span>
-        <span class="kh-count" id="kh-n1-known"></span>
-        <span class="kh-arrow">›</span>
+      <div class="kh-level-foot">
+        <div class="kh-pbar-wrap"><div class="kh-pbar" id="kh-n1-pbar"></div></div>
+        <div class="kh-level-stats">
+          <span class="kh-count" id="kh-n1-known"></span>
+          <span class="kh-due-badge" id="kh-n1-due" style="display:none"></span>
+        </div>
       </div>
     </div>
   </div>
@@ -8607,6 +8792,8 @@ function updateHomeStats(){
   if(elTAll) elTAll.textContent = totalAll;
   if(elTPct) elTPct.textContent = totalPct + '%';
   if(elTPbar)elTPbar.style.width = totalPct + '%';
+  const elTRing = document.getElementById('kh-ring-circle');
+  if(elTRing) elTRing.style.strokeDasharray = totalPct + ' 100';
 
   const labels = {N5:'pemula',N4:'dasar',N3:'menengah',N2:'lanjutan',N1:'mahir'};
   let totalDue = 0;
@@ -10064,6 +10251,7 @@ function applyLockedUi() {
       opacity: 0.7;
     }
     .kh-item.locked { opacity: 0.92; }
+    .kh-level.locked .kh-level-name::after { content: ' 🔒'; font-size: 0.82em; opacity: 0.7; }
   `;
   if (!document.getElementById('locked-ui-style')) document.head.appendChild(style);
 
