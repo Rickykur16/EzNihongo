@@ -199,22 +199,52 @@
     line-height: 1.5;
   }
   .greeting-time {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: #999;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    text-align: right;
-    white-space: nowrap;
+    flex-shrink: 0;
+    background: #14161a;
+    border-radius: 18px;
+    padding: 16px 22px;
+    text-align: center;
+    min-width: 96px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
   }
-  .greeting-time .kanji {
+  .gt-kanji {
     font-family: 'Noto Sans JP', sans-serif;
+    font-size: 38px;
+    font-weight: 700;
     color: #b20024;
-    font-size: 16px;
-    display: block;
-    margin-bottom: 4px;
-    font-weight: 500;
+    line-height: 1;
+    text-shadow: 0 0 22px rgba(178,0,36,0.55), 0 0 6px rgba(178,0,36,0.3);
     letter-spacing: 0;
+  }
+  .gt-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    color: rgba(255,255,255,0.38);
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  .gt-clock {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0.04em;
+    line-height: 1;
+  }
+  .gt-colon {
+    opacity: 0.5;
+    animation: gtBlink 1s step-end infinite;
+  }
+  @keyframes gtBlink {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 0.1; }
   }
   @media (max-width: 600px) {
     .greeting-banner { padding: 20px; }
@@ -1313,14 +1343,7 @@
     color: transparent;
   }
   .greeting-id { color: var(--du-ink-3); font-size: 15px; line-height: 1.55; }
-  .greeting-time {
-    background: var(--du-surface);
-    border: 1px solid var(--du-border);
-    border-radius: 12px;
-    padding: 10px 14px;
-    box-shadow: var(--du-shadow-xs);
-    text-align: left;
-  }
+  /* greeting-time: dark card — styled in base layer, no override needed */
   @media (max-width: 600px) { .greeting-banner { padding: 28px 18px 22px; } }
 
   /* ── STATS STRIP: elevated, streak is hero ───────────────────────── */
@@ -1701,6 +1724,45 @@
     font-size: 11px;
     letter-spacing: 0.04em;
   }
+
+  /* ── DESKTOP: persistent sidebar ────────────────────────────────── */
+  @media (min-width: 861px) {
+    .learning-layout {
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 64px;
+      height: calc(100vh - 64px);
+      width: 272px;
+      max-width: 272px;
+      flex-shrink: 0;
+      transform: translateX(0) !important;
+      box-shadow: none !important;
+      border-right: 1px solid var(--du-border, #ece9e3);
+      border-radius: 0;
+      padding: 24px 18px 32px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: #e0ddd8 transparent;
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: #dedad4; border-radius: 4px; }
+
+    .sidebar-toggle { display: none !important; }
+    .sidebar-backdrop { display: none !important; }
+    .sidebar-close { display: none !important; }
+
+    .main-content {
+      flex: 1;
+      min-width: 0;
+      max-width: 800px;
+      padding: 32px 40px;
+    }
+  }
 </style>
 </head>
 <body>
@@ -1711,8 +1773,8 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
       <span>Menu</span>
     </button>
-    <a href="welcome.html"><img src="logo.png" alt="EzNihongo"/></a>
   </div>
+  <a href="welcome.html" class="dash-nav-brand"><img src="logo.png" alt="EzNihongo"/></a>
 </nav>
 <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
 
@@ -2274,8 +2336,9 @@ function greetingBannerHtml() {
         <p class="greeting-id">${g.id} — ${g.msg}</p>
       </div>
       <div class="greeting-time">
-        <span class="kanji">${g.kanji}</span>
-        ${g.period} · ${hh}:${mm}
+        <div class="gt-kanji">${g.kanji}</div>
+        <div class="gt-label">${g.period}</div>
+        <div class="gt-clock">${hh}<span class="gt-colon">:</span>${mm}</div>
       </div>
     </div>
   `;
