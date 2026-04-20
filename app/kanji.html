@@ -1161,6 +1161,13 @@
     <div class="kd-header-title">Pengaturan</div>
   </div>
   <div class="stg-body">
+    <div class="stg-section-title">Akun</div>
+    <div id="stg-premium-card" style="background:linear-gradient(135deg,#FFF7E6,#FFE8B3);border:1px solid #FFD966;border-radius:14px;padding:14px 16px;margin-bottom:16px;">
+      <div id="stg-premium-status" style="font-weight:700;font-size:14px;margin-bottom:4px;color:#7A5000;">⭐ Status: Free</div>
+      <div id="stg-premium-desc" style="font-size:12px;color:#8a6a20;margin-bottom:10px;">Upgrade Premium Rp 99.000/tahun untuk buka N4–N1 + Semua Level.</div>
+      <button id="stg-upgrade-btn" style="background:#C41B1B;color:#fff;border:0;border-radius:10px;padding:10px 14px;font-weight:700;font-size:13px;cursor:pointer;width:100%;">Lihat Detail Premium</button>
+    </div>
+    <div class="stg-divider"></div>
     <div class="stg-section-title">Algoritma FSRS</div>
     <div class="stg-row">
       <div class="stg-label">
@@ -1754,170 +1761,170 @@ const ST = {
 const KD = [
 // ══ N5 (103) ══
 {k:"一",lv:"N5",on:"イチ・イツ",kun:"ひと-",m:"Satu",
- v:[{w:"一つ",r:"ひとつ",m:"satu benda"},{w:"一番",r:"いちばん",m:"nomor satu; paling"}],
- s:{j:"一番好きな食べ物は何ですか？",r:"いちばんすきなたべものはなんですか？",i:"Makanan favorit nomor satu Anda apa?"}},
+ v:[{w:"一つ",r:"ひとつ",m:"satu benda"},{w:"一番",r:"いちばん",m:"nomor satu; paling"},{w:"一人",r:"ひとり",m:"satu orang; sendirian"},{w:"一日",r:"いちにち",m:"satu hari"},{w:"一月",r:"いちがつ",m:"Januari"}],
+ s:[{j:"一番好きな食べ物は何ですか？",r:"いちばんすきなたべものはなんですか？",i:"Makanan favorit nomor satu kamu apa?"},{j:"一人で映画を見に行きました。",r:"ひとりでえいがをみにいきました。",i:"Aku pergi nonton film sendirian."},{j:"一日中ずっと勉強していました。",r:"いちにちじゅうずっとべんきょうしていました。",i:"Aku belajar terus seharian penuh."}]},
 {k:"二",lv:"N5",on:"ニ",kun:"ふた-",m:"Dua",
- v:[{w:"二つ",r:"ふたつ",m:"dua benda"},{w:"二人",r:"ふたり",m:"dua orang"}],
- s:{j:"二人で映画を見ました。",r:"ふたりでえいがをみました。",i:"Kami berdua menonton film."}},
+ v:[{w:"二つ",r:"ふたつ",m:"dua benda"},{w:"二人",r:"ふたり",m:"dua orang"},{w:"二月",r:"にがつ",m:"Februari"},{w:"二日",r:"ふつか",m:"tanggal 2; dua hari"},{w:"二階",r:"にかい",m:"lantai dua"}],
+ s:[{j:"二人で映画を見ました。",r:"ふたりでえいがをみました。",i:"Kami berdua nonton film."},{j:"二月は一番寒い月です。",r:"にがつはいちばんさむいつきです。",i:"Februari bulan paling dingin."},{j:"私の部屋は二階にあります。",r:"わたしのへやはにかいにあります。",i:"Kamar aku ada di lantai dua."}]},
 {k:"三",lv:"N5",on:"サン",kun:"み-",m:"Tiga",
- v:[{w:"三つ",r:"みっつ",m:"tiga benda"},{w:"三日",r:"みっか",m:"hari ketiga; tiga hari"}],
- s:{j:"三日後に試験があります。",r:"みっかごにしけんがあります。",i:"Tiga hari lagi ada ujian."}},
-{k:"四",lv:"N5",on:"シ",kun:"よ-",m:"Empat",
- v:[{w:"四月",r:"しがつ",m:"bulan April"},{w:"四つ",r:"よっつ",m:"empat benda"}],
- s:{j:"四月に日本へ行きます。",r:"しがつににほんへいきます。",i:"Saya pergi ke Jepang bulan April."}},
+ v:[{w:"三つ",r:"みっつ",m:"tiga benda"},{w:"三日",r:"みっか",m:"tanggal 3; tiga hari"},{w:"三月",r:"さんがつ",m:"Maret"},{w:"三時",r:"さんじ",m:"jam 3"},{w:"三人",r:"さんにん",m:"tiga orang"}],
+ s:[{j:"三日後に試験があります。",r:"みっかごにしけんがあります。",i:"Tiga hari lagi ada ujian."},{j:"友達三人と遊びに行きました。",r:"ともだちさんにんとあそびにいきました。",i:"Aku main sama tiga orang teman."},{j:"三時に駅で会いましょう。",r:"さんじにえきであいましょう。",i:"Ketemu di stasiun jam 3 ya."}]},
+{k:"四",lv:"N5",on:"シ",kun:"よ-・よん-",m:"Empat",
+ v:[{w:"四月",r:"しがつ",m:"April"},{w:"四つ",r:"よっつ",m:"empat benda"},{w:"四人",r:"よにん",m:"empat orang"},{w:"四時",r:"よじ",m:"jam 4"},{w:"四日",r:"よっか",m:"tanggal 4; empat hari"}],
+ s:[{j:"四月に日本へ行きます。",r:"しがつににほんへいきます。",i:"Aku ke Jepang bulan April."},{j:"家族は四人です。",r:"かぞくはよにんです。",i:"Keluarga aku ada empat orang."},{j:"四時から会議があります。",r:"よじからかいぎがあります。",i:"Ada rapat mulai jam 4."}]},
 {k:"五",lv:"N5",on:"ゴ",kun:"いつ-",m:"Lima",
- v:[{w:"五時",r:"ごじ",m:"jam 5"},{w:"五つ",r:"いつつ",m:"lima benda"}],
- s:{j:"五時に家に帰ります。",r:"ごじにいえにかえります。",i:"Saya pulang jam 5."}},
+ v:[{w:"五時",r:"ごじ",m:"jam 5"},{w:"五つ",r:"いつつ",m:"lima benda"},{w:"五月",r:"ごがつ",m:"Mei"},{w:"五分",r:"ごふん",m:"5 menit"},{w:"五日",r:"いつか",m:"tanggal 5; lima hari"}],
+ s:[{j:"五時に家に帰ります。",r:"ごじにいえにかえります。",i:"Aku pulang jam 5."},{j:"りんごを五つ買いました。",r:"りんごをいつつかいました。",i:"Aku beli lima apel."},{j:"あと五分で授業が始まります。",r:"あとごふんでじゅぎょうがはじまります。",i:"Lima menit lagi kelasnya mulai."}]},
 {k:"六",lv:"N5",on:"ロク",kun:"む-",m:"Enam",
- v:[{w:"六月",r:"ろくがつ",m:"bulan Juni"},{w:"六時間",r:"ろくじかん",m:"enam jam"}],
- s:{j:"六月は雨が多いです。",r:"ろくがつはあめがおおいです。",i:"Di bulan Juni banyak hujan."}},
+ v:[{w:"六月",r:"ろくがつ",m:"Juni"},{w:"六時間",r:"ろくじかん",m:"enam jam"},{w:"六つ",r:"むっつ",m:"enam benda"},{w:"六人",r:"ろくにん",m:"enam orang"},{w:"六日",r:"むいか",m:"tanggal 6; enam hari"}],
+ s:[{j:"六月は雨が多いです。",r:"ろくがつはあめがおおいです。",i:"Juni banyak hujan."},{j:"昨日、六時間も寝てしまいました。",r:"きのう、ろくじかんもねてしまいました。",i:"Kemarin aku ketiduran sampai enam jam."},{j:"このクラスには六人の学生がいます。",r:"このクラスにはろくにんのがくせいがいます。",i:"Di kelas ini ada enam murid."}]},
 {k:"七",lv:"N5",on:"シチ・ナナ",kun:"なな-",m:"Tujuh",
- v:[{w:"七月",r:"しちがつ",m:"bulan Juli"},{w:"七つ",r:"ななつ",m:"tujuh benda"}],
- s:{j:"七時に起きます。",r:"しちじにおきます。",i:"Saya bangun jam 7."}},
+ v:[{w:"七月",r:"しちがつ",m:"Juli"},{w:"七つ",r:"ななつ",m:"tujuh benda"},{w:"七時",r:"しちじ",m:"jam 7"},{w:"七日",r:"なのか",m:"tanggal 7; tujuh hari"},{w:"七人",r:"しちにん",m:"tujuh orang"}],
+ s:[{j:"毎朝七時に起きます。",r:"まいあさしちじにおきます。",i:"Tiap pagi aku bangun jam 7."},{j:"七月は夏休みが始まります。",r:"しちがつはなつやすみがはじまります。",i:"Libur musim panas mulai bulan Juli."},{j:"試験まであと七日です。",r:"しけんまであとなのかです。",i:"Tujuh hari lagi ujian."}]},
 {k:"八",lv:"N5",on:"ハチ",kun:"や-",m:"Delapan",
- v:[{w:"八月",r:"はちがつ",m:"bulan Agustus"},{w:"八つ",r:"やっつ",m:"delapan benda"}],
- s:{j:"八月に海に行きます。",r:"はちがつにうみにいきます。",i:"Saya pergi ke laut bulan Agustus."}},
+ v:[{w:"八月",r:"はちがつ",m:"Agustus"},{w:"八つ",r:"やっつ",m:"delapan benda"},{w:"八時",r:"はちじ",m:"jam 8"},{w:"八百屋",r:"やおや",m:"toko sayur"},{w:"八日",r:"ようか",m:"tanggal 8; delapan hari"}],
+ s:[{j:"八月に海に行きます。",r:"はちがつにうみにいきます。",i:"Bulan Agustus aku ke laut."},{j:"毎朝八時に学校に着きます。",r:"まいあさはちじにがっこうにつきます。",i:"Tiap pagi aku sampai sekolah jam 8."},{j:"近くの八百屋で野菜を買いました。",r:"ちかくのやおやでやさいをかいました。",i:"Aku beli sayur di toko sayur dekat rumah."}]},
 {k:"九",lv:"N5",on:"ク・キュウ",kun:"ここの-",m:"Sembilan",
- v:[{w:"九月",r:"くがつ",m:"bulan September"},{w:"九時",r:"くじ",m:"jam 9"}],
- s:{j:"九月から学校が始まります。",r:"くがつからがっこうがはじまります。",i:"Sekolah mulai dari bulan September."}},
+ v:[{w:"九月",r:"くがつ",m:"September"},{w:"九時",r:"くじ",m:"jam 9"},{w:"九つ",r:"ここのつ",m:"sembilan benda"},{w:"九日",r:"ここのか",m:"tanggal 9; sembilan hari"},{w:"九州",r:"きゅうしゅう",m:"Kyushu (pulau di Jepang)"}],
+ s:[{j:"九月から学校が始まります。",r:"くがつからがっこうがはじまります。",i:"Sekolah mulai dari September."},{j:"九時までに宿題を終わらせます。",r:"くじまでにしゅくだいをおわらせます。",i:"Aku selesaikan PR sebelum jam 9."},{j:"来年、九州へ旅行したいです。",r:"らいねん、きゅうしゅうへりょこうしたいです。",i:"Tahun depan aku mau wisata ke Kyushu."}]},
 {k:"十",lv:"N5",on:"ジュウ",kun:"とお-",m:"Sepuluh",
- v:[{w:"十分",r:"じゅっぷん",m:"sepuluh menit"},{w:"十月",r:"じゅうがつ",m:"bulan Oktober"}],
- s:{j:"十分ほど待ってください。",r:"じゅっぷんほどまってください。",i:"Tolong tunggu sekitar 10 menit."}},
+ v:[{w:"十分",r:"じゅっぷん",m:"10 menit"},{w:"十月",r:"じゅうがつ",m:"Oktober"},{w:"十時",r:"じゅうじ",m:"jam 10"},{w:"十日",r:"とおか",m:"tanggal 10; sepuluh hari"},{w:"十人",r:"じゅうにん",m:"sepuluh orang"}],
+ s:[{j:"十分ほど待ってください。",r:"じゅっぷんほどまってください。",i:"Tolong tunggu sekitar 10 menit."},{j:"十月は日本で一番いい季節です。",r:"じゅうがつはにほんでいちばんいいきせつです。",i:"Oktober musim terbaik di Jepang."},{j:"友達が十人も来てくれました。",r:"ともだちがじゅうにんもきてくれました。",i:"Ada sepuluh teman yang datang."}]},
 {k:"百",lv:"N5",on:"ヒャク",kun:"—",m:"Seratus",
- v:[{w:"百円",r:"ひゃくえん",m:"100 yen"},{w:"三百",r:"さんびゃく",m:"tiga ratus"}],
- s:{j:"このお菓子は百円です。",r:"このおかしはひゃくえんです。",i:"Kue ini harganya 100 yen."}},
+ v:[{w:"百円",r:"ひゃくえん",m:"100 yen"},{w:"三百",r:"さんびゃく",m:"tiga ratus"},{w:"八百",r:"はっぴゃく",m:"delapan ratus"},{w:"百万",r:"ひゃくまん",m:"sejuta"},{w:"百点",r:"ひゃくてん",m:"nilai 100"}],
+ s:[{j:"このお菓子は百円です。",r:"このおかしはひゃくえんです。",i:"Kue ini harganya 100 yen."},{j:"テストで百点を取りました。",r:"テストでひゃくてんをとりました。",i:"Aku dapat nilai 100 di ulangan."},{j:"百万円あったら、旅行に行きたいです。",r:"ひゃくまんえんあったら、りょこうにいきたいです。",i:"Kalau punya sejuta yen, aku mau wisata."}]},
 {k:"千",lv:"N5",on:"セン",kun:"ち-",m:"Seribu",
- v:[{w:"千円",r:"せんえん",m:"1.000 yen"},{w:"千人",r:"せんにん",m:"seribu orang"}],
- s:{j:"電車の切符は千円です。",r:"でんしゃのきっぷはせんえんです。",i:"Tiket kereta seharga 1.000 yen."}},
+ v:[{w:"千円",r:"せんえん",m:"1.000 yen"},{w:"千人",r:"せんにん",m:"seribu orang"},{w:"三千",r:"さんぜん",m:"tiga ribu"},{w:"八千",r:"はっせん",m:"delapan ribu"},{w:"千年",r:"せんねん",m:"seribu tahun"}],
+ s:[{j:"電車の切符は千円です。",r:"でんしゃのきっぷはせんえんです。",i:"Tiket kereta seharga 1.000 yen."},{j:"このコンサートに千人くらい来ました。",r:"このコンサートにせんにんくらいきました。",i:"Di konser ini ada sekitar seribu orang datang."},{j:"このお寺は千年以上前に建てられました。",r:"このおてらはせんねんいじょうまえにたてられました。",i:"Kuil ini dibangun lebih dari seribu tahun lalu."}]},
 {k:"万",lv:"N5",on:"マン",kun:"—",m:"Sepuluh ribu",
- v:[{w:"一万円",r:"いちまんえん",m:"10.000 yen"},{w:"万年筆",r:"まんねんひつ",m:"pulpen"}],
- s:{j:"このカメラは五万円します。",r:"このカメラはごまんえんします。",i:"Kamera ini seharga 50.000 yen."}},
-{k:"円",lv:"N5",on:"エン",kun:"まる-",m:"Yen; lingkaran",
- v:[{w:"百円",r:"ひゃくえん",m:"100 yen"},{w:"円い",r:"まるい",m:"bundar; bulat"}],
- s:{j:"これはいくらですか？五百円です。",r:"これはいくらですか？ごひゃくえんです。",i:"Berapa harganya? 500 yen."}},
+ v:[{w:"一万円",r:"いちまんえん",m:"10.000 yen"},{w:"万年筆",r:"まんねんひつ",m:"pulpen"},{w:"十万",r:"じゅうまん",m:"seratus ribu"},{w:"百万",r:"ひゃくまん",m:"sejuta"},{w:"万一",r:"まんいち",m:"kalau-kalau; seandainya"}],
+ s:[{j:"このカメラは五万円します。",r:"このカメラはごまんえんします。",i:"Kamera ini harganya 50.000 yen."},{j:"誕生日に万年筆をもらいました。",r:"たんじょうびにまんねんひつをもらいました。",i:"Aku dikasih pulpen waktu ulang tahun."},{j:"万一遅れたら連絡してください。",r:"まんいちおくれたられんらくしてください。",i:"Seandainya telat, tolong hubungi ya."}]},
+{k:"円",lv:"N5",on:"エン",kun:"まる-",m:"Yen; bundar",
+ v:[{w:"百円",r:"ひゃくえん",m:"100 yen"},{w:"円い",r:"まるい",m:"bundar; bulat"},{w:"円高",r:"えんだか",m:"yen menguat"},{w:"千円札",r:"せんえんさつ",m:"uang kertas 1.000 yen"},{w:"円卓",r:"えんたく",m:"meja bundar"}],
+ s:[{j:"これはいくらですか？五百円です。",r:"これはいくらですか？ごひゃくえんです。",i:"Ini berapa? 500 yen."},{j:"月は丸くて明るいです。",r:"つきはまるくてあかるいです。",i:"Bulan bundar dan terang."},{j:"千円札しかありません。",r:"せんえんさつしかありません。",i:"Aku cuma punya uang 1.000 yen."}]},
 {k:"年",lv:"N5",on:"ネン",kun:"とし-",m:"Tahun",
- v:[{w:"今年",r:"ことし",m:"tahun ini"},{w:"毎年",r:"まいとし",m:"setiap tahun"}],
- s:{j:"今年、日本語を勉強し始めました。",r:"ことし、にほんごをべんきょうしはじめました。",i:"Tahun ini saya mulai belajar bahasa Jepang."}},
-{k:"月",lv:"N5",on:"ゲツ・ガツ",kun:"つき-",m:"Bulan; rembulan",
- v:[{w:"今月",r:"こんげつ",m:"bulan ini"},{w:"来月",r:"らいげつ",m:"bulan depan"}],
- s:{j:"来月、友達と旅行します。",r:"らいげつ、ともだちとりょこうします。",i:"Bulan depan saya berwisata dengan teman."}},
+ v:[{w:"今年",r:"ことし",m:"tahun ini"},{w:"毎年",r:"まいとし",m:"setiap tahun"},{w:"来年",r:"らいねん",m:"tahun depan"},{w:"去年",r:"きょねん",m:"tahun lalu"},{w:"学年",r:"がくねん",m:"tingkat sekolah"}],
+ s:[{j:"今年、日本語を勉強し始めました。",r:"ことし、にほんごをべんきょうしはじめました。",i:"Tahun ini aku mulai belajar bahasa Jepang."},{j:"来年、日本へ留学します。",r:"らいねん、にほんへりゅうがくします。",i:"Tahun depan aku kuliah di Jepang."},{j:"去年の夏、京都へ行きました。",r:"きょねんのなつ、きょうとへいきました。",i:"Musim panas lalu aku ke Kyoto."}]},
+{k:"月",lv:"N5",on:"ゲツ・ガツ",kun:"つき-",m:"Bulan",
+ v:[{w:"今月",r:"こんげつ",m:"bulan ini"},{w:"来月",r:"らいげつ",m:"bulan depan"},{w:"先月",r:"せんげつ",m:"bulan lalu"},{w:"月曜日",r:"げつようび",m:"Senin"},{w:"毎月",r:"まいつき",m:"tiap bulan"}],
+ s:[{j:"来月、友達と旅行します。",r:"らいげつ、ともだちとりょこうします。",i:"Bulan depan aku traveling sama teman."},{j:"月曜日から学校が始まります。",r:"げつようびからがっこうがはじまります。",i:"Senin sekolah mulai lagi."},{j:"夜、月がとてもきれいでした。",r:"よる、つきがとてもきれいでした。",i:"Malam ini bulannya cantik banget."}]},
 {k:"日",lv:"N5",on:"ニチ・ジツ",kun:"ひ・か",m:"Hari; matahari",
- v:[{w:"今日",r:"きょう",m:"hari ini"},{w:"毎日",r:"まいにち",m:"setiap hari"}],
- s:{j:"毎日日本語を練習しています。",r:"まいにちにほんごをれんしゅうしています。",i:"Setiap hari saya berlatih bahasa Jepang."}},
+ v:[{w:"今日",r:"きょう",m:"hari ini"},{w:"毎日",r:"まいにち",m:"tiap hari"},{w:"日本",r:"にほん",m:"Jepang"},{w:"日曜日",r:"にちようび",m:"Minggu"},{w:"誕生日",r:"たんじょうび",m:"ulang tahun"}],
+ s:[{j:"毎日日本語を練習しています。",r:"まいにちにほんごをれんしゅうしています。",i:"Tiap hari aku latihan bahasa Jepang."},{j:"今日は私の誕生日です。",r:"きょうはわたしのたんじょうびです。",i:"Hari ini ulang tahunku."},{j:"日曜日は家族とご飯を食べます。",r:"にちようびはかぞくとごはんをたべます。",i:"Hari Minggu aku makan bareng keluarga."}]},
 {k:"時",lv:"N5",on:"ジ",kun:"とき-",m:"Waktu; jam",
- v:[{w:"時間",r:"じかん",m:"waktu; jam"},{w:"何時",r:"なんじ",m:"jam berapa"}],
- s:{j:"今何時ですか？三時です。",r:"いまなんじですか？さんじです。",i:"Sekarang jam berapa? Jam 3."}},
-{k:"分",lv:"N5",on:"フン・プン",kun:"わか-",m:"Menit; bagian",
- v:[{w:"五分",r:"ごふん",m:"5 menit"},{w:"自分",r:"じぶん",m:"diri sendiri"}],
- s:{j:"駅まで歩いて五分かかります。",r:"えきまであるいてごふんかかります。",i:"Butuh 5 menit berjalan ke stasiun."}},
+ v:[{w:"時間",r:"じかん",m:"waktu; jam"},{w:"何時",r:"なんじ",m:"jam berapa"},{w:"時々",r:"ときどき",m:"kadang-kadang"},{w:"時計",r:"とけい",m:"jam (alat)"},{w:"一時",r:"いちじ",m:"jam 1"}],
+ s:[{j:"今何時ですか？三時です。",r:"いまなんじですか？さんじです。",i:"Sekarang jam berapa? Jam 3."},{j:"時々、母に電話します。",r:"ときどき、ははにでんわします。",i:"Kadang-kadang aku telepon mama."},{j:"時計が壊れました。",r:"とけいがこわれました。",i:"Jamku rusak."}]},
+{k:"分",lv:"N5",on:"フン・プン・ブン",kun:"わか-",m:"Menit; bagian; paham",
+ v:[{w:"五分",r:"ごふん",m:"5 menit"},{w:"自分",r:"じぶん",m:"diri sendiri"},{w:"半分",r:"はんぶん",m:"setengah"},{w:"分かる",r:"わかる",m:"mengerti"},{w:"多分",r:"たぶん",m:"mungkin"}],
+ s:[{j:"駅まで歩いて五分かかります。",r:"えきまであるいてごふんかかります。",i:"Ke stasiun jalan kaki butuh 5 menit."},{j:"この意味が分かりません。",r:"このいみがわかりません。",i:"Aku gak ngerti maksudnya."},{j:"多分、明日は雨です。",r:"たぶん、あしたはあめです。",i:"Besok kayaknya hujan."}]},
 {k:"人",lv:"N5",on:"ジン・ニン",kun:"ひと-",m:"Orang; manusia",
- v:[{w:"日本人",r:"にほんじん",m:"orang Jepang"},{w:"外国人",r:"がいこくじん",m:"orang asing"}],
- s:{j:"あの人は日本人ですか？",r:"あのひとはにほんじんですか？",i:"Apakah orang itu orang Jepang?"}},
+ v:[{w:"日本人",r:"にほんじん",m:"orang Jepang"},{w:"外国人",r:"がいこくじん",m:"orang asing"},{w:"一人",r:"ひとり",m:"satu orang; sendirian"},{w:"大人",r:"おとな",m:"orang dewasa"},{w:"恋人",r:"こいびと",m:"kekasih"}],
+ s:[{j:"あの人は日本人ですか？",r:"あのひとはにほんじんですか？",i:"Orang itu orang Jepang bukan?"},{j:"大人になったら、一人で旅行したいです。",r:"おとなになったら、ひとりでりょこうしたいです。",i:"Kalau udah dewasa, aku mau traveling sendirian."},{j:"恋人と一緒に映画を見ました。",r:"こいびとといっしょにえいがをみました。",i:"Aku nonton film sama pacar."}]},
 {k:"口",lv:"N5",on:"コウ・ク",kun:"くち-",m:"Mulut; pintu masuk",
- v:[{w:"入口",r:"いりぐち",m:"pintu masuk"},{w:"出口",r:"でぐち",m:"pintu keluar"}],
- s:{j:"駅の出口はどこですか？",r:"えきのでぐちはどこですか？",i:"Di mana pintu keluar stasiun?"}},
+ v:[{w:"入口",r:"いりぐち",m:"pintu masuk"},{w:"出口",r:"でぐち",m:"pintu keluar"}, {w:"人口",r:"じんこう",m:"populasi"},{w:"口",r:"くち",m:"mulut"},{w:"窓口",r:"まどぐち",m:"loket; counter"}],
+ s:[{j:"駅の出口はどこですか？",r:"えきのでぐちはどこですか？",i:"Pintu keluar stasiun di mana?"},{j:"日本の人口はどれくらいですか？",r:"にほんのじんこうはどれくらいですか？",i:"Populasi Jepang berapa sih?"},{j:"切符は窓口で買ってください。",r:"きっぷはまどぐちでかってください。",i:"Tolong beli tiket di loket."}]},
 {k:"大",lv:"N5",on:"ダイ・タイ",kun:"おお-",m:"Besar",
- v:[{w:"大学",r:"だいがく",m:"universitas"},{w:"大切",r:"たいせつ",m:"penting; berharga"}],
- s:{j:"大学で日本語を勉強しています。",r:"だいがくでにほんごをべんきょうしています。",i:"Saya belajar bahasa Jepang di universitas."}},
+ v:[{w:"大学",r:"だいがく",m:"universitas"},{w:"大切",r:"たいせつ",m:"penting; berharga"},{w:"大きい",r:"おおきい",m:"besar"},{w:"大丈夫",r:"だいじょうぶ",m:"tidak apa-apa; baik-baik saja"},{w:"大好き",r:"だいすき",m:"sangat suka"}],
+ s:[{j:"大学で日本語を勉強しています。",r:"だいがくでにほんごをべんきょうしています。",i:"Aku lagi belajar bahasa Jepang di universitas."},{j:"大丈夫ですか？疲れていますか？",r:"だいじょうぶですか？つかれていますか？",i:"Kamu baik-baik aja? Capek ya?"},{j:"寿司が大好きです。",r:"すしがだいすきです。",i:"Aku suka banget sushi."}]},
 {k:"小",lv:"N5",on:"ショウ",kun:"ちい-・こ-",m:"Kecil",
- v:[{w:"小学校",r:"しょうがっこう",m:"sekolah dasar (SD)"},{w:"小さい",r:"ちいさい",m:"kecil"}],
- s:{j:"私の犬はとても小さいです。",r:"わたしのいぬはとてもちいさいです。",i:"Anjing saya sangat kecil."}},
+ v:[{w:"小学校",r:"しょうがっこう",m:"SD (sekolah dasar)"},{w:"小さい",r:"ちいさい",m:"kecil"},{w:"小説",r:"しょうせつ",m:"novel"},{w:"小鳥",r:"ことり",m:"burung kecil"},{w:"小川",r:"おがわ",m:"sungai kecil"}],
+ s:[{j:"私の犬はとても小さいです。",r:"わたしのいぬはとてもちいさいです。",i:"Anjingku kecil banget."},{j:"夜、小説を読むのが好きです。",r:"よる、しょうせつをよむのがすきです。",i:"Aku suka baca novel malam-malam."},{j:"小学校の友達と久しぶりに会いました。",r:"しょうがっこうのともだちとひさしぶりにあいました。",i:"Aku akhirnya ketemu lagi sama teman SD."}]},
 {k:"中",lv:"N5",on:"チュウ",kun:"なか-",m:"Tengah; dalam",
- v:[{w:"中学校",r:"ちゅうがっこう",m:"SMP"},{w:"中に",r:"なかに",m:"di dalam"}],
- s:{j:"かばんの中に何がありますか？",r:"かばんのなかになにがありますか？",i:"Apa yang ada di dalam tas?"}},
+ v:[{w:"中学校",r:"ちゅうがっこう",m:"SMP"},{w:"中に",r:"なかに",m:"di dalam"},{w:"中国",r:"ちゅうごく",m:"Tiongkok"},{w:"午前中",r:"ごぜんちゅう",m:"sepanjang pagi"},{w:"真ん中",r:"まんなか",m:"tengah-tengah"}],
+ s:[{j:"かばんの中に何がありますか？",r:"かばんのなかになにがありますか？",i:"Di dalam tas ada apa aja?"},{j:"午前中は図書館で勉強します。",r:"ごぜんちゅうはとしょかんでべんきょうします。",i:"Paginya aku belajar di perpustakaan."},{j:"中国語は少し話せます。",r:"ちゅうごくごはすこしはなせます。",i:"Bahasa Mandarin sedikit-sedikit bisa."}]},
 {k:"山",lv:"N5",on:"サン",kun:"やま-",m:"Gunung",
- v:[{w:"富士山",r:"ふじさん",m:"Gunung Fuji"},{w:"登山",r:"とざん",m:"mendaki gunung"}],
- s:{j:"富士山はとても高いです。",r:"ふじさんはとてもたかいです。",i:"Gunung Fuji sangat tinggi."}},
+ v:[{w:"富士山",r:"ふじさん",m:"Gunung Fuji"},{w:"登山",r:"とざん",m:"mendaki gunung"},{w:"山",r:"やま",m:"gunung"},{w:"火山",r:"かざん",m:"gunung berapi"},{w:"山登り",r:"やまのぼり",m:"mendaki gunung (kasual)"}],
+ s:[{j:"富士山はとても高いです。",r:"ふじさんはとてもたかいです。",i:"Gunung Fuji tinggi banget."},{j:"週末、友達と山登りに行きます。",r:"しゅうまつ、ともだちとやまのぼりにいきます。",i:"Akhir pekan aku naik gunung sama teman."},{j:"日本には火山がたくさんあります。",r:"にほんにはかざんがたくさんあります。",i:"Di Jepang banyak gunung berapi."}]},
 {k:"川",lv:"N5",on:"セン",kun:"かわ-",m:"Sungai",
- v:[{w:"川",r:"かわ",m:"sungai"},{w:"小川",r:"おがわ",m:"sungai kecil"}],
- s:{j:"川の近くに家があります。",r:"かわのちかくにいえがあります。",i:"Ada rumah di dekat sungai."}},
+ v:[{w:"川",r:"かわ",m:"sungai"},{w:"小川",r:"おがわ",m:"sungai kecil"},{w:"川岸",r:"かわぎし",m:"tepi sungai"},{w:"河川",r:"かせん",m:"sungai (formal)"},{w:"山川",r:"やまかわ",m:"gunung dan sungai"}],
+ s:[{j:"川の近くに家があります。",r:"かわのちかくにいえがあります。",i:"Rumahku dekat sungai."},{j:"子供の時、よく川で遊びました。",r:"こどものとき、よくかわであそびました。",i:"Waktu kecil aku sering main di sungai."},{j:"この川の水はきれいです。",r:"このかわのみずはきれいです。",i:"Air sungai ini bersih."}]},
 {k:"火",lv:"N5",on:"カ",kun:"ひ-",m:"Api; Selasa",
- v:[{w:"火曜日",r:"かようび",m:"hari Selasa"},{w:"火事",r:"かじ",m:"kebakaran"}],
- s:{j:"火曜日にテストがあります。",r:"かようびにテストがあります。",i:"Ada tes hari Selasa."}},
+ v:[{w:"火曜日",r:"かようび",m:"Selasa"},{w:"火事",r:"かじ",m:"kebakaran"},{w:"火",r:"ひ",m:"api"},{w:"花火",r:"はなび",m:"kembang api"},{w:"火山",r:"かざん",m:"gunung berapi"}],
+ s:[{j:"火曜日にテストがあります。",r:"かようびにテストがあります。",i:"Hari Selasa ada ulangan."},{j:"夏祭りで花火を見ました。",r:"なつまつりではなびをみました。",i:"Aku nonton kembang api di festival musim panas."},{j:"キャンプで火をつけました。",r:"キャンプでひをつけました。",i:"Waktu kemping aku nyalakan api."}]},
 {k:"水",lv:"N5",on:"スイ",kun:"みず-",m:"Air; Rabu",
- v:[{w:"水曜日",r:"すいようび",m:"hari Rabu"},{w:"水道",r:"すいどう",m:"saluran air"}],
- s:{j:"一日に水をたくさん飲んでください。",r:"いちにちにみずをたくさんのんでください。",i:"Tolong minum banyak air dalam sehari."}},
+ v:[{w:"水曜日",r:"すいようび",m:"Rabu"},{w:"水道",r:"すいどう",m:"saluran air"},{w:"水",r:"みず",m:"air"},{w:"お水",r:"おみず",m:"air (sopan)"},{w:"水着",r:"みずぎ",m:"baju renang"}],
+ s:[{j:"毎日、水をたくさん飲んでください。",r:"まいにち、みずをたくさんのんでください。",i:"Minum banyak air tiap hari ya."},{j:"すみません、お水をください。",r:"すみません、おみずをください。",i:"Permisi, minta airnya dong."},{j:"水曜日に病院へ行きます。",r:"すいようびにびょういんへいきます。",i:"Hari Rabu aku ke rumah sakit."}]},
 {k:"木",lv:"N5",on:"モク・ボク",kun:"き-",m:"Pohon; kayu; Kamis",
- v:[{w:"木曜日",r:"もくようび",m:"hari Kamis"},{w:"木",r:"き",m:"pohon"}],
- s:{j:"木曜日に友達と会います。",r:"もくようびにともだちとあいます。",i:"Hari Kamis saya bertemu teman."}},
+ v:[{w:"木曜日",r:"もくようび",m:"Kamis"},{w:"木",r:"き",m:"pohon"},{w:"木村",r:"きむら",m:"Kimura (nama keluarga)"},{w:"大木",r:"たいぼく",m:"pohon besar"},{w:"木造",r:"もくぞう",m:"terbuat dari kayu"}],
+ s:[{j:"木曜日に友達と会います。",r:"もくようびにともだちとあいます。",i:"Hari Kamis aku ketemu teman."},{j:"庭に大きな木があります。",r:"にわにおおきなきがあります。",i:"Di halaman ada pohon besar."},{j:"このお寺は木造です。",r:"このおてらはもくぞうです。",i:"Kuil ini terbuat dari kayu."}]},
 {k:"金",lv:"N5",on:"キン",kun:"かね-",m:"Emas; uang; Jumat",
- v:[{w:"お金",r:"おかね",m:"uang"},{w:"金曜日",r:"きんようび",m:"hari Jumat"}],
- s:{j:"お金がないので、買えません。",r:"おかねがないので、かえません。",i:"Karena tidak punya uang, saya tidak bisa membelinya."}},
+ v:[{w:"お金",r:"おかね",m:"uang"},{w:"金曜日",r:"きんようび",m:"Jumat"},{w:"金",r:"きん",m:"emas"},{w:"料金",r:"りょうきん",m:"biaya; tarif"},{w:"貯金",r:"ちょきん",m:"tabungan"}],
+ s:[{j:"お金がないから、買えません。",r:"おかねがないから、かえません。",i:"Gak ada uang, jadi gak bisa beli."},{j:"金曜日の夜、飲みに行きませんか？",r:"きんようびのよる、のみにいきませんか？",i:"Jumat malam yuk minum-minum?"},{j:"毎月少しずつ貯金しています。",r:"まいつきすこしずつちょきんしています。",i:"Tiap bulan aku nabung sedikit-sedikit."}]},
 {k:"土",lv:"N5",on:"ド",kun:"つち-",m:"Tanah; Sabtu",
- v:[{w:"土曜日",r:"どようび",m:"hari Sabtu"},{w:"土地",r:"とち",m:"tanah; lahan"}],
- s:{j:"土曜日は家でゆっくりします。",r:"どようびはいえでゆっくりします。",i:"Hari Sabtu saya santai di rumah."}},
+ v:[{w:"土曜日",r:"どようび",m:"Sabtu"},{w:"土地",r:"とち",m:"tanah; lahan"},{w:"土",r:"つち",m:"tanah"},{w:"お土産",r:"おみやげ",m:"oleh-oleh"},{w:"土足",r:"どそく",m:"dengan sepatu (masuk rumah)"}],
+ s:[{j:"土曜日は家でゆっくりします。",r:"どようびはいえでゆっくりします。",i:"Sabtu aku santai di rumah."},{j:"旅行のお土産を買いました。",r:"りょこうのおみやげをかいました。",i:"Aku beli oleh-oleh dari jalan-jalan."},{j:"土足で入らないでください。",r:"どそくではいらないでください。",i:"Jangan masuk pakai sepatu ya."}]},
 {k:"国",lv:"N5",on:"コク",kun:"くに-",m:"Negara",
- v:[{w:"外国",r:"がいこく",m:"luar negeri"},{w:"国語",r:"こくご",m:"bahasa nasional"}],
- s:{j:"どの国から来ましたか？",r:"どのくにからきましたか？",i:"Anda datang dari negara mana?"}},
+ v:[{w:"外国",r:"がいこく",m:"luar negeri"},{w:"国語",r:"こくご",m:"bahasa nasional (pelajaran)"},{w:"国",r:"くに",m:"negara; kampung halaman"},{w:"中国",r:"ちゅうごく",m:"Tiongkok"},{w:"韓国",r:"かんこく",m:"Korea Selatan"}],
+ s:[{j:"どの国から来ましたか？",r:"どのくにからきましたか？",i:"Kamu dari negara mana?"},{j:"将来、外国で働きたいです。",r:"しょうらい、がいこくではたらきたいです。",i:"Nanti aku mau kerja di luar negeri."},{j:"韓国のドラマが好きです。",r:"かんこくのドラマがすきです。",i:"Aku suka drama Korea."}]},
 {k:"語",lv:"N5",on:"ゴ",kun:"かた-",m:"Bahasa; kata",
- v:[{w:"日本語",r:"にほんご",m:"bahasa Jepang"},{w:"英語",r:"えいご",m:"bahasa Inggris"}],
- s:{j:"日本語が上手ですね！",r:"にほんごがじょうずですね！",i:"Bahasa Jepang Anda bagus!"}},
+ v:[{w:"日本語",r:"にほんご",m:"bahasa Jepang"},{w:"英語",r:"えいご",m:"bahasa Inggris"},{w:"単語",r:"たんご",m:"kosakata"},{w:"物語",r:"ものがたり",m:"cerita; kisah"},{w:"言語",r:"げんご",m:"bahasa (umum)"}],
+ s:[{j:"日本語が上手ですね！",r:"にほんごがじょうずですね！",i:"Bahasa Jepangmu jago!"},{j:"毎日、新しい単語を覚えます。",r:"まいにち、あたらしいたんごをおぼえます。",i:"Tiap hari aku hafalin kosakata baru."},{j:"この物語はとても面白いです。",r:"このものがたりはとてもおもしろいです。",i:"Cerita ini seru banget."}]},
 {k:"学",lv:"N5",on:"ガク",kun:"まな-",m:"Belajar; ilmu",
- v:[{w:"学校",r:"がっこう",m:"sekolah"},{w:"学生",r:"がくせい",m:"pelajar; mahasiswa"}],
- s:{j:"私は大学で日本語を学んでいます。",r:"わたしはだいがくでにほんごをまなんでいます。",i:"Saya belajar bahasa Jepang di universitas."}},
+ v:[{w:"学校",r:"がっこう",m:"sekolah"},{w:"学生",r:"がくせい",m:"pelajar; mahasiswa"},{w:"大学",r:"だいがく",m:"universitas"},{w:"留学",r:"りゅうがく",m:"belajar di luar negeri"},{w:"学ぶ",r:"まなぶ",m:"belajar"}],
+ s:[{j:"大学で日本語を学んでいます。",r:"だいがくでにほんごをまなんでいます。",i:"Aku belajar bahasa Jepang di universitas."},{j:"来年、日本へ留学したいです。",r:"らいねん、にほんへりゅうがくしたいです。",i:"Tahun depan aku mau kuliah di Jepang."},{j:"学校まで自転車で行きます。",r:"がっこうまでじてんしゃでいきます。",i:"Aku ke sekolah naik sepeda."}]},
 {k:"先",lv:"N5",on:"セン",kun:"さき-",m:"Sebelumnya; terdepan",
- v:[{w:"先生",r:"せんせい",m:"guru; sensei"},{w:"先週",r:"せんしゅう",m:"minggu lalu"}],
- s:{j:"先生はとても親切です。",r:"せんせいはとてもしんせつです。",i:"Guru itu sangat baik hati."}},
+ v:[{w:"先生",r:"せんせい",m:"guru; sensei"},{w:"先週",r:"せんしゅう",m:"minggu lalu"},{w:"先月",r:"せんげつ",m:"bulan lalu"},{w:"先に",r:"さきに",m:"duluan; sebelumnya"},{w:"祖先",r:"そせん",m:"leluhur"}],
+ s:[{j:"先生はとても親切です。",r:"せんせいはとてもしんせつです。",i:"Gurunya baik banget."},{j:"先週、京都へ行きました。",r:"せんしゅう、きょうとへいきました。",i:"Minggu lalu aku ke Kyoto."},{j:"お先に失礼します。",r:"おさきにしつれいします。",i:"Aku duluan ya."}]},
 {k:"生",lv:"N5",on:"セイ・ショウ",kun:"い-・う-",m:"Hidup; lahir; mentah",
- v:[{w:"学生",r:"がくせい",m:"pelajar"},{w:"生活",r:"せいかつ",m:"kehidupan sehari-hari"}],
- s:{j:"学生生活を楽しんでいます。",r:"がくせいせいかつをたのしんでいます。",i:"Saya menikmati kehidupan sebagai pelajar."}},
+ v:[{w:"学生",r:"がくせい",m:"pelajar"},{w:"生活",r:"せいかつ",m:"kehidupan sehari-hari"},{w:"先生",r:"せんせい",m:"guru"},{w:"生まれる",r:"うまれる",m:"lahir"},{w:"人生",r:"じんせい",m:"kehidupan (manusia)"}],
+ s:[{j:"学生生活を楽しんでいます。",r:"がくせいせいかつをたのしんでいます。",i:"Aku menikmati kehidupan sebagai mahasiswa."},{j:"私は東京で生まれました。",r:"わたしはとうきょうでうまれました。",i:"Aku lahir di Tokyo."},{j:"生ビールを一杯ください。",r:"なまビールをいっぱいください。",i:"Minta satu gelas bir draft ya."}]},
 {k:"女",lv:"N5",on:"ジョ・ニョ",kun:"おんな-",m:"Wanita; perempuan",
- v:[{w:"女の人",r:"おんなのひと",m:"wanita"},{w:"女子",r:"じょし",m:"perempuan (kelompok)"}],
- s:{j:"あの女の人は先生ですか？",r:"あのおんなのひとはせんせいですか？",i:"Apakah wanita itu seorang guru?"}},
+ v:[{w:"女の人",r:"おんなのひと",m:"wanita"},{w:"女子",r:"じょし",m:"cewek (kelompok)"},{w:"女の子",r:"おんなのこ",m:"anak perempuan"},{w:"彼女",r:"かのじょ",m:"dia (perempuan); pacar"},{w:"女性",r:"じょせい",m:"perempuan (formal)"}],
+ s:[{j:"あの女の人は先生です。",r:"あのおんなのひとはせんせいです。",i:"Cewek itu guru."},{j:"彼女はとても優しいです。",r:"かのじょはとてもやさしいです。",i:"Pacarku baik banget."},{j:"女子トイレはあちらです。",r:"じょしトイレはあちらです。",i:"Toilet cewek di sebelah sana."}]},
 {k:"男",lv:"N5",on:"ダン・ナン",kun:"おとこ-",m:"Laki-laki; pria",
- v:[{w:"男の子",r:"おとこのこ",m:"anak laki-laki"},{w:"男性",r:"だんせい",m:"pria (formal)"}],
- s:{j:"男の子たちがサッカーをしています。",r:"おとこのこたちがサッカーをしています。",i:"Anak-anak laki-laki sedang bermain sepak bola."}},
+ v:[{w:"男の子",r:"おとこのこ",m:"anak laki-laki"},{w:"男性",r:"だんせい",m:"pria (formal)"},{w:"男の人",r:"おとこのひと",m:"pria"},{w:"長男",r:"ちょうなん",m:"anak laki-laki tertua"},{w:"男女",r:"だんじょ",m:"pria & wanita"}],
+ s:[{j:"男の子たちがサッカーをしています。",r:"おとこのこたちがサッカーをしています。",i:"Anak-anak cowok lagi main sepak bola."},{j:"あの男の人は誰ですか？",r:"あのおとこのひとはだれですか？",i:"Cowok itu siapa?"},{j:"うちの長男は大学生です。",r:"うちのちょうなんはだいがくせいです。",i:"Anak sulung aku mahasiswa."}]},
 {k:"見",lv:"N5",on:"ケン",kun:"み-",m:"Melihat; memandang",
- v:[{w:"見る",r:"みる",m:"melihat; menonton"},{w:"見学",r:"けんがく",m:"kunjungan belajar"}],
- s:{j:"映画を見るのが好きです。",r:"えいがをみるのがすきです。",i:"Saya suka menonton film."}},
-{k:"会",lv:"N5",on:"カイ・エ",kun:"あ-",m:"Bertemu; pertemuan; perkumpulan",
- v:[{w:"会社",r:"かいしゃ",m:"perusahaan"},{w:"会う",r:"あう",m:"bertemu"}],
- s:{j:"明日、友達に会います。",r:"あした、ともだちにあいます。",i:"Besok saya bertemu teman."}},
-{k:"本",lv:"N5",on:"ホン",kun:"もと-",m:"Buku; asal; sungguhan",
- v:[{w:"日本",r:"にほん",m:"Jepang"},{w:"本",r:"ほん",m:"buku"}],
- s:{j:"毎日本を読みます。",r:"まいにちほんをよみます。",i:"Setiap hari saya membaca buku."}},
+ v:[{w:"見る",r:"みる",m:"melihat; menonton"},{w:"見学",r:"けんがく",m:"kunjungan belajar"},{w:"意見",r:"いけん",m:"pendapat"},{w:"見せる",r:"みせる",m:"menunjukkan"},{w:"発見",r:"はっけん",m:"penemuan"}],
+ s:[{j:"昨日、映画を見ました。",r:"きのう、えいがをみました。",i:"Kemarin aku nonton film."},{j:"写真を見せてください。",r:"しゃしんをみせてください。",i:"Tunjukkin fotonya dong."},{j:"あなたの意見を聞きたいです。",r:"あなたのいけんをききたいです。",i:"Aku pengen dengar pendapat kamu."}]},
+{k:"会",lv:"N5",on:"カイ・エ",kun:"あ-",m:"Bertemu; rapat",
+ v:[{w:"会社",r:"かいしゃ",m:"perusahaan"},{w:"会う",r:"あう",m:"bertemu"},{w:"会議",r:"かいぎ",m:"rapat"},{w:"社会",r:"しゃかい",m:"masyarakat"},{w:"大会",r:"たいかい",m:"turnamen; kompetisi"}],
+ s:[{j:"明日、友達に会います。",r:"あした、ともだちにあいます。",i:"Besok aku ketemu teman."},{j:"午後から会議があります。",r:"ごごからかいぎがあります。",i:"Sorenya ada rapat."},{j:"来月、マラソン大会に出ます。",r:"らいげつ、マラソンたいかいにでます。",i:"Bulan depan aku ikut lomba lari."}]},
+{k:"本",lv:"N5",on:"ホン",kun:"もと-",m:"Buku; asal; asli",
+ v:[{w:"日本",r:"にほん",m:"Jepang"},{w:"本",r:"ほん",m:"buku"},{w:"本当",r:"ほんとう",m:"benar; sungguhan"},{w:"本屋",r:"ほんや",m:"toko buku"},{w:"絵本",r:"えほん",m:"buku bergambar"}],
+ s:[{j:"毎日、本を読みます。",r:"まいにち、ほんをよみます。",i:"Tiap hari aku baca buku."},{j:"本当にありがとうございます。",r:"ほんとうにありがとうございます。",i:"Makasih banyak banget."},{j:"駅前の本屋で漫画を買いました。",r:"えきまえのほんやでまんがをかいました。",i:"Aku beli manga di toko buku depan stasiun."}]},
 {k:"出",lv:"N5",on:"シュツ・スイ",kun:"で-・だ-",m:"Keluar; mengeluarkan",
- v:[{w:"出口",r:"でぐち",m:"pintu keluar"},{w:"出かける",r:"でかける",m:"pergi keluar"}],
- s:{j:"今から出かけます。",r:"いまからでかけます。",i:"Saya akan pergi keluar sekarang."}},
+ v:[{w:"出口",r:"でぐち",m:"pintu keluar"},{w:"出かける",r:"でかける",m:"pergi keluar"},{w:"出る",r:"でる",m:"keluar"},{w:"出す",r:"だす",m:"mengeluarkan"},{w:"出席",r:"しゅっせき",m:"kehadiran"}],
+ s:[{j:"これから出かけます。",r:"これからでかけます。",i:"Aku mau keluar nih."},{j:"宿題を先生に出しました。",r:"しゅくだいをせんせいにだしました。",i:"Aku kumpulkan PR ke guru."},{j:"明日の会議には出席できません。",r:"あしたのかいぎにはしゅっせきできません。",i:"Rapat besok aku gak bisa hadir."}]},
 {k:"社",lv:"N5",on:"シャ",kun:"やしろ-",m:"Perusahaan; kuil Shinto",
- v:[{w:"会社",r:"かいしゃ",m:"perusahaan"},{w:"社員",r:"しゃいん",m:"karyawan"}],
- s:{j:"父は会社で働いています。",r:"ちちはかいしゃではたらいています。",i:"Ayah bekerja di perusahaan."}},
+ v:[{w:"会社",r:"かいしゃ",m:"perusahaan"},{w:"社員",r:"しゃいん",m:"karyawan"},{w:"神社",r:"じんじゃ",m:"kuil Shinto"},{w:"社長",r:"しゃちょう",m:"presiden direktur"},{w:"社会",r:"しゃかい",m:"masyarakat"}],
+ s:[{j:"父は会社で働いています。",r:"ちちはかいしゃではたらいています。",i:"Ayah kerja di perusahaan."},{j:"お正月に神社へ行きました。",r:"おしょうがつにじんじゃへいきました。",i:"Pas Tahun Baru aku ke kuil Shinto."},{j:"うちの社長は女性です。",r:"うちのしゃちょうはじょせいです。",i:"Presdir kantor aku cewek."}]},
 {k:"上",lv:"N5",on:"ジョウ",kun:"うえ-・あ-",m:"Atas; naik",
- v:[{w:"上手",r:"じょうず",m:"pandai; mahir"},{w:"上る",r:"のぼる",m:"naik; mendaki"}],
- s:{j:"机の上に本があります。",r:"つくえのうえにほんがあります。",i:"Ada buku di atas meja."}},
+ v:[{w:"上手",r:"じょうず",m:"jago; mahir"},{w:"上る",r:"のぼる",m:"naik; mendaki"},{w:"上",r:"うえ",m:"atas"},{w:"以上",r:"いじょう",m:"lebih dari"},{w:"屋上",r:"おくじょう",m:"atap gedung"}],
+ s:[{j:"机の上に本があります。",r:"つくえのうえにほんがあります。",i:"Di atas meja ada buku."},{j:"日本語が上手ですね！",r:"にほんごがじょうずですね！",i:"Bahasa Jepangmu jago banget!"},{j:"二十歳以上はお酒が飲めます。",r:"はたちいじょうはおさけがのめます。",i:"Kalau umur 20+ boleh minum alkohol."}]},
 {k:"行",lv:"N5",on:"コウ・ギョウ",kun:"い-",m:"Pergi; melakukan",
- v:[{w:"行く",r:"いく",m:"pergi"},{w:"旅行",r:"りょこう",m:"perjalanan; wisata"}],
- s:{j:"どこへ行きますか？",r:"どこへいきますか？",i:"Anda mau pergi ke mana?"}},
+ v:[{w:"行く",r:"いく",m:"pergi"},{w:"旅行",r:"りょこう",m:"jalan-jalan; wisata"},{w:"銀行",r:"ぎんこう",m:"bank"},{w:"流行",r:"りゅうこう",m:"tren; lagi ngetren"},{w:"急行",r:"きゅうこう",m:"kereta ekspres"}],
+ s:[{j:"どこへ行きますか？",r:"どこへいきますか？",i:"Kamu mau ke mana?"},{j:"夏休みに日本へ旅行します。",r:"なつやすみににほんへりょこうします。",i:"Libur musim panas aku jalan-jalan ke Jepang."},{j:"銀行でお金をおろしました。",r:"ぎんこうでおかねをおろしました。",i:"Aku narik uang di bank."}]},
 {k:"東",lv:"N5",on:"トウ",kun:"ひがし-",m:"Timur",
- v:[{w:"東京",r:"とうきょう",m:"Tokyo"},{w:"東口",r:"ひがしぐち",m:"pintu timur"}],
- s:{j:"東京はとても大きい都市です。",r:"とうきょうはとてもおおきいとしです。",i:"Tokyo adalah kota yang sangat besar."}},
+ v:[{w:"東京",r:"とうきょう",m:"Tokyo"},{w:"東口",r:"ひがしぐち",m:"pintu timur"},{w:"東",r:"ひがし",m:"timur"},{w:"東北",r:"とうほく",m:"wilayah Tohoku"},{w:"東西",r:"とうざい",m:"timur-barat"}],
+ s:[{j:"東京はとても大きい都市です。",r:"とうきょうはとてもおおきいとしです。",i:"Tokyo kota yang gede banget."},{j:"東口で待ち合わせしましょう。",r:"ひがしぐちでまちあわせしましょう。",i:"Yuk ketemuan di pintu timur."},{j:"東北地方は雪が多いです。",r:"とうほくちほうはゆきがおおいです。",i:"Wilayah Tohoku sering banyak salju."}]},
 {k:"入",lv:"N5",on:"ニュウ",kun:"い-・はい-",m:"Masuk; memasukkan",
- v:[{w:"入口",r:"いりぐち",m:"pintu masuk"},{w:"入学",r:"にゅうがく",m:"masuk sekolah"}],
- s:{j:"入口はどこですか？",r:"いりぐちはどこですか？",i:"Di mana pintu masuknya?"}},
-{k:"子",lv:"N5",on:"シ・ス",kun:"こ-",m:"Anak; buah; biji",
- v:[{w:"子供",r:"こども",m:"anak-anak"},{w:"女の子",r:"おんなのこ",m:"anak perempuan"}],
- s:{j:"子供たちは公園で遊んでいます。",r:"こどもたちはこうえんであそんでいます。",i:"Anak-anak bermain di taman."}},
-{k:"令",lv:"N5",on:"レイ",kun:"—",m:"Perintah; aturan; era Reiwa",
- v:[{w:"令和",r:"れいわ",m:"era Reiwa"},{w:"命令",r:"めいれい",m:"perintah"}],
- s:{j:"令和時代が始まりました。",r:"れいわじだいがはじまりました。",i:"Era Reiwa telah dimulai."}},
+ v:[{w:"入口",r:"いりぐち",m:"pintu masuk"},{w:"入学",r:"にゅうがく",m:"masuk sekolah"},{w:"入る",r:"はいる",m:"masuk"},{w:"入れる",r:"いれる",m:"memasukkan"},{w:"輸入",r:"ゆにゅう",m:"impor"}],
+ s:[{j:"入口はどこですか？",r:"いりぐちはどこですか？",i:"Pintu masuknya di mana?"},{j:"ちょっとコンビニに入りましょう。",r:"ちょっとコンビニにはいりましょう。",i:"Mampir dulu ke minimarket yuk."},{j:"コーヒーに砂糖を入れますか？",r:"コーヒーにさとうをいれますか？",i:"Mau tambah gula di kopinya?"}]},
+{k:"子",lv:"N5",on:"シ・ス",kun:"こ-",m:"Anak",
+ v:[{w:"子供",r:"こども",m:"anak-anak"},{w:"女の子",r:"おんなのこ",m:"anak cewek"},{w:"男の子",r:"おとこのこ",m:"anak cowok"},{w:"椅子",r:"いす",m:"kursi"},{w:"お菓子",r:"おかし",m:"jajanan; kue"}],
+ s:[{j:"子供たちが公園で遊んでいます。",r:"こどもたちがこうえんであそんでいます。",i:"Anak-anak lagi main di taman."},{j:"椅子に座ってください。",r:"いすにすわってください。",i:"Silakan duduk di kursinya."},{j:"お菓子が大好きです。",r:"おかしがだいすきです。",i:"Aku suka banget jajanan."}]},
+{k:"令",lv:"N5",on:"レイ",kun:"—",m:"Perintah; era Reiwa",
+ v:[{w:"令和",r:"れいわ",m:"era Reiwa"},{w:"命令",r:"めいれい",m:"perintah"},{w:"法令",r:"ほうれい",m:"undang-undang"},{w:"号令",r:"ごうれい",m:"aba-aba"},{w:"指令",r:"しれい",m:"instruksi; komando"}],
+ s:[{j:"令和時代が始まりました。",r:"れいわじだいがはじまりました。",i:"Era Reiwa udah dimulai."}, {j:"社長の命令に従いました。",r:"しゃちょうのめいれいにしたがいました。",i:"Aku ngikutin perintah presdir."},{j:"新しい法令ができました。",r:"あたらしいほうれいができました。",i:"UU baru udah dibuat."}]},
 {k:"下",lv:"N5",on:"カ・ゲ",kun:"した-・さ-",m:"Bawah; turun",
- v:[{w:"地下",r:"ちか",m:"bawah tanah"},{w:"下手",r:"へた",m:"tidak pandai; buruk"}],
- s:{j:"机の下に猫がいます。",r:"つくえのしたにねこがいます。",i:"Ada kucing di bawah meja."}},
-{k:"気",lv:"N5",on:"キ・ケ",kun:"—",m:"Semangat; perasaan; cuaca; udara",
- v:[{w:"天気",r:"てんき",m:"cuaca"},{w:"元気",r:"げんき",m:"sehat; bersemangat"}],
- s:{j:"今日の天気はどうですか？",r:"きょうのてんきはどうですか？",i:"Bagaimana cuaca hari ini?"}},
+ v:[{w:"地下",r:"ちか",m:"bawah tanah"},{w:"下手",r:"へた",m:"gak jago; payah"},{w:"下",r:"した",m:"bawah"},{w:"下さい",r:"ください",m:"tolong (permintaan)"},{w:"以下",r:"いか",m:"kurang dari; di bawah"}],
+ s:[{j:"机の下に猫がいます。",r:"つくえのしたにねこがいます。",i:"Ada kucing di bawah meja."},{j:"歌はちょっと下手です。",r:"うたはちょっとへたです。",i:"Nyanyiku agak payah."},{j:"水をください。",r:"みずをください。",i:"Minta airnya dong."}]},
+{k:"気",lv:"N5",on:"キ・ケ",kun:"—",m:"Semangat; perasaan; cuaca",
+ v:[{w:"天気",r:"てんき",m:"cuaca"},{w:"元気",r:"げんき",m:"sehat; semangat"},{w:"気持ち",r:"きもち",m:"perasaan"},{w:"空気",r:"くうき",m:"udara"},{w:"病気",r:"びょうき",m:"sakit; penyakit"}],
+ s:[{j:"今日の天気はどうですか？",r:"きょうのてんきはどうですか？",i:"Cuaca hari ini gimana?"},{j:"お元気ですか？",r:"おげんきですか？",i:"Apa kabar?"},{j:"風邪で病気になりました。",r:"かぜでびょうきになりました。",i:"Aku sakit karena flu."}]},
 {k:"言",lv:"N5",on:"ゲン・ゴン",kun:"い-",m:"Berkata; ucapan",
- v:[{w:"言葉",r:"ことば",m:"kata; bahasa"},{w:"言う",r:"いう",m:"mengatakan"}],
- s:{j:"何と言いましたか？",r:"なんといいましたか？",i:"Apa yang Anda katakan?"}},
+ v:[{w:"言葉",r:"ことば",m:"kata; bahasa"},{w:"言う",r:"いう",m:"mengatakan"},{w:"方言",r:"ほうげん",m:"dialek"},{w:"独り言",r:"ひとりごと",m:"ngomong sendiri"},{w:"助言",r:"じょげん",m:"nasihat"}],
+ s:[{j:"何と言いましたか？",r:"なんといいましたか？",i:"Tadi kamu bilang apa?"},{j:"日本語の言葉を覚えています。",r:"にほんごのことばをおぼえています。",i:"Aku lagi hafalin kosakata bahasa Jepang."},{j:"大阪の方言は面白いです。",r:"おおさかのほうげんはおもしろいです。",i:"Dialek Osaka lucu."}]},
 {k:"話",lv:"N5",on:"ワ",kun:"はな-",m:"Berbicara; cerita",
- v:[{w:"電話",r:"でんわ",m:"telepon"},{w:"話す",r:"はなす",m:"berbicara"}],
- s:{j:"日本語で話してください。",r:"にほんごではなしてください。",i:"Tolong berbicara dalam bahasa Jepang."}},
-{k:"書",lv:"N5",on:"ショ",kun:"か-",m:"Menulis; buku",
- v:[{w:"書く",r:"かく",m:"menulis"},{w:"教科書",r:"きょうかしょ",m:"buku pelajaran"}],
- s:{j:"名前を書いてください。",r:"なまえをかいてください。",i:"Tolong tulis nama Anda."}},
+ v:[{w:"電話",r:"でんわ",m:"telepon"},{w:"話す",r:"はなす",m:"berbicara"},{w:"会話",r:"かいわ",m:"percakapan"},{w:"話",r:"はなし",m:"cerita; obrolan"},{w:"世話",r:"せわ",m:"merawat; mengurus"}],
+ s:[{j:"日本語で話してください。",r:"にほんごではなしてください。",i:"Tolong ngomongnya pakai bahasa Jepang."},{j:"母に電話をかけました。",r:"ははにでんわをかけました。",i:"Aku telepon mama."},{j:"面白い話を聞きました。",r:"おもしろいはなしをききました。",i:"Aku dengar cerita lucu."}]},
+{k:"書",lv:"N5",on:"ショ",kun:"か-",m:"Menulis; dokumen",
+ v:[{w:"書く",r:"かく",m:"menulis"},{w:"教科書",r:"きょうかしょ",m:"buku pelajaran"},{w:"図書館",r:"としょかん",m:"perpustakaan"},{w:"辞書",r:"じしょ",m:"kamus"},{w:"書類",r:"しょるい",m:"dokumen"}],
+ s:[{j:"名前を書いてください。",r:"なまえをかいてください。",i:"Tolong tulis namanya."},{j:"図書館で勉強しています。",r:"としょかんでべんきょうしています。",i:"Aku belajar di perpustakaan."},{j:"この言葉を辞書で調べました。",r:"このことばをじしょでしらべました。",i:"Aku cek kata ini di kamus."}]},
 {k:"北",lv:"N5",on:"ホク",kun:"きた-",m:"Utara",
- v:[{w:"北口",r:"きたぐち",m:"pintu utara"},{w:"北海道",r:"ほっかいどう",m:"Hokkaido"}],
- s:{j:"北海道は冬にとても寒いです。",r:"ほっかいどうはふゆにとてもさむいです。",i:"Hokkaido sangat dingin di musim dingin."}},
+ v:[{w:"北口",r:"きたぐち",m:"pintu utara"},{w:"北海道",r:"ほっかいどう",m:"Hokkaido"},{w:"北",r:"きた",m:"utara"},{w:"東北",r:"とうほく",m:"wilayah Tohoku"},{w:"北西",r:"ほくせい",m:"barat laut"}],
+ s:[{j:"北海道は冬にとても寒いです。",r:"ほっかいどうはふゆにとてもさむいです。",i:"Hokkaido dingin banget pas musim dingin."},{j:"駅の北口で待っています。",r:"えきのきたぐちでまっています。",i:"Aku nunggu di pintu utara stasiun."},{j:"北に向かって歩いてください。",r:"きたにむかってあるいてください。",i:"Jalan ke arah utara ya."}]},
 {k:"名",lv:"N5",on:"メイ・ミョウ",kun:"な-",m:"Nama; terkenal",
  v:[{w:"名前",r:"なまえ",m:"nama"},{w:"有名",r:"ゆうめい",m:"terkenal"}],
  s:{j:"お名前は何ですか？",r:"おなまえはなんですか？",i:"Siapa nama Anda?"}},
@@ -8964,16 +8971,17 @@ function renderDetail(){
     });
   });
 
-  // Sentence
-  document.getElementById('kd-sent-body').innerHTML = `
-    <div class="kd-sent-wrap">
+  // Sentence(s) — supports array or single object for backward-compat
+  const sentences = Array.isArray(d.s) ? d.s : [d.s];
+  document.getElementById('kd-sent-body').innerHTML = sentences.map((s, i) => `
+    <div class="kd-sent-wrap"${i > 0 ? ' style="border-top:1px solid var(--gray-border);"' : ''}>
       <div class="kd-sent-top">
-        <div class="kd-sent-jp">${d.s.j}</div>
-        <button class="kd-speak-btn" data-speak="${d.s.j}" title="Dengarkan"><svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>
+        <div class="kd-sent-jp">${s.j}</div>
+        <button class="kd-speak-btn" data-speak="${s.j}" title="Dengarkan"><svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>
       </div>
-      <div class="kd-sent-r">${romajiToKana(d.s.r, d.s.j)}</div>
-      <div class="kd-sent-id">${d.s.i}</div>
-    </div>`;
+      <div class="kd-sent-r">${romajiToKana(s.r, s.j)}</div>
+      <div class="kd-sent-id">${s.i}</div>
+    </div>`).join('');
 }
 
 // ─── ROMAJI → KANA ────────────────────────────────────────────────────────────
@@ -9249,7 +9257,7 @@ document.getElementById('fcm-back').addEventListener('click', () => showOnly('vi
 
 // Flashcard menu: semua level
 document.getElementById('fcm-all').addEventListener('click', () => {
-  if (!requireLogin('Flashcard Semua Level')) return;
+  if (!requirePremium('Flashcard Semua Level')) return;
   activeLevel = 'all';
   buildDeck();
   fcIdx = deck.findIndex(d => !known.has(d.k));
@@ -9262,7 +9270,7 @@ document.getElementById('fcm-grid').addEventListener('click', e => {
   const card = e.target.closest('.fcm-card');
   if(!card) return;
   const lv = card.dataset.lv;
-  if (!isFree(lv) && !requireLogin('Flashcard ' + lv)) return;
+  if (!isFree(lv) && !requirePremium('Flashcard ' + lv)) return;
   activeLevel = lv;
   buildDeck();
   fcIdx = deck.findIndex(d => !known.has(d.k));
@@ -9486,10 +9494,10 @@ document.querySelectorAll('.ks-tab').forEach(tab => {
 // ─── HOME EVENTS ──────────────────────────────────────────────────────────────
 document.getElementById('kh-search').addEventListener('click', showSearch);
 document.getElementById('kh-n5').addEventListener('click', () => { window.track?.('level_click',{level:'N5'}); showSets('N5'); });
-document.getElementById('kh-n4').addEventListener('click', () => { window.track?.('level_click',{level:'N4'}); if (requireLogin('Level N4')) showSets('N4'); });
-document.getElementById('kh-n3').addEventListener('click', () => { window.track?.('level_click',{level:'N3'}); if (requireLogin('Level N3')) showSets('N3'); });
-document.getElementById('kh-n2').addEventListener('click', () => { window.track?.('level_click',{level:'N2'}); if (requireLogin('Level N2')) showSets('N2'); });
-document.getElementById('kh-n1').addEventListener('click', () => { window.track?.('level_click',{level:'N1'}); if (requireLogin('Level N1')) showSets('N1'); });
+document.getElementById('kh-n4').addEventListener('click', () => { window.track?.('level_click',{level:'N4'}); if (requirePremium('Level N4')) showSets('N4'); });
+document.getElementById('kh-n3').addEventListener('click', () => { window.track?.('level_click',{level:'N3'}); if (requirePremium('Level N3')) showSets('N3'); });
+document.getElementById('kh-n2').addEventListener('click', () => { window.track?.('level_click',{level:'N2'}); if (requirePremium('Level N2')) showSets('N2'); });
+document.getElementById('kh-n1').addEventListener('click', () => { window.track?.('level_click',{level:'N1'}); if (requirePremium('Level N1')) showSets('N1'); });
 document.getElementById('kh-kana').addEventListener('click', showKana);
 
 // ─── SET EVENTS ───────────────────────────────────────────────────────────────
@@ -9673,6 +9681,23 @@ function showSettings(){
     else
       nb.textContent = '🔔 Aktifkan pengingat harian';
   }
+  // Premium status
+  const ps = document.getElementById('stg-premium-status');
+  const pd = document.getElementById('stg-premium-desc');
+  const pb = document.getElementById('stg-upgrade-btn');
+  if (ps && pd && pb) {
+    if (window._isPremium) {
+      ps.textContent = '⭐ Status: Premium Aktif';
+      pd.textContent = 'Terima kasih! Semua level & fitur terbuka.';
+      pb.style.display = 'none';
+    } else {
+      ps.textContent = '⭐ Status: Free';
+      pd.textContent = 'Upgrade Premium Rp 99.000/tahun untuk buka N4–N1 + Semua Level.';
+      pb.style.display = 'block';
+      pb.textContent = window._isLoggedIn ? 'Upgrade ke Premium — Rp 99k/tahun' : 'Login & Upgrade';
+      pb.onclick = () => { window.track?.('upgrade_from_settings'); openUpgradeModal('Upgrade dari Pengaturan'); };
+    }
+  }
   showOnly('view-settings');
 }
 
@@ -9805,9 +9830,144 @@ window.addEventListener('beforeunload', () => {
 // ─── FREE-TRIAL AUTH MODEL ───────────────────────────────────────────────────
 // App usable tanpa login. Free: N5 + Kana. Login untuk N4-N1 + Semua Level + cloud sync.
 window._isLoggedIn = false;
+window._isPremium = false;
 const FREE_LEVELS = new Set(['N5', 'kana']);
+const PREMIUM_PRICE_IDR = 99000;
+const PREMIUM_PRICE_LABEL = 'Rp 99.000/tahun';
 
 function isFree(level) { return FREE_LEVELS.has(level); }
+function isPremium() { return !!window._isPremium; }
+
+function requirePremium(feature) {
+  if (isPremium()) return true;
+  openUpgradeModal(feature);
+  return false;
+}
+
+function openUpgradeModal(feature) {
+  window.track?.('upgrade_modal_shown', { feature });
+  const existing = document.getElementById('upgrade-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'upgrade-modal';
+  const loggedIn = window._isLoggedIn;
+  modal.innerHTML = `
+    <style>
+      #upgrade-modal {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.55);
+        backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+        display: flex; align-items: flex-end; justify-content: center;
+        z-index: 9999; animation: um-fade 0.25s ease;
+      }
+      @keyframes um-fade { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes um-slide { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+      .um-sheet {
+        background: #fff; color: #1a1a1a;
+        border-radius: 24px 24px 0 0;
+        width: 100%; max-width: 480px;
+        padding: 28px 22px 22px;
+        box-shadow: 0 -12px 40px rgba(0,0,0,0.18);
+        animation: um-slide 0.3s cubic-bezier(0.2,0.8,0.2,1);
+        max-height: 92vh; overflow-y: auto;
+      }
+      [data-theme="dark"] .um-sheet { background: #1E1C19; color: #EDEAE4; }
+      @media (min-width: 640px) { #upgrade-modal { align-items: center; } .um-sheet { border-radius: 20px; } }
+      .um-badge { display:inline-block; padding:4px 10px; border-radius:999px; background:linear-gradient(90deg,#FFD700,#FFA500); color:#4a2c00; font-size:11px; font-weight:800; letter-spacing:0.04em; }
+      .um-title { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin: 10px 0 6px; }
+      .um-feature { font-size: 13px; color: #6b6b6b; margin: 0 0 18px; }
+      [data-theme="dark"] .um-feature { color: #9b9b9b; }
+      .um-price { display:flex; align-items:baseline; gap:8px; margin: 0 0 14px; }
+      .um-price .amt { font-size: 30px; font-weight: 900; color:#C41B1B; letter-spacing:-0.02em; }
+      .um-price .per { font-size: 13px; color:#6b6b6b; }
+      .um-compare { font-size: 12px; color: #888; margin: 0 0 18px; }
+      .um-benefits { list-style: none; padding: 0; margin: 0 0 20px; display:grid; gap:10px; }
+      .um-benefits li { display:flex; gap:10px; font-size:14px; align-items:flex-start; }
+      .um-benefits li::before { content:"✓"; color:#22A55B; font-weight:800; flex-shrink:0; }
+      .um-cta { width:100%; padding:14px; border-radius:12px; border:0; background:#C41B1B; color:#fff; font-size:15px; font-weight:700; cursor:pointer; }
+      .um-cta:hover { background:#A01616; }
+      .um-cta:disabled { opacity: 0.6; cursor: wait; }
+      .um-sub { width:100%; margin-top:10px; padding:10px; background:transparent; border:0; color:#6b6b6b; font-size:12px; cursor:pointer; }
+      .um-close { position:absolute; top:14px; right:14px; background:transparent; border:0; font-size:24px; color:#999; cursor:pointer; width:32px; height:32px; }
+    </style>
+    <div class="um-sheet" style="position:relative;">
+      <button class="um-close" id="um-close" aria-label="Tutup">&times;</button>
+      <span class="um-badge">⭐ EzNihongo Premium</span>
+      <h2 class="um-title">Buka semua level JLPT</h2>
+      <p class="um-feature">${feature ? 'Fitur: ' + feature : 'Akses N4, N3, N2, N1 + semua kanji sekaligus.'}</p>
+      <div class="um-price">
+        <span class="amt">Rp 99.000</span>
+        <span class="per">/tahun</span>
+      </div>
+      <p class="um-compare">≈ Rp 8.250/bulan · 14× lebih murah dari WaniKani ($89/tahun)</p>
+      <ul class="um-benefits">
+        <li>Akses N4, N3, N2, N1 (2.126 kanji total)</li>
+        <li>Mode "Semua Level" tanpa batas</li>
+        <li>Cloud sync & backup progress antar device</li>
+        <li>Update konten tiap minggu (contoh kalimat baru)</li>
+        <li>Support pengembang Indonesia 🇮🇩</li>
+      </ul>
+      <button class="um-cta" id="um-pay">${loggedIn ? 'Upgrade Sekarang — Rp 99.000/tahun' : 'Login & Upgrade'}</button>
+      <button class="um-sub" id="um-later">Nanti aja</button>
+    </div>`;
+  document.body.appendChild(modal);
+
+  document.getElementById('um-close').onclick = () => { modal.remove(); window.track?.('upgrade_modal_closed', { feature }); };
+  document.getElementById('um-later').onclick = () => { modal.remove(); window.track?.('upgrade_modal_dismissed', { feature }); };
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+  document.getElementById('um-pay').onclick = async () => {
+    window.track?.('upgrade_cta_click', { feature, logged_in: loggedIn });
+    if (!loggedIn) {
+      const redirect = encodeURIComponent('kanji.html?upgrade=1');
+      location.href = 'login.html?redirect=' + redirect;
+      return;
+    }
+    const btn = document.getElementById('um-pay');
+    btn.disabled = true; btn.textContent = 'Menghubungi Midtrans...';
+    try { await startMidtransCheckout(); }
+    catch (e) { btn.disabled = false; btn.textContent = 'Coba lagi'; alert('Gagal membuka pembayaran: ' + (e?.message || e)); }
+  };
+}
+
+// Midtrans config — set via build or replace before deploy
+const MIDTRANS_CLIENT_KEY = window.MIDTRANS_CLIENT_KEY || 'SB-Mid-client-REPLACE_ME';
+const MIDTRANS_SNAP_URL = window.MIDTRANS_SNAP_URL || 'https://app.sandbox.midtrans.com/snap/snap.js';
+
+function loadSnapJs() {
+  return new Promise((resolve, reject) => {
+    if (window.snap) return resolve();
+    const s = document.createElement('script');
+    s.src = MIDTRANS_SNAP_URL;
+    s.setAttribute('data-client-key', MIDTRANS_CLIENT_KEY);
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('Snap.js load failed'));
+    document.head.appendChild(s);
+  });
+}
+
+async function startMidtransCheckout() {
+  const sb = window._supabase;
+  if (!sb) throw new Error('Supabase belum siap');
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) throw new Error('Belum login');
+  await loadSnapJs();
+  const res = await fetch(`${sb.supabaseUrl}/functions/v1/midtrans-create-tx`, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ plan: 'yearly' }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'gagal');
+  if (!window.snap) throw new Error('Snap.js belum termuat');
+  window.track?.('payment_modal_opened');
+  window.snap.pay(data.snap_token, {
+    onSuccess: () => { window.track?.('payment_success'); setTimeout(() => location.reload(), 800); },
+    onPending: () => { window.track?.('payment_pending'); alert('Pembayaran menunggu konfirmasi. Kamu akan upgrade otomatis setelah konfirmasi.'); },
+    onError:   (err) => { window.track?.('payment_error', { err: String(err) }); alert('Pembayaran gagal. Coba lagi ya.'); },
+    onClose:   () => { window.track?.('payment_modal_closed'); },
+  });
+}
 
 function openLoginModal(feature) {
   window.track?.('login_modal_shown', { feature });
@@ -9975,12 +10135,34 @@ async function checkAuth() {
   if (session) {
     window._isLoggedIn = true;
     window.identifyUser?.(session.user.id, { email: session.user.email });
-    window.track?.('session_active', { logged_in: true });
+    await loadPremiumStatus();
+    window.track?.('session_active', { logged_in: true, premium: window._isPremium });
     await loadProgressFromCloud(session.user.id);
+
+    // Auto-open upgrade modal if user came back from login expecting to upgrade
+    if (new URLSearchParams(location.search).get('upgrade') === '1' && !window._isPremium) {
+      setTimeout(() => openUpgradeModal('Upgrade ke Premium'), 600);
+    }
+    // Auto-refresh premium status after payment return
+    if (new URLSearchParams(location.search).get('paid') === '1') {
+      setTimeout(loadPremiumStatus, 2500);
+    }
   } else {
     window._isLoggedIn = false;
+    window._isPremium = false;
     window.track?.('session_active', { logged_in: false });
     showLoginCta();
+  }
+}
+
+async function loadPremiumStatus() {
+  try {
+    const { data, error } = await window._supabase.from('me_is_premium').select('is_premium').maybeSingle();
+    if (error) { window._isPremium = false; return; }
+    window._isPremium = !!data?.is_premium;
+    if (window._isPremium) removeLockedUi();
+  } catch (e) {
+    window._isPremium = false;
   }
 }
 
@@ -10256,6 +10438,264 @@ if ('serviceWorker' in navigator) {
     localStorage.removeItem(DISMISS_KEY);
     hide();
   });
+})();
+
+// ─── ONBOARDING WIZARD (3-screen, first-time only) ───────────────────────────
+(function initOnboarding() {
+  const ONBOARDED_KEY = 'eznihongo_onboarded';
+  const GOAL_KEY = 'eznihongo_user_goal';
+  const DAILY_MIN_KEY = 'eznihongo_daily_minutes';
+
+  if (localStorage.getItem(ONBOARDED_KEY) === '1') return;
+
+  // Wait for home to be visible before showing wizard
+  const waitHome = setInterval(() => {
+    const home = document.getElementById('view-home');
+    if (home && home.style.display !== 'none') {
+      clearInterval(waitHome);
+      setTimeout(showWizard, 400);
+    }
+  }, 100);
+
+  function showWizard() {
+    if (document.getElementById('ob-wizard')) return;
+    window.track?.('onboarding_start');
+
+    const wiz = document.createElement('div');
+    wiz.id = 'ob-wizard';
+    wiz.innerHTML = `
+      <style>
+        #ob-wizard {
+          position: fixed; inset: 0;
+          background: rgba(0,0,0,0.5);
+          backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+          display: flex; align-items: flex-end; justify-content: center;
+          z-index: 9998;
+          animation: ob-fade 0.3s ease;
+        }
+        @keyframes ob-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes ob-slide { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .ob-sheet {
+          background: #fff;
+          border-radius: 24px 24px 0 0;
+          width: 100%; max-width: 520px;
+          padding: 28px 24px 24px;
+          box-shadow: 0 -12px 40px rgba(0,0,0,0.15);
+          animation: ob-slide 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+          max-height: 92vh;
+          overflow-y: auto;
+        }
+        [data-theme="dark"] .ob-sheet { background: #1E1C19; color: #EDEAE4; }
+        @media (min-width: 640px) {
+          #ob-wizard { align-items: center; }
+          .ob-sheet { border-radius: 24px; max-height: 85vh; }
+        }
+        .ob-progress {
+          display: flex; gap: 6px; margin-bottom: 24px;
+        }
+        .ob-progress span {
+          flex: 1; height: 4px; border-radius: 2px;
+          background: #e6e2d8;
+          transition: background 0.2s;
+        }
+        [data-theme="dark"] .ob-progress span { background: #2E2C27; }
+        .ob-progress span.active { background: #C41B1B; }
+        .ob-title {
+          font-size: 22px; font-weight: 800;
+          letter-spacing: -0.01em; margin: 0 0 8px;
+        }
+        .ob-desc {
+          font-size: 14px; color: #6b6b6b;
+          margin: 0 0 20px; line-height: 1.55;
+        }
+        [data-theme="dark"] .ob-desc { color: #9b9b9b; }
+        .ob-opts {
+          display: grid; gap: 10px;
+          margin-bottom: 24px;
+        }
+        .ob-opt {
+          border: 1.5px solid #e6e2d8;
+          border-radius: 12px;
+          padding: 14px 16px;
+          background: #fff;
+          font-size: 14px;
+          cursor: pointer;
+          text-align: left;
+          font-family: inherit;
+          transition: border-color 0.15s, background 0.15s;
+          display: flex; align-items: center; gap: 12px;
+        }
+        [data-theme="dark"] .ob-opt { background: #2A2825; border-color: #2E2C27; color: #EDEAE4; }
+        .ob-opt:hover { border-color: #C41B1B; }
+        .ob-opt.selected { border-color: #C41B1B; background: #FFF3F3; }
+        [data-theme="dark"] .ob-opt.selected { background: rgba(196,27,27,0.08); }
+        .ob-opt-ico { font-size: 22px; flex-shrink: 0; }
+        .ob-opt-text { flex: 1; }
+        .ob-opt-title { font-weight: 600; font-size: 14px; }
+        .ob-opt-sub { font-size: 12px; color: #6b6b6b; margin-top: 2px; }
+        [data-theme="dark"] .ob-opt-sub { color: #9b9b9b; }
+        .ob-actions {
+          display: flex; gap: 10px; align-items: center;
+        }
+        .ob-btn {
+          padding: 13px 22px; border-radius: 999px;
+          font-size: 14px; font-weight: 600;
+          border: none; cursor: pointer; font-family: inherit;
+          transition: background 0.15s;
+        }
+        .ob-btn-primary {
+          background: #C41B1B; color: #fff;
+          flex: 1;
+        }
+        .ob-btn-primary:hover { background: #a61717; }
+        .ob-btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+        .ob-btn-ghost {
+          background: transparent; color: #6b6b6b;
+        }
+        .ob-btn-ghost:hover { color: #C41B1B; }
+        .ob-stats {
+          background: #FEF7F7;
+          border: 1px solid #FFE4E4;
+          border-radius: 12px;
+          padding: 14px 16px;
+          margin-bottom: 20px;
+          font-size: 13px;
+          color: #8b1a1a;
+        }
+        [data-theme="dark"] .ob-stats { background: rgba(196,27,27,0.08); border-color: rgba(196,27,27,0.25); color: #E85858; }
+        .ob-stats b { font-size: 16px; }
+      </style>
+      <div class="ob-sheet">
+        <div class="ob-progress">
+          <span id="ob-p1" class="active"></span>
+          <span id="ob-p2"></span>
+          <span id="ob-p3"></span>
+        </div>
+        <div id="ob-step"></div>
+      </div>
+    `;
+    document.body.appendChild(wiz);
+
+    const state = { goal: null, minutes: null, step: 1 };
+
+    function markProgress(n) {
+      for (let i = 1; i <= 3; i++) {
+        document.getElementById('ob-p' + i).classList.toggle('active', i <= n);
+      }
+    }
+
+    function renderStep1() {
+      state.step = 1; markProgress(1);
+      document.getElementById('ob-step').innerHTML = `
+        <h2 class="ob-title">Selamat datang 👋</h2>
+        <p class="ob-desc">Kenapa kamu belajar kanji? Ini bantu kami rekomendasikan alur belajar yang pas.</p>
+        <div class="ob-opts" id="ob-goal-opts">
+          <button class="ob-opt" data-v="jlpt-n5"><span class="ob-opt-ico">🎯</span><div class="ob-opt-text"><div class="ob-opt-title">JLPT N5</div><div class="ob-opt-sub">Pemula · ~103 kanji</div></div></button>
+          <button class="ob-opt" data-v="jlpt-n4"><span class="ob-opt-ico">🎯</span><div class="ob-opt-text"><div class="ob-opt-title">JLPT N4</div><div class="ob-opt-sub">Dasar · ~300 kanji</div></div></button>
+          <button class="ob-opt" data-v="jlpt-n3"><span class="ob-opt-ico">🎯</span><div class="ob-opt-text"><div class="ob-opt-title">JLPT N3</div><div class="ob-opt-sub">Menengah · ~650 kanji</div></div></button>
+          <button class="ob-opt" data-v="jlpt-n2"><span class="ob-opt-ico">🎯</span><div class="ob-opt-text"><div class="ob-opt-title">JLPT N2 / N1</div><div class="ob-opt-sub">Lanjutan · 1000+ kanji</div></div></button>
+          <button class="ob-opt" data-v="kuliah"><span class="ob-opt-ico">🎓</span><div class="ob-opt-text"><div class="ob-opt-title">Kuliah / Kerja di Jepang</div><div class="ob-opt-sub">Perlu kanji sehari-hari</div></div></button>
+          <button class="ob-opt" data-v="anime"><span class="ob-opt-ico">📺</span><div class="ob-opt-text"><div class="ob-opt-title">Anime / Manga / Hobi</div><div class="ob-opt-sub">Baca raw / nonton no-sub</div></div></button>
+        </div>
+        <div class="ob-actions">
+          <button class="ob-btn ob-btn-primary" id="ob-next-1" disabled>Lanjut →</button>
+        </div>
+      `;
+      document.getElementById('ob-goal-opts').addEventListener('click', (e) => {
+        const b = e.target.closest('.ob-opt'); if (!b) return;
+        document.querySelectorAll('#ob-goal-opts .ob-opt').forEach(x => x.classList.remove('selected'));
+        b.classList.add('selected');
+        state.goal = b.dataset.v;
+        document.getElementById('ob-next-1').disabled = false;
+      });
+      document.getElementById('ob-next-1').onclick = renderStep2;
+    }
+
+    function renderStep2() {
+      state.step = 2; markProgress(2);
+      document.getElementById('ob-step').innerHTML = `
+        <h2 class="ob-title">Berapa menit per hari?</h2>
+        <p class="ob-desc">Konsisten tiap hari lebih efektif dari marathon sekali seminggu. Pilih yang realistis.</p>
+        <div class="ob-opts" id="ob-min-opts">
+          <button class="ob-opt" data-v="5"><span class="ob-opt-ico">🌱</span><div class="ob-opt-text"><div class="ob-opt-title">5 menit</div><div class="ob-opt-sub">Santai · ~5 kartu/hari</div></div></button>
+          <button class="ob-opt" data-v="15"><span class="ob-opt-ico">⚡</span><div class="ob-opt-text"><div class="ob-opt-title">15 menit</div><div class="ob-opt-sub">Rekomendasi · ~15 kartu/hari</div></div></button>
+          <button class="ob-opt" data-v="30"><span class="ob-opt-ico">🔥</span><div class="ob-opt-text"><div class="ob-opt-title">30 menit</div><div class="ob-opt-sub">Push mode · ~30 kartu/hari</div></div></button>
+          <button class="ob-opt" data-v="60"><span class="ob-opt-ico">🚀</span><div class="ob-opt-text"><div class="ob-opt-title">60+ menit</div><div class="ob-opt-sub">Grinding · 50+ kartu/hari</div></div></button>
+        </div>
+        <div class="ob-stats" id="ob-stats" style="display:none;">
+          Dengan <b id="ob-stats-min">15</b> menit/hari, lo bisa selesaikan <b id="ob-stats-days">~7 bulan</b> untuk N5 (103 kanji).
+        </div>
+        <div class="ob-actions">
+          <button class="ob-btn ob-btn-ghost" onclick="(function(){ document.getElementById('ob-step'); })(); (${renderStep1.toString()})()">‹ Kembali</button>
+          <button class="ob-btn ob-btn-primary" id="ob-next-2" disabled>Lanjut →</button>
+        </div>
+      `;
+      document.getElementById('ob-min-opts').addEventListener('click', (e) => {
+        const b = e.target.closest('.ob-opt'); if (!b) return;
+        document.querySelectorAll('#ob-min-opts .ob-opt').forEach(x => x.classList.remove('selected'));
+        b.classList.add('selected');
+        state.minutes = parseInt(b.dataset.v);
+        document.getElementById('ob-next-2').disabled = false;
+        const cardsPerDay = Math.max(5, state.minutes);
+        const daysForN5 = Math.ceil(103 / cardsPerDay);
+        document.getElementById('ob-stats-min').textContent = state.minutes;
+        document.getElementById('ob-stats-days').textContent = daysForN5 < 30 ? `~${daysForN5} hari` : `~${Math.round(daysForN5/30)} bulan`;
+        document.getElementById('ob-stats').style.display = 'block';
+      });
+      document.getElementById('ob-next-2').onclick = renderStep3;
+    }
+
+    function renderStep3() {
+      state.step = 3; markProgress(3);
+      const canNotify = 'Notification' in window;
+      document.getElementById('ob-step').innerHTML = `
+        <h2 class="ob-title">Reminder harian? 🔔</h2>
+        <p class="ob-desc">${canNotify ? 'Kami kirim notifikasi saat ada kartu yang due. Ga spam — max 1x pagi + 1x malam.' : 'Browser kamu tidak support notifikasi — tidak apa-apa, streak tetap jalan.'}</p>
+        <div class="ob-opts">
+          ${canNotify ? `
+          <button class="ob-opt" data-v="yes"><span class="ob-opt-ico">🔔</span><div class="ob-opt-text"><div class="ob-opt-title">Ya, kirim reminder</div><div class="ob-opt-sub">Pagi 07:00 + Malam 20:00</div></div></button>
+          <button class="ob-opt" data-v="no"><span class="ob-opt-ico">🔕</span><div class="ob-opt-text"><div class="ob-opt-title">Tidak dulu</div><div class="ob-opt-sub">Bisa aktifkan di settings</div></div></button>
+          ` : `
+          <button class="ob-opt selected" data-v="no"><span class="ob-opt-ico">✓</span><div class="ob-opt-text"><div class="ob-opt-title">Lanjut ke app</div><div class="ob-opt-sub">Siap mulai belajar</div></div></button>
+          `}
+        </div>
+        <div class="ob-actions">
+          <button class="ob-btn ob-btn-ghost" id="ob-back-3">‹ Kembali</button>
+          <button class="ob-btn ob-btn-primary" id="ob-finish">Mulai Belajar →</button>
+        </div>
+      `;
+      document.querySelectorAll('#ob-wizard .ob-opt').forEach(b => {
+        b.addEventListener('click', () => {
+          document.querySelectorAll('#ob-wizard .ob-opt').forEach(x => x.classList.remove('selected'));
+          b.classList.add('selected');
+          state.notify = b.dataset.v === 'yes';
+        });
+      });
+      document.getElementById('ob-back-3').onclick = renderStep2;
+      document.getElementById('ob-finish').onclick = finish;
+    }
+
+    async function finish() {
+      localStorage.setItem(ONBOARDED_KEY, '1');
+      if (state.goal) localStorage.setItem(GOAL_KEY, state.goal);
+      if (state.minutes) localStorage.setItem(DAILY_MIN_KEY, String(state.minutes));
+      window.track?.('onboarding_complete', { goal: state.goal, minutes: state.minutes, notify: !!state.notify });
+
+      if (state.notify && 'Notification' in window) {
+        try {
+          const perm = await Notification.requestPermission();
+          if (perm === 'granted') {
+            localStorage.setItem('ez-notif', '1');
+            window.track?.('notification_permission_granted');
+          }
+        } catch (e) {}
+      }
+
+      document.getElementById('ob-wizard').remove();
+    }
+
+    renderStep1();
+  }
 })();
 </script>
 </body>
