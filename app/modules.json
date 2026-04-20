@@ -1,0 +1,256 @@
+{
+  "n5": {
+    "level": "N5",
+    "title": "Pemula — Fondasi Bahasa Jepang",
+    "description": "Mulai dari nol. Kuasai Hiragana dan Katakana, pelajari kosakata dan kanji dasar, dan mulai berkomunikasi dalam situasi sehari-hari. Cocok untuk yang belum pernah belajar Jepang sama sekali.",
+    "price": "Rp 99.000",
+    "next_level": "n4",
+    "stats": { "lessons": 33, "hours": "~8", "kanji": 80, "vocab": "800+" },
+    "learn": [
+      "Membaca dan menulis Hiragana (46 karakter) & Katakana (46 karakter)",
+      "80 Kanji dasar level N5",
+      "800+ kosakata sehari-hari",
+      "Pola kalimat dasar: です、ます、じゃない",
+      "Percakapan: perkenalan, belanja, transportasi, cuaca",
+      "Partikel dasar: は、が、を、に、で、と、も"
+    ],
+    "includes": [
+      "33 video lesson HD",
+      "Latihan soal interaktif",
+      "Vocab flashcard N5",
+      "Grammar tracker",
+      "Simulasi ujian JLPT N5",
+      "Sertifikat penyelesaian",
+      "Akses komunitas"
+    ],
+    "chapters": [
+      {
+        "title": "Bab 1 — Hiragana",
+        "lessons": [
+          { "id": "n5-1-1", "title": "Pengenalan Hiragana: あ行 (a, i, u, e, o)", "duration": "12 mnt", "free": true,  "video_id": "" },
+          { "id": "n5-1-2", "title": "Hiragana: か行、さ行、た行",                  "duration": "14 mnt", "free": true,  "video_id": "" },
+          { "id": "n5-1-3", "title": "Hiragana: な行、は行、ま行",                  "duration": "13 mnt", "free": false, "video_id": "" },
+          { "id": "n5-1-4", "title": "Hiragana: や行、ら行、わ行 + ん",             "duration": "12 mnt", "free": false, "video_id": "" },
+          { "id": "n5-1-5", "title": "Dakuten, Handakuten & kombinasi Hiragana",   "duration": "16 mnt", "free": false, "video_id": "" }
+        ]
+      },
+      {
+        "title": "Bab 2 — Katakana",
+        "lessons": [
+          { "id": "n5-2-1", "title": "Katakana dasar: ア行 s/d タ行",      "duration": "14 mnt", "free": false, "video_id": "" },
+          { "id": "n5-2-2", "title": "Katakana: ナ行 s/d ワ行 + ン",       "duration": "13 mnt", "free": false, "video_id": "" },
+          { "id": "n5-2-3", "title": "Kata serapan & latihan Katakana",     "duration": "18 mnt", "free": false, "video_id": "" }
+        ]
+      },
+      {
+        "title": "Bab 3 — Kanji N5",
+        "lessons": [
+          { "id": "n5-3-1", "title": "Kanji angka & waktu: 一二三四五六七八九十百千万",  "duration": "20 mnt", "free": false, "video_id": "" },
+          { "id": "n5-3-2", "title": "Kanji alam & arah: 日月火水木金土 + 上下左右",    "duration": "18 mnt", "free": false, "video_id": "" },
+          { "id": "n5-3-3", "title": "Kanji orang & keluarga: 人口女男子父母",          "duration": "17 mnt", "free": false, "video_id": "" }
+        ]
+      },
+      {
+        "title": "Bab 4 — Tata bahasa dasar",
+        "lessons": [
+          { "id": "n5-4-1", "title": "Pola です & ます — kalimat dasar sopan",      "duration": "15 mnt", "free": false, "video_id": "" },
+          { "id": "n5-4-2", "title": "Partikel は、が、を — subjek & objek",        "duration": "18 mnt", "free": false, "video_id": "" },
+          { "id": "n5-4-3", "title": "Partikel に、で、と、も — tempat & bersama",  "duration": "20 mnt", "free": false, "video_id": "" },
+          { "id": "n5-4-4", "title": "Bentuk negatif: じゃない & ません",           "duration": "14 mnt", "free": false, "video_id": "" },
+          { "id": "n5-4-5", "title": "Bentuk tanya: か & の",                       "duration": "13 mnt", "free": false, "video_id": "" }
+        ]
+      },
+      {
+        "title": "Bab 5 — Percakapan praktis",
+        "lessons": [
+          { "id": "n5-5-1", "title": "Perkenalan diri: はじめまして",                   "duration": "16 mnt", "free": false, "video_id": "" },
+          { "id": "n5-5-2", "title": "Di restoran & warung: memesan makanan",          "duration": "18 mnt", "free": false, "video_id": "" },
+          { "id": "n5-5-3", "title": "Transportasi: naik kereta & tanya jalan",        "duration": "20 mnt", "free": false, "video_id": "" },
+          { "id": "n5-5-4", "title": "Simulasi ujian JLPT N5",                         "duration": "45 mnt", "free": false, "video_id": "" }
+        ]
+      }
+    ]
+  },
+
+  "n4": {
+    "level": "N4",
+    "title": "Dasar — Bahasa Jepang Sehari-hari",
+    "description": "Perluas kosakata dan kanji, pelajari tata bahasa menengah, dan mulai percakapan dalam situasi formal sehari-hari.",
+    "price": "Rp 119.000",
+    "next_level": "n3",
+    "stats": { "lessons": 36, "hours": "12", "kanji": 300, "vocab": "1500+" },
+    "learn": [
+      "300 Kanji level N4",
+      "1500+ kosakata menengah",
+      "Bentuk て-form, た-form, dan ない-form",
+      "Pola perbandingan, alasan, dan kondisi",
+      "Percakapan: tempat kerja, perjalanan, dan kesehatan",
+      "Membaca teks pendek bahasa Jepang"
+    ],
+    "includes": [
+      "36 video lesson HD",
+      "Latihan soal interaktif",
+      "Vocab flashcard N4",
+      "Grammar tracker",
+      "Simulasi ujian JLPT N4",
+      "Sertifikat penyelesaian",
+      "Akses komunitas"
+    ],
+    "chapters": [
+      {
+        "title": "Bab 1 — Kanji N4 Bagian 1",
+        "lessons": [
+          { "id": "n4-1-1", "title": "Kanji 001–050: benda & aktivitas sehari-hari", "duration": "22 mnt", "free": true,  "video_id": "" },
+          { "id": "n4-1-2", "title": "Kanji 051–100: waktu, tempat & arah",          "duration": "20 mnt", "free": true,  "video_id": "" },
+          { "id": "n4-1-3", "title": "Kanji 101–150: pekerjaan & kehidupan sosial",  "duration": "21 mnt", "free": false, "video_id": "" }
+        ]
+      },
+      {
+        "title": "Bab 2 — Te-form & perubahan kata kerja",
+        "lessons": [
+          { "id": "n4-2-1", "title": "て-form: Group 1, 2, dan 3",             "duration": "18 mnt", "free": false, "video_id": "" },
+          { "id": "n4-2-2", "title": "た-form dan bentuk lampau",               "duration": "16 mnt", "free": false, "video_id": "" },
+          { "id": "n4-2-3", "title": "ない-form: bentuk negatif kata kerja",   "duration": "15 mnt", "free": false, "video_id": "" },
+          { "id": "n4-2-4", "title": "Potential form: できる & られる",          "duration": "17 mnt", "free": false, "video_id": "" }
+        ]
+      },
+      {
+        "title": "Bab 3 — Pola Grammar N4",
+        "lessons": [
+          { "id": "n4-3-1", "title": "〜ている — aksi berkelanjutan",        "duration": "14 mnt", "free": false, "video_id": "" },
+          { "id": "n4-3-2", "title": "〜てから & 〜たあとで — urutan waktu", "duration": "16 mnt", "free": false, "video_id": "" },
+          { "id": "n4-3-3", "title": "〜ので & 〜のに — alasan & kontras",   "duration": "18 mnt", "free": false, "video_id": "" },
+          { "id": "n4-3-4", "title": "〜たら & 〜ば — kondisi dan syarat",   "duration": "20 mnt", "free": false, "video_id": "" }
+        ]
+      }
+    ]
+  },
+
+  "n3": {
+    "level": "N3",
+    "title": "Menengah — Membaca Teks Asli",
+    "description": "Kuasai 650 kanji, baca artikel pendek, dan mulai menonton konten berbahasa Jepang tanpa subtitle.",
+    "price": "Rp 139.000",
+    "next_level": "n2",
+    "stats": { "lessons": 40, "hours": "~18", "kanji": 650, "vocab": "3000+" },
+    "learn": [
+      "650 Kanji level N3",
+      "3000+ kosakata",
+      "Pola grammar kompleks: passive, causative, conditional",
+      "Membaca artikel berita pendek",
+      "Menonton drama/anime tanpa subtitle dasar",
+      "Keigo dasar (bahasa sopan formal)"
+    ],
+    "includes": [
+      "40 video lesson HD",
+      "Latihan soal interaktif",
+      "Vocab flashcard N3",
+      "Grammar tracker",
+      "Simulasi ujian JLPT N3",
+      "Sertifikat penyelesaian",
+      "Akses komunitas"
+    ],
+    "chapters": [
+      {
+        "title": "Bab 1 — Kanji N3",
+        "lessons": [
+          { "id": "n3-1-1", "title": "Kanji 001–100: topik umum",  "duration": "25 mnt", "free": true,  "video_id": "" },
+          { "id": "n3-1-2", "title": "Kanji 101–200: alam & sains", "duration": "24 mnt", "free": false, "video_id": "" }
+        ]
+      },
+      {
+        "title": "Bab 2 — Grammar N3",
+        "lessons": [
+          { "id": "n3-2-1", "title": "Passive form: 〜られる",        "duration": "20 mnt", "free": false, "video_id": "" },
+          { "id": "n3-2-2", "title": "Causative form: 〜させる",      "duration": "20 mnt", "free": false, "video_id": "" },
+          { "id": "n3-2-3", "title": "Giving & receiving: あげる、もらう、くれる", "duration": "22 mnt", "free": false, "video_id": "" }
+        ]
+      }
+    ]
+  },
+
+  "n2": {
+    "level": "N2",
+    "title": "Lanjutan — Komunikasi Profesional",
+    "description": "Kuasai 1000 kanji, baca dokumen bisnis, dan berkomunikasi secara profesional dalam bahasa Jepang.",
+    "price": "Rp 159.000",
+    "next_level": "n1",
+    "stats": { "lessons": 46, "hours": "~24", "kanji": 1000, "vocab": "6000+" },
+    "learn": [
+      "1000 Kanji level N2",
+      "6000+ kosakata termasuk istilah bisnis",
+      "Keigo lengkap: sonkeigo & kenjogo",
+      "Membaca dokumen resmi & email bisnis",
+      "Menonton berita TV berbahasa Jepang",
+      "Wawancara kerja dalam bahasa Jepang"
+    ],
+    "includes": [
+      "46 video lesson HD",
+      "Latihan soal interaktif",
+      "Vocab flashcard N2",
+      "Grammar tracker",
+      "Simulasi ujian JLPT N2",
+      "Sertifikat penyelesaian",
+      "Akses komunitas"
+    ],
+    "chapters": [
+      {
+        "title": "Bab 1 — Kanji N2",
+        "lessons": [
+          { "id": "n2-1-1", "title": "Kanji bisnis & ekonomi 001–100", "duration": "28 mnt", "free": true,  "video_id": "" },
+          { "id": "n2-1-2", "title": "Kanji sains & teknologi 001–100", "duration": "26 mnt", "free": false, "video_id": "" }
+        ]
+      },
+      {
+        "title": "Bab 2 — Keigo",
+        "lessons": [
+          { "id": "n2-2-1", "title": "Sonkeigo: menghormati lawan bicara",  "duration": "24 mnt", "free": false, "video_id": "" },
+          { "id": "n2-2-2", "title": "Kenjogo: merendahkan diri sendiri",   "duration": "22 mnt", "free": false, "video_id": "" },
+          { "id": "n2-2-3", "title": "Teineigo dalam situasi formal",       "duration": "20 mnt", "free": false, "video_id": "" }
+        ]
+      }
+    ]
+  },
+
+  "n1": {
+    "level": "N1",
+    "title": "Mahir — Level Native Speaker",
+    "description": "Kuasai 2000 kanji, baca sastra dan berita, dan komunikasi setara native speaker Jepang.",
+    "price": "Rp 179.000",
+    "next_level": null,
+    "stats": { "lessons": 52, "hours": "~32", "kanji": 2000, "vocab": "10000+" },
+    "learn": [
+      "2000 Kanji level N1",
+      "10.000+ kosakata termasuk sastra & berita",
+      "Membaca novel dan esai berbahasa Jepang",
+      "Pola grammar tingkat lanjut & idiom",
+      "Mendengar dan memahami percakapan native",
+      "Menulis esai formal dalam bahasa Jepang"
+    ],
+    "includes": [
+      "52 video lesson HD",
+      "Latihan soal interaktif",
+      "Vocab flashcard N1",
+      "Grammar tracker",
+      "Simulasi ujian JLPT N1",
+      "Sertifikat penyelesaian",
+      "Akses komunitas"
+    ],
+    "chapters": [
+      {
+        "title": "Bab 1 — Kanji N1",
+        "lessons": [
+          { "id": "n1-1-1", "title": "Kanji sastra & budaya 001–100",  "duration": "30 mnt", "free": true,  "video_id": "" },
+          { "id": "n1-1-2", "title": "Kanji akademik & ilmiah 001–100", "duration": "28 mnt", "free": false, "video_id": "" }
+        ]
+      },
+      {
+        "title": "Bab 2 — Grammar N1",
+        "lessons": [
+          { "id": "n1-2-1", "title": "Pola formal & klasik: 〜にあたり、〜をもって", "duration": "26 mnt", "free": false, "video_id": "" },
+          { "id": "n1-2-2", "title": "Nuansa & register bahasa Jepang tingkat lanjut", "duration": "28 mnt", "free": false, "video_id": "" }
+        ]
+      }
+    ]
+  }
+}

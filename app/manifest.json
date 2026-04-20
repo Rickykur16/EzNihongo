@@ -1,0 +1,27 @@
+{
+  "name": "EzNihongo — Belajar Bahasa Jepang",
+  "short_name": "EzNihongo",
+  "description": "Belajar kanji Jepang N5–N3 dengan flashcard interaktif",
+  "start_url": "./kanji.html",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#C41B1B",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Flashcard Kanji",
+      "url": "./kanji.html",
+      "description": "Latihan kanji dengan flashcard"
+    }
+  ],
+  "categories": ["education", "language"]
+}
