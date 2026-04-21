@@ -822,10 +822,26 @@ async function uploadImageFile(file) {
   return data.url;
 }
 
-function photoFieldHtml(currentUrl, inputName) {
+// Presets for CSS `object-position`. Horizontal is always center; the common
+// cropping problem is vertical (e.g. faces at top get cut when aspect-ratio
+// is 4/3). Custom values can still be stored via the API directly.
+const PHOTO_POSITION_PRESETS = [
+  { value: '',               label: 'Tengah (default)' },
+  { value: 'center top',     label: 'Atas (wajah / kepala di atas foto)' },
+  { value: 'center 25%',     label: 'Agak atas' },
+  { value: 'center 75%',     label: 'Agak bawah' },
+  { value: 'center bottom',  label: 'Bawah' },
+];
+
+function photoFieldHtml(currentUrl, inputName, currentPosition = '', positionInputName = 'photoPosition') {
+  const pos = currentPosition || '';
+  const previewStyle = `max-height:140px;width:180px;aspect-ratio:4/3;border-radius:8px;border:1px solid #e5e5e5;object-fit:cover;object-position:${escapeHtml(pos || 'center')};display:block;`;
   const preview = currentUrl
-    ? `<img src="${escapeHtml(currentUrl)}" alt="" style="max-height:80px;max-width:120px;border-radius:8px;border:1px solid #e5e5e5;object-fit:cover;" />`
-    : `<div style="width:120px;height:80px;border-radius:8px;border:1px dashed #d4d4d4;background:#fafafa;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;">belum ada foto</div>`;
+    ? `<img src="${escapeHtml(currentUrl)}" alt="" style="${previewStyle}" data-photo-preview-img />`
+    : `<div style="width:180px;aspect-ratio:4/3;border-radius:8px;border:1px dashed #d4d4d4;background:#fafafa;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;">belum ada foto</div>`;
+  const presetOpts = PHOTO_POSITION_PRESETS.map(p =>
+    `<option value="${escapeHtml(p.value)}" ${p.value === pos ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
+  ).join('');
   return `
     <div class="field" data-photo-field>
       <label>Foto</label>
@@ -835,6 +851,11 @@ function photoFieldHtml(currentUrl, inputName) {
           <input type="hidden" name="${inputName}" value="${escapeHtml(currentUrl || '')}" data-photo-url />
           <input type="file" accept="image/*" data-photo-file style="font-size:13px;" />
           <div style="font-size:12px;color:#999;margin-top:4px;" data-photo-status>Pilih file JPG/PNG/WEBP (max 5MB) lalu Simpan.</div>
+          <div style="margin-top:10px;">
+            <label style="display:block;font-size:12px;color:#555;margin-bottom:4px;">Posisi foto (kalau kepotong)</label>
+            <select name="${positionInputName}" data-photo-position style="width:100%;font-size:13px;padding:6px 8px;">${presetOpts}</select>
+            <div style="font-size:11px;color:#999;margin-top:4px;">Atur kalau wajah/kepala kepotong di landing.</div>
+          </div>
         </div>
       </div>
     </div>
@@ -847,6 +868,16 @@ function attachPhotoUploaders(formEl) {
     const urlInput = field.querySelector('[data-photo-url]');
     const status = field.querySelector('[data-photo-status]');
     const preview = field.querySelector('[data-photo-preview]');
+    const positionSelect = field.querySelector('[data-photo-position]');
+    const previewStyle = (pos) =>
+      `max-height:140px;width:180px;aspect-ratio:4/3;border-radius:8px;border:1px solid #e5e5e5;object-fit:cover;object-position:${pos || 'center'};display:block;`;
+
+    const applyPosition = () => {
+      const img = preview.querySelector('[data-photo-preview-img]');
+      if (img) img.style.objectPosition = (positionSelect && positionSelect.value) || 'center';
+    };
+    if (positionSelect) positionSelect.addEventListener('change', applyPosition);
+
     if (!fileInput) return;
     fileInput.addEventListener('change', async () => {
       const file = fileInput.files?.[0];
@@ -855,7 +886,8 @@ function attachPhotoUploaders(formEl) {
       try {
         const url = await uploadImageFile(file);
         urlInput.value = url;
-        preview.innerHTML = `<img src="${url}" alt="" style="max-height:80px;max-width:120px;border-radius:8px;border:1px solid #e5e5e5;object-fit:cover;" />`;
+        const pos = (positionSelect && positionSelect.value) || '';
+        preview.innerHTML = `<img src="${url}" alt="" style="${previewStyle(pos)}" data-photo-preview-img />`;
         status.textContent = '✓ Foto siap disimpan.';
         status.style.color = '#16a34a';
       } catch (err) {
@@ -904,12 +936,12 @@ function renderSenseiList() {
 }
 
 function senseiFormHtml(s) {
-  s = s || { name: '', title: '', bio: '', tags: [], photo_url: '', sort_order: 0, is_published: true };
+  s = s || { name: '', title: '', bio: '', tags: [], photo_url: '', photo_position: '', sort_order: 0, is_published: true };
   const tagsText = Array.isArray(s.tags) ? s.tags.join(', ') : '';
   return `
     <h3>${s.id ? 'Edit Sensei' : 'Sensei Baru'}</h3>
     <form id="sensei-form">
-      ${photoFieldHtml(s.photo_url, 'photoUrl')}
+      ${photoFieldHtml(s.photo_url, 'photoUrl', s.photo_position, 'photoPosition')}
       <div class="field-row">
         <div class="field"><label>Nama</label><input name="name" value="${escapeHtml(s.name)}" required /></div>
         <div class="field"><label>Jabatan</label><input name="title" value="${escapeHtml(s.title || '')}" placeholder="Lead Sensei · Native" /></div>
@@ -956,6 +988,7 @@ async function submitSensei(e, id) {
     bio: fd.get('bio').trim() || null,
     tags,
     photoUrl: fd.get('photoUrl') || null,
+    photoPosition: fd.get('photoPosition') || null,
     sortOrder: Number(fd.get('sortOrder')) || 0,
     isPublished: fd.get('isPublished') === 'true',
   };
@@ -1015,14 +1048,14 @@ function renderTestimonials() {
 }
 
 function testimonialFormHtml(t) {
-  t = t || { name: '', location: '', occupation: '', photo_url: '', quote: '', course_slug: '', sort_order: 0, is_published: true };
+  t = t || { name: '', location: '', occupation: '', photo_url: '', photo_position: '', quote: '', course_slug: '', sort_order: 0, is_published: true };
   const courseOpts = STATE.courses.map((c) =>
     `<option value="${c.slug}" ${c.slug === t.course_slug ? 'selected' : ''}>${escapeHtml(c.title)}</option>`
   ).join('');
   return `
     <h3>${t.id ? 'Edit Testimoni' : 'Testimoni Baru'}</h3>
     <form id="testimonial-form">
-      ${photoFieldHtml(t.photo_url, 'photoUrl')}
+      ${photoFieldHtml(t.photo_url, 'photoUrl', t.photo_position, 'photoPosition')}
       <div class="field-row">
         <div class="field"><label>Nama siswa</label><input name="name" value="${escapeHtml(t.name)}" required /></div>
         <div class="field"><label>Profesi / jenis kerja / kuliah</label><input name="occupation" value="${escapeHtml(t.occupation || '')}" placeholder="SSW Kaigo · Osaka / Mahasiswa Waseda" /></div>
@@ -1074,6 +1107,7 @@ async function submitTestimonial(e, id) {
     location: fd.get('location').trim() || null,
     occupation: fd.get('occupation').trim() || null,
     photoUrl: fd.get('photoUrl') || null,
+    photoPosition: fd.get('photoPosition') || null,
     quote: fd.get('quote').trim() || null,
     courseSlug: fd.get('courseSlug').trim() || null,
     sortOrder: Number(fd.get('sortOrder')) || 0,

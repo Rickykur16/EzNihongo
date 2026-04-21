@@ -130,7 +130,7 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
 // GET /api/sensei — public list of published sensei
 router.get('/sensei', asyncHandler(async (req, res) => {
   const result = await query(
-    `SELECT id, name, title, bio, tags, photo_url, sort_order
+    `SELECT id, name, title, bio, tags, photo_url, photo_position, sort_order
      FROM sensei
      WHERE is_published = TRUE
      ORDER BY sort_order ASC, created_at ASC`
@@ -141,7 +141,7 @@ router.get('/sensei', asyncHandler(async (req, res) => {
 // GET /api/testimonials — public list of published testimonials
 router.get('/testimonials', asyncHandler(async (req, res) => {
   const result = await query(
-    `SELECT id, name, location, occupation, photo_url, quote, course_slug, sort_order
+    `SELECT id, name, location, occupation, photo_url, photo_position, quote, course_slug, sort_order
      FROM testimonials
      WHERE is_published = TRUE
      ORDER BY sort_order ASC, created_at ASC`

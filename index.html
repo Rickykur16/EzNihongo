@@ -671,6 +671,7 @@ function ModernSensei() {
     bio: x.bio || '',
     tags: Array.isArray(x.tags) ? x.tags : [],
     photoUrl: x.photo_url || null,
+    photoPosition: x.photo_position || 'center',
   }));
   const [active, setActive] = React.useState(0);
   const touchStart = React.useRef(null);
@@ -733,7 +734,7 @@ function ModernSensei() {
           {/* Card */}
           <div style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', border: '1px solid #e5e5e5', boxShadow: '0 20px 60px rgba(0,0,0,0.07)', transition: 'all 0.4s ease' }}>
             {p.photoUrl
-              ? <img src={p.photoUrl} alt={p.name} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }} />
+              ? <img src={p.photoUrl} alt={p.name} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', objectPosition: p.photoPosition, display: 'block' }} />
               : <PhotoPlaceholder caption={`photo: ${p.name.split(' ')[0]}-sensei headshot`} aspectRatio="4/3" tone="warm" style={{ borderRadius: 0 }} />
             }
             <div style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
@@ -1005,7 +1006,7 @@ function ModernTestimonials() {
           {items.map((t, i) => (
             <div key={t.id || i} className="reveal" style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', border: '1px solid #e5e5e5', boxShadow: '0 10px 40px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column' }}>
               {t.photo_url
-                ? <img src={t.photo_url} alt={t.name} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }} />
+                ? <img src={t.photo_url} alt={t.name} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', objectPosition: t.photo_position || 'center', display: 'block' }} />
                 : <PhotoPlaceholder caption={`photo: ${t.name} di ${t.location || 'Jepang'}`} aspectRatio="4/3" tone="warm" style={{ borderRadius: 0 }} />
               }
               <div style={{ padding: 'clamp(20px, 3vw, 28px)', display: 'flex', flexDirection: 'column', gap: 14, flex: 1 }}>

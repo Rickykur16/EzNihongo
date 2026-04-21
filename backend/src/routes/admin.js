@@ -286,22 +286,22 @@ router.get('/sensei', asyncHandler(async (req, res) => {
 }));
 
 router.post('/sensei', asyncHandler(async (req, res) => {
-  const { name, title, bio, tags, photoUrl, sortOrder, isPublished } = req.body || {};
+  const { name, title, bio, tags, photoUrl, photoPosition, sortOrder, isPublished } = req.body || {};
   if (!name) return res.status(400).json({ error: 'name required' });
   const result = await query(
-    `INSERT INTO sensei (name, title, bio, tags, photo_url, sort_order, is_published)
-     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+    `INSERT INTO sensei (name, title, bio, tags, photo_url, photo_position, sort_order, is_published)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
     [
       name, title || null, bio || null,
       JSON.stringify(Array.isArray(tags) ? tags : []),
-      photoUrl || null, sortOrder || 0, isPublished !== false,
+      photoUrl || null, photoPosition || null, sortOrder || 0, isPublished !== false,
     ]
   );
   res.status(201).json({ sensei: result.rows[0] });
 }));
 
 router.put('/sensei/:id', asyncHandler(async (req, res) => {
-  const { name, title, bio, tags, photoUrl, sortOrder, isPublished } = req.body || {};
+  const { name, title, bio, tags, photoUrl, photoPosition, sortOrder, isPublished } = req.body || {};
   const result = await query(
     `UPDATE sensei SET
        name = COALESCE($2, name),
@@ -309,14 +309,15 @@ router.put('/sensei/:id', asyncHandler(async (req, res) => {
        bio = COALESCE($4, bio),
        tags = COALESCE($5::jsonb, tags),
        photo_url = COALESCE($6, photo_url),
-       sort_order = COALESCE($7, sort_order),
-       is_published = COALESCE($8, is_published),
+       photo_position = COALESCE($7, photo_position),
+       sort_order = COALESCE($8, sort_order),
+       is_published = COALESCE($9, is_published),
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
     [
       req.params.id, name, title, bio,
       Array.isArray(tags) ? JSON.stringify(tags) : null,
-      photoUrl, sortOrder, isPublished,
+      photoUrl, photoPosition, sortOrder, isPublished,
     ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
@@ -336,13 +337,13 @@ router.get('/testimonials', asyncHandler(async (req, res) => {
 }));
 
 router.post('/testimonials', asyncHandler(async (req, res) => {
-  const { name, location, occupation, photoUrl, quote, courseSlug, sortOrder, isPublished } = req.body || {};
+  const { name, location, occupation, photoUrl, photoPosition, quote, courseSlug, sortOrder, isPublished } = req.body || {};
   if (!name) return res.status(400).json({ error: 'name required' });
   const result = await query(
-    `INSERT INTO testimonials (name, location, occupation, photo_url, quote, course_slug, sort_order, is_published)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+    `INSERT INTO testimonials (name, location, occupation, photo_url, photo_position, quote, course_slug, sort_order, is_published)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
     [
-      name, location || null, occupation || null, photoUrl || null,
+      name, location || null, occupation || null, photoUrl || null, photoPosition || null,
       quote || null, courseSlug || null, sortOrder || 0, isPublished !== false,
     ]
   );
@@ -350,20 +351,21 @@ router.post('/testimonials', asyncHandler(async (req, res) => {
 }));
 
 router.put('/testimonials/:id', asyncHandler(async (req, res) => {
-  const { name, location, occupation, photoUrl, quote, courseSlug, sortOrder, isPublished } = req.body || {};
+  const { name, location, occupation, photoUrl, photoPosition, quote, courseSlug, sortOrder, isPublished } = req.body || {};
   const result = await query(
     `UPDATE testimonials SET
        name = COALESCE($2, name),
        location = COALESCE($3, location),
        occupation = COALESCE($4, occupation),
        photo_url = COALESCE($5, photo_url),
-       quote = COALESCE($6, quote),
-       course_slug = COALESCE($7, course_slug),
-       sort_order = COALESCE($8, sort_order),
-       is_published = COALESCE($9, is_published),
+       photo_position = COALESCE($6, photo_position),
+       quote = COALESCE($7, quote),
+       course_slug = COALESCE($8, course_slug),
+       sort_order = COALESCE($9, sort_order),
+       is_published = COALESCE($10, is_published),
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
-    [req.params.id, name, location, occupation, photoUrl, quote, courseSlug, sortOrder, isPublished]
+    [req.params.id, name, location, occupation, photoUrl, photoPosition, quote, courseSlug, sortOrder, isPublished]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ testimonial: result.rows[0] });
