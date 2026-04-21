@@ -667,9 +667,7 @@ function ModernAudience() {
 function ModernSensei() {
   const s = SHARED_CONTENT.sensei;
   const cms = React.useContext(CmsContext);
-  // Hide entirely until admin has added sensei — no placeholders on the public page.
-  if (!cms.loaded || !cms.sensei || cms.sensei.length === 0) return null;
-  const people = cms.sensei.map(x => ({
+  const people = (cms.sensei || []).map(x => ({
     name: x.name,
     title: x.title || '',
     bio: x.bio || '',
@@ -677,23 +675,29 @@ function ModernSensei() {
     photoUrl: x.photo_url || null,
   }));
   const [active, setActive] = React.useState(0);
-  React.useEffect(() => { if (active >= people.length) setActive(0); }, [people.length]);
   const touchStart = React.useRef(null);
   const mouseStart = React.useRef(null);
   const timer = React.useRef(null);
 
-  const next = () => setActive(a => (a + 1) % people.length);
-  const prev = () => setActive(a => (a - 1 + people.length) % people.length);
+  React.useEffect(() => { if (active >= people.length) setActive(0); }, [people.length]);
+
+  const next = () => setActive(a => people.length ? (a + 1) % people.length : 0);
+  const prev = () => setActive(a => people.length ? (a - 1 + people.length) % people.length : 0);
 
   const resetTimer = () => {
     clearInterval(timer.current);
-    timer.current = setInterval(next, 3500);
+    if (people.length > 1) timer.current = setInterval(next, 3500);
   };
 
   React.useEffect(() => {
+    if (people.length <= 1) return;
     timer.current = setInterval(next, 3500);
     return () => clearInterval(timer.current);
   }, [people.length]);
+
+  // Hide entirely until admin has added sensei — no placeholders on the public page.
+  // NOTE: guard runs AFTER all hooks so hook count stays stable across renders.
+  if (!cms.loaded || people.length === 0) return null;
 
   const go = (idx) => { setActive(idx); resetTimer(); };
 
