@@ -952,9 +952,10 @@ function ModernPricing() {
               <button
                 onClick={() => {
                   const user = localStorage.getItem('ez_user');
+                  const dest = `courses/detail.html?slug=${encodeURIComponent(plan.slug)}`;
                   window.location.href = user
-                    ? `courses/${plan.slug}.html`
-                    : `login.html?next=courses%2F${plan.slug}.html`;
+                    ? dest
+                    : `login.html?next=${encodeURIComponent(dest)}`;
                 }}
                 style={{ width: '100%', marginTop: 32, background: '#C8102E', color: '#fff', padding: '16px', borderRadius: 12, fontSize: 16, fontWeight: 700, boxShadow: '0 4px 0 #8a0b20', transition: 'all 0.15s', cursor: 'pointer', border: 'none' }}
                 onMouseOver={e => { e.currentTarget.style.transform = 'translateY(2px)'; e.currentTarget.style.boxShadow = '0 2px 0 #8a0b20'; }}

@@ -783,6 +783,32 @@
     color: #485f84;
     font-weight: 500;
   }
+  .mini-plan.disabled {
+    cursor: not-allowed;
+    background: #f8f6f1;
+    border-color: #e8e0d2;
+    opacity: 0.75;
+    pointer-events: none;
+  }
+  .mini-plan.disabled:hover {
+    border-color: #e8e0d2;
+    transform: none;
+    box-shadow: none;
+  }
+  .mini-plan.disabled .level { color: #8a7d66; }
+  .mini-plan .plan-status {
+    margin-top: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #b45309;
+    background: #fff4e5;
+    border: 1px solid #fde68a;
+    border-radius: 999px;
+    padding: 3px 10px;
+    display: inline-block;
+  }
 
   /* ── Stats Bar ── */
   .stats-bar {
@@ -2638,14 +2664,39 @@ async function fetchCmsCourses() {
   } catch { return (_cmsCourses = []); }
 }
 
-function renderPaywall() {
-  const localPlans = Object.entries(COURSE_CONTENT).map(([slug, c]) => `
-    <a href="courses/${slug}.html" class="mini-plan">
-      <div class="level">${slug.toUpperCase()}</div>
-      <div class="plan-name">${c.name}</div>
-      <div class="plan-price">${c.price}</div>
+function renderPaywallCard(c) {
+  const slug = c.slug;
+  const title = c.title || (typeof slug === 'string' ? slug.toUpperCase() : 'Kelas');
+  const priceLabel = c.price_label
+    || (c.price_idr ? 'Rp ' + Number(c.price_idr).toLocaleString('id-ID') : '');
+  const available = c.is_available !== false;
+  const href = `courses/detail.html?slug=${encodeURIComponent(slug)}`;
+  if (!available) {
+    return `
+      <div class="mini-plan disabled" aria-disabled="true" title="Segera hadir">
+        <div class="level">${(slug || '').toUpperCase()}</div>
+        <div class="plan-name">${title}</div>
+        <div class="plan-price">${priceLabel}</div>
+        <div class="plan-status">Segera hadir</div>
+      </div>
+    `;
+  }
+  return `
+    <a href="${href}" class="mini-plan">
+      <div class="level">${(slug || '').toUpperCase()}</div>
+      <div class="plan-name">${title}</div>
+      <div class="plan-price">${priceLabel}</div>
     </a>
-  `).join('');
+  `;
+}
+
+function renderPaywall() {
+  // Local fallback (shown instantly while CMS loads). Treated as available.
+  const localPlans = Object.entries(COURSE_CONTENT)
+    .map(([slug, c]) => renderPaywallCard({
+      slug, title: c.name, price_label: c.price, is_available: true,
+    }))
+    .join('');
 
   document.getElementById('app-root').innerHTML = `
     <main class="paywall">
@@ -2664,24 +2715,12 @@ function renderPaywall() {
   document.getElementById('sidebar-toggle')?.classList.remove('visible');
   closeSidebar();
 
-  // Hydrate paywall pricing from admin CMS.
+  // Hydrate paywall pricing from admin CMS (source of truth).
   fetchCmsCourses().then(courses => {
     if (!courses || courses.length === 0) return;
     const target = document.getElementById('paywall-plans');
     if (!target) return;
-    target.innerHTML = courses.map(c => {
-      const slug = c.slug;
-      const title = c.title || slug.toUpperCase();
-      const priceLabel = c.price_label
-        || (c.price_idr ? 'Rp ' + Number(c.price_idr).toLocaleString('id-ID') : '');
-      return `
-        <a href="courses/${slug}.html" class="mini-plan">
-          <div class="level">${slug.toUpperCase()}</div>
-          <div class="plan-name">${title}</div>
-          <div class="plan-price">${priceLabel}</div>
-        </a>
-      `;
-    }).join('');
+    target.innerHTML = courses.map(renderPaywallCard).join('');
   });
 }
 
@@ -3234,10 +3273,12 @@ function renderCourseTabs(activeSlug) {
   if (nav) nav.innerHTML = tabs;
 }
 
-window.switchCourse = (slug) => {
+window.switchCourse = async (slug) => {
   const enrolled = getEnrolledCourses();
   if (!enrolled.includes(slug)) {
-    window.location.href = `courses/${slug}.html`;
+    // Route through the universal checkout page. detail.html handles
+    // not-found / not-available states — keeps this guard simple.
+    window.location.href = `courses/detail.html?slug=${encodeURIComponent(slug)}`;
     return;
   }
   if (slug === currentState.course) { closeSidebar(); return; }
