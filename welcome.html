@@ -2576,10 +2576,10 @@ window.restartFlashcards = () => {
   renderFlashcard();
 };
 
-function handleNewEnrollment() {
+async function handleNewEnrollment() {
   const params = new URLSearchParams(window.location.search);
   const newCourse = params.get('new');
-  if (!newCourse || !COURSE_CONTENT[newCourse]) return null;
+  if (!newCourse) return null;
 
   const enrolled = getEnrolledCourses();
   if (!enrolled.includes(newCourse)) {
@@ -2587,12 +2587,25 @@ function handleNewEnrollment() {
     localStorage.setItem('ez_courses', JSON.stringify(enrolled));
   }
 
-  const banner = document.getElementById('success-banner');
-  document.getElementById('new-course-name').textContent = COURSE_CONTENT[newCourse].name;
-  banner.classList.add('show');
-  setTimeout(() => banner.classList.remove('show'), 6000);
+  // Resolve display name — prefer local content, fall back to CMS.
+  let displayName = COURSE_CONTENT[newCourse]?.name;
+  if (!displayName) {
+    try {
+      const courses = await fetchCmsCourses();
+      const cms = courses.find(c => c.slug === newCourse);
+      displayName = cms?.title || newCourse.toUpperCase();
+    } catch { displayName = newCourse.toUpperCase(); }
+  }
 
-  history.replaceState({}, '', `welcome.html?course=${newCourse}`);
+  const banner = document.getElementById('success-banner');
+  const nameEl = document.getElementById('new-course-name');
+  if (nameEl) nameEl.textContent = displayName;
+  if (banner) {
+    banner.classList.add('show');
+    setTimeout(() => banner.classList.remove('show'), 6000);
+  }
+
+  history.replaceState({}, '', `welcome.html?course=${encodeURIComponent(newCourse)}`);
   return newCourse;
 }
 
@@ -2726,9 +2739,35 @@ function renderPaywall() {
 
 let currentState = { course: null, moduleId: null, lessonId: null };
 
+function renderCmsOnlyCourseStub(courseSlug) {
+  const root = document.getElementById('app-root');
+  if (!root) return;
+  root.innerHTML = `
+    <main class="paywall">
+      <div class="paywall-inner">
+        <div class="paywall-lock" style="font-size:44px;">🎉</div>
+        <h1 id="cms-stub-title">Kelas ${courseSlug.toUpperCase()} — aktif</h1>
+        <p id="cms-stub-body">Pembayaran kamu tercatat. Konten pelajaran sedang disiapkan dan akan muncul di sini segera.</p>
+        <a href="https://wa.me/6281294894557" target="_blank" rel="noopener noreferrer" class="paywall-cta" style="background:#25D366;">
+          Hubungi kami di WhatsApp →
+        </a>
+      </div>
+    </main>
+  `;
+  document.getElementById('sidebar-toggle')?.classList.remove('visible');
+  closeSidebar();
+
+  fetchCmsCourses().then(courses => {
+    const cms = (courses || []).find(c => c.slug === courseSlug);
+    if (!cms) return;
+    const titleEl = document.getElementById('cms-stub-title');
+    if (titleEl) titleEl.textContent = `${cms.title || courseSlug.toUpperCase()} — aktif`;
+  });
+}
+
 function renderLearning(courseSlug) {
   const course = COURSE_CONTENT[courseSlug];
-  if (!course) return renderPaywall();
+  if (!course) return renderCmsOnlyCourseStub(courseSlug);
 
   if (!currentState.moduleId) {
     const progress = getProgress()[courseSlug] || {};
@@ -3260,14 +3299,18 @@ window.markCompleteAndNext = () => {
 
 function renderCourseTabs(activeSlug) {
   const enrolled = getEnrolledCourses();
-  const tabs = Object.entries(COURSE_CONTENT).map(([slug, c]) => {
+  // Union of local content slugs + enrolled slugs (CMS-only courses still show up).
+  const slugs = [...new Set([...Object.keys(COURSE_CONTENT), ...enrolled])];
+  const tabs = slugs.map(slug => {
+    const c = COURSE_CONTENT[slug];
     const isEnrolled = enrolled.includes(slug);
     const isActive = slug === activeSlug;
     const classes = ['course-tab'];
     if (isActive) classes.push('active');
     if (!isEnrolled) classes.push('locked');
     const lockIcon = !isEnrolled ? '<span class="lock-icon">🔒</span>' : '';
-    return `<button class="${classes.join(' ')}" onclick="switchCourse('${slug}')" title="${c.name} — ${c.tagline}">${slug.toUpperCase()}${lockIcon}</button>`;
+    const title = c ? `${c.name} — ${c.tagline}` : slug.toUpperCase();
+    return `<button class="${classes.join(' ')}" onclick="switchCourse('${slug}')" title="${title}">${slug.toUpperCase()}${lockIcon}</button>`;
   }).join('');
   const nav = document.getElementById('course-tabs');
   if (nav) nav.innerHTML = tabs;
@@ -3315,7 +3358,7 @@ window.switchCourse = async (slug) => {
   const userEmailEl = document.getElementById('user-email');
   if (userEmailEl) userEmailEl.textContent = session.email;
 
-  handleNewEnrollment();
+  await handleNewEnrollment();
 
   const enrolled = getEnrolledCourses();
   const params = new URLSearchParams(window.location.search);
