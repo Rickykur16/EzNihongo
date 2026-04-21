@@ -24,15 +24,18 @@
   } catch (e) {}
 })();
 
-// Authoritative path: once api-client loads, hit /api/enrollments/me. If the
-// server confirms at least one enrollment, redirect to welcome.html. Covers
-// new devices, cleared storage, and out-of-band enrollment (e.g. SQL grant).
+// Authoritative path: once api-client loads, hit /enrollments/me via ezApi
+// (which attaches the Bearer access token + auto-refreshes on 401). If the
+// server confirms at least one enrollment — including admin-implicit ones —
+// redirect to welcome.html. Covers new devices, cleared storage, and
+// out-of-band enrollment (e.g. SQL grant, admin login, post-login return
+// to landing).
 window.addEventListener('load', async () => {
   try {
-    if (typeof ezGetMe !== 'function') return;
+    if (typeof ezGetMe !== 'function' || typeof ezApi !== 'function') return;
     const user = await ezGetMe();
     if (!user) return;
-    const res = await fetch('/api/enrollments/me', { credentials: 'include' });
+    const res = await ezApi('/enrollments/me');
     if (!res.ok) return;
     const data = await res.json();
     const slugs = (data.enrollments || []).map(e => e.slug).filter(Boolean);
