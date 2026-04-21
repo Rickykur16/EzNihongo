@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { query } from '../db.js';
 import { requireAuth, asyncHandler } from '../middleware.js';
+import { isAdminEmail } from '../auth.js';
 
 const router = Router();
 
@@ -135,6 +136,10 @@ router.post('/enrollments', asyncHandler(async (req, res) => {
 }));
 
 // GET /api/enrollments/me
+// Admins get implicit access to every published course so they can preview
+// content and test the enrolled UX without needing a real enrollment row.
+// Useful while there's no payment gateway yet and admins need to inspect
+// student-side flows repeatedly.
 router.get('/enrollments/me', asyncHandler(async (req, res) => {
   const result = await query(
     `SELECT c.id, c.slug, c.title, c.description, c.level, c.thumbnail_url, e.enrolled_at
@@ -144,6 +149,19 @@ router.get('/enrollments/me', asyncHandler(async (req, res) => {
      ORDER BY e.enrolled_at DESC`,
     [req.user.id]
   );
+
+  if (isAdminEmail(req.user.email)) {
+    const all = await query(
+      `SELECT id, slug, title, description, level, thumbnail_url
+       FROM courses WHERE is_published = TRUE
+       ORDER BY sort_order ASC, created_at ASC`
+    );
+    const have = new Set(result.rows.map((r) => r.id));
+    for (const c of all.rows) {
+      if (!have.has(c.id)) result.rows.push({ ...c, enrolled_at: null });
+    }
+  }
+
   res.json({ enrollments: result.rows });
 }));
 
