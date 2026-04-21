@@ -667,15 +667,15 @@ function ModernAudience() {
 function ModernSensei() {
   const s = SHARED_CONTENT.sensei;
   const cms = React.useContext(CmsContext);
-  const people = (cms.sensei && cms.sensei.length > 0)
-    ? cms.sensei.map(x => ({
-        name: x.name,
-        title: x.title || '',
-        bio: x.bio || '',
-        tags: Array.isArray(x.tags) ? x.tags : [],
-        photoUrl: x.photo_url || null,
-      }))
-    : s.people;
+  // Hide entirely until admin has added sensei — no placeholders on the public page.
+  if (!cms.loaded || !cms.sensei || cms.sensei.length === 0) return null;
+  const people = cms.sensei.map(x => ({
+    name: x.name,
+    title: x.title || '',
+    bio: x.bio || '',
+    tags: Array.isArray(x.tags) ? x.tags : [],
+    photoUrl: x.photo_url || null,
+  }));
   const [active, setActive] = React.useState(0);
   React.useEffect(() => { if (active >= people.length) setActive(0); }, [people.length]);
   const touchStart = React.useRef(null);
