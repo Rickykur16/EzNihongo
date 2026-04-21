@@ -2103,21 +2103,10 @@ let session = JSON.parse(localStorage.getItem('ez_user') || 'null');
 if (!session) {
   window.location.replace('login.html?next=welcome.html');
 }
-
-// Verify with backend in background; if session invalid, bounce to login
-(async () => {
-  try {
-    const user = await ezGetMe();
-    if (!user) {
-      location.replace('login.html?next=welcome.html');
-      return;
-    }
-    const mirrored = JSON.parse(localStorage.getItem('ez_user') || 'null');
-    if (mirrored) session = mirrored;
-  } catch (e) {
-    location.replace('login.html?next=welcome.html');
-  }
-})();
+// NOTE: authoritative session check (ezGetMe) now lives inside the init IIFE
+// below so we can guarantee it finishes before any rendering decision. The
+// old parallel version raced the render path — a stale localStorage ez_user +
+// expired refresh cookie could flash paywall before the redirect fired.
 
 // ═══════════════════════════════════════════════
 // CONTENT DATA — source of truth is the admin CMS (/api/courses/:slug).
@@ -2244,7 +2233,11 @@ async function syncEnrollmentsFromServer() {
     const slugs = (data.enrollments || []).map(e => e.slug).filter(Boolean);
     localStorage.setItem('ez_courses', JSON.stringify(slugs));
     return slugs;
-  } catch {
+  } catch (err) {
+    // Let the caller decide what to do about expired sessions — otherwise we
+    // silently fall back to (possibly empty) localStorage and render the
+    // paywall even though the real problem is "please log in again."
+    if (err && err.message === 'AUTH_EXPIRED') throw err;
     // Offline / server hiccup — fall back to whatever we had cached so the
     // dashboard still renders. Access is revalidated on next successful sync.
     return getEnrolledCourses();
@@ -2818,6 +2811,7 @@ function renderPaywall() {
   // still render the shell and let the fallback fetch fill in below.
   const cmsList = Array.isArray(_cmsCourses) ? _cmsCourses : [];
   const plansHtml = cmsList.map(renderPaywallCard).join('');
+  const loggedInEmail = (session && session.email) || '';
 
   document.getElementById('app-root').innerHTML = `
     <main class="paywall">
@@ -2825,6 +2819,7 @@ function renderPaywall() {
         <div class="paywall-lock">🔒</div>
         <h1>Kamu belum memiliki akses kelas</h1>
         <p>Untuk mulai belajar, pilih kelas dan selesaikan pembayaran terlebih dahulu. Sekali bayar, akses konten 1 tahun penuh.</p>
+        ${loggedInEmail ? `<p style="font-size:13px;color:#8a7d66;margin-top:-10px;margin-bottom:20px;">Login sebagai <strong>${loggedInEmail}</strong> · <a href="#" onclick="event.preventDefault(); window.ezLogout();" style="color:#C8102E;">Ganti akun</a></p>` : ''}
         <a href="index.html#pricing" class="paywall-cta">Pilih Kelas Sekarang →</a>
 
         <div class="paywall-plans" id="paywall-plans">
@@ -3488,6 +3483,21 @@ window.switchCourse = async (slug) => {
 (async () => {
   if (!session) return;
 
+  // Authoritative session check BEFORE rendering. Guarantees the rest of init
+  // sees a valid server-side session — or redirects cleanly to login. Without
+  // this the paywall would flash whenever localStorage ez_user outlived its
+  // refresh cookie (e.g. admin revoked access, or user cleared cookies only).
+  let verifiedUser = null;
+  try { verifiedUser = await window.ezGetMe(); } catch { verifiedUser = null; }
+  if (!verifiedUser) {
+    location.replace('login.html?next=welcome.html');
+    return;
+  }
+  // Pick up the freshly-mirrored ez_user so email/avatar reflect the actual
+  // logged-in account (not whoever was cached before).
+  const mirrored = JSON.parse(localStorage.getItem('ez_user') || 'null');
+  if (mirrored) session = mirrored;
+
   const userEmailEl = document.getElementById('user-email');
   if (userEmailEl) userEmailEl.textContent = session.email;
 
@@ -3503,6 +3513,14 @@ window.switchCourse = async (slug) => {
     await handleNewEnrollment();
     await hydrateEnrolledCourses();
   } catch (err) {
+    // Auth died between the ezGetMe check above and this sync (rare, but
+    // possible if the refresh cookie was invalidated mid-load). Bounce to
+    // login rather than rendering the paywall — paywall = "go buy a course",
+    // which is wrong messaging when the real issue is session expiry.
+    if (err && err.message === 'AUTH_EXPIRED') {
+      location.replace('login.html?next=welcome.html');
+      return;
+    }
     const root = document.getElementById('app-root');
     if (root) {
       root.innerHTML = `
