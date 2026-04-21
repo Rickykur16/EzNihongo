@@ -72,6 +72,67 @@ router.post('/progress/lesson/:lessonId/complete', asyncHandler(async (req, res)
   res.json({ ok: true, firstComplete: isFirstComplete });
 }));
 
+// POST /api/progress/lesson/:lessonId/quiz-attempt
+// Server-side quiz grading. This is the authoritative score — the client
+// may preview answers locally for responsiveness, but only this endpoint
+// writes to quiz_attempts.
+// Body: { answers: [{ questionId, optionId }] }
+// Returns: { score, total, correctByQuestion: { [questionId]: boolean } }
+router.post('/progress/lesson/:lessonId/quiz-attempt', asyncHandler(async (req, res) => {
+  const lessonId = req.params.lessonId;
+  const rawAnswers = Array.isArray(req.body?.answers) ? req.body.answers : [];
+
+  // One round-trip for the entire quiz: every question + every option.
+  // LEFT JOIN so questions with zero options still appear (and count toward total).
+  const rows = await query(
+    `SELECT q.id AS question_id, o.id AS option_id, o.is_correct
+     FROM quiz_questions q
+     LEFT JOIN quiz_options o ON o.question_id = q.id
+     WHERE q.lesson_id = $1`,
+    [lessonId]
+  );
+
+  if (rows.rows.length === 0) {
+    return res.status(404).json({ error: 'Lesson has no quiz' });
+  }
+
+  // optionId -> { questionId, isCorrect }. Credit only if the submitted
+  // option actually belongs to the claimed question, so a client can't
+  // cheat by pairing a correct optionId from Q1 with Q2's questionId.
+  const optionLookup = new Map();
+  const questionIds = new Set();
+  for (const r of rows.rows) {
+    questionIds.add(r.question_id);
+    if (r.option_id) {
+      optionLookup.set(r.option_id, {
+        questionId: r.question_id,
+        isCorrect: !!r.is_correct,
+      });
+    }
+  }
+  const total = questionIds.size;
+
+  const correctByQuestion = {};
+  for (const qid of questionIds) correctByQuestion[qid] = false;
+
+  for (const a of rawAnswers) {
+    const opt = optionLookup.get(a?.optionId);
+    if (!opt) continue;
+    if (opt.questionId !== a.questionId) continue;
+    if (opt.isCorrect) correctByQuestion[opt.questionId] = true;
+  }
+
+  const score = Object.values(correctByQuestion).filter(Boolean).length;
+
+  await query(
+    `INSERT INTO quiz_attempts (user_id, lesson_id, score, total_questions)
+     VALUES ($1, $2, $3, $4)`,
+    [req.user.id, lessonId, score, total]
+  );
+
+  res.json({ score, total, correctByQuestion });
+}));
+
 // PUT /api/progress/lesson/:lessonId/note
 router.put('/progress/lesson/:lessonId/note', asyncHandler(async (req, res) => {
   const note = typeof req.body?.note === 'string' ? req.body.note.slice(0, 10000) : '';

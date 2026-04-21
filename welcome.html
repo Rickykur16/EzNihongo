@@ -2162,8 +2162,15 @@ function transformQuestionFromApi(apiQ) {
   const jp = parts.slice(1).join('\n\n').trim() || '';
   const sorted = (apiQ.options || []).slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   const options = sorted.map((o) => o.option_text);
+  // Preserve DB UUIDs alongside local idx-based UI state so finishQuiz can
+  // POST authoritative {questionId, optionId} pairs for server-side grading.
+  const optionIds = sorted.map((o) => o.id);
   const correct = Math.max(0, sorted.findIndex((o) => o.is_correct));
-  return { q, jp, options, correct, explain: apiQ.explanation || '' };
+  return {
+    q, jp, options, optionIds, correct,
+    explain: apiQ.explanation || '',
+    questionId: apiQ.id,
+  };
 }
 
 async function hydrateEnrolledCourses() {
@@ -2438,7 +2445,7 @@ function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
     container.innerHTML = `<div class="quiz-container"><p style="color:#485f84;">Kuis belum tersedia.</p></div>`;
     return;
   }
-  quizState = { key, questions, idx: 0, correct: 0, answered: false, selected: -1 };
+  quizState = { key, questions, idx: 0, correct: 0, answered: false, selected: -1, answers: [] };
   renderQuizQuestion(container);
 }
 
@@ -2480,6 +2487,12 @@ window.pickQuizAnswer = (i) => {
   const isCorrect = i === q.correct;
   if (isCorrect) quizState.correct++;
 
+  // Record the answer for server-side grading at finishQuiz. Only pushed
+  // on the first pick per question (already guarded by `answered` above).
+  if (q.questionId && q.optionIds?.[i]) {
+    quizState.answers.push({ questionId: q.questionId, optionId: q.optionIds[i] });
+  }
+
   const opts = document.querySelectorAll('.quiz-option');
   opts.forEach((btn, bi) => {
     btn.classList.add('disabled');
@@ -2513,10 +2526,49 @@ window.nextQuizQuestion = () => {
   }
 };
 
-function finishQuiz() {
-  const { questions, correct, key } = quizState;
-  const total = questions.length;
-  const pct = Math.round((correct / total) * 100);
+async function finishQuiz() {
+  const { questions, correct, key, answers } = quizState;
+  const clientTotal = questions.length;
+
+  // Show a brief "Menyimpan..." state so the UI doesn't feel frozen while we
+  // POST. Falls back to client-computed score if the server is unreachable —
+  // user shouldn't be stuck with no result just because their internet
+  // hiccuped.
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="quiz-container">
+      <div class="quiz-results">
+        <h2>Menyimpan hasil...</h2>
+        <div class="score-circle">…</div>
+      </div>
+    </div>
+  `;
+
+  let score = correct;
+  let total = clientTotal;
+  try {
+    const [slug, mId, lId] = key.split(':');
+    const lesson = findLesson(slug, mId, lId);
+    const lessonApiId = lesson?.apiId;
+    if (lessonApiId && typeof window.ezApi === 'function') {
+      const res = await window.ezApi(`/progress/lesson/${encodeURIComponent(lessonApiId)}/quiz-attempt`, {
+        method: 'POST',
+        body: JSON.stringify({ answers }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.score === 'number' && typeof data.total === 'number' && data.total > 0) {
+          score = data.score;
+          total = data.total;
+        }
+      }
+    }
+  } catch (err) {
+    // AUTH_EXPIRED or network error — keep client-side score so the user still sees a result.
+    console.warn('quiz-attempt submission failed:', err?.message || err);
+  }
+
+  const pct = Math.round((score / total) * 100);
   const passed = pct >= 70;
   const bonusXP = passed ? 20 : 10;
 
@@ -2545,7 +2597,7 @@ function finishQuiz() {
         <h2>${passed ? 'Lulus!' : 'Coba Lagi'}</h2>
         <p class="subtitle">${passed ? 'Pemahaman kamu sudah cukup bagus.' : 'Minimal 70% untuk lulus. Ayo ulang!'}</p>
         <div class="score-circle">${pct}%</div>
-        <p style="color:#485f84;margin:0 0 12px;">Benar ${correct} dari ${total} soal</p>
+        <p style="color:#485f84;margin:0 0 12px;">Benar ${score} dari ${total} soal</p>
         <div class="xp-earned">⚡ +${bonusXP} XP</div>
         <div class="quiz-results-btns">
           <button class="btn-secondary" onclick="window.retryQuiz()">Ulang Kuis</button>
