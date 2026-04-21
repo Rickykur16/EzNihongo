@@ -821,18 +821,18 @@ function ModernPricing() {
   if (!plan) return null;
 
   return (
-    <section id="pricing" style={{ padding: 'clamp(60px, 10vw, 120px) 0', background: '#000', color: '#fff' }}>
+    <section id="pricing" style={{ padding: 'clamp(60px, 10vw, 120px) 0', background: 'linear-gradient(180deg, #faf7f2 0%, #ffffff 100%)', color: '#0a0a0a' }}>
       <div className="ez-container">
 
         {/* Header */}
         <div className="reveal" style={{ textAlign: 'center', marginBottom: 36 }}>
           <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.2em', color: '#C8102E', marginBottom: 16, textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace" }}>PRICING</div>
-          <h2 style={{ fontSize: 'clamp(32px, 5vw, 56px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.05 }}>Daftar &amp; Mulai Sekarang</h2>
+          <h2 style={{ fontSize: 'clamp(32px, 5vw, 56px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.05, color: '#0a0a0a' }}>Daftar &amp; Mulai Sekarang</h2>
         </div>
 
         {/* Beginner guide */}
-        <div className="reveal" style={{ maxWidth: 800, margin: '0 auto 32px', background: '#0f0f0f', border: '1px solid #1e1e1e', borderRadius: 14, padding: '16px 20px' }}>
-          <p style={{ fontSize: 13, color: '#666', marginBottom: 12, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>MULAI DARI MANA?</p>
+        <div className="reveal" style={{ maxWidth: 800, margin: '0 auto 32px', background: '#ffffff', border: '1px solid #e8e0d2', borderRadius: 14, padding: '16px 20px', boxShadow: '0 1px 3px rgba(15, 27, 60, 0.04)' }}>
+          <p style={{ fontSize: 13, color: '#8a7d66', marginBottom: 12, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>MULAI DARI MANA?</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
             {[
               { label: '🌱 Belum tahu hiragana sama sekali', plan: 'N5', slug: 'n5', color: '#16a34a' },
@@ -845,9 +845,9 @@ function ModernPricing() {
               return (
               <button key={i} onClick={() => switchPlan(g.idx)} style={{
                 display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRadius: 8,
-                background: active === g.idx ? `${g.color}18` : 'transparent',
-                border: `1.5px solid ${active === g.idx ? g.color : '#2a2a2a'}`,
-                color: active === g.idx ? g.color : '#555',
+                background: active === g.idx ? `${g.color}12` : '#fafafa',
+                border: `1.5px solid ${active === g.idx ? g.color : '#e5e5e5'}`,
+                color: active === g.idx ? g.color : '#525252',
                 fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
               }}>
                 {g.label}
@@ -862,10 +862,11 @@ function ModernPricing() {
         <div className="reveal" style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 36, flexWrap: 'wrap' }}>
           {plans.map((pl, i) => (
             <button key={i} onClick={() => switchPlan(i)} style={{
-              padding: '8px 20px', borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', border: 'none',
-              background: active === i ? '#C8102E' : '#111',
-              color: active === i ? '#fff' : '#555',
-              boxShadow: active === i ? '0 0 20px rgba(200,16,46,0.4)' : 'none',
+              padding: '8px 20px', borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
+              background: active === i ? '#C8102E' : '#ffffff',
+              color: active === i ? '#fff' : '#737373',
+              border: active === i ? '1px solid #C8102E' : '1px solid #e5e5e5',
+              boxShadow: active === i ? '0 6px 16px rgba(200,16,46,0.22)' : '0 1px 2px rgba(15,27,60,0.04)',
             }}>
               {pl.level}{i === 0 ? ' 👋' : pl.featured ? ' 🔥' : ''}
             </button>
@@ -879,11 +880,13 @@ function ModernPricing() {
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}>
           <div style={{
-            background: '#0c0c0c',
-            border: `1px solid ${plan.featured ? 'rgba(200,16,46,0.4)' : 'rgba(255,255,255,0.08)'}`,
+            background: '#ffffff',
+            border: `1px solid ${plan.featured ? 'rgba(200,16,46,0.35)' : '#ececec'}`,
             borderRadius: 20,
             padding: 'clamp(28px, 5vw, 52px)',
-            boxShadow: plan.featured ? '0 0 60px rgba(200,16,46,0.08), 0 40px 80px rgba(0,0,0,0.6)' : '0 40px 80px rgba(0,0,0,0.4)',
+            boxShadow: plan.featured
+              ? '0 24px 48px rgba(200,16,46,0.10), 0 12px 24px rgba(15,27,60,0.05)'
+              : '0 20px 40px rgba(15,27,60,0.06), 0 4px 12px rgba(15,27,60,0.04)',
             opacity: animating ? 0 : 1,
             transform: animating ? 'translateY(12px)' : 'translateY(0)',
             transition: 'opacity 0.22s ease, transform 0.22s ease',
@@ -892,16 +895,16 @@ function ModernPricing() {
             {plan.featured && (
               <div style={{ marginBottom: 20, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                 <div style={{ display: 'inline-block', background: '#C8102E', color: '#fff', fontSize: 11, fontWeight: 700, padding: '5px 14px', borderRadius: 999, letterSpacing: '0.06em' }}>⭐ PALING POPULER</div>
-                <div style={{ display: 'inline-block', background: '#1a1a1a', color: '#888', fontSize: 11, fontWeight: 600, padding: '5px 14px', borderRadius: 999, border: '1px solid #2a2a2a' }}>⚠️ Disarankan sudah menguasai N4 atau setara</div>
+                <div style={{ display: 'inline-block', background: '#fff4e5', color: '#b45309', fontSize: 11, fontWeight: 600, padding: '5px 14px', borderRadius: 999, border: '1px solid #fde68a' }}>⚠️ Disarankan sudah menguasai N4 atau setara</div>
               </div>
             )}
             {!plan.featured && active === 0 && (
               <div style={{ marginBottom: 20 }}>
-                <div style={{ display: 'inline-block', background: '#16a34a22', color: '#16a34a', fontSize: 11, fontWeight: 700, padding: '5px 14px', borderRadius: 999, border: '1px solid #16a34a44' }}>🌱 Mulai dari sini jika kamu pemula</div>
+                <div style={{ display: 'inline-block', background: '#dcfce7', color: '#15803d', fontSize: 11, fontWeight: 700, padding: '5px 14px', borderRadius: 999, border: '1px solid #86efac' }}>🌱 Mulai dari sini jika kamu pemula</div>
               </div>
             )}
 
-            <div style={{ fontSize: 11, letterSpacing: '0.18em', color: '#555', marginBottom: 16, textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace" }}>
+            <div style={{ fontSize: 11, letterSpacing: '0.18em', color: '#8a7d66', marginBottom: 16, textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace" }}>
               {plan.name} · {plan.tagline}
             </div>
 
@@ -912,20 +915,20 @@ function ModernPricing() {
             )}
 
             {!plan.available && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '6px 14px', borderRadius: 999, background: 'rgba(251, 191, 36, 0.12)', border: '1px solid rgba(251, 191, 36, 0.4)', color: '#fbbf24', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace" }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '6px 14px', borderRadius: 999, background: '#fff4e5', border: '1px solid #fde68a', color: '#b45309', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace" }}>
                 ⏳ Segera Hadir
               </div>
             )}
 
-            <div style={{ fontSize: 'clamp(44px, 8vw, 80px)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 36 }}>
-              {plan.price} <span style={{ fontSize: 'clamp(14px, 2vw, 18px)', fontWeight: 400, color: '#444' }}>{plan.period}</span>
+            <div style={{ fontSize: 'clamp(44px, 8vw, 80px)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 36, color: '#0a0a0a' }}>
+              {plan.price} <span style={{ fontSize: 'clamp(14px, 2vw, 18px)', fontWeight: 400, color: '#a3a3a3' }}>{plan.period}</span>
             </div>
 
             {/* Divider */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
-              <div style={{ flex: 1, height: 1, background: '#1a1a1a' }} />
+              <div style={{ flex: 1, height: 1, background: '#ececec' }} />
               <span style={{ color: '#C8102E', fontSize: 18 }}>✦</span>
-              <div style={{ flex: 1, height: 1, background: '#1a1a1a' }} />
+              <div style={{ flex: 1, height: 1, background: '#ececec' }} />
             </div>
 
             {/* Features */}
@@ -934,12 +937,12 @@ function ModernPricing() {
               const highlight = words.slice(0, 3).join(' ');
               const rest = words.slice(3).join(' ');
               return (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderBottom: i < plan.features.length - 1 ? '1px solid #141414' : 'none', gap: 16 }}>
-                  <p style={{ fontSize: 'clamp(13px, 1.8vw, 16px)', lineHeight: 1.6, color: '#888' }}>
-                    <span style={{ color: '#E8414F', fontWeight: 600 }}>{highlight}</span>{rest ? ' ' + rest : ''}
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderBottom: i < plan.features.length - 1 ? '1px solid #f0f0f0' : 'none', gap: 16 }}>
+                  <p style={{ fontSize: 'clamp(13px, 1.8vw, 16px)', lineHeight: 1.6, color: '#525252' }}>
+                    <span style={{ color: '#0a0a0a', fontWeight: 700 }}>{highlight}</span>{rest ? ' ' + rest : ''}
                   </p>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: plan.featured ? '#C8102E' : '#1e1e1e', border: plan.featured ? 'none' : '1px solid #333', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span style={{ color: plan.featured ? '#fff' : '#555', fontSize: 13, fontWeight: 700 }}>✓</span>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: plan.featured ? '#C8102E' : '#f5f5f5', border: plan.featured ? 'none' : '1px solid #e5e5e5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ color: plan.featured ? '#fff' : '#525252', fontSize: 13, fontWeight: 700 }}>✓</span>
                   </div>
                 </div>
               );
@@ -961,7 +964,7 @@ function ModernPricing() {
             ) : (
               <button
                 disabled
-                style={{ width: '100%', marginTop: 32, background: '#1a1a1a', color: '#666', padding: '16px', borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: 'not-allowed', border: '1px solid #2a2a2a' }}>
+                style={{ width: '100%', marginTop: 32, background: '#f5f5f5', color: '#a3a3a3', padding: '16px', borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: 'not-allowed', border: '1px solid #e5e5e5' }}>
                 Belum Tersedia
               </button>
             )}
@@ -970,12 +973,12 @@ function ModernPricing() {
           {/* Dot indicators */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 24 }}>
             {plans.map((_, i) => (
-              <button key={i} onClick={() => switchPlan(i)} style={{ width: active === i ? 24 : 8, height: 8, borderRadius: 999, background: active === i ? '#C8102E' : '#333', border: 'none', cursor: 'pointer', transition: 'all 0.3s', padding: 0 }} />
+              <button key={i} onClick={() => switchPlan(i)} style={{ width: active === i ? 24 : 8, height: 8, borderRadius: 999, background: active === i ? '#C8102E' : '#d4d4d4', border: 'none', cursor: 'pointer', transition: 'all 0.3s', padding: 0 }} />
             ))}
           </div>
         </div>
 
-        <p style={{ textAlign: 'center', fontSize: 13, color: '#2a2a2a', maxWidth: 680, margin: '40px auto 0', lineHeight: 1.6 }}>{p.note}</p>
+        <p style={{ textAlign: 'center', fontSize: 13, color: '#737373', maxWidth: 680, margin: '40px auto 0', lineHeight: 1.6 }}>{p.note}</p>
       </div>
     </section>
   );
