@@ -11,16 +11,37 @@ import discussionsRouter from './routes/discussions.js';
 import adminRouter from './routes/admin.js';
 import uploadsRouter from './routes/uploads.js';
 
+// Fail fast on missing env vars. Every deploy needs these; without them the
+// app silently degrades (bad auth, no DB, open CORS). Crashing at startup
+// with a clear message beats crashing later with a cryptic stack trace.
+const REQUIRED_ENV = [
+  'DATABASE_URL',
+  'JWT_ACCESS_SECRET',
+  'JWT_REFRESH_SECRET',
+  'GOOGLE_CLIENT_ID',
+  'ADMIN_EMAILS',
+  'ALLOWED_ORIGINS',
+];
+const missing = REQUIRED_ENV.filter((name) => !process.env[name]);
+if (missing.length > 0) {
+  console.error('FATAL: missing required env vars:', missing.join(', '));
+  console.error('Set these in backend/.env before starting the server.');
+  process.exit(1);
+}
+
 const app = express();
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+// Fail-closed: empty ALLOWED_ORIGINS now means reject all cross-origin
+// browser requests. Use explicit list in .env. Server-to-server / same-origin
+// (no Origin header) is still allowed below.
+const allowedOrigins = process.env.ALLOWED_ORIGINS
   .split(',').map((s) => s.trim()).filter(Boolean);
 
 app.set('trust proxy', 1);
 app.use(cors({
   origin: (origin, cb) => {
     if (!origin) return cb(null, true);
-    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
     return cb(new Error('Not allowed by CORS'));
   },
   credentials: true,
