@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
 import {
   verifyGoogleIdToken,
@@ -11,6 +12,18 @@ import {
 import { requireAuth, asyncHandler } from '../middleware.js';
 
 const router = Router();
+
+// Per-IP throttle on auth endpoints. Prevents brute-forcing Google token
+// replay, refresh-cookie probing, and logout spam. Server trusts the first
+// proxy hop (app.set('trust proxy', 1) in server.js), so req.ip reflects the
+// real client IP behind nginx.
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Too many auth requests, slow down' },
+});
 
 const REFRESH_COOKIE = 'ez_refresh';
 const REFRESH_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -47,7 +60,7 @@ function userResponse(user) {
 // body: { credential: google_id_token, fullName?: string }
 // - If user exists: login, ignore fullName
 // - If new user: fullName REQUIRED (user-typed display name)
-router.post('/google', asyncHandler(async (req, res) => {
+router.post('/google', authLimiter, asyncHandler(async (req, res) => {
   const { credential, fullName } = req.body || {};
   if (!credential) return res.status(400).json({ error: 'Missing credential' });
 
@@ -116,7 +129,7 @@ router.post('/google', asyncHandler(async (req, res) => {
 }));
 
 // POST /api/auth/refresh — use refresh cookie to get new access token
-router.post('/refresh', asyncHandler(async (req, res) => {
+router.post('/refresh', authLimiter, asyncHandler(async (req, res) => {
   const token = req.cookies?.[REFRESH_COOKIE];
   if (!token) return res.status(401).json({ error: 'No refresh token' });
 
@@ -160,7 +173,7 @@ router.post('/refresh', asyncHandler(async (req, res) => {
 }));
 
 // POST /api/auth/logout — invalidate session
-router.post('/logout', asyncHandler(async (req, res) => {
+router.post('/logout', authLimiter, asyncHandler(async (req, res) => {
   const token = req.cookies?.[REFRESH_COOKIE];
   if (token) {
     const tokenHash = hashToken(token);
