@@ -11,6 +11,9 @@
 </head>
 <body>
 <script>
+// Fast path: if localStorage remembers user + any enrolled course, skip the
+// landing render entirely and send them straight to dashboard. Server check
+// below catches the case where localStorage is stale or missing.
 (function() {
   try {
     const user = JSON.parse(localStorage.getItem('ez_user') || 'null');
@@ -21,11 +24,22 @@
   } catch (e) {}
 })();
 
-// Keep ez_user in sync with backend session once api-client loads
+// Authoritative path: once api-client loads, hit /api/enrollments/me. If the
+// server confirms at least one enrollment, redirect to welcome.html. Covers
+// new devices, cleared storage, and out-of-band enrollment (e.g. SQL grant).
 window.addEventListener('load', async () => {
   try {
     if (typeof ezGetMe !== 'function') return;
-    await ezGetMe();
+    const user = await ezGetMe();
+    if (!user) return;
+    const res = await fetch('/api/enrollments/me', { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const slugs = (data.enrollments || []).map(e => e.slug).filter(Boolean);
+    if (slugs.length > 0) {
+      localStorage.setItem('ez_courses', JSON.stringify(slugs));
+      window.location.replace('welcome.html');
+    }
   } catch (e) {}
 });
 </script>
