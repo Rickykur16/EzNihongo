@@ -42,6 +42,13 @@ CREATE TABLE IF NOT EXISTS courses (
   thumbnail_url TEXT,
   sort_order INT DEFAULT 0,
   is_published BOOLEAN DEFAULT FALSE,
+  price_idr INT,
+  price_label TEXT,
+  period_label TEXT,
+  tagline TEXT,
+  features JSONB NOT NULL DEFAULT '[]'::jsonb,
+  cta_label TEXT,
+  is_featured BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -76,6 +83,39 @@ CREATE TABLE IF NOT EXISTS lessons (
 );
 
 CREATE INDEX IF NOT EXISTS idx_lessons_module ON lessons(module_id, sort_order);
+
+-- ===== SENSEI & TESTIMONIALS =====
+
+CREATE TABLE IF NOT EXISTS sensei (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  title TEXT,
+  bio TEXT,
+  tags JSONB NOT NULL DEFAULT '[]'::jsonb,
+  photo_url TEXT,
+  sort_order INT NOT NULL DEFAULT 0,
+  is_published BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sensei_order ON sensei(sort_order);
+
+CREATE TABLE IF NOT EXISTS testimonials (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  location TEXT,
+  occupation TEXT,
+  photo_url TEXT,
+  quote TEXT,
+  course_slug TEXT,
+  sort_order INT NOT NULL DEFAULT 0,
+  is_published BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_testimonials_order ON testimonials(sort_order);
 
 -- ===== QUIZ =====
 

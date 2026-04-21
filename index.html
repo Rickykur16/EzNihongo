@@ -223,6 +223,37 @@ function useReveal() {
   });
 }
 
+// ============ CMS DATA (fetched from /api) ============
+
+const CmsContext = React.createContext({ courses: null, sensei: null, testimonials: null, loaded: false });
+
+function CmsProvider({ children }) {
+  const [data, setData] = React.useState({ courses: null, sensei: null, testimonials: null, loaded: false });
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [cRes, sRes, tRes] = await Promise.all([
+          fetch('/api/courses').then(r => r.ok ? r.json() : { courses: [] }).catch(() => ({ courses: [] })),
+          fetch('/api/sensei').then(r => r.ok ? r.json() : { sensei: [] }).catch(() => ({ sensei: [] })),
+          fetch('/api/testimonials').then(r => r.ok ? r.json() : { testimonials: [] }).catch(() => ({ testimonials: [] })),
+        ]);
+        if (cancelled) return;
+        setData({
+          courses: cRes.courses || [],
+          sensei: sRes.sensei || [],
+          testimonials: tRes.testimonials || [],
+          loaded: true,
+        });
+      } catch (e) {
+        if (!cancelled) setData({ courses: [], sensei: [], testimonials: [], loaded: true });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  return <CmsContext.Provider value={data}>{children}</CmsContext.Provider>;
+}
+
 function PhotoPlaceholder({ caption, aspectRatio = "4/3", tone = "warm", style = {} }) {
   const palettes = {
     warm: { a: "#e8dfd0", b: "#d9cdb8", text: "#5a4a35" },
@@ -635,13 +666,24 @@ function ModernAudience() {
 
 function ModernSensei() {
   const s = SHARED_CONTENT.sensei;
+  const cms = React.useContext(CmsContext);
+  const people = (cms.sensei && cms.sensei.length > 0)
+    ? cms.sensei.map(x => ({
+        name: x.name,
+        title: x.title || '',
+        bio: x.bio || '',
+        tags: Array.isArray(x.tags) ? x.tags : [],
+        photoUrl: x.photo_url || null,
+      }))
+    : s.people;
   const [active, setActive] = React.useState(0);
+  React.useEffect(() => { if (active >= people.length) setActive(0); }, [people.length]);
   const touchStart = React.useRef(null);
   const mouseStart = React.useRef(null);
   const timer = React.useRef(null);
 
-  const next = () => setActive(a => (a + 1) % s.people.length);
-  const prev = () => setActive(a => (a - 1 + s.people.length) % s.people.length);
+  const next = () => setActive(a => (a + 1) % people.length);
+  const prev = () => setActive(a => (a - 1 + people.length) % people.length);
 
   const resetTimer = () => {
     clearInterval(timer.current);
@@ -651,7 +693,7 @@ function ModernSensei() {
   React.useEffect(() => {
     timer.current = setInterval(next, 3500);
     return () => clearInterval(timer.current);
-  }, []);
+  }, [people.length]);
 
   const go = (idx) => { setActive(idx); resetTimer(); };
 
@@ -670,7 +712,7 @@ function ModernSensei() {
     mouseStart.current = null;
   };
 
-  const p = s.people[active];
+  const p = people[active] || people[0] || s.people[0];
 
   return (
     <section id="sensei" style={{ padding: 'clamp(60px, 10vw, 120px) 0', background: '#fafafa' }}>
@@ -688,7 +730,10 @@ function ModernSensei() {
 
           {/* Card */}
           <div style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', border: '1px solid #e5e5e5', boxShadow: '0 20px 60px rgba(0,0,0,0.07)', transition: 'all 0.4s ease' }}>
-            <PhotoPlaceholder caption={`photo: ${p.name.split(' ')[0]}-sensei headshot`} aspectRatio="4/3" tone="warm" style={{ borderRadius: 0 }} />
+            {p.photoUrl
+              ? <img src={p.photoUrl} alt={p.name} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }} />
+              : <PhotoPlaceholder caption={`photo: ${p.name.split(' ')[0]}-sensei headshot`} aspectRatio="4/3" tone="warm" style={{ borderRadius: 0 }} />
+            }
             <div style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
               <h3 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4, letterSpacing: '-0.02em' }}>{p.name}</h3>
               <div style={{ fontSize: 13, color: '#C8102E', fontWeight: 600, marginBottom: 14 }}>{p.title}</div>
@@ -707,7 +752,7 @@ function ModernSensei() {
               onMouseOver={e => { e.currentTarget.style.borderColor = '#C8102E'; e.currentTarget.style.color = '#C8102E'; }}
               onMouseOut={e => { e.currentTarget.style.borderColor = '#e5e5e5'; e.currentTarget.style.color = '#000'; }}>‹</button>
             <div style={{ display: 'flex', gap: 8 }}>
-              {s.people.map((_, i) => (
+              {people.map((_, i) => (
                 <button key={i} onClick={() => go(i)} style={{ width: active === i ? 24 : 8, height: 8, borderRadius: 999, background: active === i ? '#C8102E' : '#ddd', border: 'none', cursor: 'pointer', transition: 'all 0.3s', padding: 0 }} />
               ))}
             </div>
@@ -723,7 +768,23 @@ function ModernSensei() {
 
 function ModernPricing() {
   const p = SHARED_CONTENT.pricing;
-  const [active, setActive] = React.useState(4); // default SSW
+  const cms = React.useContext(CmsContext);
+  const plans = (cms.courses && cms.courses.length > 0)
+    ? cms.courses.map(c => ({
+        name: c.title,
+        level: c.level || c.slug?.toUpperCase() || '',
+        slug: c.slug,
+        price: c.price_label || '',
+        period: c.period_label || '',
+        tagline: c.tagline || '',
+        features: Array.isArray(c.features) ? c.features : [],
+        cta: c.cta_label || `Pilih ${c.title}`,
+        featured: !!c.is_featured,
+      }))
+    : p.plans;
+  const defaultIdx = Math.max(0, plans.findIndex(x => x.featured));
+  const [active, setActive] = React.useState(defaultIdx >= 0 ? defaultIdx : plans.length - 1);
+  React.useEffect(() => { if (active >= plans.length) setActive(0); }, [plans.length]);
   const [animating, setAnimating] = React.useState(false);
   const touchStart = React.useRef(null);
 
@@ -740,7 +801,7 @@ function ModernPricing() {
     if (touchStart.current === null) return;
     const diff = touchStart.current - e.changedTouches[0].clientX;
     if (Math.abs(diff) < 40) return;
-    if (diff > 0) switchPlan(Math.min(active + 1, p.plans.length - 1));
+    if (diff > 0) switchPlan(Math.min(active + 1, plans.length - 1));
     else switchPlan(Math.max(active - 1, 0));
     touchStart.current = null;
   };
@@ -750,12 +811,13 @@ function ModernPricing() {
     if (mouseStart.current === null) return;
     const diff = mouseStart.current - e.clientX;
     if (Math.abs(diff) < 40) { mouseStart.current = null; return; }
-    if (diff > 0) switchPlan(Math.min(active + 1, p.plans.length - 1));
+    if (diff > 0) switchPlan(Math.min(active + 1, plans.length - 1));
     else switchPlan(Math.max(active - 1, 0));
     mouseStart.current = null;
   };
 
-  const plan = p.plans[active];
+  const plan = plans[active] || plans[0];
+  if (!plan) return null;
 
   return (
     <section id="pricing" style={{ padding: 'clamp(60px, 10vw, 120px) 0', background: '#000', color: '#fff' }}>
@@ -772,10 +834,14 @@ function ModernPricing() {
           <p style={{ fontSize: 13, color: '#666', marginBottom: 12, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>MULAI DARI MANA?</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
             {[
-              { label: '🌱 Belum tahu hiragana sama sekali', plan: 'N5', idx: 0, color: '#16a34a' },
-              { label: '📗 Sudah lulus atau setara N5', plan: 'N4', idx: 1, color: '#2563eb' },
-              { label: '🎯 Ingin kerja ke Jepang sekarang', plan: 'SSW', idx: 4, color: '#C8102E' },
-            ].map((g, i) => (
+              { label: '🌱 Belum tahu hiragana sama sekali', plan: 'N5', slug: 'n5', color: '#16a34a' },
+              { label: '📗 Sudah lulus atau setara N5', plan: 'N4', slug: 'n4', color: '#2563eb' },
+              { label: '🎯 Ingin kerja ke Jepang sekarang', plan: 'SSW', slug: 'ssw', color: '#C8102E' },
+            ].map((g, i) => {
+              const idx = plans.findIndex(x => x.slug === g.slug);
+              if (idx < 0) return null;
+              g.idx = idx;
+              return (
               <button key={i} onClick={() => switchPlan(g.idx)} style={{
                 display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRadius: 8,
                 background: active === g.idx ? `${g.color}18` : 'transparent',
@@ -786,20 +852,21 @@ function ModernPricing() {
                 {g.label}
                 <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", opacity: 0.7 }}>→ {g.plan}</span>
               </button>
-            ))}
+              );
+            })}
           </div>
         </div>
 
         {/* Tab selector */}
         <div className="reveal" style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 36, flexWrap: 'wrap' }}>
-          {p.plans.map((pl, i) => (
+          {plans.map((pl, i) => (
             <button key={i} onClick={() => switchPlan(i)} style={{
               padding: '8px 20px', borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', border: 'none',
               background: active === i ? '#C8102E' : '#111',
               color: active === i ? '#fff' : '#555',
               boxShadow: active === i ? '0 0 20px rgba(200,16,46,0.4)' : 'none',
             }}>
-              {pl.level}{i === 0 ? ' 👋' : i === 4 ? ' 🔥' : ''}
+              {pl.level}{i === 0 ? ' 👋' : pl.featured ? ' 🔥' : ''}
             </button>
           ))}
         </div>
@@ -887,13 +954,51 @@ function ModernPricing() {
 
           {/* Dot indicators */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 24 }}>
-            {p.plans.map((_, i) => (
+            {plans.map((_, i) => (
               <button key={i} onClick={() => switchPlan(i)} style={{ width: active === i ? 24 : 8, height: 8, borderRadius: 999, background: active === i ? '#C8102E' : '#333', border: 'none', cursor: 'pointer', transition: 'all 0.3s', padding: 0 }} />
             ))}
           </div>
         </div>
 
         <p style={{ textAlign: 'center', fontSize: 13, color: '#2a2a2a', maxWidth: 680, margin: '40px auto 0', lineHeight: 1.6 }}>{p.note}</p>
+      </div>
+    </section>
+  );
+}
+
+function ModernTestimonials() {
+  const cms = React.useContext(CmsContext);
+  const items = (cms.testimonials && cms.testimonials.length > 0) ? cms.testimonials : [];
+  if (!items.length) return null;
+
+  return (
+    <section id="testimoni" style={{ padding: 'clamp(60px, 10vw, 120px) 0', background: '#fafafa' }}>
+      <div className="ez-container">
+        <div className="reveal" style={{ textAlign: 'center', marginBottom: 48 }}>
+          <div style={{ display: 'inline-block', padding: '5px 12px', background: '#fff0f2', color: '#C8102E', borderRadius: 6, fontSize: 12, fontWeight: 600, letterSpacing: '0.05em', marginBottom: 16 }}>TESTIMONI SISWA DI JEPANG</div>
+          <h2 style={{ fontSize: 'clamp(26px, 4vw, 48px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.03em', marginBottom: 12, textWrap: 'balance' }}>Mereka sudah di Jepang.<br/>Sekarang giliran kamu.</h2>
+          <p style={{ fontSize: 17, color: '#525252', lineHeight: 1.6, maxWidth: 640, margin: '0 auto' }}>Cerita nyata dari alumni EzNihongo yang sekarang bekerja, kuliah, dan membangun hidup di Jepang.</p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, maxWidth: 1120, margin: '0 auto' }}>
+          {items.map((t, i) => (
+            <div key={t.id || i} className="reveal" style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', border: '1px solid #e5e5e5', boxShadow: '0 10px 40px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column' }}>
+              {t.photo_url
+                ? <img src={t.photo_url} alt={t.name} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }} />
+                : <PhotoPlaceholder caption={`photo: ${t.name} di ${t.location || 'Jepang'}`} aspectRatio="4/3" tone="warm" style={{ borderRadius: 0 }} />
+              }
+              <div style={{ padding: 'clamp(20px, 3vw, 28px)', display: 'flex', flexDirection: 'column', gap: 14, flex: 1 }}>
+                <div style={{ fontSize: 28, color: '#C8102E', fontWeight: 800, lineHeight: 1, fontFamily: 'Georgia, serif' }}>"</div>
+                <p style={{ fontSize: 15, color: '#262626', lineHeight: 1.65, flex: 1, margin: 0 }}>{t.quote}</p>
+                <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 14, marginTop: 4 }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#0a0a0a', letterSpacing: '-0.01em' }}>{t.name}</div>
+                  {t.occupation && <div style={{ fontSize: 13, color: '#C8102E', fontWeight: 600, marginTop: 2 }}>{t.occupation}</div>}
+                  {t.location && <div style={{ fontSize: 12, color: '#737373', marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>📍 {t.location}</div>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -1273,6 +1378,7 @@ function App() {
         <ModernStory />
       </div>
       <ModernSensei />
+      <ModernTestimonials />
       <ModernPricing />
       <ModernFAQ />
       <ModernJoinCTA />
@@ -1281,7 +1387,9 @@ function App() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <CmsProvider><App /></CmsProvider>
+);
 </script>
 
 </body>

@@ -2615,8 +2615,19 @@ setInterval(refreshGreetingBanner, 60 * 1000);
 // ═══════════════════════════════════════════════
 // RENDER
 // ═══════════════════════════════════════════════
+let _cmsCourses = null;
+async function fetchCmsCourses() {
+  if (_cmsCourses) return _cmsCourses;
+  try {
+    const res = await fetch('/api/courses');
+    if (!res.ok) return (_cmsCourses = []);
+    const data = await res.json();
+    return (_cmsCourses = Array.isArray(data.courses) ? data.courses : []);
+  } catch { return (_cmsCourses = []); }
+}
+
 function renderPaywall() {
-  const miniPlans = Object.entries(COURSE_CONTENT).map(([slug, c]) => `
+  const localPlans = Object.entries(COURSE_CONTENT).map(([slug, c]) => `
     <a href="courses/${slug}.html" class="mini-plan">
       <div class="level">${slug.toUpperCase()}</div>
       <div class="plan-name">${c.name}</div>
@@ -2632,14 +2643,34 @@ function renderPaywall() {
         <p>Untuk mulai belajar, pilih kelas dan selesaikan pembayaran terlebih dahulu. Sekali bayar, akses konten 1 tahun penuh.</p>
         <a href="index.html#pricing" class="paywall-cta">Pilih Kelas Sekarang →</a>
 
-        <div class="paywall-plans">
-          ${miniPlans}
+        <div class="paywall-plans" id="paywall-plans">
+          ${localPlans}
         </div>
       </div>
     </main>
   `;
   document.getElementById('sidebar-toggle')?.classList.remove('visible');
   closeSidebar();
+
+  // Hydrate paywall pricing from admin CMS.
+  fetchCmsCourses().then(courses => {
+    if (!courses || courses.length === 0) return;
+    const target = document.getElementById('paywall-plans');
+    if (!target) return;
+    target.innerHTML = courses.map(c => {
+      const slug = c.slug;
+      const title = c.title || slug.toUpperCase();
+      const priceLabel = c.price_label
+        || (c.price_idr ? 'Rp ' + Number(c.price_idr).toLocaleString('id-ID') : '');
+      return `
+        <a href="courses/${slug}.html" class="mini-plan">
+          <div class="level">${slug.toUpperCase()}</div>
+          <div class="plan-name">${title}</div>
+          <div class="plan-price">${priceLabel}</div>
+        </a>
+      `;
+    }).join('');
+  });
 }
 
 let currentState = { course: null, moduleId: null, lessonId: null };

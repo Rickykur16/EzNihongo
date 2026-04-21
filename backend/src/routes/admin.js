@@ -17,18 +17,32 @@ router.get('/courses', asyncHandler(async (req, res) => {
 }));
 
 router.post('/courses', asyncHandler(async (req, res) => {
-  const { slug, title, description, level, thumbnailUrl, sortOrder, isPublished } = req.body || {};
+  const {
+    slug, title, description, level, thumbnailUrl, sortOrder, isPublished,
+    priceIdr, priceLabel, periodLabel, tagline, features, ctaLabel, isFeatured,
+  } = req.body || {};
   if (!slug || !title) return res.status(400).json({ error: 'slug and title required' });
   const result = await query(
-    `INSERT INTO courses (slug, title, description, level, thumbnail_url, sort_order, is_published)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-    [slug, title, description || null, level || null, thumbnailUrl || null, sortOrder || 0, !!isPublished]
+    `INSERT INTO courses
+       (slug, title, description, level, thumbnail_url, sort_order, is_published,
+        price_idr, price_label, period_label, tagline, features, cta_label, is_featured)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+    [
+      slug, title, description || null, level || null, thumbnailUrl || null,
+      sortOrder || 0, !!isPublished,
+      priceIdr || null, priceLabel || null, periodLabel || null, tagline || null,
+      JSON.stringify(Array.isArray(features) ? features : []),
+      ctaLabel || null, !!isFeatured,
+    ]
   );
   res.status(201).json({ course: result.rows[0] });
 }));
 
 router.put('/courses/:id', asyncHandler(async (req, res) => {
-  const { slug, title, description, level, thumbnailUrl, sortOrder, isPublished } = req.body || {};
+  const {
+    slug, title, description, level, thumbnailUrl, sortOrder, isPublished,
+    priceIdr, priceLabel, periodLabel, tagline, features, ctaLabel, isFeatured,
+  } = req.body || {};
   const result = await query(
     `UPDATE courses SET
        slug = COALESCE($2, slug),
@@ -37,9 +51,22 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
        level = COALESCE($5, level),
        thumbnail_url = COALESCE($6, thumbnail_url),
        sort_order = COALESCE($7, sort_order),
-       is_published = COALESCE($8, is_published)
+       is_published = COALESCE($8, is_published),
+       price_idr = COALESCE($9, price_idr),
+       price_label = COALESCE($10, price_label),
+       period_label = COALESCE($11, period_label),
+       tagline = COALESCE($12, tagline),
+       features = COALESCE($13::jsonb, features),
+       cta_label = COALESCE($14, cta_label),
+       is_featured = COALESCE($15, is_featured),
+       updated_at = NOW()
      WHERE id = $1 RETURNING *`,
-    [req.params.id, slug, title, description, level, thumbnailUrl, sortOrder, isPublished]
+    [
+      req.params.id, slug, title, description, level, thumbnailUrl, sortOrder, isPublished,
+      priceIdr, priceLabel, periodLabel, tagline,
+      Array.isArray(features) ? JSON.stringify(features) : null,
+      ctaLabel, isFeatured,
+    ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ course: result.rows[0] });
@@ -206,6 +233,102 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
 
 router.delete('/quiz-questions/:id', asyncHandler(async (req, res) => {
   await query(`DELETE FROM quiz_questions WHERE id = $1`, [req.params.id]);
+  res.json({ ok: true });
+}));
+
+// ===== SENSEI =====
+
+router.get('/sensei', asyncHandler(async (req, res) => {
+  const result = await query(`SELECT * FROM sensei ORDER BY sort_order ASC, created_at ASC`);
+  res.json({ sensei: result.rows });
+}));
+
+router.post('/sensei', asyncHandler(async (req, res) => {
+  const { name, title, bio, tags, photoUrl, sortOrder, isPublished } = req.body || {};
+  if (!name) return res.status(400).json({ error: 'name required' });
+  const result = await query(
+    `INSERT INTO sensei (name, title, bio, tags, photo_url, sort_order, is_published)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+    [
+      name, title || null, bio || null,
+      JSON.stringify(Array.isArray(tags) ? tags : []),
+      photoUrl || null, sortOrder || 0, isPublished !== false,
+    ]
+  );
+  res.status(201).json({ sensei: result.rows[0] });
+}));
+
+router.put('/sensei/:id', asyncHandler(async (req, res) => {
+  const { name, title, bio, tags, photoUrl, sortOrder, isPublished } = req.body || {};
+  const result = await query(
+    `UPDATE sensei SET
+       name = COALESCE($2, name),
+       title = COALESCE($3, title),
+       bio = COALESCE($4, bio),
+       tags = COALESCE($5::jsonb, tags),
+       photo_url = COALESCE($6, photo_url),
+       sort_order = COALESCE($7, sort_order),
+       is_published = COALESCE($8, is_published),
+       updated_at = NOW()
+     WHERE id = $1 RETURNING *`,
+    [
+      req.params.id, name, title, bio,
+      Array.isArray(tags) ? JSON.stringify(tags) : null,
+      photoUrl, sortOrder, isPublished,
+    ]
+  );
+  if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ sensei: result.rows[0] });
+}));
+
+router.delete('/sensei/:id', asyncHandler(async (req, res) => {
+  await query(`DELETE FROM sensei WHERE id = $1`, [req.params.id]);
+  res.json({ ok: true });
+}));
+
+// ===== TESTIMONIALS =====
+
+router.get('/testimonials', asyncHandler(async (req, res) => {
+  const result = await query(`SELECT * FROM testimonials ORDER BY sort_order ASC, created_at ASC`);
+  res.json({ testimonials: result.rows });
+}));
+
+router.post('/testimonials', asyncHandler(async (req, res) => {
+  const { name, location, occupation, photoUrl, quote, courseSlug, sortOrder, isPublished } = req.body || {};
+  if (!name) return res.status(400).json({ error: 'name required' });
+  const result = await query(
+    `INSERT INTO testimonials (name, location, occupation, photo_url, quote, course_slug, sort_order, is_published)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+    [
+      name, location || null, occupation || null, photoUrl || null,
+      quote || null, courseSlug || null, sortOrder || 0, isPublished !== false,
+    ]
+  );
+  res.status(201).json({ testimonial: result.rows[0] });
+}));
+
+router.put('/testimonials/:id', asyncHandler(async (req, res) => {
+  const { name, location, occupation, photoUrl, quote, courseSlug, sortOrder, isPublished } = req.body || {};
+  const result = await query(
+    `UPDATE testimonials SET
+       name = COALESCE($2, name),
+       location = COALESCE($3, location),
+       occupation = COALESCE($4, occupation),
+       photo_url = COALESCE($5, photo_url),
+       quote = COALESCE($6, quote),
+       course_slug = COALESCE($7, course_slug),
+       sort_order = COALESCE($8, sort_order),
+       is_published = COALESCE($9, is_published),
+       updated_at = NOW()
+     WHERE id = $1 RETURNING *`,
+    [req.params.id, name, location, occupation, photoUrl, quote, courseSlug, sortOrder, isPublished]
+  );
+  if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ testimonial: result.rows[0] });
+}));
+
+router.delete('/testimonials/:id', asyncHandler(async (req, res) => {
+  await query(`DELETE FROM testimonials WHERE id = $1`, [req.params.id]);
   res.json({ ok: true });
 }));
 

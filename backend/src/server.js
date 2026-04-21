@@ -9,6 +9,7 @@ import contentRouter from './routes/content.js';
 import progressRouter from './routes/progress.js';
 import discussionsRouter from './routes/discussions.js';
 import adminRouter from './routes/admin.js';
+import uploadsRouter from './routes/uploads.js';
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use('/api', contentRouter);
 app.use('/api', progressRouter);
 app.use('/api/discussions', discussionsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/uploads', uploadsRouter);
 
 // 404
 app.use('/api', (req, res) => {

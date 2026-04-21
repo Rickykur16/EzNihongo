@@ -167,6 +167,8 @@ function renderApp() {
       <button data-tab="courses">Kursus</button>
       <button data-tab="modules">Modul</button>
       <button data-tab="lessons">Pelajaran &amp; Kuis</button>
+      <button data-tab="sensei">Sensei</button>
+      <button data-tab="testimonials">Testimoni</button>
       <button data-tab="users">Pengguna</button>
       <button data-tab="discussions">Diskusi</button>
     </nav>
@@ -174,6 +176,8 @@ function renderApp() {
       <section class="pane" data-pane="courses"></section>
       <section class="pane" data-pane="modules"></section>
       <section class="pane" data-pane="lessons"></section>
+      <section class="pane" data-pane="sensei"></section>
+      <section class="pane" data-pane="testimonials"></section>
       <section class="pane" data-pane="users"></section>
       <section class="pane" data-pane="discussions"></section>
     </main>
@@ -194,6 +198,8 @@ function renderTab() {
   if (STATE.tab === 'courses') renderCourses();
   else if (STATE.tab === 'modules') renderModules();
   else if (STATE.tab === 'lessons') renderLessons();
+  else if (STATE.tab === 'sensei') { loadSensei().then(renderSenseiList); }
+  else if (STATE.tab === 'testimonials') { loadTestimonials().then(renderTestimonials); }
   else if (STATE.tab === 'users') { loadUsers().then(renderUsers); }
   else if (STATE.tab === 'discussions') { loadDiscussions().then(renderDiscussions); }
 }
@@ -234,7 +240,9 @@ function renderCourses() {
 }
 
 function courseFormHtml(c) {
-  c = c || { slug: '', title: '', description: '', level: '', thumbnail_url: '', sort_order: 0, is_published: false };
+  c = c || { slug: '', title: '', description: '', level: '', thumbnail_url: '', sort_order: 0, is_published: false,
+             price_idr: '', price_label: '', period_label: '/ bulan', tagline: '', features: [], cta_label: '', is_featured: false };
+  const featuresText = Array.isArray(c.features) ? c.features.join('\n') : '';
   return `
     <h3>${c.id ? 'Edit Kursus' : 'Kursus Baru'}</h3>
     <form id="course-form">
@@ -243,7 +251,27 @@ function courseFormHtml(c) {
         <div class="field"><label>Level</label><input name="level" value="${escapeHtml(c.level || '')}" placeholder="N5, N4..." /></div>
       </div>
       <div class="field"><label>Judul</label><input name="title" value="${escapeHtml(c.title)}" required /></div>
-      <div class="field"><label>Deskripsi</label><textarea name="description">${escapeHtml(c.description || '')}</textarea></div>
+      <div class="field"><label>Tagline (ringkas)</label><input name="tagline" value="${escapeHtml(c.tagline || '')}" placeholder="Dari nol — hiragana & dasar" /></div>
+      <div class="field"><label>Deskripsi (paragraf panjang)</label><textarea name="description">${escapeHtml(c.description || '')}</textarea></div>
+
+      <h4 style="margin-top:18px;">Harga &amp; Marketing</h4>
+      <div class="field-row">
+        <div class="field"><label>Harga (angka, IDR)</label><input type="number" name="priceIdr" value="${c.price_idr ?? ''}" placeholder="349000" /></div>
+        <div class="field"><label>Label harga (tampil)</label><input name="priceLabel" value="${escapeHtml(c.price_label || '')}" placeholder="Rp 349rb" /></div>
+        <div class="field"><label>Periode</label><input name="periodLabel" value="${escapeHtml(c.period_label || '/ bulan')}" /></div>
+      </div>
+      <div class="field"><label>Fitur (1 baris = 1 fitur)</label><textarea name="features" rows="5" placeholder="Akses modul N5 self-paced&#10;2 sesi live class / minggu">${escapeHtml(featuresText)}</textarea></div>
+      <div class="field-row">
+        <div class="field"><label>Teks tombol CTA</label><input name="ctaLabel" value="${escapeHtml(c.cta_label || '')}" placeholder="Pilih Kelas N5" /></div>
+        <div class="field"><label>Paling populer?</label>
+          <select name="isFeatured">
+            <option value="false" ${!c.is_featured ? 'selected' : ''}>Tidak</option>
+            <option value="true" ${c.is_featured ? 'selected' : ''}>Ya — tampilkan badge ⭐</option>
+          </select>
+        </div>
+      </div>
+
+      <h4 style="margin-top:18px;">Lain-lain</h4>
       <div class="field"><label>Thumbnail URL</label><input name="thumbnailUrl" value="${escapeHtml(c.thumbnail_url || '')}" /></div>
       <div class="field-row">
         <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${c.sort_order}" /></div>
@@ -274,6 +302,7 @@ window.editCourse = (id) => {
 async function submitCourse(e, id) {
   e.preventDefault();
   const fd = new FormData(e.target);
+  const features = (fd.get('features') || '').split('\n').map((s) => s.trim()).filter(Boolean);
   const body = {
     slug: fd.get('slug').trim(),
     title: fd.get('title').trim(),
@@ -282,6 +311,13 @@ async function submitCourse(e, id) {
     thumbnailUrl: fd.get('thumbnailUrl').trim() || null,
     sortOrder: Number(fd.get('sortOrder')) || 0,
     isPublished: fd.get('isPublished') === 'true',
+    priceIdr: Number(fd.get('priceIdr')) || null,
+    priceLabel: fd.get('priceLabel').trim() || null,
+    periodLabel: fd.get('periodLabel').trim() || null,
+    tagline: fd.get('tagline').trim() || null,
+    features,
+    ctaLabel: fd.get('ctaLabel').trim() || null,
+    isFeatured: fd.get('isFeatured') === 'true',
   };
   try {
     if (id) await api('/admin/courses/' + id, { method: 'PUT', body: JSON.stringify(body) });
@@ -674,6 +710,292 @@ async function submitQuestion(e, qid, lessonId, lessonTitle) {
     manageQuiz(lessonId, lessonTitle);
   } catch (err) { notify('Gagal simpan: ' + err.message, true); }
 }
+
+// ─────────────────────────────────────────────────────────────
+// IMAGE UPLOAD HELPER
+// ─────────────────────────────────────────────────────────────
+async function uploadImageFile(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await ezApi('/uploads', { method: 'POST', body: fd });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+  return data.url;
+}
+
+function photoFieldHtml(currentUrl, inputName) {
+  const preview = currentUrl
+    ? `<img src="${escapeHtml(currentUrl)}" alt="" style="max-height:80px;max-width:120px;border-radius:8px;border:1px solid #e5e5e5;object-fit:cover;" />`
+    : `<div style="width:120px;height:80px;border-radius:8px;border:1px dashed #d4d4d4;background:#fafafa;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;">belum ada foto</div>`;
+  return `
+    <div class="field" data-photo-field>
+      <label>Foto</label>
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <div data-photo-preview>${preview}</div>
+        <div style="flex:1;">
+          <input type="hidden" name="${inputName}" value="${escapeHtml(currentUrl || '')}" data-photo-url />
+          <input type="file" accept="image/*" data-photo-file style="font-size:13px;" />
+          <div style="font-size:12px;color:#999;margin-top:4px;" data-photo-status>Pilih file JPG/PNG/WEBP (max 5MB) lalu Simpan.</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function attachPhotoUploaders(formEl) {
+  formEl.querySelectorAll('[data-photo-field]').forEach((field) => {
+    const fileInput = field.querySelector('[data-photo-file]');
+    const urlInput = field.querySelector('[data-photo-url]');
+    const status = field.querySelector('[data-photo-status]');
+    const preview = field.querySelector('[data-photo-preview]');
+    if (!fileInput) return;
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      status.textContent = 'Mengunggah...';
+      try {
+        const url = await uploadImageFile(file);
+        urlInput.value = url;
+        preview.innerHTML = `<img src="${url}" alt="" style="max-height:80px;max-width:120px;border-radius:8px;border:1px solid #e5e5e5;object-fit:cover;" />`;
+        status.textContent = '✓ Foto siap disimpan.';
+        status.style.color = '#16a34a';
+      } catch (err) {
+        status.textContent = '✗ Gagal unggah: ' + err.message;
+        status.style.color = '#dc2626';
+      }
+    });
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// SENSEI
+// ─────────────────────────────────────────────────────────────
+async function loadSensei() {
+  try { const d = await api('/admin/sensei'); STATE.sensei = d.sensei || []; }
+  catch (e) { notify('Gagal load sensei: ' + e.message, true); }
+}
+
+function renderSenseiList() {
+  const pane = document.querySelector('[data-pane="sensei"]');
+  const rows = (STATE.sensei || []).map((s) => `
+    <tr>
+      <td>${s.photo_url ? `<img src="${escapeHtml(s.photo_url)}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;" />` : '—'}</td>
+      <td><strong>${escapeHtml(s.name)}</strong><br><span class="pill">${escapeHtml(s.title || '')}</span></td>
+      <td>${(s.tags || []).map(t => `<span class="pill">${escapeHtml(t)}</span>`).join(' ')}</td>
+      <td>${s.sort_order}</td>
+      <td>${s.is_published ? '<span class="badge badge-on">Live</span>' : '<span class="badge badge-off">Draft</span>'}</td>
+      <td class="actions">
+        <button class="btn btn-ghost" onclick="editSensei('${s.id}')">Edit</button>
+        <button class="btn btn-danger" onclick="deleteSensei('${s.id}', '${escapeHtml(s.name).replace(/'/g, "\\'")}')">Hapus</button>
+      </td>
+    </tr>
+  `).join('');
+  pane.innerHTML = `
+    <h2>Sensei</h2>
+    <p style="color:#666;font-size:13px;margin-top:-6px;">Tampil di landing page section "Sensei".</p>
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="newSensei()">+ Sensei baru</button>
+      <button class="btn btn-ghost" onclick="loadSensei().then(renderSenseiList)">↻ Refresh</button>
+    </div>
+    ${(STATE.sensei || []).length === 0
+      ? '<div class="empty">Belum ada sensei. Tambah satu untuk tampil di landing.</div>'
+      : `<table><thead><tr><th>Foto</th><th>Nama / jabatan</th><th>Tags</th><th>Urut</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table>`
+    }
+  `;
+}
+
+function senseiFormHtml(s) {
+  s = s || { name: '', title: '', bio: '', tags: [], photo_url: '', sort_order: 0, is_published: true };
+  const tagsText = Array.isArray(s.tags) ? s.tags.join(', ') : '';
+  return `
+    <h3>${s.id ? 'Edit Sensei' : 'Sensei Baru'}</h3>
+    <form id="sensei-form">
+      ${photoFieldHtml(s.photo_url, 'photoUrl')}
+      <div class="field-row">
+        <div class="field"><label>Nama</label><input name="name" value="${escapeHtml(s.name)}" required /></div>
+        <div class="field"><label>Jabatan</label><input name="title" value="${escapeHtml(s.title || '')}" placeholder="Lead Sensei · Native" /></div>
+      </div>
+      <div class="field"><label>Bio</label><textarea name="bio" rows="3">${escapeHtml(s.bio || '')}</textarea></div>
+      <div class="field"><label>Tags (pisah dengan koma)</label><input name="tags" value="${escapeHtml(tagsText)}" placeholder="JLPT, SSW, Business" /></div>
+      <div class="field-row">
+        <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${s.sort_order}" /></div>
+        <div class="field"><label>Status</label>
+          <select name="isPublished">
+            <option value="true" ${s.is_published !== false ? 'selected' : ''}>Tampilkan</option>
+            <option value="false" ${s.is_published === false ? 'selected' : ''}>Sembunyikan</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  `;
+}
+
+window.newSensei = () => {
+  openModal(senseiFormHtml(null));
+  const form = document.getElementById('sensei-form');
+  attachPhotoUploaders(form);
+  form.addEventListener('submit', (e) => submitSensei(e, null));
+};
+window.editSensei = (id) => {
+  const s = (STATE.sensei || []).find((x) => x.id === id);
+  openModal(senseiFormHtml(s));
+  const form = document.getElementById('sensei-form');
+  attachPhotoUploaders(form);
+  form.addEventListener('submit', (e) => submitSensei(e, id));
+};
+async function submitSensei(e, id) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const tags = (fd.get('tags') || '').split(',').map((t) => t.trim()).filter(Boolean);
+  const body = {
+    name: fd.get('name').trim(),
+    title: fd.get('title').trim() || null,
+    bio: fd.get('bio').trim() || null,
+    tags,
+    photoUrl: fd.get('photoUrl') || null,
+    sortOrder: Number(fd.get('sortOrder')) || 0,
+    isPublished: fd.get('isPublished') === 'true',
+  };
+  try {
+    if (id) await api('/admin/sensei/' + id, { method: 'PUT', body: JSON.stringify(body) });
+    else await api('/admin/sensei', { method: 'POST', body: JSON.stringify(body) });
+    closeModal();
+    await loadSensei(); renderSenseiList();
+    notify('Sensei tersimpan');
+  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+}
+window.deleteSensei = async (id, name) => {
+  if (!confirm(`Hapus sensei "${name}"?`)) return;
+  try {
+    await api('/admin/sensei/' + id, { method: 'DELETE' });
+    await loadSensei(); renderSenseiList();
+    notify('Sensei dihapus');
+  } catch (err) { notify('Gagal hapus: ' + err.message, true); }
+};
+
+// ─────────────────────────────────────────────────────────────
+// TESTIMONIALS
+// ─────────────────────────────────────────────────────────────
+async function loadTestimonials() {
+  try { const d = await api('/admin/testimonials'); STATE.testimonials = d.testimonials || []; }
+  catch (e) { notify('Gagal load testimoni: ' + e.message, true); }
+}
+
+function renderTestimonials() {
+  const pane = document.querySelector('[data-pane="testimonials"]');
+  const rows = (STATE.testimonials || []).map((t) => `
+    <tr>
+      <td>${t.photo_url ? `<img src="${escapeHtml(t.photo_url)}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;" />` : '—'}</td>
+      <td><strong>${escapeHtml(t.name)}</strong>${t.occupation ? `<br><span class="pill">${escapeHtml(t.occupation)}</span>` : ''}</td>
+      <td>${escapeHtml(t.location || '—')}</td>
+      <td style="max-width:280px;font-size:13px;color:#555;">${escapeHtml((t.quote || '').slice(0, 120))}${(t.quote || '').length > 120 ? '…' : ''}</td>
+      <td>${t.sort_order}</td>
+      <td>${t.is_published ? '<span class="badge badge-on">Live</span>' : '<span class="badge badge-off">Draft</span>'}</td>
+      <td class="actions">
+        <button class="btn btn-ghost" onclick="editTestimonial('${t.id}')">Edit</button>
+        <button class="btn btn-danger" onclick="deleteTestimonial('${t.id}', '${escapeHtml(t.name).replace(/'/g, "\\'")}')">Hapus</button>
+      </td>
+    </tr>
+  `).join('');
+  pane.innerHTML = `
+    <h2>Testimoni Siswa</h2>
+    <p style="color:#666;font-size:13px;margin-top:-6px;">Tampil di landing page section "Testimoni".</p>
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="newTestimonial()">+ Testimoni baru</button>
+      <button class="btn btn-ghost" onclick="loadTestimonials().then(renderTestimonials)">↻ Refresh</button>
+    </div>
+    ${(STATE.testimonials || []).length === 0
+      ? '<div class="empty">Belum ada testimoni.</div>'
+      : `<table><thead><tr><th>Foto</th><th>Nama / profesi</th><th>Lokasi</th><th>Kutipan</th><th>Urut</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table>`
+    }
+  `;
+}
+
+function testimonialFormHtml(t) {
+  t = t || { name: '', location: '', occupation: '', photo_url: '', quote: '', course_slug: '', sort_order: 0, is_published: true };
+  const courseOpts = STATE.courses.map((c) =>
+    `<option value="${c.slug}" ${c.slug === t.course_slug ? 'selected' : ''}>${escapeHtml(c.title)}</option>`
+  ).join('');
+  return `
+    <h3>${t.id ? 'Edit Testimoni' : 'Testimoni Baru'}</h3>
+    <form id="testimonial-form">
+      ${photoFieldHtml(t.photo_url, 'photoUrl')}
+      <div class="field-row">
+        <div class="field"><label>Nama siswa</label><input name="name" value="${escapeHtml(t.name)}" required /></div>
+        <div class="field"><label>Profesi / jenis kerja / kuliah</label><input name="occupation" value="${escapeHtml(t.occupation || '')}" placeholder="SSW Kaigo · Osaka / Mahasiswa Waseda" /></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Lokasi (kota di Jepang)</label><input name="location" value="${escapeHtml(t.location || '')}" placeholder="Tokyo, Japan" /></div>
+        <div class="field"><label>Kelas yang diambil</label>
+          <select name="courseSlug">
+            <option value="">—</option>${courseOpts}
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Kutipan / cerita</label><textarea name="quote" rows="5" placeholder="Apa yang siswa bilang tentang pengalamannya">${escapeHtml(t.quote || '')}</textarea></div>
+      <div class="field-row">
+        <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${t.sort_order}" /></div>
+        <div class="field"><label>Status</label>
+          <select name="isPublished">
+            <option value="true" ${t.is_published !== false ? 'selected' : ''}>Tampilkan</option>
+            <option value="false" ${t.is_published === false ? 'selected' : ''}>Sembunyikan</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  `;
+}
+
+window.newTestimonial = () => {
+  openModal(testimonialFormHtml(null));
+  const form = document.getElementById('testimonial-form');
+  attachPhotoUploaders(form);
+  form.addEventListener('submit', (e) => submitTestimonial(e, null));
+};
+window.editTestimonial = (id) => {
+  const t = (STATE.testimonials || []).find((x) => x.id === id);
+  openModal(testimonialFormHtml(t));
+  const form = document.getElementById('testimonial-form');
+  attachPhotoUploaders(form);
+  form.addEventListener('submit', (e) => submitTestimonial(e, id));
+};
+async function submitTestimonial(e, id) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = {
+    name: fd.get('name').trim(),
+    location: fd.get('location').trim() || null,
+    occupation: fd.get('occupation').trim() || null,
+    photoUrl: fd.get('photoUrl') || null,
+    quote: fd.get('quote').trim() || null,
+    courseSlug: fd.get('courseSlug').trim() || null,
+    sortOrder: Number(fd.get('sortOrder')) || 0,
+    isPublished: fd.get('isPublished') === 'true',
+  };
+  try {
+    if (id) await api('/admin/testimonials/' + id, { method: 'PUT', body: JSON.stringify(body) });
+    else await api('/admin/testimonials', { method: 'POST', body: JSON.stringify(body) });
+    closeModal();
+    await loadTestimonials(); renderTestimonials();
+    notify('Testimoni tersimpan');
+  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+}
+window.deleteTestimonial = async (id, name) => {
+  if (!confirm(`Hapus testimoni "${name}"?`)) return;
+  try {
+    await api('/admin/testimonials/' + id, { method: 'DELETE' });
+    await loadTestimonials(); renderTestimonials();
+    notify('Testimoni dihapus');
+  } catch (err) { notify('Gagal hapus: ' + err.message, true); }
+};
 
 // ─────────────────────────────────────────────────────────────
 // USERS

@@ -7,7 +7,8 @@ const router = Router();
 // GET /api/courses — list published courses (public)
 router.get('/courses', asyncHandler(async (req, res) => {
   const result = await query(
-    `SELECT id, slug, title, description, level, thumbnail_url, sort_order
+    `SELECT id, slug, title, description, level, thumbnail_url, sort_order,
+            price_idr, price_label, period_label, tagline, features, cta_label, is_featured
      FROM courses
      WHERE is_published = TRUE
      ORDER BY sort_order ASC, created_at ASC`
@@ -117,6 +118,28 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
   }
 
   res.json({ lesson: response });
+}));
+
+// GET /api/sensei — public list of published sensei
+router.get('/sensei', asyncHandler(async (req, res) => {
+  const result = await query(
+    `SELECT id, name, title, bio, tags, photo_url, sort_order
+     FROM sensei
+     WHERE is_published = TRUE
+     ORDER BY sort_order ASC, created_at ASC`
+  );
+  res.json({ sensei: result.rows });
+}));
+
+// GET /api/testimonials — public list of published testimonials
+router.get('/testimonials', asyncHandler(async (req, res) => {
+  const result = await query(
+    `SELECT id, name, location, occupation, photo_url, quote, course_slug, sort_order
+     FROM testimonials
+     WHERE is_published = TRUE
+     ORDER BY sort_order ASC, created_at ASC`
+  );
+  res.json({ testimonials: result.rows });
 }));
 
 export default router;

@@ -7,7 +7,8 @@ let _ezRefreshPromise = null;
 
 async function _ezFetch(path, opts = {}) {
   const headers = { ...(opts.headers || {}) };
-  if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+  const isFormData = typeof FormData !== 'undefined' && opts.body instanceof FormData;
+  if (opts.body && !isFormData && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
   if (_ezAccessToken) headers['Authorization'] = 'Bearer ' + _ezAccessToken;
   return fetch(EZ_API_BASE + path, { ...opts, headers, credentials: 'include' });
 }
