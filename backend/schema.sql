@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS testimonials (
   photo_url TEXT,
   photo_position TEXT,
   quote TEXT,
-  course_slug TEXT,
+  course_slug TEXT REFERENCES courses(slug) ON DELETE SET NULL,
   sort_order INT NOT NULL DEFAULT 0,
   is_published BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -156,6 +156,7 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user ON quiz_attempts(user_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user_lesson ON quiz_attempts(user_id, lesson_id);
 
 -- ===== USER DATA =====
 
