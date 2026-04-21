@@ -155,20 +155,20 @@ a { color: inherit; text-decoration: none; }
   font-weight: 700;
 }
 .ez-cinematic-scene[data-tone="muted"] .ez-cinematic-line {
-  color: #8a7d66;
+  color: #6b5d4a;
   font-size: clamp(22px, 3.4vw, 38px);
-  font-weight: 400;
+  font-weight: 500;
   font-style: italic;
 }
 .ez-cinematic-scene[data-tone="cold"] .ez-cinematic-line {
-  color: #6b5d4a;
+  color: #4a3e2f;
   font-size: clamp(22px, 3.4vw, 38px);
-  font-weight: 400;
+  font-weight: 500;
 }
 .ez-cinematic-scene[data-tone="whisper"] .ez-cinematic-line {
-  color: #9c8b72;
+  color: #6b5d4a;
   font-size: clamp(20px, 3vw, 34px);
-  font-weight: 300;
+  font-weight: 500;
   letter-spacing: 0.005em;
   font-style: italic;
 }
@@ -185,8 +185,8 @@ a { color: inherit; text-decoration: none; }
   font-size: clamp(24px, 4vw, 44px);
 }
 .ez-cinematic-scene[data-tone="warm"] .ez-cinematic-line {
-  color: #b88a3a;
-  font-weight: 600;
+  color: #8a5f1f;
+  font-weight: 700;
   letter-spacing: -0.015em;
 }
 .ez-cinematic-scene[data-tone="declare"] .ez-cinematic-line {
@@ -277,13 +277,13 @@ a { color: inherit; text-decoration: none; }
 }
 
 @keyframes ez-cine-in {
-  0%   { opacity: 0; filter: blur(14px); transform: translateY(28px) scale(0.985); letter-spacing: 0.015em; }
-  55%  { opacity: 1; filter: blur(0.5px); }
+  0%   { opacity: 0; filter: blur(6px); transform: translateY(20px) scale(0.99); letter-spacing: 0.01em; }
+  40%  { opacity: 1; filter: blur(0); }
   100% { opacity: 1; filter: blur(0); transform: translateY(0) scale(1); letter-spacing: -0.02em; }
 }
 @keyframes ez-cine-out {
   0%   { opacity: 1; filter: blur(0); transform: translateY(0) scale(1); }
-  100% { opacity: 0; filter: blur(10px); transform: translateY(-22px) scale(1.015); }
+  100% { opacity: 0; filter: blur(4px); transform: translateY(-16px) scale(1.01); }
 }
 
 .ez-cinematic-badge {
@@ -291,23 +291,25 @@ a { color: inherit; text-decoration: none; }
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-  padding: 5px 14px;
-  background: #fff0f2;
-  color: #C8102E;
-  border-radius: 6px;
+  padding: 6px 16px;
+  background: #C8102E;
+  color: #fff;
+  border-radius: 999px;
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   z-index: 2;
   opacity: 0;
   animation: ez-cine-in 900ms ease-out 0.15s forwards;
   white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(200, 16, 46, 0.25);
 }
 .ez-cinematic-badge.tone-warm {
-  background: #fef7e6;
-  color: #b88a3a;
+  background: #b88a3a;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(184, 138, 58, 0.28);
 }
 .ez-cinematic-progress.tone-warm .ez-cinematic-dot.done { background: rgba(184, 138, 58, 0.55); }
 .ez-cinematic-progress.tone-warm .ez-cinematic-dot.active { background: #b88a3a; }
