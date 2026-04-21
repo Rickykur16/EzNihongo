@@ -822,40 +822,191 @@ async function uploadImageFile(file) {
   return data.url;
 }
 
-// Presets for CSS `object-position`. Horizontal is always center; the common
-// cropping problem is vertical (e.g. faces at top get cut when aspect-ratio
-// is 4/3). Custom values can still be stored via the API directly.
-const PHOTO_POSITION_PRESETS = [
-  { value: '',               label: 'Tengah (default)' },
-  { value: 'center top',     label: 'Atas (wajah / kepala di atas foto)' },
-  { value: 'center 25%',     label: 'Agak atas' },
-  { value: 'center 75%',     label: 'Agak bawah' },
-  { value: 'center bottom',  label: 'Bawah' },
-];
+// IG-style crop modal: drag to pan, wheel/slider to zoom. Output is always
+// cropped to 4:3 (1200x900 JPEG) so the landing page just displays the image
+// as-is. The photo_position DB column stays for backward compat with older
+// uploads — new crops send position='' so the image renders centered.
+function openCropModal({ imageSrc, onConfirm, onCancel }) {
+  const OUT_W = 1200, OUT_H = 900;          // output canvas size (4:3)
+  let FRAME_W = 480, FRAME_H = 360;         // measured from DOM after mount
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:16px;font-family:Manrope,sans-serif;';
+  overlay.innerHTML = `
+    <div style="background:#1a1a1a;padding:20px;border-radius:12px;max-width:540px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+      <h3 style="color:#fff;margin:0 0 4px;font-size:16px;">Atur posisi & zoom foto</h3>
+      <p style="color:#888;margin:0 0 14px;font-size:12px;">Geser untuk ubah posisi, scroll/slider untuk zoom. Area kotak yang disimpan.</p>
+      <div data-crop-box style="position:relative;width:480px;max-width:100%;aspect-ratio:4/3;overflow:hidden;background:#000;margin:0 auto;cursor:grab;touch-action:none;border-radius:8px;user-select:none;">
+        <img data-crop-img alt="" style="position:absolute;top:0;left:0;transform-origin:0 0;user-select:none;-webkit-user-drag:none;pointer-events:none;max-width:none;" />
+      </div>
+      <div style="margin:14px 0;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:11px;color:#888;">Zoom</span>
+        <input data-crop-zoom type="range" min="1" max="4" step="0.01" value="1" style="flex:1;accent-color:#a78bfa;" />
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button data-crop-cancel type="button" style="padding:8px 16px;background:transparent;color:#ccc;border:1px solid #333;border-radius:6px;cursor:pointer;font-size:13px;">Batal</button>
+        <button data-crop-confirm type="button" style="padding:8px 18px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;" disabled>Gunakan</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const box     = overlay.querySelector('[data-crop-box]');
+  const img     = overlay.querySelector('[data-crop-img]');
+  const zoomIn  = overlay.querySelector('[data-crop-zoom]');
+  const confirm = overlay.querySelector('[data-crop-confirm]');
+  const cancel  = overlay.querySelector('[data-crop-cancel]');
+
+  let natW = 0, natH = 0;
+  let minScale = 1, scale = 1;
+  let tx = 0, ty = 0;
+
+  function apply() {
+    img.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+  }
+  function clamp() {
+    const w = natW * scale, h = natH * scale;
+    tx = Math.min(0, Math.max(FRAME_W - w, tx));
+    ty = Math.min(0, Math.max(FRAME_H - h, ty));
+  }
+
+  function measure() {
+    const r = box.getBoundingClientRect();
+    FRAME_W = r.width;
+    FRAME_H = r.height;
+  }
+
+  img.addEventListener('load', () => {
+    natW = img.naturalWidth;
+    natH = img.naturalHeight;
+    measure();
+    minScale = Math.max(FRAME_W / natW, FRAME_H / natH);
+    scale = minScale;
+    zoomIn.min = String(minScale);
+    zoomIn.max = String(minScale * 4);
+    zoomIn.value = String(minScale);
+    tx = (FRAME_W - natW * scale) / 2;
+    ty = (FRAME_H - natH * scale) / 2;
+    clamp(); apply();
+    confirm.disabled = false;
+  });
+  window.addEventListener('resize', () => {
+    if (!natW) return;
+    measure();
+    minScale = Math.max(FRAME_W / natW, FRAME_H / natH);
+    if (scale < minScale) scale = minScale;
+    zoomIn.min = String(minScale);
+    zoomIn.max = String(minScale * 4);
+    clamp(); apply();
+  });
+  img.addEventListener('error', () => {
+    confirm.disabled = true;
+    overlay.querySelector('[data-crop-box]').innerHTML = '<div style="color:#ccc;padding:40px;text-align:center;font-size:13px;">Gagal memuat gambar.</div>';
+  });
+  // Only mark crossOrigin when loading from a different origin (for recrop).
+  try {
+    const u = new URL(imageSrc, location.href);
+    if (u.origin !== location.origin) img.crossOrigin = 'anonymous';
+  } catch {}
+  img.src = imageSrc;
+
+  // pan via pointer
+  let dragging = false, sx = 0, sy = 0, otx = 0, oty = 0;
+  box.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    box.setPointerCapture(e.pointerId);
+    box.style.cursor = 'grabbing';
+    sx = e.clientX; sy = e.clientY; otx = tx; oty = ty;
+  });
+  box.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    tx = otx + (e.clientX - sx);
+    ty = oty + (e.clientY - sy);
+    clamp(); apply();
+  });
+  const endPan = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    try { box.releasePointerCapture(e.pointerId); } catch {}
+    box.style.cursor = 'grab';
+  };
+  box.addEventListener('pointerup', endPan);
+  box.addEventListener('pointercancel', endPan);
+
+  // zoom via slider
+  zoomIn.addEventListener('input', () => {
+    const ns = parseFloat(zoomIn.value);
+    const cx = FRAME_W / 2, cy = FRAME_H / 2;
+    const ipx = (cx - tx) / scale, ipy = (cy - ty) / scale;
+    scale = ns;
+    tx = cx - ipx * scale;
+    ty = cy - ipy * scale;
+    clamp(); apply();
+  });
+
+  // zoom via wheel
+  box.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const factor = Math.exp(-e.deltaY * 0.0015);
+    const ns = Math.max(minScale, Math.min(minScale * 4, scale * factor));
+    const rect = box.getBoundingClientRect();
+    const px = e.clientX - rect.left, py = e.clientY - rect.top;
+    const ipx = (px - tx) / scale, ipy = (py - ty) / scale;
+    scale = ns;
+    tx = px - ipx * scale;
+    ty = py - ipy * scale;
+    clamp(); apply();
+    zoomIn.value = String(scale);
+  }, { passive: false });
+
+  function cleanup() { overlay.remove(); }
+
+  cancel.addEventListener('click', () => { cleanup(); onCancel && onCancel(); });
+
+  confirm.addEventListener('click', () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = OUT_W; canvas.height = OUT_H;
+    const ctx = canvas.getContext('2d');
+    // crop box in image coords
+    const sX = -tx / scale;
+    const sY = -ty / scale;
+    const sW = FRAME_W / scale;
+    const sH = FRAME_H / scale;
+    try {
+      ctx.drawImage(img, sX, sY, sW, sH, 0, 0, OUT_W, OUT_H);
+      canvas.toBlob((blob) => {
+        if (!blob) { notify('Gagal buat foto (mungkin CORS)', true); return; }
+        cleanup();
+        onConfirm(blob);
+      }, 'image/jpeg', 0.92);
+    } catch (err) {
+      notify('Gagal crop: ' + err.message, true);
+    }
+  });
+}
 
 function photoFieldHtml(currentUrl, inputName, currentPosition = '', positionInputName = 'photoPosition') {
   const pos = currentPosition || '';
-  const previewStyle = `max-height:140px;width:180px;aspect-ratio:4/3;border-radius:8px;border:1px solid #e5e5e5;object-fit:cover;object-position:${escapeHtml(pos || 'center')};display:block;`;
+  // Older photos may still have a legacy photo_position; honor it in the preview
+  // until the admin recrops. New crops always produce centered 4:3 output.
+  const previewStyle = `width:180px;aspect-ratio:4/3;border-radius:8px;border:1px solid #e5e5e5;object-fit:cover;object-position:${escapeHtml(pos || 'center')};display:block;`;
   const preview = currentUrl
     ? `<img src="${escapeHtml(currentUrl)}" alt="" style="${previewStyle}" data-photo-preview-img />`
-    : `<div style="width:180px;aspect-ratio:4/3;border-radius:8px;border:1px dashed #d4d4d4;background:#fafafa;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;">belum ada foto</div>`;
-  const presetOpts = PHOTO_POSITION_PRESETS.map(p =>
-    `<option value="${escapeHtml(p.value)}" ${p.value === pos ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
-  ).join('');
+    : `<div data-photo-empty style="width:180px;aspect-ratio:4/3;border-radius:8px;border:1px dashed #d4d4d4;background:#fafafa;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;">belum ada foto</div>`;
   return `
     <div class="field" data-photo-field>
       <label>Foto</label>
-      <div style="display:flex;gap:12px;align-items:flex-start;">
+      <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">
         <div data-photo-preview>${preview}</div>
-        <div style="flex:1;">
+        <div style="flex:1;min-width:200px;">
           <input type="hidden" name="${inputName}" value="${escapeHtml(currentUrl || '')}" data-photo-url />
-          <input type="file" accept="image/*" data-photo-file style="font-size:13px;" />
-          <div style="font-size:12px;color:#999;margin-top:4px;" data-photo-status>Pilih file JPG/PNG/WEBP (max 5MB) lalu Simpan.</div>
-          <div style="margin-top:10px;">
-            <label style="display:block;font-size:12px;color:#555;margin-bottom:4px;">Posisi foto (kalau kepotong)</label>
-            <select name="${positionInputName}" data-photo-position style="width:100%;font-size:13px;padding:6px 8px;">${presetOpts}</select>
-            <div style="font-size:11px;color:#999;margin-top:4px;">Atur kalau wajah/kepala kepotong di landing.</div>
+          <input type="hidden" name="${positionInputName}" value="${escapeHtml(pos)}" data-photo-position />
+          <input type="file" accept="image/*" data-photo-file style="display:none;" />
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-ghost" data-photo-pick style="font-size:12px;padding:6px 12px;">${currentUrl ? 'Ganti foto' : '+ Pilih foto'}</button>
+            <button type="button" class="btn btn-ghost" data-photo-recrop style="font-size:12px;padding:6px 12px;${currentUrl ? '' : 'display:none;'}">Crop ulang</button>
           </div>
+          <div style="font-size:12px;color:#999;margin-top:6px;" data-photo-status>JPG/PNG/WEBP · max 5MB · otomatis di-crop 4:3.</div>
         </div>
       </div>
     </div>
@@ -865,36 +1016,66 @@ function photoFieldHtml(currentUrl, inputName, currentPosition = '', positionInp
 function attachPhotoUploaders(formEl) {
   formEl.querySelectorAll('[data-photo-field]').forEach((field) => {
     const fileInput = field.querySelector('[data-photo-file]');
-    const urlInput = field.querySelector('[data-photo-url]');
-    const status = field.querySelector('[data-photo-status]');
-    const preview = field.querySelector('[data-photo-preview]');
-    const positionSelect = field.querySelector('[data-photo-position]');
-    const previewStyle = (pos) =>
-      `max-height:140px;width:180px;aspect-ratio:4/3;border-radius:8px;border:1px solid #e5e5e5;object-fit:cover;object-position:${pos || 'center'};display:block;`;
+    const urlInput  = field.querySelector('[data-photo-url]');
+    const posInput  = field.querySelector('[data-photo-position]');
+    const status    = field.querySelector('[data-photo-status]');
+    const preview   = field.querySelector('[data-photo-preview]');
+    const pickBtn   = field.querySelector('[data-photo-pick]');
+    const recropBtn = field.querySelector('[data-photo-recrop]');
 
-    const applyPosition = () => {
-      const img = preview.querySelector('[data-photo-preview-img]');
-      if (img) img.style.objectPosition = (positionSelect && positionSelect.value) || 'center';
-    };
-    if (positionSelect) positionSelect.addEventListener('change', applyPosition);
+    const previewStyle = 'width:180px;aspect-ratio:4/3;border-radius:8px;border:1px solid #e5e5e5;object-fit:cover;object-position:center;display:block;';
 
-    if (!fileInput) return;
-    fileInput.addEventListener('change', async () => {
-      const file = fileInput.files?.[0];
-      if (!file) return;
+    async function uploadCroppedBlob(blob) {
       status.textContent = 'Mengunggah...';
+      status.style.color = '#999';
       try {
+        const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
         const url = await uploadImageFile(file);
         urlInput.value = url;
-        const pos = (positionSelect && positionSelect.value) || '';
-        preview.innerHTML = `<img src="${url}" alt="" style="${previewStyle(pos)}" data-photo-preview-img />`;
+        posInput.value = ''; // crop sudah absolut — position tidak diperlukan
+        preview.innerHTML = `<img src="${url}" alt="" style="${previewStyle}" data-photo-preview-img />`;
+        pickBtn.textContent = 'Ganti foto';
+        if (recropBtn) recropBtn.style.display = '';
         status.textContent = '✓ Foto siap disimpan.';
         status.style.color = '#16a34a';
       } catch (err) {
         status.textContent = '✗ Gagal unggah: ' + err.message;
         status.style.color = '#dc2626';
       }
-    });
+    }
+
+    if (pickBtn) {
+      pickBtn.addEventListener('click', () => fileInput && fileInput.click());
+    }
+    if (recropBtn) {
+      recropBtn.addEventListener('click', () => {
+        if (!urlInput.value) return;
+        openCropModal({
+          imageSrc: urlInput.value,
+          onConfirm: (blob) => uploadCroppedBlob(blob),
+          onCancel: () => {},
+        });
+      });
+    }
+    if (fileInput) {
+      fileInput.addEventListener('change', () => {
+        const file = fileInput.files?.[0];
+        if (!file) return;
+        const src = URL.createObjectURL(file);
+        openCropModal({
+          imageSrc: src,
+          onConfirm: async (blob) => {
+            URL.revokeObjectURL(src);
+            await uploadCroppedBlob(blob);
+            fileInput.value = '';
+          },
+          onCancel: () => {
+            URL.revokeObjectURL(src);
+            fileInput.value = '';
+          },
+        });
+      });
+    }
   });
 }
 
