@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { query } from '../db.js';
 import { requireAuth, requireAdmin, asyncHandler } from '../middleware.js';
 
@@ -6,6 +8,30 @@ const router = Router();
 
 // Every route in this file requires admin
 router.use(requireAuth, requireAdmin);
+
+// Mirror of the config in routes/uploads.js. Kept here so DELETE handlers
+// can map a stored photo_url back to a filesystem path and unlink the file.
+const UPLOAD_DIR = process.env.UPLOAD_DIR || '/var/www/eznihongo/uploads';
+const UPLOAD_PUBLIC_BASE = process.env.UPLOAD_PUBLIC_BASE || '/uploads';
+
+// Unlink an uploaded photo from disk when its row is deleted. Ignores files
+// we didn't manage (external URLs), and tolerates ENOENT (file already gone).
+// path.basename strips any `..` shenanigans so we can't escape UPLOAD_DIR
+// even if photo_url in DB was tampered with.
+async function unlinkUploadByUrl(url) {
+  if (!url || typeof url !== 'string') return;
+  if (!url.startsWith(UPLOAD_PUBLIC_BASE + '/')) return;
+  const filename = path.basename(url);
+  if (!filename || filename === '.' || filename === '..') return;
+  const filePath = path.join(UPLOAD_DIR, filename);
+  try {
+    await fs.promises.unlink(filePath);
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      console.warn('unlinkUploadByUrl failed:', filePath, err.code || err.message);
+    }
+  }
+}
 
 // Slug: lowercase letters, digits, hyphens — no leading/trailing/double hyphens.
 // Must match the client-side SLUG_REGEX in admin.html.
@@ -325,7 +351,12 @@ router.put('/sensei/:id', asyncHandler(async (req, res) => {
 }));
 
 router.delete('/sensei/:id', asyncHandler(async (req, res) => {
+  const existing = await query(
+    `SELECT photo_url FROM sensei WHERE id = $1`,
+    [req.params.id]
+  );
   await query(`DELETE FROM sensei WHERE id = $1`, [req.params.id]);
+  await unlinkUploadByUrl(existing.rows[0]?.photo_url);
   res.json({ ok: true });
 }));
 
@@ -372,7 +403,12 @@ router.put('/testimonials/:id', asyncHandler(async (req, res) => {
 }));
 
 router.delete('/testimonials/:id', asyncHandler(async (req, res) => {
+  const existing = await query(
+    `SELECT photo_url FROM testimonials WHERE id = $1`,
+    [req.params.id]
+  );
   await query(`DELETE FROM testimonials WHERE id = $1`, [req.params.id]);
+  await unlinkUploadByUrl(existing.rows[0]?.photo_url);
   res.json({ ok: true });
 }));
 
