@@ -199,13 +199,6 @@ const SHARED_CONTENT = {
       { q: "Bagaimana kalau saya tidak sempat ikut live class?", a: "Semua live class direkam dan bisa kamu tonton ulang kapan saja. Modul self-paced dan latihan kuis juga buka 24/7." },
     ],
   },
-  finalCTA: {
-    title: "Saatnya mulai, sebelum impian itu menunggu terlalu lama.",
-    subtitle: "Gratis konsultasi 15 menit dengan sensei kami untuk menentukan jalur belajarmu.",
-    cta: "Chat via WhatsApp",
-    ctaHref: "https://wa.me/6281294894557",
-    note: "Konsultasi gratis · Tidak perlu daftar dulu",
-  },
   footer: {
     tagline: "Platform belajar bahasa Jepang untuk generasi yang ingin membawa kariernya ke Jepang.",
     columns: [
@@ -322,7 +315,7 @@ function ModernNav() {
       transition: 'all 0.3s ease',
     }}>
       <div className="ez-nav-inner">
-        <a href="#" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <a href="#" onClick={e => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <img src="logo.png" alt="EzNihongo" style={{ height: 52 }} />
         </a>
 
@@ -408,15 +401,6 @@ function ModernHero() {
             onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; }}>
               {h.ctaPrimary} <span>→</span>
             </button>
-            <button style={{
-              background: '#fff', color: '#0a0a0a', border: '1.5px solid #e5e5e5',
-              padding: '15px 24px', borderRadius: 10, fontSize: 15, fontWeight: 600,
-              display: 'inline-flex', alignItems: 'center', gap: 10, transition: 'all 0.15s',
-            }}
-            onMouseOver={e => { e.currentTarget.style.borderColor = '#0a0a0a'; }}
-            onMouseOut={e => { e.currentTarget.style.borderColor = '#e5e5e5'; }}>
-              ▶ Tonton Demo (2 mnt)
-            </button>
           </div>
 
           {/* Social icons */}
@@ -444,7 +428,8 @@ function ModernHero() {
                 icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z"/></svg>
               },
             ].map((s, i) => (
-              <a key={i} href={s.href} title={s.name}
+              <a key={i} href={s.href} target="_blank" rel="noopener noreferrer"
+                aria-label={`Ikuti EzNihongo di ${s.name}`} title={s.name}
                 style={{
                   width: 44, height: 44, borderRadius: '50%',
                   background: '#fff', border: '1.5px solid #e5e5e5',
@@ -621,7 +606,7 @@ function ModernFeatures() {
                 </div>
 
                 {/* Right cell */}
-                <div className={`feat-reveal feat-from-right ${textLeft ? 'feat-visual' : 'feat-text'}`}
+                <div className={`feat-reveal feat-from-right ${textLeft ? 'feat-visual' : 'feat-text feat-swap'}`}
                   style={{ transitionDelay: `${i * 0.05 + 0.1}s` }}>
                   {textLeft ? (
                     <FeatureVisual index={i} />
@@ -716,20 +701,20 @@ function ModernSensei() {
 
   const handleTouchStart = (e) => { touchStart.current = e.touches[0].clientX; };
   const handleTouchEnd = (e) => {
-    if (!touchStart.current) return;
+    if (touchStart.current === null) return;
     const diff = touchStart.current - e.changedTouches[0].clientX;
     if (Math.abs(diff) > 40) { diff > 0 ? next() : prev(); resetTimer(); }
     touchStart.current = null;
   };
   const handleMouseDown = (e) => { mouseStart.current = e.clientX; };
   const handleMouseUp = (e) => {
-    if (!mouseStart.current) return;
+    if (mouseStart.current === null) return;
     const diff = mouseStart.current - e.clientX;
     if (Math.abs(diff) > 40) { diff > 0 ? next() : prev(); resetTimer(); }
     mouseStart.current = null;
   };
 
-  const p = people[active] || people[0] || s.people[0];
+  const p = people[active] ?? people[0];
 
   return (
     <section id="sensei" style={{ padding: 'clamp(60px, 10vw, 120px) 0', background: '#fafafa' }}>
@@ -800,9 +785,9 @@ function ModernPricing() {
         available: c.is_available !== false,
       }))
     : p.plans.map(pl => ({ ...pl, available: true }));
-  const defaultIdx = Math.max(0, plans.findIndex(x => x.featured));
-  const [active, setActive] = React.useState(defaultIdx >= 0 ? defaultIdx : plans.length - 1);
-  React.useEffect(() => { if (active >= plans.length) setActive(0); }, [plans.length]);
+  const defaultIdx = plans.findIndex(x => x.featured);
+  const [active, setActive] = React.useState(defaultIdx >= 0 ? defaultIdx : 0);
+  React.useEffect(() => { if (active >= plans.length) setActive(0); }, [plans.length, active]);
   const [animating, setAnimating] = React.useState(false);
   const touchStart = React.useRef(null);
 
@@ -1068,29 +1053,6 @@ function ModernFAQ() {
   );
 }
 
-function ModernFinalCTA() {
-  const c = SHARED_CONTENT.finalCTA;
-  return (
-    <section style={{ padding: 'clamp(60px, 10vw, 100px) 0', background: '#0a0a0a', color: '#fff', position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(#ffffff08 1px, transparent 1px), linear-gradient(90deg, #ffffff08 1px, transparent 1px)', backgroundSize: '48px 48px', maskImage: 'radial-gradient(ellipse 60% 60% at 50% 50%, black 40%, transparent 80%)' }} />
-      <div className="ez-container" style={{ position: 'relative', zIndex: 2, textAlign: 'center', maxWidth: 820 }}>
-        <div className="reveal">
-          <h2 style={{ fontSize: 'clamp(28px, 5vw, 64px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.03em', marginBottom: 20, textWrap: 'balance' }}>{c.title}</h2>
-          <p style={{ fontSize: 18, color: '#a0a0a0', lineHeight: 1.6, maxWidth: 560, margin: '0 auto 36px', textWrap: 'pretty' }}>{c.subtitle}</p>
-          <a href={c.ctaHref} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex' }}>
-            <button style={{ background: '#C8102E', color: '#fff', padding: '17px 32px', borderRadius: 10, fontSize: 16, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 10, boxShadow: '0 3px 0 #8a0b20, 0 20px 40px rgba(200,16,46,0.3)', transition: 'all 0.15s' }}
-            onMouseOver={e => { e.currentTarget.style.transform = 'translateY(1px)'; }}
-            onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; }}>
-              {c.cta} <span>→</span>
-            </button>
-          </a>
-          <div style={{ marginTop: 20, fontSize: 13, color: '#606060', fontFamily: "'JetBrains Mono', monospace" }}>{c.note}</div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function ModernJoinCTA() {
   return (
     <section style={{ padding: 'clamp(60px, 10vw, 100px) 0', background: 'linear-gradient(135deg, #8a0b20 0%, #C8102E 50%, #e8303f 100%)', position: 'relative', overflow: 'hidden' }}>
@@ -1138,8 +1100,7 @@ function ModernFooter() {
               </svg>
               <span style={{ fontSize: 14, fontWeight: 600, color: '#16a34a' }}>+62 812-9489-4557</span>
             </a>
-            <a href={"mailto:rickysatoru@gmail.com"}
-              onClick={e => { e.preventDefault(); window.location.href = 'mailto:rickysatoru@gmail.com'; }}
+            <a href="mailto:rickysatoru@gmail.com"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: '#f8f8ff', border: '1.5px solid #ddd6fe', borderRadius: 10, padding: '11px 20px', textDecoration: 'none', transition: 'all 0.2s', cursor: 'pointer' }}
               onMouseOver={e => { e.currentTarget.style.background = '#ede9fe'; e.currentTarget.style.borderColor = '#a78bfa'; }}
               onMouseOut={e => { e.currentTarget.style.background = '#f8f8ff'; e.currentTarget.style.borderColor = '#ddd6fe'; }}>
