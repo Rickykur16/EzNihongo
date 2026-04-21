@@ -219,15 +219,21 @@ const SHARED_CONTENT = {
 
 function useReveal() {
   React.useEffect(() => {
-    const els = document.querySelectorAll('.reveal');
     const io = new IntersectionObserver((entries) => {
       entries.forEach(e => {
         if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
       });
     }, { threshold: 0.12 });
-    els.forEach(el => io.observe(el));
-    return () => io.disconnect();
-  });
+    const observeAll = () => {
+      document.querySelectorAll('.reveal:not(.in)').forEach(el => io.observe(el));
+    };
+    observeAll();
+    // Catch .reveal elements mounted after initial render (e.g. Sensei/Testimonials
+    // after CMS load). Without this, they stay at opacity:0 and create a phantom gap.
+    const mo = new MutationObserver(observeAll);
+    mo.observe(document.body, { childList: true, subtree: true });
+    return () => { io.disconnect(); mo.disconnect(); };
+  }, []);
 }
 
 // ============ CMS DATA (fetched from /api) ============
@@ -575,7 +581,7 @@ function ModernFeatures() {
           <h2 style={{ fontSize: 'clamp(28px, 4.5vw, 52px)', fontWeight: 800, lineHeight: 1.08, letterSpacing: '-0.03em', marginBottom: 16 }}>
             Kenapa <span style={{ color: '#C8102E' }}>EzNihongo?</span>
           </h2>
-          <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.72)', lineHeight: 1.6 }}>{f.subtitle}</p>
+          <p style={{ fontSize: 17, color: '#606060', lineHeight: 1.6 }}>{f.subtitle}</p>
         </div>
 
         {/* Timeline */}
