@@ -255,7 +255,7 @@ a { color: inherit; text-decoration: none; }
 .ez-cinematic-hook-sub {
   font-family: 'Inter', sans-serif;
   font-size: clamp(14px, 1.7vw, 17px);
-  color: #8a7d66;
+  color: #5c4f3d;
   font-style: italic;
   letter-spacing: 0.012em;
   text-wrap: balance;
