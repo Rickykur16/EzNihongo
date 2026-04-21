@@ -118,7 +118,7 @@ function renderCourseUI(course) {
       // will be replaced with a redirect to the gateway, and the webhook will
       // enroll the user. For now we POST directly so enrollment is at least
       // server-side (not localStorage) and gated by course availability.
-      const res = await window.ezApi("/api/enrollments", {
+      const res = await window.ezApi("/enrollments", {
         method: "POST",
         body: JSON.stringify({ courseSlug: course.slug }),
       });
@@ -148,7 +148,7 @@ async function init() {
   let enrolled = [];
   if (typeof window.ezApi === "function") {
     try {
-      const res = await window.ezApi("/api/enrollments/me");
+      const res = await window.ezApi("/enrollments/me");
       if (res.ok) {
         const data = await res.json();
         enrolled = (data.enrollments || []).map(e => e.slug).filter(Boolean);

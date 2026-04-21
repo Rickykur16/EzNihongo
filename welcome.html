@@ -2227,7 +2227,7 @@ function getEnrolledCourses() {
 async function syncEnrollmentsFromServer() {
   if (typeof window.ezApi !== 'function') return getEnrolledCourses();
   try {
-    const res = await window.ezApi('/api/enrollments/me');
+    const res = await window.ezApi('/enrollments/me');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     const slugs = (data.enrollments || []).map(e => e.slug).filter(Boolean);
