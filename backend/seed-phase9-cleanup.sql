@@ -11,14 +11,8 @@ WHERE name IN ('Hiroshi Tanaka', 'Sari Kusuma', 'Aiko Yamamoto', 'Budi Hartono')
 DELETE FROM testimonials
 WHERE name IN ('Rizky Pratama', 'Dewi Anggraini', 'Fajar Nugraha');
 
--- N5 module stubs from seed-n5.sql — no real lesson content behind them yet.
+-- Wipe every module across every course so no placeholder structure
+-- (from seed-n5.sql or any earlier manual inserts) lingers in N4/N3/N2/SSW.
 -- ON DELETE CASCADE on lessons / quiz_questions / quiz_options handles cleanup.
-DELETE FROM modules
-WHERE course_id = (SELECT id FROM courses WHERE slug = 'n5')
-  AND slug IN (
-    'hiragana-katakana',
-    'salam-perkenalan',
-    'kosakata-harian',
-    'pola-kalimat-dasar',
-    'persiapan-jlpt-n5'
-  );
+-- Admin rebuilds modules + lessons per course via the panel.
+DELETE FROM modules;
