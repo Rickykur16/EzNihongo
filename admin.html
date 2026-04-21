@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Admin · EzNihongo</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; background: #fafafa; color: #0a0a0a; }
+  header { background: #fff; border-bottom: 1px solid #e5e5e5; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 700; }
+  header .meta { font-family: 'Manrope', sans-serif; font-size: 13px; color: #525252; display: flex; align-items: center; gap: 12px; }
+  header button { background: none; border: 1px solid #e5e5e5; padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit; }
+  nav.tabs { background: #fff; border-bottom: 1px solid #e5e5e5; padding: 0 24px; display: flex; gap: 4px; overflow-x: auto; }
+  nav.tabs button { background: none; border: none; padding: 14px 18px; font-size: 14px; font-weight: 600; color: #525252; cursor: pointer; font-family: inherit; border-bottom: 2px solid transparent; white-space: nowrap; }
+  nav.tabs button.active { color: #C8102E; border-bottom-color: #C8102E; }
+  main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+  section.pane { display: none; }
+  section.pane.active { display: block; }
+  h2 { font-size: 22px; margin: 0 0 16px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid transparent; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .btn-primary { background: #C8102E; color: #fff; }
+  .btn-primary:hover { background: #a10c25; }
+  .btn-ghost { background: #fff; border-color: #e5e5e5; color: #0a0a0a; }
+  .btn-ghost:hover { background: #f5f5f5; }
+  .btn-danger { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+  .btn-danger:hover { background: #fee2e2; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  th, td { padding: 12px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  th { background: #fafafa; font-weight: 600; color: #525252; font-family: 'Manrope', sans-serif; }
+  tr:last-child td { border-bottom: none; }
+  td.actions { white-space: nowrap; }
+  td.actions .btn { padding: 5px 10px; font-size: 12px; margin-left: 4px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; font-family: 'Manrope', sans-serif; }
+  .badge-on { background: #dcfce7; color: #166534; }
+  .badge-off { background: #fef3c7; color: #92400e; }
+  .badge-admin { background: #ddd6fe; color: #5b21b6; }
+  select, input, textarea { font-family: inherit; padding: 8px 10px; border: 1px solid #d4d4d4; border-radius: 8px; font-size: 13px; width: 100%; }
+  textarea { resize: vertical; min-height: 80px; font-family: 'Manrope', monospace; }
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 1000; }
+  .modal-backdrop.show { display: flex; }
+  .modal { background: #fff; border-radius: 14px; padding: 24px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
+  .modal h3 { margin: 0 0 16px; font-size: 18px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: #525252; margin-bottom: 5px; font-family: 'Manrope', sans-serif; }
+  .field-row { display: flex; gap: 12px; }
+  .field-row > .field { flex: 1; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+  .empty { text-align: center; padding: 40px; color: #737373; font-size: 14px; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 6px; background: #f0f0f0; font-size: 11px; font-family: 'Manrope', monospace; }
+  .lock-screen { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
+  .lock-card { background: #fff; padding: 32px; border-radius: 14px; max-width: 380px; text-align: center; }
+  .quiz-options-edit { background: #fafafa; padding: 12px; border-radius: 8px; }
+  .quiz-option-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .quiz-option-row input[type=text] { flex: 1; }
+  .quiz-option-row input[type=checkbox] { width: auto; }
+  .quiz-option-row .btn { padding: 4px 8px; }
+  details { margin: 8px 0; padding: 8px 12px; background: #fff; border-radius: 8px; border: 1px solid #f0f0f0; }
+  details summary { font-weight: 600; cursor: pointer; font-size: 13px; }
+  details[open] { padding-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<div class="modal-backdrop" id="modal">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<script src="api-client.js"></script>
+<script>
+// ─────────────────────────────────────────────────────────────
+// Bootstrapping & auth
+// ─────────────────────────────────────────────────────────────
+const root = document.getElementById('root');
+const modal = document.getElementById('modal');
+const modalContent = document.getElementById('modal-content');
+
+let CURRENT_USER = null;
+let STATE = {
+  tab: 'courses',
+  courses: [],
+  selectedCourse: null,
+  modules: [],
+  selectedModule: null,
+  lessons: [],
+  users: [],
+  discussions: [],
+};
+
+function el(html) {
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstChild;
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function showLock(message) {
+  root.innerHTML = `
+    <div class="lock-screen">
+      <div class="lock-card">
+        <h2 style="margin-top:0;">Akses Admin</h2>
+        <p style="color:#525252;font-family:'Manrope',sans-serif;font-size:14px;line-height:1.5;">${escapeHtml(message)}</p>
+        <a href="login.html" class="btn btn-primary" style="display:inline-block;text-decoration:none;margin-top:8px;">Masuk</a>
+      </div>
+    </div>
+  `;
+}
+
+(async () => {
+  const user = await ezGetMe();
+  if (!user) { showLock('Kamu belum masuk. Silakan masuk dulu.'); return; }
+  if (!user.isAdmin) { showLock('Akun ini bukan admin. Hubungi pengelola untuk akses.'); return; }
+  CURRENT_USER = user;
+  renderApp();
+  await loadCourses();
+  renderTab();
+})();
+
+// ─────────────────────────────────────────────────────────────
+// API helpers
+// ─────────────────────────────────────────────────────────────
+async function api(path, opts) {
+  const res = await ezApi(path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+  return data;
+}
+
+function openModal(html) {
+  modalContent.innerHTML = html;
+  modal.classList.add('show');
+}
+function closeModal() {
+  modal.classList.remove('show');
+  modalContent.innerHTML = '';
+}
+modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+function notify(msg, isErr) {
+  const t = el(`<div style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:${isErr ? '#991b1b' : '#0a0a0a'};color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:2000;font-family:'Manrope',sans-serif;">${escapeHtml(msg)}</div>`);
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2400);
+}
+
+// ─────────────────────────────────────────────────────────────
+// App shell
+// ─────────────────────────────────────────────────────────────
+function renderApp() {
+  root.innerHTML = `
+    <header>
+      <h1>EzNihongo Admin</h1>
+      <div class="meta">
+        <span>${escapeHtml(CURRENT_USER.fullName || CURRENT_USER.email)}</span>
+        <span class="badge badge-admin">Admin</span>
+        <button onclick="ezLogout()">Keluar</button>
+      </div>
+    </header>
+    <nav class="tabs">
+      <button data-tab="courses">Kursus</button>
+      <button data-tab="modules">Modul</button>
+      <button data-tab="lessons">Pelajaran &amp; Kuis</button>
+      <button data-tab="users">Pengguna</button>
+      <button data-tab="discussions">Diskusi</button>
+    </nav>
+    <main>
+      <section class="pane" data-pane="courses"></section>
+      <section class="pane" data-pane="modules"></section>
+      <section class="pane" data-pane="lessons"></section>
+      <section class="pane" data-pane="users"></section>
+      <section class="pane" data-pane="discussions"></section>
+    </main>
+  `;
+  document.querySelectorAll('nav.tabs button').forEach((btn) => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+}
+
+async function switchTab(tab) {
+  STATE.tab = tab;
+  renderTab();
+}
+
+function renderTab() {
+  document.querySelectorAll('nav.tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === STATE.tab));
+  document.querySelectorAll('section.pane').forEach((p) => p.classList.toggle('active', p.dataset.pane === STATE.tab));
+  if (STATE.tab === 'courses') renderCourses();
+  else if (STATE.tab === 'modules') renderModules();
+  else if (STATE.tab === 'lessons') renderLessons();
+  else if (STATE.tab === 'users') { loadUsers().then(renderUsers); }
+  else if (STATE.tab === 'discussions') { loadDiscussions().then(renderDiscussions); }
+}
+
+// ─────────────────────────────────────────────────────────────
+// COURSES
+// ─────────────────────────────────────────────────────────────
+async function loadCourses() {
+  try { const d = await api('/admin/courses'); STATE.courses = d.courses || []; }
+  catch (e) { notify('Gagal load kursus: ' + e.message, true); }
+}
+
+function renderCourses() {
+  const pane = document.querySelector('[data-pane="courses"]');
+  const rows = STATE.courses.map((c) => `
+    <tr>
+      <td><strong>${escapeHtml(c.title)}</strong><br><span class="pill">${escapeHtml(c.slug)}</span></td>
+      <td>${escapeHtml(c.level || '-')}</td>
+      <td>${c.sort_order}</td>
+      <td>${c.is_published ? '<span class="badge badge-on">Live</span>' : '<span class="badge badge-off">Draft</span>'}</td>
+      <td class="actions">
+        <button class="btn btn-ghost" onclick="editCourse('${c.id}')">Edit</button>
+        <button class="btn btn-danger" onclick="deleteCourse('${c.id}', '${escapeHtml(c.title).replace(/'/g, "\\'")}')">Hapus</button>
+      </td>
+    </tr>
+  `).join('');
+  pane.innerHTML = `
+    <h2>Kursus</h2>
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="newCourse()">+ Kursus baru</button>
+      <button class="btn btn-ghost" onclick="loadCourses().then(renderCourses)">↻ Refresh</button>
+    </div>
+    ${STATE.courses.length === 0
+      ? '<div class="empty">Belum ada kursus. Klik "Kursus baru" untuk mulai.</div>'
+      : `<table><thead><tr><th>Judul / slug</th><th>Level</th><th>Urutan</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table>`
+    }
+  `;
+}
+
+function courseFormHtml(c) {
+  c = c || { slug: '', title: '', description: '', level: '', thumbnail_url: '', sort_order: 0, is_published: false };
+  return `
+    <h3>${c.id ? 'Edit Kursus' : 'Kursus Baru'}</h3>
+    <form id="course-form">
+      <div class="field-row">
+        <div class="field"><label>Slug (URL)</label><input name="slug" value="${escapeHtml(c.slug)}" required pattern="[a-z0-9-]+" /></div>
+        <div class="field"><label>Level</label><input name="level" value="${escapeHtml(c.level || '')}" placeholder="N5, N4..." /></div>
+      </div>
+      <div class="field"><label>Judul</label><input name="title" value="${escapeHtml(c.title)}" required /></div>
+      <div class="field"><label>Deskripsi</label><textarea name="description">${escapeHtml(c.description || '')}</textarea></div>
+      <div class="field"><label>Thumbnail URL</label><input name="thumbnailUrl" value="${escapeHtml(c.thumbnail_url || '')}" /></div>
+      <div class="field-row">
+        <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${c.sort_order}" /></div>
+        <div class="field"><label>Status</label>
+          <select name="isPublished">
+            <option value="false" ${!c.is_published ? 'selected' : ''}>Draft</option>
+            <option value="true" ${c.is_published ? 'selected' : ''}>Live (publikasi)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  `;
+}
+
+window.newCourse = () => {
+  openModal(courseFormHtml(null));
+  document.getElementById('course-form').addEventListener('submit', (e) => submitCourse(e, null));
+};
+window.editCourse = (id) => {
+  const c = STATE.courses.find((x) => x.id === id);
+  openModal(courseFormHtml(c));
+  document.getElementById('course-form').addEventListener('submit', (e) => submitCourse(e, id));
+};
+async function submitCourse(e, id) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = {
+    slug: fd.get('slug').trim(),
+    title: fd.get('title').trim(),
+    description: fd.get('description').trim() || null,
+    level: fd.get('level').trim() || null,
+    thumbnailUrl: fd.get('thumbnailUrl').trim() || null,
+    sortOrder: Number(fd.get('sortOrder')) || 0,
+    isPublished: fd.get('isPublished') === 'true',
+  };
+  try {
+    if (id) await api('/admin/courses/' + id, { method: 'PUT', body: JSON.stringify(body) });
+    else await api('/admin/courses', { method: 'POST', body: JSON.stringify(body) });
+    closeModal();
+    await loadCourses(); renderCourses();
+    notify('Kursus tersimpan');
+  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+}
+window.deleteCourse = async (id, title) => {
+  if (!confirm(`Hapus kursus "${title}"? Modul + pelajaran di dalamnya ikut terhapus.`)) return;
+  try {
+    await api('/admin/courses/' + id, { method: 'DELETE' });
+    await loadCourses(); renderCourses();
+    notify('Kursus dihapus');
+  } catch (err) { notify('Gagal hapus: ' + err.message, true); }
+};
+
+// ─────────────────────────────────────────────────────────────
+// MODULES (course-scoped)
+// ─────────────────────────────────────────────────────────────
+async function loadModulesForCourse(courseSlug) {
+  if (!courseSlug) { STATE.modules = []; return; }
+  try {
+    const d = await api('/courses/' + courseSlug);
+    STATE.modules = d.course?.modules || [];
+  } catch (e) { STATE.modules = []; notify('Gagal load modul: ' + e.message, true); }
+}
+
+function renderModules() {
+  const pane = document.querySelector('[data-pane="modules"]');
+  const courseOpts = STATE.courses.map((c) =>
+    `<option value="${c.slug}" ${c.slug === STATE.selectedCourse ? 'selected' : ''}>${escapeHtml(c.title)} (${c.is_published ? 'live' : 'draft'})</option>`
+  ).join('');
+  let body = '';
+  if (!STATE.selectedCourse) {
+    body = '<div class="empty">Pilih kursus dulu di dropdown atas.</div>';
+  } else {
+    const courseId = STATE.courses.find((c) => c.slug === STATE.selectedCourse)?.id;
+    if (STATE.modules.length === 0) {
+      body = '<div class="empty">Belum ada modul. Tambah modul pertama.</div>';
+    } else {
+      const rows = STATE.modules.map((m) => `
+        <tr>
+          <td><strong>${escapeHtml(m.title)}</strong><br><span class="pill">${escapeHtml(m.slug)}</span></td>
+          <td>${escapeHtml(m.description || '-')}</td>
+          <td>${m.sort_order}</td>
+          <td>${(m.lessons || []).length}</td>
+          <td class="actions">
+            <button class="btn btn-ghost" onclick="editModule('${m.id}')">Edit</button>
+            <button class="btn btn-danger" onclick="deleteModule('${m.id}', '${escapeHtml(m.title).replace(/'/g, "\\'")}')">Hapus</button>
+          </td>
+        </tr>
+      `).join('');
+      body = `<table><thead><tr><th>Judul / slug</th><th>Deskripsi</th><th>Urutan</th><th># pelajaran</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+    body = `
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="newModule('${courseId}')">+ Modul baru</button>
+      </div>
+      ${body}
+    `;
+  }
+  pane.innerHTML = `
+    <h2>Modul</h2>
+    <div class="toolbar">
+      <label style="font-size:13px;color:#525252;font-family:'Manrope',sans-serif;">Kursus:</label>
+      <select id="course-picker" style="max-width:320px;">
+        <option value="">— pilih kursus —</option>
+        ${courseOpts}
+      </select>
+    </div>
+    ${body}
+  `;
+  document.getElementById('course-picker').addEventListener('change', async (e) => {
+    STATE.selectedCourse = e.target.value || null;
+    if (STATE.selectedCourse) await loadModulesForCourse(STATE.selectedCourse);
+    else STATE.modules = [];
+    renderModules();
+  });
+}
+
+function moduleFormHtml(m) {
+  m = m || { slug: '', title: '', description: '', sort_order: 0 };
+  return `
+    <h3>${m.id ? 'Edit Modul' : 'Modul Baru'}</h3>
+    <form id="module-form">
+      <div class="field"><label>Slug</label><input name="slug" value="${escapeHtml(m.slug)}" required pattern="[a-z0-9-]+" /></div>
+      <div class="field"><label>Judul</label><input name="title" value="${escapeHtml(m.title)}" required /></div>
+      <div class="field"><label>Deskripsi</label><textarea name="description">${escapeHtml(m.description || '')}</textarea></div>
+      <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${m.sort_order}" /></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  `;
+}
+
+window.newModule = (courseId) => {
+  openModal(moduleFormHtml(null));
+  document.getElementById('module-form').addEventListener('submit', (e) => submitModule(e, null, courseId));
+};
+window.editModule = (id) => {
+  const m = STATE.modules.find((x) => x.id === id);
+  openModal(moduleFormHtml(m));
+  document.getElementById('module-form').addEventListener('submit', (e) => submitModule(e, id));
+};
+async function submitModule(e, id, courseId) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = {
+    slug: fd.get('slug').trim(),
+    title: fd.get('title').trim(),
+    description: fd.get('description').trim() || null,
+    sortOrder: Number(fd.get('sortOrder')) || 0,
+  };
+  try {
+    if (id) await api('/admin/modules/' + id, { method: 'PUT', body: JSON.stringify(body) });
+    else await api('/admin/modules', { method: 'POST', body: JSON.stringify({ ...body, courseId }) });
+    closeModal();
+    await loadModulesForCourse(STATE.selectedCourse); renderModules();
+    notify('Modul tersimpan');
+  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+}
+window.deleteModule = async (id, title) => {
+  if (!confirm(`Hapus modul "${title}"? Pelajaran di dalamnya ikut terhapus.`)) return;
+  try {
+    await api('/admin/modules/' + id, { method: 'DELETE' });
+    await loadModulesForCourse(STATE.selectedCourse); renderModules();
+    notify('Modul dihapus');
+  } catch (err) { notify('Gagal hapus: ' + err.message, true); }
+};
+
+// ─────────────────────────────────────────────────────────────
+// LESSONS (module-scoped) + QUIZ
+// ─────────────────────────────────────────────────────────────
+function renderLessons() {
+  const pane = document.querySelector('[data-pane="lessons"]');
+  const courseOpts = STATE.courses.map((c) =>
+    `<option value="${c.slug}" ${c.slug === STATE.selectedCourse ? 'selected' : ''}>${escapeHtml(c.title)}</option>`
+  ).join('');
+  const moduleOpts = STATE.modules.map((m) =>
+    `<option value="${m.id}" ${m.id === STATE.selectedModule ? 'selected' : ''}>${escapeHtml(m.title)}</option>`
+  ).join('');
+
+  let body = '<div class="empty">Pilih kursus + modul dulu.</div>';
+  if (STATE.selectedModule) {
+    const mod = STATE.modules.find((m) => m.id === STATE.selectedModule);
+    STATE.lessons = (mod && mod.lessons) || [];
+    if (STATE.lessons.length === 0) {
+      body = `
+        <div class="toolbar"><button class="btn btn-primary" onclick="newLesson('${STATE.selectedModule}')">+ Pelajaran baru</button></div>
+        <div class="empty">Belum ada pelajaran di modul ini.</div>
+      `;
+    } else {
+      const rows = STATE.lessons.map((l) => `
+        <tr>
+          <td><strong>${escapeHtml(l.title)}</strong><br><span class="pill">${escapeHtml(l.slug)}</span></td>
+          <td><span class="badge ${l.type === 'quiz' ? 'badge-admin' : 'badge-off'}">${escapeHtml(l.type)}</span></td>
+          <td>${l.duration_minutes || '-'}</td>
+          <td>${l.sort_order}</td>
+          <td class="actions">
+            <button class="btn btn-ghost" onclick="editLesson('${l.id}')">Edit</button>
+            ${l.type === 'quiz' ? `<button class="btn btn-ghost" onclick="manageQuiz('${l.id}', '${escapeHtml(l.title).replace(/'/g, "\\'")}')">Kuis</button>` : ''}
+            <button class="btn btn-danger" onclick="deleteLesson('${l.id}', '${escapeHtml(l.title).replace(/'/g, "\\'")}')">Hapus</button>
+          </td>
+        </tr>
+      `).join('');
+      body = `
+        <div class="toolbar"><button class="btn btn-primary" onclick="newLesson('${STATE.selectedModule}')">+ Pelajaran baru</button></div>
+        <table><thead><tr><th>Judul / slug</th><th>Tipe</th><th>Durasi (menit)</th><th>Urutan</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+      `;
+    }
+  }
+
+  pane.innerHTML = `
+    <h2>Pelajaran &amp; Kuis</h2>
+    <div class="toolbar">
+      <label style="font-size:13px;color:#525252;font-family:'Manrope',sans-serif;">Kursus:</label>
+      <select id="lesson-course-picker" style="max-width:240px;">
+        <option value="">— pilih kursus —</option>${courseOpts}
+      </select>
+      <label style="font-size:13px;color:#525252;font-family:'Manrope',sans-serif;">Modul:</label>
+      <select id="lesson-module-picker" style="max-width:240px;" ${STATE.modules.length === 0 ? 'disabled' : ''}>
+        <option value="">— pilih modul —</option>${moduleOpts}
+      </select>
+    </div>
+    ${body}
+  `;
+  document.getElementById('lesson-course-picker').addEventListener('change', async (e) => {
+    STATE.selectedCourse = e.target.value || null;
+    STATE.selectedModule = null;
+    if (STATE.selectedCourse) await loadModulesForCourse(STATE.selectedCourse);
+    else STATE.modules = [];
+    renderLessons();
+  });
+  document.getElementById('lesson-module-picker').addEventListener('change', (e) => {
+    STATE.selectedModule = e.target.value || null;
+    renderLessons();
+  });
+}
+
+function lessonFormHtml(l) {
+  l = l || { slug: '', title: '', type: 'text', content: '', video_url: '', duration_minutes: '', sort_order: 0 };
+  return `
+    <h3>${l.id ? 'Edit Pelajaran' : 'Pelajaran Baru'}</h3>
+    <form id="lesson-form">
+      <div class="field-row">
+        <div class="field"><label>Slug</label><input name="slug" value="${escapeHtml(l.slug)}" required pattern="[a-z0-9-]+" /></div>
+        <div class="field"><label>Tipe</label>
+          <select name="type">
+            <option value="text" ${l.type === 'text' ? 'selected' : ''}>Teks</option>
+            <option value="video" ${l.type === 'video' ? 'selected' : ''}>Video</option>
+            <option value="quiz" ${l.type === 'quiz' ? 'selected' : ''}>Kuis</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Judul</label><input name="title" value="${escapeHtml(l.title)}" required /></div>
+      <div class="field"><label>Konten (markdown / HTML)</label><textarea name="content" rows="6">${escapeHtml(l.content || '')}</textarea></div>
+      <div class="field-row">
+        <div class="field"><label>Video URL (Bunny Stream)</label><input name="videoUrl" value="${escapeHtml(l.video_url || '')}" /></div>
+        <div class="field"><label>Durasi (menit)</label><input type="number" name="durationMinutes" value="${l.duration_minutes || ''}" /></div>
+      </div>
+      <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${l.sort_order}" /></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  `;
+}
+
+window.newLesson = (moduleId) => {
+  openModal(lessonFormHtml(null));
+  document.getElementById('lesson-form').addEventListener('submit', (e) => submitLesson(e, null, moduleId));
+};
+window.editLesson = (id) => {
+  const l = STATE.lessons.find((x) => x.id === id);
+  openModal(lessonFormHtml(l));
+  document.getElementById('lesson-form').addEventListener('submit', (e) => submitLesson(e, id));
+};
+async function submitLesson(e, id, moduleId) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = {
+    slug: fd.get('slug').trim(),
+    title: fd.get('title').trim(),
+    type: fd.get('type'),
+    content: fd.get('content').trim() || null,
+    videoUrl: fd.get('videoUrl').trim() || null,
+    durationMinutes: Number(fd.get('durationMinutes')) || null,
+    sortOrder: Number(fd.get('sortOrder')) || 0,
+  };
+  try {
+    if (id) await api('/admin/lessons/' + id, { method: 'PUT', body: JSON.stringify(body) });
+    else await api('/admin/lessons', { method: 'POST', body: JSON.stringify({ ...body, moduleId }) });
+    closeModal();
+    await loadModulesForCourse(STATE.selectedCourse); renderLessons();
+    notify('Pelajaran tersimpan');
+  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+}
+window.deleteLesson = async (id, title) => {
+  if (!confirm(`Hapus pelajaran "${title}"?`)) return;
+  try {
+    await api('/admin/lessons/' + id, { method: 'DELETE' });
+    await loadModulesForCourse(STATE.selectedCourse); renderLessons();
+    notify('Pelajaran dihapus');
+  } catch (err) { notify('Gagal hapus: ' + err.message, true); }
+};
+
+// ─── Quiz manager ───
+window.manageQuiz = async (lessonId, lessonTitle) => {
+  let questions = [];
+  try { const d = await api('/admin/lessons/' + lessonId + '/quiz'); questions = d.questions || []; }
+  catch (err) { notify('Gagal load kuis: ' + err.message, true); return; }
+  renderQuizModal(lessonId, lessonTitle, questions);
+};
+
+function renderQuizModal(lessonId, lessonTitle, questions) {
+  const qHtml = questions.map((q) => `
+    <details>
+      <summary>${escapeHtml(q.question.slice(0, 80))}${q.question.length > 80 ? '…' : ''}</summary>
+      <div style="margin-top:8px;font-size:13px;color:#525252;">
+        ${(q.options || []).map((o) => `<div>${o.is_correct ? '✓' : '·'} ${escapeHtml(o.option_text)}</div>`).join('')}
+        ${q.explanation ? `<div style="margin-top:6px;font-style:italic;">Penjelasan: ${escapeHtml(q.explanation)}</div>` : ''}
+        <div style="margin-top:8px;display:flex;gap:6px;">
+          <button class="btn btn-ghost" onclick='editQuestion(${JSON.stringify(q).replace(/'/g, "&#39;")}, "${lessonId}", "${escapeHtml(lessonTitle).replace(/"/g, '&quot;')}")'>Edit</button>
+          <button class="btn btn-danger" onclick='deleteQuestion("${q.id}", "${lessonId}", "${escapeHtml(lessonTitle).replace(/"/g, '&quot;')}")'>Hapus</button>
+        </div>
+      </div>
+    </details>
+  `).join('');
+  openModal(`
+    <h3>Kuis: ${escapeHtml(lessonTitle)}</h3>
+    <div class="toolbar"><button class="btn btn-primary" onclick='newQuestion("${lessonId}", "${escapeHtml(lessonTitle).replace(/"/g, '&quot;')}")'>+ Pertanyaan</button></div>
+    ${questions.length === 0 ? '<div class="empty">Belum ada pertanyaan.</div>' : qHtml}
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
+  `);
+}
+
+window.newQuestion = (lessonId, lessonTitle) => {
+  openQuestionForm(null, lessonId, lessonTitle);
+};
+window.editQuestion = (q, lessonId, lessonTitle) => {
+  openQuestionForm(q, lessonId, lessonTitle);
+};
+window.deleteQuestion = async (qid, lessonId, lessonTitle) => {
+  if (!confirm('Hapus pertanyaan ini?')) return;
+  try {
+    await api('/admin/quiz-questions/' + qid, { method: 'DELETE' });
+    notify('Pertanyaan dihapus');
+    manageQuiz(lessonId, lessonTitle);
+  } catch (err) { notify('Gagal hapus: ' + err.message, true); }
+};
+
+function openQuestionForm(q, lessonId, lessonTitle) {
+  q = q || { question: '', question_type: 'multiple_choice', explanation: '', sort_order: 0, options: [{ option_text: '', is_correct: false }, { option_text: '', is_correct: false }] };
+  const optsHtml = (q.options || []).map((o, i) => optionRowHtml(o, i)).join('');
+  openModal(`
+    <h3>${q.id ? 'Edit Pertanyaan' : 'Pertanyaan Baru'}</h3>
+    <form id="question-form">
+      <div class="field"><label>Pertanyaan</label><textarea name="question" required>${escapeHtml(q.question)}</textarea></div>
+      <div class="field"><label>Penjelasan (muncul setelah jawab)</label><textarea name="explanation">${escapeHtml(q.explanation || '')}</textarea></div>
+      <div class="field-row">
+        <div class="field"><label>Tipe</label>
+          <select name="questionType">
+            <option value="multiple_choice" ${q.question_type === 'multiple_choice' ? 'selected' : ''}>Pilihan ganda</option>
+            <option value="true_false" ${q.question_type === 'true_false' ? 'selected' : ''}>Benar / Salah</option>
+            <option value="fill_in" ${q.question_type === 'fill_in' ? 'selected' : ''}>Isi (jawaban teks)</option>
+          </select>
+        </div>
+        <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${q.sort_order || 0}" /></div>
+      </div>
+      <div class="field"><label>Opsi (tandai yang benar)</label>
+        <div class="quiz-options-edit" id="options-list">${optsHtml}</div>
+        <button type="button" class="btn btn-ghost" style="margin-top:6px;" onclick="addOptionRow()">+ Tambah opsi</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick='manageQuiz("${lessonId}", "${escapeHtml(lessonTitle).replace(/"/g, '&quot;')}")'>← Kembali</button>
+        <button type="submit" class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  `);
+  document.getElementById('question-form').addEventListener('submit', (e) => submitQuestion(e, q.id, lessonId, lessonTitle));
+}
+
+function optionRowHtml(o, i) {
+  return `
+    <div class="quiz-option-row" data-idx="${i}">
+      <input type="text" name="opt_text_${i}" value="${escapeHtml(o.option_text || '')}" placeholder="Teks jawaban" />
+      <label style="font-size:11px;display:flex;align-items:center;gap:4px;color:#525252;font-family:'Manrope',sans-serif;">
+        <input type="checkbox" name="opt_correct_${i}" ${o.is_correct ? 'checked' : ''}/>
+        Benar
+      </label>
+      <button type="button" class="btn btn-danger" onclick="this.parentElement.remove()">×</button>
+    </div>
+  `;
+}
+
+window.addOptionRow = () => {
+  const list = document.getElementById('options-list');
+  const i = list.querySelectorAll('.quiz-option-row').length;
+  list.appendChild(el(optionRowHtml({ option_text: '', is_correct: false }, i)));
+};
+
+async function submitQuestion(e, qid, lessonId, lessonTitle) {
+  e.preventDefault();
+  const form = e.target;
+  const rows = form.querySelectorAll('.quiz-option-row');
+  const options = Array.from(rows).map((row) => {
+    const idx = row.dataset.idx;
+    return {
+      text: row.querySelector(`input[name="opt_text_${idx}"]`).value.trim(),
+      isCorrect: row.querySelector(`input[name="opt_correct_${idx}"]`).checked,
+    };
+  }).filter((o) => o.text);
+  const body = {
+    question: form.question.value.trim(),
+    questionType: form.questionType.value,
+    explanation: form.explanation.value.trim() || null,
+    sortOrder: Number(form.sortOrder.value) || 0,
+    options,
+  };
+  if (!qid) body.lessonId = lessonId;
+  try {
+    if (qid) await api('/admin/quiz-questions/' + qid, { method: 'PUT', body: JSON.stringify(body) });
+    else await api('/admin/quiz-questions', { method: 'POST', body: JSON.stringify(body) });
+    notify('Pertanyaan tersimpan');
+    manageQuiz(lessonId, lessonTitle);
+  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+}
+
+// ─────────────────────────────────────────────────────────────
+// USERS
+// ─────────────────────────────────────────────────────────────
+async function loadUsers() {
+  try { const d = await api('/admin/users'); STATE.users = d.users || []; }
+  catch (e) { notify('Gagal load pengguna: ' + e.message, true); }
+}
+function renderUsers() {
+  const pane = document.querySelector('[data-pane="users"]');
+  if (STATE.users.length === 0) {
+    pane.innerHTML = '<h2>Pengguna</h2><div class="empty">Belum ada pengguna.</div>';
+    return;
+  }
+  const rows = STATE.users.map((u) => `
+    <tr>
+      <td><strong>${escapeHtml(u.full_name || '-')}</strong><br><span style="font-size:11px;color:#737373;">${escapeHtml(u.email)}</span></td>
+      <td>${u.xp || 0}</td>
+      <td>${u.streak_days || 0}</td>
+      <td>${u.total_lessons_completed || 0}</td>
+      <td>${u.last_active_date || '-'}</td>
+      <td>${new Date(u.created_at).toLocaleDateString('id-ID')}</td>
+    </tr>
+  `).join('');
+  pane.innerHTML = `
+    <h2>Pengguna (${STATE.users.length})</h2>
+    <table><thead><tr><th>Nama / email</th><th>XP</th><th>Streak</th><th>Lesson selesai</th><th>Aktif terakhir</th><th>Bergabung</th></tr></thead><tbody>${rows}</tbody></table>
+  `;
+}
+
+// ─────────────────────────────────────────────────────────────
+// DISCUSSIONS
+// ─────────────────────────────────────────────────────────────
+async function loadDiscussions() {
+  try { const d = await api('/admin/discussions'); STATE.discussions = d.discussions || []; }
+  catch (e) { notify('Gagal load diskusi: ' + e.message, true); }
+}
+function renderDiscussions() {
+  const pane = document.querySelector('[data-pane="discussions"]');
+  if (STATE.discussions.length === 0) {
+    pane.innerHTML = '<h2>Diskusi</h2><div class="empty">Belum ada diskusi.</div>';
+    return;
+  }
+  const rows = STATE.discussions.map((d) => `
+    <tr style="${d.is_deleted ? 'opacity:0.5;' : ''}">
+      <td><strong>${escapeHtml(d.full_name || d.email)}</strong><br><span style="font-size:11px;color:#737373;">${escapeHtml(d.email)}</span></td>
+      <td>${escapeHtml(d.lesson_title)}</td>
+      <td style="max-width:380px;">${escapeHtml(d.content)}${d.is_admin_reply ? ' <span class="badge badge-admin">admin</span>' : ''}${d.is_deleted ? ' <span class="badge badge-off">dihapus</span>' : ''}</td>
+      <td>${new Date(d.created_at).toLocaleString('id-ID')}</td>
+      <td class="actions">${d.is_deleted ? '' : `<button class="btn btn-danger" onclick="deleteDiscussion('${d.id}')">Hapus</button>`}</td>
+    </tr>
+  `).join('');
+  pane.innerHTML = `
+    <h2>Diskusi (${STATE.discussions.length})</h2>
+    <table><thead><tr><th>User</th><th>Pelajaran</th><th>Isi</th><th>Waktu</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+  `;
+}
+window.deleteDiscussion = async (id) => {
+  if (!confirm('Hapus komentar ini?')) return;
+  try {
+    await api('/discussions/' + id, { method: 'DELETE' });
+    await loadDiscussions(); renderDiscussions();
+    notify('Komentar dihapus');
+  } catch (err) { notify('Gagal hapus: ' + err.message, true); }
+};
+</script>
+
+</body>
+</html>
