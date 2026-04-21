@@ -780,8 +780,9 @@ function ModernPricing() {
         features: Array.isArray(c.features) ? c.features : [],
         cta: c.cta_label || `Pilih ${c.title}`,
         featured: !!c.is_featured,
+        available: c.is_available !== false,
       }))
-    : p.plans;
+    : p.plans.map(pl => ({ ...pl, available: true }));
   const defaultIdx = Math.max(0, plans.findIndex(x => x.featured));
   const [active, setActive] = React.useState(defaultIdx >= 0 ? defaultIdx : plans.length - 1);
   React.useEffect(() => { if (active >= plans.length) setActive(0); }, [plans.length]);
@@ -910,6 +911,12 @@ function ModernPricing() {
               </div>
             )}
 
+            {!plan.available && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '6px 14px', borderRadius: 999, background: 'rgba(251, 191, 36, 0.12)', border: '1px solid rgba(251, 191, 36, 0.4)', color: '#fbbf24', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace" }}>
+                ⏳ Segera Hadir
+              </div>
+            )}
+
             <div style={{ fontSize: 'clamp(44px, 8vw, 80px)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 36 }}>
               {plan.price} <span style={{ fontSize: 'clamp(14px, 2vw, 18px)', fontWeight: 400, color: '#444' }}>{plan.period}</span>
             </div>
@@ -938,18 +945,26 @@ function ModernPricing() {
               );
             })}
 
-            <button
-              onClick={() => {
-                const user = localStorage.getItem('ez_user');
-                window.location.href = user
-                  ? `courses/${plan.slug}.html`
-                  : `login.html?next=courses%2F${plan.slug}.html`;
-              }}
-              style={{ width: '100%', marginTop: 32, background: '#C8102E', color: '#fff', padding: '16px', borderRadius: 12, fontSize: 16, fontWeight: 700, boxShadow: '0 4px 0 #8a0b20', transition: 'all 0.15s', cursor: 'pointer', border: 'none' }}
-              onMouseOver={e => { e.currentTarget.style.transform = 'translateY(2px)'; e.currentTarget.style.boxShadow = '0 2px 0 #8a0b20'; }}
-              onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 0 #8a0b20'; }}>
-              {plan.cta} →
-            </button>
+            {plan.available ? (
+              <button
+                onClick={() => {
+                  const user = localStorage.getItem('ez_user');
+                  window.location.href = user
+                    ? `courses/${plan.slug}.html`
+                    : `login.html?next=courses%2F${plan.slug}.html`;
+                }}
+                style={{ width: '100%', marginTop: 32, background: '#C8102E', color: '#fff', padding: '16px', borderRadius: 12, fontSize: 16, fontWeight: 700, boxShadow: '0 4px 0 #8a0b20', transition: 'all 0.15s', cursor: 'pointer', border: 'none' }}
+                onMouseOver={e => { e.currentTarget.style.transform = 'translateY(2px)'; e.currentTarget.style.boxShadow = '0 2px 0 #8a0b20'; }}
+                onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 0 #8a0b20'; }}>
+                {plan.cta} →
+              </button>
+            ) : (
+              <button
+                disabled
+                style={{ width: '100%', marginTop: 32, background: '#1a1a1a', color: '#666', padding: '16px', borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: 'not-allowed', border: '1px solid #2a2a2a' }}>
+                Belum Tersedia
+              </button>
+            )}
           </div>
 
           {/* Dot indicators */}

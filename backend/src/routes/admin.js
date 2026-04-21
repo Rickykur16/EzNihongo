@@ -18,18 +18,18 @@ router.get('/courses', asyncHandler(async (req, res) => {
 
 router.post('/courses', asyncHandler(async (req, res) => {
   const {
-    slug, title, description, level, thumbnailUrl, sortOrder, isPublished,
+    slug, title, description, level, thumbnailUrl, sortOrder, isPublished, isAvailable,
     priceIdr, priceLabel, periodLabel, tagline, features, ctaLabel, isFeatured,
   } = req.body || {};
   if (!slug || !title) return res.status(400).json({ error: 'slug and title required' });
   const result = await query(
     `INSERT INTO courses
-       (slug, title, description, level, thumbnail_url, sort_order, is_published,
+       (slug, title, description, level, thumbnail_url, sort_order, is_published, is_available,
         price_idr, price_label, period_label, tagline, features, cta_label, is_featured)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
     [
       slug, title, description || null, level || null, thumbnailUrl || null,
-      sortOrder || 0, !!isPublished,
+      sortOrder || 0, !!isPublished, isAvailable !== false,
       priceIdr || null, priceLabel || null, periodLabel || null, tagline || null,
       JSON.stringify(Array.isArray(features) ? features : []),
       ctaLabel || null, !!isFeatured,
@@ -40,7 +40,7 @@ router.post('/courses', asyncHandler(async (req, res) => {
 
 router.put('/courses/:id', asyncHandler(async (req, res) => {
   const {
-    slug, title, description, level, thumbnailUrl, sortOrder, isPublished,
+    slug, title, description, level, thumbnailUrl, sortOrder, isPublished, isAvailable,
     priceIdr, priceLabel, periodLabel, tagline, features, ctaLabel, isFeatured,
   } = req.body || {};
   const result = await query(
@@ -52,17 +52,18 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
        thumbnail_url = COALESCE($6, thumbnail_url),
        sort_order = COALESCE($7, sort_order),
        is_published = COALESCE($8, is_published),
-       price_idr = COALESCE($9, price_idr),
-       price_label = COALESCE($10, price_label),
-       period_label = COALESCE($11, period_label),
-       tagline = COALESCE($12, tagline),
-       features = COALESCE($13::jsonb, features),
-       cta_label = COALESCE($14, cta_label),
-       is_featured = COALESCE($15, is_featured),
+       is_available = COALESCE($9, is_available),
+       price_idr = COALESCE($10, price_idr),
+       price_label = COALESCE($11, price_label),
+       period_label = COALESCE($12, period_label),
+       tagline = COALESCE($13, tagline),
+       features = COALESCE($14::jsonb, features),
+       cta_label = COALESCE($15, cta_label),
+       is_featured = COALESCE($16, is_featured),
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
     [
-      req.params.id, slug, title, description, level, thumbnailUrl, sortOrder, isPublished,
+      req.params.id, slug, title, description, level, thumbnailUrl, sortOrder, isPublished, isAvailable,
       priceIdr, priceLabel, periodLabel, tagline,
       Array.isArray(features) ? JSON.stringify(features) : null,
       ctaLabel, isFeatured,

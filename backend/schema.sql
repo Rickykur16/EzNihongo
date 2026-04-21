@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS courses (
   thumbnail_url TEXT,
   sort_order INT DEFAULT 0,
   is_published BOOLEAN DEFAULT FALSE,
+  is_available BOOLEAN NOT NULL DEFAULT TRUE,
   price_idr INT,
   price_label TEXT,
   period_label TEXT,

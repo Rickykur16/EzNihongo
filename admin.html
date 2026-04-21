@@ -219,7 +219,13 @@ function renderCourses() {
       <td><strong>${escapeHtml(c.title)}</strong><br><span class="pill">${escapeHtml(c.slug)}</span></td>
       <td>${escapeHtml(c.level || '-')}</td>
       <td>${c.sort_order}</td>
-      <td>${c.is_published ? '<span class="badge badge-on">Live</span>' : '<span class="badge badge-off">Draft</span>'}</td>
+      <td>${
+        !c.is_published
+          ? '<span class="badge badge-off">Draft</span>'
+          : (c.is_available === false
+              ? '<span class="badge" style="background:#fff4e5;color:#b45309;border:1px solid #fde68a;">Segera Hadir</span>'
+              : '<span class="badge badge-on">Live</span>')
+      }</td>
       <td class="actions">
         <button class="btn btn-ghost" onclick="editCourse('${c.id}')">Edit</button>
         <button class="btn btn-danger" onclick="deleteCourse('${c.id}', '${escapeHtml(c.title).replace(/'/g, "\\'")}')">Hapus</button>
@@ -240,8 +246,12 @@ function renderCourses() {
 }
 
 function courseFormHtml(c) {
-  c = c || { slug: '', title: '', description: '', level: '', thumbnail_url: '', sort_order: 0, is_published: false,
+  c = c || { slug: '', title: '', description: '', level: '', thumbnail_url: '', sort_order: 0, is_published: false, is_available: true,
              price_idr: '', price_label: '', period_label: '/ bulan', tagline: '', features: [], cta_label: '', is_featured: false };
+  // 3-way status (draft / coming-soon / live) maps to is_published + is_available.
+  let courseStatus = 'draft';
+  if (c.is_published && c.is_available !== false) courseStatus = 'live';
+  else if (c.is_published && c.is_available === false) courseStatus = 'coming_soon';
   const featuresText = Array.isArray(c.features) ? c.features.join('\n') : '';
   return `
     <h3>${c.id ? 'Edit Kursus' : 'Kursus Baru'}</h3>
@@ -276,9 +286,10 @@ function courseFormHtml(c) {
       <div class="field-row">
         <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${c.sort_order}" /></div>
         <div class="field"><label>Status</label>
-          <select name="isPublished">
-            <option value="false" ${!c.is_published ? 'selected' : ''}>Draft</option>
-            <option value="true" ${c.is_published ? 'selected' : ''}>Live (publikasi)</option>
+          <select name="courseStatus">
+            <option value="draft" ${courseStatus === 'draft' ? 'selected' : ''}>Draft — tidak tampil di landing</option>
+            <option value="coming_soon" ${courseStatus === 'coming_soon' ? 'selected' : ''}>Segera Hadir — tampil tapi belum bisa dibeli</option>
+            <option value="live" ${courseStatus === 'live' ? 'selected' : ''}>Live — tampil &amp; bisa dibeli</option>
           </select>
         </div>
       </div>
@@ -303,6 +314,7 @@ async function submitCourse(e, id) {
   e.preventDefault();
   const fd = new FormData(e.target);
   const features = (fd.get('features') || '').split('\n').map((s) => s.trim()).filter(Boolean);
+  const status = fd.get('courseStatus') || 'draft';
   const body = {
     slug: fd.get('slug').trim(),
     title: fd.get('title').trim(),
@@ -310,7 +322,8 @@ async function submitCourse(e, id) {
     level: fd.get('level').trim() || null,
     thumbnailUrl: fd.get('thumbnailUrl').trim() || null,
     sortOrder: Number(fd.get('sortOrder')) || 0,
-    isPublished: fd.get('isPublished') === 'true',
+    isPublished: status !== 'draft',
+    isAvailable: status !== 'coming_soon',
     priceIdr: Number(fd.get('priceIdr')) || null,
     priceLabel: fd.get('priceLabel').trim() || null,
     periodLabel: fd.get('periodLabel').trim() || null,
