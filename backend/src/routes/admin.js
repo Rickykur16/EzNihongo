@@ -7,6 +7,16 @@ const router = Router();
 // Every route in this file requires admin
 router.use(requireAuth, requireAdmin);
 
+// Slug: lowercase letters, digits, hyphens — no leading/trailing/double hyphens.
+// Must match the client-side SLUG_REGEX in admin.html.
+const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+function badSlug(slug) {
+  if (typeof slug !== 'string' || !SLUG_REGEX.test(slug)) {
+    return 'slug must be lowercase letters/digits/hyphens (e.g. "n5-dasar")';
+  }
+  return null;
+}
+
 // ===== COURSES =====
 
 router.get('/courses', asyncHandler(async (req, res) => {
@@ -22,6 +32,8 @@ router.post('/courses', asyncHandler(async (req, res) => {
     priceIdr, priceLabel, periodLabel, tagline, features, ctaLabel, isFeatured,
   } = req.body || {};
   if (!slug || !title) return res.status(400).json({ error: 'slug and title required' });
+  const slugErr = badSlug(slug);
+  if (slugErr) return res.status(400).json({ error: slugErr });
   const result = await query(
     `INSERT INTO courses
        (slug, title, description, level, thumbnail_url, sort_order, is_published, is_available,
@@ -43,6 +55,10 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
     slug, title, description, level, thumbnailUrl, sortOrder, isPublished, isAvailable,
     priceIdr, priceLabel, periodLabel, tagline, features, ctaLabel, isFeatured,
   } = req.body || {};
+  if (slug !== undefined && slug !== null) {
+    const slugErr = badSlug(slug);
+    if (slugErr) return res.status(400).json({ error: slugErr });
+  }
   const result = await query(
     `UPDATE courses SET
        slug = COALESCE($2, slug),
@@ -74,6 +90,19 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
 }));
 
 router.delete('/courses/:id', asyncHandler(async (req, res) => {
+  // Block delete when any student has enrolled — keeps paid users from losing access silently.
+  // Admins can still set the course to draft/coming_soon via PUT instead.
+  const enroll = await query(
+    `SELECT COUNT(*)::int AS n FROM user_enrollments WHERE course_id = $1`,
+    [req.params.id]
+  );
+  const n = enroll.rows[0]?.n || 0;
+  if (n > 0) {
+    return res.status(409).json({
+      error: `Tidak bisa hapus: ${n} siswa sudah terdaftar di kursus ini. Ubah status ke Draft supaya tidak tampil di landing.`,
+      enrollmentCount: n,
+    });
+  }
   await query(`DELETE FROM courses WHERE id = $1`, [req.params.id]);
   res.json({ ok: true });
 }));
@@ -85,6 +114,8 @@ router.post('/modules', asyncHandler(async (req, res) => {
   if (!courseId || !slug || !title) {
     return res.status(400).json({ error: 'courseId, slug, title required' });
   }
+  const slugErr = badSlug(slug);
+  if (slugErr) return res.status(400).json({ error: slugErr });
   const result = await query(
     `INSERT INTO modules (course_id, slug, title, description, sort_order)
      VALUES ($1, $2, $3, $4, $5) RETURNING *`,
@@ -95,6 +126,10 @@ router.post('/modules', asyncHandler(async (req, res) => {
 
 router.put('/modules/:id', asyncHandler(async (req, res) => {
   const { slug, title, description, sortOrder } = req.body || {};
+  if (slug !== undefined && slug !== null) {
+    const slugErr = badSlug(slug);
+    if (slugErr) return res.status(400).json({ error: slugErr });
+  }
   const result = await query(
     `UPDATE modules SET
        slug = COALESCE($2, slug),
@@ -120,6 +155,8 @@ router.post('/lessons', asyncHandler(async (req, res) => {
   if (!moduleId || !slug || !title) {
     return res.status(400).json({ error: 'moduleId, slug, title required' });
   }
+  const slugErr = badSlug(slug);
+  if (slugErr) return res.status(400).json({ error: slugErr });
   const result = await query(
     `INSERT INTO lessons (module_id, slug, title, type, content, video_url, duration_minutes, sort_order)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
@@ -130,6 +167,10 @@ router.post('/lessons', asyncHandler(async (req, res) => {
 
 router.put('/lessons/:id', asyncHandler(async (req, res) => {
   const { slug, title, type, content, videoUrl, durationMinutes, sortOrder } = req.body || {};
+  if (slug !== undefined && slug !== null) {
+    const slugErr = badSlug(slug);
+    if (slugErr) return res.status(400).json({ error: slugErr });
+  }
   const result = await query(
     `UPDATE lessons SET
        slug = COALESCE($2, slug),

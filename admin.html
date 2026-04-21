@@ -102,6 +102,56 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+// Slug rules: lowercase, digits, hyphens only. No leading/trailing/double hyphens.
+const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+function slugify(s) {
+  return String(s || '')
+    .toLowerCase()
+    .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+}
+
+// Wire a form so: (1) typing in title auto-fills slug until slug is touched manually,
+// (2) typing in slug live-sanitizes to the allowed charset,
+// (3) a preview element (.slug-preview) updates in real time.
+function wireSlugAuto(formEl, opts) {
+  opts = opts || {};
+  if (!formEl) return;
+  const slugInput = formEl.querySelector('input[name="slug"]');
+  const titleInput = formEl.querySelector('input[name="title"]');
+  const preview = formEl.querySelector('.slug-preview');
+  if (!slugInput || !titleInput) return;
+  // If editing (slug already has a value) treat as touched — don't overwrite on title change.
+  let touched = !!slugInput.value.trim();
+  const updatePreview = () => {
+    if (!preview) return;
+    const v = slugInput.value.trim();
+    preview.textContent = v ? (opts.previewPrefix || '') + v : '—';
+  };
+  titleInput.addEventListener('input', () => {
+    if (!touched) { slugInput.value = slugify(titleInput.value); updatePreview(); }
+  });
+  slugInput.addEventListener('input', () => {
+    touched = true;
+    const cursor = slugInput.selectionStart;
+    const before = slugInput.value;
+    const clean = before.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    if (clean !== before) {
+      slugInput.value = clean;
+      try { slugInput.setSelectionRange(cursor - (before.length - clean.length), cursor - (before.length - clean.length)); } catch {}
+    }
+    updatePreview();
+  });
+  slugInput.addEventListener('blur', () => {
+    // Final tidy on blur — collapse dashes / trim.
+    slugInput.value = slugify(slugInput.value);
+    updatePreview();
+  });
+  updatePreview();
+}
+
 function showLock(message) {
   root.innerHTML = `
     <div class="lock-screen">
@@ -257,10 +307,16 @@ function courseFormHtml(c) {
     <h3>${c.id ? 'Edit Kursus' : 'Kursus Baru'}</h3>
     <form id="course-form">
       <div class="field-row">
-        <div class="field"><label>Slug (URL)</label><input name="slug" value="${escapeHtml(c.slug)}" required pattern="[a-z0-9-]+" /></div>
+        <div class="field">
+          <label>Slug (URL)</label>
+          <input name="slug" value="${escapeHtml(c.slug)}" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="otomatis dari judul" />
+          <div style="font-size:11px;color:#737373;margin-top:4px;font-family:'Manrope',sans-serif;">
+            URL: <code class="slug-preview" style="background:#f5f5f5;padding:1px 6px;border-radius:4px;">—</code>
+          </div>
+        </div>
         <div class="field"><label>Level</label><input name="level" value="${escapeHtml(c.level || '')}" placeholder="N5, N4..." /></div>
       </div>
-      <div class="field"><label>Judul</label><input name="title" value="${escapeHtml(c.title)}" required /></div>
+      <div class="field"><label>Judul</label><input name="title" value="${escapeHtml(c.title)}" required placeholder="Ketik judul — slug terisi otomatis" /></div>
       <div class="field"><label>Tagline (ringkas)</label><input name="tagline" value="${escapeHtml(c.tagline || '')}" placeholder="Dari nol — hiragana & dasar" /></div>
       <div class="field"><label>Deskripsi (paragraf panjang)</label><textarea name="description">${escapeHtml(c.description || '')}</textarea></div>
 
@@ -303,20 +359,26 @@ function courseFormHtml(c) {
 
 window.newCourse = () => {
   openModal(courseFormHtml(null));
-  document.getElementById('course-form').addEventListener('submit', (e) => submitCourse(e, null));
+  const form = document.getElementById('course-form');
+  wireSlugAuto(form, { previewPrefix: '/courses/detail.html?slug=' });
+  form.addEventListener('submit', (e) => submitCourse(e, null));
 };
 window.editCourse = (id) => {
   const c = STATE.courses.find((x) => x.id === id);
   openModal(courseFormHtml(c));
-  document.getElementById('course-form').addEventListener('submit', (e) => submitCourse(e, id));
+  const form = document.getElementById('course-form');
+  wireSlugAuto(form, { previewPrefix: '/courses/detail.html?slug=' });
+  form.addEventListener('submit', (e) => submitCourse(e, id));
 };
 async function submitCourse(e, id) {
   e.preventDefault();
   const fd = new FormData(e.target);
   const features = (fd.get('features') || '').split('\n').map((s) => s.trim()).filter(Boolean);
   const status = fd.get('courseStatus') || 'draft';
+  const slug = slugify(fd.get('slug'));
+  if (!SLUG_REGEX.test(slug)) { notify('Slug tidak valid — gunakan huruf kecil, angka, dan tanda hubung.', true); return; }
   const body = {
-    slug: fd.get('slug').trim(),
+    slug,
     title: fd.get('title').trim(),
     description: fd.get('description').trim() || null,
     level: fd.get('level').trim() || null,
@@ -341,7 +403,7 @@ async function submitCourse(e, id) {
   } catch (err) { notify('Gagal simpan: ' + err.message, true); }
 }
 window.deleteCourse = async (id, title) => {
-  if (!confirm(`Hapus kursus "${title}"? Modul + pelajaran di dalamnya ikut terhapus.`)) return;
+  if (!confirm(`Hapus kursus "${title}"? Modul + pelajaran di dalamnya ikut terhapus.\n\nKursus yang sudah dibeli siswa tidak bisa dihapus — atur ke "Draft" saja.`)) return;
   try {
     await api('/admin/courses/' + id, { method: 'DELETE' });
     await loadCourses(); renderCourses();
@@ -418,8 +480,14 @@ function moduleFormHtml(m) {
   return `
     <h3>${m.id ? 'Edit Modul' : 'Modul Baru'}</h3>
     <form id="module-form">
-      <div class="field"><label>Slug</label><input name="slug" value="${escapeHtml(m.slug)}" required pattern="[a-z0-9-]+" /></div>
-      <div class="field"><label>Judul</label><input name="title" value="${escapeHtml(m.title)}" required /></div>
+      <div class="field">
+        <label>Slug</label>
+        <input name="slug" value="${escapeHtml(m.slug)}" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="otomatis dari judul" />
+        <div style="font-size:11px;color:#737373;margin-top:4px;font-family:'Manrope',sans-serif;">
+          Slug: <code class="slug-preview" style="background:#f5f5f5;padding:1px 6px;border-radius:4px;">—</code>
+        </div>
+      </div>
+      <div class="field"><label>Judul</label><input name="title" value="${escapeHtml(m.title)}" required placeholder="Ketik judul — slug terisi otomatis" /></div>
       <div class="field"><label>Deskripsi</label><textarea name="description">${escapeHtml(m.description || '')}</textarea></div>
       <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${m.sort_order}" /></div>
       <div class="modal-actions">
@@ -432,18 +500,24 @@ function moduleFormHtml(m) {
 
 window.newModule = (courseId) => {
   openModal(moduleFormHtml(null));
-  document.getElementById('module-form').addEventListener('submit', (e) => submitModule(e, null, courseId));
+  const form = document.getElementById('module-form');
+  wireSlugAuto(form);
+  form.addEventListener('submit', (e) => submitModule(e, null, courseId));
 };
 window.editModule = (id) => {
   const m = STATE.modules.find((x) => x.id === id);
   openModal(moduleFormHtml(m));
-  document.getElementById('module-form').addEventListener('submit', (e) => submitModule(e, id));
+  const form = document.getElementById('module-form');
+  wireSlugAuto(form);
+  form.addEventListener('submit', (e) => submitModule(e, id));
 };
 async function submitModule(e, id, courseId) {
   e.preventDefault();
   const fd = new FormData(e.target);
+  const slug = slugify(fd.get('slug'));
+  if (!SLUG_REGEX.test(slug)) { notify('Slug tidak valid — gunakan huruf kecil, angka, dan tanda hubung.', true); return; }
   const body = {
-    slug: fd.get('slug').trim(),
+    slug,
     title: fd.get('title').trim(),
     description: fd.get('description').trim() || null,
     sortOrder: Number(fd.get('sortOrder')) || 0,
@@ -540,7 +614,13 @@ function lessonFormHtml(l) {
     <h3>${l.id ? 'Edit Pelajaran' : 'Pelajaran Baru'}</h3>
     <form id="lesson-form">
       <div class="field-row">
-        <div class="field"><label>Slug</label><input name="slug" value="${escapeHtml(l.slug)}" required pattern="[a-z0-9-]+" /></div>
+        <div class="field">
+          <label>Slug</label>
+          <input name="slug" value="${escapeHtml(l.slug)}" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="otomatis dari judul" />
+          <div style="font-size:11px;color:#737373;margin-top:4px;font-family:'Manrope',sans-serif;">
+            Slug: <code class="slug-preview" style="background:#f5f5f5;padding:1px 6px;border-radius:4px;">—</code>
+          </div>
+        </div>
         <div class="field"><label>Tipe</label>
           <select name="type">
             <option value="text" ${l.type === 'text' ? 'selected' : ''}>Teks</option>
@@ -549,7 +629,7 @@ function lessonFormHtml(l) {
           </select>
         </div>
       </div>
-      <div class="field"><label>Judul</label><input name="title" value="${escapeHtml(l.title)}" required /></div>
+      <div class="field"><label>Judul</label><input name="title" value="${escapeHtml(l.title)}" required placeholder="Ketik judul — slug terisi otomatis" /></div>
       <div class="field"><label>Konten (markdown / HTML)</label><textarea name="content" rows="6">${escapeHtml(l.content || '')}</textarea></div>
       <div class="field-row">
         <div class="field"><label>Video URL (Bunny Stream)</label><input name="videoUrl" value="${escapeHtml(l.video_url || '')}" /></div>
@@ -566,18 +646,24 @@ function lessonFormHtml(l) {
 
 window.newLesson = (moduleId) => {
   openModal(lessonFormHtml(null));
-  document.getElementById('lesson-form').addEventListener('submit', (e) => submitLesson(e, null, moduleId));
+  const form = document.getElementById('lesson-form');
+  wireSlugAuto(form);
+  form.addEventListener('submit', (e) => submitLesson(e, null, moduleId));
 };
 window.editLesson = (id) => {
   const l = STATE.lessons.find((x) => x.id === id);
   openModal(lessonFormHtml(l));
-  document.getElementById('lesson-form').addEventListener('submit', (e) => submitLesson(e, id));
+  const form = document.getElementById('lesson-form');
+  wireSlugAuto(form);
+  form.addEventListener('submit', (e) => submitLesson(e, id));
 };
 async function submitLesson(e, id, moduleId) {
   e.preventDefault();
   const fd = new FormData(e.target);
+  const slug = slugify(fd.get('slug'));
+  if (!SLUG_REGEX.test(slug)) { notify('Slug tidak valid — gunakan huruf kecil, angka, dan tanda hubung.', true); return; }
   const body = {
-    slug: fd.get('slug').trim(),
+    slug,
     title: fd.get('title').trim(),
     type: fd.get('type'),
     content: fd.get('content').trim() || null,

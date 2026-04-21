@@ -99,15 +99,39 @@ router.get('/stats/me', asyncHandler(async (req, res) => {
 }));
 
 // POST /api/enrollments
+// Accepts { courseSlug } or { courseId }. Slug is the usual path — frontend only
+// knows slugs. We look up the course row and enforce that it's purchasable
+// (published + available) before enrolling. This is the single source of truth
+// for access — do NOT trust localStorage on the frontend.
 router.post('/enrollments', asyncHandler(async (req, res) => {
-  const { courseId } = req.body || {};
-  if (!courseId) return res.status(400).json({ error: 'courseId required' });
-  await query(
+  const { courseSlug, courseId } = req.body || {};
+  if (!courseSlug && !courseId) {
+    return res.status(400).json({ error: 'courseSlug or courseId required' });
+  }
+
+  const lookup = courseId
+    ? await query(`SELECT id, is_published, is_available FROM courses WHERE id = $1`, [courseId])
+    : await query(`SELECT id, is_published, is_available FROM courses WHERE slug = $1`, [courseSlug]);
+
+  if (lookup.rows.length === 0) {
+    return res.status(404).json({ error: 'Kursus tidak ditemukan.' });
+  }
+  const course = lookup.rows[0];
+  if (!course.is_published) {
+    return res.status(403).json({ error: 'Kursus belum terbit.' });
+  }
+  if (course.is_available === false) {
+    return res.status(403).json({ error: 'Kursus belum tersedia untuk pembelian.' });
+  }
+
+  const ins = await query(
     `INSERT INTO user_enrollments (user_id, course_id)
-     VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-    [req.user.id, courseId]
+     VALUES ($1, $2)
+     ON CONFLICT (user_id, course_id) DO NOTHING
+     RETURNING id`,
+    [req.user.id, course.id]
   );
-  res.json({ ok: true });
+  res.json({ ok: true, alreadyEnrolled: ins.rows.length === 0, courseId: course.id });
 }));
 
 // GET /api/enrollments/me

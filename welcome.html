@@ -2120,29 +2120,135 @@ if (!session) {
 })();
 
 // ═══════════════════════════════════════════════
-// CONTENT DATA (loaded from data/*.json at startup)
+// CONTENT DATA — source of truth is the admin CMS (/api/courses/:slug).
+// Courses/modules/lessons are hydrated per-enrolled-course on load.
+// Quiz questions are lazy-loaded on demand (first "Mulai Kuis" click).
+// Flashcards remain static JSON (out of CMS scope for now).
 // ═══════════════════════════════════════════════
 let COURSE_CONTENT = {};
 let QUIZ_DATA = {};
 let FLASHCARD_DATA = {};
 
-async function loadContentData() {
-  const [courses, quizzes, flashcards] = await Promise.all([
-    fetch('data/courses.json').then(r => r.json()),
-    fetch('data/quizzes.json').then(r => r.json()),
-    fetch('data/flashcards.json').then(r => r.json()),
-  ]);
-  COURSE_CONTENT = courses;
-  QUIZ_DATA = quizzes;
-  FLASHCARD_DATA = flashcards;
+// Migration stored lesson content as: body + '\n\n<div class="jp">...</div>'.
+// Split it back into the {body, jp} pair the dashboard renders with.
+function splitJpFromContent(content) {
+  if (!content) return { body: '', jp: '' };
+  const m = content.match(/^([\s\S]*?)\s*<div class="jp">([\s\S]*?)<\/div>\s*$/);
+  if (m) return { body: m[1].trim(), jp: m[2].trim() };
+  return { body: content, jp: '' };
+}
+
+function transformCourseFromApi(apiCourse) {
+  return {
+    name: apiCourse.title || apiCourse.slug,
+    tagline: apiCourse.description || '',
+    price: '',
+    modules: (apiCourse.modules || []).map((m, mi) => ({
+      id: m.slug,
+      num: String(mi + 1).padStart(2, '0'),
+      title: m.title,
+      lessons: (m.lessons || []).map((l) => {
+        const { body, jp } = splitJpFromContent(l.content || '');
+        return {
+          id: l.slug,
+          apiId: l.id, // UUID — needed to lazy-load quiz questions
+          title: l.title,
+          type: l.type || 'text',
+          duration: l.duration_minutes ? `${l.duration_minutes} min` : '',
+          body,
+          jp,
+        };
+      }),
+    })),
+  };
+}
+
+// Migration stored quiz prompts as "q\n\njp" (or just "q" if no jp). Split
+// back, then match the shape the existing quiz engine expects:
+// { q, jp, options: [text...], correct: idx, explain }
+function transformQuestionFromApi(apiQ) {
+  const prompt = apiQ.question || '';
+  const parts = prompt.split(/\n\n/);
+  const q = parts[0] || '';
+  const jp = parts.slice(1).join('\n\n').trim() || '';
+  const sorted = (apiQ.options || []).slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const options = sorted.map((o) => o.option_text);
+  const correct = Math.max(0, sorted.findIndex((o) => o.is_correct));
+  return { q, jp, options, correct, explain: apiQ.explanation || '' };
+}
+
+async function hydrateEnrolledCourses() {
+  const enrolled = getEnrolledCourses();
+  const missing = enrolled.filter((slug) => !COURSE_CONTENT[slug]);
+  if (missing.length === 0) return;
+  const results = await Promise.allSettled(
+    missing.map((slug) =>
+      fetch(`/api/courses/${encodeURIComponent(slug)}`, { credentials: 'include' })
+        .then((r) => (r.ok ? r.json() : null))
+    )
+  );
+  missing.forEach((slug, i) => {
+    const r = results[i];
+    if (r.status !== 'fulfilled' || !r.value?.course) return;
+    COURSE_CONTENT[slug] = transformCourseFromApi(r.value.course);
+  });
+}
+
+async function loadFlashcardData() {
+  try {
+    const r = await fetch('data/flashcards.json');
+    if (r.ok) FLASHCARD_DATA = await r.json();
+  } catch {}
+}
+
+async function ensureQuizLoaded(courseSlug, moduleId, lessonId) {
+  const key = getQuizKey(courseSlug, moduleId, lessonId);
+  if (QUIZ_DATA[key]) return QUIZ_DATA[key];
+  const lesson = findLesson(courseSlug, moduleId, lessonId);
+  if (!lesson?.apiId) return null;
+  try {
+    const r = await fetch(`/api/lessons/${encodeURIComponent(lesson.apiId)}`, { credentials: 'include' });
+    if (!r.ok) return null;
+    const data = await r.json();
+    const qs = (data.lesson?.questions || []).map(transformQuestionFromApi);
+    if (qs.length > 0) QUIZ_DATA[key] = qs;
+    return QUIZ_DATA[key] || null;
+  } catch { return null; }
+}
+
+function findLesson(courseSlug, moduleId, lessonId) {
+  const course = COURSE_CONTENT[courseSlug];
+  if (!course) return null;
+  const mod = course.modules.find((m) => m.id === moduleId);
+  if (!mod) return null;
+  return mod.lessons.find((l) => l.id === lessonId) || null;
 }
 
 // ═══════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════
+// Single source of truth: server (user_enrollments table). localStorage is a
+// cache so the rest of the UI can stay sync. syncEnrollmentsFromServer() is
+// called on page load (and again after a new enrollment) to keep the cache
+// fresh — never trust localStorage alone for access decisions.
 function getEnrolledCourses() {
   try { return JSON.parse(localStorage.getItem('ez_courses') || '[]'); }
   catch { return []; }
+}
+async function syncEnrollmentsFromServer() {
+  if (typeof window.ezApi !== 'function') return getEnrolledCourses();
+  try {
+    const res = await window.ezApi('/api/enrollments/me');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const slugs = (data.enrollments || []).map(e => e.slug).filter(Boolean);
+    localStorage.setItem('ez_courses', JSON.stringify(slugs));
+    return slugs;
+  } catch {
+    // Offline / server hiccup — fall back to whatever we had cached so the
+    // dashboard still renders. Access is revalidated on next successful sync.
+    return getEnrolledCourses();
+  }
 }
 function getProgress() {
   try { return JSON.parse(localStorage.getItem('ez_progress') || '{}'); }
@@ -2581,10 +2687,13 @@ async function handleNewEnrollment() {
   const newCourse = params.get('new');
   if (!newCourse) return null;
 
-  const enrolled = getEnrolledCourses();
+  // Checkout page already POSTed /api/enrollments. Re-sync to pick up the new
+  // row — localStorage is just a mirror. If the server says we're not enrolled
+  // (e.g. payment failed), we bail without showing the success banner.
+  const enrolled = await syncEnrollmentsFromServer();
   if (!enrolled.includes(newCourse)) {
-    enrolled.push(newCourse);
-    localStorage.setItem('ez_courses', JSON.stringify(enrolled));
+    history.replaceState({}, '', 'welcome.html');
+    return null;
   }
 
   // Resolve display name — prefer local content, fall back to CMS.
@@ -2704,12 +2813,11 @@ function renderPaywallCard(c) {
 }
 
 function renderPaywall() {
-  // Local fallback (shown instantly while CMS loads). Treated as available.
-  const localPlans = Object.entries(COURSE_CONTENT)
-    .map(([slug, c]) => renderPaywallCard({
-      slug, title: c.name, price_label: c.price, is_available: true,
-    }))
-    .join('');
+  // Init already awaited fetchCmsCourses, so _cmsCourses is populated here
+  // in the common path. If for some reason it's not (network hiccup), we
+  // still render the shell and let the fallback fetch fill in below.
+  const cmsList = Array.isArray(_cmsCourses) ? _cmsCourses : [];
+  const plansHtml = cmsList.map(renderPaywallCard).join('');
 
   document.getElementById('app-root').innerHTML = `
     <main class="paywall">
@@ -2720,7 +2828,7 @@ function renderPaywall() {
         <a href="index.html#pricing" class="paywall-cta">Pilih Kelas Sekarang →</a>
 
         <div class="paywall-plans" id="paywall-plans">
-          ${localPlans}
+          ${plansHtml}
         </div>
       </div>
     </main>
@@ -2728,13 +2836,14 @@ function renderPaywall() {
   document.getElementById('sidebar-toggle')?.classList.remove('visible');
   closeSidebar();
 
-  // Hydrate paywall pricing from admin CMS (source of truth).
-  fetchCmsCourses().then(courses => {
-    if (!courses || courses.length === 0) return;
-    const target = document.getElementById('paywall-plans');
-    if (!target) return;
-    target.innerHTML = courses.map(renderPaywallCard).join('');
-  });
+  if (cmsList.length === 0) {
+    fetchCmsCourses().then(courses => {
+      if (!courses || courses.length === 0) return;
+      const target = document.getElementById('paywall-plans');
+      if (!target) return;
+      target.innerHTML = courses.map(renderPaywallCard).join('');
+    });
+  }
 }
 
 let currentState = { course: null, moduleId: null, lessonId: null };
@@ -2767,7 +2876,10 @@ function renderCmsOnlyCourseStub(courseSlug) {
 
 function renderLearning(courseSlug) {
   const course = COURSE_CONTENT[courseSlug];
-  if (!course) return renderCmsOnlyCourseStub(courseSlug);
+  // Stub when the course doesn't hydrate (API down, unpublished, not yet
+  // populated) or has no modules yet (admin created shell, hasn't added
+  // content). User is enrolled in both cases — don't bounce them to paywall.
+  if (!course || course.modules.length === 0) return renderCmsOnlyCourseStub(courseSlug);
 
   if (!currentState.moduleId) {
     const progress = getProgress()[courseSlug] || {};
@@ -2916,7 +3028,22 @@ function renderSidebar() {
   const flashCount = (FLASHCARD_DATA[currentState.course] || []).length;
 
   const enrolled = getEnrolledCourses();
-  const courseOptionsHtml = Object.entries(COURSE_CONTENT).map(([slug, c]) => {
+  // Merge enrolled (hydrated) courses with CMS-listed courses so non-enrolled
+  // courses still appear in the picker with an "Upgrade" CTA. Source of truth
+  // for the unified list: CMS — enrolled courses are always a subset.
+  const cmsList = Array.isArray(_cmsCourses) ? _cmsCourses : [];
+  const pickerEntries = [];
+  const seen = new Set();
+  for (const c of cmsList) {
+    if (!c.slug) continue;
+    seen.add(c.slug);
+    pickerEntries.push({ slug: c.slug, name: c.title || c.slug.toUpperCase() });
+  }
+  for (const slug of Object.keys(COURSE_CONTENT)) {
+    if (seen.has(slug)) continue;
+    pickerEntries.push({ slug, name: COURSE_CONTENT[slug].name });
+  }
+  const courseOptionsHtml = pickerEntries.map(({ slug, name }) => {
     const isEnrolled = enrolled.includes(slug);
     const isActive = slug === currentState.course;
     const classes = ['course-option'];
@@ -2928,7 +3055,7 @@ function renderSidebar() {
     return `
       <div class="${classes.join(' ')}" onclick="switchCourse('${slug}')">
         <span class="level-chip">${slug.toUpperCase()}</span>
-        <span class="opt-name">${c.name}</span>
+        <span class="opt-name">${name}</span>
         ${status}
       </div>
     `;
@@ -3042,7 +3169,6 @@ function renderLesson() {
   // Handle interactive quiz
   if (lesson.type === 'quiz') {
     const quizKey = getQuizKey(currentState.course, module.id, lesson.id);
-    const hasQuestions = !!QUIZ_DATA[quizKey];
     const scores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
     const bestScore = scores[quizKey] || 0;
 
@@ -3057,8 +3183,8 @@ function renderLesson() {
           <h2 style="font-size:22px;font-weight:800;margin:0 0 8px;">Siap untuk kuis?</h2>
           <p style="color:#485f84;margin:0 0 20px;">${lesson.body || 'Tes pemahaman kamu di bab ini.'}</p>
           ${bestScore > 0 ? `<div style="display:inline-block;padding:8px 18px;background:#fff0f2;color:#b20024;border-radius:999px;font-weight:700;font-size:13px;margin-bottom:20px;">Skor terbaik: ${bestScore}%</div><br/>` : ''}
-          <button class="btn-primary" onclick="window.startQuizNow()" ${!hasQuestions ? 'disabled style="opacity:0.5"' : ''}>
-            ${hasQuestions ? (bestScore > 0 ? 'Ulang Kuis →' : 'Mulai Kuis →') : 'Kuis segera hadir'}
+          <button class="btn-primary" id="quiz-start-btn" onclick="window.startQuizNow()">
+            ${bestScore > 0 ? 'Ulang Kuis →' : 'Mulai Kuis →'}
           </button>
         </div>
       </div>
@@ -3188,7 +3314,18 @@ window.saveLessonNote = (key, value) => {
   }, 400);
 };
 
-window.startQuizNow = () => {
+window.startQuizNow = async () => {
+  const btn = document.getElementById('quiz-start-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Memuat kuis...'; }
+  const questions = await ensureQuizLoaded(currentState.course, currentState.moduleId, currentState.lessonId);
+  if (!questions || questions.length === 0) {
+    const main = document.getElementById('main-content');
+    const container = main?.querySelector('.quiz-container');
+    if (container) {
+      container.innerHTML = `<p style="color:#485f84;text-align:center;padding:40px 20px;">Kuis belum tersedia untuk bab ini.</p>`;
+    }
+    return;
+  }
   renderQuizLesson(document.getElementById('main-content'), currentState.course, currentState.moduleId, currentState.lessonId);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
@@ -3299,17 +3436,30 @@ window.markCompleteAndNext = () => {
 
 function renderCourseTabs(activeSlug) {
   const enrolled = getEnrolledCourses();
-  // Union of local content slugs + enrolled slugs (CMS-only courses still show up).
-  const slugs = [...new Set([...Object.keys(COURSE_CONTENT), ...enrolled])];
-  const tabs = slugs.map(slug => {
+  // Tabs show the full catalog (CMS) plus any enrolled slugs that somehow
+  // aren't in the CMS list (edge case — unpublished course user still has
+  // access to). Non-enrolled tabs get a lock icon + upgrade flow.
+  const cmsList = Array.isArray(_cmsCourses) ? _cmsCourses : [];
+  const entries = [];
+  const seen = new Set();
+  for (const c of cmsList) {
+    if (!c.slug) continue;
+    seen.add(c.slug);
+    entries.push({ slug: c.slug, name: c.title || c.slug.toUpperCase(), tagline: c.tagline || c.description || '' });
+  }
+  for (const slug of enrolled) {
+    if (seen.has(slug)) continue;
     const c = COURSE_CONTENT[slug];
+    entries.push({ slug, name: c?.name || slug.toUpperCase(), tagline: c?.tagline || '' });
+  }
+  const tabs = entries.map(({ slug, name, tagline }) => {
     const isEnrolled = enrolled.includes(slug);
     const isActive = slug === activeSlug;
     const classes = ['course-tab'];
     if (isActive) classes.push('active');
     if (!isEnrolled) classes.push('locked');
     const lockIcon = !isEnrolled ? '<span class="lock-icon">🔒</span>' : '';
-    const title = c ? `${c.name} — ${c.tagline}` : slug.toUpperCase();
+    const title = tagline ? `${name} — ${tagline}` : name;
     return `<button class="${classes.join(' ')}" onclick="switchCourse('${slug}')" title="${title}">${slug.toUpperCase()}${lockIcon}</button>`;
   }).join('');
   const nav = document.getElementById('course-tabs');
@@ -3338,8 +3488,20 @@ window.switchCourse = async (slug) => {
 (async () => {
   if (!session) return;
 
+  const userEmailEl = document.getElementById('user-email');
+  if (userEmailEl) userEmailEl.textContent = session.email;
+
   try {
-    await loadContentData();
+    // Pull enrollments first — the hydrator only fetches course content for
+    // slugs the user actually has access to. Flashcards are static and the
+    // CMS course list (used by sidebar picker / course tabs to show
+    // upgrade CTAs for non-enrolled courses) can load in parallel.
+    await syncEnrollmentsFromServer();
+    await Promise.all([hydrateEnrolledCourses(), loadFlashcardData(), fetchCmsCourses()]);
+    // handleNewEnrollment may resync enrollments (e.g. if user just landed
+    // from checkout). Re-hydrate in case it discovered a newly-paid course.
+    await handleNewEnrollment();
+    await hydrateEnrolledCourses();
   } catch (err) {
     const root = document.getElementById('app-root');
     if (root) {
@@ -3354,11 +3516,6 @@ window.switchCourse = async (slug) => {
     }
     return;
   }
-
-  const userEmailEl = document.getElementById('user-email');
-  if (userEmailEl) userEmailEl.textContent = session.email;
-
-  await handleNewEnrollment();
 
   const enrolled = getEnrolledCourses();
   const params = new URLSearchParams(window.location.search);

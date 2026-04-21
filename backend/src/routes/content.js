@@ -39,8 +39,11 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
   const moduleIds = modules.rows.map((m) => m.id);
   let lessonsByModule = {};
   if (moduleIds.length > 0) {
+    // Include content + video_url so the dashboard can render lesson bodies
+    // without an extra round-trip per lesson. Quiz questions are still
+    // lazy-loaded via /api/lessons/:id (smaller default payload for long courses).
     const lessons = await query(
-      `SELECT id, module_id, slug, title, type, duration_minutes, sort_order
+      `SELECT id, module_id, slug, title, type, content, video_url, duration_minutes, sort_order
        FROM lessons
        WHERE module_id = ANY($1::uuid[])
        ORDER BY sort_order ASC, created_at ASC`,
@@ -90,7 +93,7 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
 
   if (row.type === 'quiz') {
     const questions = await query(
-      `SELECT id, question, question_type, sort_order
+      `SELECT id, question, question_type, explanation, sort_order
        FROM quiz_questions
        WHERE lesson_id = $1
        ORDER BY sort_order ASC`,
@@ -99,9 +102,12 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
     const qIds = questions.rows.map((q) => q.id);
     let optsByQ = {};
     if (qIds.length > 0) {
-      // Intentionally do NOT expose is_correct here — client shouldn't know answers.
+      // is_correct is exposed on purpose: the dashboard grades client-side
+      // (same as the static data/quizzes.json we're replacing), so parity
+      // matters. Once we add server-side scoring / attempts, strip this and
+      // add POST /api/quiz-check instead.
       const opts = await query(
-        `SELECT id, question_id, option_text, sort_order
+        `SELECT id, question_id, option_text, is_correct, sort_order
          FROM quiz_options
          WHERE question_id = ANY($1::uuid[])
          ORDER BY sort_order ASC`,

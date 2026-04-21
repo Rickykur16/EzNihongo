@@ -108,14 +108,28 @@ function renderCourseUI(course) {
     });
   });
 
-  document.getElementById("c-checkout-form").addEventListener("submit", e => {
+  document.getElementById("c-checkout-form").addEventListener("submit", async e => {
     e.preventDefault();
     const btn = document.getElementById("c-submit");
     btn.textContent = "Memproses pembayaran...";
     btn.disabled = true;
-    setTimeout(() => {
+    try {
+      // Temporary: no real payment gateway yet. Once Midtrans/Xendit lands this
+      // will be replaced with a redirect to the gateway, and the webhook will
+      // enroll the user. For now we POST directly so enrollment is at least
+      // server-side (not localStorage) and gated by course availability.
+      const res = await window.ezApi("/api/enrollments", {
+        method: "POST",
+        body: JSON.stringify({ courseSlug: course.slug }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.href = `../welcome.html?new=${encodeURIComponent(course.slug)}`;
-    }, 900);
+    } catch (err) {
+      btn.textContent = "Lanjut ke Pembayaran →";
+      btn.disabled = false;
+      alert("Gagal mendaftar: " + (err.message || "coba lagi sebentar."));
+    }
   });
 }
 
@@ -128,8 +142,22 @@ async function init() {
 
   if (!(await ensureAuth(slug))) return;
 
-  // Already enrolled? Go straight to dashboard.
-  const enrolled = JSON.parse(localStorage.getItem("ez_courses") || "[]");
+  // Already enrolled? Check server (source of truth) before sending them to
+  // dashboard — localStorage can lie, especially right after login on a new
+  // device. Fall back to localStorage only if the API is unreachable.
+  let enrolled = [];
+  if (typeof window.ezApi === "function") {
+    try {
+      const res = await window.ezApi("/api/enrollments/me");
+      if (res.ok) {
+        const data = await res.json();
+        enrolled = (data.enrollments || []).map(e => e.slug).filter(Boolean);
+        localStorage.setItem("ez_courses", JSON.stringify(enrolled));
+      }
+    } catch { enrolled = JSON.parse(localStorage.getItem("ez_courses") || "[]"); }
+  } else {
+    enrolled = JSON.parse(localStorage.getItem("ez_courses") || "[]");
+  }
   if (enrolled.includes(slug)) {
     window.location.replace(`../welcome.html?course=${encodeURIComponent(slug)}`);
     return;
