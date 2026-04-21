@@ -21,13 +21,11 @@
   } catch (e) {}
 })();
 
-// Keep ez_user in sync with Supabase session once SDK loads
+// Keep ez_user in sync with backend session once api-client loads
 window.addEventListener('load', async () => {
   try {
-    if (typeof ensureSupabase !== 'function') return;
-    const sb = await ensureSupabase();
-    const { data: { session } } = await sb.auth.getSession();
-    mirrorSessionToLocal(session);
+    if (typeof ezGetMe !== 'function') return;
+    await ezGetMe();
   } catch (e) {}
 });
 </script>
@@ -36,8 +34,7 @@ window.addEventListener('load', async () => {
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-client.js"></script>
+<script src="api-client.js"></script>
 
 <script type="text/babel">
 // ============ SHARED DATA & COMPONENTS ============
@@ -263,18 +260,11 @@ function ModernNav() {
   }, []);
 
   React.useEffect(() => {
-    let sub = null;
     (async () => {
-      const sb = await window.ensureSupabase();
-      const { data: { session } } = await sb.auth.getSession();
-      const u = window.mirrorSessionToLocal(session);
+      await window.ezGetMe();
+      const u = JSON.parse(localStorage.getItem('ez_user') || 'null');
       setUser(u); setLoaded(true);
-      sub = sb.auth.onAuthStateChange((_e, s) => {
-        const m = window.mirrorSessionToLocal(s);
-        setUser(m);
-      });
     })();
-    return () => { try { sub?.data?.subscription?.unsubscribe?.(); } catch(e){} };
   }, []);
 
   const initial = user ? (user.name || user.email || 'U').charAt(0).toUpperCase() : '';
@@ -324,7 +314,7 @@ function ModernNav() {
               }}
               onMouseOver={e => { e.currentTarget.style.transform = 'translateY(1px)'; e.currentTarget.style.boxShadow = '0 1px 0 #8a0b20'; }}
               onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 0 #8a0b20'; }}
-              onClick={() => window.location.href = 'register.html'}>
+              onClick={() => window.location.href = 'login.html'}>
                 Daftar
               </button>
             </>
@@ -886,7 +876,7 @@ function ModernPricing() {
                 const user = localStorage.getItem('ez_user');
                 window.location.href = user
                   ? `courses/${plan.slug}.html`
-                  : `register.html?next=courses%2F${plan.slug}.html`;
+                  : `login.html?next=courses%2F${plan.slug}.html`;
               }}
               style={{ width: '100%', marginTop: 32, background: '#C8102E', color: '#fff', padding: '16px', borderRadius: 12, fontSize: 16, fontWeight: 700, boxShadow: '0 4px 0 #8a0b20', transition: 'all 0.15s', cursor: 'pointer', border: 'none' }}
               onMouseOver={e => { e.currentTarget.style.transform = 'translateY(2px)'; e.currentTarget.style.boxShadow = '0 2px 0 #8a0b20'; }}

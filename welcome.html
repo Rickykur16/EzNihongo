@@ -2056,36 +2056,29 @@
   © 2026 <strong>EzNihongo</strong>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-client.js"></script>
+<script src="api-client.js"></script>
 <script>
 // ═══════════════════════════════════════════════
-// AUTH GUARD — Supabase session (fallback: localStorage)
+// AUTH GUARD — self-hosted API session
 // ═══════════════════════════════════════════════
 let session = JSON.parse(localStorage.getItem('ez_user') || 'null');
 if (!session) {
   window.location.replace('login.html?next=welcome.html');
 }
 
-// Verify with Supabase in background; if signed out remotely, bounce to login
+// Verify with backend in background; if session invalid, bounce to login
 (async () => {
   try {
-    const sb = await ensureSupabase();
-    const { data: { session: sbSession } } = await sb.auth.getSession();
-    if (!sbSession) {
-      localStorage.removeItem('ez_user');
+    const user = await ezGetMe();
+    if (!user) {
       location.replace('login.html?next=welcome.html');
       return;
     }
-    const mirrored = mirrorSessionToLocal(sbSession);
+    const mirrored = JSON.parse(localStorage.getItem('ez_user') || 'null');
     if (mirrored) session = mirrored;
-    sb.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
-        localStorage.removeItem('ez_user');
-        location.replace('login.html?next=welcome.html');
-      }
-    });
-  } catch (e) {}
+  } catch (e) {
+    location.replace('login.html?next=welcome.html');
+  }
 })();
 
 // ═══════════════════════════════════════════════

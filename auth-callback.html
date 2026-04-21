@@ -1,82 +1,18 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Memuat... · EzNihongo</title>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet"/>
-<style>
-  body {
-    margin: 0;
-    min-height: 100vh;
-    background: #fafafa;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-  }
-  .loading-box { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
-  .loading-box img { height: 48px; }
-  .loading-box p { font-size: 14px; color: #525252; margin: 0; }
-  .spinner {
-    width: 28px; height: 28px;
-    border: 3px solid #e5e5e5;
-    border-top-color: #C8102E;
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-</style>
+<meta http-equiv="refresh" content="0; url=login.html">
+<script>
+  // Legacy OAuth redirect endpoint — no longer used. New flow uses Google Identity Services inline.
+  const params = new URLSearchParams(location.search);
+  const next = params.get('next');
+  location.replace('login.html' + (next ? ('?next=' + encodeURIComponent(next)) : ''));
+</script>
 </head>
 <body>
-  <div class="loading-box">
-    <img src="logo.png" alt="EzNihongo" />
-    <div class="spinner"></div>
-    <p id="status">Memverifikasi akun...</p>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js"></script>
-  <script>
-    function setStatus(msg) { document.getElementById('status').textContent = msg; }
-    function getNext() {
-      const p = new URLSearchParams(location.search);
-      return p.get('next') || 'welcome.html';
-    }
-
-    let redirected = false;
-    function goNext() {
-      if (redirected) return;
-      redirected = true;
-      setStatus('Masuk...');
-      location.href = getNext();
-    }
-
-    (async () => {
-      const sb = await ensureSupabase();
-
-      const { data: { session } } = await sb.auth.getSession();
-      if (session) { mirrorSessionToLocal(session); goNext(); return; }
-
-      sb.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          mirrorSessionToLocal(session);
-          goNext();
-        }
-        if (event === 'SIGNED_OUT') {
-          setStatus('Gagal masuk. Mengalihkan...');
-          setTimeout(() => location.href = 'login.html', 1800);
-        }
-      });
-
-      // Safety timeout: if nothing happens in 8s, back to login
-      setTimeout(() => {
-        if (!redirected) {
-          setStatus('Timeout. Mengalihkan ke login...');
-          setTimeout(() => location.href = 'login.html', 1200);
-        }
-      }, 8000);
-    })();
-  </script>
+<p>Mengalihkan...</p>
 </body>
 </html>
