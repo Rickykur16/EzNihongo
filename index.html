@@ -191,10 +191,10 @@ const SHARED_CONTENT = {
     eyebrow: "FAQ",
     title: "Pertanyaan yang sering ditanyakan.",
     items: [
-      { q: "Apakah saya bisa benar-benar kerja di Jepang setelah belajar di sini?", a: "Ya. Kelas SSW kami dirancang khusus untuk mempersiapkanmu lulus ujian Tokutei Ginou dan bekerja di Jepang. Kami juga memiliki jaringan agensi penyalur kerja mitra yang siap membantu alumni setelah lulus ujian." },
-      { q: "Bedanya dengan LPK konvensional apa?", a: "LPK biasanya mematok Rp 15—25 juta untuk program 6 bulan offline, dengan jadwal tetap. EzNihongo 100% online, pace mengikuti kamu, dan biaya total di bawah Rp 5 juta. Cocok untuk yang tetap ingin bekerja sambil belajar." },
+      { q: "Apakah saya bisa benar-benar kerja di Jepang setelah belajar di sini?", a: "Ya. Kelas SSW kami dirancang khusus untuk mempersiapkanmu lulus ujian Tokutei Ginou dan bekerja di Jepang. Kami juga memandu kamu langkah demi langkah agar bisa mandiri — sehingga ilmunya benar-benar kamu pahami sendiri." },
+      { q: "Bedanya dengan LPK konvensional apa?", a: "LPK konvensional biasanya mematok Rp 25-35 juta untuk program 6 bulan. EzNihongo membuka jalur yang sama, online, bayar per level dan kamu bisa berhenti atau naik kapan saja." },
       { q: "Saya benar-benar pemula, tidak tahu hiragana. Bisa ikut?", a: "Sangat bisa. Kelas N5 dimulai dari cara membaca hiragana-katakana, pelafalan dasar, hingga percakapan sederhana. Tidak ada prasyarat apapun." },
-      { q: "Berapa lama sampai saya bisa lulus JLPT N4 / SSW?", a: "Rata-rata siswa kami menembus N4 dalam 6–9 bulan dengan komitmen 5–7 jam belajar per minggu. Untuk SSW (Tokutei Ginou), persiapannya bisa selesai bersamaan dengan N4." },
+      { q: "Berapa lama sampai saya bisa lulus JLPT N4 / SSW?", a: "Kurikulum kami dirancang agar kamu bisa menembus N4 dalam 6 bulan dengan komitmen 5–7 jam belajar per minggu. Untuk SSW (Tokutei Ginou), persiapannya bisa selesai bersamaan dengan N4." },
       { q: "Siapa yang mengajar di EzNihongo?", a: "Pengajar kami adalah orang Indonesia yang sudah tinggal dan bekerja langsung di Jepang. Mereka paham betul tantangan yang dihadapi pelajar Indonesia — bukan teori, tapi pengalaman nyata di lapangan." },
       { q: "Bagaimana kalau saya tidak sempat ikut live class?", a: "Semua live class direkam dan bisa kamu tonton ulang kapan saja. Modul self-paced dan latihan kuis juga buka 24/7." },
     ],
@@ -1002,7 +1002,7 @@ function ModernTestimonials() {
           <p style={{ fontSize: 17, color: '#525252', lineHeight: 1.6, maxWidth: 640, margin: '0 auto' }}>Cerita nyata dari alumni EzNihongo yang sekarang bekerja, kuliah, dan membangun hidup di Jepang.</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 320px))', gap: 24, maxWidth: 1080, margin: '0 auto', justifyContent: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 380px))', gap: 'clamp(16px, 2.5vw, 24px)', justifyContent: 'center', maxWidth: 1180, margin: '0 auto' }}>
           {items.map((t, i) => (
             <div key={t.id || i} className="reveal" style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', border: '1px solid #e5e5e5', boxShadow: '0 10px 40px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column' }}>
               {t.photo_url
@@ -1124,9 +1124,10 @@ function ModernFooter() {
 const COMPARE_ROWS = [
   { label: "Biaya total",             lpk: "Rp 15\u201330 juta. Dibayar di muka.",                                ez: "Mulai Rp 899rb / kelas. Jauh di bawah biaya LPK." },
   { label: "Transparansi biaya",      lpk: "Biaya tidak transparan. \u201cBiaya lain-lain\u201d muncul di tengah jalan.", ez: "Harga final tertulis di awal. Titik." },
+  { label: "Biaya asrama & makan",   lpk: "Ada. Kamu wajib tinggal di asrama dan menanggung biaya makan sendiri.", ez: "Tidak ada. Belajar dari rumah, makan masakan sendiri." },
   { label: "Siapa pengajarnya",       lpk: "Sering tidak punya pekerjaan sendiri di Jepang \u2014 hanya tahu dari buku.", ez: "Ahli bahasa Jepang & sedang / sudah bertahun-tahun berpengalaman kerja di Jepang." },
   { label: "Urusan visa & dokumen",   lpk: "Dititip ke agen. Kamu tidak tahu apa yang sedang diproses.",          ez: "Kamu yang pegang. Dipandu langkah per langkah, tidak bisa ditipu." },
-  { label: "Begitu sampai di Jepang", lpk: "Sendirian. Cari koneksi dari nol.",                                    ez: "Komunitas alumni siap bantu \u2014 online maupun offline di Jepang." },
+  { label: "Begitu sampai di Jepang", lpk: "Sendirian. Cari koneksi dari nol.",                                    ez: "Komunitas alumni siap bantu online maupun offline di Jepang." },
   { label: "Kalau gagal berangkat",   lpk: "Uang 15\u201330 juta lenyap. Ilmu tidak dapat.",                       ez: "Ilmunya tetap di kamu. Bisa coba lagi kapan saja." },
 ];
 
