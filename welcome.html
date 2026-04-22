@@ -759,6 +759,33 @@
     letter-spacing: 0.08em;
     z-index: 1;
   }
+  .video-soon {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.9);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    backdrop-filter: blur(4px);
+    z-index: 1;
+  }
+  .video-soon::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ffb86b;
+    box-shadow: 0 0 8px rgba(255,184,107,0.7);
+  }
 
   /* Lesson text content */
   .lesson-body {
@@ -4273,9 +4300,12 @@ function renderLesson() {
   }
 
   // Regular lesson (video/text) — only render the player for actual video lessons.
+  // The placeholder signals that a video will live here; click action stays a
+  // friendly "coming soon" until Bunny Stream playback is wired up.
   const videoBlock = lesson.type === 'video' ? `
     <div class="video-player">
-      <button class="play-btn" onclick="alert('Video player belum terintegrasi.')">▶</button>
+      <span class="video-soon">Segera tersedia</span>
+      <button class="play-btn" onclick="alert('Video pelajaran akan segera tersedia di sini.')">▶</button>
       <span class="video-meta">${lesson.type.toUpperCase()} · ${lesson.duration.toUpperCase()}</span>
     </div>
   ` : '';
@@ -4303,7 +4333,7 @@ function renderLesson() {
 
     ${introBlock}
 
-    ${introBlock ? '' : videoBlock}
+    ${videoBlock}
 
     ${bodyBlock}
 
