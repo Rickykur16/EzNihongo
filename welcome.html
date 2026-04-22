@@ -275,10 +275,15 @@
     min-height: 0;
   }
 
-  /* ── Sidebar (drawer, all widths) ── */
+  /* ── Sidebar (drawer, all widths) ──
+     Layered bg: soft red radial glow at top + warm cream→white gradient +
+     subtle diagonal grain to kill the flat-white feel. Decorative ::before
+     adds a thin red accent line. */
   .sidebar {
-    background: #fff;
-    border-right: 1px solid #e5e5e5;
+    background:
+      radial-gradient(720px 240px at 50% -80px, rgba(178,0,36,0.08) 0%, transparent 65%),
+      linear-gradient(180deg, #fcfaf5 0%, #ffffff 42%, #fdfbf7 100%);
+    border-right: 1px solid #ece9e3;
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
@@ -294,6 +299,20 @@
     padding: 64px 22px 24px;
     display: flex;
     flex-direction: column;
+  }
+  .sidebar::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(178,0,36,0.35) 20%,
+      rgba(178,0,36,0.55) 50%,
+      rgba(178,0,36,0.35) 80%,
+      transparent 100%);
+    pointer-events: none;
+    z-index: 1;
   }
   .sidebar.mobile-open { transform: translateX(0); }
   .sidebar-backdrop {
@@ -2171,13 +2190,62 @@
   .rp-tip {
     background: linear-gradient(135deg, #fff9e6 0%, #fff 60%);
     border-color: #f2e6a8;
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+    user-select: none;
   }
-  .rp-tip .rp-eyebrow { color: #92400e; }
+  .rp-tip:hover {
+    border-color: #e8d48a;
+    box-shadow: 0 4px 14px rgba(200, 153, 74, 0.12);
+    transform: translateY(-1px);
+  }
+  .rp-tip:active { transform: translateY(0); }
+  .rp-tip .rp-eyebrow { color: #92400e; margin-bottom: 0; }
+  .rp-tip-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .rp-tip-hint {
+    font-size: 11px;
+    color: #b28538;
+    background: rgba(200, 153, 74, 0.14);
+    padding: 2px 8px; border-radius: 999px;
+    font-weight: 700;
+    display: inline-flex; align-items: center; gap: 4px;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+  .rp-tip-hint svg {
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .rp-tip:hover .rp-tip-hint {
+    background: rgba(200, 153, 74, 0.22);
+    color: #8a5e1a;
+  }
+  .rp-tip:hover .rp-tip-hint svg { transform: rotate(120deg); }
+  .rp-tip-body {
+    animation: rpTipFade 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  @keyframes rpTipFade {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
   .rp-tip-title {
     font-size: 13.5px; font-weight: 800; color: #1a1e26; margin-bottom: 6px;
   }
   .rp-tip-desc {
     font-size: 12px; color: #4a4a4a; line-height: 1.55; margin: 0;
+  }
+  .rp-tip-dots {
+    display: flex; gap: 5px; margin-top: 12px; justify-content: center;
+  }
+  .rp-tip-dot {
+    width: 5px; height: 5px; border-radius: 999px;
+    background: #ead8a4;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease;
+  }
+  .rp-tip-dot.active {
+    width: 20px;
+    background: #c8994a;
   }
 
   /* ── MODULE INTRO PANEL ────────────────────────────────────────── */
@@ -3302,6 +3370,29 @@ function renderLearning(courseSlug) {
   document.getElementById('sidebar-toggle')?.classList.add('visible');
 }
 
+// Pro Tips — shown in right panel, cycleable via click.
+// Hoisted to module scope so cycleTip() below can read length without magic numbers.
+const PRO_TIPS = [
+  { t: 'Belajar Efektif', d: 'Review materi kemarin selama 5 menit sebelum mulai bab baru — memori jangka panjang terbentuk dari pengulangan, bukan maraton.' },
+  { t: 'Shadowing', d: 'Ulangi audio bahasa Jepang sambil meniru ritme & intonasinya. Teknik ini dipakai penerjemah profesional.' },
+  { t: 'Kanji Trick', d: 'Pelajari radikal (bagian kanji) dulu — satu radikal bisa jadi kunci untuk puluhan kanji lain.' },
+  { t: 'Konsistensi', d: '15 menit setiap hari > 2 jam seminggu sekali. Otak butuh tidur untuk mengunci memori baru.' },
+  { t: 'Memo Vocab', d: 'Kelompokkan kosakata per tema (dapur, kantor, transport) — otak jauh lebih mudah mengingat kalau ada konteks.' },
+  { t: 'Pitch Accent', d: 'Dengarkan pengucapan native 3x sebelum mengulang. Pitch bahasa Jepang beda karakter dengan stress di English.' },
+  { t: 'Spaced Review', d: 'Review kosakata di hari ke-1, 3, 7, 14 — interval ini memperkuat memori jangka panjang secara signifikan.' },
+  { t: 'Immersion Ringan', d: 'Ganti playlist background jadi Jepang (city-pop, anime OST). Telinga lama-lama adaptasi ritme bahasa.' },
+];
+// User-controlled tip index. Null = auto (derived from lesson idx).
+let currentTipIndex = null;
+// Track last lesson shown — lesson changes reset auto-tip rotation.
+let _tipLessonSignature = null;
+
+window.cycleTip = () => {
+  const active = currentTipIndex ?? 0;
+  currentTipIndex = (active + 1) % PRO_TIPS.length;
+  renderRightPanel();
+};
+
 function renderRightPanel() {
   const panel = document.getElementById('right-panel');
   if (!panel) return;
@@ -3319,13 +3410,19 @@ function renderRightPanel() {
   const pct = Math.round((doneLessons / totalLessons) * 100);
   const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan' };
 
-  const TIPS = [
-    { t: 'Belajar Efektif', d: 'Review materi kemarin selama 5 menit sebelum mulai bab baru — memori jangka panjang terbentuk dari pengulangan, bukan maraton.' },
-    { t: 'Shadowing', d: 'Ulangi audio bahasa Jepang sambil meniru ritme & intonasinya. Teknik ini dipakai penerjemah profesional.' },
-    { t: 'Kanji Trick', d: 'Pelajari radikal (bagian kanji) dulu — satu radikal bisa jadi kunci untuk puluhan kanji lain.' },
-    { t: 'Konsistensi', d: '15 menit setiap hari > 2 jam seminggu sekali. Otak butuh tidur untuk mengunci memori baru.' },
-  ];
-  const tip = TIPS[idx % TIPS.length];
+  // Tip selection: if user hasn't clicked yet for this lesson, default
+  // to lesson-indexed tip (varies naturally as they navigate). If they
+  // clicked cycleTip(), respect their choice until lesson changes.
+  const sig = `${module.id}:${lesson.id}`;
+  if (sig !== _tipLessonSignature) {
+    currentTipIndex = null;
+    _tipLessonSignature = sig;
+  }
+  const tipIdx = currentTipIndex ?? (idx % PRO_TIPS.length);
+  const tip = PRO_TIPS[tipIdx];
+  const dotsHtml = PRO_TIPS.map((_, i) =>
+    `<span class="rp-tip-dot ${i === tipIdx ? 'active' : ''}"></span>`
+  ).join('');
 
   const nextBlock = next ? `
     <div class="rp-card rp-next">
@@ -3356,10 +3453,24 @@ function renderRightPanel() {
       <div class="rp-progress-bar"><div class="rp-progress-fill" style="width:${pct}%"></div></div>
     </div>
     ${nextBlock}
-    <div class="rp-card rp-tip">
-      <div class="rp-eyebrow">💡 Pro Tip</div>
-      <div class="rp-tip-title">${tip.t}</div>
-      <p class="rp-tip-desc">${tip.d}</p>
+    <div class="rp-card rp-tip" onclick="cycleTip()" role="button" tabindex="0"
+         aria-label="Klik untuk tip berikutnya"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();cycleTip()}">
+      <div class="rp-tip-head">
+        <div class="rp-eyebrow">💡 Pro Tip</div>
+        <span class="rp-tip-hint" aria-hidden="true">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          Klik
+        </span>
+      </div>
+      <div class="rp-tip-body" data-tip-idx="${tipIdx}">
+        <div class="rp-tip-title">${tip.t}</div>
+        <p class="rp-tip-desc">${tip.d}</p>
+      </div>
+      <div class="rp-tip-dots" aria-hidden="true">${dotsHtml}</div>
     </div>
   `;
 }
