@@ -427,31 +427,93 @@
     font-weight: 800;
     margin: 0 0 10px;
   }
-  .progress-wrap {
+  /* Consolidated progress card — single block instead of bar + two stat tiles. */
+  .progress-card {
+    background: linear-gradient(180deg, #fbfaf7 0%, #ffffff 100%);
+    border: 1px solid #ece9e3;
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .progress-row {
     display: flex;
-    align-items: center;
+    align-items: baseline;
+    justify-content: space-between;
     gap: 10px;
-    font-size: 12px;
-    color: #666;
-    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 10px;
+  }
+  .progress-pct {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: #1a1e26;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .progress-sub {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: #6b7280;
+    text-align: right;
   }
   .progress-bar {
-    flex: 1;
-    height: 6px;
-    background: #f0f0f0;
+    height: 8px;
+    background: #f1efe9;
     border-radius: 999px;
     overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(16,14,10,0.06);
   }
   .progress-fill {
     height: 100%;
-    background: #b20024;
+    background: linear-gradient(90deg, #b20024 0%, #e11d48 100%);
     border-radius: 999px;
-    transition: width 0.4s;
+    transition: width 0.5s cubic-bezier(.2,.8,.2,1);
+    box-shadow: 0 1px 3px rgba(178,0,36,0.3);
+  }
+
+  /* Module search/filter — surfaces 68+ modules for quick jump. */
+  .module-filter {
+    position: relative;
+    margin: 12px 0 8px;
+  }
+  .module-filter .mf-ico {
+    position: absolute;
+    left: 11px; top: 50%;
+    transform: translateY(-50%);
+    color: #9ca0a8;
+    pointer-events: none;
+  }
+  .module-filter input {
+    width: 100%;
+    padding: 8px 12px 8px 32px;
+    font-size: 12.5px;
+    font-family: inherit;
+    color: #1a1e26;
+    background: #fbfaf7;
+    border: 1px solid #ece9e3;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  }
+  .module-filter input::placeholder { color: #9ca0a8; }
+  .module-filter input:focus {
+    border-color: #b20024;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(178,0,36,0.08);
+  }
+  .modules-empty {
+    padding: 16px 10px;
+    text-align: center;
+    font-size: 12px;
+    color: #9ca0a8;
+    font-style: italic;
   }
 
   .module {
-    margin-bottom: 4px;
+    margin-bottom: 2px;
+    border-radius: 10px;
+    transition: background 0.15s ease;
   }
+  .module.open { background: #fbfaf7; }
   .module-header {
     width: 100%;
     display: flex;
@@ -459,57 +521,71 @@
     align-items: center;
     background: transparent;
     border: none;
-    padding: 10px 8px;
+    padding: 11px 12px;
     cursor: pointer;
     font-family: 'Manrope', sans-serif;
     font-size: 13px;
     font-weight: 700;
     color: #191c1d;
     text-align: left;
-    border-radius: 6px;
+    border-radius: 10px;
+    transition: background 0.15s ease;
   }
-  .module-header:hover { background: #f8f9fa; }
+  .module-header:hover { background: #f4f2ed; }
+  .module.open .module-header { color: #b20024; }
   .module-header .caret {
     font-size: 10px;
-    color: #999;
-    transition: transform 0.2s;
+    color: #9ca0a8;
+    transition: transform 0.2s ease, color 0.15s ease;
   }
-  .module.open .module-header .caret { transform: rotate(90deg); }
+  .module.open .module-header .caret { transform: rotate(90deg); color: #b20024; }
   .module-num {
+    display: inline-block;
     font-family: 'JetBrains Mono', monospace;
     color: #b20024;
-    font-size: 11px;
-    margin-right: 8px;
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 2px 7px;
+    margin-right: 10px;
+    background: #fff0f2;
+    border-radius: 5px;
+    letter-spacing: 0.02em;
+  }
+  .module.open .module-num {
+    background: #b20024;
+    color: #fff;
   }
 
   .lessons {
     list-style: none;
-    padding: 0 0 0 12px;
-    margin: 0 0 8px;
+    padding: 2px 6px 8px;
+    margin: 0;
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.3s ease;
   }
-  .module.open .lessons { max-height: 500px; }
+  .module.open .lessons { max-height: 2000px; }
 
   .lesson-item {
-    padding: 8px 10px;
+    padding: 8px 10px 8px 28px;
     display: flex;
     align-items: center;
     gap: 10px;
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 12px;
     color: #485f84;
-    border-left: 2px solid transparent;
-    margin-left: 4px;
+    margin: 1px 0;
+    transition: background 0.2s ease, color 0.2s ease, padding-left 0.2s ease;
   }
-  .lesson-item:hover { background: #fafafa; }
+  .lesson-item:hover {
+    background: #f4f2ed;
+    color: #1a1e26;
+  }
   .lesson-item.current {
     background: #fff0f2;
     color: #b20024;
     font-weight: 600;
-    border-left-color: #b20024;
   }
   .lesson-item.done { color: #166534; }
   .lesson-icon {
@@ -3351,19 +3427,12 @@ function renderSidebar() {
           <span class="sidebar-course-badge">${currentState.course.toUpperCase()}</span>
           <h3>Progress Kelas</h3>
         </div>
-        <div class="progress-wrap">
+        <div class="progress-card">
+          <div class="progress-row">
+            <span class="progress-pct">${pct}%</span>
+            <span class="progress-sub">${doneLessons} dari ${totalLessons} materi</span>
+          </div>
           <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-          <span>${pct}%</span>
-        </div>
-        <div class="sidebar-mini-stats">
-          <div class="mini-stat">
-            <div class="mini-stat-val">${doneLessons}<span class="mini-stat-total">/${totalLessons}</span></div>
-            <div class="mini-stat-label">Selesai</div>
-          </div>
-          <div class="mini-stat">
-            <div class="mini-stat-val">${totalLessons - doneLessons}</div>
-            <div class="mini-stat-label">Sisa</div>
-          </div>
         </div>
       </div>
       ${flashCount > 0 ? `
@@ -3373,7 +3442,12 @@ function renderSidebar() {
           <span class="count">${flashCount}</span>
         </button>
       ` : ''}
-      ${modulesHtml}
+      <div class="module-filter">
+        <svg class="mf-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="search" id="module-filter-input" placeholder="Cari modul..." oninput="filterModules(this.value)" autocomplete="off" />
+      </div>
+      <div class="modules-list">${modulesHtml}</div>
+      <div class="modules-empty" id="modules-empty" style="display:none;">Tidak ada modul yang cocok.</div>
       <div class="sidebar-quicklinks">
         <button class="quicklink" type="button" onclick="openMateri()">
           <span class="ql-ico">📚</span>
@@ -3410,6 +3484,20 @@ function renderSidebar() {
 
 window.toggleCoursePicker = () => {
   document.getElementById('course-picker')?.classList.toggle('open');
+};
+
+window.filterModules = (value) => {
+  const q = String(value || '').trim().toLowerCase();
+  const modules = document.querySelectorAll('#sidebar .modules-list .module');
+  let visible = 0;
+  modules.forEach((el) => {
+    const header = el.querySelector('.module-header')?.textContent?.toLowerCase() || '';
+    const show = !q || header.includes(q);
+    el.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const empty = document.getElementById('modules-empty');
+  if (empty) empty.style.display = (q && visible === 0) ? '' : 'none';
 };
 
 window.openMateri = () => {
