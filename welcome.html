@@ -3429,11 +3429,7 @@ function escapeHtml(s) {
 function renderModuleIntro(module) {
   const hasCando = Array.isArray(module.candoStatements) && module.candoStatements.length > 0;
   const hasScenario = !!(module.scenario && module.scenario.trim());
-  const skill = module.skillDistribution || {};
-  const skillEntries = Object.entries(skill)
-    .map(([k, v]) => [k, Number(v)])
-    .filter(([, v]) => Number.isFinite(v) && v > 0);
-  if (!hasCando && !hasScenario && skillEntries.length === 0 && !module.cefrLevel && !module.estimatedHours && !module.jfTopic && !module.titleEn) {
+  if (!hasCando && !hasScenario && !module.cefrLevel && !module.estimatedHours && !module.jfTopic && !module.titleEn) {
     return '';
   }
 
@@ -3441,17 +3437,6 @@ function renderModuleIntro(module) {
   if (module.cefrLevel) pills.push(`<span class="pill pill-accent">CEFR ${escapeHtml(module.cefrLevel)}</span>`);
   if (module.estimatedHours) pills.push(`<span class="pill">⏱ ${escapeHtml(module.estimatedHours)} jam</span>`);
   if (module.jfTopic) pills.push(`<span class="pill">${escapeHtml(module.jfTopic)}</span>`);
-
-  const SKILL_LABEL = {
-    listening: 'Listening',
-    reading: 'Reading',
-    speaking_production: 'Speaking (Prod.)',
-    speaking_interaction: 'Speaking (Int.)',
-    writing: 'Writing',
-  };
-  // Skill distribution may be stored as fractions (0.25) or percents (25).
-  const max = skillEntries.reduce((m, [, v]) => Math.max(m, v), 0);
-  const asPct = (v) => (max <= 1.01 ? v * 100 : v);
 
   return `
     <div class="module-intro">
@@ -3468,21 +3453,6 @@ function renderModuleIntro(module) {
       ${hasScenario ? `
         <div class="module-intro-section-title">Skenario</div>
         <div class="scenario-box">${escapeHtml(module.scenario)}</div>
-      ` : ''}
-      ${skillEntries.length ? `
-        <div class="module-intro-section-title">Distribusi Skill</div>
-        <div class="skill-bars">
-          ${skillEntries.map(([k, v]) => {
-            const pct = asPct(v);
-            return `
-              <div class="skill-bar-row">
-                <span class="skill-bar-label">${escapeHtml(SKILL_LABEL[k] || k)}</span>
-                <span class="skill-bar-track"><span class="skill-bar-fill" style="width:${Math.min(100, Math.max(0, pct)).toFixed(1)}%"></span></span>
-                <span class="skill-bar-pct">${pct.toFixed(0)}%</span>
-              </div>
-            `;
-          }).join('')}
-        </div>
       ` : ''}
     </div>
   `;
