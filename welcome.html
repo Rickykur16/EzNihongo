@@ -2455,6 +2455,214 @@
     line-height: 1.5;
     font-style: italic;
   }
+
+  /* ═══════════════════════════════════════════════════════════
+     VOCAB FLASHCARD — FSRS v5
+     Adapted from legacy Nihonggo app (kanji.html rv-* / fc-*)
+     ═══════════════════════════════════════════════════════════ */
+  .vfc-overlay {
+    position: fixed; inset: 0; z-index: 9500;
+    background: rgba(16, 14, 10, 0.55); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center;
+    padding: 16px;
+    opacity: 0; transition: opacity 0.18s ease;
+  }
+  .vfc-overlay.open { display: flex; opacity: 1; }
+
+  .vfc-shell {
+    width: 100%; max-width: 460px;
+    background: var(--du-surface);
+    border: 1px solid var(--du-border);
+    border-radius: 22px; box-shadow: var(--du-shadow-lg);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    max-height: calc(100vh - 32px);
+  }
+
+  .vfc-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--du-border-soft);
+  }
+  .vfc-back {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 1px solid var(--du-border);
+    background: var(--du-surface);
+    cursor: pointer; font-size: 18px; line-height: 1;
+    color: var(--du-ink-3);
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .vfc-back:hover { border-color: var(--du-accent); color: var(--du-accent); }
+  .vfc-header-mid { flex: 1; min-width: 0; }
+  .vfc-counter {
+    font-family: 'Manrope', sans-serif;
+    font-size: 12px; font-weight: 600;
+    color: var(--du-ink-2); letter-spacing: 0.3px;
+  }
+  .vfc-pbar-wrap {
+    margin-top: 6px; height: 4px; background: var(--du-border-soft);
+    border-radius: 2px; overflow: hidden;
+  }
+  .vfc-pbar-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--du-accent), var(--du-accent-2));
+    transition: width 0.25s ease;
+  }
+  .vfc-title {
+    font-size: 12px; color: var(--du-ink-4);
+    font-family: 'Manrope', sans-serif; font-weight: 500;
+    min-width: 54px; text-align: right;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .vfc-body {
+    padding: 22px 18px;
+    display: flex; flex-direction: column;
+    perspective: 1200px;
+  }
+  .vfc-card {
+    position: relative; width: 100%;
+    min-height: 280px;
+    transform-style: preserve-3d;
+    transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+  }
+  .vfc-card.flipped { transform: rotateY(180deg); }
+  .vfc-face {
+    position: absolute; inset: 0;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    background: var(--du-surface-2);
+    border: 1px solid var(--du-border);
+    border-radius: 18px;
+    padding: 28px 22px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+  }
+  .vfc-face-back {
+    transform: rotateY(180deg);
+    background: linear-gradient(160deg, var(--du-accent-soft) 0%, var(--du-surface) 100%);
+    overflow-y: auto;
+    justify-content: flex-start;
+    padding: 24px 22px;
+  }
+  .vfc-front-jp {
+    font-family: 'Noto Sans JP', 'Yuji Syuku', serif;
+    font-size: 52px; font-weight: 600;
+    color: var(--du-ink); line-height: 1.15;
+    word-break: break-word;
+  }
+  .vfc-hint {
+    margin-top: 18px;
+    font-size: 11px; color: var(--du-ink-4);
+    font-family: 'Manrope', sans-serif;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .vfc-hint::before, .vfc-hint::after {
+    content: ''; display: inline-block;
+    width: 22px; height: 1px; background: var(--du-border);
+  }
+
+  .vfc-back-jp {
+    font-family: 'Noto Sans JP', serif;
+    font-size: 30px; font-weight: 600;
+    color: var(--du-ink); line-height: 1.2;
+    margin-bottom: 6px;
+  }
+  .vfc-back-read {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 15px; color: var(--du-ink-3);
+    margin-bottom: 10px;
+  }
+  .vfc-back-mean {
+    font-size: 18px; font-weight: 600;
+    color: var(--du-accent);
+    margin-bottom: 12px; line-height: 1.35;
+  }
+  .vfc-back-cat {
+    display: inline-block; font-size: 11px;
+    padding: 2px 10px; border-radius: 20px;
+    background: rgba(178, 0, 36, 0.08); color: var(--du-accent);
+    font-family: 'Manrope', sans-serif; font-weight: 600;
+    letter-spacing: 0.3px; text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .vfc-back-note {
+    font-size: 12.5px; color: var(--du-ink-2);
+    line-height: 1.5; font-style: italic;
+    border-top: 1px dashed var(--du-border);
+    padding-top: 10px; margin-top: auto;
+    max-width: 100%;
+  }
+
+  .vfc-ratings {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 8px; padding: 12px 18px 18px;
+    border-top: 1px solid var(--du-border-soft);
+  }
+  .vfc-rbtn {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 10px 4px; border-radius: 12px; border: none;
+    cursor: pointer; font-family: 'Manrope', sans-serif;
+    transition: transform 0.1s, box-shadow 0.15s;
+  }
+  .vfc-rbtn:active { transform: scale(0.96); }
+  .vfc-rbtn-label { font-size: 13px; font-weight: 600; }
+  .vfc-rbtn-int { font-size: 10px; opacity: 0.75; }
+  .vfc-rbtn-1 { background: #FEE2E2; color: #991B1B; }
+  .vfc-rbtn-2 { background: #FEF3C7; color: #92400E; }
+  .vfc-rbtn-3 { background: #D1FAE5; color: #065F46; }
+  .vfc-rbtn-4 { background: #DBEAFE; color: #1E40AF; }
+
+  .vfc-done {
+    padding: 32px 22px;
+    display: flex; flex-direction: column;
+    align-items: center; text-align: center;
+  }
+  .vfc-done-emoji { font-size: 52px; margin-bottom: 10px; }
+  .vfc-done-title {
+    font-size: 20px; font-weight: 700; color: var(--du-ink);
+    margin-bottom: 6px;
+  }
+  .vfc-done-sub {
+    font-size: 13px; color: var(--du-ink-3);
+    line-height: 1.55; margin-bottom: 20px;
+    font-family: 'Manrope', sans-serif;
+  }
+  .vfc-done-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 8px; width: 100%; margin-bottom: 20px;
+  }
+  .vfc-done-stat {
+    background: var(--du-surface-2);
+    border: 1px solid var(--du-border);
+    border-radius: 12px; padding: 10px 4px;
+    font-family: 'Manrope', sans-serif;
+  }
+  .vfc-done-stat-num { font-size: 18px; font-weight: 700; }
+  .vfc-done-stat-lbl { font-size: 10px; color: var(--du-ink-4); margin-top: 2px; }
+  .vfc-done-btn {
+    padding: 11px 28px; border-radius: 12px; border: none;
+    background: var(--du-accent); color: #fff;
+    font-size: 14px; font-weight: 600;
+    font-family: 'Manrope', sans-serif;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .vfc-done-btn:hover { background: var(--du-accent-2); }
+
+  .vfc-empty {
+    padding: 44px 24px; text-align: center;
+    color: var(--du-ink-3);
+    font-family: 'Manrope', sans-serif;
+  }
+  .vfc-empty-emoji { font-size: 44px; margin-bottom: 10px; }
+  .vfc-empty-title { font-size: 16px; color: var(--du-ink); font-weight: 600; margin-bottom: 4px; }
+
+  @media (max-width: 480px) {
+    .vfc-front-jp { font-size: 42px; }
+    .vfc-card { min-height: 240px; }
+  }
 </style>
 </head>
 <body>
@@ -2486,7 +2694,71 @@
   © 2026 <strong>EzNihongo</strong>
 </footer>
 
+<!-- ── VOCAB FLASHCARD MODAL (FSRS) ── -->
+<div class="vfc-overlay" id="vfc-overlay" role="dialog" aria-modal="true" aria-label="Flashcard Kosakata">
+  <div class="vfc-shell">
+    <div class="vfc-header">
+      <button class="vfc-back" id="vfc-back" aria-label="Tutup">×</button>
+      <div class="vfc-header-mid">
+        <div class="vfc-counter" id="vfc-counter">0 / 0</div>
+        <div class="vfc-pbar-wrap"><div class="vfc-pbar-fill" id="vfc-pbar"></div></div>
+      </div>
+      <div class="vfc-title" id="vfc-title">Kosakata</div>
+    </div>
+
+    <div class="vfc-body" id="vfc-body">
+      <div class="vfc-card" id="vfc-card">
+        <div class="vfc-face">
+          <div class="vfc-front-jp" id="vfc-front-jp">—</div>
+          <div class="vfc-hint">Ketuk untuk lihat jawaban</div>
+        </div>
+        <div class="vfc-face vfc-face-back">
+          <div class="vfc-back-jp" id="vfc-back-jp">—</div>
+          <div class="vfc-back-read" id="vfc-back-read"></div>
+          <div class="vfc-back-mean" id="vfc-back-mean">—</div>
+          <div id="vfc-back-cat-wrap"></div>
+          <div class="vfc-back-note" id="vfc-back-note" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="vfc-ratings" id="vfc-ratings" style="display:none;">
+      <button class="vfc-rbtn vfc-rbtn-1" data-rating="1">
+        <span class="vfc-rbtn-label">Lupa</span>
+        <span class="vfc-rbtn-int" id="vfc-int-1">—</span>
+      </button>
+      <button class="vfc-rbtn vfc-rbtn-2" data-rating="2">
+        <span class="vfc-rbtn-label">Susah</span>
+        <span class="vfc-rbtn-int" id="vfc-int-2">—</span>
+      </button>
+      <button class="vfc-rbtn vfc-rbtn-3" data-rating="3">
+        <span class="vfc-rbtn-label">Bisa</span>
+        <span class="vfc-rbtn-int" id="vfc-int-3">—</span>
+      </button>
+      <button class="vfc-rbtn vfc-rbtn-4" data-rating="4">
+        <span class="vfc-rbtn-label">Mudah</span>
+        <span class="vfc-rbtn-int" id="vfc-int-4">—</span>
+      </button>
+    </div>
+
+    <div class="vfc-done" id="vfc-done" style="display:none;">
+      <div class="vfc-done-emoji">🎉</div>
+      <div class="vfc-done-title">Sesi Selesai!</div>
+      <div class="vfc-done-sub" id="vfc-done-sub"></div>
+      <div class="vfc-done-grid" id="vfc-done-grid"></div>
+      <button class="vfc-done-btn" id="vfc-done-btn">Selesai</button>
+    </div>
+
+    <div class="vfc-empty" id="vfc-empty" style="display:none;">
+      <div class="vfc-empty-emoji">📖</div>
+      <div class="vfc-empty-title">Belum ada kosakata</div>
+      <div style="font-size:13px;margin-top:6px;">Pelajaran ini belum punya daftar kosakata untuk di-flashcard.</div>
+    </div>
+  </div>
+</div>
+
 <script src="api-client.js"></script>
+<script src="fsrs.js"></script>
 <script>
 // ═══════════════════════════════════════════════
 // AUTH GUARD — self-hosted API session
@@ -3732,6 +4004,201 @@ function renderLessonVocab(lesson) {
   `;
 }
 
+// ═══════════════════════════════════════════════
+// VOCAB FLASHCARD — FSRS v5 session
+// Adapted from legacy Nihonggo learn app (kanji.html).
+// Queue-based: rating 1 (Lupa) pushes card back to queue;
+// rating 2-4 writes FSRS schedule + marks card done.
+// ═══════════════════════════════════════════════
+const VFC = {
+  queue: [],
+  total: 0,
+  done: 0,
+  lupaSet: new Set(),
+  tally: { 1: 0, 2: 0, 3: 0, 4: 0 },
+  lessonId: null,
+  flipped: false,
+};
+
+function vfcCardId(v, lessonId) {
+  // Prefix with lesson so the same vocab shared across lessons (rare but
+  // possible) schedules independently per context.
+  return 'v:' + lessonId + ':' + (v.id || (v.japanese + '|' + (v.reading || '')));
+}
+
+function vfcPreviewIntervals(v) {
+  const id = vfcCardId(v, VFC.lessonId);
+  const card = (window.EzFSRS && EzFSRS.getCardState(id)) || null;
+  const fmt = (days) => {
+    if (days == null) return '—';
+    if (days < 1) return '<1h';
+    if (days < 30) return days + 'h';
+    if (days < 365) return Math.round(days / 30) + 'bl';
+    return Math.round(days / 365) + 'th';
+  };
+  const w = EzFSRS.getWeights();
+  const intervals = {};
+  [1, 2, 3, 4].forEach((r) => {
+    try {
+      const sim = EzFSRS._internals.calculateNextState(card || EzFSRS._internals.makeNewCard(), r, w, 0.9);
+      const days = Math.max(0, Math.round((sim.due - Date.now()) / 86400000));
+      intervals[r] = fmt(days);
+    } catch (e) { intervals[r] = '—'; }
+  });
+  return intervals;
+}
+
+function openVocabFlashcard() {
+  const course = COURSE_CONTENT[currentState.course];
+  if (!course) { showToast('Data kursus belum siap', 2000); return; }
+  const mod = (course.modules || []).find((m) => m.id === currentState.moduleId);
+  const lesson = mod && (mod.lessons || []).find((l) => l.id === currentState.lessonId);
+  if (!lesson) { showToast('Pelajaran tidak ditemukan', 2000); return; }
+  const lessonId = lesson.id;
+
+  const vocab = Array.isArray(lesson.vocabulary) ? lesson.vocabulary.slice() : [];
+  vocab.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+  const overlay = document.getElementById('vfc-overlay');
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Reset view state
+  document.getElementById('vfc-done').style.display = 'none';
+  document.getElementById('vfc-ratings').style.display = 'none';
+  document.getElementById('vfc-empty').style.display = 'none';
+  document.getElementById('vfc-body').style.display = 'flex';
+
+  if (vocab.length === 0) {
+    document.getElementById('vfc-body').style.display = 'none';
+    document.getElementById('vfc-empty').style.display = 'block';
+    document.getElementById('vfc-title').textContent = lesson.title || 'Kosakata';
+    document.getElementById('vfc-counter').textContent = '0 / 0';
+    document.getElementById('vfc-pbar').style.width = '0%';
+    return;
+  }
+
+  VFC.lessonId = lessonId;
+  VFC.queue = vocab;
+  VFC.total = vocab.length;
+  VFC.done = 0;
+  VFC.lupaSet = new Set();
+  VFC.tally = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  VFC.flipped = false;
+  document.getElementById('vfc-title').textContent = lesson.title || 'Kosakata';
+  renderVocabCard();
+}
+
+function closeVocabFlashcard() {
+  const overlay = document.getElementById('vfc-overlay');
+  overlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function renderVocabCard() {
+  const v = VFC.queue[0];
+  if (!v) return;
+  VFC.flipped = false;
+  document.getElementById('vfc-card').classList.remove('flipped');
+  document.getElementById('vfc-ratings').style.display = 'none';
+
+  // Header
+  const lupaInfo = VFC.lupaSet.size > 0 ? ` · 🔁${VFC.lupaSet.size}` : '';
+  document.getElementById('vfc-counter').textContent = `${VFC.done}/${VFC.total}${lupaInfo}`;
+  const pct = VFC.total ? Math.round((VFC.done / VFC.total) * 100) : 0;
+  document.getElementById('vfc-pbar').style.width = pct + '%';
+
+  // Front
+  document.getElementById('vfc-front-jp').textContent = v.japanese || '—';
+
+  // Back
+  document.getElementById('vfc-back-jp').textContent = v.japanese || '—';
+  document.getElementById('vfc-back-read').textContent = v.reading || '';
+  document.getElementById('vfc-back-mean').textContent = v.indonesian || '—';
+  const catWrap = document.getElementById('vfc-back-cat-wrap');
+  catWrap.innerHTML = v.category ? `<span class="vfc-back-cat">${escapeHtml(v.category)}</span>` : '';
+  const noteEl = document.getElementById('vfc-back-note');
+  if (v.note) {
+    noteEl.textContent = v.note;
+    noteEl.style.display = '';
+  } else {
+    noteEl.style.display = 'none';
+  }
+
+  // Interval previews
+  const iv = vfcPreviewIntervals(v);
+  for (let r = 1; r <= 4; r++) {
+    const el = document.getElementById('vfc-int-' + r);
+    if (el) el.textContent = iv[r];
+  }
+}
+
+function flipVocabCard() {
+  if (VFC.flipped) return;
+  VFC.flipped = true;
+  document.getElementById('vfc-card').classList.add('flipped');
+  setTimeout(() => {
+    document.getElementById('vfc-ratings').style.display = '';
+  }, 230);
+}
+
+function vfcShowDone() {
+  document.getElementById('vfc-body').style.display = 'none';
+  document.getElementById('vfc-ratings').style.display = 'none';
+  document.getElementById('vfc-done').style.display = 'flex';
+  const hafal = VFC.tally[2] + VFC.tally[3] + VFC.tally[4];
+  document.getElementById('vfc-done-sub').textContent =
+    `${VFC.total} kartu · ${hafal} hafal · ${VFC.tally[1]} perlu diulang`;
+  const labels = { 1: 'Lupa', 2: 'Susah', 3: 'Bisa', 4: 'Mudah' };
+  const colors = { 1: '#991B1B', 2: '#92400E', 3: '#065F46', 4: '#1E40AF' };
+  document.getElementById('vfc-done-grid').innerHTML =
+    [1, 2, 3, 4].map((r) => `
+      <div class="vfc-done-stat">
+        <div class="vfc-done-stat-num" style="color:${colors[r]}">${VFC.tally[r]}</div>
+        <div class="vfc-done-stat-lbl">${labels[r]}</div>
+      </div>`).join('');
+}
+
+function vfcRate(rating) {
+  const v = VFC.queue[0];
+  if (!v) return;
+  VFC.tally[rating]++;
+  if (rating >= 2) {
+    // Commit to FSRS + move on
+    try { EzFSRS.reviewCard(vfcCardId(v, VFC.lessonId), rating); } catch (e) {}
+    VFC.lupaSet.delete(v.id || v.japanese);
+    VFC.done++;
+    VFC.queue.shift();
+  } else {
+    // Lupa — push to end of queue, review again later in session
+    VFC.lupaSet.add(v.id || v.japanese);
+    VFC.queue.push(VFC.queue.shift());
+  }
+  if (VFC.queue.length === 0) { vfcShowDone(); return; }
+  renderVocabCard();
+}
+
+// Wire up flashcard UI once at load
+(function wireVfc() {
+  const overlay = document.getElementById('vfc-overlay');
+  if (!overlay) return;
+  const card = document.getElementById('vfc-card');
+  card.addEventListener('click', flipVocabCard);
+  document.getElementById('vfc-back').addEventListener('click', closeVocabFlashcard);
+  document.getElementById('vfc-done-btn').addEventListener('click', closeVocabFlashcard);
+  // Close on overlay click (but not when clicking the shell itself)
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeVocabFlashcard(); });
+  // ESC to close
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay.classList.contains('open')) closeVocabFlashcard();
+  });
+  overlay.querySelectorAll('.vfc-rbtn').forEach((btn) => {
+    btn.addEventListener('click', () => vfcRate(parseInt(btn.dataset.rating, 10)));
+  });
+})();
+
+window.openVocabFlashcard = openVocabFlashcard;
+
 function renderLessonGrammar(lesson) {
   const rows = Array.isArray(lesson.grammar) ? lesson.grammar : [];
   if (rows.length === 0) return '';
@@ -3888,7 +4355,7 @@ function renderLessonTabs(module, lesson) {
               </div>
               <span class="res-arr">▶</span>
             </a>
-            <a class="resource-card" href="#" onclick="event.preventDefault();showToast('Daftar kosakata akan segera tersedia 📖',2400)">
+            <a class="resource-card" href="#" onclick="event.preventDefault();openVocabFlashcard();">
               <span class="res-ico">📖</span>
               <div class="res-info">
                 <div class="res-title">Daftar Kosakata</div>
