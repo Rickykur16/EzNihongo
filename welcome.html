@@ -7,6 +7,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
   * { box-sizing: border-box; }
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
   body {
     margin: 0;
     font-family: 'Manrope', sans-serif;
@@ -269,12 +280,16 @@
     background: #fff;
     border-right: 1px solid #e5e5e5;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
     position: fixed;
     top: 0; left: 0;
     width: 86vw; max-width: 360px; height: 100vh;
     z-index: 1100;
     transform: translateX(-100%);
     transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
     padding: 64px 22px 24px;
     display: flex;
@@ -301,7 +316,22 @@
     cursor: pointer; color: #191c1d;
   }
   .sidebar-close:hover { background: #e8e8e8; }
-  .sidebar-scroll { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -22px; padding: 0 22px; }
+  .sidebar-scroll {
+    flex: 1; min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -22px; padding: 0 22px;
+    scroll-behavior: smooth;
+  }
+  .sidebar-scroll::-webkit-scrollbar { width: 6px; }
+  .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: #e0ddd6; border-radius: 999px;
+    transition: background 0.2s ease;
+  }
+  .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: #c9c5bb; }
 
   /* ── Course Picker ── */
   .course-picker {
@@ -556,15 +586,22 @@
     color: #fff;
   }
 
+  /* Use CSS grid trick for smooth expand/collapse — animates to actual
+     content height instead of fixed 2000px, so big modules don't lag. */
   .lessons {
-    list-style: none;
-    padding: 2px 6px 8px;
-    margin: 0;
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease;
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .module.open .lessons { max-height: 2000px; }
+  .lessons > .lessons-inner {
+    list-style: none;
+    margin: 0;
+    padding: 0 6px;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .module.open .lessons { grid-template-rows: 1fr; }
+  .module.open .lessons > .lessons-inner { padding: 2px 6px 8px; }
 
   .lesson-item {
     padding: 8px 10px 8px 28px;
@@ -576,7 +613,10 @@
     font-size: 12px;
     color: #485f84;
     margin: 1px 0;
-    transition: background 0.2s ease, color 0.2s ease, padding-left 0.2s ease;
+    /* Only transition color-ish props — never layout props like
+       padding, margin, width — layout transitions trigger reflow on
+       every hover, which is what makes scroll feel choppy. */
+    transition: background-color 0.18s ease, color 0.18s ease;
   }
   .lesson-item:hover {
     background: #f4f2ed;
@@ -3363,7 +3403,7 @@ function renderSidebar() {
           <span><span class="module-num">${m.num}</span>${m.title}</span>
           <span class="caret">▶</span>
         </button>
-        <ul class="lessons">${lessonsHtml}</ul>
+        <div class="lessons"><ul class="lessons-inner">${lessonsHtml}</ul></div>
       </div>
     `;
   }).join('');
