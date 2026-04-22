@@ -2063,6 +2063,214 @@
   .rp-tip-desc {
     font-size: 12px; color: #4a4a4a; line-height: 1.55; margin: 0;
   }
+
+  /* ── MODULE INTRO PANEL ────────────────────────────────────────── */
+  .module-intro {
+    background: var(--du-surface);
+    border: 1px solid var(--du-border);
+    border-radius: 18px;
+    padding: 26px 28px;
+    margin-bottom: 22px;
+    box-shadow: var(--du-shadow-sm);
+  }
+  .module-intro-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--du-accent);
+    margin-bottom: 6px;
+  }
+  .module-intro h2 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--du-ink);
+    margin: 0 0 4px;
+  }
+  .module-intro .module-intro-sub {
+    font-size: 13.5px;
+    color: var(--du-ink-3);
+    margin: 0 0 14px;
+  }
+  .module-intro-meta {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-bottom: 16px;
+  }
+  .module-intro-meta .pill {
+    display: inline-flex; align-items: center;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: var(--du-surface-2);
+    border: 1px solid var(--du-border);
+    font-size: 12px; font-weight: 600;
+    color: var(--du-ink-2);
+  }
+  .module-intro-meta .pill-accent {
+    background: var(--du-accent-soft);
+    border-color: var(--du-accent-soft-2);
+    color: var(--du-accent);
+  }
+  .module-intro-section-title {
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--du-ink-3);
+    margin: 16px 0 8px;
+  }
+  .cando-list {
+    list-style: none; margin: 0; padding: 0;
+  }
+  .cando-list li {
+    position: relative;
+    padding: 6px 0 6px 26px;
+    font-size: 14px; line-height: 1.55;
+    color: var(--du-ink-2);
+  }
+  .cando-list li::before {
+    content: '✓';
+    position: absolute; left: 0; top: 6px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--du-accent-soft);
+    color: var(--du-accent);
+    font-size: 11px; font-weight: 800;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .scenario-box {
+    background: var(--du-surface-2);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 14px; line-height: 1.6;
+    color: var(--du-ink-2);
+  }
+  .skill-bars {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .skill-bar-row {
+    display: grid;
+    grid-template-columns: 120px 1fr 48px;
+    align-items: center;
+    gap: 10px;
+    font-size: 12.5px;
+    color: var(--du-ink-2);
+  }
+  .skill-bar-label { font-weight: 600; }
+  .skill-bar-track {
+    height: 8px;
+    background: var(--du-surface-2);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .skill-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #b20024 0%, #e11d48 100%);
+    border-radius: 999px;
+  }
+  .skill-bar-pct { text-align: right; font-weight: 600; color: var(--du-ink-3); }
+  @media (max-width: 600px) {
+    .module-intro { padding: 20px 18px; border-radius: 14px; }
+    .skill-bar-row { grid-template-columns: 96px 1fr 40px; font-size: 12px; }
+  }
+
+  /* ── LESSON VOCAB TABLE ────────────────────────────────────────── */
+  .lesson-extras { margin-top: 18px; display: flex; flex-direction: column; gap: 18px; }
+  .lesson-extra-card {
+    background: var(--du-surface);
+    border: 1px solid var(--du-border);
+    border-radius: 16px;
+    padding: 20px 22px;
+    box-shadow: var(--du-shadow-xs);
+  }
+  .lesson-extra-card h3 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 16px; font-weight: 800;
+    color: var(--du-ink);
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+  }
+  .vocab-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 14px;
+  }
+  .vocab-table th {
+    text-align: left; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--du-ink-3);
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--du-border);
+  }
+  .vocab-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--du-border-soft);
+    vertical-align: top;
+    color: var(--du-ink-2);
+  }
+  .vocab-table tr:last-child td { border-bottom: none; }
+  .vocab-table .jp-cell {
+    font-weight: 700;
+    color: var(--du-ink);
+    white-space: nowrap;
+  }
+  .vocab-table .reading-cell {
+    color: var(--du-ink-3);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .vocab-cat {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--du-accent-soft);
+    color: var(--du-accent);
+    font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .vocab-note { font-size: 12px; color: var(--du-ink-3); line-height: 1.45; }
+  @media (max-width: 640px) {
+    .vocab-table th, .vocab-table td { padding: 6px 6px; font-size: 13px; }
+    .vocab-table .reading-cell { font-size: 12px; }
+  }
+
+  /* ── LESSON GRAMMAR CARDS ──────────────────────────────────────── */
+  .grammar-list { display: flex; flex-direction: column; gap: 10px; }
+  .grammar-card {
+    border: 1px solid var(--du-border);
+    border-left: 3px solid var(--du-accent);
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: var(--du-surface-2);
+  }
+  .grammar-pattern {
+    font-weight: 800;
+    font-size: 15px;
+    color: var(--du-ink);
+    margin-bottom: 4px;
+  }
+  .grammar-meaning {
+    font-size: 13.5px; color: var(--du-ink-2);
+    margin-bottom: 8px;
+  }
+  .grammar-example {
+    background: var(--du-surface);
+    border-left: 2px solid var(--du-accent-2);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-top: 6px;
+    font-size: 13.5px;
+    color: var(--du-ink);
+    font-family: 'Noto Sans JP', sans-serif;
+    white-space: pre-wrap;
+  }
+  .grammar-notes {
+    font-size: 12.5px;
+    color: var(--du-ink-3);
+    margin-top: 8px;
+    line-height: 1.5;
+    font-style: italic;
+  }
 </style>
 </head>
 <body>
@@ -2136,6 +2344,16 @@ function transformCourseFromApi(apiCourse) {
       id: m.slug,
       num: String(mi + 1).padStart(2, '0'),
       title: m.title,
+      titleEn: m.title_en || '',
+      jfTopic: m.jf_topic || '',
+      cefrLevel: m.cefr_level || '',
+      estimatedHours: m.estimated_hours || null,
+      scenario: m.scenario || '',
+      candoStatements: Array.isArray(m.cando_statements) ? m.cando_statements : [],
+      skillDistribution: (m.skill_distribution && typeof m.skill_distribution === 'object') ? m.skill_distribution : {},
+      quizSpec: (m.quiz_spec && typeof m.quiz_spec === 'object') ? m.quiz_spec : {},
+      vocabulary: Array.isArray(m.vocabulary) ? m.vocabulary : [],
+      grammar: Array.isArray(m.grammar) ? m.grammar : [],
       lessons: (m.lessons || []).map((l) => {
         const { body, jp } = splitJpFromContent(l.content || '');
         return {
@@ -2146,6 +2364,8 @@ function transformCourseFromApi(apiCourse) {
           duration: l.duration_minutes ? `${l.duration_minutes} min` : '',
           body,
           jp,
+          vocabulary: Array.isArray(l.vocabulary) ? l.vocabulary : [],
+          grammar: Array.isArray(l.grammar) ? l.grammar : [],
         };
       }),
     })),
@@ -3200,6 +3420,137 @@ window.openHelp = () => {
   window.open('https://wa.me/6281294894557', '_blank', 'noopener');
 };
 
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function renderModuleIntro(module) {
+  const hasCando = Array.isArray(module.candoStatements) && module.candoStatements.length > 0;
+  const hasScenario = !!(module.scenario && module.scenario.trim());
+  const skill = module.skillDistribution || {};
+  const skillEntries = Object.entries(skill)
+    .map(([k, v]) => [k, Number(v)])
+    .filter(([, v]) => Number.isFinite(v) && v > 0);
+  if (!hasCando && !hasScenario && skillEntries.length === 0 && !module.cefrLevel && !module.estimatedHours && !module.jfTopic && !module.titleEn) {
+    return '';
+  }
+
+  const pills = [];
+  if (module.cefrLevel) pills.push(`<span class="pill pill-accent">CEFR ${escapeHtml(module.cefrLevel)}</span>`);
+  if (module.estimatedHours) pills.push(`<span class="pill">⏱ ${escapeHtml(module.estimatedHours)} jam</span>`);
+  if (module.jfTopic) pills.push(`<span class="pill">${escapeHtml(module.jfTopic)}</span>`);
+
+  const SKILL_LABEL = {
+    listening: 'Listening',
+    reading: 'Reading',
+    speaking_production: 'Speaking (Prod.)',
+    speaking_interaction: 'Speaking (Int.)',
+    writing: 'Writing',
+  };
+  // Skill distribution may be stored as fractions (0.25) or percents (25).
+  const max = skillEntries.reduce((m, [, v]) => Math.max(m, v), 0);
+  const asPct = (v) => (max <= 1.01 ? v * 100 : v);
+
+  return `
+    <div class="module-intro">
+      <div class="module-intro-eyebrow">Modul ${escapeHtml(module.num)}</div>
+      <h2>${escapeHtml(module.title)}</h2>
+      ${module.titleEn ? `<p class="module-intro-sub">${escapeHtml(module.titleEn)}</p>` : ''}
+      ${pills.length ? `<div class="module-intro-meta">${pills.join('')}</div>` : ''}
+      ${hasCando ? `
+        <div class="module-intro-section-title">Setelah modul ini kamu akan bisa:</div>
+        <ul class="cando-list">
+          ${module.candoStatements.map((c) => `<li>${escapeHtml(c)}</li>`).join('')}
+        </ul>
+      ` : ''}
+      ${hasScenario ? `
+        <div class="module-intro-section-title">Skenario</div>
+        <div class="scenario-box">${escapeHtml(module.scenario)}</div>
+      ` : ''}
+      ${skillEntries.length ? `
+        <div class="module-intro-section-title">Distribusi Skill</div>
+        <div class="skill-bars">
+          ${skillEntries.map(([k, v]) => {
+            const pct = asPct(v);
+            return `
+              <div class="skill-bar-row">
+                <span class="skill-bar-label">${escapeHtml(SKILL_LABEL[k] || k)}</span>
+                <span class="skill-bar-track"><span class="skill-bar-fill" style="width:${Math.min(100, Math.max(0, pct)).toFixed(1)}%"></span></span>
+                <span class="skill-bar-pct">${pct.toFixed(0)}%</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderLessonVocab(lesson) {
+  const rows = Array.isArray(lesson.vocabulary) ? lesson.vocabulary : [];
+  if (rows.length === 0) return '';
+  const sorted = rows.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  return `
+    <div class="lesson-extra-card">
+      <h3>📚 Kosakata di pelajaran ini (${sorted.length})</h3>
+      <div style="overflow-x:auto;">
+        <table class="vocab-table">
+          <thead>
+            <tr>
+              <th>日本語</th>
+              <th>Reading</th>
+              <th>Arti</th>
+              <th>Kategori</th>
+              <th>Catatan</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sorted.map((v) => `
+              <tr>
+                <td class="jp-cell">${escapeHtml(v.japanese || '')}</td>
+                <td class="reading-cell">${escapeHtml(v.reading || '')}</td>
+                <td>${escapeHtml(v.indonesian || '')}</td>
+                <td>${v.category ? `<span class="vocab-cat">${escapeHtml(v.category)}</span>` : ''}</td>
+                <td class="vocab-note">${escapeHtml(v.note || '')}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderLessonGrammar(lesson) {
+  const rows = Array.isArray(lesson.grammar) ? lesson.grammar : [];
+  if (rows.length === 0) return '';
+  const sorted = rows.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  return `
+    <div class="lesson-extra-card">
+      <h3>📖 Grammar di pelajaran ini (${sorted.length})</h3>
+      <div class="grammar-list">
+        ${sorted.map((g) => `
+          <div class="grammar-card">
+            <div class="grammar-pattern">${escapeHtml(g.pattern || '')}</div>
+            ${g.meaning ? `<div class="grammar-meaning">${escapeHtml(g.meaning)}</div>` : ''}
+            ${g.example ? `<div class="grammar-example">${escapeHtml(g.example)}</div>` : ''}
+            ${g.notes ? `<div class="grammar-notes">${escapeHtml(g.notes)}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderLessonExtras(lesson) {
+  const vocab = renderLessonVocab(lesson);
+  const grammar = renderLessonGrammar(lesson);
+  if (!vocab && !grammar) return '';
+  return `<div class="lesson-extras">${vocab}${grammar}</div>`;
+}
+
 function renderLesson() {
   const course = COURSE_CONTENT[currentState.course];
   const module = course.modules.find(m => m.id === currentState.moduleId);
@@ -3253,19 +3604,34 @@ function renderLesson() {
     </div>
   `;
 
-  document.getElementById('main-content').innerHTML = `
-    <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · ${lesson.type.toUpperCase()}</p>
-    <h1 class="lesson-title">${lesson.title}</h1>
-    <p class="lesson-subtitle">${module.title} — ${lesson.duration}</p>
+  // Show module intro panel only on the first lesson of a module (orientation).
+  const isFirstOfModule = module.lessons[0]?.id === lesson.id;
+  const introBlock = isFirstOfModule ? renderModuleIntro(module) : '';
 
-    ${videoBlock}
-
+  // When the intro panel is rendered, the first lesson's body duplicates the
+  // same info (importer-generated markdown). Skip the body block to avoid
+  // showing both.
+  const bodyBlock = introBlock ? '' : `
     <div class="lesson-body">
       <h2>Catatan Pelajaran ${lesson.jp ? `<button class="pronounce-btn" style="vertical-align:middle;font-size:11px;" onclick="window.speakLessonJP(this)">🔊 Putar Jepang</button>` : ''}</h2>
       <p>${lesson.body}</p>
       ${lesson.jp ? `<div class="jp" id="lesson-jp">${lesson.jp}</div>` : ''}
       <p style="color:#999;font-size:13px;margin-top:18px;">Materi lengkap: video tutorial, contoh audio, dan worksheet PDF tersedia saat belajar.</p>
     </div>
+  `;
+
+  document.getElementById('main-content').innerHTML = `
+    <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · ${lesson.type.toUpperCase()}</p>
+    <h1 class="lesson-title">${lesson.title}</h1>
+    <p class="lesson-subtitle">${module.title} — ${lesson.duration}</p>
+
+    ${introBlock}
+
+    ${introBlock ? '' : videoBlock}
+
+    ${bodyBlock}
+
+    ${renderLessonExtras(lesson)}
 
     ${renderLessonTabs(module, lesson)}
 
