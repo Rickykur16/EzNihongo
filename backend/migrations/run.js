@@ -12,10 +12,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import dotenv from 'dotenv';
 import pg from 'pg';
 
 const { Client } = pg;
 const MIGRATIONS_DIR = path.dirname(fileURLToPath(import.meta.url));
+
+// Load backend/.env regardless of cwd. Without this, running
+// `npm run migrate` from the backend/ dir picks up process.env fine, but
+// `node backend/migrations/run.js` from repo root would not. Matches the
+// behaviour of `import 'dotenv/config'` in server.js but path-anchored to
+// this script.
+dotenv.config({ path: path.join(MIGRATIONS_DIR, '..', '.env') });
 
 if (!process.env.DATABASE_URL) {
   console.error('FATAL: DATABASE_URL not set.');
