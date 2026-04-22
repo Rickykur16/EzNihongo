@@ -135,23 +135,55 @@ router.delete('/courses/:id', asyncHandler(async (req, res) => {
 
 // ===== MODULES =====
 
+router.get('/modules/:id', asyncHandler(async (req, res) => {
+  const m = await query(`SELECT * FROM modules WHERE id = $1`, [req.params.id]);
+  if (m.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  const [lessons, vocab, grammar] = await Promise.all([
+    query(`SELECT id, slug, title, type, sort_order, duration_minutes
+           FROM lessons WHERE module_id = $1 ORDER BY sort_order ASC, created_at ASC`, [req.params.id]),
+    query(`SELECT * FROM module_vocabulary WHERE module_id = $1 ORDER BY sort_order ASC, created_at ASC`, [req.params.id]),
+    query(`SELECT * FROM module_grammar WHERE module_id = $1 ORDER BY sort_order ASC, created_at ASC`, [req.params.id]),
+  ]);
+  res.json({
+    module: { ...m.rows[0], lessons: lessons.rows, vocabulary: vocab.rows, grammar: grammar.rows },
+  });
+}));
+
 router.post('/modules', asyncHandler(async (req, res) => {
-  const { courseId, slug, title, description, sortOrder } = req.body || {};
+  const {
+    courseId, slug, title, description, sortOrder,
+    jfTopic, cefrLevel, estimatedHours, titleEn, scenario,
+    candoStatements, skillDistribution, quizSpec,
+  } = req.body || {};
   if (!courseId || !slug || !title) {
     return res.status(400).json({ error: 'courseId, slug, title required' });
   }
   const slugErr = badSlug(slug);
   if (slugErr) return res.status(400).json({ error: slugErr });
   const result = await query(
-    `INSERT INTO modules (course_id, slug, title, description, sort_order)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [courseId, slug, title, description || null, sortOrder || 0]
+    `INSERT INTO modules (
+       course_id, slug, title, description, sort_order,
+       jf_topic, cefr_level, estimated_hours, title_en, scenario,
+       cando_statements, skill_distribution, quiz_spec
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13::jsonb)
+     RETURNING *`,
+    [
+      courseId, slug, title, description || null, sortOrder || 0,
+      jfTopic || null, cefrLevel || null, estimatedHours ?? null, titleEn || null, scenario || null,
+      JSON.stringify(Array.isArray(candoStatements) ? candoStatements : []),
+      JSON.stringify(typeof skillDistribution === 'object' && skillDistribution ? skillDistribution : {}),
+      JSON.stringify(typeof quizSpec === 'object' && quizSpec ? quizSpec : {}),
+    ]
   );
   res.status(201).json({ module: result.rows[0] });
 }));
 
 router.put('/modules/:id', asyncHandler(async (req, res) => {
-  const { slug, title, description, sortOrder } = req.body || {};
+  const {
+    slug, title, description, sortOrder,
+    jfTopic, cefrLevel, estimatedHours, titleEn, scenario,
+    candoStatements, skillDistribution, quizSpec,
+  } = req.body || {};
   if (slug !== undefined && slug !== null) {
     const slugErr = badSlug(slug);
     if (slugErr) return res.status(400).json({ error: slugErr });
@@ -161,9 +193,24 @@ router.put('/modules/:id', asyncHandler(async (req, res) => {
        slug = COALESCE($2, slug),
        title = COALESCE($3, title),
        description = COALESCE($4, description),
-       sort_order = COALESCE($5, sort_order)
+       sort_order = COALESCE($5, sort_order),
+       jf_topic = COALESCE($6, jf_topic),
+       cefr_level = COALESCE($7, cefr_level),
+       estimated_hours = COALESCE($8, estimated_hours),
+       title_en = COALESCE($9, title_en),
+       scenario = COALESCE($10, scenario),
+       cando_statements = COALESCE($11::jsonb, cando_statements),
+       skill_distribution = COALESCE($12::jsonb, skill_distribution),
+       quiz_spec = COALESCE($13::jsonb, quiz_spec),
+       updated_at = NOW()
      WHERE id = $1 RETURNING *`,
-    [req.params.id, slug, title, description, sortOrder]
+    [
+      req.params.id, slug, title, description, sortOrder,
+      jfTopic, cefrLevel, estimatedHours, titleEn, scenario,
+      Array.isArray(candoStatements) ? JSON.stringify(candoStatements) : null,
+      skillDistribution && typeof skillDistribution === 'object' ? JSON.stringify(skillDistribution) : null,
+      quizSpec && typeof quizSpec === 'object' ? JSON.stringify(quizSpec) : null,
+    ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ module: result.rows[0] });
@@ -172,6 +219,145 @@ router.put('/modules/:id', asyncHandler(async (req, res) => {
 router.delete('/modules/:id', asyncHandler(async (req, res) => {
   await query(`DELETE FROM modules WHERE id = $1`, [req.params.id]);
   res.json({ ok: true });
+}));
+
+// ===== MODULE VOCABULARY =====
+
+router.get('/module-vocabulary', asyncHandler(async (req, res) => {
+  const { moduleId, lessonId } = req.query;
+  if (!moduleId) return res.status(400).json({ error: 'moduleId required' });
+  const params = [moduleId];
+  let where = 'module_id = $1';
+  if (lessonId) { where += ' AND lesson_id = $2'; params.push(lessonId); }
+  const rows = await query(
+    `SELECT * FROM module_vocabulary WHERE ${where} ORDER BY sort_order ASC, created_at ASC`,
+    params
+  );
+  res.json({ vocabulary: rows.rows });
+}));
+
+router.post('/module-vocabulary', asyncHandler(async (req, res) => {
+  const { moduleId, lessonId, japanese, reading, indonesian, category, note, sortOrder } = req.body || {};
+  if (!moduleId || !japanese) return res.status(400).json({ error: 'moduleId and japanese required' });
+  const result = await query(
+    `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, indonesian, category, note, sort_order)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+    [moduleId, lessonId || null, japanese, reading || null, indonesian || null, category || null, note || null, sortOrder || 0]
+  );
+  res.status(201).json({ vocabulary: result.rows[0] });
+}));
+
+router.put('/module-vocabulary/:id', asyncHandler(async (req, res) => {
+  const { lessonId, japanese, reading, indonesian, category, note, sortOrder } = req.body || {};
+  // lessonId is special: allow explicit null to unassign. Use has-own-property semantics.
+  const hasLesson = Object.prototype.hasOwnProperty.call(req.body || {}, 'lessonId');
+  const result = await query(
+    `UPDATE module_vocabulary SET
+       lesson_id = CASE WHEN $9::boolean THEN $2 ELSE lesson_id END,
+       japanese = COALESCE($3, japanese),
+       reading = COALESCE($4, reading),
+       indonesian = COALESCE($5, indonesian),
+       category = COALESCE($6, category),
+       note = COALESCE($7, note),
+       sort_order = COALESCE($8, sort_order),
+       updated_at = NOW()
+     WHERE id = $1 RETURNING *`,
+    [req.params.id, lessonId || null, japanese, reading, indonesian, category, note, sortOrder, hasLesson]
+  );
+  if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ vocabulary: result.rows[0] });
+}));
+
+router.delete('/module-vocabulary/:id', asyncHandler(async (req, res) => {
+  await query(`DELETE FROM module_vocabulary WHERE id = $1`, [req.params.id]);
+  res.json({ ok: true });
+}));
+
+router.post('/module-vocabulary/bulk', asyncHandler(async (req, res) => {
+  const { moduleId, items, replace } = req.body || {};
+  if (!moduleId || !Array.isArray(items)) return res.status(400).json({ error: 'moduleId and items[] required' });
+  if (replace) await query(`DELETE FROM module_vocabulary WHERE module_id = $1`, [moduleId]);
+  const inserted = [];
+  for (let i = 0; i < items.length; i++) {
+    const v = items[i] || {};
+    if (!v.japanese) continue;
+    const r = await query(
+      `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, indonesian, category, note, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [moduleId, v.lessonId || null, v.japanese, v.reading || null, v.indonesian || null,
+       v.category || null, v.note || null, v.sortOrder ?? i]
+    );
+    inserted.push(r.rows[0]);
+  }
+  res.status(201).json({ vocabulary: inserted });
+}));
+
+// ===== MODULE GRAMMAR =====
+
+router.get('/module-grammar', asyncHandler(async (req, res) => {
+  const { moduleId, lessonId } = req.query;
+  if (!moduleId) return res.status(400).json({ error: 'moduleId required' });
+  const params = [moduleId];
+  let where = 'module_id = $1';
+  if (lessonId) { where += ' AND lesson_id = $2'; params.push(lessonId); }
+  const rows = await query(
+    `SELECT * FROM module_grammar WHERE ${where} ORDER BY sort_order ASC, created_at ASC`,
+    params
+  );
+  res.json({ grammar: rows.rows });
+}));
+
+router.post('/module-grammar', asyncHandler(async (req, res) => {
+  const { moduleId, lessonId, pattern, meaning, example, notes, sortOrder } = req.body || {};
+  if (!moduleId || !pattern) return res.status(400).json({ error: 'moduleId and pattern required' });
+  const result = await query(
+    `INSERT INTO module_grammar (module_id, lesson_id, pattern, meaning, example, notes, sort_order)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+    [moduleId, lessonId || null, pattern, meaning || null, example || null, notes || null, sortOrder || 0]
+  );
+  res.status(201).json({ grammar: result.rows[0] });
+}));
+
+router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
+  const { lessonId, pattern, meaning, example, notes, sortOrder } = req.body || {};
+  const hasLesson = Object.prototype.hasOwnProperty.call(req.body || {}, 'lessonId');
+  const result = await query(
+    `UPDATE module_grammar SET
+       lesson_id = CASE WHEN $8::boolean THEN $2 ELSE lesson_id END,
+       pattern = COALESCE($3, pattern),
+       meaning = COALESCE($4, meaning),
+       example = COALESCE($5, example),
+       notes = COALESCE($6, notes),
+       sort_order = COALESCE($7, sort_order),
+       updated_at = NOW()
+     WHERE id = $1 RETURNING *`,
+    [req.params.id, lessonId || null, pattern, meaning, example, notes, sortOrder, hasLesson]
+  );
+  if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ grammar: result.rows[0] });
+}));
+
+router.delete('/module-grammar/:id', asyncHandler(async (req, res) => {
+  await query(`DELETE FROM module_grammar WHERE id = $1`, [req.params.id]);
+  res.json({ ok: true });
+}));
+
+router.post('/module-grammar/bulk', asyncHandler(async (req, res) => {
+  const { moduleId, items, replace } = req.body || {};
+  if (!moduleId || !Array.isArray(items)) return res.status(400).json({ error: 'moduleId and items[] required' });
+  if (replace) await query(`DELETE FROM module_grammar WHERE module_id = $1`, [moduleId]);
+  const inserted = [];
+  for (let i = 0; i < items.length; i++) {
+    const g = items[i] || {};
+    if (!g.pattern) continue;
+    const r = await query(
+      `INSERT INTO module_grammar (module_id, lesson_id, pattern, meaning, example, notes, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [moduleId, g.lessonId || null, g.pattern, g.meaning || null, g.example || null, g.notes || null, g.sortOrder ?? i]
+    );
+    inserted.push(r.rows[0]);
+  }
+  res.status(201).json({ grammar: inserted });
 }));
 
 // ===== LESSONS =====

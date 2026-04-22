@@ -29,7 +29,9 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
   if (course.rows.length === 0) return res.status(404).json({ error: 'Course not found' });
 
   const modules = await query(
-    `SELECT id, slug, title, description, sort_order
+    `SELECT id, slug, title, description, sort_order,
+            jf_topic, cefr_level, estimated_hours, title_en, scenario,
+            cando_statements, skill_distribution, quiz_spec
      FROM modules
      WHERE course_id = $1
      ORDER BY sort_order ASC, created_at ASC`,
@@ -37,21 +39,46 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
   );
 
   const moduleIds = modules.rows.map((m) => m.id);
-  let lessonsByModule = {};
+  const lessonsByModule = {};
+  const vocabByModule = {};
+  const vocabByLesson = {};
+  const grammarByModule = {};
+  const grammarByLesson = {};
+
   if (moduleIds.length > 0) {
     // Include content + video_url so the dashboard can render lesson bodies
     // without an extra round-trip per lesson. Quiz questions are still
     // lazy-loaded via /api/lessons/:id (smaller default payload for long courses).
-    const lessons = await query(
-      `SELECT id, module_id, slug, title, type, content, video_url, duration_minutes, sort_order
-       FROM lessons
-       WHERE module_id = ANY($1::uuid[])
-       ORDER BY sort_order ASC, created_at ASC`,
-      [moduleIds]
-    );
+    const [lessons, vocab, grammar] = await Promise.all([
+      query(
+        `SELECT id, module_id, slug, title, type, content, video_url, duration_minutes, sort_order
+         FROM lessons WHERE module_id = ANY($1::uuid[])
+         ORDER BY sort_order ASC, created_at ASC`,
+        [moduleIds]
+      ),
+      query(
+        `SELECT id, module_id, lesson_id, japanese, reading, indonesian, category, note, sort_order
+         FROM module_vocabulary WHERE module_id = ANY($1::uuid[])
+         ORDER BY sort_order ASC, created_at ASC`,
+        [moduleIds]
+      ),
+      query(
+        `SELECT id, module_id, lesson_id, pattern, meaning, example, notes, sort_order
+         FROM module_grammar WHERE module_id = ANY($1::uuid[])
+         ORDER BY sort_order ASC, created_at ASC`,
+        [moduleIds]
+      ),
+    ]);
     for (const l of lessons.rows) {
-      if (!lessonsByModule[l.module_id]) lessonsByModule[l.module_id] = [];
-      lessonsByModule[l.module_id].push(l);
+      (lessonsByModule[l.module_id] ||= []).push(l);
+    }
+    for (const v of vocab.rows) {
+      (vocabByModule[v.module_id] ||= []).push(v);
+      if (v.lesson_id) (vocabByLesson[v.lesson_id] ||= []).push(v);
+    }
+    for (const g of grammar.rows) {
+      (grammarByModule[g.module_id] ||= []).push(g);
+      if (g.lesson_id) (grammarByLesson[g.lesson_id] ||= []).push(g);
     }
   }
 
@@ -60,7 +87,13 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
       ...course.rows[0],
       modules: modules.rows.map((m) => ({
         ...m,
-        lessons: lessonsByModule[m.id] || [],
+        lessons: (lessonsByModule[m.id] || []).map((l) => ({
+          ...l,
+          vocabulary: vocabByLesson[l.id] || [],
+          grammar: grammarByLesson[l.id] || [],
+        })),
+        vocabulary: vocabByModule[m.id] || [],
+        grammar: grammarByModule[m.id] || [],
       })),
     },
   });
