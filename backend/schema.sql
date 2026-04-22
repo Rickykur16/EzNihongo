@@ -61,6 +61,14 @@ CREATE TABLE IF NOT EXISTS modules (
   title TEXT NOT NULL,
   description TEXT,
   sort_order INT DEFAULT 0,
+  jf_topic TEXT,
+  cefr_level TEXT,
+  estimated_hours NUMERIC(5,2),
+  title_en TEXT,
+  scenario TEXT,
+  cando_statements JSONB NOT NULL DEFAULT '[]'::jsonb,
+  skill_distribution JSONB NOT NULL DEFAULT '{}'::jsonb,
+  quiz_spec JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(course_id, slug)
@@ -84,6 +92,39 @@ CREATE TABLE IF NOT EXISTS lessons (
 );
 
 CREATE INDEX IF NOT EXISTS idx_lessons_module ON lessons(module_id, sort_order);
+
+CREATE TABLE IF NOT EXISTS module_vocabulary (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  module_id UUID NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+  lesson_id UUID REFERENCES lessons(id) ON DELETE SET NULL,
+  japanese TEXT NOT NULL,
+  reading TEXT,
+  indonesian TEXT,
+  category TEXT,
+  note TEXT,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_vocab_module ON module_vocabulary(module_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_vocab_lesson ON module_vocabulary(lesson_id, sort_order);
+
+CREATE TABLE IF NOT EXISTS module_grammar (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  module_id UUID NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+  lesson_id UUID REFERENCES lessons(id) ON DELETE SET NULL,
+  pattern TEXT NOT NULL,
+  meaning TEXT,
+  example TEXT,
+  notes TEXT,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_grammar_module ON module_grammar(module_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_grammar_lesson ON module_grammar(lesson_id, sort_order);
 
 -- ===== SENSEI & TESTIMONIALS =====
 
@@ -253,6 +294,14 @@ DO $$ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'discussions_updated_at') THEN
     CREATE TRIGGER discussions_updated_at BEFORE UPDATE ON discussions
+      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'module_vocabulary_updated_at') THEN
+    CREATE TRIGGER module_vocabulary_updated_at BEFORE UPDATE ON module_vocabulary
+      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'module_grammar_updated_at') THEN
+    CREATE TRIGGER module_grammar_updated_at BEFORE UPDATE ON module_grammar
       FOR EACH ROW EXECUTE FUNCTION set_updated_at();
   END IF;
 END $$;
