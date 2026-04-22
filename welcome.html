@@ -3805,13 +3805,13 @@ function renderLesson() {
     return;
   }
 
-  // Regular lesson (video/text)
-  const videoBlock = `
+  // Regular lesson (video/text) — only render the player for actual video lessons.
+  const videoBlock = lesson.type === 'video' ? `
     <div class="video-player">
       <button class="play-btn" onclick="alert('Video player belum terintegrasi.')">▶</button>
       <span class="video-meta">${lesson.type.toUpperCase()} · ${lesson.duration.toUpperCase()}</span>
     </div>
-  `;
+  ` : '';
 
   // Show module intro panel only on the first lesson of a module (orientation).
   const isFirstOfModule = module.lessons[0]?.id === lesson.id;

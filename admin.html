@@ -448,16 +448,16 @@ function renderModules() {
             <td>${hours}</td>
             <td>${m.sort_order}</td>
             <td>${(m.lessons || []).length}</td>
+            <td>${vocabCount}</td>
+            <td>${grammarCount}</td>
             <td class="actions">
               <button class="btn btn-ghost" onclick="editModule('${m.id}')">Edit</button>
-              <button class="btn btn-ghost" onclick="manageVocab('${m.id}', '${escapeHtml(m.title).replace(/'/g, "\\'")}')">Vocab (${vocabCount})</button>
-              <button class="btn btn-ghost" onclick="manageGrammar('${m.id}', '${escapeHtml(m.title).replace(/'/g, "\\'")}')">Grammar (${grammarCount})</button>
               <button class="btn btn-danger" onclick="deleteModule('${m.id}', '${escapeHtml(m.title).replace(/'/g, "\\'")}')">Hapus</button>
             </td>
           </tr>
         `;
       }).join('');
-      body = `<table><thead><tr><th>Judul / slug</th><th>JF Topic</th><th>Jam</th><th>Urutan</th><th># pelajaran</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+      body = `<table><thead><tr><th>Judul / slug</th><th>JF Topic</th><th>Jam</th><th>Urutan</th><th># pelajaran</th><th>Kosakata</th><th>Grammar</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
     }
     body = `
       <div class="toolbar">
@@ -492,7 +492,8 @@ function moduleFormHtml(m) {
     cando_statements: [], skill_distribution: {}, quiz_spec: {},
   };
   const cando = Array.isArray(m.cando_statements) ? m.cando_statements.join('\n') : '';
-  const sd = m.skill_distribution || {};
+  // Note: skill_distribution is pedagogical guidance (for sensei) only — column
+  // stays in DB and importer still fills it, but no longer editable in admin UI.
   const quizSpec = m.quiz_spec && Object.keys(m.quiz_spec).length > 0
     ? JSON.stringify(m.quiz_spec, null, 2)
     : '';
@@ -525,16 +526,6 @@ function moduleFormHtml(m) {
 
       <div class="field"><label>Real-Life Scenario</label><textarea name="scenario" rows="2">${escapeHtml(m.scenario || '')}</textarea></div>
 
-      <label style="display:block;font-size:12px;font-weight:600;color:#525252;margin-bottom:5px;font-family:'Manrope',sans-serif;">Distribusi Skill (0.0–1.0)</label>
-      <div class="field-row" style="gap:6px;">
-        <div class="field"><label style="font-size:10px;">Listening</label><input type="number" step="0.05" min="0" max="1" name="sd_listening" value="${sd.listening ?? ''}" /></div>
-        <div class="field"><label style="font-size:10px;">Reading</label><input type="number" step="0.05" min="0" max="1" name="sd_reading" value="${sd.reading ?? ''}" /></div>
-        <div class="field"><label style="font-size:10px;">Speak-Prod</label><input type="number" step="0.05" min="0" max="1" name="sd_speaking-production" value="${sd['speaking-production'] ?? ''}" /></div>
-        <div class="field"><label style="font-size:10px;">Speak-Int</label><input type="number" step="0.05" min="0" max="1" name="sd_speaking-interaction" value="${sd['speaking-interaction'] ?? ''}" /></div>
-        <div class="field"><label style="font-size:10px;">Writing</label><input type="number" step="0.05" min="0" max="1" name="sd_writing" value="${sd.writing ?? ''}" /></div>
-      </div>
-      <div id="sd-sum" style="font-size:11px;color:#737373;margin:-6px 0 12px;font-family:'Manrope',sans-serif;"></div>
-
       <details>
         <summary>Quiz Spec (JSON)</summary>
         <div class="field" style="margin-top:10px;"><textarea name="quizSpec" rows="6" placeholder='{"sections":[{"label":"Vocabulary","count":10}],"total":26,"passThreshold":"70%"}'>${escapeHtml(quizSpec)}</textarea></div>
@@ -548,25 +539,10 @@ function moduleFormHtml(m) {
   `;
 }
 
-function wireSkillSum(form) {
-  const inputs = form.querySelectorAll('input[name^="sd_"]');
-  const sumEl = form.querySelector('#sd-sum');
-  const recalc = () => {
-    let sum = 0;
-    inputs.forEach((i) => { sum += Number(i.value) || 0; });
-    const pct = Math.round(sum * 100);
-    const ok = sum >= 0.95 && sum <= 1.05;
-    sumEl.innerHTML = `Total: <strong>${pct}%</strong> ${ok ? '<span style="color:#166534;">✓</span>' : '<span style="color:#b45309;">— harus ≈ 100%</span>'}`;
-  };
-  inputs.forEach((i) => i.addEventListener('input', recalc));
-  recalc();
-}
-
 window.newModule = (courseId) => {
   openModal(moduleFormHtml(null));
   const form = document.getElementById('module-form');
   wireSlugAuto(form);
-  wireSkillSum(form);
   form.addEventListener('submit', (e) => submitModule(e, null, courseId));
 };
 window.editModule = (id) => {
@@ -574,7 +550,6 @@ window.editModule = (id) => {
   openModal(moduleFormHtml(m));
   const form = document.getElementById('module-form');
   wireSlugAuto(form);
-  wireSkillSum(form);
   form.addEventListener('submit', (e) => submitModule(e, id));
 };
 async function submitModule(e, id, courseId) {
@@ -584,11 +559,9 @@ async function submitModule(e, id, courseId) {
   if (!SLUG_REGEX.test(slug)) { notify('Slug tidak valid — gunakan huruf kecil, angka, dan tanda hubung.', true); return; }
 
   const cando = (fd.get('candoStatements') || '').split('\n').map((s) => s.trim()).filter(Boolean);
-  const skillDistribution = {};
-  for (const key of ['listening', 'reading', 'speaking-production', 'speaking-interaction', 'writing']) {
-    const v = fd.get('sd_' + key);
-    if (v !== null && v !== '') skillDistribution[key] = Number(v);
-  }
+  // skill_distribution is no longer edited in admin UI (pedagogical guidance
+  // only — importer fills it). Omit from payload so backend COALESCE keeps
+  // existing DB value rather than overwriting to empty.
   let quizSpec = {};
   const qsRaw = (fd.get('quizSpec') || '').trim();
   if (qsRaw) {
@@ -607,7 +580,6 @@ async function submitModule(e, id, courseId) {
     estimatedHours: fd.get('estimatedHours') ? Number(fd.get('estimatedHours')) : null,
     scenario: fd.get('scenario').trim() || null,
     candoStatements: cando,
-    skillDistribution,
     quizSpec,
   };
   try {
@@ -649,7 +621,28 @@ function renderLessons() {
         <div class="empty">Belum ada pelajaran di modul ini.</div>
       `;
     } else {
-      const rows = STATE.lessons.map((l) => `
+      const vocabByLesson = {};
+      const grammarByLesson = {};
+      (mod.vocabulary || []).forEach((v) => {
+        if (!v.lesson_id) return;
+        vocabByLesson[v.lesson_id] = (vocabByLesson[v.lesson_id] || 0) + 1;
+      });
+      (mod.grammar || []).forEach((g) => {
+        if (!g.lesson_id) return;
+        grammarByLesson[g.lesson_id] = (grammarByLesson[g.lesson_id] || 0) + 1;
+      });
+      const rows = STATE.lessons.map((l) => {
+        const titleEsc = escapeHtml(l.title).replace(/'/g, "\\'");
+        const vocabN = vocabByLesson[l.id] || 0;
+        const grammarN = grammarByLesson[l.id] || 0;
+        const contentBtns = l.type !== 'quiz'
+          ? `<button class="btn btn-ghost" onclick="manageVocab('${l.id}', '${titleEsc}', '${mod.id}')">Vocab (${vocabN})</button>
+             <button class="btn btn-ghost" onclick="manageGrammar('${l.id}', '${titleEsc}', '${mod.id}')">Grammar (${grammarN})</button>`
+          : '';
+        const quizBtn = l.type === 'quiz'
+          ? `<button class="btn btn-ghost" onclick="manageQuiz('${l.id}', '${titleEsc}')">Kuis</button>`
+          : '';
+        return `
         <tr>
           <td><strong>${escapeHtml(l.title)}</strong><br><span class="pill">${escapeHtml(l.slug)}</span></td>
           <td><span class="badge ${l.type === 'quiz' ? 'badge-admin' : 'badge-off'}">${escapeHtml(l.type)}</span></td>
@@ -657,11 +650,13 @@ function renderLessons() {
           <td>${l.sort_order}</td>
           <td class="actions">
             <button class="btn btn-ghost" onclick="editLesson('${l.id}')">Edit</button>
-            ${l.type === 'quiz' ? `<button class="btn btn-ghost" onclick="manageQuiz('${l.id}', '${escapeHtml(l.title).replace(/'/g, "\\'")}')">Kuis</button>` : ''}
-            <button class="btn btn-danger" onclick="deleteLesson('${l.id}', '${escapeHtml(l.title).replace(/'/g, "\\'")}')">Hapus</button>
+            ${contentBtns}
+            ${quizBtn}
+            <button class="btn btn-danger" onclick="deleteLesson('${l.id}', '${titleEsc}')">Hapus</button>
           </td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
       body = `
         <div class="toolbar"><button class="btn btn-primary" onclick="newLesson('${STATE.selectedModule}')">+ Pelajaran baru</button></div>
         <table><thead><tr><th>Judul / slug</th><th>Tipe</th><th>Durasi (menit)</th><th>Urutan</th><th></th></tr></thead><tbody>${rows}</tbody></table>
@@ -720,7 +715,7 @@ function lessonFormHtml(l) {
       <div class="field"><label>Judul</label><input name="title" value="${escapeHtml(l.title)}" required placeholder="Ketik judul — slug terisi otomatis" /></div>
       <div class="field"><label>Konten (markdown / HTML)</label><textarea name="content" rows="6">${escapeHtml(l.content || '')}</textarea></div>
       <div class="field-row">
-        <div class="field"><label>Video URL (Bunny Stream)</label><input name="videoUrl" value="${escapeHtml(l.video_url || '')}" /></div>
+        <div class="field field-video" data-video-only style="display:${l.type === 'video' ? '' : 'none'};"><label>Video URL (Bunny Stream)</label><input name="videoUrl" value="${escapeHtml(l.video_url || '')}" /></div>
         <div class="field"><label>Durasi (menit)</label><input type="number" name="durationMinutes" value="${l.duration_minutes || ''}" /></div>
       </div>
       <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${l.sort_order}" /></div>
@@ -732,10 +727,19 @@ function lessonFormHtml(l) {
   `;
 }
 
+function wireLessonTypeVisibility(form) {
+  const typeSel = form.querySelector('select[name="type"]');
+  const videoField = form.querySelector('.field-video');
+  if (!typeSel || !videoField) return;
+  const apply = () => { videoField.style.display = typeSel.value === 'video' ? '' : 'none'; };
+  apply();
+  typeSel.addEventListener('change', apply);
+}
 window.newLesson = (moduleId) => {
   openModal(lessonFormHtml(null));
   const form = document.getElementById('lesson-form');
   wireSlugAuto(form);
+  wireLessonTypeVisibility(form);
   form.addEventListener('submit', (e) => submitLesson(e, null, moduleId));
 };
 window.editLesson = (id) => {
@@ -743,6 +747,7 @@ window.editLesson = (id) => {
   openModal(lessonFormHtml(l));
   const form = document.getElementById('lesson-form');
   wireSlugAuto(form);
+  wireLessonTypeVisibility(form);
   form.addEventListener('submit', (e) => submitLesson(e, id));
 };
 async function submitLesson(e, id, moduleId) {
@@ -750,12 +755,13 @@ async function submitLesson(e, id, moduleId) {
   const fd = new FormData(e.target);
   const slug = slugify(fd.get('slug'));
   if (!SLUG_REGEX.test(slug)) { notify('Slug tidak valid — gunakan huruf kecil, angka, dan tanda hubung.', true); return; }
+  const type = fd.get('type');
   const body = {
     slug,
     title: fd.get('title').trim(),
-    type: fd.get('type'),
+    type,
     content: fd.get('content').trim() || null,
-    videoUrl: fd.get('videoUrl').trim() || null,
+    videoUrl: type === 'video' ? ((fd.get('videoUrl') || '').trim() || null) : null,
     durationMinutes: Number(fd.get('durationMinutes')) || null,
     sortOrder: Number(fd.get('sortOrder')) || 0,
   };
@@ -915,21 +921,13 @@ const GRAMMAR_FIELDS = [
   { name: 'notes', label: 'Catatan sensei', style: 'min-width:160px;' },
 ];
 
-function lessonOptions(lessons, selectedId) {
-  const opts = (lessons || [])
-    .filter((l) => l.type !== 'quiz')
-    .map((l) => `<option value="${l.id}" ${l.id === selectedId ? 'selected' : ''}>${escapeHtml(l.title.slice(0, 50))}</option>`).join('');
-  return `<option value="">— tidak ter-link —</option>${opts}`;
-}
-
-function itemRowHtml(item, lessons, fields, kind) {
+function itemRowHtml(item, fields, kind) {
   const cells = fields.map((f) => `
     <td><input name="${f.name}" value="${escapeHtml(item[f.name] || '')}" style="${f.style}" /></td>
   `).join('');
   return `
     <tr data-id="${item.id || ''}" data-kind="${kind}">
       ${cells}
-      <td><select name="lessonId">${lessonOptions(lessons, item.lesson_id)}</select></td>
       <td><input type="number" name="sortOrder" value="${item.sort_order || 0}" style="width:60px;" /></td>
       <td class="actions">
         <button type="button" class="btn btn-primary" onclick="saveItemRow(this)">Simpan</button>
@@ -939,57 +937,56 @@ function itemRowHtml(item, lessons, fields, kind) {
   `;
 }
 
-function renderItemTable(kind, items, lessons) {
+function renderItemTable(kind, items) {
   const fields = kind === 'vocab' ? VOCAB_FIELDS : GRAMMAR_FIELDS;
   const heads = fields.map((f) => `<th>${f.label}</th>`).join('');
-  const rows = items.map((it) => itemRowHtml(it, lessons, fields, kind)).join('');
+  const rows = items.map((it) => itemRowHtml(it, fields, kind)).join('');
   return `
     <table style="font-size:12px;">
-      <thead><tr>${heads}<th>Lesson</th><th>#</th><th></th></tr></thead>
+      <thead><tr>${heads}<th>#</th><th></th></tr></thead>
       <tbody id="items-body">${rows || ''}</tbody>
     </table>
     ${items.length === 0 ? '<div class="empty" style="padding:20px;">Belum ada item.</div>' : ''}
   `;
 }
 
-async function openItemManager(kind, moduleId, moduleTitle) {
+async function openItemManager(kind, lessonId, lessonTitle, moduleId) {
   let items = [];
-  let lessons = [];
   try {
     const d = await api('/admin/modules/' + moduleId);
-    lessons = d.module?.lessons || [];
-    items = kind === 'vocab' ? (d.module?.vocabulary || []) : (d.module?.grammar || []);
+    const all = kind === 'vocab' ? (d.module?.vocabulary || []) : (d.module?.grammar || []);
+    items = all.filter((it) => it.lesson_id === lessonId);
   } catch (err) {
     notify('Gagal load ' + kind + ': ' + err.message, true);
     return;
   }
   const label = kind === 'vocab' ? 'Kosakata' : 'Grammar';
+  const safeTitle = escapeHtml(lessonTitle).replace(/'/g, "\\'");
   openModal(`
-    <h3>${label}: ${escapeHtml(moduleTitle)}</h3>
+    <h3>${label}: ${escapeHtml(lessonTitle)}</h3>
     <div class="toolbar">
-      <button type="button" class="btn btn-primary" onclick="addItemRow('${kind}', '${moduleId}')">+ Tambah</button>
-      <button type="button" class="btn btn-ghost" onclick="openBulkPaste('${kind}', '${moduleId}', '${escapeHtml(moduleTitle).replace(/'/g, "\\'")}')">Paste dari Excel (TSV)</button>
+      <button type="button" class="btn btn-primary" onclick="addItemRow('${kind}')">+ Tambah</button>
+      <button type="button" class="btn btn-ghost" onclick="openBulkPaste('${kind}', '${lessonId}', '${safeTitle}', '${moduleId}')">Paste dari Excel (TSV)</button>
       <span style="font-size:12px;color:#737373;font-family:Manrope,sans-serif;">${items.length} item</span>
     </div>
-    <div id="items-wrap" style="overflow-x:auto;">${renderItemTable(kind, items, lessons)}</div>
+    <div id="items-wrap" style="overflow-x:auto;">${renderItemTable(kind, items)}</div>
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `);
   // Widen the modal for the table layout; reset on close.
   modalContent.style.maxWidth = '1000px';
-  window.__itemCtx = { kind, moduleId, moduleTitle, lessons };
+  window.__itemCtx = { kind, lessonId, lessonTitle, moduleId };
 }
 
-window.manageVocab = (id, title) => openItemManager('vocab', id, title);
-window.manageGrammar = (id, title) => openItemManager('grammar', id, title);
+window.manageVocab = (lessonId, lessonTitle, moduleId) => openItemManager('vocab', lessonId, lessonTitle, moduleId);
+window.manageGrammar = (lessonId, lessonTitle, moduleId) => openItemManager('grammar', lessonId, lessonTitle, moduleId);
 
-window.addItemRow = (kind, moduleId) => {
-  const ctx = window.__itemCtx || {};
+window.addItemRow = (kind) => {
   const fields = kind === 'vocab' ? VOCAB_FIELDS : GRAMMAR_FIELDS;
   const empty = {};
   for (const f of fields) empty[f.name] = '';
   empty.sort_order = document.querySelectorAll('#items-body tr').length;
   const tbody = document.getElementById('items-body');
-  tbody.appendChild(el(itemRowHtml(empty, ctx.lessons || [], fields, kind)));
+  tbody.appendChild(el(itemRowHtml(empty, fields, kind)));
 };
 
 window.saveItemRow = async (btn) => {
@@ -998,11 +995,14 @@ window.saveItemRow = async (btn) => {
   const kind = tr.dataset.kind;
   const ctx = window.__itemCtx || {};
   const fields = kind === 'vocab' ? VOCAB_FIELDS : GRAMMAR_FIELDS;
-  const body = { moduleId: ctx.moduleId, sortOrder: Number(tr.querySelector('input[name="sortOrder"]').value) || 0 };
+  const body = {
+    moduleId: ctx.moduleId,
+    lessonId: ctx.lessonId,
+    sortOrder: Number(tr.querySelector('input[name="sortOrder"]').value) || 0,
+  };
   for (const f of fields) {
     body[f.name] = tr.querySelector(`input[name="${f.name}"]`).value.trim() || null;
   }
-  body.lessonId = tr.querySelector('select[name="lessonId"]').value || null;
   // Validation
   if (kind === 'vocab' && !body.japanese) { notify('Japanese wajib diisi', true); return; }
   if (kind === 'grammar' && !body.pattern) { notify('Pattern wajib diisi', true); return; }
@@ -1046,45 +1046,41 @@ window.deleteItemRow = async (btn) => {
   } catch (err) { notify('Gagal hapus: ' + err.message, true); }
 };
 
-window.openBulkPaste = (kind, moduleId, moduleTitle) => {
+window.openBulkPaste = (kind, lessonId, lessonTitle, moduleId) => {
   const fields = kind === 'vocab' ? VOCAB_FIELDS : GRAMMAR_FIELDS;
   const header = fields.map((f) => f.name).join('\t');
+  const safeTitle = escapeHtml(lessonTitle).replace(/'/g, "\\'");
   openModal(`
-    <h3>Paste ${kind} (TSV)</h3>
+    <h3>Paste ${kind} (TSV) — ${escapeHtml(lessonTitle)}</h3>
     <p style="font-size:12px;color:#525252;font-family:Manrope,sans-serif;margin:0 0 10px;">
       Satu baris per item. Kolom dipisah TAB, urutan: <code>${header}</code>.<br>
-      Contoh dari Excel — tinggal copy range dan paste di sini.
+      Semua item di-assign ke pelajaran ini otomatis.
     </p>
     <div class="field"><textarea id="bulk-tsv" rows="12" style="font-family:monospace;font-size:12px;"></textarea></div>
-    <label style="font-size:12px;display:flex;gap:6px;align-items:center;font-family:Manrope,sans-serif;color:#525252;">
-      <input type="checkbox" id="bulk-replace" style="width:auto;"/>
-      Hapus semua yang lama dulu (replace all)
-    </label>
     <div class="modal-actions">
-      <button type="button" class="btn btn-ghost" onclick="manage${kind === 'vocab' ? 'Vocab' : 'Grammar'}('${moduleId}', '${escapeHtml(moduleTitle).replace(/'/g, "\\'")}')">← Kembali</button>
-      <button type="button" class="btn btn-primary" onclick="submitBulk('${kind}', '${moduleId}', '${escapeHtml(moduleTitle).replace(/'/g, "\\'")}')">Import</button>
+      <button type="button" class="btn btn-ghost" onclick="manage${kind === 'vocab' ? 'Vocab' : 'Grammar'}('${lessonId}', '${safeTitle}', '${moduleId}')">← Kembali</button>
+      <button type="button" class="btn btn-primary" onclick="submitBulk('${kind}', '${lessonId}', '${safeTitle}', '${moduleId}')">Import</button>
     </div>
   `);
 };
 
-window.submitBulk = async (kind, moduleId, moduleTitle) => {
+window.submitBulk = async (kind, lessonId, lessonTitle, moduleId) => {
   const raw = document.getElementById('bulk-tsv').value;
-  const replace = document.getElementById('bulk-replace').checked;
   const fields = kind === 'vocab' ? VOCAB_FIELDS : GRAMMAR_FIELDS;
   const items = raw.split(/\r?\n/).map((line) => {
     if (!line.trim()) return null;
     const cols = line.split('\t');
-    const item = {};
+    const item = { lessonId };
     fields.forEach((f, i) => { item[f.name] = (cols[i] || '').trim() || null; });
     return item;
   }).filter((x) => x && (x[fields[0].name]));
   if (items.length === 0) { notify('Tidak ada baris valid', true); return; }
   const endpoint = kind === 'vocab' ? '/admin/module-vocabulary/bulk' : '/admin/module-grammar/bulk';
   try {
-    await api(endpoint, { method: 'POST', body: JSON.stringify({ moduleId, items, replace }) });
+    await api(endpoint, { method: 'POST', body: JSON.stringify({ moduleId, items, replace: false }) });
     notify(items.length + ' item di-import');
-    if (kind === 'vocab') manageVocab(moduleId, moduleTitle);
-    else manageGrammar(moduleId, moduleTitle);
+    if (kind === 'vocab') manageVocab(lessonId, lessonTitle, moduleId);
+    else manageGrammar(lessonId, lessonTitle, moduleId);
     if (STATE.selectedCourse) loadModulesForCourse(STATE.selectedCourse);
   } catch (err) { notify('Gagal import: ' + err.message, true); }
 };
