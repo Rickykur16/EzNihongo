@@ -439,8 +439,11 @@ function renderModules() {
       const rows = STATE.modules.map((m) => {
         const cefrBadge = m.cefr_level ? `<span class="pill" style="background:#e0e7ff;color:#3730a3;margin-left:4px;">${escapeHtml(m.cefr_level)}</span>` : '';
         const hours = m.estimated_hours ? `${m.estimated_hours}j` : '-';
-        const vocabCount = (m.vocabulary || []).length;
-        const grammarCount = (m.grammar || []).length;
+        // Count hanya item yang ter-assign ke lesson, biar sinkron dengan tampilan
+        // per-pelajaran di tab Pelajaran. Item orphan (lesson_id NULL) ga visible
+        // di UI manapun — bisa di-fix via re-import xlsx.
+        const vocabCount = (m.vocabulary || []).filter((v) => v.lesson_id).length;
+        const grammarCount = (m.grammar || []).filter((g) => g.lesson_id).length;
         return `
           <tr>
             <td><strong>${escapeHtml(m.title)}</strong>${cefrBadge}<br><span class="pill">${escapeHtml(m.slug)}</span></td>
