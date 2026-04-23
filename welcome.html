@@ -1955,7 +1955,7 @@
     .sidebar::-webkit-scrollbar { width: 4px; }
     .sidebar::-webkit-scrollbar-thumb { background: #dedad4; border-radius: 4px; }
 
-    /* Collapsed state — tombol di nav meng-toggle class ini di .learning-layout */
+    /* Collapsed state — handle kecil ("telinga") di pinggir sidebar meng-toggle class ini */
     .learning-layout.sidebar-collapsed .sidebar {
       width: 0;
       max-width: 0;
@@ -1970,7 +1970,54 @@
       max-width: 960px;
     }
 
-    .sidebar-toggle { display: inline-flex !important; }
+    /* Ear-shaped handle — hangs off the sidebar's right edge, stays fixed vertically */
+    .sidebar-handle {
+      position: fixed;
+      top: 50vh;
+      left: 272px;
+      transform: translateY(-50%);
+      width: 22px;
+      height: 56px;
+      padding: 0;
+      background: #ffffff;
+      border: 1px solid #ece9e3;
+      border-left: none;
+      border-radius: 0 10px 10px 0;
+      color: #6a6a6a;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.05);
+      transition:
+        left 0.25s cubic-bezier(0.2, 0, 0.1, 1),
+        background 0.15s ease,
+        color 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+    }
+    .sidebar-handle:hover {
+      background: #fff7f8;
+      color: var(--brand-red);
+      border-color: var(--brand-red);
+      box-shadow: 2px 2px 14px rgba(200, 16, 46, 0.15);
+    }
+    .sidebar-handle:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.25), 2px 2px 10px rgba(0, 0, 0, 0.05);
+    }
+    .sidebar-handle svg {
+      width: 12px;
+      height: 12px;
+      transition: transform 0.25s cubic-bezier(0.2, 0, 0.1, 1);
+    }
+    .learning-layout.sidebar-collapsed ~ .sidebar-handle,
+    .learning-layout.sidebar-collapsed + .sidebar-handle { left: 0; }
+    .learning-layout.sidebar-collapsed ~ .sidebar-handle svg,
+    .learning-layout.sidebar-collapsed + .sidebar-handle svg { transform: rotate(180deg); }
+    /* Nav hamburger stays hidden on desktop — the ear handle is the sole control */
+    .sidebar-toggle { display: none !important; }
     .sidebar-backdrop { display: none !important; }
     .sidebar-close { display: none !important; }
 
@@ -1981,6 +2028,10 @@
       padding: 32px 40px;
       transition: max-width 0.25s cubic-bezier(0.2, 0, 0.1, 1);
     }
+  }
+  /* Handle is desktop-only — mobile uses the drawer via nav button */
+  @media (max-width: 860px) {
+    .sidebar-handle { display: none !important; }
   }
 
   /* ════════════════════════════════════════════════════════════════════
@@ -3686,6 +3737,9 @@ function renderLearning(courseSlug) {
       <main class="main-content" id="main-content"></main>
       <aside class="right-panel" id="right-panel"></aside>
     </div>
+    <button class="sidebar-handle" id="sidebar-handle" type="button" aria-label="Tutup sidebar" title="Tutup sidebar" onclick="toggleSidebar()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
   `;
 
   renderSidebar();
@@ -4504,6 +4558,12 @@ function applySidebarCollapse(collapsed) {
   const btnLabel = btn && btn.querySelector('span');
   if (btnLabel) btnLabel.textContent = collapsed ? 'Menu' : 'Tutup';
   if (btn) btn.setAttribute('aria-label', collapsed ? 'Buka menu' : 'Tutup menu');
+  const handle = document.getElementById('sidebar-handle');
+  if (handle) {
+    const label = collapsed ? 'Buka sidebar' : 'Tutup sidebar';
+    handle.setAttribute('aria-label', label);
+    handle.setAttribute('title', label);
+  }
 }
 window.applySidebarCollapse = applySidebarCollapse;
 
