@@ -1533,12 +1533,12 @@
 <!-- ── SEARCH VIEW ── -->
 <div id="view-search" class="kapp" style="display:none">
   <div class="ks-header">
-    <button class="kd-back" id="ks-back">‹</button>
+    <button class="kd-back" id="ks-back" aria-label="Kembali"><span aria-hidden="true">‹</span></button>
     <div class="ks-input-wrap">
-      <span class="ks-input-icon">🔍</span>
+      <span class="ks-input-icon" aria-hidden="true">🔍</span>
       <input class="ks-input" id="ks-input" type="search"
-        placeholder="Kanji, hiragana, atau arti..." autocomplete="off" spellcheck="false"/>
-      <button class="ks-clear" id="ks-clear" style="display:none">✕</button>
+        placeholder="Kanji, hiragana, atau arti..." aria-label="Cari kanji, hiragana, atau arti" autocomplete="off" spellcheck="false"/>
+      <button class="ks-clear" id="ks-clear" style="display:none" aria-label="Hapus pencarian"><span aria-hidden="true">✕</span></button>
     </div>
   </div>
   <div class="ks-tabs">
@@ -1589,7 +1589,7 @@
   <div id="kapp-search-wrap" class="kapp-search-wrap" style="display:none">
     <div class="kapp-search-wrap-inner">
       <span class="kapp-search-icon">🔍</span>
-      <input class="kapp-search-input" id="kapp-search-input" type="search" placeholder="Cari kanji, arti, atau bacaan..."/>
+      <input class="kapp-search-input" id="kapp-search-input" type="search" placeholder="Cari kanji, arti, atau bacaan..." aria-label="Cari kanji, arti, atau bacaan" autocomplete="off" autocorrect="off" spellcheck="false"/>
     </div>
   </div>
   <div class="kapp-stat-row">
@@ -9261,8 +9261,8 @@ function renderDetail(){
           <div class="kd-vi-read">${v.r}</div>
           <div class="kd-vi-mean">${v.m}</div>
         </div>
-        <button class="kd-speak-btn" data-speak="${v.w}" title="Dengarkan"><svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>
-        ${hasKanji ? '<span class="kd-vi-hint">▾</span>' : ''}
+        <button class="kd-speak-btn" data-speak="${v.w}" title="Dengarkan" aria-label="Dengarkan pengucapan ${v.w}"><svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>
+        ${hasKanji ? '<span class="kd-vi-hint" aria-hidden="true">▾</span>' : ''}
       </div>
       ${hasKanji ? `<div class="kd-vi-break"><div class="kd-vi-break-lbl">Kanji dalam kata ini</div><div class="kd-vi-chips">${chipsHtml}</div></div>` : ''}
     </div>`;
@@ -9286,7 +9286,7 @@ function renderDetail(){
     <div class="kd-sent-wrap"${i > 0 ? ' style="border-top:1px solid var(--gray-border);"' : ''}>
       <div class="kd-sent-top">
         <div class="kd-sent-jp">${s.j}</div>
-        <button class="kd-speak-btn" data-speak="${s.j}" title="Dengarkan"><svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>
+        <button class="kd-speak-btn" data-speak="${s.j}" title="Dengarkan" aria-label="Dengarkan kalimat"><svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>
       </div>
       <div class="kd-sent-r">${romajiToKana(s.r, s.j)}</div>
       <div class="kd-sent-id">${s.i}</div>
@@ -9657,9 +9657,9 @@ function renderSearchHistory(){
     html += `<div class="sh-date">${g.label}</div>`;
     g.items.forEach(item => {
       html += `<div class="sh-item" data-q="${item.q}">
-        <span class="sh-icon">🕐</span>
+        <span class="sh-icon" aria-hidden="true">🕐</span>
         <span class="sh-q">${item.q}</span>
-        <button class="sh-del" data-del="${item.q}" title="Hapus">✕</button>
+        <button class="sh-del" data-del="${item.q}" title="Hapus" aria-label="Hapus riwayat pencarian ${item.q}"><span aria-hidden="true">✕</span></button>
       </div>`;
     });
   });
@@ -10074,22 +10074,38 @@ document.getElementById('kh-gear').addEventListener('click', showSettings);
 document.getElementById('stg-back').addEventListener('click', ()=>showHome());
 
 // ─── SETTINGS TABS ────────────────────────────────────────────────────────────
-document.querySelectorAll('#view-settings .stg-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
+(() => {
+  const tabs = [...document.querySelectorAll('#view-settings .stg-tab')];
+  function activate(tab, { focus = false } = {}) {
     const pane = tab.dataset.pane;
     window.track?.('settings_tab', { pane });
-    document.querySelectorAll('#view-settings .stg-tab').forEach(t => {
+    tabs.forEach(t => {
       const on = t === tab;
       t.classList.toggle('active', on);
       t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.tabIndex = on ? 0 : -1;
     });
     document.querySelectorAll('#view-settings .stg-pane').forEach(p => {
       const on = p.id === 'stg-pane-' + pane;
       p.classList.toggle('active', on);
       p.hidden = !on;
     });
+    if (focus) tab.focus();
+  }
+  tabs.forEach((tab, i) => {
+    // WAI-ARIA tabs: only active tab in tab order, arrow keys navigate
+    tab.tabIndex = tab.classList.contains('active') ? 0 : -1;
+    tab.addEventListener('click', () => activate(tab));
+    tab.addEventListener('keydown', e => {
+      let next = null;
+      if (e.key === 'ArrowRight') next = tabs[(i + 1) % tabs.length];
+      else if (e.key === 'ArrowLeft') next = tabs[(i - 1 + tabs.length) % tabs.length];
+      else if (e.key === 'Home') next = tabs[0];
+      else if (e.key === 'End') next = tabs[tabs.length - 1];
+      if (next) { e.preventDefault(); activate(next, { focus: true }); }
+    });
   });
-});
+})();
 
 // Retention slider live update
 document.getElementById('stg-retention').addEventListener('input', e => {
