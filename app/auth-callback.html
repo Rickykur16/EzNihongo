@@ -6,24 +6,10 @@
   <title>Memuat... · EzNihongo</title>
   <link rel="stylesheet" href="style.css" />
   <style>
-    body {
-      background: var(--gray-bg);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      text-align: center;
-    }
-    .loading-box { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-    .loading-box img { height: 40px; }
-    .loading-box p { font-size: 14px; color: var(--text-secondary); }
-    .spinner {
-      width: 28px; height: 28px;
-      border: 3px solid var(--gray-border);
-      border-top-color: var(--red);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-    }
+    body { background: var(--gray-bg); display:flex; align-items:center; justify-content:center; min-height:100vh; text-align:center; }
+    .loading-box { display:flex; flex-direction:column; align-items:center; gap:14px; }
+    .loading-box img { height:40px; }
+    .spinner { width:28px; height:28px; border:3px solid var(--gray-border); border-top-color:var(--red); border-radius:50%; animation:spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
@@ -31,53 +17,31 @@
   <div class="loading-box">
     <img src="logo.png" alt="EzNihongo" />
     <div class="spinner"></div>
-    <p id="status">Memverifikasi akun...</p>
+    <p id="status" style="font-size:14px;color:var(--text-secondary);">Memeriksa sesi...</p>
   </div>
 
-  <script src="analytics.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="api-client.js"></script>
   <script>
-    const SUPABASE_URL = 'https://bawgehtwhxhydgoztbhp.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_4mDzwW_QNliMylit68ESxA_kld_aW_S';
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    function setStatus(msg) { document.getElementById('status').textContent = msg; }
-
-    let redirected = false;
-
-    function markJustLoggedIn(session) {
+    // GIS popup login is inline now (see login.html) — no OAuth redirect here.
+    // This page exists only as a compatibility stub for old bookmarks: check
+    // session, route to kanji.html if logged in, else back to login.
+    (async () => {
       try {
-        const md = session?.user?.user_metadata || {};
-        const full = md.full_name || md.name || session?.user?.email || '';
-        const first = String(full).trim().split(/\s+/)[0] || '';
-        sessionStorage.setItem('ez_just_logged_in', '1');
-        if (first) sessionStorage.setItem('ez_login_name', first);
-      } catch(e) {}
-    }
-
-    // Cek session langsung (untuk user yang koneksinya cepat)
-    sb.auth.getSession().then(({ data: { session } }) => {
-      if (session && !redirected) {
-        redirected = true;
-        markJustLoggedIn(session);
-        setStatus('Masuk...');
-        location.href = 'kanji.html';
+        const user = typeof window.ezGetMe === 'function' ? await window.ezGetMe() : null;
+        if (user) {
+          try {
+            sessionStorage.setItem('ez_just_logged_in', '1');
+            const first = (user.fullName || user.email || '').toString().trim().split(/\s+/)[0];
+            if (first) sessionStorage.setItem('ez_login_name', first);
+          } catch {}
+          location.replace('kanji.html');
+        } else {
+          location.replace('login.html');
+        }
+      } catch {
+        location.replace('login.html');
       }
-    });
-
-    // Tunggu event SIGNED_IN (untuk user yang koneksinya lambat)
-    sb.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session && !redirected) {
-        redirected = true;
-        markJustLoggedIn(session);
-        setStatus('Masuk...');
-        location.href = 'kanji.html';
-      }
-      if (event === 'SIGNED_OUT') {
-        setStatus('Gagal masuk. Mengalihkan...');
-        setTimeout(() => location.href = 'login.html', 2000);
-      }
-    });
+    })();
   </script>
 </body>
 </html>

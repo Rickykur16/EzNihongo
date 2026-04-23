@@ -10,6 +10,9 @@ import progressRouter from './routes/progress.js';
 import discussionsRouter from './routes/discussions.js';
 import adminRouter from './routes/admin.js';
 import uploadsRouter from './routes/uploads.js';
+import subscriptionRouter from './routes/subscription.js';
+import kanjiProgressRouter from './routes/kanji-progress.js';
+import kanjiAuthRouter from './routes/kanji-auth.js';
 
 // Fail fast on missing env vars. Every deploy needs these; without them the
 // app silently degrades (bad auth, no DB, open CORS). Crashing at startup
@@ -59,11 +62,14 @@ app.get('/api/health', async (req, res) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api/kanji-auth', kanjiAuthRouter);
 app.use('/api', contentRouter);
 app.use('/api', progressRouter);
 app.use('/api/discussions', discussionsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/uploads', uploadsRouter);
+app.use('/api/subscription', subscriptionRouter);
+app.use('/api/kanji-progress', kanjiProgressRouter);
 
 // 404
 app.use('/api', (req, res) => {

@@ -1661,6 +1661,7 @@
 </div>
 
 <script src="analytics.js"></script>
+<script src="api-client.js"></script>
 <script src="nav.js"></script>
 <script src="fsrs.js"></script>
 <script>
@@ -9959,7 +9960,7 @@ function scheduleDailyReminder(){
 // Jadwalkan jika sudah pernah aktif
 if(localStorage.getItem('ez-notif')==='1') scheduleDailyReminder();
 
-// ─── SUPABASE PROGRESS SYNC ──────────────────────────────────────────────────
+// ─── PROGRESS SYNC (EzNihongo API) ───────────────────────────────────────────
 let _syncTimer = null;
 
 function scheduleSyncProgress() {
@@ -9968,37 +9969,43 @@ function scheduleSyncProgress() {
 }
 
 async function syncProgressToCloud() {
-  if (!window._supabase) return;
-  const { data: { session } } = await window._supabase.auth.getSession();
-  if (!session) return;
-  const fsrsRaw = localStorage.getItem('eznihongo_fsrs_v1');
-  await window._supabase.from('user_progress').upsert({
-    user_id:     session.user.id,
-    known_kanji: [...known],
-    fsrs_data:   fsrsRaw ? JSON.parse(fsrsRaw) : {},
-    updated_at:  new Date().toISOString()
-  }, { onConflict: 'user_id' });
+  if (typeof window.ezApi !== 'function') return;
+  if (!window._isLoggedIn) return;
+  try {
+    const fsrsRaw = localStorage.getItem('eznihongo_fsrs_v1');
+    const res = await window.ezApi('/kanji-progress', {
+      method: 'PUT',
+      body: JSON.stringify({
+        knownKanji: [...known],
+        fsrsData: fsrsRaw ? JSON.parse(fsrsRaw) : {},
+      }),
+    });
+    if (!res.ok) throw new Error('sync_failed');
+  } catch (e) {
+    // Silently swallow — next scheduleSyncProgress() will retry.
+  }
 }
 
-async function loadProgressFromCloud(userId) {
-  if (!window._supabase) return;
-  const { data, error } = await window._supabase
-    .from('user_progress')
-    .select('known_kanji, fsrs_data, updated_at')
-    .eq('user_id', userId)
-    .single();
-  if (error || !data) return;
+async function loadProgressFromCloud(_userIdIgnored) {
+  if (typeof window.ezApi !== 'function') return;
+  let data;
+  try {
+    const res = await window.ezApi('/kanji-progress');
+    if (!res.ok) return;
+    data = await res.json();
+  } catch (e) { return; }
+  if (!data) return;
 
   // Merge known: union cloud + local
   const localKnown  = new Set(JSON.parse(localStorage.getItem('ez-kanji-known') || '[]'));
-  const cloudKnown  = new Set(data.known_kanji || []);
+  const cloudKnown  = new Set(data.knownKanji || []);
   const merged      = new Set([...localKnown, ...cloudKnown]);
   known = merged;
   localStorage.setItem('ez-kanji-known', JSON.stringify([...merged]));
 
-  // Merge FSRS: per-kartu ambil data yang updated_at lebih baru
+  // Merge FSRS: per-kartu ambil data yang last_review lebih baru
   const localFsrs = JSON.parse(localStorage.getItem('eznihongo_fsrs_v1') || '{}');
-  const cloudFsrs = data.fsrs_data || {};
+  const cloudFsrs = data.fsrsData || {};
   const mergedFsrs = Object.assign({}, cloudFsrs);
   Object.keys(localFsrs).forEach(k => {
     const lc = localFsrs[k], cl = cloudFsrs[k];
@@ -10014,7 +10021,7 @@ async function loadProgressFromCloud(userId) {
 // Sync saat halaman ditutup
 window.addEventListener('beforeunload', () => {
   clearTimeout(_syncTimer);
-  if (window._supabase) syncProgressToCloud();
+  if (window._isLoggedIn) syncProgressToCloud();
 });
 
 // ─── FREE-TRIAL AUTH MODEL ───────────────────────────────────────────────────
@@ -10106,7 +10113,7 @@ function openUpgradeModal(feature) {
         <li>Support pengembang Indonesia 🇮🇩</li>
       </ul>
       <button class="um-cta" id="um-pay">${loggedIn ? 'Upgrade Sekarang — Rp 99.000/tahun' : 'Login & Upgrade'}</button>
-      <button class="um-sub" id="um-later">Nanti aja</button>
+      <button class="um-sub" id="um-later">Nanti saja</button>
     </div>`;
   document.body.appendChild(modal);
 
@@ -10145,17 +10152,14 @@ function loadSnapJs() {
 }
 
 async function startMidtransCheckout() {
-  const sb = window._supabase;
-  if (!sb) throw new Error('Supabase belum siap');
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) throw new Error('Belum login');
+  if (typeof window.ezApi !== 'function') throw new Error('API belum siap');
+  if (!window._isLoggedIn) throw new Error('Belum login');
   await loadSnapJs();
-  const res = await fetch(`${sb.supabaseUrl}/functions/v1/midtrans-create-tx`, {
+  const res = await window.ezApi('/subscription/create-tx', {
     method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
     body: JSON.stringify({ plan: 'yearly' }),
   });
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'gagal');
   if (!window.snap) throw new Error('Snap.js belum termuat');
   window.track?.('payment_modal_opened');
@@ -10228,7 +10232,7 @@ function openLoginModal(feature) {
         <li>Backup otomatis — data tidak hilang</li>
       </ul>
       <a class="lm-btn lm-primary" href="login.html?redirect=kanji.html">Masuk / Daftar dengan Google</a>
-      <button class="lm-btn lm-secondary" id="lm-close">Nanti aja</button>
+      <button class="lm-btn lm-secondary" id="lm-close">Nanti saja</button>
     </div>
   `;
   document.body.appendChild(modal);
@@ -10324,19 +10328,21 @@ async function checkAuth() {
     return;
   }
 
+  // Wait for api-client.js to attach ezGetMe to window.
   await new Promise(resolve => {
-    const poll = () => window._supabase ? resolve() : setTimeout(poll, 50);
+    const poll = () => typeof window.ezGetMe === 'function' ? resolve() : setTimeout(poll, 50);
     poll();
   });
 
-  const { data: { session } } = await window._supabase.auth.getSession();
-  if (session) {
+  const user = await window.ezGetMe();
+  if (user) {
     window._isLoggedIn = true;
-    window.identifyUser?.(session.user.id, { email: session.user.email });
+    window._authUser = user;
+    window.identifyUser?.(user.id, { email: user.email });
     await loadPremiumStatus();
     window.track?.('session_active', { logged_in: true, premium: window._isPremium });
-    await loadProgressFromCloud(session.user.id);
-    showWelcomeIfJustLoggedIn(session);
+    await loadProgressFromCloud(user.id);
+    showWelcomeIfJustLoggedIn(user);
 
     // Auto-open upgrade modal if user came back from login expecting to upgrade
     if (new URLSearchParams(location.search).get('upgrade') === '1' && !window._isPremium) {
@@ -10356,14 +10362,13 @@ async function checkAuth() {
 
 function _devPremiumFlag() { try { return localStorage.getItem('ez_dev_premium') === '1'; } catch(e) { return false; } }
 
-function showWelcomeIfJustLoggedIn(session) {
+function showWelcomeIfJustLoggedIn(user) {
   try {
     if (sessionStorage.getItem('ez_just_logged_in') !== '1') return;
     sessionStorage.removeItem('ez_just_logged_in');
-    const md = session?.user?.user_metadata || {};
     const stored = sessionStorage.getItem('ez_login_name') || '';
     sessionStorage.removeItem('ez_login_name');
-    const full = stored || md.full_name || md.name || session?.user?.email || '';
+    const full = stored || user?.fullName || user?.email || '';
     const first = String(full).trim().split(/\s+/)[0] || '';
     const greet = first ? `Hai, ${first}! 👋` : 'Hai! 👋';
     setTimeout(() => showToast(greet, 3200), 350);
@@ -10372,9 +10377,11 @@ function showWelcomeIfJustLoggedIn(session) {
 
 async function loadPremiumStatus() {
   try {
-    const { data, error } = await window._supabase.from('me_is_premium').select('is_premium').maybeSingle();
-    if (error) { window._isPremium = _devPremiumFlag(); return; }
-    window._isPremium = !!data?.is_premium || _devPremiumFlag();
+    if (typeof window.ezApi !== 'function') { window._isPremium = _devPremiumFlag(); return; }
+    const res = await window.ezApi('/subscription/status');
+    if (!res.ok) { window._isPremium = _devPremiumFlag(); return; }
+    const data = await res.json();
+    window._isPremium = !!data?.isPremium || _devPremiumFlag();
     if (window._isPremium) removeLockedUi();
   } catch (e) {
     window._isPremium = _devPremiumFlag();
@@ -10838,7 +10845,7 @@ if ('serviceWorker' in navigator) {
           <button class="ob-opt" data-v="60"><span class="ob-opt-ico">🚀</span><div class="ob-opt-text"><div class="ob-opt-title">60+ menit</div><div class="ob-opt-sub">Grinding · 50+ kartu/hari</div></div></button>
         </div>
         <div class="ob-stats" id="ob-stats" style="display:none;">
-          Dengan <b id="ob-stats-min">15</b> menit/hari, lo bisa selesaikan <b id="ob-stats-days">~7 bulan</b> untuk N5 (103 kanji).
+          Dengan <b id="ob-stats-min">15</b> menit/hari, kamu bisa menyelesaikan <b id="ob-stats-days">~7 bulan</b> untuk N5 (103 kanji).
         </div>
         <div class="ob-actions">
           <button class="ob-btn ob-btn-ghost" id="ob-back-2">‹ Kembali</button>

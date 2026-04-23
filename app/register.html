@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Daftar — EzNihongo</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     body { background: var(--gray-bg); }
 
@@ -203,21 +204,30 @@
 
       <div class="auth-logo">
         <a href="index.html"><img src="logo.png" alt="EzNihongo" style="height:44px;width:auto;"></a>
-        <p>Buat akun dan mulai belajar</p>
+        <p>Buat akun Kanji dan mulai belajar</p>
       </div>
 
-      <button class="google-btn" id="google-btn" onclick="loginWithGoogle()">
-        <svg class="google-icon" viewBox="0 0 24 24">
-          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-        </svg>
-        Daftar dengan Google
-      </button>
+      <!-- Google Identity Services button renders here -->
+      <div id="google-btn-container" style="display:flex;justify-content:center;margin-bottom:8px;"></div>
+      <p id="signin-status" style="font-size:13px;color:var(--text-secondary);text-align:center;margin:12px 0 0;"></p>
+
+      <div id="error-banner" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;padding:10px 12px;border-radius:var(--radius-sm);margin-top:12px;font-size:13px;text-align:center;"></div>
+
+      <div id="step-profile" style="display:none;margin-top:20px;">
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;text-align:center;">
+          Masukkan nama tampilan untuk akun Kanji kamu:
+        </p>
+        <form id="profile-form">
+          <div class="form-group">
+            <input id="full-name" type="text" placeholder="Nama lengkap" required maxlength="100" />
+          </div>
+          <button type="submit" class="submit-btn">Lanjutkan</button>
+          <button type="button" id="cancel-profile" style="width:100%;background:none;border:none;color:var(--text-secondary);font-size:13px;cursor:pointer;padding:6px;font-family:inherit;">Pakai akun Google lain</button>
+        </form>
+      </div>
 
       <div class="auth-footer" style="margin-top:8px;">
-        Akun dibuat otomatis saat pertama kali masuk.<br>
+        Akun Kanji terpisah dari akun utama eznihongo.com.<br>
         Sudah punya akun? <a href="login.html">Masuk di sini</a>
       </div>
 
@@ -225,18 +235,93 @@
   </div>
 
   <script src="analytics.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="api-client.js"></script>
   <script src="nav.js"></script>
   <script>
-    async function loginWithGoogle() {
-      const btn = document.getElementById('google-btn');
-      btn.disabled = true;
-      btn.style.opacity = '0.7';
-      await _supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.origin + '/app/auth-callback.html' }
-      });
+    const GOOGLE_CLIENT_ID = '998431349663-20kog1i9aeln8d7c21r8bi1ha084078o.apps.googleusercontent.com';
+
+    function getRedirect() {
+      const p = new URLSearchParams(location.search);
+      const raw = p.get('redirect');
+      const dec = raw ? decodeURIComponent(raw) : 'kanji.html';
+      if (/^https?:|^\/\//.test(dec)) return 'kanji.html';
+      return dec;
     }
+    function showError(msg) {
+      const el = document.getElementById('error-banner');
+      el.textContent = msg; el.style.display = 'block';
+    }
+    function clearError() { document.getElementById('error-banner').style.display = 'none'; }
+
+    (async () => {
+      const user = await ezGetMe();
+      if (user) location.replace(getRedirect());
+    })();
+
+    function readGoogleName(credential) {
+      try {
+        const payload = JSON.parse(atob(credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        return payload.name || '';
+      } catch { return ''; }
+    }
+
+    let _pendingCredential = null;
+
+    function handleGoogleCredential(response) {
+      clearError();
+      _pendingCredential = response.credential;
+      document.getElementById('signin-status').textContent = '';
+      document.getElementById('google-btn-container').style.display = 'none';
+      document.getElementById('step-profile').style.display = 'block';
+      const nameInput = document.getElementById('full-name');
+      nameInput.value = readGoogleName(response.credential);
+      setTimeout(() => { nameInput.focus(); nameInput.select(); }, 50);
+    }
+
+    document.getElementById('cancel-profile').addEventListener('click', () => {
+      _pendingCredential = null;
+      document.getElementById('step-profile').style.display = 'none';
+      document.getElementById('google-btn-container').style.display = 'flex';
+      clearError();
+    });
+
+    document.getElementById('profile-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearError();
+      const fullName = document.getElementById('full-name').value.trim();
+      if (!fullName) { showError('Nama harus diisi.'); return; }
+      if (!_pendingCredential) { showError('Sesi Google tidak ditemukan. Coba lagi.'); return; }
+      const btn = e.target.querySelector('.submit-btn');
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
+      try {
+        await ezLoginWithGoogle(_pendingCredential, fullName);
+        try {
+          sessionStorage.setItem('ez_just_logged_in', '1');
+          sessionStorage.setItem('ez_login_name', fullName.split(/\s+/)[0] || '');
+        } catch {}
+        location.replace(getRedirect());
+      } catch (err) {
+        btn.disabled = false; btn.textContent = 'Lanjutkan';
+        showError('Gagal daftar: ' + (err.message || 'coba lagi'));
+      }
+    });
+
+    window.addEventListener('load', () => {
+      const tryInit = () => {
+        if (!window.google || !window.google.accounts) { setTimeout(tryInit, 100); return; }
+        google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredential,
+          auto_select: false,
+          ux_mode: 'popup',
+        });
+        google.accounts.id.renderButton(
+          document.getElementById('google-btn-container'),
+          { type: 'standard', theme: 'outline', size: 'large', text: 'signup_with', shape: 'rectangular', logo_alignment: 'left', width: 320 }
+        );
+      };
+      tryInit();
+    });
   </script>
 
 </body>

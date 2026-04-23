@@ -1,23 +1,15 @@
-// nav.js — inject shared navbar + dark mode toggle + Supabase auth
+// nav.js — inject shared navbar + dark mode toggle + EzNihongo API auth
 
-const SUPABASE_URL = 'https://bawgehtwhxhydgoztbhp.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_4mDzwW_QNliMylit68ESxA_kld_aW_S';
-let _supabase = null;
-
-function loadSupabase() {
+// Ensures window.ezGetMe / ezLogout are available. api-client.js should
+// already be loaded via <script> before nav.js, but we lazy-load it here as a
+// safety net in case a page forgets.
+function ensureApiClient() {
   return new Promise((resolve) => {
-    if (window.supabase) {
-      _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      window._supabase = _supabase;
-      resolve(); return;
-    }
+    if (typeof window.ezGetMe === 'function') { resolve(); return; }
     const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-    s.onload = () => {
-      _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      window._supabase = _supabase;
-      resolve();
-    };
+    s.src = 'api-client.js';
+    s.onload = () => resolve();
+    s.onerror = () => resolve();
     document.head.appendChild(s);
   });
 }
@@ -90,7 +82,7 @@ function toggleTheme() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  await loadSupabase();
+  await ensureApiClient();
   const navEl = document.getElementById('navbar');
   if (navEl) navEl.innerHTML = renderNav();
 
@@ -121,13 +113,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Auth area — cek Supabase session
-  const { data: { session } } = await _supabase.auth.getSession();
-  const sbUser = session?.user ?? null;
+  // Auth area — resolves via refresh cookie → /api/kanji-auth/me.
+  const user = typeof window.ezGetMe === 'function' ? await window.ezGetMe() : null;
 
-  function buildAuthHTML(user, isMobile) {
-    if (user) {
-      const name    = user.user_metadata?.full_name || user.email.split('@')[0];
+  function buildAuthHTML(u, isMobile) {
+    if (u) {
+      const name    = u.fullName || (u.email ? u.email.split('@')[0] : 'User');
       const initial = name.charAt(0).toUpperCase();
       return `
         <div style="display:flex;align-items:center;gap:10px;${isMobile ? 'padding:4px 0;' : ''}">
@@ -144,13 +135,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const navAuth = document.getElementById('nav-auth');
-  if (navAuth) navAuth.innerHTML = buildAuthHTML(sbUser, false);
+  if (navAuth) navAuth.innerHTML = buildAuthHTML(user, false);
 
   const navAuthMobile = document.getElementById('nav-auth-mobile');
-  if (navAuthMobile) navAuthMobile.innerHTML = buildAuthHTML(sbUser, true);
+  if (navAuthMobile) navAuthMobile.innerHTML = buildAuthHTML(user, true);
 });
 
 async function logoutUser() {
-  await _supabase.auth.signOut();
-  location.href = 'index.html';
+  if (typeof window.ezLogout === 'function') {
+    await window.ezLogout();
+  } else {
+    location.href = 'index.html';
+  }
 }

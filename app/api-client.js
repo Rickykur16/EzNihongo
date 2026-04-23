@@ -1,7 +1,17 @@
-// api-client.js — EzNihongo self-hosted API client
-// Replaces supabase-client.js. Auth via /api/auth/* on same origin.
+// app/api-client.js — Kanji PWA client for the self-hosted API.
+//
+// This realm is SEPARATE from the main eznihongo.com site:
+//   - hits /api/kanji-auth/* instead of /api/auth/* (its own users table)
+//   - refresh cookie is `ez_kanji_refresh`, host-only to app.eznihongo.com
+//   - access-token JWTs carry scope='kanji' so the main site can't honor them
+//   - local mirror stored at `ez_kanji_user` (not `ez_user`) to avoid
+//     colliding with a main-site session in the same browser
+//
+// Override the base URL (e.g. for staging) by setting `window.EZ_API_BASE`
+// BEFORE loading this script. Nginx on app.eznihongo.com proxies /api → backend.
 
 const EZ_API_BASE = (typeof window !== 'undefined' && window.EZ_API_BASE) || '/api';
+const LOCAL_USER_KEY = 'ez_kanji_user';
 let _ezAccessToken = null;
 let _ezRefreshPromise = null;
 
@@ -19,7 +29,7 @@ async function ezApi(path, opts = {}) {
     try {
       await ezRefresh();
       res = await _ezFetch(path, opts);
-    } catch (e) {
+    } catch {
       _ezAccessToken = null;
       throw new Error('AUTH_EXPIRED');
     }
@@ -30,7 +40,7 @@ async function ezApi(path, opts = {}) {
 async function ezRefresh() {
   if (_ezRefreshPromise) return _ezRefreshPromise;
   _ezRefreshPromise = (async () => {
-    const res = await fetch(EZ_API_BASE + '/auth/refresh', {
+    const res = await fetch(EZ_API_BASE + '/kanji-auth/refresh', {
       method: 'POST',
       credentials: 'include',
     });
@@ -44,12 +54,15 @@ async function ezRefresh() {
   finally { _ezRefreshPromise = null; }
 }
 
-// Exchange Google ID token for app session.
-// On first-ever signup, backend returns 400 { error: 'profile_required', googleName }.
-// Caller must then retry with fullName.
+// Exchange Google ID token for a Kanji PWA session.
+// Pass fullName ALWAYS — the PWA captures the display name on every fresh
+// sign-in, so the kanji_users row stays in sync with whatever the user typed
+// rather than defaulting to the Google account name.
+// Backend still returns 400 { error: 'profile_required', googleName } if the
+// caller omits fullName and no row exists yet; UI should surface that form.
 async function ezLoginWithGoogle(credential, fullName) {
   const body = fullName ? { credential, fullName } : { credential };
-  const res = await fetch(EZ_API_BASE + '/auth/google', {
+  const res = await fetch(EZ_API_BASE + '/kanji-auth/google', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -70,27 +83,22 @@ async function ezLoginWithGoogle(credential, fullName) {
 
 async function ezLogout() {
   try {
-    await fetch(EZ_API_BASE + '/auth/logout', {
+    await fetch(EZ_API_BASE + '/kanji-auth/logout', {
       method: 'POST',
       credentials: 'include',
     });
   } catch {}
   _ezAccessToken = null;
-  localStorage.removeItem('ez_user');
-  localStorage.removeItem('ez_courses');
-  localStorage.removeItem('ez_progress');
-  localStorage.removeItem('ez_stats');
+  try { localStorage.removeItem(LOCAL_USER_KEY); } catch {}
   location.href = 'index.html';
 }
 
-// Validates current session. Tries refresh cookie first if no access token.
-// Returns user object or null.
 async function ezGetMe() {
   if (!_ezAccessToken) {
     try { await ezRefresh(); } catch { mirrorUserToLocal(null); return null; }
   }
   try {
-    const res = await ezApi('/auth/me');
+    const res = await ezApi('/kanji-auth/me');
     if (!res.ok) { mirrorUserToLocal(null); return null; }
     const data = await res.json();
     mirrorUserToLocal(data.user);
@@ -99,7 +107,7 @@ async function ezGetMe() {
 }
 
 function mirrorUserToLocal(user) {
-  if (!user) { localStorage.removeItem('ez_user'); return null; }
+  if (!user) { try { localStorage.removeItem(LOCAL_USER_KEY); } catch {} return null; }
   const email = user.email || '';
   const name = user.fullName || (email ? email.split('@')[0] : 'User');
   const avatar = user.avatarUrl || '';
@@ -108,23 +116,10 @@ function mirrorUserToLocal(user) {
     email,
     name,
     avatar,
-    isAdmin: !!user.isAdmin,
     loggedInAt: Date.now(),
   };
-  localStorage.setItem('ez_user', JSON.stringify(mirrored));
+  try { localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(mirrored)); } catch {}
   return mirrored;
-}
-
-// Guard helper for protected pages. Redirects to login if not authenticated.
-async function ezRequireAuth(loginPath) {
-  const user = await ezGetMe();
-  if (!user) {
-    const path = loginPath || 'login.html';
-    const here = location.pathname.replace(/^\//, '') + location.search;
-    location.replace(path + '?next=' + encodeURIComponent(here || 'welcome.html'));
-    return null;
-  }
-  return user;
 }
 
 window.ezApi = ezApi;
@@ -133,4 +128,3 @@ window.ezLoginWithGoogle = ezLoginWithGoogle;
 window.ezLogout = ezLogout;
 window.ezGetMe = ezGetMe;
 window.mirrorUserToLocal = mirrorUserToLocal;
-window.ezRequireAuth = ezRequireAuth;
