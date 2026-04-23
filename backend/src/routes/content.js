@@ -30,7 +30,7 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
 
   const modules = await query(
     `SELECT id, slug, title, description, sort_order,
-            jf_topic, cefr_level, estimated_hours, title_en, scenario,
+            jf_topic, cefr_level, title_en, scenario,
             cando_statements, skill_distribution, quiz_spec
      FROM modules
      WHERE course_id = $1
@@ -72,6 +72,8 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
     for (const l of lessons.rows) {
       (lessonsByModule[l.module_id] ||= []).push(l);
     }
+    // Durasi modul = sum dari lesson.duration_minutes. Dihitung di sini (bukan
+    // SUM() di SQL) karena kita sudah fetch lessons; hindari round-trip ekstra.
     for (const v of vocab.rows) {
       (vocabByModule[v.module_id] ||= []).push(v);
       if (v.lesson_id) (vocabByLesson[v.lesson_id] ||= []).push(v);
@@ -85,16 +87,23 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
   res.json({
     course: {
       ...course.rows[0],
-      modules: modules.rows.map((m) => ({
-        ...m,
-        lessons: (lessonsByModule[m.id] || []).map((l) => ({
-          ...l,
-          vocabulary: vocabByLesson[l.id] || [],
-          grammar: grammarByLesson[l.id] || [],
-        })),
-        vocabulary: vocabByModule[m.id] || [],
-        grammar: grammarByModule[m.id] || [],
-      })),
+      modules: modules.rows.map((m) => {
+        const mLessons = lessonsByModule[m.id] || [];
+        const totalMinutes = mLessons.reduce(
+          (sum, l) => sum + (Number(l.duration_minutes) || 0), 0
+        );
+        return {
+          ...m,
+          total_minutes: totalMinutes || null,
+          lessons: mLessons.map((l) => ({
+            ...l,
+            vocabulary: vocabByLesson[l.id] || [],
+            grammar: grammarByLesson[l.id] || [],
+          })),
+          vocabulary: vocabByModule[m.id] || [],
+          grammar: grammarByModule[m.id] || [],
+        };
+      }),
     },
   });
 }));

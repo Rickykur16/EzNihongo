@@ -2906,7 +2906,7 @@ function transformCourseFromApi(apiCourse) {
       titleEn: m.title_en || '',
       jfTopic: m.jf_topic || '',
       cefrLevel: m.cefr_level || '',
-      estimatedHours: m.estimated_hours || null,
+      totalMinutes: m.total_minutes || null,
       scenario: m.scenario || '',
       candoStatements: Array.isArray(m.cando_statements) ? m.cando_statements : [],
       skillDistribution: (m.skill_distribution && typeof m.skill_distribution === 'object') ? m.skill_distribution : {},
@@ -3992,16 +3992,26 @@ function escapeHtml(s) {
   }[c]));
 }
 
+function formatDurationLong(minutes) {
+  const n = Number(minutes);
+  if (!n || n <= 0) return '';
+  if (n < 60) return `${Math.round(n)} menit`;
+  const h = Math.floor(n / 60);
+  const rem = Math.round(n - h * 60);
+  return rem === 0 ? `${h} jam` : `${h} jam ${rem} menit`;
+}
+
 function renderModuleIntro(module) {
   const hasCando = Array.isArray(module.candoStatements) && module.candoStatements.length > 0;
   const hasScenario = !!(module.scenario && module.scenario.trim());
-  if (!hasCando && !hasScenario && !module.cefrLevel && !module.estimatedHours && !module.jfTopic && !module.titleEn) {
+  const durationText = formatDurationLong(module.totalMinutes);
+  if (!hasCando && !hasScenario && !module.cefrLevel && !durationText && !module.jfTopic && !module.titleEn) {
     return '';
   }
 
   const pills = [];
   if (module.cefrLevel) pills.push(`<span class="pill pill-accent">CEFR ${escapeHtml(module.cefrLevel)}</span>`);
-  if (module.estimatedHours) pills.push(`<span class="pill">⏱ ${escapeHtml(module.estimatedHours)} jam</span>`);
+  if (durationText) pills.push(`<span class="pill">⏱ ${escapeHtml(durationText)}</span>`);
   if (module.jfTopic) pills.push(`<span class="pill">${escapeHtml(module.jfTopic)}</span>`);
 
   return `

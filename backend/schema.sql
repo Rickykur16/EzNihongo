@@ -63,7 +63,6 @@ CREATE TABLE IF NOT EXISTS modules (
   sort_order INT DEFAULT 0,
   jf_topic TEXT,
   cefr_level TEXT,
-  estimated_hours NUMERIC(5,2),
   title_en TEXT,
   scenario TEXT,
   cando_statements JSONB NOT NULL DEFAULT '[]'::jsonb,

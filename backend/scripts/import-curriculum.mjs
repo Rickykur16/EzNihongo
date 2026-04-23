@@ -67,11 +67,8 @@ function parseLessonSheet(sheet) {
   }
   const jfTopic = meta['jf topic'] || null;
   const cefrLevel = meta['cefr level'] || null;
-  const hoursRaw = meta['estimated teaching hours'] || '';
-  const estimatedHours = (() => {
-    const m = String(hoursRaw).match(/([\d.]+)/);
-    return m ? Number(m[1]) : null;
-  })();
+  // "Estimated teaching hours" dari xlsx di-ignore — durasi modul sekarang
+  // dihitung dari SUM(lessons.duration_minutes) di runtime.
 
   // Section parser: walk top-down, cut sections by markers in column A.
   const markers = {
@@ -180,7 +177,6 @@ function parseLessonSheet(sheet) {
     titleEn,
     jfTopic,
     cefrLevel,
-    estimatedHours,
     candoStatements,
     skillDistribution,
     vocab,
@@ -209,7 +205,7 @@ function renderIntroContent(m) {
   const parts = [
     `## Tentang ${m.lessonCode} — ${m.titleId}`,
     m.titleEn ? `_${m.titleEn}_` : '',
-    m.jfTopic ? `**JF Topic:** ${m.jfTopic} · **CEFR:** ${m.cefrLevel || '-'} · **⏱ ${m.estimatedHours || '?'} jam**` : '',
+    m.jfTopic ? `**JF Topic:** ${m.jfTopic} · **CEFR:** ${m.cefrLevel || '-'}` : '',
     '',
     '### Setelah modul ini kamu akan bisa',
     candoList,
@@ -394,13 +390,13 @@ async function importLevel(client, level, filePath) {
     const modIns = await client.query(
       `INSERT INTO modules (
          course_id, slug, title, description, sort_order,
-         jf_topic, cefr_level, estimated_hours, title_en, scenario,
+         jf_topic, cefr_level, title_en, scenario,
          cando_statements, skill_distribution, quiz_spec
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13::jsonb)
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12::jsonb)
        RETURNING id`,
       [
         courseId, moduleSlug, moduleTitle, parsed.titleEn || null, idx + 1,
-        parsed.jfTopic, parsed.cefrLevel, parsed.estimatedHours, parsed.titleEn, parsed.scenario,
+        parsed.jfTopic, parsed.cefrLevel, parsed.titleEn, parsed.scenario,
         JSON.stringify(parsed.candoStatements || []),
         JSON.stringify(parsed.skillDistribution || {}),
         JSON.stringify(parsed.quizSpec || {}),

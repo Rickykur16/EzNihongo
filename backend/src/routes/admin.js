@@ -152,7 +152,7 @@ router.get('/modules/:id', asyncHandler(async (req, res) => {
 router.post('/modules', asyncHandler(async (req, res) => {
   const {
     courseId, slug, title, description, sortOrder,
-    jfTopic, cefrLevel, estimatedHours, titleEn, scenario,
+    jfTopic, cefrLevel, titleEn, scenario,
     candoStatements, skillDistribution, quizSpec,
   } = req.body || {};
   if (!courseId || !slug || !title) {
@@ -163,13 +163,13 @@ router.post('/modules', asyncHandler(async (req, res) => {
   const result = await query(
     `INSERT INTO modules (
        course_id, slug, title, description, sort_order,
-       jf_topic, cefr_level, estimated_hours, title_en, scenario,
+       jf_topic, cefr_level, title_en, scenario,
        cando_statements, skill_distribution, quiz_spec
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13::jsonb)
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12::jsonb)
      RETURNING *`,
     [
       courseId, slug, title, description || null, sortOrder || 0,
-      jfTopic || null, cefrLevel || null, estimatedHours ?? null, titleEn || null, scenario || null,
+      jfTopic || null, cefrLevel || null, titleEn || null, scenario || null,
       JSON.stringify(Array.isArray(candoStatements) ? candoStatements : []),
       JSON.stringify(typeof skillDistribution === 'object' && skillDistribution ? skillDistribution : {}),
       JSON.stringify(typeof quizSpec === 'object' && quizSpec ? quizSpec : {}),
@@ -181,7 +181,7 @@ router.post('/modules', asyncHandler(async (req, res) => {
 router.put('/modules/:id', asyncHandler(async (req, res) => {
   const {
     slug, title, description, sortOrder,
-    jfTopic, cefrLevel, estimatedHours, titleEn, scenario,
+    jfTopic, cefrLevel, titleEn, scenario,
     candoStatements, skillDistribution, quizSpec,
   } = req.body || {};
   if (slug !== undefined && slug !== null) {
@@ -196,17 +196,16 @@ router.put('/modules/:id', asyncHandler(async (req, res) => {
        sort_order = COALESCE($5, sort_order),
        jf_topic = COALESCE($6, jf_topic),
        cefr_level = COALESCE($7, cefr_level),
-       estimated_hours = COALESCE($8, estimated_hours),
-       title_en = COALESCE($9, title_en),
-       scenario = COALESCE($10, scenario),
-       cando_statements = COALESCE($11::jsonb, cando_statements),
-       skill_distribution = COALESCE($12::jsonb, skill_distribution),
-       quiz_spec = COALESCE($13::jsonb, quiz_spec),
+       title_en = COALESCE($8, title_en),
+       scenario = COALESCE($9, scenario),
+       cando_statements = COALESCE($10::jsonb, cando_statements),
+       skill_distribution = COALESCE($11::jsonb, skill_distribution),
+       quiz_spec = COALESCE($12::jsonb, quiz_spec),
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
     [
       req.params.id, slug, title, description, sortOrder,
-      jfTopic, cefrLevel, estimatedHours, titleEn, scenario,
+      jfTopic, cefrLevel, titleEn, scenario,
       Array.isArray(candoStatements) ? JSON.stringify(candoStatements) : null,
       skillDistribution && typeof skillDistribution === 'object' ? JSON.stringify(skillDistribution) : null,
       quizSpec && typeof quizSpec === 'object' ? JSON.stringify(quizSpec) : null,
