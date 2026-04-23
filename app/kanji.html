@@ -10265,8 +10265,12 @@ function openUpgradeModal(feature) {
   window.track?.('upgrade_modal_shown', { feature });
   const existing = document.getElementById('upgrade-modal');
   if (existing) existing.remove();
+  const prevFocus = document.activeElement;
   const modal = document.createElement('div');
   modal.id = 'upgrade-modal';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'um-title');
   const loggedIn = window._isLoggedIn;
   modal.innerHTML = `
     <style>
@@ -10310,7 +10314,7 @@ function openUpgradeModal(feature) {
     <div class="um-sheet" style="position:relative;">
       <button class="um-close" id="um-close" aria-label="Tutup">&times;</button>
       <span class="um-badge">⭐ EzNihongo Premium</span>
-      <h2 class="um-title">Buka semua level JLPT</h2>
+      <h2 class="um-title" id="um-title">Buka semua level JLPT</h2>
       <p class="um-feature">${feature ? 'Fitur: ' + feature : 'Akses N4, N3, N2, N1 + semua kanji sekaligus.'}</p>
       <div class="um-price">
         <span class="amt">Rp 99.000</span>
@@ -10329,9 +10333,28 @@ function openUpgradeModal(feature) {
     </div>`;
   document.body.appendChild(modal);
 
-  document.getElementById('um-close').onclick = () => { modal.remove(); window.track?.('upgrade_modal_closed', { feature }); };
-  document.getElementById('um-later').onclick = () => { modal.remove(); window.track?.('upgrade_modal_dismissed', { feature }); };
-  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+  // Focus trap + Esc to close. Restore previous focus on close.
+  function closeModal(reason) {
+    modal.remove();
+    document.removeEventListener('keydown', onKey);
+    window.track?.('upgrade_modal_' + (reason || 'closed'), { feature });
+    if (prevFocus && typeof prevFocus.focus === 'function') { try { prevFocus.focus(); } catch {} }
+  }
+  function onKey(e) {
+    if (e.key === 'Escape') { e.preventDefault(); closeModal('closed'); return; }
+    if (e.key !== 'Tab') return;
+    const focusables = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (!focusables.length) return;
+    const first = focusables[0], last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+  document.addEventListener('keydown', onKey);
+  setTimeout(() => { document.getElementById('um-pay')?.focus(); }, 50);
+
+  document.getElementById('um-close').onclick = () => closeModal('closed');
+  document.getElementById('um-later').onclick = () => closeModal('dismissed');
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal('closed'); });
 
   document.getElementById('um-pay').onclick = async () => {
     window.track?.('upgrade_cta_click', { feature, logged_in: loggedIn });
@@ -10387,8 +10410,12 @@ function openLoginModal(feature) {
   window.track?.('login_modal_shown', { feature });
   const existing = document.getElementById('login-modal');
   if (existing) existing.remove();
+  const prevFocus = document.activeElement;
   const modal = document.createElement('div');
   modal.id = 'login-modal';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'lm-title');
   modal.innerHTML = `
     <style>
       #login-modal {
@@ -10436,7 +10463,7 @@ function openLoginModal(feature) {
     </style>
     <div class="lm-card">
       <div class="lm-icon">🔓</div>
-      <h3 class="lm-title">${feature || 'Fitur ini'} butuh akun</h3>
+      <h3 class="lm-title" id="lm-title">${feature || 'Fitur ini'} butuh akun</h3>
       <p class="lm-desc">Login gratis — akun dibuat otomatis dengan Google.</p>
       <ul class="lm-bullets">
         <li>Akses semua level N5 sampai N1 (2229 kanji)</li>
@@ -10448,8 +10475,26 @@ function openLoginModal(feature) {
     </div>
   `;
   document.body.appendChild(modal);
-  document.getElementById('lm-close').onclick = () => modal.remove();
-  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+  function closeLm() {
+    modal.remove();
+    document.removeEventListener('keydown', onKey);
+    if (prevFocus && typeof prevFocus.focus === 'function') { try { prevFocus.focus(); } catch {} }
+  }
+  function onKey(e) {
+    if (e.key === 'Escape') { e.preventDefault(); closeLm(); return; }
+    if (e.key !== 'Tab') return;
+    const focusables = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (!focusables.length) return;
+    const first = focusables[0], last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+  document.addEventListener('keydown', onKey);
+  setTimeout(() => { modal.querySelector('.lm-primary')?.focus(); }, 50);
+
+  document.getElementById('lm-close').onclick = closeLm;
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeLm(); });
 }
 
 function requireLogin(feature) {
