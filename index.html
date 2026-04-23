@@ -6,7 +6,9 @@
 <title>EzNihongo — Belajar Bahasa Jepang untuk Karier di Jepang</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;500;600;700;900&family=Noto+Sans+JP:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Shippori+Mincho:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/tokens.css"/>
+<link rel="stylesheet" href="styles/components.css"/>
 <link rel="stylesheet" href="index.css"/>
 </head>
 <body>
@@ -338,20 +340,10 @@ function ModernNav() {
           )}
           {loaded && !user && (
             <>
-              <button style={{ fontSize: 14, color: '#404040', fontWeight: 500, padding: '9px 16px', borderRadius: 8, border: '1.5px solid #e5e5e5', transition: 'all 0.15s', background: '#fff' }}
-                onMouseOver={e => { e.currentTarget.style.borderColor = '#C8102E'; e.currentTarget.style.color = '#C8102E'; }}
-                onMouseOut={e => { e.currentTarget.style.borderColor = '#e5e5e5'; e.currentTarget.style.color = '#404040'; }}
-                onClick={() => window.location.href = 'login.html'}>
+              <button className="ez-btn ez-btn-ghost" onClick={() => window.location.href = 'login.html'}>
                 Masuk
               </button>
-              <button style={{
-                background: '#C8102E', color: '#fff',
-                padding: '9px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600,
-                boxShadow: '0 2px 0 #8a0b20', transition: 'all 0.15s', whiteSpace: 'nowrap',
-              }}
-              onMouseOver={e => { e.currentTarget.style.transform = 'translateY(1px)'; e.currentTarget.style.boxShadow = '0 1px 0 #8a0b20'; }}
-              onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 0 #8a0b20'; }}
-              onClick={() => window.location.href = 'login.html'}>
+              <button className="ez-btn ez-btn-primary" onClick={() => window.location.href = 'login.html'}>
                 Daftar
               </button>
             </>
@@ -390,16 +382,9 @@ function ModernHero() {
             </span>
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
-            <button style={{
-              background: '#0a0a0a', color: '#fff',
-              padding: '15px 28px', borderRadius: 10, fontSize: 15, fontWeight: 600,
-              display: 'inline-flex', alignItems: 'center', gap: 10,
-              boxShadow: '0 3px 0 #000, 0 10px 30px rgba(0,0,0,0.15)', transition: 'all 0.15s',
-            }}
-            onClick={() => document.getElementById('pricing').scrollIntoView({ behavior: 'smooth' })}
-            onMouseOver={e => { e.currentTarget.style.transform = 'translateY(1px)'; }}
-            onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; }}>
-              {h.ctaPrimary} <span>→</span>
+            <button className="ez-btn ez-btn-primary ez-btn-lg"
+              onClick={() => document.getElementById('pricing').scrollIntoView({ behavior: 'smooth' })}>
+              {h.ctaPrimary} <span aria-hidden="true">→</span>
             </button>
           </div>
 
@@ -430,17 +415,8 @@ function ModernHero() {
             ].map((s, i) => (
               <a key={i} href={s.href} target="_blank" rel="noopener noreferrer"
                 aria-label={`Ikuti EzNihongo di ${s.name}`} title={s.name}
-                style={{
-                  width: 44, height: 44, borderRadius: '50%',
-                  background: '#fff', border: '1.5px solid #e5e5e5',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: s.color, textDecoration: 'none',
-                  animation: `float 3s ease-in-out ${s.delay} infinite`,
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
-                }}
-                onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-4px) scale(1.12)'; e.currentTarget.style.boxShadow = `0 8px 20px ${s.color}33`; }}
-                onMouseOut={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)'; }}>
+                className="ez-social-icon"
+                style={{ color: s.color, animation: `float 3s ease-in-out ${s.delay} infinite` }}>
                 {s.icon}
               </a>
             ))}
@@ -645,9 +621,7 @@ function ModernAudience() {
         </div>
         <div className="ez-grid-3">
           {a.cards.map((c, i) => (
-            <div key={i} className="reveal" style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: 16, overflow: 'hidden', transition: 'all 0.25s', cursor: 'pointer' }}
-            onMouseOver={e => { e.currentTarget.style.borderColor = '#C8102E'; e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 24px 48px rgba(0,0,0,0.08)'; }}
-            onMouseOut={e => { e.currentTarget.style.borderColor = '#e5e5e5'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
+            <div key={i} className="reveal ez-audience-card">
               <PhotoPlaceholder caption={c.photoCaption} aspectRatio="5/4" tone="warm" style={{ borderRadius: 0 }} />
               <div style={{ padding: 24 }}>
                 <div style={{ display: 'inline-block', fontSize: 11, fontWeight: 600, padding: '4px 10px', background: '#f5f5f5', color: '#525252', borderRadius: 4, letterSpacing: '0.04em', marginBottom: 14, fontFamily: "'JetBrains Mono', monospace" }}>{c.tag}</div>
@@ -751,17 +725,13 @@ function ModernSensei() {
 
           {/* Dots + arrows */}
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 24 }}>
-            <button onClick={() => { prev(); resetTimer(); }} style={{ width: 36, height: 36, borderRadius: '50%', border: '1.5px solid #e5e5e5', background: '#fff', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
-              onMouseOver={e => { e.currentTarget.style.borderColor = '#C8102E'; e.currentTarget.style.color = '#C8102E'; }}
-              onMouseOut={e => { e.currentTarget.style.borderColor = '#e5e5e5'; e.currentTarget.style.color = '#000'; }}>‹</button>
+            <button aria-label="Sensei sebelumnya" onClick={() => { prev(); resetTimer(); }} className="ez-carousel-arrow">‹</button>
             <div style={{ display: 'flex', gap: 8 }}>
               {people.map((_, i) => (
-                <button key={i} onClick={() => go(i)} style={{ width: active === i ? 24 : 8, height: 8, borderRadius: 999, background: active === i ? '#C8102E' : '#ddd', border: 'none', cursor: 'pointer', transition: 'all 0.3s', padding: 0 }} />
+                <button key={i} aria-label={`Tampilkan sensei ${i + 1}`} onClick={() => go(i)} className="ez-carousel-dot" style={{ width: active === i ? 24 : 8, background: active === i ? 'var(--brand-red)' : 'var(--paper-400)' }} />
               ))}
             </div>
-            <button onClick={() => { next(); resetTimer(); }} style={{ width: 36, height: 36, borderRadius: '50%', border: '1.5px solid #e5e5e5', background: '#fff', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
-              onMouseOver={e => { e.currentTarget.style.borderColor = '#C8102E'; e.currentTarget.style.color = '#C8102E'; }}
-              onMouseOut={e => { e.currentTarget.style.borderColor = '#e5e5e5'; e.currentTarget.style.color = '#000'; }}>›</button>
+            <button aria-label="Sensei berikutnya" onClick={() => { next(); resetTimer(); }} className="ez-carousel-arrow">›</button>
           </div>
         </div>
       </div>
@@ -953,22 +923,22 @@ function ModernPricing() {
 
             {plan.available ? (
               <button
+                className="ez-btn ez-btn-primary ez-btn-lg"
+                style={{ width: '100%', marginTop: 32, fontSize: 16, fontWeight: 700 }}
                 onClick={() => {
                   const user = localStorage.getItem('ez_user');
                   const dest = `courses/detail.html?slug=${encodeURIComponent(plan.slug)}`;
                   window.location.href = user
                     ? dest
                     : `login.html?next=${encodeURIComponent(dest)}`;
-                }}
-                style={{ width: '100%', marginTop: 32, background: '#C8102E', color: '#fff', padding: '16px', borderRadius: 12, fontSize: 16, fontWeight: 700, boxShadow: '0 4px 0 #8a0b20', transition: 'all 0.15s', cursor: 'pointer', border: 'none' }}
-                onMouseOver={e => { e.currentTarget.style.transform = 'translateY(2px)'; e.currentTarget.style.boxShadow = '0 2px 0 #8a0b20'; }}
-                onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 0 #8a0b20'; }}>
-                {plan.cta} →
+                }}>
+                {plan.cta} <span aria-hidden="true">→</span>
               </button>
             ) : (
               <button
-                disabled
-                style={{ width: '100%', marginTop: 32, background: '#f5f5f5', color: '#a3a3a3', padding: '16px', borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: 'not-allowed', border: '1px solid #e5e5e5' }}>
+                className="ez-btn ez-btn-ghost"
+                style={{ width: '100%', marginTop: 32, fontSize: 16 }}
+                disabled>
                 Belum Tersedia
               </button>
             )}
@@ -1069,11 +1039,10 @@ function ModernJoinCTA() {
         </p>
         <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
           <button
-            onClick={() => document.getElementById('pricing').scrollIntoView({ behavior: 'smooth' })}
-            style={{ background: '#fff', color: '#C8102E', padding: '15px 32px', borderRadius: 10, fontSize: 16, fontWeight: 800, boxShadow: '0 4px 0 rgba(0,0,0,0.15)', transition: 'all 0.15s', border: 'none', cursor: 'pointer', letterSpacing: '-0.01em' }}
-            onMouseOver={e => { e.currentTarget.style.transform = 'translateY(2px)'; e.currentTarget.style.boxShadow = '0 2px 0 rgba(0,0,0,0.15)'; }}
-            onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 0 rgba(0,0,0,0.15)'; }}>
-            Gabung Sekarang →
+            className="ez-btn ez-btn-lg"
+            style={{ background: '#fff', color: '#C8102E', fontSize: 16, fontWeight: 800, letterSpacing: '-0.01em' }}
+            onClick={() => document.getElementById('pricing').scrollIntoView({ behavior: 'smooth' })}>
+            Gabung Sekarang <span aria-hidden="true">→</span>
           </button>
         </div>
       </div>
@@ -1092,23 +1061,17 @@ function ModernFooter() {
             <p style={{ fontSize: 14, lineHeight: 1.6, color: '#525252', maxWidth: 320, textAlign: 'center' }}>{f.tagline}</p>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'center' }}>
-            <a href="https://wa.me/6281294894557" target="_blank" rel="noopener noreferrer"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: '#f6fef9', border: '1.5px solid #bbf7d0', borderRadius: 10, padding: '11px 20px', textDecoration: 'none', transition: 'all 0.2s' }}
-              onMouseOver={e => { e.currentTarget.style.background = '#dcfce7'; e.currentTarget.style.borderColor = '#4ade80'; }}
-              onMouseOut={e => { e.currentTarget.style.background = '#f6fef9'; e.currentTarget.style.borderColor = '#bbf7d0'; }}>
+            <a href="https://wa.me/6281294894557" target="_blank" rel="noopener noreferrer" className="ez-contact-pill">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32" fill="#25D366">
                 <path d="M16 2C8.268 2 2 8.268 2 16c0 2.492.649 4.831 1.785 6.864L2 30l7.352-1.768A13.93 13.93 0 0 0 16 30c7.732 0 14-6.268 14-14S23.732 2 16 2zm0 25.6a11.57 11.57 0 0 1-5.902-1.614l-.424-.252-4.364 1.05 1.082-4.252-.276-.436A11.56 11.56 0 0 1 4.4 16C4.4 9.593 9.593 4.4 16 4.4S27.6 9.593 27.6 16 22.407 27.6 16 27.6zm6.338-8.674c-.346-.173-2.05-1.011-2.368-1.127-.317-.115-.548-.173-.778.173-.231.346-.893 1.127-1.095 1.357-.202.231-.404.26-.75.087-.346-.173-1.46-.538-2.781-1.716-1.028-.917-1.722-2.05-1.924-2.396-.202-.346-.021-.533.152-.705.156-.155.346-.404.52-.606.173-.202.23-.346.346-.577.115-.231.058-.433-.029-.606-.087-.173-.778-1.877-1.066-2.57-.281-.674-.567-.583-.778-.594l-.663-.011c-.231 0-.606.087-.923.433-.317.346-1.21 1.183-1.21 2.886s1.24 3.346 1.412 3.577c.173.231 2.44 3.724 5.913 5.222.827.357 1.472.57 1.976.73.83.264 1.587.227 2.184.138.667-.1 2.05-.838 2.34-1.647.288-.808.288-1.502.202-1.647-.086-.144-.317-.231-.663-.404z"/>
               </svg>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#16a34a' }}>+62 812-9489-4557</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink-900)' }}>+62 812-9489-4557</span>
             </a>
-            <a href="mailto:rickysatoru@gmail.com"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: '#f8f8ff', border: '1.5px solid #ddd6fe', borderRadius: 10, padding: '11px 20px', textDecoration: 'none', transition: 'all 0.2s', cursor: 'pointer' }}
-              onMouseOver={e => { e.currentTarget.style.background = '#ede9fe'; e.currentTarget.style.borderColor = '#a78bfa'; }}
-              onMouseOut={e => { e.currentTarget.style.background = '#f8f8ff'; e.currentTarget.style.borderColor = '#ddd6fe'; }}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <a href="mailto:rickysatoru@gmail.com" className="ez-contact-pill">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--ink-700)' }}>
                 <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
               </svg>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#7c3aed' }}>rickysatoru@gmail.com</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink-900)' }}>rickysatoru@gmail.com</span>
             </a>
           </div>
         </div>
@@ -1372,10 +1335,8 @@ function ModernStory() {
             <span style={{ color: '#C8102E' }}>kamu juga bisa.</span>
           </p>
           <button
-            onClick={() => document.getElementById('pricing').scrollIntoView({ behavior: 'smooth' })}
-            style={{ background: '#C8102E', color: '#fff', padding: '15px 32px', borderRadius: 10, fontSize: 16, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 10, boxShadow: '0 3px 0 #8a0b20, 0 20px 40px rgba(200,16,46,0.25)', transition: 'all 0.15s', border: 'none', cursor: 'pointer' }}
-            onMouseOver={e => { e.currentTarget.style.transform = 'translateY(1px)'; }}
-            onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; }}>
+            className="ez-btn ez-btn-primary ez-btn-lg"
+            onClick={() => document.getElementById('pricing').scrollIntoView({ behavior: 'smooth' })}>
             Join Sekarang →
           </button>
         </div>
@@ -1386,45 +1347,34 @@ function ModernStory() {
 }
 
 function FloatingWA() {
-  const [hovered, setHovered] = React.useState(false);
   return (
     <a href="https://wa.me/6281294894557" target="_blank" rel="noopener noreferrer"
-      style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 999, display: 'flex', alignItems: 'center', gap: 10, background: '#25D366', borderRadius: 999, boxShadow: '0 4px 16px rgba(37,211,102,0.45)', transition: 'all 0.25s', textDecoration: 'none', padding: hovered ? '12px 20px 12px 14px' : '12px', overflow: 'hidden' }}
-      onMouseOver={() => setHovered(true)}
-      onMouseOut={() => setHovered(false)}>
+      aria-label="Konsultasi gratis via WhatsApp"
+      className="ez-floating-wa">
       <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 32 32" fill="#fff" style={{ flexShrink: 0 }}>
         <path d="M16 2C8.268 2 2 8.268 2 16c0 2.492.649 4.831 1.785 6.864L2 30l7.352-1.768A13.93 13.93 0 0 0 16 30c7.732 0 14-6.268 14-14S23.732 2 16 2zm0 25.6a11.57 11.57 0 0 1-5.902-1.614l-.424-.252-4.364 1.05 1.082-4.252-.276-.436A11.56 11.56 0 0 1 4.4 16C4.4 9.593 9.593 4.4 16 4.4S27.6 9.593 27.6 16 22.407 27.6 16 27.6zm6.338-8.674c-.346-.173-2.05-1.011-2.368-1.127-.317-.115-.548-.173-.778.173-.231.346-.893 1.127-1.095 1.357-.202.231-.404.26-.75.087-.346-.173-1.46-.538-2.781-1.716-1.028-.917-1.722-2.05-1.924-2.396-.202-.346-.021-.533.152-.705.156-.155.346-.404.52-.606.173-.202.23-.346.346-.577.115-.231.058-.433-.029-.606-.087-.173-.778-1.877-1.066-2.57-.281-.674-.567-.583-.778-.594l-.663-.011c-.231 0-.606.087-.923.433-.317.346-1.21 1.183-1.21 2.886s1.24 3.346 1.412 3.577c.173.231 2.44 3.724 5.913 5.222.827.357 1.472.57 1.976.73.83.264 1.587.227 2.184.138.667-.1 2.05-.838 2.34-1.647.288-.808.288-1.502.202-1.647-.086-.144-.317-.231-.663-.404z"/>
       </svg>
-      <span style={{ color: '#fff', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap', maxWidth: hovered ? 180 : 0, opacity: hovered ? 1 : 0, transition: 'all 0.25s', overflow: 'hidden', display: 'block' }}>
-        Konsultasi gratis sekarang
-      </span>
+      <span className="ez-floating-wa__label">Konsultasi gratis sekarang</span>
     </a>
   );
 }
 
 function DiscordSection() {
-  const [hovered, setHovered] = React.useState(false);
   return (
-    <section style={{ padding: 'clamp(60px, 10vw, 100px) 0', background: '#fafafa', textAlign: 'center', borderTop: '1px solid #e5e5e5' }}>
+    <section style={{ padding: 'clamp(60px, 10vw, 100px) 0', background: 'var(--paper-100)', textAlign: 'center', borderTop: '1px solid var(--paper-300)' }}>
       <div className="ez-container" style={{ maxWidth: 640 }}>
         <svg width="56" height="56" viewBox="0 0 24 24" fill="#5865F2" style={{ marginBottom: 16, display: 'block', margin: '0 auto 20px' }}><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
-        <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 36px)', fontWeight: 800, letterSpacing: '-0.02em', color: '#0a0a0a', margin: '0 0 14px' }}>
+        <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 36px)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--ink-900)', margin: '0 0 14px' }}>
           Bergabung dengan komunitas belajar kami
         </h2>
-        <p style={{ fontSize: 16, color: '#525252', margin: '0 0 32px', lineHeight: 1.65 }}>
+        <p style={{ fontSize: 16, color: 'var(--ink-700)', margin: '0 0 32px', lineHeight: 1.65 }}>
           Tanya soal kanji, berbagi progres JLPT, dan belajar bersama ribuan pelajar Indonesia di server Discord EzNihongo.
         </p>
-        <a
-          href="https://discord.gg/GTvS5FQBE"
-          target="_blank"
-          rel="noopener noreferrer"
-          onMouseOver={() => setHovered(true)}
-          onMouseOut={() => setHovered(false)}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 12, background: '#5865F2', color: '#fff', padding: '14px 28px', borderRadius: 999, fontSize: 16, fontWeight: 700, textDecoration: 'none', boxShadow: '0 8px 24px rgba(88,101,242,0.3)', transition: 'transform 0.15s, box-shadow 0.15s', transform: hovered ? 'translateY(-2px)' : 'translateY(0)', }}>
+        <a href="https://discord.gg/GTvS5FQBE" target="_blank" rel="noopener noreferrer" className="ez-discord-cta">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
           Gabung Discord Gratis
         </a>
-        <p style={{ marginTop: 16, fontSize: 13, color: '#999' }}>Komunitas pelajar bahasa Jepang Indonesia</p>
+        <p style={{ marginTop: 16, fontSize: 13, color: 'var(--ink-500)' }}>Komunitas pelajar bahasa Jepang Indonesia</p>
       </div>
     </section>
   );
@@ -1433,7 +1383,7 @@ function DiscordSection() {
 function App() {
   useReveal();
   return (
-    <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', system-ui, sans-serif", background: "#ffffff", color: "#0a0a0a" }}>
+    <div style={{ fontFamily: "'Inter', system-ui, sans-serif", background: "#ffffff", color: "#0a0a0a" }}>
       <FloatingWA />
       <ModernNav />
       <ModernHero />

@@ -4,7 +4,9 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Dashboard - EzNihongo</title>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles/tokens.css"/>
+<link rel="stylesheet" href="styles/components.css"/>
 <style>
   * { box-sizing: border-box; }
   html {
@@ -20,14 +22,14 @@
   }
   body {
     margin: 0;
-    font-family: 'Manrope', sans-serif;
-    background: #f8f9fa;
-    color: #191c1d;
+    font-family: var(--font-body);
+    background: var(--paper-100);
+    color: var(--ink-900);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
   }
-  h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.02em; }
+  h1, h2, h3, h4 { font-family: var(--font-body); letter-spacing: -0.02em; font-weight: 700; }
 
   /* ── Top Nav ── */
   .dash-nav {
@@ -55,7 +57,7 @@
     color: #191c1d;
     align-items: center;
     gap: 6px;
-    font-family: 'Manrope', sans-serif;
+    font-family: var(--font-body);
     font-size: 12px;
     font-weight: 700;
     flex-shrink: 0;
@@ -109,8 +111,8 @@
     background: #fafafa;
   }
   .course-tab.locked:hover {
-    color: #b20024;
-    background: #fff0f2;
+    color: var(--brand-red);
+    background: var(--brand-red-soft);
     border-color: #ffccd5;
   }
   .course-tab .lock-icon {
@@ -118,7 +120,7 @@
     opacity: 0.7;
   }
   .course-tab .price-hint {
-    font-family: 'Manrope', sans-serif;
+    font-family: var(--font-body);
     font-size: 10px;
     font-weight: 500;
     letter-spacing: 0;
@@ -148,7 +150,7 @@
     padding: 7px 14px;
     border-radius: 8px;
     cursor: pointer;
-    font-family: 'Manrope', sans-serif;
+    font-family: var(--font-body);
     font-size: 13px;
     font-weight: 600;
     transition: all 0.2s;
@@ -158,7 +160,7 @@
     flex-shrink: 0;
   }
   .logout-btn svg { flex-shrink: 0; }
-  .logout-btn:hover { border-color: #b20024; color: #b20024; }
+  .logout-btn:hover { border-color: var(--brand-red); color: var(--brand-red); }
   @media (max-width: 600px) {
     .logout-btn { padding: 7px 10px; font-size: 12px; }
     .logout-btn-label { display: none; }
@@ -189,7 +191,7 @@
     flex-wrap: wrap;
   }
   .greeting-jp {
-    font-family: 'Noto Sans JP', 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-jp);
     font-size: clamp(22px, 3vw, 30px);
     font-weight: 500;
     color: #191c1d;
@@ -198,7 +200,7 @@
     letter-spacing: -0.01em;
   }
   .greeting-jp .name {
-    color: #b20024;
+    color: var(--brand-red);
     font-weight: 700;
   }
   .greeting-jp .san {
@@ -209,7 +211,7 @@
     font-family: 'Noto Sans JP', sans-serif;
   }
   .greeting-id {
-    font-family: 'Manrope', sans-serif;
+    font-family: var(--font-body);
     font-size: 14px;
     color: #485f84;
     margin: 0;
@@ -233,7 +235,7 @@
     font-family: 'Noto Sans JP', sans-serif;
     font-size: 38px;
     font-weight: 700;
-    color: #b20024;
+    color: var(--brand-red);
     line-height: 1;
     text-shadow: 0 0 22px rgba(178,0,36,0.55), 0 0 6px rgba(178,0,36,0.3);
     letter-spacing: 0;
@@ -409,7 +411,7 @@
   }
   .course-option:hover { background: #fafafa; }
   .course-option.active {
-    background: #fff0f2;
+    background: var(--brand-red-soft);
   }
   .course-option .level-chip {
     display: inline-flex; align-items: center; justify-content: center;
@@ -422,7 +424,7 @@
     flex-shrink: 0;
   }
   .course-option.active .level-chip {
-    background: #b20024; color: #fff; border-color: #b20024;
+    background: var(--brand-red); color: #fff; border-color: var(--brand-red);
   }
   .course-option .opt-name {
     flex: 1; min-width: 0;
@@ -433,7 +435,7 @@
     display: inline-flex; align-items: center; gap: 3px;
   }
   .course-option.locked { opacity: 0.75; }
-  .course-option.locked .opt-status { color: #b20024; }
+  .course-option.locked .opt-status { color: var(--brand-red); }
   .course-option.active .opt-status { color: #16a34a; font-weight: 700; }
 
   /* Sidebar footer (logout) */
@@ -456,7 +458,7 @@
     padding: 10px 14px;
     border-radius: 10px;
     cursor: pointer;
-    font-family: 'Manrope', sans-serif;
+    font-family: var(--font-body);
     font-size: 13px;
     font-weight: 700;
     transition: all 0.15s;
@@ -465,7 +467,7 @@
     justify-content: center;
     gap: 8px;
   }
-  .sidebar-logout-btn:hover { border-color: #b20024; color: #b20024; background: #fff5f5; }
+  .sidebar-logout-btn:hover { border-color: var(--brand-red); color: var(--brand-red); background: var(--brand-red-soft); }
   .sidebar-header {
     padding-bottom: 18px;
     border-bottom: 1px solid #f0f0f0;
@@ -491,7 +493,7 @@
     margin-bottom: 10px;
   }
   .progress-pct {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-body);
     font-size: 22px;
     font-weight: 800;
     color: #1a1e26;
@@ -513,7 +515,7 @@
   }
   .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #b20024 0%, #e11d48 100%);
+    background: linear-gradient(90deg, var(--brand-red) 0%, #e11d48 100%);
     border-radius: 999px;
     transition: width 0.5s cubic-bezier(.2,.8,.2,1);
     box-shadow: 0 1px 3px rgba(178,0,36,0.3);
@@ -545,7 +547,7 @@
   }
   .module-filter input::placeholder { color: #9ca0a8; }
   .module-filter input:focus {
-    border-color: #b20024;
+    border-color: var(--brand-red);
     background: #fff;
     box-shadow: 0 0 0 3px rgba(178,0,36,0.08);
   }
@@ -572,7 +574,7 @@
     border: none;
     padding: 11px 12px;
     cursor: pointer;
-    font-family: 'Manrope', sans-serif;
+    font-family: var(--font-body);
     font-size: 13px;
     font-weight: 700;
     color: #191c1d;
@@ -581,27 +583,27 @@
     transition: background 0.15s ease;
   }
   .module-header:hover { background: #f4f2ed; }
-  .module.open .module-header { color: #b20024; }
+  .module.open .module-header { color: var(--brand-red); }
   .module-header .caret {
     font-size: 10px;
     color: #9ca0a8;
     transition: transform 0.2s ease, color 0.15s ease;
   }
-  .module.open .module-header .caret { transform: rotate(90deg); color: #b20024; }
+  .module.open .module-header .caret { transform: rotate(90deg); color: var(--brand-red); }
   .module-num {
     display: inline-block;
     font-family: 'JetBrains Mono', monospace;
-    color: #b20024;
+    color: var(--brand-red);
     font-size: 10.5px;
     font-weight: 600;
     padding: 2px 7px;
     margin-right: 10px;
-    background: #fff0f2;
+    background: var(--brand-red-soft);
     border-radius: 5px;
     letter-spacing: 0.02em;
   }
   .module.open .module-num {
-    background: #b20024;
+    background: var(--brand-red);
     color: #fff;
   }
 
@@ -642,8 +644,8 @@
     color: #1a1e26;
   }
   .lesson-item.current {
-    background: #fff0f2;
-    color: #b20024;
+    background: var(--brand-red-soft);
+    color: var(--brand-red);
     font-weight: 600;
   }
   .lesson-item.done { color: #166534; }
@@ -664,8 +666,8 @@
     color: #fff;
   }
   .lesson-item.current .lesson-icon {
-    background: #b20024;
-    border-color: #b20024;
+    background: var(--brand-red);
+    border-color: var(--brand-red);
     color: #fff;
   }
   .lesson-meta {
@@ -701,7 +703,7 @@
     letter-spacing: 0.08em;
     margin-bottom: 12px;
   }
-  .lesson-breadcrumb span { color: #b20024; }
+  .lesson-breadcrumb span { color: var(--brand-red); }
   .lesson-title {
     font-size: clamp(24px, 3.5vw, 36px);
     font-weight: 800;
@@ -738,7 +740,7 @@
     width: 72px;
     height: 72px;
     border-radius: 50%;
-    background: #b20024;
+    background: var(--brand-red);
     border: none;
     color: #fff;
     font-size: 28px;
@@ -810,13 +812,13 @@
     font-family: 'Noto Sans JP', sans-serif;
     font-size: 22px;
     color: #191c1d;
-    background: #fff0f2;
+    background: var(--brand-red-soft);
     padding: 14px 18px;
-    border-left: 3px solid #b20024;
+    border-left: 3px solid var(--brand-red);
     border-radius: 6px;
     margin: 18px 0;
   }
-  .lesson-body .jp span { color: #b20024; font-weight: 700; }
+  .lesson-body .jp span { color: var(--brand-red); font-weight: 700; }
 
   /* Lesson nav */
   .lesson-footer {
@@ -828,7 +830,7 @@
   .btn-secondary, .btn-primary {
     padding: 12px 20px;
     border-radius: 10px;
-    font-family: 'Manrope', sans-serif;
+    font-family: var(--font-body);
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
@@ -843,10 +845,10 @@
   .btn-secondary:hover { border-color: #191c1d; }
   .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
   .btn-primary {
-    background: #b20024;
+    background: var(--brand-red);
     color: #fff;
   }
-  .btn-primary:hover { background: #8a0b20; }
+  .btn-primary:hover { background: var(--brand-red-hover); }
 
   /* ── Paywall ── */
   .paywall {
@@ -864,8 +866,8 @@
     width: 72px;
     height: 72px;
     border-radius: 50%;
-    background: #fff0f2;
-    color: #b20024;
+    background: var(--brand-red-soft);
+    color: var(--brand-red);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -886,14 +888,14 @@
   }
   .paywall-cta {
     display: inline-block;
-    background: #b20024;
+    background: var(--brand-red);
     color: #fff;
     padding: 14px 28px;
     border-radius: 10px;
     font-size: 15px;
     font-weight: 700;
     text-decoration: none;
-    box-shadow: 0 4px 0 #8a0b20, 0 10px 30px rgba(178, 0, 36, 0.25);
+    box-shadow: 0 4px 0 var(--brand-red-hover), 0 10px 30px rgba(178, 0, 36, 0.25);
     transition: transform 0.15s;
   }
   .paywall-cta:hover { transform: translateY(1px); }
@@ -922,20 +924,20 @@
     display: block;
   }
   .mini-plan:hover {
-    border-color: #b20024;
+    border-color: var(--brand-red);
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0,0,0,0.06);
   }
   .mini-plan .level {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
-    color: #b20024;
+    color: var(--brand-red);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     font-weight: 700;
   }
   .mini-plan .plan-name {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-body);
     font-size: 15px;
     font-weight: 800;
     margin: 6px 0 4px;
@@ -1026,7 +1028,7 @@
   .stat-value {
     font-size: 18px; font-weight: 800; color: #191c1d; line-height: 1.1;
   }
-  .stat-value.accent { color: #b20024; }
+  .stat-value.accent { color: var(--brand-red); }
   .stat-sub { font-size: 11px; color: #bbb; margin-top: 2px; }
   .goal-ring { position: relative; width: 36px; height: 36px; flex-shrink: 0; }
   .goal-ring svg { transform: rotate(-90deg); }
@@ -1048,7 +1050,7 @@
     border: 1px solid #e8e8e8;
     width: 100%;
     cursor: pointer;
-    font-family: 'Manrope', sans-serif;
+    font-family: var(--font-body);
     font-size: 12px;
     font-weight: 700;
     display: flex;
@@ -1088,7 +1090,7 @@
     flex: 1; height: 6px; background: #f0f0f0; border-radius: 999px; overflow: hidden;
   }
   .quiz-progress-fill {
-    height: 100%; background: linear-gradient(90deg, #b20024, #e11d48); transition: width 0.4s;
+    height: 100%; background: linear-gradient(90deg, var(--brand-red), #e11d48); transition: width 0.4s;
   }
   .quiz-progress-text {
     font-family: 'JetBrains Mono', monospace; font-size: 11px;
@@ -1101,49 +1103,50 @@
   .quiz-question .jp {
     font-family: 'Noto Sans JP', sans-serif;
     font-size: clamp(28px, 5vw, 40px);
-    color: #b20024; display: block; margin: 12px 0;
+    color: var(--brand-red); display: block; margin: 12px 0;
   }
   .quiz-options { display: grid; gap: 10px; }
   .quiz-option {
     padding: 13px 16px;
-    background: #fff;
-    border: 1px solid #e8e8e8;
-    border-left: 3px solid transparent;
-    border-radius: 8px;
-    font-family: 'Manrope', sans-serif;
-    font-size: 14px; font-weight: 500; color: #191c1d;
+    background: var(--surface-white);
+    border: 1px solid var(--paper-300);
+    border-radius: var(--radius-md);
+    font-family: var(--font-body);
+    font-size: 14px; font-weight: 500; color: var(--ink-900);
     text-align: left; cursor: pointer;
-    transition: all 0.12s;
+    transition: background var(--duration-fast) var(--ease-standard),
+                border-color var(--duration-fast) var(--ease-standard);
     display: flex; align-items: center; gap: 12px;
   }
-  .quiz-option:hover:not(.disabled) { border-left-color: #191c1d; background: #fafafa; }
-  .quiz-option.correct { border-left-color: #16a34a; background: #f0fdf4; color: #166534; border-color: #bbf7d0; border-left-color: #16a34a; }
-  .quiz-option.wrong { border-left-color: #dc2626; background: #fff8f8; color: #7f1d1d; border-color: #fecaca; border-left-color: #dc2626; }
+  .quiz-option:hover:not(.disabled) { background: var(--paper-100); border-color: var(--paper-400); }
+  .quiz-option:focus-visible { outline: none; box-shadow: var(--focus-ring); border-color: var(--brand-red); }
+  .quiz-option.correct { background: var(--success-soft); color: var(--success); border-color: var(--success); }
+  .quiz-option.wrong { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
   .quiz-option.disabled { cursor: not-allowed; }
   .quiz-option-letter {
-    width: 22px; height: 22px; border-radius: 4px;
-    background: #f5f5f5; border: none;
+    width: 22px; height: 22px; border-radius: var(--radius-sm);
+    background: var(--paper-200); border: none;
     display: flex; align-items: center; justify-content: center;
     font-size: 10px; font-weight: 800; flex-shrink: 0;
-    color: #999; font-family: 'JetBrains Mono', monospace;
+    color: var(--ink-500); font-family: var(--font-mono);
   }
-  .quiz-option.correct .quiz-option-letter { background: #16a34a; color: #fff; }
-  .quiz-option.wrong .quiz-option-letter { background: #dc2626; color: #fff; }
+  .quiz-option.correct .quiz-option-letter { background: var(--success); color: #fff; }
+  .quiz-option.wrong .quiz-option-letter { background: var(--danger); color: #fff; }
   .quiz-explanation {
     margin-top: 16px; padding: 14px 18px;
-    background: #f8f9fa; border-left: 3px solid #b20024;
-    border-radius: 8px; font-size: 14px; color: #485f84; line-height: 1.6;
+    background: var(--paper-100); border: 1px solid var(--paper-300);
+    border-radius: var(--radius-md); font-size: 14px; color: var(--ink-700); line-height: 1.6;
     animation: slideDown 0.3s;
   }
   @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
   .quiz-next-btn {
     margin-top: 20px; padding: 14px 28px;
-    background: #b20024; color: #fff; border: none;
-    border-radius: 10px; font-family: 'Manrope', sans-serif;
+    background: var(--brand-red); color: #fff; border: none;
+    border-radius: 10px; font-family: var(--font-body);
     font-size: 14px; font-weight: 700; cursor: pointer;
     transition: all 0.15s;
   }
-  .quiz-next-btn:hover { background: #8a0b20; }
+  .quiz-next-btn:hover { background: var(--brand-red-hover); }
 
   /* Quiz Results */
   .quiz-results { text-align: center; padding: 32px 24px; }
@@ -1153,15 +1156,15 @@
   .quiz-results .subtitle { color: #485f84; font-size: 14px; margin-bottom: 24px; }
   .quiz-results .score-circle {
     width: 140px; height: 140px; border-radius: 50%;
-    background: #fff; border: 8px solid #b20024;
+    background: #fff; border: 8px solid var(--brand-red);
     display: flex; align-items: center; justify-content: center;
     margin: 0 auto 24px;
-    font-size: 36px; font-weight: 800; color: #b20024;
+    font-size: 36px; font-weight: 800; color: var(--brand-red);
     box-shadow: 0 10px 30px rgba(178, 0, 36, 0.15);
   }
   .quiz-results .xp-earned {
     display: inline-block; padding: 10px 22px;
-    background: linear-gradient(135deg, #b20024, #e11d48);
+    background: linear-gradient(135deg, var(--brand-red), #e11d48);
     color: #fff; border-radius: 999px;
     font-weight: 700; font-size: 14px; margin-bottom: 24px;
   }
@@ -1178,7 +1181,7 @@
     font-size: 12px; color: #485f84; font-weight: 700;
   }
   .flashcard-category {
-    font-size: 11px; color: #b20024;
+    font-size: 11px; color: var(--brand-red);
     text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700;
   }
   .flashcard {
@@ -1220,12 +1223,12 @@
   }
   .flashcard-face.back {
     transform: rotateY(180deg);
-    background: linear-gradient(135deg, #fff0f2, #fff);
-    border: 1px solid #b20024;
+    background: linear-gradient(135deg, var(--brand-red-soft), #fff);
+    border: 1px solid var(--brand-red);
   }
   .flashcard-face.back .flashcard-reading {
     font-family: 'Noto Sans JP', sans-serif;
-    font-size: 22px; color: #b20024;
+    font-size: 22px; color: var(--brand-red);
     margin-bottom: 12px; font-weight: 600;
   }
   .flashcard-face.back .flashcard-meaning {
@@ -1236,7 +1239,7 @@
   }
   .rating-btn {
     padding: 12px 16px; border: 1px solid #e8e8e8; background: #fff;
-    border-radius: 8px; font-family: 'Manrope', sans-serif;
+    border-radius: 8px; font-family: var(--font-body);
     font-size: 12px; font-weight: 700; cursor: pointer;
     transition: all 0.12s;
     display: flex; flex-direction: column; align-items: center; gap: 6px;
@@ -1245,7 +1248,7 @@
   .rating-btn .bar {
     width: 20px; height: 3px; border-radius: 2px; background: currentColor; opacity: 0.3;
   }
-  .rating-btn.hard:hover { background: #fff5f5; border-color: #dc2626; color: #dc2626; }
+  .rating-btn.hard:hover { background: var(--brand-red-soft); border-color: #dc2626; color: #dc2626; }
   .rating-btn.hard:hover .bar { opacity: 1; }
   .rating-btn.medium:hover { background: #fffbf0; border-color: #d97706; color: #d97706; }
   .rating-btn.medium:hover .bar { opacity: 1; }
@@ -1270,13 +1273,13 @@
   .pronounce-btn {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 6px 12px;
-    background: #fff; border: 1px solid #b20024; color: #b20024;
+    background: #fff; border: 1px solid var(--brand-red); color: var(--brand-red);
     border-radius: 999px; font-size: 12px; font-weight: 600;
     cursor: pointer; transition: all 0.15s;
-    font-family: 'Manrope', sans-serif;
+    font-family: var(--font-body);
   }
-  .pronounce-btn:hover { background: #b20024; color: #fff; }
-  .pronounce-btn.playing { background: #b20024; color: #fff; animation: pulse 0.8s infinite; }
+  .pronounce-btn:hover { background: var(--brand-red); color: #fff; }
+  .pronounce-btn.playing { background: var(--brand-red); color: #fff; animation: pulse 0.8s infinite; }
   @keyframes pulse {
     0%, 100% { box-shadow: 0 0 0 0 rgba(178, 0, 36, 0.4); }
     50% { box-shadow: 0 0 0 8px rgba(178, 0, 36, 0); }
@@ -1313,7 +1316,7 @@
   .completion-modal p { color: #485f84; margin: 0 0 20px; line-height: 1.5; }
   .completion-xp {
     display: inline-block; padding: 10px 22px;
-    background: linear-gradient(135deg, #b20024, #e11d48);
+    background: linear-gradient(135deg, var(--brand-red), #e11d48);
     color: #fff; border-radius: 999px;
     font-weight: 700; font-size: 15px; margin-bottom: 20px;
   }
@@ -1370,7 +1373,7 @@
   .xp-toast.show { transform: translateX(0); opacity: 1; }
   .xp-toast .bolt {
     width: 30px; height: 30px;
-    background: linear-gradient(135deg, #b20024, #e11d48);
+    background: linear-gradient(135deg, var(--brand-red), #e11d48);
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 15px;
@@ -1392,7 +1395,7 @@
   }
   .discord-logo { flex-shrink: 0; }
   .discord-title {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-body);
     font-size: 12px;
     font-weight: 700;
     color: #fff;
@@ -1429,7 +1432,7 @@
     font-size: 12px;
     color: #485f84;
   }
-  footer strong { color: #b20024; }
+  footer strong { color: var(--brand-red); }
 
   /* ═══════════════════════════════════════════════════════════════════
      DESIGN UPGRADE v2 — Modern aesthetic polish (2026-04-21)
@@ -1445,9 +1448,9 @@
     --du-surface-2: #f7f6f3;
     --du-border: #ece9e3;
     --du-border-soft: #f4f2ed;
-    --du-accent: #b20024;
+    --du-accent: var(--brand-red);
     --du-accent-2: #e11d48;
-    --du-accent-soft: #fff0f2;
+    --du-accent-soft: var(--brand-red-soft);
     --du-accent-soft-2: #ffe1e6;
     --du-shadow-xs: 0 1px 2px rgba(16,14,10,0.04);
     --du-shadow-sm: 0 2px 6px rgba(16,14,10,0.05), 0 1px 2px rgba(16,14,10,0.03);
@@ -1523,14 +1526,14 @@
   }
   .greeting-banner > * { position: relative; z-index: 1; }
   .greeting-jp {
-    font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+    font-family: var(--font-body);
     font-weight: 800;
     font-size: clamp(26px, 3.6vw, 36px);
     letter-spacing: -0.025em;
     color: var(--du-ink);
   }
   .greeting-jp .name {
-    background: linear-gradient(135deg, #b20024 0%, #e11d48 100%);
+    background: linear-gradient(135deg, var(--brand-red) 0%, #e11d48 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -1556,7 +1559,7 @@
     position: absolute;
     left: 0; top: 0; bottom: 0;
     width: 3px;
-    background: linear-gradient(180deg, #b20024 0%, #e11d48 100%);
+    background: linear-gradient(180deg, var(--brand-red) 0%, #e11d48 100%);
   }
   .stat-cell {
     padding: 18px 22px;
@@ -1578,7 +1581,7 @@
     color: var(--du-accent);
   }
   .stat-value {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-body);
     font-size: 22px;
     letter-spacing: -0.015em;
     color: var(--du-ink);
@@ -1586,7 +1589,7 @@
   .stat-label { color: var(--du-ink-4); font-size: 10px; letter-spacing: 0.12em; }
   .goal-ring, .goal-ring svg { width: 42px; height: 42px; }
   .goal-ring-bg { stroke-width: 3.5; stroke: #f0ede7; }
-  .goal-ring-fill { stroke: #b20024; stroke-width: 3.5; }
+  .goal-ring-fill { stroke: var(--brand-red); stroke-width: 3.5; }
   .goal-ring-text { font-size: 10px; font-weight: 800; color: var(--du-ink); }
   @media (max-width: 640px) {
     .stats-bar { padding: 0 14px; margin-bottom: 22px; }
@@ -1609,7 +1612,7 @@
   }
   .lesson-breadcrumb span { color: var(--du-accent); opacity: 0.7; }
   .lesson-title {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-body);
     font-weight: 800;
     letter-spacing: -0.025em;
     color: var(--du-ink);
@@ -1623,7 +1626,7 @@
     padding: 30px 32px;
   }
   .lesson-body h2 {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-body);
     font-size: 18px;
     color: var(--du-ink);
     letter-spacing: -0.01em;
@@ -1647,14 +1650,14 @@
     box-shadow: var(--du-shadow-lg);
   }
   .play-btn {
-    background: linear-gradient(135deg, #b20024 0%, #e11d48 100%);
+    background: linear-gradient(135deg, var(--brand-red) 0%, #e11d48 100%);
     box-shadow: 0 14px 40px rgba(178,0,36,0.5), 0 4px 12px rgba(0,0,0,0.2);
   }
   .play-btn:hover { transform: scale(1.06); }
 
   /* ── BUTTONS ────────────────────────────────────────────────────── */
   .btn-primary, .quiz-next-btn {
-    background: linear-gradient(135deg, #b20024 0%, #c41c40 100%);
+    background: linear-gradient(135deg, var(--brand-red) 0%, #c41c40 100%);
     box-shadow: var(--du-shadow-red);
     border-radius: 12px;
     font-weight: 700;
@@ -1690,11 +1693,11 @@
     background: #f0ede7;
   }
   .quiz-progress-fill {
-    background: linear-gradient(90deg, #b20024 0%, #e11d48 50%, #f43f5e 100%);
+    background: linear-gradient(90deg, var(--brand-red) 0%, #e11d48 50%, #f43f5e 100%);
     border-radius: 999px;
   }
   .quiz-question {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-body);
     font-weight: 800;
     letter-spacing: -0.015em;
     font-size: 21px;
@@ -1702,7 +1705,7 @@
   }
   .quiz-question .jp {
     font-weight: 700;
-    background: linear-gradient(135deg, #b20024 0%, #e11d48 100%);
+    background: linear-gradient(135deg, var(--brand-red) 0%, #e11d48 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -1759,7 +1762,7 @@
     border: 1px solid var(--du-border);
   }
   .flashcard-face.back {
-    background: linear-gradient(135deg, #fff0f2 0%, #fffafa 45%, #ffffff 100%);
+    background: linear-gradient(135deg, var(--brand-red-soft) 0%, #fffafa 45%, #ffffff 100%);
     border: 1.5px solid var(--du-accent);
     box-shadow: 0 20px 50px rgba(178,0,36,0.15), 0 4px 12px rgba(178,0,36,0.08);
   }
@@ -1843,12 +1846,12 @@
     box-shadow: 0 14px 40px rgba(178,0,36,0.15), inset 0 1px 0 rgba(255,255,255,0.6);
   }
   .paywall h1 {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-body);
     letter-spacing: -0.025em;
   }
   .paywall-cta {
     border-radius: 14px;
-    background: linear-gradient(135deg, #b20024 0%, #c41c40 100%);
+    background: linear-gradient(135deg, var(--brand-red) 0%, #c41c40 100%);
     box-shadow: var(--du-shadow-red-lg);
     transition: all 0.2s cubic-bezier(.2,.8,.2,1);
   }
@@ -1868,7 +1871,7 @@
     box-shadow: var(--du-shadow-md);
     transform: translateY(-3px);
   }
-  .mini-plan .plan-name { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.015em; }
+  .mini-plan .plan-name { font-family: var(--font-body); letter-spacing: -0.015em; }
 
   /* ── COURSE TABS (nav) ──────────────────────────────────────────── */
   .course-tab {
@@ -1890,7 +1893,7 @@
     box-shadow: 0 14px 40px rgba(22,163,74,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
   }
   .completion-modal h2 {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-body);
     letter-spacing: -0.02em;
   }
 
@@ -1971,7 +1974,7 @@
     font-size: 12px; font-weight: 600; line-height: 1.35;
     color: inherit; white-space: normal; word-break: break-word;
   }
-  .lesson-item.current .lesson-title-text { color: #b20024; }
+  .lesson-item.current .lesson-title-text { color: var(--brand-red); }
   .lesson-item.done .lesson-title-text { color: #166534; }
   .lesson-meta-row {
     display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
@@ -2002,7 +2005,7 @@
   .sidebar-course-badge {
     display: inline-flex; align-items: center;
     padding: 3px 9px; border-radius: 6px;
-    background: linear-gradient(135deg, #b20024 0%, #8a001b 100%);
+    background: linear-gradient(135deg, var(--brand-red) 0%, #8a001b 100%);
     color: #fff; font-size: 10.5px; font-weight: 800;
     letter-spacing: 0.04em;
     box-shadow: 0 2px 6px rgba(178, 0, 36, 0.25);
@@ -2017,7 +2020,7 @@
   }
   .mini-stat-val {
     font-size: 18px; font-weight: 800; color: #1a1e26;
-    line-height: 1; font-family: 'Plus Jakarta Sans', sans-serif;
+    line-height: 1; font-family: var(--font-body);
   }
   .mini-stat-total {
     font-size: 11px; font-weight: 600; color: #9a9a9a; margin-left: 2px;
@@ -2051,7 +2054,7 @@
     color: #c4c2bd; font-size: 13px;
     transition: transform 0.15s ease, color 0.15s ease;
   }
-  .quicklink:hover .ql-arr { color: #b20024; transform: translateX(2px); }
+  .quicklink:hover .ql-arr { color: var(--brand-red); transform: translateX(2px); }
 
   /* — Lesson tabs (below lesson body) — */
   .lesson-tabs {
@@ -2077,7 +2080,7 @@
   }
   .tab-btn:hover { color: #1a1e26; background: rgba(0,0,0,0.02); }
   .tab-btn.active {
-    color: #b20024; border-bottom-color: #b20024;
+    color: var(--brand-red); border-bottom-color: var(--brand-red);
     background: #fff;
   }
   .tabs-body { padding: 20px; }
@@ -2094,7 +2097,7 @@
     transition: all 0.15s ease;
   }
   .resource-card:hover {
-    background: #fff; border-color: #b20024;
+    background: #fff; border-color: var(--brand-red);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(178,0,36,0.08);
   }
@@ -2107,7 +2110,7 @@
   .res-info { flex: 1; min-width: 0; }
   .res-title { font-size: 13.5px; font-weight: 700; color: #1a1e26; }
   .res-sub { font-size: 11.5px; color: #6b7280; margin-top: 2px; }
-  .res-arr { color: #b20024; font-size: 14px; font-weight: 700; }
+  .res-arr { color: var(--brand-red); font-size: 14px; font-weight: 700; }
 
   .tab-hint { font-size: 12.5px; color: #6b7280; margin: 0 0 10px; }
   .note-textarea {
@@ -2120,7 +2123,7 @@
     transition: border-color 0.15s ease, background 0.15s ease;
   }
   .note-textarea:focus {
-    border-color: #b20024; background: #fff;
+    border-color: var(--brand-red); background: #fff;
     box-shadow: 0 0 0 3px rgba(178,0,36,0.08);
   }
   .note-status {
@@ -2180,7 +2183,7 @@
   }
   .rp-progress-num {
     font-size: 30px; font-weight: 800; color: #1a1e26;
-    line-height: 1; font-family: 'Plus Jakarta Sans', sans-serif;
+    line-height: 1; font-family: var(--font-body);
   }
   .rp-progress-num span { font-size: 16px; color: #8a8a8a; font-weight: 700; }
   .rp-progress-sub { font-size: 11.5px; color: #6b7280; font-weight: 600; }
@@ -2189,7 +2192,7 @@
   }
   .rp-progress-fill {
     height: 100%; border-radius: 999px;
-    background: linear-gradient(90deg, #b20024 0%, #ff4d6d 100%);
+    background: linear-gradient(90deg, var(--brand-red) 0%, #ff4d6d 100%);
     transition: width 0.3s ease;
   }
 
@@ -2211,7 +2214,7 @@
     cursor: pointer; font-family: inherit;
     transition: background 0.15s ease, transform 0.15s ease;
   }
-  .rp-next-btn:hover { background: #b20024; transform: translateY(-1px); }
+  .rp-next-btn:hover { background: var(--brand-red); transform: translateY(-1px); }
   .rp-done .rp-next-title { color: #047857; }
 
   .rp-tip {
@@ -2293,7 +2296,7 @@
     margin-bottom: 6px;
   }
   .module-intro h2 {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-body);
     font-size: 22px;
     font-weight: 800;
     letter-spacing: -0.02em;
@@ -2376,7 +2379,7 @@
   }
   .skill-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, #b20024 0%, #e11d48 100%);
+    background: linear-gradient(90deg, var(--brand-red) 0%, #e11d48 100%);
     border-radius: 999px;
   }
   .skill-bar-pct { text-align: right; font-weight: 600; color: var(--du-ink-3); }
@@ -2395,7 +2398,7 @@
     box-shadow: var(--du-shadow-xs);
   }
   .lesson-extra-card h3 {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-body);
     font-size: 16px; font-weight: 800;
     color: var(--du-ink);
     margin: 0 0 12px;
@@ -2523,7 +2526,7 @@
   .vfc-back:hover { border-color: var(--du-accent); color: var(--du-accent); }
   .vfc-header-mid { flex: 1; min-width: 0; }
   .vfc-counter {
-    font-family: 'Manrope', sans-serif;
+    font-family: var(--font-body);
     font-size: 12px; font-weight: 600;
     color: var(--du-ink-2); letter-spacing: 0.3px;
   }
@@ -2538,7 +2541,7 @@
   }
   .vfc-title {
     font-size: 12px; color: var(--du-ink-4);
-    font-family: 'Manrope', sans-serif; font-weight: 500;
+    font-family: var(--font-body); font-weight: 500;
     min-width: 54px; text-align: right;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
@@ -2583,7 +2586,7 @@
   .vfc-hint {
     margin-top: 18px;
     font-size: 11px; color: var(--du-ink-4);
-    font-family: 'Manrope', sans-serif;
+    font-family: var(--font-body);
     display: inline-flex; align-items: center; gap: 8px;
   }
   .vfc-hint::before, .vfc-hint::after {
@@ -2611,7 +2614,7 @@
     display: inline-block; font-size: 11px;
     padding: 2px 10px; border-radius: 20px;
     background: rgba(178, 0, 36, 0.08); color: var(--du-accent);
-    font-family: 'Manrope', sans-serif; font-weight: 600;
+    font-family: var(--font-body); font-weight: 600;
     letter-spacing: 0.3px; text-transform: uppercase;
     margin-bottom: 10px;
   }
@@ -2631,7 +2634,7 @@
   .vfc-rbtn {
     display: flex; flex-direction: column; align-items: center; gap: 3px;
     padding: 10px 4px; border-radius: 12px; border: none;
-    cursor: pointer; font-family: 'Manrope', sans-serif;
+    cursor: pointer; font-family: var(--font-body);
     transition: transform 0.1s, box-shadow 0.15s;
   }
   .vfc-rbtn:active { transform: scale(0.96); }
@@ -2655,7 +2658,7 @@
   .vfc-done-sub {
     font-size: 13px; color: var(--du-ink-3);
     line-height: 1.55; margin-bottom: 20px;
-    font-family: 'Manrope', sans-serif;
+    font-family: var(--font-body);
   }
   .vfc-done-grid {
     display: grid; grid-template-columns: repeat(4, 1fr);
@@ -2665,7 +2668,7 @@
     background: var(--du-surface-2);
     border: 1px solid var(--du-border);
     border-radius: 12px; padding: 10px 4px;
-    font-family: 'Manrope', sans-serif;
+    font-family: var(--font-body);
   }
   .vfc-done-stat-num { font-size: 18px; font-weight: 700; }
   .vfc-done-stat-lbl { font-size: 10px; color: var(--du-ink-4); margin-top: 2px; }
@@ -2673,7 +2676,7 @@
     padding: 11px 28px; border-radius: 12px; border: none;
     background: var(--du-accent); color: #fff;
     font-size: 14px; font-weight: 600;
-    font-family: 'Manrope', sans-serif;
+    font-family: var(--font-body);
     cursor: pointer; transition: background 0.15s;
   }
   .vfc-done-btn:hover { background: var(--du-accent-2); }
@@ -2681,7 +2684,7 @@
   .vfc-empty {
     padding: 44px 24px; text-align: center;
     color: var(--du-ink-3);
-    font-family: 'Manrope', sans-serif;
+    font-family: var(--font-body);
   }
   .vfc-empty-emoji { font-size: 44px; margin-bottom: 10px; }
   .vfc-empty-title { font-size: 16px; color: var(--du-ink); font-weight: 600; margin-bottom: 4px; }
@@ -3073,7 +3076,7 @@ function refreshStatsBar() {
 // CONFETTI + COMPLETION MODAL
 // ═══════════════════════════════════════════════
 function fireConfetti() {
-  const colors = ['#b20024', '#e11d48', '#16a34a', '#f59e0b', '#3b82f6', '#8b5cf6'];
+  const colors = ['var(--brand-red)', '#e11d48', '#16a34a', '#f59e0b', '#3b82f6', '#8b5cf6'];
   for (let i = 0; i < 60; i++) {
     const p = document.createElement('div');
     p.className = 'confetti-piece';
@@ -3574,7 +3577,7 @@ function renderPaywall() {
         <div class="paywall-lock">🔒</div>
         <h1>Kamu belum memiliki akses kelas</h1>
         <p>Untuk mulai belajar, pilih kelas dan selesaikan pembayaran terlebih dahulu. Sekali bayar, akses konten 1 tahun penuh.</p>
-        ${loggedInEmail ? `<p style="font-size:13px;color:#8a7d66;margin-top:-10px;margin-bottom:20px;">Login sebagai <strong>${loggedInEmail}</strong> · <a href="#" onclick="event.preventDefault(); window.ezLogout();" style="color:#C8102E;">Ganti akun</a></p>` : ''}
+        ${loggedInEmail ? `<p style="font-size:13px;color:#8a7d66;margin-top:-10px;margin-bottom:20px;">Login sebagai <strong>${loggedInEmail}</strong> · <a href="#" onclick="event.preventDefault(); window.ezLogout();" style="color:var(--brand-red);">Ganti akun</a></p>` : ''}
         <a href="index.html#pricing" class="paywall-cta">Pilih Kelas Sekarang →</a>
 
         <div class="paywall-plans" id="paywall-plans">
@@ -4283,7 +4286,7 @@ function renderLesson() {
           <div style="font-size:48px;margin-bottom:12px;">📝</div>
           <h2 style="font-size:22px;font-weight:800;margin:0 0 8px;">Siap untuk kuis?</h2>
           <p style="color:#485f84;margin:0 0 20px;">${lesson.body || 'Tes pemahaman kamu di bab ini.'}</p>
-          ${bestScore > 0 ? `<div style="display:inline-block;padding:8px 18px;background:#fff0f2;color:#b20024;border-radius:999px;font-weight:700;font-size:13px;margin-bottom:20px;">Skor terbaik: ${bestScore}%</div><br/>` : ''}
+          ${bestScore > 0 ? `<div style="display:inline-block;padding:8px 18px;background:var(--brand-red-soft);color:var(--brand-red);border-radius:999px;font-weight:700;font-size:13px;margin-bottom:20px;">Skor terbaik: ${bestScore}%</div><br/>` : ''}
           <button class="btn-primary" id="quiz-start-btn" onclick="window.startQuizNow()">
             ${bestScore > 0 ? 'Ulang Kuis →' : 'Mulai Kuis →'}
           </button>

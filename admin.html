@@ -4,61 +4,75 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Admin · EzNihongo</title>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles/tokens.css"/>
+<link rel="stylesheet" href="styles/components.css"/>
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; background: #fafafa; color: #0a0a0a; }
-  header { background: #fff; border-bottom: 1px solid #e5e5e5; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
-  header h1 { margin: 0; font-size: 18px; font-weight: 700; }
-  header .meta { font-family: 'Manrope', sans-serif; font-size: 13px; color: #525252; display: flex; align-items: center; gap: 12px; }
-  header button { background: none; border: 1px solid #e5e5e5; padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit; }
-  nav.tabs { background: #fff; border-bottom: 1px solid #e5e5e5; padding: 0 24px; display: flex; gap: 4px; overflow-x: auto; }
-  nav.tabs button { background: none; border: none; padding: 14px 18px; font-size: 14px; font-weight: 600; color: #525252; cursor: pointer; font-family: inherit; border-bottom: 2px solid transparent; white-space: nowrap; }
-  nav.tabs button.active { color: #C8102E; border-bottom-color: #C8102E; }
+  body { margin: 0; font-family: var(--font-body); background: var(--paper-100); color: var(--ink-900); }
+  header { background: var(--paper-50); border-bottom: 1px solid var(--paper-300); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; font-family: var(--font-display); letter-spacing: -0.01em; }
+  header .meta { font-family: var(--font-body); font-size: 13px; color: var(--ink-700); display: flex; align-items: center; gap: 12px; }
+  header button { background: var(--surface-white); border: 1px solid var(--paper-300); padding: 6px 12px; border-radius: var(--radius-md); font-size: 13px; cursor: pointer; font-family: inherit; color: var(--ink-900); transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard); }
+  header button:hover { background: var(--paper-100); border-color: var(--paper-400); }
+  header button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  nav.tabs { background: var(--paper-50); border-bottom: 1px solid var(--paper-300); padding: 0 24px; display: flex; gap: 4px; overflow-x: auto; }
+  nav.tabs button { background: none; border: none; padding: 14px 18px; font-size: 14px; font-weight: 600; color: var(--ink-500); cursor: pointer; font-family: inherit; border-bottom: 2px solid transparent; white-space: nowrap; transition: color var(--duration-fast) var(--ease-standard); }
+  nav.tabs button:hover:not(.active) { color: var(--ink-700); }
+  nav.tabs button.active { color: var(--brand-red); border-bottom-color: var(--brand-red); }
+  nav.tabs button:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
   main { padding: 24px; max-width: 1200px; margin: 0 auto; }
   section.pane { display: none; }
   section.pane.active { display: block; }
-  h2 { font-size: 22px; margin: 0 0 16px; }
+  h2 { font-size: 22px; margin: 0 0 16px; font-weight: 700; letter-spacing: -0.02em; }
   .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
-  .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid transparent; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
-  .btn-primary { background: #C8102E; color: #fff; }
-  .btn-primary:hover { background: #a10c25; }
-  .btn-ghost { background: #fff; border-color: #e5e5e5; color: #0a0a0a; }
-  .btn-ghost:hover { background: #f5f5f5; }
-  .btn-danger { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
-  .btn-danger:hover { background: #fee2e2; }
-  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-  th, td { padding: 12px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
-  th { background: #fafafa; font-weight: 600; color: #525252; font-family: 'Manrope', sans-serif; }
+  .btn { padding: 8px 14px; border-radius: var(--radius-md); border: 1px solid transparent; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); }
+  .btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .btn-primary { background: var(--brand-red); color: #fff; box-shadow: var(--elev-1); }
+  .btn-primary:hover { background: var(--brand-red-hover); box-shadow: var(--elev-2); }
+  .btn-ghost { background: var(--surface-white); border-color: var(--paper-300); color: var(--ink-900); }
+  .btn-ghost:hover { background: var(--paper-100); border-color: var(--paper-400); }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-danger:hover { background: #7f1616; }
+  .btn-danger-soft { background: var(--danger-soft); color: var(--danger); border-color: #fecaca; }
+  .btn-danger-soft:hover { background: #fee2e2; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface-white); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--elev-1); }
+  th, td { padding: 12px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid var(--paper-300); vertical-align: top; }
+  th { background: var(--paper-200); font-weight: 600; color: var(--ink-700); font-family: var(--font-body); }
+  tbody tr { transition: background var(--duration-fast) var(--ease-standard); }
+  tbody tr:hover { background: var(--paper-100); }
   tr:last-child td { border-bottom: none; }
   td.actions { white-space: nowrap; }
   td.actions .btn { padding: 5px 10px; font-size: 12px; margin-left: 4px; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; font-family: 'Manrope', sans-serif; }
-  .badge-on { background: #dcfce7; color: #166534; }
-  .badge-off { background: #fef3c7; color: #92400e; }
-  .badge-admin { background: #ddd6fe; color: #5b21b6; }
-  select, input, textarea { font-family: inherit; padding: 8px 10px; border: 1px solid #d4d4d4; border-radius: 8px; font-size: 13px; width: 100%; }
-  textarea { resize: vertical; min-height: 80px; font-family: 'Manrope', monospace; }
-  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 1000; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 600; font-family: var(--font-body); letter-spacing: 0.01em; }
+  .badge-on { background: var(--success-soft); color: var(--success); }
+  .badge-off { background: var(--warning-soft); color: var(--warning); }
+  .badge-admin { background: var(--purple-soft); color: var(--purple); }
+  select, input, textarea { font-family: inherit; padding: 10px 12px; border: 1px solid var(--paper-300); border-radius: var(--radius-md); font-size: 14px; width: 100%; color: var(--ink-900); background: var(--surface-white); transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); }
+  select:focus, input:focus, textarea:focus { outline: none; border-color: var(--brand-red); box-shadow: var(--focus-ring); }
+  textarea { resize: vertical; min-height: 100px; font-family: var(--font-body); }
+  .modal-backdrop { position: fixed; inset: 0; background: var(--surface-overlay); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 1000; }
   .modal-backdrop.show { display: flex; }
-  .modal { background: #fff; border-radius: 14px; padding: 24px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
-  .modal h3 { margin: 0 0 16px; font-size: 18px; }
-  .field { margin-bottom: 14px; }
-  .field label { display: block; font-size: 12px; font-weight: 600; color: #525252; margin-bottom: 5px; font-family: 'Manrope', sans-serif; }
+  .modal { background: var(--surface-white); border-radius: var(--radius-lg); padding: var(--space-6); width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: var(--elev-3); }
+  .modal h3 { margin: 0 0 16px; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .field { margin-bottom: var(--space-4); }
+  .field label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-700); margin-bottom: 6px; font-family: var(--font-body); }
   .field-row { display: flex; gap: 12px; }
   .field-row > .field { flex: 1; }
+  .field-error { color: var(--danger); font-size: 12px; margin-top: 4px; font-weight: 500; }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
-  .empty { text-align: center; padding: 40px; color: #737373; font-size: 14px; }
-  .pill { display: inline-block; padding: 2px 8px; border-radius: 6px; background: #f0f0f0; font-size: 11px; font-family: 'Manrope', monospace; }
+  .empty { text-align: center; padding: 40px; color: var(--ink-500); font-size: 14px; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); background: var(--paper-200); color: var(--ink-700); font-size: 11px; font-family: var(--font-mono); }
   .lock-screen { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
-  .lock-card { background: #fff; padding: 32px; border-radius: 14px; max-width: 380px; text-align: center; }
-  .quiz-options-edit { background: #fafafa; padding: 12px; border-radius: 8px; }
+  .lock-card { background: var(--surface-white); padding: 32px; border-radius: var(--radius-lg); max-width: 380px; text-align: center; box-shadow: var(--elev-2); }
+  .quiz-options-edit { background: var(--paper-100); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--paper-300); }
   .quiz-option-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
   .quiz-option-row input[type=text] { flex: 1; }
   .quiz-option-row input[type=checkbox] { width: auto; }
   .quiz-option-row .btn { padding: 4px 8px; }
-  details { margin: 8px 0; padding: 8px 12px; background: #fff; border-radius: 8px; border: 1px solid #f0f0f0; }
+  details { margin: 8px 0; padding: 8px 12px; background: var(--surface-white); border-radius: var(--radius-md); border: 1px solid var(--paper-300); }
   details summary { font-weight: 600; cursor: pointer; font-size: 13px; }
+  details summary:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
   details[open] { padding-bottom: 12px; }
 </style>
 </head>
@@ -157,7 +171,7 @@ function showLock(message) {
     <div class="lock-screen">
       <div class="lock-card">
         <h2 style="margin-top:0;">Akses Admin</h2>
-        <p style="color:#525252;font-family:'Manrope',sans-serif;font-size:14px;line-height:1.5;">${escapeHtml(message)}</p>
+        <p style="color:#525252;font-family:var(--font-body);font-size:14px;line-height:1.5;">${escapeHtml(message)}</p>
         <a href="login.html?next=admin.html" class="btn btn-primary" style="display:inline-block;text-decoration:none;margin-top:8px;">Masuk</a>
       </div>
     </div>
@@ -196,7 +210,7 @@ function closeModal() {
 modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
 function notify(msg, isErr) {
-  const t = el(`<div style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:${isErr ? '#991b1b' : '#0a0a0a'};color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:2000;font-family:'Manrope',sans-serif;">${escapeHtml(msg)}</div>`);
+  const t = el(`<div style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:${isErr ? '#991b1b' : '#0a0a0a'};color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:2000;font-family:var(--font-body);">${escapeHtml(msg)}</div>`);
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 2400);
 }
@@ -311,7 +325,7 @@ function courseFormHtml(c) {
         <div class="field">
           <label>Slug (URL)</label>
           <input name="slug" value="${escapeHtml(c.slug)}" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="otomatis dari judul" />
-          <div style="font-size:11px;color:#737373;margin-top:4px;font-family:'Manrope',sans-serif;">
+          <div style="font-size:11px;color:#737373;margin-top:4px;font-family:var(--font-body);">
             URL: <code class="slug-preview" style="background:#f5f5f5;padding:1px 6px;border-radius:4px;">—</code>
           </div>
         </div>
@@ -472,7 +486,7 @@ function renderModules() {
   pane.innerHTML = `
     <h2>Modul</h2>
     <div class="toolbar">
-      <label style="font-size:13px;color:#525252;font-family:'Manrope',sans-serif;">Kursus:</label>
+      <label style="font-size:13px;color:#525252;font-family:var(--font-body);">Kursus:</label>
       <select id="course-picker" style="max-width:320px;">
         <option value="">— pilih kursus —</option>
         ${courseOpts}
@@ -506,7 +520,7 @@ function moduleFormHtml(m) {
       <div class="field">
         <label>Slug</label>
         <input name="slug" value="${escapeHtml(m.slug)}" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="otomatis dari judul" />
-        <div style="font-size:11px;color:#737373;margin-top:4px;font-family:'Manrope',sans-serif;">
+        <div style="font-size:11px;color:#737373;margin-top:4px;font-family:var(--font-body);">
           Slug: <code class="slug-preview" style="background:#f5f5f5;padding:1px 6px;border-radius:4px;">—</code>
         </div>
       </div>
@@ -670,11 +684,11 @@ function renderLessons() {
   pane.innerHTML = `
     <h2>Pelajaran &amp; Kuis</h2>
     <div class="toolbar">
-      <label style="font-size:13px;color:#525252;font-family:'Manrope',sans-serif;">Kursus:</label>
+      <label style="font-size:13px;color:#525252;font-family:var(--font-body);">Kursus:</label>
       <select id="lesson-course-picker" style="max-width:240px;">
         <option value="">— pilih kursus —</option>${courseOpts}
       </select>
-      <label style="font-size:13px;color:#525252;font-family:'Manrope',sans-serif;">Modul:</label>
+      <label style="font-size:13px;color:#525252;font-family:var(--font-body);">Modul:</label>
       <select id="lesson-module-picker" style="max-width:240px;" ${STATE.modules.length === 0 ? 'disabled' : ''}>
         <option value="">— pilih modul —</option>${moduleOpts}
       </select>
@@ -703,7 +717,7 @@ function lessonFormHtml(l) {
         <div class="field">
           <label>Slug</label>
           <input name="slug" value="${escapeHtml(l.slug)}" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="otomatis dari judul" />
-          <div style="font-size:11px;color:#737373;margin-top:4px;font-family:'Manrope',sans-serif;">
+          <div style="font-size:11px;color:#737373;margin-top:4px;font-family:var(--font-body);">
             Slug: <code class="slug-preview" style="background:#f5f5f5;padding:1px 6px;border-radius:4px;">—</code>
           </div>
         </div>
@@ -865,7 +879,7 @@ function optionRowHtml(o, i) {
   return `
     <div class="quiz-option-row" data-idx="${i}">
       <input type="text" name="opt_text_${i}" value="${escapeHtml(o.option_text || '')}" placeholder="Teks jawaban" />
-      <label style="font-size:11px;display:flex;align-items:center;gap:4px;color:#525252;font-family:'Manrope',sans-serif;">
+      <label style="font-size:11px;display:flex;align-items:center;gap:4px;color:#525252;font-family:var(--font-body);">
         <input type="checkbox" name="opt_correct_${i}" ${o.is_correct ? 'checked' : ''}/>
         Benar
       </label>
@@ -970,7 +984,7 @@ async function openItemManager(kind, lessonId, lessonTitle, moduleId) {
     <div class="toolbar">
       <button type="button" class="btn btn-primary" onclick="addItemRow('${kind}')">+ Tambah</button>
       <button type="button" class="btn btn-ghost" onclick="openBulkPaste('${kind}', '${lessonId}', '${safeTitle}', '${moduleId}')">Paste dari Excel (TSV)</button>
-      <span style="font-size:12px;color:#737373;font-family:Manrope,sans-serif;">${items.length} item</span>
+      <span style="font-size:12px;color:#737373;font-family:var(--font-body);">${items.length} item</span>
     </div>
     <div id="items-wrap" style="overflow-x:auto;">${renderItemTable(kind, items)}</div>
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
@@ -1055,7 +1069,7 @@ window.openBulkPaste = (kind, lessonId, lessonTitle, moduleId) => {
   const safeTitle = escapeHtml(lessonTitle).replace(/'/g, "\\'");
   openModal(`
     <h3>Paste ${kind} (TSV) — ${escapeHtml(lessonTitle)}</h3>
-    <p style="font-size:12px;color:#525252;font-family:Manrope,sans-serif;margin:0 0 10px;">
+    <p style="font-size:12px;color:#525252;font-family:var(--font-body);margin:0 0 10px;">
       Satu baris per item. Kolom dipisah TAB, urutan: <code>${header}</code>.<br>
       Semua item di-assign ke pelajaran ini otomatis.
     </p>
@@ -1109,7 +1123,7 @@ function openCropModal({ imageSrc, onConfirm, onCancel }) {
   let FRAME_W = 480, FRAME_H = 360;         // measured from DOM after mount
 
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:16px;font-family:Manrope,sans-serif;';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:16px;font-family:var(--font-body);';
   overlay.innerHTML = `
     <div style="background:#1a1a1a;padding:20px;border-radius:12px;max-width:540px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
       <h3 style="color:#fff;margin:0 0 4px;font-size:16px;">Atur posisi & zoom foto</h3>

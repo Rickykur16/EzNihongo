@@ -1,29 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Sans:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+@import url('../styles/tokens.css');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --red: #C41B1B;
-  --red-light: #FAEAEA;
-  --red-dark: #961414;
-  --green-light: #EAF3DE;
-  --green-dark: #3B6D11;
-  --amber-light: #FAEEDA;
-  --amber-dark: #854F0B;
-  --gray-bg: #F7F6F3;
-  --gray-border: #E5E3DC;
-  --text-primary: #1A1916;
-  --text-secondary: #6B6860;
-  --text-muted: #9E9C97;
-  --white: #FFFFFF;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-pill: 99px;
+  /* Aliases onto global tokens so legacy class rules keep working */
+  --red: var(--brand-red);
+  --red-light: var(--brand-red-soft);
+  --red-dark: var(--brand-red-hover);
+  --green-light: var(--success-soft);
+  --green-dark: var(--success);
+  --amber-light: var(--warning-soft);
+  --amber-dark: var(--warning);
+  --gray-bg: var(--paper-100);
+  --gray-border: var(--paper-300);
+  --text-primary: var(--ink-900);
+  --text-secondary: var(--ink-700);
+  --text-muted: var(--ink-500);
+  --white: var(--surface-white);
 }
 
 body {
-  font-family: 'DM Sans', 'Noto Sans JP', sans-serif;
+  font-family: var(--font-body);
   color: var(--text-primary);
   background: var(--white);
   line-height: 1.6;

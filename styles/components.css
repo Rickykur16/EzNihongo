@@ -1,0 +1,297 @@
+/* ==========================================================================
+   EZ Nihongo — Component Primitives
+   Reusable classes built on tokens. Import after tokens.css.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Buttons
+   -------------------------------------------------------------------------- */
+.ez-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 11px 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+.ez-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.ez-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ez-btn-primary {
+  background: var(--brand-red);
+  color: #fff;
+  box-shadow: var(--elev-1);
+}
+.ez-btn-primary:hover:not(:disabled) {
+  background: var(--brand-red-hover);
+  box-shadow: var(--elev-2);
+  transform: translateY(-1px);
+}
+.ez-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: var(--elev-1);
+}
+
+.ez-btn-ghost {
+  background: var(--surface-white);
+  color: var(--ink-900);
+  border-color: var(--paper-300);
+}
+.ez-btn-ghost:hover:not(:disabled) {
+  background: var(--paper-100);
+  border-color: var(--paper-400);
+}
+
+.ez-btn-quiet {
+  background: transparent;
+  color: var(--ink-700);
+}
+.ez-btn-quiet:hover:not(:disabled) {
+  background: var(--paper-200);
+  color: var(--ink-900);
+}
+
+.ez-btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+.ez-btn-danger:hover:not(:disabled) {
+  background: #7f1616;
+}
+
+.ez-btn-danger-soft {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: #fecaca;
+}
+.ez-btn-danger-soft:hover:not(:disabled) {
+  background: #fee2e2;
+}
+
+.ez-btn-lg {
+  padding: 14px 26px;
+  font-size: var(--text-base);
+  border-radius: var(--radius-pill);
+}
+.ez-btn-sm {
+  padding: 7px 12px;
+  font-size: var(--text-xs);
+  border-radius: var(--radius-sm);
+}
+
+/* --------------------------------------------------------------------------
+   Cards
+   -------------------------------------------------------------------------- */
+.ez-card {
+  background: var(--surface-white);
+  border: 1px solid var(--paper-300);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--elev-1);
+}
+.ez-card-elevated {
+  box-shadow: var(--elev-2);
+}
+
+/* --------------------------------------------------------------------------
+   Badges
+   -------------------------------------------------------------------------- */
+.ez-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.ez-badge-success { background: var(--success-soft); color: var(--success); }
+.ez-badge-warning { background: var(--warning-soft); color: var(--warning); }
+.ez-badge-info    { background: var(--info-soft);    color: var(--info); }
+.ez-badge-danger  { background: var(--danger-soft);  color: var(--danger); }
+.ez-badge-purple  { background: var(--purple-soft);  color: var(--purple); }
+.ez-badge-brand   { background: var(--brand-red-soft); color: var(--brand-red); }
+.ez-badge-neutral { background: var(--paper-200);    color: var(--ink-700); }
+
+.ez-badge-mono {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+
+/* --------------------------------------------------------------------------
+   Inputs
+   -------------------------------------------------------------------------- */
+.ez-input,
+.ez-textarea,
+.ez-select {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--paper-300);
+  border-radius: var(--radius-md);
+  background: var(--surface-white);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--ink-900);
+  line-height: 1.4;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+.ez-input:focus,
+.ez-textarea:focus,
+.ez-select:focus {
+  outline: none;
+  border-color: var(--brand-red);
+  box-shadow: var(--focus-ring);
+}
+.ez-input::placeholder,
+.ez-textarea::placeholder {
+  color: var(--ink-400);
+}
+.ez-textarea {
+  min-height: 100px;
+  resize: vertical;
+  font-family: var(--font-body);
+}
+.ez-input-error {
+  border-color: var(--danger);
+}
+.ez-input-error:focus {
+  box-shadow: 0 0 0 3px rgba(153, 27, 27, 0.2);
+}
+
+.ez-label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-700);
+  margin-bottom: 6px;
+}
+
+.ez-field {
+  margin-bottom: var(--space-4);
+}
+.ez-field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+.ez-field-error {
+  color: var(--danger);
+  font-size: var(--text-xs);
+  margin-top: 4px;
+  font-weight: 500;
+}
+.ez-field-hint {
+  color: var(--ink-500);
+  font-size: var(--text-xs);
+  margin-top: 4px;
+}
+
+/* --------------------------------------------------------------------------
+   Focus (universal)
+   -------------------------------------------------------------------------- */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* --------------------------------------------------------------------------
+   Progress bar
+   -------------------------------------------------------------------------- */
+.ez-progress {
+  width: 100%;
+  height: 6px;
+  background: var(--paper-200);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.ez-progress-fill {
+  height: 100%;
+  background: var(--brand-red);
+  border-radius: inherit;
+  transition: width var(--duration-slow) var(--ease-standard);
+}
+
+/* --------------------------------------------------------------------------
+   Divider
+   -------------------------------------------------------------------------- */
+.ez-divider {
+  height: 1px;
+  background: var(--paper-300);
+  border: none;
+  margin: var(--space-5) 0;
+}
+
+/* --------------------------------------------------------------------------
+   Visually hidden (a11y)
+   -------------------------------------------------------------------------- */
+.ez-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Global focus fallback — catches interactive elements that don't have
+   a component-specific focus-visible rule. Uses :where() so specificity
+   stays at 0 and per-component rules still win.
+   -------------------------------------------------------------------------- */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion — respect user preference across the whole system.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

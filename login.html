@@ -4,7 +4,9 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Masuk - EzNihongo</title>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles/tokens.css"/>
+<link rel="stylesheet" href="styles/components.css"/>
 <link rel="stylesheet" href="auth.css"/>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -21,7 +23,7 @@
     </div>
 
     <!-- Error banner -->
-    <div id="error-banner" style="display:none;background:#fef2f2;border:1px solid #ef444455;color:#991b1b;padding:12px 16px;border-radius:10px;margin-bottom:16px;font-family:'Manrope',sans-serif;font-size:13px;font-weight:500;text-align:center;"></div>
+    <div id="error-banner" style="display:none;background:var(--danger-soft);border:1px solid #ef444455;color:var(--danger);padding:12px 16px;border-radius:var(--radius-md);margin-bottom:16px;font-family:var(--font-body);font-size:13px;font-weight:500;text-align:center;"></div>
 
     <!-- Card -->
     <div class="auth-card">
@@ -29,7 +31,7 @@
       <!-- Sign-in step -->
       <div id="step-signin">
         <div id="google-btn-container" style="display:flex;justify-content:center;margin-bottom:8px;"></div>
-        <p id="signin-status" style="font-family:'Manrope',sans-serif;font-size:13px;color:#737373;text-align:center;margin:12px 0 0;"></p>
+        <p id="signin-status" style="font-family:var(--font-body);font-size:13px;color:var(--ink-500);text-align:center;margin:12px 0 0;"></p>
       </div>
 
       <!-- Profile-complete step (first signup) -->

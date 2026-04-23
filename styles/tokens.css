@@ -1,0 +1,114 @@
+/* ==========================================================================
+   EZ Nihongo — Design Tokens
+   Single source of truth for colors, typography, spacing, and motion.
+   Import this file first, before any other CSS.
+   ========================================================================== */
+
+:root {
+  /* Brand */
+  --brand-red: #C8102E;
+  --brand-red-hover: #a50d26;
+  --brand-red-soft: #fff0f2;
+  --brand-red-ring: rgba(200, 16, 46, 0.25);
+
+  /* Paper (warm neutrals) */
+  --paper-50: #fdfcf9;
+  --paper-100: #faf7f2;
+  --paper-200: #f2ede3;
+  --paper-300: #e8e1d3;
+  --paper-400: #d4ccb8;
+
+  /* Ink (text) */
+  --ink-900: #1a1815;
+  --ink-800: #2a251f;
+  --ink-700: #4a453e;
+  --ink-500: #8a8378;
+  --ink-400: #b5ae9f;
+
+  /* Surface */
+  --surface-white: #ffffff;
+  --surface-overlay: rgba(20, 15, 10, 0.5);
+
+  /* Semantic */
+  --success: #3b6d11;
+  --success-soft: #eaf3de;
+  --warning: #854f0b;
+  --warning-soft: #faeeda;
+  --info: #1b4fa8;
+  --info-soft: #eaf1fa;
+  --danger: #991b1b;
+  --danger-soft: #fef2f2;
+  --purple: #6b21a8;
+  --purple-soft: #f0e6ff;
+
+  /* Typography */
+  --font-display: 'Shippori Mincho', 'Noto Serif JP', Georgia, serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+  --font-jp: 'Noto Sans JP', system-ui, sans-serif;
+
+  /* Font sizes */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 32px;
+  --text-4xl: 40px;
+  --text-5xl: 52px;
+
+  /* Spacing (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  /* Elevation */
+  --elev-1: 0 1px 2px rgba(20, 15, 10, 0.04), 0 1px 3px rgba(20, 15, 10, 0.06);
+  --elev-2: 0 4px 12px rgba(20, 15, 10, 0.06), 0 2px 4px rgba(20, 15, 10, 0.04);
+  --elev-3: 0 12px 32px rgba(20, 15, 10, 0.08), 0 4px 8px rgba(20, 15, 10, 0.04);
+  --elev-4: 0 24px 60px rgba(20, 15, 10, 0.12), 0 8px 16px rgba(20, 15, 10, 0.06);
+
+  /* Motion */
+  --ease-standard: cubic-bezier(0.2, 0, 0.1, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+
+  /* Focus ring */
+  --focus-ring: 0 0 0 3px var(--brand-red-ring);
+
+  /* Layout */
+  --container-max: 1320px;
+  --container-pad: 40px;
+  --content-max: 680px;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --container-pad: 16px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}

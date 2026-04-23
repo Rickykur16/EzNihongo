@@ -1,19 +1,21 @@
+/* Course detail / checkout — tokens-driven. Import tokens.css before this. */
+
 /* ── Base ── */
 body {
-  font-family: 'Manrope', sans-serif;
-  background: #f8f9fa;
+  font-family: var(--font-body);
+  background: var(--paper-100);
   margin: 0;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  color: #191c1d;
+  color: var(--ink-900);
 }
-h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.02em; }
+h1, h2, h3 { font-family: var(--font-body); letter-spacing: -0.02em; }
 
 /* ── Nav ── */
 .c-nav {
-  background: #fff;
-  border-bottom: 1px solid #e5e5e5;
+  background: var(--surface-white);
+  border-bottom: 1px solid var(--paper-300);
   padding: 14px 32px;
   display: flex;
   align-items: center;
@@ -21,13 +23,14 @@ h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.02
 }
 .c-nav img { height: 40px; mix-blend-mode: multiply; }
 .c-back {
-  font-family: 'Manrope', sans-serif;
+  font-family: var(--font-body);
   font-size: 13px;
-  color: #485f84;
+  color: var(--ink-500);
   text-decoration: none;
   font-weight: 500;
+  transition: color var(--duration-fast) var(--ease-standard);
 }
-.c-back:hover { color: #b20024; }
+.c-back:hover { color: var(--brand-red); }
 
 /* ── Container ── */
 .c-main {
@@ -53,25 +56,27 @@ h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.02
 .c-eyebrow {
   display: inline-block;
   padding: 5px 12px;
-  background: #fff0f2;
-  color: #b20024;
-  border-radius: 6px;
+  background: var(--brand-red-soft);
+  color: var(--brand-red);
+  border-radius: var(--radius-sm);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   margin-bottom: 14px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 .c-title {
+  font-family: var(--font-display);
   font-size: clamp(28px, 4.5vw, 44px);
-  font-weight: 800;
+  font-weight: 700;
   margin: 0 0 10px;
   line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 .c-subtitle {
   font-size: 16px;
-  color: #485f84;
+  color: var(--ink-500);
   max-width: 620px;
   line-height: 1.6;
   margin: 0;
@@ -79,15 +84,15 @@ h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.02
 
 /* ── Card ── */
 .c-card {
-  background: #fff;
-  border: 1px solid #e5e5e5;
-  border-radius: 16px;
+  background: var(--surface-white);
+  border: 1px solid var(--paper-300);
+  border-radius: var(--radius-lg);
   padding: 28px;
-  box-shadow: 0 2px 14px rgba(0,0,0,0.04);
+  box-shadow: var(--elev-1);
 }
 .c-card h2 {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 700;
   margin: 0 0 18px;
 }
 
@@ -104,14 +109,14 @@ h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.02
   gap: 12px;
   font-size: 14px;
   line-height: 1.5;
-  color: #2e3132;
-  border-bottom: 1px solid #f0f0f0;
+  color: var(--ink-700);
+  border-bottom: 1px solid var(--paper-200);
 }
 .c-features li:last-child { border-bottom: none; }
 .c-check {
   width: 22px; height: 22px;
-  border-radius: 50%;
-  background: #b20024;
+  border-radius: var(--radius-pill);
+  background: var(--brand-red);
   color: #fff;
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 700;
@@ -124,22 +129,22 @@ h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.02
 .c-module {
   display: flex; gap: 14px; align-items: flex-start;
   padding: 14px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--paper-200);
 }
 .c-module:last-child { border-bottom: none; }
 .c-module-num {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px; color: #b20024; font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 12px; color: var(--brand-red); font-weight: 600;
   min-width: 28px;
 }
 .c-module-body p {
   margin: 0;
   font-size: 14px;
-  color: #2e3132;
+  color: var(--ink-700);
   line-height: 1.5;
 }
 .c-module-body p.sub {
-  font-size: 12px; color: #666; margin-top: 3px;
+  font-size: 12px; color: var(--ink-500); margin-top: 3px;
 }
 
 /* ── Order summary ── */
@@ -147,43 +152,44 @@ h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.02
   display: flex; justify-content: space-between;
   padding: 10px 0;
   font-size: 14px;
-  color: #485f84;
+  color: var(--ink-500);
 }
 .c-summary-row.total {
-  border-top: 1px solid #e5e5e5;
+  border-top: 1px solid var(--paper-300);
   padding-top: 16px;
   margin-top: 8px;
   font-weight: 700;
-  color: #191c1d;
+  color: var(--ink-900);
   font-size: 16px;
 }
 .c-price-main {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 40px;
-  font-weight: 800;
-  color: #191c1d;
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 600;
+  color: var(--ink-900);
   margin: 0;
   letter-spacing: -0.03em;
 }
 .c-price-main .period {
-  font-size: 15px; color: #666; font-weight: 500;
+  font-family: var(--font-body);
+  font-size: 15px; color: var(--ink-500); font-weight: 500;
 }
 .c-lpk-strike {
   font-size: 13px;
-  color: #999;
+  color: var(--ink-400);
   text-decoration: line-through;
   margin: 6px 0 0;
 }
 .c-savings {
   display: inline-block;
-  background: #e8f5e9;
-  color: #166534;
+  background: var(--success-soft);
+  color: var(--success);
   font-size: 11px;
   font-weight: 700;
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   margin-top: 10px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 
 /* ── Payment ── */
@@ -195,60 +201,72 @@ h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.02
 }
 .c-pay-option {
   padding: 12px;
-  border: 1px solid #e5e5e5;
-  border-radius: 10px;
+  border: 1px solid var(--paper-300);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  background: #fff;
-  font-family: 'Manrope', sans-serif;
+  background: var(--surface-white);
+  font-family: var(--font-body);
   font-size: 13px;
   font-weight: 500;
-  color: #2e3132;
+  color: var(--ink-700);
   text-align: center;
-  transition: all 0.15s;
+  transition: border-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard),
+              background var(--duration-fast) var(--ease-standard);
 }
-.c-pay-option:hover { border-color: #b20024; color: #b20024; }
+.c-pay-option:hover { border-color: var(--brand-red); color: var(--brand-red); }
+.c-pay-option:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .c-pay-option.active {
-  border-color: #b20024;
-  background: #fff0f2;
-  color: #b20024;
+  border-color: var(--brand-red);
+  background: var(--brand-red-soft);
+  color: var(--brand-red);
   font-weight: 700;
 }
 
 .c-submit {
   width: 100%;
-  background: #b20024;
+  background: var(--brand-red);
   color: #fff;
-  border: none;
+  border: 1px solid transparent;
   padding: 15px;
-  border-radius: 10px;
-  font-family: 'Manrope', sans-serif;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s;
+  box-shadow: var(--elev-1);
+  transition: background var(--duration-fast) var(--ease-standard),
+              box-shadow var(--duration-fast) var(--ease-standard),
+              transform var(--duration-fast) var(--ease-standard);
   margin-top: 4px;
 }
-.c-submit:hover { background: #8a0b20; }
-.c-submit:disabled { background: #ccc; cursor: not-allowed; }
+.c-submit:hover {
+  background: var(--brand-red-hover);
+  box-shadow: var(--elev-2);
+  transform: translateY(-1px);
+}
+.c-submit:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.c-submit:disabled { background: var(--paper-300); color: var(--ink-400); cursor: not-allowed; transform: none; box-shadow: none; }
 
 .c-help {
   text-align: center;
   margin-top: 16px;
   font-size: 12px;
-  color: #666;
+  color: var(--ink-500);
 }
-.c-help a { color: #b20024; font-weight: 600; text-decoration: none; }
+.c-help a { color: var(--brand-red); font-weight: 600; text-decoration: none; }
+.c-help a:hover { text-decoration: underline; }
 
 /* ── Footer ── */
 .c-footer {
   padding: 20px;
   text-align: center;
-  border-top: 1px solid #e5e5e5;
-  background: #fff;
+  border-top: 1px solid var(--paper-300);
+  background: var(--paper-100);
 }
 .c-footer p {
   margin: 0;
   font-size: 13px;
-  color: #485f84;
+  color: var(--ink-500);
 }
-.c-footer strong { color: #b20024; font-weight: 700; }
+.c-footer strong { color: var(--brand-red); font-weight: 700; }
