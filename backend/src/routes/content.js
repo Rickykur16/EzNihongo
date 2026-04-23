@@ -124,7 +124,7 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
     durationMinutes: row.duration_minutes,
   };
 
-  if (row.type === 'quiz') {
+  if (row.type === 'quiz' || row.type === 'review') {
     const questions = await query(
       `SELECT id, question, question_type, explanation, sort_order
        FROM quiz_questions

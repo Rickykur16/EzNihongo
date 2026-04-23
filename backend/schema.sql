@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS lessons (
   module_id UUID NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
   slug TEXT NOT NULL,
   title TEXT NOT NULL,
-  type TEXT NOT NULL DEFAULT 'text' CHECK (type IN ('video','quiz','text')),
+  type TEXT NOT NULL DEFAULT 'intro' CHECK (type IN ('intro','kosakata','kanji','grammar','praktik','review','video','text')),
   content TEXT,
   video_url TEXT,
   duration_minutes INT,
