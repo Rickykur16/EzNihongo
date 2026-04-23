@@ -1987,17 +1987,9 @@
     letter-spacing: 0.02em; text-transform: uppercase;
     line-height: 1.4; border: 1px solid transparent;
   }
-  /* Pedagogical flow: intro → kosakata → kanji → grammar → praktik → review */
-  .badge-intro    { background: var(--info-soft);    color: var(--info);    border-color: #dbeafe; }
-  .badge-kosakata { background: var(--danger-soft);  color: var(--danger);  border-color: #fecaca; }
-  .badge-kanji    { background: var(--warning-soft); color: var(--warning); border-color: #fde68a; }
-  .badge-grammar  { background: var(--purple-soft);  color: var(--purple);  border-color: #e9d5ff; }
-  .badge-praktik  { background: var(--pink-soft);    color: var(--pink);    border-color: #fbcfe8; }
-  .badge-review   { background: var(--teal-soft);    color: var(--teal);    border-color: #99f6e4; }
-  /* Legacy */
-  .badge-video    { background: #eef4ff; color: #1d4ed8; border-color: #dbeafe; }
-  .badge-quiz     { background: var(--teal-soft);  color: var(--teal);  border-color: #99f6e4; }
-  .badge-text     { background: #f5f5f4; color: #57534e; border-color: #e7e5e4; }
+  .badge-video { background: #eef4ff; color: #1d4ed8; border-color: #dbeafe; }
+  .badge-quiz  { background: #ecfdf5; color: #047857; border-color: #d1fae5; }
+  .badge-text  { background: #f5f5f4; color: #57534e; border-color: #e7e5e4; }
   .lesson-duration {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px; color: #999; font-weight: 500;
@@ -3718,7 +3710,7 @@ function renderRightPanel() {
   const totalLessons = allLessons.length;
   const doneLessons = Object.values(progress).filter(v => v).length;
   const pct = Math.round((doneLessons / totalLessons) * 100);
-  const TYPE_LABEL = { intro: 'Intro', kosakata: 'Kosakata', kanji: 'Kanji', grammar: 'Grammar', praktik: 'Praktik', review: 'Review', video: 'Video', quiz: 'Kuis', text: 'Bacaan' };
+  const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan' };
 
   // Tip selection: if user hasn't clicked yet for this lesson, default
   // to lesson-indexed tip (varies naturally as they navigate). If they
@@ -3793,13 +3785,13 @@ function renderSidebar() {
   const doneLessons = Object.values(progress).filter(v => v).length;
   const pct = Math.round((doneLessons / totalLessons) * 100);
 
-  const TYPE_LABEL = { intro: 'Intro', kosakata: 'Kosakata', kanji: 'Kanji', grammar: 'Grammar', praktik: 'Praktik', review: 'Review', video: 'Video', quiz: 'Kuis', text: 'Bacaan' };
+  const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan' };
   const modulesHtml = course.modules.map(m => {
     const lessonsHtml = m.lessons.map(l => {
       const key = `${m.id}:${l.id}`;
       const isDone = !!progress[key];
       const isCurrent = m.id === currentState.moduleId && l.id === currentState.lessonId;
-      const icon = (l.type === 'quiz' || l.type === 'review') ? '?' : (isDone ? '✓' : '▶');
+      const icon = l.type === 'quiz' ? '?' : (isDone ? '✓' : '▶');
       const typeKey = (l.type || 'text').toLowerCase();
       const typeLabel = TYPE_LABEL[typeKey] || typeKey.toUpperCase();
       return `
@@ -4278,15 +4270,14 @@ function renderLesson() {
   const prev = allLessons[idx - 1];
   const next = allLessons[idx + 1];
 
-  // Handle interactive quiz (legacy 'quiz' and new 'review' type both trigger mini-kuis UI)
-  if (lesson.type === 'quiz' || lesson.type === 'review') {
+  // Handle interactive quiz
+  if (lesson.type === 'quiz') {
     const quizKey = getQuizKey(currentState.course, module.id, lesson.id);
     const scores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
     const bestScore = scores[quizKey] || 0;
-    const breadcrumbLabel = lesson.type === 'review' ? 'REVIEW + KUIS' : 'KUIS';
 
     document.getElementById('main-content').innerHTML = `
-      <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · ${breadcrumbLabel}</p>
+      <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · KUIS</p>
       <h1 class="lesson-title">${lesson.title}</h1>
       <p class="lesson-subtitle">${module.title} — ${lesson.duration}</p>
 

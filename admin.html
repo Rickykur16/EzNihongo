@@ -48,16 +48,6 @@
   .badge-on { background: var(--success-soft); color: var(--success); }
   .badge-off { background: var(--warning-soft); color: var(--warning); }
   .badge-admin { background: var(--purple-soft); color: var(--purple); }
-  /* Lesson type badges (aligned with pedagogical flow: intro \u2192 kosakata \u2192 kanji \u2192 grammar \u2192 praktik \u2192 review). */
-  .badge-intro    { background: var(--info-soft);    color: var(--info); }
-  .badge-kosakata { background: var(--danger-soft);  color: var(--danger); }
-  .badge-kanji    { background: var(--warning-soft); color: var(--warning); }
-  .badge-grammar  { background: var(--purple-soft);  color: var(--purple); }
-  .badge-praktik  { background: var(--pink-soft);    color: var(--pink); }
-  .badge-review   { background: var(--teal-soft);    color: var(--teal); }
-  /* Legacy types, still valid until all content is reclassified. */
-  .badge-video    { background: var(--info-soft);    color: var(--info); }
-  .badge-text     { background: var(--paper-200);    color: var(--ink-700); }
   select, input, textarea { font-family: inherit; padding: 10px 12px; border: 1px solid var(--paper-300); border-radius: var(--radius-md); font-size: 14px; width: 100%; color: var(--ink-900); background: var(--surface-white); transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); }
   select:focus, input:focus, textarea:focus { outline: none; border-color: var(--brand-red); box-shadow: var(--focus-ring); }
   textarea { resize: vertical; min-height: 100px; font-family: var(--font-body); }
@@ -662,20 +652,17 @@ function renderLessons() {
         const titleEsc = escapeHtml(l.title).replace(/'/g, "\\'");
         const vocabN = vocabByLesson[l.id] || 0;
         const grammarN = grammarByLesson[l.id] || 0;
-        const isQuizType = l.type === 'quiz' || l.type === 'review';
-        const contentBtns = !isQuizType
+        const contentBtns = l.type !== 'quiz'
           ? `<button class="btn btn-ghost" onclick="manageVocab('${l.id}', '${titleEsc}', '${mod.id}')">Vocab (${vocabN})</button>
              <button class="btn btn-ghost" onclick="manageGrammar('${l.id}', '${titleEsc}', '${mod.id}')">Grammar (${grammarN})</button>`
           : '';
-        const quizBtn = isQuizType
+        const quizBtn = l.type === 'quiz'
           ? `<button class="btn btn-ghost" onclick="manageQuiz('${l.id}', '${titleEsc}')">Kuis</button>`
           : '';
-        const typeLabels = { intro: 'Intro', kosakata: 'Kosakata', kanji: 'Kanji', grammar: 'Grammar', praktik: 'Praktik', review: 'Review', video: 'Video (legacy)', text: 'Teks (legacy)', quiz: 'Kuis (legacy)' };
-        const typeLabel = typeLabels[l.type] || l.type;
         return `
         <tr>
           <td><strong>${escapeHtml(l.title)}</strong><br><span class="pill">${escapeHtml(l.slug)}</span></td>
-          <td><span class="badge badge-${escapeHtml(l.type)}">${escapeHtml(typeLabel)}</span></td>
+          <td><span class="badge ${l.type === 'quiz' ? 'badge-admin' : (l.type === 'video' ? 'badge-on' : 'badge-off')}">${escapeHtml(l.type)}</span></td>
           <td>${l.duration_minutes || '-'}</td>
           <td>${l.sort_order}</td>
           <td class="actions">
@@ -722,25 +709,7 @@ function renderLessons() {
 }
 
 function lessonFormHtml(l) {
-  l = l || { slug: '', title: '', type: 'intro', content: '', video_url: '', duration_minutes: '', sort_order: 0 };
-  const types = [
-    { v: 'intro',    label: '1. Intro \u2014 hook + can-do' },
-    { v: 'kosakata', label: '2. Kosakata \u2014 7 kata per sesi' },
-    { v: 'kanji',    label: '3. Kanji \u2014 visual dari kosakata' },
-    { v: 'grammar',  label: '4. Grammar \u2014 1 pola per pelajaran' },
-    { v: 'praktik',  label: '5. Praktik \u2014 roleplay dialog' },
-    { v: 'review',   label: '6. Review \u2014 recap + mini kuis' },
-  ];
-  const legacyTypes = ['video', 'text', 'quiz'];
-  const isLegacy = legacyTypes.includes(l.type);
-  const newOpts = types.map(t => `<option value="${t.v}" ${l.type === t.v ? 'selected' : ''}>${t.label}</option>`).join('');
-  const legacyOpts = isLegacy
-    ? `<optgroup label="Legacy (perlu diklasifikasi ulang)">
-         <option value="video" ${l.type === 'video' ? 'selected' : ''}>Video (legacy)</option>
-         <option value="text"  ${l.type === 'text'  ? 'selected' : ''}>Teks (legacy)</option>
-         <option value="quiz"  ${l.type === 'quiz'  ? 'selected' : ''}>Kuis (legacy)</option>
-       </optgroup>`
-    : '';
+  l = l || { slug: '', title: '', type: 'text', content: '', video_url: '', duration_minutes: '', sort_order: 0 };
   return `
     <h3>${l.id ? 'Edit Pelajaran' : 'Pelajaran Baru'}</h3>
     <form id="lesson-form">
@@ -748,14 +717,15 @@ function lessonFormHtml(l) {
         <div class="field">
           <label>Slug</label>
           <input name="slug" value="${escapeHtml(l.slug)}" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="otomatis dari judul" />
-          <div style="font-size:11px;color:var(--ink-500);margin-top:4px;font-family:var(--font-body);">
-            Slug: <code class="slug-preview" style="background:var(--paper-200);padding:1px 6px;border-radius:4px;">—</code>
+          <div style="font-size:11px;color:#737373;margin-top:4px;font-family:var(--font-body);">
+            Slug: <code class="slug-preview" style="background:#f5f5f5;padding:1px 6px;border-radius:4px;">—</code>
           </div>
         </div>
         <div class="field"><label>Tipe</label>
           <select name="type">
-            ${newOpts}
-            ${legacyOpts}
+            <option value="text" ${l.type === 'text' ? 'selected' : ''}>Teks</option>
+            <option value="video" ${l.type === 'video' ? 'selected' : ''}>Video</option>
+            <option value="quiz" ${l.type === 'quiz' ? 'selected' : ''}>Kuis</option>
           </select>
         </div>
       </div>

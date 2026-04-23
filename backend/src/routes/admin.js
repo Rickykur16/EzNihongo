@@ -372,7 +372,7 @@ router.post('/lessons', asyncHandler(async (req, res) => {
   const result = await query(
     `INSERT INTO lessons (module_id, slug, title, type, content, video_url, duration_minutes, sort_order)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-    [moduleId, slug, title, type || 'intro', content || null, videoUrl || null, durationMinutes || null, sortOrder || 0]
+    [moduleId, slug, title, type || 'text', content || null, videoUrl || null, durationMinutes || null, sortOrder || 0]
   );
   res.status(201).json({ lesson: result.rows[0] });
 }));
