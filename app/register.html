@@ -267,15 +267,35 @@
 
     let _pendingCredential = null;
 
-    function handleGoogleCredential(response) {
+    // Silent-login first — if the user already has a kanji_users row, just log
+    // them in and redirect. Only first-time users (profile_required) see the
+    // "Buat akun" name form.
+    async function handleGoogleCredential(response) {
       clearError();
       _pendingCredential = response.credential;
-      document.getElementById('signin-status').textContent = '';
       document.getElementById('google-btn-container').style.display = 'none';
-      document.getElementById('step-profile').style.display = 'block';
-      const nameInput = document.getElementById('full-name');
-      nameInput.value = readGoogleName(response.credential);
-      setTimeout(() => { nameInput.focus(); nameInput.select(); }, 50);
+      document.getElementById('signin-status').textContent = 'Masuk...';
+      try {
+        const user = await ezLoginWithGoogle(response.credential);
+        try {
+          sessionStorage.setItem('ez_just_logged_in', '1');
+          const first = (user.fullName || user.email || '').toString().trim().split(/\s+/)[0];
+          if (first) sessionStorage.setItem('ez_login_name', first);
+        } catch {}
+        location.replace(getRedirect());
+      } catch (err) {
+        if (err && err.code === 'profile_required') {
+          document.getElementById('signin-status').textContent = '';
+          document.getElementById('step-profile').style.display = 'block';
+          const nameInput = document.getElementById('full-name');
+          nameInput.value = err.googleName || readGoogleName(response.credential);
+          setTimeout(() => { nameInput.focus(); nameInput.select(); }, 50);
+          return;
+        }
+        document.getElementById('signin-status').textContent = '';
+        document.getElementById('google-btn-container').style.display = 'flex';
+        showError('Gagal daftar: ' + (err?.message || 'coba lagi'));
+      }
     }
 
     document.getElementById('cancel-profile').addEventListener('click', () => {

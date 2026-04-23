@@ -271,18 +271,37 @@
 
     let _pendingCredential = null;
 
-    // Kanji PWA always shows the name-confirmation step after Google auth,
-    // even for returning users — the display name lives in kanji_users,
-    // separate from the main-site account.
-    function handleGoogleCredential(response) {
+    // For returning users (kanji_users row already exists), skip the name-
+    // confirmation form and log them straight in. Backend returns
+    // 400 { error: 'profile_required', googleName } only when no row exists yet
+    // — that's the signal to show the form for first-time users.
+    async function handleGoogleCredential(response) {
       clearError();
       _pendingCredential = response.credential;
-      document.getElementById('signin-status').textContent = '';
       document.getElementById('google-btn-container').style.display = 'none';
-      document.getElementById('step-profile').style.display = 'block';
-      const nameInput = document.getElementById('full-name');
-      nameInput.value = readGoogleName(response.credential);
-      setTimeout(() => { nameInput.focus(); nameInput.select(); }, 50);
+      document.getElementById('signin-status').textContent = 'Masuk...';
+      try {
+        const user = await ezLoginWithGoogle(response.credential);
+        try {
+          sessionStorage.setItem('ez_just_logged_in', '1');
+          const first = (user.fullName || user.email || '').toString().trim().split(/\s+/)[0];
+          if (first) sessionStorage.setItem('ez_login_name', first);
+        } catch {}
+        location.replace(getRedirect());
+      } catch (err) {
+        if (err && err.code === 'profile_required') {
+          // First-time user — ask for display name.
+          document.getElementById('signin-status').textContent = '';
+          document.getElementById('step-profile').style.display = 'block';
+          const nameInput = document.getElementById('full-name');
+          nameInput.value = err.googleName || readGoogleName(response.credential);
+          setTimeout(() => { nameInput.focus(); nameInput.select(); }, 50);
+          return;
+        }
+        document.getElementById('signin-status').textContent = '';
+        document.getElementById('google-btn-container').style.display = 'flex';
+        showError('Gagal masuk: ' + (err?.message || 'coba lagi'));
+      }
     }
 
     document.getElementById('cancel-profile').addEventListener('click', () => {
