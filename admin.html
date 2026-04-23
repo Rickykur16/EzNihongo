@@ -648,7 +648,7 @@ function renderLessons() {
         return `
         <tr>
           <td><strong>${escapeHtml(l.title)}</strong><br><span class="pill">${escapeHtml(l.slug)}</span></td>
-          <td><span class="badge ${l.type === 'quiz' ? 'badge-admin' : 'badge-off'}">${escapeHtml(l.type)}</span></td>
+          <td><span class="badge ${l.type === 'quiz' ? 'badge-admin' : (l.type === 'video' ? 'badge-on' : 'badge-off')}">${escapeHtml(l.type)}</span></td>
           <td>${l.duration_minutes || '-'}</td>
           <td>${l.sort_order}</td>
           <td class="actions">
