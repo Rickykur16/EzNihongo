@@ -79,6 +79,19 @@
   .rt-btn:hover { background: var(--paper-200); color: var(--ink-900); }
   .rt-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
   .rt-hint { font-size: 11px; color: var(--ink-500); margin-top: 4px; font-family: var(--font-body); }
+  .rte-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .rte-editor { min-height: 110px; max-height: 420px; overflow-y: auto; padding: 10px 12px; border: 1px solid var(--paper-300); border-radius: var(--radius-md); font-size: 14px; line-height: 1.65; color: var(--ink-900); background: var(--surface-white); font-family: var(--font-body); outline: none; transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); }
+  .rte-editor:focus { border-color: var(--brand-red); box-shadow: var(--focus-ring); }
+  .rte-editor:empty::before { content: attr(data-placeholder); color: var(--ink-400); pointer-events: none; }
+  .rte-editor > :first-child { margin-top: 0; }
+  .rte-editor > :last-child { margin-bottom: 0; }
+  .rte-editor h2 { font-size: 18px; font-weight: 700; margin: 10px 0 4px; letter-spacing: -0.01em; }
+  .rte-editor h3 { font-size: 15px; font-weight: 700; margin: 8px 0 4px; }
+  .rte-editor p { margin: 0 0 8px; }
+  .rte-editor ul, .rte-editor ol { margin: 0 0 10px; padding-left: 22px; }
+  .rte-editor blockquote { margin: 8px 0; padding: 4px 12px; border-left: 3px solid var(--brand-red); background: var(--brand-red-soft); border-radius: 0 4px 4px 0; }
+  .rte-editor code { background: var(--paper-200); padding: 1px 5px; border-radius: 4px; font-family: var(--font-mono); font-size: 13px; }
+  .rte-editor a { color: var(--brand-red); text-decoration: underline; }
   .lesson-preview { margin-top: 8px; padding: 14px 16px; background: var(--paper-100); border: 1px solid var(--paper-300); border-radius: var(--radius-md); font-size: 14px; line-height: 1.65; color: var(--ink-900); font-family: var(--font-body); }
   .lesson-preview h2 { margin: 12px 0 6px; font-size: 16px; }
   .lesson-preview h3 { margin: 10px 0 4px; font-size: 14px; font-weight: 700; }
@@ -764,57 +777,95 @@ function wireLessonTypeVisibility(form) {
   apply();
   typeSel.addEventListener('change', apply);
 }
-function wireRichToolbar(textarea) {
-  if (!textarea || textarea.dataset.rtWired) return;
-  textarea.dataset.rtWired = '1';
-  const getSel = () => ({ s: textarea.selectionStart, e: textarea.selectionEnd, v: textarea.value });
-  const setSel = (start, end) => { textarea.focus(); textarea.setSelectionRange(start, end); };
-  const wrap = (before, after, placeholder = 'teks') => {
-    const { s, e, v } = getSel();
-    const sel = v.slice(s, e) || placeholder;
-    textarea.value = v.slice(0, s) + before + sel + after + v.slice(e);
-    setSel(s + before.length, s + before.length + sel.length);
-  };
-  const wrapBlock = (before, after, placeholder) => {
-    const { s, e, v } = getSel();
-    let ls = s; while (ls > 0 && v[ls - 1] !== '\n') ls--;
-    let le = e; while (le < v.length && v[le] !== '\n') le++;
-    const sel = v.slice(ls, le) || placeholder;
-    textarea.value = v.slice(0, ls) + before + sel + after + v.slice(le);
-    setSel(ls + before.length, ls + before.length + sel.length);
-  };
-  const makeList = () => {
-    const { s, e, v } = getSel();
-    let ls = s; while (ls > 0 && v[ls - 1] !== '\n') ls--;
-    let le = e; while (le < v.length && v[le] !== '\n') le++;
-    const block = v.slice(ls, le) || 'Item pertama\nItem kedua';
-    const items = block.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => `  <li>${l}</li>`).join('\n');
-    const html = `<ul>\n${items}\n</ul>`;
-    textarea.value = v.slice(0, ls) + html + v.slice(le);
-    setSel(ls, ls + html.length);
-  };
-  const insertLink = () => {
-    const { s, e, v } = getSel();
-    const sel = v.slice(s, e) || 'teks link';
-    const url = prompt('URL tujuan:', 'https://');
-    if (!url) return;
-    const html = `<a href="${url}">${sel}</a>`;
-    textarea.value = v.slice(0, s) + html + v.slice(e);
-    const caret = s + `<a href="${url}">`.length;
-    setSel(caret, caret + sel.length);
-  };
-  const buttons = [
-    { label: 'B', title: 'Bold (Ctrl+B)', style: 'font-weight:800', fn: () => wrap('<strong>', '</strong>') },
-    { label: 'I', title: 'Italic (Ctrl+I)', style: 'font-style:italic', fn: () => wrap('<em>', '</em>') },
-    { label: 'H2', title: 'Heading besar', fn: () => wrapBlock('<h2>', '</h2>', 'Judul') },
-    { label: 'H3', title: 'Subheading', fn: () => wrapBlock('<h3>', '</h3>', 'Subjudul') },
-    { label: '• Daftar', title: 'List poin', fn: makeList },
-    { label: '❝', title: 'Blockquote', fn: () => wrapBlock('<blockquote>', '</blockquote>', 'Kutipan') },
-    { label: '🔗', title: 'Link (Ctrl+K)', fn: insertLink },
-    { label: '</>', title: 'Code inline', style: 'font-family:var(--font-mono)', fn: () => wrap('<code>', '</code>', 'kode') },
-  ];
+// WYSIWYG rich-text editor. Replaces a textarea with a contenteditable div
+// + hidden input (so FormData still carries the HTML value under the same name).
+// Uses document.execCommand — deprecated but universally supported (Gmail pattern).
+function wireRichTextEditor(textarea) {
+  if (!textarea || textarea.dataset.rteWired) return;
+  textarea.dataset.rteWired = '1';
+
+  const initialValue = textarea.value || '';
+  const name = textarea.name;
+  const placeholder = textarea.placeholder || '';
+  const required = textarea.required;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'rte-wrap';
+
   const bar = document.createElement('div');
   bar.className = 'rt-toolbar';
+
+  const editor = document.createElement('div');
+  editor.className = 'rte-editor';
+  editor.contentEditable = 'true';
+  editor.setAttribute('role', 'textbox');
+  editor.setAttribute('aria-multiline', 'true');
+  if (placeholder) editor.setAttribute('data-placeholder', placeholder);
+  editor.innerHTML = initialValue;
+
+  const hidden = document.createElement('input');
+  hidden.type = 'hidden';
+  hidden.name = name;
+  hidden.value = initialValue;
+  if (required) hidden.required = true;
+
+  const sync = () => {
+    const html = editor.innerHTML;
+    // Treat empty editor ("<br>" is what browsers leave when all text is deleted) as empty string.
+    hidden.value = (html === '<br>' || html === '<div><br></div>') ? '' : html;
+  };
+
+  // Prefer semantic tags (<b>, <i>) over inline styles. Call each time because
+  // other editors on the page may flip this global state.
+  const preferSemantic = () => { try { document.execCommand('styleWithCSS', false, false); } catch (_) {} };
+
+  const exec = (cmd, val = null) => {
+    editor.focus();
+    preferSemantic();
+    document.execCommand(cmd, false, val);
+    sync();
+  };
+
+  const wrapSelectionWithTag = (tagName) => {
+    editor.focus();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    if (range.collapsed) return;
+    const el = document.createElement(tagName);
+    try {
+      range.surroundContents(el);
+    } catch (_) {
+      const text = range.toString();
+      el.textContent = text;
+      range.deleteContents();
+      range.insertNode(el);
+    }
+    sel.removeAllRanges();
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    sel.addRange(r);
+    sync();
+  };
+
+  const insertLink = () => {
+    const url = prompt('URL tujuan:', 'https://');
+    if (!url) return;
+    exec('createLink', url);
+  };
+
+  const buttons = [
+    { label: 'B', title: 'Bold (Ctrl+B)', style: 'font-weight:800', fn: () => exec('bold') },
+    { label: 'I', title: 'Italic (Ctrl+I)', style: 'font-style:italic', fn: () => exec('italic') },
+    { label: 'H2', title: 'Heading besar', fn: () => exec('formatBlock', 'H2') },
+    { label: 'H3', title: 'Subheading', fn: () => exec('formatBlock', 'H3') },
+    { label: '• Daftar', title: 'List poin', fn: () => exec('insertUnorderedList') },
+    { label: '❝', title: 'Blockquote', fn: () => exec('formatBlock', 'BLOCKQUOTE') },
+    { label: '🔗', title: 'Link (Ctrl+K)', fn: insertLink },
+    { label: '</>', title: 'Code inline', style: 'font-family:var(--font-mono)', fn: () => wrapSelectionWithTag('code') },
+    { label: '✕', title: 'Hapus format', fn: () => exec('removeFormat') },
+  ];
+
   for (const b of buttons) {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -823,32 +874,51 @@ function wireRichToolbar(textarea) {
     btn.title = b.title;
     btn.setAttribute('aria-label', b.title);
     if (b.style) btn.style.cssText = b.style;
+    // mousedown preventDefault keeps the editor selection intact when the
+    // toolbar button takes focus; the click handler then runs the command.
+    btn.addEventListener('mousedown', (ev) => { ev.preventDefault(); });
     btn.addEventListener('click', (ev) => { ev.preventDefault(); b.fn(); });
     bar.appendChild(btn);
   }
-  textarea.parentNode.insertBefore(bar, textarea);
-  textarea.addEventListener('keydown', (ev) => {
+
+  // Paste as plain text so Word/web HTML doesn't pollute the document.
+  editor.addEventListener('paste', (ev) => {
+    ev.preventDefault();
+    const text = (ev.clipboardData || window.clipboardData).getData('text/plain');
+    document.execCommand('insertText', false, text);
+  });
+
+  editor.addEventListener('keydown', (ev) => {
     if (!(ev.ctrlKey || ev.metaKey)) return;
     const k = ev.key.toLowerCase();
-    if (k === 'b') { ev.preventDefault(); wrap('<strong>', '</strong>'); }
-    else if (k === 'i') { ev.preventDefault(); wrap('<em>', '</em>'); }
+    if (k === 'b') { ev.preventDefault(); exec('bold'); }
+    else if (k === 'i') { ev.preventDefault(); exec('italic'); }
     else if (k === 'k') { ev.preventDefault(); insertLink(); }
   });
+
+  editor.addEventListener('input', sync);
+  editor.addEventListener('blur', sync);
+
+  wrap.appendChild(bar);
+  wrap.appendChild(editor);
+  wrap.appendChild(hidden);
+  textarea.replaceWith(wrap);
 }
 function wireRichToolbarAll(form) {
-  form.querySelectorAll('textarea.rich-text').forEach(wireRichToolbar);
+  form.querySelectorAll('textarea.rich-text').forEach(wireRichTextEditor);
 }
-// Preview panel — renders lesson content HTML inline below the textarea.
+// Preview panel — renders lesson content HTML inline below the editor.
+// After wireRichTextEditor runs, [name="content"] matches the hidden input.
 function wireContentPreview(form) {
-  const ta = form.querySelector('textarea[name="content"]');
-  if (!ta) return;
+  const input = form.querySelector('[name="content"]');
+  if (!input) return;
   const btn = form.querySelector('[data-preview-btn]');
   const panel = form.querySelector('[data-preview-panel]');
   if (!btn || !panel) return;
   btn.addEventListener('click', () => {
     const open = panel.style.display !== 'none';
     if (open) { panel.style.display = 'none'; btn.textContent = 'Pratinjau'; return; }
-    panel.innerHTML = ta.value.trim() || '<em style="color:var(--ink-500);">Konten kosong.</em>';
+    panel.innerHTML = (input.value || '').trim() || '<em style="color:var(--ink-500);">Konten kosong.</em>';
     panel.style.display = 'block';
     btn.textContent = 'Tutup pratinjau';
   });
