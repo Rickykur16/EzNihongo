@@ -596,12 +596,8 @@
       font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
       background:var(--red);color:#fff;white-space:nowrap;letter-spacing:.01em;
     }
-    /* Locked state for premium levels */
+    /* Locked state for premium levels — icon injected by applyLockedUi() into .kh-level-name */
     .kh-level.locked{opacity:.78;}
-    .kh-level.locked::after{
-      content:"🔒";position:absolute;top:10px;right:10px;
-      font-size:13px;opacity:.7;z-index:2;
-    }
     /* Legacy list-item rules kept for other views (.kh-item outside home) */
     .kh-item{
       display:flex;align-items:center;gap:14px;
@@ -1087,6 +1083,77 @@
     .ag-btn-secondary:hover{border-color:var(--red);color:var(--red);}
     [data-theme="dark"] .ag-locked{background:#1E1C19;border-color:var(--gray-border);}
     [data-theme="dark"] #auth-gate{background:#121210;}
+
+    /* ── Aksesibilitas: hormati preferensi reduce-motion OS ── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+      .rv-card, .kd-stroke-stage, .kh-ring-fill { transition: none !important; }
+    }
+
+    /* ── Focus-visible ring supaya keyboard nav terlihat ── */
+    button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
+      outline: 2px solid var(--red);
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+
+    /* ── Bottom navigation (main views only) ── */
+    .kapp-botnav{
+      position:fixed;bottom:0;left:0;right:0;
+      background:var(--white);
+      border-top:1px solid var(--gray-border);
+      display:flex;z-index:90;
+      padding:6px 0 calc(6px + env(safe-area-inset-bottom));
+      box-shadow:0 -4px 18px rgba(0,0,0,0.04);
+    }
+    .kapp-botnav-item{
+      flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+      background:transparent;border:0;padding:6px 4px;cursor:pointer;
+      font-family:inherit;color:var(--text-muted);
+      transition:color .15s;
+    }
+    .kapp-botnav-item .bn-ico{font-size:20px;line-height:1;}
+    .kapp-botnav-item .bn-lbl{font-size:10px;font-weight:600;letter-spacing:0.02em;}
+    .kapp-botnav-item.active{color:var(--red);}
+    .kapp-botnav-item:hover{color:var(--red);}
+    .kapp-botnav[hidden]{display:none;}
+    [data-theme="dark"] .kapp-botnav{background:#1E1C19;border-top-color:#2E2C27;}
+    /* Pad main content to clear bottom nav */
+    body.has-botnav #view-home,
+    body.has-botnav #view-fc-menu,
+    body.has-botnav #view-search,
+    body.has-botnav #view-kana,
+    body.has-botnav #view-settings{padding-bottom:72px;}
+
+    /* ── Settings tabs ── */
+    .stg-tabs{display:flex;gap:4px;padding:4px;background:var(--gray-bg);border-radius:12px;margin-bottom:18px;overflow-x:auto;}
+    .stg-tab{flex:1;min-width:80px;background:transparent;border:0;padding:10px 8px;border-radius:10px;font-family:inherit;font-size:12px;font-weight:600;color:var(--text-secondary);cursor:pointer;white-space:nowrap;transition:background .15s,color .15s;}
+    .stg-tab.active{background:var(--white);color:var(--red);box-shadow:0 1px 3px rgba(0,0,0,0.06);}
+    [data-theme="dark"] .stg-tabs{background:#252522;}
+    [data-theme="dark"] .stg-tab.active{background:#1E1C19;}
+    .stg-pane{display:none;}
+    .stg-pane.active{display:block;}
+
+    /* ── Streak milestone banner ── */
+    .kh-milestone{
+      background:linear-gradient(135deg,#FFD966,#FFA44D);
+      color:#3B1A00;border-radius:14px;padding:14px 16px;
+      display:flex;align-items:center;gap:12px;margin:10px 0 16px;
+      box-shadow:0 3px 14px rgba(255,164,77,0.3);
+      animation:kh-ms-in .5s ease-out;
+    }
+    @keyframes kh-ms-in{from{transform:translateY(-6px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+    .kh-milestone-ico{font-size:26px;line-height:1;}
+    .kh-milestone-title{font-size:14px;font-weight:800;}
+    .kh-milestone-sub{font-size:12px;opacity:0.85;}
+    .kh-milestone-close{background:transparent;border:0;color:inherit;opacity:0.6;cursor:pointer;font-size:18px;padding:0 4px;line-height:1;}
+    .kh-milestone-close:hover{opacity:1;}
+    [data-theme="dark"] .kh-milestone{background:linear-gradient(135deg,#7A5000,#A86A12);color:#FFF0C5;}
   </style>
 </head>
 <body>
@@ -1117,13 +1184,13 @@
       </div>
     </div>
     <div class="kh-hero-right">
-      <div class="kh-streak" id="kh-streak" style="display:none">🔥<span id="kh-streak-n">1</span></div>
-      <button class="kh-gear" id="kh-gear" title="Pengaturan">⚙</button>
+      <div class="kh-streak" id="kh-streak" style="display:none" role="status" aria-label="Streak harian"><span aria-hidden="true">🔥</span><span id="kh-streak-n">1</span></div>
+      <button class="kh-gear" id="kh-gear" title="Pengaturan" aria-label="Buka pengaturan"><span aria-hidden="true">⚙</span></button>
     </div>
   </div>
 
   <!-- Progress ring card -->
-  <div class="kh-progress">
+  <div class="kh-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Total kanji dikuasai" id="kh-progress-bar">
     <div class="kh-ring-wrap">
       <svg class="kh-ring" viewBox="0 0 88 88" aria-hidden="true">
         <defs>
@@ -1161,17 +1228,17 @@
   </div>
 
   <!-- Quick actions -->
-  <div class="kh-quick">
-    <button class="kh-q" id="kh-search">
-      <div class="kh-q-ico" style="background:#FEF3E8;">🔍</div>
+  <div class="kh-quick" role="group" aria-label="Aksi cepat">
+    <button class="kh-q" id="kh-search" aria-label="Cari kanji">
+      <div class="kh-q-ico" style="background:#FEF3E8;" aria-hidden="true">🔍</div>
       <div class="kh-q-lbl">Cari</div>
     </button>
-    <button class="kh-q" id="kh-kana">
-      <div class="kh-q-ico kh-q-ja">ア</div>
+    <button class="kh-q" id="kh-kana" aria-label="Belajar hiragana dan katakana">
+      <div class="kh-q-ico kh-q-ja" aria-hidden="true">ア</div>
       <div class="kh-q-lbl">Kana</div>
     </button>
-    <button class="kh-q" id="kh-flashcard">
-      <div class="kh-q-ico" style="background:#FFF3E0;">⚡</div>
+    <button class="kh-q" id="kh-flashcard" aria-label="Latihan flashcard">
+      <div class="kh-q-ico" style="background:#FFF3E0;" aria-hidden="true">⚡</div>
       <div class="kh-q-lbl">Latihan</div>
     </button>
   </div>
@@ -1270,7 +1337,7 @@
 <!-- ── FLASHCARD MENU ── -->
 <div id="view-fc-menu" class="kapp" style="display:none">
   <div class="fcm-header">
-    <button class="kd-back" id="fcm-back">‹</button>
+    <button class="kd-back" id="fcm-back" aria-label="Kembali ke beranda"><span aria-hidden="true">‹</span></button>
     <div class="fcm-title">Flashcard</div>
   </div>
   <!-- Semua level -->
@@ -1345,46 +1412,62 @@
 <!-- ── SETTINGS VIEW ── -->
 <div id="view-settings" class="kapp" style="display:none">
   <div class="stg-header">
-    <button class="kd-back" id="stg-back">‹</button>
+    <button class="kd-back" id="stg-back" aria-label="Kembali ke beranda"><span aria-hidden="true">‹</span></button>
     <div class="kd-header-title">Pengaturan</div>
   </div>
   <div class="stg-body">
-    <div class="stg-section-title">Akun</div>
-    <div id="stg-premium-card" style="background:linear-gradient(135deg,#FFF7E6,#FFE8B3);border:1px solid #FFD966;border-radius:14px;padding:14px 16px;margin-bottom:16px;">
-      <div id="stg-premium-status" style="font-weight:700;font-size:14px;margin-bottom:4px;color:#7A5000;">⭐ Status: Free</div>
-      <div id="stg-premium-desc" style="font-size:12px;color:#8a6a20;margin-bottom:10px;">Upgrade Premium Rp 99.000/tahun untuk buka N4–N1 + Semua Level.</div>
-      <button id="stg-upgrade-btn" style="background:#C41B1B;color:#fff;border:0;border-radius:10px;padding:10px 14px;font-weight:700;font-size:13px;cursor:pointer;width:100%;">Lihat Detail Premium</button>
+    <div class="stg-tabs" role="tablist" aria-label="Kategori pengaturan">
+      <button class="stg-tab active" data-pane="akun" role="tab" aria-selected="true" aria-controls="stg-pane-akun">Akun</button>
+      <button class="stg-tab" data-pane="latihan" role="tab" aria-selected="false" aria-controls="stg-pane-latihan">Latihan</button>
+      <button class="stg-tab" data-pane="notifikasi" role="tab" aria-selected="false" aria-controls="stg-pane-notifikasi">Notifikasi</button>
+      <button class="stg-tab" data-pane="data" role="tab" aria-selected="false" aria-controls="stg-pane-data">Data</button>
     </div>
-    <div class="stg-divider"></div>
-    <div class="stg-section-title">Algoritma FSRS</div>
-    <div class="stg-row">
-      <div class="stg-label">
-        <div class="stg-label-name">Target Retensi</div>
-        <div class="stg-label-desc">Seberapa sering ingin mengingat kanji</div>
+
+    <div class="stg-pane active" id="stg-pane-akun" role="tabpanel" aria-labelledby="stg-tab-akun">
+      <div id="stg-premium-card" style="background:linear-gradient(135deg,#FFF7E6,#FFE8B3);border:1px solid #FFD966;border-radius:14px;padding:14px 16px;margin-bottom:16px;">
+        <div id="stg-premium-status" style="font-weight:700;font-size:14px;margin-bottom:4px;color:#7A5000;"><span aria-hidden="true">⭐</span> Status: Free</div>
+        <div id="stg-premium-desc" style="font-size:12px;color:#8a6a20;margin-bottom:10px;">Upgrade Premium Rp 99.000/tahun untuk buka N4–N1 + Semua Level.</div>
+        <button id="stg-upgrade-btn" style="background:#C41B1B;color:#fff;border:0;border-radius:10px;padding:10px 14px;font-weight:700;font-size:13px;cursor:pointer;width:100%;">Lihat Detail Premium</button>
       </div>
-      <input class="stg-range" type="range" id="stg-retention" min="0.70" max="0.99" step="0.01"/>
-      <div class="stg-val" id="stg-retention-val">90%</div>
     </div>
-    <div class="stg-row">
-      <div class="stg-label">
-        <div class="stg-label-name">Kartu baru per sesi Flashcard</div>
-        <div class="stg-label-desc">Maksimal kanji baru yang ditampilkan</div>
+
+    <div class="stg-pane" id="stg-pane-latihan" role="tabpanel" aria-labelledby="stg-tab-latihan" hidden>
+      <div class="stg-section-title">Algoritma FSRS</div>
+      <div class="stg-row">
+        <div class="stg-label">
+          <div class="stg-label-name">Target Retensi</div>
+          <div class="stg-label-desc">Seberapa sering ingin mengingat kanji</div>
+        </div>
+        <input class="stg-range" type="range" id="stg-retention" min="0.70" max="0.99" step="0.01" aria-label="Target retensi persen"/>
+        <div class="stg-val" id="stg-retention-val">90%</div>
       </div>
-      <input class="stg-input" type="number" id="stg-newlimit" min="5" max="100"/>
-    </div>
-    <div class="stg-row">
-      <div class="stg-label">
-        <div class="stg-label-name">Ukuran sesi Ulasan</div>
-        <div class="stg-label-desc">Maksimal kartu per sesi Review Mode</div>
+      <div class="stg-row">
+        <div class="stg-label">
+          <div class="stg-label-name">Kartu baru per sesi Flashcard</div>
+          <div class="stg-label-desc">Maksimal kanji baru yang ditampilkan</div>
+        </div>
+        <input class="stg-input" type="number" id="stg-newlimit" min="5" max="100" aria-label="Jumlah kartu baru per sesi"/>
       </div>
-      <input class="stg-input" type="number" id="stg-session" min="5" max="200"/>
+      <div class="stg-row">
+        <div class="stg-label">
+          <div class="stg-label-name">Ukuran sesi Ulasan</div>
+          <div class="stg-label-desc">Maksimal kartu per sesi Review Mode</div>
+        </div>
+        <input class="stg-input" type="number" id="stg-session" min="5" max="200" aria-label="Ukuran sesi ulasan"/>
+      </div>
     </div>
-    <div class="stg-divider"></div>
-    <div class="stg-section-title">Notifikasi</div>
-    <button class="stg-notif-btn" id="stg-notif-btn">🔔 Aktifkan pengingat harian</button>
-    <div class="stg-divider" style="margin-top:16px;"></div>
-    <div class="stg-section-title" style="margin-top:4px;">Data</div>
-    <button class="stg-danger-btn" id="stg-reset-btn">🗑 Reset semua progress hafalan</button>
+
+    <div class="stg-pane" id="stg-pane-notifikasi" role="tabpanel" aria-labelledby="stg-tab-notifikasi" hidden>
+      <div class="stg-section-title">Pengingat</div>
+      <button class="stg-notif-btn" id="stg-notif-btn"><span aria-hidden="true">🔔</span> Aktifkan pengingat harian</button>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:10px;line-height:1.5;">Kami kirim satu notifikasi saat ada kanji yang perlu diulang. Bisa dimatikan kapan saja.</p>
+    </div>
+
+    <div class="stg-pane" id="stg-pane-data" role="tabpanel" aria-labelledby="stg-tab-data" hidden>
+      <div class="stg-section-title">Zona Berbahaya</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.5;">Tindakan di bawah ini tidak dapat dibatalkan. Pastikan Anda benar-benar yakin sebelum melanjutkan.</p>
+      <button class="stg-danger-btn" id="stg-reset-btn"><span aria-hidden="true">🗑</span> Reset semua progress hafalan</button>
+    </div>
   </div>
 </div>
 
@@ -1392,7 +1475,7 @@
 <div id="view-review" class="rv-view kapp" style="display:none">
   <!-- Header: back + progress -->
   <div class="rv-header">
-    <button class="rv-back-btn" id="rv-back">‹</button>
+    <button class="rv-back-btn" id="rv-back" aria-label="Keluar dari ulasan"><span aria-hidden="true">‹</span></button>
     <div class="rv-header-mid">
       <div class="rv-counter" id="rv-counter">0 / 0</div>
       <div class="rv-pbar-wrap"><div class="rv-pbar-fill" id="rv-pbar-fill"></div></div>
@@ -1418,20 +1501,20 @@
   </div>
 
   <!-- Tombol rating (muncul setelah kartu dibalik) -->
-  <div class="rv-ratings" id="rv-ratings" style="visibility:hidden">
-    <button class="rv-btn rv-btn-1" id="rv-btn-1">
+  <div class="rv-ratings" id="rv-ratings" style="visibility:hidden" role="group" aria-label="Rating jawaban">
+    <button class="rv-btn rv-btn-1" id="rv-btn-1" aria-label="Rating: Lupa (tombol 1)" aria-keyshortcuts="1">
       <span class="rv-btn-label">Lupa</span>
       <span class="rv-btn-interval" id="rv-int-1">—</span>
     </button>
-    <button class="rv-btn rv-btn-2" id="rv-btn-2">
+    <button class="rv-btn rv-btn-2" id="rv-btn-2" aria-label="Rating: Susah (tombol 2)" aria-keyshortcuts="2">
       <span class="rv-btn-label">Susah</span>
       <span class="rv-btn-interval" id="rv-int-2">—</span>
     </button>
-    <button class="rv-btn rv-btn-3" id="rv-btn-3">
+    <button class="rv-btn rv-btn-3" id="rv-btn-3" aria-label="Rating: Bisa (tombol 3)" aria-keyshortcuts="3">
       <span class="rv-btn-label">Bisa</span>
       <span class="rv-btn-interval" id="rv-int-3">—</span>
     </button>
-    <button class="rv-btn rv-btn-4" id="rv-btn-4">
+    <button class="rv-btn rv-btn-4" id="rv-btn-4" aria-label="Rating: Mudah (tombol 4)" aria-keyshortcuts="4">
       <span class="rv-btn-label">Mudah</span>
       <span class="rv-btn-interval" id="rv-int-4">—</span>
     </button>
@@ -1469,7 +1552,7 @@
 <div id="view-set" class="kapp" style="display:none">
   <div class="sv-header">
     <div class="sv-header-row">
-      <button class="kd-back" id="set-back">‹</button>
+      <button class="kd-back" id="set-back" aria-label="Kembali ke beranda"><span aria-hidden="true">‹</span></button>
       <div class="sv-title" id="set-title">Set</div>
       <div class="sv-size-wrap">
         <span>Set tiap</span>
@@ -1495,7 +1578,7 @@
 <div id="view-list" class="kapp" style="display:none">
   <div class="kapp-toolbar">
     <div class="kapp-toolbar-row">
-      <button class="kd-back" id="list-back" style="margin-right:4px;">‹</button>
+      <button class="kd-back" id="list-back" style="margin-right:4px;" aria-label="Kembali"><span aria-hidden="true">‹</span></button>
       <div class="kapp-toolbar-title" id="list-title" style="font-size:15px;font-weight:600;flex:1;color:var(--text-primary);"></div>
       <div class="kapp-tactions"></div>
     </div>
@@ -1520,7 +1603,7 @@
 <!-- ── KANA VIEW ── -->
 <div id="view-kana" class="kapp" style="display:none">
   <div class="kana-header">
-    <button class="kd-back" id="kana-back">‹</button>
+    <button class="kd-back" id="kana-back" aria-label="Kembali ke beranda"><span aria-hidden="true">‹</span></button>
     <div class="kana-title">Kana</div>
   </div>
   <div class="kana-content" id="kana-content"></div>
@@ -1529,10 +1612,10 @@
 <!-- ── DETAIL VIEW ── -->
 <div id="view-detail" class="kapp" style="display:none">
   <div class="kd-header">
-    <button class="kd-back" id="kd-back">‹</button>
+    <button class="kd-back" id="kd-back" aria-label="Kembali"><span aria-hidden="true">‹</span></button>
     <div class="kd-header-title" id="kd-title">Kanji 日</div>
     <div>
-      <button class="kd-icon-btn" id="kd-star" title="Tandai hafal">☆</button>
+      <button class="kd-icon-btn" id="kd-star" title="Tandai hafal" aria-label="Tandai kanji ini hafal" aria-pressed="false"><span aria-hidden="true">☆</span></button>
     </div>
   </div>
   <div class="kd-content">
@@ -1553,17 +1636,14 @@
       <div class="kd-row">
         <div class="kd-row-lbl">翻訳</div>
         <div class="kd-row-val meaning" id="kd-meaning">—</div>
-        <div class="kd-row-edit">✏</div>
       </div>
       <div class="kd-row">
         <div class="kd-row-lbl">音</div>
         <div class="kd-row-val reading" id="kd-on">—</div>
-        <div class="kd-row-edit">✏</div>
       </div>
       <div class="kd-row">
         <div class="kd-row-lbl">訓</div>
         <div class="kd-row-val reading" id="kd-kun">—</div>
-        <div class="kd-row-edit">✏</div>
       </div>
     </div>
     <div class="kd-section kd-coll" id="kd-vocab-coll">
@@ -1588,7 +1668,7 @@
 <div id="view-flashcard" class="rv-view kapp" style="display:none">
   <!-- Header: back + counter + progress bar -->
   <div class="rv-header">
-    <button class="rv-back-btn" id="fc-back">‹</button>
+    <button class="rv-back-btn" id="fc-back" aria-label="Keluar dari flashcard"><span aria-hidden="true">‹</span></button>
     <div class="rv-header-mid">
       <div class="rv-counter" id="fc-counter">0 / 0</div>
       <div class="rv-pbar-wrap"><div class="rv-pbar-fill" id="fc-pbar-fill"></div></div>
@@ -1615,20 +1695,20 @@
   </div>
 
   <!-- Tombol rating (muncul setelah kartu dibalik) -->
-  <div class="rv-ratings" id="fc-ratings" style="display:none">
-    <button class="rv-btn rv-btn-1" id="fc-btn-1">
+  <div class="rv-ratings" id="fc-ratings" style="display:none" role="group" aria-label="Rating jawaban">
+    <button class="rv-btn rv-btn-1" id="fc-btn-1" aria-label="Rating: Lupa (tombol 1)" aria-keyshortcuts="1">
       <span class="rv-btn-label">Lupa</span>
       <span class="rv-btn-interval" id="fc-int-1">—</span>
     </button>
-    <button class="rv-btn rv-btn-2" id="fc-btn-2">
+    <button class="rv-btn rv-btn-2" id="fc-btn-2" aria-label="Rating: Susah (tombol 2)" aria-keyshortcuts="2">
       <span class="rv-btn-label">Susah</span>
       <span class="rv-btn-interval" id="fc-int-2">—</span>
     </button>
-    <button class="rv-btn rv-btn-3" id="fc-btn-3">
+    <button class="rv-btn rv-btn-3" id="fc-btn-3" aria-label="Rating: Bisa (tombol 3)" aria-keyshortcuts="3">
       <span class="rv-btn-label">Bisa</span>
       <span class="rv-btn-interval" id="fc-int-3">—</span>
     </button>
-    <button class="rv-btn rv-btn-4" id="fc-btn-4">
+    <button class="rv-btn rv-btn-4" id="fc-btn-4" aria-label="Rating: Mudah (tombol 4)" aria-keyshortcuts="4">
       <span class="rv-btn-label">Mudah</span>
       <span class="rv-btn-interval" id="fc-int-4">—</span>
     </button>
@@ -1655,10 +1735,26 @@
 
 <!-- ── BOTTOM BAR ── -->
 <div class="kd-bottom-bar" id="kd-bottom-bar">
-  <button class="kd-nav-btn" id="kd-prev"><span class="kd-nav-arrow">‹</span><span class="kd-nav-label">Sebelumnya</span></button>
+  <button class="kd-nav-btn" id="kd-prev" aria-label="Kanji sebelumnya"><span class="kd-nav-arrow" aria-hidden="true">‹</span><span class="kd-nav-label">Sebelumnya</span></button>
   <div class="kd-counter" id="kd-counter">1/120</div>
-  <button class="kd-nav-btn" id="kd-next"><span class="kd-nav-label">Berikutnya</span><span class="kd-nav-arrow">›</span></button>
+  <button class="kd-nav-btn" id="kd-next" aria-label="Kanji berikutnya"><span class="kd-nav-label">Berikutnya</span><span class="kd-nav-arrow" aria-hidden="true">›</span></button>
 </div>
+
+<!-- ── BOTTOM NAV (main views only; disembunyikan saat detail/review/flashcard) ── -->
+<nav class="kapp-botnav" id="kapp-botnav" aria-label="Navigasi utama">
+  <button class="kapp-botnav-item" data-nav="home" aria-label="Beranda">
+    <span class="bn-ico" aria-hidden="true">🏠</span><span class="bn-lbl">Beranda</span>
+  </button>
+  <button class="kapp-botnav-item" data-nav="search" aria-label="Cari kanji">
+    <span class="bn-ico" aria-hidden="true">🔍</span><span class="bn-lbl">Cari</span>
+  </button>
+  <button class="kapp-botnav-item" data-nav="flashcard" aria-label="Latihan flashcard">
+    <span class="bn-ico" aria-hidden="true">⚡</span><span class="bn-lbl">Latihan</span>
+  </button>
+  <button class="kapp-botnav-item" data-nav="settings" aria-label="Pengaturan">
+    <span class="bn-ico" aria-hidden="true">⚙</span><span class="bn-lbl">Pengaturan</span>
+  </button>
+</nav>
 
 <script src="analytics.js"></script>
 <script src="api-client.js"></script>
@@ -8695,6 +8791,9 @@ function buildDeck(list){
 
 // ─── SET VIEW ─────────────────────────────────────────────────────────────────
 const ALL_VIEWS = ['view-home','view-set','view-list','view-detail','view-kana','view-search','view-review','view-fc-menu','view-settings'];
+// Views yang menampilkan bottom-nav (main navigation) vs yang tidak (detail/review/flashcard)
+const BOTNAV_VIEWS = new Set(['view-home','view-search','view-fc-menu','view-settings','view-set','view-kana']);
+const BOTNAV_MAP = { 'view-home':'home', 'view-search':'search', 'view-fc-menu':'flashcard', 'view-settings':'settings', 'view-set':'flashcard', 'view-kana':'home' };
 function showOnly(id){
   ALL_VIEWS.forEach(v => {
     const el = document.getElementById(v);
@@ -8704,6 +8803,20 @@ function showOnly(id){
   const fc = document.getElementById('view-flashcard');
   if(fc) fc.style.display = 'none';
   document.getElementById('kd-bottom-bar').classList.toggle('on', id === 'view-detail');
+
+  // Sync bottom-nav: tampilkan hanya di main views, highlight tab aktif
+  const botnav = document.getElementById('kapp-botnav');
+  if (botnav) {
+    const show = BOTNAV_VIEWS.has(id);
+    botnav.hidden = !show;
+    document.body.classList.toggle('has-botnav', show);
+    const active = BOTNAV_MAP[id];
+    botnav.querySelectorAll('.kapp-botnav-item').forEach(b => {
+      b.classList.toggle('active', b.dataset.nav === active);
+      b.setAttribute('aria-current', b.dataset.nav === active ? 'page' : 'false');
+    });
+  }
+
   window.scrollTo(0, 0);
 }
 
@@ -8798,6 +8911,11 @@ function updateHomeStats(){
   if(elTPbar)elTPbar.style.width = totalPct + '%';
   const elTRing = document.getElementById('kh-ring-circle');
   if(elTRing) elTRing.style.strokeDasharray = totalPct + ' 100';
+  const elProgBar = document.getElementById('kh-progress-bar');
+  if(elProgBar) {
+    elProgBar.setAttribute('aria-valuenow', String(totalPct));
+    elProgBar.setAttribute('aria-valuetext', `${totalKn} dari ${totalAll} kanji dikuasai (${totalPct}%)`);
+  }
 
   const labels = {N5:'pemula',N4:'dasar',N3:'menengah',N2:'lanjutan',N1:'mahir'};
   let totalDue = 0;
@@ -9691,6 +9809,18 @@ document.getElementById('kh-n2').addEventListener('click', () => { window.track?
 document.getElementById('kh-n1').addEventListener('click', () => { window.track?.('level_click',{level:'N1'}); if (requirePremium('Level N1')) showSets('N1'); });
 document.getElementById('kh-kana').addEventListener('click', showKana);
 
+// ─── BOTTOM NAV EVENTS ───────────────────────────────────────────────────────
+document.querySelectorAll('#kapp-botnav .kapp-botnav-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const nav = btn.dataset.nav;
+    window.track?.('botnav_click', { tab: nav });
+    if (nav === 'home') showHome();
+    else if (nav === 'search') showSearch();
+    else if (nav === 'flashcard') showFcMenu();
+    else if (nav === 'settings') showSettings();
+  });
+});
+
 // ─── SET EVENTS ───────────────────────────────────────────────────────────────
 document.getElementById('set-back').addEventListener('click', showHome);
 document.getElementById('set-size-sel').addEventListener('change', function(){
@@ -9767,6 +9897,54 @@ function displayStreak(){
   if(!el||!en) return;
   if((data.count||0) >= 2){ en.textContent=data.count; el.style.display=''; }
   else el.style.display='none';
+  maybeShowStreakMilestone(data.count || 0);
+}
+
+// Tampilkan banner perayaan hanya sekali per milestone (7, 14, 30, 60, 100, 365 hari)
+const STREAK_MILESTONES = [
+  { n: 7,   title: '7 hari berturut! 🔥',    sub: 'Kebiasaan mulai terbentuk. Pertahankan!' },
+  { n: 14,  title: '2 minggu konsisten! 💪', sub: 'Dua minggu non-stop. Luar biasa.' },
+  { n: 30,  title: '30 hari! 🏆',           sub: 'Satu bulan penuh dedikasi.' },
+  { n: 60,  title: '60 hari tanpa libur! 🎯', sub: 'Komitmen sejati pembelajar serius.' },
+  { n: 100, title: '100 hari! 🌟',          sub: 'Kamu sudah di level berbeda.' },
+  { n: 365, title: 'Satu tahun penuh! 👑',   sub: 'Pencapaian langka. Selamat!' },
+];
+function maybeShowStreakMilestone(count){
+  const hit = STREAK_MILESTONES.find(m => m.n === count);
+  if (!hit) return;
+  const seen = (localStorage.getItem('ez-streak-milestones-seen') || '').split(',');
+  if (seen.includes(String(count))) return;
+
+  const home = document.getElementById('view-home');
+  if (!home) return;
+  const existing = document.getElementById('kh-milestone');
+  if (existing) existing.remove();
+
+  const banner = document.createElement('div');
+  banner.id = 'kh-milestone';
+  banner.className = 'kh-milestone';
+  banner.setAttribute('role', 'status');
+  banner.innerHTML = `
+    <div class="kh-milestone-ico" aria-hidden="true">🔥</div>
+    <div style="flex:1;">
+      <div class="kh-milestone-title">${hit.title}</div>
+      <div class="kh-milestone-sub">${hit.sub}</div>
+    </div>
+    <button class="kh-milestone-close" aria-label="Tutup pemberitahuan">&times;</button>`;
+
+  // Sisipkan setelah progress ring (sebelum due-review pill atau quick-actions)
+  const progress = home.querySelector('.kh-progress');
+  if (progress && progress.parentNode === home) {
+    progress.insertAdjacentElement('afterend', banner);
+  } else {
+    home.insertBefore(banner, home.firstChild.nextSibling);
+  }
+  banner.querySelector('.kh-milestone-close').onclick = () => banner.remove();
+  window.track?.('streak_milestone', { days: count });
+
+  // Tandai sudah dilihat
+  const next = [...new Set([...seen, String(count)])].filter(Boolean).join(',');
+  localStorage.setItem('ez-streak-milestones-seen', next);
 }
 
 // ─── TOAST ───────────────────────────────────────────────────────────────────
@@ -9894,6 +10072,24 @@ function showSettings(){
 
 document.getElementById('kh-gear').addEventListener('click', showSettings);
 document.getElementById('stg-back').addEventListener('click', ()=>showHome());
+
+// ─── SETTINGS TABS ────────────────────────────────────────────────────────────
+document.querySelectorAll('#view-settings .stg-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const pane = tab.dataset.pane;
+    window.track?.('settings_tab', { pane });
+    document.querySelectorAll('#view-settings .stg-tab').forEach(t => {
+      const on = t === tab;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    document.querySelectorAll('#view-settings .stg-pane').forEach(p => {
+      const on = p.id === 'stg-pane-' + pane;
+      p.classList.toggle('active', on);
+      p.hidden = !on;
+    });
+  });
+});
 
 // Retention slider live update
 document.getElementById('stg-retention').addEventListener('input', e => {
@@ -10250,20 +10446,27 @@ function applyLockedUi() {
   const style = document.createElement('style');
   style.id = 'locked-ui-style';
   style.textContent = `
-    .kh-item.locked .kh-name::after,
+    .kh-level.locked .kh-level-badge { filter: grayscale(0.25); opacity: 0.85; }
+    .kh-level.locked .kh-level-name::after {
+      content: ' 🔒';
+      font-size: 0.85em;
+      opacity: 0.85;
+      margin-left: 2px;
+    }
     .fcm-card.locked .fcm-name::after,
     .fcm-all-card.locked .fcm-all-name::after {
       content: ' 🔒';
       font-size: 0.85em;
-      opacity: 0.7;
+      opacity: 0.85;
     }
-    .kh-item.locked { opacity: 0.92; }
   `;
   if (!document.getElementById('locked-ui-style')) document.head.appendChild(style);
 
   ['kh-n4','kh-n3','kh-n2','kh-n1'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.classList.add('locked');
+    if (!el) return;
+    el.classList.add('locked');
+    el.setAttribute('aria-label', `Level ${id.slice(3).toUpperCase()} — butuh Premium untuk dibuka`);
   });
   const fcmAll = document.getElementById('fcm-all');
   if (fcmAll) fcmAll.classList.add('locked');
@@ -10325,6 +10528,8 @@ async function checkAuth() {
 
   if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
     window._isLoggedIn = true;
+    window._isPremium = _devPremiumFlag();
+    if (!window._isPremium) applyLockedUi();
     return;
   }
 
@@ -10377,14 +10582,16 @@ function showWelcomeIfJustLoggedIn(user) {
 
 async function loadPremiumStatus() {
   try {
-    if (typeof window.ezApi !== 'function') { window._isPremium = _devPremiumFlag(); return; }
+    if (typeof window.ezApi !== 'function') { window._isPremium = _devPremiumFlag(); applyLockedUi(); return; }
     const res = await window.ezApi('/subscription/status');
-    if (!res.ok) { window._isPremium = _devPremiumFlag(); return; }
+    if (!res.ok) { window._isPremium = _devPremiumFlag(); applyLockedUi(); return; }
     const data = await res.json();
     window._isPremium = !!data?.isPremium || _devPremiumFlag();
     if (window._isPremium) removeLockedUi();
+    else applyLockedUi();
   } catch (e) {
     window._isPremium = _devPremiumFlag();
+    if (!window._isPremium) applyLockedUi();
   }
 }
 
