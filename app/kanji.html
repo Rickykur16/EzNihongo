@@ -9146,6 +9146,8 @@ function extractKanji(str) {
 function navToKanji(k) {
   const idx = KD.findIndex(d => d.k === k);
   if (idx < 0) return;
+  const target = KD[idx];
+  if (target && !isFree(target.lv) && !requirePremium('Level ' + target.lv)) return;
   _detailNavStack.push({ deck: deck, idx: detailIdx, fromView: fromView });
   deck = KD;
   detailIdx = idx;
@@ -9249,7 +9251,10 @@ function renderDetail(){
       const kd = KD.find(x => x.k === k);
       if (kd) {
         const col = lvColor(kd.lv);
-        return `<div class="kd-vi-chip" data-k="${k}"><div class="kd-vi-chip-k">${k}</div><div class="kd-vi-chip-m">${kd.m}</div><span class="kd-vi-chip-lv lv-${kd.lv}" style="background:${col.bg};color:${col.c}">${kd.lv}</span></div>`;
+        const locked = !isFree(kd.lv) && !isPremium();
+        const lockedCls = locked ? ' chip-locked' : '';
+        const lockIcon = locked ? ' 🔒' : '';
+        return `<div class="kd-vi-chip${lockedCls}" data-k="${k}"><div class="kd-vi-chip-k">${k}</div><div class="kd-vi-chip-m">${kd.m}</div><span class="kd-vi-chip-lv lv-${kd.lv}" style="background:${col.bg};color:${col.c}">${kd.lv}${lockIcon}</span></div>`;
       }
       return `<div class="kd-vi-chip chip-unknown"><div class="kd-vi-chip-k">${k}</div><div class="kd-vi-chip-m">—</div></div>`;
     }).join('');
@@ -9711,6 +9716,8 @@ function renderSearchResults(q){
     }).join('');
     body.querySelectorAll('.sr-item').forEach(el => {
       el.addEventListener('click', () => {
+        const target = KD.find(d => d.k === el.dataset.k);
+        if (target && !isFree(target.lv) && !requirePremium('Level ' + target.lv)) return;
         addHistory(q);
         fromView = 'search';
         deck = KD.filter(d => matchKanji(d, q));
@@ -9750,6 +9757,8 @@ function renderSearchResults(q){
     }).join('');
     body.querySelectorAll('.sv-item').forEach(el => {
       el.addEventListener('click', () => {
+        const target = KD.find(d => d.k === el.dataset.k);
+        if (target && !isFree(target.lv) && !requirePremium('Level ' + target.lv)) return;
         addHistory(q);
         fromView = 'search';
         deck = KD.filter(d => matchKanji(d, q));
