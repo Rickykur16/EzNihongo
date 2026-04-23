@@ -1945,11 +1945,32 @@
       overscroll-behavior: contain;
       scrollbar-width: thin;
       scrollbar-color: #e0ddd8 transparent;
+      transition:
+        width 0.25s cubic-bezier(0.2, 0, 0.1, 1),
+        max-width 0.25s cubic-bezier(0.2, 0, 0.1, 1),
+        padding 0.25s cubic-bezier(0.2, 0, 0.1, 1),
+        opacity 0.2s ease,
+        border-color 0.2s ease;
     }
     .sidebar::-webkit-scrollbar { width: 4px; }
     .sidebar::-webkit-scrollbar-thumb { background: #dedad4; border-radius: 4px; }
 
-    .sidebar-toggle { display: none !important; }
+    /* Collapsed state — tombol di nav meng-toggle class ini di .learning-layout */
+    .learning-layout.sidebar-collapsed .sidebar {
+      width: 0;
+      max-width: 0;
+      padding-left: 0;
+      padding-right: 0;
+      border-right-color: transparent;
+      opacity: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .learning-layout.sidebar-collapsed .main-content {
+      max-width: 960px;
+    }
+
+    .sidebar-toggle { display: inline-flex !important; }
     .sidebar-backdrop { display: none !important; }
     .sidebar-close { display: none !important; }
 
@@ -1958,6 +1979,7 @@
       min-width: 0;
       max-width: 800px;
       padding: 32px 40px;
+      transition: max-width 0.25s cubic-bezier(0.2, 0, 0.1, 1);
     }
   }
 
@@ -3670,6 +3692,9 @@ function renderLearning(courseSlug) {
   renderLesson();
   renderRightPanel();
   document.getElementById('sidebar-toggle')?.classList.add('visible');
+  if (isDesktop()) {
+    applySidebarCollapse(localStorage.getItem(SIDEBAR_KEY) === '1');
+  }
 }
 
 // Pro Tips — shown in right panel, cycleable via click.
@@ -4469,7 +4494,28 @@ window.selectLesson = (moduleId, lessonId) => {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
+const SIDEBAR_KEY = 'eznihongo:sidebarCollapsed';
+const isDesktop = () => window.innerWidth >= 861;
+function applySidebarCollapse(collapsed) {
+  const layout = document.querySelector('.learning-layout');
+  if (!layout) return;
+  layout.classList.toggle('sidebar-collapsed', collapsed);
+  const btn = document.getElementById('sidebar-toggle');
+  const btnLabel = btn && btn.querySelector('span');
+  if (btnLabel) btnLabel.textContent = collapsed ? 'Menu' : 'Tutup';
+  if (btn) btn.setAttribute('aria-label', collapsed ? 'Buka menu' : 'Tutup menu');
+}
+window.applySidebarCollapse = applySidebarCollapse;
+
 window.toggleSidebar = () => {
+  // Desktop: collapse/expand persistent sidebar. Mobile: drawer.
+  if (isDesktop()) {
+    const cur = localStorage.getItem(SIDEBAR_KEY) === '1';
+    const next = !cur;
+    localStorage.setItem(SIDEBAR_KEY, next ? '1' : '0');
+    applySidebarCollapse(next);
+    return;
+  }
   const sb = document.getElementById('sidebar');
   const bd = document.getElementById('sidebar-backdrop');
   if (!sb) return;
@@ -4486,9 +4532,12 @@ window.closeSidebar = () => {
   document.body.style.overflow = '';
 };
 
-// Auto-close drawer when viewport resized to desktop
+// Sync state when crossing the desktop breakpoint.
 window.addEventListener('resize', () => {
-  if (window.innerWidth > 860) closeSidebar();
+  if (isDesktop()) {
+    closeSidebar();
+    applySidebarCollapse(localStorage.getItem(SIDEBAR_KEY) === '1');
+  }
 });
 
 window.toggleModule = (moduleId) => {
