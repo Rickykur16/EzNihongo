@@ -145,6 +145,7 @@ a { text-decoration: none; color: inherit; }
   display: none;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
   gap: 5px;
   background: none;
   border: none;
@@ -155,6 +156,7 @@ a { text-decoration: none; color: inherit; }
 }
 .btn-hamburger span {
   display: block;
+  width: 22px;
   height: 2px;
   background: var(--text-primary);
   border-radius: 2px;
