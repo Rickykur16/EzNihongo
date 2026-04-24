@@ -10386,9 +10386,14 @@ function openUpgradeModal(feature) {
   };
 }
 
-// Midtrans config — set via build or replace before deploy
+// Midtrans config — set via build or replace before deploy.
+// See backend/MIDTRANS.md for how to wire this up.
 const MIDTRANS_CLIENT_KEY = window.MIDTRANS_CLIENT_KEY || 'SB-Mid-client-REPLACE_ME';
 const MIDTRANS_SNAP_URL = window.MIDTRANS_SNAP_URL || 'https://app.sandbox.midtrans.com/snap/snap.js';
+if (MIDTRANS_CLIENT_KEY === 'SB-Mid-client-REPLACE_ME') {
+  console.warn('[Midtrans] Client key belum di-set — payment Snap tidak akan load. ' +
+               'Ganti MIDTRANS_CLIENT_KEY di kanji.html atau inject window.MIDTRANS_CLIENT_KEY.');
+}
 
 function loadSnapJs() {
   return new Promise((resolve, reject) => {

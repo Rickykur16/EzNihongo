@@ -1,5 +1,12 @@
 # EzNihongo — Midtrans + Supabase Setup
 
+> **⚠️ DEPRECATED — jangan diikuti.**
+> Integrasi Midtrans sudah dipindah dari Supabase Edge Functions ke
+> Express backend di VPS. Dokumen ini ditinggal untuk keperluan arsip.
+> Lihat panduan terbaru di **[`backend/MIDTRANS.md`](../backend/MIDTRANS.md)**.
+
+---
+
 Panduan deploy paywall premium (Rp 99.000/tahun) end-to-end.
 
 ## 1. Buat akun Midtrans
