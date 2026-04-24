@@ -92,9 +92,10 @@
     }
     .nav-hamburger span {
       display: block; width: 22px; height: 2px;
-      background: var(--text); border-radius: 2px;
+      background: #000; border-radius: 2px;
       transition: transform 0.2s, opacity 0.2s;
     }
+    [data-theme="dark"] .nav-hamburger span { background: #fff; }
     .nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
     .nav-hamburger.open span:nth-child(2) { opacity: 0; }
     .nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
@@ -102,10 +103,9 @@
     .nav-mobile-menu {
       display: none;
       flex-direction: column;
-      background: rgba(255,250,245,0.82);
-      backdrop-filter: blur(22px) saturate(180%);
-      -webkit-backdrop-filter: blur(22px) saturate(180%);
+      background: #ffffff;
       border-top: 1px solid rgba(0,0,0,0.06);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.12);
       padding: 16px 20px;
       gap: 4px;
     }

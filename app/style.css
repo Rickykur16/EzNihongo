@@ -158,11 +158,12 @@ a { text-decoration: none; color: inherit; }
   display: block;
   width: 22px;
   height: 2px;
-  background: var(--text-primary);
+  background: #000;
   border-radius: 2px;
   transition: all 0.2s;
   transform-origin: center;
 }
+[data-theme="dark"] .btn-hamburger span { background: #fff; }
 .btn-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
 .btn-hamburger.open span:nth-child(2) { opacity: 0; }
 .btn-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
@@ -178,8 +179,9 @@ a { text-decoration: none; color: inherit; }
     position: absolute;
     top: 100%;
     left: 0; right: 0;
-    background: var(--white);
+    background: #ffffff;
     border-bottom: 1px solid var(--gray-border);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.12);
     flex-direction: column;
     padding: 16px 20px 20px;
     gap: 0;
@@ -203,6 +205,7 @@ a { text-decoration: none; color: inherit; }
   [data-theme="dark"] .nav-links {
     background: #1A1917;
     border-color: var(--gray-border);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.45);
   }
 }
 
