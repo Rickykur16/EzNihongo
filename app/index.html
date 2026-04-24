@@ -54,9 +54,11 @@
     /* NAV */
     .nav {
       position: sticky; top: 0; z-index: 50;
-      background: rgba(255,250,245,0.85);
-      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-      border-bottom: 1px solid var(--border);
+      background: rgba(255,250,245,0.72);
+      backdrop-filter: blur(22px) saturate(180%);
+      -webkit-backdrop-filter: blur(22px) saturate(180%);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.5) inset;
     }
     .nav-inner {
       display: flex; align-items: center; justify-content: space-between;
@@ -100,8 +102,10 @@
     .nav-mobile-menu {
       display: none;
       flex-direction: column;
-      background: rgba(255,250,245,0.97);
-      border-top: 1px solid var(--border);
+      background: rgba(255,250,245,0.82);
+      backdrop-filter: blur(22px) saturate(180%);
+      -webkit-backdrop-filter: blur(22px) saturate(180%);
+      border-top: 1px solid rgba(0,0,0,0.06);
       padding: 16px 20px;
       gap: 4px;
     }
