@@ -10426,7 +10426,16 @@ async function startMidtransCheckout() {
     onSuccess: () => { window.track?.('payment_success'); setTimeout(() => location.reload(), 800); },
     onPending: () => { window.track?.('payment_pending'); alert('Pembayaran menunggu konfirmasi. Kamu akan upgrade otomatis setelah konfirmasi.'); },
     onError:   (err) => { window.track?.('payment_error', { err: String(err) }); alert('Pembayaran gagal. Coba lagi ya.'); },
-    onClose:   () => { window.track?.('payment_modal_closed'); },
+    // Async methods (GoPay/QRIS/VA) often see webhook fire before the user
+    // dismisses the popup, so onSuccess never runs. Re-check status here.
+    onClose: async () => {
+      window.track?.('payment_modal_closed');
+      try {
+        const r = await window.ezApi('/subscription/status');
+        const d = await r.json().catch(() => ({}));
+        if (d.isPremium) location.reload();
+      } catch {}
+    },
   });
 }
 
