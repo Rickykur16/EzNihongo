@@ -77,10 +77,12 @@
 
     /* ══ DETAIL VIEW ══ */
     .kd-header{
-      position:sticky;top:57px;z-index:50;
+      position:sticky;top:0;z-index:50;
       background:#ffffff;background:var(--white,#ffffff);
       border-bottom:1px solid var(--gray-border);
-      padding:10px 14px;display:flex;align-items:center;gap:10px;
+      padding:10px 14px;
+      padding-top:calc(10px + env(safe-area-inset-top));
+      display:flex;align-items:center;gap:10px;
       box-shadow:0 2px 8px rgba(20,15,10,.04);
     }
     .kd-back{
