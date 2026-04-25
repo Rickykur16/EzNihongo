@@ -61,15 +61,18 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// Specific path-prefix routes first; the bare `/api` mounts below act as
+// catch-alls and `progressRouter` has a `router.use(requireAuth)` that would
+// otherwise hijack /api/subscription/webhook (no token → 401).
 app.use('/api/auth', authRouter);
 app.use('/api/kanji-auth', kanjiAuthRouter);
-app.use('/api', contentRouter);
-app.use('/api', progressRouter);
 app.use('/api/discussions', discussionsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/uploads', uploadsRouter);
 app.use('/api/subscription', subscriptionRouter);
 app.use('/api/kanji-progress', kanjiProgressRouter);
+app.use('/api', contentRouter);
+app.use('/api', progressRouter);
 
 // 404
 app.use('/api', (req, res) => {
