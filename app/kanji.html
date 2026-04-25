@@ -76,9 +76,11 @@
     .kapp-tile-lv{display:inline-block;font-size:8px;font-weight:700;margin-top:3px;padding:1px 5px;border-radius:10px;}
 
     /* ══ DETAIL VIEW ══ */
+    #view-detail{background:#ffffff;}
+    [data-theme="dark"] #view-detail{background:#121210;}
     .kd-header{
       position:sticky;top:0;z-index:50;
-      background:#ffffff;background:var(--white,#ffffff);
+      background-color:#ffffff;
       border-bottom:1px solid var(--gray-border);
       padding:10px 14px;
       padding-top:calc(10px + env(safe-area-inset-top));
@@ -353,7 +355,7 @@
     /* Bottom bar */
     .kd-bottom-bar{
       position:fixed;bottom:0;left:0;right:0;
-      background:#ffffff;background:var(--white,#ffffff);
+      background-color:#ffffff;
       border-top:1px solid var(--gray-border);
       padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom));
       display:none;align-items:center;gap:8px;z-index:100;
@@ -386,9 +388,9 @@
     .kd-counter{font-size:12px;color:var(--text-muted);font-weight:600;flex:1;text-align:center;}
 
     /* ── DARK MODE ── */
-    [data-theme="dark"] .kapp-toolbar,
-    [data-theme="dark"] .kd-header,
-    [data-theme="dark"] .kd-bottom-bar{background:#181816;}
+    [data-theme="dark"] .kapp-toolbar{background-color:#181816;}
+    [data-theme="dark"] .kd-header{background-color:#181816;}
+    [data-theme="dark"] .kd-bottom-bar{background-color:#181816;}
     [data-theme="dark"] .kapp-tile{background:#252522;}
     [data-theme="dark"] .kapp-tile.known{background:#0f1a09;border-color:#3a6020;}
     [data-theme="dark"] .kd-chip{background:#252522;}
