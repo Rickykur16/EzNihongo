@@ -10394,9 +10394,10 @@ function openUpgradeModal(feature) {
   };
 }
 
-// Midtrans config — set via build or replace before deploy
-const MIDTRANS_CLIENT_KEY = window.MIDTRANS_CLIENT_KEY || 'Mid-client-PjMNfh3qFZqeFzt4';
-const MIDTRANS_SNAP_URL = window.MIDTRANS_SNAP_URL || 'https://app.sandbox.midtrans.com/snap/snap.js';
+// Midtrans config — production. Override via window.MIDTRANS_CLIENT_KEY /
+// window.MIDTRANS_SNAP_URL before this script runs to switch back to sandbox.
+const MIDTRANS_CLIENT_KEY = window.MIDTRANS_CLIENT_KEY || 'Mid-client-otxC_SKVSmYbdEgb';
+const MIDTRANS_SNAP_URL = window.MIDTRANS_SNAP_URL || 'https://app.midtrans.com/snap/snap.js';
 
 function loadSnapJs() {
   return new Promise((resolve, reject) => {
