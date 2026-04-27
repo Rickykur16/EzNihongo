@@ -629,4 +629,87 @@ router.get('/discussions', asyncHandler(async (req, res) => {
   res.json({ discussions: result.rows });
 }));
 
+// ===== KANJI PWA — PREMIUM SUBSCRIPTIONS =====
+// Comp accounts (free lifetime grants by admin) live in the same `subscriptions`
+// table as Midtrans payments. They're distinguished by payment_method = 'complimentary'
+// and a midtrans_order_id starting with 'COMP-'. Admin can revoke comp rows but
+// not paid Midtrans rows — those must be refunded via Midtrans dashboard.
+
+router.get('/premium', asyncHandler(async (req, res) => {
+  const result = await query(
+    `SELECT s.id, s.user_id, s.status, s.plan, s.amount_idr,
+            s.midtrans_order_id, s.payment_method,
+            s.started_at, s.expires_at, s.created_at,
+            u.email, u.full_name,
+            CASE WHEN s.payment_method = 'complimentary' THEN 'comp' ELSE 'midtrans' END AS source
+     FROM subscriptions s
+     JOIN kanji_users u ON u.id = s.user_id
+     WHERE s.status = 'active'
+       AND (s.expires_at IS NULL OR s.expires_at > NOW())
+     ORDER BY s.created_at DESC
+     LIMIT 500`
+  );
+  res.json({ subscriptions: result.rows });
+}));
+
+router.post('/premium/grant', asyncHandler(async (req, res) => {
+  const email = (req.body?.email || '').toString().trim().toLowerCase();
+  if (!email || !email.includes('@')) {
+    return res.status(400).json({ error: 'invalid_email' });
+  }
+  const userRow = await query(
+    `SELECT id, email, full_name FROM kanji_users WHERE LOWER(email) = $1 LIMIT 1`,
+    [email]
+  );
+  if (userRow.rows.length === 0) {
+    return res.status(404).json({
+      error: 'user_not_found',
+      detail: 'Email belum pernah login ke Kanji PWA. Minta orangnya login dulu.',
+    });
+  }
+  const user = userRow.rows[0];
+  const existing = await query(
+    `SELECT id FROM subscriptions
+     WHERE user_id = $1 AND status = 'active' AND payment_method = 'complimentary'
+     LIMIT 1`,
+    [user.id]
+  );
+  if (existing.rows.length > 0) {
+    return res.status(409).json({ error: 'already_granted', detail: 'User sudah punya akses comp aktif.' });
+  }
+  const orderId = 'COMP-' + user.id.slice(0, 8) + '-' + Date.now();
+  const inserted = await query(
+    `INSERT INTO subscriptions
+       (user_id, status, plan, amount_idr, midtrans_order_id, payment_method, started_at, expires_at)
+     VALUES ($1, 'active', 'lifetime', 0, $2, 'complimentary', NOW(), NULL)
+     RETURNING id, user_id, status, plan, midtrans_order_id, started_at`,
+    [user.id, orderId]
+  );
+  res.status(201).json({
+    subscription: inserted.rows[0],
+    user: { id: user.id, email: user.email, full_name: user.full_name },
+  });
+}));
+
+router.post('/premium/revoke', asyncHandler(async (req, res) => {
+  const id = (req.body?.subscription_id || '').toString();
+  if (!id) return res.status(400).json({ error: 'missing_subscription_id' });
+  const row = await query(
+    `SELECT id, payment_method FROM subscriptions WHERE id = $1 LIMIT 1`,
+    [id]
+  );
+  if (row.rows.length === 0) return res.status(404).json({ error: 'not_found' });
+  if (row.rows[0].payment_method !== 'complimentary') {
+    return res.status(403).json({
+      error: 'cannot_revoke_paid',
+      detail: 'Subscription Midtrans hanya bisa dibatalkan via refund di dashboard Midtrans.',
+    });
+  }
+  await query(
+    `UPDATE subscriptions SET status = 'cancelled' WHERE id = $1`,
+    [id]
+  );
+  res.json({ ok: true });
+}));
+
 export default router;

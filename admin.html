@@ -129,6 +129,9 @@ let STATE = {
   lessons: [],
   users: [],
   discussions: [],
+  premium: [],
+  premiumFilter: 'all',
+  premiumSearch: '',
 };
 
 function el(html) {
@@ -271,6 +274,7 @@ function renderApp() {
       <button data-tab="testimonials">Testimoni</button>
       <button data-tab="users">Pengguna</button>
       <button data-tab="discussions">Diskusi</button>
+      <button data-tab="premium">Premium Kanji</button>
     </nav>
     <main>
       <section class="pane" data-pane="courses"></section>
@@ -280,6 +284,7 @@ function renderApp() {
       <section class="pane" data-pane="testimonials"></section>
       <section class="pane" data-pane="users"></section>
       <section class="pane" data-pane="discussions"></section>
+      <section class="pane" data-pane="premium"></section>
     </main>
   `;
   document.querySelectorAll('nav.tabs button').forEach((btn) => {
@@ -302,6 +307,7 @@ function renderTab() {
   else if (STATE.tab === 'testimonials') { loadTestimonials().then(renderTestimonials); }
   else if (STATE.tab === 'users') { loadUsers().then(renderUsers); }
   else if (STATE.tab === 'discussions') { loadDiscussions().then(renderDiscussions); }
+  else if (STATE.tab === 'premium') { loadPremium().then(renderPremium); }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1871,6 +1877,112 @@ window.deleteDiscussion = async (id) => {
     await loadDiscussions(); renderDiscussions();
     notify('Komentar dihapus');
   } catch (err) { notify('Gagal hapus: ' + err.message, true); }
+};
+
+// ─────────────────────────────────────────────────────────────
+// PREMIUM KANJI (subscriptions: comp grants + Midtrans payments)
+// ─────────────────────────────────────────────────────────────
+async function loadPremium() {
+  try { const d = await api('/admin/premium'); STATE.premium = d.subscriptions || []; }
+  catch (e) { notify('Gagal load premium: ' + e.message, true); }
+}
+function renderPremium() {
+  const pane = document.querySelector('[data-pane="premium"]');
+  const subs = STATE.premium || [];
+  const filter = STATE.premiumFilter || 'all';
+  const search = (STATE.premiumSearch || '').toLowerCase();
+  const filtered = subs.filter((s) => {
+    if (filter === 'comp' && s.source !== 'comp') return false;
+    if (filter === 'midtrans' && s.source !== 'midtrans') return false;
+    if (search && !(s.email || '').toLowerCase().includes(search)
+              && !(s.full_name || '').toLowerCase().includes(search)) return false;
+    return true;
+  });
+  const compCount = subs.filter((s) => s.source === 'comp').length;
+  const midCount = subs.filter((s) => s.source === 'midtrans').length;
+  const rows = filtered.length === 0
+    ? '<tr><td colspan="6" style="text-align:center;color:#737373;padding:24px;">Belum ada subscription aktif.</td></tr>'
+    : filtered.map((s) => {
+        const expiry = s.expires_at
+          ? new Date(s.expires_at).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' })
+          : '<span style="color:#3b6d11;font-weight:600;">Lifetime</span>';
+        const sourceBadge = s.source === 'comp'
+          ? '<span class="badge" style="background:#e6f0ff;color:#1b4fa8;">Comp</span>'
+          : '<span class="badge" style="background:#fff0f2;color:#991b1b;">Midtrans</span>';
+        const action = s.source === 'comp'
+          ? `<button class="btn btn-danger" onclick="revokePremium('${s.id}', '${escapeHtml(s.email).replace(/'/g, "\\'")}')">Revoke</button>`
+          : '<span style="color:#737373;font-size:12px;">via Midtrans dashboard</span>';
+        return `
+          <tr>
+            <td><strong>${escapeHtml(s.full_name || '-')}</strong><br><span style="font-size:11px;color:#737373;">${escapeHtml(s.email)}</span></td>
+            <td>${sourceBadge}</td>
+            <td>${escapeHtml(s.plan)}</td>
+            <td>${s.amount_idr ? 'Rp ' + Number(s.amount_idr).toLocaleString('id-ID') : '<span style="color:#737373;">—</span>'}</td>
+            <td>${expiry}</td>
+            <td class="actions">${action}</td>
+          </tr>
+        `;
+      }).join('');
+  pane.innerHTML = `
+    <h2>Premium Kanji (${subs.length} aktif · ${compCount} comp · ${midCount} Midtrans)</h2>
+    <div style="background:#f9f7f1;border:1px solid #e8e1d3;border-radius:12px;padding:16px;margin-bottom:18px;">
+      <h3 style="margin:0 0 8px;font-size:15px;">🎁 Grant akses gratis</h3>
+      <p style="margin:0 0 12px;font-size:13px;color:#737373;">Email harus sudah pernah login ke Kanji PWA dulu (akun Google).</p>
+      <form id="grant-form" style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input type="email" id="grant-email" placeholder="email@example.com" required
+               style="flex:1;min-width:240px;padding:10px 12px;border:1px solid #d4ccb8;border-radius:8px;font-family:inherit;font-size:14px;"/>
+        <button type="submit" class="btn btn-primary">Grant Lifetime</button>
+      </form>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
+      <div style="display:flex;gap:4px;">
+        <button class="btn ${filter === 'all' ? 'btn-primary' : 'btn-ghost'}" onclick="setPremiumFilter('all')">Semua</button>
+        <button class="btn ${filter === 'comp' ? 'btn-primary' : 'btn-ghost'}" onclick="setPremiumFilter('comp')">Comp</button>
+        <button class="btn ${filter === 'midtrans' ? 'btn-primary' : 'btn-ghost'}" onclick="setPremiumFilter('midtrans')">Midtrans</button>
+      </div>
+      <input type="search" id="premium-search" placeholder="Cari email/nama..." value="${escapeHtml(STATE.premiumSearch || '')}"
+             style="flex:1;min-width:200px;padding:8px 12px;border:1px solid #d4ccb8;border-radius:8px;font-family:inherit;font-size:14px;"/>
+    </div>
+    <table>
+      <thead><tr><th>User</th><th>Sumber</th><th>Plan</th><th>Bayar</th><th>Berakhir</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+  document.getElementById('grant-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('grant-email').value.trim();
+    if (!email) return;
+    try {
+      await api('/admin/premium/grant', { method: 'POST', body: JSON.stringify({ email }) });
+      notify('Akses gratis diberikan ke ' + email);
+      document.getElementById('grant-email').value = '';
+      await loadPremium(); renderPremium();
+    } catch (err) {
+      notify('Gagal grant: ' + err.message, true);
+    }
+  });
+  document.getElementById('premium-search').addEventListener('input', (e) => {
+    STATE.premiumSearch = e.target.value;
+    renderPremium();
+    // re-focus + restore caret position
+    const inp = document.getElementById('premium-search');
+    inp.focus();
+    inp.setSelectionRange(inp.value.length, inp.value.length);
+  });
+}
+window.setPremiumFilter = (f) => {
+  STATE.premiumFilter = f;
+  renderPremium();
+};
+window.revokePremium = async (id, email) => {
+  if (!confirm('Cabut akses comp untuk ' + email + '?')) return;
+  try {
+    await api('/admin/premium/revoke', { method: 'POST', body: JSON.stringify({ subscription_id: id }) });
+    notify('Akses dicabut');
+    await loadPremium(); renderPremium();
+  } catch (err) {
+    notify('Gagal revoke: ' + err.message, true);
+  }
 };
 </script>
 
