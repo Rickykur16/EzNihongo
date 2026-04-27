@@ -53,7 +53,7 @@ serve(async (req) => {
 
   // Call Midtrans Snap API
   const serverKey = Deno.env.get('MIDTRANS_SERVER_KEY')!;
-  const base = Deno.env.get('MIDTRANS_BASE') ?? 'https://app.sandbox.midtrans.com'; // use app.midtrans.com in prod
+  const base = Deno.env.get('MIDTRANS_BASE') ?? 'https://app.midtrans.com';
   const resp = await fetch(`${base}/snap/v1/transactions`, {
     method: 'POST',
     headers: {

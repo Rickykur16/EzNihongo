@@ -18,7 +18,7 @@ const PLAN_AMOUNT = {
 };
 
 function midtransBase() {
-  return process.env.MIDTRANS_BASE || 'https://app.sandbox.midtrans.com';
+  return process.env.MIDTRANS_BASE || 'https://app.midtrans.com';
 }
 
 function appUrl() {
