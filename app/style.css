@@ -25,7 +25,7 @@ body {
   color: var(--text-primary);
   background: var(--paper-100);
   line-height: 1.6;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 /* Brand accent strip — tipis di paling atas viewport, bikin app gak terlalu putih */
@@ -66,7 +66,7 @@ a { text-decoration: none; color: inherit; }
   padding: 3px 8px;
   border-radius: 6px;
 }
-.nav-links { display: flex; gap: 28px; font-size: 14px; color: var(--text-secondary); }
+.nav-links { display: flex; gap: 28px; font-size: 15px; color: var(--text-secondary); }
 .nav-links a:hover { color: var(--red); }
 .nav-right { display: flex; align-items: center; gap: 10px; }
 .social-icons { display: flex; gap: 7px; margin-right: 4px; }
@@ -127,19 +127,19 @@ a { text-decoration: none; color: inherit; }
 .btn-primary {
   background: var(--red); color: var(--white);
   border: none; padding: 10px 22px;
-  border-radius: var(--radius-pill); font-size: 14px;
+  border-radius: var(--radius-pill); font-size: 15px;
 }
 .btn-primary:hover { background: var(--red-dark); }
 .btn-login {
   background: transparent; color: var(--red);
   border: 1.5px solid var(--red); padding: 9px 20px;
-  border-radius: var(--radius-pill); font-size: 14px;
+  border-radius: var(--radius-pill); font-size: 15px;
 }
 .btn-login:hover { background: var(--red-light); }
 .btn-outline {
   background: transparent; color: var(--red);
   border: 1.5px solid var(--red); padding: 10px 24px;
-  border-radius: var(--radius-sm); font-size: 14px;
+  border-radius: var(--radius-sm); font-size: 15px;
 }
 .btn-outline:hover { background: var(--red-light); }
 
@@ -232,7 +232,7 @@ a { text-decoration: none; color: inherit; }
   border-top: 2px solid var(--brand-red);
   background: var(--white);
   text-align: center;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-muted);
 }
 
