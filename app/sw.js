@@ -1,5 +1,5 @@
 // EzNihongo App Service Worker
-const CACHE = 'eznihongo-app-v13';
+const CACHE = 'eznihongo-app-v14';
 const SHELL = [
   './',
   './index.html',

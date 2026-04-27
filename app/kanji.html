@@ -712,7 +712,7 @@
     /* Rating buttons */
     .rv-ratings{
       display:grid;grid-template-columns:repeat(4,1fr);
-      gap:8px;padding:12px 16px 24px;
+      gap:8px;padding:12px 16px calc(24px + env(safe-area-inset-bottom));
     }
     .rv-btn{
       display:flex;flex-direction:column;align-items:center;gap:3px;
@@ -9461,6 +9461,9 @@ let fcRating   = {1:0,2:0,3:0,4:0};
 function showFlashcard(){
   ALL_VIEWS.forEach(v => { const el=document.getElementById(v); if(el) el.style.display='none'; });
   document.getElementById('kd-bottom-bar').classList.remove('on');
+  // Sembunyikan bottom navigation supaya tidak nyatu dengan tombol rating
+  const botnav = document.getElementById('kapp-botnav');
+  if (botnav) { botnav.hidden = true; document.body.classList.remove('has-botnav'); }
   // Init queue: hanya yang belum hafal, dibatasi settings.newLimit
   const limit = settings.newLimit || 20;
   let unknowns = deck.filter(d => !known.has(d.k));
