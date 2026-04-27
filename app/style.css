@@ -23,9 +23,20 @@
 body {
   font-family: var(--font-body);
   color: var(--text-primary);
-  background: var(--white);
+  background: var(--paper-100);
   line-height: 1.6;
   font-size: 15px;
+}
+
+/* Brand accent strip — tipis di paling atas viewport, bikin app gak terlalu putih */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand-red) 0%, var(--brand-red-hover) 50%, var(--brand-red) 100%);
+  z-index: 200;
+  pointer-events: none;
 }
 
 a { text-decoration: none; color: inherit; }
@@ -41,6 +52,7 @@ a { text-decoration: none; color: inherit; }
   position: sticky;
   top: 0;
   z-index: 100;
+  box-shadow: 0 1px 0 var(--brand-red-soft);
 }
 .nav-logo { display: flex; align-items: center; }
 .nav-logo-img {
@@ -217,7 +229,8 @@ a { text-decoration: none; color: inherit; }
 /* FOOTER */
 .footer {
   padding: 24px 40px;
-  border-top: 1px solid var(--gray-border);
+  border-top: 2px solid var(--brand-red);
+  background: var(--white);
   text-align: center;
   font-size: 13px;
   color: var(--text-muted);
