@@ -5,6 +5,12 @@ on:
     branches:
       - main
 
+# Cegah dua deploy paralel race di VPS yang sama (git reset + migrate +
+# restart bisa saling injak kalau dua push berdekatan).
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
 jobs:
   # Cek lockfile + parse-check seluruh source backend sebelum sentuh VPS.
   # Cepat (<60s); gagalnya CI = deploy tidak jalan, jadi syntax error tidak
