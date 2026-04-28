@@ -10262,16 +10262,11 @@ window.addEventListener('beforeunload', () => {
 
 // ─── FREE-TRIAL AUTH MODEL ───────────────────────────────────────────────────
 // App usable tanpa login. Free: N5 + Kana. Login untuk N4-N1 + Semua Level + cloud sync.
+// Premium status authoritative dari /api/subscription/status — tidak ada
+// klien-side flag yang bisa membuka kunci.
 window._isLoggedIn = false;
-// Dev bypass: open `?dev=1` in URL OR set `localStorage.ez_dev_premium='1'` to unlock all levels.
-(() => {
-  try {
-    if (new URLSearchParams(location.search).get('dev') === '1') {
-      localStorage.setItem('ez_dev_premium', '1');
-    }
-  } catch(e) {}
-})();
-window._isPremium = (() => { try { return localStorage.getItem('ez_dev_premium') === '1'; } catch(e) { return false; } })();
+window._isPremium = false;
+try { localStorage.removeItem('ez_dev_premium'); } catch(e) {}
 const FREE_LEVELS = new Set(['N5', 'kana']);
 const PREMIUM_PRICE_IDR = 99000;
 const PREMIUM_PRICE_LABEL = 'Rp 99.000/tahun';
@@ -10622,8 +10617,8 @@ async function checkAuth() {
 
   if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
     window._isLoggedIn = true;
-    window._isPremium = _devPremiumFlag();
-    if (!window._isPremium) applyLockedUi();
+    window._isPremium = false;
+    applyLockedUi();
     return;
   }
 
@@ -10653,13 +10648,11 @@ async function checkAuth() {
     }
   } else {
     window._isLoggedIn = false;
-    window._isPremium = _devPremiumFlag();
+    window._isPremium = false;
     window.track?.('session_active', { logged_in: false });
     showLoginCta();
   }
 }
-
-function _devPremiumFlag() { try { return localStorage.getItem('ez_dev_premium') === '1'; } catch(e) { return false; } }
 
 function showWelcomeIfJustLoggedIn(user) {
   try {
@@ -10676,16 +10669,16 @@ function showWelcomeIfJustLoggedIn(user) {
 
 async function loadPremiumStatus() {
   try {
-    if (typeof window.ezApi !== 'function') { window._isPremium = _devPremiumFlag(); applyLockedUi(); return; }
+    if (typeof window.ezApi !== 'function') { window._isPremium = false; applyLockedUi(); return; }
     const res = await window.ezApi('/subscription/status');
-    if (!res.ok) { window._isPremium = _devPremiumFlag(); applyLockedUi(); return; }
+    if (!res.ok) { window._isPremium = false; applyLockedUi(); return; }
     const data = await res.json();
-    window._isPremium = !!data?.isPremium || _devPremiumFlag();
+    window._isPremium = !!data?.isPremium;
     if (window._isPremium) removeLockedUi();
     else applyLockedUi();
   } catch (e) {
-    window._isPremium = _devPremiumFlag();
-    if (!window._isPremium) applyLockedUi();
+    window._isPremium = false;
+    applyLockedUi();
   }
 }
 
