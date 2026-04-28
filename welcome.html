@@ -2932,8 +2932,11 @@ function transformCourseFromApi(apiCourse) {
 }
 
 // Migration stored quiz prompts as "q\n\njp" (or just "q" if no jp). Split
-// back, then match the shape the existing quiz engine expects:
-// { q, jp, options: [text...], correct: idx, explain }
+// back, then match the shape the existing quiz engine expects.
+// Note: the `correct` index is intentionally absent here — the API never
+// reveals which option is right. pickQuizAnswer() resolves it per click via
+// POST /api/lessons/:id/quiz/check, and finishQuiz() scores authoritatively
+// via /quiz-attempt.
 function transformQuestionFromApi(apiQ) {
   const prompt = apiQ.question || '';
   const parts = prompt.split(/\n\n/);
@@ -2941,12 +2944,10 @@ function transformQuestionFromApi(apiQ) {
   const jp = parts.slice(1).join('\n\n').trim() || '';
   const sorted = (apiQ.options || []).slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   const options = sorted.map((o) => o.option_text);
-  // Preserve DB UUIDs alongside local idx-based UI state so finishQuiz can
-  // POST authoritative {questionId, optionId} pairs for server-side grading.
   const optionIds = sorted.map((o) => o.id);
-  const correct = Math.max(0, sorted.findIndex((o) => o.is_correct));
   return {
-    q, jp, options, optionIds, correct,
+    q, jp, options, optionIds,
+    correct: -1,
     explain: apiQ.explanation || '',
     questionId: apiQ.id,
   };
@@ -3205,28 +3206,58 @@ function renderQuizQuestion(container) {
   `;
 }
 
-window.pickQuizAnswer = (i) => {
+window.pickQuizAnswer = async (i) => {
   if (quizState.answered) return;
   quizState.answered = true;
   quizState.selected = i;
   const q = quizState.questions[quizState.idx];
-  const isCorrect = i === q.correct;
-  if (isCorrect) quizState.correct++;
 
-  // Record the answer for server-side grading at finishQuiz. Only pushed
-  // on the first pick per question (already guarded by `answered` above).
+  // Disable options + show transient loading while the server tells us if
+  // the pick was right. The lesson API never sent is_correct, so we can't
+  // grade locally.
+  document.querySelectorAll('.quiz-option').forEach((btn) => btn.classList.add('disabled'));
+  const feedback = document.getElementById('quiz-feedback');
+  feedback.innerHTML = `<div class="quiz-explanation">Memeriksa…</div>`;
+
+  // Record the answer for the final /quiz-attempt round-up.
   if (q.questionId && q.optionIds?.[i]) {
     quizState.answers.push({ questionId: q.questionId, optionId: q.optionIds[i] });
   }
 
-  const opts = document.querySelectorAll('.quiz-option');
-  opts.forEach((btn, bi) => {
-    btn.classList.add('disabled');
+  let isCorrect = false;
+  let correctOptionId = null;
+  try {
+    const [slug, mId, lId] = (quizState.key || '').split(':');
+    const lessonApiId = findLesson(slug, mId, lId)?.apiId;
+    if (lessonApiId && q.questionId && q.optionIds?.[i]) {
+      const r = await fetch(
+        `/api/lessons/${encodeURIComponent(lessonApiId)}/quiz/check`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ questionId: q.questionId, optionId: q.optionIds[i] }),
+        }
+      );
+      if (r.ok) {
+        const data = await r.json();
+        isCorrect = !!data.isCorrect;
+        correctOptionId = data.correctOptionId || null;
+        if (data.explanation) q.explain = data.explanation;
+      }
+    }
+  } catch (err) {
+    console.warn('quiz/check failed:', err?.message || err);
+  }
+
+  q.correct = correctOptionId && q.optionIds ? q.optionIds.indexOf(correctOptionId) : -1;
+  if (isCorrect) quizState.correct++;
+
+  document.querySelectorAll('.quiz-option').forEach((btn, bi) => {
     if (bi === q.correct) btn.classList.add('correct');
     if (bi === i && !isCorrect) btn.classList.add('wrong');
   });
 
-  const feedback = document.getElementById('quiz-feedback');
   const isLast = quizState.idx === quizState.questions.length - 1;
   feedback.innerHTML = `
     <div class="quiz-explanation">

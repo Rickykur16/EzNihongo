@@ -1,8 +1,21 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
 import { asyncHandler } from '../middleware.js';
 
 const router = Router();
+
+// Per-IP throttle on quiz/check. Each option click sends one request, so a
+// real student doing a 10-question quiz uses ~10 hits. 60/min leaves headroom
+// for retries while making brute-forcing all options across many questions
+// noisy enough to notice in logs.
+const quizCheckLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Too many requests, slow down' },
+});
 
 // GET /api/courses — list published courses (public)
 router.get('/courses', asyncHandler(async (req, res) => {
@@ -144,12 +157,12 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
     const qIds = questions.rows.map((q) => q.id);
     let optsByQ = {};
     if (qIds.length > 0) {
-      // is_correct is exposed on purpose: the dashboard grades client-side
-      // (same as the static data/quizzes.json we're replacing), so parity
-      // matters. Once we add server-side scoring / attempts, strip this and
-      // add POST /api/quiz-check instead.
+      // is_correct deliberately NOT selected — would let any client read
+      // the answer key from devtools. Per-question grading goes through
+      // POST /api/lessons/:lessonId/quiz/check; final score through
+      // POST /api/progress/lesson/:lessonId/quiz-attempt.
       const opts = await query(
-        `SELECT id, question_id, option_text, is_correct, sort_order
+        `SELECT id, question_id, option_text, sort_order
          FROM quiz_options
          WHERE question_id = ANY($1::uuid[])
          ORDER BY sort_order ASC`,
@@ -167,6 +180,48 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
   }
 
   res.json({ lesson: response });
+}));
+
+// POST /api/lessons/:lessonId/quiz/check — per-question feedback.
+// Body: { questionId, optionId }
+// Returns: { isCorrect, correctOptionId, explanation }
+// Stateless — does NOT write to quiz_attempts. The dashboard hits this on
+// every option click so the student gets immediate feedback without ever
+// receiving the answer key in advance.
+router.post('/lessons/:lessonId/quiz/check', quizCheckLimiter, asyncHandler(async (req, res) => {
+  const lessonId = req.params.lessonId;
+  const { questionId, optionId } = req.body || {};
+  if (!questionId || !optionId) {
+    return res.status(400).json({ error: 'questionId and optionId required' });
+  }
+
+  // Single round-trip: question + all options, scoped to this lesson.
+  const rows = await query(
+    `SELECT q.explanation, o.id AS option_id, o.is_correct
+       FROM quiz_questions q
+       LEFT JOIN quiz_options o ON o.question_id = q.id
+      WHERE q.lesson_id = $1 AND q.id = $2`,
+    [lessonId, questionId]
+  );
+  if (rows.rows.length === 0) {
+    return res.status(404).json({ error: 'Question not found' });
+  }
+
+  let correctOptionId = null;
+  let chosen = null;
+  for (const r of rows.rows) {
+    if (r.is_correct) correctOptionId = r.option_id;
+    if (r.option_id === optionId) chosen = r;
+  }
+  if (!chosen) {
+    return res.status(400).json({ error: 'Option does not belong to this question' });
+  }
+
+  res.json({
+    isCorrect: !!chosen.is_correct,
+    correctOptionId,
+    explanation: rows.rows[0].explanation || '',
+  });
 }));
 
 // GET /api/sensei — public list of published sensei
