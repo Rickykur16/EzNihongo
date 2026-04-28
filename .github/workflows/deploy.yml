@@ -6,16 +6,63 @@ on:
       - main
 
 jobs:
-  deploy:
+  # Cek lockfile + parse-check seluruh source backend sebelum sentuh VPS.
+  # Cepat (<60s); gagalnya CI = deploy tidak jalan, jadi syntax error tidak
+  # pernah membunuh production.
+  ci:
     runs-on: ubuntu-latest
     steps:
-      - name: SSH and pull latest code
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+      - name: Syntax-check backend sources
+        working-directory: backend
+        run: find src migrations scripts -name '*.js' -o -name '*.mjs' | xargs -I{} node --check {}
+
+  deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull, install, migrate, restart, healthcheck
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: 168.144.107.34
           username: root
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            set -euo pipefail
             cd /var/www/eznihongo
-            git pull origin main
-            echo "Deploy done at $(date)"
+            git fetch --all --prune
+            git reset --hard origin/main
+
+            cd backend
+            # --omit=dev sengaja: backend hanya punya runtime deps; lock-checked
+            # install lebih cepat dan menjamin parity dengan CI di atas.
+            npm ci --omit=dev
+            npm run migrate
+
+            systemctl restart eznihongo-api
+
+            # Healthcheck loop. systemctl restart return 0 walau ExecStart crash
+            # (Restart=always), jadi /api/health adalah signal sebenarnya.
+            ok=0
+            for i in 1 2 3 4 5; do
+              if curl -fsS http://127.0.0.1:3001/api/health > /dev/null; then
+                ok=1
+                break
+              fi
+              sleep 2
+            done
+            if [ "$ok" != "1" ]; then
+              echo "FATAL: /api/health tidak respond setelah restart"
+              systemctl status eznihongo-api --no-pager || true
+              journalctl -u eznihongo-api -n 50 --no-pager || true
+              exit 1
+            fi
+            echo "Deploy ok at $(date)"
