@@ -1,0 +1,13 @@
+# /etc/cron.d/eznihongo-backup
+# Backup Postgres harian jam 03:00 server. Output (stdout+stderr) di-append ke
+# /var/log/eznihongo-backup.log — rotate via logrotate kalau perlu.
+#
+# Install:
+#   sudo cp backend/deploy/eznihongo-backup.cron /etc/cron.d/eznihongo-backup
+#   sudo chmod 644 /etc/cron.d/eznihongo-backup
+#   sudo touch /var/log/eznihongo-backup.log
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+0 3 * * * root /var/www/eznihongo/backend/deploy/backup.sh >> /var/log/eznihongo-backup.log 2>&1
