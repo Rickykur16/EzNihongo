@@ -15,6 +15,15 @@
 --
 -- Ported from supabase/functions/midtrans-{create-tx,webhook} and the
 -- Supabase `user_progress` table used by app/kanji.html.
+--
+-- Idempotency / ownership note:
+--   Production may already have these tables from the original
+--   `psql -f schema.sql` bootstrap, owned by a different role than the
+--   migration runner. PostgreSQL checks ownership BEFORE the IF NOT EXISTS
+--   short-circuit on CREATE INDEX / CREATE TRIGGER, so a naive re-run dies
+--   with "must be owner of table kanji_users". Every DDL below is gated by an
+--   existence check via pg_tables / pg_indexes / pg_trigger so we only issue
+--   the privileged statement when the object is actually missing.
 
 CREATE TABLE IF NOT EXISTS kanji_users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -27,13 +36,16 @@ CREATE TABLE IF NOT EXISTS kanji_users (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_kanji_users_email ON kanji_users(email);
-CREATE INDEX IF NOT EXISTS idx_kanji_users_google ON kanji_users(google_id);
-
 DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_kanji_users_email') THEN
+    EXECUTE 'CREATE INDEX idx_kanji_users_email ON kanji_users(email)';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_kanji_users_google') THEN
+    EXECUTE 'CREATE INDEX idx_kanji_users_google ON kanji_users(google_id)';
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'kanji_users_updated_at') THEN
-    CREATE TRIGGER kanji_users_updated_at BEFORE UPDATE ON kanji_users
-      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    EXECUTE 'CREATE TRIGGER kanji_users_updated_at BEFORE UPDATE ON kanji_users
+             FOR EACH ROW EXECUTE FUNCTION set_updated_at()';
   END IF;
 END $$;
 
@@ -48,8 +60,14 @@ CREATE TABLE IF NOT EXISTS kanji_sessions (
   expires_at TIMESTAMPTZ NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_kanji_sessions_user ON kanji_sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_kanji_sessions_hash ON kanji_sessions(refresh_token_hash);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_kanji_sessions_user') THEN
+    EXECUTE 'CREATE INDEX idx_kanji_sessions_user ON kanji_sessions(user_id)';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_kanji_sessions_hash') THEN
+    EXECUTE 'CREATE INDEX idx_kanji_sessions_hash ON kanji_sessions(refresh_token_hash)';
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS subscriptions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -68,14 +86,19 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
-CREATE INDEX IF NOT EXISTS idx_subscriptions_order ON subscriptions(midtrans_order_id);
-CREATE INDEX IF NOT EXISTS idx_subscriptions_active ON subscriptions(user_id, status, expires_at);
-
 DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_subscriptions_user') THEN
+    EXECUTE 'CREATE INDEX idx_subscriptions_user ON subscriptions(user_id)';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_subscriptions_order') THEN
+    EXECUTE 'CREATE INDEX idx_subscriptions_order ON subscriptions(midtrans_order_id)';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_subscriptions_active') THEN
+    EXECUTE 'CREATE INDEX idx_subscriptions_active ON subscriptions(user_id, status, expires_at)';
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'subscriptions_updated_at') THEN
-    CREATE TRIGGER subscriptions_updated_at BEFORE UPDATE ON subscriptions
-      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    EXECUTE 'CREATE TRIGGER subscriptions_updated_at BEFORE UPDATE ON subscriptions
+             FOR EACH ROW EXECUTE FUNCTION set_updated_at()';
   END IF;
 END $$;
 
@@ -88,7 +111,7 @@ CREATE TABLE IF NOT EXISTS kanji_progress (
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'kanji_progress_updated_at') THEN
-    CREATE TRIGGER kanji_progress_updated_at BEFORE UPDATE ON kanji_progress
-      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    EXECUTE 'CREATE TRIGGER kanji_progress_updated_at BEFORE UPDATE ON kanji_progress
+             FOR EACH ROW EXECUTE FUNCTION set_updated_at()';
   END IF;
 END $$;
