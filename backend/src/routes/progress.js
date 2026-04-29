@@ -147,17 +147,49 @@ router.put('/progress/lesson/:lessonId/note', asyncHandler(async (req, res) => {
 }));
 
 // GET /api/stats/me
+// Returns lifetime stats + today's habit progress in one round-trip so the
+// dashboard can render the streak chip and daily-goal pill without a second
+// fetch. Goal target is hardcoded (10 min OR 1 lesson per day) for now;
+// promote to user_stats.daily_goal_minutes if customisation is needed.
 router.get('/stats/me', asyncHandler(async (req, res) => {
-  const result = await query(
-    `SELECT xp, level, streak_days, last_active_date,
-            total_lessons_completed, total_minutes_learned
-     FROM user_stats WHERE user_id = $1 LIMIT 1`,
-    [req.user.id]
-  );
-  res.json({ stats: result.rows[0] || {
+  const [statsRes, todayRes] = await Promise.all([
+    query(
+      `SELECT xp, level, streak_days, last_active_date,
+              total_lessons_completed, total_minutes_learned
+       FROM user_stats WHERE user_id = $1 LIMIT 1`,
+      [req.user.id]
+    ),
+    query(
+      `SELECT COALESCE(SUM(l.duration_minutes), 0)::int AS minutes_today,
+              COUNT(*)::int AS lessons_today
+       FROM user_progress up
+       JOIN lessons l ON l.id = up.lesson_id
+       WHERE up.user_id = $1
+         AND up.completed = TRUE
+         AND DATE(up.completed_at) = CURRENT_DATE`,
+      [req.user.id]
+    ),
+  ]);
+
+  const base = statsRes.rows[0] || {
     xp: 0, level: 1, streak_days: 0, last_active_date: null,
     total_lessons_completed: 0, total_minutes_learned: 0,
-  } });
+  };
+
+  const goalMinutes = 10;
+  const goalLessons = 1;
+  const minutesToday = todayRes.rows[0]?.minutes_today ?? 0;
+  const lessonsToday = todayRes.rows[0]?.lessons_today ?? 0;
+  // Either target hits — flexible for short lessons (1 done = enough) and
+  // long ones (10 minutes deep into a single video also counts).
+  const goalMet = minutesToday >= goalMinutes || lessonsToday >= goalLessons;
+
+  res.json({
+    stats: {
+      ...base,
+      today: { minutesToday, lessonsToday, goalMinutes, goalLessons, goalMet },
+    },
+  });
 }));
 
 // POST /api/enrollments
