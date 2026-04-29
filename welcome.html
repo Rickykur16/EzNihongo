@@ -4051,8 +4051,6 @@ function renderSidebar() {
     `;
   }).join('');
 
-  const flashCount = (FLASHCARD_DATA[currentState.course] || []).length;
-
   const enrolled = getEnrolledCourses();
   // Merge enrolled (hydrated) courses with CMS-listed courses so non-enrolled
   // courses still appear in the picker with an "Upgrade" CTA. Source of truth
@@ -4118,13 +4116,6 @@ function renderSidebar() {
           <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
         </div>
       </div>
-      ${flashCount > 0 ? `
-        <button class="flashcard-cta" onclick="openFlashcards('${currentState.course}')">
-          <span class="icon">🎴</span>
-          <span>Flashcard</span>
-          <span class="count">${flashCount}</span>
-        </button>
-      ` : ''}
       <div class="module-filter">
         <svg class="mf-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="search" id="module-filter-input" placeholder="Cari modul..." oninput="filterModules(this.value)" autocomplete="off" />
@@ -4628,14 +4619,6 @@ function renderLessonTabs(module, lesson) {
               </div>
               <span class="res-arr">▶</span>
             </a>
-            <a class="resource-card" href="#" onclick="event.preventDefault();openVocabFlashcard();">
-              <span class="res-ico">📖</span>
-              <div class="res-info">
-                <div class="res-title">Daftar Kosakata</div>
-                <div class="res-sub">Flashcard list untuk bab ini</div>
-              </div>
-              <span class="res-arr">→</span>
-            </a>
           </div>
         </div>
         <div class="tab-pane" data-pane="catatan">
@@ -4904,7 +4887,7 @@ window.switchCourse = async (slug) => {
     // CMS course list (used by sidebar picker / course tabs to show
     // upgrade CTAs for non-enrolled courses) can load in parallel.
     await syncEnrollmentsFromServer();
-    await Promise.all([hydrateEnrolledCourses(), loadFlashcardData(), fetchCmsCourses()]);
+    await Promise.all([hydrateEnrolledCourses(), fetchCmsCourses()]);
     // handleNewEnrollment may resync enrollments (e.g. if user just landed
     // from checkout). Re-hydrate in case it discovered a newly-paid course.
     await handleNewEnrollment();
