@@ -1599,6 +1599,108 @@
     .stat-value { font-size: 17px; }
   }
 
+  /* ── HABIT BAR: streak chip + daily goal progress ────────────────── */
+  /* Sengaja minimalis — bukan resurrect stats strip lama yang cluttered.
+     Cuma 2 sinyal: "lo lagi streak?" + "udah memenuhi target hari ini?" */
+  .habit-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    gap: 14px;
+    margin: -10px 28px 28px;
+    padding: 0;
+  }
+  @media (max-width: 860px) { .habit-bar { margin: -10px 18px 24px; } }
+  @media (max-width: 600px) { .habit-bar { grid-template-columns: 1fr; gap: 10px; margin: -6px 14px 20px; } }
+
+  .habit-card {
+    background: var(--du-surface);
+    border: 1px solid var(--du-border);
+    border-radius: 14px;
+    padding: 14px 18px;
+    box-shadow: var(--du-shadow-xs);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .habit-streak.active {
+    background: linear-gradient(135deg, #fff1e5 0%, #ffe4d1 100%);
+    border-color: #f9c8a3;
+  }
+  .habit-streak-emoji {
+    font-size: 28px;
+    line-height: 1;
+    filter: grayscale(0.7);
+    transition: filter 0.3s;
+  }
+  .habit-streak.active .habit-streak-emoji { filter: none; }
+  .habit-streak-text { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+  .habit-streak-text strong {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--du-ink);
+    letter-spacing: -0.01em;
+  }
+  .habit-streak-text span {
+    font-size: 12px;
+    color: var(--du-ink-3);
+  }
+
+  .habit-goal { flex-direction: column; align-items: stretch; gap: 8px; }
+  .habit-goal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .habit-goal-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--du-ink-3);
+  }
+  .habit-goal-value {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--du-ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .habit-goal-track {
+    height: 8px;
+    background: var(--du-surface-2);
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+  }
+  .habit-goal-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--brand-red) 0%, #e11d48 100%);
+    border-radius: 999px;
+    transition: width 0.5s ease;
+    min-width: 0;
+  }
+  .habit-goal.met {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border-color: #86efac;
+  }
+  .habit-goal.met .habit-goal-fill {
+    background: linear-gradient(90deg, #16a34a 0%, #15803d 100%);
+  }
+  .habit-goal.met .habit-goal-label { color: #15803d; }
+
+  .habit-bar.skeleton .habit-card {
+    background: linear-gradient(90deg, var(--du-surface) 0%, var(--du-surface-2) 50%, var(--du-surface) 100%);
+    background-size: 200% 100%;
+    animation: habit-shimmer 1.2s ease-in-out infinite;
+    color: transparent;
+    border-color: transparent;
+  }
+  @keyframes habit-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
   /* ── MAIN CONTENT CARDS ─────────────────────────────────────────── */
   .lesson-breadcrumb {
     display: inline-block;
@@ -3084,15 +3186,87 @@ function addXP(amount, reason) {
 // Toast XP disembunyikan bareng stats bar.
 function showXPToast(_amount, _reason) {}
 
-// Streak / XP / Target stats bar dihilangkan atas permintaan user.
-// addXP() & getStats() dibiarkan hidup supaya pemanggil tidak error —
-// datanya masih disimpan, cuma tidak ditampilkan.
-function renderStatsBar() { return ''; }
+// Stats bar (XP/streak/target trio) dulu dihilangkan karena cluttered.
+// Sekarang diganti habit bar minimalis: streak chip + daily goal progress.
+// Server-authoritative — fetch /api/stats/me untuk streak_days + today's
+// progress, bukan dari localStorage. addXP/getStats/saveStats tetap hidup
+// supaya pemanggil tidak error, tapi UI tidak baca darinya lagi.
 
-function refreshStatsBar() {
-  const el = document.querySelector('.stats-bar');
-  if (el) el.outerHTML = renderStatsBar();
+// Skeleton placeholder — render dulu sebelum fetch return.
+function habitBarSkeleton() {
+  return `
+    <div class="habit-bar skeleton">
+      <div class="habit-card habit-streak"></div>
+      <div class="habit-card habit-goal"></div>
+    </div>
+  `;
 }
+
+function habitBarHtml(stats) {
+  const streak = Number(stats?.streak_days) || 0;
+  const today = stats?.today || { minutesToday: 0, lessonsToday: 0, goalMinutes: 10, goalLessons: 1, goalMet: false };
+  const isActive = streak >= 2;
+
+  const streakLabel = isActive ? `${streak} hari beruntun!` : 'Mulai streak hari ini';
+  const streakSub = isActive
+    ? 'Pertahankan ya — selesaikan 1 lesson lagi.'
+    : 'Selesaikan 1 lesson untuk mulai.';
+
+  const goalPct = today.goalMet
+    ? 100
+    : Math.min(100, Math.max(0, (today.minutesToday / Math.max(1, today.goalMinutes)) * 100));
+  const goalLabel = today.goalMet ? '✅ Target hari ini tercapai!' : 'Target hari ini';
+  const goalValue = today.goalMet ? '+streak besok' : `${today.minutesToday} / ${today.goalMinutes} menit`;
+
+  return `
+    <div class="habit-bar">
+      <div class="habit-card habit-streak ${isActive ? 'active' : ''}">
+        <div class="habit-streak-emoji" aria-hidden="true">🔥</div>
+        <div class="habit-streak-text">
+          <strong>${escapeHtml(streakLabel)}</strong>
+          <span>${escapeHtml(streakSub)}</span>
+        </div>
+      </div>
+      <div class="habit-card habit-goal ${today.goalMet ? 'met' : ''}">
+        <div class="habit-goal-header">
+          <span class="habit-goal-label">${escapeHtml(goalLabel)}</span>
+          <span class="habit-goal-value">${escapeHtml(goalValue)}</span>
+        </div>
+        <div class="habit-goal-track">
+          <div class="habit-goal-fill" style="width: ${goalPct}%"></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function fetchHabitStats() {
+  try {
+    const res = await fetch('/api/stats/me', { credentials: 'include' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.stats || null;
+  } catch { return null; }
+}
+
+// Render habit bar — async fetch with skeleton fallback. Returns skeleton
+// HTML synchronously so initial render isn't blocked, then refreshHabitBar()
+// populates it once data arrives.
+function renderStatsBar() { return habitBarSkeleton(); }
+
+async function refreshStatsBar() {
+  const el = document.querySelector('.habit-bar');
+  if (!el) return;
+  const stats = await fetchHabitStats();
+  if (!stats) { el.outerHTML = ''; return; } // hide if API fails — better than stale skeleton
+  el.outerHTML = habitBarHtml(stats);
+}
+
+// Auto-fetch on page mount + after lesson completion (tickActivityAndStreak
+// hook is the natural moment to refresh the goal pill).
+document.addEventListener('DOMContentLoaded', () => {
+  refreshStatsBar();
+});
 
 // ═══════════════════════════════════════════════
 // CONFETTI + COMPLETION MODAL
@@ -3877,8 +4051,6 @@ function renderSidebar() {
     `;
   }).join('');
 
-  const flashCount = (FLASHCARD_DATA[currentState.course] || []).length;
-
   const enrolled = getEnrolledCourses();
   // Merge enrolled (hydrated) courses with CMS-listed courses so non-enrolled
   // courses still appear in the picker with an "Upgrade" CTA. Source of truth
@@ -3944,13 +4116,6 @@ function renderSidebar() {
           <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
         </div>
       </div>
-      ${flashCount > 0 ? `
-        <button class="flashcard-cta" onclick="openFlashcards('${currentState.course}')">
-          <span class="icon">🎴</span>
-          <span>Flashcard</span>
-          <span class="count">${flashCount}</span>
-        </button>
-      ` : ''}
       <div class="module-filter">
         <svg class="mf-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="search" id="module-filter-input" placeholder="Cari modul..." oninput="filterModules(this.value)" autocomplete="off" />
@@ -4454,14 +4619,6 @@ function renderLessonTabs(module, lesson) {
               </div>
               <span class="res-arr">▶</span>
             </a>
-            <a class="resource-card" href="#" onclick="event.preventDefault();openVocabFlashcard();">
-              <span class="res-ico">📖</span>
-              <div class="res-info">
-                <div class="res-title">Daftar Kosakata</div>
-                <div class="res-sub">Flashcard list untuk bab ini</div>
-              </div>
-              <span class="res-arr">→</span>
-            </a>
           </div>
         </div>
         <div class="tab-pane" data-pane="catatan">
@@ -4730,7 +4887,7 @@ window.switchCourse = async (slug) => {
     // CMS course list (used by sidebar picker / course tabs to show
     // upgrade CTAs for non-enrolled courses) can load in parallel.
     await syncEnrollmentsFromServer();
-    await Promise.all([hydrateEnrolledCourses(), loadFlashcardData(), fetchCmsCourses()]);
+    await Promise.all([hydrateEnrolledCourses(), fetchCmsCourses()]);
     // handleNewEnrollment may resync enrollments (e.g. if user just landed
     // from checkout). Re-hydrate in case it discovered a newly-paid course.
     await handleNewEnrollment();
