@@ -236,32 +236,33 @@ router.get('/module-vocabulary', asyncHandler(async (req, res) => {
 }));
 
 router.post('/module-vocabulary', asyncHandler(async (req, res) => {
-  const { moduleId, lessonId, japanese, reading, indonesian, category, note, sortOrder } = req.body || {};
+  const { moduleId, lessonId, japanese, reading, romaji, indonesian, category, note, sortOrder } = req.body || {};
   if (!moduleId || !japanese) return res.status(400).json({ error: 'moduleId and japanese required' });
   const result = await query(
-    `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, indonesian, category, note, sort_order)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-    [moduleId, lessonId || null, japanese, reading || null, indonesian || null, category || null, note || null, sortOrder || 0]
+    `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, romaji, indonesian, category, note, sort_order)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+    [moduleId, lessonId || null, japanese, reading || null, romaji || null, indonesian || null, category || null, note || null, sortOrder || 0]
   );
   res.status(201).json({ vocabulary: result.rows[0] });
 }));
 
 router.put('/module-vocabulary/:id', asyncHandler(async (req, res) => {
-  const { lessonId, japanese, reading, indonesian, category, note, sortOrder } = req.body || {};
+  const { lessonId, japanese, reading, romaji, indonesian, category, note, sortOrder } = req.body || {};
   // lessonId is special: allow explicit null to unassign. Use has-own-property semantics.
   const hasLesson = Object.prototype.hasOwnProperty.call(req.body || {}, 'lessonId');
   const result = await query(
     `UPDATE module_vocabulary SET
-       lesson_id = CASE WHEN $9::boolean THEN $2 ELSE lesson_id END,
+       lesson_id = CASE WHEN $10::boolean THEN $2 ELSE lesson_id END,
        japanese = COALESCE($3, japanese),
        reading = COALESCE($4, reading),
-       indonesian = COALESCE($5, indonesian),
-       category = COALESCE($6, category),
-       note = COALESCE($7, note),
-       sort_order = COALESCE($8, sort_order),
+       romaji = COALESCE($5, romaji),
+       indonesian = COALESCE($6, indonesian),
+       category = COALESCE($7, category),
+       note = COALESCE($8, note),
+       sort_order = COALESCE($9, sort_order),
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
-    [req.params.id, lessonId || null, japanese, reading, indonesian, category, note, sortOrder, hasLesson]
+    [req.params.id, lessonId || null, japanese, reading, romaji, indonesian, category, note, sortOrder, hasLesson]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ vocabulary: result.rows[0] });
@@ -281,14 +282,141 @@ router.post('/module-vocabulary/bulk', asyncHandler(async (req, res) => {
     const v = items[i] || {};
     if (!v.japanese) continue;
     const r = await query(
-      `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, indonesian, category, note, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [moduleId, v.lessonId || null, v.japanese, v.reading || null, v.indonesian || null,
+      `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, romaji, indonesian, category, note, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [moduleId, v.lessonId || null, v.japanese, v.reading || null, v.romaji || null, v.indonesian || null,
        v.category || null, v.note || null, v.sortOrder ?? i]
     );
     inserted.push(r.rows[0]);
   }
   res.status(201).json({ vocabulary: inserted });
+}));
+
+// ===== VOCAB BANK PICKER (for deck lessons) =====
+// All vocab items, searchable, optionally scoped to a course. Used by the deck
+// editor's "tambah dari bank" picker.
+router.get('/vocab-bank', asyncHandler(async (req, res) => {
+  const { courseId, q } = req.query;
+  const params = [];
+  const where = [];
+  if (courseId) {
+    params.push(courseId);
+    where.push(`v.module_id IN (SELECT id FROM modules WHERE course_id = $${params.length})`);
+  }
+  if (q && String(q).trim()) {
+    params.push('%' + String(q).trim() + '%');
+    const p = `$${params.length}`;
+    where.push(`(v.japanese ILIKE ${p} OR v.reading ILIKE ${p} OR v.romaji ILIKE ${p} OR v.indonesian ILIKE ${p})`);
+  }
+  const rows = await query(
+    `SELECT v.id, v.module_id, v.japanese, v.reading, v.romaji, v.indonesian, v.category,
+            m.title AS module_title,
+            (SELECT COUNT(*)::int FROM vocabulary_examples e WHERE e.vocabulary_id = v.id) AS example_count
+     FROM module_vocabulary v JOIN modules m ON m.id = v.module_id
+     ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+     ORDER BY v.japanese ASC LIMIT 200`,
+    params
+  );
+  res.json({ vocabulary: rows.rows });
+}));
+
+// ===== VOCABULARY EXAMPLE SENTENCES =====
+
+router.get('/vocabulary-examples', asyncHandler(async (req, res) => {
+  const { vocabularyId } = req.query;
+  if (!vocabularyId) return res.status(400).json({ error: 'vocabularyId required' });
+  const rows = await query(
+    `SELECT * FROM vocabulary_examples WHERE vocabulary_id = $1 ORDER BY sort_order ASC, created_at ASC`,
+    [vocabularyId]
+  );
+  res.json({ examples: rows.rows });
+}));
+
+router.post('/vocabulary-examples', asyncHandler(async (req, res) => {
+  const { vocabularyId, japanese, highlight, indonesian, sortOrder } = req.body || {};
+  if (!vocabularyId || !japanese) return res.status(400).json({ error: 'vocabularyId and japanese required' });
+  const r = await query(
+    `INSERT INTO vocabulary_examples (vocabulary_id, japanese, highlight, indonesian, sort_order)
+     VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+    [vocabularyId, japanese, highlight || null, indonesian || null, sortOrder || 0]
+  );
+  res.status(201).json({ example: r.rows[0] });
+}));
+
+router.put('/vocabulary-examples/:id', asyncHandler(async (req, res) => {
+  const { japanese, highlight, indonesian, sortOrder } = req.body || {};
+  const hasHighlight = Object.prototype.hasOwnProperty.call(req.body || {}, 'highlight');
+  const r = await query(
+    `UPDATE vocabulary_examples SET
+       japanese = COALESCE($2, japanese),
+       highlight = CASE WHEN $5::boolean THEN $3 ELSE highlight END,
+       indonesian = COALESCE($4, indonesian),
+       sort_order = COALESCE($6, sort_order),
+       updated_at = NOW()
+     WHERE id = $1 RETURNING *`,
+    [req.params.id, japanese, highlight || null, indonesian, hasHighlight, sortOrder]
+  );
+  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ example: r.rows[0] });
+}));
+
+router.delete('/vocabulary-examples/:id', asyncHandler(async (req, res) => {
+  await query(`DELETE FROM vocabulary_examples WHERE id = $1`, [req.params.id]);
+  res.json({ ok: true });
+}));
+
+// ===== DECK ITEMS (vocab picked into a 'deck' lesson) =====
+
+router.get('/lessons/:lessonId/deck-items', asyncHandler(async (req, res) => {
+  const rows = await query(
+    `SELECT di.lesson_id, di.vocabulary_id, di.sort_order, di.accent_color,
+            v.japanese, v.reading, v.romaji, v.indonesian, v.category, v.module_id,
+            (SELECT COUNT(*)::int FROM vocabulary_examples e WHERE e.vocabulary_id = v.id) AS example_count
+     FROM lesson_deck_items di JOIN module_vocabulary v ON v.id = di.vocabulary_id
+     WHERE di.lesson_id = $1
+     ORDER BY di.sort_order ASC, v.japanese ASC`,
+    [req.params.lessonId]
+  );
+  res.json({ items: rows.rows });
+}));
+
+router.post('/lessons/:lessonId/deck-items', asyncHandler(async (req, res) => {
+  const { vocabularyId, sortOrder, accentColor } = req.body || {};
+  if (!vocabularyId) return res.status(400).json({ error: 'vocabularyId required' });
+  const r = await query(
+    `INSERT INTO lesson_deck_items (lesson_id, vocabulary_id, sort_order, accent_color)
+     VALUES ($1,$2,$3,$4)
+     ON CONFLICT (lesson_id, vocabulary_id)
+       DO UPDATE SET sort_order = EXCLUDED.sort_order, accent_color = EXCLUDED.accent_color
+     RETURNING *`,
+    [req.params.lessonId, vocabularyId, sortOrder ?? 0, accentColor || null]
+  );
+  res.status(201).json({ item: r.rows[0] });
+}));
+
+router.put('/lessons/:lessonId/deck-items', asyncHandler(async (req, res) => {
+  const { items } = req.body || {};
+  if (!Array.isArray(items)) return res.status(400).json({ error: 'items[] required' });
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i] || {};
+    if (!it.vocabularyId) continue;
+    await query(
+      `INSERT INTO lesson_deck_items (lesson_id, vocabulary_id, sort_order, accent_color)
+       VALUES ($1,$2,$3,$4)
+       ON CONFLICT (lesson_id, vocabulary_id)
+         DO UPDATE SET sort_order = EXCLUDED.sort_order, accent_color = EXCLUDED.accent_color`,
+      [req.params.lessonId, it.vocabularyId, it.sortOrder ?? i, it.accentColor || null]
+    );
+  }
+  res.json({ ok: true });
+}));
+
+router.delete('/lessons/:lessonId/deck-items/:vocabularyId', asyncHandler(async (req, res) => {
+  await query(
+    `DELETE FROM lesson_deck_items WHERE lesson_id = $1 AND vocabulary_id = $2`,
+    [req.params.lessonId, req.params.vocabularyId]
+  );
+  res.json({ ok: true });
 }));
 
 // ===== MODULE GRAMMAR =====

@@ -681,21 +681,27 @@ function renderLessons() {
         if (!g.lesson_id) return;
         grammarByLesson[g.lesson_id] = (grammarByLesson[g.lesson_id] || 0) + 1;
       });
+      const courseRow = STATE.courses.find((c) => c.slug === STATE.selectedCourse);
+      const courseId = courseRow ? courseRow.id : '';
       const rows = STATE.lessons.map((l) => {
         const titleEsc = escapeHtml(l.title).replace(/'/g, "\\'");
         const vocabN = vocabByLesson[l.id] || 0;
         const grammarN = grammarByLesson[l.id] || 0;
-        const contentBtns = l.type !== 'quiz'
-          ? `<button class="btn btn-ghost" onclick="manageVocab('${l.id}', '${titleEsc}', '${mod.id}')">Vocab (${vocabN})</button>
-             <button class="btn btn-ghost" onclick="manageGrammar('${l.id}', '${titleEsc}', '${mod.id}')">Grammar (${grammarN})</button>`
-          : '';
+        const deckN = Array.isArray(l.deck) ? l.deck.length : 0;
+        let contentBtns = '';
+        if (l.type === 'deck') {
+          contentBtns = `<button class="btn btn-ghost" onclick="manageDeck('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Deck (${deckN})</button>`;
+        } else if (l.type !== 'quiz') {
+          contentBtns = `<button class="btn btn-ghost" onclick="manageVocab('${l.id}', '${titleEsc}', '${mod.id}')">Vocab (${vocabN})</button>
+             <button class="btn btn-ghost" onclick="manageGrammar('${l.id}', '${titleEsc}', '${mod.id}')">Grammar (${grammarN})</button>`;
+        }
         const quizBtn = l.type === 'quiz'
           ? `<button class="btn btn-ghost" onclick="manageQuiz('${l.id}', '${titleEsc}')">Kuis</button>`
           : '';
         return `
         <tr>
           <td><strong>${escapeHtml(l.title)}</strong><br><span class="pill">${escapeHtml(l.slug)}</span></td>
-          <td><span class="badge ${l.type === 'quiz' ? 'badge-admin' : (l.type === 'video' ? 'badge-on' : 'badge-off')}">${escapeHtml(l.type)}</span></td>
+          <td><span class="badge ${l.type === 'quiz' ? 'badge-admin' : (l.type === 'video' || l.type === 'deck' ? 'badge-on' : 'badge-off')}">${escapeHtml(l.type)}</span></td>
           <td>${l.duration_minutes || '-'}</td>
           <td>${l.sort_order}</td>
           <td class="actions">
@@ -759,7 +765,13 @@ function lessonFormHtml(l) {
             <option value="text" ${l.type === 'text' ? 'selected' : ''}>Teks</option>
             <option value="video" ${l.type === 'video' ? 'selected' : ''}>Video</option>
             <option value="quiz" ${l.type === 'quiz' ? 'selected' : ''}>Kuis</option>
+            <option value="deck" ${l.type === 'deck' ? 'selected' : ''}>Deck Kosakata</option>
           </select>
+        </div>
+      </div>
+      <div class="field field-deck-hint" data-deck-only style="display:${l.type === 'deck' ? '' : 'none'};">
+        <div style="font-size:12px;color:#525252;font-family:var(--font-body);background:#fef9c3;border:1px solid #fde047;border-radius:6px;padding:8px 12px;">
+          <strong>Deck Kosakata:</strong> setelah simpan, klik tombol <strong>Kelola Deck</strong> di daftar pelajaran untuk memilih kosakata &amp; contoh kalimat. Field "Konten" di bawah opsional — boleh diisi sebagai pengantar (tampil di atas grid kartu).
         </div>
       </div>
       <div class="field"><label>Judul</label><input name="title" value="${escapeHtml(l.title)}" required placeholder="Ketik judul — slug terisi otomatis" /></div>
@@ -788,8 +800,12 @@ function lessonFormHtml(l) {
 function wireLessonTypeVisibility(form) {
   const typeSel = form.querySelector('select[name="type"]');
   const videoField = form.querySelector('.field-video');
-  if (!typeSel || !videoField) return;
-  const apply = () => { videoField.style.display = typeSel.value === 'video' ? '' : 'none'; };
+  const deckHint = form.querySelector('.field-deck-hint');
+  if (!typeSel) return;
+  const apply = () => {
+    if (videoField) videoField.style.display = typeSel.value === 'video' ? '' : 'none';
+    if (deckHint) deckHint.style.display = typeSel.value === 'deck' ? '' : 'none';
+  };
   apply();
   typeSel.addEventListener('change', apply);
 }
@@ -1300,6 +1316,342 @@ window.submitBulk = async (kind, lessonId, lessonTitle, moduleId) => {
     if (STATE.selectedCourse) loadModulesForCourse(STATE.selectedCourse);
   } catch (err) { notify('Gagal import: ' + err.message, true); }
 };
+
+// ─────────────────────────────────────────────────────────────
+// DECK ("deck" lesson type) MANAGER
+// ─────────────────────────────────────────────────────────────
+function deckRefreshList() {
+  if (STATE.selectedCourse) loadModulesForCourse(STATE.selectedCourse).then(() => {
+    if (STATE.tab === 'lessons') renderLessons();
+  });
+}
+
+function renderDeckTable(items) {
+  if (!items || items.length === 0) {
+    return '<div class="empty" style="padding:20px;">Belum ada kosakata di deck ini. Tambah dari bank atau buat kata baru.</div>';
+  }
+  const rows = items.map((it) => {
+    return `
+    <tr data-deck-vid="${it.vocabulary_id}">
+      <td lang="ja" style="font-size:17px;">${escapeHtml(it.japanese || '')}</td>
+      <td lang="ja">${escapeHtml(it.reading || '')}</td>
+      <td>${escapeHtml(it.romaji || '')}</td>
+      <td>${escapeHtml(it.indonesian || '')}</td>
+      <td>${escapeHtml(it.category || '')}</td>
+      <td><input value="${escapeHtml(it.accent_color || '')}" placeholder="#C8102E" style="width:88px;font-size:11px;" onchange="deckSetColor('${it.vocabulary_id}', this.value)" /></td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost" onclick="deckMove('${it.vocabulary_id}', -1)">↑</button>
+        <button class="btn btn-ghost" onclick="deckMove('${it.vocabulary_id}', 1)">↓</button>
+      </td>
+      <td class="actions" style="white-space:nowrap;">
+        <button class="btn btn-ghost" onclick="deckManageExamples('${it.vocabulary_id}')">Contoh (${it.example_count || 0})</button>
+        <button class="btn btn-danger" onclick="deckRemove('${it.vocabulary_id}')">Keluarkan</button>
+      </td>
+    </tr>`;
+  }).join('');
+  return `<table style="font-size:13px;">
+    <thead><tr><th>日本語</th><th>Kana</th><th>Romaji</th><th>Arti</th><th>Kategori</th><th>Warna</th><th>Urut</th><th></th></tr></thead>
+    <tbody id="deck-body">${rows}</tbody></table>`;
+}
+
+function deckRerender() {
+  const wrap = document.getElementById('deck-wrap');
+  if (wrap) wrap.innerHTML = renderDeckTable(window.__deckItems || []);
+  const c = document.getElementById('deck-count');
+  if (c) c.textContent = (window.__deckItems || []).length + ' item';
+}
+
+async function openDeckManager(lessonId, lessonTitle, moduleId, courseId) {
+  let items = [];
+  try {
+    const d = await api('/admin/lessons/' + lessonId + '/deck-items');
+    items = d.items || [];
+  } catch (err) { notify('Gagal load deck: ' + err.message, true); return; }
+  window.__deckCtx = { lessonId, lessonTitle, moduleId, courseId: courseId || '' };
+  window.__deckItems = items;
+  const safeTitle = escapeHtml(lessonTitle).replace(/'/g, "\\'");
+  openModal(`
+    <h3>Deck Kosakata: ${escapeHtml(lessonTitle)}</h3>
+    <div class="toolbar">
+      <button type="button" class="btn btn-primary" onclick="deckShowNewWord()">+ Kata baru</button>
+      <button type="button" class="btn btn-ghost" onclick="deckShowBank()">+ Dari bank</button>
+      <button type="button" class="btn btn-ghost" onclick="deckOpenBulk()">Paste dari Excel (TSV)</button>
+      <span id="deck-count" style="font-size:12px;color:#737373;font-family:var(--font-body);">${items.length} item</span>
+    </div>
+    <div id="deck-panel"></div>
+    <div id="deck-wrap" style="overflow-x:auto;">${renderDeckTable(items)}</div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
+  `);
+  modalContent.style.maxWidth = '1100px';
+}
+window.manageDeck = (lessonId, lessonTitle, moduleId, courseId) => openDeckManager(lessonId, lessonTitle, moduleId, courseId);
+
+window.deckMove = async (vid, dir) => {
+  const arr = window.__deckItems || [];
+  const i = arr.findIndex((x) => x.vocabulary_id === vid);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= arr.length) return;
+  const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+  arr.forEach((x, k) => { x.sort_order = k; });
+  deckRerender();
+  try {
+    await api('/admin/lessons/' + window.__deckCtx.lessonId + '/deck-items', {
+      method: 'PUT',
+      body: JSON.stringify({ items: arr.map((x, k) => ({ vocabularyId: x.vocabulary_id, sortOrder: k, accentColor: x.accent_color || null })) }),
+    });
+    deckRefreshList();
+  } catch (err) { notify('Gagal urut: ' + err.message, true); }
+};
+
+window.deckSetColor = async (vid, val) => {
+  const it = (window.__deckItems || []).find((x) => x.vocabulary_id === vid);
+  const color = (val || '').trim() || null;
+  if (it) it.accent_color = color;
+  try {
+    await api('/admin/lessons/' + window.__deckCtx.lessonId + '/deck-items', {
+      method: 'POST',
+      body: JSON.stringify({ vocabularyId: vid, sortOrder: it ? it.sort_order : 0, accentColor: color }),
+    });
+  } catch (err) { notify('Gagal simpan warna: ' + err.message, true); }
+};
+
+window.deckRemove = async (vid) => {
+  if (!confirm('Keluarkan kata ini dari deck? (kata tetap tersimpan di bank)')) return;
+  try {
+    await api('/admin/lessons/' + window.__deckCtx.lessonId + '/deck-items/' + vid, { method: 'DELETE' });
+    window.__deckItems = (window.__deckItems || []).filter((x) => x.vocabulary_id !== vid);
+    deckRerender(); notify('Dikeluarkan'); deckRefreshList();
+  } catch (err) { notify('Gagal: ' + err.message, true); }
+};
+
+window.deckShowNewWord = () => {
+  const p = document.getElementById('deck-panel');
+  if (!p) return;
+  p.innerHTML = `
+    <div style="background:#f5f5f5;padding:14px;border-radius:8px;margin-bottom:14px;">
+      <strong style="font-size:13px;">Kata baru</strong>
+      <div class="field-row" style="margin-top:8px;">
+        <div class="field"><label>日本語 *</label><input id="nw-jp" lang="ja" /></div>
+        <div class="field"><label>Kana (untuk audio)</label><input id="nw-reading" lang="ja" placeholder="ひ" /></div>
+        <div class="field"><label>Romaji</label><input id="nw-romaji" placeholder="hi · nichi" /></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Arti (Indonesia)</label><input id="nw-id" /></div>
+        <div class="field"><label>Kategori</label><input id="nw-cat" placeholder="time, day, sun..." /></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('deck-panel').innerHTML='';">Batal</button>
+        <button type="button" class="btn btn-primary" onclick="deckCreateWord()">Tambah ke deck</button>
+      </div>
+    </div>`;
+};
+
+window.deckCreateWord = async () => {
+  const ctx = window.__deckCtx;
+  const jp = (document.getElementById('nw-jp').value || '').trim();
+  if (!jp) { notify('日本語 wajib diisi', true); return; }
+  try {
+    const d = await api('/admin/module-vocabulary', { method: 'POST', body: JSON.stringify({
+      moduleId: ctx.moduleId, lessonId: null, japanese: jp,
+      reading: (document.getElementById('nw-reading').value || '').trim() || null,
+      romaji: (document.getElementById('nw-romaji').value || '').trim() || null,
+      indonesian: (document.getElementById('nw-id').value || '').trim() || null,
+      category: (document.getElementById('nw-cat').value || '').trim() || null,
+      sortOrder: (window.__deckItems || []).length,
+    }) });
+    const v = d.vocabulary;
+    await api('/admin/lessons/' + ctx.lessonId + '/deck-items', { method: 'POST', body: JSON.stringify({ vocabularyId: v.id, sortOrder: (window.__deckItems || []).length }) });
+    window.__deckItems = window.__deckItems || [];
+    window.__deckItems.push({ vocabulary_id: v.id, japanese: v.japanese, reading: v.reading, romaji: v.romaji, indonesian: v.indonesian, category: v.category, accent_color: null, sort_order: window.__deckItems.length, example_count: 0, module_id: v.module_id });
+    const p = document.getElementById('deck-panel'); if (p) p.innerHTML = '';
+    deckRerender(); notify('Ditambahkan'); deckRefreshList();
+    deckManageExamples(v.id);
+  } catch (err) { notify('Gagal: ' + err.message, true); }
+};
+
+window.deckShowBank = () => {
+  const p = document.getElementById('deck-panel');
+  if (!p) return;
+  p.innerHTML = `
+    <div style="background:#f5f5f5;padding:14px;border-radius:8px;margin-bottom:14px;">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+        <strong style="font-size:13px;white-space:nowrap;">Dari bank kosakata</strong>
+        <input id="bank-q" placeholder="cari kata / reading / arti..." style="flex:1;font-size:13px;" oninput="deckBankSearch()" />
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('deck-panel').innerHTML='';">Tutup</button>
+      </div>
+      <div id="bank-results" style="max-height:300px;overflow-y:auto;background:#fff;border-radius:6px;"></div>
+    </div>`;
+  deckBankSearch();
+};
+
+let __deckBankTimer = null;
+window.deckBankSearch = () => {
+  clearTimeout(__deckBankTimer);
+  __deckBankTimer = setTimeout(async () => {
+    const ctx = window.__deckCtx;
+    const q = (document.getElementById('bank-q') ? document.getElementById('bank-q').value : '').trim();
+    try {
+      const d = await api('/admin/vocab-bank?courseId=' + encodeURIComponent(ctx.courseId || '') + '&q=' + encodeURIComponent(q));
+      window.__bankResults = {};
+      const inDeck = new Set((window.__deckItems || []).map((x) => x.vocabulary_id));
+      const rows = (d.vocabulary || []).map((v) => {
+        window.__bankResults[v.id] = v;
+        return `<div style="display:flex;gap:10px;align-items:center;padding:6px 10px;border-bottom:1px solid #eee;font-size:13px;">
+          <span lang="ja" style="font-size:16px;min-width:54px;">${escapeHtml(v.japanese)}</span>
+          <span style="color:#737373;min-width:80px;">${escapeHtml(v.reading || '')}</span>
+          <span style="flex:1;min-width:0;">${escapeHtml(v.indonesian || '')}</span>
+          <span class="pill">${escapeHtml(v.module_title || '')}</span>
+          <span style="color:#a3a3a3;font-size:11px;">${v.example_count || 0} contoh</span>
+          ${inDeck.has(v.id) ? '<span style="color:#16a34a;font-size:12px;white-space:nowrap;">✓ di deck</span>' : `<button type="button" class="btn btn-primary" onclick="deckAddFromBank('${v.id}')">+ Tambah</button>`}
+        </div>`;
+      }).join('');
+      const box = document.getElementById('bank-results');
+      if (box) box.innerHTML = rows || '<div class="empty" style="padding:14px;">Tidak ada hasil.</div>';
+    } catch (err) { notify('Gagal cari: ' + err.message, true); }
+  }, 250);
+};
+
+window.deckAddFromBank = async (vid) => {
+  const ctx = window.__deckCtx;
+  const v = (window.__bankResults || {})[vid];
+  if (!v) return;
+  try {
+    await api('/admin/lessons/' + ctx.lessonId + '/deck-items', { method: 'POST', body: JSON.stringify({ vocabularyId: vid, sortOrder: (window.__deckItems || []).length }) });
+    window.__deckItems = window.__deckItems || [];
+    window.__deckItems.push({ vocabulary_id: vid, japanese: v.japanese, reading: v.reading, romaji: v.romaji, indonesian: v.indonesian, category: v.category, accent_color: null, sort_order: window.__deckItems.length, example_count: v.example_count || 0, module_id: v.module_id });
+    deckRerender(); notify('Ditambahkan'); deckRefreshList();
+    deckBankSearch();
+  } catch (err) { notify('Gagal: ' + err.message, true); }
+};
+
+window.deckOpenBulk = () => {
+  const ctx = window.__deckCtx;
+  const safeTitle = escapeHtml(ctx.lessonTitle).replace(/'/g, "\\'");
+  openModal(`
+    <h3>Paste kosakata (TSV) → ${escapeHtml(ctx.lessonTitle)}</h3>
+    <p style="font-size:12px;color:#525252;font-family:var(--font-body);margin:0 0 10px;">
+      Satu baris per kata. Kolom dipisah TAB, urutan: <code>japanese&nbsp;&nbsp;reading&nbsp;&nbsp;romaji&nbsp;&nbsp;indonesian&nbsp;&nbsp;category</code>.<br>
+      Tiap kata dibuat baru di bank lalu langsung dimasukkan ke deck ini. Contoh kalimat ditambahkan manual setelahnya.
+    </p>
+    <div class="field"><textarea id="deck-bulk-tsv" rows="12" style="font-family:monospace;font-size:12px;"></textarea></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="manageDeck('${ctx.lessonId}', '${safeTitle}', '${ctx.moduleId}', '${ctx.courseId || ''}')">← Kembali ke deck</button>
+      <button type="button" class="btn btn-primary" onclick="deckSubmitBulk()">Import</button>
+    </div>
+  `);
+};
+
+window.deckSubmitBulk = async () => {
+  const ctx = window.__deckCtx;
+  const raw = document.getElementById('deck-bulk-tsv').value || '';
+  const cols = ['japanese', 'reading', 'romaji', 'indonesian', 'category'];
+  const items = raw.split(/\r?\n/).map((line) => {
+    if (!line.trim()) return null;
+    const c = line.split('\t');
+    const o = {};
+    cols.forEach((name, i) => { o[name] = (c[i] || '').trim() || null; });
+    return o;
+  }).filter((x) => x && x.japanese);
+  if (items.length === 0) { notify('Tidak ada baris valid', true); return; }
+  try {
+    const d = await api('/admin/module-vocabulary/bulk', { method: 'POST', body: JSON.stringify({ moduleId: ctx.moduleId, items: items.map((x) => ({ ...x, lessonId: null })), replace: false }) });
+    const created = d.vocabulary || [];
+    const startSort = (window.__deckItems || []).length;
+    await api('/admin/lessons/' + ctx.lessonId + '/deck-items', { method: 'PUT', body: JSON.stringify({ items: created.map((v, i) => ({ vocabularyId: v.id, sortOrder: startSort + i })) }) });
+    notify(created.length + ' kata di-import ke deck');
+    deckRefreshList();
+    manageDeck(ctx.lessonId, ctx.lessonTitle, ctx.moduleId, ctx.courseId || '');
+  } catch (err) { notify('Gagal import: ' + err.message, true); }
+};
+
+// ── examples editor (own modal, returns to deck) ──
+function deckExampleRowHtml(vid, jp, e) {
+  e = e || {};
+  return `<tr data-ex-id="${e.id || ''}" data-exvid="${vid}">
+    <td><input name="japanese" value="${escapeHtml(e.japanese || '')}" lang="ja" style="min-width:220px;width:100%;" placeholder="例: 今日はいい天気です。" /></td>
+    <td><input name="highlight" value="${escapeHtml(e.highlight != null ? e.highlight : '')}" lang="ja" placeholder="${escapeHtml(jp)}" style="width:90px;" /></td>
+    <td><input name="indonesian" value="${escapeHtml(e.indonesian || '')}" style="min-width:180px;width:100%;" placeholder="Hari ini cuacanya bagus." /></td>
+    <td><input type="number" name="sortOrder" value="${e.sort_order || 0}" style="width:50px;" /></td>
+    <td style="white-space:nowrap;">
+      <button type="button" class="btn btn-primary" onclick="deckSaveExample(this)">Simpan</button>
+      ${e.id ? `<button type="button" class="btn btn-danger" onclick="deckDeleteExample(this)">×</button>` : `<button type="button" class="btn btn-ghost" onclick="this.closest('tr').remove()">×</button>`}
+    </td>
+  </tr>`;
+}
+
+window.deckManageExamples = async (vid) => {
+  const ctx = window.__deckCtx;
+  const item = (window.__deckItems || []).find((x) => x.vocabulary_id === vid);
+  const jp = item ? (item.japanese || '') : '';
+  let examples = [];
+  try { const d = await api('/admin/vocabulary-examples?vocabularyId=' + vid); examples = d.examples || []; }
+  catch (err) { notify('Gagal load contoh: ' + err.message, true); return; }
+  const safeTitle = escapeHtml(ctx.lessonTitle).replace(/'/g, "\\'");
+  window.__deckExVid = vid;
+  window.__deckExJp = jp;
+  openModal(`
+    <h3>Contoh kalimat — <span lang="ja">${escapeHtml(jp)}</span></h3>
+    <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 10px;">
+      "Highlight" = bagian kalimat yang ditandai (default: <code lang="ja">${escapeHtml(jp)}</code>). Tulis kalimat polos, tanpa tag HTML.
+    </p>
+    <div style="overflow-x:auto;"><table style="font-size:12px;">
+      <thead><tr><th>Kalimat (JP)</th><th>Highlight</th><th>Terjemahan (ID)</th><th>#</th><th></th></tr></thead>
+      <tbody id="deck-ex-body">${examples.map((e) => deckExampleRowHtml(vid, jp, e)).join('')}</tbody>
+    </table></div>
+    ${examples.length === 0 ? '<div class="empty" style="padding:14px;">Belum ada contoh kalimat.</div>' : ''}
+    <div class="toolbar" style="margin-top:8px;"><button type="button" class="btn btn-ghost" onclick="deckAddExampleRow()">+ Tambah contoh</button></div>
+    <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="manageDeck('${ctx.lessonId}', '${safeTitle}', '${ctx.moduleId}', '${ctx.courseId || ''}')">← Kembali ke deck</button></div>
+  `);
+  modalContent.style.maxWidth = '900px';
+};
+
+window.deckAddExampleRow = () => {
+  const tb = document.getElementById('deck-ex-body');
+  if (tb) tb.appendChild(el(deckExampleRowHtml(window.__deckExVid, window.__deckExJp || '', { sort_order: tb.querySelectorAll('tr').length })));
+};
+
+window.deckSaveExample = async (btn) => {
+  const tr = btn.closest('tr');
+  const id = tr.dataset.exId;
+  const vid = tr.dataset.exvid;
+  const body = {
+    vocabularyId: vid,
+    japanese: tr.querySelector('input[name="japanese"]').value.trim(),
+    highlight: tr.querySelector('input[name="highlight"]').value.trim() || null,
+    indonesian: tr.querySelector('input[name="indonesian"]').value.trim() || null,
+    sortOrder: Number(tr.querySelector('input[name="sortOrder"]').value) || 0,
+  };
+  if (!body.japanese) { notify('Kalimat JP wajib diisi', true); return; }
+  try {
+    if (id) {
+      await api('/admin/vocabulary-examples/' + id, { method: 'PUT', body: JSON.stringify(body) });
+    } else {
+      const d = await api('/admin/vocabulary-examples', { method: 'POST', body: JSON.stringify(body) });
+      if (d.example && d.example.id) {
+        tr.dataset.exId = d.example.id;
+        const cell = tr.querySelector('td:last-child');
+        cell.innerHTML = `<button type="button" class="btn btn-primary" onclick="deckSaveExample(this)">Simpan</button><button type="button" class="btn btn-danger" onclick="deckDeleteExample(this)">×</button>`;
+      }
+      deckBumpExampleCount(vid, 1);
+    }
+    notify('Tersimpan');
+  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+};
+
+window.deckDeleteExample = async (btn) => {
+  const tr = btn.closest('tr');
+  const id = tr.dataset.exId;
+  const vid = tr.dataset.exvid;
+  if (!id) { tr.remove(); return; }
+  if (!confirm('Hapus contoh kalimat ini?')) return;
+  try { await api('/admin/vocabulary-examples/' + id, { method: 'DELETE' }); tr.remove(); deckBumpExampleCount(vid, -1); notify('Dihapus'); }
+  catch (err) { notify('Gagal hapus: ' + err.message, true); }
+};
+
+function deckBumpExampleCount(vid, delta) {
+  const it = (window.__deckItems || []).find((x) => x.vocabulary_id === vid);
+  if (it) it.example_count = Math.max(0, (it.example_count || 0) + delta);
+}
 
 // ─────────────────────────────────────────────────────────────
 // IMAGE UPLOAD HELPER

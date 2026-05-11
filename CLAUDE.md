@@ -59,6 +59,22 @@
   `systemctl restart eznihongo-api` + healthcheck loop ke `/api/health`.
 - **Branch konvensi**: `claude/<topic>-<short-id>` untuk fitur Claude.
   PR ke `main`, tidak push langsung.
+- **Tipe pelajaran `deck`** (kosakata interaktif, migration 009): lesson
+  bertipe `deck` punya kartu kosakata yang dipilih dari bank
+  (`module_vocabulary`, bisa `lesson_id` NULL untuk item bank murni) lewat join
+  `lesson_deck_items`; tiap kata punya `vocabulary_examples` (contoh kalimat,
+  disimpan polos + kolom `highlight`). Admin kelola via tombol "Kelola Deck" di
+  daftar pelajaran (`admin.html` → `manageDeck`). `welcome.html` me-render via
+  `renderDeckLesson` (grid kartu + modal contoh kalimat, desain dari handoff
+  "Kosakata"). API: `/api/admin/vocab-bank`, `/api/admin/vocabulary-examples`,
+  `/api/admin/lessons/:id/deck-items`; `content.js` ngirim `lesson.deck`.
+- **TTS ElevenLabs** (`backend/src/routes/tts.js`, `GET /api/tts?text=`):
+  audio pelafalan untuk deck. Hasil di-cache di tabel `tts_cache` (bytea, ikut
+  `pg_dump`, tahan `git reset --hard`) → API cuma dipanggil 1x per string unik.
+  Env `ELEVENLABS_API_KEY` / `ELEVENLABS_VOICE_ID` / `ELEVENLABS_MODEL` (opsional,
+  bukan `REQUIRED_ENV`); kalau kosong endpoint balas 503 & frontend fallback ke
+  Web Speech browser. Endpoint cuma mau generate text yang ada di
+  `module_vocabulary` / `vocabulary_examples` (anti abuse kuota) + rate-limit.
 
 ## Struktur repo (high-level)
 
