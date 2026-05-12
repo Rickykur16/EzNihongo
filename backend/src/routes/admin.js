@@ -419,6 +419,87 @@ router.delete('/lessons/:lessonId/deck-items/:vocabularyId', asyncHandler(async 
   res.json({ ok: true });
 }));
 
+// ===== IMPORT VOCAB FROM NOTION =====
+// Pulls the "📚 Vocabulary 語彙" Notion database into module_vocabulary as bank
+// items (lesson_id NULL). Manual: triggered by an admin button. Idempotent —
+// rows whose `japanese` already exists in the module are skipped, so re-running
+// only adds new words. Needs NOTION_TOKEN in env (integration shared with the DB).
+function notionIdFromInput(s) {
+  if (!s) return null;
+  const m = String(s).match(/[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}/);
+  return m ? m[0].replace(/-/g, '') : null;
+}
+function notionPlainText(prop) {
+  if (!prop) return '';
+  const arr = prop.title || prop.rich_text;
+  if (Array.isArray(arr)) return arr.map((t) => (t && t.plain_text) || '').join('');
+  if (prop.select && typeof prop.select === 'object') return prop.select.name || '';
+  if (prop.status && typeof prop.status === 'object') return prop.status.name || '';
+  return '';
+}
+function pickProp(props, names) {
+  for (const n of names) if (props[n] !== undefined) return props[n];
+  const lower = {};
+  for (const k of Object.keys(props)) lower[k.toLowerCase()] = props[k];
+  for (const n of names) if (lower[n.toLowerCase()] !== undefined) return lower[n.toLowerCase()];
+  return null;
+}
+
+router.post('/import-notion-vocab', asyncHandler(async (req, res) => {
+  const token = process.env.NOTION_TOKEN || '';
+  if (!token) return res.status(503).json({ error: 'notion_not_configured', detail: 'Set NOTION_TOKEN di backend/.env' });
+  const { moduleId } = req.body || {};
+  if (!moduleId) return res.status(400).json({ error: 'moduleId required' });
+  const dbId = notionIdFromInput((req.body || {}).notionDbId) || notionIdFromInput(process.env.NOTION_VOCAB_DB_ID);
+  if (!dbId) return res.status(400).json({ error: 'notion_db_required', detail: 'Set NOTION_VOCAB_DB_ID atau kirim notionDbId' });
+
+  const mod = await query(`SELECT id FROM modules WHERE id = $1`, [moduleId]);
+  if (mod.rows.length === 0) return res.status(404).json({ error: 'module not found' });
+
+  const existing = await query(`SELECT japanese FROM module_vocabulary WHERE module_id = $1`, [moduleId]);
+  const seen = new Set(existing.rows.map((r) => (r.japanese || '').trim()).filter(Boolean));
+
+  let cursor = null, imported = 0, skipped = 0, total = 0, sort = seen.size;
+  for (let guard = 0; guard < 100; guard++) {
+    let resp;
+    try {
+      resp = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' },
+        body: JSON.stringify(cursor ? { start_cursor: cursor, page_size: 100 } : { page_size: 100 }),
+      });
+    } catch (err) {
+      return res.status(502).json({ error: 'notion_unreachable', detail: err.message });
+    }
+    if (!resp.ok) {
+      const detail = await resp.text().catch(() => '');
+      return res.status(502).json({ error: 'notion_error', status: resp.status, detail: detail.slice(0, 400) });
+    }
+    const data = await resp.json();
+    for (const page of data.results || []) {
+      const props = page.properties || {};
+      const japanese = notionPlainText(pickProp(props, ['Japanese 日本語', 'Japanese', '日本語', 'Bahasa Jepang'])).trim();
+      if (!japanese) continue;
+      total++;
+      if (seen.has(japanese)) { skipped++; continue; }
+      const reading = notionPlainText(pickProp(props, ['Reading 読み', 'Reading', '読み', 'Cara Baca'])).trim() || null;
+      const indonesian = notionPlainText(pickProp(props, ['Indonesian', 'Bahasa Indonesia'])).trim() || null;
+      const category = notionPlainText(pickProp(props, ['Category', 'Kategori'])).trim() || null;
+      const note = notionPlainText(pickProp(props, ['Note', 'Catatan'])).trim() || null;
+      await query(
+        `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, indonesian, category, note, sort_order)
+         VALUES ($1, NULL, $2, $3, $4, $5, $6, $7)`,
+        [moduleId, japanese, reading, indonesian, category, note, sort++]
+      );
+      seen.add(japanese);
+      imported++;
+    }
+    if (!data.has_more) break;
+    cursor = data.next_cursor;
+  }
+  res.json({ imported, skipped, total });
+}));
+
 // ===== MODULE GRAMMAR =====
 
 router.get('/module-grammar', asyncHandler(async (req, res) => {

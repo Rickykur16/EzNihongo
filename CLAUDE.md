@@ -68,6 +68,15 @@
   `renderDeckLesson` (grid kartu + modal contoh kalimat, desain dari handoff
   "Kosakata"). API: `/api/admin/vocab-bank`, `/api/admin/vocabulary-examples`,
   `/api/admin/lessons/:id/deck-items`; `content.js` ngirim `lesson.deck`.
+- **Import kosakata dari Notion** (`POST /api/admin/import-notion-vocab`,
+  tombol "Import dari Notion" di admin → Kelola Deck → Dari bank): narik database
+  Notion "📚 Vocabulary 語彙" (`Japanese 日本語` / `Reading 読み` / `Indonesian` /
+  `Category` / `Note`) → `module_vocabulary` sebagai item bank (`lesson_id` NULL).
+  Idempotent (skip kalau `japanese` sudah ada di modul itu). Butuh env
+  `NOTION_TOKEN` (Internal Integration Secret, share DB ke integration) +
+  `NOTION_VOCAB_DB_ID` (default `bd1f0d912aa24b139b5e68f3610b7c51`); kalau token
+  kosong endpoint balas 503. Pakai REST `api.notion.com/v1/databases/:id/query`,
+  `Notion-Version: 2022-06-28`, paginate `start_cursor`.
 - **TTS ElevenLabs** (`backend/src/routes/tts.js`, `GET /api/tts?text=`):
   audio pelafalan untuk deck. Hasil di-cache di tabel `tts_cache` (bytea, ikut
   `pg_dump`, tahan `git reset --hard`) → API cuma dipanggil 1x per string unik.

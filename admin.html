@@ -1474,14 +1474,27 @@ window.deckShowBank = () => {
   if (!p) return;
   p.innerHTML = `
     <div style="background:#f5f5f5;padding:14px;border-radius:8px;margin-bottom:14px;">
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
         <strong style="font-size:13px;white-space:nowrap;">Dari bank kosakata</strong>
-        <input id="bank-q" placeholder="cari kata / reading / arti..." style="flex:1;font-size:13px;" oninput="deckBankSearch()" />
+        <input id="bank-q" placeholder="cari kata / reading / arti..." style="flex:1;min-width:140px;font-size:13px;" oninput="deckBankSearch()" />
+        <button type="button" class="btn btn-ghost" onclick="deckImportNotion()" title="Tarik semua kosakata dari Notion ke bank modul ini">↻ Import dari Notion</button>
         <button type="button" class="btn btn-ghost" onclick="document.getElementById('deck-panel').innerHTML='';">Tutup</button>
       </div>
       <div id="bank-results" style="max-height:300px;overflow-y:auto;background:#fff;border-radius:6px;"></div>
     </div>`;
   deckBankSearch();
+};
+
+window.deckImportNotion = async () => {
+  const ctx = window.__deckCtx;
+  if (!ctx || !ctx.moduleId) return;
+  if (!confirm('Tarik semua kosakata dari database Notion ke bank modul ini? Kata yang sudah ada akan di-skip.')) return;
+  notify('Mengimpor dari Notion...');
+  try {
+    const d = await api('/admin/import-notion-vocab', { method: 'POST', body: JSON.stringify({ moduleId: ctx.moduleId }) });
+    notify('Import selesai: ' + (d.imported || 0) + ' baru, ' + (d.skipped || 0) + ' sudah ada (total ' + (d.total || 0) + ').');
+    deckBankSearch();
+  } catch (err) { notify('Gagal import Notion: ' + err.message, true); }
 };
 
 let __deckBankTimer = null;
