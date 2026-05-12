@@ -419,11 +419,14 @@ router.delete('/lessons/:lessonId/deck-items/:vocabularyId', asyncHandler(async 
   res.json({ ok: true });
 }));
 
-// ===== IMPORT VOCAB FROM NOTION =====
-// Pulls the "📚 Vocabulary 語彙" Notion database into module_vocabulary as bank
-// items (lesson_id NULL). Manual: triggered by an admin button. Idempotent —
-// rows whose `japanese` already exists in the module are skipped, so re-running
-// only adds new words. Needs NOTION_TOKEN in env (integration shared with the DB).
+// ===== NOTION IMPORT (vocab bank + per-chapter deck) =====
+// "📚 Vocabulary 語彙" Notion DB -> module_vocabulary. Each vocab page is linked
+// (relation "Lesson") to a "📗 Bab" page; the deck importer filters by that so
+// one EzNihongo deck-lesson can pull exactly one chapter's words. Needs
+// NOTION_TOKEN in env (integration shared with both DBs).
+const NOTION_BAB_DB_ID_DEFAULT = '472c7178a513459caf536c30c1008b66';
+const NOTION_VOCAB_LESSON_RELATION = 'Lesson'; // relation property on the vocab DB
+
 function notionIdFromInput(s) {
   if (!s) return null;
   const m = String(s).match(/[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}/);
@@ -437,6 +440,9 @@ function notionPlainText(prop) {
   if (prop.status && typeof prop.status === 'object') return prop.status.name || '';
   return '';
 }
+function notionNumber(prop) {
+  return prop && typeof prop.number === 'number' ? prop.number : null;
+}
 function pickProp(props, names) {
   for (const n of names) if (props[n] !== undefined) return props[n];
   const lower = {};
@@ -445,6 +451,77 @@ function pickProp(props, names) {
   return null;
 }
 
+// Query every page of a Notion database (paginating start_cursor). `body` may
+// carry a `filter`. Throws an Error with `.notionStatus` on a non-2xx response.
+async function notionQueryAll(dbId, token, body = {}) {
+  const pages = [];
+  let cursor = null;
+  for (let guard = 0; guard < 200; guard++) {
+    const resp = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...body, page_size: 100, ...(cursor ? { start_cursor: cursor } : {}) }),
+    });
+    if (!resp.ok) {
+      const detail = await resp.text().catch(() => '');
+      const err = new Error(`Notion ${resp.status}: ${detail.slice(0, 300)}`);
+      err.notionStatus = resp.status;
+      throw err;
+    }
+    const data = await resp.json();
+    for (const p of data.results || []) pages.push(p);
+    if (!data.has_more) break;
+    cursor = data.next_cursor;
+  }
+  return pages;
+}
+
+// Upsert Notion vocab pages into module_vocabulary for `moduleId`, keyed by
+// `japanese`. Existing rows get reading/indonesian/category/note refreshed from
+// Notion (lesson_id + deck wiring untouched); new rows are appended. Returns
+// counts plus `vocabIds` = the resulting row id for each page (Notion order).
+async function upsertNotionVocab(moduleId, pages) {
+  const existing = await query(`SELECT id, japanese FROM module_vocabulary WHERE module_id = $1`, [moduleId]);
+  const byJapanese = new Map();
+  for (const r of existing.rows) {
+    const j = (r.japanese || '').trim();
+    if (j && !byJapanese.has(j)) byJapanese.set(j, r.id);
+  }
+  let imported = 0, updated = 0, total = 0, sort = byJapanese.size;
+  const vocabIds = [];
+  for (const page of pages) {
+    const props = page.properties || {};
+    const japanese = notionPlainText(pickProp(props, ['Japanese 日本語', 'Japanese', '日本語', 'Bahasa Jepang'])).trim();
+    if (!japanese) continue;
+    total++;
+    const reading = notionPlainText(pickProp(props, ['Reading 読み', 'Reading', '読み', 'Cara Baca'])).trim() || null;
+    const indonesian = notionPlainText(pickProp(props, ['Indonesian', 'Bahasa Indonesia'])).trim() || null;
+    const category = notionPlainText(pickProp(props, ['Category', 'Kategori'])).trim() || null;
+    const note = notionPlainText(pickProp(props, ['Note', 'Catatan'])).trim() || null;
+    let id = byJapanese.get(japanese);
+    if (id) {
+      await query(
+        `UPDATE module_vocabulary SET reading = $2, indonesian = $3, category = $4, note = $5, updated_at = NOW()
+         WHERE id = $1`,
+        [id, reading, indonesian, category, note]
+      );
+      updated++;
+    } else {
+      const r = await query(
+        `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, indonesian, category, note, sort_order)
+         VALUES ($1, NULL, $2, $3, $4, $5, $6, $7) RETURNING id`,
+        [moduleId, japanese, reading, indonesian, category, note, sort++]
+      );
+      id = r.rows[0].id;
+      byJapanese.set(japanese, id);
+      imported++;
+    }
+    vocabIds.push(id);
+  }
+  return { imported, updated, total, vocabIds };
+}
+
+// Whole vocab DB -> a module's bank (lesson_id NULL). Bulk; useful for seeding.
 router.post('/import-notion-vocab', asyncHandler(async (req, res) => {
   const token = process.env.NOTION_TOKEN || '';
   if (!token) return res.status(503).json({ error: 'notion_not_configured', detail: 'Set NOTION_TOKEN di backend/.env' });
@@ -452,52 +529,84 @@ router.post('/import-notion-vocab', asyncHandler(async (req, res) => {
   if (!moduleId) return res.status(400).json({ error: 'moduleId required' });
   const dbId = notionIdFromInput((req.body || {}).notionDbId) || notionIdFromInput(process.env.NOTION_VOCAB_DB_ID);
   if (!dbId) return res.status(400).json({ error: 'notion_db_required', detail: 'Set NOTION_VOCAB_DB_ID atau kirim notionDbId' });
-
   const mod = await query(`SELECT id FROM modules WHERE id = $1`, [moduleId]);
   if (mod.rows.length === 0) return res.status(404).json({ error: 'module not found' });
+  let pages;
+  try { pages = await notionQueryAll(dbId, token); }
+  catch (err) { return res.status(502).json({ error: 'notion_error', status: err.notionStatus || 0, detail: err.message }); }
+  const { imported, updated, total } = await upsertNotionVocab(moduleId, pages);
+  res.json({ imported, updated, total });
+}));
 
-  const existing = await query(`SELECT japanese FROM module_vocabulary WHERE module_id = $1`, [moduleId]);
-  const seen = new Set(existing.rows.map((r) => (r.japanese || '').trim()).filter(Boolean));
+// Lists chapters ("Bab") from the "📗 Bab" Notion DB so the deck editor can pick
+// which chapter to pull. Sorted by Nomor Bab.
+router.get('/notion-bab', asyncHandler(async (req, res) => {
+  const token = process.env.NOTION_TOKEN || '';
+  if (!token) return res.status(503).json({ error: 'notion_not_configured', detail: 'Set NOTION_TOKEN di backend/.env' });
+  const dbId = notionIdFromInput(req.query.notionDbId)
+    || notionIdFromInput(process.env.NOTION_BAB_DB_ID)
+    || NOTION_BAB_DB_ID_DEFAULT;
+  let pages;
+  try { pages = await notionQueryAll(dbId, token); }
+  catch (err) { return res.status(502).json({ error: 'notion_error', status: err.notionStatus || 0, detail: err.message }); }
+  const bab = pages.map((p) => {
+    const props = p.properties || {};
+    return {
+      id: p.id,
+      name: notionPlainText(pickProp(props, ['Bab', 'Name', 'Title'])).trim() || '(tanpa judul)',
+      kode: notionPlainText(pickProp(props, ['Kode Bab', 'Kode'])).trim() || null,
+      nomor: notionNumber(pickProp(props, ['Nomor Bab', 'Nomor'])),
+    };
+  });
+  bab.sort((a, b) => {
+    if (a.nomor != null && b.nomor != null) return a.nomor - b.nomor;
+    if (a.nomor != null) return -1;
+    if (b.nomor != null) return 1;
+    return a.name.localeCompare(b.name);
+  });
+  res.json({ bab });
+}));
 
-  let cursor = null, imported = 0, skipped = 0, total = 0, sort = seen.size;
-  for (let guard = 0; guard < 100; guard++) {
-    let resp;
-    try {
-      resp = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' },
-        body: JSON.stringify(cursor ? { start_cursor: cursor, page_size: 100 } : { page_size: 100 }),
-      });
-    } catch (err) {
-      return res.status(502).json({ error: 'notion_unreachable', detail: err.message });
-    }
-    if (!resp.ok) {
-      const detail = await resp.text().catch(() => '');
-      return res.status(502).json({ error: 'notion_error', status: resp.status, detail: detail.slice(0, 400) });
-    }
-    const data = await resp.json();
-    for (const page of data.results || []) {
-      const props = page.properties || {};
-      const japanese = notionPlainText(pickProp(props, ['Japanese 日本語', 'Japanese', '日本語', 'Bahasa Jepang'])).trim();
-      if (!japanese) continue;
-      total++;
-      if (seen.has(japanese)) { skipped++; continue; }
-      const reading = notionPlainText(pickProp(props, ['Reading 読み', 'Reading', '読み', 'Cara Baca'])).trim() || null;
-      const indonesian = notionPlainText(pickProp(props, ['Indonesian', 'Bahasa Indonesia'])).trim() || null;
-      const category = notionPlainText(pickProp(props, ['Category', 'Kategori'])).trim() || null;
-      const note = notionPlainText(pickProp(props, ['Note', 'Catatan'])).trim() || null;
-      await query(
-        `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, indonesian, category, note, sort_order)
-         VALUES ($1, NULL, $2, $3, $4, $5, $6, $7)`,
-        [moduleId, japanese, reading, indonesian, category, note, sort++]
-      );
-      seen.add(japanese);
-      imported++;
-    }
-    if (!data.has_more) break;
-    cursor = data.next_cursor;
+// Pulls one chapter's vocab into a deck-lesson: upsert the words into the
+// module's bank, then append them to lesson_deck_items. body: { babPageId }.
+router.post('/lessons/:lessonId/import-notion-deck', asyncHandler(async (req, res) => {
+  const token = process.env.NOTION_TOKEN || '';
+  if (!token) return res.status(503).json({ error: 'notion_not_configured', detail: 'Set NOTION_TOKEN di backend/.env' });
+  const { babPageId } = req.body || {};
+  if (!babPageId) return res.status(400).json({ error: 'babPageId required' });
+  const dbId = notionIdFromInput((req.body || {}).notionVocabDbId) || notionIdFromInput(process.env.NOTION_VOCAB_DB_ID);
+  if (!dbId) return res.status(400).json({ error: 'notion_db_required', detail: 'Set NOTION_VOCAB_DB_ID' });
+
+  const lessonRow = await query(`SELECT id, module_id, type FROM lessons WHERE id = $1`, [req.params.lessonId]);
+  if (lessonRow.rows.length === 0) return res.status(404).json({ error: 'lesson not found' });
+  const { module_id: moduleId, type } = lessonRow.rows[0];
+  if (type !== 'deck') return res.status(400).json({ error: 'lesson_not_deck', detail: 'Pelajaran ini bukan tipe deck' });
+
+  let pages;
+  try {
+    pages = await notionQueryAll(dbId, token, {
+      filter: { property: NOTION_VOCAB_LESSON_RELATION, relation: { contains: babPageId } },
+    });
+  } catch (err) {
+    return res.status(502).json({ error: 'notion_error', status: err.notionStatus || 0, detail: err.message });
   }
-  res.json({ imported, skipped, total });
+  const { imported, updated, total, vocabIds } = await upsertNotionVocab(moduleId, pages);
+
+  const cur = await query(`SELECT vocabulary_id, sort_order FROM lesson_deck_items WHERE lesson_id = $1`, [req.params.lessonId]);
+  const inDeck = new Set(cur.rows.map((r) => r.vocabulary_id));
+  let nextSort = cur.rows.reduce((m, r) => Math.max(m, (r.sort_order ?? 0) + 1), 0);
+  let added = 0;
+  for (const vid of vocabIds) {
+    if (inDeck.has(vid)) continue;
+    inDeck.add(vid);
+    await query(
+      `INSERT INTO lesson_deck_items (lesson_id, vocabulary_id, sort_order, accent_color)
+       VALUES ($1, $2, $3, NULL) ON CONFLICT (lesson_id, vocabulary_id) DO NOTHING`,
+      [req.params.lessonId, vid, nextSort++]
+    );
+    added++;
+  }
+  res.json({ imported, updated, added, total });
 }));
 
 // ===== MODULE GRAMMAR =====

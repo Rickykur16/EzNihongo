@@ -68,15 +68,32 @@
   `renderDeckLesson` (grid kartu + modal contoh kalimat, desain dari handoff
   "Kosakata"). API: `/api/admin/vocab-bank`, `/api/admin/vocabulary-examples`,
   `/api/admin/lessons/:id/deck-items`; `content.js` ngirim `lesson.deck`.
-- **Import kosakata dari Notion** (`POST /api/admin/import-notion-vocab`,
-  tombol "Import dari Notion" di admin → Kelola Deck → Dari bank): narik database
-  Notion "📚 Vocabulary 語彙" (`Japanese 日本語` / `Reading 読み` / `Indonesian` /
-  `Category` / `Note`) → `module_vocabulary` sebagai item bank (`lesson_id` NULL).
-  Idempotent (skip kalau `japanese` sudah ada di modul itu). Butuh env
-  `NOTION_TOKEN` (Internal Integration Secret, share DB ke integration) +
-  `NOTION_VOCAB_DB_ID` (default `bd1f0d912aa24b139b5e68f3610b7c51`); kalau token
-  kosong endpoint balas 503. Pakai REST `api.notion.com/v1/databases/:id/query`,
-  `Notion-Version: 2022-06-28`, paginate `start_cursor`.
+- **Import kosakata dari Notion** — narik database Notion "📚 Vocabulary 語彙"
+  (`Japanese 日本語` / `Reading 読み` / `Indonesian` / `Category` / `Note`, plus
+  relasi `Lesson` → "📗 Bab") ke `module_vocabulary`. Helper bersama
+  `upsertNotionVocab()`: upsert by `japanese` per modul — kata baru di-insert,
+  kata yang sudah ada di-update `reading`/`indonesian`/`category`/`note`-nya dari
+  Notion (`lesson_id` + wiring deck dibiarkan). Dua endpoint:
+  - `POST /api/admin/import-notion-vocab` ({ moduleId }) — narik **semua** vocab
+    ke bank modul (`lesson_id` NULL). Tombol "Import dari Notion" di Kelola Deck →
+    Dari bank. Buat seeding awal; bank picker cap 200 baris jadi kalau ribuan
+    item, ini doang nggak praktis.
+  - `POST /api/admin/lessons/:lessonId/import-notion-deck` ({ babPageId }) —
+    narik vocab **satu Bab** (filter `relation contains babPageId` di kolom
+    `Lesson`), upsert ke bank modul, terus langsung append ke `lesson_deck_items`
+    pelajaran itu (yang udah di deck di-skip). Tombol "↻ Import Bab dari Notion"
+    di toolbar Kelola Deck → dropdown Bab dari `GET /api/admin/notion-bab`. Ini
+    alur utama buat bikin deck "per bab".
+  - `GET /api/admin/notion-bab` — list Bab dari "📗 Bab" DB (`Bab` title /
+    `Kode Bab` / `Nomor Bab`), sorted by `Nomor Bab`.
+  Catatan: kolom `Reading 読み` di Notion deskripsinya "Hiragana/katakana reading
+  or romaji" — kalau mau kana konsisten, rapihin di Notion lalu re-import. Butuh
+  env `NOTION_TOKEN` (Internal Integration Secret, share **kedua** DB ke
+  integration) + `NOTION_VOCAB_DB_ID` (default
+  `bd1f0d912aa24b139b5e68f3610b7c51`); `NOTION_BAB_DB_ID` opsional (default
+  `472c7178a513459caf536c30c1008b66`). Token kosong → 503. Pakai REST
+  `api.notion.com/v1/databases/:id/query`, `Notion-Version: 2022-06-28`, paginate
+  `start_cursor` (`notionQueryAll()`).
 - **TTS ElevenLabs** (`backend/src/routes/tts.js`, `GET /api/tts?text=`):
   audio pelafalan untuk deck. Hasil di-cache di tabel `tts_cache` (bytea, ikut
   `pg_dump`, tahan `git reset --hard`) → API cuma dipanggil 1x per string unik.

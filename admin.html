@@ -1373,7 +1373,8 @@ async function openDeckManager(lessonId, lessonTitle, moduleId, courseId) {
   openModal(`
     <h3>Deck Kosakata: ${escapeHtml(lessonTitle)}</h3>
     <div class="toolbar">
-      <button type="button" class="btn btn-primary" onclick="deckShowNewWord()">+ Kata baru</button>
+      <button type="button" class="btn btn-primary" onclick="deckImportBab()">↻ Import Bab dari Notion</button>
+      <button type="button" class="btn btn-ghost" onclick="deckShowNewWord()">+ Kata baru</button>
       <button type="button" class="btn btn-ghost" onclick="deckShowBank()">+ Dari bank</button>
       <button type="button" class="btn btn-ghost" onclick="deckOpenBulk()">Paste dari Excel (TSV)</button>
       <span id="deck-count" style="font-size:12px;color:#737373;font-family:var(--font-body);">${items.length} item</span>
@@ -1488,13 +1489,59 @@ window.deckShowBank = () => {
 window.deckImportNotion = async () => {
   const ctx = window.__deckCtx;
   if (!ctx || !ctx.moduleId) return;
-  if (!confirm('Tarik semua kosakata dari database Notion ke bank modul ini? Kata yang sudah ada akan di-skip.')) return;
+  if (!confirm('Tarik semua kosakata dari database Notion ke bank modul ini? Kata yang sudah ada akan di-update (reading/arti/kategori/note) dari Notion.')) return;
   notify('Mengimpor dari Notion...');
   try {
     const d = await api('/admin/import-notion-vocab', { method: 'POST', body: JSON.stringify({ moduleId: ctx.moduleId }) });
-    notify('Import selesai: ' + (d.imported || 0) + ' baru, ' + (d.skipped || 0) + ' sudah ada (total ' + (d.total || 0) + ').');
+    notify('Import selesai: ' + (d.imported || 0) + ' baru, ' + (d.updated || 0) + ' di-update (total ' + (d.total || 0) + ').');
     deckBankSearch();
   } catch (err) { notify('Gagal import Notion: ' + err.message, true); }
+};
+
+// ── import one Notion chapter ("Bab") straight into this deck ──
+window.deckImportBab = async () => {
+  const ctx = window.__deckCtx;
+  const p = document.getElementById('deck-panel');
+  if (!ctx || !p) return;
+  p.innerHTML = `<div style="background:#f5f5f5;padding:14px;border-radius:8px;margin-bottom:14px;font-size:13px;">Memuat daftar Bab dari Notion…</div>`;
+  try {
+    const d = await api('/admin/notion-bab');
+    const opts = (d.bab || []).map((b) => {
+      const label = (b.kode ? b.kode + ' — ' : '') + b.name;
+      return `<option value="${escapeHtml(b.id)}">${escapeHtml(label)}</option>`;
+    }).join('');
+    p.innerHTML = `
+      <div style="background:#f5f5f5;padding:14px;border-radius:8px;margin-bottom:14px;">
+        <strong style="font-size:13px;">Import kosakata satu Bab dari Notion</strong>
+        <p style="font-size:12px;color:#525252;font-family:var(--font-body);margin:6px 0 10px;">
+          Kata-kata Bab yang dipilih ditarik dari Notion → masuk ke bank modul ini → langsung ditambahkan ke deck pelajaran ini (yang sudah ada di deck di-skip).
+        </p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select id="bab-select" style="flex:1;min-width:200px;font-size:13px;">${opts || '<option value="">(tidak ada Bab)</option>'}</select>
+          <button type="button" class="btn btn-primary" onclick="deckRunImportBab()">Import &amp; masukin ke deck</button>
+          <button type="button" class="btn btn-ghost" onclick="document.getElementById('deck-panel').innerHTML='';">Batal</button>
+        </div>
+      </div>`;
+  } catch (err) {
+    p.innerHTML = `<div style="background:#fde8e8;padding:14px;border-radius:8px;margin-bottom:14px;font-size:13px;">Gagal memuat daftar Bab: ${escapeHtml(err.message)}</div>`;
+  }
+};
+
+window.deckRunImportBab = async () => {
+  const ctx = window.__deckCtx;
+  const sel = document.getElementById('bab-select');
+  const babPageId = sel ? sel.value : '';
+  if (!babPageId) { notify('Pilih Bab dulu', true); return; }
+  notify('Mengimpor dari Notion…');
+  try {
+    const d = await api('/admin/lessons/' + ctx.lessonId + '/import-notion-deck', { method: 'POST', body: JSON.stringify({ babPageId }) });
+    notify((d.added || 0) + ' kata ditambahkan ke deck (bank: ' + (d.imported || 0) + ' baru, ' + (d.updated || 0) + ' di-update, total bab ' + (d.total || 0) + ').');
+    const dd = await api('/admin/lessons/' + ctx.lessonId + '/deck-items');
+    window.__deckItems = dd.items || [];
+    const pp = document.getElementById('deck-panel'); if (pp) pp.innerHTML = '';
+    deckRerender();
+    deckRefreshList();
+  } catch (err) { notify('Gagal import: ' + err.message, true); }
 };
 
 let __deckBankTimer = null;
