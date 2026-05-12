@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS lessons (
   module_id UUID NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
   slug TEXT NOT NULL,
   title TEXT NOT NULL,
-  type TEXT NOT NULL DEFAULT 'text' CHECK (type IN ('video','quiz','text')),
+  type TEXT NOT NULL DEFAULT 'text' CHECK (type IN ('video','quiz','text','deck')),
   content TEXT,
   video_url TEXT,
   duration_minutes INT,
@@ -98,6 +98,7 @@ CREATE TABLE IF NOT EXISTS module_vocabulary (
   lesson_id UUID REFERENCES lessons(id) ON DELETE SET NULL,
   japanese TEXT NOT NULL,
   reading TEXT,
+  romaji TEXT,
   indonesian TEXT,
   category TEXT,
   note TEXT,
@@ -108,6 +109,30 @@ CREATE TABLE IF NOT EXISTS module_vocabulary (
 
 CREATE INDEX IF NOT EXISTS idx_vocab_module ON module_vocabulary(module_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_vocab_lesson ON module_vocabulary(lesson_id, sort_order);
+
+CREATE TABLE IF NOT EXISTS vocabulary_examples (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  vocabulary_id UUID NOT NULL REFERENCES module_vocabulary(id) ON DELETE CASCADE,
+  japanese TEXT NOT NULL,
+  highlight TEXT,
+  indonesian TEXT,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_vocab_examples_vocab ON vocabulary_examples(vocabulary_id, sort_order);
+
+CREATE TABLE IF NOT EXISTS lesson_deck_items (
+  lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+  vocabulary_id UUID NOT NULL REFERENCES module_vocabulary(id) ON DELETE CASCADE,
+  sort_order INT DEFAULT 0,
+  accent_color TEXT,
+  PRIMARY KEY (lesson_id, vocabulary_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_deck_items_lesson ON lesson_deck_items(lesson_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_deck_items_vocab ON lesson_deck_items(vocabulary_id);
 
 CREATE TABLE IF NOT EXISTS module_grammar (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -319,6 +344,21 @@ CREATE INDEX IF NOT EXISTS idx_discussions_lesson ON discussions(lesson_id, crea
 CREATE INDEX IF NOT EXISTS idx_discussions_parent ON discussions(parent_id);
 CREATE INDEX IF NOT EXISTS idx_discussions_user ON discussions(user_id);
 
+-- ===== TTS CACHE (ElevenLabs) =====
+
+CREATE TABLE IF NOT EXISTS tts_cache (
+  text_hash TEXT PRIMARY KEY,
+  text TEXT NOT NULL,
+  provider TEXT NOT NULL DEFAULT 'elevenlabs',
+  voice TEXT,
+  model TEXT,
+  audio BYTEA NOT NULL,
+  content_type TEXT NOT NULL DEFAULT 'audio/mpeg',
+  byte_size INT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ===== updated_at trigger =====
 
 CREATE OR REPLACE FUNCTION set_updated_at() RETURNS TRIGGER AS $$
@@ -367,6 +407,10 @@ DO $$ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'module_grammar_updated_at') THEN
     CREATE TRIGGER module_grammar_updated_at BEFORE UPDATE ON module_grammar
+      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'vocabulary_examples_updated_at') THEN
+    CREATE TRIGGER vocabulary_examples_updated_at BEFORE UPDATE ON vocabulary_examples
       FOR EACH ROW EXECUTE FUNCTION set_updated_at();
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'kanji_users_updated_at') THEN

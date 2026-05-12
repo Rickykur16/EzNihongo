@@ -57,6 +57,7 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
   const vocabByLesson = {};
   const grammarByModule = {};
   const grammarByLesson = {};
+  const deckByLesson = {};
 
   if (moduleIds.length > 0) {
     // Include content + video_url so the dashboard can render lesson bodies
@@ -70,7 +71,7 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
         [moduleIds]
       ),
       query(
-        `SELECT id, module_id, lesson_id, japanese, reading, indonesian, category, note, sort_order
+        `SELECT id, module_id, lesson_id, japanese, reading, romaji, indonesian, category, note, sort_order
          FROM module_vocabulary WHERE module_id = ANY($1::uuid[])
          ORDER BY sort_order ASC, created_at ASC`,
         [moduleIds]
@@ -95,6 +96,48 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
       (grammarByModule[g.module_id] ||= []).push(g);
       if (g.lesson_id) (grammarByLesson[g.lesson_id] ||= []).push(g);
     }
+
+    // Deck lessons: pull their picked vocab items (+ example sentences) so the
+    // dashboard can render the interactive deck without extra round-trips.
+    const deckLessonIds = lessons.rows.filter((l) => l.type === 'deck').map((l) => l.id);
+    if (deckLessonIds.length > 0) {
+      const deckRows = await query(
+        `SELECT di.lesson_id, di.sort_order, di.accent_color,
+                v.id, v.japanese, v.reading, v.romaji, v.indonesian, v.category
+         FROM lesson_deck_items di
+         JOIN module_vocabulary v ON v.id = di.vocabulary_id
+         WHERE di.lesson_id = ANY($1::uuid[])
+         ORDER BY di.lesson_id, di.sort_order ASC, v.japanese ASC`,
+        [deckLessonIds]
+      );
+      const vocabIds = [...new Set(deckRows.rows.map((r) => r.id))];
+      const examplesByVocab = {};
+      if (vocabIds.length > 0) {
+        const ex = await query(
+          `SELECT vocabulary_id, japanese, highlight, indonesian, sort_order
+           FROM vocabulary_examples WHERE vocabulary_id = ANY($1::uuid[])
+           ORDER BY vocabulary_id, sort_order ASC, created_at ASC`,
+          [vocabIds]
+        );
+        for (const e of ex.rows) {
+          (examplesByVocab[e.vocabulary_id] ||= []).push({
+            japanese: e.japanese, highlight: e.highlight, indonesian: e.indonesian,
+          });
+        }
+      }
+      for (const r of deckRows.rows) {
+        (deckByLesson[r.lesson_id] ||= []).push({
+          id: r.id,
+          japanese: r.japanese,
+          reading: r.reading,
+          romaji: r.romaji,
+          indonesian: r.indonesian,
+          category: r.category,
+          accentColor: r.accent_color,
+          examples: examplesByVocab[r.id] || [],
+        });
+      }
+    }
   }
 
   res.json({
@@ -112,6 +155,7 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
             ...l,
             vocabulary: vocabByLesson[l.id] || [],
             grammar: grammarByLesson[l.id] || [],
+            deck: deckByLesson[l.id] || [],
           })),
           vocabulary: vocabByModule[m.id] || [],
           grammar: grammarByModule[m.id] || [],
@@ -176,6 +220,43 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
     response.questions = questions.rows.map((q) => ({
       ...q,
       options: optsByQ[q.id] || [],
+    }));
+  }
+
+  if (row.type === 'deck') {
+    const deckRows = await query(
+      `SELECT di.sort_order, di.accent_color,
+              v.id, v.japanese, v.reading, v.romaji, v.indonesian, v.category
+       FROM lesson_deck_items di
+       JOIN module_vocabulary v ON v.id = di.vocabulary_id
+       WHERE di.lesson_id = $1
+       ORDER BY di.sort_order ASC, v.japanese ASC`,
+      [row.id]
+    );
+    const vocabIds = deckRows.rows.map((r) => r.id);
+    const examplesByVocab = {};
+    if (vocabIds.length > 0) {
+      const ex = await query(
+        `SELECT vocabulary_id, japanese, highlight, indonesian, sort_order
+         FROM vocabulary_examples WHERE vocabulary_id = ANY($1::uuid[])
+         ORDER BY vocabulary_id, sort_order ASC, created_at ASC`,
+        [vocabIds]
+      );
+      for (const e of ex.rows) {
+        (examplesByVocab[e.vocabulary_id] ||= []).push({
+          japanese: e.japanese, highlight: e.highlight, indonesian: e.indonesian,
+        });
+      }
+    }
+    response.deck = deckRows.rows.map((r) => ({
+      id: r.id,
+      japanese: r.japanese,
+      reading: r.reading,
+      romaji: r.romaji,
+      indonesian: r.indonesian,
+      category: r.category,
+      accentColor: r.accent_color,
+      examples: examplesByVocab[r.id] || [],
     }));
   }
 

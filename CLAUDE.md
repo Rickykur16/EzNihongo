@@ -59,6 +59,31 @@
   `systemctl restart eznihongo-api` + healthcheck loop ke `/api/health`.
 - **Branch konvensi**: `claude/<topic>-<short-id>` untuk fitur Claude.
   PR ke `main`, tidak push langsung.
+- **Tipe pelajaran `deck`** (kosakata interaktif, migration 009): lesson
+  bertipe `deck` punya kartu kosakata yang dipilih dari bank
+  (`module_vocabulary`, bisa `lesson_id` NULL untuk item bank murni) lewat join
+  `lesson_deck_items`; tiap kata punya `vocabulary_examples` (contoh kalimat,
+  disimpan polos + kolom `highlight`). Admin kelola via tombol "Kelola Deck" di
+  daftar pelajaran (`admin.html` → `manageDeck`). `welcome.html` me-render via
+  `renderDeckLesson` (grid kartu + modal contoh kalimat, desain dari handoff
+  "Kosakata"). API: `/api/admin/vocab-bank`, `/api/admin/vocabulary-examples`,
+  `/api/admin/lessons/:id/deck-items`; `content.js` ngirim `lesson.deck`.
+- **Import kosakata dari Notion** (`POST /api/admin/import-notion-vocab`,
+  tombol "Import dari Notion" di admin → Kelola Deck → Dari bank): narik database
+  Notion "📚 Vocabulary 語彙" (`Japanese 日本語` / `Reading 読み` / `Indonesian` /
+  `Category` / `Note`) → `module_vocabulary` sebagai item bank (`lesson_id` NULL).
+  Idempotent (skip kalau `japanese` sudah ada di modul itu). Butuh env
+  `NOTION_TOKEN` (Internal Integration Secret, share DB ke integration) +
+  `NOTION_VOCAB_DB_ID` (default `bd1f0d912aa24b139b5e68f3610b7c51`); kalau token
+  kosong endpoint balas 503. Pakai REST `api.notion.com/v1/databases/:id/query`,
+  `Notion-Version: 2022-06-28`, paginate `start_cursor`.
+- **TTS ElevenLabs** (`backend/src/routes/tts.js`, `GET /api/tts?text=`):
+  audio pelafalan untuk deck. Hasil di-cache di tabel `tts_cache` (bytea, ikut
+  `pg_dump`, tahan `git reset --hard`) → API cuma dipanggil 1x per string unik.
+  Env `ELEVENLABS_API_KEY` / `ELEVENLABS_VOICE_ID` / `ELEVENLABS_MODEL` (opsional,
+  bukan `REQUIRED_ENV`); kalau kosong endpoint balas 503 & frontend fallback ke
+  Web Speech browser. Endpoint cuma mau generate text yang ada di
+  `module_vocabulary` / `vocabulary_examples` (anti abuse kuota) + rate-limit.
 
 ## Struktur repo (high-level)
 

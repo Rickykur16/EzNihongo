@@ -2165,6 +2165,7 @@
   .badge-video { background: #eef4ff; color: #1d4ed8; border-color: #dbeafe; }
   .badge-quiz  { background: #ecfdf5; color: #047857; border-color: #d1fae5; }
   .badge-text  { background: #f5f5f4; color: #57534e; border-color: #e7e5e4; }
+  .badge-deck  { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
   .lesson-duration {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px; color: #999; font-weight: 500;
@@ -2661,213 +2662,123 @@
     font-style: italic;
   }
 
-  /* ═══════════════════════════════════════════════════════════
-     VOCAB FLASHCARD — FSRS v5
-     Adapted from legacy Nihonggo app (kanji.html rv-* / fc-*)
-     ═══════════════════════════════════════════════════════════ */
-  .vfc-overlay {
-    position: fixed; inset: 0; z-index: 9500;
-    background: rgba(16, 14, 10, 0.55); backdrop-filter: blur(4px);
-    display: none; align-items: center; justify-content: center;
-    padding: 16px;
-    opacity: 0; transition: opacity 0.18s ease;
-  }
-  .vfc-overlay.open { display: flex; opacity: 1; }
-
-  .vfc-shell {
-    width: 100%; max-width: 460px;
-    background: var(--du-surface);
+  /* ── DECK (kosakata cards) ─────────────────────────────────────── */
+  .deck-hero {
+    background: linear-gradient(90deg, var(--du-surface-2) 0%, var(--du-surface) 100%);
     border: 1px solid var(--du-border);
-    border-radius: 22px; box-shadow: var(--du-shadow-lg);
-    display: flex; flex-direction: column;
-    overflow: hidden;
-    max-height: calc(100vh - 32px);
+    border-radius: 12px;
+    padding: 20px 24px;
+    display: flex; justify-content: space-between; align-items: center; gap: 20px;
+    margin: 18px 0 20px;
   }
+  .deck-hero .dh-eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--brand-red); margin-bottom: 6px;
+  }
+  .deck-hero .dh-body { font-size: 13.5px; color: var(--du-ink-2); line-height: 1.5; max-width: 560px; }
+  .deck-hero .dh-jp {
+    font-family: 'Noto Sans JP', sans-serif; font-size: 44px; font-weight: 700;
+    color: var(--brand-red); line-height: 1; opacity: .85; white-space: nowrap;
+  }
+  .deck-toolbar {
+    display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
+    margin: 16px 0 18px; padding: 12px 16px;
+    background: var(--du-surface); border: 1px solid var(--du-border); border-radius: 10px;
+  }
+  .deck-toolbar .dt-stats { font-size: 13px; color: var(--du-ink-3); font-weight: 500; }
+  .deck-toolbar .dt-stats strong { color: var(--du-ink); font-weight: 700; }
+  .deck-search { position: relative; flex: 1; min-width: 180px; max-width: 320px; }
+  .deck-search input {
+    width: 100%; padding: 9px 12px 9px 32px; border: 1px solid var(--du-border); border-radius: 7px;
+    font-size: 14px; background: var(--du-surface-2); color: var(--du-ink);
+  }
+  .deck-search input:focus { outline: none; border-color: var(--du-ink-3); }
+  .deck-search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--du-ink-3); }
+  .deck-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .deck-card {
+    position: relative; background: var(--du-surface); border: 1px solid var(--du-border); border-radius: 10px;
+    padding: 14px 12px 10px; cursor: pointer; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+    transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s, border-color .18s;
+  }
+  .deck-card::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--deck-accent, var(--brand-red)); opacity: .85;
+  }
+  .deck-card:hover {
+    transform: translateY(-3px); border-color: var(--deck-accent, var(--brand-red));
+    box-shadow: 0 12px 28px -16px rgba(0,0,0,.22), 0 3px 10px -6px rgba(0,0,0,.1); z-index: 2;
+  }
+  .deck-card .dc-jp { font-family: 'Noto Sans JP', sans-serif; font-size: 28px; font-weight: 700; color: var(--du-ink); line-height: 1.1; margin-top: 4px; }
+  .deck-card .dc-kana { font-family: 'Noto Sans JP', sans-serif; font-size: 13px; font-weight: 500; color: var(--deck-accent, var(--brand-red)); letter-spacing: 0.04em; }
+  .deck-card .dc-meaning {
+    font-size: 13px; color: var(--du-ink-2); font-weight: 600; line-height: 1.25;
+    padding-top: 7px; margin-top: 5px; border-top: 1px solid var(--du-border); width: 100%;
+  }
+  .deck-card .dc-audio {
+    position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 50%;
+    border: 1px solid var(--du-border); background: var(--du-surface); color: var(--du-ink);
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: all .15s; z-index: 2;
+  }
+  .deck-card .dc-audio:hover { background: var(--deck-accent, var(--brand-red)); color: #fff; border-color: var(--deck-accent, var(--brand-red)); transform: scale(1.1); }
+  .deck-card .dc-audio.playing { background: var(--deck-accent, var(--brand-red)); color: #fff; border-color: var(--deck-accent, var(--brand-red)); animation: pulse 0.9s infinite; }
+  .deck-card .dc-len { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); font-size: 8.5px; font-weight: 700; letter-spacing: 0.18em; color: var(--du-ink-3); text-transform: uppercase; opacity: 0; transition: opacity .15s; pointer-events: none; }
+  .deck-card:hover .dc-len { opacity: .6; }
+  .deck-empty { text-align: center; padding: 60px 20px; color: var(--du-ink-3); font-style: italic; }
+  @media (max-width: 600px) { .deck-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); } .deck-card .dc-jp { font-size: 24px; } }
 
-  .vfc-header {
-    display: flex; align-items: center; gap: 10px;
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--du-border-soft);
+  /* deck modal (example sentences) */
+  .deck-modal-backdrop {
+    position: fixed; inset: 0; background: rgba(20,20,20,.55); backdrop-filter: blur(3px);
+    display: none; align-items: center; justify-content: center; z-index: 9000; padding: 24px;
   }
-  .vfc-back {
-    width: 32px; height: 32px; border-radius: 50%;
-    border: 1px solid var(--du-border);
-    background: var(--du-surface);
-    cursor: pointer; font-size: 18px; line-height: 1;
-    color: var(--du-ink-3);
-    display: inline-flex; align-items: center; justify-content: center;
-    transition: border-color 0.15s, color 0.15s;
+  .deck-modal-backdrop.open { display: flex; }
+  .deck-modal {
+    background: var(--du-surface); border-radius: 14px; max-width: 620px; width: 100%;
+    padding: 30px 32px; position: relative; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 40px 80px -24px rgba(0,0,0,.45); animation: deckRise .26s cubic-bezier(.2,.8,.2,1);
   }
-  .vfc-back:hover { border-color: var(--du-accent); color: var(--du-accent); }
-  .vfc-header-mid { flex: 1; min-width: 0; }
-  .vfc-counter {
-    font-family: var(--font-body);
-    font-size: 12px; font-weight: 600;
-    color: var(--du-ink-2); letter-spacing: 0.3px;
+  .deck-modal::before { content: ""; position: absolute; top: 0; left: 24px; right: 24px; height: 4px; background: var(--deck-accent, var(--brand-red)); border-radius: 0 0 4px 4px; }
+  @keyframes deckRise { from { opacity: 0; transform: translateY(16px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .deck-modal-close {
+    position: absolute; top: 12px; right: 12px; width: 30px; height: 30px; border: none; border-radius: 50%;
+    background: var(--du-surface-2); color: var(--du-ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
   }
-  .vfc-pbar-wrap {
-    margin-top: 6px; height: 4px; background: var(--du-border-soft);
-    border-radius: 2px; overflow: hidden;
+  .deck-modal-close:hover { background: var(--du-ink); color: var(--du-surface); }
+  .deck-modal-head { display: flex; align-items: flex-end; gap: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--du-border); margin-bottom: 18px; }
+  .deck-modal-head .dm-jp { font-family: 'Noto Sans JP', sans-serif; font-size: 64px; font-weight: 700; color: var(--du-ink); line-height: .9; white-space: nowrap; }
+  .deck-modal-head .dm-info { display: flex; flex-direction: column; gap: 3px; padding-bottom: 4px; }
+  .deck-modal-head .dm-cat { font-size: 10.5px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--deck-accent, var(--brand-red)); }
+  .deck-modal-head .dm-kana { font-family: 'Noto Sans JP', sans-serif; font-size: 19px; color: var(--du-ink-2); font-weight: 500; }
+  .deck-modal-head .dm-romaji { font-size: 13px; font-style: italic; color: var(--du-ink-3); letter-spacing: 0.03em; }
+  .deck-modal-head .dm-arti { font-size: 15px; font-weight: 600; color: var(--du-ink); margin-top: 3px; }
+  .deck-modal-head .dm-headaudio {
+    margin-left: auto; flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid var(--du-border); background: var(--du-surface); color: var(--du-ink); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; transition: all .15s; align-self: center;
   }
-  .vfc-pbar-fill {
-    height: 100%; width: 0%;
-    background: linear-gradient(90deg, var(--du-accent), var(--du-accent-2));
-    transition: width 0.25s ease;
+  .deck-modal-head .dm-headaudio:hover { background: var(--deck-accent, var(--brand-red)); color: #fff; border-color: var(--deck-accent, var(--brand-red)); }
+  .deck-modal-head .dm-headaudio.playing { background: var(--deck-accent, var(--brand-red)); color: #fff; border-color: var(--deck-accent, var(--brand-red)); animation: pulse 0.9s infinite; }
+  .deck-modal-label { font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--du-ink-3); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+  .deck-modal-label::after { content: ""; flex: 1; height: 1px; background: var(--du-border); }
+  .deck-ex-list { display: flex; flex-direction: column; gap: 10px; }
+  .deck-ex { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; background: var(--du-surface-2); border-radius: 8px; border-left: 3px solid var(--deck-accent, var(--brand-red)); }
+  .deck-ex .de-num { font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: var(--deck-accent, var(--brand-red)); padding-top: 5px; min-width: 20px; }
+  .deck-ex .de-text { flex: 1; min-width: 0; }
+  .deck-ex .de-jp { font-family: 'Noto Sans JP', sans-serif; font-size: 19px; font-weight: 500; line-height: 1.45; color: var(--du-ink); margin-bottom: 4px; }
+  .deck-ex .de-jp .hi { color: var(--deck-accent, var(--brand-red)); font-weight: 700; }
+  .deck-ex .de-id { font-size: 13.5px; color: var(--du-ink-2); line-height: 1.5; font-style: italic; }
+  .deck-ex .de-play {
+    flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--du-border);
+    background: var(--du-surface); color: var(--du-ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    transition: all .15s; margin-top: 2px;
   }
-  .vfc-title {
-    font-size: 12px; color: var(--du-ink-4);
-    font-family: var(--font-body); font-weight: 500;
-    min-width: 54px; text-align: right;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
+  .deck-ex .de-play:hover { background: var(--deck-accent, var(--brand-red)); color: #fff; border-color: var(--deck-accent, var(--brand-red)); transform: scale(1.08); }
+  .deck-ex .de-play.playing { background: var(--deck-accent, var(--brand-red)); color: #fff; border-color: var(--deck-accent, var(--brand-red)); animation: pulse 0.9s infinite; }
+  .deck-ex-empty { font-size: 13px; color: var(--du-ink-3); font-style: italic; }
+  @media (max-width: 600px) { .deck-modal-head .dm-jp { font-size: 44px; } .deck-modal { padding: 24px 18px; } }
 
-  .vfc-body {
-    padding: 22px 18px;
-    display: flex; flex-direction: column;
-    perspective: 1200px;
-  }
-  .vfc-card {
-    position: relative; width: 100%;
-    min-height: 280px;
-    transform-style: preserve-3d;
-    transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
-  }
-  .vfc-card.flipped { transform: rotateY(180deg); }
-  .vfc-face {
-    position: absolute; inset: 0;
-    backface-visibility: hidden; -webkit-backface-visibility: hidden;
-    background: var(--du-surface-2);
-    border: 1px solid var(--du-border);
-    border-radius: 18px;
-    padding: 28px 22px;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    text-align: center;
-  }
-  .vfc-face-back {
-    transform: rotateY(180deg);
-    background: linear-gradient(160deg, var(--du-accent-soft) 0%, var(--du-surface) 100%);
-    overflow-y: auto;
-    justify-content: flex-start;
-    padding: 24px 22px;
-  }
-  .vfc-front-jp {
-    font-family: 'Noto Sans JP', 'Yuji Syuku', serif;
-    font-size: 52px; font-weight: 600;
-    color: var(--du-ink); line-height: 1.15;
-    word-break: break-word;
-  }
-  .vfc-hint {
-    margin-top: 18px;
-    font-size: 11px; color: var(--du-ink-4);
-    font-family: var(--font-body);
-    display: inline-flex; align-items: center; gap: 8px;
-  }
-  .vfc-hint::before, .vfc-hint::after {
-    content: ''; display: inline-block;
-    width: 22px; height: 1px; background: var(--du-border);
-  }
-
-  .vfc-back-jp {
-    font-family: 'Noto Sans JP', serif;
-    font-size: 30px; font-weight: 600;
-    color: var(--du-ink); line-height: 1.2;
-    margin-bottom: 6px;
-  }
-  .vfc-back-read {
-    font-family: 'Noto Sans JP', sans-serif;
-    font-size: 15px; color: var(--du-ink-3);
-    margin-bottom: 10px;
-  }
-  .vfc-back-mean {
-    font-size: 18px; font-weight: 600;
-    color: var(--du-accent);
-    margin-bottom: 12px; line-height: 1.35;
-  }
-  .vfc-back-cat {
-    display: inline-block; font-size: 11px;
-    padding: 2px 10px; border-radius: 20px;
-    background: rgba(178, 0, 36, 0.08); color: var(--du-accent);
-    font-family: var(--font-body); font-weight: 600;
-    letter-spacing: 0.3px; text-transform: uppercase;
-    margin-bottom: 10px;
-  }
-  .vfc-back-note {
-    font-size: 12.5px; color: var(--du-ink-2);
-    line-height: 1.5; font-style: italic;
-    border-top: 1px dashed var(--du-border);
-    padding-top: 10px; margin-top: auto;
-    max-width: 100%;
-  }
-
-  .vfc-ratings {
-    display: grid; grid-template-columns: repeat(4, 1fr);
-    gap: 8px; padding: 12px 18px 18px;
-    border-top: 1px solid var(--du-border-soft);
-  }
-  .vfc-rbtn {
-    display: flex; flex-direction: column; align-items: center; gap: 3px;
-    padding: 10px 4px; border-radius: 12px; border: none;
-    cursor: pointer; font-family: var(--font-body);
-    transition: transform 0.1s, box-shadow 0.15s;
-  }
-  .vfc-rbtn:active { transform: scale(0.96); }
-  .vfc-rbtn-label { font-size: 13px; font-weight: 600; }
-  .vfc-rbtn-int { font-size: 10px; opacity: 0.75; }
-  .vfc-rbtn-1 { background: #FEE2E2; color: #991B1B; }
-  .vfc-rbtn-2 { background: #FEF3C7; color: #92400E; }
-  .vfc-rbtn-3 { background: #D1FAE5; color: #065F46; }
-  .vfc-rbtn-4 { background: #DBEAFE; color: #1E40AF; }
-
-  .vfc-done {
-    padding: 32px 22px;
-    display: flex; flex-direction: column;
-    align-items: center; text-align: center;
-  }
-  .vfc-done-emoji { font-size: 52px; margin-bottom: 10px; }
-  .vfc-done-title {
-    font-size: 20px; font-weight: 700; color: var(--du-ink);
-    margin-bottom: 6px;
-  }
-  .vfc-done-sub {
-    font-size: 13px; color: var(--du-ink-3);
-    line-height: 1.55; margin-bottom: 20px;
-    font-family: var(--font-body);
-  }
-  .vfc-done-grid {
-    display: grid; grid-template-columns: repeat(4, 1fr);
-    gap: 8px; width: 100%; margin-bottom: 20px;
-  }
-  .vfc-done-stat {
-    background: var(--du-surface-2);
-    border: 1px solid var(--du-border);
-    border-radius: 12px; padding: 10px 4px;
-    font-family: var(--font-body);
-  }
-  .vfc-done-stat-num { font-size: 18px; font-weight: 700; }
-  .vfc-done-stat-lbl { font-size: 10px; color: var(--du-ink-4); margin-top: 2px; }
-  .vfc-done-btn {
-    padding: 11px 28px; border-radius: 12px; border: none;
-    background: var(--du-accent); color: #fff;
-    font-size: 14px; font-weight: 600;
-    font-family: var(--font-body);
-    cursor: pointer; transition: background 0.15s;
-  }
-  .vfc-done-btn:hover { background: var(--du-accent-2); }
-
-  .vfc-empty {
-    padding: 44px 24px; text-align: center;
-    color: var(--du-ink-3);
-    font-family: var(--font-body);
-  }
-  .vfc-empty-emoji { font-size: 44px; margin-bottom: 10px; }
-  .vfc-empty-title { font-size: 16px; color: var(--du-ink); font-weight: 600; margin-bottom: 4px; }
-
-  @media (max-width: 480px) {
-    .vfc-front-jp { font-size: 42px; }
-    .vfc-card { min-height: 240px; }
-  }
 </style>
 </head>
 <body>
@@ -2899,71 +2810,7 @@
   © 2026 <strong>EzNihongo</strong>
 </footer>
 
-<!-- ── VOCAB FLASHCARD MODAL (FSRS) ── -->
-<div class="vfc-overlay" id="vfc-overlay" role="dialog" aria-modal="true" aria-label="Flashcard Kosakata">
-  <div class="vfc-shell">
-    <div class="vfc-header">
-      <button class="vfc-back" id="vfc-back" aria-label="Tutup">×</button>
-      <div class="vfc-header-mid">
-        <div class="vfc-counter" id="vfc-counter">0 / 0</div>
-        <div class="vfc-pbar-wrap"><div class="vfc-pbar-fill" id="vfc-pbar"></div></div>
-      </div>
-      <div class="vfc-title" id="vfc-title">Kosakata</div>
-    </div>
-
-    <div class="vfc-body" id="vfc-body">
-      <div class="vfc-card" id="vfc-card">
-        <div class="vfc-face">
-          <div class="vfc-front-jp" id="vfc-front-jp">—</div>
-          <div class="vfc-hint">Ketuk untuk lihat jawaban</div>
-        </div>
-        <div class="vfc-face vfc-face-back">
-          <div class="vfc-back-jp" id="vfc-back-jp">—</div>
-          <div class="vfc-back-read" id="vfc-back-read"></div>
-          <div class="vfc-back-mean" id="vfc-back-mean">—</div>
-          <div id="vfc-back-cat-wrap"></div>
-          <div class="vfc-back-note" id="vfc-back-note" style="display:none;"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="vfc-ratings" id="vfc-ratings" style="display:none;">
-      <button class="vfc-rbtn vfc-rbtn-1" data-rating="1">
-        <span class="vfc-rbtn-label">Lupa</span>
-        <span class="vfc-rbtn-int" id="vfc-int-1">—</span>
-      </button>
-      <button class="vfc-rbtn vfc-rbtn-2" data-rating="2">
-        <span class="vfc-rbtn-label">Susah</span>
-        <span class="vfc-rbtn-int" id="vfc-int-2">—</span>
-      </button>
-      <button class="vfc-rbtn vfc-rbtn-3" data-rating="3">
-        <span class="vfc-rbtn-label">Bisa</span>
-        <span class="vfc-rbtn-int" id="vfc-int-3">—</span>
-      </button>
-      <button class="vfc-rbtn vfc-rbtn-4" data-rating="4">
-        <span class="vfc-rbtn-label">Mudah</span>
-        <span class="vfc-rbtn-int" id="vfc-int-4">—</span>
-      </button>
-    </div>
-
-    <div class="vfc-done" id="vfc-done" style="display:none;">
-      <div class="vfc-done-emoji">🎉</div>
-      <div class="vfc-done-title">Sesi Selesai!</div>
-      <div class="vfc-done-sub" id="vfc-done-sub"></div>
-      <div class="vfc-done-grid" id="vfc-done-grid"></div>
-      <button class="vfc-done-btn" id="vfc-done-btn">Selesai</button>
-    </div>
-
-    <div class="vfc-empty" id="vfc-empty" style="display:none;">
-      <div class="vfc-empty-emoji">📖</div>
-      <div class="vfc-empty-title">Belum ada kosakata</div>
-      <div style="font-size:13px;margin-top:6px;">Pelajaran ini belum punya daftar kosakata untuk di-flashcard.</div>
-    </div>
-  </div>
-</div>
-
 <script src="api-client.js"></script>
-<script src="fsrs.js"></script>
 <script>
 // ═══════════════════════════════════════════════
 // AUTH GUARD — self-hosted API session
@@ -3027,6 +2874,7 @@ function transformCourseFromApi(apiCourse) {
           jp,
           vocabulary: Array.isArray(l.vocabulary) ? l.vocabulary : [],
           grammar: Array.isArray(l.grammar) ? l.grammar : [],
+          deck: Array.isArray(l.deck) ? l.deck : [],
         };
       }),
     })),
@@ -3940,7 +3788,7 @@ function renderRightPanel() {
   const totalLessons = allLessons.length;
   const doneLessons = Object.values(progress).filter(v => v).length;
   const pct = Math.round((doneLessons / totalLessons) * 100);
-  const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan' };
+  const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan', deck: 'Kosakata' };
 
   // Tip selection: if user hasn't clicked yet for this lesson, default
   // to lesson-indexed tip (varies naturally as they navigate). If they
@@ -3971,7 +3819,7 @@ function renderRightPanel() {
     <div class="rp-card rp-next rp-done">
       <div class="rp-eyebrow">Selesai</div>
       <div class="rp-next-title">🎌 Ini bab terakhir</div>
-      <div class="rp-next-meta"><span>Lanjut ke flashcard review</span></div>
+      <div class="rp-next-meta"><span>Buka Daftar Kosakata untuk mengulang</span></div>
     </div>
   `;
 
@@ -4015,13 +3863,13 @@ function renderSidebar() {
   const doneLessons = Object.values(progress).filter(v => v).length;
   const pct = Math.round((doneLessons / totalLessons) * 100);
 
-  const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan' };
+  const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan', deck: 'Kosakata' };
   const modulesHtml = course.modules.map(m => {
     const lessonsHtml = m.lessons.map(l => {
       const key = `${m.id}:${l.id}`;
       const isDone = !!progress[key];
       const isCurrent = m.id === currentState.moduleId && l.id === currentState.lessonId;
-      const icon = l.type === 'quiz' ? '?' : (isDone ? '✓' : '▶');
+      const icon = l.type === 'quiz' ? '?' : (isDone ? '✓' : (l.type === 'deck' ? '語' : '▶'));
       const typeKey = (l.type || 'text').toLowerCase();
       const typeLabel = TYPE_LABEL[typeKey] || typeKey.toUpperCase();
       return `
@@ -4123,6 +3971,11 @@ function renderSidebar() {
       <div class="modules-list">${modulesHtml}</div>
       <div class="modules-empty" id="modules-empty" style="display:none;">Tidak ada modul yang cocok.</div>
       <div class="sidebar-quicklinks">
+        <button class="quicklink" type="button" onclick="openVocabList()">
+          <span class="ql-ico">📒</span>
+          <span class="ql-text">Daftar Kosakata</span>
+          <span class="ql-arr">→</span>
+        </button>
         <button class="quicklink" type="button" onclick="openMateri()">
           <span class="ql-ico">📚</span>
           <span class="ql-text">Materi &amp; Referensi</span>
@@ -4180,6 +4033,105 @@ window.openMateri = () => {
 
 window.openHelp = () => {
   window.open('https://wa.me/6281294894557', '_blank', 'noopener');
+};
+
+// Daftar Kosakata — aggregates every vocabulary entry for the active course
+// (CMS module/lesson vocab), falling back to the bundled flashcard set when
+// the CMS has none. Replaces the old per-lesson vocab flashcard mode.
+window.openVocabList = async () => {
+  closeSidebar();
+  const slug = currentState.course;
+  const course = COURSE_CONTENT[slug];
+  const main = document.getElementById('main-content');
+  if (!main) return;
+
+  const groups = [];
+  if (course && Array.isArray(course.modules)) {
+    for (const m of course.modules) {
+      const items = (Array.isArray(m.vocabulary) ? m.vocabulary : [])
+        .slice()
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .map((v) => ({
+          japanese: v.japanese || '', reading: v.reading || '',
+          indonesian: v.indonesian || '', category: v.category || '', note: v.note || '',
+        }));
+      if (items.length) groups.push({ title: `Modul ${m.num} · ${m.title}`, items });
+    }
+  }
+  if (groups.length === 0) {
+    if (!FLASHCARD_DATA || Object.keys(FLASHCARD_DATA).length === 0) {
+      try { await loadFlashcardData(); } catch {}
+    }
+    const fc = (FLASHCARD_DATA && FLASHCARD_DATA[slug]) || [];
+    const byCat = {};
+    for (const c of fc) (byCat[c.category || 'Umum'] ||= []).push(c);
+    for (const [cat, arr] of Object.entries(byCat)) {
+      groups.push({
+        title: cat,
+        items: arr.map((c) => ({
+          japanese: c.front || '', reading: c.reading || '',
+          indonesian: c.back || '', category: '', note: '',
+        })),
+      });
+    }
+  }
+
+  const total = groups.reduce((s, g) => s + g.items.length, 0);
+  const courseName = course?.name || slug.toUpperCase();
+  if (total === 0) {
+    main.innerHTML = `
+      <p class="lesson-breadcrumb">${escapeHtml(courseName)} · KOSAKATA</p>
+      <h1 class="lesson-title">📒 Daftar Kosakata</h1>
+      <p class="lesson-subtitle" style="margin-top:12px;">Belum ada kosakata untuk kelas ini.</p>
+    `;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+
+  main.innerHTML = `
+    <p class="lesson-breadcrumb">${escapeHtml(courseName)} · KOSAKATA</p>
+    <h1 class="lesson-title">📒 Daftar Kosakata</h1>
+    <p class="lesson-subtitle">${total} kata dari seluruh materi kelas ini.</p>
+    <div class="module-filter" style="margin:14px 0 18px;">
+      <svg class="mf-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" id="vocab-list-filter" placeholder="Cari kosakata..." oninput="window.filterVocabList(this.value)" autocomplete="off" />
+    </div>
+    <div class="lesson-extras">
+      ${groups.map((g) => `
+        <div class="lesson-extra-card vocab-list-group">
+          <h3>📚 ${escapeHtml(g.title)} (${g.items.length})</h3>
+          <div style="overflow-x:auto;">
+            <table class="vocab-table">
+              <thead><tr><th>日本語</th><th>Reading</th><th>Arti</th><th>Kategori</th><th>Catatan</th></tr></thead>
+              <tbody>
+                ${g.items.map((v) => `
+                  <tr data-vocab="${escapeHtml(`${v.japanese} ${v.reading} ${v.indonesian} ${v.category}`.toLowerCase())}">
+                    <td class="jp-cell">${escapeHtml(v.japanese)}</td>
+                    <td class="reading-cell">${escapeHtml(v.reading)}</td>
+                    <td>${escapeHtml(v.indonesian)}</td>
+                    <td>${v.category ? `<span class="vocab-cat">${escapeHtml(v.category)}</span>` : ''}</td>
+                    <td class="vocab-note">${escapeHtml(v.note)}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>`).join('')}
+    </div>
+  `;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.filterVocabList = (q) => {
+  const query = String(q ?? '').trim().toLowerCase();
+  document.querySelectorAll('#main-content .vocab-list-group').forEach((group) => {
+    let visible = 0;
+    group.querySelectorAll('tbody tr').forEach((tr) => {
+      const show = !query || (tr.getAttribute('data-vocab') || '').includes(query);
+      tr.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    group.style.display = visible === 0 ? 'none' : '';
+  });
 };
 
 function escapeHtml(s) {
@@ -4265,201 +4217,6 @@ function renderLessonVocab(lesson) {
   `;
 }
 
-// ═══════════════════════════════════════════════
-// VOCAB FLASHCARD — FSRS v5 session
-// Adapted from legacy Nihonggo learn app (kanji.html).
-// Queue-based: rating 1 (Lupa) pushes card back to queue;
-// rating 2-4 writes FSRS schedule + marks card done.
-// ═══════════════════════════════════════════════
-const VFC = {
-  queue: [],
-  total: 0,
-  done: 0,
-  lupaSet: new Set(),
-  tally: { 1: 0, 2: 0, 3: 0, 4: 0 },
-  lessonId: null,
-  flipped: false,
-};
-
-function vfcCardId(v, lessonId) {
-  // Prefix with lesson so the same vocab shared across lessons (rare but
-  // possible) schedules independently per context.
-  return 'v:' + lessonId + ':' + (v.id || (v.japanese + '|' + (v.reading || '')));
-}
-
-function vfcPreviewIntervals(v) {
-  const id = vfcCardId(v, VFC.lessonId);
-  const card = (window.EzFSRS && EzFSRS.getCardState(id)) || null;
-  const fmt = (days) => {
-    if (days == null) return '—';
-    if (days < 1) return '<1h';
-    if (days < 30) return days + 'h';
-    if (days < 365) return Math.round(days / 30) + 'bl';
-    return Math.round(days / 365) + 'th';
-  };
-  const w = EzFSRS.getWeights();
-  const intervals = {};
-  [1, 2, 3, 4].forEach((r) => {
-    try {
-      const sim = EzFSRS._internals.calculateNextState(card || EzFSRS._internals.makeNewCard(), r, w, 0.9);
-      const days = Math.max(0, Math.round((sim.due - Date.now()) / 86400000));
-      intervals[r] = fmt(days);
-    } catch (e) { intervals[r] = '—'; }
-  });
-  return intervals;
-}
-
-function openVocabFlashcard() {
-  const course = COURSE_CONTENT[currentState.course];
-  if (!course) { showToast('Data kursus belum siap', 2000); return; }
-  const mod = (course.modules || []).find((m) => m.id === currentState.moduleId);
-  const lesson = mod && (mod.lessons || []).find((l) => l.id === currentState.lessonId);
-  if (!lesson) { showToast('Pelajaran tidak ditemukan', 2000); return; }
-  const lessonId = lesson.id;
-
-  const vocab = Array.isArray(lesson.vocabulary) ? lesson.vocabulary.slice() : [];
-  vocab.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-
-  const overlay = document.getElementById('vfc-overlay');
-  overlay.classList.add('open');
-  document.body.style.overflow = 'hidden';
-
-  // Reset view state
-  document.getElementById('vfc-done').style.display = 'none';
-  document.getElementById('vfc-ratings').style.display = 'none';
-  document.getElementById('vfc-empty').style.display = 'none';
-  document.getElementById('vfc-body').style.display = 'flex';
-
-  if (vocab.length === 0) {
-    document.getElementById('vfc-body').style.display = 'none';
-    document.getElementById('vfc-empty').style.display = 'block';
-    document.getElementById('vfc-title').textContent = lesson.title || 'Kosakata';
-    document.getElementById('vfc-counter').textContent = '0 / 0';
-    document.getElementById('vfc-pbar').style.width = '0%';
-    return;
-  }
-
-  VFC.lessonId = lessonId;
-  VFC.queue = vocab;
-  VFC.total = vocab.length;
-  VFC.done = 0;
-  VFC.lupaSet = new Set();
-  VFC.tally = { 1: 0, 2: 0, 3: 0, 4: 0 };
-  VFC.flipped = false;
-  document.getElementById('vfc-title').textContent = lesson.title || 'Kosakata';
-  renderVocabCard();
-}
-
-function closeVocabFlashcard() {
-  const overlay = document.getElementById('vfc-overlay');
-  overlay.classList.remove('open');
-  document.body.style.overflow = '';
-}
-
-function renderVocabCard() {
-  const v = VFC.queue[0];
-  if (!v) return;
-  VFC.flipped = false;
-  document.getElementById('vfc-card').classList.remove('flipped');
-  document.getElementById('vfc-ratings').style.display = 'none';
-
-  // Header
-  const lupaInfo = VFC.lupaSet.size > 0 ? ` · 🔁${VFC.lupaSet.size}` : '';
-  document.getElementById('vfc-counter').textContent = `${VFC.done}/${VFC.total}${lupaInfo}`;
-  const pct = VFC.total ? Math.round((VFC.done / VFC.total) * 100) : 0;
-  document.getElementById('vfc-pbar').style.width = pct + '%';
-
-  // Front
-  document.getElementById('vfc-front-jp').textContent = v.japanese || '—';
-
-  // Back
-  document.getElementById('vfc-back-jp').textContent = v.japanese || '—';
-  document.getElementById('vfc-back-read').textContent = v.reading || '';
-  document.getElementById('vfc-back-mean').textContent = v.indonesian || '—';
-  const catWrap = document.getElementById('vfc-back-cat-wrap');
-  catWrap.innerHTML = v.category ? `<span class="vfc-back-cat">${escapeHtml(v.category)}</span>` : '';
-  const noteEl = document.getElementById('vfc-back-note');
-  if (v.note) {
-    noteEl.textContent = v.note;
-    noteEl.style.display = '';
-  } else {
-    noteEl.style.display = 'none';
-  }
-
-  // Interval previews
-  const iv = vfcPreviewIntervals(v);
-  for (let r = 1; r <= 4; r++) {
-    const el = document.getElementById('vfc-int-' + r);
-    if (el) el.textContent = iv[r];
-  }
-}
-
-function flipVocabCard() {
-  if (VFC.flipped) return;
-  VFC.flipped = true;
-  document.getElementById('vfc-card').classList.add('flipped');
-  setTimeout(() => {
-    document.getElementById('vfc-ratings').style.display = '';
-  }, 230);
-}
-
-function vfcShowDone() {
-  document.getElementById('vfc-body').style.display = 'none';
-  document.getElementById('vfc-ratings').style.display = 'none';
-  document.getElementById('vfc-done').style.display = 'flex';
-  const hafal = VFC.tally[2] + VFC.tally[3] + VFC.tally[4];
-  document.getElementById('vfc-done-sub').textContent =
-    `${VFC.total} kartu · ${hafal} hafal · ${VFC.tally[1]} perlu diulang`;
-  const labels = { 1: 'Lupa', 2: 'Susah', 3: 'Bisa', 4: 'Mudah' };
-  const colors = { 1: '#991B1B', 2: '#92400E', 3: '#065F46', 4: '#1E40AF' };
-  document.getElementById('vfc-done-grid').innerHTML =
-    [1, 2, 3, 4].map((r) => `
-      <div class="vfc-done-stat">
-        <div class="vfc-done-stat-num" style="color:${colors[r]}">${VFC.tally[r]}</div>
-        <div class="vfc-done-stat-lbl">${labels[r]}</div>
-      </div>`).join('');
-}
-
-function vfcRate(rating) {
-  const v = VFC.queue[0];
-  if (!v) return;
-  VFC.tally[rating]++;
-  if (rating >= 2) {
-    // Commit to FSRS + move on
-    try { EzFSRS.reviewCard(vfcCardId(v, VFC.lessonId), rating); } catch (e) {}
-    VFC.lupaSet.delete(v.id || v.japanese);
-    VFC.done++;
-    VFC.queue.shift();
-  } else {
-    // Lupa — push to end of queue, review again later in session
-    VFC.lupaSet.add(v.id || v.japanese);
-    VFC.queue.push(VFC.queue.shift());
-  }
-  if (VFC.queue.length === 0) { vfcShowDone(); return; }
-  renderVocabCard();
-}
-
-// Wire up flashcard UI once at load
-(function wireVfc() {
-  const overlay = document.getElementById('vfc-overlay');
-  if (!overlay) return;
-  const card = document.getElementById('vfc-card');
-  card.addEventListener('click', flipVocabCard);
-  document.getElementById('vfc-back').addEventListener('click', closeVocabFlashcard);
-  document.getElementById('vfc-done-btn').addEventListener('click', closeVocabFlashcard);
-  // Close on overlay click (but not when clicking the shell itself)
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeVocabFlashcard(); });
-  // ESC to close
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && overlay.classList.contains('open')) closeVocabFlashcard();
-  });
-  overlay.querySelectorAll('.vfc-rbtn').forEach((btn) => {
-    btn.addEventListener('click', () => vfcRate(parseInt(btn.dataset.rating, 10)));
-  });
-})();
-
-window.openVocabFlashcard = openVocabFlashcard;
-
 function renderLessonGrammar(lesson) {
   const rows = Array.isArray(lesson.grammar) ? lesson.grammar : [];
   if (rows.length === 0) return '';
@@ -4487,6 +4244,197 @@ function renderLessonExtras(lesson) {
   if (!vocab && !grammar) return '';
   return `<div class="lesson-extras">${vocab}${grammar}</div>`;
 }
+
+// ── DECK (kosakata cards) ─────────────────────────────────────────
+const DECK_COLORS = {
+  sun: '#E8A23E', moon: '#6B7BA3', fire: '#D04E2A', water: '#3B7BB8',
+  tree: '#5A8C4A', gold: '#C9A227', earth: '#8C6B3F',
+  day: '#C8102E', time: '#5E4B8B', week: '#1F8A5B', general: '#C8102E',
+};
+const AUDIO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19" fill="currentColor"></polygon><path d="M15.5 8.5a5 5 0 0 1 0 7"></path></svg>';
+
+function deckAccent(item) {
+  const raw = (item && item.accentColor != null) ? String(item.accentColor).trim() : '';
+  if (raw && /^#?[0-9a-fA-F]{3,8}$/.test(raw.replace(/^#/, ''))) {
+    return raw.startsWith('#') ? raw : ('#' + raw);
+  }
+  const cat = String((item && item.category) || '').toLowerCase();
+  return DECK_COLORS[cat] || 'var(--brand-red)';
+}
+
+function deckHighlight(jpPlain, highlight, fallbackWord) {
+  const esc = escapeHtml(jpPlain || '');
+  const term = ((highlight && highlight.trim()) || (fallbackWord && fallbackWord.trim()) || '').trim();
+  if (!term) return esc;
+  const escTerm = escapeHtml(term);
+  const i = esc.indexOf(escTerm);
+  if (i < 0) return esc;
+  return esc.slice(0, i) + '<span class="hi">' + escTerm + '</span>' + esc.slice(i + escTerm.length);
+}
+
+// Plays via the cached server TTS endpoint; falls back to browser Web Speech.
+function playTTS(text, btn) {
+  const plain = String(text || '').replace(/<[^>]*>/g, '').trim();
+  if (!plain) return;
+  if (btn) {
+    document.querySelectorAll('.dc-audio.playing,.de-play.playing,.dm-headaudio.playing').forEach((b) => b.classList.remove('playing'));
+    btn.classList.add('playing');
+  }
+  const stop = () => { if (btn) btn.classList.remove('playing'); };
+  const fallback = () => { stop(); try { speakJapanese(plain, btn); } catch (e) { /* noop */ } };
+  try {
+    const a = new Audio('/api/tts?text=' + encodeURIComponent(plain));
+    a.onended = stop;
+    a.onerror = fallback;
+    const p = a.play();
+    if (p && typeof p.catch === 'function') p.catch(fallback);
+  } catch (e) { fallback(); }
+}
+window.playTTS = playTTS;
+window.playDeckAudio = (idx, btn) => {
+  const it = (window.__deckData || [])[idx];
+  if (!it) return;
+  playTTS(it.reading || it.japanese || '', btn);
+};
+window.playDeckExample = (idx, exIdx, btn) => {
+  const it = (window.__deckData || [])[idx];
+  if (!it) return;
+  const ex = (it.examples || [])[exIdx];
+  if (!ex) return;
+  playTTS(String(ex.japanese || '').replace(/<[^>]*>/g, ''), btn);
+};
+
+function renderDeckLesson(course, module, lesson, nav) {
+  const { prev, next, isDone } = nav;
+  const items = Array.isArray(lesson.deck) ? lesson.deck : [];
+  window.__deckData = items;
+
+  if (!window.__deckEscWired) {
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && window.closeDeckModal) window.closeDeckModal(); });
+    window.__deckEscWired = true;
+  }
+
+  const intro = (lesson.body && lesson.body.trim())
+    ? lesson.body
+    : 'Klik kartu untuk melihat contoh kalimat, atau klik tombol speaker untuk mendengar pengucapan.';
+  const heroJp = items.slice(0, 4).map((it) => escapeHtml(it.japanese || '')).filter(Boolean).join('・');
+  const heroBlock = items.length > 0 ? `
+    <div class="deck-hero">
+      <div>
+        <div class="dh-eyebrow">単語 · KOSAKATA</div>
+        <div class="dh-body">${escapeHtml(intro)}</div>
+      </div>
+      ${heroJp ? `<div class="dh-jp" lang="ja">${heroJp}</div>` : ''}
+    </div>` : '';
+
+  const toolbar = items.length > 0 ? `
+    <div class="deck-toolbar">
+      <div class="dt-stats"><strong id="deck-visible-count">${items.length}</strong> dari <strong>${items.length}</strong> kata</div>
+      <div class="deck-search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <input type="search" placeholder="Cari kata atau arti..." oninput="filterDeck(this.value)" autocomplete="off" />
+      </div>
+    </div>` : '';
+
+  const cardsHtml = items.length === 0
+    ? '<div class="deck-empty">Belum ada kosakata di deck ini.</div>'
+    : `<div class="deck-grid" id="deck-grid">${items.map((it, idx) => {
+        const search = ((it.japanese || '') + ' ' + (it.reading || '') + ' ' + (it.romaji || '') + ' ' + (it.indonesian || '')).toLowerCase();
+        return `<div class="deck-card" data-deck-search="${escapeHtml(search)}" style="--deck-accent:${deckAccent(it)};" onclick="openDeckModal(${idx})">
+          <button class="dc-audio" type="button" aria-label="Dengar" onclick="event.stopPropagation();playDeckAudio(${idx}, this)">${AUDIO_SVG}</button>
+          <div class="dc-jp" lang="ja">${escapeHtml(it.japanese || '')}</div>
+          ${it.reading ? `<div class="dc-kana" lang="ja">${escapeHtml(it.reading)}</div>` : ''}
+          <div class="dc-meaning">${escapeHtml(it.indonesian || '')}</div>
+          <span class="dc-len">Klik untuk contoh</span>
+        </div>`;
+      }).join('')}</div>`;
+
+  document.getElementById('main-content').innerHTML = `
+    <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · KOSAKATA</p>
+    <h1 class="lesson-title">${lesson.title}</h1>
+    <p class="lesson-subtitle">${module.title}${lesson.duration ? ' — ' + lesson.duration : ''}</p>
+    ${heroBlock}
+    ${toolbar}
+    ${cardsHtml}
+    <div class="deck-modal-backdrop" id="deck-modal-backdrop" onclick="if(event.target===this)closeDeckModal()">
+      <div class="deck-modal" id="deck-modal">
+        <button class="deck-modal-close" type="button" aria-label="Tutup" onclick="closeDeckModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+        </button>
+        <div class="deck-modal-head">
+          <div class="dm-jp" lang="ja"></div>
+          <div class="dm-info">
+            <div class="dm-cat"></div>
+            <div class="dm-kana" lang="ja"></div>
+            <div class="dm-romaji"></div>
+            <div class="dm-arti"></div>
+          </div>
+          <button class="dm-headaudio" type="button" aria-label="Dengar kata">${AUDIO_SVG}</button>
+        </div>
+        <div class="deck-modal-label">Contoh Kalimat · 例文</div>
+        <div class="deck-ex-list" id="deck-ex-list"></div>
+      </div>
+    </div>
+    <div class="lesson-footer">
+      <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
+      <button class="btn-primary" onclick="markCompleteAndNext()">
+        ${isDone ? (next ? 'Lanjut →' : 'Selesai ✓') : (next ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓')}
+      </button>
+    </div>
+  `;
+}
+
+window.filterDeck = (q) => {
+  const term = String(q || '').trim().toLowerCase();
+  let visible = 0;
+  document.querySelectorAll('#deck-grid .deck-card').forEach((c) => {
+    const match = !term || (c.dataset.deckSearch || '').includes(term);
+    c.style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+  const cnt = document.getElementById('deck-visible-count');
+  if (cnt) cnt.textContent = visible;
+};
+
+window.openDeckModal = (idx) => {
+  const it = (window.__deckData || [])[idx];
+  if (!it) return;
+  const back = document.getElementById('deck-modal-backdrop');
+  const modal = document.getElementById('deck-modal');
+  if (!back || !modal) return;
+  modal.style.setProperty('--deck-accent', deckAccent(it));
+  modal.querySelector('.dm-jp').textContent = it.japanese || '';
+  const len = [...(it.japanese || '')].length;
+  modal.querySelector('.dm-cat').textContent = ((it.category || 'kosakata').toUpperCase()) + (len ? ' · ' + len + ' KARAKTER' : '');
+  modal.querySelector('.dm-kana').textContent = it.reading || '';
+  modal.querySelector('.dm-romaji').textContent = it.romaji || '';
+  modal.querySelector('.dm-arti').textContent = it.indonesian || '';
+  const headAudio = modal.querySelector('.dm-headaudio');
+  headAudio.onclick = () => playDeckAudio(idx, headAudio);
+  const list = document.getElementById('deck-ex-list');
+  const examples = Array.isArray(it.examples) ? it.examples : [];
+  list.innerHTML = examples.length === 0
+    ? '<div class="deck-ex-empty">Belum ada contoh kalimat untuk kata ini.</div>'
+    : examples.map((ex, i) => {
+        const plain = String(ex.japanese || '').replace(/<[^>]*>/g, '');
+        return `<div class="deck-ex">
+          <div class="de-num">${String(i + 1).padStart(2, '0')}</div>
+          <div class="de-text">
+            <div class="de-jp" lang="ja">${deckHighlight(plain, ex.highlight, it.japanese)}</div>
+            ${ex.indonesian ? `<div class="de-id">${escapeHtml(ex.indonesian)}</div>` : ''}
+          </div>
+          <button class="de-play" type="button" aria-label="Dengar kalimat" onclick="playDeckExample(${idx}, ${i}, this)">${AUDIO_SVG}</button>
+        </div>`;
+      }).join('');
+  back.classList.add('open');
+};
+
+window.closeDeckModal = () => {
+  const back = document.getElementById('deck-modal-backdrop');
+  if (back) back.classList.remove('open');
+  document.querySelectorAll('.de-play.playing,.dm-headaudio.playing,.dc-audio.playing').forEach((b) => b.classList.remove('playing'));
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+};
 
 function renderLesson() {
   const course = COURSE_CONTENT[currentState.course];
@@ -4530,6 +4478,12 @@ function renderLesson() {
         </button>
       </div>
     `;
+    return;
+  }
+
+  // Deck — interactive vocab cards (design: "Kosakata" handoff)
+  if (lesson.type === 'deck') {
+    renderDeckLesson(course, module, lesson, { prev, next, isDone });
     return;
   }
 
