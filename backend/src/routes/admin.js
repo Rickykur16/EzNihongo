@@ -521,23 +521,6 @@ async function upsertNotionVocab(moduleId, pages) {
   return { imported, updated, total, vocabIds };
 }
 
-// Whole vocab DB -> a module's bank (lesson_id NULL). Bulk; useful for seeding.
-router.post('/import-notion-vocab', asyncHandler(async (req, res) => {
-  const token = process.env.NOTION_TOKEN || '';
-  if (!token) return res.status(503).json({ error: 'notion_not_configured', detail: 'Set NOTION_TOKEN di backend/.env' });
-  const { moduleId } = req.body || {};
-  if (!moduleId) return res.status(400).json({ error: 'moduleId required' });
-  const dbId = notionIdFromInput((req.body || {}).notionDbId) || notionIdFromInput(process.env.NOTION_VOCAB_DB_ID);
-  if (!dbId) return res.status(400).json({ error: 'notion_db_required', detail: 'Set NOTION_VOCAB_DB_ID atau kirim notionDbId' });
-  const mod = await query(`SELECT id FROM modules WHERE id = $1`, [moduleId]);
-  if (mod.rows.length === 0) return res.status(404).json({ error: 'module not found' });
-  let pages;
-  try { pages = await notionQueryAll(dbId, token); }
-  catch (err) { return res.status(502).json({ error: 'notion_error', status: err.notionStatus || 0, detail: err.message }); }
-  const { imported, updated, total } = await upsertNotionVocab(moduleId, pages);
-  res.json({ imported, updated, total });
-}));
-
 // Lists chapters ("Bab") from the "📗 Bab" Notion DB so the deck editor can pick
 // which chapter to pull. Sorted by Nomor Bab.
 router.get('/notion-bab', asyncHandler(async (req, res) => {
