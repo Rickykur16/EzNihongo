@@ -421,9 +421,11 @@ router.delete('/lessons/:lessonId/deck-items/:vocabularyId', asyncHandler(async 
 
 // ===== IMPORT VOCAB FROM NOTION =====
 // Pulls the "📚 Vocabulary 語彙" Notion database into module_vocabulary as bank
-// items (lesson_id NULL). Manual: triggered by an admin button. Idempotent —
-// rows whose `japanese` already exists in the module are skipped, so re-running
-// only adds new words. Needs NOTION_TOKEN in env (integration shared with the DB).
+// items (lesson_id NULL). Manual: triggered by an admin button. Upsert by
+// `japanese` within the module — re-running adds new words AND refreshes
+// reading/indonesian/category/note on existing ones from Notion (lesson_id and
+// any manual deck wiring are left untouched). Needs NOTION_TOKEN in env
+// (integration shared with the DB).
 function notionIdFromInput(s) {
   if (!s) return null;
   const m = String(s).match(/[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}/);
@@ -456,10 +458,16 @@ router.post('/import-notion-vocab', asyncHandler(async (req, res) => {
   const mod = await query(`SELECT id FROM modules WHERE id = $1`, [moduleId]);
   if (mod.rows.length === 0) return res.status(404).json({ error: 'module not found' });
 
-  const existing = await query(`SELECT japanese FROM module_vocabulary WHERE module_id = $1`, [moduleId]);
-  const seen = new Set(existing.rows.map((r) => (r.japanese || '').trim()).filter(Boolean));
+  // japanese -> existing row id, so re-import updates rows in place rather than
+  // skipping them. Notion is the source of truth for the imported fields.
+  const existing = await query(`SELECT id, japanese FROM module_vocabulary WHERE module_id = $1`, [moduleId]);
+  const byJapanese = new Map();
+  for (const r of existing.rows) {
+    const j = (r.japanese || '').trim();
+    if (j && !byJapanese.has(j)) byJapanese.set(j, r.id);
+  }
 
-  let cursor = null, imported = 0, skipped = 0, total = 0, sort = seen.size;
+  let cursor = null, imported = 0, updated = 0, total = 0, sort = byJapanese.size;
   for (let guard = 0; guard < 100; guard++) {
     let resp;
     try {
@@ -481,23 +489,32 @@ router.post('/import-notion-vocab', asyncHandler(async (req, res) => {
       const japanese = notionPlainText(pickProp(props, ['Japanese 日本語', 'Japanese', '日本語', 'Bahasa Jepang'])).trim();
       if (!japanese) continue;
       total++;
-      if (seen.has(japanese)) { skipped++; continue; }
       const reading = notionPlainText(pickProp(props, ['Reading 読み', 'Reading', '読み', 'Cara Baca'])).trim() || null;
       const indonesian = notionPlainText(pickProp(props, ['Indonesian', 'Bahasa Indonesia'])).trim() || null;
       const category = notionPlainText(pickProp(props, ['Category', 'Kategori'])).trim() || null;
       const note = notionPlainText(pickProp(props, ['Note', 'Catatan'])).trim() || null;
-      await query(
-        `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, indonesian, category, note, sort_order)
-         VALUES ($1, NULL, $2, $3, $4, $5, $6, $7)`,
-        [moduleId, japanese, reading, indonesian, category, note, sort++]
-      );
-      seen.add(japanese);
-      imported++;
+      const existingId = byJapanese.get(japanese);
+      if (existingId) {
+        await query(
+          `UPDATE module_vocabulary SET reading = $2, indonesian = $3, category = $4, note = $5, updated_at = NOW()
+           WHERE id = $1`,
+          [existingId, reading, indonesian, category, note]
+        );
+        updated++;
+      } else {
+        const r = await query(
+          `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, indonesian, category, note, sort_order)
+           VALUES ($1, NULL, $2, $3, $4, $5, $6, $7) RETURNING id`,
+          [moduleId, japanese, reading, indonesian, category, note, sort++]
+        );
+        byJapanese.set(japanese, r.rows[0].id);
+        imported++;
+      }
     }
     if (!data.has_more) break;
     cursor = data.next_cursor;
   }
-  res.json({ imported, skipped, total });
+  res.json({ imported, updated, total });
 }));
 
 // ===== MODULE GRAMMAR =====

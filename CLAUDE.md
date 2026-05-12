@@ -72,7 +72,11 @@
   tombol "Import dari Notion" di admin → Kelola Deck → Dari bank): narik database
   Notion "📚 Vocabulary 語彙" (`Japanese 日本語` / `Reading 読み` / `Indonesian` /
   `Category` / `Note`) → `module_vocabulary` sebagai item bank (`lesson_id` NULL).
-  Idempotent (skip kalau `japanese` sudah ada di modul itu). Butuh env
+  Upsert by `japanese` per modul: kata baru di-insert, kata yang sudah ada
+  di-update `reading`/`indonesian`/`category`/`note`-nya dari Notion (`lesson_id`
+  + wiring deck dibiarkan). Catatan: kolom `Reading 読み` di Notion deskripsinya
+  "Hiragana/katakana reading or romaji" — kalau mau kana konsisten, rapihin di
+  Notion lalu re-import. Butuh env
   `NOTION_TOKEN` (Internal Integration Secret, share DB ke integration) +
   `NOTION_VOCAB_DB_ID` (default `bd1f0d912aa24b139b5e68f3610b7c51`); kalau token
   kosong endpoint balas 503. Pakai REST `api.notion.com/v1/databases/:id/query`,
