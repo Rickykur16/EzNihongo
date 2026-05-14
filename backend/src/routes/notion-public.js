@@ -1,10 +1,14 @@
 // Public vocab catalog sourced from Notion, level-scoped.
 //
 // Design: an in-memory cache keyed by slug (n5, n4, …) holds the aggregated
-// {bab: [{ kode, nomor, name, vocab: […] }]} for each level. A background
-// setInterval refreshes the cache for every supported level every
-// NOTION_CACHE_TTL_MS so the dashboard's "Daftar Kosakata" stays fresh
-// without admin needing to manually import each Bab.
+// {bab: [{ kode, nomor, name, vocab: […] }]} for each level, and the same
+// payload is mirrored to the `notion_vocab_cache` table (UPSERT — one row
+// per slug, never grows). A background setInterval refreshes the cache for
+// every supported level every NOTION_CACHE_TTL_MS so the dashboard's
+// "Daftar Kosakata" stays fresh without admin needing to manually import.
+//
+// If Notion is unreachable, we keep serving the last good payload (from
+// memory, or restored from DB on boot) so users never see an empty list.
 //
 // Slug -> Notion filter: each Bab in Notion has a `Kode Bab` text in the
 // form "N5-B3", so we filter the Bab DB by `Kode Bab` starts_with
@@ -14,6 +18,7 @@
 
 import { Router } from 'express';
 import { asyncHandler } from '../middleware.js';
+import { query } from '../db.js';
 import {
   NOTION_VOCAB_DB_ID_DEFAULT,
   NOTION_BAB_DB_ID_DEFAULT,
@@ -116,16 +121,57 @@ async function fetchLevelFromNotion(slug) {
   return { bab: out, totalKata };
 }
 
+async function persistSlug(slug, data, fetchedAtMs) {
+  try {
+    await query(
+      `INSERT INTO notion_vocab_cache (slug, payload, fetched_at)
+       VALUES ($1, $2::jsonb, to_timestamp($3 / 1000.0))
+       ON CONFLICT (slug) DO UPDATE
+         SET payload = EXCLUDED.payload,
+             fetched_at = EXCLUDED.fetched_at`,
+      [slug, JSON.stringify(data), fetchedAtMs]
+    );
+  } catch (err) {
+    console.warn(`notion-public: persist ${slug} failed:`, err.message);
+  }
+}
+
+async function loadSlugFromDb(slug) {
+  try {
+    const r = await query(
+      `SELECT payload, EXTRACT(EPOCH FROM fetched_at) * 1000 AS fetched_at_ms
+       FROM notion_vocab_cache WHERE slug = $1`,
+      [slug]
+    );
+    if (r.rows.length === 0) return null;
+    return {
+      fetchedAt: Number(r.rows[0].fetched_at_ms) || 0,
+      data: r.rows[0].payload,
+      error: null,
+    };
+  } catch (err) {
+    console.warn(`notion-public: db load ${slug} failed:`, err.message);
+    return null;
+  }
+}
+
 async function refreshSlug(slug) {
   // De-dupe concurrent refreshes for the same slug.
   if (inflight.has(slug)) return inflight.get(slug);
   const p = (async () => {
     try {
       const data = await fetchLevelFromNotion(slug);
-      cache.set(slug, { fetchedAt: Date.now(), data, error: null });
+      const fetchedAt = Date.now();
+      cache.set(slug, { fetchedAt, data, error: null });
+      // Persist the fresh payload — UPSERT replaces the existing row so the
+      // table doesn't grow with each sync, and a later Notion outage can be
+      // served from this saved copy instead of returning empty.
+      await persistSlug(slug, data, fetchedAt);
       return cache.get(slug);
     } catch (err) {
-      const prev = cache.get(slug);
+      // Notion failed. Keep the last good payload in memory (and on disk),
+      // just annotate the error so the caller can surface it if needed.
+      const prev = cache.get(slug) || (await loadSlugFromDb(slug));
       const entry = {
         fetchedAt: prev?.fetchedAt || 0,
         data: prev?.data || null,
@@ -146,18 +192,27 @@ router.get('/notion-vocab', asyncHandler(async (req, res) => {
   if (!SUPPORTED_SLUGS.includes(slug)) {
     return res.status(400).json({ error: 'unsupported_slug', supported: SUPPORTED_SLUGS });
   }
-  const { token } = envIds();
-  if (!token) {
-    return res.status(503).json({ error: 'notion_not_configured', detail: 'Set NOTION_TOKEN di backend/.env' });
-  }
   let entry = cache.get(slug);
+  // If memory cache is cold, try the persisted copy before hitting Notion.
+  if (!entry || !entry.data) {
+    const fromDb = await loadSlugFromDb(slug);
+    if (fromDb) {
+      cache.set(slug, fromDb);
+      entry = fromDb;
+    }
+  }
+  const { token } = envIds();
   const stale = !entry || (Date.now() - entry.fetchedAt) > TTL_MS;
   if (stale) {
-    // No cached payload at all → block on fetch (first hit after boot).
-    // Stale-but-cached → serve stale + trigger refresh.
     if (!entry || !entry.data) {
+      // No cached payload at all → block on fetch (first hit after fresh boot
+      // before background refresh runs). Will populate DB on success.
+      if (!token) {
+        return res.status(503).json({ error: 'notion_not_configured', detail: 'Set NOTION_TOKEN di backend/.env' });
+      }
       entry = await refreshSlug(slug);
-    } else {
+    } else if (token) {
+      // Stale-but-cached → serve stale + trigger background refresh.
       refreshSlug(slug).catch((e) => console.warn('notion-public bg refresh err:', e.message));
     }
   }
@@ -185,9 +240,19 @@ async function refreshAllSlugs() {
     catch (e) { console.warn(`notion-public initial refresh ${slug}:`, e.message); }
   }
 }
+async function primeFromDb() {
+  // Restore every persisted slug into the in-memory cache so the first user
+  // request after a restart doesn't block on Notion (even if Notion is down).
+  for (const slug of SUPPORTED_SLUGS) {
+    const entry = await loadSlugFromDb(slug);
+    if (entry && entry.data) cache.set(slug, entry);
+  }
+}
 export function startNotionCacheRefresh() {
   if (_refreshTimer) return;
-  // Defer initial fetch a bit so server boot isn't blocked.
+  // Warm memory from the DB first (cheap, can serve users immediately),
+  // then defer the Notion refresh so server boot isn't blocked.
+  primeFromDb().catch((e) => console.warn('notion-public primeFromDb:', e.message));
   setTimeout(() => { refreshAllSlugs().catch(() => {}); }, 5000);
   _refreshTimer = setInterval(() => {
     refreshAllSlugs().catch(() => {});
@@ -196,3 +261,4 @@ export function startNotionCacheRefresh() {
 }
 
 export default router;
+

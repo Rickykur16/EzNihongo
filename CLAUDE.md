@@ -96,12 +96,21 @@
   (file `backend/src/routes/notion-public.js`). Endpoint:
   - Filter Bab di Notion via `Kode Bab starts_with "N5-"` (slug di-upper).
   - Sequential per-Bab fetch vocab, group, sort by `Nomor Bab`.
-  - In-memory cache per slug, TTL `NOTION_CACHE_TTL_MS` (default 30 menit).
-  - Background refresh `setInterval` di `server.js` (`startNotionCacheRefresh()`)
-    yang prime semua slug `n5..n1` tiap `NOTION_CACHE_REFRESH_MS` (default 30 menit).
-  - Stale-while-revalidate: kalau cache ada tapi expired → serve stale + trigger
-    background refresh; kalau ga ada cache sama sekali → blocking fetch (boot
-    first hit cold ~detik). Token Notion kosong → endpoint 503.
+  - **Dua layer cache**: in-memory `Map` (cepet, hilang saat restart) + tabel
+    `notion_vocab_cache` (`slug` PRIMARY KEY + `payload` JSONB; migration 010).
+    Tiap sync sukses UPSERT — 1 row per slug, **tidak numpuk**.
+  - TTL `NOTION_CACHE_TTL_MS` (default 30 menit) buat freshness check, refresh
+    interval `NOTION_CACHE_REFRESH_MS` (default 30 menit).
+  - Background refresh: `startNotionCacheRefresh()` di `server.js` —
+    (1) prime in-memory dari DB saat boot (instant, ga blok user),
+    (2) setTimeout 5s panggil Notion biar refresh data (ga blokir listen),
+    (3) setInterval tiap `REFRESH_MS`.
+  - **Failure mode**: kalau Notion down saat refresh, in-memory + DB entry
+    lama dipertahankan (cuma `error` field di-update). Endpoint tetep serve
+    data lama → user ga pernah lihat list kosong gara-gara Notion outage.
+  - Stale-while-revalidate: cache expired tapi ada → serve stale + refresh
+    background; ga ada cache sama sekali (DB kosong + memory kosong) → blocking
+    fetch. Token Notion kosong + DB kosong → 503.
   - Frontend fallback: kalau endpoint gagal/empty, `openVocabList` jatuh ke
     aggregasi DB (vocab grouped by deck-lesson) terus ke `FLASHCARD_DATA`.
 - **TTS ElevenLabs** (`backend/src/routes/tts.js`, `GET /api/tts?text=`):
