@@ -4142,7 +4142,10 @@ function renderSidebar() {
           n + m.lessons.filter((l) => progress[`${m.id}:${l.id}`]).length, 0);
         const sectionTotal = b.modules.reduce((n, m) => n + m.lessons.length, 0);
         const containsCurrent = b.modules.some((m) => m.id === currentState.moduleId);
-        const isSecOpen = _expandedSections.has(b.name) || (containsCurrent && !_sectionUserToggled);
+        // Sections default to open on every render — user can collapse manually
+        // (state lives in _collapsedSections). Removed mutex at section level
+        // per request; module-level mutex inside the section stays.
+        const isSecOpen = !_collapsedSections.has(b.name);
         const safeName = b.name.replace(/'/g, "\\'");
         return `
           <div class="sidebar-section ${isSecOpen ? 'open' : ''}" data-section="${escapeHtml(b.name)}">
@@ -4150,7 +4153,7 @@ function renderSidebar() {
                     aria-expanded="${isSecOpen ? 'true' : 'false'}"
                     onclick="toggleSidebarSection('${escapeHtml(safeName)}')">
               <span class="ss-name">${escapeHtml(b.name)}</span>
-              <span class="ss-count">${b.modules.length} Modul · ${sectionDone}/${sectionTotal}</span>
+              <span class="ss-count">${b.modules.length} Bab · ${sectionDone}/${sectionTotal}</span>
               <svg class="ss-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div class="sidebar-section-body">
@@ -5188,14 +5191,11 @@ window.speakLessonJP = (btn) => {
 };
 
 // Sidebar accordion state — persists across renderSidebar() so user choices
-// don't snap shut on every navigation. Mutex within each level: at most one
-// section open at a time, at most one module open *within each section*.
-const _expandedSections = new Set();
+// don't snap shut on every navigation. Sections default to open and toggle
+// independently (tracked here as which ones the user has *collapsed*).
+// Modules still mutex within their section: at most one module open per section.
+const _collapsedSections = new Set();
 const _expandedModules = new Set();
-// Until the user explicitly toggles a section, the section containing the
-// currently-open lesson auto-opens. After a manual toggle we respect their
-// choice (so closing the current section stays closed).
-let _sectionUserToggled = false;
 
 function _sectionOfModule(moduleId) {
   const course = COURSE_CONTENT[currentState.course];
@@ -5205,11 +5205,11 @@ function _sectionOfModule(moduleId) {
 }
 
 window.selectLesson = (moduleId, lessonId) => {
-  // Picking a lesson auto-opens its module and section; close sibling modules
-  // in the same section to keep the sidebar compact (matches the mutex rule).
+  // Picking a lesson auto-opens its module; close sibling modules in the
+  // same section to keep the sidebar compact (module-level mutex). Section
+  // open/close is left alone since they default to open.
   const sec = _sectionOfModule(moduleId);
-  _expandedSections.clear();
-  _expandedSections.add(sec);
+  _collapsedSections.delete(sec);
   for (const otherId of [..._expandedModules]) {
     if (otherId !== moduleId && _sectionOfModule(otherId) === sec) {
       _expandedModules.delete(otherId);
@@ -5290,17 +5290,18 @@ window.toggleModule = (moduleId) => {
 };
 
 window.toggleSidebarSection = (name) => {
-  _sectionUserToggled = true;
-  const wasOpen = _expandedSections.has(name);
-  // Mutex at the section level: at most one section open globally.
-  _expandedSections.clear();
-  // Closing a section also closes its open module, to match "tidak expanding".
-  for (const otherId of [..._expandedModules]) {
-    if (_sectionOfModule(otherId) !== name || wasOpen) {
-      _expandedModules.delete(otherId);
+  // No mutex — each section toggles independently. Default state is open;
+  // _collapsedSections tracks which the user has manually collapsed.
+  if (_collapsedSections.has(name)) {
+    _collapsedSections.delete(name);
+  } else {
+    _collapsedSections.add(name);
+    // When folding a section away, also close its open module so re-opening
+    // the section doesn't reveal stale "open" module body.
+    for (const otherId of [..._expandedModules]) {
+      if (_sectionOfModule(otherId) === name) _expandedModules.delete(otherId);
     }
   }
-  if (!wasOpen) _expandedSections.add(name);
   renderSidebar();
 };
 
