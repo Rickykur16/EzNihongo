@@ -2676,9 +2676,16 @@
     color: var(--brand-red); margin-bottom: 6px;
   }
   .deck-hero .dh-body { font-size: 13.5px; color: var(--du-ink-2); line-height: 1.5; max-width: 560px; }
-  .deck-hero .dh-jp {
-    font-family: 'Noto Sans JP', sans-serif; font-size: 44px; font-weight: 700;
-    color: var(--brand-red); line-height: 1; opacity: .85; white-space: nowrap;
+  .deck-hero .dh-stat {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+    flex-shrink: 0; padding-left: 16px; border-left: 2px solid var(--du-border);
+  }
+  .deck-hero .dh-stat-num { font-size: 28px; font-weight: 800; color: var(--brand-red); line-height: 1; font-variant-numeric: tabular-nums; }
+  .deck-hero .dh-stat-label { font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--du-ink-3); }
+  @media (max-width: 600px) {
+    .deck-hero { padding: 16px 18px; gap: 14px; }
+    .deck-hero .dh-stat { padding-left: 12px; }
+    .deck-hero .dh-stat-num { font-size: 22px; }
   }
   .deck-toolbar {
     display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
@@ -2697,36 +2704,57 @@
   .deck-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
   .deck-card {
     position: relative; background: var(--du-surface); border: 1px solid var(--du-border); border-radius: 10px;
-    padding: 14px 12px 10px; cursor: pointer; overflow: hidden;
+    padding: 14px 12px 26px; cursor: pointer; overflow: hidden;
     display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+    min-height: 148px;
     transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s, border-color .18s;
   }
   .deck-card::before {
     content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
     background: var(--deck-accent, var(--brand-red)); opacity: .85;
   }
-  .deck-card:hover {
+  .deck-card:hover, .deck-card:focus-visible {
     transform: translateY(-3px); border-color: var(--deck-accent, var(--brand-red));
     box-shadow: 0 12px 28px -16px rgba(0,0,0,.22), 0 3px 10px -6px rgba(0,0,0,.1); z-index: 2;
+    outline: none;
   }
+  .deck-card:focus-visible { box-shadow: 0 0 0 3px var(--deck-accent, var(--brand-red)); }
   .deck-card .dc-jp { font-family: 'Noto Sans JP', sans-serif; font-size: 28px; font-weight: 700; color: var(--du-ink); line-height: 1.1; margin-top: 4px; }
   .deck-card .dc-kana { font-family: 'Noto Sans JP', sans-serif; font-size: 13px; font-weight: 500; color: var(--deck-accent, var(--brand-red)); letter-spacing: 0.04em; }
   .deck-card .dc-meaning {
     font-size: 13px; color: var(--du-ink-2); font-weight: 600; line-height: 1.25;
     padding-top: 7px; margin-top: 5px; border-top: 1px solid var(--du-border); width: 100%;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; word-break: break-word;
   }
   .deck-card .dc-audio {
-    position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 50%;
+    position: absolute; top: 6px; right: 6px; width: 32px; height: 32px; border-radius: 50%;
     border: 1px solid var(--du-border); background: var(--du-surface); color: var(--du-ink);
     display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
     transition: all .15s; z-index: 2;
   }
-  .deck-card .dc-audio:hover { background: var(--deck-accent, var(--brand-red)); color: #fff; border-color: var(--deck-accent, var(--brand-red)); transform: scale(1.1); }
+  .deck-card .dc-audio svg { width: 14px; height: 14px; }
+  .deck-card .dc-audio:hover { background: var(--deck-accent, var(--brand-red)); color: #fff; border-color: var(--deck-accent, var(--brand-red)); transform: scale(1.08); }
   .deck-card .dc-audio.playing { background: var(--deck-accent, var(--brand-red)); color: #fff; border-color: var(--deck-accent, var(--brand-red)); animation: pulse 0.9s infinite; }
-  .deck-card .dc-len { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); font-size: 8.5px; font-weight: 700; letter-spacing: 0.18em; color: var(--du-ink-3); text-transform: uppercase; opacity: 0; transition: opacity .15s; pointer-events: none; }
-  .deck-card:hover .dc-len { opacity: .6; }
-  .deck-empty { text-align: center; padding: 60px 20px; color: var(--du-ink-3); font-style: italic; }
-  @media (max-width: 600px) { .deck-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); } .deck-card .dc-jp { font-size: 24px; } }
+  .deck-card .dc-len {
+    position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+    font-size: 8.5px; font-weight: 700; letter-spacing: 0.18em; color: var(--du-ink-3);
+    text-transform: uppercase; opacity: .45; transition: opacity .15s; pointer-events: none;
+    white-space: nowrap;
+  }
+  .deck-card:hover .dc-len, .deck-card:focus-visible .dc-len { opacity: .75; }
+  .deck-empty, .deck-empty-filter {
+    grid-column: 1 / -1; text-align: center; padding: 60px 20px;
+    color: var(--du-ink-3); font-style: italic; font-size: 14px;
+  }
+  .deck-empty-filter strong { font-style: normal; color: var(--du-ink-2); }
+  @media (max-width: 600px) {
+    .deck-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
+    .deck-card { min-height: 132px; padding: 14px 10px 24px; }
+    .deck-card .dc-jp { font-size: 24px; }
+    .deck-card .dc-audio { width: 36px; height: 36px; top: 4px; right: 4px; }
+    .deck-card .dc-len { opacity: .6; }
+  }
 
   /* deck modal (example sentences) */
   .deck-modal-backdrop {
@@ -2777,7 +2805,29 @@
   .deck-ex .de-play:hover { background: var(--deck-accent, var(--brand-red)); color: #fff; border-color: var(--deck-accent, var(--brand-red)); transform: scale(1.08); }
   .deck-ex .de-play.playing { background: var(--deck-accent, var(--brand-red)); color: #fff; border-color: var(--deck-accent, var(--brand-red)); animation: pulse 0.9s infinite; }
   .deck-ex-empty { font-size: 13px; color: var(--du-ink-3); font-style: italic; }
-  @media (max-width: 600px) { .deck-modal-head .dm-jp { font-size: 44px; } .deck-modal { padding: 24px 18px; } }
+  .deck-modal-nav {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--du-border);
+  }
+  .deck-modal-nav button {
+    display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+    border: 1px solid var(--du-border); background: var(--du-surface); color: var(--du-ink);
+    border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s;
+    font-family: inherit;
+  }
+  .deck-modal-nav button:hover:not(:disabled) {
+    background: var(--deck-accent, var(--brand-red)); color: #fff; border-color: var(--deck-accent, var(--brand-red));
+  }
+  .deck-modal-nav button:disabled { opacity: .35; cursor: not-allowed; }
+  .deck-modal-nav .dm-counter {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--du-ink-3); font-variant-numeric: tabular-nums;
+  }
+  @media (max-width: 600px) {
+    .deck-modal-head .dm-jp { font-size: 44px; }
+    .deck-modal { padding: 24px 18px; }
+    .deck-modal-nav button { padding: 8px 10px; font-size: 12px; }
+  }
 
 </style>
 </head>
@@ -4310,21 +4360,31 @@ function renderDeckLesson(course, module, lesson, nav) {
   window.__deckData = items;
 
   if (!window.__deckEscWired) {
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && window.closeDeckModal) window.closeDeckModal(); });
+    document.addEventListener('keydown', (e) => {
+      const back = document.getElementById('deck-modal-backdrop');
+      const open = back && back.classList.contains('open');
+      if (!open) return;
+      if (e.key === 'Escape') { window.closeDeckModal && window.closeDeckModal(); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); window.deckModalStep && window.deckModalStep(-1); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); window.deckModalStep && window.deckModalStep(1); }
+    });
     window.__deckEscWired = true;
   }
 
   const intro = (lesson.body && lesson.body.trim())
     ? lesson.body
     : 'Klik kartu untuk melihat contoh kalimat, atau klik tombol speaker untuk mendengar pengucapan.';
-  const heroJp = items.slice(0, 4).map((it) => escapeHtml(it.japanese || '')).filter(Boolean).join('・');
+  const exampleCount = items.reduce((n, it) => n + (Array.isArray(it.examples) ? it.examples.length : 0), 0);
   const heroBlock = items.length > 0 ? `
     <div class="deck-hero">
       <div>
         <div class="dh-eyebrow">単語 · KOSAKATA</div>
         <div class="dh-body">${escapeHtml(intro)}</div>
       </div>
-      ${heroJp ? `<div class="dh-jp" lang="ja">${heroJp}</div>` : ''}
+      <div class="dh-stat" aria-label="${items.length} kata, ${exampleCount} contoh kalimat">
+        <div class="dh-stat-num">${items.length}</div>
+        <div class="dh-stat-label">kata${exampleCount ? ` · ${exampleCount} contoh` : ''}</div>
+      </div>
     </div>` : '';
 
   const toolbar = items.length > 0 ? `
@@ -4340,14 +4400,16 @@ function renderDeckLesson(course, module, lesson, nav) {
     ? '<div class="deck-empty">Belum ada kosakata di deck ini.</div>'
     : `<div class="deck-grid" id="deck-grid">${items.map((it, idx) => {
         const search = ((it.japanese || '') + ' ' + (it.reading || '') + ' ' + (it.romaji || '') + ' ' + (it.indonesian || '')).toLowerCase();
-        return `<div class="deck-card" data-deck-search="${escapeHtml(search)}" style="--deck-accent:${deckAccent(it)};" onclick="openDeckModal(${idx})">
-          <button class="dc-audio" type="button" aria-label="Dengar" onclick="event.stopPropagation();playDeckAudio(${idx}, this)">${AUDIO_SVG}</button>
-          <div class="dc-jp" lang="ja">${escapeHtml(it.japanese || '')}</div>
+        const jp = escapeHtml(it.japanese || '');
+        const arti = escapeHtml(it.indonesian || '');
+        return `<div class="deck-card" role="button" tabindex="0" aria-label="${jp}${arti ? ' — ' + arti : ''}. Tekan Enter untuk lihat contoh kalimat." data-deck-search="${escapeHtml(search)}" style="--deck-accent:${deckAccent(it)};" onclick="openDeckModal(${idx})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDeckModal(${idx})}">
+          <button class="dc-audio" type="button" aria-label="Dengar pengucapan ${jp}" onclick="event.stopPropagation();playDeckAudio(${idx}, this)">${AUDIO_SVG}</button>
+          <div class="dc-jp" lang="ja">${jp}</div>
           ${it.reading ? `<div class="dc-kana" lang="ja">${escapeHtml(it.reading)}</div>` : ''}
-          <div class="dc-meaning">${escapeHtml(it.indonesian || '')}</div>
-          <span class="dc-len">Klik untuk contoh</span>
+          <div class="dc-meaning">${arti}</div>
+          <span class="dc-len" aria-hidden="true">Klik untuk contoh</span>
         </div>`;
-      }).join('')}</div>`;
+      }).join('')}<div class="deck-empty-filter" id="deck-empty-filter" hidden></div></div>`;
 
   document.getElementById('main-content').innerHTML = `
     <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · KOSAKATA</p>
@@ -4357,12 +4419,12 @@ function renderDeckLesson(course, module, lesson, nav) {
     ${toolbar}
     ${cardsHtml}
     <div class="deck-modal-backdrop" id="deck-modal-backdrop" onclick="if(event.target===this)closeDeckModal()">
-      <div class="deck-modal" id="deck-modal">
+      <div class="deck-modal" id="deck-modal" role="dialog" aria-modal="true" aria-labelledby="deck-modal-jp" tabindex="-1">
         <button class="deck-modal-close" type="button" aria-label="Tutup" onclick="closeDeckModal()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
         </button>
         <div class="deck-modal-head">
-          <div class="dm-jp" lang="ja"></div>
+          <div class="dm-jp" lang="ja" id="deck-modal-jp"></div>
           <div class="dm-info">
             <div class="dm-cat"></div>
             <div class="dm-kana" lang="ja"></div>
@@ -4373,6 +4435,17 @@ function renderDeckLesson(course, module, lesson, nav) {
         </div>
         <div class="deck-modal-label">Contoh Kalimat · 例文</div>
         <div class="deck-ex-list" id="deck-ex-list"></div>
+        <div class="deck-modal-nav">
+          <button type="button" id="deck-modal-prev" aria-label="Kata sebelumnya (←)" onclick="window.deckModalStep(-1)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+            <span>Sebelumnya</span>
+          </button>
+          <span class="dm-counter" id="deck-modal-counter" aria-live="polite"></span>
+          <button type="button" id="deck-modal-next" aria-label="Kata berikutnya (→)" onclick="window.deckModalStep(1)">
+            <span>Berikutnya</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
       </div>
     </div>
     <div class="lesson-footer">
@@ -4394,18 +4467,32 @@ window.filterDeck = (q) => {
   });
   const cnt = document.getElementById('deck-visible-count');
   if (cnt) cnt.textContent = visible;
+  const empty = document.getElementById('deck-empty-filter');
+  if (empty) {
+    if (visible === 0 && term) {
+      empty.innerHTML = `Tidak ada kata yang cocok dengan <strong>"${escapeHtml(term)}"</strong>.`;
+      empty.hidden = false;
+    } else {
+      empty.hidden = true;
+    }
+  }
 };
 
 window.openDeckModal = (idx) => {
-  const it = (window.__deckData || [])[idx];
+  const data = window.__deckData || [];
+  const it = data[idx];
   if (!it) return;
   const back = document.getElementById('deck-modal-backdrop');
   const modal = document.getElementById('deck-modal');
   if (!back || !modal) return;
+  const wasOpen = back.classList.contains('open');
+  if (!wasOpen) {
+    window.__deckModalReturnFocus = document.activeElement;
+  }
+  window.__deckModalIdx = idx;
   modal.style.setProperty('--deck-accent', deckAccent(it));
   modal.querySelector('.dm-jp').textContent = it.japanese || '';
-  const len = [...(it.japanese || '')].length;
-  modal.querySelector('.dm-cat').textContent = ((it.category || 'kosakata').toUpperCase()) + (len ? ' · ' + len + ' KARAKTER' : '');
+  modal.querySelector('.dm-cat').textContent = (it.category || 'kosakata').toUpperCase();
   modal.querySelector('.dm-kana').textContent = it.reading || '';
   modal.querySelector('.dm-romaji').textContent = it.romaji || '';
   modal.querySelector('.dm-arti').textContent = it.indonesian || '';
@@ -4426,7 +4513,28 @@ window.openDeckModal = (idx) => {
           <button class="de-play" type="button" aria-label="Dengar kalimat" onclick="playDeckExample(${idx}, ${i}, this)">${AUDIO_SVG}</button>
         </div>`;
       }).join('');
+  const prevBtn = document.getElementById('deck-modal-prev');
+  const nextBtn = document.getElementById('deck-modal-next');
+  const counter = document.getElementById('deck-modal-counter');
+  if (prevBtn) prevBtn.disabled = idx <= 0;
+  if (nextBtn) nextBtn.disabled = idx >= data.length - 1;
+  if (counter) counter.textContent = `${idx + 1} / ${data.length}`;
   back.classList.add('open');
+  if (!wasOpen) {
+    // Focus the modal so screen readers announce it; keyboard nav (← →/Esc) is wired globally.
+    setTimeout(() => modal.focus(), 0);
+  }
+};
+
+window.deckModalStep = (delta) => {
+  const data = window.__deckData || [];
+  const cur = typeof window.__deckModalIdx === 'number' ? window.__deckModalIdx : 0;
+  const target = cur + delta;
+  if (target < 0 || target >= data.length) return;
+  // Stop any audio that was playing for the previous card.
+  document.querySelectorAll('.de-play.playing,.dm-headaudio.playing').forEach((b) => b.classList.remove('playing'));
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  window.openDeckModal(target);
 };
 
 window.closeDeckModal = () => {
@@ -4434,6 +4542,11 @@ window.closeDeckModal = () => {
   if (back) back.classList.remove('open');
   document.querySelectorAll('.de-play.playing,.dm-headaudio.playing,.dc-audio.playing').forEach((b) => b.classList.remove('playing'));
   if (window.speechSynthesis) window.speechSynthesis.cancel();
+  const ret = window.__deckModalReturnFocus;
+  window.__deckModalReturnFocus = null;
+  if (ret && typeof ret.focus === 'function') {
+    try { ret.focus(); } catch (e) { /* noop */ }
+  }
 };
 
 function renderLesson() {
