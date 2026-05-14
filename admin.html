@@ -62,6 +62,38 @@
   .field-error { color: var(--danger); font-size: 12px; margin-top: 4px; font-weight: 500; }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
   .empty { text-align: center; padding: 40px; color: var(--ink-500); font-size: 14px; }
+
+  /* Section arranger (drag-drop modul) */
+  .sa-new { display: flex; gap: 8px; margin-bottom: 14px; }
+  .sa-new input { flex: 1; padding: 8px 12px; border: 1px solid var(--paper-300); border-radius: var(--radius-md); font: inherit; font-size: 13px; }
+  .sa-section {
+    border: 2px dashed var(--paper-300); border-radius: var(--radius-md);
+    background: var(--paper-100);
+    padding: 12px 14px; margin-bottom: 12px;
+    transition: border-color .15s, background .15s;
+  }
+  .sa-section.is-unset { background: var(--paper-50, #fafafa); border-style: dashed; opacity: .9; }
+  .sa-section.drag-over { border-color: var(--danger); background: #fdf4f4; }
+  .sa-section-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .sa-section-name { flex: 1; font-size: 13.5px; font-weight: 700; color: var(--ink-700); }
+  .sa-section-count { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: var(--ink-500); font-family: var(--font-mono); text-transform: uppercase; }
+  .sa-modules { display: flex; flex-direction: column; gap: 6px; min-height: 32px; }
+  .sa-empty { font-size: 12px; color: var(--ink-500); font-style: italic; padding: 6px 4px; }
+  .sa-module {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px;
+    background: #fff;
+    border: 1px solid var(--paper-300);
+    border-radius: var(--radius-sm, 6px);
+    cursor: grab;
+    user-select: none;
+    transition: box-shadow .12s, transform .12s, opacity .12s;
+  }
+  .sa-module:hover { box-shadow: 0 2px 6px rgba(0,0,0,.06); border-color: var(--ink-300, #999); }
+  .sa-module.sa-dragging { opacity: 0.4; cursor: grabbing; }
+  .sa-grip { color: #c0c0c0; font-size: 13px; letter-spacing: -2px; cursor: grab; }
+  .sa-module-slug { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-500); background: var(--paper-100); padding: 1px 6px; border-radius: 4px; }
+  .sa-module-title { flex: 1; font-size: 13px; font-weight: 600; color: var(--ink-700); }
   .pill { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); background: var(--paper-200); color: var(--ink-700); font-size: 11px; font-family: var(--font-mono); }
   .lock-screen { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
   .lock-card { background: var(--surface-white); padding: 32px; border-radius: var(--radius-lg); max-width: 380px; text-align: center; box-shadow: var(--elev-2); }
@@ -518,6 +550,7 @@ function renderModules() {
     body = `
       <div class="toolbar">
         <button class="btn btn-primary" onclick="newModule('${courseId}')">+ Modul baru</button>
+        <button class="btn btn-ghost" onclick="openSectionArranger()" title="Drag-drop modul antar Section di sidebar">⇅ Atur Section</button>
       </div>
       ${body}
     `;
@@ -674,6 +707,162 @@ async function submitModule(e, id, courseId) {
     notify('Modul tersimpan');
   } catch (err) { notify('Gagal simpan: ' + err.message, true); }
 }
+
+// ─────────────────────────────────────────────────────────────
+// SECTION ARRANGER (drag-drop modul antar Section di sidebar)
+// ─────────────────────────────────────────────────────────────
+// Section ditandakan via `module.section_name`. Modul yg section_name-nya
+// null/empty masuk bucket "Lainnya". Section baru dibuat dengan ngetik
+// nama di input + drag minimal 1 modul ke situ (section yg ga punya
+// modul akan hilang saat re-render kecuali masih ada di session state).
+
+const SA_UNSET = '— Lainnya —';
+let _saExtraSections = []; // section yg user buat di session tapi belum ada modulnya
+
+function _saBuckets() {
+  const map = new Map();
+  for (const m of STATE.modules || []) {
+    const sec = (m.section_name && m.section_name.trim()) || SA_UNSET;
+    if (!map.has(sec)) map.set(sec, []);
+    map.get(sec).push(m);
+  }
+  // Pastikan extra sections (yg user create tapi belum ada modulnya) tetap muncul.
+  for (const name of _saExtraSections) {
+    if (!map.has(name)) map.set(name, []);
+  }
+  // "Lainnya" selalu di paling bawah.
+  const entries = [...map.entries()];
+  entries.sort((a, b) => {
+    if (a[0] === SA_UNSET) return 1;
+    if (b[0] === SA_UNSET) return -1;
+    return 0;
+  });
+  return entries;
+}
+
+window.openSectionArranger = () => {
+  if (!STATE.selectedCourse) { notify('Pilih kursus dulu', true); return; }
+  if (!STATE.modules || STATE.modules.length === 0) { notify('Belum ada modul', true); return; }
+  _saExtraSections = [];
+  openModal(`
+    <h3>Atur Section Sidebar</h3>
+    <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 14px;">
+      Drag modul ke kotak Section yg kamu mau. Disimpan otomatis tiap drop. Modul tanpa Section masuk grup "Lainnya" di bawah.
+    </p>
+    <div class="sa-new">
+      <input id="sa-new-name" placeholder="Nama Section baru (eg. Sistem Tulisan & Perkenalan)" />
+      <button type="button" class="btn btn-primary" onclick="saAddSection()">+ Tambah</button>
+    </div>
+    <div id="sa-container"></div>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button type="button" class="btn btn-ghost" onclick="saCloseAndRefresh()">Tutup</button>
+    </div>
+  `);
+  modalContent.style.maxWidth = '720px';
+  _saRender();
+};
+
+function _saRender() {
+  const container = document.getElementById('sa-container');
+  if (!container) return;
+  const entries = _saBuckets();
+  container.innerHTML = entries.map(([name, modules]) => {
+    const safeNameAttr = escapeHtml(name);
+    const safeNameJs = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const isUnset = name === SA_UNSET;
+    return `
+      <div class="sa-section ${isUnset ? 'is-unset' : ''}" data-section="${safeNameAttr}"
+           ondragover="saAllowDrop(event)"
+           ondragleave="saLeave(event)"
+           ondrop="saDrop(event, '${safeNameJs}')">
+        <div class="sa-section-head">
+          <span class="sa-section-name">${safeNameAttr}</span>
+          <span class="sa-section-count">${modules.length} modul</span>
+        </div>
+        <div class="sa-modules">
+          ${modules.length === 0
+            ? '<div class="sa-empty">Drop modul ke sini</div>'
+            : modules.map((m) => `
+              <div class="sa-module" draggable="true" data-module-id="${m.id}"
+                   ondragstart="saDragStart(event, '${m.id}')"
+                   ondragend="saDragEnd(event)">
+                <span class="sa-grip" aria-hidden="true">⋮⋮</span>
+                <span class="sa-module-slug">${escapeHtml(m.slug)}</span>
+                <span class="sa-module-title">${escapeHtml(m.title)}</span>
+              </div>`).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.saAddSection = () => {
+  const input = document.getElementById('sa-new-name');
+  const name = (input?.value || '').trim();
+  if (!name) { notify('Ketik nama Section dulu', true); return; }
+  if (name === SA_UNSET) { notify('Nama itu reserved', true); return; }
+  // Sudah ada (entah karena ada modul atau extra)? skip dedup.
+  const existing = STATE.modules?.some((m) => (m.section_name || '').trim() === name);
+  if (!existing && !_saExtraSections.includes(name)) _saExtraSections.push(name);
+  input.value = '';
+  _saRender();
+  notify('Section "' + name + '" ditambahkan. Drag modul ke situ.');
+};
+
+window.saDragStart = (e, moduleId) => {
+  e.dataTransfer.setData('moduleId', moduleId);
+  e.dataTransfer.effectAllowed = 'move';
+  e.target.classList.add('sa-dragging');
+};
+
+window.saDragEnd = (e) => {
+  e.target.classList.remove('sa-dragging');
+  document.querySelectorAll('.sa-section.drag-over').forEach((el) => el.classList.remove('drag-over'));
+};
+
+window.saAllowDrop = (e) => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+};
+
+window.saLeave = (e) => {
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    e.currentTarget.classList.remove('drag-over');
+  }
+};
+
+window.saDrop = async (e, sectionName) => {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  const moduleId = e.dataTransfer.getData('moduleId');
+  if (!moduleId) return;
+  const mod = (STATE.modules || []).find((x) => x.id === moduleId);
+  if (!mod) return;
+  const currentSec = (mod.section_name && mod.section_name.trim()) || SA_UNSET;
+  if (currentSec === sectionName) return;
+  const newSec = sectionName === SA_UNSET ? '' : sectionName;
+  try {
+    const r = await api('/admin/modules/' + moduleId, {
+      method: 'PUT',
+      body: JSON.stringify({ sectionName: newSec }),
+    });
+    mod.section_name = (r?.module && r.module.section_name) || (newSec || null);
+    // Modul udah pindah → kalau section asalnya bukan "Lainnya" dan udah kosong
+    // tapi ada di _saExtraSections, biarin (user mungkin mau drop modul lain).
+    _saRender();
+    notify('"' + mod.title + '" → ' + sectionName);
+  } catch (err) {
+    notify('Gagal pindahin: ' + err.message, true);
+  }
+};
+
+window.saCloseAndRefresh = async () => {
+  closeModal();
+  // Refresh module list di tab Modul biar consistent.
+  try { await loadModulesForCourse(STATE.selectedCourse); renderModules(); } catch {}
+};
+
 window.deleteModule = async (id, title) => {
   if (!confirm(`Hapus modul "${title}"? Pelajaran di dalamnya ikut terhapus.`)) return;
   try {
