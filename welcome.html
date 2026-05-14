@@ -217,6 +217,20 @@
     margin: 0;
     line-height: 1.5;
   }
+  .greeting-resume {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: 14px; padding: 10px 16px;
+    background: var(--brand-red); color: #fff;
+    border: none; border-radius: 10px;
+    font-family: inherit; font-size: 13.5px; font-weight: 700;
+    cursor: pointer; transition: transform .12s, box-shadow .12s;
+    box-shadow: 0 4px 14px -6px rgba(220, 38, 38, 0.5);
+  }
+  .greeting-resume:hover { transform: translateY(-1px); box-shadow: 0 6px 18px -6px rgba(220, 38, 38, 0.6); }
+  .greeting-resume:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .greeting-resume .gr-label { font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; opacity: .85; }
+  .greeting-resume .gr-title { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (max-width: 600px) { .greeting-resume .gr-title { max-width: 180px; } }
   .greeting-time {
     flex-shrink: 0;
     background: #14161a;
@@ -403,16 +417,20 @@
   }
   .course-picker.open .course-picker-list { max-height: 420px; }
   .course-option {
-    display: flex; align-items: center; gap: 10px;
+    display: flex; align-items: center; gap: 10px; width: 100%;
     padding: 10px 14px;
-    border-top: 1px solid #f0f0f0;
-    cursor: pointer;
+    border: none; border-top: 1px solid #f0f0f0; background: transparent;
+    cursor: pointer; text-align: left;
+    font-family: inherit; color: inherit;
     transition: background 0.12s;
   }
   .course-option:hover { background: #fafafa; }
+  .course-option:focus-visible { outline: 2px solid var(--brand-red); outline-offset: -2px; }
   .course-option.active {
     background: var(--brand-red-soft);
   }
+  .course-option.locked { cursor: help; }
+  .course-option.locked:hover { background: #fff7e6; }
   .course-option .level-chip {
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 30px; height: 22px; padding: 0 6px;
@@ -1601,16 +1619,29 @@
 
   /* ── HABIT BAR: streak chip + daily goal progress ────────────────── */
   /* Sengaja minimalis — bukan resurrect stats strip lama yang cluttered.
-     Cuma 2 sinyal: "lo lagi streak?" + "udah memenuhi target hari ini?" */
+     Cuma 2 sinyal: "lo lagi streak?" + "udah memenuhi target hari ini?"
+     min-height reserves space so a failed /api/stats/me doesn't shift layout
+     when refreshStatsBar() swaps the skeleton out for a fallback notice. */
   .habit-bar {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
     gap: 14px;
     margin: -10px 28px 28px;
     padding: 0;
+    min-height: 80px;
+  }
+  .habit-bar.failed {
+    grid-template-columns: 1fr;
+    font-size: 12.5px;
+    color: var(--du-ink-3);
+    align-items: center;
+    justify-items: center;
+  }
+  .habit-bar.failed .habit-fail-msg {
+    padding: 16px 18px; text-align: center; line-height: 1.5;
   }
   @media (max-width: 860px) { .habit-bar { margin: -10px 18px 24px; } }
-  @media (max-width: 600px) { .habit-bar { grid-template-columns: 1fr; gap: 10px; margin: -6px 14px 20px; } }
+  @media (max-width: 600px) { .habit-bar { grid-template-columns: 1fr; gap: 10px; margin: -6px 14px 20px; min-height: 130px; } }
 
   .habit-card {
     background: var(--du-surface);
@@ -2619,9 +2650,28 @@
     text-transform: uppercase;
   }
   .vocab-note { font-size: 12px; color: var(--du-ink-3); line-height: 1.45; }
+  .vocab-level-chip {
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-left: 8px; padding: 2px 10px; vertical-align: middle;
+    background: var(--brand-red); color: #fff;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; font-weight: 700; letter-spacing: 0.04em;
+  }
+  .vocab-group-count {
+    color: var(--du-ink-3); font-weight: 500; font-size: .85em; margin-left: 4px;
+  }
+  .vocab-source-note {
+    display: inline-block; margin-left: 6px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+    color: var(--du-ink-3);
+    padding: 2px 8px; border-radius: 999px;
+    background: var(--du-surface-2);
+  }
   @media (max-width: 640px) {
     .vocab-table th, .vocab-table td { padding: 6px 6px; font-size: 13px; }
     .vocab-table .reading-cell { font-size: 12px; }
+    .vocab-level-chip { font-size: 12px; padding: 2px 8px; }
   }
 
   /* ── LESSON GRAMMAR CARDS ──────────────────────────────────────── */
@@ -3156,7 +3206,14 @@ async function refreshStatsBar() {
   const el = document.querySelector('.habit-bar');
   if (!el) return;
   const stats = await fetchHabitStats();
-  if (!stats) { el.outerHTML = ''; return; } // hide if API fails — better than stale skeleton
+  if (!stats) {
+    // API failed — replace skeleton with a low-key fallback that keeps the
+    // reserved vertical space so the page doesn't shift below.
+    el.outerHTML = `<div class="habit-bar failed" role="status">
+      <div class="habit-fail-msg">Stats sementara tidak tersedia. Mulai pelajaran tetap akan menambah streak ya.</div>
+    </div>`;
+    return;
+  }
   el.outerHTML = habitBarHtml(stats);
 }
 
@@ -3623,11 +3680,34 @@ function greetingBannerHtml() {
   const now = new Date();
   const hh = String(now.getHours()).padStart(2, '0');
   const mm = String(now.getMinutes()).padStart(2, '0');
+
+  // Resume CTA — only on the in-course dashboard, when we know the user's
+  // current lesson. Shortens the path from "open dashboard" to "actually study".
+  let resume = '';
+  const course = currentState.course && COURSE_CONTENT[currentState.course];
+  if (course && currentState.moduleId && currentState.lessonId) {
+    const mod = course.modules.find(m => m.id === currentState.moduleId);
+    const lesson = mod && mod.lessons.find(l => l.id === currentState.lessonId);
+    if (lesson) {
+      const progress = getProgress()[currentState.course] || {};
+      const isDone = !!progress[`${mod.id}:${lesson.id}`];
+      const label = isDone ? 'Buka kembali' : 'Lanjut belajar';
+      resume = `<button class="greeting-resume" type="button"
+        onclick="selectLesson('${mod.id}','${lesson.id}')"
+        aria-label="${label}: ${escapeHtml(lesson.title)}">
+        <span class="gr-label">${label}</span>
+        <span class="gr-title">${escapeHtml(lesson.title)}</span>
+        <span aria-hidden="true">→</span>
+      </button>`;
+    }
+  }
+
   return `
     <div class="greeting-banner">
       <div>
         <h1 class="greeting-jp">${g.jp}、<span class="name">${name}</span><span class="san">さん</span></h1>
         <p class="greeting-id">${g.id} — ${g.msg}</p>
+        ${resume}
       </div>
       <div class="greeting-time">
         <div class="gt-kanji">${g.kanji}</div>
@@ -3863,7 +3943,7 @@ function renderRightPanel() {
         <span class="rp-dot">·</span>
         <span>${next.l.duration || ''}</span>
       </div>
-      <button class="rp-next-btn" onclick="selectLesson('${next.m.id}','${next.l.id}')">Pratinjau →</button>
+      <button class="rp-next-btn" onclick="selectLesson('${next.m.id}','${next.l.id}')">Buka →</button>
     </div>
   ` : `
     <div class="rp-card rp-next rp-done">
@@ -3874,14 +3954,6 @@ function renderRightPanel() {
   `;
 
   panel.innerHTML = `
-    <div class="rp-card rp-progress">
-      <div class="rp-eyebrow">Progress Keseluruhan</div>
-      <div class="rp-progress-top">
-        <div class="rp-progress-num">${pct}<span>%</span></div>
-        <div class="rp-progress-sub">${doneLessons} dari ${totalLessons} materi</div>
-      </div>
-      <div class="rp-progress-bar"><div class="rp-progress-fill" style="width:${pct}%"></div></div>
-    </div>
     ${nextBlock}
     <div class="rp-card rp-tip" onclick="cycleTip()" role="button" tabindex="0"
          aria-label="Klik untuk tip berikutnya"
@@ -3919,13 +3991,17 @@ function renderSidebar() {
       const key = `${m.id}:${l.id}`;
       const isDone = !!progress[key];
       const isCurrent = m.id === currentState.moduleId && l.id === currentState.lessonId;
-      const icon = l.type === 'quiz' ? '?' : (isDone ? '✓' : (l.type === 'deck' ? '語' : '▶'));
+      // isDone wins: completed lessons of any type show ✓, otherwise type icon.
+      const icon = isDone ? '✓' : (l.type === 'quiz' ? '?' : (l.type === 'deck' ? '語' : '▶'));
       const typeKey = (l.type || 'text').toLowerCase();
       const typeLabel = TYPE_LABEL[typeKey] || typeKey.toUpperCase();
+      const aria = `${l.title}, ${typeLabel}${l.duration ? ', ' + l.duration : ''}${isDone ? ', selesai' : ''}${isCurrent ? ', sedang dibuka' : ''}`;
       return `
         <li class="lesson-item ${isCurrent ? 'current' : ''} ${isDone ? 'done' : ''}"
-            onclick="selectLesson('${m.id}', '${l.id}')">
-          <span class="lesson-icon">${icon}</span>
+            role="button" tabindex="0" aria-label="${escapeHtml(aria)}" aria-current="${isCurrent ? 'page' : 'false'}"
+            onclick="selectLesson('${m.id}', '${l.id}')"
+            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectLesson('${m.id}','${l.id}')}">
+          <span class="lesson-icon" aria-hidden="true">${icon}</span>
           <div class="lesson-info">
             <div class="lesson-title-text">${l.title}</div>
             <div class="lesson-meta-row">
@@ -3937,7 +4013,7 @@ function renderSidebar() {
       `;
     }).join('');
 
-    const isOpen = m.id === currentState.moduleId;
+    const isOpen = _expandedModules.has(m.id) || m.id === currentState.moduleId;
     return `
       <div class="module ${isOpen ? 'open' : ''}" data-module="${m.id}">
         <button class="module-header" onclick="toggleModule('${m.id}')">
@@ -3974,12 +4050,16 @@ function renderSidebar() {
     const status = isActive
       ? '<span class="opt-status">✓ Aktif</span>'
       : (!isEnrolled ? '<span class="opt-status">🔒 Upgrade</span>' : '<span class="opt-status">Pindah →</span>');
+    const aria = isActive
+      ? `${name}, kelas aktif`
+      : (isEnrolled ? `Pindah ke ${name}` : `${name}, terkunci — buka halaman upgrade`);
     return `
-      <div class="${classes.join(' ')}" onclick="switchCourse('${slug}')">
+      <button type="button" class="${classes.join(' ')}" onclick="switchCourse('${slug}')"
+              aria-label="${escapeHtml(aria)}" ${isActive ? 'aria-current="true"' : ''}>
         <span class="level-chip">${slug.toUpperCase()}</span>
         <span class="opt-name">${name}</span>
         ${status}
-      </div>
+      </button>
     `;
   }).join('');
 
@@ -4085,9 +4165,11 @@ window.openHelp = () => {
   window.open('https://wa.me/6281294894557', '_blank', 'noopener');
 };
 
-// Daftar Kosakata — aggregates every vocabulary entry for the active course
-// (CMS module/lesson vocab), falling back to the bundled flashcard set when
-// the CMS has none. Replaces the old per-lesson vocab flashcard mode.
+// Daftar Kosakata — flat per-level vocab reference. Primary source is the
+// `/api/notion-vocab?slug=<slug>` cache, which auto-syncs from Notion in the
+// background. Falls back to the DB-aggregated view (vocab grouped by deck
+// lesson) when the endpoint is unavailable or empty, and to the bundled
+// flashcard set as a last resort.
 window.openVocabList = async () => {
   closeSidebar();
   const slug = currentState.course;
@@ -4095,20 +4177,84 @@ window.openVocabList = async () => {
   const main = document.getElementById('main-content');
   if (!main) return;
 
-  const groups = [];
-  if (course && Array.isArray(course.modules)) {
-    for (const m of course.modules) {
-      const items = (Array.isArray(m.vocabulary) ? m.vocabulary : [])
-        .slice()
-        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-        .map((v) => ({
-          japanese: v.japanese || '', reading: v.reading || '',
-          indonesian: v.indonesian || '', category: v.category || '', note: v.note || '',
-        }));
-      if (items.length) groups.push({ title: `Modul ${m.num} · ${m.title}`, items });
+  // 1) Try Notion-backed cache first.
+  let renderable = [];
+  let sourceLabel = '';
+  let lastSyncedAt = null;
+  try {
+    const res = await fetch(`/api/notion-vocab?slug=${encodeURIComponent(slug)}`, { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      lastSyncedAt = data.fetchedAt || null;
+      const bab = Array.isArray(data.bab) ? data.bab : [];
+      renderable = bab.map((b) => ({
+        key: 'notion:' + b.id,
+        title: [b.kode, b.name].filter(Boolean).join(' — ') || b.name || '(tanpa judul)',
+        items: (b.vocab || []).map((v, i) => ({
+          id: v.id || ('notion-' + i),
+          japanese: v.japanese || '',
+          reading: v.reading || '',
+          indonesian: v.indonesian || '',
+          category: v.category || '',
+          note: v.note || '',
+          sort: i,
+        })),
+      })).filter((g) => g.items.length > 0);
+      if (renderable.length > 0) sourceLabel = 'Notion · live';
     }
+  } catch { /* network/parse — fall through to DB fallback */ }
+
+  // 2) Fallback: vocab grouped by deck-lesson from CMS DB.
+  if (renderable.length === 0 && course && Array.isArray(course.modules)) {
+    const vocabToBab = new Map();
+    const babOrder = [];
+    const seenBab = new Set();
+    for (const m of course.modules) {
+      for (const l of (m.lessons || [])) {
+        if (l.type !== 'deck') continue;
+        const babKey = `${m.id}:${l.id}`;
+        if (!seenBab.has(babKey)) { seenBab.add(babKey); babOrder.push({ babKey, babTitle: l.title }); }
+        for (const d of (l.deck || [])) {
+          if (d.id) vocabToBab.set(d.id, { babKey, babTitle: l.title });
+        }
+      }
+    }
+    const seenVocab = new Set();
+    const allVocab = [];
+    for (const m of course.modules) {
+      for (const v of (m.vocabulary || [])) {
+        if (!v || !v.id || seenVocab.has(v.id)) continue;
+        seenVocab.add(v.id);
+        allVocab.push({
+          id: v.id,
+          japanese: v.japanese || '', reading: v.reading || '',
+          indonesian: v.indonesian || '', category: v.category || '',
+          note: v.note || '', sort: v.sort_order ?? 0,
+        });
+      }
+    }
+    const groupByKey = new Map();
+    const groups = [];
+    for (const { babKey, babTitle } of babOrder) {
+      const g = { key: babKey, title: babTitle, items: [] };
+      groupByKey.set(babKey, g);
+      groups.push(g);
+    }
+    const orphan = { key: '__orphan', title: 'Belum dipasang ke Bab', items: [] };
+    for (const v of allVocab) {
+      const bab = vocabToBab.get(v.id);
+      if (bab && groupByKey.has(bab.babKey)) groupByKey.get(bab.babKey).items.push(v);
+      else orphan.items.push(v);
+    }
+    for (const g of groups) g.items.sort((a, b) => (a.sort - b.sort) || a.japanese.localeCompare(b.japanese));
+    orphan.items.sort((a, b) => (a.sort - b.sort) || a.japanese.localeCompare(b.japanese));
+    if (orphan.items.length) groups.push(orphan);
+    renderable = groups.filter((g) => g.items.length > 0);
+    if (renderable.length > 0) sourceLabel = 'cache lokal';
   }
-  if (groups.length === 0) {
+
+  // Flashcard fallback when CMS has zero vocab at all
+  if (renderable.length === 0) {
     if (!FLASHCARD_DATA || Object.keys(FLASHCARD_DATA).length === 0) {
       try { await loadFlashcardData(); } catch {}
     }
@@ -4116,40 +4262,54 @@ window.openVocabList = async () => {
     const byCat = {};
     for (const c of fc) (byCat[c.category || 'Umum'] ||= []).push(c);
     for (const [cat, arr] of Object.entries(byCat)) {
-      groups.push({
+      renderable.push({
+        key: 'fc:' + cat,
         title: cat,
-        items: arr.map((c) => ({
+        items: arr.map((c, i) => ({
+          id: 'fc-' + cat + '-' + i,
           japanese: c.front || '', reading: c.reading || '',
-          indonesian: c.back || '', category: '', note: '',
+          indonesian: c.back || '', category: '', note: '', sort: i,
         })),
       });
     }
   }
 
-  const total = groups.reduce((s, g) => s + g.items.length, 0);
+  const total = renderable.reduce((s, g) => s + g.items.length, 0);
   const courseName = course?.name || slug.toUpperCase();
+  const levelChip = slug.toUpperCase();
   if (total === 0) {
     main.innerHTML = `
       <p class="lesson-breadcrumb">${escapeHtml(courseName)} · KOSAKATA</p>
-      <h1 class="lesson-title">📒 Daftar Kosakata</h1>
+      <h1 class="lesson-title">📒 Kosakata <span class="vocab-level-chip">${escapeHtml(levelChip)}</span></h1>
       <p class="lesson-subtitle" style="margin-top:12px;">Belum ada kosakata untuk kelas ini.</p>
     `;
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
 
+  const babCount = renderable.filter((g) => !g.key.startsWith('fc:') && g.key !== '__orphan').length;
+  const subtitleParts = [`${total} kata`];
+  if (babCount > 0) subtitleParts.push(`${babCount} Bab`);
+  let syncNote = '';
+  if (sourceLabel === 'Notion · live' && lastSyncedAt) {
+    const ts = new Date(lastSyncedAt);
+    const hh = String(ts.getHours()).padStart(2, '0');
+    const mm = String(ts.getMinutes()).padStart(2, '0');
+    syncNote = `<span class="vocab-source-note" title="Disinkronkan otomatis dari Notion">⟳ Sinkron Notion ${hh}:${mm}</span>`;
+  }
+
   main.innerHTML = `
     <p class="lesson-breadcrumb">${escapeHtml(courseName)} · KOSAKATA</p>
-    <h1 class="lesson-title">📒 Daftar Kosakata</h1>
-    <p class="lesson-subtitle">${total} kata dari seluruh materi kelas ini.</p>
+    <h1 class="lesson-title">📒 Kosakata <span class="vocab-level-chip">${escapeHtml(levelChip)}</span></h1>
+    <p class="lesson-subtitle">${subtitleParts.join(' · ')}. ${syncNote}</p>
     <div class="module-filter" style="margin:14px 0 18px;">
       <svg class="mf-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="search" id="vocab-list-filter" placeholder="Cari kosakata..." oninput="window.filterVocabList(this.value)" autocomplete="off" />
     </div>
     <div class="lesson-extras">
-      ${groups.map((g) => `
+      ${renderable.map((g) => `
         <div class="lesson-extra-card vocab-list-group">
-          <h3>📚 ${escapeHtml(g.title)} (${g.items.length})</h3>
+          <h3>📚 ${escapeHtml(g.title)} <span class="vocab-group-count">(${g.items.length})</span></h3>
           <div style="overflow-x:auto;">
             <table class="vocab-table">
               <thead><tr><th>日本語</th><th>Reading</th><th>Arti</th><th>Kategori</th><th>Catatan</th></tr></thead>
@@ -4749,7 +4909,12 @@ window.speakLessonJP = (btn) => {
   speakJapanese(text, btn);
 };
 
+// Module accordion expanded state — persists across renderSidebar() so that
+// modules the user manually opened don't snap shut every time they pick a lesson.
+const _expandedModules = new Set();
+
 window.selectLesson = (moduleId, lessonId) => {
+  _expandedModules.add(moduleId);
   currentState.moduleId = moduleId;
   currentState.lessonId = lessonId;
   renderSidebar();
@@ -4813,7 +4978,10 @@ window.addEventListener('resize', () => {
 
 window.toggleModule = (moduleId) => {
   const el = document.querySelector(`.module[data-module="${moduleId}"]`);
-  if (el) el.classList.toggle('open');
+  if (!el) return;
+  el.classList.toggle('open');
+  if (el.classList.contains('open')) _expandedModules.add(moduleId);
+  else _expandedModules.delete(moduleId);
 };
 
 window.markCompleteAndNext = () => {
