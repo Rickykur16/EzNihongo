@@ -577,11 +577,42 @@
     font-style: italic;
   }
 
+  /* Section group wrapping modules. Only used when at least one module
+     has a section_name; otherwise the modules render flat. */
+  .sidebar-section {
+    margin-bottom: 8px; border-radius: 12px;
+    border: 1px solid #ece7df; background: #fff;
+    overflow: hidden;
+  }
+  .sidebar-section-header {
+    width: 100%; padding: 11px 14px;
+    display: flex; align-items: center; gap: 10px;
+    background: transparent; border: none; cursor: pointer;
+    font-family: inherit; color: #1a1a1a; text-align: left;
+    font-size: 13px; font-weight: 700; letter-spacing: 0.01em;
+    transition: background 0.12s;
+  }
+  .sidebar-section-header:hover { background: #faf7f0; }
+  .sidebar-section-header:focus-visible { outline: 2px solid var(--brand-red); outline-offset: -2px; }
+  .ss-name { flex: 1; min-width: 0; }
+  .ss-count {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    color: #8a7d66; white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .ss-caret { color: #8a7d66; transition: transform .18s; flex-shrink: 0; }
+  .sidebar-section.open .ss-caret { transform: rotate(-180deg); color: var(--brand-red); }
+  .sidebar-section.open .sidebar-section-header { color: var(--brand-red); background: #fbfaf7; }
+  .sidebar-section-body { display: none; padding: 4px 6px 6px; background: #fbfaf7; }
+  .sidebar-section.open .sidebar-section-body { display: block; }
+
   .module {
     margin-bottom: 2px;
     border-radius: 10px;
     transition: background 0.15s ease;
   }
+  .sidebar-section .module { background: #fff; }
+  .sidebar-section .module.open { background: #fbfaf7; }
   .module.open { background: #fbfaf7; }
   .module-header {
     width: 100%;
@@ -3014,6 +3045,7 @@ function transformCourseFromApi(apiCourse) {
       titleEn: m.title_en || '',
       jfTopic: m.jf_topic || '',
       cefrLevel: m.cefr_level || '',
+      sectionName: (m.section_name && m.section_name.trim()) || '',
       totalMinutes: m.total_minutes || null,
       scenario: m.scenario || '',
       candoStatements: Array.isArray(m.cando_statements) ? m.cando_statements : [],
@@ -4045,7 +4077,24 @@ function renderSidebar() {
   const pct = Math.round((doneLessons / totalLessons) * 100);
 
   const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan', deck: 'Kosakata' };
-  const modulesHtml = course.modules.map(m => {
+
+  // Group modules by section_name in their order of appearance. Modules with
+  // no section fall into "Lainnya" — only added if it actually has content,
+  // so courses that haven't been section-tagged still look clean.
+  const sectionBuckets = [];
+  const sectionByName = new Map();
+  for (const m of course.modules) {
+    const secName = (m.sectionName && m.sectionName.trim()) || 'Lainnya';
+    let bucket = sectionByName.get(secName);
+    if (!bucket) {
+      bucket = { name: secName, modules: [] };
+      sectionByName.set(secName, bucket);
+      sectionBuckets.push(bucket);
+    }
+    bucket.modules.push(m);
+  }
+
+  const renderModuleHtml = (m) => {
     const lessonsHtml = m.lessons.map(l => {
       const key = `${m.id}:${l.id}`;
       const isDone = !!progress[key];
@@ -4082,7 +4131,35 @@ function renderSidebar() {
         <div class="lessons"><ul class="lessons-inner">${lessonsHtml}</ul></div>
       </div>
     `;
-  }).join('');
+  };
+
+  // If every module is unsectioned, skip the section layer entirely — keeps
+  // the look unchanged for courses that haven't been tagged yet.
+  const hasAnySection = sectionBuckets.some((b) => b.name !== 'Lainnya');
+  const modulesHtml = hasAnySection
+    ? sectionBuckets.map((b) => {
+        const sectionDone = b.modules.reduce((n, m) =>
+          n + m.lessons.filter((l) => progress[`${m.id}:${l.id}`]).length, 0);
+        const sectionTotal = b.modules.reduce((n, m) => n + m.lessons.length, 0);
+        const containsCurrent = b.modules.some((m) => m.id === currentState.moduleId);
+        const isSecOpen = _expandedSections.has(b.name) || (containsCurrent && !_sectionUserToggled);
+        const safeName = b.name.replace(/'/g, "\\'");
+        return `
+          <div class="sidebar-section ${isSecOpen ? 'open' : ''}" data-section="${escapeHtml(b.name)}">
+            <button class="sidebar-section-header" type="button"
+                    aria-expanded="${isSecOpen ? 'true' : 'false'}"
+                    onclick="toggleSidebarSection('${escapeHtml(safeName)}')">
+              <span class="ss-name">${escapeHtml(b.name)}</span>
+              <span class="ss-count">${b.modules.length} Modul · ${sectionDone}/${sectionTotal}</span>
+              <svg class="ss-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="sidebar-section-body">
+              ${b.modules.map(renderModuleHtml).join('')}
+            </div>
+          </div>
+        `;
+      }).join('')
+    : course.modules.map(renderModuleHtml).join('');
 
   const enrolled = getEnrolledCourses();
   // Merge enrolled (hydrated) courses with CMS-listed courses so non-enrolled
@@ -5110,11 +5187,34 @@ window.speakLessonJP = (btn) => {
   speakJapanese(text, btn);
 };
 
-// Module accordion expanded state — persists across renderSidebar() so that
-// modules the user manually opened don't snap shut every time they pick a lesson.
+// Sidebar accordion state — persists across renderSidebar() so user choices
+// don't snap shut on every navigation. Mutex within each level: at most one
+// section open at a time, at most one module open *within each section*.
+const _expandedSections = new Set();
 const _expandedModules = new Set();
+// Until the user explicitly toggles a section, the section containing the
+// currently-open lesson auto-opens. After a manual toggle we respect their
+// choice (so closing the current section stays closed).
+let _sectionUserToggled = false;
+
+function _sectionOfModule(moduleId) {
+  const course = COURSE_CONTENT[currentState.course];
+  if (!course) return 'Lainnya';
+  const mod = course.modules.find((m) => m.id === moduleId);
+  return (mod && mod.sectionName && mod.sectionName.trim()) || 'Lainnya';
+}
 
 window.selectLesson = (moduleId, lessonId) => {
+  // Picking a lesson auto-opens its module and section; close sibling modules
+  // in the same section to keep the sidebar compact (matches the mutex rule).
+  const sec = _sectionOfModule(moduleId);
+  _expandedSections.clear();
+  _expandedSections.add(sec);
+  for (const otherId of [..._expandedModules]) {
+    if (otherId !== moduleId && _sectionOfModule(otherId) === sec) {
+      _expandedModules.delete(otherId);
+    }
+  }
   _expandedModules.add(moduleId);
   currentState.moduleId = moduleId;
   currentState.lessonId = lessonId;
@@ -5178,11 +5278,30 @@ window.addEventListener('resize', () => {
 });
 
 window.toggleModule = (moduleId) => {
-  const el = document.querySelector(`.module[data-module="${moduleId}"]`);
-  if (!el) return;
-  el.classList.toggle('open');
-  if (el.classList.contains('open')) _expandedModules.add(moduleId);
-  else _expandedModules.delete(moduleId);
+  // Mutex within the parent section: opening one module collapses the others
+  // in the same section. Toggle the current one if already open.
+  const sec = _sectionOfModule(moduleId);
+  const wasOpen = _expandedModules.has(moduleId);
+  for (const otherId of [..._expandedModules]) {
+    if (_sectionOfModule(otherId) === sec) _expandedModules.delete(otherId);
+  }
+  if (!wasOpen) _expandedModules.add(moduleId);
+  renderSidebar();
+};
+
+window.toggleSidebarSection = (name) => {
+  _sectionUserToggled = true;
+  const wasOpen = _expandedSections.has(name);
+  // Mutex at the section level: at most one section open globally.
+  _expandedSections.clear();
+  // Closing a section also closes its open module, to match "tidak expanding".
+  for (const otherId of [..._expandedModules]) {
+    if (_sectionOfModule(otherId) !== name || wasOpen) {
+      _expandedModules.delete(otherId);
+    }
+  }
+  if (!wasOpen) _expandedSections.add(name);
+  renderSidebar();
 };
 
 window.markCompleteAndNext = () => {

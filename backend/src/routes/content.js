@@ -43,7 +43,7 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
 
   const modules = await query(
     `SELECT id, slug, title, description, sort_order,
-            jf_topic, cefr_level, title_en, scenario,
+            jf_topic, cefr_level, title_en, scenario, section_name,
             cando_statements, skill_distribution, quiz_spec
      FROM modules
      WHERE course_id = $1
