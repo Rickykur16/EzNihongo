@@ -4142,10 +4142,10 @@ function renderSidebar() {
           n + m.lessons.filter((l) => progress[`${m.id}:${l.id}`]).length, 0);
         const sectionTotal = b.modules.reduce((n, m) => n + m.lessons.length, 0);
         const containsCurrent = b.modules.some((m) => m.id === currentState.moduleId);
-        // Sections default to open on every render — user can collapse manually
-        // (state lives in _collapsedSections). Removed mutex at section level
-        // per request; module-level mutex inside the section stays.
-        const isSecOpen = !_collapsedSections.has(b.name);
+        // Sections default to closed; only the ones the user explicitly opened
+        // (in _expandedSections) show their modules. Mutex on click: at most one
+        // section open at a time.
+        const isSecOpen = _expandedSections.has(b.name);
         const safeName = b.name.replace(/'/g, "\\'");
         return `
           <div class="sidebar-section ${isSecOpen ? 'open' : ''}" data-section="${escapeHtml(b.name)}">
@@ -5191,10 +5191,10 @@ window.speakLessonJP = (btn) => {
 };
 
 // Sidebar accordion state — persists across renderSidebar() so user choices
-// don't snap shut on every navigation. Sections default to open and toggle
-// independently (tracked here as which ones the user has *collapsed*).
-// Modules still mutex within their section: at most one module open per section.
-const _collapsedSections = new Set();
+// don't snap shut on every navigation. Sections default to CLOSED; user
+// clicks to open one (mutex — at most one section open globally). Modules
+// also mutex within their section.
+const _expandedSections = new Set();
 const _expandedModules = new Set();
 
 function _sectionOfModule(moduleId) {
@@ -5205,11 +5205,11 @@ function _sectionOfModule(moduleId) {
 }
 
 window.selectLesson = (moduleId, lessonId) => {
-  // Picking a lesson auto-opens its module; close sibling modules in the
-  // same section to keep the sidebar compact (module-level mutex). Section
-  // open/close is left alone since they default to open.
+  // Picking a lesson auto-opens its section + module; close sibling modules
+  // in the same section (module-level mutex). Other sections stay closed.
   const sec = _sectionOfModule(moduleId);
-  _collapsedSections.delete(sec);
+  _expandedSections.clear();
+  _expandedSections.add(sec);
   for (const otherId of [..._expandedModules]) {
     if (otherId !== moduleId && _sectionOfModule(otherId) === sec) {
       _expandedModules.delete(otherId);
@@ -5290,18 +5290,18 @@ window.toggleModule = (moduleId) => {
 };
 
 window.toggleSidebarSection = (name) => {
-  // No mutex — each section toggles independently. Default state is open;
-  // _collapsedSections tracks which the user has manually collapsed.
-  if (_collapsedSections.has(name)) {
-    _collapsedSections.delete(name);
-  } else {
-    _collapsedSections.add(name);
-    // When folding a section away, also close its open module so re-opening
-    // the section doesn't reveal stale "open" module body.
-    for (const otherId of [..._expandedModules]) {
-      if (_sectionOfModule(otherId) === name) _expandedModules.delete(otherId);
+  // Mutex at section level: opening one closes others (and resets their
+  // open modules). Clicking the already-open section collapses it.
+  const wasOpen = _expandedSections.has(name);
+  _expandedSections.clear();
+  // Collapsing a section also collapses its open module, to avoid leaving
+  // stale state when the user re-opens it later.
+  for (const otherId of [..._expandedModules]) {
+    if (_sectionOfModule(otherId) !== name || wasOpen) {
+      _expandedModules.delete(otherId);
     }
   }
+  if (!wasOpen) _expandedSections.add(name);
   renderSidebar();
 };
 
