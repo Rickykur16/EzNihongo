@@ -4072,6 +4072,17 @@ function renderSidebar() {
   const course = COURSE_CONTENT[currentState.course];
   const progress = getProgress()[currentState.course] || {};
 
+  // Seed expanded state once per course: section + module of the current
+  // lesson auto-open on first render. After that, the user controls everything
+  // (so clicking an open module actually collapses it).
+  if (_lastSeededCourse !== currentState.course && currentState.moduleId) {
+    _lastSeededCourse = currentState.course;
+    _expandedSections.clear();
+    _expandedModules.clear();
+    _expandedSections.add(_sectionOfModule(currentState.moduleId));
+    _expandedModules.add(currentState.moduleId);
+  }
+
   const totalLessons = course.modules.reduce((s, m) => s + m.lessons.length, 0);
   const doneLessons = Object.values(progress).filter(v => v).length;
   const pct = Math.round((doneLessons / totalLessons) * 100);
@@ -4121,7 +4132,7 @@ function renderSidebar() {
       `;
     }).join('');
 
-    const isOpen = _expandedModules.has(m.id) || m.id === currentState.moduleId;
+    const isOpen = _expandedModules.has(m.id);
     return `
       <div class="module ${isOpen ? 'open' : ''}" data-module="${m.id}">
         <button class="module-header" onclick="toggleModule('${m.id}')">
@@ -5193,9 +5204,12 @@ window.speakLessonJP = (btn) => {
 // Sidebar accordion state — persists across renderSidebar() so user choices
 // don't snap shut on every navigation. Sections default to CLOSED; user
 // clicks to open one (mutex — at most one section open globally). Modules
-// also mutex within their section.
+// also mutex within their section. On the first render of a course, the
+// section + module of the current lesson auto-open; afterwards the user
+// is fully in control (clicking the open module collapses it cleanly).
 const _expandedSections = new Set();
 const _expandedModules = new Set();
+let _lastSeededCourse = null;
 
 function _sectionOfModule(moduleId) {
   const course = COURSE_CONTENT[currentState.course];
