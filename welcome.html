@@ -1619,16 +1619,29 @@
 
   /* ── HABIT BAR: streak chip + daily goal progress ────────────────── */
   /* Sengaja minimalis — bukan resurrect stats strip lama yang cluttered.
-     Cuma 2 sinyal: "lo lagi streak?" + "udah memenuhi target hari ini?" */
+     Cuma 2 sinyal: "lo lagi streak?" + "udah memenuhi target hari ini?"
+     min-height reserves space so a failed /api/stats/me doesn't shift layout
+     when refreshStatsBar() swaps the skeleton out for a fallback notice. */
   .habit-bar {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
     gap: 14px;
     margin: -10px 28px 28px;
     padding: 0;
+    min-height: 80px;
+  }
+  .habit-bar.failed {
+    grid-template-columns: 1fr;
+    font-size: 12.5px;
+    color: var(--du-ink-3);
+    align-items: center;
+    justify-items: center;
+  }
+  .habit-bar.failed .habit-fail-msg {
+    padding: 16px 18px; text-align: center; line-height: 1.5;
   }
   @media (max-width: 860px) { .habit-bar { margin: -10px 18px 24px; } }
-  @media (max-width: 600px) { .habit-bar { grid-template-columns: 1fr; gap: 10px; margin: -6px 14px 20px; } }
+  @media (max-width: 600px) { .habit-bar { grid-template-columns: 1fr; gap: 10px; margin: -6px 14px 20px; min-height: 130px; } }
 
   .habit-card {
     background: var(--du-surface);
@@ -2637,9 +2650,21 @@
     text-transform: uppercase;
   }
   .vocab-note { font-size: 12px; color: var(--du-ink-3); line-height: 1.45; }
+  .vocab-level-chip {
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-left: 8px; padding: 2px 10px; vertical-align: middle;
+    background: var(--brand-red); color: #fff;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; font-weight: 700; letter-spacing: 0.04em;
+  }
+  .vocab-group-count {
+    color: var(--du-ink-3); font-weight: 500; font-size: .85em; margin-left: 4px;
+  }
   @media (max-width: 640px) {
     .vocab-table th, .vocab-table td { padding: 6px 6px; font-size: 13px; }
     .vocab-table .reading-cell { font-size: 12px; }
+    .vocab-level-chip { font-size: 12px; padding: 2px 8px; }
   }
 
   /* ── LESSON GRAMMAR CARDS ──────────────────────────────────────── */
@@ -3174,7 +3199,14 @@ async function refreshStatsBar() {
   const el = document.querySelector('.habit-bar');
   if (!el) return;
   const stats = await fetchHabitStats();
-  if (!stats) { el.outerHTML = ''; return; } // hide if API fails — better than stale skeleton
+  if (!stats) {
+    // API failed — replace skeleton with a low-key fallback that keeps the
+    // reserved vertical space so the page doesn't shift below.
+    el.outerHTML = `<div class="habit-bar failed" role="status">
+      <div class="habit-fail-msg">Stats sementara tidak tersedia. Mulai pelajaran tetap akan menambah streak ya.</div>
+    </div>`;
+    return;
+  }
   el.outerHTML = habitBarHtml(stats);
 }
 
@@ -4126,9 +4158,10 @@ window.openHelp = () => {
   window.open('https://wa.me/6281294894557', '_blank', 'noopener');
 };
 
-// Daftar Kosakata — aggregates every vocabulary entry for the active course
-// (CMS module/lesson vocab), falling back to the bundled flashcard set when
-// the CMS has none. Replaces the old per-lesson vocab flashcard mode.
+// Daftar Kosakata — flat per-level vocab reference. Groups by Bab (= deck
+// lesson, which is what each Notion chapter maps to after import), with a
+// trailing "Belum dipasang" group for bank items that aren't wired to any
+// deck yet. Falls back to the bundled flashcard set if the CMS has nothing.
 window.openVocabList = async () => {
   closeSidebar();
   const slug = currentState.course;
@@ -4136,20 +4169,68 @@ window.openVocabList = async () => {
   const main = document.getElementById('main-content');
   if (!main) return;
 
-  const groups = [];
+  // vocab_id -> { babTitle, babKey } from each module's deck lessons
+  const vocabToBab = new Map();
+  const babOrder = []; // preserve module/lesson order
+  const seenBab = new Set();
   if (course && Array.isArray(course.modules)) {
     for (const m of course.modules) {
-      const items = (Array.isArray(m.vocabulary) ? m.vocabulary : [])
-        .slice()
-        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-        .map((v) => ({
-          japanese: v.japanese || '', reading: v.reading || '',
-          indonesian: v.indonesian || '', category: v.category || '', note: v.note || '',
-        }));
-      if (items.length) groups.push({ title: `Modul ${m.num} · ${m.title}`, items });
+      for (const l of (m.lessons || [])) {
+        if (l.type !== 'deck') continue;
+        const babKey = `${m.id}:${l.id}`;
+        const babTitle = l.title;
+        if (!seenBab.has(babKey)) { seenBab.add(babKey); babOrder.push({ babKey, babTitle, moduleNum: m.num }); }
+        for (const d of (l.deck || [])) {
+          if (d.id) vocabToBab.set(d.id, { babKey, babTitle });
+        }
+      }
     }
   }
-  if (groups.length === 0) {
+
+  // Flatten module_vocabulary across all modules, dedupe by id.
+  const seenVocab = new Set();
+  const allVocab = [];
+  if (course && Array.isArray(course.modules)) {
+    for (const m of course.modules) {
+      for (const v of (m.vocabulary || [])) {
+        if (!v || !v.id || seenVocab.has(v.id)) continue;
+        seenVocab.add(v.id);
+        allVocab.push({
+          id: v.id,
+          japanese: v.japanese || '',
+          reading: v.reading || '',
+          indonesian: v.indonesian || '',
+          category: v.category || '',
+          note: v.note || '',
+          sort: v.sort_order ?? 0,
+        });
+      }
+    }
+  }
+
+  // Group by Bab in the order modules/lessons appear; unmapped → "Belum dipasang".
+  const groups = [];
+  const groupByKey = new Map();
+  for (const { babKey, babTitle } of babOrder) {
+    const g = { key: babKey, title: babTitle, items: [] };
+    groupByKey.set(babKey, g);
+    groups.push(g);
+  }
+  const orphan = { key: '__orphan', title: 'Belum dipasang ke Bab', items: [] };
+  for (const v of allVocab) {
+    const bab = vocabToBab.get(v.id);
+    if (bab && groupByKey.has(bab.babKey)) groupByKey.get(bab.babKey).items.push(v);
+    else orphan.items.push(v);
+  }
+  // sort each group's items
+  for (const g of groups) g.items.sort((a, b) => (a.sort - b.sort) || a.japanese.localeCompare(b.japanese));
+  orphan.items.sort((a, b) => (a.sort - b.sort) || a.japanese.localeCompare(b.japanese));
+  if (orphan.items.length) groups.push(orphan);
+  // drop empty groups
+  const renderable = groups.filter((g) => g.items.length > 0);
+
+  // Flashcard fallback when CMS has zero vocab at all
+  if (renderable.length === 0) {
     if (!FLASHCARD_DATA || Object.keys(FLASHCARD_DATA).length === 0) {
       try { await loadFlashcardData(); } catch {}
     }
@@ -4157,40 +4238,47 @@ window.openVocabList = async () => {
     const byCat = {};
     for (const c of fc) (byCat[c.category || 'Umum'] ||= []).push(c);
     for (const [cat, arr] of Object.entries(byCat)) {
-      groups.push({
+      renderable.push({
+        key: 'fc:' + cat,
         title: cat,
-        items: arr.map((c) => ({
+        items: arr.map((c, i) => ({
+          id: 'fc-' + cat + '-' + i,
           japanese: c.front || '', reading: c.reading || '',
-          indonesian: c.back || '', category: '', note: '',
+          indonesian: c.back || '', category: '', note: '', sort: i,
         })),
       });
     }
   }
 
-  const total = groups.reduce((s, g) => s + g.items.length, 0);
+  const total = renderable.reduce((s, g) => s + g.items.length, 0);
   const courseName = course?.name || slug.toUpperCase();
+  const levelChip = slug.toUpperCase();
   if (total === 0) {
     main.innerHTML = `
       <p class="lesson-breadcrumb">${escapeHtml(courseName)} · KOSAKATA</p>
-      <h1 class="lesson-title">📒 Daftar Kosakata</h1>
+      <h1 class="lesson-title">📒 Kosakata <span class="vocab-level-chip">${escapeHtml(levelChip)}</span></h1>
       <p class="lesson-subtitle" style="margin-top:12px;">Belum ada kosakata untuk kelas ini.</p>
     `;
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
 
+  const babCount = renderable.filter((g) => !g.key.startsWith('fc:') && g.key !== '__orphan').length;
+  const subtitleParts = [`${total} kata`];
+  if (babCount > 0) subtitleParts.push(`${babCount} Bab`);
+
   main.innerHTML = `
     <p class="lesson-breadcrumb">${escapeHtml(courseName)} · KOSAKATA</p>
-    <h1 class="lesson-title">📒 Daftar Kosakata</h1>
-    <p class="lesson-subtitle">${total} kata dari seluruh materi kelas ini.</p>
+    <h1 class="lesson-title">📒 Kosakata <span class="vocab-level-chip">${escapeHtml(levelChip)}</span></h1>
+    <p class="lesson-subtitle">${subtitleParts.join(' · ')}.</p>
     <div class="module-filter" style="margin:14px 0 18px;">
       <svg class="mf-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="search" id="vocab-list-filter" placeholder="Cari kosakata..." oninput="window.filterVocabList(this.value)" autocomplete="off" />
     </div>
     <div class="lesson-extras">
-      ${groups.map((g) => `
+      ${renderable.map((g) => `
         <div class="lesson-extra-card vocab-list-group">
-          <h3>📚 ${escapeHtml(g.title)} (${g.items.length})</h3>
+          <h3>📚 ${escapeHtml(g.title)} <span class="vocab-group-count">(${g.items.length})</span></h3>
           <div style="overflow-x:auto;">
             <table class="vocab-table">
               <thead><tr><th>日本語</th><th>Reading</th><th>Arti</th><th>Kategori</th><th>Catatan</th></tr></thead>
