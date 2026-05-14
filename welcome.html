@@ -2668,6 +2668,65 @@
     padding: 2px 8px; border-radius: 999px;
     background: var(--du-surface-2);
   }
+
+  /* ── VOCAB SECTIONS (Notion section → Bab → kosakata) ─────────────── */
+  .vocab-sections { display: flex; flex-direction: column; gap: 10px; }
+  .vocab-section {
+    border: 1px solid var(--du-border); border-radius: 12px;
+    background: var(--du-surface); overflow: hidden;
+  }
+  .vocab-section-toggle {
+    width: 100%; padding: 14px 18px;
+    display: flex; align-items: center; gap: 12px;
+    background: transparent; border: none; cursor: pointer;
+    font-family: inherit; color: var(--du-ink); text-align: left;
+    font-size: 15px; font-weight: 700;
+    transition: background .12s;
+  }
+  .vocab-section-toggle:hover { background: var(--du-surface-2); }
+  .vocab-section-toggle:focus-visible { outline: 2px solid var(--brand-red); outline-offset: -2px; }
+  .vs-name { flex: 1; min-width: 0; }
+  .vs-count {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+    color: var(--du-ink-3); white-space: nowrap;
+  }
+  .vs-caret { color: var(--du-ink-3); transition: transform .18s; flex-shrink: 0; }
+  .vocab-section.open .vs-caret { transform: rotate(-180deg); color: var(--brand-red); }
+  .vocab-section-body { display: none; padding: 0 12px 12px; }
+  .vocab-section.open .vocab-section-body { display: flex; flex-direction: column; gap: 8px; }
+
+  .vocab-bab {
+    border: 1px solid var(--du-border); border-radius: 10px;
+    background: var(--du-surface-2); overflow: hidden;
+  }
+  .vocab-bab-toggle {
+    width: 100%; padding: 11px 14px;
+    display: flex; align-items: center; gap: 12px;
+    background: transparent; border: none; cursor: pointer;
+    font-family: inherit; color: var(--du-ink); text-align: left;
+    font-size: 13.5px; font-weight: 600;
+    transition: background .12s;
+  }
+  .vocab-bab-toggle:hover { background: rgba(0,0,0,0.03); }
+  .vocab-bab-toggle:focus-visible { outline: 2px solid var(--brand-red); outline-offset: -2px; }
+  .vb-kode {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border: 1px solid var(--du-border); border-radius: 5px;
+    background: var(--du-surface); color: var(--brand-red);
+    flex-shrink: 0;
+  }
+  .vb-name { flex: 1; min-width: 0; }
+  .vb-count {
+    font-size: 11px; font-weight: 500; color: var(--du-ink-3); white-space: nowrap;
+  }
+  .vb-caret { color: var(--du-ink-3); transition: transform .18s; flex-shrink: 0; }
+  .vocab-bab.open .vb-caret { transform: rotate(90deg); color: var(--brand-red); }
+  .vocab-bab-body { display: none; padding: 0; }
+  .vocab-bab.open .vocab-bab-body { display: block; background: var(--du-surface); padding: 8px 12px 12px; }
+  @media (max-width: 640px) {
+    .vocab-section-toggle { padding: 12px 14px; font-size: 14px; }
+    .vocab-bab-toggle { padding: 10px 12px; font-size: 13px; }
+  }
   @media (max-width: 640px) {
     .vocab-table th, .vocab-table td { padding: 6px 6px; font-size: 13px; }
     .vocab-table .reading-cell { font-size: 12px; }
@@ -4165,11 +4224,12 @@ window.openHelp = () => {
   window.open('https://wa.me/6281294894557', '_blank', 'noopener');
 };
 
-// Daftar Kosakata — flat per-level vocab reference. Primary source is the
-// `/api/notion-vocab?slug=<slug>` cache, which auto-syncs from Notion in the
-// background. Falls back to the DB-aggregated view (vocab grouped by deck
-// lesson) when the endpoint is unavailable or empty, and to the bundled
-// flashcard set as a last resort.
+// Daftar Kosakata — per-level vocab reference, read from the `/api/notion-vocab`
+// cache (admin manually refreshes via the admin button; reads never trigger a
+// Notion fetch). Falls back to the DB-aggregated view (vocab grouped by deck
+// lesson) when the cache is empty, and to the bundled flashcard set as a last
+// resort. When the response carries `sections`, render a 2-level accordion
+// (section → Bab → kosakata) with mutex behaviour at both levels.
 window.openVocabList = async () => {
   closeSidebar();
   const slug = currentState.course;
@@ -4177,35 +4237,53 @@ window.openVocabList = async () => {
   const main = document.getElementById('main-content');
   if (!main) return;
 
-  // 1) Try Notion-backed cache first.
+  // 1) Try the Notion-backed cache. Response can be either:
+  //    { sections: [{ name, bab: [{ kode, name, vocab: [...] }] }] }
+  //    { bab: [...] }                                                ← flat
+  let sectionsView = null;
   let renderable = [];
   let sourceLabel = '';
   let lastSyncedAt = null;
   try {
-    const res = await fetch(`/api/notion-vocab?slug=${encodeURIComponent(slug)}`, { credentials: 'include' });
+    const res = await fetch(`/api/notion-vocab?slug=${encodeURIComponent(slug)}`);
     if (res.ok) {
       const data = await res.json();
       lastSyncedAt = data.fetchedAt || null;
-      const bab = Array.isArray(data.bab) ? data.bab : [];
-      renderable = bab.map((b) => ({
-        key: 'notion:' + b.id,
-        title: [b.kode, b.name].filter(Boolean).join(' — ') || b.name || '(tanpa judul)',
-        items: (b.vocab || []).map((v, i) => ({
-          id: v.id || ('notion-' + i),
-          japanese: v.japanese || '',
-          reading: v.reading || '',
-          indonesian: v.indonesian || '',
-          category: v.category || '',
-          note: v.note || '',
-          sort: i,
-        })),
-      })).filter((g) => g.items.length > 0);
-      if (renderable.length > 0) sourceLabel = 'Notion · live';
+      const mapVocab = (vocab) => (vocab || []).map((v, i) => ({
+        id: v.id || ('notion-' + i),
+        japanese: v.japanese || '',
+        reading: v.reading || '',
+        indonesian: v.indonesian || '',
+        category: v.category || '',
+        note: v.note || '',
+        sort: i,
+      }));
+      if (Array.isArray(data.sections) && data.sections.length > 0) {
+        sectionsView = data.sections.map((s, si) => ({
+          key: 'sec-' + si,
+          name: s.name || '(tanpa nama)',
+          bab: (s.bab || []).map((b, bi) => ({
+            key: 'bab-' + si + '-' + bi,
+            kode: b.kode || '',
+            name: b.name || '(tanpa judul)',
+            items: mapVocab(b.vocab),
+          })),
+        })).filter((s) => s.bab.length > 0);
+        if (sectionsView.length === 0) sectionsView = null;
+        else sourceLabel = 'Notion';
+      } else if (Array.isArray(data.bab) && data.bab.length > 0) {
+        renderable = data.bab.map((b) => ({
+          key: 'notion:' + b.id,
+          title: [b.kode, b.name].filter(Boolean).join(' — ') || b.name || '(tanpa judul)',
+          items: mapVocab(b.vocab),
+        })).filter((g) => g.items.length > 0);
+        if (renderable.length > 0) sourceLabel = 'Notion';
+      }
     }
   } catch { /* network/parse — fall through to DB fallback */ }
 
   // 2) Fallback: vocab grouped by deck-lesson from CMS DB.
-  if (renderable.length === 0 && course && Array.isArray(course.modules)) {
+  if (!sectionsView && renderable.length === 0 && course && Array.isArray(course.modules)) {
     const vocabToBab = new Map();
     const babOrder = [];
     const seenBab = new Set();
@@ -4254,7 +4332,7 @@ window.openVocabList = async () => {
   }
 
   // Flashcard fallback when CMS has zero vocab at all
-  if (renderable.length === 0) {
+  if (!sectionsView && renderable.length === 0) {
     if (!FLASHCARD_DATA || Object.keys(FLASHCARD_DATA).length === 0) {
       try { await loadFlashcardData(); } catch {}
     }
@@ -4274,7 +4352,9 @@ window.openVocabList = async () => {
     }
   }
 
-  const total = renderable.reduce((s, g) => s + g.items.length, 0);
+  const total = sectionsView
+    ? sectionsView.reduce((s, sec) => s + sec.bab.reduce((bs, b) => bs + b.items.length, 0), 0)
+    : renderable.reduce((s, g) => s + g.items.length, 0);
   const courseName = course?.name || slug.toUpperCase();
   const levelChip = slug.toUpperCase();
   if (total === 0) {
@@ -4287,16 +4367,79 @@ window.openVocabList = async () => {
     return;
   }
 
-  const babCount = renderable.filter((g) => !g.key.startsWith('fc:') && g.key !== '__orphan').length;
+  const babCount = sectionsView
+    ? sectionsView.reduce((n, s) => n + s.bab.length, 0)
+    : renderable.filter((g) => !g.key.startsWith('fc:') && g.key !== '__orphan').length;
   const subtitleParts = [`${total} kata`];
   if (babCount > 0) subtitleParts.push(`${babCount} Bab`);
+  if (sectionsView) subtitleParts.push(`${sectionsView.length} Bagian`);
   let syncNote = '';
-  if (sourceLabel === 'Notion · live' && lastSyncedAt) {
+  if (sourceLabel === 'Notion' && lastSyncedAt) {
     const ts = new Date(lastSyncedAt);
     const hh = String(ts.getHours()).padStart(2, '0');
     const mm = String(ts.getMinutes()).padStart(2, '0');
-    syncNote = `<span class="vocab-source-note" title="Disinkronkan otomatis dari Notion">⟳ Sinkron Notion ${hh}:${mm}</span>`;
+    syncNote = `<span class="vocab-source-note" title="Disinkron oleh admin dari Notion">⟳ ${hh}:${mm} · Notion</span>`;
   }
+
+  const vocabRowHtml = (v) => `
+    <tr data-vocab="${escapeHtml(`${v.japanese} ${v.reading} ${v.indonesian} ${v.category}`.toLowerCase())}">
+      <td class="jp-cell">${escapeHtml(v.japanese)}</td>
+      <td class="reading-cell">${escapeHtml(v.reading)}</td>
+      <td>${escapeHtml(v.indonesian)}</td>
+      <td>${v.category ? `<span class="vocab-cat">${escapeHtml(v.category)}</span>` : ''}</td>
+      <td class="vocab-note">${escapeHtml(v.note)}</td>
+    </tr>`;
+
+  const bodyHtml = sectionsView ? `
+    <div class="vocab-sections">
+      ${sectionsView.map((s, si) => {
+        const sectionKata = s.bab.reduce((n, b) => n + b.items.length, 0);
+        const openSec = si === 0;
+        return `
+        <div class="vocab-section ${openSec ? 'open' : ''}" data-section="${escapeHtml(s.key)}">
+          <button class="vocab-section-toggle" type="button"
+                  aria-expanded="${openSec ? 'true' : 'false'}"
+                  onclick="window.toggleVocabSection('${s.key}')">
+            <span class="vs-name">${escapeHtml(s.name)}</span>
+            <span class="vs-count">${s.bab.length} Bab · ${sectionKata} kata</span>
+            <svg class="vs-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="vocab-section-body">
+            ${s.bab.map((b) => `
+              <div class="vocab-bab vocab-list-group" data-bab="${escapeHtml(b.key)}">
+                <button class="vocab-bab-toggle" type="button"
+                        aria-expanded="false"
+                        onclick="window.toggleVocabBab('${b.key}')">
+                  ${b.kode ? `<span class="vb-kode">${escapeHtml(b.kode)}</span>` : ''}
+                  <span class="vb-name">${escapeHtml(b.name)}</span>
+                  <span class="vb-count">${b.items.length} kata</span>
+                  <svg class="vb-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
+                </button>
+                <div class="vocab-bab-body">
+                  <div style="overflow-x:auto;">
+                    <table class="vocab-table">
+                      <thead><tr><th>日本語</th><th>Reading</th><th>Arti</th><th>Kategori</th><th>Catatan</th></tr></thead>
+                      <tbody>${b.items.map(vocabRowHtml).join('')}</tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>` : `
+    <div class="lesson-extras">
+      ${renderable.map((g) => `
+        <div class="lesson-extra-card vocab-list-group">
+          <h3>📚 ${escapeHtml(g.title)} <span class="vocab-group-count">(${g.items.length})</span></h3>
+          <div style="overflow-x:auto;">
+            <table class="vocab-table">
+              <thead><tr><th>日本語</th><th>Reading</th><th>Arti</th><th>Kategori</th><th>Catatan</th></tr></thead>
+              <tbody>${g.items.map(vocabRowHtml).join('')}</tbody>
+            </table>
+          </div>
+        </div>`).join('')}
+    </div>`;
 
   main.innerHTML = `
     <p class="lesson-breadcrumb">${escapeHtml(courseName)} · KOSAKATA</p>
@@ -4306,33 +4449,14 @@ window.openVocabList = async () => {
       <svg class="mf-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="search" id="vocab-list-filter" placeholder="Cari kosakata..." oninput="window.filterVocabList(this.value)" autocomplete="off" />
     </div>
-    <div class="lesson-extras">
-      ${renderable.map((g) => `
-        <div class="lesson-extra-card vocab-list-group">
-          <h3>📚 ${escapeHtml(g.title)} <span class="vocab-group-count">(${g.items.length})</span></h3>
-          <div style="overflow-x:auto;">
-            <table class="vocab-table">
-              <thead><tr><th>日本語</th><th>Reading</th><th>Arti</th><th>Kategori</th><th>Catatan</th></tr></thead>
-              <tbody>
-                ${g.items.map((v) => `
-                  <tr data-vocab="${escapeHtml(`${v.japanese} ${v.reading} ${v.indonesian} ${v.category}`.toLowerCase())}">
-                    <td class="jp-cell">${escapeHtml(v.japanese)}</td>
-                    <td class="reading-cell">${escapeHtml(v.reading)}</td>
-                    <td>${escapeHtml(v.indonesian)}</td>
-                    <td>${v.category ? `<span class="vocab-cat">${escapeHtml(v.category)}</span>` : ''}</td>
-                    <td class="vocab-note">${escapeHtml(v.note)}</td>
-                  </tr>`).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>`).join('')}
-    </div>
+    ${bodyHtml}
   `;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 window.filterVocabList = (q) => {
   const query = String(q ?? '').trim().toLowerCase();
+  const sectionsMode = !!document.querySelector('#main-content .vocab-section');
   document.querySelectorAll('#main-content .vocab-list-group').forEach((group) => {
     let visible = 0;
     group.querySelectorAll('tbody tr').forEach((tr) => {
@@ -4341,7 +4465,84 @@ window.filterVocabList = (q) => {
       if (show) visible++;
     });
     group.style.display = visible === 0 ? 'none' : '';
+    if (sectionsMode) {
+      // While searching: auto-open Bab that have matches. When cleared:
+      // collapse all so the user sees the section-level overview again.
+      const babBtn = group.querySelector('.vocab-bab-toggle');
+      if (query && visible > 0) {
+        group.classList.add('open');
+        if (babBtn) babBtn.setAttribute('aria-expanded', 'true');
+      } else if (!query) {
+        group.classList.remove('open');
+        if (babBtn) babBtn.setAttribute('aria-expanded', 'false');
+      }
+    }
   });
+  if (sectionsMode) {
+    document.querySelectorAll('#main-content .vocab-section').forEach((sec, i) => {
+      const hasMatch = Array.from(sec.querySelectorAll('.vocab-list-group')).some((g) => g.style.display !== 'none');
+      sec.style.display = hasMatch ? '' : 'none';
+      const secBtn = sec.querySelector('.vocab-section-toggle');
+      if (query) {
+        if (hasMatch) {
+          sec.classList.add('open');
+          if (secBtn) secBtn.setAttribute('aria-expanded', 'true');
+        }
+      } else {
+        // Search cleared: only the first section stays open (default).
+        if (i === 0) {
+          sec.classList.add('open');
+          if (secBtn) secBtn.setAttribute('aria-expanded', 'true');
+        } else {
+          sec.classList.remove('open');
+          if (secBtn) secBtn.setAttribute('aria-expanded', 'false');
+        }
+      }
+    });
+  }
+};
+
+// Section / Bab accordion — only one section open at a time; within the active
+// section, only one Bab open at a time. Toggling the currently-open one
+// collapses it (so the user can collapse everything if they want).
+window.toggleVocabSection = (key) => {
+  const sec = document.querySelector(`#main-content .vocab-section[data-section="${key}"]`);
+  if (!sec) return;
+  const wasOpen = sec.classList.contains('open');
+  document.querySelectorAll('#main-content .vocab-section').forEach((s) => {
+    s.classList.remove('open');
+    const btn = s.querySelector('.vocab-section-toggle');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+    s.querySelectorAll('.vocab-bab.open').forEach((b) => {
+      b.classList.remove('open');
+      const bbtn = b.querySelector('.vocab-bab-toggle');
+      if (bbtn) bbtn.setAttribute('aria-expanded', 'false');
+    });
+  });
+  if (!wasOpen) {
+    sec.classList.add('open');
+    const btn = sec.querySelector('.vocab-section-toggle');
+    if (btn) btn.setAttribute('aria-expanded', 'true');
+  }
+};
+
+window.toggleVocabBab = (key) => {
+  const bab = document.querySelector(`#main-content .vocab-bab[data-bab="${key}"]`);
+  if (!bab) return;
+  const wasOpen = bab.classList.contains('open');
+  const sec = bab.closest('.vocab-section');
+  if (sec) {
+    sec.querySelectorAll('.vocab-bab.open').forEach((b) => {
+      if (b !== bab) {
+        b.classList.remove('open');
+        const btn = b.querySelector('.vocab-bab-toggle');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+  bab.classList.toggle('open', !wasOpen);
+  const btn = bab.querySelector('.vocab-bab-toggle');
+  if (btn) btn.setAttribute('aria-expanded', wasOpen ? 'false' : 'true');
 };
 
 function escapeHtml(s) {
