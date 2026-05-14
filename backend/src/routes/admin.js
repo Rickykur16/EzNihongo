@@ -161,7 +161,7 @@ router.get('/modules/:id', asyncHandler(async (req, res) => {
 router.post('/modules', asyncHandler(async (req, res) => {
   const {
     courseId, slug, title, description, sortOrder,
-    jfTopic, cefrLevel, titleEn, scenario,
+    jfTopic, cefrLevel, titleEn, scenario, sectionName,
     candoStatements, skillDistribution, quizSpec,
   } = req.body || {};
   if (!courseId || !slug || !title) {
@@ -172,13 +172,14 @@ router.post('/modules', asyncHandler(async (req, res) => {
   const result = await query(
     `INSERT INTO modules (
        course_id, slug, title, description, sort_order,
-       jf_topic, cefr_level, title_en, scenario,
+       jf_topic, cefr_level, title_en, scenario, section_name,
        cando_statements, skill_distribution, quiz_spec
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12::jsonb)
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13::jsonb)
      RETURNING *`,
     [
       courseId, slug, title, description || null, sortOrder || 0,
       jfTopic || null, cefrLevel || null, titleEn || null, scenario || null,
+      (sectionName && String(sectionName).trim()) || null,
       JSON.stringify(Array.isArray(candoStatements) ? candoStatements : []),
       JSON.stringify(typeof skillDistribution === 'object' && skillDistribution ? skillDistribution : {}),
       JSON.stringify(typeof quizSpec === 'object' && quizSpec ? quizSpec : {}),
@@ -190,13 +191,17 @@ router.post('/modules', asyncHandler(async (req, res) => {
 router.put('/modules/:id', asyncHandler(async (req, res) => {
   const {
     slug, title, description, sortOrder,
-    jfTopic, cefrLevel, titleEn, scenario,
+    jfTopic, cefrLevel, titleEn, scenario, sectionName,
     candoStatements, skillDistribution, quizSpec,
   } = req.body || {};
   if (slug !== undefined && slug !== null) {
     const slugErr = badSlug(slug);
     if (slugErr) return res.status(400).json({ error: slugErr });
   }
+  // sectionName is special-cased: an empty string means "unset" so admin can
+  // clear the value, whereas `undefined` keeps the current value.
+  const hasSection = Object.prototype.hasOwnProperty.call(req.body || {}, 'sectionName');
+  const sectionNorm = hasSection ? ((sectionName && String(sectionName).trim()) || null) : null;
   const result = await query(
     `UPDATE modules SET
        slug = COALESCE($2, slug),
@@ -207,16 +212,18 @@ router.put('/modules/:id', asyncHandler(async (req, res) => {
        cefr_level = COALESCE($7, cefr_level),
        title_en = COALESCE($8, title_en),
        scenario = COALESCE($9, scenario),
-       cando_statements = COALESCE($10::jsonb, cando_statements),
-       skill_distribution = COALESCE($11::jsonb, skill_distribution),
-       quiz_spec = COALESCE($12::jsonb, quiz_spec),
+       section_name = CASE WHEN $13::boolean THEN $10 ELSE section_name END,
+       cando_statements = COALESCE($11::jsonb, cando_statements),
+       skill_distribution = COALESCE($12::jsonb, skill_distribution),
+       quiz_spec = COALESCE($14::jsonb, quiz_spec),
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
     [
       req.params.id, slug, title, description, sortOrder,
-      jfTopic, cefrLevel, titleEn, scenario,
+      jfTopic, cefrLevel, titleEn, scenario, sectionNorm,
       Array.isArray(candoStatements) ? JSON.stringify(candoStatements) : null,
       skillDistribution && typeof skillDistribution === 'object' ? JSON.stringify(skillDistribution) : null,
+      hasSection,
       quizSpec && typeof quizSpec === 'object' ? JSON.stringify(quizSpec) : null,
     ]
   );

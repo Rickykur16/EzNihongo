@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS modules (
   cefr_level TEXT,
   title_en TEXT,
   scenario TEXT,
+  section_name TEXT,
   cando_statements JSONB NOT NULL DEFAULT '[]'::jsonb,
   skill_distribution JSONB NOT NULL DEFAULT '{}'::jsonb,
   quiz_spec JSONB NOT NULL DEFAULT '{}'::jsonb,
