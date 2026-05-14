@@ -258,6 +258,7 @@ function renderApp() {
     <header>
       <h1>EzNihongo Admin</h1>
       <div class="meta">
+        <button class="btn btn-ghost" type="button" onclick="syncNotionVocab()" title="Tarik ulang Daftar Kosakata semua level dari Notion (cache server)">↻ Sync Notion</button>
         <span>${escapeHtml(CURRENT_USER.fullName || CURRENT_USER.email)}</span>
         <span class="badge badge-admin">Admin</span>
         <button onclick="ezLogout()">Keluar</button>
@@ -407,6 +408,25 @@ function courseFormHtml(c) {
     </form>
   `;
 }
+
+// Manually refresh the Daftar Kosakata cache from Notion (all supported levels).
+// Triggered by the "↻ Sync Notion" button in the header. The actual fetch
+// happens server-side; this just pings the admin endpoint.
+window.syncNotionVocab = async () => {
+  if (!confirm('Sync Daftar Kosakata semua level (N5..N1) dari Notion? Tergantung jumlah Bab, butuh ~beberapa puluh detik.')) return;
+  notify('Sync Notion → server...');
+  try {
+    const d = await api('/admin/notion-vocab/refresh', { method: 'POST' });
+    const results = d?.results || [];
+    const ok = results.filter((r) => r.ok);
+    const fail = results.filter((r) => !r.ok);
+    const summary = ok.map((r) => `${r.slug.toUpperCase()}: ${r.totalKata} kata · ${r.babCount} Bab${r.sectionCount ? ' · ' + r.sectionCount + ' bagian' : ''}`).join('\n');
+    notify('Sync selesai — ' + ok.length + '/' + results.length + ' level OK' + (fail.length ? ` (gagal: ${fail.map((r) => r.slug).join(', ')})` : ''));
+    if (summary) alert('Hasil sync:\n\n' + summary + (fail.length ? '\n\nGagal:\n' + fail.map((r) => `${r.slug}: ${r.error}`).join('\n') : ''));
+  } catch (err) {
+    notify('Gagal sync: ' + err.message, true);
+  }
+};
 
 window.newCourse = () => {
   openModal(courseFormHtml(null));

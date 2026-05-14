@@ -91,28 +91,34 @@
   `api.notion.com/v1/databases/:id/query`, `Notion-Version: 2022-06-28`, paginate
   `start_cursor` (`notionQueryAll()` — helper di `backend/src/notion.js`,
   dipakai admin import + endpoint public di bawah).
-- **Daftar Kosakata auto-sync (public, per level)** — `welcome.html`
-  "📒 Daftar Kosakata" sekarang baca dari `GET /api/notion-vocab?slug=n5`
-  (file `backend/src/routes/notion-public.js`). Endpoint:
-  - Filter Bab di Notion via `Kode Bab starts_with "N5-"` (slug di-upper).
-  - Sequential per-Bab fetch vocab, group, sort by `Nomor Bab`.
-  - **Dua layer cache**: in-memory `Map` (cepet, hilang saat restart) + tabel
-    `notion_vocab_cache` (`slug` PRIMARY KEY + `payload` JSONB; migration 010).
-    Tiap sync sukses UPSERT — 1 row per slug, **tidak numpuk**.
-  - TTL `NOTION_CACHE_TTL_MS` (default 30 menit) buat freshness check, refresh
-    interval `NOTION_CACHE_REFRESH_MS` (default 30 menit).
-  - Background refresh: `startNotionCacheRefresh()` di `server.js` —
-    (1) prime in-memory dari DB saat boot (instant, ga blok user),
-    (2) setTimeout 5s panggil Notion biar refresh data (ga blokir listen),
-    (3) setInterval tiap `REFRESH_MS`.
-  - **Failure mode**: kalau Notion down saat refresh, in-memory + DB entry
-    lama dipertahankan (cuma `error` field di-update). Endpoint tetep serve
-    data lama → user ga pernah lihat list kosong gara-gara Notion outage.
-  - Stale-while-revalidate: cache expired tapi ada → serve stale + refresh
-    background; ga ada cache sama sekali (DB kosong + memory kosong) → blocking
-    fetch. Token Notion kosong + DB kosong → 503.
-  - Frontend fallback: kalau endpoint gagal/empty, `openVocabList` jatuh ke
-    aggregasi DB (vocab grouped by deck-lesson) terus ke `FLASHCARD_DATA`.
+- **Daftar Kosakata (public, per level, admin-synced)** — `welcome.html`
+  "📒 Daftar Kosakata" baca dari `GET /api/notion-vocab?slug=n5`
+  (file `backend/src/routes/notion-public.js`). Notion = **referensi**: read
+  endpoint **tidak pernah** narik dari Notion, cuma serve cache. Refresh
+  manual lewat admin button (`POST /api/admin/notion-vocab/refresh[/:slug]`,
+  admin-only). Detail:
+  - Filter Bab di Notion via `Kode Bab starts_with "N5-"` (slug di-upper),
+    sequential per-Bab fetch vocab, sort by `Nomor Bab`.
+  - **Section structure** dari curator page (env `NOTION_<SLUG>_PAGE_ID`,
+    default N5 hardcoded). Pattern: paragraph bold = nama section,
+    bulleted_list_item dengan link page = anggota Bab; synced_block tembus
+    transparan. Hasil response shape:
+    `{ sections: [{ name, bab: [{ kode, name, vocab: [...] }] }] }`
+    atau fallback `{ bab: [...] }` kalau page-nya ga ada / gagal parse.
+    Bab yg ga ke-reference di page masuk grup "Lainnya".
+  - **Dua layer cache**: in-memory `Map` (hilang saat restart) + tabel
+    `notion_vocab_cache` (`slug` PK + `payload` JSONB; migration 010). Tiap
+    refresh sukses UPSERT — 1 row per slug, **tidak numpuk**. Refresh gagal
+    → in-memory + DB row lama dipertahankan + `error` di-annotate.
+  - Boot (`startNotionCacheRefresh()` di `server.js`): cuma `primeFromDb()`
+    yg load DB → memory. **Tidak ada setInterval, tidak ada boot-time fetch
+    ke Notion** (sengaja — biar admin kontrol kapan sync).
+  - Frontend 2-level accordion (section → Bab → tabel) dgn mutex: cuma 1
+    section bisa kebuka sekaligus, cuma 1 Bab dlm section aktif yg kebuka.
+    Section pertama auto-open pas first render. Search auto-expand match.
+  - Frontend fallback: kalau endpoint balas 502 (cache kosong) / fetch
+    gagal, `openVocabList` jatuh ke aggregasi DB (vocab grouped by
+    deck-lesson) terus ke `FLASHCARD_DATA`.
 - **TTS ElevenLabs** (`backend/src/routes/tts.js`, `GET /api/tts?text=`):
   audio pelafalan untuk deck. Hasil di-cache di tabel `tts_cache` (bytea, ikut
   `pg_dump`, tahan `git reset --hard`) → API cuma dipanggil 1x per string unik.

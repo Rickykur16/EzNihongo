@@ -1,23 +1,24 @@
 // Public vocab catalog sourced from Notion, level-scoped.
 //
-// Design: an in-memory cache keyed by slug (n5, n4, …) holds the aggregated
-// {bab: [{ kode, nomor, name, vocab: […] }]} for each level, and the same
-// payload is mirrored to the `notion_vocab_cache` table (UPSERT — one row
-// per slug, never grows). A background setInterval refreshes the cache for
-// every supported level every NOTION_CACHE_TTL_MS so the dashboard's
-// "Daftar Kosakata" stays fresh without admin needing to manually import.
+// Notion is treated as a REFERENCE source: there is no background sync. The
+// in-memory cache (per slug) is primed from `notion_vocab_cache` on boot and
+// then only mutated when an admin calls POST /api/admin/notion-vocab/refresh
+// (or :slug). Reads never trigger a Notion fetch.
 //
-// If Notion is unreachable, we keep serving the last good payload (from
-// memory, or restored from DB on boot) so users never see an empty list.
+// Payload shape returned to the dashboard:
+//   { sections: [{ name, bab: [{ kode, nomor, name, vocab: [...] }] }] }  ← preferred
+//   { bab: [{ kode, nomor, name, vocab: [...] }] }                        ← when no
+//     curator section structure can be parsed (no level page, parse failed)
+// Both also carry `totalKata`. The persisted payload uses the same shape.
 //
-// Slug -> Notion filter: each Bab in Notion has a `Kode Bab` text in the
-// form "N5-B3", so we filter the Bab DB by `Kode Bab` starts_with
-// "${slug.toUpperCase()}-". For each matching Bab we then query the Vocab
-// DB filtered by the `Lesson` relation. N+1 but each level has a bounded
-// number of Bab so it's fine; the result is cached.
+// Section structure is read once per refresh from a curator page in Notion
+// (env NOTION_<SLUG>_PAGE_ID). Pattern recognised: a paragraph whose rich_text
+// is entirely bold = section header; the bulleted_list_items that follow it
+// (with a link to a Notion page) = the Bab in that section. Synced_blocks are
+// traversed transparently.
 
 import { Router } from 'express';
-import { asyncHandler } from '../middleware.js';
+import { asyncHandler, requireAuth, requireAdmin } from '../middleware.js';
 import { query } from '../db.js';
 import {
   NOTION_VOCAB_DB_ID_DEFAULT,
@@ -28,6 +29,10 @@ import {
   notionNumber,
   pickProp,
   notionQueryAll,
+  notionGetBlockChildren,
+  richTextAllBold,
+  richTextPlain,
+  notionPlainPageId,
 } from '../notion.js';
 
 const router = Router();
@@ -36,8 +41,16 @@ const router = Router();
 // is uppercased and used as the "Kode Bab" prefix filter on Notion.
 const SUPPORTED_SLUGS = ['n5', 'n4', 'n3', 'n2', 'n1'];
 
-const TTL_MS = Number(process.env.NOTION_CACHE_TTL_MS) || 30 * 60 * 1000; // 30 min default
-const REFRESH_MS = Number(process.env.NOTION_CACHE_REFRESH_MS) || TTL_MS;
+// Slug -> Notion page holding the curator's section structure. Override per
+// slug via env NOTION_<SLUG>_PAGE_ID. Without a configured page, the response
+// falls back to a flat Bab list ordered by Nomor Bab.
+const DEFAULT_LEVEL_PAGE_IDS = {
+  n5: '34dbb13ef58381cfba40f2065a7f262e',
+};
+function levelPageId(slug) {
+  const env = process.env[`NOTION_${slug.toUpperCase()}_PAGE_ID`];
+  return notionIdFromInput(env) || DEFAULT_LEVEL_PAGE_IDS[slug] || null;
+}
 
 // cache[slug] = { fetchedAt: number, data: { bab: [...], totalKata: N }, error: string | null }
 const cache = new Map();
@@ -49,6 +62,56 @@ function envIds() {
     babDbId: notionIdFromInput(process.env.NOTION_BAB_DB_ID) || NOTION_BAB_DB_ID_DEFAULT,
     token: process.env.NOTION_TOKEN || '',
   };
+}
+
+// Walk the curator's level page in Notion to extract sections. Returns
+// [{ name, babIds: ['<32-hex>', ...] }, ...] in the order they appear on the
+// page. Synced_blocks are followed transparently; max depth 5 prevents loops.
+async function parseLevelSections(pageId, token) {
+  const sections = [];
+  let current = null;
+  const visited = new Set();
+  async function walk(blockId, depth) {
+    if (depth > 5 || visited.has(blockId)) return;
+    visited.add(blockId);
+    let children;
+    try { children = await notionGetBlockChildren(blockId, token); }
+    catch (err) {
+      console.warn(`parseLevelSections: get children ${blockId} failed:`, err.message);
+      return;
+    }
+    for (const block of children) {
+      const type = block.type;
+      if (type === 'synced_block') {
+        const src = block.synced_block && block.synced_block.synced_from;
+        const srcId = (src && src.block_id) || block.id;
+        await walk(srcId, depth + 1);
+      } else if (type === 'paragraph') {
+        const rich = (block.paragraph && block.paragraph.rich_text) || [];
+        if (richTextAllBold(rich)) {
+          const name = richTextPlain(rich).trim();
+          if (name) {
+            current = { name, babIds: [] };
+            sections.push(current);
+          }
+        }
+      } else if (type === 'bulleted_list_item' || type === 'numbered_list_item') {
+        const rich = (block[type] && block[type].rich_text) || [];
+        let pid = null;
+        for (const t of rich) {
+          let url = null;
+          if (t.href) url = t.href;
+          else if (t.text && t.text.link && t.text.link.url) url = t.text.link.url;
+          else if (t.mention && t.mention.page && t.mention.page.id) url = t.mention.page.id;
+          pid = notionPlainPageId(url);
+          if (pid) break;
+        }
+        if (pid && current) current.babIds.push(pid);
+      }
+    }
+  }
+  await walk(pageId, 0);
+  return sections;
 }
 
 async function fetchLevelFromNotion(slug) {
@@ -117,6 +180,33 @@ async function fetchLevelFromNotion(slug) {
       vocab,
     });
     totalKata += vocab.length;
+  }
+
+  // 3) Try to layer the curator's section structure on top. Bab the page
+  // doesn't reference go into a trailing "Lainnya" group so nothing is lost.
+  const pageId = levelPageId(slug);
+  if (pageId) {
+    try {
+      const parsed = await parseLevelSections(pageId, token);
+      if (parsed.length > 0) {
+        const byPlainId = new Map(out.map((b) => [String(b.id).replace(/-/g, ''), b]));
+        const sections = parsed
+          .map((s) => ({
+            name: s.name,
+            bab: s.babIds.map((pid) => byPlainId.get(pid)).filter(Boolean),
+          }))
+          .filter((s) => s.bab.length > 0);
+        if (sections.length > 0) {
+          const seenBabIds = new Set();
+          for (const s of sections) for (const b of s.bab) seenBabIds.add(b.id);
+          const orphans = out.filter((b) => !seenBabIds.has(b.id));
+          if (orphans.length > 0) sections.push({ name: 'Lainnya', bab: orphans });
+          return { sections, totalKata };
+        }
+      }
+    } catch (err) {
+      console.warn('parseLevelSections failed (falling back to flat bab list):', err.message);
+    }
   }
   return { bab: out, totalKata };
 }
@@ -187,13 +277,15 @@ async function refreshSlug(slug) {
   return p;
 }
 
+// Public read — never triggers a Notion fetch. Reads the in-memory cache,
+// falls back to the persisted DB row, otherwise replies 502/503 so the
+// frontend can render its own fallback.
 router.get('/notion-vocab', asyncHandler(async (req, res) => {
   const slug = String(req.query.slug || '').toLowerCase().trim();
   if (!SUPPORTED_SLUGS.includes(slug)) {
     return res.status(400).json({ error: 'unsupported_slug', supported: SUPPORTED_SLUGS });
   }
   let entry = cache.get(slug);
-  // If memory cache is cold, try the persisted copy before hitting Notion.
   if (!entry || !entry.data) {
     const fromDb = await loadSlugFromDb(slug);
     if (fromDb) {
@@ -201,63 +293,64 @@ router.get('/notion-vocab', asyncHandler(async (req, res) => {
       entry = fromDb;
     }
   }
-  const { token } = envIds();
-  const stale = !entry || (Date.now() - entry.fetchedAt) > TTL_MS;
-  if (stale) {
-    if (!entry || !entry.data) {
-      // No cached payload at all → block on fetch (first hit after fresh boot
-      // before background refresh runs). Will populate DB on success.
-      if (!token) {
-        return res.status(503).json({ error: 'notion_not_configured', detail: 'Set NOTION_TOKEN di backend/.env' });
-      }
-      entry = await refreshSlug(slug);
-    } else if (token) {
-      // Stale-but-cached → serve stale + trigger background refresh.
-      refreshSlug(slug).catch((e) => console.warn('notion-public bg refresh err:', e.message));
-    }
-  }
   if (!entry?.data) {
-    return res.status(502).json({ error: 'notion_error', detail: entry?.error || 'unknown' });
+    return res.status(502).json({ error: 'notion_cache_empty', detail: 'Admin belum sinkronisasi dari Notion' });
   }
-  res.set('Cache-Control', 'public, max-age=300'); // 5 min browser cache
+  res.set('Cache-Control', 'private, max-age=120'); // 2 min browser cache
   res.json({
     slug,
     fetchedAt: new Date(entry.fetchedAt).toISOString(),
-    stale: (Date.now() - entry.fetchedAt) > TTL_MS,
     ...entry.data,
   });
 }));
 
-// Background refresh — primed once on boot, then runs every REFRESH_MS.
-// Each level fetched sequentially to be polite to Notion. If NOTION_TOKEN is
-// missing the whole scheduler is a no-op (handlers still return 503 cleanly).
-let _refreshTimer = null;
-async function refreshAllSlugs() {
+// Admin-only manual sync. POST /api/admin/notion-vocab/refresh refreshes all
+// slugs, /api/admin/notion-vocab/refresh/n5 refreshes one. Returns per-slug
+// summary.
+router.post('/admin/notion-vocab/refresh/:slug?', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
   const { token } = envIds();
-  if (!token) return;
-  for (const slug of SUPPORTED_SLUGS) {
-    try { await refreshSlug(slug); }
-    catch (e) { console.warn(`notion-public initial refresh ${slug}:`, e.message); }
+  if (!token) {
+    return res.status(503).json({ error: 'notion_not_configured', detail: 'Set NOTION_TOKEN di backend/.env' });
   }
-}
+  const oneSlug = req.params.slug && String(req.params.slug).toLowerCase().trim();
+  if (oneSlug && !SUPPORTED_SLUGS.includes(oneSlug)) {
+    return res.status(400).json({ error: 'unsupported_slug', supported: SUPPORTED_SLUGS });
+  }
+  const slugs = oneSlug ? [oneSlug] : SUPPORTED_SLUGS;
+  const results = [];
+  for (const slug of slugs) {
+    const entry = await refreshSlug(slug);
+    const data = entry?.data || null;
+    const totalKata = (data && typeof data.totalKata === 'number') ? data.totalKata : 0;
+    const babCount = data?.sections
+      ? data.sections.reduce((n, s) => n + (s.bab?.length || 0), 0)
+      : (data?.bab?.length || 0);
+    results.push({
+      slug,
+      ok: !entry?.error,
+      error: entry?.error || null,
+      totalKata,
+      babCount,
+      sectionCount: data?.sections?.length || 0,
+      fetchedAt: entry?.fetchedAt ? new Date(entry.fetchedAt).toISOString() : null,
+    });
+  }
+  res.json({ results });
+}));
+
 async function primeFromDb() {
-  // Restore every persisted slug into the in-memory cache so the first user
-  // request after a restart doesn't block on Notion (even if Notion is down).
+  // Restore every persisted slug into the in-memory cache so reads after a
+  // restart serve immediately. Notion is never touched from here.
   for (const slug of SUPPORTED_SLUGS) {
     const entry = await loadSlugFromDb(slug);
     if (entry && entry.data) cache.set(slug, entry);
   }
 }
+
+// Boot hook: load the DB-persisted cache into memory. No background sync —
+// Notion is a reference, refreshes are admin-triggered via the route above.
 export function startNotionCacheRefresh() {
-  if (_refreshTimer) return;
-  // Warm memory from the DB first (cheap, can serve users immediately),
-  // then defer the Notion refresh so server boot isn't blocked.
   primeFromDb().catch((e) => console.warn('notion-public primeFromDb:', e.message));
-  setTimeout(() => { refreshAllSlugs().catch(() => {}); }, 5000);
-  _refreshTimer = setInterval(() => {
-    refreshAllSlugs().catch(() => {});
-  }, REFRESH_MS);
-  if (typeof _refreshTimer.unref === 'function') _refreshTimer.unref();
 }
 
 export default router;
