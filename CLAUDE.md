@@ -89,7 +89,21 @@
   (default `bd1f0d912aa24b139b5e68f3610b7c51`); `NOTION_BAB_DB_ID` opsional
   (default `472c7178a513459caf536c30c1008b66`). Token kosong → 503. Pakai REST
   `api.notion.com/v1/databases/:id/query`, `Notion-Version: 2022-06-28`, paginate
-  `start_cursor` (`notionQueryAll()`).
+  `start_cursor` (`notionQueryAll()` — helper di `backend/src/notion.js`,
+  dipakai admin import + endpoint public di bawah).
+- **Daftar Kosakata auto-sync (public, per level)** — `welcome.html`
+  "📒 Daftar Kosakata" sekarang baca dari `GET /api/notion-vocab?slug=n5`
+  (file `backend/src/routes/notion-public.js`). Endpoint:
+  - Filter Bab di Notion via `Kode Bab starts_with "N5-"` (slug di-upper).
+  - Sequential per-Bab fetch vocab, group, sort by `Nomor Bab`.
+  - In-memory cache per slug, TTL `NOTION_CACHE_TTL_MS` (default 30 menit).
+  - Background refresh `setInterval` di `server.js` (`startNotionCacheRefresh()`)
+    yang prime semua slug `n5..n1` tiap `NOTION_CACHE_REFRESH_MS` (default 30 menit).
+  - Stale-while-revalidate: kalau cache ada tapi expired → serve stale + trigger
+    background refresh; kalau ga ada cache sama sekali → blocking fetch (boot
+    first hit cold ~detik). Token Notion kosong → endpoint 503.
+  - Frontend fallback: kalau endpoint gagal/empty, `openVocabList` jatuh ke
+    aggregasi DB (vocab grouped by deck-lesson) terus ke `FLASHCARD_DATA`.
 - **TTS ElevenLabs** (`backend/src/routes/tts.js`, `GET /api/tts?text=`):
   audio pelafalan untuk deck. Hasil di-cache di tabel `tts_cache` (bytea, ikut
   `pg_dump`, tahan `git reset --hard`) → API cuma dipanggil 1x per string unik.

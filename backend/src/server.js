@@ -14,6 +14,7 @@ import subscriptionRouter from './routes/subscription.js';
 import kanjiProgressRouter from './routes/kanji-progress.js';
 import kanjiAuthRouter from './routes/kanji-auth.js';
 import ttsRouter from './routes/tts.js';
+import notionPublicRouter, { startNotionCacheRefresh } from './routes/notion-public.js';
 
 // Fail fast on missing env vars. Every deploy needs these; without them the
 // app silently degrades (bad auth, no DB, open CORS). Crashing at startup
@@ -73,6 +74,7 @@ app.use('/api/uploads', uploadsRouter);
 app.use('/api/subscription', subscriptionRouter);
 app.use('/api/kanji-progress', kanjiProgressRouter);
 app.use('/api', ttsRouter);
+app.use('/api', notionPublicRouter);
 app.use('/api', contentRouter);
 app.use('/api', progressRouter);
 
@@ -97,4 +99,7 @@ app.use((err, req, res, next) => {
 const port = Number(process.env.PORT || 3001);
 app.listen(port, '127.0.0.1', () => {
   console.log(`EzNihongo API listening on 127.0.0.1:${port}`);
+  // Kick off the Notion vocab cache warmer in the background. Missing
+  // NOTION_TOKEN is handled inside (no-op + handlers return 503).
+  startNotionCacheRefresh();
 });

@@ -2661,6 +2661,13 @@
   .vocab-group-count {
     color: var(--du-ink-3); font-weight: 500; font-size: .85em; margin-left: 4px;
   }
+  .vocab-source-note {
+    display: inline-block; margin-left: 6px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+    color: var(--du-ink-3);
+    padding: 2px 8px; border-radius: 999px;
+    background: var(--du-surface-2);
+  }
   @media (max-width: 640px) {
     .vocab-table th, .vocab-table td { padding: 6px 6px; font-size: 13px; }
     .vocab-table .reading-cell { font-size: 12px; }
@@ -4158,10 +4165,11 @@ window.openHelp = () => {
   window.open('https://wa.me/6281294894557', '_blank', 'noopener');
 };
 
-// Daftar Kosakata — flat per-level vocab reference. Groups by Bab (= deck
-// lesson, which is what each Notion chapter maps to after import), with a
-// trailing "Belum dipasang" group for bank items that aren't wired to any
-// deck yet. Falls back to the bundled flashcard set if the CMS has nothing.
+// Daftar Kosakata — flat per-level vocab reference. Primary source is the
+// `/api/notion-vocab?slug=<slug>` cache, which auto-syncs from Notion in the
+// background. Falls back to the DB-aggregated view (vocab grouped by deck
+// lesson) when the endpoint is unavailable or empty, and to the bundled
+// flashcard set as a last resort.
 window.openVocabList = async () => {
   closeSidebar();
   const slug = currentState.course;
@@ -4169,65 +4177,81 @@ window.openVocabList = async () => {
   const main = document.getElementById('main-content');
   if (!main) return;
 
-  // vocab_id -> { babTitle, babKey } from each module's deck lessons
-  const vocabToBab = new Map();
-  const babOrder = []; // preserve module/lesson order
-  const seenBab = new Set();
-  if (course && Array.isArray(course.modules)) {
+  // 1) Try Notion-backed cache first.
+  let renderable = [];
+  let sourceLabel = '';
+  let lastSyncedAt = null;
+  try {
+    const res = await fetch(`/api/notion-vocab?slug=${encodeURIComponent(slug)}`, { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      lastSyncedAt = data.fetchedAt || null;
+      const bab = Array.isArray(data.bab) ? data.bab : [];
+      renderable = bab.map((b) => ({
+        key: 'notion:' + b.id,
+        title: [b.kode, b.name].filter(Boolean).join(' — ') || b.name || '(tanpa judul)',
+        items: (b.vocab || []).map((v, i) => ({
+          id: v.id || ('notion-' + i),
+          japanese: v.japanese || '',
+          reading: v.reading || '',
+          indonesian: v.indonesian || '',
+          category: v.category || '',
+          note: v.note || '',
+          sort: i,
+        })),
+      })).filter((g) => g.items.length > 0);
+      if (renderable.length > 0) sourceLabel = 'Notion · live';
+    }
+  } catch { /* network/parse — fall through to DB fallback */ }
+
+  // 2) Fallback: vocab grouped by deck-lesson from CMS DB.
+  if (renderable.length === 0 && course && Array.isArray(course.modules)) {
+    const vocabToBab = new Map();
+    const babOrder = [];
+    const seenBab = new Set();
     for (const m of course.modules) {
       for (const l of (m.lessons || [])) {
         if (l.type !== 'deck') continue;
         const babKey = `${m.id}:${l.id}`;
-        const babTitle = l.title;
-        if (!seenBab.has(babKey)) { seenBab.add(babKey); babOrder.push({ babKey, babTitle, moduleNum: m.num }); }
+        if (!seenBab.has(babKey)) { seenBab.add(babKey); babOrder.push({ babKey, babTitle: l.title }); }
         for (const d of (l.deck || [])) {
-          if (d.id) vocabToBab.set(d.id, { babKey, babTitle });
+          if (d.id) vocabToBab.set(d.id, { babKey, babTitle: l.title });
         }
       }
     }
-  }
-
-  // Flatten module_vocabulary across all modules, dedupe by id.
-  const seenVocab = new Set();
-  const allVocab = [];
-  if (course && Array.isArray(course.modules)) {
+    const seenVocab = new Set();
+    const allVocab = [];
     for (const m of course.modules) {
       for (const v of (m.vocabulary || [])) {
         if (!v || !v.id || seenVocab.has(v.id)) continue;
         seenVocab.add(v.id);
         allVocab.push({
           id: v.id,
-          japanese: v.japanese || '',
-          reading: v.reading || '',
-          indonesian: v.indonesian || '',
-          category: v.category || '',
-          note: v.note || '',
-          sort: v.sort_order ?? 0,
+          japanese: v.japanese || '', reading: v.reading || '',
+          indonesian: v.indonesian || '', category: v.category || '',
+          note: v.note || '', sort: v.sort_order ?? 0,
         });
       }
     }
+    const groupByKey = new Map();
+    const groups = [];
+    for (const { babKey, babTitle } of babOrder) {
+      const g = { key: babKey, title: babTitle, items: [] };
+      groupByKey.set(babKey, g);
+      groups.push(g);
+    }
+    const orphan = { key: '__orphan', title: 'Belum dipasang ke Bab', items: [] };
+    for (const v of allVocab) {
+      const bab = vocabToBab.get(v.id);
+      if (bab && groupByKey.has(bab.babKey)) groupByKey.get(bab.babKey).items.push(v);
+      else orphan.items.push(v);
+    }
+    for (const g of groups) g.items.sort((a, b) => (a.sort - b.sort) || a.japanese.localeCompare(b.japanese));
+    orphan.items.sort((a, b) => (a.sort - b.sort) || a.japanese.localeCompare(b.japanese));
+    if (orphan.items.length) groups.push(orphan);
+    renderable = groups.filter((g) => g.items.length > 0);
+    if (renderable.length > 0) sourceLabel = 'cache lokal';
   }
-
-  // Group by Bab in the order modules/lessons appear; unmapped → "Belum dipasang".
-  const groups = [];
-  const groupByKey = new Map();
-  for (const { babKey, babTitle } of babOrder) {
-    const g = { key: babKey, title: babTitle, items: [] };
-    groupByKey.set(babKey, g);
-    groups.push(g);
-  }
-  const orphan = { key: '__orphan', title: 'Belum dipasang ke Bab', items: [] };
-  for (const v of allVocab) {
-    const bab = vocabToBab.get(v.id);
-    if (bab && groupByKey.has(bab.babKey)) groupByKey.get(bab.babKey).items.push(v);
-    else orphan.items.push(v);
-  }
-  // sort each group's items
-  for (const g of groups) g.items.sort((a, b) => (a.sort - b.sort) || a.japanese.localeCompare(b.japanese));
-  orphan.items.sort((a, b) => (a.sort - b.sort) || a.japanese.localeCompare(b.japanese));
-  if (orphan.items.length) groups.push(orphan);
-  // drop empty groups
-  const renderable = groups.filter((g) => g.items.length > 0);
 
   // Flashcard fallback when CMS has zero vocab at all
   if (renderable.length === 0) {
@@ -4266,11 +4290,18 @@ window.openVocabList = async () => {
   const babCount = renderable.filter((g) => !g.key.startsWith('fc:') && g.key !== '__orphan').length;
   const subtitleParts = [`${total} kata`];
   if (babCount > 0) subtitleParts.push(`${babCount} Bab`);
+  let syncNote = '';
+  if (sourceLabel === 'Notion · live' && lastSyncedAt) {
+    const ts = new Date(lastSyncedAt);
+    const hh = String(ts.getHours()).padStart(2, '0');
+    const mm = String(ts.getMinutes()).padStart(2, '0');
+    syncNote = `<span class="vocab-source-note" title="Disinkronkan otomatis dari Notion">⟳ Sinkron Notion ${hh}:${mm}</span>`;
+  }
 
   main.innerHTML = `
     <p class="lesson-breadcrumb">${escapeHtml(courseName)} · KOSAKATA</p>
     <h1 class="lesson-title">📒 Kosakata <span class="vocab-level-chip">${escapeHtml(levelChip)}</span></h1>
-    <p class="lesson-subtitle">${subtitleParts.join(' · ')}.</p>
+    <p class="lesson-subtitle">${subtitleParts.join(' · ')}. ${syncNote}</p>
     <div class="module-filter" style="margin:14px 0 18px;">
       <svg class="mf-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="search" id="vocab-list-filter" placeholder="Cari kosakata..." oninput="window.filterVocabList(this.value)" autocomplete="off" />
