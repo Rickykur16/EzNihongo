@@ -217,6 +217,20 @@
     margin: 0;
     line-height: 1.5;
   }
+  .greeting-resume {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: 14px; padding: 10px 16px;
+    background: var(--brand-red); color: #fff;
+    border: none; border-radius: 10px;
+    font-family: inherit; font-size: 13.5px; font-weight: 700;
+    cursor: pointer; transition: transform .12s, box-shadow .12s;
+    box-shadow: 0 4px 14px -6px rgba(220, 38, 38, 0.5);
+  }
+  .greeting-resume:hover { transform: translateY(-1px); box-shadow: 0 6px 18px -6px rgba(220, 38, 38, 0.6); }
+  .greeting-resume:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .greeting-resume .gr-label { font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; opacity: .85; }
+  .greeting-resume .gr-title { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (max-width: 600px) { .greeting-resume .gr-title { max-width: 180px; } }
   .greeting-time {
     flex-shrink: 0;
     background: #14161a;
@@ -403,16 +417,20 @@
   }
   .course-picker.open .course-picker-list { max-height: 420px; }
   .course-option {
-    display: flex; align-items: center; gap: 10px;
+    display: flex; align-items: center; gap: 10px; width: 100%;
     padding: 10px 14px;
-    border-top: 1px solid #f0f0f0;
-    cursor: pointer;
+    border: none; border-top: 1px solid #f0f0f0; background: transparent;
+    cursor: pointer; text-align: left;
+    font-family: inherit; color: inherit;
     transition: background 0.12s;
   }
   .course-option:hover { background: #fafafa; }
+  .course-option:focus-visible { outline: 2px solid var(--brand-red); outline-offset: -2px; }
   .course-option.active {
     background: var(--brand-red-soft);
   }
+  .course-option.locked { cursor: help; }
+  .course-option.locked:hover { background: #fff7e6; }
   .course-option .level-chip {
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 30px; height: 22px; padding: 0 6px;
@@ -3623,11 +3641,34 @@ function greetingBannerHtml() {
   const now = new Date();
   const hh = String(now.getHours()).padStart(2, '0');
   const mm = String(now.getMinutes()).padStart(2, '0');
+
+  // Resume CTA — only on the in-course dashboard, when we know the user's
+  // current lesson. Shortens the path from "open dashboard" to "actually study".
+  let resume = '';
+  const course = currentState.course && COURSE_CONTENT[currentState.course];
+  if (course && currentState.moduleId && currentState.lessonId) {
+    const mod = course.modules.find(m => m.id === currentState.moduleId);
+    const lesson = mod && mod.lessons.find(l => l.id === currentState.lessonId);
+    if (lesson) {
+      const progress = getProgress()[currentState.course] || {};
+      const isDone = !!progress[`${mod.id}:${lesson.id}`];
+      const label = isDone ? 'Buka kembali' : 'Lanjut belajar';
+      resume = `<button class="greeting-resume" type="button"
+        onclick="selectLesson('${mod.id}','${lesson.id}')"
+        aria-label="${label}: ${escapeHtml(lesson.title)}">
+        <span class="gr-label">${label}</span>
+        <span class="gr-title">${escapeHtml(lesson.title)}</span>
+        <span aria-hidden="true">→</span>
+      </button>`;
+    }
+  }
+
   return `
     <div class="greeting-banner">
       <div>
         <h1 class="greeting-jp">${g.jp}、<span class="name">${name}</span><span class="san">さん</span></h1>
         <p class="greeting-id">${g.id} — ${g.msg}</p>
+        ${resume}
       </div>
       <div class="greeting-time">
         <div class="gt-kanji">${g.kanji}</div>
@@ -3863,7 +3904,7 @@ function renderRightPanel() {
         <span class="rp-dot">·</span>
         <span>${next.l.duration || ''}</span>
       </div>
-      <button class="rp-next-btn" onclick="selectLesson('${next.m.id}','${next.l.id}')">Pratinjau →</button>
+      <button class="rp-next-btn" onclick="selectLesson('${next.m.id}','${next.l.id}')">Buka →</button>
     </div>
   ` : `
     <div class="rp-card rp-next rp-done">
@@ -3874,14 +3915,6 @@ function renderRightPanel() {
   `;
 
   panel.innerHTML = `
-    <div class="rp-card rp-progress">
-      <div class="rp-eyebrow">Progress Keseluruhan</div>
-      <div class="rp-progress-top">
-        <div class="rp-progress-num">${pct}<span>%</span></div>
-        <div class="rp-progress-sub">${doneLessons} dari ${totalLessons} materi</div>
-      </div>
-      <div class="rp-progress-bar"><div class="rp-progress-fill" style="width:${pct}%"></div></div>
-    </div>
     ${nextBlock}
     <div class="rp-card rp-tip" onclick="cycleTip()" role="button" tabindex="0"
          aria-label="Klik untuk tip berikutnya"
@@ -3919,13 +3952,17 @@ function renderSidebar() {
       const key = `${m.id}:${l.id}`;
       const isDone = !!progress[key];
       const isCurrent = m.id === currentState.moduleId && l.id === currentState.lessonId;
-      const icon = l.type === 'quiz' ? '?' : (isDone ? '✓' : (l.type === 'deck' ? '語' : '▶'));
+      // isDone wins: completed lessons of any type show ✓, otherwise type icon.
+      const icon = isDone ? '✓' : (l.type === 'quiz' ? '?' : (l.type === 'deck' ? '語' : '▶'));
       const typeKey = (l.type || 'text').toLowerCase();
       const typeLabel = TYPE_LABEL[typeKey] || typeKey.toUpperCase();
+      const aria = `${l.title}, ${typeLabel}${l.duration ? ', ' + l.duration : ''}${isDone ? ', selesai' : ''}${isCurrent ? ', sedang dibuka' : ''}`;
       return `
         <li class="lesson-item ${isCurrent ? 'current' : ''} ${isDone ? 'done' : ''}"
-            onclick="selectLesson('${m.id}', '${l.id}')">
-          <span class="lesson-icon">${icon}</span>
+            role="button" tabindex="0" aria-label="${escapeHtml(aria)}" aria-current="${isCurrent ? 'page' : 'false'}"
+            onclick="selectLesson('${m.id}', '${l.id}')"
+            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectLesson('${m.id}','${l.id}')}">
+          <span class="lesson-icon" aria-hidden="true">${icon}</span>
           <div class="lesson-info">
             <div class="lesson-title-text">${l.title}</div>
             <div class="lesson-meta-row">
@@ -3937,7 +3974,7 @@ function renderSidebar() {
       `;
     }).join('');
 
-    const isOpen = m.id === currentState.moduleId;
+    const isOpen = _expandedModules.has(m.id) || m.id === currentState.moduleId;
     return `
       <div class="module ${isOpen ? 'open' : ''}" data-module="${m.id}">
         <button class="module-header" onclick="toggleModule('${m.id}')">
@@ -3974,12 +4011,16 @@ function renderSidebar() {
     const status = isActive
       ? '<span class="opt-status">✓ Aktif</span>'
       : (!isEnrolled ? '<span class="opt-status">🔒 Upgrade</span>' : '<span class="opt-status">Pindah →</span>');
+    const aria = isActive
+      ? `${name}, kelas aktif`
+      : (isEnrolled ? `Pindah ke ${name}` : `${name}, terkunci — buka halaman upgrade`);
     return `
-      <div class="${classes.join(' ')}" onclick="switchCourse('${slug}')">
+      <button type="button" class="${classes.join(' ')}" onclick="switchCourse('${slug}')"
+              aria-label="${escapeHtml(aria)}" ${isActive ? 'aria-current="true"' : ''}>
         <span class="level-chip">${slug.toUpperCase()}</span>
         <span class="opt-name">${name}</span>
         ${status}
-      </div>
+      </button>
     `;
   }).join('');
 
@@ -4749,7 +4790,12 @@ window.speakLessonJP = (btn) => {
   speakJapanese(text, btn);
 };
 
+// Module accordion expanded state — persists across renderSidebar() so that
+// modules the user manually opened don't snap shut every time they pick a lesson.
+const _expandedModules = new Set();
+
 window.selectLesson = (moduleId, lessonId) => {
+  _expandedModules.add(moduleId);
   currentState.moduleId = moduleId;
   currentState.lessonId = lessonId;
   renderSidebar();
@@ -4813,7 +4859,10 @@ window.addEventListener('resize', () => {
 
 window.toggleModule = (moduleId) => {
   const el = document.querySelector(`.module[data-module="${moduleId}"]`);
-  if (el) el.classList.toggle('open');
+  if (!el) return;
+  el.classList.toggle('open');
+  if (el.classList.contains('open')) _expandedModules.add(moduleId);
+  else _expandedModules.delete(moduleId);
 };
 
 window.markCompleteAndNext = () => {
