@@ -3838,15 +3838,14 @@ function renderSidebar() {
   const course = COURSE_CONTENT[currentState.course];
   const progress = getProgress()[currentState.course] || {};
 
-  // Seed expanded state once per course: section of the current lesson
-  // auto-opens on first render, but the Bab/module inside stays collapsed
-  // (user clicks a Bab to reveal its lessons). After this seed, the user
-  // controls everything.
-  if (_lastSeededCourse !== currentState.course && currentState.moduleId) {
+  // Reset expanded state on course change so stale IDs from a previous
+  // course don't leak. Default = everything collapsed; user opens what they
+  // want. `selectLesson` still pops open the relevant section + module when
+  // the user actively navigates via the resume CTA or right-panel "Buka →".
+  if (_lastSeededCourse !== currentState.course) {
     _lastSeededCourse = currentState.course;
     _expandedSections.clear();
     _expandedModules.clear();
-    _expandedSections.add(_sectionOfModule(currentState.moduleId));
   }
 
   const totalLessons = course.modules.reduce((s, m) => s + m.lessons.length, 0);
