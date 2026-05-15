@@ -4072,15 +4072,15 @@ function renderSidebar() {
   const course = COURSE_CONTENT[currentState.course];
   const progress = getProgress()[currentState.course] || {};
 
-  // Seed expanded state once per course: section + module of the current
-  // lesson auto-open on first render. After that, the user controls everything
-  // (so clicking an open module actually collapses it).
+  // Seed expanded state once per course: section of the current lesson
+  // auto-opens on first render, but the Bab/module inside stays collapsed
+  // (user clicks a Bab to reveal its lessons). After this seed, the user
+  // controls everything.
   if (_lastSeededCourse !== currentState.course && currentState.moduleId) {
     _lastSeededCourse = currentState.course;
     _expandedSections.clear();
     _expandedModules.clear();
     _expandedSections.add(_sectionOfModule(currentState.moduleId));
-    _expandedModules.add(currentState.moduleId);
   }
 
   const totalLessons = course.modules.reduce((s, m) => s + m.lessons.length, 0);
