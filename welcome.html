@@ -3838,14 +3838,23 @@ function renderSidebar() {
   const course = COURSE_CONTENT[currentState.course];
   const progress = getProgress()[currentState.course] || {};
 
-  // Reset expanded state on course change so stale IDs from a previous
-  // course don't leak. Default = everything collapsed; user opens what they
-  // want. `selectLesson` still pops open the relevant section + module when
-  // the user actively navigates via the resume CTA or right-panel "Buka →".
+  // Reset expanded state on course change so stale IDs from a previous course
+  // don't leak. Default behaviour depends on whether the user has any progress
+  // in this course:
+  //   - First-timer (no completed lesson) → everything collapsed, clean view.
+  //   - Returning student → auto-open the section + Bab containing the
+  //     next-to-study lesson (currentState.moduleId is already resolved by
+  //     renderLearning() to point there), so the sidebar lands on "lanjut di
+  //     mana".
   if (_lastSeededCourse !== currentState.course) {
     _lastSeededCourse = currentState.course;
     _expandedSections.clear();
     _expandedModules.clear();
+    const hasStudied = Object.values(progress).some((v) => v);
+    if (hasStudied && currentState.moduleId) {
+      _expandedSections.add(_sectionOfModule(currentState.moduleId));
+      _expandedModules.add(currentState.moduleId);
+    }
   }
 
   const totalLessons = course.modules.reduce((s, m) => s + m.lessons.length, 0);
