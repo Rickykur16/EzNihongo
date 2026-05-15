@@ -577,154 +577,115 @@
     font-style: italic;
   }
 
-  /* Section group wrapping modules. Only used when at least one module
-     has a section_name; otherwise the modules render flat. */
+  /* ── Sidebar (Udemy-style flat dividers) ──────────────────────────── */
+  /* The .sidebar-scroll wrapper has horizontal padding for the progress + quicklinks
+     blocks; modules-list cancels it out so section/module headers go edge-to-edge. */
+  .modules-list { margin: 0 -22px; border-top: 1px solid #d6d6d6; }
+
+  /* Section (top-level group) */
   .sidebar-section {
-    margin-bottom: 8px; border-radius: 12px;
-    border: 1px solid #ece7df; background: #fff;
-    overflow: hidden;
+    background: #f5f5f5;
+    border-bottom: 1px solid #d6d6d6;
+    border-radius: 0;
+    margin: 0;
   }
+  .sidebar-section.open { background: #fafafa; }
   .sidebar-section-header {
-    width: 100%; padding: 11px 14px;
-    display: flex; align-items: center; gap: 10px;
+    width: 100%; padding: 14px 16px;
+    display: flex; align-items: flex-start; gap: 12px;
     background: transparent; border: none; cursor: pointer;
-    font-family: inherit; color: #1a1a1a; text-align: left;
-    font-size: 13px; font-weight: 700; letter-spacing: 0.01em;
-    transition: background 0.12s;
+    color: #1c1d1f; text-align: left; font-family: inherit;
+    transition: background .12s;
   }
-  .sidebar-section-header:hover { background: #faf7f0; }
+  .sidebar-section-header:hover { background: #efefef; }
   .sidebar-section-header:focus-visible { outline: 2px solid var(--brand-red); outline-offset: -2px; }
-  .ss-name { flex: 1; min-width: 0; }
-  .ss-count {
-    font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
-    color: #8a7d66; white-space: nowrap;
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .ss-caret { color: #8a7d66; transition: transform .18s; flex-shrink: 0; }
-  .sidebar-section.open .ss-caret { transform: rotate(-180deg); color: var(--brand-red); }
-  .sidebar-section.open .sidebar-section-header { color: var(--brand-red); background: #fbfaf7; }
-  .sidebar-section-body { display: none; padding: 4px 6px 6px; background: #fbfaf7; }
+  .ss-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .ss-name { font-size: 14.5px; font-weight: 700; line-height: 1.3; color: #1c1d1f; }
+  .ss-meta { font-size: 12px; color: #6a6a6a; font-weight: 400; font-variant-numeric: tabular-nums; }
+  .ss-caret { color: #6a6a6a; transition: transform .15s; flex-shrink: 0; margin-top: 4px; }
+  .sidebar-section.open .ss-caret { transform: rotate(180deg); }
+  .sidebar-section-body { display: none; background: #fff; }
   .sidebar-section.open .sidebar-section-body { display: block; }
 
+  /* Module (Bab) — nested inside section.open */
   .module {
-    margin-bottom: 2px;
-    border-radius: 10px;
-    transition: background 0.15s ease;
-  }
-  .sidebar-section .module { background: #fff; }
-  .sidebar-section .module.open { background: #fbfaf7; }
-  .module.open { background: #fbfaf7; }
-  .module-header {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     background: transparent;
-    border: none;
-    padding: 11px 12px;
-    cursor: pointer;
-    font-family: var(--font-body);
-    font-size: 13px;
-    font-weight: 700;
-    color: #191c1d;
-    text-align: left;
-    border-radius: 10px;
-    transition: background 0.15s ease;
+    border-top: 1px solid #ececec;
+    border-radius: 0;
+    margin: 0;
   }
-  .module-header:hover { background: #f4f2ed; }
-  .module.open .module-header { color: var(--brand-red); }
-  .module-header .caret {
-    font-size: 10px;
-    color: #9ca0a8;
-    transition: transform 0.2s ease, color 0.15s ease;
+  .sidebar-section-body > .module:first-child { border-top: none; }
+  .module.open { background: #f7f5fb; }
+  .module-header {
+    width: 100%; padding: 12px 16px 12px 28px;
+    display: flex; align-items: flex-start; gap: 12px;
+    background: transparent; border: none; cursor: pointer;
+    color: #1c1d1f; text-align: left; font-family: inherit;
+    transition: background .12s;
   }
-  .module.open .module-header .caret { transform: rotate(90deg); color: var(--brand-red); }
-  .module-num {
-    display: inline-block;
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--brand-red);
-    font-size: 10.5px;
-    font-weight: 600;
-    padding: 2px 7px;
-    margin-right: 10px;
-    background: var(--brand-red-soft);
-    border-radius: 5px;
-    letter-spacing: 0.02em;
-  }
-  .module.open .module-num {
-    background: var(--brand-red);
-    color: #fff;
-  }
+  .module-header:hover { background: #f0eef5; }
+  .module-header:focus-visible { outline: 2px solid var(--brand-red); outline-offset: -2px; }
+  .m-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .m-name { font-size: 13.5px; font-weight: 600; line-height: 1.3; color: #1c1d1f; }
+  .m-meta { font-size: 11.5px; color: #6a6a6a; font-variant-numeric: tabular-nums; }
+  .m-caret { color: #6a6a6a; transition: transform .15s; flex-shrink: 0; margin-top: 3px; }
+  .module.open .m-caret { transform: rotate(180deg); color: var(--brand-red); }
 
-  /* Use CSS grid trick for smooth expand/collapse — animates to actual
-     content height instead of fixed 2000px, so big modules don't lag. */
+  /* Smooth expand/collapse via grid-template-rows */
   .lessons {
     display: grid;
     grid-template-rows: 0fr;
     transition: grid-template-rows 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   }
   .lessons > .lessons-inner {
-    list-style: none;
-    margin: 0;
-    padding: 0 6px;
-    min-height: 0;
-    overflow: hidden;
+    list-style: none; margin: 0; padding: 0; min-height: 0; overflow: hidden;
   }
   .module.open .lessons { grid-template-rows: 1fr; }
-  .module.open .lessons > .lessons-inner { padding: 2px 6px 8px; }
 
+  /* Lesson item — Udemy row */
   .lesson-item {
-    padding: 8px 10px 8px 28px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    padding: 10px 16px 10px 36px;
+    display: flex; gap: 12px; align-items: flex-start;
     cursor: pointer;
-    border-radius: 8px;
-    font-size: 12px;
-    color: #485f84;
-    margin: 1px 0;
-    /* Only transition color-ish props — never layout props like
-       padding, margin, width — layout transitions trigger reflow on
-       every hover, which is what makes scroll feel choppy. */
-    transition: background-color 0.18s ease, color 0.18s ease;
+    background: #fff;
+    border-top: 1px solid #ececec;
+    transition: background .15s;
+    outline: none;
   }
-  .lesson-item:hover {
-    background: #f4f2ed;
-    color: #1a1e26;
+  .module.open .lessons > .lessons-inner > .lesson-item:first-child { border-top: 1px solid #ececec; }
+  .lesson-item:hover { background: #f7f7f7; }
+  .lesson-item:focus-visible { background: #f0f0f0; }
+  .lesson-item.current,
+  .lesson-item.current:hover { background: #ebe9f9; }
+  .lesson-check {
+    width: 18px; height: 18px; flex-shrink: 0;
+    margin-top: 1px;
+    border: 1.5px solid #888;
+    border-radius: 3px;
+    background: #fff;
+    color: transparent;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background .12s, border-color .12s, color .12s;
   }
-  .lesson-item.current {
-    background: var(--brand-red-soft);
-    color: var(--brand-red);
-    font-weight: 600;
-  }
-  .lesson-item.done { color: #166534; }
-  .lesson-icon {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 9px;
-    flex-shrink: 0;
-    border: 1px solid currentColor;
-  }
-  .lesson-item.done .lesson-icon {
-    background: #16a34a;
-    border-color: #16a34a;
-    color: #fff;
-  }
-  .lesson-item.current .lesson-icon {
+  .lesson-item.done .lesson-check {
     background: var(--brand-red);
     border-color: var(--brand-red);
     color: #fff;
   }
-  .lesson-meta {
-    margin-left: auto;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: #999;
+  .lesson-info { flex: 1; min-width: 0; }
+  .lesson-title-text {
+    font-size: 13.5px; color: #1c1d1f; line-height: 1.4;
+    font-weight: 400; margin-bottom: 4px;
+    word-break: break-word;
   }
+  .lesson-item.current .lesson-title-text { font-weight: 600; color: #1c1d1f; }
+  .lesson-item.done .lesson-title-text { color: #404040; }
+  .lesson-meta-row {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11.5px; color: #6a6a6a;
+  }
+  .lesson-type-ico { display: inline-flex; line-height: 0; color: #6a6a6a; }
+  .lesson-duration { font-variant-numeric: tabular-nums; }
 
   /* ── Main Content ── */
   .main-content {
@@ -2946,6 +2907,7 @@ function transformCourseFromApi(apiCourse) {
           title: l.title,
           type: l.type || 'text',
           duration: l.duration_minutes ? `${l.duration_minutes} min` : '',
+          durationMinutes: Number(l.duration_minutes) || 0,
           body,
           jp,
           vocabulary: Array.isArray(l.vocabulary) ? l.vocabulary : [],
@@ -3892,10 +3854,17 @@ function renderSidebar() {
   const pct = Math.round((doneLessons / totalLessons) * 100);
 
   const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan', deck: 'Kosakata' };
+  // SVG icons compact-style ala Udemy (play / question / book / cards).
+  const TYPE_ICON = {
+    video: '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
+    quiz: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    text: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+    deck: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>',
+  };
+  const CHECK_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
 
   // Group modules by section_name in their order of appearance. Modules with
-  // no section fall into "Lainnya" — only added if it actually has content,
-  // so courses that haven't been section-tagged still look clean.
+  // no section fall into "Lainnya" — only added if it actually has content.
   const sectionBuckets = [];
   const sectionByName = new Map();
   for (const m of course.modules) {
@@ -3909,27 +3878,44 @@ function renderSidebar() {
     bucket.modules.push(m);
   }
 
+  // Global Udemy-style lesson number across all modules in the course.
+  const lessonNumber = new Map();
+  {
+    let n = 0;
+    for (const m of course.modules) {
+      for (const l of m.lessons) {
+        n += 1;
+        lessonNumber.set(`${m.id}:${l.id}`, n);
+      }
+    }
+  }
+
   const renderModuleHtml = (m) => {
+    const moduleDur = m.lessons.reduce((n, l) => n + (l.durationMinutes || 0), 0);
+    const moduleDone = m.lessons.filter((l) => progress[`${m.id}:${l.id}`]).length;
+    const moduleTotal = m.lessons.length;
+
     const lessonsHtml = m.lessons.map(l => {
       const key = `${m.id}:${l.id}`;
       const isDone = !!progress[key];
       const isCurrent = m.id === currentState.moduleId && l.id === currentState.lessonId;
-      // isDone wins: completed lessons of any type show ✓, otherwise type icon.
-      const icon = isDone ? '✓' : (l.type === 'quiz' ? '?' : (l.type === 'deck' ? '語' : '▶'));
       const typeKey = (l.type || 'text').toLowerCase();
       const typeLabel = TYPE_LABEL[typeKey] || typeKey.toUpperCase();
-      const aria = `${l.title}, ${typeLabel}${l.duration ? ', ' + l.duration : ''}${isDone ? ', selesai' : ''}${isCurrent ? ', sedang dibuka' : ''}`;
+      const typeIcon = TYPE_ICON[typeKey] || TYPE_ICON.text;
+      const num = lessonNumber.get(key);
+      const durTxt = formatDurationCompact(l.durationMinutes);
+      const aria = `${l.title}, ${typeLabel}${durTxt ? ', ' + durTxt : ''}${isDone ? ', selesai' : ''}${isCurrent ? ', sedang dibuka' : ''}`;
       return `
         <li class="lesson-item ${isCurrent ? 'current' : ''} ${isDone ? 'done' : ''}"
             role="button" tabindex="0" aria-label="${escapeHtml(aria)}" aria-current="${isCurrent ? 'page' : 'false'}"
             onclick="selectLesson('${m.id}', '${l.id}')"
             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectLesson('${m.id}','${l.id}')}">
-          <span class="lesson-icon" aria-hidden="true">${icon}</span>
+          <span class="lesson-check" aria-hidden="true">${isDone ? CHECK_SVG : ''}</span>
           <div class="lesson-info">
-            <div class="lesson-title-text">${l.title}</div>
+            <div class="lesson-title-text">${num}. ${escapeHtml(l.title)}</div>
             <div class="lesson-meta-row">
-              <span class="lesson-type-badge badge-${typeKey}">${typeLabel}</span>
-              <span class="lesson-duration">${l.duration}</span>
+              <span class="lesson-type-ico" aria-hidden="true">${typeIcon}</span>
+              <span class="lesson-duration">${escapeHtml(durTxt || typeLabel)}</span>
             </div>
           </div>
         </li>
@@ -3937,47 +3923,52 @@ function renderSidebar() {
     }).join('');
 
     const isOpen = _expandedModules.has(m.id);
+    const metaParts = [`${moduleDone} / ${moduleTotal}`];
+    if (moduleDur) metaParts.push(formatDurationCompact(moduleDur));
     return `
       <div class="module ${isOpen ? 'open' : ''}" data-module="${m.id}">
-        <button class="module-header" onclick="toggleModule('${m.id}')">
-          <span><span class="module-num">${m.num}</span>${m.title}</span>
-          <span class="caret">▶</span>
+        <button class="module-header" type="button" aria-expanded="${isOpen ? 'true' : 'false'}" onclick="toggleModule('${m.id}')">
+          <div class="m-info">
+            <span class="m-name">${escapeHtml(m.title)}</span>
+            <span class="m-meta">${escapeHtml(metaParts.join(' | '))}</span>
+          </div>
+          <svg class="m-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <div class="lessons"><ul class="lessons-inner">${lessonsHtml}</ul></div>
       </div>
     `;
   };
 
-  // If every module is unsectioned, skip the section layer entirely — keeps
-  // the look unchanged for courses that haven't been tagged yet.
-  const hasAnySection = sectionBuckets.some((b) => b.name !== 'Lainnya');
-  const modulesHtml = hasAnySection
-    ? sectionBuckets.map((b) => {
-        const sectionDone = b.modules.reduce((n, m) =>
-          n + m.lessons.filter((l) => progress[`${m.id}:${l.id}`]).length, 0);
-        const sectionTotal = b.modules.reduce((n, m) => n + m.lessons.length, 0);
-        const containsCurrent = b.modules.some((m) => m.id === currentState.moduleId);
-        // Sections default to closed; only the ones the user explicitly opened
-        // (in _expandedSections) show their modules. Mutex on click: at most one
-        // section open at a time.
-        const isSecOpen = _expandedSections.has(b.name);
-        const safeName = b.name.replace(/'/g, "\\'");
-        return `
-          <div class="sidebar-section ${isSecOpen ? 'open' : ''}" data-section="${escapeHtml(b.name)}">
-            <button class="sidebar-section-header" type="button"
-                    aria-expanded="${isSecOpen ? 'true' : 'false'}"
-                    onclick="toggleSidebarSection('${escapeHtml(safeName)}')">
-              <span class="ss-name">${escapeHtml(b.name)}</span>
-              <span class="ss-count">${b.modules.length} Bab · ${sectionDone}/${sectionTotal}</span>
-              <svg class="ss-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <div class="sidebar-section-body">
-              ${b.modules.map(renderModuleHtml).join('')}
-            </div>
+  // Untagged courses still get the section wrapper for visual consistency
+  // (Udemy always wraps in section blocks). All untagged modules end up in
+  // "Lainnya".
+  const modulesHtml = sectionBuckets.map((b) => {
+    const sectionDone = b.modules.reduce((n, m) =>
+      n + m.lessons.filter((l) => progress[`${m.id}:${l.id}`]).length, 0);
+    const sectionTotal = b.modules.reduce((n, m) => n + m.lessons.length, 0);
+    const sectionDurMin = b.modules.reduce((n, m) =>
+      n + m.lessons.reduce((mm, l) => mm + (l.durationMinutes || 0), 0), 0);
+    const isSecOpen = _expandedSections.has(b.name);
+    const safeName = b.name.replace(/'/g, "\\'");
+    const metaParts = [`${sectionDone} / ${sectionTotal}`];
+    if (sectionDurMin) metaParts.push(formatDurationCompact(sectionDurMin));
+    return `
+      <div class="sidebar-section ${isSecOpen ? 'open' : ''}" data-section="${escapeHtml(b.name)}">
+        <button class="sidebar-section-header" type="button"
+                aria-expanded="${isSecOpen ? 'true' : 'false'}"
+                onclick="toggleSidebarSection('${escapeHtml(safeName)}')">
+          <div class="ss-info">
+            <span class="ss-name">${escapeHtml(b.name)}</span>
+            <span class="ss-meta">${escapeHtml(metaParts.join(' | '))}</span>
           </div>
-        `;
-      }).join('')
-    : course.modules.map(renderModuleHtml).join('');
+          <svg class="ss-caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="sidebar-section-body">
+          ${b.modules.map(renderModuleHtml).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
 
   const enrolled = getEnrolledCourses();
   // Merge enrolled (hydrated) courses with CMS-listed courses so non-enrolled
@@ -4453,6 +4444,16 @@ function formatDurationLong(minutes) {
   const h = Math.floor(n / 60);
   const rem = Math.round(n - h * 60);
   return rem === 0 ? `${h} jam` : `${h} jam ${rem} menit`;
+}
+
+// Compact duration for the sidebar — "9 mnt", "1 jam 15 mnt". Empty if 0.
+function formatDurationCompact(minutes) {
+  const n = Math.max(0, Number(minutes) || 0);
+  if (n === 0) return '';
+  if (n < 60) return `${n} mnt`;
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  return m === 0 ? `${h} jam` : `${h} jam ${m} mnt`;
 }
 
 function renderModuleIntro(module) {
