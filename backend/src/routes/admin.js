@@ -820,6 +820,7 @@ function _generateQuizQuestions(vocab, count) {
       const options = _pickRandom([correct.reading, ...otherReadings.map((v) => v.reading)], 4);
       q = {
         question: `Bagaimana cara baca **${correct.japanese}** ?`,
+        category: 'vocabulary',
         jp: correct.japanese,
         options,
         correctIdx: options.indexOf(correct.reading),
@@ -835,6 +836,7 @@ function _generateQuizQuestions(vocab, count) {
       const options = _pickRandom([correct.indonesian, ...others.map((v) => v.indonesian)], 4);
       q = {
         question: `Apa arti dari **${correct.japanese}** ?`,
+        category: 'vocabulary',
         jp: correct.japanese,
         options,
         correctIdx: options.indexOf(correct.indonesian),
@@ -850,6 +852,7 @@ function _generateQuizQuestions(vocab, count) {
       const options = _pickRandom([correct.japanese, ...others.map((v) => v.japanese)], 4);
       q = {
         question: `Bahasa Jepang untuk **"${correct.indonesian}"** ?`,
+        category: 'vocabulary',
         options,
         correctIdx: options.indexOf(correct.japanese),
         explanation: correct.reading ? `${correct.japanese} (${correct.reading}) — ${correct.indonesian}` : null,
@@ -863,6 +866,7 @@ function _generateQuizQuestions(vocab, count) {
       if (others.length < 3) continue;
       const options = _pickRandom([correct.indonesian, ...others.map((v) => v.indonesian)], 4);
       q = {
+        category: 'listening',
         question: `🎧 Dengar audio, pilih arti yang benar:`,
         jp: correct.japanese,
         options,
@@ -921,11 +925,21 @@ router.post('/lessons/:lessonId/generate-quiz', asyncHandler(async (req, res) =>
   let sort = 0;
   for (const q of questions) {
     const qText = q.jp ? `${q.question}\n\n${q.jp}` : q.question;
+    const category = q.category || 'vocabulary';
+    const sectionNumber = category === 'listening' ? 2 : 1;
+    const sectionLabel = `Section ${sectionNumber}`;
+    const sectionInstruction = category === 'listening'
+      ? '音声を聞いて、ただしい答えをえらんでください。'
+      : '問題1：＿＿の　ことばは　ひらがなで　どう　かきますか。 1・2・3・4から　いちばん　いい　ものを　ひとつ　えらんで　ください。';
     const ins = await query(
-      `INSERT INTO quiz_questions (lesson_id, question, question_type, explanation, sort_order)
-       VALUES ($1, $2, 'multiple_choice', $3, $4)
+      `INSERT INTO quiz_questions (
+         lesson_id, question, question_type, question_category,
+         section_number, section_label, section_instruction,
+         explanation, sort_order
+       )
+       VALUES ($1, $2, 'multiple_choice', $3, $4, $5, $6, $7, $8)
        RETURNING id`,
-      [lessonId, qText, q.explanation || null, sort++]
+      [lessonId, qText, category, sectionNumber, sectionLabel, sectionInstruction, q.explanation || null, sort++]
     );
     const qid = ins.rows[0].id;
     let osort = 0;
@@ -1039,9 +1053,28 @@ router.delete('/lessons/:id', asyncHandler(async (req, res) => {
 
 // ===== QUIZ QUESTIONS (with options in one call) =====
 
+const QUIZ_CATEGORIES = new Set(['vocabulary', 'grammar', 'listening']);
+
+function normalizeQuizCategory(value) {
+  const category = String(value || 'vocabulary').toLowerCase();
+  return QUIZ_CATEGORIES.has(category) ? category : 'vocabulary';
+}
+
+function normalizeQuizSectionNumber(value) {
+  return Math.max(1, Number(value) || 1);
+}
+
 router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
   const questions = await query(
-    `SELECT * FROM quiz_questions WHERE lesson_id = $1 ORDER BY sort_order ASC`,
+    `SELECT * FROM quiz_questions
+     WHERE lesson_id = $1
+     ORDER BY CASE question_category
+                WHEN 'vocabulary' THEN 1
+                WHEN 'grammar' THEN 2
+                WHEN 'listening' THEN 3
+                ELSE 9
+              END,
+              section_number ASC, sort_order ASC`,
     [req.params.lessonId]
   );
   const qIds = questions.rows.map((q) => q.id);
@@ -1063,14 +1096,34 @@ router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
 
 router.post('/quiz-questions', asyncHandler(async (req, res) => {
   const {
-    lessonId, question, questionType, correctAnswer, explanation, sortOrder, options,
+    lessonId, question, questionType, questionCategory, sectionNumber,
+    sectionLabel, sectionInstruction, correctAnswer, explanation, sortOrder, options,
   } = req.body || {};
   if (!lessonId || !question) return res.status(400).json({ error: 'lessonId and question required' });
 
+  const category = normalizeQuizCategory(questionCategory);
+  const sectionNo = normalizeQuizSectionNumber(sectionNumber);
+  const sectionTitle = (sectionLabel && String(sectionLabel).trim()) || `Section ${sectionNo}`;
+
   const qRes = await query(
-    `INSERT INTO quiz_questions (lesson_id, question, question_type, correct_answer, explanation, sort_order)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [lessonId, question, questionType || 'multiple_choice', correctAnswer || null, explanation || null, sortOrder || 0]
+    `INSERT INTO quiz_questions (
+       lesson_id, question, question_type, question_category,
+       section_number, section_label, section_instruction,
+       correct_answer, explanation, sort_order
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+    [
+      lessonId,
+      question,
+      questionType || 'multiple_choice',
+      category,
+      sectionNo,
+      sectionTitle,
+      sectionInstruction || null,
+      correctAnswer || null,
+      explanation || null,
+      sortOrder || 0,
+    ]
   );
   const q = qRes.rows[0];
 
@@ -1089,16 +1142,38 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
 }));
 
 router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
-  const { question, questionType, correctAnswer, explanation, sortOrder, options } = req.body || {};
+  const {
+    question, questionType, questionCategory, sectionNumber,
+    sectionLabel, sectionInstruction, correctAnswer, explanation, sortOrder, options,
+  } = req.body || {};
+  const category = questionCategory ? normalizeQuizCategory(questionCategory) : null;
+  const sectionNo = sectionNumber == null ? null : normalizeQuizSectionNumber(sectionNumber);
+  const hasSectionInstruction = Object.prototype.hasOwnProperty.call(req.body || {}, 'sectionInstruction');
   const result = await query(
     `UPDATE quiz_questions SET
        question = COALESCE($2, question),
        question_type = COALESCE($3, question_type),
        correct_answer = COALESCE($4, correct_answer),
        explanation = COALESCE($5, explanation),
-       sort_order = COALESCE($6, sort_order)
-     WHERE id = $1 RETURNING *`,
-    [req.params.id, question, questionType, correctAnswer, explanation, sortOrder]
+       sort_order = COALESCE($6, sort_order),
+       question_category = COALESCE($7, question_category),
+       section_number = COALESCE($8, section_number),
+       section_label = COALESCE($9, section_label),
+       section_instruction = CASE WHEN $11::boolean THEN $10 ELSE section_instruction END
+      WHERE id = $1 RETURNING *`,
+    [
+      req.params.id,
+      question,
+      questionType,
+      correctAnswer,
+      explanation,
+      sortOrder,
+      category,
+      sectionNo,
+      sectionLabel || (sectionNo ? `Section ${sectionNo}` : null),
+      sectionInstruction || null,
+      hasSectionInstruction,
+    ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
 
