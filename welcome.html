@@ -2852,6 +2852,10 @@
     padding: 14px 17px;
     font-weight: 800;
   }
+  .quiz-paper-tab:disabled {
+    color: #b8b8b8;
+    cursor: not-allowed;
+  }
   .quiz-paper-section {
     position: relative;
     border: 1px solid #d8d8d8;
@@ -3088,6 +3092,25 @@ function transformCourseFromApi(apiCourse) {
   };
 }
 
+const QUIZ_CATEGORY_META = {
+  vocabulary: {
+    label: 'Vocabulary',
+    defaultInstruction: '問題1：＿＿の　ことばは　ひらがなで　どう　かきますか。 1・2・3・4から　いちばん　いい　ものを　ひとつ　えらんで　ください。',
+  },
+  grammar: {
+    label: 'Grammar',
+    defaultInstruction: '問題2：＿＿に　入る　いちばん　いい　ものを　1・2・3・4から　ひとつ　えらんで　ください。',
+  },
+  listening: {
+    label: 'Listening',
+    defaultInstruction: '問題3：音声を聞いて、ただしい答えを　1・2・3・4から　ひとつ　えらんで　ください。',
+  },
+};
+
+function normalizeQuizCategory(value) {
+  return QUIZ_CATEGORY_META[value] ? value : 'vocabulary';
+}
+
 // Migration stored quiz prompts as "q\n\njp" (or just "q" if no jp). Split
 // back, then match the shape the existing quiz engine expects.
 // Note: the `correct` index is intentionally absent here — the API never
@@ -3107,6 +3130,10 @@ function transformQuestionFromApi(apiQ) {
     correct: -1,
     explain: apiQ.explanation || '',
     questionId: apiQ.id,
+    category: normalizeQuizCategory(apiQ.question_category || apiQ.questionCategory),
+    sectionNumber: Number(apiQ.section_number || apiQ.sectionNumber) || 1,
+    sectionLabel: apiQ.section_label || apiQ.sectionLabel || `Section ${Number(apiQ.section_number || apiQ.sectionNumber) || 1}`,
+    sectionInstruction: apiQ.section_instruction || apiQ.sectionInstruction || '',
   };
 }
 
@@ -3338,29 +3365,94 @@ function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
     answers: [],
     answeredByIndex: {},
     correctByIndex: {},
+    selectedByIndex: {},
+    activeCategory: firstQuizCategoryWithQuestions(questions),
   };
   renderQuizQuestion(container);
 }
 
-function renderQuizPaperItem(q, qi) {
+function firstQuizCategoryWithQuestions(questions) {
+  return ['vocabulary', 'grammar', 'listening'].find((cat) =>
+    questions.some((q) => normalizeQuizCategory(q.category) === cat)
+  ) || 'vocabulary';
+}
+
+function quizQuestionsByCategory(questions, category) {
+  return questions
+    .map((q, index) => ({ q, index }))
+    .filter((item) => normalizeQuizCategory(item.q.category) === category);
+}
+
+function renderQuizCategoryTabs(questions) {
+  return ['vocabulary', 'grammar', 'listening'].map((cat) => {
+    const meta = QUIZ_CATEGORY_META[cat];
+    const count = questions.filter((q) => normalizeQuizCategory(q.category) === cat).length;
+    const active = quizState.activeCategory === cat;
+    return `
+      <button class="quiz-paper-tab ${active ? 'active' : ''}" type="button"
+        ${count === 0 ? 'disabled' : ''}
+        onclick="window.setQuizCategory('${cat}')">
+        ${meta.label}${count ? ` ${count}` : ''}
+      </button>
+    `;
+  }).join('');
+}
+
+function renderQuizSections(categoryItems) {
+  const sections = [];
+  const byKey = new Map();
+  categoryItems.forEach((item) => {
+    const sectionNumber = Number(item.q.sectionNumber) || 1;
+    const key = String(sectionNumber);
+    if (!byKey.has(key)) {
+      const meta = QUIZ_CATEGORY_META[normalizeQuizCategory(item.q.category)] || QUIZ_CATEGORY_META.vocabulary;
+      const section = {
+        number: sectionNumber,
+        label: item.q.sectionLabel || `Section ${sectionNumber}`,
+        instruction: item.q.sectionInstruction || meta.defaultInstruction,
+        items: [],
+      };
+      byKey.set(key, section);
+      sections.push(section);
+    }
+    byKey.get(key).items.push(item);
+  });
+
+  return sections.map((section) => `
+    <section class="quiz-paper-section">
+      <div class="quiz-section-label">${section.label}</div>
+      <div class="quiz-instruction">${section.instruction}</div>
+    </section>
+    <div class="quiz-paper-list">
+      ${section.items.map((item, i) => renderQuizPaperItem(item.q, item.index, section.number, i + 1)).join('')}
+    </div>
+  `).join('');
+}
+
+function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) {
   const letters = ['1', '2', '3', '4', '5'];
+  const answered = !!quizState.answeredByIndex?.[qi];
+  const selected = quizState.selectedByIndex?.[qi];
   return `
     <article class="quiz-paper-item" data-question-index="${qi}">
       <h2 class="quiz-question quiz-paper-question">
-        <span class="quiz-paper-number">1.${qi + 1}</span>
+        <span class="quiz-paper-number">${sectionNumber}.${questionNumber}</span>
         <span>${q.q}</span>
         ${q.jp ? `<span class="quiz-paper-jp">${q.jp}</span>` : ''}
         ${q.jp ? `<button class="pronounce-btn quiz-paper-audio" onclick="speakJapanese('${q.jp}', this)">Dengar</button>` : ''}
       </h2>
       <div class="quiz-options" id="quiz-options-${qi}">
         ${q.options.map((opt, i) => `
-          <button class="quiz-option" data-idx="${i}" onclick="window.pickQuizAnswer(${qi}, ${i})">
+          <button class="quiz-option ${answered ? 'disabled' : ''} ${answered && i === q.correct ? 'correct' : ''} ${answered && i === selected && i !== q.correct ? 'wrong' : ''}"
+            data-idx="${i}" onclick="window.pickQuizAnswer(${qi}, ${i})">
             <span class="quiz-option-letter">${letters[i]}</span>
             <span>${opt}</span>
           </button>
         `).join('')}
       </div>
-      <div class="quiz-feedback" id="quiz-feedback-${qi}"></div>
+      <div class="quiz-feedback" id="quiz-feedback-${qi}">
+        ${answered ? `<div class="quiz-explanation"><strong>${quizState.correctByIndex[qi] ? '✓ Benar!' : '✗ Belum tepat'}</strong> — ${q.explain || 'Jawaban kamu sudah dicatat.'}</div>` : ''}
+      </div>
     </article>
   `;
 }
@@ -3368,25 +3460,15 @@ function renderQuizPaperItem(q, qi) {
 function renderQuizQuestion(container) {
   const { questions } = quizState;
   const total = questions.length;
+  const activeItems = quizQuestionsByCategory(questions, quizState.activeCategory);
 
   container.innerHTML = `
     <div class="quiz-container quiz-paper">
       <div class="quiz-paper-tabs" role="tablist" aria-label="Kategori kuis">
-        <button class="quiz-paper-tab active" type="button">Vocabulary</button>
-        <button class="quiz-paper-tab" type="button">Grammar</button>
-        <button class="quiz-paper-tab" type="button">Listening</button>
+        ${renderQuizCategoryTabs(questions)}
       </div>
 
-      <section class="quiz-paper-section">
-        <div class="quiz-section-label">Section 1</div>
-        <div class="quiz-instruction">
-          問題1：＿＿の　ことばは　ひらがなで　どう　かきますか。 1・2・3・4から　いちばん　いい　ものを　ひとつ　えらんで　ください。
-        </div>
-      </section>
-
-      <div class="quiz-paper-list">
-        ${questions.map((q, qi) => renderQuizPaperItem(q, qi)).join('')}
-      </div>
+      ${activeItems.length ? renderQuizSections(activeItems) : '<div class="empty">Belum ada soal di kategori ini.</div>'}
 
       <div class="quiz-paper-actions">
         <div class="quiz-progress-text" id="quiz-paper-progress">Terjawab 0 / ${total}</div>
@@ -3394,7 +3476,16 @@ function renderQuizQuestion(container) {
       </div>
     </div>
   `;
+  updateQuizPaperProgress();
 }
+
+window.setQuizCategory = (category) => {
+  if (!quizState) return;
+  const next = normalizeQuizCategory(category);
+  if (!quizState.questions.some((q) => normalizeQuizCategory(q.category) === next)) return;
+  quizState.activeCategory = next;
+  renderQuizQuestion(document.getElementById('main-content'));
+};
 
 window.pickQuizAnswer = async (questionIndex, optionIndex) => {
   const qi = typeof optionIndex === 'number' ? questionIndex : quizState.idx;
@@ -3403,6 +3494,7 @@ window.pickQuizAnswer = async (questionIndex, optionIndex) => {
   quizState.answeredByIndex[qi] = true;
   quizState.answered = true;
   quizState.selected = i;
+  quizState.selectedByIndex[qi] = i;
   quizState.idx = qi;
   const q = quizState.questions[qi];
 
