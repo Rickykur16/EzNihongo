@@ -1008,7 +1008,8 @@ function renderLessons() {
              <button class="btn btn-ghost" onclick="manageGrammar('${l.id}', '${titleEsc}', '${mod.id}')">Grammar (${grammarN})</button>`;
         }
         const quizBtn = l.type === 'quiz'
-          ? `<button class="btn btn-ghost" onclick="manageQuiz('${l.id}', '${titleEsc}')">Kuis</button>`
+          ? `<button class="btn btn-ghost" onclick="manageQuiz('${l.id}', '${titleEsc}')">Kuis</button>
+             <button class="btn btn-ghost" onclick="generateQuizFromVocab('${l.id}', '${titleEsc}')" title="Generate ulang 10 soal MC dari kosakata Bab (replace soal lama)">🎲 Auto-Gen</button>`
           : '';
         return `
         <tr>
@@ -1325,6 +1326,23 @@ window.deleteLesson = async (id, title) => {
     await loadModulesForCourse(STATE.selectedCourse); renderLessons();
     notify('Pelajaran dihapus');
   } catch (err) { notify('Gagal hapus: ' + err.message, true); }
+};
+
+// Auto-generate quiz dari vocab Bab di module yg sama. Replace soal lama.
+window.generateQuizFromVocab = async (lessonId, lessonTitle) => {
+  const countStr = prompt(`Generate berapa soal MC untuk "${lessonTitle}"?\n\nMix: bacaan kanji, arti JP→ID, tulis JP, listening (audio). Replace soal lama.`, '10');
+  if (countStr === null) return;
+  const count = Math.max(4, Math.min(50, Number(countStr) || 10));
+  notify('Generating ' + count + ' soal...');
+  try {
+    const d = await api('/admin/lessons/' + lessonId + '/generate-quiz', {
+      method: 'POST',
+      body: JSON.stringify({ count }),
+    });
+    notify(`${d.created} soal dibuat dari ${d.vocabPool} kosakata. Cek "Kuis" buat review.`);
+  } catch (err) {
+    notify('Gagal generate: ' + err.message, true);
+  }
 };
 
 // ─── Import Pelajaran dari Notion ───
