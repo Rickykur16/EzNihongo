@@ -976,7 +976,10 @@ function renderLessons() {
     STATE.lessons = (mod && mod.lessons) || [];
     if (STATE.lessons.length === 0) {
       body = `
-        <div class="toolbar"><button class="btn btn-primary" onclick="newLesson('${STATE.selectedModule}')">+ Pelajaran baru</button></div>
+        <div class="toolbar">
+          <button class="btn btn-primary" onclick="newLesson('${STATE.selectedModule}')">+ Pelajaran baru</button>
+          <button class="btn btn-ghost" onclick="openPelajaranImporter('${STATE.selectedModule}')" title="Pilih pelajaran dari Bab Notion buat di-import sebagai lesson di modul ini">↻ Import Pelajaran dari Notion</button>
+        </div>
         <div class="empty">Belum ada pelajaran di modul ini.</div>
       `;
     } else {
@@ -1023,7 +1026,10 @@ function renderLessons() {
       `;
       }).join('');
       body = `
-        <div class="toolbar"><button class="btn btn-primary" onclick="newLesson('${STATE.selectedModule}')">+ Pelajaran baru</button></div>
+        <div class="toolbar">
+          <button class="btn btn-primary" onclick="newLesson('${STATE.selectedModule}')">+ Pelajaran baru</button>
+          <button class="btn btn-ghost" onclick="openPelajaranImporter('${STATE.selectedModule}')" title="Pilih pelajaran dari Bab Notion buat di-import sebagai lesson di modul ini">↻ Import Pelajaran dari Notion</button>
+        </div>
         <table><thead><tr><th>Judul / slug</th><th>Tipe</th><th>Durasi (menit)</th><th>Urutan</th><th></th></tr></thead><tbody>${rows}</tbody></table>
       `;
     }
@@ -1319,6 +1325,107 @@ window.deleteLesson = async (id, title) => {
     await loadModulesForCourse(STATE.selectedCourse); renderLessons();
     notify('Pelajaran dihapus');
   } catch (err) { notify('Gagal hapus: ' + err.message, true); }
+};
+
+// ─── Import Pelajaran dari Notion ───
+// Admin picks a Notion Bab → list of child pages (5 pelajaran) shown as
+// checkboxes → import selected ones as EzNihongo lessons under the active
+// module. Body content + type auto-mapped (Kosakata=deck, Latihan=quiz, rest=text).
+window.openPelajaranImporter = async (moduleId) => {
+  openModal(`
+    <h3>Import Pelajaran dari Notion</h3>
+    <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 14px;">
+      Pilih Bab Notion, centang pelajaran yg mau di-import. Konten teks-nya ikut ke-render jadi HTML, type otomatis (Kosakata → deck, Latihan → quiz, lainnya → text).
+    </p>
+    <div class="field">
+      <label>Bab Notion</label>
+      <select id="pi-bab"><option value="">Memuat...</option></select>
+    </div>
+    <div id="pi-list" style="margin-top:10px;font-size:13px;color:#737373;">Pilih Bab dulu...</div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button type="button" class="btn btn-primary" id="pi-import" onclick="piRunImport('${moduleId}')" disabled>Import</button>
+    </div>
+  `);
+  modalContent.style.maxWidth = '600px';
+  try {
+    const d = await api('/admin/notion-bab');
+    const opts = (d.bab || []).map((b) => {
+      const label = (b.kode ? b.kode + ' — ' : '') + b.name;
+      return `<option value="${escapeHtml(b.id)}">${escapeHtml(label)}</option>`;
+    }).join('');
+    const sel = document.getElementById('pi-bab');
+    if (sel) {
+      sel.innerHTML = '<option value="">— pilih Bab —</option>' + opts;
+      sel.addEventListener('change', () => piLoadPelajaran(sel.value));
+    }
+  } catch (err) {
+    const sel = document.getElementById('pi-bab');
+    if (sel) sel.innerHTML = '<option value="">(gagal muat: ' + err.message + ')</option>';
+  }
+};
+
+window.piLoadPelajaran = async (babPageId) => {
+  const list = document.getElementById('pi-list');
+  const btn = document.getElementById('pi-import');
+  if (!list) return;
+  if (!babPageId) { list.innerHTML = 'Pilih Bab dulu...'; if (btn) btn.disabled = true; return; }
+  list.innerHTML = 'Memuat pelajaran...';
+  try {
+    const d = await api('/admin/notion-bab/' + encodeURIComponent(babPageId) + '/pelajaran');
+    const pelajaran = d.pelajaran || [];
+    if (pelajaran.length === 0) {
+      list.innerHTML = '<div style="font-style:italic;color:#999;">Bab ini ga punya child page.</div>';
+      if (btn) btn.disabled = true;
+      return;
+    }
+    const typeBadge = (t) => {
+      const colors = { deck: '#16a34a', quiz: '#dc2626', text: '#737373' };
+      return `<span style="display:inline-block;padding:2px 7px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;border-radius:4px;background:${colors[t] || '#999'};color:#fff;font-family:var(--font-mono);">${escapeHtml(t)}</span>`;
+    };
+    list.innerHTML = `
+      <div style="font-size:11px;color:#737373;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:8px;">${pelajaran.length} pelajaran ditemukan</div>
+      <div style="display:flex;flex-direction:column;gap:6px;border:1px solid var(--paper-300);border-radius:8px;padding:8px;">
+        ${pelajaran.map((p) => `
+          <label style="display:flex;align-items:center;gap:10px;padding:6px;cursor:pointer;border-radius:6px;" onmouseover="this.style.background='var(--paper-100)'" onmouseout="this.style.background=''">
+            <input type="checkbox" class="pi-check" value="${escapeHtml(p.id)}" checked />
+            <span style="flex:1;font-size:13.5px;color:var(--ink-700);font-weight:500;">${escapeHtml(p.title)}</span>
+            ${typeBadge(p.type)}
+          </label>`).join('')}
+      </div>
+    `;
+    if (btn) btn.disabled = false;
+  } catch (err) {
+    list.innerHTML = '<div style="color:var(--danger);">Gagal: ' + err.message + '</div>';
+    if (btn) btn.disabled = true;
+  }
+};
+
+window.piRunImport = async (moduleId) => {
+  const checks = [...document.querySelectorAll('.pi-check:checked')];
+  const ids = checks.map((c) => c.value);
+  if (ids.length === 0) { notify('Pilih minimal 1 pelajaran', true); return; }
+  const btn = document.getElementById('pi-import');
+  if (btn) { btn.disabled = true; btn.textContent = 'Memuat...'; }
+  notify('Importing ' + ids.length + ' pelajaran dari Notion...');
+  try {
+    const d = await api('/admin/modules/' + moduleId + '/import-notion-pelajaran', {
+      method: 'POST',
+      body: JSON.stringify({ pelajaranIds: ids }),
+    });
+    const created = d.created || [];
+    const errors = d.errors || [];
+    notify(created.length + ' pelajaran di-import' + (errors.length ? ' (' + errors.length + ' gagal)' : ''));
+    if (errors.length) {
+      alert('Berhasil: ' + created.length + '\nGagal: ' + errors.length + '\n\n' + errors.map((e) => '- ' + (e.title || e.pageId) + ': ' + e.error).join('\n'));
+    }
+    closeModal();
+    await loadModulesForCourse(STATE.selectedCourse);
+    renderLessons();
+  } catch (err) {
+    notify('Gagal import: ' + err.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = 'Import'; }
+  }
 };
 
 // ─── Quiz manager ───
