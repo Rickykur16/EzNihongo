@@ -2815,6 +2815,175 @@
     .deck-modal-nav button { padding: 8px 10px; font-size: 12px; }
   }
 
+  /* JLPT-style quiz / assignment paper */
+  .quiz-container.quiz-paper {
+    max-width: 1006px;
+    margin: 0 auto;
+    padding: 0;
+    background: #fff;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    font-family: var(--font-body);
+  }
+  .quiz-paper-tabs {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin: 2px 0 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .quiz-paper-tabs::-webkit-scrollbar { display: none; }
+  .quiz-paper-tab {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: #777;
+    border-radius: 24px;
+    padding: 11px 14px;
+    font: 500 24px/1 var(--font-body);
+    white-space: nowrap;
+    cursor: default;
+  }
+  .quiz-paper-tab.active {
+    background: #202020;
+    color: #fff;
+    padding: 14px 17px;
+    font-weight: 800;
+  }
+  .quiz-paper-section {
+    position: relative;
+    border: 1px solid #d8d8d8;
+    border-radius: 6px;
+    padding: 38px 16px;
+    margin: 0 0 36px;
+  }
+  .quiz-section-label {
+    position: absolute;
+    top: -25px;
+    left: 11px;
+    background: #fff;
+    border: 1px solid #d8d8d8;
+    border-radius: 7px;
+    padding: 10px 16px;
+    color: #161a1d;
+    font-size: 24px;
+    font-weight: 800;
+  }
+  .quiz-instruction {
+    color: #111820;
+    font-size: clamp(20px, 2.3vw, 25px);
+    line-height: 1.35;
+    font-weight: 800;
+    letter-spacing: 0;
+  }
+  .quiz-paper-list {
+    display: grid;
+    gap: 34px;
+  }
+  .quiz-paper-item {
+    display: grid;
+    gap: 22px;
+  }
+  .quiz-question.quiz-paper-question {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0;
+    color: #111820;
+    font-size: clamp(20px, 2.1vw, 24px);
+    line-height: 1.45;
+    font-weight: 800;
+    letter-spacing: 0;
+  }
+  .quiz-paper-number { font-weight: 900; }
+  .quiz-paper-jp {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+  .quiz-paper-audio {
+    margin-left: 4px;
+    transform: translateY(-2px);
+  }
+  .quiz-paper .quiz-options {
+    display: grid;
+    gap: 11px;
+  }
+  .quiz-paper .quiz-option {
+    min-height: 59px;
+    padding: 16px;
+    background: #efefef;
+    border: 0;
+    border-left: 0;
+    border-radius: 6px;
+    box-shadow: none;
+    color: #111820;
+    font-size: 20px;
+    font-weight: 800;
+    transform: none;
+  }
+  .quiz-paper .quiz-option:hover:not(.disabled) {
+    background: #e4e4e4;
+    border: 0;
+    transform: none;
+    box-shadow: none;
+  }
+  .quiz-paper .quiz-option-letter {
+    width: auto;
+    height: auto;
+    min-width: 20px;
+    background: transparent;
+    color: #111820;
+    border-radius: 0;
+    font-size: 17px;
+    font-weight: 900;
+  }
+  .quiz-paper .quiz-option.correct {
+    background: #e4f7e8;
+    color: var(--success);
+  }
+  .quiz-paper .quiz-option.wrong {
+    background: #fde8e8;
+    color: var(--danger);
+  }
+  .quiz-paper .quiz-option.correct .quiz-option-letter,
+  .quiz-paper .quiz-option.wrong .quiz-option-letter {
+    background: transparent;
+    color: inherit;
+  }
+  .quiz-paper .quiz-explanation {
+    margin-top: -8px;
+    border-radius: 6px;
+    box-shadow: none;
+  }
+  .quiz-feedback .quiz-next-btn { display: none; }
+  .quiz-paper-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 34px;
+    padding-top: 22px;
+    border-top: 1px solid #e8e8e8;
+  }
+  .quiz-paper-actions .quiz-next-btn:disabled {
+    background: #ddd;
+    color: #999;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+  }
+  @media (max-width: 700px) {
+    .quiz-paper-tab { font-size: 20px; }
+    .quiz-paper-tab.active { padding: 12px 16px; }
+    .quiz-paper-section { padding: 32px 14px 28px; }
+    .quiz-section-label { font-size: 20px; }
+    .quiz-paper .quiz-option { min-height: 54px; font-size: 18px; }
+    .quiz-paper-actions { align-items: stretch; flex-direction: column; }
+  }
 </style>
 </head>
 <body>
@@ -3159,51 +3328,89 @@ function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
     container.innerHTML = `<div class="quiz-container"><p style="color:#485f84;">Kuis belum tersedia.</p></div>`;
     return;
   }
-  quizState = { key, questions, idx: 0, correct: 0, answered: false, selected: -1, answers: [] };
+  quizState = {
+    key,
+    questions,
+    idx: 0,
+    correct: 0,
+    answered: false,
+    selected: -1,
+    answers: [],
+    answeredByIndex: {},
+    correctByIndex: {},
+  };
   renderQuizQuestion(container);
 }
 
-function renderQuizQuestion(container) {
-  const { questions, idx } = quizState;
-  const total = questions.length;
-  const q = questions[idx];
-  const letters = ['A', 'B', 'C', 'D', 'E'];
-  const pctProgress = Math.round(((idx) / total) * 100);
-
-  container.innerHTML = `
-    <div class="quiz-container">
-      <div class="quiz-progress-wrap">
-        <div class="quiz-progress-bar"><div class="quiz-progress-fill" style="width:${pctProgress}%"></div></div>
-        <span class="quiz-progress-text">Soal ${idx + 1} / ${total}</span>
-      </div>
-      <h2 class="quiz-question">
-        ${q.q}
-        ${q.jp ? `<span class="jp">${q.jp} <button class="pronounce-btn" onclick="speakJapanese('${q.jp}', this)">🔊 Dengar</button></span>` : ''}
+function renderQuizPaperItem(q, qi) {
+  const letters = ['1', '2', '3', '4', '5'];
+  return `
+    <article class="quiz-paper-item" data-question-index="${qi}">
+      <h2 class="quiz-question quiz-paper-question">
+        <span class="quiz-paper-number">1.${qi + 1}</span>
+        <span>${q.q}</span>
+        ${q.jp ? `<span class="quiz-paper-jp">${q.jp}</span>` : ''}
+        ${q.jp ? `<button class="pronounce-btn quiz-paper-audio" onclick="speakJapanese('${q.jp}', this)">Dengar</button>` : ''}
       </h2>
-      <div class="quiz-options" id="quiz-options">
+      <div class="quiz-options" id="quiz-options-${qi}">
         ${q.options.map((opt, i) => `
-          <button class="quiz-option" data-idx="${i}" onclick="window.pickQuizAnswer(${i})">
+          <button class="quiz-option" data-idx="${i}" onclick="window.pickQuizAnswer(${qi}, ${i})">
             <span class="quiz-option-letter">${letters[i]}</span>
             <span>${opt}</span>
           </button>
         `).join('')}
       </div>
-      <div id="quiz-feedback"></div>
+      <div class="quiz-feedback" id="quiz-feedback-${qi}"></div>
+    </article>
+  `;
+}
+
+function renderQuizQuestion(container) {
+  const { questions } = quizState;
+  const total = questions.length;
+
+  container.innerHTML = `
+    <div class="quiz-container quiz-paper">
+      <div class="quiz-paper-tabs" role="tablist" aria-label="Kategori kuis">
+        <button class="quiz-paper-tab active" type="button">Vocabulary</button>
+        <button class="quiz-paper-tab" type="button">Grammar</button>
+        <button class="quiz-paper-tab" type="button">Listening</button>
+      </div>
+
+      <section class="quiz-paper-section">
+        <div class="quiz-section-label">Section 1</div>
+        <div class="quiz-instruction">
+          問題1：＿＿の　ことばは　ひらがなで　どう　かきますか。 1・2・3・4から　いちばん　いい　ものを　ひとつ　えらんで　ください。
+        </div>
+      </section>
+
+      <div class="quiz-paper-list">
+        ${questions.map((q, qi) => renderQuizPaperItem(q, qi)).join('')}
+      </div>
+
+      <div class="quiz-paper-actions">
+        <div class="quiz-progress-text" id="quiz-paper-progress">Terjawab 0 / ${total}</div>
+        <button class="quiz-next-btn" id="quiz-finish-btn" onclick="finishQuiz()" disabled>Lihat Hasil</button>
+      </div>
     </div>
   `;
 }
 
-window.pickQuizAnswer = async (i) => {
-  if (quizState.answered) return;
+window.pickQuizAnswer = async (questionIndex, optionIndex) => {
+  const qi = typeof optionIndex === 'number' ? questionIndex : quizState.idx;
+  const i = typeof optionIndex === 'number' ? optionIndex : questionIndex;
+  if (quizState.answeredByIndex?.[qi]) return;
+  quizState.answeredByIndex[qi] = true;
   quizState.answered = true;
   quizState.selected = i;
-  const q = quizState.questions[quizState.idx];
+  quizState.idx = qi;
+  const q = quizState.questions[qi];
 
   // Disable options + show transient loading while the server tells us if
   // the pick was right. The lesson API never sent is_correct, so we can't
   // grade locally.
-  document.querySelectorAll('.quiz-option').forEach((btn) => btn.classList.add('disabled'));
-  const feedback = document.getElementById('quiz-feedback');
+  document.querySelectorAll(`#quiz-options-${qi} .quiz-option`).forEach((btn) => btn.classList.add('disabled'));
+  const feedback = document.getElementById(`quiz-feedback-${qi}`);
   feedback.innerHTML = `<div class="quiz-explanation">Memeriksa…</div>`;
 
   // Record the answer for the final /quiz-attempt round-up.
@@ -3211,7 +3418,8 @@ window.pickQuizAnswer = async (i) => {
     quizState.answers.push({ questionId: q.questionId, optionId: q.optionIds[i] });
   }
 
-  let isCorrect = false;
+  let correctOptionIndex = typeof q.correct === 'number' ? q.correct : -1;
+  let isCorrect = correctOptionIndex === i;
   let correctOptionId = null;
   try {
     const [slug, mId, lId] = (quizState.key || '').split(':');
@@ -3237,10 +3445,13 @@ window.pickQuizAnswer = async (i) => {
     console.warn('quiz/check failed:', err?.message || err);
   }
 
-  q.correct = correctOptionId && q.optionIds ? q.optionIds.indexOf(correctOptionId) : -1;
-  if (isCorrect) quizState.correct++;
+  q.correct = correctOptionId && q.optionIds ? q.optionIds.indexOf(correctOptionId) : correctOptionIndex;
+  if (isCorrect) {
+    quizState.correctByIndex[qi] = true;
+    quizState.correct++;
+  }
 
-  document.querySelectorAll('.quiz-option').forEach((btn, bi) => {
+  document.querySelectorAll(`#quiz-options-${qi} .quiz-option`).forEach((btn, bi) => {
     if (bi === q.correct) btn.classList.add('correct');
     if (bi === i && !isCorrect) btn.classList.add('wrong');
   });
@@ -3248,7 +3459,7 @@ window.pickQuizAnswer = async (i) => {
   const isLast = quizState.idx === quizState.questions.length - 1;
   feedback.innerHTML = `
     <div class="quiz-explanation">
-      <strong>${isCorrect ? '✓ Benar!' : '✗ Belum tepat'}</strong> — ${q.explain}
+      <strong>${isCorrect ? '✓ Benar!' : '✗ Belum tepat'}</strong> — ${q.explain || 'Jawaban kamu sudah dicatat.'}
     </div>
     <button class="quiz-next-btn" onclick="window.nextQuizQuestion()">
       ${isLast ? 'Lihat Hasil →' : 'Soal Berikutnya →'}
@@ -3256,7 +3467,18 @@ window.pickQuizAnswer = async (i) => {
   `;
 
   if (isCorrect) addXP(5, 'jawaban benar');
+  updateQuizPaperProgress();
 };
+
+function updateQuizPaperProgress() {
+  if (!quizState) return;
+  const answered = Object.keys(quizState.answeredByIndex || {}).length;
+  const total = quizState.questions.length;
+  const progress = document.getElementById('quiz-paper-progress');
+  const finishBtn = document.getElementById('quiz-finish-btn');
+  if (progress) progress.textContent = `Terjawab ${answered} / ${total}`;
+  if (finishBtn) finishBtn.disabled = answered < total;
+}
 
 window.nextQuizQuestion = () => {
   if (quizState.idx < quizState.questions.length - 1) {
@@ -3294,7 +3516,7 @@ async function finishQuiz() {
     const [slug, mId, lId] = key.split(':');
     const lesson = findLesson(slug, mId, lId);
     const lessonApiId = lesson?.apiId;
-    if (lessonApiId && typeof window.ezApi === 'function') {
+    if (lessonApiId && typeof window.ezApi === 'function' && answers.length > 0) {
       const res = await window.ezApi(`/progress/lesson/${encodeURIComponent(lessonApiId)}/quiz-attempt`, {
         method: 'POST',
         body: JSON.stringify({ answers }),
