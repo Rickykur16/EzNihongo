@@ -75,6 +75,15 @@
   .sa-section.is-unset { background: var(--paper-50, #fafafa); border-style: dashed; opacity: .9; }
   .sa-section.drag-over { border-color: var(--danger); background: #fdf4f4; }
   .sa-section-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .sa-section-action {
+    border: 1px solid var(--paper-300); background: #fff; color: var(--ink-500);
+    width: 26px; height: 26px; border-radius: 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 12px; line-height: 1;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .sa-section-action:hover { background: var(--paper-100); color: var(--ink-700); }
+  .sa-section-action.sa-section-delete:hover { background: var(--danger-soft); color: var(--danger); border-color: #fecaca; }
   .sa-section-name { flex: 1; font-size: 13.5px; font-weight: 700; color: var(--ink-700); }
   .sa-section-count { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: var(--ink-500); font-family: var(--font-mono); text-transform: uppercase; }
   .sa-modules { display: flex; flex-direction: column; gap: 6px; min-height: 32px; }
@@ -770,6 +779,13 @@ function _saRender() {
     const safeNameAttr = escapeHtml(name);
     const safeNameJs = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     const isUnset = name === SA_UNSET;
+    const actions = isUnset
+      ? ''
+      : `
+        <button class="sa-section-action" type="button" title="Ganti nama Section"
+                onclick="saRenameSection('${safeNameJs}')" aria-label="Ganti nama">✎</button>
+        <button class="sa-section-action sa-section-delete" type="button" title="Hapus Section"
+                onclick="saDeleteSection('${safeNameJs}')" aria-label="Hapus">✕</button>`;
     return `
       <div class="sa-section ${isUnset ? 'is-unset' : ''}" data-section="${safeNameAttr}"
            ondragover="saAllowDrop(event)"
@@ -778,6 +794,7 @@ function _saRender() {
         <div class="sa-section-head">
           <span class="sa-section-name">${safeNameAttr}</span>
           <span class="sa-section-count">${modules.length} modul</span>
+          ${actions}
         </div>
         <div class="sa-modules">
           ${modules.length === 0
@@ -795,6 +812,75 @@ function _saRender() {
     `;
   }).join('');
 }
+
+window.saRenameSection = async (oldName) => {
+  if (oldName === SA_UNSET) return;
+  const input = prompt('Ganti nama Section "' + oldName + '" jadi:', oldName);
+  if (input === null) return;
+  const next = input.trim();
+  if (!next) { notify('Nama Section ga boleh kosong', true); return; }
+  if (next === SA_UNSET) { notify('Nama itu reserved', true); return; }
+  if (next === oldName) return;
+  const affected = (STATE.modules || []).filter((m) => (m.section_name || '').trim() === oldName);
+  // If only a session-extra section (no modules use it yet) → just rename in
+  // the extras list, no DB write needed.
+  if (affected.length === 0) {
+    const i = _saExtraSections.indexOf(oldName);
+    if (i >= 0) _saExtraSections[i] = next;
+    _saRender();
+    notify('Section "' + oldName + '" → "' + next + '"');
+    return;
+  }
+  notify('Update ' + affected.length + ' modul…');
+  try {
+    for (const m of affected) {
+      const r = await api('/admin/modules/' + m.id, {
+        method: 'PUT',
+        body: JSON.stringify({ sectionName: next }),
+      });
+      m.section_name = (r?.module && r.module.section_name) || next;
+    }
+    // Forget the old name from session extras if it was there.
+    const i = _saExtraSections.indexOf(oldName);
+    if (i >= 0) _saExtraSections.splice(i, 1);
+    _saRender();
+    notify('Section "' + oldName + '" → "' + next + '" (' + affected.length + ' modul)');
+  } catch (err) {
+    notify('Gagal rename: ' + err.message, true);
+  }
+};
+
+window.saDeleteSection = async (name) => {
+  if (name === SA_UNSET) return;
+  const affected = (STATE.modules || []).filter((m) => (m.section_name || '').trim() === name);
+  const msg = affected.length === 0
+    ? 'Hapus Section "' + name + '"?'
+    : 'Hapus Section "' + name + '"? ' + affected.length + ' modul di dalamnya akan masuk ke "' + SA_UNSET + '".';
+  if (!confirm(msg)) return;
+  if (affected.length === 0) {
+    const i = _saExtraSections.indexOf(name);
+    if (i >= 0) _saExtraSections.splice(i, 1);
+    _saRender();
+    notify('Section "' + name + '" dihapus');
+    return;
+  }
+  notify('Update ' + affected.length + ' modul…');
+  try {
+    for (const m of affected) {
+      const r = await api('/admin/modules/' + m.id, {
+        method: 'PUT',
+        body: JSON.stringify({ sectionName: '' }),
+      });
+      m.section_name = (r?.module && r.module.section_name) || null;
+    }
+    const i = _saExtraSections.indexOf(name);
+    if (i >= 0) _saExtraSections.splice(i, 1);
+    _saRender();
+    notify('Section "' + name + '" dihapus, ' + affected.length + ' modul → Lainnya');
+  } catch (err) {
+    notify('Gagal hapus: ' + err.message, true);
+  }
+};
 
 window.saAddSection = () => {
   const input = document.getElementById('sa-new-name');
