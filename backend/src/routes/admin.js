@@ -558,6 +558,213 @@ router.post('/lessons/:lessonId/import-notion-deck', asyncHandler(async (req, re
   res.json({ imported, updated, added, total });
 }));
 
+// ===== NOTION: BAB PELAJARAN (5 child pages of a Bab → EzNihongo lessons) =====
+// Each Notion Bab page has child pages like "Pelajaran 1: Pengantar",
+// "Pelajaran 2: Kosakata", "Pelajaran 3: Kanji", "Pelajaran 4: Tata Bahasa",
+// "Pelajaran 5: Latihan". This pair of endpoints lets admin pick which child
+// pages to import as EzNihongo lessons under a module, complete with the page
+// body converted to HTML.
+
+const SAFE_HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+function _h(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => SAFE_HTML_ESCAPES[c]); }
+
+function notionRichTextToHtml(arr) {
+  if (!Array.isArray(arr)) return '';
+  return arr.map((t) => {
+    let txt = _h(t.plain_text || '');
+    const ann = t.annotations || {};
+    if (ann.code) txt = `<code>${txt}</code>`;
+    if (ann.strikethrough) txt = `<del>${txt}</del>`;
+    if (ann.underline) txt = `<u>${txt}</u>`;
+    if (ann.italic) txt = `<em>${txt}</em>`;
+    if (ann.bold) txt = `<strong>${txt}</strong>`;
+    const url = t.href || (t.text && t.text.link && t.text.link.url);
+    if (url) txt = `<a href="${_h(url)}" target="_blank" rel="noopener">${txt}</a>`;
+    return txt;
+  }).join('');
+}
+
+// Convert a Notion page's body into simple HTML. Walks block children
+// recursively (depth-limited), consolidating consecutive list items into
+// <ul>/<ol>. Skips media types we don't render (table/columns/embeds) — the
+// goal is "good enough text body that admin can polish", not 1:1 mirror.
+async function notionBlocksToHtml(blockId, token, depth = 0, visited = new Set()) {
+  if (depth > 5 || visited.has(blockId)) return '';
+  visited.add(blockId);
+  let children;
+  try { children = await notionGetBlockChildren(blockId, token); }
+  catch (err) { console.warn('notionBlocksToHtml:', err.message); return ''; }
+
+  const parts = [];
+  let listType = null;
+  let listItems = [];
+  const flushList = () => {
+    if (listType && listItems.length) {
+      parts.push(`<${listType}>${listItems.join('')}</${listType}>`);
+    }
+    listType = null;
+    listItems = [];
+  };
+
+  for (const block of children) {
+    const type = block.type;
+    const data = block[type] || {};
+    if (type === 'bulleted_list_item' || type === 'numbered_list_item') {
+      const want = type === 'bulleted_list_item' ? 'ul' : 'ol';
+      if (listType !== want) flushList();
+      listType = want;
+      const inner = notionRichTextToHtml(data.rich_text || []);
+      listItems.push(`<li>${inner}</li>`);
+      continue;
+    }
+    flushList();
+    if (type === 'paragraph') {
+      const inner = notionRichTextToHtml(data.rich_text || []);
+      parts.push(inner.trim() ? `<p>${inner}</p>` : '<p><br></p>');
+    } else if (type === 'heading_1' || type === 'heading_2' || type === 'heading_3') {
+      const tag = type === 'heading_1' ? 'h2' : (type === 'heading_2' ? 'h3' : 'h4');
+      parts.push(`<${tag}>${notionRichTextToHtml(data.rich_text || [])}</${tag}>`);
+    } else if (type === 'quote') {
+      parts.push(`<blockquote>${notionRichTextToHtml(data.rich_text || [])}</blockquote>`);
+    } else if (type === 'code') {
+      const code = (data.rich_text || []).map((t) => t.plain_text || '').join('');
+      parts.push(`<pre><code>${_h(code)}</code></pre>`);
+    } else if (type === 'divider') {
+      parts.push('<hr>');
+    } else if (type === 'toggle') {
+      const title = notionRichTextToHtml(data.rich_text || []);
+      if (title.trim()) parts.push(`<p><strong>${title}</strong></p>`);
+      if (block.has_children) {
+        const inner = await notionBlocksToHtml(block.id, token, depth + 1, visited);
+        if (inner) parts.push(inner);
+      }
+    } else if (type === 'synced_block') {
+      const src = data.synced_from;
+      const srcId = (src && src.block_id) || block.id;
+      const inner = await notionBlocksToHtml(srcId, token, depth + 1, visited);
+      if (inner) parts.push(inner);
+    } else if (type === 'image') {
+      const url = (data.file && data.file.url) || (data.external && data.external.url);
+      const caption = notionRichTextToHtml(data.caption || []);
+      if (url) {
+        parts.push(`<figure><img src="${_h(url)}" alt="${caption ? caption.replace(/<[^>]+>/g, '') : ''}">${caption ? `<figcaption>${caption}</figcaption>` : ''}</figure>`);
+      }
+    } else if (type === 'child_page') {
+      // Note its title so admin can decide to import it as a separate lesson.
+      const t = data.title || '';
+      if (t) parts.push(`<p><em>↳ Sub-page Notion: ${_h(t)}</em></p>`);
+    } else if (type === 'callout') {
+      const ico = (data.icon && (data.icon.emoji || '')) || '💡';
+      parts.push(`<blockquote>${_h(ico)} ${notionRichTextToHtml(data.rich_text || [])}</blockquote>`);
+    }
+    // Skip: table, column_list, embed, video, file, bookmark, equation —
+    // either complex to render or rarely used in pelajaran pages.
+  }
+  flushList();
+  return parts.join('\n');
+}
+
+function notionPelajaranType(title) {
+  const t = String(title || '').toLowerCase();
+  if (t.includes('kosakata') || t.includes('語彙') || t.includes('vocab')) return 'deck';
+  if (t.includes('latihan') || t.includes('練習') || t.includes('quiz') || t.includes('exercise')) return 'quiz';
+  // pengantar / kanji / tata bahasa / grammar / 漢字 / 文法 → text
+  return 'text';
+}
+
+function slugifyJa(s) {
+  return String(s || '')
+    .normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80) || `pelajaran-${Date.now()}`;
+}
+
+// List child pages of a Bab — admin uses this to choose which pelajaran to
+// import. Returns [{ id, title, type }] in Notion order.
+router.get('/notion-bab/:babPageId/pelajaran', asyncHandler(async (req, res) => {
+  const token = process.env.NOTION_TOKEN || '';
+  if (!token) return res.status(503).json({ error: 'notion_not_configured', detail: 'Set NOTION_TOKEN di backend/.env' });
+  const babPageId = req.params.babPageId;
+  let blocks;
+  try { blocks = await notionGetBlockChildren(babPageId, token); }
+  catch (err) { return res.status(502).json({ error: 'notion_error', status: err.notionStatus || 0, detail: err.message }); }
+  const pelajaran = [];
+  for (const b of blocks) {
+    if (b.type === 'child_page') {
+      const title = (b.child_page && b.child_page.title) || '(tanpa judul)';
+      pelajaran.push({ id: b.id, title, type: notionPelajaranType(title) });
+    }
+  }
+  res.json({ pelajaran });
+}));
+
+// Create EzNihongo lessons under a module, one per Notion child-page id given.
+// Body content rendered from the Notion page's blocks.
+// body: { babPageId, pelajaranIds: [string], startSortOrder?: number }
+router.post('/modules/:moduleId/import-notion-pelajaran', asyncHandler(async (req, res) => {
+  const token = process.env.NOTION_TOKEN || '';
+  if (!token) return res.status(503).json({ error: 'notion_not_configured', detail: 'Set NOTION_TOKEN di backend/.env' });
+  const moduleId = req.params.moduleId;
+  const { pelajaranIds } = req.body || {};
+  if (!Array.isArray(pelajaranIds) || pelajaranIds.length === 0) {
+    return res.status(400).json({ error: 'pelajaranIds[] required' });
+  }
+  const mod = await query(`SELECT id FROM modules WHERE id = $1`, [moduleId]);
+  if (mod.rows.length === 0) return res.status(404).json({ error: 'module not found' });
+
+  // Avoid slug collisions within the module by tacking on a counter if needed.
+  const existing = await query(`SELECT slug FROM lessons WHERE module_id = $1`, [moduleId]);
+  const used = new Set(existing.rows.map((r) => r.slug));
+  const sortStart = await query(
+    `SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM lessons WHERE module_id = $1`,
+    [moduleId]
+  );
+  let nextSort = Number(sortStart.rows[0]?.next) || 0;
+
+  const created = [];
+  const errors = [];
+  for (const pageId of pelajaranIds) {
+    let page;
+    try {
+      const resp = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+        headers: { Authorization: `Bearer ${token}`, 'Notion-Version': '2022-06-28' },
+      });
+      if (!resp.ok) throw new Error(`Notion ${resp.status}`);
+      page = await resp.json();
+    } catch (err) {
+      errors.push({ pageId, error: err.message });
+      continue;
+    }
+    // Title — child_page block title or page properties.title.
+    const titleProp = page.properties && Object.values(page.properties).find((p) => p.type === 'title');
+    const title = notionPlainText(titleProp) || '(tanpa judul)';
+    const type = notionPelajaranType(title);
+    // Slug — ensure unique within module.
+    let baseSlug = slugifyJa(title);
+    let slug = baseSlug;
+    let n = 2;
+    while (used.has(slug)) { slug = `${baseSlug}-${n++}`; }
+    used.add(slug);
+    // Body content as HTML.
+    let html = '';
+    try { html = await notionBlocksToHtml(pageId, token); }
+    catch (err) { console.warn('notionBlocksToHtml failed:', err.message); }
+    try {
+      const r = await query(
+        `INSERT INTO lessons (module_id, slug, title, type, content, sort_order)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, slug, title, type, sort_order`,
+        [moduleId, slug, title, type, html || null, nextSort++]
+      );
+      created.push(r.rows[0]);
+    } catch (err) {
+      errors.push({ pageId, title, error: err.message });
+    }
+  }
+  res.json({ created, errors });
+}));
+
 // ===== MODULE GRAMMAR =====
 
 router.get('/module-grammar', asyncHandler(async (req, res) => {
