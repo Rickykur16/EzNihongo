@@ -3244,7 +3244,14 @@ window.openKanjiNotionImport = async () => {
         </div>
       </div>
       <div class="field"><label>Bab di Notion</label>
-        <select name="babPageId" required>${babOptions}</select>
+        <select name="babPageId">
+          <option value="all">— Import semua row di DB —</option>
+          ${babOptions}
+        </select>
+        <div style="font-size:11px;color:var(--ink-500);margin-top:4px;">
+          Pilih Bab kalau DB Kanji-mu punya relation property ke "📗 Bab".
+          Atau biarin "Import semua" kalau DB Kanji-mu standalone.
+        </div>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" onclick="openKanjiManager(STATE.kanjiManagerCtx)">← Kembali</button>
@@ -3268,7 +3275,28 @@ window.openKanjiNotionImport = async () => {
           notionKanjiDbId: dbId || undefined,
         }),
       });
-      notify(`Import selesai: ${r.imported} baru, ${r.updated} di-update (total ${r.total} di Notion).`);
+      if (r.imported === 0 && r.updated === 0) {
+        // Tampilkan diagnostic kalau ada — supaya admin tau properti DB
+        // Notion mana yg perlu di-rename biar match.
+        const diag = r.diagnostic || {};
+        const props = (diag.notionPropertyNames || []).join(', ');
+        const detail = [
+          `Pages di-scan: ${r.notionPagesScanned ?? 0}.`,
+          r.matchedRelationProp ? `Match relation: "${r.matchedRelationProp}".` : '',
+          r.usedFallbackUnfiltered ? 'Filter Bab gagal — pakai unfiltered.' : '',
+          diag.hint || '',
+          props ? `Properti di Notion: ${props}.` : '',
+        ].filter(Boolean).join(' ');
+        notify(`Import tidak menyimpan apa-apa. ${detail}`, true);
+        btn.disabled = false; btn.textContent = 'Import';
+        return;
+      }
+      const warning = r.usedFallbackUnfiltered
+        ? ' (filter Bab gagal — import unfiltered)'
+        : (r.matchedRelationProp && r.matchedRelationProp !== 'Lesson'
+          ? ` (relation: "${r.matchedRelationProp}")`
+          : '');
+      notify(`Import selesai: ${r.imported} baru, ${r.updated} di-update (total ${r.total} dari ${r.notionPagesScanned} pages)${warning}.`);
       openKanjiManager(ctx);
     } catch (err) {
       notify('Import gagal: ' + err.message, true);

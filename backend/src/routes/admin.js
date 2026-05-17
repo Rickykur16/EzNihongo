@@ -1503,13 +1503,20 @@ router.delete('/kanji/:id', asyncHandler(async (req, res) => {
 // Bulk-import kanji dari Notion DB "📖 Kanji" ke satu pelajaran. Mirror
 // pola import-notion-deck: filter by relation Bab page, upsert by
 // (character, jlpt_level), set lesson_id ke pelajaran target.
+//
+// Robust matching:
+// - babPageId opsional: kalau kosong / "all", import semua row di DB.
+// - Coba beberapa relation prop name (Lesson/Pelajaran/Bab/Chapter).
+//   Kalau semua gagal di-filter, fallback ke unfiltered + warn.
+// - Kalau total=0 (ga ada character yg match property), return diagnostic
+//   berisi property names yg ada di sample page biar admin bisa sesuain
+//   nama propertinya di Notion.
 router.post('/lessons/:lessonId/import-notion-kanji-bab', asyncHandler(async (req, res) => {
   const token = process.env.NOTION_TOKEN || '';
   if (!token) return res.status(503).json({ error: 'notion_not_configured', detail: 'Set NOTION_TOKEN di backend/.env' });
   const { babPageId, jlptLevel } = req.body || {};
-  if (!babPageId) return res.status(400).json({ error: 'babPageId required' });
   const dbId = notionIdFromInput((req.body || {}).notionKanjiDbId) || notionIdFromInput(process.env.NOTION_KANJI_DB_ID);
-  if (!dbId) return res.status(400).json({ error: 'notion_db_required', detail: 'Set NOTION_KANJI_DB_ID' });
+  if (!dbId) return res.status(400).json({ error: 'notion_db_required', detail: 'Set NOTION_KANJI_DB_ID atau paste URL DB di field' });
   const level = normalizeKanjiLevel(jlptLevel);
   const lessonId = req.params.lessonId;
 
@@ -1519,13 +1526,41 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', asyncHandler(async (re
     return res.status(400).json({ error: 'lesson_not_kanji', detail: 'Pelajaran ini bukan tipe kanji' });
   }
 
-  let pages;
-  try {
-    pages = await notionQueryAll(dbId, token, {
-      filter: { property: NOTION_VOCAB_LESSON_RELATION, relation: { contains: babPageId } },
-    });
-  } catch (err) {
-    return res.status(502).json({ error: 'notion_error', status: err.notionStatus || 0, detail: err.message });
+  // Try the filter with a few common relation property names. Kanji DB
+  // bisa pake "Lesson", "Pelajaran", "Bab", atau "Chapter" — semuanya
+  // umum. Kalau babPageId kosong, langsung ambil semua.
+  const wantFilter = !!babPageId && babPageId !== 'all';
+  const RELATION_CANDIDATES = ['Lesson', 'Pelajaran', 'Bab', 'Chapter', NOTION_VOCAB_LESSON_RELATION];
+  let pages = null;
+  let matchedRelationProp = null;
+  let usedFallbackUnfiltered = false;
+  let notionError = null;
+  if (wantFilter) {
+    for (const propName of RELATION_CANDIDATES) {
+      try {
+        const r = await notionQueryAll(dbId, token, {
+          filter: { property: propName, relation: { contains: babPageId } },
+        });
+        // Notion balas 200 (kosong) kalau prop ga ada — anggap valid kalau >0 rows.
+        if (r.length > 0) { pages = r; matchedRelationProp = propName; break; }
+      } catch (err) {
+        // 400/422 dari Notion biasanya berarti prop name salah. Skip ke kandidat berikutnya.
+        notionError = err;
+      }
+    }
+  }
+  // Fallback: ambil semua row dari DB (unfiltered) supaya admin tetep bisa import.
+  if (!pages) {
+    try {
+      pages = await notionQueryAll(dbId, token);
+      if (wantFilter) usedFallbackUnfiltered = true;
+    } catch (err) {
+      return res.status(502).json({
+        error: 'notion_error',
+        status: err.notionStatus || 0,
+        detail: err.message || 'Cek apakah integration udah di-share ke DB Kanji-mu',
+      });
+    }
   }
 
   let imported = 0, updated = 0, total = 0;
@@ -1536,15 +1571,15 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', asyncHandler(async (re
   let sort = startSort;
   for (const page of pages) {
     const props = page.properties || {};
-    const character = notionPlainText(pickProp(props, ['Kanji 漢字', 'Kanji', '漢字', 'Character'])).trim();
+    const character = notionPlainText(pickProp(props, ['Kanji 漢字', 'Kanji', '漢字', 'Character', 'Karakter', 'Name', 'Title'])).trim();
     if (!character) continue;
     total++;
-    const onReading = notionPlainText(pickProp(props, ['On 音読み', 'On', '音読み', 'Onyomi'])).trim() || null;
-    const kunReading = notionPlainText(pickProp(props, ['Kun 訓読み', 'Kun', '訓読み', 'Kunyomi'])).trim() || null;
-    const meaningId = notionPlainText(pickProp(props, ['Indonesian', 'Arti', 'Meaning', 'Bahasa Indonesia'])).trim() || null;
-    const mnemonic = notionPlainText(pickProp(props, ['Mnemonic', 'Mnemonik', 'Cara Ingat', 'Note', 'Catatan'])).trim() || null;
-    const strokeCount = notionNumber(pickProp(props, ['Stroke Count', 'Goresan', 'Strokes']));
-    const babKode = notionPlainText(pickProp(props, ['Kode Bab', 'Kode'])).trim() || null;
+    const onReading = notionPlainText(pickProp(props, ['On 音読み', 'On', '音読み', 'Onyomi', 'On Reading'])).trim() || null;
+    const kunReading = notionPlainText(pickProp(props, ['Kun 訓読み', 'Kun', '訓読み', 'Kunyomi', 'Kun Reading'])).trim() || null;
+    const meaningId = notionPlainText(pickProp(props, ['Indonesian', 'Arti', 'Meaning', 'Bahasa Indonesia', 'Indo'])).trim() || null;
+    const mnemonic = notionPlainText(pickProp(props, ['Mnemonic', 'Mnemonik', 'Cara Ingat', 'Trik', 'Note', 'Catatan'])).trim() || null;
+    const strokeCount = notionNumber(pickProp(props, ['Stroke Count', 'Goresan', 'Strokes', 'Stroke']));
+    const babKode = notionPlainText(pickProp(props, ['Kode Bab', 'Kode', 'Code'])).trim() || null;
 
     const existing = await query(
       `SELECT id FROM kanji_items WHERE character = $1 AND jlpt_level = $2 LIMIT 1`,
@@ -1572,7 +1607,28 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', asyncHandler(async (re
       imported++;
     }
   }
-  res.json({ imported, updated, total });
+
+  // Diagnostic: kalau ga ada satu pun character ke-extract, kasih tahu
+  // properti apa yg sebenarnya ada di Notion biar admin bisa sesuain.
+  const diagnostic = {};
+  if (total === 0 && pages.length > 0) {
+    const sampleProps = pages[0].properties || {};
+    diagnostic.notionPropertyNames = Object.keys(sampleProps);
+    diagnostic.expectedCharacterProperty = ['Kanji 漢字', 'Kanji', '漢字', 'Character', 'Karakter'];
+    diagnostic.hint = 'Pages ditemukan tapi nama properti karakter di Notion ga match. Rename salah satu properti DB Notion-mu jadi "Kanji" atau "漢字".';
+  } else if (pages.length === 0) {
+    diagnostic.hint = 'DB Notion-mu kosong atau integration belum di-share ke DB tersebut (notion.so → Share → Add connection → pilih integration).';
+  }
+
+  res.json({
+    imported,
+    updated,
+    total,
+    notionPagesScanned: pages.length,
+    matchedRelationProp,
+    usedFallbackUnfiltered,
+    ...(Object.keys(diagnostic).length ? { diagnostic } : {}),
+  });
 }));
 
 export default router;
