@@ -4519,6 +4519,12 @@ function renderSidebar() {
   const course = COURSE_CONTENT[currentState.course];
   const progress = getProgress()[currentState.course] || {};
 
+  // Preserve sidebar scroll across re-render. innerHTML swap di bawah
+  // ngedestroy .sidebar-scroll lama → tanpa restore ini, klik section/Bab
+  // di bawah viewport snap balik ke atas.
+  const prevScroll = document.querySelector('.sidebar-scroll');
+  const savedScrollTop = prevScroll ? prevScroll.scrollTop : 0;
+
   // Reset expanded state on course change so stale IDs from a previous course
   // don't leak. Default behaviour depends on whether the user has any progress
   // in this course:
@@ -4771,6 +4777,9 @@ function renderSidebar() {
       </button>
     </div>
   `;
+
+  const newScroll = document.querySelector('.sidebar-scroll');
+  if (newScroll && savedScrollTop) newScroll.scrollTop = savedScrollTop;
 }
 
 window.toggleCoursePicker = () => {
