@@ -2913,35 +2913,9 @@
     transform: translateY(-2px);
   }
 
-  /* Listening JLPT-style: tombol play percakapan + hidden transcript */
-  .quiz-listening {
-    margin: 14px 0 18px;
-    padding: 14px 18px;
-    background: #fafafa;
-    border: 1px solid #e5e5e5;
-    border-radius: 12px;
-  }
-  .quiz-listen-btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 9px 16px;
-    background: #1a1a1a; color: #fff;
-    border: none; border-radius: 999px;
-    font: inherit; font-size: 13px; font-weight: 600;
-    cursor: pointer;
-    transition: background .12s, transform .08s;
-  }
-  .quiz-listen-btn:hover { background: var(--brand-red); }
-  .quiz-listen-btn:active { transform: scale(0.97); }
-  .quiz-listen-btn.playing {
-    background: var(--brand-red); animation: pulse 0.9s infinite;
-  }
-  .quiz-listen-btn .qlb-ico { font-size: 11px; }
-  .quiz-listen-hint {
-    margin-top: 8px;
-    font-size: 12px; color: #6a6a6a; font-style: italic;
-  }
+  /* Listening JLPT-style: hidden transcript revealed post-answer */
   .quiz-listen-transcript {
-    margin-top: 10px;
+    margin-top: 14px;
     font-size: 13px;
   }
   .quiz-listen-transcript > summary {
@@ -2963,6 +2937,119 @@
     font-family: 'Noto Sans JP', sans-serif;
     font-size: 14px; line-height: 1.7;
     white-space: pre-wrap; word-break: break-word;
+  }
+
+  /* Listening tab: centralized audio player ala Todai test.
+     Satu player muter semua dialog satu section secara berurutan. */
+  .quiz-listening-player {
+    position: sticky; top: 12px; z-index: 5;
+    margin: 0 0 24px;
+    padding: 18px 20px 16px;
+    background: linear-gradient(180deg, #1a1a1a 0%, #232323 100%);
+    color: #fff;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  }
+  .qlp-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .qlp-title {
+    font-size: 13px; font-weight: 700;
+    letter-spacing: .04em; text-transform: uppercase;
+    color: #ffd9d9;
+  }
+  .qlp-track-label {
+    font-size: 12px; color: #c8c8c8;
+  }
+  .qlp-track-label strong { color: #fff; font-weight: 800; }
+  .qlp-controls {
+    display: flex; align-items: center; justify-content: center;
+    gap: 18px;
+    margin: 8px 0 12px;
+  }
+  .qlp-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.08);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background .12s, transform .08s, border-color .12s;
+    font: inherit; font-weight: 700;
+  }
+  .qlp-btn:hover { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.32); }
+  .qlp-btn:active { transform: scale(0.94); }
+  .qlp-btn:disabled { opacity: .35; cursor: not-allowed; }
+  .qlp-skip { width: 46px; height: 46px; font-size: 12px; }
+  .qlp-step { width: 38px; height: 38px; font-size: 16px; }
+  .qlp-play {
+    width: 62px; height: 62px; font-size: 22px;
+    background: var(--brand-red); border-color: transparent;
+  }
+  .qlp-play:hover { background: #d72121; border-color: transparent; }
+  .qlp-bar-wrap {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 10px;
+  }
+  .qlp-bar {
+    flex: 1; height: 4px;
+    -webkit-appearance: none; appearance: none;
+    background: rgba(255,255,255,.18);
+    border-radius: 999px;
+    outline: none;
+    cursor: pointer;
+  }
+  .qlp-bar::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px;
+    background: #fff; border-radius: 50%;
+    cursor: pointer;
+  }
+  .qlp-bar::-moz-range-thumb {
+    width: 14px; height: 14px;
+    background: #fff; border-radius: 50%;
+    border: none; cursor: pointer;
+  }
+  .qlp-time {
+    font-size: 12px; color: #c8c8c8;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .qlp-tracklist {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,.1);
+  }
+  .qlp-track {
+    min-width: 30px; height: 30px;
+    padding: 0 10px;
+    background: rgba(255,255,255,.06);
+    color: #c8c8c8;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 8px;
+    font: inherit; font-size: 12px; font-weight: 700;
+    cursor: pointer;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .qlp-track:hover { background: rgba(255,255,255,.14); color: #fff; }
+  .qlp-track.active {
+    background: var(--brand-red); color: #fff;
+    border-color: transparent;
+  }
+  .qlp-track.done { color: #6fcf97; border-color: rgba(111,207,151,.4); }
+  @media (max-width: 700px) {
+    .quiz-listening-player { padding: 14px 14px 12px; border-radius: 12px; }
+    .qlp-controls { gap: 12px; }
+    .qlp-play { width: 56px; height: 56px; font-size: 20px; }
+    .qlp-skip { width: 42px; height: 42px; }
+    .qlp-step { width: 34px; height: 34px; }
+  }
+  .quiz-paper-item.is-listening-active {
+    box-shadow: 0 0 0 3px rgba(255, 35, 35, .14);
+    border-radius: 8px;
+    transition: box-shadow .25s;
   }
   .quiz-paper .quiz-options {
     display: grid;
@@ -3471,16 +3558,214 @@ function renderQuizSections(categoryItems) {
     byKey.get(key).items.push(item);
   });
 
-  return sections.map((section) => `
-    <section class="quiz-paper-section">
-      <div class="quiz-section-label">${section.label}</div>
-      <div class="quiz-instruction">${section.instruction}</div>
-    </section>
-    <div class="quiz-paper-list">
-      ${section.items.map((item, i) => renderQuizPaperItem(item.q, item.index, section.number, i + 1)).join('')}
-    </div>
-  `).join('');
+  return sections.map((section) => {
+    const isListening = section.items.some(
+      (item) => normalizeQuizCategory(item.q.category) === 'listening'
+    );
+    const playerHtml = isListening
+      ? renderListeningPlayer(section.items, section.number)
+      : '';
+    return `
+      <section class="quiz-paper-section">
+        <div class="quiz-section-label">${section.label}</div>
+        <div class="quiz-instruction">${section.instruction}</div>
+      </section>
+      ${playerHtml}
+      <div class="quiz-paper-list" data-section-number="${section.number}">
+        ${section.items.map((item, i) => renderQuizPaperItem(item.q, item.index, section.number, i + 1)).join('')}
+      </div>
+    `;
+  }).join('');
 }
+
+// Centralized JLPT-style listening player. Satu player per section: muter
+// semua dialog (audio_script) section secara berurutan via single <audio>
+// dengan src swap. Track-list bisa di-klik buat lompat; play/pause + skip
+// ±10s + progress bar bekerja di track yang lagi aktif.
+function renderListeningPlayer(sectionItems, sectionNumber) {
+  const tracks = sectionItems
+    .map((item, idx) => ({
+      qi: item.index,
+      orderInSection: idx + 1,
+      script: (item.q.audioScript || '').trim(),
+    }))
+    .filter((t) => t.script);
+  if (tracks.length === 0) return '';
+  const sectionKey = `s${sectionNumber}`;
+  // Embed JSON via escapeHtml — handles &, <, >, ", ' all in one shot. Reader
+  // di initListeningPlayers cukup baca el.dataset.tracks (browser udah
+  // unescape) lalu JSON.parse.
+  const tracksJs = escapeHtml(JSON.stringify(tracks));
+  return `
+    <div class="quiz-listening-player" id="qlp-${sectionKey}" data-section-key="${sectionKey}" data-tracks="${tracksJs}">
+      <div class="qlp-head">
+        <span class="qlp-title">🎧 Audio listening</span>
+        <span class="qlp-track-label">Dialog <strong class="qlp-current-num">1</strong> / ${tracks.length}</span>
+      </div>
+      <div class="qlp-controls">
+        <button type="button" class="qlp-btn qlp-step qlp-prev" aria-label="Dialog sebelumnya" onclick="window.listeningJump('${sectionKey}', -1, true)">⏮</button>
+        <button type="button" class="qlp-btn qlp-skip" aria-label="Mundur 10 detik" onclick="window.listeningSkip('${sectionKey}', -10)">−10s</button>
+        <button type="button" class="qlp-btn qlp-play" aria-label="Putar / jeda" onclick="window.listeningTogglePlay('${sectionKey}')">▶</button>
+        <button type="button" class="qlp-btn qlp-skip" aria-label="Maju 10 detik" onclick="window.listeningSkip('${sectionKey}', 10)">+10s</button>
+        <button type="button" class="qlp-btn qlp-step qlp-next" aria-label="Dialog berikutnya" onclick="window.listeningJump('${sectionKey}', 1, true)">⏭</button>
+      </div>
+      <div class="qlp-bar-wrap">
+        <input type="range" class="qlp-bar" min="0" max="100" value="0" step="0.1" aria-label="Posisi audio"
+          oninput="window.listeningSeek('${sectionKey}', this.value)" />
+        <span class="qlp-time"><span class="qlp-cur-time">00:00</span> / <span class="qlp-total-time">00:00</span></span>
+      </div>
+      <div class="qlp-tracklist">
+        ${tracks.map((t, i) => `
+          <button type="button" class="qlp-track ${i === 0 ? 'active' : ''}" data-track-index="${i}"
+            onclick="window.listeningJump('${sectionKey}', ${i}, false)"
+            title="Dialog ${sectionNumber}.${t.orderInSection}">${sectionNumber}.${t.orderInSection}</button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// Per-section player state (audio element + current track index + tracks).
+// Re-built on every quiz render; old players get teardown via destroyAll().
+window.__listeningPlayers = window.__listeningPlayers || {};
+
+function destroyAllListeningPlayers() {
+  for (const key of Object.keys(window.__listeningPlayers)) {
+    const p = window.__listeningPlayers[key];
+    if (p?.audio) {
+      try { p.audio.pause(); } catch {}
+      p.audio.src = '';
+    }
+    delete window.__listeningPlayers[key];
+  }
+}
+
+function fmtTime(s) {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
+
+function initListeningPlayers() {
+  destroyAllListeningPlayers();
+  document.querySelectorAll('.quiz-listening-player').forEach((el) => {
+    const key = el.dataset.sectionKey;
+    let tracks;
+    try {
+      tracks = JSON.parse(el.dataset.tracks || '[]');
+    } catch { tracks = []; }
+    if (!tracks.length) return;
+    const audio = new Audio();
+    audio.preload = 'none';
+    const state = { el, audio, tracks, currentIdx: 0, isPlaying: false };
+    window.__listeningPlayers[key] = state;
+    audio.addEventListener('timeupdate', () => updateListeningUI(key));
+    audio.addEventListener('loadedmetadata', () => updateListeningUI(key));
+    audio.addEventListener('ended', () => {
+      if (state.currentIdx < state.tracks.length - 1) {
+        window.listeningJump(key, state.currentIdx + 1, true);
+      } else {
+        state.isPlaying = false;
+        updateListeningUI(key);
+      }
+    });
+    audio.addEventListener('play', () => { state.isPlaying = true; updateListeningUI(key); });
+    audio.addEventListener('pause', () => { state.isPlaying = false; updateListeningUI(key); });
+    loadListeningTrack(key, 0, false);
+  });
+}
+
+function loadListeningTrack(key, idx, autoplay) {
+  const s = window.__listeningPlayers[key];
+  if (!s) return;
+  if (idx < 0 || idx >= s.tracks.length) return;
+  s.currentIdx = idx;
+  const t = s.tracks[idx];
+  s.audio.src = '/api/tts?text=' + encodeURIComponent(t.script);
+  updateListeningUI(key);
+  if (autoplay) {
+    const p = s.audio.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  }
+}
+
+function updateListeningUI(key) {
+  const s = window.__listeningPlayers[key];
+  if (!s) return;
+  const { el, audio, tracks, currentIdx, isPlaying } = s;
+  const playBtn = el.querySelector('.qlp-play');
+  if (playBtn) playBtn.textContent = isPlaying ? '❚❚' : '▶';
+  const curNum = el.querySelector('.qlp-current-num');
+  if (curNum) curNum.textContent = currentIdx + 1;
+  const cur = el.querySelector('.qlp-cur-time');
+  const tot = el.querySelector('.qlp-total-time');
+  const bar = el.querySelector('.qlp-bar');
+  const dur = audio.duration || 0;
+  const ct = audio.currentTime || 0;
+  if (cur) cur.textContent = fmtTime(ct);
+  if (tot) tot.textContent = fmtTime(dur);
+  if (bar && dur > 0) bar.value = (ct / dur) * 100;
+  else if (bar) bar.value = 0;
+  el.querySelectorAll('.qlp-track').forEach((b, i) => {
+    b.classList.toggle('active', i === currentIdx);
+    b.classList.toggle('done', i < currentIdx);
+  });
+  const prev = el.querySelector('.qlp-prev');
+  const next = el.querySelector('.qlp-next');
+  if (prev) prev.disabled = currentIdx === 0;
+  if (next) next.disabled = currentIdx >= tracks.length - 1;
+  document.querySelectorAll('.quiz-paper-item.is-listening-active').forEach((node) => {
+    node.classList.remove('is-listening-active');
+  });
+  const activeTrack = tracks[currentIdx];
+  if (activeTrack) {
+    const node = document.querySelector(`.quiz-paper-item[data-question-index="${activeTrack.qi}"]`);
+    if (node && isPlaying) node.classList.add('is-listening-active');
+  }
+}
+
+window.listeningTogglePlay = (key) => {
+  const s = window.__listeningPlayers[key];
+  if (!s) return;
+  if (s.audio.paused) {
+    const p = s.audio.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  } else {
+    s.audio.pause();
+  }
+};
+
+window.listeningSkip = (key, delta) => {
+  const s = window.__listeningPlayers[key];
+  if (!s) return;
+  const dur = s.audio.duration || 0;
+  if (!dur) return;
+  s.audio.currentTime = Math.max(0, Math.min(dur, s.audio.currentTime + delta));
+};
+
+window.listeningSeek = (key, pct) => {
+  const s = window.__listeningPlayers[key];
+  if (!s) return;
+  const dur = s.audio.duration || 0;
+  if (!dur) return;
+  s.audio.currentTime = (Number(pct) / 100) * dur;
+};
+
+// idx kalau bertanda relatif (true) → currentIdx + idx; else absolute index.
+window.listeningJump = (key, idx, relative) => {
+  const s = window.__listeningPlayers[key];
+  if (!s) return;
+  const target = relative ? s.currentIdx + idx : Number(idx);
+  if (target < 0 || target >= s.tracks.length) return;
+  const wasPlaying = !s.audio.paused;
+  loadListeningTrack(key, target, wasPlaying || relative);
+  const activeTrack = s.tracks[target];
+  if (activeTrack) {
+    const node = document.querySelector(`.quiz-paper-item[data-question-index="${activeTrack.qi}"]`);
+    if (node) node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+};
 
 function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) {
   const letters = ['1', '2', '3', '4', '5'];
@@ -3489,28 +3774,18 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
   const isListening = normalizeQuizCategory(q.category) === 'listening';
   const hasAudioScript = isListening && q.audioScript && q.audioScript.trim();
 
-  // Listening JLPT-style: tombol play percakapan, transkrip hidden sampai
-  // siswa menjawab (mirip Todai test). Untuk question lain, tetap render JP
-  // inline + Dengar button kayak Codex sebelumnya.
-  let listeningBlock = '';
-  if (hasAudioScript) {
-    const script = q.audioScript;
-    const scriptJs = JSON.stringify(script);
-    listeningBlock = `
-      <div class="quiz-listening">
-        <button type="button" class="quiz-listen-btn" onclick="window.playQuizDialog(${qi}, ${scriptJs.replace(/"/g, '&quot;')}, this)">
-          <span class="qlb-ico">▶</span> Putar percakapan
-        </button>
-        ${answered ? `
-          <details class="quiz-listen-transcript" open>
-            <summary>Transkrip (sesudah jawab)</summary>
-            <pre lang="ja">${escapeHtml(script)}</pre>
-          </details>
-        ` : `<div class="quiz-listen-hint">Dengar dialog sebelum menjawab.</div>`}
-      </div>`;
-  }
+  // Listening: transcript hidden sampai siswa menjawab. Player di top
+  // section (renderListeningPlayer) yang nge-handle pemutarannya.
+  // Non-listening: tetap inline JP + tombol Dengar.
+  // Element selalu dibuat (display:none kalau belum dijawab) supaya
+  // pickQuizAnswer bisa toggle tanpa re-render full article.
+  const transcriptBlock = hasAudioScript ? `
+    <details class="quiz-listen-transcript" id="quiz-transcript-${qi}" ${answered ? 'open' : ''} ${answered ? '' : 'style="display:none"'}>
+      <summary>Transkrip percakapan</summary>
+      <pre lang="ja">${escapeHtml(q.audioScript)}</pre>
+    </details>` : '';
 
-  const inlineJp = !hasAudioScript && q.jp
+  const inlineJp = !isListening && q.jp
     ? `<span class="quiz-paper-jp">${q.jp}</span>
        <button class="pronounce-btn quiz-paper-audio" onclick="window.playTTS(${JSON.stringify(q.jp).replace(/"/g, '&quot;')}, this)">Dengar</button>`
     : '';
@@ -3522,7 +3797,6 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
         <span>${q.q}</span>
         ${inlineJp}
       </h2>
-      ${listeningBlock}
       <div class="quiz-options" id="quiz-options-${qi}">
         ${q.options.map((opt, i) => `
           <button class="quiz-option ${answered ? 'disabled' : ''} ${answered && i === q.correct ? 'correct' : ''} ${answered && i === selected && i !== q.correct ? 'wrong' : ''}"
@@ -3535,21 +3809,10 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
       <div class="quiz-feedback" id="quiz-feedback-${qi}">
         ${answered ? `<div class="quiz-explanation"><strong>${quizState.correctByIndex[qi] ? '✓ Benar!' : '✗ Belum tepat'}</strong> — ${q.explain || 'Jawaban kamu sudah dicatat.'}</div>` : ''}
       </div>
+      ${transcriptBlock}
     </article>
   `;
 }
-
-// Play percakapan listening lewat TTS cache (ElevenLabs). Single-voice
-// (gabungan A:/B: line). Cache otomatis di /api/tts, jadi soal yg sama ga
-// nge-hit Notion/ElevenLabs lagi.
-window.playQuizDialog = (qi, script, btn) => {
-  if (!script || !script.trim()) return;
-  if (typeof window.playTTS === 'function') {
-    window.playTTS(script, btn);
-  } else if (typeof window.speakJapanese === 'function') {
-    window.speakJapanese(script, btn);
-  }
-};
 
 function renderQuizQuestion(container) {
   const { questions } = quizState;
@@ -3571,6 +3834,7 @@ function renderQuizQuestion(container) {
     </div>
   `;
   updateQuizPaperProgress();
+  initListeningPlayers();
 }
 
 window.setQuizCategory = (category) => {
@@ -3652,6 +3916,12 @@ window.pickQuizAnswer = async (questionIndex, optionIndex) => {
     </button>
   `;
 
+  const transcriptEl = document.getElementById(`quiz-transcript-${qi}`);
+  if (transcriptEl) {
+    transcriptEl.style.display = '';
+    transcriptEl.open = true;
+  }
+
   if (isCorrect) addXP(5, 'jawaban benar');
   updateQuizPaperProgress();
 };
@@ -3679,6 +3949,9 @@ window.nextQuizQuestion = () => {
 };
 
 async function finishQuiz() {
+  // Detach Audio objects — they live independently from DOM, would keep
+  // playing after main-content gets overwritten oleh hasil page.
+  destroyAllListeningPlayers();
   const { questions, correct, key, answers } = quizState;
   const clientTotal = questions.length;
 
