@@ -3218,17 +3218,28 @@ window.openKanjiNotionImport = async () => {
   const babOptions = bab.map((b) =>
     `<option value="${b.id}">${escapeHtml(b.kode || '')}${b.kode ? ' · ' : ''}${escapeHtml(b.name)}</option>`
   ).join('');
+  // Remember last DB ID/URL admin pakai supaya ga ngetik ulang tiap import.
+  const lastKanjiDb = localStorage.getItem('ez_admin_kanji_notion_db') || '';
   openModal(`
     <h3>Import Kanji dari Notion — ${escapeHtml(ctx.lessonTitle)}</h3>
     <p style="color:var(--ink-500);font-size:13px;margin-top:-4px;">
-      Tarik karakter + reading + meaning + mnemonic dari Notion DB "📖 Kanji"
+      Tarik karakter + reading + meaning + mnemonic dari Notion DB Kanji
       yang ter-link ke Bab terpilih, langsung masuk ke pelajaran ini.
       Existing kanji (match by character + level) di-update; baru di-insert.
-      Butuh env <code>NOTION_KANJI_DB_ID</code>.
     </p>
     <form id="kanji-import-form">
+      <div class="field">
+        <label>URL / ID Notion DB Kanji</label>
+        <input name="notionKanjiDbId" value="${escapeHtml(lastKanjiDb)}"
+          placeholder="https://www.notion.so/xxxxx?v=… atau 32-char ID"
+          style="font-family:var(--font-mono);font-size:12px;" />
+        <div style="font-size:11px;color:var(--ink-500);margin-top:4px;">
+          Paste URL halaman database Kanji-mu. Kosongin kalau env
+          <code>NOTION_KANJI_DB_ID</code> udah di-set di server.
+        </div>
+      </div>
       <div class="field-row">
-        <div class="field"><label>Level</label>
+        <div class="field"><label>Level JLPT</label>
           <select name="jlptLevel">${levelOptions}</select>
         </div>
       </div>
@@ -3246,10 +3257,16 @@ window.openKanjiNotionImport = async () => {
     const f = e.target;
     const btn = f.querySelector('button[type=submit]');
     btn.disabled = true; btn.textContent = 'Importing…';
+    const dbId = (f.notionKanjiDbId && f.notionKanjiDbId.value.trim()) || '';
+    if (dbId) localStorage.setItem('ez_admin_kanji_notion_db', dbId);
     try {
       const r = await api(`/admin/lessons/${ctx.lessonId}/import-notion-kanji-bab`, {
         method: 'POST',
-        body: JSON.stringify({ babPageId: f.babPageId.value, jlptLevel: f.jlptLevel.value }),
+        body: JSON.stringify({
+          babPageId: f.babPageId.value,
+          jlptLevel: f.jlptLevel.value,
+          notionKanjiDbId: dbId || undefined,
+        }),
       });
       notify(`Import selesai: ${r.imported} baru, ${r.updated} di-update (total ${r.total} di Notion).`);
       openKanjiManager(ctx);
