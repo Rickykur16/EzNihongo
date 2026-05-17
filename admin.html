@@ -3250,14 +3250,16 @@ window.openKanjiNotionImport = async () => {
           <select name="jlptLevel">${levelOptions}</select>
         </div>
       </div>
-      <div class="field"><label>Bab di Notion</label>
-        <select name="babPageId">
-          <option value="all">— Import semua row di DB —</option>
+      <div class="field"><label>Bab (filter)</label>
+        <select name="babPageId" required>
           ${babOptions}
+          <option value="all">— Atau: import semua row di DB —</option>
         </select>
-        <div style="font-size:11px;color:var(--ink-500);margin-top:4px;">
-          Pilih Bab kalau DB Kanji-mu punya relation property ke "📗 Bab".
-          Atau biarin "Import semua" kalau DB Kanji-mu standalone.
+        <div style="font-size:11px;color:var(--ink-500);margin-top:4px;line-height:1.55;">
+          Pilih Bab → backend filter via relation <code>First Lesson</code> di
+          DB Kanji (cuma kanji yang First Lesson = Bab terpilih yang di-import).
+          Pilih "Atau: import semua" cuma kalau DB Kanji-mu standalone (tanpa
+          relation ke Bab).
         </div>
       </div>
       <div class="modal-actions">
