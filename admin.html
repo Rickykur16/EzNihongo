@@ -1238,6 +1238,7 @@ function wireRichTextEditor(textarea) {
   const buttons = [
     { label: 'B', title: 'Bold (Ctrl+B)', style: 'font-weight:800', fn: () => exec('bold') },
     { label: 'I', title: 'Italic (Ctrl+I)', style: 'font-style:italic', fn: () => exec('italic') },
+    { label: 'U', title: 'Underline (Ctrl+U) — pakai untuk garis bawah target word JLPT', style: 'text-decoration:underline', fn: () => exec('underline') },
     { label: 'H2', title: 'Heading besar', fn: () => exec('formatBlock', 'H2') },
     { label: 'H3', title: 'Subheading', fn: () => exec('formatBlock', 'H3') },
     { label: '• Daftar', title: 'List poin', fn: () => exec('insertUnorderedList') },
@@ -1274,6 +1275,7 @@ function wireRichTextEditor(textarea) {
     const k = ev.key.toLowerCase();
     if (k === 'b') { ev.preventDefault(); exec('bold'); }
     else if (k === 'i') { ev.preventDefault(); exec('italic'); }
+    else if (k === 'u') { ev.preventDefault(); exec('underline'); }
     else if (k === 'k') { ev.preventDefault(); insertLink(); }
   });
 
