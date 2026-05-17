@@ -172,6 +172,7 @@
   .quiz-option-row .btn { padding: 7px 9px; }
   .quiz-option-num { display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; font-weight: 800; color: var(--ink-700); }
   .quiz-correct-toggle { font-size: 12px; display: flex; align-items: center; gap: 5px; color: var(--ink-700); font-family: var(--font-body); font-weight: 700; white-space: nowrap; }
+  .kanji-admin-modal { max-width: 1100px; }
 </style>
 </head>
 <body>
@@ -3045,6 +3046,12 @@ window.deleteDiscussion = async (id) => {
 // dengan list kanji untuk pelajaran tsb, form add/edit, import Notion.
 // ─────────────────────────────────────────────────────────────
 const KANJI_LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1'];
+const KANJI_ADMIN_MODAL_WIDTH = '1100px';
+
+function openKanjiModal(html) {
+  openModal(html, { className: 'kanji-admin-modal' });
+  modalContent.style.maxWidth = KANJI_ADMIN_MODAL_WIDTH;
+}
 
 window.manageKanji = (lessonId, lessonTitle, moduleId, courseId) => {
   openKanjiManager({ lessonId, lessonTitle, moduleId, courseId });
@@ -3078,7 +3085,7 @@ function renderKanjiManager(ctx, items) {
       </td>
     </tr>
   `).join('');
-  openModal(`
+  openKanjiModal(`
     <h3>Kelola Kanji — ${escapeHtml(ctx.lessonTitle)}</h3>
     <p style="margin-top:-6px;color:var(--ink-500);font-size:13px;">
       Kanji yang ditambahkan di sini akan tampil sebagai pelajaran tipe Kanji di
@@ -3090,13 +3097,12 @@ function renderKanjiManager(ctx, items) {
     </div>
     ${items.length === 0
       ? '<div class="empty">Pelajaran ini belum punya kanji. Klik <strong>+ Kanji</strong> atau import dari Notion.</div>'
-      : `<table><thead><tr>
+      : `<div style="overflow-x:auto;"><table><thead><tr>
           <th>Karakter</th><th>Level</th><th>On</th><th>Kun</th><th>Arti</th>
           <th>Mnemonic</th><th>Goresan</th><th></th>
-        </tr></thead><tbody>${rows}</tbody></table>`}
+        </tr></thead><tbody>${rows}</tbody></table></div>`}
     <div class="modal-actions" style="margin-top:16px;"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `);
-  modalContent.style.maxWidth = '1100px';
   STATE.kanjiManagerCtx = ctx;
   STATE.kanjiManagerItems = items;
 }
@@ -3120,7 +3126,7 @@ window.openKanjiItemForm = (id) => {
   const levelOptions = KANJI_LEVELS.map((lv) =>
     `<option value="${lv}" ${v.jlpt_level === lv ? 'selected' : ''}>${lv}</option>`
   ).join('');
-  openModal(`
+  openKanjiModal(`
     <h3>${isNew ? 'Kanji Baru' : 'Edit Kanji'}</h3>
     <form id="kanji-item-form">
       <div class="field-row">
@@ -3227,7 +3233,7 @@ window.openKanjiNotionImport = async () => {
   ).join('');
   // Remember last DB ID/URL admin pakai supaya ga ngetik ulang tiap import.
   const lastKanjiDb = localStorage.getItem('ez_admin_kanji_notion_db') || '';
-  openModal(`
+  openKanjiModal(`
     <h3>Import Kanji dari Notion — ${escapeHtml(ctx.lessonTitle)}</h3>
     <p style="color:var(--ink-500);font-size:13px;margin-top:-4px;">
       Tarik karakter + reading + meaning + mnemonic dari Notion DB Kanji
