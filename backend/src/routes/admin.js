@@ -1206,6 +1206,48 @@ router.delete('/quiz-questions/:id', asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// Bulk update section meta (label / instruction) — semua soal di (lesson,
+// category, number) yang sama. Dipakai admin pas mereka edit info section,
+// supaya ga perlu update tiap pertanyaan satu-satu.
+router.put('/lessons/:lessonId/quiz/sections/:category/:number', asyncHandler(async (req, res) => {
+  const { lessonId, category, number } = req.params;
+  const { sectionLabel, sectionInstruction } = req.body || {};
+  const cat = normalizeQuizCategory(category);
+  const sectionNo = normalizeQuizSectionNumber(number);
+  const hasLabel = Object.prototype.hasOwnProperty.call(req.body || {}, 'sectionLabel');
+  const hasInstruction = Object.prototype.hasOwnProperty.call(req.body || {}, 'sectionInstruction');
+  if (!hasLabel && !hasInstruction) {
+    return res.status(400).json({ error: 'sectionLabel or sectionInstruction required' });
+  }
+  const labelNorm = hasLabel
+    ? ((sectionLabel && String(sectionLabel).trim()) || `Section ${sectionNo}`)
+    : null;
+  const instructionNorm = hasInstruction
+    ? ((sectionInstruction && String(sectionInstruction).trim()) || null)
+    : null;
+  const result = await query(
+    `UPDATE quiz_questions
+        SET section_label = CASE WHEN $5::boolean THEN $3 ELSE section_label END,
+            section_instruction = CASE WHEN $6::boolean THEN $4 ELSE section_instruction END
+      WHERE lesson_id = $1 AND question_category = $2 AND section_number = $7`,
+    [lessonId, cat, labelNorm, instructionNorm, hasLabel, hasInstruction, sectionNo]
+  );
+  res.json({ ok: true, updated: result.rowCount });
+}));
+
+// Delete whole section — semua soal di (lesson, category, number) terhapus.
+router.delete('/lessons/:lessonId/quiz/sections/:category/:number', asyncHandler(async (req, res) => {
+  const { lessonId, category, number } = req.params;
+  const cat = normalizeQuizCategory(category);
+  const sectionNo = normalizeQuizSectionNumber(number);
+  const result = await query(
+    `DELETE FROM quiz_questions
+      WHERE lesson_id = $1 AND question_category = $2 AND section_number = $3`,
+    [lessonId, cat, sectionNo]
+  );
+  res.json({ ok: true, deleted: result.rowCount });
+}));
+
 // ===== SENSEI =====
 
 router.get('/sensei', asyncHandler(async (req, res) => {
