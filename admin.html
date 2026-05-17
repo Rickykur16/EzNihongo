@@ -3096,6 +3096,7 @@ function renderKanjiManager(ctx, items) {
         </tr></thead><tbody>${rows}</tbody></table>`}
     <div class="modal-actions" style="margin-top:16px;"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `);
+  modalContent.style.maxWidth = '1100px';
   STATE.kanjiManagerCtx = ctx;
   STATE.kanjiManagerItems = items;
 }
