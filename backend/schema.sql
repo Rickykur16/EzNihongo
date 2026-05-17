@@ -366,6 +366,29 @@ CREATE TABLE IF NOT EXISTS tts_cache (
   last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- ===== KANJI ITEMS (Daftar Kanji di main site) =====
+-- Terpisah dari PWA app/kanji.html (yang punya KD[] hardcoded + tabel
+-- kanji_users/kanji_progress di realm sendiri). Tabel ini source of truth
+-- buat fitur Daftar Kanji di welcome.html (admin CRUD-able).
+
+CREATE TABLE IF NOT EXISTS kanji_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  character TEXT NOT NULL,
+  jlpt_level TEXT NOT NULL,
+  on_reading TEXT,
+  kun_reading TEXT,
+  meaning_id TEXT,
+  mnemonic TEXT,
+  stroke_count INT,
+  bab_kode TEXT,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS kanji_items_level_sort_idx ON kanji_items (jlpt_level, sort_order);
+CREATE INDEX IF NOT EXISTS kanji_items_bab_idx ON kanji_items (bab_kode) WHERE bab_kode IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS kanji_items_character_level_uniq ON kanji_items (character, jlpt_level);
+
 -- ===== updated_at trigger =====
 
 CREATE OR REPLACE FUNCTION set_updated_at() RETURNS TRIGGER AS $$
@@ -430,6 +453,10 @@ DO $$ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'kanji_progress_updated_at') THEN
     CREATE TRIGGER kanji_progress_updated_at BEFORE UPDATE ON kanji_progress
+      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'kanji_items_updated_at') THEN
+    CREATE TRIGGER kanji_items_updated_at BEFORE UPDATE ON kanji_items
       FOR EACH ROW EXECUTE FUNCTION set_updated_at();
   END IF;
 END $$;

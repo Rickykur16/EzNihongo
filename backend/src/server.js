@@ -15,6 +15,7 @@ import kanjiProgressRouter from './routes/kanji-progress.js';
 import kanjiAuthRouter from './routes/kanji-auth.js';
 import ttsRouter from './routes/tts.js';
 import notionPublicRouter, { startNotionCacheRefresh } from './routes/notion-public.js';
+import kanjiPublicRouter from './routes/kanji-public.js';
 
 // Fail fast on missing env vars. Every deploy needs these; without them the
 // app silently degrades (bad auth, no DB, open CORS). Crashing at startup
@@ -75,6 +76,7 @@ app.use('/api/subscription', subscriptionRouter);
 app.use('/api/kanji-progress', kanjiProgressRouter);
 app.use('/api', ttsRouter);
 app.use('/api', notionPublicRouter);
+app.use('/api', kanjiPublicRouter);
 app.use('/api', contentRouter);
 app.use('/api', progressRouter);
 
