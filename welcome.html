@@ -3290,6 +3290,7 @@ function transformCourseFromApi(apiCourse) {
           vocabulary: Array.isArray(l.vocabulary) ? l.vocabulary : [],
           grammar: Array.isArray(l.grammar) ? l.grammar : [],
           deck: Array.isArray(l.deck) ? l.deck : [],
+          kanji: Array.isArray(l.kanji) ? l.kanji : [],
         };
       }),
     })),
@@ -4519,13 +4520,14 @@ function renderSidebar() {
   const doneLessons = Object.values(progress).filter(v => v).length;
   const pct = Math.round((doneLessons / totalLessons) * 100);
 
-  const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan', deck: 'Kosakata' };
-  // SVG icons compact-style ala Udemy (play / question / book / cards).
+  const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan', deck: 'Kosakata', kanji: 'Kanji' };
+  // SVG icons compact-style ala Udemy (play / question / book / cards / kanji).
   const TYPE_ICON = {
     video: '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
     quiz: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
     text: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
     deck: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>',
+    kanji: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
   };
   const CHECK_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
 
@@ -5717,6 +5719,49 @@ window.filterDeck = (q) => {
   }
 };
 
+// Kanji lesson — render grid karakter; klik → openKanjiDetail modal
+// (yang sudah ada, dipakai juga oleh "Daftar Kanji" sidebar). API mengirim
+// lesson.kanji = array kanji_items penuh, jadi populate _kanjiByIdCache
+// dulu sebelum render supaya klik bisa lookup ke detail.
+function renderKanjiLesson(course, module, lesson, nav) {
+  const items = Array.isArray(lesson.kanji) ? lesson.kanji : [];
+  for (const k of items) {
+    if (k.id) _kanjiByIdCache.set(k.id, { ...k, compounds: k.compounds || [] });
+  }
+  const intro = (lesson.body && lesson.body.trim())
+    ? lesson.body
+    : 'Klik karakter untuk lihat goresan, mnemonic, dan kombinasi kosakata.';
+
+  const tilesHtml = items.length === 0
+    ? '<div class="deck-empty" style="padding:30px 18px;text-align:center;color:#6b6b6b;">Pelajaran ini belum punya kanji.</div>'
+    : `<div class="kanji-grid" style="margin-top:18px;">
+        ${items.map((k) => `
+          <button type="button" class="kanji-tile" onclick="openKanjiDetail('${escapeHtml(k.id)}')"
+                  data-kanji="${escapeHtml(`${k.character} ${k.on_reading || ''} ${k.kun_reading || ''} ${k.meaning_id || ''}`.toLowerCase())}">
+            <span class="kanji-tile-level">${escapeHtml(k.jlpt_level || '')}</span>
+            <span class="kanji-tile-char">${escapeHtml(k.character)}</span>
+            <span class="kanji-tile-meaning">${escapeHtml(k.meaning_id || '')}</span>
+          </button>`).join('')}
+      </div>`;
+
+  document.getElementById('main-content').innerHTML = `
+    <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · KANJI</p>
+    <h1 class="lesson-title">${escapeHtml(lesson.title)}</h1>
+    <p class="lesson-subtitle">${escapeHtml(module.title)}${lesson.duration ? ' — ' + escapeHtml(lesson.duration) : ''}</p>
+    <div class="deck-hero">
+      <div>
+        <div class="dh-eyebrow">漢字 · KANJI</div>
+        <div class="dh-body">${escapeHtml(intro)}</div>
+      </div>
+      <div class="dh-stat" aria-label="${items.length} kanji">
+        <div class="dh-stat-num">${items.length}</div>
+        <div class="dh-stat-label">kanji</div>
+      </div>
+    </div>
+    ${tilesHtml}
+  `;
+}
+
 window.openDeckModal = (idx) => {
   const data = window.__deckData || [];
   const it = data[idx];
@@ -5836,6 +5881,12 @@ function renderLesson() {
   // Deck — interactive vocab cards (design: "Kosakata" handoff)
   if (lesson.type === 'deck') {
     renderDeckLesson(course, module, lesson, { prev, next, isDone });
+    return;
+  }
+
+  // Kanji — grid karakter, klik buka detail modal (stroke + mnemonic + compound)
+  if (lesson.type === 'kanji') {
+    renderKanjiLesson(course, module, lesson, { prev, next, isDone });
     return;
   }
 
