@@ -2912,6 +2912,58 @@
     margin-left: 4px;
     transform: translateY(-2px);
   }
+
+  /* Listening JLPT-style: tombol play percakapan + hidden transcript */
+  .quiz-listening {
+    margin: 14px 0 18px;
+    padding: 14px 18px;
+    background: #fafafa;
+    border: 1px solid #e5e5e5;
+    border-radius: 12px;
+  }
+  .quiz-listen-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 16px;
+    background: #1a1a1a; color: #fff;
+    border: none; border-radius: 999px;
+    font: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    transition: background .12s, transform .08s;
+  }
+  .quiz-listen-btn:hover { background: var(--brand-red); }
+  .quiz-listen-btn:active { transform: scale(0.97); }
+  .quiz-listen-btn.playing {
+    background: var(--brand-red); animation: pulse 0.9s infinite;
+  }
+  .quiz-listen-btn .qlb-ico { font-size: 11px; }
+  .quiz-listen-hint {
+    margin-top: 8px;
+    font-size: 12px; color: #6a6a6a; font-style: italic;
+  }
+  .quiz-listen-transcript {
+    margin-top: 10px;
+    font-size: 13px;
+  }
+  .quiz-listen-transcript > summary {
+    cursor: pointer;
+    font-weight: 600; color: #4a4a4a;
+    list-style: none;
+    user-select: none;
+  }
+  .quiz-listen-transcript > summary::before {
+    content: "▾ "; color: #6a6a6a;
+  }
+  .quiz-listen-transcript[open] > summary::before { content: "▴ "; }
+  .quiz-listen-transcript > pre {
+    margin: 8px 0 0;
+    padding: 10px 14px;
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 6px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px; line-height: 1.7;
+    white-space: pre-wrap; word-break: break-word;
+  }
   .quiz-paper .quiz-options {
     display: grid;
     gap: 11px;
@@ -3134,6 +3186,7 @@ function transformQuestionFromApi(apiQ) {
     sectionNumber: Number(apiQ.section_number || apiQ.sectionNumber) || 1,
     sectionLabel: apiQ.section_label || apiQ.sectionLabel || `Section ${Number(apiQ.section_number || apiQ.sectionNumber) || 1}`,
     sectionInstruction: apiQ.section_instruction || apiQ.sectionInstruction || '',
+    audioScript: apiQ.audio_script || apiQ.audioScript || '',
   };
 }
 
@@ -3433,14 +3486,43 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
   const letters = ['1', '2', '3', '4', '5'];
   const answered = !!quizState.answeredByIndex?.[qi];
   const selected = quizState.selectedByIndex?.[qi];
+  const isListening = normalizeQuizCategory(q.category) === 'listening';
+  const hasAudioScript = isListening && q.audioScript && q.audioScript.trim();
+
+  // Listening JLPT-style: tombol play percakapan, transkrip hidden sampai
+  // siswa menjawab (mirip Todai test). Untuk question lain, tetap render JP
+  // inline + Dengar button kayak Codex sebelumnya.
+  let listeningBlock = '';
+  if (hasAudioScript) {
+    const script = q.audioScript;
+    const scriptJs = JSON.stringify(script);
+    listeningBlock = `
+      <div class="quiz-listening">
+        <button type="button" class="quiz-listen-btn" onclick="window.playQuizDialog(${qi}, ${scriptJs.replace(/"/g, '&quot;')}, this)">
+          <span class="qlb-ico">▶</span> Putar percakapan
+        </button>
+        ${answered ? `
+          <details class="quiz-listen-transcript" open>
+            <summary>Transkrip (sesudah jawab)</summary>
+            <pre lang="ja">${escapeHtml(script)}</pre>
+          </details>
+        ` : `<div class="quiz-listen-hint">Dengar dialog sebelum menjawab.</div>`}
+      </div>`;
+  }
+
+  const inlineJp = !hasAudioScript && q.jp
+    ? `<span class="quiz-paper-jp">${q.jp}</span>
+       <button class="pronounce-btn quiz-paper-audio" onclick="window.playTTS(${JSON.stringify(q.jp).replace(/"/g, '&quot;')}, this)">Dengar</button>`
+    : '';
+
   return `
     <article class="quiz-paper-item" data-question-index="${qi}">
       <h2 class="quiz-question quiz-paper-question">
         <span class="quiz-paper-number">${sectionNumber}.${questionNumber}</span>
         <span>${q.q}</span>
-        ${q.jp ? `<span class="quiz-paper-jp">${q.jp}</span>` : ''}
-        ${q.jp ? `<button class="pronounce-btn quiz-paper-audio" onclick="speakJapanese('${q.jp}', this)">Dengar</button>` : ''}
+        ${inlineJp}
       </h2>
+      ${listeningBlock}
       <div class="quiz-options" id="quiz-options-${qi}">
         ${q.options.map((opt, i) => `
           <button class="quiz-option ${answered ? 'disabled' : ''} ${answered && i === q.correct ? 'correct' : ''} ${answered && i === selected && i !== q.correct ? 'wrong' : ''}"
@@ -3456,6 +3538,18 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
     </article>
   `;
 }
+
+// Play percakapan listening lewat TTS cache (ElevenLabs). Single-voice
+// (gabungan A:/B: line). Cache otomatis di /api/tts, jadi soal yg sama ga
+// nge-hit Notion/ElevenLabs lagi.
+window.playQuizDialog = (qi, script, btn) => {
+  if (!script || !script.trim()) return;
+  if (typeof window.playTTS === 'function') {
+    window.playTTS(script, btn);
+  } else if (typeof window.speakJapanese === 'function') {
+    window.speakJapanese(script, btn);
+  }
+};
 
 function renderQuizQuestion(container) {
   const { questions } = quizState;
