@@ -193,7 +193,10 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
   lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
   question TEXT NOT NULL,
   question_type TEXT NOT NULL DEFAULT 'multiple_choice' CHECK (question_type IN ('multiple_choice','fill_blank')),
-  section TEXT,
+  question_category TEXT NOT NULL DEFAULT 'vocabulary' CHECK (question_category IN ('vocabulary','grammar','listening')),
+  section_number INT NOT NULL DEFAULT 1,
+  section_label TEXT NOT NULL DEFAULT 'Section 1',
+  section_instruction TEXT,
   correct_answer TEXT,
   explanation TEXT,
   sort_order INT DEFAULT 0,
@@ -202,6 +205,7 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_quiz_questions_lesson ON quiz_questions(lesson_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_quiz_questions_lesson_category ON quiz_questions(lesson_id, question_category, section_number, sort_order);
 
 CREATE TABLE IF NOT EXISTS quiz_options (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

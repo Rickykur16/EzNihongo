@@ -141,6 +141,32 @@
   .lesson-preview blockquote { margin: 8px 0; padding: 6px 12px; border-left: 3px solid var(--brand-red); background: var(--brand-red-soft); border-radius: 0 4px 4px 0; }
   .lesson-preview code { background: var(--paper-200); padding: 1px 5px; border-radius: 4px; font-family: var(--font-mono); font-size: 13px; }
   .lesson-preview a { color: var(--brand-red); text-decoration: underline; }
+  .quiz-admin-modal { max-width: 900px; }
+  .quiz-admin-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 14px; }
+  .quiz-admin-kicker { font-size: 11px; color: var(--ink-500); font-family: var(--font-mono); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .quiz-admin-title { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+  .quiz-paper-tabs-admin { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0 18px; }
+  .quiz-paper-tab-admin { border: 0; background: transparent; color: var(--ink-500); border-radius: 999px; padding: 8px 12px; font-size: 15px; font-weight: 600; }
+  .quiz-paper-tab-admin.active { background: #202020; color: #fff; font-weight: 800; }
+  .quiz-admin-paper { background: var(--surface-white); border: 1px solid var(--paper-300); border-radius: var(--radius-md); padding: 22px 18px 18px; margin-bottom: 16px; position: relative; }
+  .quiz-admin-section-label { position: absolute; top: -15px; left: 14px; background: var(--surface-white); border: 1px solid var(--paper-300); border-radius: 7px; padding: 6px 12px; font-size: 15px; font-weight: 800; color: var(--ink-900); }
+  .quiz-admin-instruction { font-size: 15px; line-height: 1.55; font-weight: 700; color: var(--ink-900); margin: 4px 0 18px; }
+  .quiz-admin-list { display: grid; gap: 12px; }
+  .quiz-admin-item { margin: 0; padding: 14px; background: #fff; border: 1px solid var(--paper-300); border-radius: var(--radius-md); }
+  .quiz-admin-item summary { display: flex; gap: 8px; align-items: baseline; font-size: 15px; font-weight: 800; color: var(--ink-900); }
+  .quiz-admin-no { font-weight: 900; white-space: nowrap; }
+  .quiz-admin-options { display: grid; gap: 7px; margin-top: 12px; }
+  .quiz-admin-option { display: flex; gap: 9px; align-items: center; min-height: 38px; padding: 9px 11px; background: #efefef; border-radius: 6px; font-size: 14px; font-weight: 700; color: var(--ink-900); }
+  .quiz-admin-option.correct { background: var(--success-soft); color: var(--success); }
+  .quiz-admin-option-no { min-width: 18px; font-family: var(--font-mono); font-size: 12px; font-weight: 800; }
+  .quiz-admin-note { margin-top: 10px; color: var(--ink-500); font-size: 13px; line-height: 1.5; }
+  .quiz-options-edit { background: #fff; padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--paper-300); display: grid; gap: 8px; }
+  .quiz-option-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 8px; background: #efefef; border-radius: 6px; margin-bottom: 0; }
+  .quiz-option-row input[type=text] { flex: 1; background: #fff; border-color: transparent; font-weight: 700; }
+  .quiz-option-row input[type=checkbox] { width: auto; }
+  .quiz-option-row .btn { padding: 7px 9px; }
+  .quiz-option-num { display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; font-weight: 800; color: var(--ink-700); }
+  .quiz-correct-toggle { font-size: 12px; display: flex; align-items: center; gap: 5px; color: var(--ink-700); font-family: var(--font-body); font-weight: 700; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -274,13 +300,15 @@ async function api(path, opts) {
   return data;
 }
 
-function openModal(html) {
+function openModal(html, opts = {}) {
+  modalContent.className = `modal ${opts.className || ''}`.trim();
   modalContent.innerHTML = html;
   modal.classList.add('show');
 }
 function closeModal() {
   modal.classList.remove('show');
   modalContent.innerHTML = '';
+  modalContent.className = 'modal';
   modalContent.style.maxWidth = '';
 }
 modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
@@ -1008,7 +1036,8 @@ function renderLessons() {
              <button class="btn btn-ghost" onclick="manageGrammar('${l.id}', '${titleEsc}', '${mod.id}')">Grammar (${grammarN})</button>`;
         }
         const quizBtn = l.type === 'quiz'
-          ? `<button class="btn btn-ghost" onclick="manageQuiz('${l.id}', '${titleEsc}')">Kuis</button>`
+          ? `<button class="btn btn-ghost" onclick="manageQuiz('${l.id}', '${titleEsc}')">Kuis</button>
+             <button class="btn btn-ghost" onclick="generateQuizFromVocab('${l.id}', '${titleEsc}')" title="Generate ulang 10 soal MC dari kosakata Bab (replace soal lama)">🎲 Auto-Gen</button>`
           : '';
         return `
         <tr>
@@ -1327,6 +1356,23 @@ window.deleteLesson = async (id, title) => {
   } catch (err) { notify('Gagal hapus: ' + err.message, true); }
 };
 
+// Auto-generate quiz dari vocab Bab di module yg sama. Replace soal lama.
+window.generateQuizFromVocab = async (lessonId, lessonTitle) => {
+  const countStr = prompt(`Generate berapa soal MC untuk "${lessonTitle}"?\n\nMix: bacaan kanji, arti JP→ID, tulis JP, listening (audio). Replace soal lama.`, '10');
+  if (countStr === null) return;
+  const count = Math.max(4, Math.min(50, Number(countStr) || 10));
+  notify('Generating ' + count + ' soal...');
+  try {
+    const d = await api('/admin/lessons/' + lessonId + '/generate-quiz', {
+      method: 'POST',
+      body: JSON.stringify({ count }),
+    });
+    notify(`${d.created} soal dibuat dari ${d.vocabPool} kosakata. Cek "Kuis" buat review.`);
+  } catch (err) {
+    notify('Gagal generate: ' + err.message, true);
+  }
+};
+
 // ─── Import Pelajaran dari Notion ───
 // Admin picks a Notion Bab → list of child pages (5 pelajaran) shown as
 // checkboxes → import selected ones as EzNihongo lessons under the active
@@ -1429,6 +1475,20 @@ window.piRunImport = async (moduleId) => {
 };
 
 // ─── Quiz manager ───
+const QUIZ_CATEGORY_LABELS = {
+  vocabulary: 'Vocabulary',
+  grammar: 'Grammar',
+  listening: 'Listening',
+};
+
+function quizCategory(value) {
+  return QUIZ_CATEGORY_LABELS[value] ? value : 'vocabulary';
+}
+
+function quizCategoryLabel(value) {
+  return QUIZ_CATEGORY_LABELS[quizCategory(value)];
+}
+
 window.manageQuiz = async (lessonId, lessonTitle) => {
   let questions = [];
   try { const d = await api('/admin/lessons/' + lessonId + '/quiz'); questions = d.questions || []; }
@@ -1436,34 +1496,33 @@ window.manageQuiz = async (lessonId, lessonTitle) => {
   renderQuizModal(lessonId, lessonTitle, questions);
 };
 
-const QUIZ_SECTION_LABEL = {
-  vocabulary: '📖 Vocabulary (語彙)',
-  grammar: '✍️ Grammar (文法)',
-  listening: '🎧 Listening (聴解)',
-  reading: '📚 Reading (読解)',
-};
-const QUIZ_SECTION_ORDER = ['vocabulary', 'grammar', 'listening', 'reading'];
-
 function renderQuizModal(lessonId, lessonTitle, questions) {
-  // Group by section; questions tanpa section masuk "(belum di-tag)" di bawah.
-  const buckets = new Map();
-  for (const q of questions) {
-    const key = (q.section || '').trim() || '__untagged';
-    if (!buckets.has(key)) buckets.set(key, []);
-    buckets.get(key).push(q);
-  }
-  const orderedKeys = [
-    ...QUIZ_SECTION_ORDER.filter((k) => buckets.has(k)),
-    ...[...buckets.keys()].filter((k) => !QUIZ_SECTION_ORDER.includes(k) && k !== '__untagged'),
-    ...(buckets.has('__untagged') ? ['__untagged'] : []),
-  ];
-
-  const renderQ = (q) => `
-    <details>
-      <summary>${escapeHtml(q.question.slice(0, 80))}${q.question.length > 80 ? '…' : ''}</summary>
-      <div style="margin-top:8px;font-size:13px;color:#525252;">
-        ${(q.options || []).map((o) => `<div>${o.is_correct ? '✓' : '·'} ${escapeHtml(o.option_text)}</div>`).join('')}
-        ${q.explanation ? `<div style="margin-top:6px;font-style:italic;">Penjelasan: ${escapeHtml(q.explanation)}</div>` : ''}
+  const tabsHtml = Object.keys(QUIZ_CATEGORY_LABELS).map((cat) => {
+    const count = questions.filter((q) => quizCategory(q.question_category) === cat).length;
+    return `<span class="quiz-paper-tab-admin ${count ? 'active' : ''}">${QUIZ_CATEGORY_LABELS[cat]} ${count}</span>`;
+  }).join('');
+  const sectionQuestionCounts = new Map();
+  const qHtml = questions.map((q) => {
+    const category = quizCategory(q.question_category);
+    const sectionNumber = Number(q.section_number) || 1;
+    const sectionKey = `${category}:${sectionNumber}`;
+    const sectionQuestionNumber = (sectionQuestionCounts.get(sectionKey) || 0) + 1;
+    sectionQuestionCounts.set(sectionKey, sectionQuestionNumber);
+    return `
+    <details class="quiz-admin-item">
+      <summary>
+        <span class="quiz-admin-no">${sectionNumber}.${sectionQuestionNumber}</span>
+        <span>${escapeHtml(q.question.slice(0, 90))}${q.question.length > 90 ? '…' : ''}</span>
+        <span class="pill">${quizCategoryLabel(category)}</span>
+      </summary>
+      <div class="quiz-admin-options">
+        ${(q.options || []).map((o, oi) => `
+          <div class="quiz-admin-option ${o.is_correct ? 'correct' : ''}">
+            <span class="quiz-admin-option-no">${oi + 1}</span>
+            <span>${escapeHtml(o.option_text)}</span>
+          </div>
+        `).join('')}
+        ${q.explanation ? `<div class="quiz-admin-note">Penjelasan: ${escapeHtml(q.explanation)}</div>` : ''}
         <div style="margin-top:8px;display:flex;gap:6px;">
           <button class="btn btn-ghost" onclick='editQuestion(${JSON.stringify(q).replace(/'/g, "&#39;")}, "${lessonId}", "${escapeHtml(lessonTitle).replace(/"/g, '&quot;')}")'>Edit</button>
           <button class="btn btn-danger" onclick='deleteQuestion("${q.id}", "${lessonId}", "${escapeHtml(lessonTitle).replace(/"/g, '&quot;')}")'>Hapus</button>
@@ -1471,23 +1530,25 @@ function renderQuizModal(lessonId, lessonTitle, questions) {
       </div>
     </details>
   `;
-
-  const sectionsHtml = orderedKeys.map((key) => {
-    const label = key === '__untagged' ? '(belum di-tag section)' : (QUIZ_SECTION_LABEL[key] || key);
-    return `
-      <div style="margin-top:16px;">
-        <h4 style="margin:0 0 6px;font-size:13px;color:var(--ink-700);letter-spacing:.02em;">${escapeHtml(label)} <span style="color:#999;font-weight:400;">(${buckets.get(key).length})</span></h4>
-        ${buckets.get(key).map(renderQ).join('')}
-      </div>
-    `;
   }).join('');
-
   openModal(`
-    <h3>Kuis: ${escapeHtml(lessonTitle)}</h3>
-    <div class="toolbar"><button class="btn btn-primary" onclick='newQuestion("${lessonId}", "${escapeHtml(lessonTitle).replace(/"/g, '&quot;')}")'>+ Pertanyaan</button></div>
-    ${questions.length === 0 ? '<div class="empty">Belum ada pertanyaan.</div>' : sectionsHtml}
+    <div class="quiz-admin-head">
+      <div>
+        <div class="quiz-admin-kicker">Quiz / Assignment</div>
+        <h3 class="quiz-admin-title">${escapeHtml(lessonTitle)}</h3>
+      </div>
+      <button class="btn btn-primary" onclick='newQuestion("${lessonId}", "${escapeHtml(lessonTitle).replace(/"/g, '&quot;')}")'>+ Pertanyaan</button>
+    </div>
+    <div class="quiz-paper-tabs-admin" aria-label="Kategori kuis">
+      ${tabsHtml}
+    </div>
+    <div class="quiz-admin-paper">
+      <div class="quiz-admin-section-label">Sections</div>
+      <div class="quiz-admin-instruction">Set kategori, section, dan instruksi di tiap pertanyaan. Dashboard murid akan mengelompokkan soal ke tab Vocabulary, Grammar, dan Listening sesuai metadata ini.</div>
+      <div class="quiz-admin-list">${questions.length === 0 ? '<div class="empty">Belum ada pertanyaan.</div>' : qHtml}</div>
+    </div>
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
-  `);
+  `, { className: 'quiz-admin-modal' });
 }
 
 window.newQuestion = (lessonId, lessonTitle) => {
@@ -1506,27 +1567,48 @@ window.deleteQuestion = async (qid, lessonId, lessonTitle) => {
 };
 
 function openQuestionForm(q, lessonId, lessonTitle) {
-  q = q || { question: '', question_type: 'multiple_choice', section: '', explanation: '', sort_order: 0, options: [{ option_text: '', is_correct: false }, { option_text: '', is_correct: false }] };
+  q = q || {
+    question: '',
+    question_type: 'multiple_choice',
+    question_category: 'vocabulary',
+    section_number: 1,
+    section_label: 'Section 1',
+    section_instruction: '',
+    explanation: '',
+    sort_order: 0,
+    options: [{ option_text: '', is_correct: false }, { option_text: '', is_correct: false }],
+  };
+  q.question_category = quizCategory(q.question_category);
+  q.section_number = Number(q.section_number) || 1;
+  q.section_label = q.section_label || `Section ${q.section_number}`;
   const optsHtml = (q.options || []).map((o, i) => optionRowHtml(o, i)).join('');
-  const curSection = (q.section || '').trim();
   openModal(`
-    <h3>${q.id ? 'Edit Pertanyaan' : 'Pertanyaan Baru'}</h3>
-    <form id="question-form">
-      <div class="field">
-        <label>Pertanyaan</label>
-        <textarea name="question" class="rich-text" rows="3" required placeholder="Teks pertanyaan. Untuk JP audio (listening): tulis prompt Indonesia, enter dua kali, terus JP-nya — frontend auto play TTS.">${escapeHtml(q.question)}</textarea>
+    <div class="quiz-admin-head">
+      <div>
+        <div class="quiz-admin-kicker">${escapeHtml(q.section_label)} / ${quizCategoryLabel(q.question_category)}</div>
+        <h3 class="quiz-admin-title">${q.id ? 'Edit Pertanyaan' : 'Pertanyaan Baru'}</h3>
       </div>
-      <div class="field"><label>Penjelasan (muncul setelah jawab)</label><textarea name="explanation" class="rich-text" rows="3">${escapeHtml(q.explanation || '')}</textarea></div>
-      <div class="field-row">
-        <div class="field"><label>Section (JLPT)</label>
-          <select name="section">
-            <option value="">(tanpa section)</option>
-            <option value="vocabulary" ${curSection === 'vocabulary' ? 'selected' : ''}>📖 Vocabulary (語彙)</option>
-            <option value="grammar" ${curSection === 'grammar' ? 'selected' : ''}>✍️ Grammar (文法)</option>
-            <option value="listening" ${curSection === 'listening' ? 'selected' : ''}>🎧 Listening (聴解)</option>
-            <option value="reading" ${curSection === 'reading' ? 'selected' : ''}>📚 Reading (読解)</option>
-          </select>
+    </div>
+    <form id="question-form">
+      <div class="quiz-admin-paper">
+        <div class="quiz-admin-section-label">${escapeHtml(q.section_label)}</div>
+        <div class="quiz-admin-instruction">Tulis pertanyaan seperti yang akan muncul di assignment. Metadata di bawah menentukan tab dan section murid.</div>
+        <div class="field-row">
+          <div class="field"><label>Kategori</label>
+            <select name="questionCategory">
+              <option value="vocabulary" ${q.question_category === 'vocabulary' ? 'selected' : ''}>Vocabulary</option>
+              <option value="grammar" ${q.question_category === 'grammar' ? 'selected' : ''}>Grammar</option>
+              <option value="listening" ${q.question_category === 'listening' ? 'selected' : ''}>Listening</option>
+            </select>
+          </div>
+          <div class="field"><label>Section</label><input type="number" name="sectionNumber" min="1" value="${q.section_number}" /></div>
+          <div class="field"><label>Label section</label><input name="sectionLabel" value="${escapeHtml(q.section_label)}" placeholder="Section 1" /></div>
         </div>
+        <div class="field"><label>Instruksi section</label><textarea name="sectionInstruction" rows="2">${escapeHtml(q.section_instruction || '')}</textarea></div>
+        <div class="field"><label>Pertanyaan</label><textarea name="question" class="rich-text" rows="3" required>${escapeHtml(q.question)}</textarea></div>
+        <div class="field"><label>Penjelasan setelah jawab</label><textarea name="explanation" class="rich-text" rows="3">${escapeHtml(q.explanation || '')}</textarea></div>
+      </div>
+      <div class="field-row">
         <div class="field"><label>Tipe</label>
           <select name="questionType">
             <option value="multiple_choice" ${q.question_type === 'multiple_choice' ? 'selected' : ''}>Pilihan ganda</option>
@@ -1536,7 +1618,7 @@ function openQuestionForm(q, lessonId, lessonTitle) {
         </div>
         <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${q.sort_order || 0}" /></div>
       </div>
-      <div class="field"><label>Opsi (tandai yang benar)</label>
+      <div class="field"><label>Opsi jawaban (tampilan 1 / 2 / 3 / 4)</label>
         <div class="quiz-options-edit" id="options-list">${optsHtml}</div>
         <button type="button" class="btn btn-ghost" style="margin-top:6px;" onclick="addOptionRow()">+ Tambah opsi</button>
       </div>
@@ -1545,7 +1627,7 @@ function openQuestionForm(q, lessonId, lessonTitle) {
         <button type="submit" class="btn btn-primary">Simpan</button>
       </div>
     </form>
-  `);
+  `, { className: 'quiz-admin-modal' });
   const qForm = document.getElementById('question-form');
   wireRichToolbarAll(qForm);
   qForm.addEventListener('submit', (e) => submitQuestion(e, q.id, lessonId, lessonTitle));
@@ -1554,8 +1636,9 @@ function openQuestionForm(q, lessonId, lessonTitle) {
 function optionRowHtml(o, i) {
   return `
     <div class="quiz-option-row" data-idx="${i}">
+      <span class="quiz-option-num">${i + 1}</span>
       <input type="text" name="opt_text_${i}" value="${escapeHtml(o.option_text || '')}" placeholder="Teks jawaban" />
-      <label style="font-size:11px;display:flex;align-items:center;gap:4px;color:#525252;font-family:var(--font-body);">
+      <label class="quiz-correct-toggle">
         <input type="checkbox" name="opt_correct_${i}" ${o.is_correct ? 'checked' : ''}/>
         Benar
       </label>
@@ -1584,7 +1667,10 @@ async function submitQuestion(e, qid, lessonId, lessonTitle) {
   const body = {
     question: form.question.value.trim(),
     questionType: form.questionType.value,
-    section: (form.section && form.section.value) || '',
+    questionCategory: form.questionCategory.value,
+    sectionNumber: Number(form.sectionNumber.value) || 1,
+    sectionLabel: form.sectionLabel.value.trim() || `Section ${Number(form.sectionNumber.value) || 1}`,
+    sectionInstruction: form.sectionInstruction.value.trim() || null,
     explanation: form.explanation.value.trim() || null,
     sortOrder: Number(form.sortOrder.value) || 0,
     options,

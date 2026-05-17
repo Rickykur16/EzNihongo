@@ -192,10 +192,17 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
 
   if (row.type === 'quiz') {
     const questions = await query(
-      `SELECT id, question, question_type, section, explanation, sort_order
+      `SELECT id, question, question_type, question_category, section_number,
+              section_label, section_instruction, explanation, sort_order
        FROM quiz_questions
        WHERE lesson_id = $1
-       ORDER BY sort_order ASC`,
+       ORDER BY CASE question_category
+                  WHEN 'vocabulary' THEN 1
+                  WHEN 'grammar' THEN 2
+                  WHEN 'listening' THEN 3
+                  ELSE 9
+                END,
+                section_number ASC, sort_order ASC`,
       [row.id]
     );
     const qIds = questions.rows.map((q) => q.id);

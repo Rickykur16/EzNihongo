@@ -1083,153 +1083,7 @@
   }
   .flashcard-cta:hover .count { background: rgba(255,255,255,0.15); color: #fff; }
 
-  /* ── JLPT Mock-Exam Style Quiz ────────────────────────────────────── */
-  .qz-exam { display: flex; flex-direction: column; gap: 20px; }
-  .qz-tabbar {
-    display: flex; gap: 4px;
-    border-bottom: 1px solid #e5e5e5;
-    overflow-x: auto;
-    margin-bottom: 4px;
-  }
-  .qz-tab {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 10px 16px 12px;
-    background: transparent; border: none;
-    font: inherit; font-size: 14px; font-weight: 600;
-    color: #6a6a6a;
-    cursor: pointer;
-    border-radius: 999px;
-    white-space: nowrap;
-    transition: background .12s, color .12s;
-  }
-  .qz-tab:hover { background: #f5f5f5; color: #1a1a1a; }
-  .qz-tab.active {
-    background: #1a1a1a; color: #fff;
-  }
-  .qz-tab-count {
-    font-size: 11px; padding: 1px 7px; border-radius: 999px;
-    background: rgba(0,0,0,.08); color: #6a6a6a;
-    font-variant-numeric: tabular-nums; font-weight: 700;
-  }
-  .qz-tab.active .qz-tab-count { background: rgba(255,255,255,.18); color: #fff; }
-
-  .qz-mondai {
-    border: 1px solid #d4d4d4; border-radius: 10px;
-    padding: 14px 18px;
-    background: #fff;
-    position: relative;
-  }
-  .qz-mondai-tag {
-    display: inline-block;
-    position: absolute; top: -10px; left: 16px;
-    background: #fff; padding: 0 8px;
-    font-size: 12px; font-weight: 700; color: #1a1a1a;
-    border: 1px solid #d4d4d4; border-radius: 6px;
-  }
-  .qz-mondai-text {
-    margin: 4px 0 0;
-    font-family: 'Noto Sans JP', sans-serif;
-    font-size: 14.5px; line-height: 1.6; color: #1a1a1a;
-    font-weight: 600;
-  }
-
-  .qz-qlist { display: flex; flex-direction: column; gap: 18px; }
-  .qz-q {
-    display: flex; flex-direction: column; gap: 10px;
-  }
-  .qz-q-head {
-    display: flex; align-items: flex-start; gap: 8px;
-    font-size: 15px; line-height: 1.5; color: #1a1a1a;
-  }
-  .qz-q-num {
-    font-weight: 700; flex-shrink: 0;
-    font-variant-numeric: tabular-nums;
-    min-width: 30px;
-  }
-  .qz-q-text { flex: 1; min-width: 0; font-weight: 500; }
-  .qz-q-text u { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
-  .qz-q-jp {
-    padding-left: 38px;
-    font-family: 'Noto Sans JP', sans-serif;
-    font-size: 16px; line-height: 1.7; color: #1a1a1a;
-    font-weight: 600;
-  }
-  .qz-q-jp u { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
-  .qz-audio {
-    flex-shrink: 0;
-    border: 1px solid #d4d4d4; background: #fff; color: #1a1a1a;
-    width: 30px; height: 30px; border-radius: 50%;
-    display: inline-flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    transition: all .15s;
-  }
-  .qz-audio:hover { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
-  .qz-audio.playing { background: var(--brand-red); color: #fff; border-color: var(--brand-red); animation: pulse 0.9s infinite; }
-
-  .qz-options { display: flex; flex-direction: column; gap: 8px; padding-left: 38px; }
-  .qz-option {
-    display: block; width: 100%; text-align: left;
-    padding: 12px 16px;
-    background: #f3f3f3; border: 2px solid transparent; border-radius: 8px;
-    font: inherit; font-size: 14px; color: #1a1a1a;
-    cursor: pointer;
-    transition: background .12s, border-color .12s, color .12s;
-  }
-  .qz-option:hover:not(:disabled):not(.dim) { background: #e8e8e8; }
-  .qz-option.picked { background: #ebe9f9; border-color: #6e5acb; font-weight: 600; }
-  .qz-option.correct { background: #dcfce7; border-color: #16a34a; color: #14532d; font-weight: 600; }
-  .qz-option.wrong { background: #fee2e2; border-color: #dc2626; color: #7f1d1d; font-weight: 600; }
-  .qz-option.dim { background: #f8f8f8; color: #888; }
-  .qz-option:disabled { cursor: default; }
-  .qz-explain {
-    margin: 4px 0 0 38px;
-    padding: 10px 14px;
-    background: #fff8e1; border-left: 3px solid #f59e0b;
-    border-radius: 6px;
-    font-size: 13px; line-height: 1.5; color: #4a4a4a;
-  }
-
-  .qz-submit-row {
-    position: sticky; bottom: 0;
-    margin-top: 8px;
-    display: flex; justify-content: space-between; align-items: center; gap: 12px;
-    padding: 14px 16px;
-    background: #fff;
-    border-top: 1px solid #e5e5e5;
-    box-shadow: 0 -4px 12px rgba(0,0,0,.04);
-  }
-  .qz-progress-text { font-size: 13px; color: #6a6a6a; font-variant-numeric: tabular-nums; font-weight: 600; }
-
-  .qz-result-banner {
-    margin-top: 12px; padding: 18px 20px;
-    border-radius: 12px;
-    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
-  }
-  .qz-result-banner.pass {
-    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-    border: 1px solid #86efac;
-  }
-  .qz-result-banner.fail {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border: 1px solid #fcd34d;
-  }
-  .qz-result-pct {
-    font-size: 36px; font-weight: 800; color: #1a1a1a;
-    font-variant-numeric: tabular-nums;
-  }
-  .qz-result-info { flex: 1; min-width: 200px; }
-  .qz-result-title { font-size: 18px; font-weight: 700; color: #1a1a1a; margin-bottom: 2px; }
-  .qz-result-sub { font-size: 13px; color: #4a4a4a; }
-  .qz-result-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-
-  @media (max-width: 600px) {
-    .qz-tab { padding: 8px 12px 10px; font-size: 13px; }
-    .qz-mondai-text { font-size: 13.5px; }
-    .qz-q-jp, .qz-options, .qz-explain { padding-left: 0; margin-left: 0; }
-    .qz-q-head { font-size: 14px; }
-  }
-
-  /* ── Interactive Quiz (legacy sequential UI — still used as fallback?) ── */
+  /* ── Interactive Quiz ── */
   .quiz-container {
     background: #fff;
     border: 1px solid #e5e5e5;
@@ -2961,6 +2815,179 @@
     .deck-modal-nav button { padding: 8px 10px; font-size: 12px; }
   }
 
+  /* JLPT-style quiz / assignment paper */
+  .quiz-container.quiz-paper {
+    max-width: 1006px;
+    margin: 0 auto;
+    padding: 0;
+    background: #fff;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    font-family: var(--font-body);
+  }
+  .quiz-paper-tabs {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin: 2px 0 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .quiz-paper-tabs::-webkit-scrollbar { display: none; }
+  .quiz-paper-tab {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: #777;
+    border-radius: 24px;
+    padding: 11px 14px;
+    font: 500 24px/1 var(--font-body);
+    white-space: nowrap;
+    cursor: default;
+  }
+  .quiz-paper-tab.active {
+    background: #202020;
+    color: #fff;
+    padding: 14px 17px;
+    font-weight: 800;
+  }
+  .quiz-paper-tab:disabled {
+    color: #b8b8b8;
+    cursor: not-allowed;
+  }
+  .quiz-paper-section {
+    position: relative;
+    border: 1px solid #d8d8d8;
+    border-radius: 6px;
+    padding: 38px 16px;
+    margin: 0 0 36px;
+  }
+  .quiz-section-label {
+    position: absolute;
+    top: -25px;
+    left: 11px;
+    background: #fff;
+    border: 1px solid #d8d8d8;
+    border-radius: 7px;
+    padding: 10px 16px;
+    color: #161a1d;
+    font-size: 24px;
+    font-weight: 800;
+  }
+  .quiz-instruction {
+    color: #111820;
+    font-size: clamp(20px, 2.3vw, 25px);
+    line-height: 1.35;
+    font-weight: 800;
+    letter-spacing: 0;
+  }
+  .quiz-paper-list {
+    display: grid;
+    gap: 34px;
+  }
+  .quiz-paper-item {
+    display: grid;
+    gap: 22px;
+  }
+  .quiz-question.quiz-paper-question {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0;
+    color: #111820;
+    font-size: clamp(20px, 2.1vw, 24px);
+    line-height: 1.45;
+    font-weight: 800;
+    letter-spacing: 0;
+  }
+  .quiz-paper-number { font-weight: 900; }
+  .quiz-paper-jp {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+  .quiz-paper-audio {
+    margin-left: 4px;
+    transform: translateY(-2px);
+  }
+  .quiz-paper .quiz-options {
+    display: grid;
+    gap: 11px;
+  }
+  .quiz-paper .quiz-option {
+    min-height: 59px;
+    padding: 16px;
+    background: #efefef;
+    border: 0;
+    border-left: 0;
+    border-radius: 6px;
+    box-shadow: none;
+    color: #111820;
+    font-size: 20px;
+    font-weight: 800;
+    transform: none;
+  }
+  .quiz-paper .quiz-option:hover:not(.disabled) {
+    background: #e4e4e4;
+    border: 0;
+    transform: none;
+    box-shadow: none;
+  }
+  .quiz-paper .quiz-option-letter {
+    width: auto;
+    height: auto;
+    min-width: 20px;
+    background: transparent;
+    color: #111820;
+    border-radius: 0;
+    font-size: 17px;
+    font-weight: 900;
+  }
+  .quiz-paper .quiz-option.correct {
+    background: #e4f7e8;
+    color: var(--success);
+  }
+  .quiz-paper .quiz-option.wrong {
+    background: #fde8e8;
+    color: var(--danger);
+  }
+  .quiz-paper .quiz-option.correct .quiz-option-letter,
+  .quiz-paper .quiz-option.wrong .quiz-option-letter {
+    background: transparent;
+    color: inherit;
+  }
+  .quiz-paper .quiz-explanation {
+    margin-top: -8px;
+    border-radius: 6px;
+    box-shadow: none;
+  }
+  .quiz-feedback .quiz-next-btn { display: none; }
+  .quiz-paper-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 34px;
+    padding-top: 22px;
+    border-top: 1px solid #e8e8e8;
+  }
+  .quiz-paper-actions .quiz-next-btn:disabled {
+    background: #ddd;
+    color: #999;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+  }
+  @media (max-width: 700px) {
+    .quiz-paper-tab { font-size: 20px; }
+    .quiz-paper-tab.active { padding: 12px 16px; }
+    .quiz-paper-section { padding: 32px 14px 28px; }
+    .quiz-section-label { font-size: 20px; }
+    .quiz-paper .quiz-option { min-height: 54px; font-size: 18px; }
+    .quiz-paper-actions { align-items: stretch; flex-direction: column; }
+  }
 </style>
 </head>
 <body>
@@ -3065,6 +3092,25 @@ function transformCourseFromApi(apiCourse) {
   };
 }
 
+const QUIZ_CATEGORY_META = {
+  vocabulary: {
+    label: 'Vocabulary',
+    defaultInstruction: '問題1：＿＿の　ことばは　ひらがなで　どう　かきますか。 1・2・3・4から　いちばん　いい　ものを　ひとつ　えらんで　ください。',
+  },
+  grammar: {
+    label: 'Grammar',
+    defaultInstruction: '問題2：＿＿に　入る　いちばん　いい　ものを　1・2・3・4から　ひとつ　えらんで　ください。',
+  },
+  listening: {
+    label: 'Listening',
+    defaultInstruction: '問題3：音声を聞いて、ただしい答えを　1・2・3・4から　ひとつ　えらんで　ください。',
+  },
+};
+
+function normalizeQuizCategory(value) {
+  return QUIZ_CATEGORY_META[value] ? value : 'vocabulary';
+}
+
 // Migration stored quiz prompts as "q\n\njp" (or just "q" if no jp). Split
 // back, then match the shape the existing quiz engine expects.
 // Note: the `correct` index is intentionally absent here — the API never
@@ -3081,10 +3127,13 @@ function transformQuestionFromApi(apiQ) {
   const optionIds = sorted.map((o) => o.id);
   return {
     q, jp, options, optionIds,
-    section: (apiQ.section || '').trim() || 'vocabulary',
     correct: -1,
     explain: apiQ.explanation || '',
     questionId: apiQ.id,
+    category: normalizeQuizCategory(apiQ.question_category || apiQ.questionCategory),
+    sectionNumber: Number(apiQ.section_number || apiQ.sectionNumber) || 1,
+    sectionLabel: apiQ.section_label || apiQ.sectionLabel || `Section ${Number(apiQ.section_number || apiQ.sectionNumber) || 1}`,
+    sectionInstruction: apiQ.section_instruction || apiQ.sectionInstruction || '',
   };
 }
 
@@ -3293,44 +3342,10 @@ window.speakJapanese = speakJapanese;
 // ═══════════════════════════════════════════════
 // QUIZ ENGINE
 // ═══════════════════════════════════════════════
-// JLPT mock-exam style quiz: tab bar per section, all questions of active
-// section visible at once, student picks options then klik Submit di akhir
-// untuk grade semua sekaligus. Result inline (✓/✗ per option + penjelasan).
 let quizState = null;
-
-const QUIZ_SECTION_META = {
-  vocabulary: {
-    label: 'Vocabulary',
-    sub: '語彙',
-    mondai: '問題：＿＿の ことばは どう かきますか／よみますか。1・2・3・4 から いちばん いい ものを ひとつ えらんで ください。',
-  },
-  grammar: {
-    label: 'Grammar',
-    sub: '文法',
-    mondai: '問題：（　）に なにを いれますか。1・2・3・4 から いちばん いい ものを ひとつ えらんで ください。',
-  },
-  listening: {
-    label: 'Listening',
-    sub: '聴解',
-    mondai: '問題：おんせい を ききなさい。いちばん いい こたえを 1・2・3・4 から ひとつ えらんで ください。',
-  },
-  reading: {
-    label: 'Reading',
-    sub: '読解',
-    mondai: '問題：ぶんしょう を よんで しつもん に こたえなさい。1・2・3・4 から いちばん いい こたえを ひとつ えらんで ください。',
-  },
-};
-const QUIZ_SECTION_ORDER = ['vocabulary', 'grammar', 'listening', 'reading'];
 
 function getQuizKey(courseSlug, moduleId, lessonId) {
   return `${courseSlug}:${moduleId}:${lessonId}`;
-}
-
-// `**bold**` in the prompt → underline (JLPT vocab target convention).
-function renderQuizPromptText(s) {
-  if (!s) return '';
-  const escaped = escapeHtml(String(s));
-  return escaped.replace(/\*\*([^*]+)\*\*/g, '<u>$1</u>');
 }
 
 function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
@@ -3340,244 +3355,287 @@ function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
     container.innerHTML = `<div class="quiz-container"><p style="color:#485f84;">Kuis belum tersedia.</p></div>`;
     return;
   }
-  // Group by section, preserving Notion / admin order.
-  const buckets = new Map();
-  for (const q of questions) {
-    const sec = (q.section || '').trim() || 'vocabulary';
-    if (!buckets.has(sec)) buckets.set(sec, []);
-    buckets.get(sec).push(q);
-  }
-  const orderedKeys = [
-    ...QUIZ_SECTION_ORDER.filter((k) => buckets.has(k)),
-    ...[...buckets.keys()].filter((k) => !QUIZ_SECTION_ORDER.includes(k)),
-  ];
-
   quizState = {
     key,
     questions,
-    buckets,
-    sectionKeys: orderedKeys,
-    activeSection: orderedKeys[0],
-    selections: {},      // questionId -> picked option idx
-    submitted: false,
-    serverResult: null,  // { score, total, correctByQuestion }
+    idx: 0,
+    correct: 0,
+    answered: false,
+    selected: -1,
+    answers: [],
+    answeredByIndex: {},
+    correctByIndex: {},
+    selectedByIndex: {},
+    activeCategory: firstQuizCategoryWithQuestions(questions),
   };
-  renderQuizExam();
+  renderQuizQuestion(container);
 }
 
-function renderQuizExam() {
-  const container = document.getElementById('main-content');
-  if (!container || !quizState) return;
-  const { sectionKeys, activeSection, buckets, selections, submitted, serverResult } = quizState;
+function firstQuizCategoryWithQuestions(questions) {
+  return ['vocabulary', 'grammar', 'listening'].find((cat) =>
+    questions.some((q) => normalizeQuizCategory(q.category) === cat)
+  ) || 'vocabulary';
+}
 
-  const tabBar = sectionKeys.map((k) => {
-    const meta = QUIZ_SECTION_META[k] || { label: k, sub: '' };
-    const count = buckets.get(k).length;
-    const isActive = k === activeSection;
-    return `<button type="button" class="qz-tab ${isActive ? 'active' : ''}" onclick="window.switchExamSection('${k}')">
-      ${escapeHtml(meta.label)}
-      <span class="qz-tab-count">${count}</span>
-    </button>`;
-  }).join('');
+function quizQuestionsByCategory(questions, category) {
+  return questions
+    .map((q, index) => ({ q, index }))
+    .filter((item) => normalizeQuizCategory(item.q.category) === category);
+}
 
-  const activeMeta = QUIZ_SECTION_META[activeSection] || { label: activeSection, sub: '', mondai: '' };
-  const activeQs = buckets.get(activeSection) || [];
-
-  const correctByQ = (serverResult && serverResult.correctByQuestion) || {};
-
-  const questionsHtml = activeQs.map((q, idx) => {
-    const num = `${sectionKeys.indexOf(activeSection) + 1}.${idx + 1}`;
-    const sel = selections[q.questionId];
-    const audioBtn = q.jp
-      ? `<button type="button" class="qz-audio" onclick="window.speakJapanese(${JSON.stringify(q.jp).replace(/"/g, '&quot;')}, this)" aria-label="Dengar audio">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        </button>`
-      : '';
-
-    const optionsHtml = q.options.map((opt, oi) => {
-      const isPicked = sel === oi;
-      let extraClass = '';
-      if (submitted) {
-        const correctIdx = q.optionIds && q.optionIds[oi] && correctByQ[q.questionId] ? (q.optionIds[correctByQ[q.questionId]] ? oi : -1) : -1;
-        // Simpler: serverResult provides isCorrect per question + correctOptionId
-      }
-      let optStateClass = '';
-      if (submitted) {
-        if (q.correctIdx === oi) optStateClass = 'correct';
-        else if (isPicked) optStateClass = 'wrong';
-        else optStateClass = 'dim';
-      } else if (isPicked) {
-        optStateClass = 'picked';
-      }
-      return `<button type="button" class="qz-option ${optStateClass}" ${submitted ? 'disabled' : ''}
-              onclick="window.pickExamOption('${q.questionId}', ${oi})">
-        ${escapeHtml(opt)}
-      </button>`;
-    }).join('');
-
-    const explanationHtml = submitted && q.explain
-      ? `<div class="qz-explain">${q.correctIdx === sel ? '✓' : '✗'} ${escapeHtml(q.explain)}</div>`
-      : '';
-
+function renderQuizCategoryTabs(questions) {
+  return ['vocabulary', 'grammar', 'listening'].map((cat) => {
+    const meta = QUIZ_CATEGORY_META[cat];
+    const count = questions.filter((q) => normalizeQuizCategory(q.category) === cat).length;
+    const active = quizState.activeCategory === cat;
     return `
-      <div class="qz-q" data-q-id="${escapeHtml(q.questionId)}">
-        <div class="qz-q-head">
-          <span class="qz-q-num">${num}</span>
-          <div class="qz-q-text">${renderQuizPromptText(q.q)}</div>
-          ${audioBtn}
-        </div>
-        ${q.jp ? `<div class="qz-q-jp" lang="ja">${renderQuizPromptText(q.jp)}</div>` : ''}
-        <div class="qz-options">${optionsHtml}</div>
-        ${explanationHtml}
-      </div>`;
+      <button class="quiz-paper-tab ${active ? 'active' : ''}" type="button"
+        ${count === 0 ? 'disabled' : ''}
+        onclick="window.setQuizCategory('${cat}')">
+        ${meta.label}${count ? ` ${count}` : ''}
+      </button>
+    `;
   }).join('');
+}
 
-  const totalSelected = Object.keys(selections).length;
-  const totalQuestions = quizState.questions.length;
-  const submitDisabled = totalSelected === 0;
-  const submitState = submitted
-    ? (() => {
-        const r = serverResult || {};
-        const pct = r.total > 0 ? Math.round((r.score / r.total) * 100) : 0;
-        const passed = pct >= 70;
-        return `
-          <div class="qz-result-banner ${passed ? 'pass' : 'fail'}">
-            <div class="qz-result-pct">${pct}%</div>
-            <div class="qz-result-info">
-              <div class="qz-result-title">${passed ? '🏆 Lulus!' : '💪 Belum lulus'}</div>
-              <div class="qz-result-sub">Benar ${r.score || 0} dari ${r.total || totalQuestions} soal · target ≥70%</div>
-            </div>
-            <div class="qz-result-actions">
-              <button class="btn-secondary" onclick="window.retryQuiz()">Ulang Kuis</button>
-              <button class="btn-primary" onclick="window.continueAfterQuiz()">${passed ? 'Lanjut →' : 'Kembali'}</button>
-            </div>
-          </div>`;
-      })()
-    : `
-      <div class="qz-submit-row">
-        <div class="qz-progress-text">${totalSelected} / ${totalQuestions} dijawab</div>
-        <button class="btn-primary" ${submitDisabled ? 'disabled' : ''} onclick="window.submitExam()">Submit Kuis</button>
-      </div>`;
+function renderQuizSections(categoryItems) {
+  const sections = [];
+  const byKey = new Map();
+  categoryItems.forEach((item) => {
+    const sectionNumber = Number(item.q.sectionNumber) || 1;
+    const key = String(sectionNumber);
+    if (!byKey.has(key)) {
+      const meta = QUIZ_CATEGORY_META[normalizeQuizCategory(item.q.category)] || QUIZ_CATEGORY_META.vocabulary;
+      const section = {
+        number: sectionNumber,
+        label: item.q.sectionLabel || `Section ${sectionNumber}`,
+        instruction: item.q.sectionInstruction || meta.defaultInstruction,
+        items: [],
+      };
+      byKey.set(key, section);
+      sections.push(section);
+    }
+    byKey.get(key).items.push(item);
+  });
 
-  container.innerHTML = `
-    <div class="qz-exam">
-      <div class="qz-tabbar">${tabBar}</div>
-      <div class="qz-mondai">
-        <span class="qz-mondai-tag">Section ${sectionKeys.indexOf(activeSection) + 1}</span>
-        <p class="qz-mondai-text" lang="ja">${escapeHtml(activeMeta.mondai)}</p>
-      </div>
-      <div class="qz-qlist">${questionsHtml}</div>
-      ${submitState}
+  return sections.map((section) => `
+    <section class="quiz-paper-section">
+      <div class="quiz-section-label">${section.label}</div>
+      <div class="quiz-instruction">${section.instruction}</div>
+    </section>
+    <div class="quiz-paper-list">
+      ${section.items.map((item, i) => renderQuizPaperItem(item.q, item.index, section.number, i + 1)).join('')}
     </div>
+  `).join('');
+}
+
+function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) {
+  const letters = ['1', '2', '3', '4', '5'];
+  const answered = !!quizState.answeredByIndex?.[qi];
+  const selected = quizState.selectedByIndex?.[qi];
+  return `
+    <article class="quiz-paper-item" data-question-index="${qi}">
+      <h2 class="quiz-question quiz-paper-question">
+        <span class="quiz-paper-number">${sectionNumber}.${questionNumber}</span>
+        <span>${q.q}</span>
+        ${q.jp ? `<span class="quiz-paper-jp">${q.jp}</span>` : ''}
+        ${q.jp ? `<button class="pronounce-btn quiz-paper-audio" onclick="speakJapanese('${q.jp}', this)">Dengar</button>` : ''}
+      </h2>
+      <div class="quiz-options" id="quiz-options-${qi}">
+        ${q.options.map((opt, i) => `
+          <button class="quiz-option ${answered ? 'disabled' : ''} ${answered && i === q.correct ? 'correct' : ''} ${answered && i === selected && i !== q.correct ? 'wrong' : ''}"
+            data-idx="${i}" onclick="window.pickQuizAnswer(${qi}, ${i})">
+            <span class="quiz-option-letter">${letters[i]}</span>
+            <span>${opt}</span>
+          </button>
+        `).join('')}
+      </div>
+      <div class="quiz-feedback" id="quiz-feedback-${qi}">
+        ${answered ? `<div class="quiz-explanation"><strong>${quizState.correctByIndex[qi] ? '✓ Benar!' : '✗ Belum tepat'}</strong> — ${q.explain || 'Jawaban kamu sudah dicatat.'}</div>` : ''}
+      </div>
+    </article>
   `;
 }
 
-window.switchExamSection = (sectionKey) => {
+function renderQuizQuestion(container) {
+  const { questions } = quizState;
+  const total = questions.length;
+  const activeItems = quizQuestionsByCategory(questions, quizState.activeCategory);
+
+  container.innerHTML = `
+    <div class="quiz-container quiz-paper">
+      <div class="quiz-paper-tabs" role="tablist" aria-label="Kategori kuis">
+        ${renderQuizCategoryTabs(questions)}
+      </div>
+
+      ${activeItems.length ? renderQuizSections(activeItems) : '<div class="empty">Belum ada soal di kategori ini.</div>'}
+
+      <div class="quiz-paper-actions">
+        <div class="quiz-progress-text" id="quiz-paper-progress">Terjawab 0 / ${total}</div>
+        <button class="quiz-next-btn" id="quiz-finish-btn" onclick="finishQuiz()" disabled>Lihat Hasil</button>
+      </div>
+    </div>
+  `;
+  updateQuizPaperProgress();
+}
+
+window.setQuizCategory = (category) => {
   if (!quizState) return;
-  quizState.activeSection = sectionKey;
-  renderQuizExam();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  const next = normalizeQuizCategory(category);
+  if (!quizState.questions.some((q) => normalizeQuizCategory(q.category) === next)) return;
+  quizState.activeCategory = next;
+  renderQuizQuestion(document.getElementById('main-content'));
 };
 
-window.pickExamOption = (questionId, optionIdx) => {
-  if (!quizState || quizState.submitted) return;
-  quizState.selections[questionId] = optionIdx;
-  renderQuizExam();
-};
+window.pickQuizAnswer = async (questionIndex, optionIndex) => {
+  const qi = typeof optionIndex === 'number' ? questionIndex : quizState.idx;
+  const i = typeof optionIndex === 'number' ? optionIndex : questionIndex;
+  if (quizState.answeredByIndex?.[qi]) return;
+  quizState.answeredByIndex[qi] = true;
+  quizState.answered = true;
+  quizState.selected = i;
+  quizState.selectedByIndex[qi] = i;
+  quizState.idx = qi;
+  const q = quizState.questions[qi];
 
-window.submitExam = async () => {
-  if (!quizState || quizState.submitted) return;
-  quizState.submitted = true;
-  const { key, questions, selections } = quizState;
+  // Disable options + show transient loading while the server tells us if
+  // the pick was right. The lesson API never sent is_correct, so we can't
+  // grade locally.
+  document.querySelectorAll(`#quiz-options-${qi} .quiz-option`).forEach((btn) => btn.classList.add('disabled'));
+  const feedback = document.getElementById(`quiz-feedback-${qi}`);
+  feedback.innerHTML = `<div class="quiz-explanation">Memeriksa…</div>`;
 
-  // Prepare answers payload — only questions that were actually answered.
-  const answers = [];
-  for (const q of questions) {
-    const picked = selections[q.questionId];
-    if (picked !== undefined && q.optionIds && q.optionIds[picked]) {
-      answers.push({ questionId: q.questionId, optionId: q.optionIds[picked] });
-    }
+  // Record the answer for the final /quiz-attempt round-up.
+  if (q.questionId && q.optionIds?.[i]) {
+    quizState.answers.push({ questionId: q.questionId, optionId: q.optionIds[i] });
   }
 
-  // Server-side grading is authoritative — record selection ↔ correct.
-  let score = 0;
-  let total = questions.length;
-  let correctByQuestion = {};
+  let correctOptionIndex = typeof q.correct === 'number' ? q.correct : -1;
+  let isCorrect = correctOptionIndex === i;
+  let correctOptionId = null;
+  try {
+    const [slug, mId, lId] = (quizState.key || '').split(':');
+    const lessonApiId = findLesson(slug, mId, lId)?.apiId;
+    if (lessonApiId && q.questionId && q.optionIds?.[i]) {
+      const r = await fetch(
+        `/api/lessons/${encodeURIComponent(lessonApiId)}/quiz/check`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ questionId: q.questionId, optionId: q.optionIds[i] }),
+        }
+      );
+      if (r.ok) {
+        const data = await r.json();
+        isCorrect = !!data.isCorrect;
+        correctOptionId = data.correctOptionId || null;
+        if (data.explanation) q.explain = data.explanation;
+      }
+    }
+  } catch (err) {
+    console.warn('quiz/check failed:', err?.message || err);
+  }
+
+  q.correct = correctOptionId && q.optionIds ? q.optionIds.indexOf(correctOptionId) : correctOptionIndex;
+  if (isCorrect) {
+    quizState.correctByIndex[qi] = true;
+    quizState.correct++;
+  }
+
+  document.querySelectorAll(`#quiz-options-${qi} .quiz-option`).forEach((btn, bi) => {
+    if (bi === q.correct) btn.classList.add('correct');
+    if (bi === i && !isCorrect) btn.classList.add('wrong');
+  });
+
+  const isLast = quizState.idx === quizState.questions.length - 1;
+  feedback.innerHTML = `
+    <div class="quiz-explanation">
+      <strong>${isCorrect ? '✓ Benar!' : '✗ Belum tepat'}</strong> — ${q.explain || 'Jawaban kamu sudah dicatat.'}
+    </div>
+    <button class="quiz-next-btn" onclick="window.nextQuizQuestion()">
+      ${isLast ? 'Lihat Hasil →' : 'Soal Berikutnya →'}
+    </button>
+  `;
+
+  if (isCorrect) addXP(5, 'jawaban benar');
+  updateQuizPaperProgress();
+};
+
+function updateQuizPaperProgress() {
+  if (!quizState) return;
+  const answered = Object.keys(quizState.answeredByIndex || {}).length;
+  const total = quizState.questions.length;
+  const progress = document.getElementById('quiz-paper-progress');
+  const finishBtn = document.getElementById('quiz-finish-btn');
+  if (progress) progress.textContent = `Terjawab ${answered} / ${total}`;
+  if (finishBtn) finishBtn.disabled = answered < total;
+}
+
+window.nextQuizQuestion = () => {
+  if (quizState.idx < quizState.questions.length - 1) {
+    quizState.idx++;
+    quizState.answered = false;
+    quizState.selected = -1;
+    renderQuizQuestion(document.getElementById('main-content'));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    finishQuiz();
+  }
+};
+
+async function finishQuiz() {
+  const { questions, correct, key, answers } = quizState;
+  const clientTotal = questions.length;
+
+  // Show a brief "Menyimpan..." state so the UI doesn't feel frozen while we
+  // POST. Falls back to client-computed score if the server is unreachable —
+  // user shouldn't be stuck with no result just because their internet
+  // hiccuped.
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="quiz-container">
+      <div class="quiz-results">
+        <h2>Menyimpan hasil...</h2>
+        <div class="score-circle">…</div>
+      </div>
+    </div>
+  `;
+
+  let score = correct;
+  let total = clientTotal;
   try {
     const [slug, mId, lId] = key.split(':');
     const lesson = findLesson(slug, mId, lId);
     const lessonApiId = lesson?.apiId;
-    if (lessonApiId && typeof window.ezApi === 'function') {
+    if (lessonApiId && typeof window.ezApi === 'function' && answers.length > 0) {
       const res = await window.ezApi(`/progress/lesson/${encodeURIComponent(lessonApiId)}/quiz-attempt`, {
         method: 'POST',
         body: JSON.stringify({ answers }),
       });
       if (res.ok) {
         const data = await res.json();
-        if (typeof data.score === 'number') score = data.score;
-        if (typeof data.total === 'number') total = data.total;
-        correctByQuestion = data.correctByQuestion || {};
+        if (typeof data.score === 'number' && typeof data.total === 'number' && data.total > 0) {
+          score = data.score;
+          total = data.total;
+        }
       }
     }
   } catch (err) {
-    console.warn('quiz-attempt failed:', err?.message || err);
+    // AUTH_EXPIRED or network error — keep client-side score so the user still sees a result.
+    console.warn('quiz-attempt submission failed:', err?.message || err);
   }
 
-  // Resolve correct option idx per question from server response. The server
-  // returns { correctByQuestion: { [questionId]: boolean } } indicating whether
-  // the user's pick was correct — but not which option was correct.
-  // For per-option highlighting, fall back to /quiz/check per-question if we
-  // need it; otherwise just mark user's pick green/red based on isCorrect flag.
-  for (const q of questions) {
-    const picked = selections[q.questionId];
-    if (picked === undefined) continue;
-    const wasCorrect = !!correctByQuestion[q.questionId];
-    q.correctIdx = wasCorrect ? picked : -2; // -2 = answered wrong, we don't know correct
-  }
-
-  // Look up correct option per question for any question we don't yet know.
-  // Batches per-question /quiz/check to fill correctIdx (so green can show the
-  // right option even if user picked wrong).
-  try {
-    const [slug, mId, lId] = key.split(':');
-    const lessonApiId = findLesson(slug, mId, lId)?.apiId;
-    if (lessonApiId) {
-      const unresolved = questions.filter((q) => q.correctIdx === -2 || q.correctIdx === -1);
-      for (const q of unresolved) {
-        const picked = selections[q.questionId];
-        if (picked === undefined || !q.optionIds) continue;
-        try {
-          const r = await fetch(
-            `/api/lessons/${encodeURIComponent(lessonApiId)}/quiz/check`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({ questionId: q.questionId, optionId: q.optionIds[picked] }),
-            }
-          );
-          if (r.ok) {
-            const data = await r.json();
-            if (data.correctOptionId && q.optionIds) {
-              q.correctIdx = q.optionIds.indexOf(data.correctOptionId);
-            }
-            if (data.explanation && !q.explain) q.explain = data.explanation;
-          }
-        } catch { /* per-question fail OK */ }
-      }
-    }
-  } catch (err) {
-    console.warn('quiz/check fill failed:', err?.message || err);
-  }
-
-  quizState.serverResult = { score, total, correctByQuestion };
-
-  // Persist + mark lesson done if passed.
-  const pct = total > 0 ? Math.round((score / total) * 100) : 0;
+  const pct = Math.round((score / total) * 100);
   const passed = pct >= 70;
+  const bonusXP = passed ? 20 : 10;
+
+  // save best score
   const scores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
   scores[key] = Math.max(scores[key] || 0, pct);
   localStorage.setItem('ez_quiz_scores', JSON.stringify(scores));
+
+  // mark lesson as done if passed
   if (passed) {
     const [slug, mId, lId] = key.split(':');
     const allProgress = getProgress();
@@ -3585,16 +3643,28 @@ window.submitExam = async () => {
     cp[`${mId}:${lId}`] = true;
     allProgress[slug] = cp;
     setProgress(allProgress);
-    addXP(20, 'lulus kuis');
-    fireConfetti();
-  } else {
-    addXP(10, 'mencoba kuis');
   }
 
-  renderQuizExam();
-  renderSidebar();
-};
+  addXP(bonusXP, passed ? 'lulus kuis' : 'mencoba kuis');
+  if (passed) fireConfetti();
 
+  document.getElementById('main-content').innerHTML = `
+    <div class="quiz-container">
+      <div class="quiz-results">
+        <div class="trophy">${passed ? '🏆' : '💪'}</div>
+        <h2>${passed ? 'Lulus!' : 'Coba Lagi'}</h2>
+        <p class="subtitle">${passed ? 'Pemahaman kamu sudah cukup bagus.' : 'Minimal 70% untuk lulus. Ayo ulang!'}</p>
+        <div class="score-circle">${pct}%</div>
+        <p style="color:#485f84;margin:0 0 12px;">Benar ${score} dari ${total} soal</p>
+        <div class="quiz-results-btns">
+          <button class="btn-secondary" onclick="window.retryQuiz()">Ulang Kuis</button>
+          <button class="btn-primary" onclick="window.continueAfterQuiz()">${passed ? 'Lanjut →' : 'Kembali ke Materi'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+  renderSidebar();
+}
 
 window.retryQuiz = () => {
   const [slug, mId, lId] = quizState.key.split(':');

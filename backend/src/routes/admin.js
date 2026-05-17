@@ -780,6 +780,180 @@ router.get('/module-grammar', asyncHandler(async (req, res) => {
   res.json({ grammar: rows.rows });
 }));
 
+// ===== AUTO-GENERATE QUIZ (JLPT-style multiple choice dari vocab) =====
+// Generates `count` multiple-choice questions from the vocab tied to the
+// lesson's module (preferring vocab actually wired to a deck lesson in that
+// module so questions stay scoped to one Bab). Replaces any existing
+// quiz_questions on the lesson — idempotent.
+function _pickRandom(arr, n) {
+  const copy = arr.slice();
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, n);
+}
+function _sample(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function _hasKanji(s) { return /[一-龯]/.test(String(s || '')); }
+function _generateQuizQuestions(vocab, count) {
+  const out = [];
+  const withId = vocab.filter((v) => (v.indonesian || '').trim());
+  const withReading = vocab.filter((v) => (v.reading || '').trim() && v.reading !== v.japanese && _hasKanji(v.japanese || ''));
+  // Bucket distractors so options share the rough "shape" of the answer.
+  if (withId.length < 4) return out; // need 4 minimum for distractors
+
+  const types = [];
+  // Build a balanced type rotation. Skip types whose pool < 4.
+  if (withReading.length >= 4) types.push('reading');
+  types.push('arti', 'jp', 'listening');
+
+  for (let i = 0; i < count; i++) {
+    const t = types[i % types.length];
+    let q = null;
+    if (t === 'reading') {
+      const correct = _sample(withReading);
+      const otherReadings = _pickRandom(
+        withReading.filter((v) => v.id !== correct.id && v.reading !== correct.reading),
+        3
+      );
+      if (otherReadings.length < 3) continue;
+      const options = _pickRandom([correct.reading, ...otherReadings.map((v) => v.reading)], 4);
+      q = {
+        question: `Bagaimana cara baca **${correct.japanese}** ?`,
+        category: 'vocabulary',
+        jp: correct.japanese,
+        options,
+        correctIdx: options.indexOf(correct.reading),
+        explanation: correct.indonesian ? `${correct.japanese} (${correct.reading}) — ${correct.indonesian}` : null,
+      };
+    } else if (t === 'arti') {
+      const correct = _sample(withId);
+      const others = _pickRandom(
+        withId.filter((v) => v.id !== correct.id && v.indonesian !== correct.indonesian),
+        3
+      );
+      if (others.length < 3) continue;
+      const options = _pickRandom([correct.indonesian, ...others.map((v) => v.indonesian)], 4);
+      q = {
+        question: `Apa arti dari **${correct.japanese}** ?`,
+        category: 'vocabulary',
+        jp: correct.japanese,
+        options,
+        correctIdx: options.indexOf(correct.indonesian),
+        explanation: correct.reading ? `${correct.japanese} (${correct.reading}) — ${correct.indonesian}` : null,
+      };
+    } else if (t === 'jp') {
+      const correct = _sample(withId);
+      const others = _pickRandom(
+        withId.filter((v) => v.id !== correct.id && v.japanese !== correct.japanese),
+        3
+      );
+      if (others.length < 3) continue;
+      const options = _pickRandom([correct.japanese, ...others.map((v) => v.japanese)], 4);
+      q = {
+        question: `Bahasa Jepang untuk **"${correct.indonesian}"** ?`,
+        category: 'vocabulary',
+        options,
+        correctIdx: options.indexOf(correct.japanese),
+        explanation: correct.reading ? `${correct.japanese} (${correct.reading}) — ${correct.indonesian}` : null,
+      };
+    } else if (t === 'listening') {
+      const correct = _sample(withId);
+      const others = _pickRandom(
+        withId.filter((v) => v.id !== correct.id && v.indonesian !== correct.indonesian),
+        3
+      );
+      if (others.length < 3) continue;
+      const options = _pickRandom([correct.indonesian, ...others.map((v) => v.indonesian)], 4);
+      q = {
+        category: 'listening',
+        question: `🎧 Dengar audio, pilih arti yang benar:`,
+        jp: correct.japanese,
+        options,
+        correctIdx: options.indexOf(correct.indonesian),
+        explanation: `${correct.japanese} (${correct.reading || '-'}) — ${correct.indonesian}`,
+      };
+    }
+    if (q) out.push(q);
+  }
+  return out;
+}
+
+router.post('/lessons/:lessonId/generate-quiz', asyncHandler(async (req, res) => {
+  const lessonId = req.params.lessonId;
+  const count = Math.min(50, Math.max(4, Number(req.body?.count) || 10));
+
+  const lessonRes = await query(`SELECT id, module_id, type FROM lessons WHERE id = $1`, [lessonId]);
+  if (lessonRes.rows.length === 0) return res.status(404).json({ error: 'lesson not found' });
+  const lesson = lessonRes.rows[0];
+  if (lesson.type !== 'quiz') return res.status(400).json({ error: 'lesson_not_quiz', detail: 'Pelajaran ini bukan tipe quiz' });
+
+  // Prefer vocab wired into a deck lesson in this module — keeps quiz scoped
+  // to one Bab when admin imports per-Bab. Fall back to all module vocab.
+  let vocabRes = await query(
+    `SELECT DISTINCT v.id, v.japanese, v.reading, v.romaji, v.indonesian, v.category
+     FROM module_vocabulary v
+     JOIN lesson_deck_items di ON di.vocabulary_id = v.id
+     JOIN lessons l ON l.id = di.lesson_id
+     WHERE l.module_id = $1 AND l.type = 'deck' AND v.japanese IS NOT NULL AND v.japanese <> ''`,
+    [lesson.module_id]
+  );
+  if (vocabRes.rows.length < 4) {
+    vocabRes = await query(
+      `SELECT id, japanese, reading, romaji, indonesian, category
+       FROM module_vocabulary
+       WHERE module_id = $1 AND japanese IS NOT NULL AND japanese <> ''`,
+      [lesson.module_id]
+    );
+  }
+  if (vocabRes.rows.length < 4) {
+    return res.status(400).json({
+      error: 'not_enough_vocab',
+      detail: `Modul ini cuma punya ${vocabRes.rows.length} kosakata, butuh ≥ 4. Import dari Notion dulu.`,
+    });
+  }
+
+  const questions = _generateQuizQuestions(vocabRes.rows, count);
+  if (questions.length === 0) {
+    return res.status(400).json({ error: 'generation_failed', detail: 'Vocab pool terlalu kecil untuk variasi 4 opsi.' });
+  }
+
+  // Replace existing — idempotent. Admin yg ngerasa generator-nya jelek bisa
+  // tekan tombol lagi buat re-roll.
+  await query(`DELETE FROM quiz_questions WHERE lesson_id = $1`, [lessonId]);
+
+  let sort = 0;
+  for (const q of questions) {
+    const qText = q.jp ? `${q.question}\n\n${q.jp}` : q.question;
+    const category = q.category || 'vocabulary';
+    const sectionNumber = category === 'listening' ? 2 : 1;
+    const sectionLabel = `Section ${sectionNumber}`;
+    const sectionInstruction = category === 'listening'
+      ? '音声を聞いて、ただしい答えをえらんでください。'
+      : '問題1：＿＿の　ことばは　ひらがなで　どう　かきますか。 1・2・3・4から　いちばん　いい　ものを　ひとつ　えらんで　ください。';
+    const ins = await query(
+      `INSERT INTO quiz_questions (
+         lesson_id, question, question_type, question_category,
+         section_number, section_label, section_instruction,
+         explanation, sort_order
+       )
+       VALUES ($1, $2, 'multiple_choice', $3, $4, $5, $6, $7, $8)
+       RETURNING id`,
+      [lessonId, qText, category, sectionNumber, sectionLabel, sectionInstruction, q.explanation || null, sort++]
+    );
+    const qid = ins.rows[0].id;
+    let osort = 0;
+    for (let i = 0; i < q.options.length; i++) {
+      await query(
+        `INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order)
+         VALUES ($1, $2, $3, $4)`,
+        [qid, q.options[i], i === q.correctIdx, osort++]
+      );
+    }
+  }
+  res.json({ created: questions.length, vocabPool: vocabRes.rows.length });
+}));
+
 router.post('/module-grammar', asyncHandler(async (req, res) => {
   const { moduleId, lessonId, pattern, meaning, example, notes, sortOrder } = req.body || {};
   if (!moduleId || !pattern) return res.status(400).json({ error: 'moduleId and pattern required' });
@@ -879,9 +1053,28 @@ router.delete('/lessons/:id', asyncHandler(async (req, res) => {
 
 // ===== QUIZ QUESTIONS (with options in one call) =====
 
+const QUIZ_CATEGORIES = new Set(['vocabulary', 'grammar', 'listening']);
+
+function normalizeQuizCategory(value) {
+  const category = String(value || 'vocabulary').toLowerCase();
+  return QUIZ_CATEGORIES.has(category) ? category : 'vocabulary';
+}
+
+function normalizeQuizSectionNumber(value) {
+  return Math.max(1, Number(value) || 1);
+}
+
 router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
   const questions = await query(
-    `SELECT * FROM quiz_questions WHERE lesson_id = $1 ORDER BY sort_order ASC`,
+    `SELECT * FROM quiz_questions
+     WHERE lesson_id = $1
+     ORDER BY CASE question_category
+                WHEN 'vocabulary' THEN 1
+                WHEN 'grammar' THEN 2
+                WHEN 'listening' THEN 3
+                ELSE 9
+              END,
+              section_number ASC, sort_order ASC`,
     [req.params.lessonId]
   );
   const qIds = questions.rows.map((q) => q.id);
@@ -903,14 +1096,34 @@ router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
 
 router.post('/quiz-questions', asyncHandler(async (req, res) => {
   const {
-    lessonId, question, questionType, section, correctAnswer, explanation, sortOrder, options,
+    lessonId, question, questionType, questionCategory, sectionNumber,
+    sectionLabel, sectionInstruction, correctAnswer, explanation, sortOrder, options,
   } = req.body || {};
   if (!lessonId || !question) return res.status(400).json({ error: 'lessonId and question required' });
 
+  const category = normalizeQuizCategory(questionCategory);
+  const sectionNo = normalizeQuizSectionNumber(sectionNumber);
+  const sectionTitle = (sectionLabel && String(sectionLabel).trim()) || `Section ${sectionNo}`;
+
   const qRes = await query(
-    `INSERT INTO quiz_questions (lesson_id, question, question_type, section, correct_answer, explanation, sort_order)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-    [lessonId, question, questionType || 'multiple_choice', (section && String(section).trim()) || null, correctAnswer || null, explanation || null, sortOrder || 0]
+    `INSERT INTO quiz_questions (
+       lesson_id, question, question_type, question_category,
+       section_number, section_label, section_instruction,
+       correct_answer, explanation, sort_order
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+    [
+      lessonId,
+      question,
+      questionType || 'multiple_choice',
+      category,
+      sectionNo,
+      sectionTitle,
+      sectionInstruction || null,
+      correctAnswer || null,
+      explanation || null,
+      sortOrder || 0,
+    ]
   );
   const q = qRes.rows[0];
 
@@ -929,20 +1142,38 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
 }));
 
 router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
-  const { question, questionType, section, correctAnswer, explanation, sortOrder, options } = req.body || {};
-  // section: kosong string artinya admin clear-out (NULL), undefined biarin
-  const hasSection = Object.prototype.hasOwnProperty.call(req.body || {}, 'section');
-  const sectionNorm = hasSection ? ((section && String(section).trim()) || null) : null;
+  const {
+    question, questionType, questionCategory, sectionNumber,
+    sectionLabel, sectionInstruction, correctAnswer, explanation, sortOrder, options,
+  } = req.body || {};
+  const category = questionCategory ? normalizeQuizCategory(questionCategory) : null;
+  const sectionNo = sectionNumber == null ? null : normalizeQuizSectionNumber(sectionNumber);
+  const hasSectionInstruction = Object.prototype.hasOwnProperty.call(req.body || {}, 'sectionInstruction');
   const result = await query(
     `UPDATE quiz_questions SET
        question = COALESCE($2, question),
        question_type = COALESCE($3, question_type),
-       section = CASE WHEN $7::boolean THEN $4 ELSE section END,
-       correct_answer = COALESCE($5, correct_answer),
-       explanation = COALESCE($6, explanation),
-       sort_order = COALESCE($8, sort_order)
-     WHERE id = $1 RETURNING *`,
-    [req.params.id, question, questionType, sectionNorm, correctAnswer, explanation, hasSection, sortOrder]
+       correct_answer = COALESCE($4, correct_answer),
+       explanation = COALESCE($5, explanation),
+       sort_order = COALESCE($6, sort_order),
+       question_category = COALESCE($7, question_category),
+       section_number = COALESCE($8, section_number),
+       section_label = COALESCE($9, section_label),
+       section_instruction = CASE WHEN $11::boolean THEN $10 ELSE section_instruction END
+      WHERE id = $1 RETURNING *`,
+    [
+      req.params.id,
+      question,
+      questionType,
+      correctAnswer,
+      explanation,
+      sortOrder,
+      category,
+      sectionNo,
+      sectionLabel || (sectionNo ? `Section ${sectionNo}` : null),
+      sectionInstruction || null,
+      hasSectionInstruction,
+    ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
 
