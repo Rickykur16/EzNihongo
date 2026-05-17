@@ -58,6 +58,7 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
   const grammarByModule = {};
   const grammarByLesson = {};
   const deckByLesson = {};
+  const kanjiByLesson = {};
 
   if (moduleIds.length > 0) {
     // Include content + video_url so the dashboard can render lesson bodies
@@ -138,6 +139,33 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
         });
       }
     }
+
+    // Kanji-type lessons: pull kanji_items per lesson supaya dashboard
+    // bisa render grid kanji tanpa round-trip terpisah (mirror deck).
+    const kanjiLessonIds = lessons.rows.filter((l) => l.type === 'kanji').map((l) => l.id);
+    if (kanjiLessonIds.length > 0) {
+      const kanjiRows = await query(
+        `SELECT lesson_id, id, character, jlpt_level, on_reading, kun_reading,
+                meaning_id, mnemonic, stroke_count, bab_kode, sort_order
+           FROM kanji_items
+          WHERE lesson_id = ANY($1::uuid[])
+          ORDER BY lesson_id, sort_order ASC, character ASC`,
+        [kanjiLessonIds]
+      );
+      for (const r of kanjiRows.rows) {
+        (kanjiByLesson[r.lesson_id] ||= []).push({
+          id: r.id,
+          character: r.character,
+          jlpt_level: r.jlpt_level,
+          on_reading: r.on_reading,
+          kun_reading: r.kun_reading,
+          meaning_id: r.meaning_id,
+          mnemonic: r.mnemonic,
+          stroke_count: r.stroke_count,
+          bab_kode: r.bab_kode,
+        });
+      }
+    }
   }
 
   res.json({
@@ -156,6 +184,7 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
             vocabulary: vocabByLesson[l.id] || [],
             grammar: grammarByLesson[l.id] || [],
             deck: deckByLesson[l.id] || [],
+            kanji: kanjiByLesson[l.id] || [],
           })),
           vocabulary: vocabByModule[m.id] || [],
           grammar: grammarByModule[m.id] || [],
@@ -265,6 +294,18 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
       accentColor: r.accent_color,
       examples: examplesByVocab[r.id] || [],
     }));
+  }
+
+  if (row.type === 'kanji') {
+    const kanjiRows = await query(
+      `SELECT id, character, jlpt_level, on_reading, kun_reading,
+              meaning_id, mnemonic, stroke_count, bab_kode, sort_order
+         FROM kanji_items
+        WHERE lesson_id = $1
+        ORDER BY sort_order ASC, character ASC`,
+      [row.id]
+    );
+    response.kanji = kanjiRows.rows;
   }
 
   res.json({ lesson: response });

@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS lessons (
   module_id UUID NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
   slug TEXT NOT NULL,
   title TEXT NOT NULL,
-  type TEXT NOT NULL DEFAULT 'text' CHECK (type IN ('video','quiz','text','deck')),
+  type TEXT NOT NULL DEFAULT 'text' CHECK (type IN ('video','quiz','text','deck','kanji')),
   content TEXT,
   video_url TEXT,
   duration_minutes INT,
@@ -373,6 +373,7 @@ CREATE TABLE IF NOT EXISTS tts_cache (
 
 CREATE TABLE IF NOT EXISTS kanji_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lesson_id UUID REFERENCES lessons(id) ON DELETE CASCADE,
   character TEXT NOT NULL,
   jlpt_level TEXT NOT NULL,
   on_reading TEXT,
@@ -387,6 +388,7 @@ CREATE TABLE IF NOT EXISTS kanji_items (
 );
 CREATE INDEX IF NOT EXISTS kanji_items_level_sort_idx ON kanji_items (jlpt_level, sort_order);
 CREATE INDEX IF NOT EXISTS kanji_items_bab_idx ON kanji_items (bab_kode) WHERE bab_kode IS NOT NULL;
+CREATE INDEX IF NOT EXISTS kanji_items_lesson_idx ON kanji_items (lesson_id, sort_order) WHERE lesson_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS kanji_items_character_level_uniq ON kanji_items (character, jlpt_level);
 
 -- ===== updated_at trigger =====

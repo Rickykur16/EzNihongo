@@ -98,15 +98,21 @@ router.get('/kanji', asyncHandler(async (req, res) => {
   if (!SUPPORTED_SLUGS.includes(slug)) {
     return res.status(400).json({ error: 'unsupported_slug', supported: SUPPORTED_SLUGS });
   }
-  const level = slug.toUpperCase();
 
+  // Aggregate kanji dari semua pelajaran type='kanji' di course slug ini.
+  // Group by lesson (= 1 Bab di UI), order by module.sort_order > lesson.sort_order.
   const rows = (await query(
-    `SELECT id, character, jlpt_level, on_reading, kun_reading, meaning_id,
-            mnemonic, stroke_count, bab_kode, sort_order
-       FROM kanji_items
-      WHERE jlpt_level = $1
-      ORDER BY bab_kode ASC NULLS LAST, sort_order ASC, character ASC`,
-    [level]
+    `SELECT k.id, k.character, k.jlpt_level, k.on_reading, k.kun_reading,
+            k.meaning_id, k.mnemonic, k.stroke_count, k.bab_kode, k.sort_order,
+            l.id AS lesson_id, l.title AS lesson_title, l.sort_order AS lesson_sort,
+            m.id AS module_id, m.title AS module_title, m.sort_order AS module_sort
+       FROM kanji_items k
+       JOIN lessons l ON l.id = k.lesson_id
+       JOIN modules m ON m.id = l.module_id
+       JOIN courses c ON c.id = m.course_id
+      WHERE c.slug = $1 AND l.type = 'kanji'
+      ORDER BY m.sort_order ASC, l.sort_order ASC, k.sort_order ASC, k.character ASC`,
+    [slug]
   )).rows;
 
   // Attach compound vocab per kanji (cap 8).
@@ -120,26 +126,34 @@ router.get('/kanji', asyncHandler(async (req, res) => {
         if (compounds.length >= 8) break;
       }
     }
-    return { ...k, compounds };
+    return {
+      id: k.id, character: k.character, jlpt_level: k.jlpt_level,
+      on_reading: k.on_reading, kun_reading: k.kun_reading,
+      meaning_id: k.meaning_id, mnemonic: k.mnemonic,
+      stroke_count: k.stroke_count, bab_kode: k.bab_kode,
+      compounds,
+    };
   };
 
-  // Group by bab_kode.
-  const babMap = new Map(); // kode -> { kode, kanji: [] }
+  // Group by lesson (1 Bab = 1 pelajaran tipe kanji).
+  const babMap = new Map(); // lesson_id -> { ... }
   for (const k of rows) {
-    const key = k.bab_kode || '__none__';
-    if (!babMap.has(key)) {
-      babMap.set(key, {
+    if (!babMap.has(k.lesson_id)) {
+      babMap.set(k.lesson_id, {
         kode: k.bab_kode || null,
         nomor: null,
-        name: k.bab_kode || 'Lainnya',
+        name: k.lesson_title || 'Pelajaran',
+        moduleId: k.module_id,
+        moduleTitle: k.module_title,
         kanji: [],
       });
     }
-    babMap.get(key).kanji.push(attach(k));
+    babMap.get(k.lesson_id).kanji.push(attach(k));
   }
   const allBab = Array.from(babMap.values());
 
-  // Optional section structure dari Notion curator page.
+  // Optional section structure dari Notion curator page (kalau ada).
+  // Fallback: kalau ada >1 module, group by module sebagai section.
   const token = process.env.NOTION_TOKEN || '';
   const pageId = levelPageId(slug);
   let sections = null;
@@ -161,6 +175,16 @@ router.get('/kanji', asyncHandler(async (req, res) => {
     } catch (err) {
       console.warn('kanji-public: parseSections failed:', err.message);
     }
+  }
+  if (!sections) {
+    const moduleMap = new Map();
+    for (const b of allBab) {
+      if (!moduleMap.has(b.moduleId)) {
+        moduleMap.set(b.moduleId, { name: b.moduleTitle, bab: [] });
+      }
+      moduleMap.get(b.moduleId).bab.push(b);
+    }
+    if (moduleMap.size > 1) sections = Array.from(moduleMap.values());
   }
 
   const totalKanji = rows.length;
