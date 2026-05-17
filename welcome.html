@@ -3520,18 +3520,24 @@ function quizQuestionsByCategory(questions, category) {
 }
 
 function renderQuizCategoryTabs(questions) {
-  return ['vocabulary', 'grammar', 'listening'].map((cat) => {
-    const meta = QUIZ_CATEGORY_META[cat];
-    const count = questions.filter((q) => normalizeQuizCategory(q.category) === cat).length;
-    const active = quizState.activeCategory === cat;
-    return `
-      <button class="quiz-paper-tab ${active ? 'active' : ''}" type="button"
-        ${count === 0 ? 'disabled' : ''}
-        onclick="window.setQuizCategory('${cat}')">
-        ${meta.label}${count ? ` ${count}` : ''}
-      </button>
-    `;
-  }).join('');
+  // Sembunyikan tab kategori yang ga punya soal — bukan disabled, langsung
+  // ga di-render. Tab cuma muncul kalau ada konten.
+  return ['vocabulary', 'grammar', 'listening']
+    .map((cat) => ({
+      cat,
+      meta: QUIZ_CATEGORY_META[cat],
+      count: questions.filter((q) => normalizeQuizCategory(q.category) === cat).length,
+    }))
+    .filter((t) => t.count > 0)
+    .map(({ cat, meta, count }) => {
+      const active = quizState.activeCategory === cat;
+      return `
+        <button class="quiz-paper-tab ${active ? 'active' : ''}" type="button"
+          onclick="window.setQuizCategory('${cat}')">
+          ${meta.label} ${count}
+        </button>
+      `;
+    }).join('');
 }
 
 function renderQuizSections(categoryItems) {
