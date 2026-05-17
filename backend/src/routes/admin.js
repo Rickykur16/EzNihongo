@@ -1388,4 +1388,178 @@ router.get('/discussions', asyncHandler(async (req, res) => {
   res.json({ discussions: result.rows });
 }));
 
+// ===== KANJI ITEMS (Daftar Kanji di main site) =====
+// Terpisah dari PWA app/kanji.html (yang punya KD[] hardcoded). Source of
+// truth = tabel kanji_items. Pola mirror module_vocabulary admin endpoints.
+
+const KANJI_LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1'];
+function normalizeKanjiLevel(value) {
+  const v = String(value || '').toUpperCase();
+  return KANJI_LEVELS.includes(v) ? v : 'N5';
+}
+
+router.get('/kanji', asyncHandler(async (req, res) => {
+  const conds = [];
+  const params = [];
+  if (req.query.level) { params.push(normalizeKanjiLevel(req.query.level)); conds.push(`jlpt_level = $${params.length}`); }
+  if (req.query.babKode) { params.push(req.query.babKode); conds.push(`bab_kode = $${params.length}`); }
+  if (req.query.search) {
+    params.push('%' + String(req.query.search).trim() + '%');
+    conds.push(`(character ILIKE $${params.length} OR on_reading ILIKE $${params.length} OR kun_reading ILIKE $${params.length} OR meaning_id ILIKE $${params.length})`);
+  }
+  const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+  const result = await query(
+    `SELECT id, character, jlpt_level, on_reading, kun_reading, meaning_id, mnemonic,
+            stroke_count, bab_kode, sort_order, created_at, updated_at
+     FROM kanji_items ${where}
+     ORDER BY jlpt_level ASC, sort_order ASC, character ASC
+     LIMIT 2000`,
+    params
+  );
+  res.json({ kanji: result.rows });
+}));
+
+router.post('/kanji', asyncHandler(async (req, res) => {
+  const {
+    character, jlptLevel, onReading, kunReading, meaningId,
+    mnemonic, strokeCount, babKode, sortOrder,
+  } = req.body || {};
+  const ch = String(character || '').trim();
+  if (!ch) return res.status(400).json({ error: 'character required' });
+  const level = normalizeKanjiLevel(jlptLevel);
+  const result = await query(
+    `INSERT INTO kanji_items (
+       character, jlpt_level, on_reading, kun_reading, meaning_id,
+       mnemonic, stroke_count, bab_kode, sort_order
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     ON CONFLICT (character, jlpt_level) DO UPDATE SET
+       on_reading = EXCLUDED.on_reading,
+       kun_reading = EXCLUDED.kun_reading,
+       meaning_id = EXCLUDED.meaning_id,
+       mnemonic = EXCLUDED.mnemonic,
+       stroke_count = EXCLUDED.stroke_count,
+       bab_kode = EXCLUDED.bab_kode,
+       sort_order = EXCLUDED.sort_order,
+       updated_at = NOW()
+     RETURNING *`,
+    [
+      ch,
+      level,
+      (onReading && String(onReading).trim()) || null,
+      (kunReading && String(kunReading).trim()) || null,
+      (meaningId && String(meaningId).trim()) || null,
+      (mnemonic && String(mnemonic).trim()) || null,
+      strokeCount != null && strokeCount !== '' ? Number(strokeCount) : null,
+      (babKode && String(babKode).trim()) || null,
+      Number(sortOrder) || 0,
+    ]
+  );
+  res.status(201).json({ kanji: result.rows[0] });
+}));
+
+router.put('/kanji/:id', asyncHandler(async (req, res) => {
+  const {
+    character, jlptLevel, onReading, kunReading, meaningId,
+    mnemonic, strokeCount, babKode, sortOrder,
+  } = req.body || {};
+  const ch = character != null ? String(character).trim() : null;
+  const level = jlptLevel ? normalizeKanjiLevel(jlptLevel) : null;
+  const result = await query(
+    `UPDATE kanji_items SET
+       character = COALESCE($2, character),
+       jlpt_level = COALESCE($3, jlpt_level),
+       on_reading = $4,
+       kun_reading = $5,
+       meaning_id = $6,
+       mnemonic = $7,
+       stroke_count = $8,
+       bab_kode = $9,
+       sort_order = COALESCE($10, sort_order)
+     WHERE id = $1
+     RETURNING *`,
+    [
+      req.params.id,
+      ch || null,
+      level,
+      (onReading && String(onReading).trim()) || null,
+      (kunReading && String(kunReading).trim()) || null,
+      (meaningId && String(meaningId).trim()) || null,
+      (mnemonic && String(mnemonic).trim()) || null,
+      strokeCount != null && strokeCount !== '' ? Number(strokeCount) : null,
+      (babKode && String(babKode).trim()) || null,
+      sortOrder != null && sortOrder !== '' ? Number(sortOrder) : null,
+    ]
+  );
+  if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ kanji: result.rows[0] });
+}));
+
+router.delete('/kanji/:id', asyncHandler(async (req, res) => {
+  await query(`DELETE FROM kanji_items WHERE id = $1`, [req.params.id]);
+  res.json({ ok: true });
+}));
+
+// Bulk-import kanji dari Notion DB "📖 Kanji". Mirror of import-notion-deck:
+// filter by relation ke Bab page, upsert by (character, jlpt_level).
+router.post('/kanji/import-notion-bab', asyncHandler(async (req, res) => {
+  const token = process.env.NOTION_TOKEN || '';
+  if (!token) return res.status(503).json({ error: 'notion_not_configured', detail: 'Set NOTION_TOKEN di backend/.env' });
+  const { babPageId, jlptLevel } = req.body || {};
+  if (!babPageId) return res.status(400).json({ error: 'babPageId required' });
+  const dbId = notionIdFromInput((req.body || {}).notionKanjiDbId) || notionIdFromInput(process.env.NOTION_KANJI_DB_ID);
+  if (!dbId) return res.status(400).json({ error: 'notion_db_required', detail: 'Set NOTION_KANJI_DB_ID' });
+  const level = normalizeKanjiLevel(jlptLevel);
+
+  let pages;
+  try {
+    pages = await notionQueryAll(dbId, token, {
+      filter: { property: NOTION_VOCAB_LESSON_RELATION, relation: { contains: babPageId } },
+    });
+  } catch (err) {
+    return res.status(502).json({ error: 'notion_error', status: err.notionStatus || 0, detail: err.message });
+  }
+
+  let imported = 0, updated = 0, total = 0;
+  let sort = 0;
+  for (const page of pages) {
+    const props = page.properties || {};
+    const character = notionPlainText(pickProp(props, ['Kanji 漢字', 'Kanji', '漢字', 'Character'])).trim();
+    if (!character) continue;
+    total++;
+    const onReading = notionPlainText(pickProp(props, ['On 音読み', 'On', '音読み', 'Onyomi'])).trim() || null;
+    const kunReading = notionPlainText(pickProp(props, ['Kun 訓読み', 'Kun', '訓読み', 'Kunyomi'])).trim() || null;
+    const meaningId = notionPlainText(pickProp(props, ['Indonesian', 'Arti', 'Meaning', 'Bahasa Indonesia'])).trim() || null;
+    const mnemonic = notionPlainText(pickProp(props, ['Mnemonic', 'Mnemonik', 'Cara Ingat', 'Note', 'Catatan'])).trim() || null;
+    const strokeCount = notionNumber(pickProp(props, ['Stroke Count', 'Goresan', 'Strokes']));
+    const babKode = notionPlainText(pickProp(props, ['Kode Bab', 'Kode'])).trim() || null;
+
+    const existing = await query(
+      `SELECT id FROM kanji_items WHERE character = $1 AND jlpt_level = $2 LIMIT 1`,
+      [character, level]
+    );
+    if (existing.rows.length > 0) {
+      await query(
+        `UPDATE kanji_items SET
+           on_reading = $2, kun_reading = $3, meaning_id = $4, mnemonic = $5,
+           stroke_count = $6, bab_kode = COALESCE($7, bab_kode), updated_at = NOW()
+         WHERE id = $1`,
+        [existing.rows[0].id, onReading, kunReading, meaningId, mnemonic, strokeCount, babKode]
+      );
+      updated++;
+    } else {
+      await query(
+        `INSERT INTO kanji_items (
+           character, jlpt_level, on_reading, kun_reading, meaning_id,
+           mnemonic, stroke_count, bab_kode, sort_order
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [character, level, onReading, kunReading, meaningId, mnemonic, strokeCount, babKode, sort++]
+      );
+      imported++;
+    }
+  }
+  res.json({ imported, updated, total });
+}));
+
 export default router;

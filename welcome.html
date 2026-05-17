@@ -2992,6 +2992,206 @@
     .quiz-paper .quiz-option { min-height: 54px; font-size: 18px; }
     .quiz-paper-actions { align-items: stretch; flex-direction: column; }
   }
+
+  /* ── Daftar Kanji (mirror Daftar Kosakata pattern) ── */
+  .kanji-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 10px;
+    padding: 12px 0 4px;
+  }
+  .kanji-tile {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px;
+    min-height: 110px;
+    padding: 12px 8px 10px;
+    background: var(--surface-white, #fff);
+    border: 1px solid var(--du-border, #ece9e3);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: border-color .15s, transform .12s, box-shadow .15s;
+    font: inherit;
+    color: inherit;
+    text-align: center;
+  }
+  .kanji-tile:hover {
+    border-color: var(--brand-red);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(200, 16, 46, .08);
+  }
+  .kanji-tile-char {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 42px; font-weight: 700; line-height: 1;
+    color: #1a1a1a;
+  }
+  .kanji-tile-meaning {
+    font-size: 11px; color: #6b6b6b;
+    line-height: 1.2;
+    max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .kanji-tile-level {
+    font-size: 9px; font-weight: 800;
+    color: var(--brand-red); letter-spacing: .04em;
+  }
+
+  /* Detail modal (overlay) */
+  .kanji-detail-overlay {
+    position: fixed; inset: 0;
+    background: rgba(15, 15, 20, .55);
+    backdrop-filter: blur(3px);
+    z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    animation: kanjiFade .18s ease;
+  }
+  @keyframes kanjiFade { from { opacity: 0; } to { opacity: 1; } }
+  .kanji-detail-modal {
+    background: #fff;
+    border-radius: 16px;
+    width: 100%; max-width: 720px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 0;
+    box-shadow: 0 20px 60px rgba(0,0,0,.3);
+  }
+  .kanji-detail-head {
+    display: flex; gap: 24px; align-items: center;
+    padding: 24px 28px 20px;
+    border-bottom: 1px solid var(--du-border, #ece9e3);
+  }
+  .kanji-detail-stroke {
+    width: 180px; height: 180px;
+    flex-shrink: 0;
+    background: #fafaf7;
+    border: 1px solid var(--du-border, #ece9e3);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .kanji-detail-stroke svg {
+    width: 100%; height: 100%;
+    padding: 14px;
+  }
+  .kanji-detail-stroke-static {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 110px; font-weight: 700; color: #1a1a1a; line-height: 1;
+  }
+  .kanji-detail-info { flex: 1; min-width: 0; }
+  .kanji-detail-char-big {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 56px; font-weight: 700; line-height: 1;
+    color: #1a1a1a;
+    margin-bottom: 6px;
+  }
+  .kanji-detail-meaning {
+    font-size: 18px; font-weight: 700; color: #1a1a1a;
+    margin-bottom: 10px;
+  }
+  .kanji-detail-chips {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .kanji-chip {
+    display: inline-flex; align-items: center;
+    padding: 4px 10px;
+    background: #f1efeb;
+    border-radius: 999px;
+    font-size: 11px; font-weight: 700;
+    color: #4a4a4a;
+    letter-spacing: .04em;
+  }
+  .kanji-chip.level { background: var(--brand-red); color: #fff; }
+  .kanji-detail-readings {
+    display: grid; gap: 4px;
+    font-size: 13px;
+  }
+  .kanji-reading-row {
+    display: flex; gap: 8px; align-items: baseline;
+  }
+  .kanji-reading-label {
+    font-size: 10px; font-weight: 700; color: #8a8a8a;
+    letter-spacing: .08em; min-width: 28px;
+  }
+  .kanji-reading-text {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-weight: 600; color: #1a1a1a;
+  }
+  .kanji-detail-body { padding: 20px 28px 24px; }
+  .kanji-detail-section {
+    margin-top: 20px;
+  }
+  .kanji-detail-section:first-child { margin-top: 0; }
+  .kanji-detail-section-head {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 800; color: var(--brand-red);
+    letter-spacing: .08em; text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .kanji-mnemonic-card {
+    background: linear-gradient(135deg, #fff9e6 0%, #fff 70%);
+    border: 1px solid #f2e6a8;
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 14px; line-height: 1.6;
+    color: #4a3a10;
+  }
+  .kanji-mnemonic-card p { margin: 0 0 6px; }
+  .kanji-mnemonic-card p:last-child { margin: 0; }
+  .kanji-compound-list {
+    display: grid; gap: 6px;
+  }
+  .kanji-compound-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 2fr);
+    gap: 12px; align-items: baseline;
+    padding: 8px 12px;
+    background: #fafaf7;
+    border: 1px solid var(--du-border, #ece9e3);
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .kanji-compound-row .kc-jp {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 16px; font-weight: 700; color: #1a1a1a;
+  }
+  .kanji-compound-row .kc-read {
+    font-family: 'Noto Sans JP', sans-serif;
+    color: #6b6b6b;
+  }
+  .kanji-compound-row .kc-arti { color: #4a4a4a; }
+  .kanji-detail-close {
+    position: absolute; top: 14px; right: 14px;
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,.9);
+    border: 1px solid var(--du-border, #ece9e3);
+    border-radius: 50%;
+    font-size: 18px; line-height: 1; font-weight: 700;
+    color: #6a6a6a;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .kanji-detail-close:hover {
+    background: var(--brand-red); color: #fff; border-color: transparent;
+  }
+  .kanji-replay-btn {
+    position: absolute; bottom: 8px; right: 8px;
+    padding: 4px 10px;
+    background: rgba(0,0,0,.6); color: #fff;
+    border: none; border-radius: 999px;
+    font-size: 11px; font-weight: 600;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 4px;
+    opacity: 0.85; transition: opacity .15s;
+  }
+  .kanji-replay-btn:hover { opacity: 1; }
+  @media (max-width: 600px) {
+    .kanji-detail-head { flex-direction: column; gap: 14px; padding: 20px 18px 16px; }
+    .kanji-detail-stroke { width: 140px; height: 140px; }
+    .kanji-detail-body { padding: 16px 18px 22px; }
+    .kanji-compound-row { grid-template-columns: 1fr; gap: 2px; }
+  }
 </style>
 </head>
 <body>
@@ -4517,6 +4717,11 @@ function renderSidebar() {
           <span class="ql-text">Daftar Kosakata</span>
           <span class="ql-arr">→</span>
         </button>
+        <button class="quicklink" type="button" onclick="openKanjiList()">
+          <span class="ql-ico">📝</span>
+          <span class="ql-text">Daftar Kanji</span>
+          <span class="ql-arr">→</span>
+        </button>
         <button class="quicklink" type="button" onclick="openMateri()">
           <span class="ql-ico">📚</span>
           <span class="ql-text">Materi &amp; Referensi</span>
@@ -4899,6 +5104,314 @@ window.toggleVocabBab = (key) => {
   const btn = bab.querySelector('.vocab-bab-toggle');
   if (btn) btn.setAttribute('aria-expanded', wasOpen ? 'false' : 'true');
 };
+
+// ── Daftar Kanji (mirror Daftar Kosakata + detail modal dengan stroke
+// animation dari KanjiVG). Source: GET /api/kanji?slug=<n5..n1>.
+// Cache kanji per slug di memory supaya navigasi balik ke list cepat.
+const _kanjiListCache = new Map(); // slug -> { fetchedAt, data }
+const _kanjiByIdCache = new Map(); // id -> full kanji row (untuk detail)
+
+window.openKanjiList = async () => {
+  closeSidebar();
+  const slug = currentState.course;
+  const course = COURSE_CONTENT[slug];
+  const main = document.getElementById('main-content');
+  if (!main) return;
+
+  let data = null;
+  const cached = _kanjiListCache.get(slug);
+  if (cached && (Date.now() - cached.fetchedAt) < 5 * 60 * 1000) {
+    data = cached.data;
+  } else {
+    try {
+      const res = await fetch(`/api/kanji?slug=${encodeURIComponent(slug)}`);
+      if (res.ok) {
+        data = await res.json();
+        _kanjiListCache.set(slug, { fetchedAt: Date.now(), data });
+      }
+    } catch { /* fall through to empty state */ }
+  }
+
+  const courseName = course?.name || slug.toUpperCase();
+  const levelChip = slug.toUpperCase();
+
+  // Normalize shape: API returns { sections } atau { bab }, keduanya berisi
+  // `kanji` per Bab. Index semua row ke _kanjiByIdCache untuk detail.
+  const indexBab = (bab) => {
+    for (const b of bab || []) {
+      for (const k of b.kanji || []) {
+        if (k.id) _kanjiByIdCache.set(k.id, k);
+      }
+    }
+  };
+  const sections = data?.sections;
+  if (sections) for (const s of sections) indexBab(s.bab);
+  else if (data?.bab) indexBab(data.bab);
+
+  const totalKanji = data?.totalKanji ?? 0;
+
+  if (!data || totalKanji === 0) {
+    main.innerHTML = `
+      <p class="lesson-breadcrumb">${escapeHtml(courseName)} · KANJI</p>
+      <h1 class="lesson-title">📝 Daftar Kanji <span class="vocab-level-chip">${escapeHtml(levelChip)}</span></h1>
+      <p class="lesson-subtitle" style="margin-top:12px;">
+        Daftar kanji belum di-isi admin untuk kelas ini.
+      </p>`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+
+  const tileHtml = (k) => `
+    <button type="button" class="kanji-tile" onclick="openKanjiDetail('${escapeHtml(k.id)}')"
+            data-kanji="${escapeHtml(`${k.character} ${k.on_reading || ''} ${k.kun_reading || ''} ${k.meaning_id || ''}`.toLowerCase())}">
+      <span class="kanji-tile-level">${escapeHtml(k.jlpt_level || '')}</span>
+      <span class="kanji-tile-char">${escapeHtml(k.character)}</span>
+      <span class="kanji-tile-meaning">${escapeHtml(k.meaning_id || '')}</span>
+    </button>`;
+
+  const renderBab = (b, key) => `
+    <div class="vocab-bab vocab-list-group" data-bab="${escapeHtml(key)}">
+      <button class="vocab-bab-toggle" type="button" aria-expanded="false" onclick="window.toggleVocabBab('${key}')">
+        ${b.kode ? `<span class="vb-kode">${escapeHtml(b.kode)}</span>` : ''}
+        <span class="vb-name">${escapeHtml(b.name || '(tanpa judul)')}</span>
+        <span class="vb-count">${(b.kanji || []).length} kanji</span>
+        <svg class="vb-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
+      </button>
+      <div class="vocab-bab-body">
+        <div class="kanji-grid">${(b.kanji || []).map(tileHtml).join('')}</div>
+      </div>
+    </div>`;
+
+  let bodyHtml = '';
+  if (sections) {
+    bodyHtml = `<div class="vocab-sections">
+      ${sections.map((s, si) => {
+        const key = 'sec-k-' + si;
+        const openSec = si === 0;
+        const totalSec = s.bab.reduce((n, b) => n + (b.kanji?.length || 0), 0);
+        return `
+          <div class="vocab-section ${openSec ? 'open' : ''}" data-section="${key}">
+            <button class="vocab-section-toggle" type="button" aria-expanded="${openSec ? 'true' : 'false'}" onclick="window.toggleVocabSection('${key}')">
+              <span class="vs-name">${escapeHtml(s.name || '(tanpa nama)')}</span>
+              <span class="vs-count">${s.bab.length} Bab · ${totalSec} kanji</span>
+              <svg class="vs-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="vocab-section-body">
+              ${s.bab.map((b, bi) => renderBab(b, `bab-k-${si}-${bi}`)).join('')}
+            </div>
+          </div>`;
+      }).join('')}
+    </div>`;
+  } else {
+    bodyHtml = `<div class="lesson-extras">
+      ${(data.bab || []).map((b, bi) => `
+        <div class="lesson-extra-card vocab-list-group">
+          <h3>📝 ${escapeHtml(b.name || '(tanpa judul)')} <span class="vocab-group-count">(${(b.kanji || []).length})</span></h3>
+          <div class="kanji-grid">${(b.kanji || []).map(tileHtml).join('')}</div>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  const babCount = sections
+    ? sections.reduce((n, s) => n + s.bab.length, 0)
+    : (data.bab?.length || 0);
+  const subtitleParts = [`${totalKanji} kanji`];
+  if (babCount > 0) subtitleParts.push(`${babCount} Bab`);
+  if (sections) subtitleParts.push(`${sections.length} Bagian`);
+
+  main.innerHTML = `
+    <p class="lesson-breadcrumb">${escapeHtml(courseName)} · KANJI</p>
+    <h1 class="lesson-title">📝 Daftar Kanji <span class="vocab-level-chip">${escapeHtml(levelChip)}</span></h1>
+    <p class="lesson-subtitle">${subtitleParts.join(' · ')}. Klik kanji untuk lihat goresan, mnemonic, dan kombinasi kosakata.</p>
+    <div class="module-filter" style="margin:14px 0 18px;">
+      <svg class="mf-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" id="kanji-list-filter" placeholder="Cari kanji / arti / reading..." oninput="window.filterKanjiList(this.value)" autocomplete="off" />
+    </div>
+    ${bodyHtml}
+  `;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.filterKanjiList = (q) => {
+  const query = String(q ?? '').trim().toLowerCase();
+  const sectionsMode = !!document.querySelector('#main-content .vocab-section');
+  document.querySelectorAll('#main-content .vocab-list-group').forEach((group) => {
+    let visible = 0;
+    group.querySelectorAll('.kanji-tile').forEach((tile) => {
+      const show = !query || (tile.getAttribute('data-kanji') || '').includes(query);
+      tile.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    group.style.display = visible === 0 ? 'none' : '';
+    if (sectionsMode) {
+      const babBtn = group.querySelector('.vocab-bab-toggle');
+      if (query && visible > 0) {
+        group.classList.add('open');
+        if (babBtn) babBtn.setAttribute('aria-expanded', 'true');
+      } else if (!query) {
+        group.classList.remove('open');
+        if (babBtn) babBtn.setAttribute('aria-expanded', 'false');
+      }
+    }
+  });
+  if (sectionsMode) {
+    document.querySelectorAll('#main-content .vocab-section').forEach((sec, i) => {
+      const hasMatch = Array.from(sec.querySelectorAll('.vocab-list-group')).some((g) => g.style.display !== 'none');
+      sec.style.display = hasMatch ? '' : 'none';
+      const secBtn = sec.querySelector('.vocab-section-toggle');
+      if (query && hasMatch) {
+        sec.classList.add('open');
+        if (secBtn) secBtn.setAttribute('aria-expanded', 'true');
+      } else if (!query) {
+        if (i === 0) {
+          sec.classList.add('open');
+          if (secBtn) secBtn.setAttribute('aria-expanded', 'true');
+        } else {
+          sec.classList.remove('open');
+          if (secBtn) secBtn.setAttribute('aria-expanded', 'false');
+        }
+      }
+    });
+  }
+};
+
+// ── Kanji detail modal: stroke animation (KanjiVG) + mnemonic + compounds.
+let _kanjiStrokeTimer = null;
+
+window.openKanjiDetail = (id) => {
+  const k = _kanjiByIdCache.get(id);
+  if (!k) return;
+
+  const compounds = (k.compounds || []).map((c) => `
+    <div class="kanji-compound-row">
+      <span class="kc-jp">${escapeHtml(c.japanese)}</span>
+      <span class="kc-read">${escapeHtml(c.reading || '')}</span>
+      <span class="kc-arti">${escapeHtml(c.indonesian || '')}</span>
+    </div>`).join('');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'kanji-detail-overlay';
+  overlay.innerHTML = `
+    <div class="kanji-detail-modal" role="dialog" aria-modal="true" style="position:relative;">
+      <button type="button" class="kanji-detail-close" onclick="closeKanjiDetail()" aria-label="Tutup">✕</button>
+      <div class="kanji-detail-head">
+        <div class="kanji-detail-stroke" id="kd-stroke">
+          <div class="kanji-detail-stroke-static">${escapeHtml(k.character)}</div>
+          <button type="button" class="kanji-replay-btn" onclick="replayKanjiStrokes('${escapeHtml(k.character)}')">▶ Putar goresan</button>
+        </div>
+        <div class="kanji-detail-info">
+          <div class="kanji-detail-meaning">${escapeHtml(k.meaning_id || '(belum ada arti)')}</div>
+          <div class="kanji-detail-chips">
+            <span class="kanji-chip level">${escapeHtml(k.jlpt_level || '')}</span>
+            ${k.stroke_count ? `<span class="kanji-chip">${k.stroke_count} goresan</span>` : ''}
+            ${k.bab_kode ? `<span class="kanji-chip">${escapeHtml(k.bab_kode)}</span>` : ''}
+          </div>
+          <div class="kanji-detail-readings">
+            ${k.on_reading ? `<div class="kanji-reading-row"><span class="kanji-reading-label">音</span><span class="kanji-reading-text">${escapeHtml(k.on_reading)}</span></div>` : ''}
+            ${k.kun_reading ? `<div class="kanji-reading-row"><span class="kanji-reading-label">訓</span><span class="kanji-reading-text">${escapeHtml(k.kun_reading)}</span></div>` : ''}
+          </div>
+        </div>
+      </div>
+      <div class="kanji-detail-body">
+        ${k.mnemonic ? `
+          <div class="kanji-detail-section">
+            <div class="kanji-detail-section-head">💡 Mnemonic / cara ingat</div>
+            <div class="kanji-mnemonic-card">${k.mnemonic}</div>
+          </div>` : ''}
+        ${compounds ? `
+          <div class="kanji-detail-section">
+            <div class="kanji-detail-section-head">📚 Kombinasi kosakata</div>
+            <div class="kanji-compound-list">${compounds}</div>
+          </div>` : `
+          <div class="kanji-detail-section">
+            <div class="kanji-detail-section-head">📚 Kombinasi kosakata</div>
+            <p style="color:#6b6b6b;font-size:13px;margin:0;">Belum ada kosakata yang mengandung kanji ini di kelas <strong>${escapeHtml(k.jlpt_level || '')}</strong>.</p>
+          </div>`}
+      </div>
+    </div>`;
+  overlay.addEventListener('click', (ev) => {
+    if (ev.target === overlay) closeKanjiDetail();
+  });
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+
+  // Mulai stroke animation otomatis (sumber KanjiVG, di-fetch on-demand).
+  setTimeout(() => fetchAndPlayKanjiStrokes(k.character), 120);
+};
+
+window.closeKanjiDetail = () => {
+  document.querySelectorAll('.kanji-detail-overlay').forEach((el) => el.remove());
+  document.body.style.overflow = '';
+  if (_kanjiStrokeTimer) { clearTimeout(_kanjiStrokeTimer); _kanjiStrokeTimer = null; }
+};
+
+window.replayKanjiStrokes = (char) => fetchAndPlayKanjiStrokes(char);
+
+function fetchAndPlayKanjiStrokes(char) {
+  const wrap = document.getElementById('kd-stroke');
+  if (!wrap) return;
+  const code = char.codePointAt(0).toString(16).padStart(5, '0');
+  fetch(`https://raw.githubusercontent.com/KanjiVG/kanjivg/master/kanji/${code}.svg`)
+    .then((r) => { if (!r.ok) throw new Error('not found'); return r.text(); })
+    .then((svgText) => {
+      const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+      const strokes = [...doc.querySelectorAll('path[id*="-s"]')].map((p) => p.getAttribute('d'));
+      if (strokes.length === 0) return;
+      playKanjiStrokeAnim(wrap, strokes);
+    })
+    .catch(() => { /* keep static char visible */ });
+}
+
+// Port dari app/kanji.html:runKdAnim — dashed stroke reveal sequentially.
+function playKanjiStrokeAnim(wrap, strokes) {
+  if (_kanjiStrokeTimer) { clearTimeout(_kanjiStrokeTimer); _kanjiStrokeTimer = null; }
+  const MS = 460;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 109 109');
+  strokes.forEach((d) => {
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', d);
+    p.style.cssText = 'fill:none;stroke:#1a1a1a;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;opacity:0.1';
+    svg.appendChild(p);
+  });
+  // Replace static char + replay button with animated SVG, then add replay back.
+  const replayBtn = wrap.querySelector('.kanji-replay-btn');
+  wrap.innerHTML = '';
+  wrap.appendChild(svg);
+  if (replayBtn) wrap.appendChild(replayBtn);
+
+  const paths = svg.querySelectorAll('path');
+  paths.forEach((p) => {
+    const len = p.getTotalLength();
+    p.style.strokeDasharray = len;
+    p.style.strokeDashoffset = len;
+    p.style.transition = 'none';
+  });
+
+  let i = 0;
+  function next() {
+    if (i >= paths.length) {
+      if (paths.length > 0) {
+        const last = paths[paths.length - 1];
+        last.style.transition = 'stroke .15s,opacity .15s';
+        last.style.stroke = '#1a1a1a'; last.style.opacity = '1';
+      }
+      return;
+    }
+    if (i > 0) {
+      const prev = paths[i - 1];
+      prev.style.transition = 'stroke .15s,opacity .15s';
+      prev.style.stroke = '#1a1a1a'; prev.style.opacity = '1';
+    }
+    const p = paths[i];
+    p.style.stroke = '#C41B1B'; p.style.opacity = '1';
+    p.style.transition = `stroke-dashoffset ${MS}ms cubic-bezier(.4,0,.2,1)`;
+    p.style.strokeDashoffset = '0';
+    i++;
+    _kanjiStrokeTimer = setTimeout(next, MS + 80);
+  }
+  _kanjiStrokeTimer = setTimeout(next, 200);
+}
 
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({

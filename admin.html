@@ -341,6 +341,7 @@ function renderApp() {
       <button data-tab="courses">Kursus</button>
       <button data-tab="modules">Modul</button>
       <button data-tab="lessons">Pelajaran &amp; Kuis</button>
+      <button data-tab="kanji">Kanji</button>
       <button data-tab="sensei">Sensei</button>
       <button data-tab="testimonials">Testimoni</button>
       <button data-tab="users">Pengguna</button>
@@ -350,6 +351,7 @@ function renderApp() {
       <section class="pane" data-pane="courses"></section>
       <section class="pane" data-pane="modules"></section>
       <section class="pane" data-pane="lessons"></section>
+      <section class="pane" data-pane="kanji"></section>
       <section class="pane" data-pane="sensei"></section>
       <section class="pane" data-pane="testimonials"></section>
       <section class="pane" data-pane="users"></section>
@@ -372,6 +374,7 @@ function renderTab() {
   if (STATE.tab === 'courses') renderCourses();
   else if (STATE.tab === 'modules') renderModules();
   else if (STATE.tab === 'lessons') renderLessons();
+  else if (STATE.tab === 'kanji') { loadKanji().then(renderKanjiPane); }
   else if (STATE.tab === 'sensei') { loadSensei().then(renderSenseiList); }
   else if (STATE.tab === 'testimonials') { loadTestimonials().then(renderTestimonials); }
   else if (STATE.tab === 'users') { loadUsers().then(renderUsers); }
@@ -3022,6 +3025,239 @@ window.deleteDiscussion = async (id) => {
     await loadDiscussions(); renderDiscussions();
     notify('Komentar dihapus');
   } catch (err) { notify('Gagal hapus: ' + err.message, true); }
+};
+
+// ─────────────────────────────────────────────────────────────
+// KANJI (Daftar Kanji di main site — terpisah dari PWA)
+// ─────────────────────────────────────────────────────────────
+const KANJI_LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1'];
+STATE.kanjiFilter = STATE.kanjiFilter || { level: 'N5', search: '' };
+
+async function loadKanji() {
+  try {
+    const params = new URLSearchParams();
+    if (STATE.kanjiFilter.level) params.set('level', STATE.kanjiFilter.level);
+    if (STATE.kanjiFilter.search) params.set('search', STATE.kanjiFilter.search);
+    const d = await api('/admin/kanji?' + params.toString());
+    STATE.kanji = d.kanji || [];
+  } catch (e) { notify('Gagal load kanji: ' + e.message, true); STATE.kanji = []; }
+}
+
+function renderKanjiPane() {
+  const pane = document.querySelector('[data-pane="kanji"]');
+  const f = STATE.kanjiFilter;
+  const levelOptions = KANJI_LEVELS.map((lv) =>
+    `<option value="${lv}" ${f.level === lv ? 'selected' : ''}>${lv}</option>`
+  ).join('');
+  const rows = (STATE.kanji || []).map((k) => `
+    <tr>
+      <td style="font-family:'Noto Sans JP',sans-serif;font-size:28px;font-weight:700;line-height:1;text-align:center;">${escapeHtml(k.character)}</td>
+      <td><span class="pill">${escapeHtml(k.jlpt_level)}</span></td>
+      <td style="font-family:'Noto Sans JP',sans-serif;">${escapeHtml(k.on_reading || '-')}</td>
+      <td style="font-family:'Noto Sans JP',sans-serif;">${escapeHtml(k.kun_reading || '-')}</td>
+      <td>${escapeHtml(k.meaning_id || '-')}</td>
+      <td style="max-width:240px;font-size:12px;color:#555;">${escapeHtml((k.mnemonic || '').replace(/<[^>]*>/g, '').slice(0, 100))}${(k.mnemonic || '').length > 100 ? '…' : ''}</td>
+      <td>${k.stroke_count || '-'}</td>
+      <td>${escapeHtml(k.bab_kode || '-')}</td>
+      <td class="actions">
+        <button class="btn btn-ghost" onclick="editKanji('${k.id}')">Edit</button>
+        <button class="btn btn-danger" onclick="deleteKanji('${k.id}', '${escapeHtml(k.character).replace(/'/g, "&#39;")}')">Hapus</button>
+      </td>
+    </tr>
+  `).join('');
+  pane.innerHTML = `
+    <h2>Daftar Kanji</h2>
+    <p style="margin-top:-6px;color:var(--ink-500);font-size:13px;">
+      Tabel ini source of truth buat fitur "📝 Daftar Kanji" di dashboard siswa
+      (welcome.html). Terpisah dari PWA app.eznihongo.com.
+    </p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0 16px;">
+      <label>Level
+        <select id="kanji-level-filter" style="margin-left:6px;">${levelOptions}</select>
+      </label>
+      <input id="kanji-search" type="search" placeholder="Cari karakter / reading / arti…"
+        value="${escapeHtml(f.search)}" style="flex:1;min-width:200px;" />
+      <button class="btn btn-primary" onclick="openKanjiForm(null)">+ Kanji</button>
+      <button class="btn btn-ghost" onclick="openKanjiImport()" title="Bulk import dari Notion DB Kanji (per Bab)">↻ Import Notion</button>
+    </div>
+    ${STATE.kanji.length === 0
+      ? '<div class="empty">Belum ada kanji di level ini. Klik <strong>+ Kanji</strong> atau import dari Notion.</div>'
+      : `<table><thead><tr>
+          <th>Karakter</th><th>Level</th><th>On</th><th>Kun</th><th>Arti</th>
+          <th>Mnemonic</th><th>Goresan</th><th>Bab</th><th></th>
+        </tr></thead><tbody>${rows}</tbody></table>`}
+  `;
+  document.getElementById('kanji-level-filter').addEventListener('change', (e) => {
+    STATE.kanjiFilter.level = e.target.value;
+    loadKanji().then(renderKanjiPane);
+  });
+  const searchEl = document.getElementById('kanji-search');
+  let searchT = null;
+  searchEl.addEventListener('input', (e) => {
+    clearTimeout(searchT);
+    searchT = setTimeout(() => {
+      STATE.kanjiFilter.search = e.target.value.trim();
+      loadKanji().then(renderKanjiPane);
+    }, 250);
+  });
+}
+
+window.openKanjiForm = (id) => {
+  const k = id ? (STATE.kanji || []).find((x) => x.id === id) : null;
+  const isNew = !k;
+  const defaults = {
+    character: '', jlpt_level: STATE.kanjiFilter.level || 'N5',
+    on_reading: '', kun_reading: '', meaning_id: '',
+    mnemonic: '', stroke_count: '', bab_kode: '', sort_order: 0,
+  };
+  const v = k || defaults;
+  const levelOptions = KANJI_LEVELS.map((lv) =>
+    `<option value="${lv}" ${v.jlpt_level === lv ? 'selected' : ''}>${lv}</option>`
+  ).join('');
+  openModal(`
+    <h3>${isNew ? 'Kanji Baru' : 'Edit Kanji'}</h3>
+    <form id="kanji-form">
+      <div class="field-row">
+        <div class="field"><label>Karakter (1 huruf)</label>
+          <input name="character" value="${escapeHtml(v.character)}" maxlength="2" required
+            lang="ja" style="font-family:'Noto Sans JP',sans-serif;font-size:32px;font-weight:700;text-align:center;" />
+        </div>
+        <div class="field"><label>Level JLPT</label>
+          <select name="jlptLevel">${levelOptions}</select>
+        </div>
+        <div class="field"><label>Goresan</label>
+          <input type="number" name="strokeCount" min="1" max="40" value="${v.stroke_count ?? ''}" placeholder="otomatis dari KanjiVG" />
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>On'yomi (音読み)</label>
+          <input name="onReading" value="${escapeHtml(v.on_reading || '')}" lang="ja"
+            style="font-family:'Noto Sans JP',sans-serif;" placeholder="contoh: イチ・イツ" />
+        </div>
+        <div class="field"><label>Kun'yomi (訓読み)</label>
+          <input name="kunReading" value="${escapeHtml(v.kun_reading || '')}" lang="ja"
+            style="font-family:'Noto Sans JP',sans-serif;" placeholder="contoh: ひと-" />
+        </div>
+      </div>
+      <div class="field"><label>Arti (Bahasa Indonesia)</label>
+        <input name="meaningId" value="${escapeHtml(v.meaning_id || '')}" placeholder="contoh: Satu" />
+      </div>
+      <div class="field"><label>Mnemonic / cara ingat</label>
+        <textarea name="mnemonic" class="rich-text" rows="3"
+          placeholder="contoh: 一 = satu garis horizontal, gampang inget angka 1">${escapeHtml(v.mnemonic || '')}</textarea>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Kode Bab (opsional)</label>
+          <input name="babKode" value="${escapeHtml(v.bab_kode || '')}" placeholder="contoh: N5-01" />
+        </div>
+        <div class="field"><label>Urutan</label>
+          <input type="number" name="sortOrder" value="${v.sort_order || 0}" />
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  `);
+  const form = document.getElementById('kanji-form');
+  wireRichToolbarAll(form);
+  form.addEventListener('submit', (e) => submitKanji(e, id));
+};
+
+window.editKanji = (id) => openKanjiForm(id);
+
+async function submitKanji(e, id) {
+  e.preventDefault();
+  const form = e.target;
+  const body = {
+    character: form.character.value.trim(),
+    jlptLevel: form.jlptLevel.value,
+    onReading: form.onReading.value.trim() || null,
+    kunReading: form.kunReading.value.trim() || null,
+    meaningId: form.meaningId.value.trim() || null,
+    mnemonic: form.mnemonic.value.trim() || null,
+    strokeCount: form.strokeCount.value === '' ? null : Number(form.strokeCount.value),
+    babKode: form.babKode.value.trim() || null,
+    sortOrder: Number(form.sortOrder.value) || 0,
+  };
+  try {
+    if (id) await api('/admin/kanji/' + id, { method: 'PUT', body: JSON.stringify(body) });
+    else await api('/admin/kanji', { method: 'POST', body: JSON.stringify(body) });
+    notify('Kanji tersimpan');
+    closeModal();
+    await loadKanji(); renderKanjiPane();
+  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+}
+
+window.deleteKanji = async (id, character) => {
+  if (!confirm(`Hapus kanji ${character}?`)) return;
+  try {
+    await api('/admin/kanji/' + id, { method: 'DELETE' });
+    notify('Kanji dihapus');
+    await loadKanji(); renderKanjiPane();
+  } catch (err) { notify('Gagal hapus: ' + err.message, true); }
+};
+
+window.openKanjiImport = async () => {
+  // Reuse Bab dropdown dari endpoint vocab existing.
+  let bab = [];
+  try { const d = await api('/admin/notion-bab'); bab = d.bab || []; }
+  catch (err) {
+    notify('Gagal load daftar Bab: ' + err.message, true);
+    return;
+  }
+  if (bab.length === 0) {
+    notify('Belum ada Bab di Notion. Set NOTION_TOKEN + NOTION_BAB_DB_ID di backend/.env.', true);
+    return;
+  }
+  const levelOptions = KANJI_LEVELS.map((lv) =>
+    `<option value="${lv}" ${STATE.kanjiFilter.level === lv ? 'selected' : ''}>${lv}</option>`
+  ).join('');
+  const babOptions = bab.map((b) =>
+    `<option value="${b.id}">${escapeHtml(b.kode || '')}${b.kode ? ' · ' : ''}${escapeHtml(b.name)}</option>`
+  ).join('');
+  openModal(`
+    <h3>Import Kanji dari Notion (per Bab)</h3>
+    <p style="color:var(--ink-500);font-size:13px;margin-top:-4px;">
+      Tarik karakter + reading + meaning + mnemonic dari Notion DB "📖 Kanji"
+      yang ter-link ke Bab terpilih. Existing kanji (match by character + level)
+      akan di-update; yang baru di-insert. Butuh env <code>NOTION_KANJI_DB_ID</code>.
+    </p>
+    <form id="kanji-import-form">
+      <div class="field-row">
+        <div class="field"><label>Level</label>
+          <select name="jlptLevel">${levelOptions}</select>
+        </div>
+      </div>
+      <div class="field"><label>Bab</label>
+        <select name="babPageId" required>${babOptions}</select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button type="submit" class="btn btn-primary">Import</button>
+      </div>
+    </form>
+  `);
+  document.getElementById('kanji-import-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const btn = f.querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Importing…';
+    try {
+      const r = await api('/admin/kanji/import-notion-bab', {
+        method: 'POST',
+        body: JSON.stringify({ babPageId: f.babPageId.value, jlptLevel: f.jlptLevel.value }),
+      });
+      notify(`Import selesai: ${r.imported} baru, ${r.updated} di-update (total ${r.total} di Notion).`);
+      closeModal();
+      STATE.kanjiFilter.level = f.jlptLevel.value;
+      await loadKanji(); renderKanjiPane();
+    } catch (err) {
+      notify('Import gagal: ' + err.message, true);
+      btn.disabled = false; btn.textContent = 'Import';
+    }
+  });
 };
 </script>
 
