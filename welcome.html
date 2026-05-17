@@ -2908,11 +2908,6 @@
     text-underline-offset: 3px;
     text-decoration-thickness: 1px;
   }
-  .quiz-paper-audio {
-    margin-left: 4px;
-    transform: translateY(-2px);
-  }
-
   /* Listening JLPT-style: hidden transcript revealed post-answer */
   .quiz-listen-transcript {
     margin-top: 14px;
@@ -3786,8 +3781,7 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
     </details>` : '';
 
   const inlineJp = !isListening && q.jp
-    ? `<span class="quiz-paper-jp">${q.jp}</span>
-       <button class="pronounce-btn quiz-paper-audio" onclick="window.playTTS(${JSON.stringify(q.jp).replace(/"/g, '&quot;')}, this)">Dengar</button>`
+    ? `<span class="quiz-paper-jp">${q.jp}</span>`
     : '';
 
   return `

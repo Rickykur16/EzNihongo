@@ -151,6 +151,11 @@
   .quiz-admin-paper { background: var(--surface-white); border: 1px solid var(--paper-300); border-radius: var(--radius-md); padding: 22px 18px 18px; margin-bottom: 16px; position: relative; }
   .quiz-admin-section-label { position: absolute; top: -15px; left: 14px; background: var(--surface-white); border: 1px solid var(--paper-300); border-radius: 7px; padding: 6px 12px; font-size: 15px; font-weight: 800; color: var(--ink-900); }
   .quiz-admin-instruction { font-size: 15px; line-height: 1.55; font-weight: 700; color: var(--ink-900); margin: 4px 0 18px; }
+  .quiz-admin-section-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 4px 0 12px; }
+  .quiz-admin-section-actions .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .quiz-admin-empty-q { padding: 14px; color: var(--ink-500); font-size: 13px; text-align: center; background: #fafafa; border: 1px dashed var(--paper-300); border-radius: 8px; }
+  .quiz-admin-sections { display: grid; gap: 14px; }
+  .quiz-admin-sections-empty { padding: 28px 18px; text-align: center; color: var(--ink-500); font-size: 14px; background: #fafafa; border: 1px dashed var(--paper-300); border-radius: var(--radius-md); }
   .quiz-admin-list { display: grid; gap: 12px; }
   .quiz-admin-item { margin: 0; padding: 14px; background: #fff; border: 1px solid var(--paper-300); border-radius: var(--radius-md); }
   .quiz-admin-item summary { display: flex; gap: 8px; align-items: baseline; font-size: 15px; font-weight: 800; color: var(--ink-900); }
@@ -1489,134 +1494,310 @@ function quizCategoryLabel(value) {
   return QUIZ_CATEGORY_LABELS[quizCategory(value)];
 }
 
-window.manageQuiz = async (lessonId, lessonTitle) => {
+// Pending section: admin tekan "+ Section baru" → meta-nya ditampung di
+// sini, langsung lanjut ke form pertanyaan. Section persist ke DB pas
+// pertanyaan pertama disimpan. Cancel = section discarded. Pemegang
+// state hanya satu (1 pending section per session) — cukup buat flow ini.
+let _pendingSection = null;
+const _quizCtxStash = {};
+
+window.manageQuiz = async (lessonId, lessonTitle, opts) => {
   let questions = [];
   try { const d = await api('/admin/lessons/' + lessonId + '/quiz'); questions = d.questions || []; }
   catch (err) { notify('Gagal load kuis: ' + err.message, true); return; }
+  if (!opts?.keepPending) _pendingSection = null;
   renderQuizModal(lessonId, lessonTitle, questions);
 };
 
+function categorySortOrder(cat) {
+  return { vocabulary: 1, grammar: 2, listening: 3 }[cat] || 9;
+}
+
+function collectSections(questions, lessonId) {
+  const byKey = new Map();
+  questions.forEach((q) => {
+    const cat = quizCategory(q.question_category);
+    const num = Number(q.section_number) || 1;
+    const key = `${cat}:${num}`;
+    if (!byKey.has(key)) {
+      byKey.set(key, {
+        category: cat, number: num,
+        label: q.section_label || `Section ${num}`,
+        instruction: q.section_instruction || '',
+        questions: [],
+        isPending: false,
+      });
+    }
+    byKey.get(key).questions.push(q);
+  });
+  if (_pendingSection && _pendingSection.lessonId === lessonId) {
+    const key = `${_pendingSection.category}:${_pendingSection.number}`;
+    if (!byKey.has(key)) {
+      byKey.set(key, {
+        category: _pendingSection.category,
+        number: _pendingSection.number,
+        label: _pendingSection.label,
+        instruction: _pendingSection.instruction || '',
+        questions: [],
+        isPending: true,
+      });
+    }
+  }
+  return Array.from(byKey.values()).sort((a, b) =>
+    (categorySortOrder(a.category) - categorySortOrder(b.category)) || (a.number - b.number)
+  );
+}
+
+function stashCtx(payload) {
+  // Stash ke window-level supaya onclick handler ga perlu embed JSON
+  // (escape hell). Token random, dipakai cuma di session ini.
+  const key = 'k_' + Math.random().toString(36).slice(2, 11);
+  _quizCtxStash[key] = payload;
+  return key;
+}
+
 function renderQuizModal(lessonId, lessonTitle, questions) {
+  const sections = collectSections(questions, lessonId);
   const tabsHtml = Object.keys(QUIZ_CATEGORY_LABELS).map((cat) => {
-    const count = questions.filter((q) => quizCategory(q.question_category) === cat).length;
+    const count = sections.filter((s) => s.category === cat)
+      .reduce((n, s) => n + s.questions.length, 0);
     return `<span class="quiz-paper-tab-admin ${count ? 'active' : ''}">${QUIZ_CATEGORY_LABELS[cat]} ${count}</span>`;
   }).join('');
-  const sectionQuestionCounts = new Map();
-  const qHtml = questions.map((q) => {
-    const category = quizCategory(q.question_category);
-    const sectionNumber = Number(q.section_number) || 1;
-    const sectionKey = `${category}:${sectionNumber}`;
-    const sectionQuestionNumber = (sectionQuestionCounts.get(sectionKey) || 0) + 1;
-    sectionQuestionCounts.set(sectionKey, sectionQuestionNumber);
-    return `
-    <details class="quiz-admin-item">
-      <summary>
-        <span class="quiz-admin-no">${sectionNumber}.${sectionQuestionNumber}</span>
-        <span>${escapeHtml(q.question.slice(0, 90))}${q.question.length > 90 ? '…' : ''}</span>
-        <span class="pill">${quizCategoryLabel(category)}</span>
-      </summary>
-      <div class="quiz-admin-options">
-        ${(q.options || []).map((o, oi) => `
-          <div class="quiz-admin-option ${o.is_correct ? 'correct' : ''}">
-            <span class="quiz-admin-option-no">${oi + 1}</span>
-            <span>${escapeHtml(o.option_text)}</span>
-          </div>
-        `).join('')}
-        ${q.explanation ? `<div class="quiz-admin-note">Penjelasan: ${escapeHtml(q.explanation)}</div>` : ''}
-        <div style="margin-top:8px;display:flex;gap:6px;">
-          <button class="btn btn-ghost" onclick='editQuestion(${JSON.stringify(q).replace(/'/g, "&#39;")}, "${lessonId}", "${escapeHtml(lessonTitle).replace(/"/g, '&quot;')}")'>Edit</button>
-          <button class="btn btn-danger" onclick='deleteQuestion("${q.id}", "${lessonId}", "${escapeHtml(lessonTitle).replace(/"/g, '&quot;')}")'>Hapus</button>
-        </div>
-      </div>
-    </details>
-  `;
-  }).join('');
+
+  const sectionsHtml = sections.length === 0
+    ? '<div class="quiz-admin-sections-empty">Belum ada section. Klik <strong>+ Section baru</strong> untuk mulai.</div>'
+    : sections.map((s) => renderSectionCard(s, lessonId, lessonTitle)).join('');
+
+  const newSectionCtx = stashCtx({
+    lessonId, lessonTitle, mode: 'new',
+    existingSections: sections.map((s) => ({ category: s.category, number: s.number })),
+  });
   openModal(`
     <div class="quiz-admin-head">
       <div>
         <div class="quiz-admin-kicker">Quiz / Assignment</div>
         <h3 class="quiz-admin-title">${escapeHtml(lessonTitle)}</h3>
       </div>
-      <button class="btn btn-primary" onclick='newQuestion("${lessonId}", "${escapeHtml(lessonTitle).replace(/"/g, '&quot;')}")'>+ Pertanyaan</button>
+      <button class="btn btn-primary" onclick="openSectionForm('${newSectionCtx}')">+ Section baru</button>
     </div>
-    <div class="quiz-paper-tabs-admin" aria-label="Kategori kuis">
-      ${tabsHtml}
-    </div>
-    <div class="quiz-admin-paper">
-      <div class="quiz-admin-section-label">Sections</div>
-      <div class="quiz-admin-instruction">Set kategori, section, dan instruksi di tiap pertanyaan. Dashboard murid akan mengelompokkan soal ke tab Vocabulary, Grammar, dan Listening sesuai metadata ini.</div>
-      <div class="quiz-admin-list">${questions.length === 0 ? '<div class="empty">Belum ada pertanyaan.</div>' : qHtml}</div>
-    </div>
+    <div class="quiz-paper-tabs-admin" aria-label="Kategori kuis">${tabsHtml}</div>
+    <div class="quiz-admin-sections">${sectionsHtml}</div>
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `, { className: 'quiz-admin-modal' });
 }
 
-window.newQuestion = (lessonId, lessonTitle) => {
-  openQuestionForm(null, lessonId, lessonTitle);
-};
-window.editQuestion = (q, lessonId, lessonTitle) => {
-  openQuestionForm(q, lessonId, lessonTitle);
-};
-window.deleteQuestion = async (qid, lessonId, lessonTitle) => {
+function renderSectionCard(s, lessonId, lessonTitle) {
+  const sectionCtx = { lessonId, lessonTitle, category: s.category, number: s.number, label: s.label, instruction: s.instruction };
+  const editKey = stashCtx({ ...sectionCtx, mode: 'edit' });
+  const addQKey = stashCtx({ ...sectionCtx, question: null });
+  const delKey = stashCtx(sectionCtx);
+
+  const qHtml = s.questions.map((q, qi) => {
+    const editQKey = stashCtx({ ...sectionCtx, question: q });
+    const delQKey = stashCtx({ id: q.id, lessonId, lessonTitle });
+    return `
+      <details class="quiz-admin-item">
+        <summary>
+          <span class="quiz-admin-no">${s.number}.${qi + 1}</span>
+          <span>${escapeHtml(q.question.slice(0, 90))}${q.question.length > 90 ? '…' : ''}</span>
+        </summary>
+        <div class="quiz-admin-options">
+          ${(q.options || []).map((o, oi) => `
+            <div class="quiz-admin-option ${o.is_correct ? 'correct' : ''}">
+              <span class="quiz-admin-option-no">${oi + 1}</span>
+              <span>${escapeHtml(o.option_text)}</span>
+            </div>
+          `).join('')}
+          ${q.explanation ? `<div class="quiz-admin-note">Penjelasan: ${escapeHtml(q.explanation)}</div>` : ''}
+          <div style="margin-top:8px;display:flex;gap:6px;">
+            <button class="btn btn-ghost" onclick="openQuestionForm('${editQKey}')">Edit</button>
+            <button class="btn btn-danger" onclick="deleteQuestion('${delQKey}')">Hapus</button>
+          </div>
+        </div>
+      </details>
+    `;
+  }).join('');
+
+  const emptyQ = s.questions.length === 0
+    ? `<div class="quiz-admin-empty-q">Section masih kosong — tambahkan pertanyaan pertama.</div>`
+    : '';
+
+  const pendingPill = s.isPending
+    ? '<span class="pill" style="background:#fffbea;color:#8a6d00;border:1px solid #f0e0a0;">Belum tersimpan</span>'
+    : `<button class="btn btn-danger btn-sm" onclick="deleteSection('${delKey}')">Hapus section</button>`;
+
+  return `
+    <div class="quiz-admin-paper" data-section-key="${s.category}:${s.number}">
+      <div class="quiz-admin-section-label">${s.number}. ${escapeHtml(s.label)} · ${quizCategoryLabel(s.category)}</div>
+      <div class="quiz-admin-section-actions">
+        <button class="btn btn-ghost btn-sm" onclick="openSectionForm('${editKey}')">Edit section</button>
+        ${pendingPill}
+      </div>
+      ${s.instruction ? `<div class="quiz-admin-instruction">${escapeHtml(s.instruction)}</div>` : ''}
+      <div class="quiz-admin-list">${qHtml}${emptyQ}</div>
+      <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="openQuestionForm('${addQKey}')">+ Pertanyaan</button>
+    </div>
+  `;
+}
+
+window.deleteQuestion = async (key) => {
+  const ctx = _quizCtxStash[key];
+  if (!ctx) return;
   if (!confirm('Hapus pertanyaan ini?')) return;
   try {
-    await api('/admin/quiz-questions/' + qid, { method: 'DELETE' });
+    await api('/admin/quiz-questions/' + ctx.id, { method: 'DELETE' });
     notify('Pertanyaan dihapus');
-    manageQuiz(lessonId, lessonTitle);
+    manageQuiz(ctx.lessonId, ctx.lessonTitle);
   } catch (err) { notify('Gagal hapus: ' + err.message, true); }
 };
 
-function openQuestionForm(q, lessonId, lessonTitle) {
-  q = q || {
-    question: '',
-    question_type: 'multiple_choice',
-    question_category: 'vocabulary',
-    section_number: 1,
-    section_label: 'Section 1',
-    section_instruction: '',
-    explanation: '',
-    sort_order: 0,
-    options: [{ option_text: '', is_correct: false }, { option_text: '', is_correct: false }],
-  };
-  q.question_category = quizCategory(q.question_category);
-  q.section_number = Number(q.section_number) || 1;
-  q.section_label = q.section_label || `Section ${q.section_number}`;
-  const optsHtml = (q.options || []).map((o, i) => optionRowHtml(o, i)).join('');
+window.deleteSection = async (key) => {
+  const ctx = _quizCtxStash[key];
+  if (!ctx) return;
+  if (!confirm(`Hapus section "${ctx.label}" beserta semua pertanyaannya?`)) return;
+  try {
+    await api(`/admin/lessons/${ctx.lessonId}/quiz/sections/${ctx.category}/${ctx.number}`, { method: 'DELETE' });
+    notify('Section dihapus');
+    manageQuiz(ctx.lessonId, ctx.lessonTitle);
+  } catch (err) { notify('Gagal hapus: ' + err.message, true); }
+};
+
+window.openSectionForm = (key) => {
+  const ctx = _quizCtxStash[key];
+  if (!ctx) return;
+  const isNew = ctx.mode === 'new';
+  const { lessonId, lessonTitle } = ctx;
+
+  // Default untuk new: kategori sesuai context kalau ada, nomor = next.
+  const cat = ctx.category || 'vocabulary';
+  // Untuk section baru: default nomor = max existing nomor di kategori itu + 1.
+  const existing = ctx.existingSections || [];
+  const nextNumFor = (c) => (existing.filter((s) => s.category === c)
+    .reduce((m, s) => Math.max(m, s.number), 0)) + 1;
+  const num = ctx.number || (isNew ? nextNumFor(cat) : 1);
+  const label = ctx.label || '';
+  const instruction = ctx.instruction || '';
+  const backKey = stashCtx({ lessonId, lessonTitle });
+
   openModal(`
     <div class="quiz-admin-head">
       <div>
-        <div class="quiz-admin-kicker">${escapeHtml(q.section_label)} / ${quizCategoryLabel(q.question_category)}</div>
+        <div class="quiz-admin-kicker">Quiz / Assignment</div>
+        <h3 class="quiz-admin-title">${isNew ? 'Section Baru' : 'Edit Section'}</h3>
+      </div>
+    </div>
+    <form id="section-form">
+      <div class="field-row">
+        <div class="field"><label>Kategori</label>
+          <select name="sectionCategory" ${isNew ? '' : 'disabled'}>
+            <option value="vocabulary" ${cat === 'vocabulary' ? 'selected' : ''}>Vocabulary</option>
+            <option value="grammar" ${cat === 'grammar' ? 'selected' : ''}>Grammar</option>
+            <option value="listening" ${cat === 'listening' ? 'selected' : ''}>Listening</option>
+          </select>
+        </div>
+        <div class="field"><label>Nomor section</label>
+          <input type="number" name="sectionNumber" min="1" value="${num}" ${isNew ? '' : 'readonly'} />
+        </div>
+      </div>
+      <div class="field"><label>Label section</label>
+        <input name="sectionLabel" value="${escapeHtml(label)}" placeholder="contoh: もじ・ごい (Moji-Goi)" />
+      </div>
+      <div class="field"><label>Instruksi section (mondai)</label>
+        <textarea name="sectionInstruction" rows="3" lang="ja"
+          placeholder="contoh: 問題1：＿＿の ことばは ひらがなで どう かきますか。 1・2・3・4から いちばん いい ものを ひとつ えらんで ください。">${escapeHtml(instruction)}</textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="backToManageQuiz('${backKey}')">← Batal</button>
+        <button type="submit" class="btn btn-primary">${isNew ? 'Lanjut → Tambah pertanyaan pertama' : 'Simpan section'}</button>
+      </div>
+    </form>
+  `, { className: 'quiz-admin-modal' });
+  const form = document.getElementById('section-form');
+  // Saat user ganti kategori (cuma di mode baru), auto-update nomor section
+  // ke max+1 di kategori baru — biar admin ga manual nebak nomor selanjutnya
+  // per kategori. Tiap kategori punya number-space sendiri.
+  if (isNew) {
+    const catSelect = form.sectionCategory;
+    const numInput = form.sectionNumber;
+    catSelect.addEventListener('change', () => {
+      numInput.value = nextNumFor(catSelect.value);
+    });
+  }
+  form.addEventListener('submit', (e) => submitSection(e, ctx));
+};
+
+async function submitSection(e, ctx) {
+  e.preventDefault();
+  const form = e.target;
+  const category = form.sectionCategory.value;
+  const number = Number(form.sectionNumber.value) || 1;
+  const label = form.sectionLabel.value.trim() || `Section ${number}`;
+  const instruction = form.sectionInstruction.value.trim();
+  const { lessonId, lessonTitle } = ctx;
+
+  if (ctx.mode === 'edit') {
+    try {
+      await api(`/admin/lessons/${lessonId}/quiz/sections/${ctx.category}/${ctx.number}`, {
+        method: 'PUT',
+        body: JSON.stringify({ sectionLabel: label, sectionInstruction: instruction || null }),
+      });
+      notify('Section tersimpan');
+      manageQuiz(lessonId, lessonTitle);
+    } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+    return;
+  }
+
+  // New section → stash pending + langsung buka form pertanyaan pertama.
+  _pendingSection = { lessonId, category, number, label, instruction };
+  const k = stashCtx({
+    lessonId, lessonTitle,
+    category, number, label, instruction,
+    question: null,
+  });
+  openQuestionForm(k);
+}
+
+window.openQuestionForm = (key) => {
+  const ctx = _quizCtxStash[key];
+  if (!ctx) return;
+  const { lessonId, lessonTitle, category, number, label, instruction } = ctx;
+  const q = ctx.question || {
+    question: '',
+    question_type: 'multiple_choice',
+    explanation: '',
+    sort_order: 0,
+    audio_script: '',
+    options: [{ option_text: '', is_correct: false }, { option_text: '', is_correct: false }],
+  };
+  const optsHtml = (q.options || []).map((o, i) => optionRowHtml(o, i)).join('');
+  const isListening = category === 'listening';
+  const backKey = stashCtx({ lessonId, lessonTitle });
+
+  openModal(`
+    <div class="quiz-admin-head">
+      <div>
+        <div class="quiz-admin-kicker">${number}. ${escapeHtml(label)} · ${quizCategoryLabel(category)}</div>
         <h3 class="quiz-admin-title">${q.id ? 'Edit Pertanyaan' : 'Pertanyaan Baru'}</h3>
       </div>
     </div>
     <form id="question-form">
       <div class="quiz-admin-paper">
-        <div class="quiz-admin-section-label">${escapeHtml(q.section_label)}</div>
-        <div class="quiz-admin-instruction">Tulis pertanyaan seperti yang akan muncul di assignment. Metadata di bawah menentukan tab dan section murid.</div>
-        <div class="field-row">
-          <div class="field"><label>Kategori</label>
-            <select name="questionCategory">
-              <option value="vocabulary" ${q.question_category === 'vocabulary' ? 'selected' : ''}>Vocabulary</option>
-              <option value="grammar" ${q.question_category === 'grammar' ? 'selected' : ''}>Grammar</option>
-              <option value="listening" ${q.question_category === 'listening' ? 'selected' : ''}>Listening</option>
-            </select>
-          </div>
-          <div class="field"><label>Section</label><input type="number" name="sectionNumber" min="1" value="${q.section_number}" /></div>
-          <div class="field"><label>Label section</label><input name="sectionLabel" value="${escapeHtml(q.section_label)}" placeholder="Section 1" /></div>
-        </div>
-        <div class="field"><label>Instruksi section</label><textarea name="sectionInstruction" rows="2">${escapeHtml(q.section_instruction || '')}</textarea></div>
+        <div class="quiz-admin-section-label">${number}. ${escapeHtml(label)}</div>
+        ${instruction ? `<div class="quiz-admin-instruction">${escapeHtml(instruction)}</div>` : ''}
         <div class="field"><label>Pertanyaan</label><textarea name="question" class="rich-text" rows="3" required>${escapeHtml(q.question)}</textarea></div>
-        <details class="field" ${q.audio_script ? 'open' : ''}>
-          <summary style="cursor:pointer;font-size:13px;color:var(--ink-700);">🎧 Audio dialog (listening) — opsional</summary>
-          <div style="margin-top:8px;">
-            <textarea name="audioScript" rows="6" lang="ja"
-              placeholder="Khusus listening JLPT-style: tulis percakapannya, 1 baris per turn.&#10;&#10;Contoh:&#10;A: お国は どちらですか。&#10;B: インドネシアです。&#10;A: 大きな町ですか。&#10;B: いいえ、小さい町です。"
-              style="font-family:'Noto Sans JP',sans-serif;width:100%;font-size:14px;line-height:1.6;">${escapeHtml(q.audio_script || '')}</textarea>
-            <div style="font-size:11px;color:var(--ink-500);margin-top:4px;">
-              Student klik tombol Play di soal → seluruh dialog di-play sebagai audio TTS. Transkrip ke-hidden by default, baru muncul setelah submit.
+        ${isListening ? `
+          <details class="field" ${q.audio_script ? 'open' : ''}>
+            <summary style="cursor:pointer;font-size:13px;color:var(--ink-700);">🎧 Audio dialog (listening) — opsional</summary>
+            <div style="margin-top:8px;">
+              <textarea name="audioScript" rows="6" lang="ja"
+                placeholder="Tulis percakapannya, 1 baris per turn.&#10;&#10;Contoh:&#10;A: お国は どちらですか。&#10;B: インドネシアです。&#10;A: 大きな町ですか。&#10;B: いいえ、小さい町です。"
+                style="font-family:'Noto Sans JP',sans-serif;width:100%;font-size:14px;line-height:1.6;">${escapeHtml(q.audio_script || '')}</textarea>
+              <div style="font-size:11px;color:var(--ink-500);margin-top:4px;">
+                Player listening di top section akan muter dialog ini berurutan. Transkrip hidden sampai siswa submit.
+              </div>
             </div>
-          </div>
-        </details>
+          </details>
+        ` : ''}
         <div class="field"><label>Penjelasan setelah jawab</label><textarea name="explanation" class="rich-text" rows="3">${escapeHtml(q.explanation || '')}</textarea></div>
       </div>
       <div class="field-row">
@@ -1634,15 +1815,21 @@ function openQuestionForm(q, lessonId, lessonTitle) {
         <button type="button" class="btn btn-ghost" style="margin-top:6px;" onclick="addOptionRow()">+ Tambah opsi</button>
       </div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick='manageQuiz("${lessonId}", "${escapeHtml(lessonTitle).replace(/"/g, '&quot;')}")'>← Kembali</button>
+        <button type="button" class="btn btn-ghost" onclick="backToManageQuiz('${backKey}')">← Kembali</button>
         <button type="submit" class="btn btn-primary">Simpan</button>
       </div>
     </form>
   `, { className: 'quiz-admin-modal' });
   const qForm = document.getElementById('question-form');
   wireRichToolbarAll(qForm);
-  qForm.addEventListener('submit', (e) => submitQuestion(e, q.id, lessonId, lessonTitle));
-}
+  qForm.addEventListener('submit', (e) => submitQuestion(e, q.id, ctx));
+};
+
+window.backToManageQuiz = (key) => {
+  const ctx = _quizCtxStash[key];
+  if (!ctx) return;
+  manageQuiz(ctx.lessonId, ctx.lessonTitle, { keepPending: true });
+};
 
 function optionRowHtml(o, i) {
   return `
@@ -1664,7 +1851,7 @@ window.addOptionRow = () => {
   list.appendChild(el(optionRowHtml({ option_text: '', is_correct: false }, i)));
 };
 
-async function submitQuestion(e, qid, lessonId, lessonTitle) {
+async function submitQuestion(e, qid, ctx) {
   e.preventDefault();
   const form = e.target;
   const rows = form.querySelectorAll('.quiz-option-row');
@@ -1675,13 +1862,14 @@ async function submitQuestion(e, qid, lessonId, lessonTitle) {
       isCorrect: row.querySelector(`input[name="opt_correct_${idx}"]`).checked,
     };
   }).filter((o) => o.text);
+  const { lessonId, lessonTitle, category, number, label, instruction } = ctx;
   const body = {
     question: form.question.value.trim(),
     questionType: form.questionType.value,
-    questionCategory: form.questionCategory.value,
-    sectionNumber: Number(form.sectionNumber.value) || 1,
-    sectionLabel: form.sectionLabel.value.trim() || `Section ${Number(form.sectionNumber.value) || 1}`,
-    sectionInstruction: form.sectionInstruction.value.trim() || null,
+    questionCategory: category,
+    sectionNumber: number,
+    sectionLabel: label,
+    sectionInstruction: instruction || null,
     audioScript: (form.audioScript && form.audioScript.value.trim()) || '',
     explanation: form.explanation.value.trim() || null,
     sortOrder: Number(form.sortOrder.value) || 0,
@@ -1692,6 +1880,8 @@ async function submitQuestion(e, qid, lessonId, lessonTitle) {
     if (qid) await api('/admin/quiz-questions/' + qid, { method: 'PUT', body: JSON.stringify(body) });
     else await api('/admin/quiz-questions', { method: 'POST', body: JSON.stringify(body) });
     notify('Pertanyaan tersimpan');
+    // Pertanyaan tersave = section pasti udah ada di DB → drop pending.
+    _pendingSection = null;
     manageQuiz(lessonId, lessonTitle);
   } catch (err) { notify('Gagal simpan: ' + err.message, true); }
 }
