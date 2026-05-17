@@ -3078,6 +3078,7 @@ function renderKanjiManager(ctx, items) {
       <td style="font-family:'Noto Sans JP',sans-serif;">${escapeHtml(k.kun_reading || '-')}</td>
       <td>${escapeHtml(k.meaning_id || '-')}</td>
       <td style="max-width:220px;font-size:12px;color:#555;">${escapeHtml((k.mnemonic || '').replace(/<[^>]*>/g, '').slice(0, 90))}${(k.mnemonic || '').length > 90 ? '…' : ''}</td>
+      <td>${Array.isArray(k.compounds) && k.compounds.length ? k.compounds.length : '-'}</td>
       <td>${k.stroke_count || '-'}</td>
       <td class="actions">
         <button class="btn btn-ghost" onclick='editKanjiItem("${k.id}")'>Edit</button>
@@ -3099,12 +3100,41 @@ function renderKanjiManager(ctx, items) {
       ? '<div class="empty">Pelajaran ini belum punya kanji. Klik <strong>+ Kanji</strong> atau import dari Notion.</div>'
       : `<div style="overflow-x:auto;"><table><thead><tr>
           <th>Karakter</th><th>Level</th><th>On</th><th>Kun</th><th>Arti</th>
-          <th>Mnemonic</th><th>Goresan</th><th></th>
+          <th>Mnemonic</th><th>Kombinasi</th><th>Goresan</th><th></th>
         </tr></thead><tbody>${rows}</tbody></table></div>`}
     <div class="modal-actions" style="margin-top:16px;"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `);
   STATE.kanjiManagerCtx = ctx;
   STATE.kanjiManagerItems = items;
+}
+
+function kanjiCompoundRowHtml(item) {
+  const c = item || {};
+  return `
+    <tr>
+      <td><input name="compoundJapanese" value="${escapeHtml(c.japanese || '')}" lang="ja" placeholder="日本語" style="font-family:'Noto Sans JP',sans-serif;" /></td>
+      <td><input name="compoundReading" value="${escapeHtml(c.reading || '')}" lang="ja" placeholder="にほんご" style="font-family:'Noto Sans JP',sans-serif;" /></td>
+      <td><input name="compoundIndonesian" value="${escapeHtml(c.indonesian || '')}" placeholder="bahasa Jepang" /></td>
+      <td class="actions"><button type="button" class="btn btn-danger" onclick="removeKanjiCompoundRow(this)">×</button></td>
+    </tr>`;
+}
+
+window.addKanjiCompoundRow = () => {
+  const tbody = document.getElementById('kanji-compounds-body');
+  if (tbody) tbody.appendChild(el(kanjiCompoundRowHtml({})));
+};
+
+window.removeKanjiCompoundRow = (btn) => {
+  const tr = btn && btn.closest('tr');
+  if (tr) tr.remove();
+};
+
+function collectKanjiCompounds(form) {
+  return Array.from(form.querySelectorAll('#kanji-compounds-body tr')).map((tr) => ({
+    japanese: (tr.querySelector('input[name="compoundJapanese"]')?.value || '').trim(),
+    reading: (tr.querySelector('input[name="compoundReading"]')?.value || '').trim(),
+    indonesian: (tr.querySelector('input[name="compoundIndonesian"]')?.value || '').trim(),
+  })).filter((c) => c.japanese || c.reading || c.indonesian);
 }
 
 window.openKanjiItemForm = (id) => {
@@ -3121,8 +3151,11 @@ window.openKanjiItemForm = (id) => {
   const v = k || {
     character: '', jlpt_level: defaultLevel,
     on_reading: '', kun_reading: '', meaning_id: '',
-    mnemonic: '', stroke_count: '', bab_kode: '', sort_order: items.length,
+    mnemonic: '', compounds: [], stroke_count: '', bab_kode: '', sort_order: items.length,
   };
+  const compoundRows = (Array.isArray(v.compounds) && v.compounds.length ? v.compounds : [{}])
+    .map(kanjiCompoundRowHtml)
+    .join('');
   const levelOptions = KANJI_LEVELS.map((lv) =>
     `<option value="${lv}" ${v.jlpt_level === lv ? 'selected' : ''}>${lv}</option>`
   ).join('');
@@ -3158,6 +3191,19 @@ window.openKanjiItemForm = (id) => {
         <textarea name="mnemonic" class="rich-text" rows="3"
           placeholder="contoh: 一 = satu garis horizontal, gampang inget angka 1">${escapeHtml(v.mnemonic || '')}</textarea>
       </div>
+      <div class="field">
+        <label>Kombinasi kosakata</label>
+        <div style="overflow-x:auto;">
+          <table style="font-size:12px;">
+            <thead><tr><th>Kanji / kata</th><th>Kana</th><th>Arti Bahasa Indonesia</th><th></th></tr></thead>
+            <tbody id="kanji-compounds-body">${compoundRows}</tbody>
+          </table>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;flex-wrap:wrap;">
+          <span style="font-size:11px;color:var(--ink-500);">Contoh: 日本語 · にほんご · bahasa Jepang.</span>
+          <button type="button" class="btn btn-ghost" onclick="addKanjiCompoundRow()">+ Tambah kombinasi</button>
+        </div>
+      </div>
       <div class="field-row">
         <div class="field"><label>Kode Bab (opsional)</label>
           <input name="babKode" value="${escapeHtml(v.bab_kode || '')}" placeholder="contoh: N5-01" />
@@ -3191,6 +3237,7 @@ async function submitKanjiItem(e, id) {
     kunReading: form.kunReading.value.trim() || null,
     meaningId: form.meaningId.value.trim() || null,
     mnemonic: form.mnemonic.value.trim() || null,
+    compounds: collectKanjiCompounds(form),
     strokeCount: form.strokeCount.value === '' ? null : Number(form.strokeCount.value),
     babKode: form.babKode.value.trim() || null,
     sortOrder: Number(form.sortOrder.value) || 0,

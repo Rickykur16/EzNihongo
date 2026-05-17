@@ -146,7 +146,7 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
     if (kanjiLessonIds.length > 0) {
       const kanjiRows = await query(
         `SELECT lesson_id, id, character, jlpt_level, on_reading, kun_reading,
-                meaning_id, mnemonic, stroke_count, bab_kode, sort_order
+                meaning_id, mnemonic, compounds, stroke_count, bab_kode, sort_order
            FROM kanji_items
           WHERE lesson_id = ANY($1::uuid[])
           ORDER BY lesson_id, sort_order ASC, character ASC`,
@@ -161,6 +161,7 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
           kun_reading: r.kun_reading,
           meaning_id: r.meaning_id,
           mnemonic: r.mnemonic,
+          compounds: Array.isArray(r.compounds) ? r.compounds : [],
           stroke_count: r.stroke_count,
           bab_kode: r.bab_kode,
         });
@@ -299,7 +300,7 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
   if (row.type === 'kanji') {
     const kanjiRows = await query(
       `SELECT id, character, jlpt_level, on_reading, kun_reading,
-              meaning_id, mnemonic, stroke_count, bab_kode, sort_order
+              meaning_id, mnemonic, compounds, stroke_count, bab_kode, sort_order
          FROM kanji_items
         WHERE lesson_id = $1
         ORDER BY sort_order ASC, character ASC`,

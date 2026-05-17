@@ -78,6 +78,15 @@ async function parseKanjiLevelSections(pageId, token) {
 const vocabCache = new Map(); // slug -> { ts, rows }
 const VOCAB_TTL = 5 * 60 * 1000;
 
+function normalizeKanjiCompounds(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => ({
+    japanese: String(item?.japanese || '').trim(),
+    reading: String(item?.reading || '').trim(),
+    indonesian: String(item?.indonesian || '').trim(),
+  })).filter((item) => item.japanese || item.reading || item.indonesian);
+}
+
 async function loadCourseVocab(slug) {
   const entry = vocabCache.get(slug);
   if (entry && (Date.now() - entry.ts) < VOCAB_TTL) return entry.rows;
@@ -103,7 +112,7 @@ router.get('/kanji', asyncHandler(async (req, res) => {
   // Group by lesson (= 1 Bab di UI), order by module.sort_order > lesson.sort_order.
   const rows = (await query(
     `SELECT k.id, k.character, k.jlpt_level, k.on_reading, k.kun_reading,
-            k.meaning_id, k.mnemonic, k.stroke_count, k.bab_kode, k.sort_order,
+            k.meaning_id, k.mnemonic, k.compounds, k.stroke_count, k.bab_kode, k.sort_order,
             l.id AS lesson_id, l.title AS lesson_title, l.sort_order AS lesson_sort,
             m.id AS module_id, m.title AS module_title, m.sort_order AS module_sort
        FROM kanji_items k
@@ -119,11 +128,15 @@ router.get('/kanji', asyncHandler(async (req, res) => {
   const vocab = await loadCourseVocab(slug);
   const attach = (k) => {
     const ch = k.character;
-    const compounds = [];
-    for (const v of vocab) {
-      if ((v.japanese || '').includes(ch)) {
-        compounds.push({ japanese: v.japanese, reading: v.reading, indonesian: v.indonesian });
-        if (compounds.length >= 8) break;
+    const manualCompounds = normalizeKanjiCompounds(k.compounds);
+    let compounds = manualCompounds;
+    if (compounds.length === 0) {
+      compounds = [];
+      for (const v of vocab) {
+        if ((v.japanese || '').includes(ch)) {
+          compounds.push({ japanese: v.japanese, reading: v.reading, indonesian: v.indonesian });
+          if (compounds.length >= 8) break;
+        }
       }
     }
     return {

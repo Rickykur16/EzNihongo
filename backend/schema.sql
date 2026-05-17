@@ -380,6 +380,7 @@ CREATE TABLE IF NOT EXISTS kanji_items (
   kun_reading TEXT,
   meaning_id TEXT,
   mnemonic TEXT,
+  compounds JSONB NOT NULL DEFAULT '[]'::jsonb,
   stroke_count INT,
   bab_kode TEXT,
   sort_order INT NOT NULL DEFAULT 0,

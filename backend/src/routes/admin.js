@@ -1397,6 +1397,14 @@ function normalizeKanjiLevel(value) {
   const v = String(value || '').toUpperCase();
   return KANJI_LEVELS.includes(v) ? v : 'N5';
 }
+function normalizeKanjiCompounds(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => ({
+    japanese: String(item?.japanese || '').trim(),
+    reading: String(item?.reading || '').trim(),
+    indonesian: String(item?.indonesian || '').trim(),
+  })).filter((item) => item.japanese || item.reading || item.indonesian);
+}
 
 // List kanji per pelajaran. Lesson scope dipake admin "Kelola Kanji"
 // (mirror "Kelola Deck"). Kanji jadi jenis pelajaran (lessons.type =
@@ -1404,7 +1412,7 @@ function normalizeKanjiLevel(value) {
 router.get('/lessons/:lessonId/kanji', asyncHandler(async (req, res) => {
   const result = await query(
     `SELECT id, character, jlpt_level, on_reading, kun_reading, meaning_id,
-            mnemonic, stroke_count, bab_kode, sort_order
+            mnemonic, compounds, stroke_count, bab_kode, sort_order
        FROM kanji_items
       WHERE lesson_id = $1
       ORDER BY sort_order ASC, character ASC`,
@@ -1416,23 +1424,26 @@ router.get('/lessons/:lessonId/kanji', asyncHandler(async (req, res) => {
 router.post('/kanji', asyncHandler(async (req, res) => {
   const {
     lessonId, character, jlptLevel, onReading, kunReading, meaningId,
-    mnemonic, strokeCount, babKode, sortOrder,
+    mnemonic, compounds, strokeCount, babKode, sortOrder,
   } = req.body || {};
   const ch = String(character || '').trim();
   if (!ch) return res.status(400).json({ error: 'character required' });
   const level = normalizeKanjiLevel(jlptLevel);
+  const hasCompounds = Object.prototype.hasOwnProperty.call(req.body || {}, 'compounds');
+  const safeCompounds = normalizeKanjiCompounds(compounds);
   const result = await query(
     `INSERT INTO kanji_items (
        lesson_id, character, jlpt_level, on_reading, kun_reading, meaning_id,
-       mnemonic, stroke_count, bab_kode, sort_order
+       mnemonic, compounds, stroke_count, bab_kode, sort_order
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11)
      ON CONFLICT (character, jlpt_level) DO UPDATE SET
        lesson_id = COALESCE(EXCLUDED.lesson_id, kanji_items.lesson_id),
        on_reading = EXCLUDED.on_reading,
        kun_reading = EXCLUDED.kun_reading,
        meaning_id = EXCLUDED.meaning_id,
        mnemonic = EXCLUDED.mnemonic,
+       compounds = CASE WHEN $12::boolean THEN EXCLUDED.compounds ELSE kanji_items.compounds END,
        stroke_count = EXCLUDED.stroke_count,
        bab_kode = EXCLUDED.bab_kode,
        sort_order = EXCLUDED.sort_order,
@@ -1446,9 +1457,11 @@ router.post('/kanji', asyncHandler(async (req, res) => {
       (kunReading && String(kunReading).trim()) || null,
       (meaningId && String(meaningId).trim()) || null,
       (mnemonic && String(mnemonic).trim()) || null,
+      JSON.stringify(safeCompounds),
       strokeCount != null && strokeCount !== '' ? Number(strokeCount) : null,
       (babKode && String(babKode).trim()) || null,
       Number(sortOrder) || 0,
+      hasCompounds,
     ]
   );
   res.status(201).json({ kanji: result.rows[0] });
@@ -1457,11 +1470,13 @@ router.post('/kanji', asyncHandler(async (req, res) => {
 router.put('/kanji/:id', asyncHandler(async (req, res) => {
   const {
     lessonId, character, jlptLevel, onReading, kunReading, meaningId,
-    mnemonic, strokeCount, babKode, sortOrder,
+    mnemonic, compounds, strokeCount, babKode, sortOrder,
   } = req.body || {};
   const ch = character != null ? String(character).trim() : null;
   const level = jlptLevel ? normalizeKanjiLevel(jlptLevel) : null;
   const hasLessonId = Object.prototype.hasOwnProperty.call(req.body || {}, 'lessonId');
+  const hasCompounds = Object.prototype.hasOwnProperty.call(req.body || {}, 'compounds');
+  const safeCompounds = normalizeKanjiCompounds(compounds);
   const result = await query(
     `UPDATE kanji_items SET
        character = COALESCE($2, character),
@@ -1473,7 +1488,8 @@ router.put('/kanji/:id', asyncHandler(async (req, res) => {
        stroke_count = $8,
        bab_kode = $9,
        sort_order = COALESCE($10, sort_order),
-       lesson_id = CASE WHEN $12::boolean THEN $11 ELSE lesson_id END
+       lesson_id = CASE WHEN $12::boolean THEN $11 ELSE lesson_id END,
+       compounds = CASE WHEN $14::boolean THEN $13::jsonb ELSE kanji_items.compounds END
      WHERE id = $1
      RETURNING *`,
     [
@@ -1489,6 +1505,8 @@ router.put('/kanji/:id', asyncHandler(async (req, res) => {
       sortOrder != null && sortOrder !== '' ? Number(sortOrder) : null,
       lessonId || null,
       hasLessonId,
+      JSON.stringify(safeCompounds),
+      hasCompounds,
     ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
