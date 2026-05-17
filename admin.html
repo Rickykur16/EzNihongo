@@ -301,7 +301,13 @@ function showLock(message) {
 async function api(path, opts) {
   const res = await ezApi(path, opts);
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+  if (!res.ok) {
+    // Pakai `detail` (user-friendly) kalau ada, fallback ke `error` (kode).
+    const msg = data.detail || data.error || ('HTTP ' + res.status);
+    const err = new Error(msg);
+    err.body = data;
+    throw err;
+  }
   return data;
 }
 
@@ -3233,9 +3239,10 @@ window.openKanjiNotionImport = async () => {
         <input name="notionKanjiDbId" value="${escapeHtml(lastKanjiDb)}"
           placeholder="https://www.notion.so/xxxxx?v=… atau 32-char ID"
           style="font-family:var(--font-mono);font-size:12px;" />
-        <div style="font-size:11px;color:var(--ink-500);margin-top:4px;">
-          Paste URL halaman database Kanji-mu. Kosongin kalau env
-          <code>NOTION_KANJI_DB_ID</code> udah di-set di server.
+        <div style="font-size:11px;color:var(--ink-500);margin-top:4px;line-height:1.55;">
+          <strong>Cara dapetin URL:</strong> buka DB Kanji di Notion → klik tombol "Share" pojok kanan atas → "Copy link" → paste di sini.<br>
+          Pastikan integration Notion-mu sudah di-share ke DB ini (Share → Add connections → pilih integration).<br>
+          Boleh kosong <em>kalau</em> env <code>NOTION_KANJI_DB_ID</code> udah di-set di server.
         </div>
       </div>
       <div class="field-row">
@@ -3263,8 +3270,18 @@ window.openKanjiNotionImport = async () => {
     e.preventDefault();
     const f = e.target;
     const btn = f.querySelector('button[type=submit]');
-    btn.disabled = true; btn.textContent = 'Importing…';
     const dbId = (f.notionKanjiDbId && f.notionKanjiDbId.value.trim()) || '';
+    // Validasi client: kalau field kosong + env juga belum di-set, kasih pesan
+    // yang langsung action-able (bukan kode error "notion_db_required").
+    if (!dbId) {
+      const proceed = confirm(
+        'Field URL/ID Notion DB Kanji kosong.\n\n' +
+        'Klik OK untuk tetap coba (kalau env NOTION_KANJI_DB_ID sudah di-set di server),\n' +
+        'atau Batal untuk paste URL DB dulu (Notion → DB Kanji → Share → copy link).'
+      );
+      if (!proceed) { f.notionKanjiDbId?.focus(); return; }
+    }
+    btn.disabled = true; btn.textContent = 'Importing…';
     if (dbId) localStorage.setItem('ez_admin_kanji_notion_db', dbId);
     try {
       const r = await api(`/admin/lessons/${ctx.lessonId}/import-notion-kanji-bab`, {
