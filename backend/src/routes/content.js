@@ -192,7 +192,7 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
 
   if (row.type === 'quiz') {
     const questions = await query(
-      `SELECT id, question, question_type, explanation, sort_order
+      `SELECT id, question, question_type, section, explanation, sort_order
        FROM quiz_questions
        WHERE lesson_id = $1
        ORDER BY sort_order ASC`,

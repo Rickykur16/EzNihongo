@@ -193,6 +193,7 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
   lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
   question TEXT NOT NULL,
   question_type TEXT NOT NULL DEFAULT 'multiple_choice' CHECK (question_type IN ('multiple_choice','fill_blank')),
+  section TEXT,
   correct_answer TEXT,
   explanation TEXT,
   sort_order INT DEFAULT 0,

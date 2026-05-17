@@ -1454,8 +1454,29 @@ window.manageQuiz = async (lessonId, lessonTitle) => {
   renderQuizModal(lessonId, lessonTitle, questions);
 };
 
+const QUIZ_SECTION_LABEL = {
+  vocabulary: '📖 Vocabulary (語彙)',
+  grammar: '✍️ Grammar (文法)',
+  listening: '🎧 Listening (聴解)',
+  reading: '📚 Reading (読解)',
+};
+const QUIZ_SECTION_ORDER = ['vocabulary', 'grammar', 'listening', 'reading'];
+
 function renderQuizModal(lessonId, lessonTitle, questions) {
-  const qHtml = questions.map((q) => `
+  // Group by section; questions tanpa section masuk "(belum di-tag)" di bawah.
+  const buckets = new Map();
+  for (const q of questions) {
+    const key = (q.section || '').trim() || '__untagged';
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(q);
+  }
+  const orderedKeys = [
+    ...QUIZ_SECTION_ORDER.filter((k) => buckets.has(k)),
+    ...[...buckets.keys()].filter((k) => !QUIZ_SECTION_ORDER.includes(k) && k !== '__untagged'),
+    ...(buckets.has('__untagged') ? ['__untagged'] : []),
+  ];
+
+  const renderQ = (q) => `
     <details>
       <summary>${escapeHtml(q.question.slice(0, 80))}${q.question.length > 80 ? '…' : ''}</summary>
       <div style="margin-top:8px;font-size:13px;color:#525252;">
@@ -1467,11 +1488,22 @@ function renderQuizModal(lessonId, lessonTitle, questions) {
         </div>
       </div>
     </details>
-  `).join('');
+  `;
+
+  const sectionsHtml = orderedKeys.map((key) => {
+    const label = key === '__untagged' ? '(belum di-tag section)' : (QUIZ_SECTION_LABEL[key] || key);
+    return `
+      <div style="margin-top:16px;">
+        <h4 style="margin:0 0 6px;font-size:13px;color:var(--ink-700);letter-spacing:.02em;">${escapeHtml(label)} <span style="color:#999;font-weight:400;">(${buckets.get(key).length})</span></h4>
+        ${buckets.get(key).map(renderQ).join('')}
+      </div>
+    `;
+  }).join('');
+
   openModal(`
     <h3>Kuis: ${escapeHtml(lessonTitle)}</h3>
     <div class="toolbar"><button class="btn btn-primary" onclick='newQuestion("${lessonId}", "${escapeHtml(lessonTitle).replace(/"/g, '&quot;')}")'>+ Pertanyaan</button></div>
-    ${questions.length === 0 ? '<div class="empty">Belum ada pertanyaan.</div>' : qHtml}
+    ${questions.length === 0 ? '<div class="empty">Belum ada pertanyaan.</div>' : sectionsHtml}
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `);
 }
@@ -1492,14 +1524,27 @@ window.deleteQuestion = async (qid, lessonId, lessonTitle) => {
 };
 
 function openQuestionForm(q, lessonId, lessonTitle) {
-  q = q || { question: '', question_type: 'multiple_choice', explanation: '', sort_order: 0, options: [{ option_text: '', is_correct: false }, { option_text: '', is_correct: false }] };
+  q = q || { question: '', question_type: 'multiple_choice', section: '', explanation: '', sort_order: 0, options: [{ option_text: '', is_correct: false }, { option_text: '', is_correct: false }] };
   const optsHtml = (q.options || []).map((o, i) => optionRowHtml(o, i)).join('');
+  const curSection = (q.section || '').trim();
   openModal(`
     <h3>${q.id ? 'Edit Pertanyaan' : 'Pertanyaan Baru'}</h3>
     <form id="question-form">
-      <div class="field"><label>Pertanyaan</label><textarea name="question" class="rich-text" rows="3" required>${escapeHtml(q.question)}</textarea></div>
+      <div class="field">
+        <label>Pertanyaan</label>
+        <textarea name="question" class="rich-text" rows="3" required placeholder="Teks pertanyaan. Untuk JP audio (listening): tulis prompt Indonesia, enter dua kali, terus JP-nya — frontend auto play TTS.">${escapeHtml(q.question)}</textarea>
+      </div>
       <div class="field"><label>Penjelasan (muncul setelah jawab)</label><textarea name="explanation" class="rich-text" rows="3">${escapeHtml(q.explanation || '')}</textarea></div>
       <div class="field-row">
+        <div class="field"><label>Section (JLPT)</label>
+          <select name="section">
+            <option value="">(tanpa section)</option>
+            <option value="vocabulary" ${curSection === 'vocabulary' ? 'selected' : ''}>📖 Vocabulary (語彙)</option>
+            <option value="grammar" ${curSection === 'grammar' ? 'selected' : ''}>✍️ Grammar (文法)</option>
+            <option value="listening" ${curSection === 'listening' ? 'selected' : ''}>🎧 Listening (聴解)</option>
+            <option value="reading" ${curSection === 'reading' ? 'selected' : ''}>📚 Reading (読解)</option>
+          </select>
+        </div>
         <div class="field"><label>Tipe</label>
           <select name="questionType">
             <option value="multiple_choice" ${q.question_type === 'multiple_choice' ? 'selected' : ''}>Pilihan ganda</option>
@@ -1557,6 +1602,7 @@ async function submitQuestion(e, qid, lessonId, lessonTitle) {
   const body = {
     question: form.question.value.trim(),
     questionType: form.questionType.value,
+    section: (form.section && form.section.value) || '',
     explanation: form.explanation.value.trim() || null,
     sortOrder: Number(form.sortOrder.value) || 0,
     options,

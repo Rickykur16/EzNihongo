@@ -821,6 +821,7 @@ function _generateQuizQuestions(vocab, count) {
       q = {
         question: `Bagaimana cara baca **${correct.japanese}** ?`,
         jp: correct.japanese,
+        section: 'vocabulary',
         options,
         correctIdx: options.indexOf(correct.reading),
         explanation: correct.indonesian ? `${correct.japanese} (${correct.reading}) — ${correct.indonesian}` : null,
@@ -836,6 +837,7 @@ function _generateQuizQuestions(vocab, count) {
       q = {
         question: `Apa arti dari **${correct.japanese}** ?`,
         jp: correct.japanese,
+        section: 'vocabulary',
         options,
         correctIdx: options.indexOf(correct.indonesian),
         explanation: correct.reading ? `${correct.japanese} (${correct.reading}) — ${correct.indonesian}` : null,
@@ -850,6 +852,7 @@ function _generateQuizQuestions(vocab, count) {
       const options = _pickRandom([correct.japanese, ...others.map((v) => v.japanese)], 4);
       q = {
         question: `Bahasa Jepang untuk **"${correct.indonesian}"** ?`,
+        section: 'vocabulary',
         options,
         correctIdx: options.indexOf(correct.japanese),
         explanation: correct.reading ? `${correct.japanese} (${correct.reading}) — ${correct.indonesian}` : null,
@@ -865,6 +868,7 @@ function _generateQuizQuestions(vocab, count) {
       q = {
         question: `🎧 Dengar audio, pilih arti yang benar:`,
         jp: correct.japanese,
+        section: 'listening',
         options,
         correctIdx: options.indexOf(correct.indonesian),
         explanation: `${correct.japanese} (${correct.reading || '-'}) — ${correct.indonesian}`,
@@ -922,10 +926,10 @@ router.post('/lessons/:lessonId/generate-quiz', asyncHandler(async (req, res) =>
   for (const q of questions) {
     const qText = q.jp ? `${q.question}\n\n${q.jp}` : q.question;
     const ins = await query(
-      `INSERT INTO quiz_questions (lesson_id, question, question_type, explanation, sort_order)
-       VALUES ($1, $2, 'multiple_choice', $3, $4)
+      `INSERT INTO quiz_questions (lesson_id, question, question_type, section, explanation, sort_order)
+       VALUES ($1, $2, 'multiple_choice', $3, $4, $5)
        RETURNING id`,
-      [lessonId, qText, q.explanation || null, sort++]
+      [lessonId, qText, q.section || 'vocabulary', q.explanation || null, sort++]
     );
     const qid = ins.rows[0].id;
     let osort = 0;
@@ -1063,14 +1067,14 @@ router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
 
 router.post('/quiz-questions', asyncHandler(async (req, res) => {
   const {
-    lessonId, question, questionType, correctAnswer, explanation, sortOrder, options,
+    lessonId, question, questionType, section, correctAnswer, explanation, sortOrder, options,
   } = req.body || {};
   if (!lessonId || !question) return res.status(400).json({ error: 'lessonId and question required' });
 
   const qRes = await query(
-    `INSERT INTO quiz_questions (lesson_id, question, question_type, correct_answer, explanation, sort_order)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [lessonId, question, questionType || 'multiple_choice', correctAnswer || null, explanation || null, sortOrder || 0]
+    `INSERT INTO quiz_questions (lesson_id, question, question_type, section, correct_answer, explanation, sort_order)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    [lessonId, question, questionType || 'multiple_choice', (section && String(section).trim()) || null, correctAnswer || null, explanation || null, sortOrder || 0]
   );
   const q = qRes.rows[0];
 
@@ -1089,16 +1093,20 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
 }));
 
 router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
-  const { question, questionType, correctAnswer, explanation, sortOrder, options } = req.body || {};
+  const { question, questionType, section, correctAnswer, explanation, sortOrder, options } = req.body || {};
+  // section: kosong string artinya admin clear-out (NULL), undefined biarin
+  const hasSection = Object.prototype.hasOwnProperty.call(req.body || {}, 'section');
+  const sectionNorm = hasSection ? ((section && String(section).trim()) || null) : null;
   const result = await query(
     `UPDATE quiz_questions SET
        question = COALESCE($2, question),
        question_type = COALESCE($3, question_type),
-       correct_answer = COALESCE($4, correct_answer),
-       explanation = COALESCE($5, explanation),
-       sort_order = COALESCE($6, sort_order)
+       section = CASE WHEN $7::boolean THEN $4 ELSE section END,
+       correct_answer = COALESCE($5, correct_answer),
+       explanation = COALESCE($6, explanation),
+       sort_order = COALESCE($8, sort_order)
      WHERE id = $1 RETURNING *`,
-    [req.params.id, question, questionType, correctAnswer, explanation, sortOrder]
+    [req.params.id, question, questionType, sectionNorm, correctAnswer, explanation, hasSection, sortOrder]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
 
