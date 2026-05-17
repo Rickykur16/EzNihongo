@@ -3308,11 +3308,14 @@ window.openKanjiNotionImport = async () => {
         btn.disabled = false; btn.textContent = 'Import';
         return;
       }
-      const warning = r.usedFallbackUnfiltered
-        ? ' (filter Bab gagal — import unfiltered)'
-        : (r.matchedRelationProp && r.matchedRelationProp !== 'Lesson'
-          ? ` (relation: "${r.matchedRelationProp}")`
-          : '');
+      let warning = '';
+      if (r.usedFallbackUnfiltered) {
+        warning = ' (filter gagal — import semua row di DB)';
+      } else if (r.matchedRelationProp) {
+        warning = ` (relation: "${r.matchedRelationProp}")`;
+      } else if (r.matchedLevelProp) {
+        warning = ` (filter level: "${r.matchedLevelProp}")`;
+      }
       notify(`Import selesai: ${r.imported} baru, ${r.updated} di-update (total ${r.total} dari ${r.notionPagesScanned} pages)${warning}.`);
       openKanjiManager(ctx);
     } catch (err) {

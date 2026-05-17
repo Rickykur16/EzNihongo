@@ -1526,34 +1526,57 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', asyncHandler(async (re
     return res.status(400).json({ error: 'lesson_not_kanji', detail: 'Pelajaran ini bukan tipe kanji' });
   }
 
-  // Try the filter with a few common relation property names. Kanji DB
-  // bisa pake "Lesson", "Pelajaran", "Bab", atau "Chapter" — semuanya
-  // umum. Kalau babPageId kosong, langsung ambil semua.
+  // Strategi filter berlapis:
+  // 1. Coba pakai relation prop (Lesson/Pelajaran/Bab/Chapter/First Lesson)
+  //    kalau babPageId valid. Lots of Notion DB nyebut beda-beda.
+  // 2. Kalau gagal / babPageId='all', fallback ke filter by JLPT Level
+  //    (kalau DB punya select property "JLPT Level") — supaya admin pilih
+  //    level N5 ga dapet 2000+ kanji semua level.
+  // 3. Kalau semuanya gagal, ambil unfiltered (warn user).
   const wantFilter = !!babPageId && babPageId !== 'all';
-  const RELATION_CANDIDATES = ['Lesson', 'Pelajaran', 'Bab', 'Chapter', NOTION_VOCAB_LESSON_RELATION];
+  const RELATION_CANDIDATES = [
+    'Lesson', 'Pelajaran', 'Bab', 'Chapter', 'First Lesson',
+    NOTION_VOCAB_LESSON_RELATION,
+  ];
+  const LEVEL_PROP_CANDIDATES = ['JLPT Level', 'JLPT', 'Level', 'Tingkat'];
   let pages = null;
   let matchedRelationProp = null;
+  let matchedLevelProp = null;
   let usedFallbackUnfiltered = false;
   let notionError = null;
+
   if (wantFilter) {
     for (const propName of RELATION_CANDIDATES) {
       try {
         const r = await notionQueryAll(dbId, token, {
           filter: { property: propName, relation: { contains: babPageId } },
         });
-        // Notion balas 200 (kosong) kalau prop ga ada — anggap valid kalau >0 rows.
         if (r.length > 0) { pages = r; matchedRelationProp = propName; break; }
       } catch (err) {
-        // 400/422 dari Notion biasanya berarti prop name salah. Skip ke kandidat berikutnya.
         notionError = err;
       }
     }
   }
-  // Fallback: ambil semua row dari DB (unfiltered) supaya admin tetep bisa import.
+
+  // Filter by JLPT Level select sebagai langkah kedua / fallback utama.
+  if (!pages) {
+    for (const propName of LEVEL_PROP_CANDIDATES) {
+      try {
+        const r = await notionQueryAll(dbId, token, {
+          filter: { property: propName, select: { equals: level } },
+        });
+        if (r.length > 0) { pages = r; matchedLevelProp = propName; break; }
+      } catch (err) {
+        notionError = err;
+      }
+    }
+  }
+
+  // Fallback terakhir: ambil semua row dari DB (unfiltered).
   if (!pages) {
     try {
       pages = await notionQueryAll(dbId, token);
-      if (wantFilter) usedFallbackUnfiltered = true;
+      usedFallbackUnfiltered = true;
     } catch (err) {
       return res.status(502).json({
         error: 'notion_error',
@@ -1569,15 +1592,29 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', asyncHandler(async (re
     [lessonId]
   )).rows[0].next;
   let sort = startSort;
+  // Aliases super-banyak supaya tahan beda-beda schema. Misal:
+  // - On'yomi 音読み / On 音読み / On / 音読み / Onyomi / On Reading / On'yomi
+  // - Meaning (ID) / Indonesian / Arti / Meaning / Bahasa Indonesia / Indo
+  // Fallback meaning_id ke Meaning (EN) kalau ID kosong.
   for (const page of pages) {
     const props = page.properties || {};
     const character = notionPlainText(pickProp(props, ['Kanji 漢字', 'Kanji', '漢字', 'Character', 'Karakter', 'Name', 'Title'])).trim();
     if (!character) continue;
     total++;
-    const onReading = notionPlainText(pickProp(props, ['On 音読み', 'On', '音読み', 'Onyomi', 'On Reading'])).trim() || null;
-    const kunReading = notionPlainText(pickProp(props, ['Kun 訓読み', 'Kun', '訓読み', 'Kunyomi', 'Kun Reading'])).trim() || null;
-    const meaningId = notionPlainText(pickProp(props, ['Indonesian', 'Arti', 'Meaning', 'Bahasa Indonesia', 'Indo'])).trim() || null;
-    const mnemonic = notionPlainText(pickProp(props, ['Mnemonic', 'Mnemonik', 'Cara Ingat', 'Trik', 'Note', 'Catatan'])).trim() || null;
+    const onReading = notionPlainText(pickProp(props, [
+      "On'yomi 音読み", "On'yomi", 'On 音読み', 'On', '音読み', 'Onyomi', 'On Reading',
+    ])).trim() || null;
+    const kunReading = notionPlainText(pickProp(props, [
+      "Kun'yomi 訓読み", "Kun'yomi", 'Kun 訓読み', 'Kun', '訓読み', 'Kunyomi', 'Kun Reading',
+    ])).trim() || null;
+    const meaningIdRaw = notionPlainText(pickProp(props, [
+      'Meaning (ID)', 'Indonesian', 'Arti', 'Bahasa Indonesia', 'Indo',
+    ])).trim();
+    const meaningEn = notionPlainText(pickProp(props, ['Meaning (EN)', 'Meaning', 'English'])).trim();
+    const meaningId = meaningIdRaw || meaningEn || null;
+    const mnemonic = notionPlainText(pickProp(props, [
+      'Mnemonic', 'Mnemonik', 'Cara Ingat', 'Trik', 'Note', 'Catatan',
+    ])).trim() || null;
     const strokeCount = notionNumber(pickProp(props, ['Stroke Count', 'Goresan', 'Strokes', 'Stroke']));
     const babKode = notionPlainText(pickProp(props, ['Kode Bab', 'Kode', 'Code'])).trim() || null;
 
@@ -1626,6 +1663,7 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', asyncHandler(async (re
     total,
     notionPagesScanned: pages.length,
     matchedRelationProp,
+    matchedLevelProp,
     usedFallbackUnfiltered,
     ...(Object.keys(diagnostic).length ? { diagnostic } : {}),
   });
