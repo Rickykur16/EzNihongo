@@ -1097,7 +1097,8 @@ router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
 router.post('/quiz-questions', asyncHandler(async (req, res) => {
   const {
     lessonId, question, questionType, questionCategory, sectionNumber,
-    sectionLabel, sectionInstruction, correctAnswer, explanation, sortOrder, options,
+    sectionLabel, sectionInstruction, audioScript,
+    correctAnswer, explanation, sortOrder, options,
   } = req.body || {};
   if (!lessonId || !question) return res.status(400).json({ error: 'lessonId and question required' });
 
@@ -1108,10 +1109,10 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
   const qRes = await query(
     `INSERT INTO quiz_questions (
        lesson_id, question, question_type, question_category,
-       section_number, section_label, section_instruction,
+       section_number, section_label, section_instruction, audio_script,
        correct_answer, explanation, sort_order
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
     [
       lessonId,
       question,
@@ -1120,6 +1121,7 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
       sectionNo,
       sectionTitle,
       sectionInstruction || null,
+      (audioScript && String(audioScript).trim()) || null,
       correctAnswer || null,
       explanation || null,
       sortOrder || 0,
@@ -1144,11 +1146,14 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
 router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
   const {
     question, questionType, questionCategory, sectionNumber,
-    sectionLabel, sectionInstruction, correctAnswer, explanation, sortOrder, options,
+    sectionLabel, sectionInstruction, audioScript,
+    correctAnswer, explanation, sortOrder, options,
   } = req.body || {};
   const category = questionCategory ? normalizeQuizCategory(questionCategory) : null;
   const sectionNo = sectionNumber == null ? null : normalizeQuizSectionNumber(sectionNumber);
   const hasSectionInstruction = Object.prototype.hasOwnProperty.call(req.body || {}, 'sectionInstruction');
+  const hasAudioScript = Object.prototype.hasOwnProperty.call(req.body || {}, 'audioScript');
+  const audioScriptNorm = hasAudioScript ? ((audioScript && String(audioScript).trim()) || null) : null;
   const result = await query(
     `UPDATE quiz_questions SET
        question = COALESCE($2, question),
@@ -1159,7 +1164,8 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
        question_category = COALESCE($7, question_category),
        section_number = COALESCE($8, section_number),
        section_label = COALESCE($9, section_label),
-       section_instruction = CASE WHEN $11::boolean THEN $10 ELSE section_instruction END
+       section_instruction = CASE WHEN $11::boolean THEN $10 ELSE section_instruction END,
+       audio_script = CASE WHEN $13::boolean THEN $12 ELSE audio_script END
       WHERE id = $1 RETURNING *`,
     [
       req.params.id,
@@ -1173,6 +1179,8 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
       sectionLabel || (sectionNo ? `Section ${sectionNo}` : null),
       sectionInstruction || null,
       hasSectionInstruction,
+      audioScriptNorm,
+      hasAudioScript,
     ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });

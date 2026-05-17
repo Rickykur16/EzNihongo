@@ -197,6 +197,7 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
   section_number INT NOT NULL DEFAULT 1,
   section_label TEXT NOT NULL DEFAULT 'Section 1',
   section_instruction TEXT,
+  audio_script TEXT,
   correct_answer TEXT,
   explanation TEXT,
   sort_order INT DEFAULT 0,

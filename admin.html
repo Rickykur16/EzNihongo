@@ -1606,6 +1606,17 @@ function openQuestionForm(q, lessonId, lessonTitle) {
         </div>
         <div class="field"><label>Instruksi section</label><textarea name="sectionInstruction" rows="2">${escapeHtml(q.section_instruction || '')}</textarea></div>
         <div class="field"><label>Pertanyaan</label><textarea name="question" class="rich-text" rows="3" required>${escapeHtml(q.question)}</textarea></div>
+        <details class="field" ${q.audio_script ? 'open' : ''}>
+          <summary style="cursor:pointer;font-size:13px;color:var(--ink-700);">🎧 Audio dialog (listening) — opsional</summary>
+          <div style="margin-top:8px;">
+            <textarea name="audioScript" rows="6" lang="ja"
+              placeholder="Khusus listening JLPT-style: tulis percakapannya, 1 baris per turn.&#10;&#10;Contoh:&#10;A: お国は どちらですか。&#10;B: インドネシアです。&#10;A: 大きな町ですか。&#10;B: いいえ、小さい町です。"
+              style="font-family:'Noto Sans JP',sans-serif;width:100%;font-size:14px;line-height:1.6;">${escapeHtml(q.audio_script || '')}</textarea>
+            <div style="font-size:11px;color:var(--ink-500);margin-top:4px;">
+              Student klik tombol Play di soal → seluruh dialog di-play sebagai audio TTS. Transkrip ke-hidden by default, baru muncul setelah submit.
+            </div>
+          </div>
+        </details>
         <div class="field"><label>Penjelasan setelah jawab</label><textarea name="explanation" class="rich-text" rows="3">${escapeHtml(q.explanation || '')}</textarea></div>
       </div>
       <div class="field-row">
@@ -1671,6 +1682,7 @@ async function submitQuestion(e, qid, lessonId, lessonTitle) {
     sectionNumber: Number(form.sectionNumber.value) || 1,
     sectionLabel: form.sectionLabel.value.trim() || `Section ${Number(form.sectionNumber.value) || 1}`,
     sectionInstruction: form.sectionInstruction.value.trim() || null,
+    audioScript: (form.audioScript && form.audioScript.value.trim()) || '',
     explanation: form.explanation.value.trim() || null,
     sortOrder: Number(form.sortOrder.value) || 0,
     options,

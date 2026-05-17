@@ -13,7 +13,10 @@ const router = Router();
 const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY || '';
 const ELEVEN_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || '';
 const ELEVEN_MODEL = process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2';
-const MAX_TEXT_LEN = 300;
+// 300 ok untuk satu kata/kalimat vocab, tapi listening dialog JLPT bisa
+// 200-500 char (multi-turn). Naikin ke 1500 — masih jauh dari biaya
+// signifikan, dan whitelist DB udah ngamanin set of generatable strings.
+const MAX_TEXT_LEN = 1500;
 
 // Each card / sentence click is one request. 40/min/IP leaves room for a long
 // deck while keeping abuse noisy. The DB-existence check below is the real guard
@@ -45,10 +48,12 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
   if (text.length > MAX_TEXT_LEN) return res.status(400).json({ error: 'text too long' });
 
   // Only synthesize text that actually exists in the curriculum — caps the set
-  // of strings an attacker could ever cause us to generate.
+  // of strings an attacker could ever cause us to generate. Quiz listening
+  // dialogs (audio_script) di-whitelist juga supaya JLPT-style audio jalan.
   const known = await query(
     `SELECT 1 WHERE EXISTS (SELECT 1 FROM module_vocabulary WHERE japanese = $1 OR reading = $1)
                 OR EXISTS (SELECT 1 FROM vocabulary_examples WHERE japanese = $1)
+                OR EXISTS (SELECT 1 FROM quiz_questions WHERE audio_script = $1)
      LIMIT 1`,
     [text]
   );
