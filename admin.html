@@ -1713,6 +1713,16 @@ window.openSectionForm = (key) => {
     </form>
   `, { className: 'quiz-admin-modal' });
   const form = document.getElementById('section-form');
+  // Saat user ganti kategori (cuma di mode baru), auto-update nomor section
+  // ke max+1 di kategori baru — biar admin ga manual nebak nomor selanjutnya
+  // per kategori. Tiap kategori punya number-space sendiri.
+  if (isNew) {
+    const catSelect = form.sectionCategory;
+    const numInput = form.sectionNumber;
+    catSelect.addEventListener('change', () => {
+      numInput.value = nextNumFor(catSelect.value);
+    });
+  }
   form.addEventListener('submit', (e) => submitSection(e, ctx));
 };
 
