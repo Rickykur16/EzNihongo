@@ -3368,12 +3368,27 @@ async function loadFlashcardData() {
 }
 
 // Quiz status — fetched dari /quiz-status endpoint sebelum render
-// landing card. canAttempt=false → render cooldown card.
-async function fetchQuizStatus(lessonApiId) {
+// landing card. Cached 60s di memory supaya retry / re-navigate ke
+// lesson yang sama feels instant. Cache di-invalidate setelah
+// startQuizAttempt / finishQuiz (status pasti berubah).
+const _quizStatusCache = new Map();
+const QUIZ_STATUS_TTL = 60 * 1000;
+
+function invalidateQuizStatus(lessonApiId) {
+  if (lessonApiId) _quizStatusCache.delete(lessonApiId);
+}
+
+async function fetchQuizStatus(lessonApiId, opts = {}) {
+  const cached = _quizStatusCache.get(lessonApiId);
+  if (!opts.force && cached && (Date.now() - cached.ts) < QUIZ_STATUS_TTL) {
+    return cached.data;
+  }
   try {
     const r = await window.ezApi(`/progress/lesson/${encodeURIComponent(lessonApiId)}/quiz-status`);
     if (!r.ok) return null;
-    return await r.json();
+    const data = await r.json();
+    _quizStatusCache.set(lessonApiId, { ts: Date.now(), data });
+    return data;
   } catch (err) {
     console.warn('fetchQuizStatus failed:', err?.message || err);
     return null;
@@ -3561,13 +3576,33 @@ async function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
     container.innerHTML = `<div class="quiz-container"><p style="color:#485f84;">Kuis belum tersedia.</p></div>`;
     return;
   }
-  container.innerHTML = `<div class="quiz-container"><p style="color:#485f84;">Memuat...</p></div>`;
+  const lessonTitle = lesson.title || 'Kuis';
+
+  // Skeleton — render card structure dengan title langsung supaya user
+  // tidak liat blank. Data dynamic (pool size, last attempt) di-fill in
+  // pas status arrive. Kalau cache hit, langsung skip skeleton.
+  const cached = _quizStatusCache.get(lesson.apiId);
+  if (cached && (Date.now() - cached.ts) < QUIZ_STATUS_TTL) {
+    renderQuizLandingCard(container, key, lessonTitle, cached.data);
+    return;
+  }
+  container.innerHTML = `
+    <div class="quiz-container">
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:28px 26px;max-width:680px;margin:0 auto;">
+        <div style="font-size:11px;color:#b91c1c;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin-bottom:6px;">📋 Assignment Harian</div>
+        <h2 style="margin:0 0 18px;font-size:24px;font-weight:800;line-height:1.3;">${escapeHtml(lessonTitle)}</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;">
+          ${[1,2,3,4].map(() => `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;height:54px;"><div style="background:#eee;height:10px;width:60%;border-radius:4px;margin-bottom:8px;"></div><div style="background:#eee;height:14px;width:40%;border-radius:4px;"></div></div>`).join('')}
+        </div>
+        <p style="color:#9ca3af;font-size:13px;margin:0;">Memuat status kuis…</p>
+      </div>
+    </div>
+  `;
   const status = await fetchQuizStatus(lesson.apiId);
   if (!status) {
     container.innerHTML = `<div class="quiz-container"><p style="color:#b91c1c;">Gagal load status kuis. Refresh halaman.</p></div>`;
     return;
   }
-  const lessonTitle = lesson.title || 'Kuis';
   renderQuizLandingCard(container, key, lessonTitle, status);
 }
 
@@ -3664,6 +3699,7 @@ window.startQuizAttempt = async (key) => {
   if (!lesson?.apiId) return;
   const main = document.getElementById('main-content');
   main.innerHTML = `<div class="quiz-container"><p style="color:#485f84;">Memulai kuis...</p></div>`;
+  invalidateQuizStatus(lesson.apiId);
   try {
     const r = await window.ezApi(`/progress/lesson/${encodeURIComponent(lesson.apiId)}/quiz/start`, {
       method: 'POST',
@@ -4173,6 +4209,7 @@ async function finishQuiz() {
     const [slug, mId, lId] = key.split(':');
     const lesson = findLesson(slug, mId, lId);
     const lessonApiId = lesson?.apiId;
+    invalidateQuizStatus(lessonApiId);
     if (lessonApiId && typeof window.ezApi === 'function') {
       const res = await window.ezApi(`/progress/lesson/${encodeURIComponent(lessonApiId)}/quiz-attempt`, {
         method: 'POST',
