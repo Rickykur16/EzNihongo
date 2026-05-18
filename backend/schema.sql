@@ -86,6 +86,9 @@ CREATE TABLE IF NOT EXISTS lessons (
   video_url TEXT,
   duration_minutes INT,
   sort_order INT DEFAULT 0,
+  passing_score_pct INT NOT NULL DEFAULT 70,
+  questions_per_attempt INT,
+  cooldown_hours INT NOT NULL DEFAULT 12,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(module_id, slug)
@@ -224,11 +227,16 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
   lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
   score INT,
   total_questions INT,
+  attempt_token UUID DEFAULT gen_random_uuid(),
+  sampled_question_ids JSONB,
+  started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user ON quiz_attempts(user_id);
 CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user_lesson ON quiz_attempts(user_id, lesson_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user_lesson_completed
+  ON quiz_attempts (user_id, lesson_id, completed_at DESC);
 
 -- ===== USER DATA =====
 

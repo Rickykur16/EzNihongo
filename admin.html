@@ -1154,6 +1154,25 @@ function lessonFormHtml(l) {
         <div class="field"><label>Durasi (menit)</label><input type="number" name="durationMinutes" value="${l.duration_minutes || ''}" /></div>
       </div>
       <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${l.sort_order}" /></div>
+      <div class="field" data-quiz-only style="display:${l.type === 'quiz' ? '' : 'none'};">
+        <div style="font-size:12px;color:#525252;font-family:var(--font-body);background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:8px 12px;margin-bottom:10px;">
+          <strong>Kuis (assignment harian):</strong> siswa cuma boleh coba sekali per <em>cooldown</em>; gagal = tunggu sampai window berikutnya. Setiap attempt sample acak dari pool soal — admin disarankan isi minimal 3× <em>Soal per attempt</em> biar variasi terasa.
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Skor minimal lulus (%)</label>
+            <input type="number" name="passingScorePct" min="1" max="100" value="${l.passing_score_pct ?? 70}" />
+          </div>
+          <div class="field">
+            <label>Soal per attempt</label>
+            <input type="number" name="questionsPerAttempt" min="1" value="${l.questions_per_attempt ?? ''}" placeholder="kosong = semua soal di pool" />
+          </div>
+          <div class="field">
+            <label>Cooldown (jam)</label>
+            <input type="number" name="cooldownHours" min="1" max="168" value="${l.cooldown_hours ?? 12}" />
+          </div>
+        </div>
+      </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
         <button type="submit" class="btn btn-primary">Simpan</button>
@@ -1166,10 +1185,14 @@ function wireLessonTypeVisibility(form) {
   const typeSel = form.querySelector('select[name="type"]');
   const videoField = form.querySelector('.field-video');
   const deckHint = form.querySelector('.field-deck-hint');
+  const kanjiHint = form.querySelector('[data-kanji-only]');
+  const quizFields = form.querySelector('[data-quiz-only]');
   if (!typeSel) return;
   const apply = () => {
     if (videoField) videoField.style.display = typeSel.value === 'video' ? '' : 'none';
     if (deckHint) deckHint.style.display = typeSel.value === 'deck' ? '' : 'none';
+    if (kanjiHint) kanjiHint.style.display = typeSel.value === 'kanji' ? '' : 'none';
+    if (quizFields) quizFields.style.display = typeSel.value === 'quiz' ? '' : 'none';
   };
   apply();
   typeSel.addEventListener('change', apply);
@@ -1362,6 +1385,12 @@ async function submitLesson(e, id, moduleId) {
     durationMinutes: Number(fd.get('durationMinutes')) || null,
     sortOrder: Number(fd.get('sortOrder')) || 0,
   };
+  if (type === 'quiz') {
+    const qpaRaw = (fd.get('questionsPerAttempt') || '').toString().trim();
+    body.passingScorePct = Number(fd.get('passingScorePct')) || 70;
+    body.questionsPerAttempt = qpaRaw === '' ? null : Number(qpaRaw);
+    body.cooldownHours = Number(fd.get('cooldownHours')) || 12;
+  }
   try {
     if (id) await api('/admin/lessons/' + id, { method: 'PUT', body: JSON.stringify(body) });
     else await api('/admin/lessons', { method: 'POST', body: JSON.stringify({ ...body, moduleId }) });
@@ -1521,10 +1550,14 @@ const _quizCtxStash = {};
 
 window.manageQuiz = async (lessonId, lessonTitle, opts) => {
   let questions = [];
-  try { const d = await api('/admin/lessons/' + lessonId + '/quiz'); questions = d.questions || []; }
-  catch (err) { notify('Gagal load kuis: ' + err.message, true); return; }
+  let lessonMeta = null;
+  try {
+    const d = await api('/admin/lessons/' + lessonId + '/quiz');
+    questions = d.questions || [];
+    lessonMeta = d.lessonMeta || null;
+  } catch (err) { notify('Gagal load kuis: ' + err.message, true); return; }
   if (!opts?.keepPending) _pendingSection = null;
-  renderQuizModal(lessonId, lessonTitle, questions);
+  renderQuizModal(lessonId, lessonTitle, questions, lessonMeta);
 };
 
 function categorySortOrder(cat) {
@@ -1574,7 +1607,7 @@ function stashCtx(payload) {
   return key;
 }
 
-function renderQuizModal(lessonId, lessonTitle, questions) {
+function renderQuizModal(lessonId, lessonTitle, questions, lessonMeta) {
   const sections = collectSections(questions, lessonId);
   const tabsHtml = Object.keys(QUIZ_CATEGORY_LABELS).map((cat) => {
     const count = sections.filter((s) => s.category === cat)
@@ -1590,14 +1623,36 @@ function renderQuizModal(lessonId, lessonTitle, questions) {
     lessonId, lessonTitle, mode: 'new',
     existingSections: sections.map((s) => ({ category: s.category, number: s.number })),
   });
+
+  // Pool indicator: ratio actual pool size : target sample. Warn if <2×.
+  const poolSize = questions.length;
+  const qpa = lessonMeta?.questions_per_attempt || poolSize;
+  const passing = lessonMeta?.passing_score_pct ?? 70;
+  const cooldown = lessonMeta?.cooldown_hours ?? 12;
+  const ratio = qpa > 0 ? (poolSize / qpa) : 0;
+  let ratioBadge = '';
+  if (qpa && qpa < poolSize) {
+    if (ratio >= 3) ratioBadge = `<span style="color:#15803d;">✅ ${ratio.toFixed(1)}× variasi sehat</span>`;
+    else if (ratio >= 2) ratioBadge = `<span style="color:#a16207;">⚠️ ${ratio.toFixed(1)}× — soal bisa berulang antar attempt</span>`;
+    else ratioBadge = `<span style="color:#b91c1c;">🔴 ${ratio.toFixed(1)}× — pool kekecilan, retry sering dapet soal sama</span>`;
+  } else if (lessonMeta) {
+    ratioBadge = `<span style="color:#737373;">Tiap attempt pakai semua ${poolSize} soal (tidak ada rotasi).</span>`;
+  }
+  const poolIndicator = lessonMeta ? `
+    <div style="background:#f9fafb;border:1px solid var(--paper-300);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;line-height:1.6;">
+      <strong>Pool:</strong> ${poolSize} soal · <strong>Per attempt:</strong> ${qpa} acak · <strong>Lulus:</strong> ${passing}% · <strong>Cooldown:</strong> ${cooldown}h<br>
+      ${ratioBadge}
+    </div>` : '';
+
   openModal(`
     <div class="quiz-admin-head">
       <div>
-        <div class="quiz-admin-kicker">Quiz / Assignment</div>
+        <div class="quiz-admin-kicker">Quiz / Assignment Harian</div>
         <h3 class="quiz-admin-title">${escapeHtml(lessonTitle)}</h3>
       </div>
       <button class="btn btn-primary" onclick="openSectionForm('${newSectionCtx}')">+ Section baru</button>
     </div>
+    ${poolIndicator}
     <div class="quiz-paper-tabs-admin" aria-label="Kategori kuis">${tabsHtml}</div>
     <div class="quiz-admin-sections">${sectionsHtml}</div>
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>

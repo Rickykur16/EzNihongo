@@ -3367,19 +3367,17 @@ async function loadFlashcardData() {
   } catch {}
 }
 
-async function ensureQuizLoaded(courseSlug, moduleId, lessonId) {
-  const key = getQuizKey(courseSlug, moduleId, lessonId);
-  if (QUIZ_DATA[key]) return QUIZ_DATA[key];
-  const lesson = findLesson(courseSlug, moduleId, lessonId);
-  if (!lesson?.apiId) return null;
+// Quiz status — fetched dari /quiz-status endpoint sebelum render
+// landing card. canAttempt=false → render cooldown card.
+async function fetchQuizStatus(lessonApiId) {
   try {
-    const r = await fetch(`/api/lessons/${encodeURIComponent(lesson.apiId)}`, { credentials: 'include' });
+    const r = await window.ezApi(`/progress/lesson/${encodeURIComponent(lessonApiId)}/quiz-status`);
     if (!r.ok) return null;
-    const data = await r.json();
-    const qs = (data.lesson?.questions || []).map(transformQuestionFromApi);
-    if (qs.length > 0) QUIZ_DATA[key] = qs;
-    return QUIZ_DATA[key] || null;
-  } catch { return null; }
+    return await r.json();
+  } catch (err) {
+    console.warn('fetchQuizStatus failed:', err?.message || err);
+    return null;
+  }
 }
 
 function findLesson(courseSlug, moduleId, lessonId) {
@@ -3554,28 +3552,160 @@ function getQuizKey(courseSlug, moduleId, lessonId) {
   return `${courseSlug}:${moduleId}:${lessonId}`;
 }
 
-function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
+// Async — fetch quiz-status, render landing card atau cooldown card.
+// Klik Mulai Kuis → startQuizAttempt() → POST /quiz/start → render paper.
+async function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
   const key = getQuizKey(courseSlug, moduleId, lessonId);
-  const questions = QUIZ_DATA[key];
-  if (!questions || questions.length === 0) {
+  const lesson = findLesson(courseSlug, moduleId, lessonId);
+  if (!lesson?.apiId) {
     container.innerHTML = `<div class="quiz-container"><p style="color:#485f84;">Kuis belum tersedia.</p></div>`;
     return;
   }
-  quizState = {
-    key,
-    questions,
-    idx: 0,
-    correct: 0,
-    answered: false,
-    selected: -1,
-    answers: [],
-    answeredByIndex: {},
-    correctByIndex: {},
-    selectedByIndex: {},
-    activeCategory: firstQuizCategoryWithQuestions(questions),
-  };
-  renderQuizQuestion(container);
+  container.innerHTML = `<div class="quiz-container"><p style="color:#485f84;">Memuat...</p></div>`;
+  const status = await fetchQuizStatus(lesson.apiId);
+  if (!status) {
+    container.innerHTML = `<div class="quiz-container"><p style="color:#b91c1c;">Gagal load status kuis. Refresh halaman.</p></div>`;
+    return;
+  }
+  const lessonTitle = lesson.title || 'Kuis';
+  renderQuizLandingCard(container, key, lessonTitle, status);
 }
+
+function fmtCooldown(hoursLeft) {
+  if (hoursLeft <= 0) return '0 jam';
+  const totalMin = Math.ceil(hoursLeft * 60);
+  if (totalMin < 60) return `${totalMin} menit`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m === 0 ? `${h} jam` : `${h} jam ${m} menit`;
+}
+
+function fmtNextAt(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleString('id-ID', {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+  });
+}
+
+function renderQuizLandingCard(container, key, lessonTitle, status) {
+  const last = status.lastAttempt;
+  const lastPct = last ? Math.round((last.score / Math.max(1, last.totalQuestions)) * 100) : null;
+  const lastPassed = last ? lastPct >= status.passingScorePct : false;
+
+  let lastBlock = '';
+  if (last) {
+    const badge = lastPassed
+      ? `<span style="background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;">✓ Lulus</span>`
+      : `<span style="background:#fee2e2;color:#b91c1c;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;">Belum lulus</span>`;
+    lastBlock = `
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;margin-top:18px;">
+        <div style="font-size:11px;color:#737373;letter-spacing:.04em;text-transform:uppercase;font-weight:700;margin-bottom:6px;">Attempt terakhir</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <strong style="font-size:18px;">${last.score} / ${last.totalQuestions}</strong>
+          <span style="color:#525252;">(${lastPct}%)</span>
+          ${badge}
+        </div>
+      </div>`;
+  }
+
+  const canAttempt = status.canAttempt;
+  const ctaButton = canAttempt
+    ? `<button class="btn-primary" onclick="window.startQuizAttempt('${escapeAttr(key)}')" style="padding:14px 28px;font-size:16px;">Mulai Kuis →</button>`
+    : `<button class="btn-primary" disabled style="padding:14px 28px;font-size:16px;opacity:.5;cursor:not-allowed;">⏱ Tunggu ${fmtCooldown(status.cooldownHoursLeft)}</button>`;
+
+  const cooldownNote = canAttempt
+    ? `Setelah submit, attempt berikutnya bisa dicoba ${status.cooldownHours} jam kemudian.`
+    : `<strong>Kuis terkunci.</strong> Bisa coba lagi pada <strong>${fmtNextAt(status.nextAttemptAt)}</strong> (sekitar ${fmtCooldown(status.cooldownHoursLeft)} lagi).`;
+
+  container.innerHTML = `
+    <div class="quiz-container">
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:28px 26px;max-width:680px;margin:0 auto;">
+        <div style="font-size:11px;color:#b91c1c;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin-bottom:6px;">📋 Assignment Harian</div>
+        <h2 style="margin:0 0 18px;font-size:24px;font-weight:800;line-height:1.3;">${escapeHtml(lessonTitle)}</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;">
+          <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
+            <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">Pool soal</div>
+            <div style="font-size:18px;font-weight:800;margin-top:2px;">${status.poolSize}</div>
+          </div>
+          <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
+            <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">Per attempt</div>
+            <div style="font-size:18px;font-weight:800;margin-top:2px;">${status.questionsPerAttempt} acak</div>
+          </div>
+          <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
+            <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">Lulus min</div>
+            <div style="font-size:18px;font-weight:800;margin-top:2px;">${status.passingScorePct}%</div>
+          </div>
+          <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
+            <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">Cooldown</div>
+            <div style="font-size:18px;font-weight:800;margin-top:2px;">${status.cooldownHours}h</div>
+          </div>
+        </div>
+        <p style="color:#525252;font-size:14px;line-height:1.6;margin:0 0 4px;">
+          Tiap attempt, sistem ambil <strong>${status.questionsPerAttempt}</strong> soal acak dari pool <strong>${status.poolSize}</strong> — jadi soal bisa beda tiap retry.
+        </p>
+        <p style="color:#525252;font-size:13px;line-height:1.6;margin:0 0 22px;">
+          ${cooldownNote}
+        </p>
+        ${lastBlock}
+        <div style="margin-top:24px;text-align:center;">
+          ${ctaButton}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function escapeAttr(s) { return String(s).replace(/'/g, '&#39;').replace(/"/g, '&quot;'); }
+
+window.startQuizAttempt = async (key) => {
+  const [slug, mId, lId] = key.split(':');
+  const lesson = findLesson(slug, mId, lId);
+  if (!lesson?.apiId) return;
+  const main = document.getElementById('main-content');
+  main.innerHTML = `<div class="quiz-container"><p style="color:#485f84;">Memulai kuis...</p></div>`;
+  try {
+    const r = await window.ezApi(`/progress/lesson/${encodeURIComponent(lesson.apiId)}/quiz/start`, {
+      method: 'POST',
+    });
+    if (r.status === 429) {
+      // Cooldown race condition — re-render landing dgn status terbaru.
+      const status = await fetchQuizStatus(lesson.apiId);
+      if (status) renderQuizLandingCard(main, key, lesson.title || 'Kuis', status);
+      return;
+    }
+    if (!r.ok) {
+      const errData = await r.json().catch(() => ({}));
+      main.innerHTML = `<div class="quiz-container"><p style="color:#b91c1c;">Gagal mulai: ${errData.error || r.status}</p></div>`;
+      return;
+    }
+    const data = await r.json();
+    const questions = (data.questions || []).map(transformQuestionFromApi);
+    if (questions.length === 0) {
+      main.innerHTML = `<div class="quiz-container"><p>Kuis ini belum punya soal.</p></div>`;
+      return;
+    }
+    QUIZ_DATA[key] = questions;
+    quizState = {
+      key,
+      questions,
+      idx: 0,
+      correct: 0,
+      answered: false,
+      selected: -1,
+      answers: [],
+      answeredByIndex: {},
+      correctByIndex: {},
+      selectedByIndex: {},
+      activeCategory: firstQuizCategoryWithQuestions(questions),
+      attemptToken: data.attemptToken,
+      passingScorePct: data.passingScorePct,
+    };
+    renderQuizQuestion(main);
+  } catch (err) {
+    main.innerHTML = `<div class="quiz-container"><p style="color:#b91c1c;">Network error: ${err?.message || err}</p></div>`;
+  }
+};
 
 function firstQuizCategoryWithQuestions(questions) {
   return ['vocabulary', 'grammar', 'listening'].find((cat) =>
@@ -4020,16 +4150,9 @@ window.nextQuizQuestion = () => {
 };
 
 async function finishQuiz() {
-  // Detach Audio objects — they live independently from DOM, would keep
-  // playing after main-content gets overwritten oleh hasil page.
   destroyAllListeningPlayers();
-  const { questions, correct, key, answers } = quizState;
+  const { questions, correct, key, answers, attemptToken, passingScorePct } = quizState;
   const clientTotal = questions.length;
-
-  // Show a brief "Menyimpan..." state so the UI doesn't feel frozen while we
-  // POST. Falls back to client-computed score if the server is unreachable —
-  // user shouldn't be stuck with no result just because their internet
-  // hiccuped.
   const main = document.getElementById('main-content');
   main.innerHTML = `
     <div class="quiz-container">
@@ -4042,14 +4165,18 @@ async function finishQuiz() {
 
   let score = correct;
   let total = clientTotal;
+  let passing = passingScorePct || 70;
+  let serverPassed = null;
+  let nextAttemptAt = null;
+  let cooldownHours = 12;
   try {
     const [slug, mId, lId] = key.split(':');
     const lesson = findLesson(slug, mId, lId);
     const lessonApiId = lesson?.apiId;
-    if (lessonApiId && typeof window.ezApi === 'function' && answers.length > 0) {
+    if (lessonApiId && typeof window.ezApi === 'function') {
       const res = await window.ezApi(`/progress/lesson/${encodeURIComponent(lessonApiId)}/quiz-attempt`, {
         method: 'POST',
-        body: JSON.stringify({ answers }),
+        body: JSON.stringify({ attemptToken, answers }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -4057,23 +4184,26 @@ async function finishQuiz() {
           score = data.score;
           total = data.total;
         }
+        if (typeof data.passingScorePct === 'number') passing = data.passingScorePct;
+        if (typeof data.passed === 'boolean') serverPassed = data.passed;
+        if (data.nextAttemptAt) nextAttemptAt = data.nextAttemptAt;
+        if (typeof data.cooldownHours === 'number') cooldownHours = data.cooldownHours;
       }
     }
   } catch (err) {
-    // AUTH_EXPIRED or network error — keep client-side score so the user still sees a result.
     console.warn('quiz-attempt submission failed:', err?.message || err);
   }
 
-  const pct = Math.round((score / total) * 100);
-  const passed = pct >= 70;
+  const pct = total > 0 ? Math.round((score / total) * 100) : 0;
+  const passed = serverPassed != null ? serverPassed : pct >= passing;
   const bonusXP = passed ? 20 : 10;
 
-  // save best score
+  // Save best score localStorage (UI-only, server is source of truth).
   const scores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
   scores[key] = Math.max(scores[key] || 0, pct);
   localStorage.setItem('ez_quiz_scores', JSON.stringify(scores));
 
-  // mark lesson as done if passed
+  // Mark lesson done if passed (unlock next).
   if (passed) {
     const [slug, mId, lId] = key.split(':');
     const allProgress = getProgress();
@@ -4082,21 +4212,46 @@ async function finishQuiz() {
     allProgress[slug] = cp;
     setProgress(allProgress);
   }
-
   addXP(bonusXP, passed ? 'lulus kuis' : 'mencoba kuis');
   if (passed) fireConfetti();
 
-  document.getElementById('main-content').innerHTML = `
+  // Per-kategori breakdown — kasih siswa info materi mana yg lemah.
+  const byCategory = { vocabulary: [0, 0], grammar: [0, 0], listening: [0, 0] };
+  for (let i = 0; i < questions.length; i++) {
+    const cat = normalizeQuizCategory(questions[i].category);
+    byCategory[cat][1] += 1;
+    if (quizState.correctByIndex?.[i]) byCategory[cat][0] += 1;
+  }
+  const catBlock = ['vocabulary', 'grammar', 'listening']
+    .filter((c) => byCategory[c][1] > 0)
+    .map((c) => {
+      const [right, n] = byCategory[c];
+      const label = QUIZ_CATEGORY_META[c]?.label || c;
+      const ok = right === n;
+      return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;">
+        <span>${label}</span>
+        <strong style="color:${ok ? '#15803d' : '#525252'};">${right} / ${n}</strong>
+      </div>`;
+    }).join('');
+
+  const cooldownLine = nextAttemptAt
+    ? `<p style="color:#525252;font-size:13px;margin:14px 0 6px;">Bisa coba lagi pada <strong>${fmtNextAt(nextAttemptAt)}</strong> (${cooldownHours} jam dari sekarang).</p>`
+    : '';
+
+  main.innerHTML = `
     <div class="quiz-container">
       <div class="quiz-results">
         <div class="trophy">${passed ? '🏆' : '💪'}</div>
-        <h2>${passed ? 'Lulus!' : 'Coba Lagi'}</h2>
-        <p class="subtitle">${passed ? 'Pemahaman kamu sudah cukup bagus.' : 'Minimal 70% untuk lulus. Ayo ulang!'}</p>
+        <h2>${passed ? 'Lulus!' : 'Belum Lulus'}</h2>
+        <p class="subtitle">${passed
+          ? 'Materi berikutnya sudah ke-unlock.'
+          : `Skor minimal lulus: ${passing}%. Coba lagi setelah ${cooldownHours} jam.`}</p>
         <div class="score-circle">${pct}%</div>
         <p style="color:#485f84;margin:0 0 12px;">Benar ${score} dari ${total} soal</p>
+        ${catBlock ? `<div style="background:#f9fafb;border-radius:8px;padding:10px 16px;margin:12px 0;text-align:left;font-size:14px;">${catBlock}</div>` : ''}
+        ${cooldownLine}
         <div class="quiz-results-btns">
-          <button class="btn-secondary" onclick="window.retryQuiz()">Ulang Kuis</button>
-          <button class="btn-primary" onclick="window.continueAfterQuiz()">${passed ? 'Lanjut →' : 'Kembali ke Materi'}</button>
+          <button class="btn-primary" onclick="window.continueAfterQuiz()">${passed ? 'Lanjut ke materi →' : 'Kembali ke pelajaran'}</button>
         </div>
       </div>
     </div>
@@ -4105,6 +4260,8 @@ async function finishQuiz() {
 }
 
 window.retryQuiz = () => {
+  // Cooldown enforced server-side. Klik retry → re-render landing card,
+  // backend balik cooldown info kalau belum waktunya.
   const [slug, mId, lId] = quizState.key.split(':');
   renderQuizLesson(document.getElementById('main-content'), slug, mId, lId);
 };
