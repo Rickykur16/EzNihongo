@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { query } from '../db.js';
+import { query, withAdvisoryLock } from '../db.js';
 import { requireAuth, asyncHandler } from '../middleware.js';
 import { isAdminEmail } from '../auth.js';
 
@@ -79,8 +79,12 @@ const ATTEMPT_RESUME_MINUTES = 30;
 // Compute cooldown summary buat lesson tertentu. Returns { lastAttempt,
 // canAttempt, nextAttemptAt, cooldownHoursLeft, inProgress } yang dipakai
 // `/quiz/start` + `GET /lessons/:id` quiz branch.
-async function lessonAttemptStatus(userId, lessonId, cooldownHours) {
-  const r = await query(
+//
+// `runQuery` opsional — passed in dari `withAdvisoryLock` callback supaya
+// status check terjadi dalam transaction yang sama dengan INSERT, anti
+// race condition. Default ke global query() (auto-pool connect).
+async function lessonAttemptStatus(userId, lessonId, cooldownHours, runQuery = query) {
+  const r = await runQuery(
     `SELECT id, attempt_token, score, total_questions, sampled_question_ids,
             started_at, completed_at
        FROM quiz_attempts
@@ -188,11 +192,15 @@ async function loadQuestionsByIds(ids) {
 // cooldown dulu — kalau masih dalam window, return blocked + countdown.
 // Kalau OK: sample N soal acak dari pool, INSERT attempt row, return
 // attemptToken + soal.
+//
+// Anti-race: cooldown check + INSERT terjadi dalam satu transaction
+// yang dikunci via pg_advisory_xact_lock(user_id||lesson_id). Dua
+// request concurrent untuk (user, lesson) sama → request kedua block
+// sampai yg pertama commit, lalu re-check cooldown → block 429.
 router.post('/progress/lesson/:lessonId/quiz/start', asyncHandler(async (req, res) => {
   const lessonId = req.params.lessonId;
 
-  // Paralelin 2 query awal: lesson meta + pool IDs. cooldown_hours
-  // butuh data lesson, jadi attempt status tetep harus nunggu.
+  // Lesson meta + pool IDs paralel — di luar lock karena read-only & idempotent.
   const [lessonRow, poolIdsRes] = await Promise.all([
     query(
       `SELECT id, type, passing_score_pct, questions_per_attempt, cooldown_hours
@@ -210,22 +218,55 @@ router.post('/progress/lesson/:lessonId/quiz/start', asyncHandler(async (req, re
   const allIds = poolIdsRes.rows.map((r) => r.id);
   if (allIds.length === 0) return res.status(404).json({ error: 'Lesson has no quiz questions' });
 
-  const status = await lessonAttemptStatus(req.user.id, lessonId, cooldownHours);
+  // Critical section — lock per (user, lesson). Status check & INSERT
+  // share the same transaction supaya concurrent requests serialize.
+  let result;
+  try {
+    result = await withAdvisoryLock(`quiz:${req.user.id}:${lessonId}`, async (client) => {
+      const runQuery = (text, params) => client.query(text, params);
+      const status = await lessonAttemptStatus(req.user.id, lessonId, cooldownHours, runQuery);
 
-  if (!status.canAttempt) {
+      if (!status.canAttempt) {
+        return { kind: 'blocked', status };
+      }
+      if (status.inProgress) {
+        return { kind: 'resume', inProgress: status.inProgress };
+      }
+
+      const sampledIds = sampleQuestionIds(allIds, lesson.questions_per_attempt);
+      const insertRes = await runQuery(
+        `INSERT INTO quiz_attempts (user_id, lesson_id, attempt_token, sampled_question_ids, started_at)
+         VALUES ($1, $2, gen_random_uuid(), $3::jsonb, NOW())
+         RETURNING attempt_token, started_at`,
+        [req.user.id, lessonId, JSON.stringify(sampledIds)]
+      );
+      return {
+        kind: 'new',
+        sampledIds,
+        attemptToken: insertRes.rows[0].attempt_token,
+        startedAt: insertRes.rows[0].started_at,
+      };
+    });
+  } catch (err) {
+    console.error('quiz/start lock error:', err);
+    return res.status(500).json({ error: 'internal_error' });
+  }
+
+  if (result.kind === 'blocked') {
+    const s = result.status;
     return res.status(429).json({
       blocked: true,
       reason: 'cooldown',
       cooldownHours,
-      cooldownHoursLeft: status.cooldownHoursLeft,
-      nextAttemptAt: status.nextAttemptAt,
-      lastAttempt: status.lastAttempt,
+      cooldownHoursLeft: s.cooldownHoursLeft,
+      nextAttemptAt: s.nextAttemptAt,
+      lastAttempt: s.lastAttempt,
       passingScorePct,
     });
   }
 
-  if (status.inProgress) {
-    const ip = status.inProgress;
+  if (result.kind === 'resume') {
+    const ip = result.inProgress;
     const sampledIds = Array.isArray(ip.sampled_question_ids) ? ip.sampled_question_ids : [];
     const questions = await loadQuestionsByIds(sampledIds);
     const expiresAt = new Date(new Date(ip.started_at).getTime() + ATTEMPT_RESUME_MINUTES * 60000).toISOString();
@@ -239,25 +280,11 @@ router.post('/progress/lesson/:lessonId/quiz/start', asyncHandler(async (req, re
     });
   }
 
-  const sampledIds = sampleQuestionIds(allIds, lesson.questions_per_attempt);
-
-  // Paralelin: load full question data + INSERT attempt row. Keduanya
-  // independent (load butuh sampledIds, INSERT butuh sampledIds; ga
-  // ada dependency satu sama lain).
-  const [questions, insertRes] = await Promise.all([
-    loadQuestionsByIds(sampledIds),
-    query(
-      `INSERT INTO quiz_attempts (user_id, lesson_id, attempt_token, sampled_question_ids, started_at)
-       VALUES ($1, $2, gen_random_uuid(), $3::jsonb, NOW())
-       RETURNING attempt_token, started_at`,
-      [req.user.id, lessonId, JSON.stringify(sampledIds)]
-    ),
-  ]);
-  const { attempt_token: attemptToken, started_at: startedAt } = insertRes.rows[0];
-  const expiresAt = new Date(new Date(startedAt).getTime() + ATTEMPT_RESUME_MINUTES * 60000).toISOString();
-
+  // result.kind === 'new'
+  const questions = await loadQuestionsByIds(result.sampledIds);
+  const expiresAt = new Date(new Date(result.startedAt).getTime() + ATTEMPT_RESUME_MINUTES * 60000).toISOString();
   res.json({
-    attemptToken,
+    attemptToken: result.attemptToken,
     questions,
     passingScorePct,
     totalQuestions: questions.length,
@@ -336,12 +363,19 @@ router.post('/progress/lesson/:lessonId/quiz-attempt', asyncHandler(async (req, 
   const pct = total > 0 ? (score / total) * 100 : 0;
   const passed = pct >= passingScorePct;
 
-  await query(
+  // Atomic UPDATE — `AND completed_at IS NULL` mencegah double-submit
+  // race condition: kalau 2 request concurrent klik submit cepat-cepat,
+  // request kedua dapet rowCount=0 (row udah completed) → 409 instead
+  // of overwriting score yang valid.
+  const upd = await query(
     `UPDATE quiz_attempts
         SET score = $1, total_questions = $2, completed_at = NOW()
-      WHERE id = $3`,
+      WHERE id = $3 AND completed_at IS NULL`,
     [score, total, attempt.id]
   );
+  if (upd.rowCount === 0) {
+    return res.status(409).json({ error: 'already_submitted' });
+  }
 
   const nextAttemptAt = new Date(Date.now() + cooldownHours * 3600 * 1000).toISOString();
   res.json({
