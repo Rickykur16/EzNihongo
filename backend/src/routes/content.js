@@ -221,43 +221,19 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
   };
 
   if (row.type === 'quiz') {
-    const questions = await query(
-      `SELECT id, question, question_type, question_category, section_number,
-              section_label, section_instruction, audio_script, explanation, sort_order
-       FROM quiz_questions
-       WHERE lesson_id = $1
-       ORDER BY CASE question_category
-                  WHEN 'vocabulary' THEN 1
-                  WHEN 'grammar' THEN 2
-                  WHEN 'listening' THEN 3
-                  ELSE 9
-                END,
-                section_number ASC, sort_order ASC`,
+    // Quiz lessons: jangan dump soal. Frontend ambil soal via
+    // POST /api/progress/lesson/:id/quiz/start (auth required, mulai attempt).
+    // Endpoint ini cuma return metadata + pool size buat card landing.
+    const poolRes = await query(
+      `SELECT COUNT(*)::int AS n FROM quiz_questions WHERE lesson_id = $1`,
       [row.id]
     );
-    const qIds = questions.rows.map((q) => q.id);
-    let optsByQ = {};
-    if (qIds.length > 0) {
-      // is_correct deliberately NOT selected — would let any client read
-      // the answer key from devtools. Per-question grading goes through
-      // POST /api/lessons/:lessonId/quiz/check; final score through
-      // POST /api/progress/lesson/:lessonId/quiz-attempt.
-      const opts = await query(
-        `SELECT id, question_id, option_text, sort_order
-         FROM quiz_options
-         WHERE question_id = ANY($1::uuid[])
-         ORDER BY sort_order ASC`,
-        [qIds]
-      );
-      for (const o of opts.rows) {
-        if (!optsByQ[o.question_id]) optsByQ[o.question_id] = [];
-        optsByQ[o.question_id].push(o);
-      }
-    }
-    response.questions = questions.rows.map((q) => ({
-      ...q,
-      options: optsByQ[q.id] || [],
-    }));
+    response.quizMeta = {
+      passingScorePct: row.passing_score_pct ?? 70,
+      questionsPerAttempt: row.questions_per_attempt || poolRes.rows[0]?.n || 0,
+      cooldownHours: row.cooldown_hours ?? 12,
+      poolSize: poolRes.rows[0]?.n || 0,
+    };
   }
 
   if (row.type === 'deck') {

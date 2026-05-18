@@ -1010,26 +1010,42 @@ router.post('/module-grammar/bulk', asyncHandler(async (req, res) => {
 // ===== LESSONS =====
 
 router.post('/lessons', asyncHandler(async (req, res) => {
-  const { moduleId, slug, title, type, content, videoUrl, durationMinutes, sortOrder } = req.body || {};
+  const {
+    moduleId, slug, title, type, content, videoUrl, durationMinutes, sortOrder,
+    passingScorePct, questionsPerAttempt, cooldownHours,
+  } = req.body || {};
   if (!moduleId || !slug || !title) {
     return res.status(400).json({ error: 'moduleId, slug, title required' });
   }
   const slugErr = badSlug(slug);
   if (slugErr) return res.status(400).json({ error: slugErr });
   const result = await query(
-    `INSERT INTO lessons (module_id, slug, title, type, content, video_url, duration_minutes, sort_order)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-    [moduleId, slug, title, type || 'text', content || null, videoUrl || null, durationMinutes || null, sortOrder || 0]
+    `INSERT INTO lessons (
+       module_id, slug, title, type, content, video_url, duration_minutes, sort_order,
+       passing_score_pct, questions_per_attempt, cooldown_hours
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+    [
+      moduleId, slug, title, type || 'text',
+      content || null, videoUrl || null, durationMinutes || null, sortOrder || 0,
+      passingScorePct != null && passingScorePct !== '' ? Number(passingScorePct) : 70,
+      questionsPerAttempt != null && questionsPerAttempt !== '' ? Number(questionsPerAttempt) : null,
+      cooldownHours != null && cooldownHours !== '' ? Number(cooldownHours) : 12,
+    ]
   );
   res.status(201).json({ lesson: result.rows[0] });
 }));
 
 router.put('/lessons/:id', asyncHandler(async (req, res) => {
-  const { slug, title, type, content, videoUrl, durationMinutes, sortOrder } = req.body || {};
+  const {
+    slug, title, type, content, videoUrl, durationMinutes, sortOrder,
+    passingScorePct, questionsPerAttempt, cooldownHours,
+  } = req.body || {};
   if (slug !== undefined && slug !== null) {
     const slugErr = badSlug(slug);
     if (slugErr) return res.status(400).json({ error: slugErr });
   }
+  const hasQPA = Object.prototype.hasOwnProperty.call(req.body || {}, 'questionsPerAttempt');
   const result = await query(
     `UPDATE lessons SET
        slug = COALESCE($2, slug),
@@ -1038,9 +1054,18 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
        content = COALESCE($5, content),
        video_url = COALESCE($6, video_url),
        duration_minutes = COALESCE($7, duration_minutes),
-       sort_order = COALESCE($8, sort_order)
+       sort_order = COALESCE($8, sort_order),
+       passing_score_pct = COALESCE($9, passing_score_pct),
+       questions_per_attempt = CASE WHEN $11::boolean THEN $10 ELSE questions_per_attempt END,
+       cooldown_hours = COALESCE($12, cooldown_hours)
      WHERE id = $1 RETURNING *`,
-    [req.params.id, slug, title, type, content, videoUrl, durationMinutes, sortOrder]
+    [
+      req.params.id, slug, title, type, content, videoUrl, durationMinutes, sortOrder,
+      passingScorePct != null && passingScorePct !== '' ? Number(passingScorePct) : null,
+      hasQPA && questionsPerAttempt !== '' && questionsPerAttempt != null ? Number(questionsPerAttempt) : null,
+      hasQPA,
+      cooldownHours != null && cooldownHours !== '' ? Number(cooldownHours) : null,
+    ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ lesson: result.rows[0] });
@@ -1065,6 +1090,12 @@ function normalizeQuizSectionNumber(value) {
 }
 
 router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
+  const lessonRow = await query(
+    `SELECT id, passing_score_pct, questions_per_attempt, cooldown_hours
+       FROM lessons WHERE id = $1 LIMIT 1`,
+    [req.params.lessonId]
+  );
+  const lessonMeta = lessonRow.rows[0] || null;
   const questions = await query(
     `SELECT * FROM quiz_questions
      WHERE lesson_id = $1
@@ -1091,6 +1122,7 @@ router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
   }
   res.json({
     questions: questions.rows.map((q) => ({ ...q, options: optsByQ[q.id] || [] })),
+    lessonMeta,
   });
 }));
 
