@@ -155,25 +155,27 @@ function sampleQuestionIds(allIds, questionsPerAttempt) {
 
 async function loadQuestionsByIds(ids) {
   if (ids.length === 0) return [];
-  const qRes = await query(
-    `SELECT id, question, question_type, question_category, section_number,
-            section_label, section_instruction, audio_script, explanation, sort_order
-       FROM quiz_questions
-      WHERE id = ANY($1::uuid[])`,
-    [ids]
-  );
-  const oRes = await query(
-    `SELECT id, question_id, option_text, sort_order
-       FROM quiz_options
-      WHERE question_id = ANY($1::uuid[])
-      ORDER BY sort_order ASC`,
-    [ids]
-  );
+  // Paralel: questions row + options dalam 1 round trip (sebelumnya sequential).
+  const [qRes, oRes] = await Promise.all([
+    query(
+      `SELECT id, question, question_type, question_category, section_number,
+              section_label, section_instruction, audio_script, explanation, sort_order
+         FROM quiz_questions
+        WHERE id = ANY($1::uuid[])`,
+      [ids]
+    ),
+    query(
+      `SELECT id, question_id, option_text, sort_order
+         FROM quiz_options
+        WHERE question_id = ANY($1::uuid[])
+        ORDER BY sort_order ASC`,
+      [ids]
+    ),
+  ]);
   const optsByQ = {};
   for (const o of oRes.rows) {
     (optsByQ[o.question_id] ||= []).push(o);
   }
-  // Preserve ID order = sampled order (after shuffle).
   const byId = new Map(qRes.rows.map((q) => [q.id, q]));
   return ids
     .map((id) => byId.get(id))
@@ -188,20 +190,28 @@ async function loadQuestionsByIds(ids) {
 // attemptToken + soal.
 router.post('/progress/lesson/:lessonId/quiz/start', asyncHandler(async (req, res) => {
   const lessonId = req.params.lessonId;
-  const lessonRow = await query(
-    `SELECT id, type, passing_score_pct, questions_per_attempt, cooldown_hours
-       FROM lessons WHERE id = $1 LIMIT 1`,
-    [lessonId]
-  );
+
+  // Paralelin 2 query awal: lesson meta + pool IDs. cooldown_hours
+  // butuh data lesson, jadi attempt status tetep harus nunggu.
+  const [lessonRow, poolIdsRes] = await Promise.all([
+    query(
+      `SELECT id, type, passing_score_pct, questions_per_attempt, cooldown_hours
+         FROM lessons WHERE id = $1 LIMIT 1`,
+      [lessonId]
+    ),
+    query(`SELECT id FROM quiz_questions WHERE lesson_id = $1`, [lessonId]),
+  ]);
   if (lessonRow.rows.length === 0) return res.status(404).json({ error: 'Lesson not found' });
   const lesson = lessonRow.rows[0];
   if (lesson.type !== 'quiz') return res.status(400).json({ error: 'lesson_not_quiz' });
 
   const passingScorePct = lesson.passing_score_pct ?? 70;
   const cooldownHours = lesson.cooldown_hours ?? 12;
+  const allIds = poolIdsRes.rows.map((r) => r.id);
+  if (allIds.length === 0) return res.status(404).json({ error: 'Lesson has no quiz questions' });
+
   const status = await lessonAttemptStatus(req.user.id, lessonId, cooldownHours);
 
-  // Cooldown — kasih info hasil terakhir + waktu next attempt.
   if (!status.canAttempt) {
     return res.status(429).json({
       blocked: true,
@@ -214,7 +224,6 @@ router.post('/progress/lesson/:lessonId/quiz/start', asyncHandler(async (req, re
     });
   }
 
-  // Resume — kasih attempt yang sama (sampled soal sama, attempt_token sama).
   if (status.inProgress) {
     const ip = status.inProgress;
     const sampledIds = Array.isArray(ip.sampled_question_ids) ? ip.sampled_question_ids : [];
@@ -230,23 +239,20 @@ router.post('/progress/lesson/:lessonId/quiz/start', asyncHandler(async (req, re
     });
   }
 
-  // Sample baru.
-  const idsRes = await query(
-    `SELECT id FROM quiz_questions WHERE lesson_id = $1`,
-    [lessonId]
-  );
-  const allIds = idsRes.rows.map((r) => r.id);
-  if (allIds.length === 0) return res.status(404).json({ error: 'Lesson has no quiz questions' });
-
   const sampledIds = sampleQuestionIds(allIds, lesson.questions_per_attempt);
-  const questions = await loadQuestionsByIds(sampledIds);
 
-  const insertRes = await query(
-    `INSERT INTO quiz_attempts (user_id, lesson_id, attempt_token, sampled_question_ids, started_at)
-     VALUES ($1, $2, gen_random_uuid(), $3::jsonb, NOW())
-     RETURNING attempt_token, started_at`,
-    [req.user.id, lessonId, JSON.stringify(sampledIds)]
-  );
+  // Paralelin: load full question data + INSERT attempt row. Keduanya
+  // independent (load butuh sampledIds, INSERT butuh sampledIds; ga
+  // ada dependency satu sama lain).
+  const [questions, insertRes] = await Promise.all([
+    loadQuestionsByIds(sampledIds),
+    query(
+      `INSERT INTO quiz_attempts (user_id, lesson_id, attempt_token, sampled_question_ids, started_at)
+       VALUES ($1, $2, gen_random_uuid(), $3::jsonb, NOW())
+       RETURNING attempt_token, started_at`,
+      [req.user.id, lessonId, JSON.stringify(sampledIds)]
+    ),
+  ]);
   const { attempt_token: attemptToken, started_at: startedAt } = insertRes.rows[0];
   const expiresAt = new Date(new Date(startedAt).getTime() + ATTEMPT_RESUME_MINUTES * 60000).toISOString();
 
