@@ -4024,14 +4024,16 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
     </details>` : '';
 
   const inlineJp = !isListening && q.jp
-    ? `<span class="quiz-paper-jp">${q.jp}</span>`
+    ? `<span class="quiz-paper-jp">${sanitizeHtml(q.jp)}</span>`
     : '';
 
+  // q.q / q.explain dari admin rich-text editor (boleh <b>/<i>/<u> tapi
+  // ga boleh <script>). q.options dari plain-text input → escape full.
   return `
     <article class="quiz-paper-item" data-question-index="${qi}">
       <h2 class="quiz-question quiz-paper-question">
         <span class="quiz-paper-number">${sectionNumber}.${questionNumber}</span>
-        <span>${q.q}</span>
+        <span>${sanitizeHtml(q.q)}</span>
         ${inlineJp}
       </h2>
       <div class="quiz-options" id="quiz-options-${qi}">
@@ -4039,12 +4041,12 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
           <button class="quiz-option ${answered ? 'disabled' : ''} ${answered && i === q.correct ? 'correct' : ''} ${answered && i === selected && i !== q.correct ? 'wrong' : ''}"
             data-idx="${i}" onclick="window.pickQuizAnswer(${qi}, ${i})">
             <span class="quiz-option-letter">${letters[i]}</span>
-            <span>${opt}</span>
+            <span>${escapeHtml(opt)}</span>
           </button>
         `).join('')}
       </div>
       <div class="quiz-feedback" id="quiz-feedback-${qi}">
-        ${answered ? `<div class="quiz-explanation"><strong>${quizState.correctByIndex[qi] ? '✓ Benar!' : '✗ Belum tepat'}</strong> — ${q.explain || 'Jawaban kamu sudah dicatat.'}</div>` : ''}
+        ${answered ? `<div class="quiz-explanation"><strong>${quizState.correctByIndex[qi] ? '✓ Benar!' : '✗ Belum tepat'}</strong> — ${sanitizeHtml(q.explain || 'Jawaban kamu sudah dicatat.')}</div>` : ''}
       </div>
       ${transcriptBlock}
     </article>
@@ -4146,7 +4148,7 @@ window.pickQuizAnswer = async (questionIndex, optionIndex) => {
   const isLast = quizState.idx === quizState.questions.length - 1;
   feedback.innerHTML = `
     <div class="quiz-explanation">
-      <strong>${isCorrect ? '✓ Benar!' : '✗ Belum tepat'}</strong> — ${q.explain || 'Jawaban kamu sudah dicatat.'}
+      <strong>${isCorrect ? '✓ Benar!' : '✗ Belum tepat'}</strong> — ${sanitizeHtml(q.explain || 'Jawaban kamu sudah dicatat.')}
     </div>
     <button class="quiz-next-btn" onclick="window.nextQuizQuestion()">
       ${isLast ? 'Lihat Hasil →' : 'Soal Berikutnya →'}
@@ -5512,7 +5514,7 @@ window.openKanjiDetail = (id) => {
         ${k.mnemonic ? `
           <div class="kanji-detail-section">
             <div class="kanji-detail-section-head">💡 Mnemonic / cara ingat</div>
-            <div class="kanji-mnemonic-card">${k.mnemonic}</div>
+            <div class="kanji-mnemonic-card">${sanitizeHtml(k.mnemonic)}</div>
           </div>` : ''}
         ${compounds ? `
           <div class="kanji-detail-section">
@@ -5613,6 +5615,48 @@ function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]));
+}
+
+// Sanitize rich-text content dari admin/Notion sebelum render via innerHTML.
+// Allowlist tag formatting yang dipakai rich-text editor admin (B/I/U/EM/
+// STRONG/BR/P/SPAN/DIV/UL/OL/LI/H2/H3/BLOCKQUOTE/CODE) — strip semua tag
+// lain (script, img, iframe, link, on*= handlers, style=, dll). Anti-XSS
+// untuk q.q, q.options, q.explain, q.audioScript, kanji mnemonic.
+const _SANITIZE_ALLOWED = new Set([
+  'B', 'I', 'U', 'EM', 'STRONG', 'BR', 'P', 'SPAN', 'DIV',
+  'UL', 'OL', 'LI', 'H2', 'H3', 'BLOCKQUOTE', 'CODE', 'PRE', 'A',
+]);
+// Khusus tag A: cuma boleh href (https/http only, no javascript:).
+function sanitizeHtml(input) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = String(input ?? '');
+  const walk = (node) => {
+    const kids = [...node.childNodes];
+    for (const child of kids) {
+      if (child.nodeType !== 1) continue; // text/comment node — biarkan
+      const tag = child.tagName;
+      if (!_SANITIZE_ALLOWED.has(tag)) {
+        // Replace element dengan plain text content (drop tag, keep text).
+        const text = document.createTextNode(child.textContent || '');
+        child.replaceWith(text);
+        continue;
+      }
+      // Strip semua attribute kecuali href di tag A (dengan validasi).
+      const attrs = [...child.attributes];
+      for (const attr of attrs) {
+        if (tag === 'A' && attr.name === 'href') {
+          const url = String(attr.value || '').trim();
+          if (!/^https?:\/\//i.test(url)) child.removeAttribute('href');
+          else child.setAttribute('rel', 'noopener noreferrer');
+        } else {
+          child.removeAttribute(attr.name);
+        }
+      }
+      walk(child);
+    }
+  };
+  walk(tmp);
+  return tmp.innerHTML;
 }
 
 function formatDurationLong(minutes) {
