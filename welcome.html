@@ -2874,6 +2874,34 @@
     letter-spacing: 0;
   }
   .quiz-paper-number { font-weight: 900; }
+  /* Soal label JLPT-style: "1ばん", "れい", dst. Render kalau q.q ada
+     (admin isi text body) — sebagai prefix sebelum text. */
+  .quiz-paper-label {
+    display: inline-block;
+    padding: 4px 12px;
+    background: #1a1a1a;
+    color: #fff;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 800;
+    font-family: 'Noto Sans JP', sans-serif;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  /* Kalau q.q kosong (mayoritas soal listening JLPT), render label saja
+     — gak ada question text body. Bold, padding cukup, sebelum image grid. */
+  .quiz-paper-label-only {
+    display: inline-block;
+    padding: 5px 14px;
+    background: #1a1a1a;
+    color: #fff;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 800;
+    font-family: 'Noto Sans JP', sans-serif;
+    margin: 16px 0 10px;
+  }
+  .quiz-q-text { font-family: 'Noto Sans JP', sans-serif; }
   .quiz-paper-jp,
   .quiz-paper-question u {
     text-decoration: underline;
@@ -3931,12 +3959,16 @@ function renderQuizSections(categoryItems) {
       ? renderListeningPlayer(section.items, section.number)
       : '';
     // JLPT-style section header: kotak label "Section N" floating di atas
-    // border, mondai instruction big font di bawahnya.
+    // border, mondai instruction big font di bawahnya. Drop class
+    // .quiz-paper-section yang bikin double-border conflict.
+    const labelText = section.label || `Section ${section.number}`;
+    const instructionText = (section.instruction || '').trim()
+      || (QUIZ_CATEGORY_META[normalizeQuizCategory(section.items[0]?.q?.category)]?.defaultInstruction || '');
     return `
       ${playerHtml}
-      <section class="quiz-paper-section jlpt-section">
-        <span class="jlpt-section-tab">${sanitizeHtml(section.label)}</span>
-        <div class="jlpt-mondai">${sanitizeHtml(section.instruction)}</div>
+      <section class="jlpt-section">
+        <span class="jlpt-section-tab">${sanitizeHtml(labelText)}</span>
+        ${instructionText ? `<div class="jlpt-mondai">${sanitizeHtml(instructionText)}</div>` : ''}
       </section>
       <div class="quiz-paper-list" data-section-number="${section.number}">
         ${section.items.map((item, i) => renderQuizPaperItem(item.q, item.index, section.number, i + 1)).join('')}
@@ -4206,13 +4238,24 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
 
   // q.q / q.explain dari admin rich-text editor (boleh <b>/<i>/<u> tapi
   // ga boleh <script>). q.options dari plain-text input → escape full.
+  // Render header soal JLPT-style:
+  //   - `q.q` admin-controlled (kosong = ga render text body, cuma label
+  //     "1ばん" / "れい" auto)
+  //   - Default label: "1ばん" untuk soal aktual JLPT-feel. Admin bisa
+  //     override dgn ngetik di field question (e.g. "れい:" untuk contoh).
+  const qText = String(q.q || '').trim();
+  const defaultLabel = `${questionNumber}ばん`;
+  const headerHtml = qText
+    ? `<h2 class="quiz-question quiz-paper-question">
+         <span class="quiz-paper-label">${defaultLabel}</span>
+         <span class="quiz-q-text">${sanitizeHtml(qText)}</span>
+         ${inlineJp}
+       </h2>`
+    : `<div class="quiz-paper-label-only">${defaultLabel}</div>`;
+
   return `
     <article class="quiz-paper-item" data-question-index="${qi}">
-      <h2 class="quiz-question quiz-paper-question">
-        <span class="quiz-paper-number">${sectionNumber}.${questionNumber}</span>
-        <span>${sanitizeHtml(q.q)}</span>
-        ${inlineJp}
-      </h2>
+      ${headerHtml}
       ${questionImage}
       ${perQuestionAudio}
       ${optionsHtml}
