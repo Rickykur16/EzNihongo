@@ -1877,8 +1877,14 @@ window.openQuestionForm = (key) => {
               <code>N:</code> narrator (bacain pertanyaan/mondai),
               <code>A:</code> cewe (atau <code>女:</code> / nama cewe),
               <code>B:</code> cowo (atau <code>男:</code> / nama cowo).<br>
-              Backend auto-detect format → tiap turn pakai voice yang sesuai dari env (<code>ELEVENLABS_VOICE_NARRATOR</code> / <code>_FEMALE</code> / <code>_MALE</code>), concat jadi 1 MP3.<br>
-              Kalau env voice belum di-set, fallback ke voice tunggal (<code>ELEVENLABS_VOICE_ID</code>).
+              Backend auto-detect → tiap turn pakai voice yang sesuai dari env (<code>ELEVENLABS_VOICE_NARRATOR</code> / <code>_FEMALE</code> / <code>_MALE</code>), concat jadi 1 MP3.
+              <br><br>
+              <strong>✨ Emotion tags</strong> (butuh <code>ELEVENLABS_MODEL=eleven_v3</code> di server):<br>
+              Inline di teks per turn, contoh: <code>A: [questioning] お国は どちらですか。</code><br>
+              Tag yang umum: <code>[questioning]</code> <code>[excited]</code> <code>[thoughtful]</code>
+              <code>[sad]</code> <code>[happy]</code> <code>[surprised]</code> <code>[shy]</code>
+              <code>[whisper]</code> <code>[laughs]</code> <code>[sigh]</code> <code>[gasp]</code> <code>[calm]</code>.
+              Tag dibaca ElevenLabs sebagai intonation, ga keluar di audio sebagai kata.
             </div>
             ${q.id && !q.audio_script ? '<div style="font-size:12px;color:#b91c1c;font-weight:600;margin-top:6px;background:#fee2e2;padding:6px 10px;border-radius:6px;">⚠️ Field kosong — soal listening ini belum ada audio buat di-play di dashboard student.</div>' : ''}
           </div>
