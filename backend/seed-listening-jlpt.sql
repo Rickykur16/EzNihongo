@@ -249,7 +249,236 @@ BEGIN
     ('4. うどんと 温かい お茶', TRUE, 3)
   ) AS opt(text, is_correct, ord);
 
-  RAISE NOTICE 'Listening JLPT sample seeded: lesson_id = %', v_lesson_id;
+  -- ────────────────────────────────────────────────────────
+  -- BATCH 2: 10 soal tambahan (sort_order 9-18) — topik:
+  -- transportasi, hobi, keluarga, sakit, bandara, pakaian,
+  -- perpustakaan, ultah, olahraga, sekolah.
+  -- ────────────────────────────────────────────────────────
+
+  -- Soal 9: Transportasi
+  INSERT INTO quiz_questions (
+    lesson_id, question, question_type, question_category,
+    section_number, section_label, section_instruction, audio_script,
+    explanation, sort_order
+  ) VALUES (
+    v_lesson_id,
+    '男の人は きょう どうやって 駅まで 行きますか。',
+    'multiple_choice', 'listening', 1, v_section_label, v_section_instruction,
+    E'N: 男の人と 女の人が 話しています。男の人は きょう どうやって 駅まで 行きますか。\nA: 駅まで どうやって 行きますか。\nB: 普段は バスですが、今日は 雨だから タクシーに します。\nA: そうですね、いい考えです。\nB: バス停まで 歩きたくないんです。',
+    'Cowo bilang "今日は 雨だから タクシーに します" — hari ini hujan jadi naik taksi.',
+    9
+  );
+  WITH q AS (SELECT id FROM quiz_questions WHERE lesson_id = v_lesson_id AND sort_order = 9)
+  INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order)
+  SELECT q.id, opt.text, opt.is_correct, opt.ord FROM q, (VALUES
+    ('1. バス', FALSE, 0),
+    ('2. 電車', FALSE, 1),
+    ('3. タクシー', TRUE, 2),
+    ('4. 自転車', FALSE, 3)
+  ) AS opt(text, is_correct, ord);
+
+  -- Soal 10: Hobi
+  INSERT INTO quiz_questions (
+    lesson_id, question, question_type, question_category,
+    section_number, section_label, section_instruction, audio_script,
+    explanation, sort_order
+  ) VALUES (
+    v_lesson_id,
+    '女の人の 趣味は 何ですか。',
+    'multiple_choice', 'listening', 1, v_section_label, v_section_instruction,
+    E'N: 女の人と 男の人が 話しています。女の人の 趣味は 何ですか。\nA: 週末は 何を しますか。\nB: 私は 友達と サッカーを します。あなたは？\nA: 本を 読んだり、映画を 見たり します。特に 日本の 映画が 好きです。\nB: いいですね。',
+    'Cewe (A) bilang dia baca buku & nonton film, suka film Jepang. Cowo yang sepak bola.',
+    10
+  );
+  WITH q AS (SELECT id FROM quiz_questions WHERE lesson_id = v_lesson_id AND sort_order = 10)
+  INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order)
+  SELECT q.id, opt.text, opt.is_correct, opt.ord FROM q, (VALUES
+    ('1. サッカー', FALSE, 0),
+    ('2. 読書と 映画', TRUE, 1),
+    ('3. 旅行', FALSE, 2),
+    ('4. 料理', FALSE, 3)
+  ) AS opt(text, is_correct, ord);
+
+  -- Soal 11: Keluarga
+  INSERT INTO quiz_questions (
+    lesson_id, question, question_type, question_category,
+    section_number, section_label, section_instruction, audio_script,
+    explanation, sort_order
+  ) VALUES (
+    v_lesson_id,
+    '男の人の 家族は 何人ですか。',
+    'multiple_choice', 'listening', 1, v_section_label, v_section_instruction,
+    E'N: 女の人が 男の人に 家族について 聞いています。男の人の 家族は 何人ですか。\nA: ご家族は 何人ですか。\nB: 5人です。父、母、姉、弟、そして 私です。\nA: 大きい 家族ですね。お姉さんは おいくつですか。\nB: 25歳です。看護師です。',
+    'Cowo sebutin 5 orang: ayah, ibu, kakak cewe, adik cowo, dan dia sendiri.',
+    11
+  );
+  WITH q AS (SELECT id FROM quiz_questions WHERE lesson_id = v_lesson_id AND sort_order = 11)
+  INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order)
+  SELECT q.id, opt.text, opt.is_correct, opt.ord FROM q, (VALUES
+    ('1. 3人', FALSE, 0),
+    ('2. 4人', FALSE, 1),
+    ('3. 5人', TRUE, 2),
+    ('4. 6人', FALSE, 3)
+  ) AS opt(text, is_correct, ord);
+
+  -- Soal 12: Di dokter
+  INSERT INTO quiz_questions (
+    lesson_id, question, question_type, question_category,
+    section_number, section_label, section_instruction, audio_script,
+    explanation, sort_order
+  ) VALUES (
+    v_lesson_id,
+    '患者は どこが 痛いですか。',
+    'multiple_choice', 'listening', 1, v_section_label, v_section_instruction,
+    E'N: 病院で 医者と 患者が 話しています。患者は どこが 痛いですか。\nA: どうしましたか。\nB: 昨日から 頭が ずきずきして、熱も あります。\nA: のどは どうですか。\nB: のども 少し 痛いです。',
+    'Pasien (cowo) bilang "頭が ずきずき" + "のども 少し 痛い" — kepala + tenggorokan sakit.',
+    12
+  );
+  WITH q AS (SELECT id FROM quiz_questions WHERE lesson_id = v_lesson_id AND sort_order = 12)
+  INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order)
+  SELECT q.id, opt.text, opt.is_correct, opt.ord FROM q, (VALUES
+    ('1. お腹だけ', FALSE, 0),
+    ('2. 頭と のど', TRUE, 1),
+    ('3. 足', FALSE, 2),
+    ('4. 目', FALSE, 3)
+  ) AS opt(text, is_correct, ord);
+
+  -- Soal 13: Bandara
+  INSERT INTO quiz_questions (
+    lesson_id, question, question_type, question_category,
+    section_number, section_label, section_instruction, audio_script,
+    explanation, sort_order
+  ) VALUES (
+    v_lesson_id,
+    '飛行機は 何時に 出発しますか。',
+    'multiple_choice', 'listening', 1, v_section_label, v_section_instruction,
+    E'N: 空港で 女の人と 男の人が 話しています。飛行機は 何時に 出発しますか。\nA: すみません、東京行きの 飛行機は 何時ですか。\nB: 14時 30分です。\nA: 今、12時ですから、まだ 時間が ありますね。\nB: はい、2時間半 待ちます。',
+    'Cowo bilang "14時 30分です" — jam 14:30.',
+    13
+  );
+  WITH q AS (SELECT id FROM quiz_questions WHERE lesson_id = v_lesson_id AND sort_order = 13)
+  INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order)
+  SELECT q.id, opt.text, opt.is_correct, opt.ord FROM q, (VALUES
+    ('1. 12時', FALSE, 0),
+    ('2. 14時', FALSE, 1),
+    ('3. 14時 30分', TRUE, 2),
+    ('4. 16時 30分', FALSE, 3)
+  ) AS opt(text, is_correct, ord);
+
+  -- Soal 14: Belanja baju
+  INSERT INTO quiz_questions (
+    lesson_id, question, question_type, question_category,
+    section_number, section_label, section_instruction, audio_script,
+    explanation, sort_order
+  ) VALUES (
+    v_lesson_id,
+    '女の人は どんな 服を 探していますか。',
+    'multiple_choice', 'listening', 1, v_section_label, v_section_instruction,
+    E'N: 店で 女の人と 店員が 話しています。女の人は どんな 服を 探していますか。\nA: いらっしゃいませ。\nB: あの、白い シャツを 探しています。\nA: サイズは？\nB: Mサイズで お願いします。長袖が いいです。\nA: こちらは どうですか。',
+    'Cewe nyari "白い シャツ" + "Mサイズ" + "長袖" — kemeja putih lengan panjang M.',
+    14
+  );
+  WITH q AS (SELECT id FROM quiz_questions WHERE lesson_id = v_lesson_id AND sort_order = 14)
+  INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order)
+  SELECT q.id, opt.text, opt.is_correct, opt.ord FROM q, (VALUES
+    ('1. 黒い 半袖 シャツ', FALSE, 0),
+    ('2. 白い 長袖 シャツ', TRUE, 1),
+    ('3. 青い T シャツ', FALSE, 2),
+    ('4. 赤い ワンピース', FALSE, 3)
+  ) AS opt(text, is_correct, ord);
+
+  -- Soal 15: Perpustakaan
+  INSERT INTO quiz_questions (
+    lesson_id, question, question_type, question_category,
+    section_number, section_label, section_instruction, audio_script,
+    explanation, sort_order
+  ) VALUES (
+    v_lesson_id,
+    '日本語の 本は 何階に ありますか。',
+    'multiple_choice', 'listening', 1, v_section_label, v_section_instruction,
+    E'N: 男の人と 女の人が 図書館で 話しています。日本語の 本は 何階に ありますか。\nA: すみません、日本語の 本は 何階に ありますか。\nB: 3階です。雑誌は 2階ですよ。\nA: わかりました。\nB: 漫画は 4階に あります。',
+    'Pegawai (B/cowo) bilang "日本語の 本は 3階". Majalah lt 2, manga lt 4.',
+    15
+  );
+  WITH q AS (SELECT id FROM quiz_questions WHERE lesson_id = v_lesson_id AND sort_order = 15)
+  INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order)
+  SELECT q.id, opt.text, opt.is_correct, opt.ord FROM q, (VALUES
+    ('1. 2階', FALSE, 0),
+    ('2. 3階', TRUE, 1),
+    ('3. 4階', FALSE, 2),
+    ('4. 5階', FALSE, 3)
+  ) AS opt(text, is_correct, ord);
+
+  -- Soal 16: Ulang tahun
+  INSERT INTO quiz_questions (
+    lesson_id, question, question_type, question_category,
+    section_number, section_label, section_instruction, audio_script,
+    explanation, sort_order
+  ) VALUES (
+    v_lesson_id,
+    '誕生日 パーティーは 何曜日ですか。',
+    'multiple_choice', 'listening', 1, v_section_label, v_section_instruction,
+    E'N: 二人が パーティーについて 話しています。誕生日 パーティーは 何曜日ですか。\nA: 来週、太郎さんの 誕生日 パーティーですね。\nB: ええ、土曜日です。何を プレゼントしますか。\nA: 私は 本に します。\nB: 私は ケーキを 作ります。',
+    'Cowo bilang "土曜日です" — hari Sabtu.',
+    16
+  );
+  WITH q AS (SELECT id FROM quiz_questions WHERE lesson_id = v_lesson_id AND sort_order = 16)
+  INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order)
+  SELECT q.id, opt.text, opt.is_correct, opt.ord FROM q, (VALUES
+    ('1. 月曜日', FALSE, 0),
+    ('2. 水曜日', FALSE, 1),
+    ('3. 金曜日', FALSE, 2),
+    ('4. 土曜日', TRUE, 3)
+  ) AS opt(text, is_correct, ord);
+
+  -- Soal 17: Olahraga
+  INSERT INTO quiz_questions (
+    lesson_id, question, question_type, question_category,
+    section_number, section_label, section_instruction, audio_script,
+    explanation, sort_order
+  ) VALUES (
+    v_lesson_id,
+    '男の人は 週末 何を しますか。',
+    'multiple_choice', 'listening', 1, v_section_label, v_section_instruction,
+    E'N: 二人が 話しています。男の人は 週末 何を しますか。\nA: 週末は 何を しますか。\nB: 朝 ジョギングを して、午後 友達と テニスを します。\nA: 健康的ですね。私は 家で 寝ます。\nB: たまには 運動しましょう。',
+    'Cowo (B) bilang "ジョギング" + "テニス" — joging pagi + tenis sore.',
+    17
+  );
+  WITH q AS (SELECT id FROM quiz_questions WHERE lesson_id = v_lesson_id AND sort_order = 17)
+  INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order)
+  SELECT q.id, opt.text, opt.is_correct, opt.ord FROM q, (VALUES
+    ('1. 家で 寝る', FALSE, 0),
+    ('2. ジョギングと テニス', TRUE, 1),
+    ('3. サッカー', FALSE, 2),
+    ('4. 料理', FALSE, 3)
+  ) AS opt(text, is_correct, ord);
+
+  -- Soal 18: Sekolah (telat)
+  INSERT INTO quiz_questions (
+    lesson_id, question, question_type, question_category,
+    section_number, section_label, section_instruction, audio_script,
+    explanation, sort_order
+  ) VALUES (
+    v_lesson_id,
+    '学生は どうして 遅れましたか。',
+    'multiple_choice', 'listening', 1, v_section_label, v_section_instruction,
+    E'N: 学生が 先生に 話しています。学生は どうして 遅れましたか。\nA: すみません、遅れました。\nB: どうしましたか。\nA: バスが 来なかったので、歩いて 来ました。\nB: そうですか。次は タクシーを 呼んで くださいね。',
+    'Siswa (A/cewe) bilang "バスが 来なかったので" — bus tidak datang, jadi jalan kaki.',
+    18
+  );
+  WITH q AS (SELECT id FROM quiz_questions WHERE lesson_id = v_lesson_id AND sort_order = 18)
+  INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order)
+  SELECT q.id, opt.text, opt.is_correct, opt.ord FROM q, (VALUES
+    ('1. 寝坊した', FALSE, 0),
+    ('2. バスが 来なかった', TRUE, 1),
+    ('3. 雨が 強かった', FALSE, 2),
+    ('4. 道に 迷った', FALSE, 3)
+  ) AS opt(text, is_correct, ord);
+
+  -- Update lesson questions_per_attempt jadi 5 dari pool 18 = 3.6× ratio.
+  UPDATE lessons SET questions_per_attempt = 5 WHERE id = v_lesson_id;
+
+  RAISE NOTICE 'Listening JLPT seeded: lesson_id = %, 18 soal pool (3.6× sample)', v_lesson_id;
 END $$;
 
 COMMIT;

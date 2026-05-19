@@ -3562,6 +3562,13 @@ function showCompletion({ title, message, xp, continueLabel, onContinue, onSecon
 // ═══════════════════════════════════════════════
 function speakJapanese(text, btn) {
   if (!('speechSynthesis' in window)) { alert('Browser kamu tidak mendukung audio TTS.'); return; }
+  // Stop ElevenLabs audio yang lagi jalan (kalau ada) supaya tidak
+  // overlap dengan Web Speech — bug user-report: bentrok 2 voice
+  // bareng di vocab card.
+  if (typeof _ttsCurrentAudio !== 'undefined' && _ttsCurrentAudio) {
+    try { _ttsCurrentAudio.pause(); _ttsCurrentAudio.src = ''; } catch {}
+    _ttsCurrentAudio = null;
+  }
   const plain = text.replace(/<[^>]*>/g, '');
   const u = new SpeechSynthesisUtterance(plain);
   u.lang = 'ja-JP';
@@ -5836,22 +5843,61 @@ function deckHighlight(jpPlain, highlight, fallbackWord) {
 }
 
 // Plays via the cached server TTS endpoint; falls back to browser Web Speech.
+// Global current audio + flag — supaya 2 click TTS tidak overlap dan
+// fallback (Web Speech) ga jalan bareng kalau ElevenLabs audio sudah
+// mulai play. Bug: dua-duanya bunyi pas autoplay race (audio play
+// resolve LATE, fallback udah trigger Web Speech duluan).
+let _ttsCurrentAudio = null;
+
+function _stopAllTts() {
+  // Stop ElevenLabs audio yang masih aktif (kalau ada).
+  if (_ttsCurrentAudio) {
+    try { _ttsCurrentAudio.pause(); _ttsCurrentAudio.src = ''; } catch {}
+    _ttsCurrentAudio = null;
+  }
+  // Cancel browser Web Speech yang lagi ngomong / antri.
+  try {
+    if (window.speechSynthesis && (window.speechSynthesis.speaking || window.speechSynthesis.pending)) {
+      window.speechSynthesis.cancel();
+    }
+  } catch {}
+}
+
 function playTTS(text, btn) {
   const plain = String(text || '').replace(/<[^>]*>/g, '').trim();
   if (!plain) return;
+  // Hentiin semua TTS yang lagi jalan sebelum mulai baru (anti bentrok).
+  _stopAllTts();
   if (btn) {
     document.querySelectorAll('.dc-audio.playing,.de-play.playing,.dm-headaudio.playing').forEach((b) => b.classList.remove('playing'));
     btn.classList.add('playing');
   }
+  let elevenStarted = false;
+  let fallbackTriggered = false;
   const stop = () => { if (btn) btn.classList.remove('playing'); };
-  const fallback = () => { stop(); try { speakJapanese(plain, btn); } catch (e) { /* noop */ } };
+  const fallback = (reason) => {
+    // Jangan fallback kalau ElevenLabs udah benar-benar mulai play
+    // (race: play() promise reject after audio actually playing
+    // karena autoplay quirk, atau onerror fires post-playback).
+    if (elevenStarted || fallbackTriggered) return;
+    fallbackTriggered = true;
+    stop();
+    try { speakJapanese(plain, btn); } catch (e) { /* noop */ }
+  };
   try {
     const a = new Audio('/api/tts?text=' + encodeURIComponent(plain));
-    a.onended = stop;
-    a.onerror = fallback;
+    _ttsCurrentAudio = a;
+    a.onplaying = () => { elevenStarted = true; };
+    a.onended = () => {
+      stop();
+      if (_ttsCurrentAudio === a) _ttsCurrentAudio = null;
+    };
+    a.onerror = () => fallback('error');
     const p = a.play();
-    if (p && typeof p.catch === 'function') p.catch(fallback);
-  } catch (e) { fallback(); }
+    if (p && typeof p.then === 'function') {
+      p.then(() => { elevenStarted = true; }).catch(() => fallback('play-reject'));
+    }
+  } catch (e) { fallback('throw'); }
 }
 window.playTTS = playTTS;
 
