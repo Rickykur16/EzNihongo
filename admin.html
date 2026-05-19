@@ -1869,7 +1869,7 @@ window.openQuestionForm = (key) => {
         ${isListening ? `
           <div class="field">
             <label>🎧 Audio dialog (listening) — JLPT 3-voice format</label>
-            <textarea name="audioScript" rows="7" lang="ja"
+            <textarea id="audioScriptField" name="audioScript" rows="7" lang="ja"
               placeholder="Format JLPT: 1 baris per turn, pakai prefix speaker.&#10;&#10;Contoh:&#10;N: 男の人と女の人が話しています。女の人はどこから来ましたか。&#10;B: お国は どちらですか。&#10;A: インドネシアです。&#10;B: 大きな町から 来ましたか。&#10;A: いいえ、小さい町から 来ました。"
               style="font-family:'Noto Sans JP',sans-serif;width:100%;font-size:14px;line-height:1.6;">${escapeHtml(q.audio_script || '')}</textarea>
             <div style="font-size:11px;color:var(--ink-500);margin-top:6px;line-height:1.6;">
@@ -1887,6 +1887,24 @@ window.openQuestionForm = (key) => {
               Tag dibaca ElevenLabs sebagai intonation, ga keluar di audio sebagai kata.
             </div>
             ${q.id && !q.audio_script ? '<div style="font-size:12px;color:#b91c1c;font-weight:600;margin-top:6px;background:#fee2e2;padding:6px 10px;border-radius:6px;">⚠️ Field kosong — soal listening ini belum ada audio buat di-play di dashboard student.</div>' : ''}
+            <div id="ttsTagPicker" style="margin-top:10px;padding:10px 12px;background:#f9fafb;border:1px solid var(--paper-300);border-radius:6px;">
+              <div style="font-size:11px;color:var(--ink-500);margin-bottom:6px;font-weight:700;">
+                ✨ TAG EMOTION — klik buat sisipin ke posisi cursor textarea
+              </div>
+              <div id="ttsTagChips" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
+              <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                <input id="ttsCustomTagInput" type="text" placeholder="tag baru (e.g. annoyed, dreamy)"
+                  style="font-size:12px;padding:5px 8px;flex:1;min-width:140px;max-width:220px;" />
+                <button type="button" class="btn btn-ghost btn-sm" onclick="addCustomTtsTag()">+ Simpan favorit</button>
+                <span style="font-size:10px;color:var(--ink-500);">tersimpan per-browser</span>
+              </div>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <button type="button" class="btn btn-ghost" onclick="testTtsAudio()">🔊 Test audio</button>
+              <button type="button" class="btn btn-ghost" onclick="clearTtsCacheCurrent()" title="Hapus cache audio script saat ini supaya next test regenerate dari ElevenLabs">🗑️ Hapus cache audio</button>
+              <span id="ttsTestStatus" style="font-size:11px;color:var(--ink-500);"></span>
+            </div>
+            <audio id="ttsTestAudio" controls style="margin-top:8px;width:100%;display:none;"></audio>
           </div>
         ` : ''}
         <div class="field"><label>Penjelasan setelah jawab</label><textarea name="explanation" class="rich-text" rows="3">${escapeHtml(q.explanation || '')}</textarea></div>
@@ -1914,6 +1932,128 @@ window.openQuestionForm = (key) => {
   const qForm = document.getElementById('question-form');
   wireRichToolbarAll(qForm);
   qForm.addEventListener('submit', (e) => submitQuestion(e, q.id, ctx));
+  if (isListening) renderTtsTagPicker();
+};
+
+// ───── TTS Admin Workflow: tag picker, test audio, clear cache ─────
+
+// Tag bawaan ElevenLabs v3 + tag yang sering dipake JLPT-style.
+const TTS_BUILTIN_TAGS = [
+  'calm', 'questioning', 'thoughtful', 'excited', 'happy', 'sad',
+  'surprised', 'shy', 'hesitant', 'angry', 'whisper', 'laughs',
+  'sigh', 'gasp', 'pause',
+];
+function getTtsFavTags() {
+  try { return JSON.parse(localStorage.getItem('ez_admin_tts_fav_tags') || '[]'); }
+  catch { return []; }
+}
+function setTtsFavTags(tags) {
+  localStorage.setItem('ez_admin_tts_fav_tags', JSON.stringify(tags));
+}
+
+function renderTtsTagPicker() {
+  const chipsBox = document.getElementById('ttsTagChips');
+  if (!chipsBox) return;
+  const favs = getTtsFavTags();
+  const all = [...favs, ...TTS_BUILTIN_TAGS.filter((t) => !favs.includes(t))];
+  chipsBox.innerHTML = all.map((tag) => {
+    const isFav = favs.includes(tag);
+    return `<button type="button" class="tts-tag-chip ${isFav ? 'is-fav' : ''}"
+      onclick="insertTtsTag('${escapeHtml(tag)}')"
+      title="${isFav ? 'Favorit (klik kanan untuk hapus)' : 'Builtin'}"
+      oncontextmenu="event.preventDefault(); ${isFav ? `removeFavTtsTag('${escapeHtml(tag)}')` : 'void 0'}; return false;"
+      style="padding:3px 9px;background:${isFav ? '#fef3c7' : '#fff'};color:#1a1a1a;border:1px solid ${isFav ? '#fbbf24' : '#d1d5db'};border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono);">
+      ${isFav ? '🌟 ' : ''}[${escapeHtml(tag)}]
+    </button>`;
+  }).join('');
+}
+
+window.insertTtsTag = (tag) => {
+  const ta = document.getElementById('audioScriptField');
+  if (!ta) return;
+  const start = ta.selectionStart;
+  const end = ta.selectionEnd;
+  const text = ta.value;
+  const insert = `[${tag}] `;
+  ta.value = text.slice(0, start) + insert + text.slice(end);
+  // Geser cursor ke setelah insert.
+  const newPos = start + insert.length;
+  ta.focus();
+  ta.setSelectionRange(newPos, newPos);
+};
+
+window.addCustomTtsTag = () => {
+  const input = document.getElementById('ttsCustomTagInput');
+  if (!input) return;
+  const tag = input.value.trim().toLowerCase().replace(/[^a-z_]/g, '');
+  if (!tag) { notify('Tag tidak boleh kosong / cuma huruf+underscore', true); return; }
+  const favs = getTtsFavTags();
+  if (favs.includes(tag)) { notify('Tag udah ada di favorit'); return; }
+  favs.unshift(tag);
+  setTtsFavTags(favs.slice(0, 20)); // max 20 fav
+  input.value = '';
+  renderTtsTagPicker();
+  notify(`Tag [${tag}] ditambah ke favorit`);
+};
+
+window.removeFavTtsTag = (tag) => {
+  const favs = getTtsFavTags().filter((t) => t !== tag);
+  setTtsFavTags(favs);
+  renderTtsTagPicker();
+};
+
+window.testTtsAudio = async () => {
+  const ta = document.getElementById('audioScriptField');
+  const audio = document.getElementById('ttsTestAudio');
+  const status = document.getElementById('ttsTestStatus');
+  if (!ta || !audio || !status) return;
+  const text = ta.value.trim();
+  if (!text) { notify('Audio script kosong', true); return; }
+  status.textContent = 'Generating... (~5s kalau cache miss)';
+  audio.style.display = 'none';
+  try {
+    const r = await ezApi('/admin/tts/preview', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      status.textContent = `Error: ${err.detail || err.error || r.status}`;
+      return;
+    }
+    const blob = await r.blob();
+    audio.src = URL.createObjectURL(blob);
+    audio.style.display = 'block';
+    audio.play();
+    status.textContent = `OK (${(blob.size / 1024).toFixed(1)}KB)`;
+  } catch (err) {
+    status.textContent = `Network error: ${err.message}`;
+  }
+};
+
+window.clearTtsCacheCurrent = async () => {
+  const ta = document.getElementById('audioScriptField');
+  const status = document.getElementById('ttsTestStatus');
+  if (!ta || !status) return;
+  const text = ta.value.trim();
+  if (!text) { notify('Audio script kosong', true); return; }
+  if (!confirm('Hapus cache audio untuk script ini? Next test akan regenerate dari ElevenLabs (kena cost).')) return;
+  status.textContent = 'Hapus cache...';
+  try {
+    const r = await ezApi('/admin/tts/cache', {
+      method: 'DELETE',
+      body: JSON.stringify({ text }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (r.ok) {
+      status.textContent = `Cache dihapus: ${data.deleted || 0} entry`;
+      notify(`Cache dihapus (${data.deleted || 0} entry)`);
+    } else {
+      status.textContent = `Error: ${data.error || r.status}`;
+    }
+  } catch (err) {
+    status.textContent = `Network error: ${err.message}`;
+  }
 };
 
 window.backToManageQuiz = (key) => {
