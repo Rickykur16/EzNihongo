@@ -3372,7 +3372,10 @@ async function loadFlashcardData() {
 // lesson yang sama feels instant. Cache di-invalidate setelah
 // startQuizAttempt / finishQuiz (status pasti berubah).
 const _quizStatusCache = new Map();
-const QUIZ_STATUS_TTL = 60 * 1000;
+// 15s TTL — admin update lesson meta (cooldown_hours, passing_score_pct,
+// questions_per_attempt) di prod harus visible ke student dalam ~15s.
+// Trade-off vs 60s sebelumnya: lebih sering hit server tapi data fresh.
+const QUIZ_STATUS_TTL = 15 * 1000;
 
 function invalidateQuizStatus(lessonApiId) {
   if (lessonApiId) _quizStatusCache.delete(lessonApiId);
@@ -4227,6 +4230,9 @@ async function finishQuiz() {
         if (typeof data.passed === 'boolean') serverPassed = data.passed;
         if (data.nextAttemptAt) nextAttemptAt = data.nextAttemptAt;
         if (typeof data.cooldownHours === 'number') cooldownHours = data.cooldownHours;
+        if (typeof data.removedFromPool === 'number') {
+          quizState.removedFromPool = data.removedFromPool;
+        }
       }
     }
   } catch (err) {
@@ -4273,6 +4279,9 @@ async function finishQuiz() {
       </div>`;
     }).join('');
 
+  const removedNote = quizState.removedFromPool
+    ? `<p style="color:#92400e;font-size:13px;margin:8px 0;background:#fef3c7;padding:8px 12px;border-radius:6px;text-align:left;">⚠️ ${quizState.removedFromPool} soal dari attempt-mu di-update admin saat mengerjakan, jadi tidak dihitung. Total disesuaikan jadi ${total} soal.</p>`
+    : '';
   const cooldownLine = nextAttemptAt
     ? `<p style="color:#525252;font-size:13px;margin:14px 0 6px;">Bisa coba lagi pada <strong>${fmtNextAt(nextAttemptAt)}</strong> (${cooldownHours} jam dari sekarang).</p>`
     : '';
@@ -4288,6 +4297,7 @@ async function finishQuiz() {
         <div class="score-circle">${pct}%</div>
         <p style="color:#485f84;margin:0 0 12px;">Benar ${score} dari ${total} soal</p>
         ${catBlock ? `<div style="background:#f9fafb;border-radius:8px;padding:10px 16px;margin:12px 0;text-align:left;font-size:14px;">${catBlock}</div>` : ''}
+        ${removedNote}
         ${cooldownLine}
         <div class="quiz-results-btns">
           <button class="btn-primary" onclick="window.continueAfterQuiz()">${passed ? 'Lanjut ke materi →' : 'Kembali ke pelajaran'}</button>
@@ -6259,6 +6269,16 @@ function _sectionOfModule(moduleId) {
 }
 
 window.selectLesson = (moduleId, lessonId) => {
+  // Cleanup lesson-scoped state sebelum pindah — listening player + kanji
+  // detail overlay + kanji stroke timer + kanji modal stale state.
+  // Tanpa ini, audio terus jalan / modal stack / timer fight pas ganti
+  // lesson via sidebar.
+  try { destroyAllListeningPlayers(); } catch {}
+  try { window.closeKanjiDetail?.(); } catch {}
+  if (typeof _kanjiStrokeTimer !== 'undefined' && _kanjiStrokeTimer) {
+    clearTimeout(_kanjiStrokeTimer); _kanjiStrokeTimer = null;
+  }
+
   // Picking a lesson auto-opens its section + module; close sibling modules
   // in the same section (module-level mutex). Other sections stay closed.
   const sec = _sectionOfModule(moduleId);

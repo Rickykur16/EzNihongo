@@ -348,12 +348,22 @@ router.post('/progress/lesson/:lessonId/quiz-attempt', asyncHandler(async (req, 
       });
     }
   }
-  const total = sampledIds.length || questionIds.size;
+
+  // Soal yang dihapus admin saat attempt sedang berlangsung: count them
+  // sebagai "removed from pool" — bukan dihitung salah (unfair) dan bukan
+  // dihitung benar (cheat-enabling). Total = soal yg masih valid saat
+  // grading. Kalau SEMUA soal hilang, treat sebagai 0/0 — frontend kasih
+  // info "soal sudah berubah, coba lagi nanti".
+  const removedFromPool = sampledIds.filter((id) => !questionIds.has(id)).length;
+  const validSampledIds = sampledIds.filter((id) => questionIds.has(id));
+  const total = validSampledIds.length;
+
   const correctByQuestion = {};
-  for (const qid of sampledIds) correctByQuestion[qid] = false;
+  for (const qid of validSampledIds) correctByQuestion[qid] = false;
 
   for (const a of rawAnswers) {
     if (!sampledSet.has(a?.questionId)) continue;
+    if (!questionIds.has(a?.questionId)) continue;
     const opt = optionLookup.get(a?.optionId);
     if (!opt) continue;
     if (opt.questionId !== a.questionId) continue;
@@ -382,6 +392,7 @@ router.post('/progress/lesson/:lessonId/quiz-attempt', asyncHandler(async (req, 
     score, total, correctByQuestion,
     passingScorePct, passed,
     cooldownHours, nextAttemptAt,
+    ...(removedFromPool > 0 ? { removedFromPool } : {}),
   });
 }));
 

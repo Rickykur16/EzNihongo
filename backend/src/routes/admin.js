@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import fs from 'fs';
 import path from 'path';
+import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
 import { requireAuth, requireAdmin, asyncHandler } from '../middleware.js';
 import {
@@ -17,6 +18,31 @@ const router = Router();
 
 // Every route in this file requires admin
 router.use(requireAuth, requireAdmin);
+
+// Notion import endpoints hit external API + heavy DB writes; cap at
+// 5/min per admin IP supaya spam ga habisin Notion quota (3 req/s
+// upstream limit). Aplikasi ke import-notion-deck, import-notion-pelajaran,
+// import-notion-kanji-bab.
+const notionImportLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'too_many_imports', detail: 'Tunggu 1 menit sebelum import lagi.' },
+});
+
+// Generic Notion error response — internal error message di-log ke
+// server, tapi response ke client cuma generic. Sebelumnya
+// `err.message` bocorin "Unauthorized" / "Invalid database" / request
+// ID yang nge-disclose state integration ke client (info leak).
+function notionErrorResponse(res, err, fallback = 'Sumber Notion tidak bisa diakses.') {
+  console.error('[notion-import]', err?.notionStatus || '', err?.message || err);
+  return res.status(502).json({
+    error: 'notion_error',
+    status: err?.notionStatus || 0,
+    detail: fallback,
+  });
+}
 
 // Mirror of the config in routes/uploads.js. Kept here so DELETE handlers
 // can map a stored photo_url back to a filesystem path and unlink the file.
@@ -497,7 +523,7 @@ router.get('/notion-bab', asyncHandler(async (req, res) => {
     || NOTION_BAB_DB_ID_DEFAULT;
   let pages;
   try { pages = await notionQueryAll(dbId, token); }
-  catch (err) { return res.status(502).json({ error: 'notion_error', status: err.notionStatus || 0, detail: err.message }); }
+  catch (err) { return notionErrorResponse(res, err, 'Gagal load daftar Bab dari Notion.'); }
   const bab = pages.map((p) => {
     const props = p.properties || {};
     return {
@@ -518,7 +544,7 @@ router.get('/notion-bab', asyncHandler(async (req, res) => {
 
 // Pulls one chapter's vocab into a deck-lesson: upsert the words into the
 // module's bank, then append them to lesson_deck_items. body: { babPageId }.
-router.post('/lessons/:lessonId/import-notion-deck', asyncHandler(async (req, res) => {
+router.post('/lessons/:lessonId/import-notion-deck', notionImportLimiter, asyncHandler(async (req, res) => {
   const token = process.env.NOTION_TOKEN || '';
   if (!token) return res.status(503).json({ error: 'notion_not_configured', detail: 'Set NOTION_TOKEN di backend/.env' });
   const { babPageId } = req.body || {};
@@ -537,7 +563,7 @@ router.post('/lessons/:lessonId/import-notion-deck', asyncHandler(async (req, re
       filter: { property: NOTION_VOCAB_LESSON_RELATION, relation: { contains: babPageId } },
     });
   } catch (err) {
-    return res.status(502).json({ error: 'notion_error', status: err.notionStatus || 0, detail: err.message });
+    return notionErrorResponse(res, err, 'Gagal import vocab dari Notion.');
   }
   const { imported, updated, total, vocabIds } = await upsertNotionVocab(moduleId, pages);
 
@@ -689,7 +715,7 @@ router.get('/notion-bab/:babPageId/pelajaran', asyncHandler(async (req, res) => 
   const babPageId = req.params.babPageId;
   let blocks;
   try { blocks = await notionGetBlockChildren(babPageId, token); }
-  catch (err) { return res.status(502).json({ error: 'notion_error', status: err.notionStatus || 0, detail: err.message }); }
+  catch (err) { return notionErrorResponse(res, err, 'Gagal load Pelajaran dari Bab Notion.'); }
   const pelajaran = [];
   for (const b of blocks) {
     if (b.type === 'child_page') {
@@ -703,7 +729,7 @@ router.get('/notion-bab/:babPageId/pelajaran', asyncHandler(async (req, res) => 
 // Create EzNihongo lessons under a module, one per Notion child-page id given.
 // Body content rendered from the Notion page's blocks.
 // body: { babPageId, pelajaranIds: [string], startSortOrder?: number }
-router.post('/modules/:moduleId/import-notion-pelajaran', asyncHandler(async (req, res) => {
+router.post('/modules/:moduleId/import-notion-pelajaran', notionImportLimiter, asyncHandler(async (req, res) => {
   const token = process.env.NOTION_TOKEN || '';
   if (!token) return res.status(503).json({ error: 'notion_not_configured', detail: 'Set NOTION_TOKEN di backend/.env' });
   const moduleId = req.params.moduleId;
@@ -1046,6 +1072,29 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
     if (slugErr) return res.status(400).json({ error: slugErr });
   }
   const hasQPA = Object.prototype.hasOwnProperty.call(req.body || {}, 'questionsPerAttempt');
+
+  // Lesson type-switch cleanup: kalau type berubah dari yang punya konten
+  // (quiz/kanji/deck), hapus konten lama sebelum UPDATE. Tanpa ini,
+  // quiz_questions/kanji_items/lesson_deck_items orphan di DB + counter
+  // di list pelajaran salah. FK ON DELETE CASCADE handle quiz_options +
+  // quiz_attempts otomatis. ON DELETE CASCADE buat kanji_items udah ada
+  // (migration 015), buat lesson_deck_items juga.
+  if (type) {
+    const cur = await query(`SELECT type FROM lessons WHERE id = $1 LIMIT 1`, [req.params.id]);
+    if (cur.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+    const oldType = cur.rows[0].type;
+    if (oldType !== type) {
+      if (oldType === 'quiz') {
+        await query(`DELETE FROM quiz_questions WHERE lesson_id = $1`, [req.params.id]);
+        await query(`DELETE FROM quiz_attempts WHERE lesson_id = $1`, [req.params.id]);
+      } else if (oldType === 'kanji') {
+        await query(`DELETE FROM kanji_items WHERE lesson_id = $1`, [req.params.id]);
+      } else if (oldType === 'deck') {
+        await query(`DELETE FROM lesson_deck_items WHERE lesson_id = $1`, [req.params.id]);
+      }
+    }
+  }
+
   const result = await query(
     `UPDATE lessons SET
        slug = COALESCE($2, slug),
@@ -1561,7 +1610,7 @@ router.delete('/kanji/:id', asyncHandler(async (req, res) => {
 // - Kalau total=0 (ga ada character yg match property), return diagnostic
 //   berisi property names yg ada di sample page biar admin bisa sesuain
 //   nama propertinya di Notion.
-router.post('/lessons/:lessonId/import-notion-kanji-bab', asyncHandler(async (req, res) => {
+router.post('/lessons/:lessonId/import-notion-kanji-bab', notionImportLimiter, asyncHandler(async (req, res) => {
   const token = process.env.NOTION_TOKEN || '';
   if (!token) return res.status(503).json({ error: 'notion_not_configured', detail: 'Set NOTION_TOKEN di backend/.env' });
   const { babPageId, jlptLevel } = req.body || {};
@@ -1628,11 +1677,7 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', asyncHandler(async (re
       pages = await notionQueryAll(dbId, token);
       usedFallbackUnfiltered = true;
     } catch (err) {
-      return res.status(502).json({
-        error: 'notion_error',
-        status: err.notionStatus || 0,
-        detail: err.message || 'Cek apakah integration udah di-share ke DB Kanji-mu',
-      });
+      return notionErrorResponse(res, err, 'Cek integration share ke DB Kanji di Notion.');
     }
   }
 
