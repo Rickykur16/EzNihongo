@@ -38,7 +38,7 @@ const ttsLimiter = rateLimit({
 // manual DELETE). Format:
 // `elevenlabs|<voiceA>:<voiceB>:...|<model>|v2|<text>`
 // (versi naik kalau voice_settings preset berubah signifikan)
-const SETTINGS_VERSION = 'v2'; // per-role narrator/dialog
+const SETTINGS_VERSION = 'v3'; // per-role + speed 0.92 + narrator style 0.25
 function hashKey(text, voices) {
   const sortedVoices = voices.slice().sort().join(':');
   return crypto.createHash('sha256')
@@ -93,15 +93,15 @@ function voiceForSpeaker(speaker, orderIndex) {
     : { voiceId: ELEVEN_VOICE_MALE, role: 'male' };
 }
 
-// Per-role voice_settings — narrator formal-steady, dialog speaker
-// conversational-expressive. Style > 0 baru aktif di model yg support
-// (eleven_v3 / multilingual_v2 +). use_speaker_boost = lebih konsisten
-// dengan source voice.
+// Per-role voice_settings — narrator formal-steady tapi cukup berwarna,
+// dialog speaker conversational-expressive. Speed < 1.0 = lebih lambat
+// (JLPT real test biasa pace 0.9-0.95). Settings ini bisa di-tune per
+// taste — bump SETTINGS_VERSION kalau mau invalidate cache full.
 const VOICE_SETTINGS = {
-  narrator: { stability: 0.65, similarity_boost: 0.85, style: 0.0, use_speaker_boost: true },
-  female:   { stability: 0.35, similarity_boost: 0.75, style: 0.4, use_speaker_boost: true },
-  male:     { stability: 0.35, similarity_boost: 0.75, style: 0.4, use_speaker_boost: true },
-  single:   { stability: 0.4,  similarity_boost: 0.8,  style: 0.0, use_speaker_boost: true }, // legacy vocab/sentence
+  narrator: { stability: 0.5,  similarity_boost: 0.85, style: 0.25, use_speaker_boost: true, speed: 0.92 },
+  female:   { stability: 0.35, similarity_boost: 0.75, style: 0.4,  use_speaker_boost: true, speed: 0.92 },
+  male:     { stability: 0.35, similarity_boost: 0.75, style: 0.4,  use_speaker_boost: true, speed: 0.92 },
+  single:   { stability: 0.4,  similarity_boost: 0.8,  style: 0.0,  use_speaker_boost: true, speed: 1.0 }, // legacy vocab/sentence
 };
 
 async function fetchElevenAudio(voiceId, text, role = 'single', retry = 0) {
