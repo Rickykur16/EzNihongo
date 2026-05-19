@@ -376,6 +376,15 @@ CREATE TABLE IF NOT EXISTS tts_cache (
   last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Admin TTS tag library — shortcut tag yang admin save untuk reuse
+-- antar device. Insert ke audio_script sebagai [tagname]. Tag yg ga
+-- match official ElevenLabs list akan di-ignore model, tapi tetap
+-- berguna sebagai shortcut entry.
+CREATE TABLE IF NOT EXISTS tts_tag_library (
+  tag TEXT PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ===== KANJI ITEMS (Daftar Kanji di main site) =====
 -- Terpisah dari PWA app/kanji.html (yang punya KD[] hardcoded + tabel
 -- kanji_users/kanji_progress di realm sendiri). Tabel ini source of truth

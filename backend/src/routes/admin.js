@@ -1870,4 +1870,33 @@ router.delete('/tts/cache/all', asyncHandler(async (req, res) => {
   res.json({ ok: true, deleted: r.rowCount });
 }));
 
+// ===== TTS TAG LIBRARY (shared antar admin device) =====
+// Tag custom yang admin save buat dipake ulang via picker chip. Source
+// of truth di DB (tts_tag_library), localStorage cuma cache + offline.
+
+router.get('/tts/tags', asyncHandler(async (req, res) => {
+  const r = await query(`SELECT tag FROM tts_tag_library ORDER BY created_at DESC`);
+  res.json({ tags: r.rows.map((x) => x.tag) });
+}));
+
+router.post('/tts/tags', asyncHandler(async (req, res) => {
+  const raw = String((req.body || {}).tag || '').trim().toLowerCase();
+  // Normalize: huruf + angka + underscore, dimulai dengan huruf, max 24 char.
+  const tag = raw.replace(/[^a-z0-9_]/g, '');
+  if (!tag || !/^[a-z]/.test(tag) || tag.length > 24) {
+    return res.status(400).json({ error: 'invalid_tag', detail: 'Tag harus mulai dgn huruf, hanya huruf/angka/underscore, max 24 char.' });
+  }
+  await query(
+    `INSERT INTO tts_tag_library (tag) VALUES ($1) ON CONFLICT (tag) DO NOTHING`,
+    [tag]
+  );
+  res.status(201).json({ ok: true, tag });
+}));
+
+router.delete('/tts/tags/:tag', asyncHandler(async (req, res) => {
+  const tag = String(req.params.tag || '').toLowerCase();
+  await query(`DELETE FROM tts_tag_library WHERE tag = $1`, [tag]);
+  res.json({ ok: true });
+}));
+
 export default router;

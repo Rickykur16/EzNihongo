@@ -1895,8 +1895,8 @@ window.openQuestionForm = (key) => {
               <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
                 <input id="ttsCustomTagInput" type="text" placeholder="tag baru (e.g. annoyed, dreamy)"
                   style="font-size:12px;padding:5px 8px;flex:1;min-width:140px;max-width:220px;" />
-                <button type="button" class="btn btn-ghost btn-sm" onclick="addCustomTtsTag()">+ Simpan favorit</button>
-                <span style="font-size:10px;color:var(--ink-500);">tersimpan per-browser</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="addCustomTtsTag()">+ Simpan ke library</button>
+                <span style="font-size:10px;color:var(--ink-500);">shared antar admin (DB)</span>
               </div>
             </div>
             <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -1943,27 +1943,39 @@ const TTS_BUILTIN_TAGS = [
   'surprised', 'shy', 'hesitant', 'angry', 'whisper', 'laughs',
   'sigh', 'gasp', 'pause',
 ];
-function getTtsFavTags() {
-  try { return JSON.parse(localStorage.getItem('ez_admin_tts_fav_tags') || '[]'); }
-  catch { return []; }
-}
-function setTtsFavTags(tags) {
-  localStorage.setItem('ez_admin_tts_fav_tags', JSON.stringify(tags));
+// Server-side tag library (shared antar admin browser). Di-cache in-memory
+// supaya re-render picker ga refetch tiap kali. Initial fetch on first
+// render; subsequent mutations update cache + re-render.
+let ttsServerTags = null; // null = belum fetch, [] = fetched empty.
+
+async function fetchTtsServerTags() {
+  try {
+    const r = await ezApi('/admin/tts/tags');
+    if (!r.ok) return [];
+    const data = await r.json().catch(() => ({ tags: [] }));
+    return Array.isArray(data.tags) ? data.tags : [];
+  } catch { return []; }
 }
 
-function renderTtsTagPicker() {
+async function renderTtsTagPicker() {
   const chipsBox = document.getElementById('ttsTagChips');
   if (!chipsBox) return;
-  const favs = getTtsFavTags();
-  const all = [...favs, ...TTS_BUILTIN_TAGS.filter((t) => !favs.includes(t))];
+  if (ttsServerTags === null) {
+    chipsBox.innerHTML = '<span style="font-size:11px;color:var(--ink-500);">Loading tag library...</span>';
+    ttsServerTags = await fetchTtsServerTags();
+    // Picker mungkin udah unmount kalau modal di-close pas fetch jalan.
+    if (!document.getElementById('ttsTagChips')) return;
+  }
+  const server = ttsServerTags;
+  const all = [...server, ...TTS_BUILTIN_TAGS.filter((t) => !server.includes(t))];
   chipsBox.innerHTML = all.map((tag) => {
-    const isFav = favs.includes(tag);
-    return `<button type="button" class="tts-tag-chip ${isFav ? 'is-fav' : ''}"
+    const isCustom = server.includes(tag);
+    return `<button type="button" class="tts-tag-chip ${isCustom ? 'is-fav' : ''}"
       onclick="insertTtsTag('${escapeHtml(tag)}')"
-      title="${isFav ? 'Favorit (klik kanan untuk hapus)' : 'Builtin'}"
-      oncontextmenu="event.preventDefault(); ${isFav ? `removeFavTtsTag('${escapeHtml(tag)}')` : 'void 0'}; return false;"
-      style="padding:3px 9px;background:${isFav ? '#fef3c7' : '#fff'};color:#1a1a1a;border:1px solid ${isFav ? '#fbbf24' : '#d1d5db'};border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono);">
-      ${isFav ? '🌟 ' : ''}[${escapeHtml(tag)}]
+      title="${isCustom ? 'Custom (klik kanan untuk hapus dari library)' : 'Builtin ElevenLabs'}"
+      oncontextmenu="event.preventDefault(); ${isCustom ? `removeFavTtsTag('${escapeHtml(tag)}')` : 'void 0'}; return false;"
+      style="padding:3px 9px;background:${isCustom ? '#fef3c7' : '#fff'};color:#1a1a1a;border:1px solid ${isCustom ? '#fbbf24' : '#d1d5db'};border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono);">
+      ${isCustom ? '⭐ ' : ''}[${escapeHtml(tag)}]
     </button>`;
   }).join('');
 }
@@ -1982,24 +1994,50 @@ window.insertTtsTag = (tag) => {
   ta.setSelectionRange(newPos, newPos);
 };
 
-window.addCustomTtsTag = () => {
+window.addCustomTtsTag = async () => {
   const input = document.getElementById('ttsCustomTagInput');
   if (!input) return;
-  const tag = input.value.trim().toLowerCase().replace(/[^a-z_]/g, '');
-  if (!tag) { notify('Tag tidak boleh kosong / cuma huruf+underscore', true); return; }
-  const favs = getTtsFavTags();
-  if (favs.includes(tag)) { notify('Tag udah ada di favorit'); return; }
-  favs.unshift(tag);
-  setTtsFavTags(favs.slice(0, 20)); // max 20 fav
-  input.value = '';
-  renderTtsTagPicker();
-  notify(`Tag [${tag}] ditambah ke favorit`);
+  const raw = input.value.trim().toLowerCase();
+  const tag = raw.replace(/[^a-z0-9_]/g, '');
+  if (!tag || !/^[a-z]/.test(tag) || tag.length > 24) {
+    notify('Tag harus mulai dgn huruf, hanya huruf/angka/underscore, max 24 char.', true);
+    return;
+  }
+  try {
+    const r = await ezApi('/admin/tts/tags', {
+      method: 'POST',
+      body: JSON.stringify({ tag }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      notify(`Gagal: ${data.detail || data.error || r.status}`, true);
+      return;
+    }
+    // Server-side accepted. Pasang di cache + re-render.
+    if (!ttsServerTags) ttsServerTags = [];
+    if (!ttsServerTags.includes(tag)) ttsServerTags = [tag, ...ttsServerTags];
+    input.value = '';
+    renderTtsTagPicker();
+    notify(`Tag [${tag}] disimpan ke library`);
+  } catch (err) {
+    notify(`Network error: ${err.message}`, true);
+  }
 };
 
-window.removeFavTtsTag = (tag) => {
-  const favs = getTtsFavTags().filter((t) => t !== tag);
-  setTtsFavTags(favs);
-  renderTtsTagPicker();
+window.removeFavTtsTag = async (tag) => {
+  if (!confirm(`Hapus tag [${tag}] dari library? (Admin lain juga akan kehilangan tag ini)`)) return;
+  try {
+    const r = await ezApi(`/admin/tts/tags/${encodeURIComponent(tag)}`, { method: 'DELETE' });
+    if (!r.ok) {
+      const data = await r.json().catch(() => ({}));
+      notify(`Gagal: ${data.detail || data.error || r.status}`, true);
+      return;
+    }
+    if (ttsServerTags) ttsServerTags = ttsServerTags.filter((t) => t !== tag);
+    renderTtsTagPicker();
+  } catch (err) {
+    notify(`Network error: ${err.message}`, true);
+  }
 };
 
 window.testTtsAudio = async () => {
