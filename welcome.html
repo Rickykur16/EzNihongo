@@ -2779,6 +2779,19 @@
     text-decoration-thickness: 1px;
   }
   /* Listening JLPT-style: hidden transcript revealed post-answer */
+  .quiz-q-listen-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin: 6px 0 14px;
+    padding: 8px 14px;
+    background: #1a1a1a; color: #fff;
+    border: none; border-radius: 999px;
+    font: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, transform .12s;
+  }
+  .quiz-q-listen-btn:hover { background: var(--brand-red); }
+  .quiz-q-listen-btn:active { transform: scale(0.97); }
+  .quiz-q-listen-btn.playing { background: var(--brand-red); animation: pulse 0.9s infinite; }
   .quiz-listen-transcript {
     margin-top: 14px;
     font-size: 13px;
@@ -4030,6 +4043,16 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
     ? `<span class="quiz-paper-jp">${sanitizeHtml(q.jp)}</span>`
     : '';
 
+  // Per-question listening button — pelengkap centralized player. Beberapa
+  // student prefer tombol per-soal supaya bisa play dialog spesifik tanpa
+  // navigate tracklist. Render kalau soal listening punya audioScript.
+  const perQuestionAudio = hasAudioScript ? `
+    <button type="button" class="quiz-q-listen-btn"
+      onclick="window.playQuizQuestionDialog(${qi}, this)"
+      aria-label="Putar dialog soal ${sectionNumber}.${questionNumber}">
+      🎧 Dengar dialog soal ini
+    </button>` : '';
+
   // q.q / q.explain dari admin rich-text editor (boleh <b>/<i>/<u> tapi
   // ga boleh <script>). q.options dari plain-text input → escape full.
   return `
@@ -4039,6 +4062,7 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
         <span>${sanitizeHtml(q.q)}</span>
         ${inlineJp}
       </h2>
+      ${perQuestionAudio}
       <div class="quiz-options" id="quiz-options-${qi}">
         ${q.options.map((opt, i) => `
           <button class="quiz-option ${answered ? 'disabled' : ''} ${answered && i === q.correct ? 'correct' : ''} ${answered && i === selected && i !== q.correct ? 'wrong' : ''}"
@@ -5830,6 +5854,16 @@ function playTTS(text, btn) {
   } catch (e) { fallback(); }
 }
 window.playTTS = playTTS;
+
+// Putar dialog satu soal listening (per-question). Pelengkap centralized
+// player di top section — kasih student fleksibilitas play dialog
+// spesifik tanpa nge-navigate tracklist player.
+window.playQuizQuestionDialog = (qi, btn) => {
+  const q = quizState?.questions?.[qi];
+  const script = q?.audioScript ? String(q.audioScript).trim() : '';
+  if (!script) return;
+  playTTS(script, btn);
+};
 window.playDeckAudio = (idx, btn) => {
   const it = (window.__deckData || [])[idx];
   if (!it) return;
