@@ -1860,12 +1860,14 @@ window.openQuestionForm = (key) => {
         <div class="field"><label>Pertanyaan</label><textarea name="question" class="rich-text" rows="3" required>${escapeHtml(q.question)}</textarea></div>
         ${isListening ? `
           <div class="field">
-            <label>🎧 Audio dialog (listening)</label>
+            <label>🎧 Audio dialog (listening) — JLPT 2-speaker format</label>
             <textarea name="audioScript" rows="6" lang="ja"
-              placeholder="Tulis percakapannya, 1 baris per turn.&#10;&#10;Contoh:&#10;A: お国は どちらですか。&#10;B: インドネシアです。&#10;A: 大きな町ですか。&#10;B: いいえ、小さい町です。"
+              placeholder="Format JLPT: 1 baris per turn, pakai prefix speaker.&#10;&#10;Contoh:&#10;A: お国は どちらですか。&#10;B: インドネシアです。&#10;A: 大きな町ですか。&#10;B: いいえ、小さい町です。"
               style="font-family:'Noto Sans JP',sans-serif;width:100%;font-size:14px;line-height:1.6;">${escapeHtml(q.audio_script || '')}</textarea>
-            <div style="font-size:11px;color:var(--ink-500);margin-top:4px;">
-              Tanpa field ini, student tidak akan lihat tombol audio di soal listening. Wajib diisi.
+            <div style="font-size:11px;color:var(--ink-500);margin-top:6px;line-height:1.55;">
+              <strong>Format:</strong> Tiap baris pakai prefix speaker + colon, contoh <code>A: ...</code> / <code>B: ...</code> atau <code>女: ...</code> / <code>男: ...</code>.<br>
+              Backend auto-detect dialog → speaker A (cewe) pakai voice <code>ELEVENLABS_VOICE_FEMALE</code>, B (cowo) pakai <code>ELEVENLABS_VOICE_MALE</code>. Audio di-concat jadi 1 MP3.<br>
+              Kalau env voice cewe/cowo belum di-set, semua speaker pakai voice tunggal (<code>ELEVENLABS_VOICE_ID</code>).
             </div>
             ${q.id && !q.audio_script ? '<div style="font-size:12px;color:#b91c1c;font-weight:600;margin-top:6px;background:#fee2e2;padding:6px 10px;border-radius:6px;">⚠️ Field kosong — soal listening ini belum ada audio buat di-play di dashboard student.</div>' : ''}
           </div>
