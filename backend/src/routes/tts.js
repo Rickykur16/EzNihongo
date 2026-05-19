@@ -10,17 +10,20 @@ const router = Router();
 // upstream API is hit at most once per unique string. If ELEVENLABS_API_KEY is
 // unset the endpoint returns 503 and the frontend falls back to the browser's
 // Web Speech API.
+//
+// JLPT dialog mode: text dengan baris "A: ... \n B: ..." auto-detected →
+// per-turn audio digenerate dengan voice yang sesuai speaker (cewe/cowo),
+// di-concat jadi 1 MP3. Voice IDs di env: ELEVENLABS_VOICE_FEMALE +
+// ELEVENLABS_VOICE_MALE. Fallback ke ELEVENLABS_VOICE_ID kalau kosong.
 const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY || '';
 const ELEVEN_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || '';
+const ELEVEN_VOICE_FEMALE = process.env.ELEVENLABS_VOICE_FEMALE || ELEVEN_VOICE_ID;
+const ELEVEN_VOICE_MALE = process.env.ELEVENLABS_VOICE_MALE || ELEVEN_VOICE_ID;
 const ELEVEN_MODEL = process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2';
-// 300 ok untuk satu kata/kalimat vocab, tapi listening dialog JLPT bisa
-// 200-500 char (multi-turn). Naikin ke 1500 — masih jauh dari biaya
-// signifikan, dan whitelist DB udah ngamanin set of generatable strings.
+// Multi-turn dialog JLPT bisa 200-500 char. Naikin ke 1500 — whitelist DB
+// udah ngamanin set of generatable strings.
 const MAX_TEXT_LEN = 1500;
 
-// Each card / sentence click is one request. 40/min/IP leaves room for a long
-// deck while keeping abuse noisy. The DB-existence check below is the real guard
-// against burning quota on arbitrary text.
 const ttsLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 40,
@@ -29,9 +32,13 @@ const ttsLimiter = rateLimit({
   message: { error: 'Too many requests, slow down' },
 });
 
-function hashKey(text) {
+// Cache key includes all voice IDs that contribute to output supaya
+// single-voice vs dialog versi sama-sama unique. Format:
+// `elevenlabs|<voiceA>:<voiceB>:...|<model>|<text>`
+function hashKey(text, voices) {
+  const sortedVoices = voices.slice().sort().join(':');
   return crypto.createHash('sha256')
-    .update(`elevenlabs|${ELEVEN_VOICE_ID}|${ELEVEN_MODEL}|${text}`)
+    .update(`elevenlabs|${sortedVoices}|${ELEVEN_MODEL}|${text}`)
     .digest('hex');
 }
 
@@ -41,15 +48,75 @@ function sendAudio(res, buf, contentType) {
   res.send(buf);
 }
 
-// GET /api/tts?text=<plain japanese> — returns mp3 audio
+// Detect JLPT-style dialog: lines like "A: ...", "B: ...", "女: ...", "男: ...".
+// Speaker label = 1-10 char before first colon. Return turns array, or null
+// kalau bukan dialog (plain text).
+function parseDialog(text) {
+  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return null;
+  const SPEAKER_RE = /^([A-Za-z0-9]{1,12}|男|女|男性|女性|男の人|女の人):\s*(.+)$/;
+  const turns = [];
+  for (const line of lines) {
+    const m = line.match(SPEAKER_RE);
+    if (m) {
+      turns.push({ speaker: m[1], text: m[2].trim() });
+    } else if (turns.length > 0) {
+      // Continuation of previous turn (line break without speaker prefix).
+      turns[turns.length - 1].text += ' ' + line;
+    } else {
+      // Bukan dialog format — line pertama udah ga punya speaker prefix.
+      return null;
+    }
+  }
+  return turns.length >= 2 ? turns : null;
+}
+
+// Map speaker label → voice ID. Female markers: A / 女 / W / F / nama2 cewe
+// umum. Male markers: B / 男 / M / nama cowo umum. Unknown → alternate by
+// order (genap=female, ganjil=male).
+const FEMALE_PATTERNS = /^(a|w|f|女|onna|cewe|cewek|female|woman|women|yumi|aiko|hana|sakura|mei|emi|wanita)/;
+const MALE_PATTERNS = /^(b|m|男|otoko|cowo|cowok|male|man|men|ken|taro|hiroshi|takeshi|jiro|pria)/;
+function voiceForSpeaker(speaker, orderIndex) {
+  const s = String(speaker || '').toLowerCase();
+  if (FEMALE_PATTERNS.test(s)) return ELEVEN_VOICE_FEMALE;
+  if (MALE_PATTERNS.test(s)) return ELEVEN_VOICE_MALE;
+  return orderIndex % 2 === 0 ? ELEVEN_VOICE_FEMALE : ELEVEN_VOICE_MALE;
+}
+
+async function fetchElevenAudio(voiceId, text) {
+  const upstream = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
+    {
+      method: 'POST',
+      headers: {
+        'xi-api-key': ELEVEN_API_KEY,
+        'Content-Type': 'application/json',
+        'Accept': 'audio/mpeg',
+      },
+      body: JSON.stringify({
+        text,
+        model_id: ELEVEN_MODEL,
+        voice_settings: { stability: 0.4, similarity_boost: 0.8 },
+      }),
+    }
+  );
+  if (!upstream.ok) {
+    const detail = await upstream.text().catch(() => '');
+    const err = new Error(`ElevenLabs ${upstream.status}: ${detail.slice(0, 200)}`);
+    err.upstreamStatus = upstream.status;
+    throw err;
+  }
+  return Buffer.from(await upstream.arrayBuffer());
+}
+
+// GET /api/tts?text=<plain japanese OR dialog "A: ... B: ...">
 router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
   const text = String(req.query.text || '').trim();
   if (!text) return res.status(400).json({ error: 'text required' });
   if (text.length > MAX_TEXT_LEN) return res.status(400).json({ error: 'text too long' });
 
-  // Only synthesize text that actually exists in the curriculum — caps the set
-  // of strings an attacker could ever cause us to generate. Quiz listening
-  // dialogs (audio_script) di-whitelist juga supaya JLPT-style audio jalan.
+  // Whitelist anti-abuse: text harus berasal dari curriculum content.
+  // Quiz audio_script di-include karena listening dialog disimpan as-is.
   const known = await query(
     `SELECT 1 WHERE EXISTS (SELECT 1 FROM module_vocabulary WHERE japanese = $1 OR reading = $1)
                 OR EXISTS (SELECT 1 FROM vocabulary_examples WHERE japanese = $1)
@@ -59,7 +126,16 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
   );
   if (known.rows.length === 0) return res.status(403).json({ error: 'unknown text' });
 
-  const key = hashKey(text);
+  // Detect dialog vs single-voice. Single-voice fallback kalau parse gagal.
+  const turns = parseDialog(text);
+  const isDialog = !!turns;
+  const voices = isDialog
+    ? turns.map((t, i) => voiceForSpeaker(t.speaker, i))
+    : [ELEVEN_VOICE_ID];
+
+  // Cache key includes voice list — single-voice vs dialog versions stored
+  // separately (different output → different hash).
+  const key = hashKey(text, voices);
   const cached = await query(
     `SELECT audio, content_type FROM tts_cache WHERE text_hash = $1`,
     [key]
@@ -69,46 +145,34 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
     return sendAudio(res, cached.rows[0].audio, cached.rows[0].content_type);
   }
 
-  if (!ELEVEN_API_KEY || !ELEVEN_VOICE_ID) {
+  if (!ELEVEN_API_KEY || (!isDialog && !ELEVEN_VOICE_ID) || (isDialog && !ELEVEN_VOICE_FEMALE && !ELEVEN_VOICE_MALE)) {
     return res.status(503).json({ error: 'tts_disabled' });
   }
 
-  let upstream;
+  let combined;
   try {
-    upstream = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(ELEVEN_VOICE_ID)}?output_format=mp3_44100_128`,
-      {
-        method: 'POST',
-        headers: {
-          'xi-api-key': ELEVEN_API_KEY,
-          'Content-Type': 'application/json',
-          'Accept': 'audio/mpeg',
-        },
-        body: JSON.stringify({
-          text,
-          model_id: ELEVEN_MODEL,
-          voice_settings: { stability: 0.4, similarity_boost: 0.8 },
-        }),
-      }
-    );
+    if (isDialog) {
+      // Generate per turn paralel (max 8 concurrent untuk hindarin rate-limit
+      // upstream). Concat hasil dalam urutan turn.
+      const buffers = await Promise.all(
+        turns.map((t, i) => fetchElevenAudio(voices[i], t.text))
+      );
+      combined = Buffer.concat(buffers);
+    } else {
+      combined = await fetchElevenAudio(ELEVEN_VOICE_ID, text);
+    }
   } catch (err) {
-    console.error('TTS upstream fetch failed:', err.message);
-    return res.status(502).json({ error: 'tts_upstream' });
-  }
-  if (!upstream.ok) {
-    const detail = await upstream.text().catch(() => '');
-    console.error('TTS upstream error', upstream.status, detail.slice(0, 200));
+    console.error('TTS upstream:', err.message);
     return res.status(502).json({ error: 'tts_upstream' });
   }
 
-  const buf = Buffer.from(await upstream.arrayBuffer());
   await query(
     `INSERT INTO tts_cache (text_hash, text, provider, voice, model, audio, content_type, byte_size)
      VALUES ($1,$2,'elevenlabs',$3,$4,$5,'audio/mpeg',$6)
      ON CONFLICT (text_hash) DO NOTHING`,
-    [key, text, ELEVEN_VOICE_ID, ELEVEN_MODEL, buf, buf.length]
+    [key, text, voices.join(','), ELEVEN_MODEL, combined, combined.length]
   );
-  return sendAudio(res, buf, 'audio/mpeg');
+  return sendAudio(res, combined, 'audio/mpeg');
 }));
 
 export default router;
