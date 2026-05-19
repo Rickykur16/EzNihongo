@@ -52,6 +52,7 @@ const hashKey = ttsHashKey;
 export {
   ELEVEN_VOICE_ID as TTS_ELEVEN_VOICE_ID,
   ELEVEN_MODEL as TTS_ELEVEN_MODEL,
+  SETTINGS_VERSION as TTS_SETTINGS_VERSION,
 };
 
 function sendAudio(res, buf, contentType) {
@@ -236,12 +237,19 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
   }
 
   await query(
-    `INSERT INTO tts_cache (text_hash, text, provider, voice, model, audio, content_type, byte_size)
-     VALUES ($1,$2,'elevenlabs',$3,$4,$5,'audio/mpeg',$6)
+    `INSERT INTO tts_cache (text_hash, text, provider, voice, model, audio, content_type, byte_size, settings_version)
+     VALUES ($1,$2,'elevenlabs',$3,$4,$5,'audio/mpeg',$6,$7)
      ON CONFLICT (text_hash) DO NOTHING`,
-    [key, text, voices.join(','), ELEVEN_MODEL, combined, combined.length]
+    [key, text, voices.join(','), ELEVEN_MODEL, combined, combined.length, SETTINGS_VERSION]
   );
   return sendAudio(res, combined, 'audio/mpeg');
 }));
+
+// GET /api/tts/version — public, untuk frontend append `?v=` ke URL TTS
+// supaya browser HTTP cache invalidate kalau settings_version berubah.
+router.get('/tts/version', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=300'); // small TTL biar bump nyebar dalam ~5 menit.
+  res.json({ version: SETTINGS_VERSION });
+});
 
 export default router;
