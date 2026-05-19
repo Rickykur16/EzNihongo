@@ -1390,9 +1390,14 @@ async function submitLesson(e, id, moduleId) {
   };
   if (type === 'quiz') {
     const qpaRaw = (fd.get('questionsPerAttempt') || '').toString().trim();
-    body.passingScorePct = Number(fd.get('passingScorePct')) || 70;
+    // Pakai Number().valueOf() bukan `Number() || N` karena 0 itu valid value
+    // tapi falsy → `Number(0) || 12` salah-jadi-12. cooldown_hours=0 berarti
+    // "tanpa cooldown" yang user-controlled.
+    const passingRaw = fd.get('passingScorePct');
+    const cooldownRaw = fd.get('cooldownHours');
+    body.passingScorePct = passingRaw === '' || passingRaw == null ? 70 : Number(passingRaw);
     body.questionsPerAttempt = qpaRaw === '' ? null : Number(qpaRaw);
-    body.cooldownHours = Number(fd.get('cooldownHours')) || 12;
+    body.cooldownHours = cooldownRaw === '' || cooldownRaw == null ? 12 : Number(cooldownRaw);
   }
   try {
     if (id) await api('/admin/lessons/' + id, { method: 'PUT', body: JSON.stringify(body) });
