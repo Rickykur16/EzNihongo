@@ -33,13 +33,16 @@ const ttsLimiter = rateLimit({
   message: { error: 'Too many requests, slow down' },
 });
 
-// Cache key includes all voice IDs that contribute to output supaya
-// single-voice vs dialog versi sama-sama unique. Format:
-// `elevenlabs|<voiceA>:<voiceB>:...|<model>|<text>`
+// Cache key includes all voice IDs + model + voice_settings VERSION supaya
+// kalau model atau settings ganti, cache otomatis invalidate (gak perlu
+// manual DELETE). Format:
+// `elevenlabs|<voiceA>:<voiceB>:...|<model>|v2|<text>`
+// (versi naik kalau voice_settings preset berubah signifikan)
+const SETTINGS_VERSION = 'v2'; // per-role narrator/dialog
 function hashKey(text, voices) {
   const sortedVoices = voices.slice().sort().join(':');
   return crypto.createHash('sha256')
-    .update(`elevenlabs|${sortedVoices}|${ELEVEN_MODEL}|${text}`)
+    .update(`elevenlabs|${sortedVoices}|${ELEVEN_MODEL}|${SETTINGS_VERSION}|${text}`)
     .digest('hex');
 }
 
@@ -72,24 +75,37 @@ function parseDialog(text) {
   return turns.length >= 2 ? turns : null;
 }
 
-// Map speaker label → voice ID. 3 roles: narrator/female/male.
-// - Narrator: N / Narrator / ナレーター / Nasi
-// - Female: A / W / F / 女 / nama2 cewe umum
-// - Male: B / M / 男 / nama cowo umum
-// Unknown → alternate by order (genap=female, ganjil=male) — narrator
-// excluded dari alternation karena beda role.
+// Map speaker label → { voiceId, role }. 3 roles: narrator/female/male.
+// - Narrator: N / Narrator / ナレーター / Nasi → formal calm
+// - Female: A / W / F / 女 / nama cewe umum → conversational expressive
+// - Male: B / M / 男 / nama cowo umum → conversational expressive
 const NARRATOR_PATTERNS = /^(n|narrator|nasi|ナレーター|nrs)$/;
 const FEMALE_PATTERNS = /^(a|w|f|女|onna|cewe|cewek|female|woman|women|yumi|aiko|hana|sakura|mei|emi|wanita)/;
 const MALE_PATTERNS = /^(b|m|男|otoko|cowo|cowok|male|man|men|ken|taro|hiroshi|takeshi|jiro|pria)/;
 function voiceForSpeaker(speaker, orderIndex) {
   const s = String(speaker || '').toLowerCase();
-  if (NARRATOR_PATTERNS.test(s)) return ELEVEN_VOICE_NARRATOR;
-  if (FEMALE_PATTERNS.test(s)) return ELEVEN_VOICE_FEMALE;
-  if (MALE_PATTERNS.test(s)) return ELEVEN_VOICE_MALE;
-  return orderIndex % 2 === 0 ? ELEVEN_VOICE_FEMALE : ELEVEN_VOICE_MALE;
+  if (NARRATOR_PATTERNS.test(s)) return { voiceId: ELEVEN_VOICE_NARRATOR, role: 'narrator' };
+  if (FEMALE_PATTERNS.test(s)) return { voiceId: ELEVEN_VOICE_FEMALE, role: 'female' };
+  if (MALE_PATTERNS.test(s)) return { voiceId: ELEVEN_VOICE_MALE, role: 'male' };
+  // Unknown → alternate by order (genap=female, ganjil=male)
+  return orderIndex % 2 === 0
+    ? { voiceId: ELEVEN_VOICE_FEMALE, role: 'female' }
+    : { voiceId: ELEVEN_VOICE_MALE, role: 'male' };
 }
 
-async function fetchElevenAudio(voiceId, text, retry = 0) {
+// Per-role voice_settings — narrator formal-steady, dialog speaker
+// conversational-expressive. Style > 0 baru aktif di model yg support
+// (eleven_v3 / multilingual_v2 +). use_speaker_boost = lebih konsisten
+// dengan source voice.
+const VOICE_SETTINGS = {
+  narrator: { stability: 0.65, similarity_boost: 0.85, style: 0.0, use_speaker_boost: true },
+  female:   { stability: 0.35, similarity_boost: 0.75, style: 0.4, use_speaker_boost: true },
+  male:     { stability: 0.35, similarity_boost: 0.75, style: 0.4, use_speaker_boost: true },
+  single:   { stability: 0.4,  similarity_boost: 0.8,  style: 0.0, use_speaker_boost: true }, // legacy vocab/sentence
+};
+
+async function fetchElevenAudio(voiceId, text, role = 'single', retry = 0) {
+  const settings = VOICE_SETTINGS[role] || VOICE_SETTINGS.single;
   const upstream = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
     {
@@ -102,7 +118,7 @@ async function fetchElevenAudio(voiceId, text, retry = 0) {
       body: JSON.stringify({
         text,
         model_id: ELEVEN_MODEL,
-        voice_settings: { stability: 0.4, similarity_boost: 0.8 },
+        voice_settings: settings,
       }),
     }
   );
@@ -112,7 +128,7 @@ async function fetchElevenAudio(voiceId, text, retry = 0) {
     // 500-503. Backoff: 500ms × (retry+1). Max 3 retries.
     if (retry < 3 && (upstream.status === 409 || upstream.status === 429 || upstream.status >= 500)) {
       await new Promise((r) => setTimeout(r, 500 * (retry + 1)));
-      return fetchElevenAudio(voiceId, text, retry + 1);
+      return fetchElevenAudio(voiceId, text, role, retry + 1);
     }
     const err = new Error(`ElevenLabs ${upstream.status}: ${detail.slice(0, 200)}`);
     err.upstreamStatus = upstream.status;
@@ -141,9 +157,10 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
   // Detect dialog vs single-voice. Single-voice fallback kalau parse gagal.
   const turns = parseDialog(text);
   const isDialog = !!turns;
-  const voices = isDialog
+  const turnVoices = isDialog
     ? turns.map((t, i) => voiceForSpeaker(t.speaker, i))
-    : [ELEVEN_VOICE_ID];
+    : [{ voiceId: ELEVEN_VOICE_ID, role: 'single' }];
+  const voices = turnVoices.map((v) => v.voiceId);
 
   // Cache key includes voice list — single-voice vs dialog versions stored
   // separately (different output → different hash).
@@ -175,11 +192,11 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
       // (cache miss); user berikutnya hit cache.
       const buffers = [];
       for (let i = 0; i < turns.length; i++) {
-        buffers.push(await fetchElevenAudio(voices[i], turns[i].text));
+        buffers.push(await fetchElevenAudio(turnVoices[i].voiceId, turns[i].text, turnVoices[i].role));
       }
       combined = Buffer.concat(buffers);
     } else {
-      combined = await fetchElevenAudio(ELEVEN_VOICE_ID, text);
+      combined = await fetchElevenAudio(ELEVEN_VOICE_ID, text, 'single');
     }
   } catch (err) {
     console.error('TTS upstream:', err.message);
