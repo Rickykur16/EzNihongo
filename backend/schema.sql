@@ -201,6 +201,7 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
   section_label TEXT NOT NULL DEFAULT 'Section 1',
   section_instruction TEXT,
   audio_script TEXT,
+  image_url TEXT,
   correct_answer TEXT,
   explanation TEXT,
   sort_order INT DEFAULT 0,
@@ -216,6 +217,7 @@ CREATE TABLE IF NOT EXISTS quiz_options (
   question_id UUID NOT NULL REFERENCES quiz_questions(id) ON DELETE CASCADE,
   option_text TEXT NOT NULL,
   is_correct BOOLEAN DEFAULT FALSE,
+  image_url TEXT,
   sort_order INT DEFAULT 0
 );
 
