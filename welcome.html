@@ -3804,8 +3804,11 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
     ? `<button class="btn-primary" onclick="window.startQuizAttempt('${escapeAttr(key)}')" style="padding:14px 28px;font-size:16px;">Mulai Kuis →</button>`
     : `<button class="btn-primary" disabled style="padding:14px 28px;font-size:16px;opacity:.5;cursor:not-allowed;">⏱ Tunggu ${fmtCooldown(status.cooldownHoursLeft)}</button>`;
 
+  const noCooldown = (status.cooldownHours || 0) <= 0;
   const cooldownNote = canAttempt
-    ? `Setelah submit, attempt berikutnya bisa dicoba ${status.cooldownHours} jam kemudian.`
+    ? (noCooldown
+        ? `Kuis ini <strong>tanpa cooldown</strong> — bisa coba ulang kapan saja.`
+        : `Setelah submit, attempt berikutnya bisa dicoba ${status.cooldownHours} jam kemudian.`)
     : `<strong>Kuis terkunci.</strong> Bisa coba lagi pada <strong>${fmtNextAt(status.nextAttemptAt)}</strong> (sekitar ${fmtCooldown(status.cooldownHoursLeft)} lagi).`;
 
   container.innerHTML = `
@@ -3828,7 +3831,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
           </div>
           <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
             <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">Cooldown</div>
-            <div style="font-size:18px;font-weight:800;margin-top:2px;">${status.cooldownHours}h</div>
+            <div style="font-size:18px;font-weight:800;margin-top:2px;">${(status.cooldownHours || 0) > 0 ? `${status.cooldownHours}h` : 'Tanpa'}</div>
           </div>
         </div>
         <p style="color:#525252;font-size:14px;line-height:1.6;margin:0 0 4px;">
@@ -4493,9 +4496,12 @@ async function finishQuiz() {
   const removedNote = quizState.removedFromPool
     ? `<p style="color:#92400e;font-size:13px;margin:8px 0;background:#fef3c7;padding:8px 12px;border-radius:6px;text-align:left;">⚠️ ${quizState.removedFromPool} soal dari attempt-mu di-update admin saat mengerjakan, jadi tidak dihitung. Total disesuaikan jadi ${total} soal.</p>`
     : '';
-  const cooldownLine = nextAttemptAt
+  const noCooldownResult = (cooldownHours || 0) <= 0;
+  const cooldownLine = nextAttemptAt && !noCooldownResult
     ? `<p style="color:#525252;font-size:13px;margin:14px 0 6px;">Bisa coba lagi pada <strong>${fmtNextAt(nextAttemptAt)}</strong> (${cooldownHours} jam dari sekarang).</p>`
-    : '';
+    : (noCooldownResult
+      ? `<p style="color:#15803d;font-size:13px;margin:14px 0 6px;">Tanpa cooldown — bisa retake kapan saja.</p>`
+      : '');
 
   main.innerHTML = `
     <div class="quiz-container">
@@ -4504,7 +4510,9 @@ async function finishQuiz() {
         <h2>${passed ? 'Lulus!' : 'Belum Lulus'}</h2>
         <p class="subtitle">${passed
           ? 'Materi berikutnya sudah ke-unlock.'
-          : `Skor minimal lulus: ${passing}%. Coba lagi setelah ${cooldownHours} jam.`}</p>
+          : (noCooldownResult
+            ? `Skor minimal lulus: ${passing}%. Coba lagi sekarang.`
+            : `Skor minimal lulus: ${passing}%. Coba lagi setelah ${cooldownHours} jam.`)}</p>
         <div class="score-circle">${pct}%</div>
         <p style="color:#485f84;margin:0 0 12px;">Benar ${score} dari ${total} soal</p>
         ${catBlock ? `<div style="background:#f9fafb;border-radius:8px;padding:10px 16px;margin:12px 0;text-align:left;font-size:14px;">${catBlock}</div>` : ''}
