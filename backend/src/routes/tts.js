@@ -17,6 +17,7 @@ const router = Router();
 // ELEVENLABS_VOICE_MALE. Fallback ke ELEVENLABS_VOICE_ID kalau kosong.
 const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY || '';
 const ELEVEN_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || '';
+const ELEVEN_VOICE_NARRATOR = process.env.ELEVENLABS_VOICE_NARRATOR || ELEVEN_VOICE_ID;
 const ELEVEN_VOICE_FEMALE = process.env.ELEVENLABS_VOICE_FEMALE || ELEVEN_VOICE_ID;
 const ELEVEN_VOICE_MALE = process.env.ELEVENLABS_VOICE_MALE || ELEVEN_VOICE_ID;
 const ELEVEN_MODEL = process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2';
@@ -71,13 +72,18 @@ function parseDialog(text) {
   return turns.length >= 2 ? turns : null;
 }
 
-// Map speaker label → voice ID. Female markers: A / 女 / W / F / nama2 cewe
-// umum. Male markers: B / 男 / M / nama cowo umum. Unknown → alternate by
-// order (genap=female, ganjil=male).
+// Map speaker label → voice ID. 3 roles: narrator/female/male.
+// - Narrator: N / Narrator / ナレーター / Nasi
+// - Female: A / W / F / 女 / nama2 cewe umum
+// - Male: B / M / 男 / nama cowo umum
+// Unknown → alternate by order (genap=female, ganjil=male) — narrator
+// excluded dari alternation karena beda role.
+const NARRATOR_PATTERNS = /^(n|narrator|nasi|ナレーター|nrs)$/;
 const FEMALE_PATTERNS = /^(a|w|f|女|onna|cewe|cewek|female|woman|women|yumi|aiko|hana|sakura|mei|emi|wanita)/;
 const MALE_PATTERNS = /^(b|m|男|otoko|cowo|cowok|male|man|men|ken|taro|hiroshi|takeshi|jiro|pria)/;
 function voiceForSpeaker(speaker, orderIndex) {
   const s = String(speaker || '').toLowerCase();
+  if (NARRATOR_PATTERNS.test(s)) return ELEVEN_VOICE_NARRATOR;
   if (FEMALE_PATTERNS.test(s)) return ELEVEN_VOICE_FEMALE;
   if (MALE_PATTERNS.test(s)) return ELEVEN_VOICE_MALE;
   return orderIndex % 2 === 0 ? ELEVEN_VOICE_FEMALE : ELEVEN_VOICE_MALE;
@@ -145,7 +151,10 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
     return sendAudio(res, cached.rows[0].audio, cached.rows[0].content_type);
   }
 
-  if (!ELEVEN_API_KEY || (!isDialog && !ELEVEN_VOICE_ID) || (isDialog && !ELEVEN_VOICE_FEMALE && !ELEVEN_VOICE_MALE)) {
+  // Disabled kalau API key kosong, atau (non-dialog tanpa voice ID),
+  // atau (dialog tanpa satupun voice cewe/cowo/narrator yang ke-set).
+  const dialogVoicesEmpty = !ELEVEN_VOICE_FEMALE && !ELEVEN_VOICE_MALE && !ELEVEN_VOICE_NARRATOR;
+  if (!ELEVEN_API_KEY || (!isDialog && !ELEVEN_VOICE_ID) || (isDialog && dialogVoicesEmpty)) {
     return res.status(503).json({ error: 'tts_disabled' });
   }
 
