@@ -3025,6 +3025,16 @@
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
+  /* Jeda antar dialog — countdown text supaya student tau audio
+     berikutnya kapan jalan (kayak JLPT real). */
+  .qlp-jeda {
+    min-height: 18px;
+    text-align: center;
+    font-size: 12px;
+    color: #ffd9d9;
+    margin: 4px 0 6px;
+    font-style: italic;
+  }
   .qlp-tracklist {
     display: flex; flex-wrap: wrap; gap: 6px;
     padding-top: 10px;
@@ -4016,6 +4026,7 @@ function renderListeningPlayer(sectionItems, sectionNumber) {
           oninput="window.listeningSeek('${sectionKey}', this.value)" />
         <span class="qlp-time"><span class="qlp-cur-time">00:00</span> / <span class="qlp-total-time">00:00</span></span>
       </div>
+      <div class="qlp-jeda" aria-live="polite"></div>
       <div class="qlp-tracklist">
         ${tracks.map((t, i) => `
           <button type="button" class="qlp-track ${i === 0 ? 'active' : ''}" data-track-index="${i}"
@@ -4038,6 +4049,7 @@ function destroyAllListeningPlayers() {
       try { p.audio.pause(); } catch {}
       p.audio.src = '';
     }
+    if (p?._jedaTimer) { clearTimeout(p._jedaTimer); p._jedaTimer = null; }
     delete window.__listeningPlayers[key];
   }
 }
@@ -4066,7 +4078,28 @@ function initListeningPlayers() {
     audio.addEventListener('loadedmetadata', () => updateListeningUI(key));
     audio.addEventListener('ended', () => {
       if (state.currentIdx < state.tracks.length - 1) {
-        window.listeningJump(key, state.currentIdx + 1, true);
+        // Jeda 5 detik antar dialog ala JLPT real test — kasih siswa
+        // waktu baca opsi sebelum dialog berikutnya jalan. Track count
+        // tetap progress (1.1 done) tapi audio belum mulai.
+        state.isPlaying = false;
+        updateListeningUI(key);
+        // Show countdown di UI selama jeda.
+        const countdownEl = el.querySelector('.qlp-jeda');
+        let secsLeft = 5;
+        const tick = () => {
+          if (!window.__listeningPlayers[key] || window.__listeningPlayers[key] !== state) return; // di-destroy
+          if (countdownEl) countdownEl.textContent = `Lanjut dialog ${state.currentIdx + 2} dalam ${secsLeft}s…`;
+          secsLeft--;
+          if (secsLeft < 0) {
+            if (countdownEl) countdownEl.textContent = '';
+            window.listeningJump(key, state.currentIdx + 1, true);
+            return;
+          }
+          state._jedaTimer = setTimeout(tick, 1000);
+        };
+        // Clear timer lama (kalau user manual skip in the middle of jeda)
+        if (state._jedaTimer) clearTimeout(state._jedaTimer);
+        tick();
       } else {
         state.isPlaying = false;
         updateListeningUI(key);
@@ -4158,6 +4191,10 @@ window.listeningSeek = (key, pct) => {
 window.listeningJump = (key, idx, relative) => {
   const s = window.__listeningPlayers[key];
   if (!s) return;
+  // Skip jeda countdown kalau user navigasi manual / auto-advance trigger.
+  if (s._jedaTimer) { clearTimeout(s._jedaTimer); s._jedaTimer = null; }
+  const jedaEl = s.el.querySelector('.qlp-jeda');
+  if (jedaEl) jedaEl.textContent = '';
   const target = relative ? s.currentIdx + idx : Number(idx);
   if (target < 0 || target >= s.tracks.length) return;
   const wasPlaying = !s.audio.paused;
@@ -4191,15 +4228,12 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
     ? `<span class="quiz-paper-jp">${sanitizeHtml(q.jp)}</span>`
     : '';
 
-  // Per-question listening button — pelengkap centralized player. Beberapa
-  // student prefer tombol per-soal supaya bisa play dialog spesifik tanpa
-  // navigate tracklist. Render kalau soal listening punya audioScript.
-  const perQuestionAudio = hasAudioScript ? `
-    <button type="button" class="quiz-q-listen-btn"
-      onclick="window.playQuizQuestionDialog(${qi}, this)"
-      aria-label="Putar dialog soal ${sectionNumber}.${questionNumber}">
-      🎧 Dengar dialog soal ini
-    </button>` : '';
+  // Tombol per-soal di-hapus per user request: konfllict sama
+  // centralized player utama di top section (kepencet barengan = audio
+  // bentrok). Cukup 1 player utama yang auto-advance dialog. User
+  // boleh klik tracklist (1.1, 1.2, dst) buat lompat ke dialog
+  // tertentu.
+  const perQuestionAudio = '';
 
   // Question prompt image (opsional). Render di atas opsi.
   const questionImage = q.imageUrl
