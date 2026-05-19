@@ -38,7 +38,7 @@ const ttsLimiter = rateLimit({
 // manual DELETE). Format:
 // `elevenlabs|<voiceA>:<voiceB>:...|<model>|v2|<text>`
 // (versi naik kalau voice_settings preset berubah signifikan)
-const SETTINGS_VERSION = 'v3'; // per-role + speed 0.92 + narrator style 0.25
+const SETTINGS_VERSION = 'v4'; // + jeda 700ms antar turn dialog
 function hashKey(text, voices) {
   const sortedVoices = voices.slice().sort().join(':');
   return crypto.createHash('sha256')
@@ -190,9 +190,15 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
       //   - 409 "already_running" kalau voice ID sama dipanggil paralel
       // Serial lebih lambat tapi reliable. Anyway cuma kena first request
       // (cache miss); user berikutnya hit cache.
+      // Tambah jeda 700ms di akhir tiap turn (kecuali yang terakhir) via
+      // SSML <break> tag — model ElevenLabs (v2 multilingual & v3) handle
+      // jeda sebagai trailing silence di audio. Concat hasilnya = natural
+      // pause antar speaker, gak nubruk-nubrukan.
       const buffers = [];
       for (let i = 0; i < turns.length; i++) {
-        buffers.push(await fetchElevenAudio(turnVoices[i].voiceId, turns[i].text, turnVoices[i].role));
+        const isLast = i === turns.length - 1;
+        const textWithBreak = isLast ? turns[i].text : `${turns[i].text} <break time="700ms" />`;
+        buffers.push(await fetchElevenAudio(turnVoices[i].voiceId, textWithBreak, turnVoices[i].role));
       }
       combined = Buffer.concat(buffers);
     } else {
