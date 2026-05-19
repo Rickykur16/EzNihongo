@@ -38,7 +38,7 @@ const ttsLimiter = rateLimit({
 // manual DELETE). Format:
 // `elevenlabs|<voiceA>:<voiceB>:...|<model>|v2|<text>`
 // (versi naik kalau voice_settings preset berubah signifikan)
-const SETTINGS_VERSION = 'v4'; // + jeda 700ms antar turn dialog
+const SETTINGS_VERSION = 'v5'; // narrator pinned ke v2 (anti-"depresi")
 export function ttsHashKey(text, voices) {
   const sortedVoices = voices.slice().sort().join(':');
   return crypto.createHash('sha256')
@@ -101,19 +101,34 @@ export function voiceForSpeaker(speaker, orderIndex) {
     : { voiceId: ELEVEN_VOICE_MALE, role: 'male' };
 }
 
-// Per-role voice_settings — narrator formal-steady tapi cukup berwarna,
-// dialog speaker conversational-expressive. Speed < 1.0 = lebih lambat
-// (JLPT real test biasa pace 0.9-0.95). Settings ini bisa di-tune per
-// taste — bump SETTINGS_VERSION kalau mau invalidate cache full.
+// Per-role voice_settings — narrator formal-steady (style 0 = neutral-clear,
+// gak interpret emosi), dialog speaker conversational-expressive (style tinggi
+// + low stability → follow text emotion / tag inflection). Speed < 1.0 = pace
+// JLPT real test (~0.9-0.95). Settings ini bisa di-tune per taste — bump
+// SETTINGS_VERSION kalau mau invalidate cache full.
 const VOICE_SETTINGS = {
-  narrator: { stability: 0.5,  similarity_boost: 0.85, style: 0.25, use_speaker_boost: true, speed: 0.92 },
+  narrator: { stability: 0.55, similarity_boost: 0.8,  style: 0.0,  use_speaker_boost: true, speed: 0.95 },
   female:   { stability: 0.35, similarity_boost: 0.75, style: 0.4,  use_speaker_boost: true, speed: 0.92 },
   male:     { stability: 0.35, similarity_boost: 0.75, style: 0.4,  use_speaker_boost: true, speed: 0.92 },
   single:   { stability: 0.4,  similarity_boost: 0.8,  style: 0.0,  use_speaker_boost: true, speed: 1.0 }, // legacy vocab/sentence
 };
 
+// Narrator selalu pakai v2 — v3 cenderung interpret konten JLPT plain
+// ("男の人と女の人が話しています...") sebagai monotone-depressed karena
+// gak ada cue emosi di text. v2 lebih netral-clear, cocok buat instruksi
+// JLPT formal. Dialog speaker (A/B) tetap pake env model (biasanya v3)
+// supaya emotion tag [questioning]/[excited]/dll jalan.
+const NARRATOR_MODEL_OVERRIDE = 'eleven_multilingual_v2';
+
 export async function fetchElevenAudio(voiceId, text, role = 'single', retry = 0) {
   const settings = VOICE_SETTINGS[role] || VOICE_SETTINGS.single;
+  const modelId = role === 'narrator' ? NARRATOR_MODEL_OVERRIDE : ELEVEN_MODEL;
+  // Narrator dipaksa v2 → tag emotion [calm]/[questioning]/dll bakal dibaca
+  // literal. Strip tag dari text supaya gak keluar sebagai kata "calm" /
+  // "questioning" di audio.
+  const cleanText = role === 'narrator'
+    ? text.replace(/\[[a-z_]{1,24}\]\s*/gi, '').trim()
+    : text;
   const upstream = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
     {
@@ -124,8 +139,8 @@ export async function fetchElevenAudio(voiceId, text, role = 'single', retry = 0
         'Accept': 'audio/mpeg',
       },
       body: JSON.stringify({
-        text,
-        model_id: ELEVEN_MODEL,
+        text: cleanText,
+        model_id: modelId,
         voice_settings: settings,
       }),
     }
