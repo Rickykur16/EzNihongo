@@ -39,12 +39,20 @@ const ttsLimiter = rateLimit({
 // `elevenlabs|<voiceA>:<voiceB>:...|<model>|v2|<text>`
 // (versi naik kalau voice_settings preset berubah signifikan)
 const SETTINGS_VERSION = 'v4'; // + jeda 700ms antar turn dialog
-function hashKey(text, voices) {
+export function ttsHashKey(text, voices) {
   const sortedVoices = voices.slice().sort().join(':');
   return crypto.createHash('sha256')
     .update(`elevenlabs|${sortedVoices}|${ELEVEN_MODEL}|${SETTINGS_VERSION}|${text}`)
     .digest('hex');
 }
+// Backward alias buat code dalam file ini.
+const hashKey = ttsHashKey;
+
+// Re-export helpers buat admin endpoints (test/cache management).
+export {
+  ELEVEN_VOICE_ID as TTS_ELEVEN_VOICE_ID,
+  ELEVEN_MODEL as TTS_ELEVEN_MODEL,
+};
 
 function sendAudio(res, buf, contentType) {
   res.set('Content-Type', contentType || 'audio/mpeg');
@@ -55,7 +63,7 @@ function sendAudio(res, buf, contentType) {
 // Detect JLPT-style dialog: lines like "A: ...", "B: ...", "女: ...", "男: ...".
 // Speaker label = 1-10 char before first colon. Return turns array, or null
 // kalau bukan dialog (plain text).
-function parseDialog(text) {
+export function parseDialog(text) {
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean);
   if (lines.length === 0) return null;
   const SPEAKER_RE = /^([A-Za-z0-9]{1,12}|男|女|男性|女性|男の人|女の人):\s*(.+)$/;
@@ -82,7 +90,7 @@ function parseDialog(text) {
 const NARRATOR_PATTERNS = /^(n|narrator|nasi|ナレーター|nrs)$/;
 const FEMALE_PATTERNS = /^(a|w|f|女|onna|cewe|cewek|female|woman|women|yumi|aiko|hana|sakura|mei|emi|wanita)/;
 const MALE_PATTERNS = /^(b|m|男|otoko|cowo|cowok|male|man|men|ken|taro|hiroshi|takeshi|jiro|pria)/;
-function voiceForSpeaker(speaker, orderIndex) {
+export function voiceForSpeaker(speaker, orderIndex) {
   const s = String(speaker || '').toLowerCase();
   if (NARRATOR_PATTERNS.test(s)) return { voiceId: ELEVEN_VOICE_NARRATOR, role: 'narrator' };
   if (FEMALE_PATTERNS.test(s)) return { voiceId: ELEVEN_VOICE_FEMALE, role: 'female' };
@@ -104,7 +112,7 @@ const VOICE_SETTINGS = {
   single:   { stability: 0.4,  similarity_boost: 0.8,  style: 0.0,  use_speaker_boost: true, speed: 1.0 }, // legacy vocab/sentence
 };
 
-async function fetchElevenAudio(voiceId, text, role = 'single', retry = 0) {
+export async function fetchElevenAudio(voiceId, text, role = 'single', retry = 0) {
   const settings = VOICE_SETTINGS[role] || VOICE_SETTINGS.single;
   const upstream = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,

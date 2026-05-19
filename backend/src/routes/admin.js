@@ -13,6 +13,13 @@ import {
   pickProp,
   notionQueryAll,
 } from '../notion.js';
+import {
+  ttsHashKey,
+  parseDialog,
+  voiceForSpeaker,
+  fetchElevenAudio,
+  TTS_ELEVEN_VOICE_ID,
+} from './tts.js';
 
 const router = Router();
 
@@ -1768,6 +1775,99 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', notionImportLimiter, a
     usedFallbackUnfiltered,
     ...(Object.keys(diagnostic).length ? { diagnostic } : {}),
   });
+}));
+
+// ===== TTS ADMIN: test audio + cache management =====
+//
+// Endpoint admin-only buat dev workflow: preview audio sebelum save,
+// hapus cache kalau hasil ga cocok, stats cache.
+// Skip whitelist check (admin bisa test text apapun, bukan cuma yang
+// udah saved di DB).
+
+// POST /api/admin/tts/preview — body { text }, return MP3 stream.
+router.post('/tts/preview', asyncHandler(async (req, res) => {
+  const text = String((req.body || {}).text || '').trim();
+  if (!text) return res.status(400).json({ error: 'text required' });
+  if (text.length > 2000) return res.status(400).json({ error: 'text too long (max 2000 char)' });
+
+  // Detect dialog. Single-voice fallback.
+  const turns = parseDialog(text);
+  const isDialog = !!turns;
+  const turnVoices = isDialog
+    ? turns.map((t, i) => voiceForSpeaker(t.speaker, i))
+    : [{ voiceId: TTS_ELEVEN_VOICE_ID, role: 'single' }];
+  const voices = turnVoices.map((v) => v.voiceId);
+
+  // Cek cache dulu — kalau hit, gak kena cost ElevenLabs.
+  const key = ttsHashKey(text, voices);
+  const cached = await query(
+    `SELECT audio, content_type FROM tts_cache WHERE text_hash = $1`,
+    [key]
+  );
+  if (cached.rows.length > 0) {
+    query(`UPDATE tts_cache SET last_used_at = NOW() WHERE text_hash = $1`, [key]).catch(() => {});
+    res.set('Content-Type', cached.rows[0].content_type || 'audio/mpeg');
+    res.set('Cache-Control', 'private, no-cache'); // admin preview, ga perlu CDN cache
+    return res.send(cached.rows[0].audio);
+  }
+
+  // Generate baru.
+  let combined;
+  try {
+    if (isDialog) {
+      const buffers = [];
+      for (let i = 0; i < turns.length; i++) {
+        const isLast = i === turns.length - 1;
+        const textWithBreak = isLast ? turns[i].text : `${turns[i].text} <break time="700ms" />`;
+        buffers.push(await fetchElevenAudio(turnVoices[i].voiceId, textWithBreak, turnVoices[i].role));
+      }
+      combined = Buffer.concat(buffers);
+    } else {
+      combined = await fetchElevenAudio(TTS_ELEVEN_VOICE_ID, text, 'single');
+    }
+  } catch (err) {
+    console.error('TTS admin preview:', err.message);
+    return res.status(502).json({ error: 'tts_upstream', detail: err.message });
+  }
+
+  await query(
+    `INSERT INTO tts_cache (text_hash, text, provider, voice, model, audio, content_type, byte_size)
+     VALUES ($1,$2,'elevenlabs',$3,$4,$5,'audio/mpeg',$6)
+     ON CONFLICT (text_hash) DO NOTHING`,
+    [key, text, voices.join(','), 'eleven_v3-or-v2', combined, combined.length]
+  );
+  res.set('Content-Type', 'audio/mpeg');
+  res.set('Cache-Control', 'private, no-cache');
+  res.send(combined);
+}));
+
+// DELETE /api/admin/tts/cache — body { text } → cari cache entry yang
+// match text hash (semua variasi voice), hapus. Berguna kalau admin
+// tweak voice settings lalu mau force regen tertentu.
+router.delete('/tts/cache', asyncHandler(async (req, res) => {
+  const text = String((req.body || {}).text || '').trim();
+  if (!text) return res.status(400).json({ error: 'text required' });
+  // Hapus by exact text match — coverage semua voice/model variasi.
+  const r = await query(`DELETE FROM tts_cache WHERE text = $1`, [text]);
+  res.json({ ok: true, deleted: r.rowCount });
+}));
+
+// GET /api/admin/tts/cache/stats — count + total size.
+router.get('/tts/cache/stats', asyncHandler(async (req, res) => {
+  const r = await query(
+    `SELECT COUNT(*)::int AS count,
+            COALESCE(SUM(byte_size), 0)::bigint AS bytes,
+            MAX(created_at) AS newest,
+            MIN(created_at) AS oldest
+       FROM tts_cache`
+  );
+  res.json(r.rows[0]);
+}));
+
+// DELETE /api/admin/tts/cache/all — nuke all cache. Cost regenerate.
+router.delete('/tts/cache/all', asyncHandler(async (req, res) => {
+  const r = await query(`DELETE FROM tts_cache`);
+  res.json({ ok: true, deleted: r.rowCount });
 }));
 
 export default router;
