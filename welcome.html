@@ -4134,7 +4134,7 @@ function loadListeningTrack(key, idx, autoplay) {
   if (idx < 0 || idx >= s.tracks.length) return;
   s.currentIdx = idx;
   const t = s.tracks[idx];
-  s.audio.src = '/api/tts?text=' + encodeURIComponent(t.script);
+  s.audio.src = ttsUrl(t.script);
   updateListeningUI(key);
   if (autoplay) {
     const p = s.audio.play();
@@ -6102,6 +6102,30 @@ function _stopAllTts() {
   } catch {}
 }
 
+// TTS cache version untuk browser cache invalidation. Backend kasih
+// version (e.g. "v6") via /api/tts/version. Append ke URL param `v` →
+// kalau settings_version berubah, browser cache (max-age 1yr) auto miss
+// karena URL beda. Init lazy on first call.
+let _ttsCacheVersion = '';
+let _ttsCacheVersionFetched = false;
+async function _initTtsVersion() {
+  if (_ttsCacheVersionFetched) return;
+  _ttsCacheVersionFetched = true;
+  try {
+    const r = await fetch('/api/tts/version');
+    if (r.ok) {
+      const d = await r.json();
+      _ttsCacheVersion = String(d.version || '');
+    }
+  } catch {}
+}
+function ttsUrl(text) {
+  const base = '/api/tts?text=' + encodeURIComponent(text);
+  return _ttsCacheVersion ? base + '&v=' + encodeURIComponent(_ttsCacheVersion) : base;
+}
+// Fire-and-forget di module init.
+_initTtsVersion();
+
 function playTTS(text, btn) {
   const plain = String(text || '').replace(/<[^>]*>/g, '').trim();
   if (!plain) return;
@@ -6124,7 +6148,7 @@ function playTTS(text, btn) {
     try { speakJapanese(plain, btn); } catch (e) { /* noop */ }
   };
   try {
-    const a = new Audio('/api/tts?text=' + encodeURIComponent(plain));
+    const a = new Audio(ttsUrl(plain));
     _ttsCurrentAudio = a;
     a.onplaying = () => { elevenStarted = true; };
     a.onended = () => {

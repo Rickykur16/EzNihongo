@@ -352,6 +352,7 @@ function renderApp() {
       <button data-tab="testimonials">Testimoni</button>
       <button data-tab="users">Pengguna</button>
       <button data-tab="discussions">Diskusi</button>
+      <button data-tab="tts">TTS Cache</button>
     </nav>
     <main>
       <section class="pane" data-pane="courses"></section>
@@ -361,6 +362,7 @@ function renderApp() {
       <section class="pane" data-pane="testimonials"></section>
       <section class="pane" data-pane="users"></section>
       <section class="pane" data-pane="discussions"></section>
+      <section class="pane" data-pane="tts"></section>
     </main>
   `;
   document.querySelectorAll('nav.tabs button').forEach((btn) => {
@@ -383,6 +385,7 @@ function renderTab() {
   else if (STATE.tab === 'testimonials') { loadTestimonials().then(renderTestimonials); }
   else if (STATE.tab === 'users') { loadUsers().then(renderUsers); }
   else if (STATE.tab === 'discussions') { loadDiscussions().then(renderDiscussions); }
+  else if (STATE.tab === 'tts') { renderTtsCachePane(); }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -2098,6 +2101,134 @@ window.backToManageQuiz = (key) => {
   const ctx = _quizCtxStash[key];
   if (!ctx) return;
   manageQuiz(ctx.lessonId, ctx.lessonTitle, { keepPending: true });
+};
+
+// ───── TTS Cache Pane (global) ─────
+// Stats + orphan cleanup. Orphan = entry dengan settings_version
+// != current version (atau NULL). Cleanup deterministic, gak pake
+// last_used_at (yg false-positive utk soal jarang dimaikan).
+
+function ttsBytesFmt(n) {
+  const v = Number(n) || 0;
+  if (v < 1024) return `${v} B`;
+  if (v < 1024 * 1024) return `${(v / 1024).toFixed(1)} KB`;
+  return `${(v / 1024 / 1024).toFixed(2)} MB`;
+}
+
+async function renderTtsCachePane() {
+  const pane = document.querySelector('[data-pane="tts"]');
+  if (!pane) return;
+  pane.innerHTML = `
+    <div style="max-width:720px;">
+      <h2 style="margin-top:0;">TTS Cache Management</h2>
+      <p style="color:var(--ink-500);font-size:13px;">
+        Audio MP3 dari ElevenLabs di-cache di Postgres supaya satu string japanese
+        cuma hit API sekali. Bump <code>SETTINGS_VERSION</code> (voice settings ubah)
+        bikin entry lama jadi orphan — bypass hash key beda, tapi tetep makan disk.
+      </p>
+      <div id="ttsCacheStatsBox" style="background:#f9fafb;border:1px solid var(--paper-300);border-radius:8px;padding:14px;margin-top:12px;">
+        <div style="color:var(--ink-500);font-size:13px;">Loading stats...</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+        <button type="button" class="btn btn-ghost" onclick="loadTtsCacheStats()">↻ Refresh stats</button>
+        <button type="button" class="btn btn-danger" onclick="cleanupTtsOrphans()" id="ttsOrphanBtn" disabled>🧹 Hapus orphan</button>
+        <button type="button" class="btn btn-danger" onclick="nukeAllTtsCache()" style="margin-left:auto;">⚠️ Nuke semua cache</button>
+      </div>
+      <p style="font-size:12px;color:var(--ink-500);margin-top:14px;">
+        <strong>Hapus orphan</strong> aman: cuma entry dgn versi settings beda dari current.
+        Entry valid versi current (yang masih dipake) tidak akan tersentuh.
+        <br>
+        <strong>Nuke semua</strong> hapus everything → semua soal regen dari ElevenLabs pas first play (kena cost ~10-20k char).
+      </p>
+    </div>
+  `;
+  loadTtsCacheStats();
+}
+
+window.loadTtsCacheStats = async () => {
+  const box = document.getElementById('ttsCacheStatsBox');
+  const btn = document.getElementById('ttsOrphanBtn');
+  if (!box) return;
+  try {
+    const r = await ezApi('/admin/tts/cache/stats');
+    if (!r.ok) {
+      box.innerHTML = `<div style="color:#b91c1c;">Error: HTTP ${r.status}</div>`;
+      return;
+    }
+    const s = await r.json();
+    const orphanCount = Number(s.orphan_count || 0);
+    const totalBytes = Number(s.bytes || 0);
+    box.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;">
+        <div>
+          <div style="font-size:11px;color:var(--ink-500);text-transform:uppercase;font-weight:700;">Total entries</div>
+          <div style="font-size:22px;font-weight:700;">${s.count || 0}</div>
+          <div style="font-size:11px;color:var(--ink-500);">${ttsBytesFmt(totalBytes)}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#16a34a;text-transform:uppercase;font-weight:700;">Current (${escapeHtml(s.current_version || '?')})</div>
+          <div style="font-size:22px;font-weight:700;color:#16a34a;">${s.current_count || 0}</div>
+          <div style="font-size:11px;color:var(--ink-500);">${ttsBytesFmt(s.current_bytes || 0)}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#b91c1c;text-transform:uppercase;font-weight:700;">Orphan</div>
+          <div style="font-size:22px;font-weight:700;color:${orphanCount > 0 ? '#b91c1c' : '#9ca3af'};">${orphanCount}</div>
+          <div style="font-size:11px;color:var(--ink-500);">${ttsBytesFmt(s.orphan_bytes || 0)}</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--ink-500);margin-top:10px;">
+        Oldest: ${s.oldest ? new Date(s.oldest).toLocaleString('id-ID') : '-'} ·
+        Newest: ${s.newest ? new Date(s.newest).toLocaleString('id-ID') : '-'}
+      </div>
+    `;
+    if (btn) btn.disabled = orphanCount === 0;
+  } catch (err) {
+    box.innerHTML = `<div style="color:#b91c1c;">Network error: ${escapeHtml(err.message)}</div>`;
+  }
+};
+
+window.cleanupTtsOrphans = async () => {
+  // Preview dulu via GET → confirm dgn nominal exact.
+  let preview;
+  try {
+    const r = await ezApi('/admin/tts/cache/orphans');
+    if (!r.ok) { notify('Gagal preview orphan', true); return; }
+    preview = await r.json();
+  } catch (err) { notify(`Network: ${err.message}`, true); return; }
+  const count = Number(preview.count || 0);
+  if (count === 0) { notify('Gak ada orphan to clean'); return; }
+  const msg = `Hapus ${count} orphan entries (${ttsBytesFmt(preview.bytes || 0)})?\n\n` +
+    `Current version: ${preview.current_version}. Entry valid versi current tidak akan terhapus.`;
+  if (!confirm(msg)) return;
+  try {
+    const r = await ezApi('/admin/tts/cache/orphans', { method: 'DELETE' });
+    const data = await r.json().catch(() => ({}));
+    if (r.ok) {
+      notify(`Orphan dihapus: ${data.deleted || 0} entries`);
+      loadTtsCacheStats();
+    } else {
+      notify(`Gagal: ${data.error || r.status}`, true);
+    }
+  } catch (err) {
+    notify(`Network error: ${err.message}`, true);
+  }
+};
+
+window.nukeAllTtsCache = async () => {
+  if (!confirm('⚠️ HAPUS SEMUA TTS cache?\n\nSemua soal listening akan regenerate dari ElevenLabs pas first play (kena cost). Cuma lakukan ini kalau benar-benar perlu reset full.')) return;
+  if (!confirm('Yakin? Tindakan ini tidak bisa di-undo.')) return;
+  try {
+    const r = await ezApi('/admin/tts/cache/all', { method: 'DELETE' });
+    const data = await r.json().catch(() => ({}));
+    if (r.ok) {
+      notify(`Semua cache dihapus: ${data.deleted || 0} entries`);
+      loadTtsCacheStats();
+    } else {
+      notify(`Gagal: ${data.error || r.status}`, true);
+    }
+  } catch (err) {
+    notify(`Network error: ${err.message}`, true);
+  }
 };
 
 function optionRowHtml(o, i) {

@@ -19,6 +19,8 @@ import {
   voiceForSpeaker,
   fetchElevenAudio,
   TTS_ELEVEN_VOICE_ID,
+  TTS_ELEVEN_MODEL,
+  TTS_SETTINGS_VERSION,
 } from './tts.js';
 
 const router = Router();
@@ -1831,10 +1833,10 @@ router.post('/tts/preview', asyncHandler(async (req, res) => {
   }
 
   await query(
-    `INSERT INTO tts_cache (text_hash, text, provider, voice, model, audio, content_type, byte_size)
-     VALUES ($1,$2,'elevenlabs',$3,$4,$5,'audio/mpeg',$6)
+    `INSERT INTO tts_cache (text_hash, text, provider, voice, model, audio, content_type, byte_size, settings_version)
+     VALUES ($1,$2,'elevenlabs',$3,$4,$5,'audio/mpeg',$6,$7)
      ON CONFLICT (text_hash) DO NOTHING`,
-    [key, text, voices.join(','), 'eleven_v3-or-v2', combined, combined.length]
+    [key, text, voices.join(','), TTS_ELEVEN_MODEL, combined, combined.length, TTS_SETTINGS_VERSION]
   );
   res.set('Content-Type', 'audio/mpeg');
   res.set('Cache-Control', 'private, no-cache');
@@ -1852,22 +1854,54 @@ router.delete('/tts/cache', asyncHandler(async (req, res) => {
   res.json({ ok: true, deleted: r.rowCount });
 }));
 
-// GET /api/admin/tts/cache/stats — count + total size.
+// GET /api/admin/tts/cache/stats — count + total size + breakdown
+// current version vs orphan (version mismatch / NULL).
 router.get('/tts/cache/stats', asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT COUNT(*)::int AS count,
             COALESCE(SUM(byte_size), 0)::bigint AS bytes,
             MAX(created_at) AS newest,
-            MIN(created_at) AS oldest
-       FROM tts_cache`
+            MIN(created_at) AS oldest,
+            COUNT(*) FILTER (WHERE settings_version = $1)::int AS current_count,
+            COALESCE(SUM(byte_size) FILTER (WHERE settings_version = $1), 0)::bigint AS current_bytes,
+            COUNT(*) FILTER (WHERE settings_version IS DISTINCT FROM $1)::int AS orphan_count,
+            COALESCE(SUM(byte_size) FILTER (WHERE settings_version IS DISTINCT FROM $1), 0)::bigint AS orphan_bytes
+       FROM tts_cache`,
+    [TTS_SETTINGS_VERSION]
   );
-  res.json(r.rows[0]);
+  res.json({ ...r.rows[0], current_version: TTS_SETTINGS_VERSION });
 }));
 
 // DELETE /api/admin/tts/cache/all — nuke all cache. Cost regenerate.
 router.delete('/tts/cache/all', asyncHandler(async (req, res) => {
   const r = await query(`DELETE FROM tts_cache`);
   res.json({ ok: true, deleted: r.rowCount });
+}));
+
+// GET /api/admin/tts/cache/orphans — preview: count + bytes orphan
+// (entries dgn settings_version != current atau NULL). Run sebelum
+// DELETE supaya admin tau dampak.
+router.get('/tts/cache/orphans', asyncHandler(async (req, res) => {
+  const r = await query(
+    `SELECT COUNT(*)::int AS count,
+            COALESCE(SUM(byte_size), 0)::bigint AS bytes
+       FROM tts_cache
+      WHERE settings_version IS DISTINCT FROM $1`,
+    [TTS_SETTINGS_VERSION]
+  );
+  res.json({ ...r.rows[0], current_version: TTS_SETTINGS_VERSION });
+}));
+
+// DELETE /api/admin/tts/cache/orphans — execute cleanup. Current version
+// dibaca dari server const (bukan req body) → race-safe terhadap admin
+// session lama yg hold version expired.
+router.delete('/tts/cache/orphans', asyncHandler(async (req, res) => {
+  const r = await query(
+    `DELETE FROM tts_cache
+      WHERE settings_version IS DISTINCT FROM $1`,
+    [TTS_SETTINGS_VERSION]
+  );
+  res.json({ ok: true, deleted: r.rowCount, current_version: TTS_SETTINGS_VERSION });
 }));
 
 // ===== TTS TAG LIBRARY (shared antar admin device) =====

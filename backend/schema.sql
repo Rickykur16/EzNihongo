@@ -372,9 +372,12 @@ CREATE TABLE IF NOT EXISTS tts_cache (
   audio BYTEA NOT NULL,
   content_type TEXT NOT NULL DEFAULT 'audio/mpeg',
   byte_size INT,
+  settings_version TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS idx_tts_cache_settings_version
+  ON tts_cache (settings_version);
 
 -- Admin TTS tag library — shortcut tag yang admin save untuk reuse
 -- antar device. Insert ke audio_script sebagai [tagname]. Tag yg ga
