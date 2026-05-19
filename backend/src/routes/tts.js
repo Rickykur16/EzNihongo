@@ -38,7 +38,7 @@ const ttsLimiter = rateLimit({
 // manual DELETE). Format:
 // `elevenlabs|<voiceA>:<voiceB>:...|<model>|v2|<text>`
 // (versi naik kalau voice_settings preset berubah signifikan)
-const SETTINGS_VERSION = 'v5'; // narrator pinned ke v2 (anti-"depresi")
+const SETTINGS_VERSION = 'v6'; // jeda 1.5s setelah narrator (was 700ms)
 export function ttsHashKey(text, voices) {
   const sortedVoices = voices.slice().sort().join(':');
   return crypto.createHash('sha256')
@@ -213,14 +213,17 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
       //   - 409 "already_running" kalau voice ID sama dipanggil paralel
       // Serial lebih lambat tapi reliable. Anyway cuma kena first request
       // (cache miss); user berikutnya hit cache.
-      // Tambah jeda 700ms di akhir tiap turn (kecuali yang terakhir) via
-      // SSML <break> tag — model ElevenLabs (v2 multilingual & v3) handle
-      // jeda sebagai trailing silence di audio. Concat hasilnya = natural
-      // pause antar speaker, gak nubruk-nubrukan.
+      // Tambah jeda di akhir tiap turn (kecuali yang terakhir) via SSML
+      // <break> tag — model ElevenLabs (v2 multilingual & v3) handle jeda
+      // sebagai trailing silence di audio. Concat hasilnya = natural pause.
+      // - Setelah narrator (instruksi mondai): 1500ms — JLPT real test
+      //   biasa ada jeda ~1.5s sebelum dialog mulai.
+      // - Antar dialog speaker (A/B): 700ms — natural conversational gap.
       const buffers = [];
       for (let i = 0; i < turns.length; i++) {
         const isLast = i === turns.length - 1;
-        const textWithBreak = isLast ? turns[i].text : `${turns[i].text} <break time="700ms" />`;
+        const breakMs = turnVoices[i].role === 'narrator' ? 1500 : 700;
+        const textWithBreak = isLast ? turns[i].text : `${turns[i].text} <break time="${breakMs}ms" />`;
         buffers.push(await fetchElevenAudio(turnVoices[i].voiceId, textWithBreak, turnVoices[i].role));
       }
       combined = Buffer.concat(buffers);
