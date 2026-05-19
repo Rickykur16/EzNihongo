@@ -2744,6 +2744,108 @@
     font-size: 24px;
     font-weight: 800;
   }
+  /* JLPT-style section: kotak label "Section N" tab di atas border kiri,
+     mondai instruction big font sebagai konten utama. Match desain JLPT
+     real test (Todai pattern). */
+  .jlpt-section {
+    position: relative;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    padding: 28px 18px 22px;
+    margin: 12px 0 26px;
+    background: #fff;
+  }
+  .jlpt-section-tab {
+    position: absolute;
+    top: -16px; left: 16px;
+    display: inline-block;
+    padding: 5px 14px;
+    background: #fff;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 800;
+    color: #1a1a1a;
+    letter-spacing: 0.02em;
+  }
+  .jlpt-mondai {
+    font-size: clamp(15px, 1.8vw, 18px);
+    font-weight: 600;
+    line-height: 1.85;
+    color: #111;
+    font-family: 'Noto Sans JP', sans-serif;
+  }
+  .jlpt-mondai strong { font-weight: 800; }
+  /* Question prompt image (di atas opsi) */
+  .quiz-q-image {
+    margin: 12px 0 16px;
+    text-align: center;
+  }
+  .quiz-q-image img {
+    max-width: 100%;
+    max-height: 320px;
+    border-radius: 8px;
+    border: 1px solid var(--du-border, #ece9e3);
+  }
+  /* Grid 2x2 opsi gambar (JLPT pattern: pilih gambar 1/2/3/4) */
+  .quiz-options-image-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin: 12px 0;
+  }
+  .quiz-image-option {
+    position: relative;
+    padding: 24px 12px 12px;
+    background: #fff;
+    border: 2px solid #2a2a2a;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color .15s, transform .12s, box-shadow .15s;
+    font: inherit;
+    text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    min-height: 180px;
+  }
+  .quiz-image-option:hover:not(.disabled) {
+    border-color: var(--brand-red);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(200, 16, 46, .12);
+  }
+  .quiz-image-option.disabled { cursor: default; opacity: .85; }
+  .quiz-image-option.correct {
+    border-color: #15803d; background: #f0fdf4;
+  }
+  .quiz-image-option.wrong {
+    border-color: #b91c1c; background: #fef2f2;
+  }
+  .qio-num {
+    position: absolute;
+    top: 6px; left: 10px;
+    font-size: 18px;
+    font-weight: 800;
+    color: #1a1a1a;
+  }
+  .quiz-image-option.correct .qio-num { color: #15803d; }
+  .quiz-image-option.wrong .qio-num { color: #b91c1c; }
+  .qio-img {
+    max-width: 100%; max-height: 180px;
+    object-fit: contain;
+    border-radius: 4px;
+  }
+  .qio-text {
+    font-size: 18px; font-weight: 700; color: #1a1a1a;
+    padding: 24px 8px;
+  }
+  .qio-caption {
+    font-size: 12px; color: #525252; margin-top: auto;
+    font-family: 'Noto Sans JP', sans-serif;
+  }
+  @media (max-width: 600px) {
+    .quiz-options-image-grid { gap: 10px; }
+    .quiz-image-option { min-height: 140px; padding: 22px 8px 10px; }
+    .qio-img { max-height: 120px; }
+  }
   .quiz-instruction {
     color: #111820;
     font-size: clamp(20px, 2.3vw, 25px);
@@ -3342,9 +3444,10 @@ function transformQuestionFromApi(apiQ) {
   const jp = parts.slice(1).join('\n\n').trim() || '';
   const sorted = (apiQ.options || []).slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   const options = sorted.map((o) => o.option_text);
+  const optionImages = sorted.map((o) => o.image_url || o.imageUrl || '');
   const optionIds = sorted.map((o) => o.id);
   return {
-    q, jp, options, optionIds,
+    q, jp, options, optionIds, optionImages,
     correct: -1,
     explain: apiQ.explanation || '',
     questionId: apiQ.id,
@@ -3353,6 +3456,7 @@ function transformQuestionFromApi(apiQ) {
     sectionLabel: apiQ.section_label || apiQ.sectionLabel || `Section ${Number(apiQ.section_number || apiQ.sectionNumber) || 1}`,
     sectionInstruction: apiQ.section_instruction || apiQ.sectionInstruction || '',
     audioScript: apiQ.audio_script || apiQ.audioScript || '',
+    imageUrl: apiQ.image_url || apiQ.imageUrl || '',
   };
 }
 
@@ -3826,12 +3930,14 @@ function renderQuizSections(categoryItems) {
     const playerHtml = isListening
       ? renderListeningPlayer(section.items, section.number)
       : '';
+    // JLPT-style section header: kotak label "Section N" floating di atas
+    // border, mondai instruction big font di bawahnya.
     return `
-      <section class="quiz-paper-section">
-        <div class="quiz-section-label">${section.label}</div>
-        <div class="quiz-instruction">${section.instruction}</div>
-      </section>
       ${playerHtml}
+      <section class="quiz-paper-section jlpt-section">
+        <span class="jlpt-section-tab">${sanitizeHtml(section.label)}</span>
+        <div class="jlpt-mondai">${sanitizeHtml(section.instruction)}</div>
+      </section>
       <div class="quiz-paper-list" data-section-number="${section.number}">
         ${section.items.map((item, i) => renderQuizPaperItem(item.q, item.index, section.number, i + 1)).join('')}
       </div>
@@ -4060,6 +4166,44 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
       🎧 Dengar dialog soal ini
     </button>` : '';
 
+  // Question prompt image (opsional). Render di atas opsi.
+  const questionImage = q.imageUrl
+    ? `<div class="quiz-q-image"><img src="${escapeHtml(q.imageUrl)}" alt="Gambar soal ${sectionNumber}.${questionNumber}" loading="lazy" /></div>`
+    : '';
+
+  // Detect mode: kalau MAYORITAS opsi punya image_url → render grid 2x2
+  // image. Kalau cuma sebagian / tidak ada → render text-only stack
+  // (current default).
+  const optionImages = Array.isArray(q.optionImages) ? q.optionImages : [];
+  const imagedCount = optionImages.filter(Boolean).length;
+  const useImageGrid = imagedCount >= Math.max(2, Math.floor(q.options.length / 2));
+
+  const optionsHtml = useImageGrid
+    ? `<div class="quiz-options-image-grid" id="quiz-options-${qi}">
+        ${q.options.map((opt, i) => {
+          const img = optionImages[i];
+          const stateCls = `${answered ? 'disabled' : ''} ${answered && i === q.correct ? 'correct' : ''} ${answered && i === selected && i !== q.correct ? 'wrong' : ''}`;
+          return `
+            <button class="quiz-image-option ${stateCls}" data-idx="${i}"
+              onclick="window.pickQuizAnswer(${qi}, ${i})">
+              <span class="qio-num">${letters[i]}</span>
+              ${img
+                ? `<img class="qio-img" src="${escapeHtml(img)}" alt="Pilihan ${letters[i]}" loading="lazy" />`
+                : `<span class="qio-text">${escapeHtml(opt)}</span>`}
+              ${opt && img ? `<span class="qio-caption">${escapeHtml(opt)}</span>` : ''}
+            </button>`;
+        }).join('')}
+      </div>`
+    : `<div class="quiz-options" id="quiz-options-${qi}">
+        ${q.options.map((opt, i) => `
+          <button class="quiz-option ${answered ? 'disabled' : ''} ${answered && i === q.correct ? 'correct' : ''} ${answered && i === selected && i !== q.correct ? 'wrong' : ''}"
+            data-idx="${i}" onclick="window.pickQuizAnswer(${qi}, ${i})">
+            <span class="quiz-option-letter">${letters[i]}</span>
+            <span>${escapeHtml(opt)}</span>
+          </button>
+        `).join('')}
+      </div>`;
+
   // q.q / q.explain dari admin rich-text editor (boleh <b>/<i>/<u> tapi
   // ga boleh <script>). q.options dari plain-text input → escape full.
   return `
@@ -4069,16 +4213,9 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
         <span>${sanitizeHtml(q.q)}</span>
         ${inlineJp}
       </h2>
+      ${questionImage}
       ${perQuestionAudio}
-      <div class="quiz-options" id="quiz-options-${qi}">
-        ${q.options.map((opt, i) => `
-          <button class="quiz-option ${answered ? 'disabled' : ''} ${answered && i === q.correct ? 'correct' : ''} ${answered && i === selected && i !== q.correct ? 'wrong' : ''}"
-            data-idx="${i}" onclick="window.pickQuizAnswer(${qi}, ${i})">
-            <span class="quiz-option-letter">${letters[i]}</span>
-            <span>${escapeHtml(opt)}</span>
-          </button>
-        `).join('')}
-      </div>
+      ${optionsHtml}
       <div class="quiz-feedback" id="quiz-feedback-${qi}">
         ${answered ? `<div class="quiz-explanation"><strong>${quizState.correctByIndex[qi] ? '✓ Benar!' : '✗ Belum tepat'}</strong> — ${sanitizeHtml(q.explain || 'Jawaban kamu sudah dicatat.')}</div>` : ''}
       </div>

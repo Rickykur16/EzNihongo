@@ -163,13 +163,14 @@ async function loadQuestionsByIds(ids) {
   const [qRes, oRes] = await Promise.all([
     query(
       `SELECT id, question, question_type, question_category, section_number,
-              section_label, section_instruction, audio_script, explanation, sort_order
+              section_label, section_instruction, audio_script, image_url,
+              explanation, sort_order
          FROM quiz_questions
         WHERE id = ANY($1::uuid[])`,
       [ids]
     ),
     query(
-      `SELECT id, question_id, option_text, sort_order
+      `SELECT id, question_id, option_text, image_url, sort_order
          FROM quiz_options
         WHERE question_id = ANY($1::uuid[])
         ORDER BY sort_order ASC`,

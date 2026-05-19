@@ -1178,7 +1178,7 @@ router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
 router.post('/quiz-questions', asyncHandler(async (req, res) => {
   const {
     lessonId, question, questionType, questionCategory, sectionNumber,
-    sectionLabel, sectionInstruction, audioScript,
+    sectionLabel, sectionInstruction, audioScript, imageUrl,
     correctAnswer, explanation, sortOrder, options,
   } = req.body || {};
   if (!lessonId || !question) return res.status(400).json({ error: 'lessonId and question required' });
@@ -1190,10 +1190,10 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
   const qRes = await query(
     `INSERT INTO quiz_questions (
        lesson_id, question, question_type, question_category,
-       section_number, section_label, section_instruction, audio_script,
+       section_number, section_label, section_instruction, audio_script, image_url,
        correct_answer, explanation, sort_order
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
     [
       lessonId,
       question,
@@ -1203,6 +1203,7 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
       sectionTitle,
       sectionInstruction || null,
       (audioScript && String(audioScript).trim()) || null,
+      (imageUrl && String(imageUrl).trim()) || null,
       correctAnswer || null,
       explanation || null,
       sortOrder || 0,
@@ -1214,9 +1215,9 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
     for (let i = 0; i < options.length; i++) {
       const o = options[i];
       await query(
-        `INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order)
-         VALUES ($1, $2, $3, $4)`,
-        [q.id, o.text || o.option_text, !!o.isCorrect || !!o.is_correct, i]
+        `INSERT INTO quiz_options (question_id, option_text, is_correct, image_url, sort_order)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [q.id, o.text || o.option_text, !!o.isCorrect || !!o.is_correct, o.imageUrl || o.image_url || null, i]
       );
     }
   }
@@ -1227,14 +1228,16 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
 router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
   const {
     question, questionType, questionCategory, sectionNumber,
-    sectionLabel, sectionInstruction, audioScript,
+    sectionLabel, sectionInstruction, audioScript, imageUrl,
     correctAnswer, explanation, sortOrder, options,
   } = req.body || {};
   const category = questionCategory ? normalizeQuizCategory(questionCategory) : null;
   const sectionNo = sectionNumber == null ? null : normalizeQuizSectionNumber(sectionNumber);
   const hasSectionInstruction = Object.prototype.hasOwnProperty.call(req.body || {}, 'sectionInstruction');
   const hasAudioScript = Object.prototype.hasOwnProperty.call(req.body || {}, 'audioScript');
+  const hasImageUrl = Object.prototype.hasOwnProperty.call(req.body || {}, 'imageUrl');
   const audioScriptNorm = hasAudioScript ? ((audioScript && String(audioScript).trim()) || null) : null;
+  const imageUrlNorm = hasImageUrl ? ((imageUrl && String(imageUrl).trim()) || null) : null;
   const result = await query(
     `UPDATE quiz_questions SET
        question = COALESCE($2, question),
@@ -1246,7 +1249,8 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
        section_number = COALESCE($8, section_number),
        section_label = COALESCE($9, section_label),
        section_instruction = CASE WHEN $11::boolean THEN $10 ELSE section_instruction END,
-       audio_script = CASE WHEN $13::boolean THEN $12 ELSE audio_script END
+       audio_script = CASE WHEN $13::boolean THEN $12 ELSE audio_script END,
+       image_url = CASE WHEN $15::boolean THEN $14 ELSE image_url END
       WHERE id = $1 RETURNING *`,
     [
       req.params.id,
@@ -1262,6 +1266,8 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
       hasSectionInstruction,
       audioScriptNorm,
       hasAudioScript,
+      imageUrlNorm,
+      hasImageUrl,
     ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
@@ -1272,9 +1278,9 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
     for (let i = 0; i < options.length; i++) {
       const o = options[i];
       await query(
-        `INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order)
-         VALUES ($1, $2, $3, $4)`,
-        [req.params.id, o.text || o.option_text, !!o.isCorrect || !!o.is_correct, i]
+        `INSERT INTO quiz_options (question_id, option_text, is_correct, image_url, sort_order)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [req.params.id, o.text || o.option_text, !!o.isCorrect || !!o.is_correct, o.imageUrl || o.image_url || null, i]
       );
     }
   }

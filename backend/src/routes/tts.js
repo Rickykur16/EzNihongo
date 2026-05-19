@@ -89,7 +89,7 @@ function voiceForSpeaker(speaker, orderIndex) {
   return orderIndex % 2 === 0 ? ELEVEN_VOICE_FEMALE : ELEVEN_VOICE_MALE;
 }
 
-async function fetchElevenAudio(voiceId, text) {
+async function fetchElevenAudio(voiceId, text, retry = 0) {
   const upstream = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
     {
@@ -108,6 +108,12 @@ async function fetchElevenAudio(voiceId, text) {
   );
   if (!upstream.ok) {
     const detail = await upstream.text().catch(() => '');
+    // Retry on transient errors: 409 (already_running), 429 (rate limit),
+    // 500-503. Backoff: 500ms × (retry+1). Max 3 retries.
+    if (retry < 3 && (upstream.status === 409 || upstream.status === 429 || upstream.status >= 500)) {
+      await new Promise((r) => setTimeout(r, 500 * (retry + 1)));
+      return fetchElevenAudio(voiceId, text, retry + 1);
+    }
     const err = new Error(`ElevenLabs ${upstream.status}: ${detail.slice(0, 200)}`);
     err.upstreamStatus = upstream.status;
     throw err;
@@ -161,11 +167,16 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
   let combined;
   try {
     if (isDialog) {
-      // Generate per turn paralel (max 8 concurrent untuk hindarin rate-limit
-      // upstream). Concat hasil dalam urutan turn.
-      const buffers = await Promise.all(
-        turns.map((t, i) => fetchElevenAudio(voices[i], t.text))
-      );
+      // Generate per turn SERIAL (bukan Promise.all paralel) karena
+      // ElevenLabs free tier:
+      //   - max 5 concurrent requests (429 concurrent_limit_exceeded)
+      //   - 409 "already_running" kalau voice ID sama dipanggil paralel
+      // Serial lebih lambat tapi reliable. Anyway cuma kena first request
+      // (cache miss); user berikutnya hit cache.
+      const buffers = [];
+      for (let i = 0; i < turns.length; i++) {
+        buffers.push(await fetchElevenAudio(voices[i], turns[i].text));
+      }
       combined = Buffer.concat(buffers);
     } else {
       combined = await fetchElevenAudio(ELEVEN_VOICE_ID, text);
