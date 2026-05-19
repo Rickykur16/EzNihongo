@@ -2947,16 +2947,18 @@
     white-space: pre-wrap; word-break: break-word;
   }
 
-  /* Listening tab: centralized audio player ala Todai test.
-     Satu player muter semua dialog satu section secara berurutan. */
+  /* Listening tab: centralized audio player — light theme JLPT-style.
+     Cream background dengan border merah brand, match dashboard. */
   .quiz-listening-player {
     position: sticky; top: 12px; z-index: 5;
     margin: 0 0 24px;
     padding: 18px 20px 16px;
-    background: linear-gradient(180deg, #1a1a1a 0%, #232323 100%);
-    color: #fff;
-    border-radius: 14px;
-    box-shadow: 0 8px 24px rgba(0,0,0,.18);
+    background: #fff;
+    color: #1a1a1a;
+    border: 1px solid #e5e7eb;
+    border-top: 3px solid var(--brand-red);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(20, 20, 30, .06);
   }
   .qlp-head {
     display: flex; align-items: center; justify-content: space-between;
@@ -2964,99 +2966,114 @@
     margin-bottom: 12px;
   }
   .qlp-title {
-    font-size: 13px; font-weight: 700;
-    letter-spacing: .04em; text-transform: uppercase;
-    color: #ffd9d9;
+    font-size: 12px; font-weight: 800;
+    letter-spacing: .06em; text-transform: uppercase;
+    color: var(--brand-red);
   }
   .qlp-track-label {
-    font-size: 12px; color: #c8c8c8;
+    font-size: 12px; color: #6b7280;
   }
-  .qlp-track-label strong { color: #fff; font-weight: 800; }
+  .qlp-track-label strong { color: #1a1a1a; font-weight: 800; font-size: 14px; }
   .qlp-controls {
     display: flex; align-items: center; justify-content: center;
-    gap: 18px;
+    gap: 14px;
     margin: 8px 0 12px;
   }
   .qlp-btn {
     display: inline-flex; align-items: center; justify-content: center;
-    background: rgba(255,255,255,.08);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,.18);
+    background: #f9fafb;
+    color: #1a1a1a;
+    border: 1px solid #e5e7eb;
     border-radius: 999px;
     cursor: pointer;
-    transition: background .12s, transform .08s, border-color .12s;
+    transition: background .12s, transform .08s, border-color .12s, color .12s;
     font: inherit; font-weight: 700;
   }
-  .qlp-btn:hover { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.32); }
+  .qlp-btn:hover { background: #f3f4f6; border-color: #d1d5db; color: #000; }
   .qlp-btn:active { transform: scale(0.94); }
   .qlp-btn:disabled { opacity: .35; cursor: not-allowed; }
   .qlp-skip { width: 46px; height: 46px; font-size: 12px; }
   .qlp-step { width: 38px; height: 38px; font-size: 16px; }
   .qlp-play {
-    width: 62px; height: 62px; font-size: 22px;
-    background: var(--brand-red); border-color: transparent;
+    width: 60px; height: 60px; font-size: 22px;
+    background: var(--brand-red);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 4px 10px rgba(200, 16, 46, .25);
   }
-  .qlp-play:hover { background: #d72121; border-color: transparent; }
+  .qlp-play:hover {
+    background: #d72121;
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 6px 14px rgba(200, 16, 46, .35);
+  }
   .qlp-bar-wrap {
     display: flex; align-items: center; gap: 12px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
   .qlp-bar {
     flex: 1; height: 4px;
     -webkit-appearance: none; appearance: none;
-    background: rgba(255,255,255,.18);
+    background: #e5e7eb;
     border-radius: 999px;
     outline: none;
     cursor: pointer;
+    accent-color: var(--brand-red);
   }
   .qlp-bar::-webkit-slider-thumb {
     -webkit-appearance: none; appearance: none;
     width: 14px; height: 14px;
-    background: #fff; border-radius: 50%;
+    background: var(--brand-red); border-radius: 50%;
     cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,.15);
   }
   .qlp-bar::-moz-range-thumb {
     width: 14px; height: 14px;
-    background: #fff; border-radius: 50%;
+    background: var(--brand-red); border-radius: 50%;
     border: none; cursor: pointer;
   }
   .qlp-time {
-    font-size: 12px; color: #c8c8c8;
+    font-size: 12px; color: #6b7280;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
-  /* Jeda antar dialog — countdown text supaya student tau audio
-     berikutnya kapan jalan (kayak JLPT real). */
+  /* Jeda antar dialog — countdown text. */
   .qlp-jeda {
     min-height: 18px;
     text-align: center;
     font-size: 12px;
-    color: #ffd9d9;
+    color: var(--brand-red);
     margin: 4px 0 6px;
     font-style: italic;
+    font-weight: 600;
   }
   .qlp-tracklist {
     display: flex; flex-wrap: wrap; gap: 6px;
     padding-top: 10px;
-    border-top: 1px solid rgba(255,255,255,.1);
+    border-top: 1px solid #e5e7eb;
   }
   .qlp-track {
     min-width: 30px; height: 30px;
     padding: 0 10px;
-    background: rgba(255,255,255,.06);
-    color: #c8c8c8;
-    border: 1px solid rgba(255,255,255,.14);
+    background: #f9fafb;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
     border-radius: 8px;
     font: inherit; font-size: 12px; font-weight: 700;
     cursor: pointer;
     transition: background .12s, color .12s, border-color .12s;
   }
-  .qlp-track:hover { background: rgba(255,255,255,.14); color: #fff; }
+  .qlp-track:hover { background: #f3f4f6; color: #1a1a1a; }
   .qlp-track.active {
     background: var(--brand-red); color: #fff;
     border-color: transparent;
+    box-shadow: 0 2px 6px rgba(200, 16, 46, .25);
   }
-  .qlp-track.done { color: #6fcf97; border-color: rgba(111,207,151,.4); }
+  .qlp-track.done {
+    color: #15803d;
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+  }
   @media (max-width: 700px) {
     .quiz-listening-player { padding: 14px 14px 12px; border-radius: 12px; }
     .qlp-controls { gap: 12px; }
