@@ -1169,7 +1169,10 @@ function lessonFormHtml(l) {
           </div>
           <div class="field">
             <label>Cooldown (jam)</label>
-            <input type="number" name="cooldownHours" min="1" max="168" value="${l.cooldown_hours ?? 12}" />
+            <input type="number" name="cooldownHours" min="0" max="168" value="${l.cooldown_hours ?? 12}" />
+            <div style="font-size:11px;color:var(--ink-500);margin-top:4px;">
+              <strong>0 = tanpa cooldown</strong> (siswa bisa retake kapan aja). Default 12 jam.
+            </div>
           </div>
         </div>
       </div>
@@ -1640,7 +1643,7 @@ function renderQuizModal(lessonId, lessonTitle, questions, lessonMeta) {
   }
   const poolIndicator = lessonMeta ? `
     <div style="background:#f9fafb;border:1px solid var(--paper-300);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;line-height:1.6;">
-      <strong>Pool:</strong> ${poolSize} soal · <strong>Per attempt:</strong> ${qpa} acak · <strong>Lulus:</strong> ${passing}% · <strong>Cooldown:</strong> ${cooldown}h<br>
+      <strong>Pool:</strong> ${poolSize} soal · <strong>Per attempt:</strong> ${qpa} acak · <strong>Lulus:</strong> ${passing}% · <strong>Cooldown:</strong> ${cooldown > 0 ? `${cooldown}h` : 'tanpa cooldown'}<br>
       ${ratioBadge}
     </div>` : '';
 
