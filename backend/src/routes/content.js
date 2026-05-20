@@ -78,7 +78,7 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
         [moduleIds]
       ),
       query(
-        `SELECT id, module_id, lesson_id, pattern, meaning, example, notes, sort_order
+        `SELECT id, module_id, lesson_id, pattern, meaning, example, notes, example_dialog, sort_order
          FROM module_grammar WHERE module_id = ANY($1::uuid[])
          ORDER BY sort_order ASC, created_at ASC`,
         [moduleIds]

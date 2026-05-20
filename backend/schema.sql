@@ -146,6 +146,7 @@ CREATE TABLE IF NOT EXISTS module_grammar (
   meaning TEXT,
   example TEXT,
   notes TEXT,
+  example_dialog TEXT,
   sort_order INT DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

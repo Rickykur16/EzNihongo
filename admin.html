@@ -2328,12 +2328,17 @@ const GRAMMAR_FIELDS = [
   { name: 'meaning', label: 'Arti', style: 'min-width:140px;' },
   { name: 'example', label: 'Contoh', style: 'min-width:180px;' },
   { name: 'notes', label: 'Catatan sensei', style: 'min-width:160px;' },
+  { name: 'example_dialog', bodyKey: 'exampleDialog', label: 'Dialog contoh (A:/B:)', style: 'min-width:220px;', type: 'textarea',
+    placeholder: 'N: 男の人と女の人が話しています。\nA: お国は どちらですか。\nB: インドネシアです。' },
 ];
 
 function itemRowHtml(item, fields, kind) {
-  const cells = fields.map((f) => `
-    <td><input name="${f.name}" value="${escapeHtml(item[f.name] || '')}" style="${f.style}" /></td>
-  `).join('');
+  const cells = fields.map((f) => {
+    if (f.type === 'textarea') {
+      return `<td><textarea name="${f.name}" rows="3" placeholder="${escapeHtml(f.placeholder || '')}" style="${f.style}font-family:var(--font-mono);font-size:11px;">${escapeHtml(item[f.name] || '')}</textarea></td>`;
+    }
+    return `<td><input name="${f.name}" value="${escapeHtml(item[f.name] || '')}" style="${f.style}" /></td>`;
+  }).join('');
   return `
     <tr data-id="${item.id || ''}" data-kind="${kind}">
       ${cells}
@@ -2410,7 +2415,8 @@ window.saveItemRow = async (btn) => {
     sortOrder: Number(tr.querySelector('input[name="sortOrder"]').value) || 0,
   };
   for (const f of fields) {
-    body[f.name] = tr.querySelector(`input[name="${f.name}"]`).value.trim() || null;
+    const input = tr.querySelector(`[name="${f.name}"]`);
+    body[f.bodyKey || f.name] = (input && input.value.trim()) || null;
   }
   // Validation
   if (kind === 'vocab' && !body.japanese) { notify('Japanese wajib diisi', true); return; }
@@ -2456,7 +2462,9 @@ window.deleteItemRow = async (btn) => {
 };
 
 window.openBulkPaste = (kind, lessonId, lessonTitle, moduleId) => {
-  const fields = kind === 'vocab' ? VOCAB_FIELDS : GRAMMAR_FIELDS;
+  // Exclude textarea fields (multi-line, e.g. example_dialog) — TSV gak bisa
+  // muat newline per sel. Field itu di-isi manual via tabel editor.
+  const fields = (kind === 'vocab' ? VOCAB_FIELDS : GRAMMAR_FIELDS).filter((f) => f.type !== 'textarea');
   const header = fields.map((f) => f.name).join('\t');
   const safeTitle = escapeHtml(lessonTitle).replace(/'/g, "\\'");
   openModal(`
@@ -2475,7 +2483,7 @@ window.openBulkPaste = (kind, lessonId, lessonTitle, moduleId) => {
 
 window.submitBulk = async (kind, lessonId, lessonTitle, moduleId) => {
   const raw = document.getElementById('bulk-tsv').value;
-  const fields = kind === 'vocab' ? VOCAB_FIELDS : GRAMMAR_FIELDS;
+  const fields = (kind === 'vocab' ? VOCAB_FIELDS : GRAMMAR_FIELDS).filter((f) => f.type !== 'textarea');
   const items = raw.split(/\r?\n/).map((line) => {
     if (!line.trim()) return null;
     const cols = line.split('\t');
