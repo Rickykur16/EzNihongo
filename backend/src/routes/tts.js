@@ -1,10 +1,41 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
+import TinySegmenter from 'tiny-segmenter';
 import { query } from '../db.js';
 import { asyncHandler, optionalAuth } from '../middleware.js';
 
 const router = Router();
+
+// Segmentasi kata Jepang buat karaoke (highlight per-kata, partikel
+// ke-pisah). TinySegmenter = pure-JS, no dictionary, akurat buat teks
+// kanji+kana umum (N5). Dipakai pas generate aligned (hasil ke-cache).
+const segmenter = new TinySegmenter();
+const GK_BREAK_RE = /^[\s　、。，．！？!?…「」『』（）()・]+$/;
+
+// chars[] + times[] (per-karakter dari ElevenLabs) → words[] per-kata.
+// words[i] = { text, start, end } untuk kata; { text, start:null } untuk
+// pemisah (spasi/tanda baca, gak di-highlight).
+function segmentWords(chars, times) {
+  const joined = chars.join('');
+  const tokens = segmenter.segment(joined);
+  const words = [];
+  let ci = 0;
+  for (const tok of tokens) {
+    const arr = Array.from(tok);
+    const startIdx = ci;
+    const endIdx = ci + arr.length - 1;
+    ci += arr.length;
+    if (GK_BREAK_RE.test(tok)) {
+      words.push({ text: tok, start: null });
+    } else {
+      const s = times[startIdx] ? times[startIdx][0] : 0;
+      const e = times[endIdx] ? times[endIdx][1] : s;
+      words.push({ text: tok, start: s, end: e });
+    }
+  }
+  return words;
+}
 
 // Natural-voice TTS via ElevenLabs, cached permanently in Postgres so the
 // upstream API is hit at most once per unique string. If ELEVENLABS_API_KEY is
@@ -317,10 +348,10 @@ router.get('/tts/aligned', optionalAuth, ttsLimiter, asyncHandler(async (req, re
     : [{ voiceId: ELEVEN_VOICE_ID, role: 'single' }];
   const voices = turnVoices.map((v) => v.voiceId);
 
-  // "aligned2" = format per-segment (audio + waktu relatif per turn).
-  // Frontend putar tiap segment berurutan → timing akurat tanpa estimasi
-  // offset (yg bikin highlight drift/lompat di versi sebelumnya).
-  const key = hashKey('aligned2\n' + text, voices);
+  // "aligned3" = per-segment (audio + waktu relatif) + words[] hasil
+  // segmentasi kata (highlight per-kata, partikel ke-pisah). Bump dari
+  // aligned2 (yg masih per-karakter) supaya regenerate format baru.
+  const key = hashKey('aligned3\n' + text, voices);
   const cached = await query(
     `SELECT alignment FROM tts_cache WHERE text_hash = $1`,
     [key]
@@ -351,8 +382,7 @@ router.get('/tts/aligned', optionalAuth, ttsLimiter, asyncHandler(async (req, re
       segments.push({
         speaker: effTurns[i].speaker || '',
         role: turnVoices[i].role,
-        chars: r.chars,
-        times,
+        words: segmentWords(r.chars, times),
         audio_base64: r.buffer.toString('base64'),
         content_type: 'audio/mpeg',
       });
@@ -363,7 +393,7 @@ router.get('/tts/aligned', optionalAuth, ttsLimiter, asyncHandler(async (req, re
     return res.status(502).json({ error: 'tts_upstream' });
   }
 
-  const alignment = { segments, format: 'segments-v2' };
+  const alignment = { segments, format: 'segments-v3-words' };
   await query(
     `INSERT INTO tts_cache (text_hash, text, provider, voice, model, audio, content_type, byte_size, settings_version, alignment)
      VALUES ($1,$2,'elevenlabs',$3,$4,$5,'audio/mpeg',$6,$7,$8)

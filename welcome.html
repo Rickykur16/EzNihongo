@@ -6094,30 +6094,6 @@ function gkStopAll() {
   }
 }
 
-// Kelompokin karakter (+ timing per-char dari ElevenLabs) jadi KATA.
-// Boundary = spasi / tanda baca. Tiap kata punya start=char pertama,
-// end=char terakhir → highlight per-kata (bukan per-huruf). Materi N5
-// umumnya wakachigaki (pakai spasi antar kata) jadi pemisahan akurat.
-const GK_BREAK = /[\s　、。，．！？!?…「」『』（）()・]/;
-function gkGroupWords(chars, times) {
-  const out = []; // { text, start|null, end|null }  start null = pemisah (gak di-highlight)
-  let cur = null;
-  for (let i = 0; i < chars.length; i++) {
-    const c = chars[i];
-    const t = times[i] || [0, 0];
-    if (GK_BREAK.test(c)) {
-      if (cur) { out.push(cur); cur = null; }
-      out.push({ text: c, start: null, end: null });
-    } else {
-      if (!cur) cur = { text: '', start: t[0], end: t[1] };
-      cur.text += c;
-      cur.end = t[1];
-    }
-  }
-  if (cur) out.push(cur);
-  return out;
-}
-
 function parseDialogLinesFE(text) {
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean);
   const SPK = /^([A-Za-z0-9]{1,12}|男|女|男性|女性|男の人|女の人):\s*(.+)$/;
@@ -6230,22 +6206,21 @@ window.grammarKaraokePlay = async (key) => {
     const data = await r.json();
     const segs = (data && data.segments) || [];
     if (!segs.length) throw new Error('no segments');
-    // Kelompokin tiap segment jadi kata, render span per-kata (highlight
-    // per-kata bukan per-huruf). Pemisah (spasi/tanda baca) render polos.
-    const perSeg = segs.map((seg) => gkGroupWords(seg.chars || [], seg.times || []));
+    // Render span per-kata (words[] dari backend, partikel udah ke-pisah).
+    // Pemisah (start null = spasi/tanda baca) render polos, gak di-highlight.
     transcript.innerHTML = segs.map((seg, si) => {
       let wi = 0;
-      const inner = perSeg[si].map((w) => {
-        if (w.start === null) return `<span class="gk-punct">${escapeHtml(w.text)}</span>`;
+      const inner = (seg.words || []).map((w) => {
+        if (w.start == null) return `<span class="gk-punct">${escapeHtml(w.text)}</span>`;
         return `<span class="gk-word" data-k="${si}_${wi++}">${escapeHtml(w.text)}</span>`;
       }).join('');
       return karaokeLineHtml(seg.speaker, inner);
     }).join('');
-    const spans = perSeg.map((words, si) =>
-      words.filter((w) => w.start !== null)
+    const spans = segs.map((seg, si) =>
+      (seg.words || []).filter((w) => w.start != null)
         .map((_, idx) => transcript.querySelector(`.gk-word[data-k="${si}_${idx}"]`)));
-    const wordTimes = perSeg.map((words) =>
-      words.filter((w) => w.start !== null).map((w) => [w.start, w.end]));
+    const wordTimes = segs.map((seg) =>
+      (seg.words || []).filter((w) => w.start != null).map((w) => [w.start, w.end]));
     st = { segments: segs, spans, wordTimes, curSeg: 0, audio: null, stopped: false, ended: false, playBtn };
     window.__gk[key] = st;
     if (statusEl) statusEl.textContent = '';
