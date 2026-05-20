@@ -161,6 +161,47 @@ export async function fetchElevenAudio(voiceId, text, role = 'single', retry = 0
   return Buffer.from(await upstream.arrayBuffer());
 }
 
+// Timestamp-capable generation untuk karaoke subtitle. Endpoint
+// /with-timestamps balikin audio + alignment per-karakter. Dipaksa pakai
+// eleven_multilingual_v2 (model yg support timestamps reliable; v3 belum
+// tentu) + strip [emotion tag] biar gak kebaca literal sebagai kata.
+const ALIGNED_MODEL = 'eleven_multilingual_v2';
+
+async function fetchElevenAudioAligned(voiceId, text, role = 'single', retry = 0) {
+  const settings = VOICE_SETTINGS[role] || VOICE_SETTINGS.single;
+  const cleanText = String(text).replace(/\[[a-z_]{1,24}\]\s*/gi, '').trim();
+  const upstream = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}/with-timestamps?output_format=mp3_44100_128`,
+    {
+      method: 'POST',
+      headers: {
+        'xi-api-key': ELEVEN_API_KEY,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ text: cleanText, model_id: ALIGNED_MODEL, voice_settings: settings }),
+    }
+  );
+  if (!upstream.ok) {
+    const detail = await upstream.text().catch(() => '');
+    if (retry < 3 && (upstream.status === 409 || upstream.status === 429 || upstream.status >= 500)) {
+      await new Promise((r) => setTimeout(r, 500 * (retry + 1)));
+      return fetchElevenAudioAligned(voiceId, text, role, retry + 1);
+    }
+    const err = new Error(`ElevenLabs TS ${upstream.status}: ${detail.slice(0, 200)}`);
+    err.upstreamStatus = upstream.status;
+    throw err;
+  }
+  const data = await upstream.json();
+  const al = data.alignment || {};
+  return {
+    buffer: Buffer.from(data.audio_base64 || '', 'base64'),
+    chars: Array.isArray(al.characters) ? al.characters : [],
+    starts: Array.isArray(al.character_start_times_seconds) ? al.character_start_times_seconds : [],
+    ends: Array.isArray(al.character_end_times_seconds) ? al.character_end_times_seconds : [],
+  };
+}
+
 // GET /api/tts?text=<plain japanese OR dialog "A: ... B: ...">
 router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
   const text = String(req.query.text || '').trim();
@@ -244,6 +285,97 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
     [key, text, voices.join(','), ELEVEN_MODEL, combined, combined.length, SETTINGS_VERSION]
   );
   return sendAudio(res, combined, 'audio/mpeg');
+}));
+
+// GET /api/tts/aligned?text= — karaoke subtitle. Balikin JSON:
+//   { audio_base64, content_type, alignment: { segments, duration } }
+// alignment.segments[i] = { speaker, role, chars:[...], times:[[s,e],...] }
+// dengan times = waktu audio GLOBAL (detik) buat tiap karakter. Audio =
+// concat MP3 per turn (offset waktu kumulatif via byte-size). Beda cache
+// entry dari /api/tts (prefix "aligned"), gak ada SSML break (biar
+// alignment bersih), model dipaksa v2 (timestamp reliable).
+router.get('/tts/aligned', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
+  const text = String(req.query.text || '').trim();
+  if (!text) return res.status(400).json({ error: 'text required' });
+  if (text.length > MAX_TEXT_LEN) return res.status(400).json({ error: 'text too long' });
+
+  const known = await query(
+    `SELECT 1 WHERE EXISTS (SELECT 1 FROM module_vocabulary WHERE japanese = $1 OR reading = $1)
+                OR EXISTS (SELECT 1 FROM vocabulary_examples WHERE japanese = $1)
+                OR EXISTS (SELECT 1 FROM quiz_questions WHERE audio_script = $1)
+                OR EXISTS (SELECT 1 FROM module_grammar WHERE example_dialog = $1)
+     LIMIT 1`,
+    [text]
+  );
+  if (known.rows.length === 0) return res.status(403).json({ error: 'unknown text' });
+
+  const turns = parseDialog(text);
+  const isDialog = !!turns;
+  const effTurns = isDialog ? turns : [{ speaker: '', text }];
+  const turnVoices = isDialog
+    ? turns.map((t, i) => voiceForSpeaker(t.speaker, i))
+    : [{ voiceId: ELEVEN_VOICE_ID, role: 'single' }];
+  const voices = turnVoices.map((v) => v.voiceId);
+
+  const key = hashKey('aligned\n' + text, voices);
+  const cached = await query(
+    `SELECT audio, content_type, alignment FROM tts_cache WHERE text_hash = $1`,
+    [key]
+  );
+  if (cached.rows.length > 0 && cached.rows[0].alignment) {
+    query(`UPDATE tts_cache SET last_used_at = NOW() WHERE text_hash = $1`, [key]).catch(() => {});
+    return res.json({
+      audio_base64: cached.rows[0].audio.toString('base64'),
+      content_type: cached.rows[0].content_type || 'audio/mpeg',
+      alignment: cached.rows[0].alignment,
+    });
+  }
+
+  const dialogVoicesEmpty = !ELEVEN_VOICE_FEMALE && !ELEVEN_VOICE_MALE && !ELEVEN_VOICE_NARRATOR;
+  if (!ELEVEN_API_KEY || (!isDialog && !ELEVEN_VOICE_ID) || (isDialog && dialogVoicesEmpty)) {
+    return res.status(503).json({ error: 'tts_disabled' });
+  }
+
+  let combined;
+  const segments = [];
+  let offsetSec = 0;
+  try {
+    const buffers = [];
+    for (let i = 0; i < effTurns.length; i++) {
+      const r = await fetchElevenAudioAligned(turnVoices[i].voiceId, effTurns[i].text, turnVoices[i].role);
+      buffers.push(r.buffer);
+      const times = r.starts.map((s, j) => [
+        +(offsetSec + s).toFixed(3),
+        +(offsetSec + (r.ends[j] ?? s)).toFixed(3),
+      ]);
+      segments.push({
+        speaker: effTurns[i].speaker || '',
+        role: turnVoices[i].role,
+        chars: r.chars,
+        times,
+      });
+      // mp3_44100_128 ≈ 16000 byte/detik → offset turn berikutnya.
+      offsetSec += r.buffer.length / 16000;
+    }
+    combined = Buffer.concat(buffers);
+  } catch (err) {
+    console.error('TTS aligned upstream:', err.message);
+    return res.status(502).json({ error: 'tts_upstream' });
+  }
+
+  const alignment = { segments, duration: +offsetSec.toFixed(3) };
+  await query(
+    `INSERT INTO tts_cache (text_hash, text, provider, voice, model, audio, content_type, byte_size, settings_version, alignment)
+     VALUES ($1,$2,'elevenlabs',$3,$4,$5,'audio/mpeg',$6,$7,$8)
+     ON CONFLICT (text_hash) DO UPDATE SET
+       audio = EXCLUDED.audio, byte_size = EXCLUDED.byte_size, alignment = EXCLUDED.alignment`,
+    [key, text, voices.join(','), ALIGNED_MODEL, combined, combined.length, SETTINGS_VERSION, JSON.stringify(alignment)]
+  );
+  return res.json({
+    audio_base64: combined.toString('base64'),
+    content_type: 'audio/mpeg',
+    alignment,
+  });
 }));
 
 // GET /api/tts/version — public, untuk frontend append `?v=` ke URL TTS
