@@ -374,6 +374,7 @@ CREATE TABLE IF NOT EXISTS tts_cache (
   content_type TEXT NOT NULL DEFAULT 'audio/mpeg',
   byte_size INT,
   settings_version TEXT,
+  alignment JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

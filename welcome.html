@@ -2960,11 +2960,29 @@
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(20, 20, 30, .06);
   }
-  /* Dialog contoh grammar: non-sticky, nempel di dalam grammar card. */
-  .grammar-dialog-player {
-    position: static; margin: 12px 0 0; padding: 12px 14px 10px;
-    box-shadow: none;
+  /* Karaoke dialog grammar (Todai-style): full transcript + highlight. */
+  .grammar-karaoke {
+    margin: 12px 0 0; padding: 12px 14px;
+    background: #faf7f5; border: 1px solid #eadfda; border-radius: 10px;
   }
+  .gk-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .gk-play {
+    background: var(--brand-red); color: #fff; border: none;
+    padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 700;
+    cursor: pointer;
+  }
+  .gk-play:disabled { opacity: .6; cursor: default; }
+  .gk-status { font-size: 12px; color: #8a8a8a; }
+  .gk-transcript { display: flex; flex-direction: column; gap: 7px; }
+  .gk-line { display: flex; gap: 8px; align-items: baseline; }
+  .gk-speaker {
+    flex: 0 0 auto; min-width: 20px; font-weight: 800; font-size: 12px;
+    color: var(--brand-red);
+  }
+  .gk-text { font-size: 17px; line-height: 1.85; color: #444; }
+  .gk-ch { border-radius: 3px; transition: color .08s, background .08s; }
+  .gk-ch.gk-done { color: #1a1a1a; }
+  .gk-ch.gk-active { color: #fff; background: var(--brand-red); }
   .qlp-head {
     display: flex; align-items: center; justify-content: space-between;
     gap: 12px;
@@ -6047,7 +6065,7 @@ function renderLessonGrammar(lesson) {
             ${g.meaning ? `<div class="grammar-meaning">${escapeHtml(g.meaning)}</div>` : ''}
             ${g.example ? `<div class="grammar-example">${escapeHtml(g.example)}</div>` : ''}
             ${g.notes ? `<div class="grammar-notes">${escapeHtml(g.notes)}</div>` : ''}
-            ${dialog ? grammarDialogPlayerHtml(dialog, `g${i}`) : ''}
+            ${dialog ? grammarKaraokeHtml(dialog, `g${i}`) : ''}
           </div>`;
         }).join('')}
       </div>
@@ -6055,30 +6073,104 @@ function renderLessonGrammar(lesson) {
   `;
 }
 
-// Single-track listening player buat dialog contoh grammar. Reuse markup +
-// state machine yang sama dengan quiz listening player (initListeningPlayers
-// scan .quiz-listening-player), tapi tanpa tracklist/jeda (cuma 1 dialog).
-function grammarDialogPlayerHtml(script, key) {
-  const tracks = [{ qi: -1, orderInSection: 1, script }];
-  const tracksJs = escapeHtml(JSON.stringify(tracks));
+// ── Karaoke dialog player (Todai-style) ───────────────────────────
+// Full transcript keliatan; karakter yang lagi diucapin di-highlight
+// ngikutin audio. Timing dari /api/tts/aligned (alignment per-karakter
+// ElevenLabs). Lazy: audio + alignment baru di-fetch pas user klik play.
+window.__gk = window.__gk || {};
+
+function parseDialogLinesFE(text) {
+  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean);
+  const SPK = /^([A-Za-z0-9]{1,12}|男|女|男性|女性|男の人|女の人):\s*(.+)$/;
+  const turns = [];
+  for (const line of lines) {
+    const m = line.match(SPK);
+    if (m) turns.push({ speaker: m[1], text: m[2].trim() });
+    else if (turns.length) turns[turns.length - 1].text += ' ' + line;
+    else turns.push({ speaker: '', text: line });
+  }
+  return turns;
+}
+
+function karaokeLineHtml(speaker, inner) {
+  return `<div class="gk-line">${speaker ? `<span class="gk-speaker">${escapeHtml(speaker)}</span>` : ''}<span class="gk-text">${inner}</span></div>`;
+}
+
+// Static transcript (semua text keliatan) sebelum audio di-load.
+function renderKaraokeStatic(text) {
+  return parseDialogLinesFE(text).map((t) => karaokeLineHtml(t.speaker, escapeHtml(t.text))).join('');
+}
+
+function grammarKaraokeHtml(dialogText, key) {
   return `
-    <div class="quiz-listening-player grammar-dialog-player" id="qlp-${key}" data-section-key="${key}" data-tracks="${tracksJs}">
-      <div class="qlp-head">
-        <span class="qlp-title">🎧 Dialog contoh</span>
+    <div class="grammar-karaoke" id="gk-${key}" data-dialog="${escapeHtml(dialogText)}">
+      <div class="gk-controls">
+        <button type="button" class="gk-play" onclick="window.grammarKaraokePlay('${key}')">▶ Putar dialog</button>
+        <span class="gk-status"></span>
       </div>
-      <div class="qlp-controls">
-        <button type="button" class="qlp-btn qlp-skip" aria-label="Mundur 10 detik" onclick="window.listeningSkip('${key}', -10)">−10s</button>
-        <button type="button" class="qlp-btn qlp-play" aria-label="Putar / jeda" onclick="window.listeningTogglePlay('${key}')">▶</button>
-        <button type="button" class="qlp-btn qlp-skip" aria-label="Maju 10 detik" onclick="window.listeningSkip('${key}', 10)">+10s</button>
-      </div>
-      <div class="qlp-bar-wrap">
-        <input type="range" class="qlp-bar" min="0" max="100" value="0" step="0.1" aria-label="Posisi audio"
-          oninput="window.listeningSeek('${key}', this.value)" />
-        <span class="qlp-time"><span class="qlp-cur-time">00:00</span> / <span class="qlp-total-time">00:00</span></span>
-      </div>
+      <div class="gk-transcript">${renderKaraokeStatic(dialogText)}</div>
     </div>
   `;
 }
+
+window.grammarKaraokePlay = async (key) => {
+  const el = document.getElementById('gk-' + key);
+  if (!el) return;
+  let st = window.__gk[key];
+  if (st && st.audio) {
+    if (st.audio.paused) { const p = st.audio.play(); if (p && p.catch) p.catch(() => {}); }
+    else st.audio.pause();
+    return;
+  }
+  const dialog = el.dataset.dialog || '';
+  const statusEl = el.querySelector('.gk-status');
+  const playBtn = el.querySelector('.gk-play');
+  const transcript = el.querySelector('.gk-transcript');
+  if (statusEl) statusEl.textContent = 'Memuat… (pertama kali ~5-10 detik)';
+  if (playBtn) playBtn.disabled = true;
+  try {
+    const r = await fetch('/api/tts/aligned?text=' + encodeURIComponent(dialog));
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    const segs = (data.alignment && data.alignment.segments) || [];
+    // Re-render transcript dari alignment (mapping karakter→waktu authoritative).
+    transcript.innerHTML = segs.map((seg, si) => {
+      const inner = (seg.chars || []).map((c, ci) =>
+        `<span class="gk-ch" data-k="${si}_${ci}">${escapeHtml(c)}</span>`).join('');
+      return karaokeLineHtml(seg.speaker, inner);
+    }).join('');
+    const flat = [];
+    segs.forEach((seg, si) => {
+      (seg.times || []).forEach((t, ci) => {
+        const span = transcript.querySelector(`.gk-ch[data-k="${si}_${ci}"]`);
+        if (span) flat.push({ span, start: t[0], end: t[1] });
+      });
+    });
+    const audio = new Audio('data:' + (data.content_type || 'audio/mpeg') + ';base64,' + data.audio_base64);
+    st = { audio, flat };
+    window.__gk[key] = st;
+    audio.addEventListener('timeupdate', () => {
+      const tt = audio.currentTime;
+      for (const c of flat) {
+        if (tt >= c.end) { c.span.classList.add('gk-done'); c.span.classList.remove('gk-active'); }
+        else if (tt >= c.start) { c.span.classList.add('gk-active'); c.span.classList.remove('gk-done'); }
+        else { c.span.classList.remove('gk-active', 'gk-done'); }
+      }
+    });
+    audio.addEventListener('play', () => { if (playBtn) playBtn.textContent = '❚❚ Jeda'; });
+    audio.addEventListener('pause', () => { if (playBtn) playBtn.textContent = '▶ Putar dialog'; });
+    audio.addEventListener('ended', () => {
+      if (playBtn) playBtn.textContent = '↻ Ulangi';
+      flat.forEach((c) => c.span.classList.remove('gk-active'));
+    });
+    if (statusEl) statusEl.textContent = '';
+    if (playBtn) playBtn.disabled = false;
+    const p = audio.play(); if (p && p.catch) p.catch(() => {});
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Audio tidak tersedia';
+    if (playBtn) playBtn.disabled = false;
+  }
+};
 
 function renderLessonExtras(lesson) {
   const vocab = renderLessonVocab(lesson);
@@ -6542,8 +6634,6 @@ function renderLesson() {
       </button>
     </div>
   `;
-  // Wire listening player(s) untuk dialog contoh grammar (kalau ada).
-  initListeningPlayers();
 }
 
 function getLessonNoteKey(module, lesson) {
