@@ -990,30 +990,31 @@ router.post('/lessons/:lessonId/generate-quiz', asyncHandler(async (req, res) =>
 }));
 
 router.post('/module-grammar', asyncHandler(async (req, res) => {
-  const { moduleId, lessonId, pattern, meaning, example, notes, sortOrder } = req.body || {};
+  const { moduleId, lessonId, pattern, meaning, example, notes, exampleDialog, sortOrder } = req.body || {};
   if (!moduleId || !pattern) return res.status(400).json({ error: 'moduleId and pattern required' });
   const result = await query(
-    `INSERT INTO module_grammar (module_id, lesson_id, pattern, meaning, example, notes, sort_order)
-     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-    [moduleId, lessonId || null, pattern, meaning || null, example || null, notes || null, sortOrder || 0]
+    `INSERT INTO module_grammar (module_id, lesson_id, pattern, meaning, example, notes, example_dialog, sort_order)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+    [moduleId, lessonId || null, pattern, meaning || null, example || null, notes || null, exampleDialog || null, sortOrder || 0]
   );
   res.status(201).json({ grammar: result.rows[0] });
 }));
 
 router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
-  const { lessonId, pattern, meaning, example, notes, sortOrder } = req.body || {};
+  const { lessonId, pattern, meaning, example, notes, exampleDialog, sortOrder } = req.body || {};
   const hasLesson = Object.prototype.hasOwnProperty.call(req.body || {}, 'lessonId');
   const result = await query(
     `UPDATE module_grammar SET
-       lesson_id = CASE WHEN $8::boolean THEN $2 ELSE lesson_id END,
+       lesson_id = CASE WHEN $9::boolean THEN $2 ELSE lesson_id END,
        pattern = COALESCE($3, pattern),
        meaning = COALESCE($4, meaning),
        example = COALESCE($5, example),
        notes = COALESCE($6, notes),
-       sort_order = COALESCE($7, sort_order),
+       example_dialog = COALESCE($7, example_dialog),
+       sort_order = COALESCE($8, sort_order),
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
-    [req.params.id, lessonId || null, pattern, meaning, example, notes, sortOrder, hasLesson]
+    [req.params.id, lessonId || null, pattern, meaning, example, notes, exampleDialog, sortOrder, hasLesson]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ grammar: result.rows[0] });
