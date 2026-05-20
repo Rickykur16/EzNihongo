@@ -13,7 +13,21 @@ const router = Router();
 const segmenter = new TinySegmenter();
 const GK_BREAK_RE = /^[\s　、。，．！？!?…「」『』（）()・]+$/;
 
-// chars[] + times[] (per-karakter dari ElevenLabs) → words[] per-kata.
+// Auxiliary / infleksi yang harus NEMPEL ke kata kerja/sifat/kopula di
+// depannya (bunsetsu-level), bukan jadi kata sendiri. TinySegmenter mecah
+// per-morfem (話し|て|い|ます) → tanpa merge highlight-nya lompat-lompat.
+// Partikel kasus (は が を に へ と も の から まで dll) SENGAJA gak di sini
+// supaya tetap jadi pemisah kata.
+const AUX_MERGE = new Set([
+  'て', 'で', 'た', 'だ', 'い', 'いる', 'いた', 'ます', 'まし', 'ました', 'ません',
+  'ましょ', 'ましょう', 'ない', 'なかっ', 'なかった', 'なく', 'なくて', 'ず',
+  'える', 'てる', 'たい', 'たく', 'です', 'でし', 'でした', 'でしょ', 'でしょう',
+  'だっ', 'だった', 'れ', 'れる', 'られ', 'られる', 'せ', 'せる', 'させ', 'させる',
+  'よう', 'う', 'ろ', 'なさい', 'ください', 'ね', 'よ', 'ちゃ', 'じゃ',
+]);
+
+// chars[] + times[] (per-karakter dari ElevenLabs) → words[] per-kata
+// (bunsetsu: kata kerja + auxiliary jadi satu, partikel kepisah).
 // words[i] = { text, start, end } untuk kata; { text, start:null } untuk
 // pemisah (spasi/tanda baca, gak di-highlight).
 function segmentWords(chars, times) {
@@ -28,9 +42,16 @@ function segmentWords(chars, times) {
     ci += arr.length;
     if (GK_BREAK_RE.test(tok)) {
       words.push({ text: tok, start: null });
+      continue;
+    }
+    const s = times[startIdx] ? times[startIdx][0] : 0;
+    const e = times[endIdx] ? times[endIdx][1] : s;
+    const prev = words[words.length - 1];
+    if (AUX_MERGE.has(tok) && prev && prev.start != null) {
+      // Gabung auxiliary ke kata di depannya — extend rentang waktu.
+      prev.text += tok;
+      prev.end = e;
     } else {
-      const s = times[startIdx] ? times[startIdx][0] : 0;
-      const e = times[endIdx] ? times[endIdx][1] : s;
       words.push({ text: tok, start: s, end: e });
     }
   }
@@ -348,10 +369,9 @@ router.get('/tts/aligned', optionalAuth, ttsLimiter, asyncHandler(async (req, re
     : [{ voiceId: ELEVEN_VOICE_ID, role: 'single' }];
   const voices = turnVoices.map((v) => v.voiceId);
 
-  // "aligned3" = per-segment (audio + waktu relatif) + words[] hasil
-  // segmentasi kata (highlight per-kata, partikel ke-pisah). Bump dari
-  // aligned2 (yg masih per-karakter) supaya regenerate format baru.
-  const key = hashKey('aligned3\n' + text, voices);
+  // "aligned4" = words[] dengan auxiliary di-merge ke kata kerja
+  // (bunsetsu). Bump dari aligned3 supaya regenerate segmentasi baru.
+  const key = hashKey('aligned4\n' + text, voices);
   const cached = await query(
     `SELECT alignment FROM tts_cache WHERE text_hash = $1`,
     [key]
