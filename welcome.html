@@ -6079,6 +6079,20 @@ function renderLessonGrammar(lesson) {
 // ElevenLabs). Lazy: audio + alignment baru di-fetch pas user klik play.
 window.__gk = window.__gk || {};
 
+// Stop + buang semua karaoke player (dipanggil pas pindah lesson supaya
+// audio lama gak terus main; key g0/g1 di-reuse antar render).
+function gkStopAll() {
+  for (const k of Object.keys(window.__gk)) {
+    const st = window.__gk[k];
+    if (st) {
+      st.stopped = true;
+      if (st._gap) { clearTimeout(st._gap); st._gap = null; }
+      if (st.audio) { try { st.audio.pause(); } catch {} st.audio.src = ''; }
+    }
+    delete window.__gk[k];
+  }
+}
+
 function parseDialogLinesFE(text) {
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean);
   const SPK = /^([A-Za-z0-9]{1,12}|男|女|男性|女性|男の人|女の人):\s*(.+)$/;
@@ -6113,15 +6127,72 @@ function grammarKaraokeHtml(dialogText, key) {
   `;
 }
 
+// Putar segment ke-si secara berurutan. Tiap segment audio sendiri +
+// waktu karakter RELATIF ke awal segment → highlight akurat, gak ada
+// drift/offset estimation. Jeda ~450ms antar segment.
+function gkPlaySegment(key, si) {
+  const st = window.__gk[key];
+  if (!st || st.stopped) return;
+  const segs = st.segments;
+  if (si >= segs.length) {
+    st.curSeg = 0; st.audio = null; st.ended = true;
+    if (st.playBtn) st.playBtn.textContent = '↻ Ulangi';
+    st.spans.flat().forEach((sp) => sp && sp.classList.remove('gk-active'));
+    return;
+  }
+  st.curSeg = si; st.ended = false;
+  // Tandai segment sebelumnya 'done', segment ini + sesudahnya reset.
+  st.spans.forEach((arr, idx) => arr.forEach((sp) => {
+    if (!sp) return;
+    sp.classList.remove('gk-active');
+    sp.classList.toggle('gk-done', idx < si);
+  }));
+  const seg = segs[si];
+  const audio = new Audio('data:' + (seg.content_type || 'audio/mpeg') + ';base64,' + seg.audio_base64);
+  st.audio = audio;
+  const times = seg.times || [];
+  const spans = st.spans[si] || [];
+  audio.addEventListener('timeupdate', () => {
+    const tt = audio.currentTime;
+    for (let j = 0; j < spans.length; j++) {
+      const sp = spans[j]; const t = times[j];
+      if (!sp || !t) continue;
+      if (tt >= t[1]) { sp.classList.add('gk-done'); sp.classList.remove('gk-active'); }
+      else if (tt >= t[0]) { sp.classList.add('gk-active'); sp.classList.remove('gk-done'); }
+      else { sp.classList.remove('gk-active', 'gk-done'); }
+    }
+  });
+  audio.addEventListener('ended', () => {
+    spans.forEach((sp) => sp && (sp.classList.add('gk-done'), sp.classList.remove('gk-active')));
+    if (st.stopped) return;
+    st._gap = setTimeout(() => gkPlaySegment(key, si + 1), 450);
+  });
+  const p = audio.play(); if (p && p.catch) p.catch(() => {});
+}
+
 window.grammarKaraokePlay = async (key) => {
   const el = document.getElementById('gk-' + key);
   if (!el) return;
   let st = window.__gk[key];
-  if (st && st.audio) {
-    if (st.audio.paused) { const p = st.audio.play(); if (p && p.catch) p.catch(() => {}); }
-    else st.audio.pause();
+  // Sudah ke-load: toggle play/pause/replay.
+  if (st && st.segments) {
+    if (st.audio && !st.audio.paused) {
+      st.stopped = true;
+      if (st._gap) { clearTimeout(st._gap); st._gap = null; }
+      st.audio.pause();
+      if (st.playBtn) st.playBtn.textContent = '▶ Putar dialog';
+    } else if (st.ended || !st.audio) {
+      st.stopped = false; st.ended = false;
+      if (st.playBtn) st.playBtn.textContent = '❚❚ Jeda';
+      gkPlaySegment(key, 0);
+    } else {
+      st.stopped = false;
+      if (st.playBtn) st.playBtn.textContent = '❚❚ Jeda';
+      const p = st.audio.play(); if (p && p.catch) p.catch(() => {});
+    }
     return;
   }
+  // Pertama kali: fetch alignment + audio per segment, render, lalu play.
   const dialog = el.dataset.dialog || '';
   const statusEl = el.querySelector('.gk-status');
   const playBtn = el.querySelector('.gk-play');
@@ -6132,40 +6203,21 @@ window.grammarKaraokePlay = async (key) => {
     const r = await fetch('/api/tts/aligned?text=' + encodeURIComponent(dialog));
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
-    const segs = (data.alignment && data.alignment.segments) || [];
-    // Re-render transcript dari alignment (mapping karakter→waktu authoritative).
+    const segs = (data && data.segments) || [];
+    if (!segs.length) throw new Error('no segments');
+    // Render transcript dari segment (mapping karakter→span authoritative).
     transcript.innerHTML = segs.map((seg, si) => {
       const inner = (seg.chars || []).map((c, ci) =>
         `<span class="gk-ch" data-k="${si}_${ci}">${escapeHtml(c)}</span>`).join('');
       return karaokeLineHtml(seg.speaker, inner);
     }).join('');
-    const flat = [];
-    segs.forEach((seg, si) => {
-      (seg.times || []).forEach((t, ci) => {
-        const span = transcript.querySelector(`.gk-ch[data-k="${si}_${ci}"]`);
-        if (span) flat.push({ span, start: t[0], end: t[1] });
-      });
-    });
-    const audio = new Audio('data:' + (data.content_type || 'audio/mpeg') + ';base64,' + data.audio_base64);
-    st = { audio, flat };
+    const spans = segs.map((seg, si) =>
+      (seg.chars || []).map((_, ci) => transcript.querySelector(`.gk-ch[data-k="${si}_${ci}"]`)));
+    st = { segments: segs, spans, curSeg: 0, audio: null, stopped: false, ended: false, playBtn };
     window.__gk[key] = st;
-    audio.addEventListener('timeupdate', () => {
-      const tt = audio.currentTime;
-      for (const c of flat) {
-        if (tt >= c.end) { c.span.classList.add('gk-done'); c.span.classList.remove('gk-active'); }
-        else if (tt >= c.start) { c.span.classList.add('gk-active'); c.span.classList.remove('gk-done'); }
-        else { c.span.classList.remove('gk-active', 'gk-done'); }
-      }
-    });
-    audio.addEventListener('play', () => { if (playBtn) playBtn.textContent = '❚❚ Jeda'; });
-    audio.addEventListener('pause', () => { if (playBtn) playBtn.textContent = '▶ Putar dialog'; });
-    audio.addEventListener('ended', () => {
-      if (playBtn) playBtn.textContent = '↻ Ulangi';
-      flat.forEach((c) => c.span.classList.remove('gk-active'));
-    });
     if (statusEl) statusEl.textContent = '';
-    if (playBtn) playBtn.disabled = false;
-    const p = audio.play(); if (p && p.catch) p.catch(() => {});
+    if (playBtn) { playBtn.disabled = false; playBtn.textContent = '❚❚ Jeda'; }
+    gkPlaySegment(key, 0);
   } catch (e) {
     if (statusEl) statusEl.textContent = 'Audio tidak tersedia';
     if (playBtn) playBtn.disabled = false;
@@ -6550,6 +6602,7 @@ window.closeDeckModal = () => {
 };
 
 function renderLesson() {
+  gkStopAll(); // stop karaoke dialog dari lesson sebelumnya
   const course = COURSE_CONTENT[currentState.course];
   const module = course.modules.find(m => m.id === currentState.moduleId);
   const lesson = module.lessons.find(l => l.id === currentState.lessonId);

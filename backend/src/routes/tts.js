@@ -317,18 +317,17 @@ router.get('/tts/aligned', optionalAuth, ttsLimiter, asyncHandler(async (req, re
     : [{ voiceId: ELEVEN_VOICE_ID, role: 'single' }];
   const voices = turnVoices.map((v) => v.voiceId);
 
-  const key = hashKey('aligned\n' + text, voices);
+  // "aligned2" = format per-segment (audio + waktu relatif per turn).
+  // Frontend putar tiap segment berurutan → timing akurat tanpa estimasi
+  // offset (yg bikin highlight drift/lompat di versi sebelumnya).
+  const key = hashKey('aligned2\n' + text, voices);
   const cached = await query(
-    `SELECT audio, content_type, alignment FROM tts_cache WHERE text_hash = $1`,
+    `SELECT alignment FROM tts_cache WHERE text_hash = $1`,
     [key]
   );
   if (cached.rows.length > 0 && cached.rows[0].alignment) {
     query(`UPDATE tts_cache SET last_used_at = NOW() WHERE text_hash = $1`, [key]).catch(() => {});
-    return res.json({
-      audio_base64: cached.rows[0].audio.toString('base64'),
-      content_type: cached.rows[0].content_type || 'audio/mpeg',
-      alignment: cached.rows[0].alignment,
-    });
+    return res.json(cached.rows[0].alignment);
   }
 
   const dialogVoicesEmpty = !ELEVEN_VOICE_FEMALE && !ELEVEN_VOICE_MALE && !ELEVEN_VOICE_NARRATOR;
@@ -336,26 +335,27 @@ router.get('/tts/aligned', optionalAuth, ttsLimiter, asyncHandler(async (req, re
     return res.status(503).json({ error: 'tts_disabled' });
   }
 
+  // Tiap turn = segment terpisah: audio sendiri + waktu karakter RELATIF
+  // ke awal segment (bukan global). Frontend mainin berurutan.
   let combined;
   const segments = [];
-  let offsetSec = 0;
   try {
     const buffers = [];
     for (let i = 0; i < effTurns.length; i++) {
       const r = await fetchElevenAudioAligned(turnVoices[i].voiceId, effTurns[i].text, turnVoices[i].role);
       buffers.push(r.buffer);
       const times = r.starts.map((s, j) => [
-        +(offsetSec + s).toFixed(3),
-        +(offsetSec + (r.ends[j] ?? s)).toFixed(3),
+        +Number(s).toFixed(3),
+        +Number(r.ends[j] ?? s).toFixed(3),
       ]);
       segments.push({
         speaker: effTurns[i].speaker || '',
         role: turnVoices[i].role,
         chars: r.chars,
         times,
+        audio_base64: r.buffer.toString('base64'),
+        content_type: 'audio/mpeg',
       });
-      // mp3_44100_128 ≈ 16000 byte/detik → offset turn berikutnya.
-      offsetSec += r.buffer.length / 16000;
     }
     combined = Buffer.concat(buffers);
   } catch (err) {
@@ -363,7 +363,7 @@ router.get('/tts/aligned', optionalAuth, ttsLimiter, asyncHandler(async (req, re
     return res.status(502).json({ error: 'tts_upstream' });
   }
 
-  const alignment = { segments, duration: +offsetSec.toFixed(3) };
+  const alignment = { segments, format: 'segments-v2' };
   await query(
     `INSERT INTO tts_cache (text_hash, text, provider, voice, model, audio, content_type, byte_size, settings_version, alignment)
      VALUES ($1,$2,'elevenlabs',$3,$4,$5,'audio/mpeg',$6,$7,$8)
@@ -371,11 +371,7 @@ router.get('/tts/aligned', optionalAuth, ttsLimiter, asyncHandler(async (req, re
        audio = EXCLUDED.audio, byte_size = EXCLUDED.byte_size, alignment = EXCLUDED.alignment`,
     [key, text, voices.join(','), ALIGNED_MODEL, combined, combined.length, SETTINGS_VERSION, JSON.stringify(alignment)]
   );
-  return res.json({
-    audio_base64: combined.toString('base64'),
-    content_type: 'audio/mpeg',
-    alignment,
-  });
+  return res.json(alignment);
 }));
 
 // GET /api/tts/version — public, untuk frontend append `?v=` ke URL TTS
