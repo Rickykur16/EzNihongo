@@ -2979,10 +2979,11 @@
     flex: 0 0 auto; min-width: 20px; font-weight: 800; font-size: 12px;
     color: var(--brand-red);
   }
-  .gk-text { font-size: 17px; line-height: 1.85; color: #444; }
-  .gk-ch { border-radius: 3px; transition: color .08s, background .08s; }
-  .gk-ch.gk-done { color: #1a1a1a; }
-  .gk-ch.gk-active { color: #fff; background: var(--brand-red); }
+  .gk-text { font-size: 17px; line-height: 1.95; color: #444; }
+  .gk-punct { color: #444; }
+  .gk-word { border-radius: 4px; padding: 0 1px; transition: color .1s, background .1s; }
+  .gk-word.gk-done { color: #1a1a1a; }
+  .gk-word.gk-active { color: #fff; background: var(--brand-red); padding: 1px 3px; }
   .qlp-head {
     display: flex; align-items: center; justify-content: space-between;
     gap: 12px;
@@ -6093,6 +6094,30 @@ function gkStopAll() {
   }
 }
 
+// Kelompokin karakter (+ timing per-char dari ElevenLabs) jadi KATA.
+// Boundary = spasi / tanda baca. Tiap kata punya start=char pertama,
+// end=char terakhir → highlight per-kata (bukan per-huruf). Materi N5
+// umumnya wakachigaki (pakai spasi antar kata) jadi pemisahan akurat.
+const GK_BREAK = /[\s　、。，．！？!?…「」『』（）()・]/;
+function gkGroupWords(chars, times) {
+  const out = []; // { text, start|null, end|null }  start null = pemisah (gak di-highlight)
+  let cur = null;
+  for (let i = 0; i < chars.length; i++) {
+    const c = chars[i];
+    const t = times[i] || [0, 0];
+    if (GK_BREAK.test(c)) {
+      if (cur) { out.push(cur); cur = null; }
+      out.push({ text: c, start: null, end: null });
+    } else {
+      if (!cur) cur = { text: '', start: t[0], end: t[1] };
+      cur.text += c;
+      cur.end = t[1];
+    }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
 function parseDialogLinesFE(text) {
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean);
   const SPK = /^([A-Za-z0-9]{1,12}|男|女|男性|女性|男の人|女の人):\s*(.+)$/;
@@ -6150,7 +6175,7 @@ function gkPlaySegment(key, si) {
   const seg = segs[si];
   const audio = new Audio('data:' + (seg.content_type || 'audio/mpeg') + ';base64,' + seg.audio_base64);
   st.audio = audio;
-  const times = seg.times || [];
+  const times = (st.wordTimes && st.wordTimes[si]) || [];
   const spans = st.spans[si] || [];
   audio.addEventListener('timeupdate', () => {
     const tt = audio.currentTime;
@@ -6205,15 +6230,23 @@ window.grammarKaraokePlay = async (key) => {
     const data = await r.json();
     const segs = (data && data.segments) || [];
     if (!segs.length) throw new Error('no segments');
-    // Render transcript dari segment (mapping karakter→span authoritative).
+    // Kelompokin tiap segment jadi kata, render span per-kata (highlight
+    // per-kata bukan per-huruf). Pemisah (spasi/tanda baca) render polos.
+    const perSeg = segs.map((seg) => gkGroupWords(seg.chars || [], seg.times || []));
     transcript.innerHTML = segs.map((seg, si) => {
-      const inner = (seg.chars || []).map((c, ci) =>
-        `<span class="gk-ch" data-k="${si}_${ci}">${escapeHtml(c)}</span>`).join('');
+      let wi = 0;
+      const inner = perSeg[si].map((w) => {
+        if (w.start === null) return `<span class="gk-punct">${escapeHtml(w.text)}</span>`;
+        return `<span class="gk-word" data-k="${si}_${wi++}">${escapeHtml(w.text)}</span>`;
+      }).join('');
       return karaokeLineHtml(seg.speaker, inner);
     }).join('');
-    const spans = segs.map((seg, si) =>
-      (seg.chars || []).map((_, ci) => transcript.querySelector(`.gk-ch[data-k="${si}_${ci}"]`)));
-    st = { segments: segs, spans, curSeg: 0, audio: null, stopped: false, ended: false, playBtn };
+    const spans = perSeg.map((words, si) =>
+      words.filter((w) => w.start !== null)
+        .map((_, idx) => transcript.querySelector(`.gk-word[data-k="${si}_${idx}"]`)));
+    const wordTimes = perSeg.map((words) =>
+      words.filter((w) => w.start !== null).map((w) => [w.start, w.end]));
+    st = { segments: segs, spans, wordTimes, curSeg: 0, audio: null, stopped: false, ended: false, playBtn };
     window.__gk[key] = st;
     if (statusEl) statusEl.textContent = '';
     if (playBtn) { playBtn.disabled = false; playBtn.textContent = '❚❚ Jeda'; }
