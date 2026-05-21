@@ -2148,30 +2148,7 @@
     border-radius: 14px; overflow: hidden;
     box-shadow: 0 1px 2px rgba(20,20,30,0.04);
   }
-  .tabs-head {
-    display: flex; gap: 2px;
-    background: #fafaf7;
-    border-bottom: 1px solid var(--du-border, #ece9e3);
-    overflow-x: auto; scrollbar-width: none;
-  }
-  .tabs-head::-webkit-scrollbar { display: none; }
-  .tab-btn {
-    flex: 1; white-space: nowrap;
-    padding: 13px 16px; background: transparent;
-    border: none; border-bottom: 2px solid transparent;
-    font-size: 13px; font-weight: 600; color: #6b7280;
-    cursor: pointer; transition: all 0.15s ease;
-    font-family: inherit;
-  }
-  .tab-btn:hover { color: #1a1e26; background: rgba(0,0,0,0.02); }
-  .tab-btn.active {
-    color: var(--brand-red); border-bottom-color: var(--brand-red);
-    background: #fff;
-  }
   .tabs-body { padding: 20px; }
-  .tab-pane { display: none; }
-  .tab-pane.active { display: block; animation: tabFade 0.2s ease; }
-  @keyframes tabFade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
   .resource-list { display: flex; flex-direction: column; gap: 8px; }
   .resource-card {
@@ -2196,40 +2173,6 @@
   .res-title { font-size: 13.5px; font-weight: 700; color: #1a1e26; }
   .res-sub { font-size: 11.5px; color: #6b7280; margin-top: 2px; }
   .res-arr { color: var(--brand-red); font-size: 14px; font-weight: 700; }
-
-  .tab-hint { font-size: 12.5px; color: #6b7280; margin: 0 0 10px; }
-  .note-textarea {
-    width: 100%; min-height: 160px; resize: vertical;
-    padding: 12px 14px; font-size: 14px; line-height: 1.55;
-    font-family: inherit; color: #1a1e26;
-    background: #fafaf7;
-    border: 1px solid var(--du-border, #ece9e3);
-    border-radius: 10px; outline: none;
-    transition: border-color 0.15s ease, background 0.15s ease;
-  }
-  .note-textarea:focus {
-    border-color: var(--brand-red); background: #fff;
-    box-shadow: 0 0 0 3px rgba(178,0,36,0.08);
-  }
-  .note-status {
-    margin-top: 8px; font-size: 11.5px; font-weight: 600;
-    color: #9a9a9a; text-align: right;
-  }
-  .note-status.saving { color: #b08b00; }
-  .note-status.saved { color: #047857; }
-
-  .coming-soon { text-align: center; padding: 20px 10px; }
-  .cs-ico { font-size: 40px; margin-bottom: 10px; }
-  .cs-title { font-size: 17px; font-weight: 800; color: #1a1e26; margin-bottom: 6px; }
-  .cs-desc { font-size: 13px; color: #6b7280; max-width: 360px; margin: 0 auto 14px; line-height: 1.55; }
-  .cs-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 10px 18px; border-radius: 999px;
-    background: #5865F2; color: #fff; font-weight: 700;
-    font-size: 13px; text-decoration: none;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-  }
-  .cs-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(88,101,242,0.3); }
 
   /* ── MODULE INTRO PANEL ────────────────────────────────────────── */
   .module-intro {
@@ -6684,7 +6627,7 @@ function renderLesson() {
 
     ${renderLessonExtras(lesson)}
 
-    ${renderLessonTabs(module, lesson)}
+    ${renderLessonMaterials(module, lesson)}
 
     <div class="lesson-footer">
       <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">
@@ -6697,81 +6640,25 @@ function renderLesson() {
   `;
 }
 
-function getLessonNoteKey(module, lesson) {
-  return `ez_note_${currentState.course}_${module.id}_${lesson.id}`;
-}
-
-function renderLessonTabs(module, lesson) {
-  const noteKey = getLessonNoteKey(module, lesson);
-  const noteVal = (localStorage.getItem(noteKey) || '').replace(/</g, '&lt;');
+function renderLessonMaterials(module, lesson) {
   return `
     <div class="lesson-tabs" id="lesson-tabs">
-      <div class="tabs-head" role="tablist">
-        <button class="tab-btn active" data-tab="materi" onclick="switchLessonTab('materi')">📎 Materi Pendukung</button>
-        <button class="tab-btn" data-tab="catatan" onclick="switchLessonTab('catatan')">📝 Catatan Pribadi</button>
-        <button class="tab-btn" data-tab="diskusi" onclick="switchLessonTab('diskusi')">💬 Diskusi</button>
-      </div>
       <div class="tabs-body">
-        <div class="tab-pane active" data-pane="materi">
-          <div class="resource-list">
-            <a class="resource-card" href="#" onclick="event.preventDefault();showToast('Worksheet akan segera tersedia ✍️',2400)">
-              <span class="res-ico">📄</span>
-              <div class="res-info">
-                <div class="res-title">Worksheet PDF</div>
-                <div class="res-sub">Latihan tertulis — 2 halaman</div>
-              </div>
-              <span class="res-arr">↓</span>
-            </a>
-            <a class="resource-card" href="#" onclick="event.preventDefault();showToast('Audio contoh akan segera tersedia 🎧',2400)">
-              <span class="res-ico">🎧</span>
-              <div class="res-info">
-                <div class="res-title">Audio Contoh Kalimat</div>
-                <div class="res-sub">Native speaker · ~3 min</div>
-              </div>
-              <span class="res-arr">▶</span>
-            </a>
-          </div>
-        </div>
-        <div class="tab-pane" data-pane="catatan">
-          <p class="tab-hint">Tulis catatanmu di bawah — tersimpan otomatis di perangkat ini.</p>
-          <textarea class="note-textarea" id="lesson-note" placeholder="Ketik catatanmu di sini..." oninput="saveLessonNote('${noteKey}', this.value)">${noteVal}</textarea>
-          <div class="note-status" id="note-status">Siap untuk dicatat</div>
-        </div>
-        <div class="tab-pane" data-pane="diskusi">
-          <div class="coming-soon">
-            <div class="cs-ico">💬</div>
-            <div class="cs-title">Diskusi segera hadir</div>
-            <p class="cs-desc">Fitur forum per pelajaran sedang dalam pengembangan. Sementara, gabung komunitas Discord kami untuk diskusi real-time.</p>
-            <a class="cs-btn" href="https://discord.gg/GANTI_LINK_INI" target="_blank" rel="noopener">Buka Discord →</a>
-          </div>
+        <h3 style="margin:0 0 12px;font-size:14px;">📎 Materi Pendukung</h3>
+        <div class="resource-list">
+          <a class="resource-card" href="#" onclick="event.preventDefault();showToast('Worksheet akan segera tersedia ✍️',2400)">
+            <span class="res-ico">📄</span>
+            <div class="res-info">
+              <div class="res-title">Worksheet PDF</div>
+              <div class="res-sub">Latihan tertulis — 2 halaman</div>
+            </div>
+            <span class="res-arr">↓</span>
+          </a>
         </div>
       </div>
     </div>
   `;
 }
-
-window.switchLessonTab = (tab) => {
-  document.querySelectorAll('#lesson-tabs .tab-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.tab === tab);
-  });
-  document.querySelectorAll('#lesson-tabs .tab-pane').forEach(p => {
-    p.classList.toggle('active', p.dataset.pane === tab);
-  });
-};
-
-let _noteSaveTimer = null;
-window.saveLessonNote = (key, value) => {
-  const status = document.getElementById('note-status');
-  if (status) { status.textContent = 'Menyimpan...'; status.classList.add('saving'); }
-  clearTimeout(_noteSaveTimer);
-  _noteSaveTimer = setTimeout(() => {
-    try { localStorage.setItem(key, value); } catch(e) {}
-    if (status) { status.textContent = 'Tersimpan ✓'; status.classList.remove('saving'); status.classList.add('saved'); }
-  }, 400);
-};
-
-// Legacy startQuizNow / ensureQuizLoaded — di-hapus. Quiz lesson sekarang
-// langsung renderQuizLesson(landing card) → user klik Mulai → startQuizAttempt.
 
 window.speakLessonJP = (btn) => {
   const el = document.getElementById('lesson-jp');
