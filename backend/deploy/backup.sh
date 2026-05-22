@@ -1,5 +1,12 @@
 #!/bin/bash
-# Postgres backup untuk eznihongo. Dijalankan harian via cron sebagai root.
+# Backup lengkap eznihongo. Dijalankan harian via cron sebagai root.
+#
+# Satu arsip per hari (eznihongo-<ts>.tar.gz) berisi:
+#   db.dump      pg_dump -F c (data database eznihongo, compressed)
+#   globals.sql  pg_dumpall --globals-only (role + grant cluster-wide)
+#   uploads/     seluruh isi UPLOAD_DIR (gambar sensei/testimonial)
+# Tiga komponen ini yang TIDAK ada di Git, jadi inilah yang nyelametin data
+# kalau VPS hilang. Kode app sendiri aman di GitHub.
 #
 # Install di VPS:
 #   sudo cp /var/www/eznihongo/backend/deploy/backup.sh /var/www/eznihongo/backend/deploy/backup.sh
@@ -37,25 +44,50 @@ if [ -z "${DATABASE_URL:-}" ]; then
   exit 1
 fi
 
+# Default sama dengan src/routes/uploads.js — bisa di-override via .env.
+UPLOAD_DIR="${UPLOAD_DIR:-/var/www/eznihongo/uploads}"
+
 mkdir -p "$DEST"
 TS=$(date +%Y%m%d-%H%M%S)
-DUMP="$DEST/eznihongo-$TS.dump"
+ARCHIVE="$DEST/eznihongo-$TS.tar.gz"
 
-echo "[$(date -Is)] Dumping ke $DUMP"
+# Staging dir buat ngumpulin dump sebelum di-bundle. Dibersihin via trap supaya
+# nggak ninggalin sampah walau gagal di tengah.
+STAGE=$(mktemp -d)
+trap 'rm -rf "$STAGE"' EXIT
+
+echo "[$(date -Is)] Dumping database ke $STAGE/db.dump"
 # -F c = custom format (compressed, restore granular). pg_dump accepts URI via -d.
-pg_dump -d "$DATABASE_URL" -F c -f "$DUMP"
+pg_dump -d "$DATABASE_URL" -F c -f "$STAGE/db.dump"
 
-# Retention lokal: hapus dump lebih tua dari N hari.
-find "$DEST" -name 'eznihongo-*.dump' -mtime +"$RETENTION_DAYS" -delete
+echo "[$(date -Is)] Dumping globals (role + grant) ke $STAGE/globals.sql"
+# --no-role-passwords: eznihongo_app bukan superuser, jadi nggak bisa baca
+# pg_authid. Role + grant tetap ke-dump; password di-set manual saat restore.
+pg_dumpall --globals-only --no-role-passwords -d "$DATABASE_URL" > "$STAGE/globals.sql"
+
+# Bundle: db.dump + globals.sql (dari STAGE) + uploads/ (dari parent UPLOAD_DIR).
+# tar GNU memproses tiap -C berurutan.
+if [ -d "$UPLOAD_DIR" ]; then
+  echo "[$(date -Is)] Bundling db + globals + uploads dari $UPLOAD_DIR"
+  tar -czf "$ARCHIVE" \
+    -C "$STAGE" db.dump globals.sql \
+    -C "$(dirname "$UPLOAD_DIR")" "$(basename "$UPLOAD_DIR")"
+else
+  echo "[$(date -Is)] WARNING: $UPLOAD_DIR tidak ada — bundle tanpa uploads"
+  tar -czf "$ARCHIVE" -C "$STAGE" db.dump globals.sql
+fi
+
+# Retention lokal: hapus arsip lebih tua dari N hari.
+find "$DEST" -name 'eznihongo-*.tar.gz' -mtime +"$RETENTION_DAYS" -delete
 
 # Offsite (kalau remote dikonfigurasi). rclone pakai config di /root/.config/rclone/rclone.conf
 # atau RCLONE_CONFIG= env. Lewati kalau RCLONE_REMOTE belum diset di .env.
 if [ -n "${RCLONE_REMOTE:-}" ]; then
   echo "[$(date -Is)] Upload ke $RCLONE_REMOTE"
-  rclone copy "$DUMP" "$RCLONE_REMOTE/" --quiet
+  rclone copy "$ARCHIVE" "$RCLONE_REMOTE/" --quiet
 else
   echo "[$(date -Is)] RCLONE_REMOTE kosong — skip offsite, backup hanya lokal"
 fi
 
-SIZE=$(stat -c%s "$DUMP")
-echo "[$(date -Is)] OK: $DUMP ($SIZE bytes)"
+SIZE=$(stat -c%s "$ARCHIVE")
+echo "[$(date -Is)] OK: $ARCHIVE ($SIZE bytes)"
