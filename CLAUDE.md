@@ -88,10 +88,11 @@
   - **Kanji N** — `type: kanji`, opsional per siklus (skip kalau sub-topik itu
     gak ada kanji baru). Grid dari `kanji_items` (urut `sort_order`); klik tile →
     modal detail (strokes/on-kun/compounds/mnemonic).
-  - **Bunpou N** — `type: text`. `body` = penjelasan pola; `lesson.grammar`
-    (pattern/meaning/example/notes + `example_dialog`) di-wire ke `lesson_id` ini
-    → kartu grammar + tombol dialog karaoke. Kalau dalam satu siklus pola masih
-    kebanyakan (>4-5), boleh dipecah lagi jadi beberapa lesson `text` berurutan.
+  - **Bunpou N** — `type: text`, **2 pola grammar per lesson** (jangan lebih).
+    `body` = penjelasan pola; `lesson.grammar` (pattern/meaning/example/notes +
+    `example_dialog`) di-wire ke `lesson_id` ini → kartu grammar + tombol dialog
+    karaoke. Kalau sub-topik punya >2 pola, lanjutin di Bunpou siklus berikutnya
+    (`sort_order` berurutan), jangan numpuk dalam satu lesson.
   - **Speaking Test AI N** — **PLACEHOLDER dulu**, ditaruh tiap habis Bunpou
     dalam siklus. Belum ada tipe lesson `speaking` / STT / evaluasi AI; sekarang
     pakai lesson `type: text` berisi "Speaking Test AI — segera hadir". (Fitur
