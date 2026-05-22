@@ -59,40 +59,54 @@
   `systemctl restart eznihongo-api` + healthcheck loop ke `/api/health`.
 - **Branch konvensi**: `claude/<topic>-<short-id>` untuk fitur Claude.
   PR ke `main`, tidak push langsung.
-- **Struktur baku 1 Bab (modul)** — urutan lesson via `sort_order`, dari intro
-  sampai assignment. Standar 6 elemen:
-  1. **Intro Video** — `type: video`, `sort_order=1`. WAJIB lesson pertama &
-     bertipe `video` (atau `text`) supaya **Module Intro Panel** render (can-do
-     statements, skenario, `cefr_level`, `total_minutes`, `jf_topic` — dari kolom
-     MODUL, bukan `body`; `body` disembunyikan saat intro panel muncul). Catatan:
-     playback video masih placeholder "Segera tersedia" (belum di-wire ke Bunny).
-  2. **Kosakata** — `type: deck`, `sort_order=2`. Kartu dari `module_vocabulary`
-     via `lesson_deck_items` (+ `vocabulary_examples`); bisa import per Bab dari
-     Notion ("↻ Import Bab dari Notion" di Kelola Deck).
-  3. **Kanji** — `type: kanji`, `sort_order=3`. Grid kanji dari `kanji_items`
-     (urut `sort_order`); klik tile → modal detail (strokes/on-kun/compounds/
-     mnemonic).
-  4. **Grammar** — `type: text`, `sort_order=4`. `body` = penjelasan pola;
-     `lesson.grammar` (pattern/meaning/example/notes + `example_dialog`) di-wire
-     ke `lesson_id` ini → kartu grammar + tombol dialog karaoke. Kalau pola
-     kebanyakan (>4-5), **split jadi Grammar 1/2/...** — tiap pecahan lesson
-     `text` sendiri dengan subset pola-nya, `sort_order` berurutan (4, 5, ...),
-     elemen sesudahnya tinggal digeser. Tujuannya lesson tetap kecil & bisa
-     di-mark complete satu-satu (progress lebih kerasa) ketimbang satu lesson
-     panjang.
-  5. **Speaking Test AI** — `sort_order=5`. **PLACEHOLDER dulu**: belum ada tipe
-     lesson `speaking` / STT / evaluasi AI. Untuk sekarang pakai lesson `type:
-     text` berisi "Speaking Test AI — segera hadir". (Fitur beneran = pekerjaan
-     terpisah: tipe lesson baru `speaking` + migration CHECK + rekam mic/STT +
-     evaluasi AI + admin soal.)
-  6. **Assignment / Kuis** — `type: quiz`, `sort_order=6` (selalu TERAKHIR).
-     Landing card: pool soal acak + passing score + cooldown (`quiz_spec` di
-     modul; `passing_score_pct`/`questions_per_attempt`/`cooldown_hours` di
-     lesson).
+- **Struktur baku 1 Bab (modul)** — urutan lesson via `sort_order`. Model
+  **bookend + siklus interleaving**: intro di depan, assignment di belakang,
+  isinya siklus berulang per sub-topik (bukan blok per tipe). Pola:
 
-  Aturan tetap: lesson #1 = `video`/`text` (biar intro panel jalan); kuis selalu
-  `sort_order` tertinggi. Bab tanpa kanji → tinggal skip #3 & geser nomor. Atur
-  urutan di admin lewat field "Urutan".
+  ```
+  Intro Video                                  (video)        ← sekali, paling depan
+  ── siklus per sub-topik (ulang sebanyak sub-topik) ──
+    Kosakata N                                 (deck)
+    Kanji N                                    (kanji, opsional)
+    Bunpou N                                   (text)
+    Speaking Test AI N                         (placeholder)  ← tiap habis Bunpou
+  ── akhir ──
+  Assignment / Kuis                            (quiz)         ← sekali, paling belakang
+  ```
+
+  `sort_order` urut menaik mengikuti urutan di atas (1, 2, 3, ...). Detail tiap
+  elemen:
+  - **Intro Video** — `type: video`. WAJIB lesson pertama & bertipe `video`
+    (atau `text`) supaya **Module Intro Panel** render (can-do statements,
+    skenario, `cefr_level`, `total_minutes`, `jf_topic` — dari kolom MODUL, bukan
+    `body`; `body` disembunyikan saat intro panel muncul). Catatan: playback
+    video masih placeholder "Segera tersedia" (belum di-wire ke Bunny).
+  - **Kosakata N** — `type: deck`. Kartu dari `module_vocabulary` via
+    `lesson_deck_items` (+ `vocabulary_examples`); bisa import per Bab dari Notion
+    ("↻ Import Bab dari Notion" di Kelola Deck). Split per sub-topik (bukan satu
+    deck gendut).
+  - **Kanji N** — `type: kanji`, opsional per siklus (skip kalau sub-topik itu
+    gak ada kanji baru). Grid dari `kanji_items` (urut `sort_order`); klik tile →
+    modal detail (strokes/on-kun/compounds/mnemonic).
+  - **Bunpou N** — `type: text`. `body` = penjelasan pola; `lesson.grammar`
+    (pattern/meaning/example/notes + `example_dialog`) di-wire ke `lesson_id` ini
+    → kartu grammar + tombol dialog karaoke. Kalau dalam satu siklus pola masih
+    kebanyakan (>4-5), boleh dipecah lagi jadi beberapa lesson `text` berurutan.
+  - **Speaking Test AI N** — **PLACEHOLDER dulu**, ditaruh tiap habis Bunpou
+    dalam siklus. Belum ada tipe lesson `speaking` / STT / evaluasi AI; sekarang
+    pakai lesson `type: text` berisi "Speaking Test AI — segera hadir". (Fitur
+    beneran = pekerjaan terpisah: tipe lesson baru `speaking` + migration CHECK +
+    rekam mic/STT + evaluasi AI + admin soal.)
+  - **Assignment / Kuis** — `type: quiz`, selalu **TERAKHIR** (`sort_order`
+    tertinggi). Landing card: pool soal acak + passing score + cooldown
+    (`quiz_spec` di modul; `passing_score_pct`/`questions_per_attempt`/
+    `cooldown_hours` di lesson).
+
+  Kenapa interleaving: belajar batch kecil kosakata → kanji → bunpou → speaking
+  per sub-topik lebih nempel ketimbang blocking (semua kosakata sekaligus, dst),
+  dan tiap lesson tetap kecil → bisa di-mark complete satu-satu. Aturan tetap:
+  lesson #1 = `video`/`text` (biar intro panel jalan); kuis selalu paling akhir.
+  Atur urutan di admin lewat field "Urutan".
 - **Tipe pelajaran `deck`** (kosakata interaktif, migration 009): lesson
   bertipe `deck` punya kartu kosakata yang dipilih dari bank
   (`module_vocabulary`, bisa `lesson_id` NULL untuk item bank murni) lewat join
