@@ -89,7 +89,9 @@
     gak ada kanji baru). Grid dari `kanji_items` (urut `sort_order`); klik tile →
     modal detail (strokes/on-kun/compounds/mnemonic).
   - **Bunpou N** — `type: text`, **2 pola grammar per lesson** (jangan lebih).
-    `body` = penjelasan pola; `lesson.grammar` (pattern/meaning/example/notes +
+    **Judul lesson langsung sebutin pola yang dibahas**, bukan "Bunpou 1/2" —
+    mis. `〜は〜です / 〜じゃありません` atau `〜があります / 〜がいます`. `body` =
+    penjelasan pola; `lesson.grammar` (pattern/meaning/example/notes +
     `example_dialog`) di-wire ke `lesson_id` ini → kartu grammar + tombol dialog
     karaoke. Kalau sub-topik punya >2 pola, lanjutin di Bunpou siklus berikutnya
     (`sort_order` berurutan), jangan numpuk dalam satu lesson.
