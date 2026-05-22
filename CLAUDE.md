@@ -74,7 +74,12 @@
      mnemonic).
   4. **Grammar** — `type: text`, `sort_order=4`. `body` = penjelasan pola;
      `lesson.grammar` (pattern/meaning/example/notes + `example_dialog`) di-wire
-     ke `lesson_id` ini → kartu grammar + tombol dialog karaoke.
+     ke `lesson_id` ini → kartu grammar + tombol dialog karaoke. Kalau pola
+     kebanyakan (>4-5), **split jadi Grammar 1/2/...** — tiap pecahan lesson
+     `text` sendiri dengan subset pola-nya, `sort_order` berurutan (4, 5, ...),
+     elemen sesudahnya tinggal digeser. Tujuannya lesson tetap kecil & bisa
+     di-mark complete satu-satu (progress lebih kerasa) ketimbang satu lesson
+     panjang.
   5. **Speaking Test AI** — `sort_order=5`. **PLACEHOLDER dulu**: belum ada tipe
      lesson `speaking` / STT / evaluasi AI. Untuk sekarang pakai lesson `type:
      text` berisi "Speaking Test AI — segera hadir". (Fitur beneran = pekerjaan
