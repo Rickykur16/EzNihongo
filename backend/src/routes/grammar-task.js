@@ -17,6 +17,9 @@ const router = Router();
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5';
 const MAX_SENTENCE_LEN = 200;
+// Batas evaluasi AI per siswa per hari (0 = tanpa batas). Cuma panggilan AI
+// nyata yang dihitung; cache hit gratis & tidak dihitung.
+const EVAL_DAILY_LIMIT = Number(process.env.GRAMMAR_EVAL_DAILY_LIMIT || 30);
 
 // System statis (cacheable) — instruksi inti yang tak berubah antar evaluasi.
 const EVAL_SYSTEM = `You are a meticulous Japanese-language teacher grading short sentences written by Indonesian students. Always reply with a single valid JSON object and nothing else.`;
@@ -95,6 +98,17 @@ router.post('/grammar-task/evaluate', requireAuth, evalLimiter, asyncHandler(asy
 
   if (!ANTHROPIC_API_KEY) return res.status(503).json({ error: 'eval_disabled' });
 
+  // Daily per-user cap (cache hits already returned above, so they're free).
+  if (EVAL_DAILY_LIMIT > 0) {
+    const used = await query(
+      `SELECT count FROM grammar_eval_usage WHERE user_id = $1 AND day = CURRENT_DATE`,
+      [req.user.id]
+    );
+    if ((used.rows[0]?.count || 0) >= EVAL_DAILY_LIMIT) {
+      return res.status(429).json({ error: 'daily_limit', limit: EVAL_DAILY_LIMIT });
+    }
+  }
+
   const tpl = await loadEvalPrompt();
   const userContent = fillTemplate(tpl, {
     pattern: grammar.pattern || '',
@@ -147,6 +161,14 @@ router.post('/grammar-task/evaluate', requireAuth, evalLimiter, asyncHandler(asy
      VALUES ($1, $2, $3, $4, $5) ON CONFLICT (eval_hash) DO NOTHING`,
     [key, grammarId, sentence, JSON.stringify(result), ANTHROPIC_MODEL]
   );
+  // Hitung pemakaian harian (hanya setelah panggilan AI sukses).
+  if (EVAL_DAILY_LIMIT > 0) {
+    query(
+      `INSERT INTO grammar_eval_usage (user_id, day, count) VALUES ($1, CURRENT_DATE, 1)
+       ON CONFLICT (user_id, day) DO UPDATE SET count = grammar_eval_usage.count + 1`,
+      [req.user.id]
+    ).catch(() => {});
+  }
   return res.json(result);
 }));
 

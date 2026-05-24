@@ -139,7 +139,11 @@
   **Anthropic Claude** via raw `fetch` (`ANTHROPIC_API_KEY` opsional, bukan
   `REQUIRED_ENV`, kosong → 503; `ANTHROPIC_MODEL` default `claude-haiku-4-5`).
   Hasil di-cache di `grammar_eval_cache` (kalimat identik per grammar ga panggil
-  AI lagi). **Prompt koreksi editable admin**: tabel `app_settings`
+  AI lagi). **Batas harian per siswa**: tabel `grammar_eval_usage`
+  (`user_id`+`day` PK; migration 024), env `GRAMMAR_EVAL_DAILY_LIMIT` (default
+  30, 0 = tanpa batas); cuma panggilan AI nyata yang dihitung (cache hit gratis),
+  lewat batas → 429 (`daily_limit`), frontend tampilkan pesan "coba besok".
+  **Prompt koreksi editable admin**: tabel `app_settings`
   (key `grammar_eval_prompt`), `GET/PUT /api/admin/settings/grammar-eval-prompt`,
   placeholder `{{pattern}}`/`{{meaning}}`/`{{example}}`/`{{sentence}}` (satu
   template global dipakai semua tugas; system prompt statis pakai

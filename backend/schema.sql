@@ -184,6 +184,14 @@ CREATE TABLE IF NOT EXISTS app_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Per-user daily cap on AI grammar evaluations (cache hits not counted)
+CREATE TABLE IF NOT EXISTS grammar_eval_usage (
+  user_id UUID NOT NULL,
+  day DATE NOT NULL,
+  count INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, day)
+);
+
 -- ===== SENSEI & TESTIMONIALS =====
 
 CREATE TABLE IF NOT EXISTS sensei (

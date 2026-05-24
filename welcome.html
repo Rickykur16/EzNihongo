@@ -6582,6 +6582,11 @@ window.gtCheck = async (idx, btn) => {
       result.innerHTML = '<div style="color:#999;font-size:13px;">Penilaian AI belum aktif. Kamu tetap bisa menandai pelajaran ini selesai.</div>';
       return;
     }
+    if (res.status === 429) {
+      const dd = await res.json().catch(() => ({}));
+      result.innerHTML = `<div style="color:#c0392b;font-size:13px;">Batas percobaan harian tercapai${dd.limit ? ` (${dd.limit}/hari)` : ''}. Coba lagi besok ya. Kamu tetap bisa menandai pelajaran ini selesai.</div>`;
+      return;
+    }
     if (!res.ok) { result.innerHTML = '<div style="color:#c0392b;font-size:13px;">Gagal memeriksa, coba lagi.</div>'; return; }
     const d = await res.json();
     const ok = d.correct && d.usesPattern;
