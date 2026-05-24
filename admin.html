@@ -1049,6 +1049,9 @@ function renderLessons() {
           contentBtns = `<button class="btn btn-ghost" onclick="manageDeck('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Deck (${deckN})</button>`;
         } else if (l.type === 'kanji') {
           contentBtns = `<button class="btn btn-ghost" onclick="manageKanji('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Kanji (${kanjiN})</button>`;
+        } else if (l.type === 'grammar_task') {
+          const gtN = Array.isArray(l.grammarTask) ? l.grammarTask.length : 0;
+          contentBtns = `<button class="btn btn-ghost" onclick="manageGrammarTask('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Tugas Grammar (${gtN})</button>`;
         } else if (l.type !== 'quiz') {
           contentBtns = `<button class="btn btn-ghost" onclick="manageVocab('${l.id}', '${titleEsc}', '${mod.id}')">Vocab (${vocabN})</button>
              <button class="btn btn-ghost" onclick="manageGrammar('${l.id}', '${titleEsc}', '${mod.id}')">Grammar (${grammarN})</button>`;
@@ -1129,6 +1132,7 @@ function lessonFormHtml(l) {
             <option value="quiz" ${l.type === 'quiz' ? 'selected' : ''}>Kuis</option>
             <option value="deck" ${l.type === 'deck' ? 'selected' : ''}>Deck Kosakata</option>
             <option value="kanji" ${l.type === 'kanji' ? 'selected' : ''}>Kanji</option>
+            <option value="grammar_task" ${l.type === 'grammar_task' ? 'selected' : ''}>Tugas Grammar</option>
           </select>
         </div>
       </div>
@@ -1140,6 +1144,11 @@ function lessonFormHtml(l) {
       <div class="field" data-kanji-only style="display:${l.type === 'kanji' ? '' : 'none'};">
         <div style="font-size:12px;color:#525252;font-family:var(--font-body);background:#ffe4e6;border:1px solid #fda4af;border-radius:6px;padding:8px 12px;">
           <strong>Kanji:</strong> setelah simpan, klik tombol <strong>Kelola Kanji</strong> di daftar pelajaran untuk menambah karakter + mnemonic. Field "Konten" di bawah opsional sebagai pengantar.
+        </div>
+      </div>
+      <div class="field" data-grammar-task-only style="display:${l.type === 'grammar_task' ? '' : 'none'};">
+        <div style="font-size:12px;color:#525252;font-family:var(--font-body);background:#ecfdf5;border:1px solid #6ee7b7;border-radius:6px;padding:8px 12px;">
+          <strong>Tugas Grammar:</strong> setelah simpan, klik tombol <strong>Kelola Tugas Grammar</strong> di daftar pelajaran untuk memilih pola grammar yang harus dipraktikkan siswa (buat kalimat + ucapkan, dinilai AI). Field "Konten" di bawah opsional sebagai pengantar.
         </div>
       </div>
       <div class="field"><label>Judul</label><input name="title" value="${escapeHtml(l.title)}" required placeholder="Ketik judul — slug terisi otomatis" /></div>
@@ -1192,12 +1201,14 @@ function wireLessonTypeVisibility(form) {
   const videoField = form.querySelector('.field-video');
   const deckHint = form.querySelector('.field-deck-hint');
   const kanjiHint = form.querySelector('[data-kanji-only]');
+  const grammarTaskHint = form.querySelector('[data-grammar-task-only]');
   const quizFields = form.querySelector('[data-quiz-only]');
   if (!typeSel) return;
   const apply = () => {
     if (videoField) videoField.style.display = typeSel.value === 'video' ? '' : 'none';
     if (deckHint) deckHint.style.display = typeSel.value === 'deck' ? '' : 'none';
     if (kanjiHint) kanjiHint.style.display = typeSel.value === 'kanji' ? '' : 'none';
+    if (grammarTaskHint) grammarTaskHint.style.display = typeSel.value === 'grammar_task' ? '' : 'none';
     if (quizFields) quizFields.style.display = typeSel.value === 'quiz' ? '' : 'none';
   };
   apply();
@@ -2500,6 +2511,159 @@ window.submitBulk = async (kind, lessonId, lessonTitle, moduleId) => {
     else manageGrammar(lessonId, lessonTitle, moduleId);
     if (STATE.selectedCourse) loadModulesForCourse(STATE.selectedCourse);
   } catch (err) { notify('Gagal import: ' + err.message, true); }
+};
+
+// ─────────────────────────────────────────────────────────────
+// GRAMMAR TASK ("grammar_task" lesson type) MANAGER
+// Pilih pola grammar dari bank modul (module_grammar) ke sebuah tugas.
+// Grammar yang sama bisa dipakai di banyak tugas (reusable). Prompt koreksi
+// AI editable di bawah (global, dipakai semua tugas).
+// ─────────────────────────────────────────────────────────────
+function gtmRefreshList() {
+  if (STATE.selectedCourse) loadModulesForCourse(STATE.selectedCourse).then(() => {
+    if (STATE.tab === 'lessons') renderLessons();
+  });
+}
+
+function renderGtmTable(items) {
+  if (!items || items.length === 0) {
+    return '<div class="empty" style="padding:20px;">Belum ada pola grammar di tugas ini. Tambah dari bank di bawah.</div>';
+  }
+  const rows = items.map((it) => `
+    <tr data-gtm-gid="${it.grammar_id}">
+      <td lang="ja" style="font-size:16px;font-weight:600;">${escapeHtml(it.pattern || '')}</td>
+      <td>${escapeHtml(it.meaning || '')}</td>
+      <td lang="ja">${escapeHtml(it.example || '')}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost" onclick="gtmMove('${it.grammar_id}', -1)">↑</button>
+        <button class="btn btn-ghost" onclick="gtmMove('${it.grammar_id}', 1)">↓</button>
+      </td>
+      <td class="actions" style="white-space:nowrap;">
+        <button class="btn btn-danger" onclick="gtmRemove('${it.grammar_id}')">Keluarkan</button>
+      </td>
+    </tr>`).join('');
+  return `<table style="font-size:13px;">
+    <thead><tr><th>Pola</th><th>Arti</th><th>Contoh</th><th>Urut</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+
+function gtmRerender() {
+  const wrap = document.getElementById('gtm-wrap');
+  if (wrap) wrap.innerHTML = renderGtmTable(window.__gtmItems || []);
+  const c = document.getElementById('gtm-count');
+  if (c) c.textContent = (window.__gtmItems || []).length + ' pola';
+  const bank = document.getElementById('gtm-bank');
+  if (bank) bank.innerHTML = renderGtmBank();
+}
+
+function renderGtmBank() {
+  const selected = new Set((window.__gtmItems || []).map((x) => x.grammar_id));
+  const q = (window.__gtmBankQuery || '').trim().toLowerCase();
+  const all = (window.__gtmBank || []).filter((g) => {
+    if (selected.has(g.id)) return false;
+    if (!q) return true;
+    return ((g.pattern || '') + ' ' + (g.meaning || '') + ' ' + (g.example || '')).toLowerCase().includes(q);
+  });
+  if (all.length === 0) return '<div class="empty" style="padding:14px;">Tidak ada pola grammar lain di modul ini.</div>';
+  return all.map((g) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid #f0f0f0;">
+      <div style="flex:1;min-width:0;">
+        <div lang="ja" style="font-weight:600;">${escapeHtml(g.pattern || '')}</div>
+        <div style="font-size:12px;color:#737373;">${escapeHtml(g.meaning || '')}</div>
+      </div>
+      <button type="button" class="btn btn-primary" style="padding:4px 12px;" onclick="gtmAdd('${g.id}')">+ Tambah</button>
+    </div>`).join('');
+}
+
+window.gtmBankSearch = (v) => { window.__gtmBankQuery = v || ''; const b = document.getElementById('gtm-bank'); if (b) b.innerHTML = renderGtmBank(); };
+
+async function openGrammarTaskManager(lessonId, lessonTitle, moduleId, courseId) {
+  let items = [], bank = [], prompt = '';
+  try {
+    const d = await api('/admin/lessons/' + lessonId + '/grammar-task-items');
+    items = d.items || [];
+    const b = await api('/admin/module-grammar?moduleId=' + encodeURIComponent(moduleId));
+    bank = b.grammar || [];
+    const p = await api('/admin/settings/grammar-eval-prompt');
+    prompt = p.value || '';
+  } catch (err) { notify('Gagal load tugas grammar: ' + err.message, true); return; }
+  window.__gtmCtx = { lessonId, lessonTitle, moduleId, courseId: courseId || '' };
+  window.__gtmItems = items;
+  window.__gtmBank = bank;
+  window.__gtmBankQuery = '';
+  openModal(`
+    <h3>Tugas Grammar: ${escapeHtml(lessonTitle)}</h3>
+    <div class="toolbar">
+      <span id="gtm-count" style="font-size:12px;color:#737373;font-family:var(--font-body);">${items.length} pola</span>
+    </div>
+    <div id="gtm-wrap" style="overflow-x:auto;">${renderGtmTable(items)}</div>
+    <div style="margin-top:16px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <strong style="font-size:13px;white-space:nowrap;">Tambah dari bank grammar</strong>
+        <input placeholder="cari pola / arti..." style="flex:1;min-width:160px;font-size:13px;" oninput="gtmBankSearch(this.value)" />
+      </div>
+      <div id="gtm-bank" style="max-height:260px;overflow-y:auto;background:#fff;border:1px solid #eee;border-radius:8px;">${renderGtmBank()}</div>
+    </div>
+    <details style="margin-top:18px;border:1px solid #e5e5e5;border-radius:8px;padding:10px 14px;">
+      <summary style="cursor:pointer;font-weight:600;font-size:13px;">Prompt Koreksi AI (berlaku untuk SEMUA tugas grammar)</summary>
+      <p style="font-size:12px;color:#525252;font-family:var(--font-body);margin:8px 0;">
+        Placeholder yang tersedia: <code>{{pattern}}</code> <code>{{meaning}}</code> <code>{{example}}</code> <code>{{sentence}}</code>.
+        AI diminta menjawab JSON: <code>{"correct","usesPattern","feedback","correction"}</code>.
+      </p>
+      <textarea id="gtm-prompt" rows="12" style="width:100%;font-family:monospace;font-size:12px;box-sizing:border-box;">${escapeHtml(prompt)}</textarea>
+      <div style="margin-top:8px;text-align:right;"><button type="button" class="btn btn-primary" onclick="gtmSavePrompt()">Simpan Prompt</button></div>
+    </details>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
+  `);
+  modalContent.style.maxWidth = '1000px';
+}
+window.manageGrammarTask = (lessonId, lessonTitle, moduleId, courseId) => openGrammarTaskManager(lessonId, lessonTitle, moduleId, courseId);
+
+async function gtmSave() {
+  const arr = window.__gtmItems || [];
+  await api('/admin/lessons/' + window.__gtmCtx.lessonId + '/grammar-task-items', {
+    method: 'PUT',
+    body: JSON.stringify({ items: arr.map((x, k) => ({ grammarId: x.grammar_id, sortOrder: k })) }),
+  });
+}
+
+window.gtmAdd = async (grammarId) => {
+  const g = (window.__gtmBank || []).find((x) => x.id === grammarId);
+  if (!g) return;
+  window.__gtmItems = window.__gtmItems || [];
+  window.__gtmItems.push({ grammar_id: g.id, pattern: g.pattern, meaning: g.meaning, example: g.example, sort_order: window.__gtmItems.length });
+  gtmRerender();
+  try { await gtmSave(); notify('Ditambahkan'); gtmRefreshList(); }
+  catch (err) { notify('Gagal: ' + err.message, true); }
+};
+
+window.gtmRemove = async (grammarId) => {
+  try {
+    await api('/admin/lessons/' + window.__gtmCtx.lessonId + '/grammar-task-items/' + grammarId, { method: 'DELETE' });
+    window.__gtmItems = (window.__gtmItems || []).filter((x) => x.grammar_id !== grammarId);
+    gtmRerender(); notify('Dikeluarkan'); gtmRefreshList();
+  } catch (err) { notify('Gagal: ' + err.message, true); }
+};
+
+window.gtmMove = async (grammarId, dir) => {
+  const arr = window.__gtmItems || [];
+  const i = arr.findIndex((x) => x.grammar_id === grammarId);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= arr.length) return;
+  const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+  arr.forEach((x, k) => { x.sort_order = k; });
+  gtmRerender();
+  try { await gtmSave(); gtmRefreshList(); }
+  catch (err) { notify('Gagal urut: ' + err.message, true); }
+};
+
+window.gtmSavePrompt = async () => {
+  const ta = document.getElementById('gtm-prompt');
+  if (!ta) return;
+  try {
+    await api('/admin/settings/grammar-eval-prompt', { method: 'PUT', body: JSON.stringify({ value: ta.value }) });
+    notify('Prompt disimpan');
+  } catch (err) { notify('Gagal simpan prompt: ' + err.message, true); }
 };
 
 // ─────────────────────────────────────────────────────────────

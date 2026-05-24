@@ -266,7 +266,7 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
     `SELECT 1 WHERE EXISTS (SELECT 1 FROM module_vocabulary WHERE japanese = $1 OR reading = $1)
                 OR EXISTS (SELECT 1 FROM vocabulary_examples WHERE japanese = $1)
                 OR EXISTS (SELECT 1 FROM quiz_questions WHERE audio_script = $1)
-                OR EXISTS (SELECT 1 FROM module_grammar WHERE example_dialog = $1)
+                OR EXISTS (SELECT 1 FROM module_grammar WHERE example_dialog = $1 OR example = $1)
      LIMIT 1`,
     [text]
   );
@@ -355,7 +355,7 @@ router.get('/tts/aligned', optionalAuth, ttsLimiter, asyncHandler(async (req, re
     `SELECT 1 WHERE EXISTS (SELECT 1 FROM module_vocabulary WHERE japanese = $1 OR reading = $1)
                 OR EXISTS (SELECT 1 FROM vocabulary_examples WHERE japanese = $1)
                 OR EXISTS (SELECT 1 FROM quiz_questions WHERE audio_script = $1)
-                OR EXISTS (SELECT 1 FROM module_grammar WHERE example_dialog = $1)
+                OR EXISTS (SELECT 1 FROM module_grammar WHERE example_dialog = $1 OR example = $1)
      LIMIT 1`,
     [text]
   );

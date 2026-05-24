@@ -125,7 +125,28 @@
   Env `ELEVENLABS_API_KEY` / `ELEVENLABS_VOICE_ID` / `ELEVENLABS_MODEL` (opsional,
   bukan `REQUIRED_ENV`); kalau kosong endpoint balas 503 & frontend fallback ke
   Web Speech browser. Endpoint cuma mau generate text yang ada di
-  `module_vocabulary` / `vocabulary_examples` (anti abuse kuota) + rate-limit.
+  `module_vocabulary` / `vocabulary_examples` / `module_grammar`
+  (`example`/`example_dialog`) (anti abuse kuota) + rate-limit.
+- **Tipe pelajaran `grammar_task`** (buat kalimat + ucapkan, dinilai AI;
+  migration 023): lesson bertipe `grammar_task` memilih pola grammar dari bank
+  modul (`module_grammar`) lewat join `lesson_grammar_task_items` (reusable —
+  pola sama bisa dipakai di banyak tugas). Siswa membuat kalimat memakai pola
+  itu lalu **mengucapkannya**: rekam di browser (`MediaRecorder`) →
+  `POST /api/grammar-task/transcribe` (multipart) → **ElevenLabs STT (Scribe)**
+  (`ELEVENLABS_API_KEY` yang sama; opsional `ELEVENLABS_STT_MODEL`, default
+  `scribe_v1`). Kalau mic ditolak / STT 503 → fallback input ketik. Kalimat
+  dinilai AI lewat `POST /api/grammar-task/evaluate` ({ grammarId, sentence }) →
+  **Anthropic Claude** via raw `fetch` (`ANTHROPIC_API_KEY` opsional, bukan
+  `REQUIRED_ENV`, kosong → 503; `ANTHROPIC_MODEL` default `claude-haiku-4-5`).
+  Hasil di-cache di `grammar_eval_cache` (kalimat identik per grammar ga panggil
+  AI lagi). **Prompt koreksi editable admin**: tabel `app_settings`
+  (key `grammar_eval_prompt`), `GET/PUT /api/admin/settings/grammar-eval-prompt`,
+  placeholder `{{pattern}}`/`{{meaning}}`/`{{example}}`/`{{sentence}}` (satu
+  template global dipakai semua tugas; system prompt statis pakai
+  `cache_control: ephemeral`). Admin kelola via tombol "Kelola Tugas Grammar"
+  (`admin.html` → `manageGrammarTask`, picker dari `GET /api/admin/module-grammar`).
+  `welcome.html` me-render via `renderGrammarTaskLesson`; `content.js` ngirim
+  `lesson.grammarTask`. API admin CRUD: `/api/admin/lessons/:id/grammar-task-items`.
 
 ## Struktur repo (high-level)
 

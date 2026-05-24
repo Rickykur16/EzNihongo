@@ -3428,6 +3428,7 @@ function transformCourseFromApi(apiCourse) {
           grammar: Array.isArray(l.grammar) ? l.grammar : [],
           deck: Array.isArray(l.deck) ? l.deck : [],
           kanji: Array.isArray(l.kanji) ? l.kanji : [],
+          grammarTask: Array.isArray(l.grammarTask) ? l.grammarTask : [],
         };
       }),
     })),
@@ -6438,6 +6439,174 @@ window.filterDeck = (q) => {
   }
 };
 
+// Grammar task — siswa membuat kalimat memakai pola grammar lalu mengucapkannya.
+// Ucapan direkam (MediaRecorder) → transkrip ElevenLabs STT (/api/grammar-task/
+// transcribe) → kalimat dinilai AI (/api/grammar-task/evaluate). Kalau mic tak
+// didukung / izin ditolak / STT nonaktif, siswa mengetik kalimatnya.
+let _gtRec = null; // { idx, recorder, chunks, stream }
+
+function _gtSttSupported() {
+  return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+}
+
+function renderGrammarTaskLesson(course, module, lesson, nav) {
+  const { prev, next, isDone } = nav;
+  const items = Array.isArray(lesson.grammarTask) ? lesson.grammarTask : [];
+  window.__gtData = items;
+  const sttOn = _gtSttSupported();
+
+  const intro = (lesson.body && lesson.body.trim())
+    ? lesson.body
+    : 'Buat kalimatmu sendiri memakai pola grammar di bawah, lalu ucapkan (atau ketik). Kalimatmu akan diperiksa otomatis.';
+
+  const cards = items.length === 0
+    ? '<div class="deck-empty">Belum ada pola grammar untuk tugas ini.</div>'
+    : items.map((it, idx) => {
+        const pattern = escapeHtml(it.pattern || '');
+        const meaning = escapeHtml(it.meaning || '');
+        const example = it.example ? escapeHtml(it.example) : '';
+        const micBtn = sttOn ? `
+          <button type="button" class="gt-mic" id="gt-mic-${idx}" onclick="gtToggleRecord(${idx}, this)" aria-label="Rekam ucapan">🎤 Rekam</button>` : '';
+        const hint = sttOn ? 'Klik 🎤 untuk merekam ucapanmu, atau ketik langsung di bawah.' : 'Ketik kalimatmu dalam bahasa Jepang di bawah.';
+        return `
+        <div class="gt-card" style="border:1px solid #e6e6ea;border-radius:14px;padding:18px 18px 16px;margin-bottom:16px;background:#fff;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#8a8a96;">文法 · POLA ${idx + 1}</span>
+          </div>
+          <div lang="ja" style="font-size:20px;font-weight:700;margin:6px 0 2px;">${pattern}</div>
+          ${meaning ? `<div style="color:#555;font-size:14px;">${meaning}</div>` : ''}
+          ${example ? `<div style="margin-top:10px;display:flex;align-items:flex-start;gap:8px;">
+            <button class="dc-audio" type="button" style="position:static;flex:none;" aria-label="Dengar contoh" onclick="gtPlayExample(${idx}, this)">${AUDIO_SVG}</button>
+            <div lang="ja" style="font-size:15px;color:#333;line-height:1.5;">${example}</div>
+          </div>` : ''}
+          <div style="margin-top:14px;font-size:13px;color:#666;">${hint}</div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center;">
+            ${micBtn}
+            <span class="gt-status" id="gt-status-${idx}" style="font-size:12px;color:#999;"></span>
+          </div>
+          <textarea id="gt-input-${idx}" lang="ja" rows="2" placeholder="例：私は毎日日本語を勉強します。"
+            style="width:100%;margin-top:10px;padding:10px 12px;border:1px solid #d8d8de;border-radius:10px;font-size:15px;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
+          <div style="margin-top:10px;">
+            <button type="button" class="btn-primary" style="padding:8px 18px;" onclick="gtCheck(${idx}, this)">Periksa</button>
+          </div>
+          <div class="gt-result" id="gt-result-${idx}" style="margin-top:12px;"></div>
+        </div>`;
+      }).join('');
+
+  document.getElementById('main-content').innerHTML = `
+    <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · TUGAS GRAMMAR</p>
+    <h1 class="lesson-title">${lesson.title}</h1>
+    <p class="lesson-subtitle">${module.title}${lesson.duration ? ' — ' + lesson.duration : ''}</p>
+    <div class="deck-hero" style="margin-bottom:18px;">
+      <div><div class="dh-eyebrow">作文 · BUAT KALIMAT</div><div class="dh-body">${escapeHtml(intro)}</div></div>
+    </div>
+    ${cards}
+    <div class="lesson-footer">
+      <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
+      <button class="btn-primary" onclick="markCompleteAndNext()">
+        ${isDone ? (next ? 'Lanjut →' : 'Selesai ✓') : (next ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓')}
+      </button>
+    </div>
+  `;
+}
+
+window.gtPlayExample = (idx, btn) => {
+  const it = (window.__gtData || [])[idx];
+  if (!it || !it.example) return;
+  playTTS(String(it.example).replace(/<[^>]*>/g, ''), btn);
+};
+
+window.gtToggleRecord = async (idx, btn) => {
+  // Stop kalau sedang merekam item ini.
+  if (_gtRec && _gtRec.idx === idx && _gtRec.recorder && _gtRec.recorder.state === 'recording') {
+    _gtRec.recorder.stop();
+    return;
+  }
+  if (!_gtSttSupported()) return;
+  const status = document.getElementById(`gt-status-${idx}`);
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    if (status) status.textContent = 'Akses mikrofon ditolak — ketik kalimatmu saja.';
+    return;
+  }
+  const chunks = [];
+  const recorder = new MediaRecorder(stream);
+  _gtRec = { idx, recorder, chunks, stream };
+  recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+  recorder.onstop = async () => {
+    stream.getTracks().forEach((t) => t.stop());
+    btn.textContent = '🎤 Rekam';
+    btn.classList.remove('recording');
+    if (status) status.textContent = 'Mentranskrip…';
+    const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+    const fd = new FormData();
+    fd.append('audio', blob, 'speech.webm');
+    try {
+      const res = await window.ezApi('/grammar-task/transcribe', { method: 'POST', body: fd });
+      if (res.status === 503) { if (status) status.textContent = 'Transkripsi otomatis nonaktif — ketik kalimatmu saja.'; return; }
+      if (!res.ok) { if (status) status.textContent = 'Gagal mentranskrip, coba lagi atau ketik manual.'; return; }
+      const data = await res.json();
+      const input = document.getElementById(`gt-input-${idx}`);
+      if (input && data.text) input.value = data.text;
+      if (status) status.textContent = data.text ? 'Transkrip selesai — periksa & sunting bila perlu.' : 'Tidak ada teks terdeteksi.';
+    } catch (e) {
+      if (status) status.textContent = 'Gagal mentranskrip, coba lagi atau ketik manual.';
+    } finally {
+      _gtRec = null;
+    }
+  };
+  recorder.start();
+  btn.textContent = '■ Stop';
+  btn.classList.add('recording');
+  if (status) status.textContent = 'Merekam… klik Stop saat selesai.';
+};
+
+window.gtCheck = async (idx, btn) => {
+  const it = (window.__gtData || [])[idx];
+  const input = document.getElementById(`gt-input-${idx}`);
+  const result = document.getElementById(`gt-result-${idx}`);
+  if (!it || !input || !result) return;
+  const sentence = String(input.value || '').trim();
+  if (!sentence) { result.innerHTML = '<div style="color:#c0392b;font-size:13px;">Tulis atau ucapkan kalimatmu dulu.</div>'; return; }
+  btn.disabled = true;
+  const oldLabel = btn.textContent;
+  btn.textContent = 'Memeriksa…';
+  try {
+    const res = await window.ezApi('/grammar-task/evaluate', {
+      method: 'POST',
+      body: JSON.stringify({ grammarId: it.id, sentence }),
+    });
+    if (res.status === 503) {
+      result.innerHTML = '<div style="color:#999;font-size:13px;">Penilaian AI belum aktif. Kamu tetap bisa menandai pelajaran ini selesai.</div>';
+      return;
+    }
+    if (!res.ok) { result.innerHTML = '<div style="color:#c0392b;font-size:13px;">Gagal memeriksa, coba lagi.</div>'; return; }
+    const d = await res.json();
+    const ok = d.correct && d.usesPattern;
+    const badge = ok
+      ? '<span style="display:inline-block;background:#e7f7ec;color:#1c8a4a;font-weight:700;font-size:12px;padding:3px 10px;border-radius:999px;">✓ Bagus!</span>'
+      : '<span style="display:inline-block;background:#fdeceb;color:#c0392b;font-weight:700;font-size:12px;padding:3px 10px;border-radius:999px;">Perlu diperbaiki</span>';
+    const corr = d.correction ? `
+      <div style="margin-top:8px;display:flex;align-items:flex-start;gap:8px;">
+        <button class="dc-audio" type="button" style="position:static;flex:none;" aria-label="Dengar koreksi" onclick="speakJapanese(${JSON.stringify(String(d.correction)).replace(/"/g, '&quot;')}, this)">${AUDIO_SVG}</button>
+        <div><div style="font-size:11px;color:#8a8a96;font-weight:700;">KOREKSI</div><div lang="ja" style="font-size:15px;">${escapeHtml(d.correction)}</div></div>
+      </div>` : '';
+    result.innerHTML = `
+      <div style="border:1px solid #ececf0;border-radius:10px;padding:12px 14px;background:#fafafb;">
+        ${badge}
+        ${d.feedback ? `<div style="margin-top:8px;font-size:14px;color:#333;line-height:1.5;">${escapeHtml(d.feedback)}</div>` : ''}
+        ${corr}
+      </div>`;
+  } catch (e) {
+    result.innerHTML = '<div style="color:#c0392b;font-size:13px;">Gagal memeriksa, coba lagi.</div>';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldLabel;
+  }
+};
+
 // Kanji lesson — render grid karakter; klik → openKanjiDetail modal
 // (yang sudah ada, dipakai juga oleh "Daftar Kanji" sidebar). API mengirim
 // lesson.kanji = array kanji_items penuh, jadi populate _kanjiByIdCache
@@ -6584,6 +6753,12 @@ function renderLesson() {
   // Kanji — grid karakter, klik buka detail modal (stroke + mnemonic + compound)
   if (lesson.type === 'kanji') {
     renderKanjiLesson(course, module, lesson, { prev, next, isDone });
+    return;
+  }
+
+  // Grammar task — siswa buat kalimat pakai pola grammar, ucapkan (STT), dinilai AI
+  if (lesson.type === 'grammar_task') {
+    renderGrammarTaskLesson(course, module, lesson, { prev, next, isDone });
     return;
   }
 

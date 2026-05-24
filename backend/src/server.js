@@ -14,6 +14,7 @@ import subscriptionRouter from './routes/subscription.js';
 import kanjiProgressRouter from './routes/kanji-progress.js';
 import kanjiAuthRouter from './routes/kanji-auth.js';
 import ttsRouter from './routes/tts.js';
+import grammarTaskRouter from './routes/grammar-task.js';
 import notionPublicRouter, { startNotionCacheRefresh } from './routes/notion-public.js';
 import kanjiPublicRouter from './routes/kanji-public.js';
 
@@ -75,6 +76,7 @@ app.use('/api/uploads', uploadsRouter);
 app.use('/api/subscription', subscriptionRouter);
 app.use('/api/kanji-progress', kanjiProgressRouter);
 app.use('/api', ttsRouter);
+app.use('/api', grammarTaskRouter);
 app.use('/api', notionPublicRouter);
 app.use('/api', kanjiPublicRouter);
 app.use('/api', contentRouter);
