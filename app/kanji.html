@@ -9121,20 +9121,42 @@ function runKdAnim(strokes) {
   _kdAnimTimer = setTimeout(next, 280);
 }
 
-// ─── WEB SPEECH ───────────────────────────────────────────────────────────────
+// ─── PRONUNCIATION (ElevenLabs via /api/tts) ───────────────────────────────────
+// Natural-voice TTS dari backend (ElevenLabs), bukan suara robotik Web Speech
+// bawaan browser. Audio di-generate server-side max 1x per string (cache di
+// Postgres tts_cache) lalu di-serve dengan `Cache-Control: immutable` — jadi
+// pemutaran ulang di browser diambil dari HTTP cache, hemat kuota API.
+let _kanjiTtsAudio = null;
+let _kanjiTtsVer = '';
+(async () => {
+  try {
+    const r = await fetch('/api/tts/version');
+    if (r.ok) _kanjiTtsVer = (await r.json()).version || '';
+  } catch { /* biarin — URL tetap jalan tanpa ?v= */ }
+})();
+
 function speakJP(text, btn) {
-  if (!('speechSynthesis' in window)) return;
-  speechSynthesis.cancel();
-  if (btn) {
-    document.querySelectorAll('.kd-speak-btn.speaking').forEach(b => b.classList.remove('speaking'));
-    btn.classList.add('speaking');
+  const plain = String(text || '').trim();
+  if (!plain) return;
+  // Stop audio yang lagi jalan biar gak overlap.
+  if (_kanjiTtsAudio) {
+    try { _kanjiTtsAudio.pause(); _kanjiTtsAudio.src = ''; } catch {}
+    _kanjiTtsAudio = null;
   }
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = 'ja-JP';
-  utter.rate = 0.85;
-  utter.onend = () => { if (btn) btn.classList.remove('speaking'); };
-  utter.onerror = () => { if (btn) btn.classList.remove('speaking'); };
-  speechSynthesis.speak(utter);
+  document.querySelectorAll('.kd-speak-btn.speaking').forEach(b => b.classList.remove('speaking'));
+  if (btn) btn.classList.add('speaking');
+  const clear = () => {
+    if (btn) btn.classList.remove('speaking');
+    if (_kanjiTtsAudio === a) _kanjiTtsAudio = null;
+  };
+  const url = '/api/tts?text=' + encodeURIComponent(plain)
+    + (_kanjiTtsVer ? '&v=' + encodeURIComponent(_kanjiTtsVer) : '');
+  const a = new Audio(url);
+  _kanjiTtsAudio = a;
+  a.onended = clear;
+  a.onerror = clear;
+  const p = a.play();
+  if (p && typeof p.catch === 'function') p.catch(clear);
 }
 
 // Single delegated listener on kd-content

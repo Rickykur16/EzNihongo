@@ -1,11 +1,49 @@
 import { Router } from 'express';
 import crypto from 'crypto';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 import rateLimit from 'express-rate-limit';
 import TinySegmenter from 'tiny-segmenter';
 import { query } from '../db.js';
 import { asyncHandler, optionalAuth } from '../middleware.js';
 
 const router = Router();
+
+// Anti-abuse whitelist for the Kanji PWA (app/kanji.html). Its vocab words +
+// example sentences live in an embedded client-side array (KD), not in
+// Postgres, so the DB whitelist below can't see them. This static set is
+// generated from that array by scripts/gen-kanji-tts-allowlist.mjs — regenerate
+// it whenever KD changes. Missing file → empty set (kanji TTS returns 403 until
+// regenerated), never a boot crash.
+const KANJI_TTS_ALLOW = (() => {
+  try {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const file = resolve(here, '..', '..', 'data', 'kanji-tts-allowlist.json');
+    const list = JSON.parse(readFileSync(file, 'utf8'));
+    return new Set(Array.isArray(list) ? list : []);
+  } catch (err) {
+    console.warn('kanji-tts-allowlist load failed:', err.message);
+    return new Set();
+  }
+})();
+
+// True if `text` is curriculum content allowed for TTS generation: either the
+// Kanji PWA allowlist (in-memory, cheap) or main-site content (DB). Quiz
+// audio_script + grammar example_dialog included because listening dialog is
+// stored as-is.
+async function isAllowedTtsText(text) {
+  if (KANJI_TTS_ALLOW.has(text)) return true;
+  const known = await query(
+    `SELECT 1 WHERE EXISTS (SELECT 1 FROM module_vocabulary WHERE japanese = $1 OR reading = $1)
+                OR EXISTS (SELECT 1 FROM vocabulary_examples WHERE japanese = $1)
+                OR EXISTS (SELECT 1 FROM quiz_questions WHERE audio_script = $1)
+                OR EXISTS (SELECT 1 FROM module_grammar WHERE example_dialog = $1)
+     LIMIT 1`,
+    [text]
+  );
+  return known.rows.length > 0;
+}
 
 // Segmentasi kata Jepang buat karaoke (highlight per-kata, partikel
 // ke-pisah). TinySegmenter = pure-JS, no dictionary, akurat buat teks
@@ -260,17 +298,9 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
   if (!text) return res.status(400).json({ error: 'text required' });
   if (text.length > MAX_TEXT_LEN) return res.status(400).json({ error: 'text too long' });
 
-  // Whitelist anti-abuse: text harus berasal dari curriculum content.
-  // Quiz audio_script di-include karena listening dialog disimpan as-is.
-  const known = await query(
-    `SELECT 1 WHERE EXISTS (SELECT 1 FROM module_vocabulary WHERE japanese = $1 OR reading = $1)
-                OR EXISTS (SELECT 1 FROM vocabulary_examples WHERE japanese = $1)
-                OR EXISTS (SELECT 1 FROM quiz_questions WHERE audio_script = $1)
-                OR EXISTS (SELECT 1 FROM module_grammar WHERE example_dialog = $1)
-     LIMIT 1`,
-    [text]
-  );
-  if (known.rows.length === 0) return res.status(403).json({ error: 'unknown text' });
+  // Whitelist anti-abuse: text harus berasal dari curriculum content
+  // (DB main-site) atau allowlist Kanji PWA.
+  if (!(await isAllowedTtsText(text))) return res.status(403).json({ error: 'unknown text' });
 
   // Detect dialog vs single-voice. Single-voice fallback kalau parse gagal.
   const turns = parseDialog(text);
@@ -351,15 +381,7 @@ router.get('/tts/aligned', optionalAuth, ttsLimiter, asyncHandler(async (req, re
   if (!text) return res.status(400).json({ error: 'text required' });
   if (text.length > MAX_TEXT_LEN) return res.status(400).json({ error: 'text too long' });
 
-  const known = await query(
-    `SELECT 1 WHERE EXISTS (SELECT 1 FROM module_vocabulary WHERE japanese = $1 OR reading = $1)
-                OR EXISTS (SELECT 1 FROM vocabulary_examples WHERE japanese = $1)
-                OR EXISTS (SELECT 1 FROM quiz_questions WHERE audio_script = $1)
-                OR EXISTS (SELECT 1 FROM module_grammar WHERE example_dialog = $1)
-     LIMIT 1`,
-    [text]
-  );
-  if (known.rows.length === 0) return res.status(403).json({ error: 'unknown text' });
+  if (!(await isAllowedTtsText(text))) return res.status(403).json({ error: 'unknown text' });
 
   const turns = parseDialog(text);
   const isDialog = !!turns;

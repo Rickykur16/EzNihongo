@@ -123,9 +123,19 @@
   audio pelafalan untuk deck. Hasil di-cache di tabel `tts_cache` (bytea, ikut
   `pg_dump`, tahan `git reset --hard`) → API cuma dipanggil 1x per string unik.
   Env `ELEVENLABS_API_KEY` / `ELEVENLABS_VOICE_ID` / `ELEVENLABS_MODEL` (opsional,
-  bukan `REQUIRED_ENV`); kalau kosong endpoint balas 503 & frontend fallback ke
-  Web Speech browser. Endpoint cuma mau generate text yang ada di
-  `module_vocabulary` / `vocabulary_examples` (anti abuse kuota) + rate-limit.
+  bukan `REQUIRED_ENV`); kalau kosong endpoint balas 503. Di main site
+  (`welcome.html`) frontend fallback ke Web Speech browser; di Kanji PWA
+  (`app/kanji.html`) **tidak ada** fallback Web Speech (sengaja — suara robotik
+  bawaan browser dihilangkan, cuma ElevenLabs). Endpoint cuma mau generate text
+  yang ada di `module_vocabulary` / `vocabulary_examples` / `quiz_questions.audio_script`
+  / `module_grammar.example_dialog` (DB, anti abuse kuota) **atau** di allowlist
+  Kanji PWA + rate-limit.
+  - **Allowlist Kanji PWA**: vocab + contoh kalimat kanji ada di array `KD`
+    yang di-embed di `app/kanji.html` (bukan di DB), jadi DB-whitelist gak
+    keliatan. Di-generate ke `backend/data/kanji-tts-allowlist.json` lewat
+    `npm run gen:kanji-tts` (`scripts/gen-kanji-tts-allowlist.mjs`) — **regenerate
+    tiap KD berubah**. `tts.js` load file itu ke `Set` in-memory saat boot
+    (file hilang → set kosong → kanji TTS balas 403, bukan crash).
 
 ## Struktur repo (high-level)
 
