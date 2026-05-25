@@ -3428,6 +3428,7 @@ function transformCourseFromApi(apiCourse) {
           grammar: Array.isArray(l.grammar) ? l.grammar : [],
           deck: Array.isArray(l.deck) ? l.deck : [],
           kanji: Array.isArray(l.kanji) ? l.kanji : [],
+          grammarTask: Array.isArray(l.grammarTask) ? l.grammarTask : [],
         };
       }),
     })),
@@ -6438,6 +6439,217 @@ window.filterDeck = (q) => {
   }
 };
 
+// Grammar task — siswa membuat kalimat memakai pola grammar lalu mengucapkannya.
+// Ucapan direkam (MediaRecorder) → transkrip ElevenLabs STT (/api/grammar-task/
+// transcribe) → kalimat dinilai AI (/api/grammar-task/evaluate). Kalau mic tak
+// didukung / izin ditolak / STT nonaktif, siswa mengetik kalimatnya.
+let _gtRec = null; // { key, recorder, chunks, stream }
+
+function _gtSttSupported() {
+  return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+}
+
+function renderGrammarTaskLesson(course, module, lesson, nav) {
+  const { prev, next, isDone } = nav;
+  const items = Array.isArray(lesson.grammarTask) ? lesson.grammarTask : [];
+  window.__gtData = items;
+  window.__gtLessonId = lesson.apiId;
+  const sttOn = _gtSttSupported();
+
+  // Total kalimat yang harus diselesaikan (jumlah per pola, min 1).
+  let total = 0;
+  items.forEach((it) => { total += Math.max(1, Number(it.requiredCount) || 1); });
+  window.__gtState = { passed: {}, total, evalDisabled: false, isDone: !!isDone, hasNext: !!next };
+
+  const intro = (lesson.body && lesson.body.trim())
+    ? lesson.body
+    : 'Kerjakan tugas tiap pola grammar di bawah: buat kalimat sesuai instruksi, lalu ucapkan (atau ketik). Kalimatmu dinilai otomatis.';
+
+  const slotHtml = (pi, si, count) => {
+    const key = `${pi}-${si}`;
+    const micBtn = sttOn ? `<button type="button" class="gt-mic" id="gt-mic-${key}" onclick="gtToggleRecord(${pi}, ${si}, this)" aria-label="Rekam ucapan">🎤 Rekam</button>` : '';
+    return `
+      <div class="gt-slot" style="margin-top:12px;padding-top:12px;${si > 0 ? 'border-top:1px dashed #e6e6ea;' : ''}">
+        ${count > 1 ? `<div style="font-size:12px;font-weight:700;color:#8a8a96;">KALIMAT ${si + 1} / ${count}</div>` : ''}
+        <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;align-items:center;">
+          ${micBtn}
+          <span class="gt-status" id="gt-status-${key}" style="font-size:12px;color:#999;"></span>
+        </div>
+        <textarea id="gt-input-${key}" lang="ja" rows="2" placeholder="例：私は毎日日本語を勉強します。"
+          style="width:100%;margin-top:8px;padding:10px 12px;border:1px solid #d8d8de;border-radius:10px;font-size:15px;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
+        <div style="margin-top:8px;">
+          <button type="button" class="btn-primary" style="padding:8px 18px;" onclick="gtCheck(${pi}, ${si}, this)">Periksa</button>
+        </div>
+        <div class="gt-result" id="gt-result-${key}" style="margin-top:10px;"></div>
+      </div>`;
+  };
+
+  const cards = items.length === 0
+    ? '<div class="deck-empty">Belum ada pola grammar untuk tugas ini.</div>'
+    : items.map((it, pi) => {
+        const count = Math.max(1, Number(it.requiredCount) || 1);
+        const pattern = escapeHtml(it.pattern || '');
+        const meaning = escapeHtml(it.meaning || '');
+        const example = it.example ? escapeHtml(it.example) : '';
+        const instruction = it.instruction && it.instruction.trim()
+          ? escapeHtml(it.instruction.trim())
+          : `Buat ${count} kalimat memakai pola ini, lalu ucapkan atau ketik.`;
+        const hint = sttOn ? 'Klik 🎤 untuk merekam ucapanmu, atau ketik langsung.' : 'Ketik kalimatmu dalam bahasa Jepang.';
+        let slots = '';
+        for (let si = 0; si < count; si++) slots += slotHtml(pi, si, count);
+        return `
+        <div class="gt-card" style="border:1px solid #e6e6ea;border-radius:14px;padding:18px 18px 16px;margin-bottom:16px;background:#fff;">
+          <span style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#8a8a96;">文法 · POLA ${pi + 1}</span>
+          <div lang="ja" style="font-size:20px;font-weight:700;margin:6px 0 2px;">${pattern}</div>
+          ${meaning ? `<div style="color:#555;font-size:14px;">${meaning}</div>` : ''}
+          ${example ? `<div style="margin-top:10px;display:flex;align-items:flex-start;gap:8px;">
+            <button class="dc-audio" type="button" style="position:static;flex:none;" aria-label="Dengar contoh" onclick="gtPlayExample(${pi}, this)">${AUDIO_SVG}</button>
+            <div lang="ja" style="font-size:15px;color:#333;line-height:1.5;">${example}</div>
+          </div>` : ''}
+          <div style="margin-top:12px;padding:10px 12px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;font-size:14px;color:#065f46;">
+            <strong>Tugas:</strong> ${instruction}
+          </div>
+          <div style="margin-top:6px;font-size:12px;color:#888;">${hint}</div>
+          ${slots}
+        </div>`;
+      }).join('');
+
+  document.getElementById('main-content').innerHTML = `
+    <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · TUGAS GRAMMAR</p>
+    <h1 class="lesson-title">${lesson.title}</h1>
+    <p class="lesson-subtitle">${module.title}${lesson.duration ? ' — ' + lesson.duration : ''}</p>
+    <div class="deck-hero" style="margin-bottom:18px;">
+      <div><div class="dh-eyebrow">作文 · BUAT KALIMAT</div><div class="dh-body">${escapeHtml(intro)}</div></div>
+    </div>
+    ${cards}
+    <div id="gt-progress-hint" style="text-align:center;font-size:13px;color:#666;margin:4px 0 10px;"></div>
+    <div class="lesson-footer">
+      <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
+      <button class="btn-primary" id="gt-complete-btn" onclick="markCompleteAndNext()"></button>
+    </div>
+  `;
+  gtUpdateComplete();
+}
+
+function gtUpdateComplete() {
+  const st = window.__gtState;
+  if (!st) return;
+  const btn = document.getElementById('gt-complete-btn');
+  if (!btn) return;
+  const passedCount = Object.values(st.passed).filter(Boolean).length;
+  const done = st.isDone || st.evalDisabled || st.total === 0 || passedCount >= st.total;
+  btn.disabled = !done;
+  btn.style.opacity = done ? '' : '0.5';
+  btn.style.cursor = done ? '' : 'not-allowed';
+  const normalLabel = st.isDone ? (st.hasNext ? 'Lanjut →' : 'Selesai ✓') : (st.hasNext ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓');
+  btn.textContent = done ? normalLabel : 'Selesaikan semua kalimat dulu';
+  const hint = document.getElementById('gt-progress-hint');
+  if (hint) {
+    hint.textContent = (st.evalDisabled || st.total === 0) ? '' : `${passedCount} / ${st.total} kalimat selesai`;
+  }
+}
+
+window.gtPlayExample = (idx, btn) => {
+  const it = (window.__gtData || [])[idx];
+  if (!it || !it.example) return;
+  playTTS(String(it.example).replace(/<[^>]*>/g, ''), btn);
+};
+
+window.gtToggleRecord = async (pi, si, btn) => {
+  const key = `${pi}-${si}`;
+  // Stop kalau sedang merekam slot ini.
+  if (_gtRec && _gtRec.key === key && _gtRec.recorder && _gtRec.recorder.state === 'recording') {
+    _gtRec.recorder.stop();
+    return;
+  }
+  if (!_gtSttSupported()) return;
+  const status = document.getElementById(`gt-status-${key}`);
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    if (status) status.textContent = 'Akses mikrofon ditolak — ketik kalimatmu saja.';
+    return;
+  }
+  const chunks = [];
+  const recorder = new MediaRecorder(stream);
+  _gtRec = { key, recorder, chunks, stream };
+  recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+  recorder.onstop = async () => {
+    stream.getTracks().forEach((t) => t.stop());
+    btn.textContent = '🎤 Rekam';
+    btn.classList.remove('recording');
+    if (status) status.textContent = 'Mentranskrip…';
+    const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+    const fd = new FormData();
+    fd.append('audio', blob, 'speech.webm');
+    try {
+      const res = await window.ezApi('/grammar-task/transcribe', { method: 'POST', body: fd });
+      if (res.status === 503) { if (status) status.textContent = 'Transkripsi otomatis nonaktif — ketik kalimatmu saja.'; return; }
+      if (!res.ok) { if (status) status.textContent = 'Gagal mentranskrip, coba lagi atau ketik manual.'; return; }
+      const data = await res.json();
+      const input = document.getElementById(`gt-input-${key}`);
+      if (input && data.text) input.value = data.text;
+      if (status) status.textContent = data.text ? 'Transkrip selesai — periksa & sunting bila perlu.' : 'Tidak ada teks terdeteksi.';
+    } catch (e) {
+      if (status) status.textContent = 'Gagal mentranskrip, coba lagi atau ketik manual.';
+    } finally {
+      _gtRec = null;
+    }
+  };
+  recorder.start();
+  btn.textContent = '■ Stop';
+  btn.classList.add('recording');
+  if (status) status.textContent = 'Merekam… klik Stop saat selesai.';
+};
+
+window.gtCheck = async (pi, si, btn) => {
+  const it = (window.__gtData || [])[pi];
+  const key = `${pi}-${si}`;
+  const input = document.getElementById(`gt-input-${key}`);
+  const result = document.getElementById(`gt-result-${key}`);
+  if (!it || !input || !result) return;
+  const sentence = String(input.value || '').trim();
+  if (!sentence) { result.innerHTML = '<div style="color:#c0392b;font-size:13px;">Tulis atau ucapkan kalimatmu dulu.</div>'; return; }
+  btn.disabled = true;
+  const oldLabel = btn.textContent;
+  btn.textContent = 'Memeriksa…';
+  try {
+    const res = await window.ezApi('/grammar-task/evaluate', {
+      method: 'POST',
+      body: JSON.stringify({ lessonId: window.__gtLessonId, grammarId: it.id, sentence }),
+    });
+    if (res.status === 503) {
+      if (window.__gtState) { window.__gtState.evalDisabled = true; gtUpdateComplete(); }
+      result.innerHTML = '<div style="color:#999;font-size:13px;">Penilaian AI belum aktif. Kamu tetap bisa menandai pelajaran ini selesai.</div>';
+      return;
+    }
+    if (!res.ok) { result.innerHTML = '<div style="color:#c0392b;font-size:13px;">Gagal memeriksa, coba lagi.</div>'; return; }
+    const d = await res.json();
+    const ok = d.correct && d.usesPattern;
+    if (window.__gtState) { window.__gtState.passed[key] = !!ok; gtUpdateComplete(); }
+    const badge = ok
+      ? '<span style="display:inline-block;background:#e7f7ec;color:#1c8a4a;font-weight:700;font-size:12px;padding:3px 10px;border-radius:999px;">✓ Bagus!</span>'
+      : '<span style="display:inline-block;background:#fdeceb;color:#c0392b;font-weight:700;font-size:12px;padding:3px 10px;border-radius:999px;">Perlu diperbaiki</span>';
+    const corr = d.correction ? `
+      <div style="margin-top:8px;display:flex;align-items:flex-start;gap:8px;">
+        <button class="dc-audio" type="button" style="position:static;flex:none;" aria-label="Dengar koreksi" onclick="speakJapanese(${JSON.stringify(String(d.correction)).replace(/"/g, '&quot;')}, this)">${AUDIO_SVG}</button>
+        <div><div style="font-size:11px;color:#8a8a96;font-weight:700;">KOREKSI</div><div lang="ja" style="font-size:15px;">${escapeHtml(d.correction)}</div></div>
+      </div>` : '';
+    result.innerHTML = `
+      <div style="border:1px solid #ececf0;border-radius:10px;padding:12px 14px;background:#fafafb;">
+        ${badge}
+        ${d.feedback ? `<div style="margin-top:8px;font-size:14px;color:#333;line-height:1.5;">${escapeHtml(d.feedback)}</div>` : ''}
+        ${corr}
+      </div>`;
+  } catch (e) {
+    result.innerHTML = '<div style="color:#c0392b;font-size:13px;">Gagal memeriksa, coba lagi.</div>';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldLabel;
+  }
+};
+
 // Kanji lesson — render grid karakter; klik → openKanjiDetail modal
 // (yang sudah ada, dipakai juga oleh "Daftar Kanji" sidebar). API mengirim
 // lesson.kanji = array kanji_items penuh, jadi populate _kanjiByIdCache
@@ -6584,6 +6796,12 @@ function renderLesson() {
   // Kanji — grid karakter, klik buka detail modal (stroke + mnemonic + compound)
   if (lesson.type === 'kanji') {
     renderKanjiLesson(course, module, lesson, { prev, next, isDone });
+    return;
+  }
+
+  // Grammar task — siswa buat kalimat pakai pola grammar, ucapkan (STT), dinilai AI
+  if (lesson.type === 'grammar_task') {
+    renderGrammarTaskLesson(course, module, lesson, { prev, next, isDone });
     return;
   }
 

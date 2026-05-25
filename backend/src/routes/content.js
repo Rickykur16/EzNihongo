@@ -59,6 +59,7 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
   const grammarByLesson = {};
   const deckByLesson = {};
   const kanjiByLesson = {};
+  const grammarTaskByLesson = {};
 
   if (moduleIds.length > 0) {
     // Include content + video_url so the dashboard can render lesson bodies
@@ -167,6 +168,32 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
         });
       }
     }
+
+    // Grammar-task lessons: pull the grammar points picked into the task so the
+    // dashboard can render the speaking task without extra round-trips.
+    const grammarTaskLessonIds = lessons.rows.filter((l) => l.type === 'grammar_task').map((l) => l.id);
+    if (grammarTaskLessonIds.length > 0) {
+      const gtRows = await query(
+        `SELECT gi.lesson_id, gi.sort_order, gi.instruction, gi.required_count,
+                g.id, g.pattern, g.meaning, g.example, g.notes
+         FROM lesson_grammar_task_items gi
+         JOIN module_grammar g ON g.id = gi.grammar_id
+         WHERE gi.lesson_id = ANY($1::uuid[])
+         ORDER BY gi.lesson_id, gi.sort_order ASC, g.sort_order ASC`,
+        [grammarTaskLessonIds]
+      );
+      for (const r of gtRows.rows) {
+        (grammarTaskByLesson[r.lesson_id] ||= []).push({
+          id: r.id,
+          pattern: r.pattern,
+          meaning: r.meaning,
+          example: r.example,
+          notes: r.notes,
+          instruction: r.instruction,
+          requiredCount: r.required_count,
+        });
+      }
+    }
   }
 
   res.json({
@@ -186,6 +213,7 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
             grammar: grammarByLesson[l.id] || [],
             deck: deckByLesson[l.id] || [],
             kanji: kanjiByLesson[l.id] || [],
+            grammarTask: grammarTaskByLesson[l.id] || [],
           })),
           vocabulary: vocabByModule[m.id] || [],
           grammar: grammarByModule[m.id] || [],
@@ -283,6 +311,22 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
       [row.id]
     );
     response.kanji = kanjiRows.rows;
+  }
+
+  if (row.type === 'grammar_task') {
+    const gt = await query(
+      `SELECT g.id, g.pattern, g.meaning, g.example, g.notes, gi.sort_order,
+              gi.instruction, gi.required_count
+       FROM lesson_grammar_task_items gi
+       JOIN module_grammar g ON g.id = gi.grammar_id
+       WHERE gi.lesson_id = $1
+       ORDER BY gi.sort_order ASC, g.sort_order ASC`,
+      [row.id]
+    );
+    response.grammarTask = gt.rows.map((r) => ({
+      id: r.id, pattern: r.pattern, meaning: r.meaning, example: r.example, notes: r.notes,
+      instruction: r.instruction, requiredCount: r.required_count,
+    }));
   }
 
   res.json({ lesson: response });

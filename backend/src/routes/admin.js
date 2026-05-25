@@ -470,6 +470,66 @@ router.delete('/lessons/:lessonId/deck-items/:vocabularyId', asyncHandler(async 
   res.json({ ok: true });
 }));
 
+// ===== GRAMMAR TASK ITEMS (grammar picked into a 'grammar_task' lesson) =====
+// Reuse module_grammar as the bank (same grammar can be used across tasks).
+
+router.get('/lessons/:lessonId/grammar-task-items', asyncHandler(async (req, res) => {
+  const rows = await query(
+    `SELECT gi.lesson_id, gi.grammar_id, gi.sort_order, gi.instruction, gi.required_count,
+            g.pattern, g.meaning, g.example, g.module_id
+     FROM lesson_grammar_task_items gi JOIN module_grammar g ON g.id = gi.grammar_id
+     WHERE gi.lesson_id = $1
+     ORDER BY gi.sort_order ASC, g.sort_order ASC`,
+    [req.params.lessonId]
+  );
+  res.json({ items: rows.rows });
+}));
+
+router.put('/lessons/:lessonId/grammar-task-items', asyncHandler(async (req, res) => {
+  const { items } = req.body || {};
+  if (!Array.isArray(items)) return res.status(400).json({ error: 'items[] required' });
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i] || {};
+    if (!it.grammarId) continue;
+    const reqCount = Math.min(10, Math.max(1, Number(it.requiredCount) || 1));
+    await query(
+      `INSERT INTO lesson_grammar_task_items (lesson_id, grammar_id, sort_order, instruction, required_count)
+       VALUES ($1,$2,$3,$4,$5)
+       ON CONFLICT (lesson_id, grammar_id)
+         DO UPDATE SET sort_order = EXCLUDED.sort_order,
+                       instruction = EXCLUDED.instruction,
+                       required_count = EXCLUDED.required_count`,
+      [req.params.lessonId, it.grammarId, it.sortOrder ?? i, (it.instruction || '').trim() || null, reqCount]
+    );
+  }
+  res.json({ ok: true });
+}));
+
+router.delete('/lessons/:lessonId/grammar-task-items/:grammarId', asyncHandler(async (req, res) => {
+  await query(
+    `DELETE FROM lesson_grammar_task_items WHERE lesson_id = $1 AND grammar_id = $2`,
+    [req.params.lessonId, req.params.grammarId]
+  );
+  res.json({ ok: true });
+}));
+
+// ===== APP SETTINGS (editable AI grammar-eval prompt) =====
+
+router.get('/settings/grammar-eval-prompt', asyncHandler(async (_req, res) => {
+  const r = await query(`SELECT value FROM app_settings WHERE key = 'grammar_eval_prompt'`);
+  res.json({ value: r.rows[0]?.value || '' });
+}));
+
+router.put('/settings/grammar-eval-prompt', asyncHandler(async (req, res) => {
+  const value = String((req.body || {}).value || '');
+  await query(
+    `INSERT INTO app_settings (key, value, updated_at) VALUES ('grammar_eval_prompt', $1, NOW())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+    [value]
+  );
+  res.json({ ok: true });
+}));
+
 // ===== NOTION IMPORT (vocab bank + per-chapter deck) =====
 // "📚 Vocabulary 語彙" Notion DB -> module_vocabulary. Each vocab page is linked
 // (relation "Lesson") to a "📗 Bab" page; the deck importer filters by that so
@@ -1101,6 +1161,8 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
         await query(`DELETE FROM kanji_items WHERE lesson_id = $1`, [req.params.id]);
       } else if (oldType === 'deck') {
         await query(`DELETE FROM lesson_deck_items WHERE lesson_id = $1`, [req.params.id]);
+      } else if (oldType === 'grammar_task') {
+        await query(`DELETE FROM lesson_grammar_task_items WHERE lesson_id = $1`, [req.params.id]);
       }
     }
   }

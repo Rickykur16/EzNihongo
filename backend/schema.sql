@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS lessons (
   module_id UUID NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
   slug TEXT NOT NULL,
   title TEXT NOT NULL,
-  type TEXT NOT NULL DEFAULT 'text' CHECK (type IN ('video','quiz','text','deck','kanji')),
+  type TEXT NOT NULL DEFAULT 'text' CHECK (type IN ('video','quiz','text','deck','kanji','grammar_task')),
   content TEXT,
   video_url TEXT,
   duration_minutes INT,
@@ -154,6 +154,39 @@ CREATE TABLE IF NOT EXISTS module_grammar (
 
 CREATE INDEX IF NOT EXISTS idx_grammar_module ON module_grammar(module_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_grammar_lesson ON module_grammar(lesson_id, sort_order);
+
+-- Grammar picked into a 'grammar_task' lesson (reused from the module bank).
+-- instruction = admin task prompt per pattern; required_count = sentences the
+-- student must complete for that pattern.
+CREATE TABLE IF NOT EXISTS lesson_grammar_task_items (
+  lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+  grammar_id UUID NOT NULL REFERENCES module_grammar(id) ON DELETE CASCADE,
+  sort_order INT DEFAULT 0,
+  instruction TEXT,
+  required_count INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (lesson_id, grammar_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_grammar_task_items_lesson ON lesson_grammar_task_items(lesson_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_grammar_task_items_grammar ON lesson_grammar_task_items(grammar_id);
+
+-- AI grammar-task evaluation cache (identical sentences skip the AI call)
+CREATE TABLE IF NOT EXISTS grammar_eval_cache (
+  eval_hash TEXT PRIMARY KEY,
+  grammar_id UUID,
+  sentence TEXT NOT NULL,
+  result JSONB NOT NULL,
+  model TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Editable app settings (e.g. the AI grammar-eval prompt template)
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 -- ===== SENSEI & TESTIMONIALS =====
 
