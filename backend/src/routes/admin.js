@@ -475,7 +475,7 @@ router.delete('/lessons/:lessonId/deck-items/:vocabularyId', asyncHandler(async 
 
 router.get('/lessons/:lessonId/grammar-task-items', asyncHandler(async (req, res) => {
   const rows = await query(
-    `SELECT gi.lesson_id, gi.grammar_id, gi.sort_order,
+    `SELECT gi.lesson_id, gi.grammar_id, gi.sort_order, gi.instruction, gi.required_count,
             g.pattern, g.meaning, g.example, g.module_id
      FROM lesson_grammar_task_items gi JOIN module_grammar g ON g.id = gi.grammar_id
      WHERE gi.lesson_id = $1
@@ -491,12 +491,15 @@ router.put('/lessons/:lessonId/grammar-task-items', asyncHandler(async (req, res
   for (let i = 0; i < items.length; i++) {
     const it = items[i] || {};
     if (!it.grammarId) continue;
+    const reqCount = Math.min(10, Math.max(1, Number(it.requiredCount) || 1));
     await query(
-      `INSERT INTO lesson_grammar_task_items (lesson_id, grammar_id, sort_order)
-       VALUES ($1,$2,$3)
+      `INSERT INTO lesson_grammar_task_items (lesson_id, grammar_id, sort_order, instruction, required_count)
+       VALUES ($1,$2,$3,$4,$5)
        ON CONFLICT (lesson_id, grammar_id)
-         DO UPDATE SET sort_order = EXCLUDED.sort_order`,
-      [req.params.lessonId, it.grammarId, it.sortOrder ?? i]
+         DO UPDATE SET sort_order = EXCLUDED.sort_order,
+                       instruction = EXCLUDED.instruction,
+                       required_count = EXCLUDED.required_count`,
+      [req.params.lessonId, it.grammarId, it.sortOrder ?? i, (it.instruction || '').trim() || null, reqCount]
     );
   }
   res.json({ ok: true });

@@ -17,9 +17,6 @@ const router = Router();
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5';
 const MAX_SENTENCE_LEN = 200;
-// Batas evaluasi AI per siswa per hari (0 = tanpa batas). Cuma panggilan AI
-// nyata yang dihitung; cache hit gratis & tidak dihitung.
-const EVAL_DAILY_LIMIT = Number(process.env.GRAMMAR_EVAL_DAILY_LIMIT || 30);
 
 // System statis (cacheable) — instruksi inti yang tak berubah antar evaluasi.
 const EVAL_SYSTEM = `You are a meticulous Japanese-language teacher grading short sentences written by Indonesian students. Always reply with a single valid JSON object and nothing else.`;
@@ -29,13 +26,14 @@ const DEFAULT_PROMPT = `Kamu adalah guru bahasa Jepang yang menilai kalimat buat
 Pola grammar target: {{pattern}}
 Arti pola: {{meaning}}
 Contoh: {{example}}
+Instruksi tugas dari guru: {{instruction}}
 
 Kalimat siswa: {{sentence}}
 
-Nilai apakah kalimat siswa (1) gramatikal/benar sebagai bahasa Jepang, dan
-(2) benar-benar memakai pola grammar target. Beri umpan balik singkat dalam
-bahasa Indonesia yang membangun, dan kalau perlu beri versi koreksi kalimatnya
-dalam bahasa Jepang.
+Nilai apakah kalimat siswa (1) gramatikal/benar sebagai bahasa Jepang,
+(2) benar-benar memakai pola grammar target, dan (3) sesuai instruksi tugas.
+Beri umpan balik singkat dalam bahasa Indonesia yang membangun, dan kalau perlu
+beri versi koreksi kalimatnya dalam bahasa Jepang.
 
 Jawab HANYA dengan JSON valid (tanpa teks lain) berbentuk:
 {"correct": boolean, "usesPattern": boolean, "feedback": "string Indonesia", "correction": "string Jepang atau kosong"}`;
@@ -73,7 +71,7 @@ const evalLimiter = rateLimit({
 
 // POST /api/grammar-task/evaluate  body: { grammarId, sentence }
 router.post('/grammar-task/evaluate', requireAuth, evalLimiter, asyncHandler(async (req, res) => {
-  const { grammarId } = req.body || {};
+  const { grammarId, lessonId } = req.body || {};
   const sentence = String((req.body || {}).sentence || '').trim();
   if (!grammarId) return res.status(400).json({ error: 'grammarId required' });
   if (!sentence) return res.status(400).json({ error: 'sentence required' });
@@ -87,8 +85,18 @@ router.post('/grammar-task/evaluate', requireAuth, evalLimiter, asyncHandler(asy
   if (g.rows.length === 0) return res.status(404).json({ error: 'grammar not found' });
   const grammar = g.rows[0];
 
+  // Instruksi tugas dari admin (per lesson+grammar), kalau ada — dipakai AI.
+  let instruction = '';
+  if (lessonId) {
+    const ti = await query(
+      `SELECT instruction FROM lesson_grammar_task_items WHERE lesson_id = $1 AND grammar_id = $2`,
+      [lessonId, grammarId]
+    );
+    instruction = (ti.rows[0]?.instruction || '').trim();
+  }
+
   const key = crypto.createHash('sha256')
-    .update(`grammar-eval|${ANTHROPIC_MODEL}|${grammarId}|${sentence}`)
+    .update(`grammar-eval|${ANTHROPIC_MODEL}|${grammarId}|${instruction}|${sentence}`)
     .digest('hex');
   const cached = await query(`SELECT result FROM grammar_eval_cache WHERE eval_hash = $1`, [key]);
   if (cached.rows.length > 0) {
@@ -98,22 +106,12 @@ router.post('/grammar-task/evaluate', requireAuth, evalLimiter, asyncHandler(asy
 
   if (!ANTHROPIC_API_KEY) return res.status(503).json({ error: 'eval_disabled' });
 
-  // Daily per-user cap (cache hits already returned above, so they're free).
-  if (EVAL_DAILY_LIMIT > 0) {
-    const used = await query(
-      `SELECT count FROM grammar_eval_usage WHERE user_id = $1 AND day = CURRENT_DATE`,
-      [req.user.id]
-    );
-    if ((used.rows[0]?.count || 0) >= EVAL_DAILY_LIMIT) {
-      return res.status(429).json({ error: 'daily_limit', limit: EVAL_DAILY_LIMIT });
-    }
-  }
-
   const tpl = await loadEvalPrompt();
   const userContent = fillTemplate(tpl, {
     pattern: grammar.pattern || '',
     meaning: grammar.meaning || '',
     example: grammar.example || '',
+    instruction: instruction || '(bebas — buat kalimat apa saja yang memakai pola ini)',
     sentence,
   });
 
@@ -161,14 +159,6 @@ router.post('/grammar-task/evaluate', requireAuth, evalLimiter, asyncHandler(asy
      VALUES ($1, $2, $3, $4, $5) ON CONFLICT (eval_hash) DO NOTHING`,
     [key, grammarId, sentence, JSON.stringify(result), ANTHROPIC_MODEL]
   );
-  // Hitung pemakaian harian (hanya setelah panggilan AI sukses).
-  if (EVAL_DAILY_LIMIT > 0) {
-    query(
-      `INSERT INTO grammar_eval_usage (user_id, day, count) VALUES ($1, CURRENT_DATE, 1)
-       ON CONFLICT (user_id, day) DO UPDATE SET count = grammar_eval_usage.count + 1`,
-      [req.user.id]
-    ).catch(() => {});
-  }
   return res.json(result);
 }));
 

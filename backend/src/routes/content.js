@@ -174,7 +174,8 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
     const grammarTaskLessonIds = lessons.rows.filter((l) => l.type === 'grammar_task').map((l) => l.id);
     if (grammarTaskLessonIds.length > 0) {
       const gtRows = await query(
-        `SELECT gi.lesson_id, gi.sort_order, g.id, g.pattern, g.meaning, g.example, g.notes
+        `SELECT gi.lesson_id, gi.sort_order, gi.instruction, gi.required_count,
+                g.id, g.pattern, g.meaning, g.example, g.notes
          FROM lesson_grammar_task_items gi
          JOIN module_grammar g ON g.id = gi.grammar_id
          WHERE gi.lesson_id = ANY($1::uuid[])
@@ -188,6 +189,8 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
           meaning: r.meaning,
           example: r.example,
           notes: r.notes,
+          instruction: r.instruction,
+          requiredCount: r.required_count,
         });
       }
     }
@@ -312,7 +315,8 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
 
   if (row.type === 'grammar_task') {
     const gt = await query(
-      `SELECT g.id, g.pattern, g.meaning, g.example, g.notes, gi.sort_order
+      `SELECT g.id, g.pattern, g.meaning, g.example, g.notes, gi.sort_order,
+              gi.instruction, gi.required_count
        FROM lesson_grammar_task_items gi
        JOIN module_grammar g ON g.id = gi.grammar_id
        WHERE gi.lesson_id = $1
@@ -321,6 +325,7 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
     );
     response.grammarTask = gt.rows.map((r) => ({
       id: r.id, pattern: r.pattern, meaning: r.meaning, example: r.example, notes: r.notes,
+      instruction: r.instruction, requiredCount: r.required_count,
     }));
   }
 

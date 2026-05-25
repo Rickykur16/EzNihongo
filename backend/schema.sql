@@ -155,11 +155,15 @@ CREATE TABLE IF NOT EXISTS module_grammar (
 CREATE INDEX IF NOT EXISTS idx_grammar_module ON module_grammar(module_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_grammar_lesson ON module_grammar(lesson_id, sort_order);
 
--- Grammar picked into a 'grammar_task' lesson (reused from the module bank)
+-- Grammar picked into a 'grammar_task' lesson (reused from the module bank).
+-- instruction = admin task prompt per pattern; required_count = sentences the
+-- student must complete for that pattern.
 CREATE TABLE IF NOT EXISTS lesson_grammar_task_items (
   lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
   grammar_id UUID NOT NULL REFERENCES module_grammar(id) ON DELETE CASCADE,
   sort_order INT DEFAULT 0,
+  instruction TEXT,
+  required_count INT NOT NULL DEFAULT 1,
   PRIMARY KEY (lesson_id, grammar_id)
 );
 
@@ -182,14 +186,6 @@ CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY,
   value TEXT,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Per-user daily cap on AI grammar evaluations (cache hits not counted)
-CREATE TABLE IF NOT EXISTS grammar_eval_usage (
-  user_id UUID NOT NULL,
-  day DATE NOT NULL,
-  count INT NOT NULL DEFAULT 0,
-  PRIMARY KEY (user_id, day)
 );
 
 -- ===== SENSEI & TESTIMONIALS =====

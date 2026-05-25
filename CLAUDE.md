@@ -138,19 +138,24 @@
   dinilai AI lewat `POST /api/grammar-task/evaluate` ({ grammarId, sentence }) →
   **Anthropic Claude** via raw `fetch` (`ANTHROPIC_API_KEY` opsional, bukan
   `REQUIRED_ENV`, kosong → 503; `ANTHROPIC_MODEL` default `claude-haiku-4-5`).
-  Hasil di-cache di `grammar_eval_cache` (kalimat identik per grammar ga panggil
-  AI lagi). **Batas harian per siswa**: tabel `grammar_eval_usage`
-  (`user_id`+`day` PK; migration 024), env `GRAMMAR_EVAL_DAILY_LIMIT` (default
-  30, 0 = tanpa batas); cuma panggilan AI nyata yang dihitung (cache hit gratis),
-  lewat batas → 429 (`daily_limit`), frontend tampilkan pesan "coba besok".
+  Hasil di-cache di `grammar_eval_cache` (kalimat identik per grammar+instruksi
+  ga panggil AI lagi). **Model tugas (admin-defined)**: tiap pola di
+  `lesson_grammar_task_items` punya kolom `instruction` (perintah tugas, mis.
+  "buat kalimat tentang kegiatan harianmu") + `required_count` (berapa kalimat
+  yang harus dibuat siswa per pola; migration 024). Siswa harus menyelesaikan
+  SEMUA kalimat (AI menilai `correct && usesPattern`) sebelum tombol "Tandai
+  Selesai" aktif (gating di `gtUpdateComplete`; kalau AI 503 / tanpa pola →
+  un-gate). Instruksi dikirim ke AI saat menilai (placeholder `{{instruction}}`,
+  di-lookup server-side dari `lesson_grammar_task_items` via `lessonId`).
   **Prompt koreksi editable admin**: tabel `app_settings`
   (key `grammar_eval_prompt`), `GET/PUT /api/admin/settings/grammar-eval-prompt`,
-  placeholder `{{pattern}}`/`{{meaning}}`/`{{example}}`/`{{sentence}}` (satu
-  template global dipakai semua tugas; system prompt statis pakai
+  placeholder `{{pattern}}`/`{{meaning}}`/`{{example}}`/`{{instruction}}`/`{{sentence}}`
+  (satu template global dipakai semua tugas; system prompt statis pakai
   `cache_control: ephemeral`). Admin kelola via tombol "Kelola Tugas Grammar"
-  (`admin.html` → `manageGrammarTask`, picker dari `GET /api/admin/module-grammar`).
-  `welcome.html` me-render via `renderGrammarTaskLesson`; `content.js` ngirim
-  `lesson.grammarTask`. API admin CRUD: `/api/admin/lessons/:id/grammar-task-items`.
+  (`admin.html` → `manageGrammarTask`, picker dari `GET /api/admin/module-grammar`,
+  edit instruksi + jumlah kalimat per pola). `welcome.html` me-render via
+  `renderGrammarTaskLesson`; `content.js` ngirim `lesson.grammarTask` (termasuk
+  `instruction`/`requiredCount`). API admin CRUD: `/api/admin/lessons/:id/grammar-task-items`.
 
 ## Struktur repo (high-level)
 

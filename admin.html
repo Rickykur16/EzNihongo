@@ -2531,9 +2531,9 @@ function renderGtmTable(items) {
   }
   const rows = items.map((it) => `
     <tr data-gtm-gid="${it.grammar_id}">
-      <td lang="ja" style="font-size:16px;font-weight:600;">${escapeHtml(it.pattern || '')}</td>
-      <td>${escapeHtml(it.meaning || '')}</td>
-      <td lang="ja">${escapeHtml(it.example || '')}</td>
+      <td style="min-width:130px;"><span lang="ja" style="font-size:16px;font-weight:600;">${escapeHtml(it.pattern || '')}</span><div style="font-size:12px;color:#737373;">${escapeHtml(it.meaning || '')}</div></td>
+      <td><textarea rows="2" style="width:100%;min-width:220px;font-size:12px;font-family:var(--font-body);box-sizing:border-box;" placeholder="Perintah tugas untuk pola ini (mis. Buat kalimat tentang kegiatan harianmu). Opsional." onchange="gtmSetInstruction('${it.grammar_id}', this.value)">${escapeHtml(it.instruction || '')}</textarea></td>
+      <td><input type="number" min="1" max="10" value="${it.required_count || 1}" style="width:60px;font-size:13px;" onchange="gtmSetCount('${it.grammar_id}', this.value)" /></td>
       <td style="white-space:nowrap;">
         <button class="btn btn-ghost" onclick="gtmMove('${it.grammar_id}', -1)">↑</button>
         <button class="btn btn-ghost" onclick="gtmMove('${it.grammar_id}', 1)">↓</button>
@@ -2543,7 +2543,7 @@ function renderGtmTable(items) {
       </td>
     </tr>`).join('');
   return `<table style="font-size:13px;">
-    <thead><tr><th>Pola</th><th>Arti</th><th>Contoh</th><th>Urut</th><th></th></tr></thead>
+    <thead><tr><th>Pola / arti</th><th>Instruksi tugas (ke siswa + AI)</th><th>Jml kalimat</th><th>Urut</th><th></th></tr></thead>
     <tbody>${rows}</tbody></table>`;
 }
 
@@ -2623,15 +2623,32 @@ async function gtmSave() {
   const arr = window.__gtmItems || [];
   await api('/admin/lessons/' + window.__gtmCtx.lessonId + '/grammar-task-items', {
     method: 'PUT',
-    body: JSON.stringify({ items: arr.map((x, k) => ({ grammarId: x.grammar_id, sortOrder: k })) }),
+    body: JSON.stringify({ items: arr.map((x, k) => ({
+      grammarId: x.grammar_id, sortOrder: k,
+      instruction: x.instruction || null,
+      requiredCount: x.required_count || 1,
+    })) }),
   });
 }
+
+window.gtmSetInstruction = async (grammarId, value) => {
+  const it = (window.__gtmItems || []).find((x) => x.grammar_id === grammarId);
+  if (it) it.instruction = value;
+  try { await gtmSave(); } catch (err) { notify('Gagal simpan instruksi: ' + err.message, true); }
+};
+
+window.gtmSetCount = async (grammarId, value) => {
+  const it = (window.__gtmItems || []).find((x) => x.grammar_id === grammarId);
+  const n = Math.min(10, Math.max(1, Number(value) || 1));
+  if (it) it.required_count = n;
+  try { await gtmSave(); gtmRefreshList(); } catch (err) { notify('Gagal simpan jumlah: ' + err.message, true); }
+};
 
 window.gtmAdd = async (grammarId) => {
   const g = (window.__gtmBank || []).find((x) => x.id === grammarId);
   if (!g) return;
   window.__gtmItems = window.__gtmItems || [];
-  window.__gtmItems.push({ grammar_id: g.id, pattern: g.pattern, meaning: g.meaning, example: g.example, sort_order: window.__gtmItems.length });
+  window.__gtmItems.push({ grammar_id: g.id, pattern: g.pattern, meaning: g.meaning, example: g.example, instruction: '', required_count: 1, sort_order: window.__gtmItems.length });
   gtmRerender();
   try { await gtmSave(); notify('Ditambahkan'); gtmRefreshList(); }
   catch (err) { notify('Gagal: ' + err.message, true); }

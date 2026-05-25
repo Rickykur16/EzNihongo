@@ -53,13 +53,14 @@ INSERT INTO app_settings (key, value) VALUES (
 Pola grammar target: {{pattern}}
 Arti pola: {{meaning}}
 Contoh: {{example}}
+Instruksi tugas dari guru: {{instruction}}
 
 Kalimat siswa: {{sentence}}
 
-Nilai apakah kalimat siswa (1) gramatikal/benar sebagai bahasa Jepang, dan
-(2) benar-benar memakai pola grammar target. Beri umpan balik singkat dalam
-bahasa Indonesia yang membangun, dan kalau perlu beri versi koreksi kalimatnya
-dalam bahasa Jepang.
+Nilai apakah kalimat siswa (1) gramatikal/benar sebagai bahasa Jepang,
+(2) benar-benar memakai pola grammar target, dan (3) sesuai instruksi tugas.
+Beri umpan balik singkat dalam bahasa Indonesia yang membangun, dan kalau perlu
+beri versi koreksi kalimatnya dalam bahasa Jepang.
 
 Jawab HANYA dengan JSON valid (tanpa teks lain) berbentuk:
 {"correct": boolean, "usesPattern": boolean, "feedback": "string Indonesia", "correction": "string Jepang atau kosong"}'
