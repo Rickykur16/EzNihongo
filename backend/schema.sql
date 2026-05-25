@@ -89,6 +89,7 @@ CREATE TABLE IF NOT EXISTS lessons (
   passing_score_pct INT NOT NULL DEFAULT 70,
   questions_per_attempt INT,
   cooldown_hours INT NOT NULL DEFAULT 12,
+  popup_after_lesson_id UUID REFERENCES lessons(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(module_id, slug)

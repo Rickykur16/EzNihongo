@@ -1108,7 +1108,7 @@ router.post('/module-grammar/bulk', asyncHandler(async (req, res) => {
 router.post('/lessons', asyncHandler(async (req, res) => {
   const {
     moduleId, slug, title, type, content, videoUrl, durationMinutes, sortOrder,
-    passingScorePct, questionsPerAttempt, cooldownHours,
+    passingScorePct, questionsPerAttempt, cooldownHours, popupAfterLessonId,
   } = req.body || {};
   if (!moduleId || !slug || !title) {
     return res.status(400).json({ error: 'moduleId, slug, title required' });
@@ -1118,15 +1118,16 @@ router.post('/lessons', asyncHandler(async (req, res) => {
   const result = await query(
     `INSERT INTO lessons (
        module_id, slug, title, type, content, video_url, duration_minutes, sort_order,
-       passing_score_pct, questions_per_attempt, cooldown_hours
+       passing_score_pct, questions_per_attempt, cooldown_hours, popup_after_lesson_id
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
     [
       moduleId, slug, title, type || 'text',
       content || null, videoUrl || null, durationMinutes || null, sortOrder || 0,
       passingScorePct != null && passingScorePct !== '' ? Number(passingScorePct) : 70,
       questionsPerAttempt != null && questionsPerAttempt !== '' ? Number(questionsPerAttempt) : null,
       cooldownHours != null && cooldownHours !== '' ? Number(cooldownHours) : 12,
+      popupAfterLessonId || null,
     ]
   );
   res.status(201).json({ lesson: result.rows[0] });
@@ -1135,13 +1136,14 @@ router.post('/lessons', asyncHandler(async (req, res) => {
 router.put('/lessons/:id', asyncHandler(async (req, res) => {
   const {
     slug, title, type, content, videoUrl, durationMinutes, sortOrder,
-    passingScorePct, questionsPerAttempt, cooldownHours,
+    passingScorePct, questionsPerAttempt, cooldownHours, popupAfterLessonId,
   } = req.body || {};
   if (slug !== undefined && slug !== null) {
     const slugErr = badSlug(slug);
     if (slugErr) return res.status(400).json({ error: slugErr });
   }
   const hasQPA = Object.prototype.hasOwnProperty.call(req.body || {}, 'questionsPerAttempt');
+  const hasPopup = Object.prototype.hasOwnProperty.call(req.body || {}, 'popupAfterLessonId');
 
   // Lesson type-switch cleanup: kalau type berubah dari yang punya konten
   // (quiz/kanji/deck), hapus konten lama sebelum UPDATE. Tanpa ini,
@@ -1178,7 +1180,8 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
        sort_order = COALESCE($8, sort_order),
        passing_score_pct = COALESCE($9, passing_score_pct),
        questions_per_attempt = CASE WHEN $11::boolean THEN $10 ELSE questions_per_attempt END,
-       cooldown_hours = COALESCE($12, cooldown_hours)
+       cooldown_hours = COALESCE($12, cooldown_hours),
+       popup_after_lesson_id = CASE WHEN $14::boolean THEN $13 ELSE popup_after_lesson_id END
      WHERE id = $1 RETURNING *`,
     [
       req.params.id, slug, title, type, content, videoUrl, durationMinutes, sortOrder,
@@ -1186,6 +1189,8 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
       hasQPA && questionsPerAttempt !== '' && questionsPerAttempt != null ? Number(questionsPerAttempt) : null,
       hasQPA,
       cooldownHours != null && cooldownHours !== '' ? Number(cooldownHours) : null,
+      hasPopup && popupAfterLessonId ? popupAfterLessonId : null,
+      hasPopup,
     ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });

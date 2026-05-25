@@ -1150,6 +1150,14 @@ function lessonFormHtml(l) {
         <div style="font-size:12px;color:#525252;font-family:var(--font-body);background:#ecfdf5;border:1px solid #6ee7b7;border-radius:6px;padding:8px 12px;">
           <strong>Tugas Grammar:</strong> setelah simpan, klik tombol <strong>Kelola Tugas Grammar</strong> di daftar pelajaran untuk memilih pola grammar yang harus dipraktikkan siswa (buat kalimat + ucapkan, dinilai AI). Field "Konten" di bawah opsional sebagai pengantar.
         </div>
+        <label style="margin-top:10px;">Tampilkan otomatis setelah pelajaran (popup)</label>
+        <select name="popupAfterLessonId">
+          <option value="">— tidak (tampil sebagai pelajaran biasa) —</option>
+          ${(STATE.lessons || []).filter((x) => x.id !== l.id).map((x) => `<option value="${x.id}" ${l.popup_after_lesson_id === x.id ? 'selected' : ''}>${escapeHtml(x.title)}</option>`).join('')}
+        </select>
+        <div style="font-size:11px;color:#737373;margin-top:4px;font-family:var(--font-body);">
+          Kalau dipilih, tugas ini muncul sebagai popup begitu pelajaran pemicu selesai, dan disembunyikan dari daftar pelajaran siswa.
+        </div>
       </div>
       <div class="field"><label>Judul</label><input name="title" value="${escapeHtml(l.title)}" required placeholder="Ketik judul — slug terisi otomatis" /></div>
       <div class="field">
@@ -1401,6 +1409,9 @@ async function submitLesson(e, id, moduleId) {
     videoUrl: type === 'video' ? ((fd.get('videoUrl') || '').trim() || null) : null,
     durationMinutes: Number(fd.get('durationMinutes')) || null,
     sortOrder: Number(fd.get('sortOrder')) || 0,
+    // Hanya grammar_task yang punya pelajaran pemicu; tipe lain selalu null
+    // (juga meng-clear kalau lesson diubah dari grammar_task ke tipe lain).
+    popupAfterLessonId: type === 'grammar_task' ? ((fd.get('popupAfterLessonId') || '').trim() || null) : null,
   };
   if (type === 'quiz') {
     const qpaRaw = (fd.get('questionsPerAttempt') || '').toString().trim();
