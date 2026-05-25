@@ -3429,6 +3429,7 @@ function transformCourseFromApi(apiCourse) {
           deck: Array.isArray(l.deck) ? l.deck : [],
           kanji: Array.isArray(l.kanji) ? l.kanji : [],
           grammarTask: Array.isArray(l.grammarTask) ? l.grammarTask : [],
+          popupAfterLessonId: l.popup_after_lesson_id || null,
         };
       }),
     })),
@@ -4995,7 +4996,7 @@ function renderSidebar() {
   {
     let n = 0;
     for (const m of course.modules) {
-      for (const l of m.lessons) {
+      for (const l of visibleLessons(m)) {
         n += 1;
         lessonNumber.set(`${m.id}:${l.id}`, n);
       }
@@ -5003,11 +5004,12 @@ function renderSidebar() {
   }
 
   const renderModuleHtml = (m) => {
-    const moduleDur = m.lessons.reduce((n, l) => n + (l.durationMinutes || 0), 0);
-    const moduleDone = m.lessons.filter((l) => progress[`${m.id}:${l.id}`]).length;
-    const moduleTotal = m.lessons.length;
+    const lessons = visibleLessons(m);
+    const moduleDur = lessons.reduce((n, l) => n + (l.durationMinutes || 0), 0);
+    const moduleDone = lessons.filter((l) => progress[`${m.id}:${l.id}`]).length;
+    const moduleTotal = lessons.length;
 
-    const lessonsHtml = m.lessons.map(l => {
+    const lessonsHtml = lessons.map(l => {
       const key = `${m.id}:${l.id}`;
       const isDone = !!progress[key];
       const isCurrent = m.id === currentState.moduleId && l.id === currentState.lessonId;
@@ -6448,23 +6450,19 @@ let _gtRec = null; // { key, recorder, chunks, stream }
 function _gtSttSupported() {
   return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
 }
+// Cari elemen gt-* dalam popup kalau terbuka, else seluruh dokumen — supaya
+// popup tidak bentrok dengan render full-page tugas (id gt-* bisa dobel).
+function _gtScope() { return document.querySelector('.gt-popup-overlay') || document; }
 
-function renderGrammarTaskLesson(course, module, lesson, nav) {
-  const { prev, next, isDone } = nav;
-  const items = Array.isArray(lesson.grammarTask) ? lesson.grammarTask : [];
-  window.__gtData = items;
-  window.__gtLessonId = lesson.apiId;
-  const sttOn = _gtSttSupported();
-
-  // Total kalimat yang harus diselesaikan (jumlah per pola, min 1).
+// Total kalimat yang harus diselesaikan (jumlah per pola, min 1).
+function gtTotalRequired(items) {
   let total = 0;
-  items.forEach((it) => { total += Math.max(1, Number(it.requiredCount) || 1); });
-  window.__gtState = { passed: {}, total, evalDisabled: false, isDone: !!isDone, hasNext: !!next };
+  (items || []).forEach((it) => { total += Math.max(1, Number(it.requiredCount) || 1); });
+  return total;
+}
 
-  const intro = (lesson.body && lesson.body.trim())
-    ? lesson.body
-    : 'Kerjakan tugas tiap pola grammar di bawah: buat kalimat sesuai instruksi, lalu ucapkan (atau ketik). Kalimatmu dinilai otomatis.';
-
+// Bangun HTML kartu tugas (dipakai full-page render & popup modal).
+function gtCardsHtml(items, sttOn) {
   const slotHtml = (pi, si, count) => {
     const key = `${pi}-${si}`;
     const micBtn = sttOn ? `<button type="button" class="gt-mic" id="gt-mic-${key}" onclick="gtToggleRecord(${pi}, ${si}, this)" aria-label="Rekam ucapan">🎤 Rekam</button>` : '';
@@ -6483,36 +6481,50 @@ function renderGrammarTaskLesson(course, module, lesson, nav) {
         <div class="gt-result" id="gt-result-${key}" style="margin-top:10px;"></div>
       </div>`;
   };
+  if (!items || items.length === 0) {
+    return '<div class="deck-empty">Belum ada pola grammar untuk tugas ini.</div>';
+  }
+  return items.map((it, pi) => {
+    const count = Math.max(1, Number(it.requiredCount) || 1);
+    const pattern = escapeHtml(it.pattern || '');
+    const meaning = escapeHtml(it.meaning || '');
+    const example = it.example ? escapeHtml(it.example) : '';
+    const instruction = it.instruction && it.instruction.trim()
+      ? escapeHtml(it.instruction.trim())
+      : `Buat ${count} kalimat memakai pola ini, lalu ucapkan atau ketik.`;
+    const hint = sttOn ? 'Klik 🎤 untuk merekam ucapanmu, atau ketik langsung.' : 'Ketik kalimatmu dalam bahasa Jepang.';
+    let slots = '';
+    for (let si = 0; si < count; si++) slots += slotHtml(pi, si, count);
+    return `
+    <div class="gt-card" style="border:1px solid #e6e6ea;border-radius:14px;padding:18px 18px 16px;margin-bottom:16px;background:#fff;">
+      <span style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#8a8a96;">文法 · POLA ${pi + 1}</span>
+      <div lang="ja" style="font-size:20px;font-weight:700;margin:6px 0 2px;">${pattern}</div>
+      ${meaning ? `<div style="color:#555;font-size:14px;">${meaning}</div>` : ''}
+      ${example ? `<div style="margin-top:10px;display:flex;align-items:flex-start;gap:8px;">
+        <button class="dc-audio" type="button" style="position:static;flex:none;" aria-label="Dengar contoh" onclick="gtPlayExample(${pi}, this)">${AUDIO_SVG}</button>
+        <div lang="ja" style="font-size:15px;color:#333;line-height:1.5;">${example}</div>
+      </div>` : ''}
+      <div style="margin-top:12px;padding:10px 12px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;font-size:14px;color:#065f46;">
+        <strong>Tugas:</strong> ${instruction}
+      </div>
+      <div style="margin-top:6px;font-size:12px;color:#888;">${hint}</div>
+      ${slots}
+    </div>`;
+  }).join('');
+}
 
-  const cards = items.length === 0
-    ? '<div class="deck-empty">Belum ada pola grammar untuk tugas ini.</div>'
-    : items.map((it, pi) => {
-        const count = Math.max(1, Number(it.requiredCount) || 1);
-        const pattern = escapeHtml(it.pattern || '');
-        const meaning = escapeHtml(it.meaning || '');
-        const example = it.example ? escapeHtml(it.example) : '';
-        const instruction = it.instruction && it.instruction.trim()
-          ? escapeHtml(it.instruction.trim())
-          : `Buat ${count} kalimat memakai pola ini, lalu ucapkan atau ketik.`;
-        const hint = sttOn ? 'Klik 🎤 untuk merekam ucapanmu, atau ketik langsung.' : 'Ketik kalimatmu dalam bahasa Jepang.';
-        let slots = '';
-        for (let si = 0; si < count; si++) slots += slotHtml(pi, si, count);
-        return `
-        <div class="gt-card" style="border:1px solid #e6e6ea;border-radius:14px;padding:18px 18px 16px;margin-bottom:16px;background:#fff;">
-          <span style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#8a8a96;">文法 · POLA ${pi + 1}</span>
-          <div lang="ja" style="font-size:20px;font-weight:700;margin:6px 0 2px;">${pattern}</div>
-          ${meaning ? `<div style="color:#555;font-size:14px;">${meaning}</div>` : ''}
-          ${example ? `<div style="margin-top:10px;display:flex;align-items:flex-start;gap:8px;">
-            <button class="dc-audio" type="button" style="position:static;flex:none;" aria-label="Dengar contoh" onclick="gtPlayExample(${pi}, this)">${AUDIO_SVG}</button>
-            <div lang="ja" style="font-size:15px;color:#333;line-height:1.5;">${example}</div>
-          </div>` : ''}
-          <div style="margin-top:12px;padding:10px 12px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;font-size:14px;color:#065f46;">
-            <strong>Tugas:</strong> ${instruction}
-          </div>
-          <div style="margin-top:6px;font-size:12px;color:#888;">${hint}</div>
-          ${slots}
-        </div>`;
-      }).join('');
+function renderGrammarTaskLesson(course, module, lesson, nav) {
+  const { prev, next, isDone } = nav;
+  const items = Array.isArray(lesson.grammarTask) ? lesson.grammarTask : [];
+  window.__gtData = items;
+  window.__gtLessonId = lesson.apiId;
+  window.__gtPopupCtx = null;
+  const sttOn = _gtSttSupported();
+  window.__gtState = { passed: {}, total: gtTotalRequired(items), evalDisabled: false, isDone: !!isDone, hasNext: !!next, isPopup: false };
+
+  const intro = (lesson.body && lesson.body.trim())
+    ? lesson.body
+    : 'Kerjakan tugas tiap pola grammar di bawah: buat kalimat sesuai instruksi, lalu ucapkan (atau ketik). Kalimatmu dinilai otomatis.';
 
   document.getElementById('main-content').innerHTML = `
     <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · TUGAS GRAMMAR</p>
@@ -6521,7 +6533,7 @@ function renderGrammarTaskLesson(course, module, lesson, nav) {
     <div class="deck-hero" style="margin-bottom:18px;">
       <div><div class="dh-eyebrow">作文 · BUAT KALIMAT</div><div class="dh-body">${escapeHtml(intro)}</div></div>
     </div>
-    ${cards}
+    ${gtCardsHtml(items, sttOn)}
     <div id="gt-progress-hint" style="text-align:center;font-size:13px;color:#666;margin:4px 0 10px;"></div>
     <div class="lesson-footer">
       <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
@@ -6531,19 +6543,103 @@ function renderGrammarTaskLesson(course, module, lesson, nav) {
   gtUpdateComplete();
 }
 
+// ── Popup tugas grammar (muncul otomatis setelah pelajaran pemicu selesai,
+// atau via tombol "Kerjakan Tugas"). Reuse gtCardsHtml + handler gt* ──
+function closeGrammarTaskPopup() {
+  document.querySelectorAll('.gt-popup-overlay').forEach((el) => el.remove());
+  document.body.style.overflow = '';
+  try { _stopAllTts(); } catch {}
+}
+
+function openGrammarTaskPopup(course, taskMod, taskLesson, onDone) {
+  const items = Array.isArray(taskLesson.grammarTask) ? taskLesson.grammarTask : [];
+  const sttOn = _gtSttSupported();
+  window.__gtData = items;
+  window.__gtLessonId = taskLesson.apiId;
+  window.__gtState = { passed: {}, total: gtTotalRequired(items), evalDisabled: false, isDone: false, hasNext: false, isPopup: true };
+  window.__gtPopupCtx = { moduleId: taskMod.id, lessonKey: `${taskMod.id}:${taskLesson.id}`, onDone: (typeof onDone === 'function' ? onDone : null) };
+
+  const overlay = document.createElement('div');
+  overlay.className = 'gt-popup-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px;';
+  overlay.innerHTML = `
+    <div class="gt-popup" role="dialog" aria-modal="true" aria-label="Tugas grammar" style="background:#f7f7f9;border-radius:16px;max-width:680px;width:100%;padding:20px 18px 18px;position:relative;">
+      <button type="button" aria-label="Tutup" onclick="gtPopupDismiss()" style="position:absolute;top:12px;right:12px;border:none;background:#eee;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:16px;">✕</button>
+      <div class="dh-eyebrow" style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#8a8a96;">作文 · TUGAS GRAMMAR</div>
+      <h2 style="margin:4px 0 4px;font-size:20px;">${escapeHtml(taskLesson.title || 'Tugas Grammar')}</h2>
+      <p style="margin:0 0 14px;font-size:13px;color:#666;">Buat kalimat sesuai instruksi tiap pola, lalu ucapkan atau ketik. Kalimatmu dinilai otomatis.</p>
+      ${gtCardsHtml(items, sttOn)}
+      <div id="gt-progress-hint" style="text-align:center;font-size:13px;color:#666;margin:4px 0 10px;"></div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;">
+        <button type="button" class="btn-secondary" onclick="gtPopupDismiss()" style="padding:8px 16px;">Nanti saja</button>
+        <button type="button" class="btn-primary" id="gt-complete-btn" onclick="gtPopupComplete()"></button>
+      </div>
+    </div>`;
+  overlay.addEventListener('click', (ev) => { if (ev.target === overlay) gtPopupDismiss(); });
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  if (!window.__gtPopupEscWired) {
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && document.querySelector('.gt-popup-overlay')) gtPopupDismiss();
+    });
+    window.__gtPopupEscWired = true;
+  }
+  gtUpdateComplete();
+}
+
+// Tutup tanpa menyelesaikan — task tetap "belum selesai", tetap lanjut.
+window.gtPopupDismiss = () => {
+  const ctx = window.__gtPopupCtx;
+  closeGrammarTaskPopup();
+  window.__gtPopupCtx = null;
+  if (ctx && ctx.onDone) ctx.onDone();
+};
+
+// Selesaikan tugas: tandai task lesson selesai + XP, tutup, lanjut.
+window.gtPopupComplete = () => {
+  const ctx = window.__gtPopupCtx;
+  if (ctx) {
+    const allProgress = getProgress();
+    const cp = allProgress[currentState.course] || {};
+    const wasDone = !!cp[ctx.lessonKey];
+    cp[ctx.lessonKey] = true;
+    allProgress[currentState.course] = cp;
+    setProgress(allProgress);
+    if (!wasDone) addXP(10, 'tugas grammar selesai');
+  }
+  closeGrammarTaskPopup();
+  window.__gtPopupCtx = null;
+  if (ctx && ctx.onDone) ctx.onDone();
+};
+
+// Buka popup untuk task tertentu dari tombol "Kerjakan Tugas" di pelajaran pemicu.
+window.gtOpenTaskPopup = (moduleId, lessonId) => {
+  const course = COURSE_CONTENT[currentState.course];
+  const m = course.modules.find((x) => x.id === moduleId);
+  const l = m && m.lessons.find((x) => x.id === lessonId);
+  if (!m || !l) return;
+  openGrammarTaskPopup(course, m, l, () => { renderLesson(); });
+};
+
 function gtUpdateComplete() {
   const st = window.__gtState;
   if (!st) return;
-  const btn = document.getElementById('gt-complete-btn');
+  const scope = _gtScope();
+  const btn = scope.querySelector('#gt-complete-btn');
   if (!btn) return;
   const passedCount = Object.values(st.passed).filter(Boolean).length;
   const done = st.isDone || st.evalDisabled || st.total === 0 || passedCount >= st.total;
   btn.disabled = !done;
   btn.style.opacity = done ? '' : '0.5';
   btn.style.cursor = done ? '' : 'not-allowed';
-  const normalLabel = st.isDone ? (st.hasNext ? 'Lanjut →' : 'Selesai ✓') : (st.hasNext ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓');
+  let normalLabel;
+  if (st.isPopup) {
+    normalLabel = 'Selesai ✓';
+  } else {
+    normalLabel = st.isDone ? (st.hasNext ? 'Lanjut →' : 'Selesai ✓') : (st.hasNext ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓');
+  }
   btn.textContent = done ? normalLabel : 'Selesaikan semua kalimat dulu';
-  const hint = document.getElementById('gt-progress-hint');
+  const hint = scope.querySelector('#gt-progress-hint');
   if (hint) {
     hint.textContent = (st.evalDisabled || st.total === 0) ? '' : `${passedCount} / ${st.total} kalimat selesai`;
   }
@@ -6563,7 +6659,7 @@ window.gtToggleRecord = async (pi, si, btn) => {
     return;
   }
   if (!_gtSttSupported()) return;
-  const status = document.getElementById(`gt-status-${key}`);
+  const status = _gtScope().querySelector(`#gt-status-${key}`);
   let stream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -6588,7 +6684,7 @@ window.gtToggleRecord = async (pi, si, btn) => {
       if (res.status === 503) { if (status) status.textContent = 'Transkripsi otomatis nonaktif — ketik kalimatmu saja.'; return; }
       if (!res.ok) { if (status) status.textContent = 'Gagal mentranskrip, coba lagi atau ketik manual.'; return; }
       const data = await res.json();
-      const input = document.getElementById(`gt-input-${key}`);
+      const input = _gtScope().querySelector(`#gt-input-${key}`);
       if (input && data.text) input.value = data.text;
       if (status) status.textContent = data.text ? 'Transkrip selesai — periksa & sunting bila perlu.' : 'Tidak ada teks terdeteksi.';
     } catch (e) {
@@ -6606,8 +6702,9 @@ window.gtToggleRecord = async (pi, si, btn) => {
 window.gtCheck = async (pi, si, btn) => {
   const it = (window.__gtData || [])[pi];
   const key = `${pi}-${si}`;
-  const input = document.getElementById(`gt-input-${key}`);
-  const result = document.getElementById(`gt-result-${key}`);
+  const scope = _gtScope();
+  const input = scope.querySelector(`#gt-input-${key}`);
+  const result = scope.querySelector(`#gt-result-${key}`);
   if (!it || !input || !result) return;
   const sentence = String(input.value || '').trim();
   if (!sentence) { result.innerHTML = '<div style="color:#c0392b;font-size:13px;">Tulis atau ucapkan kalimatmu dulu.</div>'; return; }
@@ -6764,6 +6861,28 @@ window.closeDeckModal = () => {
   }
 };
 
+// Tugas grammar yang dikaitkan ke pelajaran pemicu (popupAfterLessonId) hanya
+// tampil sebagai popup → disembunyikan dari daftar, navigasi, & hitungan progres.
+function gtIsPopupTask(l) {
+  return !!(l && l.type === 'grammar_task' && l.popupAfterLessonId);
+}
+function visibleLessons(m) {
+  return (m.lessons || []).filter((l) => !gtIsPopupTask(l));
+}
+// Cari tugas-popup (grammar_task) yang dipicu oleh lesson tertentu (by apiId).
+function gtPendingTaskFor(course, lesson) {
+  if (!lesson || !lesson.apiId) return null;
+  for (const m of course.modules) {
+    for (const l of m.lessons) {
+      if (gtIsPopupTask(l) && l.popupAfterLessonId === lesson.apiId) {
+        const prog = getProgress()[currentState.course] || {};
+        return { taskMod: m, taskLesson: l, done: !!prog[`${m.id}:${l.id}`] };
+      }
+    }
+  }
+  return null;
+}
+
 function renderLesson() {
   gkStopAll(); // stop karaoke dialog dari lesson sebelumnya
   const course = COURSE_CONTENT[currentState.course];
@@ -6773,7 +6892,7 @@ function renderLesson() {
   const key = `${module.id}:${lesson.id}`;
   const isDone = !!progress[key];
 
-  const allLessons = course.modules.flatMap(m => m.lessons.map(l => ({ m, l })));
+  const allLessons = course.modules.flatMap(m => visibleLessons(m).map(l => ({ m, l })));
   const idx = allLessons.findIndex(x => x.m.id === module.id && x.l.id === lesson.id);
   const prev = allLessons[idx - 1];
   const next = allLessons[idx + 1];
@@ -6832,10 +6951,24 @@ function renderLesson() {
     </div>
   `;
 
+  // Banner tugas grammar terkait (popup) — pelajaran ini jadi pemicunya.
+  const pend = gtPendingTaskFor(course, lesson);
+  const taskBanner = !pend ? '' : (pend.done
+    ? `<div style="margin:14px 0;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;font-size:13px;color:#166534;">
+         ✓ Tugas grammar untuk pelajaran ini sudah selesai.
+         <button type="button" class="btn-secondary" style="margin-left:8px;padding:4px 12px;font-size:12px;" onclick="gtOpenTaskPopup('${pend.taskMod.id}','${pend.taskLesson.id}')">Kerjakan ulang</button>
+       </div>`
+    : `<div style="margin:14px 0;padding:12px 16px;background:#ecfdf5;border:1px solid #6ee7b7;border-radius:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+         <div style="flex:1;min-width:180px;font-size:14px;color:#065f46;">📝 Ada <strong>tugas grammar</strong> untuk pelajaran ini — <strong>belum selesai</strong>.</div>
+         <button type="button" class="btn-primary" style="padding:8px 18px;" onclick="gtOpenTaskPopup('${pend.taskMod.id}','${pend.taskLesson.id}')">Kerjakan Tugas</button>
+       </div>`);
+
   document.getElementById('main-content').innerHTML = `
     <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · ${lesson.type.toUpperCase()}</p>
     <h1 class="lesson-title">${lesson.title}</h1>
     <p class="lesson-subtitle">${module.title} — ${lesson.duration}</p>
+
+    ${taskBanner}
 
     ${introBlock}
 
@@ -7024,18 +7157,21 @@ window.markCompleteAndNext = () => {
 
   if (!wasAlreadyDone) addXP(10, 'lesson selesai');
 
-  const allLessons = course.modules.flatMap(m => m.lessons.map(l => ({ m, l })));
+  // Navigasi & hitungan progres pakai lesson terlihat saja (tugas-popup yang
+  // tersembunyi tidak ikut dihitung — ia overlay terikat pelajaran pemicunya).
+  const allLessons = course.modules.flatMap(m => visibleLessons(m).map(l => ({ m, l })));
   const idx = allLessons.findIndex(x => x.m.id === currentState.moduleId && x.l.id === currentState.lessonId);
   const next = allLessons[idx + 1];
 
   // Check if this was the last lesson of the module
   const currentModule = course.modules.find(m => m.id === currentState.moduleId);
-  const moduleDoneLessons = currentModule.lessons.filter(l => courseProgress[`${currentModule.id}:${l.id}`]).length;
-  const justFinishedModule = !wasAlreadyDone && moduleDoneLessons === currentModule.lessons.length;
+  const curModVisible = visibleLessons(currentModule);
+  const moduleDoneLessons = curModVisible.filter(l => courseProgress[`${currentModule.id}:${l.id}`]).length;
+  const justFinishedModule = !wasAlreadyDone && moduleDoneLessons === curModVisible.length;
 
   // Check if entire course completed
-  const totalLessons = course.modules.reduce((s, m) => s + m.lessons.length, 0);
-  const totalDone = Object.values(courseProgress).filter(v => v).length;
+  const totalLessons = course.modules.reduce((s, m) => s + visibleLessons(m).length, 0);
+  const totalDone = course.modules.reduce((s, m) => s + visibleLessons(m).filter(l => courseProgress[`${m.id}:${l.id}`]).length, 0);
   const courseComplete = !wasAlreadyDone && totalDone === totalLessons;
 
   const advance = () => {
@@ -7048,26 +7184,38 @@ window.markCompleteAndNext = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  if (courseComplete) {
-    showCompletion({
-      title: '🎌 Selamat! Kelas Selesai',
-      message: `Kamu telah menyelesaikan semua materi ${course.name}. 素晴らしい！`,
-      xp: 50,
-      continueLabel: 'Tutup',
-      onContinue: advance,
-    });
-    addXP(50, 'kelas selesai');
-  } else if (justFinishedModule) {
-    showCompletion({
-      title: 'Bab Selesai!',
-      message: `Kamu sudah tamatkan "${currentModule.title}". Lanjut ke materi berikutnya?`,
-      xp: 15,
-      continueLabel: 'Lanjut →',
-      onContinue: advance,
-    });
-    addXP(15, 'bab selesai');
+  const finalize = () => {
+    if (courseComplete) {
+      showCompletion({
+        title: '🎌 Selamat! Kelas Selesai',
+        message: `Kamu telah menyelesaikan semua materi ${course.name}. 素晴らしい！`,
+        xp: 50,
+        continueLabel: 'Tutup',
+        onContinue: advance,
+      });
+      addXP(50, 'kelas selesai');
+    } else if (justFinishedModule) {
+      showCompletion({
+        title: 'Bab Selesai!',
+        message: `Kamu sudah tamatkan "${currentModule.title}". Lanjut ke materi berikutnya?`,
+        xp: 15,
+        continueLabel: 'Lanjut →',
+        onContinue: advance,
+      });
+      addXP(15, 'bab selesai');
+    } else {
+      advance();
+    }
+  };
+
+  // Kalau pelajaran yang baru diselesaikan punya tugas grammar terkait (popup)
+  // yang belum selesai → munculkan popup dulu, lanjut setelah ditutup/selesai.
+  const curLesson = currentModule.lessons.find(l => l.id === currentState.lessonId);
+  const pend = curLesson ? gtPendingTaskFor(course, curLesson) : null;
+  if (pend && !pend.done) {
+    openGrammarTaskPopup(course, pend.taskMod, pend.taskLesson, finalize);
   } else {
-    advance();
+    finalize();
   }
 };
 

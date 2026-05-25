@@ -156,6 +156,16 @@
   edit instruksi + jumlah kalimat per pola). `welcome.html` me-render via
   `renderGrammarTaskLesson`; `content.js` ngirim `lesson.grammarTask` (termasuk
   `instruction`/`requiredCount`). API admin CRUD: `/api/admin/lessons/:id/grammar-task-items`.
+  **Popup otomatis (opsional)**: lesson grammar_task bisa di-set kolom
+  `lessons.popup_after_lesson_id` (migration 025; dropdown "Tampilkan otomatis
+  setelah pelajaran" di form admin). Kalau di-set, tugas muncul sebagai **modal
+  popup** begitu pelajaran pemicu di-`markCompleteAndNext`, dan **disembunyikan**
+  dari daftar/sidebar + navigasi + hitungan progres (helper `gtIsPopupTask` /
+  `visibleLessons` di `welcome.html`). Boleh ditunda: tutup popup tetap lanjut;
+  pelajaran pemicu menampilkan banner "Kerjakan Tugas" (`gtPendingTaskFor` →
+  `gtOpenTaskPopup` → `openGrammarTaskPopup`) sampai task selesai. Render kartu
+  di-share via `gtCardsHtml`; complete popup (`gtPopupComplete`) menandai lesson
+  task selesai + XP lalu lanjut.
 
 ## Struktur repo (high-level)
 

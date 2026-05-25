@@ -67,7 +67,7 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
     // lazy-loaded via /api/lessons/:id (smaller default payload for long courses).
     const [lessons, vocab, grammar] = await Promise.all([
       query(
-        `SELECT id, module_id, slug, title, type, content, video_url, duration_minutes, sort_order
+        `SELECT id, module_id, slug, title, type, content, video_url, duration_minutes, sort_order, popup_after_lesson_id
          FROM lessons WHERE module_id = ANY($1::uuid[])
          ORDER BY sort_order ASC, created_at ASC`,
         [moduleIds]
