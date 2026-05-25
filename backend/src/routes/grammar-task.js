@@ -199,6 +199,11 @@ router.post('/grammar-task/transcribe', requireAuth, sttLimiter, upload.single('
       if (!upstream.ok) {
         const detail = await upstream.text().catch(() => '');
         console.error('ElevenLabs STT:', upstream.status, detail.slice(0, 200));
+        // Key TTS-only / plan tanpa akses Scribe → 401/403. Perlakukan sebagai
+        // STT nonaktif supaya frontend tampilkan "ketik saja", bukan error.
+        if (upstream.status === 401 || upstream.status === 403) {
+          return res.status(503).json({ error: 'stt_disabled' });
+        }
         return res.status(502).json({ error: 'stt_upstream' });
       }
       const data = await upstream.json();
