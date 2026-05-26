@@ -3329,6 +3329,210 @@
     .kanji-detail-body { padding: 16px 18px 22px; }
     .kanji-compound-row { grid-template-columns: 1fr; gap: 2px; }
   }
+
+  /* ============================================================
+     GRAMMAR TASK (作文) — premium redesign (visual restyle)
+     Pakai token --du-* yang sudah ada; handler & ID gt-* tetap.
+     ============================================================ */
+  :root {
+    --gt-success: #6b9c80;
+    --gt-success-ink: #2e5a45;
+    --gt-success-soft: #ecf4ee;
+    --gt-success-border: #cfe1d4;
+  }
+
+  .gt-popup-overlay {
+    position: fixed; inset: 0;
+    background: rgba(15,16,18,0.55);
+    backdrop-filter: blur(8px) saturate(140%);
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    z-index: 3000;
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+    animation: gt-fade-in 220ms ease both;
+  }
+  .gt-popup {
+    position: relative;
+    width: 100%; max-width: 680px;
+    max-height: 92vh; overflow-y: auto;
+    padding: 28px 28px 22px;
+    background: var(--du-surface);
+    border: 1px solid var(--du-border-soft);
+    border-radius: 18px;
+    box-shadow: var(--du-shadow-lg);
+    font-family: var(--font-body);
+    color: var(--du-ink);
+    animation: gt-pop-in 260ms cubic-bezier(.2,.9,.3,1.1) both;
+  }
+  .gt-popup__header { margin-bottom: 18px; padding-right: 40px; }
+  .gt-popup__eyebrow {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--du-ink-4); margin-bottom: 8px;
+  }
+  .gt-popup__title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 6px; }
+  .gt-popup__desc { font-size: 14px; color: var(--du-ink-3); line-height: 1.55; }
+  .gt-popup__close {
+    position: absolute; top: 14px; right: 14px;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--du-surface-2); border: 1px solid var(--du-border-soft);
+    color: var(--du-ink-3); font-size: 18px; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 140ms ease;
+  }
+  .gt-popup__close:hover { background: var(--du-accent-soft); color: var(--du-accent); border-color: var(--du-accent-soft-2); }
+
+  .gt-card {
+    background: var(--du-surface); border: 1px solid var(--du-border);
+    border-radius: 16px; padding: 22px; margin-bottom: 14px;
+    box-shadow: var(--du-shadow-sm);
+  }
+  .gt-card__chip {
+    display: inline-flex; align-items: center;
+    font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--du-accent); background: var(--du-accent-soft);
+    padding: 4px 10px; border-radius: 999px; margin-bottom: 14px;
+  }
+  .gt-card__pattern {
+    font-family: 'Shippori Mincho', serif; font-size: 40px; font-weight: 600;
+    color: var(--du-ink); letter-spacing: -0.01em; line-height: 1.1; margin-bottom: 4px;
+  }
+  .gt-card__meaning { font-size: 14px; color: var(--du-ink-3); margin-bottom: 16px; }
+  .gt-card__example {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 8px 14px 8px 8px;
+    background: var(--du-surface-2); border: 1px solid var(--du-border-soft);
+    border-radius: 999px; font-family: var(--font-jp); font-size: 15px;
+    color: var(--du-ink-2); margin-bottom: 16px;
+  }
+  .gt-card__example-audio {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--du-surface); border: 1px solid var(--du-border);
+    color: var(--du-accent); font-size: 12px;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0; cursor: pointer; transition: all 140ms ease;
+  }
+  .gt-card__example-audio:hover { background: var(--du-accent); color: #fff; border-color: var(--du-accent); transform: scale(1.05); }
+
+  .gt-callout {
+    background: var(--du-accent-soft); border-left: 3px solid var(--du-accent);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;
+    font-size: 14px; line-height: 1.55; color: var(--du-ink-2);
+  }
+  .gt-callout strong { color: var(--du-accent); font-weight: 700; }
+  .gt-help { font-size: 13px; line-height: 1.5; color: var(--du-ink-3); margin-bottom: 14px; }
+
+  .gt-slot { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+  .gt-slot + .gt-slot { margin-top: 18px; padding-top: 22px; border-top: 1px solid var(--du-border-soft); position: relative; }
+  .gt-slot[data-slot-label]::before {
+    content: attr(data-slot-label);
+    position: absolute; top: -8px; left: 0;
+    background: var(--du-surface); padding: 0 8px;
+    font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--du-ink-4);
+  }
+  .gt-slot__mic-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  .gt-mic {
+    position: relative; display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 16px;
+    background: var(--du-surface); border: 1px solid var(--du-border);
+    border-radius: 12px; color: var(--du-ink-2);
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 160ms ease;
+  }
+  .gt-mic:hover:not(:disabled) { background: var(--du-surface-2); border-color: var(--du-ink-4); }
+  .gt-mic.recording {
+    background: var(--du-accent); border-color: var(--du-accent); color: #fff;
+    box-shadow: 0 0 0 4px var(--du-accent-soft-2);
+  }
+  .gt-mic.recording::before {
+    content: ''; position: absolute; inset: -4px; border-radius: 14px;
+    border: 2px solid var(--du-accent); opacity: 0.4;
+    animation: gt-pulse 1.4s ease-out infinite; pointer-events: none;
+  }
+
+  .gt-status { font-size: 13px; line-height: 1.5; color: var(--du-ink-3); flex: 1; min-width: 0; }
+
+  textarea[id^="gt-input-"] {
+    width: 100%; min-height: 60px; padding: 12px 14px;
+    background: var(--du-surface); border: 1px solid var(--du-border);
+    border-radius: 12px;
+    font-family: var(--font-jp); font-size: 15px; line-height: 1.55;
+    color: var(--du-ink); resize: vertical; box-sizing: border-box;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+  }
+  textarea[id^="gt-input-"]::placeholder { color: var(--du-ink-4); }
+  textarea[id^="gt-input-"]:focus { outline: none; border-color: var(--du-accent); box-shadow: 0 0 0 3px var(--du-accent-soft); }
+
+  .gt-check {
+    align-self: flex-start; display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 22px; background: var(--du-accent); color: #fff;
+    border: none; border-radius: 12px;
+    font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer; box-shadow: 0 3px 0 var(--du-accent-2);
+    transition: all 140ms ease;
+  }
+  .gt-check:hover:not(:disabled) { transform: translateY(1px); box-shadow: 0 1px 0 var(--du-accent-2); }
+  .gt-check:disabled { background: var(--du-surface-2); color: var(--du-ink-3); box-shadow: none; cursor: progress; }
+
+  .gt-result {
+    margin-top: 4px; padding: 14px 16px;
+    background: var(--du-surface); border: 1px solid var(--du-border-soft);
+    border-radius: 12px; font-size: 14px; line-height: 1.6; color: var(--du-ink-2);
+    animation: gt-slide-in 260ms ease both;
+  }
+  .gt-result[hidden] { display: none; }
+  .gt-result strong, .gt-result b { color: var(--du-ink); font-weight: 600; }
+  .gt-result--success { background: var(--gt-success-soft); border: 1px solid var(--gt-success-border); border-left: 3px solid var(--gt-success); }
+  .gt-result--success strong { color: var(--gt-success-ink); }
+  .gt-result--error { background: var(--du-accent-soft); border: 1px solid var(--du-accent-soft-2); border-left: 3px solid var(--du-accent); }
+  .gt-result--error strong { color: var(--du-accent); }
+  .gt-result-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .gt-result-icon { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+  .gt-result--success .gt-result-icon { background: var(--gt-success); color: #fff; }
+  .gt-result--error .gt-result-icon { background: var(--du-accent); color: #fff; }
+  .gt-result-title { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; }
+  .gt-result--success .gt-result-title { color: var(--gt-success-ink); }
+  .gt-result--error .gt-result-title { color: var(--du-accent); }
+  .gt-result-body { padding-left: 36px; font-size: 14px; line-height: 1.6; color: var(--du-ink-2); }
+  .gt-result-body :lang(ja) { font-family: var(--font-jp); }
+
+  #gt-progress-hint {
+    text-align: center; font-size: 12px; color: var(--du-ink-3);
+    margin: 6px 0 14px; font-family: var(--font-mono); font-weight: 600; letter-spacing: 0.02em;
+  }
+
+  .gt-footer__actions { display: flex; justify-content: flex-end; gap: 10px; }
+  .gt-btn {
+    padding: 11px 20px; border-radius: 12px; border: none;
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 140ms ease;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .gt-btn--ghost { background: transparent; color: var(--du-ink-2); border: 1px solid var(--du-border); }
+  .gt-btn--ghost:hover { background: var(--du-surface-2); border-color: var(--du-ink-4); }
+  .gt-btn--primary { background: var(--du-accent); color: #fff; font-weight: 700; box-shadow: 0 3px 0 var(--du-accent-2); }
+  .gt-btn--primary:hover:not(:disabled) { transform: translateY(1px); box-shadow: 0 1px 0 var(--du-accent-2); }
+  .gt-btn--primary:disabled { background: var(--du-surface-2); color: var(--du-ink-4); box-shadow: none; cursor: not-allowed; }
+
+  @keyframes gt-fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes gt-pop-in { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes gt-slide-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes gt-pulse { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.18); opacity: 0; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .gt-popup-overlay, .gt-popup, .gt-result, .gt-mic.recording::before { animation: none !important; transition: none !important; }
+  }
+  @media (max-width: 560px) {
+    .gt-popup-overlay { padding: 0; }
+    .gt-popup { max-width: 100%; max-height: 100vh; border-radius: 0; padding: 22px 18px 18px; }
+    .gt-card { padding: 18px; }
+    .gt-card__pattern { font-size: 32px; }
+    .gt-footer__actions { flex-direction: column-reverse; }
+    .gt-footer__actions .gt-btn { width: 100%; justify-content: center; }
+  }
 </style>
 </head>
 <body>
@@ -6465,20 +6669,17 @@ function gtTotalRequired(items) {
 function gtCardsHtml(items, sttOn) {
   const slotHtml = (pi, si, count) => {
     const key = `${pi}-${si}`;
+    const slotLabel = (count > 1 && si > 0) ? ` data-slot-label="Kalimat ${si + 1}"` : '';
     const micBtn = sttOn ? `<button type="button" class="gt-mic" id="gt-mic-${key}" onclick="gtToggleRecord(${pi}, ${si}, this)" aria-label="Rekam ucapan">🎤 Rekam</button>` : '';
     return `
-      <div class="gt-slot" style="margin-top:12px;padding-top:12px;${si > 0 ? 'border-top:1px dashed #e6e6ea;' : ''}">
-        ${count > 1 ? `<div style="font-size:12px;font-weight:700;color:#8a8a96;">KALIMAT ${si + 1} / ${count}</div>` : ''}
-        <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;align-items:center;">
+      <div class="gt-slot"${slotLabel}>
+        <div class="gt-slot__mic-row">
           ${micBtn}
-          <span class="gt-status" id="gt-status-${key}" style="font-size:12px;color:#999;"></span>
+          <span class="gt-status" id="gt-status-${key}"></span>
         </div>
-        <textarea id="gt-input-${key}" lang="ja" rows="2" placeholder="例：私は毎日日本語を勉強します。"
-          style="width:100%;margin-top:8px;padding:10px 12px;border:1px solid #d8d8de;border-radius:10px;font-size:15px;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
-        <div style="margin-top:8px;">
-          <button type="button" class="btn-primary" style="padding:8px 18px;" onclick="gtCheck(${pi}, ${si}, this)">Periksa</button>
-        </div>
-        <div class="gt-result" id="gt-result-${key}" style="margin-top:10px;"></div>
+        <textarea id="gt-input-${key}" lang="ja" rows="2" placeholder="例：私は毎日日本語を勉強します。"></textarea>
+        <button type="button" class="gt-check" onclick="gtCheck(${pi}, ${si}, this)">Periksa</button>
+        <div class="gt-result" id="gt-result-${key}" hidden></div>
       </div>`;
   };
   if (!items || items.length === 0) {
@@ -6496,20 +6697,18 @@ function gtCardsHtml(items, sttOn) {
     let slots = '';
     for (let si = 0; si < count; si++) slots += slotHtml(pi, si, count);
     return `
-    <div class="gt-card" style="border:1px solid #e6e6ea;border-radius:14px;padding:18px 18px 16px;margin-bottom:16px;background:#fff;">
-      <span style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#8a8a96;">文法 · POLA ${pi + 1}</span>
-      <div lang="ja" style="font-size:20px;font-weight:700;margin:6px 0 2px;">${pattern}</div>
-      ${meaning ? `<div style="color:#555;font-size:14px;">${meaning}</div>` : ''}
-      ${example ? `<div style="margin-top:10px;display:flex;align-items:flex-start;gap:8px;">
-        <button class="dc-audio" type="button" style="position:static;flex:none;" aria-label="Dengar contoh" onclick="gtPlayExample(${pi}, this)">${AUDIO_SVG}</button>
-        <div lang="ja" style="font-size:15px;color:#333;line-height:1.5;">${example}</div>
+    <article class="gt-card">
+      <div class="gt-card__chip">文法 · Pola ${pi + 1}</div>
+      <div class="gt-card__pattern" lang="ja">${pattern}</div>
+      ${meaning ? `<div class="gt-card__meaning">${meaning}</div>` : ''}
+      ${example ? `<div class="gt-card__example">
+        <button type="button" class="gt-card__example-audio" aria-label="Dengar contoh" onclick="gtPlayExample(${pi}, this)">🔊</button>
+        <span lang="ja">${example}</span>
       </div>` : ''}
-      <div style="margin-top:12px;padding:10px 12px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;font-size:14px;color:#065f46;">
-        <strong>Tugas:</strong> ${instruction}
-      </div>
-      <div style="margin-top:6px;font-size:12px;color:#888;">${hint}</div>
+      <div class="gt-callout"><strong>Tugas:</strong> ${instruction}</div>
+      <p class="gt-help">${hint}</p>
       ${slots}
-    </div>`;
+    </article>`;
   }).join('');
 }
 
@@ -6534,7 +6733,7 @@ function renderGrammarTaskLesson(course, module, lesson, nav) {
       <div><div class="dh-eyebrow">作文 · BUAT KALIMAT</div><div class="dh-body">${escapeHtml(intro)}</div></div>
     </div>
     ${gtCardsHtml(items, sttOn)}
-    <div id="gt-progress-hint" style="text-align:center;font-size:13px;color:#666;margin:4px 0 10px;"></div>
+    <div id="gt-progress-hint"></div>
     <div class="lesson-footer">
       <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
       <button class="btn-primary" id="gt-complete-btn" onclick="markCompleteAndNext()"></button>
@@ -6561,18 +6760,19 @@ function openGrammarTaskPopup(course, taskMod, taskLesson, onDone) {
 
   const overlay = document.createElement('div');
   overlay.className = 'gt-popup-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px;';
   overlay.innerHTML = `
-    <div class="gt-popup" role="dialog" aria-modal="true" aria-label="Tugas grammar" style="background:#f7f7f9;border-radius:16px;max-width:680px;width:100%;padding:20px 18px 18px;position:relative;">
-      <button type="button" aria-label="Tutup" onclick="gtPopupDismiss()" style="position:absolute;top:12px;right:12px;border:none;background:#eee;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:16px;">✕</button>
-      <div class="dh-eyebrow" style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#8a8a96;">作文 · TUGAS GRAMMAR</div>
-      <h2 style="margin:4px 0 4px;font-size:20px;">${escapeHtml(taskLesson.title || 'Tugas Grammar')}</h2>
-      <p style="margin:0 0 14px;font-size:13px;color:#666;">Buat kalimat sesuai instruksi tiap pola, lalu ucapkan atau ketik. Kalimatmu dinilai otomatis.</p>
+    <div class="gt-popup" role="dialog" aria-modal="true" aria-labelledby="gt-popup-title">
+      <button type="button" class="gt-popup__close" aria-label="Tutup" onclick="gtPopupDismiss()">×</button>
+      <header class="gt-popup__header">
+        <div class="gt-popup__eyebrow">作文 · Tugas Grammar</div>
+        <h2 id="gt-popup-title" class="gt-popup__title">${escapeHtml(taskLesson.title || 'Tugas Grammar')}</h2>
+        <p class="gt-popup__desc">Buat kalimat sesuai instruksi tiap pola, lalu ucapkan atau ketik. Kalimatmu dinilai otomatis.</p>
+      </header>
       ${gtCardsHtml(items, sttOn)}
-      <div id="gt-progress-hint" style="text-align:center;font-size:13px;color:#666;margin:4px 0 10px;"></div>
-      <div style="display:flex;justify-content:flex-end;gap:10px;">
-        <button type="button" class="btn-secondary" onclick="gtPopupDismiss()" style="padding:8px 16px;">Nanti saja</button>
-        <button type="button" class="btn-primary" id="gt-complete-btn" onclick="gtPopupComplete()"></button>
+      <div id="gt-progress-hint"></div>
+      <div class="gt-footer__actions">
+        <button type="button" class="gt-btn gt-btn--ghost" onclick="gtPopupDismiss()">Nanti saja</button>
+        <button type="button" class="gt-btn gt-btn--primary" id="gt-complete-btn" onclick="gtPopupComplete()"></button>
       </div>
     </div>`;
   overlay.addEventListener('click', (ev) => { if (ev.target === overlay) gtPopupDismiss(); });
@@ -6707,7 +6907,8 @@ window.gtCheck = async (pi, si, btn) => {
   const result = scope.querySelector(`#gt-result-${key}`);
   if (!it || !input || !result) return;
   const sentence = String(input.value || '').trim();
-  if (!sentence) { result.innerHTML = '<div style="color:#c0392b;font-size:13px;">Tulis atau ucapkan kalimatmu dulu.</div>'; return; }
+  const showResult = (cls, html) => { result.hidden = false; result.className = `gt-result${cls ? ' ' + cls : ''}`; result.innerHTML = html; };
+  if (!sentence) { showResult('gt-result--error', '<div class="gt-result-body" style="padding-left:0;">Tulis atau ucapkan kalimatmu dulu.</div>'); return; }
   btn.disabled = true;
   const oldLabel = btn.textContent;
   btn.textContent = 'Memeriksa…';
@@ -6718,29 +6919,29 @@ window.gtCheck = async (pi, si, btn) => {
     });
     if (res.status === 503) {
       if (window.__gtState) { window.__gtState.evalDisabled = true; gtUpdateComplete(); }
-      result.innerHTML = '<div style="color:#999;font-size:13px;">Penilaian AI belum aktif. Kamu tetap bisa menandai pelajaran ini selesai.</div>';
+      showResult('', '<div class="gt-result-body" style="padding-left:0;color:var(--du-ink-3);">Penilaian AI belum aktif. Kamu tetap bisa menandai pelajaran ini selesai.</div>');
       return;
     }
-    if (!res.ok) { result.innerHTML = '<div style="color:#c0392b;font-size:13px;">Gagal memeriksa, coba lagi.</div>'; return; }
+    if (!res.ok) { showResult('gt-result--error', '<div class="gt-result-body" style="padding-left:0;">Gagal memeriksa, coba lagi.</div>'); return; }
     const d = await res.json();
     const ok = d.correct && d.usesPattern;
     if (window.__gtState) { window.__gtState.passed[key] = !!ok; gtUpdateComplete(); }
-    const badge = ok
-      ? '<span style="display:inline-block;background:#e7f7ec;color:#1c8a4a;font-weight:700;font-size:12px;padding:3px 10px;border-radius:999px;">✓ Bagus!</span>'
-      : '<span style="display:inline-block;background:#fdeceb;color:#c0392b;font-weight:700;font-size:12px;padding:3px 10px;border-radius:999px;">Perlu diperbaiki</span>';
     const corr = d.correction ? `
-      <div style="margin-top:8px;display:flex;align-items:flex-start;gap:8px;">
+      <div style="margin-top:10px;display:flex;align-items:flex-start;gap:8px;">
         <button class="dc-audio" type="button" style="position:static;flex:none;" aria-label="Dengar koreksi" onclick="speakJapanese(${JSON.stringify(String(d.correction)).replace(/"/g, '&quot;')}, this)">${AUDIO_SVG}</button>
-        <div><div style="font-size:11px;color:#8a8a96;font-weight:700;">KOREKSI</div><div lang="ja" style="font-size:15px;">${escapeHtml(d.correction)}</div></div>
+        <div><div style="font-size:11px;color:var(--du-ink-4);font-weight:700;letter-spacing:.08em;">KOREKSI</div><div lang="ja" style="font-size:15px;">${escapeHtml(d.correction)}</div></div>
       </div>` : '';
-    result.innerHTML = `
-      <div style="border:1px solid #ececf0;border-radius:10px;padding:12px 14px;background:#fafafb;">
-        ${badge}
-        ${d.feedback ? `<div style="margin-top:8px;font-size:14px;color:#333;line-height:1.5;">${escapeHtml(d.feedback)}</div>` : ''}
+    showResult(ok ? 'gt-result--success' : 'gt-result--error', `
+      <div class="gt-result-head">
+        <span class="gt-result-icon" aria-hidden="true">${ok ? '✓' : '!'}</span>
+        <span class="gt-result-title">${ok ? 'Bagus!' : 'Belum tepat'}</span>
+      </div>
+      <div class="gt-result-body">
+        ${d.feedback ? escapeHtml(d.feedback) : ''}
         ${corr}
-      </div>`;
+      </div>`);
   } catch (e) {
-    result.innerHTML = '<div style="color:#c0392b;font-size:13px;">Gagal memeriksa, coba lagi.</div>';
+    showResult('gt-result--error', '<div class="gt-result-body" style="padding-left:0;">Gagal memeriksa, coba lagi.</div>');
   } finally {
     btn.disabled = false;
     btn.textContent = oldLabel;
