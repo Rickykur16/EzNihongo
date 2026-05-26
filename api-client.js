@@ -79,6 +79,7 @@ async function ezLogout() {
   localStorage.removeItem('ez_user');
   localStorage.removeItem('ez_courses');
   localStorage.removeItem('ez_progress');
+  localStorage.removeItem('ez_quiz_scores');
   localStorage.removeItem('ez_stats');
   location.href = 'index.html';
 }
