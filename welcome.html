@@ -3787,6 +3787,55 @@ function getProgress() {
 }
 function setProgress(obj) {
   localStorage.setItem('ez_progress', JSON.stringify(obj));
+  _scheduleCloudPush();
+}
+
+// ── Sync progres lintas device (blob per user, mirror kanji_progress) ──
+// Progres + skor kuis disimpan di localStorage (per-device) lalu di-push ke
+// /api/learning-state supaya ikut akun. Boot menarik blob & union-merge.
+let _cloudPushTimer = null;
+function _scheduleCloudPush() {
+  if (typeof window.ezApi !== 'function') return;
+  clearTimeout(_cloudPushTimer);
+  _cloudPushTimer = setTimeout(pushLearningStateToCloud, 1200);
+}
+async function pushLearningStateToCloud() {
+  if (typeof window.ezApi !== 'function') return;
+  try {
+    const progress = getProgress();
+    const quizScores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
+    await window.ezApi('/learning-state', {
+      method: 'PUT',
+      body: JSON.stringify({ progress, quizScores }),
+    });
+  } catch {}
+}
+function _mergeProgress(a, b) {
+  const out = JSON.parse(JSON.stringify(a || {}));
+  for (const c in (b || {})) out[c] = Object.assign({}, out[c], b[c]);
+  return out;
+}
+function _mergeQuizScores(a, b) {
+  const out = { ...(a || {}) };
+  for (const k in (b || {})) out[k] = Math.max(out[k] || 0, b[k] || 0);
+  return out;
+}
+// Tarik blob server saat boot, union-merge dengan localStorage (completion
+// monoton — sekali selesai tetap selesai), lalu push balik supaya item
+// lokal-only ikut naik ke cloud. Gagal/offline → diam, pakai localStorage.
+async function syncLearningStateFromServer() {
+  if (typeof window.ezApi !== 'function') return;
+  try {
+    const res = await window.ezApi('/learning-state');
+    if (!res.ok) return;
+    const cloud = await res.json();
+    const mergedP = _mergeProgress(cloud.progress || {}, getProgress());
+    localStorage.setItem('ez_progress', JSON.stringify(mergedP));
+    const localQ = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
+    const mergedQ = _mergeQuizScores(cloud.quizScores || {}, localQ);
+    localStorage.setItem('ez_quiz_scores', JSON.stringify(mergedQ));
+    _scheduleCloudPush();
+  } catch {}
 }
 
 // ═══════════════════════════════════════════════
@@ -4685,6 +4734,7 @@ async function finishQuiz() {
   const scores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
   scores[key] = Math.max(scores[key] || 0, pct);
   localStorage.setItem('ez_quiz_scores', JSON.stringify(scores));
+  _scheduleCloudPush();
 
   // Mark lesson done if passed (unlock next).
   if (passed) {
@@ -7503,6 +7553,9 @@ window.switchCourse = async (slug) => {
     // from checkout). Re-hydrate in case it discovered a newly-paid course.
     await handleNewEnrollment();
     await hydrateEnrolledCourses();
+    // Tarik progres + skor kuis dari akun (sync lintas device) sebelum render
+    // supaya tanda ✓ langsung benar. Gagal/offline → diam, pakai localStorage.
+    await syncLearningStateFromServer();
   } catch (err) {
     // Auth died between the ezGetMe check above and this sync (rare, but
     // possible if the refresh cookie was invalidated mid-load). Bounce to

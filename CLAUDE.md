@@ -59,6 +59,17 @@
   `systemctl restart eznihongo-api` + healthcheck loop ke `/api/health`.
 - **Branch konvensi**: `claude/<topic>-<short-id>` untuk fitur Claude.
   PR ke `main`, tidak push langsung.
+- **Sync progres lintas device (main site)** — progres "lesson selesai"
+  (`ez_progress`) + skor kuis (`ez_quiz_scores`) di `welcome.html` disimpan di
+  localStorage **dan** di-mirror ke server sebagai blob JSONB per user (tabel
+  `user_learning_state`, migration 026), pola sama seperti `kanji_progress`.
+  Endpoint `GET/PUT /api/learning-state` (`backend/src/routes/learning-state.js`,
+  `requireAuth`). Frontend: `setProgress` + tulis skor kuis memicu
+  `_scheduleCloudPush()` (debounce 1.2s → `PUT`); boot memanggil
+  `syncLearningStateFromServer()` yang union-merge cloud↔local (completion
+  monoton) sebelum render. XP/streak TIDAK ikut blob — tetap server-authoritative
+  via `/api/stats/me`. Tabel relational `user_progress` (lesson UUID) sengaja
+  tidak dipakai karena progres frontend di-key slug `"<moduleId>:<lessonId>"`.
 - **Tipe pelajaran `deck`** (kosakata interaktif, migration 009): lesson
   bertipe `deck` punya kartu kosakata yang dipilih dari bank
   (`module_vocabulary`, bisa `lesson_id` NULL untuk item bank murni) lewat join

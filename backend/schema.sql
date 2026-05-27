@@ -301,6 +301,15 @@ CREATE TABLE IF NOT EXISTS user_progress (
 CREATE INDEX IF NOT EXISTS idx_progress_user ON user_progress(user_id);
 CREATE INDEX IF NOT EXISTS idx_progress_lesson ON user_progress(lesson_id);
 
+-- Blob progres main site (peta "lesson selesai" + skor kuis) untuk sync
+-- lintas device. Frontend merge local+cloud lalu tulis balik union.
+CREATE TABLE IF NOT EXISTS user_learning_state (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  progress JSONB NOT NULL DEFAULT '{}'::jsonb,
+  quiz_scores JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS user_stats (
   user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   xp INT DEFAULT 0,
