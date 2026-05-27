@@ -3533,6 +3533,36 @@
     .gt-footer__actions { flex-direction: column-reverse; }
     .gt-footer__actions .gt-btn { width: 100%; justify-content: center; }
   }
+
+  /* ── AI Senpai (Maneki) floating widget ── */
+  #ai-senpai {
+    position: fixed; right: 24px; bottom: 24px; z-index: 2000;
+    display: flex; flex-direction: column; align-items: flex-end;
+    font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  }
+  #ai-senpai .ez-jp { font-family: var(--font-jp, 'Noto Sans JP', sans-serif); }
+  #ai-senpai button { font-family: inherit; }
+  @keyframes senpaiAppear { 0%{opacity:0;transform:scale(.4) translateY(40px)} 70%{opacity:1;transform:scale(1.08) translateY(-4px)} 100%{opacity:1;transform:scale(1) translateY(0)} }
+  @keyframes senpaiPaw { 0%,100%{transform:rotate(-8deg)} 50%{transform:rotate(8deg)} }
+  @keyframes senpaiPulse { 0%{box-shadow:0 0 0 0 rgba(200,16,46,.42)} 100%{box-shadow:0 0 0 30px rgba(200,16,46,0)} }
+  @keyframes senpaiHalo { 0%,100%{opacity:.55;transform:translate(-50%,-50%) scale(1)} 50%{opacity:1;transform:translate(-50%,-50%) scale(1.08)} }
+  @keyframes senpaiBadge { 0%{transform:scale(.4);opacity:0} 100%{transform:scale(1);opacity:1} }
+  @keyframes senpaiCoin { 0%{opacity:0;transform:translate(0,0) rotate(0) scale(.4)} 15%{opacity:1} 85%{opacity:1} 100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(.9)} }
+  @keyframes senpaiPeekIn { 0%{opacity:0;transform:translateY(8px) scale(.92)} 100%{opacity:1;transform:translateY(0) scale(1)} }
+  @keyframes senpaiPanelIn { 0%{opacity:0;transform:translateY(20px) scale(.94)} 100%{opacity:1;transform:translateY(0) scale(1)} }
+  @keyframes senpaiTypingDot { 0%,100%{opacity:.3;transform:translateY(0)} 50%{opacity:1;transform:translateY(-2px)} }
+  #ai-senpai .senpai-orb-btn { position:relative; border:0; padding:0; cursor:pointer; background:transparent; outline:none; animation: senpaiAppear 480ms cubic-bezier(.34,1.56,.64,1); transition: transform .18s cubic-bezier(.2,.7,.3,1); }
+  #ai-senpai .senpai-orb-btn:hover { transform: scale(1.06) translateY(-3px); }
+  #ai-senpai .senpai-orb-btn:active { transform: scale(.94) translateY(2px); }
+  #ai-senpai .senpai-scroll::-webkit-scrollbar { width:6px; }
+  #ai-senpai .senpai-scroll::-webkit-scrollbar-thumb { background:#E8DFD7; border-radius:999px; }
+  @media (max-width: 480px) {
+    #ai-senpai { right: 12px; bottom: 12px; }
+    #ai-senpai .senpai-panel { width: calc(100vw - 24px) !important; max-width: 340px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #ai-senpai *, #ai-senpai *::before, #ai-senpai *::after { animation: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -7462,6 +7492,7 @@ window.markCompleteAndNext = () => {
     renderSidebar();
     renderLesson();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    try { if (window.AISenpai && AISenpai._started) AISenpai.refresh(); } catch {}
   };
 
   const finalize = () => {
@@ -7548,6 +7579,440 @@ window.switchCourse = async (slug) => {
 };
 
 // ═══════════════════════════════════════════════
+// AI SENPAI (Maneki) — floating AI tutor widget
+// ═══════════════════════════════════════════════
+// Maskot Maneki-neko mengambang di pojok kanan-bawah. State machine:
+// idle → peek (chip) → toast (kartu) → digest (grup) → expanded (chat).
+// Reminder diturunkan dari data nyata (lanjut belajar / tugas grammar /
+// streak via /api/stats/me). Chat real ke /api/tutor/chat (Claude); riwayat
+// di sessionStorage. Mount ke <body> supaya selamat dari re-render #app-root.
+const S = (window.AISenpai = {
+  mode: 'idle',
+  reminders: [],
+  chat: [],
+  typing: false,
+  _started: false,
+  _autoToasted: false,
+  _toastTimer: null,
+  _recording: false,
+  _rec: null,
+  _chunks: [],
+
+  PALETTE: { body:'#FFFFFF', stroke:'#1B1410', inEar:'#FFB7AE', patch:'#F2B544', collar:'#C8102E', collarStroke:'#a50d26', bell:'#F2B544', bellStroke:'#B07300' },
+  SUGGEST: ['Beda は vs が?', 'Quiz kanji N4', 'Buat kalimat 〜てしまう'],
+  groupMeta: {
+    continue:   { color:'#C8102E', bg:'#fff0f2', label:'Lanjut belajar', jp:'続き' },
+    grammar:    { color:'#1F7A52', bg:'#E6F5EC', label:'Tugas Grammar',  jp:'文法' },
+    streak:     { color:'#B07300', bg:'#FFF1D6', label:'Streak harian',  jp:'連続' },
+    unfinished: { color:'#1B6CA8', bg:'#E5F2FC', label:'Belum selesai',  jp:'未完' },
+  },
+
+  esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); },
+
+  // ── Maneki SVG (varian classic 白猫) ──
+  manekiSVG(size, pose, mood, blink) {
+    const p = S.PALETTE;
+    const eyeFill = '#1B1410';
+    const isWave = pose === 'wave';
+    const pawRotate = pose === 'high' ? -55 : pose === 'up' ? -25 : pose === 'down' ? 20 : 0;
+    const eyes = mood === 'sleepy'
+      ? `<path d="M36 46 Q40 50 44 46" stroke="${p.stroke}" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M56 46 Q60 50 64 46" stroke="${p.stroke}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`
+      : mood === 'excited'
+      ? `<ellipse cx="40" cy="46" rx="3.2" ry="${blink ? 0.5 : 4.2}" fill="${eyeFill}"/><ellipse cx="60" cy="46" rx="3.2" ry="${blink ? 0.5 : 4.2}" fill="${eyeFill}"/>`
+      : `<path d="M36 46 Q40 ${blink ? 46.4 : 42} 44 46" stroke="${p.stroke}" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M56 46 Q60 ${blink ? 46.4 : 42} 64 46" stroke="${p.stroke}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" style="display:block;overflow:visible;">
+      <ellipse cx="50" cy="95" rx="30" ry="3.6" fill="rgba(27,20,16,0.18)"/>
+      <path d="M28 60 Q28 90 50 92 Q72 90 72 60 Z" fill="${p.body}" stroke="${p.stroke}" stroke-width="2.4" stroke-linejoin="round"/>
+      <circle cx="50" cy="46" r="28" fill="${p.body}" stroke="${p.stroke}" stroke-width="2.4"/>
+      <path d="M30 28 L26 14 L40 22 Z" fill="${p.body}" stroke="${p.stroke}" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M70 28 L74 14 L60 22 Z" fill="${p.body}" stroke="${p.stroke}" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M30 25 L29 18 L36 22 Z" fill="${p.inEar}"/><path d="M70 25 L71 18 L64 22 Z" fill="${p.inEar}"/>
+      <path d="M44 22 Q50 18 56 22 Q58 28 50 32 Q43 30 44 22 Z" fill="${p.patch}" opacity="0.9"/>
+      <path d="M68 38 Q74 38 73 46 Q66 44 68 38 Z" fill="${p.patch}" opacity="0.85"/>
+      ${eyes}
+      <path d="M18 52 L32 50" stroke="${p.stroke}" stroke-width="1.4" stroke-linecap="round"/>
+      <path d="M18 56 L32 56" stroke="${p.stroke}" stroke-width="1.4" stroke-linecap="round"/>
+      <path d="M82 52 L68 50" stroke="${p.stroke}" stroke-width="1.4" stroke-linecap="round"/>
+      <path d="M82 56 L68 56" stroke="${p.stroke}" stroke-width="1.4" stroke-linecap="round"/>
+      <path d="M48 52 L52 52 L50 55 Z" fill="#1B1410"/>
+      <path d="M50 55 Q47 60 44 58 M50 55 Q53 60 56 58" stroke="#1B1410" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <ellipse cx="33" cy="56" rx="3.4" ry="1.8" fill="#FFB7AE" opacity="0.65"/>
+      <path d="M30 66 Q50 72 70 66 L70 70 Q50 76 30 70 Z" fill="${p.collar}" stroke="${p.stroke}" stroke-width="2"/>
+      <circle cx="50" cy="72" r="4.2" fill="${p.bell}" stroke="${p.stroke}" stroke-width="1.6"/>
+      <circle cx="50" cy="72.6" r="1" fill="${p.stroke}"/>
+      <g transform="translate(36,80) rotate(-12)">
+        <ellipse cx="0" cy="0" rx="11.5" ry="7.2" fill="#F2B544" stroke="${p.stroke}" stroke-width="2"/>
+        <ellipse cx="0" cy="0" rx="8.4" ry="4.7" fill="none" stroke="${p.stroke}" stroke-width="0.9" opacity="0.7"/>
+        <ellipse cx="-3.5" cy="-2.6" rx="3.4" ry="1.2" fill="#FFE08A" opacity="0.9"/>
+        <text x="0" y="3.2" text-anchor="middle" font-size="8.8" font-weight="900" fill="${p.stroke}" font-family="'Noto Sans JP',sans-serif">福</text>
+      </g>
+      <g style="transform-origin:72px 56px;animation:${isWave ? 'senpaiPaw 1.05s ease-in-out infinite' : 'none'};">
+        <g transform="translate(72,56) rotate(${pawRotate})">
+          <ellipse cx="0" cy="0" rx="8" ry="9" fill="${p.body}" stroke="${p.stroke}" stroke-width="2.2"/>
+          <ellipse cx="0" cy="2" rx="3.2" ry="2.2" fill="#FFB7AE" opacity="0.85"/>
+          <ellipse cx="-3.5" cy="-3" rx="1.2" ry="1.4" fill="#FFB7AE" opacity="0.85"/>
+          <ellipse cx="0" cy="-4" rx="1.2" ry="1.4" fill="#FFB7AE" opacity="0.85"/>
+          <ellipse cx="3.5" cy="-3" rx="1.2" ry="1.4" fill="#FFB7AE" opacity="0.85"/>
+        </g>
+      </g>
+    </svg>`;
+  },
+
+  orbHTML() {
+    const has = S.reminders.length > 0;
+    const urgent = S.reminders.some((r) => r.urgency === 'high');
+    const pose = S.mode === 'expanded' ? 'high' : has ? 'wave' : 'down';
+    const mood = !has ? 'sleepy' : (S.mode === 'toast' || S.mode === 'expanded' ? 'excited' : 'happy');
+    const badge = S.mode === 'expanded' ? 0 : S.reminders.length;
+    const pulsing = S.mode === 'toast' || (urgent && S.mode === 'peek');
+    const halo = (has && S.mode !== 'expanded' && !pulsing)
+      ? `<span style="position:absolute;left:50%;top:52%;width:90px;height:90px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgba(200,16,46,0.16), transparent 70%);animation:senpaiHalo 3.2s ease-in-out infinite;pointer-events:none;"></span>`
+      : '';
+    const pulse = pulsing
+      ? `<span style="position:absolute;left:50%;top:52%;width:80px;height:80px;transform:translate(-50%,-50%);border-radius:50%;animation:senpaiPulse 1.8s ease-out infinite;pointer-events:none;"></span>`
+      : '';
+    const badgeEl = badge > 0
+      ? `<span style="position:absolute;top:0;right:-2px;min-width:24px;height:24px;padding:0 7px;background:#C8102E;color:#fff;border-radius:999px;border:2.5px solid #FFF8F1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;box-shadow:0 3px 0 #a50d26;animation:senpaiBadge 280ms cubic-bezier(.34,1.56,.64,1);">${badge}</span>`
+      : '';
+    return `<button class="senpai-orb-btn" style="width:86px;height:94px;filter:drop-shadow(0 14px 22px rgba(27,20,16,${has ? 0.26 : 0.18}));" aria-label="AI Senpai" onclick="AISenpai.clickOrb()">
+      ${pulse}${halo}${S.manekiSVG(86, pose, mood, false)}${badgeEl}
+    </button>`;
+  },
+
+  _lessonTitle() {
+    try {
+      const c = COURSE_CONTENT[currentState.course]; if (!c) return '';
+      const m = c.modules.find((x) => x.id === currentState.moduleId); if (!m) return '';
+      const l = m.lessons.find((x) => x.id === currentState.lessonId); if (!l) return '';
+      return l.jp ? `${l.title} (${l.jp})` : l.title;
+    } catch { return ''; }
+  },
+
+  // ── Reminder dari data nyata ──
+  computeReminders(stats) {
+    const out = [];
+    try {
+      const slug = currentState.course;
+      const course = COURSE_CONTENT[slug];
+      if (course && slug) {
+        const prog = getProgress()[slug] || {};
+        let next = null;
+        for (const m of course.modules) {
+          for (const l of visibleLessons(m)) {
+            if (!prog[`${m.id}:${l.id}`]) { next = { m, l }; break; }
+          }
+          if (next) break;
+        }
+        if (next) {
+          out.push({ id:'continue', group:'continue', icon:'▶', urgency:'high',
+            title:`Lanjutkan: ${next.l.title}`, sub:`${next.m.title} · ${slug.toUpperCase()}`,
+            action: () => window.selectLesson(next.m.id, next.l.id) });
+          const total = course.modules.reduce((s, m) => s + visibleLessons(m).length, 0);
+          const done = Object.values(prog).filter(Boolean).length;
+          const remaining = total - done;
+          if (remaining > 1) {
+            out.push({ id:'unfinished', group:'unfinished', icon:'📚', urgency:'low',
+              title:`${remaining} pelajaran belum selesai`, sub:`${slug.toUpperCase()} · ${Math.round((done / total) * 100)}% selesai`,
+              action: () => window.selectLesson(next.m.id, next.l.id) });
+          }
+        }
+        // Tugas grammar popup yang belum selesai (cari yang pertama).
+        for (const m of course.modules) {
+          for (const l of m.lessons) {
+            if (gtIsPopupTask(l) && !prog[`${m.id}:${l.id}`]) {
+              out.push({ id:'grammar', group:'grammar', icon:'文', urgency:'med',
+                title:'Ada tugas grammar menunggu', sub:`${m.title} · buat & ucapkan kalimat`,
+                action: () => { try { window.gtOpenTaskPopup(m.id, l.id); } catch {} } });
+              break;
+            }
+          }
+          if (out.find((r) => r.id === 'grammar')) break;
+        }
+      }
+      // Streak harian (server-authoritative).
+      if (stats && stats.today && !stats.today.goalMet) {
+        const days = stats.streak_days || 0;
+        out.push({ id:'streak', group:'streak', icon:'🔥', urgency:'med',
+          title: days > 0 ? `Jaga streak ${days} hari!` : 'Mulai streak hari ini!',
+          sub:'Belajar sebentar biar target harian tercapai',
+          action: () => { const r = S.reminders.find((x) => x.id === 'continue'); if (r) r.action(); } });
+      }
+    } catch {}
+    return out;
+  },
+
+  async refresh() {
+    let stats = null;
+    try {
+      if (typeof window.ezApi === 'function') {
+        const r = await window.ezApi('/stats/me');
+        if (r.ok) { const d = await r.json(); stats = d.stats || d; }
+      }
+    } catch {}
+    S.reminders = S.computeReminders(stats);
+    if (S.mode === 'idle' || S.mode === 'peek') {
+      S.mode = S.reminders.length ? 'peek' : 'idle';
+    }
+    // Auto-pop satu toast untuk reminder mendesak (sekali per sesi).
+    if (!S._autoToasted && (S.mode === 'peek') && S.reminders.some((r) => r.urgency === 'high')) {
+      S._autoToasted = true;
+      S.mode = 'toast';
+      clearTimeout(S._toastTimer);
+      S._toastTimer = setTimeout(() => { if (S.mode === 'toast') { S.mode = 'peek'; S.render(); } }, 7000);
+      S.render();
+      S.burst();
+      return;
+    }
+    S.render();
+  },
+
+  _topReminder() { return S.reminders.find((r) => r.urgency === 'high') || S.reminders[0]; },
+
+  clickOrb() {
+    if (S.mode === 'expanded') { S.mode = S.reminders.length ? 'peek' : 'idle'; }
+    else { S.mode = 'expanded'; if (!S.chat.length) S._seedChat(); }
+    S.render();
+  },
+  openExpanded() { S.mode = 'expanded'; if (!S.chat.length) S._seedChat(); S.render(); },
+  openDigest() { S.mode = 'digest'; S.render(); },
+  closePanel() { S.mode = S.reminders.length ? 'peek' : 'idle'; S.render(); },
+  dismissPeek() { S.mode = 'idle'; S.render(); },
+  dismissToast() { clearTimeout(S._toastTimer); S.mode = S.reminders.length ? 'peek' : 'idle'; S.render(); },
+  act(id) { const r = S.reminders.find((x) => x.id === id); S.mode = 'idle'; S.render(); if (r && r.action) { try { r.action(); } catch {} } },
+  _seedChat() { S.chat = [{ from:'ai', text:'Otsukare! Aku Senpai 🐾 Mau tanya soal grammar, kosakata, atau kanji? Tanya aja!' }]; S.persist(); },
+
+  burst() {
+    const wrap = document.querySelector('#ai-senpai .senpai-coins');
+    if (!wrap) return;
+    for (let i = 0; i < 3; i++) {
+      const dx = (i - 1) * 16 + (Math.random() - 0.5) * 8;
+      const dy = -60 - Math.random() * 30;
+      const rot = (Math.random() - 0.5) * 120;
+      const c = document.createElement('div');
+      c.style.cssText = `position:absolute;left:0;top:0;animation:senpaiCoin 1.1s ${i * 60}ms cubic-bezier(.2,.7,.3,1) forwards;--dx:${dx}px;--dy:${dy}px;--rot:${rot}deg;`;
+      c.innerHTML = `<svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="10" fill="#F2B544" stroke="#B07300" stroke-width="1.5"/><circle cx="11" cy="11" r="7" fill="none" stroke="#B07300" stroke-width="0.8"/><text x="11" y="14" text-anchor="middle" font-size="9" font-weight="900" fill="#7A4A00" font-family="'Noto Sans JP',sans-serif">福</text></svg>`;
+      wrap.appendChild(c);
+      setTimeout(() => c.remove(), 1300);
+    }
+  },
+
+  persist() { try { sessionStorage.setItem('ez_tutor_chat', JSON.stringify(S.chat)); } catch {} },
+
+  send(text) {
+    text = String(text || '').trim();
+    if (!text || S.typing) return;
+    S.chat.push({ from:'user', text });
+    S.persist();
+    S.typing = true;
+    S.render();
+    const ctx = { level: (currentState.course || '').toUpperCase(), lesson: S._lessonTitle() };
+    const msgs = S.chat.slice(-20).map((m) => ({ role: m.from === 'ai' ? 'assistant' : 'user', content: m.text }));
+    const done = (aiText) => { S.typing = false; S.chat.push({ from:'ai', text: aiText }); S.persist(); S.render(); };
+    if (typeof window.ezApi !== 'function') { done('Maaf, koneksi tidak tersedia.'); return; }
+    window.ezApi('/tutor/chat', { method:'POST', body: JSON.stringify({ messages: msgs, context: ctx }) })
+      .then(async (r) => {
+        if (r.status === 503) return done('Maaf, Senpai lagi istirahat — fitur AI belum aktif. Coba lagi nanti ya 🐾');
+        if (!r.ok) return done('Aduh, ada gangguan. Coba ulangi sebentar lagi ya.');
+        const d = await r.json().catch(() => ({}));
+        done((d.reply || '').trim() || 'Hmm, coba tanya dengan cara lain ya.');
+      })
+      .catch(() => done('Koneksi gagal. Cek internetmu lalu coba lagi 🙏'));
+  },
+  sendInput() { const el = document.getElementById('senpai-input'); if (el) { const v = el.value; el.value = ''; S.send(v); } },
+
+  // ── Voice (reuse /grammar-task/transcribe, ElevenLabs STT) ──
+  voiceSupported() { return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder); },
+  async toggleVoice() {
+    if (!S.voiceSupported()) return;
+    const btn = document.getElementById('senpai-mic');
+    if (S._recording) { try { S._rec && S._rec.stop(); } catch {} return; }
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch { if (btn) btn.style.display = 'none'; return; }
+    S._chunks = [];
+    S._rec = new MediaRecorder(stream);
+    S._recording = true;
+    if (btn) { btn.textContent = '⏹'; btn.style.background = '#C8102E'; btn.style.color = '#fff'; }
+    S._rec.ondataavailable = (e) => { if (e.data && e.data.size) S._chunks.push(e.data); };
+    S._rec.onstop = async () => {
+      S._recording = false;
+      stream.getTracks().forEach((t) => t.stop());
+      if (btn) { btn.textContent = '🎤'; btn.style.background = '#fff0f2'; btn.style.color = '#C8102E'; }
+      const blob = new Blob(S._chunks, { type: 'audio/webm' });
+      if (!blob.size || typeof window.ezApi !== 'function') return;
+      const fd = new FormData();
+      fd.append('audio', blob, 'speech.webm');
+      try {
+        const r = await window.ezApi('/grammar-task/transcribe', { method:'POST', body: fd });
+        if (!r.ok) { if (r.status === 503 && btn) btn.style.display = 'none'; return; }
+        const d = await r.json();
+        const inp = document.getElementById('senpai-input');
+        if (inp && d.text) { inp.value = (inp.value ? inp.value + ' ' : '') + d.text; inp.focus(); }
+      } catch {}
+    };
+    S._rec.start();
+  },
+
+  // ── Panel templates ──
+  _peekHTML() {
+    const r = S._topReminder(); if (!r) return '';
+    const meta = S.groupMeta[r.group] || S.groupMeta.continue;
+    const more = S.reminders.length > 1
+      ? `<button onclick="AISenpai.openDigest()" style="margin-bottom:10px;margin-right:6px;border:0;cursor:pointer;background:#1B1410;color:#fff;padding:5px 10px;border-radius:999px;font-size:10.5px;font-weight:800;letter-spacing:.04em;box-shadow:0 6px 16px rgba(27,20,16,.18);">Lihat semua ${S.reminders.length} →</button>`
+      : '';
+    return `<div style="display:flex;flex-direction:column;align-items:flex-end;">
+      <div class="senpai-panel" style="margin-bottom:10px;background:#fff;border-radius:14px;padding:8px 10px 8px 9px;box-shadow:0 10px 24px rgba(27,20,16,.12),0 0 0 1.5px #F0E0DA;display:flex;align-items:center;gap:8px;max-width:260px;cursor:pointer;animation:senpaiPeekIn 360ms cubic-bezier(.34,1.56,.64,1);transform-origin:bottom right;" onclick="AISenpai.openExpanded()">
+        <span class="ez-jp" style="width:22px;height:22px;border-radius:7px;background:${meta.bg};color:${meta.color};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;flex:0 0 22px;">${r.icon}</span>
+        <div style="min-width:0;flex:1;">
+          <div style="font-size:9.5px;font-weight:900;letter-spacing:.06em;color:${meta.color};text-transform:uppercase;">${S.esc(meta.label)}</div>
+          <div style="font-size:12px;font-weight:700;color:#1B1410;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${S.esc(r.title)}</div>
+        </div>
+        <button onclick="event.stopPropagation();AISenpai.dismissPeek()" style="flex:0 0 22px;width:22px;height:22px;border-radius:6px;border:0;background:transparent;color:#9A8A82;cursor:pointer;font-size:13px;">✕</button>
+      </div>
+      ${more}
+    </div>`;
+  },
+
+  _toastHTML() {
+    const r = S._topReminder(); if (!r) return '';
+    const meta = S.groupMeta[r.group] || S.groupMeta.continue;
+    return `<div class="senpai-panel" style="margin-bottom:12px;width:304px;background:#fff;border-radius:20px;padding:12px 14px;box-shadow:0 18px 40px rgba(27,20,16,.16),0 0 0 1.5px #F0E0DA;position:relative;animation:senpaiPanelIn 480ms cubic-bezier(.34,1.56,.64,1);transform-origin:bottom right;">
+      <div style="display:inline-flex;align-items:center;gap:6px;background:${meta.bg};color:${meta.color};padding:3px 9px 3px 7px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px;">
+        <span class="ez-jp" style="font-size:11px;">${r.icon}</span><span>${S.esc(meta.label)}</span>
+      </div>
+      <div style="font-size:14px;font-weight:900;color:#1B1410;line-height:1.25;margin-bottom:2px;">${S.esc(r.title)}</div>
+      <div style="font-size:11.5px;color:#7A6A60;margin-bottom:11px;line-height:1.35;">${S.esc(r.sub)} — Senpai sudah nungguin nih 🐾</div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="AISenpai.act('${r.id}')" style="flex:1;border:0;cursor:pointer;background:#C8102E;color:#fff;font-weight:900;font-size:12px;padding:10px;border-radius:12px;box-shadow:0 3px 0 #a50d26;">Mulai sekarang</button>
+        <button onclick="AISenpai.dismissToast()" style="border:0;background:#FFF1D6;cursor:pointer;color:#7A4A00;font-weight:800;font-size:12px;padding:10px 11px;border-radius:12px;">Nanti</button>
+      </div>
+      <button onclick="AISenpai.dismissToast()" style="position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:6px;border:0;background:transparent;color:#9A8A82;cursor:pointer;font-size:13px;">✕</button>
+    </div>`;
+  },
+
+  _digestHTML() {
+    const grouped = {};
+    S.reminders.forEach((r) => { (grouped[r.group] = grouped[r.group] || []).push(r); });
+    const order = Object.keys(grouped).sort((a, b) => {
+      const ah = grouped[a].some((r) => r.urgency === 'high') ? 0 : 1;
+      const bh = grouped[b].some((r) => r.urgency === 'high') ? 0 : 1;
+      return ah - bh;
+    });
+    const groupsHtml = order.map((g) => {
+      const meta = S.groupMeta[g] || S.groupMeta.continue;
+      const items = grouped[g].map((r) => `<div style="background:rgba(255,255,255,0.85);border-radius:10px;padding:7px 9px;display:flex;align-items:center;gap:8px;">
+        <div style="min-width:0;flex:1;">
+          <div style="font-size:12px;font-weight:800;color:#1B1410;line-height:1.25;">${S.esc(r.title)}</div>
+          <div style="font-size:10px;color:#7A6A60;margin-top:1px;">${S.esc(r.sub)}</div>
+        </div>
+        <button onclick="AISenpai.act('${r.id}')" style="border:0;cursor:pointer;background:${meta.color};color:#fff;font-weight:900;font-size:10.5px;padding:6px 10px;border-radius:8px;white-space:nowrap;">Buka</button>
+      </div>`).join('');
+      return `<div style="background:${meta.bg};border-radius:14px;padding:9px 10px 10px;margin-bottom:7px;">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
+          <span class="ez-jp" style="width:22px;height:22px;border-radius:7px;background:rgba(255,255,255,0.85);color:${meta.color};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;">${grouped[g][0].icon}</span>
+          <div style="font-size:11.5px;font-weight:900;color:${meta.color};">${S.esc(meta.label)} <span class="ez-jp" style="opacity:.7;font-weight:700;">· ${meta.jp}</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px;">${items}</div>
+      </div>`;
+    }).join('');
+    return `<div class="senpai-panel" style="margin-bottom:12px;width:326px;background:#fff;border-radius:22px;box-shadow:0 24px 56px rgba(27,20,16,.2),0 0 0 1.5px #F0E0DA;overflow:hidden;animation:senpaiPanelIn 380ms cubic-bezier(.34,1.56,.64,1);transform-origin:bottom right;">
+      <div style="padding:12px 12px 12px 14px;background:linear-gradient(180deg,#fff0f2 0%,#FFF8F1 100%);border-bottom:1px solid #F0E0DA;position:relative;">
+        <div style="font-size:10px;font-weight:900;letter-spacing:.14em;color:#a50d26;text-transform:uppercase;"><span class="ez-jp">招き猫</span> Digest</div>
+        <div style="font-size:15px;font-weight:900;color:#1B1410;margin-top:2px;">${S.reminders.length} hal menunggu</div>
+        <button onclick="AISenpai.closePanel()" style="position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:7px;border:0;background:#fff;color:#7A6A60;cursor:pointer;box-shadow:0 2px 6px rgba(27,20,16,.1);font-size:13px;">✕</button>
+      </div>
+      <div class="senpai-scroll" style="max-height:320px;overflow-y:auto;padding:8px 10px 4px;">${groupsHtml}</div>
+      <div style="padding:10px 12px 12px;border-top:1px solid #F0E0DA;display:flex;background:#FFFBF6;">
+        <button onclick="AISenpai.openExpanded()" style="margin-left:auto;border:0;cursor:pointer;background:#C8102E;color:#fff;font-weight:900;font-size:11.5px;padding:8px 12px;border-radius:10px;box-shadow:0 2.5px 0 #a50d26;">Buka chat 💬</button>
+      </div>
+    </div>`;
+  },
+
+  _expandedHTML() {
+    const bubbles = S.chat.map((m) => {
+      const ai = m.from === 'ai';
+      return `<div style="display:flex;justify-content:${ai ? 'flex-start' : 'flex-end'};margin-bottom:6px;">
+        <div style="max-width:82%;padding:9px 12px;border-radius:${ai ? '4px 16px 16px 16px' : '16px 4px 16px 16px'};background:${ai ? '#F5EBE5' : '#C8102E'};color:${ai ? '#1B1410' : '#fff'};font-size:12.5px;line-height:1.42;font-weight:500;white-space:pre-wrap;">${S.esc(m.text)}</div>
+      </div>`;
+    }).join('');
+    const typing = S.typing
+      ? `<div style="display:flex;margin-top:4px;"><div style="background:#F5EBE5;border-radius:4px 16px 16px 16px;padding:9px 12px;display:flex;gap:4px;">
+          <span style="width:5px;height:5px;border-radius:999px;background:#B8A89F;animation:senpaiTypingDot 1.2s infinite;"></span>
+          <span style="width:5px;height:5px;border-radius:999px;background:#B8A89F;animation:senpaiTypingDot 1.2s .15s infinite;"></span>
+          <span style="width:5px;height:5px;border-radius:999px;background:#B8A89F;animation:senpaiTypingDot 1.2s .3s infinite;"></span>
+        </div></div>`
+      : '';
+    const strip = S.reminders.length
+      ? `<div style="padding:10px 12px 4px;"><div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;">${S.reminders.slice(0, 5).map((r) => {
+          const meta = S.groupMeta[r.group] || S.groupMeta.continue;
+          return `<button onclick="AISenpai.act('${r.id}')" style="flex:0 0 auto;border:1.5px solid #F0E0DA;background:#FFFBF6;padding:7px 10px 7px 8px;border-radius:12px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <span class="ez-jp" style="width:20px;height:20px;border-radius:6px;background:${meta.bg};color:${meta.color};display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:900;">${r.icon}</span>
+            <span style="font-size:11.5px;font-weight:800;color:#1B1410;white-space:nowrap;">${S.esc(meta.label)}</span>
+          </button>`;
+        }).join('')}</div></div>`
+      : '';
+    const chips = S.SUGGEST.map((c) => `<button onclick="AISenpai.send('${S.esc(c).replace(/'/g, "\\'")}')" style="border:1.5px solid #F0E0DA;background:#fff;color:#5A4A42;font-size:11px;font-weight:700;padding:5px 9px;border-radius:999px;cursor:pointer;">${S.esc(c)}</button>`).join('');
+    const mic = S.voiceSupported()
+      ? `<button id="senpai-mic" title="Rekam suara" onclick="AISenpai.toggleVoice()" style="flex:0 0 32px;width:32px;height:32px;border-radius:10px;border:0;background:#fff0f2;color:#C8102E;display:flex;align-items:center;justify-content:center;cursor:pointer;">🎤</button>`
+      : '';
+    return `<div class="senpai-panel" style="margin-bottom:12px;width:340px;height:560px;max-height:78vh;background:#fff;border-radius:24px;box-shadow:0 28px 70px rgba(27,20,16,.22),0 0 0 1.5px #F0E0DA;display:flex;flex-direction:column;position:relative;animation:senpaiPanelIn 420ms cubic-bezier(.34,1.56,.64,1);transform-origin:bottom right;">
+      <div style="position:absolute;top:-46px;left:14px;z-index:2;filter:drop-shadow(0 6px 12px rgba(27,20,16,.12));">${S.manekiSVG(72, 'up', 'happy', false)}</div>
+      <div style="background:linear-gradient(180deg,#fff0f2 0%,#FFF8F1 100%);padding:16px 14px 12px 96px;border-radius:24px 24px 0 0;position:relative;border-bottom:1px solid #F0E0DA;">
+        <div style="font-size:10px;font-weight:900;letter-spacing:.16em;color:#a50d26;"><span class="ez-jp">招き猫</span> · LUCKY SENPAI</div>
+        <div style="font-weight:900;font-size:16px;color:#1B1410;margin-top:2px;">Senpai</div>
+        <div style="font-size:11px;color:#7A6A60;font-weight:700;margin-top:1px;"><span style="display:inline-block;width:6px;height:6px;border-radius:999px;background:#4FB58E;margin-right:5px;vertical-align:middle;"></span>Online · siap bantu</div>
+        <button onclick="AISenpai.closePanel()" style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:8px;border:0;background:#fff;color:#7A6A60;cursor:pointer;box-shadow:0 2px 6px rgba(27,20,16,.1);font-size:15px;">✕</button>
+      </div>
+      ${strip}
+      <div id="senpai-chat-scroll" class="senpai-scroll" style="flex:1;padding:8px 12px 4px;overflow-y:auto;border-top:1px solid #F0E0DA;margin-top:6px;">
+        ${bubbles}${typing}
+      </div>
+      <div style="padding:10px 12px 12px;border-top:1px solid #F0E0DA;background:#FFFBF6;border-radius:0 0 24px 24px;">
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">${chips}</div>
+        <div style="display:flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #F0E0DA;border-radius:14px;padding:6px 6px 6px 12px;">
+          <input id="senpai-input" placeholder="Tanya Senpai apa saja…" style="flex:1;border:0;outline:0;background:transparent;font-family:inherit;font-size:12.5px;color:#1B1410;min-width:0;"/>
+          ${mic}
+          <button onclick="AISenpai.sendInput()" style="flex:0 0 32px;width:32px;height:32px;border-radius:10px;border:0;background:#C8102E;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 0 #a50d26;font-size:15px;">➤</button>
+        </div>
+      </div>
+    </div>`;
+  },
+
+  panelHTML() {
+    if (S.mode === 'peek' && S.reminders.length) return S._peekHTML();
+    if (S.mode === 'toast' && S.reminders.length) return S._toastHTML();
+    if (S.mode === 'digest') return S._digestHTML();
+    if (S.mode === 'expanded') return S._expandedHTML();
+    return '';
+  },
+
+  render() {
+    const root = document.getElementById('ai-senpai');
+    if (!root) return;
+    root.innerHTML = `${S.panelHTML()}<div class="senpai-orb-wrap" style="position:relative;">${S.orbHTML()}<div class="senpai-coins" style="position:absolute;left:43px;top:14px;pointer-events:none;width:0;height:0;z-index:5;"></div></div>`;
+    if (S.mode === 'expanded') {
+      const inp = document.getElementById('senpai-input');
+      if (inp) {
+        inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); S.sendInput(); } });
+        if (!('ontouchstart' in window)) inp.focus();
+      }
+      const sc = document.getElementById('senpai-chat-scroll');
+      if (sc) sc.scrollTop = sc.scrollHeight;
+    }
+  },
+
+  init() {
+    if (S._started) return;
+    S._started = true;
+    let el = document.getElementById('ai-senpai');
+    if (!el) { el = document.createElement('div'); el.id = 'ai-senpai'; document.body.appendChild(el); }
+    try { const saved = JSON.parse(sessionStorage.getItem('ez_tutor_chat') || '[]'); if (Array.isArray(saved)) S.chat = saved; } catch {}
+    S.render();
+    S.refresh();
+  },
+});
+
+// ═══════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════
 (async () => {
@@ -7609,6 +8074,8 @@ window.switchCourse = async (slug) => {
   } else {
     renderCourseTabs(selected);
     renderLearning(selected);
+    // AI Senpai widget — mount setelah first paint (tidak blok critical path).
+    try { AISenpai.init(); } catch {}
   }
 
   // ── Lazy / background: tidak memblok first paint, perbarui UI saat tiba ──
@@ -7624,6 +8091,7 @@ window.switchCourse = async (slug) => {
   // yang sedang dibuka). renderSidebar sudah preserve scroll + expanded state.
   syncLearningStateFromServer().then((changed) => {
     if (changed && document.getElementById('sidebar')) renderSidebar();
+    try { if (window.AISenpai && AISenpai._started) AISenpai.refresh(); } catch {}
   });
 })();
 </script>
