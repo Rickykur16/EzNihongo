@@ -3823,19 +3823,23 @@ function _mergeQuizScores(a, b) {
 // Tarik blob server saat boot, union-merge dengan localStorage (completion
 // monoton — sekali selesai tetap selesai), lalu push balik supaya item
 // lokal-only ikut naik ke cloud. Gagal/offline → diam, pakai localStorage.
+// Return true bila localStorage berubah (caller bisa re-render tanda ✓).
 async function syncLearningStateFromServer() {
-  if (typeof window.ezApi !== 'function') return;
+  if (typeof window.ezApi !== 'function') return false;
   try {
     const res = await window.ezApi('/learning-state');
-    if (!res.ok) return;
+    if (!res.ok) return false;
     const cloud = await res.json();
-    const mergedP = _mergeProgress(cloud.progress || {}, getProgress());
-    localStorage.setItem('ez_progress', JSON.stringify(mergedP));
-    const localQ = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
-    const mergedQ = _mergeQuizScores(cloud.quizScores || {}, localQ);
-    localStorage.setItem('ez_quiz_scores', JSON.stringify(mergedQ));
+    const beforeP = localStorage.getItem('ez_progress') || '{}';
+    const afterP = JSON.stringify(_mergeProgress(cloud.progress || {}, getProgress()));
+    localStorage.setItem('ez_progress', afterP);
+    const beforeQ = localStorage.getItem('ez_quiz_scores') || '{}';
+    const afterQ = JSON.stringify(_mergeQuizScores(cloud.quizScores || {}, JSON.parse(beforeQ)));
+    localStorage.setItem('ez_quiz_scores', afterQ);
     _scheduleCloudPush();
+    return beforeP !== afterP || beforeQ !== afterQ;
   } catch {}
+  return false;
 }
 
 // ═══════════════════════════════════════════════
@@ -5108,6 +5112,31 @@ function renderPaywall() {
       target.innerHTML = courses.map(renderPaywallCard).join('');
     });
   }
+}
+
+// Spinner ringan selama fetch kritis (enrollments + konten course) — biar
+// dashboard tidak blank dan terasa "ngestuck" sebelum first paint.
+function renderBootSkeleton() {
+  document.getElementById('app-root').innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:18px;color:#8a7d66;">
+      <style>@keyframes ezBootSpin{to{transform:rotate(360deg)}}</style>
+      <div style="width:42px;height:42px;border:4px solid #ece5d8;border-top-color:var(--brand-red);border-radius:50%;animation:ezBootSpin .8s linear infinite;"></div>
+      <div style="font-size:14px;">Memuat materi…</div>
+    </div>
+  `;
+}
+
+function renderBootError(err) {
+  const root = document.getElementById('app-root');
+  if (!root) return;
+  root.innerHTML = `
+    <div style="padding:60px 20px;text-align:center;color:#666;max-width:500px;margin:0 auto;">
+      <h2 style="color:#1a1a1a;margin-bottom:12px;">Gagal memuat materi</h2>
+      <p style="margin-bottom:20px;">Coba refresh halaman, atau cek koneksi internet kamu.</p>
+      <button onclick="location.reload()" style="padding:10px 20px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;cursor:pointer;">Refresh</button>
+      <p style="font-size:12px;color:#999;margin-top:20px;">${(err && err.message) || err}</p>
+    </div>
+  `;
 }
 
 let currentState = { course: null, moduleId: null, lessonId: null };
@@ -7542,20 +7571,21 @@ window.switchCourse = async (slug) => {
   const userEmailEl = document.getElementById('user-email');
   if (userEmailEl) userEmailEl.textContent = session.email;
 
+  // Spinner langsung supaya layar tidak blank selama fetch kritis.
+  renderBootSkeleton();
+
+  // ── Critical path: hanya yang dibutuhkan untuk first paint ──
+  // Enrollments (course mana yang dimiliki) + konten course terpilih. CMS
+  // catalog & sync progres cloud TIDAK diblok di sini — renderCourseTabs
+  // degrade tanpa CMS, renderLearning pakai progres localStorage.
+  const params = new URLSearchParams(window.location.search);
   try {
-    // Pull enrollments first — the hydrator only fetches course content for
-    // slugs the user actually has access to. Flashcards are static and the
-    // CMS course list (used by sidebar picker / course tabs to show
-    // upgrade CTAs for non-enrolled courses) can load in parallel.
     await syncEnrollmentsFromServer();
-    await Promise.all([hydrateEnrolledCourses(), fetchCmsCourses()]);
-    // handleNewEnrollment may resync enrollments (e.g. if user just landed
-    // from checkout). Re-hydrate in case it discovered a newly-paid course.
-    await handleNewEnrollment();
+    // Balik dari checkout (?new=<slug>): selesaikan resolusi enrollment +
+    // banner sukses SEBELUM first paint supaya paywall tidak berkedip dulu.
+    // Hanya jalan saat ?new ada (rare) — handleNewEnrollment re-sync sendiri.
+    if (params.get('new')) await handleNewEnrollment();
     await hydrateEnrolledCourses();
-    // Tarik progres + skor kuis dari akun (sync lintas device) sebelum render
-    // supaya tanda ✓ langsung benar. Gagal/offline → diam, pakai localStorage.
-    await syncLearningStateFromServer();
   } catch (err) {
     // Auth died between the ezGetMe check above and this sync (rare, but
     // possible if the refresh cookie was invalidated mid-load). Bounce to
@@ -7565,31 +7595,36 @@ window.switchCourse = async (slug) => {
       location.replace('login.html?next=welcome.html');
       return;
     }
-    const root = document.getElementById('app-root');
-    if (root) {
-      root.innerHTML = `
-        <div style="padding:60px 20px;text-align:center;color:#666;max-width:500px;margin:0 auto;">
-          <h2 style="color:#1a1a1a;margin-bottom:12px;">Gagal memuat materi</h2>
-          <p style="margin-bottom:20px;">Coba refresh halaman, atau cek koneksi internet kamu.</p>
-          <button onclick="location.reload()" style="padding:10px 20px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;cursor:pointer;">Refresh</button>
-          <p style="font-size:12px;color:#999;margin-top:20px;">${(err && err.message) || err}</p>
-        </div>
-      `;
-    }
+    renderBootError(err);
     return;
   }
 
+  // handleNewEnrollment may rewrite the URL to ?course=<new slug>; re-read.
+  const requested = new URLSearchParams(window.location.search).get('course');
   const enrolled = getEnrolledCourses();
-  const params = new URLSearchParams(window.location.search);
-  const requested = params.get('course');
+  const selected = enrolled.includes(requested) ? requested : enrolled[0];
 
   if (enrolled.length === 0) {
     renderPaywall();
   } else {
-    const selected = enrolled.includes(requested) ? requested : enrolled[0];
     renderCourseTabs(selected);
     renderLearning(selected);
   }
+
+  // ── Lazy / background: tidak memblok first paint, perbarui UI saat tiba ──
+
+  // Katalog CMS → tab lengkap (course non-enrolled + ikon 🔒 untuk upgrade).
+  // Hanya untuk view course; paywall punya fallback fetch sendiri.
+  if (selected) {
+    fetchCmsCourses().then(() => renderCourseTabs(selected)).catch(() => {});
+  }
+
+  // Sync progres lintas device → kalau ada perubahan, refresh tanda ✓ di
+  // sidebar saja (jangan re-render penuh — bisa menendang user dari lesson
+  // yang sedang dibuka). renderSidebar sudah preserve scroll + expanded state.
+  syncLearningStateFromServer().then((changed) => {
+    if (changed && document.getElementById('sidebar')) renderSidebar();
+  });
 })();
 </script>
 
