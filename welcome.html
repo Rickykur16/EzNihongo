@@ -7604,7 +7604,6 @@ const S = (window.AISenpai = {
   groupMeta: {
     continue:   { color:'#C8102E', bg:'#fff0f2', label:'Lanjut belajar', jp:'続き' },
     grammar:    { color:'#1F7A52', bg:'#E6F5EC', label:'Tugas Grammar',  jp:'文法' },
-    streak:     { color:'#B07300', bg:'#FFF1D6', label:'Streak harian',  jp:'連続' },
     unfinished: { color:'#1B6CA8', bg:'#E5F2FC', label:'Belum selesai',  jp:'未完' },
   },
 
@@ -7690,7 +7689,7 @@ const S = (window.AISenpai = {
   },
 
   // ── Reminder dari data nyata ──
-  computeReminders(stats) {
+  computeReminders() {
     const out = [];
     try {
       const slug = currentState.course;
@@ -7738,27 +7737,12 @@ const S = (window.AISenpai = {
           }
         }
       }
-      // Streak harian (server-authoritative).
-      if (stats && stats.today && !stats.today.goalMet) {
-        const days = stats.streak_days || 0;
-        out.push({ id:'streak', group:'streak', icon:'🔥', urgency:'med',
-          title: days > 0 ? `Jaga streak ${days} hari!` : 'Mulai streak hari ini!',
-          sub:'Belajar sebentar biar target harian tercapai',
-          action: () => { const r = S.reminders.find((x) => x.id === 'continue'); if (r) r.action(); } });
-      }
     } catch {}
     return out;
   },
 
-  async refresh() {
-    let stats = null;
-    try {
-      if (typeof window.ezApi === 'function') {
-        const r = await window.ezApi('/stats/me');
-        if (r.ok) { const d = await r.json(); stats = d.stats || d; }
-      }
-    } catch {}
-    S.reminders = S.computeReminders(stats);
+  refresh() {
+    S.reminders = S.computeReminders();
     if (S.mode === 'idle' || S.mode === 'peek') {
       S.mode = S.reminders.length ? 'peek' : 'idle';
     }
