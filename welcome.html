@@ -6902,6 +6902,7 @@ window.gtPopupDismiss = () => {
   closeGrammarTaskPopup();
   window.__gtPopupCtx = null;
   if (ctx && ctx.onDone) ctx.onDone();
+  try { if (window.AISenpai && AISenpai._started) AISenpai.refresh(); } catch {}
 };
 
 // Selesaikan tugas: tandai task lesson selesai + XP, tutup, lanjut.
@@ -6919,6 +6920,7 @@ window.gtPopupComplete = () => {
   closeGrammarTaskPopup();
   window.__gtPopupCtx = null;
   if (ctx && ctx.onDone) ctx.onDone();
+  try { if (window.AISenpai && AISenpai._started) AISenpai.refresh(); } catch {}
 };
 
 // Buka popup untuk task tertentu dari tombol "Kerjakan Tugas" di pelajaran pemicu.
@@ -7695,6 +7697,26 @@ const S = (window.AISenpai = {
       const course = COURSE_CONTENT[slug];
       if (course && slug) {
         const prog = getProgress()[slug] || {};
+
+        // Tugas grammar (popup) yang "tertunda": pelajaran pemicunya sudah
+        // selesai tapi tugasnya di-skip / belum dikerjakan → munculkan sebagai
+        // notif per tugas (urgensi tinggi, ditaruh paling depan biar keinget).
+        const byApiId = {};
+        for (const m of course.modules) for (const l of m.lessons) if (l.apiId) byApiId[l.apiId] = { m, l };
+        for (const m of course.modules) {
+          for (const l of m.lessons) {
+            if (!gtIsPopupTask(l)) continue;
+            if (prog[`${m.id}:${l.id}`]) continue;                 // sudah dikerjakan
+            const trig = byApiId[l.popupAfterLessonId];
+            if (!trig || !prog[`${trig.m.id}:${trig.l.id}`]) continue; // pemicu belum selesai → belum "muncul"
+            out.push({ id:`grammar:${m.id}:${l.id}`, group:'grammar', icon:'文', urgency:'high',
+              title:`Tugas grammar: ${l.title}`,
+              sub:`Lanjutan dari "${trig.l.title}" · buat & ucapkan kalimat`,
+              action: () => { try { window.gtOpenTaskPopup(m.id, l.id); } catch {} } });
+          }
+        }
+
+        // Lanjut belajar — pelajaran (terlihat) belum selesai berikutnya.
         let next = null;
         for (const m of course.modules) {
           for (const l of visibleLessons(m)) {
@@ -7714,18 +7736,6 @@ const S = (window.AISenpai = {
               title:`${remaining} pelajaran belum selesai`, sub:`${slug.toUpperCase()} · ${Math.round((done / total) * 100)}% selesai`,
               action: () => window.selectLesson(next.m.id, next.l.id) });
           }
-        }
-        // Tugas grammar popup yang belum selesai (cari yang pertama).
-        for (const m of course.modules) {
-          for (const l of m.lessons) {
-            if (gtIsPopupTask(l) && !prog[`${m.id}:${l.id}`]) {
-              out.push({ id:'grammar', group:'grammar', icon:'文', urgency:'med',
-                title:'Ada tugas grammar menunggu', sub:`${m.title} · buat & ucapkan kalimat`,
-                action: () => { try { window.gtOpenTaskPopup(m.id, l.id); } catch {} } });
-              break;
-            }
-          }
-          if (out.find((r) => r.id === 'grammar')) break;
         }
       }
       // Streak harian (server-authoritative).
