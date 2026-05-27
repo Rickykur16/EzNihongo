@@ -7599,7 +7599,6 @@ const S = (window.AISenpai = {
   _chunks: [],
 
   PALETTE: { body:'#FFFFFF', stroke:'#1B1410', inEar:'#FFB7AE', patch:'#F2B544', collar:'#C8102E', collarStroke:'#a50d26', bell:'#F2B544', bellStroke:'#B07300' },
-  SUGGEST: ['Beda は vs が?', 'Quiz kanji N4', 'Buat kalimat 〜てしまう'],
   groupMeta: {
     continue:   { color:'#C8102E', bg:'#fff0f2', label:'Lanjut belajar', jp:'続き' },
     grammar:    { color:'#1F7A52', bg:'#E6F5EC', label:'Tugas Grammar',  jp:'文法' },
@@ -7951,7 +7950,6 @@ const S = (window.AISenpai = {
           </button>`;
         }).join('')}</div></div>`
       : '';
-    const chips = S.SUGGEST.map((c) => `<button onclick="AISenpai.send('${S.esc(c).replace(/'/g, "\\'")}')" style="border:1.5px solid #F0E0DA;background:#fff;color:#5A4A42;font-size:11px;font-weight:700;padding:5px 9px;border-radius:999px;cursor:pointer;">${S.esc(c)}</button>`).join('');
     const mic = S.voiceSupported()
       ? `<button id="senpai-mic" title="Rekam suara" onclick="AISenpai.toggleVoice()" style="flex:0 0 32px;width:32px;height:32px;border-radius:10px;border:0;background:#fff0f2;color:#C8102E;display:flex;align-items:center;justify-content:center;cursor:pointer;">🎤</button>`
       : '';
@@ -7968,7 +7966,6 @@ const S = (window.AISenpai = {
         ${bubbles}${typing}
       </div>
       <div style="padding:10px 12px 12px;border-top:1px solid #F0E0DA;background:#FFFBF6;border-radius:0 0 24px 24px;">
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">${chips}</div>
         <div style="display:flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #F0E0DA;border-radius:14px;padding:6px 6px 6px 12px;">
           <input id="senpai-input" placeholder="Tanya Senpai apa saja…" style="flex:1;border:0;outline:0;background:transparent;font-family:inherit;font-size:12.5px;color:#1B1410;min-width:0;"/>
           ${mic}
