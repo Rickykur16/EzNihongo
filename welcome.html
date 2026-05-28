@@ -7789,7 +7789,7 @@ const S = (window.AISenpai = {
     }
   },
 
-  persist() { try { sessionStorage.setItem('ez_tutor_chat', JSON.stringify(S.chat)); } catch {} },
+  persist() { try { sessionStorage.setItem('ez_tutor_chat', JSON.stringify({ v: 2, chat: S.chat })); } catch {} },
 
   send(text) {
     text = String(text || '').trim();
@@ -7997,7 +7997,9 @@ const S = (window.AISenpai = {
     S._started = true;
     let el = document.getElementById('ai-senpai');
     if (!el) { el = document.createElement('div'); el.id = 'ai-senpai'; document.body.appendChild(el); }
-    try { const saved = JSON.parse(sessionStorage.getItem('ez_tutor_chat') || '[]'); if (Array.isArray(saved)) S.chat = saved; } catch {}
+    // Pakai cache hanya kalau versinya cocok — bump versi (mis. ganti nama
+    // maskot / sapaan) bikin chat lama dibuang & di-seed ulang dgn teks baru.
+    try { const saved = JSON.parse(sessionStorage.getItem('ez_tutor_chat') || 'null'); if (saved && saved.v === 2 && Array.isArray(saved.chat)) S.chat = saved.chat; } catch {}
     S.render();
     S.refresh();
   },
