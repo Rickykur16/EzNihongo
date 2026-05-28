@@ -530,6 +530,21 @@ router.put('/settings/grammar-eval-prompt', asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
+router.get('/settings/quiz-gen-prompt', asyncHandler(async (_req, res) => {
+  const r = await query(`SELECT value FROM app_settings WHERE key = 'quiz_gen_prompt'`);
+  res.json({ value: r.rows[0]?.value || '', default: QUIZ_GEN_PROMPT_DEFAULT });
+}));
+
+router.put('/settings/quiz-gen-prompt', asyncHandler(async (req, res) => {
+  const value = String((req.body || {}).value || '');
+  await query(
+    `INSERT INTO app_settings (key, value, updated_at) VALUES ('quiz_gen_prompt', $1, NOW())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+    [value]
+  );
+  res.json({ ok: true });
+}));
+
 // ===== NOTION IMPORT (vocab bank + per-chapter deck) =====
 // "📚 Vocabulary 語彙" Notion DB -> module_vocabulary. Each vocab page is linked
 // (relation "Lesson") to a "📗 Bab" page; the deck importer filters by that so
@@ -909,6 +924,46 @@ const QUIZ_KINDS = {
   listening:  { type: 'multiple_choice', cat: 'listening',  label: 'menyimak (multiple_choice, questionCategory=listening, isi "audioScript" dengan teks Jepang yang didengar, 4 opsi arti)' },
 };
 
+// Prompt generator editable admin (app_settings.quiz_gen_prompt). Placeholder
+// diisi per request: {{count}} {{kinds}} {{instruction}} {{vocab}} {{grammar}}.
+const QUIZ_GEN_PROMPT_DEFAULT = `Buatkan {{count}} soal kuis dalam Bahasa Indonesia untuk satu pelajaran.
+
+Jenis soal yang diminta (distribusikan merata):
+{{kinds}}
+
+{{instruction}}
+Gunakan HANYA materi di bawah sebagai sumber. Jangan mengarang kosakata atau pola di luar ini.
+
+Kosakata:
+{{vocab}}
+
+Pola grammar:
+{{grammar}}
+
+Aturan:
+- Pertanyaan dan "explanation" dalam Bahasa Indonesia; teks Jepang boleh muncul di soal/opsi.
+- multiple_choice: tepat 4 opsi, tepat 1 dengan "isCorrect": true.
+- fill_blank: isi "correctAnswer" (jawaban singkat), "options": [].
+- listening: "audioScript" = kata/kalimat Jepang yang didengar; 4 opsi arti, 1 benar.
+- "explanation": alasan singkat kenapa jawaban benar.
+
+Balas HANYA JSON valid tanpa teks lain, bentuk:
+{"questions":[{"question":"...","questionType":"multiple_choice","questionCategory":"vocabulary","audioScript":"","correctAnswer":"","explanation":"...","options":[{"text":"...","isCorrect":true},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false}]}]}`;
+
+function _fillTemplate(tpl, vars) {
+  return String(tpl).replace(/\{\{(\w+)\}\}/g, (_m, k) => (vars[k] != null ? String(vars[k]) : ''));
+}
+
+async function _loadQuizGenPrompt() {
+  try {
+    const r = await query(`SELECT value FROM app_settings WHERE key = 'quiz_gen_prompt'`);
+    const v = r.rows[0]?.value;
+    return (v && v.trim()) ? v : QUIZ_GEN_PROMPT_DEFAULT;
+  } catch {
+    return QUIZ_GEN_PROMPT_DEFAULT;
+  }
+}
+
 router.post('/lessons/:lessonId/generate-quiz', quizGenLimiter, asyncHandler(async (req, res) => {
   const lessonId = req.params.lessonId;
   const count = Math.min(30, Math.max(1, Number(req.body?.count) || 10));
@@ -958,28 +1013,14 @@ router.post('/lessons/:lessonId/generate-quiz', quizGenLimiter, asyncHandler(asy
     `- ${g.pattern}${g.meaning ? ` = ${g.meaning}` : ''}${g.example ? `. Contoh: ${g.example}` : ''}`).join('\n');
   const kindLines = kinds.map((k) => `- ${QUIZ_KINDS[k].label}`).join('\n');
 
-  const userContent = `Buatkan ${count} soal kuis dalam Bahasa Indonesia untuk satu pelajaran.
-
-Jenis soal yang diminta (distribusikan merata):
-${kindLines}
-${instruction ? `\nInstruksi tambahan dari admin: ${instruction}\n` : ''}
-Gunakan HANYA materi di bawah sebagai sumber. Jangan mengarang kosakata atau pola di luar ini.
-
-Kosakata:
-${vocabLines || '(tidak ada)'}
-
-Pola grammar:
-${grammarLines || '(tidak ada)'}
-
-Aturan:
-- Pertanyaan dan "explanation" dalam Bahasa Indonesia; teks Jepang boleh muncul di soal/opsi.
-- multiple_choice: tepat 4 opsi, tepat 1 dengan "isCorrect": true.
-- fill_blank: isi "correctAnswer" (jawaban singkat), "options": [].
-- listening: "audioScript" = kata/kalimat Jepang yang didengar; 4 opsi arti, 1 benar.
-- "explanation": alasan singkat kenapa jawaban benar.
-
-Balas HANYA JSON valid tanpa teks lain, bentuk:
-{"questions":[{"question":"...","questionType":"multiple_choice","questionCategory":"vocabulary","audioScript":"","correctAnswer":"","explanation":"...","options":[{"text":"...","isCorrect":true},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false}]}]}`;
+  const promptTpl = await _loadQuizGenPrompt();
+  const userContent = _fillTemplate(promptTpl, {
+    count,
+    kinds: kindLines,
+    instruction: instruction ? `Instruksi tambahan dari admin: ${instruction}` : '',
+    vocab: vocabLines || '(tidak ada)',
+    grammar: grammarLines || '(tidak ada)',
+  });
 
   let parsed;
   try {
