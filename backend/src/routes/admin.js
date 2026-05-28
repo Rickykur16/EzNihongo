@@ -875,178 +875,178 @@ router.get('/module-grammar', asyncHandler(async (req, res) => {
   res.json({ grammar: rows.rows });
 }));
 
-// ===== AUTO-GENERATE QUIZ (JLPT-style multiple choice dari vocab) =====
-// Generates `count` multiple-choice questions from the vocab tied to the
-// lesson's module (preferring vocab actually wired to a deck lesson in that
-// module so questions stay scoped to one Bab). Replaces any existing
-// quiz_questions on the lesson — idempotent.
-function _pickRandom(arr, n) {
-  const copy = arr.slice();
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy.slice(0, n);
-}
-function _sample(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-function _hasKanji(s) { return /[一-龯]/.test(String(s || '')); }
-function _generateQuizQuestions(vocab, count) {
-  const out = [];
-  const withId = vocab.filter((v) => (v.indonesian || '').trim());
-  const withReading = vocab.filter((v) => (v.reading || '').trim() && v.reading !== v.japanese && _hasKanji(v.japanese || ''));
-  // Bucket distractors so options share the rough "shape" of the answer.
-  if (withId.length < 4) return out; // need 4 minimum for distractors
+// ===== AI QUIZ GENERATOR (Claude) =====
+// Generate draft soal kuis pakai Claude, grounded ke kosakata + grammar modul
+// pelajaran. Endpoint ini TIDAK menyimpan ke DB — balikin draft buat admin
+// review/edit di UI, lalu admin simpan lewat POST /admin/quiz-questions.
+// ANTHROPIC_API_KEY opsional (kosong -> 503).
+const QUIZ_ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
+const QUIZ_ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5';
 
-  const types = [];
-  // Build a balanced type rotation. Skip types whose pool < 4.
-  if (withReading.length >= 4) types.push('reading');
-  types.push('arti', 'jp', 'listening');
+const QUIZ_GEN_SYSTEM = `You are a Japanese-language quiz author for Indonesian learners (JLPT N5/N4) on the EzNihongo platform. Write accurate questions grounded ONLY in the study material provided. Always reply with a single valid JSON object and nothing else.`;
 
-  for (let i = 0; i < count; i++) {
-    const t = types[i % types.length];
-    let q = null;
-    if (t === 'reading') {
-      const correct = _sample(withReading);
-      const otherReadings = _pickRandom(
-        withReading.filter((v) => v.id !== correct.id && v.reading !== correct.reading),
-        3
-      );
-      if (otherReadings.length < 3) continue;
-      const options = _pickRandom([correct.reading, ...otherReadings.map((v) => v.reading)], 4);
-      q = {
-        question: `Bagaimana cara baca **${correct.japanese}** ?`,
-        category: 'vocabulary',
-        jp: correct.japanese,
-        options,
-        correctIdx: options.indexOf(correct.reading),
-        explanation: correct.indonesian ? `${correct.japanese} (${correct.reading}) — ${correct.indonesian}` : null,
-      };
-    } else if (t === 'arti') {
-      const correct = _sample(withId);
-      const others = _pickRandom(
-        withId.filter((v) => v.id !== correct.id && v.indonesian !== correct.indonesian),
-        3
-      );
-      if (others.length < 3) continue;
-      const options = _pickRandom([correct.indonesian, ...others.map((v) => v.indonesian)], 4);
-      q = {
-        question: `Apa arti dari **${correct.japanese}** ?`,
-        category: 'vocabulary',
-        jp: correct.japanese,
-        options,
-        correctIdx: options.indexOf(correct.indonesian),
-        explanation: correct.reading ? `${correct.japanese} (${correct.reading}) — ${correct.indonesian}` : null,
-      };
-    } else if (t === 'jp') {
-      const correct = _sample(withId);
-      const others = _pickRandom(
-        withId.filter((v) => v.id !== correct.id && v.japanese !== correct.japanese),
-        3
-      );
-      if (others.length < 3) continue;
-      const options = _pickRandom([correct.japanese, ...others.map((v) => v.japanese)], 4);
-      q = {
-        question: `Bahasa Jepang untuk **"${correct.indonesian}"** ?`,
-        category: 'vocabulary',
-        options,
-        correctIdx: options.indexOf(correct.japanese),
-        explanation: correct.reading ? `${correct.japanese} (${correct.reading}) — ${correct.indonesian}` : null,
-      };
-    } else if (t === 'listening') {
-      const correct = _sample(withId);
-      const others = _pickRandom(
-        withId.filter((v) => v.id !== correct.id && v.indonesian !== correct.indonesian),
-        3
-      );
-      if (others.length < 3) continue;
-      const options = _pickRandom([correct.indonesian, ...others.map((v) => v.indonesian)], 4);
-      q = {
-        category: 'listening',
-        question: `🎧 Dengar audio, pilih arti yang benar:`,
-        jp: correct.japanese,
-        options,
-        correctIdx: options.indexOf(correct.indonesian),
-        explanation: `${correct.japanese} (${correct.reading || '-'}) — ${correct.indonesian}`,
-      };
-    }
-    if (q) out.push(q);
-  }
-  return out;
+const quizGenLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'too_many_requests', detail: 'Tunggu sebentar sebelum generate lagi.' },
+});
+
+function _extractJsonObject(text) {
+  const str = String(text || '');
+  const a = str.indexOf('{');
+  const b = str.lastIndexOf('}');
+  if (a === -1 || b === -1 || b < a) return null;
+  try { return JSON.parse(str.slice(a, b + 1)); } catch { return null; }
 }
 
-router.post('/lessons/:lessonId/generate-quiz', asyncHandler(async (req, res) => {
+// Jenis soal yang bisa diminta admin -> (questionType, questionCategory).
+const QUIZ_KINDS = {
+  mc_vocab:   { type: 'multiple_choice', cat: 'vocabulary', label: 'pilihan ganda kosakata (questionType=multiple_choice, questionCategory=vocabulary, 4 opsi 1 benar)' },
+  mc_grammar: { type: 'multiple_choice', cat: 'grammar',    label: 'pilihan ganda grammar (multiple_choice, grammar, 4 opsi 1 benar)' },
+  fill_blank: { type: 'fill_blank',      cat: 'vocabulary', label: 'isian (questionType=fill_blank, isi "correctAnswer", "options": [])' },
+  listening:  { type: 'multiple_choice', cat: 'listening',  label: 'menyimak (multiple_choice, questionCategory=listening, isi "audioScript" dengan teks Jepang yang didengar, 4 opsi arti)' },
+};
+
+router.post('/lessons/:lessonId/generate-quiz', quizGenLimiter, asyncHandler(async (req, res) => {
   const lessonId = req.params.lessonId;
-  const count = Math.min(50, Math.max(4, Number(req.body?.count) || 10));
+  const count = Math.min(30, Math.max(1, Number(req.body?.count) || 10));
+  let kinds = Array.isArray(req.body?.kinds) ? req.body.kinds.filter((k) => QUIZ_KINDS[k]) : [];
+  if (kinds.length === 0) kinds = ['mc_vocab', 'mc_grammar'];
+  const instruction = String(req.body?.instruction || '').slice(0, 500).trim();
 
   const lessonRes = await query(`SELECT id, module_id, type FROM lessons WHERE id = $1`, [lessonId]);
   if (lessonRes.rows.length === 0) return res.status(404).json({ error: 'lesson not found' });
   const lesson = lessonRes.rows[0];
   if (lesson.type !== 'quiz') return res.status(400).json({ error: 'lesson_not_quiz', detail: 'Pelajaran ini bukan tipe quiz' });
 
-  // Prefer vocab wired into a deck lesson in this module — keeps quiz scoped
-  // to one Bab when admin imports per-Bab. Fall back to all module vocab.
+  // Grounding: vocab (prefer deck-wired di modul) + grammar modul.
   let vocabRes = await query(
-    `SELECT DISTINCT v.id, v.japanese, v.reading, v.romaji, v.indonesian, v.category
+    `SELECT DISTINCT v.japanese, v.reading, v.indonesian, v.category
      FROM module_vocabulary v
      JOIN lesson_deck_items di ON di.vocabulary_id = v.id
      JOIN lessons l ON l.id = di.lesson_id
-     WHERE l.module_id = $1 AND l.type = 'deck' AND v.japanese IS NOT NULL AND v.japanese <> ''`,
+     WHERE l.module_id = $1 AND l.type = 'deck' AND v.japanese IS NOT NULL AND v.japanese <> ''
+     LIMIT 80`,
     [lesson.module_id]
   );
   if (vocabRes.rows.length < 4) {
     vocabRes = await query(
-      `SELECT id, japanese, reading, romaji, indonesian, category
+      `SELECT japanese, reading, indonesian, category
        FROM module_vocabulary
-       WHERE module_id = $1 AND japanese IS NOT NULL AND japanese <> ''`,
+       WHERE module_id = $1 AND japanese IS NOT NULL AND japanese <> ''
+       LIMIT 80`,
       [lesson.module_id]
     );
   }
-  if (vocabRes.rows.length < 4) {
-    return res.status(400).json({
-      error: 'not_enough_vocab',
-      detail: `Modul ini cuma punya ${vocabRes.rows.length} kosakata, butuh ≥ 4. Import dari Notion dulu.`,
+  const grammarRes = await query(
+    `SELECT pattern, meaning, example FROM module_grammar
+     WHERE module_id = $1 AND pattern IS NOT NULL AND pattern <> ''
+     LIMIT 30`,
+    [lesson.module_id]
+  );
+
+  if (vocabRes.rows.length === 0 && grammarRes.rows.length === 0) {
+    return res.status(400).json({ error: 'not_enough_material', detail: 'Modul ini belum punya kosakata/grammar. Import materi dulu.' });
+  }
+  if (!QUIZ_ANTHROPIC_KEY) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
+
+  const vocabLines = vocabRes.rows.map((v) =>
+    `- ${v.japanese}${v.reading ? ` (${v.reading})` : ''} = ${v.indonesian || '?'}${v.category ? ` [${v.category}]` : ''}`).join('\n');
+  const grammarLines = grammarRes.rows.map((g) =>
+    `- ${g.pattern}${g.meaning ? ` = ${g.meaning}` : ''}${g.example ? `. Contoh: ${g.example}` : ''}`).join('\n');
+  const kindLines = kinds.map((k) => `- ${QUIZ_KINDS[k].label}`).join('\n');
+
+  const userContent = `Buatkan ${count} soal kuis dalam Bahasa Indonesia untuk satu pelajaran.
+
+Jenis soal yang diminta (distribusikan merata):
+${kindLines}
+${instruction ? `\nInstruksi tambahan dari admin: ${instruction}\n` : ''}
+Gunakan HANYA materi di bawah sebagai sumber. Jangan mengarang kosakata atau pola di luar ini.
+
+Kosakata:
+${vocabLines || '(tidak ada)'}
+
+Pola grammar:
+${grammarLines || '(tidak ada)'}
+
+Aturan:
+- Pertanyaan dan "explanation" dalam Bahasa Indonesia; teks Jepang boleh muncul di soal/opsi.
+- multiple_choice: tepat 4 opsi, tepat 1 dengan "isCorrect": true.
+- fill_blank: isi "correctAnswer" (jawaban singkat), "options": [].
+- listening: "audioScript" = kata/kalimat Jepang yang didengar; 4 opsi arti, 1 benar.
+- "explanation": alasan singkat kenapa jawaban benar.
+
+Balas HANYA JSON valid tanpa teks lain, bentuk:
+{"questions":[{"question":"...","questionType":"multiple_choice","questionCategory":"vocabulary","audioScript":"","correctAnswer":"","explanation":"...","options":[{"text":"...","isCorrect":true},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false}]}]}`;
+
+  let parsed;
+  try {
+    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': QUIZ_ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: QUIZ_ANTHROPIC_MODEL,
+        max_tokens: 4096,
+        system: [{ type: 'text', text: QUIZ_GEN_SYSTEM, cache_control: { type: 'ephemeral' } }],
+        messages: [{ role: 'user', content: userContent }],
+      }),
     });
-  }
-
-  const questions = _generateQuizQuestions(vocabRes.rows, count);
-  if (questions.length === 0) {
-    return res.status(400).json({ error: 'generation_failed', detail: 'Vocab pool terlalu kecil untuk variasi 4 opsi.' });
-  }
-
-  // Replace existing — idempotent. Admin yg ngerasa generator-nya jelek bisa
-  // tekan tombol lagi buat re-roll.
-  await query(`DELETE FROM quiz_questions WHERE lesson_id = $1`, [lessonId]);
-
-  let sort = 0;
-  for (const q of questions) {
-    const qText = q.jp ? `${q.question}\n\n${q.jp}` : q.question;
-    const category = q.category || 'vocabulary';
-    const sectionNumber = category === 'listening' ? 2 : 1;
-    const sectionLabel = `Section ${sectionNumber}`;
-    const sectionInstruction = category === 'listening'
-      ? '音声を聞いて、ただしい答えをえらんでください。'
-      : '問題1：＿＿の　ことばは　ひらがなで　どう　かきますか。 1・2・3・4から　いちばん　いい　ものを　ひとつ　えらんで　ください。';
-    const ins = await query(
-      `INSERT INTO quiz_questions (
-         lesson_id, question, question_type, question_category,
-         section_number, section_label, section_instruction,
-         explanation, sort_order
-       )
-       VALUES ($1, $2, 'multiple_choice', $3, $4, $5, $6, $7, $8)
-       RETURNING id`,
-      [lessonId, qText, category, sectionNumber, sectionLabel, sectionInstruction, q.explanation || null, sort++]
-    );
-    const qid = ins.rows[0].id;
-    let osort = 0;
-    for (let i = 0; i < q.options.length; i++) {
-      await query(
-        `INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order)
-         VALUES ($1, $2, $3, $4)`,
-        [qid, q.options[i], i === q.correctIdx, osort++]
-      );
+    if (!upstream.ok) {
+      const detail = await upstream.text().catch(() => '');
+      console.error('Anthropic quiz-gen:', upstream.status, detail.slice(0, 200));
+      return res.status(502).json({ error: 'ai_upstream' });
     }
+    const data = await upstream.json();
+    const text = Array.isArray(data.content)
+      ? data.content.filter((b) => b.type === 'text').map((b) => b.text).join('')
+      : '';
+    parsed = _extractJsonObject(text);
+  } catch (err) {
+    console.error('Anthropic quiz-gen error:', err.message);
+    return res.status(502).json({ error: 'ai_upstream' });
   }
-  res.json({ created: questions.length, vocabPool: vocabRes.rows.length });
+  if (!parsed || !Array.isArray(parsed.questions)) return res.status(502).json({ error: 'ai_parse' });
+
+  const allowedTypes = new Set(kinds.map((k) => QUIZ_KINDS[k].type));
+  const allowedCats = new Set(kinds.map((k) => QUIZ_KINDS[k].cat));
+  const fallbackCat = allowedCats.values().next().value;
+  const clean = [];
+  for (const q of parsed.questions) {
+    if (!q || typeof q !== 'object') continue;
+    const question = String(q.question || '').trim().slice(0, 1000);
+    if (!question) continue;
+    const qtype = q.questionType === 'fill_blank' ? 'fill_blank' : 'multiple_choice';
+    if (!allowedTypes.has(qtype)) continue;
+    let qcat = ['vocabulary', 'grammar', 'listening'].includes(q.questionCategory) ? q.questionCategory : 'vocabulary';
+    if (!allowedCats.has(qcat)) qcat = fallbackCat;
+    const explanation = String(q.explanation || '').trim().slice(0, 1000);
+    const audioScript = String(q.audioScript || '').trim().slice(0, 500);
+    if (qtype === 'fill_blank') {
+      const correctAnswer = String(q.correctAnswer || '').trim().slice(0, 200);
+      if (!correctAnswer) continue;
+      clean.push({ question, questionType: 'fill_blank', questionCategory: qcat, audioScript: '', correctAnswer, explanation, options: [] });
+    } else {
+      let options = Array.isArray(q.options)
+        ? q.options.map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect })).filter((o) => o.text)
+        : [];
+      if (options.length < 2) continue;
+      options = options.slice(0, 6);
+      let firstCorrect = options.findIndex((o) => o.isCorrect);
+      if (firstCorrect === -1) firstCorrect = 0;
+      options = options.map((o, i) => ({ text: o.text, isCorrect: i === firstCorrect }));
+      clean.push({ question, questionType: 'multiple_choice', questionCategory: qcat, audioScript: qcat === 'listening' ? audioScript : '', correctAnswer: '', explanation, options });
+    }
+    if (clean.length >= count) break;
+  }
+  if (clean.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan soal valid. Coba lagi.' });
+
+  res.json({ questions: clean, vocabPool: vocabRes.rows.length, grammarPool: grammarRes.rows.length });
 }));
 
 router.post('/module-grammar', asyncHandler(async (req, res) => {

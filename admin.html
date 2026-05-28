@@ -1058,7 +1058,7 @@ function renderLessons() {
         }
         const quizBtn = l.type === 'quiz'
           ? `<button class="btn btn-ghost" onclick="manageQuiz('${l.id}', '${titleEsc}')">Kuis</button>
-             <button class="btn btn-ghost" onclick="generateQuizFromVocab('${l.id}', '${titleEsc}')" title="Generate ulang 10 soal MC dari kosakata Bab (replace soal lama)">🎲 Auto-Gen</button>`
+             <button class="btn btn-ghost" onclick="generateQuizAI('${l.id}', '${titleEsc}')" title="Generate soal pakai AI dari materi Bab (preview dulu sebelum simpan)">✨ Generate AI</button>`
           : '';
         return `
         <tr>
@@ -1442,19 +1442,159 @@ window.deleteLesson = async (id, title) => {
 };
 
 // Auto-generate quiz dari vocab Bab di module yg sama. Replace soal lama.
-window.generateQuizFromVocab = async (lessonId, lessonTitle) => {
-  const countStr = prompt(`Generate berapa soal MC untuk "${lessonTitle}"?\n\nMix: bacaan kanji, arti JP→ID, tulis JP, listening (audio). Replace soal lama.`, '10');
-  if (countStr === null) return;
-  const count = Math.max(4, Math.min(50, Number(countStr) || 10));
-  notify('Generating ' + count + ' soal...');
+// ─── Generate Soal Kuis pakai AI ───
+// AI (Claude) bikin draft soal grounded ke materi Bab → admin preview/edit →
+// simpan via POST /admin/quiz-questions (path simpan yang sama dgn manual).
+let _quizGenDrafts = [];
+let _quizGenCtx = null;
+
+window.generateQuizAI = (lessonId, lessonTitle) => {
+  _quizGenCtx = { lessonId, lessonTitle };
+  openModal(`
+    <h3>✨ Generate Soal AI — ${escapeHtml(lessonTitle)}</h3>
+    <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 14px;">
+      AI bikin soal dari kosakata &amp; grammar Bab ini. Kamu review &amp; edit dulu sebelum disimpan.
+    </p>
+    <div class="field">
+      <label>Jumlah soal</label>
+      <input id="qg-count" type="number" min="1" max="30" value="10" />
+    </div>
+    <div class="field">
+      <label>Jenis soal</label>
+      <label style="display:block;font-weight:400;"><input type="checkbox" class="qg-kind" value="mc_vocab" checked /> Pilihan ganda — kosakata</label>
+      <label style="display:block;font-weight:400;"><input type="checkbox" class="qg-kind" value="mc_grammar" checked /> Pilihan ganda — grammar</label>
+      <label style="display:block;font-weight:400;"><input type="checkbox" class="qg-kind" value="fill_blank" /> Isian (fill blank)</label>
+      <label style="display:block;font-weight:400;"><input type="checkbox" class="qg-kind" value="listening" /> Menyimak (listening)</label>
+    </div>
+    <div class="field">
+      <label>Instruksi tambahan (opsional)</label>
+      <textarea id="qg-instruction" rows="2" placeholder="mis. fokus ke kata kerja, level mudah"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button type="button" class="btn btn-primary" id="qg-run" onclick="quizGenRun()">Generate</button>
+    </div>
+  `);
+};
+
+window.quizGenBack = () => generateQuizAI(_quizGenCtx.lessonId, _quizGenCtx.lessonTitle);
+
+window.quizGenRun = async () => {
+  const kinds = Array.from(document.querySelectorAll('.qg-kind:checked')).map((c) => c.value);
+  if (kinds.length === 0) { notify('Pilih minimal 1 jenis soal', true); return; }
+  const count = Math.max(1, Math.min(30, Number(document.getElementById('qg-count').value) || 10));
+  const instruction = document.getElementById('qg-instruction').value.trim();
+  const btn = document.getElementById('qg-run');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
   try {
-    const d = await api('/admin/lessons/' + lessonId + '/generate-quiz', {
+    const d = await api('/admin/lessons/' + _quizGenCtx.lessonId + '/generate-quiz', {
       method: 'POST',
-      body: JSON.stringify({ count }),
+      body: JSON.stringify({ count, kinds, instruction }),
     });
-    notify(`${d.created} soal dibuat dari ${d.vocabPool} kosakata. Cek "Kuis" buat review.`);
+    _quizGenDrafts = Array.isArray(d.questions) ? d.questions : [];
+    if (_quizGenDrafts.length === 0) {
+      notify('AI tidak menghasilkan soal. Coba lagi.', true);
+      if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
+      return;
+    }
+    quizGenRenderPreview();
   } catch (err) {
     notify('Gagal generate: ' + err.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
+  }
+};
+
+function _qgCatLabel(c) { return c === 'grammar' ? 'Grammar' : c === 'listening' ? 'Menyimak' : 'Kosakata'; }
+
+function quizGenRenderPreview() {
+  const cards = _quizGenDrafts.map((q, i) => {
+    const typeLabel = q.questionType === 'fill_blank' ? 'Isian' : _qgCatLabel(q.questionCategory);
+    let body = '';
+    if (q.questionType === 'fill_blank') {
+      body = `<div class="field"><label>Jawaban benar</label><input id="qg_ca_${i}" value="${escapeHtml(q.correctAnswer || '')}" /></div>`;
+    } else {
+      if (q.questionCategory === 'listening') {
+        body += `<div class="field"><label>Audio script (Jepang)</label><input id="qg_audio_${i}" value="${escapeHtml(q.audioScript || '')}" /></div>`;
+      }
+      body += '<div class="field"><label>Opsi (pilih yang benar)</label>' + (q.options || []).map((o, j) =>
+        `<label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-bottom:4px;">
+           <input type="radio" name="qg_correct_${i}" value="${j}" ${o.isCorrect ? 'checked' : ''} />
+           <input id="qg_opt_${i}_${j}" value="${escapeHtml(o.text || '')}" style="flex:1;" />
+         </label>`).join('') + '</div>';
+    }
+    return `<div style="border:1px solid var(--border,#e5e5e5);border-radius:8px;padding:12px;margin-bottom:10px;">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:8px;">
+        <input type="checkbox" class="qg-inc" data-i="${i}" checked /> Soal ${i + 1}
+        <span class="pill">${typeLabel}</span>
+      </label>
+      <div class="field"><label>Pertanyaan</label><textarea id="qg_q_${i}" rows="2">${escapeHtml(q.question || '')}</textarea></div>
+      ${body}
+      <div class="field"><label>Penjelasan</label><input id="qg_exp_${i}" value="${escapeHtml(q.explanation || '')}" /></div>
+    </div>`;
+  }).join('');
+  openModal(`
+    <h3>Review ${_quizGenDrafts.length} Soal — ${escapeHtml(_quizGenCtx.lessonTitle)}</h3>
+    <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 12px;">Edit seperlunya, hilangkan centang soal yang tidak mau disimpan.</p>
+    <div style="max-height:58vh;overflow-y:auto;">${cards}</div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="quizGenBack()">← Ulangi</button>
+      <button type="button" class="btn btn-primary" id="qg-save" onclick="quizGenSave()">Simpan ke kuis</button>
+    </div>
+  `);
+  const mc = document.getElementById('modal-content');
+  if (mc) mc.style.maxWidth = '640px';
+}
+
+window.quizGenSave = async () => {
+  const includes = Array.from(document.querySelectorAll('.qg-inc:checked')).map((c) => Number(c.dataset.i));
+  if (includes.length === 0) { notify('Tidak ada soal dipilih', true); return; }
+  const btn = document.getElementById('qg-save');
+  if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
+  let saved = 0;
+  try {
+    let sort = 0;
+    for (const i of includes) {
+      const d = _quizGenDrafts[i];
+      const question = (document.getElementById('qg_q_' + i)?.value || '').trim();
+      if (!question) continue;
+      const explanation = (document.getElementById('qg_exp_' + i)?.value || '').trim() || null;
+      const isListening = d.questionCategory === 'listening' && d.questionType !== 'fill_blank';
+      const bodyObj = {
+        lessonId: _quizGenCtx.lessonId,
+        question,
+        questionType: d.questionType,
+        questionCategory: d.questionCategory,
+        sectionNumber: isListening ? 2 : 1,
+        sectionLabel: isListening ? 'Bagian 2' : 'Bagian 1',
+        sectionInstruction: null,
+        audioScript: isListening ? (document.getElementById('qg_audio_' + i)?.value || '').trim() : '',
+        explanation,
+        sortOrder: sort++,
+        options: [],
+      };
+      if (d.questionType === 'fill_blank') {
+        bodyObj.correctAnswer = (document.getElementById('qg_ca_' + i)?.value || '').trim();
+        if (!bodyObj.correctAnswer) continue;
+      } else {
+        const checkedEl = document.querySelector('input[name="qg_correct_' + i + '"]:checked');
+        const correctIdx = checkedEl ? Number(checkedEl.value) : 0;
+        bodyObj.options = (d.options || []).map((o, j) => ({
+          text: (document.getElementById('qg_opt_' + i + '_' + j)?.value || '').trim(),
+          isCorrect: j === correctIdx,
+          imageUrl: null,
+        })).filter((o) => o.text);
+        if (bodyObj.options.length < 2) continue;
+        if (!bodyObj.options.some((o) => o.isCorrect)) bodyObj.options[0].isCorrect = true;
+      }
+      await api('/admin/quiz-questions', { method: 'POST', body: JSON.stringify(bodyObj) });
+      saved++;
+    }
+    notify(saved + ' soal tersimpan ke kuis.');
+    closeModal();
+    manageQuiz(_quizGenCtx.lessonId, _quizGenCtx.lessonTitle);
+  } catch (err) {
+    notify('Gagal simpan (tersimpan ' + saved + '): ' + err.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = 'Simpan ke kuis'; }
   }
 };
 
