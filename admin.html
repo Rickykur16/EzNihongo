@@ -36,6 +36,7 @@
   .btn-danger:hover { background: #7f1616; }
   .btn-danger-soft { background: var(--danger-soft); color: var(--danger); border-color: #fecaca; }
   .btn-danger-soft:hover { background: #fee2e2; }
+  .btn.tts-preview.playing { background: var(--brand-red); color: #fff; border-color: var(--brand-red); }
   table { width: 100%; border-collapse: collapse; background: var(--surface-white); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--elev-1); }
   th, td { padding: 12px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid var(--paper-300); vertical-align: top; }
   th { background: var(--paper-200); font-weight: 600; color: var(--ink-700); font-family: var(--font-body); }
@@ -3153,6 +3154,60 @@ window.deckSubmitBulk = async () => {
   } catch (err) { notify('Gagal import: ' + err.message, true); }
 };
 
+// ── TTS preview (ElevenLabs → Web Speech fallback) ──
+// Teks tersimpan ada di whitelist /api/tts (vocabulary_examples) → suara
+// ElevenLabs. Draft yang belum disimpan kena 403 → fallback Web Speech browser.
+let _adminTtsAudio = null;
+let _adminTtsVersion = '';
+let _adminTtsVersionFetched = false;
+async function _adminInitTtsVersion() {
+  if (_adminTtsVersionFetched) return;
+  _adminTtsVersionFetched = true;
+  try { const r = await fetch('/api/tts/version'); if (r.ok) { const d = await r.json(); _adminTtsVersion = String(d.version || ''); } }
+  catch {}
+}
+_adminInitTtsVersion();
+function _adminTtsUrl(text) {
+  const base = '/api/tts?text=' + encodeURIComponent(text);
+  return _adminTtsVersion ? base + '&v=' + encodeURIComponent(_adminTtsVersion) : base;
+}
+function _adminSpeakJa(text, btn) {
+  if (!('speechSynthesis' in window)) { notify('Browser tidak mendukung audio TTS', true); if (btn) btn.classList.remove('playing'); return; }
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ja-JP';
+  u.rate = 0.9;
+  u.onend = () => { if (btn) btn.classList.remove('playing'); };
+  u.onerror = () => { if (btn) btn.classList.remove('playing'); };
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+function adminPlayTts(text, btn) {
+  const plain = String(text || '').replace(/<[^>]*>/g, '').trim();
+  if (!plain) { notify('Isi kalimat dulu', true); return; }
+  if (_adminTtsAudio) { try { _adminTtsAudio.pause(); _adminTtsAudio.src = ''; } catch {} _adminTtsAudio = null; }
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  document.querySelectorAll('.tts-preview.playing').forEach((b) => b.classList.remove('playing'));
+  if (btn) btn.classList.add('playing');
+  let started = false, fellBack = false;
+  const stop = () => { if (btn) btn.classList.remove('playing'); };
+  const fallback = () => { if (started || fellBack) return; fellBack = true; _adminSpeakJa(plain, btn); };
+  try {
+    const a = new Audio(_adminTtsUrl(plain));
+    _adminTtsAudio = a;
+    a.onplaying = () => { started = true; };
+    a.onended = () => { stop(); if (_adminTtsAudio === a) _adminTtsAudio = null; };
+    a.onerror = () => fallback();
+    const p = a.play();
+    if (p && typeof p.then === 'function') p.then(() => { started = true; }).catch(() => fallback());
+  } catch { fallback(); }
+}
+window.adminPlayTts = adminPlayTts;
+window.deckPlayExampleTts = (btn) => {
+  const tr = btn.closest('tr');
+  const input = tr && tr.querySelector('input[name="japanese"]');
+  adminPlayTts(input ? input.value : '', btn);
+};
+
 // ── examples editor (own modal, returns to deck) ──
 function deckExampleRowHtml(vid, jp, e) {
   e = e || {};
@@ -3162,6 +3217,7 @@ function deckExampleRowHtml(vid, jp, e) {
     <td><input name="indonesian" value="${escapeHtml(e.indonesian || '')}" style="min-width:180px;width:100%;" placeholder="Hari ini cuacanya bagus." /></td>
     <td><input type="number" name="sortOrder" value="${e.sort_order || 0}" style="width:50px;" /></td>
     <td style="white-space:nowrap;">
+      <button type="button" class="btn btn-ghost tts-preview" title="Dengar pelafalan" onclick="deckPlayExampleTts(this)">🔊</button>
       <button type="button" class="btn btn-primary" onclick="deckSaveExample(this)">Simpan</button>
       ${e.id ? `<button type="button" class="btn btn-danger" onclick="deckDeleteExample(this)">×</button>` : `<button type="button" class="btn btn-ghost" onclick="this.closest('tr').remove()">×</button>`}
     </td>
