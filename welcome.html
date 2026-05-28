@@ -7772,7 +7772,7 @@ const S = (window.AISenpai = {
   dismissPeek() { S.mode = 'idle'; S.render(); },
   dismissToast() { clearTimeout(S._toastTimer); S.mode = S.reminders.length ? 'peek' : 'idle'; S.render(); },
   act(id) { const r = S.reminders.find((x) => x.id === id); S.mode = 'idle'; S.render(); if (r && r.action) { try { r.action(); } catch {} } },
-  _seedChat() { S.chat = [{ from:'ai', text:'Otsukare! Aku Senpai 🐾 Mau tanya soal grammar, kosakata, atau kanji? Tanya aja!' }]; S.persist(); },
+  _seedChat() { S.chat = [{ from:'ai', text:'Otsukare! Aku Maneko-chan 🐾 Mau tanya soal grammar, kosakata, atau kanji? Tanya aja!' }]; S.persist(); },
 
   burst() {
     const wrap = document.querySelector('#ai-senpai .senpai-coins');
@@ -7950,8 +7950,8 @@ const S = (window.AISenpai = {
     return `<div class="senpai-panel" style="margin-bottom:12px;width:340px;height:560px;max-height:78vh;background:#fff;border-radius:24px;box-shadow:0 28px 70px rgba(27,20,16,.22),0 0 0 1.5px #F0E0DA;display:flex;flex-direction:column;position:relative;animation:senpaiPanelIn 420ms cubic-bezier(.34,1.56,.64,1);transform-origin:bottom right;">
       <div style="position:absolute;top:-46px;left:14px;z-index:2;filter:drop-shadow(0 6px 12px rgba(27,20,16,.12));">${S.manekiSVG(72, 'up', 'happy', false)}</div>
       <div style="background:linear-gradient(180deg,#fff0f2 0%,#FFF8F1 100%);padding:16px 14px 12px 96px;border-radius:24px 24px 0 0;position:relative;border-bottom:1px solid #F0E0DA;">
-        <div style="font-size:10px;font-weight:900;letter-spacing:.16em;color:#a50d26;"><span class="ez-jp">招き猫</span> · LUCKY SENPAI</div>
-        <div style="font-weight:900;font-size:16px;color:#1B1410;margin-top:2px;">Senpai</div>
+        <div style="font-size:10px;font-weight:900;letter-spacing:.16em;color:#a50d26;"><span class="ez-jp">招き猫</span> · MANEKO CHAN</div>
+        <div style="font-weight:900;font-size:16px;color:#1B1410;margin-top:2px;">Maneko-chan</div>
         <div style="font-size:11px;color:#7A6A60;font-weight:700;margin-top:1px;"><span style="display:inline-block;width:6px;height:6px;border-radius:999px;background:#4FB58E;margin-right:5px;vertical-align:middle;"></span>Online · siap bantu</div>
         <button onclick="AISenpai.closePanel()" style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:8px;border:0;background:#fff;color:#7A6A60;cursor:pointer;box-shadow:0 2px 6px rgba(27,20,16,.1);font-size:15px;">✕</button>
       </div>
