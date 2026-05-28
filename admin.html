@@ -1448,8 +1448,13 @@ window.deleteLesson = async (id, title) => {
 let _quizGenDrafts = [];
 let _quizGenCtx = null;
 
-window.generateQuizAI = (lessonId, lessonTitle) => {
+window.generateQuizAI = async (lessonId, lessonTitle) => {
   _quizGenCtx = { lessonId, lessonTitle };
+  let promptVal = '';
+  try {
+    const p = await api('/admin/settings/quiz-gen-prompt');
+    promptVal = p.value || p.default || '';
+  } catch { /* biarkan kosong; backend tetap pakai default */ }
   openModal(`
     <h3>✨ Generate Soal AI — ${escapeHtml(lessonTitle)}</h3>
     <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 14px;">
@@ -1470,14 +1475,34 @@ window.generateQuizAI = (lessonId, lessonTitle) => {
       <label>Instruksi tambahan (opsional)</label>
       <textarea id="qg-instruction" rows="2" placeholder="mis. fokus ke kata kerja, level mudah"></textarea>
     </div>
+    <details style="margin:4px 0 14px;border:1px solid #e5e5e5;border-radius:8px;padding:10px 14px;">
+      <summary style="cursor:pointer;font-weight:600;font-size:13px;">Prompt Generator AI (lanjutan)</summary>
+      <p style="font-size:12px;color:#525252;font-family:var(--font-body);margin:8px 0;">
+        Placeholder: <code>{{count}}</code> <code>{{kinds}}</code> <code>{{instruction}}</code> <code>{{vocab}}</code> <code>{{grammar}}</code>.
+        Berlaku untuk SEMUA generate soal. Kosongkan lalu simpan untuk balik ke default.
+      </p>
+      <textarea id="qg-prompt" rows="12" style="width:100%;font-family:monospace;font-size:12px;box-sizing:border-box;">${escapeHtml(promptVal)}</textarea>
+      <div style="margin-top:8px;text-align:right;"><button type="button" class="btn btn-ghost" onclick="quizGenSavePrompt()">Simpan Prompt</button></div>
+    </details>
     <div class="modal-actions">
       <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
       <button type="button" class="btn btn-primary" id="qg-run" onclick="quizGenRun()">Generate</button>
     </div>
   `);
+  const mc = document.getElementById('modal-content');
+  if (mc) mc.style.maxWidth = '640px';
 };
 
 window.quizGenBack = () => generateQuizAI(_quizGenCtx.lessonId, _quizGenCtx.lessonTitle);
+
+window.quizGenSavePrompt = async () => {
+  const ta = document.getElementById('qg-prompt');
+  if (!ta) return;
+  try {
+    await api('/admin/settings/quiz-gen-prompt', { method: 'PUT', body: JSON.stringify({ value: ta.value }) });
+    notify('Prompt generator disimpan');
+  } catch (err) { notify('Gagal simpan prompt: ' + err.message, true); }
+};
 
 window.quizGenRun = async () => {
   const kinds = Array.from(document.querySelectorAll('.qg-kind:checked')).map((c) => c.value);
