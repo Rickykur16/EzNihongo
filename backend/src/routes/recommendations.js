@@ -21,7 +21,6 @@ const MAX_LESSONS = 3;
 const CATEGORY_LABEL = {
   vocabulary: 'Kosakata',
   grammar: 'Tata Bahasa',
-  reading: 'Dokkai',
   listening: 'Menyimak',
 };
 

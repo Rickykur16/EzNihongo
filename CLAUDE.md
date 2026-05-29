@@ -204,28 +204,20 @@
   `recoPanelHtml`; lesson rekomendasi (UUID dari API) dicocokkan via `l.apiId`
   lalu `selectLesson(moduleSlug, lessonSlug)`. Panel disembunyikan kalau belum
   ada data kuis.
-- **Kategori soal kuis** (`quiz_questions.question_category`): 4 nilai —
-  `vocabulary`, `grammar`, `reading` (Dokkai; migration 028), `listening`.
-  Label UI: admin.html/welcome.html pakai "Vocabulary"/"Grammar"/"Dokkai"/
-  "Listening"; panel adaptif (recommendations.js) pakai "Kosakata"/"Tata Bahasa"/
-  "Dokkai"/"Menyimak". Cuma `reading`/Dokkai yang ditambah; tiga lama
-  dipertahankan apa adanya (tidak ada migrasi data). CHECK constraint
-  `quiz_questions_category_check` (migration 028 drop kedua kemungkinan nama
-  lalu add ulang dgn 4 nilai). Label dikelola di 3 tempat sejajar:
+- **Kategori soal kuis** (`quiz_questions.question_category`): 3 nilai —
+  `vocabulary`, `grammar`, `listening`. Label UI: admin.html/welcome.html pakai
+  "Vocabulary"/"Grammar"/"Listening"; panel adaptif (recommendations.js) pakai
+  "Kosakata"/"Tata Bahasa"/"Menyimak". Label dikelola di 3 tempat sejajar:
   `QUIZ_CATEGORY_LABELS` (admin.html), `QUIZ_CATEGORY_META` (welcome.html),
-  `CATEGORY_LABEL` (recommendations.js).
-- **Tipe soal `reading` (Dokkai, passage bacaan)** — satu teks bacaan → beberapa
-  soal. Passage disimpan di kolom `quiz_questions.passage` (TEXT, denormalized
-  per-soal seperti `section_instruction`); semua soal dalam satu section dokkai
-  memuat passage yang sama, di-render sekali di atas section (`.quiz-passage` di
-  `renderQuizSections`, welcome.html). Admin set passage di **form Section**
-  (bukan per-soal): `openSectionForm` → field muncul saat kategori `reading` →
-  section PUT (`/admin/lessons/:id/quiz/sections/:category/:number` + body
-  `passage`) update semua soal section sekaligus. Soal baru di section reading
-  mewarisi passage via ctx (`collectSections` → `submitQuestion`). Generator AI:
-  kind `dokkai` (`QUIZ_KINDS`), prompt minta `passage` + soal yang share passage
-  sama; `quizGenSave` (admin.html) mengelompokkan soal per passage → satu section
-  reading per passage unik (`Dokkai N`).
+  `CATEGORY_LABEL` (recommendations.js). CHECK constraint
+  `quiz_questions_category_check`. (Catatan: kategori `reading`/Dokkai + kolom
+  `passage` sempat ditambah di migration 028 lalu di-batalkan di 029 — kuis
+  tetap 3 kategori; jangan tambah lagi tanpa diminta.)
+- **Generate opsi pilihan ganda (AI)** — tombol "✨ Generate opsi (AI)" di editor
+  soal admin (`openQuestionForm` → `quizGenOptions`): kirim pertanyaan +
+  (listening: audio script) ke `POST /api/admin/generate-question-options`
+  (`callClaude` di `backend/src/anthropic.js`) → 4 opsi (1 benar) + penjelasan
+  diisi ke form. `ANTHROPIC_API_KEY` kosong → 503 (manual tetap jalan).
 
 ## Struktur repo (high-level)
 
