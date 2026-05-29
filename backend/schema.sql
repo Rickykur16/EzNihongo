@@ -189,6 +189,16 @@ CREATE TABLE IF NOT EXISTS app_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Cache catatan coaching AI (belajar adaptif) per weakness signature — pola
+-- sama seperti grammar_eval_cache. Lihat migration 027.
+CREATE TABLE IF NOT EXISTS coaching_note_cache (
+  note_hash TEXT PRIMARY KEY,
+  note TEXT NOT NULL,
+  model TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ===== SENSEI & TESTIMONIALS =====
 
 CREATE TABLE IF NOT EXISTS sensei (
@@ -274,6 +284,23 @@ CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user ON quiz_attempts(user_id);
 CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user_lesson ON quiz_attempts(user_id, lesson_id);
 CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user_lesson_completed
   ON quiz_attempts (user_id, lesson_id, completed_at DESC);
+
+-- Hasil per-soal tiap submit (benar/salah + kategori di-snapshot) untuk
+-- deteksi kelemahan per kategori (belajar adaptif). Lihat migration 027.
+CREATE TABLE IF NOT EXISTS quiz_question_results (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  attempt_id UUID NOT NULL REFERENCES quiz_attempts(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+  question_id UUID NOT NULL,
+  question_category TEXT NOT NULL,
+  is_correct BOOLEAN NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_qqr_user_cat_created
+  ON quiz_question_results (user_id, question_category, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_qqr_attempt ON quiz_question_results (attempt_id);
 
 -- ===== USER DATA =====
 

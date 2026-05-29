@@ -331,7 +331,7 @@ router.post('/progress/lesson/:lessonId/quiz-attempt', asyncHandler(async (req, 
   const cooldownHours = lessonRow.rows[0]?.cooldown_hours ?? 12;
 
   const rows = await query(
-    `SELECT q.id AS question_id, o.id AS option_id, o.is_correct
+    `SELECT q.id AS question_id, q.question_category, o.id AS option_id, o.is_correct
        FROM quiz_questions q
        LEFT JOIN quiz_options o ON o.question_id = q.id
       WHERE q.id = ANY($1::uuid[])`,
@@ -340,8 +340,10 @@ router.post('/progress/lesson/:lessonId/quiz-attempt', asyncHandler(async (req, 
 
   const optionLookup = new Map();
   const questionIds = new Set();
+  const categoryByQuestion = new Map();
   for (const r of rows.rows) {
     questionIds.add(r.question_id);
+    categoryByQuestion.set(r.question_id, r.question_category || 'vocabulary');
     if (r.option_id) {
       optionLookup.set(r.option_id, {
         questionId: r.question_id,
@@ -386,6 +388,32 @@ router.post('/progress/lesson/:lessonId/quiz-attempt', asyncHandler(async (req, 
   );
   if (upd.rowCount === 0) {
     return res.status(409).json({ error: 'already_submitted' });
+  }
+
+  // Simpan hasil per-soal (benar/salah + kategori snapshot) untuk deteksi
+  // kelemahan adaptif (lihat routes/recommendations.js). Best-effort: error di
+  // sini tidak boleh menggagalkan submit — skor sudah ke-commit di atas.
+  if (validSampledIds.length > 0) {
+    try {
+      const valueSql = [];
+      const params = [];
+      let i = 1;
+      for (const qid of validSampledIds) {
+        params.push(
+          attempt.id, req.user.id, lessonId, qid,
+          categoryByQuestion.get(qid) || 'vocabulary', !!correctByQuestion[qid]
+        );
+        valueSql.push(`($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++})`);
+      }
+      await query(
+        `INSERT INTO quiz_question_results
+           (attempt_id, user_id, lesson_id, question_id, question_category, is_correct)
+         VALUES ${valueSql.join(', ')}`,
+        params
+      );
+    } catch (err) {
+      console.error('quiz_question_results insert failed:', err.message);
+    }
   }
 
   const nextAttemptAt = new Date(Date.now() + cooldownHours * 3600 * 1000).toISOString();

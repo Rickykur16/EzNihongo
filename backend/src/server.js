@@ -7,6 +7,7 @@ import { db } from './db.js';
 import authRouter from './routes/auth.js';
 import contentRouter from './routes/content.js';
 import progressRouter from './routes/progress.js';
+import recommendationsRouter from './routes/recommendations.js';
 import discussionsRouter from './routes/discussions.js';
 import adminRouter from './routes/admin.js';
 import uploadsRouter from './routes/uploads.js';
@@ -85,6 +86,7 @@ app.use('/api', notionPublicRouter);
 app.use('/api', kanjiPublicRouter);
 app.use('/api', contentRouter);
 app.use('/api', progressRouter);
+app.use('/api', recommendationsRouter);
 
 // 404
 app.use('/api', (req, res) => {
