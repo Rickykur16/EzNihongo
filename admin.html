@@ -3338,7 +3338,7 @@ window.deckManageExamples = async (vid) => {
       <tbody id="deck-ex-body">${examples.map((e) => deckExampleRowHtml(vid, jp, e)).join('')}</tbody>
     </table></div>
     ${examples.length === 0 ? '<div class="empty" style="padding:14px;">Belum ada contoh kalimat.</div>' : ''}
-    <div class="toolbar" style="margin-top:8px;"><button type="button" class="btn btn-ghost" onclick="deckAddExampleRow()">+ Tambah contoh</button></div>
+    <div class="toolbar" style="margin-top:8px;"><button type="button" class="btn btn-ghost" onclick="deckAddExampleRow()">+ Tambah contoh</button><button type="button" class="btn btn-ghost" id="deck-ex-gen" onclick="deckGenExamples()">✨ Generate contoh (AI)</button></div>
     <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="manageDeck('${ctx.lessonId}', '${safeTitle}', '${ctx.moduleId}', '${ctx.courseId || ''}')">← Kembali ke deck</button></div>
   `);
   modalContent.style.maxWidth = '900px';
@@ -3347,6 +3347,33 @@ window.deckManageExamples = async (vid) => {
 window.deckAddExampleRow = () => {
   const tb = document.getElementById('deck-ex-body');
   if (tb) tb.appendChild(el(deckExampleRowHtml(window.__deckExVid, window.__deckExJp || '', { sort_order: tb.querySelectorAll('tr').length })));
+};
+
+// Generate contoh kalimat (AI) untuk kosakata yang sedang dibuka. Hasil
+// ditambahkan sebagai baris BELUM tersimpan — admin review lalu klik Simpan.
+window.deckGenExamples = async () => {
+  const vid = window.__deckExVid;
+  const jp = window.__deckExJp || '';
+  if (!vid) return;
+  const btn = document.getElementById('deck-ex-gen');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  try {
+    const d = await api('/admin/generate-vocab-examples', { method: 'POST', body: JSON.stringify({ vocabularyId: vid, count: 3 }) });
+    const exs = Array.isArray(d.examples) ? d.examples : [];
+    if (exs.length === 0) { notify('AI tidak menghasilkan contoh. Coba lagi.', true); return; }
+    const tb = document.getElementById('deck-ex-body');
+    let base = tb ? tb.querySelectorAll('tr').length : 0;
+    exs.forEach((e) => {
+      if (tb) tb.appendChild(el(deckExampleRowHtml(vid, jp, {
+        japanese: e.japanese, highlight: e.highlight, indonesian: e.indonesian, sort_order: base++,
+      })));
+    });
+    notify('Contoh dibuat AI — review lalu klik Simpan di tiap baris');
+  } catch (err) {
+    notify('Gagal generate: ' + err.message, true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✨ Generate contoh (AI)'; }
+  }
 };
 
 window.deckSaveExample = async (btn) => {
