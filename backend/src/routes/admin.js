@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
 import { requireAuth, requireAdmin, asyncHandler } from '../middleware.js';
 import { COACH_PROMPT_DEFAULT } from './recommendations.js';
+import { callClaude, anthropicEnabled } from '../anthropic.js';
 import {
   NOTION_BAB_DB_ID_DEFAULT,
   NOTION_VOCAB_LESSON_RELATION,
@@ -936,9 +937,10 @@ function _extractJsonObject(text) {
 
 // Jenis soal yang bisa diminta admin -> (questionType, questionCategory).
 const QUIZ_KINDS = {
-  mc_vocab:   { type: 'multiple_choice', cat: 'vocabulary', label: 'pilihan ganda kosakata (questionType=multiple_choice, questionCategory=vocabulary, 4 opsi 1 benar)' },
+  mc_vocab:   { type: 'multiple_choice', cat: 'vocabulary', label: 'pilihan ganda moji-goi/kosakata (questionType=multiple_choice, questionCategory=vocabulary, 4 opsi 1 benar)' },
   mc_grammar: { type: 'multiple_choice', cat: 'grammar',    label: 'pilihan ganda grammar (multiple_choice, grammar, 4 opsi 1 benar)' },
   fill_blank: { type: 'fill_blank',      cat: 'vocabulary', label: 'isian (questionType=fill_blank, isi "correctAnswer", "options": [])' },
+  dokkai:     { type: 'multiple_choice', cat: 'reading',    label: 'dokkai/reading (multiple_choice, questionCategory=reading, isi "passage" dengan teks bacaan Jepang lalu BEBERAPA soal pemahaman 4 opsi yang memakai "passage" sama persis)' },
   listening:  { type: 'multiple_choice', cat: 'listening',  label: 'menyimak (multiple_choice, questionCategory=listening, isi "audioScript" dengan teks Jepang yang didengar, 4 opsi arti)' },
 };
 
@@ -963,10 +965,11 @@ Aturan:
 - multiple_choice: tepat 4 opsi, tepat 1 dengan "isCorrect": true.
 - fill_blank: isi "correctAnswer" (jawaban singkat), "options": [].
 - listening: "audioScript" = kata/kalimat Jepang yang didengar; 4 opsi arti, 1 benar.
+- reading (dokkai): isi "passage" dengan satu teks bacaan Jepang pendek, lalu buat 2-4 soal pemahaman tentang bacaan itu. Semua soal dari satu bacaan HARUS memakai string "passage" yang sama persis (supaya dikelompokkan jadi satu section). Soal & opsi boleh Bahasa Indonesia.
 - "explanation": alasan singkat kenapa jawaban benar.
 
 Balas HANYA JSON valid tanpa teks lain, bentuk:
-{"questions":[{"question":"...","questionType":"multiple_choice","questionCategory":"vocabulary","audioScript":"","correctAnswer":"","explanation":"...","options":[{"text":"...","isCorrect":true},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false}]}]}`;
+{"questions":[{"question":"...","questionType":"multiple_choice","questionCategory":"vocabulary","audioScript":"","passage":"","correctAnswer":"","explanation":"...","options":[{"text":"...","isCorrect":true},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false}]}]}`;
 
 function _fillTemplate(tpl, vars) {
   return String(tpl).replace(/\{\{(\w+)\}\}/g, (_m, k) => (vars[k] != null ? String(vars[k]) : ''));
@@ -1082,14 +1085,15 @@ router.post('/lessons/:lessonId/generate-quiz', quizGenLimiter, asyncHandler(asy
     if (!question) continue;
     const qtype = q.questionType === 'fill_blank' ? 'fill_blank' : 'multiple_choice';
     if (!allowedTypes.has(qtype)) continue;
-    let qcat = ['vocabulary', 'grammar', 'listening'].includes(q.questionCategory) ? q.questionCategory : 'vocabulary';
+    let qcat = ['vocabulary', 'grammar', 'reading', 'listening'].includes(q.questionCategory) ? q.questionCategory : 'vocabulary';
     if (!allowedCats.has(qcat)) qcat = fallbackCat;
     const explanation = String(q.explanation || '').trim().slice(0, 1000);
     const audioScript = String(q.audioScript || '').trim().slice(0, 500);
+    const passage = String(q.passage || '').trim().slice(0, 4000);
     if (qtype === 'fill_blank') {
       const correctAnswer = String(q.correctAnswer || '').trim().slice(0, 200);
       if (!correctAnswer) continue;
-      clean.push({ question, questionType: 'fill_blank', questionCategory: qcat, audioScript: '', correctAnswer, explanation, options: [] });
+      clean.push({ question, questionType: 'fill_blank', questionCategory: qcat, audioScript: '', passage: '', correctAnswer, explanation, options: [] });
     } else {
       let options = Array.isArray(q.options)
         ? q.options.map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect })).filter((o) => o.text)
@@ -1099,13 +1103,62 @@ router.post('/lessons/:lessonId/generate-quiz', quizGenLimiter, asyncHandler(asy
       let firstCorrect = options.findIndex((o) => o.isCorrect);
       if (firstCorrect === -1) firstCorrect = 0;
       options = options.map((o, i) => ({ text: o.text, isCorrect: i === firstCorrect }));
-      clean.push({ question, questionType: 'multiple_choice', questionCategory: qcat, audioScript: qcat === 'listening' ? audioScript : '', correctAnswer: '', explanation, options });
+      clean.push({ question, questionType: 'multiple_choice', questionCategory: qcat, audioScript: qcat === 'listening' ? audioScript : '', passage: qcat === 'reading' ? passage : '', correctAnswer: '', explanation, options });
     }
     if (clean.length >= count) break;
   }
   if (clean.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan soal valid. Coba lagi.' });
 
   res.json({ questions: clean, vocabPool: vocabRes.rows.length, grammarPool: grammarRes.rows.length });
+}));
+
+// Generate opsi pilihan ganda (AI) untuk SATU soal — dipakai tombol "Generate
+// opsi" di editor soal admin. Admin tulis pertanyaannya, AI isikan 4 opsi
+// (1 benar) + penjelasan. Untuk dokkai, jawaban di-grounding ke passage; untuk
+// listening, ke audio script. ANTHROPIC_API_KEY kosong → 503.
+router.post('/generate-question-options', asyncHandler(async (req, res) => {
+  const body = req.body || {};
+  const question = String(body.question || '').trim().slice(0, 2000);
+  const category = normalizeQuizCategory(body.questionCategory);
+  const passage = String(body.passage || '').trim().slice(0, 4000);
+  const audioScript = String(body.audioScript || '').trim().slice(0, 1000);
+  if (!question) return res.status(400).json({ error: 'question required' });
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
+
+  const ctxBlocks = [];
+  if (category === 'reading' && passage) ctxBlocks.push(`Teks bacaan (dokkai):\n${passage}`);
+  if (category === 'listening' && audioScript) ctxBlocks.push(`Skrip audio (listening):\n${audioScript}`);
+
+  const userContent = `Buat 4 opsi jawaban pilihan ganda untuk soal kuis bahasa Jepang (JLPT N5/N4).
+Kategori: ${category}.
+${ctxBlocks.join('\n\n')}
+
+Soal: ${question}
+
+Aturan:
+- Tepat 4 opsi, TEPAT 1 yang benar.${category === 'reading' ? ' Jawaban benar HARUS sesuai isi teks bacaan di atas.' : ''}${category === 'listening' ? ' Jawaban benar HARUS sesuai isi skrip audio di atas.' : ''}
+- Distraktor (opsi salah) masuk akal & sepadan (panjang/jenis mirip), bukan asal-asalan.
+- Bahasa opsi mengikuti konteks soal (Indonesia atau Jepang).
+- "explanation": alasan singkat dalam Bahasa Indonesia kenapa jawaban benar.
+
+Balas HANYA JSON valid tanpa teks lain:
+{"options":[{"text":"...","isCorrect":true},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false}],"explanation":"..."}`;
+
+  const text = await callClaude({ system: QUIZ_GEN_SYSTEM, userContent, maxTokens: 700 });
+  if (!text) return res.status(502).json({ error: 'ai_upstream' });
+  const parsed = _extractJsonObject(text);
+  if (!parsed || !Array.isArray(parsed.options)) return res.status(502).json({ error: 'ai_parse' });
+
+  let options = parsed.options
+    .map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect }))
+    .filter((o) => o.text)
+    .slice(0, 6);
+  if (options.length < 2) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan opsi valid. Coba lagi.' });
+  let firstCorrect = options.findIndex((o) => o.isCorrect);
+  if (firstCorrect === -1) firstCorrect = 0;
+  options = options.map((o, i) => ({ text: o.text, isCorrect: i === firstCorrect }));
+  const explanation = String(parsed.explanation || '').trim().slice(0, 1000);
+  res.json({ options, explanation });
 }));
 
 router.post('/module-grammar', asyncHandler(async (req, res) => {
@@ -1263,7 +1316,7 @@ router.delete('/lessons/:id', asyncHandler(async (req, res) => {
 
 // ===== QUIZ QUESTIONS (with options in one call) =====
 
-const QUIZ_CATEGORIES = new Set(['vocabulary', 'grammar', 'listening']);
+const QUIZ_CATEGORIES = new Set(['vocabulary', 'grammar', 'reading', 'listening']);
 
 function normalizeQuizCategory(value) {
   const category = String(value || 'vocabulary').toLowerCase();
@@ -1287,7 +1340,8 @@ router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
      ORDER BY CASE question_category
                 WHEN 'vocabulary' THEN 1
                 WHEN 'grammar' THEN 2
-                WHEN 'listening' THEN 3
+                WHEN 'reading' THEN 3
+                WHEN 'listening' THEN 4
                 ELSE 9
               END,
               section_number ASC, sort_order ASC`,
@@ -1314,7 +1368,7 @@ router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
 router.post('/quiz-questions', asyncHandler(async (req, res) => {
   const {
     lessonId, question, questionType, questionCategory, sectionNumber,
-    sectionLabel, sectionInstruction, audioScript, imageUrl,
+    sectionLabel, sectionInstruction, audioScript, passage, imageUrl,
     correctAnswer, explanation, sortOrder, options,
   } = req.body || {};
   if (!lessonId || !question) return res.status(400).json({ error: 'lessonId and question required' });
@@ -1326,10 +1380,10 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
   const qRes = await query(
     `INSERT INTO quiz_questions (
        lesson_id, question, question_type, question_category,
-       section_number, section_label, section_instruction, audio_script, image_url,
+       section_number, section_label, section_instruction, audio_script, passage, image_url,
        correct_answer, explanation, sort_order
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
     [
       lessonId,
       question,
@@ -1339,6 +1393,7 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
       sectionTitle,
       sectionInstruction || null,
       (audioScript && String(audioScript).trim()) || null,
+      (passage && String(passage).trim()) || null,
       (imageUrl && String(imageUrl).trim()) || null,
       correctAnswer || null,
       explanation || null,
@@ -1364,15 +1419,17 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
 router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
   const {
     question, questionType, questionCategory, sectionNumber,
-    sectionLabel, sectionInstruction, audioScript, imageUrl,
+    sectionLabel, sectionInstruction, audioScript, passage, imageUrl,
     correctAnswer, explanation, sortOrder, options,
   } = req.body || {};
   const category = questionCategory ? normalizeQuizCategory(questionCategory) : null;
   const sectionNo = sectionNumber == null ? null : normalizeQuizSectionNumber(sectionNumber);
   const hasSectionInstruction = Object.prototype.hasOwnProperty.call(req.body || {}, 'sectionInstruction');
   const hasAudioScript = Object.prototype.hasOwnProperty.call(req.body || {}, 'audioScript');
+  const hasPassage = Object.prototype.hasOwnProperty.call(req.body || {}, 'passage');
   const hasImageUrl = Object.prototype.hasOwnProperty.call(req.body || {}, 'imageUrl');
   const audioScriptNorm = hasAudioScript ? ((audioScript && String(audioScript).trim()) || null) : null;
+  const passageNorm = hasPassage ? ((passage && String(passage).trim()) || null) : null;
   const imageUrlNorm = hasImageUrl ? ((imageUrl && String(imageUrl).trim()) || null) : null;
   const result = await query(
     `UPDATE quiz_questions SET
@@ -1386,7 +1443,8 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
        section_label = COALESCE($9, section_label),
        section_instruction = CASE WHEN $11::boolean THEN $10 ELSE section_instruction END,
        audio_script = CASE WHEN $13::boolean THEN $12 ELSE audio_script END,
-       image_url = CASE WHEN $15::boolean THEN $14 ELSE image_url END
+       image_url = CASE WHEN $15::boolean THEN $14 ELSE image_url END,
+       passage = CASE WHEN $17::boolean THEN $16 ELSE passage END
       WHERE id = $1 RETURNING *`,
     [
       req.params.id,
@@ -1404,6 +1462,8 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
       hasAudioScript,
       imageUrlNorm,
       hasImageUrl,
+      passageNorm,
+      hasPassage,
     ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
@@ -1434,13 +1494,14 @@ router.delete('/quiz-questions/:id', asyncHandler(async (req, res) => {
 // supaya ga perlu update tiap pertanyaan satu-satu.
 router.put('/lessons/:lessonId/quiz/sections/:category/:number', asyncHandler(async (req, res) => {
   const { lessonId, category, number } = req.params;
-  const { sectionLabel, sectionInstruction } = req.body || {};
+  const { sectionLabel, sectionInstruction, passage } = req.body || {};
   const cat = normalizeQuizCategory(category);
   const sectionNo = normalizeQuizSectionNumber(number);
   const hasLabel = Object.prototype.hasOwnProperty.call(req.body || {}, 'sectionLabel');
   const hasInstruction = Object.prototype.hasOwnProperty.call(req.body || {}, 'sectionInstruction');
-  if (!hasLabel && !hasInstruction) {
-    return res.status(400).json({ error: 'sectionLabel or sectionInstruction required' });
+  const hasPassage = Object.prototype.hasOwnProperty.call(req.body || {}, 'passage');
+  if (!hasLabel && !hasInstruction && !hasPassage) {
+    return res.status(400).json({ error: 'sectionLabel, sectionInstruction or passage required' });
   }
   const labelNorm = hasLabel
     ? ((sectionLabel && String(sectionLabel).trim()) || `Section ${sectionNo}`)
@@ -1448,12 +1509,16 @@ router.put('/lessons/:lessonId/quiz/sections/:category/:number', asyncHandler(as
   const instructionNorm = hasInstruction
     ? ((sectionInstruction && String(sectionInstruction).trim()) || null)
     : null;
+  const passageNorm = hasPassage
+    ? ((passage && String(passage).trim()) || null)
+    : null;
   const result = await query(
     `UPDATE quiz_questions
         SET section_label = CASE WHEN $5::boolean THEN $3 ELSE section_label END,
-            section_instruction = CASE WHEN $6::boolean THEN $4 ELSE section_instruction END
+            section_instruction = CASE WHEN $6::boolean THEN $4 ELSE section_instruction END,
+            passage = CASE WHEN $8::boolean THEN $9 ELSE passage END
       WHERE lesson_id = $1 AND question_category = $2 AND section_number = $7`,
-    [lessonId, cat, labelNorm, instructionNorm, hasLabel, hasInstruction, sectionNo]
+    [lessonId, cat, labelNorm, instructionNorm, hasLabel, hasInstruction, sectionNo, hasPassage, passageNorm]
   );
   res.json({ ok: true, updated: result.rowCount });
 }));
