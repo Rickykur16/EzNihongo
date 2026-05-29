@@ -1162,6 +1162,53 @@ Balas HANYA JSON valid tanpa teks lain:
   res.json({ options, explanation });
 }));
 
+// Generate contoh kalimat (AI) untuk satu kosakata deck — dipakai tombol
+// "Generate contoh (AI)" di modal Kelola Deck → Contoh. Grounded ke kata di
+// module_vocabulary. Mengembalikan daftar { japanese, highlight, indonesian }
+// untuk di-review admin sebelum disimpan ke vocabulary_examples.
+router.post('/generate-vocab-examples', asyncHandler(async (req, res) => {
+  const { vocabularyId } = req.body || {};
+  const count = Math.max(1, Math.min(5, Number((req.body || {}).count) || 3));
+  if (!vocabularyId) return res.status(400).json({ error: 'vocabularyId required' });
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
+
+  const v = await query(`SELECT japanese, reading, indonesian FROM module_vocabulary WHERE id = $1`, [vocabularyId]);
+  if (v.rows.length === 0) return res.status(404).json({ error: 'vocab not found' });
+  const word = v.rows[0];
+
+  const userContent = `Buat ${count} contoh kalimat bahasa Jepang gaya JLPT N5/N4 yang memakai kata berikut.
+Kata: ${word.japanese}${word.reading ? ` (${word.reading})` : ''}${word.indonesian ? ` = ${word.indonesian}` : ''}
+
+Aturan:
+- Tiap kalimat pendek, natural, level pemula, dan BENAR-BENAR memakai kata "${word.japanese}".
+- "highlight" = potongan persis yang muncul di kalimat untuk kata itu (biasanya "${word.japanese}" atau bentuk yang dipakai di kalimat).
+- "indonesian" = terjemahan kalimat ke Bahasa Indonesia.
+- Kalimat polos, tanpa tag HTML / tanpa furigana.
+
+Balas HANYA JSON valid tanpa teks lain:
+{"examples":[{"japanese":"…","highlight":"${word.japanese}","indonesian":"…"}]}`;
+
+  const text = await callClaude({
+    system: 'You write Japanese example sentences for Indonesian beginner learners. Reply with a single valid JSON object only.',
+    userContent,
+    maxTokens: 800,
+  });
+  if (!text) return res.status(502).json({ error: 'ai_upstream' });
+  const parsed = _extractJsonObject(text);
+  if (!parsed || !Array.isArray(parsed.examples)) return res.status(502).json({ error: 'ai_parse' });
+
+  const examples = parsed.examples
+    .map((e) => ({
+      japanese: String(e?.japanese || '').trim().slice(0, 300),
+      highlight: (String(e?.highlight || '').trim().slice(0, 100)) || null,
+      indonesian: (String(e?.indonesian || '').trim().slice(0, 300)) || null,
+    }))
+    .filter((e) => e.japanese)
+    .slice(0, count);
+  if (examples.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan contoh valid. Coba lagi.' });
+  res.json({ examples });
+}));
+
 router.post('/module-grammar', asyncHandler(async (req, res) => {
   const { moduleId, lessonId, pattern, meaning, example, notes, exampleDialog, sortOrder } = req.body || {};
   if (!moduleId || !pattern) return res.status(400).json({ error: 'moduleId and pattern required' });

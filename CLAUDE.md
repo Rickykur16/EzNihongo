@@ -218,6 +218,13 @@
   (listening: audio script) ke `POST /api/admin/generate-question-options`
   (`callClaude` di `backend/src/anthropic.js`) → 4 opsi (1 benar) + penjelasan
   diisi ke form. `ANTHROPIC_API_KEY` kosong → 503 (manual tetap jalan).
+- **Generate contoh kalimat (AI) untuk kosakata deck** — tombol "✨ Generate
+  contoh (AI)" di modal Kelola Deck → Contoh (`deckManageExamples` →
+  `deckGenExamples`): `POST /api/admin/generate-vocab-examples` ({ vocabularyId,
+  count }) di-grounding ke kata di `module_vocabulary` → daftar
+  `{ japanese, highlight, indonesian }` ditambahkan sebagai baris BELUM tersimpan
+  (admin review lalu Simpan per baris ke `vocabulary_examples`). `callClaude`;
+  `ANTHROPIC_API_KEY` kosong → 503.
 
 ## Struktur repo (high-level)
 
