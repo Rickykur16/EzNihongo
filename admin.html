@@ -2208,6 +2208,7 @@ window.openQuestionForm = (key) => {
       <div class="field"><label>Opsi jawaban (tampilan 1 / 2 / 3 / 4)</label>
         <div class="quiz-options-edit" id="options-list">${optsHtml}</div>
         <button type="button" class="btn btn-ghost" style="margin-top:6px;" onclick="addOptionRow()">+ Tambah opsi</button>
+        <button type="button" class="btn btn-ghost" id="qgo-btn" style="margin-top:6px;" onclick="quizGenOptions()">✨ Generate opsi (AI)</button>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" onclick="backToManageQuiz('${backKey}')">← Kembali</button>
@@ -2219,6 +2220,47 @@ window.openQuestionForm = (key) => {
   wireRichToolbarAll(qForm);
   qForm.addEventListener('submit', (e) => submitQuestion(e, q.id, ctx));
   if (isListening) renderTtsTagPicker();
+  // Context untuk "Generate opsi (AI)" — grounding dokkai pakai passage section.
+  _activeQuestionCtx = { lessonId, category, passage };
+};
+
+// Generate opsi pilihan ganda untuk soal yang sedang diedit (AI). Mengganti
+// isi #options-list dengan opsi hasil AI; isi penjelasan kalau masih kosong.
+let _activeQuestionCtx = null;
+window.quizGenOptions = async () => {
+  const ctx = _activeQuestionCtx;
+  const form = document.getElementById('question-form');
+  if (!ctx || !form) return;
+  const question = (form.question.value || '').trim();
+  if (!question) { notify('Tulis pertanyaannya dulu sebelum generate opsi', true); return; }
+  const audioScript = (form.audioScript && form.audioScript.value.trim()) || '';
+  const btn = document.getElementById('qgo-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  try {
+    const d = await api('/admin/generate-question-options', {
+      method: 'POST',
+      body: JSON.stringify({
+        lessonId: ctx.lessonId,
+        question,
+        questionCategory: ctx.category,
+        passage: ctx.passage || '',
+        audioScript,
+      }),
+    });
+    const opts = Array.isArray(d.options) ? d.options : [];
+    if (opts.length < 2) { notify('AI tidak menghasilkan opsi. Coba lagi.', true); return; }
+    const list = document.getElementById('options-list');
+    list.innerHTML = '';
+    opts.forEach((o, i) => list.appendChild(el(optionRowHtml({ option_text: o.text, is_correct: !!o.isCorrect }, i))));
+    if (d.explanation && form.explanation && !form.explanation.value.trim()) {
+      form.explanation.value = d.explanation;
+    }
+    notify('Opsi dibuat AI — review & edit seperlunya');
+  } catch (err) {
+    notify('Gagal generate opsi: ' + err.message, true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✨ Generate opsi (AI)'; }
+  }
 };
 
 // ───── TTS Admin Workflow: tag picker, test audio, clear cache ─────

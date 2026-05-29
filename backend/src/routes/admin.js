@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
 import { requireAuth, requireAdmin, asyncHandler } from '../middleware.js';
 import { COACH_PROMPT_DEFAULT } from './recommendations.js';
+import { callClaude, anthropicEnabled } from '../anthropic.js';
 import {
   NOTION_BAB_DB_ID_DEFAULT,
   NOTION_VOCAB_LESSON_RELATION,
@@ -1109,6 +1110,55 @@ router.post('/lessons/:lessonId/generate-quiz', quizGenLimiter, asyncHandler(asy
   if (clean.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan soal valid. Coba lagi.' });
 
   res.json({ questions: clean, vocabPool: vocabRes.rows.length, grammarPool: grammarRes.rows.length });
+}));
+
+// Generate opsi pilihan ganda (AI) untuk SATU soal — dipakai tombol "Generate
+// opsi" di editor soal admin. Admin tulis pertanyaannya, AI isikan 4 opsi
+// (1 benar) + penjelasan. Untuk dokkai, jawaban di-grounding ke passage; untuk
+// listening, ke audio script. ANTHROPIC_API_KEY kosong → 503.
+router.post('/generate-question-options', asyncHandler(async (req, res) => {
+  const body = req.body || {};
+  const question = String(body.question || '').trim().slice(0, 2000);
+  const category = normalizeQuizCategory(body.questionCategory);
+  const passage = String(body.passage || '').trim().slice(0, 4000);
+  const audioScript = String(body.audioScript || '').trim().slice(0, 1000);
+  if (!question) return res.status(400).json({ error: 'question required' });
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
+
+  const ctxBlocks = [];
+  if (category === 'reading' && passage) ctxBlocks.push(`Teks bacaan (dokkai):\n${passage}`);
+  if (category === 'listening' && audioScript) ctxBlocks.push(`Skrip audio (listening):\n${audioScript}`);
+
+  const userContent = `Buat 4 opsi jawaban pilihan ganda untuk soal kuis bahasa Jepang (JLPT N5/N4).
+Kategori: ${category}.
+${ctxBlocks.join('\n\n')}
+
+Soal: ${question}
+
+Aturan:
+- Tepat 4 opsi, TEPAT 1 yang benar.${category === 'reading' ? ' Jawaban benar HARUS sesuai isi teks bacaan di atas.' : ''}${category === 'listening' ? ' Jawaban benar HARUS sesuai isi skrip audio di atas.' : ''}
+- Distraktor (opsi salah) masuk akal & sepadan (panjang/jenis mirip), bukan asal-asalan.
+- Bahasa opsi mengikuti konteks soal (Indonesia atau Jepang).
+- "explanation": alasan singkat dalam Bahasa Indonesia kenapa jawaban benar.
+
+Balas HANYA JSON valid tanpa teks lain:
+{"options":[{"text":"...","isCorrect":true},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false}],"explanation":"..."}`;
+
+  const text = await callClaude({ system: QUIZ_GEN_SYSTEM, userContent, maxTokens: 700 });
+  if (!text) return res.status(502).json({ error: 'ai_upstream' });
+  const parsed = _extractJsonObject(text);
+  if (!parsed || !Array.isArray(parsed.options)) return res.status(502).json({ error: 'ai_parse' });
+
+  let options = parsed.options
+    .map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect }))
+    .filter((o) => o.text)
+    .slice(0, 6);
+  if (options.length < 2) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan opsi valid. Coba lagi.' });
+  let firstCorrect = options.findIndex((o) => o.isCorrect);
+  if (firstCorrect === -1) firstCorrect = 0;
+  options = options.map((o, i) => ({ text: o.text, isCorrect: i === firstCorrect }));
+  const explanation = String(parsed.explanation || '').trim().slice(0, 1000);
+  res.json({ options, explanation });
 }));
 
 router.post('/module-grammar', asyncHandler(async (req, res) => {
