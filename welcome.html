@@ -2732,6 +2732,20 @@
     font-family: 'Noto Sans JP', sans-serif;
   }
   .jlpt-mondai strong { font-weight: 800; }
+  /* Dokkai: passage bacaan di atas soal-soal section reading */
+  .quiz-passage {
+    margin: 4px 0 18px;
+    padding: 18px 20px;
+    background: #fffdf7;
+    border: 1px solid var(--du-border, #ece9e3);
+    border-left: 4px solid #B20024;
+    border-radius: 10px;
+    font-family: 'Noto Sans JP', serif;
+    font-size: clamp(15px, 1.7vw, 17px);
+    line-height: 2;
+    color: #1B1410;
+    white-space: normal;
+  }
   /* Question prompt image (di atas opsi) */
   .quiz-q-image {
     margin: 12px 0 16px;
@@ -3685,16 +3699,20 @@ function transformCourseFromApi(apiCourse) {
 
 const QUIZ_CATEGORY_META = {
   vocabulary: {
-    label: 'Vocabulary',
+    label: 'Moji-Goi',
     defaultInstruction: '問題1：＿＿の　ことばは　ひらがなで　どう　かきますか。 1・2・3・4から　いちばん　いい　ものを　ひとつ　えらんで　ください。',
   },
   grammar: {
-    label: 'Grammar',
+    label: 'Tata Bahasa',
     defaultInstruction: '問題2：＿＿に　入る　いちばん　いい　ものを　1・2・3・4から　ひとつ　えらんで　ください。',
   },
+  reading: {
+    label: 'Dokkai',
+    defaultInstruction: '問題：つぎの　ぶんしょうを　読んで、しつもんに　こたえて　ください。こたえは　1・2・3・4から　いちばん　いい　ものを　ひとつ　えらんで　ください。',
+  },
   listening: {
-    label: 'Listening',
-    defaultInstruction: '問題3：音声を聞いて、ただしい答えを　1・2・3・4から　ひとつ　えらんで　ください。',
+    label: 'Menyimak',
+    defaultInstruction: '問題：音声を聞いて、ただしい答えを　1・2・3・4から　ひとつ　えらんで　ください。',
   },
 };
 
@@ -3727,6 +3745,7 @@ function transformQuestionFromApi(apiQ) {
     sectionLabel: apiQ.section_label || apiQ.sectionLabel || `Section ${Number(apiQ.section_number || apiQ.sectionNumber) || 1}`,
     sectionInstruction: apiQ.section_instruction || apiQ.sectionInstruction || '',
     audioScript: apiQ.audio_script || apiQ.audioScript || '',
+    passage: apiQ.passage || '',
     imageUrl: apiQ.image_url || apiQ.imageUrl || '',
   };
 }
@@ -4263,12 +4282,19 @@ function renderQuizSections(categoryItems) {
     const labelText = section.label || `Section ${section.number}`;
     const instructionText = (section.instruction || '').trim()
       || (QUIZ_CATEGORY_META[normalizeQuizCategory(section.items[0]?.q?.category)]?.defaultInstruction || '');
+    // Dokkai: satu passage bacaan di atas semua soal section. Diambil dari soal
+    // pertama yang punya passage (semua soal section memuat passage yang sama).
+    const passageText = (section.items.find((it) => (it.q.passage || '').trim())?.q.passage || '').trim();
+    const passageHtml = passageText
+      ? `<div class="quiz-passage" lang="ja">${sanitizeHtml(passageText).replace(/\n/g, '<br>')}</div>`
+      : '';
     return `
       ${playerHtml}
       <section class="jlpt-section">
         <span class="jlpt-section-tab">${sanitizeHtml(labelText)}</span>
         ${instructionText ? `<div class="jlpt-mondai">${sanitizeHtml(instructionText)}</div>` : ''}
       </section>
+      ${passageHtml}
       <div class="quiz-paper-list" data-section-number="${section.number}">
         ${section.items.map((item, i) => renderQuizPaperItem(item.q, item.index, section.number, i + 1)).join('')}
       </div>
@@ -5087,7 +5113,7 @@ setInterval(refreshGreetingBanner, 60 * 1000);
 // dari GET /api/recommendations/me (backend/src/routes/recommendations.js).
 // Disembunyikan kalau belum ada data kuis; endpoint men-degradasi anggun
 // tanpa AI (noteSource 'rule').
-const RECO_CAT_ORDER = ['vocabulary', 'grammar', 'listening'];
+const RECO_CAT_ORDER = ['vocabulary', 'grammar', 'reading', 'listening'];
 
 async function loadRecommendations() {
   const host = document.getElementById('reco-panel');

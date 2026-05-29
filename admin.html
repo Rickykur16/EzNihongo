@@ -1519,6 +1519,7 @@ window.generateQuizAI = async (lessonId, lessonTitle) => {
       <label style="display:block;font-weight:400;"><input type="checkbox" class="qg-kind" value="mc_vocab" checked /> Pilihan ganda — kosakata</label>
       <label style="display:block;font-weight:400;"><input type="checkbox" class="qg-kind" value="mc_grammar" checked /> Pilihan ganda — grammar</label>
       <label style="display:block;font-weight:400;"><input type="checkbox" class="qg-kind" value="fill_blank" /> Isian (fill blank)</label>
+      <label style="display:block;font-weight:400;"><input type="checkbox" class="qg-kind" value="dokkai" /> Dokkai (reading — bacaan + soal)</label>
       <label style="display:block;font-weight:400;"><input type="checkbox" class="qg-kind" value="listening" /> Menyimak (listening)</label>
     </div>
     <div class="field">
@@ -1579,7 +1580,7 @@ window.quizGenRun = async () => {
   }
 };
 
-function _qgCatLabel(c) { return c === 'grammar' ? 'Grammar' : c === 'listening' ? 'Menyimak' : 'Kosakata'; }
+function _qgCatLabel(c) { return c === 'grammar' ? 'Tata Bahasa' : c === 'listening' ? 'Menyimak' : c === 'reading' ? 'Dokkai' : 'Moji-Goi'; }
 
 function quizGenRenderPreview() {
   const cards = _quizGenDrafts.map((q, i) => {
@@ -1590,6 +1591,9 @@ function quizGenRenderPreview() {
     } else {
       if (q.questionCategory === 'listening') {
         body += `<div class="field"><label>Audio script (Jepang)</label><input id="qg_audio_${i}" value="${escapeHtml(q.audioScript || '')}" /></div>`;
+      }
+      if (q.questionCategory === 'reading') {
+        body += `<div class="field"><label>📖 Teks bacaan (dokkai) — soal dgn bacaan sama akan digabung 1 section</label><textarea id="qg_passage_${i}" rows="4" lang="ja" style="width:100%;font-family:'Noto Sans JP',serif;line-height:1.7;">${escapeHtml(q.passage || '')}</textarea></div>`;
       }
       body += '<div class="field"><label>Opsi (pilih yang benar)</label>' + (q.options || []).map((o, j) =>
         `<label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-bottom:4px;">
@@ -1628,25 +1632,43 @@ window.quizGenSave = async () => {
   let saved = 0;
   try {
     let sort = 0;
+    // Dokkai: soal dengan teks bacaan sama digabung jadi satu section reading
+    // (passage → nomor section). Tiap passage unik = section reading baru.
+    const readingSections = new Map();
+    let nextReadingSec = 1;
     for (const i of includes) {
       const d = _quizGenDrafts[i];
       const question = (document.getElementById('qg_q_' + i)?.value || '').trim();
       if (!question) continue;
       const explanation = (document.getElementById('qg_exp_' + i)?.value || '').trim() || null;
       const isListening = d.questionCategory === 'listening' && d.questionType !== 'fill_blank';
+      const isReading = d.questionCategory === 'reading' && d.questionType !== 'fill_blank';
+      let sectionNumber, sectionLabel, passage = null;
+      if (isReading) {
+        passage = (document.getElementById('qg_passage_' + i)?.value || '').trim();
+        let sec = readingSections.get(passage);
+        if (!sec) { sec = nextReadingSec++; readingSections.set(passage, sec); }
+        sectionNumber = sec;
+        sectionLabel = `Dokkai ${sec}`;
+      } else if (isListening) {
+        sectionNumber = 2; sectionLabel = 'Bagian 2';
+      } else {
+        sectionNumber = 1; sectionLabel = 'Bagian 1';
+      }
       const bodyObj = {
         lessonId: _quizGenCtx.lessonId,
         question,
         questionType: d.questionType,
         questionCategory: d.questionCategory,
-        sectionNumber: isListening ? 2 : 1,
-        sectionLabel: isListening ? 'Bagian 2' : 'Bagian 1',
+        sectionNumber,
+        sectionLabel,
         sectionInstruction: null,
         audioScript: isListening ? (document.getElementById('qg_audio_' + i)?.value || '').trim() : '',
         explanation,
         sortOrder: sort++,
         options: [],
       };
+      if (isReading) bodyObj.passage = passage || null;
       if (d.questionType === 'fill_blank') {
         bodyObj.correctAnswer = (document.getElementById('qg_ca_' + i)?.value || '').trim();
         if (!bodyObj.correctAnswer) continue;
@@ -1776,9 +1798,10 @@ window.piRunImport = async (moduleId) => {
 
 // ─── Quiz manager ───
 const QUIZ_CATEGORY_LABELS = {
-  vocabulary: 'Vocabulary',
-  grammar: 'Grammar',
-  listening: 'Listening',
+  vocabulary: 'Moji-Goi',
+  grammar: 'Tata Bahasa',
+  reading: 'Dokkai',
+  listening: 'Menyimak',
 };
 
 function quizCategory(value) {
@@ -1809,7 +1832,7 @@ window.manageQuiz = async (lessonId, lessonTitle, opts) => {
 };
 
 function categorySortOrder(cat) {
-  return { vocabulary: 1, grammar: 2, listening: 3 }[cat] || 9;
+  return { vocabulary: 1, grammar: 2, reading: 3, listening: 4 }[cat] || 9;
 }
 
 function collectSections(questions, lessonId) {
@@ -1823,6 +1846,7 @@ function collectSections(questions, lessonId) {
         category: cat, number: num,
         label: q.section_label || `Section ${num}`,
         instruction: q.section_instruction || '',
+        passage: q.passage || '',
         questions: [],
         isPending: false,
       });
@@ -1908,7 +1932,7 @@ function renderQuizModal(lessonId, lessonTitle, questions, lessonMeta) {
 }
 
 function renderSectionCard(s, lessonId, lessonTitle) {
-  const sectionCtx = { lessonId, lessonTitle, category: s.category, number: s.number, label: s.label, instruction: s.instruction };
+  const sectionCtx = { lessonId, lessonTitle, category: s.category, number: s.number, label: s.label, instruction: s.instruction, passage: s.passage || '' };
   const editKey = stashCtx({ ...sectionCtx, mode: 'edit' });
   const addQKey = stashCtx({ ...sectionCtx, question: null });
   const delKey = stashCtx(sectionCtx);
@@ -1998,6 +2022,7 @@ window.openSectionForm = (key) => {
   const num = ctx.number || (isNew ? nextNumFor(cat) : 1);
   const label = ctx.label || '';
   const instruction = ctx.instruction || '';
+  const passage = ctx.passage || '';
   const backKey = stashCtx({ lessonId, lessonTitle });
 
   openModal(`
@@ -2011,9 +2036,10 @@ window.openSectionForm = (key) => {
       <div class="field-row">
         <div class="field"><label>Kategori</label>
           <select name="sectionCategory" ${isNew ? '' : 'disabled'}>
-            <option value="vocabulary" ${cat === 'vocabulary' ? 'selected' : ''}>Vocabulary</option>
-            <option value="grammar" ${cat === 'grammar' ? 'selected' : ''}>Grammar</option>
-            <option value="listening" ${cat === 'listening' ? 'selected' : ''}>Listening</option>
+            <option value="vocabulary" ${cat === 'vocabulary' ? 'selected' : ''}>Moji-Goi (文字・語彙)</option>
+            <option value="grammar" ${cat === 'grammar' ? 'selected' : ''}>Tata Bahasa (文法)</option>
+            <option value="reading" ${cat === 'reading' ? 'selected' : ''}>Dokkai (読解)</option>
+            <option value="listening" ${cat === 'listening' ? 'selected' : ''}>Menyimak (聴解)</option>
           </select>
         </div>
         <div class="field"><label>Nomor section</label>
@@ -2026,6 +2052,12 @@ window.openSectionForm = (key) => {
       <div class="field"><label>Instruksi section (mondai)</label>
         <textarea name="sectionInstruction" rows="3" lang="ja"
           placeholder="contoh: 問題1：＿＿の ことばは ひらがなで どう かきますか。 1・2・3・4から いちばん いい ものを ひとつ えらんで ください。">${escapeHtml(instruction)}</textarea>
+      </div>
+      <div class="field" id="sectionPassageWrap" style="${cat === 'reading' ? '' : 'display:none;'}">
+        <label>📖 Teks bacaan (dokkai) — tampil di atas semua soal section ini</label>
+        <textarea name="sectionPassage" rows="6" lang="ja"
+          placeholder="Tempel teks bacaan Jepang di sini. Semua soal di section ini akan memakai bacaan yang sama."
+          style="font-family:'Noto Sans JP',serif;width:100%;line-height:1.8;">${escapeHtml(passage)}</textarea>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" onclick="backToManageQuiz('${backKey}')">← Batal</button>
@@ -2040,8 +2072,10 @@ window.openSectionForm = (key) => {
   if (isNew) {
     const catSelect = form.sectionCategory;
     const numInput = form.sectionNumber;
+    const passageWrap = document.getElementById('sectionPassageWrap');
     catSelect.addEventListener('change', () => {
       numInput.value = nextNumFor(catSelect.value);
+      if (passageWrap) passageWrap.style.display = catSelect.value === 'reading' ? '' : 'none';
     });
   }
   form.addEventListener('submit', (e) => submitSection(e, ctx));
@@ -2054,13 +2088,19 @@ async function submitSection(e, ctx) {
   const number = Number(form.sectionNumber.value) || 1;
   const label = form.sectionLabel.value.trim() || `Section ${number}`;
   const instruction = form.sectionInstruction.value.trim();
+  const passage = (form.sectionPassage && category === 'reading')
+    ? form.sectionPassage.value.trim() : '';
   const { lessonId, lessonTitle } = ctx;
 
   if (ctx.mode === 'edit') {
     try {
       await api(`/admin/lessons/${lessonId}/quiz/sections/${ctx.category}/${ctx.number}`, {
         method: 'PUT',
-        body: JSON.stringify({ sectionLabel: label, sectionInstruction: instruction || null }),
+        body: JSON.stringify({
+          sectionLabel: label,
+          sectionInstruction: instruction || null,
+          ...(ctx.category === 'reading' ? { passage: passage || null } : {}),
+        }),
       });
       notify('Section tersimpan');
       manageQuiz(lessonId, lessonTitle);
@@ -2069,10 +2109,10 @@ async function submitSection(e, ctx) {
   }
 
   // New section → stash pending + langsung buka form pertanyaan pertama.
-  _pendingSection = { lessonId, category, number, label, instruction };
+  _pendingSection = { lessonId, category, number, label, instruction, passage };
   const k = stashCtx({
     lessonId, lessonTitle,
-    category, number, label, instruction,
+    category, number, label, instruction, passage,
     question: null,
   });
   openQuestionForm(k);
@@ -2082,6 +2122,7 @@ window.openQuestionForm = (key) => {
   const ctx = _quizCtxStash[key];
   if (!ctx) return;
   const { lessonId, lessonTitle, category, number, label, instruction } = ctx;
+  const passage = ctx.passage || '';
   const q = ctx.question || {
     question: '',
     question_type: 'multiple_choice',
@@ -2092,6 +2133,7 @@ window.openQuestionForm = (key) => {
   };
   const optsHtml = (q.options || []).map((o, i) => optionRowHtml(o, i)).join('');
   const isListening = category === 'listening';
+  const isReading = category === 'reading';
   const backKey = stashCtx({ lessonId, lessonTitle });
 
   openModal(`
@@ -2105,6 +2147,10 @@ window.openQuestionForm = (key) => {
       <div class="quiz-admin-paper">
         <div class="quiz-admin-section-label">${number}. ${escapeHtml(label)}</div>
         ${instruction ? `<div class="quiz-admin-instruction">${escapeHtml(instruction)}</div>` : ''}
+        ${isReading ? `<div class="field">
+          <label>📖 Teks bacaan section (dokkai) — edit di "Edit section"</label>
+          <div lang="ja" style="white-space:pre-wrap;background:#fffdf7;border:1px solid var(--paper-300,#e5e5e5);border-left:4px solid #B20024;border-radius:8px;padding:12px 14px;font-family:'Noto Sans JP',serif;line-height:1.8;font-size:14px;${passage ? '' : 'color:#b91c1c;'}">${passage ? escapeHtml(passage) : '⚠️ Section ini belum punya teks bacaan. Buka "Edit section" untuk menambahkannya.'}</div>
+        </div>` : ''}
         <div class="field"><label>Pertanyaan</label><textarea name="question" class="rich-text" rows="3" required>${escapeHtml(q.question)}</textarea></div>
         ${isListening ? `
           <div class="field">
@@ -2526,7 +2572,7 @@ async function submitQuestion(e, qid, ctx) {
       imageUrl: imgEl ? imgEl.value.trim() || null : null,
     };
   }).filter((o) => o.text);
-  const { lessonId, lessonTitle, category, number, label, instruction } = ctx;
+  const { lessonId, lessonTitle, category, number, label, instruction, passage } = ctx;
   const body = {
     question: form.question.value.trim(),
     questionType: form.questionType.value,
@@ -2539,6 +2585,7 @@ async function submitQuestion(e, qid, ctx) {
     sortOrder: Number(form.sortOrder.value) || 0,
     options,
   };
+  if (category === 'reading') body.passage = passage || null;
   if (!qid) body.lessonId = lessonId;
   try {
     if (qid) await api('/admin/quiz-questions/' + qid, { method: 'PUT', body: JSON.stringify(body) });
