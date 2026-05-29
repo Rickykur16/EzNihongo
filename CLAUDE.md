@@ -177,6 +177,33 @@
   `gtOpenTaskPopup` → `openGrammarTaskPopup`) sampai task selesai. Render kartu
   di-share via `gtCardsHtml`; complete popup (`gtPopupComplete`) menandai lesson
   task selesai + XP lalu lanjut.
+- **Belajar adaptif (deteksi kelemahan + rekomendasi)** — panel "Fokus
+  belajarmu" di dashboard siswa (`welcome.html`): akurasi per kategori
+  (`vocabulary`/`grammar`/`listening`) + pelajaran untuk diulang + catatan
+  coaching AI dari Maneko-chan. Fondasi: handler submit kuis
+  (`POST /api/progress/lesson/:id/quiz-attempt`) sekarang **mem-persist hasil
+  per-soal** (benar/salah + `question_category` di-snapshot) ke tabel
+  `quiz_question_results` (migration 027) — sebelumnya `correctByQuestion`
+  cuma dihitung lalu dibuang, jadi tidak ada granularitas kategori. Best-effort
+  insert (error tidak menggagalkan submit). **Tanpa backfill**: histori baru
+  terkumpul untuk attempt setelah deploy. Endpoint
+  `GET /api/recommendations/me` (`backend/src/routes/recommendations.js`,
+  `requireAuth`): agregasi akurasi per kategori (lookback 90 hari, weak =
+  akurasi < 70% DAN ≥ 8 soal — di bawah itu `insufficientData`), pilih kategori
+  terlemah, lalu pelajaran kandidat (ter-`user_enrollments`, memuat soal
+  kategori itu, skor terbaik < passing atau belum pernah; LIMIT 3). **Catatan
+  coaching AI**: prompt editable admin (`app_settings.coaching_note_prompt`,
+  placeholder `{{studentName}}`/`{{weakCategory}}`/`{{accuracyPct}}`/`{{lessonTitles}}`;
+  tab "AI" di `admin.html`), persona Maneko-chan, di-cache di
+  `coaching_note_cache` per "weakness signature" (akurasi di-bucket 5%) seperti
+  `grammar_eval_cache`. `ANTHROPIC_API_KEY` kosong / gagal → fallback catatan
+  berbasis-aturan (`noteSource:'rule'`), endpoint **tidak pernah 503**. Helper
+  Claude bersama baru `backend/src/anthropic.js` (`callClaude()`); tiga call-site
+  lama (tutor/grammar-task/admin generate) belum dimigrasi (follow-up). Frontend:
+  `loadRecommendations()` dipanggil dari `renderLearning`, render via
+  `recoPanelHtml`; lesson rekomendasi (UUID dari API) dicocokkan via `l.apiId`
+  lalu `selectLesson(moduleSlug, lessonSlug)`. Panel disembunyikan kalau belum
+  ada data kuis.
 
 ## Struktur repo (high-level)
 

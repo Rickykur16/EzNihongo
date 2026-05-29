@@ -354,6 +354,7 @@ function renderApp() {
       <button data-tab="users">Pengguna</button>
       <button data-tab="discussions">Diskusi</button>
       <button data-tab="tts">TTS Cache</button>
+      <button data-tab="ai">AI</button>
     </nav>
     <main>
       <section class="pane" data-pane="courses"></section>
@@ -364,6 +365,7 @@ function renderApp() {
       <section class="pane" data-pane="users"></section>
       <section class="pane" data-pane="discussions"></section>
       <section class="pane" data-pane="tts"></section>
+      <section class="pane" data-pane="ai"></section>
     </main>
   `;
   document.querySelectorAll('nav.tabs button').forEach((btn) => {
@@ -387,7 +389,54 @@ function renderTab() {
   else if (STATE.tab === 'users') { loadUsers().then(renderUsers); }
   else if (STATE.tab === 'discussions') { loadDiscussions().then(renderDiscussions); }
   else if (STATE.tab === 'tts') { renderTtsCachePane(); }
+  else if (STATE.tab === 'ai') { renderAiSettings(); }
 }
+
+// ─────────────────────────────────────────────────────────────
+// AI SETTINGS — prompt catatan coaching (belajar adaptif)
+// ─────────────────────────────────────────────────────────────
+async function renderAiSettings() {
+  const pane = document.querySelector('[data-pane="ai"]');
+  if (!pane) return;
+  pane.innerHTML = '<p style="color:#737373;font-family:var(--font-body);">Memuat…</p>';
+  let val = '', def = '';
+  try {
+    const p = await api('/admin/settings/coaching-note-prompt');
+    val = p.value || '';
+    def = p.default || '';
+  } catch { /* tetap render editor; backend pakai default */ }
+  window.__coachPromptDefault = def;
+  pane.innerHTML = `
+    <div style="max-width:760px;border:1px solid #e5e5e5;border-radius:10px;padding:18px 20px;background:#fff;">
+      <h2 style="margin:0 0 4px;">Catatan Coaching Adaptif (Maneko-chan)</h2>
+      <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 14px;">
+        Catatan personal yang muncul di panel "Fokus belajarmu" siswa, dibuat AI dari area
+        terlemah mereka. Placeholder: <code>{{studentName}}</code> <code>{{weakCategory}}</code>
+        <code>{{accuracyPct}}</code> <code>{{lessonTitles}}</code>. Kosongkan lalu simpan untuk
+        kembali ke default. Butuh <code>ANTHROPIC_API_KEY</code>; tanpa itu siswa tetap dapat
+        catatan berbasis-aturan.
+      </p>
+      <textarea id="coach-prompt" rows="12" style="width:100%;font-family:monospace;font-size:12px;box-sizing:border-box;">${escapeHtml(val)}</textarea>
+      <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;">
+        <button type="button" class="btn btn-ghost" onclick="coachPromptResetDefault()">Isi Default</button>
+        <button type="button" class="btn btn-primary" onclick="coachPromptSave()">Simpan Prompt</button>
+      </div>
+    </div>`;
+}
+
+window.coachPromptResetDefault = () => {
+  const ta = document.getElementById('coach-prompt');
+  if (ta) ta.value = window.__coachPromptDefault || '';
+};
+
+window.coachPromptSave = async () => {
+  const ta = document.getElementById('coach-prompt');
+  if (!ta) return;
+  try {
+    await api('/admin/settings/coaching-note-prompt', { method: 'PUT', body: JSON.stringify({ value: ta.value }) });
+    notify('Prompt coaching disimpan');
+  } catch (err) { notify('Gagal simpan prompt: ' + err.message, true); }
+};
 
 // ─────────────────────────────────────────────────────────────
 // COURSES

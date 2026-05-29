@@ -4,6 +4,7 @@ import path from 'path';
 import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
 import { requireAuth, requireAdmin, asyncHandler } from '../middleware.js';
+import { COACH_PROMPT_DEFAULT } from './recommendations.js';
 import {
   NOTION_BAB_DB_ID_DEFAULT,
   NOTION_VOCAB_LESSON_RELATION,
@@ -539,6 +540,23 @@ router.put('/settings/quiz-gen-prompt', asyncHandler(async (req, res) => {
   const value = String((req.body || {}).value || '');
   await query(
     `INSERT INTO app_settings (key, value, updated_at) VALUES ('quiz_gen_prompt', $1, NOW())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+    [value]
+  );
+  res.json({ ok: true });
+}));
+
+// Prompt catatan coaching belajar adaptif (app_settings.coaching_note_prompt).
+// Placeholder: {{studentName}} {{weakCategory}} {{accuracyPct}} {{lessonTitles}}.
+router.get('/settings/coaching-note-prompt', asyncHandler(async (_req, res) => {
+  const r = await query(`SELECT value FROM app_settings WHERE key = 'coaching_note_prompt'`);
+  res.json({ value: r.rows[0]?.value || '', default: COACH_PROMPT_DEFAULT });
+}));
+
+router.put('/settings/coaching-note-prompt', asyncHandler(async (req, res) => {
+  const value = String((req.body || {}).value || '');
+  await query(
+    `INSERT INTO app_settings (key, value, updated_at) VALUES ('coaching_note_prompt', $1, NOW())
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
     [value]
   );

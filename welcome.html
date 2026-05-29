@@ -1553,6 +1553,19 @@
   /* greeting-time: dark card — styled in base layer, no override needed */
   @media (max-width: 600px) { .greeting-banner { padding: 28px 18px 22px; } }
 
+  /* ── FOKUS BELAJAR: panel rekomendasi adaptif ────────────────────── */
+  .reco-panel-wrap { padding: 0 40px 6px; }
+  @media (max-width: 860px) { .reco-panel-wrap { padding: 0 24px 6px; } }
+  @media (max-width: 600px) { .reco-panel-wrap { padding: 0 16px 6px; } }
+  .reco-panel {
+    padding: 18px 20px;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(27,20,16,.08), 0 0 0 1.5px #F0E0DA;
+  }
+  .reco-lesson { transition: background .15s ease, transform .15s ease; }
+  .reco-lesson:hover { background: #fff1ec; transform: translateX(2px); }
+
   /* ── STATS STRIP: elevated, streak is hero ───────────────────────── */
   .stats-bar { margin-top: -14px; margin-bottom: 32px; padding: 0 28px; }
   @media (max-width: 860px) { .stats-bar { padding: 0 18px; } }
@@ -5068,6 +5081,99 @@ function refreshGreetingBanner() {
 
 setInterval(refreshGreetingBanner, 60 * 1000);
 
+// ── Fokus belajar (rekomendasi adaptif) ──────────────────────────────
+// Panel "Fokus belajarmu": akurasi per kategori (Kosakata/Tata Bahasa/
+// Menyimak) + pelajaran untuk diulang + catatan coaching Maneko-chan. Data
+// dari GET /api/recommendations/me (backend/src/routes/recommendations.js).
+// Disembunyikan kalau belum ada data kuis; endpoint men-degradasi anggun
+// tanpa AI (noteSource 'rule').
+const RECO_CAT_ORDER = ['vocabulary', 'grammar', 'listening'];
+
+async function loadRecommendations() {
+  const host = document.getElementById('reco-panel');
+  if (!host) return;
+  if (typeof window.ezApi !== 'function') { host.innerHTML = ''; return; }
+  try {
+    const r = await window.ezApi('/recommendations/me');
+    if (!r.ok) { host.innerHTML = ''; return; }
+    const data = await r.json();
+    host.innerHTML = recoPanelHtml(data);
+  } catch {
+    host.innerHTML = '';
+  }
+}
+
+function recoCategoryBar(c) {
+  const pct = Math.round((c.accuracy || 0) * 100);
+  const color = c.weak ? '#E5484D' : (pct >= 85 ? '#2E9E5B' : '#E0A100');
+  const sub = c.insufficientData
+    ? `${c.attempts} soal · data belum cukup`
+    : `${pct}% · ${c.correct}/${c.attempts} benar`;
+  return `
+    <div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;color:#1B1410;margin-bottom:5px;">
+        <span>${escapeHtml(c.label || c.category)}${c.weak ? ' <span style="color:#E5484D;">⚠</span>' : ''}</span>
+        <span style="color:#8a7d66;font-weight:600;">${escapeHtml(sub)}</span>
+      </div>
+      <div style="height:8px;border-radius:6px;background:#F0E0DA;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${color};border-radius:6px;transition:width .5s ease;"></div>
+      </div>
+    </div>`;
+}
+
+function recoLessonChip(rec) {
+  // API mengembalikan UUID backend (rec.id). Model konten frontend pakai slug
+  // sebagai id (l.id = slug) dan menyimpan UUID di l.apiId — selectLesson
+  // butuh (moduleSlug, lessonSlug). Cocokkan via apiId lalu pakai slug.
+  const course = COURSE_CONTENT[currentState.course];
+  let mod = null, les = null;
+  if (course) {
+    for (const m of course.modules) {
+      const l = m.lessons.find((l) => l.apiId === rec.id);
+      if (l) { mod = m; les = l; break; }
+    }
+  }
+  const title = escapeHtml(rec.title || (les && les.title) || 'Pelajaran');
+  if (mod && les) {
+    return `<button type="button" class="reco-lesson"
+        onclick="selectLesson('${mod.id}','${les.id}')"
+        style="display:block;width:100%;text-align:left;border:1px solid #F0E0DA;background:#fffafb;border-radius:10px;padding:9px 12px;margin-bottom:6px;cursor:pointer;font-size:13px;color:#1B1410;font-weight:600;">
+        ${title}<span aria-hidden="true" style="float:right;color:#8a7d66;">→</span>
+      </button>`;
+  }
+  return `<div style="border:1px solid #F0E0DA;background:#fffafb;border-radius:10px;padding:9px 12px;margin-bottom:6px;font-size:13px;color:#5b4f42;font-weight:600;">${title}</div>`;
+}
+
+function recoPanelHtml(data) {
+  if (!data || !data.hasData) return '';
+  const cats = (Array.isArray(data.categories) ? data.categories.slice() : [])
+    .sort((a, b) => RECO_CAT_ORDER.indexOf(a.category) - RECO_CAT_ORDER.indexOf(b.category));
+  if (cats.length === 0) return '';
+  const bars = cats.map(recoCategoryBar).join('');
+  const lessonsArr = Array.isArray(data.recommendedLessons) ? data.recommendedLessons : [];
+  const lessons = lessonsArr.map(recoLessonChip).join('');
+  const note = data.coachingNote ? `
+    <div style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding:12px 13px;border-radius:12px;background:#FFF7F4;border:1.5px solid #F0E0DA;">
+      <div style="font-size:22px;line-height:1;flex-shrink:0;">🐾</div>
+      <div>
+        <div style="font-weight:900;font-size:13px;color:#1B1410;">Maneko-chan</div>
+        <div style="font-size:13px;color:#5b4f42;margin-top:2px;line-height:1.55;">${escapeHtml(data.coachingNote)}</div>
+      </div>
+    </div>` : '';
+  return `
+    <div class="reco-panel-wrap">
+      <section class="reco-panel" aria-label="Fokus belajarmu">
+        <h2 style="margin:0 0 13px;font-size:16px;font-weight:900;color:#1B1410;">🎯 Fokus belajarmu</h2>
+        ${bars}
+        ${lessons ? `<div style="margin-top:13px;">
+          <div style="font-size:11px;font-weight:800;color:#8a7d66;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;">Ulangi pelajaran ini</div>
+          ${lessons}
+        </div>` : ''}
+        ${note}
+      </section>
+    </div>`;
+}
+
 // ═══════════════════════════════════════════════
 // RENDER
 // ═══════════════════════════════════════════════
@@ -5228,6 +5334,7 @@ function renderLearning(courseSlug) {
 
   document.getElementById('app-root').innerHTML = `
     ${greetingBannerHtml()}
+    <div id="reco-panel"></div>
     <div class="learning-layout">
       <aside class="sidebar" id="sidebar"></aside>
       <main class="main-content" id="main-content"></main>
@@ -5239,6 +5346,7 @@ function renderLearning(courseSlug) {
 
   renderSidebar();
   renderLesson();
+  loadRecommendations();
   document.getElementById('sidebar-toggle')?.classList.add('visible');
   if (isDesktop()) {
     applySidebarCollapse(localStorage.getItem(SIDEBAR_KEY) === '1');
