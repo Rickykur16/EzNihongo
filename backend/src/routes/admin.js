@@ -945,29 +945,35 @@ const QUIZ_KINDS = {
 
 // Prompt generator editable admin (app_settings.quiz_gen_prompt). Placeholder
 // diisi per request: {{count}} {{kinds}} {{instruction}} {{vocab}} {{grammar}}.
-const QUIZ_GEN_PROMPT_DEFAULT = `Buatkan {{count}} soal kuis dalam Bahasa Indonesia untuk satu pelajaran.
+const QUIZ_GEN_PROMPT_DEFAULT = `Buatkan {{count}} soal kuis bahasa Jepang gaya JLPT N5/N4. Distribusikan sesuai jenis yang diminta.
 
-Jenis soal yang diminta (distribusikan merata):
+Jenis soal yang diminta:
 {{kinds}}
 
 {{instruction}}
 Gunakan HANYA materi di bawah sebagai sumber. Jangan mengarang kosakata atau pola di luar ini.
 
-Kosakata:
+Kosakata (japanese (reading) = arti):
 {{vocab}}
 
 Pola grammar:
 {{grammar}}
 
-Aturan:
-- Pertanyaan dan "explanation" dalam Bahasa Indonesia; teks Jepang boleh muncul di soal/opsi.
-- multiple_choice: tepat 4 opsi, tepat 1 dengan "isCorrect": true.
-- fill_blank: isi "correctAnswer" (jawaban singkat), "options": [].
-- listening: "audioScript" = kata/kalimat Jepang yang didengar; 4 opsi arti, 1 benar.
-- "explanation": alasan singkat kenapa jawaban benar.
+Aturan umum:
+- "explanation": 1 kalimat Bahasa Indonesia, alasan/arti singkat.
+- multiple_choice: tepat 4 opsi, tepat 1 dengan "isCorrect": true. Distraktor masuk akal & sepadan (panjang/jenis mirip).
+
+Aturan per jenis soal:
+- kosakata (questionCategory "vocabulary", multiple_choice) = MOJI-GOI cara baca kanji:
+  * field "question" HANYA satu kalimat contoh natural. DILARANG menulis pertanyaan ("読み方は何ですか" dsb) atau tanda kutip 「」 — instruksi mondai sudah otomatis tampil di header section.
+  * kata target ditulis KANJI dan WAJIB dibungkus tag <u>…</u> (hanya kata target, bukan seluruh kalimat). Contoh: 私の <u>仕事</u> はエンジニアです。
+  * 4 opsi = cara baca HIRAGANA kata target; 1 benar (sesuai "reading" di daftar), 3 salah = kana mirip/diacak (ubah urutan kana, vokal panjang/pendek, dengung す/ず・し/じ, atau っ/つ). Contoh しごと → しゅう, じぎょう, しぎょう.
+- grammar (questionCategory "grammar", multiple_choice): kalimat dengan ＿＿ kosong; 4 opsi pola/partikel, 1 benar.
+- isian (questionType "fill_blank", questionCategory "vocabulary"): isi "correctAnswer" (jawaban singkat), "options": [].
+- menyimak (questionCategory "listening", multiple_choice): isi "audioScript" = kalimat Jepang yang didengar; 4 opsi arti, 1 benar.
 
 Balas HANYA JSON valid tanpa teks lain, bentuk:
-{"questions":[{"question":"...","questionType":"multiple_choice","questionCategory":"vocabulary","audioScript":"","correctAnswer":"","explanation":"...","options":[{"text":"...","isCorrect":true},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false}]}]}`;
+{"questions":[{"question":"私の <u>仕事</u> はエンジニアです。","questionType":"multiple_choice","questionCategory":"vocabulary","audioScript":"","correctAnswer":"","explanation":"仕事 dibaca しごと = pekerjaan.","options":[{"text":"しごと","isCorrect":true},{"text":"しゅう","isCorrect":false},{"text":"じぎょう","isCorrect":false},{"text":"しぎょう","isCorrect":false}]}]}`;
 
 function _fillTemplate(tpl, vars) {
   return String(tpl).replace(/\{\{(\w+)\}\}/g, (_m, k) => (vars[k] != null ? String(vars[k]) : ''));
