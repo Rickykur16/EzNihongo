@@ -51,6 +51,10 @@
   .badge-admin { background: var(--purple-soft); color: var(--purple); }
   select, input, textarea { font-family: inherit; padding: 10px 12px; border: 1px solid var(--paper-300); border-radius: var(--radius-md); font-size: 14px; width: 100%; color: var(--ink-900); background: var(--surface-white); transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); }
   select:focus, input:focus, textarea:focus { outline: none; border-color: var(--brand-red); box-shadow: var(--focus-ring); }
+  /* Checkbox/radio jangan kena width:100% + border + padding dari rule input
+     di atas (bikin kotak full-width, label turun ke bawah). Reset ke native. */
+  input[type=checkbox], input[type=radio] { width: auto; padding: 0; border: 0; box-shadow: none; margin: 0; vertical-align: middle; flex: none; }
+  input[type=checkbox]:focus, input[type=radio]:focus { box-shadow: none; border: 0; }
   textarea { resize: vertical; min-height: 100px; font-family: var(--font-body); }
   .modal-backdrop { position: fixed; inset: 0; background: var(--surface-overlay); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 1000; }
   .modal-backdrop.show { display: flex; }
@@ -1516,11 +1520,11 @@ window.generateQuizAI = async (lessonId, lessonTitle) => {
     </div>
     <div class="field">
       <label>Jenis soal</label>
-      <label style="display:block;font-weight:400;"><input type="checkbox" class="qg-kind" value="mc_vocab" checked /> Pilihan ganda — kosakata</label>
-      <label style="display:block;font-weight:400;"><input type="checkbox" class="qg-kind" value="mc_grammar" checked /> Pilihan ganda — grammar</label>
-      <label style="display:block;font-weight:400;"><input type="checkbox" class="qg-kind" value="fill_blank" /> Isian (fill blank)</label>
-      <label style="display:block;font-weight:400;"><input type="checkbox" class="qg-kind" value="dokkai" /> Dokkai (reading — bacaan + soal)</label>
-      <label style="display:block;font-weight:400;"><input type="checkbox" class="qg-kind" value="listening" /> Menyimak (listening)</label>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="mc_vocab" checked /> Pilihan ganda — Moji-Goi</label>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="mc_grammar" checked /> Pilihan ganda — Tata Bahasa</label>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="fill_blank" /> Isian (fill blank)</label>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="dokkai" /> Dokkai (reading — bacaan + soal)</label>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="listening" /> Menyimak (listening)</label>
     </div>
     <div class="field">
       <label>Instruksi tambahan (opsional)</label>
