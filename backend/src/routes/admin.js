@@ -937,7 +937,7 @@ function _extractJsonObject(text) {
 
 // Jenis soal yang bisa diminta admin -> (questionType, questionCategory).
 const QUIZ_KINDS = {
-  mc_vocab:   { type: 'multiple_choice', cat: 'vocabulary', label: 'pilihan ganda moji-goi/kosakata (questionType=multiple_choice, questionCategory=vocabulary, 4 opsi 1 benar)' },
+  mc_vocab:   { type: 'multiple_choice', cat: 'vocabulary', label: 'pilihan ganda kosakata (questionType=multiple_choice, questionCategory=vocabulary, 4 opsi 1 benar)' },
   mc_grammar: { type: 'multiple_choice', cat: 'grammar',    label: 'pilihan ganda grammar (multiple_choice, grammar, 4 opsi 1 benar)' },
   fill_blank: { type: 'fill_blank',      cat: 'vocabulary', label: 'isian (questionType=fill_blank, isi "correctAnswer", "options": [])' },
   dokkai:     { type: 'multiple_choice', cat: 'reading',    label: 'dokkai/reading (multiple_choice, questionCategory=reading, isi "passage" dengan teks bacaan Jepang lalu BEBERAPA soal pemahaman 4 opsi yang memakai "passage" sama persis)' },

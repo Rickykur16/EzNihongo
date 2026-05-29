@@ -204,14 +204,16 @@
   `recoPanelHtml`; lesson rekomendasi (UUID dari API) dicocokkan via `l.apiId`
   lalu `selectLesson(moduleSlug, lessonSlug)`. Panel disembunyikan kalau belum
   ada data kuis.
-- **Kategori soal kuis = 4 seksi JLPT** (`quiz_questions.question_category`):
-  `vocabulary` (label "Moji-Goi 文字・語彙"), `grammar` (Tata Bahasa 文法),
-  `reading` (Dokkai 読解; migration 028), `listening` (Menyimak 聴解). Key internal
-  `vocabulary`/`listening` SENGAJA dipertahankan (cuma label UI yang berubah) —
-  tidak ada migrasi data. CHECK constraint `quiz_questions_category_check`
-  (migration 028 drop kedua kemungkinan nama lalu add ulang dgn 4 nilai).
-  Label dikelola di 3 tempat sejajar: `QUIZ_CATEGORY_LABELS` (admin.html),
-  `QUIZ_CATEGORY_META` (welcome.html), `CATEGORY_LABEL` (recommendations.js).
+- **Kategori soal kuis** (`quiz_questions.question_category`): 4 nilai —
+  `vocabulary`, `grammar`, `reading` (Dokkai; migration 028), `listening`.
+  Label UI: admin.html/welcome.html pakai "Vocabulary"/"Grammar"/"Dokkai"/
+  "Listening"; panel adaptif (recommendations.js) pakai "Kosakata"/"Tata Bahasa"/
+  "Dokkai"/"Menyimak". Cuma `reading`/Dokkai yang ditambah; tiga lama
+  dipertahankan apa adanya (tidak ada migrasi data). CHECK constraint
+  `quiz_questions_category_check` (migration 028 drop kedua kemungkinan nama
+  lalu add ulang dgn 4 nilai). Label dikelola di 3 tempat sejajar:
+  `QUIZ_CATEGORY_LABELS` (admin.html), `QUIZ_CATEGORY_META` (welcome.html),
+  `CATEGORY_LABEL` (recommendations.js).
 - **Tipe soal `reading` (Dokkai, passage bacaan)** — satu teks bacaan → beberapa
   soal. Passage disimpan di kolom `quiz_questions.passage` (TEXT, denormalized
   per-soal seperti `section_instruction`); semua soal dalam satu section dokkai
