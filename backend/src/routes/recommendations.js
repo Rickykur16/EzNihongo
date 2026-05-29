@@ -19,7 +19,7 @@ const LOOKBACK_DAYS = 90;
 const MAX_LESSONS = 3;
 
 const CATEGORY_LABEL = {
-  vocabulary: 'Moji-Goi',
+  vocabulary: 'Kosakata',
   grammar: 'Tata Bahasa',
   reading: 'Dokkai',
   listening: 'Menyimak',

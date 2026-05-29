@@ -1520,8 +1520,8 @@ window.generateQuizAI = async (lessonId, lessonTitle) => {
     </div>
     <div class="field">
       <label>Jenis soal</label>
-      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="mc_vocab" checked /> Pilihan ganda — Moji-Goi</label>
-      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="mc_grammar" checked /> Pilihan ganda — Tata Bahasa</label>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="mc_vocab" checked /> Pilihan ganda — kosakata</label>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="mc_grammar" checked /> Pilihan ganda — grammar</label>
       <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="fill_blank" /> Isian (fill blank)</label>
       <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="dokkai" /> Dokkai (reading — bacaan + soal)</label>
       <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="listening" /> Menyimak (listening)</label>
@@ -1584,7 +1584,7 @@ window.quizGenRun = async () => {
   }
 };
 
-function _qgCatLabel(c) { return c === 'grammar' ? 'Tata Bahasa' : c === 'listening' ? 'Menyimak' : c === 'reading' ? 'Dokkai' : 'Moji-Goi'; }
+function _qgCatLabel(c) { return c === 'grammar' ? 'Grammar' : c === 'listening' ? 'Menyimak' : c === 'reading' ? 'Dokkai' : 'Kosakata'; }
 
 function quizGenRenderPreview() {
   const cards = _quizGenDrafts.map((q, i) => {
@@ -1802,10 +1802,10 @@ window.piRunImport = async (moduleId) => {
 
 // ─── Quiz manager ───
 const QUIZ_CATEGORY_LABELS = {
-  vocabulary: 'Moji-Goi',
-  grammar: 'Tata Bahasa',
+  vocabulary: 'Vocabulary',
+  grammar: 'Grammar',
   reading: 'Dokkai',
-  listening: 'Menyimak',
+  listening: 'Listening',
 };
 
 function quizCategory(value) {
@@ -2040,10 +2040,10 @@ window.openSectionForm = (key) => {
       <div class="field-row">
         <div class="field"><label>Kategori</label>
           <select name="sectionCategory" ${isNew ? '' : 'disabled'}>
-            <option value="vocabulary" ${cat === 'vocabulary' ? 'selected' : ''}>Moji-Goi (文字・語彙)</option>
-            <option value="grammar" ${cat === 'grammar' ? 'selected' : ''}>Tata Bahasa (文法)</option>
-            <option value="reading" ${cat === 'reading' ? 'selected' : ''}>Dokkai (読解)</option>
-            <option value="listening" ${cat === 'listening' ? 'selected' : ''}>Menyimak (聴解)</option>
+            <option value="vocabulary" ${cat === 'vocabulary' ? 'selected' : ''}>Vocabulary</option>
+            <option value="grammar" ${cat === 'grammar' ? 'selected' : ''}>Grammar</option>
+            <option value="reading" ${cat === 'reading' ? 'selected' : ''}>Dokkai</option>
+            <option value="listening" ${cat === 'listening' ? 'selected' : ''}>Listening</option>
           </select>
         </div>
         <div class="field"><label>Nomor section</label>
