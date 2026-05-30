@@ -5666,6 +5666,38 @@ window.openVocabList = async () => {
   const main = document.getElementById('main-content');
   if (!main) return;
 
+  // 0) Daftar Kosakata sebagai DECK: gabungan semua kartu deck per Bab (modul)
+  //    di level ini. Tiap modul yang punya pelajaran bertipe `deck` jadi satu
+  //    grup; kartu dari semua deck-lesson di modul itu digabung (dedup by id
+  //    dalam modul). Render pakai kartu + modal contoh kalimat (reuse UI deck
+  //    lesson). Kalau level ini sama sekali tak punya deck-lesson, jatuh ke
+  //    tampilan tabel lama (Notion / cache DB / flashcard) di bawah.
+  if (course && Array.isArray(course.modules)) {
+    const deckGroups = [];
+    const flat = []; // window.__deckData — semua kartu berurutan utk modal nav
+    for (const m of course.modules) {
+      const seen = new Set();
+      const items = [];
+      for (const l of (m.lessons || [])) {
+        if (l.type !== 'deck' || !Array.isArray(l.deck)) continue;
+        for (const d of l.deck) {
+          if (!d) continue;
+          const id = d.id != null ? String(d.id) : '';
+          if (id && seen.has(id)) continue;
+          if (id) seen.add(id);
+          items.push({ item: d, gi: flat.length });
+          flat.push(d);
+        }
+      }
+      if (items.length) deckGroups.push({ key: 'vd-' + m.id, num: m.num, title: m.title, items });
+    }
+    if (deckGroups.length > 0) {
+      window.__deckData = flat;
+      renderVocabDeckView(course, slug, deckGroups, flat.length);
+      return;
+    }
+  }
+
   // 1) Try the Notion-backed cache. Response can be either:
   //    { sections: [{ name, bab: [{ kode, name, vocab: [...] }] }] }
   //    { bab: [...] }                                                ← flat
@@ -5972,6 +6004,138 @@ window.toggleVocabBab = (key) => {
   bab.classList.toggle('open', !wasOpen);
   const btn = bab.querySelector('.vocab-bab-toggle');
   if (btn) btn.setAttribute('aria-expanded', wasOpen ? 'false' : 'true');
+};
+
+// Daftar Kosakata sebagai deck per Bab (lihat openVocabList). Tiap grup =
+// satu modul; isinya grid kartu deck (gabungan semua deck-lesson modul itu)
+// + modal contoh kalimat yang sama dengan pelajaran bertipe `deck`. Kartu
+// memakai indeks global ke window.__deckData supaya nav prev/next di modal
+// mulus lintas Bab.
+function renderVocabDeckView(course, slug, groups, totalCards) {
+  const main = document.getElementById('main-content');
+  if (!main) return;
+  const courseName = course?.name || slug.toUpperCase();
+  const levelChip = slug.toUpperCase();
+
+  // Wire keyboard nav modal deck sekali (sama seperti renderDeckLesson) — biar
+  // ← → / Esc jalan walau pelajaran deck belum pernah dibuka sesi ini.
+  if (!window.__deckEscWired) {
+    document.addEventListener('keydown', (e) => {
+      const back = document.getElementById('deck-modal-backdrop');
+      const open = back && back.classList.contains('open');
+      if (!open) return;
+      if (e.key === 'Escape') { window.closeDeckModal && window.closeDeckModal(); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); window.deckModalStep && window.deckModalStep(-1); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); window.deckModalStep && window.deckModalStep(1); }
+    });
+    window.__deckEscWired = true;
+  }
+
+  const cardHtml = (it, gi) => {
+    const search = ((it.japanese || '') + ' ' + (it.reading || '') + ' ' + (it.romaji || '') + ' ' + (it.indonesian || '')).toLowerCase();
+    const jp = escapeHtml(it.japanese || '');
+    const arti = escapeHtml(it.indonesian || '');
+    return `<div class="deck-card" role="button" tabindex="0" aria-label="${jp}${arti ? ' — ' + arti : ''}. Tekan Enter untuk lihat contoh kalimat." data-deck-search="${escapeHtml(search)}" style="--deck-accent:${deckAccent(it)};" onclick="openDeckModal(${gi})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDeckModal(${gi})}">
+      <button class="dc-audio" type="button" aria-label="Dengar pengucapan ${jp}" onclick="event.stopPropagation();playDeckAudio(${gi}, this)">${AUDIO_SVG}</button>
+      <div class="dc-jp" lang="ja">${jp}</div>
+      ${it.reading ? `<div class="dc-kana" lang="ja">${escapeHtml(it.reading)}</div>` : ''}
+      <div class="dc-meaning">${arti}</div>
+      <span class="dc-len" aria-hidden="true">Klik untuk contoh</span>
+    </div>`;
+  };
+
+  const babHtml = groups.map((g, i) => {
+    const open = i === 0;
+    const cards = g.items.map(({ item, gi }) => cardHtml(item, gi)).join('');
+    return `
+      <div class="vocab-bab vocab-list-group ${open ? 'open' : ''}" data-bab="${escapeHtml(g.key)}">
+        <button class="vocab-bab-toggle" type="button" aria-expanded="${open ? 'true' : 'false'}" onclick="window.toggleVocabDeckBab('${g.key}')">
+          ${g.num ? `<span class="vb-kode">Bab ${escapeHtml(g.num)}</span>` : ''}
+          <span class="vb-name">${escapeHtml(g.title)}</span>
+          <span class="vb-count">${g.items.length} kata</span>
+          <svg class="vb-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
+        </button>
+        <div class="vocab-bab-body">
+          <div class="deck-grid">${cards}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  main.innerHTML = `
+    <p class="lesson-breadcrumb">${escapeHtml(courseName)} · KOSAKATA</p>
+    <h1 class="lesson-title">📒 Kosakata <span class="vocab-level-chip">${escapeHtml(levelChip)}</span></h1>
+    <p class="lesson-subtitle">${totalCards} kata · ${groups.length} Bab. Gabungan semua deck kosakata per Bab — klik kartu untuk contoh kalimat.</p>
+    <div class="module-filter" style="margin:14px 0 18px;">
+      <svg class="mf-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" id="vocab-list-filter" placeholder="Cari kosakata..." oninput="window.filterVocabDeck(this.value)" autocomplete="off" />
+    </div>
+    <div class="vocab-sections vocab-deck-list">${babHtml}</div>
+    <div class="deck-modal-backdrop" id="deck-modal-backdrop" onclick="if(event.target===this)closeDeckModal()">
+      <div class="deck-modal" id="deck-modal" role="dialog" aria-modal="true" aria-labelledby="deck-modal-jp" tabindex="-1">
+        <button class="deck-modal-close" type="button" aria-label="Tutup" onclick="closeDeckModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+        </button>
+        <div class="deck-modal-head">
+          <div class="dm-jp" lang="ja" id="deck-modal-jp"></div>
+          <div class="dm-info">
+            <div class="dm-cat"></div>
+            <div class="dm-kana" lang="ja"></div>
+            <div class="dm-romaji"></div>
+            <div class="dm-arti"></div>
+          </div>
+          <button class="dm-headaudio" type="button" aria-label="Dengar kata">${AUDIO_SVG}</button>
+        </div>
+        <div class="deck-modal-label">Contoh Kalimat · 例文</div>
+        <div class="deck-ex-list" id="deck-ex-list"></div>
+        <div class="deck-modal-nav">
+          <button type="button" id="deck-modal-prev" aria-label="Kata sebelumnya (←)" onclick="window.deckModalStep(-1)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+            <span>Sebelumnya</span>
+          </button>
+          <span class="dm-counter" id="deck-modal-counter" aria-live="polite"></span>
+          <button type="button" id="deck-modal-next" aria-label="Kata berikutnya (→)" onclick="window.deckModalStep(1)">
+            <span>Berikutnya</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Accordion Bab di Daftar Kosakata deck: tiap Bab buka/tutup mandiri.
+window.toggleVocabDeckBab = (key) => {
+  const bab = document.querySelector(`#main-content .vocab-deck-list .vocab-bab[data-bab="${key}"]`);
+  if (!bab) return;
+  const open = bab.classList.toggle('open');
+  const btn = bab.querySelector('.vocab-bab-toggle');
+  if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+};
+
+// Filter kartu di Daftar Kosakata deck: sembunyikan kartu yang tak cocok,
+// sembunyikan Bab kosong, auto-buka Bab yang punya match saat mengetik;
+// saat kosong kembali ke default (hanya Bab pertama terbuka).
+window.filterVocabDeck = (q) => {
+  const query = String(q ?? '').trim().toLowerCase();
+  document.querySelectorAll('#main-content .vocab-deck-list .vocab-bab').forEach((bab, i) => {
+    let visible = 0;
+    bab.querySelectorAll('.deck-card').forEach((c) => {
+      const show = !query || (c.dataset.deckSearch || '').includes(query);
+      c.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    bab.style.display = visible === 0 ? 'none' : '';
+    const btn = bab.querySelector('.vocab-bab-toggle');
+    if (query && visible > 0) {
+      bab.classList.add('open');
+      if (btn) btn.setAttribute('aria-expanded', 'true');
+    } else if (!query) {
+      const open = i === 0;
+      bab.classList.toggle('open', open);
+      if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+  });
 };
 
 // ── Daftar Kanji (mirror Daftar Kosakata + detail modal dengan stroke
