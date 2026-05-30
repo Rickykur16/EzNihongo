@@ -1169,6 +1169,11 @@ Balas HANYA JSON valid tanpa teks lain:
 router.post('/generate-vocab-examples', asyncHandler(async (req, res) => {
   const { vocabularyId } = req.body || {};
   const count = Math.max(1, Math.min(5, Number((req.body || {}).count) || 3));
+  const avoidRaw = Array.isArray((req.body || {}).avoid) ? (req.body || {}).avoid : [];
+  const avoid = avoidRaw
+    .map((s) => String(s || '').trim().slice(0, 300))
+    .filter(Boolean)
+    .slice(0, 20);
   if (!vocabularyId) return res.status(400).json({ error: 'vocabularyId required' });
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
 
@@ -1176,9 +1181,13 @@ router.post('/generate-vocab-examples', asyncHandler(async (req, res) => {
   if (v.rows.length === 0) return res.status(404).json({ error: 'vocab not found' });
   const word = v.rows[0];
 
+  const avoidBlock = avoid.length > 0
+    ? `\nSudah ada contoh berikut — buat yang BERBEDA dan variasikan situasi/pelaku/waktu, jangan mirip:\n${avoid.map((s) => `- ${s}`).join('\n')}\n`
+    : '';
+
   const userContent = `Buat ${count} contoh kalimat bahasa Jepang gaya JLPT N5/N4 yang memakai kata berikut.
 Kata: ${word.japanese}${word.reading ? ` (${word.reading})` : ''}${word.indonesian ? ` = ${word.indonesian}` : ''}
-
+${avoidBlock}
 Aturan:
 - Tiap kalimat pendek, natural, level pemula, dan BENAR-BENAR memakai kata "${word.japanese}".
 - "highlight" = potongan persis yang muncul di kalimat untuk kata itu (biasanya "${word.japanese}" atau bentuk yang dipakai di kalimat).

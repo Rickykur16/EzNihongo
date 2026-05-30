@@ -3357,8 +3357,18 @@ window.deckGenExamples = async () => {
   if (!vid) return;
   const btn = document.getElementById('deck-ex-gen');
   if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  // Kirim kalimat yang sudah ada (tersimpan + baru di-generate) supaya AI bikin
+  // yang BERBEDA, bukan ulang yang sama.
+  const tbForAvoid = document.getElementById('deck-ex-body');
+  const avoid = tbForAvoid
+    ? Array.from(tbForAvoid.querySelectorAll('input[name="japanese"]'))
+        .map((i) => (i.value || '').trim()).filter(Boolean)
+    : [];
   try {
-    const d = await api('/admin/generate-vocab-examples', { method: 'POST', body: JSON.stringify({ vocabularyId: vid, count: 3 }) });
+    const d = await api('/admin/generate-vocab-examples', {
+      method: 'POST',
+      body: JSON.stringify({ vocabularyId: vid, count: 3, avoid }),
+    });
     const exs = Array.isArray(d.examples) ? d.examples : [];
     if (exs.length === 0) { notify('AI tidak menghasilkan contoh. Coba lagi.', true); return; }
     const tb = document.getElementById('deck-ex-body');
