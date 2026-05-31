@@ -2446,23 +2446,34 @@
   }
   .grammar-pattern {
     font-weight: 800;
-    font-size: 15px;
+    font-size: 17px;
     color: var(--du-ink);
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+    font-family: 'Noto Sans JP', sans-serif;
+    letter-spacing: -0.01em;
   }
   .grammar-meaning {
     font-size: 13.5px; color: var(--du-ink-2);
-    margin-bottom: 8px;
+    margin-bottom: 14px;
+  }
+  /* Wrapper untuk tiap blok (contoh / dialog) — kasih label di atas konten. */
+  .grammar-block { margin-top: 14px; }
+  .grammar-block-label {
+    font-size: 11.5px;
+    font-weight: 800;
+    color: var(--du-ink-3, #8a7d66);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
   }
   .grammar-example {
     background: var(--du-surface);
-    border-left: 2px solid var(--du-accent-2);
-    border-radius: 6px;
-    padding: 8px 12px;
-    margin-top: 6px;
-    font-size: 13.5px;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 15.5px;
     color: var(--du-ink);
     font-family: 'Noto Sans JP', sans-serif;
+    line-height: 1.7;
     white-space: pre-wrap;
   }
   .grammar-notes {
@@ -6431,9 +6442,15 @@ function renderLessonGrammar(lesson) {
           <div class="grammar-card">
             <div class="grammar-pattern">${escapeHtml(g.pattern || '')}</div>
             ${g.meaning ? `<div class="grammar-meaning">${escapeHtml(g.meaning)}</div>` : ''}
-            ${g.example ? `<div class="grammar-example">${escapeHtml(g.example)}</div>` : ''}
+            ${g.example ? `<div class="grammar-block">
+              <div class="grammar-block-label">📝 Contoh</div>
+              <div class="grammar-example" lang="ja">${escapeHtml(g.example)}</div>
+            </div>` : ''}
+            ${dialog ? `<div class="grammar-block">
+              <div class="grammar-block-label">💬 Dialog contoh</div>
+              ${grammarKaraokeHtml(dialog, `g${i}`)}
+            </div>` : ''}
             ${g.notes ? `<div class="grammar-notes">${escapeHtml(g.notes)}</div>` : ''}
-            ${dialog ? grammarKaraokeHtml(dialog, `g${i}`) : ''}
           </div>`;
         }).join('')}
       </div>

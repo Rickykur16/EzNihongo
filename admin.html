@@ -2621,17 +2621,63 @@ function itemRowHtml(item, fields, kind) {
     }
     return `<td><input name="${f.name}" value="${escapeHtml(item[f.name] || '')}" style="${f.style}" /></td>`;
   }).join('');
+  const aiButtons = kind === 'grammar' ? `
+    <button type="button" class="btn btn-ghost btn-sm" title="Generate contoh kalimat (AI) dari Pola + Arti" onclick="grmrGenExample(this)">✨ Contoh</button>
+    <button type="button" class="btn btn-ghost btn-sm" title="Generate dialog 3-suara N/A/B (AI) dari Pola + Arti" onclick="grmrGenDialog(this)">✨ Dialog</button>
+  ` : '';
   return `
     <tr data-id="${item.id || ''}" data-kind="${kind}">
       ${cells}
       <td><input type="number" name="sortOrder" value="${item.sort_order || 0}" style="width:60px;" /></td>
       <td class="actions">
+        ${aiButtons}
         <button type="button" class="btn btn-primary" onclick="saveItemRow(this)">Simpan</button>
         ${item.id ? `<button type="button" class="btn btn-danger" onclick="deleteItemRow(this)">×</button>` : `<button type="button" class="btn btn-ghost" onclick="this.closest('tr').remove()">×</button>`}
       </td>
     </tr>
   `;
 }
+
+// Tombol AI per baris grammar — populate field example / example_dialog
+// dari Pola + Arti. Admin review lalu klik Simpan untuk persist.
+window.grmrGenExample = async (btn) => {
+  const tr = btn.closest('tr'); if (!tr) return;
+  const pattern = (tr.querySelector('input[name="pattern"]')?.value || '').trim();
+  const meaning = (tr.querySelector('input[name="meaning"]')?.value || '').trim();
+  if (!pattern) { notify('Isi Pola dulu', true); return; }
+  const orig = btn.textContent; btn.disabled = true; btn.textContent = '…';
+  try {
+    const d = await api('/admin/generate-grammar-example', {
+      method: 'POST', body: JSON.stringify({ pattern, meaning }),
+    });
+    const ex = (d.example || '').trim();
+    if (!ex) { notify('AI tidak menghasilkan contoh', true); return; }
+    const inp = tr.querySelector('input[name="example"]');
+    if (inp) inp.value = ex;
+    notify('Contoh dibuat AI — review lalu klik Simpan');
+  } catch (err) { notify('Gagal: ' + err.message, true); }
+  finally { btn.disabled = false; btn.textContent = orig; }
+};
+
+window.grmrGenDialog = async (btn) => {
+  const tr = btn.closest('tr'); if (!tr) return;
+  const pattern = (tr.querySelector('input[name="pattern"]')?.value || '').trim();
+  const meaning = (tr.querySelector('input[name="meaning"]')?.value || '').trim();
+  const example = (tr.querySelector('input[name="example"]')?.value || '').trim();
+  if (!pattern) { notify('Isi Pola dulu', true); return; }
+  const orig = btn.textContent; btn.disabled = true; btn.textContent = '…';
+  try {
+    const d = await api('/admin/generate-grammar-dialog', {
+      method: 'POST', body: JSON.stringify({ pattern, meaning, example }),
+    });
+    const dlg = (d.dialog || '').trim();
+    if (!dlg) { notify('AI tidak menghasilkan dialog', true); return; }
+    const ta = tr.querySelector('textarea[name="example_dialog"]');
+    if (ta) ta.value = dlg;
+    notify('Dialog dibuat AI — review lalu klik Simpan');
+  } catch (err) { notify('Gagal: ' + err.message, true); }
+  finally { btn.disabled = false; btn.textContent = orig; }
+};
 
 function renderItemTable(kind, items) {
   const fields = kind === 'vocab' ? VOCAB_FIELDS : GRAMMAR_FIELDS;
