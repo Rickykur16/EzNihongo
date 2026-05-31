@@ -1218,6 +1218,79 @@ Balas HANYA JSON valid tanpa teks lain:
   res.json({ examples });
 }));
 
+// Generate gambar ilustrasi (AI) untuk kosakata deck — tombol "Gambar (AI)"
+// di Kelola Deck. Provider default: OpenAI gpt-image-1 (quality=low,
+// ~$0.011/gambar). Bytes disimpan di vocab_image_cache (BYTEA), 1 gambar
+// per kosakata; klik ulang dgn force=true untuk regenerate. Public serve
+// lewat GET /api/vocab-image?vocabularyId=... (routes/vocab-image.js).
+// OPENAI_API_KEY opsional (bukan REQUIRED_ENV); kosong → 503.
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
+const OPENAI_IMAGE_QUALITY = process.env.OPENAI_IMAGE_QUALITY || 'low';
+const OPENAI_IMAGE_SIZE = process.env.OPENAI_IMAGE_SIZE || '1024x1024';
+
+router.post('/generate-vocab-image', asyncHandler(async (req, res) => {
+  const { vocabularyId, force } = req.body || {};
+  if (!vocabularyId) return res.status(400).json({ error: 'vocabularyId required' });
+  if (!OPENAI_API_KEY) return res.status(503).json({ error: 'image_disabled', detail: 'OPENAI_API_KEY belum diset.' });
+
+  const v = await query(`SELECT japanese, reading, indonesian, category FROM module_vocabulary WHERE id = $1`, [vocabularyId]);
+  if (v.rows.length === 0) return res.status(404).json({ error: 'vocab not found' });
+  const word = v.rows[0];
+
+  if (!force) {
+    const hit = await query(`SELECT 1 FROM vocab_image_cache WHERE vocabulary_id = $1`, [vocabularyId]);
+    if (hit.rows.length > 0) {
+      query(`UPDATE vocab_image_cache SET last_used_at = NOW() WHERE vocabulary_id = $1`, [vocabularyId]).catch(() => {});
+      return res.json({ ok: true, cached: true });
+    }
+  }
+
+  const concept = word.indonesian || word.japanese;
+  const prompt = `Simple flat illustration showing the concept of "${concept}" (Japanese: ${word.japanese}${word.reading ? `, ${word.reading}` : ''}). Minimalist textbook-style art for a vocabulary card. No text or letters in the image. Clean white background. Friendly, clear, instantly recognizable.`;
+
+  let bytes;
+  try {
+    const upstream = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'authorization': `Bearer ${OPENAI_API_KEY}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: OPENAI_IMAGE_MODEL,
+        prompt,
+        size: OPENAI_IMAGE_SIZE,
+        quality: OPENAI_IMAGE_QUALITY,
+        n: 1,
+      }),
+    });
+    if (!upstream.ok) {
+      const detail = await upstream.text().catch(() => '');
+      console.error('OpenAI image:', upstream.status, detail.slice(0, 200));
+      return res.status(502).json({ error: 'image_upstream', detail: detail.slice(0, 200) });
+    }
+    const data = await upstream.json();
+    const b64 = data?.data?.[0]?.b64_json;
+    if (!b64) return res.status(502).json({ error: 'image_empty' });
+    bytes = Buffer.from(b64, 'base64');
+  } catch (err) {
+    console.error('OpenAI image error:', err.message);
+    return res.status(502).json({ error: 'image_upstream' });
+  }
+
+  await query(
+    `INSERT INTO vocab_image_cache (vocabulary_id, image_bytes, mime, model, prompt, last_used_at)
+     VALUES ($1, $2, 'image/png', $3, $4, NOW())
+     ON CONFLICT (vocabulary_id) DO UPDATE
+       SET image_bytes = EXCLUDED.image_bytes, mime = EXCLUDED.mime,
+           model = EXCLUDED.model, prompt = EXCLUDED.prompt,
+           created_at = NOW(), last_used_at = NOW()`,
+    [vocabularyId, bytes, OPENAI_IMAGE_MODEL, prompt]
+  );
+  res.json({ ok: true, cached: false, sizeBytes: bytes.length });
+}));
+
 // Generate contoh kalimat (AI) untuk pola grammar — tombol "Contoh (AI)" di
 // editor grammar admin. Admin tulis pattern + meaning, AI bikin 1 kalimat
 // pendek yang memakai pola itu (level pemula).
