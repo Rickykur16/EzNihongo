@@ -1356,7 +1356,7 @@ Aturan:
 NAMA TOKOH (wajib — biar UI siswa bisa render nama, bukan kode A/B):
 - Beri 2 tokoh nama keluarga Jepang umum berbeda (mis. 田中, 山田, 鈴木, 佐藤, 高橋, 中村, 小林, 加藤). Pakai KANJI, bukan hiragana.
 - Baris N (narrator) WAJIB menyebut KEDUA nama dgn suffix さん di baris pertama (urutan = urutan bicara: nama pertama yang disebut = A, kedua = B). Contoh: "田中さんと山田さんが話しています。"
-- Tiap speaker WAJIB memanggil lawan bicara dgn "○○さん" minimal 1x (mis. A panggil "山田さん", B panggil "田中さん").
+- Dialog A/B sendiri TIDAK harus saling menyebut nama — biarkan natural seperti percakapan Jepang biasa. Pemanggilan nama hanya kalau memang pas konteks (mis. pertama kali bicara, ingin menonjolkan lawan bicara), JANGAN dipaksakan tiap turn.
 
 ATURAN KANJI (penting untuk TTS):
 - **HINDARI kanji yang punya banyak cara baca / ambigu** — output ini akan dibacakan oleh TTS (ElevenLabs). Kalau ada keraguan, TULIS DALAM HIRAGANA, bukan kanji.
