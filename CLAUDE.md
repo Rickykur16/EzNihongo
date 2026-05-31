@@ -225,6 +225,17 @@
   `{ japanese, highlight, indonesian }` ditambahkan sebagai baris BELUM tersimpan
   (admin review lalu Simpan per baris ke `vocabulary_examples`). `callClaude`;
   `ANTHROPIC_API_KEY` kosong → 503.
+- **Generate gambar ilustrasi (AI) untuk kosakata** — tombol "✨ Gambar" di
+  Kelola Deck (per baris): `POST /api/admin/generate-vocab-image`
+  ({ vocabularyId, force? }) → **OpenAI gpt-image-1** (quality=low,
+  ~$0.011/gambar) via raw fetch → bytes disimpan di `vocab_image_cache`
+  (BYTEA, 1 row per kosakata, ikut `pg_dump`; migration 030). Preview modal di
+  admin (`deckShowImagePreview`); regenerate dgn `force=true`. Public serve di
+  `GET /api/vocab-image?vocabularyId=...` (`backend/src/routes/vocab-image.js`,
+  cache-control 24h, 404 kalau belum generate). Env baru `OPENAI_API_KEY`
+  (opsional; kosong → 503). Frontend siswa belum render gambar (follow-up):
+  butuh `has_image` flag di `content.js` lesson payload + `<img>` di deck card.
+  Kalau volume bytes besar (>500 MB) migrate ke object storage (R2).
 
 ## Struktur repo (high-level)
 

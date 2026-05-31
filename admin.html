@@ -3028,6 +3028,7 @@ function renderDeckTable(items) {
       </td>
       <td class="actions" style="white-space:nowrap;">
         <button class="btn btn-ghost" onclick="deckManageExamples('${it.vocabulary_id}')">Contoh (${it.example_count || 0})</button>
+        <button class="btn btn-ghost" onclick="deckGenImage('${it.vocabulary_id}', this)" title="Generate ilustrasi (AI). Klik lagi untuk regenerate.">✨ Gambar</button>
         <button class="btn btn-danger" onclick="deckRemove('${it.vocabulary_id}')">Keluarkan</button>
       </td>
     </tr>`;
@@ -3394,6 +3395,58 @@ window.deckAddExampleRow = () => {
   const tb = document.getElementById('deck-ex-body');
   if (tb) tb.appendChild(el(deckExampleRowHtml(window.__deckExVid, window.__deckExJp || '', { sort_order: tb.querySelectorAll('tr').length })));
 };
+
+// Generate ilustrasi gambar (AI) untuk satu kosakata di deck. Pakai OpenAI
+// gpt-image-1 (server-side). Hasil cached di vocab_image_cache → served di
+// /api/vocab-image?vocabularyId=... Preview modal kasih opsi regenerate.
+window.deckGenImage = async (vid, btn) => {
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const d = await api('/admin/generate-vocab-image', {
+      method: 'POST', body: JSON.stringify({ vocabularyId: vid, force: false }),
+    });
+    deckShowImagePreview(vid, d.cached === true);
+  } catch (err) {
+    notify('Gagal generate gambar: ' + err.message, true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+  }
+};
+
+window.deckRegenImage = async (vid) => {
+  const btn = document.getElementById('deck-img-regen');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  try {
+    await api('/admin/generate-vocab-image', {
+      method: 'POST', body: JSON.stringify({ vocabularyId: vid, force: true }),
+    });
+    deckShowImagePreview(vid, false);
+  } catch (err) {
+    notify('Gagal regenerate: ' + err.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = '↻ Regenerate'; }
+  }
+};
+
+function deckShowImagePreview(vid, fromCache) {
+  const ts = Date.now();
+  const src = '/api/vocab-image?vocabularyId=' + encodeURIComponent(vid) + '&v=' + ts;
+  openModal(`
+    <h3>Ilustrasi kosakata ${fromCache ? '<span style="font-size:11px;color:#737373;font-weight:400;">(dari cache)</span>' : '<span style="font-size:11px;color:#16a34a;font-weight:600;">(baru di-generate)</span>'}</h3>
+    <div style="display:flex;justify-content:center;padding:14px 0;">
+      <img src="${src}" alt="vocab image" style="max-width:380px;max-height:380px;border:1px solid #e5e5e5;border-radius:10px;background:#fff;" />
+    </div>
+    <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 12px;">
+      Hasil OpenAI <code>gpt-image-1</code> (quality=low). Tidak suka? Klik regenerate untuk gambar baru.
+    </p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="closeModal()">Tutup</button>
+      <button type="button" class="btn btn-primary" id="deck-img-regen" onclick="deckRegenImage('${vid}')">↻ Regenerate</button>
+    </div>
+  `);
+  const mc = document.getElementById('modal-content');
+  if (mc) mc.style.maxWidth = '460px';
+}
 
 // Generate contoh kalimat (AI) untuk kosakata yang sedang dibuka. Hasil
 // ditambahkan sebagai baris BELUM tersimpan — admin review lalu klik Simpan.

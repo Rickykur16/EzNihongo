@@ -199,6 +199,18 @@ CREATE TABLE IF NOT EXISTS coaching_note_cache (
   last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Cache gambar AI per kosakata (spike "Generate gambar" di Kelola Deck).
+-- Lihat migration 030.
+CREATE TABLE IF NOT EXISTS vocab_image_cache (
+  vocabulary_id UUID PRIMARY KEY REFERENCES module_vocabulary(id) ON DELETE CASCADE,
+  image_bytes BYTEA NOT NULL,
+  mime TEXT NOT NULL DEFAULT 'image/png',
+  model TEXT,
+  prompt TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ===== SENSEI & TESTIMONIALS =====
 
 CREATE TABLE IF NOT EXISTS sensei (
