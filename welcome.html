@@ -6530,6 +6530,26 @@ function resolveSpeakerNames(turns) {
     const candidates = uniqueNames.filter((n) => !mentioned.includes(n) && !taken.has(n));
     if (candidates.length === 1) out[code] = candidates[0];
   }
+  // Fallback narrator-order: kalau masih ada speaker tanpa nama tapi narrator
+  // menyebut N nama (urutan kemunculan) yang cocok jumlahnya dengan jumlah
+  // speaker non-N, assign berdasar urutan. Heuristik longgar tapi cocok dgn
+  // konvensi dialog JLPT (narrator perkenalkan tokoh sesuai urutan bicara).
+  const unresolvedCount = nonNarrators.filter((c) => !out[c]).length;
+  if (unresolvedCount > 0) {
+    const narratorText = turns.filter((t) => t.speaker === 'N').map((t) => t.text).join(' ');
+    const narratorNames = [];
+    const nrRe = /([一-鿿゠-ヿ]{1,8})さん/g;
+    let nm;
+    while ((nm = nrRe.exec(narratorText)) !== null) {
+      if (!narratorNames.includes(nm[1])) narratorNames.push(nm[1]);
+    }
+    if (narratorNames.length === nonNarrators.length) {
+      for (let i = 0; i < nonNarrators.length; i++) {
+        const code = nonNarrators[i];
+        if (!out[code]) out[code] = narratorNames[i];
+      }
+    }
+  }
   return out;
 }
 

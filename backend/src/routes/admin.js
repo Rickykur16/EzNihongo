@@ -1353,6 +1353,11 @@ Aturan:
 - Pola "${pattern}" muncul minimal 1x di dialog (idealnya dipakai A atau B, bukan narator).
 - Tulis polos, tanpa tag HTML, tanpa furigana, tanpa romaji.
 
+NAMA TOKOH (wajib — biar UI siswa bisa render nama, bukan kode A/B):
+- Beri 2 tokoh nama keluarga Jepang umum berbeda (mis. 田中, 山田, 鈴木, 佐藤, 高橋, 中村, 小林, 加藤). Pakai KANJI, bukan hiragana.
+- Baris N (narrator) WAJIB menyebut KEDUA nama dgn suffix さん di baris pertama (urutan = urutan bicara: nama pertama yang disebut = A, kedua = B). Contoh: "田中さんと山田さんが話しています。"
+- Tiap speaker WAJIB memanggil lawan bicara dgn "○○さん" minimal 1x (mis. A panggil "山田さん", B panggil "田中さん").
+
 ATURAN KANJI (penting untuk TTS):
 - **HINDARI kanji yang punya banyak cara baca / ambigu** — output ini akan dibacakan oleh TTS (ElevenLabs). Kalau ada keraguan, TULIS DALAM HIRAGANA, bukan kanji.
 - Daftar kanji yang HARUS ditulis hiragana karena ambigu/sering salah baca TTS: 一人 (ひとり), 二人 (ふたり), 今日 (きょう), 昨日 (きのう), 明日 (あした), 一日 (いちにち), 上手 (じょうず), 下手 (へた), 大人 (おとな), 子供 (こども), 何 (なに), 人 (ひと), 大きい (おおきい), 小さい (ちいさい), 行く (いく), 来る (くる), 入る (はいる), 出る (でる).
