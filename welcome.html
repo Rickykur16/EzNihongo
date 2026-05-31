@@ -2466,9 +2466,9 @@
     letter-spacing: 0.05em;
     margin-bottom: 6px;
   }
-  /* Dialog block: collapsible accordion — tersembunyi default, klik header
-     buka. Hanya 1 yg boleh terbuka pada satu waktu (JS handler atur). */
-  .grammar-dialog-block .grammar-block-label { margin-bottom: 0; }
+  /* Block collapsible (contoh / dialog): tersembunyi default, klik header
+     buka. Untuk dialog, hanya 1 yg boleh terbuka pada satu waktu (mutex JS). */
+  .grammar-collapsible .grammar-block-label { margin-bottom: 0; }
   .grammar-block-toggle {
     display: flex; align-items: center; justify-content: space-between;
     width: 100%; padding: 6px 8px;
@@ -2487,11 +2487,11 @@
     transition: transform .2s ease;
     margin-left: 8px;
   }
-  .grammar-dialog-block:not([data-collapsed]) .grammar-block-chevron {
+  .grammar-collapsible:not([data-collapsed]) .grammar-block-chevron {
     transform: rotate(180deg);
   }
   .grammar-block-content { margin-top: 8px; }
-  .grammar-dialog-block[data-collapsed] .grammar-block-content {
+  .grammar-collapsible[data-collapsed] .grammar-block-content {
     display: none;
   }
   .grammar-example {
@@ -6500,12 +6500,17 @@ function renderLessonGrammar(lesson) {
           <div class="grammar-card">
             <div class="grammar-pattern">${escapeHtml(g.pattern || '')}</div>
             ${g.meaning ? `<div class="grammar-meaning">${escapeHtml(g.meaning)}</div>` : ''}
-            ${g.example ? `<div class="grammar-block">
-              <div class="grammar-block-label">📝 Contoh</div>
-              <div class="grammar-example" lang="ja">${escapeHtml(g.example)}</div>
+            ${g.example ? `<div class="grammar-block grammar-collapsible" data-collapsed="1">
+              <button type="button" class="grammar-block-toggle" onclick="window.grammarBlockToggle(this)">
+                <span class="grammar-block-label">📝 Contoh</span>
+                <span class="grammar-block-chevron" aria-hidden="true">▾</span>
+              </button>
+              <div class="grammar-block-content">
+                <div class="grammar-example" lang="ja">${escapeHtml(g.example)}</div>
+              </div>
             </div>` : ''}
-            ${dialog ? `<div class="grammar-block grammar-dialog-block" data-collapsed="1">
-              <button type="button" class="grammar-block-toggle" onclick="window.grammarDialogToggle(this)">
+            ${dialog ? `<div class="grammar-block grammar-collapsible grammar-dialog-block" data-collapsed="1">
+              <button type="button" class="grammar-block-toggle" onclick="window.grammarBlockToggle(this)">
                 <span class="grammar-block-label">💬 Dialog contoh</span>
                 <span class="grammar-block-chevron" aria-hidden="true">▾</span>
               </button>
@@ -6555,25 +6560,31 @@ function gkStopOne(key) {
   gkSyncActiveLine(key, -1);
 }
 
-// Toggle collapse dialog block. Mutex: opening satu auto-tutup yang lain
-// (+ stop audionya). Header (button) sebagai trigger.
-window.grammarDialogToggle = (btn) => {
-  const block = btn.closest('.grammar-dialog-block');
+// Toggle collapse block grammar (contoh / dialog). Untuk dialog (mengandung
+// audio) berlaku mutex: opening satu dialog auto-tutup dialog lain + stop
+// audionya. Section contoh (tanpa audio) toggle bebas, tidak kena mutex.
+window.grammarBlockToggle = (btn) => {
+  const block = btn.closest('.grammar-collapsible');
   if (!block) return;
+  const isDialog = block.classList.contains('grammar-dialog-block');
   const isCollapsed = block.hasAttribute('data-collapsed');
   if (isCollapsed) {
-    // Tutup semua dialog lain + stop audio mereka.
-    document.querySelectorAll('.grammar-dialog-block:not([data-collapsed])').forEach((other) => {
-      if (other === block) return;
-      other.setAttribute('data-collapsed', '1');
-      const kara = other.querySelector('.grammar-karaoke');
-      if (kara && kara.id) gkStopOne(kara.id.replace(/^gk-/, ''));
-    });
+    if (isDialog) {
+      // Mutex: tutup dialog lain + stop audio mereka.
+      document.querySelectorAll('.grammar-dialog-block:not([data-collapsed])').forEach((other) => {
+        if (other === block) return;
+        other.setAttribute('data-collapsed', '1');
+        const kara = other.querySelector('.grammar-karaoke');
+        if (kara && kara.id) gkStopOne(kara.id.replace(/^gk-/, ''));
+      });
+    }
     block.removeAttribute('data-collapsed');
   } else {
     block.setAttribute('data-collapsed', '1');
-    const kara = block.querySelector('.grammar-karaoke');
-    if (kara && kara.id) gkStopOne(kara.id.replace(/^gk-/, ''));
+    if (isDialog) {
+      const kara = block.querySelector('.grammar-karaoke');
+      if (kara && kara.id) gkStopOne(kara.id.replace(/^gk-/, ''));
+    }
   }
 };
 
