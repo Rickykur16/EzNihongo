@@ -225,6 +225,25 @@
   `{ japanese, highlight, indonesian }` ditambahkan sebagai baris BELUM tersimpan
   (admin review lalu Simpan per baris ke `vocabulary_examples`). `callClaude`;
   `ANTHROPIC_API_KEY` kosong → 503.
+- **Multi contoh + terjemahan untuk pola grammar** (migration 031) — tabel
+  baru `grammar_examples` (mirror `vocabulary_examples`: japanese / highlight /
+  indonesian / sort_order, FK ke `module_grammar`). Backfill dari kolom legacy
+  `module_grammar.example` (dipertahankan untuk fallback). Admin kelola via
+  tombol "📝 Contoh" per baris grammar (`grammarManageExamples`) — pola sama
+  persis dgn deck kosakata. Generator AI multi: `POST /admin/generate-grammar-examples`
+  (pattern + meaning + avoid[], pola sama dgn `generate-vocab-examples`).
+  Endpoint CRUD: `/admin/grammar-examples`. content.js (`GET /api/courses/:slug`)
+  meng-attach `g.examples[]` per grammar; `welcome.html renderLessonGrammar`
+  prefer examples[] dgn fallback ke `g.example`.
+- **Terjemahan dialog grammar (parallel per-baris)** — kolom baru
+  `module_grammar.example_dialog_id` (TEXT, struktur paralel N:/A:/B: persis
+  dialog Jepang). Admin field di GRAMMAR_FIELDS + tombol "✨ Translate"
+  (`grmrTranslateDialog`) memanggil `POST /admin/generate-dialog-translation`
+  → Claude bikin terjemahan dgn prefix sama jumlah baris. Frontend
+  `parseDialogIdMap` cocokkan per-line index dgn dialog Jepang; render di bawah
+  tiap turn (`.gk-line-id` / `.gk-narrator-id`, italic kecil gray). Kerja
+  paralel — kalau ID baris kurang/lebih dari JP, baris yg nggak match cuma
+  tidak menampilkan terjemahan (no crash).
 - **Generate gambar ilustrasi (AI) untuk kosakata** — tombol "✨ Gambar" di
   Kelola Deck (per baris): `POST /api/admin/generate-vocab-image`
   ({ vocabularyId, force? }) → **OpenAI gpt-image-1** (quality=low,
