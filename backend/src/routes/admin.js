@@ -1353,6 +1353,12 @@ Aturan:
 - Pola "${pattern}" muncul minimal 1x di dialog (idealnya dipakai A atau B, bukan narator).
 - Tulis polos, tanpa tag HTML, tanpa furigana, tanpa romaji.
 
+ATURAN KANJI (penting untuk TTS):
+- **HINDARI kanji yang punya banyak cara baca / ambigu** — output ini akan dibacakan oleh TTS (ElevenLabs). Kalau ada keraguan, TULIS DALAM HIRAGANA, bukan kanji.
+- Daftar kanji yang HARUS ditulis hiragana karena ambigu/sering salah baca TTS: 一人 (ひとり), 二人 (ふたり), 今日 (きょう), 昨日 (きのう), 明日 (あした), 一日 (いちにち), 上手 (じょうず), 下手 (へた), 大人 (おとな), 子供 (こども), 何 (なに), 人 (ひと), 大きい (おおきい), 小さい (ちいさい), 行く (いく), 来る (くる), 入る (はいる), 出る (でる).
+- Kalau ragu apakah kanji punya bacaan tunggal yang jelas, **TULIS DI HIRAGANA**. Lebih aman daripada salah dibaca TTS.
+- Boleh tetap pakai kanji untuk kata yang bacanya tunggal & umum (mis. 私, 学生, 先生, 仕事, 学校, 本, 山, 川, 日本, 中国).
+
 Balas HANYA JSON valid:
 {"dialog":"N: …\\nA: …\\nB: …\\nA: …\\nB: …"}`;
 
