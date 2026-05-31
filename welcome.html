@@ -2466,6 +2466,34 @@
     letter-spacing: 0.05em;
     margin-bottom: 6px;
   }
+  /* Dialog block: collapsible accordion — tersembunyi default, klik header
+     buka. Hanya 1 yg boleh terbuka pada satu waktu (JS handler atur). */
+  .grammar-dialog-block .grammar-block-label { margin-bottom: 0; }
+  .grammar-block-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; padding: 6px 8px;
+    background: transparent; border: 1px solid var(--du-border, #ece9e3);
+    border-radius: 8px;
+    cursor: pointer; font: inherit; color: inherit; text-align: left;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .grammar-block-toggle:hover {
+    background: rgba(178,0,36,0.04);
+    border-color: rgba(178,0,36,0.18);
+  }
+  .grammar-block-chevron {
+    color: var(--du-ink-3, #8a7d66);
+    font-size: 12px;
+    transition: transform .2s ease;
+    margin-left: 8px;
+  }
+  .grammar-dialog-block:not([data-collapsed]) .grammar-block-chevron {
+    transform: rotate(180deg);
+  }
+  .grammar-block-content { margin-top: 8px; }
+  .grammar-dialog-block[data-collapsed] .grammar-block-content {
+    display: none;
+  }
   .grammar-example {
     background: var(--du-surface);
     border-radius: 8px;
@@ -6476,9 +6504,14 @@ function renderLessonGrammar(lesson) {
               <div class="grammar-block-label">📝 Contoh</div>
               <div class="grammar-example" lang="ja">${escapeHtml(g.example)}</div>
             </div>` : ''}
-            ${dialog ? `<div class="grammar-block">
-              <div class="grammar-block-label">💬 Dialog contoh</div>
-              ${grammarKaraokeHtml(dialog, `g${i}`)}
+            ${dialog ? `<div class="grammar-block grammar-dialog-block" data-collapsed="1">
+              <button type="button" class="grammar-block-toggle" onclick="window.grammarDialogToggle(this)">
+                <span class="grammar-block-label">💬 Dialog contoh</span>
+                <span class="grammar-block-chevron" aria-hidden="true">▾</span>
+              </button>
+              <div class="grammar-block-content">
+                ${grammarKaraokeHtml(dialog, `g${i}`)}
+              </div>
             </div>` : ''}
             ${g.notes ? `<div class="grammar-notes">${escapeHtml(g.notes)}</div>` : ''}
           </div>`;
@@ -6507,6 +6540,42 @@ function gkStopAll() {
     delete window.__gk[k];
   }
 }
+
+// Stop SATU karaoke player tanpa membuang state (segments cache tetap).
+// Dipakai saat dialog block ditutup (collapse) atau dialog lain dibuka
+// supaya hanya 1 audio aktif pada satu waktu.
+function gkStopOne(key) {
+  const st = window.__gk[key];
+  if (!st) return;
+  st.stopped = true;
+  if (st._gap) { clearTimeout(st._gap); st._gap = null; }
+  if (st.audio) { try { st.audio.pause(); } catch {} st.audio = null; }
+  st.playOnce = false;
+  if (st.playBtn) st.playBtn.textContent = st.ended ? '↻ Ulangi' : '▶ Putar dialog';
+  gkSyncActiveLine(key, -1);
+}
+
+// Toggle collapse dialog block. Mutex: opening satu auto-tutup yang lain
+// (+ stop audionya). Header (button) sebagai trigger.
+window.grammarDialogToggle = (btn) => {
+  const block = btn.closest('.grammar-dialog-block');
+  if (!block) return;
+  const isCollapsed = block.hasAttribute('data-collapsed');
+  if (isCollapsed) {
+    // Tutup semua dialog lain + stop audio mereka.
+    document.querySelectorAll('.grammar-dialog-block:not([data-collapsed])').forEach((other) => {
+      if (other === block) return;
+      other.setAttribute('data-collapsed', '1');
+      const kara = other.querySelector('.grammar-karaoke');
+      if (kara && kara.id) gkStopOne(kara.id.replace(/^gk-/, ''));
+    });
+    block.removeAttribute('data-collapsed');
+  } else {
+    block.setAttribute('data-collapsed', '1');
+    const kara = block.querySelector('.grammar-karaoke');
+    if (kara && kara.id) gkStopOne(kara.id.replace(/^gk-/, ''));
+  }
+};
 
 function parseDialogLinesFE(text) {
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean);
