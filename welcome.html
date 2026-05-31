@@ -2941,7 +2941,37 @@
   .gk-play:disabled { opacity: .6; cursor: default; }
   .gk-status { font-size: 12px; color: #8a8a8a; }
   .gk-transcript { display: flex; flex-direction: column; gap: 7px; }
-  .gk-line { display: flex; gap: 8px; align-items: baseline; }
+  .gk-line {
+    display: flex; gap: 8px; align-items: baseline;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border-left: 3px solid transparent;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .gk-line:hover { background: rgba(178,0,36,0.05); }
+  .gk-line.gk-line-active {
+    background: rgba(178,0,36,0.08);
+    border-left-color: var(--brand-red);
+  }
+  .gk-line[data-no-audio="1"] { cursor: default; }
+  .gk-line[data-no-audio="1"]:hover { background: transparent; }
+  /* Narator (N) — judul italic di atas, BUKAN baris speaker. */
+  .gk-narrator {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px;
+    font-style: italic;
+    color: #6b5f4f;
+    line-height: 1.7;
+    padding: 8px 10px;
+    margin-bottom: 12px;
+    border-bottom: 1px dashed #eadfda;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    transition: background .15s ease;
+  }
+  .gk-narrator:hover { background: rgba(178,0,36,0.05); }
+  .gk-narrator.gk-line-active { background: rgba(178,0,36,0.08); }
   .gk-speaker {
     flex: 0 0 auto; min-width: 20px; font-weight: 800; font-size: 12px;
     color: var(--brand-red);
@@ -6553,13 +6583,35 @@ function resolveSpeakerNames(turns) {
   return out;
 }
 
-function karaokeLineHtml(speaker, inner) {
-  return `<div class="gk-line">${speaker ? `<span class="gk-speaker">${escapeHtml(speaker)}</span>` : ''}<span class="gk-text">${inner}</span></div>`;
+function karaokeLineHtml(speaker, inner, lineIndex, key) {
+  const onClick = (key != null && lineIndex != null) ? ` onclick="window.grammarKaraokeJumpTo('${key}',${lineIndex})"` : '';
+  const idx = lineIndex != null ? ` data-line-index="${lineIndex}"` : '';
+  return `<div class="gk-line"${idx}${onClick}>${speaker ? `<span class="gk-speaker">${escapeHtml(speaker)}</span>` : ''}<span class="gk-text">${inner}</span></div>`;
+}
+
+// Narator → judul italic di atas (tanpa label "N"). Tetap clickable seperti
+// baris biasa karena punya segment audio sendiri.
+function karaokeNarratorHtml(inner, lineIndex, key) {
+  const onClick = (key != null && lineIndex != null) ? ` onclick="window.grammarKaraokeJumpTo('${key}',${lineIndex})"` : '';
+  const idx = lineIndex != null ? ` data-line-index="${lineIndex}"` : '';
+  return `<div class="gk-narrator"${idx}${onClick}><span class="gk-text">${inner}</span></div>`;
 }
 
 // Static transcript (semua text keliatan) sebelum audio di-load.
-function renderKaraokeStatic(text) {
-  return parseDialogLinesFE(text).map((t) => karaokeLineHtml(t.displayName || t.speaker, escapeHtml(t.text))).join('');
+// Narator (speaker 'N') di-render di atas sebagai .gk-narrator, sisanya
+// (A/B/etc) sebagai .gk-line dgn label nama hasil resolver.
+function renderKaraokeStatic(text, key) {
+  const turns = parseDialogLinesFE(text);
+  const parts = [];
+  // Narator dulu (umumnya cuma 1 di awal, tapi support multi).
+  turns.forEach((t, i) => {
+    if (t.speaker === 'N') parts.push(karaokeNarratorHtml(escapeHtml(t.text), i, key));
+  });
+  // Lalu conversation lines.
+  turns.forEach((t, i) => {
+    if (t.speaker !== 'N') parts.push(karaokeLineHtml(t.displayName || t.speaker, escapeHtml(t.text), i, key));
+  });
+  return parts.join('');
 }
 
 function grammarKaraokeHtml(dialogText, key) {
@@ -6569,10 +6621,34 @@ function grammarKaraokeHtml(dialogText, key) {
         <button type="button" class="gk-play" onclick="window.grammarKaraokePlay('${key}')">▶ Putar dialog</button>
         <span class="gk-status"></span>
       </div>
-      <div class="gk-transcript">${renderKaraokeStatic(dialogText)}</div>
+      <div class="gk-transcript">${renderKaraokeStatic(dialogText, key)}</div>
     </div>
   `;
 }
+
+// Jump ke segment tertentu (klik per-baris). Kalau segments belum ke-load,
+// trigger initial load lewat grammarKaraokePlay dgn flag jumpTo. Setelah
+// segment selesai, TIDAK auto-advance (playOnce mode).
+window.grammarKaraokeJumpTo = async (key, li) => {
+  const li2 = Number(li);
+  if (!Number.isInteger(li2) || li2 < 0) return;
+  let st = window.__gk[key];
+  if (st && st.segments) {
+    // Sudah loaded: stop yg sedang berjalan + play single segment.
+    if (st.audio) { try { st.audio.pause(); } catch {} st.audio = null; }
+    if (st._gap) { clearTimeout(st._gap); st._gap = null; }
+    st.stopped = false; st.ended = false; st.playOnce = true;
+    if (st.playBtn) st.playBtn.textContent = '❚❚ Jeda';
+    if (li2 >= st.segments.length) return;
+    gkPlaySegment(key, li2);
+    return;
+  }
+  // Belum loaded: minta grammarKaraokePlay load dulu dgn target jump.
+  const el = document.getElementById('gk-' + key);
+  if (!el) return;
+  el.dataset.jumpTo = String(li2);
+  window.grammarKaraokePlay(key);
+};
 
 // Putar segment ke-si secara berurutan. Tiap segment audio sendiri +
 // waktu karakter RELATIF ke awal segment → highlight akurat, gak ada
@@ -6582,9 +6658,10 @@ function gkPlaySegment(key, si) {
   if (!st || st.stopped) return;
   const segs = st.segments;
   if (si >= segs.length) {
-    st.curSeg = 0; st.audio = null; st.ended = true;
+    st.curSeg = 0; st.audio = null; st.ended = true; st.playOnce = false;
     if (st.playBtn) st.playBtn.textContent = '↻ Ulangi';
     st.spans.flat().forEach((sp) => sp && sp.classList.remove('gk-active'));
+    gkSyncActiveLine(key, -1);
     return;
   }
   st.curSeg = si; st.ended = false;
@@ -6594,6 +6671,7 @@ function gkPlaySegment(key, si) {
     sp.classList.remove('gk-active');
     sp.classList.toggle('gk-done', idx < si);
   }));
+  gkSyncActiveLine(key, si);
   const seg = segs[si];
   const audio = new Audio('data:' + (seg.content_type || 'audio/mpeg') + ';base64,' + seg.audio_base64);
   st.audio = audio;
@@ -6612,9 +6690,27 @@ function gkPlaySegment(key, si) {
   audio.addEventListener('ended', () => {
     spans.forEach((sp) => sp && (sp.classList.add('gk-done'), sp.classList.remove('gk-active')));
     if (st.stopped) return;
+    // playOnce: dipanggil dari grammarKaraokeJumpTo — jangan auto-advance.
+    if (st.playOnce) {
+      st.playOnce = false; st.ended = true; st.audio = null;
+      if (st.playBtn) st.playBtn.textContent = '↻ Ulangi';
+      gkSyncActiveLine(key, -1);
+      return;
+    }
     st._gap = setTimeout(() => gkPlaySegment(key, si + 1), 450);
   });
   const p = audio.play(); if (p && p.catch) p.catch(() => {});
+}
+
+// Sync class .gk-line-active ke baris/narator dgn data-line-index === activeSi
+// (atau bersihkan semua kalau activeSi < 0).
+function gkSyncActiveLine(key, activeSi) {
+  const root = document.getElementById('gk-' + key);
+  if (!root) return;
+  root.querySelectorAll('[data-line-index]').forEach((el) => {
+    const li = Number(el.dataset.lineIndex);
+    el.classList.toggle('gk-line-active', activeSi >= 0 && li === activeSi);
+  });
 }
 
 window.grammarKaraokePlay = async (key) => {
@@ -6657,23 +6753,47 @@ window.grammarKaraokePlay = async (key) => {
     const nameMap = resolveSpeakerNames(parseDialogLinesFE(dialog));
     // Render span per-kata (words[] dari backend, partikel udah ke-pisah).
     // Pemisah (start null = spasi/tanda baca) render polos, gak di-highlight.
-    transcript.innerHTML = segs.map((seg, si) => {
+    // Narator (speaker 'N') di-render sebagai .gk-narrator (judul atas, tanpa
+    // label); A/B di-render sebagai .gk-line dgn nama hasil resolver.
+    const renderInner = (seg, si) => {
       let wi = 0;
-      const inner = (seg.words || []).map((w) => {
+      return (seg.words || []).map((w) => {
         if (w.start == null) return `<span class="gk-punct">${escapeHtml(w.text)}</span>`;
         return `<span class="gk-word" data-k="${si}_${wi++}">${escapeHtml(w.text)}</span>`;
       }).join('');
-      return karaokeLineHtml(nameMap[seg.speaker] || seg.speaker, inner);
-    }).join('');
+    };
+    const narrParts = [];
+    const lineParts = [];
+    segs.forEach((seg, si) => {
+      const inner = renderInner(seg, si);
+      if (seg.speaker === 'N') {
+        narrParts.push(karaokeNarratorHtml(inner, si, key));
+      } else {
+        lineParts.push(karaokeLineHtml(nameMap[seg.speaker] || seg.speaker, inner, si, key));
+      }
+    });
+    transcript.innerHTML = narrParts.join('') + lineParts.join('');
     const spans = segs.map((seg, si) =>
       (seg.words || []).filter((w) => w.start != null)
         .map((_, idx) => transcript.querySelector(`.gk-word[data-k="${si}_${idx}"]`)));
     const wordTimes = segs.map((seg) =>
       (seg.words || []).filter((w) => w.start != null).map((w) => [w.start, w.end]));
-    st = { segments: segs, spans, wordTimes, curSeg: 0, audio: null, stopped: false, ended: false, playBtn };
+    st = { segments: segs, spans, wordTimes, curSeg: 0, audio: null, stopped: false, ended: false, playOnce: false, playBtn };
     window.__gk[key] = st;
     if (statusEl) statusEl.textContent = '';
     if (playBtn) { playBtn.disabled = false; playBtn.textContent = '❚❚ Jeda'; }
+    // Kalau klik per-baris yg trigger initial load, lompat ke segment target
+    // dgn playOnce. Kalau bukan, putar dari segment 0 (full play).
+    const jumpToRaw = el.dataset.jumpTo;
+    if (jumpToRaw != null) {
+      delete el.dataset.jumpTo;
+      const ji = Number(jumpToRaw);
+      if (Number.isInteger(ji) && ji >= 0 && ji < segs.length) {
+        st.playOnce = true;
+        gkPlaySegment(key, ji);
+        return;
+      }
+    }
     gkPlaySegment(key, 0);
   } catch (e) {
     if (statusEl) statusEl.textContent = 'Audio tidak tersedia';
