@@ -6488,7 +6488,49 @@ function parseDialogLinesFE(text) {
     else if (turns.length) turns[turns.length - 1].text += ' ' + line;
     else turns.push({ speaker: '', text: line });
   }
+  const names = resolveSpeakerNames(turns);
+  for (const t of turns) {
+    if (names[t.speaker]) t.displayName = names[t.speaker];
+  }
   return turns;
+}
+
+// Auto-deteksi nama tokoh dari teks dialog supaya label "A"/"B" (kode TTS) bisa
+// di-render sebagai nama asli (mis. 田中, 山田) di sisi siswa. Admin tetap pakai
+// N/A/B karena ElevenLabs butuh prefix itu untuk routing suara narrator/cewe/cowo.
+// Strategi:
+//  1. Self-intro: "私は○○です" → kode pembicara itu = ○○.
+//  2. Address-elimination: tiap pembicara menyebut "○○さん" = menyapa lawan
+//     bicara, jadi nama mereka sendiri = nama yang TIDAK mereka sebut.
+// Kalau tidak resolvable → kode tetap dipakai apa adanya.
+function resolveSpeakerNames(turns) {
+  const out = {};
+  if (!Array.isArray(turns) || turns.length === 0) return out;
+  // Class hanya kanji + katakana (exclude hiragana) supaya "田中さん" tidak
+  // ke-greedy-match jadi "田中さん..." — nama-nama Jepang lazimnya kanji/katakana.
+  const NAME_RE = /([一-鿿゠-ヿ]{1,8})さん/g;
+  const SELF_RE_G = /(?:私|わたし|僕|ぼく)は([一-鿿゠-ヿ]{1,8})(?:さん|です|と申します|といいます|と言います)/g;
+  const SELF_RE = /(?:私|わたし|僕|ぼく)は([一-鿿゠-ヿ]{1,8})(?:さん|です|と申します|といいます|と言います)/;
+  const allText = turns.map((t) => t.text).join(' ');
+  const fromSan = Array.from(allText.matchAll(NAME_RE)).map((m) => m[1]);
+  const fromSelf = Array.from(allText.matchAll(SELF_RE_G)).map((m) => m[1]);
+  const uniqueNames = Array.from(new Set([...fromSan, ...fromSelf]));
+  if (uniqueNames.length === 0) return out;
+  for (const t of turns) {
+    if (!t.speaker || t.speaker === 'N') continue;
+    const m = t.text.match(SELF_RE);
+    if (m && uniqueNames.includes(m[1])) out[t.speaker] = m[1];
+  }
+  const nonNarrators = Array.from(new Set(turns.map((t) => t.speaker).filter((c) => c && c !== 'N')));
+  for (const code of nonNarrators) {
+    if (out[code]) continue;
+    const myLines = turns.filter((t) => t.speaker === code).map((t) => t.text).join(' ');
+    const mentioned = uniqueNames.filter((n) => myLines.includes(n));
+    const taken = new Set(Object.values(out));
+    const candidates = uniqueNames.filter((n) => !mentioned.includes(n) && !taken.has(n));
+    if (candidates.length === 1) out[code] = candidates[0];
+  }
+  return out;
 }
 
 function karaokeLineHtml(speaker, inner) {
@@ -6497,7 +6539,7 @@ function karaokeLineHtml(speaker, inner) {
 
 // Static transcript (semua text keliatan) sebelum audio di-load.
 function renderKaraokeStatic(text) {
-  return parseDialogLinesFE(text).map((t) => karaokeLineHtml(t.speaker, escapeHtml(t.text))).join('');
+  return parseDialogLinesFE(text).map((t) => karaokeLineHtml(t.displayName || t.speaker, escapeHtml(t.text))).join('');
 }
 
 function grammarKaraokeHtml(dialogText, key) {
@@ -6590,6 +6632,9 @@ window.grammarKaraokePlay = async (key) => {
     const data = await r.json();
     const segs = (data && data.segments) || [];
     if (!segs.length) throw new Error('no segments');
+    // Resolve nama tokoh sekali dari teks dialog (sama logikanya dengan
+    // renderKaraokeStatic) → seg.speaker (kode A/B/N) di-label sebagai nama.
+    const nameMap = resolveSpeakerNames(parseDialogLinesFE(dialog));
     // Render span per-kata (words[] dari backend, partikel udah ke-pisah).
     // Pemisah (start null = spasi/tanda baca) render polos, gak di-highlight.
     transcript.innerHTML = segs.map((seg, si) => {
@@ -6598,7 +6643,7 @@ window.grammarKaraokePlay = async (key) => {
         if (w.start == null) return `<span class="gk-punct">${escapeHtml(w.text)}</span>`;
         return `<span class="gk-word" data-k="${si}_${wi++}">${escapeHtml(w.text)}</span>`;
       }).join('');
-      return karaokeLineHtml(seg.speaker, inner);
+      return karaokeLineHtml(nameMap[seg.speaker] || seg.speaker, inner);
     }).join('');
     const spans = segs.map((seg, si) =>
       (seg.words || []).filter((w) => w.start != null)
