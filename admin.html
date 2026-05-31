@@ -2608,10 +2608,11 @@ const VOCAB_FIELDS = [
 const GRAMMAR_FIELDS = [
   { name: 'pattern', label: 'Pola', style: 'min-width:150px;' },
   { name: 'meaning', label: 'Arti', style: 'min-width:140px;' },
-  { name: 'example', label: 'Contoh', style: 'min-width:180px;' },
   { name: 'notes', label: 'Catatan sensei', style: 'min-width:160px;' },
   { name: 'example_dialog', bodyKey: 'exampleDialog', label: 'Dialog contoh (A:/B:)', style: 'min-width:220px;', type: 'textarea',
     placeholder: 'N: 男の人と女の人が話しています。\nA: お国は どちらですか。\nB: インドネシアです。' },
+  { name: 'example_dialog_id', bodyKey: 'exampleDialogId', label: 'Dialog terjemahan (parallel)', style: 'min-width:200px;', type: 'textarea',
+    placeholder: 'N: Tanaka dan Yamada sedang berbicara.\nA: Anda dari mana?\nB: Saya dari Indonesia.' },
 ];
 
 function itemRowHtml(item, fields, kind) {
@@ -2622,8 +2623,9 @@ function itemRowHtml(item, fields, kind) {
     return `<td><input name="${f.name}" value="${escapeHtml(item[f.name] || '')}" style="${f.style}" /></td>`;
   }).join('');
   const aiButtons = kind === 'grammar' ? `
-    <button type="button" class="btn btn-ghost btn-sm" title="Generate contoh kalimat (AI) dari Pola + Arti" onclick="grmrGenExample(this)">✨ Contoh</button>
+    ${item.id ? `<button type="button" class="btn btn-ghost btn-sm" title="Kelola contoh kalimat (multi)" onclick="grammarManageExamples('${item.id}', this)">📝 Contoh</button>` : ''}
     <button type="button" class="btn btn-ghost btn-sm" title="Generate dialog 3-suara N/A/B (AI) dari Pola + Arti" onclick="grmrGenDialog(this)">✨ Dialog</button>
+    <button type="button" class="btn btn-ghost btn-sm" title="Terjemahkan dialog (AI) ke Bahasa Indonesia" onclick="grmrTranslateDialog(this)">✨ Translate</button>
   ` : '';
   return `
     <tr data-id="${item.id || ''}" data-kind="${kind}">
@@ -2638,37 +2640,17 @@ function itemRowHtml(item, fields, kind) {
   `;
 }
 
-// Tombol AI per baris grammar — populate field example / example_dialog
-// dari Pola + Arti. Admin review lalu klik Simpan untuk persist.
-window.grmrGenExample = async (btn) => {
-  const tr = btn.closest('tr'); if (!tr) return;
-  const pattern = (tr.querySelector('input[name="pattern"]')?.value || '').trim();
-  const meaning = (tr.querySelector('input[name="meaning"]')?.value || '').trim();
-  if (!pattern) { notify('Isi Pola dulu', true); return; }
-  const orig = btn.textContent; btn.disabled = true; btn.textContent = '…';
-  try {
-    const d = await api('/admin/generate-grammar-example', {
-      method: 'POST', body: JSON.stringify({ pattern, meaning }),
-    });
-    const ex = (d.example || '').trim();
-    if (!ex) { notify('AI tidak menghasilkan contoh', true); return; }
-    const inp = tr.querySelector('input[name="example"]');
-    if (inp) inp.value = ex;
-    notify('Contoh dibuat AI — review lalu klik Simpan');
-  } catch (err) { notify('Gagal: ' + err.message, true); }
-  finally { btn.disabled = false; btn.textContent = orig; }
-};
-
+// Tombol AI per baris grammar — populate field example_dialog dari Pola + Arti.
+// Admin review lalu klik Simpan untuk persist.
 window.grmrGenDialog = async (btn) => {
   const tr = btn.closest('tr'); if (!tr) return;
   const pattern = (tr.querySelector('input[name="pattern"]')?.value || '').trim();
   const meaning = (tr.querySelector('input[name="meaning"]')?.value || '').trim();
-  const example = (tr.querySelector('input[name="example"]')?.value || '').trim();
   if (!pattern) { notify('Isi Pola dulu', true); return; }
   const orig = btn.textContent; btn.disabled = true; btn.textContent = '…';
   try {
     const d = await api('/admin/generate-grammar-dialog', {
-      method: 'POST', body: JSON.stringify({ pattern, meaning, example }),
+      method: 'POST', body: JSON.stringify({ pattern, meaning }),
     });
     const dlg = (d.dialog || '').trim();
     if (!dlg) { notify('AI tidak menghasilkan dialog', true); return; }
@@ -2677,6 +2659,144 @@ window.grmrGenDialog = async (btn) => {
     notify('Dialog dibuat AI — review lalu klik Simpan');
   } catch (err) { notify('Gagal: ' + err.message, true); }
   finally { btn.disabled = false; btn.textContent = orig; }
+};
+
+// Translate dialog yang sudah ada di textarea → isi textarea example_dialog_id
+// (struktur paralel: tiap baris N:/A:/B: di-terjemahkan ke 1 baris ID).
+window.grmrTranslateDialog = async (btn) => {
+  const tr = btn.closest('tr'); if (!tr) return;
+  const dialog = (tr.querySelector('textarea[name="example_dialog"]')?.value || '').trim();
+  if (!dialog) { notify('Isi Dialog dulu (atau klik ✨ Dialog)', true); return; }
+  const orig = btn.textContent; btn.disabled = true; btn.textContent = '…';
+  try {
+    const d = await api('/admin/generate-dialog-translation', {
+      method: 'POST', body: JSON.stringify({ dialog }),
+    });
+    const id = (d.dialog_id || '').trim();
+    if (!id) { notify('AI tidak menghasilkan terjemahan', true); return; }
+    const ta = tr.querySelector('textarea[name="example_dialog_id"]');
+    if (ta) ta.value = id;
+    notify('Terjemahan dialog dibuat — review lalu klik Simpan');
+  } catch (err) { notify('Gagal: ' + err.message, true); }
+  finally { btn.disabled = false; btn.textContent = orig; }
+};
+
+// === Multi contoh grammar (mirror deckManageExamples) ===
+window.grammarManageExamples = async (grammarId) => {
+  if (!grammarId) return;
+  const tr = document.querySelector(`tr[data-id="${grammarId}"]`);
+  const pattern = tr?.querySelector('input[name="pattern"]')?.value || '';
+  const meaning = tr?.querySelector('input[name="meaning"]')?.value || '';
+  window.__grmrExCtx = { grammarId, pattern, meaning };
+  let examples = [];
+  try {
+    const d = await api('/admin/grammar-examples?grammarId=' + grammarId);
+    examples = d.examples || [];
+  } catch (err) { notify('Gagal load contoh: ' + err.message, true); return; }
+  openModal(`
+    <h3>Contoh kalimat — <span lang="ja">${escapeHtml(pattern)}</span></h3>
+    <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 10px;">
+      Tulis polos. "Highlight" opsional = potongan kalimat yg menonjolkan pemakaian pola.
+    </p>
+    <div style="overflow-x:auto;"><table style="font-size:12px;">
+      <thead><tr><th>Kalimat (JP)</th><th>Highlight</th><th>Terjemahan (ID)</th><th>#</th><th></th></tr></thead>
+      <tbody id="grmr-ex-body">${examples.map((e) => grmrExRowHtml(grammarId, e)).join('')}</tbody>
+    </table></div>
+    ${examples.length === 0 ? '<div class="empty" style="padding:14px;">Belum ada contoh kalimat.</div>' : ''}
+    <div class="toolbar" style="margin-top:8px;display:flex;gap:6px;">
+      <button type="button" class="btn btn-ghost" onclick="grmrAddExampleRow()">+ Tambah contoh</button>
+      <button type="button" class="btn btn-ghost" id="grmr-ex-gen" onclick="grmrGenExamples()">✨ Generate contoh (AI)</button>
+    </div>
+    <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
+  `);
+  modalContent.style.maxWidth = '900px';
+};
+
+function grmrExRowHtml(gid, e) {
+  e = e || {};
+  return `<tr data-ex-id="${e.id || ''}" data-grmr="${gid}">
+    <td><input name="japanese" value="${escapeHtml(e.japanese || '')}" lang="ja" style="min-width:220px;width:100%;" placeholder="例: 私は学生です。" /></td>
+    <td><input name="highlight" value="${escapeHtml(e.highlight != null ? e.highlight : '')}" lang="ja" placeholder="" style="width:90px;" /></td>
+    <td><input name="indonesian" value="${escapeHtml(e.indonesian || '')}" style="min-width:180px;width:100%;" placeholder="Saya adalah siswa." /></td>
+    <td><input type="number" name="sortOrder" value="${e.sort_order || 0}" style="width:50px;" /></td>
+    <td style="white-space:nowrap;">
+      <button type="button" class="btn btn-primary" onclick="grmrSaveExample(this)">Simpan</button>
+      ${e.id ? `<button type="button" class="btn btn-danger" onclick="grmrDeleteExample(this)">×</button>` : `<button type="button" class="btn btn-ghost" onclick="this.closest('tr').remove()">×</button>`}
+    </td>
+  </tr>`;
+}
+
+window.grmrAddExampleRow = () => {
+  const tb = document.getElementById('grmr-ex-body');
+  if (tb) tb.appendChild(el(grmrExRowHtml(window.__grmrExCtx.grammarId, { sort_order: tb.querySelectorAll('tr').length })));
+};
+
+window.grmrSaveExample = async (btn) => {
+  const tr = btn.closest('tr');
+  const id = tr.dataset.exId;
+  const gid = tr.dataset.grmr;
+  const body = {
+    grammarId: gid,
+    japanese: tr.querySelector('input[name="japanese"]').value.trim(),
+    highlight: tr.querySelector('input[name="highlight"]').value.trim() || null,
+    indonesian: tr.querySelector('input[name="indonesian"]').value.trim() || null,
+    sortOrder: Number(tr.querySelector('input[name="sortOrder"]').value) || 0,
+  };
+  if (!body.japanese) { notify('Kalimat JP wajib diisi', true); return; }
+  try {
+    if (id) {
+      await api('/admin/grammar-examples/' + id, { method: 'PUT', body: JSON.stringify(body) });
+    } else {
+      const d = await api('/admin/grammar-examples', { method: 'POST', body: JSON.stringify(body) });
+      if (d.example && d.example.id) {
+        tr.dataset.exId = d.example.id;
+        const cell = tr.querySelector('td:last-child');
+        cell.innerHTML = `<button type="button" class="btn btn-primary" onclick="grmrSaveExample(this)">Simpan</button><button type="button" class="btn btn-danger" onclick="grmrDeleteExample(this)">×</button>`;
+      }
+    }
+    notify('Tersimpan');
+  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+};
+
+window.grmrDeleteExample = async (btn) => {
+  const tr = btn.closest('tr');
+  const id = tr.dataset.exId;
+  if (!id) { tr.remove(); return; }
+  if (!confirm('Hapus contoh kalimat ini?')) return;
+  try { await api('/admin/grammar-examples/' + id, { method: 'DELETE' }); tr.remove(); notify('Dihapus'); }
+  catch (err) { notify('Gagal hapus: ' + err.message, true); }
+};
+
+window.grmrGenExamples = async () => {
+  const ctx = window.__grmrExCtx;
+  if (!ctx) return;
+  const tbForAvoid = document.getElementById('grmr-ex-body');
+  const avoid = tbForAvoid
+    ? Array.from(tbForAvoid.querySelectorAll('input[name="japanese"]'))
+        .map((i) => (i.value || '').trim()).filter(Boolean)
+    : [];
+  const btn = document.getElementById('grmr-ex-gen');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  try {
+    const d = await api('/admin/generate-grammar-examples', {
+      method: 'POST',
+      body: JSON.stringify({ pattern: ctx.pattern, meaning: ctx.meaning, count: 3, avoid }),
+    });
+    const exs = Array.isArray(d.examples) ? d.examples : [];
+    if (exs.length === 0) { notify('AI tidak menghasilkan contoh. Coba lagi.', true); return; }
+    const tb = document.getElementById('grmr-ex-body');
+    let base = tb ? tb.querySelectorAll('tr').length : 0;
+    exs.forEach((e) => {
+      if (tb) tb.appendChild(el(grmrExRowHtml(ctx.grammarId, {
+        japanese: e.japanese, highlight: e.highlight, indonesian: e.indonesian, sort_order: base++,
+      })));
+    });
+    notify('Contoh dibuat AI — review lalu klik Simpan per baris');
+  } catch (err) {
+    notify('Gagal generate: ' + err.message, true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✨ Generate contoh (AI)'; }
+  }
 };
 
 function renderItemTable(kind, items) {

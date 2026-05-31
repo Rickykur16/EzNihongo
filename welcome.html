@@ -2494,16 +2494,37 @@
   .grammar-collapsible[data-collapsed] .grammar-block-content {
     display: none;
   }
-  .grammar-example {
+  .grammar-example-item {
     background: var(--du-surface);
     border-radius: 8px;
     padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+  .grammar-example-item:last-child { margin-bottom: 0; }
+  .grammar-example {
     font-size: 15.5px;
     color: var(--du-ink);
     font-family: 'Noto Sans JP', sans-serif;
     line-height: 1.7;
     white-space: pre-wrap;
   }
+  .grammar-example-id {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--du-ink-2, #6b5f4f);
+    line-height: 1.55;
+    font-style: italic;
+  }
+  /* Terjemahan Indonesia per baris dialog karaoke — kecil, italic, di bawah text. */
+  .gk-line-id, .gk-narrator-id {
+    margin-top: 3px;
+    font-size: 12.5px;
+    color: #8a7d66;
+    font-style: italic;
+    line-height: 1.5;
+  }
+  .gk-line-main { display: flex; gap: 8px; align-items: baseline; }
+  .gk-line { flex-direction: column; align-items: stretch; }
   .grammar-notes {
     font-size: 12.5px;
     color: var(--du-ink-3);
@@ -6496,26 +6517,34 @@ function renderLessonGrammar(lesson) {
       <div class="grammar-list">
         ${sorted.map((g, i) => {
           const dialog = (g.example_dialog || '').trim();
+          // Prefer examples[] (multi); fallback ke g.example single (legacy).
+          let examples = Array.isArray(g.examples) ? g.examples : [];
+          if (examples.length === 0 && g.example && g.example.trim()) {
+            examples = [{ japanese: g.example, indonesian: null }];
+          }
+          const examplesHtml = examples.map((ex) => `
+            <div class="grammar-example-item">
+              <div class="grammar-example" lang="ja">${escapeHtml(ex.japanese || '')}</div>
+              ${ex.indonesian ? `<div class="grammar-example-id">${escapeHtml(ex.indonesian)}</div>` : ''}
+            </div>`).join('');
           return `
           <div class="grammar-card">
             <div class="grammar-pattern">${escapeHtml(g.pattern || '')}</div>
             ${g.meaning ? `<div class="grammar-meaning">${escapeHtml(g.meaning)}</div>` : ''}
-            ${g.example ? `<div class="grammar-block grammar-collapsible" data-collapsed="1">
+            ${examples.length > 0 ? `<div class="grammar-block grammar-collapsible" data-collapsed="1">
               <button type="button" class="grammar-block-toggle" onclick="window.grammarBlockToggle(this)">
-                <span class="grammar-block-label">📝 Contoh</span>
+                <span class="grammar-block-label">📝 Contoh${examples.length > 1 ? ` (${examples.length})` : ''}</span>
                 <span class="grammar-block-chevron" aria-hidden="true">▾</span>
               </button>
-              <div class="grammar-block-content">
-                <div class="grammar-example" lang="ja">${escapeHtml(g.example)}</div>
-              </div>
+              <div class="grammar-block-content">${examplesHtml}</div>
             </div>` : ''}
-            ${dialog ? `<div class="grammar-block grammar-collapsible grammar-dialog-block" data-collapsed="1">
+            ${dialog ? `<div class="grammar-block grammar-collapsible grammar-dialog-block" data-collapsed="1" data-dialog-id="${escapeHtml(g.example_dialog_id || '')}">
               <button type="button" class="grammar-block-toggle" onclick="window.grammarBlockToggle(this)">
                 <span class="grammar-block-label">💬 Dialog contoh</span>
                 <span class="grammar-block-chevron" aria-hidden="true">▾</span>
               </button>
               <div class="grammar-block-content">
-                ${grammarKaraokeHtml(dialog, `g${i}`)}
+                ${grammarKaraokeHtml(dialog, `g${i}`, g.example_dialog_id || '')}
               </div>
             </div>` : ''}
             ${g.notes ? `<div class="grammar-notes">${escapeHtml(g.notes)}</div>` : ''}
@@ -6663,45 +6692,60 @@ function resolveSpeakerNames(turns) {
   return out;
 }
 
-function karaokeLineHtml(speaker, inner, lineIndex, key) {
+function karaokeLineHtml(speaker, inner, lineIndex, key, idText) {
   const onClick = (key != null && lineIndex != null) ? ` onclick="window.grammarKaraokeJumpTo('${key}',${lineIndex})"` : '';
   const idx = lineIndex != null ? ` data-line-index="${lineIndex}"` : '';
-  return `<div class="gk-line"${idx}${onClick}>${speaker ? `<span class="gk-speaker">${escapeHtml(speaker)}</span>` : ''}<span class="gk-text">${inner}</span></div>`;
+  const id = idText ? `<div class="gk-line-id">${escapeHtml(idText)}</div>` : '';
+  return `<div class="gk-line"${idx}${onClick}><div class="gk-line-main">${speaker ? `<span class="gk-speaker">${escapeHtml(speaker)}</span>` : ''}<span class="gk-text">${inner}</span></div>${id}</div>`;
 }
 
 // Narator → judul italic di atas (tanpa label "N"). Tetap clickable seperti
 // baris biasa karena punya segment audio sendiri.
-function karaokeNarratorHtml(inner, lineIndex, key) {
+function karaokeNarratorHtml(inner, lineIndex, key, idText) {
   const onClick = (key != null && lineIndex != null) ? ` onclick="window.grammarKaraokeJumpTo('${key}',${lineIndex})"` : '';
   const idx = lineIndex != null ? ` data-line-index="${lineIndex}"` : '';
-  return `<div class="gk-narrator"${idx}${onClick}><span class="gk-text">${inner}</span></div>`;
+  const id = idText ? `<div class="gk-narrator-id">${escapeHtml(idText)}</div>` : '';
+  return `<div class="gk-narrator"${idx}${onClick}><div><span class="gk-text">${inner}</span></div>${id}</div>`;
+}
+
+// Map line index → terjemahan Indonesia (kalau dialogIdText ada). Parsing
+// pakai parseDialogLinesFE juga supaya struktur N/A/B paralel; index match
+// dgn line dialog Jepang (asumsi AI translator menghasilkan baris yg sama
+// jumlah & urutannya).
+function parseDialogIdMap(dialogIdText) {
+  const map = {};
+  if (!dialogIdText) return map;
+  const turns = parseDialogLinesFE(dialogIdText);
+  turns.forEach((t, i) => { if (t.text) map[i] = t.text; });
+  return map;
 }
 
 // Static transcript (semua text keliatan) sebelum audio di-load.
 // Narator (speaker 'N') di-render di atas sebagai .gk-narrator, sisanya
 // (A/B/etc) sebagai .gk-line dgn label nama hasil resolver.
-function renderKaraokeStatic(text, key) {
+function renderKaraokeStatic(text, key, dialogIdText) {
   const turns = parseDialogLinesFE(text);
+  const idMap = parseDialogIdMap(dialogIdText);
   const parts = [];
   // Narator dulu (umumnya cuma 1 di awal, tapi support multi).
   turns.forEach((t, i) => {
-    if (t.speaker === 'N') parts.push(karaokeNarratorHtml(escapeHtml(t.text), i, key));
+    if (t.speaker === 'N') parts.push(karaokeNarratorHtml(escapeHtml(t.text), i, key, idMap[i]));
   });
   // Lalu conversation lines.
   turns.forEach((t, i) => {
-    if (t.speaker !== 'N') parts.push(karaokeLineHtml(t.displayName || t.speaker, escapeHtml(t.text), i, key));
+    if (t.speaker !== 'N') parts.push(karaokeLineHtml(t.displayName || t.speaker, escapeHtml(t.text), i, key, idMap[i]));
   });
   return parts.join('');
 }
 
-function grammarKaraokeHtml(dialogText, key) {
+function grammarKaraokeHtml(dialogText, key, dialogIdText) {
   return `
-    <div class="grammar-karaoke" id="gk-${key}" data-dialog="${escapeHtml(dialogText)}">
+    <div class="grammar-karaoke" id="gk-${key}" data-dialog="${escapeHtml(dialogText)}" data-dialog-id="${escapeHtml(dialogIdText || '')}">
       <div class="gk-controls">
         <button type="button" class="gk-play" onclick="window.grammarKaraokePlay('${key}')">▶ Putar dialog</button>
         <span class="gk-status"></span>
       </div>
-      <div class="gk-transcript">${renderKaraokeStatic(dialogText, key)}</div>
+      <div class="gk-transcript">${renderKaraokeStatic(dialogText, key, dialogIdText)}</div>
     </div>
   `;
 }
@@ -6831,6 +6875,8 @@ window.grammarKaraokePlay = async (key) => {
     // Resolve nama tokoh sekali dari teks dialog (sama logikanya dengan
     // renderKaraokeStatic) → seg.speaker (kode A/B/N) di-label sebagai nama.
     const nameMap = resolveSpeakerNames(parseDialogLinesFE(dialog));
+    // Terjemahan Indonesia (kalau ada) — paralel per-baris dgn dialog Jepang.
+    const idMap = parseDialogIdMap(el.dataset.dialogId || '');
     // Render span per-kata (words[] dari backend, partikel udah ke-pisah).
     // Pemisah (start null = spasi/tanda baca) render polos, gak di-highlight.
     // Narator (speaker 'N') di-render sebagai .gk-narrator (judul atas, tanpa
@@ -6847,9 +6893,9 @@ window.grammarKaraokePlay = async (key) => {
     segs.forEach((seg, si) => {
       const inner = renderInner(seg, si);
       if (seg.speaker === 'N') {
-        narrParts.push(karaokeNarratorHtml(inner, si, key));
+        narrParts.push(karaokeNarratorHtml(inner, si, key, idMap[si]));
       } else {
-        lineParts.push(karaokeLineHtml(nameMap[seg.speaker] || seg.speaker, inner, si, key));
+        lineParts.push(karaokeLineHtml(nameMap[seg.speaker] || seg.speaker, inner, si, key, idMap[si]));
       }
     });
     transcript.innerHTML = narrParts.join('') + lineParts.join('');

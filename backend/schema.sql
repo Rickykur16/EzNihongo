@@ -148,6 +148,7 @@ CREATE TABLE IF NOT EXISTS module_grammar (
   example TEXT,
   notes TEXT,
   example_dialog TEXT,
+  example_dialog_id TEXT,
   sort_order INT DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -155,6 +156,22 @@ CREATE TABLE IF NOT EXISTS module_grammar (
 
 CREATE INDEX IF NOT EXISTS idx_grammar_module ON module_grammar(module_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_grammar_lesson ON module_grammar(lesson_id, sort_order);
+
+-- Multi contoh kalimat per pola grammar (mirror vocabulary_examples).
+-- Lihat migration 031.
+CREATE TABLE IF NOT EXISTS grammar_examples (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  grammar_id UUID NOT NULL REFERENCES module_grammar(id) ON DELETE CASCADE,
+  japanese TEXT NOT NULL,
+  highlight TEXT,
+  indonesian TEXT,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_grammar_examples_grammar
+  ON grammar_examples(grammar_id, sort_order);
 
 -- Grammar picked into a 'grammar_task' lesson (reused from the module bank).
 -- instruction = admin task prompt per pattern; required_count = sentences the

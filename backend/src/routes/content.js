@@ -79,7 +79,7 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
         [moduleIds]
       ),
       query(
-        `SELECT id, module_id, lesson_id, pattern, meaning, example, notes, example_dialog, sort_order
+        `SELECT id, module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, sort_order
          FROM module_grammar WHERE module_id = ANY($1::uuid[])
          ORDER BY sort_order ASC, created_at ASC`,
         [moduleIds]
@@ -94,7 +94,23 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
       (vocabByModule[v.module_id] ||= []).push(v);
       if (v.lesson_id) (vocabByLesson[v.lesson_id] ||= []).push(v);
     }
+    // Pre-fetch multi contoh grammar untuk semua pola di module (mirror
+    // vocabulary_examples). Index by grammar_id → array of examples.
+    const grammarIds = grammar.rows.map((g) => g.id);
+    const grammarExamplesByGrammar = {};
+    if (grammarIds.length > 0) {
+      const gexRes = await query(
+        `SELECT grammar_id, japanese, highlight, indonesian, sort_order
+         FROM grammar_examples WHERE grammar_id = ANY($1::uuid[])
+         ORDER BY sort_order ASC, created_at ASC`,
+        [grammarIds]
+      );
+      for (const e of gexRes.rows) {
+        (grammarExamplesByGrammar[e.grammar_id] ||= []).push(e);
+      }
+    }
     for (const g of grammar.rows) {
+      g.examples = grammarExamplesByGrammar[g.id] || [];
       (grammarByModule[g.module_id] ||= []).push(g);
       if (g.lesson_id) (grammarByLesson[g.lesson_id] ||= []).push(g);
     }

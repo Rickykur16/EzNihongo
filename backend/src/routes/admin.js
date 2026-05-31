@@ -1291,6 +1291,93 @@ router.post('/generate-vocab-image', asyncHandler(async (req, res) => {
   res.json({ ok: true, cached: false, sizeBytes: bytes.length });
 }));
 
+// Generate MULTI contoh kalimat (AI) untuk pola grammar — tombol "Contoh (AI)"
+// di modal Kelola Contoh Grammar. Output: array { japanese, highlight,
+// indonesian } siap dimasukkan ke grammar_examples. Pola sama persis dgn
+// generate-vocab-examples (avoid list, count, dgn terjemahan).
+router.post('/generate-grammar-examples', asyncHandler(async (req, res) => {
+  const body = req.body || {};
+  const pattern = String(body.pattern || '').trim().slice(0, 200);
+  const meaning = String(body.meaning || '').trim().slice(0, 500);
+  const count = Math.max(1, Math.min(5, Number(body.count) || 3));
+  const avoidRaw = Array.isArray(body.avoid) ? body.avoid : [];
+  const avoid = avoidRaw.map((s) => String(s || '').trim().slice(0, 300)).filter(Boolean).slice(0, 20);
+  if (!pattern) return res.status(400).json({ error: 'pattern required' });
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
+
+  const avoidBlock = avoid.length > 0
+    ? `\nSudah ada contoh berikut — buat yang BERBEDA dan variasikan situasi/pelaku/waktu, jangan mirip:\n${avoid.map((s) => `- ${s}`).join('\n')}\n`
+    : '';
+
+  const userContent = `Buat ${count} contoh kalimat bahasa Jepang gaya JLPT N5/N4 yang memakai pola grammar berikut.
+
+Pola: ${pattern}
+${meaning ? `Arti/fungsi: ${meaning}\n` : ''}${avoidBlock}
+Aturan:
+- Tiap kalimat pendek, natural, level pemula, dan BENAR-BENAR memakai pola "${pattern}".
+- "highlight" = potongan kalimat yang menunjukkan pemakaian pola (biasanya frasa pendek yg memuat pola).
+- "indonesian" = terjemahan kalimat ke Bahasa Indonesia.
+- Kalimat polos, tanpa tag HTML / tanpa furigana.
+
+Balas HANYA JSON valid tanpa teks lain:
+{"examples":[{"japanese":"…","highlight":"…","indonesian":"…"}]}`;
+
+  const text = await callClaude({
+    system: 'You write Japanese grammar example sentences for Indonesian beginner learners. Reply with a single valid JSON object only.',
+    userContent,
+    maxTokens: 900,
+  });
+  if (!text) return res.status(502).json({ error: 'ai_upstream' });
+  const parsed = _extractJsonObject(text);
+  if (!parsed || !Array.isArray(parsed.examples)) return res.status(502).json({ error: 'ai_parse' });
+  const examples = parsed.examples
+    .map((e) => ({
+      japanese: String(e?.japanese || '').trim().slice(0, 300),
+      highlight: (String(e?.highlight || '').trim().slice(0, 100)) || null,
+      indonesian: (String(e?.indonesian || '').trim().slice(0, 300)) || null,
+    }))
+    .filter((e) => e.japanese)
+    .slice(0, count);
+  if (examples.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan contoh valid. Coba lagi.' });
+  res.json({ examples });
+}));
+
+// Translate dialog 3-suara (AI) ke Bahasa Indonesia — output dgn struktur
+// PARALEL (prefix N: / A: / B: per baris) supaya frontend bisa mencocokkan
+// terjemahan tiap turn dgn turn dialog Jepangnya.
+router.post('/generate-dialog-translation', asyncHandler(async (req, res) => {
+  const body = req.body || {};
+  const dialog = String(body.dialog || '').trim().slice(0, 4000);
+  if (!dialog) return res.status(400).json({ error: 'dialog required' });
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
+
+  const userContent = `Terjemahkan dialog Jepang berikut ke Bahasa Indonesia yang natural.
+
+Dialog asli:
+${dialog}
+
+WAJIB: pertahankan struktur baris persis seperti aslinya — tiap baris diawali prefix yang sama (N:, A:, B:, dst). Jumlah baris harus sama dgn dialog asli. Terjemahkan tiap baris menjadi 1 baris Indonesia (tanpa pecah jadi 2 baris).
+
+Aturan terjemahan:
+- Pakai Bahasa Indonesia santai-natural sesuai konteks (bukan kaku formal kecuali konteksnya formal).
+- Pertahankan nama tokoh (mis. 田中さん → Pak Tanaka / Tanaka-san — konsisten saja).
+- Tidak ada tag HTML, tidak ada catatan tambahan.
+
+Balas HANYA JSON valid tanpa teks lain:
+{"dialog_id":"N: …\\nA: …\\nB: …\\nA: …"}`;
+
+  const text = await callClaude({
+    system: 'You translate Japanese dialog into natural Indonesian, preserving the speaker-prefix line structure exactly. Reply with a single valid JSON object only.',
+    userContent,
+    maxTokens: 800,
+  });
+  if (!text) return res.status(502).json({ error: 'ai_upstream' });
+  const parsed = _extractJsonObject(text);
+  const translation = String(parsed?.dialog_id || '').trim().slice(0, 4000);
+  if (!translation) return res.status(502).json({ error: 'ai_empty' });
+  res.json({ dialog_id: translation });
+}));
+
 // Generate contoh kalimat (AI) untuk pola grammar — tombol "Contoh (AI)" di
 // editor grammar admin. Admin tulis pattern + meaning, AI bikin 1 kalimat
 // pendek yang memakai pola itu (level pemula).
@@ -1380,19 +1467,20 @@ Balas HANYA JSON valid:
 }));
 
 router.post('/module-grammar', asyncHandler(async (req, res) => {
-  const { moduleId, lessonId, pattern, meaning, example, notes, exampleDialog, sortOrder } = req.body || {};
+  const { moduleId, lessonId, pattern, meaning, example, notes, exampleDialog, exampleDialogId, sortOrder } = req.body || {};
   if (!moduleId || !pattern) return res.status(400).json({ error: 'moduleId and pattern required' });
   const result = await query(
-    `INSERT INTO module_grammar (module_id, lesson_id, pattern, meaning, example, notes, example_dialog, sort_order)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-    [moduleId, lessonId || null, pattern, meaning || null, example || null, notes || null, exampleDialog || null, sortOrder || 0]
+    `INSERT INTO module_grammar (module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, sort_order)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+    [moduleId, lessonId || null, pattern, meaning || null, example || null, notes || null, exampleDialog || null, exampleDialogId || null, sortOrder || 0]
   );
   res.status(201).json({ grammar: result.rows[0] });
 }));
 
 router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
-  const { lessonId, pattern, meaning, example, notes, exampleDialog, sortOrder } = req.body || {};
+  const { lessonId, pattern, meaning, example, notes, exampleDialog, exampleDialogId, sortOrder } = req.body || {};
   const hasLesson = Object.prototype.hasOwnProperty.call(req.body || {}, 'lessonId');
+  const hasDialogId = Object.prototype.hasOwnProperty.call(req.body || {}, 'exampleDialogId');
   const result = await query(
     `UPDATE module_grammar SET
        lesson_id = CASE WHEN $9::boolean THEN $2 ELSE lesson_id END,
@@ -1402,12 +1490,57 @@ router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
        notes = COALESCE($6, notes),
        example_dialog = COALESCE($7, example_dialog),
        sort_order = COALESCE($8, sort_order),
+       example_dialog_id = CASE WHEN $11::boolean THEN $10 ELSE example_dialog_id END,
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
-    [req.params.id, lessonId || null, pattern, meaning, example, notes, exampleDialog, sortOrder, hasLesson]
+    [req.params.id, lessonId || null, pattern, meaning, example, notes, exampleDialog, sortOrder, hasLesson, exampleDialogId || null, hasDialogId]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ grammar: result.rows[0] });
+}));
+
+// === grammar_examples CRUD (mirror vocabulary-examples) ===
+router.get('/grammar-examples', asyncHandler(async (req, res) => {
+  const { grammarId } = req.query;
+  if (!grammarId) return res.status(400).json({ error: 'grammarId required' });
+  const rows = await query(
+    `SELECT * FROM grammar_examples WHERE grammar_id = $1 ORDER BY sort_order ASC, created_at ASC`,
+    [grammarId]
+  );
+  res.json({ examples: rows.rows });
+}));
+
+router.post('/grammar-examples', asyncHandler(async (req, res) => {
+  const { grammarId, japanese, highlight, indonesian, sortOrder } = req.body || {};
+  if (!grammarId || !japanese) return res.status(400).json({ error: 'grammarId and japanese required' });
+  const r = await query(
+    `INSERT INTO grammar_examples (grammar_id, japanese, highlight, indonesian, sort_order)
+     VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+    [grammarId, japanese, highlight || null, indonesian || null, sortOrder || 0]
+  );
+  res.status(201).json({ example: r.rows[0] });
+}));
+
+router.put('/grammar-examples/:id', asyncHandler(async (req, res) => {
+  const { japanese, highlight, indonesian, sortOrder } = req.body || {};
+  const hasHighlight = Object.prototype.hasOwnProperty.call(req.body || {}, 'highlight');
+  const r = await query(
+    `UPDATE grammar_examples SET
+       japanese = COALESCE($2, japanese),
+       highlight = CASE WHEN $5::boolean THEN $3 ELSE highlight END,
+       indonesian = COALESCE($4, indonesian),
+       sort_order = COALESCE($6, sort_order),
+       updated_at = NOW()
+     WHERE id = $1 RETURNING *`,
+    [req.params.id, japanese, highlight || null, indonesian, hasHighlight, sortOrder]
+  );
+  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ example: r.rows[0] });
+}));
+
+router.delete('/grammar-examples/:id', asyncHandler(async (req, res) => {
+  await query(`DELETE FROM grammar_examples WHERE id = $1`, [req.params.id]);
+  res.json({ ok: true });
 }));
 
 router.delete('/module-grammar/:id', asyncHandler(async (req, res) => {
