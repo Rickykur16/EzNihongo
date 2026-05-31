@@ -1218,6 +1218,83 @@ Balas HANYA JSON valid tanpa teks lain:
   res.json({ examples });
 }));
 
+// Generate contoh kalimat (AI) untuk pola grammar — tombol "Contoh (AI)" di
+// editor grammar admin. Admin tulis pattern + meaning, AI bikin 1 kalimat
+// pendek yang memakai pola itu (level pemula).
+router.post('/generate-grammar-example', asyncHandler(async (req, res) => {
+  const body = req.body || {};
+  const pattern = String(body.pattern || '').trim().slice(0, 200);
+  const meaning = String(body.meaning || '').trim().slice(0, 500);
+  if (!pattern) return res.status(400).json({ error: 'pattern required' });
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
+
+  const userContent = `Buat SATU contoh kalimat bahasa Jepang yang BENAR-BENAR memakai pola grammar berikut, untuk pembelajar JLPT N5/N4.
+
+Pola: ${pattern}
+${meaning ? `Arti/fungsi: ${meaning}\n` : ''}
+Aturan:
+- Kalimat pendek (5-15 kata), natural, level pemula.
+- Tulis polos tanpa tag HTML, tanpa furigana.
+- Kalimat harus jelas menggunakan pola di atas — bukan parafrase.
+
+Balas HANYA JSON valid:
+{"example":"…"}`;
+
+  const text = await callClaude({
+    system: 'You write Japanese example sentences for Indonesian beginner learners. Reply with a single valid JSON object only.',
+    userContent,
+    maxTokens: 200,
+  });
+  if (!text) return res.status(502).json({ error: 'ai_upstream' });
+  const parsed = _extractJsonObject(text);
+  const example = String(parsed?.example || '').trim().slice(0, 300);
+  if (!example) return res.status(502).json({ error: 'ai_empty' });
+  res.json({ example });
+}));
+
+// Generate dialog 3-suara (AI) untuk pola grammar — tombol "Dialog (AI)" di
+// editor grammar admin. Output langsung kompatibel dengan player karaoke
+// (format JLPT: N/A/B per baris). N = narrator, A = cewe, B = cowo.
+router.post('/generate-grammar-dialog', asyncHandler(async (req, res) => {
+  const body = req.body || {};
+  const pattern = String(body.pattern || '').trim().slice(0, 200);
+  const meaning = String(body.meaning || '').trim().slice(0, 500);
+  const example = String(body.example || '').trim().slice(0, 300);
+  if (!pattern) return res.status(400).json({ error: 'pattern required' });
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
+
+  const userContent = `Buat dialog pendek bahasa Jepang gaya JLPT (level N5/N4) yang menampilkan pemakaian pola grammar berikut secara natural.
+
+Pola: ${pattern}
+${meaning ? `Arti/fungsi: ${meaning}\n` : ''}${example ? `Contoh kalimat: ${example}\n` : ''}
+FORMAT WAJIB (tepat seperti ini, 1 baris per turn, prefix speaker + ":"):
+N: kalimat narator yang mengenalkan situasi (1 baris).
+A: ujaran perempuan…
+B: ujaran lelaki…
+A: …
+B: …
+
+Aturan:
+- Hanya 3 peran: N (narrator), A (perempuan), B (lelaki). DILARANG peran lain.
+- 4-6 turn dialog (di luar baris narator).
+- Pola "${pattern}" muncul minimal 1x di dialog (idealnya dipakai A atau B, bukan narator).
+- Tulis polos, tanpa tag HTML, tanpa furigana, tanpa romaji.
+
+Balas HANYA JSON valid:
+{"dialog":"N: …\\nA: …\\nB: …\\nA: …\\nB: …"}`;
+
+  const text = await callClaude({
+    system: 'You write short Japanese dialogues in JLPT 3-role format (N/A/B) for Indonesian beginner learners. Reply with a single valid JSON object only.',
+    userContent,
+    maxTokens: 600,
+  });
+  if (!text) return res.status(502).json({ error: 'ai_upstream' });
+  const parsed = _extractJsonObject(text);
+  const dialog = String(parsed?.dialog || '').trim().slice(0, 2000);
+  if (!dialog) return res.status(502).json({ error: 'ai_empty' });
+  res.json({ dialog });
+}));
+
 router.post('/module-grammar', asyncHandler(async (req, res) => {
   const { moduleId, lessonId, pattern, meaning, example, notes, exampleDialog, sortOrder } = req.body || {};
   if (!moduleId || !pattern) return res.status(400).json({ error: 'moduleId and pattern required' });
