@@ -2501,13 +2501,25 @@
     margin-bottom: 8px;
   }
   .grammar-example-item:last-child { margin-bottom: 0; }
-  .grammar-example {
+  .grammar-example-row { display: flex; align-items: flex-start; gap: 10px; }
+  .grammar-example { flex: 1; min-width: 0;
     font-size: 15.5px;
     color: var(--du-ink);
     font-family: 'Noto Sans JP', sans-serif;
     line-height: 1.7;
     white-space: pre-wrap;
   }
+  .ge-play {
+    flex: 0 0 auto; width: 30px; height: 30px; margin-top: 2px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 999px; cursor: pointer;
+    background: #fff; color: var(--brand-red);
+    border: 1.5px solid var(--du-border, #ece9e3);
+    transition: background .15s, color .15s, transform .15s;
+  }
+  .ge-play svg { width: 14px; height: 14px; }
+  .ge-play:hover { background: var(--brand-red); color: #fff; border-color: var(--brand-red); transform: scale(1.08); }
+  .ge-play.playing { background: var(--brand-red); color: #fff; border-color: var(--brand-red); animation: pulse 0.9s infinite; }
   .grammar-example-id {
     margin-top: 6px;
     font-size: 13px;
@@ -6524,7 +6536,10 @@ function renderLessonGrammar(lesson) {
           }
           const examplesHtml = examples.map((ex) => `
             <div class="grammar-example-item">
-              <div class="grammar-example" lang="ja">${escapeHtml(ex.japanese || '')}</div>
+              <div class="grammar-example-row">
+                <div class="grammar-example" lang="ja">${escapeHtml(ex.japanese || '')}</div>
+                <button type="button" class="ge-play" title="Dengar pelafalan" data-tts="${escapeHtml(ex.japanese || '')}" onclick="window.playGrammarExampleTts(this)">${AUDIO_SVG}</button>
+              </div>
               ${ex.indonesian ? `<div class="grammar-example-id">${escapeHtml(ex.indonesian)}</div>` : ''}
             </div>`).join('');
           return `
@@ -7006,13 +7021,19 @@ function ttsUrl(text) {
 // Fire-and-forget di module init.
 _initTtsVersion();
 
+// Play TTS contoh kalimat grammar (teks di data-tts attribute).
+window.playGrammarExampleTts = (btn) => {
+  if (!btn) return;
+  playTTS(btn.dataset.tts || '', btn);
+};
+
 function playTTS(text, btn) {
   const plain = String(text || '').replace(/<[^>]*>/g, '').trim();
   if (!plain) return;
   // Hentiin semua TTS yang lagi jalan sebelum mulai baru (anti bentrok).
   _stopAllTts();
   if (btn) {
-    document.querySelectorAll('.dc-audio.playing,.de-play.playing,.dm-headaudio.playing').forEach((b) => b.classList.remove('playing'));
+    document.querySelectorAll('.dc-audio.playing,.de-play.playing,.dm-headaudio.playing,.ge-play.playing').forEach((b) => b.classList.remove('playing'));
     btn.classList.add('playing');
   }
   let elevenStarted = false;
