@@ -2526,16 +2526,9 @@
     line-height: 1.55;
     font-style: italic;
   }
-  /* Terjemahan Indonesia per baris dialog karaoke — kecil, italic, di bawah text. */
-  .gk-line-id, .gk-narrator-id {
-    margin-top: 3px;
-    font-size: 12.5px;
-    color: #8a7d66;
-    font-style: italic;
-    line-height: 1.5;
-  }
-  .gk-line-main { display: flex; gap: 8px; align-items: baseline; }
-  .gk-line { flex-direction: column; align-items: stretch; }
+  /* Terjemahan Indonesia per baris dialog — kecil, italic. Visibility
+     (tap/selalu/off) dikontrol di blok .grammar-karaoke[data-arti] di bawah. */
+  .gk-line-id { font-size: 12.5px; color: #8a7d66; font-style: italic; line-height: 1.5; }
   .grammar-notes {
     font-size: 12.5px;
     color: var(--du-ink-3);
@@ -2987,60 +2980,131 @@
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(20, 20, 30, .06);
   }
-  /* Karaoke dialog grammar (Todai-style): full transcript + highlight. */
+  /* ── Dialog Contoh — chat-bubble redesign ─────────────────────────
+     Tiap pembicara punya avatar + bubble berwarna di sisinya sendiri
+     (kiri/kanan), narator jadi kartu "Situasi" di atas, terjemahan bisa
+     tap-to-reveal. Highlight per-kata (gk-word) tetap dari aligned TTS. */
   .grammar-karaoke {
-    margin: 12px 0 0; padding: 12px 14px;
-    background: #faf7f5; border: 1px solid #eadfda; border-radius: 10px;
+    margin: 12px 0 0;
+    background: #fff;
+    border: 1px solid #f0e5de;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 0 rgba(27,20,16,0.04), 0 12px 32px rgba(27,20,16,0.05);
   }
-  .gk-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  /* toolbar */
+  .gk-toolbar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 12px 14px;
+    background: #fffbf7;
+    border-bottom: 1px solid #f4ece6;
+  }
   .gk-play {
+    display: inline-flex; align-items: center; gap: 6px;
     background: var(--brand-red); color: #fff; border: none;
-    padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 700;
-    cursor: pointer;
+    padding: 9px 16px; border-radius: 11px;
+    font-size: 13px; font-weight: 800; cursor: pointer; white-space: nowrap;
+    box-shadow: 0 3px 0 #b81e18;
+    transition: transform .08s, box-shadow .08s;
   }
-  .gk-play:disabled { opacity: .6; cursor: default; }
-  .gk-status { font-size: 12px; color: #8a8a8a; }
-  .gk-transcript { display: flex; flex-direction: column; gap: 7px; }
-  .gk-line {
-    display: flex; gap: 8px; align-items: baseline;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 6px;
-    border-left: 3px solid transparent;
-    transition: background .15s ease, border-color .15s ease;
+  .gk-play:hover { transform: translateY(-1px); box-shadow: 0 4px 0 #b81e18; }
+  .gk-play:active { transform: translateY(2px); box-shadow: 0 1px 0 #b81e18; }
+  .gk-play:disabled { opacity: .6; cursor: default; transform: none; box-shadow: 0 3px 0 #b81e18; }
+  .gk-seg { display: inline-flex; background: #f4ece6; border-radius: 10px; padding: 3px; gap: 2px; }
+  .gk-seg-btn {
+    border: 0; cursor: pointer; font: inherit;
+    background: transparent; color: #9a8a82;
+    font-weight: 800; font-size: 11.5px; padding: 5px 9px; border-radius: 8px;
+    transition: all .12s;
   }
-  .gk-line:hover { background: rgba(178,0,36,0.05); }
-  .gk-line.gk-line-active {
-    background: rgba(178,0,36,0.08);
-    border-left-color: var(--brand-red);
+  .gk-seg-btn.is-on { background: #fff; color: #1b1410; box-shadow: 0 1px 3px rgba(27,20,16,0.12); }
+  .gk-tool-div { width: 1px; height: 20px; background: #eee2db; margin: 0 1px; }
+  .gk-arti-toggle {
+    border: 0; cursor: pointer; font: inherit; white-space: nowrap;
+    background: #1b1410; color: #fff;
+    font-weight: 800; font-size: 11.5px; padding: 7px 12px; border-radius: 9px;
+    transition: all .12s;
   }
-  .gk-line[data-no-audio="1"] { cursor: default; }
-  .gk-line[data-no-audio="1"]:hover { background: transparent; }
-  /* Narator (N) — judul italic di atas, BUKAN baris speaker. */
-  .gk-narrator {
+  .grammar-karaoke[data-arti="off"] .gk-arti-toggle { background: #f4ece6; color: #9a8a82; }
+  .gk-status { font-size: 11.5px; color: #9a8a82; margin-left: auto; }
+  /* scene setter (narator → "Situasi") */
+  .gk-transcript { padding: 18px 16px 10px; }
+  .gk-scene {
+    text-align: center; max-width: 540px; margin: 0 auto 20px;
+    padding-bottom: 16px; border-bottom: 1px dashed #ece0d8;
+  }
+  .gk-scene-tag {
+    display: inline-block; font-size: 9.5px; font-weight: 900; letter-spacing: 0.14em;
+    color: #b89a55; background: #fbf3e2; padding: 3px 10px; border-radius: 999px;
+    text-transform: uppercase; margin-bottom: 10px;
     font-family: 'Noto Sans JP', sans-serif;
-    font-size: 14px;
-    font-style: italic;
-    color: #6b5f4f;
-    line-height: 1.7;
-    padding: 8px 10px;
-    margin-bottom: 12px;
-    border-bottom: 1px dashed #eadfda;
-    border-radius: 6px 6px 0 0;
-    cursor: pointer;
-    transition: background .15s ease;
   }
-  .gk-narrator:hover { background: rgba(178,0,36,0.05); }
-  .gk-narrator.gk-line-active { background: rgba(178,0,36,0.08); }
-  .gk-speaker {
-    flex: 0 0 auto; min-width: 20px; font-weight: 800; font-size: 12px;
-    color: var(--brand-red);
+  .gk-scene-line { cursor: pointer; border-radius: 8px; padding: 4px 8px; transition: background .15s ease; }
+  .gk-scene-line:hover { background: rgba(178,0,36,0.04); }
+  .gk-scene-line.gk-line-active { background: rgba(178,0,36,0.07); }
+  .gk-scene-line .gk-text { font-size: 18px; color: #5a4a42; line-height: 1.7; }
+  .gk-scene-line .gk-line-id { margin-top: 4px; color: #9a8a82; }
+  /* conversation bubbles */
+  .gk-text { font-family: 'Noto Sans JP', sans-serif; }
+  .gk-bubbles { display: flex; flex-direction: column; }
+  .gk-line { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 16px; }
+  .gk-side-right { flex-direction: row-reverse; }
+  .gk-avatar {
+    flex: 0 0 38px; width: 38px; height: 38px; border-radius: 50%;
+    background: var(--sp, var(--brand-red)); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: 14px;
+    box-shadow: 0 2px 6px rgba(27,20,16,0.12); margin-bottom: 2px;
+    transition: box-shadow .2s ease;
   }
-  .gk-text { font-size: 17px; line-height: 1.95; color: #444; }
-  .gk-punct { color: #444; }
+  .gk-line.gk-line-active .gk-avatar { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--sp, var(--brand-red)); }
+  .gk-bubble-col { max-width: 76%; display: flex; flex-direction: column; }
+  .gk-side-right .gk-bubble-col { align-items: flex-end; }
+  .gk-name { font-size: 11px; font-weight: 800; color: var(--sp-deep, var(--brand-red)); margin-bottom: 4px; padding: 0 4px; letter-spacing: 0.02em; }
+  .gk-bubble {
+    background: var(--sp-bubble, #fff);
+    border: 1.5px solid #f0e5de;
+    border-radius: 16px 16px 16px 4px;
+    padding: 11px 13px;
+    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+  }
+  .gk-side-right .gk-bubble { border-radius: 16px 16px 4px 16px; }
+  .gk-line.gk-line-active .gk-bubble {
+    border-color: var(--sp, var(--brand-red));
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--sp, var(--brand-red)) 15%, transparent);
+    transform: translateY(-1px);
+  }
+  .gk-bubble-main { display: flex; align-items: flex-start; gap: 8px; }
+  .gk-bubble-main .gk-text { flex: 1; min-width: 0; font-size: 17px; line-height: 1.85; color: #1b1410; }
+  .gk-line-play {
+    flex: 0 0 30px; width: 30px; height: 30px; border-radius: 9px; border: 0; cursor: pointer;
+    background: var(--sp-soft, #ffe7e5); color: var(--sp, var(--brand-red));
+    display: flex; align-items: center; justify-content: center;
+    transition: filter .15s ease, background .15s ease, color .15s ease; margin-top: 2px;
+  }
+  .gk-line-play:hover { filter: brightness(0.96); }
+  .gk-line.gk-line-active .gk-line-play { background: var(--sp, var(--brand-red)); color: #fff; }
+  /* arti reveal */
+  .gk-arti { margin-top: 7px; }
+  .gk-reveal {
+    display: inline-flex; align-items: center; gap: 5px;
+    border: 0; background: transparent; cursor: pointer; padding: 0;
+    color: var(--sp, var(--brand-red)); font-weight: 800; font-size: 11.5px;
+    font-family: inherit; letter-spacing: 0.01em;
+  }
+  /* arti modes — scoped ke bubble (scene selalu tampil). */
+  .grammar-karaoke[data-arti="always"] .gk-bubbles .gk-reveal { display: none; }
+  .grammar-karaoke[data-arti="off"] .gk-bubbles .gk-reveal,
+  .grammar-karaoke[data-arti="off"] .gk-bubbles .gk-line-id { display: none; }
+  .grammar-karaoke[data-arti="tap"] .gk-bubbles .gk-line-id { display: none; }
+  .grammar-karaoke[data-arti="tap"] .gk-bubbles .gk-line.gk-revealed .gk-line-id { display: block; animation: gkReveal .28s ease; }
+  .grammar-karaoke[data-arti="tap"] .gk-bubbles .gk-line.gk-revealed .gk-reveal { display: none; }
+  @keyframes gkReveal { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+  /* word-level karaoke highlight (dari aligned TTS) */
+  .gk-punct { color: inherit; }
   .gk-word { border-radius: 4px; padding: 0 1px; transition: color .1s, background .1s; }
   .gk-word.gk-done { color: #1a1a1a; }
-  .gk-word.gk-active { color: #fff; background: var(--brand-red); padding: 1px 3px; }
+  .gk-word.gk-active { color: #fff; background: var(--sp, var(--brand-red)); padding: 1px 3px; }
   .qlp-head {
     display: flex; align-items: center; justify-content: space-between;
     gap: 12px;
@@ -6723,21 +6787,119 @@ function resolveSpeakerNames(turns) {
   return out;
 }
 
-function karaokeLineHtml(speaker, inner, lineIndex, key, idText) {
-  const onClick = (key != null && lineIndex != null) ? ` onclick="window.grammarKaraokeJumpTo('${key}',${lineIndex})"` : '';
-  const idx = lineIndex != null ? ` data-line-index="${lineIndex}"` : '';
-  const id = idText ? `<div class="gk-line-id">${escapeHtml(idText)}</div>` : '';
-  return `<div class="gk-line"${idx}${onClick}><div class="gk-line-main">${speaker ? `<span class="gk-speaker">${escapeHtml(speaker)}</span>` : ''}<span class="gk-text">${inner}</span></div>${id}</div>`;
+// Palet warna per pembicara (dipakai bergiliran sesuai urutan kemunculan):
+// speaker pertama = merah brand (kiri), kedua = indigo (kanan), dst.
+const GK_PALETTES = [
+  { color: '#E4322B', deep: '#B81E18', soft: '#FFE7E5', bubble: '#FFFFFF' }, // red
+  { color: '#3E5C9A', deep: '#2C447A', soft: '#E9EEF8', bubble: '#F3F6FC' }, // indigo
+  { color: '#1F8A6B', deep: '#156B52', soft: '#E2F3ED', bubble: '#F1F9F6' }, // teal
+  { color: '#9A4F8E', deep: '#763C6D', soft: '#F6E9F4', bubble: '#FBF3FA' }, // plum
+];
+const GK_PLAY_TRI = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+const GK_EYE_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+
+// Map kode pembicara non-narator → { side, pal } (urutan kemunculan).
+function gkSpeakerStyles(rows) {
+  const codes = [];
+  rows.forEach((r) => { const s = r.speaker; if (s && s !== 'N' && !codes.includes(s)) codes.push(s); });
+  const map = {};
+  codes.forEach((c, i) => {
+    map[c] = { side: i % 2 === 0 ? 'left' : 'right', pal: GK_PALETTES[i % GK_PALETTES.length] };
+  });
+  return map;
+}
+function gkVars(pal) {
+  return `--sp:${pal.color};--sp-deep:${pal.deep};--sp-soft:${pal.soft};--sp-bubble:${pal.bubble};`;
+}
+function gkAvatarText(name) {
+  const s = String(name || '').trim();
+  if (!s) return '？';
+  return s.length <= 2 ? s : s.slice(0, 2);
 }
 
-// Narator → judul italic di atas (tanpa label "N"). Tetap clickable seperti
-// baris biasa karena punya segment audio sendiri.
-function karaokeNarratorHtml(inner, lineIndex, key, idText) {
-  const onClick = (key != null && lineIndex != null) ? ` onclick="window.grammarKaraokeJumpTo('${key}',${lineIndex})"` : '';
-  const idx = lineIndex != null ? ` data-line-index="${lineIndex}"` : '';
-  const id = idText ? `<div class="gk-narrator-id">${escapeHtml(idText)}</div>` : '';
-  return `<div class="gk-narrator"${idx}${onClick}><div><span class="gk-text">${inner}</span></div>${id}</div>`;
+// Default mode terjemahan + kecepatan: disimpan global di localStorage (semua
+// dialog di halaman ikut). Default arti = "tap" (active recall), speed = 1×.
+function gkGetArtiMode() {
+  try { const v = localStorage.getItem('ez_dialog_arti'); if (v === 'always' || v === 'off' || v === 'tap') return v; } catch (e) {}
+  return 'tap';
 }
+function gkGetSpeed() {
+  try { const v = parseFloat(localStorage.getItem('ez_dialog_speed')); if (v === 0.75 || v === 1 || v === 1.25) return v; } catch (e) {}
+  return 1;
+}
+function gkArtiLabel(mode) {
+  return mode === 'always' ? 'Arti: selalu' : mode === 'off' ? 'Arti: off' : 'Arti: tap';
+}
+
+// Narator (speaker 'N') → kartu "Situasi" di atas. Tetap clickable (punya
+// segment audio sendiri) + terjemahan selalu tampil (tidak kena mode tap).
+function gkSceneHtml(rows, key) {
+  const body = rows.map((r) => `
+    <div class="gk-scene-line" data-line-index="${r.index}" onclick="window.grammarKaraokeJumpTo('${key}',${r.index})" title="Putar baris ini">
+      <div class="gk-text">${r.inner}</div>
+      ${r.idText ? `<div class="gk-line-id">${escapeHtml(r.idText)}</div>` : ''}
+    </div>`).join('');
+  return `<div class="gk-scene"><div class="gk-scene-tag">場面 · Situasi</div>${body}</div>`;
+}
+// Satu baris percakapan → chat bubble (avatar + nama + bubble berwarna di
+// sisi pembicara). Tombol putar per-baris + reveal arti (mode tap).
+function gkBubbleHtml(r, key, styles) {
+  const sp = styles[r.speaker] || { side: 'left', pal: GK_PALETTES[0] };
+  const avatar = gkAvatarText(r.displayName || r.speaker);
+  const name = escapeHtml(r.displayName || r.speaker || '');
+  const arti = r.idText
+    ? `<div class="gk-arti"><button type="button" class="gk-reveal" onclick="window.gkRevealArti(this)">${GK_EYE_SVG} Lihat arti</button><div class="gk-line-id">${escapeHtml(r.idText)}</div></div>`
+    : '';
+  return `
+    <div class="gk-line gk-side-${sp.side}" data-line-index="${r.index}" style="${gkVars(sp.pal)}">
+      <div class="gk-avatar">${escapeHtml(avatar)}</div>
+      <div class="gk-bubble-col">
+        ${name ? `<div class="gk-name">${name}</div>` : ''}
+        <div class="gk-bubble">
+          <div class="gk-bubble-main">
+            <div class="gk-text">${r.inner}</div>
+            <button type="button" class="gk-line-play" title="Putar baris ini" onclick="window.grammarKaraokeJumpTo('${key}',${r.index})">${GK_PLAY_TRI}</button>
+          </div>
+          ${arti}
+        </div>
+      </div>
+    </div>`;
+}
+// Susun transcript: scene (narator) di atas + bubble percakapan. rows[i] =
+// { speaker, displayName, inner, idText, index }. index = segment index audio.
+function gkComposeHtml(rows, key, styles) {
+  const sceneRows = rows.filter((r) => r.speaker === 'N');
+  const lineRows = rows.filter((r) => r.speaker !== 'N');
+  const scene = sceneRows.length ? gkSceneHtml(sceneRows, key) : '';
+  const bubbles = lineRows.map((r) => gkBubbleHtml(r, key, styles)).join('');
+  return scene + `<div class="gk-bubbles">${bubbles}</div>`;
+}
+
+// Cycle mode arti (tap → selalu → off) — global untuk semua dialog di halaman.
+window.gkCycleArti = (key, btn) => {
+  const next = { tap: 'always', always: 'off', off: 'tap' }[gkGetArtiMode()] || 'tap';
+  try { localStorage.setItem('ez_dialog_arti', next); } catch (e) {}
+  document.querySelectorAll('.grammar-karaoke').forEach((el) => el.setAttribute('data-arti', next));
+  document.querySelectorAll('.gk-arti-toggle').forEach((b) => { b.textContent = gkArtiLabel(next); });
+};
+// Set kecepatan playback — global; aktif live untuk player yang sedang load.
+window.gkSetSpeed = (key, rate, btn) => {
+  const r = parseFloat(rate) || 1;
+  try { localStorage.setItem('ez_dialog_speed', String(r)); } catch (e) {}
+  document.querySelectorAll('.grammar-karaoke').forEach((el) => {
+    el.setAttribute('data-speed', String(r));
+    el.querySelectorAll('.gk-speed .gk-seg-btn').forEach((b) => b.classList.toggle('is-on', parseFloat(b.dataset.v) === r));
+  });
+  for (const k of Object.keys(window.__gk)) {
+    const st = window.__gk[k];
+    if (st) { st.rate = r; if (st.audio) { try { st.audio.playbackRate = r; } catch (e) {} } }
+  }
+};
+// Reveal terjemahan satu bubble (mode tap).
+window.gkRevealArti = (btn) => {
+  const line = btn && btn.closest('.gk-line');
+  if (line) line.classList.add('gk-revealed');
+};
 
 // Map line index → terjemahan Indonesia (kalau dialogIdText ada). Parsing
 // pakai parseDialogLinesFE juga supaya struktur N/A/B paralel; index match
@@ -6751,29 +6913,36 @@ function parseDialogIdMap(dialogIdText) {
   return map;
 }
 
-// Static transcript (semua text keliatan) sebelum audio di-load.
-// Narator (speaker 'N') di-render di atas sebagai .gk-narrator, sisanya
-// (A/B/etc) sebagai .gk-line dgn label nama hasil resolver.
+// Static transcript (semua text keliatan) sebelum audio di-load: narator →
+// kartu Situasi, sisanya → chat bubble. Struktur identik dgn versi audio
+// supaya layout tidak loncat saat audio selesai load.
 function renderKaraokeStatic(text, key, dialogIdText) {
   const turns = parseDialogLinesFE(text);
   const idMap = parseDialogIdMap(dialogIdText);
-  const parts = [];
-  // Narator dulu (umumnya cuma 1 di awal, tapi support multi).
-  turns.forEach((t, i) => {
-    if (t.speaker === 'N') parts.push(karaokeNarratorHtml(escapeHtml(t.text), i, key, idMap[i]));
-  });
-  // Lalu conversation lines.
-  turns.forEach((t, i) => {
-    if (t.speaker !== 'N') parts.push(karaokeLineHtml(t.displayName || t.speaker, escapeHtml(t.text), i, key, idMap[i]));
-  });
-  return parts.join('');
+  const styles = gkSpeakerStyles(turns);
+  const rows = turns.map((t, i) => ({
+    speaker: t.speaker,
+    displayName: t.displayName || t.speaker,
+    inner: escapeHtml(t.text),
+    idText: idMap[i] || '',
+    index: i,
+  }));
+  return gkComposeHtml(rows, key, styles);
 }
 
 function grammarKaraokeHtml(dialogText, key, dialogIdText) {
+  const arti = gkGetArtiMode();
+  const speed = gkGetSpeed();
+  const speeds = [0.75, 1, 1.25];
   return `
-    <div class="grammar-karaoke" id="gk-${key}" data-dialog="${escapeHtml(dialogText)}" data-dialog-id="${escapeHtml(dialogIdText || '')}">
-      <div class="gk-controls">
+    <div class="grammar-karaoke" id="gk-${key}" data-dialog="${escapeHtml(dialogText)}" data-dialog-id="${escapeHtml(dialogIdText || '')}" data-arti="${arti}" data-speed="${speed}">
+      <div class="gk-toolbar">
         <button type="button" class="gk-play" onclick="window.grammarKaraokePlay('${key}')">▶ Putar dialog</button>
+        <div class="gk-seg gk-speed">
+          ${speeds.map((v) => `<button type="button" class="gk-seg-btn${v === speed ? ' is-on' : ''}" data-v="${v}" onclick="window.gkSetSpeed('${key}',${v},this)">${v}×</button>`).join('')}
+        </div>
+        <span class="gk-tool-div"></span>
+        <button type="button" class="gk-arti-toggle" onclick="window.gkCycleArti('${key}',this)">${gkArtiLabel(arti)}</button>
         <span class="gk-status"></span>
       </div>
       <div class="gk-transcript">${renderKaraokeStatic(dialogText, key, dialogIdText)}</div>
@@ -6830,6 +6999,7 @@ function gkPlaySegment(key, si) {
   const seg = segs[si];
   const audio = new Audio('data:' + (seg.content_type || 'audio/mpeg') + ';base64,' + seg.audio_base64);
   st.audio = audio;
+  try { audio.playbackRate = st.rate || 1; } catch (e) {}
   const times = (st.wordTimes && st.wordTimes[si]) || [];
   const spans = st.spans[si] || [];
   audio.addEventListener('timeupdate', () => {
@@ -6862,9 +7032,13 @@ function gkPlaySegment(key, si) {
 function gkSyncActiveLine(key, activeSi) {
   const root = document.getElementById('gk-' + key);
   if (!root) return;
+  const tap = root.getAttribute('data-arti') === 'tap';
   root.querySelectorAll('[data-line-index]').forEach((el) => {
     const li = Number(el.dataset.lineIndex);
-    el.classList.toggle('gk-line-active', activeSi >= 0 && li === activeSi);
+    const on = activeSi >= 0 && li === activeSi;
+    el.classList.toggle('gk-line-active', on);
+    // Mode tap: mendengar suatu baris otomatis reveal artinya (cek pemahaman).
+    if (on && tap && el.classList.contains('gk-line')) el.classList.add('gk-revealed');
   });
 }
 
@@ -6910,8 +7084,6 @@ window.grammarKaraokePlay = async (key) => {
     const idMap = parseDialogIdMap(el.dataset.dialogId || '');
     // Render span per-kata (words[] dari backend, partikel udah ke-pisah).
     // Pemisah (start null = spasi/tanda baca) render polos, gak di-highlight.
-    // Narator (speaker 'N') di-render sebagai .gk-narrator (judul atas, tanpa
-    // label); A/B di-render sebagai .gk-line dgn nama hasil resolver.
     const renderInner = (seg, si) => {
       let wi = 0;
       return (seg.words || []).map((w) => {
@@ -6919,23 +7091,23 @@ window.grammarKaraokePlay = async (key) => {
         return `<span class="gk-word" data-k="${si}_${wi++}">${escapeHtml(w.text)}</span>`;
       }).join('');
     };
-    const narrParts = [];
-    const lineParts = [];
-    segs.forEach((seg, si) => {
-      const inner = renderInner(seg, si);
-      if (seg.speaker === 'N') {
-        narrParts.push(karaokeNarratorHtml(inner, si, key, idMap[si]));
-      } else {
-        lineParts.push(karaokeLineHtml(nameMap[seg.speaker] || seg.speaker, inner, si, key, idMap[si]));
-      }
-    });
-    transcript.innerHTML = narrParts.join('') + lineParts.join('');
+    // Bangun bubble (struktur sama dgn renderKaraokeStatic) — span per-kata
+    // sebagai inner supaya highlight aligned tetap jalan di dalam bubble.
+    const styles = gkSpeakerStyles(segs);
+    const rows = segs.map((seg, si) => ({
+      speaker: seg.speaker,
+      displayName: nameMap[seg.speaker] || seg.speaker,
+      inner: renderInner(seg, si),
+      idText: idMap[si] || '',
+      index: si,
+    }));
+    transcript.innerHTML = gkComposeHtml(rows, key, styles);
     const spans = segs.map((seg, si) =>
       (seg.words || []).filter((w) => w.start != null)
         .map((_, idx) => transcript.querySelector(`.gk-word[data-k="${si}_${idx}"]`)));
     const wordTimes = segs.map((seg) =>
       (seg.words || []).filter((w) => w.start != null).map((w) => [w.start, w.end]));
-    st = { segments: segs, spans, wordTimes, curSeg: 0, audio: null, stopped: false, ended: false, playOnce: false, playBtn };
+    st = { segments: segs, spans, wordTimes, curSeg: 0, audio: null, stopped: false, ended: false, playOnce: false, playBtn, rate: parseFloat(el.dataset.speed) || 1 };
     window.__gk[key] = st;
     if (statusEl) statusEl.textContent = '';
     if (playBtn) { playBtn.disabled = false; playBtn.textContent = '❚❚ Jeda'; }
