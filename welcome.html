@@ -4208,6 +4208,22 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
         : `Setelah submit, attempt berikutnya bisa dicoba ${status.cooldownHours} jam kemudian.`)
     : `<strong>Kuis terkunci.</strong> Bisa coba lagi pada <strong>${fmtNextAt(status.nextAttemptAt)}</strong> (sekitar ${fmtCooldown(status.cooldownHoursLeft)} lagi).`;
 
+  // Navigasi pelajaran (gate lunak): "Sebelumnya" selalu ada; "Lanjut →" hanya
+  // kalau attempt terakhir LULUS — kuis tetap jadi gerbang kalau belum lulus.
+  const [navSlug, navMid, navLid] = String(key).split(':');
+  let navPrev = null, navNext = null;
+  const navCourse = COURSE_CONTENT[navSlug];
+  if (navCourse) {
+    const navAll = navCourse.modules.flatMap(m => visibleLessons(m).map(l => ({ m, l })));
+    const navI = navAll.findIndex(x => x.m.id === navMid && x.l.id === navLid);
+    if (navI >= 0) { navPrev = navAll[navI - 1]; navNext = navAll[navI + 1]; }
+  }
+  const navFooter = (navPrev || (lastPassed && navNext)) ? `
+    <div class="lesson-footer" style="max-width:680px;margin:14px auto 0;">
+      <button class="btn-secondary" ${!navPrev ? 'disabled' : ''} onclick="${navPrev ? `selectLesson('${navPrev.m.id}','${navPrev.l.id}')` : ''}">← Sebelumnya</button>
+      ${lastPassed && navNext ? `<button class="btn-primary" onclick="selectLesson('${navNext.m.id}','${navNext.l.id}')">Lanjut →</button>` : ''}
+    </div>` : '';
+
   container.innerHTML = `
     <div class="quiz-container">
       <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:28px 26px;max-width:680px;margin:0 auto;">
@@ -4242,6 +4258,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
           ${ctaButton}
         </div>
       </div>
+      ${navFooter}
     </div>
   `;
 }
@@ -7520,6 +7537,7 @@ window.gtCheck = async (pi, si, btn) => {
 // lesson.kanji = array kanji_items penuh, jadi populate _kanjiByIdCache
 // dulu sebelum render supaya klik bisa lookup ke detail.
 function renderKanjiLesson(course, module, lesson, nav) {
+  const { prev, next, isDone } = nav || {};
   const items = Array.isArray(lesson.kanji) ? lesson.kanji : [];
   for (const k of items) {
     if (k.id) _kanjiByIdCache.set(k.id, { ...k, compounds: k.compounds || [] });
@@ -7555,6 +7573,12 @@ function renderKanjiLesson(course, module, lesson, nav) {
       </div>
     </div>
     ${tilesHtml}
+    <div class="lesson-footer">
+      <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
+      <button class="btn-primary" onclick="markCompleteAndNext()">
+        ${isDone ? (next ? 'Lanjut →' : 'Selesai ✓') : (next ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓')}
+      </button>
+    </div>
   `;
 }
 
@@ -7949,7 +7973,7 @@ window.markCompleteAndNext = () => {
     }
     renderSidebar();
     renderLesson();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'auto' });
     try { if (window.AISenpai && AISenpai._started) AISenpai.refresh(); } catch {}
   };
 
