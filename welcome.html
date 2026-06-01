@@ -358,7 +358,6 @@
     scrollbar-gutter: stable;
     -webkit-overflow-scrolling: touch;
     margin: 0 -22px; padding: 0 22px;
-    scroll-behavior: smooth;
   }
   .sidebar-scroll::-webkit-scrollbar { width: 6px; }
   .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -7831,7 +7830,7 @@ window.selectLesson = (moduleId, lessonId) => {
   renderSidebar();
   renderLesson();
   closeSidebar();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo({ top: 0, behavior: 'auto' });
 };
 
 const SIDEBAR_KEY = 'eznihongo:sidebarCollapsed';
