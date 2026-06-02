@@ -688,15 +688,19 @@
 
   /* ── Main Content ── */
   .main-content {
-    padding: 32px 40px;
+    /* Bottom padding sengaja besar: kasih ruang biar footer pelajaran
+       (tombol "Lanjut →") tidak ketutup widget AI Senpai (orb + panel peek
+       yang fixed di pojok kanan-bawah, z-index 2000). Tanpa ini, di lesson
+       panjang footer ke-scroll mentok ke bawah → tombolnya gak bisa diklik. */
+    padding: 32px 40px 132px;
     overflow-y: auto;
     min-width: 0;
     max-width: 900px;
     margin: 0 auto;
     width: 100%;
   }
-  @media (max-width: 860px) { .main-content { padding: 24px 24px 32px; } }
-  @media (max-width: 600px) { .main-content { padding: 18px 16px 28px; } }
+  @media (max-width: 860px) { .main-content { padding: 24px 24px 200px; } }
+  @media (max-width: 600px) { .main-content { padding: 18px 16px 200px; } }
 
   .lesson-title { font-size: clamp(22px, 5vw, 32px); }
   @media (max-width: 600px) {
