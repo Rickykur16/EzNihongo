@@ -692,15 +692,17 @@
        (tombol "Lanjut →") tidak ketutup widget AI Senpai (orb + panel peek
        yang fixed di pojok kanan-bawah, z-index 2000). Tanpa ini, di lesson
        panjang footer ke-scroll mentok ke bawah → tombolnya gak bisa diklik. */
-    padding: 32px 40px 132px;
+    /* Panel "Lanjutkan…" (peek) persistent ~205px dari dasar viewport →
+       clearance harus > itu di semua lebar layar (termasuk desktop). */
+    padding: 32px 40px 250px;
     overflow-y: auto;
     min-width: 0;
     max-width: 900px;
     margin: 0 auto;
     width: 100%;
   }
-  @media (max-width: 860px) { .main-content { padding: 24px 24px 200px; } }
-  @media (max-width: 600px) { .main-content { padding: 18px 16px 200px; } }
+  @media (max-width: 860px) { .main-content { padding: 24px 24px 250px; } }
+  @media (max-width: 600px) { .main-content { padding: 18px 16px 250px; } }
 
   .lesson-title { font-size: clamp(22px, 5vw, 32px); }
   @media (max-width: 600px) {
@@ -1994,7 +1996,7 @@
     }
     .learning-layout.sidebar-collapsed .main-content {
       max-width: 1200px;
-      padding: 32px 60px;
+      padding: 32px 60px 250px; /* bottom besar: footer clear dari widget Senpai */
     }
 
     /* Ear-shaped handle — hangs off the sidebar's right edge, stays fixed vertically */
@@ -2052,7 +2054,7 @@
       flex: 1;
       min-width: 0;
       max-width: 980px;
-      padding: 32px 44px;
+      padding: 32px 44px 250px; /* bottom besar: footer clear dari widget Senpai */
       transition: max-width 0.25s cubic-bezier(0.2, 0, 0.1, 1);
     }
   }
