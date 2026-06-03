@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
+import bcrypt from 'bcryptjs';
 import { query } from '../db.js';
 import {
   verifyGoogleIdToken,
@@ -24,6 +25,21 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many auth requests, slow down' },
 });
+
+// Login password lebih sensitif (brute-force-able) → limit lebih ketat dari
+// authLimiter umum.
+const loginLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts, slow down' },
+});
+
+// Hash dummy untuk meratakan waktu bcrypt.compare saat user/hash tidak ada
+// (anti user-enumeration lewat timing). Selalu dipakai sebagai fallback di
+// /login. Cost 10 cukup untuk guard.
+const DUMMY_HASH = bcrypt.hashSync('eznihongo-timing-guard', 10);
 
 const REFRESH_COOKIE = 'ez_refresh';
 const REFRESH_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -54,6 +70,29 @@ function userResponse(user) {
     avatarUrl: user.avatar_url,
     isAdmin: isAdminEmail(user.email),
   };
+}
+
+// Buat sesi untuk `user`: insert row sessions, sign refresh+access token, set
+// refresh cookie. Dipakai bersama oleh /google dan /login. Return body response
+// { accessToken, user }.
+async function issueSession(req, res, user) {
+  const sessionResult = await query(
+    `INSERT INTO sessions (user_id, refresh_token_hash, expires_at, user_agent, ip_address)
+     VALUES ($1, $2, NOW() + INTERVAL '30 days', $3, $4)
+     RETURNING id`,
+    [user.id, 'pending', req.headers['user-agent'] || null, req.ip || null]
+  );
+  const sessionId = sessionResult.rows[0].id;
+
+  const refreshToken = await signRefreshToken(user.id, sessionId);
+  await query(
+    `UPDATE sessions SET refresh_token_hash = $1 WHERE id = $2`,
+    [hashToken(refreshToken), sessionId]
+  );
+
+  const accessToken = await signAccessToken(user.id, user.email);
+  setRefreshCookie(res, refreshToken);
+  return { accessToken, user: userResponse(user) };
 }
 
 // POST /api/auth/google — exchange Google ID token for app session
@@ -107,25 +146,26 @@ router.post('/google', authLimiter, asyncHandler(async (req, res) => {
     );
   }
 
-  // Create session
-  const sessionResult = await query(
-    `INSERT INTO sessions (user_id, refresh_token_hash, expires_at, user_agent, ip_address)
-     VALUES ($1, $2, NOW() + INTERVAL '30 days', $3, $4)
-     RETURNING id`,
-    [user.id, 'pending', req.headers['user-agent'] || null, req.ip || null]
-  );
-  const sessionId = sessionResult.rows[0].id;
+  res.json(await issueSession(req, res, user));
+}));
 
-  const refreshToken = await signRefreshToken(user.id, sessionId);
-  await query(
-    `UPDATE sessions SET refresh_token_hash = $1 WHERE id = $2`,
-    [hashToken(refreshToken), sessionId]
-  );
+// POST /api/auth/login — login email+password (admin password-only / non-Google).
+// Authz admin tetap via ADMIN_EMAILS; ini hanya metode autentikasi tambahan.
+// Selalu menjalankan satu bcrypt.compare (dummy hash bila user/hash tidak ada)
+// + pesan 401 generik → anti user-enumeration (via timing maupun pesan).
+router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const password = String(req.body?.password || '');
+  if (!email || !password) return res.status(400).json({ error: 'Missing email or password' });
 
-  const accessToken = await signAccessToken(user.id, user.email);
-  setRefreshCookie(res, refreshToken);
-
-  res.json({ accessToken, user: userResponse(user) });
+  const result = await query('SELECT * FROM users WHERE lower(email) = $1 LIMIT 1', [email]);
+  const user = result.rows[0];
+  const stored = (user && user.password_hash) || DUMMY_HASH;
+  const match = await bcrypt.compare(password, stored);
+  if (!user || !user.password_hash || !match) {
+    return res.status(401).json({ error: 'invalid_credentials' });
+  }
+  res.json(await issueSession(req, res, user));
 }));
 
 // POST /api/auth/refresh — use refresh cookie to get new access token

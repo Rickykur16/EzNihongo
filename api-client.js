@@ -68,6 +68,26 @@ async function ezLoginWithGoogle(credential, fullName) {
   return data.user;
 }
 
+// Email+password login (admin password-only / non-Google). On failure the
+// backend returns a generic 401 { error: 'invalid_credentials' }.
+async function ezLogin(email, password) {
+  const res = await fetch(EZ_API_BASE + '/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.message || data.error || 'login_failed');
+    err.code = data.error;
+    throw err;
+  }
+  _ezAccessToken = data.accessToken;
+  mirrorUserToLocal(data.user);
+  return data.user;
+}
+
 async function ezLogout() {
   try {
     await fetch(EZ_API_BASE + '/auth/logout', {
@@ -131,6 +151,7 @@ async function ezRequireAuth(loginPath) {
 window.ezApi = ezApi;
 window.ezRefresh = ezRefresh;
 window.ezLoginWithGoogle = ezLoginWithGoogle;
+window.ezLogin = ezLogin;
 window.ezLogout = ezLogout;
 window.ezGetMe = ezGetMe;
 window.mirrorUserToLocal = mirrorUserToLocal;

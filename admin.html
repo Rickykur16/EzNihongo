@@ -291,15 +291,51 @@ function showLock(message) {
   `;
 }
 
-(async () => {
+// Layar login admin email+password (inline). Google tetap sebagai fallback.
+function showLogin(errMsg) {
+  root.innerHTML = `
+    <div class="lock-screen">
+      <div class="lock-card">
+        <h2 style="margin-top:0;">Masuk Admin</h2>
+        <p style="color:#525252;font-family:var(--font-body);font-size:14px;line-height:1.5;">Masuk dengan email &amp; password admin.</p>
+        <div id="admin-login-err" style="display:${errMsg ? 'block' : 'none'};background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;padding:9px 12px;border-radius:8px;font-family:var(--font-body);font-size:13px;margin-bottom:12px;text-align:left;">${escapeHtml(errMsg || '')}</div>
+        <form id="admin-login-form" style="display:flex;flex-direction:column;gap:10px;text-align:left;">
+          <input name="email" type="email" placeholder="Email" required autocomplete="username"
+            style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--border,#d4d4d4);border-radius:8px;font-family:var(--font-body);font-size:14px;"/>
+          <input name="password" type="password" placeholder="Password" required autocomplete="current-password"
+            style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--border,#d4d4d4);border-radius:8px;font-family:var(--font-body);font-size:14px;"/>
+          <button type="submit" class="btn btn-primary" style="margin-top:4px;">Masuk</button>
+        </form>
+        <p style="margin-top:14px;font-size:12.5px;font-family:var(--font-body);color:#737373;">atau <a href="login.html?next=admin.html">masuk dengan Google</a></p>
+      </div>
+    </div>
+  `;
+  const form = document.getElementById('admin-login-form');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = form.querySelector('button[type="submit"]');
+    const email = form.email.value.trim();
+    const password = form.password.value;
+    btn.disabled = true; btn.textContent = 'Masuk...';
+    try {
+      await ezLogin(email, password);
+      await bootAdmin();
+    } catch (err) {
+      showLogin(err.code === 'invalid_credentials' ? 'Email atau password salah.' : ('Gagal masuk: ' + (err.message || 'coba lagi')));
+    }
+  });
+}
+
+async function bootAdmin() {
   const user = await ezGetMe();
-  if (!user) { showLock('Kamu belum masuk. Silakan masuk dulu.'); return; }
+  if (!user) { showLogin(); return; }
   if (!user.isAdmin) { showLock('Akun ini bukan admin. Hubungi pengelola untuk akses.'); return; }
   CURRENT_USER = user;
   renderApp();
   await loadCourses();
   renderTab();
-})();
+}
+bootAdmin();
 
 // ─────────────────────────────────────────────────────────────
 // API helpers
@@ -336,6 +372,50 @@ function notify(msg, isErr) {
   setTimeout(() => t.remove(), 2400);
 }
 
+// Set/ubah password login admin (self-service). Tanpa email → password admin
+// yang sedang login; dengan email (di <details>) → admin lain yg ada di
+// ADMIN_EMAILS. POST /api/admin/set-password.
+function openPasswordModal() {
+  openModal(`
+    <h2 style="margin-top:0;">Ubah Password</h2>
+    <p style="color:#525252;font-family:var(--font-body);font-size:13.5px;line-height:1.5;">Set/ubah password untuk login admin via email+password. Minimal 10 karakter.</p>
+    <form id="pw-form" style="display:flex;flex-direction:column;gap:10px;">
+      <input name="password" type="password" placeholder="Password baru (min. 10 karakter)" required minlength="10" autocomplete="new-password"
+        style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--border,#d4d4d4);border-radius:8px;font-family:var(--font-body);font-size:14px;"/>
+      <input name="password2" type="password" placeholder="Ulangi password" required minlength="10" autocomplete="new-password"
+        style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--border,#d4d4d4);border-radius:8px;font-family:var(--font-body);font-size:14px;"/>
+      <details style="font-family:var(--font-body);font-size:12.5px;color:#737373;">
+        <summary style="cursor:pointer;">Set untuk admin lain (opsional)</summary>
+        <input name="email" type="email" placeholder="Email admin lain (harus ada di ADMIN_EMAILS)" autocomplete="off"
+          style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--border,#d4d4d4);border-radius:8px;font-family:var(--font-body);font-size:14px;margin-top:8px;"/>
+      </details>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
+        <button type="button" class="btn" onclick="closeModal()">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  `);
+  const form = document.getElementById('pw-form');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const pw = form.password.value, pw2 = form.password2.value;
+    const email = form.email ? form.email.value.trim() : '';
+    if (pw !== pw2) { notify('Password tidak sama.', true); return; }
+    if (pw.length < 10) { notify('Password minimal 10 karakter.', true); return; }
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = 'Menyimpan...';
+    try {
+      const body = email ? { password: pw, email } : { password: pw };
+      await api('/admin/set-password', { method: 'POST', body: JSON.stringify(body) });
+      closeModal();
+      notify(email ? ('Password admin ' + email + ' tersimpan.') : 'Password kamu tersimpan.');
+    } catch (err) {
+      btn.disabled = false; btn.textContent = 'Simpan';
+      notify(err.message || 'Gagal simpan password.', true);
+    }
+  });
+}
+
 // ─────────────────────────────────────────────────────────────
 // App shell
 // ─────────────────────────────────────────────────────────────
@@ -346,6 +426,7 @@ function renderApp() {
       <div class="meta">
         <span>${escapeHtml(CURRENT_USER.fullName || CURRENT_USER.email)}</span>
         <span class="badge badge-admin">Admin</span>
+        <button onclick="openPasswordModal()">Ubah Password</button>
         <button onclick="ezLogout()">Keluar</button>
       </div>
     </header>
