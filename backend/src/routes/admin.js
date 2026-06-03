@@ -2,8 +2,10 @@ import { Router } from 'express';
 import fs from 'fs';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
+import bcrypt from 'bcryptjs';
 import { query } from '../db.js';
 import { requireAuth, requireAdmin, asyncHandler } from '../middleware.js';
+import { isAdminEmail } from '../auth.js';
 import { COACH_PROMPT_DEFAULT } from './recommendations.js';
 import { callClaude, anthropicEnabled } from '../anthropic.js';
 import {
@@ -29,6 +31,39 @@ const router = Router();
 
 // Every route in this file requires admin
 router.use(requireAuth, requireAdmin);
+
+// POST /api/admin/set-password — admin meng-set/ubah password (self-service).
+// Tanpa `email` → set password milik admin yang sedang login. Dengan `email`
+// (provisioning co-admin) → email itu WAJIB ada di ADMIN_EMAILS. Authz admin
+// tetap via ADMIN_EMAILS; ini hanya menambah cara login email+password.
+router.post('/set-password', asyncHandler(async (req, res) => {
+  const password = String(req.body?.password || '');
+  const targetEmailRaw = req.body?.email != null ? String(req.body.email).trim().toLowerCase() : '';
+  const email = targetEmailRaw || String(req.user.email || '').toLowerCase();
+
+  if (password.length < 10) {
+    return res.status(400).json({ error: 'weak_password', detail: 'Password minimal 10 karakter.' });
+  }
+  if (targetEmailRaw && !isAdminEmail(targetEmailRaw)) {
+    return res.status(400).json({ error: 'not_admin_email', detail: 'Email itu bukan admin (tidak ada di ADMIN_EMAILS).' });
+  }
+
+  const hash = await bcrypt.hash(password, 12);
+  // UPSERT: kalau row email sudah ada → update password_hash; kalau belum ada
+  // (admin password-only yang belum pernah login Google) → insert row minimal.
+  const existing = await query('SELECT id FROM users WHERE lower(email) = $1 LIMIT 1', [email]);
+  if (existing.rows.length > 0) {
+    await query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [hash, existing.rows[0].id]);
+  } else {
+    const fallbackName = email.split('@')[0] || 'Admin';
+    const ins = await query(
+      `INSERT INTO users (email, password_hash, full_name) VALUES ($1, $2, $3) RETURNING id`,
+      [email, hash, fallbackName]
+    );
+    await query('INSERT INTO user_stats (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [ins.rows[0].id]);
+  }
+  res.json({ ok: true, email });
+}));
 
 // Notion import endpoints hit external API + heavy DB writes; cap at
 // 5/min per admin IP supaya spam ga habisin Notion quota (3 req/s
