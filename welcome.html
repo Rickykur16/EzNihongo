@@ -3625,6 +3625,9 @@
     border-radius: 12px; color: var(--du-ink-2);
     font-family: inherit; font-size: 13px; font-weight: 600;
     cursor: pointer; transition: all 160ms ease;
+    /* Push-to-talk: cegah scroll/zoom/seleksi teks/callout saat tombol ditahan. */
+    touch-action: none; -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
   }
   .gt-mic:hover:not(:disabled) { background: var(--du-surface-2); border-color: var(--du-ink-4); }
   .gt-mic.recording {
@@ -7409,7 +7412,7 @@ window.filterDeck = (q) => {
 // Ucapan direkam (MediaRecorder) → transkrip ElevenLabs STT (/api/grammar-task/
 // transcribe) → kalimat dinilai AI (/api/grammar-task/evaluate). Kalau mic tak
 // didukung / izin ditolak / STT nonaktif, siswa mengetik kalimatnya.
-let _gtRec = null; // { key, recorder, chunks, stream }
+let _gtRec = null; // { key, btn, recorder, chunks, stream, stopRequested, discarded }
 
 function _gtSttSupported() {
   return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
@@ -7430,7 +7433,7 @@ function gtCardsHtml(items, sttOn) {
   const slotHtml = (pi, si, count) => {
     const key = `${pi}-${si}`;
     const slotLabel = (count > 1 && si > 0) ? ` data-slot-label="Kalimat ${si + 1}"` : '';
-    const micBtn = sttOn ? `<button type="button" class="gt-mic" id="gt-mic-${key}" onclick="gtToggleRecord(${pi}, ${si}, this)" aria-label="Rekam ucapan">🎤 Rekam</button>` : '';
+    const micBtn = sttOn ? `<button type="button" class="gt-mic" id="gt-mic-${key}" onpointerdown="gtStartRecord(${pi}, ${si}, this, event)" onpointerup="gtStopRecord(${pi}, ${si}, this, event)" onpointercancel="gtStopRecord(${pi}, ${si}, this, event)" oncontextmenu="return false" aria-label="Tahan untuk merekam ucapan">🎤 Tahan untuk bicara</button>` : '';
     return `
       <div class="gt-slot"${slotLabel}>
         <div class="gt-slot__mic-row">
@@ -7453,7 +7456,7 @@ function gtCardsHtml(items, sttOn) {
     const instruction = it.instruction && it.instruction.trim()
       ? escapeHtml(it.instruction.trim())
       : `Buat ${count} kalimat memakai pola ini, lalu ucapkan atau ketik.`;
-    const hint = sttOn ? 'Klik 🎤 untuk merekam ucapanmu, atau ketik langsung.' : 'Ketik kalimatmu dalam bahasa Jepang.';
+    const hint = sttOn ? 'Tahan 🎤 lalu bicara, lepas saat selesai — atau ketik langsung.' : 'Ketik kalimatmu dalam bahasa Jepang.';
     let slots = '';
     for (let si = 0; si < count; si++) slots += slotHtml(pi, si, count);
     return `
@@ -7613,53 +7616,109 @@ window.gtPlayExample = (idx, btn) => {
   playTTS(String(it.example).replace(/<[^>]*>/g, ''), btn);
 };
 
-window.gtToggleRecord = async (pi, si, btn) => {
-  const key = `${pi}-${si}`;
-  // Stop kalau sedang merekam slot ini.
-  if (_gtRec && _gtRec.key === key && _gtRec.recorder && _gtRec.recorder.state === 'recording') {
-    _gtRec.recorder.stop();
-    return;
-  }
+// Push-to-talk: tahan tombol untuk merekam, lepas untuk berhenti & transkrip.
+// Tiap mulai rekam baru me-reset teks slot (tidak menumpuk transkrip lama).
+function _gtResetBtn(btn) {
+  if (!btn) return;
+  btn.classList.remove('recording');
+  btn.textContent = '🎤 Tahan untuk bicara';
+}
+
+// Buang rekaman yang sedang berjalan tanpa men-transkrip (mis. saat user mulai
+// menahan tombol lain). Hasil onstop diabaikan lewat flag `discarded`.
+function _gtCancelActive() {
+  const rec = _gtRec;
+  if (!rec) return;
+  rec.discarded = true;
+  try { if (rec.recorder && rec.recorder.state === 'recording') rec.recorder.stop(); } catch {}
+  try { if (rec.stream) rec.stream.getTracks().forEach((t) => t.stop()); } catch {}
+  _gtResetBtn(rec.btn);
+  _gtRec = null;
+}
+
+window.gtStartRecord = async (pi, si, btn, ev) => {
+  if (ev && ev.cancelable) ev.preventDefault();
   if (!_gtSttSupported()) return;
-  const status = _gtScope().querySelector(`#gt-status-${key}`);
+  const key = `${pi}-${si}`;
+  // Reset: rekaman lain yang masih jalan dibuang, teks + hasil slot ini dibersihkan.
+  if (_gtRec) _gtCancelActive();
+  const scope = _gtScope();
+  const status = scope.querySelector(`#gt-status-${key}`);
+  const input = scope.querySelector(`#gt-input-${key}`);
+  const result = scope.querySelector(`#gt-result-${key}`);
+  if (input) input.value = '';
+  if (result) result.hidden = true;
+
+  const rec = { key, btn, recorder: null, chunks: [], stream: null, stopRequested: false, discarded: false };
+  _gtRec = rec;
+  // Pointer capture supaya pointerup tetap diterima walau jari/mouse geser keluar tombol.
+  try { if (ev && ev.pointerId != null && btn.setPointerCapture) btn.setPointerCapture(ev.pointerId); } catch {}
+  btn.classList.add('recording');
+  btn.textContent = '● Merekam…';
+  if (status) status.textContent = 'Merekam… lepas tombol saat selesai bicara.';
+
   let stream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (e) {
+    if (_gtRec === rec) _gtRec = null;
+    _gtResetBtn(btn);
     if (status) status.textContent = 'Akses mikrofon ditolak — ketik kalimatmu saja.';
     return;
   }
-  const chunks = [];
-  const recorder = new MediaRecorder(stream);
-  _gtRec = { key, recorder, chunks, stream };
-  recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-  recorder.onstop = async () => {
+  // User sudah melepas / membatalkan sebelum izin mic selesai → jangan rekam.
+  if (_gtRec !== rec || rec.stopRequested || rec.discarded) {
     stream.getTracks().forEach((t) => t.stop());
-    btn.textContent = '🎤 Rekam';
-    btn.classList.remove('recording');
-    if (status) status.textContent = 'Mentranskrip…';
-    const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
-    const fd = new FormData();
-    fd.append('audio', blob, 'speech.webm');
-    try {
-      const res = await window.ezApi('/grammar-task/transcribe', { method: 'POST', body: fd });
-      if (res.status === 503) { if (status) status.textContent = 'Transkripsi otomatis nonaktif — ketik kalimatmu saja.'; return; }
-      if (!res.ok) { if (status) status.textContent = 'Gagal mentranskrip, coba lagi atau ketik manual.'; return; }
-      const data = await res.json();
-      const input = _gtScope().querySelector(`#gt-input-${key}`);
-      if (input && data.text) input.value = data.text;
-      if (status) status.textContent = data.text ? 'Transkrip selesai — periksa & sunting bila perlu.' : 'Tidak ada teks terdeteksi.';
-    } catch (e) {
-      if (status) status.textContent = 'Gagal mentranskrip, coba lagi atau ketik manual.';
-    } finally {
-      _gtRec = null;
-    }
-  };
+    if (_gtRec === rec) { _gtRec = null; _gtResetBtn(btn); if (status) status.textContent = 'Terlalu singkat — tahan tombol lalu bicara.'; }
+    return;
+  }
+  rec.stream = stream;
+  const recorder = new MediaRecorder(stream);
+  rec.recorder = recorder;
+  recorder.ondataavailable = (e) => { if (e.data && e.data.size) rec.chunks.push(e.data); };
+  recorder.onstop = () => _gtFinishRecord(rec);
   recorder.start();
-  btn.textContent = '■ Stop';
-  btn.classList.add('recording');
-  if (status) status.textContent = 'Merekam… klik Stop saat selesai.';
 };
+
+window.gtStopRecord = (pi, si, btn, ev) => {
+  if (ev) {
+    if (ev.cancelable) ev.preventDefault();
+    try { if (ev.pointerId != null && btn.releasePointerCapture && btn.hasPointerCapture && btn.hasPointerCapture(ev.pointerId)) btn.releasePointerCapture(ev.pointerId); } catch {}
+  }
+  const rec = _gtRec;
+  if (!rec || rec.key !== `${pi}-${si}`) return;
+  rec.stopRequested = true;
+  if (rec.recorder && rec.recorder.state === 'recording') {
+    try { rec.recorder.stop(); } catch {}
+  }
+  // Kalau recorder belum siap (masih menunggu izin mic), flag stopRequested
+  // di atas akan membatalkannya begitu getUserMedia selesai.
+};
+
+async function _gtFinishRecord(rec) {
+  const scope = _gtScope();
+  const status = scope.querySelector(`#gt-status-${rec.key}`);
+  if (rec.stream) rec.stream.getTracks().forEach((t) => t.stop());
+  _gtResetBtn(rec.btn);
+  if (rec.discarded) { if (_gtRec === rec) _gtRec = null; return; }
+  if (status) status.textContent = 'Mentranskrip…';
+  const blob = new Blob(rec.chunks, { type: (rec.recorder && rec.recorder.mimeType) || 'audio/webm' });
+  const fd = new FormData();
+  fd.append('audio', blob, 'speech.webm');
+  try {
+    const res = await window.ezApi('/grammar-task/transcribe', { method: 'POST', body: fd });
+    if (res.status === 503) { if (status) status.textContent = 'Transkripsi otomatis nonaktif — ketik kalimatmu saja.'; return; }
+    if (!res.ok) { if (status) status.textContent = 'Gagal mentranskrip, coba lagi atau ketik manual.'; return; }
+    const data = await res.json();
+    const input = scope.querySelector(`#gt-input-${rec.key}`);
+    if (input && data.text) input.value = data.text; // replace, bukan append → tidak menumpuk
+    if (status) status.textContent = data.text ? 'Transkrip selesai — periksa & sunting bila perlu.' : 'Tidak ada teks terdeteksi.';
+  } catch (e) {
+    if (status) status.textContent = 'Gagal mentranskrip, coba lagi atau ketik manual.';
+  } finally {
+    if (_gtRec === rec) _gtRec = null;
+  }
+}
 
 window.gtCheck = async (pi, si, btn) => {
   const it = (window.__gtData || [])[pi];
