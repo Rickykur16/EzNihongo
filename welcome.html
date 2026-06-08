@@ -3653,6 +3653,18 @@
   textarea[id^="gt-input-"]::placeholder { color: var(--du-ink-4); }
   textarea[id^="gt-input-"]:focus { outline: none; border-color: var(--du-accent); box-shadow: 0 0 0 3px var(--du-accent-soft); }
 
+  /* Transkrip ucapan (read-only) untuk tugas grammar mode bicara. */
+  .gt-said {
+    padding: 12px 14px; border-radius: 12px;
+    background: var(--du-surface-2); border: 1px dashed var(--du-border);
+    font-family: var(--font-jp); font-size: 16px; line-height: 1.55;
+    color: var(--du-ink); min-height: 22px;
+    word-break: break-word; white-space: pre-wrap;
+  }
+  .gt-said--empty {
+    font-family: inherit; font-size: 13px; font-style: italic; color: var(--du-ink-4);
+  }
+
   .gt-check {
     align-self: flex-start; display: inline-flex; align-items: center; gap: 8px;
     padding: 11px 22px; background: var(--du-accent); color: #fff;
@@ -7433,11 +7445,26 @@ function gtCardsHtml(items, sttOn) {
   const slotHtml = (pi, si, count) => {
     const key = `${pi}-${si}`;
     const slotLabel = (count > 1 && si > 0) ? ` data-slot-label="Kalimat ${si + 1}"` : '';
-    const micBtn = sttOn ? `<button type="button" class="gt-mic" id="gt-mic-${key}" onpointerdown="gtStartRecord(${pi}, ${si}, this, event)" onpointerup="gtStopRecord(${pi}, ${si}, this, event)" onpointercancel="gtStopRecord(${pi}, ${si}, this, event)" oncontextmenu="return false" aria-label="Tahan untuk merekam ucapan">🎤 Tahan untuk bicara</button>` : '';
+    if (sttOn) {
+      // Mode bicara: push-to-talk + transkrip read-only (tanpa textbox). Textarea
+      // tetap disertakan tapi disembunyikan — hanya muncul sebagai fallback ketik
+      // kalau mic ditolak / STT nonaktif (lihat _gtTypeState).
+      return `
+        <div class="gt-slot"${slotLabel}>
+          <div class="gt-slot__mic-row">
+            <button type="button" class="gt-mic" id="gt-mic-${key}" onpointerdown="gtStartRecord(${pi}, ${si}, this, event)" onpointerup="gtStopRecord(${pi}, ${si}, this, event)" onpointercancel="gtStopRecord(${pi}, ${si}, this, event)" oncontextmenu="return false" aria-label="Tahan untuk merekam ucapan">🎤 Tahan untuk bicara</button>
+            <span class="gt-status" id="gt-status-${key}"></span>
+          </div>
+          <div class="gt-said gt-said--empty" id="gt-said-${key}" data-text="" lang="ja" aria-live="polite">Tahan tombol lalu ucapkan kalimatmu — teksnya muncul di sini.</div>
+          <textarea id="gt-input-${key}" lang="ja" rows="2" placeholder="例：私は毎日日本語を勉強します。" hidden></textarea>
+          <button type="button" class="gt-check" onclick="gtCheck(${pi}, ${si}, this)">Periksa</button>
+          <div class="gt-result" id="gt-result-${key}" hidden></div>
+        </div>`;
+    }
+    // Mode ketik (mic tak didukung): textarea biasa.
     return `
       <div class="gt-slot"${slotLabel}>
         <div class="gt-slot__mic-row">
-          ${micBtn}
           <span class="gt-status" id="gt-status-${key}"></span>
         </div>
         <textarea id="gt-input-${key}" lang="ja" rows="2" placeholder="例：私は毎日日本語を勉強します。"></textarea>
@@ -7456,7 +7483,7 @@ function gtCardsHtml(items, sttOn) {
     const instruction = it.instruction && it.instruction.trim()
       ? escapeHtml(it.instruction.trim())
       : `Buat ${count} kalimat memakai pola ini, lalu ucapkan atau ketik.`;
-    const hint = sttOn ? 'Tahan 🎤 lalu bicara, lepas saat selesai — atau ketik langsung.' : 'Ketik kalimatmu dalam bahasa Jepang.';
+    const hint = sttOn ? 'Tahan 🎤 lalu ucapkan kalimatmu, lepas saat selesai.' : 'Ketik kalimatmu dalam bahasa Jepang.';
     let slots = '';
     for (let si = 0; si < count; si++) slots += slotHtml(pi, si, count);
     return `
@@ -7636,6 +7663,44 @@ function _gtCancelActive() {
   _gtRec = null;
 }
 
+// Kalimat slot: mode bicara menyimpan transkrip read-only di .gt-said; mode ketik
+// (atau fallback saat mic gagal) memakai textarea #gt-input.
+function _gtGetSentence(key, scope) {
+  scope = scope || _gtScope();
+  const ta = scope.querySelector(`#gt-input-${key}`);
+  if (ta && !ta.hidden) return String(ta.value || '').trim();
+  const said = scope.querySelector(`#gt-said-${key}`);
+  if (said) return String(said.dataset.text || '').trim();
+  return ta ? String(ta.value || '').trim() : '';
+}
+function _gtSetSaid(key, text, scope) {
+  scope = scope || _gtScope();
+  const said = scope.querySelector(`#gt-said-${key}`);
+  if (!said) return;
+  text = String(text || '');
+  said.dataset.text = text;
+  if (text) { said.textContent = text; said.classList.remove('gt-said--empty'); }
+  else { said.textContent = 'Tahan tombol lalu ucapkan kalimatmu — teksnya muncul di sini.'; said.classList.add('gt-said--empty'); }
+}
+// Tampilkan transkrip (sembunyikan textarea). No-op untuk slot mode-ketik.
+function _gtSpeakState(key, scope) {
+  scope = scope || _gtScope();
+  const said = scope.querySelector(`#gt-said-${key}`);
+  if (!said) return;
+  said.hidden = false;
+  const ta = scope.querySelector(`#gt-input-${key}`);
+  if (ta) ta.hidden = true;
+}
+// Fallback: mic ditolak / STT nonaktif → tampilkan textarea ketik.
+function _gtTypeState(key, scope) {
+  scope = scope || _gtScope();
+  const said = scope.querySelector(`#gt-said-${key}`);
+  if (!said) return;
+  said.hidden = true;
+  const ta = scope.querySelector(`#gt-input-${key}`);
+  if (ta) { ta.hidden = false; try { ta.focus(); } catch {} }
+}
+
 window.gtStartRecord = async (pi, si, btn, ev) => {
   if (ev && ev.cancelable) ev.preventDefault();
   if (!_gtSttSupported()) return;
@@ -7646,7 +7711,9 @@ window.gtStartRecord = async (pi, si, btn, ev) => {
   const status = scope.querySelector(`#gt-status-${key}`);
   const input = scope.querySelector(`#gt-input-${key}`);
   const result = scope.querySelector(`#gt-result-${key}`);
+  _gtSpeakState(key, scope);
   if (input) input.value = '';
+  _gtSetSaid(key, '', scope);
   if (result) result.hidden = true;
 
   const rec = { key, btn, recorder: null, chunks: [], stream: null, stopRequested: false, discarded: false };
@@ -7664,6 +7731,7 @@ window.gtStartRecord = async (pi, si, btn, ev) => {
     if (_gtRec === rec) _gtRec = null;
     _gtResetBtn(btn);
     if (status) status.textContent = 'Akses mikrofon ditolak — ketik kalimatmu saja.';
+    _gtTypeState(key, scope);
     return;
   }
   // User sudah melepas / membatalkan sebelum izin mic selesai → jangan rekam.
@@ -7707,14 +7775,14 @@ async function _gtFinishRecord(rec) {
   fd.append('audio', blob, 'speech.webm');
   try {
     const res = await window.ezApi('/grammar-task/transcribe', { method: 'POST', body: fd });
-    if (res.status === 503) { if (status) status.textContent = 'Transkripsi otomatis nonaktif — ketik kalimatmu saja.'; return; }
-    if (!res.ok) { if (status) status.textContent = 'Gagal mentranskrip, coba lagi atau ketik manual.'; return; }
+    if (res.status === 503) { if (status) status.textContent = 'Transkripsi otomatis nonaktif — ketik kalimatmu saja.'; _gtTypeState(rec.key, scope); return; }
+    if (!res.ok) { if (status) status.textContent = 'Gagal mentranskrip — tahan tombol untuk rekam ulang.'; return; }
     const data = await res.json();
-    const input = scope.querySelector(`#gt-input-${rec.key}`);
-    if (input && data.text) input.value = data.text; // replace, bukan append → tidak menumpuk
-    if (status) status.textContent = data.text ? 'Transkrip selesai — periksa & sunting bila perlu.' : 'Tidak ada teks terdeteksi.';
+    _gtSpeakState(rec.key, scope);
+    _gtSetSaid(rec.key, data.text || '', scope); // replace, bukan append → tidak menumpuk
+    if (status) status.textContent = data.text ? 'Transkrip selesai — periksa, atau rekam ulang bila kurang pas.' : 'Tidak ada teks terdeteksi — coba rekam lagi.';
   } catch (e) {
-    if (status) status.textContent = 'Gagal mentranskrip, coba lagi atau ketik manual.';
+    if (status) status.textContent = 'Gagal mentranskrip — tahan tombol untuk rekam ulang.';
   } finally {
     if (_gtRec === rec) _gtRec = null;
   }
@@ -7724,12 +7792,11 @@ window.gtCheck = async (pi, si, btn) => {
   const it = (window.__gtData || [])[pi];
   const key = `${pi}-${si}`;
   const scope = _gtScope();
-  const input = scope.querySelector(`#gt-input-${key}`);
   const result = scope.querySelector(`#gt-result-${key}`);
-  if (!it || !input || !result) return;
-  const sentence = String(input.value || '').trim();
+  if (!it || !result) return;
+  const sentence = _gtGetSentence(key, scope);
   const showResult = (cls, html) => { result.hidden = false; result.className = `gt-result${cls ? ' ' + cls : ''}`; result.innerHTML = html; };
-  if (!sentence) { showResult('gt-result--error', '<div class="gt-result-body" style="padding-left:0;">Tulis atau ucapkan kalimatmu dulu.</div>'); return; }
+  if (!sentence) { showResult('gt-result--error', '<div class="gt-result-body" style="padding-left:0;">Ucapkan atau ketik kalimatmu dulu.</div>'); return; }
   btn.disabled = true;
   const oldLabel = btn.textContent;
   btn.textContent = 'Memeriksa…';
