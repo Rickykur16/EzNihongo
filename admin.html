@@ -437,6 +437,7 @@ function renderApp() {
       <button data-tab="sensei">Sensei</button>
       <button data-tab="testimonials">Testimoni</button>
       <button data-tab="users">Pengguna</button>
+      <button data-tab="kanji-access">Akses Kanji</button>
       <button data-tab="discussions">Diskusi</button>
       <button data-tab="tts">TTS Cache</button>
       <button data-tab="ai">AI</button>
@@ -448,6 +449,7 @@ function renderApp() {
       <section class="pane" data-pane="sensei"></section>
       <section class="pane" data-pane="testimonials"></section>
       <section class="pane" data-pane="users"></section>
+      <section class="pane" data-pane="kanji-access"></section>
       <section class="pane" data-pane="discussions"></section>
       <section class="pane" data-pane="tts"></section>
       <section class="pane" data-pane="ai"></section>
@@ -472,6 +474,7 @@ function renderTab() {
   else if (STATE.tab === 'sensei') { loadSensei().then(renderSenseiList); }
   else if (STATE.tab === 'testimonials') { loadTestimonials().then(renderTestimonials); }
   else if (STATE.tab === 'users') { loadUsers().then(renderUsers); }
+  else if (STATE.tab === 'kanji-access') { renderKanjiAccess(); }
   else if (STATE.tab === 'discussions') { loadDiscussions().then(renderDiscussions); }
   else if (STATE.tab === 'tts') { renderTtsCachePane(); }
   else if (STATE.tab === 'ai') { renderAiSettings(); }
@@ -4264,6 +4267,105 @@ function renderUsers() {
     <table><thead><tr><th>Nama / email</th><th>XP</th><th>Streak</th><th>Lesson selesai</th><th>Aktif terakhir</th><th>Bergabung</th></tr></thead><tbody>${rows}</tbody></table>
   `;
 }
+
+// ─────────────────────────────────────────────────────────────
+// AKSES DASHBOARD KANJI — beri akses premium tanpa pembayaran.
+// Admin cari user kanji by email → grant comp subscription (durasi
+// dipilih) → user tinggal login & buka dashboard. Bisa dicabut.
+// ─────────────────────────────────────────────────────────────
+const KANJI_PLAN_LABEL = { monthly: '1 bulan', yearly: '1 tahun', lifetime: 'Selamanya' };
+
+function renderKanjiAccess() {
+  const pane = document.querySelector('[data-pane="kanji-access"]');
+  const r = STATE.kanjiAccessResult;
+  let resultHtml = '';
+  if (r === 'notfound') {
+    resultHtml = `<div class="empty">User dengan email itu belum terdaftar di app Kanji. Minta dia daftar/login dulu di app.eznihongo.com, lalu coba lagi.</div>`;
+  } else if (r && r.user) {
+    const badge = r.isPremium
+      ? '<span class="badge badge-admin">PREMIUM AKTIF</span>'
+      : '<span class="badge badge-off">belum premium</span>';
+    const subRows = (r.subscriptions || []).map((s) => {
+      const exp = s.expires_at ? new Date(s.expires_at).toLocaleDateString('id-ID') : '—';
+      const active = s.status === 'active' && (!s.expires_at || new Date(s.expires_at) > new Date());
+      return `<tr style="${active ? '' : 'opacity:0.55;'}">
+        <td>${escapeHtml(s.status)}</td>
+        <td>${escapeHtml(KANJI_PLAN_LABEL[s.plan] || s.plan)}</td>
+        <td>${escapeHtml(s.payment_method || '—')}</td>
+        <td>${exp}</td>
+        <td class="actions">${active ? `<button class="btn btn-danger" onclick="revokeKanjiAccess('${s.id}')">Cabut</button>` : ''}</td>
+      </tr>`;
+    }).join('');
+    resultHtml = `
+      <div class="card" style="margin-top:16px;padding:16px;border:1px solid var(--line,#e5e5e5);border-radius:10px;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <strong>${escapeHtml(r.user.full_name || '-')}</strong>
+          <span style="font-size:12px;color:#737373;">${escapeHtml(r.user.email)}</span>
+          ${badge}
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:14px;">
+          <label style="font-size:13px;">Durasi akses<br>
+            <select id="ka-plan" style="margin-top:4px;">
+              <option value="lifetime">Selamanya (lifetime)</option>
+              <option value="yearly">1 tahun</option>
+              <option value="monthly">1 bulan</option>
+            </select>
+          </label>
+          <button class="btn btn-primary" onclick="grantKanjiAccess('${escapeHtml(r.user.email)}')">Beri akses</button>
+        </div>
+        ${subRows ? `<table style="margin-top:16px;"><thead><tr><th>Status</th><th>Durasi</th><th>Metode</th><th>Berlaku s/d</th><th></th></tr></thead><tbody>${subRows}</tbody></table>` : ''}
+      </div>`;
+  }
+  pane.innerHTML = `
+    <h2>Akses Dashboard Kanji</h2>
+    <p style="color:#737373;font-size:13px;margin-top:-4px;max-width:620px;">
+      Beri akses premium ke app Kanji (app.eznihongo.com) tanpa pembayaran. User
+      harus sudah pernah login/daftar di app dulu. Setelah diberi akses, dia tinggal
+      login dan dashboard-nya langsung terbuka.
+    </p>
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:14px;">
+      <label style="font-size:13px;">Email user<br>
+        <input id="ka-email" type="email" placeholder="user@email.com" style="margin-top:4px;min-width:280px;"
+          value="${escapeHtml(STATE.kanjiAccessEmail || '')}"
+          onkeydown="if(event.key==='Enter')lookupKanjiAccess()">
+      </label>
+      <button class="btn btn-ghost" onclick="lookupKanjiAccess()">Cari</button>
+    </div>
+    ${resultHtml}
+  `;
+}
+
+window.lookupKanjiAccess = async () => {
+  const email = (document.getElementById('ka-email')?.value || '').trim();
+  STATE.kanjiAccessEmail = email;
+  if (!email) { notify('Masukkan email dulu', true); return; }
+  try {
+    const d = await api('/admin/kanji-access?email=' + encodeURIComponent(email));
+    STATE.kanjiAccessResult = d;
+  } catch (err) {
+    if (/user_not_found/.test(err.message)) STATE.kanjiAccessResult = 'notfound';
+    else { notify('Gagal cari: ' + err.message, true); return; }
+  }
+  renderKanjiAccess();
+};
+
+window.grantKanjiAccess = async (email) => {
+  const plan = document.getElementById('ka-plan')?.value || 'lifetime';
+  try {
+    await api('/admin/kanji-access/grant', { method: 'POST', body: JSON.stringify({ email, plan }) });
+    notify('Akses diberikan (' + (KANJI_PLAN_LABEL[plan] || plan) + ')');
+    await lookupKanjiAccess();
+  } catch (err) { notify('Gagal beri akses: ' + err.message, true); }
+};
+
+window.revokeKanjiAccess = async (subscriptionId) => {
+  if (!confirm('Cabut akses ini? User tidak lagi premium.')) return;
+  try {
+    await api('/admin/kanji-access/revoke', { method: 'POST', body: JSON.stringify({ subscriptionId }) });
+    notify('Akses dicabut');
+    await lookupKanjiAccess();
+  } catch (err) { notify('Gagal cabut: ' + err.message, true); }
+};
 
 // ─────────────────────────────────────────────────────────────
 // DISCUSSIONS

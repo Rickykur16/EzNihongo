@@ -2034,6 +2034,83 @@ router.get('/users', asyncHandler(async (req, res) => {
   res.json({ users: result.rows });
 }));
 
+// ===== AKSES DASHBOARD KANJI (comp grants) =====
+// Beri akses premium tanpa pembayaran Midtrans: insert baris `subscriptions`
+// status='active', amount_idr=0, payment_method='comp', order_id 'COMP-...'.
+// /api/subscription/status (kanji realm) langsung melihatnya sebagai premium.
+// Tabel kanji ada di DB yang sama; admin di sini dijaga oleh ADMIN_EMAILS.
+
+const KANJI_PLAN_INTERVAL = {
+  monthly: '1 month',
+  yearly: '1 year',
+  lifetime: '100 years',
+};
+
+// GET /api/admin/kanji-access?email= — cari user kanji + daftar subscription-nya
+router.get('/kanji-access', asyncHandler(async (req, res) => {
+  const email = String(req.query.email || '').trim().toLowerCase();
+  if (!email) return res.status(400).json({ error: 'email_required' });
+
+  const userRow = await query(
+    `SELECT id, email, full_name, created_at FROM kanji_users WHERE lower(email) = $1 LIMIT 1`,
+    [email]
+  );
+  const user = userRow.rows[0];
+  if (!user) return res.status(404).json({ error: 'user_not_found' });
+
+  const subs = await query(
+    `SELECT id, status, plan, amount_idr, payment_method, started_at, expires_at, created_at
+       FROM subscriptions
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT 50`,
+    [user.id]
+  );
+  const isPremium = subs.rows.some(
+    (s) => s.status === 'active' && (!s.expires_at || new Date(s.expires_at) > new Date())
+  );
+  res.json({ user, isPremium, subscriptions: subs.rows });
+}));
+
+// POST /api/admin/kanji-access/grant — { email, plan } → comp subscription aktif
+router.post('/kanji-access/grant', asyncHandler(async (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const plan = String(req.body?.plan || 'lifetime');
+  if (!email) return res.status(400).json({ error: 'email_required' });
+  const interval = KANJI_PLAN_INTERVAL[plan];
+  if (!interval) return res.status(400).json({ error: 'invalid_plan' });
+
+  const userRow = await query(
+    `SELECT id, email, full_name FROM kanji_users WHERE lower(email) = $1 LIMIT 1`,
+    [email]
+  );
+  const user = userRow.rows[0];
+  if (!user) return res.status(404).json({ error: 'user_not_found' });
+
+  const orderId = `COMP-${user.id.slice(0, 8)}-${Date.now()}`;
+  const inserted = await query(
+    `INSERT INTO subscriptions
+       (user_id, status, plan, amount_idr, midtrans_order_id, payment_method, started_at, expires_at)
+     VALUES ($1, 'active', $2, 0, $3, 'comp', NOW(), NOW() + $4::interval)
+     RETURNING id, status, plan, expires_at, payment_method, created_at`,
+    [user.id, plan, orderId, interval]
+  );
+  res.json({ ok: true, user: { email: user.email, full_name: user.full_name }, subscription: inserted.rows[0] });
+}));
+
+// POST /api/admin/kanji-access/revoke — { subscriptionId } → set status='cancelled'
+router.post('/kanji-access/revoke', asyncHandler(async (req, res) => {
+  const subscriptionId = String(req.body?.subscriptionId || '');
+  if (!subscriptionId) return res.status(400).json({ error: 'subscription_id_required' });
+  const updated = await query(
+    `UPDATE subscriptions SET status = 'cancelled', updated_at = NOW()
+      WHERE id = $1 RETURNING id, status`,
+    [subscriptionId]
+  );
+  if (updated.rows.length === 0) return res.status(404).json({ error: 'subscription_not_found' });
+  res.json({ ok: true, subscription: updated.rows[0] });
+}));
+
 // ===== DISCUSSIONS (admin moderation) =====
 
 router.get('/discussions', asyncHandler(async (req, res) => {
