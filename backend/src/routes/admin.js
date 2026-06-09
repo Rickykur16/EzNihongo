@@ -2025,9 +2025,16 @@ router.get('/users', asyncHandler(async (req, res) => {
     `SELECT u.id, u.email, u.full_name, u.google_name, u.avatar_url, u.created_at,
             COALESCE(s.xp, 0) AS xp, COALESCE(s.streak_days, 0) AS streak_days,
             COALESCE(s.total_lessons_completed, 0) AS total_lessons_completed,
-            s.last_active_date
+            s.last_active_date,
+            COALESCE(en.courses, ARRAY[]::text[]) AS enrolled_courses
      FROM users u
      LEFT JOIN user_stats s ON s.user_id = u.id
+     LEFT JOIN (
+       SELECT e.user_id, array_agg(c.title ORDER BY e.enrolled_at) AS courses
+       FROM user_enrollments e
+       JOIN courses c ON c.id = e.course_id
+       GROUP BY e.user_id
+     ) en ON en.user_id = u.id
      ORDER BY u.created_at DESC
      LIMIT 500`
   );
