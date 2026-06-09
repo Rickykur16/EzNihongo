@@ -437,7 +437,7 @@ function renderApp() {
       <button data-tab="sensei">Sensei</button>
       <button data-tab="testimonials">Testimoni</button>
       <button data-tab="users">Pengguna</button>
-      <button data-tab="kanji-access">Akses Kanji</button>
+      <button data-tab="access">Beri Akses</button>
       <button data-tab="discussions">Diskusi</button>
       <button data-tab="tts">TTS Cache</button>
       <button data-tab="ai">AI</button>
@@ -449,7 +449,7 @@ function renderApp() {
       <section class="pane" data-pane="sensei"></section>
       <section class="pane" data-pane="testimonials"></section>
       <section class="pane" data-pane="users"></section>
-      <section class="pane" data-pane="kanji-access"></section>
+      <section class="pane" data-pane="access"></section>
       <section class="pane" data-pane="discussions"></section>
       <section class="pane" data-pane="tts"></section>
       <section class="pane" data-pane="ai"></section>
@@ -474,7 +474,7 @@ function renderTab() {
   else if (STATE.tab === 'sensei') { loadSensei().then(renderSenseiList); }
   else if (STATE.tab === 'testimonials') { loadTestimonials().then(renderTestimonials); }
   else if (STATE.tab === 'users') { loadUsers().then(renderUsers); }
-  else if (STATE.tab === 'kanji-access') { renderKanjiAccess(); }
+  else if (STATE.tab === 'access') { renderAccess(); }
   else if (STATE.tab === 'discussions') { loadDiscussions().then(renderDiscussions); }
   else if (STATE.tab === 'tts') { renderTtsCachePane(); }
   else if (STATE.tab === 'ai') { renderAiSettings(); }
@@ -4269,101 +4269,93 @@ function renderUsers() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// AKSES DASHBOARD KANJI — beri akses premium tanpa pembayaran.
-// Admin cari user kanji by email → grant comp subscription (durasi
-// dipilih) → user tinggal login & buka dashboard. Bisa dicabut.
+// BERI AKSES — enroll user ke kursus dashboard utama tanpa checkout.
+// Admin cari user by email → pilih kursus → enroll. User tinggal
+// login & buka dashboard. Bisa dicabut. Sumber kebenaran akses =
+// user_enrollments (sama yang dipakai checkout / welcome.html).
 // ─────────────────────────────────────────────────────────────
-const KANJI_PLAN_LABEL = { monthly: '1 bulan', yearly: '1 tahun', lifetime: 'Selamanya' };
-
-function renderKanjiAccess() {
-  const pane = document.querySelector('[data-pane="kanji-access"]');
-  const r = STATE.kanjiAccessResult;
+function renderAccess() {
+  const pane = document.querySelector('[data-pane="access"]');
+  const r = STATE.accessResult;
   let resultHtml = '';
   if (r === 'notfound') {
-    resultHtml = `<div class="empty">User dengan email itu belum terdaftar di app Kanji. Minta dia daftar/login dulu di app.eznihongo.com, lalu coba lagi.</div>`;
+    resultHtml = `<div class="empty">User dengan email itu belum terdaftar. Minta dia daftar/login dulu di eznihongo.com, lalu coba lagi.</div>`;
   } else if (r && r.user) {
-    const badge = r.isPremium
-      ? '<span class="badge badge-admin">PREMIUM AKTIF</span>'
-      : '<span class="badge badge-off">belum premium</span>';
-    const subRows = (r.subscriptions || []).map((s) => {
-      const exp = s.expires_at ? new Date(s.expires_at).toLocaleDateString('id-ID') : '—';
-      const active = s.status === 'active' && (!s.expires_at || new Date(s.expires_at) > new Date());
-      return `<tr style="${active ? '' : 'opacity:0.55;'}">
-        <td>${escapeHtml(s.status)}</td>
-        <td>${escapeHtml(KANJI_PLAN_LABEL[s.plan] || s.plan)}</td>
-        <td>${escapeHtml(s.payment_method || '—')}</td>
-        <td>${exp}</td>
-        <td class="actions">${active ? `<button class="btn btn-danger" onclick="revokeKanjiAccess('${s.id}')">Cabut</button>` : ''}</td>
-      </tr>`;
-    }).join('');
+    const enrolledIds = new Set((r.enrollments || []).map((e) => e.course_id));
+    const enrRows = (r.enrollments || []).map((e) => `
+      <tr>
+        <td><strong>${escapeHtml(e.title)}</strong> <span class="pill">${escapeHtml(e.level || '-')}</span></td>
+        <td>${new Date(e.enrolled_at).toLocaleDateString('id-ID')}</td>
+        <td class="actions"><button class="btn btn-danger" onclick="revokeAccess('${escapeHtml(r.user.email)}','${e.course_id}')">Cabut</button></td>
+      </tr>`).join('');
+    const grantable = (r.courses || []).filter((c) => !enrolledIds.has(c.id));
+    const opts = grantable.map((c) => `<option value="${escapeHtml(c.slug)}">${escapeHtml(c.title)} (${escapeHtml(c.level || '-')})</option>`).join('');
     resultHtml = `
       <div class="card" style="margin-top:16px;padding:16px;border:1px solid var(--line,#e5e5e5);border-radius:10px;">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <strong>${escapeHtml(r.user.full_name || '-')}</strong>
           <span style="font-size:12px;color:#737373;">${escapeHtml(r.user.email)}</span>
-          ${badge}
         </div>
+        ${grantable.length ? `
         <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:14px;">
-          <label style="font-size:13px;">Durasi akses<br>
-            <select id="ka-plan" style="margin-top:4px;">
-              <option value="lifetime">Selamanya (lifetime)</option>
-              <option value="yearly">1 tahun</option>
-              <option value="monthly">1 bulan</option>
-            </select>
+          <label style="font-size:13px;">Beri akses ke kursus<br>
+            <select id="ac-course" style="margin-top:4px;min-width:280px;">${opts}</select>
           </label>
-          <button class="btn btn-primary" onclick="grantKanjiAccess('${escapeHtml(r.user.email)}')">Beri akses</button>
-        </div>
-        ${subRows ? `<table style="margin-top:16px;"><thead><tr><th>Status</th><th>Durasi</th><th>Metode</th><th>Berlaku s/d</th><th></th></tr></thead><tbody>${subRows}</tbody></table>` : ''}
+          <button class="btn btn-primary" onclick="grantAccess('${escapeHtml(r.user.email)}')">Beri akses</button>
+        </div>` : '<p style="margin-top:14px;color:#737373;font-size:13px;">User sudah punya akses ke semua kursus terbit.</p>'}
+        <h3 style="margin:18px 0 6px;font-size:14px;">Kursus yang sudah diakses</h3>
+        ${enrRows ? `<table><thead><tr><th>Kursus</th><th>Sejak</th><th></th></tr></thead><tbody>${enrRows}</tbody></table>` : '<div class="empty">Belum punya akses kursus apa pun.</div>'}
       </div>`;
   }
   pane.innerHTML = `
-    <h2>Akses Dashboard Kanji</h2>
-    <p style="color:#737373;font-size:13px;margin-top:-4px;max-width:620px;">
-      Beri akses premium ke app Kanji (app.eznihongo.com) tanpa pembayaran. User
-      harus sudah pernah login/daftar di app dulu. Setelah diberi akses, dia tinggal
-      login dan dashboard-nya langsung terbuka.
+    <h2>Beri Akses Dashboard</h2>
+    <p style="color:#737373;font-size:13px;margin-top:-4px;max-width:640px;">
+      Beri akses kursus ke user tanpa mereka harus checkout/bayar. User harus
+      sudah pernah daftar/login di eznihongo.com dulu. Setelah diberi akses,
+      dia tinggal login dan kursusnya langsung terbuka di dashboard.
     </p>
     <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:14px;">
       <label style="font-size:13px;">Email user<br>
-        <input id="ka-email" type="email" placeholder="user@email.com" style="margin-top:4px;min-width:280px;"
-          value="${escapeHtml(STATE.kanjiAccessEmail || '')}"
-          onkeydown="if(event.key==='Enter')lookupKanjiAccess()">
+        <input id="ac-email" type="email" placeholder="user@email.com" style="margin-top:4px;min-width:280px;"
+          value="${escapeHtml(STATE.accessEmail || '')}"
+          onkeydown="if(event.key==='Enter')lookupAccess()">
       </label>
-      <button class="btn btn-ghost" onclick="lookupKanjiAccess()">Cari</button>
+      <button class="btn btn-ghost" onclick="lookupAccess()">Cari</button>
     </div>
     ${resultHtml}
   `;
 }
 
-window.lookupKanjiAccess = async () => {
-  const email = (document.getElementById('ka-email')?.value || '').trim();
-  STATE.kanjiAccessEmail = email;
+window.lookupAccess = async () => {
+  const email = (document.getElementById('ac-email')?.value || '').trim();
+  STATE.accessEmail = email;
   if (!email) { notify('Masukkan email dulu', true); return; }
   try {
-    const d = await api('/admin/kanji-access?email=' + encodeURIComponent(email));
-    STATE.kanjiAccessResult = d;
+    const d = await api('/admin/user-access?email=' + encodeURIComponent(email));
+    STATE.accessResult = d;
   } catch (err) {
-    if (/user_not_found/.test(err.message)) STATE.kanjiAccessResult = 'notfound';
+    if (/user_not_found/.test(err.message)) STATE.accessResult = 'notfound';
     else { notify('Gagal cari: ' + err.message, true); return; }
   }
-  renderKanjiAccess();
+  renderAccess();
 };
 
-window.grantKanjiAccess = async (email) => {
-  const plan = document.getElementById('ka-plan')?.value || 'lifetime';
+window.grantAccess = async (email) => {
+  const courseSlug = document.getElementById('ac-course')?.value;
+  if (!courseSlug) { notify('Pilih kursus dulu', true); return; }
   try {
-    await api('/admin/kanji-access/grant', { method: 'POST', body: JSON.stringify({ email, plan }) });
-    notify('Akses diberikan (' + (KANJI_PLAN_LABEL[plan] || plan) + ')');
-    await lookupKanjiAccess();
+    const d = await api('/admin/user-access/grant', { method: 'POST', body: JSON.stringify({ email, courseSlug }) });
+    notify(d.alreadyEnrolled ? 'User sudah punya akses kursus itu' : 'Akses diberikan');
+    await lookupAccess();
   } catch (err) { notify('Gagal beri akses: ' + err.message, true); }
 };
 
-window.revokeKanjiAccess = async (subscriptionId) => {
-  if (!confirm('Cabut akses ini? User tidak lagi premium.')) return;
+window.revokeAccess = async (email, courseId) => {
+  if (!confirm('Cabut akses kursus ini dari user?')) return;
   try {
-    await api('/admin/kanji-access/revoke', { method: 'POST', body: JSON.stringify({ subscriptionId }) });
+    await api('/admin/user-access/revoke', { method: 'POST', body: JSON.stringify({ email, courseId }) });
     notify('Akses dicabut');
-    await lookupKanjiAccess();
+    await lookupAccess();
   } catch (err) { notify('Gagal cabut: ' + err.message, true); }
 };
 

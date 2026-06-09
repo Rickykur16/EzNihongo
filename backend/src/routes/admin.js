@@ -2034,81 +2034,93 @@ router.get('/users', asyncHandler(async (req, res) => {
   res.json({ users: result.rows });
 }));
 
-// ===== AKSES DASHBOARD KANJI (comp grants) =====
-// Beri akses premium tanpa pembayaran Midtrans: insert baris `subscriptions`
-// status='active', amount_idr=0, payment_method='comp', order_id 'COMP-...'.
-// /api/subscription/status (kanji realm) langsung melihatnya sebagai premium.
-// Tabel kanji ada di DB yang sama; admin di sini dijaga oleh ADMIN_EMAILS.
+// ===== AKSES DASHBOARD (enrollment grants) =====
+// Beri akses kursus tanpa lewat checkout: insert/hapus baris user_enrollments.
+// Sama persis dengan yang dilakukan POST /api/enrollments, tapi admin bisa
+// pilih user mana (by email). user_enrollments = single source of truth akses.
 
-const KANJI_PLAN_INTERVAL = {
-  monthly: '1 month',
-  yearly: '1 year',
-  lifetime: '100 years',
-};
-
-// GET /api/admin/kanji-access?email= — cari user kanji + daftar subscription-nya
-router.get('/kanji-access', asyncHandler(async (req, res) => {
+// GET /api/admin/user-access?email= — cari user + daftar kursus yang sudah di-enroll
+router.get('/user-access', asyncHandler(async (req, res) => {
   const email = String(req.query.email || '').trim().toLowerCase();
   if (!email) return res.status(400).json({ error: 'email_required' });
 
   const userRow = await query(
-    `SELECT id, email, full_name, created_at FROM kanji_users WHERE lower(email) = $1 LIMIT 1`,
+    `SELECT id, email, full_name, created_at FROM users WHERE lower(email) = $1 LIMIT 1`,
     [email]
   );
   const user = userRow.rows[0];
   if (!user) return res.status(404).json({ error: 'user_not_found' });
 
-  const subs = await query(
-    `SELECT id, status, plan, amount_idr, payment_method, started_at, expires_at, created_at
-       FROM subscriptions
-      WHERE user_id = $1
-      ORDER BY created_at DESC
-      LIMIT 50`,
+  const enrolled = await query(
+    `SELECT c.id AS course_id, c.slug, c.title, c.level, e.enrolled_at
+       FROM user_enrollments e
+       JOIN courses c ON c.id = e.course_id
+      WHERE e.user_id = $1
+      ORDER BY e.enrolled_at DESC`,
     [user.id]
   );
-  const isPremium = subs.rows.some(
-    (s) => s.status === 'active' && (!s.expires_at || new Date(s.expires_at) > new Date())
+  const courses = await query(
+    `SELECT id, slug, title, level, is_published, is_available
+       FROM courses WHERE is_published = TRUE
+      ORDER BY sort_order ASC, created_at ASC`
   );
-  res.json({ user, isPremium, subscriptions: subs.rows });
+  res.json({ user, enrollments: enrolled.rows, courses: courses.rows });
 }));
 
-// POST /api/admin/kanji-access/grant — { email, plan } → comp subscription aktif
-router.post('/kanji-access/grant', asyncHandler(async (req, res) => {
+// POST /api/admin/user-access/grant — { email, courseSlug } → enroll user ke kursus
+router.post('/user-access/grant', asyncHandler(async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
-  const plan = String(req.body?.plan || 'lifetime');
+  const courseSlug = String(req.body?.courseSlug || '').trim();
   if (!email) return res.status(400).json({ error: 'email_required' });
-  const interval = KANJI_PLAN_INTERVAL[plan];
-  if (!interval) return res.status(400).json({ error: 'invalid_plan' });
+  if (!courseSlug) return res.status(400).json({ error: 'course_required' });
 
   const userRow = await query(
-    `SELECT id, email, full_name FROM kanji_users WHERE lower(email) = $1 LIMIT 1`,
+    `SELECT id, email, full_name FROM users WHERE lower(email) = $1 LIMIT 1`,
     [email]
   );
   const user = userRow.rows[0];
   if (!user) return res.status(404).json({ error: 'user_not_found' });
 
-  const orderId = `COMP-${user.id.slice(0, 8)}-${Date.now()}`;
-  const inserted = await query(
-    `INSERT INTO subscriptions
-       (user_id, status, plan, amount_idr, midtrans_order_id, payment_method, started_at, expires_at)
-     VALUES ($1, 'active', $2, 0, $3, 'comp', NOW(), NOW() + $4::interval)
-     RETURNING id, status, plan, expires_at, payment_method, created_at`,
-    [user.id, plan, orderId, interval]
+  const courseRow = await query(
+    `SELECT id, slug, title, is_published FROM courses WHERE slug = $1 LIMIT 1`,
+    [courseSlug]
   );
-  res.json({ ok: true, user: { email: user.email, full_name: user.full_name }, subscription: inserted.rows[0] });
+  const course = courseRow.rows[0];
+  if (!course) return res.status(404).json({ error: 'course_not_found' });
+  if (!course.is_published) return res.status(400).json({ error: 'course_not_published' });
+
+  const ins = await query(
+    `INSERT INTO user_enrollments (user_id, course_id)
+     VALUES ($1, $2)
+     ON CONFLICT (user_id, course_id) DO NOTHING
+     RETURNING id`,
+    [user.id, course.id]
+  );
+  res.json({
+    ok: true,
+    alreadyEnrolled: ins.rows.length === 0,
+    user: { email: user.email, full_name: user.full_name },
+    course: { slug: course.slug, title: course.title },
+  });
 }));
 
-// POST /api/admin/kanji-access/revoke — { subscriptionId } → set status='cancelled'
-router.post('/kanji-access/revoke', asyncHandler(async (req, res) => {
-  const subscriptionId = String(req.body?.subscriptionId || '');
-  if (!subscriptionId) return res.status(400).json({ error: 'subscription_id_required' });
-  const updated = await query(
-    `UPDATE subscriptions SET status = 'cancelled', updated_at = NOW()
-      WHERE id = $1 RETURNING id, status`,
-    [subscriptionId]
+// POST /api/admin/user-access/revoke — { email, courseId } → hapus enrollment
+router.post('/user-access/revoke', asyncHandler(async (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const courseId = String(req.body?.courseId || '');
+  if (!email) return res.status(400).json({ error: 'email_required' });
+  if (!courseId) return res.status(400).json({ error: 'course_required' });
+
+  const userRow = await query(`SELECT id FROM users WHERE lower(email) = $1 LIMIT 1`, [email]);
+  const user = userRow.rows[0];
+  if (!user) return res.status(404).json({ error: 'user_not_found' });
+
+  const del = await query(
+    `DELETE FROM user_enrollments WHERE user_id = $1 AND course_id = $2 RETURNING id`,
+    [user.id, courseId]
   );
-  if (updated.rows.length === 0) return res.status(404).json({ error: 'subscription_not_found' });
-  res.json({ ok: true, subscription: updated.rows[0] });
+  if (del.rows.length === 0) return res.status(404).json({ error: 'enrollment_not_found' });
+  res.json({ ok: true });
 }));
 
 // ===== DISCUSSIONS (admin moderation) =====
