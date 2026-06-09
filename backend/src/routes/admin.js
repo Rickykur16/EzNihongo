@@ -2034,6 +2034,95 @@ router.get('/users', asyncHandler(async (req, res) => {
   res.json({ users: result.rows });
 }));
 
+// ===== AKSES DASHBOARD (enrollment grants) =====
+// Beri akses kursus tanpa lewat checkout: insert/hapus baris user_enrollments.
+// Sama persis dengan yang dilakukan POST /api/enrollments, tapi admin bisa
+// pilih user mana (by email). user_enrollments = single source of truth akses.
+
+// GET /api/admin/user-access?email= — cari user + daftar kursus yang sudah di-enroll
+router.get('/user-access', asyncHandler(async (req, res) => {
+  const email = String(req.query.email || '').trim().toLowerCase();
+  if (!email) return res.status(400).json({ error: 'email_required' });
+
+  const userRow = await query(
+    `SELECT id, email, full_name, created_at FROM users WHERE lower(email) = $1 LIMIT 1`,
+    [email]
+  );
+  const user = userRow.rows[0];
+  if (!user) return res.status(404).json({ error: 'user_not_found' });
+
+  const enrolled = await query(
+    `SELECT c.id AS course_id, c.slug, c.title, c.level, e.enrolled_at
+       FROM user_enrollments e
+       JOIN courses c ON c.id = e.course_id
+      WHERE e.user_id = $1
+      ORDER BY e.enrolled_at DESC`,
+    [user.id]
+  );
+  const courses = await query(
+    `SELECT id, slug, title, level, is_published, is_available
+       FROM courses WHERE is_published = TRUE
+      ORDER BY sort_order ASC, created_at ASC`
+  );
+  res.json({ user, enrollments: enrolled.rows, courses: courses.rows });
+}));
+
+// POST /api/admin/user-access/grant — { email, courseSlug } → enroll user ke kursus
+router.post('/user-access/grant', asyncHandler(async (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const courseSlug = String(req.body?.courseSlug || '').trim();
+  if (!email) return res.status(400).json({ error: 'email_required' });
+  if (!courseSlug) return res.status(400).json({ error: 'course_required' });
+
+  const userRow = await query(
+    `SELECT id, email, full_name FROM users WHERE lower(email) = $1 LIMIT 1`,
+    [email]
+  );
+  const user = userRow.rows[0];
+  if (!user) return res.status(404).json({ error: 'user_not_found' });
+
+  const courseRow = await query(
+    `SELECT id, slug, title, is_published FROM courses WHERE slug = $1 LIMIT 1`,
+    [courseSlug]
+  );
+  const course = courseRow.rows[0];
+  if (!course) return res.status(404).json({ error: 'course_not_found' });
+  if (!course.is_published) return res.status(400).json({ error: 'course_not_published' });
+
+  const ins = await query(
+    `INSERT INTO user_enrollments (user_id, course_id)
+     VALUES ($1, $2)
+     ON CONFLICT (user_id, course_id) DO NOTHING
+     RETURNING id`,
+    [user.id, course.id]
+  );
+  res.json({
+    ok: true,
+    alreadyEnrolled: ins.rows.length === 0,
+    user: { email: user.email, full_name: user.full_name },
+    course: { slug: course.slug, title: course.title },
+  });
+}));
+
+// POST /api/admin/user-access/revoke — { email, courseId } → hapus enrollment
+router.post('/user-access/revoke', asyncHandler(async (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const courseId = String(req.body?.courseId || '');
+  if (!email) return res.status(400).json({ error: 'email_required' });
+  if (!courseId) return res.status(400).json({ error: 'course_required' });
+
+  const userRow = await query(`SELECT id FROM users WHERE lower(email) = $1 LIMIT 1`, [email]);
+  const user = userRow.rows[0];
+  if (!user) return res.status(404).json({ error: 'user_not_found' });
+
+  const del = await query(
+    `DELETE FROM user_enrollments WHERE user_id = $1 AND course_id = $2 RETURNING id`,
+    [user.id, courseId]
+  );
+  if (del.rows.length === 0) return res.status(404).json({ error: 'enrollment_not_found' });
+  res.json({ ok: true });
+}));
+
 // ===== DISCUSSIONS (admin moderation) =====
 
 router.get('/discussions', asyncHandler(async (req, res) => {
