@@ -9,6 +9,12 @@
 
 export const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 export const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5';
+// Model khusus GENERATOR soal (generate-jlpt / generate-listening): tugas
+// komposisi ketat (組み立て: pecah kalimat jadi 4 potongan + lacak posisi ★)
+// terbukti gagal terus di haiku — semua draft ditolak validasi permutasi.
+// Default sonnet; admin-only & volume rendah jadi biayanya kecil. Fitur
+// siswa (tutor, grammar eval, coaching) tetap ANTHROPIC_MODEL (haiku).
+export const ANTHROPIC_GEN_MODEL = process.env.ANTHROPIC_GEN_MODEL || 'claude-sonnet-4-6';
 
 export function anthropicEnabled() {
   return !!ANTHROPIC_API_KEY;
@@ -16,7 +22,9 @@ export function anthropicEnabled() {
 
 // Mengembalikan teks balasan asisten (string), atau null kalau nonaktif/gagal.
 // `system` di-kirim dengan cache_control ephemeral (cacheable prompt prefix).
-export async function callClaude({ system, userContent, messages, maxTokens = 512 }) {
+// `model` opsional — default ANTHROPIC_MODEL; generator soal pakai
+// ANTHROPIC_GEN_MODEL.
+export async function callClaude({ system, userContent, messages, maxTokens = 512, model }) {
   if (!ANTHROPIC_API_KEY) return null;
   const msgs = Array.isArray(messages) && messages.length
     ? messages
@@ -30,7 +38,7 @@ export async function callClaude({ system, userContent, messages, maxTokens = 51
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
+        model: model || ANTHROPIC_MODEL,
         max_tokens: maxTokens,
         ...(system ? { system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }] } : {}),
         messages: msgs,

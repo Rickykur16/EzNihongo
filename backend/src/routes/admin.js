@@ -7,7 +7,7 @@ import { query } from '../db.js';
 import { requireAuth, requireAdmin, asyncHandler } from '../middleware.js';
 import { isAdminEmail } from '../auth.js';
 import { COACH_PROMPT_DEFAULT } from './recommendations.js';
-import { callClaude, anthropicEnabled } from '../anthropic.js';
+import { callClaude, anthropicEnabled, ANTHROPIC_GEN_MODEL } from '../anthropic.js';
 import {
   NOTION_BAB_DB_ID_DEFAULT,
   NOTION_VOCAB_LESSON_RELATION,
@@ -1442,7 +1442,7 @@ router.post('/lessons/:lessonId/generate-listening', quizGenLimiter, asyncHandle
       : '',
   });
 
-  const text = await callClaude({ system: QUIZ_GEN_SYSTEM, userContent, maxTokens: 4096 });
+  const text = await callClaude({ system: QUIZ_GEN_SYSTEM, userContent, maxTokens: 4096, model: ANTHROPIC_GEN_MODEL });
   if (!text) return res.status(502).json({ error: 'ai_upstream' });
   const parsed = _extractJsonObject(text);
   if (!parsed || !Array.isArray(parsed.questions)) return res.status(502).json({ error: 'ai_parse' });
@@ -1847,6 +1847,7 @@ router.post('/lessons/:lessonId/generate-jlpt', quizGenLimiter, asyncHandler(asy
     system: QUIZ_GEN_SYSTEM,
     userContent,
     maxTokens: task.needsPassage ? 6000 : 4096,
+    model: ANTHROPIC_GEN_MODEL,
   });
   if (!text) return res.status(502).json({ error: 'ai_upstream' });
   const parsed = _extractJsonObject(text);
