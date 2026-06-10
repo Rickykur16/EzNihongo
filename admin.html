@@ -1590,8 +1590,11 @@ window.generateQuizAI = async (lessonId, lessonTitle) => {
   _quizGenCtx = { lessonId, lessonTitle };
   let promptVal = '';
   try {
+    // HANYA nilai custom yang dimuat — dulu fallback ke default bikin
+    // jebakan: sekali "Simpan Prompt", default lama membeku di DB dan
+    // perbaikan default berikutnya tidak pernah kepakai.
     const p = await api('/admin/settings/quiz-gen-prompt');
-    promptVal = p.value || p.default || '';
+    promptVal = p.value || '';
   } catch { /* biarkan kosong; backend tetap pakai default */ }
   openModal(`
     <h3>✨ Generate Soal AI — ${escapeHtml(lessonTitle)}</h3>
@@ -1617,9 +1620,9 @@ window.generateQuizAI = async (lessonId, lessonTitle) => {
       <summary style="cursor:pointer;font-weight:600;font-size:13px;">Prompt Generator AI (lanjutan)</summary>
       <p style="font-size:12px;color:#525252;font-family:var(--font-body);margin:8px 0;">
         Placeholder: <code>{{count}}</code> <code>{{kinds}}</code> <code>{{instruction}}</code> <code>{{vocab}}</code> <code>{{grammar}}</code>.
-        Berlaku untuk SEMUA generate soal. Kosongkan lalu simpan untuk balik ke default.
+        Berlaku untuk SEMUA generate soal. <strong>Kosong = pakai prompt default server (otomatis ikut versi terbaru — disarankan).</strong> Isi hanya kalau mau override permanen.
       </p>
-      <textarea id="qg-prompt" rows="12" style="width:100%;font-family:monospace;font-size:12px;box-sizing:border-box;">${escapeHtml(promptVal)}</textarea>
+      <textarea id="qg-prompt" rows="12" style="width:100%;font-family:monospace;font-size:12px;box-sizing:border-box;" placeholder="(kosong — pakai default server)">${escapeHtml(promptVal)}</textarea>
       <div style="margin-top:8px;text-align:right;"><button type="button" class="btn btn-ghost" onclick="quizGenSavePrompt()">Simpan Prompt</button></div>
     </details>
     <div class="modal-actions">
@@ -1786,8 +1789,10 @@ window.openListeningGen = async (key) => {
   if (!_listenGenCtx) return;
   let promptVal = '';
   try {
+    // HANYA nilai custom (lihat catatan di generateQuizAI — anti jebakan
+    // default membeku).
     const p = await api('/admin/settings/listening-gen-prompt');
-    promptVal = p.value || p.default || '';
+    promptVal = p.value || '';
   } catch { /* biarkan kosong; backend tetap pakai default */ }
   const taskRows = LISTEN_GEN_TASKS.map((t, i) => `
     <label style="display:flex;align-items:flex-start;gap:10px;font-weight:400;margin-bottom:8px;padding:8px 10px;border:1px solid var(--paper-300);border-radius:8px;cursor:pointer;">
@@ -1821,9 +1826,9 @@ window.openListeningGen = async (key) => {
       <p style="font-size:12px;color:#525252;font-family:var(--font-body);margin:8px 0;">
         Placeholder: <code>{{count}}</code> <code>{{level}}</code> <code>{{taskName}}</code> <code>{{taskRules}}</code>
         <code>{{levelRules}}</code> <code>{{topic}}</code> <code>{{vocab}}</code> <code>{{grammar}}</code> <code>{{avoid}}</code>.
-        Aturan per tipe mondai &amp; level diisi otomatis oleh server. Kosongkan lalu simpan untuk balik ke default.
+        Aturan per tipe mondai &amp; level diisi otomatis oleh server. <strong>Kosong = pakai prompt default server (disarankan).</strong>
       </p>
-      <textarea id="lg-prompt" rows="12" style="width:100%;font-family:monospace;font-size:12px;box-sizing:border-box;">${escapeHtml(promptVal)}</textarea>
+      <textarea id="lg-prompt" rows="12" style="width:100%;font-family:monospace;font-size:12px;box-sizing:border-box;" placeholder="(kosong — pakai default server)">${escapeHtml(promptVal)}</textarea>
       <div style="margin-top:8px;text-align:right;"><button type="button" class="btn btn-ghost" onclick="listenGenSavePrompt()">Simpan Prompt</button></div>
     </details>
     <div class="modal-actions">

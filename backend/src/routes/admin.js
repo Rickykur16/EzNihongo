@@ -1140,6 +1140,14 @@ router.post('/lessons/:lessonId/generate-quiz', quizGenLimiter, asyncHandler(asy
       // (ga ada audio buat diputar siswa) → buang draft-nya.
       const turns = parseDialog(audioScript);
       if (!turns) continue;
+      // Wajib struktur JLPT penuh sesuai prompt: ≥3 turn, ada baris narator
+      // (N) DAN dua pembicara dialog (cewe + cowo). Menolak output model yg
+      // memperlakukan N sebagai tokoh / dialog 2-turn tanpa kerangka soal.
+      const spk = turns.map((t) => String(t.speaker).toUpperCase());
+      const hasNarrator = spk.some((s) => /^N/.test(s));
+      const hasFemale = spk.some((s) => /^(A|W|F|女)/.test(s));
+      const hasMale = spk.some((s) => /^(B|M|男)/.test(s));
+      if (turns.length < 3 || !hasNarrator || !hasFemale || !hasMale) continue;
       // "question" = teks yang TAMPIL di soal — model kadang menyalin dialog
       // / instruksi meta ("音声を聞いてください。N: ...") ke sini. Pangkas ke
       // baris pertama tanpa prefix speaker; kalau masih ada pola speaker
