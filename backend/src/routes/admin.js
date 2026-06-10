@@ -1010,6 +1010,7 @@ Aturan per jenis soal:
   * baris tengah = dialog "A: " (perempuan) dan "B: " (laki-laki) bergantian, 3-6 turn — WAJIB ada baris A: dan B:, jangan pakai N: di sini
   * baris terakhir "N: " = pertanyaan yang sama diulang persis
   * N/A/B adalah KODE PERAN suara, BUKAN nama tokoh — dilarang menyebut 「Nさん」「Aさん」 di dialog/pertanyaan. Sebut tokoh sebagai 男の人/女の人/田中さん dsb.
+  * dialog harus terdengar ALAMI seperti percakapan sehari-hari — jangan menjejalkan kosakata daftar (cukup 1-3 kata per soal, dipakai wajar); kealamian lebih penting daripada cakupan materi.
   * "question" = HANYA kalimat pertanyaan Jepang yang dibacakan narator. DILARANG menyalin dialog, prefix speaker (N:/A:/B:), atau instruksi meta ("音声を聞いてください" dsb) ke "question".
   4 opsi, 1 benar sesuai isi dialog. (Untuk soal listening per-mondai yang lebih autentik pakai tombol "Generate Listening JLPT".)
 
@@ -1256,7 +1257,7 @@ const JLPT_LISTENING_TASKS = {
 - Baris pertama → N: [kalimat situasi][pertanyaan]. Pola situasi baku: 「店で、男の人と女の人が話しています。」「学校で先生が話しています。」 Pertanyaan menarget AKSI berikutnya atau barang/jumlah: 「男の人はこのあとまず何をしますか。」「女の人は何を買いますか。」
 - Baris tengah → dialog A: (perempuan) dan B: (laki-laki) bergantian. WAJIB ada minimal satu baris A: DAN satu baris B: — narator (N:) HANYA untuk baris pertama & terakhir, JANGAN pakai N: untuk isi dialog.
 - Baris terakhir → N: [pertanyaan yang SAMA PERSIS diulang].
-Konvensi distraktor: dialog menyebut KEEMPAT opsi secara alami, tiga dieliminasi di alur percakapan (sudah dikerjakan / untuk besok / batal — 「もう〜ました」「やっぱり」「その前に」「あとで」). Jawaban TIDAK boleh hanya dari kalimat pertama dialog.
+Konvensi distraktor: dialog menyinggung opsi-opsi lain secara ALAMI lalu mengeliminasinya di alur percakapan (sudah dikerjakan / untuk besok / batal — 「もう〜ました」「やっぱり」「その前に」「あとで」). Tidak wajib menyebut semua opsi kalau hasilnya jadi kaku — kealamian lebih penting. Jawaban TIDAK boleh hanya dari kalimat pertama dialog.
 "question" = teks pertanyaan Jepang yang sama dengan yang dibacakan narator.
 Opsi: 4 frasa Jepang pendek (bukan kalimat panjang), TEPAT 1 benar.`,
   },
@@ -1318,7 +1319,7 @@ Format speaker audioScript (1 baris per turn, prefix + titik dua):
 - "B: " = pembicara laki-laki
 
 {{topic}}
-Utamakan kosakata & pola grammar dari materi di bawah supaya siswa mengenalinya. Kata fungsi umum (partikel, salam, angka, kata tanya) boleh dari luar daftar, tapi JANGAN pakai kosakata konten yang jauh di atas level.
+Pakai kosakata & pola grammar dari materi di bawah HANYA kalau masuk secara wajar — cukup 1-3 kata dari daftar per soal. Kata fungsi umum (partikel, salam, angka, kata tanya) boleh dari luar daftar, tapi JANGAN pakai kosakata konten yang jauh di atas level.
 
 Kosakata (japanese (reading) = arti):
 {{vocab}}
@@ -1327,6 +1328,8 @@ Pola grammar:
 {{grammar}}
 {{avoid}}
 Aturan umum:
+- PALING PENTING: dialog harus terdengar ALAMI seperti percakapan sehari-hari orang Jepang beneran — bukan kalimat contoh buku teks yang kaku, bukan daftar kosakata yang dipaksa jadi percakapan. Boleh pakai respon pendek alami (そうですか、いいですね、あ、すみません) secukupnya.
+- JANGAN menjejalkan kosakata daftar ke dialog. Lebih baik dialog luwes yang cuma pakai 2 kata dari daftar daripada dialog kaku yang menjejalkan 6 kata.
 - Setiap soal harus berdiri sendiri dengan situasi/topik BERBEDA satu sama lain.
 - TEPAT 1 opsi "isCorrect": true per soal. Distraktor sepadan (panjang/jenis mirip), masuk akal, dan disebut/terkait di dialog.
 - "explanation": 1-2 kalimat Bahasa Indonesia — kutip frasa kunci dialog yang menentukan jawaban.
