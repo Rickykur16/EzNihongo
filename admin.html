@@ -1761,6 +1761,245 @@ window.quizGenSave = async () => {
   }
 };
 
+// ─── Generate Soal Listening gaya JLPT (AI) ───
+// Satu run = satu tipe mondai JLPT. Backend balikin draft soal lengkap
+// (audioScript dialog N:/A:/B: + pertanyaan + opsi + penjelasan) + meta
+// section tujuan (listening section nomor = nomor mondai). Admin review,
+// bisa test audio per draft (via /admin/tts/preview, tanpa perlu save dulu),
+// lalu simpan via POST /admin/quiz-questions seperti soal manual.
+const LISTEN_GEN_TASKS = [
+  { value: 'kadai',   title: 'もんだい1 · 課題理解',   desc: 'Dialog → "apa yang dilakukan/dibeli selanjutnya". 4 opsi.' },
+  { value: 'point',   title: 'もんだい2 · ポイント理解', desc: 'Dialog → poin spesifik: alasan / jam / tempat / orang. 4 opsi.' },
+  { value: 'hatsuwa', title: 'もんだい3 · 発話表現',   desc: 'Situasi singkat → 「何と言いますか」. 3 opsi ucapan.' },
+  { value: 'sokuji',  title: 'もんだい4 · 即時応答',   desc: 'Satu ucapan pendek → pilih balasan yang pas. 3 opsi.' },
+];
+let _listenGenDrafts = [];
+let _listenGenSection = null;
+let _listenGenCtx = null;
+
+window.openListeningGen = async (key) => {
+  const ctx = _quizCtxStash[key];
+  if (ctx) _listenGenCtx = { lessonId: ctx.lessonId, lessonTitle: ctx.lessonTitle };
+  if (!_listenGenCtx) return;
+  let promptVal = '';
+  try {
+    const p = await api('/admin/settings/listening-gen-prompt');
+    promptVal = p.value || p.default || '';
+  } catch { /* biarkan kosong; backend tetap pakai default */ }
+  const taskRows = LISTEN_GEN_TASKS.map((t, i) => `
+    <label style="display:flex;align-items:flex-start;gap:10px;font-weight:400;margin-bottom:8px;padding:8px 10px;border:1px solid var(--paper-300);border-radius:8px;cursor:pointer;">
+      <input type="radio" name="lg-task" value="${t.value}" ${i === 0 ? 'checked' : ''} style="margin-top:3px;" />
+      <span>
+        <strong lang="ja">${t.title}</strong><br>
+        <span style="font-size:12px;color:#525252;">${t.desc}</span>
+      </span>
+    </label>`).join('');
+  openModal(`
+    <h3>🎧 Generate Listening JLPT — ${escapeHtml(_listenGenCtx.lessonTitle)}</h3>
+    <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 14px;">
+      AI bikin soal listening lengkap dengan dialog gaya ujian JLPT (narator + 2 pembicara),
+      grounded ke kosakata &amp; grammar Bab ini. Review, test audio, lalu simpan.
+    </p>
+    <div class="field"><label>Tipe soal (mondai)</label>${taskRows}</div>
+    <div class="field-row">
+      <div class="field"><label>Level</label>
+        <select id="lg-level"><option value="N5" selected>N5</option><option value="N4">N4</option></select>
+      </div>
+      <div class="field"><label>Jumlah soal</label>
+        <input id="lg-count" type="number" min="1" max="8" value="3" />
+      </div>
+    </div>
+    <div class="field">
+      <label>Topik / instruksi tambahan (opsional)</label>
+      <input id="lg-topic" placeholder="mis. belanja di pasar, janjian ketemu, di kantor" />
+    </div>
+    <details style="margin:4px 0 14px;border:1px solid #e5e5e5;border-radius:8px;padding:10px 14px;">
+      <summary style="cursor:pointer;font-weight:600;font-size:13px;">Prompt Generator Listening (lanjutan)</summary>
+      <p style="font-size:12px;color:#525252;font-family:var(--font-body);margin:8px 0;">
+        Placeholder: <code>{{count}}</code> <code>{{level}}</code> <code>{{taskName}}</code> <code>{{taskRules}}</code>
+        <code>{{levelRules}}</code> <code>{{topic}}</code> <code>{{vocab}}</code> <code>{{grammar}}</code> <code>{{avoid}}</code>.
+        Aturan per tipe mondai &amp; level diisi otomatis oleh server. Kosongkan lalu simpan untuk balik ke default.
+      </p>
+      <textarea id="lg-prompt" rows="12" style="width:100%;font-family:monospace;font-size:12px;box-sizing:border-box;">${escapeHtml(promptVal)}</textarea>
+      <div style="margin-top:8px;text-align:right;"><button type="button" class="btn btn-ghost" onclick="listenGenSavePrompt()">Simpan Prompt</button></div>
+    </details>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="listenGenClose()">Batal</button>
+      <button type="button" class="btn btn-primary" id="lg-run" onclick="listenGenRun()">Generate</button>
+    </div>
+  `);
+  const mc = document.getElementById('modal-content');
+  if (mc) mc.style.maxWidth = '640px';
+};
+
+window.listenGenClose = () => manageQuiz(_listenGenCtx.lessonId, _listenGenCtx.lessonTitle);
+window.listenGenBack = () => openListeningGen(stashCtx(_listenGenCtx));
+
+window.listenGenSavePrompt = async () => {
+  const ta = document.getElementById('lg-prompt');
+  if (!ta) return;
+  try {
+    await api('/admin/settings/listening-gen-prompt', { method: 'PUT', body: JSON.stringify({ value: ta.value }) });
+    notify('Prompt generator listening disimpan');
+  } catch (err) { notify('Gagal simpan prompt: ' + err.message, true); }
+};
+
+window.listenGenRun = async () => {
+  const taskType = document.querySelector('input[name="lg-task"]:checked')?.value || 'kadai';
+  const level = document.getElementById('lg-level').value;
+  const count = Math.max(1, Math.min(8, Number(document.getElementById('lg-count').value) || 3));
+  const topic = document.getElementById('lg-topic').value.trim();
+  const btn = document.getElementById('lg-run');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating… (±30s)'; }
+  try {
+    const d = await api('/admin/lessons/' + _listenGenCtx.lessonId + '/generate-listening', {
+      method: 'POST',
+      body: JSON.stringify({ taskType, level, count, topic }),
+    });
+    _listenGenDrafts = Array.isArray(d.questions) ? d.questions : [];
+    _listenGenSection = d.section || null;
+    if (_listenGenDrafts.length === 0) {
+      notify('AI tidak menghasilkan soal. Coba lagi.', true);
+      if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
+      return;
+    }
+    listenGenRenderPreview();
+  } catch (err) {
+    notify('Gagal generate: ' + err.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
+  }
+};
+
+function listenGenRenderPreview() {
+  const s = _listenGenSection || { number: 1, label: 'Listening', instruction: '' };
+  const cards = _listenGenDrafts.map((q, i) => `
+    <div style="border:1px solid var(--border,#e5e5e5);border-radius:8px;padding:12px;margin-bottom:10px;">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:8px;">
+        <input type="checkbox" class="lg-inc" data-i="${i}" checked /> Soal ${i + 1}
+      </label>
+      <div class="field"><label>Pertanyaan (tampil di layar)</label><textarea id="lg_q_${i}" rows="2" lang="ja">${escapeHtml(q.question || '')}</textarea></div>
+      <div class="field">
+        <label>Audio dialog (N: narator · A: cewe · B: cowo)</label>
+        <textarea id="lg_audio_${i}" rows="6" lang="ja" style="font-family:'Noto Sans JP',sans-serif;width:100%;font-size:14px;line-height:1.6;box-sizing:border-box;">${escapeHtml(q.audioScript || '')}</textarea>
+        <div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="listenGenTestAudio(${i})">🔊 Test audio</button>
+          <span id="lg_tts_status_${i}" style="font-size:11px;color:var(--ink-500);"></span>
+        </div>
+        <audio id="lg_player_${i}" controls style="margin-top:6px;width:100%;display:none;"></audio>
+      </div>
+      <div class="field"><label>Opsi (pilih yang benar)</label>${(q.options || []).map((o, j) => `
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-bottom:4px;">
+          <input type="radio" name="lg_correct_${i}" value="${j}" ${o.isCorrect ? 'checked' : ''} />
+          <input id="lg_opt_${i}_${j}" value="${escapeHtml(o.text || '')}" lang="ja" style="flex:1;" />
+        </label>`).join('')}</div>
+      <div class="field"><label>Penjelasan</label><input id="lg_exp_${i}" value="${escapeHtml(q.explanation || '')}" /></div>
+    </div>`).join('');
+  openModal(`
+    <h3>Review ${_listenGenDrafts.length} Soal Listening — ${escapeHtml(_listenGenCtx.lessonTitle)}</h3>
+    <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 12px;">
+      Akan disimpan ke section listening <strong lang="ja">${s.number}. ${escapeHtml(s.label)}</strong>
+      (dibuat otomatis kalau belum ada). Edit seperlunya, hilangkan centang yang tidak mau disimpan.
+      Audio final siswa di-generate dari script ini, jadi test dulu sebelum simpan.
+    </p>
+    <div style="max-height:58vh;overflow-y:auto;">${cards}</div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="listenGenBack()">← Ulangi</button>
+      <button type="button" class="btn btn-primary" id="lg-save" onclick="listenGenSave()">Simpan ke kuis</button>
+    </div>
+  `);
+  const mc = document.getElementById('modal-content');
+  if (mc) mc.style.maxWidth = '680px';
+}
+
+window.listenGenTestAudio = async (i) => {
+  const ta = document.getElementById('lg_audio_' + i);
+  const audio = document.getElementById('lg_player_' + i);
+  const status = document.getElementById('lg_tts_status_' + i);
+  if (!ta || !audio || !status) return;
+  const text = ta.value.trim();
+  if (!text) { notify('Audio script kosong', true); return; }
+  status.textContent = 'Generating... (~5s kalau cache miss)';
+  audio.style.display = 'none';
+  try {
+    const r = await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({ text }) });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      status.textContent = `Error: ${err.detail || err.error || r.status}`;
+      return;
+    }
+    const blob = await r.blob();
+    audio.src = URL.createObjectURL(blob);
+    audio.style.display = 'block';
+    audio.play();
+    status.textContent = `OK (${(blob.size / 1024).toFixed(1)}KB)`;
+  } catch (err) {
+    status.textContent = `Network error: ${err.message}`;
+  }
+};
+
+window.listenGenSave = async () => {
+  const includes = Array.from(document.querySelectorAll('.lg-inc:checked')).map((c) => Number(c.dataset.i));
+  if (includes.length === 0) { notify('Tidak ada soal dipilih', true); return; }
+  const btn = document.getElementById('lg-save');
+  if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
+  const s = _listenGenSection || { number: 1, label: 'Listening', instruction: '' };
+  let saved = 0;
+  try {
+    // Kalau section listening nomor ini sudah ada: append setelah sort_order
+    // terakhir + pertahankan label/instruksi existing (jangan ditimpa).
+    let sort = 0;
+    let sectionLabel = s.label;
+    let sectionInstruction = s.instruction || null;
+    try {
+      const cur = await api('/admin/lessons/' + _listenGenCtx.lessonId + '/quiz');
+      const existing = (cur.questions || []).filter((q) =>
+        q.question_category === 'listening' && Number(q.section_number) === s.number);
+      if (existing.length > 0) {
+        sort = Math.max(...existing.map((q) => Number(q.sort_order) || 0)) + 1;
+        sectionLabel = existing[0].section_label || sectionLabel;
+        sectionInstruction = existing[0].section_instruction ?? sectionInstruction;
+      }
+    } catch { /* fallback: sort dari 0, meta dari generator */ }
+    for (const i of includes) {
+      const question = (document.getElementById('lg_q_' + i)?.value || '').trim();
+      const audioScript = (document.getElementById('lg_audio_' + i)?.value || '').trim();
+      if (!question || !audioScript) continue;
+      const checkedEl = document.querySelector('input[name="lg_correct_' + i + '"]:checked');
+      const correctIdx = checkedEl ? Number(checkedEl.value) : 0;
+      const options = (_listenGenDrafts[i].options || []).map((o, j) => ({
+        text: (document.getElementById('lg_opt_' + i + '_' + j)?.value || '').trim(),
+        isCorrect: j === correctIdx,
+        imageUrl: null,
+      })).filter((o) => o.text);
+      if (options.length < 2) continue;
+      if (!options.some((o) => o.isCorrect)) options[0].isCorrect = true;
+      await api('/admin/quiz-questions', {
+        method: 'POST',
+        body: JSON.stringify({
+          lessonId: _listenGenCtx.lessonId,
+          question,
+          questionType: 'multiple_choice',
+          questionCategory: 'listening',
+          sectionNumber: s.number,
+          sectionLabel,
+          sectionInstruction,
+          audioScript,
+          explanation: (document.getElementById('lg_exp_' + i)?.value || '').trim() || null,
+          sortOrder: sort++,
+          options,
+        }),
+      });
+      saved++;
+    }
+    notify(saved + ' soal listening tersimpan.');
+    closeModal();
+    manageQuiz(_listenGenCtx.lessonId, _listenGenCtx.lessonTitle);
+  } catch (err) {
+    notify('Gagal simpan (tersimpan ' + saved + '): ' + err.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = 'Simpan ke kuis'; }
+  }
+};
+
 // ─── Import Pelajaran dari Notion ───
 // Admin picks a Notion Bab → list of child pages (5 pelajaran) shown as
 // checkboxes → import selected ones as EzNihongo lessons under the active
@@ -1980,13 +2219,18 @@ function renderQuizModal(lessonId, lessonTitle, questions, lessonMeta) {
       ${ratioBadge}
     </div>` : '';
 
+  const listenGenKey = stashCtx({ lessonId, lessonTitle });
+
   openModal(`
     <div class="quiz-admin-head">
       <div>
         <div class="quiz-admin-kicker">Quiz / Assignment Harian</div>
         <h3 class="quiz-admin-title">${escapeHtml(lessonTitle)}</h3>
       </div>
-      <button class="btn btn-primary" onclick="openSectionForm('${newSectionCtx}')">+ Section baru</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+        <button class="btn btn-ghost" onclick="openListeningGen('${listenGenKey}')">🎧 Generate Listening JLPT</button>
+        <button class="btn btn-primary" onclick="openSectionForm('${newSectionCtx}')">+ Section baru</button>
+      </div>
     </div>
     ${poolIndicator}
     <div class="quiz-paper-tabs-admin" aria-label="Kategori kuis">${tabsHtml}</div>
