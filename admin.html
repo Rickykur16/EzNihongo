@@ -1195,8 +1195,7 @@ function renderLessons() {
              <button class="btn btn-ghost" onclick="manageGrammar('${l.id}', '${titleEsc}', '${mod.id}')">Grammar (${grammarN})</button>`;
         }
         const quizBtn = l.type === 'quiz'
-          ? `<button class="btn btn-ghost" onclick="manageQuiz('${l.id}', '${titleEsc}')">Kuis</button>
-             <button class="btn btn-ghost" onclick="generateQuizAI('${l.id}', '${titleEsc}')" title="Generate soal pakai AI dari materi Bab (preview dulu sebelum simpan)">✨ Generate AI</button>`
+          ? `<button class="btn btn-ghost" onclick="manageQuiz('${l.id}', '${titleEsc}')">Kuis</button>`
           : '';
         return `
         <tr>
@@ -1579,193 +1578,6 @@ window.deleteLesson = async (id, title) => {
   } catch (err) { notify('Gagal hapus: ' + err.message, true); }
 };
 
-// Auto-generate quiz dari vocab Bab di module yg sama. Replace soal lama.
-// ─── Generate Soal Kuis pakai AI ───
-// AI (Claude) bikin draft soal grounded ke materi Bab → admin preview/edit →
-// simpan via POST /admin/quiz-questions (path simpan yang sama dgn manual).
-let _quizGenDrafts = [];
-let _quizGenCtx = null;
-
-window.generateQuizAI = async (lessonId, lessonTitle) => {
-  _quizGenCtx = { lessonId, lessonTitle };
-  let promptVal = '';
-  try {
-    // HANYA nilai custom yang dimuat — dulu fallback ke default bikin
-    // jebakan: sekali "Simpan Prompt", default lama membeku di DB dan
-    // perbaikan default berikutnya tidak pernah kepakai.
-    const p = await api('/admin/settings/quiz-gen-prompt');
-    promptVal = p.value || '';
-  } catch { /* biarkan kosong; backend tetap pakai default */ }
-  openModal(`
-    <h3>✨ Generate Soal AI — ${escapeHtml(lessonTitle)}</h3>
-    <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 14px;">
-      AI bikin soal dari kosakata &amp; grammar Bab ini. Kamu review &amp; edit dulu sebelum disimpan.
-    </p>
-    <div class="field">
-      <label>Jumlah soal</label>
-      <input id="qg-count" type="number" min="1" max="30" value="10" />
-    </div>
-    <div class="field">
-      <label>Jenis soal</label>
-      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="mc_vocab" checked /> Pilihan ganda — kosakata</label>
-      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="mc_grammar" checked /> Pilihan ganda — grammar</label>
-      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="fill_blank" /> Isian (fill blank)</label>
-      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="listening" /> Menyimak (listening) <span style="font-size:11px;color:#737373;">— dialog JLPT per-mondai lebih bagus lewat tombol 🎧 Generate Listening JLPT</span></label>
-    </div>
-    <div class="field">
-      <label>Instruksi tambahan (opsional)</label>
-      <textarea id="qg-instruction" rows="2" placeholder="mis. fokus ke kata kerja, level mudah"></textarea>
-    </div>
-    <details style="margin:4px 0 14px;border:1px solid #e5e5e5;border-radius:8px;padding:10px 14px;">
-      <summary style="cursor:pointer;font-weight:600;font-size:13px;">Prompt Generator AI (lanjutan)</summary>
-      <p style="font-size:12px;color:#525252;font-family:var(--font-body);margin:8px 0;">
-        Placeholder: <code>{{count}}</code> <code>{{kinds}}</code> <code>{{instruction}}</code> <code>{{vocab}}</code> <code>{{grammar}}</code>.
-        Berlaku untuk SEMUA generate soal. <strong>Kosong = pakai prompt default server (otomatis ikut versi terbaru — disarankan).</strong> Isi hanya kalau mau override permanen.
-      </p>
-      <textarea id="qg-prompt" rows="12" style="width:100%;font-family:monospace;font-size:12px;box-sizing:border-box;" placeholder="(kosong — pakai default server)">${escapeHtml(promptVal)}</textarea>
-      <div style="margin-top:8px;text-align:right;"><button type="button" class="btn btn-ghost" onclick="quizGenSavePrompt()">Simpan Prompt</button></div>
-    </details>
-    <div class="modal-actions">
-      <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
-      <button type="button" class="btn btn-primary" id="qg-run" onclick="quizGenRun()">Generate</button>
-    </div>
-  `);
-  const mc = document.getElementById('modal-content');
-  if (mc) mc.style.maxWidth = '640px';
-};
-
-window.quizGenBack = () => generateQuizAI(_quizGenCtx.lessonId, _quizGenCtx.lessonTitle);
-
-window.quizGenSavePrompt = async () => {
-  const ta = document.getElementById('qg-prompt');
-  if (!ta) return;
-  try {
-    await api('/admin/settings/quiz-gen-prompt', { method: 'PUT', body: JSON.stringify({ value: ta.value }) });
-    notify('Prompt generator disimpan');
-  } catch (err) { notify('Gagal simpan prompt: ' + err.message, true); }
-};
-
-window.quizGenRun = async () => {
-  const kinds = Array.from(document.querySelectorAll('.qg-kind:checked')).map((c) => c.value);
-  if (kinds.length === 0) { notify('Pilih minimal 1 jenis soal', true); return; }
-  const count = Math.max(1, Math.min(30, Number(document.getElementById('qg-count').value) || 10));
-  const instruction = document.getElementById('qg-instruction').value.trim();
-  const btn = document.getElementById('qg-run');
-  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
-  try {
-    const d = await api('/admin/lessons/' + _quizGenCtx.lessonId + '/generate-quiz', {
-      method: 'POST',
-      body: JSON.stringify({ count, kinds, instruction }),
-    });
-    _quizGenDrafts = Array.isArray(d.questions) ? d.questions : [];
-    if (_quizGenDrafts.length === 0) {
-      notify('AI tidak menghasilkan soal. Coba lagi.', true);
-      if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
-      return;
-    }
-    quizGenRenderPreview();
-  } catch (err) {
-    notify('Gagal generate: ' + err.message, true);
-    if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
-  }
-};
-
-function _qgCatLabel(c) { return c === 'grammar' ? 'Grammar' : c === 'listening' ? 'Menyimak' : 'Kosakata'; }
-
-function quizGenRenderPreview() {
-  const cards = _quizGenDrafts.map((q, i) => {
-    const typeLabel = q.questionType === 'fill_blank' ? 'Isian' : _qgCatLabel(q.questionCategory);
-    let body = '';
-    if (q.questionType === 'fill_blank') {
-      body = `<div class="field"><label>Jawaban benar</label><input id="qg_ca_${i}" value="${escapeHtml(q.correctAnswer || '')}" /></div>`;
-    } else {
-      if (q.questionCategory === 'listening') {
-        // Textarea, BUKAN input — dialog multi-baris N:/A:/B:; newline di
-        // attribute value <input> dinormalisasi browser jadi spasi → script
-        // jadi 1 baris & parseDialog gagal (single voice).
-        body += `<div class="field"><label>Audio dialog (N: narator · A: cewe · B: cowo)</label><textarea id="qg_audio_${i}" rows="5" lang="ja" style="font-family:'Noto Sans JP',sans-serif;width:100%;font-size:13px;line-height:1.6;box-sizing:border-box;">${escapeHtml(q.audioScript || '')}</textarea></div>`;
-      }
-      body += '<div class="field"><label>Opsi (pilih yang benar)</label>' + (q.options || []).map((o, j) =>
-        `<label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-bottom:4px;">
-           <input type="radio" name="qg_correct_${i}" value="${j}" ${o.isCorrect ? 'checked' : ''} />
-           <input id="qg_opt_${i}_${j}" value="${escapeHtml(o.text || '')}" style="flex:1;" />
-         </label>`).join('') + '</div>';
-    }
-    return `<div style="border:1px solid var(--border,#e5e5e5);border-radius:8px;padding:12px;margin-bottom:10px;">
-      <label style="display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:8px;">
-        <input type="checkbox" class="qg-inc" data-i="${i}" checked /> Soal ${i + 1}
-        <span class="pill">${typeLabel}</span>
-      </label>
-      <div class="field"><label>Pertanyaan</label><textarea id="qg_q_${i}" rows="2">${escapeHtml(q.question || '')}</textarea></div>
-      ${body}
-      <div class="field"><label>Penjelasan</label><input id="qg_exp_${i}" value="${escapeHtml(q.explanation || '')}" /></div>
-    </div>`;
-  }).join('');
-  openModal(`
-    <h3>Review ${_quizGenDrafts.length} Soal — ${escapeHtml(_quizGenCtx.lessonTitle)}</h3>
-    <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 12px;">Edit seperlunya, hilangkan centang soal yang tidak mau disimpan.</p>
-    <div style="max-height:58vh;overflow-y:auto;">${cards}</div>
-    <div class="modal-actions">
-      <button type="button" class="btn btn-ghost" onclick="quizGenBack()">← Ulangi</button>
-      <button type="button" class="btn btn-primary" id="qg-save" onclick="quizGenSave()">Simpan ke kuis</button>
-    </div>
-  `);
-  const mc = document.getElementById('modal-content');
-  if (mc) mc.style.maxWidth = '640px';
-}
-
-window.quizGenSave = async () => {
-  const includes = Array.from(document.querySelectorAll('.qg-inc:checked')).map((c) => Number(c.dataset.i));
-  if (includes.length === 0) { notify('Tidak ada soal dipilih', true); return; }
-  const btn = document.getElementById('qg-save');
-  if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
-  let saved = 0;
-  try {
-    let sort = 0;
-    for (const i of includes) {
-      const d = _quizGenDrafts[i];
-      const question = (document.getElementById('qg_q_' + i)?.value || '').trim();
-      if (!question) continue;
-      const explanation = (document.getElementById('qg_exp_' + i)?.value || '').trim() || null;
-      const isListening = d.questionCategory === 'listening' && d.questionType !== 'fill_blank';
-      const bodyObj = {
-        lessonId: _quizGenCtx.lessonId,
-        question,
-        questionType: d.questionType,
-        questionCategory: d.questionCategory,
-        sectionNumber: isListening ? 2 : 1,
-        sectionLabel: isListening ? 'Bagian 2' : 'Bagian 1',
-        sectionInstruction: null,
-        audioScript: isListening ? (document.getElementById('qg_audio_' + i)?.value || '').trim() : '',
-        explanation,
-        sortOrder: sort++,
-        options: [],
-      };
-      if (d.questionType === 'fill_blank') {
-        bodyObj.correctAnswer = (document.getElementById('qg_ca_' + i)?.value || '').trim();
-        if (!bodyObj.correctAnswer) continue;
-      } else {
-        const checkedEl = document.querySelector('input[name="qg_correct_' + i + '"]:checked');
-        const correctIdx = checkedEl ? Number(checkedEl.value) : 0;
-        bodyObj.options = (d.options || []).map((o, j) => ({
-          text: (document.getElementById('qg_opt_' + i + '_' + j)?.value || '').trim(),
-          isCorrect: j === correctIdx,
-          imageUrl: null,
-        })).filter((o) => o.text);
-        if (bodyObj.options.length < 2) continue;
-        if (!bodyObj.options.some((o) => o.isCorrect)) bodyObj.options[0].isCorrect = true;
-      }
-      await api('/admin/quiz-questions', { method: 'POST', body: JSON.stringify(bodyObj) });
-      saved++;
-    }
-    notify(saved + ' soal tersimpan ke kuis.');
-    closeModal();
-    manageQuiz(_quizGenCtx.lessonId, _quizGenCtx.lessonTitle);
-  } catch (err) {
-    notify('Gagal simpan (tersimpan ' + saved + '): ' + err.message, true);
-    if (btn) { btn.disabled = false; btn.textContent = 'Simpan ke kuis'; }
-  }
-};
 
 // ─── Generate Soal Listening gaya JLPT (AI) ───
 // Satu run = satu tipe mondai JLPT. Backend balikin draft soal lengkap
@@ -1789,8 +1601,8 @@ window.openListeningGen = async (key) => {
   if (!_listenGenCtx) return;
   let promptVal = '';
   try {
-    // HANYA nilai custom (lihat catatan di generateQuizAI — anti jebakan
-    // default membeku).
+    // HANYA nilai custom yang dimuat (anti jebakan default membeku —
+    // lihat migration 033).
     const p = await api('/admin/settings/listening-gen-prompt');
     promptVal = p.value || '';
   } catch { /* biarkan kosong; backend tetap pakai default */ }
@@ -2008,6 +1820,257 @@ window.listenGenSave = async () => {
   }
 };
 
+// ─── Generate Soal JLPT (AI): Moji-Goi / Tata Bahasa / Dokkai ───
+// Saudara dari generator listening: satu run = satu tipe mondai. Backend
+// (POST /admin/lessons/:id/generate-jlpt) balikin draft + meta section
+// kategori-nya; soal disimpan ke section nomor = nomor mondai. Tugas
+// ber-bacaan (dokkai + 文章の文法) bawa field passage — textarea bacaan
+// cuma dirender di soal PERTAMA tiap bacaan, edit berlaku untuk semua soal
+// bacaan itu (string passage harus identik supaya dirender 1x di kuis).
+const JLPT_GEN_TASKS_FE = [
+  { group: 'Moji-Goi (文字・語彙)', items: [
+    { value: 'goi_kanji',   title: 'もんだい1 · 漢字読み',   desc: 'Cara baca kanji dalam kalimat. 4 opsi hiragana.' },
+    { value: 'goi_hyouki',  title: 'もんだい2 · 表記',       desc: 'Kata hiragana → penulisan kanji/katakana yang benar.' },
+    { value: 'goi_bunmyaku', title: 'もんだい3 · 文脈規定',  desc: 'Isi （　） dengan kata yang cocok konteks.' },
+    { value: 'goi_iikae',   title: 'もんだい4 · 言い換え類義', desc: 'Pilih kalimat dengan makna terdekat (utamanya N4).' },
+    { value: 'goi_yougou',  title: 'もんだい5 · 用法',       desc: 'Pilih kalimat yang memakai kata dengan benar (N4).' },
+  ]},
+  { group: 'Tata Bahasa (文法)', items: [
+    { value: 'bunpou_keishiki', title: 'もんだい1 · 文の文法1',  desc: 'Isi （　） dengan partikel/bentuk yang benar.' },
+    { value: 'bunpou_kumitate', title: 'もんだい2 · 文の組み立て', desc: 'Susun kalimat — pilih fragmen di posisi ★.' },
+    { value: 'bunpou_bunshou',  title: 'もんだい3 · 文章の文法',  desc: 'Wacana dengan blank （①）（②）… (1 run = 1 wacana, jumlah = blank).' },
+  ]},
+  { group: 'Dokkai (読解)', items: [
+    { value: 'dokkai_tanbun',  title: 'もんだい1 · 内容理解（短文）', desc: 'Bacaan pendek + 1 soal per bacaan. Jumlah = bacaan.' },
+    { value: 'dokkai_chuubun', title: 'もんだい2 · 内容理解（中文）', desc: 'Bacaan sedang + 2-3 soal per bacaan. Jumlah = bacaan.' },
+    { value: 'dokkai_jouhou',  title: 'もんだい3 · 情報検索',       desc: 'Pengumuman/jadwal + 2 soal cari info. Jumlah = bacaan.' },
+  ]},
+];
+let _jlptGenDrafts = [];
+let _jlptGenSection = null;
+let _jlptGenCategory = 'vocabulary';
+let _jlptGenCtx = null;
+
+window.openJlptGen = async (key) => {
+  const ctx = _quizCtxStash[key];
+  if (ctx) _jlptGenCtx = { lessonId: ctx.lessonId, lessonTitle: ctx.lessonTitle };
+  if (!_jlptGenCtx) return;
+  let promptVal = '';
+  try {
+    // HANYA nilai custom yang dimuat (anti jebakan default membeku).
+    const p = await api('/admin/settings/jlpt-gen-prompt');
+    promptVal = p.value || '';
+  } catch { /* biarkan kosong; backend tetap pakai default */ }
+  let first = true;
+  const groupsHtml = JLPT_GEN_TASKS_FE.map((g) => `
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#737373;margin:10px 0 6px;">${g.group}</div>
+    ${g.items.map((t) => {
+      const checked = first ? 'checked' : '';
+      first = false;
+      return `
+      <label style="display:flex;align-items:flex-start;gap:10px;font-weight:400;margin-bottom:6px;padding:7px 10px;border:1px solid var(--paper-300);border-radius:8px;cursor:pointer;">
+        <input type="radio" name="jg-task" value="${t.value}" ${checked} style="margin-top:3px;" />
+        <span>
+          <strong lang="ja">${t.title}</strong><br>
+          <span style="font-size:12px;color:#525252;">${t.desc}</span>
+        </span>
+      </label>`;
+    }).join('')}`).join('');
+  openModal(`
+    <h3>✨ Generate JLPT — ${escapeHtml(_jlptGenCtx.lessonTitle)}</h3>
+    <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 14px;">
+      AI bikin soal sesuai format mondai ujian JLPT asli, grounded ke kosakata &amp; grammar Bab ini.
+      Review dulu sebelum simpan. (Soal listening pakai tombol 🎧 sendiri.)
+    </p>
+    <div class="field"><label>Tipe soal (mondai)</label>${groupsHtml}</div>
+    <div class="field-row">
+      <div class="field"><label>Level</label>
+        <select id="jg-level"><option value="N5" selected>N5</option><option value="N4">N4</option></select>
+      </div>
+      <div class="field"><label>Jumlah</label>
+        <input id="jg-count" type="number" min="1" max="8" value="3" />
+      </div>
+    </div>
+    <div class="field">
+      <label>Topik / instruksi tambahan (opsional)</label>
+      <input id="jg-topic" placeholder="mis. kegiatan akhir pekan, di restoran, surat untuk teman" />
+    </div>
+    <details style="margin:4px 0 14px;border:1px solid #e5e5e5;border-radius:8px;padding:10px 14px;">
+      <summary style="cursor:pointer;font-weight:600;font-size:13px;">Prompt Generator JLPT (lanjutan)</summary>
+      <p style="font-size:12px;color:#525252;font-family:var(--font-body);margin:8px 0;">
+        Placeholder: <code>{{count}}</code> <code>{{level}}</code> <code>{{taskName}}</code> <code>{{taskRules}}</code>
+        <code>{{levelRules}}</code> <code>{{topic}}</code> <code>{{vocab}}</code> <code>{{grammar}}</code> <code>{{avoid}}</code>.
+        Aturan per mondai &amp; level diisi otomatis oleh server. <strong>Kosong = pakai prompt default server (disarankan).</strong>
+      </p>
+      <textarea id="jg-prompt" rows="12" style="width:100%;font-family:monospace;font-size:12px;box-sizing:border-box;" placeholder="(kosong — pakai default server)">${escapeHtml(promptVal)}</textarea>
+      <div style="margin-top:8px;text-align:right;"><button type="button" class="btn btn-ghost" onclick="jlptGenSavePrompt()">Simpan Prompt</button></div>
+    </details>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="jlptGenClose()">Batal</button>
+      <button type="button" class="btn btn-primary" id="jg-run" onclick="jlptGenRun()">Generate</button>
+    </div>
+  `);
+  const mc = document.getElementById('modal-content');
+  if (mc) mc.style.maxWidth = '640px';
+};
+
+window.jlptGenClose = () => manageQuiz(_jlptGenCtx.lessonId, _jlptGenCtx.lessonTitle);
+window.jlptGenBack = () => openJlptGen(stashCtx(_jlptGenCtx));
+
+window.jlptGenSavePrompt = async () => {
+  const ta = document.getElementById('jg-prompt');
+  if (!ta) return;
+  try {
+    await api('/admin/settings/jlpt-gen-prompt', { method: 'PUT', body: JSON.stringify({ value: ta.value }) });
+    notify('Prompt generator JLPT disimpan');
+  } catch (err) { notify('Gagal simpan prompt: ' + err.message, true); }
+};
+
+window.jlptGenRun = async () => {
+  const taskType = document.querySelector('input[name="jg-task"]:checked')?.value || 'goi_kanji';
+  const level = document.getElementById('jg-level').value;
+  const count = Math.max(1, Math.min(8, Number(document.getElementById('jg-count').value) || 3));
+  const topic = document.getElementById('jg-topic').value.trim();
+  const btn = document.getElementById('jg-run');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating… (±30s)'; }
+  try {
+    const d = await api('/admin/lessons/' + _jlptGenCtx.lessonId + '/generate-jlpt', {
+      method: 'POST',
+      body: JSON.stringify({ taskType, level, count, topic }),
+    });
+    _jlptGenDrafts = Array.isArray(d.questions) ? d.questions : [];
+    _jlptGenSection = d.section || null;
+    _jlptGenCategory = d.category || 'vocabulary';
+    if (_jlptGenDrafts.length === 0) {
+      notify('AI tidak menghasilkan soal. Coba lagi.', true);
+      if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
+      return;
+    }
+    jlptGenRenderPreview();
+  } catch (err) {
+    notify('Gagal generate: ' + err.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
+  }
+};
+
+function jlptGenRenderPreview() {
+  const s = _jlptGenSection || { number: 1, label: 'Section 1', instruction: '' };
+  const cards = _jlptGenDrafts.map((q, i) => {
+    // Textarea bacaan hanya di soal pertama tiap bacaan; soal lain bacaan
+    // yang sama cuma diberi penanda.
+    const isNewPassage = q.passage && (i === 0 || _jlptGenDrafts[i - 1].passage !== q.passage);
+    const passageBlock = q.passage
+      ? (isNewPassage
+        ? `<div class="field"><label>📖 Teks bacaan (dishare semua soal bacaan ini)</label><textarea class="jg-passage" data-i="${i}" rows="6" lang="ja" style="width:100%;font-family:'Noto Sans JP',serif;line-height:1.8;box-sizing:border-box;" oninput="jlptGenSyncPassage(${i}, this.value)">${escapeHtml(q.passage)}</textarea></div>`
+        : '<div style="font-size:12px;color:#737373;margin-bottom:8px;">📖 memakai bacaan yang sama dengan soal di atas</div>')
+      : '';
+    return `
+    <div style="border:1px solid var(--border,#e5e5e5);border-radius:8px;padding:12px;margin-bottom:10px;">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:8px;">
+        <input type="checkbox" class="jg-inc" data-i="${i}" checked /> Soal ${i + 1}
+      </label>
+      ${passageBlock}
+      <div class="field"><label>Pertanyaan</label><textarea id="jg_q_${i}" rows="2" lang="ja">${escapeHtml(q.question || '')}</textarea></div>
+      <div class="field"><label>Opsi (pilih yang benar)</label>${(q.options || []).map((o, j) => `
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-bottom:4px;">
+          <input type="radio" name="jg_correct_${i}" value="${j}" ${o.isCorrect ? 'checked' : ''} />
+          <input id="jg_opt_${i}_${j}" value="${escapeHtml(o.text || '')}" lang="ja" style="flex:1;" />
+        </label>`).join('')}</div>
+      <div class="field"><label>Penjelasan</label><input id="jg_exp_${i}" value="${escapeHtml(q.explanation || '')}" /></div>
+    </div>`;
+  }).join('');
+  openModal(`
+    <h3>Review ${_jlptGenDrafts.length} Soal — ${escapeHtml(_jlptGenCtx.lessonTitle)}</h3>
+    <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 12px;">
+      Akan disimpan ke section ${escapeHtml(quizCategoryLabel(_jlptGenCategory))}
+      <strong lang="ja">${s.number}. ${escapeHtml(s.label)}</strong> (dibuat otomatis kalau belum ada).
+      Edit seperlunya, hilangkan centang yang tidak mau disimpan.
+    </p>
+    <div style="max-height:58vh;overflow-y:auto;">${cards}</div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="jlptGenBack()">← Ulangi</button>
+      <button type="button" class="btn btn-primary" id="jg-save" onclick="jlptGenSave()">Simpan ke kuis</button>
+    </div>
+  `);
+  const mc = document.getElementById('modal-content');
+  if (mc) mc.style.maxWidth = '680px';
+}
+
+// Edit textarea bacaan → propagate ke semua draft yang memakai bacaan yang
+// sama (string harus tetap identik supaya dirender sebagai satu grup).
+window.jlptGenSyncPassage = (i, value) => {
+  const old = _jlptGenDrafts[i]?.passage;
+  if (old == null) return;
+  for (const d of _jlptGenDrafts) {
+    if (d.passage === old) d.passage = value;
+  }
+  // Simpan nilai baru di draft i duluan (loop di atas sudah meng-cover i
+  // karena passage-nya sama; baris ini jaga-jaga kalau old === '').
+  _jlptGenDrafts[i].passage = value;
+};
+
+window.jlptGenSave = async () => {
+  const includes = Array.from(document.querySelectorAll('.jg-inc:checked')).map((c) => Number(c.dataset.i));
+  if (includes.length === 0) { notify('Tidak ada soal dipilih', true); return; }
+  const btn = document.getElementById('jg-save');
+  if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
+  const s = _jlptGenSection || { number: 1, label: 'Section 1', instruction: '' };
+  let saved = 0;
+  try {
+    // Section existing: append setelah sort_order terakhir + pertahankan
+    // label/instruksi (pola sama dgn listenGenSave).
+    let sort = 0;
+    let sectionLabel = s.label;
+    let sectionInstruction = s.instruction || null;
+    try {
+      const cur = await api('/admin/lessons/' + _jlptGenCtx.lessonId + '/quiz');
+      const existing = (cur.questions || []).filter((q) =>
+        q.question_category === _jlptGenCategory && Number(q.section_number) === s.number);
+      if (existing.length > 0) {
+        sort = Math.max(...existing.map((q) => Number(q.sort_order) || 0)) + 1;
+        sectionLabel = existing[0].section_label || sectionLabel;
+        sectionInstruction = existing[0].section_instruction ?? sectionInstruction;
+      }
+    } catch { /* fallback: sort dari 0, meta dari generator */ }
+    for (const i of includes) {
+      const question = (document.getElementById('jg_q_' + i)?.value || '').trim();
+      if (!question) continue;
+      const checkedEl = document.querySelector('input[name="jg_correct_' + i + '"]:checked');
+      const correctIdx = checkedEl ? Number(checkedEl.value) : 0;
+      const options = (_jlptGenDrafts[i].options || []).map((o, j) => ({
+        text: (document.getElementById('jg_opt_' + i + '_' + j)?.value || '').trim(),
+        isCorrect: j === correctIdx,
+        imageUrl: null,
+      })).filter((o) => o.text);
+      if (options.length < 2) continue;
+      if (!options.some((o) => o.isCorrect)) options[0].isCorrect = true;
+      await api('/admin/quiz-questions', {
+        method: 'POST',
+        body: JSON.stringify({
+          lessonId: _jlptGenCtx.lessonId,
+          question,
+          questionType: 'multiple_choice',
+          questionCategory: _jlptGenCategory,
+          sectionNumber: s.number,
+          sectionLabel,
+          sectionInstruction,
+          passage: (_jlptGenDrafts[i].passage || '').trim() || null,
+          explanation: (document.getElementById('jg_exp_' + i)?.value || '').trim() || null,
+          sortOrder: sort++,
+          options,
+        }),
+      });
+      saved++;
+    }
+    notify(saved + ' soal JLPT tersimpan.');
+    closeModal();
+    manageQuiz(_jlptGenCtx.lessonId, _jlptGenCtx.lessonTitle);
+  } catch (err) {
+    notify('Gagal simpan (tersimpan ' + saved + '): ' + err.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = 'Simpan ke kuis'; }
+  }
+};
+
 // ─── Import Pelajaran dari Notion ───
 // Admin picks a Notion Bab → list of child pages (5 pelajaran) shown as
 // checkboxes → import selected ones as EzNihongo lessons under the active
@@ -2111,9 +2174,10 @@ window.piRunImport = async (moduleId) => {
 
 // ─── Quiz manager ───
 const QUIZ_CATEGORY_LABELS = {
-  vocabulary: 'Vocabulary',
-  grammar: 'Grammar',
-  listening: 'Listening',
+  vocabulary: 'Moji-Goi',
+  grammar: 'Tata Bahasa',
+  reading: 'Dokkai',
+  listening: 'Menyimak',
 };
 
 function quizCategory(value) {
@@ -2144,7 +2208,7 @@ window.manageQuiz = async (lessonId, lessonTitle, opts) => {
 };
 
 function categorySortOrder(cat) {
-  return { vocabulary: 1, grammar: 2, listening: 3 }[cat] || 9;
+  return { vocabulary: 1, grammar: 2, reading: 3, listening: 4 }[cat] || 9;
 }
 
 function collectSections(questions, lessonId) {
@@ -2158,6 +2222,7 @@ function collectSections(questions, lessonId) {
         category: cat, number: num,
         label: q.section_label || `Section ${num}`,
         instruction: q.section_instruction || '',
+        passage: q.passage || '',
         questions: [],
         isPending: false,
       });
@@ -2236,6 +2301,7 @@ function renderQuizModal(lessonId, lessonTitle, questions, lessonMeta) {
         <h3 class="quiz-admin-title">${escapeHtml(lessonTitle)}</h3>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+        <button class="btn btn-ghost" onclick="openJlptGen('${listenGenKey}')">✨ Generate JLPT</button>
         <button class="btn btn-ghost" onclick="openListeningGen('${listenGenKey}')">🎧 Generate Listening JLPT</button>
         <button class="btn btn-primary" onclick="openSectionForm('${newSectionCtx}')">+ Section baru</button>
       </div>
@@ -2248,7 +2314,7 @@ function renderQuizModal(lessonId, lessonTitle, questions, lessonMeta) {
 }
 
 function renderSectionCard(s, lessonId, lessonTitle) {
-  const sectionCtx = { lessonId, lessonTitle, category: s.category, number: s.number, label: s.label, instruction: s.instruction };
+  const sectionCtx = { lessonId, lessonTitle, category: s.category, number: s.number, label: s.label, instruction: s.instruction, passage: s.passage || '' };
   const editKey = stashCtx({ ...sectionCtx, mode: 'edit' });
   const addQKey = stashCtx({ ...sectionCtx, question: null });
   const delKey = stashCtx(sectionCtx);
@@ -2338,6 +2404,7 @@ window.openSectionForm = (key) => {
   const num = ctx.number || (isNew ? nextNumFor(cat) : 1);
   const label = ctx.label || '';
   const instruction = ctx.instruction || '';
+  const passage = ctx.passage || '';
   const backKey = stashCtx({ lessonId, lessonTitle });
 
   openModal(`
@@ -2351,9 +2418,10 @@ window.openSectionForm = (key) => {
       <div class="field-row">
         <div class="field"><label>Kategori</label>
           <select name="sectionCategory" ${isNew ? '' : 'disabled'}>
-            <option value="vocabulary" ${cat === 'vocabulary' ? 'selected' : ''}>Vocabulary</option>
-            <option value="grammar" ${cat === 'grammar' ? 'selected' : ''}>Grammar</option>
-            <option value="listening" ${cat === 'listening' ? 'selected' : ''}>Listening</option>
+            <option value="vocabulary" ${cat === 'vocabulary' ? 'selected' : ''}>Moji-Goi (文字・語彙)</option>
+            <option value="grammar" ${cat === 'grammar' ? 'selected' : ''}>Tata Bahasa (文法)</option>
+            <option value="reading" ${cat === 'reading' ? 'selected' : ''}>Dokkai (読解)</option>
+            <option value="listening" ${cat === 'listening' ? 'selected' : ''}>Menyimak (聴解)</option>
           </select>
         </div>
         <div class="field"><label>Nomor section</label>
@@ -2366,6 +2434,12 @@ window.openSectionForm = (key) => {
       <div class="field"><label>Instruksi section (mondai)</label>
         <textarea name="sectionInstruction" rows="3" lang="ja"
           placeholder="contoh: 問題1：＿＿の ことばは ひらがなで どう かきますか。 1・2・3・4から いちばん いい ものを ひとつ えらんで ください。">${escapeHtml(instruction)}</textarea>
+      </div>
+      <div class="field" id="sectionPassageWrap" style="${cat === 'reading' ? '' : 'display:none;'}">
+        <label>📖 Teks bacaan (dokkai) — tampil di atas semua soal section ini</label>
+        <textarea name="sectionPassage" rows="6" lang="ja"
+          placeholder="Tempel teks bacaan Jepang di sini. Semua soal di section ini akan memakai bacaan yang sama."
+          style="font-family:'Noto Sans JP',serif;width:100%;line-height:1.8;">${escapeHtml(passage)}</textarea>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" onclick="backToManageQuiz('${backKey}')">← Batal</button>
@@ -2380,8 +2454,10 @@ window.openSectionForm = (key) => {
   if (isNew) {
     const catSelect = form.sectionCategory;
     const numInput = form.sectionNumber;
+    const passageWrap = document.getElementById('sectionPassageWrap');
     catSelect.addEventListener('change', () => {
       numInput.value = nextNumFor(catSelect.value);
+      if (passageWrap) passageWrap.style.display = catSelect.value === 'reading' ? '' : 'none';
     });
   }
   form.addEventListener('submit', (e) => submitSection(e, ctx));
@@ -2394,13 +2470,19 @@ async function submitSection(e, ctx) {
   const number = Number(form.sectionNumber.value) || 1;
   const label = form.sectionLabel.value.trim() || `Section ${number}`;
   const instruction = form.sectionInstruction.value.trim();
+  const passage = (form.sectionPassage && category === 'reading')
+    ? form.sectionPassage.value.trim() : '';
   const { lessonId, lessonTitle } = ctx;
 
   if (ctx.mode === 'edit') {
     try {
       await api(`/admin/lessons/${lessonId}/quiz/sections/${ctx.category}/${ctx.number}`, {
         method: 'PUT',
-        body: JSON.stringify({ sectionLabel: label, sectionInstruction: instruction || null }),
+        body: JSON.stringify({
+          sectionLabel: label,
+          sectionInstruction: instruction || null,
+          ...(ctx.category === 'reading' ? { passage: passage || null } : {}),
+        }),
       });
       notify('Section tersimpan');
       manageQuiz(lessonId, lessonTitle);
@@ -2409,10 +2491,10 @@ async function submitSection(e, ctx) {
   }
 
   // New section → stash pending + langsung buka form pertanyaan pertama.
-  _pendingSection = { lessonId, category, number, label, instruction };
+  _pendingSection = { lessonId, category, number, label, instruction, passage };
   const k = stashCtx({
     lessonId, lessonTitle,
-    category, number, label, instruction,
+    category, number, label, instruction, passage,
     question: null,
   });
   openQuestionForm(k);
@@ -2422,6 +2504,7 @@ window.openQuestionForm = (key) => {
   const ctx = _quizCtxStash[key];
   if (!ctx) return;
   const { lessonId, lessonTitle, category, number, label, instruction } = ctx;
+  const passage = ctx.passage || '';
   const q = ctx.question || {
     question: '',
     question_type: 'multiple_choice',
@@ -2432,6 +2515,7 @@ window.openQuestionForm = (key) => {
   };
   const optsHtml = (q.options || []).map((o, i) => optionRowHtml(o, i)).join('');
   const isListening = category === 'listening';
+  const isReading = category === 'reading';
   const backKey = stashCtx({ lessonId, lessonTitle });
 
   openModal(`
@@ -2445,6 +2529,10 @@ window.openQuestionForm = (key) => {
       <div class="quiz-admin-paper">
         <div class="quiz-admin-section-label">${number}. ${escapeHtml(label)}</div>
         ${instruction ? `<div class="quiz-admin-instruction">${escapeHtml(instruction)}</div>` : ''}
+        ${isReading ? `<div class="field">
+          <label>📖 Teks bacaan section (dokkai) — edit di "Edit section"</label>
+          <div lang="ja" style="white-space:pre-wrap;background:#fffdf7;border:1px solid var(--paper-300,#e5e5e5);border-left:4px solid #B20024;border-radius:8px;padding:12px 14px;font-family:'Noto Sans JP',serif;line-height:1.8;font-size:14px;${passage ? '' : 'color:#b91c1c;'}">${passage ? escapeHtml(passage) : '⚠️ Section ini belum punya teks bacaan. Buka "Edit section" untuk menambahkannya.'}</div>
+        </div>` : ''}
         <div class="field"><label>Pertanyaan</label><textarea name="question" class="rich-text" rows="3" required>${escapeHtml(q.question)}</textarea></div>
         ${isListening ? `
           <div class="field">
@@ -2514,8 +2602,8 @@ window.openQuestionForm = (key) => {
   wireRichToolbarAll(qForm);
   qForm.addEventListener('submit', (e) => submitQuestion(e, q.id, ctx));
   if (isListening) renderTtsTagPicker();
-  // Context untuk "Generate opsi (AI)".
-  _activeQuestionCtx = { lessonId, category };
+  // Context untuk "Generate opsi (AI)" — grounding dokkai pakai passage section.
+  _activeQuestionCtx = { lessonId, category, passage };
 };
 
 // Generate opsi pilihan ganda untuk soal yang sedang diedit (AI). Mengganti
@@ -2537,6 +2625,7 @@ window.quizGenOptions = async () => {
         lessonId: ctx.lessonId,
         question,
         questionCategory: ctx.category,
+        passage: ctx.passage || '',
         audioScript,
       }),
     });
@@ -2907,7 +2996,7 @@ async function submitQuestion(e, qid, ctx) {
       imageUrl: imgEl ? imgEl.value.trim() || null : null,
     };
   }).filter((o) => o.text);
-  const { lessonId, lessonTitle, category, number, label, instruction } = ctx;
+  const { lessonId, lessonTitle, category, number, label, instruction, passage } = ctx;
   const body = {
     question: form.question.value.trim(),
     questionType: form.questionType.value,
@@ -2920,6 +3009,7 @@ async function submitQuestion(e, qid, ctx) {
     sortOrder: Number(form.sortOrder.value) || 0,
     options,
   };
+  if (category === 'reading') body.passage = passage || null;
   if (!qid) body.lessonId = lessonId;
   try {
     if (qid) await api('/admin/quiz-questions/' + qid, { method: 'PUT', body: JSON.stringify(body) });
