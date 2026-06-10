@@ -4771,10 +4771,19 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
   //     override dgn ngetik di field question (e.g. "れい:" untuk contoh).
   const qText = String(q.q || '').trim();
   const defaultLabel = `${questionNumber}ばん`;
+  // Listening JLPT: kalau teks pertanyaan persis ada di audio script
+  // (= dibacakan narator), sembunyikan sampai dijawab — di ujian asli
+  // pertanyaan hanya didengar, tidak dicetak. Reveal bareng transkrip
+  // di pickQuizAnswer. Soal listening lama (pertanyaan meta Indonesia,
+  // bukan bagian script) tetap tampil.
+  const qTextPlain = qText.replace(/<[^>]*>/g, '').trim();
+  const qSpoken = hasAudioScript && qTextPlain && q.audioScript.includes(qTextPlain);
+  const hideQText = qSpoken && !answered;
   const headerHtml = qText
     ? `<h2 class="quiz-question quiz-paper-question">
          <span class="quiz-paper-label">${defaultLabel}</span>
-         <span class="quiz-q-text">${sanitizeHtml(qText)}</span>
+         <span class="quiz-q-text" id="quiz-qtext-${qi}" ${hideQText ? 'style="display:none"' : ''}>${sanitizeHtml(qText)}</span>
+         ${hideQText ? '<span class="quiz-q-text quiz-q-spoken-hint" id="quiz-qhint-' + qi + '" style="color:var(--ink-500,#737373);font-style:italic;">🎧 Dengarkan pertanyaannya di audio</span>' : ''}
          ${inlineJp}
        </h2>`
     : `<div class="quiz-paper-label-only">${defaultLabel}</div>`;
@@ -4900,6 +4909,11 @@ window.pickQuizAnswer = async (questionIndex, optionIndex) => {
     transcriptEl.style.display = '';
     transcriptEl.open = true;
   }
+  // Reveal teks pertanyaan listening yang tadinya audio-only.
+  const qTextEl = document.getElementById(`quiz-qtext-${qi}`);
+  if (qTextEl) qTextEl.style.display = '';
+  const qHintEl = document.getElementById(`quiz-qhint-${qi}`);
+  if (qHintEl) qHintEl.remove();
 
   if (isCorrect) addXP(5, 'jawaban benar');
   updateQuizPaperProgress();

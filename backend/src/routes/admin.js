@@ -1222,7 +1222,7 @@ const JLPT_LISTENING_TASKS = {
     name: '課題理解 (memahami tugas/aksi berikutnya)',
     rules: `Struktur audioScript WAJIB:
 - Baris pertama → N: [kalimat situasi][pertanyaan]. Pola situasi baku: 「店で、男の人と女の人が話しています。」「学校で先生が話しています。」 Pertanyaan menarget AKSI berikutnya atau barang/jumlah: 「男の人はこのあとまず何をしますか。」「女の人は何を買いますか。」
-- Baris tengah → dialog A: (perempuan) dan B: (laki-laki) bergantian.
+- Baris tengah → dialog A: (perempuan) dan B: (laki-laki) bergantian. WAJIB ada minimal satu baris A: DAN satu baris B: — narator (N:) HANYA untuk baris pertama & terakhir, JANGAN pakai N: untuk isi dialog.
 - Baris terakhir → N: [pertanyaan yang SAMA PERSIS diulang].
 Konvensi distraktor: dialog menyebut KEEMPAT opsi secara alami, tiga dieliminasi di alur percakapan (sudah dikerjakan / untuk besok / batal — 「もう〜ました」「やっぱり」「その前に」「あとで」). Jawaban TIDAK boleh hanya dari kalimat pertama dialog.
 "question" = teks pertanyaan Jepang yang sama dengan yang dibacakan narator.
@@ -1236,7 +1236,7 @@ Opsi: 4 frasa Jepang pendek (bukan kalimat panjang), TEPAT 1 benar.`,
     name: 'ポイント理解 (menangkap poin spesifik)',
     rules: `Struktur audioScript WAJIB:
 - Baris pertama → N: [kalimat situasi][pertanyaan]. Pertanyaan menarget SATU poin spesifik: alasan (どうして), waktu (いつ/何時), tempat (どこ), orang (だれ), atau hal yang disukai/tidak. Contoh pola: 「女の人はどうしてパーティーに行きませんか。」「二人は何時に会いますか。」
-- Baris tengah → dialog A: (perempuan) dan B: (laki-laki) bergantian; sedikit lebih panjang dari mondai 1.
+- Baris tengah → dialog A: (perempuan) dan B: (laki-laki) bergantian; sedikit lebih panjang dari mondai 1. WAJIB ada minimal satu baris A: DAN satu baris B: — narator (N:) HANYA untuk baris pertama & terakhir, JANGAN pakai N: untuk isi dialog.
 - Baris terakhir → N: [pertanyaan yang SAMA PERSIS diulang].
 Konvensi distraktor: dialog menyebut beberapa kandidat jawaban yang salah sebelum jawaban benar muncul (mis. tebakan pertama lawan bicara salah, lalu dikoreksi).
 "question" = teks pertanyaan Jepang yang sama dengan yang dibacakan narator.
@@ -1248,11 +1248,10 @@ Opsi: 4 frasa/klausa Jepang pendek, TEPAT 1 benar.`,
     instruction: 'もんだい3では、ぶんを きいて、1から3の なかから、いちばん いい ものを ひとつ えらんで ください。',
     optionCount: 3,
     name: '発話表現 (memilih ucapan yang tepat untuk situasi)',
-    rules: `Struktur audioScript WAJIB (di ujian asli ketiga pilihan DIBACAKAN, jadi ikutkan di script):
-- Baris 1 → N: [1-2 kalimat situasi]。何と言いますか。 Contoh pola: 「朝、学校で先生に会いました。何と言いますか。」「友達の消しゴムを使いたいです。何と言いますか。」
-- Baris 2-4 → tiga pilihan dibacakan tokoh dalam situasi (A: kalau perempuan, B: kalau laki-laki), 1 baris per opsi, diawali nomor: 「A: 1、消しゴム、借りてもいい？」
-"question" = teks baris narator (situasi + 何と言いますか。).
-Opsi (field "options", urutan SAMA dengan yang dibacakan): 3 ucapan Jepang pendek (3-8 kata) TANPA nomor di depannya, TEPAT 1 benar. Distraktor memakai kesalahan khas: arah memberi-menerima (あげます/くれます/もらいます), tingkat kesopanan salah, atau set phrase tertukar (いただきます vs ごちそうさま, 失礼します vs すみません).`,
+    rules: `Struktur audioScript WAJIB (pendek; HANYA narator — pilihan TIDAK dibacakan karena sudah tampil di layar siswa):
+- Satu baris saja → N: [1-2 kalimat situasi]。何と言いますか。 Contoh pola: 「朝、学校で先生に会いました。何と言いますか。」「友達の消しゴムを使いたいです。何と言いますか。」 JANGAN tulis baris lain selain baris N: ini.
+"question" = teks yang SAMA PERSIS dengan baris narator (tanpa prefix N:).
+Opsi (field "options"): 3 ucapan Jepang pendek (3-8 kata), TEPAT 1 benar. Distraktor memakai kesalahan khas: arah memberi-menerima (あげます/くれます/もらいます), tingkat kesopanan salah, atau set phrase tertukar (いただきます vs ごちそうさま, 失礼します vs すみません).`,
   },
   sokuji: {
     number: 4,
@@ -1260,11 +1259,10 @@ Opsi (field "options", urutan SAMA dengan yang dibacakan): 3 ucapan Jepang pende
     instruction: 'もんだい4では、ぶんを きいて、1から3の なかから、いちばん いい へんじを ひとつ えらんで ください。',
     optionCount: 3,
     name: '即時応答 (respon cepat percakapan)',
-    rules: `Struktur audioScript WAJIB (paling pendek, TANPA narator; di ujian asli ketiga balasan DIBACAKAN, jadi ikutkan di script):
-- Baris 1 → A: [satu ucapan pendek] ATAU B: [satu ucapan pendek] (pertanyaan/permintaan/komentar 1 kalimat). Contoh pola: 「お国はどちらですか。」「この荷物、ちょっと持ってもらえない？」
-- Baris 2-4 → tiga balasan dibacakan LAWAN bicara (gender berlawanan dari baris 1), 1 baris per opsi, diawali nomor: 「A: 1、うん、いいよ。」
+    rules: `Struktur audioScript WAJIB (paling pendek, TANPA narator; balasan TIDAK dibacakan karena sudah tampil di layar siswa):
+- Satu baris saja → A: [satu ucapan pendek] ATAU B: [satu ucapan pendek] (pertanyaan/permintaan/komentar 1 kalimat). Contoh pola: 「お国はどちらですか。」「この荷物、ちょっと持ってもらえない？」 JANGAN tulis baris lain.
 "question" = teks tetap: いちばん いい へんじを えらんで ください。
-Opsi (field "options", urutan SAMA dengan yang dibacakan): 3 balasan Jepang sangat pendek (2-6 kata) TANPA nomor di depannya, TEPAT 1 benar. Distraktor memakai: kata tanya tertukar (どちら = tempat vs pilihan), mengulang kata dari ucapan dengan makna salah, pasangan set phrase salah, atau bentuk waktu tidak nyambung.`,
+Opsi (field "options"): 3 balasan Jepang sangat pendek (2-6 kata) seolah diucapkan LAWAN bicara, TEPAT 1 benar. Distraktor memakai: kata tanya tertukar (どちら = tempat vs pilihan), mengulang kata dari ucapan dengan makna salah, pasangan set phrase salah, atau bentuk waktu tidak nyambung.`,
   },
 };
 
@@ -1332,7 +1330,8 @@ router.put('/settings/listening-gen-prompt', asyncHandler(async (req, res) => {
 
 router.post('/lessons/:lessonId/generate-listening', quizGenLimiter, asyncHandler(async (req, res) => {
   const lessonId = req.params.lessonId;
-  const task = JLPT_LISTENING_TASKS[String(req.body?.taskType || '')];
+  const taskType = String(req.body?.taskType || '');
+  const task = JLPT_LISTENING_TASKS[taskType];
   if (!task) return res.status(400).json({ error: 'bad_task', detail: 'taskType harus kadai/point/hatsuwa/sokuji.' });
   const level = JLPT_LISTENING_LEVELS[req.body?.level] ? String(req.body.level) : 'N5';
   const count = Math.min(8, Math.max(1, Number(req.body?.count) || 3));
@@ -1409,13 +1408,29 @@ router.post('/lessons/:lessonId/generate-listening', quizGenLimiter, asyncHandle
   const clean = [];
   for (const q of parsed.questions) {
     if (!q || typeof q !== 'object') continue;
-    const question = String(q.question || '').trim().slice(0, 1000);
+    // "question" = teks yang TAMPIL — kalau model kebablasan naruh dialog
+    // multi-baris di sini, ambil baris pertama saja (jangan bocorin script)
+    // dan buang prefix speaker.
+    const question = String(q.question || '').split('\n')[0]
+      .replace(/^[A-Za-z]{1,3}:\s*/, '').trim().slice(0, 1000);
     // Batas 1400 < MAX_TEXT_LEN tts publik (1500) supaya audio pasti bisa
     // di-generate untuk siswa.
     const audioScript = String(q.audioScript || '').trim().slice(0, 1400);
     if (!question || !audioScript) continue;
     // Script harus dialog valid yang dikenali parser TTS (prefix speaker).
-    if (!parseDialog(audioScript)) continue;
+    const turns = parseDialog(audioScript);
+    if (!turns) continue;
+    // Struktur per tipe mondai: dialog 1/2 wajib multi-speaker (ada cewe A
+    // DAN cowo B — semua-narator = bug satu suara); mondai 3/4 wajib pendek
+    // (opsi tidak ikut dibacakan).
+    const speakers = turns.map((t) => String(t.speaker).toUpperCase());
+    if (taskType === 'kadai' || taskType === 'point') {
+      const hasFemale = speakers.some((s) => /^(A|W|F|女)/.test(s));
+      const hasMale = speakers.some((s) => /^(B|M|男)/.test(s));
+      if (turns.length < 3 || !hasFemale || !hasMale) continue;
+    } else if (turns.length > 2) {
+      continue;
+    }
     let options = Array.isArray(q.options)
       ? q.options.map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect })).filter((o) => o.text)
       : [];

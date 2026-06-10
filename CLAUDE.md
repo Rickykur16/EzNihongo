@@ -227,12 +227,18 @@
   ({ taskType, level, count, topic }) → draft soal LENGKAP: `audioScript`
   dialog 3-voice format `N:/A:/B:` (kerangka JLPT: narator bacakan
   situasi+pertanyaan → dialog → pertanyaan diulang; untuk 発話表現/即時応答
-  ketiga opsi ikut dibacakan di script — minimal 2 turn supaya lolos
-  `parseDialog` & multi-voice TTS) + pertanyaan + opsi (4 utk mondai 1/2,
-  3 utk mondai 3/4) + penjelasan. Grounding vocab/grammar modul + anti-duplikat
+  script HANYA 1 baris situasi/ucapan — opsi TIDAK dibacakan karena tampil
+  di layar; `parseDialog` di tts.js terima dialog 1-turn, SETTINGS_VERSION
+  v7) + pertanyaan + opsi (4 utk mondai 1/2, 3 utk mondai 3/4) + penjelasan.
+  Grounding vocab/grammar modul + anti-duplikat
   (baris situasi soal listening existing dikirim sbg avoid). Validasi server:
   `parseDialog()` harus kenal script-nya, max 1400 char (< MAX_TEXT_LEN tts
-  1500). Draft di-review admin (bisa 🔊 test audio per draft via
+  1500), `question` dipangkas ke 1 baris tanpa prefix speaker, dialog mondai
+  1/2 wajib ≥3 turn dgn pembicara A DAN B (anti semua-narator), mondai 3/4
+  max 2 turn. Frontend siswa (`welcome.html renderQuizPaperItem`): teks
+  pertanyaan listening yg persis ada di `audioScript` (= dibacakan narator)
+  disembunyikan sampai dijawab (hint 🎧), reveal bareng transkrip di
+  `pickQuizAnswer`. Draft di-review admin (bisa 🔊 test audio per draft via
   `/admin/tts/preview` sebelum save) → simpan via POST /admin/quiz-questions ke
   section listening nomor = nomor mondai (label+instruksi mondai auto-set;
   kalau section sudah ada, label/instruksi existing dipertahankan dan
