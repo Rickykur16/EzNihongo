@@ -1031,6 +1031,10 @@ async function _loadQuizGenPrompt() {
   }
 }
 
+// DEPRECATED: tombol "✨ Generate AI" (bulk) di admin sudah dihapus — diganti
+// generator per-mondai (generate-jlpt + generate-listening). Endpoint ini
+// dibiarkan dulu tanpa pemanggil; hapus di cleanup berikutnya bareng
+// QUIZ_KINDS/QUIZ_GEN_PROMPT_DEFAULT/settings quiz-gen-prompt.
 router.post('/lessons/:lessonId/generate-quiz', quizGenLimiter, asyncHandler(async (req, res) => {
   const lessonId = req.params.lessonId;
   const count = Math.min(30, Math.max(1, Number(req.body?.count) || 10));
@@ -1131,11 +1135,12 @@ router.post('/lessons/:lessonId/generate-quiz', quizGenLimiter, asyncHandler(asy
     if (!question) continue;
     const qtype = q.questionType === 'fill_blank' ? 'fill_blank' : 'multiple_choice';
     if (!allowedTypes.has(qtype)) continue;
-    let qcat = ['vocabulary', 'grammar', 'listening'].includes(q.questionCategory) ? q.questionCategory : 'vocabulary';
+    let qcat = ['vocabulary', 'grammar', 'reading', 'listening'].includes(q.questionCategory) ? q.questionCategory : 'vocabulary';
     if (!allowedCats.has(qcat)) qcat = fallbackCat;
     const explanation = String(q.explanation || '').trim().slice(0, 1000);
     // 1400 < MAX_TEXT_LEN tts publik (1500) — dialog JLPT bisa panjang.
     const audioScript = String(q.audioScript || '').trim().slice(0, 1400);
+    const passage = String(q.passage || '').trim().slice(0, 4000);
     if (qcat === 'listening' && qtype !== 'fill_blank') {
       // Listening tanpa script dialog yang dikenali parser TTS = soal cacat
       // (ga ada audio buat diputar siswa) → buang draft-nya.
@@ -1164,7 +1169,7 @@ router.post('/lessons/:lessonId/generate-quiz', quizGenLimiter, asyncHandler(asy
     if (qtype === 'fill_blank') {
       const correctAnswer = String(q.correctAnswer || '').trim().slice(0, 200);
       if (!correctAnswer) continue;
-      clean.push({ question, questionType: 'fill_blank', questionCategory: qcat, audioScript: '', correctAnswer, explanation, options: [] });
+      clean.push({ question, questionType: 'fill_blank', questionCategory: qcat, audioScript: '', passage: '', correctAnswer, explanation, options: [] });
     } else {
       let options = Array.isArray(q.options)
         ? q.options.map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect })).filter((o) => o.text)
@@ -1174,7 +1179,7 @@ router.post('/lessons/:lessonId/generate-quiz', quizGenLimiter, asyncHandler(asy
       let firstCorrect = options.findIndex((o) => o.isCorrect);
       if (firstCorrect === -1) firstCorrect = 0;
       options = options.map((o, i) => ({ text: o.text, isCorrect: i === firstCorrect }));
-      clean.push({ question, questionType: 'multiple_choice', questionCategory: qcat, audioScript: qcat === 'listening' ? audioScript : '', correctAnswer: '', explanation, options });
+      clean.push({ question, questionType: 'multiple_choice', questionCategory: qcat, audioScript: qcat === 'listening' ? audioScript : '', passage: qcat === 'reading' ? passage : '', correctAnswer: '', explanation, options });
     }
     if (clean.length >= count) break;
   }
@@ -1191,11 +1196,13 @@ router.post('/generate-question-options', asyncHandler(async (req, res) => {
   const body = req.body || {};
   const question = String(body.question || '').trim().slice(0, 2000);
   const category = normalizeQuizCategory(body.questionCategory);
+  const passage = String(body.passage || '').trim().slice(0, 4000);
   const audioScript = String(body.audioScript || '').trim().slice(0, 1000);
   if (!question) return res.status(400).json({ error: 'question required' });
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
 
   const ctxBlocks = [];
+  if (category === 'reading' && passage) ctxBlocks.push(`Teks bacaan (dokkai):\n${passage}`);
   if (category === 'listening' && audioScript) ctxBlocks.push(`Skrip audio (listening):\n${audioScript}`);
 
   const userContent = `Buat 4 opsi jawaban pilihan ganda untuk soal kuis bahasa Jepang (JLPT N5/N4).
@@ -1205,7 +1212,7 @@ ${ctxBlocks.join('\n\n')}
 Soal: ${question}
 
 Aturan:
-- Tepat 4 opsi, TEPAT 1 yang benar.${category === 'listening' ? ' Jawaban benar HARUS sesuai isi skrip audio di atas.' : ''}
+- Tepat 4 opsi, TEPAT 1 yang benar.${category === 'reading' ? ' Jawaban benar HARUS sesuai isi teks bacaan di atas.' : ''}${category === 'listening' ? ' Jawaban benar HARUS sesuai isi skrip audio di atas.' : ''}
 - Distraktor (opsi salah) masuk akal & sepadan (panjang/jenis mirip), bukan asal-asalan.
 - Bahasa opsi mengikuti konteks soal (Indonesia atau Jepang).
 - "explanation": alasan singkat dalam Bahasa Indonesia kenapa jawaban benar.
@@ -1483,6 +1490,370 @@ router.post('/lessons/:lessonId/generate-listening', quizGenLimiter, asyncHandle
   res.json({
     questions: clean,
     section: { number: task.number, label: task.label, instruction: task.instruction },
+    vocabPool: vocabRes.rows.length,
+    grammarPool: grammarRes.rows.length,
+  });
+}));
+
+// ===== GENERATOR SOAL JLPT PER-MONDAI: VOCAB (文字・語彙) / GRAMMAR (文法) /
+// DOKKAI (読解) =====
+// Saudara dari generate-listening: satu run = satu tipe mondai, draft di-review
+// admin lalu disimpan via POST /admin/quiz-questions ke section kategori-nya
+// (section_number = nomor mondai). Tugas ber-passage (dokkai + 文章の文法)
+// minta AI balas {"passages":[{passage, questions:[...]}]} lalu di-flatten —
+// semua soal satu bacaan membawa string passage IDENTIK (kunci grouping render
+// di welcome.html).
+const JLPT_GEN_TASKS = {
+  // --- 文字・語彙 (vocabulary) ---
+  goi_kanji: {
+    category: 'vocabulary', number: 1, optionCount: 4,
+    label: 'もんだい1 漢字読み',
+    instruction: '＿＿の ことばは ひらがなで どう かきますか。1・2・3・4から いちばん いい ものを ひとつ えらんで ください。',
+    name: '漢字読み (cara baca kanji)',
+    rules: `Format soal: "question" = SATU kalimat Jepang natural; kata target ditulis KANJI dan WAJIB dibungkus tag <u>…</u> (hanya kata target). Contoh: 私の <u>仕事</u> はエンジニアです。 DILARANG menulis kalimat tanya meta ("読み方は何ですか" dsb) — instruksi mondai sudah tampil otomatis.
+Opsi: 4 cara baca HIRAGANA kata target (hiragana saja, tanpa kanji/romaji); 1 benar, 3 distraktor kana mirip: vokal panjang/pendek (おばさん/おばあさん), dakuten (か/が, す/ず), っ kecil (きて/きって), urutan kana ditukar.
+Balas: {"questions":[{"question":"...","options":[{"text":"...","isCorrect":true},...],"explanation":"..."}]}`,
+  },
+  goi_hyouki: {
+    category: 'vocabulary', number: 2, optionCount: 4,
+    label: 'もんだい2 表記',
+    instruction: '＿＿の ことばは どう かきますか。1・2・3・4から いちばん いい ものを ひとつ えらんで ください。',
+    name: '表記 (penulisan kanji/katakana)',
+    rules: `Format soal: "question" = SATU kalimat Jepang; kata target ditulis HIRAGANA dan dibungkus <u>…</u>. Contoh: わたしは <u>でんしゃ</u>で がっこうへ いきます。
+Opsi: 4 penulisan kanji (atau katakana utk kata serapan) kata target; 1 benar, 3 distraktor kanji mirip visual (電/雷, 持/待, 牛/午) atau katakana mirip (シ/ツ, ソ/ン).
+Balas: {"questions":[{"question":"...","options":[{"text":"...","isCorrect":true},...],"explanation":"..."}]}`,
+  },
+  goi_bunmyaku: {
+    category: 'vocabulary', number: 3, optionCount: 4,
+    label: 'もんだい3 文脈規定',
+    instruction: '（　）に なにを いれますか。1・2・3・4から いちばん いい ものを ひとつ えらんで ください。',
+    name: '文脈規定 (kata sesuai konteks)',
+    rules: `Format soal: "question" = SATU kalimat Jepang dengan bagian kosong ditulis （　）. Contoh: あついですから、まどを（　）ください。
+Opsi: 4 kata Jepang SEKELAS kata (semuanya kata kerja, atau semuanya kata benda, dst); 1 cocok konteks, 3 distraktor sekelas tapi nuansa/konteks salah.
+Balas: {"questions":[{"question":"...","options":[{"text":"...","isCorrect":true},...],"explanation":"..."}]}`,
+  },
+  goi_iikae: {
+    category: 'vocabulary', number: 4, optionCount: 4,
+    label: 'もんだい4 言い換え類義',
+    instruction: '＿＿の ぶんと だいたい おなじ いみの ぶんが あります。1・2・3・4から いちばん いい ものを ひとつ えらんで ください。',
+    name: '言い換え類義 (makna terdekat / parafrase)',
+    rules: `Format soal: "question" = SATU kalimat Jepang dengan kata/frasa target dibungkus <u>…</u>. Contoh: この へやは <u>くらい</u>です。
+Opsi: 4 kalimat Jepang parafrase dari kalimat soal; 1 maknanya sama, 3 distraktor: antonim, konsep terkait tapi beda, salah tangkap makna kiasan.
+Balas: {"questions":[{"question":"...","options":[{"text":"...","isCorrect":true},...],"explanation":"..."}]}`,
+  },
+  goi_yougou: {
+    category: 'vocabulary', number: 5, optionCount: 4,
+    label: 'もんだい5 用法',
+    instruction: 'つぎの ことばの つかいかたで いちばん いい ものを 1・2・3・4から ひとつ えらんで ください。',
+    name: '用法 (penggunaan kata — N4)',
+    rules: `Format soal: "question" = HANYA kata targetnya saja (1 kata Jepang, tanpa kalimat). Contoh: るす
+Opsi: 4 kalimat Jepang yang SEMUANYA memuat kata target; TEPAT 1 yang penggunaannya benar (makna + kelas kata + kolokasi), 3 distraktor memakai kata itu di konteks yang salah/tidak natural.
+Balas: {"questions":[{"question":"...","options":[{"text":"...","isCorrect":true},...],"explanation":"..."}]}`,
+  },
+  // --- 文法 (grammar) ---
+  bunpou_keishiki: {
+    category: 'grammar', number: 1, optionCount: 4,
+    label: 'もんだい1 文の文法1',
+    instruction: '（　）に 何を 入れますか。1・2・3・4から いちばん いい ものを 一つ えらんで ください。',
+    name: '文の文法1 (pilih bentuk/partikel)',
+    rules: `Format soal: "question" = SATU kalimat Jepang dengan bagian kosong （　）. Contoh: わたしは バス（　）がっこうへ 行きます。
+Opsi: 4 partikel ATAU 4 bentuk konjugasi dari kata yang sama; 1 benar, 3 distraktor = kesalahan khas pembelajar (partikel tertukar は/が/を/に/で, bentuk て/た/ない tertukar).
+Balas: {"questions":[{"question":"...","options":[{"text":"...","isCorrect":true},...],"explanation":"..."}]}`,
+  },
+  bunpou_kumitate: {
+    category: 'grammar', number: 2, optionCount: 4,
+    label: 'もんだい2 文の組み立て',
+    instruction: '＿★＿に 入る ものは どれですか。1・2・3・4から いちばん いい ものを 一つ えらんで ください。',
+    name: '文の組み立て (susun kalimat ★)',
+    rules: `Format soal: "question" = kalimat dengan 4 slot kosong berurutan, salah satu diberi tanda bintang, ditulis PERSIS dengan pola: [awal kalimat]＿＿　＿＿　＿★＿　＿＿[akhir kalimat]。 (underscore full-width ＿, dipisah spasi full-width; posisi ★ boleh di slot mana saja). Contoh: つくえの　＿＿　＿＿　＿★＿　＿＿が　あります。
+Opsi: 4 fragmen kalimat (potongan yang mengisi keempat slot); "isCorrect": true HANYA pada fragmen yang jatuh di posisi ★ ketika kalimat disusun benar.
+"explanation" WAJIB menampilkan kalimat utuh dengan urutan benar + terjemahan Indonesia singkat.
+Balas: {"questions":[{"question":"...","options":[{"text":"...","isCorrect":true},...],"explanation":"..."}]}`,
+  },
+  bunpou_bunshou: {
+    category: 'grammar', number: 3, optionCount: 4, needsPassage: true, qPerPassage: [1, 5],
+    label: 'もんだい3 文章の文法',
+    instruction: 'ぶんしょうの いみを かんがえて、（①）から（⑤）の 中に 入る いちばん いい ものを 1・2・3・4から 一つ えらんで ください。',
+    name: '文章の文法 (cloze wacana — isi blank dalam teks)',
+    rules: `Buat SATU wacana/teks pendek Jepang (cerita harian, surat, sakubun siswa; ±80-150 karakter utk N5, ±150-250 utk N4) berisi blank bernomor ditulis （①）（②）… sesuai jumlah soal yang diminta.
+Tiap soal = satu blank: "question" = （①）に 入る ものは どれですか。 (sesuai nomornya); 4 opsi partikel/bentuk/kata penghubung yang cocok di blank itu, 1 benar.
+Balas: {"passages":[{"passage":"[teks dengan （①）（②）…]","questions":[{"question":"（①）に 入る ものは どれですか。","options":[{"text":"...","isCorrect":true},...],"explanation":"..."},...]}]}`,
+  },
+  // --- 読解 (reading / dokkai) ---
+  dokkai_tanbun: {
+    category: 'reading', number: 1, optionCount: 4, needsPassage: true, qPerPassage: [1, 1],
+    label: 'もんだい1 内容理解（短文）',
+    instruction: 'つぎの ぶんしょうを よんで、しつもんに こたえて ください。こたえは 1・2・3・4から いちばん いい ものを ひとつ えらんで ください。',
+    name: '内容理解・短文 (bacaan pendek, 1 soal/bacaan)',
+    rules: `Tiap item = SATU bacaan pendek (±80-100 karakter utk N5, ±150-200 utk N4; topik harian: catatan, email pendek, pengalaman) + TEPAT 1 soal pemahaman.
+Soal menarget: isi eksplisit, ide utama, atau inferensi sederhana. "question" = kalimat tanya Jepang. 4 opsi Jepang pendek, 1 benar (jawaban HARUS dari isi bacaan, distraktor = info yang disinggung tapi bukan jawaban).
+Balas: {"passages":[{"passage":"...","questions":[{"question":"...","options":[{"text":"...","isCorrect":true},...],"explanation":"..."}]}]}`,
+  },
+  dokkai_chuubun: {
+    category: 'reading', number: 2, optionCount: 4, needsPassage: true, qPerPassage: [2, 3],
+    label: 'もんだい2 内容理解（中文）',
+    instruction: 'つぎの ぶんしょうを よんで、しつもんに こたえて ください。こたえは 1・2・3・4から いちばん いい ものを ひとつ えらんで ください。',
+    name: '内容理解・中文 (bacaan sedang, 2-3 soal/bacaan)',
+    rules: `Tiap item = SATU bacaan sedang (±200-300 karakter utk N5, ±400-600 utk N4; esai pendek/pengalaman/opini sederhana) + 2-3 soal pemahaman tentang bacaan YANG SAMA.
+Soal menarget: alasan (どうして), maksud penulis, detail, urutan kejadian — tiap soal menarget bagian BERBEDA dari bacaan. 4 opsi, 1 benar.
+Balas: {"passages":[{"passage":"...","questions":[{...},{...}]}]} — semua soal satu bacaan di array "questions" passage itu.`,
+  },
+  dokkai_jouhou: {
+    category: 'reading', number: 3, optionCount: 4, needsPassage: true, qPerPassage: [2, 2],
+    label: 'もんだい3 情報検索',
+    instruction: 'つぎの おしらせを みて、しつもんに こたえて ください。こたえは 1・2・3・4から いちばん いい ものを ひとつ えらんで ください。',
+    name: '情報検索 (cari info dari pengumuman/jadwal)',
+    rules: `Tiap item = SATU teks praktis (pengumuman, jadwal, poster acara, brosur toko; ±150-350 karakter) ditulis TEKS POLOS per baris (label: isi, tanpa tabel/markdown). Contoh format:
+としょかんの りようじかん
+げつようび〜きんようび：9じ〜18じ
+どようび・にちようび：10じ〜16じ
+おやすみ：まいしゅう げつようび
++ TEPAT 2 soal mencari/membandingkan info spesifik (jam, hari, harga, syarat). 4 opsi, 1 benar.
+Balas: {"passages":[{"passage":"...","questions":[{...},{...}]}]}`,
+  },
+};
+
+const JLPT_GEN_LEVELS = {
+  N5: `Level N5: HANYA kosakata & kanji dasar (±800 kata, ±100 kanji), semua kalimat bentuk sopan です/ます, struktur sederhana. Kanji di luar daftar dasar tulis kana. Topik: rumah, sekolah, belanja, makanan, waktu, cuaca, keluarga.`,
+  N4: `Level N4: kosakata ±1500 kata / ±300 kanji, boleh bentuk kasual & 〜てもいい/〜なければならない/potensial/あげるくれるもらう, kalimat majemuk sederhana. Topik: + pekerjaan, kesehatan, rencana, perasaan, pengalaman.`,
+};
+
+// Prompt wrapper editable admin (app_settings.jlpt_gen_prompt). Placeholder:
+// {{count}} {{level}} {{taskName}} {{taskRules}} {{levelRules}} {{topic}}
+// {{vocab}} {{grammar}} {{avoid}}. Bentuk JSON output ditentukan aturan
+// per-tipe ({{taskRules}}).
+const JLPT_GEN_PROMPT_DEFAULT = `Buatkan {{count}} {{unit}} soal bahasa Jepang gaya ujian JLPT {{level}}, tipe {{taskName}}.
+
+{{taskRules}}
+
+{{levelRules}}
+
+{{topic}}
+Pakai kosakata & pola grammar dari materi di bawah HANYA kalau masuk secara wajar — cukup 1-3 kata dari daftar per soal. Kata fungsi umum (partikel, salam, angka, kata tanya) boleh dari luar daftar, tapi JANGAN pakai kosakata konten yang jauh di atas level.
+
+Kosakata (japanese (reading) = arti):
+{{vocab}}
+
+Pola grammar:
+{{grammar}}
+{{avoid}}
+Aturan umum:
+- PALING PENTING: kalimat & teks harus terdengar ALAMI seperti bahasa Jepang sehari-hari beneran — bukan kalimat buku teks kaku, bukan daftar kosakata yang dipaksa jadi kalimat.
+- Setiap soal berdiri sendiri dengan topik/situasi BERBEDA satu sama lain.
+- TEPAT 1 opsi "isCorrect": true per soal. Distraktor sepadan (panjang/jenis mirip) dan menarget kesalahan khas pembelajar, bukan asal-asalan.
+- "explanation": 1-2 kalimat Bahasa Indonesia menjelaskan kenapa jawaban benar (sebut arti kata/pola kuncinya).
+- Balas HANYA JSON valid tanpa teks lain, dengan bentuk PERSIS seperti dicontohkan di aturan tipe soal di atas.`;
+
+async function _loadJlptGenPrompt() {
+  try {
+    const r = await query(`SELECT value FROM app_settings WHERE key = 'jlpt_gen_prompt'`);
+    const v = r.rows[0]?.value;
+    return (v && v.trim()) ? v : JLPT_GEN_PROMPT_DEFAULT;
+  } catch {
+    return JLPT_GEN_PROMPT_DEFAULT;
+  }
+}
+
+router.get('/settings/jlpt-gen-prompt', asyncHandler(async (_req, res) => {
+  const r = await query(`SELECT value FROM app_settings WHERE key = 'jlpt_gen_prompt'`);
+  res.json({ value: r.rows[0]?.value || '', default: JLPT_GEN_PROMPT_DEFAULT });
+}));
+
+router.put('/settings/jlpt-gen-prompt', asyncHandler(async (req, res) => {
+  const value = String((req.body || {}).value || '');
+  await query(
+    `INSERT INTO app_settings (key, value, updated_at) VALUES ('jlpt_gen_prompt', $1, NOW())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+    [value]
+  );
+  res.json({ ok: true });
+}));
+
+// Validasi struktural per tipe mondai — draft yang melanggar format dibuang
+// (pola sama dgn validasi listening). Return question ternormalisasi atau null.
+function _validateJlptQuestion(taskType, rawQuestion) {
+  const question = String(rawQuestion || '').split('\n')[0].trim().slice(0, 1000);
+  if (!question) return null;
+  const HAS_U = /<u>[^<]+<\/u>/;
+  switch (taskType) {
+    case 'goi_kanji':
+    case 'goi_hyouki':
+    case 'goi_iikae':
+      if (!HAS_U.test(question)) return null;
+      break;
+    case 'goi_bunmyaku':
+    case 'bunpou_keishiki':
+      if (!question.includes('（　）') && !question.includes('＿＿') && !/（\s*）/.test(question)) return null;
+      break;
+    case 'goi_yougou':
+      if (question.length > 30 || HAS_U.test(question)) return null;
+      break;
+    case 'bunpou_kumitate':
+      if (!question.includes('★') || (question.match(/＿＿/g) || []).length < 3) return null;
+      break;
+    case 'bunpou_bunshou':
+      if (!/[①②③④⑤]/.test(question)) return null;
+      break;
+    default:
+      break;
+  }
+  return question;
+}
+
+function _normalizeJlptOptions(rawOptions, optionCount, taskType, question) {
+  let options = Array.isArray(rawOptions)
+    ? rawOptions.map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect })).filter((o) => o.text)
+    : [];
+  if (options.length < 2) return null;
+  options = options.slice(0, optionCount);
+  // goi_kanji: opsi wajib hiragana murni (cara baca).
+  if (taskType === 'goi_kanji' && !options.every((o) => /^[぀-ゟー\s]+$/.test(o.text))) return null;
+  // goi_yougou: semua opsi harus memuat kata target (= question).
+  if (taskType === 'goi_yougou' && question && !options.every((o) => o.text.includes(question))) return null;
+  let firstCorrect = options.findIndex((o) => o.isCorrect);
+  if (firstCorrect === -1) firstCorrect = 0;
+  return options.map((o, i) => ({ text: o.text, isCorrect: i === firstCorrect }));
+}
+
+const JLPT_PASSAGE_MAXLEN = { bunpou_bunshou: 600, dokkai_tanbun: 400, dokkai_chuubun: 1000, dokkai_jouhou: 800 };
+
+router.post('/lessons/:lessonId/generate-jlpt', quizGenLimiter, asyncHandler(async (req, res) => {
+  const lessonId = req.params.lessonId;
+  const taskType = String(req.body?.taskType || '');
+  const task = JLPT_GEN_TASKS[taskType];
+  if (!task) return res.status(400).json({ error: 'bad_task', detail: 'taskType tidak dikenal.' });
+  const level = JLPT_GEN_LEVELS[req.body?.level] ? String(req.body.level) : 'N5';
+  // count = jumlah soal (non-passage) atau jumlah bacaan (passage task);
+  // bunpou_bunshou = 1 wacana dengan `count` blank.
+  const count = Math.min(8, Math.max(1, Number(req.body?.count) || 3));
+  const topic = String(req.body?.topic || '').slice(0, 300).trim();
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
+
+  const lessonRes = await query(`SELECT id, module_id, type FROM lessons WHERE id = $1`, [lessonId]);
+  if (lessonRes.rows.length === 0) return res.status(404).json({ error: 'lesson not found' });
+  const lesson = lessonRes.rows[0];
+  if (lesson.type !== 'quiz') return res.status(400).json({ error: 'lesson_not_quiz', detail: 'Pelajaran ini bukan tipe quiz' });
+
+  // Grounding vocab + grammar modul — query sama dgn generator lain.
+  let vocabRes = await query(
+    `SELECT DISTINCT v.japanese, v.reading, v.indonesian, v.category
+     FROM module_vocabulary v
+     JOIN lesson_deck_items di ON di.vocabulary_id = v.id
+     JOIN lessons l ON l.id = di.lesson_id
+     WHERE l.module_id = $1 AND l.type = 'deck' AND v.japanese IS NOT NULL AND v.japanese <> ''
+     LIMIT 80`,
+    [lesson.module_id]
+  );
+  if (vocabRes.rows.length < 4) {
+    vocabRes = await query(
+      `SELECT japanese, reading, indonesian, category
+       FROM module_vocabulary
+       WHERE module_id = $1 AND japanese IS NOT NULL AND japanese <> ''
+       LIMIT 80`,
+      [lesson.module_id]
+    );
+  }
+  const grammarRes = await query(
+    `SELECT pattern, meaning, example FROM module_grammar
+     WHERE module_id = $1 AND pattern IS NOT NULL AND pattern <> ''
+     LIMIT 30`,
+    [lesson.module_id]
+  );
+
+  // Anti-duplikat: soal existing di kategori yang sama (+ baris pertama
+  // passage utk tugas bacaan).
+  const existingRes = await query(
+    `SELECT question, passage FROM quiz_questions
+     WHERE lesson_id = $1 AND question_category = $2
+     ORDER BY created_at DESC LIMIT 30`,
+    [lessonId, task.category]
+  );
+  const avoidLines = [...new Set(existingRes.rows.flatMap((r) => [
+    String(r.question || '').split('\n')[0].trim(),
+    String(r.passage || '').split('\n')[0].trim(),
+  ]))].filter(Boolean);
+
+  const vocabLines = vocabRes.rows.map((v) =>
+    `- ${v.japanese}${v.reading ? ` (${v.reading})` : ''} = ${v.indonesian || '?'}${v.category ? ` [${v.category}]` : ''}`).join('\n');
+  const grammarLines = grammarRes.rows.map((g) =>
+    `- ${g.pattern}${g.meaning ? ` = ${g.meaning}` : ''}${g.example ? `. Contoh: ${g.example}` : ''}`).join('\n');
+
+  const promptTpl = await _loadJlptGenPrompt();
+  const userContent = _fillTemplate(promptTpl, {
+    count: taskType === 'bunpou_bunshou' ? `1 wacana dengan ${count}` : count,
+    unit: task.needsPassage
+      ? (taskType === 'bunpou_bunshou' ? 'blank' : 'bacaan (lihat aturan jumlah soal per bacaan)')
+      : '',
+    level,
+    taskName: task.name,
+    taskRules: task.rules,
+    levelRules: JLPT_GEN_LEVELS[level],
+    topic: topic ? `Topik/instruksi tambahan dari admin: ${topic}\n` : '',
+    vocab: vocabLines || '(tidak ada — pakai kosakata standar level ini)',
+    grammar: grammarLines || '(tidak ada — pakai grammar standar level ini)',
+    avoid: avoidLines.length
+      ? `\nSoal yang SUDAH ADA di kuis ini (jangan bikin soal/bacaan serupa):\n${avoidLines.map((s) => `- ${s.slice(0, 120)}`).join('\n')}\n`
+      : '',
+  });
+
+  const text = await callClaude({
+    system: QUIZ_GEN_SYSTEM,
+    userContent,
+    maxTokens: task.needsPassage ? 6000 : 4096,
+  });
+  if (!text) return res.status(502).json({ error: 'ai_upstream' });
+  const parsed = _extractJsonObject(text);
+  if (!parsed) return res.status(502).json({ error: 'ai_parse' });
+
+  const clean = [];
+  if (task.needsPassage) {
+    const passages = Array.isArray(parsed.passages) ? parsed.passages : [];
+    const [minQ, maxQ] = taskType === 'bunpou_bunshou' ? [1, Math.min(count, 5)] : task.qPerPassage;
+    const passageCount = taskType === 'bunpou_bunshou' ? 1 : count;
+    for (const p of passages) {
+      if (!p || typeof p !== 'object') continue;
+      const passage = String(p.passage || '').trim().slice(0, Math.min(4000, JLPT_PASSAGE_MAXLEN[taskType] || 4000));
+      if (!passage) continue;
+      if (taskType === 'bunpou_bunshou' && !passage.includes('①')) continue;
+      const group = [];
+      for (const q of (Array.isArray(p.questions) ? p.questions : [])) {
+        if (!q || typeof q !== 'object') continue;
+        const question = _validateJlptQuestion(taskType, q.question);
+        if (!question) continue;
+        const options = _normalizeJlptOptions(q.options, task.optionCount, taskType, question);
+        if (!options) continue;
+        group.push({
+          question, passage, options,
+          explanation: String(q.explanation || '').trim().slice(0, 1000),
+        });
+        if (group.length >= maxQ) break;
+      }
+      // Bacaan dgn soal kurang dari minimum = buang seluruh bacaan (mis.
+      // chuubun cuma 1 soal valid → bukan format mondai-nya).
+      if (group.length < minQ) continue;
+      clean.push(...group);
+      if (clean.filter((x, i, arr) => arr.findIndex((y) => y.passage === x.passage) === i).length >= passageCount) break;
+    }
+  } else {
+    for (const q of (Array.isArray(parsed.questions) ? parsed.questions : [])) {
+      if (!q || typeof q !== 'object') continue;
+      const question = _validateJlptQuestion(taskType, q.question);
+      if (!question) continue;
+      const options = _normalizeJlptOptions(q.options, task.optionCount, taskType, question);
+      if (!options) continue;
+      clean.push({
+        question, passage: '', options,
+        explanation: String(q.explanation || '').trim().slice(0, 1000),
+      });
+      if (clean.length >= count) break;
+    }
+  }
+  if (clean.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan soal valid. Coba lagi.' });
+
+  res.json({
+    questions: clean,
+    section: { number: task.number, label: task.label, instruction: task.instruction },
+    category: task.category,
     vocabPool: vocabRes.rows.length,
     grammarPool: grammarRes.rows.length,
   });
@@ -1993,7 +2364,7 @@ router.delete('/lessons/:id', asyncHandler(async (req, res) => {
 
 // ===== QUIZ QUESTIONS (with options in one call) =====
 
-const QUIZ_CATEGORIES = new Set(['vocabulary', 'grammar', 'listening']);
+const QUIZ_CATEGORIES = new Set(['vocabulary', 'grammar', 'reading', 'listening']);
 
 function normalizeQuizCategory(value) {
   const category = String(value || 'vocabulary').toLowerCase();
@@ -2017,7 +2388,8 @@ router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
      ORDER BY CASE question_category
                 WHEN 'vocabulary' THEN 1
                 WHEN 'grammar' THEN 2
-                WHEN 'listening' THEN 3
+                WHEN 'reading' THEN 3
+                WHEN 'listening' THEN 4
                 ELSE 9
               END,
               section_number ASC, sort_order ASC`,
@@ -2044,7 +2416,7 @@ router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
 router.post('/quiz-questions', asyncHandler(async (req, res) => {
   const {
     lessonId, question, questionType, questionCategory, sectionNumber,
-    sectionLabel, sectionInstruction, audioScript, imageUrl,
+    sectionLabel, sectionInstruction, audioScript, passage, imageUrl,
     correctAnswer, explanation, sortOrder, options,
   } = req.body || {};
   if (!lessonId || !question) return res.status(400).json({ error: 'lessonId and question required' });
@@ -2056,10 +2428,10 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
   const qRes = await query(
     `INSERT INTO quiz_questions (
        lesson_id, question, question_type, question_category,
-       section_number, section_label, section_instruction, audio_script, image_url,
+       section_number, section_label, section_instruction, audio_script, passage, image_url,
        correct_answer, explanation, sort_order
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
     [
       lessonId,
       question,
@@ -2069,6 +2441,7 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
       sectionTitle,
       sectionInstruction || null,
       (audioScript && String(audioScript).trim()) || null,
+      (passage && String(passage).trim()) || null,
       (imageUrl && String(imageUrl).trim()) || null,
       correctAnswer || null,
       explanation || null,
@@ -2094,15 +2467,17 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
 router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
   const {
     question, questionType, questionCategory, sectionNumber,
-    sectionLabel, sectionInstruction, audioScript, imageUrl,
+    sectionLabel, sectionInstruction, audioScript, passage, imageUrl,
     correctAnswer, explanation, sortOrder, options,
   } = req.body || {};
   const category = questionCategory ? normalizeQuizCategory(questionCategory) : null;
   const sectionNo = sectionNumber == null ? null : normalizeQuizSectionNumber(sectionNumber);
   const hasSectionInstruction = Object.prototype.hasOwnProperty.call(req.body || {}, 'sectionInstruction');
   const hasAudioScript = Object.prototype.hasOwnProperty.call(req.body || {}, 'audioScript');
+  const hasPassage = Object.prototype.hasOwnProperty.call(req.body || {}, 'passage');
   const hasImageUrl = Object.prototype.hasOwnProperty.call(req.body || {}, 'imageUrl');
   const audioScriptNorm = hasAudioScript ? ((audioScript && String(audioScript).trim()) || null) : null;
+  const passageNorm = hasPassage ? ((passage && String(passage).trim()) || null) : null;
   const imageUrlNorm = hasImageUrl ? ((imageUrl && String(imageUrl).trim()) || null) : null;
   const result = await query(
     `UPDATE quiz_questions SET
@@ -2116,7 +2491,8 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
        section_label = COALESCE($9, section_label),
        section_instruction = CASE WHEN $11::boolean THEN $10 ELSE section_instruction END,
        audio_script = CASE WHEN $13::boolean THEN $12 ELSE audio_script END,
-       image_url = CASE WHEN $15::boolean THEN $14 ELSE image_url END
+       image_url = CASE WHEN $15::boolean THEN $14 ELSE image_url END,
+       passage = CASE WHEN $17::boolean THEN $16 ELSE passage END
       WHERE id = $1 RETURNING *`,
     [
       req.params.id,
@@ -2134,6 +2510,8 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
       hasAudioScript,
       imageUrlNorm,
       hasImageUrl,
+      passageNorm,
+      hasPassage,
     ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
@@ -2159,18 +2537,20 @@ router.delete('/quiz-questions/:id', asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
-// Bulk update section meta (label / instruction) — semua soal di (lesson,
-// category, number) yang sama. Dipakai admin pas mereka edit info section,
-// supaya ga perlu update tiap pertanyaan satu-satu.
+// Bulk update section meta (label / instruction / passage) — semua soal di
+// (lesson, category, number) yang sama. Dipakai admin pas mereka edit info
+// section, supaya ga perlu update tiap pertanyaan satu-satu. Passage dishare
+// section-level untuk dokkai (reading).
 router.put('/lessons/:lessonId/quiz/sections/:category/:number', asyncHandler(async (req, res) => {
   const { lessonId, category, number } = req.params;
-  const { sectionLabel, sectionInstruction } = req.body || {};
+  const { sectionLabel, sectionInstruction, passage } = req.body || {};
   const cat = normalizeQuizCategory(category);
   const sectionNo = normalizeQuizSectionNumber(number);
   const hasLabel = Object.prototype.hasOwnProperty.call(req.body || {}, 'sectionLabel');
   const hasInstruction = Object.prototype.hasOwnProperty.call(req.body || {}, 'sectionInstruction');
-  if (!hasLabel && !hasInstruction) {
-    return res.status(400).json({ error: 'sectionLabel or sectionInstruction required' });
+  const hasPassage = Object.prototype.hasOwnProperty.call(req.body || {}, 'passage');
+  if (!hasLabel && !hasInstruction && !hasPassage) {
+    return res.status(400).json({ error: 'sectionLabel, sectionInstruction or passage required' });
   }
   const labelNorm = hasLabel
     ? ((sectionLabel && String(sectionLabel).trim()) || `Section ${sectionNo}`)
@@ -2178,12 +2558,16 @@ router.put('/lessons/:lessonId/quiz/sections/:category/:number', asyncHandler(as
   const instructionNorm = hasInstruction
     ? ((sectionInstruction && String(sectionInstruction).trim()) || null)
     : null;
+  const passageNorm = hasPassage
+    ? ((passage && String(passage).trim()) || null)
+    : null;
   const result = await query(
     `UPDATE quiz_questions
         SET section_label = CASE WHEN $5::boolean THEN $3 ELSE section_label END,
-            section_instruction = CASE WHEN $6::boolean THEN $4 ELSE section_instruction END
+            section_instruction = CASE WHEN $6::boolean THEN $4 ELSE section_instruction END,
+            passage = CASE WHEN $8::boolean THEN $9 ELSE passage END
       WHERE lesson_id = $1 AND question_category = $2 AND section_number = $7`,
-    [lessonId, cat, labelNorm, instructionNorm, hasLabel, hasInstruction, sectionNo]
+    [lessonId, cat, labelNorm, instructionNorm, hasLabel, hasInstruction, sectionNo, hasPassage, passageNorm]
   );
   res.json({ ok: true, updated: result.rowCount });
 }));

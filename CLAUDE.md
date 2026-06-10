@@ -204,15 +204,46 @@
   `recoPanelHtml`; lesson rekomendasi (UUID dari API) dicocokkan via `l.apiId`
   lalu `selectLesson(moduleSlug, lessonSlug)`. Panel disembunyikan kalau belum
   ada data kuis.
-- **Kategori soal kuis** (`quiz_questions.question_category`): 3 nilai —
-  `vocabulary`, `grammar`, `listening`. Label UI: admin.html/welcome.html pakai
-  "Vocabulary"/"Grammar"/"Listening"; panel adaptif (recommendations.js) pakai
-  "Kosakata"/"Tata Bahasa"/"Menyimak". Label dikelola di 3 tempat sejajar:
-  `QUIZ_CATEGORY_LABELS` (admin.html), `QUIZ_CATEGORY_META` (welcome.html),
-  `CATEGORY_LABEL` (recommendations.js). CHECK constraint
-  `quiz_questions_category_check`. (Catatan: kategori `reading`/Dokkai + kolom
-  `passage` sempat ditambah di migration 028 lalu di-batalkan di 029 — kuis
-  tetap 3 kategori; jangan tambah lagi tanpa diminta.)
+- **Kategori soal kuis** (`quiz_questions.question_category`): 4 nilai —
+  `vocabulary` (Moji-Goi), `grammar` (Tata Bahasa), `reading` (Dokkai),
+  `listening` (Menyimak). Kategori `reading` + kolom `passage` ditambah di
+  migration 028, dibatalkan di 029, lalu **direstorasi di migration 034**
+  (user minta dokkai untuk generator JLPT). Label dikelola di 3 tempat
+  sejajar: `QUIZ_CATEGORY_LABELS` (admin.html), `QUIZ_CATEGORY_META`
+  (welcome.html), `CATEGORY_LABEL` (recommendations.js); plus array kategori
+  hardcoded di welcome.html (tabs/finder/stats `byCategory`/`RECO_CAT_ORDER`)
+  & admin.js (`QUIZ_CATEGORIES`, ORDER BY CASE) — kalau nambah kategori lagi,
+  grep semua. CHECK constraint `quiz_questions_category_check`.
+  **Passage (dokkai)**: kolom `quiz_questions.passage` per-soal (denormalized
+  — semua soal satu bacaan menyimpan string IDENTIK); welcome.html me-render
+  blok `.quiz-passage` sekali di atas grup soal ber-passage sama (per-grup
+  dalam section, bukan per-section — satu mondai bisa berisi beberapa bacaan).
+  Admin: passage di-set section-level via form Edit Section (kategori
+  reading), section PUT meng-update passage semua soal section.
+- **Generator soal JLPT per-mondai (vocab/grammar/dokkai)** — tombol
+  "✨ Generate JLPT" di header Kelola Kuis (`admin.html` → `openJlptGen`),
+  saudara dari generator listening. Satu run = satu tipe mondai
+  (`JLPT_GEN_TASKS` di `backend/src/routes/admin.js`, 11 tipe): Moji-Goi
+  漢字読み/表記/文脈規定/言い換え類義/用法(N4), Bunpou 文の文法1/文の組み立て(★)/
+  文章の文法(cloze wacana), Dokkai 短文/中文/情報検索. Endpoint
+  `POST /api/admin/lessons/:lessonId/generate-jlpt`
+  ({ taskType, level, count, topic }); `count` = jumlah soal, KECUALI tugas
+  ber-passage: dokkai = jumlah bacaan (短文 1 soal, 中文 2-3, 情報検索 2 per
+  bacaan), 文章の文法 = 1 wacana dgn `count` blank. Tugas ber-passage: AI
+  balas `{"passages":[{passage,questions:[...]}]}`, di-flatten server-side
+  (passage identik per grup). Validasi struktural per tipe
+  (`_validateJlptQuestion`/`_normalizeJlptOptions`): 漢字読み wajib `<u>…</u>` +
+  opsi hiragana-only, 組み立て wajib ★ + ≥3 `＿＿`, 文章の文法 wajib `（①）`,
+  用法 question = kata saja + semua opsi memuatnya, dst — draft melanggar
+  dibuang. Grounding vocab+grammar modul + anti-duplikat per kategori. Prompt
+  wrapper editable (`app_settings.jlpt_gen_prompt`,
+  `GET/PUT /admin/settings/jlpt-gen-prompt`, placeholder sama dgn listening;
+  modal hanya memuat nilai custom). Simpan → section kategori-nya, nomor =
+  nomor mondai (label+instruksi mondai auto; section existing dipertahankan).
+  **Generator bulk lama ("✨ Generate AI" per pelajaran) DIHAPUS dari UI** —
+  endpoint `generate-quiz` + settings `quiz-gen-prompt` masih ada di backend
+  (deprecated, tanpa pemanggil; hapus di cleanup berikutnya). Konsekuensi:
+  generate fill_blank via AI tidak ada lagi (buat manual).
 - **Generate opsi pilihan ganda (AI)** — tombol "✨ Generate opsi (AI)" di editor
   soal admin (`openQuestionForm` → `quizGenOptions`): kirim pertanyaan +
   (listening: audio script) ke `POST /api/admin/generate-question-options`

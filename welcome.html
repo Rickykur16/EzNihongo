@@ -2802,6 +2802,20 @@
     font-family: 'Noto Sans JP', sans-serif;
   }
   .jlpt-mondai strong { font-weight: 800; }
+  /* Dokkai: passage bacaan di atas grup soal (reading / 文章の文法) */
+  .quiz-passage {
+    margin: 4px 0 18px;
+    padding: 18px 20px;
+    background: #fffdf7;
+    border: 1px solid var(--du-border, #ece9e3);
+    border-left: 4px solid #B20024;
+    border-radius: 10px;
+    font-family: 'Noto Sans JP', serif;
+    font-size: clamp(15px, 1.7vw, 17px);
+    line-height: 2;
+    color: #1B1410;
+    white-space: normal;
+  }
   /* Question prompt image (di atas opsi) */
   .quiz-q-image {
     margin: 12px 0 16px;
@@ -3871,16 +3885,20 @@ function transformCourseFromApi(apiCourse) {
 
 const QUIZ_CATEGORY_META = {
   vocabulary: {
-    label: 'Vocabulary',
+    label: 'Moji-Goi',
     defaultInstruction: '問題1：＿＿の　ことばは　ひらがなで　どう　かきますか。 1・2・3・4から　いちばん　いい　ものを　ひとつ　えらんで　ください。',
   },
   grammar: {
-    label: 'Grammar',
+    label: 'Tata Bahasa',
     defaultInstruction: '問題2：＿＿に　入る　いちばん　いい　ものを　1・2・3・4から　ひとつ　えらんで　ください。',
   },
+  reading: {
+    label: 'Dokkai',
+    defaultInstruction: '問題：つぎの　ぶんしょうを　読んで、しつもんに　こたえて　ください。こたえは　1・2・3・4から　いちばん　いい　ものを　ひとつ　えらんで　ください。',
+  },
   listening: {
-    label: 'Listening',
-    defaultInstruction: '問題3：音声を聞いて、ただしい答えを　1・2・3・4から　ひとつ　えらんで　ください。',
+    label: 'Menyimak',
+    defaultInstruction: '問題：音声を聞いて、ただしい答えを　1・2・3・4から　ひとつ　えらんで　ください。',
   },
 };
 
@@ -3913,6 +3931,7 @@ function transformQuestionFromApi(apiQ) {
     sectionLabel: apiQ.section_label || apiQ.sectionLabel || `Section ${Number(apiQ.section_number || apiQ.sectionNumber) || 1}`,
     sectionInstruction: apiQ.section_instruction || apiQ.sectionInstruction || '',
     audioScript: apiQ.audio_script || apiQ.audioScript || '',
+    passage: apiQ.passage || '',
     imageUrl: apiQ.image_url || apiQ.imageUrl || '',
   };
 }
@@ -4401,7 +4420,7 @@ window.startQuizAttempt = async (key) => {
 };
 
 function firstQuizCategoryWithQuestions(questions) {
-  return ['vocabulary', 'grammar', 'listening'].find((cat) =>
+  return ['vocabulary', 'grammar', 'reading', 'listening'].find((cat) =>
     questions.some((q) => normalizeQuizCategory(q.category) === cat)
   ) || 'vocabulary';
 }
@@ -4415,7 +4434,7 @@ function quizQuestionsByCategory(questions, category) {
 function renderQuizCategoryTabs(questions) {
   // Sembunyikan tab kategori yang ga punya soal — bukan disabled, langsung
   // ga di-render. Tab cuma muncul kalau ada konten.
-  return ['vocabulary', 'grammar', 'listening']
+  return ['vocabulary', 'grammar', 'reading', 'listening']
     .map((cat) => ({
       cat,
       meta: QUIZ_CATEGORY_META[cat],
@@ -4466,6 +4485,19 @@ function renderQuizSections(categoryItems) {
     const labelText = section.label || `Section ${section.number}`;
     const instructionText = (section.instruction || '').trim()
       || (QUIZ_CATEGORY_META[normalizeQuizCategory(section.items[0]?.q?.category)]?.defaultInstruction || '');
+    // Passage (dokkai / 文章の文法): dirender SEKALI di atas grup soal yang
+    // memakai bacaan sama — per-grup, bukan per-section, karena satu mondai
+    // bisa berisi beberapa bacaan (短文) dan sampling per-attempt bisa
+    // menyisakan subset soal (passage denormalized per soal).
+    let prevPassage = null;
+    const itemsHtml = section.items.map((item, i) => {
+      const passage = (item.q.passage || '').trim();
+      const passageHtml = passage && passage !== prevPassage
+        ? `<div class="quiz-passage" lang="ja">${sanitizeHtml(passage).replace(/\n/g, '<br>')}</div>`
+        : '';
+      prevPassage = passage || prevPassage;
+      return passageHtml + renderQuizPaperItem(item.q, item.index, section.number, i + 1);
+    }).join('');
     return `
       ${playerHtml}
       <section class="jlpt-section">
@@ -4473,7 +4505,7 @@ function renderQuizSections(categoryItems) {
         ${instructionText ? `<div class="jlpt-mondai">${sanitizeHtml(instructionText)}</div>` : ''}
       </section>
       <div class="quiz-paper-list" data-section-number="${section.number}">
-        ${section.items.map((item, i) => renderQuizPaperItem(item.q, item.index, section.number, i + 1)).join('')}
+        ${itemsHtml}
       </div>
     `;
   }).join('');
@@ -5013,13 +5045,13 @@ async function finishQuiz() {
   if (passed) fireConfetti();
 
   // Per-kategori breakdown — kasih siswa info materi mana yg lemah.
-  const byCategory = { vocabulary: [0, 0], grammar: [0, 0], listening: [0, 0] };
+  const byCategory = { vocabulary: [0, 0], grammar: [0, 0], reading: [0, 0], listening: [0, 0] };
   for (let i = 0; i < questions.length; i++) {
     const cat = normalizeQuizCategory(questions[i].category);
     byCategory[cat][1] += 1;
     if (quizState.correctByIndex?.[i]) byCategory[cat][0] += 1;
   }
-  const catBlock = ['vocabulary', 'grammar', 'listening']
+  const catBlock = ['vocabulary', 'grammar', 'reading', 'listening']
     .filter((c) => byCategory[c][1] > 0)
     .map((c) => {
       const [right, n] = byCategory[c];
@@ -5304,7 +5336,7 @@ setInterval(refreshGreetingBanner, 60 * 1000);
 // dari GET /api/recommendations/me (backend/src/routes/recommendations.js).
 // Disembunyikan kalau belum ada data kuis; endpoint men-degradasi anggun
 // tanpa AI (noteSource 'rule').
-const RECO_CAT_ORDER = ['vocabulary', 'grammar', 'listening'];
+const RECO_CAT_ORDER = ['vocabulary', 'grammar', 'reading', 'listening'];
 
 async function loadRecommendations() {
   const host = document.getElementById('reco-panel');
