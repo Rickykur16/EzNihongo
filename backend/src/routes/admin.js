@@ -1510,7 +1510,7 @@ const JLPT_GEN_TASKS = {
     label: 'もんだい1 漢字読み',
     instruction: '＿＿の ことばは ひらがなで どう かきますか。1・2・3・4から いちばん いい ものを ひとつ えらんで ください。',
     name: '漢字読み (cara baca kanji)',
-    rules: `Format soal: "question" = SATU kalimat Jepang natural; kata target ditulis KANJI dan WAJIB dibungkus tag <u>…</u> (hanya kata target). Contoh: 私の <u>仕事</u> はエンジニアです。 DILARANG menulis kalimat tanya meta ("読み方は何ですか" dsb) — instruksi mondai sudah tampil otomatis.
+    rules: `Format soal: "question" = SATU kalimat Jepang natural; kata target ditulis KANJI (isi <u>…</u> WAJIB mengandung kanji, BUKAN kana) dan WAJIB dibungkus tag <u>…</u> (hanya kata target). Contoh: 私の <u>仕事</u> はエンジニアです。 DILARANG menulis kalimat tanya meta ("読み方は何ですか" dsb) — instruksi mondai sudah tampil otomatis.
 Opsi: 4 cara baca HIRAGANA kata target (hiragana saja, tanpa kanji/romaji); 1 benar, 3 distraktor kana mirip: vokal panjang/pendek (おばさん/おばあさん), dakuten (か/が, す/ず), っ kecil (きて/きって), urutan kana ditukar.
 Balas: {"questions":[{"question":"...","options":[{"text":"...","isCorrect":true},...],"explanation":"..."}]}`,
   },
@@ -1519,7 +1519,7 @@ Balas: {"questions":[{"question":"...","options":[{"text":"...","isCorrect":true
     label: 'もんだい2 表記',
     instruction: '＿＿の ことばは どう かきますか。1・2・3・4から いちばん いい ものを ひとつ えらんで ください。',
     name: '表記 (penulisan kanji/katakana)',
-    rules: `Format soal: "question" = SATU kalimat Jepang; kata target ditulis HIRAGANA dan dibungkus <u>…</u>. Contoh: わたしは <u>でんしゃ</u>で がっこうへ いきます。
+    rules: `Format soal: "question" = SATU kalimat Jepang; kata target ditulis HIRAGANA dan dibungkus <u>…</u>. Contoh: わたしは <u>でんしゃ</u>で がっこうへ いきます。 DILARANG menulis bentuk KANJI kata target di mana pun dalam kalimat (isi <u>…</u> WAJIB hiragana, tanpa kanji) — kalau kanjinya tertulis di soal, jawabannya bocor.
 Opsi: 4 penulisan kanji (atau katakana utk kata serapan) kata target; 1 benar, 3 distraktor kanji mirip visual (電/雷, 持/待, 牛/午) atau katakana mirip (シ/ツ, ソ/ン).
 Balas: {"questions":[{"question":"...","options":[{"text":"...","isCorrect":true},...],"explanation":"..."}]}`,
   },
@@ -1675,9 +1675,20 @@ function _validateJlptQuestion(taskType, rawQuestion) {
   const question = String(rawQuestion || '').split('\n')[0].trim().slice(0, 1000);
   if (!question) return null;
   const HAS_U = /<u>[^<]+<\/u>/;
+  const KANJI_RE = /[一-鿿々]/;
+  // Isi tag <u>…</u> (kata target) — dicek jenis hurufnya per tipe.
+  const uContent = question.match(/<u>([^<]+)<\/u>/)?.[1] || '';
   switch (taskType) {
     case 'goi_kanji':
+      // 漢字読み: kata target wajib KANJI (kalau kana semua, soal "baca
+      // kanji"-nya trivial).
+      if (!HAS_U.test(question) || !KANJI_RE.test(uContent)) return null;
+      break;
     case 'goi_hyouki':
+      // 表記: kata target wajib KANA (tanpa kanji) — kalau kanji-nya sudah
+      // tertulis di soal, jawaban bocor (opsi benar = kanji yang sama).
+      if (!HAS_U.test(question) || KANJI_RE.test(uContent)) return null;
+      break;
     case 'goi_iikae':
       if (!HAS_U.test(question)) return null;
       break;
@@ -1712,6 +1723,10 @@ function _normalizeJlptOptions(rawOptions, optionCount, taskType, question) {
   if (taskType === 'goi_yougou' && question && !options.every((o) => o.text.includes(question))) return null;
   let firstCorrect = options.findIndex((o) => o.isCorrect);
   if (firstCorrect === -1) firstCorrect = 0;
+  // goi_hyouki: jawaban (penulisan kanji) tidak boleh muncul di kalimat soal
+  // — kalau muncul, jawabannya bocor (jaring pengaman kedua di samping cek
+  // kana-only pada isi <u> di _validateJlptQuestion).
+  if (taskType === 'goi_hyouki' && question && question.includes(options[firstCorrect].text)) return null;
   return options.map((o, i) => ({ text: o.text, isCorrect: i === firstCorrect }));
 }
 
