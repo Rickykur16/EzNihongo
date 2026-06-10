@@ -975,7 +975,7 @@ const QUIZ_KINDS = {
   mc_vocab:   { type: 'multiple_choice', cat: 'vocabulary', label: 'pilihan ganda kosakata (questionType=multiple_choice, questionCategory=vocabulary, 4 opsi 1 benar)' },
   mc_grammar: { type: 'multiple_choice', cat: 'grammar',    label: 'pilihan ganda grammar (multiple_choice, grammar, 4 opsi 1 benar)' },
   fill_blank: { type: 'fill_blank',      cat: 'vocabulary', label: 'isian (questionType=fill_blank, isi "correctAnswer", "options": [])' },
-  listening:  { type: 'multiple_choice', cat: 'listening',  label: 'menyimak (multiple_choice, questionCategory=listening, isi "audioScript" dengan teks Jepang yang didengar, 4 opsi arti)' },
+  listening:  { type: 'multiple_choice', cat: 'listening',  label: 'menyimak (multiple_choice, questionCategory=listening, isi "audioScript" dialog gaya JLPT format N:/A:/B:, 4 opsi 1 benar)' },
 };
 
 // Prompt generator editable admin (app_settings.quiz_gen_prompt). Placeholder
@@ -1005,7 +1005,7 @@ Aturan per jenis soal:
   * 4 opsi = cara baca HIRAGANA kata target; 1 benar (sesuai "reading" di daftar), 3 salah = kana mirip/diacak (ubah urutan kana, vokal panjang/pendek, dengung す/ず・し/じ, atau っ/つ). Contoh しごと → しゅう, じぎょう, しぎょう.
 - grammar (questionCategory "grammar", multiple_choice): kalimat dengan ＿＿ kosong; 4 opsi pola/partikel, 1 benar.
 - isian (questionType "fill_blank", questionCategory "vocabulary"): isi "correctAnswer" (jawaban singkat), "options": [].
-- menyimak (questionCategory "listening", multiple_choice): isi "audioScript" = kalimat Jepang yang didengar; 4 opsi arti, 1 benar.
+- menyimak (questionCategory "listening", multiple_choice): isi "audioScript" = dialog gaya JLPT, 1 baris per turn dengan prefix speaker — "N: " narator (baris pertama: situasi + pertanyaan; baris terakhir: pertanyaan diulang), "A: " perempuan, "B: " laki-laki, turn dipisah \\n. "question" = pertanyaan Jepang yang dibacakan narator; 4 opsi, 1 benar sesuai isi dialog. (Untuk soal listening per-mondai yang lebih autentik pakai tombol "Generate Listening JLPT".)
 
 Balas HANYA JSON valid tanpa teks lain, bentuk:
 {"questions":[{"question":"私の <u>仕事</u> はエンジニアです。","questionType":"multiple_choice","questionCategory":"vocabulary","audioScript":"","correctAnswer":"","explanation":"仕事 dibaca しごと = pekerjaan.","options":[{"text":"しごと","isCorrect":true},{"text":"しゅう","isCorrect":false},{"text":"じぎょう","isCorrect":false},{"text":"しぎょう","isCorrect":false}]}]}`;
@@ -1195,6 +1195,247 @@ Balas HANYA JSON valid tanpa teks lain:
   options = options.map((o, i) => ({ text: o.text, isCorrect: i === firstCorrect }));
   const explanation = String(parsed.explanation || '').trim().slice(0, 1000);
   res.json({ options, explanation });
+}));
+
+// ===== GENERATOR SOAL LISTENING GAYA JLPT (Claude) =====
+// Satu run = satu tipe mondai JLPT (課題理解 / ポイント理解 / 発話表現 / 即時応答).
+// AI menghasilkan soal LENGKAP: audioScript dialog format 3-voice (N:/A:/B:,
+// sama dgn format yang dimengerti parseDialog di tts.js) + pertanyaan + opsi +
+// penjelasan. Draft TIDAK disimpan — admin review di UI lalu simpan via
+// POST /admin/quiz-questions, masuk section listening sesuai nomor mondai.
+//
+// Struktur tiap tipe mengikuti format resmi ujian JLPT N5/N4:
+// - 課題理解 (mondai 1): N: situasi+pertanyaan → dialog A/B → N: pertanyaan
+//   diulang. Pertanyaan = aksi berikutnya / barang yang dibeli. 4 opsi.
+// - ポイント理解 (mondai 2): kerangka sama, pertanyaan menarget satu poin
+//   (alasan/waktu/tempat/orang). 4 opsi.
+// - 発話表現 (mondai 3): N: situasi singkat + 「何と言いますか。」. 3 opsi ucapan.
+// - 即時応答 (mondai 4): satu ucapan pendek A/B tanpa narator. 3 opsi balasan.
+// (Di ujian asli opsi mondai 3/4 dibacakan, tidak dicetak — di platform kita
+// opsi tampil di layar; kompromi yang disengaja.)
+const JLPT_LISTENING_TASKS = {
+  kadai: {
+    number: 1,
+    label: 'もんだい1 課題理解',
+    instruction: 'もんだい1では、はじめに しつもんを きいて ください。それから はなしを きいて、1から4の なかから、いちばん いい ものを ひとつ えらんで ください。',
+    optionCount: 4,
+    name: '課題理解 (memahami tugas/aksi berikutnya)',
+    rules: `Struktur audioScript WAJIB:
+- Baris pertama → N: [kalimat situasi][pertanyaan]. Pola situasi baku: 「店で、男の人と女の人が話しています。」「学校で先生が話しています。」 Pertanyaan menarget AKSI berikutnya atau barang/jumlah: 「男の人はこのあとまず何をしますか。」「女の人は何を買いますか。」
+- Baris tengah → dialog A: (perempuan) dan B: (laki-laki) bergantian.
+- Baris terakhir → N: [pertanyaan yang SAMA PERSIS diulang].
+Konvensi distraktor: dialog menyebut KEEMPAT opsi secara alami, tiga dieliminasi di alur percakapan (sudah dikerjakan / untuk besok / batal — 「もう〜ました」「やっぱり」「その前に」「あとで」). Jawaban TIDAK boleh hanya dari kalimat pertama dialog.
+"question" = teks pertanyaan Jepang yang sama dengan yang dibacakan narator.
+Opsi: 4 frasa Jepang pendek (bukan kalimat panjang), TEPAT 1 benar.`,
+  },
+  point: {
+    number: 2,
+    label: 'もんだい2 ポイント理解',
+    instruction: 'もんだい2では、はじめに しつもんを きいて ください。それから はなしを きいて、1から4の なかから、いちばん いい ものを ひとつ えらんで ください。',
+    optionCount: 4,
+    name: 'ポイント理解 (menangkap poin spesifik)',
+    rules: `Struktur audioScript WAJIB:
+- Baris pertama → N: [kalimat situasi][pertanyaan]. Pertanyaan menarget SATU poin spesifik: alasan (どうして), waktu (いつ/何時), tempat (どこ), orang (だれ), atau hal yang disukai/tidak. Contoh pola: 「女の人はどうしてパーティーに行きませんか。」「二人は何時に会いますか。」
+- Baris tengah → dialog A: (perempuan) dan B: (laki-laki) bergantian; sedikit lebih panjang dari mondai 1.
+- Baris terakhir → N: [pertanyaan yang SAMA PERSIS diulang].
+Konvensi distraktor: dialog menyebut beberapa kandidat jawaban yang salah sebelum jawaban benar muncul (mis. tebakan pertama lawan bicara salah, lalu dikoreksi).
+"question" = teks pertanyaan Jepang yang sama dengan yang dibacakan narator.
+Opsi: 4 frasa/klausa Jepang pendek, TEPAT 1 benar.`,
+  },
+  hatsuwa: {
+    number: 3,
+    label: 'もんだい3 発話表現',
+    instruction: 'もんだい3では、ぶんを きいて、1から3の なかから、いちばん いい ものを ひとつ えらんで ください。',
+    optionCount: 3,
+    name: '発話表現 (memilih ucapan yang tepat untuk situasi)',
+    rules: `Struktur audioScript WAJIB (di ujian asli ketiga pilihan DIBACAKAN, jadi ikutkan di script):
+- Baris 1 → N: [1-2 kalimat situasi]。何と言いますか。 Contoh pola: 「朝、学校で先生に会いました。何と言いますか。」「友達の消しゴムを使いたいです。何と言いますか。」
+- Baris 2-4 → tiga pilihan dibacakan tokoh dalam situasi (A: kalau perempuan, B: kalau laki-laki), 1 baris per opsi, diawali nomor: 「A: 1、消しゴム、借りてもいい？」
+"question" = teks baris narator (situasi + 何と言いますか。).
+Opsi (field "options", urutan SAMA dengan yang dibacakan): 3 ucapan Jepang pendek (3-8 kata) TANPA nomor di depannya, TEPAT 1 benar. Distraktor memakai kesalahan khas: arah memberi-menerima (あげます/くれます/もらいます), tingkat kesopanan salah, atau set phrase tertukar (いただきます vs ごちそうさま, 失礼します vs すみません).`,
+  },
+  sokuji: {
+    number: 4,
+    label: 'もんだい4 即時応答',
+    instruction: 'もんだい4では、ぶんを きいて、1から3の なかから、いちばん いい へんじを ひとつ えらんで ください。',
+    optionCount: 3,
+    name: '即時応答 (respon cepat percakapan)',
+    rules: `Struktur audioScript WAJIB (paling pendek, TANPA narator; di ujian asli ketiga balasan DIBACAKAN, jadi ikutkan di script):
+- Baris 1 → A: [satu ucapan pendek] ATAU B: [satu ucapan pendek] (pertanyaan/permintaan/komentar 1 kalimat). Contoh pola: 「お国はどちらですか。」「この荷物、ちょっと持ってもらえない？」
+- Baris 2-4 → tiga balasan dibacakan LAWAN bicara (gender berlawanan dari baris 1), 1 baris per opsi, diawali nomor: 「A: 1、うん、いいよ。」
+"question" = teks tetap: いちばん いい へんじを えらんで ください。
+Opsi (field "options", urutan SAMA dengan yang dibacakan): 3 balasan Jepang sangat pendek (2-6 kata) TANPA nomor di depannya, TEPAT 1 benar. Distraktor memakai: kata tanya tertukar (どちら = tempat vs pilihan), mengulang kata dari ucapan dengan makna salah, pasangan set phrase salah, atau bentuk waktu tidak nyambung.`,
+  },
+};
+
+const JLPT_LISTENING_LEVELS = {
+  N5: `Level N5: dialog 3-6 turn (di luar baris narator), total dialog ±80-120 karakter. SEMUA bentuk sopan です/ます. Kosakata dasar sehari-hari; angka/hari/jam diucapkan jelas. Tepat SATU "jebakan" revisi per dialog (mis. 「あ、やっぱり三つでいいです」). Setting: rumah, sekolah, toko, stasiun, restoran, rumah teman.`,
+  N4: `Level N4: dialog 4-8 turn, total dialog ±120-200 karakter. Boleh satu pertukaran bentuk kasual antar teman; pegawai/staf boleh keigo ringan (いらっしゃいませ dsb). Boleh dua jebakan per dialog. Grammar boleh: 〜てもいい/〜てはいけない, 〜なければならない, kondisional と/ば/たら, あげる/くれる/もらう, bentuk potensial. Setting: + kantor, dokter, telepon, pengumuman stasiun.`,
+};
+
+// Prompt wrapper editable admin (app_settings.listening_gen_prompt).
+// Placeholder per request: {{count}} {{level}} {{taskName}} {{taskRules}}
+// {{levelRules}} {{topic}} {{vocab}} {{grammar}} {{avoid}}.
+const LISTENING_GEN_PROMPT_DEFAULT = `Buatkan {{count}} soal LISTENING bahasa Jepang gaya ujian JLPT {{level}}, tipe {{taskName}}.
+
+{{taskRules}}
+
+{{levelRules}}
+
+Format speaker audioScript (1 baris per turn, prefix + titik dua):
+- "N: " = narator (membacakan situasi & pertanyaan)
+- "A: " = pembicara perempuan
+- "B: " = pembicara laki-laki
+
+{{topic}}
+Utamakan kosakata & pola grammar dari materi di bawah supaya siswa mengenalinya. Kata fungsi umum (partikel, salam, angka, kata tanya) boleh dari luar daftar, tapi JANGAN pakai kosakata konten yang jauh di atas level.
+
+Kosakata (japanese (reading) = arti):
+{{vocab}}
+
+Pola grammar:
+{{grammar}}
+{{avoid}}
+Aturan umum:
+- Setiap soal harus berdiri sendiri dengan situasi/topik BERBEDA satu sama lain.
+- TEPAT 1 opsi "isCorrect": true per soal. Distraktor sepadan (panjang/jenis mirip), masuk akal, dan disebut/terkait di dialog.
+- "explanation": 1-2 kalimat Bahasa Indonesia — kutip frasa kunci dialog yang menentukan jawaban.
+- audioScript maksimal 1200 karakter.
+
+Balas HANYA JSON valid tanpa teks lain, bentuk:
+{"questions":[{"question":"...","audioScript":"N: ...\\nB: ...\\nA: ...\\nN: ...","options":[{"text":"...","isCorrect":true},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false}],"explanation":"..."}]}`;
+
+async function _loadListeningGenPrompt() {
+  try {
+    const r = await query(`SELECT value FROM app_settings WHERE key = 'listening_gen_prompt'`);
+    const v = r.rows[0]?.value;
+    return (v && v.trim()) ? v : LISTENING_GEN_PROMPT_DEFAULT;
+  } catch {
+    return LISTENING_GEN_PROMPT_DEFAULT;
+  }
+}
+
+router.get('/settings/listening-gen-prompt', asyncHandler(async (_req, res) => {
+  const r = await query(`SELECT value FROM app_settings WHERE key = 'listening_gen_prompt'`);
+  res.json({ value: r.rows[0]?.value || '', default: LISTENING_GEN_PROMPT_DEFAULT });
+}));
+
+router.put('/settings/listening-gen-prompt', asyncHandler(async (req, res) => {
+  const value = String((req.body || {}).value || '');
+  await query(
+    `INSERT INTO app_settings (key, value, updated_at) VALUES ('listening_gen_prompt', $1, NOW())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+    [value]
+  );
+  res.json({ ok: true });
+}));
+
+router.post('/lessons/:lessonId/generate-listening', quizGenLimiter, asyncHandler(async (req, res) => {
+  const lessonId = req.params.lessonId;
+  const task = JLPT_LISTENING_TASKS[String(req.body?.taskType || '')];
+  if (!task) return res.status(400).json({ error: 'bad_task', detail: 'taskType harus kadai/point/hatsuwa/sokuji.' });
+  const level = JLPT_LISTENING_LEVELS[req.body?.level] ? String(req.body.level) : 'N5';
+  const count = Math.min(8, Math.max(1, Number(req.body?.count) || 3));
+  const topic = String(req.body?.topic || '').slice(0, 300).trim();
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
+
+  const lessonRes = await query(`SELECT id, module_id, type FROM lessons WHERE id = $1`, [lessonId]);
+  if (lessonRes.rows.length === 0) return res.status(404).json({ error: 'lesson not found' });
+  const lesson = lessonRes.rows[0];
+  if (lesson.type !== 'quiz') return res.status(400).json({ error: 'lesson_not_quiz', detail: 'Pelajaran ini bukan tipe quiz' });
+
+  // Grounding vocab + grammar modul — query sama dgn generate-quiz.
+  let vocabRes = await query(
+    `SELECT DISTINCT v.japanese, v.reading, v.indonesian, v.category
+     FROM module_vocabulary v
+     JOIN lesson_deck_items di ON di.vocabulary_id = v.id
+     JOIN lessons l ON l.id = di.lesson_id
+     WHERE l.module_id = $1 AND l.type = 'deck' AND v.japanese IS NOT NULL AND v.japanese <> ''
+     LIMIT 80`,
+    [lesson.module_id]
+  );
+  if (vocabRes.rows.length < 4) {
+    vocabRes = await query(
+      `SELECT japanese, reading, indonesian, category
+       FROM module_vocabulary
+       WHERE module_id = $1 AND japanese IS NOT NULL AND japanese <> ''
+       LIMIT 80`,
+      [lesson.module_id]
+    );
+  }
+  const grammarRes = await query(
+    `SELECT pattern, meaning, example FROM module_grammar
+     WHERE module_id = $1 AND pattern IS NOT NULL AND pattern <> ''
+     LIMIT 30`,
+    [lesson.module_id]
+  );
+
+  // Anti-duplikat: kasih AI baris situasi soal listening yang sudah ada.
+  const existingRes = await query(
+    `SELECT audio_script, question FROM quiz_questions
+     WHERE lesson_id = $1 AND question_category = 'listening'
+     ORDER BY created_at DESC LIMIT 30`,
+    [lessonId]
+  );
+  const avoidLines = existingRes.rows
+    .map((r) => String(r.audio_script || r.question || '').split('\n')[0].trim())
+    .filter(Boolean);
+
+  const vocabLines = vocabRes.rows.map((v) =>
+    `- ${v.japanese}${v.reading ? ` (${v.reading})` : ''} = ${v.indonesian || '?'}${v.category ? ` [${v.category}]` : ''}`).join('\n');
+  const grammarLines = grammarRes.rows.map((g) =>
+    `- ${g.pattern}${g.meaning ? ` = ${g.meaning}` : ''}${g.example ? `. Contoh: ${g.example}` : ''}`).join('\n');
+
+  const promptTpl = await _loadListeningGenPrompt();
+  const userContent = _fillTemplate(promptTpl, {
+    count,
+    level,
+    taskName: task.name,
+    taskRules: task.rules,
+    levelRules: JLPT_LISTENING_LEVELS[level],
+    topic: topic ? `Topik/instruksi tambahan dari admin: ${topic}\n` : '',
+    vocab: vocabLines || '(tidak ada — pakai kosakata standar level ini)',
+    grammar: grammarLines || '(tidak ada — pakai grammar standar level ini)',
+    avoid: avoidLines.length
+      ? `\nSoal listening yang SUDAH ADA di kuis ini (jangan bikin situasi/pertanyaan serupa):\n${avoidLines.map((s) => `- ${s.slice(0, 120)}`).join('\n')}\n`
+      : '',
+  });
+
+  const text = await callClaude({ system: QUIZ_GEN_SYSTEM, userContent, maxTokens: 4096 });
+  if (!text) return res.status(502).json({ error: 'ai_upstream' });
+  const parsed = _extractJsonObject(text);
+  if (!parsed || !Array.isArray(parsed.questions)) return res.status(502).json({ error: 'ai_parse' });
+
+  const clean = [];
+  for (const q of parsed.questions) {
+    if (!q || typeof q !== 'object') continue;
+    const question = String(q.question || '').trim().slice(0, 1000);
+    // Batas 1400 < MAX_TEXT_LEN tts publik (1500) supaya audio pasti bisa
+    // di-generate untuk siswa.
+    const audioScript = String(q.audioScript || '').trim().slice(0, 1400);
+    if (!question || !audioScript) continue;
+    // Script harus dialog valid yang dikenali parser TTS (prefix speaker).
+    if (!parseDialog(audioScript)) continue;
+    let options = Array.isArray(q.options)
+      ? q.options.map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect })).filter((o) => o.text)
+      : [];
+    if (options.length < 2) continue;
+    options = options.slice(0, task.optionCount);
+    let firstCorrect = options.findIndex((o) => o.isCorrect);
+    if (firstCorrect === -1) firstCorrect = 0;
+    options = options.map((o, i) => ({ text: o.text, isCorrect: i === firstCorrect }));
+    const explanation = String(q.explanation || '').trim().slice(0, 1000);
+    clean.push({ question, audioScript, options, explanation });
+    if (clean.length >= count) break;
+  }
+  if (clean.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan soal valid. Coba lagi.' });
+
+  res.json({
+    questions: clean,
+    section: { number: task.number, label: task.label, instruction: task.instruction },
+    vocabPool: vocabRes.rows.length,
+    grammarPool: grammarRes.rows.length,
+  });
 }));
 
 // Generate contoh kalimat (AI) untuk satu kosakata deck — dipakai tombol

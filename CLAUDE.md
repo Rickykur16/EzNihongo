@@ -218,6 +218,30 @@
   (listening: audio script) ke `POST /api/admin/generate-question-options`
   (`callClaude` di `backend/src/anthropic.js`) → 4 opsi (1 benar) + penjelasan
   diisi ke form. `ANTHROPIC_API_KEY` kosong → 503 (manual tetap jalan).
+- **Generate soal listening gaya JLPT (AI)** — tombol "🎧 Generate Listening
+  JLPT" di header modal Kelola Kuis (`admin.html` → `openListeningGen`). Satu
+  run = satu tipe mondai JLPT N5/N4: 課題理解 / ポイント理解 / 発話表現 /
+  即時応答 (struktur per tipe di-hardcode di `JLPT_LISTENING_TASKS`,
+  `backend/src/routes/admin.js`). Endpoint
+  `POST /api/admin/lessons/:lessonId/generate-listening`
+  ({ taskType, level, count, topic }) → draft soal LENGKAP: `audioScript`
+  dialog 3-voice format `N:/A:/B:` (kerangka JLPT: narator bacakan
+  situasi+pertanyaan → dialog → pertanyaan diulang; untuk 発話表現/即時応答
+  ketiga opsi ikut dibacakan di script — minimal 2 turn supaya lolos
+  `parseDialog` & multi-voice TTS) + pertanyaan + opsi (4 utk mondai 1/2,
+  3 utk mondai 3/4) + penjelasan. Grounding vocab/grammar modul + anti-duplikat
+  (baris situasi soal listening existing dikirim sbg avoid). Validasi server:
+  `parseDialog()` harus kenal script-nya, max 1400 char (< MAX_TEXT_LEN tts
+  1500). Draft di-review admin (bisa 🔊 test audio per draft via
+  `/admin/tts/preview` sebelum save) → simpan via POST /admin/quiz-questions ke
+  section listening nomor = nomor mondai (label+instruksi mondai auto-set;
+  kalau section sudah ada, label/instruksi existing dipertahankan dan
+  sort_order di-append). Prompt wrapper editable admin
+  (`app_settings.listening_gen_prompt`,
+  `GET/PUT /api/admin/settings/listening-gen-prompt`, placeholder
+  `{{count}}/{{level}}/{{taskName}}/{{taskRules}}/{{levelRules}}/{{topic}}/{{vocab}}/{{grammar}}/{{avoid}}`);
+  aturan per-mondai & per-level tetap di kode. Generator kuis bulk lama
+  (`generate-quiz`) prompt default-nya juga di-update ke format dialog.
 - **Generate contoh kalimat (AI) untuk kosakata deck** — tombol "✨ Generate
   contoh (AI)" di modal Kelola Deck → Contoh (`deckManageExamples` →
   `deckGenExamples`): `POST /api/admin/generate-vocab-examples` ({ vocabularyId,
