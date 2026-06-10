@@ -177,6 +177,14 @@
   `gtOpenTaskPopup` → `openGrammarTaskPopup`) sampai task selesai. Render kartu
   di-share via `gtCardsHtml`; complete popup (`gtPopupComplete`) menandai lesson
   task selesai + XP lalu lanjut.
+- **Maneko-chan disembunyikan saat penilaian** — widget tutor (`#ai-senpai`,
+  `window.AISenpai` di welcome.html) di-hide via `display:none` kontainer saat
+  lesson aktif bertipe `quiz`/`grammar_task` dan saat popup tugas grammar
+  terbuka (anti dipakai bantu jawab soal). Helper `setTutorHidden` /
+  `updateTutorVisibility`; dipanggil dari `renderLesson` (router pusat semua
+  navigasi lesson), `openGrammarTaskPopup`/`closeGrammarTaskPopup`, dan
+  `AISenpai.init` (hormati flag kalau init jalan setelah render pertama).
+  State chat & mode panel tidak disentuh — cuma visibilitas.
 - **Belajar adaptif (deteksi kelemahan + rekomendasi)** — panel "Fokus
   belajarmu" di dashboard siswa (`welcome.html`): akurasi per kategori
   (`vocabulary`/`grammar`/`listening`) + pelajaran untuk diulang + catatan

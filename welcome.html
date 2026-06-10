@@ -7584,6 +7584,8 @@ function closeGrammarTaskPopup() {
   document.querySelectorAll('.gt-popup-overlay').forEach((el) => el.remove());
   document.body.style.overflow = '';
   try { _stopAllTts(); } catch {}
+  // Maneko-chan balik tampil hanya kalau lesson aktif bukan quiz/grammar_task.
+  updateTutorVisibility();
 }
 
 function openGrammarTaskPopup(course, taskMod, taskLesson, onDone) {
@@ -7614,6 +7616,7 @@ function openGrammarTaskPopup(course, taskMod, taskLesson, onDone) {
   overlay.addEventListener('click', (ev) => { if (ev.target === overlay) gtPopupDismiss(); });
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
+  setTutorHidden(true); // popup tugas = sedang dinilai, sembunyikan Maneko-chan
   if (!window.__gtPopupEscWired) {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && document.querySelector('.gt-popup-overlay')) gtPopupDismiss();
@@ -8025,11 +8028,31 @@ function gtPendingTaskFor(course, lesson) {
   return null;
 }
 
+// Sembunyikan tutor Maneko-chan saat siswa sedang dinilai (pelajaran quiz /
+// grammar_task + popup tugas grammar) — jangan sampai tutor AI dipakai bantu
+// menjawab soal. Cukup display:none di kontainer #ai-senpai; state chat &
+// mode panel tetap utuh.
+window.__tutorHidden = false;
+function setTutorHidden(hidden) {
+  window.__tutorHidden = !!hidden;
+  const el = document.getElementById('ai-senpai');
+  if (el) el.style.display = hidden ? 'none' : '';
+}
+function updateTutorVisibility() {
+  // Popup tugas grammar lagi kebuka → tetap sembunyi apa pun lesson aktifnya.
+  if (document.querySelector('.gt-popup-overlay')) { setTutorHidden(true); return; }
+  const course = COURSE_CONTENT[currentState.course];
+  const module = course?.modules?.find((m) => m.id === currentState.moduleId);
+  const lesson = module?.lessons?.find((l) => l.id === currentState.lessonId);
+  setTutorHidden(!!lesson && (lesson.type === 'quiz' || lesson.type === 'grammar_task'));
+}
+
 function renderLesson() {
   gkStopAll(); // stop karaoke dialog dari lesson sebelumnya
   const course = COURSE_CONTENT[currentState.course];
   const module = course.modules.find(m => m.id === currentState.moduleId);
   const lesson = module.lessons.find(l => l.id === currentState.lessonId);
+  updateTutorVisibility();
   const progress = getProgress()[currentState.course] || {};
   const key = `${module.id}:${lesson.id}`;
   const isDone = !!progress[key];
@@ -8827,6 +8850,9 @@ const S = (window.AISenpai = {
     S._started = true;
     let el = document.getElementById('ai-senpai');
     if (!el) { el = document.createElement('div'); el.id = 'ai-senpai'; document.body.appendChild(el); }
+    // Hormati flag visibilitas kalau renderLesson sempat jalan duluan
+    // (lesson quiz/grammar_task = Maneko-chan disembunyikan).
+    if (window.__tutorHidden) el.style.display = 'none';
     // Pakai cache hanya kalau versinya cocok — bump versi (mis. ganti nama
     // maskot / sapaan) bikin chat lama dibuang & di-seed ulang dgn teks baru.
     try { const saved = JSON.parse(sessionStorage.getItem('ez_tutor_chat') || 'null'); if (saved && saved.v === 2 && Array.isArray(saved.chat)) S.chat = saved.chat; } catch {}
