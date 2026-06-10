@@ -7,7 +7,7 @@ import { query } from '../db.js';
 import { requireAuth, requireAdmin, asyncHandler } from '../middleware.js';
 import { isAdminEmail } from '../auth.js';
 import { COACH_PROMPT_DEFAULT } from './recommendations.js';
-import { callClaude, anthropicEnabled } from '../anthropic.js';
+import { callClaude, anthropicEnabled, ANTHROPIC_GEN_MODEL } from '../anthropic.js';
 import {
   NOTION_BAB_DB_ID_DEFAULT,
   NOTION_VOCAB_LESSON_RELATION,
@@ -1307,7 +1307,7 @@ Opsi (field "options"): 3 balasan Jepang sangat pendek (2-6 kata) seolah diucapk
 };
 
 const JLPT_LISTENING_LEVELS = {
-  N5: `Level N5: dialog 3-6 turn (di luar baris narator), total dialog ±80-120 karakter. SEMUA bentuk sopan です/ます. Kosakata dasar sehari-hari; angka/hari/jam diucapkan jelas. Tepat SATU "jebakan" revisi per dialog (mis. 「あ、やっぱり三つでいいです」). Setting: rumah, sekolah, toko, stasiun, restoran, rumah teman.`,
+  N5: `Level N5 (KETAT — pelajar pemula sekali): dialog 3-6 turn (di luar baris narator), total dialog ±80-120 karakter. SEMUA bentuk sopan です/ます, kalimat pendek satu klausa. Kosakata HANYA dari ±800 kata inti N5 — kalau ragu sebuah kata masuk N5, JANGAN pakai, ganti kata dari daftar Bab. Angka/hari/jam diucapkan jelas. Tepat SATU "jebakan" revisi per dialog (mis. 「あ、やっぱり三つでいいです」). Setting: rumah, sekolah, toko, stasiun, restoran, rumah teman.`,
   N4: `Level N4: dialog 4-8 turn, total dialog ±120-200 karakter. Boleh satu pertukaran bentuk kasual antar teman; pegawai/staf boleh keigo ringan (いらっしゃいませ dsb). Boleh dua jebakan per dialog. Grammar boleh: 〜てもいい/〜てはいけない, 〜なければならない, kondisional と/ば/たら, あげる/くれる/もらう, bentuk potensial. Setting: + kantor, dokter, telepon, pengumuman stasiun.`,
 };
 
@@ -1326,7 +1326,10 @@ Format speaker audioScript (1 baris per turn, prefix + titik dua):
 - "B: " = pembicara laki-laki
 
 {{topic}}
-Pakai kosakata & pola grammar dari materi di bawah HANYA kalau masuk secara wajar — cukup 1-3 kata dari daftar per soal. Kata fungsi umum (partikel, salam, angka, kata tanya) boleh dari luar daftar, tapi JANGAN pakai kosakata konten yang jauh di atas level.
+GROUNDING MATERI (penting — soal ini ujian untuk Bab tertentu):
+- Tiap dialog WAJIB berpusat pada kosakata/pola dari daftar di bawah — topik percakapan dan kata kuncinya (termasuk jawaban benar) diambil dari materi Bab.
+- Kata konten lain di luar daftar hanya jika perlu melengkapi percakapan, dan WAJIB selevel. Kata fungsi (partikel, salam, angka, kata tanya) bebas.
+- JANGAN menjejalkan banyak kata daftar ke satu dialog sampai kaku — cukup 2-3 kata daftar dipakai secara luwes per dialog, yang penting kata yang DIUJI berasal dari daftar.
 
 Kosakata (japanese (reading) = arti):
 {{vocab}}
@@ -1335,8 +1338,7 @@ Pola grammar:
 {{grammar}}
 {{avoid}}
 Aturan umum:
-- PALING PENTING: dialog harus terdengar ALAMI seperti percakapan sehari-hari orang Jepang beneran — bukan kalimat contoh buku teks yang kaku, bukan daftar kosakata yang dipaksa jadi percakapan. Boleh pakai respon pendek alami (そうですか、いいですね、あ、すみません) secukupnya.
-- JANGAN menjejalkan kosakata daftar ke dialog. Lebih baik dialog luwes yang cuma pakai 2 kata dari daftar daripada dialog kaku yang menjejalkan 6 kata.
+- Dialog harus terdengar ALAMI seperti percakapan sehari-hari orang Jepang — bukan kalimat contoh buku teks yang kaku. Boleh respon pendek alami (そうですか、いいですね、あ、すみません) secukupnya.
 - Setiap soal harus berdiri sendiri dengan situasi/topik BERBEDA satu sama lain.
 - TEPAT 1 opsi "isCorrect": true per soal. Distraktor sepadan (panjang/jenis mirip), masuk akal, dan disebut/terkait di dialog.
 - "explanation": 1-2 kalimat Bahasa Indonesia — kutip frasa kunci dialog yang menentukan jawaban.
@@ -1442,7 +1444,7 @@ router.post('/lessons/:lessonId/generate-listening', quizGenLimiter, asyncHandle
       : '',
   });
 
-  const text = await callClaude({ system: QUIZ_GEN_SYSTEM, userContent, maxTokens: 4096 });
+  const text = await callClaude({ system: QUIZ_GEN_SYSTEM, userContent, maxTokens: 4096, model: ANTHROPIC_GEN_MODEL });
   if (!text) return res.status(502).json({ error: 'ai_upstream' });
   const parsed = _extractJsonObject(text);
   if (!parsed || !Array.isArray(parsed.questions)) return res.status(502).json({ error: 'ai_parse' });
@@ -1615,8 +1617,12 @@ Balas: {"passages":[{"passage":"...","questions":[{...},{...}]}]}`,
 };
 
 const JLPT_GEN_LEVELS = {
-  N5: `Level N5: HANYA kosakata & kanji dasar (±800 kata, ±100 kanji), semua kalimat bentuk sopan です/ます, struktur sederhana. Kanji di luar daftar dasar tulis kana. Topik: rumah, sekolah, belanja, makanan, waktu, cuaca, keluarga.`,
-  N4: `Level N4: kosakata ±1500 kata / ±300 kanji, boleh bentuk kasual & 〜てもいい/〜なければならない/potensial/あげるくれるもらう, kalimat majemuk sederhana. Topik: + pekerjaan, kesehatan, rencana, perasaan, pengalaman.`,
+  N5: `Level N5 (KETAT — ini pelajar pemula sekali):
+- Kosakata HANYA dari ±800 kata inti N5. Kalau ragu sebuah kata masuk N5 atau bukan, JANGAN pakai — ganti dengan kata dari daftar kosakata Bab.
+- Kanji HANYA ±100 kanji dasar N5 (日 月 火 水 木 金 土 人 大 小 山 川 田 中 上 下 左 右 前 後 年 時 分 今 何 私 行 来 見 食 飲 読 書 話 聞 買 学 校 生 先 国 dst). Kata dengan kanji di luar itu WAJIB ditulis hiragana/katakana.
+- SEMUA kalimat bentuk sopan です/ます, satu klausa sederhana (tanpa kalimat majemuk), pendek.
+- Topik: rumah, sekolah, belanja, makanan, waktu, cuaca, keluarga, perkenalan.`,
+  N4: `Level N4: kosakata ±1500 kata / ±300 kanji (kanji di luar itu tulis kana), boleh bentuk kasual & 〜てもいい/〜なければならない/potensial/あげるくれるもらう, kalimat majemuk sederhana. Topik: + pekerjaan, kesehatan, rencana, perasaan, pengalaman.`,
 };
 
 // Prompt wrapper editable admin (app_settings.jlpt_gen_prompt). Placeholder:
@@ -1630,7 +1636,10 @@ const JLPT_GEN_PROMPT_DEFAULT = `Buatkan {{count}} {{unit}} soal bahasa Jepang g
 {{levelRules}}
 
 {{topic}}
-Pakai kosakata & pola grammar dari materi di bawah HANYA kalau masuk secara wajar — cukup 1-3 kata dari daftar per soal. Kata fungsi umum (partikel, salam, angka, kata tanya) boleh dari luar daftar, tapi JANGAN pakai kosakata konten yang jauh di atas level.
+GROUNDING MATERI (penting — soal ini ujian untuk Bab tertentu):
+- KATA TARGET yang diuji tiap soal WAJIB diambil dari daftar kosakata di bawah (untuk soal kosakata: kata yang digarisbawahi/diisi; untuk grammar: pola dari daftar grammar). Hanya kalau daftar benar-benar tidak punya kata yang cocok untuk format mondai ini, boleh pakai kata umum selevel.
+- Kata KONTEN lain (benda/kerja/sifat) di kalimat & opsi: utamakan dari daftar juga; di luar daftar hanya jika perlu melengkapi kalimat, dan WAJIB selevel.
+- Kata fungsi (partikel, kopula, angka, kata tanya, salam) bebas.
 
 Kosakata (japanese (reading) = arti):
 {{vocab}}
@@ -1639,7 +1648,7 @@ Pola grammar:
 {{grammar}}
 {{avoid}}
 Aturan umum:
-- PALING PENTING: kalimat & teks harus terdengar ALAMI seperti bahasa Jepang sehari-hari beneran — bukan kalimat buku teks kaku, bukan daftar kosakata yang dipaksa jadi kalimat.
+- Kalimat & teks harus terdengar ALAMI seperti bahasa Jepang sehari-hari — bukan kalimat buku teks kaku. Alami TIDAK berarti boleh keluar dari materi: pakai kosakata daftar dengan cara yang luwes.
 - Setiap soal berdiri sendiri dengan topik/situasi BERBEDA satu sama lain.
 - TEPAT 1 opsi "isCorrect": true per soal. Distraktor sepadan (panjang/jenis mirip) dan menarget kesalahan khas pembelajar, bukan asal-asalan.
 - "explanation": 1-2 kalimat Bahasa Indonesia menjelaskan kenapa jawaban benar (sebut arti kata/pola kuncinya).
@@ -1847,6 +1856,7 @@ router.post('/lessons/:lessonId/generate-jlpt', quizGenLimiter, asyncHandler(asy
     system: QUIZ_GEN_SYSTEM,
     userContent,
     maxTokens: task.needsPassage ? 6000 : 4096,
+    model: ANTHROPIC_GEN_MODEL,
   });
   if (!text) return res.status(502).json({ error: 'ai_upstream' });
   const parsed = _extractJsonObject(text);

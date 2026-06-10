@@ -277,7 +277,11 @@
   (`app_settings.listening_gen_prompt`,
   `GET/PUT /api/admin/settings/listening-gen-prompt`, placeholder
   `{{count}}/{{level}}/{{taskName}}/{{taskRules}}/{{levelRules}}/{{topic}}/{{vocab}}/{{grammar}}/{{avoid}}`);
-  aturan per-mondai & per-level tetap di kode. Generator kuis bulk lama
+  aturan per-mondai & per-level tetap di kode. **Model generator soal**:
+  generate-jlpt + generate-listening pakai `ANTHROPIC_GEN_MODEL` (default
+  `claude-sonnet-4-6`) — haiku terbukti gagal terus di 組み立て (semua draft
+  ditolak validasi permutasi); fitur siswa (tutor/grammar eval/coaching)
+  tetap `ANTHROPIC_MODEL` (default haiku). Generator kuis bulk lama
   (`generate-quiz`) juga di-update: prompt default format dialog + contoh JSON
   menyertakan 1 soal listening lengkap (model suka meniru contoh — dulu contoh
   `audioScript:""` bikin script kosong), draft listening tanpa script yang
