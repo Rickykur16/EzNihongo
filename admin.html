@@ -1607,7 +1607,7 @@ window.generateQuizAI = async (lessonId, lessonTitle) => {
       <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="mc_vocab" checked /> Pilihan ganda — kosakata</label>
       <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="mc_grammar" checked /> Pilihan ganda — grammar</label>
       <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="fill_blank" /> Isian (fill blank)</label>
-      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="listening" /> Menyimak (listening)</label>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:6px;"><input type="checkbox" class="qg-kind" value="listening" /> Menyimak (listening) <span style="font-size:11px;color:#737373;">— dialog JLPT per-mondai lebih bagus lewat tombol 🎧 Generate Listening JLPT</span></label>
     </div>
     <div class="field">
       <label>Instruksi tambahan (opsional)</label>
@@ -1677,7 +1677,10 @@ function quizGenRenderPreview() {
       body = `<div class="field"><label>Jawaban benar</label><input id="qg_ca_${i}" value="${escapeHtml(q.correctAnswer || '')}" /></div>`;
     } else {
       if (q.questionCategory === 'listening') {
-        body += `<div class="field"><label>Audio script (Jepang)</label><input id="qg_audio_${i}" value="${escapeHtml(q.audioScript || '')}" /></div>`;
+        // Textarea, BUKAN input — dialog multi-baris N:/A:/B:; newline di
+        // attribute value <input> dinormalisasi browser jadi spasi → script
+        // jadi 1 baris & parseDialog gagal (single voice).
+        body += `<div class="field"><label>Audio dialog (N: narator · A: cewe · B: cowo)</label><textarea id="qg_audio_${i}" rows="5" lang="ja" style="font-family:'Noto Sans JP',sans-serif;width:100%;font-size:13px;line-height:1.6;box-sizing:border-box;">${escapeHtml(q.audioScript || '')}</textarea></div>`;
       }
       body += '<div class="field"><label>Opsi (pilih yang benar)</label>' + (q.options || []).map((o, j) =>
         `<label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-bottom:4px;">

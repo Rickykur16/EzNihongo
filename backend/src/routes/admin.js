@@ -1005,10 +1005,14 @@ Aturan per jenis soal:
   * 4 opsi = cara baca HIRAGANA kata target; 1 benar (sesuai "reading" di daftar), 3 salah = kana mirip/diacak (ubah urutan kana, vokal panjang/pendek, dengung す/ず・し/じ, atau っ/つ). Contoh しごと → しゅう, じぎょう, しぎょう.
 - grammar (questionCategory "grammar", multiple_choice): kalimat dengan ＿＿ kosong; 4 opsi pola/partikel, 1 benar.
 - isian (questionType "fill_blank", questionCategory "vocabulary"): isi "correctAnswer" (jawaban singkat), "options": [].
-- menyimak (questionCategory "listening", multiple_choice): isi "audioScript" = dialog gaya JLPT, 1 baris per turn dengan prefix speaker — "N: " narator (baris pertama: situasi + pertanyaan; baris terakhir: pertanyaan diulang), "A: " perempuan, "B: " laki-laki, turn dipisah \\n. "question" = pertanyaan Jepang yang dibacakan narator; 4 opsi, 1 benar sesuai isi dialog. (Untuk soal listening per-mondai yang lebih autentik pakai tombol "Generate Listening JLPT".)
+- menyimak (questionCategory "listening", multiple_choice): "audioScript" WAJIB diisi (soal tanpa audioScript akan DIBUANG) dengan dialog gaya JLPT, alurnya: narator → dialog → pertanyaan diulang. 1 baris per turn dengan prefix speaker, turn dipisah \\n:
+  * baris pertama "N: " = narator membacakan kalimat situasi + pertanyaan (contoh: N: 店で、男の人と女の人が話しています。男の人は何を買いますか。)
+  * baris tengah = dialog "A: " (perempuan) dan "B: " (laki-laki) bergantian, 3-6 turn — WAJIB ada baris A: dan B:, jangan pakai N: di sini
+  * baris terakhir "N: " = pertanyaan yang sama diulang persis
+  "question" = pertanyaan Jepang yang dibacakan narator; 4 opsi, 1 benar sesuai isi dialog. (Untuk soal listening per-mondai yang lebih autentik pakai tombol "Generate Listening JLPT".)
 
 Balas HANYA JSON valid tanpa teks lain, bentuk:
-{"questions":[{"question":"私の <u>仕事</u> はエンジニアです。","questionType":"multiple_choice","questionCategory":"vocabulary","audioScript":"","correctAnswer":"","explanation":"仕事 dibaca しごと = pekerjaan.","options":[{"text":"しごと","isCorrect":true},{"text":"しゅう","isCorrect":false},{"text":"じぎょう","isCorrect":false},{"text":"しぎょう","isCorrect":false}]}]}`;
+{"questions":[{"question":"私の <u>仕事</u> はエンジニアです。","questionType":"multiple_choice","questionCategory":"vocabulary","audioScript":"","correctAnswer":"","explanation":"仕事 dibaca しごと = pekerjaan.","options":[{"text":"しごと","isCorrect":true},{"text":"しゅう","isCorrect":false},{"text":"じぎょう","isCorrect":false},{"text":"しぎょう","isCorrect":false}]},{"question":"女の人は何を買いますか。","questionType":"multiple_choice","questionCategory":"listening","audioScript":"N: 店で、女の人と店の人が話しています。女の人は何を買いますか。\\nA: すみません、りんごを三つください。\\nB: はい。みかんも安いですよ。\\nA: じゃあ、みかんも三つください。\\nN: 女の人は何を買いますか。","correctAnswer":"","explanation":"Perempuan membeli 3 apel lalu menambah 3 jeruk.","options":[{"text":"りんごとみかん","isCorrect":true},{"text":"りんごだけ","isCorrect":false},{"text":"みかんだけ","isCorrect":false},{"text":"バナナ","isCorrect":false}]}]}`;
 
 function _fillTemplate(tpl, vars) {
   return String(tpl).replace(/\{\{(\w+)\}\}/g, (_m, k) => (vars[k] != null ? String(vars[k]) : ''));
@@ -1127,7 +1131,11 @@ router.post('/lessons/:lessonId/generate-quiz', quizGenLimiter, asyncHandler(asy
     let qcat = ['vocabulary', 'grammar', 'listening'].includes(q.questionCategory) ? q.questionCategory : 'vocabulary';
     if (!allowedCats.has(qcat)) qcat = fallbackCat;
     const explanation = String(q.explanation || '').trim().slice(0, 1000);
-    const audioScript = String(q.audioScript || '').trim().slice(0, 500);
+    // 1400 < MAX_TEXT_LEN tts publik (1500) — dialog JLPT bisa panjang.
+    const audioScript = String(q.audioScript || '').trim().slice(0, 1400);
+    // Listening tanpa script dialog yang dikenali parser TTS = soal cacat
+    // (ga ada audio buat diputar siswa) → buang draft-nya.
+    if (qcat === 'listening' && qtype !== 'fill_blank' && !parseDialog(audioScript)) continue;
     if (qtype === 'fill_blank') {
       const correctAnswer = String(q.correctAnswer || '').trim().slice(0, 200);
       if (!correctAnswer) continue;
