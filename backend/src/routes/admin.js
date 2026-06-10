@@ -1510,7 +1510,7 @@ const JLPT_GEN_TASKS = {
     label: 'もんだい1 漢字読み',
     instruction: '＿＿の ことばは ひらがなで どう かきますか。1・2・3・4から いちばん いい ものを ひとつ えらんで ください。',
     name: '漢字読み (cara baca kanji)',
-    rules: `Format soal: "question" = SATU kalimat Jepang natural; kata target ditulis KANJI dan WAJIB dibungkus tag <u>…</u> (hanya kata target). Contoh: 私の <u>仕事</u> はエンジニアです。 DILARANG menulis kalimat tanya meta ("読み方は何ですか" dsb) — instruksi mondai sudah tampil otomatis.
+    rules: `Format soal: "question" = SATU kalimat Jepang natural; kata target ditulis KANJI (isi <u>…</u> WAJIB mengandung kanji, BUKAN kana) dan WAJIB dibungkus tag <u>…</u> (hanya kata target). Contoh: 私の <u>仕事</u> はエンジニアです。 DILARANG menulis kalimat tanya meta ("読み方は何ですか" dsb) — instruksi mondai sudah tampil otomatis.
 Opsi: 4 cara baca HIRAGANA kata target (hiragana saja, tanpa kanji/romaji); 1 benar, 3 distraktor kana mirip: vokal panjang/pendek (おばさん/おばあさん), dakuten (か/が, す/ず), っ kecil (きて/きって), urutan kana ditukar.
 Balas: {"questions":[{"question":"...","options":[{"text":"...","isCorrect":true},...],"explanation":"..."}]}`,
   },
@@ -1519,7 +1519,7 @@ Balas: {"questions":[{"question":"...","options":[{"text":"...","isCorrect":true
     label: 'もんだい2 表記',
     instruction: '＿＿の ことばは どう かきますか。1・2・3・4から いちばん いい ものを ひとつ えらんで ください。',
     name: '表記 (penulisan kanji/katakana)',
-    rules: `Format soal: "question" = SATU kalimat Jepang; kata target ditulis HIRAGANA dan dibungkus <u>…</u>. Contoh: わたしは <u>でんしゃ</u>で がっこうへ いきます。
+    rules: `Format soal: "question" = SATU kalimat Jepang; kata target ditulis HIRAGANA dan dibungkus <u>…</u>. Contoh: わたしは <u>でんしゃ</u>で がっこうへ いきます。 DILARANG menulis bentuk KANJI kata target di mana pun dalam kalimat (isi <u>…</u> WAJIB hiragana, tanpa kanji) — kalau kanjinya tertulis di soal, jawabannya bocor.
 Opsi: 4 penulisan kanji (atau katakana utk kata serapan) kata target; 1 benar, 3 distraktor kanji mirip visual (電/雷, 持/待, 牛/午) atau katakana mirip (シ/ツ, ソ/ン).
 Balas: {"questions":[{"question":"...","options":[{"text":"...","isCorrect":true},...],"explanation":"..."}]}`,
   },
@@ -1565,9 +1565,10 @@ Balas: {"questions":[{"question":"...","options":[{"text":"...","isCorrect":true
     label: 'もんだい2 文の組み立て',
     instruction: '＿★＿に 入る ものは どれですか。1・2・3・4から いちばん いい ものを 一つ えらんで ください。',
     name: '文の組み立て (susun kalimat ★)',
-    rules: `Format soal: "question" = kalimat dengan 4 slot kosong berurutan, salah satu diberi tanda bintang, ditulis PERSIS dengan pola: [awal kalimat]＿＿　＿＿　＿★＿　＿＿[akhir kalimat]。 (underscore full-width ＿, dipisah spasi full-width; posisi ★ boleh di slot mana saja). Contoh: つくえの　＿＿　＿＿　＿★＿　＿＿が　あります。
-Opsi: 4 fragmen kalimat (potongan yang mengisi keempat slot); "isCorrect": true HANYA pada fragmen yang jatuh di posisi ★ ketika kalimat disusun benar.
-"explanation" WAJIB menampilkan kalimat utuh dengan urutan benar + terjemahan Indonesia singkat.
+    rules: `Format soal: "question" = kalimat dengan 4 slot kosong berurutan, salah satu diberi tanda bintang, ditulis PERSIS dengan pola: [awal kalimat]＿＿　＿＿　＿★＿　＿＿[akhir kalimat]。 (underscore full-width ＿, dipisah spasi full-width; posisi ★ boleh di slot mana saja).
+Opsi: 4 POTONGAN kalimat BERBEDA yang SEMUANYA dipakai mengisi keempat slot, masing-masing TEPAT SATU KALI — [awal kalimat] + keempat potongan tersusun + [akhir kalimat] HARUS PERSIS membentuk kalimat utuh yang gramatikal (kalimat itu wajib ditulis di "explanation"; server memverifikasi dengan menyusun ulang potongan, draft yang tidak bisa disusun DIBUANG). DILARANG: (a) opsi berupa kata-kata alternatif yang hanya satu dipakai; (b) 4 opsi yang merupakan acakan urutan dari potongan yang sama (mis. 弟は銀行員 / は弟銀行員 / …); (c) 4 kata benda polos tanpa partikel — tiap potongan biasanya membawa partikelnya (「友だちと」「えいがを」「見に」). Campur jenis potongan (frasa benda+partikel / kata kerja / pelengkap) supaya urutannya menantang. "isCorrect": true HANYA pada potongan yang jatuh di posisi ★.
+Contoh lengkap: question = きのう　＿＿　＿＿　＿★＿　＿＿。 opsi = 友だちと / えいがを / 見に / 行きました → susunan benar: きのう友だちとえいがを見に行きました。 → posisi ★ (slot ke-3) diisi 見に → "isCorrect": true di 見に.
+"explanation" WAJIB menampilkan kalimat utuh dengan urutan benar (memuat KEEMPAT potongan) + terjemahan Indonesia singkat.
 Balas: {"questions":[{"question":"...","options":[{"text":"...","isCorrect":true},...],"explanation":"..."}]}`,
   },
   bunpou_bunshou: {
@@ -1675,9 +1676,20 @@ function _validateJlptQuestion(taskType, rawQuestion) {
   const question = String(rawQuestion || '').split('\n')[0].trim().slice(0, 1000);
   if (!question) return null;
   const HAS_U = /<u>[^<]+<\/u>/;
+  const KANJI_RE = /[一-鿿々]/;
+  // Isi tag <u>…</u> (kata target) — dicek jenis hurufnya per tipe.
+  const uContent = question.match(/<u>([^<]+)<\/u>/)?.[1] || '';
   switch (taskType) {
     case 'goi_kanji':
+      // 漢字読み: kata target wajib KANJI (kalau kana semua, soal "baca
+      // kanji"-nya trivial).
+      if (!HAS_U.test(question) || !KANJI_RE.test(uContent)) return null;
+      break;
     case 'goi_hyouki':
+      // 表記: kata target wajib KANA (tanpa kanji) — kalau kanji-nya sudah
+      // tertulis di soal, jawaban bocor (opsi benar = kanji yang sama).
+      if (!HAS_U.test(question) || KANJI_RE.test(uContent)) return null;
+      break;
     case 'goi_iikae':
       if (!HAS_U.test(question)) return null;
       break;
@@ -1712,7 +1724,42 @@ function _normalizeJlptOptions(rawOptions, optionCount, taskType, question) {
   if (taskType === 'goi_yougou' && question && !options.every((o) => o.text.includes(question))) return null;
   let firstCorrect = options.findIndex((o) => o.isCorrect);
   if (firstCorrect === -1) firstCorrect = 0;
+  // goi_hyouki: jawaban (penulisan kanji) tidak boleh muncul di kalimat soal
+  // — kalau muncul, jawabannya bocor (jaring pengaman kedua di samping cek
+  // kana-only pada isi <u> di _validateJlptQuestion).
+  if (taskType === 'goi_hyouki' && question && question.includes(options[firstCorrect].text)) return null;
   return options.map((o, i) => ({ text: o.text, isCorrect: i === firstCorrect }));
+}
+
+// 組み立て: verifikasi matematis bahwa soalnya beneran puzzle susun-kalimat.
+// Kalimat soal = [prefix][4 slot][suffix]; kalimat utuh (wajib ada di
+// explanation) harus PERSIS prefix + keempat potongan dalam suatu urutan +
+// suffix (whitespace diabaikan). Coba 24 permutasi; kalau ada yang cocok,
+// return indeks opsi yang jatuh di slot ★ (= kunci jawaban terverifikasi —
+// dipakai meng-override penandaan model). Kalau tidak ada → null (soal
+// pilihan-kata menyamar susun-kalimat, atau partikel penyambung hilang).
+function _validateKumitate(question, options, explanation) {
+  const slotRe = /(?:＿★＿|＿＿)(?:[　\s]*(?:＿★＿|＿＿)){3}/;
+  const m = question.match(slotRe);
+  if (!m) return null;
+  const tokens = m[0].match(/＿★＿|＿＿/g) || [];
+  if (tokens.length !== 4) return null;
+  const starIdx = tokens.indexOf('＿★＿');
+  if (starIdx === -1) return null;
+  const strip = (s) => String(s).replace(/[\s　]/g, '');
+  const prefix = strip(question.slice(0, m.index));
+  const suffix = strip(question.slice(m.index + m[0].length));
+  const expl = strip(explanation);
+  const frags = options.map((o) => strip(o.text));
+  if (frags.length !== 4 || frags.some((f) => !f)) return null;
+  const ix = [0, 1, 2, 3];
+  for (const a of ix) for (const b of ix) for (const c of ix) for (const d of ix) {
+    if (new Set([a, b, c, d]).size !== 4) continue;
+    const p = [a, b, c, d];
+    const candidate = prefix + p.map((i) => frags[i]).join('') + suffix;
+    if (expl.includes(candidate)) return p[starIdx];
+  }
+  return null;
 }
 
 const JLPT_PASSAGE_MAXLEN = { bunpou_bunshou: 600, dokkai_tanbun: 400, dokkai_chuubun: 1000, dokkai_jouhou: 800 };
@@ -1839,12 +1886,19 @@ router.post('/lessons/:lessonId/generate-jlpt', quizGenLimiter, asyncHandler(asy
       if (!q || typeof q !== 'object') continue;
       const question = _validateJlptQuestion(taskType, q.question);
       if (!question) continue;
-      const options = _normalizeJlptOptions(q.options, task.optionCount, taskType, question);
+      let options = _normalizeJlptOptions(q.options, task.optionCount, taskType, question);
       if (!options) continue;
-      clean.push({
-        question, passage: '', options,
-        explanation: String(q.explanation || '').trim().slice(0, 1000),
-      });
+      const explanation = String(q.explanation || '').trim().slice(0, 1000);
+      // Kumitate: verifikasi permutasi (lihat _validateKumitate) — menolak
+      // puzzle palsu (opsi kata-alternatif, opsi acakan chunk yang sama,
+      // potongan tanpa partikel penyambung) DAN meng-override kunci jawaban
+      // dengan potongan yang beneran jatuh di slot ★.
+      if (taskType === 'bunpou_kumitate') {
+        const starOptIdx = _validateKumitate(question, options, explanation);
+        if (starOptIdx == null) continue;
+        options = options.map((o, i) => ({ text: o.text, isCorrect: i === starOptIdx }));
+      }
+      clean.push({ question, passage: '', options, explanation });
       if (clean.length >= count) break;
     }
   }
