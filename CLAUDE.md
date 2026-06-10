@@ -247,7 +247,13 @@
   `GET/PUT /api/admin/settings/listening-gen-prompt`, placeholder
   `{{count}}/{{level}}/{{taskName}}/{{taskRules}}/{{levelRules}}/{{topic}}/{{vocab}}/{{grammar}}/{{avoid}}`);
   aturan per-mondai & per-level tetap di kode. Generator kuis bulk lama
-  (`generate-quiz`) prompt default-nya juga di-update ke format dialog.
+  (`generate-quiz`) juga di-update: prompt default format dialog + contoh JSON
+  menyertakan 1 soal listening lengkap (model suka meniru contoh — dulu contoh
+  `audioScript:""` bikin script kosong), draft listening tanpa script yang
+  lolos `parseDialog` dibuang server-side, preview admin pakai `<textarea>`
+  (dulu `<input>` — newline dialog di-collapse browser → single voice).
+  Catatan: kalau admin pernah "Simpan Prompt" custom di modal Generate Soal
+  AI, default baru TIDAK kepakai — kosongkan & simpan utk reset.
 - **Generate contoh kalimat (AI) untuk kosakata deck** — tombol "✨ Generate
   contoh (AI)" di modal Kelola Deck → Contoh (`deckManageExamples` →
   `deckGenExamples`): `POST /api/admin/generate-vocab-examples` ({ vocabularyId,
