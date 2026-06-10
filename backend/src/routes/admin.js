@@ -1565,9 +1565,10 @@ Balas: {"questions":[{"question":"...","options":[{"text":"...","isCorrect":true
     label: 'もんだい2 文の組み立て',
     instruction: '＿★＿に 入る ものは どれですか。1・2・3・4から いちばん いい ものを 一つ えらんで ください。',
     name: '文の組み立て (susun kalimat ★)',
-    rules: `Format soal: "question" = kalimat dengan 4 slot kosong berurutan, salah satu diberi tanda bintang, ditulis PERSIS dengan pola: [awal kalimat]＿＿　＿＿　＿★＿　＿＿[akhir kalimat]。 (underscore full-width ＿, dipisah spasi full-width; posisi ★ boleh di slot mana saja). Contoh: つくえの　＿＿　＿＿　＿★＿　＿＿が　あります。
-Opsi: 4 fragmen kalimat (potongan yang mengisi keempat slot); "isCorrect": true HANYA pada fragmen yang jatuh di posisi ★ ketika kalimat disusun benar.
-"explanation" WAJIB menampilkan kalimat utuh dengan urutan benar + terjemahan Indonesia singkat.
+    rules: `Format soal: "question" = kalimat dengan 4 slot kosong berurutan, salah satu diberi tanda bintang, ditulis PERSIS dengan pola: [awal kalimat]＿＿　＿＿　＿★＿　＿＿[akhir kalimat]。 (underscore full-width ＿, dipisah spasi full-width; posisi ★ boleh di slot mana saja).
+Opsi: 4 POTONGAN kalimat BERBEDA yang SEMUANYA dipakai mengisi keempat slot, masing-masing TEPAT SATU KALI — saat keempat potongan disusun dengan urutan benar, terbentuk kalimat utuh yang gramatikal. DILARANG KERAS membuat opsi berupa kata-kata alternatif yang hanya satu dipakai (itu bukan 組み立て). Campur jenis potongan (frasa benda / partikel / kata kerja) supaya urutannya menantang. "isCorrect": true HANYA pada potongan yang jatuh di posisi ★.
+Contoh lengkap: question = きのう　＿＿　＿＿　＿★＿　＿＿。 opsi = 友だちと / えいがを / 見に / 行きました → susunan benar: きのう友だちとえいがを見に行きました。 → posisi ★ (slot ke-3) diisi 見に → "isCorrect": true di 見に.
+"explanation" WAJIB menampilkan kalimat utuh dengan urutan benar (memuat KEEMPAT potongan) + terjemahan Indonesia singkat.
 Balas: {"questions":[{"question":"...","options":[{"text":"...","isCorrect":true},...],"explanation":"..."}]}`,
   },
   bunpou_bunshou: {
@@ -1856,10 +1857,13 @@ router.post('/lessons/:lessonId/generate-jlpt', quizGenLimiter, asyncHandler(asy
       if (!question) continue;
       const options = _normalizeJlptOptions(q.options, task.optionCount, taskType, question);
       if (!options) continue;
-      clean.push({
-        question, passage: '', options,
-        explanation: String(q.explanation || '').trim().slice(0, 1000),
-      });
+      const explanation = String(q.explanation || '').trim().slice(0, 1000);
+      // Kumitate asli: KEEMPAT potongan terpakai di kalimat utuh (yang wajib
+      // ditulis di explanation). Kalau ada opsi yang tidak muncul di
+      // explanation, berarti model bikin soal pilihan-kata yang menyamar jadi
+      // soal susun-kalimat (slot bohongan) → buang.
+      if (taskType === 'bunpou_kumitate' && !options.every((o) => explanation.includes(o.text))) continue;
+      clean.push({ question, passage: '', options, explanation });
       if (clean.length >= count) break;
     }
   }
