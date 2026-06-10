@@ -251,9 +251,14 @@
   menyertakan 1 soal listening lengkap (model suka meniru contoh — dulu contoh
   `audioScript:""` bikin script kosong), draft listening tanpa script yang
   lolos `parseDialog` dibuang server-side, preview admin pakai `<textarea>`
-  (dulu `<input>` — newline dialog di-collapse browser → single voice).
-  Catatan: kalau admin pernah "Simpan Prompt" custom di modal Generate Soal
-  AI, default baru TIDAK kepakai — kosongkan & simpan utk reset.
+  (dulu `<input>` — newline dialog di-collapse browser → single voice),
+  draft listening bulk wajib struktur JLPT penuh (≥3 turn + ada N + A + B,
+  menolak output "N sebagai tokoh"). **Jebakan prompt membeku** (textarea
+  prompt dulu prefilled default → sekali "Simpan Prompt", default lama beku
+  di `app_settings` dan perbaikan default berikutnya ga kepakai) sudah
+  ditutup: migration 033 menghapus `quiz_gen_prompt`/`listening_gen_prompt`
+  tersimpan (one-time reset), dan kedua modal kini hanya memuat nilai
+  custom (kosong = default server terbaru).
 - **Generate contoh kalimat (AI) untuk kosakata deck** — tombol "✨ Generate
   contoh (AI)" di modal Kelola Deck → Contoh (`deckManageExamples` →
   `deckGenExamples`): `POST /api/admin/generate-vocab-examples` ({ vocabularyId,
