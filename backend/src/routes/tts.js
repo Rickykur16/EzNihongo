@@ -91,6 +91,10 @@ const ttsLimiter = rateLimit({
 // `elevenlabs|<voiceA>:<voiceB>:...|<model>|v2|<text>`
 // (versi naik kalau voice_settings preset berubah signifikan)
 const SETTINGS_VERSION = 'v6'; // jeda 1.5s setelah narrator (was 700ms)
+// Catatan: parseDialog berubah terima 1-turn TANPA bump version — teks
+// 1-turn yang terdampak otomatis dapet hash baru karena voice list-nya
+// berubah (single → role voice); bump global = regenerate SEMUA cache
+// (cost ElevenLabs), gak perlu.
 export function ttsHashKey(text, voices) {
   const sortedVoices = voices.slice().sort().join(':');
   return crypto.createHash('sha256')
@@ -115,7 +119,9 @@ function sendAudio(res, buf, contentType) {
 
 // Detect JLPT-style dialog: lines like "A: ...", "B: ...", "女: ...", "男: ...".
 // Speaker label = 1-10 char before first colon. Return turns array, or null
-// kalau bukan dialog (plain text).
+// kalau bukan dialog (plain text). Satu baris ber-prefix juga dianggap dialog
+// (mis. soal 即時応答 cuma 1 ucapan) — dapet voice sesuai role & prefix-nya
+// gak ikut kebaca; teks polos tanpa prefix tetap null → single-voice fallback.
 export function parseDialog(text) {
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean);
   if (lines.length === 0) return null;
@@ -133,7 +139,7 @@ export function parseDialog(text) {
       return null;
     }
   }
-  return turns.length >= 2 ? turns : null;
+  return turns.length >= 1 ? turns : null;
 }
 
 // Map speaker label → { voiceId, role }. 3 roles: narrator/female/male.
