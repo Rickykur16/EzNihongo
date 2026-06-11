@@ -2816,6 +2816,58 @@
     color: #1B1410;
     white-space: normal;
   }
+  /* 情報検索: passage berformat pengumuman (judul + baris label：nilai)
+     dirender sebagai flyer ala lembar soal JLPT — bingkai hitam, judul
+     center, tabel info. Deteksi format di renderQuizPassage(). */
+  .quiz-notice {
+    background: #fff;
+    border: 2px solid #2a2a2a;
+    border-left: 2px solid #2a2a2a;
+    border-radius: 4px;
+    padding: 16px 18px;
+    max-width: 560px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.8;
+  }
+  .quiz-notice-title {
+    text-align: center;
+    font-weight: 800;
+    font-size: clamp(16px, 2vw, 19px);
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+    border-bottom: 2px solid #2a2a2a;
+  }
+  .quiz-notice-rows {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .quiz-notice-rows th,
+  .quiz-notice-rows td {
+    border-bottom: 1px solid #e5e0d8;
+    vertical-align: top;
+  }
+  .quiz-notice-rows tr:last-child th,
+  .quiz-notice-rows tr:last-child td {
+    border-bottom: none;
+  }
+  .quiz-notice-rows th {
+    text-align: left;
+    font-weight: 600;
+    white-space: nowrap;
+    width: 1%;
+    padding: 7px 14px 7px 0;
+  }
+  .quiz-notice-rows td {
+    padding: 7px 0;
+  }
+  .quiz-notice-rows .quiz-notice-sub {
+    font-weight: 700;
+    padding-top: 12px;
+  }
+  @media (max-width: 480px) {
+    .quiz-notice-rows th { white-space: normal; width: auto; }
+  }
   /* Question prompt image (di atas opsi) */
   .quiz-q-image {
     margin: 12px 0 16px;
@@ -4493,7 +4545,7 @@ function renderQuizSections(categoryItems) {
     const itemsHtml = section.items.map((item, i) => {
       const passage = (item.q.passage || '').trim();
       const passageHtml = passage && passage !== prevPassage
-        ? `<div class="quiz-passage" lang="ja">${sanitizeHtml(passage).replace(/\n/g, '<br>')}</div>`
+        ? renderQuizPassage(passage)
         : '';
       prevPassage = passage || prevPassage;
       return passageHtml + renderQuizPaperItem(item.q, item.index, section.number, i + 1);
@@ -4509,6 +4561,36 @@ function renderQuizSections(categoryItems) {
       </div>
     `;
   }).join('');
+}
+
+// Passage dokkai. Passage berformat pengumuman (情報検索: baris pertama =
+// judul tanpa "：", ≥2 baris berikutnya "label：nilai") dirender sebagai
+// flyer JLPT (judul center + tabel); selain itu (prose 短文/中文,
+// 文章の文法) tetap blok teks <br>-joined seperti semula. Deteksi by
+// content, bukan label section, supaya soal manual ikut kebagian.
+function renderQuizPassage(passage) {
+  const lines = passage.split('\n').map((l) => l.trim()).filter(Boolean);
+  const isNotice = lines.length >= 3
+    && !lines[0].includes('：')
+    && lines.slice(1).filter((l) => l.includes('：')).length >= 2;
+  if (!isNotice) {
+    return `<div class="quiz-passage" lang="ja">${sanitizeHtml(passage).replace(/\n/g, '<br>')}</div>`;
+  }
+  const rows = lines.slice(1).map((line) => {
+    const sep = line.indexOf('：');
+    if (sep === -1) {
+      return `<tr><td colspan="2" class="quiz-notice-sub">${sanitizeHtml(line)}</td></tr>`;
+    }
+    const label = line.slice(0, sep).trim();
+    const value = line.slice(sep + 1).trim();
+    return `<tr><th>${sanitizeHtml(label)}</th><td>${sanitizeHtml(value)}</td></tr>`;
+  }).join('');
+  return `
+    <div class="quiz-passage quiz-notice" lang="ja">
+      <div class="quiz-notice-title">${sanitizeHtml(lines[0])}</div>
+      <table class="quiz-notice-rows">${rows}</table>
+    </div>
+  `;
 }
 
 // Centralized JLPT-style listening player. Satu player per section: muter
