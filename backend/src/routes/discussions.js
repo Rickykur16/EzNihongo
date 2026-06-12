@@ -36,7 +36,7 @@ router.post('/', requireAuth, asyncHandler(async (req, res) => {
     }
   }
 
-  const isAdmin = isAdminEmail(req.user.email);
+  const isAdmin = await isAdminEmail(req.user.email);
   const result = await query(
     `INSERT INTO discussions (lesson_id, user_id, parent_id, content, is_admin_reply)
      VALUES ($1, $2, $3, $4, $5)
@@ -55,7 +55,7 @@ router.delete('/:id', requireAuth, asyncHandler(async (req, res) => {
   if (existing.rows.length === 0) return res.status(404).json({ error: 'Not found' });
 
   const isOwner = existing.rows[0].user_id === req.user.id;
-  const isAdmin = isAdminEmail(req.user.email);
+  const isAdmin = await isAdminEmail(req.user.email);
   if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
   await query(

@@ -27,9 +27,11 @@ export async function optionalAuth(req, res, next) {
   next();
 }
 
-export function requireAdmin(req, res, next) {
+export async function requireAdmin(req, res, next) {
   if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
-  if (!isAdminEmail(req.user.email)) {
+  // isAdminEmail async (env + tabel admin_emails) tapi throw-safe — DB error
+  // di-handle internal dengan fallback env-only.
+  if (!(await isAdminEmail(req.user.email))) {
     return res.status(403).json({ error: 'Admin access required' });
   }
   next();

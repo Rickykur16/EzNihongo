@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { OAuth2Client } from 'google-auth-library';
 import crypto from 'node:crypto';
+import { query } from './db.js';
 
 const accessSecret = new TextEncoder().encode(process.env.JWT_ACCESS_SECRET);
 const refreshSecret = new TextEncoder().encode(process.env.JWT_REFRESH_SECRET);
@@ -54,10 +55,52 @@ export function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-export function isAdminEmail(email) {
-  const list = (process.env.ADMIN_EMAILS || '')
+// ── Admin authz ──────────────────────────────────────────────────────────
+// Admin = env ADMIN_EMAILS (bootstrap, tidak bisa dihapus dari UI) ∪ tabel
+// admin_emails (migration 035, dikelola via panel admin tanpa edit .env).
+// isAdminEmail() async — SEMUA call site wajib `await` (Promise itu truthy,
+// lupa await = semua orang lolos cek admin).
+
+export function listEnvAdminEmails() {
+  return (process.env.ADMIN_EMAILS || '')
     .split(',')
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
-  return list.includes((email || '').toLowerCase());
+}
+
+export function isEnvAdminEmail(email) {
+  return listEnvAdminEmails().includes((email || '').toLowerCase());
+}
+
+// Cache set email DB dengan TTL pendek — requireAdmin dipanggil tiap request
+// admin, jangan query tiap kali. Mutasi (add/remove) memanggil invalidate.
+let adminCache = { set: null, at: 0 };
+const ADMIN_CACHE_TTL_MS = 15_000;
+
+export function invalidateAdminEmailCache() {
+  adminCache = { set: null, at: 0 };
+}
+
+async function dbAdminEmails() {
+  if (adminCache.set && Date.now() - adminCache.at < ADMIN_CACHE_TTL_MS) {
+    return adminCache.set;
+  }
+  try {
+    const result = await query('SELECT email FROM admin_emails');
+    adminCache = {
+      set: new Set(result.rows.map((r) => String(r.email).toLowerCase())),
+      at: Date.now(),
+    };
+    return adminCache.set;
+  } catch {
+    // DB down / tabel belum ter-migrate → fallback cache lama atau env-only.
+    return adminCache.set || new Set();
+  }
+}
+
+export async function isAdminEmail(email) {
+  const normalized = (email || '').toLowerCase();
+  if (!normalized) return false;
+  if (isEnvAdminEmail(normalized)) return true;
+  return (await dbAdminEmails()).has(normalized);
 }

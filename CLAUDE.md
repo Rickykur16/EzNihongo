@@ -45,6 +45,15 @@
 
 ## Konvensi penting
 
+- **Admin authz**: env `ADMIN_EMAILS` (bootstrap, anti-lockout, read-only dari
+  UI) ∪ tabel `admin_emails` (migration 035, dikelola via tombol "Kelola Admin"
+  di header `admin.html` — tambah/hapus tanpa edit `.env`/restart). Cek lewat
+  `isAdminEmail()` (`backend/src/auth.js`) yang sekarang **async** (DB + cache
+  TTL 15s, throw-safe: DB error → fallback env-only) — call site baru WAJIB
+  `await` (Promise truthy = semua orang lolos cek). Endpoint:
+  `GET/POST /api/admin/admins`, `DELETE /api/admin/admins/:email` (env admin &
+  diri sendiri tidak bisa dihapus). Provisioning password co-admin tetap via
+  `set-password` (email harus sudah admin).
 - **Env**: produksi pakai `backend/.env`, semua var lewat `DATABASE_URL`
   (bukan `DB_PASSWORD` terpisah). systemd service + migration runner +
   backup script semua source dari file yang sama.
