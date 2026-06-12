@@ -373,8 +373,8 @@ function notify(msg, isErr) {
 }
 
 // Set/ubah password login admin (self-service). Tanpa email → password admin
-// yang sedang login; dengan email (di <details>) → admin lain yg ada di
-// ADMIN_EMAILS. POST /api/admin/set-password.
+// yang sedang login; dengan email (di <details>) → admin lain (env ATAU
+// tabel admin_emails — tambah dulu via Kelola Admin). POST /api/admin/set-password.
 function openPasswordModal() {
   openModal(`
     <h2 style="margin-top:0;">Ubah Password</h2>
@@ -386,7 +386,7 @@ function openPasswordModal() {
         style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--border,#d4d4d4);border-radius:8px;font-family:var(--font-body);font-size:14px;"/>
       <details style="font-family:var(--font-body);font-size:12.5px;color:#737373;">
         <summary style="cursor:pointer;">Set untuk admin lain (opsional)</summary>
-        <input name="email" type="email" placeholder="Email admin lain (harus ada di ADMIN_EMAILS)" autocomplete="off"
+        <input name="email" type="email" placeholder="Email admin lain (harus sudah terdaftar sebagai admin)" autocomplete="off"
           style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--border,#d4d4d4);border-radius:8px;font-family:var(--font-body);font-size:14px;margin-top:8px;"/>
       </details>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
@@ -416,6 +416,80 @@ function openPasswordModal() {
   });
 }
 
+// Kelola admin (tabel admin_emails). Admin .env = bootstrap, read-only di
+// sini. Tambah email → langsung aktif (login Google dengan email itu, atau
+// set password via "Ubah Password" → admin lain). GET/POST/DELETE
+// /api/admin/admins.
+function openAdminsModal() {
+  openModal(`
+    <h2 style="margin-top:0;">Kelola Admin</h2>
+    <p style="color:#525252;font-family:var(--font-body);font-size:13.5px;line-height:1.5;">
+      Admin baru langsung aktif tanpa restart: dia bisa login Google dengan email itu,
+      atau set password-nya lewat "Ubah Password" → set untuk admin lain.
+    </p>
+    <form id="admin-add-form" style="display:flex;gap:8px;margin-bottom:14px;">
+      <input name="email" type="email" placeholder="email@contoh.com" required autocomplete="off"
+        style="flex:1;box-sizing:border-box;padding:10px 12px;border:1px solid var(--border,#d4d4d4);border-radius:8px;font-family:var(--font-body);font-size:14px;"/>
+      <button type="submit" class="btn btn-primary">Tambah</button>
+    </form>
+    <div id="admin-list" style="font-family:var(--font-body);font-size:14px;color:#525252;">Memuat...</div>
+  `);
+
+  async function refreshList() {
+    const listEl = document.getElementById('admin-list');
+    if (!listEl) return;
+    try {
+      const data = await api('/admin/admins');
+      listEl.innerHTML = (data.admins || []).map((a) => `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f0;">
+          <span style="flex:1;word-break:break-all;">${escapeHtml(a.email)}</span>
+          ${a.source === 'env'
+            ? '<span class="badge" style="background:#f5f5f5;color:#737373;" title="Bootstrap dari ADMIN_EMAILS di .env — kelola lewat server">.env</span>'
+            : `<button class="btn" data-remove-admin="${escapeHtml(a.email)}" style="font-size:12.5px;">Hapus</button>`}
+        </div>
+      `).join('') || '<em>Belum ada admin.</em>';
+      listEl.querySelectorAll('[data-remove-admin]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const email = btn.getAttribute('data-remove-admin');
+          if (!confirm('Cabut akses admin ' + email + '?')) return;
+          btn.disabled = true;
+          try {
+            await api('/admin/admins/' + encodeURIComponent(email), { method: 'DELETE' });
+            notify('Akses admin ' + email + ' dicabut.');
+            refreshList();
+          } catch (err) {
+            btn.disabled = false;
+            notify(err.message || 'Gagal menghapus admin.', true);
+          }
+        });
+      });
+    } catch (err) {
+      listEl.innerHTML = '<em>' + escapeHtml(err.message || 'Gagal memuat daftar admin.') + '</em>';
+    }
+  }
+
+  document.getElementById('admin-add-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const email = form.email.value.trim();
+    if (!email) return;
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = 'Menambah...';
+    try {
+      const result = await api('/admin/admins', { method: 'POST', body: JSON.stringify({ email }) });
+      notify(result.detail || ('Admin ' + email + ' ditambahkan.'));
+      form.email.value = '';
+      refreshList();
+    } catch (err) {
+      notify(err.message || 'Gagal menambah admin.', true);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Tambah';
+    }
+  });
+
+  refreshList();
+}
+
 // ─────────────────────────────────────────────────────────────
 // App shell
 // ─────────────────────────────────────────────────────────────
@@ -426,6 +500,7 @@ function renderApp() {
       <div class="meta">
         <span>${escapeHtml(CURRENT_USER.fullName || CURRENT_USER.email)}</span>
         <span class="badge badge-admin">Admin</span>
+        <button onclick="openAdminsModal()">Kelola Admin</button>
         <button onclick="openPasswordModal()">Ubah Password</button>
         <button onclick="ezLogout()">Keluar</button>
       </div>

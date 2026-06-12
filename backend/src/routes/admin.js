@@ -5,7 +5,12 @@ import rateLimit from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
 import { query } from '../db.js';
 import { requireAuth, requireAdmin, asyncHandler } from '../middleware.js';
-import { isAdminEmail } from '../auth.js';
+import {
+  isAdminEmail,
+  isEnvAdminEmail,
+  listEnvAdminEmails,
+  invalidateAdminEmailCache,
+} from '../auth.js';
 import { COACH_PROMPT_DEFAULT } from './recommendations.js';
 import { callClaude, anthropicEnabled, ANTHROPIC_GEN_MODEL } from '../anthropic.js';
 import {
@@ -34,8 +39,9 @@ router.use(requireAuth, requireAdmin);
 
 // POST /api/admin/set-password — admin meng-set/ubah password (self-service).
 // Tanpa `email` → set password milik admin yang sedang login. Dengan `email`
-// (provisioning co-admin) → email itu WAJIB ada di ADMIN_EMAILS. Authz admin
-// tetap via ADMIN_EMAILS; ini hanya menambah cara login email+password.
+// (provisioning co-admin) → email itu WAJIB sudah admin (env ADMIN_EMAILS
+// atau tabel admin_emails — tambah dulu via Kelola Admin). Ini hanya
+// menambah cara login email+password, bukan pemberian akses.
 router.post('/set-password', asyncHandler(async (req, res) => {
   const password = String(req.body?.password || '');
   const targetEmailRaw = req.body?.email != null ? String(req.body.email).trim().toLowerCase() : '';
@@ -44,8 +50,8 @@ router.post('/set-password', asyncHandler(async (req, res) => {
   if (password.length < 10) {
     return res.status(400).json({ error: 'weak_password', detail: 'Password minimal 10 karakter.' });
   }
-  if (targetEmailRaw && !isAdminEmail(targetEmailRaw)) {
-    return res.status(400).json({ error: 'not_admin_email', detail: 'Email itu bukan admin (tidak ada di ADMIN_EMAILS).' });
+  if (targetEmailRaw && !(await isAdminEmail(targetEmailRaw))) {
+    return res.status(400).json({ error: 'not_admin_email', detail: 'Email itu bukan admin — tambahkan dulu lewat Kelola Admin.' });
   }
 
   const hash = await bcrypt.hash(password, 12);
@@ -63,6 +69,62 @@ router.post('/set-password', asyncHandler(async (req, res) => {
     await query('INSERT INTO user_stats (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [ins.rows[0].id]);
   }
   res.json({ ok: true, email });
+}));
+
+// ── Kelola admin (tabel admin_emails, migration 035) ──────────────────────
+// Admin env (ADMIN_EMAILS) read-only dari UI — bootstrap anti-lockout.
+// Admin DB bisa ditambah/dihapus tanpa edit .env + restart.
+
+// GET /api/admin/admins — gabungan env + DB
+router.get('/admins', asyncHandler(async (req, res) => {
+  const envSet = new Set(listEnvAdminEmails());
+  const result = await query(
+    'SELECT email, added_by, created_at FROM admin_emails ORDER BY created_at ASC'
+  );
+  const admins = [
+    ...[...envSet].map((email) => ({ email, source: 'env' })),
+    ...result.rows
+      .filter((r) => !envSet.has(String(r.email).toLowerCase()))
+      .map((r) => ({
+        email: r.email,
+        source: 'db',
+        addedBy: r.added_by,
+        createdAt: r.created_at,
+      })),
+  ];
+  res.json({ admins });
+}));
+
+// POST /api/admin/admins — tambah admin baru { email }
+router.post('/admins', asyncHandler(async (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'invalid_email', detail: 'Format email tidak valid.' });
+  }
+  if (isEnvAdminEmail(email)) {
+    return res.json({ ok: true, email, source: 'env', detail: 'Email sudah admin (via .env).' });
+  }
+  await query(
+    `INSERT INTO admin_emails (email, added_by) VALUES ($1, $2)
+     ON CONFLICT (email) DO NOTHING`,
+    [email, String(req.user.email || '').toLowerCase()]
+  );
+  invalidateAdminEmailCache();
+  res.json({ ok: true, email, source: 'db' });
+}));
+
+// DELETE /api/admin/admins/:email — cabut akses admin DB
+router.delete('/admins/:email', asyncHandler(async (req, res) => {
+  const email = String(req.params.email || '').trim().toLowerCase();
+  if (isEnvAdminEmail(email)) {
+    return res.status(400).json({ error: 'env_admin', detail: 'Admin bootstrap (.env) tidak bisa dihapus dari sini.' });
+  }
+  if (email === String(req.user.email || '').toLowerCase()) {
+    return res.status(400).json({ error: 'cannot_remove_self', detail: 'Tidak bisa menghapus akses sendiri.' });
+  }
+  await query('DELETE FROM admin_emails WHERE email = $1', [email]);
+  invalidateAdminEmailCache();
+  res.json({ ok: true });
 }));
 
 // Notion import endpoints hit external API + heavy DB writes; cap at

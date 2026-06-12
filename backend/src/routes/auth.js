@@ -62,13 +62,13 @@ function clearRefreshCookie(res) {
   });
 }
 
-function userResponse(user) {
+async function userResponse(user) {
   return {
     id: user.id,
     email: user.email,
     fullName: user.full_name,
     avatarUrl: user.avatar_url,
-    isAdmin: isAdminEmail(user.email),
+    isAdmin: await isAdminEmail(user.email),
   };
 }
 
@@ -92,7 +92,7 @@ async function issueSession(req, res, user) {
 
   const accessToken = await signAccessToken(user.id, user.email);
   setRefreshCookie(res, refreshToken);
-  return { accessToken, user: userResponse(user) };
+  return { accessToken, user: await userResponse(user) };
 }
 
 // POST /api/auth/google — exchange Google ID token for app session
@@ -207,7 +207,7 @@ router.post('/refresh', authLimiter, asyncHandler(async (req, res) => {
       email: row.email,
       fullName: row.full_name,
       avatarUrl: row.avatar_url,
-      isAdmin: isAdminEmail(row.email),
+      isAdmin: await isAdminEmail(row.email),
     },
   });
 }));
@@ -230,7 +230,7 @@ router.get('/me', requireAuth, asyncHandler(async (req, res) => {
     [req.user.id]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
-  res.json({ user: userResponse(result.rows[0]) });
+  res.json({ user: await userResponse(result.rows[0]) });
 }));
 
 export default router;

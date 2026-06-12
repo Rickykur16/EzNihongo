@@ -573,7 +573,7 @@ router.get('/enrollments/me', asyncHandler(async (req, res) => {
     [req.user.id]
   );
 
-  if (isAdminEmail(req.user.email)) {
+  if (await isAdminEmail(req.user.email)) {
     const all = await query(
       `SELECT id, slug, title, description, level, thumbnail_url
        FROM courses WHERE is_published = TRUE
