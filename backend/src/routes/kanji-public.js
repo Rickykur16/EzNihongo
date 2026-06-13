@@ -21,6 +21,7 @@ import {
   richTextPlain,
   notionPlainPageId,
 } from '../notion.js';
+import { loadCourseVocab, deriveCompounds } from '../kanji-compounds.js';
 
 const router = Router();
 
@@ -73,35 +74,6 @@ async function parseKanjiLevelSections(pageId, token) {
   return sections;
 }
 
-// Cache vocab per slug (in-memory only, 5-minute TTL). Avoids re-querying
-// the same course-vocab list across concurrent kanji requests.
-const vocabCache = new Map(); // slug -> { ts, rows }
-const VOCAB_TTL = 5 * 60 * 1000;
-
-function normalizeKanjiCompounds(value) {
-  if (!Array.isArray(value)) return [];
-  return value.map((item) => ({
-    japanese: String(item?.japanese || '').trim(),
-    reading: String(item?.reading || '').trim(),
-    indonesian: String(item?.indonesian || '').trim(),
-  })).filter((item) => item.japanese || item.reading || item.indonesian);
-}
-
-async function loadCourseVocab(slug) {
-  const entry = vocabCache.get(slug);
-  if (entry && (Date.now() - entry.ts) < VOCAB_TTL) return entry.rows;
-  const r = await query(
-    `SELECT v.japanese, v.reading, v.indonesian
-       FROM module_vocabulary v
-       JOIN modules m ON m.id = v.module_id
-       JOIN courses c ON c.id = m.course_id
-      WHERE c.slug = $1 AND v.japanese IS NOT NULL AND length(v.japanese) > 0`,
-    [slug]
-  );
-  vocabCache.set(slug, { ts: Date.now(), rows: r.rows });
-  return r.rows;
-}
-
 router.get('/kanji', asyncHandler(async (req, res) => {
   const slug = String(req.query.slug || '').toLowerCase().trim();
   if (!SUPPORTED_SLUGS.includes(slug)) {
@@ -124,29 +96,17 @@ router.get('/kanji', asyncHandler(async (req, res) => {
     [slug]
   )).rows;
 
-  // Attach compound vocab per kanji (cap 8).
+  // Attach compound vocab per kanji (lihat src/kanji-compounds.js — logika
+  // sama dipakai juga oleh /api/courses/:slug supaya pelajaran & Daftar Kanji
+  // menampilkan contoh kosakata yang identik).
   const vocab = await loadCourseVocab(slug);
-  const attach = (k) => {
-    const ch = k.character;
-    const manualCompounds = normalizeKanjiCompounds(k.compounds);
-    let compounds = manualCompounds;
-    if (compounds.length === 0) {
-      compounds = [];
-      for (const v of vocab) {
-        if ((v.japanese || '').includes(ch)) {
-          compounds.push({ japanese: v.japanese, reading: v.reading, indonesian: v.indonesian });
-          if (compounds.length >= 8) break;
-        }
-      }
-    }
-    return {
-      id: k.id, character: k.character, jlpt_level: k.jlpt_level,
-      on_reading: k.on_reading, kun_reading: k.kun_reading,
-      meaning_id: k.meaning_id, mnemonic: k.mnemonic,
-      stroke_count: k.stroke_count, bab_kode: k.bab_kode,
-      compounds,
-    };
-  };
+  const attach = (k) => ({
+    id: k.id, character: k.character, jlpt_level: k.jlpt_level,
+    on_reading: k.on_reading, kun_reading: k.kun_reading,
+    meaning_id: k.meaning_id, mnemonic: k.mnemonic,
+    stroke_count: k.stroke_count, bab_kode: k.bab_kode,
+    compounds: deriveCompounds(k.character, k.compounds, vocab),
+  });
 
   // Group by lesson (1 Bab = 1 pelajaran tipe kanji).
   const babMap = new Map(); // lesson_id -> { ... }
