@@ -14,6 +14,7 @@
 import { Router } from 'express';
 import { asyncHandler } from '../middleware.js';
 import { query } from '../db.js';
+import { resolveKanjiCompounds } from '../kanji-compounds.js';
 import {
   notionIdFromInput,
   notionGetBlockChildren,
@@ -78,15 +79,6 @@ async function parseKanjiLevelSections(pageId, token) {
 const vocabCache = new Map(); // slug -> { ts, rows }
 const VOCAB_TTL = 5 * 60 * 1000;
 
-function normalizeKanjiCompounds(value) {
-  if (!Array.isArray(value)) return [];
-  return value.map((item) => ({
-    japanese: String(item?.japanese || '').trim(),
-    reading: String(item?.reading || '').trim(),
-    indonesian: String(item?.indonesian || '').trim(),
-  })).filter((item) => item.japanese || item.reading || item.indonesian);
-}
-
 async function loadCourseVocab(slug) {
   const entry = vocabCache.get(slug);
   if (entry && (Date.now() - entry.ts) < VOCAB_TTL) return entry.rows;
@@ -126,27 +118,13 @@ router.get('/kanji', asyncHandler(async (req, res) => {
 
   // Attach compound vocab per kanji (cap 8).
   const vocab = await loadCourseVocab(slug);
-  const attach = (k) => {
-    const ch = k.character;
-    const manualCompounds = normalizeKanjiCompounds(k.compounds);
-    let compounds = manualCompounds;
-    if (compounds.length === 0) {
-      compounds = [];
-      for (const v of vocab) {
-        if ((v.japanese || '').includes(ch)) {
-          compounds.push({ japanese: v.japanese, reading: v.reading, indonesian: v.indonesian });
-          if (compounds.length >= 8) break;
-        }
-      }
-    }
-    return {
-      id: k.id, character: k.character, jlpt_level: k.jlpt_level,
-      on_reading: k.on_reading, kun_reading: k.kun_reading,
-      meaning_id: k.meaning_id, mnemonic: k.mnemonic,
-      stroke_count: k.stroke_count, bab_kode: k.bab_kode,
-      compounds,
-    };
-  };
+  const attach = (k) => ({
+    id: k.id, character: k.character, jlpt_level: k.jlpt_level,
+    on_reading: k.on_reading, kun_reading: k.kun_reading,
+    meaning_id: k.meaning_id, mnemonic: k.mnemonic,
+    stroke_count: k.stroke_count, bab_kode: k.bab_kode,
+    compounds: resolveKanjiCompounds(k.compounds, k.character, vocab),
+  });
 
   // Group by lesson (1 Bab = 1 pelajaran tipe kanji).
   const babMap = new Map(); // lesson_id -> { ... }
