@@ -3959,8 +3959,11 @@ function adminPlayTts(text, btn) {
 window.adminPlayTts = adminPlayTts;
 window.deckPlayExampleTts = (btn) => {
   const tr = btn.closest('tr');
-  const input = tr && tr.querySelector('input[name="japanese"]');
-  adminPlayTts(input ? input.value : '', btn);
+  // Prefer kana (yang didengar siswa); fallback ke teks JP kalau kana kosong.
+  const reading = tr && tr.querySelector('input[name="reading"]');
+  const japanese = tr && tr.querySelector('input[name="japanese"]');
+  const text = (reading && reading.value.trim()) || (japanese ? japanese.value : '');
+  adminPlayTts(text, btn);
 };
 
 // ── examples editor (own modal, returns to deck) ──

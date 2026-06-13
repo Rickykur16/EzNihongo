@@ -270,7 +270,7 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
   // Quiz audio_script di-include karena listening dialog disimpan as-is.
   const known = await query(
     `SELECT 1 WHERE EXISTS (SELECT 1 FROM module_vocabulary WHERE japanese = $1 OR reading = $1)
-                OR EXISTS (SELECT 1 FROM vocabulary_examples WHERE japanese = $1)
+                OR EXISTS (SELECT 1 FROM vocabulary_examples WHERE japanese = $1 OR reading = $1)
                 OR EXISTS (SELECT 1 FROM quiz_questions WHERE audio_script = $1)
                 OR EXISTS (SELECT 1 FROM module_grammar WHERE example_dialog = $1 OR example = $1)
                 OR EXISTS (SELECT 1 FROM grammar_examples WHERE japanese = $1)
@@ -360,7 +360,7 @@ router.get('/tts/aligned', optionalAuth, ttsLimiter, asyncHandler(async (req, re
 
   const known = await query(
     `SELECT 1 WHERE EXISTS (SELECT 1 FROM module_vocabulary WHERE japanese = $1 OR reading = $1)
-                OR EXISTS (SELECT 1 FROM vocabulary_examples WHERE japanese = $1)
+                OR EXISTS (SELECT 1 FROM vocabulary_examples WHERE japanese = $1 OR reading = $1)
                 OR EXISTS (SELECT 1 FROM quiz_questions WHERE audio_script = $1)
                 OR EXISTS (SELECT 1 FROM module_grammar WHERE example_dialog = $1 OR example = $1)
                 OR EXISTS (SELECT 1 FROM grammar_examples WHERE japanese = $1)
