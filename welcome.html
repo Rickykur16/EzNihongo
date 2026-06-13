@@ -7415,15 +7415,16 @@ window.playQuizQuestionDialog = (qi, btn) => {
 window.playDeckAudio = (idx, btn) => {
   const it = (window.__deckData || [])[idx];
   if (!it) return;
-  playTTS(it.reading || it.japanese || '', btn);
+  // Pakai teks Jepang utama (kanji), bukan kana.
+  playTTS(it.japanese || it.reading || '', btn);
 };
 window.playDeckExample = (idx, exIdx, btn) => {
   const it = (window.__deckData || [])[idx];
   if (!it) return;
   const ex = (it.examples || [])[exIdx];
   if (!ex) return;
-  // Prefer bacaan kana — ElevenLabs sering salah baca kanji yang ambigu.
-  playTTS(String(ex.reading || ex.japanese || '').replace(/<[^>]*>/g, ''), btn);
+  // Pakai kalimat Jepang utama (kanji), bukan kana — prosodi lebih natural.
+  playTTS(String(ex.japanese || ex.reading || '').replace(/<[^>]*>/g, ''), btn);
 };
 
 function renderDeckLesson(course, module, lesson, nav) {

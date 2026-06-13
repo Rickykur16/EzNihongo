@@ -154,11 +154,13 @@
   Web Speech browser. Endpoint cuma mau generate text yang ada di
   `module_vocabulary` (`japanese`/`reading`) / `vocabulary_examples`
   (`japanese`/`reading`) / `module_grammar` (`example`/`example_dialog`) (anti
-  abuse kuota) + rate-limit. **Frontend kirim kana, bukan kanji**: kartu kata
-  (`playDeckAudio`) & contoh kalimat (`playDeckExample`) prefer `reading` lalu
-  fallback `japanese` — ElevenLabs sering salah baca kanji ambigu. Ganti
-  input kanji→kana otomatis bikin cache entry baru (text beda = hash beda),
-  tidak perlu bump `SETTINGS_VERSION`.
+  abuse kuota) + rate-limit. **Frontend kirim teks Jepang utama (kanji), bukan
+  kana**: kartu kata (`playDeckAudio`) & contoh kalimat (`playDeckExample`)
+  prefer `japanese` lalu fallback `reading` — pakai kalimat utama biar prosodi
+  natural (dulu prefer `reading`/kana karena ElevenLabs kadang salah baca kanji
+  ambigu; di-balik atas permintaan user). Ganti input reading↔japanese otomatis
+  bikin cache entry baru (text beda = hash beda), tidak perlu bump
+  `SETTINGS_VERSION`.
 - **Tipe pelajaran `grammar_task`** (buat kalimat + ucapkan, dinilai AI;
   migration 023): lesson bertipe `grammar_task` memilih pola grammar dari bank
   modul (`module_grammar`) lewat join `lesson_grammar_task_items` (reusable —
