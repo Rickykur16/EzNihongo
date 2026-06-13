@@ -132,14 +132,14 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
       const examplesByVocab = {};
       if (vocabIds.length > 0) {
         const ex = await query(
-          `SELECT vocabulary_id, japanese, highlight, indonesian, sort_order
+          `SELECT vocabulary_id, japanese, reading, highlight, indonesian, sort_order
            FROM vocabulary_examples WHERE vocabulary_id = ANY($1::uuid[])
            ORDER BY vocabulary_id, sort_order ASC, created_at ASC`,
           [vocabIds]
         );
         for (const e of ex.rows) {
           (examplesByVocab[e.vocabulary_id] ||= []).push({
-            japanese: e.japanese, highlight: e.highlight, indonesian: e.indonesian,
+            japanese: e.japanese, reading: e.reading, highlight: e.highlight, indonesian: e.indonesian,
           });
         }
       }
@@ -294,14 +294,14 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
     const examplesByVocab = {};
     if (vocabIds.length > 0) {
       const ex = await query(
-        `SELECT vocabulary_id, japanese, highlight, indonesian, sort_order
+        `SELECT vocabulary_id, japanese, reading, highlight, indonesian, sort_order
          FROM vocabulary_examples WHERE vocabulary_id = ANY($1::uuid[])
          ORDER BY vocabulary_id, sort_order ASC, created_at ASC`,
         [vocabIds]
       );
       for (const e of ex.rows) {
         (examplesByVocab[e.vocabulary_id] ||= []).push({
-          japanese: e.japanese, highlight: e.highlight, indonesian: e.indonesian,
+          japanese: e.japanese, reading: e.reading, highlight: e.highlight, indonesian: e.indonesian,
         });
       }
     }

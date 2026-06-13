@@ -483,28 +483,30 @@ router.get('/vocabulary-examples', asyncHandler(async (req, res) => {
 }));
 
 router.post('/vocabulary-examples', asyncHandler(async (req, res) => {
-  const { vocabularyId, japanese, highlight, indonesian, sortOrder } = req.body || {};
+  const { vocabularyId, japanese, reading, highlight, indonesian, sortOrder } = req.body || {};
   if (!vocabularyId || !japanese) return res.status(400).json({ error: 'vocabularyId and japanese required' });
   const r = await query(
-    `INSERT INTO vocabulary_examples (vocabulary_id, japanese, highlight, indonesian, sort_order)
-     VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-    [vocabularyId, japanese, highlight || null, indonesian || null, sortOrder || 0]
+    `INSERT INTO vocabulary_examples (vocabulary_id, japanese, reading, highlight, indonesian, sort_order)
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+    [vocabularyId, japanese, reading || null, highlight || null, indonesian || null, sortOrder || 0]
   );
   res.status(201).json({ example: r.rows[0] });
 }));
 
 router.put('/vocabulary-examples/:id', asyncHandler(async (req, res) => {
-  const { japanese, highlight, indonesian, sortOrder } = req.body || {};
+  const { japanese, reading, highlight, indonesian, sortOrder } = req.body || {};
   const hasHighlight = Object.prototype.hasOwnProperty.call(req.body || {}, 'highlight');
+  const hasReading = Object.prototype.hasOwnProperty.call(req.body || {}, 'reading');
   const r = await query(
     `UPDATE vocabulary_examples SET
        japanese = COALESCE($2, japanese),
+       reading = CASE WHEN $7::boolean THEN $8 ELSE reading END,
        highlight = CASE WHEN $5::boolean THEN $3 ELSE highlight END,
        indonesian = COALESCE($4, indonesian),
        sort_order = COALESCE($6, sort_order),
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
-    [req.params.id, japanese, highlight || null, indonesian, hasHighlight, sortOrder]
+    [req.params.id, japanese, highlight || null, indonesian, hasHighlight, sortOrder, hasReading, reading || null]
   );
   if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ example: r.rows[0] });
@@ -2014,11 +2016,12 @@ ${avoidBlock}
 Aturan:
 - Tiap kalimat pendek, natural, level pemula, dan BENAR-BENAR memakai kata "${word.japanese}".
 - "highlight" = potongan persis yang muncul di kalimat untuk kata itu (biasanya "${word.japanese}" atau bentuk yang dipakai di kalimat).
+- "reading" = cara baca SELURUH kalimat dalam hiragana/katakana penuh (semua kanji diganti kana, tanpa romaji).
 - "indonesian" = terjemahan kalimat ke Bahasa Indonesia.
 - Kalimat polos, tanpa tag HTML / tanpa furigana.
 
 Balas HANYA JSON valid tanpa teks lain:
-{"examples":[{"japanese":"…","highlight":"${word.japanese}","indonesian":"…"}]}`;
+{"examples":[{"japanese":"…","reading":"…","highlight":"${word.japanese}","indonesian":"…"}]}`;
 
   const text = await callClaude({
     system: 'You write Japanese example sentences for Indonesian beginner learners. Reply with a single valid JSON object only.',
@@ -2032,6 +2035,7 @@ Balas HANYA JSON valid tanpa teks lain:
   const examples = parsed.examples
     .map((e) => ({
       japanese: String(e?.japanese || '').trim().slice(0, 300),
+      reading: (String(e?.reading || '').trim().slice(0, 300)) || null,
       highlight: (String(e?.highlight || '').trim().slice(0, 100)) || null,
       indonesian: (String(e?.indonesian || '').trim().slice(0, 300)) || null,
     }))

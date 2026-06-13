@@ -83,7 +83,10 @@
   bertipe `deck` punya kartu kosakata yang dipilih dari bank
   (`module_vocabulary`, bisa `lesson_id` NULL untuk item bank murni) lewat join
   `lesson_deck_items`; tiap kata punya `vocabulary_examples` (contoh kalimat,
-  disimpan polos + kolom `highlight`). Admin kelola via tombol "Kelola Deck" di
+  disimpan polos + kolom `highlight` + `reading` kana penuh per kalimat
+  [migration 036, nullable tanpa backfill — frontend sembunyikan baris kana
+  kalau kosong; generate-vocab-examples ikut mengisi `reading`]). Admin kelola
+  via tombol "Kelola Deck" di
   daftar pelajaran (`admin.html` → `manageDeck`). `welcome.html` me-render via
   `renderDeckLesson` (grid kartu + modal contoh kalimat, desain dari handoff
   "Kosakata"). API: `/api/admin/vocab-bank`, `/api/admin/vocabulary-examples`,
