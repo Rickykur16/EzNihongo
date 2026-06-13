@@ -3675,6 +3675,7 @@ async function openDeckManager(lessonId, lessonTitle, moduleId, courseId) {
       <button type="button" class="btn btn-ghost" onclick="deckShowNewWord()">+ Kata baru</button>
       <button type="button" class="btn btn-ghost" onclick="deckShowBank()">+ Dari bank</button>
       <button type="button" class="btn btn-ghost" onclick="deckOpenBulk()">Paste dari Excel (TSV)</button>
+      <button type="button" class="btn btn-ghost" id="deck-kana-gen" onclick="deckGenAllReadings()" title="Isi kana (cara baca) untuk semua contoh kalimat yang belum ada kana">✨ Generate kana (AI)</button>
       <span id="deck-count" style="font-size:12px;color:#737373;font-family:var(--font-body);">${items.length} item</span>
     </div>
     <div id="deck-panel"></div>
@@ -3684,6 +3685,30 @@ async function openDeckManager(lessonId, lessonTitle, moduleId, courseId) {
   modalContent.style.maxWidth = '1100px';
 }
 window.manageDeck = (lessonId, lessonTitle, moduleId, courseId) => openDeckManager(lessonId, lessonTitle, moduleId, courseId);
+
+// Backfill kana untuk semua contoh kalimat di deck ini yang belum ada kana.
+// AI (server-side) mengubah kalimat ber-kanji jadi kana penuh + auto-save;
+// kalimat tanpa kanji diisi tanpa panggil AI. Hasil bisa diedit di kolom Kana.
+window.deckGenAllReadings = async () => {
+  const ctx = window.__deckCtx || {};
+  if (!ctx.lessonId) return;
+  if (!confirm('Isi kana (AI) untuk semua contoh kalimat yang belum ada kana di deck ini? Hasilnya bisa diedit manual di kolom Kana tiap kata.')) return;
+  const btn = document.getElementById('deck-kana-gen');
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  try {
+    const d = await api('/admin/lessons/' + ctx.lessonId + '/generate-deck-readings', {
+      method: 'POST', body: JSON.stringify({}),
+    });
+    const total = d.total || 0, updated = d.updated || 0;
+    if (total === 0) notify('Semua contoh sudah punya kana.');
+    else notify(updated + ' dari ' + total + ' contoh diisi kana' + (updated < total ? ' (' + (total - updated) + ' gagal — coba lagi)' : ''));
+  } catch (err) {
+    notify('Gagal generate kana: ' + err.message, true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig || '✨ Generate kana (AI)'; }
+  }
+};
 
 window.deckMove = async (vid, dir) => {
   const arr = window.__deckItems || [];

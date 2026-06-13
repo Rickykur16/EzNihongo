@@ -2045,6 +2045,79 @@ Balas HANYA JSON valid tanpa teks lain:
   res.json({ examples });
 }));
 
+// Backfill kana (reading) untuk contoh kalimat di sebuah deck yang masih kosong
+// — tombol "Generate kana (AI)" di Kelola Deck. Contoh lama (sebelum kolom
+// `reading` ada) tidak punya kana; ini mengisinya dari `japanese` via Claude.
+// Hemat AI: kalimat tanpa kanji di-set reading=japanese langsung (exact, tanpa
+// panggil model). Idempoten — default cuma isi yang kosong; { force:true }
+// regenerate semua. Cap per run + batch supaya tidak timeout (re-run lanjut).
+const _hasKanji = (s) => /[々一-鿿]/.test(String(s || ''));
+router.post('/lessons/:lessonId/generate-deck-readings', asyncHandler(async (req, res) => {
+  const force = (req.body || {}).force === true;
+  const rows = await query(
+    `SELECT e.id, e.japanese
+       FROM vocabulary_examples e
+       JOIN lesson_deck_items di ON di.vocabulary_id = e.vocabulary_id
+      WHERE di.lesson_id = $1 AND ($2::boolean OR e.reading IS NULL OR e.reading = '')
+      ORDER BY e.id`,
+    [req.params.lessonId, force]
+  );
+  const all = rows.rows.slice(0, 500); // cap aman per run; re-run lanjut sisanya
+  const total = all.length;
+  if (total === 0) return res.json({ total: 0, updated: 0, failed: 0 });
+
+  let updated = 0;
+  const needAi = [];
+  // 1) Kalimat tanpa kanji → reading == japanese (exact, tanpa AI).
+  for (const r of all) {
+    const jp = String(r.japanese || '').trim();
+    if (!jp) continue;
+    if (_hasKanji(jp)) { needAi.push(r); continue; }
+    await query(`UPDATE vocabulary_examples SET reading = $1, updated_at = NOW() WHERE id = $2`, [jp.slice(0, 300), r.id]);
+    updated++;
+  }
+
+  // 2) Sisanya (mengandung kanji) → Claude per batch.
+  if (needAi.length > 0) {
+    if (!anthropicEnabled()) {
+      return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.', total, updated, failed: needAi.length });
+    }
+    const BATCH = 20;
+    for (let i = 0; i < needAi.length; i += BATCH) {
+      const batch = needAi.slice(i, i + BATCH);
+      const list = batch.map((r, j) => `${j + 1}. ${String(r.japanese).trim().slice(0, 280)}`).join('\n');
+      const userContent = `Ubah tiap kalimat Jepang berikut menjadi cara baca KANA penuh.
+Aturan:
+- Semua kanji diganti hiragana (katakana untuk kata serapan).
+- TANPA kanji, TANPA romaji, TANPA furigana/tanda kurung.
+- Pertahankan partikel dan tanda baca (。、？！) apa adanya.
+
+Kalimat:
+${list}
+
+Balas HANYA JSON valid tanpa teks lain, "n" = nomor kalimat:
+{"items":[{"n":1,"reading":"…"}]}`;
+      const text = await callClaude({
+        system: 'You convert Japanese sentences to full kana readings. Reply with a single valid JSON object only.',
+        userContent,
+        maxTokens: 1200,
+        model: ANTHROPIC_GEN_MODEL,
+      });
+      const parsed = text ? _extractJsonObject(text) : null;
+      const items = parsed && Array.isArray(parsed.items) ? parsed.items : [];
+      for (const it of items) {
+        const n = Number(it?.n);
+        const reading = String(it?.reading || '').trim().slice(0, 300);
+        if (!reading || !Number.isInteger(n) || n < 1 || n > batch.length) continue;
+        await query(`UPDATE vocabulary_examples SET reading = $1, updated_at = NOW() WHERE id = $2`, [reading, batch[n - 1].id]);
+        updated++;
+      }
+    }
+  }
+
+  res.json({ total, updated, failed: total - updated });
+}));
+
 // Generate gambar ilustrasi (AI) untuk kosakata deck — tombol "Gambar (AI)"
 // di Kelola Deck. Provider default: OpenAI gpt-image-1 (quality=low,
 // ~$0.011/gambar). Bytes disimpan di vocab_image_cache (BYTEA), 1 gambar

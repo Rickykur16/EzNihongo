@@ -85,7 +85,11 @@
   `lesson_deck_items`; tiap kata punya `vocabulary_examples` (contoh kalimat,
   disimpan polos + kolom `highlight` + `reading` kana penuh per kalimat
   [migration 036, nullable tanpa backfill — frontend sembunyikan baris kana
-  kalau kosong; generate-vocab-examples ikut mengisi `reading`]). Admin kelola
+  kalau kosong; generate-vocab-examples ikut mengisi `reading`; backfill contoh
+  lama via tombol "✨ Generate kana (AI)" di Kelola Deck →
+  `POST /api/admin/lessons/:id/generate-deck-readings` (Claude `ANTHROPIC_GEN_MODEL`
+  per-deck, auto-save, idempoten/cuma isi yang kosong kecuali `force`; kalimat
+  tanpa kanji di-set reading=japanese tanpa panggil AI)]). Admin kelola
   via tombol "Kelola Deck" di
   daftar pelajaran (`admin.html` → `manageDeck`). `welcome.html` me-render via
   `renderDeckLesson` (grid kartu + modal contoh kalimat, desain dari handoff
