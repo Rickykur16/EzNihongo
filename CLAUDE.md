@@ -148,8 +148,13 @@
   Env `ELEVENLABS_API_KEY` / `ELEVENLABS_VOICE_ID` / `ELEVENLABS_MODEL` (opsional,
   bukan `REQUIRED_ENV`); kalau kosong endpoint balas 503 & frontend fallback ke
   Web Speech browser. Endpoint cuma mau generate text yang ada di
-  `module_vocabulary` / `vocabulary_examples` / `module_grammar`
-  (`example`/`example_dialog`) (anti abuse kuota) + rate-limit.
+  `module_vocabulary` (`japanese`/`reading`) / `vocabulary_examples`
+  (`japanese`/`reading`) / `module_grammar` (`example`/`example_dialog`) (anti
+  abuse kuota) + rate-limit. **Frontend kirim kana, bukan kanji**: kartu kata
+  (`playDeckAudio`) & contoh kalimat (`playDeckExample`) prefer `reading` lalu
+  fallback `japanese` — ElevenLabs sering salah baca kanji ambigu. Ganti
+  input kanji→kana otomatis bikin cache entry baru (text beda = hash beda),
+  tidak perlu bump `SETTINGS_VERSION`.
 - **Tipe pelajaran `grammar_task`** (buat kalimat + ucapkan, dinilai AI;
   migration 023): lesson bertipe `grammar_task` memilih pola grammar dari bank
   modul (`module_grammar`) lewat join `lesson_grammar_task_items` (reusable —

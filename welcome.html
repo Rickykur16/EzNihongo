@@ -7422,7 +7422,8 @@ window.playDeckExample = (idx, exIdx, btn) => {
   if (!it) return;
   const ex = (it.examples || [])[exIdx];
   if (!ex) return;
-  playTTS(String(ex.japanese || '').replace(/<[^>]*>/g, ''), btn);
+  // Prefer bacaan kana — ElevenLabs sering salah baca kanji yang ambigu.
+  playTTS(String(ex.reading || ex.japanese || '').replace(/<[^>]*>/g, ''), btn);
 };
 
 function renderDeckLesson(course, module, lesson, nav) {
