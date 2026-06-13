@@ -1239,12 +1239,7 @@ function renderLessons() {
         <div class="empty">Belum ada pelajaran di modul ini.</div>
       `;
     } else {
-      const vocabByLesson = {};
       const grammarByLesson = {};
-      (mod.vocabulary || []).forEach((v) => {
-        if (!v.lesson_id) return;
-        vocabByLesson[v.lesson_id] = (vocabByLesson[v.lesson_id] || 0) + 1;
-      });
       (mod.grammar || []).forEach((g) => {
         if (!g.lesson_id) return;
         grammarByLesson[g.lesson_id] = (grammarByLesson[g.lesson_id] || 0) + 1;
@@ -1253,7 +1248,6 @@ function renderLessons() {
       const courseId = courseRow ? courseRow.id : '';
       const rows = STATE.lessons.map((l) => {
         const titleEsc = escapeHtml(l.title).replace(/'/g, "\\'");
-        const vocabN = vocabByLesson[l.id] || 0;
         const grammarN = grammarByLesson[l.id] || 0;
         const deckN = Array.isArray(l.deck) ? l.deck.length : 0;
         const kanjiN = Array.isArray(l.kanji) ? l.kanji.length : 0;
@@ -1266,8 +1260,7 @@ function renderLessons() {
           const gtN = Array.isArray(l.grammarTask) ? l.grammarTask.length : 0;
           contentBtns = `<button class="btn btn-ghost" onclick="manageGrammarTask('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Tugas Grammar (${gtN})</button>`;
         } else if (l.type !== 'quiz') {
-          contentBtns = `<button class="btn btn-ghost" onclick="manageVocab('${l.id}', '${titleEsc}', '${mod.id}')">Vocab (${vocabN})</button>
-             <button class="btn btn-ghost" onclick="manageGrammar('${l.id}', '${titleEsc}', '${mod.id}')">Grammar (${grammarN})</button>`;
+          contentBtns = `<button class="btn btn-ghost" onclick="manageGrammar('${l.id}', '${titleEsc}', '${mod.id}')">Grammar (${grammarN})</button>`;
         }
         const quizBtn = l.type === 'quiz'
           ? `<button class="btn btn-ghost" onclick="manageQuiz('${l.id}', '${titleEsc}')">Kuis</button>`
