@@ -2,6 +2,7 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
 import { asyncHandler } from '../middleware.js';
+import { resolveKanjiCompounds } from '../kanji-compounds.js';
 
 const router = Router();
 
@@ -178,7 +179,10 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
           kun_reading: r.kun_reading,
           meaning_id: r.meaning_id,
           mnemonic: r.mnemonic,
-          compounds: Array.isArray(r.compounds) ? r.compounds : [],
+          // Sama dengan /api/kanji: kalau kolom manual kosong, turunkan
+          // kombinasi dari vocab course (sudah di-load di `vocab` di atas)
+          // supaya kanji di Materi sinkron dengan "Daftar Kanji" sidebar.
+          compounds: resolveKanjiCompounds(r.compounds, r.character, vocab.rows),
           stroke_count: r.stroke_count,
           bab_kode: r.bab_kode,
         });
@@ -326,7 +330,19 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
         ORDER BY sort_order ASC, character ASC`,
       [row.id]
     );
-    response.kanji = kanjiRows.rows;
+    // Vocab se-course untuk fallback kombinasi (selaras /api/courses/:slug
+    // & /api/kanji); cuma di-query saat lesson bertipe kanji.
+    const cv = await query(
+      `SELECT v.japanese, v.reading, v.indonesian
+         FROM module_vocabulary v
+         JOIN modules m ON m.id = v.module_id
+        WHERE m.course_id = $1 AND v.japanese IS NOT NULL AND length(v.japanese) > 0`,
+      [row.course_id]
+    );
+    response.kanji = kanjiRows.rows.map((r) => ({
+      ...r,
+      compounds: resolveKanjiCompounds(r.compounds, r.character, cv.rows),
+    }));
   }
 
   if (row.type === 'grammar_task') {

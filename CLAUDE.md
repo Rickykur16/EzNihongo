@@ -95,6 +95,19 @@
   `renderDeckLesson` (grid kartu + modal contoh kalimat, desain dari handoff
   "Kosakata"). API: `/api/admin/vocab-bank`, `/api/admin/vocabulary-examples`,
   `/api/admin/lessons/:id/deck-items`; `content.js` ngirim `lesson.deck`.
+- **Tipe pelajaran `kanji` + "Daftar Kanji"** (grid kanji + modal detail):
+  lesson bertipe `kanji` punya `kanji_items` (karakter, on/kun, arti, mnemonic,
+  `compounds` JSONB; migration 014/016). `welcome.html` render grid via
+  `renderKanjiLesson`; klik kanji buka `openKanjiDetail` — **modal yang sama**
+  dipakai "📝 Daftar Kanji" sidebar (`openKanjiList` ← `GET /api/kanji`,
+  `kanji-public.js`). **Kombinasi kosakata** ("📚") per kanji: pakai kolom
+  manual `kanji_items.compounds` kalau diisi; kalau kosong **fallback** ke vocab
+  course (`module_vocabulary`) yang mengandung karakter (cap 8). Fallback ini
+  dipusatkan di `resolveKanjiCompounds()` (`backend/src/kanji-compounds.js`) dan
+  WAJIB dipakai SEMUA endpoint yang ngirim kanji ke frontend — `/api/kanji`
+  (kanji-public.js) **dan** `/api/courses/:slug` + `/api/lessons/:id`
+  (content.js). Kalau salah satu kirim kolom mentah, Materi vs Daftar Kanji jadi
+  tidak sinkron (bug lama: content.js kirim mentah → kombinasi kosong di Materi).
 - **Import kosakata dari Notion (per Bab)** — narik vocab **satu Bab** dari
   database Notion "📚 Vocabulary 語彙" (`Japanese 日本語` / `Reading 読み` /
   `Indonesian` / `Category` / `Note`, plus relasi `Lesson` → "📗 Bab") langsung ke
