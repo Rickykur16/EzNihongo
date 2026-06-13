@@ -2,6 +2,7 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
 import { asyncHandler } from '../middleware.js';
+import { loadCourseVocab, deriveCompounds } from '../kanji-compounds.js';
 
 const router = Router();
 
@@ -169,6 +170,9 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
           ORDER BY lesson_id, sort_order ASC, character ASC`,
         [kanjiLessonIds]
       );
+      // Derive contoh kosakata sama seperti "Daftar Kanji" (/api/kanji) supaya
+      // kanji yang sama tampil identik di pelajaran & Daftar Kanji.
+      const courseVocab = await loadCourseVocab(req.params.slug);
       for (const r of kanjiRows.rows) {
         (kanjiByLesson[r.lesson_id] ||= []).push({
           id: r.id,
@@ -178,7 +182,7 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
           kun_reading: r.kun_reading,
           meaning_id: r.meaning_id,
           mnemonic: r.mnemonic,
-          compounds: Array.isArray(r.compounds) ? r.compounds : [],
+          compounds: deriveCompounds(r.character, r.compounds, courseVocab),
           stroke_count: r.stroke_count,
           bab_kode: r.bab_kode,
         });
@@ -326,7 +330,11 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
         ORDER BY sort_order ASC, character ASC`,
       [row.id]
     );
-    response.kanji = kanjiRows.rows;
+    const courseVocab = await loadCourseVocab(row.course_slug);
+    response.kanji = kanjiRows.rows.map((r) => ({
+      ...r,
+      compounds: deriveCompounds(r.character, r.compounds, courseVocab),
+    }));
   }
 
   if (row.type === 'grammar_task') {
