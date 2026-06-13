@@ -1239,12 +1239,7 @@ function renderLessons() {
         <div class="empty">Belum ada pelajaran di modul ini.</div>
       `;
     } else {
-      const vocabByLesson = {};
       const grammarByLesson = {};
-      (mod.vocabulary || []).forEach((v) => {
-        if (!v.lesson_id) return;
-        vocabByLesson[v.lesson_id] = (vocabByLesson[v.lesson_id] || 0) + 1;
-      });
       (mod.grammar || []).forEach((g) => {
         if (!g.lesson_id) return;
         grammarByLesson[g.lesson_id] = (grammarByLesson[g.lesson_id] || 0) + 1;
@@ -1253,7 +1248,6 @@ function renderLessons() {
       const courseId = courseRow ? courseRow.id : '';
       const rows = STATE.lessons.map((l) => {
         const titleEsc = escapeHtml(l.title).replace(/'/g, "\\'");
-        const vocabN = vocabByLesson[l.id] || 0;
         const grammarN = grammarByLesson[l.id] || 0;
         const deckN = Array.isArray(l.deck) ? l.deck.length : 0;
         const kanjiN = Array.isArray(l.kanji) ? l.kanji.length : 0;
@@ -1266,8 +1260,7 @@ function renderLessons() {
           const gtN = Array.isArray(l.grammarTask) ? l.grammarTask.length : 0;
           contentBtns = `<button class="btn btn-ghost" onclick="manageGrammarTask('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Tugas Grammar (${gtN})</button>`;
         } else if (l.type !== 'quiz') {
-          contentBtns = `<button class="btn btn-ghost" onclick="manageVocab('${l.id}', '${titleEsc}', '${mod.id}')">Vocab (${vocabN})</button>
-             <button class="btn btn-ghost" onclick="manageGrammar('${l.id}', '${titleEsc}', '${mod.id}')">Grammar (${grammarN})</button>`;
+          contentBtns = `<button class="btn btn-ghost" onclick="manageGrammar('${l.id}', '${titleEsc}', '${mod.id}')">Grammar (${grammarN})</button>`;
         }
         const quizBtn = l.type === 'quiz'
           ? `<button class="btn btn-ghost" onclick="manageQuiz('${l.id}', '${titleEsc}')">Kuis</button>`
@@ -3975,6 +3968,7 @@ function deckExampleRowHtml(vid, jp, e) {
   e = e || {};
   return `<tr data-ex-id="${e.id || ''}" data-exvid="${vid}">
     <td><input name="japanese" value="${escapeHtml(e.japanese || '')}" lang="ja" style="min-width:220px;width:100%;" placeholder="例: 今日はいい天気です。" /></td>
+    <td><input name="reading" value="${escapeHtml(e.reading || '')}" lang="ja" style="min-width:170px;width:100%;" placeholder="きょうはいいてんきです。" /></td>
     <td><input name="highlight" value="${escapeHtml(e.highlight != null ? e.highlight : '')}" lang="ja" placeholder="${escapeHtml(jp)}" style="width:90px;" /></td>
     <td><input name="indonesian" value="${escapeHtml(e.indonesian || '')}" style="min-width:180px;width:100%;" placeholder="Hari ini cuacanya bagus." /></td>
     <td><input type="number" name="sortOrder" value="${e.sort_order || 0}" style="width:50px;" /></td>
@@ -4002,7 +3996,7 @@ window.deckManageExamples = async (vid) => {
       "Highlight" = bagian kalimat yang ditandai (default: <code lang="ja">${escapeHtml(jp)}</code>). Tulis kalimat polos, tanpa tag HTML.
     </p>
     <div style="overflow-x:auto;"><table style="font-size:12px;">
-      <thead><tr><th>Kalimat (JP)</th><th>Highlight</th><th>Terjemahan (ID)</th><th>#</th><th></th></tr></thead>
+      <thead><tr><th>Kalimat (JP)</th><th>Kana</th><th>Highlight</th><th>Terjemahan (ID)</th><th>#</th><th></th></tr></thead>
       <tbody id="deck-ex-body">${examples.map((e) => deckExampleRowHtml(vid, jp, e)).join('')}</tbody>
     </table></div>
     ${examples.length === 0 ? '<div class="empty" style="padding:14px;">Belum ada contoh kalimat.</div>' : ''}
@@ -4095,7 +4089,7 @@ window.deckGenExamples = async () => {
     let base = tb ? tb.querySelectorAll('tr').length : 0;
     exs.forEach((e) => {
       if (tb) tb.appendChild(el(deckExampleRowHtml(vid, jp, {
-        japanese: e.japanese, highlight: e.highlight, indonesian: e.indonesian, sort_order: base++,
+        japanese: e.japanese, reading: e.reading, highlight: e.highlight, indonesian: e.indonesian, sort_order: base++,
       })));
     });
     notify('Contoh dibuat AI — review lalu klik Simpan di tiap baris');
@@ -4113,6 +4107,7 @@ window.deckSaveExample = async (btn) => {
   const body = {
     vocabularyId: vid,
     japanese: tr.querySelector('input[name="japanese"]').value.trim(),
+    reading: tr.querySelector('input[name="reading"]').value.trim() || null,
     highlight: tr.querySelector('input[name="highlight"]').value.trim() || null,
     indonesian: tr.querySelector('input[name="indonesian"]').value.trim() || null,
     sortOrder: Number(tr.querySelector('input[name="sortOrder"]').value) || 0,

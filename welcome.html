@@ -2677,6 +2677,7 @@
   .deck-ex .de-text { flex: 1; min-width: 0; }
   .deck-ex .de-jp { font-family: 'Noto Sans JP', sans-serif; font-size: 19px; font-weight: 500; line-height: 1.45; color: var(--du-ink); margin-bottom: 4px; }
   .deck-ex .de-jp .hi { color: var(--deck-accent, var(--brand-red)); font-weight: 700; }
+  .deck-ex .de-kana { font-family: 'Noto Sans JP', sans-serif; font-size: 13px; color: var(--du-ink-3); line-height: 1.4; margin-bottom: 4px; }
   .deck-ex .de-id { font-size: 13.5px; color: var(--du-ink-2); line-height: 1.5; font-style: italic; }
   .deck-ex .de-play {
     flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--du-border);
@@ -8047,6 +8048,7 @@ window.openDeckModal = (idx) => {
           <div class="de-num">${String(i + 1).padStart(2, '0')}</div>
           <div class="de-text">
             <div class="de-jp" lang="ja">${deckHighlight(plain, ex.highlight, it.japanese)}</div>
+            ${ex.reading ? `<div class="de-kana" lang="ja">${escapeHtml(ex.reading)}</div>` : ''}
             ${ex.indonesian ? `<div class="de-id">${escapeHtml(ex.indonesian)}</div>` : ''}
           </div>
           <button class="de-play" type="button" aria-label="Dengar kalimat" onclick="playDeckExample(${idx}, ${i}, this)">${AUDIO_SVG}</button>

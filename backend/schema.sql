@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS vocabulary_examples (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   vocabulary_id UUID NOT NULL REFERENCES module_vocabulary(id) ON DELETE CASCADE,
   japanese TEXT NOT NULL,
+  reading TEXT,
   highlight TEXT,
   indonesian TEXT,
   sort_order INT DEFAULT 0,
