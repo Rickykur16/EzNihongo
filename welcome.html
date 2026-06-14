@@ -3684,30 +3684,74 @@
     letter-spacing: 0.14em; text-transform: uppercase; color: var(--du-ink-4);
   }
   .gt-slot__mic-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  /* Mode bicara: tombol bulat besar (tahan-bicara) + kolom status/timer. */
+  .gt-slot__mic-row--speech { flex-wrap: nowrap; align-items: center; gap: 16px; }
+  .gt-mic-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+  .gt-mic-timer {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+    color: var(--du-accent); letter-spacing: .04em; min-height: 14px;
+  }
 
+  /* Tombol mic bulat ala Duolingo/IELTS: ikon SVG persisten + ring + waveform + spinner. */
   .gt-mic {
-    position: relative; display: inline-flex; align-items: center; gap: 8px;
-    padding: 10px 16px;
-    background: var(--du-surface); border: 1px solid var(--du-border);
-    border-radius: 12px; color: var(--du-ink-2);
-    font-family: inherit; font-size: 13px; font-weight: 600;
-    cursor: pointer; transition: all 160ms ease;
+    position: relative; flex: none;
+    width: 84px; height: 84px; padding: 0;
+    background: transparent; border: none; border-radius: 50%;
+    cursor: pointer; color: var(--du-accent);
     /* Push-to-talk: cegah scroll/zoom/seleksi teks/callout saat tombol ditahan. */
     touch-action: none; -webkit-user-select: none; user-select: none;
-    -webkit-touch-callout: none;
+    -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
   }
-  .gt-mic:hover:not(:disabled) { background: var(--du-surface-2); border-color: var(--du-ink-4); }
-  .gt-mic.recording {
-    background: var(--du-accent); border-color: var(--du-accent); color: #fff;
-    box-shadow: 0 0 0 4px var(--du-accent-soft-2);
+  .gt-mic__core {
+    position: absolute; inset: 8px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: var(--du-surface); border: 2px solid var(--du-border);
+    color: var(--du-ink-2); box-shadow: 0 4px 0 var(--du-border-soft);
+    transition: transform 120ms ease, background 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 120ms ease;
   }
-  .gt-mic.recording::before {
-    content: ''; position: absolute; inset: -4px; border-radius: 14px;
-    border: 2px solid var(--du-accent); opacity: 0.4;
-    animation: gt-pulse 1.4s ease-out infinite; pointer-events: none;
+  .gt-mic:hover:not(.recording):not(.processing) .gt-mic__core {
+    background: var(--du-surface-2); border-color: var(--du-ink-4); color: var(--du-ink);
   }
+  .gt-mic:active:not(.processing) .gt-mic__core { transform: translateY(3px); box-shadow: 0 1px 0 var(--du-border-soft); }
+  .gt-mic__icon { display: inline-flex; }
 
-  .gt-status { font-size: 13px; line-height: 1.5; color: var(--du-ink-3); flex: 1; min-width: 0; }
+  /* Merekam: core accent, ikon disembunyikan, waveform + ring tampil. */
+  .gt-mic.recording .gt-mic__core {
+    background: var(--du-accent); border-color: var(--du-accent); color: #fff;
+    box-shadow: 0 4px 0 var(--du-accent-2);
+  }
+  .gt-mic.recording .gt-mic__icon { display: none; }
+  .gt-mic__ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 2px solid var(--du-accent); opacity: 0; pointer-events: none;
+  }
+  .gt-mic.recording .gt-mic__ring { animation: gt-ring 1.6s ease-out infinite; }
+  .gt-mic.recording .gt-mic__ring--2 { animation-delay: .8s; }
+  @keyframes gt-ring { 0% { transform: scale(.85); opacity: .5; } 100% { transform: scale(1.35); opacity: 0; } }
+
+  .gt-mic__wave { display: none; align-items: center; gap: 3px; height: 26px; }
+  .gt-mic.recording .gt-mic__wave { display: inline-flex; }
+  .gt-mic__wave i { width: 3px; height: 8px; border-radius: 2px; background: #fff; animation: gt-wave .9s ease-in-out infinite; }
+  .gt-mic__wave i:nth-child(2) { animation-delay: .15s; }
+  .gt-mic__wave i:nth-child(3) { animation-delay: .3s; }
+  .gt-mic__wave i:nth-child(4) { animation-delay: .45s; }
+  .gt-mic__wave i:nth-child(5) { animation-delay: .6s; }
+  @keyframes gt-wave { 0%, 100% { height: 8px; opacity: .7; } 50% { height: 24px; opacity: 1; } }
+
+  /* Memeriksa: core redup + spinner, ikon/wave disembunyikan, non-interaktif. */
+  .gt-mic.processing { cursor: progress; }
+  .gt-mic.processing .gt-mic__core { background: var(--du-surface-2); border-color: var(--du-border); color: var(--du-ink-3); box-shadow: 0 4px 0 var(--du-border-soft); }
+  .gt-mic.processing .gt-mic__icon, .gt-mic.processing .gt-mic__wave { display: none; }
+  .gt-mic__spinner {
+    display: none; width: 24px; height: 24px; border-radius: 50%;
+    border: 3px solid var(--du-border); border-top-color: var(--du-accent);
+    animation: gt-spin .7s linear infinite;
+  }
+  .gt-mic.processing .gt-mic__spinner { display: inline-block; }
+  @keyframes gt-spin { to { transform: rotate(360deg); } }
+
+  .gt-status { font-size: 13px; line-height: 1.45; color: var(--du-ink-3); font-weight: 600; min-width: 0; word-break: break-word; }
 
   textarea[id^="gt-input-"] {
     width: 100%; min-height: 60px; padding: 12px 14px;
@@ -3786,16 +3830,20 @@
   @keyframes gt-fade-in { from { opacity: 0; } to { opacity: 1; } }
   @keyframes gt-pop-in { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
   @keyframes gt-slide-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes gt-pulse { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.18); opacity: 0; } }
 
   @media (prefers-reduced-motion: reduce) {
-    .gt-popup-overlay, .gt-popup, .gt-result, .gt-mic.recording::before { animation: none !important; transition: none !important; }
+    .gt-popup-overlay, .gt-popup, .gt-result { animation: none !important; transition: none !important; }
+    .gt-mic__ring, .gt-mic__wave i, .gt-mic__spinner { animation: none !important; }
+    .gt-mic.recording .gt-mic__ring { opacity: .25; }    /* sisa petunjuk ring statis */
+    .gt-mic.recording .gt-mic__wave i { height: 16px; }  /* bar statis, bukan gerak */
   }
   @media (max-width: 560px) {
     .gt-popup-overlay { padding: 0; }
     .gt-popup { max-width: 100%; max-height: 100vh; border-radius: 0; padding: 22px 18px 18px; }
     .gt-card { padding: 18px; }
     .gt-card__pattern { font-size: 32px; }
+    .gt-mic { width: 72px; height: 72px; }
+    .gt-slot__mic-row--speech { gap: 12px; }
     .gt-footer__actions { flex-direction: column-reverse; }
     .gt-footer__actions .gt-btn { width: 100%; justify-content: center; }
   }
@@ -7294,6 +7342,8 @@ const DECK_COLORS = {
   day: '#C8102E', time: '#5E4B8B', week: '#1F8A5B', general: '#C8102E',
 };
 const AUDIO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19" fill="currentColor"></polygon><path d="M15.5 8.5a5 5 0 0 1 0 7"></path></svg>';
+// Ikon mic untuk tombol tahan-bicara tugas grammar (lihat _gtSetMicState / gtCardsHtml).
+const GT_MIC_SVG = '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>';
 
 function deckAccent(item) {
   const raw = (item && item.accentColor != null) ? String(item.accentColor).trim() : '';
@@ -7582,13 +7632,24 @@ function gtCardsHtml(items, sttOn) {
       // kalau mic ditolak / STT nonaktif (lihat _gtTypeState).
       return `
         <div class="gt-slot"${slotLabel}>
-          <div class="gt-slot__mic-row">
-            <button type="button" class="gt-mic" id="gt-mic-${key}" onpointerdown="gtStartRecord(${pi}, ${si}, this, event)" onpointerup="gtStopRecord(${pi}, ${si}, this, event)" onpointercancel="gtStopRecord(${pi}, ${si}, this, event)" oncontextmenu="return false" aria-label="Tahan untuk merekam ucapan">🎤 Tahan untuk bicara</button>
-            <span class="gt-status" id="gt-status-${key}"></span>
+          <div class="gt-slot__mic-row gt-slot__mic-row--speech">
+            <button type="button" class="gt-mic idle" id="gt-mic-${key}" onpointerdown="gtStartRecord(${pi}, ${si}, this, event)" onpointerup="gtStopRecord(${pi}, ${si}, this, event)" onpointercancel="gtStopRecord(${pi}, ${si}, this, event)" oncontextmenu="return false" aria-label="Tahan untuk merekam ucapan">
+              <span class="gt-mic__ring" aria-hidden="true"></span>
+              <span class="gt-mic__ring gt-mic__ring--2" aria-hidden="true"></span>
+              <span class="gt-mic__core" aria-hidden="true">
+                <span class="gt-mic__icon">${GT_MIC_SVG}</span>
+                <span class="gt-mic__wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="gt-mic__spinner" aria-hidden="true"></span>
+              </span>
+            </button>
+            <div class="gt-mic-meta">
+              <span class="gt-status" id="gt-status-${key}" role="status" aria-live="polite">Tahan untuk bicara</span>
+              <span class="gt-mic-timer" id="gt-timer-${key}" aria-hidden="true"></span>
+            </div>
           </div>
           <div class="gt-said gt-said--empty" id="gt-said-${key}" data-text="" lang="ja" aria-live="polite">Tahan tombol lalu ucapkan kalimatmu — teksnya muncul di sini.</div>
           <textarea id="gt-input-${key}" lang="ja" rows="2" placeholder="例：私は毎日日本語を勉強します。" hidden></textarea>
-          <button type="button" class="gt-check" onclick="gtCheck(${pi}, ${si}, this)">Periksa</button>
+          <button type="button" class="gt-check" id="gt-check-${key}" onclick="gtCheck(${pi}, ${si}, this)" hidden>Periksa</button>
           <div class="gt-result" id="gt-result-${key}" hidden></div>
         </div>`;
     }
@@ -7599,7 +7660,7 @@ function gtCardsHtml(items, sttOn) {
           <span class="gt-status" id="gt-status-${key}"></span>
         </div>
         <textarea id="gt-input-${key}" lang="ja" rows="2" placeholder="例：私は毎日日本語を勉強します。"></textarea>
-        <button type="button" class="gt-check" onclick="gtCheck(${pi}, ${si}, this)">Periksa</button>
+        <button type="button" class="gt-check" id="gt-check-${key}" onclick="gtCheck(${pi}, ${si}, this)">Periksa</button>
         <div class="gt-result" id="gt-result-${key}" hidden></div>
       </div>`;
   };
@@ -7777,12 +7838,62 @@ window.gtPlayExample = (idx, btn) => {
   playTTS(String(it.example).replace(/<[^>]*>/g, ''), btn);
 };
 
-// Push-to-talk: tahan tombol untuk merekam, lepas untuk berhenti & transkrip.
-// Tiap mulai rekam baru me-reset teks slot (tidak menumpuk transkrip lama).
+// Push-to-talk: tahan tombol untuk merekam, lepas untuk berhenti → transkrip →
+// auto-periksa (Haiku). Tiap mulai rekam baru me-reset teks slot (tidak menumpuk
+// transkrip lama).
+
+// Timer rekaman mm:ss per slot (ditampilkan di #gt-timer-${key} saat merekam).
+let _gtTimers = {};
+// Nomor urut percobaan per slot — tiap rekam baru menaikkannya supaya hasil
+// eval/transkrip lama yang masih in-flight tidak menimpa rekaman yang lebih baru.
+let _gtEvalSeq = {};
+function _gtStartTimer(key, scope) {
+  scope = scope || _gtScope();
+  const el = scope.querySelector(`#gt-timer-${key}`);
+  _gtStopTimer(key, scope);
+  if (!el) return;
+  const t0 = Date.now();
+  el.textContent = '0:00';
+  _gtTimers[key] = setInterval(() => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    el.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }, 250);
+}
+function _gtStopTimer(key, scope) {
+  if (_gtTimers[key]) { clearInterval(_gtTimers[key]); delete _gtTimers[key]; }
+  scope = scope || _gtScope();
+  const el = scope && scope.querySelector(`#gt-timer-${key}`);
+  if (el) el.textContent = '';
+}
+
+// Pusat kendali tampilan tombol mic: kelas + label singkat di #gt-status.
+// state: 'idle' | 'recording' | 'processing'
+function _gtSetMicState(key, state, scope) {
+  scope = scope || _gtScope();
+  const btn = scope.querySelector(`#gt-mic-${key}`);
+  if (btn) {
+    btn.classList.toggle('recording', state === 'recording');
+    btn.classList.toggle('processing', state === 'processing');
+    btn.classList.toggle('idle', state === 'idle');
+    btn.setAttribute('aria-busy', state === 'processing' ? 'true' : 'false');
+  }
+  const status = scope.querySelector(`#gt-status-${key}`);
+  if (status) status.textContent =
+    state === 'recording' ? 'Lepas saat selesai bicara…' :
+    state === 'processing' ? 'Memeriksa…' : 'Tahan untuk bicara';
+  if (state !== 'recording') _gtStopTimer(key, scope);
+}
+
+// Reset visual tombol mic (dipanggil saat batal/selesai/error). Hanya bersihkan
+// kelas + timer; JANGAN tulis textContent (akan menimpa ikon SVG) dan JANGAN paksa
+// #gt-status (biar _gtFinishRecord bebas menulis "Mentranskrip…").
 function _gtResetBtn(btn) {
   if (!btn) return;
-  btn.classList.remove('recording');
-  btn.textContent = '🎤 Tahan untuk bicara';
+  btn.classList.remove('recording', 'processing');
+  btn.classList.add('idle');
+  btn.setAttribute('aria-busy', 'false');
+  const key = btn.id ? btn.id.replace('gt-mic-', '') : null;
+  if (key) _gtStopTimer(key);
 }
 
 // Buang rekaman yang sedang berjalan tanpa men-transkrip (mis. saat user mulai
@@ -7816,7 +7927,8 @@ function _gtSetSaid(key, text, scope) {
   if (text) { said.textContent = text; said.classList.remove('gt-said--empty'); }
   else { said.textContent = 'Tahan tombol lalu ucapkan kalimatmu — teksnya muncul di sini.'; said.classList.add('gt-said--empty'); }
 }
-// Tampilkan transkrip (sembunyikan textarea). No-op untuk slot mode-ketik.
+// Tampilkan transkrip (sembunyikan textarea + tombol Periksa — mode bicara
+// auto-periksa). No-op untuk slot mode-ketik.
 function _gtSpeakState(key, scope) {
   scope = scope || _gtScope();
   const said = scope.querySelector(`#gt-said-${key}`);
@@ -7824,8 +7936,10 @@ function _gtSpeakState(key, scope) {
   said.hidden = false;
   const ta = scope.querySelector(`#gt-input-${key}`);
   if (ta) ta.hidden = true;
+  const chk = scope.querySelector(`#gt-check-${key}`);
+  if (chk) chk.hidden = true;
 }
-// Fallback: mic ditolak / STT nonaktif → tampilkan textarea ketik.
+// Fallback: mic ditolak / STT nonaktif → tampilkan textarea ketik + tombol Periksa.
 function _gtTypeState(key, scope) {
   scope = scope || _gtScope();
   const said = scope.querySelector(`#gt-said-${key}`);
@@ -7833,6 +7947,8 @@ function _gtTypeState(key, scope) {
   said.hidden = true;
   const ta = scope.querySelector(`#gt-input-${key}`);
   if (ta) { ta.hidden = false; try { ta.focus(); } catch {} }
+  const chk = scope.querySelector(`#gt-check-${key}`);
+  if (chk) chk.hidden = false;
 }
 
 window.gtStartRecord = async (pi, si, btn, ev) => {
@@ -7850,13 +7966,14 @@ window.gtStartRecord = async (pi, si, btn, ev) => {
   _gtSetSaid(key, '', scope);
   if (result) result.hidden = true;
 
-  const rec = { key, btn, recorder: null, chunks: [], stream: null, stopRequested: false, discarded: false };
+  const rec = { key, pi, si, btn, recorder: null, chunks: [], stream: null, stopRequested: false, discarded: false };
+  rec.seq = _gtEvalSeq[key] = (_gtEvalSeq[key] || 0) + 1; // tandai percobaan baru
   _gtRec = rec;
   // Pointer capture supaya pointerup tetap diterima walau jari/mouse geser keluar tombol.
   try { if (ev && ev.pointerId != null && btn.setPointerCapture) btn.setPointerCapture(ev.pointerId); } catch {}
-  btn.classList.add('recording');
-  btn.textContent = '● Merekam…';
-  if (status) status.textContent = 'Merekam… lepas tombol saat selesai bicara.';
+  _gtSetMicState(key, 'recording', scope);
+  _gtStartTimer(key, scope);
+  if (status) status.textContent = 'Merekam… lepas saat selesai bicara.';
 
   let stream;
   try {
@@ -7899,30 +8016,69 @@ window.gtStopRecord = (pi, si, btn, ev) => {
 
 async function _gtFinishRecord(rec) {
   const scope = _gtScope();
-  const status = scope.querySelector(`#gt-status-${rec.key}`);
+  const key = rec.key;
+  const status = scope.querySelector(`#gt-status-${key}`);
   if (rec.stream) rec.stream.getTracks().forEach((t) => t.stop());
   _gtResetBtn(rec.btn);
   if (rec.discarded) { if (_gtRec === rec) _gtRec = null; return; }
+  _gtSetMicState(key, 'processing', scope); // spinner sampai hasil keluar (transkrip → periksa)
   if (status) status.textContent = 'Mentranskrip…';
   const blob = new Blob(rec.chunks, { type: (rec.recorder && rec.recorder.mimeType) || 'audio/webm' });
   const fd = new FormData();
   fd.append('audio', blob, 'speech.webm');
   try {
     const res = await window.ezApi('/grammar-task/transcribe', { method: 'POST', body: fd });
-    if (res.status === 503) { if (status) status.textContent = 'Transkripsi otomatis nonaktif — ketik kalimatmu saja.'; _gtTypeState(rec.key, scope); return; }
-    if (!res.ok) { if (status) status.textContent = 'Gagal mentranskrip — tahan tombol untuk rekam ulang.'; return; }
+    // User mulai rekam ulang selagi transkrip jalan → buang hasil ini diam-diam.
+    if (rec.discarded) { if (_gtRec === rec) _gtRec = null; return; }
+    if (res.status === 503) {
+      if (status) status.textContent = 'Transkripsi otomatis nonaktif — ketik kalimatmu saja.';
+      _gtSetMicState(key, 'idle', scope);
+      _gtTypeState(key, scope);
+      if (_gtRec === rec) _gtRec = null;
+      return;
+    }
+    if (!res.ok) {
+      if (status) status.textContent = 'Gagal mentranskrip — tahan tombol untuk rekam ulang.';
+      _gtSetMicState(key, 'idle', scope);
+      if (_gtRec === rec) _gtRec = null;
+      return;
+    }
     const data = await res.json();
-    _gtSpeakState(rec.key, scope);
-    _gtSetSaid(rec.key, data.text || '', scope); // replace, bukan append → tidak menumpuk
-    if (status) status.textContent = data.text ? 'Transkrip selesai — periksa, atau rekam ulang bila kurang pas.' : 'Tidak ada teks terdeteksi — coba rekam lagi.';
+    if (rec.discarded) { if (_gtRec === rec) _gtRec = null; return; }
+    _gtSpeakState(key, scope);
+    _gtSetSaid(key, data.text || '', scope); // replace, bukan append → tidak menumpuk
+    // Lepas handle rekaman SEBELUM await eval: izinkan user menahan lagi (rekam
+    // ulang) selagi penilaian jalan tanpa _gtCancelActive kebingungan.
+    if (_gtRec === rec) _gtRec = null;
+    if (!data.text) {
+      if (status) status.textContent = 'Tidak ada teks terdeteksi — coba rekam lagi.';
+      _gtSetMicState(key, 'idle', scope);
+      return;
+    }
+    // Auto-evaluasi dengan Haiku — tanpa klik "Periksa".
+    await gtRunEval(rec.pi, rec.si, {
+      fromSpeech: true,
+      guard: () => _gtEvalSeq[key] === rec.seq, // batal render kalau slot sudah rekam ulang
+      onStart: () => _gtSetMicState(key, 'processing', scope),
+      onDone: () => {
+        const b = _gtScope().querySelector(`#gt-mic-${key}`);
+        if (b && b.classList.contains('recording')) return; // user sudah rekam ulang
+        _gtSetMicState(key, 'idle', scope);
+      },
+    });
   } catch (e) {
+    if (rec.discarded) { if (_gtRec === rec) _gtRec = null; return; }
     if (status) status.textContent = 'Gagal mentranskrip — tahan tombol untuk rekam ulang.';
-  } finally {
+    _gtSetMicState(key, 'idle', scope);
     if (_gtRec === rec) _gtRec = null;
   }
 }
 
-window.gtCheck = async (pi, si, btn) => {
+// Inti penilaian kalimat (tanpa ketergantungan tombol). Dipanggil otomatis dari
+// _gtFinishRecord (mode bicara, lepas → auto-periksa) maupun lewat wrapper gtCheck
+// (tombol "Periksa" di fallback ketik). opts: { fromSpeech, guard, onStart, onDone }.
+async function gtRunEval(pi, si, opts) {
+  opts = opts || {};
   const it = (window.__gtData || [])[pi];
   const key = `${pi}-${si}`;
   const scope = _gtScope();
@@ -7930,15 +8086,23 @@ window.gtCheck = async (pi, si, btn) => {
   if (!it || !result) return;
   const sentence = _gtGetSentence(key, scope);
   const showResult = (cls, html) => { result.hidden = false; result.className = `gt-result${cls ? ' ' + cls : ''}`; result.innerHTML = html; };
-  if (!sentence) { showResult('gt-result--error', '<div class="gt-result-body" style="padding-left:0;">Ucapkan atau ketik kalimatmu dulu.</div>'); return; }
-  btn.disabled = true;
-  const oldLabel = btn.textContent;
-  btn.textContent = 'Memeriksa…';
+  if (!sentence) {
+    if (opts.fromSpeech) {
+      const status = scope.querySelector(`#gt-status-${key}`);
+      if (status) status.textContent = 'Tidak ada teks terdeteksi — coba rekam lagi.';
+    } else {
+      showResult('gt-result--error', '<div class="gt-result-body" style="padding-left:0;">Ucapkan atau ketik kalimatmu dulu.</div>');
+    }
+    try { if (typeof opts.onDone === 'function') opts.onDone(); } catch {}
+    return;
+  }
+  try { if (typeof opts.onStart === 'function') opts.onStart(); } catch {}
   try {
     const res = await window.ezApi('/grammar-task/evaluate', {
       method: 'POST',
       body: JSON.stringify({ lessonId: window.__gtLessonId, grammarId: it.id, sentence }),
     });
+    if (opts.guard && !opts.guard()) return; // slot sudah rekam ulang → jangan render hasil basi
     if (res.status === 503) {
       if (window.__gtState) { window.__gtState.evalDisabled = true; gtUpdateComplete(); }
       showResult('', '<div class="gt-result-body" style="padding-left:0;color:var(--du-ink-3);">Penilaian AI belum aktif. Kamu tetap bisa menandai pelajaran ini selesai.</div>');
@@ -7946,6 +8110,7 @@ window.gtCheck = async (pi, si, btn) => {
     }
     if (!res.ok) { showResult('gt-result--error', '<div class="gt-result-body" style="padding-left:0;">Gagal memeriksa, coba lagi.</div>'); return; }
     const d = await res.json();
+    if (opts.guard && !opts.guard()) return;
     const ok = d.correct && d.usesPattern;
     if (window.__gtState) { window.__gtState.passed[key] = !!ok; gtUpdateComplete(); }
     const corr = d.correction ? `
@@ -7963,11 +8128,20 @@ window.gtCheck = async (pi, si, btn) => {
         ${corr}
       </div>`);
   } catch (e) {
+    if (opts.guard && !opts.guard()) return;
     showResult('gt-result--error', '<div class="gt-result-body" style="padding-left:0;">Gagal memeriksa, coba lagi.</div>');
   } finally {
-    btn.disabled = false;
-    btn.textContent = oldLabel;
+    try { if (typeof opts.onDone === 'function') opts.onDone(); } catch {}
   }
+}
+
+// Wrapper tombol "Periksa" (fallback ketik): sambungkan disabled/label ke gtRunEval.
+window.gtCheck = (pi, si, btn) => {
+  let oldLabel = '';
+  return gtRunEval(pi, si, {
+    onStart: () => { if (btn) { btn.disabled = true; oldLabel = btn.textContent; btn.textContent = 'Memeriksa…'; } },
+    onDone: () => { if (btn) { btn.disabled = false; btn.textContent = oldLabel || 'Periksa'; } },
+  });
 };
 
 // Kanji lesson — render grid karakter; klik → openKanjiDetail modal
