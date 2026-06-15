@@ -3776,17 +3776,6 @@
     font-family: inherit; font-size: 13px; font-style: italic; color: var(--du-ink-4);
   }
 
-  .gt-check {
-    align-self: flex-start; display: inline-flex; align-items: center; gap: 8px;
-    padding: 11px 22px; background: var(--du-accent); color: #fff;
-    border: none; border-radius: 12px;
-    font-family: inherit; font-size: 14px; font-weight: 700;
-    cursor: pointer; box-shadow: 0 3px 0 var(--du-accent-2);
-    transition: all 140ms ease;
-  }
-  .gt-check:hover:not(:disabled) { transform: translateY(1px); box-shadow: 0 1px 0 var(--du-accent-2); }
-  .gt-check:disabled { background: var(--du-surface-2); color: var(--du-ink-3); box-shadow: none; cursor: progress; }
-
   .gt-result {
     margin-top: 4px; padding: 14px 16px;
     background: var(--du-surface); border: 1px solid var(--du-border-soft);
@@ -7648,19 +7637,17 @@ function gtCardsHtml(items, sttOn) {
             </div>
           </div>
           <div class="gt-said gt-said--empty" id="gt-said-${key}" data-text="" lang="ja" aria-live="polite">Tahan tombol lalu ucapkan kalimatmu — teksnya muncul di sini.</div>
-          <textarea id="gt-input-${key}" lang="ja" rows="2" placeholder="例：私は毎日日本語を勉強します。" hidden></textarea>
-          <button type="button" class="gt-check" id="gt-check-${key}" onclick="gtCheck(${pi}, ${si}, this)" hidden>Periksa</button>
+          <textarea id="gt-input-${key}" lang="ja" rows="2" placeholder="例：私は毎日日本語を勉強します。" onkeydown="gtInputKey(${pi}, ${si}, event)" hidden></textarea>
           <div class="gt-result" id="gt-result-${key}" hidden></div>
         </div>`;
     }
-    // Mode ketik (mic tak didukung): textarea biasa.
+    // Mode ketik (mic tak didukung): textarea biasa, Enter untuk periksa.
     return `
       <div class="gt-slot"${slotLabel}>
         <div class="gt-slot__mic-row">
           <span class="gt-status" id="gt-status-${key}"></span>
         </div>
-        <textarea id="gt-input-${key}" lang="ja" rows="2" placeholder="例：私は毎日日本語を勉強します。"></textarea>
-        <button type="button" class="gt-check" id="gt-check-${key}" onclick="gtCheck(${pi}, ${si}, this)">Periksa</button>
+        <textarea id="gt-input-${key}" lang="ja" rows="2" placeholder="例：私は毎日日本語を勉強します。" onkeydown="gtInputKey(${pi}, ${si}, event)"></textarea>
         <div class="gt-result" id="gt-result-${key}" hidden></div>
       </div>`;
   };
@@ -7675,7 +7662,7 @@ function gtCardsHtml(items, sttOn) {
     const instruction = it.instruction && it.instruction.trim()
       ? escapeHtml(it.instruction.trim())
       : `Buat ${count} kalimat memakai pola ini, lalu ucapkan atau ketik.`;
-    const hint = sttOn ? 'Tahan 🎤 lalu ucapkan kalimatmu, lepas saat selesai.' : 'Ketik kalimatmu dalam bahasa Jepang.';
+    const hint = sttOn ? 'Tahan 🎤 lalu ucapkan kalimatmu, lepas saat selesai — kalimatmu langsung diperiksa.' : 'Ketik kalimatmu dalam bahasa Jepang, lalu tekan Enter untuk memeriksa.';
     let slots = '';
     for (let si = 0; si < count; si++) slots += slotHtml(pi, si, count);
     return `
@@ -7927,8 +7914,8 @@ function _gtSetSaid(key, text, scope) {
   if (text) { said.textContent = text; said.classList.remove('gt-said--empty'); }
   else { said.textContent = 'Tahan tombol lalu ucapkan kalimatmu — teksnya muncul di sini.'; said.classList.add('gt-said--empty'); }
 }
-// Tampilkan transkrip (sembunyikan textarea + tombol Periksa — mode bicara
-// auto-periksa). No-op untuk slot mode-ketik.
+// Tampilkan transkrip (sembunyikan textarea — mode bicara auto-periksa).
+// No-op untuk slot mode-ketik.
 function _gtSpeakState(key, scope) {
   scope = scope || _gtScope();
   const said = scope.querySelector(`#gt-said-${key}`);
@@ -7936,10 +7923,8 @@ function _gtSpeakState(key, scope) {
   said.hidden = false;
   const ta = scope.querySelector(`#gt-input-${key}`);
   if (ta) ta.hidden = true;
-  const chk = scope.querySelector(`#gt-check-${key}`);
-  if (chk) chk.hidden = true;
 }
-// Fallback: mic ditolak / STT nonaktif → tampilkan textarea ketik + tombol Periksa.
+// Fallback: mic ditolak / STT nonaktif → tampilkan textarea ketik (Enter = periksa).
 function _gtTypeState(key, scope) {
   scope = scope || _gtScope();
   const said = scope.querySelector(`#gt-said-${key}`);
@@ -7947,8 +7932,6 @@ function _gtTypeState(key, scope) {
   said.hidden = true;
   const ta = scope.querySelector(`#gt-input-${key}`);
   if (ta) { ta.hidden = false; try { ta.focus(); } catch {} }
-  const chk = scope.querySelector(`#gt-check-${key}`);
-  if (chk) chk.hidden = false;
 }
 
 window.gtStartRecord = async (pi, si, btn, ev) => {
@@ -7981,7 +7964,7 @@ window.gtStartRecord = async (pi, si, btn, ev) => {
   } catch (e) {
     if (_gtRec === rec) _gtRec = null;
     _gtResetBtn(btn);
-    if (status) status.textContent = 'Akses mikrofon ditolak — ketik kalimatmu saja.';
+    if (status) status.textContent = 'Akses mikrofon ditolak — ketik kalimatmu, lalu tekan Enter.';
     _gtTypeState(key, scope);
     return;
   }
@@ -8031,7 +8014,7 @@ async function _gtFinishRecord(rec) {
     // User mulai rekam ulang selagi transkrip jalan → buang hasil ini diam-diam.
     if (rec.discarded) { if (_gtRec === rec) _gtRec = null; return; }
     if (res.status === 503) {
-      if (status) status.textContent = 'Transkripsi otomatis nonaktif — ketik kalimatmu saja.';
+      if (status) status.textContent = 'Transkripsi otomatis nonaktif — ketik kalimatmu, lalu tekan Enter.';
       _gtSetMicState(key, 'idle', scope);
       _gtTypeState(key, scope);
       if (_gtRec === rec) _gtRec = null;
@@ -8075,8 +8058,8 @@ async function _gtFinishRecord(rec) {
 }
 
 // Inti penilaian kalimat (tanpa ketergantungan tombol). Dipanggil otomatis dari
-// _gtFinishRecord (mode bicara, lepas → auto-periksa) maupun lewat wrapper gtCheck
-// (tombol "Periksa" di fallback ketik). opts: { fromSpeech, guard, onStart, onDone }.
+// _gtFinishRecord (mode bicara, lepas → auto-periksa) maupun dari gtInputKey
+// (Enter di fallback ketik). opts: { fromSpeech, guard, onStart, onDone }.
 async function gtRunEval(pi, si, opts) {
   opts = opts || {};
   const it = (window.__gtData || [])[pi];
@@ -8135,12 +8118,20 @@ async function gtRunEval(pi, si, opts) {
   }
 }
 
-// Wrapper tombol "Periksa" (fallback ketik): sambungkan disabled/label ke gtRunEval.
-window.gtCheck = (pi, si, btn) => {
-  let oldLabel = '';
+// Fallback ketik (mic ditolak / STT nonaktif / device tanpa STT): Enter tanpa Shift
+// langsung memeriksa kalimat — tidak ada tombol "Periksa" lagi.
+window.gtInputKey = (pi, si, ev) => {
+  if (!ev || ev.key !== 'Enter' || ev.shiftKey) return;
+  if (ev.isComposing || ev.keyCode === 229) return; // jangan submit saat konfirmasi IME (henkan kanji)
+  ev.preventDefault();
+  const key = `${pi}-${si}`;
+  const scope = _gtScope();
+  const ta = ev.target;
+  const status = scope.querySelector(`#gt-status-${key}`);
+  let prevStatus = '';
   return gtRunEval(pi, si, {
-    onStart: () => { if (btn) { btn.disabled = true; oldLabel = btn.textContent; btn.textContent = 'Memeriksa…'; } },
-    onDone: () => { if (btn) { btn.disabled = false; btn.textContent = oldLabel || 'Periksa'; } },
+    onStart: () => { if (ta) ta.disabled = true; if (status) { prevStatus = status.textContent; status.textContent = 'Memeriksa…'; } },
+    onDone: () => { if (ta) { ta.disabled = false; try { ta.focus(); } catch {} } if (status) status.textContent = prevStatus; },
   });
 };
 
