@@ -1758,6 +1758,18 @@ window.listenGenRun = async () => {
   }
 };
 
+// Render baris opsi (radio benar + input teks) untuk satu draft generator.
+// Dipakai render awal DAN regenerate (genDraftOptions) supaya id/markup identik:
+// id input ${prefix}_opt_${i}_${j}, radio name=${prefix}_correct_${i}.
+// options = [{text, isCorrect}].
+function genOptionRows(prefix, i, options) {
+  return (options || []).map((o, j) => `
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-bottom:4px;">
+          <input type="radio" name="${prefix}_correct_${i}" value="${j}" ${o.isCorrect ? 'checked' : ''} />
+          <input id="${prefix}_opt_${i}_${j}" value="${escapeHtml(o.text || '')}" lang="ja" style="flex:1;" />
+        </label>`).join('');
+}
+
 function listenGenRenderPreview() {
   const s = _listenGenSection || { number: 1, label: 'Listening', instruction: '' };
   const cards = _listenGenDrafts.map((q, i) => `
@@ -1775,11 +1787,13 @@ function listenGenRenderPreview() {
         </div>
         <audio id="lg_player_${i}" controls style="margin-top:6px;width:100%;display:none;"></audio>
       </div>
-      <div class="field"><label>Opsi (pilih yang benar)</label>${(q.options || []).map((o, j) => `
-        <label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-bottom:4px;">
-          <input type="radio" name="lg_correct_${i}" value="${j}" ${o.isCorrect ? 'checked' : ''} />
-          <input id="lg_opt_${i}_${j}" value="${escapeHtml(o.text || '')}" lang="ja" style="flex:1;" />
-        </label>`).join('')}</div>
+      <div class="field"><label>Opsi (pilih yang benar)</label>
+        <div id="lg_opts_${i}">${genOptionRows('lg', i, q.options)}</div>
+        <div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button type="button" id="lg_opt_btn_${i}" class="btn btn-ghost btn-sm" onclick="listenGenOptions(${i})">✨ Generate opsi + penjelasan (AI)</button>
+          <span id="lg_opt_status_${i}" style="font-size:11px;color:var(--ink-500);"></span>
+        </div>
+      </div>
       <div class="field"><label>Penjelasan</label><input id="lg_exp_${i}" value="${escapeHtml(q.explanation || '')}" /></div>
     </div>`).join('');
   openModal(`
@@ -1824,6 +1838,57 @@ window.listenGenTestAudio = async (i) => {
     status.textContent = `Network error: ${err.message}`;
   }
 };
+
+// Regenerate opsi + penjelasan untuk SATU draft agar match pertanyaan TERBARU
+// (dibaca dari DOM). Re-use endpoint /admin/generate-question-options. Update
+// _drafts[i].options & .explanation, render ulang container opsi, dan TIMPA
+// input penjelasan (beda dari quizGenOptions yg cuma isi kalau kosong).
+// Penjelasan dari endpoint = Bahasa Indonesia.
+async function genDraftOptions({ prefix, i, drafts, lessonId, category, passage, audioScript }) {
+  const question = (document.getElementById(`${prefix}_q_${i}`)?.value || '').trim();
+  if (!question) { notify('Tulis pertanyaannya dulu sebelum generate opsi', true); return; }
+  const btn = document.getElementById(`${prefix}_opt_btn_${i}`);
+  const status = document.getElementById(`${prefix}_opt_status_${i}`);
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  if (status) status.textContent = 'Generating… (~5s)';
+  try {
+    const d = await api('/admin/generate-question-options', {
+      method: 'POST',
+      body: JSON.stringify({ lessonId, question, questionCategory: category, passage: passage || '', audioScript: audioScript || '' }),
+    });
+    const opts = Array.isArray(d.options) ? d.options : [];
+    if (opts.length < 2) { notify('AI tidak menghasilkan opsi. Coba lagi.', true); if (status) status.textContent = ''; return; }
+    drafts[i].options = opts.map((o) => ({ text: String(o.text || ''), isCorrect: !!o.isCorrect }));
+    const cont = document.getElementById(`${prefix}_opts_${i}`);
+    if (cont) cont.innerHTML = genOptionRows(prefix, i, drafts[i].options);
+    if (typeof d.explanation === 'string' && d.explanation.trim()) {
+      drafts[i].explanation = d.explanation;
+      const expEl = document.getElementById(`${prefix}_exp_${i}`);
+      if (expEl) expEl.value = d.explanation;
+    }
+    if (status) status.textContent = `OK (${drafts[i].options.length} opsi)`;
+    notify('Opsi + penjelasan dibuat AI — review & edit seperlunya');
+  } catch (err) {
+    if (status) status.textContent = `Error: ${err.message}`;
+    notify('Gagal generate opsi: ' + err.message, true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✨ Generate opsi + penjelasan (AI)'; }
+  }
+}
+
+window.listenGenOptions = (i) => genDraftOptions({
+  prefix: 'lg', i, drafts: _listenGenDrafts,
+  lessonId: _listenGenCtx.lessonId,
+  category: 'listening',
+  audioScript: (document.getElementById(`lg_audio_${i}`)?.value || '').trim(),
+});
+
+window.jlptGenOptions = (i) => genDraftOptions({
+  prefix: 'jg', i, drafts: _jlptGenDrafts,
+  lessonId: _jlptGenCtx.lessonId,
+  category: _jlptGenCategory,
+  passage: _jlptGenDrafts[i]?.passage || '',
+});
 
 window.listenGenSave = async () => {
   const includes = Array.from(document.querySelectorAll('.lg-inc:checked')).map((c) => Number(c.dataset.i));
@@ -2039,11 +2104,13 @@ function jlptGenRenderPreview() {
       </label>
       ${passageBlock}
       <div class="field"><label>Pertanyaan</label><textarea id="jg_q_${i}" rows="2" lang="ja">${escapeHtml(q.question || '')}</textarea></div>
-      <div class="field"><label>Opsi (pilih yang benar)</label>${(q.options || []).map((o, j) => `
-        <label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-bottom:4px;">
-          <input type="radio" name="jg_correct_${i}" value="${j}" ${o.isCorrect ? 'checked' : ''} />
-          <input id="jg_opt_${i}_${j}" value="${escapeHtml(o.text || '')}" lang="ja" style="flex:1;" />
-        </label>`).join('')}</div>
+      <div class="field"><label>Opsi (pilih yang benar)</label>
+        <div id="jg_opts_${i}">${genOptionRows('jg', i, q.options)}</div>
+        <div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button type="button" id="jg_opt_btn_${i}" class="btn btn-ghost btn-sm" onclick="jlptGenOptions(${i})">✨ Generate opsi + penjelasan (AI)</button>
+          <span id="jg_opt_status_${i}" style="font-size:11px;color:var(--ink-500);"></span>
+        </div>
+      </div>
       <div class="field"><label>Penjelasan</label><input id="jg_exp_${i}" value="${escapeHtml(q.explanation || '')}" /></div>
     </div>`;
   }).join('');

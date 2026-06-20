@@ -279,7 +279,17 @@
   soal admin (`openQuestionForm` → `quizGenOptions`): kirim pertanyaan +
   (listening: audio script) ke `POST /api/admin/generate-question-options`
   (`callClaude` di `backend/src/anthropic.js`) → 4 opsi (1 benar) + penjelasan
-  diisi ke form. `ANTHROPIC_API_KEY` kosong → 503 (manual tetap jalan).
+  diisi ke form. `ANTHROPIC_API_KEY` kosong → 503 (manual tetap jalan). Penjelasan
+  prompt-nya WAJIB Bahasa Indonesia (bukan Jepang). **Tombol per-draft juga ada di
+  modal review generator JLPT & Listening** (`admin.html` → `jlptGenRenderPreview`/
+  `listenGenRenderPreview` → `window.jlptGenOptions`/`listenGenOptions` →
+  core `genDraftOptions`): regenerate opsi+penjelasan agar match pertanyaan yang
+  SUDAH diedit (baca dari DOM: pertanyaan `${prefix}_q_${i}`, listening pakai audio
+  script `lg_audio_${i}` terbaru, JLPT reading pakai `_jlptGenDrafts[i].passage`),
+  re-use endpoint yang sama. Baris opsi dirender via helper bersama `genOptionRows`
+  (dipakai render awal + regenerate, jaga id `${prefix}_opt_${i}_${j}` konsisten
+  dgn `jlptGenSave`/`listenGenSave`). Beda dari `quizGenOptions`: penjelasan
+  SELALU ditimpa (bukan cuma kalau kosong).
 - **Generate soal listening gaya JLPT (AI)** — tombol "🎧 Generate Listening
   JLPT" di header modal Kelola Kuis (`admin.html` → `openListeningGen`). Satu
   run = satu tipe mondai JLPT N5/N4: 課題理解 / ポイント理解 / 発話表現 /
