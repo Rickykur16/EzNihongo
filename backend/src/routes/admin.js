@@ -1279,7 +1279,7 @@ Aturan:
 - Tepat 4 opsi, TEPAT 1 yang benar.${category === 'reading' ? ' Jawaban benar HARUS sesuai isi teks bacaan di atas.' : ''}${category === 'listening' ? ' Jawaban benar HARUS sesuai isi skrip audio di atas.' : ''}
 - Distraktor (opsi salah) masuk akal & sepadan (panjang/jenis mirip), bukan asal-asalan.
 - Bahasa opsi mengikuti konteks soal (Indonesia atau Jepang).
-- "explanation": alasan singkat dalam Bahasa Indonesia kenapa jawaban benar.
+- "explanation": alasan singkat WAJIB dalam Bahasa Indonesia (JANGAN bahasa Jepang; istilah Jepang boleh dikutip seperlunya) kenapa jawaban benar.
 
 Balas HANYA JSON valid tanpa teks lain:
 {"options":[{"text":"...","isCorrect":true},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false}],"explanation":"..."}`;
