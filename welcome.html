@@ -4008,6 +4008,16 @@ function transformQuestionFromApi(apiQ) {
   const q = parts[0] || '';
   const jp = parts.slice(1).join('\n\n').trim() || '';
   const sorted = (apiQ.options || []).slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  // Acak urutan opsi — sekali per attempt (transformQuestionFromApi dipanggil
+  // sekali di startQuizAttempt, hasilnya disimpan di quizState lalu dipakai semua
+  // render). Fisher-Yates (unbiased) supaya posisi jawaban benar tersebar merata;
+  // tanpa ini draft AI cenderung menaruh jawaban benar di opsi pertama dan posisi
+  // tetap sama tiap retry. Aman: penilaian server-side pakai option id (bukan
+  // posisi) — ketiga array paralel di bawah ikut permutasi yang sama.
+  for (let i = sorted.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [sorted[i], sorted[j]] = [sorted[j], sorted[i]];
+  }
   const options = sorted.map((o) => o.option_text);
   const optionImages = sorted.map((o) => o.image_url || o.imageUrl || '');
   const optionIds = sorted.map((o) => o.id);
