@@ -1256,12 +1256,23 @@ router.post('/lessons/:lessonId/generate-quiz', quizGenLimiter, asyncHandler(asy
 // opsi" di editor soal admin. Admin tulis pertanyaannya, AI isikan 4 opsi
 // (1 benar) + penjelasan. Untuk listening, jawaban di-grounding ke audio
 // script. ANTHROPIC_API_KEY kosong → 503.
+// Cari definisi tipe mondai di kedua peta (JLPT tulis + listening) supaya
+// generate-question-options bisa meminjam aturan "Opsi:" tipe spesifik.
+function _taskForType(taskType) {
+  if (!taskType) return null;
+  return JLPT_GEN_TASKS[taskType] || JLPT_LISTENING_TASKS[taskType] || null;
+}
+
 router.post('/generate-question-options', asyncHandler(async (req, res) => {
   const body = req.body || {};
   const question = String(body.question || '').trim().slice(0, 2000);
   const category = normalizeQuizCategory(body.questionCategory);
   const passage = String(body.passage || '').trim().slice(0, 4000);
   const audioScript = String(body.audioScript || '').trim().slice(0, 1000);
+  const taskType = String(body.taskType || '').trim();
+  const level = String(body.level || '').trim();
+  const task = _taskForType(taskType);
+  const optionCount = task ? (task.optionCount || 4) : 4;
   if (!question) return res.status(400).json({ error: 'question required' });
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
 
@@ -1269,19 +1280,33 @@ router.post('/generate-question-options', asyncHandler(async (req, res) => {
   if (category === 'reading' && passage) ctxBlocks.push(`Teks bacaan (dokkai):\n${passage}`);
   if (category === 'listening' && audioScript) ctxBlocks.push(`Skrip audio (listening):\n${audioScript}`);
 
-  const userContent = `Buat 4 opsi jawaban pilihan ganda untuk soal kuis bahasa Jepang (JLPT N5/N4).
+  // Kalibrasi opsi ke tipe mondai spesifik: pinjam aturan "Opsi:" dari definisi
+  // tugas (rules), buang baris contoh "Balas:" (shape jawaban penuh) karena di
+  // sini kita cuma minta opsi untuk soal yang SUDAH ada.
+  let taskGuidance = '';
+  if (task) {
+    const taskRules = String(task.rules || '').split(/\nBalas\s*:/)[0].trim();
+    const lvl = JLPT_LISTENING_TASKS[taskType]
+      ? (JLPT_LISTENING_LEVELS[level] || '')
+      : (JLPT_GEN_LEVELS[level] || '');
+    taskGuidance = `Tipe soal: ${task.name} (${task.label}).
+PENTING: soal SUDAH ada (di bawah). JANGAN bikin soal baru atau ubah teksnya — buat OPSI jawabannya saja.
+Ikuti HANYA aturan "Opsi:" untuk tipe mondai ini; ABAIKAN bagian "Format soal"/"Struktur audioScript".
+${taskRules}${lvl ? `\n\nBatasan level:\n${lvl}` : ''}`;
+  }
+
+  const userContent = `Buat ${optionCount} opsi jawaban pilihan ganda untuk soal kuis bahasa Jepang (JLPT N5/N4).
 Kategori: ${category}.
-${ctxBlocks.join('\n\n')}
+${taskGuidance ? '\n' + taskGuidance + '\n' : ''}${ctxBlocks.join('\n\n')}
 
 Soal: ${question}
 
 Aturan:
-- Tepat 4 opsi, TEPAT 1 yang benar.${category === 'reading' ? ' Jawaban benar HARUS sesuai isi teks bacaan di atas.' : ''}${category === 'listening' ? ' Jawaban benar HARUS sesuai isi skrip audio di atas.' : ''}
+- Tepat ${optionCount} opsi, TEPAT 1 yang benar.${category === 'reading' ? ' Jawaban benar HARUS sesuai isi teks bacaan di atas.' : ''}${category === 'listening' ? ' Jawaban benar HARUS sesuai isi skrip audio di atas.' : ''}
 - Distraktor (opsi salah) masuk akal & sepadan (panjang/jenis mirip), bukan asal-asalan.
-- Bahasa opsi mengikuti konteks soal (Indonesia atau Jepang).
-- "explanation": alasan singkat WAJIB dalam Bahasa Indonesia (JANGAN bahasa Jepang; istilah Jepang boleh dikutip seperlunya) kenapa jawaban benar.
+${task ? '' : '- Bahasa opsi mengikuti konteks soal (Indonesia atau Jepang).\n'}- "explanation": alasan singkat WAJIB dalam Bahasa Indonesia (JANGAN bahasa Jepang; istilah Jepang boleh dikutip seperlunya) kenapa jawaban benar.
 
-Balas HANYA JSON valid tanpa teks lain:
+Balas HANYA JSON valid tanpa teks lain (buat TEPAT ${optionCount} objek opsi):
 {"options":[{"text":"...","isCorrect":true},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false}],"explanation":"..."}`;
 
   const text = await callClaude({ system: QUIZ_GEN_SYSTEM, userContent, maxTokens: 700 });
@@ -1289,6 +1314,43 @@ Balas HANYA JSON valid tanpa teks lain:
   const parsed = _extractJsonObject(text);
   if (!parsed || !Array.isArray(parsed.options)) return res.status(502).json({ error: 'ai_parse' });
 
+  // Jalur kalibrasi (taskType dikenal): enforce aturan opsi per tipe via
+  // _normalizeJlptOptions (mis. goi_kanji wajib hiragana). Kalau gagal, 1 retry
+  // diperketat lalu fallback generik supaya admin tak pernah terblokir.
+  if (task) {
+    let options = _normalizeJlptOptions(parsed.options, optionCount, taskType, question);
+    let explanation = String(parsed.explanation || '').trim().slice(0, 1000);
+    if (!options) {
+      const hardened = userContent + `\n\nKOREKSI: opsi sebelumnya melanggar aturan "Opsi:" di atas. ` +
+        (taskType === 'goi_kanji'
+          ? 'Setiap opsi WAJIB HIRAGANA murni (tanpa kanji/katakana/romaji).'
+          : 'Pastikan SEMUA opsi mengikuti aturan "Opsi:" tipe ini dengan ketat.');
+      const text2 = await callClaude({ system: QUIZ_GEN_SYSTEM, userContent: hardened, maxTokens: 700 });
+      const parsed2 = text2 ? _extractJsonObject(text2) : null;
+      if (parsed2 && Array.isArray(parsed2.options)) {
+        const opts2 = _normalizeJlptOptions(parsed2.options, optionCount, taskType, question);
+        if (opts2) {
+          options = opts2;
+          const exp2 = String(parsed2.explanation || '').trim().slice(0, 1000);
+          if (exp2) explanation = exp2;
+        }
+      }
+    }
+    if (!options) {
+      // Fallback: normalisasi generik (jangan blokir admin meski belum 100% pas tipe).
+      const generic = parsed.options
+        .map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect }))
+        .filter((o) => o.text)
+        .slice(0, optionCount);
+      if (generic.length < 2) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan opsi valid. Coba lagi.' });
+      let fc = generic.findIndex((o) => o.isCorrect);
+      if (fc === -1) fc = 0;
+      options = generic.map((o, i) => ({ text: o.text, isCorrect: i === fc }));
+    }
+    return res.json({ options, explanation });
+  }
+
+  // Jalur generik (tanpa taskType) — perilaku lama, tidak berubah.
   let options = parsed.options
     .map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect }))
     .filter((o) => o.text)

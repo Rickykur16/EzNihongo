@@ -1662,6 +1662,8 @@ const LISTEN_GEN_TASKS = [
 let _listenGenDrafts = [];
 let _listenGenSection = null;
 let _listenGenCtx = null;
+let _listenGenTaskType = null;
+let _listenGenLevel = null;
 
 window.openListeningGen = async (key) => {
   const ctx = _quizCtxStash[key];
@@ -1746,6 +1748,8 @@ window.listenGenRun = async () => {
     });
     _listenGenDrafts = Array.isArray(d.questions) ? d.questions : [];
     _listenGenSection = d.section || null;
+    _listenGenTaskType = taskType;
+    _listenGenLevel = level;
     if (_listenGenDrafts.length === 0) {
       notify('AI tidak menghasilkan soal. Coba lagi.', true);
       if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
@@ -1844,7 +1848,7 @@ window.listenGenTestAudio = async (i) => {
 // _drafts[i].options & .explanation, render ulang container opsi, dan TIMPA
 // input penjelasan (beda dari quizGenOptions yg cuma isi kalau kosong).
 // Penjelasan dari endpoint = Bahasa Indonesia.
-async function genDraftOptions({ prefix, i, drafts, lessonId, category, passage, audioScript }) {
+async function genDraftOptions({ prefix, i, drafts, lessonId, category, passage, audioScript, taskType, level }) {
   const question = (document.getElementById(`${prefix}_q_${i}`)?.value || '').trim();
   if (!question) { notify('Tulis pertanyaannya dulu sebelum generate opsi', true); return; }
   const btn = document.getElementById(`${prefix}_opt_btn_${i}`);
@@ -1854,7 +1858,7 @@ async function genDraftOptions({ prefix, i, drafts, lessonId, category, passage,
   try {
     const d = await api('/admin/generate-question-options', {
       method: 'POST',
-      body: JSON.stringify({ lessonId, question, questionCategory: category, passage: passage || '', audioScript: audioScript || '' }),
+      body: JSON.stringify({ lessonId, question, questionCategory: category, taskType: taskType || '', level: level || '', passage: passage || '', audioScript: audioScript || '' }),
     });
     const opts = Array.isArray(d.options) ? d.options : [];
     if (opts.length < 2) { notify('AI tidak menghasilkan opsi. Coba lagi.', true); if (status) status.textContent = ''; return; }
@@ -1881,6 +1885,8 @@ window.listenGenOptions = (i) => genDraftOptions({
   lessonId: _listenGenCtx.lessonId,
   category: 'listening',
   audioScript: (document.getElementById(`lg_audio_${i}`)?.value || '').trim(),
+  taskType: _listenGenTaskType,
+  level: _listenGenLevel,
 });
 
 window.jlptGenOptions = (i) => genDraftOptions({
@@ -1888,6 +1894,8 @@ window.jlptGenOptions = (i) => genDraftOptions({
   lessonId: _jlptGenCtx.lessonId,
   category: _jlptGenCategory,
   passage: _jlptGenDrafts[i]?.passage || '',
+  taskType: _jlptGenTaskType,
+  level: _jlptGenLevel,
 });
 
 window.listenGenSave = async () => {
@@ -1983,6 +1991,8 @@ let _jlptGenDrafts = [];
 let _jlptGenSection = null;
 let _jlptGenCategory = 'vocabulary';
 let _jlptGenCtx = null;
+let _jlptGenTaskType = null;
+let _jlptGenLevel = null;
 
 window.openJlptGen = async (key) => {
   const ctx = _quizCtxStash[key];
@@ -2074,6 +2084,8 @@ window.jlptGenRun = async () => {
     _jlptGenDrafts = Array.isArray(d.questions) ? d.questions : [];
     _jlptGenSection = d.section || null;
     _jlptGenCategory = d.category || 'vocabulary';
+    _jlptGenTaskType = taskType;
+    _jlptGenLevel = level;
     if (_jlptGenDrafts.length === 0) {
       notify('AI tidak menghasilkan soal. Coba lagi.', true);
       if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
