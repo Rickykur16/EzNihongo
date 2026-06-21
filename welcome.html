@@ -5237,7 +5237,11 @@ window.retryQuiz = () => {
 window.continueAfterQuiz = () => {
   const [slug, mId, lId] = quizState.key.split(':');
   const course = COURSE_CONTENT[slug];
-  const allLessons = course.modules.flatMap(m => m.lessons.map(l => ({ m, l })));
+  // Navigasi pakai lesson terlihat saja (sama seperti markCompleteAndNext &
+  // renderLesson). Dengan m.lessons mentah, "next" setelah kuis terakhir bisa
+  // nyangkut di tugas-popup grammar yang tersembunyi dalam bab yang sama —
+  // jadi tidak pernah lompat ke bab berikutnya.
+  const allLessons = course.modules.flatMap(m => visibleLessons(m).map(l => ({ m, l })));
   const idx = allLessons.findIndex(x => x.m.id === mId && x.l.id === lId);
   const next = allLessons[idx + 1];
   if (next) {
