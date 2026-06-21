@@ -3720,6 +3720,7 @@ function renderDeckTable(items) {
         <button class="btn btn-ghost" onclick="deckMove('${it.vocabulary_id}', 1)">↓</button>
       </td>
       <td class="actions" style="white-space:nowrap;">
+        <button class="btn btn-ghost" onclick="deckEditWord('${it.vocabulary_id}')" title="Edit 日本語/kana/romaji/arti/kategori kata ini">✏️ Edit</button>
         <button class="btn btn-ghost" onclick="deckManageExamples('${it.vocabulary_id}')">Contoh (${it.example_count || 0})</button>
         <button class="btn btn-ghost" onclick="deckGenImage('${it.vocabulary_id}', this)" title="Generate ilustrasi (AI). Klik lagi untuk regenerate.">✨ Gambar</button>
         <button class="btn btn-danger" onclick="deckRemove('${it.vocabulary_id}')">Keluarkan</button>
@@ -3870,6 +3871,64 @@ window.deckCreateWord = async () => {
     deckRerender(); notify('Ditambahkan'); deckRefreshList();
     deckManageExamples(v.id);
   } catch (err) { notify('Gagal: ' + err.message, true); }
+};
+
+// Edit kata yang sudah ada di deck (日本語/kana/romaji/arti/kategori). Mengubah
+// baris module_vocabulary (bank), jadi berlaku di SEMUA deck yang memakai kata
+// ini. PUT mengirim string apa adanya: field dikosongkan = disimpan kosong;
+// note/sort_order/lesson_id tidak dikirim → dipertahankan server-side.
+window.deckEditWord = (vid) => {
+  const it = (window.__deckItems || []).find((x) => x.vocabulary_id === vid);
+  if (!it) { notify('Kata tidak ditemukan', true); return; }
+  const p = document.getElementById('deck-panel');
+  if (!p) return;
+  p.innerHTML = `
+    <div style="background:#f5f5f5;padding:14px;border-radius:8px;margin-bottom:14px;">
+      <strong style="font-size:13px;">Edit kata</strong>
+      <div class="field-row" style="margin-top:8px;">
+        <div class="field"><label>日本語 *</label><input id="ew-jp" lang="ja" /></div>
+        <div class="field"><label>Kana (untuk audio)</label><input id="ew-reading" lang="ja" placeholder="ひ" /></div>
+        <div class="field"><label>Romaji</label><input id="ew-romaji" placeholder="hi · nichi" /></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Arti (Indonesia)</label><input id="ew-id" /></div>
+        <div class="field"><label>Kategori</label><input id="ew-cat" placeholder="time, day, sun..." /></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('deck-panel').innerHTML='';">Batal</button>
+        <button type="button" class="btn btn-primary" onclick="deckSaveWord('${vid}')">Simpan</button>
+      </div>
+      <div style="font-size:11px;color:#737373;margin-top:8px;">Perubahan juga berlaku di bank kosakata & semua deck lain yang memakai kata ini.</div>
+    </div>`;
+  // Set value via DOM (hindari masalah escaping atribut HTML).
+  document.getElementById('ew-jp').value = it.japanese || '';
+  document.getElementById('ew-reading').value = it.reading || '';
+  document.getElementById('ew-romaji').value = it.romaji || '';
+  document.getElementById('ew-id').value = it.indonesian || '';
+  document.getElementById('ew-cat').value = it.category || '';
+};
+
+window.deckSaveWord = async (vid) => {
+  const jp = (document.getElementById('ew-jp').value || '').trim();
+  if (!jp) { notify('日本語 wajib diisi', true); return; }
+  const payload = {
+    japanese: jp,
+    reading: (document.getElementById('ew-reading').value || '').trim(),
+    romaji: (document.getElementById('ew-romaji').value || '').trim(),
+    indonesian: (document.getElementById('ew-id').value || '').trim(),
+    category: (document.getElementById('ew-cat').value || '').trim(),
+  };
+  try {
+    const d = await api('/admin/module-vocabulary/' + vid, { method: 'PUT', body: JSON.stringify(payload) });
+    const v = d.vocabulary || {};
+    const it = (window.__deckItems || []).find((x) => x.vocabulary_id === vid);
+    if (it) {
+      it.japanese = v.japanese; it.reading = v.reading; it.romaji = v.romaji;
+      it.indonesian = v.indonesian; it.category = v.category;
+    }
+    const p = document.getElementById('deck-panel'); if (p) p.innerHTML = '';
+    deckRerender(); notify('Tersimpan');
+  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
 };
 
 window.deckShowBank = () => {
