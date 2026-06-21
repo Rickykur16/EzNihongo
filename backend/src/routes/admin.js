@@ -1016,7 +1016,7 @@ router.get('/module-grammar', asyncHandler(async (req, res) => {
 const QUIZ_ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
 const QUIZ_ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5';
 
-const QUIZ_GEN_SYSTEM = `You are a Japanese-language quiz author for Indonesian learners (JLPT N5/N4) on the EzNihongo platform. Write accurate questions grounded ONLY in the study material provided. Always reply with a single valid JSON object and nothing else.`;
+const QUIZ_GEN_SYSTEM = `You are a Japanese-language quiz author for Indonesian learners (JLPT N5/N4) on the EzNihongo platform. Write accurate questions grounded ONLY in the study material provided. CRITICAL: every "explanation" field MUST be written in Indonesian (Bahasa Indonesia), NEVER in Japanese — you may quote Japanese words/phrases inline, but the explanatory sentence itself must be Indonesian. Always reply with a single valid JSON object and nothing else.`;
 
 const quizGenLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -1467,7 +1467,7 @@ Aturan umum:
 - Dialog harus terdengar ALAMI seperti percakapan sehari-hari orang Jepang — bukan kalimat contoh buku teks yang kaku. Boleh respon pendek alami (そうですか、いいですね、あ、すみません) secukupnya.
 - Setiap soal harus berdiri sendiri dengan situasi/topik BERBEDA satu sama lain.
 - TEPAT 1 opsi "isCorrect": true per soal. Distraktor sepadan (panjang/jenis mirip), masuk akal, dan disebut/terkait di dialog.
-- "explanation": 1-2 kalimat Bahasa Indonesia — kutip frasa kunci dialog yang menentukan jawaban.
+- "explanation": WAJIB Bahasa Indonesia (JANGAN bahasa Jepang; frasa Jepang boleh dikutip), 1-2 kalimat — kutip frasa kunci dialog yang menentukan jawaban.
 - audioScript maksimal 1200 karakter.
 
 Balas HANYA JSON valid tanpa teks lain, bentuk:
@@ -1777,7 +1777,7 @@ Aturan umum:
 - Kalimat & teks harus terdengar ALAMI seperti bahasa Jepang sehari-hari — bukan kalimat buku teks kaku. Alami TIDAK berarti boleh keluar dari materi: pakai kosakata daftar dengan cara yang luwes.
 - Setiap soal berdiri sendiri dengan topik/situasi BERBEDA satu sama lain.
 - TEPAT 1 opsi "isCorrect": true per soal. Distraktor sepadan (panjang/jenis mirip) dan menarget kesalahan khas pembelajar, bukan asal-asalan.
-- "explanation": 1-2 kalimat Bahasa Indonesia menjelaskan kenapa jawaban benar (sebut arti kata/pola kuncinya).
+- "explanation": WAJIB Bahasa Indonesia (JANGAN bahasa Jepang; kata/pola Jepang boleh dikutip), 1-2 kalimat, jelaskan kenapa jawaban benar (sebut arti kata/pola kuncinya).
 - Balas HANYA JSON valid tanpa teks lain, dengan bentuk PERSIS seperti dicontohkan di aturan tipe soal di atas.`;
 
 async function _loadJlptGenPrompt() {
