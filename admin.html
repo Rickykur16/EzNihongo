@@ -204,6 +204,7 @@ let STATE = {
   selectedCourse: null,
   modules: [],
   selectedModule: null,
+  lessonViewMode: 'module', // 'module' (datar per modul) | 'bab' (semua modul, dikelompokkan per tipe)
   lessons: [],
   users: [],
   discussions: [],
@@ -1217,55 +1218,44 @@ window.deleteModule = async (id, title) => {
 // ─────────────────────────────────────────────────────────────
 // LESSONS (module-scoped) + QUIZ
 // ─────────────────────────────────────────────────────────────
-function renderLessons() {
-  const pane = document.querySelector('[data-pane="lessons"]');
-  const courseOpts = STATE.courses.map((c) =>
-    `<option value="${c.slug}" ${c.slug === STATE.selectedCourse ? 'selected' : ''}>${escapeHtml(c.title)}</option>`
-  ).join('');
-  const moduleOpts = STATE.modules.map((m) =>
-    `<option value="${m.id}" ${m.id === STATE.selectedModule ? 'selected' : ''}>${escapeHtml(m.title)}</option>`
-  ).join('');
+// Urutan & label tipe pelajaran untuk tampilan "Per Bab". Label disamakan dengan
+// dropdown Tipe di form pelajaran (lihat lessonFormHtml).
+const LESSON_TYPE_ORDER = ['deck', 'quiz', 'grammar_task', 'kanji', 'video', 'text'];
+const LESSON_TYPE_LABELS = {
+  text: 'Teks', video: 'Video', quiz: 'Kuis',
+  deck: 'Deck Kosakata', kanji: 'Kanji', grammar_task: 'Tugas Grammar',
+};
 
-  let body = '<div class="empty">Pilih kursus + modul dulu.</div>';
-  if (STATE.selectedModule) {
-    const mod = STATE.modules.find((m) => m.id === STATE.selectedModule);
-    STATE.lessons = (mod && mod.lessons) || [];
-    if (STATE.lessons.length === 0) {
-      body = `
-        <div class="toolbar">
-          <button class="btn btn-primary" onclick="newLesson('${STATE.selectedModule}')">+ Pelajaran baru</button>
-          <button class="btn btn-ghost" onclick="openPelajaranImporter('${STATE.selectedModule}')" title="Pilih pelajaran dari Bab Notion buat di-import sebagai lesson di modul ini">↻ Import Pelajaran dari Notion</button>
-        </div>
-        <div class="empty">Belum ada pelajaran di modul ini.</div>
-      `;
-    } else {
-      const grammarByLesson = {};
-      (mod.grammar || []).forEach((g) => {
-        if (!g.lesson_id) return;
-        grammarByLesson[g.lesson_id] = (grammarByLesson[g.lesson_id] || 0) + 1;
-      });
-      const courseRow = STATE.courses.find((c) => c.slug === STATE.selectedCourse);
-      const courseId = courseRow ? courseRow.id : '';
-      const rows = STATE.lessons.map((l) => {
-        const titleEsc = escapeHtml(l.title).replace(/'/g, "\\'");
-        const grammarN = grammarByLesson[l.id] || 0;
-        const deckN = Array.isArray(l.deck) ? l.deck.length : 0;
-        const kanjiN = Array.isArray(l.kanji) ? l.kanji.length : 0;
-        let contentBtns = '';
-        if (l.type === 'deck') {
-          contentBtns = `<button class="btn btn-ghost" onclick="manageDeck('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Deck (${deckN})</button>`;
-        } else if (l.type === 'kanji') {
-          contentBtns = `<button class="btn btn-ghost" onclick="manageKanji('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Kanji (${kanjiN})</button>`;
-        } else if (l.type === 'grammar_task') {
-          const gtN = Array.isArray(l.grammarTask) ? l.grammarTask.length : 0;
-          contentBtns = `<button class="btn btn-ghost" onclick="manageGrammarTask('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Tugas Grammar (${gtN})</button>`;
-        } else if (l.type !== 'quiz') {
-          contentBtns = `<button class="btn btn-ghost" onclick="manageGrammar('${l.id}', '${titleEsc}', '${mod.id}')">Grammar (${grammarN})</button>`;
-        }
-        const quizBtn = l.type === 'quiz'
-          ? `<button class="btn btn-ghost" onclick="manageQuiz('${l.id}', '${titleEsc}')">Kuis</button>`
-          : '';
-        return `
+// Hitung jumlah pola grammar yg ter-assign ke tiap lesson dalam satu modul.
+function grammarCountsByLesson(mod) {
+  const map = {};
+  (mod.grammar || []).forEach((g) => {
+    if (!g.lesson_id) return;
+    map[g.lesson_id] = (map[g.lesson_id] || 0) + 1;
+  });
+  return map;
+}
+
+// Satu baris <tr> pelajaran (dipakai tampilan datar per-modul & tampilan per-bab).
+function lessonRowHtml(l, mod, courseId, grammarN) {
+  const titleEsc = escapeHtml(l.title).replace(/'/g, "\\'");
+  const deckN = Array.isArray(l.deck) ? l.deck.length : 0;
+  const kanjiN = Array.isArray(l.kanji) ? l.kanji.length : 0;
+  let contentBtns = '';
+  if (l.type === 'deck') {
+    contentBtns = `<button class="btn btn-ghost" onclick="manageDeck('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Deck (${deckN})</button>`;
+  } else if (l.type === 'kanji') {
+    contentBtns = `<button class="btn btn-ghost" onclick="manageKanji('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Kanji (${kanjiN})</button>`;
+  } else if (l.type === 'grammar_task') {
+    const gtN = Array.isArray(l.grammarTask) ? l.grammarTask.length : 0;
+    contentBtns = `<button class="btn btn-ghost" onclick="manageGrammarTask('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Tugas Grammar (${gtN})</button>`;
+  } else if (l.type !== 'quiz') {
+    contentBtns = `<button class="btn btn-ghost" onclick="manageGrammar('${l.id}', '${titleEsc}', '${mod.id}')">Grammar (${grammarN || 0})</button>`;
+  }
+  const quizBtn = l.type === 'quiz'
+    ? `<button class="btn btn-ghost" onclick="manageQuiz('${l.id}', '${titleEsc}')">Kuis</button>`
+    : '';
+  return `
         <tr>
           <td><strong>${escapeHtml(l.title)}</strong><br><span class="pill">${escapeHtml(l.slug)}</span></td>
           <td><span class="badge ${l.type === 'quiz' ? 'badge-admin' : (l.type === 'video' || l.type === 'deck' ? 'badge-on' : 'badge-off')}">${escapeHtml(l.type)}</span></td>
@@ -1279,28 +1269,145 @@ function renderLessons() {
           </td>
         </tr>
       `;
+}
+
+// Toggle tampilan daftar pelajaran: 'module' (datar) | 'bab' (semua modul, per tipe).
+window.setLessonViewMode = (mode) => {
+  STATE.lessonViewMode = mode === 'bab' ? 'bab' : 'module';
+  renderLessons();
+};
+
+// "+ Pelajaran baru" dari dalam kartu bab: set konteks modul dulu supaya
+// nextSortOrder() benar & refresh pasca-simpan kembali ke bab yang tepat.
+window.newLessonInBab = (moduleId) => {
+  const mod = (STATE.modules || []).find((m) => m.id === moduleId);
+  STATE.selectedModule = moduleId;
+  STATE.lessons = (mod && mod.lessons) || [];
+  newLesson(moduleId);
+};
+
+// Body tampilan "Per Bab": tiap modul = satu bab (kartu lipat), pelajaran di
+// dalamnya dikelompokkan per tipe. Semua data dari STATE.modules (sudah dimuat
+// loadModulesForCourse) — tanpa request tambahan.
+function renderLessonsByBabBody() {
+  const courseRow = STATE.courses.find((c) => c.slug === STATE.selectedCourse);
+  const courseId = courseRow ? courseRow.id : '';
+  const mods = STATE.modules || [];
+  if (mods.length === 0) {
+    return '<div class="empty">Belum ada modul (bab) di kursus ini.</div>';
+  }
+  return mods.map((mod) => {
+    const lessons = Array.isArray(mod.lessons) ? mod.lessons : [];
+    const grammarByLesson = grammarCountsByLesson(mod);
+    const byType = {};
+    lessons.forEach((l) => { (byType[l.type] = byType[l.type] || []).push(l); });
+    const typesPresent = LESSON_TYPE_ORDER.filter((t) => byType[t] && byType[t].length)
+      .concat(Object.keys(byType).filter((t) => !LESSON_TYPE_ORDER.includes(t)));
+    const typePills = typesPresent
+      .map((t) => `<span class="pill" style="background:#eef2ff;color:#3730a3;">${escapeHtml(LESSON_TYPE_LABELS[t] || t)}: ${byType[t].length}</span>`)
+      .join(' ');
+    let inner;
+    if (lessons.length === 0) {
+      inner = '<div class="empty" style="margin:8px 0;">Belum ada pelajaran di bab ini.</div>';
+    } else {
+      inner = typesPresent.map((t) => {
+        const rows = byType[t]
+          .map((l) => lessonRowHtml(l, mod, courseId, grammarByLesson[l.id] || 0))
+          .join('');
+        return `
+          <div style="margin-bottom:14px;">
+            <h4 style="margin:6px 0;font-size:12px;color:#525252;font-family:var(--font-body);text-transform:uppercase;letter-spacing:0.04em;">${escapeHtml(LESSON_TYPE_LABELS[t] || t)} <span class="pill">${byType[t].length}</span></h4>
+            <table><thead><tr><th>Judul / slug</th><th>Tipe</th><th>Durasi (menit)</th><th>Urutan</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+          </div>`;
       }).join('');
-      body = `
-        <div class="toolbar">
-          <button class="btn btn-primary" onclick="newLesson('${STATE.selectedModule}')">+ Pelajaran baru</button>
-          <button class="btn btn-ghost" onclick="openPelajaranImporter('${STATE.selectedModule}')" title="Pilih pelajaran dari Bab Notion buat di-import sebagai lesson di modul ini">↻ Import Pelajaran dari Notion</button>
+    }
+    return `
+      <details open style="border:1px solid #e5e5e5;border-radius:10px;margin-bottom:12px;background:#fff;">
+        <summary style="cursor:pointer;padding:12px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:var(--font-body);">
+          <strong style="font-size:15px;">${escapeHtml(mod.title)}</strong>
+          <span class="pill">${escapeHtml(mod.slug)}</span>
+          <span style="font-size:12px;color:#737373;">${lessons.length} pelajaran</span>
+          ${typePills}
+        </summary>
+        <div style="padding:4px 14px 14px;">
+          <div class="toolbar" style="margin:6px 0 10px;">
+            <button class="btn btn-primary" onclick="newLessonInBab('${mod.id}')">+ Pelajaran baru</button>
+            <button class="btn btn-ghost" onclick="openPelajaranImporter('${mod.id}')" title="Pilih pelajaran dari Bab Notion buat di-import sebagai lesson di modul ini">↻ Import Pelajaran dari Notion</button>
+          </div>
+          ${inner}
         </div>
-        <table><thead><tr><th>Judul / slug</th><th>Tipe</th><th>Durasi (menit)</th><th>Urutan</th><th></th></tr></thead><tbody>${rows}</tbody></table>
-      `;
+      </details>`;
+  }).join('');
+}
+
+function renderLessons() {
+  const pane = document.querySelector('[data-pane="lessons"]');
+  const courseOpts = STATE.courses.map((c) =>
+    `<option value="${c.slug}" ${c.slug === STATE.selectedCourse ? 'selected' : ''}>${escapeHtml(c.title)}</option>`
+  ).join('');
+  const moduleOpts = STATE.modules.map((m) =>
+    `<option value="${m.id}" ${m.id === STATE.selectedModule ? 'selected' : ''}>${escapeHtml(m.title)}</option>`
+  ).join('');
+
+  const babMode = STATE.lessonViewMode === 'bab';
+
+  let body;
+  if (babMode) {
+    body = STATE.selectedCourse
+      ? renderLessonsByBabBody()
+      : '<div class="empty">Pilih kursus dulu.</div>';
+  } else {
+    body = '<div class="empty">Pilih kursus + modul dulu.</div>';
+    if (STATE.selectedModule) {
+      const mod = STATE.modules.find((m) => m.id === STATE.selectedModule);
+      STATE.lessons = (mod && mod.lessons) || [];
+      if (STATE.lessons.length === 0) {
+        body = `
+          <div class="toolbar">
+            <button class="btn btn-primary" onclick="newLesson('${STATE.selectedModule}')">+ Pelajaran baru</button>
+            <button class="btn btn-ghost" onclick="openPelajaranImporter('${STATE.selectedModule}')" title="Pilih pelajaran dari Bab Notion buat di-import sebagai lesson di modul ini">↻ Import Pelajaran dari Notion</button>
+          </div>
+          <div class="empty">Belum ada pelajaran di modul ini.</div>
+        `;
+      } else {
+        const grammarByLesson = grammarCountsByLesson(mod);
+        const courseRow = STATE.courses.find((c) => c.slug === STATE.selectedCourse);
+        const courseId = courseRow ? courseRow.id : '';
+        const rows = STATE.lessons
+          .map((l) => lessonRowHtml(l, mod, courseId, grammarByLesson[l.id] || 0))
+          .join('');
+        body = `
+          <div class="toolbar">
+            <button class="btn btn-primary" onclick="newLesson('${STATE.selectedModule}')">+ Pelajaran baru</button>
+            <button class="btn btn-ghost" onclick="openPelajaranImporter('${STATE.selectedModule}')" title="Pilih pelajaran dari Bab Notion buat di-import sebagai lesson di modul ini">↻ Import Pelajaran dari Notion</button>
+          </div>
+          <table><thead><tr><th>Judul / slug</th><th>Tipe</th><th>Durasi (menit)</th><th>Urutan</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+        `;
+      }
     }
   }
 
+  const viewToggle = `
+      <span style="flex:1;"></span>
+      <div style="display:inline-flex;gap:4px;">
+        <button class="btn ${babMode ? 'btn-ghost' : 'btn-primary'}" onclick="setLessonViewMode('module')">Per Modul</button>
+        <button class="btn ${babMode ? 'btn-primary' : 'btn-ghost'}" onclick="setLessonViewMode('bab')" title="Lihat semua pelajaran di kursus ini dikelompokkan per bab (modul) & tipe">Per Bab</button>
+      </div>`;
+  const modulePickerHtml = babMode ? '' : `
+      <label style="font-size:13px;color:#525252;font-family:var(--font-body);">Modul:</label>
+      <select id="lesson-module-picker" style="max-width:240px;" ${STATE.modules.length === 0 ? 'disabled' : ''}>
+        <option value="">— pilih modul —</option>${moduleOpts}
+      </select>`;
+
   pane.innerHTML = `
     <h2>Pelajaran &amp; Kuis</h2>
-    <div class="toolbar">
+    <div class="toolbar" style="flex-wrap:wrap;">
       <label style="font-size:13px;color:#525252;font-family:var(--font-body);">Kursus:</label>
       <select id="lesson-course-picker" style="max-width:240px;">
         <option value="">— pilih kursus —</option>${courseOpts}
       </select>
-      <label style="font-size:13px;color:#525252;font-family:var(--font-body);">Modul:</label>
-      <select id="lesson-module-picker" style="max-width:240px;" ${STATE.modules.length === 0 ? 'disabled' : ''}>
-        <option value="">— pilih modul —</option>${moduleOpts}
-      </select>
+      ${modulePickerHtml}
+      ${viewToggle}
     </div>
     ${body}
   `;
@@ -1311,7 +1418,8 @@ function renderLessons() {
     else STATE.modules = [];
     renderLessons();
   });
-  document.getElementById('lesson-module-picker').addEventListener('change', (e) => {
+  const modulePicker = document.getElementById('lesson-module-picker');
+  if (modulePicker) modulePicker.addEventListener('change', (e) => {
     STATE.selectedModule = e.target.value || null;
     renderLessons();
   });
