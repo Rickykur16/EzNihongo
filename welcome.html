@@ -2803,18 +2803,20 @@
     font-family: 'Noto Sans JP', sans-serif;
   }
   .jlpt-mondai strong { font-weight: 800; }
-  /* Dokkai: passage bacaan di atas grup soal (reading / 文章の文法) */
+  /* Dokkai: passage bacaan di atas grup soal (reading / 文章の文法).
+     Gaya lembar soal JLPT: bingkai monokrom polos (sebaris dgn
+     .jlpt-section / .quiz-notice), bukan callout web ber-aksen merah +
+     sudut rounded. */
   .quiz-passage {
     margin: 4px 0 18px;
     padding: 18px 20px;
-    background: #fffdf7;
-    border: 1px solid var(--du-border, #ece9e3);
-    border-left: 4px solid #B20024;
-    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
     font-family: 'Noto Sans JP', serif;
     font-size: clamp(15px, 1.7vw, 17px);
     line-height: 2;
-    color: #1B1410;
+    color: #1a1a1a;
     white-space: normal;
   }
   /* 情報検索: passage berformat pengumuman (judul + baris label：nilai)
