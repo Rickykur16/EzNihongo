@@ -2281,6 +2281,67 @@ Balas HANYA JSON valid tanpa teks lain:
   res.json({ examples });
 }));
 
+// Generate contoh KATA (AI) untuk satu karakter kana — tombol "✨ Generate
+// contoh (AI)" di Kelola Kana → Contoh. Mirror generate-vocab-examples, tapi
+// hasilnya kata pendek yang MENGANDUNG karakter target (bukan kalimat).
+router.post('/generate-kana-examples', asyncHandler(async (req, res) => {
+  const { kanaId } = req.body || {};
+  const count = Math.max(1, Math.min(5, Number((req.body || {}).count) || 3));
+  const avoidRaw = Array.isArray((req.body || {}).avoid) ? (req.body || {}).avoid : [];
+  const avoid = avoidRaw
+    .map((s) => String(s || '').trim().slice(0, 100))
+    .filter(Boolean)
+    .slice(0, 20);
+  if (!kanaId) return res.status(400).json({ error: 'kanaId required' });
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
+
+  const k = await query(`SELECT character, kind, romaji FROM kana_items WHERE id = $1`, [kanaId]);
+  if (k.rows.length === 0) return res.status(404).json({ error: 'kana not found' });
+  const ch = k.rows[0];
+  const kindLabel = ch.kind === 'katakana' ? 'katakana' : 'hiragana';
+  const scriptRule = ch.kind === 'katakana'
+    ? 'Pakai kata serapan (loanword) yang LAZIM ditulis katakana penuh (mis. テレビ, カメラ). japanese & reading sama-sama katakana.'
+    : 'Pakai kata sehari-hari yang ditulis hiragana penuh (hindari kanji supaya pemula bisa baca). reading = hiragana, sama dengan japanese.';
+
+  const avoidBlock = avoid.length > 0
+    ? `\nSudah ada contoh berikut — buat yang BERBEDA, jangan diulang:\n${avoid.map((s) => `- ${s}`).join('\n')}\n`
+    : '';
+
+  const userContent = `Buat ${count} contoh KATA bahasa Jepang untuk pemula yang MENGANDUNG karakter ${kindLabel} "${ch.character}" (romaji: ${ch.romaji}).
+${scriptRule}
+${avoidBlock}
+Aturan:
+- Tiap "japanese" WAJIB benar-benar memuat karakter "${ch.character}" secara harfiah.
+- Kata pendek & umum (idealnya 2–4 karakter), cocok untuk yang baru belajar ${kindLabel}.
+- "reading" = cara baca penuh dalam kana. "highlight" = "${ch.character}". "indonesian" = arti kata.
+- Tanpa tag HTML, tanpa furigana, tanpa romaji.
+
+Balas HANYA JSON valid tanpa teks lain:
+{"examples":[{"japanese":"…","reading":"…","highlight":"${ch.character}","indonesian":"…"}]}`;
+
+  const text = await callClaude({
+    system: 'You generate simple Japanese example words for Indonesian beginners learning kana. Each word must literally contain the requested character. Reply with a single valid JSON object only.',
+    userContent,
+    maxTokens: 700,
+  });
+  if (!text) return res.status(502).json({ error: 'ai_upstream' });
+  const parsed = _extractJsonObject(text);
+  if (!parsed || !Array.isArray(parsed.examples)) return res.status(502).json({ error: 'ai_parse' });
+
+  const examples = parsed.examples
+    .map((e) => ({
+      japanese: String(e?.japanese || '').trim().slice(0, 100),
+      reading: (String(e?.reading || '').trim().slice(0, 100)) || null,
+      highlight: (String(e?.highlight || '').trim().slice(0, 50)) || ch.character,
+      indonesian: (String(e?.indonesian || '').trim().slice(0, 200)) || null,
+    }))
+    // Wajib memuat karakter target supaya highlight muncul & contohnya relevan.
+    .filter((e) => e.japanese && e.japanese.includes(ch.character))
+    .slice(0, count);
+  if (examples.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan contoh valid. Coba lagi.' });
+  res.json({ examples });
+}));
+
 // Backfill kana (reading) untuk contoh kalimat di sebuah deck yang masih kosong
 // — tombol "Generate kana (AI)" di Kelola Deck. Contoh lama (sebelum kolom
 // `reading` ada) tidak punya kana; ini mengisinya dari `japanese` via Claude.

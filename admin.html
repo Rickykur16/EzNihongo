@@ -4085,7 +4085,7 @@ window.kanaManageExamples = async (kanaId) => {
       <tbody id="kana-ex-body">${examples.map((e) => kanaExampleRowHtml(kanaId, ch, e)).join('')}</tbody>
     </table></div>
     ${examples.length === 0 ? '<div class="empty" style="padding:14px;">Belum ada contoh kata.</div>' : ''}
-    <div class="toolbar" style="margin-top:8px;"><button type="button" class="btn btn-ghost" onclick="kanaAddExampleRow()">+ Tambah contoh</button></div>
+    <div class="toolbar" style="margin-top:8px;"><button type="button" class="btn btn-ghost" onclick="kanaAddExampleRow()">+ Tambah contoh</button><button type="button" class="btn btn-ghost" id="kana-ex-gen" onclick="kanaGenExamples()">✨ Generate contoh (AI)</button></div>
     <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="manageKana('${ctx.lessonId}', '${safeTitle}', '${ctx.moduleId}', '${ctx.courseId || ''}')">← Kembali</button></div>
   `);
   modalContent.style.maxWidth = '860px';
@@ -4094,6 +4094,42 @@ window.kanaManageExamples = async (kanaId) => {
 window.kanaAddExampleRow = () => {
   const tb = document.getElementById('kana-ex-body');
   if (tb) tb.appendChild(el(kanaExampleRowHtml(window.__kanaExId, window.__kanaExCh || '', { sort_order: tb.querySelectorAll('tr').length })));
+};
+
+// Generate contoh kata (AI) untuk karakter kana ini — mirror deckGenExamples.
+// Hasil ditambahkan sebagai baris BELUM tersimpan (admin review → Simpan).
+window.kanaGenExamples = async () => {
+  const kanaId = window.__kanaExId;
+  const ch = window.__kanaExCh || '';
+  if (!kanaId) return;
+  const btn = document.getElementById('kana-ex-gen');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  // Kirim kata yang sudah ada (tersimpan + baru) supaya AI bikin yang berbeda.
+  const tbForAvoid = document.getElementById('kana-ex-body');
+  const avoid = tbForAvoid
+    ? Array.from(tbForAvoid.querySelectorAll('input[name="japanese"]'))
+        .map((i) => (i.value || '').trim()).filter(Boolean)
+    : [];
+  try {
+    const d = await api('/admin/generate-kana-examples', {
+      method: 'POST',
+      body: JSON.stringify({ kanaId, count: 3, avoid }),
+    });
+    const exs = Array.isArray(d.examples) ? d.examples : [];
+    if (exs.length === 0) { notify('AI tidak menghasilkan contoh. Coba lagi.', true); return; }
+    const tb = document.getElementById('kana-ex-body');
+    let base = tb ? tb.querySelectorAll('tr').length : 0;
+    exs.forEach((e) => {
+      if (tb) tb.appendChild(el(kanaExampleRowHtml(kanaId, ch, {
+        japanese: e.japanese, reading: e.reading, highlight: e.highlight, indonesian: e.indonesian, sort_order: base++,
+      })));
+    });
+    notify('Contoh dibuat AI — review lalu Simpan di tiap baris');
+  } catch (err) {
+    notify('Gagal generate: ' + err.message, true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✨ Generate contoh (AI)'; }
+  }
 };
 
 window.kanaPlayExampleTts = (btn) => {
