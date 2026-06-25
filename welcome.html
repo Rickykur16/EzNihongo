@@ -3381,6 +3381,80 @@
     .quiz-paper-actions { align-items: stretch; flex-direction: column; }
   }
 
+  /* ── Kana lesson (chart gojuon + modal + drill) ── */
+  .kana-video { margin: 16px 0 4px; }
+  .kana-row { margin-top: 16px; }
+  .kana-row-label {
+    font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--du-ink-3, #8a8a8a); margin-bottom: 8px; padding-left: 2px;
+  }
+  .kana-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 8px; }
+  .kana-cell {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px; min-height: 84px; padding: 12px 8px 10px; cursor: pointer;
+    background: #fff; border: 1px solid #ece8e1; border-radius: 12px; transition: transform .12s, box-shadow .12s, border-color .12s;
+  }
+  .kana-cell::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 12px 0 0 12px;
+    background: var(--brand-red, #C8102E); opacity: .85;
+  }
+  .kana-cell:hover, .kana-cell:focus-visible {
+    transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.08); border-color: #d9d3ca; outline: none;
+  }
+  .kana-cell-char { font-family: 'Noto Sans JP', sans-serif; font-size: 30px; font-weight: 700; color: var(--du-ink, #1b1410); line-height: 1; }
+  .kana-cell-romaji { font-size: 12px; font-weight: 600; color: var(--brand-red, #C8102E); letter-spacing: 0.03em; }
+  .kana-cell .dc-audio {
+    position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; display: inline-flex;
+    align-items: center; justify-content: center; border-radius: 50%; border: 1px solid #ece8e1; background: #fff;
+    color: var(--du-ink-2, #555); cursor: pointer; opacity: 0; transition: opacity .12s, background .12s, color .12s;
+  }
+  .kana-cell:hover .dc-audio, .kana-cell:focus-within .dc-audio { opacity: 1; }
+  .kana-cell .dc-audio svg { width: 12px; height: 12px; }
+  .kana-cell .dc-audio:hover, .kana-cell .dc-audio.playing { background: var(--brand-red, #C8102E); color: #fff; border-color: var(--brand-red, #C8102E); }
+  @media (max-width: 640px) {
+    .kana-grid { grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); }
+    .kana-cell { min-height: 72px; padding: 10px 6px 8px; }
+    .kana-cell-char { font-size: 25px; }
+    .kana-cell .dc-audio { opacity: .65; }
+  }
+  /* Kana modal — reuse .deck-modal shell, custom head */
+  .kana-modal .kana-modal-head { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .kana-modal .kana-modal-info { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 120px; }
+  .kana-modal .km-romaji { font-size: 30px; font-weight: 800; color: var(--du-ink, #1b1410); line-height: 1; font-family: 'Noto Sans JP', sans-serif; }
+  .kana-modal .km-kind { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--du-ink-3, #8a8a8a); }
+  .kana-modal .kana-mnemonic {
+    margin: 12px 0 4px; padding: 12px 14px; background: #fff8ec; border: 1px solid #f3e2bf; border-radius: 12px;
+    font-size: 13.5px; line-height: 1.5; color: #5a4a2a;
+  }
+  .kana-modal .kana-mn-ico { margin-right: 4px; }
+  /* Kana drill */
+  .kana-drill { margin-top: 24px; padding: 18px; border: 1px solid #ece8e1; border-radius: 16px; background: #fcfbf9; }
+  .kana-drill-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .kana-drill-title { font-size: 15px; font-weight: 800; color: var(--du-ink, #1b1410); }
+  .kana-drill-sub { font-size: 12.5px; color: var(--du-ink-3, #8a8a8a); margin-top: 2px; }
+  .kana-drill-body { margin-top: 16px; }
+  .kana-drill-progress { font-size: 12px; font-weight: 700; color: var(--du-ink-3, #8a8a8a); text-align: center; }
+  .kana-drill-prompt {
+    font-family: 'Noto Sans JP', sans-serif; font-size: 56px; font-weight: 700; text-align: center;
+    color: var(--du-ink, #1b1410); margin: 10px 0 2px; line-height: 1.1;
+  }
+  .kana-drill-hint { text-align: center; font-size: 12.5px; color: var(--du-ink-3, #8a8a8a); margin-bottom: 14px; }
+  .kana-drill-opts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-width: 420px; margin: 0 auto; }
+  .kana-drill-opt {
+    font-family: 'Noto Sans JP', sans-serif; font-size: 22px; font-weight: 700; padding: 14px; cursor: pointer;
+    background: #fff; border: 1.5px solid #e2ddd4; border-radius: 12px; color: var(--du-ink, #1b1410); transition: all .12s;
+  }
+  .kana-drill-opt:hover:not(:disabled) { border-color: var(--brand-red, #C8102E); transform: translateY(-1px); }
+  .kana-drill-opt:disabled { cursor: default; }
+  .kana-drill-opt.correct { background: #ecfdf3; border-color: #6ee7a8; color: #15803d; }
+  .kana-drill-opt.wrong { background: #fef2f2; border-color: #fca5a5; color: #b91c1c; }
+  .kana-drill-feedback { text-align: center; min-height: 24px; margin-top: 14px; font-size: 14px; }
+  .kana-drill-feedback .kdf-ok { color: #15803d; font-weight: 700; }
+  .kana-drill-feedback .kdf-no { color: #b91c1c; font-weight: 600; }
+  .kana-drill-result { text-align: center; padding: 12px 0; }
+  .kana-drill-result .kdr-score { font-size: 40px; font-weight: 800; color: var(--brand-red, #C8102E); font-variant-numeric: tabular-nums; }
+  .kana-drill-result .kdr-pct { font-size: 14px; color: var(--du-ink-3, #8a8a8a); margin-bottom: 16px; }
+
   /* ── Daftar Kanji (mirror Daftar Kosakata pattern) ── */
   .kanji-grid {
     display: grid;
@@ -3957,6 +4031,7 @@ function transformCourseFromApi(apiCourse) {
           apiId: l.id, // UUID — needed to lazy-load quiz questions
           title: l.title,
           type: l.type || 'text',
+          videoUrl: l.video_url || null,
           duration: l.duration_minutes ? `${l.duration_minutes} min` : '',
           durationMinutes: Number(l.duration_minutes) || 0,
           body,
@@ -3965,6 +4040,7 @@ function transformCourseFromApi(apiCourse) {
           grammar: Array.isArray(l.grammar) ? l.grammar : [],
           deck: Array.isArray(l.deck) ? l.deck : [],
           kanji: Array.isArray(l.kanji) ? l.kanji : [],
+          kana: Array.isArray(l.kana) ? l.kana : [],
           grammarTask: Array.isArray(l.grammarTask) ? l.grammarTask : [],
           popupAfterLessonId: l.popup_after_lesson_id || null,
         };
@@ -5769,7 +5845,7 @@ function renderSidebar() {
   const doneLessons = Object.values(progress).filter(v => v).length;
   const pct = Math.round((doneLessons / totalLessons) * 100);
 
-  const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan', deck: 'Kosakata', kanji: 'Kanji' };
+  const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan', deck: 'Kosakata', kanji: 'Kanji', kana: 'Kana' };
   // SVG icons compact-style ala Udemy (play / question / book / cards / kanji).
   const TYPE_ICON = {
     video: '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
@@ -5777,6 +5853,7 @@ function renderSidebar() {
     text: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
     deck: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>',
     kanji: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
+    kana: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h9M9 4v5M5 13c4 0 8 3 8 7M19 13c-3 0-4 2-4 4"/></svg>',
   };
   const CHECK_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
 
@@ -6597,10 +6674,11 @@ window.closeKanjiDetail = () => {
   if (_kanjiStrokeTimer) { clearTimeout(_kanjiStrokeTimer); _kanjiStrokeTimer = null; }
 };
 
-window.replayKanjiStrokes = (char) => fetchAndPlayKanjiStrokes(char);
+window.replayKanjiStrokes = (char, elId) => fetchAndPlayKanjiStrokes(char, elId);
 
-function fetchAndPlayKanjiStrokes(char) {
-  const wrap = document.getElementById('kd-stroke');
+// elId default 'kd-stroke' (modal kanji); modal kana pakai 'kana-stroke'.
+function fetchAndPlayKanjiStrokes(char, elId = 'kd-stroke') {
+  const wrap = document.getElementById(elId);
   if (!wrap) return;
   const code = char.codePointAt(0).toString(16).padStart(5, '0');
   fetch(`https://raw.githubusercontent.com/KanjiVG/kanjivg/master/kanji/${code}.svg`)
@@ -8199,6 +8277,318 @@ function renderKanjiLesson(course, module, lesson, nav) {
   `;
 }
 
+// ── Kana lesson — video + chart gojuon (grouped per baris) + modal goresan
+// (reuse fetchAndPlayKanjiStrokes / KanjiVG) + drill pengenalan dua arah.
+function renderKanaLesson(course, module, lesson, nav) {
+  const { prev, next, isDone } = nav || {};
+  const items = Array.isArray(lesson.kana) ? lesson.kana : [];
+  window.__kanaData = items;
+  window.__kanaDrill = null;
+
+  if (!window.__kanaEscWired) {
+    document.addEventListener('keydown', (e) => {
+      const back = document.getElementById('kana-modal-backdrop');
+      if (!back || !back.classList.contains('open')) return;
+      if (e.key === 'Escape') { window.closeKanaModal && window.closeKanaModal(); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); window.kanaModalStep && window.kanaModalStep(-1); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); window.kanaModalStep && window.kanaModalStep(1); }
+    });
+    window.__kanaEscWired = true;
+  }
+
+  const intro = (lesson.body && lesson.body.trim())
+    ? lesson.body
+    : 'Klik karakter untuk dengar bunyi, lihat urutan goresan, mnemonic, dan contoh kata.';
+
+  // "Ada video ada kananya": slot video di atas chart. Iframe kalau videoUrl
+  // di-set admin, kalau belum → placeholder (konsisten dgn lesson video).
+  const vurl = (lesson.videoUrl || '').trim();
+  const videoBlock = vurl
+    ? `<div class="kana-video"><iframe src="${escapeHtml(vurl)}" loading="lazy" title="Video pelajaran"
+         allow="accelerometer;gyroscope;autoplay;encrypted-media;picture-in-picture" allowfullscreen
+         style="border:0;width:100%;aspect-ratio:16/9;border-radius:14px;background:#000;"></iframe></div>`
+    : `<div class="video-player" style="margin:16px 0 4px;">
+         <span class="video-soon">Video segera tersedia</span>
+         <button class="play-btn" onclick="alert('Video pelajaran akan segera tersedia di sini.')">▶</button>
+         <span class="video-meta">KANA${lesson.duration ? ' · ' + escapeHtml(lesson.duration.toUpperCase()) : ''}</span>
+       </div>`;
+
+  // Group karakter per groupLabel (urutan kemunculan) untuk chart per baris.
+  const groups = [];
+  const groupMap = new Map();
+  items.forEach((it, idx) => {
+    const g = it.groupLabel || 'Lainnya';
+    if (!groupMap.has(g)) { groupMap.set(g, []); groups.push(g); }
+    groupMap.get(g).push({ it, idx });
+  });
+  const chartHtml = items.length === 0
+    ? '<div class="deck-empty">Pelajaran ini belum punya karakter kana.</div>'
+    : groups.map((g) => `
+        <div class="kana-row">
+          <div class="kana-row-label">${escapeHtml(g)}</div>
+          <div class="kana-grid">
+            ${groupMap.get(g).map(({ it, idx }) => {
+              const ch = escapeHtml(it.character);
+              const rom = escapeHtml(it.romaji || '');
+              return `<div class="kana-cell" role="button" tabindex="0"
+                        aria-label="${ch} dibaca ${rom}. Tekan Enter untuk detail."
+                        onclick="openKanaModal(${idx})"
+                        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openKanaModal(${idx})}">
+                <button class="dc-audio" type="button" aria-label="Dengar ${ch}" onclick="event.stopPropagation();playKanaAudio(${idx}, this)">${AUDIO_SVG}</button>
+                <span class="kana-cell-char" lang="ja">${ch}</span>
+                <span class="kana-cell-romaji">${rom}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`).join('');
+
+  const drillBlock = items.length >= 2 ? `
+    <div class="kana-drill" id="kana-drill">
+      <div class="kana-drill-head">
+        <div>
+          <div class="kana-drill-title">🎯 Latihan Pengenalan</div>
+          <div class="kana-drill-sub">Uji ingatanmu dua arah: karakter ↔ bunyi.</div>
+        </div>
+        <button class="btn-primary" type="button" onclick="kanaDrillStart()">Mulai Drill</button>
+      </div>
+      <div class="kana-drill-body" id="kana-drill-body"></div>
+    </div>` : '';
+
+  const modalMarkup = `
+    <div class="deck-modal-backdrop" id="kana-modal-backdrop" onclick="if(event.target===this)closeKanaModal()">
+      <div class="deck-modal kana-modal" id="kana-modal" role="dialog" aria-modal="true" tabindex="-1">
+        <button class="deck-modal-close" type="button" aria-label="Tutup" onclick="closeKanaModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+        </button>
+        <div class="kana-modal-head">
+          <div class="kanji-detail-stroke" id="kana-stroke"></div>
+          <div class="kana-modal-info">
+            <div class="km-romaji" id="kana-modal-romaji"></div>
+            <div class="km-kind" id="kana-modal-kind"></div>
+            <button class="dm-headaudio" id="kana-modal-audio" type="button" aria-label="Dengar bunyi">${AUDIO_SVG}</button>
+          </div>
+        </div>
+        <div class="kana-mnemonic" id="kana-modal-mnemonic"></div>
+        <div class="deck-modal-label">Contoh Kata · 例</div>
+        <div class="deck-ex-list" id="kana-ex-list"></div>
+        <div class="deck-modal-nav">
+          <button type="button" id="kana-modal-prev" aria-label="Sebelumnya (←)" onclick="kanaModalStep(-1)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+            <span>Sebelumnya</span>
+          </button>
+          <span class="dm-counter" id="kana-modal-counter" aria-live="polite"></span>
+          <button type="button" id="kana-modal-next" aria-label="Berikutnya (→)" onclick="kanaModalStep(1)">
+            <span>Berikutnya</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('main-content').innerHTML = `
+    <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · KANA</p>
+    <h1 class="lesson-title">${escapeHtml(lesson.title)}</h1>
+    <p class="lesson-subtitle">${escapeHtml(module.title)}${lesson.duration ? ' — ' + escapeHtml(lesson.duration) : ''}</p>
+    ${videoBlock}
+    <div class="deck-hero">
+      <div>
+        <div class="dh-eyebrow">かな · HIRAGANA & KATAKANA</div>
+        <div class="dh-body">${escapeHtml(intro)}</div>
+      </div>
+      <div class="dh-stat" aria-label="${items.length} karakter">
+        <div class="dh-stat-num">${items.length}</div>
+        <div class="dh-stat-label">karakter</div>
+      </div>
+    </div>
+    ${chartHtml}
+    ${drillBlock}
+    ${modalMarkup}
+    <div class="lesson-footer">
+      <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
+      <button class="btn-primary" onclick="markCompleteAndNext()">
+        ${isDone ? (next ? 'Lanjut →' : 'Selesai ✓') : (next ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓')}
+      </button>
+    </div>
+  `;
+}
+
+window.playKanaAudio = (idx, btn) => {
+  const it = (window.__kanaData || [])[idx];
+  if (!it) return;
+  playTTS(it.character || '', btn);
+};
+window.playKanaExample = (idx, exIdx, btn) => {
+  const it = (window.__kanaData || [])[idx];
+  if (!it) return;
+  const ex = (it.examples || [])[exIdx];
+  if (!ex) return;
+  playTTS(String(ex.japanese || ex.reading || '').replace(/<[^>]*>/g, ''), btn);
+};
+
+window.openKanaModal = (idx) => {
+  const data = window.__kanaData || [];
+  const it = data[idx];
+  if (!it) return;
+  const back = document.getElementById('kana-modal-backdrop');
+  const modal = document.getElementById('kana-modal');
+  if (!back || !modal) return;
+  const wasOpen = back.classList.contains('open');
+  if (!wasOpen) window.__kanaModalReturnFocus = document.activeElement;
+  window.__kanaModalIdx = idx;
+
+  // Reset stroke container ke karakter statis + tombol replay, lalu animasikan.
+  if (_kanjiStrokeTimer) { clearTimeout(_kanjiStrokeTimer); _kanjiStrokeTimer = null; }
+  const strokeWrap = document.getElementById('kana-stroke');
+  if (strokeWrap) {
+    strokeWrap.innerHTML = `<div class="kanji-detail-stroke-static" lang="ja">${escapeHtml(it.character)}</div>
+      <button type="button" class="kanji-replay-btn" id="kana-replay">▶ Putar goresan</button>`;
+    const rb = document.getElementById('kana-replay');
+    if (rb) rb.onclick = () => replayKanjiStrokes(it.character, 'kana-stroke');
+  }
+  document.getElementById('kana-modal-romaji').textContent = it.romaji || '';
+  document.getElementById('kana-modal-kind').textContent =
+    (it.kind === 'katakana' ? 'KATAKANA' : 'HIRAGANA') + (it.groupLabel ? ' · ' + it.groupLabel : '');
+  const audioBtn = document.getElementById('kana-modal-audio');
+  if (audioBtn) audioBtn.onclick = () => playKanaAudio(idx, audioBtn);
+  const mn = document.getElementById('kana-modal-mnemonic');
+  if (mn) {
+    mn.innerHTML = it.mnemonic ? `<span class="kana-mn-ico">💡</span>${escapeHtml(it.mnemonic)}` : '';
+    mn.style.display = it.mnemonic ? '' : 'none';
+  }
+
+  const list = document.getElementById('kana-ex-list');
+  const examples = Array.isArray(it.examples) ? it.examples : [];
+  list.innerHTML = examples.length === 0
+    ? '<div class="deck-ex-empty">Belum ada contoh kata.</div>'
+    : examples.map((ex, i) => {
+        const plain = String(ex.japanese || '').replace(/<[^>]*>/g, '');
+        return `<div class="deck-ex">
+          <div class="de-num">${String(i + 1).padStart(2, '0')}</div>
+          <div class="de-text">
+            <div class="de-jp" lang="ja">${deckHighlight(plain, ex.highlight, it.character)}</div>
+            ${ex.reading && ex.reading !== plain ? `<div class="de-kana" lang="ja">${escapeHtml(ex.reading)}</div>` : ''}
+            ${ex.indonesian ? `<div class="de-id">${escapeHtml(ex.indonesian)}</div>` : ''}
+          </div>
+          <button class="de-play" type="button" aria-label="Dengar kata" onclick="playKanaExample(${idx}, ${i}, this)">${AUDIO_SVG}</button>
+        </div>`;
+      }).join('');
+
+  const prevBtn = document.getElementById('kana-modal-prev');
+  const nextBtn = document.getElementById('kana-modal-next');
+  const counter = document.getElementById('kana-modal-counter');
+  if (prevBtn) prevBtn.disabled = idx <= 0;
+  if (nextBtn) nextBtn.disabled = idx >= data.length - 1;
+  if (counter) counter.textContent = `${idx + 1} / ${data.length}`;
+
+  back.classList.add('open');
+  if (!wasOpen) setTimeout(() => modal.focus(), 0);
+  setTimeout(() => fetchAndPlayKanjiStrokes(it.character, 'kana-stroke'), 140);
+};
+
+window.kanaModalStep = (delta) => {
+  const data = window.__kanaData || [];
+  const cur = typeof window.__kanaModalIdx === 'number' ? window.__kanaModalIdx : 0;
+  const target = cur + delta;
+  if (target < 0 || target >= data.length) return;
+  document.querySelectorAll('.de-play.playing,.dm-headaudio.playing').forEach((b) => b.classList.remove('playing'));
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  openKanaModal(target);
+};
+
+window.closeKanaModal = () => {
+  const back = document.getElementById('kana-modal-backdrop');
+  if (back) back.classList.remove('open');
+  if (_kanjiStrokeTimer) { clearTimeout(_kanjiStrokeTimer); _kanjiStrokeTimer = null; }
+  document.querySelectorAll('.de-play.playing,.dm-headaudio.playing,.dc-audio.playing').forEach((b) => b.classList.remove('playing'));
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  const ret = window.__kanaModalReturnFocus;
+  window.__kanaModalReturnFocus = null;
+  if (ret && typeof ret.focus === 'function') { try { ret.focus(); } catch (e) { /* noop */ } }
+};
+
+// Drill pengenalan dua arah (client-side, tanpa persistensi). Tiap soal acak
+// arah: karakter→bunyi ('k2r') atau bunyi→karakter ('r2k'), 4 opsi (distraktor
+// dgn romaji unik biar tak ambigu mis. じ/ぢ).
+function _kanaPickDistractors(pool, item, count) {
+  const used = new Set([item.romaji]);
+  const out = [];
+  const shuffled = pool.filter((p) => p !== item).sort(() => Math.random() - 0.5);
+  for (const p of shuffled) {
+    if (out.length >= count) break;
+    if (used.has(p.romaji)) continue;
+    used.add(p.romaji);
+    out.push(p);
+  }
+  return out;
+}
+window.kanaDrillStart = () => {
+  const pool = (window.__kanaData || []).filter((k) => k.character && k.romaji);
+  const body = document.getElementById('kana-drill-body');
+  if (!body) return;
+  if (pool.length < 2) { body.innerHTML = '<div class="kana-drill-progress">Karakter belum cukup untuk drill.</div>'; return; }
+  const n = Math.min(pool.length, 12);
+  const order = pool.slice().sort(() => Math.random() - 0.5).slice(0, n);
+  const questions = order.map((item) => {
+    const dir = Math.random() < 0.5 ? 'k2r' : 'r2k';
+    const distract = _kanaPickDistractors(pool, item, 3);
+    const opts = [item, ...distract].sort(() => Math.random() - 0.5);
+    return { item, dir, opts };
+  });
+  window.__kanaDrill = { questions, idx: 0, score: 0, answered: false };
+  kanaDrillRender();
+};
+function kanaDrillRender() {
+  const st = window.__kanaDrill;
+  const body = document.getElementById('kana-drill-body');
+  if (!st || !body) return;
+  if (st.idx >= st.questions.length) {
+    const pct = Math.round((st.score / st.questions.length) * 100);
+    body.innerHTML = `<div class="kana-drill-result">
+      <div class="kdr-score">${st.score} / ${st.questions.length}</div>
+      <div class="kdr-pct">${pct}% benar — ${pct >= 80 ? 'mantap! 🎉' : 'ulangi biar makin lancar.'}</div>
+      <button class="btn-primary" type="button" onclick="kanaDrillStart()">Ulangi Drill</button>
+    </div>`;
+    return;
+  }
+  const q = st.questions[st.idx];
+  const promptText = q.dir === 'k2r' ? q.item.character : q.item.romaji;
+  const promptLang = q.dir === 'k2r' ? ' lang="ja"' : '';
+  const hint = q.dir === 'k2r' ? 'Apa bunyinya?' : 'Karakter yang mana?';
+  const optsHtml = q.opts.map((o, oi) => {
+    const label = q.dir === 'k2r' ? o.romaji : o.character;
+    const lang = q.dir === 'k2r' ? '' : ' lang="ja"';
+    return `<button class="kana-drill-opt" type="button" data-oi="${oi}"${lang} onclick="kanaDrillAnswer(${oi})">${escapeHtml(label)}</button>`;
+  }).join('');
+  body.innerHTML = `
+    <div class="kana-drill-progress">Soal ${st.idx + 1} / ${st.questions.length} · Skor ${st.score}</div>
+    <div class="kana-drill-prompt"${promptLang}>${escapeHtml(promptText)}</div>
+    <div class="kana-drill-hint">${hint}</div>
+    <div class="kana-drill-opts">${optsHtml}</div>
+    <div class="kana-drill-feedback" id="kana-drill-feedback"></div>`;
+  st.answered = false;
+}
+window.kanaDrillAnswer = (oi) => {
+  const st = window.__kanaDrill;
+  if (!st || st.answered) return;
+  const q = st.questions[st.idx];
+  st.answered = true;
+  const correct = q.opts[oi] === q.item;
+  if (correct) st.score++;
+  document.querySelectorAll('#kana-drill-body .kana-drill-opt').forEach((b, i) => {
+    b.disabled = true;
+    if (q.opts[i] === q.item) b.classList.add('correct');
+    else if (i === oi) b.classList.add('wrong');
+  });
+  const fb = document.getElementById('kana-drill-feedback');
+  if (fb) {
+    fb.innerHTML = correct
+      ? '<span class="kdf-ok">✓ Benar!</span>'
+      : `<span class="kdf-no">✗ Jawaban: <strong lang="ja">${escapeHtml(q.item.character)}</strong> = ${escapeHtml(q.item.romaji)}</span>`;
+  }
+  st.idx++;
+  setTimeout(() => { if (window.__kanaDrill === st) kanaDrillRender(); }, correct ? 750 : 1500);
+};
+
 window.openDeckModal = (idx) => {
   const data = window.__deckData || [];
   const it = data[idx];
@@ -8348,6 +8738,12 @@ function renderLesson() {
     return;
   }
 
+  // Kana — video + chart gojuon + modal goresan + drill dua arah
+  if (lesson.type === 'kana') {
+    renderKanaLesson(course, module, lesson, { prev, next, isDone });
+    return;
+  }
+
   // Grammar task — siswa buat kalimat pakai pola grammar, ucapkan (STT), dinilai AI
   if (lesson.type === 'grammar_task') {
     renderGrammarTaskLesson(course, module, lesson, { prev, next, isDone });
@@ -8472,6 +8868,8 @@ window.selectLesson = (moduleId, lessonId) => {
   // lesson via sidebar.
   try { destroyAllListeningPlayers(); } catch {}
   try { window.closeKanjiDetail?.(); } catch {}
+  try { window.closeKanaModal?.(); } catch {}
+  window.__kanaDrill = null;
   if (typeof _kanjiStrokeTimer !== 'undefined' && _kanjiStrokeTimer) {
     clearTimeout(_kanjiStrokeTimer); _kanjiStrokeTimer = null;
   }

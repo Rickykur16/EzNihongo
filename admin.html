@@ -1256,6 +1256,9 @@ function renderLessons() {
           contentBtns = `<button class="btn btn-ghost" onclick="manageDeck('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Deck (${deckN})</button>`;
         } else if (l.type === 'kanji') {
           contentBtns = `<button class="btn btn-ghost" onclick="manageKanji('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Kanji (${kanjiN})</button>`;
+        } else if (l.type === 'kana') {
+          const kanaN = Array.isArray(l.kana) ? l.kana.length : 0;
+          contentBtns = `<button class="btn btn-ghost" onclick="manageKana('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Kana (${kanaN})</button>`;
         } else if (l.type === 'grammar_task') {
           const gtN = Array.isArray(l.grammarTask) ? l.grammarTask.length : 0;
           contentBtns = `<button class="btn btn-ghost" onclick="manageGrammarTask('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Tugas Grammar (${gtN})</button>`;
@@ -1337,6 +1340,7 @@ function lessonFormHtml(l) {
             <option value="quiz" ${l.type === 'quiz' ? 'selected' : ''}>Kuis</option>
             <option value="deck" ${l.type === 'deck' ? 'selected' : ''}>Deck Kosakata</option>
             <option value="kanji" ${l.type === 'kanji' ? 'selected' : ''}>Kanji</option>
+            <option value="kana" ${l.type === 'kana' ? 'selected' : ''}>Hiragana/Katakana</option>
             <option value="grammar_task" ${l.type === 'grammar_task' ? 'selected' : ''}>Tugas Grammar</option>
           </select>
         </div>
@@ -1349,6 +1353,11 @@ function lessonFormHtml(l) {
       <div class="field" data-kanji-only style="display:${l.type === 'kanji' ? '' : 'none'};">
         <div style="font-size:12px;color:#525252;font-family:var(--font-body);background:#ffe4e6;border:1px solid #fda4af;border-radius:6px;padding:8px 12px;">
           <strong>Kanji:</strong> setelah simpan, klik tombol <strong>Kelola Kanji</strong> di daftar pelajaran untuk menambah karakter + mnemonic. Field "Konten" di bawah opsional sebagai pengantar.
+        </div>
+      </div>
+      <div class="field" data-kana-only style="display:${l.type === 'kana' ? '' : 'none'};">
+        <div style="font-size:12px;color:#525252;font-family:var(--font-body);background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;padding:8px 12px;">
+          <strong>Hiragana/Katakana:</strong> setelah simpan, klik tombol <strong>Kelola Kana</strong> di daftar pelajaran untuk memilih karakter dari bank + contoh kata. Isi <strong>Video URL</strong> di bawah untuk menampilkan video di atas chart. Field "Konten" opsional sebagai pengantar.
         </div>
       </div>
       <div class="field" data-grammar-task-only style="display:${l.type === 'grammar_task' ? '' : 'none'};">
@@ -1414,13 +1423,16 @@ function wireLessonTypeVisibility(form) {
   const videoField = form.querySelector('.field-video');
   const deckHint = form.querySelector('.field-deck-hint');
   const kanjiHint = form.querySelector('[data-kanji-only]');
+  const kanaHint = form.querySelector('[data-kana-only]');
   const grammarTaskHint = form.querySelector('[data-grammar-task-only]');
   const quizFields = form.querySelector('[data-quiz-only]');
   if (!typeSel) return;
   const apply = () => {
-    if (videoField) videoField.style.display = typeSel.value === 'video' ? '' : 'none';
+    // Video URL relevan untuk tipe video DAN kana (video di atas chart kana).
+    if (videoField) videoField.style.display = (typeSel.value === 'video' || typeSel.value === 'kana') ? '' : 'none';
     if (deckHint) deckHint.style.display = typeSel.value === 'deck' ? '' : 'none';
     if (kanjiHint) kanjiHint.style.display = typeSel.value === 'kanji' ? '' : 'none';
+    if (kanaHint) kanaHint.style.display = typeSel.value === 'kana' ? '' : 'none';
     if (grammarTaskHint) grammarTaskHint.style.display = typeSel.value === 'grammar_task' ? '' : 'none';
     if (quizFields) quizFields.style.display = typeSel.value === 'quiz' ? '' : 'none';
   };
@@ -1611,7 +1623,7 @@ async function submitLesson(e, id, moduleId) {
     title: fd.get('title').trim(),
     type,
     content: fd.get('content').trim() || null,
-    videoUrl: type === 'video' ? ((fd.get('videoUrl') || '').trim() || null) : null,
+    videoUrl: (type === 'video' || type === 'kana') ? ((fd.get('videoUrl') || '').trim() || null) : null,
     durationMinutes: Number(fd.get('durationMinutes')) || null,
     sortOrder: Number(fd.get('sortOrder')) || 0,
     // Hanya grammar_task yang punya pelajaran pemicu; tipe lain selalu null
@@ -3765,6 +3777,375 @@ async function openDeckManager(lessonId, lessonTitle, moduleId, courseId) {
   modalContent.style.maxWidth = '1100px';
 }
 window.manageDeck = (lessonId, lessonTitle, moduleId, courseId) => openDeckManager(lessonId, lessonTitle, moduleId, courseId);
+
+// ─────────────────────────────────────────────────────────────
+// KANA ("kana" lesson type) MANAGER — mirror Kelola Deck. Pilih karakter
+// dari bank (kana_items) ke pelajaran via lesson_kana_items, edit mnemonic
+// + contoh kata. Bank di-seed migration 037; admin bisa tambah/edit.
+// ─────────────────────────────────────────────────────────────
+function kanaRefreshList() {
+  if (STATE.selectedCourse) loadModulesForCourse(STATE.selectedCourse).then(() => {
+    if (STATE.tab === 'lessons') renderLessons();
+  });
+}
+
+function renderKanaTable(items) {
+  if (!items || items.length === 0) {
+    return '<div class="empty" style="padding:20px;">Belum ada karakter di pelajaran ini. Tambah dari bank atau buat karakter baru.</div>';
+  }
+  const rows = items.map((it) => `
+    <tr data-kana-id="${it.kana_id}">
+      <td lang="ja" style="font-size:22px;">${escapeHtml(it.character || '')}</td>
+      <td>${escapeHtml(it.romaji || '')}</td>
+      <td><span class="pill">${escapeHtml(it.kind || '')}</span></td>
+      <td>${escapeHtml(it.group_label || '')}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost" onclick="kanaMove('${it.kana_id}', -1)">↑</button>
+        <button class="btn btn-ghost" onclick="kanaMove('${it.kana_id}', 1)">↓</button>
+      </td>
+      <td class="actions" style="white-space:nowrap;">
+        <button class="btn btn-ghost tts-preview" title="Dengar" onclick="adminPlayTts('${escapeHtml(it.character || '').replace(/'/g, "\\'")}', this)">🔊</button>
+        <button class="btn btn-ghost" onclick="kanaEditChar('${it.kana_id}')" title="Edit romaji/mnemonic/grup">✏️ Edit</button>
+        <button class="btn btn-ghost" onclick="kanaManageExamples('${it.kana_id}')">Contoh (${it.example_count || 0})</button>
+        <button class="btn btn-danger" onclick="kanaRemove('${it.kana_id}')">Keluarkan</button>
+      </td>
+    </tr>`).join('');
+  return `<table style="font-size:13px;">
+    <thead><tr><th>Karakter</th><th>Romaji</th><th>Jenis</th><th>Grup</th><th>Urut</th><th></th></tr></thead>
+    <tbody id="kana-mgr-body">${rows}</tbody></table>`;
+}
+
+function kanaMgrRerender() {
+  const wrap = document.getElementById('kana-mgr-wrap');
+  if (wrap) wrap.innerHTML = renderKanaTable(window.__kanaMgrItems || []);
+  const c = document.getElementById('kana-mgr-count');
+  if (c) c.textContent = (window.__kanaMgrItems || []).length + ' karakter';
+}
+
+async function openKanaManager(lessonId, lessonTitle, moduleId, courseId) {
+  let items = [];
+  try {
+    const d = await api('/admin/lessons/' + lessonId + '/kana-items');
+    items = d.items || [];
+  } catch (err) { notify('Gagal load kana: ' + err.message, true); return; }
+  window.__kanaCtx = { lessonId, lessonTitle, moduleId, courseId: courseId || '' };
+  window.__kanaMgrItems = items;
+  openModal(`
+    <h3>Kelola Kana: ${escapeHtml(lessonTitle)}</h3>
+    <div class="toolbar">
+      <button type="button" class="btn btn-ghost" onclick="kanaShowBank()">+ Dari bank</button>
+      <button type="button" class="btn btn-ghost" onclick="kanaShowNew()">+ Karakter baru</button>
+      <span id="kana-mgr-count" style="font-size:12px;color:#737373;font-family:var(--font-body);">${items.length} karakter</span>
+    </div>
+    <div id="kana-panel"></div>
+    <div id="kana-mgr-wrap" style="overflow-x:auto;">${renderKanaTable(items)}</div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
+  `);
+  modalContent.style.maxWidth = '1000px';
+}
+window.manageKana = (lessonId, lessonTitle, moduleId, courseId) => openKanaManager(lessonId, lessonTitle, moduleId, courseId);
+
+window.kanaMove = async (kanaId, dir) => {
+  const arr = window.__kanaMgrItems || [];
+  const i = arr.findIndex((x) => x.kana_id === kanaId);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= arr.length) return;
+  const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+  arr.forEach((x, k) => { x.sort_order = k; });
+  kanaMgrRerender();
+  try {
+    await api('/admin/lessons/' + window.__kanaCtx.lessonId + '/kana-items', {
+      method: 'PUT',
+      body: JSON.stringify({ items: arr.map((x, k) => ({ kanaId: x.kana_id, sortOrder: k })) }),
+    });
+    kanaRefreshList();
+  } catch (err) { notify('Gagal urut: ' + err.message, true); }
+};
+
+window.kanaRemove = async (kanaId) => {
+  if (!confirm('Keluarkan karakter ini dari pelajaran? (tetap ada di bank)')) return;
+  try {
+    await api('/admin/lessons/' + window.__kanaCtx.lessonId + '/kana-items/' + kanaId, { method: 'DELETE' });
+    window.__kanaMgrItems = (window.__kanaMgrItems || []).filter((x) => x.kana_id !== kanaId);
+    kanaMgrRerender(); notify('Dikeluarkan'); kanaRefreshList();
+  } catch (err) { notify('Gagal: ' + err.message, true); }
+};
+
+window.kanaEditChar = (kanaId) => {
+  const it = (window.__kanaMgrItems || []).find((x) => x.kana_id === kanaId);
+  if (!it) { notify('Karakter tidak ditemukan', true); return; }
+  const p = document.getElementById('kana-panel');
+  if (!p) return;
+  p.innerHTML = `
+    <div style="background:#f5f5f5;padding:14px;border-radius:8px;margin-bottom:14px;">
+      <strong style="font-size:13px;">Edit karakter</strong>
+      <div class="field-row" style="margin-top:8px;">
+        <div class="field"><label>Karakter *</label><input id="ke-char" lang="ja" /></div>
+        <div class="field"><label>Romaji</label><input id="ke-romaji" placeholder="a · ka · kya" /></div>
+        <div class="field"><label>Jenis</label>
+          <select id="ke-kind">
+            <option value="hiragana">Hiragana</option>
+            <option value="katakana">Katakana</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Grup (baris)</label><input id="ke-group" placeholder="Vokal, Baris K, Dakuten G..." /></div>
+        <div class="field"><label>Varian</label>
+          <select id="ke-variant">
+            <option value="base">base</option>
+            <option value="dakuten">dakuten</option>
+            <option value="handakuten">handakuten</option>
+            <option value="youon">youon</option>
+            <option value="special">special</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Mnemonic (cara ingat)</label><textarea id="ke-mnemonic" rows="2" placeholder="Mis. あ seperti orang berkata Ah!"></textarea></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('kana-panel').innerHTML='';">Batal</button>
+        <button type="button" class="btn btn-primary" onclick="kanaSaveChar('${kanaId}')">Simpan</button>
+      </div>
+      <div style="font-size:11px;color:#737373;margin-top:8px;">Perubahan berlaku di bank kana & semua pelajaran yang memakai karakter ini.</div>
+    </div>`;
+  document.getElementById('ke-char').value = it.character || '';
+  document.getElementById('ke-romaji').value = it.romaji || '';
+  document.getElementById('ke-kind').value = it.kind || 'hiragana';
+  document.getElementById('ke-group').value = it.group_label || '';
+  document.getElementById('ke-variant').value = it.variant_type || 'base';
+  document.getElementById('ke-mnemonic').value = it.mnemonic || '';
+};
+
+window.kanaSaveChar = async (kanaId) => {
+  const ch = (document.getElementById('ke-char').value || '').trim();
+  if (!ch) { notify('Karakter wajib diisi', true); return; }
+  const payload = {
+    character: ch,
+    kind: document.getElementById('ke-kind').value,
+    romaji: (document.getElementById('ke-romaji').value || '').trim(),
+    groupLabel: (document.getElementById('ke-group').value || '').trim(),
+    variantType: document.getElementById('ke-variant').value,
+    mnemonic: (document.getElementById('ke-mnemonic').value || '').trim(),
+  };
+  try {
+    const d = await api('/admin/kana/' + kanaId, { method: 'PUT', body: JSON.stringify(payload) });
+    const k = d.kana || {};
+    const it = (window.__kanaMgrItems || []).find((x) => x.kana_id === kanaId);
+    if (it) {
+      it.character = k.character; it.romaji = k.romaji; it.kind = k.kind;
+      it.group_label = k.group_label; it.variant_type = k.variant_type; it.mnemonic = k.mnemonic;
+    }
+    const p = document.getElementById('kana-panel'); if (p) p.innerHTML = '';
+    kanaMgrRerender(); notify('Tersimpan');
+  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+};
+
+window.kanaShowNew = () => {
+  const p = document.getElementById('kana-panel');
+  if (!p) return;
+  p.innerHTML = `
+    <div style="background:#f5f5f5;padding:14px;border-radius:8px;margin-bottom:14px;">
+      <strong style="font-size:13px;">Karakter baru</strong>
+      <div class="field-row" style="margin-top:8px;">
+        <div class="field"><label>Karakter *</label><input id="kn-char" lang="ja" /></div>
+        <div class="field"><label>Romaji *</label><input id="kn-romaji" placeholder="a · ka" /></div>
+        <div class="field"><label>Jenis</label>
+          <select id="kn-kind"><option value="hiragana">Hiragana</option><option value="katakana">Katakana</option></select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Grup (baris)</label><input id="kn-group" placeholder="Vokal, Baris K..." /></div>
+        <div class="field"><label>Varian</label>
+          <select id="kn-variant"><option value="base">base</option><option value="dakuten">dakuten</option><option value="handakuten">handakuten</option><option value="youon">youon</option><option value="special">special</option></select>
+        </div>
+      </div>
+      <div class="field"><label>Mnemonic</label><textarea id="kn-mnemonic" rows="2"></textarea></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('kana-panel').innerHTML='';">Batal</button>
+        <button type="button" class="btn btn-primary" onclick="kanaCreateChar()">Tambah ke pelajaran</button>
+      </div>
+    </div>`;
+};
+
+window.kanaCreateChar = async () => {
+  const ctx = window.__kanaCtx;
+  const ch = (document.getElementById('kn-char').value || '').trim();
+  const romaji = (document.getElementById('kn-romaji').value || '').trim();
+  if (!ch || !romaji) { notify('Karakter & romaji wajib diisi', true); return; }
+  try {
+    const d = await api('/admin/kana', { method: 'POST', body: JSON.stringify({
+      character: ch, romaji,
+      kind: document.getElementById('kn-kind').value,
+      groupLabel: (document.getElementById('kn-group').value || '').trim() || null,
+      variantType: document.getElementById('kn-variant').value,
+      mnemonic: (document.getElementById('kn-mnemonic').value || '').trim() || null,
+    }) });
+    const k = d.kana;
+    await api('/admin/lessons/' + ctx.lessonId + '/kana-items', { method: 'POST', body: JSON.stringify({ kanaId: k.id, sortOrder: (window.__kanaMgrItems || []).length }) });
+    window.__kanaMgrItems = window.__kanaMgrItems || [];
+    window.__kanaMgrItems.push({ kana_id: k.id, character: k.character, kind: k.kind, romaji: k.romaji, mnemonic: k.mnemonic, group_label: k.group_label, variant_type: k.variant_type, sort_order: window.__kanaMgrItems.length, example_count: 0 });
+    const p = document.getElementById('kana-panel'); if (p) p.innerHTML = '';
+    kanaMgrRerender(); notify('Ditambahkan'); kanaRefreshList();
+  } catch (err) { notify('Gagal: ' + err.message, true); }
+};
+
+window.kanaShowBank = () => {
+  const p = document.getElementById('kana-panel');
+  if (!p) return;
+  p.innerHTML = `
+    <div style="background:#f5f5f5;padding:14px;border-radius:8px;margin-bottom:14px;">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+        <strong style="font-size:13px;white-space:nowrap;">Dari bank kana</strong>
+        <select id="kana-bank-kind" style="font-size:13px;" onchange="kanaBankSearch()">
+          <option value="">Semua</option>
+          <option value="hiragana">Hiragana</option>
+          <option value="katakana">Katakana</option>
+        </select>
+        <input id="kana-bank-q" placeholder="cari karakter / romaji / grup..." style="flex:1;min-width:140px;font-size:13px;" oninput="kanaBankSearch()" />
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('kana-panel').innerHTML='';">Tutup</button>
+      </div>
+      <div id="kana-bank-results" style="max-height:320px;overflow-y:auto;background:#fff;border-radius:6px;"></div>
+    </div>`;
+  kanaBankSearch();
+};
+
+let __kanaBankTimer = null;
+window.kanaBankSearch = () => {
+  clearTimeout(__kanaBankTimer);
+  __kanaBankTimer = setTimeout(async () => {
+    const kind = (document.getElementById('kana-bank-kind') ? document.getElementById('kana-bank-kind').value : '');
+    const q = (document.getElementById('kana-bank-q') ? document.getElementById('kana-bank-q').value : '').trim();
+    try {
+      const d = await api('/admin/kana-bank?kind=' + encodeURIComponent(kind) + '&q=' + encodeURIComponent(q));
+      window.__kanaBankResults = {};
+      const inLesson = new Set((window.__kanaMgrItems || []).map((x) => x.kana_id));
+      const rows = (d.kana || []).map((k) => {
+        window.__kanaBankResults[k.id] = k;
+        return `<div style="display:flex;gap:10px;align-items:center;padding:6px 10px;border-bottom:1px solid #eee;font-size:13px;">
+          <span lang="ja" style="font-size:20px;min-width:40px;">${escapeHtml(k.character)}</span>
+          <span style="color:#737373;min-width:60px;">${escapeHtml(k.romaji || '')}</span>
+          <span class="pill">${escapeHtml(k.kind)}</span>
+          <span style="flex:1;min-width:0;color:#a3a3a3;">${escapeHtml(k.group_label || '')}</span>
+          ${inLesson.has(k.id) ? '<span style="color:#16a34a;font-size:12px;white-space:nowrap;">✓ dipakai</span>' : `<button type="button" class="btn btn-primary" onclick="kanaAddFromBank('${k.id}')">+ Tambah</button>`}
+        </div>`;
+      }).join('');
+      const box = document.getElementById('kana-bank-results');
+      if (box) box.innerHTML = rows || '<div class="empty" style="padding:14px;">Tidak ada hasil.</div>';
+    } catch (err) { notify('Gagal cari: ' + err.message, true); }
+  }, 250);
+};
+
+window.kanaAddFromBank = async (kanaId) => {
+  const ctx = window.__kanaCtx;
+  const k = (window.__kanaBankResults || {})[kanaId];
+  if (!k) return;
+  try {
+    await api('/admin/lessons/' + ctx.lessonId + '/kana-items', { method: 'POST', body: JSON.stringify({ kanaId, sortOrder: (window.__kanaMgrItems || []).length }) });
+    window.__kanaMgrItems = window.__kanaMgrItems || [];
+    window.__kanaMgrItems.push({ kana_id: kanaId, character: k.character, kind: k.kind, romaji: k.romaji, mnemonic: k.mnemonic, group_label: k.group_label, variant_type: k.variant_type, sort_order: window.__kanaMgrItems.length, example_count: k.example_count || 0 });
+    kanaMgrRerender(); notify('Ditambahkan'); kanaRefreshList();
+    kanaBankSearch();
+  } catch (err) { notify('Gagal: ' + err.message, true); }
+};
+
+// ── contoh kata editor (mirror deck examples) ──
+function kanaExampleRowHtml(kanaId, ch, e) {
+  e = e || {};
+  return `<tr data-ex-id="${e.id || ''}" data-exkana="${kanaId}">
+    <td><input name="japanese" value="${escapeHtml(e.japanese || '')}" lang="ja" style="min-width:160px;width:100%;" placeholder="例: あめ" /></td>
+    <td><input name="reading" value="${escapeHtml(e.reading || '')}" lang="ja" style="min-width:140px;width:100%;" placeholder="あめ" /></td>
+    <td><input name="highlight" value="${escapeHtml(e.highlight != null ? e.highlight : '')}" lang="ja" placeholder="${escapeHtml(ch)}" style="width:80px;" /></td>
+    <td><input name="indonesian" value="${escapeHtml(e.indonesian || '')}" style="min-width:160px;width:100%;" placeholder="hujan" /></td>
+    <td><input type="number" name="sortOrder" value="${e.sort_order || 0}" style="width:50px;" /></td>
+    <td style="white-space:nowrap;">
+      <button type="button" class="btn btn-ghost tts-preview" title="Dengar" onclick="kanaPlayExampleTts(this)">🔊</button>
+      <button type="button" class="btn btn-primary" onclick="kanaSaveExample(this)">Simpan</button>
+      ${e.id ? `<button type="button" class="btn btn-danger" onclick="kanaDeleteExample(this)">×</button>` : `<button type="button" class="btn btn-ghost" onclick="this.closest('tr').remove()">×</button>`}
+    </td>
+  </tr>`;
+}
+
+window.kanaManageExamples = async (kanaId) => {
+  const ctx = window.__kanaCtx;
+  const item = (window.__kanaMgrItems || []).find((x) => x.kana_id === kanaId);
+  const ch = item ? (item.character || '') : '';
+  let examples = [];
+  try { const d = await api('/admin/kana-examples?kanaId=' + kanaId); examples = d.examples || []; }
+  catch (err) { notify('Gagal load contoh: ' + err.message, true); return; }
+  const safeTitle = escapeHtml(ctx.lessonTitle).replace(/'/g, "\\'");
+  window.__kanaExId = kanaId;
+  window.__kanaExCh = ch;
+  openModal(`
+    <h3>Contoh kata — <span lang="ja">${escapeHtml(ch)}</span></h3>
+    <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 10px;">
+      "Highlight" = bagian yang ditandai (default: <code lang="ja">${escapeHtml(ch)}</code>). Tulis kata polos tanpa tag HTML.
+    </p>
+    <div style="overflow-x:auto;"><table style="font-size:12px;">
+      <thead><tr><th>Kata (JP)</th><th>Kana</th><th>Highlight</th><th>Arti (ID)</th><th>#</th><th></th></tr></thead>
+      <tbody id="kana-ex-body">${examples.map((e) => kanaExampleRowHtml(kanaId, ch, e)).join('')}</tbody>
+    </table></div>
+    ${examples.length === 0 ? '<div class="empty" style="padding:14px;">Belum ada contoh kata.</div>' : ''}
+    <div class="toolbar" style="margin-top:8px;"><button type="button" class="btn btn-ghost" onclick="kanaAddExampleRow()">+ Tambah contoh</button></div>
+    <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="manageKana('${ctx.lessonId}', '${safeTitle}', '${ctx.moduleId}', '${ctx.courseId || ''}')">← Kembali</button></div>
+  `);
+  modalContent.style.maxWidth = '860px';
+};
+
+window.kanaAddExampleRow = () => {
+  const tb = document.getElementById('kana-ex-body');
+  if (tb) tb.appendChild(el(kanaExampleRowHtml(window.__kanaExId, window.__kanaExCh || '', { sort_order: tb.querySelectorAll('tr').length })));
+};
+
+window.kanaPlayExampleTts = (btn) => {
+  const tr = btn.closest('tr');
+  const japanese = tr && tr.querySelector('input[name="japanese"]');
+  const reading = tr && tr.querySelector('input[name="reading"]');
+  const text = (japanese && japanese.value.trim()) || (reading ? reading.value : '');
+  adminPlayTts(text, btn);
+};
+
+window.kanaSaveExample = async (btn) => {
+  const tr = btn.closest('tr');
+  const kanaId = tr.getAttribute('data-exkana');
+  const exId = tr.getAttribute('data-ex-id');
+  const get = (n) => { const i = tr.querySelector(`[name="${n}"]`); return i ? i.value.trim() : ''; };
+  const japanese = get('japanese');
+  if (!japanese) { notify('Kata (JP) wajib diisi', true); return; }
+  const payload = {
+    japanese,
+    reading: get('reading') || null,
+    highlight: get('highlight') || null,
+    indonesian: get('indonesian') || null,
+    sortOrder: Number(get('sortOrder')) || 0,
+  };
+  try {
+    if (exId) {
+      await api('/admin/kana-examples/' + exId, { method: 'PUT', body: JSON.stringify(payload) });
+    } else {
+      const d = await api('/admin/kana-examples', { method: 'POST', body: JSON.stringify({ kanaId, ...payload }) });
+      tr.setAttribute('data-ex-id', d.example.id);
+    }
+    // update count di list utama
+    const it = (window.__kanaMgrItems || []).find((x) => x.kana_id === kanaId);
+    if (it && !exId) it.example_count = (it.example_count || 0) + 1;
+    notify('Tersimpan');
+  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+};
+
+window.kanaDeleteExample = async (btn) => {
+  const tr = btn.closest('tr');
+  const exId = tr.getAttribute('data-ex-id');
+  const kanaId = tr.getAttribute('data-exkana');
+  if (!exId) { tr.remove(); return; }
+  if (!confirm('Hapus contoh ini?')) return;
+  try {
+    await api('/admin/kana-examples/' + exId, { method: 'DELETE' });
+    tr.remove();
+    const it = (window.__kanaMgrItems || []).find((x) => x.kana_id === kanaId);
+    if (it && it.example_count > 0) it.example_count -= 1;
+    notify('Dihapus');
+  } catch (err) { notify('Gagal hapus: ' + err.message, true); }
+};
 
 // Backfill kana untuk semua contoh kalimat di deck ini yang belum ada kana.
 // AI (server-side) mengubah kalimat ber-kanji jadi kana penuh + auto-save;
