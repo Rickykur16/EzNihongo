@@ -60,6 +60,7 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
   const grammarByLesson = {};
   const deckByLesson = {};
   const kanjiByLesson = {};
+  const kanaByLesson = {};
   const grammarTaskByLesson = {};
 
   if (moduleIds.length > 0) {
@@ -214,6 +215,48 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
         });
       }
     }
+
+    // Kana-type lessons: pull kana_items (+ contoh kata) per lesson supaya
+    // dashboard bisa render chart gojuon + drill tanpa round-trip (mirror deck).
+    const kanaLessonIds = lessons.rows.filter((l) => l.type === 'kana').map((l) => l.id);
+    if (kanaLessonIds.length > 0) {
+      const kanaRows = await query(
+        `SELECT ki.lesson_id, ki.sort_order,
+                k.id, k.character, k.kind, k.romaji, k.mnemonic, k.group_label, k.variant_type
+         FROM lesson_kana_items ki
+         JOIN kana_items k ON k.id = ki.kana_id
+         WHERE ki.lesson_id = ANY($1::uuid[])
+         ORDER BY ki.lesson_id, ki.sort_order ASC, k.sort_order ASC`,
+        [kanaLessonIds]
+      );
+      const kanaIds = [...new Set(kanaRows.rows.map((r) => r.id))];
+      const examplesByKana = {};
+      if (kanaIds.length > 0) {
+        const ex = await query(
+          `SELECT kana_id, japanese, reading, highlight, indonesian, sort_order
+           FROM kana_examples WHERE kana_id = ANY($1::uuid[])
+           ORDER BY kana_id, sort_order ASC, created_at ASC`,
+          [kanaIds]
+        );
+        for (const e of ex.rows) {
+          (examplesByKana[e.kana_id] ||= []).push({
+            japanese: e.japanese, reading: e.reading, highlight: e.highlight, indonesian: e.indonesian,
+          });
+        }
+      }
+      for (const r of kanaRows.rows) {
+        (kanaByLesson[r.lesson_id] ||= []).push({
+          id: r.id,
+          character: r.character,
+          kind: r.kind,
+          romaji: r.romaji,
+          mnemonic: r.mnemonic,
+          groupLabel: r.group_label,
+          variantType: r.variant_type,
+          examples: examplesByKana[r.id] || [],
+        });
+      }
+    }
   }
 
   res.json({
@@ -233,6 +276,7 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
             grammar: grammarByLesson[l.id] || [],
             deck: deckByLesson[l.id] || [],
             kanji: kanjiByLesson[l.id] || [],
+            kana: kanaByLesson[l.id] || [],
             grammarTask: grammarTaskByLesson[l.id] || [],
           })),
           vocabulary: vocabByModule[m.id] || [],
@@ -350,6 +394,43 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
     response.grammarTask = gt.rows.map((r) => ({
       id: r.id, pattern: r.pattern, meaning: r.meaning, example: r.example, notes: r.notes,
       instruction: r.instruction, requiredCount: r.required_count,
+    }));
+  }
+
+  if (row.type === 'kana') {
+    const kanaRows = await query(
+      `SELECT ki.sort_order,
+              k.id, k.character, k.kind, k.romaji, k.mnemonic, k.group_label, k.variant_type
+       FROM lesson_kana_items ki
+       JOIN kana_items k ON k.id = ki.kana_id
+       WHERE ki.lesson_id = $1
+       ORDER BY ki.sort_order ASC, k.sort_order ASC`,
+      [row.id]
+    );
+    const kanaIds = kanaRows.rows.map((r) => r.id);
+    const examplesByKana = {};
+    if (kanaIds.length > 0) {
+      const ex = await query(
+        `SELECT kana_id, japanese, reading, highlight, indonesian, sort_order
+         FROM kana_examples WHERE kana_id = ANY($1::uuid[])
+         ORDER BY kana_id, sort_order ASC, created_at ASC`,
+        [kanaIds]
+      );
+      for (const e of ex.rows) {
+        (examplesByKana[e.kana_id] ||= []).push({
+          japanese: e.japanese, reading: e.reading, highlight: e.highlight, indonesian: e.indonesian,
+        });
+      }
+    }
+    response.kana = kanaRows.rows.map((r) => ({
+      id: r.id,
+      character: r.character,
+      kind: r.kind,
+      romaji: r.romaji,
+      mnemonic: r.mnemonic,
+      groupLabel: r.group_label,
+      variantType: r.variant_type,
+      examples: examplesByKana[r.id] || [],
     }));
   }
 

@@ -571,6 +571,180 @@ router.delete('/lessons/:lessonId/deck-items/:vocabularyId', asyncHandler(async 
   res.json({ ok: true });
 }));
 
+// ===== KANA (hiragana/katakana) =====
+// Source of truth = tabel kana_items (bank global). Admin "Kelola Kana"
+// (mirror "Kelola Deck") memilih karakter ke pelajaran 'kana' via
+// lesson_kana_items, edit mnemonic + contoh kata. Mirror pola deck/vocab.
+
+const KANA_VARIANTS = ['base', 'dakuten', 'handakuten', 'youon', 'special'];
+
+// Bank picker — semua karakter, searchable, optional filter kind.
+router.get('/kana-bank', asyncHandler(async (req, res) => {
+  const { kind, q } = req.query;
+  const params = [];
+  const where = [];
+  if (kind === 'hiragana' || kind === 'katakana') {
+    params.push(kind);
+    where.push(`kind = $${params.length}`);
+  }
+  if (q && String(q).trim()) {
+    params.push('%' + String(q).trim() + '%');
+    const p = `$${params.length}`;
+    where.push(`(character ILIKE ${p} OR romaji ILIKE ${p} OR group_label ILIKE ${p})`);
+  }
+  const rows = await query(
+    `SELECT k.id, k.character, k.kind, k.romaji, k.mnemonic, k.group_label, k.variant_type, k.sort_order,
+            (SELECT COUNT(*)::int FROM kana_examples e WHERE e.kana_id = k.id) AS example_count
+     FROM kana_items k
+     ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+     ORDER BY k.kind ASC, k.sort_order ASC LIMIT 400`,
+    params
+  );
+  res.json({ kana: rows.rows });
+}));
+
+router.post('/kana', asyncHandler(async (req, res) => {
+  const { character, kind, romaji, mnemonic, groupLabel, variantType, sortOrder } = req.body || {};
+  const ch = String(character || '').trim();
+  if (!ch) return res.status(400).json({ error: 'character required' });
+  const kd = kind === 'katakana' ? 'katakana' : 'hiragana';
+  const variant = KANA_VARIANTS.includes(variantType) ? variantType : 'base';
+  const result = await query(
+    `INSERT INTO kana_items (character, kind, romaji, mnemonic, group_label, variant_type, sort_order)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)
+     ON CONFLICT (kind, character) DO UPDATE SET
+       romaji = EXCLUDED.romaji, mnemonic = EXCLUDED.mnemonic,
+       group_label = EXCLUDED.group_label, variant_type = EXCLUDED.variant_type,
+       sort_order = EXCLUDED.sort_order, updated_at = NOW()
+     RETURNING *`,
+    [ch, kd, String(romaji || '').trim() || ch, (mnemonic && String(mnemonic).trim()) || null,
+     (groupLabel && String(groupLabel).trim()) || null, variant, Number(sortOrder) || 0]
+  );
+  res.status(201).json({ kana: result.rows[0] });
+}));
+
+router.put('/kana/:id', asyncHandler(async (req, res) => {
+  const { character, kind, romaji, mnemonic, groupLabel, variantType, sortOrder } = req.body || {};
+  const kd = kind === 'hiragana' || kind === 'katakana' ? kind : null;
+  const variant = variantType && KANA_VARIANTS.includes(variantType) ? variantType : null;
+  const result = await query(
+    `UPDATE kana_items SET
+       character = COALESCE($2, character),
+       kind = COALESCE($3, kind),
+       romaji = COALESCE($4, romaji),
+       mnemonic = $5,
+       group_label = $6,
+       variant_type = COALESCE($7, variant_type),
+       sort_order = COALESCE($8, sort_order),
+       updated_at = NOW()
+     WHERE id = $1 RETURNING *`,
+    [req.params.id, character != null ? String(character).trim() : null, kd,
+     romaji != null && String(romaji).trim() ? String(romaji).trim() : null,
+     (mnemonic && String(mnemonic).trim()) || null,
+     (groupLabel && String(groupLabel).trim()) || null,
+     variant, sortOrder != null && sortOrder !== '' ? Number(sortOrder) : null]
+  );
+  if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ kana: result.rows[0] });
+}));
+
+router.delete('/kana/:id', asyncHandler(async (req, res) => {
+  await query(`DELETE FROM kana_items WHERE id = $1`, [req.params.id]);
+  res.json({ ok: true });
+}));
+
+// Contoh kata per karakter (mirror vocabulary-examples).
+router.get('/kana-examples', asyncHandler(async (req, res) => {
+  const { kanaId } = req.query;
+  if (!kanaId) return res.status(400).json({ error: 'kanaId required' });
+  const rows = await query(
+    `SELECT * FROM kana_examples WHERE kana_id = $1 ORDER BY sort_order ASC, created_at ASC`,
+    [kanaId]
+  );
+  res.json({ examples: rows.rows });
+}));
+
+router.post('/kana-examples', asyncHandler(async (req, res) => {
+  const { kanaId, japanese, reading, highlight, indonesian, sortOrder } = req.body || {};
+  if (!kanaId || !japanese) return res.status(400).json({ error: 'kanaId and japanese required' });
+  const r = await query(
+    `INSERT INTO kana_examples (kana_id, japanese, reading, highlight, indonesian, sort_order)
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+    [kanaId, japanese, reading || null, highlight || null, indonesian || null, sortOrder || 0]
+  );
+  res.status(201).json({ example: r.rows[0] });
+}));
+
+router.put('/kana-examples/:id', asyncHandler(async (req, res) => {
+  const { japanese, reading, highlight, indonesian, sortOrder } = req.body || {};
+  const r = await query(
+    `UPDATE kana_examples SET
+       japanese = COALESCE($2, japanese),
+       reading = $3, highlight = $4, indonesian = $5,
+       sort_order = COALESCE($6, sort_order), updated_at = NOW()
+     WHERE id = $1 RETURNING *`,
+    [req.params.id, japanese, reading || null, highlight || null, indonesian || null, sortOrder]
+  );
+  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ example: r.rows[0] });
+}));
+
+router.delete('/kana-examples/:id', asyncHandler(async (req, res) => {
+  await query(`DELETE FROM kana_examples WHERE id = $1`, [req.params.id]);
+  res.json({ ok: true });
+}));
+
+// Karakter dipilih ke pelajaran 'kana' (mirror deck-items).
+router.get('/lessons/:lessonId/kana-items', asyncHandler(async (req, res) => {
+  const rows = await query(
+    `SELECT lki.lesson_id, lki.kana_id, lki.sort_order,
+            k.character, k.kind, k.romaji, k.mnemonic, k.group_label, k.variant_type,
+            (SELECT COUNT(*)::int FROM kana_examples e WHERE e.kana_id = k.id) AS example_count
+     FROM lesson_kana_items lki JOIN kana_items k ON k.id = lki.kana_id
+     WHERE lki.lesson_id = $1
+     ORDER BY lki.sort_order ASC, k.sort_order ASC`,
+    [req.params.lessonId]
+  );
+  res.json({ items: rows.rows });
+}));
+
+router.post('/lessons/:lessonId/kana-items', asyncHandler(async (req, res) => {
+  const { kanaId, sortOrder } = req.body || {};
+  if (!kanaId) return res.status(400).json({ error: 'kanaId required' });
+  const r = await query(
+    `INSERT INTO lesson_kana_items (lesson_id, kana_id, sort_order)
+     VALUES ($1,$2,$3)
+     ON CONFLICT (lesson_id, kana_id) DO UPDATE SET sort_order = EXCLUDED.sort_order
+     RETURNING *`,
+    [req.params.lessonId, kanaId, sortOrder ?? 0]
+  );
+  res.status(201).json({ item: r.rows[0] });
+}));
+
+router.put('/lessons/:lessonId/kana-items', asyncHandler(async (req, res) => {
+  const { items } = req.body || {};
+  if (!Array.isArray(items)) return res.status(400).json({ error: 'items[] required' });
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i] || {};
+    if (!it.kanaId) continue;
+    await query(
+      `INSERT INTO lesson_kana_items (lesson_id, kana_id, sort_order)
+       VALUES ($1,$2,$3)
+       ON CONFLICT (lesson_id, kana_id) DO UPDATE SET sort_order = EXCLUDED.sort_order`,
+      [req.params.lessonId, it.kanaId, it.sortOrder ?? i]
+    );
+  }
+  res.json({ ok: true });
+}));
+
+router.delete('/lessons/:lessonId/kana-items/:kanaId', asyncHandler(async (req, res) => {
+  await query(
+    `DELETE FROM lesson_kana_items WHERE lesson_id = $1 AND kana_id = $2`,
+    [req.params.lessonId, req.params.kanaId]
+  );
+  res.json({ ok: true });
+}));
+
 // ===== GRAMMAR TASK ITEMS (grammar picked into a 'grammar_task' lesson) =====
 // Reuse module_grammar as the bank (same grammar can be used across tasks).
 
@@ -2588,6 +2762,8 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
         await query(`DELETE FROM kanji_items WHERE lesson_id = $1`, [req.params.id]);
       } else if (oldType === 'deck') {
         await query(`DELETE FROM lesson_deck_items WHERE lesson_id = $1`, [req.params.id]);
+      } else if (oldType === 'kana') {
+        await query(`DELETE FROM lesson_kana_items WHERE lesson_id = $1`, [req.params.id]);
       } else if (oldType === 'grammar_task') {
         await query(`DELETE FROM lesson_grammar_task_items WHERE lesson_id = $1`, [req.params.id]);
       }

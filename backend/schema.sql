@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS lessons (
   module_id UUID NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
   slug TEXT NOT NULL,
   title TEXT NOT NULL,
-  type TEXT NOT NULL DEFAULT 'text' CHECK (type IN ('video','quiz','text','deck','kanji','grammar_task')),
+  type TEXT NOT NULL DEFAULT 'text' CHECK (type IN ('video','quiz','text','deck','kanji','grammar_task','kana')),
   content TEXT,
   video_url TEXT,
   duration_minutes INT,
@@ -138,6 +138,46 @@ CREATE TABLE IF NOT EXISTS lesson_deck_items (
 );
 
 CREATE INDEX IF NOT EXISTS idx_deck_items_lesson ON lesson_deck_items(lesson_id, sort_order);
+
+-- Kana (hiragana/katakana) — bank karakter global + join ke pelajaran 'kana'
+-- + contoh kata. Lihat migration 037. Mirror struktur deck (bank + join + examples).
+CREATE TABLE IF NOT EXISTS kana_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  character TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('hiragana', 'katakana')),
+  romaji TEXT NOT NULL,
+  mnemonic TEXT,
+  group_label TEXT,
+  variant_type TEXT NOT NULL DEFAULT 'base'
+    CHECK (variant_type IN ('base', 'dakuten', 'handakuten', 'youon', 'special')),
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (kind, character)
+);
+
+CREATE TABLE IF NOT EXISTS lesson_kana_items (
+  lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+  kana_id UUID NOT NULL REFERENCES kana_items(id) ON DELETE CASCADE,
+  sort_order INT DEFAULT 0,
+  PRIMARY KEY (lesson_id, kana_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_lesson_kana_items_lesson ON lesson_kana_items(lesson_id, sort_order);
+
+CREATE TABLE IF NOT EXISTS kana_examples (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  kana_id UUID NOT NULL REFERENCES kana_items(id) ON DELETE CASCADE,
+  japanese TEXT NOT NULL,
+  reading TEXT,
+  highlight TEXT,
+  indonesian TEXT,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_kana_examples_kana ON kana_examples(kana_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_deck_items_vocab ON lesson_deck_items(vocabulary_id);
 
 CREATE TABLE IF NOT EXISTS module_grammar (
