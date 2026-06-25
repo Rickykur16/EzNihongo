@@ -4108,6 +4108,7 @@ function transformQuestionFromApi(apiQ) {
     sectionInstruction: apiQ.section_instruction || apiQ.sectionInstruction || '',
     audioScript: apiQ.audio_script || apiQ.audioScript || '',
     passage: apiQ.passage || '',
+    sortOrder: Number(apiQ.sort_order ?? apiQ.sortOrder ?? 0) || 0,
     imageUrl: apiQ.image_url || apiQ.imageUrl || '',
   };
 }
@@ -4648,6 +4649,17 @@ function renderQuizSections(categoryItems) {
     byKey.get(key).items.push(item);
   });
 
+  // Soal model ber-bacaan (文章の文法 cloze + dokkai) WAJIB urut sesuai
+  // urutan asli (sort_order) — blank （①）（②）… / soal per-bacaan harus
+  // tampil 1,2,3 dan tetap mengelompok per bacaan, bukan teracak oleh
+  // sampling per-attempt di server. Section tanpa bacaan (goi / 文の文法1)
+  // dibiarkan apa adanya supaya variasi urutan antar-attempt tetap jalan.
+  sections.forEach((section) => {
+    if (section.items.some((item) => (item.q.passage || '').trim())) {
+      section.items.sort((a, b) => (a.q.sortOrder ?? 0) - (b.q.sortOrder ?? 0));
+    }
+  });
+
   return sections.map((section) => {
     const isListening = section.items.some(
       (item) => normalizeQuizCategory(item.q.category) === 'listening'
@@ -5007,8 +5019,18 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
   //     "1ばん" / "れい" auto)
   //   - Default label: "1ばん" untuk soal aktual JLPT-feel. Admin bisa
   //     override dgn ngetik di field question (e.g. "れい:" untuk contoh).
-  const qText = String(q.q || '').trim();
+  let qText = String(q.q || '').trim();
   const defaultLabel = `${questionNumber}ばん`;
+  // 文章の文法 (cloze wacana): tiap blank cukup ditandai referensi （①）/（②）…
+  // seperti di soal JLPT asli — bukan kalimat tanya panjang ("Manakah dari
+  // pilihan…", "（①）に 入る ものは どれですか。"). Pangkas teks pertanyaan ke
+  // referensi blank-nya saja kalau soal ini bagian dari bacaan grammar; kalau
+  // tak ada nomor blank, biarkan label "Nばん" berdiri sendiri. Tidak menyentuh
+  // dokkai (reading) yang pertanyaannya memang harus tampil utuh.
+  if (normalizeQuizCategory(q.category) === 'grammar' && (q.passage || '').trim()) {
+    const blank = qText.replace(/<[^>]*>/g, '').match(/[①-⑳]/);
+    qText = blank ? `（${blank[0]}）` : '';
+  }
   // Listening JLPT: kalau teks pertanyaan persis ada di audio script
   // (= dibacakan narator), sembunyikan sampai dijawab — di ujian asli
   // pertanyaan hanya didengar, tidak dicetak. Reveal bareng transkrip
