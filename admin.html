@@ -108,6 +108,40 @@
   .sa-grip { color: #c0c0c0; font-size: 13px; letter-spacing: -2px; cursor: grab; }
   .sa-module-slug { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-500); background: var(--paper-100); padding: 1px 6px; border-radius: 4px; }
   .sa-module-title { flex: 1; font-size: 13px; font-weight: 600; color: var(--ink-700); }
+  /* Card board ("Atur Kartu" drag-and-drop) — kolom per pelajaran, horizontal scroll */
+  .cb-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .cb-type-btn { border: 1px solid var(--paper-300); background: #fff; color: var(--ink-500); padding: 6px 14px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; transition: background .12s, color .12s, border-color .12s; }
+  .cb-type-btn.is-active { background: var(--ink-700); color: #fff; border-color: var(--ink-700); }
+  .cb-hint { font-size: 12px; color: var(--ink-500); font-family: var(--font-body); }
+  .cb-container { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 10px; align-items: flex-start; }
+  .cb-col {
+    flex: 0 0 250px; max-width: 250px;
+    border: 2px dashed var(--paper-300); border-radius: var(--radius-md);
+    background: var(--paper-100); padding: 10px 12px;
+    transition: border-color .15s, background .15s;
+    max-height: 60vh; display: flex; flex-direction: column;
+  }
+  .cb-col.drag-over { border-color: var(--danger); background: #fdf4f4; }
+  .cb-col-head { margin-bottom: 8px; }
+  .cb-col-module { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: var(--ink-500); font-family: var(--font-mono); text-transform: uppercase; }
+  .cb-col-title { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 700; color: var(--ink-700); }
+  .cb-col-count { font-size: 10px; font-weight: 600; color: var(--ink-500); font-family: var(--font-mono); }
+  .cb-cards { display: flex; flex-direction: column; gap: 6px; min-height: 40px; overflow-y: auto; }
+  .cb-empty { font-size: 12px; color: var(--ink-500); font-style: italic; padding: 8px 4px; text-align: center; }
+  .cb-card {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; background: #fff;
+    border: 1px solid var(--paper-300); border-left-width: 4px;
+    border-radius: var(--radius-sm, 6px);
+    cursor: grab; user-select: none;
+    transition: box-shadow .12s, opacity .12s;
+  }
+  .cb-card:hover { box-shadow: 0 2px 6px rgba(0,0,0,.06); border-color: var(--ink-300, #999); }
+  .cb-card.cb-dragging { opacity: 0.4; cursor: grabbing; }
+  .cb-grip { color: #c0c0c0; font-size: 13px; letter-spacing: -2px; cursor: grab; }
+  .cb-card-main { flex: 1; min-width: 0; }
+  .cb-card-jp { font-size: 15px; color: var(--ink-700); }
+  .cb-card-sub { font-size: 11px; color: var(--ink-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pill { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); background: var(--paper-200); color: var(--ink-700); font-size: 11px; font-family: var(--font-mono); }
   .lock-screen { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
   .lock-card { background: var(--surface-white); padding: 32px; border-radius: var(--radius-lg); max-width: 380px; text-align: center; box-shadow: var(--elev-2); }
@@ -1205,6 +1239,194 @@ window.saCloseAndRefresh = async () => {
   try { await loadModulesForCourse(STATE.selectedCourse); renderModules(); } catch {}
 };
 
+// ─────────────────────────────────────────────────────────────
+// ATUR KARTU (drag) — board untuk MEMINDAHKAN kartu (kosakata/kanji/kana)
+// antar pelajaran ("Bab"). Mirror pola section arranger (sa*) tapi kolom
+// per pelajaran + horizontal. Dirender penuh dari STATE.modules (sudah memuat
+// .deck/.kanji/.kana per lesson) — tanpa fetch tambahan; mutasi STATE in-place
+// menjaga hitungan "Kelola Deck (N)" di renderLessons tetap benar.
+//
+// Catatan: contoh kalimat / audio (TTS) / gambar ikut otomatis karena di-key ke
+// identitas kartu (vocabulary_id / kana_id / kanji id), board cuma me-relink
+// lesson. accent_color (per-deck) dibawa eksplisit saat POST ke deck tujuan.
+// ─────────────────────────────────────────────────────────────
+const CB_TYPES = {
+  deck: { label: 'Kosakata', arr: 'deck' },
+  kanji: { label: 'Kanji', arr: 'kanji' },
+  kana: { label: 'Kana', arr: 'kana' },
+};
+
+function cbFindLesson(lessonId) {
+  for (const m of STATE.modules || []) {
+    for (const l of (m.lessons || [])) {
+      if (l.id === lessonId) return { lesson: l, module: m };
+    }
+  }
+  return null;
+}
+
+function cbCardInner(type, c) {
+  if (type === 'kanji') {
+    return `<span class="cb-card-jp" lang="ja">${escapeHtml(c.character || '')}</span>
+            <span class="cb-card-sub">${escapeHtml(c.meaning_id || '')}</span>`;
+  }
+  if (type === 'kana') {
+    return `<span class="cb-card-jp" lang="ja">${escapeHtml(c.character || '')}</span>
+            <span class="cb-card-sub">${escapeHtml(c.romaji || '')}</span>`;
+  }
+  const sub = [c.reading, c.indonesian].filter(Boolean).join(' · ');
+  return `<span class="cb-card-jp" lang="ja">${escapeHtml(c.japanese || '')}</span>
+          <span class="cb-card-sub">${escapeHtml(sub)}</span>`;
+}
+
+function renderCardBoard() {
+  const cont = document.getElementById('cb-container');
+  if (!cont) return;
+  const type = window.__boardType || 'deck';
+  const arr = CB_TYPES[type].arr;
+  document.querySelectorAll('.cb-type-btn').forEach((b) => b.classList.toggle('is-active', b.dataset.type === type));
+  const cols = [];
+  for (const m of STATE.modules || []) {
+    for (const l of (m.lessons || [])) {
+      if (l.type !== type) continue;
+      const cards = l[arr] || [];
+      const cardsHtml = cards.length === 0
+        ? '<div class="cb-empty">Drop kartu ke sini</div>'
+        : cards.map((c) => {
+            const style = (type === 'deck' && c.accentColor) ? ` style="border-left-color:${escapeHtml(c.accentColor)};"` : '';
+            return `<div class="cb-card" draggable="true" data-card-id="${escapeHtml(String(c.id))}"${style}
+                      ondragstart="boardDragStart(event,'${l.id}','${c.id}')"
+                      ondragend="boardDragEnd(event)">
+                      <span class="cb-grip" aria-hidden="true">⋮⋮</span>
+                      <span class="cb-card-main">${cbCardInner(type, c)}</span>
+                    </div>`;
+          }).join('');
+      cols.push(`
+        <div class="cb-col" data-lesson-id="${l.id}"
+             ondragover="boardAllowDrop(event)" ondragleave="boardLeave(event)" ondrop="boardDrop(event,'${l.id}')">
+          <div class="cb-col-head">
+            <div class="cb-col-module">${escapeHtml(m.title || '')}</div>
+            <div class="cb-col-title"><span>${escapeHtml(l.title || '')}</span><span class="cb-col-count">${cards.length}</span></div>
+          </div>
+          <div class="cb-cards">${cardsHtml}</div>
+        </div>`);
+    }
+  }
+  cont.innerHTML = cols.length
+    ? cols.join('')
+    : `<div class="empty" style="padding:20px;">Belum ada pelajaran bertipe "${escapeHtml(CB_TYPES[type].label)}" di kursus ini.</div>`;
+}
+
+window.openCardBoard = () => {
+  if (!STATE.selectedCourse) { notify('Pilih kursus dulu', true); return; }
+  if (!STATE.modules || STATE.modules.length === 0) { notify('Belum ada modul di kursus ini', true); return; }
+  window.__boardType = window.__boardType || 'deck';
+  const btns = Object.entries(CB_TYPES).map(([k, v]) =>
+    `<button type="button" class="cb-type-btn" data-type="${k}" onclick="boardSetType('${k}')">${v.label}</button>`).join('');
+  openModal(`
+    <h3>Atur Kartu — pindah antar Bab (drag &amp; drop)</h3>
+    <div class="cb-toolbar">
+      ${btns}
+      <span class="cb-hint">Seret kartu dari satu pelajaran ke pelajaran lain untuk memindahkannya. Contoh kalimat, gambar &amp; audio ikut otomatis.</span>
+    </div>
+    <div id="cb-container" class="cb-container"></div>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button type="button" class="btn btn-ghost" onclick="boardCloseAndRefresh()">Tutup</button>
+    </div>
+  `);
+  modalContent.style.maxWidth = '1100px';
+  renderCardBoard();
+};
+
+window.boardSetType = (t) => { if (CB_TYPES[t]) { window.__boardType = t; renderCardBoard(); } };
+
+window.boardCloseAndRefresh = () => {
+  closeModal();
+  // STATE.modules sudah ter-update in-place → cukup re-render daftar pelajaran.
+  try { if (STATE.tab === 'lessons') renderLessons(); } catch {}
+};
+
+window.boardDragStart = (e, lessonId, cardId) => {
+  e.dataTransfer.setData('text/plain', lessonId + '|' + cardId);
+  e.dataTransfer.effectAllowed = 'move';
+  e.currentTarget.classList.add('cb-dragging');
+};
+
+window.boardDragEnd = (e) => {
+  e.currentTarget.classList.remove('cb-dragging');
+  document.querySelectorAll('.cb-col.drag-over').forEach((el) => el.classList.remove('drag-over'));
+};
+
+window.boardAllowDrop = (e) => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+};
+
+window.boardLeave = (e) => {
+  if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('drag-over');
+};
+
+window.boardDrop = (e, dstLessonId) => {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  const payload = e.dataTransfer.getData('text/plain') || '';
+  const sep = payload.indexOf('|');
+  if (sep < 0) return;
+  const srcLessonId = payload.slice(0, sep);
+  const cardId = payload.slice(sep + 1);
+  if (!srcLessonId || !cardId || srcLessonId === dstLessonId) return;
+  boardMoveCard(srcLessonId, dstLessonId, cardId);
+};
+
+async function boardMoveCard(srcLessonId, dstLessonId, cardId) {
+  const type = window.__boardType || 'deck';
+  const arr = CB_TYPES[type].arr;
+  const src = cbFindLesson(srcLessonId);
+  const dst = cbFindLesson(dstLessonId);
+  if (!src || !dst) return;
+  const srcArr = src.lesson[arr] || (src.lesson[arr] = []);
+  const dstArr = dst.lesson[arr] || (dst.lesson[arr] = []);
+  const idx = srcArr.findIndex((c) => String(c.id) === String(cardId));
+  if (idx < 0) return;
+  if (dstArr.some((c) => String(c.id) === String(cardId))) { notify('Kata ini sudah ada di Bab tujuan', true); return; }
+  const card = srcArr[idx];
+  const dstLen = dstArr.length;
+  // Optimistik: pindahkan di STATE lalu repaint.
+  srcArr.splice(idx, 1);
+  dstArr.push(card);
+  renderCardBoard();
+  try {
+    if (type === 'deck') {
+      await api('/admin/lessons/' + dstLessonId + '/deck-items', { method: 'POST', body: JSON.stringify({ vocabularyId: cardId, sortOrder: dstLen, accentColor: card.accentColor || null }) });
+      try {
+        await api('/admin/lessons/' + srcLessonId + '/deck-items/' + cardId, { method: 'DELETE' });
+      } catch (delErr) {
+        try { await api('/admin/lessons/' + dstLessonId + '/deck-items/' + cardId, { method: 'DELETE' }); } catch {}
+        throw delErr;
+      }
+    } else if (type === 'kana') {
+      await api('/admin/lessons/' + dstLessonId + '/kana-items', { method: 'POST', body: JSON.stringify({ kanaId: cardId, sortOrder: dstLen }) });
+      try {
+        await api('/admin/lessons/' + srcLessonId + '/kana-items/' + cardId, { method: 'DELETE' });
+      } catch (delErr) {
+        try { await api('/admin/lessons/' + dstLessonId + '/kana-items/' + cardId, { method: 'DELETE' }); } catch {}
+        throw delErr;
+      }
+    } else { // kanji — lesson_id ada di baris kanji_items
+      await api('/admin/kanji/' + cardId + '/move', { method: 'POST', body: JSON.stringify({ targetLessonId: dstLessonId, sortOrder: dstLen }) });
+    }
+    notify('"' + (card.japanese || card.character || '') + '" → ' + (dst.lesson.title || 'Bab tujuan'));
+  } catch (err) {
+    // Revert: kembalikan kartu ke posisi asal.
+    const di = dstArr.findIndex((c) => String(c.id) === String(cardId));
+    if (di >= 0) dstArr.splice(di, 1);
+    srcArr.splice(idx, 0, card);
+    renderCardBoard();
+    notify('Gagal pindah: ' + err.message, true);
+  }
+}
+
 window.deleteModule = async (id, title) => {
   if (!confirm(`Hapus modul "${title}"? Pelajaran di dalamnya ikut terhapus.`)) return;
   try {
@@ -1304,6 +1526,7 @@ function renderLessons() {
       <select id="lesson-module-picker" style="max-width:240px;" ${STATE.modules.length === 0 ? 'disabled' : ''}>
         <option value="">— pilih modul —</option>${moduleOpts}
       </select>
+      ${STATE.selectedCourse ? `<button class="btn btn-ghost" onclick="openCardBoard()" title="Drag kartu untuk pindah antar pelajaran (kosakata / kanji / kana)">🔀 Atur Kartu (drag)</button>` : ''}
     </div>
     ${body}
   `;
