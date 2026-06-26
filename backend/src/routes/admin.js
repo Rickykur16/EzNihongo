@@ -3386,6 +3386,25 @@ router.delete('/kanji/:id', asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// Pindahkan kanji ke pelajaran lain TANPA menyentuh field lain. Dipakai oleh
+// board drag "Atur Kartu". PUT /kanji/:id meng-null-kan on/kun/meaning/mnemonic/
+// stroke/bab_kode saat tidak dikirim, jadi tidak aman untuk move parsial.
+router.post('/kanji/:id/move', asyncHandler(async (req, res) => {
+  const { targetLessonId, sortOrder } = req.body || {};
+  if (!targetLessonId) return res.status(400).json({ error: 'targetLessonId required' });
+  const r = await query(
+    `UPDATE kanji_items
+        SET lesson_id = $1,
+            sort_order = COALESCE($2, sort_order),
+            updated_at = NOW()
+      WHERE id = $3
+      RETURNING *`,
+    [targetLessonId, sortOrder ?? null, req.params.id]
+  );
+  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ kanji: r.rows[0] });
+}));
+
 // Bulk-import kanji dari Notion DB "📖 Kanji" ke satu pelajaran. Mirror
 // pola import-notion-deck: filter by relation Bab page, upsert by
 // (character, jlpt_level), set lesson_id ke pelajaran target.
