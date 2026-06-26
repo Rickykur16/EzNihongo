@@ -2805,7 +2805,7 @@ router.delete('/lessons/:id', asyncHandler(async (req, res) => {
 
 // ===== QUIZ QUESTIONS (with options in one call) =====
 
-const QUIZ_CATEGORIES = new Set(['vocabulary', 'grammar', 'reading', 'listening']);
+const QUIZ_CATEGORIES = new Set(['vocabulary', 'grammar', 'reading', 'listening', 'custom']);
 
 function normalizeQuizCategory(value) {
   const category = String(value || 'vocabulary').toLowerCase();
@@ -2831,6 +2831,7 @@ router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
                 WHEN 'grammar' THEN 2
                 WHEN 'reading' THEN 3
                 WHEN 'listening' THEN 4
+                WHEN 'custom' THEN 5
                 ELSE 9
               END,
               section_number ASC, sort_order ASC`,

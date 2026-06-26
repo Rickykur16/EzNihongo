@@ -2337,6 +2337,7 @@ const QUIZ_CATEGORY_LABELS = {
   grammar: 'Tata Bahasa',
   reading: 'Dokkai',
   listening: 'Menyimak',
+  custom: 'Custom',
 };
 
 function quizCategory(value) {
@@ -2367,7 +2368,7 @@ window.manageQuiz = async (lessonId, lessonTitle, opts) => {
 };
 
 function categorySortOrder(cat) {
-  return { vocabulary: 1, grammar: 2, reading: 3, listening: 4 }[cat] || 9;
+  return { vocabulary: 1, grammar: 2, reading: 3, listening: 4, custom: 5 }[cat] || 9;
 }
 
 function collectSections(questions, lessonId) {
@@ -2581,6 +2582,7 @@ window.openSectionForm = (key) => {
             <option value="grammar" ${cat === 'grammar' ? 'selected' : ''}>Tata Bahasa (文法)</option>
             <option value="reading" ${cat === 'reading' ? 'selected' : ''}>Dokkai (読解)</option>
             <option value="listening" ${cat === 'listening' ? 'selected' : ''}>Menyimak (聴解)</option>
+            <option value="custom" ${cat === 'custom' ? 'selected' : ''}>Custom (non-JLPT — label & instruksi bebas)</option>
           </select>
         </div>
         <div class="field"><label>Nomor section</label>
@@ -2693,6 +2695,13 @@ window.openQuestionForm = (key) => {
           <div lang="ja" style="white-space:pre-wrap;background:#fffdf7;border:1px solid var(--paper-300,#e5e5e5);border-left:4px solid #B20024;border-radius:8px;padding:12px 14px;font-family:'Noto Sans JP',serif;line-height:1.8;font-size:14px;${passage ? '' : 'color:#b91c1c;'}">${passage ? escapeHtml(passage) : '⚠️ Section ini belum punya teks bacaan. Buka "Edit section" untuk menambahkannya.'}</div>
         </div>` : ''}
         <div class="field"><label>Pertanyaan</label><textarea name="question" class="rich-text" rows="3" required>${escapeHtml(q.question)}</textarea></div>
+        <div class="field"><label>🖼️ Gambar soal (opsional) — tampil di atas pilihan jawaban</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="text" name="imageUrl" id="questionImageUrl" value="${escapeHtml(q.image_url || q.imageUrl || '')}" placeholder="URL gambar opsional (atau klik upload →)" style="flex:1;font-size:12px;" />
+            <button type="button" class="btn btn-ghost btn-sm" onclick="uploadQuestionImage()" title="Upload gambar soal">📤</button>
+          </div>
+          <div id="questionImagePreview">${(q.image_url || q.imageUrl) ? `<img src="${escapeHtml(q.image_url || q.imageUrl)}" style="max-height:140px;margin-top:8px;border-radius:6px;border:1px solid #ddd;" />` : ''}</div>
+        </div>
         ${isListening ? `
           <div class="field">
             <label>🎧 Audio dialog (listening) — JLPT 3-voice format</label>
@@ -3125,6 +3134,25 @@ window.addOptionRow = () => {
   list.appendChild(el(optionRowHtml({ option_text: '', is_correct: false }, i)));
 };
 
+window.uploadQuestionImage = () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async () => {
+    const f = input.files && input.files[0];
+    if (!f) return;
+    try {
+      const url = await uploadImageFile(f);
+      const urlInput = document.getElementById('questionImageUrl');
+      if (urlInput) urlInput.value = url;
+      const prev = document.getElementById('questionImagePreview');
+      if (prev) prev.innerHTML = `<img src="${escapeHtml(url)}" style="max-height:140px;margin-top:8px;border-radius:6px;border:1px solid #ddd;" />`;
+      notify('Gambar soal tersimpan');
+    } catch (err) { notify('Gagal upload: ' + err.message, true); }
+  };
+  input.click();
+};
+
 window.uploadOptionImage = (i) => {
   const input = document.createElement('input');
   input.type = 'file';
@@ -3166,6 +3194,7 @@ async function submitQuestion(e, qid, ctx) {
     audioScript: (form.audioScript && form.audioScript.value.trim()) || '',
     explanation: form.explanation.value.trim() || null,
     sortOrder: Number(form.sortOrder.value) || 0,
+    imageUrl: (form.imageUrl && form.imageUrl.value.trim()) || null,
     options,
   };
   if (category === 'reading') body.passage = passage || null;
