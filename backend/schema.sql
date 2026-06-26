@@ -311,7 +311,7 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
   lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
   question TEXT NOT NULL,
   question_type TEXT NOT NULL DEFAULT 'multiple_choice' CHECK (question_type IN ('multiple_choice','fill_blank')),
-  question_category TEXT NOT NULL DEFAULT 'vocabulary' CHECK (question_category IN ('vocabulary','grammar','listening','reading')),
+  question_category TEXT NOT NULL DEFAULT 'vocabulary' CHECK (question_category IN ('vocabulary','grammar','listening','reading','custom')),
   section_number INT NOT NULL DEFAULT 1,
   section_label TEXT NOT NULL DEFAULT 'Section 1',
   section_instruction TEXT,

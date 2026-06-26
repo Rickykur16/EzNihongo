@@ -4068,7 +4068,17 @@ const QUIZ_CATEGORY_META = {
     label: 'Menyimak',
     defaultInstruction: '問題：音声を聞いて、ただしい答えを　1・2・3・4から　ひとつ　えらんで　ください。',
   },
+  // Kategori custom (non-JLPT): label & instruksi diisi admin per-section,
+  // jadi default instruction kosong (tidak ada baris mondai Jepang otomatis).
+  custom: {
+    label: 'Custom',
+    defaultInstruction: '',
+  },
 };
+
+// Sumber tunggal urutan kategori kuis — dipakai tab, stats, & rekomendasi.
+// Kalau nambah kategori, cukup update QUIZ_CATEGORY_META + array ini.
+const QUIZ_CAT_ORDER = ['vocabulary', 'grammar', 'reading', 'listening', 'custom'];
 
 function normalizeQuizCategory(value) {
   return QUIZ_CATEGORY_META[value] ? value : 'vocabulary';
@@ -4599,7 +4609,7 @@ window.startQuizAttempt = async (key) => {
 };
 
 function firstQuizCategoryWithQuestions(questions) {
-  return ['vocabulary', 'grammar', 'reading', 'listening'].find((cat) =>
+  return QUIZ_CAT_ORDER.find((cat) =>
     questions.some((q) => normalizeQuizCategory(q.category) === cat)
   ) || 'vocabulary';
 }
@@ -4613,7 +4623,7 @@ function quizQuestionsByCategory(questions, category) {
 function renderQuizCategoryTabs(questions) {
   // Sembunyikan tab kategori yang ga punya soal — bukan disabled, langsung
   // ga di-render. Tab cuma muncul kalau ada konten.
-  return ['vocabulary', 'grammar', 'reading', 'listening']
+  return QUIZ_CAT_ORDER
     .map((cat) => ({
       cat,
       meta: QUIZ_CATEGORY_META[cat],
@@ -4651,13 +4661,17 @@ function renderQuizSections(categoryItems) {
     byKey.get(key).items.push(item);
   });
 
-  // Soal model ber-bacaan (文章の文法 cloze + dokkai) WAJIB urut sesuai
-  // urutan asli (sort_order) — blank （①）（②）… / soal per-bacaan harus
-  // tampil 1,2,3 dan tetap mengelompok per bacaan, bukan teracak oleh
-  // sampling per-attempt di server. Section tanpa bacaan (goi / 文の文法1)
+  // Soal model ber-bacaan (文章の文法 cloze + dokkai) + kategori custom WAJIB
+  // urut sesuai urutan asli (sort_order) — blank （①）（②）… / soal per-bacaan
+  // harus tampil 1,2,3 & mengelompok per bacaan, dan soal custom (lembar
+  // buatan admin) ikut urutan yang admin set — bukan teracak oleh sampling
+  // per-attempt di server. Section JLPT tanpa bacaan (goi / 文の文法1)
   // dibiarkan apa adanya supaya variasi urutan antar-attempt tetap jalan.
   sections.forEach((section) => {
-    if (section.items.some((item) => (item.q.passage || '').trim())) {
+    const keepOrder = section.items.some(
+      (item) => (item.q.passage || '').trim() || normalizeQuizCategory(item.q.category) === 'custom'
+    );
+    if (keepOrder) {
       section.items.sort((a, b) => (a.q.sortOrder ?? 0) - (b.q.sortOrder ?? 0));
     }
   });
@@ -5022,7 +5036,10 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
   //   - Default label: "1ばん" untuk soal aktual JLPT-feel. Admin bisa
   //     override dgn ngetik di field question (e.g. "れい:" untuk contoh).
   let qText = String(q.q || '').trim();
-  const defaultLabel = `${questionNumber}ばん`;
+  // Kategori custom (non-JLPT): label biasa "Soal N", bukan "Nばん" ala JLPT.
+  const defaultLabel = normalizeQuizCategory(q.category) === 'custom'
+    ? `Soal ${questionNumber}`
+    : `${questionNumber}ばん`;
   // 文章の文法 (cloze wacana): tiap blank cukup ditandai referensi （①）/（②）…
   // seperti di soal JLPT asli — bukan kalimat tanya panjang ("Manakah dari
   // pilihan…", "（①）に 入る ものは どれですか。"). Pangkas teks pertanyaan ke
@@ -5275,13 +5292,14 @@ async function finishQuiz() {
   if (passed) fireConfetti();
 
   // Per-kategori breakdown — kasih siswa info materi mana yg lemah.
-  const byCategory = { vocabulary: [0, 0], grammar: [0, 0], reading: [0, 0], listening: [0, 0] };
+  const byCategory = {};
+  QUIZ_CAT_ORDER.forEach((c) => { byCategory[c] = [0, 0]; });
   for (let i = 0; i < questions.length; i++) {
     const cat = normalizeQuizCategory(questions[i].category);
     byCategory[cat][1] += 1;
     if (quizState.correctByIndex?.[i]) byCategory[cat][0] += 1;
   }
-  const catBlock = ['vocabulary', 'grammar', 'reading', 'listening']
+  const catBlock = QUIZ_CAT_ORDER
     .filter((c) => byCategory[c][1] > 0)
     .map((c) => {
       const [right, n] = byCategory[c];
@@ -5570,7 +5588,7 @@ setInterval(refreshGreetingBanner, 60 * 1000);
 // dari GET /api/recommendations/me (backend/src/routes/recommendations.js).
 // Disembunyikan kalau belum ada data kuis; endpoint men-degradasi anggun
 // tanpa AI (noteSource 'rule').
-const RECO_CAT_ORDER = ['vocabulary', 'grammar', 'reading', 'listening'];
+const RECO_CAT_ORDER = QUIZ_CAT_ORDER;
 
 async function loadRecommendations() {
   const host = document.getElementById('reco-panel');

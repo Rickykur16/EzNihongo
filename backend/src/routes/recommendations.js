@@ -23,6 +23,7 @@ const CATEGORY_LABEL = {
   grammar: 'Tata Bahasa',
   reading: 'Dokkai',
   listening: 'Menyimak',
+  custom: 'Custom',
 };
 
 // System statis (cacheable) — persona Maneko-chan, selaras dengan tutor.js.
