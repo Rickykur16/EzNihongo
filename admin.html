@@ -1841,6 +1841,17 @@ async function submitLesson(e, id, moduleId) {
   const slug = slugify(fd.get('slug'));
   if (!SLUG_REGEX.test(slug)) { notify('Slug tidak valid — gunakan huruf kecil, angka, dan tanda hubung.', true); return; }
   const type = fd.get('type');
+  // Peringatan kalau slug pelajaran lama diubah. Progres siswa di-key
+  // "<moduleId>:<slug>" (ez_progress) → ganti slug = completion/lulus lama orphan.
+  if (id) {
+    const existing = (STATE.lessons || []).find((x) => x.id === id);
+    if (existing && existing.slug && existing.slug !== slug &&
+        !confirm('Slug diubah dari "' + existing.slug + '" ke "' + slug + '".\n\n' +
+                 'Progres siswa untuk pelajaran ini disimpan berdasarkan slug, jadi yang sudah ' +
+                 'menyelesaikan/lulus akan terlihat "belum selesai". Lanjut ganti slug?')) {
+      return;
+    }
+  }
   const body = {
     slug,
     title: fd.get('title').trim(),
@@ -1865,12 +1876,50 @@ async function submitLesson(e, id, moduleId) {
     body.cooldownHours = cooldownRaw === '' || cooldownRaw == null ? 12 : Number(cooldownRaw);
   }
   try {
-    if (id) await api('/admin/lessons/' + id, { method: 'PUT', body: JSON.stringify(body) });
-    else await api('/admin/lessons', { method: 'POST', body: JSON.stringify({ ...body, moduleId }) });
+    let saved;
+    if (id) {
+      const d = await api('/admin/lessons/' + id, { method: 'PUT', body: JSON.stringify(body) });
+      saved = d.lesson;
+    } else {
+      const d = await api('/admin/lessons', { method: 'POST', body: JSON.stringify({ ...body, moduleId }) });
+      saved = d.lesson;
+    }
     closeModal();
-    await loadModulesForCourse(STATE.selectedCourse); renderLessons();
+    // Patch STATE in-place (hindari refetch /api/courses/:slug penuh tiap simpan).
+    applyLessonSaveToState(saved, id, moduleId);
+    renderLessons();
     notify('Pelajaran tersimpan');
   } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+}
+
+// Patch STATE.modules in-place setelah simpan pelajaran tanpa refetch course
+// penuh. `saved` = row dari API (snake_case, TANPA array konten nested seperti
+// deck/kanji/kana/grammar), jadi merge per-field via Object.assign aman: array
+// nested yang sudah ada di STATE tidak tersentuh. Fallback ke refetch penuh
+// kalau modul/row tak ketemu (mis. STATE belum sinkron).
+function applyLessonSaveToState(saved, id, moduleId) {
+  const mid = moduleId || STATE.selectedModule;
+  const mod = (STATE.modules || []).find((m) => m.id === mid);
+  if (!saved || !mod) { loadModulesForCourse(STATE.selectedCourse).then(renderLessons); return; }
+  mod.lessons = mod.lessons || [];
+  const blank = { deck: [], kanji: [], kana: [], grammar: [], grammarTask: [] };
+  if (id) {
+    const l = mod.lessons.find((x) => x.id === id);
+    if (l) {
+      const typeChanged = l.type !== saved.type;
+      Object.assign(l, saved);
+      // Type-switch menghapus konten lama di server → kosongkan array terkait
+      // supaya hitungan Deck/Kanji/Kana (N) di daftar tidak drift.
+      if (typeChanged) { l.deck = []; l.kanji = []; l.kana = []; l.grammarTask = []; }
+    } else {
+      mod.lessons.push({ ...blank, ...saved });
+    }
+  } else {
+    mod.lessons.push({ ...blank, ...saved });
+  }
+  mod.lessons.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  // renderLessons() me-derive ulang STATE.lessons dari modul terpilih, jadi
+  // mutasi in-place di atas sudah cukup.
 }
 window.deleteLesson = async (id, title) => {
   if (!confirm(`Hapus pelajaran "${title}"?`)) return;
@@ -3666,8 +3715,18 @@ async function openItemManager(kind, lessonId, lessonTitle, moduleId) {
     <div class="toolbar">
       <button type="button" class="btn btn-primary" onclick="addItemRow('${kind}')">+ Tambah</button>
       <button type="button" class="btn btn-ghost" onclick="openBulkPaste('${kind}', '${lessonId}', '${safeTitle}', '${moduleId}')">Paste dari Excel (TSV)</button>
-      <span style="font-size:12px;color:#737373;font-family:var(--font-body);">${items.length} item</span>
+      <span id="item-count" style="font-size:12px;color:#737373;font-family:var(--font-body);">${items.length} item</span>
     </div>
+    ${kind === 'grammar' ? `
+    <div style="background:#f5f5f5;padding:10px 12px;border-radius:8px;margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <strong style="font-size:12px;white-space:nowrap;">Tambah cepat:</strong>
+      <input id="gfa-pattern" lang="ja" placeholder="Pola (例: 〜ています)" style="flex:1;min-width:140px;font-size:13px;"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();grmrFastAdd(event);}" />
+      <input id="gfa-meaning" placeholder="Arti (opsional)" style="flex:1;min-width:140px;font-size:13px;"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();grmrFastAdd(event);}" />
+      <button type="button" id="gfa-btn" class="btn btn-primary" onclick="grmrFastAdd(event)">+ Tambah cepat</button>
+    </div>
+    <div style="font-size:11px;color:#a3a3a3;font-family:var(--font-body);margin:-4px 0 10px;">Isi Pola (+ Arti opsional), tekan Enter untuk tambah beruntun. Dialog/contoh bisa dilengkapi belakangan per baris.</div>` : ''}
     <div id="items-wrap" style="overflow-x:auto;">${renderItemTable(kind, items)}</div>
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `);
@@ -3745,6 +3804,48 @@ window.deleteItemRow = async (btn) => {
     });
   } catch (err) { notify('Gagal hapus: ' + err.message, true); }
 };
+
+// Fast-add bunpou: input Pola + Arti di header modal Grammar → langsung POST &
+// append baris tersimpan, lalu fokus balik ke Pola untuk entri beruntun
+// (Enter = tambah). Dialog/contoh dilengkapi belakangan per baris.
+window.grmrFastAdd = async (e) => {
+  if (e) e.preventDefault();
+  const ctx = window.__itemCtx || {};
+  if (ctx.kind !== 'grammar') return;
+  const pIn = document.getElementById('gfa-pattern');
+  const mIn = document.getElementById('gfa-meaning');
+  const pattern = (pIn && pIn.value.trim()) || '';
+  if (!pattern) { notify('Isi Pola dulu', true); if (pIn) pIn.focus(); return; }
+  const meaning = (mIn && mIn.value.trim()) || '';
+  const btn = document.getElementById('gfa-btn'); if (btn) btn.disabled = true;
+  try {
+    const d = await api('/admin/module-grammar', { method: 'POST', body: JSON.stringify({
+      moduleId: ctx.moduleId, lessonId: ctx.lessonId, pattern, meaning: meaning || null,
+      sortOrder: document.querySelectorAll('#items-body tr').length,
+    }) });
+    const saved = d.grammar;
+    const tbody = document.getElementById('items-body');
+    if (tbody && saved) tbody.appendChild(el(itemRowHtml(saved, GRAMMAR_FIELDS, 'grammar')));
+    const emptyEl = document.querySelector('#items-wrap .empty'); if (emptyEl) emptyEl.remove();
+    grmrBumpItemCount(1);
+    if (pIn) pIn.value = ''; if (mIn) mIn.value = '';
+    if (pIn) pIn.focus();
+    notify('Bunpou ditambahkan');
+    // Update STATE in-place (TANPA refetch course) supaya hitungan Grammar (N)
+    // di daftar pelajaran tetap segar — Enter beruntun = nol request ekstra.
+    const mod = (STATE.modules || []).find((m) => m.id === ctx.moduleId);
+    if (mod && saved) { mod.grammar = mod.grammar || []; mod.grammar.push(saved); }
+    if (STATE.tab === 'lessons') renderLessons();
+    else if (STATE.tab === 'modules') renderModules();
+  } catch (err) { notify('Gagal: ' + err.message, true); }
+  finally { if (btn) btn.disabled = false; }
+};
+
+function grmrBumpItemCount(delta) {
+  const span = document.getElementById('item-count');
+  if (!span) return;
+  span.textContent = ((parseInt(span.textContent, 10) || 0) + delta) + ' item';
+}
 
 window.openBulkPaste = (kind, lessonId, lessonTitle, moduleId) => {
   // Exclude textarea fields (multi-line, e.g. example_dialog) — TSV gak bisa
