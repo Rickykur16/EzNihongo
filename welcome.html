@@ -9034,26 +9034,39 @@ window.addEventListener('resize', () => {
   }
 });
 
-// Setelah toggle Bab/section, renderSidebar re-render lalu me-restore scrollTop
-// lama dari .sidebar-scroll. Saat mutex mengempiskan Bab lain di ATAS, konten
-// jadi lebih pendek → scrollTop lama overshoot dan browser meng-clamp sidebar
-// ke paling bawah. Bawa header yang baru diklik kembali ke viewport (gerak
-// minimal) untuk menetralkan overshoot itu — berlaku untuk buka maupun tutup.
-// Cocokkan via dataset (bukan selektor CSS) supaya nama section dengan spasi/
-// karakter khusus tetap aman.
-function _keepSidebarHeaderVisible(kind, key) {
+// Toggle Bab/section me-render ulang sidebar; renderSidebar() sudah me-restore
+// scrollTop lama (.sidebar-scroll) supaya posisi scroll terjaga — "efek scroll"
+// yang diinginkan. Tapi saat mutex mengempiskan Bab lain di ATAS header yang
+// diklik, konten memendek → scrollTop absolut lama jadi salah dan bisa
+// overshoot ke paling bawah. Solusinya: ANCHOR pada header yang diklik — ukur
+// posisi layarnya sebelum render, lalu setelah render geser scrollTop seperlunya
+// agar header itu tetap di titik layar yang sama. Hasilnya: posisi terjaga
+// (efek scroll kembali) TANPA loncat ke bawah. Cocokkan via dataset (bukan
+// selektor CSS) supaya nama section berkarakter khusus tetap aman.
+function _sidebarAnchor(kind, key) {
   const wrapSel = kind === 'module' ? '.module' : '.sidebar-section';
   const dataAttr = kind === 'module' ? 'module' : 'section';
   const hdrSel = kind === 'module' ? '.module-header' : '.sidebar-section-header';
-  const wrap = Array.from(document.querySelectorAll(wrapSel))
-    .find((el) => el.dataset[dataAttr] === key);
-  const hdr = wrap && wrap.querySelector(hdrSel);
-  if (hdr && typeof hdr.scrollIntoView === 'function') {
-    try { hdr.scrollIntoView({ block: 'nearest' }); } catch {}
-  }
+  const findHdr = () => {
+    const wrap = Array.from(document.querySelectorAll(wrapSel))
+      .find((el) => el.dataset[dataAttr] === key);
+    return wrap && wrap.querySelector(hdrSel);
+  };
+  const before = findHdr();
+  const beforeTop = before ? before.getBoundingClientRect().top : null;
+  // Kembalikan fungsi "re-anchor" untuk dipanggil setelah renderSidebar().
+  return () => {
+    if (beforeTop == null) return;
+    const after = findHdr();
+    const scroller = document.querySelector('.sidebar-scroll');
+    if (!after || !scroller) return;
+    // Geser scroll sebesar perpindahan header di layar → header diam di tempat.
+    scroller.scrollTop += after.getBoundingClientRect().top - beforeTop;
+  };
 }
 
 window.toggleModule = (moduleId) => {
+  const reanchor = _sidebarAnchor('module', moduleId);
   // Mutex within the parent section: opening one module collapses the others
   // in the same section. Toggle the current one if already open.
   const sec = _sectionOfModule(moduleId);
@@ -9063,10 +9076,11 @@ window.toggleModule = (moduleId) => {
   }
   if (!wasOpen) _expandedModules.add(moduleId);
   renderSidebar();
-  _keepSidebarHeaderVisible('module', moduleId);
+  reanchor();
 };
 
 window.toggleSidebarSection = (name) => {
+  const reanchor = _sidebarAnchor('section', name);
   // Mutex at section level: opening one closes others (and resets their
   // open modules). Clicking the already-open section collapses it.
   const wasOpen = _expandedSections.has(name);
@@ -9080,7 +9094,7 @@ window.toggleSidebarSection = (name) => {
   }
   if (!wasOpen) _expandedSections.add(name);
   renderSidebar();
-  _keepSidebarHeaderVisible('section', name);
+  reanchor();
 };
 
 window.markCompleteAndNext = () => {
