@@ -3927,9 +3927,10 @@ window.saveItemRow = async (btn) => {
       `;
     }
     notify('Tersimpan');
-    // Refresh counts in the modules table in the background (if visible).
+    // Refresh hitungan di background (modul) / daftar pelajaran (drawer tetap utuh).
     if (STATE.selectedCourse) loadModulesForCourse(STATE.selectedCourse).then(() => {
       if (STATE.tab === 'modules') renderModules();
+      else if (STATE.tab === 'lessons') refreshLessonsView();
     });
   } catch (err) { notify('Gagal simpan: ' + err.message, true); }
 };
@@ -3947,6 +3948,7 @@ window.deleteItemRow = async (btn) => {
     notify('Dihapus');
     if (STATE.selectedCourse) loadModulesForCourse(STATE.selectedCourse).then(() => {
       if (STATE.tab === 'modules') renderModules();
+      else if (STATE.tab === 'lessons') refreshLessonsView();
     });
   } catch (err) { notify('Gagal hapus: ' + err.message, true); }
 };
@@ -3993,6 +3995,20 @@ function grmrBumpItemCount(delta) {
   span.textContent = ((parseInt(span.textContent, 10) || 0) + delta) + ' item';
 }
 
+// Kembali dari modal bulk-paste ke tempat asal: drawer inline (grammar, kalau
+// drawer aktif untuk lesson itu) atau modal item-manager (vocab / non-drawer).
+// Mencegah id ganda #items-body/#gfa-* antara drawer & modal manager.
+window.bulkPasteReturn = (kind, lessonId, lessonTitle, moduleId) => {
+  if (kind === 'grammar' && document.getElementById('lesson-drawer') && STATE.activeLessonId === lessonId) {
+    closeModal();
+    openLessonDrawer(lessonId);
+  } else if (kind === 'vocab') {
+    manageVocab(lessonId, lessonTitle, moduleId);
+  } else {
+    manageGrammar(lessonId, lessonTitle, moduleId);
+  }
+};
+
 window.openBulkPaste = (kind, lessonId, lessonTitle, moduleId) => {
   // Exclude textarea fields (multi-line, e.g. example_dialog) — TSV gak bisa
   // muat newline per sel. Field itu di-isi manual via tabel editor.
@@ -4007,7 +4023,7 @@ window.openBulkPaste = (kind, lessonId, lessonTitle, moduleId) => {
     </p>
     <div class="field"><textarea id="bulk-tsv" rows="12" style="font-family:monospace;font-size:12px;"></textarea></div>
     <div class="modal-actions">
-      <button type="button" class="btn btn-ghost" onclick="manage${kind === 'vocab' ? 'Vocab' : 'Grammar'}('${lessonId}', '${safeTitle}', '${moduleId}')">← Kembali</button>
+      <button type="button" class="btn btn-ghost" onclick="bulkPasteReturn('${kind}', '${lessonId}', '${safeTitle}', '${moduleId}')">← Kembali</button>
       <button type="button" class="btn btn-primary" onclick="submitBulk('${kind}', '${lessonId}', '${safeTitle}', '${moduleId}')">Import</button>
     </div>
   `);
@@ -4028,9 +4044,9 @@ window.submitBulk = async (kind, lessonId, lessonTitle, moduleId) => {
   try {
     await api(endpoint, { method: 'POST', body: JSON.stringify({ moduleId, items, replace: false }) });
     notify(items.length + ' item di-import');
-    if (kind === 'vocab') manageVocab(lessonId, lessonTitle, moduleId);
-    else manageGrammar(lessonId, lessonTitle, moduleId);
-    if (STATE.selectedCourse) loadModulesForCourse(STATE.selectedCourse);
+    // Refresh STATE dulu supaya hitungan & drawer akurat.
+    if (STATE.selectedCourse) await loadModulesForCourse(STATE.selectedCourse);
+    bulkPasteReturn(kind, lessonId, lessonTitle, moduleId);
   } catch (err) { notify('Gagal import: ' + err.message, true); }
 };
 
