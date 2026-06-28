@@ -142,6 +142,23 @@
   .cb-card-main { flex: 1; min-width: 0; }
   .cb-card-jp { font-size: 15px; color: var(--ink-700); }
   .cb-card-sub { font-size: 11px; color: var(--ink-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Drawer authoring + filter tipe (tab Pelajaran) */
+  .lesson-facets { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .lesson-facet { border: 1px solid var(--paper-300); background: #fff; color: var(--ink-500); padding: 5px 12px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 600; transition: background .12s, color .12s, border-color .12s; }
+  .lesson-facet.is-active { background: var(--ink-700); color: #fff; border-color: var(--ink-700); }
+  .lesson-split { display: flex; gap: 16px; align-items: flex-start; }
+  .lesson-list { flex: 0 0 320px; max-width: 340px; display: flex; flex-direction: column; gap: 6px; max-height: 72vh; overflow-y: auto; }
+  .lesson-li { border: 1px solid var(--paper-300); border-radius: 8px; background: #fff; padding: 9px 12px; cursor: pointer; transition: border-color .12s, box-shadow .12s; }
+  .lesson-li:hover { border-color: var(--ink-300, #999); box-shadow: 0 2px 6px rgba(0,0,0,.05); }
+  .lesson-li.is-active { border-color: var(--ink-700); box-shadow: 0 0 0 1px var(--ink-700) inset; }
+  .lesson-li-main { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .lesson-li-title { font-size: 13.5px; font-weight: 700; color: var(--ink-700); }
+  .lesson-li-meta { display: flex; align-items: center; gap: 8px; }
+  .lesson-li-count { font-size: 11px; color: var(--ink-500); font-family: var(--font-mono); }
+  .lesson-drawer { flex: 1; min-width: 0; border: 1px solid var(--paper-300); border-radius: 10px; background: var(--paper-50, #fafafa); padding: 16px; max-height: 80vh; overflow-y: auto; }
+  .drawer-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .drawer-section { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--paper-300); }
+  @media (max-width: 900px) { .lesson-split { flex-direction: column; } .lesson-list { flex-basis: auto; max-width: none; width: 100%; max-height: 40vh; } }
   .pill { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); background: var(--paper-200); color: var(--ink-700); font-size: 11px; font-family: var(--font-mono); }
   .lock-screen { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
   .lock-card { background: var(--surface-white); padding: 32px; border-radius: var(--radius-lg); max-width: 380px; text-align: center; box-shadow: var(--elev-2); }
@@ -1461,56 +1478,16 @@ function renderLessons() {
         <div class="empty">Belum ada pelajaran di modul ini.</div>
       `;
     } else {
-      const grammarByLesson = {};
-      (mod.grammar || []).forEach((g) => {
-        if (!g.lesson_id) return;
-        grammarByLesson[g.lesson_id] = (grammarByLesson[g.lesson_id] || 0) + 1;
-      });
-      const courseRow = STATE.courses.find((c) => c.slug === STATE.selectedCourse);
-      const courseId = courseRow ? courseRow.id : '';
-      const rows = STATE.lessons.map((l) => {
-        const titleEsc = escapeHtml(l.title).replace(/'/g, "\\'");
-        const grammarN = grammarByLesson[l.id] || 0;
-        const deckN = Array.isArray(l.deck) ? l.deck.length : 0;
-        const kanjiN = Array.isArray(l.kanji) ? l.kanji.length : 0;
-        let contentBtns = '';
-        if (l.type === 'deck') {
-          contentBtns = `<button class="btn btn-ghost" onclick="manageDeck('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Deck (${deckN})</button>`;
-        } else if (l.type === 'kanji') {
-          contentBtns = `<button class="btn btn-ghost" onclick="manageKanji('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Kanji (${kanjiN})</button>`;
-        } else if (l.type === 'kana') {
-          const kanaN = Array.isArray(l.kana) ? l.kana.length : 0;
-          contentBtns = `<button class="btn btn-ghost" onclick="manageKana('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Kana (${kanaN})</button>`;
-        } else if (l.type === 'grammar_task') {
-          const gtN = Array.isArray(l.grammarTask) ? l.grammarTask.length : 0;
-          contentBtns = `<button class="btn btn-ghost" onclick="manageGrammarTask('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')">Kelola Tugas Grammar (${gtN})</button>`;
-        } else if (l.type !== 'quiz') {
-          contentBtns = `<button class="btn btn-ghost" onclick="manageGrammar('${l.id}', '${titleEsc}', '${mod.id}')">Grammar (${grammarN})</button>`;
-        }
-        const quizBtn = l.type === 'quiz'
-          ? `<button class="btn btn-ghost" onclick="manageQuiz('${l.id}', '${titleEsc}')">Kuis</button>`
-          : '';
-        return `
-        <tr>
-          <td><strong>${escapeHtml(l.title)}</strong><br><span class="pill">${escapeHtml(l.slug)}</span></td>
-          <td><span class="badge ${l.type === 'quiz' ? 'badge-admin' : (l.type === 'video' || l.type === 'deck' ? 'badge-on' : 'badge-off')}">${escapeHtml(l.type)}</span></td>
-          <td>${l.duration_minutes || '-'}</td>
-          <td>${l.sort_order}</td>
-          <td class="actions">
-            <button class="btn btn-ghost" onclick="editLesson('${l.id}')">Edit</button>
-            ${contentBtns}
-            ${quizBtn}
-            <button class="btn btn-danger" onclick="deleteLesson('${l.id}', '${titleEsc}')">Hapus</button>
-          </td>
-        </tr>
-      `;
-      }).join('');
       body = `
         <div class="toolbar">
           <button class="btn btn-primary" onclick="newLesson('${STATE.selectedModule}')">+ Pelajaran baru</button>
           <button class="btn btn-ghost" onclick="openPelajaranImporter('${STATE.selectedModule}')" title="Pilih pelajaran dari Bab Notion buat di-import sebagai lesson di modul ini">↻ Import Pelajaran dari Notion</button>
         </div>
-        <table><thead><tr><th>Judul / slug</th><th>Tipe</th><th>Durasi (menit)</th><th>Urutan</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+        <div class="lesson-facets">${LESSON_FACETS.map((f) => `<button type="button" class="lesson-facet${(STATE.lessonFilter || 'all') === f.key ? ' is-active' : ''}" data-facet="${f.key}" onclick="setLessonFilter('${f.key}')">${f.label}</button>`).join('')}</div>
+        <div class="lesson-split">
+          <div id="lesson-list" class="lesson-list">${lessonListHtml()}</div>
+          <div id="lesson-drawer" class="lesson-drawer">${LESSON_DRAWER_EMPTY}</div>
+        </div>
       `;
     }
   }
@@ -1533,15 +1510,187 @@ function renderLessons() {
   document.getElementById('lesson-course-picker').addEventListener('change', async (e) => {
     STATE.selectedCourse = e.target.value || null;
     STATE.selectedModule = null;
+    STATE.activeLessonId = null;
     if (STATE.selectedCourse) await loadModulesForCourse(STATE.selectedCourse);
     else STATE.modules = [];
     renderLessons();
   });
   document.getElementById('lesson-module-picker').addEventListener('change', (e) => {
     STATE.selectedModule = e.target.value || null;
+    STATE.activeLessonId = null;
     renderLessons();
   });
 }
+
+// ─────────────────────────────────────────────────────────────
+// DRAWER AUTHORING + FILTER TIPE (navigasi cepat tab Pelajaran)
+// Daftar pelajaran kiri (bisa difilter per "jenis konten", termasuk facet
+// "Bunpou" = pelajaran text/video) + drawer edit persisten di kanan. Klik baris
+// → edit form + konten inline tanpa modal bertumpuk, lompat-lompat cepat antar
+// pelajaran. Reuse lessonFormHtml + wire* + stack item-manager grammar.
+// ─────────────────────────────────────────────────────────────
+const LESSON_DRAWER_EMPTY = '<div class="empty" style="padding:24px 16px;">← Pilih pelajaran untuk edit cepat (form + bunpou inline), atau klik <strong>+ Pelajaran baru</strong>.</div>';
+
+const LESSON_FACETS = [
+  { key: 'all', label: 'Semua', match: () => true },
+  { key: 'bunpou', label: 'Bunpou', match: (l) => l.type === 'text' || l.type === 'video' },
+  { key: 'deck', label: 'Kosakata', match: (l) => l.type === 'deck' },
+  { key: 'kanji', label: 'Kanji', match: (l) => l.type === 'kanji' },
+  { key: 'kana', label: 'Kana', match: (l) => l.type === 'kana' },
+  { key: 'quiz', label: 'Kuis', match: (l) => l.type === 'quiz' },
+  { key: 'grammar_task', label: 'Tugas', match: (l) => l.type === 'grammar_task' },
+];
+
+function lessonContentMeta(l, grammarN) {
+  if (l.type === 'text' || l.type === 'video') return grammarN ? ('文法 ' + grammarN) : '';
+  if (l.type === 'deck') return 'Deck ' + ((l.deck || []).length);
+  if (l.type === 'kanji') return 'Kanji ' + ((l.kanji || []).length);
+  if (l.type === 'kana') return 'Kana ' + ((l.kana || []).length);
+  if (l.type === 'grammar_task') return 'Tugas ' + ((l.grammarTask || []).length);
+  return '';
+}
+
+// Daftar pelajaran kiri (terfilter). Dibaca ulang dari STATE → dipakai render
+// awal + renderLessonListPane (refresh tanpa menyentuh drawer).
+function lessonListHtml() {
+  const mod = (STATE.modules || []).find((m) => m.id === STATE.selectedModule);
+  if (!mod) return '';
+  const lessons = mod.lessons || [];
+  const grammarByLesson = {};
+  (mod.grammar || []).forEach((g) => { if (g.lesson_id) grammarByLesson[g.lesson_id] = (grammarByLesson[g.lesson_id] || 0) + 1; });
+  const facet = STATE.lessonFilter || 'all';
+  const fdef = LESSON_FACETS.find((f) => f.key === facet) || LESSON_FACETS[0];
+  const filtered = lessons.filter(fdef.match);
+  if (filtered.length === 0) return '<div class="empty" style="padding:16px;">Tidak ada pelajaran untuk filter ini.</div>';
+  return filtered.map((l) => {
+    const active = l.id === STATE.activeLessonId ? ' is-active' : '';
+    const meta = lessonContentMeta(l, grammarByLesson[l.id] || 0);
+    const badgeClass = l.type === 'quiz' ? 'badge-admin' : (l.type === 'video' || l.type === 'deck' ? 'badge-on' : 'badge-off');
+    return `<div class="lesson-li${active}" data-lesson-id="${l.id}" onclick="openLessonDrawer('${l.id}')">
+      <div class="lesson-li-main">
+        <span class="lesson-li-title">${escapeHtml(l.title || '')}</span>
+        <span class="pill">${escapeHtml(l.slug || '')}</span>
+      </div>
+      <div class="lesson-li-meta">
+        <span class="badge ${badgeClass}">${escapeHtml(l.type)}</span>
+        ${meta ? `<span class="lesson-li-count">${escapeHtml(meta)}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.setLessonFilter = (key) => {
+  STATE.lessonFilter = key;
+  document.querySelectorAll('.lesson-facet').forEach((b) => b.classList.toggle('is-active', b.dataset.facet === key));
+  renderLessonListPane();
+};
+
+function renderLessonListPane() {
+  const list = document.getElementById('lesson-list');
+  if (list) list.innerHTML = lessonListHtml();
+}
+
+// Refresh tampilan daftar setelah operasi item (grammar) tanpa menghancurkan
+// drawer yang sedang terbuka. Kalau layout drawer aktif, cukup re-render daftar
+// kiri; kalau tidak, fallback ke renderLessons penuh.
+function refreshLessonsView() {
+  if (STATE.tab !== 'lessons') return;
+  if (document.getElementById('lesson-list')) renderLessonListPane();
+  else renderLessons();
+}
+
+// Bar "Tambah cepat" bunpou — dipakai modal Kelola Grammar & drawer (id sama
+// supaya grmrFastAdd/saveItemRow konsisten).
+function grammarFastAddBarHtml() {
+  return `
+    <div style="background:#f5f5f5;padding:10px 12px;border-radius:8px;margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <strong style="font-size:12px;white-space:nowrap;">Tambah cepat:</strong>
+      <input id="gfa-pattern" lang="ja" placeholder="Pola (例: 〜ています)" style="flex:1;min-width:140px;font-size:13px;"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();grmrFastAdd(event);}" />
+      <input id="gfa-meaning" placeholder="Arti (opsional)" style="flex:1;min-width:140px;font-size:13px;"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();grmrFastAdd(event);}" />
+      <button type="button" id="gfa-btn" class="btn btn-primary" onclick="grmrFastAdd(event)">+ Tambah cepat</button>
+    </div>
+    <div style="font-size:11px;color:#a3a3a3;font-family:var(--font-body);margin:-4px 0 10px;">Isi Pola (+ Arti opsional), tekan Enter untuk tambah beruntun. Dialog/contoh bisa dilengkapi belakangan per baris.</div>`;
+}
+
+function drawerContentBtn(onclickExpr, label, count) {
+  return `<div class="drawer-section">
+    <button type="button" class="btn btn-primary" onclick="${onclickExpr}">${label}${count != null ? ' (' + count + ')' : ''}</button>
+    <div style="font-size:11px;color:#a3a3a3;margin-top:6px;font-family:var(--font-body);">Konten dikelola di jendela terpisah.</div>
+  </div>`;
+}
+
+function drawerHtml(l, mod, courseId) {
+  const titleEsc = escapeHtml(l.title || '').replace(/'/g, "\\'");
+  let content = '';
+  if (l.type === 'text' || l.type === 'video') {
+    const items = (mod.grammar || []).filter((g) => g.lesson_id === l.id);
+    content = `
+      <div class="drawer-section">
+        <h4 style="margin:0 0 8px;font-size:13px;">Bunpou (文法)</h4>
+        <div class="toolbar" style="margin-bottom:8px;">
+          <button type="button" class="btn btn-ghost" onclick="addItemRow('grammar')">+ Tambah</button>
+          <button type="button" class="btn btn-ghost" onclick="openBulkPaste('grammar', '${l.id}', '${titleEsc}', '${mod.id}')">Paste TSV</button>
+          <span id="item-count" style="font-size:12px;color:#737373;font-family:var(--font-body);">${items.length} item</span>
+        </div>
+        ${grammarFastAddBarHtml()}
+        <div id="items-wrap" style="overflow-x:auto;">${renderItemTable('grammar', items)}</div>
+      </div>`;
+  } else if (l.type === 'deck') {
+    content = drawerContentBtn(`manageDeck('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')`, 'Kelola Deck', (l.deck || []).length);
+  } else if (l.type === 'kanji') {
+    content = drawerContentBtn(`manageKanji('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')`, 'Kelola Kanji', (l.kanji || []).length);
+  } else if (l.type === 'kana') {
+    content = drawerContentBtn(`manageKana('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')`, 'Kelola Kana', (l.kana || []).length);
+  } else if (l.type === 'grammar_task') {
+    content = drawerContentBtn(`manageGrammarTask('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')`, 'Kelola Tugas Grammar', (l.grammarTask || []).length);
+  } else if (l.type === 'quiz') {
+    content = drawerContentBtn(`manageQuiz('${l.id}', '${titleEsc}')`, 'Kelola Kuis', null);
+  }
+  return `
+    <div class="drawer-head">
+      <strong style="font-size:13px;">Edit cepat</strong>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="deleteLesson('${l.id}', '${titleEsc}')" style="margin-left:auto;color:var(--danger);">Hapus</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="closeLessonDrawer()" title="Tutup drawer">✕</button>
+    </div>
+    ${lessonFormHtml(l)}
+    ${content}`;
+}
+
+window.openLessonDrawer = (lessonId) => {
+  const found = cbFindLesson(lessonId);
+  const drawer = document.getElementById('lesson-drawer');
+  if (!found || !drawer) return;
+  const l = found.lesson, mod = found.module;
+  STATE.activeLessonId = lessonId;
+  const courseRow = STATE.courses.find((c) => c.slug === STATE.selectedCourse);
+  const courseId = courseRow ? courseRow.id : '';
+  drawer.innerHTML = drawerHtml(l, mod, courseId);
+  const form = drawer.querySelector('#lesson-form');
+  if (form) {
+    // Hindari bentrok id dengan form modal (newLesson/editLesson pakai
+    // getElementById('lesson-form')). wire* berbasis elemen, jadi aman direname.
+    form.id = 'drawer-lesson-form';
+    wireSlugAuto(form);
+    wireLessonTypeVisibility(form);
+    wireRichToolbarAll(form);
+    wireContentPreview(form);
+    form.addEventListener('submit', (e) => submitLesson(e, l.id));
+  }
+  // Set konteks item-manager supaya grmrFastAdd/saveItemRow/addItemRow inline jalan.
+  if (l.type === 'text' || l.type === 'video') {
+    window.__itemCtx = { kind: 'grammar', lessonId: l.id, lessonTitle: l.title, moduleId: mod.id };
+  }
+  renderLessonListPane();
+};
+
+window.closeLessonDrawer = () => {
+  STATE.activeLessonId = null;
+  const drawer = document.getElementById('lesson-drawer');
+  if (drawer) drawer.innerHTML = LESSON_DRAWER_EMPTY;
+  renderLessonListPane();
+};
 
 function lessonFormHtml(l) {
   l = l || { slug: '', title: '', type: 'text', content: '', video_url: '', duration_minutes: '', sort_order: 0 };
@@ -1884,10 +2033,16 @@ async function submitLesson(e, id, moduleId) {
       const d = await api('/admin/lessons', { method: 'POST', body: JSON.stringify({ ...body, moduleId }) });
       saved = d.lesson;
     }
-    closeModal();
     // Patch STATE in-place (hindari refetch /api/courses/:slug penuh tiap simpan).
     applyLessonSaveToState(saved, id, moduleId);
-    renderLessons();
+    const inDrawer = !!(e.target && e.target.closest && e.target.closest('#lesson-drawer'));
+    if (inDrawer) {
+      // Drawer tetap terbuka; refresh daftar + drawer (mencerminkan ganti tipe/judul).
+      openLessonDrawer(saved.id);
+    } else {
+      closeModal();
+      renderLessons();
+    }
     notify('Pelajaran tersimpan');
   } catch (err) { notify('Gagal simpan: ' + err.message, true); }
 }
@@ -3717,16 +3872,7 @@ async function openItemManager(kind, lessonId, lessonTitle, moduleId) {
       <button type="button" class="btn btn-ghost" onclick="openBulkPaste('${kind}', '${lessonId}', '${safeTitle}', '${moduleId}')">Paste dari Excel (TSV)</button>
       <span id="item-count" style="font-size:12px;color:#737373;font-family:var(--font-body);">${items.length} item</span>
     </div>
-    ${kind === 'grammar' ? `
-    <div style="background:#f5f5f5;padding:10px 12px;border-radius:8px;margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <strong style="font-size:12px;white-space:nowrap;">Tambah cepat:</strong>
-      <input id="gfa-pattern" lang="ja" placeholder="Pola (例: 〜ています)" style="flex:1;min-width:140px;font-size:13px;"
-             onkeydown="if(event.key==='Enter'){event.preventDefault();grmrFastAdd(event);}" />
-      <input id="gfa-meaning" placeholder="Arti (opsional)" style="flex:1;min-width:140px;font-size:13px;"
-             onkeydown="if(event.key==='Enter'){event.preventDefault();grmrFastAdd(event);}" />
-      <button type="button" id="gfa-btn" class="btn btn-primary" onclick="grmrFastAdd(event)">+ Tambah cepat</button>
-    </div>
-    <div style="font-size:11px;color:#a3a3a3;font-family:var(--font-body);margin:-4px 0 10px;">Isi Pola (+ Arti opsional), tekan Enter untuk tambah beruntun. Dialog/contoh bisa dilengkapi belakangan per baris.</div>` : ''}
+    ${kind === 'grammar' ? grammarFastAddBarHtml() : ''}
     <div id="items-wrap" style="overflow-x:auto;">${renderItemTable(kind, items)}</div>
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `);
@@ -3835,8 +3981,8 @@ window.grmrFastAdd = async (e) => {
     // di daftar pelajaran tetap segar — Enter beruntun = nol request ekstra.
     const mod = (STATE.modules || []).find((m) => m.id === ctx.moduleId);
     if (mod && saved) { mod.grammar = mod.grammar || []; mod.grammar.push(saved); }
-    if (STATE.tab === 'lessons') renderLessons();
-    else if (STATE.tab === 'modules') renderModules();
+    if (STATE.tab === 'modules') renderModules();
+    else refreshLessonsView();
   } catch (err) { notify('Gagal: ' + err.message, true); }
   finally { if (btn) btn.disabled = false; }
 };
