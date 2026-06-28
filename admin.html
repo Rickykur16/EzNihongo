@@ -1336,15 +1336,54 @@ window.openCardBoard = () => {
   `);
   modalContent.style.maxWidth = '1100px';
   renderCardBoard();
+  // Auto-scroll saat drag — listener dipasang sekali di container (renderCardBoard cuma isi innerHTML).
+  const cont = document.getElementById('cb-container');
+  if (cont) {
+    cont.addEventListener('dragover', (e) => { e.preventDefault(); cbUpdateAutoScroll(e.clientX, e.clientY); });
+    cont.addEventListener('drop', cbStopAutoScroll);
+  }
 };
 
 window.boardSetType = (t) => { if (CB_TYPES[t]) { window.__boardType = t; renderCardBoard(); } };
 
 window.boardCloseAndRefresh = () => {
+  cbStopAutoScroll();
   closeModal();
   // STATE.modules sudah ter-update in-place → cukup re-render daftar pelajaran.
   try { if (STATE.tab === 'lessons') renderLessons(); } catch {}
 };
+
+// Auto-scroll Card Board saat drag — geser #cb-container ke tepi yang didekati kursor.
+let _cbScrollRAF = null, _cbVX = 0, _cbVY = 0;
+const CB_EDGE = 60;        // px ambang dari tepi
+const CB_MAX_SPEED = 20;   // px per frame
+
+function cbAutoScrollStep() {
+  const cont = document.getElementById('cb-container');
+  if (!cont) { cbStopAutoScroll(); return; }
+  if (_cbVX) cont.scrollLeft += _cbVX;
+  if (_cbVY) { const modal = cont.closest('.modal') || cont; modal.scrollTop += _cbVY; }
+  _cbScrollRAF = (_cbVX || _cbVY) ? requestAnimationFrame(cbAutoScrollStep) : null;
+}
+
+function cbUpdateAutoScroll(x, y) {
+  const cont = document.getElementById('cb-container');
+  if (!cont) return;
+  const r = cont.getBoundingClientRect();
+  _cbVX = 0;
+  if (x < r.left + CB_EDGE)  _cbVX = -CB_MAX_SPEED * Math.min(1, (r.left + CB_EDGE - x) / CB_EDGE);
+  else if (x > r.right - CB_EDGE) _cbVX = CB_MAX_SPEED * Math.min(1, (x - (r.right - CB_EDGE)) / CB_EDGE);
+  const modal = cont.closest('.modal') || cont, mr = modal.getBoundingClientRect();
+  _cbVY = 0;
+  if (y < mr.top + CB_EDGE)  _cbVY = -CB_MAX_SPEED * Math.min(1, (mr.top + CB_EDGE - y) / CB_EDGE);
+  else if (y > mr.bottom - CB_EDGE) _cbVY = CB_MAX_SPEED * Math.min(1, (y - (mr.bottom - CB_EDGE)) / CB_EDGE);
+  if ((_cbVX || _cbVY) && !_cbScrollRAF) _cbScrollRAF = requestAnimationFrame(cbAutoScrollStep);
+}
+
+function cbStopAutoScroll() {
+  _cbVX = 0; _cbVY = 0;
+  if (_cbScrollRAF) { cancelAnimationFrame(_cbScrollRAF); _cbScrollRAF = null; }
+}
 
 window.boardDragStart = (e, lessonId, cardId) => {
   e.dataTransfer.setData('text/plain', lessonId + '|' + cardId);
@@ -1353,6 +1392,7 @@ window.boardDragStart = (e, lessonId, cardId) => {
 };
 
 window.boardDragEnd = (e) => {
+  cbStopAutoScroll();
   e.currentTarget.classList.remove('cb-dragging');
   document.querySelectorAll('.cb-col.drag-over').forEach((el) => el.classList.remove('drag-over'));
 };
@@ -1368,6 +1408,7 @@ window.boardLeave = (e) => {
 };
 
 window.boardDrop = (e, dstLessonId) => {
+  cbStopAutoScroll();
   e.preventDefault();
   e.currentTarget.classList.remove('drag-over');
   const payload = e.dataTransfer.getData('text/plain') || '';
