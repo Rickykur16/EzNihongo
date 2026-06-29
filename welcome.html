@@ -7704,10 +7704,20 @@ function renderDeckLesson(course, module, lesson, nav) {
         </div>`;
       }).join('')}<div class="deck-empty-filter" id="deck-empty-filter" hidden></div></div>`;
 
+  // Video opsional di atas grid (pola sama dgn kana, welcome.html ~8394).
+  // Deck tanpa video_url TIDAK menampilkan apa-apa (tanpa placeholder).
+  const deckVideoUrl = (lesson.videoUrl || '').trim();
+  const deckVideoBlock = deckVideoUrl
+    ? `<div class="deck-video" style="margin:16px 0;"><iframe src="${escapeHtml(deckVideoUrl)}" loading="lazy" title="Video pelajaran"
+         allow="accelerometer;gyroscope;autoplay;encrypted-media;picture-in-picture" allowfullscreen
+         style="border:0;width:100%;aspect-ratio:16/9;border-radius:14px;background:#000;"></iframe></div>`
+    : '';
+
   document.getElementById('main-content').innerHTML = `
     <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · KOSAKATA</p>
     <h1 class="lesson-title">${lesson.title}</h1>
     <p class="lesson-subtitle">${module.title}${lesson.duration ? ' — ' + lesson.duration : ''}</p>
+    ${deckVideoBlock}
     ${heroBlock}
     ${toolbar}
     ${cardsHtml}

@@ -95,6 +95,13 @@
   `renderDeckLesson` (grid kartu + modal contoh kalimat, desain dari handoff
   "Kosakata"). API: `/api/admin/vocab-bank`, `/api/admin/vocabulary-examples`,
   `/api/admin/lessons/:id/deck-items`; `content.js` ngirim `lesson.deck`.
+  **Video opsional per-deck**: lesson `deck` boleh mengisi `lessons.video_url`
+  (kolom sudah ada, dipakai juga oleh tipe `video`/`kana` — tanpa migrasi). Field
+  "Video URL (Bunny Stream)" di form admin kini tampil juga untuk tipe `deck`
+  (`wireLessonTypeVisibility`). `renderDeckLesson` me-render iframe video di atas
+  grid kartu kalau `videoUrl` terisi (pola sama dgn kana), kalau kosong **tidak**
+  menampilkan placeholder. Admin tempel URL embed (Bunny Stream
+  `iframe.mediadelivery.net/embed/...` atau YouTube `youtube.com/embed/...`).
 - **Import kosakata dari Notion (per Bab)** — narik vocab **satu Bab** dari
   database Notion "📚 Vocabulary 語彙" (`Japanese 日本語` / `Reading 読み` /
   `Indonesian` / `Category` / `Note`, plus relasi `Lesson` → "📗 Bab") langsung ke
