@@ -6087,16 +6087,21 @@ window.deleteTestimonial = async (id, name) => {
 // USERS
 // ─────────────────────────────────────────────────────────────
 // Server-side search + pagination. `q` searches name/email across ALL users
-// (not just a loaded cap); `append` pages in the next 100.
+// (not just a loaded cap); `append` pages in the next 100. A monotonic request
+// token drops stale responses so an in-flight "load more" can't concatenate
+// onto a list a newer search already replaced (and vice-versa).
+let _usersReqSeq = 0;
 async function loadUsers(opts = {}) {
   const q = opts.q != null ? opts.q : (STATE.usersQuery || '');
   STATE.usersQuery = q;
   const offset = opts.append ? (STATE.users || []).length : 0;
+  const seq = ++_usersReqSeq;
   try {
     const d = await api('/admin/users?limit=100&offset=' + offset + '&q=' + encodeURIComponent(q));
+    if (seq !== _usersReqSeq) return; // superseded by a newer request
     STATE.usersTotal = d.total != null ? d.total : (d.users || []).length;
     STATE.users = opts.append ? [...(STATE.users || []), ...(d.users || [])] : (d.users || []);
-  } catch (e) { notify('Gagal load pengguna: ' + e.message, true); }
+  } catch (e) { if (seq === _usersReqSeq) notify('Gagal load pengguna: ' + e.message, true); }
 }
 function renderUsers() {
   const pane = document.querySelector('[data-pane="users"]');
@@ -6310,17 +6315,36 @@ window.revokeAccess = async (email, courseId) => {
 // DISCUSSIONS
 // ─────────────────────────────────────────────────────────────
 // Server-side search + status filter (active/deleted/all) + pagination so
-// moderation isn't capped at the most-recent 200 comments.
+// moderation isn't capped at the most-recent 200 comments. Request token drops
+// stale responses (same race guard as loadUsers).
+let _discReqSeq = 0;
 async function loadDiscussions(opts = {}) {
   const q = opts.q != null ? opts.q : (STATE.discQuery || '');
   const status = opts.status != null ? opts.status : (STATE.discStatus || 'all');
   STATE.discQuery = q; STATE.discStatus = status;
   const offset = opts.append ? (STATE.discussions || []).length : 0;
+  const seq = ++_discReqSeq;
   try {
     const d = await api('/admin/discussions?limit=200&offset=' + offset + '&status=' + encodeURIComponent(status) + '&q=' + encodeURIComponent(q));
+    if (seq !== _discReqSeq) return; // superseded by a newer request
     STATE.discTotal = d.total != null ? d.total : (d.discussions || []).length;
     STATE.discussions = opts.append ? [...(STATE.discussions || []), ...(d.discussions || [])] : (d.discussions || []);
-  } catch (e) { notify('Gagal load diskusi: ' + e.message, true); }
+  } catch (e) { if (seq === _discReqSeq) notify('Gagal load diskusi: ' + e.message, true); }
+}
+// Apply a delete/restore to the loaded list in place — avoids refetching (which
+// would collapse a multi-page "Muat lebih banyak" view back to the first page).
+function discApplyLocalStatus(id, isDeleted) {
+  const arr = STATE.discussions || [];
+  const idx = arr.findIndex((d) => String(d.id) === String(id));
+  if (idx < 0) return;
+  const status = STATE.discStatus || 'all';
+  if ((status === 'active' && isDeleted) || (status === 'deleted' && !isDeleted)) {
+    arr.splice(idx, 1); // no longer matches the active filter → drop from view
+    if (STATE.discTotal != null) STATE.discTotal = Math.max(0, STATE.discTotal - 1);
+  } else {
+    arr[idx] = { ...arr[idx], is_deleted: isDeleted };
+  }
+  renderDiscussionsResult();
 }
 function renderDiscussions() {
   const pane = document.querySelector('[data-pane="discussions"]');
@@ -6387,14 +6411,14 @@ window.deleteDiscussion = async (id) => {
   if (!confirm('Hapus komentar ini?')) return;
   try {
     await api('/discussions/' + id, { method: 'DELETE' });
-    await loadDiscussions(); renderDiscussionsResult();
+    discApplyLocalStatus(id, true);
     notify('Komentar dihapus');
   } catch (err) { notify('Gagal hapus: ' + err.message, true); }
 };
 window.restoreDiscussion = async (id) => {
   try {
     await api('/admin/discussions/' + id + '/restore', { method: 'POST' });
-    await loadDiscussions(); renderDiscussionsResult();
+    discApplyLocalStatus(id, false);
     notify('Komentar dipulihkan');
   } catch (err) { notify('Gagal pulihkan: ' + err.message, true); }
 };
