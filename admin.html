@@ -1841,8 +1841,9 @@ function wireLessonTypeVisibility(form) {
   const quizFields = form.querySelector('[data-quiz-only]');
   if (!typeSel) return;
   const apply = () => {
-    // Video URL relevan untuk tipe video DAN kana (video di atas chart kana).
-    if (videoField) videoField.style.display = (typeSel.value === 'video' || typeSel.value === 'kana') ? '' : 'none';
+    // Video URL relevan untuk tipe video, kana (video di atas chart kana),
+    // dan deck (video opsional di atas grid kosakata).
+    if (videoField) videoField.style.display = (typeSel.value === 'video' || typeSel.value === 'kana' || typeSel.value === 'deck') ? '' : 'none';
     if (deckHint) deckHint.style.display = typeSel.value === 'deck' ? '' : 'none';
     if (kanjiHint) kanjiHint.style.display = typeSel.value === 'kanji' ? '' : 'none';
     if (kanaHint) kanaHint.style.display = typeSel.value === 'kana' ? '' : 'none';
