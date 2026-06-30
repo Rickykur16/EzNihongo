@@ -3178,6 +3178,21 @@ router.delete('/testimonials/:id', asyncHandler(async (req, res) => {
 // ===== USERS (admin view only) =====
 
 router.get('/users', asyncHandler(async (req, res) => {
+  // Server-side search + pagination so users beyond the old hard cap of 500
+  // are reachable (search by name/email; page with limit/offset).
+  const q = String(req.query.q || '').trim();
+  const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 100));
+  const offset = Math.max(0, Number(req.query.offset) || 0);
+  const params = [];
+  let where = '';
+  if (q) {
+    params.push('%' + q + '%');
+    const p = `$${params.length}`;
+    where = `WHERE (u.email ILIKE ${p} OR u.full_name ILIKE ${p} OR u.google_name ILIKE ${p})`;
+  }
+  const totalRes = await query(`SELECT COUNT(*)::int AS n FROM users u ${where}`, params);
+  const listParams = params.slice();
+  listParams.push(limit, offset);
   const result = await query(
     `SELECT u.id, u.email, u.full_name, u.google_name, u.avatar_url, u.created_at,
             COALESCE(s.xp, 0) AS xp, COALESCE(s.streak_days, 0) AS streak_days,
@@ -3185,10 +3200,12 @@ router.get('/users', asyncHandler(async (req, res) => {
             s.last_active_date
      FROM users u
      LEFT JOIN user_stats s ON s.user_id = u.id
+     ${where}
      ORDER BY u.created_at DESC
-     LIMIT 500`
+     LIMIT $${listParams.length - 1} OFFSET $${listParams.length}`,
+    listParams
   );
-  res.json({ users: result.rows });
+  res.json({ users: result.rows, total: totalRes.rows[0].n });
 }));
 
 // ===== AKSES DASHBOARD (enrollment grants) =====
@@ -3283,6 +3300,29 @@ router.post('/user-access/revoke', asyncHandler(async (req, res) => {
 // ===== DISCUSSIONS (admin moderation) =====
 
 router.get('/discussions', asyncHandler(async (req, res) => {
+  // Search (content / user / lesson), status filter (active|deleted|all) and
+  // pagination so moderation isn't limited to the most recent 200 comments.
+  const q = String(req.query.q || '').trim();
+  const status = String(req.query.status || 'all').toLowerCase();
+  const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 200));
+  const offset = Math.max(0, Number(req.query.offset) || 0);
+  const conds = [];
+  const params = [];
+  if (status === 'active') conds.push('d.is_deleted = FALSE');
+  else if (status === 'deleted') conds.push('d.is_deleted = TRUE');
+  if (q) {
+    params.push('%' + q + '%');
+    const p = `$${params.length}`;
+    conds.push(`(d.content ILIKE ${p} OR u.full_name ILIKE ${p} OR u.email ILIKE ${p} OR l.title ILIKE ${p})`);
+  }
+  const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
+  const totalRes = await query(
+    `SELECT COUNT(*)::int AS n FROM discussions d
+       JOIN users u ON u.id = d.user_id JOIN lessons l ON l.id = d.lesson_id ${where}`,
+    params
+  );
+  const listParams = params.slice();
+  listParams.push(limit, offset);
   const result = await query(
     `SELECT d.id, d.lesson_id, d.parent_id, d.content, d.is_admin_reply, d.is_deleted,
             d.created_at, d.user_id, u.full_name, u.email, u.avatar_url,
@@ -3290,10 +3330,22 @@ router.get('/discussions', asyncHandler(async (req, res) => {
      FROM discussions d
      JOIN users u ON u.id = d.user_id
      JOIN lessons l ON l.id = d.lesson_id
+     ${where}
      ORDER BY d.created_at DESC
-     LIMIT 200`
+     LIMIT $${listParams.length - 1} OFFSET $${listParams.length}`,
+    listParams
   );
-  res.json({ discussions: result.rows });
+  res.json({ discussions: result.rows, total: totalRes.rows[0].n });
+}));
+
+// Restore a soft-deleted comment (admin moderation undo).
+router.post('/discussions/:id/restore', asyncHandler(async (req, res) => {
+  const r = await query(
+    `UPDATE discussions SET is_deleted = FALSE, updated_at = NOW() WHERE id = $1 RETURNING id`,
+    [req.params.id]
+  );
+  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ ok: true });
 }));
 
 // ===== KANJI ITEMS (Daftar Kanji di main site) =====

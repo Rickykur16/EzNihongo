@@ -230,6 +230,12 @@
   .quiz-correct-toggle { font-size: 12px; display: flex; align-items: center; gap: 5px; color: var(--ink-700); font-family: var(--font-body); font-weight: 700; white-space: nowrap; }
   .kanji-admin-modal { max-width: 1100px; }
   @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  /* Drag-to-reorder table rows (deck / kana) */
+  .row-grip { cursor: grab; color: var(--ink-400, #b0b0b0); font-size: 14px; letter-spacing: -2px; margin-right: 6px; user-select: none; }
+  tr[draggable="true"] { cursor: default; }
+  tr.row-dragging { opacity: 0.4; }
+  tr.row-drop-before td { box-shadow: inset 0 2px 0 0 var(--brand-red); }
+  tr.row-drop-after td { box-shadow: inset 0 -2px 0 0 var(--brand-red); }
 </style>
 </head>
 <body>
@@ -487,29 +493,64 @@ function beginSubmit(form) {
   return () => prev.forEach(({ b, disabled, html }) => { b.disabled = disabled; b.innerHTML = html; });
 }
 
-// Lightweight client-side list filter: shows/hides already-rendered rows by
-// substring match over their text content. Instant, no backend round-trip —
-// scoped to what the list endpoint already returned (within its cap).
-function filterBarHtml(id, placeholder) {
-  return `<input id="${id}" type="search" placeholder="${escapeHtml(placeholder || 'Cari…')}" autocomplete="off" style="max-width:340px;margin-bottom:12px;" />`;
+// Debounce: delay a call until input settles (used by server-side search boxes
+// so we don't fire a request on every keystroke).
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
-function wireListFilter(inputId, rowSelector, opts = {}) {
-  const input = document.getElementById(inputId);
-  if (!input) return;
-  const scope = opts.scope ? document.querySelector(opts.scope) : document;
-  if (!scope) return;
-  const apply = () => {
-    const q = input.value.trim().toLowerCase();
-    let shown = 0;
-    scope.querySelectorAll(rowSelector).forEach((r) => {
-      const match = !q || r.textContent.toLowerCase().includes(q);
-      r.style.display = match ? '' : 'none';
-      if (match) shown++;
+
+// Move the item with id=draggedId to just before/after targetId (operates by
+// id, so it's correct even when the table is filtered to a subset).
+function reorderById(arr, idKey, draggedId, targetId, after) {
+  const di = arr.findIndex((x) => String(x[idKey]) === String(draggedId));
+  if (di < 0) return;
+  const [item] = arr.splice(di, 1);
+  let ti = arr.findIndex((x) => String(x[idKey]) === String(targetId));
+  if (ti < 0) { arr.push(item); return; }
+  if (after) ti += 1;
+  arr.splice(ti, 0, item);
+}
+
+// Make the rows of a <tbody> drag-reorderable. Drags started from interactive
+// elements (inputs/buttons) are suppressed so the controls still work. Calls
+// onReorder(draggedId, targetId, after) which should mutate the array, re-render
+// and persist. Re-wire after every re-render (rows are recreated).
+function wireRowDrag(tbodyId, idAttr, onReorder) {
+  const tb = document.getElementById(tbodyId);
+  if (!tb) return;
+  let draggedId = null;
+  const clearMarks = () => tb.querySelectorAll('.row-drop-before, .row-drop-after')
+    .forEach((x) => x.classList.remove('row-drop-before', 'row-drop-after'));
+  tb.querySelectorAll('tr[' + idAttr + ']').forEach((tr) => {
+    tr.setAttribute('draggable', 'true');
+    tr.addEventListener('dragstart', (e) => {
+      if (e.target.closest('input, button, a, select, textarea')) { e.preventDefault(); return; }
+      draggedId = tr.getAttribute(idAttr);
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', draggedId); } catch {}
+      tr.classList.add('row-dragging');
     });
-    if (opts.countId) { const c = document.getElementById(opts.countId); if (c) c.textContent = shown; }
-  };
-  input.addEventListener('input', apply);
-  apply();
+    tr.addEventListener('dragend', () => { tr.classList.remove('row-dragging'); clearMarks(); });
+    tr.addEventListener('dragover', (e) => {
+      if (!draggedId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const rect = tr.getBoundingClientRect();
+      const after = (e.clientY - rect.top) > rect.height / 2;
+      clearMarks();
+      tr.classList.add(after ? 'row-drop-after' : 'row-drop-before');
+    });
+    tr.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const targetId = tr.getAttribute(idAttr);
+      const rect = tr.getBoundingClientRect();
+      const after = (e.clientY - rect.top) > rect.height / 2;
+      clearMarks();
+      const dragged = draggedId; draggedId = null;
+      if (dragged && targetId && dragged !== targetId) onReorder(dragged, targetId, after);
+    });
+  });
 }
 
 // Set/ubah password login admin (self-service). Tanpa email → password admin
@@ -4502,6 +4543,7 @@ function renderDeckTable(items) {
       <td>${escapeHtml(it.category || '')}</td>
       <td><input value="${escapeHtml(it.accent_color || '')}" placeholder="#C8102E" style="width:88px;font-size:11px;" onchange="deckSetColor('${it.vocabulary_id}', this.value)" /></td>
       <td style="white-space:nowrap;">
+        <span class="row-grip" title="Tarik untuk urutkan">⠿</span>
         <button class="btn btn-ghost" onclick="deckMove('${it.vocabulary_id}', -1)">↑</button>
         <button class="btn btn-ghost" onclick="deckMove('${it.vocabulary_id}', 1)">↓</button>
       </td>
@@ -4530,10 +4572,29 @@ function deckRerender() {
     const q = (window.__deckQuery || '').trim().toLowerCase();
     c.textContent = q ? `${all.filter((it) => deckMatchesQuery(it, q)).length} / ${all.length} item` : `${all.length} item`;
   }
+  wireRowDrag('deck-body', 'data-deck-vid', deckReorder);
 }
 // Search box filters the deck at render time (input lives in the toolbar, so
 // re-rendering #deck-wrap keeps it focused).
 window.deckFilter = (v) => { window.__deckQuery = v || ''; deckRerender(); };
+
+// Persist current deck order as one PUT (shared by ↑/↓ and drag-reorder).
+async function deckPersistOrder() {
+  const arr = window.__deckItems || [];
+  arr.forEach((x, k) => { x.sort_order = k; });
+  try {
+    await api('/admin/lessons/' + window.__deckCtx.lessonId + '/deck-items', {
+      method: 'PUT',
+      body: JSON.stringify({ items: arr.map((x, k) => ({ vocabularyId: x.vocabulary_id, sortOrder: k, accentColor: x.accent_color || null })) }),
+    });
+    deckRefreshList();
+  } catch (err) { notify('Gagal urut: ' + err.message, true); }
+}
+function deckReorder(draggedId, targetId, after) {
+  reorderById(window.__deckItems || [], 'vocabulary_id', draggedId, targetId, after);
+  deckRerender();
+  deckPersistOrder();
+}
 
 async function openDeckManager(lessonId, lessonTitle, moduleId, courseId) {
   let items = [];
@@ -4561,6 +4622,7 @@ async function openDeckManager(lessonId, lessonTitle, moduleId, courseId) {
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `);
   modalContent.style.maxWidth = '1100px';
+  wireRowDrag('deck-body', 'data-deck-vid', deckReorder);
 }
 window.manageDeck = (lessonId, lessonTitle, moduleId, courseId) => openDeckManager(lessonId, lessonTitle, moduleId, courseId);
 
@@ -4592,6 +4654,7 @@ function renderKanaTable(items) {
       <td><span class="pill">${escapeHtml(it.kind || '')}</span></td>
       <td>${escapeHtml(it.group_label || '')}</td>
       <td style="white-space:nowrap;">
+        <span class="row-grip" title="Tarik untuk urutkan">⠿</span>
         <button class="btn btn-ghost" onclick="kanaMove('${it.kana_id}', -1)">↑</button>
         <button class="btn btn-ghost" onclick="kanaMove('${it.kana_id}', 1)">↓</button>
       </td>
@@ -4616,8 +4679,27 @@ function kanaMgrRerender() {
     const q = (window.__kanaMgrQuery || '').trim().toLowerCase();
     c.textContent = q ? `${all.filter((it) => kanaMatchesQuery(it, q)).length} / ${all.length} karakter` : `${all.length} karakter`;
   }
+  wireRowDrag('kana-mgr-body', 'data-kana-id', kanaReorder);
 }
 window.kanaFilter = (v) => { window.__kanaMgrQuery = v || ''; kanaMgrRerender(); };
+
+// Persist current kana order as one PUT (shared by ↑/↓ and drag-reorder).
+async function kanaPersistOrder() {
+  const arr = window.__kanaMgrItems || [];
+  arr.forEach((x, k) => { x.sort_order = k; });
+  try {
+    await api('/admin/lessons/' + window.__kanaCtx.lessonId + '/kana-items', {
+      method: 'PUT',
+      body: JSON.stringify({ items: arr.map((x, k) => ({ kanaId: x.kana_id, sortOrder: k })) }),
+    });
+    kanaRefreshList();
+  } catch (err) { notify('Gagal urut: ' + err.message, true); }
+}
+function kanaReorder(draggedId, targetId, after) {
+  reorderById(window.__kanaMgrItems || [], 'kana_id', draggedId, targetId, after);
+  kanaMgrRerender();
+  kanaPersistOrder();
+}
 
 async function openKanaManager(lessonId, lessonTitle, moduleId, courseId) {
   let items = [];
@@ -4641,6 +4723,7 @@ async function openKanaManager(lessonId, lessonTitle, moduleId, courseId) {
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `);
   modalContent.style.maxWidth = '1000px';
+  wireRowDrag('kana-mgr-body', 'data-kana-id', kanaReorder);
 }
 window.manageKana = (lessonId, lessonTitle, moduleId, courseId) => openKanaManager(lessonId, lessonTitle, moduleId, courseId);
 
@@ -4650,15 +4733,8 @@ window.kanaMove = async (kanaId, dir) => {
   const j = i + dir;
   if (i < 0 || j < 0 || j >= arr.length) return;
   const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
-  arr.forEach((x, k) => { x.sort_order = k; });
   kanaMgrRerender();
-  try {
-    await api('/admin/lessons/' + window.__kanaCtx.lessonId + '/kana-items', {
-      method: 'PUT',
-      body: JSON.stringify({ items: arr.map((x, k) => ({ kanaId: x.kana_id, sortOrder: k })) }),
-    });
-    kanaRefreshList();
-  } catch (err) { notify('Gagal urut: ' + err.message, true); }
+  kanaPersistOrder();
 };
 
 window.kanaRemove = async (kanaId) => {
@@ -4976,15 +5052,8 @@ window.deckMove = async (vid, dir) => {
   const j = i + dir;
   if (i < 0 || j < 0 || j >= arr.length) return;
   const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
-  arr.forEach((x, k) => { x.sort_order = k; });
   deckRerender();
-  try {
-    await api('/admin/lessons/' + window.__deckCtx.lessonId + '/deck-items', {
-      method: 'PUT',
-      body: JSON.stringify({ items: arr.map((x, k) => ({ vocabularyId: x.vocabulary_id, sortOrder: k, accentColor: x.accent_color || null })) }),
-    });
-    deckRefreshList();
-  } catch (err) { notify('Gagal urut: ' + err.message, true); }
+  deckPersistOrder();
 };
 
 window.deckSetColor = async (vid, val) => {
@@ -6017,17 +6086,44 @@ window.deleteTestimonial = async (id, name) => {
 // ─────────────────────────────────────────────────────────────
 // USERS
 // ─────────────────────────────────────────────────────────────
-async function loadUsers() {
-  try { const d = await api('/admin/users'); STATE.users = d.users || []; }
-  catch (e) { notify('Gagal load pengguna: ' + e.message, true); }
+// Server-side search + pagination. `q` searches name/email across ALL users
+// (not just a loaded cap); `append` pages in the next 100.
+async function loadUsers(opts = {}) {
+  const q = opts.q != null ? opts.q : (STATE.usersQuery || '');
+  STATE.usersQuery = q;
+  const offset = opts.append ? (STATE.users || []).length : 0;
+  try {
+    const d = await api('/admin/users?limit=100&offset=' + offset + '&q=' + encodeURIComponent(q));
+    STATE.usersTotal = d.total != null ? d.total : (d.users || []).length;
+    STATE.users = opts.append ? [...(STATE.users || []), ...(d.users || [])] : (d.users || []);
+  } catch (e) { notify('Gagal load pengguna: ' + e.message, true); }
 }
 function renderUsers() {
   const pane = document.querySelector('[data-pane="users"]');
-  if (STATE.users.length === 0) {
-    pane.innerHTML = '<h2>Pengguna</h2><div class="empty">Belum ada pengguna.</div>';
+  // Shell holds the search box (kept across result re-renders so it stays
+  // focused while typing); #users-result holds the table + pager.
+  pane.innerHTML = `
+    <h2>Pengguna</h2>
+    <input id="users-filter" type="search" placeholder="Cari nama atau email (semua pengguna)…" autocomplete="off" value="${escapeHtml(STATE.usersQuery || '')}" style="max-width:340px;margin-bottom:12px;" />
+    <div id="users-result"></div>
+  `;
+  const input = document.getElementById('users-filter');
+  if (input) input.addEventListener('input', debounce(async () => {
+    await loadUsers({ q: input.value });
+    renderUsersResult();
+  }, 280));
+  renderUsersResult();
+}
+function renderUsersResult() {
+  const wrap = document.getElementById('users-result');
+  if (!wrap) return;
+  const users = STATE.users || [];
+  const total = STATE.usersTotal != null ? STATE.usersTotal : users.length;
+  if (users.length === 0) {
+    wrap.innerHTML = `<div class="empty">${STATE.usersQuery ? 'Tidak ada pengguna cocok pencarian.' : 'Belum ada pengguna.'}</div>`;
     return;
   }
-  const rows = STATE.users.map((u) => `
+  const rows = users.map((u) => `
     <tr>
       <td><strong>${escapeHtml(u.full_name || '-')}</strong><br><span style="font-size:11px;color:#737373;">${escapeHtml(u.email)}</span></td>
       <td>${u.xp || 0}</td>
@@ -6038,13 +6134,20 @@ function renderUsers() {
       <td class="actions"><button class="btn btn-primary" onclick="openUserAccess('${escapeHtml(u.email)}')">Beri Akses</button></td>
     </tr>
   `).join('');
-  pane.innerHTML = `
-    <h2>Pengguna (<span id="users-count">${STATE.users.length}</span>)</h2>
-    ${filterBarHtml('users-filter', 'Cari nama atau email…')}
+  const more = users.length < total
+    ? `<div style="text-align:center;margin-top:12px;"><button class="btn btn-ghost" onclick="usersLoadMore(this)">Muat lebih banyak (${total - users.length} lagi)</button></div>`
+    : '';
+  wrap.innerHTML = `
+    <div style="font-size:12px;color:#737373;margin-bottom:8px;">Menampilkan ${users.length} dari ${total} pengguna.</div>
     <table><thead><tr><th>Nama / email</th><th>XP</th><th>Streak</th><th>Lesson selesai</th><th>Aktif terakhir</th><th>Bergabung</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    ${more}
   `;
-  wireListFilter('users-filter', 'tbody tr', { scope: '[data-pane="users"]', countId: 'users-count' });
 }
+window.usersLoadMore = async (btn) => {
+  if (btn) { btn.disabled = true; btn.textContent = 'Memuat…'; }
+  await loadUsers({ append: true });
+  renderUsersResult();
+};
 
 // Beri Akses dari tab Pengguna — modal per-user. Pakai endpoint yang sama
 // dengan tab "Beri Akses" (/admin/user-access*), tapi render di modal.
@@ -6206,39 +6309,94 @@ window.revokeAccess = async (email, courseId) => {
 // ─────────────────────────────────────────────────────────────
 // DISCUSSIONS
 // ─────────────────────────────────────────────────────────────
-async function loadDiscussions() {
-  try { const d = await api('/admin/discussions'); STATE.discussions = d.discussions || []; }
-  catch (e) { notify('Gagal load diskusi: ' + e.message, true); }
+// Server-side search + status filter (active/deleted/all) + pagination so
+// moderation isn't capped at the most-recent 200 comments.
+async function loadDiscussions(opts = {}) {
+  const q = opts.q != null ? opts.q : (STATE.discQuery || '');
+  const status = opts.status != null ? opts.status : (STATE.discStatus || 'all');
+  STATE.discQuery = q; STATE.discStatus = status;
+  const offset = opts.append ? (STATE.discussions || []).length : 0;
+  try {
+    const d = await api('/admin/discussions?limit=200&offset=' + offset + '&status=' + encodeURIComponent(status) + '&q=' + encodeURIComponent(q));
+    STATE.discTotal = d.total != null ? d.total : (d.discussions || []).length;
+    STATE.discussions = opts.append ? [...(STATE.discussions || []), ...(d.discussions || [])] : (d.discussions || []);
+  } catch (e) { notify('Gagal load diskusi: ' + e.message, true); }
 }
 function renderDiscussions() {
   const pane = document.querySelector('[data-pane="discussions"]');
-  if (STATE.discussions.length === 0) {
-    pane.innerHTML = '<h2>Diskusi</h2><div class="empty">Belum ada diskusi.</div>';
+  const status = STATE.discStatus || 'all';
+  pane.innerHTML = `
+    <h2>Diskusi</h2>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+      <input id="disc-filter" type="search" placeholder="Cari user, pelajaran, atau isi komentar…" autocomplete="off" value="${escapeHtml(STATE.discQuery || '')}" style="max-width:320px;margin:0;" />
+      <select id="disc-status" style="max-width:170px;margin:0;">
+        <option value="all" ${status === 'all' ? 'selected' : ''}>Semua</option>
+        <option value="active" ${status === 'active' ? 'selected' : ''}>Aktif</option>
+        <option value="deleted" ${status === 'deleted' ? 'selected' : ''}>Dihapus</option>
+      </select>
+    </div>
+    <div id="disc-result"></div>
+  `;
+  const input = document.getElementById('disc-filter');
+  if (input) input.addEventListener('input', debounce(async () => {
+    await loadDiscussions({ q: input.value });
+    renderDiscussionsResult();
+  }, 280));
+  const sel = document.getElementById('disc-status');
+  if (sel) sel.addEventListener('change', async () => {
+    await loadDiscussions({ status: sel.value });
+    renderDiscussionsResult();
+  });
+  renderDiscussionsResult();
+}
+function renderDiscussionsResult() {
+  const wrap = document.getElementById('disc-result');
+  if (!wrap) return;
+  const list = STATE.discussions || [];
+  const total = STATE.discTotal != null ? STATE.discTotal : list.length;
+  if (list.length === 0) {
+    wrap.innerHTML = `<div class="empty">${(STATE.discQuery || (STATE.discStatus && STATE.discStatus !== 'all')) ? 'Tidak ada komentar cocok filter.' : 'Belum ada diskusi.'}</div>`;
     return;
   }
-  const rows = STATE.discussions.map((d) => `
+  const rows = list.map((d) => `
     <tr style="${d.is_deleted ? 'opacity:0.5;' : ''}">
       <td><strong>${escapeHtml(d.full_name || d.email)}</strong><br><span style="font-size:11px;color:#737373;">${escapeHtml(d.email)}</span></td>
       <td>${escapeHtml(d.lesson_title)}</td>
       <td style="max-width:380px;">${escapeHtml(d.content)}${d.is_admin_reply ? ' <span class="badge badge-admin">admin</span>' : ''}${d.is_deleted ? ' <span class="badge badge-off">dihapus</span>' : ''}</td>
       <td>${new Date(d.created_at).toLocaleString('id-ID')}</td>
-      <td class="actions">${d.is_deleted ? '' : `<button class="btn btn-danger" onclick="deleteDiscussion('${d.id}')">Hapus</button>`}</td>
+      <td class="actions">${d.is_deleted
+        ? `<button class="btn btn-ghost" onclick="restoreDiscussion('${d.id}')">Pulihkan</button>`
+        : `<button class="btn btn-danger" onclick="deleteDiscussion('${d.id}')">Hapus</button>`}</td>
     </tr>
   `).join('');
-  pane.innerHTML = `
-    <h2>Diskusi (<span id="disc-count">${STATE.discussions.length}</span>)</h2>
-    ${filterBarHtml('disc-filter', 'Cari user, pelajaran, atau isi komentar…')}
+  const more = list.length < total
+    ? `<div style="text-align:center;margin-top:12px;"><button class="btn btn-ghost" onclick="discLoadMore(this)">Muat lebih banyak (${total - list.length} lagi)</button></div>`
+    : '';
+  wrap.innerHTML = `
+    <div style="font-size:12px;color:#737373;margin-bottom:8px;">Menampilkan ${list.length} dari ${total} komentar.</div>
     <table><thead><tr><th>User</th><th>Pelajaran</th><th>Isi</th><th>Waktu</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    ${more}
   `;
-  wireListFilter('disc-filter', 'tbody tr', { scope: '[data-pane="discussions"]', countId: 'disc-count' });
 }
+window.discLoadMore = async (btn) => {
+  if (btn) { btn.disabled = true; btn.textContent = 'Memuat…'; }
+  await loadDiscussions({ append: true });
+  renderDiscussionsResult();
+};
 window.deleteDiscussion = async (id) => {
   if (!confirm('Hapus komentar ini?')) return;
   try {
     await api('/discussions/' + id, { method: 'DELETE' });
-    await loadDiscussions(); renderDiscussions();
+    await loadDiscussions(); renderDiscussionsResult();
     notify('Komentar dihapus');
   } catch (err) { notify('Gagal hapus: ' + err.message, true); }
+};
+window.restoreDiscussion = async (id) => {
+  try {
+    await api('/admin/discussions/' + id + '/restore', { method: 'POST' });
+    await loadDiscussions(); renderDiscussionsResult();
+    notify('Komentar dipulihkan');
+  } catch (err) { notify('Gagal pulihkan: ' + err.message, true); }
 };
 
 // ─────────────────────────────────────────────────────────────
