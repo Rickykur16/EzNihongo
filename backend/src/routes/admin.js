@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
-import { query } from '../db.js';
+import { query, withTransaction } from '../db.js';
 import { requireAuth, requireAdmin, asyncHandler } from '../middleware.js';
 import {
   isAdminEmail,
@@ -426,19 +426,24 @@ router.delete('/module-vocabulary/:id', asyncHandler(async (req, res) => {
 router.post('/module-vocabulary/bulk', asyncHandler(async (req, res) => {
   const { moduleId, items, replace } = req.body || {};
   if (!moduleId || !Array.isArray(items)) return res.status(400).json({ error: 'moduleId and items[] required' });
-  if (replace) await query(`DELETE FROM module_vocabulary WHERE module_id = $1`, [moduleId]);
-  const inserted = [];
-  for (let i = 0; i < items.length; i++) {
-    const v = items[i] || {};
-    if (!v.japanese) continue;
-    const r = await query(
-      `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, romaji, indonesian, category, note, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [moduleId, v.lessonId || null, v.japanese, v.reading || null, v.romaji || null, v.indonesian || null,
-       v.category || null, v.note || null, v.sortOrder ?? i]
-    );
-    inserted.push(r.rows[0]);
-  }
+  // replace=true DELETEs the whole module first; without a transaction a crash
+  // mid-insert leaves the module emptied or half-populated.
+  const inserted = await withTransaction(async (client) => {
+    if (replace) await client.query(`DELETE FROM module_vocabulary WHERE module_id = $1`, [moduleId]);
+    const out = [];
+    for (let i = 0; i < items.length; i++) {
+      const v = items[i] || {};
+      if (!v.japanese) continue;
+      const r = await client.query(
+        `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, romaji, indonesian, category, note, sort_order)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+        [moduleId, v.lessonId || null, v.japanese, v.reading || null, v.romaji || null, v.indonesian || null,
+         v.category || null, v.note || null, v.sortOrder ?? i]
+      );
+      out.push(r.rows[0]);
+    }
+    return out;
+  });
   res.status(201).json({ vocabulary: inserted });
 }));
 
@@ -549,17 +554,21 @@ router.post('/lessons/:lessonId/deck-items', asyncHandler(async (req, res) => {
 router.put('/lessons/:lessonId/deck-items', asyncHandler(async (req, res) => {
   const { items } = req.body || {};
   if (!Array.isArray(items)) return res.status(400).json({ error: 'items[] required' });
-  for (let i = 0; i < items.length; i++) {
-    const it = items[i] || {};
-    if (!it.vocabularyId) continue;
-    await query(
-      `INSERT INTO lesson_deck_items (lesson_id, vocabulary_id, sort_order, accent_color)
-       VALUES ($1,$2,$3,$4)
-       ON CONFLICT (lesson_id, vocabulary_id)
-         DO UPDATE SET sort_order = EXCLUDED.sort_order, accent_color = EXCLUDED.accent_color`,
-      [req.params.lessonId, it.vocabularyId, it.sortOrder ?? i, it.accentColor || null]
-    );
-  }
+  // Whole reorder/upsert applied atomically — a partial failure must not leave
+  // the deck with a mix of old and new sort orders.
+  await withTransaction(async (client) => {
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i] || {};
+      if (!it.vocabularyId) continue;
+      await client.query(
+        `INSERT INTO lesson_deck_items (lesson_id, vocabulary_id, sort_order, accent_color)
+         VALUES ($1,$2,$3,$4)
+         ON CONFLICT (lesson_id, vocabulary_id)
+           DO UPDATE SET sort_order = EXCLUDED.sort_order, accent_color = EXCLUDED.accent_color`,
+        [req.params.lessonId, it.vocabularyId, it.sortOrder ?? i, it.accentColor || null]
+      );
+    }
+  });
   res.json({ ok: true });
 }));
 
@@ -724,16 +733,19 @@ router.post('/lessons/:lessonId/kana-items', asyncHandler(async (req, res) => {
 router.put('/lessons/:lessonId/kana-items', asyncHandler(async (req, res) => {
   const { items } = req.body || {};
   if (!Array.isArray(items)) return res.status(400).json({ error: 'items[] required' });
-  for (let i = 0; i < items.length; i++) {
-    const it = items[i] || {};
-    if (!it.kanaId) continue;
-    await query(
-      `INSERT INTO lesson_kana_items (lesson_id, kana_id, sort_order)
-       VALUES ($1,$2,$3)
-       ON CONFLICT (lesson_id, kana_id) DO UPDATE SET sort_order = EXCLUDED.sort_order`,
-      [req.params.lessonId, it.kanaId, it.sortOrder ?? i]
-    );
-  }
+  // Whole reorder/upsert applied atomically.
+  await withTransaction(async (client) => {
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i] || {};
+      if (!it.kanaId) continue;
+      await client.query(
+        `INSERT INTO lesson_kana_items (lesson_id, kana_id, sort_order)
+         VALUES ($1,$2,$3)
+         ON CONFLICT (lesson_id, kana_id) DO UPDATE SET sort_order = EXCLUDED.sort_order`,
+        [req.params.lessonId, it.kanaId, it.sortOrder ?? i]
+      );
+    }
+  });
   res.json({ ok: true });
 }));
 
@@ -763,20 +775,23 @@ router.get('/lessons/:lessonId/grammar-task-items', asyncHandler(async (req, res
 router.put('/lessons/:lessonId/grammar-task-items', asyncHandler(async (req, res) => {
   const { items } = req.body || {};
   if (!Array.isArray(items)) return res.status(400).json({ error: 'items[] required' });
-  for (let i = 0; i < items.length; i++) {
-    const it = items[i] || {};
-    if (!it.grammarId) continue;
-    const reqCount = Math.min(10, Math.max(1, Number(it.requiredCount) || 1));
-    await query(
-      `INSERT INTO lesson_grammar_task_items (lesson_id, grammar_id, sort_order, instruction, required_count)
-       VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (lesson_id, grammar_id)
-         DO UPDATE SET sort_order = EXCLUDED.sort_order,
-                       instruction = EXCLUDED.instruction,
-                       required_count = EXCLUDED.required_count`,
-      [req.params.lessonId, it.grammarId, it.sortOrder ?? i, (it.instruction || '').trim() || null, reqCount]
-    );
-  }
+  // Whole task-item set applied atomically.
+  await withTransaction(async (client) => {
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i] || {};
+      if (!it.grammarId) continue;
+      const reqCount = Math.min(10, Math.max(1, Number(it.requiredCount) || 1));
+      await client.query(
+        `INSERT INTO lesson_grammar_task_items (lesson_id, grammar_id, sort_order, instruction, required_count)
+         VALUES ($1,$2,$3,$4,$5)
+         ON CONFLICT (lesson_id, grammar_id)
+           DO UPDATE SET sort_order = EXCLUDED.sort_order,
+                         instruction = EXCLUDED.instruction,
+                         required_count = EXCLUDED.required_count`,
+        [req.params.lessonId, it.grammarId, it.sortOrder ?? i, (it.instruction || '').trim() || null, reqCount]
+      );
+    }
+  });
   res.json({ ok: true });
 }));
 
@@ -2687,18 +2702,23 @@ router.delete('/module-grammar/:id', asyncHandler(async (req, res) => {
 router.post('/module-grammar/bulk', asyncHandler(async (req, res) => {
   const { moduleId, items, replace } = req.body || {};
   if (!moduleId || !Array.isArray(items)) return res.status(400).json({ error: 'moduleId and items[] required' });
-  if (replace) await query(`DELETE FROM module_grammar WHERE module_id = $1`, [moduleId]);
-  const inserted = [];
-  for (let i = 0; i < items.length; i++) {
-    const g = items[i] || {};
-    if (!g.pattern) continue;
-    const r = await query(
-      `INSERT INTO module_grammar (module_id, lesson_id, pattern, meaning, example, notes, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [moduleId, g.lessonId || null, g.pattern, g.meaning || null, g.example || null, g.notes || null, g.sortOrder ?? i]
-    );
-    inserted.push(r.rows[0]);
-  }
+  // replace=true wipes the module's grammar first; wrap so a crash mid-insert
+  // can't leave it emptied or half-populated.
+  const inserted = await withTransaction(async (client) => {
+    if (replace) await client.query(`DELETE FROM module_grammar WHERE module_id = $1`, [moduleId]);
+    const out = [];
+    for (let i = 0; i < items.length; i++) {
+      const g = items[i] || {};
+      if (!g.pattern) continue;
+      const r = await client.query(
+        `INSERT INTO module_grammar (module_id, lesson_id, pattern, meaning, example, notes, sort_order)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+        [moduleId, g.lessonId || null, g.pattern, g.meaning || null, g.example || null, g.notes || null, g.sortOrder ?? i]
+      );
+      out.push(r.rows[0]);
+    }
+    return out;
+  });
   res.status(201).json({ grammar: inserted });
 }));
 
@@ -2750,52 +2770,61 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
   // di list pelajaran salah. FK ON DELETE CASCADE handle quiz_options +
   // quiz_attempts otomatis. ON DELETE CASCADE buat kanji_items udah ada
   // (migration 015), buat lesson_deck_items juga.
-  if (type) {
-    const cur = await query(`SELECT type FROM lessons WHERE id = $1 LIMIT 1`, [req.params.id]);
-    if (cur.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-    const oldType = cur.rows[0].type;
-    if (oldType !== type) {
-      if (oldType === 'quiz') {
-        await query(`DELETE FROM quiz_questions WHERE lesson_id = $1`, [req.params.id]);
-        await query(`DELETE FROM quiz_attempts WHERE lesson_id = $1`, [req.params.id]);
-      } else if (oldType === 'kanji') {
-        await query(`DELETE FROM kanji_items WHERE lesson_id = $1`, [req.params.id]);
-      } else if (oldType === 'deck') {
-        await query(`DELETE FROM lesson_deck_items WHERE lesson_id = $1`, [req.params.id]);
-      } else if (oldType === 'kana') {
-        await query(`DELETE FROM lesson_kana_items WHERE lesson_id = $1`, [req.params.id]);
-      } else if (oldType === 'grammar_task') {
-        await query(`DELETE FROM lesson_grammar_task_items WHERE lesson_id = $1`, [req.params.id]);
+  // Type-switch cleanup + UPDATE must be atomic: this deletes quiz_attempts
+  // (student progress) and other nested content before re-typing the lesson.
+  // A crash between the DELETEs and the UPDATE would orphan content and lose
+  // student history with no consistent state to recover to.
+  const outcome = await withTransaction(async (client) => {
+    if (type) {
+      const cur = await client.query(`SELECT type FROM lessons WHERE id = $1 LIMIT 1`, [req.params.id]);
+      if (cur.rows.length === 0) return { notFound: true };
+      const oldType = cur.rows[0].type;
+      if (oldType !== type) {
+        if (oldType === 'quiz') {
+          await client.query(`DELETE FROM quiz_questions WHERE lesson_id = $1`, [req.params.id]);
+          await client.query(`DELETE FROM quiz_attempts WHERE lesson_id = $1`, [req.params.id]);
+        } else if (oldType === 'kanji') {
+          await client.query(`DELETE FROM kanji_items WHERE lesson_id = $1`, [req.params.id]);
+        } else if (oldType === 'deck') {
+          await client.query(`DELETE FROM lesson_deck_items WHERE lesson_id = $1`, [req.params.id]);
+        } else if (oldType === 'kana') {
+          await client.query(`DELETE FROM lesson_kana_items WHERE lesson_id = $1`, [req.params.id]);
+        } else if (oldType === 'grammar_task') {
+          await client.query(`DELETE FROM lesson_grammar_task_items WHERE lesson_id = $1`, [req.params.id]);
+        }
       }
     }
-  }
 
-  const result = await query(
-    `UPDATE lessons SET
-       slug = COALESCE($2, slug),
-       title = COALESCE($3, title),
-       type = COALESCE($4, type),
-       content = COALESCE($5, content),
-       video_url = COALESCE($6, video_url),
-       duration_minutes = COALESCE($7, duration_minutes),
-       sort_order = COALESCE($8, sort_order),
-       passing_score_pct = COALESCE($9, passing_score_pct),
-       questions_per_attempt = CASE WHEN $11::boolean THEN $10 ELSE questions_per_attempt END,
-       cooldown_hours = COALESCE($12, cooldown_hours),
-       popup_after_lesson_id = CASE WHEN $14::boolean THEN $13 ELSE popup_after_lesson_id END
-     WHERE id = $1 RETURNING *`,
-    [
-      req.params.id, slug, title, type, content, videoUrl, durationMinutes, sortOrder,
-      passingScorePct != null && passingScorePct !== '' ? Number(passingScorePct) : null,
-      hasQPA && questionsPerAttempt !== '' && questionsPerAttempt != null ? Number(questionsPerAttempt) : null,
-      hasQPA,
-      cooldownHours != null && cooldownHours !== '' ? Number(cooldownHours) : null,
-      hasPopup && popupAfterLessonId ? popupAfterLessonId : null,
-      hasPopup,
-    ]
-  );
-  if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-  res.json({ lesson: result.rows[0] });
+    const result = await client.query(
+      `UPDATE lessons SET
+         slug = COALESCE($2, slug),
+         title = COALESCE($3, title),
+         type = COALESCE($4, type),
+         content = COALESCE($5, content),
+         video_url = COALESCE($6, video_url),
+         duration_minutes = COALESCE($7, duration_minutes),
+         sort_order = COALESCE($8, sort_order),
+         passing_score_pct = COALESCE($9, passing_score_pct),
+         questions_per_attempt = CASE WHEN $11::boolean THEN $10 ELSE questions_per_attempt END,
+         cooldown_hours = COALESCE($12, cooldown_hours),
+         popup_after_lesson_id = CASE WHEN $14::boolean THEN $13 ELSE popup_after_lesson_id END
+       WHERE id = $1 RETURNING *`,
+      [
+        req.params.id, slug, title, type, content, videoUrl, durationMinutes, sortOrder,
+        passingScorePct != null && passingScorePct !== '' ? Number(passingScorePct) : null,
+        hasQPA && questionsPerAttempt !== '' && questionsPerAttempt != null ? Number(questionsPerAttempt) : null,
+        hasQPA,
+        cooldownHours != null && cooldownHours !== '' ? Number(cooldownHours) : null,
+        hasPopup && popupAfterLessonId ? popupAfterLessonId : null,
+        hasPopup,
+      ]
+    );
+    if (result.rows.length === 0) return { notFound: true };
+    return { lesson: result.rows[0] };
+  });
+
+  if (outcome.notFound) return res.status(404).json({ error: 'Not found' });
+  res.json({ lesson: outcome.lesson });
 }));
 
 router.delete('/lessons/:id', asyncHandler(async (req, res) => {
@@ -2867,41 +2896,46 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
   const sectionNo = normalizeQuizSectionNumber(sectionNumber);
   const sectionTitle = (sectionLabel && String(sectionLabel).trim()) || `Section ${sectionNo}`;
 
-  const qRes = await query(
-    `INSERT INTO quiz_questions (
-       lesson_id, question, question_type, question_category,
-       section_number, section_label, section_instruction, audio_script, passage, image_url,
-       correct_answer, explanation, sort_order
-     )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
-    [
-      lessonId,
-      question,
-      questionType || 'multiple_choice',
-      category,
-      sectionNo,
-      sectionTitle,
-      sectionInstruction || null,
-      (audioScript && String(audioScript).trim()) || null,
-      (passage && String(passage).trim()) || null,
-      (imageUrl && String(imageUrl).trim()) || null,
-      correctAnswer || null,
-      explanation || null,
-      sortOrder || 0,
-    ]
-  );
-  const q = qRes.rows[0];
+  // Question + options written atomically: a crash mid-loop must not leave a
+  // question with a partial option set (a broken live quiz).
+  const q = await withTransaction(async (client) => {
+    const qRes = await client.query(
+      `INSERT INTO quiz_questions (
+         lesson_id, question, question_type, question_category,
+         section_number, section_label, section_instruction, audio_script, passage, image_url,
+         correct_answer, explanation, sort_order
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+      [
+        lessonId,
+        question,
+        questionType || 'multiple_choice',
+        category,
+        sectionNo,
+        sectionTitle,
+        sectionInstruction || null,
+        (audioScript && String(audioScript).trim()) || null,
+        (passage && String(passage).trim()) || null,
+        (imageUrl && String(imageUrl).trim()) || null,
+        correctAnswer || null,
+        explanation || null,
+        sortOrder || 0,
+      ]
+    );
+    const row = qRes.rows[0];
 
-  if (Array.isArray(options) && options.length > 0) {
-    for (let i = 0; i < options.length; i++) {
-      const o = options[i];
-      await query(
-        `INSERT INTO quiz_options (question_id, option_text, is_correct, image_url, sort_order)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [q.id, o.text || o.option_text, !!o.isCorrect || !!o.is_correct, o.imageUrl || o.image_url || null, i]
-      );
+    if (Array.isArray(options) && options.length > 0) {
+      for (let i = 0; i < options.length; i++) {
+        const o = options[i];
+        await client.query(
+          `INSERT INTO quiz_options (question_id, option_text, is_correct, image_url, sort_order)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [row.id, o.text || o.option_text, !!o.isCorrect || !!o.is_correct, o.imageUrl || o.image_url || null, i]
+        );
+      }
     }
-  }
+    return row;
+  });
 
   res.status(201).json({ question: q });
 }));
@@ -2921,57 +2955,63 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
   const audioScriptNorm = hasAudioScript ? ((audioScript && String(audioScript).trim()) || null) : null;
   const passageNorm = hasPassage ? ((passage && String(passage).trim()) || null) : null;
   const imageUrlNorm = hasImageUrl ? ((imageUrl && String(imageUrl).trim()) || null) : null;
-  const result = await query(
-    `UPDATE quiz_questions SET
-       question = COALESCE($2, question),
-       question_type = COALESCE($3, question_type),
-       correct_answer = COALESCE($4, correct_answer),
-       explanation = COALESCE($5, explanation),
-       sort_order = COALESCE($6, sort_order),
-       question_category = COALESCE($7, question_category),
-       section_number = COALESCE($8, section_number),
-       section_label = COALESCE($9, section_label),
-       section_instruction = CASE WHEN $11::boolean THEN $10 ELSE section_instruction END,
-       audio_script = CASE WHEN $13::boolean THEN $12 ELSE audio_script END,
-       image_url = CASE WHEN $15::boolean THEN $14 ELSE image_url END,
-       passage = CASE WHEN $17::boolean THEN $16 ELSE passage END
-      WHERE id = $1 RETURNING *`,
-    [
-      req.params.id,
-      question,
-      questionType,
-      correctAnswer,
-      explanation,
-      sortOrder,
-      category,
-      sectionNo,
-      sectionLabel || (sectionNo ? `Section ${sectionNo}` : null),
-      sectionInstruction || null,
-      hasSectionInstruction,
-      audioScriptNorm,
-      hasAudioScript,
-      imageUrlNorm,
-      hasImageUrl,
-      passageNorm,
-      hasPassage,
-    ]
-  );
-  if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  // Update + wholesale option replace must be atomic: the old DELETE-then-loop
+  // could wipe every option then crash, leaving a live question answerless.
+  const updated = await withTransaction(async (client) => {
+    const result = await client.query(
+      `UPDATE quiz_questions SET
+         question = COALESCE($2, question),
+         question_type = COALESCE($3, question_type),
+         correct_answer = COALESCE($4, correct_answer),
+         explanation = COALESCE($5, explanation),
+         sort_order = COALESCE($6, sort_order),
+         question_category = COALESCE($7, question_category),
+         section_number = COALESCE($8, section_number),
+         section_label = COALESCE($9, section_label),
+         section_instruction = CASE WHEN $11::boolean THEN $10 ELSE section_instruction END,
+         audio_script = CASE WHEN $13::boolean THEN $12 ELSE audio_script END,
+         image_url = CASE WHEN $15::boolean THEN $14 ELSE image_url END,
+         passage = CASE WHEN $17::boolean THEN $16 ELSE passage END
+        WHERE id = $1 RETURNING *`,
+      [
+        req.params.id,
+        question,
+        questionType,
+        correctAnswer,
+        explanation,
+        sortOrder,
+        category,
+        sectionNo,
+        sectionLabel || (sectionNo ? `Section ${sectionNo}` : null),
+        sectionInstruction || null,
+        hasSectionInstruction,
+        audioScriptNorm,
+        hasAudioScript,
+        imageUrlNorm,
+        hasImageUrl,
+        passageNorm,
+        hasPassage,
+      ]
+    );
+    if (result.rows.length === 0) return null;
 
-  if (Array.isArray(options)) {
-    // Replace options wholesale
-    await query(`DELETE FROM quiz_options WHERE question_id = $1`, [req.params.id]);
-    for (let i = 0; i < options.length; i++) {
-      const o = options[i];
-      await query(
-        `INSERT INTO quiz_options (question_id, option_text, is_correct, image_url, sort_order)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [req.params.id, o.text || o.option_text, !!o.isCorrect || !!o.is_correct, o.imageUrl || o.image_url || null, i]
-      );
+    if (Array.isArray(options)) {
+      // Replace options wholesale
+      await client.query(`DELETE FROM quiz_options WHERE question_id = $1`, [req.params.id]);
+      for (let i = 0; i < options.length; i++) {
+        const o = options[i];
+        await client.query(
+          `INSERT INTO quiz_options (question_id, option_text, is_correct, image_url, sort_order)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [req.params.id, o.text || o.option_text, !!o.isCorrect || !!o.is_correct, o.imageUrl || o.image_url || null, i]
+        );
+      }
     }
-  }
+    return result.rows[0];
+  });
 
-  res.json({ question: result.rows[0] });
+  if (!updated) return res.status(404).json({ error: 'Not found' });
+  res.json({ question: updated });
 }));
 
 router.delete('/quiz-questions/:id', asyncHandler(async (req, res) => {
@@ -3138,6 +3178,21 @@ router.delete('/testimonials/:id', asyncHandler(async (req, res) => {
 // ===== USERS (admin view only) =====
 
 router.get('/users', asyncHandler(async (req, res) => {
+  // Server-side search + pagination so users beyond the old hard cap of 500
+  // are reachable (search by name/email; page with limit/offset).
+  const q = String(req.query.q || '').trim();
+  const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 100));
+  const offset = Math.max(0, Number(req.query.offset) || 0);
+  const params = [];
+  let where = '';
+  if (q) {
+    params.push('%' + q + '%');
+    const p = `$${params.length}`;
+    where = `WHERE (u.email ILIKE ${p} OR u.full_name ILIKE ${p} OR u.google_name ILIKE ${p})`;
+  }
+  const totalRes = await query(`SELECT COUNT(*)::int AS n FROM users u ${where}`, params);
+  const listParams = params.slice();
+  listParams.push(limit, offset);
   const result = await query(
     `SELECT u.id, u.email, u.full_name, u.google_name, u.avatar_url, u.created_at,
             COALESCE(s.xp, 0) AS xp, COALESCE(s.streak_days, 0) AS streak_days,
@@ -3145,10 +3200,12 @@ router.get('/users', asyncHandler(async (req, res) => {
             s.last_active_date
      FROM users u
      LEFT JOIN user_stats s ON s.user_id = u.id
+     ${where}
      ORDER BY u.created_at DESC
-     LIMIT 500`
+     LIMIT $${listParams.length - 1} OFFSET $${listParams.length}`,
+    listParams
   );
-  res.json({ users: result.rows });
+  res.json({ users: result.rows, total: totalRes.rows[0].n });
 }));
 
 // ===== AKSES DASHBOARD (enrollment grants) =====
@@ -3243,6 +3300,29 @@ router.post('/user-access/revoke', asyncHandler(async (req, res) => {
 // ===== DISCUSSIONS (admin moderation) =====
 
 router.get('/discussions', asyncHandler(async (req, res) => {
+  // Search (content / user / lesson), status filter (active|deleted|all) and
+  // pagination so moderation isn't limited to the most recent 200 comments.
+  const q = String(req.query.q || '').trim();
+  const status = String(req.query.status || 'all').toLowerCase();
+  const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 200));
+  const offset = Math.max(0, Number(req.query.offset) || 0);
+  const conds = [];
+  const params = [];
+  if (status === 'active') conds.push('d.is_deleted = FALSE');
+  else if (status === 'deleted') conds.push('d.is_deleted = TRUE');
+  if (q) {
+    params.push('%' + q + '%');
+    const p = `$${params.length}`;
+    conds.push(`(d.content ILIKE ${p} OR u.full_name ILIKE ${p} OR u.email ILIKE ${p} OR l.title ILIKE ${p})`);
+  }
+  const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
+  const totalRes = await query(
+    `SELECT COUNT(*)::int AS n FROM discussions d
+       JOIN users u ON u.id = d.user_id JOIN lessons l ON l.id = d.lesson_id ${where}`,
+    params
+  );
+  const listParams = params.slice();
+  listParams.push(limit, offset);
   const result = await query(
     `SELECT d.id, d.lesson_id, d.parent_id, d.content, d.is_admin_reply, d.is_deleted,
             d.created_at, d.user_id, u.full_name, u.email, u.avatar_url,
@@ -3250,10 +3330,22 @@ router.get('/discussions', asyncHandler(async (req, res) => {
      FROM discussions d
      JOIN users u ON u.id = d.user_id
      JOIN lessons l ON l.id = d.lesson_id
+     ${where}
      ORDER BY d.created_at DESC
-     LIMIT 200`
+     LIMIT $${listParams.length - 1} OFFSET $${listParams.length}`,
+    listParams
   );
-  res.json({ discussions: result.rows });
+  res.json({ discussions: result.rows, total: totalRes.rows[0].n });
+}));
+
+// Restore a soft-deleted comment (admin moderation undo).
+router.post('/discussions/:id/restore', asyncHandler(async (req, res) => {
+  const r = await query(
+    `UPDATE discussions SET is_deleted = FALSE, updated_at = NOW() WHERE id = $1 RETURNING id`,
+    [req.params.id]
+  );
+  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ ok: true });
 }));
 
 // ===== KANJI ITEMS (Daftar Kanji di main site) =====
