@@ -5571,9 +5571,19 @@ function getTimeGreeting() {
 }
 
 function getUserName() {
-  if (!session || !session.email) return 'teman';
-  const local = session.email.split('@')[0];
-  const clean = local.replace(/[._-]+/g, ' ').trim();
+  if (!session) return 'teman';
+  const email = session.email || '';
+  const emailLocal = email ? email.split('@')[0] : '';
+  // session.name di-mirror dari full_name (nama yang diketik user saat daftar)
+  // oleh mirrorUserToLocal() di api-client.js. Pakai itu sebagai sumber utama.
+  const name = (session.name || '').trim();
+  // Fallback ke email local-part yang dirapikan hanya untuk akun lama yang
+  // belum punya display name (di kasus itu session.name === email local-part).
+  if (name && name.toLowerCase() !== emailLocal.toLowerCase()) {
+    return name;
+  }
+  if (!emailLocal) return name || 'teman';
+  const clean = emailLocal.replace(/[._-]+/g, ' ').trim();
   return clean.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
@@ -5608,7 +5618,7 @@ function greetingBannerHtml() {
   return `
     <div class="greeting-banner">
       <div>
-        <h1 class="greeting-jp">${g.jp}、<span class="name">${name}</span><span class="san">さん</span></h1>
+        <h1 class="greeting-jp">${g.jp}、<span class="name">${escapeHtml(name)}</span><span class="san">さん</span></h1>
         <p class="greeting-id">${g.id} — ${g.msg}</p>
         ${resume}
       </div>
