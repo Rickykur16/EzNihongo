@@ -1663,8 +1663,11 @@ function renderLessons() {
           <button class="btn btn-ghost" onclick="openPelajaranImporter('${STATE.selectedModule}')" title="Pilih pelajaran dari Bab Notion buat di-import sebagai lesson di modul ini">↻ Import Pelajaran dari Notion</button>
         </div>`
       : `
-        <div style="color:#737373;font-size:13px;font-family:var(--font-body);margin-bottom:10px;line-height:1.5;">
-          Menampilkan <strong>semua pelajaran</strong> di seluruh Bab ${escapeHtml(courseTitle)}, dikelompokkan per Bab. Pakai filter kategori &amp; pencarian untuk mengelompokkan. Pilih satu Bab di atas untuk menambah pelajaran / import.
+        <div class="toolbar">
+          <button class="btn btn-primary" onclick="newLessonPickModule()">+ Pelajaran baru</button>
+          <span style="color:#737373;font-size:12.5px;font-family:var(--font-body);line-height:1.5;">
+            Semua pelajaran di seluruh Bab ${escapeHtml(courseTitle)}, dikelompokkan per Bab (pakai filter kategori &amp; pencarian). Import Notion: pilih satu Bab dulu.
+          </span>
         </div>`;
     if (STATE.selectedModule && STATE.lessons.length === 0) {
       body = `${actionsToolbar}<div class="empty">Belum ada pelajaran di modul ini.</div>`;
@@ -2192,6 +2195,31 @@ function nextSortOrder(list, key) {
   if (!Array.isArray(list) || list.length === 0) return 1;
   return Math.max(0, ...list.map((x) => Number(x[key || 'sort_order']) || 0)) + 1;
 }
+// Di mode "Semua Bab" tidak ada modul terpilih, jadi tanya dulu Bab tujuan
+// sebelum buka form pelajaran baru (kalau cuma 1 Bab, langsung pakai itu).
+window.newLessonPickModule = () => {
+  const mods = STATE.modules || [];
+  if (mods.length === 0) { notify('Belum ada Bab di kursus ini. Buat Bab dulu di tab Modul.', true); return; }
+  if (mods.length === 1) { newLesson(mods[0].id); return; }
+  const opts = mods.map((m) => `<option value="${m.id}">${escapeHtml(m.title || '')}</option>`).join('');
+  openModal(`
+    <h3>Pelajaran baru — pilih Bab</h3>
+    <div class="field">
+      <label>Tambahkan ke Bab</label>
+      <select id="new-lesson-module">${opts}</select>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button type="button" class="btn btn-primary" onclick="newLessonProceed()">Lanjut</button>
+    </div>
+  `);
+};
+window.newLessonProceed = () => {
+  const mid = (document.getElementById('new-lesson-module') || {}).value || '';
+  if (!mid) return;
+  newLesson(mid); // mengganti isi modal dengan form pelajaran baru untuk Bab itu
+};
+
 window.newLesson = (moduleId) => {
   openModal(lessonFormHtml(null));
   const form = document.getElementById('lesson-form');
@@ -2199,7 +2227,9 @@ window.newLesson = (moduleId) => {
   wireLessonTypeVisibility(form);
   wireRichToolbarAll(form);
   wireContentPreview(form);
-  form.querySelector('input[name="sortOrder"]').value = nextSortOrder(STATE.lessons);
+  // Sort order relatif ke Bab tujuan (bukan gabungan semua Bab di mode Semua Bab).
+  const mod = (STATE.modules || []).find((m) => m.id === moduleId);
+  form.querySelector('input[name="sortOrder"]').value = nextSortOrder((mod && mod.lessons) || STATE.lessons);
   form.addEventListener('submit', (e) => submitLesson(e, null, moduleId));
 };
 window.editLesson = (id) => {
