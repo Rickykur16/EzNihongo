@@ -2,24 +2,27 @@
 
 ## Pending ops / infra (jadwal: minggu ini)
 
-- [ ] **Offsite backup ke Cloudflare R2** — `RCLONE_REMOTE` di
-  `/var/www/eznihongo/backend/.env` masih kosong, jadi `backup.sh` cuma
-  nge-dump lokal di `/var/backups/eznihongo/`. Risiko: kalau VPS hilang
-  (disk corrupt / akun suspended / hacker `rm -rf`), backup ikut hilang.
-  Setup: rclone config (s3, provider Cloudflare) → `RCLONE_REMOTE=r2:eznihongo-backups`
-  di `.env` → test `sudo /var/www/eznihongo/backend/deploy/backup.sh` dan
-  `sudo rclone ls r2:eznihongo-backups`. Lihat session sebelumnya untuk
-  step lengkapnya.
+- [x] **Offsite backup ke Cloudflare R2** — sudah hidup (konfirmasi user,
+  Jul 2026): `RCLONE_REMOTE` terisi di `/var/www/eznihongo/backend/.env`,
+  `backup.sh` upload arsip harian via `rclone copy`. Verifikasi sesekali:
+  `tail /var/log/eznihongo-backup.log` (harus ada baris "Upload ke r2:...")
+  + `sudo rclone ls r2:eznihongo-backups`.
 
 - [ ] **GPG encryption pada dump** sebelum di-upload offsite. Dump berisi
-  email user + raw webhook Midtrans (PII + payment data). Tambahkan
+  email user + raw webhook Midtrans (PII + payment data) dan sekarang
+  BENERAN naik ke R2 tanpa enkripsi — makin urgent. Tambahkan
   `gpg --symmetric --cipher-algo AES256` di `backup.sh` sebelum
   `rclone copy`. Passphrase simpan di password manager, bukan di repo.
-  Hanya relevan setelah offsite hidup.
 
-- [ ] **`pg_dumpall --globals-only`** terpisah untuk role / grant. Saat ini
-  `backup.sh` cuma dump database `eznihongo` — kalau VPS rebuild dari nol,
-  role `eznihongo_app` + grant-nya harus dibikin manual dulu.
+- [ ] **Retensi remote R2** — `rclone copy` cuma nambah, tidak pernah hapus;
+  retensi 14 hari cuma berlaku lokal, bucket numpuk selamanya (biaya kecil
+  tapi PII lama ikut numpuk). Tambah `rclone delete "$RCLONE_REMOTE" --min-age 30d`
+  setelah copy di `backup.sh`, atau set lifecycle rule di dashboard R2.
+
+- [x] **`pg_dumpall --globals-only`** — SUDAH di-handle `backup.sh`
+  (`globals.sql` ikut arsip, `--no-role-passwords` karena `eznihongo_app`
+  bukan superuser). Catatan restore: password role `eznihongo_app` harus
+  di-set manual (tidak ikut dump).
 
 - [ ] **Test restore ke staging** — tulisan ini ga akan jadi backup beneran
   sampai pernah dicoba di-restore. Minimal sekali per bulan ke Postgres
