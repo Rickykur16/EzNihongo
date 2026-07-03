@@ -217,7 +217,16 @@
   `callClaude()`. `TUTOR_SYSTEM` melarang markdown (bubble chat render teks
   polos via `S.esc`, tidak ada parser markdown), mewajibkan contoh Jepang
   akurat sesuai konsep, dan membatasi panjang jawaban (±6 kalimat / 5 poin,
-  `max_tokens` 500).
+  `max_tokens` 500). **Balasan streaming** ("seperti lagi chatingan"): frontend
+  kirim `stream: true` → backend pakai `callClaudeStream()` (helper SSE di
+  `anthropic.js`) dan meneruskan potongan teks sebagai chunked `text/plain`
+  (header `X-Accel-Buffering: no` WAJIB — tanpa itu nginx mem-buffer respons
+  proxy sampai selesai). Error sebelum byte pertama tetap JSON 502/503; error
+  di tengah stream → respons ditutup, frontend simpan teks parsial. Frontend
+  (`AISenpai.send` + `_streamUpdate` di welcome.html): bubble
+  `#senpai-stream-text` tumbuh via `textContent` per chunk (tanpa re-render
+  penuh biar input tidak ke-reset), fallback otomatis ke JSON kalau backend
+  balas `application/json` (kompatibel dua arah saat deploy tidak serentak).
 - **Maneko-chan disembunyikan saat penilaian** — widget tutor (`#ai-senpai`,
   `window.AISenpai` di welcome.html) di-hide via `display:none` kontainer saat
   lesson aktif bertipe `quiz`/`grammar_task` dan saat popup tugas grammar
