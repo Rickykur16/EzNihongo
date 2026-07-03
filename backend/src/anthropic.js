@@ -15,6 +15,10 @@ export const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5'
 // Default sonnet; admin-only & volume rendah jadi biayanya kecil. Fitur
 // siswa (tutor, grammar eval, coaching) tetap ANTHROPIC_MODEL (haiku).
 export const ANTHROPIC_GEN_MODEL = process.env.ANTHROPIC_GEN_MODEL || 'claude-sonnet-4-6';
+// Model khusus TUTOR chat (Maneko-chan): haiku terbukti halusinasi di
+// penjelasan linguistik (contoh youon/sokuon ngaco, arti kata dikarang).
+// Default sonnet — kualitas jawaban > biaya; bisa di-override via .env.
+export const ANTHROPIC_TUTOR_MODEL = process.env.ANTHROPIC_TUTOR_MODEL || 'claude-sonnet-4-6';
 
 export function anthropicEnabled() {
   return !!ANTHROPIC_API_KEY;

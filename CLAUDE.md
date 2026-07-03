@@ -207,6 +207,17 @@
   `gtOpenTaskPopup` → `openGrammarTaskPopup`) sampai task selesai. Render kartu
   di-share via `gtCardsHtml`; complete popup (`gtPopupComplete`) menandai lesson
   task selesai + XP lalu lanjut.
+- **Tutor Maneko-chan pakai Sonnet** — `backend/src/routes/tutor.js`
+  (`POST /api/tutor/chat`) pakai `ANTHROPIC_TUTOR_MODEL` (default
+  `claude-sonnet-4-6`, opsional di `.env`) — haiku terbukti halusinasi di
+  penjelasan linguistik (contoh youon/sokuon ngaco, arti kata dikarang; lihat
+  screenshot user Jul 2026). Ide routing haiku→sonnet via classifier ditolak
+  user; keputusan: selalu sonnet, tanpa routing. Fitur siswa lain (grammar
+  eval, coaching) tetap `ANTHROPIC_MODEL` (haiku). tutor.js sudah migrasi ke
+  `callClaude()`. `TUTOR_SYSTEM` melarang markdown (bubble chat render teks
+  polos via `S.esc`, tidak ada parser markdown), mewajibkan contoh Jepang
+  akurat sesuai konsep, dan membatasi panjang jawaban (±6 kalimat / 5 poin,
+  `max_tokens` 500).
 - **Maneko-chan disembunyikan saat penilaian** — widget tutor (`#ai-senpai`,
   `window.AISenpai` di welcome.html) di-hide via `display:none` kontainer saat
   lesson aktif bertipe `quiz`/`grammar_task` dan saat popup tugas grammar
@@ -236,8 +247,8 @@
   `coaching_note_cache` per "weakness signature" (akurasi di-bucket 5%) seperti
   `grammar_eval_cache`. `ANTHROPIC_API_KEY` kosong / gagal → fallback catatan
   berbasis-aturan (`noteSource:'rule'`), endpoint **tidak pernah 503**. Helper
-  Claude bersama baru `backend/src/anthropic.js` (`callClaude()`); tiga call-site
-  lama (tutor/grammar-task/admin generate) belum dimigrasi (follow-up). Frontend:
+  Claude bersama baru `backend/src/anthropic.js` (`callClaude()`); dua call-site
+  lama (grammar-task/admin generate) belum dimigrasi (follow-up; tutor sudah). Frontend:
   `loadRecommendations()` dipanggil dari `renderLearning`, render via
   `recoPanelHtml`; lesson rekomendasi (UUID dari API) dicocokkan via `l.apiId`
   lalu `selectLesson(moduleSlug, lessonSlug)`. Panel disembunyikan kalau belum

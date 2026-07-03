@@ -1,27 +1,34 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { asyncHandler, requireAuth } from '../middleware.js';
+import { anthropicEnabled, callClaude, ANTHROPIC_TUTOR_MODEL } from '../anthropic.js';
 
 const router = Router();
 
 // ---- AI Senpai chat tutor (Anthropic) ----
 // Chat tutor bahasa Jepang untuk siswa login. Multi-turn: frontend kirim seluruh
 // riwayat pesan (cap 20 terakhir) + konteks pelajaran aktif; server menambah
-// system prompt persona "Senpai" lalu memanggil Claude. Tidak ada cache DB
-// (multi-turn → cache tak berguna) dan tidak ada riwayat tersimpan di server
-// (frontend simpan di sessionStorage). ANTHROPIC_API_KEY opsional (bukan
-// REQUIRED_ENV): kosong → 503, frontend fallback ke pesan "AI nonaktif".
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
-const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5';
+// system prompt persona "Senpai" lalu memanggil Claude via callClaude()
+// (model ANTHROPIC_TUTOR_MODEL, default sonnet — haiku halusinasi di
+// penjelasan linguistik). Tidak ada cache DB (multi-turn → cache tak berguna)
+// dan tidak ada riwayat tersimpan di server (frontend simpan di
+// sessionStorage). ANTHROPIC_API_KEY opsional (bukan REQUIRED_ENV):
+// kosong → 503, frontend fallback ke pesan "AI nonaktif".
 const MAX_MESSAGES = 20;
 const MAX_CONTENT_LEN = 2000;
+// Pagar keras panjang jawaban — bubble chat kecil, jawaban panjang malah
+// susah dibaca (plus meredam biaya output sonnet).
+const MAX_REPLY_TOKENS = 500;
 
 // System statis (cacheable) — persona inti yang tak berubah antar percakapan.
 const TUTOR_SYSTEM = `Kamu adalah "Maneko-chan", maskot kucing tutor bahasa Jepang yang ramah dan sabar di aplikasi belajar EzNihongo. Muridmu orang Indonesia, kebanyakan level pemula (JLPT N5/N4).
 
 Aturan:
 - Jawab dalam Bahasa Indonesia yang hangat dan ringkas. Jangan bertele-tele.
+- Jawab SINGKAT — maksimal sekitar 6 kalimat atau 5 poin. Pakai bahasa sehari-hari yang mudah dipahami pemula; hindari istilah linguistik teknis tanpa penjelasan singkat. Cukup 1-2 contoh terbaik, jangan borong semua contoh. Kalau topiknya luas, jawab intinya dulu lalu tawarkan lanjutan (misal "mau kujelasin lebih dalam?").
+- Jangan pakai format markdown (asterisk **, heading #, dsb) — tampilan chat tidak mendukungnya. Tulis teks polos; untuk daftar pakai tanda hubung (-).
 - Kalau menulis bahasa Jepang, sertakan cara baca (kana/romaji) dan arti singkat.
+- Pastikan setiap contoh kata/kalimat Jepang benar-benar mengandung konsep yang sedang dijelaskan dan artinya akurat. Kalau tidak yakin, jangan beri contoh itu.
 - Beri contoh kalimat yang relevan dengan level pemula bila membantu.
 - Fokus pada belajar bahasa Jepang (grammar, kosakata, kanji, budaya, tips belajar). Kalau ditanya hal di luar topik itu, arahkan kembali dengan sopan.
 - Dorong murid dengan nada positif, seperti senpai yang suportif.`;
@@ -53,7 +60,7 @@ function sanitizeMessages(raw) {
 
 // POST /api/tutor/chat  body: { messages: [{role, content}], context?: { level, lesson } }
 router.post('/tutor/chat', requireAuth, tutorLimiter, asyncHandler(async (req, res) => {
-  if (!ANTHROPIC_API_KEY) return res.status(503).json({ error: 'tutor_disabled' });
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'tutor_disabled' });
 
   const messages = sanitizeMessages((req.body || {}).messages);
   if (!messages || messages.length === 0) {
@@ -67,36 +74,14 @@ router.post('/tutor/chat', requireAuth, tutorLimiter, asyncHandler(async (req, r
     ? `\n\nKonteks: murid sedang membuka pelajaran ${level ? level + ' — ' : ''}"${lesson}". Kaitkan jawaban dengan konteks ini bila relevan.`
     : '');
 
-  let reply;
-  try {
-    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        max_tokens: 700,
-        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-        messages,
-      }),
-    });
-    if (!upstream.ok) {
-      const detail = await upstream.text().catch(() => '');
-      console.error('Anthropic tutor:', upstream.status, detail.slice(0, 200));
-      return res.status(502).json({ error: 'tutor_upstream' });
-    }
-    const data = await upstream.json();
-    reply = Array.isArray(data.content)
-      ? data.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim()
-      : '';
-  } catch (err) {
-    console.error('Anthropic tutor error:', err.message);
-    return res.status(502).json({ error: 'tutor_upstream' });
-  }
-
+  const reply = await callClaude({
+    system,
+    messages,
+    maxTokens: MAX_REPLY_TOKENS,
+    model: ANTHROPIC_TUTOR_MODEL,
+  });
+  // callClaude balikin null saat upstream gagal (error sudah di-log di helper).
+  if (reply === null) return res.status(502).json({ error: 'tutor_upstream' });
   if (!reply) return res.status(502).json({ error: 'tutor_empty' });
   return res.json({ reply });
 }));
