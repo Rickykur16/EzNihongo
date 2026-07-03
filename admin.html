@@ -1408,38 +1408,48 @@ async function boardMoveCard(srcLessonId, dstLessonId, cardId) {
   const dstArr = dst.lesson[arr] || (dst.lesson[arr] = []);
   const idx = srcArr.findIndex((c) => String(c.id) === String(cardId));
   if (idx < 0) return;
-  if (dstArr.some((c) => String(c.id) === String(cardId))) { notify('Kata ini sudah ada di Bab tujuan', true); return; }
   const card = srcArr[idx];
+  // Kata bisa SUDAH ada di deck tujuan — dua deck di Bab yang sama berbagi bank
+  // vocab (module_vocabulary module-scoped), jadi vocabulary_id kerap identik.
+  // Itu BUKAN error: "pindah" = tetap hapus dari sumber, jangan gandakan di
+  // tujuan (POST dilewati; DELETE sumber tetap jalan).
+  const alreadyInDst = dstArr.some((c) => String(c.id) === String(cardId));
   const dstLen = dstArr.length;
-  // Optimistik: pindahkan di STATE lalu repaint.
+  // Optimistik: hapus dari sumber; tambah ke tujuan hanya bila belum ada.
   srcArr.splice(idx, 1);
-  dstArr.push(card);
+  if (!alreadyInDst) dstArr.push(card);
   renderCardBoard();
   try {
     if (type === 'deck') {
-      await api('/admin/lessons/' + dstLessonId + '/deck-items', { method: 'POST', body: JSON.stringify({ vocabularyId: cardId, sortOrder: dstLen, accentColor: card.accentColor || null }) });
+      if (!alreadyInDst) {
+        await api('/admin/lessons/' + dstLessonId + '/deck-items', { method: 'POST', body: JSON.stringify({ vocabularyId: cardId, sortOrder: dstLen, accentColor: card.accentColor || null }) });
+      }
       try {
         await api('/admin/lessons/' + srcLessonId + '/deck-items/' + cardId, { method: 'DELETE' });
       } catch (delErr) {
-        try { await api('/admin/lessons/' + dstLessonId + '/deck-items/' + cardId, { method: 'DELETE' }); } catch {}
+        if (!alreadyInDst) { try { await api('/admin/lessons/' + dstLessonId + '/deck-items/' + cardId, { method: 'DELETE' }); } catch {} }
         throw delErr;
       }
     } else if (type === 'kana') {
-      await api('/admin/lessons/' + dstLessonId + '/kana-items', { method: 'POST', body: JSON.stringify({ kanaId: cardId, sortOrder: dstLen }) });
+      if (!alreadyInDst) {
+        await api('/admin/lessons/' + dstLessonId + '/kana-items', { method: 'POST', body: JSON.stringify({ kanaId: cardId, sortOrder: dstLen }) });
+      }
       try {
         await api('/admin/lessons/' + srcLessonId + '/kana-items/' + cardId, { method: 'DELETE' });
       } catch (delErr) {
-        try { await api('/admin/lessons/' + dstLessonId + '/kana-items/' + cardId, { method: 'DELETE' }); } catch {}
+        if (!alreadyInDst) { try { await api('/admin/lessons/' + dstLessonId + '/kana-items/' + cardId, { method: 'DELETE' }); } catch {} }
         throw delErr;
       }
-    } else { // kanji — lesson_id ada di baris kanji_items
+    } else { // kanji — lesson_id ada di baris kanji_items (tak ada duplikat lintas-lesson)
       await api('/admin/kanji/' + cardId + '/move', { method: 'POST', body: JSON.stringify({ targetLessonId: dstLessonId, sortOrder: dstLen }) });
     }
     notify('"' + (card.japanese || card.character || '') + '" → ' + (dst.lesson.title || 'Bab tujuan'));
   } catch (err) {
     // Revert: kembalikan kartu ke posisi asal.
-    const di = dstArr.findIndex((c) => String(c.id) === String(cardId));
-    if (di >= 0) dstArr.splice(di, 1);
+    if (!alreadyInDst) {
+      const di = dstArr.findIndex((c) => String(c.id) === String(cardId));
+      if (di >= 0) dstArr.splice(di, 1);
+    }
     srcArr.splice(idx, 0, card);
     renderCardBoard();
     notify('Gagal pindah: ' + err.message, true);
