@@ -9459,17 +9459,84 @@ const S = (window.AISenpai = {
     S.typing = true;
     S.render();
     const ctx = { level: (currentState.course || '').toUpperCase(), lesson: S._lessonTitle() };
-    const msgs = S.chat.slice(-20).map((m) => ({ role: m.from === 'ai' ? 'assistant' : 'user', content: m.text }));
-    const done = (aiText) => { S.typing = false; S.chat.push({ from:'ai', text: aiText }); S.persist(); S.render(); };
-    if (typeof window.ezApi !== 'function') { done('Maaf, koneksi tidak tersedia.'); return; }
-    window.ezApi('/tutor/chat', { method:'POST', body: JSON.stringify({ messages: msgs, context: ctx }) })
+    // Riwayat untuk API: bubble AI beruntun (jawaban yang dipecah ala
+    // WhatsApp) digabung jadi SATU pesan assistant — API Anthropic menolak
+    // role yang tidak berselang-seling.
+    const msgs = [];
+    for (const m of S.chat.slice(-20)) {
+      const role = m.from === 'ai' ? 'assistant' : 'user';
+      const last = msgs[msgs.length - 1];
+      if (last && last.role === role) last.content += '\n\n' + m.text;
+      else msgs.push({ role, content: m.text });
+    }
+    const finish = (aiText) => { S._enqueueBubbles(aiText); S._sayDone = true; S._drainSay(); };
+    if (typeof window.ezApi !== 'function') { finish('Maaf, koneksi tidak tersedia.'); return; }
+    window.ezApi('/tutor/chat', { method:'POST', body: JSON.stringify({ messages: msgs, context: ctx, stream: true }) })
       .then(async (r) => {
-        if (r.status === 503) return done('Maaf, Senpai lagi istirahat — fitur AI belum aktif. Coba lagi nanti ya 🐾');
-        if (!r.ok) return done('Aduh, ada gangguan. Coba ulangi sebentar lagi ya.');
-        const d = await r.json().catch(() => ({}));
-        done((d.reply || '').trim() || 'Hmm, coba tanya dengan cara lain ya.');
+        if (r.status === 503) return finish('Maaf, Senpai lagi istirahat — fitur AI belum aktif. Coba lagi nanti ya 🐾');
+        if (!r.ok) return finish('Aduh, ada gangguan. Coba ulangi sebentar lagi ya.');
+        // Backend lama (atau error) balas JSON utuh.
+        if ((r.headers.get('content-type') || '').includes('application/json')) {
+          const d = await r.json().catch(() => ({}));
+          return finish((d.reply || '').trim() || 'Hmm, coba tanya dengan cara lain ya.');
+        }
+        if (!r.body || !r.body.getReader) {
+          const t = await r.text().catch(() => '');
+          return finish(t.trim() || 'Hmm, coba tanya dengan cara lain ya.');
+        }
+        // Streaming: begitu satu paragraf UTUH diterima (dibatasi baris
+        // kosong), langsung masuk antrian bubble — ala WhatsApp, paragraf
+        // yang belum selesai tidak diperlihatkan (cuma titik "mengetik").
+        const reader = r.body.getReader();
+        const dec = new TextDecoder();
+        let acc = '';
+        let sent = 0;
+        const flushComplete = () => {
+          const parts = acc.split(/\n\s*\n/);
+          for (; sent < parts.length - 1; sent++) S._enqueueBubbles(parts[sent]);
+        };
+        try {
+          for (;;) {
+            const { done: fin, value } = await reader.read();
+            if (fin) break;
+            acc += dec.decode(value, { stream: true });
+            flushComplete();
+          }
+          acc += dec.decode();
+        } catch {}
+        const rest = acc.split(/\n\s*\n/).slice(sent).join('\n\n');
+        if (!rest.trim() && sent === 0) return finish('Hmm, coba tanya dengan cara lain ya.');
+        finish(rest);
       })
-      .catch(() => done('Koneksi gagal. Cek internetmu lalu coba lagi 🙏'));
+      .catch(() => finish('Koneksi gagal. Cek internetmu lalu coba lagi 🙏'));
+  },
+
+  // ── Bubble ala WhatsApp: jawaban dipecah per paragraf, muncul satu-satu ──
+  _sayQueue: [],
+  _sayDraining: false,
+  _sayDone: false,
+  _enqueueBubbles(text) {
+    for (const part of String(text || '').split(/\n\s*\n/)) {
+      const t = part.trim();
+      if (t) S._sayQueue.push(t);
+    }
+    S._drainSay();
+  },
+  async _drainSay() {
+    if (S._sayDraining) return;
+    S._sayDraining = true;
+    while (S._sayQueue.length) {
+      const t = S._sayQueue.shift();
+      // Jeda "lagi ngetik" proporsional panjang bubble biar terasa manusiawi
+      // (streaming bisa lebih cepat dari kecepatan baca).
+      await new Promise((r) => setTimeout(r, Math.min(350 + t.length * 8, 1200)));
+      S.chat.push({ from:'ai', text: t });
+      S.persist();
+      S.render();
+    }
+    S._sayDraining = false;
+    // Stream selesai + antrian habis → matikan indikator mengetik.
+    if (S._sayDone) { S._sayDone = false; S.typing = false; S.render(); }
   },
   sendInput() { const el = document.getElementById('senpai-input'); if (el) { const v = el.value; el.value = ''; S.send(v); } },
 

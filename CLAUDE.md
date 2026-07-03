@@ -217,7 +217,22 @@
   `callClaude()`. `TUTOR_SYSTEM` melarang markdown (bubble chat render teks
   polos via `S.esc`, tidak ada parser markdown), mewajibkan contoh Jepang
   akurat sesuai konsep, dan membatasi panjang jawaban (±6 kalimat / 5 poin,
-  `max_tokens` 500).
+  `max_tokens` 500). **Balasan gaya WhatsApp** (multi-bubble, permintaan user
+  — BUKAN typewriter per-huruf, itu ditolak): jawaban dipecah per paragraf
+  (pembatas baris kosong; prompt menyuruh model memecah jadi 1-3 pesan
+  pendek), tiap paragraf muncul sebagai bubble terpisah dengan jeda "lagi
+  ngetik" proporsional panjang (350ms+8ms/char, cap 1.2s). Transport tetap
+  streaming: frontend kirim `stream: true` → backend `callClaudeStream()`
+  (helper SSE di `anthropic.js`) meneruskan potongan sebagai chunked
+  `text/plain` (header `X-Accel-Buffering: no` WAJIB — tanpa itu nginx
+  mem-buffer respons proxy sampai selesai); paragraf yang belum utuh TIDAK
+  ditampilkan (cuma titik typing), begitu utuh masuk antrian bubble
+  (`AISenpai._enqueueBubbles`/`_drainSay` di welcome.html). Error sebelum
+  byte pertama tetap JSON 502/503. Fallback otomatis ke JSON utuh kalau
+  backend balas `application/json` (kompatibel dua arah saat deploy tidak
+  serentak). PENTING: bubble AI beruntun di `S.chat` di-merge jadi satu
+  pesan assistant saat membangun riwayat API (`send()`) — API Anthropic
+  menolak role yang tidak berselang-seling.
 - **Maneko-chan disembunyikan saat penilaian** — widget tutor (`#ai-senpai`,
   `window.AISenpai` di welcome.html) di-hide via `display:none` kontainer saat
   lesson aktif bertipe `quiz`/`grammar_task` dan saat popup tugas grammar
