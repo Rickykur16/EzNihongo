@@ -407,7 +407,10 @@
   Kalau volume bytes besar (>500 MB) migrate ke object storage (R2).
 - **Drill pengenalan dua arah (shared)** — komponen generik `ezDrill*` di
   `welcome.html` (dulu khusus kana, digeneralisasi): dipakai lesson kana
-  (karakter↔bunyi), deck kosakata (kata↔arti), dan kanji (karakter↔arti).
+  (karakter↔bunyi), deck kosakata (kata↔arti), dan kanji — pool kanji diambil
+  dari KOMBINASI kanji (`k.compounds`, flatten semua kanji pelajaran + dedupe
+  by japanese; permintaan user Jul 2026), fallback ke karakter↔`meaning_id`
+  kalau compounds < 2 (bank kosakata course belum punya kata ber-kanji itu).
   Client-side murni, tanpa persistensi/endpoint. Renderer lesson men-set
   `window.__ezDrillCfg` = { pool, front(it), back(it), frontJa/backJa,
   frontIsText/backIsText (sisi teks Latin → modifier `--text`, font lebih

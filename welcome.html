@@ -8367,20 +8367,48 @@ function renderKanjiLesson(course, module, lesson, nav) {
     if (k.id) _kanjiByIdCache.set(k.id, { ...k, compounds: k.compounds || [] });
   }
   window.__ezDrill = null;
-  window.__ezDrillCfg = {
-    pool: items.filter((k) => k.character && k.meaning_id),
-    front: (k) => k.character,
-    back: (k) => k.meaning_id,
-    frontJa: true,
-    backIsText: true,
-    hintF2B: 'Apa artinya?',
-    hintB2F: 'Kanji yang mana?',
-    // Feedback jawaban salah ikut menampilkan cara baca (kun/on) kalau ada.
-    fbBack: (k) => {
-      const readings = [k.kun_reading, k.on_reading].filter(Boolean).join(' / ');
-      return (readings ? readings + ' · ' : '') + k.meaning_id;
-    },
-  };
+  // Drill dari KOMBINASI kanji (compounds, mis. 日本/毎日) — bukan karakter
+  // tunggal — biar latihan sesuai kata yang beneran dipakai. Flatten compounds
+  // semua kanji pelajaran, dedupe by japanese (kata sama bisa muncul di
+  // beberapa kanji, mis. 日本 di 日 dan 本).
+  const compoundSeen = new Set();
+  const compoundPool = [];
+  for (const k of items) {
+    for (const c of (k.compounds || [])) {
+      if (!c.japanese || !c.indonesian || compoundSeen.has(c.japanese)) continue;
+      compoundSeen.add(c.japanese);
+      compoundPool.push(c);
+    }
+  }
+  if (compoundPool.length >= 2) {
+    window.__ezDrillCfg = {
+      pool: compoundPool,
+      front: (c) => c.japanese,
+      back: (c) => c.indonesian,
+      frontJa: true,
+      backIsText: true,
+      hintF2B: 'Apa artinya?',
+      hintB2F: 'Kata yang mana?',
+      // Feedback jawaban salah ikut menampilkan cara bacanya.
+      fbBack: (c) => (c.reading ? c.reading + ' · ' : '') + c.indonesian,
+    };
+  } else {
+    // Fallback: pelajaran tanpa kombinasi (bank kosakata course belum ada
+    // kata yang memuat kanji-kanji ini) → drill karakter↔arti seperti dulu.
+    window.__ezDrillCfg = {
+      pool: items.filter((k) => k.character && k.meaning_id),
+      front: (k) => k.character,
+      back: (k) => k.meaning_id,
+      frontJa: true,
+      backIsText: true,
+      hintF2B: 'Apa artinya?',
+      hintB2F: 'Kanji yang mana?',
+      fbBack: (k) => {
+        const readings = [k.kun_reading, k.on_reading].filter(Boolean).join(' / ');
+        return (readings ? readings + ' · ' : '') + k.meaning_id;
+      },
+    };
+  }
   const intro = (lesson.body && lesson.body.trim())
     ? lesson.body
     : 'Klik karakter untuk lihat goresan, mnemonic, dan kombinasi kosakata.';
@@ -8398,7 +8426,9 @@ function renderKanjiLesson(course, module, lesson, nav) {
       </div>`;
 
   const drillBlock = window.__ezDrillCfg.pool.length >= 2
-    ? ezDrillBlockHtml('Uji ingatanmu dua arah: kanji ↔ arti.') : '';
+    ? ezDrillBlockHtml(compoundPool.length >= 2
+        ? 'Uji ingatanmu dua arah: kombinasi kanji ↔ arti.'
+        : 'Uji ingatanmu dua arah: kanji ↔ arti.') : '';
 
   document.getElementById('main-content').innerHTML = `
     <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · KANJI</p>
