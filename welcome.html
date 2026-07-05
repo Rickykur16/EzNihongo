@@ -3474,33 +3474,37 @@
     font-size: 13.5px; line-height: 1.5; color: #5a4a2a;
   }
   .kana-modal .kana-mn-ico { margin-right: 4px; }
-  /* Kana drill */
-  .kana-drill { margin-top: 24px; padding: 18px; border: 1px solid #ece8e1; border-radius: 16px; background: #fcfbf9; }
-  .kana-drill-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
-  .kana-drill-title { font-size: 15px; font-weight: 800; color: var(--du-ink, #1b1410); }
-  .kana-drill-sub { font-size: 12.5px; color: var(--du-ink-3, #8a8a8a); margin-top: 2px; }
-  .kana-drill-body { margin-top: 16px; }
-  .kana-drill-progress { font-size: 12px; font-weight: 700; color: var(--du-ink-3, #8a8a8a); text-align: center; }
-  .kana-drill-prompt {
+  /* Drill pengenalan dua arah — shared: kana (karakter↔bunyi), deck kosakata
+     (kata↔arti), kanji (karakter↔arti). Lihat ezDrillStart di bawah. */
+  .ez-drill { margin-top: 24px; padding: 18px; border: 1px solid #ece8e1; border-radius: 16px; background: #fcfbf9; }
+  .ez-drill-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .ez-drill-title { font-size: 15px; font-weight: 800; color: var(--du-ink, #1b1410); }
+  .ez-drill-sub { font-size: 12.5px; color: var(--du-ink-3, #8a8a8a); margin-top: 2px; }
+  .ez-drill-body { margin-top: 16px; }
+  .ez-drill-progress { font-size: 12px; font-weight: 700; color: var(--du-ink-3, #8a8a8a); text-align: center; }
+  .ez-drill-prompt {
     font-family: 'Noto Sans JP', sans-serif; font-size: 56px; font-weight: 700; text-align: center;
     color: var(--du-ink, #1b1410); margin: 10px 0 2px; line-height: 1.1;
   }
-  .kana-drill-hint { text-align: center; font-size: 12.5px; color: var(--du-ink-3, #8a8a8a); margin-bottom: 14px; }
-  .kana-drill-opts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-width: 420px; margin: 0 auto; }
-  .kana-drill-opt {
+  /* Sisi teks Latin (arti Indonesia / kata panjang) — ukuran lebih wajar */
+  .ez-drill-prompt--text { font-family: inherit; font-size: 26px; line-height: 1.3; }
+  .ez-drill-hint { text-align: center; font-size: 12.5px; color: var(--du-ink-3, #8a8a8a); margin-bottom: 14px; }
+  .ez-drill-opts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-width: 420px; margin: 0 auto; }
+  .ez-drill-opt {
     font-family: 'Noto Sans JP', sans-serif; font-size: 22px; font-weight: 700; padding: 14px; cursor: pointer;
     background: #fff; border: 1.5px solid #e2ddd4; border-radius: 12px; color: var(--du-ink, #1b1410); transition: all .12s;
   }
-  .kana-drill-opt:hover:not(:disabled) { border-color: var(--brand-red, #C8102E); transform: translateY(-1px); }
-  .kana-drill-opt:disabled { cursor: default; }
-  .kana-drill-opt.correct { background: #ecfdf3; border-color: #6ee7a8; color: #15803d; }
-  .kana-drill-opt.wrong { background: #fef2f2; border-color: #fca5a5; color: #b91c1c; }
-  .kana-drill-feedback { text-align: center; min-height: 24px; margin-top: 14px; font-size: 14px; }
-  .kana-drill-feedback .kdf-ok { color: #15803d; font-weight: 700; }
-  .kana-drill-feedback .kdf-no { color: #b91c1c; font-weight: 600; }
-  .kana-drill-result { text-align: center; padding: 12px 0; }
-  .kana-drill-result .kdr-score { font-size: 40px; font-weight: 800; color: var(--brand-red, #C8102E); font-variant-numeric: tabular-nums; }
-  .kana-drill-result .kdr-pct { font-size: 14px; color: var(--du-ink-3, #8a8a8a); margin-bottom: 16px; }
+  .ez-drill-opt--text { font-family: inherit; font-size: 15px; font-weight: 600; }
+  .ez-drill-opt:hover:not(:disabled) { border-color: var(--brand-red, #C8102E); transform: translateY(-1px); }
+  .ez-drill-opt:disabled { cursor: default; }
+  .ez-drill-opt.correct { background: #ecfdf3; border-color: #6ee7a8; color: #15803d; }
+  .ez-drill-opt.wrong { background: #fef2f2; border-color: #fca5a5; color: #b91c1c; }
+  .ez-drill-feedback { text-align: center; min-height: 24px; margin-top: 14px; font-size: 14px; }
+  .ez-drill-feedback .kdf-ok { color: #15803d; font-weight: 700; }
+  .ez-drill-feedback .kdf-no { color: #b91c1c; font-weight: 600; }
+  .ez-drill-result { text-align: center; padding: 12px 0; }
+  .ez-drill-result .kdr-score { font-size: 40px; font-weight: 800; color: var(--brand-red, #C8102E); font-variant-numeric: tabular-nums; }
+  .ez-drill-result .kdr-pct { font-size: 14px; color: var(--du-ink-3, #8a8a8a); margin-bottom: 16px; }
 
   /* ── Daftar Kanji (mirror Daftar Kosakata pattern) ── */
   .kanji-grid {
@@ -7661,6 +7665,18 @@ function renderDeckLesson(course, module, lesson, nav) {
   const { prev, next, isDone } = nav;
   const items = Array.isArray(lesson.deck) ? lesson.deck : [];
   window.__deckData = items;
+  window.__ezDrill = null;
+  window.__ezDrillCfg = {
+    pool: items.filter((it) => it.japanese && it.indonesian),
+    front: (it) => it.japanese,
+    back: (it) => it.indonesian,
+    frontJa: true,
+    backIsText: true,
+    hintF2B: 'Apa artinya?',
+    hintB2F: 'Kata yang mana?',
+    // Feedback jawaban salah ikut menampilkan kana biar sekalian belajar bacanya.
+    fbBack: (it) => (it.reading && it.reading !== it.japanese ? it.reading + ' · ' : '') + it.indonesian,
+  };
 
   if (!window.__deckEscWired) {
     document.addEventListener('keydown', (e) => {
@@ -7723,6 +7739,9 @@ function renderDeckLesson(course, module, lesson, nav) {
          style="border:0;width:100%;aspect-ratio:16/9;border-radius:14px;background:#000;"></iframe></div>`
     : '';
 
+  const drillBlock = window.__ezDrillCfg.pool.length >= 2
+    ? ezDrillBlockHtml('Uji ingatanmu dua arah: kata ↔ arti.') : '';
+
   document.getElementById('main-content').innerHTML = `
     <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · KOSAKATA</p>
     <h1 class="lesson-title">${lesson.title}</h1>
@@ -7731,6 +7750,7 @@ function renderDeckLesson(course, module, lesson, nav) {
     ${heroBlock}
     ${toolbar}
     ${cardsHtml}
+    ${drillBlock}
     <div class="deck-modal-backdrop" id="deck-modal-backdrop" onclick="if(event.target===this)closeDeckModal()">
       <div class="deck-modal" id="deck-modal" role="dialog" aria-modal="true" aria-labelledby="deck-modal-jp" tabindex="-1">
         <button class="deck-modal-close" type="button" aria-label="Tutup" onclick="closeDeckModal()">
@@ -8346,6 +8366,21 @@ function renderKanjiLesson(course, module, lesson, nav) {
   for (const k of items) {
     if (k.id) _kanjiByIdCache.set(k.id, { ...k, compounds: k.compounds || [] });
   }
+  window.__ezDrill = null;
+  window.__ezDrillCfg = {
+    pool: items.filter((k) => k.character && k.meaning_id),
+    front: (k) => k.character,
+    back: (k) => k.meaning_id,
+    frontJa: true,
+    backIsText: true,
+    hintF2B: 'Apa artinya?',
+    hintB2F: 'Kanji yang mana?',
+    // Feedback jawaban salah ikut menampilkan cara baca (kun/on) kalau ada.
+    fbBack: (k) => {
+      const readings = [k.kun_reading, k.on_reading].filter(Boolean).join(' / ');
+      return (readings ? readings + ' · ' : '') + k.meaning_id;
+    },
+  };
   const intro = (lesson.body && lesson.body.trim())
     ? lesson.body
     : 'Klik karakter untuk lihat goresan, mnemonic, dan kombinasi kosakata.';
@@ -8362,6 +8397,9 @@ function renderKanjiLesson(course, module, lesson, nav) {
           </button>`).join('')}
       </div>`;
 
+  const drillBlock = window.__ezDrillCfg.pool.length >= 2
+    ? ezDrillBlockHtml('Uji ingatanmu dua arah: kanji ↔ arti.') : '';
+
   document.getElementById('main-content').innerHTML = `
     <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · KANJI</p>
     <h1 class="lesson-title">${escapeHtml(lesson.title)}</h1>
@@ -8377,6 +8415,7 @@ function renderKanjiLesson(course, module, lesson, nav) {
       </div>
     </div>
     ${tilesHtml}
+    ${drillBlock}
     <div class="lesson-footer">
       <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
       <button class="btn-primary" onclick="markCompleteAndNext()">
@@ -8392,7 +8431,15 @@ function renderKanaLesson(course, module, lesson, nav) {
   const { prev, next, isDone } = nav || {};
   const items = Array.isArray(lesson.kana) ? lesson.kana : [];
   window.__kanaData = items;
-  window.__kanaDrill = null;
+  window.__ezDrill = null;
+  window.__ezDrillCfg = {
+    pool: items.filter((k) => k.character && k.romaji),
+    front: (k) => k.character,
+    back: (k) => k.romaji,
+    frontJa: true,
+    hintF2B: 'Apa bunyinya?',
+    hintB2F: 'Karakter yang mana?',
+  };
 
   if (!window.__kanaEscWired) {
     document.addEventListener('keydown', (e) => {
@@ -8451,17 +8498,8 @@ function renderKanaLesson(course, module, lesson, nav) {
           </div>
         </div>`).join('');
 
-  const drillBlock = items.length >= 2 ? `
-    <div class="kana-drill" id="kana-drill">
-      <div class="kana-drill-head">
-        <div>
-          <div class="kana-drill-title">🎯 Latihan Pengenalan</div>
-          <div class="kana-drill-sub">Uji ingatanmu dua arah: karakter ↔ bunyi.</div>
-        </div>
-        <button class="btn-primary" type="button" onclick="kanaDrillStart()">Mulai Drill</button>
-      </div>
-      <div class="kana-drill-body" id="kana-drill-body"></div>
-    </div>` : '';
+  const drillBlock = window.__ezDrillCfg.pool.length >= 2
+    ? ezDrillBlockHtml('Uji ingatanmu dua arah: karakter ↔ bunyi.') : '';
 
   const modalMarkup = `
     <div class="deck-modal-backdrop" id="kana-modal-backdrop" onclick="if(event.target===this)closeKanaModal()">
@@ -8615,87 +8653,112 @@ window.closeKanaModal = () => {
   if (ret && typeof ret.focus === 'function') { try { ret.focus(); } catch (e) { /* noop */ } }
 };
 
-// Drill pengenalan dua arah (client-side, tanpa persistensi). Tiap soal acak
-// arah: karakter→bunyi ('k2r') atau bunyi→karakter ('r2k'), 4 opsi (distraktor
-// dgn romaji unik biar tak ambigu mis. じ/ぢ).
-function _kanaPickDistractors(pool, item, count) {
-  const used = new Set([item.romaji]);
+// Drill pengenalan dua arah (client-side, tanpa persistensi) — generik, dipakai
+// lesson kana (karakter↔bunyi), deck kosakata (kata↔arti), dan kanji
+// (karakter↔arti). Renderer lesson men-set window.__ezDrillCfg:
+//   { pool, front(it), back(it), frontJa, backJa, frontIsText, backIsText,
+//     hintF2B, hintB2F, fbBack(it)? }
+// lalu menaruh markup dari ezDrillBlockHtml(). Tiap soal acak arah front→back
+// ('f2b') atau back→front ('b2f'), 4 opsi; distraktor di-dedupe by sisi back
+// biar tak ambigu (mis. じ/ぢ sama-sama "ji", dua kata dgn arti sama).
+function ezDrillBlockHtml(sub) {
+  return `
+    <div class="ez-drill" id="ez-drill">
+      <div class="ez-drill-head">
+        <div>
+          <div class="ez-drill-title">🎯 Latihan Pengenalan</div>
+          <div class="ez-drill-sub">${escapeHtml(sub)}</div>
+        </div>
+        <button class="btn-primary" type="button" onclick="ezDrillStart()">Mulai Drill</button>
+      </div>
+      <div class="ez-drill-body" id="ez-drill-body"></div>
+    </div>`;
+}
+function _ezDrillPickDistractors(pool, item, count, back) {
+  const used = new Set([back(item)]);
   const out = [];
   const shuffled = pool.filter((p) => p !== item).sort(() => Math.random() - 0.5);
   for (const p of shuffled) {
     if (out.length >= count) break;
-    if (used.has(p.romaji)) continue;
-    used.add(p.romaji);
+    if (used.has(back(p))) continue;
+    used.add(back(p));
     out.push(p);
   }
   return out;
 }
-window.kanaDrillStart = () => {
-  const pool = (window.__kanaData || []).filter((k) => k.character && k.romaji);
-  const body = document.getElementById('kana-drill-body');
-  if (!body) return;
-  if (pool.length < 2) { body.innerHTML = '<div class="kana-drill-progress">Karakter belum cukup untuk drill.</div>'; return; }
+window.ezDrillStart = () => {
+  const cfg = window.__ezDrillCfg;
+  const body = document.getElementById('ez-drill-body');
+  if (!cfg || !body) return;
+  const pool = cfg.pool || [];
+  if (pool.length < 2) { body.innerHTML = '<div class="ez-drill-progress">Item belum cukup untuk drill.</div>'; return; }
   const n = Math.min(pool.length, 12);
   const order = pool.slice().sort(() => Math.random() - 0.5).slice(0, n);
   const questions = order.map((item) => {
-    const dir = Math.random() < 0.5 ? 'k2r' : 'r2k';
-    const distract = _kanaPickDistractors(pool, item, 3);
+    const dir = Math.random() < 0.5 ? 'f2b' : 'b2f';
+    const distract = _ezDrillPickDistractors(pool, item, 3, cfg.back);
     const opts = [item, ...distract].sort(() => Math.random() - 0.5);
     return { item, dir, opts };
   });
-  window.__kanaDrill = { questions, idx: 0, score: 0, answered: false };
-  kanaDrillRender();
+  window.__ezDrill = { cfg, questions, idx: 0, score: 0, answered: false };
+  ezDrillRender();
 };
-function kanaDrillRender() {
-  const st = window.__kanaDrill;
-  const body = document.getElementById('kana-drill-body');
+function ezDrillRender() {
+  const st = window.__ezDrill;
+  const body = document.getElementById('ez-drill-body');
   if (!st || !body) return;
+  const cfg = st.cfg;
   if (st.idx >= st.questions.length) {
     const pct = Math.round((st.score / st.questions.length) * 100);
-    body.innerHTML = `<div class="kana-drill-result">
+    body.innerHTML = `<div class="ez-drill-result">
       <div class="kdr-score">${st.score} / ${st.questions.length}</div>
       <div class="kdr-pct">${pct}% benar — ${pct >= 80 ? 'mantap! 🎉' : 'ulangi biar makin lancar.'}</div>
-      <button class="btn-primary" type="button" onclick="kanaDrillStart()">Ulangi Drill</button>
+      <button class="btn-primary" type="button" onclick="ezDrillStart()">Ulangi Drill</button>
     </div>`;
     return;
   }
   const q = st.questions[st.idx];
-  const promptText = q.dir === 'k2r' ? q.item.character : q.item.romaji;
-  const promptLang = q.dir === 'k2r' ? ' lang="ja"' : '';
-  const hint = q.dir === 'k2r' ? 'Apa bunyinya?' : 'Karakter yang mana?';
+  const f2b = q.dir === 'f2b';
+  const promptText = f2b ? cfg.front(q.item) : cfg.back(q.item);
+  const promptLang = (f2b ? cfg.frontJa : cfg.backJa) ? ' lang="ja"' : '';
+  const promptCls = (f2b ? cfg.frontIsText : cfg.backIsText) ? ' ez-drill-prompt--text' : '';
+  const hint = f2b ? cfg.hintF2B : cfg.hintB2F;
+  const optJa = (f2b ? cfg.backJa : cfg.frontJa) ? ' lang="ja"' : '';
+  const optCls = (f2b ? cfg.backIsText : cfg.frontIsText) ? ' ez-drill-opt--text' : '';
   const optsHtml = q.opts.map((o, oi) => {
-    const label = q.dir === 'k2r' ? o.romaji : o.character;
-    const lang = q.dir === 'k2r' ? '' : ' lang="ja"';
-    return `<button class="kana-drill-opt" type="button" data-oi="${oi}"${lang} onclick="kanaDrillAnswer(${oi})">${escapeHtml(label)}</button>`;
+    const label = f2b ? cfg.back(o) : cfg.front(o);
+    return `<button class="ez-drill-opt${optCls}" type="button"${optJa} onclick="ezDrillAnswer(${oi})">${escapeHtml(label)}</button>`;
   }).join('');
   body.innerHTML = `
-    <div class="kana-drill-progress">Soal ${st.idx + 1} / ${st.questions.length} · Skor ${st.score}</div>
-    <div class="kana-drill-prompt"${promptLang}>${escapeHtml(promptText)}</div>
-    <div class="kana-drill-hint">${hint}</div>
-    <div class="kana-drill-opts">${optsHtml}</div>
-    <div class="kana-drill-feedback" id="kana-drill-feedback"></div>`;
+    <div class="ez-drill-progress">Soal ${st.idx + 1} / ${st.questions.length} · Skor ${st.score}</div>
+    <div class="ez-drill-prompt${promptCls}"${promptLang}>${escapeHtml(promptText)}</div>
+    <div class="ez-drill-hint">${hint}</div>
+    <div class="ez-drill-opts">${optsHtml}</div>
+    <div class="ez-drill-feedback" id="ez-drill-feedback"></div>`;
   st.answered = false;
 }
-window.kanaDrillAnswer = (oi) => {
-  const st = window.__kanaDrill;
+window.ezDrillAnswer = (oi) => {
+  const st = window.__ezDrill;
   if (!st || st.answered) return;
+  const cfg = st.cfg;
   const q = st.questions[st.idx];
   st.answered = true;
   const correct = q.opts[oi] === q.item;
   if (correct) st.score++;
-  document.querySelectorAll('#kana-drill-body .kana-drill-opt').forEach((b, i) => {
+  document.querySelectorAll('#ez-drill-body .ez-drill-opt').forEach((b, i) => {
     b.disabled = true;
     if (q.opts[i] === q.item) b.classList.add('correct');
     else if (i === oi) b.classList.add('wrong');
   });
-  const fb = document.getElementById('kana-drill-feedback');
+  const fb = document.getElementById('ez-drill-feedback');
   if (fb) {
+    const backLabel = typeof cfg.fbBack === 'function' ? cfg.fbBack(q.item) : cfg.back(q.item);
     fb.innerHTML = correct
       ? '<span class="kdf-ok">✓ Benar!</span>'
-      : `<span class="kdf-no">✗ Jawaban: <strong lang="ja">${escapeHtml(q.item.character)}</strong> = ${escapeHtml(q.item.romaji)}</span>`;
+      : `<span class="kdf-no">✗ Jawaban: <strong${cfg.frontJa ? ' lang="ja"' : ''}>${escapeHtml(cfg.front(q.item))}</strong> = ${escapeHtml(backLabel)}</span>`;
   }
   st.idx++;
-  setTimeout(() => { if (window.__kanaDrill === st) kanaDrillRender(); }, correct ? 750 : 1500);
+  setTimeout(() => { if (window.__ezDrill === st) ezDrillRender(); }, correct ? 750 : 1500);
 };
 
 window.openDeckModal = (idx) => {
@@ -8978,7 +9041,8 @@ window.selectLesson = (moduleId, lessonId) => {
   try { destroyAllListeningPlayers(); } catch {}
   try { window.closeKanjiDetail?.(); } catch {}
   try { window.closeKanaModal?.(); } catch {}
-  window.__kanaDrill = null;
+  window.__ezDrill = null;
+  window.__ezDrillCfg = null;
   if (typeof _kanjiStrokeTimer !== 'undefined' && _kanjiStrokeTimer) {
     clearTimeout(_kanjiStrokeTimer); _kanjiStrokeTimer = null;
   }

@@ -405,6 +405,18 @@
   (opsional; kosong → 503). Frontend siswa belum render gambar (follow-up):
   butuh `has_image` flag di `content.js` lesson payload + `<img>` di deck card.
   Kalau volume bytes besar (>500 MB) migrate ke object storage (R2).
+- **Drill pengenalan dua arah (shared)** — komponen generik `ezDrill*` di
+  `welcome.html` (dulu khusus kana, digeneralisasi): dipakai lesson kana
+  (karakter↔bunyi), deck kosakata (kata↔arti), dan kanji (karakter↔arti).
+  Client-side murni, tanpa persistensi/endpoint. Renderer lesson men-set
+  `window.__ezDrillCfg` = { pool, front(it), back(it), frontJa/backJa,
+  frontIsText/backIsText (sisi teks Latin → modifier `--text`, font lebih
+  kecil), hintF2B/hintB2F, fbBack(it)? (label feedback jawaban salah — deck &
+  kanji pakai ini utk ikut menampilkan reading) } lalu menaruh markup
+  `ezDrillBlockHtml(sub)` (hanya kalau `pool.length >= 2`). Tiap soal acak
+  arah front↔back, 4 opsi, maks 12 soal/sesi; distraktor di-dedupe by sisi
+  back (anti ambigu じ/ぢ, dua kata dgn arti sama). CSS prefix `.ez-drill-*`.
+  State (`__ezDrill`/`__ezDrillCfg`) di-reset di `selectLesson` + tiap renderer.
 
 ## Struktur repo (high-level)
 
