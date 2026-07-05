@@ -7676,6 +7676,7 @@ function renderDeckLesson(course, module, lesson, nav) {
     hintB2F: 'Kata yang mana?',
     // Feedback jawaban salah ikut menampilkan kana biar sekalian belajar bacanya.
     fbBack: (it) => (it.reading && it.reading !== it.japanese ? it.reading + ' · ' : '') + it.indonesian,
+    tts: (it) => it.japanese || it.reading, // preferensi sama dgn playDeckAudio
   };
 
   if (!window.__deckEscWired) {
@@ -8391,6 +8392,9 @@ function renderKanjiLesson(course, module, lesson, nav) {
       hintB2F: 'Kata yang mana?',
       // Feedback jawaban salah ikut menampilkan cara bacanya.
       fbBack: (c) => (c.reading ? c.reading + ' · ' : '') + c.indonesian,
+      // Compounds auto-derive dari module_vocabulary → lolos whitelist TTS;
+      // compound manual yang tak ada di bank fallback ke Web Speech.
+      tts: (c) => c.japanese || c.reading,
     };
   } else {
     // Fallback: pelajaran tanpa kombinasi (bank kosakata course belum ada
@@ -8407,6 +8411,7 @@ function renderKanjiLesson(course, module, lesson, nav) {
         const readings = [k.kun_reading, k.on_reading].filter(Boolean).join(' / ');
         return (readings ? readings + ' · ' : '') + k.meaning_id;
       },
+      tts: (k) => k.character,
     };
   }
   const intro = (lesson.body && lesson.body.trim())
@@ -8469,6 +8474,7 @@ function renderKanaLesson(course, module, lesson, nav) {
     frontJa: true,
     hintF2B: 'Apa bunyinya?',
     hintB2F: 'Karakter yang mana?',
+    tts: (k) => k.character,
   };
 
   if (!window.__kanaEscWired) {
@@ -8716,6 +8722,14 @@ function _ezDrillPickDistractors(pool, item, count, back) {
   }
   return out;
 }
+function _ezDrillBuildQuestions(cfg, items) {
+  return items.slice().sort(() => Math.random() - 0.5).map((item) => {
+    const dir = Math.random() < 0.5 ? 'f2b' : 'b2f';
+    const distract = _ezDrillPickDistractors(cfg.pool, item, 3, cfg.back);
+    const opts = [item, ...distract].sort(() => Math.random() - 0.5);
+    return { item, dir, opts };
+  });
+}
 window.ezDrillStart = () => {
   const cfg = window.__ezDrillCfg;
   const body = document.getElementById('ez-drill-body');
@@ -8723,14 +8737,11 @@ window.ezDrillStart = () => {
   const pool = cfg.pool || [];
   if (pool.length < 2) { body.innerHTML = '<div class="ez-drill-progress">Item belum cukup untuk drill.</div>'; return; }
   const n = Math.min(pool.length, 12);
-  const order = pool.slice().sort(() => Math.random() - 0.5).slice(0, n);
-  const questions = order.map((item) => {
-    const dir = Math.random() < 0.5 ? 'f2b' : 'b2f';
-    const distract = _ezDrillPickDistractors(pool, item, 3, cfg.back);
-    const opts = [item, ...distract].sort(() => Math.random() - 0.5);
-    return { item, dir, opts };
-  });
-  window.__ezDrill = { cfg, questions, idx: 0, score: 0, answered: false };
+  const questions = _ezDrillBuildQuestions(cfg, pool.slice().sort(() => Math.random() - 0.5).slice(0, n));
+  // total = jumlah soal ronde pertama; skor hanya dihitung di ronde pertama
+  // (percobaan pertama). Soal yang salah masuk `retry` dan diulang di ronde
+  // berikutnya sampai semuanya terjawab benar.
+  window.__ezDrill = { cfg, questions, idx: 0, score: 0, total: n, round: 1, retry: [], answered: false };
   ezDrillRender();
 };
 function ezDrillRender() {
@@ -8739,13 +8750,21 @@ function ezDrillRender() {
   if (!st || !body) return;
   const cfg = st.cfg;
   if (st.idx >= st.questions.length) {
-    const pct = Math.round((st.score / st.questions.length) * 100);
-    body.innerHTML = `<div class="ez-drill-result">
-      <div class="kdr-score">${st.score} / ${st.questions.length}</div>
-      <div class="kdr-pct">${pct}% benar — ${pct >= 80 ? 'mantap! 🎉' : 'ulangi biar makin lancar.'}</div>
-      <button class="btn-primary" type="button" onclick="ezDrillStart()">Ulangi Drill</button>
-    </div>`;
-    return;
+    if (st.retry.length > 0) {
+      // Ronde ulangan: soal yang salah dibangun ulang (arah & opsi baru).
+      st.questions = _ezDrillBuildQuestions(cfg, st.retry);
+      st.retry = [];
+      st.idx = 0;
+      st.round++;
+    } else {
+      const pct = Math.round((st.score / st.total) * 100);
+      body.innerHTML = `<div class="ez-drill-result">
+        <div class="kdr-score">${st.score} / ${st.total}</div>
+        <div class="kdr-pct">${pct}% benar di percobaan pertama — ${pct >= 80 ? 'mantap! 🎉' : 'ulangi biar makin lancar.'}${st.round > 1 ? '<br>Soal yang salah sudah kamu ulang sampai benar 💪' : ''}</div>
+        <button class="btn-primary" type="button" onclick="ezDrillStart()">Ulangi Drill</button>
+      </div>`;
+      return;
+    }
   }
   const q = st.questions[st.idx];
   const f2b = q.dir === 'f2b';
@@ -8759,14 +8778,23 @@ function ezDrillRender() {
     const label = f2b ? cfg.back(o) : cfg.front(o);
     return `<button class="ez-drill-opt${optCls}" type="button"${optJa} onclick="ezDrillAnswer(${oi})">${escapeHtml(label)}</button>`;
   }).join('');
+  const progress = st.round === 1
+    ? `Soal ${st.idx + 1} / ${st.questions.length} · Skor ${st.score}`
+    : `🔁 Ulangan soal salah · ${st.idx + 1} / ${st.questions.length}`;
   body.innerHTML = `
-    <div class="ez-drill-progress">Soal ${st.idx + 1} / ${st.questions.length} · Skor ${st.score}</div>
+    <div class="ez-drill-progress">${progress}</div>
     <div class="ez-drill-prompt${promptCls}"${promptLang}>${escapeHtml(promptText)}</div>
     <div class="ez-drill-hint">${hint}</div>
     <div class="ez-drill-opts">${optsHtml}</div>
     <div class="ez-drill-feedback" id="ez-drill-feedback"></div>`;
   st.answered = false;
 }
+window.ezDrillNext = () => {
+  const st = window.__ezDrill;
+  if (!st || !st.answered) return;
+  st.idx++;
+  ezDrillRender();
+};
 window.ezDrillAnswer = (oi) => {
   const st = window.__ezDrill;
   if (!st || st.answered) return;
@@ -8774,21 +8802,34 @@ window.ezDrillAnswer = (oi) => {
   const q = st.questions[st.idx];
   st.answered = true;
   const correct = q.opts[oi] === q.item;
-  if (correct) st.score++;
+  if (correct && st.round === 1) st.score++;
+  if (!correct) st.retry.push(q.item);
   document.querySelectorAll('#ez-drill-body .ez-drill-opt').forEach((b, i) => {
     b.disabled = true;
     if (q.opts[i] === q.item) b.classList.add('correct');
     else if (i === oi) b.classList.add('wrong');
   });
+  // Perkuat memori auditori: putar pelafalan jawaban begitu terungkap
+  // (ElevenLabs cached, fallback Web Speech — sama dgn tombol speaker).
+  if (typeof cfg.tts === 'function') {
+    try { playTTS(cfg.tts(q.item)); } catch {}
+  }
   const fb = document.getElementById('ez-drill-feedback');
   if (fb) {
     const backLabel = typeof cfg.fbBack === 'function' ? cfg.fbBack(q.item) : cfg.back(q.item);
     fb.innerHTML = correct
       ? '<span class="kdf-ok">✓ Benar!</span>'
-      : `<span class="kdf-no">✗ Jawaban: <strong${cfg.frontJa ? ' lang="ja"' : ''}>${escapeHtml(cfg.front(q.item))}</strong> = ${escapeHtml(backLabel)}</span>`;
+      : `<span class="kdf-no">✗ Jawaban: <strong${cfg.frontJa ? ' lang="ja"' : ''}>${escapeHtml(cfg.front(q.item))}</strong> = ${escapeHtml(backLabel)}</span>
+         <div style="margin-top:12px;"><button class="btn-primary" type="button" id="ez-drill-next" onclick="ezDrillNext()">Lanjut →</button></div>`;
   }
-  st.idx++;
-  setTimeout(() => { if (window.__ezDrill === st) ezDrillRender(); }, correct ? 750 : 1500);
+  if (correct) {
+    // Benar → auto-lanjut singkat. Salah → tunggu klik "Lanjut" biar siswa
+    // sempat membaca jawaban + cara bacanya (dulu auto 1.5s, kecepetan).
+    setTimeout(() => { if (window.__ezDrill === st) { st.idx++; ezDrillRender(); } }, 750);
+  } else {
+    const nextBtn = document.getElementById('ez-drill-next');
+    if (nextBtn) setTimeout(() => { try { nextBtn.focus(); } catch {} }, 0);
+  }
 };
 
 window.openDeckModal = (idx) => {

@@ -418,8 +418,14 @@
   kanji pakai ini utk ikut menampilkan reading) } lalu menaruh markup
   `ezDrillBlockHtml(sub)` (hanya kalau `pool.length >= 2`). Tiap soal acak
   arah front↔back, 4 opsi, maks 12 soal/sesi; distraktor di-dedupe by sisi
-  back (anti ambigu じ/ぢ, dua kata dgn arti sama). CSS prefix `.ez-drill-*`.
-  State (`__ezDrill`/`__ezDrillCfg`) di-reset di `selectLesson` + tiap renderer.
+  back (anti ambigu じ/ぢ, dua kata dgn arti sama). Mekanik belajar: jawaban
+  SALAH di-re-queue ke ronde ulangan (arah+opsi dibangun ulang, loop sampai
+  semua benar; skor = percobaan pertama ronde 1 / total), setelah salah TIDAK
+  auto-advance (tombol "Lanjut →", auto-focus) sedangkan benar auto 750ms;
+  `cfg.tts(it)` opsional → `playTTS()` pelafalan jawaban saat terungkap
+  (semua 4 config men-set ini; compound manual di luar bank vocab fallback
+  Web Speech via playTTS). CSS prefix `.ez-drill-*`. State
+  (`__ezDrill`/`__ezDrillCfg`) di-reset di `selectLesson` + tiap renderer.
 
 ## Struktur repo (high-level)
 
