@@ -4722,6 +4722,15 @@ function renderQuizSections(categoryItems) {
     }
   });
 
+  // Blok section (Bagian A, B, C… / Section 1, 2, 3…) sendiri ikut urutan
+  // MUNCUL PERTAMA di categoryItems, yang bisa teracak — server men-shuffle
+  // seluruh pool soal per attempt (sampleQuestionIds di progress.js) walau
+  // questions_per_attempt NULL. Tanpa sort ini, "Bagian D" bisa tampil
+  // sebelum "Bagian A" di satu attempt lalu berbeda lagi di attempt lain.
+  // Urutkan blok berdasarkan section.number supaya progresi section selalu
+  // konsisten; urutan SOAL di dalam tiap blok (di atas) tidak terpengaruh.
+  sections.sort((a, b) => a.number - b.number);
+
   return sections.map((section) => {
     const isListening = section.items.some(
       (item) => normalizeQuizCategory(item.q.category) === 'listening'
