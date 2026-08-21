@@ -2365,7 +2365,16 @@ window.deleteLesson = async (id, title) => {
   if (!confirm(`Hapus pelajaran "${title}"?`)) return;
   try {
     await api('/admin/lessons/' + id, { method: 'DELETE' });
-    await loadModulesForCourse(STATE.selectedCourse); renderLessons();
+    // Hapus lokal di STATE.modules, JANGAN refetch via loadModulesForCourse:
+    // itu manggil /api/courses/:slug (endpoint publik, filter is_published=TRUE)
+    // → 404 utk course draft → STATE.modules kepaksa [] → dropdown Modul "reset"
+    // ke ★ Semua Bab (opsi pertama, karena STATE.selectedModule ga match apapun).
+    for (const m of STATE.modules || []) {
+      const idx = (m.lessons || []).findIndex((l) => l.id === id);
+      if (idx !== -1) { m.lessons.splice(idx, 1); break; }
+    }
+    if (STATE.activeLessonId === id) STATE.activeLessonId = null;
+    renderLessons();
     notify('Pelajaran dihapus');
   } catch (err) { notify('Gagal hapus: ' + err.message, true); }
 };
