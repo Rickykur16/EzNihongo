@@ -32,6 +32,14 @@ if (!process.env.DATABASE_URL) {
 
 async function main() {
   const client = new Client({ connectionString: process.env.DATABASE_URL });
+  // Tanpa listener ini, RAISE NOTICE dari migrasi (dipakai luas di 039+
+  // untuk status & diagnostic output) hilang begitu saja — node-postgres
+  // tidak mencetaknya ke console secara default, cuma emit event 'notice'
+  // yang harus di-subscribe manual. Tanpa ini deploy log cuma menunjukkan
+  // "→ applying X.sql" tanpa isi apa pun dari dalam migrasinya.
+  client.on('notice', (msg) => {
+    console.log(`  [notice] ${msg.message}`);
+  });
   await client.connect();
 
   // Bootstrap: ensure schema_migrations exists. The 000 migration creates it,
