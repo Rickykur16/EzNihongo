@@ -411,13 +411,18 @@
   Bab 3-10: Pengantar (`video`) → Kosakata 語彙 (`deck`) → Kanji 漢字 (`kanji`)
   → Tata Bahasa (`text`) → 2 Tugas Bunpou (`grammar_task`) → Assignment
   (`quiz`, 50 soal). Migrasi 039-060 mengisi tugas bunpou + assignment Bab
-  1-11; **061-069 mengisi tiga pelajaran pertama Bab 12-20** (generator dipakai
+  1-11; **070-078 mengisi tiga pelajaran pertama Bab 12-20** (generator dipakai
   sekali di sesi itu; file SQL-nya yang jadi source of truth). Pola resolusi
-  modul di 061-069: ordinal `OFFSET (bab-1)` + cek judul (regex longgar) →
-  cari by judul (regex ketat) → **bikin modul baru** kalau tetap tidak ada,
+  modul di 070-078: ordinal `OFFSET (bab-1)` — judul yang tidak cocok cuma
+  memicu NOTICE (judul produksi bergaya "BAB 12: Bentuk Te : Konjugasi &
+  Permintaan", beda dari judul Notion), ordinal tetap dipercaya seperti
+  039-065; modul baru **hanya** dibuat kalau ordinalnya memang tidak ada,
   sekalian isi metadata kurikulum (title_en / CEFR / JF topic / scenario /
   cando_statements) yang masih kosong. Tiga pelajaran itu selalu di
-  sort_order 1/2/3, pelajaran lain digeser ke 4..n.
+  sort_order 1/2/3, pelajaran lain digeser ke 4..n. Kanji di-insert
+  per-pelajaran (character + jlpt_level + lesson_id, sesuai migration 064) —
+  jangan pakai `ON CONFLICT (character, jlpt_level)`, index itu sudah tidak
+  ada.
   **Sisa pekerjaan Bab 12-20**: (a) deck kosakata Bab 17-20 masih kosong —
   isi lewat Kelola Deck → "↻ Import Bab dari Notion" (endpoint pakai
   `NOTION_TOKEN` backend, bukan kuota MCP); (b) Bab 13 belum punya kanji di

@@ -1,18 +1,22 @@
--- 065_bab16_intro_kosakata_kanji.sql — Struktur dasar Bab 16
+-- 074_bab16_intro_kosakata_kanji.sql — Struktur dasar Bab 16
 -- (Hari & Jadwal): Pelajaran 1 Pengantar (video), Pelajaran 2
 -- Kosakata 語彙 (deck), Pelajaran 3 Kanji 漢字 (kanji).
 --
 -- Kembaran migration 061 (Bab 12) — lihat file itu untuk penjelasan lengkap
 -- pola resolusi modul, semantik upsert, dan alasan konten di-hardcode dari
 -- Notion. Ringkasnya:
---   * modul di-resolve ordinal (OFFSET 15) → cari by judul → dibuat kalau
---     belum ada, lengkap dengan metadata kurikulum (CEFR / JF topic /
---     skenario / can-do) yang cuma diisi kalau masih kosong;
+--   * modul di-resolve ordinal (OFFSET 15, sama seperti 039-065); judul yang
+--     tidak cocok cuma memicu NOTICE, bukan skip. Kalau ordinalnya memang
+--     tidak ada → cari by judul → baru dibuat, lengkap dengan metadata
+--     kurikulum (CEFR / JF topic / skenario / can-do) yang cuma diisi kalau
+--     masih kosong;
 --   * tiga pelajaran menempati sort_order 1/2/3, pelajaran lain di modul
 --     yang sama digeser ke 4..n dengan urutan relatif tetap;
 --   * kosakata: 41 kata dari Notion "📚 Vocabulary 語彙" (relasi Lesson
 --     → N5-B16), upsert per (module_id, japanese) lalu di-wire ke deck;
 --   * kanji: 9 karakter baru (日・月・火・水・木・金・土・時・分);
+--   * kanji di-scope per pelajaran (character + jlpt_level + lesson_id,
+--     sesuai migration 064) — baris kanji milik Bab lain tidak diambil alih;
 --   * video_url dibiarkan NULL (admin isi URL Bunny Stream lewat form);
 --     duration_minutes estimasi awal 10/30/20 menit, tidak menimpa nilai
 --     yang sudah ada.
@@ -47,7 +51,7 @@ DECLARE
 BEGIN
   SELECT id INTO v_course_id FROM courses WHERE slug = v_course_slug;
   IF v_course_id IS NULL THEN
-    RAISE NOTICE '065: kursus % tidak ditemukan — skip Bab %.', v_course_slug, v_bab_no;
+    RAISE NOTICE '074: kursus % tidak ditemukan — skip Bab %.', v_course_slug, v_bab_no;
     RETURN;
   END IF;
 
@@ -58,10 +62,13 @@ BEGIN
    ORDER BY m.sort_order ASC, m.created_at ASC
    OFFSET (v_bab_no - 1) LIMIT 1;
 
+  -- Judul modul di produksi tidak selalu sama dengan judul Notion (mis.
+  -- "BAB 12: Bentuk Te : Konjugasi & Permintaan"), jadi ketidakcocokan judul
+  -- cuma jadi PERINGATAN — ordinal tetap dipercaya, sama seperti migrasi
+  -- 039-065. Modul baru hanya dibuat kalau ordinalnya memang tidak ada.
   IF v_module_id IS NOT NULL AND v_module_title !~* v_title_re THEN
-    RAISE NOTICE '065: modul ordinal ke-% berjudul "%" tidak cocok pola Bab % — coba cari by judul.',
-      v_bab_no, v_module_title, v_bab_no;
-    v_module_id := NULL;
+    RAISE NOTICE '074: modul Bab % terbaca "%" — kalau ternyata bukan bab yang dimaksud, pindahkan pelajarannya lewat admin (tidak perlu migrasi baru).',
+      v_bab_no, v_module_title;
   END IF;
 
   IF v_module_id IS NULL THEN
@@ -79,7 +86,7 @@ BEGIN
     VALUES (v_course_id, v_mod_slug, v_mod_title, v_mod_scenario, v_bab_no,
             v_mod_title_en, v_mod_cefr, v_mod_topic, v_mod_scenario, v_mod_cando)
     RETURNING id INTO v_module_id;
-    RAISE NOTICE '065: modul Bab % belum ada — dibuat (slug %, sort_order %).',
+    RAISE NOTICE '074: modul Bab % belum ada — dibuat (slug %, sort_order %).',
       v_bab_no, v_mod_slug, v_bab_no;
   ELSE
     -- Modul sudah ada: lengkapi metadata yang masih kosong saja.
@@ -91,7 +98,7 @@ BEGIN
       cando_statements = CASE WHEN cando_statements = '[]'::jsonb THEN v_mod_cando ELSE cando_statements END,
       updated_at       = NOW()
     WHERE id = v_module_id;
-    RAISE NOTICE '065: pakai modul "%" untuk Bab %.', v_module_title, v_bab_no;
+    RAISE NOTICE '074: pakai modul "%" untuk Bab %.', v_module_title, v_bab_no;
   END IF;
 
   -- === 2. Tiga pelajaran ==================================================
@@ -235,22 +242,31 @@ BEGIN
     ('分', 'ブン、フン、ブ', 'わ(かる)、わ(ける)', 'menit, membagi, mengerti', 4,
      'Bagian atas 八 (membelah, membuka) + bawah 刀 (pisau). Pisau yang membelah sesuatu menjadi bagian-bagian. Dari membagi lahir makna menit (bagian dari jam) dan mengerti (memilah-milah pemahaman).', 9);
 
+  -- Scope per pelajaran, bukan per (character, jlpt_level): sejak migration
+  -- 064 satu karakter boleh punya baris sendiri di tiap Bab, dan baris milik
+  -- Bab lain TIDAK boleh diambil alih. Update-lalu-insert (bukan ON CONFLICT)
+  -- supaya tidak terikat ke nama index tertentu.
+  UPDATE kanji_items ki SET
+    on_reading   = COALESCE(NULLIF(ki.on_reading, ''), k.on_reading),
+    kun_reading  = COALESCE(NULLIF(ki.kun_reading, ''), k.kun_reading),
+    meaning_id   = COALESCE(NULLIF(ki.meaning_id, ''), k.meaning_id),
+    mnemonic     = COALESCE(NULLIF(ki.mnemonic, ''), k.mnemonic),
+    stroke_count = COALESCE(ki.stroke_count, k.stroke_count),
+    bab_kode     = COALESCE(NULLIF(ki.bab_kode, ''), v_kode),
+    updated_at   = NOW()
+  FROM _b16_kanji k
+  WHERE ki.lesson_id = v_l_kanji AND ki.jlpt_level = 'N5' AND ki.character = k.character;
+
   INSERT INTO kanji_items (character, jlpt_level, on_reading, kun_reading, meaning_id, mnemonic, stroke_count, bab_kode, lesson_id, sort_order)
   SELECT k.character, 'N5', k.on_reading, k.kun_reading, k.meaning_id, k.mnemonic, k.stroke_count, v_kode, v_l_kanji, k.ord
     FROM _b16_kanji k
-  ON CONFLICT (character, jlpt_level) DO UPDATE SET
-    on_reading   = COALESCE(NULLIF(kanji_items.on_reading, ''), EXCLUDED.on_reading),
-    kun_reading  = COALESCE(NULLIF(kanji_items.kun_reading, ''), EXCLUDED.kun_reading),
-    meaning_id   = COALESCE(NULLIF(kanji_items.meaning_id, ''), EXCLUDED.meaning_id),
-    mnemonic     = COALESCE(NULLIF(kanji_items.mnemonic, ''), EXCLUDED.mnemonic),
-    stroke_count = COALESCE(kanji_items.stroke_count, EXCLUDED.stroke_count),
-    bab_kode     = COALESCE(NULLIF(kanji_items.bab_kode, ''), EXCLUDED.bab_kode),
-    lesson_id    = COALESCE(kanji_items.lesson_id, EXCLUDED.lesson_id),
-    sort_order   = CASE WHEN kanji_items.lesson_id IS NULL THEN EXCLUDED.sort_order ELSE kanji_items.sort_order END,
-    updated_at   = NOW();
+   WHERE NOT EXISTS (
+     SELECT 1 FROM kanji_items ki
+      WHERE ki.lesson_id = v_l_kanji AND ki.jlpt_level = 'N5' AND ki.character = k.character
+   );
 
   SELECT COUNT(*) INTO v_n_kanji FROM kanji_items WHERE lesson_id = v_l_kanji;
 
-  RAISE NOTICE '065: Bab % siap — Pengantar (video) + Kosakata (% kata) + Kanji (% karakter).',
+  RAISE NOTICE '074: Bab % siap — Pengantar (video) + Kosakata (% kata) + Kanji (% karakter).',
     v_bab_no, v_n_vocab, v_n_kanji;
 END $$;
