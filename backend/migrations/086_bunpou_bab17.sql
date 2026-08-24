@@ -1,6 +1,6 @@
 -- 086_bunpou_bab17.sql — Dua pelajaran Tata Bahasa (bunpou) Bab 17:
--- "Tata Bahasa Bab 17: Suka & Mahir" (urutan 4) dan
--- "Tata Bahasa Bab 17: Kemampuan & Bertanya Jenis" (urutan 6).
+-- "Tata Bahasa Bab 17: Suka & Mahir (〜が好きです／嫌いです・〜が上手です／下手です)" (urutan 4) dan
+-- "Tata Bahasa Bab 17: Kemampuan & Bertanya Jenis (〜ができます・どんな〜)" (urutan 6).
 --
 -- Bagian dari seri 081-089 yang mengisi materi Tata Bahasa Bab 12-20 — lihat
 -- 081_bunpou_bab12.sql untuk penjelasan lengkap: struktur target tiap bab,
@@ -10,6 +10,12 @@
 -- Daftar pola diambil dari dokumen kurikulum "EzNihongo — Daftar Grammar 文法
 -- (JLPT N5 + N4)" bagian N5-B17 (4 pola), dibagi 2 pola di pelajaran
 -- pertama dan 2 pola di pelajaran kedua.
+--
+-- JUDUL memuat daftar pola di dalam kurung, dipisah ・ — mengikuti gaya
+-- lesson buatan admin (mis. Bab 3 "Kalimat Identitas (です・じゃありません・
+-- ですか)"). Pola yang bentuk aslinya bukan formula bersih (nama konjugasi
+-- atau formula ber-placeholder) memakai label pendek lewat key `short` di
+-- v_pola; key itu cuma dokumentasi asal-usul judul, tidak dibaca SQL.
 --
 -- POSISI: pelajaran ini menempati urutan 4 dan 6; slot 5 dan 7 disediakan
 -- untuk dua Tugas Bunpou Bab 17 yang belum dibuat, jadi untuk sementara
@@ -32,8 +38,8 @@ DECLARE
   v_title_re    TEXT := '(suka|mahir|hobi)';
   v_slug1       TEXT := 'tata-bahasa-bab-17-suka-mahir';
   v_slug2       TEXT := 'tata-bahasa-bab-17-kemampuan-bertanya-jenis';
-  v_title1      TEXT := 'Tata Bahasa Bab 17: Suka & Mahir';
-  v_title2      TEXT := 'Tata Bahasa Bab 17: Kemampuan & Bertanya Jenis';
+  v_title1      TEXT := 'Tata Bahasa Bab 17: Suka & Mahir (〜が好きです／嫌いです・〜が上手です／下手です)';
+  v_title2      TEXT := 'Tata Bahasa Bab 17: Kemampuan & Bertanya Jenis (〜ができます・どんな〜)';
   v_body1       TEXT := 'Bab 17 memperkenalkan satu kebiasaan penting bahasa Jepang: hal yang disukai dan hal yang dikuasai ditandai partikel が, bukan を. Sebabnya すき、きらい、じょうず、へた semuanya kata SIFAT な, walaupun dalam bahasa Indonesia terdengar seperti kata kerja.';
   v_body2       TEXT := 'Melanjutkan pola が yang sama, 〜ができます menyatakan kemampuan. Ditutup dengan どんな — kata tanya yang selalu menempel pada kata benda dan sangat sering dipakai untuk menggali selera serta pendapat lawan bicara.';
   -- Kumulatif s/d Bab 17 (BASE Bab 3-11 + 12/14/15/16) + 子父母友手足口目耳 (17).

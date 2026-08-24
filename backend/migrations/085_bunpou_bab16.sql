@@ -1,6 +1,6 @@
 -- 085_bunpou_bab16.sql — Dua pelajaran Tata Bahasa (bunpou) Bab 16:
--- "Tata Bahasa Bab 16: Partikel Waktu & Tanggal" (urutan 4) dan
--- "Tata Bahasa Bab 16: Frekuensi & Bertanya Waktu" (urutan 6).
+-- "Tata Bahasa Bab 16: Partikel Waktu & Tanggal (〜に・〜月〜日)" (urutan 4) dan
+-- "Tata Bahasa Bab 16: Frekuensi & Bertanya Waktu (毎週／毎月／毎年・何曜日／何月何日／いつ)" (urutan 6).
 --
 -- Bagian dari seri 081-089 yang mengisi materi Tata Bahasa Bab 12-20 — lihat
 -- 081_bunpou_bab12.sql untuk penjelasan lengkap: struktur target tiap bab,
@@ -10,6 +10,12 @@
 -- Daftar pola diambil dari dokumen kurikulum "EzNihongo — Daftar Grammar 文法
 -- (JLPT N5 + N4)" bagian N5-B16 (4 pola), dibagi 2 pola di pelajaran
 -- pertama dan 2 pola di pelajaran kedua.
+--
+-- JUDUL memuat daftar pola di dalam kurung, dipisah ・ — mengikuti gaya
+-- lesson buatan admin (mis. Bab 3 "Kalimat Identitas (です・じゃありません・
+-- ですか)"). Pola yang bentuk aslinya bukan formula bersih (nama konjugasi
+-- atau formula ber-placeholder) memakai label pendek lewat key `short` di
+-- v_pola; key itu cuma dokumentasi asal-usul judul, tidak dibaca SQL.
 --
 -- POSISI: pelajaran ini menempati urutan 4 dan 6; slot 5 dan 7 disediakan
 -- untuk dua Tugas Bunpou Bab 16 yang belum dibuat, jadi untuk sementara
@@ -32,8 +38,8 @@ DECLARE
   v_title_re    TEXT := '(hari|jadwal|tanggal)';
   v_slug1       TEXT := 'tata-bahasa-bab-16-partikel-waktu-tanggal';
   v_slug2       TEXT := 'tata-bahasa-bab-16-frekuensi-bertanya-waktu';
-  v_title1      TEXT := 'Tata Bahasa Bab 16: Partikel Waktu & Tanggal';
-  v_title2      TEXT := 'Tata Bahasa Bab 16: Frekuensi & Bertanya Waktu';
+  v_title1      TEXT := 'Tata Bahasa Bab 16: Partikel Waktu & Tanggal (〜に・〜月〜日)';
+  v_title2      TEXT := 'Tata Bahasa Bab 16: Frekuensi & Bertanya Waktu (毎週／毎月／毎年・何曜日／何月何日／いつ)';
   v_body1       TEXT := 'Bab 16 merapikan cara bicara soal waktu. Yang paling sering bikin pemula salah: kapan memakai partikel に dan kapan tidak. Aturannya sederhana — keterangan waktu yang berupa angka memakai に, sedangkan kata waktu relatif seperti きょう dan あした tidak.';
   v_body2       TEXT := 'Bagian kedua Bab 16 melengkapi kosakata jadwal: cara menyatakan "setiap minggu / bulan / tahun", dan tiga cara bertanya waktu yang paling sering dipakai (何ようび、何月何日、いつ).';
   -- 62 kanji Bab 3-11 (dari 061) + 食飲 (12) + 立休入出 (14) + 言話聞買店会社 (15) +
@@ -46,6 +52,7 @@ DECLARE
   {
     "lesson": 1,
     "pattern": "〜に[verb]",
+    "short": "〜に",
     "meaning": "partikel waktu (pada ~)",
     "example": "七時に おきます。",
     "notes": "に dipakai untuk waktu yang bisa DIANGKAKAN: jam, tanggal, bulan, tahun, dan nama hari (七時に、三月に、日ようびに). TIDAK dipakai untuk kata waktu relatif — きょう、あした、いま、まいにち、こんしゅう semuanya tanpa に.",

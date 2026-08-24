@@ -40,6 +40,12 @@
 -- notes baris lama TIDAK ditimpa; yang di-set cuma lesson_id + sort_order,
 -- plus contoh kalimat di grammar_examples.
 --
+-- JUDUL memuat daftar pola di dalam kurung, dipisah ・ — mengikuti gaya
+-- lesson buatan admin (mis. Bab 3 "Kalimat Identitas (です・じゃありません・
+-- ですか)"). Pola yang bentuk aslinya bukan formula bersih (nama konjugasi
+-- atau formula ber-placeholder) memakai label pendek lewat key `short` di
+-- v_pola; key itu cuma dokumentasi asal-usul judul, tidak dibaca SQL.
+--
 -- KANJI: contoh kalimat memakai kanji yang sudah diajarkan sampai Bab 12
 -- saja — 62 kanji Bab 3-11 (daftar persis dari 061) + 食・飲 dari Bab 12
 -- (070). Ditegakkan lewat assertion di akhir file.
@@ -55,8 +61,8 @@ DECLARE
   v_title_re    TEXT := '(te.?form|konjugasi|penghubung|permintaan)';
   v_slug1       TEXT := 'tata-bahasa-bab-12-konjugasi-te-form';
   v_slug2       TEXT := 'tata-bahasa-bab-12-menghubungkan-kalimat-te-form';
-  v_title1      TEXT := 'Tata Bahasa Bab 12: Konjugasi Te-form';
-  v_title2      TEXT := 'Tata Bahasa Bab 12: Menghubungkan Kalimat dengan Te-form';
+  v_title1      TEXT := 'Tata Bahasa Bab 12: Konjugasi Te-form (Golongan 1・Golongan 2・する／くる)';
+  v_title2      TEXT := 'Tata Bahasa Bab 12: Menghubungkan Kalimat dengan Te-form (〜て、〜・〜てから)';
   v_body1       TEXT := 'Bentuk te (て形) adalah pintu masuk ke sebagian besar tata bahasa Jepang setelah bentuk ます. Di pelajaran ini kamu belajar cara mengubah kata kerja golongan 1, golongan 2, dan dua kata kerja tidak beraturan (する・くる) ke bentuk te. Hafalkan polanya lewat kartu di bawah, lalu ucapkan tiap contoh kalimatnya.';
   v_body2       TEXT := 'Setelah bisa mengkonjugasi bentuk te, sekarang kita pakai untuk menyambung kalimat: 〜て、〜 untuk merangkai aksi berurutan, dan 〜てから untuk menegaskan bahwa aksi pertama harus selesai dulu. Perhatikan bahwa hanya kata kerja TERAKHIR yang menentukan bentuk sopan dan waktu kalimat.';
   -- 62 kanji Bab 3-11 (daftar persis dari 061) + 食・飲 dari Bab 12 (070).
@@ -68,6 +74,7 @@ DECLARE
   {
     "lesson": 1,
     "pattern": "Te-form Golongan 1 (u-verbs)",
+    "short": "Golongan 1",
     "meaning": "konjugasi te-form kata kerja golongan 1",
     "example": "のむ→のんで、かく→かいて",
     "notes": "Akhiran kamus menentukan bentuk te: う・つ・る→って (かう→かって、まつ→まって、かえる→かえって); ぬ・ぶ・む→んで (しぬ→しんで、よぶ→よんで、のむ→のんで); く→いて (かく→かいて, KECUALI いく→いって); ぐ→いで (およぐ→およいで); す→して (はなす→はなして).",
@@ -92,6 +99,7 @@ DECLARE
   {
     "lesson": 1,
     "pattern": "Te-form Golongan 2 (ru-verbs)",
+    "short": "Golongan 2",
     "meaning": "konjugasi te-form kata kerja golongan 2",
     "example": "たべる→たべて、みる→みて",
     "notes": "Cukup buang る di akhir kata kamus, ganti dengan て. Berlaku untuk semua kata kerja golongan 2 (berakhiran いる／える yang bentuk kamusnya ichidan).",
@@ -116,6 +124,7 @@ DECLARE
   {
     "lesson": 1,
     "pattern": "Te-form Tidak Beraturan",
+    "short": "する／くる",
     "meaning": "konjugasi te-form 2 kata kerja tidak beraturan",
     "example": "する→して、くる→きて",
     "notes": "Hanya 2 kata kerja tidak beraturan di N5: する (melakukan) → して, くる (datang) → きて. Wajib dihafal, tidak mengikuti pola golongan 1 atau 2.",

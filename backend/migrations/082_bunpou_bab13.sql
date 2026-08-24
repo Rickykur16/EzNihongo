@@ -1,6 +1,6 @@
 -- 082_bunpou_bab13.sql — Dua pelajaran Tata Bahasa (bunpou) Bab 13:
--- "Tata Bahasa Bab 13: Progresif & Permintaan" (urutan 4) dan
--- "Tata Bahasa Bab 13: Izin & Larangan" (urutan 6).
+-- "Tata Bahasa Bab 13: Progresif & Permintaan (〜ています・〜てください・〜てくれませんか)" (urutan 4) dan
+-- "Tata Bahasa Bab 13: Izin & Larangan (〜てもいいですか・〜てはいけません)" (urutan 6).
 --
 -- Bagian dari seri 081-089 yang mengisi materi Tata Bahasa Bab 12-20 — lihat
 -- 081_bunpou_bab12.sql untuk penjelasan lengkap: struktur target tiap bab,
@@ -10,6 +10,12 @@
 -- Daftar pola diambil dari dokumen kurikulum "EzNihongo — Daftar Grammar 文法
 -- (JLPT N5 + N4)" bagian N5-B13 (5 pola), dibagi 3 pola di pelajaran
 -- pertama dan 2 pola di pelajaran kedua.
+--
+-- JUDUL memuat daftar pola di dalam kurung, dipisah ・ — mengikuti gaya
+-- lesson buatan admin (mis. Bab 3 "Kalimat Identitas (です・じゃありません・
+-- ですか)"). Pola yang bentuk aslinya bukan formula bersih (nama konjugasi
+-- atau formula ber-placeholder) memakai label pendek lewat key `short` di
+-- v_pola; key itu cuma dokumentasi asal-usul judul, tidak dibaca SQL.
 --
 -- POSISI: pelajaran ini menempati urutan 4 dan 6; slot 5 dan 7 disediakan
 -- untuk dua Tugas Bunpou Bab 13 yang belum dibuat, jadi untuk sementara
@@ -32,8 +38,8 @@ DECLARE
   v_title_re    TEXT := '(te.?form|progresif|aplikasi|ています)';
   v_slug1       TEXT := 'tata-bahasa-bab-13-progresif-permintaan';
   v_slug2       TEXT := 'tata-bahasa-bab-13-izin-larangan';
-  v_title1      TEXT := 'Tata Bahasa Bab 13: Progresif & Permintaan';
-  v_title2      TEXT := 'Tata Bahasa Bab 13: Izin & Larangan';
+  v_title1      TEXT := 'Tata Bahasa Bab 13: Progresif & Permintaan (〜ています・〜てください・〜てくれませんか)';
+  v_title2      TEXT := 'Tata Bahasa Bab 13: Izin & Larangan (〜てもいいですか・〜てはいけません)';
   v_body1       TEXT := 'Bentuk te bukan cuma penyambung kalimat. Digabung dengan います, kata kerja bentuk te menyatakan aksi yang sedang berlangsung, kondisi yang bertahan, kebiasaan, bahkan profesi. Di pelajaran ini kamu juga belajar dua cara meminta tolong: 〜てください yang tegas-sopan, dan 〜てくれませんか yang lebih halus.';
   v_body2       TEXT := 'Dua pola penutup Bab 13 mengurus izin dan larangan: 〜てもいいですか untuk meminta izin, dan 〜てはいけません untuk menyatakan sesuatu tidak boleh dilakukan. Keduanya sangat sering muncul di aturan tempat umum, sekolah, dan tempat kerja di Jepang.';
   -- Bab 13 tidak memperkenalkan kanji baru, jadi daftarnya sama dengan Bab

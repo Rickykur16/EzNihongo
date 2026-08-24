@@ -1,6 +1,6 @@
 -- 087_bunpou_bab18.sql — Dua pelajaran Tata Bahasa (bunpou) Bab 18:
--- "Tata Bahasa Bab 18: Membandingkan Dua Hal" (urutan 4) dan
--- "Tata Bahasa Bab 18: Bertanya Perbandingan & Superlatif" (urutan 6).
+-- "Tata Bahasa Bab 18: Membandingkan Dua Hal (AはBより〜です・AよりBのほうが〜)" (urutan 4) dan
+-- "Tata Bahasa Bab 18: Bertanya Perbandingan & Superlatif (AとBとどちらが〜・〜の中で〜が一番〜)" (urutan 6).
 --
 -- Bagian dari seri 081-089 yang mengisi materi Tata Bahasa Bab 12-20 — lihat
 -- 081_bunpou_bab12.sql untuk penjelasan lengkap: struktur target tiap bab,
@@ -10,6 +10,12 @@
 -- Daftar pola diambil dari dokumen kurikulum "EzNihongo — Daftar Grammar 文法
 -- (JLPT N5 + N4)" bagian N5-B18 (4 pola), dibagi 2 pola di pelajaran
 -- pertama dan 2 pola di pelajaran kedua.
+--
+-- JUDUL memuat daftar pola di dalam kurung, dipisah ・ — mengikuti gaya
+-- lesson buatan admin (mis. Bab 3 "Kalimat Identitas (です・じゃありません・
+-- ですか)"). Pola yang bentuk aslinya bukan formula bersih (nama konjugasi
+-- atau formula ber-placeholder) memakai label pendek lewat key `short` di
+-- v_pola; key itu cuma dokumentasi asal-usul judul, tidak dibaca SQL.
 --
 -- POSISI: pelajaran ini menempati urutan 4 dan 6; slot 5 dan 7 disediakan
 -- untuk dua Tugas Bunpou Bab 18 yang belum dibuat, jadi untuk sementara
@@ -32,8 +38,8 @@ DECLARE
   v_title_re    TEXT := '(perbandingan|banding)';
   v_slug1       TEXT := 'tata-bahasa-bab-18-membandingkan-dua-hal';
   v_slug2       TEXT := 'tata-bahasa-bab-18-superlatif';
-  v_title1      TEXT := 'Tata Bahasa Bab 18: Membandingkan Dua Hal';
-  v_title2      TEXT := 'Tata Bahasa Bab 18: Bertanya Perbandingan & Superlatif';
+  v_title1      TEXT := 'Tata Bahasa Bab 18: Membandingkan Dua Hal (AはBより〜です・AよりBのほうが〜)';
+  v_title2      TEXT := 'Tata Bahasa Bab 18: Bertanya Perbandingan & Superlatif (AとBとどちらが〜・〜の中で〜が一番〜)';
   v_body1       TEXT := 'Bab 18 mengajarkan cara membandingkan dua hal. Dua pola di pelajaran ini isinya sama tapi sudut pandangnya kebalikan: AはBより menyorot A, sedangkan AよりBのほうが menyorot B. Pilih yang mana tergantung apa yang ingin kamu tonjolkan.';
   v_body2       TEXT := 'Setelah bisa membandingkan, sekarang bertanya dan menyimpulkan: どちらが untuk memilih di antara dua hal, dan 〜の中で〜が一番〜 untuk menyebut yang paling unggul di dalam satu kelompok.';
   -- Kumulatif s/d Bab 18 (BASE Bab 3-11 + 12/14/15/16/17) + 大小多少 (18). 番

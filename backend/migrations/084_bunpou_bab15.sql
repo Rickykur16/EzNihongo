@@ -1,6 +1,6 @@
 -- 084_bunpou_bab15.sql — Dua pelajaran Tata Bahasa (bunpou) Bab 15:
--- "Tata Bahasa Bab 15: Bahasa Pelayanan" (urutan 4) dan
--- "Tata Bahasa Bab 15: Memutuskan & Perubahan" (urutan 6).
+-- "Tata Bahasa Bab 15: Bahasa Pelayanan (〜をお願いします・〜はいかがですか・〜になります・お〜ください)" (urutan 4) dan
+-- "Tata Bahasa Bab 15: Memutuskan & Perubahan (〜にします・〜くなります／〜になります)" (urutan 6).
 --
 -- Bagian dari seri 081-089 yang mengisi materi Tata Bahasa Bab 12-20 — lihat
 -- 081_bunpou_bab12.sql untuk penjelasan lengkap: struktur target tiap bab,
@@ -10,6 +10,12 @@
 -- Daftar pola diambil dari dokumen kurikulum "EzNihongo — Daftar Grammar 文法
 -- (JLPT N5 + N4)" bagian N5-B15 (6 pola), dibagi 4 pola di pelajaran
 -- pertama dan 2 pola di pelajaran kedua.
+--
+-- JUDUL memuat daftar pola di dalam kurung, dipisah ・ — mengikuti gaya
+-- lesson buatan admin (mis. Bab 3 "Kalimat Identitas (です・じゃありません・
+-- ですか)"). Pola yang bentuk aslinya bukan formula bersih (nama konjugasi
+-- atau formula ber-placeholder) memakai label pendek lewat key `short` di
+-- v_pola; key itu cuma dokumentasi asal-usul judul, tidak dibaca SQL.
 --
 -- POSISI: pelajaran ini menempati urutan 4 dan 6; slot 5 dan 7 disediakan
 -- untuk dua Tugas Bunpou Bab 15 yang belum dibuat, jadi untuk sementara
@@ -32,8 +38,8 @@ DECLARE
   v_title_re    TEXT := '(pelayanan|komunikasi|service)';
   v_slug1       TEXT := 'tata-bahasa-bab-15-bahasa-pelayanan';
   v_slug2       TEXT := 'tata-bahasa-bab-15-memutuskan-perubahan';
-  v_title1      TEXT := 'Tata Bahasa Bab 15: Bahasa Pelayanan';
-  v_title2      TEXT := 'Tata Bahasa Bab 15: Memutuskan & Perubahan';
+  v_title1      TEXT := 'Tata Bahasa Bab 15: Bahasa Pelayanan (〜をお願いします・〜はいかがですか・〜になります・お〜ください)';
+  v_title2      TEXT := 'Tata Bahasa Bab 15: Memutuskan & Perubahan (〜にします・〜くなります／〜になります)';
   v_body1       TEXT := 'Bab 15 mengajarkan bahasa yang kamu dengar di toko, restoran, dan hotel Jepang. Empat pola di pelajaran ini adalah "suara petugas dan tamu": cara memesan, cara menawarkan, cara menyebut total harga, dan cara mempersilakan dengan hormat.';
   v_body2       TEXT := 'Dua pola penutup Bab 15 mengurus keputusan dan perubahan: 〜にします untuk menyatakan pilihan yang kamu ambil, dan 〜くなります／〜になります untuk menyatakan sesuatu berubah menjadi lain. Perhatikan bedanya — yang satu keputusan, yang satu perubahan yang terjadi.';
   -- 62 kanji Bab 3-11 (dari 061) + 食飲 (Bab 12) + 立休入出 (Bab 14) + 言話聞買店会社
@@ -46,6 +52,7 @@ DECLARE
   {
     "lesson": 1,
     "pattern": "〜を[counter]お願いします",
+    "short": "〜をお願いします",
     "meaning": "memesan / meminta sesuatu dengan sopan",
     "example": "コーヒーを 二つ おねがいします。",
     "notes": "Pola standar saat memesan di restoran, toko, atau meminta layanan. Urutan: [benda]を [jumlah + kata bantu bilangan] おねがいします. Boleh juga tanpa jumlah: [benda]を おねがいします.",
@@ -94,6 +101,7 @@ DECLARE
   {
     "lesson": 1,
     "pattern": "〜になります (keigo)",
+    "short": "〜になります",
     "meaning": "jadinya ~ / totalnya ~ (bahasa pelayanan)",
     "example": "千円に なります。",
     "notes": "Dipakai petugas toko atau restoran untuk menyebut total harga dan hasil. Secara harfiah berarti \"menjadi\", tapi fungsinya menghaluskan pernyataan です. Jangan dipakai saat kamu berada di posisi pelanggan.",

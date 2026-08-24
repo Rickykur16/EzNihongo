@@ -182,7 +182,12 @@
   `lesson_id`) DAN jadi soal Tugas Bunpou (lewat `lesson_grammar_task_items`).
   Seed Bab 12-20 ada di migrasi **081-089** (`0NN_bunpou_babNN.sql`): satu file
   per bab, dua pelajaran di **sort_order 4 dan 6** dengan slot 5 & 7 disisakan
-  untuk dua Tugas Bunpou; pola di-find-or-create by `(module_id, pattern)`
+  untuk dua Tugas Bunpou; judulnya `Tata Bahasa Bab N: Topik (pola1・pola2・…)`
+  — daftar pola di dalam kurung dipisah ・, mengikuti gaya lesson buatan admin
+  (mis. Bab 3 "Kalimat Identitas (です・じゃありません・ですか)"); pola yang
+  bentuknya bukan formula bersih (mis. `Nai-form (konjugasi)`,
+  `〜を[counter]お願いします`) memakai label pendek lewat key `short` di
+  `v_pola`; pola di-find-or-create by `(module_id, pattern)`
   supaya bank yang sudah dibuat migrasi Tugas Bunpou (mis. 065 untuk Bab 12)
   dipakai ulang, bukan diduplikasi. Beda gaya dari 043-065: seluruh konten
   ditaruh di satu literal JSONB `v_pola` lalu di-upsert dalam satu loop.

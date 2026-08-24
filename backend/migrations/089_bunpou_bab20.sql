@@ -1,6 +1,6 @@
 -- 089_bunpou_bab20.sql — Dua pelajaran Tata Bahasa (bunpou) Bab 20:
--- "Tata Bahasa Bab 20: Pengalaman" (urutan 4) dan
--- "Tata Bahasa Bab 20: Penghubung Kalimat" (urutan 6).
+-- "Tata Bahasa Bab 20: Pengalaman (〜たことがあります・〜たことがありません)" (urutan 4) dan
+-- "Tata Bahasa Bab 20: Penghubung Kalimat (〜から・〜が、〜・そして／それから／でも)" (urutan 6).
 --
 -- Bagian dari seri 081-089 yang mengisi materi Tata Bahasa Bab 12-20 — lihat
 -- 081_bunpou_bab12.sql untuk penjelasan lengkap: struktur target tiap bab,
@@ -10,6 +10,12 @@
 -- Daftar pola diambil dari dokumen kurikulum "EzNihongo — Daftar Grammar 文法
 -- (JLPT N5 + N4)" bagian N5-B20 (5 pola), dibagi 2 pola di pelajaran
 -- pertama dan 3 pola di pelajaran kedua.
+--
+-- JUDUL memuat daftar pola di dalam kurung, dipisah ・ — mengikuti gaya
+-- lesson buatan admin (mis. Bab 3 "Kalimat Identitas (です・じゃありません・
+-- ですか)"). Pola yang bentuk aslinya bukan formula bersih (nama konjugasi
+-- atau formula ber-placeholder) memakai label pendek lewat key `short` di
+-- v_pola; key itu cuma dokumentasi asal-usul judul, tidak dibaca SQL.
 --
 -- POSISI: pelajaran ini menempati urutan 4 dan 6; slot 5 dan 7 disediakan
 -- untuk dua Tugas Bunpou Bab 20 yang belum dibuat, jadi untuk sementara
@@ -31,8 +37,8 @@ DECLARE
   v_title_re    TEXT := '(pengalaman|penghubung)';
   v_slug1       TEXT := 'tata-bahasa-bab-20-pengalaman';
   v_slug2       TEXT := 'tata-bahasa-bab-20-penghubung-kalimat';
-  v_title1      TEXT := 'Tata Bahasa Bab 20: Pengalaman';
-  v_title2      TEXT := 'Tata Bahasa Bab 20: Penghubung Kalimat';
+  v_title1      TEXT := 'Tata Bahasa Bab 20: Pengalaman (〜たことがあります・〜たことがありません)';
+  v_title2      TEXT := 'Tata Bahasa Bab 20: Penghubung Kalimat (〜から・〜が、〜・そして／それから／でも)';
   v_body1       TEXT := 'Bab 20 menutup rangkaian N5 dengan cara bercerita tentang pengalaman. Pola 〜たことがあります memakai bentuk た yang sudah kamu pelajari di Bab 14 — pastikan konjugasinya sudah lancar sebelum lanjut.';
   v_body2       TEXT := 'Tiga pola terakhir N5 adalah alat untuk merangkai kalimat yang lebih panjang: menyatakan sebab dengan 〜から, mempertentangkan dua hal dengan 〜が、〜, dan menyambung antar kalimat dengan そして／それから／でも.';
   -- Kumulatif s/d Bab 20 (BASE Bab 3-11 + 12/14/15/16/17/18/19) + 来令 (20).
@@ -92,6 +98,7 @@ DECLARE
   {
     "lesson": 2,
     "pattern": "〜から (sebab)",
+    "short": "〜から",
     "meaning": "karena ~",
     "example": "雨が ふるから、行きません。",
     "notes": "から menempel di BELAKANG alasan: [alasan]から、[akibat]. Bisa dipasang setelah bentuk sopan maupun bentuk plain. Jangan tertukar dengan から yang berarti \"dari\" (Bab 9) — yang itu menempel pada kata benda.",

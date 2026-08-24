@@ -1,6 +1,6 @@
 -- 083_bunpou_bab14.sql — Dua pelajaran Tata Bahasa (bunpou) Bab 14:
--- "Tata Bahasa Bab 14: Bentuk Nai & Kewajiban" (urutan 4) dan
--- "Tata Bahasa Bab 14: Bentuk Plain (Kamus & Lampau)" (urutan 6).
+-- "Tata Bahasa Bab 14: Bentuk Nai & Kewajiban (V-ない・〜ないでください・〜なければなりません・〜なくてもいいです)" (urutan 4) dan
+-- "Tata Bahasa Bab 14: Bentuk Plain (V-kamus・〜た・〜なかった)" (urutan 6).
 --
 -- Bagian dari seri 081-089 yang mengisi materi Tata Bahasa Bab 12-20 — lihat
 -- 081_bunpou_bab12.sql untuk penjelasan lengkap: struktur target tiap bab,
@@ -10,6 +10,12 @@
 -- Daftar pola diambil dari dokumen kurikulum "EzNihongo — Daftar Grammar 文法
 -- (JLPT N5 + N4)" bagian N5-B14 (7 pola), dibagi 4 pola di pelajaran
 -- pertama dan 3 pola di pelajaran kedua.
+--
+-- JUDUL memuat daftar pola di dalam kurung, dipisah ・ — mengikuti gaya
+-- lesson buatan admin (mis. Bab 3 "Kalimat Identitas (です・じゃありません・
+-- ですか)"). Pola yang bentuk aslinya bukan formula bersih (nama konjugasi
+-- atau formula ber-placeholder) memakai label pendek lewat key `short` di
+-- v_pola; key itu cuma dokumentasi asal-usul judul, tidak dibaca SQL.
 --
 -- POSISI: pelajaran ini menempati urutan 4 dan 6; slot 5 dan 7 disediakan
 -- untuk dua Tugas Bunpou Bab 14 yang belum dibuat, jadi untuk sementara
@@ -31,8 +37,8 @@ DECLARE
   v_title_re    TEXT := '(bentuk|verb|kewajiban)';
   v_slug1       TEXT := 'tata-bahasa-bab-14-bentuk-nai-kewajiban';
   v_slug2       TEXT := 'tata-bahasa-bab-14-bentuk-plain';
-  v_title1      TEXT := 'Tata Bahasa Bab 14: Bentuk Nai & Kewajiban';
-  v_title2      TEXT := 'Tata Bahasa Bab 14: Bentuk Plain (Kamus & Lampau)';
+  v_title1      TEXT := 'Tata Bahasa Bab 14: Bentuk Nai & Kewajiban (V-ない・〜ないでください・〜なければなりません・〜なくてもいいです)';
+  v_title2      TEXT := 'Tata Bahasa Bab 14: Bentuk Plain (V-kamus・〜た・〜なかった)';
   v_body1       TEXT := 'Setelah bentuk te, sekarang giliran bentuk ない — pintu masuk ke semua ekspresi negatif plain. Dari satu konjugasi ini lahir tiga pola sekaligus: melarang dengan halus (〜ないでください), menyatakan kewajiban (〜なければなりません), dan menyatakan sesuatu tidak wajib (〜なくてもいいです).';
   v_body2       TEXT := 'Bagian kedua Bab 14 memperkenalkan bentuk plain (bentuk biasa): bentuk kamus, bentuk lampau 〜た, dan lampau negatif 〜なかった. Inilah bentuk yang dipakai dalam percakapan santai dengan teman, sekaligus fondasi hampir semua tata bahasa N4.';
   -- 62 kanji Bab 3-11 (dari 061) + 食飲 (Bab 12) + 立休入出 (Bab 14).
@@ -44,6 +50,7 @@ DECLARE
   {
     "lesson": 1,
     "pattern": "Nai-form (konjugasi)",
+    "short": "V-ない",
     "meaning": "konjugasi bentuk negatif plain 〜ない",
     "example": "のむ→のまない、たべる→たべない",
     "notes": "Golongan 1: ganti bunyi -u terakhir jadi -a lalu tambah ない (のむ→のまない、かく→かかない); kata kerja berakhiran う jadi わ (かう→かわない). Golongan 2: buang る tambah ない (たべる→たべない). Tidak beraturan: する→しない、くる→こない. Kekecualian penting: ある→ない.",
@@ -140,6 +147,7 @@ DECLARE
   {
     "lesson": 2,
     "pattern": "[V-jisho] (Bentuk Kamus)",
+    "short": "V-kamus",
     "meaning": "bentuk dasar kata kerja (plain, non-lampau)",
     "example": "たべます→たべる、いきます→いく",
     "notes": "Bentuk kamus adalah bentuk yang tertulis di kamus, dipakai dalam percakapan santai sekaligus jadi dasar banyak pola lanjutan (〜ことができる、〜まえに、〜つもり). Golongan 2: ます→る. Golongan 1: bunyi -i terakhir jadi -u (のみます→のむ).",
@@ -164,6 +172,7 @@ DECLARE
   {
     "lesson": 2,
     "pattern": "[V-ta] (Lampau Plain)",
+    "short": "〜た",
     "meaning": "bentuk lampau plain (〜た)",
     "example": "たべました→たべた、いきました→いった",
     "notes": "Bentuk た dibuat persis seperti bentuk て, tinggal ganti て→た dan で→だ (のんで→のんだ、かいて→かいた、して→した、きて→きた). Dipakai untuk cerita santai dan jadi dasar pola 〜たことがあります (Bab 20) serta 〜たら.",
@@ -188,6 +197,7 @@ DECLARE
   {
     "lesson": 2,
     "pattern": "[V-nakatta]",
+    "short": "〜なかった",
     "meaning": "lampau negatif plain",
     "example": "たべませんでした→たべなかった",
     "notes": "Dari bentuk ない: buang い, tambah かった (のまない→のまなかった). Persis seperti konjugasi kata sifat い — memang ない sendiri berperilaku sebagai kata sifat い.",

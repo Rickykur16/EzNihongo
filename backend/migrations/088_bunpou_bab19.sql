@@ -1,6 +1,6 @@
 -- 088_bunpou_bab19.sql — Dua pelajaran Tata Bahasa (bunpou) Bab 19:
--- "Tata Bahasa Bab 19: Keinginan" (urutan 4) dan
--- "Tata Bahasa Bab 19: Rencana & Ajakan" (urutan 6).
+-- "Tata Bahasa Bab 19: Keinginan (〜たいです・〜たくないです・〜が欲しいです)" (urutan 4) dan
+-- "Tata Bahasa Bab 19: Rencana & Ajakan (〜つもりです・〜予定です・〜ましょう／ませんか)" (urutan 6).
 --
 -- Bagian dari seri 081-089 yang mengisi materi Tata Bahasa Bab 12-20 — lihat
 -- 081_bunpou_bab12.sql untuk penjelasan lengkap: struktur target tiap bab,
@@ -10,6 +10,12 @@
 -- Daftar pola diambil dari dokumen kurikulum "EzNihongo — Daftar Grammar 文法
 -- (JLPT N5 + N4)" bagian N5-B19 (6 pola), dibagi 3 pola di pelajaran
 -- pertama dan 3 pola di pelajaran kedua.
+--
+-- JUDUL memuat daftar pola di dalam kurung, dipisah ・ — mengikuti gaya
+-- lesson buatan admin (mis. Bab 3 "Kalimat Identitas (です・じゃありません・
+-- ですか)"). Pola yang bentuk aslinya bukan formula bersih (nama konjugasi
+-- atau formula ber-placeholder) memakai label pendek lewat key `short` di
+-- v_pola; key itu cuma dokumentasi asal-usul judul, tidak dibaca SQL.
 --
 -- POSISI: pelajaran ini menempati urutan 4 dan 6; slot 5 dan 7 disediakan
 -- untuk dua Tugas Bunpou Bab 19 yang belum dibuat, jadi untuk sementara
@@ -32,8 +38,8 @@ DECLARE
   v_title_re    TEXT := '(keinginan|rencana|cita)';
   v_slug1       TEXT := 'tata-bahasa-bab-19-keinginan';
   v_slug2       TEXT := 'tata-bahasa-bab-19-rencana-ajakan';
-  v_title1      TEXT := 'Tata Bahasa Bab 19: Keinginan';
-  v_title2      TEXT := 'Tata Bahasa Bab 19: Rencana & Ajakan';
+  v_title1      TEXT := 'Tata Bahasa Bab 19: Keinginan (〜たいです・〜たくないです・〜が欲しいです)';
+  v_title2      TEXT := 'Tata Bahasa Bab 19: Rencana & Ajakan (〜つもりです・〜予定です・〜ましょう／ませんか)';
   v_body1       TEXT := 'Bab 19 mengajarkan cara menyatakan keinginan. Kuncinya membedakan dua hal: 〜たい untuk sesuatu yang ingin DILAKUKAN, dan 〜がほしい untuk benda yang ingin DIMILIKI. Keduanya berkonjugasi seperti kata sifat い, jadi bentuk negatif dan lampaunya mengikuti aturan yang sudah kamu pelajari di Bab 6.';
   v_body2       TEXT := 'Dari keinginan ke rencana: 〜つもり untuk niat pribadi, 〜よてい untuk jadwal yang sudah ditetapkan, dan 〜ましょう／ませんか untuk mengajak orang lain ikut serta.';
   -- Kumulatif s/d Bab 19 (BASE Bab 3-11 + 12/14/15/16/17/18) + 雨天空山川 (19).
@@ -94,6 +100,7 @@ DECLARE
   {
     "lesson": 1,
     "pattern": "[noun]が欲しいです",
+    "short": "〜が欲しいです",
     "meaning": "menginginkan (benda)",
     "example": "新しい かばんが ほしいです。",
     "notes": "ほしい untuk BENDA (kata benda + が), sedangkan たい untuk AKSI (kata kerja). ほしい juga kata sifat い: ほしくないです、ほしかったです. Sama seperti たい, hanya dipakai untuk diri sendiri atau dalam pertanyaan.",
