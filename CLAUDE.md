@@ -168,6 +168,29 @@
   ambigu; di-balik atas permintaan user). Ganti input reading↔japanese otomatis
   bikin cache entry baru (text beda = hash beda), tidak perlu bump
   `SETTINGS_VERSION`.
+- **Tipe pelajaran `text` (Tata Bahasa / bunpou)** — materi teori grammar yang
+  dibaca siswa sebelum Tugas Bunpou. Isi ajarnya BUKAN di `lessons.content`
+  (welcome.html membungkusnya jadi `<p>${lesson.body}</p>`, jadi content diisi
+  satu paragraf teks polos tanpa tag blok — `<p>`/`<ul>` akan pecah) melainkan
+  di baris `module_grammar` yang `lesson_id`-nya menunjuk pelajaran itu;
+  `content.js` mengelompokkannya jadi `lesson.grammar[]`, `welcome.html`
+  `renderLessonGrammar()` merendernya sebagai kartu pola (pattern / meaning /
+  blok "📝 Contoh" collapsible / notes). Tiap contoh kalimat = baris
+  `grammar_examples` (migration 031; `japanese` sudah di-whitelist di
+  `/api/tts` jadi tombol 🔊 per contoh langsung jalan). Baris `module_grammar`
+  yang sama boleh dipakai dua-duanya: tampil di pelajaran Tata Bahasa (lewat
+  `lesson_id`) DAN jadi soal Tugas Bunpou (lewat `lesson_grammar_task_items`).
+  Seed Bab 12-20 ada di migrasi **081-089** (`0NN_bunpou_babNN.sql`): satu file
+  per bab, dua pelajaran di **sort_order 4 dan 6** dengan slot 5 & 7 disisakan
+  untuk dua Tugas Bunpou; pola di-find-or-create by `(module_id, pattern)`
+  supaya bank yang sudah dibuat migrasi Tugas Bunpou (mis. 065 untuk Bab 12)
+  dipakai ulang, bukan diduplikasi. Beda gaya dari 043-065: seluruh konten
+  ditaruh di satu literal JSONB `v_pola` lalu di-upsert dalam satu loop.
+  Tiap file punya assertion jumlah pola, minimal 2 contoh + terjemahan per
+  pola, `sort_order` final 4/6 tanpa kembar, dan **pagar kanji** — contoh
+  kalimat cuma boleh memakai kanji yang sudah diajarkan sampai bab itu
+  (daftar kumulatif: 62 kanji Bab 3-11 dari migrasi 061 + kanji baru tiap bab
+  dari header 070-078).
 - **Tipe pelajaran `grammar_task`** (buat kalimat + ucapkan, dinilai AI;
   migration 023): lesson bertipe `grammar_task` memilih pola grammar dari bank
   modul (`module_grammar`) lewat join `lesson_grammar_task_items` (reusable —
@@ -423,11 +446,17 @@
   per-pelajaran (character + jlpt_level + lesson_id, sesuai migration 064) —
   jangan pakai `ON CONFLICT (character, jlpt_level)`, index itu sudah tidak
   ada.
+  Migrasi **081-089 mengisi materi Tata Bahasa Bab 12-20** — dua pelajaran
+  bertipe `text` per bab (sort_order 4 dan 6), pola dari dokumen kurikulum
+  "EzNihongo — Daftar Grammar 文法 (JLPT N5 + N4)" bagian N5-B12…B20 (46 pola,
+  138 contoh kalimat). Detail pola ini di bagian **Tipe pelajaran `text`
+  (Tata Bahasa)** di bawah.
   **Sisa pekerjaan Bab 12-20**: (a) deck kosakata Bab 17-20 masih kosong —
   isi lewat Kelola Deck → "↻ Import Bab dari Notion" (endpoint pakai
   `NOTION_TOKEN` backend, bukan kuota MCP); (b) Bab 13 belum punya kanji di
-  Notion (kolom "Kanji First Introduced" kosong); (c) Tata Bahasa, Tugas
-  Bunpou, dan Assignment Bab 12-20 belum dibuat.
+  Notion (kolom "Kanji First Introduced" kosong); (c) Tugas Bunpou Bab 13-20
+  (slot sort_order 5 & 7 sudah disiapkan, sengaja kosong) dan Assignment
+  Bab 12-20 belum dibuat.
   **Konvensi judul lesson** (dirapikan di migration 079 — sebelumnya
   Assignment/Tugas Bunpou Bab 1-12 pakai em dash, tidak konsisten dengan
   Pelajaran intro/deck/kanji yang pakai titik dua): `Tipe Bab N: Topik`
