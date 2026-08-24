@@ -1,19 +1,23 @@
--- 062_bab13_intro_kosakata_kanji.sql — Struktur dasar Bab 13
+-- 071_bab13_intro_kosakata_kanji.sql — Struktur dasar Bab 13
 -- (Te-form: Progresif & Aplikasi): Pelajaran 1 Pengantar (video), Pelajaran 2
 -- Kosakata 語彙 (deck), Pelajaran 3 Kanji 漢字 (kanji).
 --
 -- Kembaran migration 061 (Bab 12) — lihat file itu untuk penjelasan lengkap
 -- pola resolusi modul, semantik upsert, dan alasan konten di-hardcode dari
 -- Notion. Ringkasnya:
---   * modul di-resolve ordinal (OFFSET 12) → cari by judul → dibuat kalau
---     belum ada, lengkap dengan metadata kurikulum (CEFR / JF topic /
---     skenario / can-do) yang cuma diisi kalau masih kosong;
+--   * modul di-resolve ordinal (OFFSET 12, sama seperti 039-065); judul yang
+--     tidak cocok cuma memicu NOTICE, bukan skip. Kalau ordinalnya memang
+--     tidak ada → cari by judul → baru dibuat, lengkap dengan metadata
+--     kurikulum (CEFR / JF topic / skenario / can-do) yang cuma diisi kalau
+--     masih kosong;
 --   * tiga pelajaran menempati sort_order 1/2/3, pelajaran lain di modul
 --     yang sama digeser ke 4..n dengan urutan relatif tetap;
 --   * kosakata: 40 kata dari Notion "📚 Vocabulary 語彙" (relasi Lesson
 --     → N5-B13), upsert per (module_id, japanese) lalu di-wire ke deck;
 --   * kanji: kolom "Kanji First Introduced" Bab ini MASIH KOSONG di Notion,
 --     jadi pelajaran Kanji dibuat tapi belum berisi (lihat blok 4);
+--   * kanji di-scope per pelajaran (character + jlpt_level + lesson_id,
+--     sesuai migration 064) — baris kanji milik Bab lain tidak diambil alih;
 --   * video_url dibiarkan NULL (admin isi URL Bunny Stream lewat form);
 --     duration_minutes estimasi awal 10/30/20 menit, tidak menimpa nilai
 --     yang sudah ada.
@@ -48,7 +52,7 @@ DECLARE
 BEGIN
   SELECT id INTO v_course_id FROM courses WHERE slug = v_course_slug;
   IF v_course_id IS NULL THEN
-    RAISE NOTICE '062: kursus % tidak ditemukan — skip Bab %.', v_course_slug, v_bab_no;
+    RAISE NOTICE '071: kursus % tidak ditemukan — skip Bab %.', v_course_slug, v_bab_no;
     RETURN;
   END IF;
 
@@ -59,10 +63,13 @@ BEGIN
    ORDER BY m.sort_order ASC, m.created_at ASC
    OFFSET (v_bab_no - 1) LIMIT 1;
 
+  -- Judul modul di produksi tidak selalu sama dengan judul Notion (mis.
+  -- "BAB 12: Bentuk Te : Konjugasi & Permintaan"), jadi ketidakcocokan judul
+  -- cuma jadi PERINGATAN — ordinal tetap dipercaya, sama seperti migrasi
+  -- 039-065. Modul baru hanya dibuat kalau ordinalnya memang tidak ada.
   IF v_module_id IS NOT NULL AND v_module_title !~* v_title_re THEN
-    RAISE NOTICE '062: modul ordinal ke-% berjudul "%" tidak cocok pola Bab % — coba cari by judul.',
-      v_bab_no, v_module_title, v_bab_no;
-    v_module_id := NULL;
+    RAISE NOTICE '071: modul Bab % terbaca "%" — kalau ternyata bukan bab yang dimaksud, pindahkan pelajarannya lewat admin (tidak perlu migrasi baru).',
+      v_bab_no, v_module_title;
   END IF;
 
   IF v_module_id IS NULL THEN
@@ -80,7 +87,7 @@ BEGIN
     VALUES (v_course_id, v_mod_slug, v_mod_title, v_mod_scenario, v_bab_no,
             v_mod_title_en, v_mod_cefr, v_mod_topic, v_mod_scenario, v_mod_cando)
     RETURNING id INTO v_module_id;
-    RAISE NOTICE '062: modul Bab % belum ada — dibuat (slug %, sort_order %).',
+    RAISE NOTICE '071: modul Bab % belum ada — dibuat (slug %, sort_order %).',
       v_bab_no, v_mod_slug, v_bab_no;
   ELSE
     -- Modul sudah ada: lengkapi metadata yang masih kosong saja.
@@ -92,7 +99,7 @@ BEGIN
       cando_statements = CASE WHEN cando_statements = '[]'::jsonb THEN v_mod_cando ELSE cando_statements END,
       updated_at       = NOW()
     WHERE id = v_module_id;
-    RAISE NOTICE '062: pakai modul "%" untuk Bab %.', v_module_title, v_bab_no;
+    RAISE NOTICE '071: pakai modul "%" untuk Bab %.', v_module_title, v_bab_no;
   END IF;
 
   -- === 2. Tiga pelajaran ==================================================
@@ -220,6 +227,6 @@ BEGIN
   -- Notion diisi.
   SELECT COUNT(*) INTO v_n_kanji FROM kanji_items WHERE lesson_id = v_l_kanji;
 
-  RAISE NOTICE '062: Bab % siap — Pengantar (video) + Kosakata (% kata) + Kanji (% karakter).',
+  RAISE NOTICE '071: Bab % siap — Pengantar (video) + Kosakata (% kata) + Kanji (% karakter).',
     v_bab_no, v_n_vocab, v_n_kanji;
 END $$;
