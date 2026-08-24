@@ -93,3 +93,21 @@ FROM modules m
 JOIN courses c ON c.id = m.course_id
 WHERE c.slug = 'n5'
 ORDER BY m.sort_order;
+
+\echo ''
+\echo '== 5. Judul kosakata/kanji yang BELUM kanonik =========================='
+\echo '   (patokan migration 080: deck = "Kosakata 語彙", kanji = "Kanji 漢字")'
+\echo '   Tiap modul standarnya punya tepat satu deck + satu kanji, jadi apa pun'
+\echo '   yang muncul di sini = drift judul yang perlu dirapikan.'
+
+SELECT
+  m.sort_order AS bab,
+  l.type,
+  l.title
+FROM lessons l
+JOIN modules m ON m.id = l.module_id
+JOIN courses c ON c.id = m.course_id
+WHERE c.slug = 'n5'
+  AND l.type IN ('deck', 'kanji')
+  AND l.title NOT IN ('Kosakata 語彙', 'Kanji 漢字')
+ORDER BY m.sort_order, l.sort_order;
