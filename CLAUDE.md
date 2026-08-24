@@ -428,6 +428,13 @@
   `NOTION_TOKEN` backend, bukan kuota MCP); (b) Bab 13 belum punya kanji di
   Notion (kolom "Kanji First Introduced" kosong); (c) Tata Bahasa, Tugas
   Bunpou, dan Assignment Bab 12-20 belum dibuat.
+  **Konvensi judul lesson** (dirapikan di migration 079 — sebelumnya
+  Assignment/Tugas Bunpou Bab 1-12 pakai em dash, tidak konsisten dengan
+  Pelajaran intro/deck/kanji yang pakai titik dua): `Tipe Bab N: Topik`
+  (titik dua, BUKAN em dash) — mis. `Assignment Bab 13: Topik`,
+  `Tugas Bunpou Bab 13: Topik`. Pelajaran intro/deck/kanji tetap
+  `Pelajaran N: Topik` (N = urutan dalam modul, tanpa nomor Bab — modul
+  sudah punya "BAB N :" sendiri di judulnya).
   Audit cepat kondisi produksi: `backend/scripts/audit-bab-structure.sql`
   (read-only, 4 laporan: jenis pelajaran per bab, bab yang menyimpang,
   pelajaran kosong, bank vocab/grammar).
