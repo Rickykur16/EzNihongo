@@ -405,6 +405,27 @@
   (opsional; kosong → 503). Frontend siswa belum render gambar (follow-up):
   butuh `has_image` flag di `content.js` lesson payload + `<img>` di deck card.
   Kalau volume bytes besar (>500 MB) migrate ke object storage (R2).
+- **Seeding struktur Bab (kurikulum tidak ada di repo)** — modules / lessons /
+  module_vocabulary / kanji_items hidup di DB produksi, jadi tiap bab dibangun
+  lewat migrasi SQL berisi konten hasil tarik dari Notion. Patokan struktur =
+  Bab 3-10: Pengantar (`video`) → Kosakata 語彙 (`deck`) → Kanji 漢字 (`kanji`)
+  → Tata Bahasa (`text`) → 2 Tugas Bunpou (`grammar_task`) → Assignment
+  (`quiz`, 50 soal). Migrasi 039-060 mengisi tugas bunpou + assignment Bab
+  1-11; **061-069 mengisi tiga pelajaran pertama Bab 12-20** (generator dipakai
+  sekali di sesi itu; file SQL-nya yang jadi source of truth). Pola resolusi
+  modul di 061-069: ordinal `OFFSET (bab-1)` + cek judul (regex longgar) →
+  cari by judul (regex ketat) → **bikin modul baru** kalau tetap tidak ada,
+  sekalian isi metadata kurikulum (title_en / CEFR / JF topic / scenario /
+  cando_statements) yang masih kosong. Tiga pelajaran itu selalu di
+  sort_order 1/2/3, pelajaran lain digeser ke 4..n.
+  **Sisa pekerjaan Bab 12-20**: (a) deck kosakata Bab 17-20 masih kosong —
+  isi lewat Kelola Deck → "↻ Import Bab dari Notion" (endpoint pakai
+  `NOTION_TOKEN` backend, bukan kuota MCP); (b) Bab 13 belum punya kanji di
+  Notion (kolom "Kanji First Introduced" kosong); (c) Tata Bahasa, Tugas
+  Bunpou, dan Assignment Bab 12-20 belum dibuat.
+  Audit cepat kondisi produksi: `backend/scripts/audit-bab-structure.sql`
+  (read-only, 4 laporan: jenis pelajaran per bab, bab yang menyimpang,
+  pelajaran kosong, bank vocab/grammar).
 
 ## Struktur repo (high-level)
 
