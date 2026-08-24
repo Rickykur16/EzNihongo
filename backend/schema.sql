@@ -555,7 +555,7 @@ CREATE TABLE IF NOT EXISTS kanji_items (
 CREATE INDEX IF NOT EXISTS kanji_items_level_sort_idx ON kanji_items (jlpt_level, sort_order);
 CREATE INDEX IF NOT EXISTS kanji_items_bab_idx ON kanji_items (bab_kode) WHERE bab_kode IS NOT NULL;
 CREATE INDEX IF NOT EXISTS kanji_items_lesson_idx ON kanji_items (lesson_id, sort_order) WHERE lesson_id IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS kanji_items_character_level_uniq ON kanji_items (character, jlpt_level);
+CREATE UNIQUE INDEX IF NOT EXISTS kanji_items_character_level_lesson_uniq ON kanji_items (character, jlpt_level, lesson_id);
 
 -- ===== updated_at trigger =====
 

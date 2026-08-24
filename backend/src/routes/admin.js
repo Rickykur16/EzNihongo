@@ -3397,8 +3397,7 @@ router.post('/kanji', asyncHandler(async (req, res) => {
        mnemonic, compounds, stroke_count, bab_kode, sort_order
      )
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11)
-     ON CONFLICT (character, jlpt_level) DO UPDATE SET
-       lesson_id = COALESCE(EXCLUDED.lesson_id, kanji_items.lesson_id),
+     ON CONFLICT (character, jlpt_level, lesson_id) DO UPDATE SET
        on_reading = EXCLUDED.on_reading,
        kun_reading = EXCLUDED.kun_reading,
        meaning_id = EXCLUDED.meaning_id,
@@ -3611,18 +3610,22 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', notionImportLimiter, a
     const strokeCount = notionNumber(pickProp(props, ['Stroke Count', 'Goresan', 'Strokes', 'Stroke']));
     const babKode = notionPlainText(pickProp(props, ['Kode Bab', 'Kode', 'Code'])).trim() || null;
 
+    // Scoped by lesson_id (bukan cuma character+level) — kanji yang sama
+    // dipakai di Bab lain harus dapat baris sendiri, bukan "dicuri" via
+    // UPDATE lesson_id (root cause deck kanji Bab lain jadi kosong,
+    // didiagnosis di migration 049/050). Unique index sudah disesuaikan
+    // di migration 064.
     const existing = await query(
-      `SELECT id FROM kanji_items WHERE character = $1 AND jlpt_level = $2 LIMIT 1`,
-      [character, level]
+      `SELECT id FROM kanji_items WHERE character = $1 AND jlpt_level = $2 AND lesson_id = $3 LIMIT 1`,
+      [character, level, lessonId]
     );
     if (existing.rows.length > 0) {
       await query(
         `UPDATE kanji_items SET
-           lesson_id = $2,
-           on_reading = $3, kun_reading = $4, meaning_id = $5, mnemonic = $6,
-           stroke_count = $7, bab_kode = COALESCE($8, bab_kode), updated_at = NOW()
+           on_reading = $2, kun_reading = $3, meaning_id = $4, mnemonic = $5,
+           stroke_count = $6, bab_kode = COALESCE($7, bab_kode), updated_at = NOW()
          WHERE id = $1`,
-        [existing.rows[0].id, lessonId, onReading, kunReading, meaningId, mnemonic, strokeCount, babKode]
+        [existing.rows[0].id, onReading, kunReading, meaningId, mnemonic, strokeCount, babKode]
       );
       updated++;
     } else {
