@@ -1089,6 +1089,21 @@ function notionPelajaranType(title) {
   return 'text';
 }
 
+// Notion menamai child page "Pelajaran 1: Pengantar", "Pelajaran 2: Kosakata",
+// dst. Nomornya redundan dengan nomor urut yang sudah dirender sendiri oleh
+// sidebar welcome.html, dan artinya beda (posisi dalam modul vs nomor global),
+// jadi di layar jadi "87. Pelajaran 1: Pengantar". Strip prefix-nya lalu
+// samakan varian generik ke bentuk kanonik — sejajar dengan migration 080 yang
+// merapikan baris yang sudah terlanjur masuk DB. Judul spesifik (mis. "Kalimat
+// Identitas (です…)") dikembalikan apa adanya setelah prefix di-strip.
+function canonicalPelajaranTitle(title) {
+  const t = String(title || '').replace(/^\s*pelajaran\s*\d+\s*[:\-–—]\s*/i, '').trim();
+  if (/^(introduction|intro|pengantar)$/i.test(t)) return 'Pengantar';
+  if (/^(kosakata|vocabulary|vocab)(\s*語彙)?$/i.test(t)) return 'Kosakata 語彙';
+  if (/^kanji(\s*漢字)?$/i.test(t)) return 'Kanji 漢字';
+  return t;
+}
+
 function slugifyJa(s) {
   return String(s || '')
     .normalize('NFKD').replace(/[̀-ͯ]/g, '')
@@ -1156,7 +1171,7 @@ router.post('/modules/:moduleId/import-notion-pelajaran', notionImportLimiter, a
     }
     // Title — child_page block title or page properties.title.
     const titleProp = page.properties && Object.values(page.properties).find((p) => p.type === 'title');
-    const title = notionPlainText(titleProp) || '(tanpa judul)';
+    const title = canonicalPelajaranTitle(notionPlainText(titleProp)) || '(tanpa judul)';
     const type = notionPelajaranType(title);
     // Slug — ensure unique within module.
     let baseSlug = slugifyJa(title);
