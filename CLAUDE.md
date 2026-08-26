@@ -487,6 +487,22 @@
   (mis. tombol hapus di "Kelola Deck"/lesson list ke-pencet tidak sengaja,
   atau ada script/cron yang keliru). Kalau terhapus lagi untuk ketiga
   kalinya, jangan cuma re-run pola restore — investigasi dulu.
+
+- [ ] **18 lesson Tata Bahasa Bab 12-20 di-set `type='video'`** via migration
+  **099** (`099_bunpou_text_to_video.sql`), permintaan user — murni ubah
+  kolom, TANPA perubahan kode. Efeknya saat ini: masih tampil placeholder
+  statis "Video akan segera tersedia" di `welcome.html` (lesson type
+  `video` biasa TIDAK baca `video_url`, beda dari `deck`/`kana` yang sudah
+  ada wiring iframe-nya) dan form admin belum expose field Video URL untuk
+  hasil ubahan ini kecuali `wireLessonTypeVisibility` sudah otomatis
+  menampilkannya karena type-nya memang `video`. Kartu pola grammar
+  (module_grammar + grammar_examples) TETAP tampil seperti biasa karena
+  render-nya independen dari `lessons.type`. `video_url` belum diisi
+  (belum ada link saat migrasi ini ditulis) — kalau video-nya sudah siap,
+  perlu tambahan kerjaan: (a) admin isi `video_url` per lesson lewat form
+  (field-nya sudah otomatis muncul untuk type video), TAPI (b) `welcome.html`
+  masih perlu diubah supaya lesson type `video` non-deck/kana benar-benar
+  merender iframe dari `video_url` alih-alih placeholder — belum dikerjakan.
   **Konvensi judul lesson** (dirapikan di migration 079 — sebelumnya
   Assignment/Tugas Bunpou Bab 1-12 pakai em dash, tidak konsisten dengan
   Pelajaran intro/deck/kanji yang pakai titik dua): `Tipe Bab N: Topik`
