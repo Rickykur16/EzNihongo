@@ -459,9 +459,23 @@
   **Sisa pekerjaan Bab 12-20**: (a) deck kosakata Bab 17-20 masih kosong —
   isi lewat Kelola Deck → "↻ Import Bab dari Notion" (endpoint pakai
   `NOTION_TOKEN` backend, bukan kuota MCP); (b) Bab 13 belum punya kanji di
-  Notion (kolom "Kanji First Introduced" kosong); (c) Tugas Bunpou Bab 13-20
-  (slot sort_order 5 & 7 sudah disiapkan, sengaja kosong) dan Assignment
-  Bab 12-20 belum dibuat.
+  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 12-20
+  belum dibuat.
+  **Tugas Bunpou Bab 13-20** diisi migrasi **090-097** (satu file per bab,
+  `0NN_grammar_task_babNN.sql`) — mengisi slot sort_order 5 & 7 yang sengaja
+  disisakan kosong oleh 082-089 (Bab 12 sendiri sudah ditangani lebih dulu
+  oleh 062/065, sebelum seri 081-089 ada). Pola split pertama/kedua tugas
+  SAMA PERSIS dengan split pelajaran Tata Bahasa terkait (mis. Bab 14 = 4+3
+  pola), dan bank `module_grammar` di-FIND-OR-CREATE dengan pattern string
+  persis sama dengan 081-089 supaya reuse baris yang sudah ada (bukan
+  duplikat) — INSERT fallback-nya hanya kepakai kalau baris itu ternyata
+  terhapus. Penomoran ulang ke sort_order 5 & 7 pakai ROW_NUMBER atas urutan
+  relatif (pola yang sama dengan 048-065), bukan nilai sort_order literal,
+  jadi aman dijalankan berapa pun gap yang sudah ada. Divalidasi end-to-end
+  dengan menjalankan seluruh rantai migrasi (000-097) di Postgres lokal
+  sekali pakai (course + 20 modul dummy) sebelum commit — semua 8 file
+  applied bersih, tanpa duplikat pola, posisi final 5/7 persis seperti yang
+  diklaim tiap `RAISE NOTICE`.
   **Konvensi judul lesson** (dirapikan di migration 079 — sebelumnya
   Assignment/Tugas Bunpou Bab 1-12 pakai em dash, tidak konsisten dengan
   Pelajaran intro/deck/kanji yang pakai titik dua): `Tipe Bab N: Topik`
