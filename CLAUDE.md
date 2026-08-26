@@ -476,6 +476,17 @@
   sekali pakai (course + 20 modul dummy) sebelum commit — semua 8 file
   applied bersih, tanpa duplikat pola, posisi final 5/7 persis seperti yang
   diklaim tiap `RAISE NOTICE`.
+
+- [ ] **Tugas Bunpou Bab 12 kehapus DUA KALI** dari production (setelah
+  062, lalu setelah restore 065) — di-restore lagi via migration **098**
+  (`098_grammar_task_bab12_restore2.sql`, logika identik 062/065, sudah
+  divalidasi lewat simulasi hapus+restore di Postgres lokal). File itu
+  sendiri sudah menutup insiden ini, tapi ROOT CAUSE penghapusan berulang
+  belum diketahui — cek dulu sebelum bikin restore ketiga: apakah ada
+  admin/proses yang menghapus lesson `grammar_task` Bab 12 secara rutin
+  (mis. tombol hapus di "Kelola Deck"/lesson list ke-pencet tidak sengaja,
+  atau ada script/cron yang keliru). Kalau terhapus lagi untuk ketiga
+  kalinya, jangan cuma re-run pola restore — investigasi dulu.
   **Konvensi judul lesson** (dirapikan di migration 079 — sebelumnya
   Assignment/Tugas Bunpou Bab 1-12 pakai em dash, tidak konsisten dengan
   Pelajaran intro/deck/kanji yang pakai titik dua): `Tipe Bab N: Topik`
