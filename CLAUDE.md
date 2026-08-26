@@ -459,8 +459,8 @@
   **Sisa pekerjaan Bab 12-20**: (a) deck kosakata Bab 17-20 masih kosong —
   isi lewat Kelola Deck → "↻ Import Bab dari Notion" (endpoint pakai
   `NOTION_TOKEN` backend, bukan kuota MCP); (b) Bab 13 belum punya kanji di
-  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 13-20
-  belum dibuat (Bab 12 sudah — migration 100).
+  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 14-20
+  belum dibuat (Bab 12/13 sudah — migration 100/102).
   **Tugas Bunpou Bab 13-20** diisi migrasi **090-097** (satu file per bab,
   `0NN_grammar_task_babNN.sql`) — mengisi slot sort_order 5 & 7 yang sengaja
   disisakan kosong oleh 082-089 (Bab 12 sendiri sudah ditangani lebih dulu
@@ -562,6 +562,21 @@
   applied bersih, semua opsi tepat 4 dengan 1 kunci benar, pagar kanji +
   dedup 159 target lolos, dan 101 berhasil menormalkan 2 judul em dash
   dari 062.
+
+- **Assignment Bab 13: Progresif, Permintaan & Izin** diisi migration
+  **102** (`102_assignment_bab13_progresif_izin.sql`), pola sama persis
+  dengan 100 (50 soal, sort_order 100, pagar kata kerja tetap dihapus —
+  Bab 13 masih keluarga te-form). Karena Bab 13 TIDAK memperkenalkan kanji
+  baru (dikonfirmasi header 082), whitelist kanji-nya SAMA PERSIS dengan
+  100, dan もんだい1/2 diisi REVIEW kanji lama (読/書/見/食/飲 dari Bab
+  10-12) digabung dengan 5 pola grammar BARU Bab 13 (ています/てください/
+  てくれませんか/てもいいですか/てはいけません) — pola yang sama dengan
+  061 (review kanji lama karena Bab itu sendiri minim kanji baru relevan).
+  DEDUP array diperluas jadi 177 target (159 dari 042-061 + 18 dari 100).
+  Divalidasi end-to-end: replay penuh 081→062→100→082→090→102→101 di atas
+  modul Bab 12+13 dummy — kedua assignment applied bersih berdampingan,
+  semua opsi 4/1 kunci, pagar level + dedup lolos, tidak ada tabrakan
+  target antara Assignment Bab 12 dan Bab 13.
 
 ## Struktur repo (high-level)
 
