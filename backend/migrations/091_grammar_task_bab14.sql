@@ -166,7 +166,7 @@ BEGIN
     module_id, slug, title, type, content, duration_minutes, sort_order,
     passing_score_pct, cooldown_hours
   ) VALUES (
-    v_module_id, v_slug1, 'Tugas Bunpou Bab 14 — Bentuk Nai & Kewajiban', 'grammar_task',
+    v_module_id, v_slug1, 'Tugas Bunpou Bab 14: Bentuk Nai & Kewajiban', 'grammar_task',
     'Buat kalimat pakai 4 pola Bab 14 (konjugasi ない, melarang dengan sopan lewat 〜ないでください, menyatakan kewajiban lewat 〜なければなりません, dan menyatakan tidak wajib lewat 〜なくてもいいです), lalu ucapkan. Kalimatmu direkam dan dinilai otomatis — selesaikan semua kalimat yang diminta tiap pola untuk menandai tugas ini selesai.',
     15, 100, 70, 12
   )
@@ -179,7 +179,7 @@ BEGIN
     module_id, slug, title, type, content, duration_minutes, sort_order,
     passing_score_pct, cooldown_hours
   ) VALUES (
-    v_module_id, v_slug2, 'Tugas Bunpou Bab 14 — Bentuk Plain', 'grammar_task',
+    v_module_id, v_slug2, 'Tugas Bunpou Bab 14: Bentuk Plain', 'grammar_task',
     'Buat kalimat pakai 3 pola Bab 14 (bentuk kamus, bentuk lampau plain 〜た, dan lampau negatif plain 〜なかった), lalu ucapkan. Kalimatmu direkam dan dinilai otomatis — selesaikan semua kalimat yang diminta tiap pola untuk menandai tugas ini selesai.',
     15, 101, 70, 12
   )

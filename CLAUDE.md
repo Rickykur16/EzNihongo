@@ -459,8 +459,8 @@
   **Sisa pekerjaan Bab 12-20**: (a) deck kosakata Bab 17-20 masih kosong —
   isi lewat Kelola Deck → "↻ Import Bab dari Notion" (endpoint pakai
   `NOTION_TOKEN` backend, bukan kuota MCP); (b) Bab 13 belum punya kanji di
-  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 12-20
-  belum dibuat.
+  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 13-20
+  belum dibuat (Bab 12 sudah — migration 100).
   **Tugas Bunpou Bab 13-20** diisi migrasi **090-097** (satu file per bab,
   `0NN_grammar_task_babNN.sql`) — mengisi slot sort_order 5 & 7 yang sengaja
   disisakan kosong oleh 082-089 (Bab 12 sendiri sudah ditangani lebih dulu
@@ -521,6 +521,47 @@
   Audit cepat kondisi produksi: `backend/scripts/audit-bab-structure.sql`
   (read-only, 4 laporan: jenis pelajaran per bab, bab yang menyimpang,
   pelajaran kosong, bank vocab/grammar).
+
+- [ ] **Regresi judul em dash di 090-097 (Tugas Bunpou Bab 13-20)** — ditulis
+  belakangan setelah migration 079 menetapkan konvensi titik dua, tanpa
+  sengaja balik pakai em dash lagi (mis. `'Tugas Bunpou Bab 13 —
+  Progresif & Permintaan'`). Sumber file 090-097 sudah diperbaiki ke titik
+  dua langsung, dan migration **101**
+  (`101_normalize_tugas_bunpou_title_separator.sql`) menjalankan ulang
+  regex generik 079 (`^(Assignment|Tugas Bunpou) Bab [0-9]+ — `) untuk
+  merapikan baris yang sudah kadung ter-apply di production dengan title
+  em dash (termasuk Bab 12 dari 062, yang juga sempat kena regresi ini).
+  Kalau menulis migrasi Assignment/Tugas Bunpou baru lagi, JUDUL WAJIB
+  titik dua dari awal — jangan andalkan normalizer lagi.
+
+- **Assignment Bab 12: Bentuk Te** diisi migration **100**
+  (`100_assignment_bab12_te_form.sql`), pola sama persis dengan
+  039-061 (50 soal: 漢字読み 9 + 表記 9 + 文脈規定 12 + 文の文法1 20,
+  ditampilkan semua tiap attempt, lulus 70%, cooldown 12 jam, di
+  sort_order 100 tanpa penomoran ulang). Dua catatan desain khusus Bab 12
+  dibanding 039-061:
+  - **Pagar kata kerja DIHAPUS** (bukan diperluas seperti biasa) — Bab 12
+    adalah bab konjugasi kata kerja itu sendiri (bentuk te), jadi regex
+    lama yang melarang token `ます|ました|...|いて` justru melarang materi
+    inti bab ini (`いて` adalah hasil sah く→いて, `ます`/`ました` wajib
+    muncul sebagai kata kerja terakhir di pola 〜て、〜). Pagar kanji tetap
+    berlaku penuh dan itu yang menahan kosakata di luar level.
+  - **Jebakan pagar "rantai の"** (assertion 4, regex `の[^。]*の` terhadap
+    kolom `question` mentah termasuk isi `<u>…</u>`, bukan cuma badan
+    kalimat): kata majemuk yang secara kebetulan punya dua の di dalam satu
+    kata (`のみもの` = の-み-も-の) FALSE POSITIVE ke-flag sebagai "chain
+    の" walau bukan partikel berantai. 039-061 diam-diam menghindari ini
+    dengan taruh kata seperti itu HANYA di options/penjelasan, tidak pernah
+    di teks `question`. Migrasi 100 awalnya kena ini di draft pertama
+    (soal もんだい2 表記 target `のみもの`) — diganti ke `のみました`
+    (hanya satu の) sebelum lolos. Kalau menulis soal baru dengan kosakata
+    ber-の ganda dalam satu kata, taruh di options saja, jangan di
+    `question`.
+  Divalidasi end-to-end: simulasi penuh di Postgres lokal (course + 12
+  modul dummy, replay 081→062→100→101 di atas modul Bab 12) — 50 soal
+  applied bersih, semua opsi tepat 4 dengan 1 kunci benar, pagar kanji +
+  dedup 159 target lolos, dan 101 berhasil menormalkan 2 judul em dash
+  dari 062.
 
 ## Struktur repo (high-level)
 

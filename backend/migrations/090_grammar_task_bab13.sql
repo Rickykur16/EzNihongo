@@ -147,7 +147,7 @@ BEGIN
     module_id, slug, title, type, content, duration_minutes, sort_order,
     passing_score_pct, cooldown_hours
   ) VALUES (
-    v_module_id, v_slug1, 'Tugas Bunpou Bab 13 — Progresif & Permintaan', 'grammar_task',
+    v_module_id, v_slug1, 'Tugas Bunpou Bab 13: Progresif & Permintaan', 'grammar_task',
     'Buat kalimat pakai 3 pola Bab 13 (menyatakan aksi sedang berlangsung/kondisi/kebiasaan/profesi dengan 〜ています, meminta tolong dengan sopan lewat 〜てください, dan meminta tolong lebih halus lewat 〜てくれませんか), lalu ucapkan. Kalimatmu direkam dan dinilai otomatis — selesaikan semua kalimat yang diminta tiap pola untuk menandai tugas ini selesai.',
     15, 100, 70, 12
   )
@@ -160,7 +160,7 @@ BEGIN
     module_id, slug, title, type, content, duration_minutes, sort_order,
     passing_score_pct, cooldown_hours
   ) VALUES (
-    v_module_id, v_slug2, 'Tugas Bunpou Bab 13 — Izin & Larangan', 'grammar_task',
+    v_module_id, v_slug2, 'Tugas Bunpou Bab 13: Izin & Larangan', 'grammar_task',
     'Buat kalimat pakai 2 pola Bab 13 (meminta izin dengan 〜てもいいですか, dan menyatakan larangan tegas dengan 〜てはいけません), lalu ucapkan. Kalimatmu direkam dan dinilai otomatis — selesaikan semua kalimat yang diminta tiap pola untuk menandai tugas ini selesai.',
     15, 101, 70, 12
   )

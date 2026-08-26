@@ -133,7 +133,7 @@ BEGIN
     module_id, slug, title, type, content, duration_minutes, sort_order,
     passing_score_pct, cooldown_hours
   ) VALUES (
-    v_module_id, v_slug1, 'Tugas Bunpou Bab 18 — Membandingkan Dua Hal', 'grammar_task',
+    v_module_id, v_slug1, 'Tugas Bunpou Bab 18: Membandingkan Dua Hal', 'grammar_task',
     'Buat kalimat pakai 2 pola Bab 18 (membandingkan dua hal dengan menyorot A lewat AはBより〜です, dan menyorot B lewat AよりBのほうが〜), lalu ucapkan. Kalimatmu direkam dan dinilai otomatis — selesaikan semua kalimat yang diminta tiap pola untuk menandai tugas ini selesai.',
     15, 100, 70, 12
   )
@@ -146,7 +146,7 @@ BEGIN
     module_id, slug, title, type, content, duration_minutes, sort_order,
     passing_score_pct, cooldown_hours
   ) VALUES (
-    v_module_id, v_slug2, 'Tugas Bunpou Bab 18 — Bertanya Perbandingan & Superlatif', 'grammar_task',
+    v_module_id, v_slug2, 'Tugas Bunpou Bab 18: Bertanya Perbandingan & Superlatif', 'grammar_task',
     'Buat kalimat pakai 2 pola Bab 18 (bertanya mana yang lebih unggul di antara dua hal dengan AとBとどちらが〜, dan menyatakan yang paling unggul di dalam satu kelompok dengan 〜の中で〜が一番〜), lalu ucapkan. Kalimatmu direkam dan dinilai otomatis — selesaikan semua kalimat yang diminta tiap pola untuk menandai tugas ini selesai.',
     15, 101, 70, 12
   )

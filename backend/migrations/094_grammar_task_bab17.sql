@@ -132,7 +132,7 @@ BEGIN
     module_id, slug, title, type, content, duration_minutes, sort_order,
     passing_score_pct, cooldown_hours
   ) VALUES (
-    v_module_id, v_slug1, 'Tugas Bunpou Bab 17 — Suka & Mahir', 'grammar_task',
+    v_module_id, v_slug1, 'Tugas Bunpou Bab 17: Suka & Mahir', 'grammar_task',
     'Buat kalimat pakai 2 pola Bab 17 (menyatakan suka/tidak suka dengan 〜が好きです／嫌いです, dan menyatakan mahir/tidak mahir dengan 〜が上手です／下手です), lalu ucapkan. Kalimatmu direkam dan dinilai otomatis — selesaikan semua kalimat yang diminta tiap pola untuk menandai tugas ini selesai.',
     15, 100, 70, 12
   )
@@ -145,7 +145,7 @@ BEGIN
     module_id, slug, title, type, content, duration_minutes, sort_order,
     passing_score_pct, cooldown_hours
   ) VALUES (
-    v_module_id, v_slug2, 'Tugas Bunpou Bab 17 — Kemampuan & Bertanya Jenis', 'grammar_task',
+    v_module_id, v_slug2, 'Tugas Bunpou Bab 17: Kemampuan & Bertanya Jenis', 'grammar_task',
     'Buat kalimat pakai 2 pola Bab 17 (menyatakan kemampuan dengan 〜ができます, dan bertanya jenis/sifat sesuatu dengan どんな〜), lalu ucapkan. Kalimatmu direkam dan dinilai otomatis — selesaikan semua kalimat yang diminta tiap pola untuk menandai tugas ini selesai.',
     15, 101, 70, 12
   )

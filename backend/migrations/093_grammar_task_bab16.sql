@@ -132,7 +132,7 @@ BEGIN
     module_id, slug, title, type, content, duration_minutes, sort_order,
     passing_score_pct, cooldown_hours
   ) VALUES (
-    v_module_id, v_slug1, 'Tugas Bunpou Bab 16 — Partikel Waktu & Tanggal', 'grammar_task',
+    v_module_id, v_slug1, 'Tugas Bunpou Bab 16: Partikel Waktu & Tanggal', 'grammar_task',
     'Buat kalimat pakai 2 pola Bab 16 (memakai partikel waktu 〜に dengan keterangan waktu yang bisa diangkakan, dan menyebutkan tanggal dengan pola 〜月〜日), lalu ucapkan. Kalimatmu direkam dan dinilai otomatis — selesaikan semua kalimat yang diminta tiap pola untuk menandai tugas ini selesai.',
     15, 100, 70, 12
   )
@@ -145,7 +145,7 @@ BEGIN
     module_id, slug, title, type, content, duration_minutes, sort_order,
     passing_score_pct, cooldown_hours
   ) VALUES (
-    v_module_id, v_slug2, 'Tugas Bunpou Bab 16 — Frekuensi & Bertanya Waktu', 'grammar_task',
+    v_module_id, v_slug2, 'Tugas Bunpou Bab 16: Frekuensi & Bertanya Waktu', 'grammar_task',
     'Buat kalimat pakai 2 pola Bab 16 (menyatakan sesuatu yang rutin dengan 毎週／毎月／毎年, dan bertanya hari/tanggal/waktu dengan 何曜日／何月何日／いつ), lalu ucapkan. Kalimatmu direkam dan dinilai otomatis — selesaikan semua kalimat yang diminta tiap pola untuk menandai tugas ini selesai.',
     15, 101, 70, 12
   )

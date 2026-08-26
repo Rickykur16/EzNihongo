@@ -155,7 +155,7 @@ BEGIN
     module_id, slug, title, type, content, duration_minutes, sort_order,
     passing_score_pct, cooldown_hours
   ) VALUES (
-    v_module_id, v_slug1, 'Tugas Bunpou Bab 15 — Bahasa Pelayanan', 'grammar_task',
+    v_module_id, v_slug1, 'Tugas Bunpou Bab 15: Bahasa Pelayanan', 'grammar_task',
     'Buat kalimat pakai 4 pola Bab 15 (memesan/meminta dengan 〜を[counter]お願いします, menawarkan dengan 〜はいかがですか, menyebut total/hasil ala petugas dengan 〜になります, dan mempersilakan dengan hormat lewat お〜ください), lalu ucapkan. Kalimatmu direkam dan dinilai otomatis — selesaikan semua kalimat yang diminta tiap pola untuk menandai tugas ini selesai.',
     15, 100, 70, 12
   )
@@ -168,7 +168,7 @@ BEGIN
     module_id, slug, title, type, content, duration_minutes, sort_order,
     passing_score_pct, cooldown_hours
   ) VALUES (
-    v_module_id, v_slug2, 'Tugas Bunpou Bab 15 — Memutuskan & Perubahan', 'grammar_task',
+    v_module_id, v_slug2, 'Tugas Bunpou Bab 15: Memutuskan & Perubahan', 'grammar_task',
     'Buat kalimat pakai 2 pola Bab 15 (menyatakan pilihan yang diambil dengan 〜にします, dan menyatakan perubahan keadaan dengan 〜くなります atau 〜になります), lalu ucapkan. Kalimatmu direkam dan dinilai otomatis — selesaikan semua kalimat yang diminta tiap pola untuk menandai tugas ini selesai.',
     15, 101, 70, 12
   )

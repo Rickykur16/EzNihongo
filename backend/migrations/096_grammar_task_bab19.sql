@@ -154,7 +154,7 @@ BEGIN
     module_id, slug, title, type, content, duration_minutes, sort_order,
     passing_score_pct, cooldown_hours
   ) VALUES (
-    v_module_id, v_slug1, 'Tugas Bunpou Bab 19 — Keinginan', 'grammar_task',
+    v_module_id, v_slug1, 'Tugas Bunpou Bab 19: Keinginan', 'grammar_task',
     'Buat kalimat pakai 3 pola Bab 19 (menyatakan ingin melakukan sesuatu dengan 〜たいです, tidak ingin melakukan sesuatu dengan 〜たくないです, dan menginginkan sebuah benda dengan 〜が欲しいです), lalu ucapkan. Kalimatmu direkam dan dinilai otomatis — selesaikan semua kalimat yang diminta tiap pola untuk menandai tugas ini selesai.',
     15, 100, 70, 12
   )
@@ -167,7 +167,7 @@ BEGIN
     module_id, slug, title, type, content, duration_minutes, sort_order,
     passing_score_pct, cooldown_hours
   ) VALUES (
-    v_module_id, v_slug2, 'Tugas Bunpou Bab 19 — Rencana & Ajakan', 'grammar_task',
+    v_module_id, v_slug2, 'Tugas Bunpou Bab 19: Rencana & Ajakan', 'grammar_task',
     'Buat kalimat pakai 3 pola Bab 19 (menyatakan niat pribadi dengan 〜つもりです, menyatakan jadwal yang sudah ditetapkan dengan 〜予定です, dan mengajak orang lain dengan 〜ましょう atau 〜ませんか), lalu ucapkan. Kalimatmu direkam dan dinilai otomatis — selesaikan semua kalimat yang diminta tiap pola untuk menandai tugas ini selesai.',
     15, 101, 70, 12
   )
