@@ -2,6 +2,26 @@
 
 ## Pending ops / infra (jadwal: minggu ini)
 
+- [x] **Insiden: deploy PR #189 macet lalu gagal, PR #190 tidak ke-trigger
+  sama sekali** (2026-08-26). Run CI job `ci` untuk merge PR #189
+  (migration 100/101, commit `84be81f`) hang 15 menit (normalnya <60s)
+  lalu `cancelled`, job `deploy` ikutan `skipped` → migration 100/101
+  TIDAK ter-apply ke production meski sudah di GitHub `main`. Push
+  berikutnya (merge PR #190, migration 102, commit `fbc1d7b`) bahkan
+  sama sekali tidak memicu run "Deploy to VPS" baru (workflow run untuk
+  sha itu tidak pernah muncul di `list_workflow_runs`) — kemungkinan
+  besar terkait `concurrency: group: deploy-vps, cancel-in-progress: false`
+  di `deploy.yml` yang antre di belakang run yang macet, lalu entah
+  kenapa tidak pernah dijalankan setelah run itu selesai. Re-run manual
+  via API (`rerun_workflow_run` / `rerun_failed_jobs`) ditolak 403
+  ("Resource not accessible by integration") — token yang dipakai sesi
+  ini tidak punya scope `actions:write`. Root cause CI hang belum
+  diketahui (kemungkinan npm registry / GitHub-hosted runner transient
+  issue, bukan bug di kode kita). **Kalau kejadian lagi**: cek
+  `list_workflow_runs` untuk `deploy.yml` setelah tiap merge — jangan
+  asumsikan merge = ter-deploy. Fix yang dipakai: push commit baru
+  (bukan commit kosong) ke `main` supaya trigger run bersih.
+
 - [ ] **Offsite backup ke Cloudflare R2** — `RCLONE_REMOTE` di
   `/var/www/eznihongo/backend/.env` masih kosong, jadi `backup.sh` cuma
   nge-dump lokal di `/var/backups/eznihongo/`. Risiko: kalau VPS hilang
