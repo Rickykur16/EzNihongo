@@ -144,7 +144,7 @@ BEGIN
     module_id, slug, title, type, content, duration_minutes, sort_order,
     passing_score_pct, cooldown_hours
   ) VALUES (
-    v_module_id, v_slug1, 'Tugas Bunpou Bab 20 — Pengalaman', 'grammar_task',
+    v_module_id, v_slug1, 'Tugas Bunpou Bab 20: Pengalaman', 'grammar_task',
     'Buat kalimat pakai 2 pola Bab 20 (menceritakan pengalaman yang pernah dialami dengan 〜たことがあります, dan menyatakan belum pernah mengalami sesuatu dengan 〜たことがありません), lalu ucapkan. Kalimatmu direkam dan dinilai otomatis — selesaikan semua kalimat yang diminta tiap pola untuk menandai tugas ini selesai.',
     15, 100, 70, 12
   )
@@ -157,7 +157,7 @@ BEGIN
     module_id, slug, title, type, content, duration_minutes, sort_order,
     passing_score_pct, cooldown_hours
   ) VALUES (
-    v_module_id, v_slug2, 'Tugas Bunpou Bab 20 — Penghubung Kalimat', 'grammar_task',
+    v_module_id, v_slug2, 'Tugas Bunpou Bab 20: Penghubung Kalimat', 'grammar_task',
     'Buat kalimat pakai 3 pola Bab 20 (menyatakan sebab dengan 〜から, mempertentangkan dua hal dengan 〜が、〜, dan menyambung antar kalimat dengan そして／それから／でも), lalu ucapkan. Kalimatmu direkam dan dinilai otomatis — selesaikan semua kalimat yang diminta tiap pola untuk menandai tugas ini selesai.',
     15, 101, 70, 12
   )
