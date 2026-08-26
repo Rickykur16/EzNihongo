@@ -479,8 +479,8 @@
   **Sisa pekerjaan Bab 12-20**: (a) deck kosakata Bab 17-20 masih kosong —
   isi lewat Kelola Deck → "↻ Import Bab dari Notion" (endpoint pakai
   `NOTION_TOKEN` backend, bukan kuota MCP); (b) Bab 13 belum punya kanji di
-  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 14-20
-  belum dibuat (Bab 12/13 sudah — migration 100/102).
+  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 15-20
+  belum dibuat (Bab 12/13/14 sudah — migration 100/102/103).
   **Tugas Bunpou Bab 13-20** diisi migrasi **090-097** (satu file per bab,
   `0NN_grammar_task_babNN.sql`) — mengisi slot sort_order 5 & 7 yang sengaja
   disisakan kosong oleh 082-089 (Bab 12 sendiri sudah ditangani lebih dulu
@@ -597,6 +597,23 @@
   modul Bab 12+13 dummy — kedua assignment applied bersih berdampingan,
   semua opsi 4/1 kunci, pagar level + dedup lolos, tidak ada tabrakan
   target antara Assignment Bab 12 dan Bab 13.
+
+- **Assignment Bab 14: Bentuk Nai & Bentuk Plain** diisi migration **103**
+  (`103_assignment_bab14_nai_plain.sql`), pola sama persis dengan 100/102
+  (50 soal, sort_order 100, pagar kata kerja tetap dihapus). Bab 14
+  memperkenalkan 4 kanji BARU — 立(たつ)・休(やすむ)・入(はいる)・出(でる)
+  — kanji baru pertama sejak Bab 12, jadi もんだい1/2 untuk PERTAMA KALINYA
+  sejak itu diisi 100% kanji baru bab itu sendiri (bukan review kanji lama),
+  digabung dengan 3 bentuk konjugasi juga baru di Bab 14 (nai-form, bentuk
+  kamus, bentuk ta plain) — sengaja TIDAK memakai 3 pola lain
+  (ないでください／なければなりません／なくてもいいです) di もんだい1/2
+  karena itu bentuk fungsi-kalimat, bukan penentu bacaan kanji; ketiganya
+  tetap diuji di もんだい1 文の文法1. Whitelist kanji = whitelist 100/102
+  UNION 立休入出. DEDUP array diperluas jadi 195 target (177 dari 042-100 +
+  18 dari 102). Divalidasi end-to-end: replay penuh
+  081→062→100→082→090→102→083→091→103 di atas modul Bab 12+13+14 dummy —
+  ketiga assignment applied bersih berdampingan, semua opsi 4/1 kunci,
+  pagar level + dedup lolos.
 
 ## Struktur repo (high-level)
 
