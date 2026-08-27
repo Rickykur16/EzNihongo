@@ -479,8 +479,10 @@
   **Sisa pekerjaan Bab 12-20**: (a) deck kosakata Bab 17-20 masih kosong —
   isi lewat Kelola Deck → "↻ Import Bab dari Notion" (endpoint pakai
   `NOTION_TOKEN` backend, bukan kuota MCP); (b) Bab 13 belum punya kanji di
-  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 15-20
-  belum dibuat (Bab 12/13/14 sudah — migration 100/102/103).
+  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 16-20
+  belum dibuat (Bab 12/13/14/15 sudah — migration 100/104/103/105; 102
+  digantikan 104 untuk data production, lihat catatan Assignment Bab 13 di
+  bawah).
   **Tugas Bunpou Bab 13-20** diisi migrasi **090-097** (satu file per bab,
   `0NN_grammar_task_babNN.sql`) — mengisi slot sort_order 5 & 7 yang sengaja
   disisakan kosong oleh 082-089 (Bab 12 sendiri sudah ditangani lebih dulu
@@ -639,6 +641,45 @@
   081→062→100→082→090→102→083→091→103 di atas modul Bab 12+13+14 dummy —
   ketiga assignment applied bersih berdampingan, semua opsi 4/1 kunci,
   pagar level + dedup lolos.
+
+- **Assignment Bab 15: Bahasa Pelayanan & Perubahan** diisi migration
+  **105** (`105_assignment_bab15_pelayanan_perubahan.sql`), pola sama
+  persis dengan 100/104/103 (50 soal, sort_order 100). Bab 15
+  memperkenalkan 7 kanji BARU — 言(いう)・話(はなす)・聞(きく)・買(かう)・
+  店(みせ)・会(あう)・社(かいしゃ, cuma dipakai dalam 会社) — tapi BEDA
+  dari Bab 14: keenam pola grammar Bab 15 adalah FRASA TETAP (〜を…お願い
+  します／〜はいかがですか／〜になります／お〜ください／〜にします／
+  〜くなります・〜になります), bukan keluarga konjugasi kata kerja satu
+  akar seperti nai/kamus/ta Bab 14, jadi memaksakan もんだい1/2 mengikuti
+  salah satu pola grammar tidak alami. もんだい1/2 diisi KOSAKATA POLOS
+  (言います／話します／聞きます／買います／会います／お店／電話／会社／
+  店の人) gaya 039-061, kembali ke pendekatan sebelum Bab 12-14 yang
+  memang bertema konjugasi. Ke-6 pola grammar tetap diuji penuh di もんだい1
+  文の文法1 (split 4/3/3/4/3/3) — 4 pola berbentuk frasa tetap
+  (お願いします／いかがですか／になります／にします) memakai opsi
+  CROSS-PATTERN (opsi salah = 3 frasa tetap lain, gaya JLPT 文法 asli
+  menguji pemilihan pola yang tepat untuk konteks, bukan konjugasi), 2 pola
+  lain (お〜ください, 〜くなります/〜になります) tetap self-contained
+  seperti 100/102/103. もんだい3 pakai 12 kosakata fungsional dari bank
+  Bab 15 (073), SEMUA ditulis kana/katakana polos (bukan kanji) karena
+  section itu tidak pakai `<u>` — seluruh kolom question kena pagar
+  whitelist dan kanji seperti 現/計/約/屋/物 belum diajarkan. Whitelist
+  kanji = whitelist 100/104/103 UNION 言話聞買店会社 (sama persis dengan
+  `v_kanji_ok` di 084). **DEDUP diperbaiki metodenya** di migrasi ini:
+  daripada menyusun array secara incremental dari catatan migrasi
+  sebelumnya (pendekatan yang di sesi sebelumnya sempat salah hitung
+  karena pola glob shell keliru melewatkan file 039 dan 055), array
+  sekarang di-grep ULANG PENUH dari seluruh file migrasi assignment
+  039-104 yang benar-benar ada di repo (215 target unik). Divalidasi
+  end-to-end: replay penuh
+  081→062→100→082→090→102→104→083→091→103→084→092→105 di atas modul Bab
+  12+13+14+15 dummy — keempat assignment (Bab 12/13/14/15) applied bersih
+  berdampingan, semua opsi 4/1 kunci, pagar level + dedup lolos. Sempat
+  kena jebakan pagar "rantai の" varian ketiga saat menulis もんだい3: kata
+  kerja pasif "たのまれたら" (mengandung の di suku kedua) dan もの (juga
+  mengandung の) masing-masing digabung dengan "店の人" dalam satu kalimat
+  → dua の. Diganti ke "おねがいされたら" dan "メニューを" (keduanya tanpa
+  の) untuk soal 20 dan 26.
 
 ## Struktur repo (high-level)
 
