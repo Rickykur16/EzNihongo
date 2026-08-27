@@ -1019,6 +1019,22 @@
   berturut-turut). Divalidasi bersih pada draft pertama (Postgres lokal,
   replay 081→108→117, idempoten). Bab 19-20 (118-119) menyusul dengan
   pola identik.
+  **Bab 19 (118) selesai** — grammar scope 〜たいです／〜たくないです／
+  [noun]が欲しいです (selalu kana ほしいです — 欲 tidak diajarkan)／
+  〜つもりです vs 〜予定です (selalu kana よていです — 予定 tidak diajarkan)
+  ／〜ましょう・〜ませんか (088_bunpou_bab19.sql). 5 kanji baru Bab 19
+  (雨天空山川) ditambahkan ke whitelist (102 karakter). Passage: keinginan
+  &amp; rencana pendakian gunung (たいです／ほしいです／つもりです vs
+  よていです semua dipakai natural dalam satu cerita). Listening: dialog 1
+  jebakan "harus disimak sampai akhir" (jadwal digeser dua kali sebelum
+  disepakati); dialog 2 keinginan yang BERUBAH di tengah percakapan;
+  dialog 3 barang yang disebut PERTAMA justru DITOLAK (kamera kemahalan,
+  niat sebenarnya beli sepeda) — pola sama dengan jebakan suka-vs-mahir
+  Bab 17 dan perbandingan Bab 18. Larangan でも/そして/それから/〜が、〜
+  tetap bersih (kelima kalinya berturut-turut). Divalidasi bersih pada
+  draft pertama (Postgres lokal, replay 081→109→118, idempoten). Bab 20
+  (119) — BAB PENUTUP seri dokkai/listening — menyusul dengan pola
+  identik.
 
 ## Struktur repo (high-level)
 
