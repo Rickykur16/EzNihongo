@@ -910,6 +910,29 @@
   pada draft pertama (Postgres lokal, replay 081→100→111 di atas modul
   Bab 12 dummy, re-run kedua dikonfirmasi idempoten — masih 57 soal, tidak
   dobel). Bab 13-20 (112-119) menyusul dengan pola identik.
+  **Bab 13 (112) selesai** — grammar scope ています／てください／
+  てくれませんか／てもいいですか／てはいけません (082_bunpou_bab13.sql),
+  whitelist kanji SAMA PERSIS dengan Bab 12 (Bab 13 tidak memperkenalkan
+  kanji baru). Passage: aturan perpustakaan (boleh/tidak boleh, tolong
+  kembalikan buku). Listening: 4 dialog ミナさん／たなかさん／おかださん
+  (nama yang sama dengan 111 untuk kontinuitas). Sengaja TIDAK memakai
+  nai-form/bentuk plain/たことがあります/ましょう・ませんか/penghubung
+  そして・それから・でも・〜が、 (semua itu Bab 14+) supaya tidak bocor
+  materi depan. **Klarifikasi user setelah Bab 12/13**: level soal harus
+  tetap N5 (jangan terlalu susah), dan BOLEH pakai grammar/kosakata/kanji
+  dari bab-bab SEBELUMNYA sebagai kalimat pengantar/konteks soal (tidak
+  perlu memaksakan tiap kalimat 100% dari bab itu sendiri) — sudah otomatis
+  konsisten karena whitelist kanji memang kumulatif (bukan cuma kanji bab
+  ini), tapi ini eksplisit meng-encourage makin sering pakai kosakata umum
+  bab lama (学校／駅／花／先生 dst) sebagai konteks alih-alih memaksa tema
+  sempit tiap bab. **Jebakan の tambahan dicatat**: この／あの／その／どの
+  masing-masing SENDIRI mengandung satu karakter の (こ-の dieja hiragana)
+  — aman dipakai sekali per kalimat, tapi kalau digabung dengan の lain
+  (posesif, atau この+あの sekaligus) kena regex rantai-の yang sama;
+  semua kalimat Bab 13 dicek manual max 1 の per kalimat. Divalidasi bersih
+  tanpa revisi pada draft pertama (Postgres lokal, replay 081→104→112,
+  idempoten). Bab 14-20 (113-119) menyusul dengan pola identik, level N5
+  santai dan bebas pakai kosakata bab lama sebagai pengantar.
 
 ## Struktur repo (high-level)
 
