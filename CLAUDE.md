@@ -984,6 +984,22 @@
   berturut-turut sejak larangan dieksplisitkan). Divalidasi bersih pada
   draft final (Postgres lokal, replay 081→106→115, idempoten). Bab 17-20
   (116-119) menyusul dengan pola identik.
+  **Bab 17 (116) selesai** — grammar scope 〜が好きです／嫌いです (selalu
+  kana すき／きらい — 好/嫌 TIDAK diajarkan meski jadi inti pola bab ini),
+  〜が上手です／下手です, 〜ができます, どんな〜 (086_bunpou_bab17.sql).
+  9 kanji baru Bab 17 (子父母友手足口目耳) ditambahkan ke whitelist (93
+  karakter) — hanya 父・母・友・手 yang kepakai secara alami di konten
+  suka/mahir ini (子/足/口/目/耳 dibiarkan untuk もんだい1/2 yang memang
+  menguji vocab tersebut). Passage: perkenalan diri (suka musik, mahir
+  piano, tidak mahir menyanyi). Listening: 4 dialog dengan jebakan khas
+  JLPT — dialog 1 menguji beda 〜が すきです vs 〜が 上手です (kata paling
+  sering disebut justru yang TIDAK mahir); dialog 2 melacak kemampuan 3
+  orang berbeda (siswa harus mengaitkan subjek dengan levelnya
+  masing-masing, bukan cuma menangkap kata kunci). Larangan
+  でも/そして/それから/〜が、〜 tetap bersih tanpa revisi (ketiga kalinya
+  berturut-turut). Divalidasi bersih pada draft final (Postgres lokal,
+  replay 081→107→116, idempoten). Bab 18-20 (117-119) menyusul dengan
+  pola identik.
 
 ## Struktur repo (high-level)
 
