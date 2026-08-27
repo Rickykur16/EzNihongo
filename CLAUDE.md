@@ -588,15 +588,40 @@
   dengan 100 (50 soal, sort_order 100, pagar kata kerja tetap dihapus —
   Bab 13 masih keluarga te-form). Karena Bab 13 TIDAK memperkenalkan kanji
   baru (dikonfirmasi header 082), whitelist kanji-nya SAMA PERSIS dengan
-  100, dan もんだい1/2 diisi REVIEW kanji lama (読/書/見/食/飲 dari Bab
-  10-12) digabung dengan 5 pola grammar BARU Bab 13 (ています/てください/
-  てくれませんか/てもいいですか/てはいけません) — pola yang sama dengan
-  061 (review kanji lama karena Bab itu sendiri minim kanji baru relevan).
-  DEDUP array diperluas jadi 177 target (159 dari 042-061 + 18 dari 100).
-  Divalidasi end-to-end: replay penuh 081→062→100→082→090→102→101 di atas
-  modul Bab 12+13 dummy — kedua assignment applied bersih berdampingan,
-  semua opsi 4/1 kunci, pagar level + dedup lolos, tidak ada tabrakan
-  target antara Assignment Bab 12 dan Bab 13.
+  100. Draf awal もんだい1/2 sempat REVIEW kanji lama (読/書/見/食/飲 dari
+  Bab 10-12, sama seperti pola 061) tapi user menandai ini bikin Assignment
+  Bab 12 dan 13 terasa "kanji-nya sama" — **direvisi** (lihat migration 104
+  di bawah) supaya もんだい1/2 memakai kanji LEBIH LAMA (車・花・電車・道・駅,
+  sebelum Bab 12) untuk variasi, digabung dengan 4 pola grammar Bab 13
+  (ています/てください/てもいいですか/てはいけません; てくれませんか tetap
+  hanya di もんだい1 文の文法1). DEDUP array diperluas jadi 177 target (159
+  dari 042-061 + 18 dari 100). Divalidasi end-to-end: replay penuh
+  081→062→100→082→090→102→104→083→091→103 di atas modul Bab 12+13+14
+  dummy — semua assignment applied bersih berdampingan, semua opsi 4/1
+  kunci, pagar level + dedup lolos, tidak ada tabrakan target antar bab.
+
+- **Revisi kanji Assignment Bab 13** — migration **104**
+  (`104_assignment_bab13_kanji_variety_fix.sql`) memperbaiki DATA
+  PRODUCTION yang sudah menjalankan 102 versi lama (ter-deploy lewat PR
+  #191, jadi tidak akan re-run otomatis). Sumber 102 SUDAH diedit langsung
+  di repo (fresh install lewat 000-104 benar sejak awal); 104 me-replay
+  DELETE+INSERT 50 soal yang IDENTIK dengan 102 versi baru ke lesson slug
+  yang sama, pola sama dengan 101 (perbaikan judul 090-097 yang sudah
+  live) dan 065 (restore konten yang sudah live). もんだい1/2 baru:
+  車をもっています／花がさいています／電車にのっています／道をあるいています／
+  駅でまっています (ています, 5) + 電車にのってください／道をあるいてください
+  (てください, 2) + 車をつかってもいいですか (てもいいですか, 1) +
+  花をとってはいけません (てはいけません, 1), verba dieja kana (持/咲/乗/歩/
+  待/使/取 tidak ada di whitelist taught kanji, pola sama dengan 行 di 100).
+  **Jebakan pagar "rantai の" varian baru**: draft pertama memakai konteks
+  "つぎの 電車にのってください" — "つぎの" (の pertama) + "のって" (verba
+  乗る bentuk te, の kedua) = dua の dalam satu kalimat, ke-flag assertion 4
+  padahal bukan partikel の berantai yang sebenarnya (mirip jebakan
+  "のみもの" di migration 100, tapi kali ini dari KOMBINASI kata konteks +
+  verba, bukan satu kata majemuk). Diganti ke "えきで 電車にのってください"
+  (tanpa の di konteks). Kalau menulis soal baru dengan verba yang KANA-nya
+  kebetulan diawali の (のる/のみます/dst), hindari taruh kata ber-の lain
+  (つぎの/あの/この kalau ada の, dst) di konteks kalimat yang sama.
 
 - **Assignment Bab 14: Bentuk Nai & Bentuk Plain** diisi migration **103**
   (`103_assignment_bab14_nai_plain.sql`), pola sama persis dengan 100/102
