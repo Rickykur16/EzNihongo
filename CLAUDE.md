@@ -479,10 +479,10 @@
   **Sisa pekerjaan Bab 12-20**: (a) deck kosakata Bab 17-20 masih kosong —
   isi lewat Kelola Deck → "↻ Import Bab dari Notion" (endpoint pakai
   `NOTION_TOKEN` backend, bukan kuota MCP); (b) Bab 13 belum punya kanji di
-  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 16-20
-  belum dibuat (Bab 12/13/14/15 sudah — migration 100/104/103/105; 102
-  digantikan 104 untuk data production, lihat catatan Assignment Bab 13 di
-  bawah).
+  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 17-20
+  belum dibuat (Bab 12/13/14/15/16 sudah — migration 100/104/103/105/106;
+  102 digantikan 104 untuk data production, lihat catatan Assignment
+  Bab 13 di bawah).
   **Tugas Bunpou Bab 13-20** diisi migrasi **090-097** (satu file per bab,
   `0NN_grammar_task_babNN.sql`) — mengisi slot sort_order 5 & 7 yang sengaja
   disisakan kosong oleh 082-089 (Bab 12 sendiri sudah ditangani lebih dulu
@@ -680,6 +680,42 @@
   mengandung の) masing-masing digabung dengan "店の人" dalam satu kalimat
   → dua の. Diganti ke "おねがいされたら" dan "メニューを" (keduanya tanpa
   の) untuk soal 20 dan 26.
+
+- **Assignment Bab 16: Waktu & Tanggal** diisi migration **106**
+  (`106_assignment_bab16_waktu_tanggal.sql`), pola sama persis dengan
+  100/104/103/105 (50 soal, sort_order 100). Bab 16 memperkenalkan 6 kanji
+  BARU — 日・火・水・木・金・土 (nama hari; 曜 belum diajarkan, jadi
+  "ようび" selalu kana). もんだい1/2 diisi KOSAKATA POLOS gaya 105: 7 nama
+  hari (日ようび～土ようび, 月 sendiri sudah taught lama tapi disertakan
+  supaya siklus 7 hari lengkap) + 2 frasa tanggal (何月何日／六月三日,
+  menguji bacaan khusus tanggal 3 = みっか). もんだい1 文の文法1 (split
+  5/5/5/5) menguji 4 pola: 〜に (partikel waktu) diuji DUA ARAH — waktu
+  berangka (jam/hari/bulan) WAJIB に (soal 31-33) vs waktu relatif
+  (あした／まいにち) JUSTRU TIDAK memakai に (soal 34-35), opsi salah
+  +を/+で/+ni yang salah; 〜月〜日 (36-40) opsi salah tanggal lain yang
+  mirip (angka digeser), termasuk bacaan khusus tanggal 20 = はつか;
+  毎週／毎月／毎年 (41-45) opsi cross-pattern +毎日 (kata sungguhan tapi di
+  luar 3 pola resmi bab ini); 何曜日／何月何日／いつ (46-50) opsi
+  cross-pattern +何時. もんだい3 pakai 12 kosakata waktu relatif dari bank
+  Bab 16 (074) — あした／きのう／あさって／せんげつ／らいげつ／こんげつ／
+  きょねん／らいねん／しゅうまつ／せんしゅう／らいしゅう／こんしゅう,
+  SEMUA kana polos (bank 074 punya banyak kata lain seperti 明日／今日／
+  来月 yang memakai kanji 明／今／来 yang belum diajarkan). Whitelist kanji
+  = whitelist 100/104/103/105 UNION 日火水木金土 (sama persis dengan
+  `v_kanji_ok` di 085). **Metode dedup lanjut disempurnakan**: array
+  di-grep ulang penuh dari 039-105 seperti 105, TAPI proses grep sempat
+  ke-tangkap 2 baris PALSU dari komentar migration 105 sendiri (placeholder
+  literal `<u>...</u>`/`<u>…</u>` di teks penjelasan, bukan target soal
+  sungguhan) — sudah difilter manual sebelum dipakai (233 target bersih).
+  **Pelajaran untuk migrasi berikutnya**: comment placeholder yang
+  menyerupai pola tag target ikut ter-grep dan HARUS di-cross-check/filter
+  manual, jangan asumsikan hasil grep otomatis bersih. Divalidasi
+  end-to-end: replay penuh
+  081→062→100→082→090→102→104→083→091→103→084→092→105→085→093→106 di atas
+  modul Bab 12+13+14+15+16 dummy — kelima assignment (Bab 12-16) applied
+  bersih berdampingan, semua opsi 4/1 kunci, pagar level + dedup lolos,
+  kanji tested antar bab semuanya berbeda (Bab12: 読書見食飲行; Bab13:
+  車花電車道駅; Bab14: 立休入出; Bab15: 言話聞買店会社; Bab16: 日火水木金土).
 
 ## Struktur repo (high-level)
 
