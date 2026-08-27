@@ -1,5 +1,17 @@
--- 102_assignment_bab13_progresif_izin.sql — Assignment Bab 13: Progresif,
--- Permintaan & Izin.
+-- 104_assignment_bab13_kanji_variety_fix.sql — perbaikan produksi untuk
+-- Assignment Bab 13 yang SUDAH LIVE (102, ter-deploy lewat PR #191).
+--
+-- MASALAH: user melaporkan "kanji yang kau ujikan bab 12 dan bab 13 sama"
+-- — もんだい1/2 di 102 memakai 読/書/見/食/飲 persis sama dengan Assignment
+-- Bab 12 (100), jadi tidak ada variasi kanji antar dua assignment
+-- berurutan. Sumber 102 SUDAH diedit langsung (fresh install lewat 000-104
+-- sekarang benar sejak awal) tapi database yang SUDAH menjalankan 102
+-- (tercatat di schema_migrations, tidak akan re-run) tetap punya versi
+-- lama — migrasi ini yang memperbaiki data production, pola sama dengan
+-- 101 (perbaikan judul 090-097 yang sudah live) dan 065 (restore konten
+-- yang sudah live). Isi DO-block di bawah IDENTIK dengan versi 102 yang
+-- sudah direvisi (re-run penuh DELETE+INSERT 50 soal ke lesson slug yang
+-- sama), supaya idempoten dan konsisten dengan fresh install.
 --
 -- Ujian bab untuk Bab 13, melanjutkan pola assignment Bab 1-12
 -- (039/040/041/045/047/051/053/055/057/059/061/100). Modul di-resolve
@@ -94,16 +106,16 @@ BEGIN
    OFFSET (v_bab_no - 1) LIMIT 1;
 
   IF v_module_id IS NULL THEN
-    RAISE NOTICE '102: modul Bab % di kursus % tidak ditemukan — skip seed assignment.', v_bab_no, v_course_slug;
+    RAISE NOTICE '104: modul Bab % di kursus % tidak ditemukan — skip seed assignment.', v_bab_no, v_course_slug;
     RETURN;
   END IF;
 
   IF v_module_title !~* v_title_re THEN
-    RAISE NOTICE '102: modul Bab % terbaca "%" — kalau ternyata bukan bab yang dimaksud, pindahkan pelajarannya lewat admin (tidak perlu migrasi baru).',
+    RAISE NOTICE '104: modul Bab % terbaca "%" — kalau ternyata bukan bab yang dimaksud, pindahkan pelajarannya lewat admin (tidak perlu migrasi baru).',
       v_bab_no, v_module_title;
   END IF;
 
-  RAISE NOTICE '102: seed Assignment Bab % ke modul "%".', v_bab_no, v_module_title;
+  RAISE NOTICE '104: seed Assignment Bab % ke modul "%".', v_bab_no, v_module_title;
 
   INSERT INTO lessons (
     module_id, slug, title, type, content, duration_minutes, sort_order,
@@ -340,7 +352,7 @@ BEGIN
 
   -- ===== Assertion bentuk =====
   IF (SELECT COUNT(*) FROM quiz_questions WHERE lesson_id = v_lesson_id) <> 50 THEN
-    RAISE EXCEPTION '102: jumlah soal bukan 50 (dapat %)',
+    RAISE EXCEPTION '104: jumlah soal bukan 50 (dapat %)',
       (SELECT COUNT(*) FROM quiz_questions WHERE lesson_id = v_lesson_id);
   END IF;
 
@@ -351,7 +363,7 @@ BEGIN
      GROUP BY qq.id
     HAVING COUNT(qo.id) <> 4 OR COUNT(*) FILTER (WHERE qo.is_correct) <> 1
   ) THEN
-    RAISE EXCEPTION '102: ada soal yang opsinya bukan 4 atau kuncinya bukan tepat 1';
+    RAISE EXCEPTION '104: ada soal yang opsinya bukan 4 atau kuncinya bukan tepat 1';
   END IF;
 
   -- ===== Pagar level =====
@@ -367,7 +379,7 @@ BEGIN
              '[先何語校国生学名人魚本花八三十九一五四二六七安高古新白長男女気下前外間右中左後上時分円百千万年月半歳午車東道駅行西電北南見読書週毎食飲]', '', 'g'
            ) ~ '[一-龯]'
   ) THEN
-    RAISE EXCEPTION '102: ada kanji di luar daftar taught pada badan kalimat soal';
+    RAISE EXCEPTION '104: ada kanji di luar daftar taught pada badan kalimat soal';
   END IF;
 
   -- 2. Partikel: TIDAK ADA ASSERTION (dihapus sejak 059).
@@ -379,7 +391,7 @@ BEGIN
     SELECT 1 FROM quiz_questions
      WHERE lesson_id = v_lesson_id AND question ~ 'の[^。]*の'
   ) THEN
-    RAISE EXCEPTION '102: ada kalimat dengan rantai の (lebih dari satu の dalam satu kalimat)';
+    RAISE EXCEPTION '104: ada kalimat dengan rantai の (lebih dari satu の dalam satu kalimat)';
   END IF;
 
   -- 5. Target section: もんだい1 wajib kanji di dalam <u>, もんだい2 wajib kana.
@@ -388,7 +400,7 @@ BEGIN
      WHERE lesson_id = v_lesson_id AND question_category = 'vocabulary' AND section_number = 1
        AND COALESCE((regexp_match(question, '<u>([^<]*)</u>'))[1], '') !~ '[一-龯]'
   ) THEN
-    RAISE EXCEPTION '102: ada soal 漢字読み yang target <u> nya tidak mengandung kanji';
+    RAISE EXCEPTION '104: ada soal 漢字読み yang target <u> nya tidak mengandung kanji';
   END IF;
 
   IF EXISTS (
@@ -396,7 +408,7 @@ BEGIN
      WHERE lesson_id = v_lesson_id AND question_category = 'vocabulary' AND section_number = 2
        AND COALESCE((regexp_match(question, '<u>([^<]*)</u>'))[1], '一') ~ '[一-龯]'
   ) THEN
-    RAISE EXCEPTION '102: ada soal 表記 yang target <u> nya sudah berupa kanji';
+    RAISE EXCEPTION '104: ada soal 表記 yang target <u> nya sudah berupa kanji';
   END IF;
 
   -- 6. DEDUP WAJIB — target <u> tidak boleh sama dengan salah satu dari
@@ -431,8 +443,8 @@ BEGIN
          '飲んでから'
        ])
   ) THEN
-    RAISE EXCEPTION '102: ada target <u> yang sudah pernah diujikan di migration 042-100';
+    RAISE EXCEPTION '104: ada target <u> yang sudah pernah diujikan di migration 042-100';
   END IF;
 
-  RAISE NOTICE '102: selesai — 50 soal (vocabulary 30, grammar 20), semua pagar level + dedup lolos.';
+  RAISE NOTICE '104: selesai — 50 soal (vocabulary 30, grammar 20), semua pagar level + dedup lolos.';
 END $$;
