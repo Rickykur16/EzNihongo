@@ -968,6 +968,22 @@
   (Postgres lokal, replay 081→105→114, idempoten). Bab 16-20 (115-119)
   menyusul dengan pola identik, larangan grammar bab depan tetap
   dieksplisitkan tiap prompt.
+  **Bab 16 (115) selesai** — grammar scope 〜に (partikel waktu titik
+  spesifik)／〜月〜日／毎週・毎月・毎年／何曜日・何月何日・いつ
+  (085_bunpou_bab16.sql). 6 kanji baru Bab 16 (日火水木金土) ditambahkan
+  ke whitelist (84 karakter). 曜 (dalam ようび) tetap TIDAK diajarkan,
+  selalu kana. **Jebakan baru ditemukan**: 京 (dalam 東京) JUGA tidak
+  diajarkan (cuma 東 yang taught) — draft pertama sempat pakai 東京 kanji,
+  diperbaiki ke とうきょう kana penuh sebelum commit. Passage: jadwal
+  mingguan + tanggal ujian + rutinitas bulanan. Listening: 4 dialog
+  bertema jebakan klasik JLPT choukai — beberapa hari/tanggal disebut
+  dalam satu audio, siswa harus menyimak SAMPAI AKHIR untuk tahu yang
+  benar-benar berlaku (dialog 2: rapat pindah dari 六月八日 ke 六月九日;
+  dialog 4: kebiasaan 十二月 tapi tahun ini 一月十五日). Larangan
+  でも/そして/それから/〜が、〜 tetap bersih tanpa revisi (kedua kalinya
+  berturut-turut sejak larangan dieksplisitkan). Divalidasi bersih pada
+  draft final (Postgres lokal, replay 081→106→115, idempoten). Bab 17-20
+  (116-119) menyusul dengan pola identik.
 
 ## Struktur repo (high-level)
 
