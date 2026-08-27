@@ -533,7 +533,7 @@ router.get('/stats/me', asyncHandler(async (req, res) => {
 // check, so it only ever applies to courses explicitly marked is_free=TRUE.
 // A paid course (is_free=FALSE) must go through POST /api/orders instead;
 // an unclassified course (is_free IS NULL — not yet reviewed by an admin,
-// see migration 118) is blocked from both paths until it's classified.
+// see migration 121) is blocked from both paths until it's classified.
 router.post('/enrollments', asyncHandler(async (req, res) => {
   const { courseSlug, courseId } = req.body || {};
   if (!courseSlug && !courseId) {

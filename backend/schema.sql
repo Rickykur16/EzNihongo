@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS courses (
   is_featured BOOLEAN NOT NULL DEFAULT FALSE,
   -- Nullable, no default, deliberately: a course sitting at NULL is blocked
   -- from BOTH self-enroll and order purchase until an admin explicitly
-  -- classifies it (see admin.html course form + migration 118).
+  -- classifies it (see admin.html course form + migration 121).
   is_free BOOLEAN,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -383,11 +383,11 @@ CREATE INDEX IF NOT EXISTS idx_qqr_attempt ON quiz_question_results (attempt_id)
 -- foundation): status/expires_at/source/revoked_at let admin grants be
 -- revoked or time-boxed without losing the enrollment row (and the progress
 -- tied to it). 'expired' is computed at read time (status='active' AND
--- expires_at < NOW()), not stored. See migration 117.
+-- expires_at < NOW()), not stored. See migration 120.
 -- ===== COURSE ORDERS (Phase 2 — manual bank transfer, provider-agnostic) =====
 -- Purchase intent, separate from the Kanji PWA's Midtrans-driven
 -- `subscriptions` table (different identity realm — kanji_users, not
--- users). See migration 118 for the full design rationale.
+-- users). See migration 121 for the full design rationale.
 CREATE TABLE IF NOT EXISTS orders (
   id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_number           TEXT UNIQUE NOT NULL,

@@ -110,7 +110,7 @@ function renderCourseUI(course) {
 
   // Free courses (is_free === true) self-enroll instantly, same as before.
   // Everything else (paid, or not yet classified by an admin — see
-  // migration 118) goes through the order/manual-transfer flow. The
+  // migration 121) goes through the order/manual-transfer flow. The
   // payment-method buttons above are cosmetic for now — only bank transfer
   // is wired up server-side (POST /api/orders), so the submit handler
   // always creates a manual-transfer order regardless of which is active.

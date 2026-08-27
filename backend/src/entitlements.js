@@ -1,7 +1,7 @@
 // Course access / entitlement checks — Phase 1 (course access foundation).
 //
 // Access is per (user, course): user_enrollments is the entitlement record
-// (see migration 117). Enrolling in N5 never implies N4 access because
+// (see migration 120). Enrolling in N5 never implies N4 access because
 // every check below is scoped to a single course_id. Admins get implicit
 // access to every course (mirrors GET /api/enrollments/me) so they can
 // preview/QA content without a real enrollment row.

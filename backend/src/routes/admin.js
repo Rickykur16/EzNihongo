@@ -205,7 +205,7 @@ router.post('/courses', asyncHandler(async (req, res) => {
   if (slugErr) return res.status(400).json({ error: slugErr });
   // isFree is tri-state (true/false/null = "not yet classified") — pass
   // through as-is rather than coercing with !!, which would collapse
-  // "unclassified" into "paid". See migration 118.
+  // "unclassified" into "paid". See migration 121.
   const result = await query(
     `INSERT INTO courses
        (slug, title, description, level, thumbnail_url, sort_order, is_published, is_available,
@@ -3237,7 +3237,7 @@ router.get('/users', asyncHandler(async (req, res) => {
 // Beri/cabut akses kursus tanpa lewat checkout: insert/soft-revoke baris
 // user_enrollments (grant sama persis dengan POST /api/enrollments, tapi
 // admin bisa pilih user mana by email; revoke mengubah status, bukan
-// DELETE — lihat migration 117). user_enrollments = single source of
+// DELETE — lihat migration 120). user_enrollments = single source of
 // truth akses, di-scope per course_id (akses N5 tidak pernah membuka N4).
 
 // GET /api/admin/user-access?email= — cari user + daftar kursus yang sudah di-enroll
@@ -3349,7 +3349,7 @@ router.post('/user-access/revoke', asyncHandler(async (req, res) => {
 // the ONLY event that grants access — the user_enrollments upsert happens
 // inside the same transaction as the order/payment status flip below, never
 // at order-creation or proof-upload time. See backend/src/routes/orders.js
-// for the student-facing side and migration 118 for the schema.
+// for the student-facing side and migration 121 for the schema.
 
 const ORDER_ACTIONABLE_STATUSES = ['pending_payment', 'awaiting_review', 'rejected'];
 function orderEffectiveStatus(order) {
