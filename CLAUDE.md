@@ -476,12 +476,16 @@
   "EzNihongo — Daftar Grammar 文法 (JLPT N5 + N4)" bagian N5-B12…B20 (46 pola,
   138 contoh kalimat). Detail pola ini di bagian **Tipe pelajaran `text`
   (Tata Bahasa)** di bawah.
-  **Sisa pekerjaan Bab 12-20**: (a) deck kosakata Bab 17-20 masih kosong —
-  isi lewat Kelola Deck → "↻ Import Bab dari Notion" (endpoint pakai
-  `NOTION_TOKEN` backend, bukan kuota MCP); (b) Bab 13 belum punya kanji di
-  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 19-20
-  belum dibuat (Bab 12-18 sudah — migration 100/104/103/105/106/107/108;
-  102 digantikan 104 untuk data production, lihat catatan Assignment
+  **Sisa pekerjaan Bab 12-20**: (a) ~~deck kosakata Bab 17-20 masih
+  kosong~~ — dikoreksi user (2026-08-27): sudah terisi, klaim lama di
+  sini keliru/basi (kemungkinan sudah diisi manual lewat Kelola Deck →
+  "↻ Import Bab dari Notion" setelah catatan ini ditulis, sesi ini tidak
+  verifikasi ulang mana yang persis terisi — cek langsung di admin kalau
+  perlu detail per-bab); (b) Bab 13 belum punya kanji di
+  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 20
+  belum dibuat (Bab 12-19 sudah — migration
+  100/104/103/105/106/107/108/109; 102 digantikan 104 untuk data
+  production, lihat catatan Assignment
   Bab 13 di bawah).
   **Tugas Bunpou Bab 13-20** diisi migrasi **090-097** (satu file per bab,
   `0NN_grammar_task_babNN.sql`) — mengisi slot sort_order 5 & 7 yang sengaja
@@ -793,6 +797,37 @@
   081→062→100→082→090→102→104→083→091→103→084→092→105→085→093→106→086→094→107→087→095→108
   di atas modul Bab 12-18 dummy — ketujuh assignment (Bab 12-18) applied
   bersih berdampingan, semua opsi 4/1 kunci, pagar level + dedup lolos.
+
+- **Assignment Bab 19: Keinginan & Rencana** diisi migration **109**
+  (`109_assignment_bab19_keinginan_rencana.sql`), pola sama persis dengan
+  100/104/103/105/106/107/108 (50 soal, sort_order 100). Bab 19
+  memperkenalkan 5 kanji BARU — 雨(あめ)・天(dalam 天気)・空(そら)・
+  山(やま)・川(かわ), kata benda alam/cuaca (欲・予定 belum diajarkan,
+  jadi ほしい／よてい selalu kana). もんだい1/2 diisi KOSAKATA POLOS gaya
+  105/106/107 (bukan konjugasi, karena 6 pola grammar Bab 19 tidak butuh
+  kanji baru untuk diuji): 雨／天気／空／山／川 + 3 kombinasi berakhiran
+  satu の (雨の日／山の上／川の水, masing-masing HANYA satu の jadi aman
+  dari jebakan rantai の) + あおい空 (reuse 空 dalam frasa berbeda).
+  もんだい1 文の文法1 (split 4/3/3/3/3/4) menguji 6 pola: 〜たいです／
+  〜たくないです (opsi salah bentuk ます/ません/ました dari verba yang
+  sama), [noun]が欲しいです (opsi salah partikel を/に/で, konsisten
+  dengan nuansa partikel が dari Bab 17), 〜つもりです vs 〜予定です
+  (cross-pattern, menegaskan niat pribadi vs jadwal ditetapkan dari
+  catatan grammar 088), dan 〜ましょう／ませんか (mengajak vs menyetujui
+  ajakan). もんだい3 pakai 12 kosakata umum bertema keinginan/rencana/hobi
+  (りょこう／かいもの／さんぽ／しごと／べんきょう／かいぎ／しゅみ／
+  けいかく／よてい／つもり／きぼう／ゆめ) karena Bab 19 belum punya bank
+  kosakata resmi. Whitelist kanji = whitelist 100/104/103/105/106/107/108
+  UNION 雨天空山川 (sama persis dengan `v_kanji_ok` di 088). Draft PERTAMA
+  KALI sejak migration 106 lolos tanpa revisi jebakan の-chain atau
+  whitelist — kata-kata alam bab ini (雨/天気/空/山/川) kebetulan tidak
+  berakhiran の dan tidak pernah perlu digabung dengan この/あの/kata
+  ber-の lain dalam desain yang dipilih. Divalidasi end-to-end: replay
+  penuh
+  081→062→100→082→090→102→104→083→091→103→084→092→105→085→093→106→086→094→107→087→095→108→088→096→109
+  di atas modul Bab 12-19 dummy — kedelapan assignment (Bab 12-19)
+  applied bersih berdampingan, semua opsi 4/1 kunci, pagar level + dedup
+  lolos.
 
 ## Struktur repo (high-level)
 
