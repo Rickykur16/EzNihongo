@@ -482,11 +482,10 @@
   "↻ Import Bab dari Notion" setelah catatan ini ditulis, sesi ini tidak
   verifikasi ulang mana yang persis terisi — cek langsung di admin kalau
   perlu detail per-bab); (b) Bab 13 belum punya kanji di
-  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 20
-  belum dibuat (Bab 12-19 sudah — migration
-  100/104/103/105/106/107/108/109; 102 digantikan 104 untuk data
-  production, lihat catatan Assignment
-  Bab 13 di bawah).
+  Notion (kolom "Kanji First Introduced" kosong). Assignment Bab 12-20
+  SUDAH LENGKAP (migration 100/104/103/105/106/107/108/109/110; 102
+  digantikan 104 untuk data production, lihat catatan Assignment Bab 13
+  di bawah) — seri Assignment ini selesai per Bab 20 (2026-08-27).
   **Tugas Bunpou Bab 13-20** diisi migrasi **090-097** (satu file per bab,
   `0NN_grammar_task_babNN.sql`) — mengisi slot sort_order 5 & 7 yang sengaja
   disisakan kosong oleh 082-089 (Bab 12 sendiri sudah ditangani lebih dulu
@@ -828,6 +827,44 @@
   di atas modul Bab 12-19 dummy — kedelapan assignment (Bab 12-19)
   applied bersih berdampingan, semua opsi 4/1 kunci, pagar level + dedup
   lolos.
+
+- **Assignment Bab 20: Pengalaman & Penghubung Kalimat** diisi migration
+  **110** (`110_assignment_bab20_pengalaman_penghubung.sql`) — BAB
+  PENUTUP seri Assignment Bab 12-20, pola sama persis dengan
+  100/104/103/105/106/107/108/109 (50 soal, sort_order 100). Bab 20
+  memperkenalkan 2 kanji BARU — 来 dan 令. 来 ISTIMEWA karena punya DUA
+  cara baca: らい (on-yomi, kata majemuk waktu 来年／来月／来週 — kata ini
+  SEBELUMNYA selalu kana di 106/109 karena 来 belum taught, sekarang boleh
+  kanji) dan き／く／こ (kun-yomi, verba tidak beraturan 来る "datang":
+  来ます／来ました／来ません／来て／来ない). もんだい1/2 SENGAJA memakai
+  7 dari 9 target untuk menguji KEDUA cara baca sekaligus (jebakan klasik
+  JLPT — kanji yang sama, bacaan beda tergantung konteks), plus 令和
+  (nama era, satu-satunya kata yang memakai 令 di level N5). もんだい1
+  文の文法1 (split 4/4/4/4/4) menguji 5 pola penutup N5: 〜たことが
+  あります／ありません (opsi salah bentuk ます/ました/ています dari verba
+  sama), 〜から sebagai penanda SEBAB (opsi salah penghubung lain di
+  posisi salah gramatikal: が/でも/そして), 〜が、〜 pertentangan di AKHIR
+  kalimat pertama (opsi salah から/ので/と), dan そして／それから／でも
+  (satu-satunya pola yang testable murni dari konteks makna — memilih
+  penghubung antar-kalimat yang tepat berdasarkan hubungan logis kedua
+  kalimat, bukan posisi gramatikal). もんだい3 pakai 12 kata keterangan
+  umum N5/N4 yang menyertai kalimat pengalaman/pendapat
+  (いちども／はじめて／もう／まだ／やっと／ぜんぜん／たぶん／もちろん／
+  ぜひ／きっと／やっぱり／とても) karena Bab 20 belum punya bank kosakata
+  resmi. Whitelist kanji = whitelist 100/104/103/105/106/107/108/109
+  UNION 来令 (sama persis dengan `v_kanji_ok` di 089). Draft ini JUGA
+  lolos tanpa revisi jebakan の-chain atau whitelist (kata-kata 来-based
+  tidak berakhiran の). Divalidasi end-to-end: replay penuh
+  081→062→100→082→090→102→104→083→091→103→084→092→105→085→093→106→086→094→107→087→095→108→088→096→109→089→097→110
+  di atas modul Bab 12-20 dummy — SEMBILAN assignment (Bab 12-20, seri
+  LENGKAP) applied bersih berdampingan, semua opsi 4/1 kunci, pagar level
+  + dedup lolos, kanji tested antar bab semuanya berbeda (Bab12:
+  読書見食飲行; Bab13: 車花電車道駅; Bab14: 立休入出; Bab15: 言話聞買店会社;
+  Bab16: 日火水木金土; Bab17: 子父母友手足口目耳; Bab18: 大小多少; Bab19:
+  雨天空山川; Bab20: 来令). **Seri Assignment Bab 12-20 selesai
+  (2026-08-27)** — 450 soal total tersebar di 9 lesson, satu per bab,
+  masing-masing menguji kanji baru bab itu sendiri tanpa tumpang tindih
+  dengan bab lain.
 
 ## Struktur repo (high-level)
 
