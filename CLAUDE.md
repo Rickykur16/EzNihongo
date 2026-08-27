@@ -479,10 +479,10 @@
   **Sisa pekerjaan Bab 12-20**: (a) deck kosakata Bab 17-20 masih kosong —
   isi lewat Kelola Deck → "↻ Import Bab dari Notion" (endpoint pakai
   `NOTION_TOKEN` backend, bukan kuota MCP); (b) Bab 13 belum punya kanji di
-  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 18-20
-  belum dibuat (Bab 12/13/14/15/16/17 sudah — migration
-  100/104/103/105/106/107; 102 digantikan 104 untuk data production, lihat
-  catatan Assignment Bab 13 di bawah).
+  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 19-20
+  belum dibuat (Bab 12-18 sudah — migration 100/104/103/105/106/107/108;
+  102 digantikan 104 untuk data production, lihat catatan Assignment
+  Bab 13 di bawah).
   **Tugas Bunpou Bab 13-20** diisi migrasi **090-097** (satu file per bab,
   `0NN_grammar_task_babNN.sql`) — mengisi slot sort_order 5 & 7 yang sengaja
   disisakan kosong oleh 082-089 (Bab 12 sendiri sudah ditangani lebih dulu
@@ -751,6 +751,48 @@
   di atas modul Bab 12+13+14+15+16+17 dummy — keenam assignment (Bab
   12-17) applied bersih berdampingan, semua opsi 4/1 kunci, pagar level +
   dedup lolos.
+
+- **Assignment Bab 18: Perbandingan** diisi migration **108**
+  (`108_assignment_bab18_perbandingan.sql`), pola sama persis dengan
+  100/104/103/105/106/107 (50 soal, sort_order 100). Bab 18 memperkenalkan
+  4 kanji BARU — 大(おお)・小(ちい)・多(おお)・少(すく), semuanya kata
+  sifat い ukuran/jumlah (番 dari いちばん belum diajarkan, selalu kana).
+  Beda dari 105/106/107 (Bab 15-17, kanji baru = kata benda → kosakata
+  polos): kanji baru Bab 18 adalah kata SIFAT い yang alami dikonjugasi,
+  jadi もんだい1/2 kembali ke pola KONJUGASI (bentuk kini + bentuk lampau
+  かった) seperti 100/103 (Bab 12/14). **CATATAN PENTING**: 大 di bab ini
+  BARU RESMI masuk whitelist badan-kalimat — di 107 (Bab 17) 大 sengaja
+  dihindari di luar tag karena waktu itu belum taught (lihat jebakan
+  whitelist di 107); sekarang boleh dipakai bebas. もんだい1 文の文法1
+  (split 5/5/5/5) menguji 4 pola: AはBより〜です／AよりBのほうが〜 (opsi
+  salah partikel lain と/の/が), AとBとどちらが〜 (opsi salah どれ/なに/だれ
+  — menegaskan nuansa "どれ untuk ≥3 pilihan" dari catatan grammar 087),
+  dan 〜の中で〜が一番〜 (opsi salah なか/より/のほうが). もんだい3 pakai
+  12 kosakata umum (4 musim dari bank Bab 16 yang belum pernah dites + 4
+  transportasi + 4 makanan) karena Bab 18 belum punya bank kosakata resmi.
+  **Jebakan pagar "rantai の" varian keempat — PALING LUAS ditemukan di
+  migrasi ini**: draft awal ke-flag di 8 dari 30 soal もんだい1-3, semuanya
+  dari kombinasi kata umum yang SENDIRI-SENDIRI wajar tapi kalau digabung
+  jadi dua の: (1) この + あの dalam satu kalimat perbandingan ("この 本は
+  あの 本より..." — pola PERSIS dari contoh di 087_bunpou_bab18.sql
+  sendiri!) → diganti nama kota/benda konkret tanpa この/あの; (2) くだもの
+  (berakhiran の) + の posesif → "くだものの中で" = 2 の → diganti やさい
+  (tidak berakhiran の); (3) のりもの (mengandung DUA の SEKALIGUS di
+  dalam satu kata: の-ri-mo-no) — bahkan SENDIRIAN tanpa kata lain pun
+  sudah melanggar assertion, mirip のみもの (100) tapi ini kasus kata
+  benda umum, bukan kuliner → dihapus total dari kolom question, diganti
+  "それは" generik; (4) にほんの/インドの + たべもの (berakhiran の) → 2-3 の
+  → salah satu の-nya dihapus dari kalimat. **Pelajaran kumulatif**: kata
+  APAPUN yang berakhiran の (たべもの／のみもの／くだもの／のりもの／
+  たてもの dst — pola umum kata benda bahasa Jepang "X-mono") otomatis
+  jadi separuh dari rantai の begitu digabung dengan の lain di kalimat
+  yang sama (posesif, この/あの/そのkalau ada, atau kata ber-の lain);
+  cek MANUAL setiap kalimat baru yang memakai kata berakhiran の, jangan
+  cuma andalkan pola yang "terlihat aman". Divalidasi end-to-end: replay
+  penuh
+  081→062→100→082→090→102→104→083→091→103→084→092→105→085→093→106→086→094→107→087→095→108
+  di atas modul Bab 12-18 dummy — ketujuh assignment (Bab 12-18) applied
+  bersih berdampingan, semua opsi 4/1 kunci, pagar level + dedup lolos.
 
 ## Struktur repo (high-level)
 
