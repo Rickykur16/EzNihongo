@@ -479,10 +479,10 @@
   **Sisa pekerjaan Bab 12-20**: (a) deck kosakata Bab 17-20 masih kosong —
   isi lewat Kelola Deck → "↻ Import Bab dari Notion" (endpoint pakai
   `NOTION_TOKEN` backend, bukan kuota MCP); (b) Bab 13 belum punya kanji di
-  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 17-20
-  belum dibuat (Bab 12/13/14/15/16 sudah — migration 100/104/103/105/106;
-  102 digantikan 104 untuk data production, lihat catatan Assignment
-  Bab 13 di bawah).
+  Notion (kolom "Kanji First Introduced" kosong); (c) Assignment Bab 18-20
+  belum dibuat (Bab 12/13/14/15/16/17 sudah — migration
+  100/104/103/105/106/107; 102 digantikan 104 untuk data production, lihat
+  catatan Assignment Bab 13 di bawah).
   **Tugas Bunpou Bab 13-20** diisi migrasi **090-097** (satu file per bab,
   `0NN_grammar_task_babNN.sql`) — mengisi slot sort_order 5 & 7 yang sengaja
   disisakan kosong oleh 082-089 (Bab 12 sendiri sudah ditangani lebih dulu
@@ -716,6 +716,41 @@
   bersih berdampingan, semua opsi 4/1 kunci, pagar level + dedup lolos,
   kanji tested antar bab semuanya berbeda (Bab12: 読書見食飲行; Bab13:
   車花電車道駅; Bab14: 立休入出; Bab15: 言話聞買店会社; Bab16: 日火水木金土).
+
+- **Assignment Bab 17: Suka & Mahir** diisi migration **107**
+  (`107_assignment_bab17_suka_mahir.sql`), pola sama persis dengan
+  100/104/103/105/106 (50 soal, sort_order 100). Bab 17 memperkenalkan 9
+  kanji BARU — 子・父・母・友・手・足・口・目・耳 (keluarga & bagian tubuh)
+  — tapi 好・嫌 (suki/kirai) BELUM diajarkan, jadi すき／きらい selalu
+  kana. もんだい1/2 diisi KOSAKATA POLOS 9 kanji baru (父／母／友だち／手／
+  足／口／目／耳／子ども), gaya 105/106 — 4 pola grammar Bab 17
+  (〜が好きです・〜が上手です・〜ができます・どんな〜) sama sekali tidak
+  butuh kanji baru untuk diuji (partikel が + kata tanya どんな), jadi
+  tidak dipaksakan ke もんだい1/2. **Jebakan whitelist baru ditemukan**:
+  soal draf awal memakai "大きいです" (mata besar) sebagai konteks di
+  luar tag, tapi 大 TERNYATA TIDAK ADA di whitelist meski "大学"/"大学生"
+  sudah lama jadi target dedup historis — kanji di DALAM tag `<u>` tidak
+  pernah dicek terhadap whitelist (assertion 1 cuma cek badan kalimat DI
+  LUAR tag), jadi 大学/大学生 lolos dulu sebagai TARGET tapi 大 tidak
+  pernah benar-benar ditambahkan ke whitelist "bebas dipakai di luar tag".
+  Pelajaran: jangan asumsikan kanji yang muncul di ARRAY DEDUP otomatis
+  aman dipakai bebas di badan kalimat — selalu cross-check terhadap
+  whitelist string yang sebenarnya. Diganti ke "わるいです" (kana, tidak
+  butuh kanji). もんだい1 文の文法1 (split 5/5/5/5) menguji partikel が di
+  3 pola pertama (〜が好きです／嫌いです・〜が上手です／下手です・
+  〜ができます — semua opsi salah seragam を/に/で supaya siswa fokus pada
+  SATU nuansa partikel), dan どんな vs kata tanya lain (どう/なに/だれ) di
+  pola ke-4. もんだい3 pakai 12 kosakata umum bertema suka/mahir/hobi
+  (すき／きらい／だいすき／だいきらい／じょうず／へた／とくい／どんな／
+  りょうり／うた／え／おんがく) — Bab 17 BELUM punya bank kosakata resmi
+  (075 cuma seed kanji_items, bukan module_vocabulary), jadi dipilih
+  kosakata umum N5 yang tematik, bukan dari bank existing. Whitelist kanji
+  = whitelist 100/104/103/105/106 UNION 子父母友手足口目耳 (sama persis
+  dengan `v_kanji_ok` di 086). Divalidasi end-to-end: replay penuh
+  081→062→100→082→090→102→104→083→091→103→084→092→105→085→093→106→086→094→107
+  di atas modul Bab 12+13+14+15+16+17 dummy — keenam assignment (Bab
+  12-17) applied bersih berdampingan, semua opsi 4/1 kunci, pagar level +
+  dedup lolos.
 
 ## Struktur repo (high-level)
 
