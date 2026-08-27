@@ -866,7 +866,8 @@
   masing-masing menguji kanji baru bab itu sendiri tanpa tumpang tindih
   dengan bab lain.
 
-- [ ] **Assignment Bab 12-20 belum ada dokkai (読解) / listening (聴解)**
+- [x] **Assignment Bab 12-20 belum ada dokkai (読解) / listening (聴解)**
+  — SELESAI (2026-08-27, migrasi 111-119, lihat catatan lengkap di bawah)
   — user (2026-08-27) menyadari Assignment 100/104/103/105-110 cuma
   menguji vocabulary+grammar (漢字読み/表記/文脈規定/文の文法1), padahal
   kolom `question_category IN ('reading','listening')` + `passage` +
@@ -1000,6 +1001,67 @@
   berturut-turut). Divalidasi bersih pada draft final (Postgres lokal,
   replay 081→107→116, idempoten). Bab 18-20 (117-119) menyusul dengan
   pola identik.
+  **Bab 18 (117) selesai** — grammar scope AはBより／AよりBのほうが／
+  AとBとどちらが／〜の中で〜がいちばん (087_bunpou_bab18.sql). 4 kanji
+  baru Bab 18 (大小多少) ditambahkan ke whitelist (97 karakter). 番 (dalam
+  いちばん) tetap TIDAK diajarkan, selalu kana. **Jebakan の-chain
+  TERBESAR ada di bab ini** (lihat catatan panjang di migration 108:
+  この+あの digabung, kata "X-mono" seperti くだもの/のりもの) — kali ini
+  larangan totalnya dieksplisitkan di prompt (hindari この/あの/その sama
+  sekali, pakai nama toko/benda konkret untuk perbandingan) dan berhasil:
+  draft pertama bersih tanpa SATU PUN revisi rantai-の, padahal bab paling
+  rawan sejauh ini. Passage: perbandingan 3 toko roti (ukuran, harga,
+  keramaian — sengaja toko terkecil yang paling ramai supaya jawaban
+  tidak bisa ditebak dari satu fakta saja). Listening: 4 dialog dengan
+  pola serupa (barang/transportasi/buah dipilih berdasarkan perbandingan,
+  jawaban akhir sering tidak menyebut nama pilihannya secara eksplisit —
+  siswa harus menyimpulkan dari "yang lebih murah/cepat" ke barangnya).
+  Larangan でも/そして/それから/〜が、〜 tetap bersih (keempat kalinya
+  berturut-turut). Divalidasi bersih pada draft pertama (Postgres lokal,
+  replay 081→108→117, idempoten). Bab 19-20 (118-119) menyusul dengan
+  pola identik.
+  **Bab 19 (118) selesai** — grammar scope 〜たいです／〜たくないです／
+  [noun]が欲しいです (selalu kana ほしいです — 欲 tidak diajarkan)／
+  〜つもりです vs 〜予定です (selalu kana よていです — 予定 tidak diajarkan)
+  ／〜ましょう・〜ませんか (088_bunpou_bab19.sql). 5 kanji baru Bab 19
+  (雨天空山川) ditambahkan ke whitelist (102 karakter). Passage: keinginan
+  &amp; rencana pendakian gunung (たいです／ほしいです／つもりです vs
+  よていです semua dipakai natural dalam satu cerita). Listening: dialog 1
+  jebakan "harus disimak sampai akhir" (jadwal digeser dua kali sebelum
+  disepakati); dialog 2 keinginan yang BERUBAH di tengah percakapan;
+  dialog 3 barang yang disebut PERTAMA justru DITOLAK (kamera kemahalan,
+  niat sebenarnya beli sepeda) — pola sama dengan jebakan suka-vs-mahir
+  Bab 17 dan perbandingan Bab 18. Larangan でも/そして/それから/〜が、〜
+  tetap bersih (kelima kalinya berturut-turut). Divalidasi bersih pada
+  draft pertama (Postgres lokal, replay 081→109→118, idempoten). Bab 20
+  (119) — BAB PENUTUP seri dokkai/listening — menyusul dengan pola
+  identik.
+  **Bab 20 (119) selesai — SERI DOKKAI/LISTENING BAB 12-20 LENGKAP
+  (2026-08-27)**. Grammar scope 〜たことがあります／〜たことがありません／
+  〜から (sebab)／〜が、〜 (pertentangan)／そして・それから・でも
+  (089_bunpou_bab20.sql) — BEDA dari migrasi 111-118: keempat pola ini
+  direservasi untuk bab ini di semua bab sebelumnya, sekarang dipakai
+  bebas karena inilah bab yang mengajarkannya. 2 kanji baru Bab 20
+  (来令) ditambahkan ke whitelist (104 karakter) — 来 sengaja diuji KEDUA
+  bacaannya sekaligus (らい di 来年／来週／来月, き di kata kerja 来る:
+  来ます／来ません) sebagai poin ajar inti; 令 TIDAK dipakai sama sekali
+  karena satu-satunya pemakaian N5 (令和) butuh kanji 和 yang tidak ada
+  di whitelist — menambah 和 adalah keputusan kurikulum terpisah, di luar
+  scope migrasi ini. Passage: pengalaman ke Jepang + mendaki gunung,
+  merangkai たことがあります／それから／〜が、〜／でも／〜から dalam satu
+  cerita. Listening: dialog 1 jawaban "mendaki bersama tahun depan" tidak
+  diucapkan kata per kata (harus digabung dari ajakan てくれませんか-style
+  + persetujuan); dialog 3 total harga bukan penjumlahan kedua barang
+  yang disebut, tapi harga barang yang akhirnya DIPILIH setelah でも
+  membalik keputusan awal. Divalidasi bersih pada draft pertama (Postgres
+  lokal, replay 081→110→119, idempoten, DAN verifikasi akhir: kesembilan
+  lesson assignment-bab-12 s/d -20 semuanya persis 57 soal). **Seri
+  111-119 selesai (2026-08-27)** — 7 soal baru × 9 bab = 63 soal baru
+  total (27 reading + 36 listening), ditambah 450 soal vocab/grammar dari
+  seri 100-110, sehingga tiap Assignment Bab 12-20 sekarang 57 soal
+  (9 × 57 = 513 soal total di seluruh Bab 12-20). Assignment sekarang
+  benar-benar menguji keempat kategori JLPT (vocabulary/grammar/reading/
+  listening), bukan cuma vocab+grammar seperti sebelumnya.
 
 ## Struktur repo (high-level)
 
