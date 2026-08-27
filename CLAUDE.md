@@ -866,6 +866,51 @@
   masing-masing menguji kanji baru bab itu sendiri tanpa tumpang tindih
   dengan bab lain.
 
+- [ ] **Assignment Bab 12-20 belum ada dokkai (読解) / listening (聴解)**
+  — user (2026-08-27) menyadari Assignment 100/104/103/105-110 cuma
+  menguji vocabulary+grammar (漢字読み/表記/文脈規定/文の文法1), padahal
+  kolom `question_category IN ('reading','listening')` + `passage` +
+  `audio_script` sudah lama ada (migration 012/013/034) dan dipakai fitur
+  lain (generator JLPT dokkai/listening terpisah). Keputusan user: EXTEND
+  lesson Assignment yang sudah ada (bukan lesson baru terpisah) — satu
+  migrasi tambahan per bab, **111-119** (`111_assignment_bab12_dokkai_
+  listening.sql` dst, satu file per bab, DELETE hanya menyasar
+  `question_category IN ('reading','listening')` milik lesson itu supaya
+  50 soal vocabulary/grammar dari 100/104/103/105-110 tidak ikut kehapus
+  saat re-run). Tiap bab dapat tambahan tetap: もんだい4 読解 (1 passage
+  pendek + 3 soal pemahaman) + もんだい5 聴解 (4 dialog INDEPENDEN,
+  masing-masing audio_script sendiri, 1 soal per dialog) = 7 soal baru,
+  total per Assignment naik 50→57; `questions_per_attempt` di-update ke
+  jumlah baru supaya kebijakan "semua soal tampil tiap attempt" (established
+  Bab 8/055) tetap berlaku.
+  **Draft konten pakai subagent Opus** (permintaan user: "Put opus as sub
+  agent as you need it") — Sonnet menulis SQL/migration/validasi seperti
+  biasa, tapi teks Jepang passage+dialog di-draft Opus dulu untuk hasil
+  lebih natural, lalu di-cross-check ulang lewat assertion SQL yang sama
+  ketatnya dengan mondai vocabulary/grammar.
+  **Assertion baru** (di luar 6 assertion existing 100/104/dst yang tetap
+  berlaku utuh karena `WHERE lesson_id = v_lesson_id` mencakup semua soal):
+  pagar kanji + rantai-の kini JUGA dicek pada kolom `passage` dan
+  `audio_script` (bukan cuma `question` seperti soal vocabulary/grammar —
+  makna kalimat sesungguhnya ada di dua kolom itu, `question` di mondai
+  4/5 cuma kalimat tanya pendek), plus format tiap baris `audio_script`
+  wajib `SPEAKER: teks` dengan SPEAKER cuma N/A/B (subset `SPEAKER_RE` di
+  `backend/src/routes/tts.js` `parseDialog()`). Dedup `<u>` TIDAK berlaku
+  di mondai 4/5 (tidak ada tag `<u>` sama sekali di sana).
+  **Jebakan の-chain baru ditemukan saat drafting Bab 12 (111)**: kalimat
+  narator standar gaya JLPT asli "男の人と女の人が話しています" itu SENDIRI
+  adalah rantai の (男**の**人 + 女**の**人 = 2 の dalam satu kalimat) — jadi
+  listening di semua bab 111-119 pakai NAMA (mis. ミナさん／たなかさん)
+  untuk kedua pembicara di baris narator, BUKAN "男の人／女の人" generik.
+  Bab 12 (111) selesai duluan sebagai percontohan: passage cerita rutinitas
+  harian (te-form chaining 〜て、〜／〜てから) + 4 dialog listening,
+  semuanya dalam whitelist kanji 100/081 (68 karakter) dan sengaja
+  menghindari 〜てください／〜ています (baru diajarkan Bab 13) supaya tidak
+  bocor materi bab depan. Divalidasi bersih tanpa revisi kanji/rantai-の
+  pada draft pertama (Postgres lokal, replay 081→100→111 di atas modul
+  Bab 12 dummy, re-run kedua dikonfirmasi idempoten — masih 57 soal, tidak
+  dobel). Bab 13-20 (112-119) menyusul dengan pola identik.
+
 ## Struktur repo (high-level)
 
 - `backend/` — Node.js API, Postgres-backed. Entry: `src/server.js`.
