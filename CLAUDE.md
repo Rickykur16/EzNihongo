@@ -1000,6 +1000,25 @@
   berturut-turut). Divalidasi bersih pada draft final (Postgres lokal,
   replay 081→107→116, idempoten). Bab 18-20 (117-119) menyusul dengan
   pola identik.
+  **Bab 18 (117) selesai** — grammar scope AはBより／AよりBのほうが／
+  AとBとどちらが／〜の中で〜がいちばん (087_bunpou_bab18.sql). 4 kanji
+  baru Bab 18 (大小多少) ditambahkan ke whitelist (97 karakter). 番 (dalam
+  いちばん) tetap TIDAK diajarkan, selalu kana. **Jebakan の-chain
+  TERBESAR ada di bab ini** (lihat catatan panjang di migration 108:
+  この+あの digabung, kata "X-mono" seperti くだもの/のりもの) — kali ini
+  larangan totalnya dieksplisitkan di prompt (hindari この/あの/その sama
+  sekali, pakai nama toko/benda konkret untuk perbandingan) dan berhasil:
+  draft pertama bersih tanpa SATU PUN revisi rantai-の, padahal bab paling
+  rawan sejauh ini. Passage: perbandingan 3 toko roti (ukuran, harga,
+  keramaian — sengaja toko terkecil yang paling ramai supaya jawaban
+  tidak bisa ditebak dari satu fakta saja). Listening: 4 dialog dengan
+  pola serupa (barang/transportasi/buah dipilih berdasarkan perbandingan,
+  jawaban akhir sering tidak menyebut nama pilihannya secara eksplisit —
+  siswa harus menyimpulkan dari "yang lebih murah/cepat" ke barangnya).
+  Larangan でも/そして/それから/〜が、〜 tetap bersih (keempat kalinya
+  berturut-turut). Divalidasi bersih pada draft pertama (Postgres lokal,
+  replay 081→108→117, idempoten). Bab 19-20 (118-119) menyusul dengan
+  pola identik.
 
 ## Struktur repo (high-level)
 
