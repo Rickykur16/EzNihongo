@@ -952,6 +952,22 @@
   〜が、〜 di prompt subagent (bukan cuma nama pola-nya, tapi juga kata
   penghubung netral "tapi/namun" apa pun) supaya jebakan yang sama tidak
   terulang.
+  **Bab 15 (114) selesai** — grammar scope 〜を[counter]お願いします／
+  〜はいかがですか／〜になります／お〜ください／〜にします／
+  〜くなります・〜になります (084_bunpou_bab15.sql), konteks toko/resto.
+  7 kanji baru Bab 15 (言話聞買店会社) ditambahkan ke whitelist (78/79
+  karakter — subagent mengoreksi hitungan label prompt sebelumnya yang
+  keliru bilang 79, string-nya sendiri identik dengan 105, cuma labelnya
+  yang salah hitung). Catatan penting: 願 (dalam お願いします) TIDAK ada
+  di whitelist, jadi selalu ditulis kana おねがいします — konsisten dengan
+  105. Passage: transaksi kafe (pesan, ditawari, memutuskan, total harga).
+  Listening: 4 dialog toko dengan nama ミナさん／たなかさん／おかださん／
+  やまださん. **Larangan でも/そして/それから/〜が、〜 dieksplisitkan di
+  prompt kali ini (pelajaran dari 113) dan berhasil — draft pertama bersih
+  tanpa perlu revisi manual.** Divalidasi bersih pada draft pertama
+  (Postgres lokal, replay 081→105→114, idempoten). Bab 16-20 (115-119)
+  menyusul dengan pola identik, larangan grammar bab depan tetap
+  dieksplisitkan tiap prompt.
 
 ## Struktur repo (high-level)
 
