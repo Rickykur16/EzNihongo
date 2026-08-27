@@ -4174,9 +4174,12 @@ async function hydrateEnrolledCourses() {
   const enrolled = getEnrolledCourses();
   const missing = enrolled.filter((slug) => !COURSE_CONTENT[slug]);
   if (missing.length === 0) return;
+  // Course content is entitlement-gated server-side now — must go through
+  // ezApi so the Authorization bearer token (and its auto-refresh-on-401)
+  // is attached, not a bare cookie-only fetch.
   const results = await Promise.allSettled(
     missing.map((slug) =>
-      fetch(`/api/courses/${encodeURIComponent(slug)}`, { credentials: 'include' })
+      window.ezApi(`/courses/${encodeURIComponent(slug)}`)
         .then((r) => (r.ok ? r.json() : null))
     )
   );
@@ -5197,12 +5200,11 @@ window.pickQuizAnswer = async (questionIndex, optionIndex) => {
     const [slug, mId, lId] = (quizState.key || '').split(':');
     const lessonApiId = findLesson(slug, mId, lId)?.apiId;
     if (lessonApiId && q.questionId && q.optionIds?.[i]) {
-      const r = await fetch(
-        `/api/lessons/${encodeURIComponent(lessonApiId)}/quiz/check`,
+      // Entitlement-gated — must go through ezApi for the bearer token.
+      const r = await window.ezApi(
+        `/lessons/${encodeURIComponent(lessonApiId)}/quiz/check`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({ questionId: q.questionId, optionId: q.optionIds[i] }),
         }
       );

@@ -4,6 +4,7 @@ import multer from 'multer';
 import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
 import { asyncHandler, requireAuth } from '../middleware.js';
+import { userCanAccessCourse } from '../entitlements.js';
 
 const router = Router();
 
@@ -79,11 +80,20 @@ router.post('/grammar-task/evaluate', requireAuth, evalLimiter, asyncHandler(asy
 
   // Grounding + anti-abuse: hanya evaluasi terhadap grammar item nyata.
   const g = await query(
-    `SELECT id, pattern, meaning, example FROM module_grammar WHERE id = $1`,
+    `SELECT g.id, g.pattern, g.meaning, g.example, m.course_id
+       FROM module_grammar g
+       JOIN modules m ON m.id = g.module_id
+      WHERE g.id = $1`,
     [grammarId]
   );
   if (g.rows.length === 0) return res.status(404).json({ error: 'grammar not found' });
   const grammar = g.rows[0];
+  // Course access gate (resolved via the grammar item's module, not the
+  // client-supplied lessonId, so it can't be bypassed by omitting it) —
+  // this is Learning Platform content like any lesson.
+  if (!(await userCanAccessCourse(req.user, grammar.course_id))) {
+    return res.status(403).json({ error: 'not_enrolled' });
+  }
 
   // Instruksi tugas dari admin (per lesson+grammar), kalau ada — dipakai AI.
   let instruction = '';

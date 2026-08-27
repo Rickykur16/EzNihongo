@@ -3223,10 +3223,12 @@ router.get('/users', asyncHandler(async (req, res) => {
   res.json({ users: result.rows, total: totalRes.rows[0].n });
 }));
 
-// ===== AKSES DASHBOARD (enrollment grants) =====
-// Beri akses kursus tanpa lewat checkout: insert/hapus baris user_enrollments.
-// Sama persis dengan yang dilakukan POST /api/enrollments, tapi admin bisa
-// pilih user mana (by email). user_enrollments = single source of truth akses.
+// ===== AKSES DASHBOARD (course entitlement grants) =====
+// Beri/cabut akses kursus tanpa lewat checkout: insert/soft-revoke baris
+// user_enrollments (grant sama persis dengan POST /api/enrollments, tapi
+// admin bisa pilih user mana by email; revoke mengubah status, bukan
+// DELETE — lihat migration 117). user_enrollments = single source of
+// truth akses, di-scope per course_id (akses N5 tidak pernah membuka N4).
 
 // GET /api/admin/user-access?email= — cari user + daftar kursus yang sudah di-enroll
 router.get('/user-access', asyncHandler(async (req, res) => {
@@ -3241,7 +3243,8 @@ router.get('/user-access', asyncHandler(async (req, res) => {
   if (!user) return res.status(404).json({ error: 'user_not_found' });
 
   const enrolled = await query(
-    `SELECT c.id AS course_id, c.slug, c.title, c.level, e.enrolled_at
+    `SELECT c.id AS course_id, c.slug, c.title, c.level, e.enrolled_at,
+            e.status, e.expires_at, e.source, e.revoked_at
        FROM user_enrollments e
        JOIN courses c ON c.id = e.course_id
       WHERE e.user_id = $1
@@ -3256,10 +3259,18 @@ router.get('/user-access', asyncHandler(async (req, res) => {
   res.json({ user, enrollments: enrolled.rows, courses: courses.rows });
 }));
 
-// POST /api/admin/user-access/grant — { email, courseSlug } → enroll user ke kursus
+// POST /api/admin/user-access/grant — { email, courseSlug, expiresAt? } →
+// enroll user ke kursus (atau reaktivasi entitlement yang sebelumnya
+// di-revoke). expiresAt opsional (ISO string) untuk akses time-boxed;
+// kosong = akses permanen sampai di-revoke manual.
 router.post('/user-access/grant', asyncHandler(async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   const courseSlug = String(req.body?.courseSlug || '').trim();
+  const expiresAtRaw = req.body?.expiresAt;
+  const expiresAt = expiresAtRaw ? new Date(expiresAtRaw) : null;
+  if (expiresAtRaw && Number.isNaN(expiresAt?.getTime())) {
+    return res.status(400).json({ error: 'invalid_expires_at' });
+  }
   if (!email) return res.status(400).json({ error: 'email_required' });
   if (!courseSlug) return res.status(400).json({ error: 'course_required' });
 
@@ -3278,22 +3289,29 @@ router.post('/user-access/grant', asyncHandler(async (req, res) => {
   if (!course) return res.status(404).json({ error: 'course_not_found' });
   if (!course.is_published) return res.status(400).json({ error: 'course_not_published' });
 
+  // ON CONFLICT reactivates a previously-revoked row (status back to active,
+  // revoked_at cleared) instead of leaving it stuck revoked — grant is the
+  // one explicit "give this user access" action, so it should always work.
   const ins = await query(
-    `INSERT INTO user_enrollments (user_id, course_id)
-     VALUES ($1, $2)
-     ON CONFLICT (user_id, course_id) DO NOTHING
-     RETURNING id`,
-    [user.id, course.id]
+    `INSERT INTO user_enrollments (user_id, course_id, status, source, expires_at)
+     VALUES ($1, $2, 'active', 'admin_grant', $3)
+     ON CONFLICT (user_id, course_id) DO UPDATE
+       SET status = 'active', revoked_at = NULL, expires_at = $3
+     RETURNING id, (xmax = 0) AS inserted`,
+    [user.id, course.id, expiresAt]
   );
   res.json({
     ok: true,
-    alreadyEnrolled: ins.rows.length === 0,
+    alreadyEnrolled: !ins.rows[0].inserted,
     user: { email: user.email, full_name: user.full_name },
     course: { slug: course.slug, title: course.title },
   });
 }));
 
-// POST /api/admin/user-access/revoke — { email, courseId } → hapus enrollment
+// POST /api/admin/user-access/revoke — { email, courseId } → cabut akses
+// (soft-revoke: status='revoked', bukan DELETE) supaya baris enrollment +
+// riwayatnya tetap ada dan progres siswa (user_progress, tidak di-FK ke
+// user_enrollments) tidak tersentuh.
 router.post('/user-access/revoke', asyncHandler(async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   const courseId = String(req.body?.courseId || '');
@@ -3304,11 +3322,14 @@ router.post('/user-access/revoke', asyncHandler(async (req, res) => {
   const user = userRow.rows[0];
   if (!user) return res.status(404).json({ error: 'user_not_found' });
 
-  const del = await query(
-    `DELETE FROM user_enrollments WHERE user_id = $1 AND course_id = $2 RETURNING id`,
+  const upd = await query(
+    `UPDATE user_enrollments
+        SET status = 'revoked', revoked_at = NOW()
+      WHERE user_id = $1 AND course_id = $2 AND status = 'active'
+      RETURNING id`,
     [user.id, courseId]
   );
-  if (del.rows.length === 0) return res.status(404).json({ error: 'enrollment_not_found' });
+  if (upd.rows.length === 0) return res.status(404).json({ error: 'enrollment_not_found' });
   res.json({ ok: true });
 }));
 

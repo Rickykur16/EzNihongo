@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
-import { asyncHandler } from '../middleware.js';
+import { asyncHandler, requireAuth } from '../middleware.js';
 import { loadCourseVocab, deriveCompounds } from '../kanji-compounds.js';
+import { userCanAccessCourse, requireLessonCourseAccess } from '../entitlements.js';
 
 const router = Router();
 
@@ -31,8 +32,11 @@ router.get('/courses', asyncHandler(async (req, res) => {
   res.json({ courses: result.rows });
 }));
 
-// GET /api/courses/:slug — course detail with modules + lessons (public)
-router.get('/courses/:slug', asyncHandler(async (req, res) => {
+// GET /api/courses/:slug — course detail with modules + lessons.
+// Full curriculum content (lesson bodies, decks, kanji, grammar tasks) is
+// only served to callers with an active entitlement for this course (or
+// admins) — course access is per course_id, so N5 access never unlocks N4.
+router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
   const course = await query(
     `SELECT id, slug, title, description, level, thumbnail_url
      FROM courses
@@ -41,6 +45,9 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
     [req.params.slug]
   );
   if (course.rows.length === 0) return res.status(404).json({ error: 'Course not found' });
+  if (!(await userCanAccessCourse(req.user, course.rows[0].id))) {
+    return res.status(403).json({ error: 'not_enrolled' });
+  }
 
   const modules = await query(
     `SELECT id, slug, title, description, sort_order,
@@ -287,8 +294,10 @@ router.get('/courses/:slug', asyncHandler(async (req, res) => {
   });
 }));
 
-// GET /api/lessons/:id — single lesson with content + quiz (public read)
-router.get('/lessons/:id', asyncHandler(async (req, res) => {
+// GET /api/lessons/:id — single lesson with content + quiz.
+// Same entitlement gate as /api/courses/:slug — this is the Learning
+// Platform content itself, not just metadata.
+router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
   const lesson = await query(
     `SELECT l.*, m.course_id, m.title AS module_title, c.slug AS course_slug
      FROM lessons l
@@ -299,6 +308,9 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
     [req.params.id]
   );
   if (lesson.rows.length === 0) return res.status(404).json({ error: 'Lesson not found' });
+  if (!(await userCanAccessCourse(req.user, lesson.rows[0].course_id))) {
+    return res.status(403).json({ error: 'not_enrolled' });
+  }
 
   const row = lesson.rows[0];
   const response = {
@@ -443,7 +455,7 @@ router.get('/lessons/:id', asyncHandler(async (req, res) => {
 // Stateless — does NOT write to quiz_attempts. The dashboard hits this on
 // every option click so the student gets immediate feedback without ever
 // receiving the answer key in advance.
-router.post('/lessons/:lessonId/quiz/check', quizCheckLimiter, asyncHandler(async (req, res) => {
+router.post('/lessons/:lessonId/quiz/check', requireAuth, quizCheckLimiter, requireLessonCourseAccess('lessonId'), asyncHandler(async (req, res) => {
   const lessonId = req.params.lessonId;
   const { questionId, optionId } = req.body || {};
   if (!questionId || !optionId) {

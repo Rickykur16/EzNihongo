@@ -375,15 +375,26 @@ CREATE INDEX IF NOT EXISTS idx_qqr_attempt ON quiz_question_results (attempt_id)
 
 -- ===== USER DATA =====
 
+-- Doubles as the course entitlement record (Phase 1 — course access
+-- foundation): status/expires_at/source/revoked_at let admin grants be
+-- revoked or time-boxed without losing the enrollment row (and the progress
+-- tied to it). 'expired' is computed at read time (status='active' AND
+-- expires_at < NOW()), not stored. See migration 117.
 CREATE TABLE IF NOT EXISTS user_enrollments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
   enrolled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'revoked')),
+  expires_at TIMESTAMPTZ,
+  source TEXT NOT NULL DEFAULT 'self_enroll' CHECK (source IN ('self_enroll', 'admin_grant', 'purchase')),
+  revoked_at TIMESTAMPTZ,
   UNIQUE(user_id, course_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_enrollments_user ON user_enrollments(user_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_user_active
+  ON user_enrollments (user_id, course_id) WHERE status = 'active';
 
 CREATE TABLE IF NOT EXISTS user_progress (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
