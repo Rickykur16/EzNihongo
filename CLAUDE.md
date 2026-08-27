@@ -933,6 +933,25 @@
   tanpa revisi pada draft pertama (Postgres lokal, replay 081→104→112,
   idempoten). Bab 14-20 (113-119) menyusul dengan pola identik, level N5
   santai dan bebas pakai kosakata bab lama sebagai pengantar.
+  **Bab 14 (113) selesai** — grammar scope V-ない／〜ないでください／
+  〜なければなりません／〜なくてもいいです／V-kamus／〜た／〜なかった
+  (083_bunpou_bab14.sql). 4 kanji baru Bab 14 (立休入出) ditambahkan ke
+  whitelist (72 karakter total). Passage: aturan darmawisata sekolah
+  (barang wajib vs opsional dibawa). Listening: 4 dialog ミナさん／
+  たなかさん／おかださん. **Draft pertama (Opus) menyelipkan「でも、」
+  sebagai penghubung kalimat di salah satu dialog** — dihapus manual
+  sebelum commit karena そして／それから／でも (dan 〜が、〜 pertentangan)
+  sengaja direservasi untuk Bab 20 (089_bunpou_bab20.sql); dua kalimat
+  berdiri sendiri tanpa penghubung tetap gramatikal. **Jebakan の baru**:
+  きのう (kemarin) mengandung karakter の di suku tengahnya (き-の-う) —
+  sama seperti pola kata "X-mono", otomatis memakai jatah の kalimat itu;
+  jangan digabung dengan この／あの／の posesif lain di kalimat yang sama.
+  Divalidasi bersih setelah fix でも (Postgres lokal, replay 081→103→113,
+  idempoten). Bab 15-20 (114-119) menyusul dengan pola identik — untuk
+  draft berikutnya, tambahkan larangan eksplisit でも/そして/それから/
+  〜が、〜 di prompt subagent (bukan cuma nama pola-nya, tapi juga kata
+  penghubung netral "tapi/namun" apa pun) supaya jebakan yang sama tidak
+  terulang.
 
 ## Struktur repo (high-level)
 
