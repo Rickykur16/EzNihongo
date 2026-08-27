@@ -21,6 +21,7 @@ import grammarTaskRouter from './routes/grammar-task.js';
 import tutorRouter from './routes/tutor.js';
 import notionPublicRouter, { startNotionCacheRefresh } from './routes/notion-public.js';
 import kanjiPublicRouter from './routes/kanji-public.js';
+import ordersRouter from './routes/orders.js';
 
 // Fail fast on missing env vars. Every deploy needs these; without them the
 // app silently degrades (bad auth, no DB, open CORS). Crashing at startup
@@ -89,6 +90,7 @@ app.use('/api', kanjiPublicRouter);
 app.use('/api', contentRouter);
 app.use('/api', progressRouter);
 app.use('/api', recommendationsRouter);
+app.use('/api', ordersRouter);
 
 // 404
 app.use('/api', (req, res) => {

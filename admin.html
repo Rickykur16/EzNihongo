@@ -698,6 +698,7 @@ function renderApp() {
       <button data-tab="testimonials">Testimoni</button>
       <button data-tab="users">Pengguna</button>
       <button data-tab="access">Beri Akses</button>
+      <button data-tab="orders">Pesanan</button>
       <button data-tab="discussions">Diskusi</button>
       <button data-tab="tts">TTS Cache</button>
       <button data-tab="ai">AI</button>
@@ -710,6 +711,7 @@ function renderApp() {
       <section class="pane" data-pane="testimonials"></section>
       <section class="pane" data-pane="users"></section>
       <section class="pane" data-pane="access"></section>
+      <section class="pane" data-pane="orders"></section>
       <section class="pane" data-pane="discussions"></section>
       <section class="pane" data-pane="tts"></section>
       <section class="pane" data-pane="ai"></section>
@@ -735,6 +737,7 @@ function renderTab() {
   else if (STATE.tab === 'testimonials') { loadTestimonials().then(renderTestimonials); }
   else if (STATE.tab === 'users') { loadUsers().then(renderUsers); }
   else if (STATE.tab === 'access') { renderAccess(); }
+  else if (STATE.tab === 'orders') { renderOrders(); }
   else if (STATE.tab === 'discussions') { loadDiscussions().then(renderDiscussions); }
   else if (STATE.tab === 'tts') { renderTtsCachePane(); }
   else if (STATE.tab === 'ai') { renderAiSettings(); }
@@ -808,6 +811,13 @@ function renderCourses() {
               ? '<span class="badge" style="background:#fff4e5;color:#b45309;border:1px solid #fde68a;">Segera Hadir</span>'
               : '<span class="badge badge-on">Live</span>')
       }</td>
+      <td>${
+        c.is_free === true
+          ? '<span class="badge badge-on">Gratis</span>'
+          : (c.is_free === false
+              ? '<span class="badge" style="background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;">Berbayar</span>'
+              : '<span class="badge" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;">Belum ditentukan</span>')
+      }</td>
       <td class="actions">
         <button class="btn btn-ghost" onclick="editCourse('${c.id}')">Edit</button>
         <button class="btn btn-danger" onclick="deleteCourse('${c.id}', '${escapeHtml(c.title).replace(/'/g, "\\'")}')">Hapus</button>
@@ -822,7 +832,7 @@ function renderCourses() {
     </div>
     ${STATE.courses.length === 0
       ? '<div class="empty">Belum ada kursus. Klik "Kursus baru" untuk mulai.</div>'
-      : `<table><thead><tr><th>Judul / slug</th><th>Level</th><th>Urutan</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table>`
+      : `<table><thead><tr><th>Judul / slug</th><th>Level</th><th>Urutan</th><th>Status</th><th>Akses</th><th></th></tr></thead><tbody>${rows}</tbody></table>`
     }
   `;
 }
@@ -859,6 +869,14 @@ function courseFormHtml(c) {
         <div class="field"><label>Periode</label><input name="periodLabel" value="${escapeHtml(c.period_label || '/ bulan')}" /></div>
       </div>
       <div class="field"><label>Fitur (1 baris = 1 fitur)</label><textarea name="features" rows="5" placeholder="Akses modul N5 self-paced&#10;2 sesi live class / minggu">${escapeHtml(featuresText)}</textarea></div>
+      <div class="field">
+        <label>Akses kursus</label>
+        <select name="isFree">
+          <option value="" ${c.is_free == null ? 'selected' : ''}>Belum ditentukan — siswa tidak bisa self-enroll ATAU beli sampai ini diisi</option>
+          <option value="true" ${c.is_free === true ? 'selected' : ''}>Gratis — siswa bisa self-enroll langsung, tanpa Pesanan</option>
+          <option value="false" ${c.is_free === false ? 'selected' : ''}>Berbayar — wajib lewat alur Pesanan (transfer bank + verifikasi admin)</option>
+        </select>
+      </div>
       <div class="field-row">
         <div class="field"><label>Teks tombol CTA</label><input name="ctaLabel" value="${escapeHtml(c.cta_label || '')}" placeholder="Pilih Kelas N5" /></div>
         <div class="field">
@@ -929,6 +947,10 @@ async function submitCourse(e, id) {
     features,
     ctaLabel: fd.get('ctaLabel').trim() || null,
     isFeatured: !!fd.get('isFeatured'),
+    // '' (Belum ditentukan) is omitted entirely — undefined on the wire —
+    // so the backend leaves is_free untouched (new course: stays NULL;
+    // existing course: keeps its current value) rather than coercing it.
+    ...(fd.get('isFree') !== '' ? { isFree: fd.get('isFree') === 'true' } : {}),
   };
   const endSubmit = beginSubmit(e.target);
   try {
@@ -6391,6 +6413,224 @@ window.revokeAccess = async (email, courseId) => {
     notify('Akses dicabut');
     await lookupAccess();
   } catch (err) { notify('Gagal cabut: ' + err.message, true); }
+};
+
+// ─────────────────────────────────────────────────────────────
+// PESANAN — verifikasi pembayaran transfer bank manual (Phase 2).
+// Order = niat beli; approval admin = satu-satunya event yang membuka
+// akses (user_enrollments), lihat backend/src/routes/admin.js.
+// ─────────────────────────────────────────────────────────────
+const ORDER_STATUS_LABEL = {
+  pending_payment: 'Menunggu Transfer',
+  awaiting_review: 'Menunggu Verifikasi',
+  approved: 'Disetujui',
+  rejected: 'Ditolak',
+  expired: 'Kadaluarsa',
+  cancelled: 'Dibatalkan',
+};
+function orderStatusBadge(status) {
+  const label = ORDER_STATUS_LABEL[status] || status;
+  const style = {
+    awaiting_review: 'background:#fff4e5;color:#b45309;border:1px solid #fde68a;',
+    approved: 'background:#dcfce7;color:#15803d;border:1px solid #86efac;',
+    rejected: 'background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;',
+    expired: 'background:#f5f5f5;color:#737373;border:1px solid #e5e5e5;',
+    cancelled: 'background:#f5f5f5;color:#737373;border:1px solid #e5e5e5;',
+    pending_payment: 'background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;',
+  }[status] || '';
+  return `<span class="badge" style="${style}">${escapeHtml(label)}</span>`;
+}
+function formatIdr(n) {
+  return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
+}
+
+async function loadOrders(opts = {}) {
+  const status = opts.status != null ? opts.status : (STATE.ordersStatus ?? 'awaiting_review');
+  const q = opts.q != null ? opts.q : (STATE.ordersQuery || '');
+  STATE.ordersStatus = status; STATE.ordersQuery = q;
+  try {
+    const d = await api(`/admin/orders?status=${encodeURIComponent(status)}&q=${encodeURIComponent(q)}&limit=100`);
+    STATE.orders = d.orders || [];
+  } catch (e) { notify('Gagal load pesanan: ' + e.message, true); }
+}
+
+async function loadBankAccounts() {
+  try {
+    const d = await api('/admin/settings/bank-accounts');
+    STATE.bankAccounts = d.accounts || [];
+  } catch (e) { STATE.bankAccounts = []; }
+}
+
+function renderOrders() {
+  const pane = document.querySelector('[data-pane="orders"]');
+  pane.innerHTML = `<h2>Pesanan</h2><div class="empty">Memuat…</div>`;
+  Promise.all([loadBankAccounts(), loadOrders()]).then(renderOrdersResult);
+}
+
+function bankAccountsCardHtml() {
+  const accounts = STATE.bankAccounts || [];
+  const rows = accounts.map((a, i) => `
+    <div class="field-row" data-bank-row="${i}" style="align-items:flex-end;">
+      <div class="field"><label>Label</label><input class="ba-label" value="${escapeHtml(a.label || '')}" placeholder="BCA" /></div>
+      <div class="field"><label>Bank</label><input class="ba-bank" value="${escapeHtml(a.bankName || '')}" placeholder="Bank Central Asia" /></div>
+      <div class="field"><label>No. Rekening</label><input class="ba-number" value="${escapeHtml(a.accountNumber || '')}" placeholder="1234567890" /></div>
+      <div class="field"><label>Atas Nama</label><input class="ba-holder" value="${escapeHtml(a.accountHolder || '')}" placeholder="PT EzNihongo" /></div>
+      <button type="button" class="btn btn-danger" onclick="this.closest('[data-bank-row]').remove()">Hapus</button>
+    </div>`).join('');
+  return `
+    <div class="card" style="margin-bottom:18px;padding:16px;border:1px solid var(--line,#e5e5e5);border-radius:10px;">
+      <h3 style="margin:0 0 4px;font-size:14px;">Rekening Bank (instruksi transfer)</h3>
+      <p style="color:#737373;font-size:12px;margin:0 0 12px;">Ditampilkan ke siswa saat membuat pesanan. Tidak pernah di-hardcode di frontend.</p>
+      <div id="bank-accounts-rows">${rows}</div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button type="button" class="btn btn-ghost" onclick="addBankAccountRow()">+ Rekening</button>
+        <button type="button" class="btn btn-primary" onclick="saveBankAccounts()">Simpan Rekening</button>
+      </div>
+    </div>`;
+}
+window.addBankAccountRow = () => {
+  STATE.bankAccounts = [...(STATE.bankAccounts || []), { label: '', bankName: '', accountNumber: '', accountHolder: '' }];
+  const wrap = document.querySelector('[data-pane="orders"]');
+  const card = wrap.querySelector('.card');
+  if (card) card.outerHTML = bankAccountsCardHtml();
+};
+window.saveBankAccounts = async () => {
+  const rows = document.querySelectorAll('[data-bank-row]');
+  const accounts = Array.from(rows).map((r) => ({
+    label: r.querySelector('.ba-label').value.trim(),
+    bankName: r.querySelector('.ba-bank').value.trim(),
+    accountNumber: r.querySelector('.ba-number').value.trim(),
+    accountHolder: r.querySelector('.ba-holder').value.trim(),
+  }));
+  try {
+    const d = await api('/admin/settings/bank-accounts', { method: 'PUT', body: JSON.stringify({ accounts }) });
+    STATE.bankAccounts = d.accounts;
+    notify('Rekening tersimpan');
+  } catch (err) { notify('Gagal simpan rekening: ' + err.message, true); }
+};
+
+function renderOrdersResult() {
+  const pane = document.querySelector('[data-pane="orders"]');
+  const status = STATE.ordersStatus ?? 'awaiting_review';
+  const rows = (STATE.orders || []).map((o) => `
+    <tr>
+      <td><code style="font-size:12px;">${escapeHtml(o.orderNumber)}</code></td>
+      <td>${escapeHtml(o.user.fullName || '-')}<br><span style="font-size:11px;color:#737373;">${escapeHtml(o.user.email)}</span></td>
+      <td>${escapeHtml(o.courseTitle)}</td>
+      <td>${formatIdr(o.amountIdr)}</td>
+      <td>${orderStatusBadge(o.status)}</td>
+      <td style="font-size:12px;">${new Date(o.createdAt).toLocaleString('id-ID')}</td>
+      <td class="actions"><button class="btn btn-ghost" onclick="openOrderDetail('${o.id}')">Detail</button></td>
+    </tr>`).join('');
+  pane.innerHTML = `
+    <h2>Pesanan</h2>
+    <p style="color:#737373;font-size:13px;margin-top:-4px;max-width:640px;">
+      Verifikasi bukti transfer bank manual. Menyetujui pesanan adalah satu-satunya cara akses kursus
+      berbayar terbuka — tidak ada akses sebelum disetujui.
+    </p>
+    ${bankAccountsCardHtml()}
+    <div class="toolbar" style="flex-wrap:wrap;">
+      <select id="ord-status-filter" onchange="loadOrders({status:this.value}).then(renderOrdersResult)">
+        ${['awaiting_review', 'pending_payment', 'rejected', 'approved', 'expired', 'cancelled', '']
+          .map((s) => `<option value="${s}" ${status === s ? 'selected' : ''}>${s === '' ? 'Semua status' : ORDER_STATUS_LABEL[s]}</option>`).join('')}
+      </select>
+      <input id="ord-q" placeholder="Cari no. pesanan / email" value="${escapeHtml(STATE.ordersQuery || '')}"
+        style="min-width:220px;" onkeydown="if(event.key==='Enter'){loadOrders({q:this.value}).then(renderOrdersResult)}">
+      <button class="btn btn-ghost" onclick="loadOrders({q:document.getElementById('ord-q').value}).then(renderOrdersResult)">Cari</button>
+      <button class="btn btn-ghost" onclick="loadOrders().then(renderOrdersResult)">↻ Refresh</button>
+    </div>
+    ${(STATE.orders || []).length === 0
+      ? '<div class="empty">Tidak ada pesanan untuk filter ini.</div>'
+      : `<table><thead><tr><th>No. Pesanan</th><th>Siswa</th><th>Kursus</th><th>Jumlah</th><th>Status</th><th>Dibuat</th><th></th></tr></thead><tbody>${rows}</tbody></table>`
+    }`;
+}
+
+window.openOrderDetail = async (orderId) => {
+  let d;
+  try { d = await api('/admin/orders/' + orderId); }
+  catch (err) { notify('Gagal load detail: ' + err.message, true); return; }
+  const { order, payments } = d;
+  const pending = payments.find((p) => p.status === 'pending');
+  const rows = payments.map((p) => `
+    <div style="border:1px solid var(--line,#e5e5e5);border-radius:8px;padding:12px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <div>
+          ${orderStatusBadge(p.status === 'pending' ? 'awaiting_review' : (p.status === 'superseded' ? 'expired' : p.status))}
+          <span style="font-size:12px;color:#737373;margin-left:8px;">Diajukan ${new Date(p.submittedAt).toLocaleString('id-ID')}</span>
+        </div>
+        ${p.hasProof ? `<button class="btn btn-ghost" onclick="viewOrderProof('${order.id}','${p.id}')">Lihat Bukti</button>` : ''}
+      </div>
+      ${p.claimedBankName || p.claimedSenderName || p.claimedAmountIdr ? `
+        <div style="font-size:12px;color:#525252;margin-top:8px;">
+          Klaim siswa: ${escapeHtml(p.claimedBankName || '-')} · ${escapeHtml(p.claimedSenderName || '-')}
+          ${p.claimedAmountIdr ? ' · ' + formatIdr(p.claimedAmountIdr) : ''}
+        </div>` : ''}
+      ${p.rejectionReason ? `<div style="font-size:12px;color:#b91c1c;margin-top:6px;">Alasan ditolak: ${escapeHtml(p.rejectionReason)}</div>` : ''}
+      ${p.reviewedBy ? `<div style="font-size:11px;color:#a3a3a3;margin-top:4px;">Direview oleh ${escapeHtml(p.reviewedBy)} — ${new Date(p.reviewedAt).toLocaleString('id-ID')}</div>` : ''}
+    </div>`).join('') || '<div class="empty">Belum ada bukti transfer diajukan.</div>';
+
+  openModal(`
+    <h3>Pesanan ${escapeHtml(order.orderNumber)}</h3>
+    <p style="font-size:13px;color:#525252;margin:0 0 4px;">
+      <strong>${escapeHtml(order.user.fullName || '-')}</strong> (${escapeHtml(order.user.email)}) ·
+      ${escapeHtml(order.courseTitle)} · ${formatIdr(order.amountIdr)}
+    </p>
+    <p style="font-size:12px;color:#737373;margin:0 0 14px;">
+      Status: ${orderStatusBadge(order.status)} · Kadaluarsa: ${new Date(order.expiresAt).toLocaleString('id-ID')}
+    </p>
+    <h4 style="margin:14px 0 6px;font-size:13px;">Riwayat bukti transfer</h4>
+    ${rows}
+    ${pending ? `
+      <div style="margin-top:6px;">
+        <label style="font-size:13px;">Alasan tolak (wajib kalau menolak)<br>
+          <input id="ord-reject-reason" style="width:100%;margin-top:4px;" placeholder="cth: nominal tidak sesuai" />
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Tutup</button>
+        <button type="button" class="btn btn-danger" onclick="rejectOrder('${order.id}')">Tolak</button>
+        <button type="button" class="btn btn-primary" onclick="approveOrder('${order.id}')">Setujui &amp; Beri Akses</button>
+      </div>` : `
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>`
+    }
+  `, { dismissOnBackdrop: true });
+};
+
+window.viewOrderProof = async (orderId, paymentId) => {
+  try {
+    const r = await ezApi(`/orders/${orderId}/payments/${paymentId}/proof`);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const isPdf = blob.type === 'application/pdf';
+    openModal(`
+      <h3>Bukti Transfer</h3>
+      ${isPdf
+        ? `<a href="${url}" target="_blank" class="btn btn-primary">Buka PDF di tab baru</a>`
+        : `<img src="${url}" style="max-width:100%;border-radius:8px;border:1px solid var(--line,#e5e5e5);" />`}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
+    `, { className: 'modal-lg' });
+  } catch (err) { notify('Gagal muat bukti: ' + err.message, true); }
+};
+
+window.approveOrder = async (orderId) => {
+  if (!confirm('Setujui pesanan ini? Siswa akan langsung dapat akses kursus.')) return;
+  try {
+    await api('/admin/orders/' + orderId + '/approve', { method: 'POST', body: JSON.stringify({}) });
+    notify('Pesanan disetujui — akses diberikan');
+    closeModal();
+    await loadOrders(); renderOrdersResult();
+  } catch (err) { notify('Gagal menyetujui: ' + err.message, true); }
+};
+window.rejectOrder = async (orderId) => {
+  const reason = (document.getElementById('ord-reject-reason')?.value || '').trim();
+  if (!reason) { notify('Isi alasan penolakan dulu', true); return; }
+  try {
+    await api('/admin/orders/' + orderId + '/reject', { method: 'POST', body: JSON.stringify({ reason }) });
+    notify('Pesanan ditolak');
+    closeModal();
+    await loadOrders(); renderOrdersResult();
+  } catch (err) { notify('Gagal menolak: ' + err.message, true); }
 };
 
 // ─────────────────────────────────────────────────────────────

@@ -108,27 +108,51 @@ function renderCourseUI(course) {
     });
   });
 
+  // Free courses (is_free === true) self-enroll instantly, same as before.
+  // Everything else (paid, or not yet classified by an admin — see
+  // migration 118) goes through the order/manual-transfer flow. The
+  // payment-method buttons above are cosmetic for now — only bank transfer
+  // is wired up server-side (POST /api/orders), so the submit handler
+  // always creates a manual-transfer order regardless of which is active.
+  const submitBtn = document.getElementById("c-submit");
+  if (course.is_free !== true) submitBtn.textContent = "Buat Pesanan →";
+
   document.getElementById("c-checkout-form").addEventListener("submit", async e => {
     e.preventDefault();
     const btn = document.getElementById("c-submit");
-    btn.textContent = "Memproses pembayaran...";
     btn.disabled = true;
+
+    if (course.is_free === true) {
+      btn.textContent = "Memproses...";
+      try {
+        const res = await window.ezApi("/enrollments", {
+          method: "POST",
+          body: JSON.stringify({ courseSlug: course.slug }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        window.location.href = `../welcome.html?new=${encodeURIComponent(course.slug)}`;
+      } catch (err) {
+        btn.textContent = "Lanjut ke Pembayaran →";
+        btn.disabled = false;
+        alert("Gagal mendaftar: " + (err.message || "coba lagi sebentar."));
+      }
+      return;
+    }
+
+    btn.textContent = "Membuat pesanan...";
     try {
-      // Temporary: no real payment gateway yet. Once Midtrans/Xendit lands this
-      // will be replaced with a redirect to the gateway, and the webhook will
-      // enroll the user. For now we POST directly so enrollment is at least
-      // server-side (not localStorage) and gated by course availability.
-      const res = await window.ezApi("/enrollments", {
+      const res = await window.ezApi("/orders", {
         method: "POST",
         body: JSON.stringify({ courseSlug: course.slug }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      window.location.href = `../welcome.html?new=${encodeURIComponent(course.slug)}`;
+      window.location.href = `order.html?id=${encodeURIComponent(data.order.id)}`;
     } catch (err) {
-      btn.textContent = "Lanjut ke Pembayaran →";
+      btn.textContent = "Buat Pesanan →";
       btn.disabled = false;
-      alert("Gagal mendaftar: " + (err.message || "coba lagi sebentar."));
+      alert("Gagal membuat pesanan: " + (err.message || "coba lagi sebentar."));
     }
   });
 }

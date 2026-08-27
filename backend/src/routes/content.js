@@ -24,7 +24,7 @@ router.get('/courses', asyncHandler(async (req, res) => {
   const result = await query(
     `SELECT id, slug, title, description, level, thumbnail_url, sort_order,
             price_idr, price_label, period_label, tagline, features, cta_label,
-            is_featured, is_available
+            is_featured, is_available, is_free
      FROM courses
      WHERE is_published = TRUE
      ORDER BY sort_order ASC, created_at ASC`

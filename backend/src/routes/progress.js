@@ -528,6 +528,12 @@ router.get('/stats/me', asyncHandler(async (req, res) => {
 // knows slugs. We look up the course row and enforce that it's purchasable
 // (published + available) before enrolling. This is the single source of truth
 // for access — do NOT trust localStorage on the frontend.
+//
+// Free-only (Phase 2): this endpoint self-enrolls a user with ZERO payment
+// check, so it only ever applies to courses explicitly marked is_free=TRUE.
+// A paid course (is_free=FALSE) must go through POST /api/orders instead;
+// an unclassified course (is_free IS NULL — not yet reviewed by an admin,
+// see migration 118) is blocked from both paths until it's classified.
 router.post('/enrollments', asyncHandler(async (req, res) => {
   const { courseSlug, courseId } = req.body || {};
   if (!courseSlug && !courseId) {
@@ -535,8 +541,8 @@ router.post('/enrollments', asyncHandler(async (req, res) => {
   }
 
   const lookup = courseId
-    ? await query(`SELECT id, is_published, is_available FROM courses WHERE id = $1`, [courseId])
-    : await query(`SELECT id, is_published, is_available FROM courses WHERE slug = $1`, [courseSlug]);
+    ? await query(`SELECT id, is_published, is_available, is_free FROM courses WHERE id = $1`, [courseId])
+    : await query(`SELECT id, is_published, is_available, is_free FROM courses WHERE slug = $1`, [courseSlug]);
 
   if (lookup.rows.length === 0) {
     return res.status(404).json({ error: 'Kursus tidak ditemukan.' });
@@ -547,6 +553,11 @@ router.post('/enrollments', asyncHandler(async (req, res) => {
   }
   if (course.is_available === false) {
     return res.status(403).json({ error: 'Kursus belum tersedia untuk pembelian.' });
+  }
+  // Strict IS TRUE — excludes both FALSE (paid) and NULL (unclassified) by
+  // construction, so neither can slip through as "not FALSE therefore free".
+  if (course.is_free !== true) {
+    return res.status(403).json({ error: 'payment_required' });
   }
 
   // An existing row that's been admin-revoked must NOT be silently
