@@ -347,7 +347,7 @@ export function parseDistractors(raw) {
 // yang dikirim (penurunannya deterministik).
 async function loadTaskConcepts(lessonId) {
   const rows = await query(
-    `SELECT g.id, g.pattern, g.meaning, g.recognition_distractors, gi.sort_order
+    `SELECT g.id, g.pattern, g.meaning, g.recognition_distractors, g.controlled_distractors, gi.sort_order
        FROM lesson_grammar_task_items gi
        JOIN module_grammar g ON g.id = gi.grammar_id
       WHERE gi.lesson_id = $1
@@ -370,6 +370,7 @@ async function loadTaskConcepts(lessonId) {
   return rows.rows.map((r) => ({
     ...r,
     recognitionDistractors: parseDistractors(r.recognition_distractors),
+    controlledDistractors: parseDistractors(r.controlled_distractors),
     examples: byGrammar.get(r.id) || [],
   }));
 }
@@ -379,7 +380,7 @@ async function loadTaskConcepts(lessonId) {
 // pola, yang berarti hanya 1 pengecoh dan Step 1 hilang. Lihat deriveDrills().
 async function loadModulePool(lessonId) {
   const rows = await query(
-    `SELECT g.id, g.pattern, g.meaning, g.recognition_distractors
+    `SELECT g.id, g.pattern, g.meaning, g.recognition_distractors, g.controlled_distractors
        FROM module_grammar g
        JOIN lessons l ON l.module_id = g.module_id
       WHERE l.id = $1
@@ -401,6 +402,7 @@ async function loadModulePool(lessonId) {
   return rows.rows.map((r) => ({
     ...r,
     recognitionDistractors: parseDistractors(r.recognition_distractors),
+    controlledDistractors: parseDistractors(r.controlled_distractors),
     examples: byGrammar.get(r.id) || [],
   }));
 }

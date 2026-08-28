@@ -418,6 +418,33 @@ if (MODE === 'eval') {
   await query(`UPDATE module_grammar SET recognition_distractors = NULL`);
   anthropicText = null;
 
+  console.log('\nStep 2 — pengecoh kurasi admin menang atas aturan (migration 125)');
+  await query(
+    `UPDATE module_grammar SET controlled_distractors = $2 WHERE id = $1`,
+    [ctx.gids[0], 'せんせい\nともだち\nがっこう']
+  );
+  const c2 = await realFetch(`${base}/grammar-task/lesson/${ctx.taskLessonId}/drills`,
+    { headers: { authorization: 'Bearer ' + token } });
+  const c2d = (await c2.json()).drills.find((d) => d.grammarId === ctx.gids[0]);
+  check('opsi Step 2 memakai pengecoh kurasi',
+    c2d.step2.options.includes('せんせい') && c2d.step2.options.includes('がくせい'),
+    c2d.step2.options);
+  check('pengecoh turunan tidak lagi dipakai (がくせいの)',
+    !c2d.step2.options.includes('がくせいの'), c2d.step2.options);
+  const c2ans = await realFetch(base + '/grammar-task/drill-answer', {
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
+    body: JSON.stringify({ lessonId: ctx.taskLessonId, grammarId: ctx.gids[0], step: 2,
+      optionIndex: c2d.step2.options.indexOf('がくせい') }),
+  });
+  check('penilaian server konsisten dengan opsi kurasi Step 2',
+    c2ans.status === 200 && (await c2ans.json()).passed === true);
+  await query(`UPDATE module_grammar SET controlled_distractors = NULL WHERE id = $1`, [ctx.gids[0]]);
+  const c2back = await realFetch(`${base}/grammar-task/lesson/${ctx.taskLessonId}/drills`,
+    { headers: { authorization: 'Bearer ' + token } });
+  const c2bd = (await c2back.json()).drills.find((d) => d.grammarId === ctx.gids[0]);
+  check('dikosongkan → kembali ke pengecoh turunan',
+    c2bd.step2 && c2bd.step2.options.includes('がくせいの'), c2bd.step2.options);
+
   console.log('\nStep 1 — pengecoh kurasi dipakai kalau ada (migration 124)');
   await query(
     `UPDATE module_grammar SET recognition_distractors = $2 WHERE id = $1`,

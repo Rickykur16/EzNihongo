@@ -198,6 +198,10 @@ CREATE TABLE IF NOT EXISTS module_grammar (
   -- tombol "✨ Pengecoh" di admin (draft AI, di-review admin). NULL = pakai
   -- penurunan lama, yaitu arti pola lain di bab yang sama sebagai pengecoh.
   recognition_distractors TEXT,
+  -- Pengecoh Step 2 Tugas Bunpou, satu per baris (migration 125). NULL = pakai
+  -- pengecoh turunan aturan. Lihat catatan di migrasinya soal kenapa disimpan
+  -- per-pola, bukan per-contoh kalimat.
+  controlled_distractors TEXT,
   sort_order INT DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

@@ -13,6 +13,7 @@ import {
 } from '../auth.js';
 import { COACH_PROMPT_DEFAULT } from './recommendations.js';
 import { callClaude, anthropicEnabled, ANTHROPIC_GEN_MODEL } from '../anthropic.js';
+import { controlledSlot } from '../grammar-drills.js';
 import {
   NOTION_BAB_DB_ID_DEFAULT,
   NOTION_VOCAB_LESSON_RELATION,
@@ -1290,23 +1291,93 @@ Aturan:
   return distractors.length >= 2 ? distractors : null;
 }
 
+// Pengecoh Step 2: alternatif untuk POTONGAN yang dikosongkan di satu kalimat.
+// Beda dari Step 1 — di sini yang diuji BENTUK, dan syarat utamanya pengecoh
+// harus benar-benar SALAH di kalimat itu. Aturan mekanis tidak bisa menjamin
+// itu (lihat migration 125), makanya butuh AI + review admin.
+async function generateControlledFor(item) {
+  const slot = controlledSlot(item);
+  if (!slot) return null;
+
+  const userContent = `Pola grammar: ${item.pattern}
+Arti pola: ${item.meaning || '(tidak ada)'}
+
+Soal isian:
+${slot.sentence}
+${slot.indonesian ? `Arti kalimat: ${slot.indonesian}` : ''}
+Jawaban yang BENAR untuk bagian ＿＿＿ : ${slot.answer}
+
+Tulis 3 pilihan SALAH untuk mengisi ＿＿＿ pada kalimat di atas.
+
+Aturan:
+- Tiap pilihan harus kata/bentuk bahasa Jepang yang BENAR-BENAR ADA. Jangan
+  mengarang bentuk seperti "すってはいけます" atau menempelkan partikel ke
+  frasa ("書いてくださいを").
+- Tiap pilihan harus JELAS SALAH kalau dimasukkan ke kalimat itu. Ini yang
+  paling penting: kalau sebuah pilihan ternyata juga menghasilkan kalimat yang
+  benar, soalnya jadi punya dua jawaban dan tidak bisa dipakai.
+- Bentuknya mirip jawaban benar (panjang dan jenis kata sebanding), supaya
+  tidak ketahuan hanya dari bentuknya.
+- Utamakan kekeliruan yang wajar dilakukan pemula: bentuk kata kerja yang
+  keliru, partikel yang keliru, atau pola lain yang mirip tapi tidak cocok
+  konteksnya.
+- Level N5/N4. Jangan memakai kanji di luar level itu.
+- Balas TEPAT 3 baris, satu pilihan per baris, tanpa nomor dan tanpa penjelasan.`;
+
+  const text = await callClaude({
+    system: DISTRACTOR_SYSTEM,
+    userContent,
+    maxTokens: 400,
+    model: ANTHROPIC_GEN_MODEL,
+  });
+  if (text == null) return null;
+
+  const distractors = String(text)
+    .split(/\r?\n/)
+    .map((l) => l.replace(/^\s*(?:\d+[.)]|[-*•])\s*/, '').trim())
+    .filter(Boolean)
+    .filter((l) => l !== slot.answer)
+    .slice(0, 3);
+  return distractors.length >= 2 ? { distractors, slot } : null;
+}
+
+// Muat satu pola LENGKAP dengan contohnya — dibutuhkan controlledSlot().
+async function loadGrammarWithExamples(id) {
+  const g = await query(
+    `SELECT id, module_id, pattern, meaning, recognition_distractors, controlled_distractors
+       FROM module_grammar WHERE id = $1`,
+    [id]
+  );
+  if (g.rows.length === 0) return null;
+  const ex = await query(
+    `SELECT japanese, highlight, indonesian FROM grammar_examples
+      WHERE grammar_id = $1 ORDER BY sort_order ASC, created_at ASC`,
+    [id]
+  );
+  return { ...g.rows[0], examples: ex.rows };
+}
+
 router.post('/module-grammar/:id/generate-distractors', asyncHandler(async (req, res) => {
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled' });
-  const g = await query(
-    `SELECT id, module_id, pattern, meaning FROM module_grammar WHERE id = $1`,
-    [req.params.id]
-  );
-  if (g.rows.length === 0) return res.status(404).json({ error: 'grammar not found' });
-  const item = g.rows[0];
+  const item = await loadGrammarWithExamples(req.params.id);
+  if (!item) return res.status(404).json({ error: 'grammar not found' });
   if (!(item.meaning || '').trim()) {
     return res.status(400).json({ error: 'no_meaning', detail: 'Isi kolom Arti dulu — pengecoh dibuat berdasarkan fungsi yang benar.' });
   }
-  const distractors = await generateDistractorsFor(item);
-  if (!distractors) {
-    return res.status(502).json({ error: 'ai_unusable', detail: 'AI tidak menghasilkan cukup pengecoh yang layak. Coba lagi.' });
+  // Dua tahap sekaligus supaya admin cukup sekali klik per pola.
+  const [step1, step2] = await Promise.all([
+    generateDistractorsFor(item),
+    generateControlledFor(item),
+  ]);
+  if (!step1 && !step2) {
+    return res.status(502).json({ error: 'ai_unusable', detail: 'AI tidak menghasilkan pengecoh yang layak. Coba lagi.' });
   }
   // TIDAK disimpan di sini — admin review dulu lalu tekan Simpan.
-  res.json({ distractors });
+  res.json({
+    distractors: step1 || [],
+    controlled: step2 ? step2.distractors : [],
+    slot: step2 ? { sentence: step2.slot.sentence, answer: step2.slot.answer } : null,
+  });
 }));
 
 // Generate + SIMPAN untuk semua pola satu kursus yang pengecohnya masih kosong.
@@ -1337,25 +1408,40 @@ router.post('/module-grammar/generate-distractors-bulk', asyncHandler(async (req
   }
   if (!courseId) return res.status(400).json({ error: 'course_not_resolved' });
 
+  // "Belum lengkap" = salah satu dari dua kolom masih kosong.
   const pendingSql = `
     SELECT g.id, g.module_id, g.pattern, g.meaning
       FROM module_grammar g
       JOIN modules m ON m.id = g.module_id
      WHERE m.course_id = $1
        AND g.meaning IS NOT NULL AND TRIM(g.meaning) <> ''
-       AND (g.recognition_distractors IS NULL OR TRIM(g.recognition_distractors) = '')
+       AND ((g.recognition_distractors IS NULL OR TRIM(g.recognition_distractors) = '')
+         OR (g.controlled_distractors  IS NULL OR TRIM(g.controlled_distractors)  = ''))
      ORDER BY m.sort_order ASC, g.sort_order ASC`;
 
   const batch = await query(`${pendingSql} LIMIT $2`, [courseId, limit]);
 
   let saved = 0;
   const failed = [];
-  for (const item of batch.rows) {
-    const distractors = await generateDistractorsFor(item);
-    if (!distractors) { failed.push(item.pattern); continue; }
+  for (const row of batch.rows) {
+    const item = await loadGrammarWithExamples(row.id);
+    if (!item) continue;
+    // Hanya isi kolom yang masih kosong — yang sudah dikurasi admin tidak
+    // pernah ditimpa, walau baris ini terpilih karena kolom satunya kosong.
+    const needS1 = !(item.recognition_distractors || '').trim();
+    const needS2 = !(item.controlled_distractors || '').trim();
+    const [s1, s2] = await Promise.all([
+      needS1 ? generateDistractorsFor(item) : null,
+      needS2 ? generateControlledFor(item) : null,
+    ]);
+    if ((needS1 && !s1) && (needS2 && !s2)) { failed.push(row.pattern); continue; }
     await query(
-      `UPDATE module_grammar SET recognition_distractors = $2, updated_at = NOW() WHERE id = $1`,
-      [item.id, distractors.join('\n')]
+      `UPDATE module_grammar SET
+         recognition_distractors = COALESCE($2, recognition_distractors),
+         controlled_distractors  = COALESCE($3, controlled_distractors),
+         updated_at = NOW()
+       WHERE id = $1`,
+      [row.id, s1 ? s1.join('\n') : null, s2 ? s2.distractors.join('\n') : null]
     );
     saved++;
   }
@@ -1378,31 +1464,49 @@ router.post('/module-grammar/generate-distractors-bulk', asyncHandler(async (req
 
 // Baca pengecoh tersimpan untuk satu pola (dipakai modal admin saat dibuka).
 router.get('/module-grammar/:id/distractors', asyncHandler(async (req, res) => {
-  const r = await query(
-    `SELECT pattern, meaning, recognition_distractors FROM module_grammar WHERE id = $1`,
-    [req.params.id]
-  );
-  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  const item = await loadGrammarWithExamples(req.params.id);
+  if (!item) return res.status(404).json({ error: 'Not found' });
+  // Soal Step 2 (kalimat + jawaban) ikut dikirim: admin perlu melihat soal yang
+  // sedang ia buatkan pengecohnya, sekaligus langsung sadar kalau contoh
+  // kalimatnya berubah dan pengecoh lamanya jadi tidak cocok.
+  const slot = controlledSlot({ ...item, examples: item.examples });
   res.json({
-    pattern: r.rows[0].pattern,
-    meaning: r.rows[0].meaning,
-    value: r.rows[0].recognition_distractors || '',
+    pattern: item.pattern,
+    meaning: item.meaning,
+    value: item.recognition_distractors || '',
+    controlled: item.controlled_distractors || '',
+    slot: slot ? { sentence: slot.sentence, answer: slot.answer, indonesian: slot.indonesian } : null,
   });
 }));
 
 // Simpan (atau kosongkan) pengecoh kurasi. Kosong = kembali ke penurunan lama.
+const cleanLines = (raw) => String(raw || '')
+  .split(/\r?\n/).map((l) => l.trim()).filter(Boolean).slice(0, 6);
+
 router.put('/module-grammar/:id/distractors', asyncHandler(async (req, res) => {
-  const list = Array.isArray(req.body?.distractors)
-    ? req.body.distractors
-    : String(req.body?.value || '').split(/\r?\n/);
-  const clean = list.map((l) => String(l || '').trim()).filter(Boolean).slice(0, 6);
+  const body = req.body || {};
+  // Presence-checked per field: modal boleh menyimpan salah satunya saja tanpa
+  // diam-diam mengosongkan yang lain.
+  const hasS1 = Object.prototype.hasOwnProperty.call(body, 'value')
+    || Object.prototype.hasOwnProperty.call(body, 'distractors');
+  const hasS2 = Object.prototype.hasOwnProperty.call(body, 'controlled');
+  const s1 = Array.isArray(body.distractors) ? body.distractors.map(String) : cleanLines(body.value);
+  const s2 = cleanLines(body.controlled);
+
   const r = await query(
-    `UPDATE module_grammar SET recognition_distractors = $2, updated_at = NOW()
-      WHERE id = $1 RETURNING id, recognition_distractors`,
-    [req.params.id, clean.length ? clean.join('\n') : null]
+    `UPDATE module_grammar SET
+       recognition_distractors = CASE WHEN $3::boolean THEN $2 ELSE recognition_distractors END,
+       controlled_distractors  = CASE WHEN $5::boolean THEN $4 ELSE controlled_distractors END,
+       updated_at = NOW()
+     WHERE id = $1 RETURNING id`,
+    [
+      req.params.id,
+      s1.length ? s1.join('\n') : null, hasS1,
+      s2.length ? s2.join('\n') : null, hasS2,
+    ]
   );
   if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-  res.json({ ok: true, distractors: clean });
+  res.json({ ok: true, distractors: s1, controlled: s2 });
 }));
 
 // Bank pola grammar milik MODUL sebuah pelajaran — dipakai dropdown "Pola

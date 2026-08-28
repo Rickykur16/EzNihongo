@@ -226,26 +226,57 @@ export function deriveHighlight(pattern, japanese) {
 // ── STEP 2 — Controlled Practice: apakah BENTUKNYA benar? ─────────────────
 // Bagian kalimat yang memuat pola (kolom `highlight`) dikosongkan; siswa
 // memilih bentuk yang tepat di antara perubahan bentuk yang masuk akal.
-export function buildControlledDrill(item, siblings) {
+// Kalimat + jawaban untuk soal Step 2, TANPA pengecoh. Dipisah supaya admin
+// (dan prompt AI) bisa melihat soal yang sedang dikurasi.
+export function controlledSlot(item) {
   // Prefer highlight yang memang ditulis penyusun materi; kalau kosong,
   // turunkan dari polanya (lihat deriveHighlight).
-  let ex = null;
-  let answer = null;
   for (const e of (item.examples || [])) {
     const jp = String(e.japanese || '');
     if (!jp) continue;
     const hl = cleanHighlight(e.highlight);
-    const useHl = (hl && jp.includes(hl)) ? hl : deriveHighlight(item.pattern, jp);
-    if (useHl) { ex = e; answer = useHl; break; }
+    const answer = (hl && jp.includes(hl)) ? hl : deriveHighlight(item.pattern, jp);
+    if (!answer) continue;
+    const at = jp.indexOf(answer);
+    return {
+      japanese: jp,
+      indonesian: e.indonesian || null,
+      answer,
+      sentence: jp.slice(0, at) + '＿＿＿' + jp.slice(at + answer.length),
+      after: jp.slice(at + answer.length),
+    };
   }
-  if (!ex || !answer) return null;
+  return null;
+}
 
-  const jp = String(ex.japanese);
-  const at = jp.indexOf(answer);
-  const blanked = jp.slice(0, at) + '＿＿＿' + jp.slice(at + answer.length);
+export function buildControlledDrill(item, siblings) {
+  const slot = controlledSlot(item);
+  if (!slot) return null;
+  const { answer, sentence: blanked } = slot;
+
+  // Pengecoh KURASI (migration 125) kalau ada. Aturan mekanis tidak bisa tahu
+  // apakah sebuah pengecoh KEBETULAN juga benar di kalimat itu — itu butuh
+  // pemahaman makna. Yang dikurasi admin menang.
+  const curated = (item.controlledDistractors || [])
+    .map((d) => cleanHighlight(d))
+    .filter((d) => d && d !== answer);
+  if (curated.length >= 2) {
+    const picked = pickDistractors(curated, answer, 3, `${item.id}|ctrl-cur`);
+    const { options, correctIndex } = buildOptions(answer, picked, `${item.id}|ctrl`);
+    return {
+      step: 2,
+      grammarId: item.id,
+      prompt: 'Lengkapi kalimat berikut dengan bentuk yang tepat.',
+      sentence: blanked,
+      indonesian: slot.indonesian,
+      options,
+      correctIndex,
+      rule: 'curated-distractor',
+    };
+  }
 
   // Konteks sesudah jawaban menentukan apakah "tempel partikel" masuk akal.
-  const { rule, distractors: formPool } = formDistractors(answer, { after: jp.slice(at + answer.length) });
+  const { rule, distractors: formPool } = formDistractors(answer, { after: slot.after });
   let distractors = pickDistractors(formPool, answer, 3, `${item.id}|ctrl`);
 
   // Aturan bentuk tidak menghasilkan cukup pilihan → pakai potongan berpola
@@ -266,9 +297,9 @@ export function buildControlledDrill(item, siblings) {
   return {
     step: 2,
     grammarId: item.id,
-    prompt: `Lengkapi kalimat berikut dengan bentuk yang tepat.`,
+    prompt: 'Lengkapi kalimat berikut dengan bentuk yang tepat.',
     sentence: blanked,
-    indonesian: ex.indonesian || null,
+    indonesian: slot.indonesian,
     options,
     correctIndex,
     rule,
