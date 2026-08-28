@@ -2627,6 +2627,15 @@
   }
   .deck-search input:focus { outline: none; border-color: var(--du-ink-3); }
   .deck-search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--du-ink-3); }
+  /* Toggle kartu/daftar — dipakai deck kosakata & kanji (viewToggleHtml()). */
+  .view-toggle { display: flex; border: 1px solid var(--du-border); border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+  .view-toggle .vt-btn {
+    padding: 7px 10px; background: var(--du-surface); border: none; cursor: pointer;
+    color: var(--du-ink-3); display: flex; align-items: center; justify-content: center; transition: all .15s;
+  }
+  .view-toggle .vt-btn + .vt-btn { border-left: 1px solid var(--du-border); }
+  .view-toggle .vt-btn:hover { color: var(--du-ink); }
+  .view-toggle .vt-btn.active { background: var(--brand-red); color: #fff; }
   .deck-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
   .deck-card {
     position: relative; background: var(--du-surface); border: 1px solid var(--du-border); border-radius: 10px;
@@ -2669,6 +2678,29 @@
     white-space: nowrap;
   }
   .deck-card:hover .dc-len, .deck-card:focus-visible .dc-len { opacity: .75; }
+  /* List view alternative to .deck-grid/.deck-card (same data, compact row). */
+  .deck-list { display: flex; flex-direction: column; gap: 8px; }
+  .deck-list-item {
+    position: relative; display: flex; align-items: center; gap: 14px;
+    padding: 10px 46px 10px 14px; background: var(--du-surface); border: 1px solid var(--du-border);
+    border-radius: 10px; cursor: pointer; transition: border-color .15s;
+  }
+  .deck-list-item:hover, .deck-list-item:focus-visible { border-color: var(--brand-red); outline: none; }
+  .deck-list-item .dli-jp { font-family: 'Noto Sans JP', sans-serif; font-size: 19px; font-weight: 700; color: var(--du-ink); min-width: 84px; flex-shrink: 0; }
+  .deck-list-item .dli-kana { font-family: 'Noto Sans JP', sans-serif; font-size: 12.5px; color: var(--brand-red); min-width: 70px; flex-shrink: 0; }
+  .deck-list-item .dli-meaning { flex: 1; font-size: 13.5px; color: var(--du-ink-2); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .deck-list-item .dc-audio {
+    position: absolute; top: 50%; right: 8px; transform: translateY(-50%); width: 30px; height: 30px; border-radius: 50%;
+    border: 1px solid var(--du-border); background: var(--du-surface-2, var(--du-surface)); color: var(--du-ink);
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all .15s; z-index: 2;
+  }
+  .deck-list-item .dc-audio svg { width: 13px; height: 13px; }
+  .deck-list-item .dc-audio:hover { background: var(--brand-red); color: #fff; border-color: var(--brand-red); transform: translateY(-50%) scale(1.08); }
+  .deck-list-item .dc-audio.playing { background: var(--brand-red); color: #fff; border-color: var(--brand-red); animation: pulse 0.9s infinite; }
+  @media (max-width: 600px) {
+    .deck-list-item { flex-wrap: wrap; padding: 10px 46px 10px 12px; }
+    .deck-list-item .dli-jp { font-size: 17px; min-width: 0; }
+  }
   .deck-empty, .deck-empty-filter {
     grid-column: 1 / -1; text-align: center; padding: 60px 20px;
     color: var(--du-ink-3); font-style: italic; font-size: 14px;
@@ -3543,6 +3575,19 @@
     font-size: 9px; font-weight: 800;
     color: var(--brand-red); letter-spacing: .04em;
   }
+  /* List view alternative to .kanji-grid/.kanji-tile (same data, compact row). */
+  .kanji-list { display: flex; flex-direction: column; gap: 8px; padding: 12px 0 4px; }
+  .kanji-list-item {
+    display: flex; align-items: center; gap: 14px; padding: 10px 14px; width: 100%;
+    background: var(--surface-white, #fff); border: 1px solid var(--du-border, #ece9e3); border-radius: 10px;
+    cursor: pointer; transition: border-color .15s; font: inherit; color: inherit; text-align: left;
+  }
+  .kanji-list-item:hover { border-color: var(--brand-red); }
+  .kanji-list-item .kli-char { font-family: 'Noto Sans JP', sans-serif; font-size: 30px; font-weight: 700; color: #1a1a1a; min-width: 48px; text-align: center; flex-shrink: 0; }
+  .kanji-list-item .kli-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .kanji-list-item .kli-meaning { font-size: 13.5px; font-weight: 600; color: #1a1a1a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kanji-list-item .kli-reading { font-family: 'Noto Sans JP', sans-serif; font-size: 12px; color: #6b6b6b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kanji-list-item .kli-level { font-size: 9px; font-weight: 800; color: var(--brand-red); letter-spacing: .04em; flex-shrink: 0; }
 
   /* Detail modal (overlay) */
   .kanji-detail-overlay {
@@ -7545,6 +7590,17 @@ function deckAccent(item) {
   return DECK_COLORS[cat] || 'var(--brand-red)';
 }
 
+// Toggle kartu/daftar dipakai deck kosakata & kanji (pref per-tipe, persist
+// localStorage). `setterFn` = nama fungsi global ('setDeckView'/'setKanjiView').
+function viewToggleHtml(current, setterFn) {
+  const gridIcon = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>';
+  const listIcon = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>';
+  return `<div class="view-toggle" role="group" aria-label="Tampilan">
+    <button type="button" class="vt-btn${current === 'card' ? ' active' : ''}" aria-label="Tampilan kartu" aria-pressed="${current === 'card'}" onclick="${setterFn}('card')">${gridIcon}</button>
+    <button type="button" class="vt-btn${current === 'list' ? ' active' : ''}" aria-label="Tampilan daftar" aria-pressed="${current === 'list'}" onclick="${setterFn}('list')">${listIcon}</button>
+  </div>`;
+}
+
 function deckHighlight(jpPlain, highlight, fallbackWord) {
   const esc = escapeHtml(jpPlain || '');
   const term = ((highlight && highlight.trim()) || (fallbackWord && fallbackWord.trim()) || '').trim();
@@ -7672,6 +7728,8 @@ function renderDeckLesson(course, module, lesson, nav) {
   const { prev, next, isDone } = nav;
   const items = Array.isArray(lesson.deck) ? lesson.deck : [];
   window.__deckData = items;
+  window.__deckLessonArgs = [course, module, lesson, nav];
+  const deckView = localStorage.getItem('ez_deck_view') === 'list' ? 'list' : 'card';
 
   if (!window.__deckEscWired) {
     document.addEventListener('keydown', (e) => {
@@ -7708,16 +7766,27 @@ function renderDeckLesson(course, module, lesson, nav) {
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
         <input type="search" placeholder="Cari kata atau arti..." oninput="filterDeck(this.value)" autocomplete="off" />
       </div>
+      ${viewToggleHtml(deckView, 'setDeckView')}
     </div>` : '';
 
   const cardsHtml = items.length === 0
     ? '<div class="deck-empty">Belum ada kosakata di deck ini.</div>'
-    : `<div class="deck-grid" id="deck-grid">${items.map((it, idx) => {
+    : `<div class="${deckView === 'list' ? 'deck-list' : 'deck-grid'}" id="deck-grid">${items.map((it, idx) => {
         const search = ((it.japanese || '') + ' ' + (it.reading || '') + ' ' + (it.romaji || '') + ' ' + (it.indonesian || '')).toLowerCase();
         const jp = escapeHtml(it.japanese || '');
         const arti = escapeHtml(it.indonesian || '');
-        return `<div class="deck-card" role="button" tabindex="0" aria-label="${jp}${arti ? ' — ' + arti : ''}. Tekan Enter untuk lihat contoh kalimat." data-deck-search="${escapeHtml(search)}" style="--deck-accent:${deckAccent(it)};" onclick="openDeckModal(${idx})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDeckModal(${idx})}">
-          <button class="dc-audio" type="button" aria-label="Dengar pengucapan ${jp}" onclick="event.stopPropagation();playDeckAudio(${idx}, this)">${AUDIO_SVG}</button>
+        const label = `${jp}${arti ? ' — ' + arti : ''}. Tekan Enter untuk lihat contoh kalimat.`;
+        const audioBtn = `<button class="dc-audio" type="button" aria-label="Dengar pengucapan ${jp}" onclick="event.stopPropagation();playDeckAudio(${idx}, this)">${AUDIO_SVG}</button>`;
+        if (deckView === 'list') {
+          return `<div class="deck-list-item" role="button" tabindex="0" aria-label="${label}" data-deck-search="${escapeHtml(search)}" onclick="openDeckModal(${idx})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDeckModal(${idx})}">
+            <div class="dli-jp" lang="ja">${jp}</div>
+            ${it.reading ? `<div class="dli-kana" lang="ja">${escapeHtml(it.reading)}</div>` : ''}
+            <div class="dli-meaning">${arti}</div>
+            ${audioBtn}
+          </div>`;
+        }
+        return `<div class="deck-card" role="button" tabindex="0" aria-label="${label}" data-deck-search="${escapeHtml(search)}" style="--deck-accent:${deckAccent(it)};" onclick="openDeckModal(${idx})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDeckModal(${idx})}">
+          ${audioBtn}
           <div class="dc-jp" lang="ja">${jp}</div>
           ${it.reading ? `<div class="dc-kana" lang="ja">${escapeHtml(it.reading)}</div>` : ''}
           <div class="dc-meaning">${arti}</div>
@@ -7799,10 +7868,15 @@ function renderDeckLesson(course, module, lesson, nav) {
   `;
 }
 
+window.setDeckView = (view) => {
+  localStorage.setItem('ez_deck_view', view === 'list' ? 'list' : 'card');
+  const args = window.__deckLessonArgs;
+  if (args) renderDeckLesson(...args);
+};
 window.filterDeck = (q) => {
   const term = String(q || '').trim().toLowerCase();
   let visible = 0;
-  document.querySelectorAll('#deck-grid .deck-card').forEach((c) => {
+  document.querySelectorAll('#deck-grid > [data-deck-search]').forEach((c) => {
     const match = !term || (c.dataset.deckSearch || '').includes(term);
     c.style.display = match ? '' : 'none';
     if (match) visible++;
@@ -8373,6 +8447,8 @@ function renderKanjiLesson(course, module, lesson, nav) {
   const { prev, next, isDone } = nav || {};
   const items = Array.isArray(lesson.kanji) ? lesson.kanji : [];
   window.__kanjiDrillPool = items;
+  window.__kanjiLessonArgs = [course, module, lesson, nav];
+  const kanjiView = localStorage.getItem('ez_kanji_view') === 'list' ? 'list' : 'card';
   for (const k of items) {
     if (k.id) _kanjiByIdCache.set(k.id, { ...k, compounds: k.compounds || [] });
   }
@@ -8380,8 +8456,29 @@ function renderKanjiLesson(course, module, lesson, nav) {
     ? lesson.body
     : 'Klik karakter untuk lihat goresan, mnemonic, dan kombinasi kosakata.';
 
+  const kanjiToolbar = items.length > 0 ? `
+    <div class="deck-toolbar" style="margin-top:16px;">
+      <div class="dt-stats">${items.length} kanji</div>
+      ${viewToggleHtml(kanjiView, 'setKanjiView')}
+    </div>` : '';
+
   const tilesHtml = items.length === 0
     ? '<div class="deck-empty" style="padding:30px 18px;text-align:center;color:#6b6b6b;">Pelajaran ini belum punya kanji.</div>'
+    : kanjiView === 'list'
+    ? `<div class="kanji-list">
+        ${items.map((k) => {
+          const reading = [k.kun_reading, k.on_reading].filter(Boolean).join(' · ');
+          return `<button type="button" class="kanji-list-item" onclick="openKanjiDetail('${escapeHtml(k.id)}')"
+                  data-kanji="${escapeHtml(`${k.character} ${k.on_reading || ''} ${k.kun_reading || ''} ${k.meaning_id || ''}`.toLowerCase())}">
+            <span class="kli-char" lang="ja">${escapeHtml(k.character)}</span>
+            <span class="kli-info">
+              <span class="kli-meaning">${escapeHtml(k.meaning_id || '')}</span>
+              ${reading ? `<span class="kli-reading" lang="ja">${escapeHtml(reading)}</span>` : ''}
+            </span>
+            <span class="kli-level">${escapeHtml(k.jlpt_level || '')}</span>
+          </button>`;
+        }).join('')}
+      </div>`
     : `<div class="kanji-grid" style="margin-top:18px;">
         ${items.map((k) => `
           <button type="button" class="kanji-tile" onclick="openKanjiDetail('${escapeHtml(k.id)}')"
@@ -8422,6 +8519,7 @@ function renderKanjiLesson(course, module, lesson, nav) {
         <div class="dh-stat-label">kanji</div>
       </div>
     </div>
+    ${kanjiToolbar}
     ${tilesHtml}
     ${drillBlock}
     <div class="lesson-footer">
@@ -8941,6 +9039,11 @@ window.deckDrillAnswer = (oi) => {
 // Kanji tanpa reading tidak dapat mode char2reading — otomatis jatuh balik
 // ke char2meaning/meaning2char (juga kalau pool "punya reading" terlalu kecil
 // untuk 2+ opsi).
+window.setKanjiView = (view) => {
+  localStorage.setItem('ez_kanji_view', view === 'list' ? 'list' : 'card');
+  const args = window.__kanjiLessonArgs;
+  if (args) renderKanjiLesson(...args);
+};
 window.kanjiDrillStart = () => {
   const pool = (window.__kanjiDrillPool || []).filter((k) => k.character && k.meaning_id);
   const body = document.getElementById('kanji-drill-body');
