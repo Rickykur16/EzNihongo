@@ -102,7 +102,7 @@ const recommendationsRouter = (await import(path.join(SRC, 'routes/recommendatio
 const contentRouter = (await import(path.join(SRC, 'routes/content.js'))).default;
 const progressRouter = (await import(path.join(SRC, 'routes/progress.js'))).default;
 const { computeConceptMastery } = await import(path.join(SRC, 'grammar-mastery.js'));
-const { formDistractors, buildRecognitionDrill, buildControlledDrill, deriveHighlight, shortMeaning } =
+const { formDistractors, buildRecognitionDrill, buildControlledDrill, deriveHighlight, shortMeaning, cleanHighlight } =
   await import(path.join(SRC, 'grammar-drills.js'));
 
 let pass = 0, fail = 0;
@@ -292,9 +292,12 @@ if (MODE === 'eval') {
 
   // ── Step 1 & 2: latihan terarah, dinilai server tanpa AI ──────────────
   console.log('\nStep 1/2 — pengecoh diturunkan sesuai BENTUK jawabannya');
-  check('kata benda → tempel partikel (pola がくせい/がくせいの/がくせいを)',
-    formDistractors('がくせい').rule === 'particle-append'
-    && formDistractors('がくせい').distractors.includes('がくせいの'), formDistractors('がくせい'));
+  // Tempel partikel sekarang butuh konteks: hanya sah di slot kata benda
+  // (tepat sebelum kopula). Lihat blok "pengecoh tidak boleh jadi kata karangan".
+  check('kata benda di slot です → tempel partikel (がくせい/がくせいの/がくせいを)',
+    formDistractors('がくせい', { after: 'です。' }).rule === 'particle-append'
+    && formDistractors('がくせい', { after: 'です。' }).distractors.includes('がくせいの'),
+    formDistractors('がくせい', { after: 'です。' }));
   check('bentuk te → pengecohnya bentuk lain, bukan partikel (読んで → 読んだ)',
     formDistractors('読んで').rule === 'te' && formDistractors('読んで').distractors.includes('読んだ'),
     formDistractors('読んで'));
@@ -306,6 +309,26 @@ if (MODE === 'eval') {
     && formDistractors('行かない').distractors.includes('行かなかった'), formDistractors('行かない'));
   check('partikel di akhir → tukar partikel', formDistractors('がっこうで').rule === 'particle-swap',
     formDistractors('がっこうで'));
+
+  console.log('\nStep 2 — pengecoh tidak boleh jadi kata karangan');
+  check('tanda baca di highlight dibuang (おきて、 → おきて)',
+    cleanHighlight('おきて、') === 'おきて', cleanHighlight('おきて、'));
+  check('tempel partikel HANYA di slot kata benda (sebelum です)',
+    formDistractors('がくせい', { after: 'です。' }).rule === 'particle-append'
+    && formDistractors('がくせい', { after: '。' }).distractors.length === 0,
+    [formDistractors('がくせい', { after: 'です。' }).rule, formDistractors('がくせい', { after: '。' }).rule]);
+  check('frasa perintah tidak ditempeli partikel (書いてくださいを)',
+    formDistractors('書いてください', { after: '。' }).distractors.length === 0,
+    formDistractors('書いてください', { after: '。' }));
+  check('frasa tetap 〜てはいけません tidak dikonjugasikan (すってはいけます)',
+    formDistractors('すってはいけません', { after: '。' }).distractors.length === 0,
+    formDistractors('すってはいけません', { after: '。' }));
+  check('〜てから bukan pengecoh bentuk te (dua-duanya benar di kalimat berantai)',
+    !formDistractors('読んで', { after: '、' }).distractors.some((d) => d.includes('から')),
+    formDistractors('読んで', { after: '、' }).distractors);
+  check('bentuk te tetap punya pengecoh yang sah',
+    formDistractors('読んで', { after: '、' }).distractors.includes('読んだ'),
+    formDistractors('読んで', { after: '、' }).distractors);
 
   console.log('\nStep 2 — contoh lama tanpa highlight (backfill 031) tetap dapat soal');
   check('pola 〜てください → potongan literalnya ketemu di kalimat',

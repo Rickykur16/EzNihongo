@@ -79,16 +79,45 @@ const FORM_RULES = [
   { rule: 'tai', suffix: 'たくない', alts: ['たい', 'たかった', 'たくて'] },
   { rule: 'tai', suffix: 'たい', alts: ['たくない', 'たかった', 'たくて'] },
   // Bentuk te (Bab 12-13) — te vs ta adalah kekeliruan klasik.
-  { rule: 'te', suffix: 'んで', alts: ['んだ', 'んでから', 'んでいる'] },
-  { rule: 'te', suffix: 'いて', alts: ['いた', 'いてから', 'いている'] },
-  { rule: 'te', suffix: 'って', alts: ['った', 'ってから', 'っている'] },
-  { rule: 'te', suffix: 'て', alts: ['た', 'てから', 'ている'] },
+  // 〜てから SENGAJA tidak dipakai sebagai pengecoh bentuk te: di kalimat
+  // berantai ("本を ＿＿＿、うちへ かえります") 〜てから sama benarnya dengan
+  // 〜て, jadi soalnya jadi punya dua jawaban benar.
+  { rule: 'te', suffix: 'んで', alts: ['んだ', 'んでいる'] },
+  { rule: 'te', suffix: 'いて', alts: ['いた', 'いている'] },
+  { rule: 'te', suffix: 'って', alts: ['った', 'っている'] },
+  { rule: 'te', suffix: 'て', alts: ['た', 'ている'] },
 ];
 
+// Frasa tata bahasa yang TIDAK boleh dikonjugasikan. Mengonjugasikannya
+// menghasilkan kata yang tidak ada dalam bahasa Jepang — mis. aturan masu
+// pada 〜てはいけません melahirkan "すってはいけます" / "すってはいけました".
+// Untuk pola seperti ini pengecoh diambil dari contoh pola lain di bab yang
+// sama (bahasa Jepang sungguhan), bukan dikarang lewat konjugasi.
+const FIXED_PHRASE = /(てはいけ|ではいけ|てもいい|でもいい|てください|でください|てくれ|でくれ|なければ|なくても|ましょう|ませんか|いかがです|お願いします|ことがあり)/;
+
+// Tanda baca ikut terbawa kalau `highlight` disalin apa adanya dari kalimat
+// (mis. "おきて、"). Kalau tidak dibuang, pengecohnya jadi "おきて、が" —
+// partikel setelah koma, sesuatu yang tidak mungkin ditulis siswa mana pun.
+const TRAILING_PUNCT = /[、。，．！？!?\s]+$/;
+export function cleanHighlight(raw) {
+  return String(raw || '').trim().replace(TRAILING_PUNCT, '');
+}
+
+// Slot KATA BENDA: potongan yang tepat setelahnya adalah kopula. Hanya dalam
+// posisi inilah "tempel partikel" masuk akal sebagai pengecoh
+// (がくせい / がくせいの / がくせいを di "わたしは ＿＿＿ です。").
+// Di luar itu — frasa perintah, bentuk kamus, bentuk te — menempelkan partikel
+// menghasilkan kata yang tidak pernah ada dalam bahasa Jepang.
+const COPULA_AHEAD = /^(です|でした|だ|じゃありません|ではありません|でしょう)/;
+
 // Pengecoh untuk satu jawaban benar. Mengembalikan { rule, distractors[] }.
-export function formDistractors(answer) {
-  const a = String(answer || '');
+// `opts.after` = sisa kalimat setelah jawaban, dipakai menguji slot kata benda.
+export function formDistractors(answer, opts) {
+  const a = cleanHighlight(answer);
   if (!a) return { rule: 'none', distractors: [] };
+
+  // Frasa tetap: jangan dikonjugasi sama sekali (lihat FIXED_PHRASE).
+  if (FIXED_PHRASE.test(a)) return { rule: 'none', distractors: [] };
 
   for (const r of FORM_RULES) {
     if (a.length > r.suffix.length && a.endsWith(r.suffix)) {
@@ -104,9 +133,15 @@ export function formDistractors(answer) {
     return { rule: 'particle-swap', distractors: PARTICLES.filter((p) => p !== last).map((p) => stem + p) };
   }
 
-  // Sisanya diperlakukan sebagai kata benda: tempelkan partikel — ini persis
-  // pola "がくせい / がくせいの / がくせいを" yang diminta.
-  return { rule: 'particle-append', distractors: ['の', 'を', 'に', 'が'].map((p) => a + p) };
+  // Tempel partikel HANYA di slot kata benda (lihat COPULA_AHEAD). Di luar itu
+  // lebih baik tidak menghasilkan apa-apa — pemanggil akan jatuh ke pengecoh
+  // dari contoh pola lain, yang setidaknya bahasa Jepang sungguhan. Pengecoh
+  // yang omong kosong lebih buruk daripada tidak ada soal.
+  const after = String((opts && opts.after) || '').trim();
+  if (COPULA_AHEAD.test(after)) {
+    return { rule: 'particle-append', distractors: ['の', 'を', 'に', 'が'].map((p) => a + p) };
+  }
+  return { rule: 'none', distractors: [] };
 }
 
 // Ambil `n` pengecoh unik yang tidak sama dengan jawaban benar.
@@ -199,15 +234,18 @@ export function buildControlledDrill(item, siblings) {
   for (const e of (item.examples || [])) {
     const jp = String(e.japanese || '');
     if (!jp) continue;
-    const hl = String(e.highlight || '').trim();
+    const hl = cleanHighlight(e.highlight);
     const useHl = (hl && jp.includes(hl)) ? hl : deriveHighlight(item.pattern, jp);
     if (useHl) { ex = e; answer = useHl; break; }
   }
   if (!ex || !answer) return null;
 
-  const blanked = String(ex.japanese).replace(answer, '＿＿＿');
+  const jp = String(ex.japanese);
+  const at = jp.indexOf(answer);
+  const blanked = jp.slice(0, at) + '＿＿＿' + jp.slice(at + answer.length);
 
-  const { rule, distractors: formPool } = formDistractors(answer);
+  // Konteks sesudah jawaban menentukan apakah "tempel partikel" masuk akal.
+  const { rule, distractors: formPool } = formDistractors(answer, { after: jp.slice(at + answer.length) });
   let distractors = pickDistractors(formPool, answer, 3, `${item.id}|ctrl`);
 
   // Aturan bentuk tidak menghasilkan cukup pilihan → pakai potongan berpola
@@ -215,7 +253,7 @@ export function buildControlledDrill(item, siblings) {
   if (distractors.length < 3) {
     const sibPool = (siblings || [])
       .filter((s) => s.id !== item.id)
-      .flatMap((s) => (s.examples || []).map((e) => String(e.highlight || '').trim()))
+      .flatMap((s) => (s.examples || []).map((e) => cleanHighlight(e.highlight)))
       .filter(Boolean);
     distractors = distractors.concat(
       pickDistractors(sibPool, answer, 3 - distractors.length, `${item.id}|ctrl-sib`)

@@ -397,6 +397,30 @@
       membuang `correctIndex`) dan tidak ada tabel soal yang perlu disinkronkan.
       Urutan opsi diacak dengan hash berseed (FNV-1a), bukan `Math.random`,
       supaya soal yang dinilai persis soal yang dikirim.
+    - **Pengecoh Step 2 tidak boleh jadi kata karangan.** Audit offline atas
+      seluruh 46 pola Bab 12-20 (bangkitkan drill dari data seed 081-089, lalu
+      baca satu per satu) menemukan tiga kelas anomali di rilis pertama, semua
+      dari aturan cadangan yang terlalu longgar:
+      (1) `highlight` yang menyertakan tanda baca → pengecoh "おきて、が",
+      partikel setelah koma — ditutup `cleanHighlight()`;
+      (2) tempel-partikel pada frasa/kata kerja → "書いてくださいを", "読むが" —
+      sekarang tempel-partikel HANYA di slot kata benda, yaitu ketika potongan
+      sesudah jawaban dimulai kopula (`COPULA_AHEAD`), persis kasus
+      がくせい/がくせいの/がくせいを;
+      (3) konjugasi pada frasa tetap → aturan masu pada 〜てはいけません
+      melahirkan "すってはいけます"/"すってはいけました" yang bukan bahasa
+      Jepang — ditutup `FIXED_PHRASE`.
+      Kalau tidak ada aturan yang berlaku, pengecoh diambil dari contoh pola
+      lain di bab yang sama (bahasa Jepang sungguhan); pengecoh yang omong
+      kosong lebih buruk daripada tidak ada soal.
+      Juga: 〜てから DIBUANG dari pengecoh bentuk te — di kalimat berantai
+      ("本を ＿＿＿、うちへ かえります") 〜てから sama benarnya dengan 〜て,
+      jadi soalnya jadi punya dua jawaban benar.
+      **Batas yang tersisa (belum ditutup)**: pengecoh cadangan dari pola lain
+      kadang KEBETULAN juga benar di kalimatnya — mis. "あした 学校へ ＿＿＿"
+      dengan jawaban 行かなくてもいいです dan pengecoh 行かない, dua-duanya
+      gramatikal. Ini tidak bisa diselesaikan secara deterministik; jalan
+      keluarnya kurasi seperti Step 1 (kolom + generate AI + review admin).
     - **Pengecoh sadar-bentuk** (`FORM_RULES`): keluarga masu / desu / nai /
       tai / te, lalu tukar-partikel, lalu tempel-partikel. Urutan penting —
       `んで` (bentuk te 読んで) dicek SEBELUM partikel `で`, kalau tidak
