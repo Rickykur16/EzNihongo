@@ -198,22 +198,26 @@ router.get('/courses', asyncHandler(async (req, res) => {
 router.post('/courses', asyncHandler(async (req, res) => {
   const {
     slug, title, description, level, thumbnailUrl, sortOrder, isPublished, isAvailable,
-    priceIdr, priceLabel, periodLabel, tagline, features, ctaLabel, isFeatured,
+    priceIdr, priceLabel, periodLabel, tagline, features, ctaLabel, isFeatured, isFree,
   } = req.body || {};
   if (!slug || !title) return res.status(400).json({ error: 'slug and title required' });
   const slugErr = badSlug(slug);
   if (slugErr) return res.status(400).json({ error: slugErr });
+  // isFree is tri-state (true/false/null = "not yet classified") — pass
+  // through as-is rather than coercing with !!, which would collapse
+  // "unclassified" into "paid". See migration 121.
   const result = await query(
     `INSERT INTO courses
        (slug, title, description, level, thumbnail_url, sort_order, is_published, is_available,
-        price_idr, price_label, period_label, tagline, features, cta_label, is_featured)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+        price_idr, price_label, period_label, tagline, features, cta_label, is_featured, is_free)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
     [
       slug, title, description || null, level || null, thumbnailUrl || null,
       sortOrder || 0, !!isPublished, isAvailable !== false,
       priceIdr || null, priceLabel || null, periodLabel || null, tagline || null,
       JSON.stringify(Array.isArray(features) ? features : []),
       ctaLabel || null, !!isFeatured,
+      isFree === true ? true : (isFree === false ? false : null),
     ]
   );
   res.status(201).json({ course: result.rows[0] });
@@ -222,12 +226,16 @@ router.post('/courses', asyncHandler(async (req, res) => {
 router.put('/courses/:id', asyncHandler(async (req, res) => {
   const {
     slug, title, description, level, thumbnailUrl, sortOrder, isPublished, isAvailable,
-    priceIdr, priceLabel, periodLabel, tagline, features, ctaLabel, isFeatured,
+    priceIdr, priceLabel, periodLabel, tagline, features, ctaLabel, isFeatured, isFree,
   } = req.body || {};
   if (slug !== undefined && slug !== null) {
     const slugErr = badSlug(slug);
     if (slugErr) return res.status(400).json({ error: slugErr });
   }
+  // isFree: only overwrite when the client explicitly sent true/false.
+  // Omitted (undefined) keeps the existing value — it never collapses to
+  // NULL/paid just because a caller didn't include the field.
+  const isFreeExplicit = isFree === true || isFree === false;
   const result = await query(
     `UPDATE courses SET
        slug = COALESCE($2, slug),
@@ -245,6 +253,7 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
        features = COALESCE($14::jsonb, features),
        cta_label = COALESCE($15, cta_label),
        is_featured = COALESCE($16, is_featured),
+       is_free = CASE WHEN $17 THEN $18::boolean ELSE is_free END,
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
     [
@@ -252,6 +261,7 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
       priceIdr, priceLabel, periodLabel, tagline,
       Array.isArray(features) ? JSON.stringify(features) : null,
       ctaLabel, isFeatured,
+      isFreeExplicit, isFreeExplicit ? isFree : null,
     ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
@@ -3223,10 +3233,12 @@ router.get('/users', asyncHandler(async (req, res) => {
   res.json({ users: result.rows, total: totalRes.rows[0].n });
 }));
 
-// ===== AKSES DASHBOARD (enrollment grants) =====
-// Beri akses kursus tanpa lewat checkout: insert/hapus baris user_enrollments.
-// Sama persis dengan yang dilakukan POST /api/enrollments, tapi admin bisa
-// pilih user mana (by email). user_enrollments = single source of truth akses.
+// ===== AKSES DASHBOARD (course entitlement grants) =====
+// Beri/cabut akses kursus tanpa lewat checkout: insert/soft-revoke baris
+// user_enrollments (grant sama persis dengan POST /api/enrollments, tapi
+// admin bisa pilih user mana by email; revoke mengubah status, bukan
+// DELETE — lihat migration 120). user_enrollments = single source of
+// truth akses, di-scope per course_id (akses N5 tidak pernah membuka N4).
 
 // GET /api/admin/user-access?email= — cari user + daftar kursus yang sudah di-enroll
 router.get('/user-access', asyncHandler(async (req, res) => {
@@ -3241,7 +3253,8 @@ router.get('/user-access', asyncHandler(async (req, res) => {
   if (!user) return res.status(404).json({ error: 'user_not_found' });
 
   const enrolled = await query(
-    `SELECT c.id AS course_id, c.slug, c.title, c.level, e.enrolled_at
+    `SELECT c.id AS course_id, c.slug, c.title, c.level, e.enrolled_at,
+            e.status, e.expires_at, e.source, e.revoked_at
        FROM user_enrollments e
        JOIN courses c ON c.id = e.course_id
       WHERE e.user_id = $1
@@ -3256,10 +3269,24 @@ router.get('/user-access', asyncHandler(async (req, res) => {
   res.json({ user, enrollments: enrolled.rows, courses: courses.rows });
 }));
 
-// POST /api/admin/user-access/grant — { email, courseSlug } → enroll user ke kursus
+// POST /api/admin/user-access/grant — { email, courseSlug, expiresAt? } →
+// enroll user ke kursus (atau reaktivasi entitlement yang sebelumnya
+// di-revoke). expiresAt opsional (ISO string) untuk akses time-boxed;
+// kosong = akses permanen sampai di-revoke manual.
 router.post('/user-access/grant', asyncHandler(async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   const courseSlug = String(req.body?.courseSlug || '').trim();
+  const expiresAtRaw = req.body?.expiresAt;
+  const expiresAt = expiresAtRaw ? new Date(expiresAtRaw) : null;
+  if (expiresAtRaw && Number.isNaN(expiresAt?.getTime())) {
+    return res.status(400).json({ error: 'invalid_expires_at' });
+  }
+  // A past expiresAt would create a grant that's already lapsed the instant
+  // it's saved (hasCourseAccess checks expires_at > NOW()) — silently
+  // useless rather than an error, so reject it instead of accepting it.
+  if (expiresAt && expiresAt.getTime() <= Date.now()) {
+    return res.status(400).json({ error: 'expires_at_in_past' });
+  }
   if (!email) return res.status(400).json({ error: 'email_required' });
   if (!courseSlug) return res.status(400).json({ error: 'course_required' });
 
@@ -3278,22 +3305,29 @@ router.post('/user-access/grant', asyncHandler(async (req, res) => {
   if (!course) return res.status(404).json({ error: 'course_not_found' });
   if (!course.is_published) return res.status(400).json({ error: 'course_not_published' });
 
+  // ON CONFLICT reactivates a previously-revoked row (status back to active,
+  // revoked_at cleared) instead of leaving it stuck revoked — grant is the
+  // one explicit "give this user access" action, so it should always work.
   const ins = await query(
-    `INSERT INTO user_enrollments (user_id, course_id)
-     VALUES ($1, $2)
-     ON CONFLICT (user_id, course_id) DO NOTHING
-     RETURNING id`,
-    [user.id, course.id]
+    `INSERT INTO user_enrollments (user_id, course_id, status, source, expires_at)
+     VALUES ($1, $2, 'active', 'admin_grant', $3)
+     ON CONFLICT (user_id, course_id) DO UPDATE
+       SET status = 'active', revoked_at = NULL, expires_at = $3
+     RETURNING id, (xmax = 0) AS inserted`,
+    [user.id, course.id, expiresAt]
   );
   res.json({
     ok: true,
-    alreadyEnrolled: ins.rows.length === 0,
+    alreadyEnrolled: !ins.rows[0].inserted,
     user: { email: user.email, full_name: user.full_name },
     course: { slug: course.slug, title: course.title },
   });
 }));
 
-// POST /api/admin/user-access/revoke — { email, courseId } → hapus enrollment
+// POST /api/admin/user-access/revoke — { email, courseId } → cabut akses
+// (soft-revoke: status='revoked', bukan DELETE) supaya baris enrollment +
+// riwayatnya tetap ada dan progres siswa (user_progress, tidak di-FK ke
+// user_enrollments) tidak tersentuh.
 router.post('/user-access/revoke', asyncHandler(async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   const courseId = String(req.body?.courseId || '');
@@ -3304,12 +3338,249 @@ router.post('/user-access/revoke', asyncHandler(async (req, res) => {
   const user = userRow.rows[0];
   if (!user) return res.status(404).json({ error: 'user_not_found' });
 
-  const del = await query(
-    `DELETE FROM user_enrollments WHERE user_id = $1 AND course_id = $2 RETURNING id`,
+  const upd = await query(
+    `UPDATE user_enrollments
+        SET status = 'revoked', revoked_at = NOW()
+      WHERE user_id = $1 AND course_id = $2 AND status = 'active'
+      RETURNING id`,
     [user.id, courseId]
   );
-  if (del.rows.length === 0) return res.status(404).json({ error: 'enrollment_not_found' });
+  if (upd.rows.length === 0) return res.status(404).json({ error: 'enrollment_not_found' });
   res.json({ ok: true });
+}));
+
+// ===== ORDERS (Phase 2 — manual bank transfer payment verification) =====
+// Course purchase orders, separate from the Kanji PWA's Midtrans-driven
+// `subscriptions` (different table, different identity realm). Approval is
+// the ONLY event that grants access — the user_enrollments upsert happens
+// inside the same transaction as the order/payment status flip below, never
+// at order-creation or proof-upload time. See backend/src/routes/orders.js
+// for the student-facing side and migration 121 for the schema.
+
+const ORDER_ACTIONABLE_STATUSES = ['pending_payment', 'awaiting_review', 'rejected'];
+function orderEffectiveStatus(order) {
+  if (order.status === 'approved' || order.status === 'cancelled') return order.status;
+  if (new Date(order.expires_at).getTime() < Date.now()) return 'expired';
+  return order.status;
+}
+
+// GET /api/admin/orders?status=&q=&limit=&offset= — queue listing.
+// status: exact DB status to filter on, or omitted/'' for all.
+// q: matches order_number or user email.
+// 'expired' is never a stored status (see orderEffectiveStatus above) — a
+// row can sit at status='pending_payment'/'awaiting_review' in the DB long
+// after its expires_at has passed. Filtering on the raw `status` column
+// would make `?status=expired` match zero rows forever, so both the list
+// and the count query filter on this same CASE expression instead —
+// mirrors orderEffectiveStatus() exactly, just computed in SQL.
+const ORDER_EFFECTIVE_STATUS_SQL = `
+  CASE
+    WHEN o.status IN ('approved', 'cancelled') THEN o.status
+    WHEN o.expires_at < NOW() THEN 'expired'
+    ELSE o.status
+  END`;
+
+router.get('/orders', asyncHandler(async (req, res) => {
+  const status = String(req.query.status || '').trim();
+  const q = String(req.query.q || '').trim();
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const offset = Number(req.query.offset) || 0;
+
+  const result = await query(
+    `SELECT o.*, u.email AS user_email, u.full_name AS user_full_name,
+            (SELECT COUNT(*)::int FROM order_payments p WHERE p.order_id = o.id) AS payment_attempts
+       FROM orders o
+       JOIN users u ON u.id = o.user_id
+      WHERE ($1 = '' OR ${ORDER_EFFECTIVE_STATUS_SQL} = $1)
+        AND ($2 = '' OR o.order_number ILIKE '%' || $2 || '%' OR u.email ILIKE '%' || $2 || '%')
+      ORDER BY o.created_at DESC
+      LIMIT $3 OFFSET $4`,
+    [status, q, limit, offset]
+  );
+  const totalRes = await query(
+    `SELECT COUNT(*)::int AS n
+       FROM orders o JOIN users u ON u.id = o.user_id
+      WHERE ($1 = '' OR ${ORDER_EFFECTIVE_STATUS_SQL} = $1)
+        AND ($2 = '' OR o.order_number ILIKE '%' || $2 || '%' OR u.email ILIKE '%' || $2 || '%')`,
+    [status, q]
+  );
+  res.json({
+    orders: result.rows.map((o) => ({
+      id: o.id, orderNumber: o.order_number, courseTitle: o.course_title_snapshot,
+      amountIdr: o.amount_idr, status: orderEffectiveStatus(o), createdAt: o.created_at,
+      expiresAt: o.expires_at, paymentAttempts: o.payment_attempts,
+      user: { email: o.user_email, fullName: o.user_full_name },
+    })),
+    total: totalRes.rows[0].n,
+  });
+}));
+
+// GET /api/admin/orders/:id — full detail incl. every payment attempt.
+router.get('/orders/:id', asyncHandler(async (req, res) => {
+  const orderRes = await query(
+    `SELECT o.*, u.email AS user_email, u.full_name AS user_full_name
+       FROM orders o JOIN users u ON u.id = o.user_id
+      WHERE o.id = $1 LIMIT 1`,
+    [req.params.id]
+  );
+  const order = orderRes.rows[0];
+  if (!order) return res.status(404).json({ error: 'order_not_found' });
+
+  const payments = await query(
+    `SELECT p.*, r.email AS reviewed_by_email
+       FROM order_payments p
+       LEFT JOIN users r ON r.id = p.reviewed_by
+      WHERE p.order_id = $1
+      ORDER BY p.submitted_at DESC`,
+    [order.id]
+  );
+  res.json({
+    order: {
+      id: order.id, orderNumber: order.order_number, courseId: order.course_id,
+      courseTitle: order.course_title_snapshot, amountIdr: order.amount_idr,
+      status: orderEffectiveStatus(order), createdAt: order.created_at,
+      expiresAt: order.expires_at, approvedAt: order.approved_at,
+      user: { email: order.user_email, fullName: order.user_full_name },
+    },
+    payments: payments.rows.map((p) => ({
+      id: p.id, status: p.status, hasProof: !!p.proof_mime,
+      claimedBankName: p.claimed_bank_name, claimedSenderName: p.claimed_sender_name,
+      claimedAmountIdr: p.claimed_amount_idr, claimedTransferredAt: p.claimed_transferred_at,
+      submittedAt: p.submitted_at, reviewedAt: p.reviewed_at, reviewedBy: p.reviewed_by_email,
+      rejectionReason: p.rejection_reason,
+    })),
+  });
+}));
+
+// POST /api/admin/orders/:id/approve — { paymentId? } (defaults to the
+// order's current pending attempt). Grants access atomically: guarded
+// status transitions on both order_payments and orders, then the
+// user_enrollments upsert, all in one transaction — a duplicate/concurrent
+// approve call finds nothing left in 'pending'/'awaiting_review' and 409s
+// before it ever reaches the enrollment upsert.
+router.post('/orders/:id/approve', asyncHandler(async (req, res) => {
+  const orderId = req.params.id;
+  let paymentId = req.body?.paymentId;
+  if (!paymentId) {
+    const p = await query(
+      `SELECT id FROM order_payments WHERE order_id = $1 AND status = 'pending'
+        ORDER BY submitted_at DESC LIMIT 1`,
+      [orderId]
+    );
+    paymentId = p.rows[0]?.id;
+  }
+  if (!paymentId) return res.status(404).json({ error: 'no_pending_payment' });
+
+  try {
+    const result = await withTransaction(async (client) => {
+      const payRes = await client.query(
+        `UPDATE order_payments SET status = 'approved', reviewed_by = $1, reviewed_at = NOW()
+          WHERE id = $2 AND order_id = $3 AND status = 'pending'
+          RETURNING *`,
+        [req.user.id, paymentId, orderId]
+      );
+      if (payRes.rows.length === 0) throw Object.assign(new Error('payment_not_pending'), { code: 'ORDER_CONFLICT' });
+
+      const orderRes = await client.query(
+        `UPDATE orders SET status = 'approved', approved_at = NOW(), updated_at = NOW()
+          WHERE id = $1 AND status = 'awaiting_review' AND expires_at > NOW()
+          RETURNING *`,
+        [orderId]
+      );
+      if (orderRes.rows.length === 0) throw Object.assign(new Error('order_not_approvable'), { code: 'ORDER_CONFLICT' });
+      const order = orderRes.rows[0];
+
+      await client.query(
+        `INSERT INTO user_enrollments (user_id, course_id, status, source, order_id, expires_at, revoked_at)
+         VALUES ($1, $2, 'active', 'purchase', $3, NULL, NULL)
+         ON CONFLICT (user_id, course_id) DO UPDATE
+           SET status = 'active', source = 'purchase', order_id = $3, expires_at = NULL, revoked_at = NULL`,
+        [order.user_id, order.course_id, orderId]
+      );
+
+      return { order, payment: payRes.rows[0] };
+    });
+    res.json({
+      ok: true,
+      order: { id: result.order.id, status: orderEffectiveStatus(result.order) },
+    });
+  } catch (err) {
+    if (err.code === 'ORDER_CONFLICT') return res.status(409).json({ error: err.message });
+    throw err;
+  }
+}));
+
+// POST /api/admin/orders/:id/reject — { paymentId?, reason } — reason required.
+// NOT terminal for the order: the student can submit a new proof, which
+// flips the order back to 'awaiting_review' (see orders.js payment-proof).
+router.post('/orders/:id/reject', asyncHandler(async (req, res) => {
+  const orderId = req.params.id;
+  const reason = String(req.body?.reason || '').trim();
+  if (!reason) return res.status(400).json({ error: 'reason_required' });
+  let paymentId = req.body?.paymentId;
+  if (!paymentId) {
+    const p = await query(
+      `SELECT id FROM order_payments WHERE order_id = $1 AND status = 'pending'
+        ORDER BY submitted_at DESC LIMIT 1`,
+      [orderId]
+    );
+    paymentId = p.rows[0]?.id;
+  }
+  if (!paymentId) return res.status(404).json({ error: 'no_pending_payment' });
+
+  try {
+    const result = await withTransaction(async (client) => {
+      const payRes = await client.query(
+        `UPDATE order_payments
+            SET status = 'rejected', reviewed_by = $1, reviewed_at = NOW(), rejection_reason = $2
+          WHERE id = $3 AND order_id = $4 AND status = 'pending'
+          RETURNING *`,
+        [req.user.id, reason, paymentId, orderId]
+      );
+      if (payRes.rows.length === 0) throw Object.assign(new Error('payment_not_pending'), { code: 'ORDER_CONFLICT' });
+
+      const orderRes = await client.query(
+        `UPDATE orders SET status = 'rejected', updated_at = NOW()
+          WHERE id = $1 AND status = 'awaiting_review'
+          RETURNING *`,
+        [orderId]
+      );
+      if (orderRes.rows.length === 0) throw Object.assign(new Error('order_not_rejectable'), { code: 'ORDER_CONFLICT' });
+      return { order: orderRes.rows[0] };
+    });
+    res.json({ ok: true, order: { id: result.order.id, status: orderEffectiveStatus(result.order) } });
+  } catch (err) {
+    if (err.code === 'ORDER_CONFLICT') return res.status(409).json({ error: err.message });
+    throw err;
+  }
+}));
+
+// ===== SETTINGS — bank transfer accounts (manual payment instructions) =====
+// Admin-editable, no redeploy needed — same app_settings pattern as the
+// AI prompt settings below. Value is a JSON-encoded array of
+// { label, bankName, accountNumber, accountHolder }. Never hardcoded in
+// frontend source — fetched per-order from the student-facing API.
+router.get('/settings/bank-accounts', asyncHandler(async (_req, res) => {
+  const r = await query(`SELECT value FROM app_settings WHERE key = 'bank_transfer_accounts'`);
+  let accounts = [];
+  try { accounts = JSON.parse(r.rows[0]?.value || '[]'); } catch { accounts = []; }
+  res.json({ accounts: Array.isArray(accounts) ? accounts : [] });
+}));
+
+router.put('/settings/bank-accounts', asyncHandler(async (req, res) => {
+  const accounts = Array.isArray(req.body?.accounts) ? req.body.accounts : [];
+  const cleaned = accounts.map((a) => ({
+    label: String(a?.label || '').trim().slice(0, 100),
+    bankName: String(a?.bankName || '').trim().slice(0, 100),
+    accountNumber: String(a?.accountNumber || '').trim().slice(0, 50),
+    accountHolder: String(a?.accountHolder || '').trim().slice(0, 100),
+  })).filter((a) => a.bankName && a.accountNumber);
+  await query(
+    `INSERT INTO app_settings (key, value, updated_at) VALUES ('bank_transfer_accounts', $1, NOW())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+    [JSON.stringify(cleaned)]
+  );
+  res.json({ ok: true, accounts: cleaned });
 }));
 
 // ===== DISCUSSIONS (admin moderation) =====

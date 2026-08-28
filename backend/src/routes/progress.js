@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { query, withAdvisoryLock } from '../db.js';
 import { requireAuth, asyncHandler } from '../middleware.js';
 import { isAdminEmail } from '../auth.js';
+import { requireLessonCourseAccess } from '../entitlements.js';
 
 const router = Router();
 
@@ -19,7 +20,7 @@ router.get('/progress/me', asyncHandler(async (req, res) => {
 }));
 
 // GET /api/progress/lesson/:lessonId
-router.get('/progress/lesson/:lessonId', asyncHandler(async (req, res) => {
+router.get('/progress/lesson/:lessonId', requireLessonCourseAccess('lessonId'), asyncHandler(async (req, res) => {
   const result = await query(
     `SELECT lesson_id, completed, completed_at, note
      FROM user_progress
@@ -31,7 +32,7 @@ router.get('/progress/lesson/:lessonId', asyncHandler(async (req, res) => {
 }));
 
 // POST /api/progress/lesson/:lessonId/complete
-router.post('/progress/lesson/:lessonId/complete', asyncHandler(async (req, res) => {
+router.post('/progress/lesson/:lessonId/complete', requireLessonCourseAccess('lessonId'), asyncHandler(async (req, res) => {
   const lesson = await query(
     `SELECT id, duration_minutes FROM lessons WHERE id = $1 LIMIT 1`,
     [req.params.lessonId]
@@ -198,7 +199,7 @@ async function loadQuestionsByIds(ids) {
 // yang dikunci via pg_advisory_xact_lock(user_id||lesson_id). Dua
 // request concurrent untuk (user, lesson) sama → request kedua block
 // sampai yg pertama commit, lalu re-check cooldown → block 429.
-router.post('/progress/lesson/:lessonId/quiz/start', asyncHandler(async (req, res) => {
+router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('lessonId'), asyncHandler(async (req, res) => {
   const lessonId = req.params.lessonId;
 
   // Lesson meta + pool IDs paralel — di luar lock karena read-only & idempotent.
@@ -299,7 +300,7 @@ router.post('/progress/lesson/:lessonId/quiz/start', asyncHandler(async (req, re
 // Update row existing (yang dibuat di /quiz/start) — bukan INSERT baru.
 // Compute passed = (score/total)*100 >= passing_score_pct. Return next
 // attempt window.
-router.post('/progress/lesson/:lessonId/quiz-attempt', asyncHandler(async (req, res) => {
+router.post('/progress/lesson/:lessonId/quiz-attempt', requireLessonCourseAccess('lessonId'), asyncHandler(async (req, res) => {
   const lessonId = req.params.lessonId;
   const { attemptToken } = req.body || {};
   const rawAnswers = Array.isArray(req.body?.answers) ? req.body.answers : [];
@@ -427,7 +428,7 @@ router.post('/progress/lesson/:lessonId/quiz-attempt', asyncHandler(async (req, 
 
 // GET /api/progress/lesson/:lessonId/quiz-status
 // Cooldown + last attempt info, dipakai welcome.html quiz landing.
-router.get('/progress/lesson/:lessonId/quiz-status', asyncHandler(async (req, res) => {
+router.get('/progress/lesson/:lessonId/quiz-status', requireLessonCourseAccess('lessonId'), asyncHandler(async (req, res) => {
   const lessonId = req.params.lessonId;
   const lessonRow = await query(
     `SELECT id, type, passing_score_pct, questions_per_attempt, cooldown_hours
@@ -464,7 +465,7 @@ router.get('/progress/lesson/:lessonId/quiz-status', asyncHandler(async (req, re
 }));
 
 // PUT /api/progress/lesson/:lessonId/note
-router.put('/progress/lesson/:lessonId/note', asyncHandler(async (req, res) => {
+router.put('/progress/lesson/:lessonId/note', requireLessonCourseAccess('lessonId'), asyncHandler(async (req, res) => {
   const note = typeof req.body?.note === 'string' ? req.body.note.slice(0, 10000) : '';
   await query(
     `INSERT INTO user_progress (user_id, lesson_id, note)
@@ -527,6 +528,12 @@ router.get('/stats/me', asyncHandler(async (req, res) => {
 // knows slugs. We look up the course row and enforce that it's purchasable
 // (published + available) before enrolling. This is the single source of truth
 // for access — do NOT trust localStorage on the frontend.
+//
+// Free-only (Phase 2): this endpoint self-enrolls a user with ZERO payment
+// check, so it only ever applies to courses explicitly marked is_free=TRUE.
+// A paid course (is_free=FALSE) must go through POST /api/orders instead;
+// an unclassified course (is_free IS NULL — not yet reviewed by an admin,
+// see migration 121) is blocked from both paths until it's classified.
 router.post('/enrollments', asyncHandler(async (req, res) => {
   const { courseSlug, courseId } = req.body || {};
   if (!courseSlug && !courseId) {
@@ -534,8 +541,8 @@ router.post('/enrollments', asyncHandler(async (req, res) => {
   }
 
   const lookup = courseId
-    ? await query(`SELECT id, is_published, is_available FROM courses WHERE id = $1`, [courseId])
-    : await query(`SELECT id, is_published, is_available FROM courses WHERE slug = $1`, [courseSlug]);
+    ? await query(`SELECT id, is_published, is_available, is_free FROM courses WHERE id = $1`, [courseId])
+    : await query(`SELECT id, is_published, is_available, is_free FROM courses WHERE slug = $1`, [courseSlug]);
 
   if (lookup.rows.length === 0) {
     return res.status(404).json({ error: 'Kursus tidak ditemukan.' });
@@ -547,10 +554,26 @@ router.post('/enrollments', asyncHandler(async (req, res) => {
   if (course.is_available === false) {
     return res.status(403).json({ error: 'Kursus belum tersedia untuk pembelian.' });
   }
+  // Strict IS TRUE — excludes both FALSE (paid) and NULL (unclassified) by
+  // construction, so neither can slip through as "not FALSE therefore free".
+  if (course.is_free !== true) {
+    return res.status(403).json({ error: 'payment_required' });
+  }
+
+  // An existing row that's been admin-revoked must NOT be silently
+  // reactivated by self-enroll — that would defeat the revoke. Report it
+  // distinctly instead of the generic "already enrolled".
+  const existing = await query(
+    `SELECT id, status FROM user_enrollments WHERE user_id = $1 AND course_id = $2 LIMIT 1`,
+    [req.user.id, course.id]
+  );
+  if (existing.rows.length > 0 && existing.rows[0].status === 'revoked') {
+    return res.status(403).json({ error: 'access_revoked' });
+  }
 
   const ins = await query(
-    `INSERT INTO user_enrollments (user_id, course_id)
-     VALUES ($1, $2)
+    `INSERT INTO user_enrollments (user_id, course_id, status, source)
+     VALUES ($1, $2, 'active', 'self_enroll')
      ON CONFLICT (user_id, course_id) DO NOTHING
      RETURNING id`,
     [req.user.id, course.id]
@@ -559,16 +582,21 @@ router.post('/enrollments', asyncHandler(async (req, res) => {
 }));
 
 // GET /api/enrollments/me
+// Only currently-active (not revoked, not expired) entitlements — this is
+// what the frontend uses to decide which courses to render/fetch, so a
+// revoked or lapsed course must disappear from here.
 // Admins get implicit access to every published course so they can preview
 // content and test the enrolled UX without needing a real enrollment row.
 // Useful while there's no payment gateway yet and admins need to inspect
 // student-side flows repeatedly.
 router.get('/enrollments/me', asyncHandler(async (req, res) => {
   const result = await query(
-    `SELECT c.id, c.slug, c.title, c.description, c.level, c.thumbnail_url, e.enrolled_at
+    `SELECT c.id, c.slug, c.title, c.description, c.level, c.thumbnail_url,
+            e.enrolled_at, e.expires_at, e.source
      FROM user_enrollments e
      JOIN courses c ON c.id = e.course_id
      WHERE e.user_id = $1
+       AND e.status = 'active' AND (e.expires_at IS NULL OR e.expires_at > NOW())
      ORDER BY e.enrolled_at DESC`,
     [req.user.id]
   );

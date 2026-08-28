@@ -50,6 +50,10 @@ CREATE TABLE IF NOT EXISTS courses (
   features JSONB NOT NULL DEFAULT '[]'::jsonb,
   cta_label TEXT,
   is_featured BOOLEAN NOT NULL DEFAULT FALSE,
+  -- Nullable, no default, deliberately: a course sitting at NULL is blocked
+  -- from BOTH self-enroll and order purchase until an admin explicitly
+  -- classifies it (see admin.html course form + migration 121).
+  is_free BOOLEAN,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -375,15 +379,76 @@ CREATE INDEX IF NOT EXISTS idx_qqr_attempt ON quiz_question_results (attempt_id)
 
 -- ===== USER DATA =====
 
+-- Doubles as the course entitlement record (Phase 1 — course access
+-- foundation): status/expires_at/source/revoked_at let admin grants be
+-- revoked or time-boxed without losing the enrollment row (and the progress
+-- tied to it). 'expired' is computed at read time (status='active' AND
+-- expires_at < NOW()), not stored. See migration 120.
+-- ===== COURSE ORDERS (Phase 2 — manual bank transfer, provider-agnostic) =====
+-- Purchase intent, separate from the Kanji PWA's Midtrans-driven
+-- `subscriptions` table (different identity realm — kanji_users, not
+-- users). See migration 121 for the full design rationale.
+CREATE TABLE IF NOT EXISTS orders (
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_number           TEXT UNIQUE NOT NULL,
+  user_id                UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  course_id              UUID NOT NULL REFERENCES courses(id) ON DELETE RESTRICT,
+  course_title_snapshot  TEXT NOT NULL,
+  amount_idr             INT NOT NULL,
+  currency               TEXT NOT NULL DEFAULT 'IDR',
+  payment_provider       TEXT NOT NULL DEFAULT 'manual_transfer'
+                            CHECK (payment_provider IN ('manual_transfer', 'midtrans')),
+  status                 TEXT NOT NULL DEFAULT 'pending_payment'
+                            CHECK (status IN ('pending_payment','awaiting_review','approved','rejected','expired','cancelled')),
+  expires_at             TIMESTAMPTZ NOT NULL,
+  approved_at            TIMESTAMPTZ,
+  created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_course ON orders(course_id);
+
+CREATE TABLE IF NOT EXISTS order_payments (
+  id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id                UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  provider                TEXT NOT NULL DEFAULT 'manual_transfer',
+  status                  TEXT NOT NULL DEFAULT 'pending'
+                             CHECK (status IN ('pending','approved','rejected','superseded')),
+  proof_image             BYTEA,
+  proof_mime              TEXT,
+  proof_filename          TEXT,
+  claimed_bank_name       TEXT,
+  claimed_sender_name     TEXT,
+  claimed_amount_idr      INT,
+  claimed_transferred_at  TIMESTAMPTZ,
+  external_reference      TEXT,
+  raw_payload              JSONB,
+  submitted_by            UUID NOT NULL REFERENCES users(id),
+  submitted_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  reviewed_by             UUID REFERENCES users(id),
+  reviewed_at             TIMESTAMPTZ,
+  rejection_reason        TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_order_payments_order ON order_payments(order_id, submitted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_order_payments_pending ON order_payments(order_id) WHERE status = 'pending';
+
 CREATE TABLE IF NOT EXISTS user_enrollments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
   enrolled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'revoked')),
+  expires_at TIMESTAMPTZ,
+  source TEXT NOT NULL DEFAULT 'self_enroll' CHECK (source IN ('self_enroll', 'admin_grant', 'purchase')),
+  revoked_at TIMESTAMPTZ,
+  order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
   UNIQUE(user_id, course_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_enrollments_user ON user_enrollments(user_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_user_active
+  ON user_enrollments (user_id, course_id) WHERE status = 'active';
 
 CREATE TABLE IF NOT EXISTS user_progress (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
