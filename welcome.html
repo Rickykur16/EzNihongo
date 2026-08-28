@@ -8888,7 +8888,10 @@ function deckDrillRender() {
   } else {
     hint = 'Kata yang mana?';
     promptHtml = `<div class="kana-drill-prompt" style="font-size:28px;">${escapeHtml(item.indonesian)}</div>`;
-    optsHtml = q.opts.map((o, oi) => `<button class="kana-drill-opt" type="button" data-oi="${oi}" lang="ja" onclick="deckDrillAnswer(${oi})">${escapeHtml(o.japanese)}</button>`).join('');
+    optsHtml = q.opts.map((o, oi) => `<button class="kana-drill-opt" type="button" data-oi="${oi}" lang="ja" onclick="deckDrillAnswer(${oi})">
+      <span style="display:block;">${escapeHtml(o.japanese)}</span>
+      ${o.reading && o.reading !== o.japanese ? `<span style="display:block;font-size:12px;font-weight:600;color:var(--du-ink-3,#8a8a8a);margin-top:3px;">${escapeHtml(o.reading)}</span>` : ''}
+    </button>`).join('');
   }
   body.innerHTML = `
     <div class="kana-drill-progress">Tersisa ${remaining} dari ${st.total} · Salah ${st.wrong}x</div>
@@ -8926,9 +8929,10 @@ window.deckDrillAnswer = (oi) => {
   const fb = document.getElementById('deck-drill-feedback');
   if (fb) {
     const answerLabel = q.dir === 'id2jp' ? st.current.japanese : st.current.indonesian;
+    const showReading = q.dir === 'id2jp' && st.current.reading && st.current.reading !== st.current.japanese;
     fb.innerHTML = correct
       ? '<span class="kdf-ok">✓ Benar!</span>'
-      : `<span class="kdf-no">✗ Jawaban: <strong${q.dir === 'id2jp' ? ' lang="ja"' : ''}>${escapeHtml(answerLabel)}</strong></span>`;
+      : `<span class="kdf-no">✗ Jawaban: <strong${q.dir === 'id2jp' ? ' lang="ja"' : ''}>${escapeHtml(answerLabel)}</strong>${showReading ? ` <span lang="ja">(${escapeHtml(st.current.reading)})</span>` : ''}</span>`;
   }
   setTimeout(() => { if (window.__deckDrill === st) deckDrillAdvance(); }, correct ? 750 : 1500);
 };
