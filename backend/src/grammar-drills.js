@@ -209,14 +209,22 @@ export function buildControlledDrill(item, siblings) {
   };
 }
 
-// Semua drill untuk satu daftar pola. `siblings` = daftar itu sendiri, dipakai
-// sebagai sumber pengecoh antar pola dalam bab yang sama.
-export function deriveDrills(items) {
+// Semua drill untuk satu daftar pola.
+//
+// `pool` = sumber pengecoh, DEFAULTNYA seluruh pola satu bab — bukan cuma pola
+// di tugas ini. Alasannya konkret: tiap bab dipecah jadi dua Tugas Bunpou, dan
+// yang kedua sering hanya berisi 2 pola (mis. Bab 13 tugas 2 = 〜てもいいですか
+// + 〜てはいけません). Dengan pool sebatas tugas, itu cuma menyisakan 1 pengecoh
+// — di bawah ambang minimum — sehingga Step 1 hilang diam-diam di separuh tugas.
+// Pool se-bab juga lebih tepat secara pedagogis: yang perlu dibedakan siswa
+// adalah pola-pola yang baru dipelajari di bab itu.
+export function deriveDrills(items, pool) {
+  const siblings = (Array.isArray(pool) && pool.length) ? pool : items;
   const out = new Map();
   for (const item of items) {
     out.set(item.id, {
-      step1: buildRecognitionDrill(item, items),
-      step2: buildControlledDrill(item, items),
+      step1: buildRecognitionDrill(item, siblings),
+      step2: buildControlledDrill(item, siblings),
     });
   }
   return out;

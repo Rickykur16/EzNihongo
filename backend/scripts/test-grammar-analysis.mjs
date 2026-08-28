@@ -144,6 +144,14 @@ async function seed() {
     await query(`INSERT INTO grammar_examples (grammar_id,japanese,highlight,indonesian,sort_order)
                  VALUES ($1,$2,$3,$4,0)`, [g.rows[0].id, ex[0], ex[1], ex[2]]);
   }
+  // Tugas Bunpou KEDUA tiap bab di produksi sering hanya berisi 2 pola
+  // (mis. Bab 13 tugas 2 = 〜てもいいですか + 〜てはいけません). Ini yang dulu
+  // membuat Step 1 hilang karena pengecoh hanya diambil dari tugas itu sendiri.
+  const lg2 = await query(`INSERT INTO lessons (module_id,slug,title,type,sort_order) VALUES ($1,'tugas-bunpou-2','Tugas Bunpou Bab 3 (2)','grammar_task',7) RETURNING id`, [moduleId]);
+  const taskLesson2Id = lg2.rows[0].id;
+  await query(`INSERT INTO lesson_grammar_task_items (lesson_id,grammar_id,sort_order,required_count)
+               VALUES ($1,$2,1,1),($1,$3,2,1)`, [taskLesson2Id, gids[1], gids[2]]);
+
   const u = await query(`INSERT INTO users (google_id,email,full_name) VALUES ('g1','s@example.com','Rina Sari') RETURNING id`);
   const userId = u.rows[0].id;
   await query(`INSERT INTO user_enrollments (user_id,course_id) VALUES ($1,$2)`, [userId, courseId]);
@@ -158,7 +166,7 @@ async function seed() {
     await query(`INSERT INTO quiz_options (question_id,option_text,is_correct,sort_order) VALUES ($1,'salah',false,1)`, [q]);
     opts[q] = a.rows[0].id;
   }
-  return { courseId, moduleId, bunpouLessonId, taskLessonId, quizLessonId, gids, userId,
+  return { courseId, moduleId, bunpouLessonId, taskLessonId, taskLesson2Id, quizLessonId, gids, userId,
            q1: q1.rows[0].id, q2: q2.rows[0].id, opts };
 }
 
@@ -325,6 +333,24 @@ if (MODE === 'eval') {
   const gdata2 = await gres2.json();
   check('urutan opsi deterministik (soal yang dinilai = soal yang dikirim)',
     JSON.stringify(gdata2.drills[0]) === JSON.stringify(d1), gdata2.drills[0]);
+
+  console.log('\nStep 1 — tugas berisi 2 pola tetap dapat soal (pengecoh se-bab)');
+  const g2res = await realFetch(`${base}/grammar-task/lesson/${ctx.taskLesson2Id}/drills`,
+    { headers: { authorization: 'Bearer ' + token } });
+  const g2data = await g2res.json();
+  check('200 + 2 pola', g2res.status === 200 && g2data.drills.length === 2, g2data);
+  check('Step 1 TIDAK hilang walau tugasnya cuma 2 pola',
+    g2data.drills.every((d) => d.step1 && d.step1.options.length >= 3),
+    g2data.drills.map((d) => (d.step1 ? d.step1.options.length : null)));
+  check('pengecohnya arti pola lain di bab yang sama (termasuk yang di luar tugas ini)',
+    g2data.drills[0].step1.options.includes('arti 0'), g2data.drills[0].step1.options);
+  const g2ans = await realFetch(base + '/grammar-task/drill-answer', {
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
+    body: JSON.stringify({ lessonId: ctx.taskLesson2Id, grammarId: g2data.drills[0].grammarId, step: 1, optionIndex: 0 }),
+  });
+  const g2j = await g2ans.json();
+  check('penilaian server memakai pool yang sama (tidak 404/500)',
+    g2ans.status === 200 && typeof g2j.passed === 'boolean' && Number.isInteger(g2j.correctIndex), g2j);
 
   console.log('\nStep 1/2 — penilaian di server + pencatatan percobaan');
   // Kunci jawaban benar diturunkan ulang di sini, sama seperti yang server lakukan.
