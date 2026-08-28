@@ -2485,6 +2485,52 @@
     .vocab-level-chip { font-size: 12px; padding: 2px 8px; }
   }
 
+  /* ── ANALISIS BUNPOU (lapisan tipis di atas kartu grammar) ─────── */
+  /* Sengaja BUKAN dashboard: satu baris ringkas + panel yang bisa dibuka.
+     Halaman ini tetap halaman materi, bukan halaman statistik. */
+  .bunpou-analysis {
+    border: 1px solid var(--du-border);
+    border-radius: 12px;
+    padding: 13px 15px;
+    background: var(--du-surface-2);
+    margin-bottom: 14px;
+  }
+  .ba-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .ba-title { font-size: 13px; font-weight: 800; color: var(--du-ink); }
+  .ba-pct { font-size: 20px; font-weight: 900; color: var(--du-ink); font-variant-numeric: tabular-nums; }
+  .ba-bar { height: 8px; border-radius: 6px; background: var(--du-border); overflow: hidden; margin: 8px 0 7px; }
+  .ba-bar-fill { height: 100%; border-radius: 6px; transition: width .5s ease; }
+  .ba-sub { font-size: 12.5px; color: var(--du-ink-3); line-height: 1.5; }
+  .ba-toggle {
+    margin-top: 9px; border: 1px solid var(--du-border); background: transparent;
+    border-radius: 8px; padding: 6px 12px; font-size: 12.5px; font-weight: 700;
+    color: var(--du-ink-2); cursor: pointer;
+  }
+  .ba-toggle:hover { background: var(--du-surface); }
+  .ba-panel { margin-top: 12px; border-top: 1px solid var(--du-border); padding-top: 12px; }
+  .ba-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+  .ba-row + .ba-row { border-top: 1px dashed var(--du-border); }
+  .ba-row__main { flex: 1; min-width: 0; }
+  .ba-row__pattern { font-family: 'Noto Sans JP', sans-serif; font-weight: 700; font-size: 14px; color: var(--du-ink); }
+  .ba-row__meta { font-size: 11.5px; color: var(--du-ink-3); margin-top: 2px; }
+  .ba-row__score { font-size: 15px; font-weight: 800; color: var(--du-ink-2); font-variant-numeric: tabular-nums; }
+  .ba-focus {
+    margin-top: 12px; padding: 11px 13px; border-radius: 10px;
+    background: var(--du-surface); border: 1px solid var(--du-border);
+    font-size: 13px; color: var(--du-ink-2); line-height: 1.55;
+  }
+  .ba-focus__title { font-weight: 800; color: var(--du-ink); margin-bottom: 3px; font-size: 12.5px; }
+  .ba-practice {
+    margin-top: 9px; border: none; border-radius: 8px; padding: 7px 15px;
+    font-size: 13px; font-weight: 800; cursor: pointer;
+    background: var(--du-accent, #C8102E); color: #fff;
+  }
+  /* Titik status per pola di kartu grammar — halus, sekadar penanda. */
+  .ba-dot {
+    display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+    margin-right: 7px; vertical-align: middle; flex: none;
+  }
+
   /* ── LESSON GRAMMAR CARDS ──────────────────────────────────────── */
   .grammar-list { display: flex; flex-direction: column; gap: 10px; }
   .grammar-card {
@@ -5761,10 +5807,27 @@ function recoPanelHtml(data) {
   if (!data || !data.hasData) return '';
   const cats = (Array.isArray(data.categories) ? data.categories.slice() : [])
     .sort((a, b) => RECO_CAT_ORDER.indexOf(a.category) - RECO_CAT_ORDER.indexOf(b.category));
-  if (cats.length === 0) return '';
+  // Siswa bisa punya sinyal Bunpou tanpa pernah mengerjakan kuis sama sekali —
+  // panelnya tetap berguna walau bar kategorinya kosong.
+  if (cats.length === 0 && !(data.weakGrammar || []).length) return '';
   const bars = cats.map(recoCategoryBar).join('');
   const lessonsArr = Array.isArray(data.recommendedLessons) ? data.recommendedLessons : [];
   const lessons = lessonsArr.map(recoLessonChip).join('');
+  // Pola grammar yang masih meleset — lebih actionable daripada "Tata Bahasa
+  // 62%", karena menyebut pola yang mana dan menautkan ke tugas latihannya.
+  const wg = Array.isArray(data.weakGrammar) ? data.weakGrammar : [];
+  const grammarHtml = wg.length === 0 ? '' : `
+    <div style="margin-top:13px;">
+      <div style="font-size:11px;font-weight:800;color:#6b5d49;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;">Pola yang perlu latihan</div>
+      ${wg.map((g) => `
+        <div style="border:1px solid #F0E0DA;background:#fffafb;border-radius:10px;padding:9px 12px;margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;">
+            <span lang="ja" style="font-size:14px;font-weight:800;color:#1B1410;">${escapeHtml(g.pattern || '')}</span>
+            <span style="font-size:12px;color:#6b5d49;font-weight:700;">${g.score != null ? g.score + '%' : ''}</span>
+          </div>
+          ${g.message ? `<div style="font-size:12px;color:#5b4f42;margin-top:3px;line-height:1.5;">${escapeHtml(g.message)}</div>` : ''}
+        </div>`).join('')}
+    </div>`;
   const note = data.coachingNote ? `
     <div style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding:12px 13px;border-radius:12px;background:#FFF7F4;border:1.5px solid #F0E0DA;">
       <div style="font-size:22px;line-height:1;flex-shrink:0;">🐾</div>
@@ -5782,6 +5845,7 @@ function recoPanelHtml(data) {
           <div style="font-size:11px;font-weight:800;color:#6b5d49;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;">Ulangi pelajaran ini</div>
           ${lessons}
         </div>` : ''}
+        ${grammarHtml}
         ${note}
       </section>
     </div>`;
@@ -7040,6 +7104,7 @@ function renderLessonGrammar(lesson) {
   return `
     <div class="lesson-extra-card">
       <h3>📖 Grammar di pelajaran ini (${sorted.length})</h3>
+      <div id="bunpou-analysis"></div>
       <div class="grammar-list">
         ${sorted.map((g, i) => {
           const dialog = (g.example_dialog || '').trim();
@@ -7057,8 +7122,8 @@ function renderLessonGrammar(lesson) {
               ${ex.indonesian ? `<div class="grammar-example-id">${escapeHtml(ex.indonesian)}</div>` : ''}
             </div>`).join('');
           return `
-          <div class="grammar-card">
-            <div class="grammar-pattern">${escapeHtml(g.pattern || '')}</div>
+          <div class="grammar-card" data-grammar-id="${escapeHtml(g.id || '')}">
+            <div class="grammar-pattern"><span class="ba-dot" data-ba-dot="${escapeHtml(g.id || '')}" style="background:var(--du-border);" title="Belum dianalisis"></span>${escapeHtml(g.pattern || '')}</div>
             ${g.meaning ? `<div class="grammar-meaning">${escapeHtml(g.meaning)}</div>` : ''}
             ${examples.length > 0 ? `<div class="grammar-block grammar-collapsible" data-collapsed="1">
               <button type="button" class="grammar-block-toggle" onclick="window.grammarBlockToggle(this)">
@@ -7562,6 +7627,132 @@ window.grammarKaraokePlay = async (key) => {
     if (statusEl) statusEl.textContent = 'Audio tidak tersedia';
     if (playBtn) playBtn.disabled = false;
   }
+};
+
+// ── ANALISIS BUNPOU ────────────────────────────────────────────────
+// Lapisan tipis di atas kartu grammar: seberapa jauh siswa menguasai tiap
+// pola di pelajaran ini, dari GET /api/grammar/mastery/lesson/:id.
+// Sumber datanya percobaan Tugas Bunpou (dinilai AI) + soal kuis yang
+// ditautkan admin ke pola (dinilai deterministik) — lihat migration 122.
+//
+// Dimuat SETELAH render dan gagal dalam diam: halaman materi harus tetap utuh
+// kalau endpoint-nya belum ada / siswa belum punya data sama sekali.
+const BA_STATE_COLOR = {
+  MASTERED: '#2E7D52',
+  PROGRESSING: '#3B7BB8',
+  LEARNING: '#3B7BB8',
+  NEEDS_PRACTICE: '#E0A100',
+  UNSEEN: 'var(--du-border)',
+};
+const BA_STATE_ICON = {
+  MASTERED: '🟢', PROGRESSING: '🔵', LEARNING: '🔵',
+  NEEDS_PRACTICE: '🟡', UNSEEN: '⚪',
+};
+
+async function loadBunpouAnalysis(lesson) {
+  const host = document.getElementById('bunpou-analysis');
+  if (!host || !lesson || !lesson.apiId) return;
+  if (typeof window.ezApi !== 'function') return;
+  let data;
+  try {
+    const r = await window.ezApi('/grammar/mastery/lesson/' + encodeURIComponent(lesson.apiId));
+    if (!r.ok) return;
+    data = await r.json();
+  } catch { return; }
+  // Render bisa keburu berganti pelajaran selagi request jalan.
+  if (document.getElementById('bunpou-analysis') !== host) return;
+  const concepts = Array.isArray(data.concepts) ? data.concepts : [];
+  if (concepts.length === 0) return;
+
+  window.__baData = data;
+  baPaintDots(concepts);
+  host.innerHTML = baStripHtml(data);
+}
+
+// Titik status kecil di sebelah tiap pola. Pola yang belum dianalisis
+// dibiarkan abu-abu seperti kondisi awalnya.
+function baPaintDots(concepts) {
+  for (const c of concepts) {
+    const dot = document.querySelector(`[data-ba-dot="${c.grammarId}"]`);
+    if (!dot) continue;
+    dot.style.background = BA_STATE_COLOR[c.state] || 'var(--du-border)';
+    dot.title = c.stateLabel || '';
+  }
+}
+
+function baStripHtml(data) {
+  const s = data.summary || {};
+  // Persentase hanya muncul kalau backend memang mengeluarkan angka — di bawah
+  // ambang percobaan minimum `pct` sengaja null, jadi UI tidak punya angka
+  // untuk diklaim.
+  const hasPct = s.pct != null;
+  const bits = [];
+  if (s.mastered) bits.push(`${s.mastered} pola cukup dikuasai`);
+  if (s.needsPractice) bits.push(`${s.needsPractice} pola perlu latihan`);
+  if (s.dueReview) bits.push(`${s.dueReview} pola perlu diulang`);
+  if (!bits.length) {
+    bits.push(s.analyzed === 0
+      ? 'Kerjakan Tugas Bunpou-nya dulu supaya bisa dianalisis'
+      : `${s.analyzed} pola sedang dipelajari`);
+  }
+  const barColor = !hasPct ? 'var(--du-border)'
+    : (s.pct >= 85 ? '#2E7D52' : (s.pct >= 55 ? '#3B7BB8' : '#E0A100'));
+  return `
+    <div class="bunpou-analysis">
+      <div class="ba-head">
+        <div class="ba-title">Pemahaman Bunpou</div>
+        <div class="ba-pct">${hasPct ? s.pct + '%' : '—'}</div>
+      </div>
+      <div class="ba-bar"><div class="ba-bar-fill" style="width:${hasPct ? s.pct : 0}%;background:${barColor};"></div></div>
+      <div class="ba-sub">${escapeHtml(bits.join(' · '))}</div>
+      <button type="button" class="ba-toggle" id="ba-toggle" onclick="baTogglePanel()">Lihat analisis</button>
+      <div class="ba-panel" id="ba-panel" hidden>${baPanelHtml(data)}</div>
+    </div>`;
+}
+
+function baPanelHtml(data) {
+  const rows = (data.concepts || []).map((c) => {
+    const icon = BA_STATE_ICON[c.state] || '⚪';
+    // Jumlah percobaan ditampilkan apa adanya — itu yang bikin siswa paham
+    // kenapa sebuah pola belum punya angka.
+    const meta = c.attempts > 0
+      ? `${icon} ${escapeHtml(c.stateLabel)} · ${c.attempts} percobaan${c.dueReview ? ' · perlu diulang' : ''}`
+      : `${icon} ${escapeHtml(c.stateLabel)}`;
+    return `
+      <div class="ba-row">
+        <div class="ba-row__main">
+          <div class="ba-row__pattern" lang="ja">${escapeHtml(c.pattern || '')}</div>
+          <div class="ba-row__meta">${meta}</div>
+        </div>
+        <div class="ba-row__score">${c.score != null ? c.score + '%' : '–'}</div>
+      </div>`;
+  }).join('');
+
+  const f = data.focus;
+  const focusHtml = (f && f.message) ? `
+    <div class="ba-focus">
+      <div class="ba-focus__title">⚠ Fokus berikutnya</div>
+      <div>${escapeHtml(f.message)}</div>
+      ${f.practice ? `<button type="button" class="ba-practice" onclick="baPractice('${escapeHtml(f.practice.moduleSlug)}','${escapeHtml(f.practice.lessonSlug)}')">Latihan sekarang</button>` : ''}
+    </div>` : '';
+
+  return rows + focusHtml;
+}
+
+window.baTogglePanel = () => {
+  const panel = document.getElementById('ba-panel');
+  const btn = document.getElementById('ba-toggle');
+  if (!panel || !btn) return;
+  const open = panel.hasAttribute('hidden');
+  if (open) panel.removeAttribute('hidden'); else panel.setAttribute('hidden', '');
+  btn.textContent = open ? 'Tutup analisis' : 'Lihat analisis';
+};
+
+// API mengembalikan slug modul + slug pelajaran; model konten frontend memakai
+// slug sebagai id (lihat recoLessonChip), jadi keduanya langsung cocok.
+window.baPractice = (moduleSlug, lessonSlug) => {
+  if (!moduleSlug || !lessonSlug) return;
+  selectLesson(moduleSlug, lessonSlug);
 };
 
 function renderLessonExtras(lesson) {
@@ -8387,7 +8578,12 @@ async function gtRunEval(pi, si, opts) {
   try {
     const res = await window.ezApi('/grammar-task/evaluate', {
       method: 'POST',
-      body: JSON.stringify({ lessonId: window.__gtLessonId, grammarId: it.id, sentence }),
+      // inputMode dipakai server untuk membedakan salah dengar STT dari
+      // kesalahan siswa (kalimat yang diketik tidak mungkin salah transkrip).
+      body: JSON.stringify({
+        lessonId: window.__gtLessonId, grammarId: it.id, sentence,
+        inputMode: opts.fromSpeech ? 'speech' : 'text',
+      }),
     });
     if (opts.guard && !opts.guard()) return; // slot sudah rekam ulang → jangan render hasil basi
     if (res.status === 503) {
@@ -9298,6 +9494,9 @@ function renderLesson() {
       </button>
     </div>
   `;
+
+  // Analisis Bunpou dimuat setelah materi tampil — tidak boleh menunda render.
+  loadBunpouAnalysis(lesson);
 }
 
 function renderLessonMaterials(module, lesson) {

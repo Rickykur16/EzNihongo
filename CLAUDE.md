@@ -289,6 +289,104 @@
   navigasi lesson), `openGrammarTaskPopup`/`closeGrammarTaskPopup`, dan
   `AISenpai.init` (hormati flag kalau init jalan setelah render pertama).
   State chat & mode panel tidak disentuh — cuma visibilitas.
+- **Analisis Belajar Bunpou (mastery per POLA grammar)** — migration **122**.
+  Sebelum ini verdict AI di Tugas Bunpou DIBUANG setelah dirender: satu-satunya
+  yang tersimpan adalah `grammar_eval_cache` yang global + anonim (hemat biaya
+  AI, bukan sinyal belajar). Akibatnya server tidak pernah tahu tugas grammar
+  sudah dikerjakan (klaim "selesai" cuma di localStorage), dan deteksi kelemahan
+  cuma bisa bilang kategori "Tata Bahasa" lemah — tidak pernah pola YANG MANA.
+  - **Identitas konsep tidak dibuat baru**: `module_grammar.id` sudah stabil dan
+    dipakai bersama pelajaran Tata Bahasa (lewat `lesson_id`) DAN Tugas Bunpou
+    (lewat `lesson_grammar_task_items`).
+  - **Tabel baru `grammar_attempts`** — satu baris per kalimat yang dinilai
+    (user/grammar/lesson, `source` production|controlled|recognition,
+    `input_mode` speech|text, kalimat, correct/uses_pattern/passed, plus output
+    terstruktur: `grammar_score`, `primary_error`, `error_types[]`, `severity`,
+    `concept_signal`, `eval_source` ai|cache). SATU tabel, bukan pasangan
+    attempts+results: satu submit = satu kalimat = satu verdict.
+    **Pencatatan ada DI LUAR cabang cache** — kalau tidak, kalimat yang kebetulan
+    sama dengan kalimat siswa lain hilang total dari analisis.
+  - **Kolom `grammar_id`** ditambahkan ke `quiz_questions` (tautan opsional yang
+    di-set admin lewat dropdown "Pola grammar yang diuji" di form soal kategori
+    grammar) dan di-snapshot ke `quiz_question_results` (pola sama dgn
+    `question_category` di migration 027). Nullable, TANPA backfill: seluruh
+    soal Assignment Bab 1-20 tetap valid dengan NULL dan tetap dihitung di
+    kategori grammar seperti biasa. Ini yang bikin soal pengenalan/latihan
+    terkontrol ikut mengisi mastery **tanpa biaya AI** — penilaian opsi sudah
+    deterministik di `progress.js`.
+  - **Kontrak output AI** (`OUTPUT_CONTRACT` di `grammar-task.js`) sengaja
+    ditaruh DI LUAR template yang bisa di-edit admin (`app_settings.
+    grammar_eval_prompt`). Kalau bentuk JSON ikut di template, admin yang
+    menyimpan prompt versi lama akan diam-diam mematikan seluruh klasifikasi
+    error — persis "jebakan prompt membeku" migration 033. Pedagogi & nada milik
+    admin, bentuk data milik server. Respons endpoint = **superset** kontrak lama
+    `{correct, usesPattern, feedback, correction}`, jadi frontend lama tetap
+    jalan. Cache di-namespace `grammar-eval-v2|` supaya entri lama (4 field)
+    tidak disajikan setengah jadi; entri lama jadi dorman, bukan salah.
+    `grammar-task.js` sekalian migrasi dari raw `fetch` ke `callClaude()`.
+  - **Normalisasi server-side**: tipe error di luar whitelist → `other`,
+    `grammarScore` di-clamp 0-100, severity/conceptSignal tak dikenal → null.
+    Klasifikasi bersifat PENJELAS — model mastery digerakkan `passed`, jadi
+    taksonomi yang berisik tidak merusak analisisnya. `transcription_issue`
+    diturunkan ke `other` untuk kalimat yang DIKETIK (`applyInputMode`), dan
+    percobaan yang gagal karena salah dengar STT dibuang dari agregasi — salah
+    dengar mesin bukan kegagalan grammar. Kesalahan grammar TIDAK PERNAH jadi
+    kelemahan kosakata: percobaan grammar hanya mengisi konsep grammar.
+  - **Model mastery** (`backend/src/grammar-mastery.js`, sadar-keyakinan): 12
+    percobaan terbaru dalam 180 hari, bobot half-life 45 hari. **Persentase baru
+    keluar setelah 3 percobaan** (`score: null` di bawah itu → UI tidak punya
+    angka untuk mengklaim "86% dikuasai" dari satu-dua percobaan). State:
+    UNSEEN / LEARNING (<3) / NEEDS_PRACTICE (wa<0.55 atau **dua percobaan
+    terakhir gagal**) / PROGRESSING / MASTERED (≥4 percobaan, wa≥0.85,
+    effectiveN≥2.5, percobaan terakhir lulus). Aturan **recovery**: dua
+    percobaan terakhir lulus DAN lulus ≥ separuh percobaan → tidak lagi
+    NEEDS_PRACTICE (peluruhan 45 hari terlalu lambat untuk mengakui retry yang
+    berhasil beberapa hari lalu; syarat separuh menahannya dari memaafkan 2
+    keberhasilan di antara 6 kegagalan). `dueReview` (retensi Level D) sengaja
+    TIDAK disyaratkan `state === 'MASTERED'` — syarat effectiveN pada MASTERED
+    sendiri meluruh, jadi konsep basi turun ke PROGRESSING lebih dulu dan
+    bendera itu tidak akan pernah menyala; syaratnya "pernah kuat (wa≥0.85),
+    sekarang >21 hari tak disentuh".
+  - **Endpoint** (`backend/src/routes/grammar-analysis.js`, sisi BACA):
+    `GET /api/grammar/mastery/lesson/:lessonId` (ringkasan + per-pola + satu
+    `focus` + deep-link Tugas Bunpou) dan `GET /api/grammar/mastery/me`.
+    Pola satu pelajaran diambil lewat LEFT JOIN + OR, **bukan cabang
+    `lessons.type`** — migration 099 sudah mengubah 18 pelajaran Tata Bahasa
+    Bab 12-20 dari `text` ke `video` tanpa menyentuh relasi grammar-nya.
+    `/api/recommendations/me` dapat field baru `weakGrammar[]` (+ placeholder
+    `{{weakPatterns}}` di prompt coaching; agregasinya dibungkus try/catch
+    supaya panel lama tidak mati kalau 122 belum ter-apply).
+  - **UI** (`welcome.html`): strip "Pemahaman Bunpou" di atas kartu grammar
+    (persen + bar + "N pola dikuasai · N perlu latihan" + tombol "Lihat
+    analisis" yang membuka panel per-pola + satu kalimat fokus + tombol
+    "Latihan sekarang"), plus titik status halus per kartu
+    (🟢 Dikuasai / 🟡 Perlu latihan / 🔵 Sedang dipelajari / ⚪ Belum
+    dianalisis). Dimuat SETELAH render dan gagal dalam diam. Istilah teknis AI
+    (`wrong_particle` dst) TIDAK PERNAH ditampilkan ke siswa — dipetakan ke
+    kalimat biasa lewat `ERROR_HINT`/`focusSentence`.
+  - **Uji**: `node backend/scripts/test-grammar-analysis.mjs` (butuh
+    `DATABASE_URL` ke database sekali-pakai; skrip men-TRUNCATE dan menolak
+    jalan kalau nama DB tidak mengandung test/tmp/local/dev). 3 mode, 62
+    assertion, mencakup 12 kasus: kalimat benar, salah pola target, salah
+    partikel, salah konjugasi, elemen hilang, retry berhasil, gagal berulang,
+    data belum cukup, AI mati, STT mati, Tugas Bunpou Bab 3-20 tetap jalan,
+    kalimat identik dari cache.
+  - **Belum dikerjakan (sengaja)**: latihan terkontrol (Level B) sebagai tipe
+    soal tersendiri. Yang ada sekarang tulang punggung datanya (`grammar_id` di
+    soal kuis + `source='controlled'` di `grammar_attempts`); UI drill-nya
+    follow-up terpisah, bukan ditebak sekarang.
+
+- **`quiz_attempts.completed_at` sempat salah dideklarasikan** `NOT NULL
+  DEFAULT NOW()` di `schema.sql` — diperbaiki migration **123**. Seluruh kode
+  attempt memperlakukan kolom itu sebagai penanda "sudah disubmit"
+  (`/quiz/start` INSERT tanpa mengisinya; `/quiz-attempt` menutup attempt lewat
+  `WHERE completed_at IS NULL`; `lessonAttemptStatus` ORDER BY ... NULLS LAST),
+  jadi di database hasil bootstrap `schema.sql` bersih SETIAP submit kuis
+  ditolak 409 `already_submitted` — Assignment Bab 1-20 mustahil diselesaikan.
+  Produksi tidak terpengaruh (skemanya sudah nullable, submit jalan normal);
+  123 no-op di sana dan cuma menyamakan environment baru, termasuk uji restore
+  ke staging yang masih terbuka di daftar di atas. Ditemukan saat menguji 122.
+
 - **Belajar adaptif (deteksi kelemahan + rekomendasi)** — panel "Fokus
   belajarmu" di dashboard siswa (`welcome.html`): akurasi per kategori
   (`vocabulary`/`grammar`/`listening`) + pelajaran untuk diulang + catatan

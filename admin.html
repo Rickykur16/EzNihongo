@@ -3553,6 +3553,15 @@ window.openQuestionForm = (key) => {
         </div>
         <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${q.sort_order || 0}" /></div>
       </div>
+      ${category === 'grammar' ? `<div class="field">
+        <label>Pola grammar yang diuji (opsional)</label>
+        <select name="grammarId" id="qf-grammar-id"><option value="">— tidak ditautkan —</option></select>
+        <div style="font-size:11px;color:var(--ink-500);margin-top:5px;line-height:1.5;">
+          Kalau ditautkan, soal ini ikut mengisi analisis Bunpou siswa untuk pola tersebut
+          (dinilai dari opsi benar/salah, tanpa AI). Kosong = soal tetap dihitung di
+          kategori Tata Bahasa seperti biasa.
+        </div>
+      </div>` : ''}
       <div class="field"><label>Opsi jawaban (tampilan 1 / 2 / 3 / 4)</label>
         <div class="quiz-options-edit" id="options-list">${optsHtml}</div>
         <button type="button" class="btn btn-ghost" style="margin-top:6px;" onclick="addOptionRow()">+ Tambah opsi</button>
@@ -3569,9 +3578,29 @@ window.openQuestionForm = (key) => {
   wireRichToolbarAll(qForm);
   qForm.addEventListener('submit', (e) => submitQuestion(e, q.id, ctx));
   if (isListening) renderTtsTagPicker();
+  if (category === 'grammar') loadQuestionGrammarBank(lessonId, q.grammar_id || '');
   // Context untuk "Generate opsi (AI)" — grounding dokkai pakai passage section.
   _activeQuestionCtx = { lessonId, category, passage };
 };
+
+// Isi dropdown "Pola grammar yang diuji" dari bank modul pelajaran ini.
+// Gagal load dibiarkan diam: tautan pola itu opsional, form soal harus tetap
+// bisa disimpan tanpanya.
+async function loadQuestionGrammarBank(lessonId, selectedId) {
+  const sel = document.getElementById('qf-grammar-id');
+  if (!sel) return;
+  try {
+    const d = await api('/admin/lessons/' + lessonId + '/grammar-bank');
+    for (const g of (d.grammar || [])) {
+      const opt = document.createElement('option');
+      opt.value = g.id;
+      const meaning = g.meaning ? ' — ' + g.meaning : '';
+      opt.textContent = (g.pattern || '(tanpa pola)') + meaning;
+      if (g.id === selectedId) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  } catch { /* dropdown tetap "tidak ditautkan" */ }
+}
 
 // Generate opsi pilihan ganda untuk soal yang sedang diedit (AI). Mengganti
 // isi #options-list dengan opsi hasil AI; isi penjelasan kalau masih kosong.
@@ -4014,6 +4043,10 @@ async function submitQuestion(e, qid, ctx) {
     imageUrl: (form.imageUrl && form.imageUrl.value.trim()) || null,
     options,
   };
+  // Hanya dikirim kalau dropdown-nya memang dirender (kategori grammar) —
+  // PUT memakai presence-check, jadi mengirim null di kategori lain akan
+  // menghapus tautan yang sudah ada.
+  if (form.grammarId) body.grammarId = form.grammarId.value || null;
   if (category === 'reading') body.passage = passage || null;
   if (!qid) body.lessonId = lessonId;
   // "Simpan & tambah" keeps the admin in the rapid add-question loop instead of

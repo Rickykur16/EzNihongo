@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { query } from '../db.js';
 import { asyncHandler, requireAuth } from '../middleware.js';
 import { callClaude, ANTHROPIC_MODEL, anthropicEnabled } from '../anthropic.js';
+import { loadMastery, focusSentence } from '../grammar-mastery.js';
 
 // Belajar adaptif — deteksi kelemahan per kategori (vocabulary/grammar/
 // listening) dari hasil per-soal (quiz_question_results, diisi handler
@@ -17,6 +18,7 @@ const WEAK_THRESHOLD = 0.70; // akurasi di bawah ini dianggap lemah
 const MIN_SAMPLE = 8;        // minimal jumlah soal sebelum menilai sebuah kategori
 const LOOKBACK_DAYS = 90;
 const MAX_LESSONS = 3;
+const MAX_GRAMMAR_CONCEPTS = 3;
 
 const CATEGORY_LABEL = {
   vocabulary: 'Kosakata',
@@ -32,10 +34,11 @@ const COACH_SYSTEM = `Kamu adalah "Maneko-chan", maskot kucing tutor bahasa Jepa
 export const COACH_PROMPT_DEFAULT = `Murid bernama {{studentName}} sedang belajar bahasa Jepang.
 Dari hasil kuis terakhir, area paling lemahnya adalah: {{weakCategory}} (akurasi {{accuracyPct}}%).
 Pelajaran yang disarankan untuk diulang: {{lessonTitles}}.
+Pola grammar yang masih sering meleset: {{weakPatterns}}.
 
 Tulis catatan singkat (2-3 kalimat) dalam Bahasa Indonesia sebagai Maneko-chan:
-akui usahanya, sebut area yang perlu difokuskan, dan dorong dia mengulang
-pelajaran itu. Nada positif, tidak menggurui.`;
+akui usahanya, sebut area yang perlu difokuskan (sebut polanya kalau ada),
+dan dorong dia mengulang pelajaran itu. Nada positif, tidak menggurui.`;
 
 async function loadCoachPrompt() {
   try {
@@ -85,7 +88,53 @@ router.get('/recommendations/me', asyncHandler(async (req, res) => {
   });
 
   const totalAttempts = categories.reduce((s, c) => s + c.attempts, 0);
-  const hasData = totalAttempts > 0;
+
+  // 1b. Kelemahan per POLA grammar (bukan cuma kategori "Tata Bahasa").
+  // Sumbernya percobaan Tugas Bunpou + soal kuis yang ditautkan ke pola
+  // (migration 122). Ini yang bikin rekomendasi bisa bilang pola MANA, bukan
+  // sekadar "grammar-mu lemah".
+  let weakGrammar = [];
+  try {
+    const seen = await query(
+      `SELECT DISTINCT grammar_id FROM (
+          SELECT grammar_id FROM grammar_attempts
+           WHERE user_id = $1 AND created_at > NOW() - make_interval(days => $2::int)
+          UNION ALL
+          SELECT grammar_id FROM quiz_question_results
+           WHERE user_id = $1 AND grammar_id IS NOT NULL
+             AND created_at > NOW() - make_interval(days => $2::int)
+       ) t WHERE grammar_id IS NOT NULL`,
+      [req.user.id, LOOKBACK_DAYS]
+    );
+    const gids = seen.rows.map((r) => r.grammar_id);
+    if (gids.length > 0) {
+      const [mastery, meta] = await Promise.all([
+        loadMastery(req.user.id, gids),
+        query(`SELECT id, pattern, meaning FROM module_grammar WHERE id = ANY($1::uuid[])`, [gids]),
+      ]);
+      weakGrammar = meta.rows
+        .map((row) => ({ row, m: mastery.get(row.id) }))
+        .filter((e) => e.m && (e.m.state === 'NEEDS_PRACTICE' || e.m.dueReview))
+        .sort((a, b) => (a.m.score ?? 100) - (b.m.score ?? 100))
+        .slice(0, MAX_GRAMMAR_CONCEPTS)
+        .map((e) => ({
+          grammarId: e.row.id,
+          pattern: e.row.pattern,
+          meaning: e.row.meaning,
+          state: e.m.state,
+          score: e.m.score,
+          attempts: e.m.attempts,
+          dueReview: e.m.dueReview,
+          message: focusSentence(e.row.pattern, e.m, e.m.dominantError),
+        }));
+    }
+  } catch (err) {
+    // Panel rekomendasi lama tidak boleh mati gara-gara lapisan analisis baru
+    // (mis. migration 122 belum ter-apply di satu environment).
+    console.error('weak grammar aggregation failed:', err.message);
+  }
+
+  const hasData = totalAttempts > 0 || weakGrammar.length > 0;
 
   // Kategori terlemah = yang ditandai weak dengan akurasi terendah.
   const weakest = categories
@@ -135,8 +184,11 @@ router.get('/recommendations/me', asyncHandler(async (req, res) => {
     // drift kecil tidak membatalkan cache.
     const bucket = Math.round(accuracyPct / 5) * 5;
     const lessonIdsSig = recommendedLessons.map((l) => l.id).sort().join(',');
+    // Pola lemah ikut signature: catatan yang menyebut pola tertentu tidak boleh
+    // disajikan lagi setelah pola itu tidak lemah lagi.
+    const grammarSig = weakGrammar.map((g) => g.grammarId).sort().join(',');
     const noteHash = crypto.createHash('sha256')
-      .update(`coaching|${ANTHROPIC_MODEL}|${weakest.category}|${bucket}|${lessonIdsSig}`)
+      .update(`coaching|${ANTHROPIC_MODEL}|${weakest.category}|${bucket}|${lessonIdsSig}|${grammarSig}`)
       .digest('hex');
 
     const cached = await query(`SELECT note FROM coaching_note_cache WHERE note_hash = $1`, [noteHash]);
@@ -152,6 +204,7 @@ router.get('/recommendations/me', asyncHandler(async (req, res) => {
         weakCategory: weakest.label,
         accuracyPct: String(accuracyPct),
         lessonTitles,
+        weakPatterns: weakGrammar.map((g) => g.pattern).join(', ') || '(belum terdeteksi)',
       });
       const note = await callClaude({ system: COACH_SYSTEM, userContent, maxTokens: 300 });
       if (note) {
@@ -183,6 +236,7 @@ router.get('/recommendations/me', asyncHandler(async (req, res) => {
     categories,
     weakest: weakest ? weakest.category : null,
     recommendedLessons,
+    weakGrammar,
     coachingNote,
     noteSource,
   });
