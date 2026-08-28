@@ -136,14 +136,23 @@ export function buildRecognitionDrill(item, siblings) {
   const meaning = shortMeaning(item.meaning);
   if (!meaning) return null;
 
-  // Dipendekkan ke kalimat pertama supaya keempat opsi sebanding panjangnya.
-  // `meaning` di bank ditulis sebagai catatan ajar (bisa 2-3 kalimat), dan
-  // opsi yang jauh lebih panjang dari yang lain langsung menjadi petunjuk
-  // mana yang benar tanpa siswa perlu memahami apa pun.
-  const pool = (siblings || [])
+  // Pengecoh KURASI (migration 124) kalau ada: fungsi yang salah untuk pola INI
+  // sendiri, mis. untuk 〜の〜 → "menandai objek kalimat". Jauh lebih menguji
+  // daripada memakai arti pola lain, karena tidak bisa dieliminasi cuma dengan
+  // menyadari "ini bukan soal も".
+  const curated = (item.recognitionDistractors || [])
+    .map((d) => String(d || '').trim())
+    .filter((d) => d && d !== meaning);
+
+  // Cadangan (pola yang belum di-generate): arti pola LAIN di bab yang sama,
+  // dipendekkan ke kalimat pertama supaya keempat opsi sebanding panjangnya —
+  // opsi yang jauh lebih panjang dari yang lain sudah jadi petunjuk sendiri.
+  const fallback = (siblings || [])
     .filter((s) => s.id !== item.id)
     .map((s) => shortMeaning(s.meaning))
     .filter((m) => m && m !== meaning);
+
+  const pool = curated.length >= 2 ? curated : fallback;
 
   // Di bawah 2 pengecoh soalnya jadi tebakan 50:50 — lebih baik tidak ada.
   const distractors = pickDistractors(pool, meaning, 3, `${item.id}|recog`);
@@ -158,7 +167,7 @@ export function buildRecognitionDrill(item, siblings) {
     example: ex ? { japanese: ex.japanese, indonesian: ex.indonesian || null } : null,
     options,
     correctIndex, // dibuang sebelum dikirim ke siswa — lihat publicDrill()
-    rule: 'sibling-meaning',
+    rule: curated.length >= 2 ? 'curated-distractor' : 'sibling-meaning',
   };
 }
 

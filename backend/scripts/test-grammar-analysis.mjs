@@ -334,6 +334,34 @@ if (MODE === 'eval') {
   check('urutan opsi deterministik (soal yang dinilai = soal yang dikirim)',
     JSON.stringify(gdata2.drills[0]) === JSON.stringify(d1), gdata2.drills[0]);
 
+  console.log('\nStep 1 — pengecoh kurasi dipakai kalau ada (migration 124)');
+  await query(
+    `UPDATE module_grammar SET recognition_distractors = $2 WHERE id = $1`,
+    [ctx.gids[0], 'Menandai objek yang dikenai perbuatan.\nMenyatakan tempat berlangsungnya kegiatan.\nMenyatakan alat atau cara melakukan sesuatu.']
+  );
+  const cur = await realFetch(`${base}/grammar-task/lesson/${ctx.taskLessonId}/drills`,
+    { headers: { authorization: 'Bearer ' + token } });
+  const curData = await cur.json();
+  const curDrill = curData.drills.find((d) => d.grammarId === ctx.gids[0]);
+  check('opsi memakai pengecoh kurasi, bukan arti pola lain',
+    curDrill.step1.options.includes('Menandai objek yang dikenai perbuatan.')
+    && !curDrill.step1.options.includes('arti 1'), curDrill.step1.options);
+  check('jawaban benar tetap ikut jadi opsi',
+    curDrill.step1.options.includes('arti 0'), curDrill.step1.options);
+  const curAns = await realFetch(base + '/grammar-task/drill-answer', {
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
+    body: JSON.stringify({ lessonId: ctx.taskLessonId, grammarId: ctx.gids[0], step: 1,
+      optionIndex: curDrill.step1.options.indexOf('arti 0') }),
+  });
+  check('penilaian server konsisten dengan opsi kurasi',
+    curAns.status === 200 && (await curAns.json()).passed === true);
+  await query(`UPDATE module_grammar SET recognition_distractors = NULL WHERE id = $1`, [ctx.gids[0]]);
+  const back = await realFetch(`${base}/grammar-task/lesson/${ctx.taskLessonId}/drills`,
+    { headers: { authorization: 'Bearer ' + token } });
+  const backDrill = (await back.json()).drills.find((d) => d.grammarId === ctx.gids[0]);
+  check('dikosongkan → kembali ke pengecoh otomatis (tidak rusak)',
+    backDrill.step1 && backDrill.step1.options.includes('arti 1'), backDrill.step1.options);
+
   console.log('\nStep 1 — opsi dipendekkan supaya panjangnya sebanding');
   const notaPanjang = "Partikel の di sini menyatakan kepunyaan: KB 2 milik KB 1. Pola: \"B milik A\".";
   check('catatan ajar multi-kalimat dipotong ke kalimat pertama',
@@ -397,10 +425,12 @@ if (MODE === 'eval') {
   a = await answer(ctx.gids[0], 2, (s2.correctIndex + 1) % s2.options.length);
   check('Step 2 jawaban salah → passed false', a.json.passed === false, a.json);
 
+  // Ambil 4 TERAKHIR: blok pengecoh kurasi di atas sudah menulis percobaan lain
+  // untuk pola yang sama, jadi menghitung seluruh baris bikin tes rapuh.
   const drillRows = (await query(
     `SELECT source, passed, primary_error FROM grammar_attempts
-      WHERE grammar_id=$1 AND source <> 'production' ORDER BY created_at`, [ctx.gids[0]])).rows;
-  check('4 percobaan tercatat dengan source recognition/controlled',
+      WHERE grammar_id=$1 AND source <> 'production' ORDER BY created_at`, [ctx.gids[0]])).rows.slice(-4);
+  check('4 percobaan terakhir tercatat dengan source recognition/controlled',
     drillRows.length === 4 && drillRows[0].source === 'recognition' && drillRows[2].source === 'controlled',
     drillRows.map((x) => x.source));
   check('Step 1 salah → primary_error meaning_mismatch',

@@ -4099,6 +4099,7 @@ function itemRowHtml(item, fields, kind) {
   }).join('');
   const aiButtons = kind === 'grammar' ? `
     ${item.id ? `<button type="button" class="btn btn-ghost btn-sm" title="Kelola contoh kalimat (multi)" onclick="grammarManageExamples('${item.id}', this)">📝 Contoh</button>` : ''}
+    ${item.id ? `<button type="button" class="btn btn-ghost btn-sm" title="Pengecoh soal Step 1 Tugas Bunpou" onclick="grammarManageDistractors('${item.id}')">🎯 Pengecoh</button>` : ''}
     <button type="button" class="btn btn-ghost btn-sm" title="Generate dialog 3-suara N/A/B (AI) dari Pola + Arti" onclick="grmrGenDialog(this)">✨ Dialog</button>
     <button type="button" class="btn btn-ghost btn-sm" title="Terjemahkan dialog (AI) ke Bahasa Indonesia" onclick="grmrTranslateDialog(this)">✨ Translate</button>
   ` : '';
@@ -4185,6 +4186,83 @@ window.grammarManageExamples = async (grammarId) => {
     <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `);
   modalContent.style.maxWidth = '900px';
+};
+
+// ── Pengecoh Step 1 Tugas Bunpou (migration 124) ──────────────────────────
+// Soal Step 1 = "Apa fungsi <pola>?". Tanpa pengecoh kurasi, pengecohnya
+// diturunkan dari arti pola LAIN di bab yang sama — terlalu mudah karena bisa
+// dieliminasi tanpa memahami pola targetnya. Di sini admin men-generate
+// pengecoh (fungsi yang SALAH untuk pola ini sendiri), me-review, lalu simpan.
+window.grammarManageDistractors = async (grammarId) => {
+  if (!grammarId) return;
+  const tr = document.querySelector(`tr[data-id="${grammarId}"]`);
+  const pattern = tr?.querySelector('input[name="pattern"]')?.value || '';
+  const meaning = tr?.querySelector('input[name="meaning"]')?.value || '';
+  window.__grmrDistCtx = { grammarId, pattern };
+
+  // Baris grammar di DOM tidak menyimpan module_id, jadi nilai tersimpan diambil
+  // lewat endpoint per-pola — bukan ditebak dari dataset baris.
+  let current = '';
+  try {
+    const d = await api('/admin/module-grammar/' + grammarId + '/distractors');
+    current = d.value || '';
+  } catch (err) { notify('Gagal load pengecoh: ' + err.message, true); return; }
+
+  openModal(`
+    <h3>Pengecoh Step 1 — <span lang="ja">${escapeHtml(pattern)}</span></h3>
+    <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 4px;">
+      Jawaban BENAR soal ini adalah kolom Arti: <em>${escapeHtml(meaning || '(kosong)')}</em>
+    </p>
+    <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 10px;">
+      Tulis <strong>satu pengecoh per baris</strong> — fungsi yang SALAH untuk pola ini
+      (mis. untuk 〜の〜: "menandai objek kalimat"). Jangan menyebut polanya sendiri di
+      dalam pengecoh, dan panjangnya usahakan mirip dengan Arti di atas.
+      Kosongkan untuk kembali memakai pengecoh otomatis (arti pola lain di bab ini).
+    </p>
+    <textarea id="grmr-dist" rows="6" style="width:100%;font-size:13px;"
+      placeholder="Menandai objek yang dikenai perbuatan.&#10;Menyatakan tempat berlangsungnya kegiatan.&#10;Menyatakan alat atau cara melakukan sesuatu.">${escapeHtml(current)}</textarea>
+    <div class="toolbar" style="margin-top:8px;display:flex;gap:6px;">
+      <button type="button" class="btn btn-ghost" id="grmr-dist-gen" onclick="grmrGenDistractors()">✨ Generate pengecoh (AI)</button>
+      <span id="grmr-dist-status" style="font-size:11px;color:#737373;align-self:center;"></span>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button type="button" class="btn btn-primary" onclick="grmrSaveDistractors()">Simpan</button>
+    </div>
+  `);
+  modalContent.style.maxWidth = '640px';
+};
+
+window.grmrGenDistractors = async () => {
+  const ctx = window.__grmrDistCtx;
+  const btn = document.getElementById('grmr-dist-gen');
+  const status = document.getElementById('grmr-dist-status');
+  if (!ctx) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  if (status) status.textContent = '';
+  try {
+    const d = await api('/admin/module-grammar/' + ctx.grammarId + '/generate-distractors', { method: 'POST' });
+    const ta = document.getElementById('grmr-dist');
+    if (ta && Array.isArray(d.distractors)) ta.value = d.distractors.join('\n');
+    if (status) status.textContent = 'Draft AI — review dulu, lalu Simpan.';
+  } catch (err) {
+    notify('Gagal generate pengecoh: ' + err.message, true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✨ Generate pengecoh (AI)'; }
+  }
+};
+
+window.grmrSaveDistractors = async () => {
+  const ctx = window.__grmrDistCtx;
+  const ta = document.getElementById('grmr-dist');
+  if (!ctx || !ta) return;
+  try {
+    await api('/admin/module-grammar/' + ctx.grammarId + '/distractors', {
+      method: 'PUT', body: JSON.stringify({ value: ta.value }),
+    });
+    notify('Pengecoh tersimpan');
+    closeModal();
+  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
 };
 
 function grmrExRowHtml(gid, e) {

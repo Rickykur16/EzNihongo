@@ -332,12 +332,22 @@ router.post('/grammar-task/evaluate', requireAuth, evalLimiter, asyncHandler(asy
 // tanpa AI sama sekali — sesuai prinsip "jangan kirim soal pilihan ganda
 // sederhana ke Claude". Lihat grammar-drills.js.
 
+// `recognition_distractors` disimpan sebagai TEXT satu pengecoh per baris
+// (lebih tahan salah ketik daripada JSON saat admin mengeditnya di textarea).
+export function parseDistractors(raw) {
+  return String(raw || '')
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .slice(0, 6);
+}
+
 // Pola + contohnya untuk satu lesson tugas. Dipakai dua-duanya oleh endpoint
 // daftar soal dan endpoint penilaian, supaya soal yang dinilai persis soal
 // yang dikirim (penurunannya deterministik).
 async function loadTaskConcepts(lessonId) {
   const rows = await query(
-    `SELECT g.id, g.pattern, g.meaning, gi.sort_order
+    `SELECT g.id, g.pattern, g.meaning, g.recognition_distractors, gi.sort_order
        FROM lesson_grammar_task_items gi
        JOIN module_grammar g ON g.id = gi.grammar_id
       WHERE gi.lesson_id = $1
@@ -357,7 +367,11 @@ async function loadTaskConcepts(lessonId) {
     if (!byGrammar.has(e.grammar_id)) byGrammar.set(e.grammar_id, []);
     byGrammar.get(e.grammar_id).push(e);
   }
-  return rows.rows.map((r) => ({ ...r, examples: byGrammar.get(r.id) || [] }));
+  return rows.rows.map((r) => ({
+    ...r,
+    recognitionDistractors: parseDistractors(r.recognition_distractors),
+    examples: byGrammar.get(r.id) || [],
+  }));
 }
 
 // Seluruh pola satu BAB (modul pelajaran ini), dipakai sebagai sumber pengecoh.
@@ -365,7 +379,7 @@ async function loadTaskConcepts(lessonId) {
 // pola, yang berarti hanya 1 pengecoh dan Step 1 hilang. Lihat deriveDrills().
 async function loadModulePool(lessonId) {
   const rows = await query(
-    `SELECT g.id, g.pattern, g.meaning
+    `SELECT g.id, g.pattern, g.meaning, g.recognition_distractors
        FROM module_grammar g
        JOIN lessons l ON l.module_id = g.module_id
       WHERE l.id = $1
@@ -384,7 +398,11 @@ async function loadModulePool(lessonId) {
     if (!byGrammar.has(e.grammar_id)) byGrammar.set(e.grammar_id, []);
     byGrammar.get(e.grammar_id).push(e);
   }
-  return rows.rows.map((r) => ({ ...r, examples: byGrammar.get(r.id) || [] }));
+  return rows.rows.map((r) => ({
+    ...r,
+    recognitionDistractors: parseDistractors(r.recognition_distractors),
+    examples: byGrammar.get(r.id) || [],
+  }));
 }
 
 // Kesalahan di soal bentuk BUKAN tebakan model — aturan yang membangun

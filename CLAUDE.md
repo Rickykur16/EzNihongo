@@ -415,6 +415,23 @@
       produksi Bab 3-20 yang sudah live tidak bisa terkunci oleh bug frontend.
       Setelah `GT_MAX_WRONG` (2) kali salah, jawaban dibuka dan tahap
       berikutnya dilepas — siswa tidak boleh mentok permanen di pilihan ganda.
+    - **Pengecoh Step 1 yang dikurasi** (migration **124**, kolom
+      `module_grammar.recognition_distractors`, TEXT satu per baris). Pengecoh
+      turunan (arti pola LAIN di bab yang sama) terbukti terlalu mudah: untuk
+      〜の〜 pengecohnya bicara soal も dan ね/よ, jadi bisa dieliminasi tanpa
+      memahami の sama sekali. Kolom ini menampung fungsi yang SALAH untuk pola
+      ITU SENDIRI (mis. "menandai objek kalimat"). Di-generate SEKALI per pola
+      lewat tombol "🎯 Pengecoh" di editor grammar admin
+      (`POST /api/admin/module-grammar/:id/generate-distractors`,
+      `ANTHROPIC_GEN_MODEL`), di-review admin, lalu disimpan
+      (`PUT .../distractors`; `GET .../distractors` untuk memuatnya kembali).
+      **Siswa tidak pernah memicu AI untuk soal pilihan ganda.** Prompt-nya
+      mengirim fungsi pola lain di bab itu sebagai daftar-HINDARI (kalau
+      pengecoh kebetulan mendeskripsikan pola lain, soalnya jadi ambigu) dan
+      melarang menyebut pola targetnya sendiri (itu membocorkan jawaban);
+      server juga membuang baris yang memuat pola target atau menyalin arti
+      yang benar. Kosong = kembali ke penurunan lama, jadi pola yang belum
+      di-generate tetap jalan.
     - **Arti pola DISEMBUNYIKAN sampai Step 1 dijawab** (`gtSetMeaningHidden`).
       Jawaban Step 1 = `module_grammar.meaning`, dan teks itu juga tercetak di
       kepala kartu tugas — rilis pertama menampilkan keduanya sekaligus,

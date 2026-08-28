@@ -194,6 +194,10 @@ CREATE TABLE IF NOT EXISTS module_grammar (
   notes TEXT,
   example_dialog TEXT,
   example_dialog_id TEXT,
+  -- Pengecoh Step 1 Tugas Bunpou, satu per baris (migration 124). Diisi lewat
+  -- tombol "✨ Pengecoh" di admin (draft AI, di-review admin). NULL = pakai
+  -- penurunan lama, yaitu arti pola lain di bab yang sama sebagai pengecoh.
+  recognition_distractors TEXT,
   sort_order INT DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
