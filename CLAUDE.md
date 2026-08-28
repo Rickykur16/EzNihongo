@@ -432,6 +432,18 @@
       server juga membuang baris yang memuat pola target atau menyalin arti
       yang benar. Kosong = kembali ke penurunan lama, jadi pola yang belum
       di-generate tetap jalan.
+      **Isi massal**: tombol "🚀 Isi semua pola yang masih kosong" di modal yang
+      sama → `POST /api/admin/module-grammar/generate-distractors-bulk`
+      ({ fromGrammarId, limit }), cakupan = seluruh kursus pola itu. Dikerjakan
+      per BATCH KECIL (default 6) karena nginx memutus request di 60s
+      (`proxy_read_timeout` di deploy/nginx-api.conf) sementara satu panggilan
+      AI makan beberapa detik; frontend memanggilnya berulang sampai `remaining`
+      habis, dengan pengaman berhenti kalau satu batch gagal total atau
+      putarannya kelewat banyak. Hasilnya LANGSUNG disimpan (tanpa review
+      satu-satu — permintaan user), tapi aman diulang: pola yang sudah terisi
+      dilewati bukan ditimpa, dan pola tanpa `meaning` dilewati serta dilaporkan
+      lewat `skippedNoMeaning`. Logika generate dipakai bersama endpoint tunggal
+      dan massal lewat helper `generateDistractorsFor()`.
     - **Arti pola DISEMBUNYIKAN sampai Step 1 dijawab** (`gtSetMeaningHidden`).
       Jawaban Step 1 = `module_grammar.meaning`, dan teks itu juga tercetak di
       kepala kartu tugas — rilis pertama menampilkan keduanya sekaligus,

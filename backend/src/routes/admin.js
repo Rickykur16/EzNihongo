@@ -1233,19 +1233,9 @@ router.get('/module-grammar', asyncHandler(async (req, res) => {
 // overuse AI" di CLAUDE.md.
 const DISTRACTOR_SYSTEM = `You write multiple-choice distractors for a Japanese-grammar course taught in Indonesian to JLPT N5/N4 beginners. Reply with plain lines only — no numbering, no bullets, no extra prose.`;
 
-router.post('/module-grammar/:id/generate-distractors', asyncHandler(async (req, res) => {
-  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled' });
-
-  const g = await query(
-    `SELECT id, module_id, pattern, meaning FROM module_grammar WHERE id = $1`,
-    [req.params.id]
-  );
-  if (g.rows.length === 0) return res.status(404).json({ error: 'grammar not found' });
-  const item = g.rows[0];
-  if (!(item.meaning || '').trim()) {
-    return res.status(400).json({ error: 'no_meaning', detail: 'Isi kolom Arti dulu — pengecoh dibuat berdasarkan fungsi yang benar.' });
-  }
-
+// Satu pola → daftar pengecoh (atau null kalau gagal). Dipakai endpoint
+// tunggal (draft untuk di-review admin) DAN endpoint massal (auto-simpan).
+async function generateDistractorsFor(item) {
   // Fungsi pola LAIN di bab yang sama dikirim sebagai daftar-hindari: kalau
   // pengecoh kebetulan mendeskripsikan pola lain, soalnya jadi ambigu untuk
   // siswa yang tahu pola itu.
@@ -1284,7 +1274,7 @@ Aturan:
     maxTokens: 500,
     model: ANTHROPIC_GEN_MODEL,
   });
-  if (text == null) return res.status(502).json({ error: 'ai_upstream' });
+  if (text == null) return null;
 
   // Bersihkan penomoran/bullet yang kadang tetap muncul, buang baris yang
   // menyalin fungsi benar, dan buang yang membocorkan pola targetnya.
@@ -1297,11 +1287,93 @@ Aturan:
     .filter((l) => !l.includes(item.pattern))
     .slice(0, 3);
 
-  if (distractors.length < 2) {
+  return distractors.length >= 2 ? distractors : null;
+}
+
+router.post('/module-grammar/:id/generate-distractors', asyncHandler(async (req, res) => {
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled' });
+  const g = await query(
+    `SELECT id, module_id, pattern, meaning FROM module_grammar WHERE id = $1`,
+    [req.params.id]
+  );
+  if (g.rows.length === 0) return res.status(404).json({ error: 'grammar not found' });
+  const item = g.rows[0];
+  if (!(item.meaning || '').trim()) {
+    return res.status(400).json({ error: 'no_meaning', detail: 'Isi kolom Arti dulu — pengecoh dibuat berdasarkan fungsi yang benar.' });
+  }
+  const distractors = await generateDistractorsFor(item);
+  if (!distractors) {
     return res.status(502).json({ error: 'ai_unusable', detail: 'AI tidak menghasilkan cukup pengecoh yang layak. Coba lagi.' });
   }
   // TIDAK disimpan di sini — admin review dulu lalu tekan Simpan.
   res.json({ distractors });
+}));
+
+// Generate + SIMPAN untuk semua pola satu kursus yang pengecohnya masih kosong.
+//
+// Dikerjakan per BATCH KECIL, bukan sekali jalan: nginx memutus request di 60s
+// (proxy_read_timeout), dan satu panggilan AI makan beberapa detik. Frontend
+// memanggil ini berulang sampai `remaining` habis.
+//
+// Aman diulang: yang sudah terisi dilewati, jadi klik ulang = melanjutkan,
+// bukan menimpa. Pola tanpa `meaning` dilewati (tidak ada dasar jawabannya).
+router.post('/module-grammar/generate-distractors-bulk', asyncHandler(async (req, res) => {
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled' });
+  const { fromGrammarId, courseSlug } = req.body || {};
+  const limit = Math.min(10, Math.max(1, Number(req.body?.limit) || 6));
+
+  // Cakupan kursus diturunkan dari pola yang sedang dibuka admin — tidak perlu
+  // menyalurkan courseId lewat seluruh UI hanya demi tombol ini.
+  let courseId = null;
+  if (fromGrammarId) {
+    const c = await query(
+      `SELECT m.course_id FROM module_grammar g JOIN modules m ON m.id = g.module_id WHERE g.id = $1`,
+      [fromGrammarId]
+    );
+    courseId = c.rows[0]?.course_id || null;
+  } else if (courseSlug) {
+    const c = await query(`SELECT id FROM courses WHERE slug = $1`, [courseSlug]);
+    courseId = c.rows[0]?.id || null;
+  }
+  if (!courseId) return res.status(400).json({ error: 'course_not_resolved' });
+
+  const pendingSql = `
+    SELECT g.id, g.module_id, g.pattern, g.meaning
+      FROM module_grammar g
+      JOIN modules m ON m.id = g.module_id
+     WHERE m.course_id = $1
+       AND g.meaning IS NOT NULL AND TRIM(g.meaning) <> ''
+       AND (g.recognition_distractors IS NULL OR TRIM(g.recognition_distractors) = '')
+     ORDER BY m.sort_order ASC, g.sort_order ASC`;
+
+  const batch = await query(`${pendingSql} LIMIT $2`, [courseId, limit]);
+
+  let saved = 0;
+  const failed = [];
+  for (const item of batch.rows) {
+    const distractors = await generateDistractorsFor(item);
+    if (!distractors) { failed.push(item.pattern); continue; }
+    await query(
+      `UPDATE module_grammar SET recognition_distractors = $2, updated_at = NOW() WHERE id = $1`,
+      [item.id, distractors.join('\n')]
+    );
+    saved++;
+  }
+
+  const rest = await query(`SELECT COUNT(*)::int AS n FROM (${pendingSql}) t`, [courseId]);
+  const noMeaning = await query(
+    `SELECT COUNT(*)::int AS n FROM module_grammar g JOIN modules m ON m.id = g.module_id
+      WHERE m.course_id = $1 AND (g.meaning IS NULL OR TRIM(g.meaning) = '')`,
+    [courseId]
+  );
+
+  res.json({
+    processed: batch.rows.length,
+    saved,
+    failed,
+    remaining: rest.rows[0].n,
+    skippedNoMeaning: noMeaning.rows[0].n,
+  });
 }));
 
 // Baca pengecoh tersimpan untuk satu pola (dipakai modal admin saat dibuka).
