@@ -410,6 +410,14 @@
       `POST /api/grammar-task/drill-answer`. Percobaan masuk `grammar_attempts`
       dengan `source='recognition'|'controlled'` (kolomnya memang sudah
       disiapkan di migration 122) — **tidak ada migrasi baru**.
+    - **Maju ke tahap TERSEDIA berikutnya** (`gtAdvance`), bukan `step + 1`.
+      Pola yang punya Step 1 tapi TIDAK punya Step 2 (contohnya tidak
+      menghasilkan soal bentuk) dulu jadi JALAN BUNTU: lulus Step 1 hanya
+      "membuka" Step 2 yang disembunyikan, dan Step 3 (tugas bicara/mic) tidak
+      pernah terbuka sama sekali. `window.__gtAvail` memetakan tahap mana yang
+      benar-benar punya soal; Step 3 selalu dianggap ada. Step 3 yang terkunci
+      juga sekarang menampilkan alasannya — sebelumnya cuma redup dan tidak
+      bisa diklik tanpa keterangan apa pun, jadi terlihat seperti mic rusak.
     - **Penguncian ada di UI, bukan server**: Step 2 terbuka setelah Step 1
       lulus, Step 3 setelah Step 2. Server sengaja tetap permisif supaya alur
       produksi Bab 3-20 yang sudah live tidak bisa terkunci oleh bug frontend.

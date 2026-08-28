@@ -8259,6 +8259,7 @@ function gtCardsHtml(items, sttOn, showDots) {
         </section>
         <section class="gt-step gt-step--locked" data-step="3" id="gt-step3-${pi}">
           <div class="gt-step__head"><span class="gt-step__num">3</span><span class="gt-step__title">Buat kalimatmu sendiri</span></div>
+          <div class="gt-step__lockmsg" id="gt-lock3-${pi}">Selesaikan langkah sebelumnya dulu untuk membuka tugas ini.</div>
           <div class="gt-callout"><strong>Tugas:</strong> ${instruction}</div>
           <p class="gt-help">${hint}</p>
           ${slots}
@@ -8295,23 +8296,36 @@ async function gtLoadDrills(lessonId) {
   for (const d of (data.drills || [])) byGrammar[d.grammarId] = d;
   window.__gtDrills = byGrammar;
   window.__gtWrong = {};
+  window.__gtAvail = {};
   (window.__gtData || []).forEach((it, pi) => {
     const d = byGrammar[it.id] || {};
     gtRenderStep(pi, 1, d.step1);
     gtRenderStep(pi, 2, d.step2);
+    // Peta tahap yang BENAR-BENAR punya soal. Step 3 (produksi) selalu ada.
+    window.__gtAvail[pi] = { 1: !!d.step1, 2: !!d.step2 };
     // Jawaban Step 1 = arti pola, dan arti itu tercetak di kepala kartu.
     // Kalau dibiarkan, soalnya cuma mencocokkan teks yang ada tepat di atasnya.
     // Disembunyikan sampai Step 1 dijawab, lalu dibuka sebagai materi bacaan.
     if (d.step1) gtSetMeaningHidden(pi, true);
-    // Tahap yang tidak punya soal langsung dianggap lewat.
-    if (!d.step1) gtOpenStep(pi, 2);
-    if (!d.step1 && !d.step2) gtOpenStep(pi, 3);
+    gtAdvance(pi, 0); // buka tahap tersedia yang pertama
   });
+}
+
+// Buka tahap TERSEDIA berikutnya setelah `fromStep`, melewati tahap yang tidak
+// punya soal. Tanpa ini, pola yang punya Step 1 tapi tidak punya Step 2 jadi
+// jalan buntu: lulus Step 1 cuma "membuka" Step 2 yang disembunyikan, dan
+// Step 3 (tugas bicara) tidak pernah terbuka sama sekali.
+function gtAdvance(pi, fromStep) {
+  const avail = (window.__gtAvail || {})[pi] || {};
+  for (let st = fromStep + 1; st <= 3; st++) {
+    if (st === 3 || avail[st]) { gtOpenStep(pi, st); return; }
+  }
 }
 
 // Endpoint tidak tersedia (deploy belum serentak / offline) → jangan kunci
 // siswa dari tugas produksi yang sudah lama berjalan.
 function gtUnlockAllSteps() {
+  window.__gtAvail = {};
   (window.__gtData || []).forEach((_it, pi) => {
     gtSetMeaningHidden(pi, false);
     for (const st of [1, 2]) {
@@ -8352,7 +8366,7 @@ function gtOpenStep(pi, step) {
   if (!el) return;
   el.classList.remove('gt-step--locked');
   const msg = el.querySelector('.gt-step__lockmsg');
-  if (msg && step !== 3) msg.remove();
+  if (msg) msg.remove();
 }
 
 function gtMarkStepPassed(pi, step) {
@@ -8389,7 +8403,7 @@ window.gtAnswerDrill = async (pi, step, optionIndex) => {
     if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--ok">✓ Benar</span>';
     gtMarkStepPassed(pi, step);
     if (step === 1) gtSetMeaningHidden(pi, false); // arti boleh dibaca lagi
-    gtOpenStep(pi, step + 1);
+    gtAdvance(pi, step);
   } else {
     if (chosen) chosen.classList.add('gt-opt--wrong');
     const key = `${pi}-${step}`;
@@ -8403,7 +8417,7 @@ window.gtAnswerDrill = async (pi, step, optionIndex) => {
       if (right) right.classList.add('gt-opt--correct');
       if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--no">Belum tepat. Jawaban yang benar ditandai hijau — pelajari lalu lanjut.</span>';
       if (step === 1) gtSetMeaningHidden(pi, false);
-      gtOpenStep(pi, step + 1);
+      gtAdvance(pi, step);
     } else {
       if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--no">Belum tepat.</span>'
         + `<button type="button" class="gt-retry" onclick="gtRetryDrill(${pi}, ${step})">Coba lagi</button>`;
