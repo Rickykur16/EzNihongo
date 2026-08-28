@@ -7725,6 +7725,23 @@ function renderDeckLesson(course, module, lesson, nav) {
         </div>`;
       }).join('')}<div class="deck-empty-filter" id="deck-empty-filter" hidden></div></div>`;
 
+  // Drill recall (client-side, tanpa persistensi/XP, sama seperti kana —
+  // welcome.html ~8465). Beda dari kana: kartu yang dijawab benar dikeluarkan
+  // dari antrian (tidak diulang lagi sesi ini), kartu salah masuk lagi ke
+  // antrian sampai semua kartu "dikuasai".
+  const deckDrillPool = items.filter((it) => it.japanese && it.indonesian);
+  const drillBlock = deckDrillPool.length >= 2 ? `
+    <div class="kana-drill" id="deck-drill">
+      <div class="kana-drill-head">
+        <div>
+          <div class="kana-drill-title">🎯 Latihan Kosakata</div>
+          <div class="kana-drill-sub">Kartu yang sudah benar tidak akan diulang.</div>
+        </div>
+        <button class="btn-primary" type="button" onclick="deckDrillStart()">Mulai Drill</button>
+      </div>
+      <div class="kana-drill-body" id="deck-drill-body"></div>
+    </div>` : '';
+
   // Video opsional di atas grid (pola sama dgn kana, welcome.html ~8394).
   // Deck tanpa video_url TIDAK menampilkan apa-apa (tanpa placeholder).
   const deckVideoUrl = (lesson.videoUrl || '').trim();
@@ -7742,6 +7759,7 @@ function renderDeckLesson(course, module, lesson, nav) {
     ${heroBlock}
     ${toolbar}
     ${cardsHtml}
+    ${drillBlock}
     <div class="deck-modal-backdrop" id="deck-modal-backdrop" onclick="if(event.target===this)closeDeckModal()">
       <div class="deck-modal" id="deck-modal" role="dialog" aria-modal="true" aria-labelledby="deck-modal-jp" tabindex="-1">
         <button class="deck-modal-close" type="button" aria-label="Tutup" onclick="closeDeckModal()">
@@ -8354,6 +8372,7 @@ window.gtInputKey = (pi, si, ev) => {
 function renderKanjiLesson(course, module, lesson, nav) {
   const { prev, next, isDone } = nav || {};
   const items = Array.isArray(lesson.kanji) ? lesson.kanji : [];
+  window.__kanjiDrillPool = items;
   for (const k of items) {
     if (k.id) _kanjiByIdCache.set(k.id, { ...k, compounds: k.compounds || [] });
   }
@@ -8373,6 +8392,22 @@ function renderKanjiLesson(course, module, lesson, nav) {
           </button>`).join('')}
       </div>`;
 
+  // Drill recall (client-side, tanpa persistensi/XP, pola sama dgn drill
+  // kosakata/kana — antrian-sampai-tuntas). Kanji tanpa arti tidak bisa
+  // dibikin soal apapun jadi disaring dari pool.
+  const kanjiDrillPool = items.filter((k) => k.character && k.meaning_id);
+  const drillBlock = kanjiDrillPool.length >= 2 ? `
+    <div class="kana-drill" id="kanji-drill">
+      <div class="kana-drill-head">
+        <div>
+          <div class="kana-drill-title">🎯 Latihan Kanji</div>
+          <div class="kana-drill-sub">Kartu yang sudah benar tidak akan diulang.</div>
+        </div>
+        <button class="btn-primary" type="button" onclick="kanjiDrillStart()">Mulai Drill</button>
+      </div>
+      <div class="kana-drill-body" id="kanji-drill-body"></div>
+    </div>` : '';
+
   document.getElementById('main-content').innerHTML = `
     <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · KANJI</p>
     <h1 class="lesson-title">${escapeHtml(lesson.title)}</h1>
@@ -8388,6 +8423,7 @@ function renderKanjiLesson(course, module, lesson, nav) {
       </div>
     </div>
     ${tilesHtml}
+    ${drillBlock}
     <div class="lesson-footer">
       <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
       <button class="btn-primary" onclick="markCompleteAndNext()">
@@ -8641,6 +8677,23 @@ function _kanaPickDistractors(pool, item, count) {
   }
   return out;
 }
+// Versi generic dari _kanaPickDistractors di atas (key configurable via
+// keyFn) — dipakai drill kosakata & kanji supaya tidak duplikasi logic
+// unique-filter. _kanaPickDistractors dibiarkan apa adanya (nol risiko
+// regresi ke drill kana yang sudah live).
+function pickDistractors(pool, item, count, keyFn) {
+  const used = new Set([keyFn(item)]);
+  const out = [];
+  const shuffled = pool.filter((p) => p !== item).sort(() => Math.random() - 0.5);
+  for (const p of shuffled) {
+    if (out.length >= count) break;
+    const k = keyFn(p);
+    if (used.has(k)) continue;
+    used.add(k);
+    out.push(p);
+  }
+  return out;
+}
 window.kanaDrillStart = () => {
   const pool = (window.__kanaData || []).filter((k) => k.character && k.romaji);
   const body = document.getElementById('kana-drill-body');
@@ -8779,6 +8832,209 @@ window.closeDeckModal = () => {
   if (ret && typeof ret.focus === 'function') {
     try { ret.focus(); } catch (e) { /* noop */ }
   }
+};
+
+// Drill recall kosakata: antrian-sampai-tuntas (client-side, tanpa
+// persistensi/XP). Kartu benar keluar dari antrian, kartu salah masuk lagi
+// ke posisi acak (bukan langsung soal berikutnya) supaya diulang sampai benar.
+window.deckDrillStart = () => {
+  const pool = (window.__deckData || []).filter((it) => it.japanese && it.indonesian);
+  const body = document.getElementById('deck-drill-body');
+  if (!body) return;
+  if (pool.length < 2) { body.innerHTML = '<div class="kana-drill-progress">Kata belum cukup untuk drill.</div>'; return; }
+  const queue = pool.slice().sort(() => Math.random() - 0.5);
+  window.__deckDrill = { pool, queue, mastered: 0, wrong: 0, total: queue.length, current: null, currentQ: null, answered: false };
+  deckDrillAdvance();
+};
+function deckDrillAdvance() {
+  const st = window.__deckDrill;
+  if (!st) return;
+  if (st.queue.length === 0) { st.current = null; deckDrillRender(); return; }
+  st.current = st.queue.shift();
+  const optsCount = Math.min(4, st.pool.length);
+  const dir = ['jp2id', 'id2jp', 'audio2id'][Math.floor(Math.random() * 3)];
+  const keyFn = dir === 'id2jp' ? (x) => x.japanese : (x) => x.indonesian;
+  const distract = pickDistractors(st.pool, st.current, optsCount - 1, keyFn);
+  const opts = [st.current, ...distract].sort(() => Math.random() - 0.5);
+  st.currentQ = { dir, opts };
+  st.answered = false;
+  deckDrillRender();
+}
+function deckDrillRender() {
+  const st = window.__deckDrill;
+  const body = document.getElementById('deck-drill-body');
+  if (!st || !body) return;
+  if (!st.current) {
+    body.innerHTML = `<div class="kana-drill-result">
+      <div class="kdr-score">${st.total} kartu dikuasai</div>
+      <div class="kdr-pct">${st.wrong} kali salah${st.wrong === 0 ? ' — sempurna! 🎉' : ' — terus berlatih ya.'}</div>
+      <button class="btn-primary" type="button" onclick="deckDrillStart()">Ulangi Drill</button>
+    </div>`;
+    return;
+  }
+  const q = st.currentQ;
+  const item = st.current;
+  const remaining = st.queue.length + 1;
+  let promptHtml, hint, optsHtml;
+  if (q.dir === 'audio2id') {
+    hint = 'Dengar lalu pilih artinya.';
+    promptHtml = `<button type="button" id="deck-drill-audio" aria-label="Putar lagi" onclick="deckDrillPlayAudio(this)"
+      style="display:flex;align-items:center;justify-content:center;width:64px;height:64px;margin:10px auto 2px;border-radius:50%;border:1px solid var(--du-border,#ece8e1);background:var(--du-surface,#fff);color:var(--brand-red,#C8102E);cursor:pointer;">${AUDIO_SVG}</button>`;
+    optsHtml = q.opts.map((o, oi) => `<button class="kana-drill-opt" type="button" data-oi="${oi}" onclick="deckDrillAnswer(${oi})">${escapeHtml(o.indonesian)}</button>`).join('');
+  } else if (q.dir === 'jp2id') {
+    hint = 'Artinya?';
+    promptHtml = `<div class="kana-drill-prompt" lang="ja">${escapeHtml(item.japanese)}${item.reading ? `<div style="font-size:14px;font-weight:600;color:var(--du-ink-3,#8a8a8a);margin-top:4px;">${escapeHtml(item.reading)}</div>` : ''}</div>`;
+    optsHtml = q.opts.map((o, oi) => `<button class="kana-drill-opt" type="button" data-oi="${oi}" onclick="deckDrillAnswer(${oi})">${escapeHtml(o.indonesian)}</button>`).join('');
+  } else {
+    hint = 'Kata yang mana?';
+    promptHtml = `<div class="kana-drill-prompt" style="font-size:28px;">${escapeHtml(item.indonesian)}</div>`;
+    optsHtml = q.opts.map((o, oi) => `<button class="kana-drill-opt" type="button" data-oi="${oi}" lang="ja" onclick="deckDrillAnswer(${oi})">${escapeHtml(o.japanese)}</button>`).join('');
+  }
+  body.innerHTML = `
+    <div class="kana-drill-progress">Tersisa ${remaining} dari ${st.total} · Salah ${st.wrong}x</div>
+    ${promptHtml}
+    <div class="kana-drill-hint">${hint}</div>
+    <div class="kana-drill-opts">${optsHtml}</div>
+    <div class="kana-drill-feedback" id="deck-drill-feedback"></div>`;
+  if (q.dir === 'audio2id') deckDrillPlayAudio();
+}
+window.deckDrillPlayAudio = (btn) => {
+  const st = window.__deckDrill;
+  if (!st || !st.current) return;
+  playTTS(st.current.japanese || st.current.reading || '', btn || document.getElementById('deck-drill-audio'));
+};
+window.deckDrillAnswer = (oi) => {
+  const st = window.__deckDrill;
+  if (!st || st.answered || !st.current) return;
+  const q = st.currentQ;
+  st.answered = true;
+  const correct = q.opts[oi] === st.current;
+  if (correct) {
+    st.mastered++;
+  } else {
+    st.wrong++;
+    const q2 = st.queue;
+    const minPos = Math.min(2, q2.length);
+    const pos = q2.length === 0 ? 0 : minPos + Math.floor(Math.random() * (q2.length - minPos + 1));
+    q2.splice(pos, 0, st.current);
+  }
+  document.querySelectorAll('#deck-drill-body .kana-drill-opt').forEach((b, i) => {
+    b.disabled = true;
+    if (q.opts[i] === st.current) b.classList.add('correct');
+    else if (i === oi) b.classList.add('wrong');
+  });
+  const fb = document.getElementById('deck-drill-feedback');
+  if (fb) {
+    const answerLabel = q.dir === 'id2jp' ? st.current.japanese : st.current.indonesian;
+    fb.innerHTML = correct
+      ? '<span class="kdf-ok">✓ Benar!</span>'
+      : `<span class="kdf-no">✗ Jawaban: <strong${q.dir === 'id2jp' ? ' lang="ja"' : ''}>${escapeHtml(answerLabel)}</strong></span>`;
+  }
+  setTimeout(() => { if (window.__deckDrill === st) deckDrillAdvance(); }, correct ? 750 : 1500);
+};
+
+// Drill recall kanji: pola identik drill kosakata (antrian-sampai-tuntas).
+// Kanji tanpa reading tidak dapat mode char2reading — otomatis jatuh balik
+// ke char2meaning/meaning2char (juga kalau pool "punya reading" terlalu kecil
+// untuk 2+ opsi).
+window.kanjiDrillStart = () => {
+  const pool = (window.__kanjiDrillPool || []).filter((k) => k.character && k.meaning_id);
+  const body = document.getElementById('kanji-drill-body');
+  if (!body) return;
+  if (pool.length < 2) { body.innerHTML = '<div class="kana-drill-progress">Kanji belum cukup untuk drill.</div>'; return; }
+  const queue = pool.slice().sort(() => Math.random() - 0.5);
+  window.__kanjiDrill = { pool, queue, mastered: 0, wrong: 0, total: queue.length, current: null, currentQ: null, answered: false };
+  kanjiDrillAdvance();
+};
+function kanjiDrillAdvance() {
+  const st = window.__kanjiDrill;
+  if (!st) return;
+  if (st.queue.length === 0) { st.current = null; kanjiDrillRender(); return; }
+  const item = st.queue.shift();
+  st.current = item;
+  const readingPool = st.pool.filter((k) => k.kun_reading || k.on_reading);
+  const hasReading = !!(item.kun_reading || item.on_reading);
+  const modes = ['char2meaning', 'meaning2char'];
+  if (hasReading && readingPool.length >= 2) modes.push('char2reading');
+  const dir = modes[Math.floor(Math.random() * modes.length)];
+  let base, keyFn;
+  if (dir === 'char2reading') { base = readingPool; keyFn = (x) => x.kun_reading || x.on_reading; }
+  else if (dir === 'meaning2char') { base = st.pool; keyFn = (x) => x.character; }
+  else { base = st.pool; keyFn = (x) => x.meaning_id; }
+  const optsCount = Math.min(4, base.length);
+  const distract = pickDistractors(base, item, optsCount - 1, keyFn);
+  const opts = [item, ...distract].sort(() => Math.random() - 0.5);
+  st.currentQ = { dir, opts };
+  st.answered = false;
+  kanjiDrillRender();
+}
+function kanjiDrillRender() {
+  const st = window.__kanjiDrill;
+  const body = document.getElementById('kanji-drill-body');
+  if (!st || !body) return;
+  if (!st.current) {
+    body.innerHTML = `<div class="kana-drill-result">
+      <div class="kdr-score">${st.total} kartu dikuasai</div>
+      <div class="kdr-pct">${st.wrong} kali salah${st.wrong === 0 ? ' — sempurna! 🎉' : ' — terus berlatih ya.'}</div>
+      <button class="btn-primary" type="button" onclick="kanjiDrillStart()">Ulangi Drill</button>
+    </div>`;
+    return;
+  }
+  const q = st.currentQ;
+  const item = st.current;
+  const remaining = st.queue.length + 1;
+  let promptHtml, hint, optsHtml;
+  if (q.dir === 'meaning2char') {
+    hint = 'Karakter yang mana?';
+    promptHtml = `<div class="kana-drill-prompt" style="font-size:28px;">${escapeHtml(item.meaning_id)}</div>`;
+    optsHtml = q.opts.map((o, oi) => `<button class="kana-drill-opt" type="button" data-oi="${oi}" lang="ja" onclick="kanjiDrillAnswer(${oi})">${escapeHtml(o.character)}</button>`).join('');
+  } else if (q.dir === 'char2reading') {
+    hint = 'Cara bacanya?';
+    promptHtml = `<div class="kana-drill-prompt" lang="ja">${escapeHtml(item.character)}</div>`;
+    optsHtml = q.opts.map((o, oi) => `<button class="kana-drill-opt" type="button" data-oi="${oi}" lang="ja" onclick="kanjiDrillAnswer(${oi})">${escapeHtml(o.kun_reading || o.on_reading)}</button>`).join('');
+  } else {
+    hint = 'Artinya?';
+    promptHtml = `<div class="kana-drill-prompt" lang="ja">${escapeHtml(item.character)}</div>`;
+    optsHtml = q.opts.map((o, oi) => `<button class="kana-drill-opt" type="button" data-oi="${oi}" onclick="kanjiDrillAnswer(${oi})">${escapeHtml(o.meaning_id)}</button>`).join('');
+  }
+  body.innerHTML = `
+    <div class="kana-drill-progress">Tersisa ${remaining} dari ${st.total} · Salah ${st.wrong}x</div>
+    ${promptHtml}
+    <div class="kana-drill-hint">${hint}</div>
+    <div class="kana-drill-opts">${optsHtml}</div>
+    <div class="kana-drill-feedback" id="kanji-drill-feedback"></div>`;
+}
+window.kanjiDrillAnswer = (oi) => {
+  const st = window.__kanjiDrill;
+  if (!st || st.answered || !st.current) return;
+  const q = st.currentQ;
+  st.answered = true;
+  const correct = q.opts[oi] === st.current;
+  if (correct) {
+    st.mastered++;
+  } else {
+    st.wrong++;
+    const q2 = st.queue;
+    const minPos = Math.min(2, q2.length);
+    const pos = q2.length === 0 ? 0 : minPos + Math.floor(Math.random() * (q2.length - minPos + 1));
+    q2.splice(pos, 0, st.current);
+  }
+  document.querySelectorAll('#kanji-drill-body .kana-drill-opt').forEach((b, i) => {
+    b.disabled = true;
+    if (q.opts[i] === st.current) b.classList.add('correct');
+    else if (i === oi) b.classList.add('wrong');
+  });
+  const fb = document.getElementById('kanji-drill-feedback');
+  if (fb) {
+    const isJa = q.dir === 'meaning2char' || q.dir === 'char2reading';
+    const answerLabel = q.dir === 'meaning2char' ? st.current.character
+      : q.dir === 'char2reading' ? (st.current.kun_reading || st.current.on_reading)
+      : st.current.meaning_id;
+    fb.innerHTML = correct
+      ? '<span class="kdf-ok">✓ Benar!</span>'
+      : `<span class="kdf-no">✗ Jawaban: <strong${isJa ? ' lang="ja"' : ''}>${escapeHtml(answerLabel)}</strong></span>`;
+  }
+  setTimeout(() => { if (window.__kanjiDrill === st) kanjiDrillAdvance(); }, correct ? 750 : 1500);
 };
 
 // Tugas grammar yang dikaitkan ke pelajaran pemicu (popupAfterLessonId) hanya
