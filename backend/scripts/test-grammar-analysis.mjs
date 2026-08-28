@@ -46,6 +46,9 @@ if (!MODE) {
         ...process.env,
         JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'test-access-secret',
         JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'test-refresh-secret',
+        // Endpoint admin (generate pengecoh massal) lewat requireAdmin — user
+        // uji harus terdaftar sebagai admin supaya tesnya bisa memanggilnya.
+        ADMIN_EMAILS: process.env.ADMIN_EMAILS || 's@example.com',
         ...env,
       },
     });
@@ -72,11 +75,15 @@ import { createHash } from 'node:crypto';
 const realFetch = globalThis.fetch;
 let anthropicReply = null;
 let anthropicCalls = 0;
+// `anthropicReply` berupa string dikirim apa adanya (generator pengecoh
+// membalas teks per baris, bukan JSON).
+let anthropicText = null;
 globalThis.fetch = async (url, opts) => {
   const u = String(url);
   if (u.includes('api.anthropic.com')) {
     anthropicCalls++;
-    return new Response(JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(anthropicReply) }] }),
+    const body = anthropicText != null ? anthropicText : JSON.stringify(anthropicReply);
+    return new Response(JSON.stringify({ content: [{ type: 'text', text: body }] }),
       { status: 200, headers: { 'content-type': 'application/json' } });
   }
   if (u.includes('api.elevenlabs.io')) {
@@ -89,6 +96,7 @@ globalThis.fetch = async (url, opts) => {
 const { query } = await import(path.join(SRC, 'db.js'));
 const { signAccessToken } = await import(path.join(SRC, 'auth.js'));
 const grammarTaskRouter = (await import(path.join(SRC, 'routes/grammar-task.js'))).default;
+const adminRouter = (await import(path.join(SRC, 'routes/admin.js'))).default;
 const grammarAnalysisRouter = (await import(path.join(SRC, 'routes/grammar-analysis.js'))).default;
 const recommendationsRouter = (await import(path.join(SRC, 'routes/recommendations.js'))).default;
 const contentRouter = (await import(path.join(SRC, 'routes/content.js'))).default;
@@ -184,7 +192,9 @@ function makeApp(routers) {
 if (MODE === 'eval') {
   const ctx = await seed();
   const token = await signAccessToken(ctx.userId, 's@example.com');
-  const server = makeApp([grammarTaskRouter]).listen(0);
+  const app = makeApp([grammarTaskRouter]);
+  app.use('/api/admin', adminRouter);
+  const server = app.listen(0);
   await sleep(120);
   const base = `http://127.0.0.1:${server.address().port}/api`;
   const call = async (path, body) => {
@@ -333,6 +343,38 @@ if (MODE === 'eval') {
   const gdata2 = await gres2.json();
   check('urutan opsi deterministik (soal yang dinilai = soal yang dikirim)',
     JSON.stringify(gdata2.drills[0]) === JSON.stringify(d1), gdata2.drills[0]);
+
+  console.log('\nGenerate pengecoh MASSAL (satu tombol, bisa diulang)');
+  // Semua pola bab ini dikosongkan dulu, lalu diisi lewat endpoint massal.
+  await query(`UPDATE module_grammar SET recognition_distractors = NULL`);
+  anthropicText = 'Menandai objek yang dikenai perbuatan.\nMenyatakan tempat berlangsungnya kegiatan.\nMenyatakan alat atau cara melakukan sesuatu.';
+  const bulk = async (limit) => {
+    const r = await realFetch(base + '/admin/module-grammar/generate-distractors-bulk', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
+      body: JSON.stringify({ fromGrammarId: ctx.gids[0], limit }),
+    });
+    return { status: r.status, json: await r.json() };
+  };
+  let b = await bulk(2);
+  check('batch pertama mengisi sebagian, sisanya dilaporkan',
+    b.status === 200 && b.json.saved === 2 && b.json.remaining === 1, b.json);
+  b = await bulk(6);
+  check('batch kedua menghabiskan sisanya', b.json.saved === 1 && b.json.remaining === 0, b.json);
+  b = await bulk(6);
+  check('diulang saat sudah penuh = no-op (tidak menimpa)',
+    b.json.processed === 0 && b.json.saved === 0 && b.json.remaining === 0, b.json);
+  const filled = (await query(
+    `SELECT COUNT(*)::int n FROM module_grammar WHERE recognition_distractors IS NOT NULL`)).rows[0].n;
+  check('ketiga pola tersimpan pengecohnya', filled === 3, filled);
+  // Pola tanpa Arti tidak bisa di-generate — harus dilewati, bukan bikin macet.
+  await query(`UPDATE module_grammar SET recognition_distractors = NULL, meaning = '' WHERE id = $1`, [ctx.gids[2]]);
+  b = await bulk(6);
+  check('pola tanpa Arti dilewati dan dilaporkan, bukan menggantung',
+    b.json.remaining === 0 && b.json.skippedNoMeaning === 1, b.json);
+  await query(`UPDATE module_grammar SET meaning = 'arti 2' WHERE id = $1`, [ctx.gids[2]]);
+  await query(`UPDATE module_grammar SET recognition_distractors = NULL`);
+  anthropicText = null;
 
   console.log('\nStep 1 — pengecoh kurasi dipakai kalau ada (migration 124)');
   await query(
