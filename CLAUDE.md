@@ -356,7 +356,15 @@
     `/api/recommendations/me` dapat field baru `weakGrammar[]` (+ placeholder
     `{{weakPatterns}}` di prompt coaching; agregasinya dibungkus try/catch
     supaya panel lama tidak mati kalau 122 belum ter-apply).
-  - **UI** (`welcome.html`): strip "Pemahaman Bunpou" di atas kartu grammar
+  - **UI** (`welcome.html`): strip "Pemahaman Bunpou" tampil di DUA tempat —
+    halaman Tata Bahasa (sebelum belajar: di mana posisiku) dan halaman Tugas
+    Bunpou (di sinilah percobaan dibuat, jadi strip di-refresh otomatis
+    ~1.5 detik setelah tiap kalimat dinilai lewat `scheduleBunpouAnalysisRefresh`,
+    dan state panel yang sedang terbuka dipertahankan). Tombol "Latihan
+    sekarang" disembunyikan kalau targetnya justru halaman yang sedang dibuka.
+    Popup tugas TIDAK memuat strip (interstitial singkat), jadi titik status
+    per pola dibuat opt-in lewat argumen ketiga `gtCardsHtml(items, sttOn,
+    showDots)` supaya tidak jadi titik abu-abu tanpa makna di sana. Strip:
     (persen + bar + "N pola dikuasai · N perlu latihan" + tombol "Lihat
     analisis" yang membuka panel per-pola + satu kalimat fokus + tombol
     "Latihan sekarang"), plus titik status halus per kartu

@@ -7653,6 +7653,10 @@ async function loadBunpouAnalysis(lesson) {
   const host = document.getElementById('bunpou-analysis');
   if (!host || !lesson || !lesson.apiId) return;
   if (typeof window.ezApi !== 'function') return;
+  // Disimpan supaya refresh setelah tiap kalimat dinilai tidak perlu argumen,
+  // dan supaya panel tahu pelajaran mana yang sedang dibuka (lihat baPanelHtml:
+  // tombol "Latihan sekarang" tidak ditampilkan kalau targetnya halaman ini).
+  window.__baLesson = lesson;
   let data;
   try {
     const r = await window.ezApi('/grammar/mastery/lesson/' + encodeURIComponent(lesson.apiId));
@@ -7664,9 +7668,22 @@ async function loadBunpouAnalysis(lesson) {
   const concepts = Array.isArray(data.concepts) ? data.concepts : [];
   if (concepts.length === 0) return;
 
+  // Panel yang sedang terbuka jangan menutup sendiri saat strip di-refresh.
+  const wasOpen = !!(document.getElementById('ba-panel') && !document.getElementById('ba-panel').hasAttribute('hidden'));
   window.__baData = data;
   baPaintDots(concepts);
   host.innerHTML = baStripHtml(data);
+  if (wasOpen) baTogglePanel();
+}
+
+// Refresh setelah kalimat dinilai — di halaman Tugas Bunpou inilah percobaan
+// dibuat, jadi angkanya harus ikut bergerak. Di-debounce supaya menilai
+// beberapa kalimat beruntun tidak memicu request bertubi-tubi.
+let _baRefreshTimer = null;
+function scheduleBunpouAnalysisRefresh() {
+  if (!document.getElementById('bunpou-analysis') || !window.__baLesson) return;
+  clearTimeout(_baRefreshTimer);
+  _baRefreshTimer = setTimeout(() => loadBunpouAnalysis(window.__baLesson), 1500);
 }
 
 // Titik status kecil di sebelah tiap pola. Pola yang belum dianalisis
@@ -7729,11 +7746,15 @@ function baPanelHtml(data) {
   }).join('');
 
   const f = data.focus;
+  // Kalau tugas latihannya justru halaman yang sedang dibuka (siswa memang lagi
+  // di Tugas Bunpou-nya), tombolnya cuma akan me-reload halaman yang sama.
+  const here = window.__baLesson && window.__baLesson.apiId;
+  const showPractice = f && f.practice && f.practice.lessonId !== here;
   const focusHtml = (f && f.message) ? `
     <div class="ba-focus">
       <div class="ba-focus__title">⚠ Fokus berikutnya</div>
       <div>${escapeHtml(f.message)}</div>
-      ${f.practice ? `<button type="button" class="ba-practice" onclick="baPractice('${escapeHtml(f.practice.moduleSlug)}','${escapeHtml(f.practice.lessonSlug)}')">Latihan sekarang</button>` : ''}
+      ${showPractice ? `<button type="button" class="ba-practice" onclick="baPractice('${escapeHtml(f.practice.moduleSlug)}','${escapeHtml(f.practice.lessonSlug)}')">Latihan sekarang</button>` : ''}
     </div>` : '';
 
   return rows + focusHtml;
@@ -8106,7 +8127,10 @@ function gtTotalRequired(items) {
 }
 
 // Bangun HTML kartu tugas (dipakai full-page render & popup modal).
-function gtCardsHtml(items, sttOn) {
+// showDots: titik status penguasaan per pola. Hanya untuk render full-page —
+// popup tugas tidak memuat strip analisis, jadi titiknya akan abu-abu terus
+// di sana dan cuma jadi noise.
+function gtCardsHtml(items, sttOn, showDots) {
   const slotHtml = (pi, si, count) => {
     const key = `${pi}-${si}`;
     const slotLabel = (count > 1 && si > 0) ? ` data-slot-label="Kalimat ${si + 1}"` : '';
@@ -8161,9 +8185,9 @@ function gtCardsHtml(items, sttOn) {
     let slots = '';
     for (let si = 0; si < count; si++) slots += slotHtml(pi, si, count);
     return `
-    <article class="gt-card">
+    <article class="gt-card" data-grammar-id="${escapeHtml(it.id || '')}">
       <div class="gt-card__chip">文法 · Pola ${pi + 1}</div>
-      <div class="gt-card__pattern" lang="ja">${pattern}</div>
+      <div class="gt-card__pattern" lang="ja">${showDots ? `<span class="ba-dot" data-ba-dot="${escapeHtml(it.id || '')}" style="background:var(--du-border);" title="Belum dianalisis"></span>` : ''}${pattern}</div>
       ${meaning ? `<div class="gt-card__meaning">${meaning}</div>` : ''}
       ${example ? `<div class="gt-card__example">
         <button type="button" class="gt-card__example-audio" aria-label="Dengar contoh" onclick="gtPlayExample(${pi}, this)">🔊</button>
@@ -8196,7 +8220,8 @@ function renderGrammarTaskLesson(course, module, lesson, nav) {
     <div class="deck-hero" style="margin-bottom:18px;">
       <div><div class="dh-eyebrow">作文 · BUAT KALIMAT</div><div class="dh-body">${escapeHtml(intro)}</div></div>
     </div>
-    ${gtCardsHtml(items, sttOn)}
+    <div id="bunpou-analysis"></div>
+    ${gtCardsHtml(items, sttOn, true)}
     <div id="gt-progress-hint"></div>
     <div class="lesson-footer">
       <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
@@ -8204,6 +8229,9 @@ function renderGrammarTaskLesson(course, module, lesson, nav) {
     </div>
   `;
   gtUpdateComplete();
+  // Di sinilah percobaan dibuat, jadi analisisnya paling berguna di sini:
+  // dimuat sekarang, lalu di-refresh tiap kalimat selesai dinilai.
+  loadBunpouAnalysis(lesson);
 }
 
 // ── Popup tugas grammar (muncul otomatis setelah pelajaran pemicu selesai,
@@ -8596,6 +8624,7 @@ async function gtRunEval(pi, si, opts) {
     if (opts.guard && !opts.guard()) return;
     const ok = d.correct && d.usesPattern;
     if (window.__gtState) { window.__gtState.passed[key] = !!ok; gtUpdateComplete(); }
+    scheduleBunpouAnalysisRefresh(); // percobaan baru tercatat → strip ikut bergerak
     const corr = d.correction ? `
       <div style="margin-top:10px;display:flex;align-items:flex-start;gap:8px;">
         <button class="dc-audio" type="button" style="position:static;flex:none;" aria-label="Dengar koreksi" onclick="speakJapanese(${JSON.stringify(String(d.correction)).replace(/"/g, '&quot;')}, this)">${AUDIO_SVG}</button>
