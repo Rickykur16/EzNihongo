@@ -4199,12 +4199,14 @@ window.grammarManageDistractors = async (grammarId) => {
   // baris tabel: modal ini dibuka dari dua tempat dengan bentuk tabel berbeda
   // (editor Grammar modul dan Kelola Tugas Grammar), dan hanya yang pertama
   // punya input[name="pattern"].
-  let current = '', pattern = '', meaning = '';
+  let current = '', controlled = '', pattern = '', meaning = '', slot = null;
   try {
     const d = await api('/admin/module-grammar/' + grammarId + '/distractors');
     current = d.value || '';
+    controlled = d.controlled || '';
     pattern = d.pattern || '';
     meaning = d.meaning || '';
+    slot = d.slot || null;
   } catch (err) { notify('Gagal load pengecoh: ' + err.message, true); return; }
   window.__grmrDistCtx = { grammarId, pattern };
 
@@ -4213,16 +4215,34 @@ window.grammarManageDistractors = async (grammarId) => {
     <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 4px;">
       Jawaban BENAR soal ini adalah kolom Arti: <em>${escapeHtml(meaning || '(kosong)')}</em>
     </p>
-    <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 10px;">
+    <h4 style="margin:14px 0 4px;font-size:13px;">Step 1 — pahami fungsi</h4>
+    <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 6px;">
       Tulis <strong>satu pengecoh per baris</strong> — fungsi yang SALAH untuk pola ini
       (mis. untuk 〜の〜: "menandai objek kalimat"). Jangan menyebut polanya sendiri di
       dalam pengecoh, dan panjangnya usahakan mirip dengan Arti di atas.
       Kosongkan untuk kembali memakai pengecoh otomatis (arti pola lain di bab ini).
     </p>
-    <textarea id="grmr-dist" rows="6" style="width:100%;font-size:13px;"
+    <textarea id="grmr-dist" rows="5" style="width:100%;font-size:13px;"
       placeholder="Menandai objek yang dikenai perbuatan.&#10;Menyatakan tempat berlangsungnya kegiatan.&#10;Menyatakan alat atau cara melakukan sesuatu.">${escapeHtml(current)}</textarea>
+
+    <h4 style="margin:18px 0 4px;font-size:13px;">Step 2 — latihan bentuk</h4>
+    ${slot ? `<div style="font-size:13px;font-family:var(--font-body);background:#fffdf7;border:1px solid var(--paper-300,#e5e5e5);border-left:4px solid #B20024;border-radius:6px;padding:10px 12px;margin-bottom:6px;">
+      <div lang="ja" style="font-size:15px;line-height:1.8;">${escapeHtml(slot.sentence)}</div>
+      ${slot.indonesian ? `<div style="font-size:12px;color:#737373;margin-top:2px;">${escapeHtml(slot.indonesian)}</div>` : ''}
+      <div style="margin-top:6px;font-size:12px;color:#525252;">Jawaban benar: <strong lang="ja">${escapeHtml(slot.answer)}</strong></div>
+    </div>` : `<div style="font-size:12px;color:#b91c1c;background:#fee2e2;border-radius:6px;padding:8px 10px;margin-bottom:6px;font-family:var(--font-body);">
+      Pola ini belum punya contoh kalimat yang bisa dijadikan soal Step 2 — tambahkan contoh lewat tombol 📝 Contoh dulu.
+    </div>`}
+    <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 6px;">
+      Pilihan SALAH untuk mengisi ＿＿＿ di atas, satu per baris. Syarat terpenting:
+      tiap pilihan harus <strong>jelas salah</strong> di kalimat itu — kalau ada yang
+      ternyata juga benar, soalnya jadi punya dua jawaban. Kosongkan untuk memakai
+      pengecoh otomatis.
+    </p>
+    <textarea id="grmr-ctrl" rows="4" style="width:100%;font-size:13px;" lang="ja"
+      placeholder="読んだ&#10;読んでいる&#10;読みます">${escapeHtml(controlled)}</textarea>
     <div class="toolbar" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
-      <button type="button" class="btn btn-ghost" id="grmr-dist-gen" onclick="grmrGenDistractors()">✨ Generate pengecoh (AI)</button>
+      <button type="button" class="btn btn-ghost" id="grmr-dist-gen" onclick="grmrGenDistractors()">✨ Generate keduanya (AI)</button>
       <button type="button" class="btn btn-ghost" id="grmr-dist-all" onclick="grmrGenDistractorsAll()" title="Isi semua pola di kursus ini yang pengecohnya masih kosong">🚀 Isi semua pola yang masih kosong</button>
       <span id="grmr-dist-status" style="font-size:11px;color:#737373;align-self:center;"></span>
     </div>
@@ -4245,12 +4265,14 @@ window.grmrGenDistractors = async () => {
   try {
     const d = await api('/admin/module-grammar/' + ctx.grammarId + '/generate-distractors', { method: 'POST' });
     const ta = document.getElementById('grmr-dist');
-    if (ta && Array.isArray(d.distractors)) ta.value = d.distractors.join('\n');
+    if (ta && Array.isArray(d.distractors) && d.distractors.length) ta.value = d.distractors.join('\n');
+    const tc = document.getElementById('grmr-ctrl');
+    if (tc && Array.isArray(d.controlled) && d.controlled.length) tc.value = d.controlled.join('\n');
     if (status) status.textContent = 'Draft AI — review dulu, lalu Simpan.';
   } catch (err) {
     notify('Gagal generate pengecoh: ' + err.message, true);
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '✨ Generate pengecoh (AI)'; }
+    if (btn) { btn.disabled = false; btn.textContent = '✨ Generate keduanya (AI)'; }
   }
 };
 
@@ -4311,8 +4333,9 @@ window.grmrSaveDistractors = async () => {
   const ta = document.getElementById('grmr-dist');
   if (!ctx || !ta) return;
   try {
+    const tc = document.getElementById('grmr-ctrl');
     await api('/admin/module-grammar/' + ctx.grammarId + '/distractors', {
-      method: 'PUT', body: JSON.stringify({ value: ta.value }),
+      method: 'PUT', body: JSON.stringify({ value: ta.value, controlled: tc ? tc.value : '' }),
     });
     notify('Pengecoh tersimpan');
     closeModal();
