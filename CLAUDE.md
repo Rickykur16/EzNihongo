@@ -440,6 +440,15 @@
       server juga membuang baris yang memuat pola target atau menyalin arti
       yang benar. Kosong = kembali ke penurunan lama, jadi pola yang belum
       di-generate tetap jalan.
+      **Dua pintu masuk**: tombol 🎯 Pengecoh ada di editor Grammar modul DAN di
+      tabel "Kelola Tugas Grammar" (rilis pertama cuma di tempat pertama —
+      admin yang membuka Tugas Bunpou tidak menemukannya sama sekali, karena
+      pola Bab 12-20 `lesson_id`-nya menunjuk pelajaran Tata Bahasa, bukan
+      pelajaran tugasnya). Modal-nya mengambil pola/arti/nilai dari endpoint,
+      BUKAN dari baris tabel — dua pemanggil itu bentuk tabelnya berbeda dan
+      hanya satu yang punya `input[name="pattern"]`. Modal Kelola Tugas Grammar
+      juga menjelaskan bahwa Step 1 & 2 dibuat otomatis dan yang diatur di tabel
+      itu adalah Step 3.
       **Isi massal**: tombol "🚀 Isi semua pola yang masih kosong" di modal yang
       sama → `POST /api/admin/module-grammar/generate-distractors-bulk`
       ({ fromGrammarId, limit }), cakupan = seluruh kursus pola itu. Dikerjakan

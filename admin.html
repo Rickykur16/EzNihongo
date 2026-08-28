@@ -4195,18 +4195,18 @@ window.grammarManageExamples = async (grammarId) => {
 // pengecoh (fungsi yang SALAH untuk pola ini sendiri), me-review, lalu simpan.
 window.grammarManageDistractors = async (grammarId) => {
   if (!grammarId) return;
-  const tr = document.querySelector(`tr[data-id="${grammarId}"]`);
-  const pattern = tr?.querySelector('input[name="pattern"]')?.value || '';
-  const meaning = tr?.querySelector('input[name="meaning"]')?.value || '';
-  window.__grmrDistCtx = { grammarId, pattern };
-
-  // Baris grammar di DOM tidak menyimpan module_id, jadi nilai tersimpan diambil
-  // lewat endpoint per-pola — bukan ditebak dari dataset baris.
-  let current = '';
+  // Pola/arti/nilai tersimpan SEMUANYA diambil dari endpoint, bukan dibaca dari
+  // baris tabel: modal ini dibuka dari dua tempat dengan bentuk tabel berbeda
+  // (editor Grammar modul dan Kelola Tugas Grammar), dan hanya yang pertama
+  // punya input[name="pattern"].
+  let current = '', pattern = '', meaning = '';
   try {
     const d = await api('/admin/module-grammar/' + grammarId + '/distractors');
     current = d.value || '';
+    pattern = d.pattern || '';
+    meaning = d.meaning || '';
   } catch (err) { notify('Gagal load pengecoh: ' + err.message, true); return; }
+  window.__grmrDistCtx = { grammarId, pattern };
 
   openModal(`
     <h3>Pengecoh Step 1 — <span lang="ja">${escapeHtml(pattern)}</span></h3>
@@ -4642,6 +4642,7 @@ function renderGtmTable(items) {
         <button class="btn btn-ghost" onclick="gtmMove('${it.grammar_id}', 1)">↓</button>
       </td>
       <td class="actions" style="white-space:nowrap;">
+        <button class="btn btn-ghost" title="Pengecoh soal Step 1 (pengenalan fungsi) untuk pola ini" onclick="grammarManageDistractors('${it.grammar_id}')">🎯 Pengecoh</button>
         <button class="btn btn-danger" onclick="gtmRemove('${it.grammar_id}')">Keluarkan</button>
       </td>
     </tr>`).join('');
@@ -4696,8 +4697,18 @@ async function openGrammarTaskManager(lessonId, lessonTitle, moduleId, courseId)
   window.__gtmBankQuery = '';
   openModal(`
     <h3>Tugas Grammar: ${escapeHtml(lessonTitle)}</h3>
+    <div style="font-size:12px;color:#525252;font-family:var(--font-body);line-height:1.65;background:#f9fafb;border:1px solid var(--paper-300,#e5e5e5);border-radius:6px;padding:10px 12px;margin-bottom:10px;">
+      <strong>Tugas ini punya 3 tahap untuk siswa.</strong>
+      <strong>Step 1</strong> (pahami fungsi) dan <strong>Step 2</strong> (latihan bentuk) dibuat
+      OTOMATIS dari materi yang sudah ada — arti pola + contoh kalimatnya — jadi tidak ada yang
+      perlu ditulis di sini. Yang diatur di tabel bawah ini adalah <strong>Step 3</strong>:
+      siswa membuat kalimat sendiri lalu mengucapkannya, dinilai AI.
+      Satu-satunya bagian Step 1 yang bisa dikurasi adalah <em>pengecohnya</em> — lewat tombol
+      🎯 Pengecoh per pola, atau sekaligus dengan tombol di sebelah.
+    </div>
     <div class="toolbar">
       <span id="gtm-count" style="font-size:12px;color:#737373;font-family:var(--font-body);">${items.length} pola</span>
+      ${items[0] ? `<button type="button" class="btn btn-ghost" title="Isi pengecoh Step 1 untuk semua pola di kursus ini yang masih kosong" onclick="grammarManageDistractors('${items[0].grammar_id}')">🎯 Kelola pengecoh Step 1</button>` : ''}
     </div>
     <div id="gtm-wrap" style="overflow-x:auto;">${renderGtmTable(items)}</div>
     <div style="margin-top:16px;">
