@@ -415,6 +415,41 @@
       produksi Bab 3-20 yang sudah live tidak bisa terkunci oleh bug frontend.
       Setelah `GT_MAX_WRONG` (2) kali salah, jawaban dibuka dan tahap
       berikutnya dilepas — siswa tidak boleh mentok permanen di pilihan ganda.
+    - **Pengecoh Step 1 yang dikurasi** (migration **124**, kolom
+      `module_grammar.recognition_distractors`, TEXT satu per baris). Pengecoh
+      turunan (arti pola LAIN di bab yang sama) terbukti terlalu mudah: untuk
+      〜の〜 pengecohnya bicara soal も dan ね/よ, jadi bisa dieliminasi tanpa
+      memahami の sama sekali. Kolom ini menampung fungsi yang SALAH untuk pola
+      ITU SENDIRI (mis. "menandai objek kalimat"). Di-generate SEKALI per pola
+      lewat tombol "🎯 Pengecoh" di editor grammar admin
+      (`POST /api/admin/module-grammar/:id/generate-distractors`,
+      `ANTHROPIC_GEN_MODEL`), di-review admin, lalu disimpan
+      (`PUT .../distractors`; `GET .../distractors` untuk memuatnya kembali).
+      **Siswa tidak pernah memicu AI untuk soal pilihan ganda.** Prompt-nya
+      mengirim fungsi pola lain di bab itu sebagai daftar-HINDARI (kalau
+      pengecoh kebetulan mendeskripsikan pola lain, soalnya jadi ambigu) dan
+      melarang menyebut pola targetnya sendiri (itu membocorkan jawaban);
+      server juga membuang baris yang memuat pola target atau menyalin arti
+      yang benar. Kosong = kembali ke penurunan lama, jadi pola yang belum
+      di-generate tetap jalan.
+    - **Arti pola DISEMBUNYIKAN sampai Step 1 dijawab** (`gtSetMeaningHidden`).
+      Jawaban Step 1 = `module_grammar.meaning`, dan teks itu juga tercetak di
+      kepala kartu tugas — rilis pertama menampilkan keduanya sekaligus,
+      sehingga soalnya cuma mencocokkan teks yang ada tepat di atasnya. Kalau
+      endpoint drills gagal (`gtUnlockAllSteps`), arti tetap tampil seperti
+      semula. Opsi juga dipendekkan ke kalimat pertama (`shortMeaning`) supaya
+      panjang keempatnya sebanding — opsi yang jauh lebih panjang jadi petunjuk
+      jawaban tanpa siswa perlu paham apa pun.
+    - **Pengecoh Step 1 diambil se-BAB, bukan se-tugas** (`deriveDrills(items,
+      pool)` + `loadModulePool()`). Tiap bab dipecah jadi dua Tugas Bunpou dan
+      yang kedua sering cuma berisi 2 pola (mis. Bab 13 tugas 2 =
+      〜てもいいですか + 〜てはいけません, lihat 090). Dengan pool sebatas tugas
+      itu cuma menyisakan 1 pengecoh — di bawah ambang minimum — sehingga Step 1
+      HILANG diam-diam di sekitar separuh Tugas Bunpou. Rilis pertama kena ini;
+      diperbaiki dengan memperluas pool ke seluruh `module_grammar` bab itu
+      (juga lebih tepat pedagogis: yang perlu dibedakan adalah pola-pola yang
+      baru dipelajari di bab itu). Endpoint daftar soal DAN endpoint penilaian
+      memuat pool dengan cara identik supaya penurunannya tetap deterministik.
     - **Degradasi**: pola tanpa `meaning` (atau tanpa pola pembanding di bab
       yang sama) tidak dapat Step 1; contoh tanpa kalimat tidak dapat Step 2 —
       tahapnya disembunyikan dan tahap berikutnya langsung terbuka. Endpoint

@@ -332,12 +332,22 @@ router.post('/grammar-task/evaluate', requireAuth, evalLimiter, asyncHandler(asy
 // tanpa AI sama sekali — sesuai prinsip "jangan kirim soal pilihan ganda
 // sederhana ke Claude". Lihat grammar-drills.js.
 
+// `recognition_distractors` disimpan sebagai TEXT satu pengecoh per baris
+// (lebih tahan salah ketik daripada JSON saat admin mengeditnya di textarea).
+export function parseDistractors(raw) {
+  return String(raw || '')
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .slice(0, 6);
+}
+
 // Pola + contohnya untuk satu lesson tugas. Dipakai dua-duanya oleh endpoint
 // daftar soal dan endpoint penilaian, supaya soal yang dinilai persis soal
 // yang dikirim (penurunannya deterministik).
 async function loadTaskConcepts(lessonId) {
   const rows = await query(
-    `SELECT g.id, g.pattern, g.meaning, gi.sort_order
+    `SELECT g.id, g.pattern, g.meaning, g.recognition_distractors, gi.sort_order
        FROM lesson_grammar_task_items gi
        JOIN module_grammar g ON g.id = gi.grammar_id
       WHERE gi.lesson_id = $1
@@ -357,7 +367,42 @@ async function loadTaskConcepts(lessonId) {
     if (!byGrammar.has(e.grammar_id)) byGrammar.set(e.grammar_id, []);
     byGrammar.get(e.grammar_id).push(e);
   }
-  return rows.rows.map((r) => ({ ...r, examples: byGrammar.get(r.id) || [] }));
+  return rows.rows.map((r) => ({
+    ...r,
+    recognitionDistractors: parseDistractors(r.recognition_distractors),
+    examples: byGrammar.get(r.id) || [],
+  }));
+}
+
+// Seluruh pola satu BAB (modul pelajaran ini), dipakai sebagai sumber pengecoh.
+// Bukan sebatas pola di tugas ini: tugas kedua tiap bab sering cuma berisi 2
+// pola, yang berarti hanya 1 pengecoh dan Step 1 hilang. Lihat deriveDrills().
+async function loadModulePool(lessonId) {
+  const rows = await query(
+    `SELECT g.id, g.pattern, g.meaning, g.recognition_distractors
+       FROM module_grammar g
+       JOIN lessons l ON l.module_id = g.module_id
+      WHERE l.id = $1
+      ORDER BY g.sort_order ASC, g.created_at ASC`,
+    [lessonId]
+  );
+  if (rows.rows.length === 0) return [];
+  const ex = await query(
+    `SELECT grammar_id, japanese, highlight, indonesian
+       FROM grammar_examples WHERE grammar_id = ANY($1::uuid[])
+      ORDER BY grammar_id, sort_order ASC, created_at ASC`,
+    [rows.rows.map((r) => r.id)]
+  );
+  const byGrammar = new Map();
+  for (const e of ex.rows) {
+    if (!byGrammar.has(e.grammar_id)) byGrammar.set(e.grammar_id, []);
+    byGrammar.get(e.grammar_id).push(e);
+  }
+  return rows.rows.map((r) => ({
+    ...r,
+    recognitionDistractors: parseDistractors(r.recognition_distractors),
+    examples: byGrammar.get(r.id) || [],
+  }));
 }
 
 // Kesalahan di soal bentuk BUKAN tebakan model — aturan yang membangun
@@ -377,8 +422,11 @@ const RULE_ERROR = {
 // Soal Step 1 & 2 per pola. correctIndex TIDAK ikut dikirim.
 router.get('/grammar-task/lesson/:lessonId/drills', requireAuth,
   requireLessonCourseAccess('lessonId'), asyncHandler(async (req, res) => {
-    const items = await loadTaskConcepts(req.params.lessonId);
-    const drills = deriveDrills(items);
+    const [items, pool] = await Promise.all([
+      loadTaskConcepts(req.params.lessonId),
+      loadModulePool(req.params.lessonId),
+    ]);
+    const drills = deriveDrills(items, pool);
     res.json({
       lessonId: req.params.lessonId,
       drills: items.map((it) => ({
@@ -409,11 +457,17 @@ router.post('/grammar-task/drill-answer', requireAuth, evalLimiter, asyncHandler
     return res.status(403).json({ error: 'not_enrolled' });
   }
 
-  const items = await loadTaskConcepts(lessonId);
+  // Pool dimuat dengan cara yang sama persis seperti endpoint daftar soal —
+  // penurunannya deterministik, jadi soal yang dinilai identik dengan yang
+  // dikirim ke siswa.
+  const [items, pool] = await Promise.all([
+    loadTaskConcepts(lessonId),
+    loadModulePool(lessonId),
+  ]);
   const item = items.find((i) => i.id === grammarId);
   if (!item) return res.status(404).json({ error: 'grammar not in this task' });
 
-  const drill = deriveDrills(items).get(grammarId)[step === 1 ? 'step1' : 'step2'];
+  const drill = deriveDrills(items, pool).get(grammarId)[step === 1 ? 'step1' : 'step2'];
   if (!drill) return res.status(404).json({ error: 'drill_unavailable' });
   if (optionIndex >= drill.options.length) return res.status(400).json({ error: 'optionIndex out of range' });
 

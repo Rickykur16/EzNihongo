@@ -8243,7 +8243,7 @@ function gtCardsHtml(items, sttOn, showDots) {
     <article class="gt-card" data-grammar-id="${escapeHtml(it.id || '')}">
       <div class="gt-card__chip">文法 · Pola ${pi + 1}</div>
       <div class="gt-card__pattern" lang="ja">${showDots ? `<span class="ba-dot" data-ba-dot="${escapeHtml(it.id || '')}" style="background:var(--du-border);" title="Belum dianalisis"></span>` : ''}${pattern}</div>
-      ${meaning ? `<div class="gt-card__meaning">${meaning}</div>` : ''}
+      ${meaning ? `<div class="gt-card__meaning" id="gt-meaning-${pi}">${meaning}</div>` : ''}
       ${example ? `<div class="gt-card__example">
         <button type="button" class="gt-card__example-audio" aria-label="Dengar contoh" onclick="gtPlayExample(${pi}, this)">🔊</button>
         <span lang="ja">${example}</span>
@@ -8299,6 +8299,10 @@ async function gtLoadDrills(lessonId) {
     const d = byGrammar[it.id] || {};
     gtRenderStep(pi, 1, d.step1);
     gtRenderStep(pi, 2, d.step2);
+    // Jawaban Step 1 = arti pola, dan arti itu tercetak di kepala kartu.
+    // Kalau dibiarkan, soalnya cuma mencocokkan teks yang ada tepat di atasnya.
+    // Disembunyikan sampai Step 1 dijawab, lalu dibuka sebagai materi bacaan.
+    if (d.step1) gtSetMeaningHidden(pi, true);
     // Tahap yang tidak punya soal langsung dianggap lewat.
     if (!d.step1) gtOpenStep(pi, 2);
     if (!d.step1 && !d.step2) gtOpenStep(pi, 3);
@@ -8309,6 +8313,7 @@ async function gtLoadDrills(lessonId) {
 // siswa dari tugas produksi yang sudah lama berjalan.
 function gtUnlockAllSteps() {
   (window.__gtData || []).forEach((_it, pi) => {
+    gtSetMeaningHidden(pi, false);
     for (const st of [1, 2]) {
       const el = _gtScope().querySelector(`#gt-step${st}-${pi}`);
       if (el) el.style.display = 'none';
@@ -8335,6 +8340,11 @@ function gtRenderStep(pi, step, drill) {
       <span lang="${step === 1 ? 'id' : 'ja'}">${escapeHtml(o)}</span>
     </button>`).join('');
   body.innerHTML = `${ctx}<div class="gt-opts">${opts}</div><div class="gt-step__verdict" id="gt-verdict-${step}-${pi}"></div>`;
+}
+
+function gtSetMeaningHidden(pi, hidden) {
+  const el = _gtScope().querySelector(`#gt-meaning-${pi}`);
+  if (el) el.hidden = !!hidden;
 }
 
 function gtOpenStep(pi, step) {
@@ -8378,6 +8388,7 @@ window.gtAnswerDrill = async (pi, step, optionIndex) => {
     if (chosen) chosen.classList.add('gt-opt--correct');
     if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--ok">✓ Benar</span>';
     gtMarkStepPassed(pi, step);
+    if (step === 1) gtSetMeaningHidden(pi, false); // arti boleh dibaca lagi
     gtOpenStep(pi, step + 1);
   } else {
     if (chosen) chosen.classList.add('gt-opt--wrong');
@@ -8391,6 +8402,7 @@ window.gtAnswerDrill = async (pi, step, optionIndex) => {
       const right = buttons[d.correctIndex];
       if (right) right.classList.add('gt-opt--correct');
       if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--no">Belum tepat. Jawaban yang benar ditandai hijau — pelajari lalu lanjut.</span>';
+      if (step === 1) gtSetMeaningHidden(pi, false);
       gtOpenStep(pi, step + 1);
     } else {
       if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--no">Belum tepat.</span>'

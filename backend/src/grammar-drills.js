@@ -38,6 +38,21 @@ function seededOrder(items, seed) {
 
 const PARTICLES = ['は', 'が', 'を', 'に', 'で', 'へ', 'と', 'の'];
 
+// Kalimat pertama dari catatan arti pola, untuk dipakai sebagai opsi Step 1.
+// Catatan di `module_grammar.meaning` ditulis untuk dibaca sebagai materi
+// (sering 2-3 kalimat), bukan sebagai pilihan jawaban; dipakai mentah-mentah
+// panjangnya jadi timpang antar opsi.
+export function shortMeaning(raw) {
+  const t = String(raw || '').trim();
+  if (!t) return '';
+  const m = t.match(/^[\s\S]*?[.。](\s|$)/);
+  let out = m ? m[0].trim() : t;
+  // Kalimat pertama yang terlalu pendek (mis. "Menyatakan 'juga'.") tidak
+  // cukup membedakan — pakai teks utuhnya.
+  if (out.length < 25 && t.length > out.length) out = t;
+  return out.length > 140 ? out.slice(0, 137).trim() + '…' : out;
+}
+
 // Aturan perubahan bentuk untuk pengecoh Step 2, dicoba BERURUTAN.
 // Tiap aturan: kalau `suffix` cocok di akhir jawaban benar, buang suffix itu
 // lalu tempelkan tiap `alts` sebagai pengecoh.
@@ -118,13 +133,26 @@ function buildOptions(answer, distractors, seed) {
 // pengecohnya = arti pola LAIN di bab yang sama (bukan arti karangan), jadi
 // siswa harus benar-benar membedakan fungsi antar pola yang baru dipelajari.
 export function buildRecognitionDrill(item, siblings) {
-  const meaning = String(item.meaning || '').trim();
+  const meaning = shortMeaning(item.meaning);
   if (!meaning) return null;
 
-  const pool = (siblings || [])
+  // Pengecoh KURASI (migration 124) kalau ada: fungsi yang salah untuk pola INI
+  // sendiri, mis. untuk 〜の〜 → "menandai objek kalimat". Jauh lebih menguji
+  // daripada memakai arti pola lain, karena tidak bisa dieliminasi cuma dengan
+  // menyadari "ini bukan soal も".
+  const curated = (item.recognitionDistractors || [])
+    .map((d) => String(d || '').trim())
+    .filter((d) => d && d !== meaning);
+
+  // Cadangan (pola yang belum di-generate): arti pola LAIN di bab yang sama,
+  // dipendekkan ke kalimat pertama supaya keempat opsi sebanding panjangnya —
+  // opsi yang jauh lebih panjang dari yang lain sudah jadi petunjuk sendiri.
+  const fallback = (siblings || [])
     .filter((s) => s.id !== item.id)
-    .map((s) => String(s.meaning || '').trim())
+    .map((s) => shortMeaning(s.meaning))
     .filter((m) => m && m !== meaning);
+
+  const pool = curated.length >= 2 ? curated : fallback;
 
   // Di bawah 2 pengecoh soalnya jadi tebakan 50:50 — lebih baik tidak ada.
   const distractors = pickDistractors(pool, meaning, 3, `${item.id}|recog`);
@@ -139,7 +167,7 @@ export function buildRecognitionDrill(item, siblings) {
     example: ex ? { japanese: ex.japanese, indonesian: ex.indonesian || null } : null,
     options,
     correctIndex, // dibuang sebelum dikirim ke siswa — lihat publicDrill()
-    rule: 'sibling-meaning',
+    rule: curated.length >= 2 ? 'curated-distractor' : 'sibling-meaning',
   };
 }
 
@@ -209,14 +237,22 @@ export function buildControlledDrill(item, siblings) {
   };
 }
 
-// Semua drill untuk satu daftar pola. `siblings` = daftar itu sendiri, dipakai
-// sebagai sumber pengecoh antar pola dalam bab yang sama.
-export function deriveDrills(items) {
+// Semua drill untuk satu daftar pola.
+//
+// `pool` = sumber pengecoh, DEFAULTNYA seluruh pola satu bab — bukan cuma pola
+// di tugas ini. Alasannya konkret: tiap bab dipecah jadi dua Tugas Bunpou, dan
+// yang kedua sering hanya berisi 2 pola (mis. Bab 13 tugas 2 = 〜てもいいですか
+// + 〜てはいけません). Dengan pool sebatas tugas, itu cuma menyisakan 1 pengecoh
+// — di bawah ambang minimum — sehingga Step 1 hilang diam-diam di separuh tugas.
+// Pool se-bab juga lebih tepat secara pedagogis: yang perlu dibedakan siswa
+// adalah pola-pola yang baru dipelajari di bab itu.
+export function deriveDrills(items, pool) {
+  const siblings = (Array.isArray(pool) && pool.length) ? pool : items;
   const out = new Map();
   for (const item of items) {
     out.set(item.id, {
-      step1: buildRecognitionDrill(item, items),
-      step2: buildControlledDrill(item, items),
+      step1: buildRecognitionDrill(item, siblings),
+      step2: buildControlledDrill(item, siblings),
     });
   }
   return out;

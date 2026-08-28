@@ -1222,6 +1222,117 @@ router.get('/module-grammar', asyncHandler(async (req, res) => {
   res.json({ grammar: rows.rows });
 }));
 
+// ===== PENGECOH STEP 1 TUGAS BUNPOU (migration 124) =====
+// Soal Step 1 menanyakan "Apa fungsi <pola>?". Tanpa pengecoh kurasi, pengecoh
+// diturunkan dari arti pola LAIN di bab yang sama — terlalu mudah, karena bisa
+// dieliminasi cuma dengan menyadari "ini bukan soal も". Endpoint ini membuat
+// pengecoh yang menguji betulan: fungsi yang SALAH untuk pola itu sendiri.
+//
+// Di-generate SEKALI per pola oleh admin lalu disimpan. Siswa tidak pernah
+// memicu panggilan AI untuk soal pilihan ganda — lihat prinsip "jangan
+// overuse AI" di CLAUDE.md.
+const DISTRACTOR_SYSTEM = `You write multiple-choice distractors for a Japanese-grammar course taught in Indonesian to JLPT N5/N4 beginners. Reply with plain lines only — no numbering, no bullets, no extra prose.`;
+
+router.post('/module-grammar/:id/generate-distractors', asyncHandler(async (req, res) => {
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled' });
+
+  const g = await query(
+    `SELECT id, module_id, pattern, meaning FROM module_grammar WHERE id = $1`,
+    [req.params.id]
+  );
+  if (g.rows.length === 0) return res.status(404).json({ error: 'grammar not found' });
+  const item = g.rows[0];
+  if (!(item.meaning || '').trim()) {
+    return res.status(400).json({ error: 'no_meaning', detail: 'Isi kolom Arti dulu — pengecoh dibuat berdasarkan fungsi yang benar.' });
+  }
+
+  // Fungsi pola LAIN di bab yang sama dikirim sebagai daftar-hindari: kalau
+  // pengecoh kebetulan mendeskripsikan pola lain, soalnya jadi ambigu untuk
+  // siswa yang tahu pola itu.
+  const sib = await query(
+    `SELECT pattern, meaning FROM module_grammar
+      WHERE module_id = $1 AND id <> $2 AND meaning IS NOT NULL AND TRIM(meaning) <> ''
+      ORDER BY sort_order ASC LIMIT 12`,
+    [item.module_id, item.id]
+  );
+  const avoid = sib.rows.map((r) => `- ${r.pattern}: ${r.meaning}`).join('\n') || '(tidak ada)';
+
+  const userContent = `Pola grammar target: ${item.pattern}
+Fungsi yang BENAR dari pola ini: ${item.meaning}
+
+Fungsi pola lain di bab yang sama (JANGAN tulis ulang salah satu dari ini):
+${avoid}
+
+Tulis 3 pengecoh untuk soal pilihan ganda "Apa fungsi ${item.pattern}?".
+
+Aturan:
+- Tiap pengecoh adalah fungsi yang SALAH untuk pola target, tapi masuk akal
+  sebagai kekeliruan pemula — bukan fungsi yang benar, dan bukan fungsi pola
+  lain yang didaftarkan di atas.
+- Bahasa Indonesia, gaya dan panjang MIRIP dengan fungsi yang benar di atas
+  (satu kalimat). Opsi yang panjangnya timpang langsung ketahuan jawabannya.
+- JANGAN menyebut atau menuliskan pola targetnya sendiri (${item.pattern})
+  maupun huruf Jepangnya di dalam pengecoh — itu membocorkan jawaban.
+- Level N5/N4: pakai istilah sederhana (partikel, kata kerja, kata benda,
+  kata sifat, bentuk sopan), bukan istilah linguistik lanjutan.
+- Balas TEPAT 3 baris, satu pengecoh per baris, tanpa nomor dan tanpa tanda
+  hubung di depan.`;
+
+  const text = await callClaude({
+    system: DISTRACTOR_SYSTEM,
+    userContent,
+    maxTokens: 500,
+    model: ANTHROPIC_GEN_MODEL,
+  });
+  if (text == null) return res.status(502).json({ error: 'ai_upstream' });
+
+  // Bersihkan penomoran/bullet yang kadang tetap muncul, buang baris yang
+  // menyalin fungsi benar, dan buang yang membocorkan pola targetnya.
+  const correct = (item.meaning || '').trim().toLowerCase();
+  const distractors = String(text)
+    .split(/\r?\n/)
+    .map((l) => l.replace(/^\s*(?:\d+[.)]|[-*•])\s*/, '').trim())
+    .filter(Boolean)
+    .filter((l) => l.toLowerCase() !== correct)
+    .filter((l) => !l.includes(item.pattern))
+    .slice(0, 3);
+
+  if (distractors.length < 2) {
+    return res.status(502).json({ error: 'ai_unusable', detail: 'AI tidak menghasilkan cukup pengecoh yang layak. Coba lagi.' });
+  }
+  // TIDAK disimpan di sini — admin review dulu lalu tekan Simpan.
+  res.json({ distractors });
+}));
+
+// Baca pengecoh tersimpan untuk satu pola (dipakai modal admin saat dibuka).
+router.get('/module-grammar/:id/distractors', asyncHandler(async (req, res) => {
+  const r = await query(
+    `SELECT pattern, meaning, recognition_distractors FROM module_grammar WHERE id = $1`,
+    [req.params.id]
+  );
+  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({
+    pattern: r.rows[0].pattern,
+    meaning: r.rows[0].meaning,
+    value: r.rows[0].recognition_distractors || '',
+  });
+}));
+
+// Simpan (atau kosongkan) pengecoh kurasi. Kosong = kembali ke penurunan lama.
+router.put('/module-grammar/:id/distractors', asyncHandler(async (req, res) => {
+  const list = Array.isArray(req.body?.distractors)
+    ? req.body.distractors
+    : String(req.body?.value || '').split(/\r?\n/);
+  const clean = list.map((l) => String(l || '').trim()).filter(Boolean).slice(0, 6);
+  const r = await query(
+    `UPDATE module_grammar SET recognition_distractors = $2, updated_at = NOW()
+      WHERE id = $1 RETURNING id, recognition_distractors`,
+    [req.params.id, clean.length ? clean.join('\n') : null]
+  );
+  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ ok: true, distractors: clean });
+}));
+
 // Bank pola grammar milik MODUL sebuah pelajaran — dipakai dropdown "Pola
 // grammar yang diuji" di form soal kuis (migration 122). Terpisah dari
 // /module-grammar di atas yang menuntut moduleId: editor kuis cuma memegang
