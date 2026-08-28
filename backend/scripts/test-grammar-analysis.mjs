@@ -94,6 +94,8 @@ const recommendationsRouter = (await import(path.join(SRC, 'routes/recommendatio
 const contentRouter = (await import(path.join(SRC, 'routes/content.js'))).default;
 const progressRouter = (await import(path.join(SRC, 'routes/progress.js'))).default;
 const { computeConceptMastery } = await import(path.join(SRC, 'grammar-mastery.js'));
+const { formDistractors, buildRecognitionDrill, buildControlledDrill, deriveHighlight } =
+  await import(path.join(SRC, 'grammar-drills.js'));
 
 let pass = 0, fail = 0;
 function check(name, cond, detail) {
@@ -123,12 +125,24 @@ async function seed() {
   const gids = [];
   const patterns = ['〜は〜です', '〜じゃありません', '〜ですか'];
   for (let i = 0; i < patterns.length; i++) {
+    // Arti per pola sengaja BERBEDA: pengecoh Step 1 diambil dari arti pola
+    // lain di bab yang sama, jadi pola bermakna identik memang tidak dapat
+    // soal Step 1 (di-skip, bukan dipaksakan).
     const g = await query(
       `INSERT INTO module_grammar (module_id,lesson_id,pattern,meaning,example,sort_order)
-       VALUES ($1,$2,$3,'arti','例文',$4) RETURNING id`, [moduleId, bunpouLessonId, patterns[i], i]);
+       VALUES ($1,$2,$3,$5,'例文',$4) RETURNING id`,
+      [moduleId, bunpouLessonId, patterns[i], i, `arti ${i}`]);
     gids.push(g.rows[0].id);
     await query(`INSERT INTO lesson_grammar_task_items (lesson_id,grammar_id,sort_order,instruction,required_count)
                  VALUES ($1,$2,$3,'buat kalimat tentang dirimu',1)`, [taskLessonId, g.rows[0].id, i]);
+    // Bahan Step 1 & 2 — highlight = potongan kalimat yang memuat polanya.
+    const ex = [
+      ['わたしは がくせいです。', 'がくせい', 'Saya seorang siswa.'],
+      ['わたしは せんせいじゃありません。', 'じゃありません', 'Saya bukan guru.'],
+      ['あなたは がくせいです。', 'です', 'Kamu seorang siswa.'],
+    ][i];
+    await query(`INSERT INTO grammar_examples (grammar_id,japanese,highlight,indonesian,sort_order)
+                 VALUES ($1,$2,$3,$4,0)`, [g.rows[0].id, ex[0], ex[1], ex[2]]);
   }
   const u = await query(`INSERT INTO users (google_id,email,full_name) VALUES ('g1','s@example.com','Rina Sari') RETURNING id`);
   const userId = u.rows[0].id;
@@ -257,6 +271,110 @@ if (MODE === 'eval') {
   check('tetap 200; field baru null/kosong, tidak error', r.status === 200 && r.json.correct === true
     && r.json.grammarScore === null && r.json.severity === null
     && Array.isArray(r.json.errorTypes) && r.json.errorTypes.length === 0, r.json);
+
+  // ── Step 1 & 2: latihan terarah, dinilai server tanpa AI ──────────────
+  console.log('\nStep 1/2 — pengecoh diturunkan sesuai BENTUK jawabannya');
+  check('kata benda → tempel partikel (pola がくせい/がくせいの/がくせいを)',
+    formDistractors('がくせい').rule === 'particle-append'
+    && formDistractors('がくせい').distractors.includes('がくせいの'), formDistractors('がくせい'));
+  check('bentuk te → pengecohnya bentuk lain, bukan partikel (読んで → 読んだ)',
+    formDistractors('読んで').rule === 'te' && formDistractors('読んで').distractors.includes('読んだ'),
+    formDistractors('読んで'));
+  check('んで dicek sebelum partikel で (tidak jadi "読んは")',
+    !formDistractors('読んで').distractors.some((d) => d.startsWith('読んは')), formDistractors('読んで'));
+  check('bentuk masu → keluarga masu', formDistractors('たべます').rule === 'masu'
+    && formDistractors('たべます').distractors.includes('たべました'), formDistractors('たべます'));
+  check('bentuk nai → keluarga nai', formDistractors('行かない').rule === 'nai'
+    && formDistractors('行かない').distractors.includes('行かなかった'), formDistractors('行かない'));
+  check('partikel di akhir → tukar partikel', formDistractors('がっこうで').rule === 'particle-swap',
+    formDistractors('がっこうで'));
+
+  console.log('\nStep 2 — contoh lama tanpa highlight (backfill 031) tetap dapat soal');
+  check('pola 〜てください → potongan literalnya ketemu di kalimat',
+    deriveHighlight('〜てください', 'ここに 名前を かいてください。') === 'てください',
+    deriveHighlight('〜てください', 'ここに 名前を かいてください。'));
+  check('pola 〜は〜です → ambil potongan terpanjang yang muncul',
+    deriveHighlight('〜は〜です', 'わたしは がくせいです。') === 'です',
+    deriveHighlight('〜は〜です', 'わたしは がくせいです。'));
+  check('potongan yang tidak muncul di kalimat tidak dipaksakan',
+    deriveHighlight('〜てから', 'わたしは がくせいです。') === null,
+    deriveHighlight('〜てから', 'わたしは がくせいです。'));
+  const legacy = { id: ctx.gids[0], pattern: '〜じゃありません', meaning: 'arti 0',
+    examples: [{ japanese: 'わたしは せんせいじゃありません。', highlight: null, indonesian: null }] };
+  const legacyDrill = buildControlledDrill(legacy, [legacy]);
+  check('contoh tanpa highlight tetap menghasilkan Step 2',
+    legacyDrill && legacyDrill.sentence.includes('＿＿＿'), legacyDrill);
+
+  console.log('\nStep 1/2 — soal diturunkan dari materi yang sudah ada');
+  const gres = await realFetch(`${base}/grammar-task/lesson/${ctx.taskLessonId}/drills`,
+    { headers: { authorization: 'Bearer ' + token } });
+  const gdata = await gres.json();
+  check('200 + satu entri per pola', gres.status === 200 && gdata.drills.length === 3, gdata);
+  const d1 = gdata.drills[0];
+  check('Step 1 menanyakan fungsi pola', d1.step1 && d1.step1.prompt.includes(d1.pattern), d1.step1);
+  check('Step 1 pengecohnya arti pola LAIN di bab yang sama',
+    d1.step1.options.length === 3 && d1.step1.options.includes('arti 1')
+    && d1.step1.options.includes('arti 2'), d1.step1.options);
+  check('Step 2 mengosongkan bagian berpola',
+    d1.step2 && d1.step2.sentence.includes('＿＿＿') && !d1.step2.sentence.includes('がくせいです'), d1.step2);
+  check('KUNCI JAWABAN tidak ikut dikirim ke browser',
+    !('correctIndex' in d1.step1) && !('correctIndex' in d1.step2), Object.keys(d1.step1));
+
+  const gres2 = await realFetch(`${base}/grammar-task/lesson/${ctx.taskLessonId}/drills`,
+    { headers: { authorization: 'Bearer ' + token } });
+  const gdata2 = await gres2.json();
+  check('urutan opsi deterministik (soal yang dinilai = soal yang dikirim)',
+    JSON.stringify(gdata2.drills[0]) === JSON.stringify(d1), gdata2.drills[0]);
+
+  console.log('\nStep 1/2 — penilaian di server + pencatatan percobaan');
+  // Kunci jawaban benar diturunkan ulang di sini, sama seperti yang server lakukan.
+  const items = [
+    { id: ctx.gids[0], pattern: '〜は〜です', meaning: 'arti 0',
+      examples: [{ japanese: 'わたしは がくせいです。', highlight: 'がくせい', indonesian: 'Saya seorang siswa.' }] },
+    { id: ctx.gids[1], pattern: '〜じゃありません', meaning: 'arti 1',
+      examples: [{ japanese: 'わたしは せんせいじゃありません。', highlight: 'じゃありません', indonesian: 'Saya bukan guru.' }] },
+    { id: ctx.gids[2], pattern: '〜ですか', meaning: 'arti 2',
+      examples: [{ japanese: 'あなたは がくせいです。', highlight: 'です', indonesian: 'Kamu seorang siswa.' }] },
+  ];
+  const s1 = buildRecognitionDrill(items[0], items);
+  const s2 = buildControlledDrill(items[0], items);
+
+  const answer = async (grammarId, step, optionIndex) => {
+    const res = await realFetch(base + '/grammar-task/drill-answer', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
+      body: JSON.stringify({ lessonId: ctx.taskLessonId, grammarId, step, optionIndex }),
+    });
+    return { status: res.status, json: await res.json() };
+  };
+
+  let a = await answer(ctx.gids[0], 1, s1.correctIndex);
+  check('Step 1 jawaban benar → passed', a.status === 200 && a.json.passed === true, a.json);
+  a = await answer(ctx.gids[0], 1, (s1.correctIndex + 1) % s1.options.length);
+  check('Step 1 jawaban salah → passed false + kunci dibuka setelah dinilai',
+    a.json.passed === false && a.json.correctIndex === s1.correctIndex, a.json);
+
+  a = await answer(ctx.gids[0], 2, s2.correctIndex);
+  check('Step 2 jawaban benar → passed', a.json.passed === true, a.json);
+  a = await answer(ctx.gids[0], 2, (s2.correctIndex + 1) % s2.options.length);
+  check('Step 2 jawaban salah → passed false', a.json.passed === false, a.json);
+
+  const drillRows = (await query(
+    `SELECT source, passed, primary_error FROM grammar_attempts
+      WHERE grammar_id=$1 AND source <> 'production' ORDER BY created_at`, [ctx.gids[0]])).rows;
+  check('4 percobaan tercatat dengan source recognition/controlled',
+    drillRows.length === 4 && drillRows[0].source === 'recognition' && drillRows[2].source === 'controlled',
+    drillRows.map((x) => x.source));
+  check('Step 1 salah → primary_error meaning_mismatch',
+    drillRows[1].primary_error === 'meaning_mismatch', drillRows[1]);
+  check('Step 2 salah → error terklasifikasi dari ATURAN pengecoh, tanpa AI',
+    drillRows[3].primary_error === 'wrong_particle', drillRows[3]);
+  check('jawaban benar tidak menuliskan error', drillRows[0].primary_error === null, drillRows[0]);
+
+  a = await answer(ctx.gids[0], 2, 99);
+  check('indeks opsi di luar jangkauan ditolak', a.status === 400, a);
+  a = await answer(ctx.gids[0], 3, 0);
+  check('step selain 1/2 ditolak', a.status === 400, a);
 
   server.close();
 }
