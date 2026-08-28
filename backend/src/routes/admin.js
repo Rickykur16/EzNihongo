@@ -3262,11 +3262,24 @@ router.get('/user-access', asyncHandler(async (req, res) => {
     [user.id]
   );
   const courses = await query(
-    `SELECT id, slug, title, level, is_published, is_available
+    `SELECT id, slug, title, level, is_published, is_available, is_free
        FROM courses WHERE is_published = TRUE
       ORDER BY sort_order ASC, created_at ASC`
   );
-  res.json({ user, enrollments: enrolled.rows, courses: courses.rows });
+  // Order history for this user — surfaced alongside enrollments so an
+  // admin looking at "why does this user have access" (or "do they have a
+  // pending order I should review") doesn't have to cross-reference the
+  // Pesanan tab separately. Same effective-status computation as the
+  // orders list/detail endpoints.
+  const orders = await query(
+    `SELECT o.id, o.order_number, o.course_title_snapshot, o.amount_idr,
+            ${ORDER_EFFECTIVE_STATUS_SQL} AS status, o.created_at, o.expires_at, o.approved_at
+       FROM orders o
+      WHERE o.user_id = $1
+      ORDER BY o.created_at DESC`,
+    [user.id]
+  );
+  res.json({ user, enrollments: enrolled.rows, courses: courses.rows, orders: orders.rows });
 }));
 
 // POST /api/admin/user-access/grant — { email, courseSlug, expiresAt? } →
