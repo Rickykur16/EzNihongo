@@ -244,6 +244,43 @@ CREATE TABLE IF NOT EXISTS grammar_eval_cache (
   last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Satu baris per kalimat siswa yang dinilai di Tugas Bunpou (migration 122).
+-- Sebelum ini verdict AI dibuang setelah dirender — grammar_eval_cache di atas
+-- global/anonim (hemat biaya AI, bukan sinyal belajar). Tabel inilah yang bikin
+-- sistem bisa menjawab "pola grammar MANA yang siswa ini belum kuasai".
+-- Klasifikasi error bersifat penjelas; model mastery digerakkan oleh `passed`.
+CREATE TABLE IF NOT EXISTS grammar_attempts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  grammar_id UUID NOT NULL REFERENCES module_grammar(id) ON DELETE CASCADE,
+  lesson_id UUID REFERENCES lessons(id) ON DELETE SET NULL,
+  source TEXT NOT NULL DEFAULT 'production'
+    CHECK (source IN ('production', 'controlled', 'recognition')),
+  input_mode TEXT NOT NULL DEFAULT 'text'
+    CHECK (input_mode IN ('speech', 'text')),
+  sentence TEXT NOT NULL,
+  correct BOOLEAN NOT NULL,
+  uses_pattern BOOLEAN NOT NULL,
+  passed BOOLEAN NOT NULL,
+  grammar_score SMALLINT CHECK (grammar_score IS NULL OR (grammar_score BETWEEN 0 AND 100)),
+  primary_error TEXT,
+  error_types TEXT[] NOT NULL DEFAULT '{}',
+  severity TEXT,
+  concept_signal TEXT,
+  feedback TEXT,
+  correction TEXT,
+  eval_source TEXT NOT NULL DEFAULT 'ai' CHECK (eval_source IN ('ai', 'cache')),
+  model TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_grammar_attempts_user_grammar
+  ON grammar_attempts (user_id, grammar_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_grammar_attempts_user_created
+  ON grammar_attempts (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_grammar_attempts_lesson
+  ON grammar_attempts (lesson_id);
+
 -- Editable app settings (e.g. the AI grammar-eval prompt template)
 CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY,
@@ -316,6 +353,10 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
   question TEXT NOT NULL,
   question_type TEXT NOT NULL DEFAULT 'multiple_choice' CHECK (question_type IN ('multiple_choice','fill_blank')),
   question_category TEXT NOT NULL DEFAULT 'vocabulary' CHECK (question_category IN ('vocabulary','grammar','listening','reading','custom')),
+  -- Tautan opsional ke pola grammar di bank modul (migration 122). NULL =
+  -- soal tidak diatribusikan ke satu konsep (semua soal Bab 1-20 yang sudah
+  -- ada). Terisi = soal ikut mengisi mastery per-konsep, dinilai deterministik.
+  grammar_id UUID REFERENCES module_grammar(id) ON DELETE SET NULL,
   section_number INT NOT NULL DEFAULT 1,
   section_label TEXT NOT NULL DEFAULT 'Section 1',
   section_instruction TEXT,
@@ -331,6 +372,8 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
 
 CREATE INDEX IF NOT EXISTS idx_quiz_questions_lesson ON quiz_questions(lesson_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_quiz_questions_lesson_category ON quiz_questions(lesson_id, question_category, section_number, sort_order);
+CREATE INDEX IF NOT EXISTS idx_quiz_questions_grammar
+  ON quiz_questions(grammar_id) WHERE grammar_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS quiz_options (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -352,7 +395,11 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
   attempt_token UUID DEFAULT gen_random_uuid(),
   sampled_question_ids JSONB,
   started_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  -- NULL = attempt sedang berjalan, belum disubmit. Penanda ini yang dipakai
+  -- pengaman anti double-submit di /quiz-attempt (WHERE completed_at IS NULL)
+  -- dan oleh lessonAttemptStatus (ORDER BY ... NULLS LAST). Sempat salah
+  -- dideklarasikan NOT NULL DEFAULT NOW() — lihat migration 123.
+  completed_at TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user ON quiz_attempts(user_id);
@@ -369,6 +416,9 @@ CREATE TABLE IF NOT EXISTS quiz_question_results (
   lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
   question_id UUID NOT NULL,
   question_category TEXT NOT NULL,
+  -- Snapshot konsep grammar soal (migration 122), pola sama dgn kategori di
+  -- atas: analisis historis tidak berubah kalau admin menautkan ulang soalnya.
+  grammar_id UUID,
   is_correct BOOLEAN NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -376,6 +426,8 @@ CREATE TABLE IF NOT EXISTS quiz_question_results (
 CREATE INDEX IF NOT EXISTS idx_qqr_user_cat_created
   ON quiz_question_results (user_id, question_category, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_qqr_attempt ON quiz_question_results (attempt_id);
+CREATE INDEX IF NOT EXISTS idx_qqr_user_grammar
+  ON quiz_question_results (user_id, grammar_id, created_at DESC) WHERE grammar_id IS NOT NULL;
 
 -- ===== USER DATA =====
 

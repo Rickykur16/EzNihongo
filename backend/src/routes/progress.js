@@ -332,7 +332,8 @@ router.post('/progress/lesson/:lessonId/quiz-attempt', requireLessonCourseAccess
   const cooldownHours = lessonRow.rows[0]?.cooldown_hours ?? 12;
 
   const rows = await query(
-    `SELECT q.id AS question_id, q.question_category, o.id AS option_id, o.is_correct
+    `SELECT q.id AS question_id, q.question_category, q.grammar_id,
+            o.id AS option_id, o.is_correct
        FROM quiz_questions q
        LEFT JOIN quiz_options o ON o.question_id = q.id
       WHERE q.id = ANY($1::uuid[])`,
@@ -342,9 +343,14 @@ router.post('/progress/lesson/:lessonId/quiz-attempt', requireLessonCourseAccess
   const optionLookup = new Map();
   const questionIds = new Set();
   const categoryByQuestion = new Map();
+  // Konsep grammar per soal (migration 122) — NULL untuk semua soal yang belum
+  // ditautkan admin, yang berarti soal itu tetap dihitung di kategori 'grammar'
+  // seperti sebelumnya tapi tidak masuk analisis per-pola.
+  const grammarByQuestion = new Map();
   for (const r of rows.rows) {
     questionIds.add(r.question_id);
     categoryByQuestion.set(r.question_id, r.question_category || 'vocabulary');
+    grammarByQuestion.set(r.question_id, r.grammar_id || null);
     if (r.option_id) {
       optionLookup.set(r.option_id, {
         questionId: r.question_id,
@@ -402,13 +408,15 @@ router.post('/progress/lesson/:lessonId/quiz-attempt', requireLessonCourseAccess
       for (const qid of validSampledIds) {
         params.push(
           attempt.id, req.user.id, lessonId, qid,
-          categoryByQuestion.get(qid) || 'vocabulary', !!correctByQuestion[qid]
+          categoryByQuestion.get(qid) || 'vocabulary',
+          grammarByQuestion.get(qid) || null,
+          !!correctByQuestion[qid]
         );
-        valueSql.push(`($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++})`);
+        valueSql.push(`($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}::uuid, $${i++})`);
       }
       await query(
         `INSERT INTO quiz_question_results
-           (attempt_id, user_id, lesson_id, question_id, question_category, is_correct)
+           (attempt_id, user_id, lesson_id, question_id, question_category, grammar_id, is_correct)
          VALUES ${valueSql.join(', ')}`,
         params
       );

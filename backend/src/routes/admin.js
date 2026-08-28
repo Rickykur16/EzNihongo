@@ -1222,6 +1222,23 @@ router.get('/module-grammar', asyncHandler(async (req, res) => {
   res.json({ grammar: rows.rows });
 }));
 
+// Bank pola grammar milik MODUL sebuah pelajaran — dipakai dropdown "Pola
+// grammar yang diuji" di form soal kuis (migration 122). Terpisah dari
+// /module-grammar di atas yang menuntut moduleId: editor kuis cuma memegang
+// lessonId, dan menyalurkan moduleId ke seluruh alur Kelola Kuis hanya demi
+// satu dropdown tidak sepadan.
+router.get('/lessons/:lessonId/grammar-bank', asyncHandler(async (req, res) => {
+  const rows = await query(
+    `SELECT g.id, g.pattern, g.meaning
+       FROM module_grammar g
+       JOIN lessons l ON l.module_id = g.module_id
+      WHERE l.id = $1
+      ORDER BY g.sort_order ASC, g.created_at ASC`,
+    [req.params.lessonId]
+  );
+  res.json({ grammar: rows.rows });
+}));
+
 // ===== AI QUIZ GENERATOR (Claude) =====
 // Generate draft soal kuis pakai Claude, grounded ke kosakata + grammar modul
 // pelajaran. Endpoint ini TIDAK menyimpan ke DB — balikin draft buat admin
@@ -2913,7 +2930,7 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
   const {
     lessonId, question, questionType, questionCategory, sectionNumber,
     sectionLabel, sectionInstruction, audioScript, passage, imageUrl,
-    correctAnswer, explanation, sortOrder, options,
+    correctAnswer, explanation, sortOrder, options, grammarId,
   } = req.body || {};
   if (!lessonId || !question) return res.status(400).json({ error: 'lessonId and question required' });
 
@@ -2928,9 +2945,9 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
       `INSERT INTO quiz_questions (
          lesson_id, question, question_type, question_category,
          section_number, section_label, section_instruction, audio_script, passage, image_url,
-         correct_answer, explanation, sort_order
+         correct_answer, explanation, sort_order, grammar_id
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
       [
         lessonId,
         question,
@@ -2945,6 +2962,9 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
         correctAnswer || null,
         explanation || null,
         sortOrder || 0,
+        // Tautan opsional ke pola grammar (migration 122) — bikin soal ini ikut
+        // mengisi analisis per-konsep tanpa biaya AI (penilaiannya deterministik).
+        (grammarId && String(grammarId).trim()) || null,
       ]
     );
     const row = qRes.rows[0];
@@ -2969,9 +2989,13 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
   const {
     question, questionType, questionCategory, sectionNumber,
     sectionLabel, sectionInstruction, audioScript, passage, imageUrl,
-    correctAnswer, explanation, sortOrder, options,
+    correctAnswer, explanation, sortOrder, options, grammarId,
   } = req.body || {};
   const category = questionCategory ? normalizeQuizCategory(questionCategory) : null;
+  // Presence-checked, bukan COALESCE: admin harus bisa MELEPAS tautan pola
+  // (kirim grammarId: null) — dengan COALESCE itu mustahil.
+  const hasGrammarId = Object.prototype.hasOwnProperty.call(req.body || {}, 'grammarId');
+  const grammarIdNorm = hasGrammarId ? ((grammarId && String(grammarId).trim()) || null) : null;
   const sectionNo = sectionNumber == null ? null : normalizeQuizSectionNumber(sectionNumber);
   const hasSectionInstruction = Object.prototype.hasOwnProperty.call(req.body || {}, 'sectionInstruction');
   const hasAudioScript = Object.prototype.hasOwnProperty.call(req.body || {}, 'audioScript');
@@ -2996,7 +3020,8 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
          section_instruction = CASE WHEN $11::boolean THEN $10 ELSE section_instruction END,
          audio_script = CASE WHEN $13::boolean THEN $12 ELSE audio_script END,
          image_url = CASE WHEN $15::boolean THEN $14 ELSE image_url END,
-         passage = CASE WHEN $17::boolean THEN $16 ELSE passage END
+         passage = CASE WHEN $17::boolean THEN $16 ELSE passage END,
+         grammar_id = CASE WHEN $19::boolean THEN $18::uuid ELSE grammar_id END
         WHERE id = $1 RETURNING *`,
       [
         req.params.id,
@@ -3016,6 +3041,8 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
         hasImageUrl,
         passageNorm,
         hasPassage,
+        grammarIdNorm,
+        hasGrammarId,
       ]
     );
     if (result.rows.length === 0) return null;
