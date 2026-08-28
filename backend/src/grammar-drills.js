@@ -38,6 +38,21 @@ function seededOrder(items, seed) {
 
 const PARTICLES = ['は', 'が', 'を', 'に', 'で', 'へ', 'と', 'の'];
 
+// Kalimat pertama dari catatan arti pola, untuk dipakai sebagai opsi Step 1.
+// Catatan di `module_grammar.meaning` ditulis untuk dibaca sebagai materi
+// (sering 2-3 kalimat), bukan sebagai pilihan jawaban; dipakai mentah-mentah
+// panjangnya jadi timpang antar opsi.
+export function shortMeaning(raw) {
+  const t = String(raw || '').trim();
+  if (!t) return '';
+  const m = t.match(/^[\s\S]*?[.。](\s|$)/);
+  let out = m ? m[0].trim() : t;
+  // Kalimat pertama yang terlalu pendek (mis. "Menyatakan 'juga'.") tidak
+  // cukup membedakan — pakai teks utuhnya.
+  if (out.length < 25 && t.length > out.length) out = t;
+  return out.length > 140 ? out.slice(0, 137).trim() + '…' : out;
+}
+
 // Aturan perubahan bentuk untuk pengecoh Step 2, dicoba BERURUTAN.
 // Tiap aturan: kalau `suffix` cocok di akhir jawaban benar, buang suffix itu
 // lalu tempelkan tiap `alts` sebagai pengecoh.
@@ -118,12 +133,16 @@ function buildOptions(answer, distractors, seed) {
 // pengecohnya = arti pola LAIN di bab yang sama (bukan arti karangan), jadi
 // siswa harus benar-benar membedakan fungsi antar pola yang baru dipelajari.
 export function buildRecognitionDrill(item, siblings) {
-  const meaning = String(item.meaning || '').trim();
+  const meaning = shortMeaning(item.meaning);
   if (!meaning) return null;
 
+  // Dipendekkan ke kalimat pertama supaya keempat opsi sebanding panjangnya.
+  // `meaning` di bank ditulis sebagai catatan ajar (bisa 2-3 kalimat), dan
+  // opsi yang jauh lebih panjang dari yang lain langsung menjadi petunjuk
+  // mana yang benar tanpa siswa perlu memahami apa pun.
   const pool = (siblings || [])
     .filter((s) => s.id !== item.id)
-    .map((s) => String(s.meaning || '').trim())
+    .map((s) => shortMeaning(s.meaning))
     .filter((m) => m && m !== meaning);
 
   // Di bawah 2 pengecoh soalnya jadi tebakan 50:50 — lebih baik tidak ada.

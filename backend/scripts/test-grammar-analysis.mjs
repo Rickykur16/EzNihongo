@@ -94,7 +94,7 @@ const recommendationsRouter = (await import(path.join(SRC, 'routes/recommendatio
 const contentRouter = (await import(path.join(SRC, 'routes/content.js'))).default;
 const progressRouter = (await import(path.join(SRC, 'routes/progress.js'))).default;
 const { computeConceptMastery } = await import(path.join(SRC, 'grammar-mastery.js'));
-const { formDistractors, buildRecognitionDrill, buildControlledDrill, deriveHighlight } =
+const { formDistractors, buildRecognitionDrill, buildControlledDrill, deriveHighlight, shortMeaning } =
   await import(path.join(SRC, 'grammar-drills.js'));
 
 let pass = 0, fail = 0;
@@ -333,6 +333,18 @@ if (MODE === 'eval') {
   const gdata2 = await gres2.json();
   check('urutan opsi deterministik (soal yang dinilai = soal yang dikirim)',
     JSON.stringify(gdata2.drills[0]) === JSON.stringify(d1), gdata2.drills[0]);
+
+  console.log('\nStep 1 — opsi dipendekkan supaya panjangnya sebanding');
+  const notaPanjang = "Partikel の di sini menyatakan kepunyaan: KB 2 milik KB 1. Pola: \"B milik A\".";
+  check('catatan ajar multi-kalimat dipotong ke kalimat pertama',
+    shortMeaning(notaPanjang) === 'Partikel の di sini menyatakan kepunyaan: KB 2 milik KB 1.',
+    shortMeaning(notaPanjang));
+  check('kalimat pertama yang terlalu pendek tidak dipakai sendirian',
+    shortMeaning("Menyatakan \"juga\". Partikel も menggantikan posisi は.").length > 25,
+    shortMeaning("Menyatakan \"juga\". Partikel も menggantikan posisi は."));
+  check('arti satu kalimat dibiarkan apa adanya',
+    shortMeaning('Menyatakan kepemilikan antara dua kata benda.') === 'Menyatakan kepemilikan antara dua kata benda.');
+  check('teks tanpa titik tetap aman', shortMeaning('arti tanpa titik').length > 0);
 
   console.log('\nStep 1 — tugas berisi 2 pola tetap dapat soal (pengecoh se-bab)');
   const g2res = await realFetch(`${base}/grammar-task/lesson/${ctx.taskLesson2Id}/drills`,

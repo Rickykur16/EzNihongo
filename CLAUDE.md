@@ -415,6 +415,14 @@
       produksi Bab 3-20 yang sudah live tidak bisa terkunci oleh bug frontend.
       Setelah `GT_MAX_WRONG` (2) kali salah, jawaban dibuka dan tahap
       berikutnya dilepas — siswa tidak boleh mentok permanen di pilihan ganda.
+    - **Arti pola DISEMBUNYIKAN sampai Step 1 dijawab** (`gtSetMeaningHidden`).
+      Jawaban Step 1 = `module_grammar.meaning`, dan teks itu juga tercetak di
+      kepala kartu tugas — rilis pertama menampilkan keduanya sekaligus,
+      sehingga soalnya cuma mencocokkan teks yang ada tepat di atasnya. Kalau
+      endpoint drills gagal (`gtUnlockAllSteps`), arti tetap tampil seperti
+      semula. Opsi juga dipendekkan ke kalimat pertama (`shortMeaning`) supaya
+      panjang keempatnya sebanding — opsi yang jauh lebih panjang jadi petunjuk
+      jawaban tanpa siswa perlu paham apa pun.
     - **Pengecoh Step 1 diambil se-BAB, bukan se-tugas** (`deriveDrills(items,
       pool)` + `loadModulePool()`). Tiap bab dipecah jadi dua Tugas Bunpou dan
       yang kedua sering cuma berisi 2 pola (mis. Bab 13 tugas 2 =
