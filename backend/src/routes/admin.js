@@ -3281,6 +3281,12 @@ router.post('/user-access/grant', asyncHandler(async (req, res) => {
   if (expiresAtRaw && Number.isNaN(expiresAt?.getTime())) {
     return res.status(400).json({ error: 'invalid_expires_at' });
   }
+  // A past expiresAt would create a grant that's already lapsed the instant
+  // it's saved (hasCourseAccess checks expires_at > NOW()) — silently
+  // useless rather than an error, so reject it instead of accepting it.
+  if (expiresAt && expiresAt.getTime() <= Date.now()) {
+    return res.status(400).json({ error: 'expires_at_in_past' });
+  }
   if (!email) return res.status(400).json({ error: 'email_required' });
   if (!courseSlug) return res.status(400).json({ error: 'course_required' });
 
@@ -3361,6 +3367,19 @@ function orderEffectiveStatus(order) {
 // GET /api/admin/orders?status=&q=&limit=&offset= — queue listing.
 // status: exact DB status to filter on, or omitted/'' for all.
 // q: matches order_number or user email.
+// 'expired' is never a stored status (see orderEffectiveStatus above) — a
+// row can sit at status='pending_payment'/'awaiting_review' in the DB long
+// after its expires_at has passed. Filtering on the raw `status` column
+// would make `?status=expired` match zero rows forever, so both the list
+// and the count query filter on this same CASE expression instead —
+// mirrors orderEffectiveStatus() exactly, just computed in SQL.
+const ORDER_EFFECTIVE_STATUS_SQL = `
+  CASE
+    WHEN o.status IN ('approved', 'cancelled') THEN o.status
+    WHEN o.expires_at < NOW() THEN 'expired'
+    ELSE o.status
+  END`;
+
 router.get('/orders', asyncHandler(async (req, res) => {
   const status = String(req.query.status || '').trim();
   const q = String(req.query.q || '').trim();
@@ -3372,7 +3391,7 @@ router.get('/orders', asyncHandler(async (req, res) => {
             (SELECT COUNT(*)::int FROM order_payments p WHERE p.order_id = o.id) AS payment_attempts
        FROM orders o
        JOIN users u ON u.id = o.user_id
-      WHERE ($1 = '' OR o.status = $1)
+      WHERE ($1 = '' OR ${ORDER_EFFECTIVE_STATUS_SQL} = $1)
         AND ($2 = '' OR o.order_number ILIKE '%' || $2 || '%' OR u.email ILIKE '%' || $2 || '%')
       ORDER BY o.created_at DESC
       LIMIT $3 OFFSET $4`,
@@ -3381,7 +3400,7 @@ router.get('/orders', asyncHandler(async (req, res) => {
   const totalRes = await query(
     `SELECT COUNT(*)::int AS n
        FROM orders o JOIN users u ON u.id = o.user_id
-      WHERE ($1 = '' OR o.status = $1)
+      WHERE ($1 = '' OR ${ORDER_EFFECTIVE_STATUS_SQL} = $1)
         AND ($2 = '' OR o.order_number ILIKE '%' || $2 || '%' OR u.email ILIKE '%' || $2 || '%')`,
     [status, q]
   );

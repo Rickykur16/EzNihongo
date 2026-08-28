@@ -2,7 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import multer from 'multer';
 import rateLimit from 'express-rate-limit';
-import { query, withTransaction } from '../db.js';
+import { query, withTransaction, withAdvisoryLock } from '../db.js';
 import { requireAuth, asyncHandler } from '../middleware.js';
 import { isAdminEmail } from '../auth.js';
 import { hasCourseAccess } from '../entitlements.js';
@@ -125,43 +125,47 @@ router.post('/orders', asyncHandler(async (req, res) => {
     return res.status(409).json({ error: 'already_enrolled' });
   }
 
-  const existing = await query(
-    `SELECT * FROM orders
-      WHERE user_id = $1 AND course_id = $2
-        AND status = ANY($3::text[]) AND expires_at > NOW()
-      ORDER BY created_at DESC LIMIT 1`,
-    [req.user.id, course.id, ACTIONABLE_STATUSES]
-  );
-  if (existing.rows.length > 0) {
-    const bankAccounts = await getBankAccounts();
-    return res.json({
-      order: serializeOrder({ ...existing.rows[0], course_slug: course.slug }),
-      bankAccounts, alreadyOpen: true,
-    });
-  }
+  // Critical section — locked per (user, course). Without this, two
+  // concurrent requests (double-click, duplicate tab) can both pass the
+  // "no existing open order" check before either INSERT commits, creating
+  // two open orders for the same purchase. Same pattern as progress.js's
+  // quiz/start advisory lock.
+  const { order, alreadyOpen } = await withAdvisoryLock(`order:${req.user.id}:${course.id}`, async (client) => {
+    const runQuery = (text, params) => client.query(text, params);
 
-  let order;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const ins = await query(
-        `INSERT INTO orders
-           (order_number, user_id, course_id, course_title_snapshot, amount_idr, expires_at)
-         VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '3 days')
-         RETURNING *`,
-        [generateOrderNumber(), req.user.id, course.id, course.title, course.price_idr]
-      );
-      order = ins.rows[0];
-      break;
-    } catch (err) {
-      if (err.code === '23505' && attempt < 2) continue; // order_number collision — retry
-      throw err;
+    const existing = await runQuery(
+      `SELECT * FROM orders
+        WHERE user_id = $1 AND course_id = $2
+          AND status = ANY($3::text[]) AND expires_at > NOW()
+        ORDER BY created_at DESC LIMIT 1`,
+      [req.user.id, course.id, ACTIONABLE_STATUSES]
+    );
+    if (existing.rows.length > 0) {
+      return { order: existing.rows[0], alreadyOpen: true };
     }
-  }
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const ins = await runQuery(
+          `INSERT INTO orders
+             (order_number, user_id, course_id, course_title_snapshot, amount_idr, expires_at)
+           VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '3 days')
+           RETURNING *`,
+          [generateOrderNumber(), req.user.id, course.id, course.title, course.price_idr]
+        );
+        return { order: ins.rows[0], alreadyOpen: false };
+      } catch (err) {
+        if (err.code === '23505' && attempt < 2) continue; // order_number collision — retry
+        throw err;
+      }
+    }
+    throw new Error('order_number_generation_failed');
+  });
 
   const bankAccounts = await getBankAccounts();
-  res.status(201).json({
+  res.status(alreadyOpen ? 200 : 201).json({
     order: serializeOrder({ ...order, course_slug: course.slug }),
-    bankAccounts, alreadyOpen: false,
+    bankAccounts, alreadyOpen,
   });
 }));
 
