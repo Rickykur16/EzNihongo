@@ -344,6 +344,25 @@ if (MODE === 'eval') {
   check('urutan opsi deterministik (soal yang dinilai = soal yang dikirim)',
     JSON.stringify(gdata2.drills[0]) === JSON.stringify(d1), gdata2.drills[0]);
 
+  console.log('\nKondisi jalan buntu: ada Step 1, TIDAK ada Step 2');
+  // Contoh yang kalimatnya tidak memuat potongan literal polanya sama sekali →
+  // buildControlledDrill tidak bisa membuat soal bentuk. Ini kondisi nyata yang
+  // dulu membuat Step 3 (tugas bicara) terkunci selamanya di frontend, karena
+  // lulus Step 1 hanya "membuka" Step 2 yang disembunyikan.
+  await query(`DELETE FROM grammar_examples WHERE grammar_id = $1`, [ctx.gids[2]]);
+  await query(`INSERT INTO grammar_examples (grammar_id,japanese,highlight,indonesian,sort_order)
+               VALUES ($1,'ぜんぜんちがうぶん',NULL,'kalimat tanpa polanya',0)`, [ctx.gids[2]]);
+  const dead = await realFetch(`${base}/grammar-task/lesson/${ctx.taskLessonId}/drills`,
+    { headers: { authorization: 'Bearer ' + token } });
+  const deadDrill = (await dead.json()).drills.find((d) => d.grammarId === ctx.gids[2]);
+  check('Step 1 ada tapi Step 2 null — kondisi buntu itu memang bisa terjadi',
+    deadDrill && deadDrill.step1 && deadDrill.step2 === null,
+    { step1: !!deadDrill?.step1, step2: deadDrill?.step2 });
+  // Pulihkan contoh aslinya untuk blok tes berikutnya.
+  await query(`DELETE FROM grammar_examples WHERE grammar_id = $1`, [ctx.gids[2]]);
+  await query(`INSERT INTO grammar_examples (grammar_id,japanese,highlight,indonesian,sort_order)
+               VALUES ($1,'あなたは がくせいです。','です','Kamu seorang siswa.',0)`, [ctx.gids[2]]);
+
   console.log('\nGenerate pengecoh MASSAL (satu tombol, bisa diulang)');
   // Semua pola bab ini dikosongkan dulu, lalu diisi lewat endpoint massal.
   await query(`UPDATE module_grammar SET recognition_distractors = NULL`);
