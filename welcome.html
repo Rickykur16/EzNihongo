@@ -2485,6 +2485,61 @@
     .vocab-level-chip { font-size: 12px; padding: 2px 8px; }
   }
 
+  /* ── TIGA TAHAP TUGAS BUNPOU ───────────────────────────────────── */
+  /* Step 1 pengenalan fungsi → Step 2 latihan bentuk → Step 3 produksi.
+     Dua tahap pertama pilihan ganda, dinilai server tanpa AI. */
+  .gt-step { margin-top: 14px; padding-top: 13px; border-top: 1px dashed var(--du-border); }
+  .gt-step:first-child { margin-top: 10px; }
+  .gt-step__head { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+  .gt-step__num {
+    flex: none; width: 21px; height: 21px; border-radius: 50%;
+    background: var(--du-border); color: var(--du-ink-2);
+    font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center;
+  }
+  .gt-step--passed .gt-step__num { background: #2E7D52; color: #fff; }
+  .gt-step__title { font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--du-ink-3); }
+  /* Terkunci: masih terbaca (siswa tahu apa yang menanti) tapi tidak bisa diklik. */
+  .gt-step--locked { opacity: .45; pointer-events: none; }
+  .gt-step__lockmsg { font-size: 12px; color: var(--du-ink-3); font-style: italic; }
+  .gt-step__q { font-size: 14.5px; color: var(--du-ink); margin-bottom: 9px; line-height: 1.6; }
+  .gt-step__sentence {
+    font-family: 'Noto Sans JP', sans-serif; font-size: 16px; color: var(--du-ink);
+    background: var(--du-surface); border: 1px solid var(--du-border);
+    border-radius: 9px; padding: 11px 13px; margin-bottom: 4px; line-height: 1.7;
+  }
+  .gt-step__id { font-size: 12px; color: var(--du-ink-3); margin-bottom: 9px; }
+  .gt-opts { display: flex; flex-direction: column; gap: 7px; }
+  .gt-opt {
+    display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+    border: 1.5px solid var(--du-border); background: var(--du-surface-2);
+    border-radius: 9px; padding: 10px 12px; font-size: 14.5px; color: var(--du-ink);
+    cursor: pointer; font-family: inherit;
+  }
+  .gt-opt:hover:not(:disabled) { border-color: var(--du-ink-3); }
+  .gt-opt__key {
+    flex: none; width: 20px; height: 20px; border-radius: 5px; background: var(--du-border);
+    font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+  }
+  .gt-opt--correct { border-color: #2E7D52; background: #EAF6EF; }
+  .gt-opt--wrong { border-color: #E5484D; background: #FDECEC; }
+  .gt-opt:disabled { cursor: default; }
+  .gt-step__verdict { margin-top: 9px; font-size: 13px; line-height: 1.55; }
+  .gt-step__verdict--ok { color: #2E7D52; font-weight: 700; }
+  .gt-step__verdict--no { color: #B4232A; }
+  .gt-retry {
+    margin-top: 8px; border: 1px solid var(--du-border); background: transparent;
+    border-radius: 8px; padding: 6px 13px; font-size: 12.5px; font-weight: 700;
+    color: var(--du-ink-2); cursor: pointer;
+  }
+  /* Kartu hasil produksi (Step 4) — rincian per aspek, bukan satu paragraf. */
+  .gt-check { display: flex; align-items: flex-start; gap: 7px; font-size: 13.5px; margin-bottom: 3px; }
+  .gt-check__mark { flex: none; font-weight: 900; }
+  .gt-check--ok .gt-check__mark { color: #2E7D52; }
+  .gt-check--no .gt-check__mark { color: #E5484D; }
+  .gt-field { margin-top: 9px; }
+  .gt-field__label { font-size: 11px; font-weight: 800; letter-spacing: .07em; color: var(--du-ink-4); text-transform: uppercase; }
+  .gt-field__val { font-size: 14.5px; color: var(--du-ink); }
+
   /* ── ANALISIS BUNPOU (lapisan tipis di atas kartu grammar) ─────── */
   /* Sengaja BUKAN dashboard: satu baris ringkas + panel yang bisa dibuka.
      Halaman ini tetap halaman materi, bukan halaman statistik. */
@@ -7653,6 +7708,10 @@ async function loadBunpouAnalysis(lesson) {
   const host = document.getElementById('bunpou-analysis');
   if (!host || !lesson || !lesson.apiId) return;
   if (typeof window.ezApi !== 'function') return;
+  // Disimpan supaya refresh setelah tiap kalimat dinilai tidak perlu argumen,
+  // dan supaya panel tahu pelajaran mana yang sedang dibuka (lihat baPanelHtml:
+  // tombol "Latihan sekarang" tidak ditampilkan kalau targetnya halaman ini).
+  window.__baLesson = lesson;
   let data;
   try {
     const r = await window.ezApi('/grammar/mastery/lesson/' + encodeURIComponent(lesson.apiId));
@@ -7664,9 +7723,22 @@ async function loadBunpouAnalysis(lesson) {
   const concepts = Array.isArray(data.concepts) ? data.concepts : [];
   if (concepts.length === 0) return;
 
+  // Panel yang sedang terbuka jangan menutup sendiri saat strip di-refresh.
+  const wasOpen = !!(document.getElementById('ba-panel') && !document.getElementById('ba-panel').hasAttribute('hidden'));
   window.__baData = data;
   baPaintDots(concepts);
   host.innerHTML = baStripHtml(data);
+  if (wasOpen) baTogglePanel();
+}
+
+// Refresh setelah kalimat dinilai — di halaman Tugas Bunpou inilah percobaan
+// dibuat, jadi angkanya harus ikut bergerak. Di-debounce supaya menilai
+// beberapa kalimat beruntun tidak memicu request bertubi-tubi.
+let _baRefreshTimer = null;
+function scheduleBunpouAnalysisRefresh() {
+  if (!document.getElementById('bunpou-analysis') || !window.__baLesson) return;
+  clearTimeout(_baRefreshTimer);
+  _baRefreshTimer = setTimeout(() => loadBunpouAnalysis(window.__baLesson), 1500);
 }
 
 // Titik status kecil di sebelah tiap pola. Pola yang belum dianalisis
@@ -7729,11 +7801,15 @@ function baPanelHtml(data) {
   }).join('');
 
   const f = data.focus;
+  // Kalau tugas latihannya justru halaman yang sedang dibuka (siswa memang lagi
+  // di Tugas Bunpou-nya), tombolnya cuma akan me-reload halaman yang sama.
+  const here = window.__baLesson && window.__baLesson.apiId;
+  const showPractice = f && f.practice && f.practice.lessonId !== here;
   const focusHtml = (f && f.message) ? `
     <div class="ba-focus">
       <div class="ba-focus__title">⚠ Fokus berikutnya</div>
       <div>${escapeHtml(f.message)}</div>
-      ${f.practice ? `<button type="button" class="ba-practice" onclick="baPractice('${escapeHtml(f.practice.moduleSlug)}','${escapeHtml(f.practice.lessonSlug)}')">Latihan sekarang</button>` : ''}
+      ${showPractice ? `<button type="button" class="ba-practice" onclick="baPractice('${escapeHtml(f.practice.moduleSlug)}','${escapeHtml(f.practice.lessonSlug)}')">Latihan sekarang</button>` : ''}
     </div>` : '';
 
   return rows + focusHtml;
@@ -8106,7 +8182,10 @@ function gtTotalRequired(items) {
 }
 
 // Bangun HTML kartu tugas (dipakai full-page render & popup modal).
-function gtCardsHtml(items, sttOn) {
+// showDots: titik status penguasaan per pola. Hanya untuk render full-page —
+// popup tugas tidak memuat strip analisis, jadi titiknya akan abu-abu terus
+// di sana dan cuma jadi noise.
+function gtCardsHtml(items, sttOn, showDots) {
   const slotHtml = (pi, si, count) => {
     const key = `${pi}-${si}`;
     const slotLabel = (count > 1 && si > 0) ? ` data-slot-label="Kalimat ${si + 1}"` : '';
@@ -8161,20 +8240,175 @@ function gtCardsHtml(items, sttOn) {
     let slots = '';
     for (let si = 0; si < count; si++) slots += slotHtml(pi, si, count);
     return `
-    <article class="gt-card">
+    <article class="gt-card" data-grammar-id="${escapeHtml(it.id || '')}">
       <div class="gt-card__chip">文法 · Pola ${pi + 1}</div>
-      <div class="gt-card__pattern" lang="ja">${pattern}</div>
+      <div class="gt-card__pattern" lang="ja">${showDots ? `<span class="ba-dot" data-ba-dot="${escapeHtml(it.id || '')}" style="background:var(--du-border);" title="Belum dianalisis"></span>` : ''}${pattern}</div>
       ${meaning ? `<div class="gt-card__meaning">${meaning}</div>` : ''}
       ${example ? `<div class="gt-card__example">
         <button type="button" class="gt-card__example-audio" aria-label="Dengar contoh" onclick="gtPlayExample(${pi}, this)">🔊</button>
         <span lang="ja">${example}</span>
       </div>` : ''}
-      <div class="gt-callout"><strong>Tugas:</strong> ${instruction}</div>
-      <p class="gt-help">${hint}</p>
-      ${slots}
+      <div class="gt-steps">
+        <section class="gt-step" data-step="1" id="gt-step1-${pi}">
+          <div class="gt-step__head"><span class="gt-step__num">1</span><span class="gt-step__title">Pahami fungsinya</span></div>
+          <div class="gt-step__body"><span class="gt-step__lockmsg">Memuat…</span></div>
+        </section>
+        <section class="gt-step gt-step--locked" data-step="2" id="gt-step2-${pi}">
+          <div class="gt-step__head"><span class="gt-step__num">2</span><span class="gt-step__title">Latihan bentuk</span></div>
+          <div class="gt-step__body"><span class="gt-step__lockmsg">Selesaikan langkah 1 dulu.</span></div>
+        </section>
+        <section class="gt-step gt-step--locked" data-step="3" id="gt-step3-${pi}">
+          <div class="gt-step__head"><span class="gt-step__num">3</span><span class="gt-step__title">Buat kalimatmu sendiri</span></div>
+          <div class="gt-callout"><strong>Tugas:</strong> ${instruction}</div>
+          <p class="gt-help">${hint}</p>
+          ${slots}
+        </section>
+      </div>
     </article>`;
   }).join('');
 }
+
+// ── Step 1 & 2: latihan terarah sebelum produksi ──────────────────────────
+// Soalnya diturunkan server dari materi yang sudah ada (arti pola + contoh
+// kalimat ber-highlight) dan DINILAI DI SERVER — kunci jawaban tidak pernah
+// ada di DOM, jadi tidak bisa diintip. Lihat backend/src/grammar-drills.js.
+//
+// Kalau sebuah pola tidak punya soal turunan (mis. bab lama yang contohnya
+// belum ber-highlight), tahapnya dilewati dan tahap berikutnya langsung
+// terbuka — tugas produksi tidak boleh ikut terkunci gara-gara materi
+// pendukungnya belum lengkap.
+const GT_OPT_KEYS = ['A', 'B', 'C', 'D'];
+// Setelah sekian kali salah, jawabannya dibuka dan tahap berikutnya dilepas —
+// supaya siswa tidak pernah mentok dan tidak bisa lanjut sama sekali.
+const GT_MAX_WRONG = 2;
+
+async function gtLoadDrills(lessonId) {
+  if (typeof window.ezApi !== 'function') { gtUnlockAllSteps(); return; }
+  let data;
+  try {
+    const r = await window.ezApi('/grammar-task/lesson/' + encodeURIComponent(lessonId) + '/drills');
+    if (!r.ok) { gtUnlockAllSteps(); return; }
+    data = await r.json();
+  } catch { gtUnlockAllSteps(); return; }
+  if (window.__gtLessonId !== lessonId) return; // sudah pindah pelajaran
+  const byGrammar = {};
+  for (const d of (data.drills || [])) byGrammar[d.grammarId] = d;
+  window.__gtDrills = byGrammar;
+  window.__gtWrong = {};
+  (window.__gtData || []).forEach((it, pi) => {
+    const d = byGrammar[it.id] || {};
+    gtRenderStep(pi, 1, d.step1);
+    gtRenderStep(pi, 2, d.step2);
+    // Tahap yang tidak punya soal langsung dianggap lewat.
+    if (!d.step1) gtOpenStep(pi, 2);
+    if (!d.step1 && !d.step2) gtOpenStep(pi, 3);
+  });
+}
+
+// Endpoint tidak tersedia (deploy belum serentak / offline) → jangan kunci
+// siswa dari tugas produksi yang sudah lama berjalan.
+function gtUnlockAllSteps() {
+  (window.__gtData || []).forEach((_it, pi) => {
+    for (const st of [1, 2]) {
+      const el = _gtScope().querySelector(`#gt-step${st}-${pi}`);
+      if (el) el.style.display = 'none';
+    }
+    gtOpenStep(pi, 3);
+  });
+}
+
+function gtRenderStep(pi, step, drill) {
+  const el = _gtScope().querySelector(`#gt-step${step}-${pi}`);
+  if (!el) return;
+  const body = el.querySelector('.gt-step__body');
+  if (!drill) { el.style.display = 'none'; return; }
+  const ctx = step === 1
+    ? `${drill.example ? `<div class="gt-step__sentence" lang="ja">${escapeHtml(drill.example.japanese || '')}</div>
+        ${drill.example.indonesian ? `<div class="gt-step__id">${escapeHtml(drill.example.indonesian)}</div>` : ''}` : ''}
+       <div class="gt-step__q">${escapeHtml(drill.prompt || '')}</div>`
+    : `<div class="gt-step__q">${escapeHtml(drill.prompt || '')}</div>
+       <div class="gt-step__sentence" lang="ja">${escapeHtml(drill.sentence || '')}</div>
+       ${drill.indonesian ? `<div class="gt-step__id">${escapeHtml(drill.indonesian)}</div>` : ''}`;
+  const opts = (drill.options || []).map((o, oi) => `
+    <button type="button" class="gt-opt" id="gt-opt-${step}-${pi}-${oi}" onclick="gtAnswerDrill(${pi}, ${step}, ${oi})">
+      <span class="gt-opt__key">${GT_OPT_KEYS[oi] || (oi + 1)}</span>
+      <span lang="${step === 1 ? 'id' : 'ja'}">${escapeHtml(o)}</span>
+    </button>`).join('');
+  body.innerHTML = `${ctx}<div class="gt-opts">${opts}</div><div class="gt-step__verdict" id="gt-verdict-${step}-${pi}"></div>`;
+}
+
+function gtOpenStep(pi, step) {
+  const el = _gtScope().querySelector(`#gt-step${step}-${pi}`);
+  if (!el) return;
+  el.classList.remove('gt-step--locked');
+  const msg = el.querySelector('.gt-step__lockmsg');
+  if (msg && step !== 3) msg.remove();
+}
+
+function gtMarkStepPassed(pi, step) {
+  const el = _gtScope().querySelector(`#gt-step${step}-${pi}`);
+  if (el) el.classList.add('gt-step--passed');
+}
+
+window.gtAnswerDrill = async (pi, step, optionIndex) => {
+  const it = (window.__gtData || [])[pi];
+  if (!it) return;
+  const scope = _gtScope();
+  const verdict = scope.querySelector(`#gt-verdict-${step}-${pi}`);
+  const buttons = [...scope.querySelectorAll(`[id^="gt-opt-${step}-${pi}-"]`)];
+  buttons.forEach((b) => { b.disabled = true; });
+  if (verdict) verdict.textContent = 'Memeriksa…';
+
+  let d;
+  try {
+    const r = await window.ezApi('/grammar-task/drill-answer', {
+      method: 'POST',
+      body: JSON.stringify({ lessonId: window.__gtLessonId, grammarId: it.id, step, optionIndex }),
+    });
+    if (!r.ok) throw new Error('bad');
+    d = await r.json();
+  } catch {
+    if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--no">Gagal memeriksa, coba lagi.</span>';
+    buttons.forEach((b) => { b.disabled = false; });
+    return;
+  }
+
+  const chosen = buttons[optionIndex];
+  if (d.passed) {
+    if (chosen) chosen.classList.add('gt-opt--correct');
+    if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--ok">✓ Benar</span>';
+    gtMarkStepPassed(pi, step);
+    gtOpenStep(pi, step + 1);
+  } else {
+    if (chosen) chosen.classList.add('gt-opt--wrong');
+    const key = `${pi}-${step}`;
+    window.__gtWrong = window.__gtWrong || {};
+    window.__gtWrong[key] = (window.__gtWrong[key] || 0) + 1;
+    const giveUp = window.__gtWrong[key] >= GT_MAX_WRONG;
+    if (giveUp) {
+      // Buka jawabannya dan lepaskan tahap berikutnya — siswa tidak boleh
+      // mentok permanen di pilihan ganda.
+      const right = buttons[d.correctIndex];
+      if (right) right.classList.add('gt-opt--correct');
+      if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--no">Belum tepat. Jawaban yang benar ditandai hijau — pelajari lalu lanjut.</span>';
+      gtOpenStep(pi, step + 1);
+    } else {
+      if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--no">Belum tepat.</span>'
+        + `<button type="button" class="gt-retry" onclick="gtRetryDrill(${pi}, ${step})">Coba lagi</button>`;
+    }
+  }
+  scheduleBunpouAnalysisRefresh();
+};
+
+window.gtRetryDrill = (pi, step) => {
+  const scope = _gtScope();
+  scope.querySelectorAll(`[id^="gt-opt-${step}-${pi}-"]`).forEach((b) => {
+    b.disabled = false;
+    b.classList.remove('gt-opt--wrong', 'gt-opt--correct');
+  });
+  const verdict = scope.querySelector(`#gt-verdict-${step}-${pi}`);
+  if (verdict) verdict.innerHTML = '';
+};
 
 function renderGrammarTaskLesson(course, module, lesson, nav) {
   const { prev, next, isDone } = nav;
@@ -8196,7 +8430,8 @@ function renderGrammarTaskLesson(course, module, lesson, nav) {
     <div class="deck-hero" style="margin-bottom:18px;">
       <div><div class="dh-eyebrow">作文 · BUAT KALIMAT</div><div class="dh-body">${escapeHtml(intro)}</div></div>
     </div>
-    ${gtCardsHtml(items, sttOn)}
+    <div id="bunpou-analysis"></div>
+    ${gtCardsHtml(items, sttOn, true)}
     <div id="gt-progress-hint"></div>
     <div class="lesson-footer">
       <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
@@ -8204,6 +8439,10 @@ function renderGrammarTaskLesson(course, module, lesson, nav) {
     </div>
   `;
   gtUpdateComplete();
+  gtLoadDrills(lesson.apiId);
+  // Di sinilah percobaan dibuat, jadi analisisnya paling berguna di sini:
+  // dimuat sekarang, lalu di-refresh tiap kalimat selesai dinilai.
+  loadBunpouAnalysis(lesson);
 }
 
 // ── Popup tugas grammar (muncul otomatis setelah pelajaran pemicu selesai,
@@ -8242,6 +8481,9 @@ function openGrammarTaskPopup(course, taskMod, taskLesson, onDone) {
       </div>
     </div>`;
   overlay.addEventListener('click', (ev) => { if (ev.target === overlay) gtPopupDismiss(); });
+  // Popup memakai gtCardsHtml yang sama, jadi tahap 1-2 harus ikut dimuat —
+  // kalau tidak, Step 3 di popup terkunci selamanya di "Memuat…".
+  setTimeout(() => gtLoadDrills(taskLesson.apiId), 0);
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
   setTutorHidden(true); // popup tugas = sedang dinilai, sembunyikan Maneko-chan
@@ -8552,6 +8794,92 @@ async function _gtFinishRecord(rec) {
   }
 }
 
+// ── Step 4 — umpan balik produksi ────────────────────────────────────────
+// Dirinci per aspek (grammar / pemakaian pola / makna) alih-alih satu paragraf,
+// supaya siswa tahu BAGIAN MANA yang meleset. Semua datanya sudah dikirim
+// endpoint evaluate; "Masalah" diambil dari primaryError yang terklasifikasi.
+const GT_ERROR_LABEL = {
+  wrong_particle: 'Partikel yang digunakan tidak sesuai.',
+  wrong_conjugation: 'Perubahan bentuk katanya belum tepat.',
+  wrong_word_order: 'Urutan katanya belum tepat.',
+  missing_element: 'Ada bagian kalimat yang belum lengkap.',
+  extra_element: 'Ada kata berlebih yang membuat kalimatnya janggal.',
+  wrong_grammar_pattern: 'Pola yang diminta belum terpakai di kalimatmu.',
+  meaning_mismatch: 'Kalimatnya belum sesuai maksud tugasnya.',
+  unnatural_but_grammatical: 'Kalimatnya benar, tapi terdengar belum alami.',
+  vocabulary_issue: 'Pilihan katanya belum pas.',
+  transcription_issue: 'Suaramu sepertinya kurang tertangkap jelas.',
+  other: 'Masih ada yang perlu diperbaiki.',
+};
+
+function gtCheckRow(ok, label) {
+  return `<div class="gt-check gt-check--${ok ? 'ok' : 'no'}">
+    <span class="gt-check__mark" aria-hidden="true">${ok ? '✓' : '✗'}</span><span>${escapeHtml(label)}</span>
+  </div>`;
+}
+
+function gtFeedbackHtml(d, sentence, pi, si) {
+  const ok = d.correct && d.usesPattern;
+  const types = Array.isArray(d.errorTypes) ? d.errorTypes : [];
+  const meaningOk = !types.includes('meaning_mismatch');
+  const checks = gtCheckRow(!!d.correct, 'Grammar benar')
+    + gtCheckRow(!!d.usesPattern, 'Pola digunakan')
+    + gtCheckRow(meaningOk, 'Makna sesuai');
+
+  if (ok) {
+    return `
+      <div class="gt-result-head">
+        <span class="gt-result-icon" aria-hidden="true">✓</span>
+        <span class="gt-result-title">Bagus!</span>
+      </div>
+      <div class="gt-result-body">
+        ${checks}
+        ${d.feedback ? `<div class="gt-field"><div class="gt-field__label">💡 Catatan</div><div>${escapeHtml(d.feedback)}</div></div>` : ''}
+      </div>`;
+  }
+
+  // Prefer kalimat masalah yang terklasifikasi; kalau model tidak mengisinya,
+  // pakai umpan balik bebasnya supaya kolomnya tidak pernah kosong.
+  const problem = (d.primaryError && GT_ERROR_LABEL[d.primaryError]) || d.feedback || GT_ERROR_LABEL.other;
+  const corrAudio = d.correction
+    ? `<button class="dc-audio" type="button" style="position:static;flex:none;" aria-label="Dengar koreksi" onclick="speakJapanese(${JSON.stringify(String(d.correction)).replace(/"/g, '&quot;')}, this)">${AUDIO_SVG}</button>`
+    : '';
+  return `
+    <div class="gt-result-head">
+      <span class="gt-result-icon" aria-hidden="true">!</span>
+      <span class="gt-result-title">Grammar belum tepat</span>
+    </div>
+    <div class="gt-result-body">
+      ${checks}
+      <div class="gt-field"><div class="gt-field__label">Masalah</div><div>${escapeHtml(problem)}</div></div>
+      <div class="gt-field"><div class="gt-field__label">Kalimatmu</div><div class="gt-field__val" lang="ja">${escapeHtml(sentence)}</div></div>
+      ${d.correction ? `<div class="gt-field">
+        <div class="gt-field__label">Seharusnya</div>
+        <div style="display:flex;align-items:center;gap:8px;">${corrAudio}<span class="gt-field__val" lang="ja">${escapeHtml(d.correction)}</span></div>
+      </div>` : ''}
+      ${d.primaryError && GT_ERROR_LABEL[d.primaryError] && d.feedback
+        ? `<div class="gt-field"><div class="gt-field__label">💡 Catatan</div><div>${escapeHtml(d.feedback)}</div></div>` : ''}
+      <button type="button" class="gt-retry" onclick="gtRetryProduction(${pi}, ${si})">Coba lagi</button>
+    </div>`;
+}
+
+// Step 5 — coba lagi: kosongkan slot supaya siswa langsung bisa mengucapkan /
+// mengetik ulang. Percobaan sebelumnya TETAP tercatat (itu sinyal belajarnya);
+// keberhasilan berikutnya yang akan mengangkat masteri-nya, lihat aturan
+// recovery di grammar-mastery.js.
+window.gtRetryProduction = (pi, si) => {
+  const key = `${pi}-${si}`;
+  const scope = _gtScope();
+  const result = scope.querySelector(`#gt-result-${key}`);
+  if (result) result.hidden = true;
+  const ta = scope.querySelector(`#gt-input-${key}`);
+  if (ta) ta.value = '';
+  _gtSetSaid(key, '', scope);
+  const status = scope.querySelector(`#gt-status-${key}`);
+  if (status) status.textContent = _gtSttSupported() ? 'Tahan untuk bicara' : '';
+  if (ta && !ta.hidden) { try { ta.focus(); } catch {} }
+};
+
 // Inti penilaian kalimat (tanpa ketergantungan tombol). Dipanggil otomatis dari
 // _gtFinishRecord (mode bicara, lepas → auto-periksa) maupun dari gtInputKey
 // (Enter di fallback ketik). opts: { fromSpeech, guard, onStart, onDone }.
@@ -8596,20 +8924,9 @@ async function gtRunEval(pi, si, opts) {
     if (opts.guard && !opts.guard()) return;
     const ok = d.correct && d.usesPattern;
     if (window.__gtState) { window.__gtState.passed[key] = !!ok; gtUpdateComplete(); }
-    const corr = d.correction ? `
-      <div style="margin-top:10px;display:flex;align-items:flex-start;gap:8px;">
-        <button class="dc-audio" type="button" style="position:static;flex:none;" aria-label="Dengar koreksi" onclick="speakJapanese(${JSON.stringify(String(d.correction)).replace(/"/g, '&quot;')}, this)">${AUDIO_SVG}</button>
-        <div><div style="font-size:11px;color:var(--du-ink-4);font-weight:700;letter-spacing:.08em;">KOREKSI</div><div lang="ja" style="font-size:15px;">${escapeHtml(d.correction)}</div></div>
-      </div>` : '';
-    showResult(ok ? 'gt-result--success' : 'gt-result--error', `
-      <div class="gt-result-head">
-        <span class="gt-result-icon" aria-hidden="true">${ok ? '✓' : '!'}</span>
-        <span class="gt-result-title">${ok ? 'Bagus!' : 'Belum tepat'}</span>
-      </div>
-      <div class="gt-result-body">
-        ${d.feedback ? escapeHtml(d.feedback) : ''}
-        ${corr}
-      </div>`);
+    scheduleBunpouAnalysisRefresh(); // percobaan baru tercatat → strip ikut bergerak
+    showResult(ok ? 'gt-result--success' : 'gt-result--error',
+      gtFeedbackHtml(d, sentence, pi, si));
   } catch (e) {
     if (opts.guard && !opts.guard()) return;
     showResult('gt-result--error', '<div class="gt-result-body" style="padding-left:0;">Gagal memeriksa, coba lagi.</div>');

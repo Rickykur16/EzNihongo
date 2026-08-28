@@ -4,8 +4,9 @@ import multer from 'multer';
 import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
 import { asyncHandler, requireAuth } from '../middleware.js';
-import { userCanAccessCourse } from '../entitlements.js';
+import { userCanAccessCourse, courseIdForLessonId, requireLessonCourseAccess } from '../entitlements.js';
 import { callClaude, ANTHROPIC_MODEL, anthropicEnabled } from '../anthropic.js';
+import { deriveDrills, publicDrill } from '../grammar-drills.js';
 
 const router = Router();
 
@@ -322,6 +323,124 @@ router.post('/grammar-task/evaluate', requireAuth, evalLimiter, asyncHandler(asy
   });
 
   return res.json(finalResult);
+}));
+
+// ---- Step 1 & 2: latihan terarah (deterministik, tanpa AI) ----
+// Tugas Bunpou punya 3 tahap: (1) pengenalan fungsi pola, (2) latihan bentuk
+// terkontrol, (3) produksi kalimat sendiri + diucapkan (endpoint evaluate di
+// atas). Dua tahap pertama diturunkan dari materi yang sudah ada dan dinilai
+// tanpa AI sama sekali — sesuai prinsip "jangan kirim soal pilihan ganda
+// sederhana ke Claude". Lihat grammar-drills.js.
+
+// Pola + contohnya untuk satu lesson tugas. Dipakai dua-duanya oleh endpoint
+// daftar soal dan endpoint penilaian, supaya soal yang dinilai persis soal
+// yang dikirim (penurunannya deterministik).
+async function loadTaskConcepts(lessonId) {
+  const rows = await query(
+    `SELECT g.id, g.pattern, g.meaning, gi.sort_order
+       FROM lesson_grammar_task_items gi
+       JOIN module_grammar g ON g.id = gi.grammar_id
+      WHERE gi.lesson_id = $1
+      ORDER BY gi.sort_order ASC, g.sort_order ASC`,
+    [lessonId]
+  );
+  if (rows.rows.length === 0) return [];
+  const ids = rows.rows.map((r) => r.id);
+  const ex = await query(
+    `SELECT grammar_id, japanese, highlight, indonesian
+       FROM grammar_examples WHERE grammar_id = ANY($1::uuid[])
+      ORDER BY grammar_id, sort_order ASC, created_at ASC`,
+    [ids]
+  );
+  const byGrammar = new Map();
+  for (const e of ex.rows) {
+    if (!byGrammar.has(e.grammar_id)) byGrammar.set(e.grammar_id, []);
+    byGrammar.get(e.grammar_id).push(e);
+  }
+  return rows.rows.map((r) => ({ ...r, examples: byGrammar.get(r.id) || [] }));
+}
+
+// Kesalahan di soal bentuk BUKAN tebakan model — aturan yang membangun
+// pengecohnya sudah tahu jenis kekeliruan yang diuji. Ini klasifikasi error
+// gratis dan pasti, yang ikut mengisi "fokus berikutnya" di panel analisis.
+const RULE_ERROR = {
+  'particle-swap': 'wrong_particle',
+  'particle-append': 'wrong_particle',
+  masu: 'wrong_conjugation',
+  desu: 'wrong_conjugation',
+  nai: 'wrong_conjugation',
+  tai: 'wrong_conjugation',
+  te: 'wrong_conjugation',
+};
+
+// GET /api/grammar-task/lesson/:lessonId/drills
+// Soal Step 1 & 2 per pola. correctIndex TIDAK ikut dikirim.
+router.get('/grammar-task/lesson/:lessonId/drills', requireAuth,
+  requireLessonCourseAccess('lessonId'), asyncHandler(async (req, res) => {
+    const items = await loadTaskConcepts(req.params.lessonId);
+    const drills = deriveDrills(items);
+    res.json({
+      lessonId: req.params.lessonId,
+      drills: items.map((it) => ({
+        grammarId: it.id,
+        pattern: it.pattern,
+        step1: publicDrill(drills.get(it.id).step1),
+        step2: publicDrill(drills.get(it.id).step2),
+      })),
+    });
+  })
+);
+
+// POST /api/grammar-task/drill-answer
+// body: { lessonId, grammarId, step, optionIndex }
+// Soal diturunkan ULANG di sini lalu jawabannya dinilai — tidak ada kunci
+// jawaban yang pernah dikirim ke browser, dan tidak ada tabel soal.
+router.post('/grammar-task/drill-answer', requireAuth, evalLimiter, asyncHandler(async (req, res) => {
+  const { lessonId, grammarId } = req.body || {};
+  const step = Number((req.body || {}).step);
+  const optionIndex = Number((req.body || {}).optionIndex);
+  if (!lessonId || !grammarId) return res.status(400).json({ error: 'lessonId and grammarId required' });
+  if (step !== 1 && step !== 2) return res.status(400).json({ error: 'step must be 1 or 2' });
+  if (!Number.isInteger(optionIndex) || optionIndex < 0) return res.status(400).json({ error: 'optionIndex required' });
+
+  const courseId = await courseIdForLessonId(lessonId);
+  if (!courseId) return res.status(404).json({ error: 'lesson not found' });
+  if (!(await userCanAccessCourse(req.user, courseId))) {
+    return res.status(403).json({ error: 'not_enrolled' });
+  }
+
+  const items = await loadTaskConcepts(lessonId);
+  const item = items.find((i) => i.id === grammarId);
+  if (!item) return res.status(404).json({ error: 'grammar not in this task' });
+
+  const drill = deriveDrills(items).get(grammarId)[step === 1 ? 'step1' : 'step2'];
+  if (!drill) return res.status(404).json({ error: 'drill_unavailable' });
+  if (optionIndex >= drill.options.length) return res.status(400).json({ error: 'optionIndex out of range' });
+
+  const passed = optionIndex === drill.correctIndex;
+  const primaryError = passed ? null
+    : (step === 1 ? 'meaning_mismatch' : (RULE_ERROR[drill.rule] || 'wrong_grammar_pattern'));
+
+  try {
+    await query(
+      `INSERT INTO grammar_attempts (
+         user_id, grammar_id, lesson_id, source, input_mode, sentence,
+         correct, uses_pattern, passed, primary_error, error_types, eval_source
+       ) VALUES ($1,$2,$3,$4,'text',$5,$6,$6,$6,$7,$8,'ai')`,
+      [
+        req.user.id, grammarId, lessonId,
+        step === 1 ? 'recognition' : 'controlled',
+        String(drill.options[optionIndex] || '').slice(0, 200),
+        passed, primaryError, primaryError ? [primaryError] : [],
+      ]
+    );
+  } catch (err) {
+    // Best-effort, sama seperti recordAttempt: gagal mencatat tidak boleh
+    // membatalkan hasil yang sudah benar di depan siswa.
+    console.error('grammar_attempts (drill) insert failed:', err.message);
+  }
+
+  res.json({ passed, correctIndex: drill.correctIndex });
 }));
 
 // ---- Speech-to-text (ElevenLabs Scribe) ----

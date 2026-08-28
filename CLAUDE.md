@@ -356,7 +356,15 @@
     `/api/recommendations/me` dapat field baru `weakGrammar[]` (+ placeholder
     `{{weakPatterns}}` di prompt coaching; agregasinya dibungkus try/catch
     supaya panel lama tidak mati kalau 122 belum ter-apply).
-  - **UI** (`welcome.html`): strip "Pemahaman Bunpou" di atas kartu grammar
+  - **UI** (`welcome.html`): strip "Pemahaman Bunpou" tampil di DUA tempat —
+    halaman Tata Bahasa (sebelum belajar: di mana posisiku) dan halaman Tugas
+    Bunpou (di sinilah percobaan dibuat, jadi strip di-refresh otomatis
+    ~1.5 detik setelah tiap kalimat dinilai lewat `scheduleBunpouAnalysisRefresh`,
+    dan state panel yang sedang terbuka dipertahankan). Tombol "Latihan
+    sekarang" disembunyikan kalau targetnya justru halaman yang sedang dibuka.
+    Popup tugas TIDAK memuat strip (interstitial singkat), jadi titik status
+    per pola dibuat opt-in lewat argumen ketiga `gtCardsHtml(items, sttOn,
+    showDots)` supaya tidak jadi titik abu-abu tanpa makna di sana. Strip:
     (persen + bar + "N pola dikuasai · N perlu latihan" + tombol "Lihat
     analisis" yang membuka panel per-pola + satu kalimat fokus + tombol
     "Latihan sekarang"), plus titik status halus per kartu
@@ -371,6 +379,54 @@
     partikel, salah konjugasi, elemen hilang, retry berhasil, gagal berulang,
     data belum cukup, AI mati, STT mati, Tugas Bunpou Bab 3-20 tetap jalan,
     kalimat identik dari cache.
+  - **Tugas Bunpou 3 tahap** (permintaan user, menyusul rilis pertama):
+    tiap pola kini punya Step 1 **Recognition** ("Apa fungsi 〜は〜です?",
+    pilihan ganda dari ARTI pola lain di bab yang sama) → Step 2 **Controlled
+    Practice** (kalimat contoh dengan bagian berpolanya dikosongkan, pilihan
+    ganda bentuk) → Step 3 **Production** (buat kalimat sendiri + ucapkan,
+    sistem lama yang tidak diubah). Step 4 = kartu umpan balik dirinci per
+    aspek (Grammar benar / Pola digunakan / Makna sesuai + Masalah / Kalimatmu
+    / Seharusnya + tombol "Coba lagi"); Step 5 = retry & re-test, sudah
+    dilayani model mastery (aturan recovery + `dueReview` + weakness →
+    rekomendasi).
+    - **Tanpa tabel baru dan tanpa AI**: soal Step 1 & 2 DITURUNKAN
+      deterministik dari materi yang sudah ada (`module_grammar.meaning` +
+      `grammar_examples.japanese/.highlight`) di `backend/src/grammar-drills.js`.
+      Karena penurunannya fungsi murni, server **menurunkan ulang** soalnya saat
+      menilai → kunci jawaban tidak pernah dikirim ke browser (`publicDrill()`
+      membuang `correctIndex`) dan tidak ada tabel soal yang perlu disinkronkan.
+      Urutan opsi diacak dengan hash berseed (FNV-1a), bukan `Math.random`,
+      supaya soal yang dinilai persis soal yang dikirim.
+    - **Pengecoh sadar-bentuk** (`FORM_RULES`): keluarga masu / desu / nai /
+      tai / te, lalu tukar-partikel, lalu tempel-partikel. Urutan penting —
+      `んで` (bentuk te 読んで) dicek SEBELUM partikel `で`, kalau tidak
+      pengecohnya jadi "読んは". Untuk kata benda hasilnya persis pola yang
+      diminta user: がくせい / がくせいの / がくせいを.
+    - **Klasifikasi error gratis**: aturan yang membangun pengecoh sudah tahu
+      jenis kekeliruannya, jadi jawaban salah langsung tercatat sebagai
+      `wrong_particle` / `wrong_conjugation` / `meaning_mismatch` tanpa AI —
+      ikut mengisi "fokus berikutnya" di panel analisis.
+    - **Endpoint**: `GET /api/grammar-task/lesson/:lessonId/drills` dan
+      `POST /api/grammar-task/drill-answer`. Percobaan masuk `grammar_attempts`
+      dengan `source='recognition'|'controlled'` (kolomnya memang sudah
+      disiapkan di migration 122) — **tidak ada migrasi baru**.
+    - **Penguncian ada di UI, bukan server**: Step 2 terbuka setelah Step 1
+      lulus, Step 3 setelah Step 2. Server sengaja tetap permisif supaya alur
+      produksi Bab 3-20 yang sudah live tidak bisa terkunci oleh bug frontend.
+      Setelah `GT_MAX_WRONG` (2) kali salah, jawaban dibuka dan tahap
+      berikutnya dilepas — siswa tidak boleh mentok permanen di pilihan ganda.
+    - **Degradasi**: pola tanpa `meaning` (atau tanpa pola pembanding di bab
+      yang sama) tidak dapat Step 1; contoh tanpa kalimat tidak dapat Step 2 —
+      tahapnya disembunyikan dan tahap berikutnya langsung terbuka. Endpoint
+      drills gagal total → `gtUnlockAllSteps()` membuka Step 3 apa adanya.
+    - **Cakupan Bab 3-11**: backfill migration 031 menyalin
+      `module_grammar.example` ke `grammar_examples` TANPA `highlight`, jadi bab
+      lama akan kehilangan Step 2. Ditutup oleh `deriveHighlight()` yang
+      mengambil potongan literal terpanjang dari polanya sendiri (mis.
+      `〜てください` → `てください`, `〜は〜です` → `です`) selama potongan itu
+      benar-benar muncul di kalimatnya. Bab 12-20 tidak terpengaruh — 138/138
+      contohnya sudah punya highlight.
+
   - **Belum dikerjakan (sengaja)**: latihan terkontrol (Level B) sebagai tipe
     soal tersendiri. Yang ada sekarang tulang punggung datanya (`grammar_id` di
     soal kuis + `source='controlled'` di `grammar_attempts`); UI drill-nya
