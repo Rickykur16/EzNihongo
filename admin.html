@@ -6293,7 +6293,18 @@ function courseAccessLabelText(c) {
 
 function userAccessPanelHtml(d, opts) {
   const { courseSelectId, revokeFn, grantFn } = opts;
-  const enrolledIds = new Set((d.enrollments || []).map((e) => e.course_id));
+  // Only rows that are actively blocking access should hide a course from
+  // the grant dropdown — a revoked or expired enrollment row still exists
+  // in d.enrollments, but the admin needs to be able to re-grant it (the
+  // backend already reactivates such a row on grant, see the ON CONFLICT
+  // upsert in POST /admin/user-access/grant). Filtering on the raw row
+  // presence alone made a revoked course silently disappear from "Beri
+  // akses" with no way back in from this panel.
+  const enrolledIds = new Set(
+    (d.enrollments || [])
+      .filter((e) => e.status === 'active' && !(e.expires_at && new Date(e.expires_at).getTime() < Date.now()))
+      .map((e) => e.course_id)
+  );
   const enrRows = (d.enrollments || []).map((e) => `
     <tr>
       <td><strong>${escapeHtml(e.title)}</strong> <span class="pill">${escapeHtml(e.level || '-')}</span></td>
