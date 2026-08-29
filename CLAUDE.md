@@ -115,6 +115,55 @@
       ini terbukti mengganggu, jalan keluarnya kolom "urutan alternatif" yang
       dikurasi admin, pola yang sama dengan 124/125.
 
+      **Bab 3-11 sempat kehilangan Step 2 sama sekali** (user: "cuma 1 dan
+      langsung 3") — akar masalahnya DATA, bukan aturan: contoh Bab 3-11 lahir
+      dari backfill migration 031 (disalin dari `module_grammar.example`)
+      sehingga TANPA spasi antar-bunsetsu DAN tanpa terjemahan. Tanpa spasi
+      kalimatnya tidak bisa dipotong (susun-kalimat mati), tanpa terjemahan
+      pilihan ganda kopula ditahan pagar `hasTranslation`. Perlu diingat:
+      **memecah kalimat Jepang tanpa spasi TIDAK bisa diheuristikkan** —
+      partikel muncul di dalam kata (にほん、はな、がっこう), jadi pemecah
+      berbasis partikel/transisi aksara justru melahirkan kepingan sampah,
+      yaitu masalah "ga masuk akal" yang sama dalam bentuk baru. Jalan
+      keluarnya melengkapi MATERINYA, bukan melonggarkan aturan: tombol
+      **🚀 di modal 🎯 Pengecoh kini dua fase** — [1/2] melengkapi contoh
+      (`POST /admin/module-grammar/prepare-examples-bulk`, batch 10) lalu [2/2]
+      mengisi pengecoh; keduanya bisa diulang dan kolom terisi tidak pernah
+      ditimpa. Urutannya penting: terjemahan yang baru terisi ikut dipakai saat
+      mengarang pengecoh. Sengaja SATU tombol — admin tidak perlu tahu bahwa
+      ada dua jenis kekurangan data. **Jaminan keamanannya**:
+      hasil spasi diterima hanya kalau identik dengan aslinya setelah semua
+      spasi dibuang (`spacingOnly`) — model secara struktural tidak bisa
+      menulis ulang kalimat materi, cuma menyisipkan spasi; kalau ia
+      menyelundupkan perubahan kata, spasinya dibuang dan terjemahannya tetap
+      dipakai.
+
+      **Opsi Step 1 kembar & timpang panjangnya** — dilaporkan user lewat
+      screenshot soal 「〜は〜です」 yang opsinya "juga" (4 huruf) DAN
+      "Menyatakan 「juga」. Partikel も menggantikan posisi は ketika subjek lain
+      memiliki hal yang sama." (130 huruf): arti yang sama ditulis dua versi,
+      dan yang satu menonjol panjangnya. Penyebabnya aturan di `shortMeaning`
+      yang komentarnya justru menyebut contoh itu — kalimat pertama <25 huruf
+      dieskalasi ke TEKS UTUH. Sekarang: eskalasinya cuma menambah SATU kalimat
+      berikutnya, dibatasi `MEANING_MAX` 90 huruf; plus dua saringan baru di
+      `buildRecognitionDrill` yang berlaku untuk pengecoh kurasi MAUPUN
+      cadangan — `sameMeaning` (buang opsi yang saling memuat; dua opsi
+      bermakna sama tidak mungkin dua-duanya benar, jadi bisa dicoret tanpa
+      paham polanya) dan `balancedMeaning` (panjang sebanding jawaban).
+      Kalau saringan menyisakan <2 pengecoh, soalnya disembunyikan seperti
+      biasa. Diaudit terhadap 46 pola Bab 12-20: 0 soal timpang/kembar sebelum
+      maupun sesudah (arti di 081-089 memang seragam), cakupan Step 1 tetap
+      46/46 — perbaikannya menyasar data bab lama.
+
+      **Lantai pada pagar panjang pengecoh** — `slotShaped` semula memakai
+      rasio murni (≤2×+2), yang menghukum jawaban PENDEK: untuk jawaban
+      「です」 (2 huruf) rasio itu membuang 「じゃありません」 (7), justru lawan
+      paling wajar, sehingga pola berjawaban kopula tetap tidak dapat Step 2
+      walau tombol 🚀 sudah ditekan. Batasnya kini `max(2×+2, 12)`. Pilihan
+      sepanjang kalimat tetap tertahan oleh dua pagar LAIN (tumpang tindih
+      dengan jawaban + highlight-sekalimat), bukan oleh panjang — dibuktikan
+      ulang lewat audit 46 pola: 0 anomali, dan cakupan Step 2 naik 45→46/46.
+
       **`drillLimiter` dipisah dari `evalLimiter`** (90/menit vs 20/menit) —
       ditemukan saat menulis tes ini. Soal Step 1/2 dinilai murni DB+CPU tanpa
       AI, tapi dulu ikut memakai jatah endpoint `evaluate`; satu Tugas Bunpou

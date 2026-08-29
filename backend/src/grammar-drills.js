@@ -42,15 +42,44 @@ const PARTICLES = ['は', 'が', 'を', 'に', 'で', 'へ', 'と', 'の'];
 // Catatan di `module_grammar.meaning` ditulis untuk dibaca sebagai materi
 // (sering 2-3 kalimat), bukan sebagai pilihan jawaban; dipakai mentah-mentah
 // panjangnya jadi timpang antar opsi.
+const MEANING_MAX = 90;
 export function shortMeaning(raw) {
   const t = String(raw || '').trim();
   if (!t) return '';
-  const m = t.match(/^[\s\S]*?[.。](\s|$)/);
-  let out = m ? m[0].trim() : t;
-  // Kalimat pertama yang terlalu pendek (mis. "Menyatakan 'juga'.") tidak
-  // cukup membedakan — pakai teks utuhnya.
-  if (out.length < 25 && t.length > out.length) out = t;
-  return out.length > 140 ? out.slice(0, 137).trim() + '…' : out;
+  // Catatan arti ditulis untuk DIBACA sebagai materi (sering 2-3 kalimat).
+  // Dipakai mentah-mentah, panjangnya jadi timpang antar-opsi — dan opsi yang
+  // bentuknya beda sendiri sudah jadi petunjuk sebelum isinya dibaca.
+  const sentences = t.match(/[^.。]+[.。]?/g) || [t];
+  let out = sentences[0].trim();
+  // Kalimat pertama yang sangat pendek ("Menyatakan 'juga'.") kurang
+  // membedakan — ambil SATU kalimat berikutnya, bukan seluruh teksnya.
+  // Versi sebelumnya memakai teks utuh di sini, dan itulah yang melahirkan
+  // opsi 130 huruf berdampingan dengan opsi 10 huruf.
+  if (out.length < 25 && sentences[1]) out = `${out} ${sentences[1].trim()}`.trim();
+  return out.length > MEANING_MAX ? out.slice(0, MEANING_MAX - 1).trim() + '…' : out;
+}
+
+// Dua opsi yang salah satunya memuat yang lain = arti yang sama ditulis dua
+// versi ("juga" vs "Menyatakan 'juga'. Partikel も…"). Dua-duanya tidak mungkin
+// benar sekaligus, jadi siswa bisa mencoretnya tanpa tahu polanya.
+function meaningKey(t) {
+  return String(t || '').toLowerCase().replace(/[\s"'’“”.,;:()。、]/g, '');
+}
+function sameMeaning(a, b) {
+  const x = meaningKey(a);
+  const y = meaningKey(b);
+  if (!x || !y) return false;
+  return x === y || x.includes(y) || y.includes(x);
+}
+
+// Opsi Step 1 harus SEBANDING panjangnya dengan jawabannya, dengan alasan yang
+// sama seperti pengecoh Step 2: yang menonjol bentuknya bisa dipilih (atau
+// dicoret) tanpa membaca isinya.
+function balancedMeaning(answer, cand) {
+  const a = String(answer || '').length;
+  const c = String(cand || '').length;
+  if (!c) return false;
+  return c <= Math.max(a * 3 + 20, 60) && c * 3 + 20 >= a;
 }
 
 // Aturan perubahan bentuk untuk pengecoh Step 2, dicoba BERURUTAN.
@@ -187,10 +216,14 @@ export function slotShaped(answer, cand) {
   if (!a || !c || c === a) return false;
   // Tanda baca di TENGAH = ini kalimat, bukan isi slot.
   if (INNER_PUNCT.test(c)) return false;
-  // Panjang harus sebanding. Opsi yang jauh lebih panjang/pendek dari yang
-  // lain sudah jadi petunjuk sendiri sebelum siswa membaca isinya — dan
-  // pilihan sepanjang kalimat memang tidak mungkin muat di ＿＿＿.
-  if (c.length > a.length * 2 + 2) return false;
+  // Panjang harus sebanding: opsi yang jauh lebih panjang dari yang lain sudah
+  // jadi petunjuk sendiri, dan pilihan sepanjang kalimat memang tidak mungkin
+  // muat di ＿＿＿. Batasnya punya LANTAI, karena aturan rasio saja menghukum
+  // jawaban pendek: untuk jawaban 「です」 (2 huruf) rasio 2×+2 membuang
+  // 「じゃありません」 (7) — justru lawan yang paling wajar. Pilihan sepanjang
+  // kalimat tetap tertahan oleh dua pagar lain (tumpang tindih dengan jawaban,
+  // dan highlight-sekalimat), bukan oleh panjang saja.
+  if (c.length > Math.max(a.length * 2 + 2, 12)) return false;
   if (c.length * 2 + 2 < a.length) return false;
   return true;
 }
@@ -266,8 +299,20 @@ export function buildRecognitionDrill(item, siblings) {
 
   const pool = curated.length >= 2 ? curated : fallback;
 
+  // Buang yang artinya sama dengan jawaban ATAU sama dengan pengecoh lain yang
+  // sudah terpilih, lalu jaga panjangnya sebanding. Kedua saringan berlaku
+  // untuk pengecoh kurasi maupun cadangan: opsi kembar dan opsi yang timpang
+  // panjangnya sama-sama bisa dicoret tanpa memahami polanya.
+  const kept = [];
+  for (const c of pool) {
+    if (sameMeaning(c, meaning)) continue;
+    if (!balancedMeaning(meaning, c)) continue;
+    if (kept.some((k) => sameMeaning(k, c))) continue;
+    kept.push(c);
+  }
+
   // Di bawah 2 pengecoh soalnya jadi tebakan 50:50 — lebih baik tidak ada.
-  const distractors = pickDistractors(pool, meaning, 3, `${item.id}|recog`);
+  const distractors = pickDistractors(kept, meaning, 3, `${item.id}|recog`);
   if (distractors.length < 2) return null;
 
   const ex = (item.examples || [])[0];
