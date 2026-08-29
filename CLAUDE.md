@@ -65,6 +65,41 @@
 
 ## Konvensi penting
 
+      **migration 127 MENIMPA (bukan cuma mengisi) contoh Bab 3-11** —
+      user melaporkan setelah 126: "Step 2 balik seperti semula tapi tidak
+      sesuai dengan susun kata yang saya harapkan". Diagnosis: 126 sengaja
+      pakai `NOT EXISTS` supaya tidak menimpa kurasi admin yang sudah ada —
+      pagar yang wajar sebagai default. Tapi log deploy 126 (run #308)
+      menunjukkan **34 dari 44 pola Bab 3-11 SUDAH punya `grammar_examples`
+      sebelum 126 sempat jalan** (126 cuma mengisi 9 yang kosong). Klaim awal
+      sesi ini ("kemungkinan dari tombol AI PR #225 yang sempat diklik")
+      TERNYATA KELIRU dan tidak pernah diverifikasi — endpoint
+      `prepare-examples-bulk` hanya bisa UPDATE baris yang SUDAH ADA, tidak
+      pernah INSERT baris baru, jadi mustahil jadi sumber untuk bab yang
+      sebelumnya nol baris. Sumber yang jauh lebih masuk akal: tombol
+      **"📝 Contoh"** admin (fitur manual lama, di luar migrasi apa pun) —
+      dan kalimat yang diketik lewat situ TIDAK memakai konvensi spasi
+      antar-bunsetsu (konvensi itu baru mulai dipakai 081-089/126), jadi
+      `buildArrangeDrill` (butuh 3-8 token berspasi) gagal terpicu dan
+      otomatis jatuh ke pilihan ganda — persis yang dikeluhkan user.
+      **migration 127** (`127_grammar_examples_bab3_11_replace.sql`) DELETE
+      lalu INSERT ulang untuk SEMUA 44 pola yang match (bukan cuma yang
+      kosong), pakai `v_pola` JSON BYTE-IDENTIK dengan 126 — tidak menulis
+      kalimat baru, cuma mengganti cara penerapan dari "isi yang kosong"
+      jadi "timpa semua". Alasan tidak coba "deteksi & spasi ulang kalimat
+      admin yang ada": mustahil aman tanpa tahu isi persisnya, dan berisiko
+      mengarang ulang kalimat orang lain — pola replay DELETE+INSERT ini
+      sudah dipakai berulang di repo (065/098/101/104) untuk kondisi
+      serupa (konten sudah live, perlu diganti total). Divalidasi ulang
+      di Postgres sungguhan: simulasi kalimat admin tanpa spasi
+      (`UPDATE grammar_examples SET japanese=... tanpa spasi`) → jalankan
+      127 → kalimat balik berspasi+terjemahan; re-run 127 kedua kali →
+      idempoten (hasil identik); lewat endpoint `GET drills` asli → pola itu
+      sekarang benar tampil `variant: "arrange"`, bukan `"choice"`. Pattern
+      Bab 3 `〜ね・〜よ` tetap tidak ketemu di 127 sama seperti 126 (nama
+      polanya di production kemungkinan beda dari tebakan) — belum
+      terselesaikan, perlu user cek nama persisnya di admin.
+
       **Tombol AI "Lengkapi contoh" DIBANGUN LALU DIHAPUS LAGI, diganti
       migration 126 hand-authored** — respons user atas pendekatan tombol
       🚀 dua-fase: "tombol ai jya gaperlu hapus aja, kamu bua manual". Root
