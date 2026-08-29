@@ -79,6 +79,46 @@
       massal menganggap sebuah pola "belum lengkap" kalau salah satu dari dua
       kolomnya kosong — kolom yang sudah terisi tidak pernah ditimpa.
 
+      **Pagar kelayakan pengecoh Step 2** (`slotShaped` / `plausibleSlotFiller`
+      di `grammar-drills.js`) — dipasang setelah user melaporkan soal
+      「私は学生＿＿＿。」 yang pilihannya 「ペンは赤いです」 dan
+      「田中さんは医者です」. Sumbernya: pengecoh CADANGAN diambil dari
+      `grammar_examples.highlight` pola lain, dan banyak baris highlight
+      (backfill 031 / isian admin / hasil AI) isinya KALIMAT UTUH, bukan
+      potongan pola. Pilihan sepanjang kalimat bukan cuma salah — mustahil
+      dimasukkan ke ＿＿＿, jadi soalnya bisa dijawab tanpa tahu tata bahasanya.
+      Tiga pagar sekarang: (a) contoh yang highlight-nya ≥80% panjang
+      kalimatnya TIDAK dipakai sebagai sumber pengecoh (`isWholeSentenceHighlight`
+      — contohnya sendiri tetap tampil normal sebagai materi); (b) kandidat
+      cadangan wajib `slotShaped` (tanpa tanda baca kalimat, panjang sebanding
+      ≤2×+2 dan ≥ setengahnya) DAN tidak tumpang tindih dengan jawaban
+      (「ペンは赤いです」 memuat 「です」 utuh = petunjuk); (c) keluaran AI di
+      `generateControlledFor` disaring `slotShaped` juga — model kadang membalas
+      kalimat utuh walau diminta potongan. Pagar (b) TIDAK dikenakan pada
+      pengecoh hasil aturan bentuk, yang memang sengaja seakar dengan jawaban
+      (て → ている). Diukur offline terhadap 46 pola Bab 12-20 (parse `v_pola`
+      dari 081-089, `deriveDrills` fungsi murni jadi tidak butuh DB): 13
+      pengecoh anomali → 0, cakupan Step 2 TETAP 44/46. Percobaan pertama
+      memakai pagar "ada は/が padahal jawaban tidak" ternyata terlalu tumpul —
+      ikut membunuh pengecoh lintas-pola yang justru bagus (「より」 vs
+      「のほうが」), jadi diganti pagar panjang + deteksi highlight-sekalimat.
+
+      **Dua bug bentuk yang ikut ketahuan** saat mengukur itu: (1) aturan
+      kopula pada akar berakhiran い melahirkan kata yang TIDAK ADA
+      (「ほしいじゃありませんでした」, 「行きたいでした」) — sekarang 〜たいです
+      punya aturan sendiri (kata sifat-i: 〜たくないです/〜たかったです) yang
+      dicek SEBELUM kopula, dan aturan kopula dilewati kalau akarnya berakhiran
+      い karena ejaan tidak membedakan kata sifat-i (ほしい) dari kata benda
+      (よてい — 「よていじゃありません」 justru benar); (2) jawaban yang isinya
+      PERSIS satu akhiran predikat (pola 〜は〜です yang highlight-nya cuma
+      「です」) dulu tidak dapat pengecoh sama sekali lalu jatuh ke cadangan
+      sampah. Sekarang kopula/masu boleh dilawankan kala & kepositifan, TAPI
+      hanya kalau contohnya punya terjemahan — tanpa terjemahan di layar
+      「私は学生でした。」 sama benarnya dengan kuncinya, jadi soalnya
+      disembunyikan (Step 3 tetap terbuka, lihat `gtAdvance`). Ini kelas
+      masalah yang sama dengan pengecoh-yang-kebetulan-benar di atas, dan
+      jalan keluarnya sama: kurasi admin.
+
   - **Belum dikerjakan (sengaja)**: latihan terkontrol (Level B) sebagai tipe
     soal tersendiri. Yang ada sekarang tulang punggung datanya (`grammar_id` di
     soal kuis + `source='controlled'` di `grammar_attempts`); UI drill-nya

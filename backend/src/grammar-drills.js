@@ -66,6 +66,10 @@ const FORM_RULES = [
   { rule: 'masu', suffix: 'ました', alts: ['ます', 'ません', 'ませんでした'] },
   { rule: 'masu', suffix: 'ません', alts: ['ます', 'ました', 'ませんでした'] },
   { rule: 'masu', suffix: 'ます', alts: ['ました', 'ません', 'ませんでした'] },
+  // 〜たいです (Bab 19) — たi berperilaku sebagai kata sifat-i, jadi harus
+  // dicek SEBELUM kopula. Lewat aturan kopula, 「行きたいです」 melahirkan
+  // 「行きたいでした」 yang bukan bahasa Jepang.
+  { rule: 'tai', suffix: 'たいです', alts: ['たくないです', 'たかったです', 'たくなかったです'] },
   // Kopula.
   { rule: 'desu', suffix: 'じゃありません', alts: ['です', 'でした', 'じゃありませんでした'] },
   { rule: 'desu', suffix: 'でした', alts: ['です', 'じゃありません', 'じゃありませんでした'] },
@@ -87,6 +91,12 @@ const FORM_RULES = [
   { rule: 'te', suffix: 'って', alts: ['った', 'っている'] },
   { rule: 'te', suffix: 'て', alts: ['た', 'ている'] },
 ];
+
+// Aturan yang akhirannya bisa BERDIRI SENDIRI sebagai predikat: jawaban yang
+// isinya persis 「です」/「ます」 masih bisa dilawankan dengan kala & kepositifan
+// (lihat formDistractors). Bentuk te/nai/tai tidak masuk daftar ini — 「た」 atau
+// 「ない」 sebagai satu-satunya isi slot bukan soal yang bisa dijawab.
+const STANDALONE_ENDING = new Set(['masu', 'desu']);
 
 // Frasa tata bahasa yang TIDAK boleh dikonjugasikan. Mengonjugasikannya
 // menghasilkan kata yang tidak ada dalam bahasa Jepang — mis. aturan masu
@@ -120,10 +130,27 @@ export function formDistractors(answer, opts) {
   if (FIXED_PHRASE.test(a)) return { rule: 'none', distractors: [] };
 
   for (const r of FORM_RULES) {
-    if (a.length > r.suffix.length && a.endsWith(r.suffix)) {
+    if (!a.endsWith(r.suffix)) continue;
+    if (a.length > r.suffix.length) {
       const stem = a.slice(0, a.length - r.suffix.length);
+      // Kopula setelah akar berakhiran い tidak bisa dipastikan: 「よていです」
+      // (kata benda) sah jadi 「よていじゃありません」, tapi 「ほしいです」
+      // (kata sifat-i) TIDAK — bentuk benarnya 「ほしくないです」. Ejaannya
+      // tidak membedakan keduanya, jadi daripada menebak dan berisiko
+      // mencetak kata yang tidak ada, aturan ini dilewati saja; pengecohnya
+      // jatuh ke contoh pola lain. (〜たいです sudah ditangani di atas.)
+      if (r.rule === 'desu' && stem.endsWith('い')) continue;
       return { rule: r.rule, distractors: r.alts.map((s) => stem + s) };
     }
+    // Jawabannya PERSIS satu akhiran predikat — mis. pola 〜は〜です yang
+    // highlight-nya cuma 「です」 (「私は学生＿＿＿。」). Alt-nya kata Jepang
+    // yang sah dan bedanya jelas (kala / kepositifan), TAPI tanpa terjemahan
+    // di layar 「私は学生でした。」 sama benarnya dengan kunci jawaban. Jadi
+    // hanya dipakai kalau contohnya punya terjemahan yang menentukan.
+    if (STANDALONE_ENDING.has(r.rule) && opts && opts.hasTranslation) {
+      return { rule: r.rule, distractors: r.alts.slice() };
+    }
+    break; // akhiran cocok tapi tidak layak dikonjugasi — jangan coba aturan lain
   }
 
   // Partikel di akhir → tukar dengan partikel lain (uji pemilihan partikel).
@@ -142,6 +169,56 @@ export function formDistractors(answer, opts) {
     return { rule: 'particle-append', distractors: ['の', 'を', 'に', 'が'].map((p) => a + p) };
   }
   return { rule: 'none', distractors: [] };
+}
+
+// ── Kelayakan pengecoh Step 2 ─────────────────────────────────────────────
+// Pengecoh Step 2 harus bisa MENGGANTIKAN jawaban di dalam ＿＿＿. Sumber
+// cadangannya adalah `highlight` contoh pola LAIN, dan highlight itu tidak
+// selalu potongan pola: banyak baris lama (backfill migration 031, atau isian
+// admin/AI) berisi KALIMAT UTUH. Tanpa pagar ini, 「私は学生＿＿＿。」 disodori
+// pilihan 「ペンは赤いです」 — bukan cuma salah, tapi mustahil dimasukkan ke
+// slot, jadi soalnya bisa dijawab tanpa tahu tata bahasanya sama sekali.
+const INNER_PUNCT = /[。、，．！？!?]/;
+
+// Bentuknya muat di dalam slot? (dipakai juga untuk menyaring keluaran AI)
+export function slotShaped(answer, cand) {
+  const a = cleanHighlight(answer);
+  const c = cleanHighlight(cand);
+  if (!a || !c || c === a) return false;
+  // Tanda baca di TENGAH = ini kalimat, bukan isi slot.
+  if (INNER_PUNCT.test(c)) return false;
+  // Panjang harus sebanding. Opsi yang jauh lebih panjang/pendek dari yang
+  // lain sudah jadi petunjuk sendiri sebelum siswa membaca isinya — dan
+  // pilihan sepanjang kalimat memang tidak mungkin muat di ＿＿＿.
+  if (c.length > a.length * 2 + 2) return false;
+  if (c.length * 2 + 2 < a.length) return false;
+  return true;
+}
+
+// `highlight` yang isinya SELURUH kalimat contohnya bukan potongan pola —
+// itu baris data yang salah isi (backfill lama / isian admin yang menyalin
+// kalimatnya bulat-bulat). Dipakai sebagai pengecoh, hasilnya persis keluhan
+// yang memicu pagar ini: 「私は学生＿＿＿。」 ditawari 「ペンは赤いです」.
+// Contohnya tetap tampil normal sebagai materi; yang ditolak cuma perannya
+// sebagai sumber pengecoh.
+const WHOLE_SENTENCE_RATIO = 0.8;
+export function isWholeSentenceHighlight(example) {
+  const hl = cleanHighlight(example && example.highlight);
+  const jp = cleanHighlight(example && example.japanese);
+  if (!hl || !jp) return false;
+  return hl.length >= jp.length * WHOLE_SENTENCE_RATIO;
+}
+
+// Layak sebagai pengecoh CADANGAN dari pola lain: selain muat di slot, tidak
+// boleh tumpang tindih dengan jawaban. 「ペンは赤いです」 memuat 「です」 utuh —
+// pengecoh yang memuat jawabannya sendiri itu petunjuk, dan sering ikut benar.
+// Aturan ini TIDAK dipakai untuk pengecoh hasil aturan bentuk, yang memang
+// sengaja seakar dengan jawaban (て → ている).
+export function plausibleSlotFiller(answer, cand) {
+  if (!slotShaped(answer, cand)) return false;
+  const a = cleanHighlight(answer);
+  const c = cleanHighlight(cand);
+  return !c.includes(a) && !a.includes(c);
 }
 
 // Ambil `n` pengecoh unik yang tidak sama dengan jawaban benar.
@@ -276,7 +353,10 @@ export function buildControlledDrill(item, siblings) {
   }
 
   // Konteks sesudah jawaban menentukan apakah "tempel partikel" masuk akal.
-  const { rule, distractors: formPool } = formDistractors(answer, { after: slot.after });
+  const { rule, distractors: formPool } = formDistractors(answer, {
+    after: slot.after,
+    hasTranslation: !!slot.indonesian,
+  });
   let distractors = pickDistractors(formPool, answer, 3, `${item.id}|ctrl`);
 
   // Aturan bentuk tidak menghasilkan cukup pilihan → pakai potongan berpola
@@ -284,8 +364,10 @@ export function buildControlledDrill(item, siblings) {
   if (distractors.length < 3) {
     const sibPool = (siblings || [])
       .filter((s) => s.id !== item.id)
-      .flatMap((s) => (s.examples || []).map((e) => cleanHighlight(e.highlight)))
-      .filter(Boolean);
+      .flatMap((s) => (s.examples || [])
+        .filter((e) => !isWholeSentenceHighlight(e))
+        .map((e) => cleanHighlight(e.highlight)))
+      .filter((c) => plausibleSlotFiller(answer, c));
     distractors = distractors.concat(
       pickDistractors(sibPool, answer, 3 - distractors.length, `${item.id}|ctrl-sib`)
         .filter((d) => !distractors.includes(d))
