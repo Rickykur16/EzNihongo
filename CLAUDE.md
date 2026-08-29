@@ -65,6 +65,37 @@
 
 ## Konvensi penting
 
+      **migration 128: kalimat pendek 2-bunsetsu selalu jatuh ke pilihan
+      ganda, walau siblingnya (di Tugas Bunpou lain) sudah susun kalimat** —
+      user: "Kenapa bab 3 yang bagian tugas bunpou pertama masih pilihan
+      ganda sedangkan yg bagian kedua sudah susun kalimat". Root cause BUKAN
+      bug aturan: 4 dari 6 pola Bab 3 (〜は〜です／〜は〜じゃありません／
+      〜は〜ですか／〜も, dari 126/127) kalimat contohnya cuma 2 bunsetsu
+      (topik + predikat polos, mis. "わたしは がくせいです。") — di bawah
+      `MIN_ARRANGE_TOKENS` (3), SELALU jatuh ke pilihan ganda. Cuma 〜の
+      (3 bunsetsu) yang jadi susun-kalimat. Karena Tugas Bunpou Bab 3
+      terbagi 2 (konvensi sama semua Bab 3-11) dan ke-4 pola pendek
+      kebetulan di tugas pertama sementara 〜の di tugas kedua, user melihat
+      "tugas 1 semua pilihan ganda, tugas 2 sudah susun kalimat" — bukan
+      inkonsistensi acak, murni akibat panjang kalimat per pola. Perbaikan:
+      ke-4 kalimat pendek DIPERPANJANG jadi 3 bunsetsu dengan modifier
+      asal-negara (にほんの／アメリカの／かんこくの, mis. "たなかさんは
+      にほんの せんせいです。") — natural, level N5, cocok tema Bab 3
+      (perkenalan: nama/kewarganegaraan/profesi), dan aman dari jebakan
+      rantai-の (cuma SATU の per kalimat). **migration 128**
+      (`128_grammar_examples_bab3_arrange.sql`) — replay DELETE+INSERT sama
+      seperti 127, dipersempit ke Bab 3 saja (Bab 4-11 tidak perlu ditimpa
+      ulang, kontennya tidak berubah). Divalidasi: offline (deriveDrills
+      murni) → 6/6 pola Bab 3 jadi arrange (naik dari 2/6), 0 opsi
+      timpang/kembar; end-to-end lewat endpoint asli dengan 2 lesson dummy
+      meniru split Tugas Bunpou 1 (3 pola pendek) + 2 (〜も + 〜の) persis
+      kondisi produksi → KEDUANYA sekarang tampil `variant: "arrange"` di
+      semua pola yang match. **Cakupan Bab 3-11 total naik 30→34 dari 44
+      pola**; 10 sisanya (Bab 4-7) masih pilihan ganda karena alasan sama
+      (kalimat cuma 1-2 bunsetsu) — belum diperpanjang karena belum
+      dilaporkan sebagai masalah oleh user, tapi pola perbaikannya identik
+      kalau suatu saat diminta.
+
       **migration 127 MENIMPA (bukan cuma mengisi) contoh Bab 3-11** —
       user melaporkan setelah 126: "Step 2 balik seperti semula tapi tidak
       sesuai dengan susun kata yang saya harapkan". Diagnosis: 126 sengaja
