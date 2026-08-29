@@ -65,6 +65,47 @@
 
 ## Konvensi penting
 
+      **Tombol AI "Lengkapi contoh" DIBANGUN LALU DIHAPUS LAGI, diganti
+      migration 126 hand-authored** — respons user atas pendekatan tombol
+      🚀 dua-fase: "tombol ai jya gaperlu hapus aja, kamu bua manual". Root
+      cause aslinya BUKAN cuma "belum ada spasi": migrasi 043/046/048/052/
+      054/056/058/060 (Tugas Bunpou Bab 4-11) HANYA mengisi
+      `module_grammar.example` (kolom lama satu-kalimat), TIDAK PERNAH
+      mengisi `grammar_examples` (tabel multi-contoh, migration 031) —
+      backfill 031 sendiri sudah jalan SEBELUM 043-060 (nomor migrasi lebih
+      kecil), jadi tidak pernah menjangkau baris yang baru dibuat 043-060.
+      Bab 4-11 punya NOL baris `grammar_examples`: `controlledSlot` butuh
+      `item.examples`, jadi Step 2 (pilihan ganda MAUPUN susun-kalimat)
+      benar-benar tidak ada bahan, persis gejala yang dilaporkan (Step 1 →
+      langsung Step 3). **migration 126** (`126_grammar_examples_bab3_11.sql`)
+      menulis 2 contoh per pola secara manual (gaya sama dengan 081-089:
+      JSONB `v_pola` per bab + loop) — kalimat PERTAMA byte-identik dengan
+      `module_grammar.example` yang sudah live (cuma ditambah spasi
+      antar-bunsetsu + terjemahan), kalimat KEDUA baru, gaya & level sama,
+      semua kana (konsisten dengan gaya legacy Bab 4-11, tanpa perlu
+      whitelist kanji). **Bab 3 tidak punya `module_grammar` sama sekali di
+      repo** (bank pola Bab 3 diisi manual lewat admin UI di produksi) — pola
+      Bab 3 di 126 memakai FIND (bukan CREATE): kalau teks pattern tebakan
+      tidak cocok persis dengan produksi, baris itu di-skip dengan NOTICE,
+      TIDAK membuat duplikat (diuji: kondisi "ditemukan" DAN "tidak
+      ditemukan" dua-duanya aman). Divalidasi OFFLINE dulu (deriveDrills
+      fungsi murni, tanpa DB) sebelum ditulis ke migrasi: 44/44 pola dapat
+      Step 1 DAN Step 2 (30 jadi susun-kalimat, 14 pilihan ganda), 0 opsi
+      timpang/kembar/bawa-tanda-baca, 0 highlight yang bukan substring
+      kalimatnya, 0 kalimat dipakai dua kali — lalu divalidasi ULANG lewat
+      Postgres sungguhan (course + 12 modul dummy, replay 000→126, idempoten
+      di-run dua kali, dan end-to-end lewat endpoint asli:
+      `GET drills`/`POST drill-answer` dites brute-force 3! permutasi susun
+      kalimat, cuma satu urutan yang lulus, kunci tidak bocor sebelum jatah
+      salah habis). Endpoint `POST /admin/module-grammar/prepare-
+      examples-bulk` yang sempat dibangun (spasi+terjemahan via AI runtime,
+      dengan pengaman `spacingOnly` supaya AI tidak bisa menulis ulang
+      kalimat) DIHAPUS TOTAL bersama tombolnya — bukan karena tidak aman,
+      tapi karena user memilih konten sensitif begini ditulis & direview
+      sebagai diff migrasi, konsisten dengan cara SEMUA konten lain di repo
+      ini dibuat (bukan dieksekusi live tanpa pratinjau). Tombol 🚀 kembali
+      ke satu fase (isi pengecoh saja), seperti sebelum PR sebelumnya.
+
       **Pengecoh Step 2 juga bisa dikurasi admin** (migration **125**, kolom
       `module_grammar.controlled_distractors`) — permintaan user setelah melihat
       hasil aturan. Yang tidak bisa diselesaikan aturan: pengecoh yang KEBETULAN

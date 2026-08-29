@@ -667,51 +667,6 @@ if (MODE === 'eval') {
   check('setelah pernah lulus, hitungan salah mulai dari nol lagi',
     afterPass.json.passed === false && afterPass.json.japanese === undefined, afterPass.json);
 
-  console.log('\nLengkapi contoh: spasi + terjemahan (bab lama)');
-  // Bentuk data Bab 3-11 hasil backfill 031: tanpa spasi, tanpa terjemahan.
-  await query(`UPDATE grammar_examples SET japanese = $2, indonesian = NULL WHERE grammar_id = $1`,
-    [ctx.gids[0], '本を読んで、うちへかえります。']);
-  const prep = async (reply) => {
-    anthropicText = reply;
-    const r = await realFetch(base + '/admin/module-grammar/prepare-examples-bulk', {
-      method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
-      body: JSON.stringify({ fromGrammarId: ctx.gids[0], limit: 10 }),
-    });
-    const json = await r.json();
-    anthropicText = null;
-    const row = await query(`SELECT japanese, indonesian FROM grammar_examples WHERE grammar_id = $1`,
-      [ctx.gids[0]]);
-    return { json, row: row.rows[0] };
-  };
-
-  // Model menyelundupkan perubahan kata (かえります → もどります).
-  const tampered = await prep('本を 読んで、うちへ もどります。\nMembaca buku, lalu pulang.');
-  check('spasi yang MENGUBAH kalimat ditolak — materi tidak bisa ditulis ulang AI',
-    tampered.row.japanese === '本を読んで、うちへかえります。', tampered.row);
-  check('terjemahannya tetap tersimpan walau spasinya ditolak',
-    tampered.row.indonesian === 'Membaca buku, lalu pulang.', tampered.row);
-
-  await query(`UPDATE grammar_examples SET indonesian = NULL WHERE grammar_id = $1`, [ctx.gids[0]]);
-  const good = await prep('本を 読んで、うちへ かえります。\nMembaca buku, lalu pulang ke rumah.');
-  check('spasi yang sah diterapkan + terjemahan terisi',
-    good.row.japanese === '本を 読んで、うちへ かえります。'
-      && good.row.indonesian === 'Membaca buku, lalu pulang ke rumah.', good.row);
-  check('sesudah dilengkapi, tidak ada sisa yang belum lengkap', good.json.remaining === 0, good.json);
-
-  // Dan inilah tujuannya: contoh yang tadi buntu kini jadi soal susun kalimat.
-  const revived = await realFetch(`${base}/grammar-task/lesson/${ctx.taskLessonId}/drills`,
-    { headers: { authorization: 'Bearer ' + token } });
-  const revivedD = (await revived.json()).drills.find((d) => d.grammarId === ctx.gids[0]).step2;
-  check('contoh bab lama yang dilengkapi jadi punya soal susun kalimat',
-    revivedD && revivedD.variant === 'arrange' && revivedD.tokens.length === 4
-      && revivedD.indonesian === 'Membaca buku, lalu pulang ke rumah.', revivedD);
-
-  // Dijalankan ulang tidak boleh menyentuh apa pun lagi.
-  const again = await prep('X\nY');
-  check('diulang saat semua sudah lengkap = tidak ada yang diproses',
-    again.json.processed === 0 && again.json.saved === 0
-      && again.row.japanese === '本を 読んで、うちへ かえります。', again.json);
-
   // Kiriman cacat tidak boleh bisa dipakai menembus penilaian.
   const dupOrder = await realFetch(base + '/grammar-task/drill-answer', {
     method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },

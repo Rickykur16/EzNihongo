@@ -4243,7 +4243,7 @@ window.grammarManageDistractors = async (grammarId) => {
       placeholder="読んだ&#10;読んでいる&#10;読みます">${escapeHtml(controlled)}</textarea>
     <div class="toolbar" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
       <button type="button" class="btn btn-ghost" id="grmr-dist-gen" onclick="grmrGenDistractors()">✨ Generate keduanya (AI)</button>
-      <button type="button" class="btn btn-ghost" id="grmr-dist-all" onclick="grmrGenDistractorsAll()" title="Lengkapi contoh kalimat (spasi + terjemahan) lalu isi pengecoh, untuk semua pola di kursus ini yang masih kosong">🚀 Lengkapi semua yang masih kosong</button>
+      <button type="button" class="btn btn-ghost" id="grmr-dist-all" onclick="grmrGenDistractorsAll()" title="Isi semua pola di kursus ini yang pengecohnya masih kosong">🚀 Isi semua pola yang masih kosong</button>
       <span id="grmr-dist-status" style="font-size:11px;color:#737373;align-self:center;"></span>
     </div>
     <div id="grmr-dist-bulk" style="display:none;margin-top:8px;padding:10px 12px;background:#f9fafb;border:1px solid var(--paper-300,#e5e5e5);border-radius:6px;font-size:12px;font-family:var(--font-body);line-height:1.6;"></div>
@@ -4279,42 +4279,11 @@ window.grmrGenDistractors = async () => {
 // Isi semua pola sekaligus. Server mengerjakannya per batch kecil (nginx
 // memutus request di 60s), jadi di sini dipanggil berulang sampai habis.
 // Aman diulang: pola yang sudah terisi dilewati server, bukan ditimpa.
-// FASE 1 dari tombol 🚀. Contoh Bab 3-11 (backfill migration 031) tidak punya
-// spasi antar-bunsetsu maupun terjemahan. Step 2 butuh keduanya: tanpa spasi
-// kalimatnya tidak bisa dipotong jadi soal susun kalimat, dan tanpa terjemahan
-// soal pilihan ganda kopula jadi ambigu (「私は学生でした。」 sama benarnya dengan
-// kuncinya). Dijalankan SEBELUM pengecoh, karena terjemahan yang baru terisi
-// ikut dipakai saat mengarang pengecoh.
-async function grmrPrepareExamplesPhase(ctx, box) {
-  let saved = 0;
-  const failed = [];
-  for (let guard = 0; guard < 60; guard++) {
-    const d = await api('/admin/module-grammar/prepare-examples-bulk', {
-      method: 'POST', body: JSON.stringify({ fromGrammarId: ctx.grammarId, limit: 10 }),
-    });
-    saved += d.saved || 0;
-    if (Array.isArray(d.failed)) failed.push(...d.failed);
-    if (box) {
-      box.textContent = `[1/2] Melengkapi contoh — selesai: ${saved} · sisa: ${d.remaining}`
-        + (failed.length ? `\nGagal: ${failed.slice(0, 3).join(' / ')}` : '');
-    }
-    if (!d.remaining) break;
-    if (!d.saved && d.processed) {
-      if (box) box.textContent += '\nBatch terakhir gagal semua — lanjut ke pengecoh.';
-      break;
-    }
-  }
-  return saved;
-}
-
 window.grmrGenDistractorsAll = async () => {
   const ctx = window.__grmrDistCtx;
   if (!ctx) return;
-  if (!confirm('Lengkapi SEMUA pola di kursus ini yang masih kosong?\n\n'
-    + '1) Contoh kalimat yang belum punya spasi antar-bunsetsu / terjemahan akan dilengkapi. '
-    + 'Kalimat Jepangnya TIDAK diubah — hanya spasi yang disisipkan, dan itu diperiksa otomatis.\n'
-    + '2) Pengecoh Step 1 & Step 2 yang masih kosong akan diisi.\n\n'
-    + 'Hasilnya langsung disimpan (tanpa review satu-satu). Yang sudah terisi tidak pernah ditimpa, '
+  if (!confirm('Generate pengecoh untuk SEMUA pola di kursus ini yang masih kosong?\n\n'
+    + 'Hasilnya langsung disimpan (tanpa review satu-satu). Pola yang sudah terisi tidak ditimpa, '
     + 'dan kamu tetap bisa mengedit tiap pola lewat tombol 🎯 Pengecoh.')) return;
 
   const btn = document.getElementById('grmr-dist-all');
@@ -4328,8 +4297,6 @@ window.grmrGenDistractorsAll = async () => {
   const allFailed = [];
   let guard = 0;
   try {
-    // Fase 1: materinya dulu — pengecoh yang baik butuh terjemahan.
-    const prepared = await grmrPrepareExamplesPhase(ctx, box);
     for (;;) {
       // Pengaman: jangan pernah berputar tanpa batas kalau server terus
       // mengembalikan sisa yang sama (mis. semua pola gagal di-generate).
@@ -4340,9 +4307,8 @@ window.grmrGenDistractorsAll = async () => {
       totalSaved += d.saved || 0;
       if (Array.isArray(d.failed)) allFailed.push(...d.failed);
       if (box) {
-        box.textContent = `[1/2] Contoh dilengkapi: ${prepared}\n`
-          + `[2/2] Pengecoh tersimpan: ${totalSaved} pola · sisa: ${d.remaining}`
-          + (d.skippedNoMeaning ? ` · dilewati (kolom Arti kosong): ${d.skippedNoMeaning}` : '')
+        box.textContent = `Tersimpan: ${totalSaved} pola · Sisa: ${d.remaining}`
+          + (d.skippedNoMeaning ? ` · Dilewati (kolom Arti kosong): ${d.skippedNoMeaning}` : '')
           + (allFailed.length ? `\nGagal: ${allFailed.join(', ')}` : '');
       }
       if (!d.remaining) break;
@@ -4357,7 +4323,7 @@ window.grmrGenDistractorsAll = async () => {
     notify('Gagal generate massal: ' + err.message, true);
     if (box) box.textContent += '\nBerhenti karena error: ' + err.message;
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '🚀 Lengkapi semua yang masih kosong'; }
+    if (btn) { btn.disabled = false; btn.textContent = '🚀 Isi semua pola yang masih kosong'; }
     if (one) one.disabled = false;
   }
 };
