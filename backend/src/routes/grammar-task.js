@@ -6,7 +6,7 @@ import { query } from '../db.js';
 import { asyncHandler, requireAuth } from '../middleware.js';
 import { userCanAccessCourse, courseIdForLessonId, requireLessonCourseAccess } from '../entitlements.js';
 import { callClaude, ANTHROPIC_MODEL, anthropicEnabled } from '../anthropic.js';
-import { deriveDrills, publicDrill } from '../grammar-drills.js';
+import { deriveDrills, publicDrill, arrangeIsCorrect } from '../grammar-drills.js';
 
 const router = Router();
 
@@ -218,6 +218,18 @@ const evalLimiter = rateLimit({
   message: { error: 'Too many requests, slow down' },
 });
 
+// Soal Step 1/2 dinilai murni dari DB + CPU, tanpa panggilan AI, jadi tidak
+// perlu seketat evalLimiter. Satu Tugas Bunpou 7 pola sudah 14 panggilan
+// sebelum ada percobaan ulang sama sekali — dengan jatah 20/menit milik
+// evaluate, siswa yang mengerjakan cepat kena 429 di tengah tugas.
+const drillLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 90,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Too many requests, slow down' },
+});
+
 // POST /api/grammar-task/evaluate
 // body: { grammarId, lessonId?, sentence, inputMode? }
 // Response = superset dari kontrak lama {correct, usesPattern, feedback,
@@ -410,7 +422,13 @@ async function loadModulePool(lessonId) {
 // Kesalahan di soal bentuk BUKAN tebakan model — aturan yang membangun
 // pengecohnya sudah tahu jenis kekeliruan yang diuji. Ini klasifikasi error
 // gratis dan pasti, yang ikut mengisi "fokus berikutnya" di panel analisis.
+// Jatah salah sebelum jawaban dibuka. HARUS sama dengan GT_MAX_WRONG di
+// welcome.html: frontend yang memutuskan kapan berhenti bertanya, server yang
+// memutuskan kapan kuncinya boleh keluar.
+const DRILL_MAX_WRONG = 2;
+
 const RULE_ERROR = {
+  arrange: 'wrong_word_order',
   'particle-swap': 'wrong_particle',
   'particle-append': 'wrong_particle',
   masu: 'wrong_conjugation',
@@ -442,16 +460,23 @@ router.get('/grammar-task/lesson/:lessonId/drills', requireAuth,
 );
 
 // POST /api/grammar-task/drill-answer
-// body: { lessonId, grammarId, step, optionIndex }
+// body: { lessonId, grammarId, step, optionIndex }   — soal pilihan ganda
+//   atau { lessonId, grammarId, step, order: number[] } — soal susun kalimat,
+//   `order` = indeks potongan (sesuai array `tokens` yang dikirim) menurut
+//   urutan yang disusun siswa.
 // Soal diturunkan ULANG di sini lalu jawabannya dinilai — tidak ada kunci
 // jawaban yang pernah dikirim ke browser, dan tidak ada tabel soal.
-router.post('/grammar-task/drill-answer', requireAuth, evalLimiter, asyncHandler(async (req, res) => {
+router.post('/grammar-task/drill-answer', requireAuth, drillLimiter, asyncHandler(async (req, res) => {
   const { lessonId, grammarId } = req.body || {};
   const step = Number((req.body || {}).step);
   const optionIndex = Number((req.body || {}).optionIndex);
+  const order = (req.body || {}).order;
+  const isArrange = Array.isArray(order);
   if (!lessonId || !grammarId) return res.status(400).json({ error: 'lessonId and grammarId required' });
   if (step !== 1 && step !== 2) return res.status(400).json({ error: 'step must be 1 or 2' });
-  if (!Number.isInteger(optionIndex) || optionIndex < 0) return res.status(400).json({ error: 'optionIndex required' });
+  if (!isArrange && (!Number.isInteger(optionIndex) || optionIndex < 0)) {
+    return res.status(400).json({ error: 'optionIndex or order required' });
+  }
 
   const courseId = await courseIdForLessonId(lessonId);
   if (!courseId) return res.status(404).json({ error: 'lesson not found' });
@@ -471,9 +496,17 @@ router.post('/grammar-task/drill-answer', requireAuth, evalLimiter, asyncHandler
 
   const drill = deriveDrills(items, pool).get(grammarId)[step === 1 ? 'step1' : 'step2'];
   if (!drill) return res.status(404).json({ error: 'drill_unavailable' });
-  if (optionIndex >= drill.options.length) return res.status(400).json({ error: 'optionIndex out of range' });
+  // Bentuk jawaban harus cocok dengan bentuk soal yang BENAR-BENAR diturunkan
+  // di sini, bukan dengan yang dikira browser: materi bisa saja berubah di
+  // antara pemuatan soal dan pengiriman jawaban.
+  if (isArrange !== (drill.variant === 'arrange')) {
+    return res.status(409).json({ error: 'drill_changed' });
+  }
+  if (!isArrange && optionIndex >= drill.options.length) {
+    return res.status(400).json({ error: 'optionIndex out of range' });
+  }
 
-  const passed = optionIndex === drill.correctIndex;
+  const passed = isArrange ? arrangeIsCorrect(drill, order) : (optionIndex === drill.correctIndex);
   const primaryError = passed ? null
     : (step === 1 ? 'meaning_mismatch' : (RULE_ERROR[drill.rule] || 'wrong_grammar_pattern'));
 
@@ -486,7 +519,9 @@ router.post('/grammar-task/drill-answer', requireAuth, evalLimiter, asyncHandler
       [
         req.user.id, grammarId, lessonId,
         step === 1 ? 'recognition' : 'controlled',
-        String(drill.options[optionIndex] || '').slice(0, 200),
+        String(isArrange
+          ? order.map((i) => drill.tokens[i]).filter(Boolean).join(' ')
+          : (drill.options[optionIndex] || '')).slice(0, 200),
         passed, primaryError, primaryError ? [primaryError] : [],
       ]
     );
@@ -496,7 +531,44 @@ router.post('/grammar-task/drill-answer', requireAuth, evalLimiter, asyncHandler
     console.error('grammar_attempts (drill) insert failed:', err.message);
   }
 
-  res.json({ passed, correctIndex: drill.correctIndex });
+  if (!isArrange) return res.json({ passed, correctIndex: drill.correctIndex });
+
+  // Susunan yang benar TIDAK boleh ikut di respons jawaban yang salah —
+  // kalau ikut, siswa cukup mengirim satu urutan asal lalu membacanya dari
+  // network tab. Jawabannya baru dibuka setelah jatah percobaan habis, yaitu
+  // kondisi yang sama dengan menyerah di layar. Yang dihitung cuma kegagalan
+  // SEJAK kelulusan terakhir, supaya kegagalan minggu lalu tidak langsung
+  // membuka jawaban hari ini.
+  let reveal = passed;
+  if (!passed) {
+    try {
+      const r = await query(
+        `SELECT COUNT(*)::int AS fails
+           FROM grammar_attempts
+          WHERE user_id = $1 AND grammar_id = $2 AND source = 'controlled'
+            AND passed = FALSE
+            -- Dibatasi ke sesi belajar yang sedang berjalan. Tanpa ini, dua
+            -- kegagalan lama yang tidak pernah disusul kelulusan membuat
+            -- jawaban langsung terbuka di percobaan pertama hari berikutnya.
+            AND created_at > NOW() - INTERVAL '30 minutes'
+            AND created_at > COALESCE((
+              SELECT MAX(created_at) FROM grammar_attempts
+               WHERE user_id = $1 AND grammar_id = $2 AND source = 'controlled'
+                 AND passed = TRUE
+            ), '-infinity'::timestamptz)`,
+        [req.user.id, grammarId]
+      );
+      reveal = (r.rows[0] ? r.rows[0].fails : 0) >= DRILL_MAX_WRONG;
+    } catch (err) {
+      // Gagal menghitung → jangan buka jawabannya. Frontend sudah menangani
+      // respons tanpa kunci dengan pesan biasa.
+      console.error('drill reveal count failed:', err.message);
+      reveal = false;
+    }
+  }
+  res.json(reveal
+    ? { passed, correctOrder: drill.answer, japanese: drill.japanese }
+    : { passed });
 }));
 
 // ---- Speech-to-text (ElevenLabs Scribe) ----

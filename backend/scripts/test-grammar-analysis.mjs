@@ -599,6 +599,104 @@ if (MODE === 'eval') {
     drillRows[3].primary_error === 'wrong_particle', drillRows[3]);
   check('jawaban benar tidak menuliskan error', drillRows[0].primary_error === null, drillRows[0]);
 
+  console.log('\nStep 2 — susun kalimat (kepingan diacak)');
+  // Contoh seed lainnya cuma 2 potongan, jadi tetap pilihan ganda; yang ini
+  // sengaja 4 potongan supaya jalur susun-kalimat yang diuji.
+  await query(`DELETE FROM grammar_examples WHERE grammar_id = $1`, [ctx.gids[0]]);
+  await query(`INSERT INTO grammar_examples (grammar_id,japanese,highlight,indonesian,sort_order)
+               VALUES ($1,'本を 読んで、うちへ かえります。','読んで','Membaca buku, lalu pulang ke rumah.',0)`,
+    [ctx.gids[0]]);
+  // Blok pilihan ganda di atas sudah meninggalkan kegagalan 'controlled' untuk
+  // pola ini; yang diuji di sini jatah salah RONDE INI, jadi dimulai bersih.
+  await query(`DELETE FROM grammar_attempts WHERE grammar_id = $1 AND source = 'controlled'`,
+    [ctx.gids[0]]);
+  const arrRes = await realFetch(`${base}/grammar-task/lesson/${ctx.taskLessonId}/drills`,
+    { headers: { authorization: 'Bearer ' + token } });
+  const arrD = (await arrRes.json()).drills.find((d) => d.grammarId === ctx.gids[0]).step2;
+  check('kalimat berspasi → soalnya jadi susun kalimat',
+    arrD && arrD.variant === 'arrange' && arrD.tokens.length === 4, arrD);
+  check('kunci jawaban TIDAK ikut terkirim ke browser',
+    arrD && arrD.answer === undefined && arrD.japanese === undefined, Object.keys(arrD || {}));
+  check('tanda baca dibuang dari kepingan (koma/titik = petunjuk posisi)',
+    arrD && arrD.tokens.every((t) => !/[、。]/.test(t)), arrD && arrD.tokens);
+  check('kepingannya persis potongan kalimatnya',
+    arrD && [...arrD.tokens].sort().join('|') === ['本を', '読んで', 'うちへ', 'かえります'].sort().join('|'),
+    arrD && arrD.tokens);
+  check('acakannya tidak kebetulan sama dengan jawabannya',
+    arrD && arrD.tokens.join(' ') !== '本を 読んで うちへ かえります', arrD && arrD.tokens);
+
+  const arrAnswer = async (seq) => {
+    const order = seq.map((t) => arrD.tokens.indexOf(t));
+    const r = await realFetch(base + '/grammar-task/drill-answer', {
+      method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
+      body: JSON.stringify({ lessonId: ctx.taskLessonId, grammarId: ctx.gids[0], step: 2, order }),
+    });
+    return { status: r.status, json: await r.json() };
+  };
+  const wrongArr = await arrAnswer(['うちへ', 'かえります', '本を', '読んで']);
+  check('urutan salah → tidak lulus, dan kunci TIDAK dibocorkan',
+    // Kalau kuncinya ikut di respons yang salah, siswa cukup mengirim satu
+    // urutan asal lalu membacanya dari network tab.
+    wrongArr.status === 200 && wrongArr.json.passed === false
+      && wrongArr.json.japanese === undefined
+      && wrongArr.json.correctOrder === undefined, wrongArr.json);
+  const wrongRow = await query(
+    `SELECT source, primary_error, sentence FROM grammar_attempts
+      WHERE grammar_id = $1 ORDER BY created_at DESC LIMIT 1`, [ctx.gids[0]]);
+  check('dicatat sebagai kekeliruan URUTAN KATA, bukan konjugasi',
+    wrongRow.rows[0] && wrongRow.rows[0].source === 'controlled'
+      && wrongRow.rows[0].primary_error === 'wrong_word_order', wrongRow.rows[0]);
+  check('kalimat yang dicatat = yang benar-benar disusun siswa',
+    wrongRow.rows[0] && wrongRow.rows[0].sentence === 'うちへ かえります 本を 読んで',
+    wrongRow.rows[0] && wrongRow.rows[0].sentence);
+
+  // Salah kedua = jatah habis; barulah kuncinya dibuka, sama seperti menyerah.
+  const wrongArr2 = await arrAnswer(['かえります', 'うちへ', '読んで', '本を']);
+  check('salah kedua kalinya → jawaban baru dibuka (setara menyerah di layar)',
+    wrongArr2.json.passed === false
+      && wrongArr2.json.japanese === '本を 読んで、うちへ かえります。', wrongArr2.json);
+
+  const rightArr = await arrAnswer(['本を', '読んで', 'うちへ', 'かえります']);
+  check('urutan benar → lulus, kalimat utuhnya baru dikirim SESUDAH dinilai',
+    rightArr.status === 200 && rightArr.json.passed === true
+      && rightArr.json.japanese === '本を 読んで、うちへ かえります。', rightArr.json);
+
+  // Jatah salah dihitung SEJAK kelulusan terakhir, jadi kegagalan SEBELUM
+  // lulus tadi tidak boleh ikut membuka jawaban di ronde berikutnya.
+  const afterPass = await arrAnswer(['うちへ', '本を', '読んで', 'かえります']);
+  check('setelah pernah lulus, hitungan salah mulai dari nol lagi',
+    afterPass.json.passed === false && afterPass.json.japanese === undefined, afterPass.json);
+
+  // Kiriman cacat tidak boleh bisa dipakai menembus penilaian.
+  const dupOrder = await realFetch(base + '/grammar-task/drill-answer', {
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
+    body: JSON.stringify({ lessonId: ctx.taskLessonId, grammarId: ctx.gids[0], step: 2, order: [0, 0, 1, 2] }),
+  });
+  check('indeks kembar ditolak sebagai jawaban salah, bukan bikin server error',
+    dupOrder.status === 200 && (await dupOrder.json()).passed === false);
+  const wrongShape = await realFetch(base + '/grammar-task/drill-answer', {
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
+    body: JSON.stringify({ lessonId: ctx.taskLessonId, grammarId: ctx.gids[0], step: 2, optionIndex: 0 }),
+  });
+  check('jawaban pilihan ganda untuk soal susun → 409, bukan lulus kebetulan',
+    wrongShape.status === 409, wrongShape.status);
+
+  // Kalimat tanpa spasi tidak bisa dipotong → kembali ke pilihan ganda, yang
+  // memang jalur tempat pengecoh kurasi admin bekerja.
+  await query(`UPDATE grammar_examples SET japanese = $2 WHERE grammar_id = $1`,
+    [ctx.gids[0], 'わたしはがくせいです。']);
+  await query(`UPDATE module_grammar SET controlled_distractors = $2 WHERE id = $1`,
+    [ctx.gids[0], 'せんせい\nともだち\nがっこう']);
+  const noSpace = await realFetch(`${base}/grammar-task/lesson/${ctx.taskLessonId}/drills`,
+    { headers: { authorization: 'Bearer ' + token } });
+  const noSpaceD = (await noSpace.json()).drills.find((d) => d.grammarId === ctx.gids[0]).step2;
+  check('kalimat tanpa spasi → jatuh ke pilihan ganda, bukan hilang',
+    noSpaceD && noSpaceD.variant === 'choice' && noSpaceD.options.includes('せんせい'), noSpaceD);
+  await query(`UPDATE module_grammar SET controlled_distractors = NULL WHERE id = $1`, [ctx.gids[0]]);
+  await query(`DELETE FROM grammar_examples WHERE grammar_id = $1`, [ctx.gids[0]]);
+  await query(`INSERT INTO grammar_examples (grammar_id,japanese,highlight,indonesian,sort_order)
+               VALUES ($1,'わたしは がくせいです。','がくせい','Saya seorang siswa.',0)`, [ctx.gids[0]]);
+
   a = await answer(ctx.gids[0], 2, 99);
   check('indeks opsi di luar jangkauan ditolak', a.status === 400, a);
   a = await answer(ctx.gids[0], 3, 0);

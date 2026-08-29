@@ -79,6 +79,48 @@
       massal menganggap sebuah pola "belum lengkap" kalau salah satu dari dua
       kolomnya kosong — kolom yang sudah terisi tidak pernah ditimpa.
 
+      **Step 2 sekarang SUSUN KALIMAT (ala Duolingo), bukan pilihan ganda** —
+      permintaan user setelah pagar di bawah membuat sebagian Step 2 hilang.
+      Kepingan kalimat contoh diacak, siswa menyusunnya kembali dengan
+      mengetuk (bukan drag — target sentuh lebih besar, tanpa pustaka DnD).
+      Keunggulannya struktural: TIDAK ADA PENGECOH sama sekali, jadi seluruh
+      kelas masalah "pengecohnya tidak masuk akal" / "pengecohnya kebetulan
+      juga benar" hilang dengan sendirinya, dan bahannya cuma kalimat contoh
+      yang memang sudah dikurasi penyusun materi. Cakupan Bab 12-20 naik jadi
+      45/46 pola (dari 44, dan tanpa satu pun pengecoh yang perlu dijaga).
+      Tokenisasi (`tokenizeSentence`) mengandalkan konvensi materi N5: contoh
+      ditulis dengan SPASI antar-bunsetsu — diukur 137/138 contoh di 081-089
+      berspasi; 、 ikut jadi batas walau tidak diikuti spasi, dan tanda baca
+      DIBUANG dari kepingan karena 「読んで、」 yang membawa koma langsung
+      memberi tahu bahwa ia bukan potongan terakhir. Syarat 3-8 potongan
+      (2 potongan = tebakan 50:50). Kalimat yang tidak memenuhi syarat —
+      terutama contoh lama Bab 3-11 yang mungkin tanpa spasi — JATUH KE
+      PILIHAN GANDA lama, dan di situlah pengecoh kurasi admin (124/125) tetap
+      bekerja; keduanya hidup berdampingan, `variant: 'arrange' | 'choice'`.
+      **Penilaian tetap di server** (`arrangeIsCorrect`): browser cuma
+      menerima `tokens` yang sudah teracak, mengirim balik `order` berisi
+      INDEKS, dan `publicDrill` menahan `answer` + `japanese`. Perbandingan
+      atas NILAI potongan, jadi dua keping yang tulisannya sama boleh
+      bertukar tempat. **Kunci jawaban tidak ikut di respons jawaban yang
+      salah** — kalau ikut, siswa cukup mengirim satu urutan asal lalu
+      membacanya dari network tab; kuncinya baru dibuka setelah server sendiri
+      mencatat `DRILL_MAX_WRONG` (2, harus sama dengan `GT_MAX_WRONG` di
+      welcome.html) kegagalan SEJAK kelulusan terakhir DAN dalam 30 menit
+      terakhir (tanpa batas waktu itu, dua kegagalan lama yang tak pernah
+      disusul kelulusan membuat jawaban langsung terbuka besoknya).
+      **Batasan yang disadari**: hanya urutan PERSIS contohnya yang diterima,
+      padahal urutan bunsetsu bahasa Jepang lumayan lentur — susunan lain yang
+      sebenarnya sah tetap dinilai salah. Ditahan dengan syarat maksimal 8
+      potongan dan dengan menampilkan kalimat benarnya saat jatah habis. Kalau
+      ini terbukti mengganggu, jalan keluarnya kolom "urutan alternatif" yang
+      dikurasi admin, pola yang sama dengan 124/125.
+
+      **`drillLimiter` dipisah dari `evalLimiter`** (90/menit vs 20/menit) —
+      ditemukan saat menulis tes ini. Soal Step 1/2 dinilai murni DB+CPU tanpa
+      AI, tapi dulu ikut memakai jatah endpoint `evaluate`; satu Tugas Bunpou
+      7 pola sudah 14 panggilan sebelum ada percobaan ulang, jadi siswa yang
+      mengerjakan cepat kena 429 di tengah tugas.
+
       **Pagar kelayakan pengecoh Step 2** (`slotShaped` / `plausibleSlotFiller`
       di `grammar-drills.js`) — dipasang setelah user melaporkan soal
       「私は学生＿＿＿。」 yang pilihannya 「ペンは赤いです」 dan

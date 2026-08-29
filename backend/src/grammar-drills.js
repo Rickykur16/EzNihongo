@@ -326,6 +326,72 @@ export function controlledSlot(item) {
   return null;
 }
 
+// ── STEP 2, bentuk utama: SUSUN KALIMAT ───────────────────────────────────
+// Potongan kalimat diacak, siswa menyusunnya kembali. Keunggulannya dibanding
+// pilihan ganda: TIDAK ADA PENGECOH sama sekali, jadi seluruh kelas masalah
+// "pengecohnya tidak masuk akal" / "pengecohnya kebetulan juga benar" hilang —
+// bahannya cuma kalimat contoh yang memang sudah dikurasi penyusun materi.
+// Yang diuji juga lebih dekat ke tata bahasa sesungguhnya: urutan bunsetsu dan
+// penempatan partikel, bukan menebak satu bentuk di antara empat.
+//
+// Tokenisasi mengandalkan konvensi materi N5 ini: kalimat contoh ditulis
+// dengan SPASI antar-bunsetsu (「本を 読んで、うちへ かえります。」). Diukur di
+// 081-089: 137 dari 138 contoh berspasi. Koma ikut jadi batas potongan karena
+// 、 memang menutup bunsetsu walau tidak diikuti spasi.
+const MIN_ARRANGE_TOKENS = 3;   // 2 potongan = tebakan 50:50, tidak layak
+const MAX_ARRANGE_TOKENS = 8;   // di atas ini jadi kerja menyusun, bukan belajar
+
+export function tokenizeSentence(japanese) {
+  return String(japanese || '')
+    .replace(/、/g, '、 ')
+    .split(/[\s\u3000]+/)
+    // Tanda baca dibuang dari kepingannya: 「読んで、」 yang membawa koma
+    // langsung memberi tahu bahwa ia bukan potongan terakhir.
+    .map((t) => t.replace(/^[、。]+|[、。]+$/g, '').trim())
+    .filter(Boolean);
+}
+
+export function buildArrangeDrill(item) {
+  for (const e of (item.examples || [])) {
+    const tokens = tokenizeSentence(e.japanese);
+    if (tokens.length < MIN_ARRANGE_TOKENS || tokens.length > MAX_ARRANGE_TOKENS) continue;
+
+    let shuffled = seededOrder(tokens, `${item.id}|arr`);
+    // Acakan yang kebetulan sama dengan jawabannya bikin soalnya tidak ada.
+    if (shuffled.join('\u0000') === tokens.join('\u0000')) {
+      shuffled = shuffled.slice(1).concat(shuffled[0]);
+    }
+    return {
+      step: 2,
+      variant: 'arrange',
+      grammarId: item.id,
+      prompt: 'Susun potongan berikut menjadi kalimat yang benar.',
+      tokens: shuffled,
+      indonesian: e.indonesian || null,
+      answer: tokens,        // dibuang sebelum dikirim — lihat publicDrill()
+      japanese: e.japanese,  // untuk ditampilkan saat jawabannya dibuka
+      rule: 'arrange',
+    };
+  }
+  return null;
+}
+
+// Jawaban benar? Potongan yang isinya sama persis boleh bertukar tempat —
+// perbandingannya atas NILAI potongan, bukan posisi aslinya.
+export function arrangeIsCorrect(drill, order) {
+  if (!drill || drill.variant !== 'arrange') return false;
+  if (!Array.isArray(order) || order.length !== drill.tokens.length) return false;
+  const seen = new Set();
+  const built = [];
+  for (const raw of order) {
+    const i = Number(raw);
+    if (!Number.isInteger(i) || i < 0 || i >= drill.tokens.length || seen.has(i)) return false;
+    seen.add(i);
+    built.push(drill.tokens[i]);
+  }
+  return built.join('\u0000') === drill.answer.join('\u0000');
+}
+
 export function buildControlledDrill(item, siblings) {
   const slot = controlledSlot(item);
   if (!slot) return null;
@@ -348,6 +414,7 @@ export function buildControlledDrill(item, siblings) {
       indonesian: slot.indonesian,
       options,
       correctIndex,
+      variant: 'choice',
       rule: 'curated-distractor',
     };
   }
@@ -384,6 +451,7 @@ export function buildControlledDrill(item, siblings) {
     indonesian: slot.indonesian,
     options,
     correctIndex,
+    variant: 'choice',
     rule,
   };
 }
@@ -403,7 +471,11 @@ export function deriveDrills(items, pool) {
   for (const item of items) {
     out.set(item.id, {
       step1: buildRecognitionDrill(item, siblings),
-      step2: buildControlledDrill(item, siblings),
+      // Susun-kalimat lebih diutamakan: tidak butuh pengecoh sama sekali.
+      // Pilihan ganda tetap dipakai untuk contoh yang tidak bisa dipotong
+      // (kalimat tanpa spasi, atau terlalu pendek) — di situlah pengecoh
+      // kurasi admin bekerja.
+      step2: buildArrangeDrill(item) || buildControlledDrill(item, siblings),
     });
   }
   return out;
@@ -414,6 +486,8 @@ export function deriveDrills(items, pool) {
 // meninggalkan server dan tidak bisa dibaca dari DOM.
 export function publicDrill(drill) {
   if (!drill) return null;
-  const { correctIndex, ...rest } = drill;
+  // `answer` = urutan benar susun-kalimat, `japanese` = kalimat utuhnya.
+  // Keduanya kunci jawaban, jadi ikut ditahan sampai jawabannya dinilai.
+  const { correctIndex, answer, japanese, ...rest } = drill;
   return rest;
 }
