@@ -2531,6 +2531,37 @@
     border-radius: 8px; padding: 6px 13px; font-size: 12.5px; font-weight: 700;
     color: var(--du-ink-2); cursor: pointer;
   }
+  /* Susun kalimat (Step 2) — kepingan diketuk, bukan diseret: target sentuh
+     lebih besar dan jalan di semua browser tanpa pustaka drag-and-drop. */
+  .gt-arr__slot {
+    display: flex; flex-wrap: wrap; gap: 7px; align-items: flex-start;
+    min-height: 46px; padding: 9px 10px; margin-bottom: 10px;
+    border: 1.5px dashed var(--du-border); border-radius: 10px;
+    background: var(--du-surface);
+  }
+  .gt-arr__ph { font-size: 12.5px; color: var(--du-ink-4); font-style: italic; align-self: center; }
+  .gt-arr__bank { display: flex; flex-wrap: wrap; gap: 7px; }
+  .gt-chip {
+    font-family: 'Noto Sans JP', sans-serif; font-size: 15px; color: var(--du-ink);
+    border: 1.5px solid var(--du-border); border-bottom-width: 3px;
+    background: var(--du-surface-2); border-radius: 9px;
+    padding: 7px 12px; cursor: pointer;
+  }
+  .gt-chip:hover:not(:disabled) { border-color: var(--du-ink-3); }
+  .gt-chip:disabled { cursor: default; }
+  /* Kepingan yang sudah dipindah ke baris jawaban tetap memesan tempatnya,
+     supaya baris bank tidak melompat-lompat setiap kali diketuk. */
+  .gt-chip--used { visibility: hidden; }
+  .gt-arr__slot .gt-chip { border-color: var(--du-ink-4); background: var(--du-surface-2); }
+  .gt-arr--ok .gt-chip { border-color: #2E7D52; background: #EAF6EF; }
+  .gt-arr--no .gt-chip { border-color: #E5484D; background: #FDECEC; }
+  .gt-arr__go {
+    margin-top: 10px; border: none; background: var(--du-accent, #2E7D52); color: #fff;
+    border-radius: 9px; padding: 9px 18px; font-size: 13.5px; font-weight: 800;
+    cursor: pointer; font-family: inherit;
+  }
+  .gt-arr__go:disabled { opacity: .4; cursor: default; }
+
   /* Kartu hasil produksi (Step 4) — rincian per aspek, bukan satu paragraf. */
   .gt-check { display: flex; align-items: flex-start; gap: 7px; font-size: 13.5px; margin-bottom: 3px; }
   .gt-check__mark { flex: none; font-weight: 900; }
@@ -8254,7 +8285,7 @@ function gtCardsHtml(items, sttOn, showDots) {
           <div class="gt-step__body"><span class="gt-step__lockmsg">Memuat…</span></div>
         </section>
         <section class="gt-step gt-step--locked" data-step="2" id="gt-step2-${pi}">
-          <div class="gt-step__head"><span class="gt-step__num">2</span><span class="gt-step__title">Latihan bentuk</span></div>
+          <div class="gt-step__head"><span class="gt-step__num">2</span><span class="gt-step__title" id="gt-step2-title-${pi}">Latihan bentuk</span></div>
           <div class="gt-step__body"><span class="gt-step__lockmsg">Selesaikan langkah 1 dulu.</span></div>
         </section>
         <section class="gt-step gt-step--locked" data-step="3" id="gt-step3-${pi}">
@@ -8348,6 +8379,11 @@ function gtRenderStep(pi, step, drill) {
     : `<div class="gt-step__q">${escapeHtml(drill.prompt || '')}</div>
        <div class="gt-step__sentence" lang="ja">${escapeHtml(drill.sentence || '')}</div>
        ${drill.indonesian ? `<div class="gt-step__id">${escapeHtml(drill.indonesian)}</div>` : ''}`;
+  if (step === 2) {
+    const title = _gtScope().querySelector(`#gt-step2-title-${pi}`);
+    if (title) title.textContent = drill.variant === 'arrange' ? 'Susun kalimat' : 'Latihan bentuk';
+  }
+  if (drill.variant === 'arrange') { gtRenderArrange(pi, body, drill); return; }
   const opts = (drill.options || []).map((o, oi) => `
     <button type="button" class="gt-opt" id="gt-opt-${step}-${pi}-${oi}" onclick="gtAnswerDrill(${pi}, ${step}, ${oi})">
       <span class="gt-opt__key">${GT_OPT_KEYS[oi] || (oi + 1)}</span>
@@ -8355,6 +8391,144 @@ function gtRenderStep(pi, step, drill) {
     </button>`).join('');
   body.innerHTML = `${ctx}<div class="gt-opts">${opts}</div><div class="gt-step__verdict" id="gt-verdict-${step}-${pi}"></div>`;
 }
+
+// ── Susun kalimat ────────────────────────────────────────────────────────
+// Urutan yang sedang disusun disimpan sebagai daftar INDEKS ke `drill.tokens`,
+// bukan sebagai teks: itu yang dikirim ke server, dan kepingan yang tulisannya
+// kebetulan sama tetap bisa dibedakan posisinya.
+function gtRenderArrange(pi, body, drill) {
+  const bank = (drill.tokens || []).map((t, ti) => `
+    <button type="button" class="gt-chip" id="gt-chip-${pi}-${ti}" onclick="gtArrTake(${pi}, ${ti})"
+      lang="ja">${escapeHtml(t)}</button>`).join('');
+  body.innerHTML = `
+    <div class="gt-step__q">${escapeHtml(drill.prompt || '')}</div>
+    ${drill.indonesian ? `<div class="gt-step__id">${escapeHtml(drill.indonesian)}</div>` : ''}
+    <div class="gt-arr__slot" id="gt-arr-slot-${pi}"></div>
+    <div class="gt-arr__bank" id="gt-arr-bank-${pi}">${bank}</div>
+    <button type="button" class="gt-arr__go" id="gt-arr-go-${pi}" disabled
+      onclick="gtArrSubmit(${pi})">Periksa</button>
+    <div class="gt-step__verdict" id="gt-verdict-2-${pi}"></div>`;
+  window.__gtArr = window.__gtArr || {};
+  window.__gtArr[pi] = [];
+  gtArrPaint(pi, drill);
+}
+
+function gtArrPaint(pi, drill) {
+  const scope = _gtScope();
+  const picked = (window.__gtArr || {})[pi] || [];
+  const slot = scope.querySelector(`#gt-arr-slot-${pi}`);
+  const go = scope.querySelector(`#gt-arr-go-${pi}`);
+  if (!slot) return;
+  slot.innerHTML = picked.length
+    ? picked.map((ti, pos) => `
+        <button type="button" class="gt-chip" onclick="gtArrReturn(${pi}, ${pos})"
+          lang="ja">${escapeHtml(drill.tokens[ti])}</button>`).join('')
+    : '<span class="gt-arr__ph">Ketuk potongan di bawah untuk menyusun.</span>';
+  // Kepingan yang sudah terpakai disembunyikan, bukan dihapus (lihat CSS).
+  (drill.tokens || []).forEach((_t, ti) => {
+    const el = scope.querySelector(`#gt-chip-${pi}-${ti}`);
+    if (el) el.classList.toggle('gt-chip--used', picked.includes(ti));
+  });
+  if (go) go.disabled = picked.length !== (drill.tokens || []).length;
+}
+
+function gtArrDrill(pi) {
+  const it = (window.__gtData || [])[pi];
+  const d = it && (window.__gtDrills || {})[it.id];
+  return d && d.step2 && d.step2.variant === 'arrange' ? d.step2 : null;
+}
+
+window.gtArrTake = (pi, ti) => {
+  const drill = gtArrDrill(pi);
+  if (!drill) return;
+  const picked = (window.__gtArr || {})[pi] || [];
+  if (picked.includes(ti)) return;
+  picked.push(ti);
+  window.__gtArr[pi] = picked;
+  gtArrPaint(pi, drill);
+};
+
+window.gtArrReturn = (pi, pos) => {
+  const drill = gtArrDrill(pi);
+  if (!drill) return;
+  const picked = (window.__gtArr || {})[pi] || [];
+  picked.splice(pos, 1);
+  window.__gtArr[pi] = picked;
+  gtArrPaint(pi, drill);
+};
+
+window.gtArrSubmit = async (pi) => {
+  const it = (window.__gtData || [])[pi];
+  const drill = gtArrDrill(pi);
+  if (!it || !drill) return;
+  const scope = _gtScope();
+  const order = ((window.__gtArr || {})[pi] || []).slice();
+  if (order.length !== drill.tokens.length) return;
+
+  const slot = scope.querySelector(`#gt-arr-slot-${pi}`);
+  const go = scope.querySelector(`#gt-arr-go-${pi}`);
+  const verdict = scope.querySelector(`#gt-verdict-2-${pi}`);
+  if (go) go.disabled = true;
+  if (verdict) verdict.textContent = 'Memeriksa…';
+
+  let d;
+  try {
+    const r = await window.ezApi('/grammar-task/drill-answer', {
+      method: 'POST',
+      body: JSON.stringify({ lessonId: window.__gtLessonId, grammarId: it.id, step: 2, order }),
+    });
+    if (!r.ok) throw new Error('bad');
+    d = await r.json();
+  } catch {
+    if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--no">Gagal memeriksa, coba lagi.</span>';
+    if (go) go.disabled = false;
+    return;
+  }
+
+  if (d.passed) {
+    if (slot) slot.classList.add('gt-arr--ok');
+    if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--ok">✓ Benar</span>';
+    gtMarkStepPassed(pi, 2);
+    gtAdvance(pi, 2);
+  } else {
+    if (slot) slot.classList.add('gt-arr--no');
+    const key = `${pi}-2`;
+    window.__gtWrong = window.__gtWrong || {};
+    window.__gtWrong[key] = (window.__gtWrong[key] || 0) + 1;
+    if (window.__gtWrong[key] >= GT_MAX_WRONG) {
+      // Kalimat yang benar baru dibuka di sini — sebelum dinilai, server tidak
+      // pernah mengirimkannya. Tahap berikutnya ikut dilepas supaya siswa
+      // tidak mentok permanen.
+      // Server hanya mengirim kuncinya kalau jatah salahnya memang sudah
+      // habis menurut catatannya sendiri. Kalau tidak dikirim (mis. pencatatan
+      // percobaan gagal), jangan tampilkan kotak kosong.
+      const right = d.japanese || (d.correctOrder || []).join(' ');
+      if (verdict) {
+        verdict.innerHTML = right
+          ? '<span class="gt-step__verdict--no">Belum tepat. Urutan yang benar:</span>'
+            + `<div class="gt-step__sentence" style="margin-top:7px" lang="ja">${escapeHtml(right)}</div>`
+          : '<span class="gt-step__verdict--no">Belum tepat. Pelajari lagi contoh kalimatnya di atas, lalu lanjut.</span>';
+      }
+      gtAdvance(pi, 2);
+    } else {
+      if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--no">Urutannya belum tepat.</span>'
+        + `<button type="button" class="gt-retry" onclick="gtArrRetry(${pi})">Coba lagi</button>`;
+    }
+  }
+  scheduleBunpouAnalysisRefresh();
+};
+
+window.gtArrRetry = (pi) => {
+  const drill = gtArrDrill(pi);
+  if (!drill) return;
+  const scope = _gtScope();
+  const slot = scope.querySelector(`#gt-arr-slot-${pi}`);
+  if (slot) slot.classList.remove('gt-arr--no', 'gt-arr--ok');
+  const verdict = scope.querySelector(`#gt-verdict-2-${pi}`);
+  if (verdict) verdict.innerHTML = '';
+  window.__gtArr[pi] = [];
+  gtArrPaint(pi, drill);
+};
 
 function gtSetMeaningHidden(pi, hidden) {
   const el = _gtScope().querySelector(`#gt-meaning-${pi}`);
