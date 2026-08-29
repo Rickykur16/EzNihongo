@@ -78,11 +78,20 @@ let anthropicCalls = 0;
 // `anthropicReply` berupa string dikirim apa adanya (generator pengecoh
 // membalas teks per baris, bukan JSON).
 let anthropicText = null;
+// Balasan Step 2: panjangnya sebanding dengan jawaban seed (がくせい /
+// じゃありません / です), jadi lolos slotShaped untuk ketiga pola.
+let anthropicControlledText = 'せんせい\nではない\nでした';
 globalThis.fetch = async (url, opts) => {
   const u = String(url);
   if (u.includes('api.anthropic.com')) {
     anthropicCalls++;
-    const body = anthropicText != null ? anthropicText : JSON.stringify(anthropicReply);
+    // Generate pengecoh memanggil model DUA kali dengan prompt berbeda: Step 1
+    // minta kalimat arti (Bahasa Indonesia), Step 2 minta potongan Jepang yang
+    // muat di ＿＿＿. Satu balasan untuk keduanya tidak realistis — sejak
+    // slotShaped() ikut menyaring, balasan Step 1 memang ditolak di Step 2.
+    const isStep2 = String((opts && opts.body) || '').includes('Soal isian');
+    const body = isStep2 ? anthropicControlledText
+      : (anthropicText != null ? anthropicText : JSON.stringify(anthropicReply));
     return new Response(JSON.stringify({ content: [{ type: 'text', text: body }] }),
       { status: 200, headers: { 'content-type': 'application/json' } });
   }
@@ -442,8 +451,48 @@ if (MODE === 'eval') {
   const c2back = await realFetch(`${base}/grammar-task/lesson/${ctx.taskLessonId}/drills`,
     { headers: { authorization: 'Bearer ' + token } });
   const c2bd = (await c2back.json()).drills.find((d) => d.grammarId === ctx.gids[0]);
+  const derived = c2bd.step2 ? c2bd.step2.options.filter((o) => o !== 'がくせい') : [];
   check('dikosongkan → kembali ke pengecoh turunan',
-    c2bd.step2 && c2bd.step2.options.includes('がくせいの'), c2bd.step2.options);
+    // Yang diuji: pengecohnya kembali TURUNAN (partikel ditempel ke jawaban),
+    // bukan yang tadi dikurasi. Partikel mana yang terpilih tidak diuji —
+    // urutannya di-seed dari id pola, yang berbeda tiap kali seed dijalankan.
+    derived.length === 3 && derived.every((o) => /^がくせい[のをにが]$/.test(o)),
+    c2bd.step2 && c2bd.step2.options);
+
+  console.log('\nStep 2 — highlight yang isinya kalimat utuh tidak boleh jadi pilihan');
+  // Keluhan nyata dari produksi: 「私は学生＿＿＿。」 disodori pilihan
+  // 「ペンは赤いです」 dan 「田中さんは医者です」. Sumbernya highlight contoh
+  // pola LAIN yang isinya kalimat utuh (bukan potongan pola), dipakai sebagai
+  // pengecoh cadangan. Pilihan sepanjang kalimat tidak mungkin muat di ＿＿＿,
+  // jadi soalnya bisa dijawab tanpa tahu tata bahasanya sama sekali.
+  await query(`UPDATE grammar_examples SET highlight = japanese WHERE grammar_id = ANY($1)`,
+    [[ctx.gids[0], ctx.gids[1]]]);
+  // Blok generate massal di atas sudah mengisi pengecoh kurasi untuk semua
+  // pola; yang diuji di sini justru jalur TURUNAN, jadi kurasinya dikosongkan.
+  await query(`UPDATE module_grammar SET controlled_distractors = NULL WHERE id = $1`, [ctx.gids[2]]);
+  // Tanpa terjemahan, 「です」 tidak punya pengecoh bentuk yang menentukan
+  // (「がくせいでした」 sama benarnya), jadi ia MEMANG jatuh ke cadangan.
+  await query(`UPDATE grammar_examples SET indonesian = NULL WHERE grammar_id = $1`, [ctx.gids[2]]);
+  const junk = await realFetch(`${base}/grammar-task/lesson/${ctx.taskLessonId}/drills`,
+    { headers: { authorization: 'Bearer ' + token } });
+  const junkD = (await junk.json()).drills.find((d) => d.grammarId === ctx.gids[2]);
+  check('tidak ada pilihan berbentuk kalimat — soalnya disembunyikan, bukan diisi asal',
+    junkD && junkD.step2 === null, junkD && junkD.step2 && junkD.step2.options);
+
+  // Dengan terjemahan di layar, kala & kepositifan jadi bisa dinilai, jadi
+  // 「です」 dapat lawan yang sah tanpa perlu meminjam dari pola lain.
+  await query(`UPDATE grammar_examples SET indonesian = 'Kamu seorang siswa.' WHERE grammar_id = $1`,
+    [ctx.gids[2]]);
+  const copula = await realFetch(`${base}/grammar-task/lesson/${ctx.taskLessonId}/drills`,
+    { headers: { authorization: 'Bearer ' + token } });
+  const copulaD = (await copula.json()).drills.find((d) => d.grammarId === ctx.gids[2]);
+  check('ada terjemahan → kopula dilawankan kala/kepositifan',
+    copulaD && copulaD.step2
+      && copulaD.step2.options.includes('でした')
+      && copulaD.step2.options.every((o) => !/[。、]/.test(o)),
+    copulaD && copulaD.step2 && copulaD.step2.options);
+  await query(`UPDATE grammar_examples SET highlight = $2 WHERE grammar_id = $1`, [ctx.gids[0], 'がくせい']);
+  await query(`UPDATE grammar_examples SET highlight = $2 WHERE grammar_id = $1`, [ctx.gids[1], 'じゃありません']);
 
   console.log('\nStep 1 — pengecoh kurasi dipakai kalau ada (migration 124)');
   await query(

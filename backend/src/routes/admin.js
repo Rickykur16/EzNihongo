@@ -13,7 +13,7 @@ import {
 } from '../auth.js';
 import { COACH_PROMPT_DEFAULT } from './recommendations.js';
 import { callClaude, anthropicEnabled, ANTHROPIC_GEN_MODEL } from '../anthropic.js';
-import { controlledSlot } from '../grammar-drills.js';
+import { controlledSlot, slotShaped } from '../grammar-drills.js';
 import {
   NOTION_BAB_DB_ID_DEFAULT,
   NOTION_VOCAB_LESSON_RELATION,
@@ -1322,6 +1322,8 @@ Aturan:
   keliru, partikel yang keliru, atau pola lain yang mirip tapi tidak cocok
   konteksnya.
 - Level N5/N4. Jangan memakai kanji di luar level itu.
+- Tulis ISI ＿＿＿ saja, bukan kalimat utuh. Panjangnya sebanding dengan
+  jawaban benar dan tanpa tanda baca akhir kalimat.
 - Balas TEPAT 3 baris, satu pilihan per baris, tanpa nomor dan tanpa penjelasan.`;
 
   const text = await callClaude({
@@ -1336,7 +1338,10 @@ Aturan:
     .split(/\r?\n/)
     .map((l) => l.replace(/^\s*(?:\d+[.)]|[-*•])\s*/, '').trim())
     .filter(Boolean)
-    .filter((l) => l !== slot.answer)
+    // Pagar yang sama dengan penurunan otomatis: pilihan harus muat di ＿＿＿.
+    // Model kadang membalas kalimat utuh walau diminta potongan, dan pilihan
+    // sepanjang kalimat membuat soalnya bisa dijawab tanpa tahu tata bahasanya.
+    .filter((l) => slotShaped(slot.answer, l))
     .slice(0, 3);
   return distractors.length >= 2 ? { distractors, slot } : null;
 }
