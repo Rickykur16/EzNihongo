@@ -4244,6 +4244,7 @@ window.grammarManageDistractors = async (grammarId) => {
     <div class="toolbar" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
       <button type="button" class="btn btn-ghost" id="grmr-dist-gen" onclick="grmrGenDistractors()">✨ Generate keduanya (AI)</button>
       <button type="button" class="btn btn-ghost" id="grmr-dist-all" onclick="grmrGenDistractorsAll()" title="Isi semua pola di kursus ini yang pengecohnya masih kosong">🚀 Isi semua pola yang masih kosong</button>
+      <button type="button" class="btn btn-ghost" id="grmr-prep-all" onclick="grmrPrepareExamplesAll()" title="Tambahkan spasi antar-bunsetsu dan terjemahan pada contoh kalimat yang belum punya">␣ Lengkapi contoh (spasi + terjemahan)</button>
       <span id="grmr-dist-status" style="font-size:11px;color:#737373;align-self:center;"></span>
     </div>
     <div id="grmr-dist-bulk" style="display:none;margin-top:8px;padding:10px 12px;background:#f9fafb;border:1px solid var(--paper-300,#e5e5e5);border-radius:6px;font-size:12px;font-family:var(--font-body);line-height:1.6;"></div>
@@ -4279,6 +4280,51 @@ window.grmrGenDistractors = async () => {
 // Isi semua pola sekaligus. Server mengerjakannya per batch kecil (nginx
 // memutus request di 60s), jadi di sini dipanggil berulang sampai habis.
 // Aman diulang: pola yang sudah terisi dilewati server, bukan ditimpa.
+// Contoh Bab 3-11 (backfill migration 031) tidak punya spasi antar-bunsetsu
+// maupun terjemahan. Step 2 butuh keduanya: tanpa spasi kalimatnya tidak bisa
+// dipotong jadi soal susun kalimat, dan tanpa terjemahan soal pilihan ganda
+// kopula jadi ambigu (「私は学生でした。」 sama benarnya dengan kuncinya).
+window.grmrPrepareExamplesAll = async () => {
+  const ctx = window.__grmrDistCtx;
+  if (!ctx) return;
+  if (!confirm('Lengkapi contoh kalimat di SELURUH kursus ini?\n\n'
+    + 'Contoh yang belum punya spasi antar-bunsetsu akan diberi spasi, dan yang belum punya '
+    + 'terjemahan akan diterjemahkan. Kalimat Jepangnya TIDAK diubah — hanya spasi yang '
+    + 'disisipkan, dan itu diperiksa otomatis. Contoh yang sudah lengkap tidak disentuh.')) return;
+
+  const btn = document.getElementById('grmr-prep-all');
+  const box = document.getElementById('grmr-dist-bulk');
+  if (btn) { btn.disabled = true; btn.textContent = 'Melengkapi…'; }
+  if (box) { box.style.display = 'block'; box.textContent = 'Memulai…'; }
+
+  let totalSaved = 0;
+  const allFailed = [];
+  let guard = 0;
+  try {
+    for (;;) {
+      if (++guard > 60) { if (box) box.textContent += '\nBerhenti otomatis — terlalu banyak putaran. Klik lagi untuk melanjutkan.'; break; }
+      const d = await api('/admin/module-grammar/prepare-examples-bulk', {
+        method: 'POST', body: JSON.stringify({ fromGrammarId: ctx.grammarId, limit: 10 }),
+      });
+      totalSaved += d.saved || 0;
+      if (Array.isArray(d.failed)) allFailed.push(...d.failed);
+      if (box) {
+        box.textContent = `Contoh dilengkapi: ${totalSaved} · Sisa: ${d.remaining}`
+          + (allFailed.length ? `\nGagal: ${allFailed.slice(0, 5).join(' / ')}` : '');
+      }
+      if (!d.remaining) break;
+      if (!d.saved && d.processed) {
+        if (box) box.textContent += '\nBatch terakhir gagal semua — dihentikan. Coba lagi nanti.';
+        break;
+      }
+    }
+  } catch (e) {
+    if (box) box.textContent = 'Gagal: ' + (e.message || e);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '␣ Lengkapi contoh (spasi + terjemahan)'; }
+  }
+};
+
 window.grmrGenDistractorsAll = async () => {
   const ctx = window.__grmrDistCtx;
   if (!ctx) return;

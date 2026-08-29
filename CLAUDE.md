@@ -115,6 +115,35 @@
       ini terbukti mengganggu, jalan keluarnya kolom "urutan alternatif" yang
       dikurasi admin, pola yang sama dengan 124/125.
 
+      **Bab 3-11 sempat kehilangan Step 2 sama sekali** (user: "cuma 1 dan
+      langsung 3") — akar masalahnya DATA, bukan aturan: contoh Bab 3-11 lahir
+      dari backfill migration 031 (disalin dari `module_grammar.example`)
+      sehingga TANPA spasi antar-bunsetsu DAN tanpa terjemahan. Tanpa spasi
+      kalimatnya tidak bisa dipotong (susun-kalimat mati), tanpa terjemahan
+      pilihan ganda kopula ditahan pagar `hasTranslation`. Perlu diingat:
+      **memecah kalimat Jepang tanpa spasi TIDAK bisa diheuristikkan** —
+      partikel muncul di dalam kata (にほん、はな、がっこう), jadi pemecah
+      berbasis partikel/transisi aksara justru melahirkan kepingan sampah,
+      yaitu masalah "ga masuk akal" yang sama dalam bentuk baru. Jalan
+      keluarnya melengkapi MATERINYA, bukan melonggarkan aturan: tombol
+      **"␣ Lengkapi contoh (spasi + terjemahan)"** di modal 🎯 Pengecoh
+      (`POST /admin/module-grammar/prepare-examples-bulk`, batch 10, bisa
+      diulang, kolom terisi tidak pernah ditimpa). **Jaminan keamanannya**:
+      hasil spasi diterima hanya kalau identik dengan aslinya setelah semua
+      spasi dibuang (`spacingOnly`) — model secara struktural tidak bisa
+      menulis ulang kalimat materi, cuma menyisipkan spasi; kalau ia
+      menyelundupkan perubahan kata, spasinya dibuang dan terjemahannya tetap
+      dipakai.
+
+      **Lantai pada pagar panjang pengecoh** — `slotShaped` semula memakai
+      rasio murni (≤2×+2), yang menghukum jawaban PENDEK: untuk jawaban
+      「です」 (2 huruf) rasio itu membuang 「じゃありません」 (7), justru lawan
+      paling wajar, sehingga pola berjawaban kopula tetap tidak dapat Step 2
+      walau tombol 🚀 sudah ditekan. Batasnya kini `max(2×+2, 12)`. Pilihan
+      sepanjang kalimat tetap tertahan oleh dua pagar LAIN (tumpang tindih
+      dengan jawaban + highlight-sekalimat), bukan oleh panjang — dibuktikan
+      ulang lewat audit 46 pola: 0 anomali, dan cakupan Step 2 naik 45→46/46.
+
       **`drillLimiter` dipisah dari `evalLimiter`** (90/menit vs 20/menit) —
       ditemukan saat menulis tes ini. Soal Step 1/2 dinilai murni DB+CPU tanpa
       AI, tapi dulu ikut memakai jatah endpoint `evaluate`; satu Tugas Bunpou

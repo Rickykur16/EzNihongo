@@ -187,10 +187,14 @@ export function slotShaped(answer, cand) {
   if (!a || !c || c === a) return false;
   // Tanda baca di TENGAH = ini kalimat, bukan isi slot.
   if (INNER_PUNCT.test(c)) return false;
-  // Panjang harus sebanding. Opsi yang jauh lebih panjang/pendek dari yang
-  // lain sudah jadi petunjuk sendiri sebelum siswa membaca isinya — dan
-  // pilihan sepanjang kalimat memang tidak mungkin muat di ＿＿＿.
-  if (c.length > a.length * 2 + 2) return false;
+  // Panjang harus sebanding: opsi yang jauh lebih panjang dari yang lain sudah
+  // jadi petunjuk sendiri, dan pilihan sepanjang kalimat memang tidak mungkin
+  // muat di ＿＿＿. Batasnya punya LANTAI, karena aturan rasio saja menghukum
+  // jawaban pendek: untuk jawaban 「です」 (2 huruf) rasio 2×+2 membuang
+  // 「じゃありません」 (7) — justru lawan yang paling wajar. Pilihan sepanjang
+  // kalimat tetap tertahan oleh dua pagar lain (tumpang tindih dengan jawaban,
+  // dan highlight-sekalimat), bukan oleh panjang saja.
+  if (c.length > Math.max(a.length * 2 + 2, 12)) return false;
   if (c.length * 2 + 2 < a.length) return false;
   return true;
 }
