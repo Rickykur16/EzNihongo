@@ -2830,8 +2830,15 @@
   .deck-list-item .dc-audio:hover { background: var(--brand-red); color: #fff; border-color: var(--brand-red); transform: translateY(-50%) scale(1.08); }
   .deck-list-item .dc-audio.playing { background: var(--brand-red); color: #fff; border-color: var(--brand-red); animation: pulse 0.9s infinite; }
   @media (max-width: 600px) {
-    .deck-list-item { flex-wrap: wrap; padding: 10px 46px 10px 12px; }
-    .deck-list-item .dli-jp { font-size: 17px; min-width: 0; }
+    .deck-list-item { padding: 10px 46px 10px 12px; }
+    .deck-list-item .dli-jp {
+      font-size: 17px; min-width: 0; max-width: 42%; flex-shrink: 1;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .deck-list-item .dli-kana {
+      min-width: 0; max-width: 30%; flex-shrink: 1;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
   }
   .deck-empty, .deck-empty-filter {
     grid-column: 1 / -1; text-align: center; padding: 60px 20px;
