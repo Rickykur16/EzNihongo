@@ -2830,8 +2830,24 @@
   .deck-list-item .dc-audio:hover { background: var(--brand-red); color: #fff; border-color: var(--brand-red); transform: translateY(-50%) scale(1.08); }
   .deck-list-item .dc-audio.playing { background: var(--brand-red); color: #fff; border-color: var(--brand-red); animation: pulse 0.9s infinite; }
   @media (max-width: 600px) {
-    .deck-list-item { flex-wrap: wrap; padding: 10px 46px 10px 12px; }
-    .deck-list-item .dli-jp { font-size: 17px; min-width: 0; }
+    .deck-list-item { padding: 10px 46px 10px 12px; align-items: flex-start; }
+    .deck-list-item .dli-jp {
+      font-size: 17px; min-width: 0; max-width: 42%; flex-shrink: 1;
+      line-height: 1.25; white-space: normal; word-break: break-word;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .deck-list-item .dli-kana {
+      min-width: 0; max-width: 30%; flex-shrink: 1; padding-top: 2px;
+      line-height: 1.25; white-space: normal; word-break: break-word;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .deck-list-item .dli-meaning {
+      padding-top: 2px; line-height: 1.3; white-space: normal;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden; text-overflow: ellipsis;
+    }
   }
   .deck-empty, .deck-empty-filter {
     grid-column: 1 / -1; text-align: center; padding: 60px 20px;
