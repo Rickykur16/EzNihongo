@@ -2839,9 +2839,15 @@
     }
     .deck-list-item .dli-kana {
       min-width: 0; max-width: 30%; flex-shrink: 1; padding-top: 2px;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      line-height: 1.25; white-space: normal; word-break: break-word;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden; text-overflow: ellipsis;
     }
-    .deck-list-item .dli-meaning { padding-top: 2px; }
+    .deck-list-item .dli-meaning {
+      padding-top: 2px; line-height: 1.3; white-space: normal;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden; text-overflow: ellipsis;
+    }
   }
   .deck-empty, .deck-empty-filter {
     grid-column: 1 / -1; text-align: center; padding: 60px 20px;
