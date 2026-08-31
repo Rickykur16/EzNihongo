@@ -3755,6 +3755,9 @@
   .kana-mastery-card.review { background: #fff8ec; border-color: #f1dfb8; }
   .kana-mastery-note { margin-top: 12px; color: var(--du-ink-2, #555); font-size: 12.5px; line-height: 1.55; }
   .kana-mastery-note strong { color: var(--du-ink, #1b1410); }
+  .kana-session-plan { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 12px; }
+  .kana-session-step { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 9px 10px; border: 1px solid #e9e4dc; border-radius: 11px; background: #fff; color: var(--du-ink-2, #555); font-size: 11.5px; font-weight: 700; }
+  .kana-session-step b { display: inline-flex; flex: 0 0 22px; width: 22px; height: 22px; align-items: center; justify-content: center; border-radius: 50%; background: #fff0f2; color: var(--brand-red, #C8102E); font-size: 11px; }
   .kana-weak-preview { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
   .kana-weak-label { color: var(--du-ink-3, #8a8a8a); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
   .kana-weak-chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border: 1px solid #ead6b5; border-radius: 999px; background: #fff; color: #664b21; font-size: 12px; }
@@ -3787,6 +3790,12 @@
   .kana-drill-result .kdr-pct { font-size: 14px; color: var(--du-ink-3, #8a8a8a); margin-bottom: 12px; }
   .kana-drill-result .kdr-caption { margin-bottom: 16px; color: var(--du-ink-2, #555); font-size: 12.5px; }
   .kana-drill-result-actions { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  .kana-session-break { max-width: 480px; margin: 0 auto; padding: 10px 0 4px; text-align: center; }
+  .kana-session-check { display: flex; width: 42px; height: 42px; align-items: center; justify-content: center; margin: 0 auto 9px; border-radius: 50%; background: #eafaf0; color: #15803d; font-size: 22px; font-weight: 900; }
+  .kana-session-break h3 { margin: 0; color: var(--du-ink, #1b1410); font-size: 19px; }
+  .kana-session-break > p { margin: 5px 0 14px; color: var(--du-ink-3, #8a8a8a); font-size: 12.5px; }
+  .kana-session-next { margin-bottom: 14px; padding: 10px 12px; border: 1px solid #eadfcd; border-radius: 12px; background: #fffaf2; color: #6a5530; font-size: 12.5px; line-height: 1.45; }
+  .kana-session-next strong { color: #4d3918; }
   .kana-weakness-list { max-width: 520px; margin: 18px auto; text-align: left; }
   .kana-weakness-title { margin-bottom: 8px; color: var(--du-ink, #1b1410); font-size: 12px; font-weight: 800; }
   .kana-weakness-item { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 10px; border-top: 1px solid #ece7df; }
@@ -3806,6 +3815,8 @@
     .kana-mastery-card { padding: 11px 8px; text-align: center; }
     .kana-mastery-card strong { font-size: 21px; }
     .kana-mastery-card span { font-size: 10.5px; }
+    .kana-session-plan { grid-template-columns: 1fr; gap: 6px; }
+    .kana-session-step { padding-block: 8px; }
     .kana-drill-prompt { font-size: 50px; margin-top: 12px; }
     .kana-drill-opts { gap: 8px; }
     .kana-drill-opt { min-height: 56px; padding: 11px 8px; font-size: 21px; }
@@ -9533,7 +9544,7 @@ function renderKanaLesson(course, module, lesson, nav) {
         <div class="dh-stat-label">karakter</div>
       </div>
     </div>
-    ${chartHtml}
+    <div id="kana-chart-wrap">${chartHtml}</div>
     ${drillBlock}
     ${modalMarkup}
     <div class="lesson-footer">
@@ -9643,6 +9654,8 @@ window.closeKanaModal = () => {
 // Drill adaptif dua arah. Penguasaan disimpan lokal per karakter dan arah agar
 // soal berikutnya memprioritaskan kana yang baru, sering salah, atau belum diuji.
 const KANA_MASTERY_KEY = 'ez_kana_mastery_v1';
+const KANA_DRILL_SESSION_COUNT = 3;
+const KANA_DRILL_ITEMS_PER_SESSION = 12;
 
 function _kanaShuffle(list) {
   const out = list.slice();
@@ -9701,7 +9714,7 @@ function _kanaSummary(item, store) {
   const correct = stat.k2r.correct + stat.r2k.correct;
   const accuracy = attempts ? correct / attempts : 0;
   const testedBoth = stat.k2r.attempts > 0 && stat.r2k.attempts > 0;
-  const mastered = attempts >= 4 && testedBoth && accuracy >= 0.8 && (stat.k2r.streak + stat.r2k.streak) >= 2;
+  const mastered = attempts >= 3 && testedBoth && accuracy >= 0.8 && (stat.k2r.streak + stat.r2k.streak) >= 2;
   return { stat, attempts, correct, accuracy, mastered };
 }
 
@@ -9782,7 +9795,7 @@ function pickDistractors(pool, item, count, keyFn) {
   }
   return out;
 }
-function _kanaMakeQuestion(pool, item, dir, retryCount) {
+function _kanaMakeQuestion(pool, item, dir, retryCount, baseOrder) {
   const distract = _kanaPickDistractors(pool, item, 3);
   return {
     item,
@@ -9790,7 +9803,41 @@ function _kanaMakeQuestion(pool, item, dir, retryCount) {
     opts: _kanaShuffle([item, ...distract]),
     retryCount: retryCount || 0,
     isRetry: (retryCount || 0) > 0,
+    baseOrder: baseOrder || 1,
   };
+}
+
+function _kanaSetFocus(active) {
+  const chart = document.getElementById('kana-chart-wrap');
+  if (chart) chart.hidden = !!active;
+  if (active) {
+    const drill = document.getElementById('kana-drill');
+    if (drill) requestAnimationFrame(() => drill.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+}
+
+function _kanaSessionInfo(number) {
+  const sessions = {
+    1: { label: 'Kenali', description: 'Kenali karakter dari arah yang paling perlu dilatih.' },
+    2: { label: 'Balik arah', description: 'Uji Kana yang sama dari arah sebaliknya.' },
+    3: { label: 'Penguatan', description: 'Perkuat kembali arah yang masih paling lemah.' },
+  };
+  return sessions[number] || sessions[1];
+}
+
+function _kanaBeginSession(st, number, questions) {
+  st.session = number;
+  st.questions = questions;
+  st.idx = 0;
+  st.targetCount = questions.length;
+  st.answered = false;
+  st.resolved = new Set();
+  st.sessionAttempts = 0;
+  st.sessionCorrect = 0;
+  st.sessionWrong = 0;
+  st.streak = 0;
+  st.baseQuestionCount += questions.length;
+  kanaDrillRender();
 }
 
 function _kanaWeakItems(pool) {
@@ -9819,9 +9866,15 @@ function kanaDrillShowOverview() {
       <div class="kana-mastery-card review"><strong>${review.length}</strong><span>Perlu diulang</span></div>
       <div class="kana-mastery-card"><strong>${fresh}</strong><span>Belum dilatih</span></div>
     </div>
-    <div class="kana-mastery-note"><strong>Cara kerja:</strong> soal baru dan yang sering salah muncul lebih dulu. Jawaban salah akan muncul lagi setelah beberapa soal sampai lebih melekat. Progres tersimpan di perangkat ini.</div>
+    <div class="kana-session-plan" aria-label="Tiga sesi latihan">
+      <div class="kana-session-step"><b>1</b><span>Kenali</span></div>
+      <div class="kana-session-step"><b>2</b><span>Balik arah</span></div>
+      <div class="kana-session-step"><b>3</b><span>Penguatan</span></div>
+    </div>
+    <div class="kana-mastery-note"><strong>3 sesi, maksimal 12 soal per sesi.</strong> Soal baru dan yang sering salah muncul lebih dulu. Jawaban salah akan muncul lagi setelah beberapa soal. Tabel Kana disembunyikan selama latihan dan progres tersimpan di perangkat ini.</div>
     ${preview.length ? `<div class="kana-weak-preview"><span class="kana-weak-label">Fokus berikutnya</span>${preview.map(({ item, summary }) => `<span class="kana-weak-chip"><b lang="ja">${escapeHtml(item.character)}</b> ${escapeHtml(item.romaji)} · ${escapeHtml(_kanaDirectionLabel(_kanaWeakDirection(summary)))}</span>`).join('')}</div>` : ''}`;
   window.__kanaDrill = null;
+  _kanaSetFocus(false);
 }
 
 window.kanaDrillShowOverview = kanaDrillShowOverview;
@@ -9833,13 +9886,22 @@ window.kanaDrillStart = (mode = 'adaptive') => {
   if (pool.length < 2) { body.innerHTML = '<div class="kana-drill-progress">Karakter belum cukup untuk drill.</div>'; return; }
   const store = _kanaReadMastery();
   let ranked = pool.map((item) => ({ item, summary: _kanaSummary(item, store) }));
-  if (mode === 'weak') ranked = ranked.filter((row) => row.summary.attempts > 0 && !row.summary.mastered);
+  if (mode === 'weak') {
+    ranked = ranked.filter((row) => row.summary.attempts > 0 && !row.summary.mastered);
+  } else {
+    // Kana yang sudah dikuasai keluar dari putaran berikutnya selama masih ada
+    // materi baru/lemah. Bila semuanya dikuasai, seluruh pool kembali menjadi
+    // review pemeliharaan agar ingatan tidak dibiarkan hilang permanen.
+    const pending = ranked.filter((row) => !row.summary.mastered);
+    if (pending.length) ranked = pending;
+  }
   if (!ranked.length) { kanaDrillShowOverview(); return; }
   ranked = ranked.map((row) => ({ ...row, priority: _kanaPriority(row.summary) + Math.random() * 1.25 }))
     .sort((a, b) => b.priority - a.priority);
-  const targetCount = Math.min(ranked.length, mode === 'weak' ? 8 : 12);
+  const targetCount = Math.min(ranked.length, KANA_DRILL_ITEMS_PER_SESSION);
   const selected = ranked.slice(0, targetCount);
-  const questions = selected.map(({ item, summary }) => {
+  const baseDirections = {};
+  const questions = selected.map(({ item, summary }, index) => {
     const kStrength = _kanaDirStrength(summary.stat.k2r);
     const rStrength = _kanaDirStrength(summary.stat.r2k);
     const dir = mode === 'weak'
@@ -9847,23 +9909,48 @@ window.kanaDrillStart = (mode = 'adaptive') => {
       : (Math.abs(kStrength - rStrength) < 0.05
           ? (Math.random() < 0.5 ? 'k2r' : 'r2k')
           : (kStrength < rStrength ? 'k2r' : 'r2k'));
-    return _kanaMakeQuestion(pool, item, dir, 0);
+    baseDirections[_kanaKey(item)] = dir;
+    return _kanaMakeQuestion(pool, item, dir, 0, index + 1);
   });
-  window.__kanaDrill = {
+  const st = {
     pool,
-    questions,
-    idx: 0,
-    targetCount,
-    answered: false,
+    selected: selected.map((row) => row.item),
+    baseDirections,
+    mode,
+    session: 1,
     attempts: 0,
     correct: 0,
     wrong: 0,
     firstCorrect: 0,
+    baseQuestionCount: 0,
     streak: 0,
     bestStreak: 0,
-    resolved: new Set(),
+    mistakeKeys: new Set(),
   };
-  kanaDrillRender();
+  window.__kanaDrill = st;
+  _kanaSetFocus(true);
+  _kanaBeginSession(st, 1, questions);
+};
+
+window.kanaDrillNextSession = () => {
+  const st = window.__kanaDrill;
+  if (!st || st.session >= KANA_DRILL_SESSION_COUNT) return;
+  const next = st.session + 1;
+  let rows = _kanaShuffle(st.selected).map((item) => ({ item, summary: _kanaSummary(item) }));
+  if (next === 3) {
+    rows = rows.sort((a, b) => {
+      const mistakeDiff = Number(st.mistakeKeys.has(_kanaKey(b.item))) - Number(st.mistakeKeys.has(_kanaKey(a.item)));
+      return mistakeDiff || (_kanaPriority(b.summary) - _kanaPriority(a.summary));
+    });
+  }
+  const questions = rows.map(({ item, summary }, index) => {
+    const firstDir = st.baseDirections[_kanaKey(item)] || 'k2r';
+    const dir = next === 2
+      ? (firstDir === 'k2r' ? 'r2k' : 'k2r')
+      : _kanaWeakDirection(summary);
+    return _kanaMakeQuestion(st.pool, item, dir, 0, index + 1);
+  });
+  _kanaBeginSession(st, next, questions);
 };
 
 function _kanaWeaknessMarkup(pool) {
@@ -9887,12 +9974,25 @@ function kanaDrillRender() {
   const body = document.getElementById('kana-drill-body');
   if (!st || !body) return;
   if (st.idx >= st.questions.length) {
+    if (st.session < KANA_DRILL_SESSION_COUNT) {
+      const sessionPct = st.sessionAttempts ? Math.round((st.sessionCorrect / st.sessionAttempts) * 100) : 0;
+      const next = _kanaSessionInfo(st.session + 1);
+      body.innerHTML = `<div class="kana-session-break">
+        <div class="kana-session-check">✓</div>
+        <h3>Sesi ${st.session} selesai</h3>
+        <p>${sessionPct}% akurat · ${st.sessionCorrect} benar, ${st.sessionWrong} salah</p>
+        <div class="kana-session-next"><strong>Berikutnya: ${escapeHtml(next.label)}</strong><br>${escapeHtml(next.description)}</div>
+        <button class="btn-primary" type="button" onclick="kanaDrillNextSession()">Lanjut Sesi ${st.session + 1}</button>
+      </div>`;
+      return;
+    }
     const pct = st.attempts ? Math.round((st.correct / st.attempts) * 100) : 0;
-    const recallPct = st.targetCount ? Math.round((st.firstCorrect / st.targetCount) * 100) : 0;
+    const recallPct = st.baseQuestionCount ? Math.round((st.firstCorrect / st.baseQuestionCount) * 100) : 0;
     const weakCount = _kanaWeakItems(st.pool).length;
+    _kanaSetFocus(false);
     body.innerHTML = `<div class="kana-drill-result">
       <div class="kdr-score">${pct}%</div>
-      <div class="kdr-pct">Akurasi sesi · ${st.correct} benar, ${st.wrong} salah</div>
+      <div class="kdr-pct">3 sesi selesai · ${st.correct} benar, ${st.wrong} salah</div>
       <div class="kdr-caption">${recallPct}% langsung ingat tanpa pengulangan · runtun terbaik ${st.bestStreak}</div>
       ${_kanaWeaknessMarkup(st.pool)}
       <div class="kana-drill-result-actions">
@@ -9913,16 +10013,19 @@ function kanaDrillRender() {
     return `<button class="kana-drill-opt" type="button" data-oi="${oi}"${lang} onclick="kanaDrillAnswer(${oi})">${escapeHtml(label)}</button>`;
   }).join('');
   const resolved = st.resolved.size;
-  const accuracy = st.attempts ? Math.round((st.correct / st.attempts) * 100) : 0;
-  const progress = Math.round((resolved / st.targetCount) * 100);
+  const accuracy = st.sessionAttempts ? Math.round((st.sessionCorrect / st.sessionAttempts) * 100) : 0;
+  const sessionProgress = st.targetCount ? resolved / st.targetCount : 0;
+  const progress = Math.round((((st.session - 1) + sessionProgress) / KANA_DRILL_SESSION_COUNT) * 100);
+  const sessionInfo = _kanaSessionInfo(st.session);
   body.innerHTML = `
     <div class="kana-drill-session-meta">
+      <span>Sesi <strong>${st.session}/${KANA_DRILL_SESSION_COUNT}</strong></span>
       <span>Selesai <strong>${resolved}/${st.targetCount}</strong></span>
       <span>Akurasi <strong>${accuracy}%</strong></span>
       <span>Runtun <strong>${st.streak}</strong></span>
     </div>
-    <div class="kana-drill-meter" role="progressbar" aria-label="Kemajuan drill" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><span style="width:${progress}%"></span></div>
-    <div class="kana-drill-progress">${q.isRetry ? 'Pengulangan terjadwal' : `Soal ${Math.min(st.idx + 1, st.targetCount)} dari ${st.targetCount}`} · ${escapeHtml(_kanaDirectionLabel(q.dir))}</div>
+    <div class="kana-drill-meter" role="progressbar" aria-label="Kemajuan tiga sesi drill" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><span style="width:${progress}%"></span></div>
+    <div class="kana-drill-progress">Sesi ${st.session}: ${escapeHtml(sessionInfo.label)} · ${q.isRetry ? `Ulang soal ${q.baseOrder}` : `Soal ${q.baseOrder} dari ${st.targetCount}`} · ${escapeHtml(_kanaDirectionLabel(q.dir))}</div>
     <div class="kana-drill-prompt"${promptLang}>${escapeHtml(promptText)}</div>
     <div class="kana-drill-hint">${hint}</div>
     <div class="kana-drill-opts">${optsHtml}</div>
@@ -9937,18 +10040,22 @@ window.kanaDrillAnswer = (oi) => {
   const correct = q.opts[oi] === q.item;
   const key = _kanaKey(q.item);
   st.attempts++;
+  st.sessionAttempts++;
   _kanaRecordAnswer(q.item, q.dir, correct);
   if (correct) {
     st.correct++;
+    st.sessionCorrect++;
     st.streak++;
     st.bestStreak = Math.max(st.bestStreak, st.streak);
     if (!q.isRetry) st.firstCorrect++;
     st.resolved.add(key);
   } else {
     st.wrong++;
+    st.sessionWrong++;
     st.streak = 0;
+    st.mistakeKeys.add(key);
     if (q.retryCount < 2) {
-      const retry = _kanaMakeQuestion(st.pool, q.item, q.dir, q.retryCount + 1);
+      const retry = _kanaMakeQuestion(st.pool, q.item, q.dir, q.retryCount + 1, q.baseOrder);
       const insertAt = Math.min(st.questions.length, st.idx + 3);
       st.questions.splice(insertAt, 0, retry);
     } else {
