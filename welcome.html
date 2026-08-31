@@ -1496,14 +1496,23 @@
 
   /* ── NAV: glass with soft shadow ────────────────────────────────── */
   .dash-nav {
+    height: 64px;
     padding: 14px 28px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     background: rgba(255,255,255,0.82);
     backdrop-filter: saturate(1.5) blur(14px);
     -webkit-backdrop-filter: saturate(1.5) blur(14px);
     border-bottom: 1px solid rgba(20,18,14,0.06);
     box-shadow: 0 1px 0 rgba(20,18,14,0.02);
   }
-  @media (max-width: 600px) { .dash-nav { padding: 11px 16px; } }
+  .dash-nav-left { justify-self: start; width: auto; flex: none; }
+  .dash-nav-brand { display: inline-flex; align-items: center; justify-content: center; }
+  .dash-nav-right { justify-self: end; }
+  @media (max-width: 600px) {
+    .dash-nav { height: 60px; padding: 8px 14px; }
+    .dash-nav img { height: 30px; }
+  }
 
   .sidebar-toggle {
     border-radius: 10px;
@@ -1580,7 +1589,18 @@
   }
   .greeting-id { color: var(--du-ink-3); font-size: 15px; line-height: 1.55; }
   /* greeting-time: dark card — styled in base layer, no override needed */
-  @media (max-width: 600px) { .greeting-banner { padding: 28px 18px 22px; } }
+  @media (max-width: 600px) {
+    .greeting-banner { padding: 24px 16px 20px; gap: 12px; }
+    .greeting-jp { font-size: 24px; line-height: 1.25; }
+    .greeting-id { font-size: 13.5px; line-height: 1.5; }
+    .greeting-resume {
+      width: 100%;
+      justify-content: center;
+      margin-top: 12px;
+      padding: 11px 14px;
+    }
+    .greeting-resume .gr-title { max-width: min(52vw, 210px); }
+  }
 
   /* ── FOKUS BELAJAR: panel rekomendasi adaptif ────────────────────── */
   .reco-panel-wrap { padding: 0 40px 6px; }
@@ -1712,6 +1732,8 @@
   /* YouTube segment player — distinct from .video-player placeholder so its
      decorative pseudo-layer never sits above the live iframe. */
   .youtube-segment-player {
+    position: relative;
+    display: block;
     width: 100%;
     aspect-ratio: 16 / 9;
     overflow: hidden;
@@ -1719,6 +1741,7 @@
     background: #111827;
     box-shadow: var(--du-shadow-lg);
   }
+  .youtube-segment-mount,
   .youtube-segment-player iframe {
     display: block;
     width: 100%;
@@ -1730,10 +1753,17 @@
     gap: 8px;
     align-items: center;
     flex-wrap: wrap;
-    margin: 10px 2px 22px;
+    margin: 10px 0 22px;
+    padding: 10px 12px;
+    border: 1px solid var(--du-border);
+    border-radius: 12px;
+    background: var(--du-surface);
+    box-shadow: var(--du-shadow-xs);
     color: var(--du-ink-2);
     font-size: 12px;
+    line-height: 1.45;
   }
+  .youtube-segment-source { flex: 1; min-width: 140px; font-weight: 600; }
   .youtube-segment-range {
     display: inline-flex;
     padding: 4px 9px;
@@ -1744,7 +1774,24 @@
     font-size: 11px;
     font-weight: 700;
   }
-  .youtube-segment-status { color: var(--du-meta); }
+  .youtube-segment-status:not(:empty) {
+    flex-basis: 100%;
+    color: var(--du-meta);
+    padding-top: 8px;
+    border-top: 1px solid var(--du-border-soft);
+  }
+  @media (max-width: 600px) {
+    .youtube-segment-player { border-radius: 14px; box-shadow: var(--du-shadow-md); }
+    .youtube-segment-caption {
+      align-items: flex-start;
+      margin-top: 8px;
+      margin-bottom: 18px;
+      padding: 9px 10px;
+      border-radius: 10px;
+    }
+    .youtube-segment-range { padding: 4px 8px; font-size: 10px; }
+    .youtube-segment-source { min-width: 0; font-size: 11.5px; }
+  }
 
   /* ── BUTTONS ────────────────────────────────────────────────────── */
   .btn-primary, .quiz-next-btn {
@@ -3676,8 +3723,8 @@
   .kana-cell .dc-audio svg { width: 12px; height: 12px; }
   .kana-cell .dc-audio:hover, .kana-cell .dc-audio.playing { background: var(--brand-red, #C8102E); color: #fff; border-color: var(--brand-red, #C8102E); }
   @media (max-width: 640px) {
-    .kana-grid { grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); }
-    .kana-cell { min-height: 72px; padding: 10px 6px 8px; }
+    .kana-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+    .kana-cell { min-height: 72px; padding: 10px 4px 8px; }
     .kana-cell-char { font-size: 25px; }
     .kana-cell .dc-audio { opacity: .65; }
   }
@@ -4210,9 +4257,22 @@
   #ai-senpai .senpai-orb-btn:active { transform: scale(.94) translateY(2px); }
   #ai-senpai .senpai-scroll::-webkit-scrollbar { width:6px; }
   #ai-senpai .senpai-scroll::-webkit-scrollbar-thumb { background:#E8DFD7; border-radius:999px; }
+  #ai-senpai[data-mode="peek"][data-compact="true"] > div:first-child { display: none !important; }
+  #ai-senpai[data-compact="true"] .senpai-orb-btn { width: 76px !important; height: 82px !important; }
+  #ai-senpai[data-compact="true"] .senpai-orb-btn > svg { width: 76px !important; height: 82px !important; }
   @media (max-width: 480px) {
-    #ai-senpai { right: 12px; bottom: 12px; }
+    #ai-senpai { right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); }
     #ai-senpai .senpai-panel { width: calc(100vw - 24px) !important; max-width: 340px; }
+    #ai-senpai[data-mode="peek"] > div:first-child { display: none !important; }
+    #ai-senpai .senpai-orb-btn,
+    #ai-senpai[data-compact="true"] .senpai-orb-btn { width: 60px !important; height: 66px !important; }
+    #ai-senpai .senpai-orb-btn > svg,
+    #ai-senpai[data-compact="true"] .senpai-orb-btn > svg { width: 60px !important; height: 66px !important; }
+    .main-content { padding-bottom: 150px; }
+  }
+  @media (max-width: 360px) {
+    .greeting-resume .gr-label { display: none; }
+    .greeting-resume .gr-title { max-width: 200px; }
   }
   @media (prefers-reduced-motion: reduce) {
     #ai-senpai *, #ai-senpai *::before, #ai-senpai *::after { animation: none !important; }
@@ -6175,6 +6235,8 @@ function renderLearning(courseSlug) {
   document.getElementById('sidebar-toggle')?.classList.add('visible');
   if (isDesktop()) {
     applySidebarCollapse(localStorage.getItem(SIDEBAR_KEY) === '1');
+  } else {
+    closeSidebar();
   }
 }
 
@@ -9937,6 +9999,7 @@ function gtPendingTaskFor(course, lesson) {
 // menjawab soal. Cukup display:none di kontainer #ai-senpai; state chat &
 // mode panel tetap utuh.
 window.__tutorHidden = false;
+window.__tutorCompact = false;
 function setTutorHidden(hidden) {
   window.__tutorHidden = !!hidden;
   const el = document.getElementById('ai-senpai');
@@ -9948,6 +10011,9 @@ function updateTutorVisibility() {
   const course = COURSE_CONTENT[currentState.course];
   const module = course?.modules?.find((m) => m.id === currentState.moduleId);
   const lesson = module?.lessons?.find((l) => l.id === currentState.lessonId);
+  window.__tutorCompact = !!lesson && (lesson.type === 'video' || lesson.type === 'kana');
+  const tutor = document.getElementById('ai-senpai');
+  if (tutor) tutor.dataset.compact = window.__tutorCompact ? 'true' : 'false';
   setTutorHidden(!!lesson && (lesson.type === 'quiz' || lesson.type === 'grammar_task'));
 }
 
@@ -10068,11 +10134,13 @@ function renderVideoLessonPlayer(lesson) {
     const sourceTitle = source.title || 'Video YouTube';
     setTimeout(() => mountYoutubeSegmentPlayer({ elementId, videoId, startSeconds, endSeconds }), 0);
     return `
-      <div class="youtube-segment-player" id="${escapeHtml(elementId)}"></div>
+      <div class="youtube-segment-player">
+        <div class="youtube-segment-mount" id="${escapeHtml(elementId)}"></div>
+      </div>
       <div class="youtube-segment-caption">
         <span class="youtube-segment-range">${formatSegmentTimestamp(startSeconds)} – ${formatSegmentTimestamp(endSeconds)}</span>
-        <span>${escapeHtml(sourceTitle)}</span>
-        <span class="youtube-segment-status" id="${escapeHtml(elementId)}-status"></span>
+        <span class="youtube-segment-source">${escapeHtml(sourceTitle)}</span>
+        <span class="youtube-segment-status" id="${escapeHtml(elementId)}-status" aria-live="polite"></span>
       </div>`;
   }
 
@@ -10281,6 +10349,12 @@ window.selectLesson = (moduleId, lessonId) => {
 
 const SIDEBAR_KEY = 'eznihongo:sidebarCollapsed';
 const isDesktop = () => window.innerWidth >= 861;
+function updateMobileSidebarToggle(isOpen) {
+  const btn = document.getElementById('sidebar-toggle');
+  const btnLabel = btn && btn.querySelector('span');
+  if (btnLabel) btnLabel.textContent = isOpen ? 'Tutup' : 'Menu';
+  if (btn) btn.setAttribute('aria-label', isOpen ? 'Tutup menu' : 'Buka menu');
+}
 function applySidebarCollapse(collapsed) {
   const layout = document.querySelector('.learning-layout');
   if (!layout) return;
@@ -10313,6 +10387,7 @@ window.toggleSidebar = () => {
   const isOpen = sb.classList.toggle('mobile-open');
   if (bd) bd.classList.toggle('show', isOpen);
   document.body.style.overflow = isOpen ? 'hidden' : '';
+  updateMobileSidebarToggle(isOpen);
 };
 
 window.closeSidebar = () => {
@@ -10321,6 +10396,7 @@ window.closeSidebar = () => {
   if (sb) sb.classList.remove('mobile-open');
   if (bd) bd.classList.remove('show');
   document.body.style.overflow = '';
+  updateMobileSidebarToggle(false);
 };
 
 // Sync state when crossing the desktop breakpoint.
@@ -10328,6 +10404,8 @@ window.addEventListener('resize', () => {
   if (isDesktop()) {
     closeSidebar();
     applySidebarCollapse(localStorage.getItem(SIDEBAR_KEY) === '1');
+  } else {
+    closeSidebar();
   }
 });
 
@@ -10683,8 +10761,11 @@ const S = (window.AISenpai = {
     if (S.mode === 'idle' || S.mode === 'peek') {
       S.mode = S.reminders.length ? 'peek' : 'idle';
     }
-    // Auto-pop satu toast untuk reminder mendesak (sekali per sesi).
-    if (!S._autoToasted && (S.mode === 'peek') && S.reminders.some((r) => r.urgency === 'high')) {
+    // Auto-pop satu toast untuk reminder mendesak (sekali per sesi). Di layar
+    // HP greeting sudah menyediakan CTA lanjut belajar; toast duplikat hanya
+    // menutup video dan materi, jadi cukup tampilkan orb tutor yang ringkas.
+    const allowAutoToast = !window.matchMedia('(max-width: 480px)').matches && !window.__tutorCompact;
+    if (allowAutoToast && !S._autoToasted && (S.mode === 'peek') && S.reminders.some((r) => r.urgency === 'high')) {
       S._autoToasted = true;
       S.mode = 'toast';
       clearTimeout(S._toastTimer);
@@ -10984,6 +11065,8 @@ const S = (window.AISenpai = {
   render() {
     const root = document.getElementById('ai-senpai');
     if (!root) return;
+    root.dataset.mode = S.mode;
+    root.dataset.compact = window.__tutorCompact ? 'true' : 'false';
     root.innerHTML = `${S.panelHTML()}<div class="senpai-orb-wrap" style="position:relative;">${S.orbHTML()}<div class="senpai-coins" style="position:absolute;left:43px;top:14px;pointer-events:none;width:0;height:0;z-index:5;"></div></div>`;
     if (S.mode === 'expanded') {
       const inp = document.getElementById('senpai-input');
