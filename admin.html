@@ -267,6 +267,7 @@ let STATE = {
   modules: [],
   selectedModule: null,
   lessons: [],
+  videoSources: [],
   users: [],
   discussions: [],
 };
@@ -289,6 +290,32 @@ function formatDurationShort(minutes) {
   const h = Math.floor(n / 60);
   const rem = Math.round(n - h * 60);
   return rem === 0 ? `${h}j` : `${h}j ${rem}m`;
+}
+
+function formatVideoTimestamp(seconds) {
+  const n = Number(seconds);
+  if (!Number.isFinite(n) || n < 0) return '';
+  const total = Math.floor(n);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return h
+    ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+// Accept mm:ss, hh:mm:ss, or a whole number of seconds. Keeping parsing in
+// the editor avoids forcing authors to calculate timestamps by hand.
+function parseVideoTimestamp(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  if (/^\d+$/.test(raw)) return Number(raw);
+  const parts = raw.split(':');
+  if (parts.length < 2 || parts.length > 3 || parts.some((p) => !/^\d{1,2}$/.test(p))) return NaN;
+  const nums = parts.map(Number);
+  const [h, m, s] = parts.length === 3 ? nums : [0, nums[0], nums[1]];
+  if (m > 59 || s > 59) return NaN;
+  return h * 3600 + m * 60 + s;
 }
 
 // Slug rules: lowercase, digits, hyphens only. No leading/trailing/double hyphens.
@@ -394,7 +421,7 @@ async function bootAdmin() {
   if (!user.isAdmin) { showLock('Akun ini bukan admin. Hubungi pengelola untuk akses.'); return; }
   CURRENT_USER = user;
   renderApp();
-  await loadCourses();
+  await Promise.all([loadCourses(), loadVideoSources()]);
   renderTab();
 }
 bootAdmin();
@@ -980,6 +1007,18 @@ async function loadModulesForCourse(courseSlug) {
     const d = await api('/courses/' + courseSlug);
     STATE.modules = d.course?.modules || [];
   } catch (e) { STATE.modules = []; notify('Gagal load modul: ' + e.message, true); }
+}
+
+async function loadVideoSources() {
+  try {
+    const d = await api('/admin/video-sources');
+    STATE.videoSources = Array.isArray(d.sources) ? d.sources : [];
+  } catch (e) {
+    STATE.videoSources = [];
+    // The normal lesson editor (including legacy Bunny URL) remains usable
+    // while a deployment is rolling and the new endpoint is not available.
+    console.warn('Gagal memuat sumber YouTube:', e.message);
+  }
 }
 
 function renderModules() {
@@ -1944,8 +1983,56 @@ window.closeLessonDrawer = () => {
   renderLessonListPane();
 };
 
+function youtubeSegmentFieldsHtml(l) {
+  const selected = l.video_source_id || '';
+  const selectedValue = selected || (l.id ? '' : '__new__');
+  const sources = STATE.videoSources || [];
+  const savedSourceMissingFromPicker = selected && !sources.some((source) => source.id === selected);
+  const sourceOptions = (savedSourceMissingFromPicker
+    ? [{ id: selected, title: 'Sumber tersimpan (daftar belum termuat)', external_id: '' }]
+    : []).concat(sources).map((source) => {
+    const label = source.title || `YouTube · ${source.external_id}`;
+    const used = Number(source.lesson_count) || 0;
+    return `<option value="${source.id}" ${selectedValue === source.id ? 'selected' : ''}>${escapeHtml(label)}${used ? ` · ${used} pelajaran` : ''}</option>`;
+  }).join('');
+  const adding = selectedValue === '__new__';
+  const hasSource = !!selectedValue;
+  return `
+    <div class="field" data-youtube-segment-only style="display:${l.type === 'video' ? '' : 'none'};margin-top:12px;padding:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;">
+      <label>Sumber YouTube</label>
+      <select name="videoSourceId" data-video-source-select>
+        <option value="" ${!selectedValue ? 'selected' : ''}>— gunakan embed legacy di bawah —</option>
+        ${sourceOptions}
+        <option value="__new__" ${adding ? 'selected' : ''}>+ Tambah video YouTube baru</option>
+      </select>
+      <div data-new-youtube-source style="display:${adding ? '' : 'none'};margin-top:10px;">
+        <label style="font-size:12px;">URL YouTube</label>
+        <input name="youtubeSourceUrl" value="" placeholder="https://youtu.be/... atau https://youtube.com/watch?v=..." autocomplete="off" />
+        <label style="font-size:12px;margin-top:8px;">Nama sumber <span style="font-weight:400;color:#737373;">(opsional, agar mudah dipilih lagi)</span></label>
+        <input name="youtubeSourceTitle" value="" placeholder="Contoh: Bab 1 — video lengkap" maxlength="240" />
+      </div>
+      <div data-video-segment-range style="display:${hasSource ? '' : 'none'};margin-top:10px;">
+        <div class="field-row">
+          <div class="field">
+            <label>Mulai</label>
+            <input name="videoStart" value="${escapeHtml(formatVideoTimestamp(l.video_start_seconds ?? 0) || '00:00')}" placeholder="00:00" inputmode="numeric" />
+          </div>
+          <div class="field">
+            <label>Selesai</label>
+            <input name="videoEnd" value="${escapeHtml(formatVideoTimestamp(l.video_end_seconds))}" placeholder="contoh 04:30" inputmode="numeric" />
+          </div>
+        </div>
+        <div style="font-size:11px;color:#9a3412;margin-top:4px;">Format <code>mm:ss</code> atau <code>hh:mm:ss</code>. Setiap pelajaran memakai rentang berbeda dari video sumber yang sama.</div>
+      </div>
+    </div>`;
+}
+
 function lessonFormHtml(l) {
-  l = l || { slug: '', title: '', type: 'text', content: '', video_url: '', duration_minutes: '', sort_order: 0 };
+  l = l || {
+    slug: '', title: '', type: 'text', content: '', video_url: '',
+    video_source_id: '', video_start_seconds: null, video_end_seconds: null,
+    duration_minutes: '', sort_order: 0,
+  };
   return `
     <h3>${l.id ? 'Edit Pelajaran' : 'Pelajaran Baru'}</h3>
     <form id="lesson-form">
@@ -2007,8 +2094,9 @@ function lessonFormHtml(l) {
         </div>
         <div data-preview-panel class="lesson-preview" style="display:none;"></div>
       </div>
+      ${youtubeSegmentFieldsHtml(l)}
       <div class="field-row">
-        <div class="field field-video" data-video-only style="display:${l.type === 'video' ? '' : 'none'};"><label>Video URL (Bunny Stream)</label><input name="videoUrl" value="${escapeHtml(l.video_url || '')}" /></div>
+        <div class="field field-video" data-video-only style="display:${l.type === 'video' ? '' : 'none'};"><label>URL embed lain / Bunny Stream <span style="font-weight:400;color:#737373;">(opsional)</span></label><input name="videoUrl" value="${escapeHtml(l.video_url || '')}" placeholder="Dipakai untuk video lama yang bukan YouTube" /></div>
         <div class="field"><label>Durasi (menit)</label><input type="number" name="durationMinutes" value="${l.duration_minutes || ''}" /></div>
       </div>
       <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${l.sort_order}" /></div>
@@ -2045,6 +2133,7 @@ function lessonFormHtml(l) {
 function wireLessonTypeVisibility(form) {
   const typeSel = form.querySelector('select[name="type"]');
   const videoField = form.querySelector('.field-video');
+  const youtubeSegmentField = form.querySelector('[data-youtube-segment-only]');
   const deckHint = form.querySelector('.field-deck-hint');
   const kanjiHint = form.querySelector('[data-kanji-only]');
   const kanaHint = form.querySelector('[data-kana-only]');
@@ -2055,6 +2144,7 @@ function wireLessonTypeVisibility(form) {
     // Video URL relevan untuk tipe video, kana (video di atas chart kana),
     // dan deck (video opsional di atas grid kosakata).
     if (videoField) videoField.style.display = (typeSel.value === 'video' || typeSel.value === 'kana' || typeSel.value === 'deck') ? '' : 'none';
+    if (youtubeSegmentField) youtubeSegmentField.style.display = typeSel.value === 'video' ? '' : 'none';
     if (deckHint) deckHint.style.display = typeSel.value === 'deck' ? '' : 'none';
     if (kanjiHint) kanjiHint.style.display = typeSel.value === 'kanji' ? '' : 'none';
     if (kanaHint) kanaHint.style.display = typeSel.value === 'kana' ? '' : 'none';
@@ -2063,6 +2153,21 @@ function wireLessonTypeVisibility(form) {
   };
   apply();
   typeSel.addEventListener('change', apply);
+  wireYouTubeSegmentEditor(form);
+}
+
+function wireYouTubeSegmentEditor(form) {
+  const sourceSelect = form.querySelector('[data-video-source-select]');
+  if (!sourceSelect) return;
+  const newSource = form.querySelector('[data-new-youtube-source]');
+  const range = form.querySelector('[data-video-segment-range]');
+  const apply = () => {
+    const value = sourceSelect.value;
+    if (newSource) newSource.style.display = value === '__new__' ? '' : 'none';
+    if (range) range.style.display = value ? '' : 'none';
+  };
+  apply();
+  sourceSelect.addEventListener('change', apply);
 }
 // WYSIWYG rich-text editor. Replaces a textarea with a contenteditable div
 // + hidden input (so FormData still carries the HTML value under the same name).
@@ -2304,13 +2409,42 @@ async function submitLesson(e, id, moduleId) {
       }
     }
   }
+  const selectedVideoSource = type === 'video' ? String(fd.get('videoSourceId') || '').trim() : '';
+  const wantsNewVideoSource = selectedVideoSource === '__new__';
+  let videoStartSeconds = null;
+  let videoEndSeconds = null;
+  if (selectedVideoSource) {
+    videoStartSeconds = parseVideoTimestamp(fd.get('videoStart'));
+    videoEndSeconds = parseVideoTimestamp(fd.get('videoEnd'));
+    if (!Number.isInteger(videoStartSeconds) || videoStartSeconds < 0) {
+      notify('Waktu mulai video tidak valid. Gunakan format mm:ss atau hh:mm:ss.', true);
+      return;
+    }
+    if (!Number.isInteger(videoEndSeconds) || videoEndSeconds <= videoStartSeconds) {
+      notify('Waktu selesai harus lebih besar dari waktu mulai.', true);
+      return;
+    }
+    if (wantsNewVideoSource && !(fd.get('youtubeSourceUrl') || '').trim()) {
+      notify('Tempel URL YouTube untuk sumber video baru.', true);
+      return;
+    }
+  }
+  const manualDuration = Number(fd.get('durationMinutes')) || null;
+  const segmentDuration = selectedVideoSource
+    ? Math.max(1, Math.ceil((videoEndSeconds - videoStartSeconds) / 60))
+    : null;
   const body = {
     slug,
     title: fd.get('title').trim(),
     type,
     content: fd.get('content').trim() || null,
-    videoUrl: (type === 'video' || type === 'kana') ? ((fd.get('videoUrl') || '').trim() || null) : null,
-    durationMinutes: Number(fd.get('durationMinutes')) || null,
+    // Legacy/direct embeds are kept for Bunny and existing non-YouTube
+    // lessons; new YouTube playback uses videoSourceId below.
+    videoUrl: (type === 'video' || type === 'kana' || type === 'deck') ? ((fd.get('videoUrl') || '').trim() || null) : null,
+    videoSourceId: selectedVideoSource && !wantsNewVideoSource ? selectedVideoSource : null,
+    videoStartSeconds,
+    videoEndSeconds,
+    durationMinutes: manualDuration || segmentDuration,
     sortOrder: Number(fd.get('sortOrder')) || 0,
     // Hanya grammar_task yang punya pelajaran pemicu; tipe lain selalu null
     // (juga meng-clear kalau lesson diubah dari grammar_task ke tipe lain).
@@ -2329,6 +2463,20 @@ async function submitLesson(e, id, moduleId) {
   }
   const endSubmit = beginSubmit(e.target);
   try {
+    if (wantsNewVideoSource) {
+      const d = await api('/admin/video-sources', {
+        method: 'POST',
+        body: JSON.stringify({
+          youtubeUrl: (fd.get('youtubeSourceUrl') || '').trim(),
+          title: (fd.get('youtubeSourceTitle') || '').trim() || null,
+        }),
+      });
+      if (!d.source?.id) throw new Error('Sumber YouTube tidak dapat dibuat');
+      body.videoSourceId = d.source.id;
+      const at = (STATE.videoSources || []).findIndex((s) => s.id === d.source.id);
+      if (at >= 0) STATE.videoSources[at] = { ...STATE.videoSources[at], ...d.source };
+      else STATE.videoSources.unshift({ ...d.source, lesson_count: 0 });
+    }
     let saved;
     if (id) {
       const d = await api('/admin/lessons/' + id, { method: 'PUT', body: JSON.stringify(body) });

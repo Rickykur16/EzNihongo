@@ -1709,6 +1709,43 @@
   }
   .play-btn:hover { transform: scale(1.06); }
 
+  /* YouTube segment player — distinct from .video-player placeholder so its
+     decorative pseudo-layer never sits above the live iframe. */
+  .youtube-segment-player {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 18px;
+    background: #111827;
+    box-shadow: var(--du-shadow-lg);
+  }
+  .youtube-segment-player iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+  .youtube-segment-caption {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 10px 2px 22px;
+    color: var(--du-ink-2);
+    font-size: 12px;
+  }
+  .youtube-segment-range {
+    display: inline-flex;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: var(--du-accent-soft);
+    color: var(--brand-red);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .youtube-segment-status { color: var(--du-meta); }
+
   /* ── BUTTONS ────────────────────────────────────────────────────── */
   .btn-primary, .quiz-next-btn {
     background: linear-gradient(135deg, var(--brand-red) 0%, #c41c40 100%);
@@ -4272,6 +4309,15 @@ function transformCourseFromApi(apiCourse) {
           title: l.title,
           type: l.type || 'text',
           videoUrl: l.video_url || null,
+          videoSource: l.video_source_id && l.video_external_id ? {
+            id: l.video_source_id,
+            provider: l.video_provider,
+            externalId: l.video_external_id,
+            title: l.video_source_title || '',
+            durationSeconds: Number(l.video_source_duration_seconds) || null,
+          } : null,
+          videoStartSeconds: l.video_start_seconds == null ? null : Number(l.video_start_seconds),
+          videoEndSeconds: l.video_end_seconds == null ? null : Number(l.video_end_seconds),
           duration: l.duration_minutes ? `${l.duration_minutes} min` : '',
           durationMinutes: Number(l.duration_minutes) || 0,
           body,
@@ -9914,8 +9960,146 @@ function updateTutorVisibility() {
   setTutorHidden(!!lesson && (lesson.type === 'quiz' || lesson.type === 'grammar_task'));
 }
 
+// ── YouTube segment playback ────────────────────────────────────────────
+// One video source can be referenced by many lessons. The player starts at
+// the lesson's range start and pauses at its range end; the small time guard
+// is intentional because YouTube clears endSeconds after a learner seeks.
+let _youtubeIframeApiPromise = null;
+let _activeYoutubeSegmentPlayer = null;
+
+function destroyYoutubeSegmentPlayer() {
+  const active = _activeYoutubeSegmentPlayer;
+  _activeYoutubeSegmentPlayer = null;
+  if (!active) return;
+  try { active.destroy(); } catch {}
+}
+
+function loadYoutubeIframeApi() {
+  if (window.YT && typeof window.YT.Player === 'function') return Promise.resolve(window.YT);
+  if (_youtubeIframeApiPromise) return _youtubeIframeApiPromise;
+  _youtubeIframeApiPromise = new Promise((resolve, reject) => {
+    const oldReady = window.onYouTubeIframeAPIReady;
+    const script = document.createElement('script');
+    script.src = 'https://www.youtube.com/iframe_api';
+    script.async = true;
+    script.onerror = () => reject(new Error('YouTube tidak dapat dimuat.'));
+    window.onYouTubeIframeAPIReady = () => {
+      try { if (typeof oldReady === 'function') oldReady(); } catch {}
+      resolve(window.YT);
+    };
+    document.head.appendChild(script);
+  });
+  return _youtubeIframeApiPromise;
+}
+
+function formatSegmentTimestamp(seconds) {
+  const total = Math.max(0, Math.floor(Number(seconds) || 0));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return h
+    ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function mountYoutubeSegmentPlayer({ elementId, videoId, startSeconds, endSeconds }) {
+  destroyYoutubeSegmentPlayer();
+  const mount = document.getElementById(elementId);
+  if (!mount) return;
+
+  loadYoutubeIframeApi().then(() => {
+    // The learner may have navigated to another lesson while the API loaded.
+    if (!mount.isConnected || document.getElementById(elementId) !== mount) return;
+    let player = null;
+    let guard = null;
+    let segmentEnded = false;
+    const finishSegment = () => {
+      if (segmentEnded) return;
+      segmentEnded = true;
+      if (guard) { clearInterval(guard); guard = null; }
+      try { player?.pauseVideo(); } catch {}
+      const status = document.getElementById(`${elementId}-status`);
+      if (status) status.textContent = 'Segmen selesai. Tandai pelajaran selesai untuk lanjut.';
+    };
+    const startEndGuard = () => {
+      if (!Number.isFinite(endSeconds) || endSeconds <= startSeconds || guard) return;
+      guard = setInterval(() => {
+        try {
+          // Seek can land slightly before a keyframe; a 0.3 s tolerance keeps
+          // the lesson from leaking into the following segment.
+          if (player && player.getPlayerState() === 1 && player.getCurrentTime() >= endSeconds - 0.3) finishSegment();
+        } catch {}
+      }, 250);
+    };
+
+    const playerVars = {
+      playsinline: 1,
+      rel: 0,
+      start: startSeconds,
+      end: endSeconds,
+    };
+    // The IFrame API recommends origin as an extra control-channel check.
+    if (location.origin && location.origin !== 'null') playerVars.origin = location.origin;
+
+    player = new window.YT.Player(elementId, {
+      videoId,
+      playerVars,
+      events: {
+        onReady: (event) => {
+          // Cue instead of autoplay: browser autoplay policies stay respected.
+          event.target.cueVideoById({ videoId, startSeconds, endSeconds });
+        },
+        onStateChange: (event) => {
+          if (event.data === 1) startEndGuard(); // YT.PlayerState.PLAYING
+          if (event.data === 0) finishSegment(); // ended at segment boundary
+        },
+      },
+    });
+    _activeYoutubeSegmentPlayer = {
+      destroy: () => {
+        if (guard) clearInterval(guard);
+        try { player?.destroy(); } catch {}
+      },
+    };
+  }).catch(() => {
+    const status = document.getElementById(`${elementId}-status`);
+    if (status) status.textContent = 'Video YouTube tidak dapat dimuat. Periksa koneksi lalu coba lagi.';
+  });
+}
+
+function renderVideoLessonPlayer(lesson) {
+  const source = lesson.videoSource;
+  const videoId = source?.provider === 'youtube' ? String(source.externalId || '') : '';
+  const startSeconds = Number(lesson.videoStartSeconds);
+  const endSeconds = Number(lesson.videoEndSeconds);
+  if (/^[A-Za-z0-9_-]{6,64}$/.test(videoId) && Number.isInteger(startSeconds) && Number.isInteger(endSeconds) && endSeconds > startSeconds) {
+    const elementId = `youtube-segment-${String(lesson.apiId || lesson.id).replace(/[^A-Za-z0-9_-]/g, '')}`;
+    const sourceTitle = source.title || 'Video YouTube';
+    setTimeout(() => mountYoutubeSegmentPlayer({ elementId, videoId, startSeconds, endSeconds }), 0);
+    return `
+      <div class="youtube-segment-player" id="${escapeHtml(elementId)}"></div>
+      <div class="youtube-segment-caption">
+        <span class="youtube-segment-range">${formatSegmentTimestamp(startSeconds)} – ${formatSegmentTimestamp(endSeconds)}</span>
+        <span>${escapeHtml(sourceTitle)}</span>
+        <span class="youtube-segment-status" id="${escapeHtml(elementId)}-status"></span>
+      </div>`;
+  }
+
+  // Legacy direct/Bunny embeds remain available while old courses migrate.
+  if (lesson.videoUrl) {
+    return `<div class="youtube-segment-player"><iframe src="${escapeHtml(lesson.videoUrl)}" loading="lazy" title="Video pelajaran" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
+  }
+  return `
+    <div class="video-player">
+      <span class="video-soon">Segera tersedia</span>
+      <button class="play-btn" onclick="alert('Video pelajaran akan segera tersedia di sini.')">▶</button>
+      <span class="video-meta">VIDEO · ${lesson.duration.toUpperCase()}</span>
+    </div>`;
+}
+
 function renderLesson() {
   gkStopAll(); // stop karaoke dialog dari lesson sebelumnya
+  destroyYoutubeSegmentPlayer();
   const course = COURSE_CONTENT[currentState.course];
   const module = course.modules.find(m => m.id === currentState.moduleId);
   const lesson = module.lessons.find(l => l.id === currentState.lessonId);
@@ -9962,16 +10146,9 @@ function renderLesson() {
     return;
   }
 
-  // Regular lesson (video/text) — only render the player for actual video lessons.
-  // The placeholder signals that a video will live here; click action stays a
-  // friendly "coming soon" until Bunny Stream playback is wired up.
-  const videoBlock = lesson.type === 'video' ? `
-    <div class="video-player">
-      <span class="video-soon">Segera tersedia</span>
-      <button class="play-btn" onclick="alert('Video pelajaran akan segera tersedia di sini.')">▶</button>
-      <span class="video-meta">${lesson.type.toUpperCase()} · ${lesson.duration.toUpperCase()}</span>
-    </div>
-  ` : '';
+  // Regular lesson (video/text) — YouTube segments take precedence, then
+  // legacy direct/Bunny embeds, then the existing coming-soon placeholder.
+  const videoBlock = lesson.type === 'video' ? renderVideoLessonPlayer(lesson) : '';
 
   // Show module intro panel only on the first lesson of a module (orientation).
   const isFirstOfModule = module.lessons[0]?.id === lesson.id;

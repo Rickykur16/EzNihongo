@@ -71,14 +71,24 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
   const grammarTaskByLesson = {};
 
   if (moduleIds.length > 0) {
-    // Include content + video_url so the dashboard can render lesson bodies
-    // without an extra round-trip per lesson. Quiz questions are still
+    // Include content + video metadata so the dashboard can render lesson
+    // bodies and YouTube segments without an extra round-trip per lesson.
+    // Quiz questions are still
     // lazy-loaded via /api/lessons/:id (smaller default payload for long courses).
     const [lessons, vocab, grammar] = await Promise.all([
       query(
-        `SELECT id, module_id, slug, title, type, content, video_url, duration_minutes, sort_order, popup_after_lesson_id
-         FROM lessons WHERE module_id = ANY($1::uuid[])
-         ORDER BY sort_order ASC, created_at ASC`,
+        `SELECT l.id, l.module_id, l.slug, l.title, l.type, l.content,
+                l.video_url, l.video_source_id, l.video_start_seconds,
+                l.video_end_seconds, l.duration_minutes, l.sort_order,
+                l.popup_after_lesson_id,
+                vs.provider AS video_provider,
+                vs.external_id AS video_external_id,
+                vs.title AS video_source_title,
+                vs.duration_seconds AS video_source_duration_seconds
+           FROM lessons l
+           LEFT JOIN video_sources vs ON vs.id = l.video_source_id
+          WHERE l.module_id = ANY($1::uuid[])
+          ORDER BY l.sort_order ASC, l.created_at ASC`,
         [moduleIds]
       ),
       query(
@@ -299,10 +309,15 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
 // Platform content itself, not just metadata.
 router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
   const lesson = await query(
-    `SELECT l.*, m.course_id, m.title AS module_title, c.slug AS course_slug
+    `SELECT l.*, m.course_id, m.title AS module_title, c.slug AS course_slug,
+            vs.provider AS video_provider,
+            vs.external_id AS video_external_id,
+            vs.title AS video_source_title,
+            vs.duration_seconds AS video_source_duration_seconds
      FROM lessons l
      JOIN modules m ON m.id = l.module_id
      JOIN courses c ON c.id = m.course_id
+     LEFT JOIN video_sources vs ON vs.id = l.video_source_id
      WHERE l.id = $1 AND c.is_published = TRUE
      LIMIT 1`,
     [req.params.id]
@@ -321,6 +336,15 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
     type: row.type,
     content: row.content,
     videoUrl: row.video_url,
+    videoSource: row.video_source_id ? {
+      id: row.video_source_id,
+      provider: row.video_provider,
+      externalId: row.video_external_id,
+      title: row.video_source_title,
+      durationSeconds: row.video_source_duration_seconds,
+    } : null,
+    videoStartSeconds: row.video_start_seconds,
+    videoEndSeconds: row.video_end_seconds,
     durationMinutes: row.duration_minutes,
   };
 

@@ -38,6 +38,99 @@ const router = Router();
 // Every route in this file requires admin
 router.use(requireAuth, requireAdmin);
 
+// ── YouTube video sources ────────────────────────────────────────────────
+// Store an ID, never an embed URL. The same source can then be picked by many
+// lessons, each with its own start/end range. This accepts the share, watch,
+// embed, shorts, live, and youtu.be forms that creators commonly paste.
+const YOUTUBE_VIDEO_ID_RE = /^[A-Za-z0-9_-]{6,64}$/;
+
+function parseYouTubeSource(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  if (YOUTUBE_VIDEO_ID_RE.test(raw)) {
+    return { externalId: raw, sourceUrl: `https://www.youtube.com/watch?v=${raw}` };
+  }
+
+  let url;
+  try {
+    url = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+  } catch {
+    return null;
+  }
+  const host = url.hostname.toLowerCase().replace(/^www\./, '');
+  const parts = url.pathname.split('/').filter(Boolean);
+  let externalId = '';
+
+  if (host === 'youtu.be') {
+    externalId = parts[0] || '';
+  } else if (host === 'youtube.com' || host.endsWith('.youtube.com') ||
+             host === 'youtube-nocookie.com' || host.endsWith('.youtube-nocookie.com')) {
+    if (url.pathname === '/watch') externalId = url.searchParams.get('v') || '';
+    else if (['embed', 'shorts', 'live', 'v'].includes(parts[0])) externalId = parts[1] || '';
+  }
+
+  if (!YOUTUBE_VIDEO_ID_RE.test(externalId)) return null;
+  return {
+    externalId,
+    sourceUrl: `https://www.youtube.com/watch?v=${externalId}`,
+  };
+}
+
+function normalizeSegment(sourceIdValue, startValue, endValue) {
+  const sourceId = String(sourceIdValue || '').trim() || null;
+  const hasStart = startValue !== undefined && startValue !== null && startValue !== '';
+  const hasEnd = endValue !== undefined && endValue !== null && endValue !== '';
+  if (!sourceId) {
+    if (hasStart || hasEnd) return { error: 'Pilih sumber YouTube untuk memakai rentang waktu video.' };
+    return { videoSourceId: null, videoStartSeconds: null, videoEndSeconds: null };
+  }
+
+  const start = hasStart ? Number(startValue) : 0;
+  const end = hasEnd ? Number(endValue) : null;
+  if (!Number.isInteger(start) || start < 0) {
+    return { error: 'Waktu mulai video harus berupa detik bulat positif atau nol.' };
+  }
+  if (!Number.isInteger(end) || end <= start) {
+    return { error: 'Waktu selesai video harus lebih besar dari waktu mulai.' };
+  }
+  return { videoSourceId: sourceId, videoStartSeconds: start, videoEndSeconds: end };
+}
+
+// GET /api/admin/video-sources — source picker for reusable YouTube videos.
+router.get('/video-sources', asyncHandler(async (_req, res) => {
+  const sources = await query(
+    `SELECT vs.id, vs.provider, vs.external_id, vs.source_url, vs.title,
+            vs.duration_seconds, vs.created_at, vs.updated_at,
+            COUNT(l.id)::int AS lesson_count
+       FROM video_sources vs
+       LEFT JOIN lessons l ON l.video_source_id = vs.id
+      GROUP BY vs.id
+      ORDER BY vs.updated_at DESC, vs.created_at DESC`
+  );
+  res.json({ sources: sources.rows });
+}));
+
+// POST /api/admin/video-sources — creates (or reuses) a canonical YouTube
+// source. No YouTube Data API key is needed just to embed a known video.
+router.post('/video-sources', asyncHandler(async (req, res) => {
+  const parsed = parseYouTubeSource(req.body?.youtubeUrl);
+  if (!parsed) {
+    return res.status(400).json({ error: 'URL YouTube tidak valid. Tempel URL watch, share, embed, shorts, atau ID video.' });
+  }
+  const title = String(req.body?.title || '').trim().slice(0, 240) || null;
+  const created = await query(
+    `INSERT INTO video_sources (provider, external_id, source_url, title)
+     VALUES ('youtube', $1, $2, $3)
+     ON CONFLICT (provider, external_id) DO UPDATE
+       SET source_url = EXCLUDED.source_url,
+           title = COALESCE(EXCLUDED.title, video_sources.title),
+           updated_at = NOW()
+     RETURNING *`,
+    [parsed.externalId, parsed.sourceUrl, title]
+  );
+  res.status(201).json({ source: created.rows[0], reused: created.rows[0].created_at !== created.rows[0].updated_at });
+}));
+
 // POST /api/admin/set-password — admin meng-set/ubah password (self-service).
 // Tanpa `email` → set password milik admin yang sedang login. Dengan `email`
 // (provisioning co-admin) → email itu WAJIB sudah admin (env ADMIN_EMAILS
@@ -3060,7 +3153,8 @@ router.post('/module-grammar/bulk', asyncHandler(async (req, res) => {
 
 router.post('/lessons', asyncHandler(async (req, res) => {
   const {
-    moduleId, slug, title, type, content, videoUrl, durationMinutes, sortOrder,
+    moduleId, slug, title, type, content, videoUrl, videoSourceId,
+    videoStartSeconds, videoEndSeconds, durationMinutes, sortOrder,
     passingScorePct, questionsPerAttempt, cooldownHours, popupAfterLessonId,
   } = req.body || {};
   if (!moduleId || !slug || !title) {
@@ -3068,15 +3162,27 @@ router.post('/lessons', asyncHandler(async (req, res) => {
   }
   const slugErr = badSlug(slug);
   if (slugErr) return res.status(400).json({ error: slugErr });
+  // Ranges are only meaningful for an actual video lesson. Keeping the
+  // legacy video_url independent lets existing Bunny content work unchanged.
+  const segment = normalizeSegment(
+    type === 'video' ? videoSourceId : null,
+    type === 'video' ? videoStartSeconds : null,
+    type === 'video' ? videoEndSeconds : null
+  );
+  if (segment.error) return res.status(400).json({ error: segment.error });
   const result = await query(
     `INSERT INTO lessons (
-       module_id, slug, title, type, content, video_url, duration_minutes, sort_order,
-       passing_score_pct, questions_per_attempt, cooldown_hours, popup_after_lesson_id
-     )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+       module_id, slug, title, type, content, video_url,
+       video_source_id, video_start_seconds, video_end_seconds,
+       duration_minutes, sort_order, passing_score_pct, questions_per_attempt,
+       cooldown_hours, popup_after_lesson_id
+      )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
     [
       moduleId, slug, title, type || 'text',
-      content || null, videoUrl || null, durationMinutes || null, sortOrder || 0,
+      content || null, videoUrl || null,
+      segment.videoSourceId, segment.videoStartSeconds, segment.videoEndSeconds,
+      durationMinutes || null, sortOrder || 0,
       passingScorePct != null && passingScorePct !== '' ? Number(passingScorePct) : 70,
       questionsPerAttempt != null && questionsPerAttempt !== '' ? Number(questionsPerAttempt) : null,
       cooldownHours != null && cooldownHours !== '' ? Number(cooldownHours) : 12,
@@ -3088,7 +3194,8 @@ router.post('/lessons', asyncHandler(async (req, res) => {
 
 router.put('/lessons/:id', asyncHandler(async (req, res) => {
   const {
-    slug, title, type, content, videoUrl, durationMinutes, sortOrder,
+    slug, title, type, content, videoUrl, videoSourceId, videoStartSeconds,
+    videoEndSeconds, durationMinutes, sortOrder,
     passingScorePct, questionsPerAttempt, cooldownHours, popupAfterLessonId,
   } = req.body || {};
   if (slug !== undefined && slug !== null) {
@@ -3097,6 +3204,9 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
   }
   const hasQPA = Object.prototype.hasOwnProperty.call(req.body || {}, 'questionsPerAttempt');
   const hasPopup = Object.prototype.hasOwnProperty.call(req.body || {}, 'popupAfterLessonId');
+  const hasVideoSource = Object.prototype.hasOwnProperty.call(req.body || {}, 'videoSourceId');
+  const hasVideoStart = Object.prototype.hasOwnProperty.call(req.body || {}, 'videoStartSeconds');
+  const hasVideoEnd = Object.prototype.hasOwnProperty.call(req.body || {}, 'videoEndSeconds');
 
   // Lesson type-switch cleanup: kalau type berubah dari yang punya konten
   // (quiz/kanji/deck), hapus konten lama sebelum UPDATE. Tanpa ini,
@@ -3109,55 +3219,82 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
   // A crash between the DELETEs and the UPDATE would orphan content and lose
   // student history with no consistent state to recover to.
   const outcome = await withTransaction(async (client) => {
-    if (type) {
-      const cur = await client.query(`SELECT type FROM lessons WHERE id = $1 LIMIT 1`, [req.params.id]);
-      if (cur.rows.length === 0) return { notFound: true };
-      const oldType = cur.rows[0].type;
-      if (oldType !== type) {
-        if (oldType === 'quiz') {
-          await client.query(`DELETE FROM quiz_questions WHERE lesson_id = $1`, [req.params.id]);
-          await client.query(`DELETE FROM quiz_attempts WHERE lesson_id = $1`, [req.params.id]);
-        } else if (oldType === 'kanji') {
-          await client.query(`DELETE FROM kanji_items WHERE lesson_id = $1`, [req.params.id]);
-        } else if (oldType === 'deck') {
-          await client.query(`DELETE FROM lesson_deck_items WHERE lesson_id = $1`, [req.params.id]);
-        } else if (oldType === 'kana') {
-          await client.query(`DELETE FROM lesson_kana_items WHERE lesson_id = $1`, [req.params.id]);
-        } else if (oldType === 'grammar_task') {
-          await client.query(`DELETE FROM lesson_grammar_task_items WHERE lesson_id = $1`, [req.params.id]);
-        }
+    const cur = await client.query(
+      `SELECT type, video_source_id, video_start_seconds, video_end_seconds
+         FROM lessons WHERE id = $1 LIMIT 1`,
+      [req.params.id]
+    );
+    if (cur.rows.length === 0) return { notFound: true };
+    const current = cur.rows[0];
+    const oldType = current.type;
+    if (type && oldType !== type) {
+      if (oldType === 'quiz') {
+        await client.query(`DELETE FROM quiz_questions WHERE lesson_id = $1`, [req.params.id]);
+        await client.query(`DELETE FROM quiz_attempts WHERE lesson_id = $1`, [req.params.id]);
+      } else if (oldType === 'kanji') {
+        await client.query(`DELETE FROM kanji_items WHERE lesson_id = $1`, [req.params.id]);
+      } else if (oldType === 'deck') {
+        await client.query(`DELETE FROM lesson_deck_items WHERE lesson_id = $1`, [req.params.id]);
+      } else if (oldType === 'kana') {
+        await client.query(`DELETE FROM lesson_kana_items WHERE lesson_id = $1`, [req.params.id]);
+      } else if (oldType === 'grammar_task') {
+        await client.query(`DELETE FROM lesson_grammar_task_items WHERE lesson_id = $1`, [req.params.id]);
       }
     }
 
-    const result = await client.query(
-      `UPDATE lessons SET
-         slug = COALESCE($2, slug),
-         title = COALESCE($3, title),
-         type = COALESCE($4, type),
-         content = COALESCE($5, content),
-         video_url = COALESCE($6, video_url),
-         duration_minutes = COALESCE($7, duration_minutes),
-         sort_order = COALESCE($8, sort_order),
-         passing_score_pct = COALESCE($9, passing_score_pct),
-         questions_per_attempt = CASE WHEN $11::boolean THEN $10 ELSE questions_per_attempt END,
-         cooldown_hours = COALESCE($12, cooldown_hours),
-         popup_after_lesson_id = CASE WHEN $14::boolean THEN $13 ELSE popup_after_lesson_id END
-       WHERE id = $1 RETURNING *`,
-      [
-        req.params.id, slug, title, type, content, videoUrl, durationMinutes, sortOrder,
-        passingScorePct != null && passingScorePct !== '' ? Number(passingScorePct) : null,
-        hasQPA && questionsPerAttempt !== '' && questionsPerAttempt != null ? Number(questionsPerAttempt) : null,
-        hasQPA,
-        cooldownHours != null && cooldownHours !== '' ? Number(cooldownHours) : null,
-        hasPopup && popupAfterLessonId ? popupAfterLessonId : null,
-        hasPopup,
-      ]
-    );
+      // PUT also supports partial callers. Only fields actually supplied in
+      // the payload replace a saved segment; the admin editor sends all three
+      // so it can deliberately clear the source when lesson type changes.
+      const effectiveType = type || oldType;
+      const segment = normalizeSegment(
+        effectiveType === 'video'
+          ? (hasVideoSource ? videoSourceId : current.video_source_id)
+          : null,
+        effectiveType === 'video'
+          ? (hasVideoStart ? videoStartSeconds : current.video_start_seconds)
+          : null,
+        effectiveType === 'video'
+          ? (hasVideoEnd ? videoEndSeconds : current.video_end_seconds)
+          : null
+      );
+      if (segment.error) return { error: segment.error };
+
+      const result = await client.query(
+        `UPDATE lessons SET
+          slug = COALESCE($2, slug),
+          title = COALESCE($3, title),
+          type = COALESCE($4, type),
+          content = COALESCE($5, content),
+          video_url = COALESCE($6, video_url),
+          video_source_id = CASE WHEN $10::boolean THEN $7 ELSE video_source_id END,
+          video_start_seconds = CASE WHEN $11::boolean THEN $8 ELSE video_start_seconds END,
+          video_end_seconds = CASE WHEN $12::boolean THEN $9 ELSE video_end_seconds END,
+          duration_minutes = COALESCE($13, duration_minutes),
+          sort_order = COALESCE($14, sort_order),
+          passing_score_pct = COALESCE($15, passing_score_pct),
+          questions_per_attempt = CASE WHEN $17::boolean THEN $16 ELSE questions_per_attempt END,
+          cooldown_hours = COALESCE($18, cooldown_hours),
+          popup_after_lesson_id = CASE WHEN $20::boolean THEN $19 ELSE popup_after_lesson_id END
+        WHERE id = $1 RETURNING *`,
+        [
+          req.params.id, slug, title, type, content, videoUrl,
+          segment.videoSourceId, segment.videoStartSeconds, segment.videoEndSeconds,
+          true, true, true,
+          durationMinutes, sortOrder,
+          passingScorePct != null && passingScorePct !== '' ? Number(passingScorePct) : null,
+          hasQPA && questionsPerAttempt !== '' && questionsPerAttempt != null ? Number(questionsPerAttempt) : null,
+          hasQPA,
+          cooldownHours != null && cooldownHours !== '' ? Number(cooldownHours) : null,
+          hasPopup && popupAfterLessonId ? popupAfterLessonId : null,
+          hasPopup,
+        ]
+      );
     if (result.rows.length === 0) return { notFound: true };
     return { lesson: result.rows[0] };
   });
 
   if (outcome.notFound) return res.status(404).json({ error: 'Not found' });
+  if (outcome.error) return res.status(400).json({ error: outcome.error });
   res.json({ lesson: outcome.lesson });
 }));
 
