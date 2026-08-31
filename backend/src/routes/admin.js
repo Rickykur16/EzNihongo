@@ -96,6 +96,10 @@ function normalizeSegment(sourceIdValue, startValue, endValue) {
   return { videoSourceId: sourceId, videoStartSeconds: start, videoEndSeconds: end };
 }
 
+function supportsVideoSegment(type) {
+  return type === 'video' || type === 'kana';
+}
+
 // GET /api/admin/video-sources — source picker for reusable YouTube videos.
 router.get('/video-sources', asyncHandler(async (_req, res) => {
   const sources = await query(
@@ -3162,12 +3166,13 @@ router.post('/lessons', asyncHandler(async (req, res) => {
   }
   const slugErr = badSlug(slug);
   if (slugErr) return res.status(400).json({ error: slugErr });
-  // Ranges are only meaningful for an actual video lesson. Keeping the
-  // legacy video_url independent lets existing Bunny content work unchanged.
+  // Video and kana lessons can share one YouTube source while using different
+  // timeline ranges. Legacy video_url remains independent for Bunny content.
+  const acceptsVideoSegment = supportsVideoSegment(type);
   const segment = normalizeSegment(
-    type === 'video' ? videoSourceId : null,
-    type === 'video' ? videoStartSeconds : null,
-    type === 'video' ? videoEndSeconds : null
+    acceptsVideoSegment ? videoSourceId : null,
+    acceptsVideoSegment ? videoStartSeconds : null,
+    acceptsVideoSegment ? videoEndSeconds : null
   );
   if (segment.error) return res.status(400).json({ error: segment.error });
   const result = await query(
@@ -3246,14 +3251,15 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
       // the payload replace a saved segment; the admin editor sends all three
       // so it can deliberately clear the source when lesson type changes.
       const effectiveType = type || oldType;
+      const acceptsVideoSegment = supportsVideoSegment(effectiveType);
       const segment = normalizeSegment(
-        effectiveType === 'video'
+        acceptsVideoSegment
           ? (hasVideoSource ? videoSourceId : current.video_source_id)
           : null,
-        effectiveType === 'video'
+        acceptsVideoSegment
           ? (hasVideoStart ? videoStartSeconds : current.video_start_seconds)
           : null,
-        effectiveType === 'video'
+        acceptsVideoSegment
           ? (hasVideoEnd ? videoEndSeconds : current.video_end_seconds)
           : null
       );

@@ -9329,18 +9329,9 @@ function renderKanaLesson(course, module, lesson, nav) {
     ? lesson.body
     : 'Klik karakter untuk dengar bunyi, lihat urutan goresan, mnemonic, dan contoh kata.';
 
-  // "Ada video ada kananya": slot video di atas chart. Iframe kalau videoUrl
-  // di-set admin, kalau belum → placeholder (konsisten dgn lesson video).
-  const vurl = (lesson.videoUrl || '').trim();
-  const videoBlock = vurl
-    ? `<div class="kana-video"><iframe src="${escapeHtml(vurl)}" loading="lazy" title="Video pelajaran"
-         allow="accelerometer;gyroscope;autoplay;encrypted-media;picture-in-picture" allowfullscreen
-         style="border:0;width:100%;aspect-ratio:16/9;border-radius:14px;background:#000;"></iframe></div>`
-    : `<div class="video-player" style="margin:16px 0 4px;">
-         <span class="video-soon">Video segera tersedia</span>
-         <button class="play-btn" onclick="alert('Video pelajaran akan segera tersedia di sini.')">▶</button>
-         <span class="video-meta">KANA${lesson.duration ? ' · ' + escapeHtml(lesson.duration.toUpperCase()) : ''}</span>
-       </div>`;
+  // Reuse the same segmented YouTube player as video lessons. It prioritizes a
+  // saved YouTube range, then falls back to the legacy Bunny/direct embed URL.
+  const videoBlock = `<div class="kana-video">${renderVideoLessonPlayer(lesson)}</div>`;
 
   // Group karakter per groupLabel (urutan kemunculan) untuk chart per baris.
   const groups = [];
@@ -10086,14 +10077,17 @@ function renderVideoLessonPlayer(lesson) {
   }
 
   // Legacy direct/Bunny embeds remain available while old courses migrate.
-  if (lesson.videoUrl) {
-    return `<div class="youtube-segment-player"><iframe src="${escapeHtml(lesson.videoUrl)}" loading="lazy" title="Video pelajaran" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
+  const legacyVideoUrl = String(lesson.videoUrl || '').trim();
+  if (legacyVideoUrl) {
+    return `<div class="youtube-segment-player"><iframe src="${escapeHtml(legacyVideoUrl)}" loading="lazy" title="Video pelajaran" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
   }
+  const placeholderLabel = lesson.type === 'kana' ? 'KANA' : 'VIDEO';
+  const durationLabel = lesson.duration ? ` · ${escapeHtml(String(lesson.duration).toUpperCase())}` : '';
   return `
     <div class="video-player">
       <span class="video-soon">Segera tersedia</span>
       <button class="play-btn" onclick="alert('Video pelajaran akan segera tersedia di sini.')">▶</button>
-      <span class="video-meta">VIDEO · ${lesson.duration.toUpperCase()}</span>
+      <span class="video-meta">${placeholderLabel}${durationLabel}</span>
     </div>`;
 }
 

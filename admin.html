@@ -1983,6 +1983,10 @@ window.closeLessonDrawer = () => {
   renderLessonListPane();
 };
 
+function supportsVideoSegment(type) {
+  return type === 'video' || type === 'kana';
+}
+
 function youtubeSegmentFieldsHtml(l) {
   const selected = l.video_source_id || '';
   const selectedValue = selected || (l.id ? '' : '__new__');
@@ -1998,7 +2002,7 @@ function youtubeSegmentFieldsHtml(l) {
   const adding = selectedValue === '__new__';
   const hasSource = !!selectedValue;
   return `
-    <div class="field" data-youtube-segment-only style="display:${l.type === 'video' ? '' : 'none'};margin-top:12px;padding:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;">
+    <div class="field" data-youtube-segment-only style="display:${supportsVideoSegment(l.type) ? '' : 'none'};margin-top:12px;padding:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;">
       <label>Sumber YouTube</label>
       <select name="videoSourceId" data-video-source-select>
         <option value="" ${!selectedValue ? 'selected' : ''}>— gunakan embed legacy di bawah —</option>
@@ -2068,7 +2072,7 @@ function lessonFormHtml(l) {
       </div>
       <div class="field" data-kana-only style="display:${l.type === 'kana' ? '' : 'none'};">
         <div style="font-size:12px;color:#525252;font-family:var(--font-body);background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;padding:8px 12px;">
-          <strong>Hiragana/Katakana:</strong> setelah simpan, klik tombol <strong>Kelola Kana</strong> di daftar pelajaran untuk memilih karakter dari bank + contoh kata. Isi <strong>Video URL</strong> di bawah untuk menampilkan video di atas chart. Field "Konten" opsional sebagai pengantar.
+          <strong>Hiragana/Katakana:</strong> setelah simpan, klik tombol <strong>Kelola Kana</strong> di daftar pelajaran untuk memilih karakter dari bank + contoh kata. Pilih <strong>Sumber YouTube</strong> dan atur timeline untuk menampilkan potongan video di atas chart; URL embed lain tetap tersedia sebagai opsi legacy. Field "Konten" opsional sebagai pengantar.
         </div>
       </div>
       <div class="field" data-grammar-task-only style="display:${l.type === 'grammar_task' ? '' : 'none'};">
@@ -2096,7 +2100,7 @@ function lessonFormHtml(l) {
       </div>
       ${youtubeSegmentFieldsHtml(l)}
       <div class="field-row">
-        <div class="field field-video" data-video-only style="display:${l.type === 'video' ? '' : 'none'};"><label>URL embed lain / Bunny Stream <span style="font-weight:400;color:#737373;">(opsional)</span></label><input name="videoUrl" value="${escapeHtml(l.video_url || '')}" placeholder="Dipakai untuk video lama yang bukan YouTube" /></div>
+        <div class="field field-video" data-video-only style="display:${l.type === 'video' || l.type === 'kana' || l.type === 'deck' ? '' : 'none'};"><label>URL embed lain / Bunny Stream <span style="font-weight:400;color:#737373;">(opsional)</span></label><input name="videoUrl" value="${escapeHtml(l.video_url || '')}" placeholder="Dipakai untuk video lama yang bukan YouTube" /></div>
         <div class="field"><label>Durasi (menit)</label><input type="number" name="durationMinutes" value="${l.duration_minutes || ''}" /></div>
       </div>
       <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${l.sort_order}" /></div>
@@ -2144,7 +2148,7 @@ function wireLessonTypeVisibility(form) {
     // Video URL relevan untuk tipe video, kana (video di atas chart kana),
     // dan deck (video opsional di atas grid kosakata).
     if (videoField) videoField.style.display = (typeSel.value === 'video' || typeSel.value === 'kana' || typeSel.value === 'deck') ? '' : 'none';
-    if (youtubeSegmentField) youtubeSegmentField.style.display = typeSel.value === 'video' ? '' : 'none';
+    if (youtubeSegmentField) youtubeSegmentField.style.display = supportsVideoSegment(typeSel.value) ? '' : 'none';
     if (deckHint) deckHint.style.display = typeSel.value === 'deck' ? '' : 'none';
     if (kanjiHint) kanjiHint.style.display = typeSel.value === 'kanji' ? '' : 'none';
     if (kanaHint) kanaHint.style.display = typeSel.value === 'kana' ? '' : 'none';
@@ -2409,7 +2413,7 @@ async function submitLesson(e, id, moduleId) {
       }
     }
   }
-  const selectedVideoSource = type === 'video' ? String(fd.get('videoSourceId') || '').trim() : '';
+  const selectedVideoSource = supportsVideoSegment(type) ? String(fd.get('videoSourceId') || '').trim() : '';
   const wantsNewVideoSource = selectedVideoSource === '__new__';
   let videoStartSeconds = null;
   let videoEndSeconds = null;
