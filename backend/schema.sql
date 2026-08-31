@@ -80,6 +80,24 @@ CREATE TABLE IF NOT EXISTS modules (
 
 CREATE INDEX IF NOT EXISTS idx_modules_course ON modules(course_id, sort_order);
 
+-- Satu sumber video dapat dipakai oleh beberapa pelajaran. Saat ini provider
+-- yang didukung adalah YouTube; external_id menyimpan YouTube video ID, bukan
+-- URL embed, supaya URL yang dipaste admin bisa dinormalisasi di API.
+CREATE TABLE IF NOT EXISTS video_sources (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider TEXT NOT NULL DEFAULT 'youtube' CHECK (provider IN ('youtube')),
+  external_id TEXT NOT NULL,
+  source_url TEXT NOT NULL,
+  title TEXT,
+  duration_seconds INT CHECK (duration_seconds IS NULL OR duration_seconds >= 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(provider, external_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_video_sources_provider_external
+  ON video_sources(provider, external_id);
+
 CREATE TABLE IF NOT EXISTS lessons (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   module_id UUID NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
@@ -87,7 +105,14 @@ CREATE TABLE IF NOT EXISTS lessons (
   title TEXT NOT NULL,
   type TEXT NOT NULL DEFAULT 'text' CHECK (type IN ('video','quiz','text','deck','kanji','grammar_task','kana')),
   content TEXT,
+  -- Legacy direct/Bunny iframe URL. New YouTube video lessons should use the
+  -- reusable video_source_id plus the segment timestamps below.
   video_url TEXT,
+  -- A source with lesson segments cannot be deleted accidentally; otherwise
+  -- SET NULL would leave orphaned start/end timestamps behind.
+  video_source_id UUID REFERENCES video_sources(id) ON DELETE RESTRICT,
+  video_start_seconds INT CHECK (video_start_seconds IS NULL OR video_start_seconds >= 0),
+  video_end_seconds INT CHECK (video_end_seconds IS NULL OR video_end_seconds > 0),
   duration_minutes INT,
   sort_order INT DEFAULT 0,
   passing_score_pct INT NOT NULL DEFAULT 70,
@@ -96,6 +121,8 @@ CREATE TABLE IF NOT EXISTS lessons (
   popup_after_lesson_id UUID REFERENCES lessons(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (video_source_id IS NOT NULL OR (video_start_seconds IS NULL AND video_end_seconds IS NULL)),
+  CHECK (video_end_seconds IS NULL OR video_start_seconds IS NULL OR video_end_seconds > video_start_seconds),
   UNIQUE(module_id, slug)
 );
 
@@ -692,6 +719,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'video_sources_updated_at') THEN
+    CREATE TRIGGER video_sources_updated_at BEFORE UPDATE ON video_sources
+      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'users_updated_at') THEN
     CREATE TRIGGER users_updated_at BEFORE UPDATE ON users
       FOR EACH ROW EXECUTE FUNCTION set_updated_at();
