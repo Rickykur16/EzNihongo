@@ -3739,12 +3739,31 @@
   }
   .kana-modal .kana-mn-ico { margin-right: 4px; }
   /* Kana drill */
-  .kana-drill { margin-top: 24px; padding: 18px; border: 1px solid #ece8e1; border-radius: 16px; background: #fcfbf9; }
+  .kana-drill { margin-top: 24px; padding: 20px; border: 1px solid #ece8e1; border-radius: 16px; background: #fcfbf9; }
   .kana-drill-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
   .kana-drill-title { font-size: 15px; font-weight: 800; color: var(--du-ink, #1b1410); }
   .kana-drill-sub { font-size: 12.5px; color: var(--du-ink-3, #8a8a8a); margin-top: 2px; }
+  .kana-drill-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .kana-drill-actions .btn-primary, .kana-drill-actions .btn-secondary { min-height: 40px; padding: 9px 14px; }
   .kana-drill-body { margin-top: 16px; }
   .kana-drill-progress { font-size: 12px; font-weight: 700; color: var(--du-ink-3, #8a8a8a); text-align: center; }
+  .kana-mastery-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .kana-mastery-card { padding: 13px 14px; border: 1px solid #e9e4dc; border-radius: 13px; background: #fff; }
+  .kana-mastery-card strong { display: block; color: var(--du-ink, #1b1410); font-size: 24px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .kana-mastery-card span { display: block; margin-top: 5px; color: var(--du-ink-3, #8a8a8a); font-size: 11.5px; font-weight: 700; }
+  .kana-mastery-card.mastered { background: #f0fdf4; border-color: #bbebcd; }
+  .kana-mastery-card.review { background: #fff8ec; border-color: #f1dfb8; }
+  .kana-mastery-note { margin-top: 12px; color: var(--du-ink-2, #555); font-size: 12.5px; line-height: 1.55; }
+  .kana-mastery-note strong { color: var(--du-ink, #1b1410); }
+  .kana-weak-preview { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .kana-weak-label { color: var(--du-ink-3, #8a8a8a); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .kana-weak-chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border: 1px solid #ead6b5; border-radius: 999px; background: #fff; color: #664b21; font-size: 12px; }
+  .kana-weak-chip b { font-family: 'Noto Sans JP', sans-serif; font-size: 15px; }
+  .kana-drill-session-meta { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .kana-drill-session-meta span { padding: 5px 9px; border: 1px solid #e8e2d9; border-radius: 999px; background: #fff; color: var(--du-ink-3, #8a8a8a); font-size: 11.5px; font-weight: 700; }
+  .kana-drill-session-meta strong { color: var(--du-ink, #1b1410); font-variant-numeric: tabular-nums; }
+  .kana-drill-meter { width: min(100%, 420px); height: 5px; margin: 0 auto 8px; overflow: hidden; border-radius: 999px; background: #ebe7e1; }
+  .kana-drill-meter span { display: block; height: 100%; border-radius: inherit; background: var(--brand-red, #C8102E); transition: width .2s ease; }
   .kana-drill-prompt {
     font-family: 'Noto Sans JP', sans-serif; font-size: 56px; font-weight: 700; text-align: center;
     color: var(--du-ink, #1b1410); margin: 10px 0 2px; line-height: 1.1;
@@ -3759,12 +3778,41 @@
   .kana-drill-opt:disabled { cursor: default; }
   .kana-drill-opt.correct { background: #ecfdf3; border-color: #6ee7a8; color: #15803d; }
   .kana-drill-opt.wrong { background: #fef2f2; border-color: #fca5a5; color: #b91c1c; }
-  .kana-drill-feedback { text-align: center; min-height: 24px; margin-top: 14px; font-size: 14px; }
+  .kana-drill-feedback { text-align: center; min-height: 24px; margin-top: 14px; font-size: 14px; line-height: 1.5; }
   .kana-drill-feedback .kdf-ok { color: #15803d; font-weight: 700; }
   .kana-drill-feedback .kdf-no { color: #b91c1c; font-weight: 600; }
+  .kana-drill-feedback .kdf-memory { display: block; max-width: 430px; margin: 6px auto 0; color: #6b572d; font-size: 12px; font-weight: 500; }
   .kana-drill-result { text-align: center; padding: 12px 0; }
   .kana-drill-result .kdr-score { font-size: 40px; font-weight: 800; color: var(--brand-red, #C8102E); font-variant-numeric: tabular-nums; }
-  .kana-drill-result .kdr-pct { font-size: 14px; color: var(--du-ink-3, #8a8a8a); margin-bottom: 16px; }
+  .kana-drill-result .kdr-pct { font-size: 14px; color: var(--du-ink-3, #8a8a8a); margin-bottom: 12px; }
+  .kana-drill-result .kdr-caption { margin-bottom: 16px; color: var(--du-ink-2, #555); font-size: 12.5px; }
+  .kana-drill-result-actions { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  .kana-weakness-list { max-width: 520px; margin: 18px auto; text-align: left; }
+  .kana-weakness-title { margin-bottom: 8px; color: var(--du-ink, #1b1410); font-size: 12px; font-weight: 800; }
+  .kana-weakness-item { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 10px; border-top: 1px solid #ece7df; }
+  .kana-weakness-item:last-child { border-bottom: 1px solid #ece7df; }
+  .kana-weakness-char { font-family: 'Noto Sans JP', sans-serif; color: var(--brand-red, #C8102E); font-size: 25px; font-weight: 800; text-align: center; }
+  .kana-weakness-info strong { display: block; color: var(--du-ink, #1b1410); font-size: 12.5px; }
+  .kana-weakness-info span { color: var(--du-ink-3, #8a8a8a); font-size: 11px; }
+  .kana-weakness-rate { color: #9a6818; font-size: 11.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  @media (max-width: 560px) {
+    .kana-drill { padding: 16px 14px; }
+    .kana-drill-head { align-items: stretch; }
+    .kana-drill-head > div:first-child { width: 100%; }
+    .kana-drill-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+    .kana-drill-actions .btn-primary, .kana-drill-actions .btn-secondary { width: 100%; padding-inline: 9px; }
+    #kana-drill-weak-btn[hidden] + .btn-primary { grid-column: 1 / -1; }
+    .kana-mastery-summary { gap: 6px; }
+    .kana-mastery-card { padding: 11px 8px; text-align: center; }
+    .kana-mastery-card strong { font-size: 21px; }
+    .kana-mastery-card span { font-size: 10.5px; }
+    .kana-drill-prompt { font-size: 50px; margin-top: 12px; }
+    .kana-drill-opts { gap: 8px; }
+    .kana-drill-opt { min-height: 56px; padding: 11px 8px; font-size: 21px; }
+    .kana-weakness-item { grid-template-columns: 40px minmax(0, 1fr) auto; padding-inline: 4px; }
+    .kana-drill-result-actions { display: grid; grid-template-columns: 1fr; }
+    .kana-drill-result-actions button { width: 100%; }
+  }
 
   /* ── Daftar Kanji (mirror Daftar Kosakata pattern) ── */
   .kanji-grid {
@@ -9428,10 +9476,13 @@ function renderKanaLesson(course, module, lesson, nav) {
     <div class="kana-drill" id="kana-drill">
       <div class="kana-drill-head">
         <div>
-          <div class="kana-drill-title">🎯 Latihan Pengenalan</div>
-          <div class="kana-drill-sub">Uji ingatanmu dua arah: karakter ↔ bunyi.</div>
+          <div class="kana-drill-title">🎯 Drill Adaptif Kana</div>
+          <div class="kana-drill-sub">Soal menyesuaikan kelemahanmu dan mengulang jawaban yang salah.</div>
         </div>
-        <button class="btn-primary" type="button" onclick="kanaDrillStart()">Mulai Drill</button>
+        <div class="kana-drill-actions">
+          <button class="btn-secondary" id="kana-drill-weak-btn" type="button" onclick="kanaDrillStart('weak')" hidden>Fokus Kelemahan</button>
+          <button class="btn-primary" type="button" onclick="kanaDrillStart('adaptive')">Mulai Adaptif</button>
+        </div>
       </div>
       <div class="kana-drill-body" id="kana-drill-body"></div>
     </div>` : '';
@@ -9492,6 +9543,7 @@ function renderKanaLesson(course, module, lesson, nav) {
       </button>
     </div>
   `;
+  if (items.length >= 2) kanaDrillShowOverview();
 }
 
 window.playKanaAudio = (idx, btn) => {
@@ -9588,25 +9640,135 @@ window.closeKanaModal = () => {
   if (ret && typeof ret.focus === 'function') { try { ret.focus(); } catch (e) { /* noop */ } }
 };
 
-// Drill pengenalan dua arah (client-side, tanpa persistensi). Tiap soal acak
-// arah: karakter→bunyi ('k2r') atau bunyi→karakter ('r2k'), 4 opsi (distraktor
-// dgn romaji unik biar tak ambigu mis. じ/ぢ).
+// Drill adaptif dua arah. Penguasaan disimpan lokal per karakter dan arah agar
+// soal berikutnya memprioritaskan kana yang baru, sering salah, atau belum diuji.
+const KANA_MASTERY_KEY = 'ez_kana_mastery_v1';
+
+function _kanaShuffle(list) {
+  const out = list.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function _kanaKey(item) {
+  return [item.kind || 'kana', item.character || '', item.romaji || '']
+    .map((part) => String(part).trim().toLowerCase())
+    .join('::');
+}
+
+function _kanaEmptyDir() {
+  return { attempts: 0, correct: 0, streak: 0, lastSeen: 0 };
+}
+
+function _kanaReadMastery() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(KANA_MASTERY_KEY) || '{}');
+    return parsed && typeof parsed === 'object' && parsed.items && typeof parsed.items === 'object'
+      ? parsed
+      : { version: 1, items: {} };
+  } catch (e) {
+    return { version: 1, items: {} };
+  }
+}
+
+function _kanaStat(item, store) {
+  const saved = (store || _kanaReadMastery()).items[_kanaKey(item)] || {};
+  const normalizeDir = (dir) => {
+    const attempts = Math.max(0, Number(dir && dir.attempts) || 0);
+    return {
+      attempts,
+      correct: Math.min(attempts, Math.max(0, Number(dir && dir.correct) || 0)),
+      streak: Math.max(0, Number(dir && dir.streak) || 0),
+      lastSeen: Math.max(0, Number(dir && dir.lastSeen) || 0),
+    };
+  };
+  return {
+    character: item.character,
+    romaji: item.romaji,
+    kind: item.kind || 'kana',
+    groupLabel: item.groupLabel || '',
+    k2r: normalizeDir(saved.k2r || _kanaEmptyDir()),
+    r2k: normalizeDir(saved.r2k || _kanaEmptyDir()),
+  };
+}
+
+function _kanaSummary(item, store) {
+  const stat = _kanaStat(item, store);
+  const attempts = stat.k2r.attempts + stat.r2k.attempts;
+  const correct = stat.k2r.correct + stat.r2k.correct;
+  const accuracy = attempts ? correct / attempts : 0;
+  const testedBoth = stat.k2r.attempts > 0 && stat.r2k.attempts > 0;
+  const mastered = attempts >= 4 && testedBoth && accuracy >= 0.8 && (stat.k2r.streak + stat.r2k.streak) >= 2;
+  return { stat, attempts, correct, accuracy, mastered };
+}
+
+function _kanaDirStrength(dir) {
+  if (!dir.attempts) return -0.35;
+  return (dir.correct / dir.attempts) + Math.min(dir.streak, 3) * 0.08 + Math.min(dir.attempts, 4) * 0.03;
+}
+
+function _kanaWeakDirection(summary) {
+  const kWrong = Math.max(0, summary.stat.k2r.attempts - summary.stat.k2r.correct);
+  const rWrong = Math.max(0, summary.stat.r2k.attempts - summary.stat.r2k.correct);
+  if (kWrong !== rWrong) return kWrong > rWrong ? 'k2r' : 'r2k';
+  return _kanaDirStrength(summary.stat.k2r) <= _kanaDirStrength(summary.stat.r2k) ? 'k2r' : 'r2k';
+}
+
+function _kanaDirectionLabel(dir) {
+  return dir === 'k2r' ? 'karakter → bunyi' : 'bunyi → karakter';
+}
+
+function _kanaPriority(summary) {
+  if (!summary.attempts) return 7;
+  const weakest = Math.min(_kanaDirStrength(summary.stat.k2r), _kanaDirStrength(summary.stat.r2k));
+  const lastSeen = Math.max(summary.stat.k2r.lastSeen, summary.stat.r2k.lastSeen);
+  const ageBoost = !lastSeen ? 1 : Math.max(0, Math.min(1.5, (Date.now() - lastSeen) / 86400000 / 14));
+  return (summary.mastered ? 0 : 4) + (1 - summary.accuracy) * 5 + Math.max(0, 1 - weakest) * 2 + ageBoost;
+}
+
+function _kanaRecordAnswer(item, dir, correct) {
+  const store = _kanaReadMastery();
+  const key = _kanaKey(item);
+  const stat = _kanaStat(item, store);
+  const target = stat[dir];
+  target.attempts += 1;
+  if (correct) target.correct += 1;
+  target.streak = correct ? target.streak + 1 : 0;
+  target.lastSeen = Date.now();
+  store.items[key] = stat;
+  try { localStorage.setItem(KANA_MASTERY_KEY, JSON.stringify(store)); } catch (e) { /* storage can be unavailable */ }
+}
+
+// Distraktor dipilih dari kelompok/bunyi yang mirip, tetapi romaji tetap unik
+// agar soal seperti じ/ぢ tidak memiliki dua jawaban yang sama-sama benar.
 function _kanaPickDistractors(pool, item, count) {
-  const used = new Set([item.romaji]);
+  const normalizeRomaji = (value) => String(value || '').trim().toLowerCase();
+  const used = new Set([normalizeRomaji(item.romaji)]);
   const out = [];
-  const shuffled = pool.filter((p) => p !== item).sort(() => Math.random() - 0.5);
-  for (const p of shuffled) {
+  const candidates = pool.filter((p) => p !== item).map((p) => {
+    const a = String(item.romaji || '').toLowerCase();
+    const b = String(p.romaji || '').toLowerCase();
+    let similarity = 0;
+    if ((p.kind || '') === (item.kind || '')) similarity += 3;
+    if ((p.groupLabel || '') === (item.groupLabel || '')) similarity += 4;
+    if (a.charAt(0) && a.charAt(0) === b.charAt(0)) similarity += 1;
+    if (a.slice(-1) && a.slice(-1) === b.slice(-1)) similarity += 2;
+    return { p, similarity: similarity + Math.random() };
+  }).sort((a, b) => b.similarity - a.similarity);
+  for (const entry of candidates) {
+    const p = entry.p;
     if (out.length >= count) break;
-    if (used.has(p.romaji)) continue;
-    used.add(p.romaji);
+    const romaji = normalizeRomaji(p.romaji);
+    if (used.has(romaji)) continue;
+    used.add(romaji);
     out.push(p);
   }
   return out;
 }
-// Versi generic dari _kanaPickDistractors di atas (key configurable via
-// keyFn) — dipakai drill kosakata & kanji supaya tidak duplikasi logic
-// unique-filter. _kanaPickDistractors dibiarkan apa adanya (nol risiko
-// regresi ke drill kana yang sudah live).
+// Versi generic dengan key configurable untuk drill kosakata dan kanji.
 function pickDistractors(pool, item, count, keyFn) {
   const used = new Set([keyFn(item)]);
   const out = [];
@@ -9620,32 +9782,124 @@ function pickDistractors(pool, item, count, keyFn) {
   }
   return out;
 }
-window.kanaDrillStart = () => {
+function _kanaMakeQuestion(pool, item, dir, retryCount) {
+  const distract = _kanaPickDistractors(pool, item, 3);
+  return {
+    item,
+    dir,
+    opts: _kanaShuffle([item, ...distract]),
+    retryCount: retryCount || 0,
+    isRetry: (retryCount || 0) > 0,
+  };
+}
+
+function _kanaWeakItems(pool) {
+  const store = _kanaReadMastery();
+  return pool.map((item) => ({ item, summary: _kanaSummary(item, store) }))
+    .filter((row) => row.summary.attempts > 0 && !row.summary.mastered)
+    .sort((a, b) => _kanaPriority(b.summary) - _kanaPriority(a.summary));
+}
+
+function kanaDrillShowOverview() {
   const pool = (window.__kanaData || []).filter((k) => k.character && k.romaji);
   const body = document.getElementById('kana-drill-body');
   if (!body) return;
   if (pool.length < 2) { body.innerHTML = '<div class="kana-drill-progress">Karakter belum cukup untuk drill.</div>'; return; }
-  const n = Math.min(pool.length, 12);
-  const order = pool.slice().sort(() => Math.random() - 0.5).slice(0, n);
-  const questions = order.map((item) => {
-    const dir = Math.random() < 0.5 ? 'k2r' : 'r2k';
-    const distract = _kanaPickDistractors(pool, item, 3);
-    const opts = [item, ...distract].sort(() => Math.random() - 0.5);
-    return { item, dir, opts };
+  const store = _kanaReadMastery();
+  const rows = pool.map((item) => ({ item, summary: _kanaSummary(item, store) }));
+  const mastered = rows.filter((row) => row.summary.mastered).length;
+  const review = rows.filter((row) => row.summary.attempts > 0 && !row.summary.mastered);
+  const fresh = rows.length - mastered - review.length;
+  const weakBtn = document.getElementById('kana-drill-weak-btn');
+  if (weakBtn) weakBtn.hidden = review.length === 0;
+  const preview = review.slice().sort((a, b) => _kanaPriority(b.summary) - _kanaPriority(a.summary)).slice(0, 5);
+  body.innerHTML = `
+    <div class="kana-mastery-summary" aria-label="Ringkasan penguasaan kana">
+      <div class="kana-mastery-card mastered"><strong>${mastered}</strong><span>Dikuasai</span></div>
+      <div class="kana-mastery-card review"><strong>${review.length}</strong><span>Perlu diulang</span></div>
+      <div class="kana-mastery-card"><strong>${fresh}</strong><span>Belum dilatih</span></div>
+    </div>
+    <div class="kana-mastery-note"><strong>Cara kerja:</strong> soal baru dan yang sering salah muncul lebih dulu. Jawaban salah akan muncul lagi setelah beberapa soal sampai lebih melekat. Progres tersimpan di perangkat ini.</div>
+    ${preview.length ? `<div class="kana-weak-preview"><span class="kana-weak-label">Fokus berikutnya</span>${preview.map(({ item, summary }) => `<span class="kana-weak-chip"><b lang="ja">${escapeHtml(item.character)}</b> ${escapeHtml(item.romaji)} · ${escapeHtml(_kanaDirectionLabel(_kanaWeakDirection(summary)))}</span>`).join('')}</div>` : ''}`;
+  window.__kanaDrill = null;
+}
+
+window.kanaDrillShowOverview = kanaDrillShowOverview;
+
+window.kanaDrillStart = (mode = 'adaptive') => {
+  const pool = (window.__kanaData || []).filter((k) => k.character && k.romaji);
+  const body = document.getElementById('kana-drill-body');
+  if (!body) return;
+  if (pool.length < 2) { body.innerHTML = '<div class="kana-drill-progress">Karakter belum cukup untuk drill.</div>'; return; }
+  const store = _kanaReadMastery();
+  let ranked = pool.map((item) => ({ item, summary: _kanaSummary(item, store) }));
+  if (mode === 'weak') ranked = ranked.filter((row) => row.summary.attempts > 0 && !row.summary.mastered);
+  if (!ranked.length) { kanaDrillShowOverview(); return; }
+  ranked = ranked.map((row) => ({ ...row, priority: _kanaPriority(row.summary) + Math.random() * 1.25 }))
+    .sort((a, b) => b.priority - a.priority);
+  const targetCount = Math.min(ranked.length, mode === 'weak' ? 8 : 12);
+  const selected = ranked.slice(0, targetCount);
+  const questions = selected.map(({ item, summary }) => {
+    const kStrength = _kanaDirStrength(summary.stat.k2r);
+    const rStrength = _kanaDirStrength(summary.stat.r2k);
+    const dir = mode === 'weak'
+      ? _kanaWeakDirection(summary)
+      : (Math.abs(kStrength - rStrength) < 0.05
+          ? (Math.random() < 0.5 ? 'k2r' : 'r2k')
+          : (kStrength < rStrength ? 'k2r' : 'r2k'));
+    return _kanaMakeQuestion(pool, item, dir, 0);
   });
-  window.__kanaDrill = { questions, idx: 0, score: 0, answered: false };
+  window.__kanaDrill = {
+    pool,
+    questions,
+    idx: 0,
+    targetCount,
+    answered: false,
+    attempts: 0,
+    correct: 0,
+    wrong: 0,
+    firstCorrect: 0,
+    streak: 0,
+    bestStreak: 0,
+    resolved: new Set(),
+  };
   kanaDrillRender();
 };
+
+function _kanaWeaknessMarkup(pool) {
+  const weak = _kanaWeakItems(pool).slice(0, 5);
+  if (!weak.length) return '';
+  return `<div class="kana-weakness-list">
+    <div class="kana-weakness-title">Yang perlu diperkuat</div>
+    ${weak.map(({ item, summary }) => {
+      const pct = Math.round(summary.accuracy * 100);
+      return `<div class="kana-weakness-item">
+        <div class="kana-weakness-char" lang="ja">${escapeHtml(item.character)}</div>
+        <div class="kana-weakness-info"><strong>${escapeHtml(item.romaji)}</strong><span>Fokus: ${escapeHtml(_kanaDirectionLabel(_kanaWeakDirection(summary)))}</span></div>
+        <div class="kana-weakness-rate">${pct}%</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
 function kanaDrillRender() {
   const st = window.__kanaDrill;
   const body = document.getElementById('kana-drill-body');
   if (!st || !body) return;
   if (st.idx >= st.questions.length) {
-    const pct = Math.round((st.score / st.questions.length) * 100);
+    const pct = st.attempts ? Math.round((st.correct / st.attempts) * 100) : 0;
+    const recallPct = st.targetCount ? Math.round((st.firstCorrect / st.targetCount) * 100) : 0;
+    const weakCount = _kanaWeakItems(st.pool).length;
     body.innerHTML = `<div class="kana-drill-result">
-      <div class="kdr-score">${st.score} / ${st.questions.length}</div>
-      <div class="kdr-pct">${pct}% benar — ${pct >= 80 ? 'mantap! 🎉' : 'ulangi biar makin lancar.'}</div>
-      <button class="btn-primary" type="button" onclick="kanaDrillStart()">Ulangi Drill</button>
+      <div class="kdr-score">${pct}%</div>
+      <div class="kdr-pct">Akurasi sesi · ${st.correct} benar, ${st.wrong} salah</div>
+      <div class="kdr-caption">${recallPct}% langsung ingat tanpa pengulangan · runtun terbaik ${st.bestStreak}</div>
+      ${_kanaWeaknessMarkup(st.pool)}
+      <div class="kana-drill-result-actions">
+        <button class="btn-secondary" type="button" onclick="kanaDrillShowOverview()">Lihat Perkembangan</button>
+        ${weakCount ? '<button class="btn-secondary" type="button" onclick="kanaDrillStart(\'weak\')">Latih Kelemahan</button>' : ''}
+        <button class="btn-primary" type="button" onclick="kanaDrillStart('adaptive')">Latihan Lagi</button>
+      </div>
     </div>`;
     return;
   }
@@ -9658,12 +9912,21 @@ function kanaDrillRender() {
     const lang = q.dir === 'k2r' ? '' : ' lang="ja"';
     return `<button class="kana-drill-opt" type="button" data-oi="${oi}"${lang} onclick="kanaDrillAnswer(${oi})">${escapeHtml(label)}</button>`;
   }).join('');
+  const resolved = st.resolved.size;
+  const accuracy = st.attempts ? Math.round((st.correct / st.attempts) * 100) : 0;
+  const progress = Math.round((resolved / st.targetCount) * 100);
   body.innerHTML = `
-    <div class="kana-drill-progress">Soal ${st.idx + 1} / ${st.questions.length} · Skor ${st.score}</div>
+    <div class="kana-drill-session-meta">
+      <span>Selesai <strong>${resolved}/${st.targetCount}</strong></span>
+      <span>Akurasi <strong>${accuracy}%</strong></span>
+      <span>Runtun <strong>${st.streak}</strong></span>
+    </div>
+    <div class="kana-drill-meter" role="progressbar" aria-label="Kemajuan drill" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><span style="width:${progress}%"></span></div>
+    <div class="kana-drill-progress">${q.isRetry ? 'Pengulangan terjadwal' : `Soal ${Math.min(st.idx + 1, st.targetCount)} dari ${st.targetCount}`} · ${escapeHtml(_kanaDirectionLabel(q.dir))}</div>
     <div class="kana-drill-prompt"${promptLang}>${escapeHtml(promptText)}</div>
     <div class="kana-drill-hint">${hint}</div>
     <div class="kana-drill-opts">${optsHtml}</div>
-    <div class="kana-drill-feedback" id="kana-drill-feedback"></div>`;
+    <div class="kana-drill-feedback" id="kana-drill-feedback" aria-live="polite"></div>`;
   st.answered = false;
 }
 window.kanaDrillAnswer = (oi) => {
@@ -9672,7 +9935,26 @@ window.kanaDrillAnswer = (oi) => {
   const q = st.questions[st.idx];
   st.answered = true;
   const correct = q.opts[oi] === q.item;
-  if (correct) st.score++;
+  const key = _kanaKey(q.item);
+  st.attempts++;
+  _kanaRecordAnswer(q.item, q.dir, correct);
+  if (correct) {
+    st.correct++;
+    st.streak++;
+    st.bestStreak = Math.max(st.bestStreak, st.streak);
+    if (!q.isRetry) st.firstCorrect++;
+    st.resolved.add(key);
+  } else {
+    st.wrong++;
+    st.streak = 0;
+    if (q.retryCount < 2) {
+      const retry = _kanaMakeQuestion(st.pool, q.item, q.dir, q.retryCount + 1);
+      const insertAt = Math.min(st.questions.length, st.idx + 3);
+      st.questions.splice(insertAt, 0, retry);
+    } else {
+      st.resolved.add(key);
+    }
+  }
   document.querySelectorAll('#kana-drill-body .kana-drill-opt').forEach((b, i) => {
     b.disabled = true;
     if (q.opts[i] === q.item) b.classList.add('correct');
@@ -9680,12 +9962,15 @@ window.kanaDrillAnswer = (oi) => {
   });
   const fb = document.getElementById('kana-drill-feedback');
   if (fb) {
+    const memory = !correct && q.item.mnemonic
+      ? `<span class="kdf-memory">💡 ${escapeHtml(q.item.mnemonic)}</span>`
+      : '';
     fb.innerHTML = correct
-      ? '<span class="kdf-ok">✓ Benar!</span>'
-      : `<span class="kdf-no">✗ Jawaban: <strong lang="ja">${escapeHtml(q.item.character)}</strong> = ${escapeHtml(q.item.romaji)}</span>`;
+      ? `<span class="kdf-ok">✓ ${q.isRetry ? 'Sudah ingat!' : 'Benar!'}</span>`
+      : `<span class="kdf-no">✗ <strong lang="ja">${escapeHtml(q.item.character)}</strong> = ${escapeHtml(q.item.romaji)}${q.retryCount < 2 ? ' · akan muncul lagi' : ''}</span>${memory}`;
   }
   st.idx++;
-  setTimeout(() => { if (window.__kanaDrill === st) kanaDrillRender(); }, correct ? 750 : 1500);
+  setTimeout(() => { if (window.__kanaDrill === st) kanaDrillRender(); }, correct ? 700 : 1700);
 };
 
 window.openDeckModal = (idx) => {
