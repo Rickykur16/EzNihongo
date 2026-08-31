@@ -9818,8 +9818,8 @@ function _kanaSetFocus(active) {
 
 function _kanaSessionInfo(number) {
   const sessions = {
-    1: { label: 'Kenali', description: 'Kenali karakter dari arah yang paling perlu dilatih.' },
-    2: { label: 'Balik arah', description: 'Uji Kana yang sama dari arah sebaliknya.' },
+    1: { label: 'Kenali', description: 'Lihat hiragana lalu pilih romaji yang tepat.' },
+    2: { label: 'Balik arah', description: 'Lihat romaji lalu pilih hiragana yang tepat.' },
     3: { label: 'Penguatan', description: 'Perkuat kembali arah yang masih paling lemah.' },
   };
   return sessions[number] || sessions[1];
@@ -9900,22 +9900,12 @@ window.kanaDrillStart = (mode = 'adaptive') => {
     .sort((a, b) => b.priority - a.priority);
   const targetCount = Math.min(ranked.length, KANA_DRILL_ITEMS_PER_SESSION);
   const selected = ranked.slice(0, targetCount);
-  const baseDirections = {};
-  const questions = selected.map(({ item, summary }, index) => {
-    const kStrength = _kanaDirStrength(summary.stat.k2r);
-    const rStrength = _kanaDirStrength(summary.stat.r2k);
-    const dir = mode === 'weak'
-      ? _kanaWeakDirection(summary)
-      : (Math.abs(kStrength - rStrength) < 0.05
-          ? (Math.random() < 0.5 ? 'k2r' : 'r2k')
-          : (kStrength < rStrength ? 'k2r' : 'r2k'));
-    baseDirections[_kanaKey(item)] = dir;
-    return _kanaMakeQuestion(pool, item, dir, 0, index + 1);
+  const questions = selected.map(({ item }, index) => {
+    return _kanaMakeQuestion(pool, item, 'k2r', 0, index + 1);
   });
   const st = {
     pool,
     selected: selected.map((row) => row.item),
-    baseDirections,
     mode,
     session: 1,
     attempts: 0,
@@ -9944,9 +9934,8 @@ window.kanaDrillNextSession = () => {
     });
   }
   const questions = rows.map(({ item, summary }, index) => {
-    const firstDir = st.baseDirections[_kanaKey(item)] || 'k2r';
     const dir = next === 2
-      ? (firstDir === 'k2r' ? 'r2k' : 'k2r')
+      ? 'r2k'
       : _kanaWeakDirection(summary);
     return _kanaMakeQuestion(st.pool, item, dir, 0, index + 1);
   });
