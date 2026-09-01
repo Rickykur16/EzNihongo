@@ -30,11 +30,11 @@ test('normalizes complete manual words, validates target, and deduplicates', () 
   ]);
 });
 
-test('manual words stay first while automatic vocabulary fills remaining slots', () => {
+test('manual words stay first while same-level vocabulary can come from another Bab', () => {
   const vocab = [
-    { vocabulary_id: 'v1', module_id: 'm1', module_title: 'Bab 1', module_sort: 1, vocab_sort: 1, japanese: '日本', reading: 'にほん', indonesian: 'Jepang' },
-    { vocabulary_id: 'v2', module_id: 'm2', module_title: 'Bab 2', module_sort: 2, vocab_sort: 1, japanese: '日本語', reading: 'にほんご', indonesian: 'bahasa Jepang', example_japanese: '日本語を話します。' },
-    { vocabulary_id: 'v3', module_id: 'm2', module_title: 'Bab 2', module_sort: 2, vocab_sort: 2, japanese: '日本語', reading: 'にほんご', indonesian: 'duplikat' },
+    { vocabulary_id: 'v1', module_id: 'm1', course_level: 'N4', module_title: 'Bab 1', module_sort: 1, vocab_sort: 1, japanese: '日本', reading: 'にほん', indonesian: 'Jepang' },
+    { vocabulary_id: 'v2', module_id: 'm2', course_level: 'N4', module_title: 'Bab 2', module_sort: 2, vocab_sort: 1, japanese: '日本語', reading: 'にほんご', indonesian: 'bahasa Jepang', example_japanese: '日本語を話します。' },
+    { vocabulary_id: 'v3', module_id: 'm2', course_level: 'N4', module_title: 'Bab 2', module_sort: 2, vocab_sort: 2, japanese: '日本語', reading: 'にほんご', indonesian: 'duplikat' },
   ];
   const result = deriveCompounds('日', [
     { japanese: '日本語', reading: 'にほんご', indonesian: 'bahasa Jepang' },
@@ -46,6 +46,41 @@ test('manual words stay first while automatic vocabulary fills remaining slots',
   assert.equal(result[0].usageLevel, 'N4');
   assert.equal(result[0].exampleJapanese, '日本語を話します。');
   assert.equal(result[1].japanese, '日本');
+});
+
+test('returns every same-level word without a cap and excludes later JLPT levels', () => {
+  const vocab = Array.from({ length: 10 }, (_, index) => ({
+    vocabulary_id: `v${index + 1}`,
+    module_id: 'm5',
+    course_level: 'N5',
+    module_title: 'Bab 5',
+    module_sort: 5,
+    vocab_sort: index + 1,
+    japanese: `日本${index + 1}`,
+    reading: `にほん${index + 1}`,
+    indonesian: `kata ${index + 1}`,
+  }));
+  vocab.push({
+    vocabulary_id: 'outside',
+    module_id: 'm6',
+    course_level: 'N4',
+    module_title: 'Bab 6',
+    module_sort: 6,
+    vocab_sort: 1,
+    japanese: '休日',
+    reading: 'きゅうじつ',
+    indonesian: 'hari libur',
+  });
+
+  const result = deriveCompounds('日', [], vocab, {
+    moduleId: 'm5',
+    moduleSort: 5,
+    courseLevel: 'N5',
+  });
+
+  assert.equal(result.length, 10);
+  assert.ok(result.every((item) => item.usageLevel === 'N5'));
+  assert.ok(result.every((item) => item.japanese !== '休日'));
 });
 
 test('catalog keeps earliest introduction and classifies later-level usage as known', () => {

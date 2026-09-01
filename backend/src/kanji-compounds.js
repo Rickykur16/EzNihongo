@@ -6,7 +6,6 @@
 //   2. deck Kosakata mendapat metadata kanji lama/baru tanpa perlu membuat
 //      lesson Kanji duplikat di setiap level.
 
-export const COMPOUND_CAP = 8;
 export const KANJI_LEVEL_RANK = Object.freeze({ N5: 1, N4: 2, N3: 3, N2: 4, N1: 5 });
 
 const VOCAB_TTL = 5 * 60 * 1000;
@@ -83,7 +82,7 @@ export async function loadCourseVocab(slug) {
   const entry = vocabCache.get(key);
   if (entry && (Date.now() - entry.ts) < VOCAB_TTL) return entry.rows;
   const result = await dbQuery(
-    `SELECT v.id AS vocabulary_id, v.module_id,
+    `SELECT v.id AS vocabulary_id, v.module_id, c.level AS course_level,
             m.title AS module_title, m.sort_order AS module_sort,
             v.sort_order AS vocab_sort, v.japanese, v.reading,
             v.indonesian, v.category,
@@ -222,12 +221,16 @@ function autoCompoundOrder(a, b, context) {
     || a.japanese.localeCompare(b.japanese, 'ja');
 }
 
-// Manual menjadi kata utama, lalu bank kosakata melengkapi slot yang tersisa.
+// Manual menjadi kata utama, lalu bank kosakata dari level JLPT yang sama
+// melengkapinya lintas Bab. Tidak ada target jumlah: semua kata relevan pada
+// level aktif ditampilkan apa adanya, tanpa mengambil kosakata level berikutnya.
 // Semua bentuk dipertahankan: kata tunggal, kanji+kana/okurigana, dan gabungan.
 export function deriveCompounds(character, manualCompounds, vocab, context = {}) {
   const target = clean(character);
   if (!target) return [];
+  const currentLevel = clean(context.courseLevel).toUpperCase();
   const automatic = (vocab || [])
+    .filter((row) => !currentLevel || clean(row.course_level).toUpperCase() === currentLevel)
     .filter((row) => clean(row.japanese).includes(target))
     .filter((row) => clean(row.japanese) && clean(row.reading) && clean(row.indonesian))
     .map((row) => enrichCompound(row, target, context))
@@ -249,14 +252,12 @@ export function deriveCompounds(character, manualCompounds, vocab, context = {})
       usageLevel: matched.usageLevel || clean(context.courseLevel).toUpperCase(),
     });
     seen.add(key);
-    if (out.length >= COMPOUND_CAP) return out;
   }
   for (const row of automatic) {
     const key = compoundKey(row);
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(row);
-    if (out.length >= COMPOUND_CAP) break;
   }
   return out;
 }
