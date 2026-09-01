@@ -4118,13 +4118,30 @@ function normalizeKanjiLevel(value) {
   const v = String(value || '').toUpperCase();
   return KANJI_LEVELS.includes(v) ? v : 'N5';
 }
-function normalizeKanjiCompounds(value) {
-  if (!Array.isArray(value)) return [];
-  return value.map((item) => ({
-    japanese: String(item?.japanese || '').trim(),
-    reading: String(item?.reading || '').trim(),
-    indonesian: String(item?.indonesian || '').trim(),
-  })).filter((item) => item.japanese || item.reading || item.indonesian);
+function validateKanjiCompounds(value, character = '') {
+  if (!Array.isArray(value)) return { items: [], error: null };
+  const target = String(character || '').trim();
+  const items = [];
+  const seen = new Set();
+  for (let i = 0; i < value.length; i++) {
+    const item = {
+      japanese: String(value[i]?.japanese || '').trim(),
+      reading: String(value[i]?.reading || '').trim(),
+      indonesian: String(value[i]?.indonesian || '').trim(),
+    };
+    if (!item.japanese && !item.reading && !item.indonesian) continue;
+    if (!item.japanese || !item.reading || !item.indonesian) {
+      return { items: [], error: `Kata #${i + 1}: kata, bacaan, dan arti wajib diisi lengkap` };
+    }
+    if (target && !item.japanese.includes(target)) {
+      return { items: [], error: `Kata #${i + 1} harus mengandung kanji ${target}` };
+    }
+    const key = `${item.japanese.toLowerCase()}::${item.reading.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push(item);
+  }
+  return { items, error: null };
 }
 
 // List kanji per pelajaran. Lesson scope dipake admin "Kelola Kanji"
@@ -4151,7 +4168,9 @@ router.post('/kanji', asyncHandler(async (req, res) => {
   if (!ch) return res.status(400).json({ error: 'character required' });
   const level = normalizeKanjiLevel(jlptLevel);
   const hasCompounds = Object.prototype.hasOwnProperty.call(req.body || {}, 'compounds');
-  const safeCompounds = normalizeKanjiCompounds(compounds);
+  const compoundValidation = validateKanjiCompounds(compounds, ch);
+  if (compoundValidation.error) return res.status(400).json({ error: compoundValidation.error });
+  const safeCompounds = compoundValidation.items;
   const result = await query(
     `INSERT INTO kanji_items (
        lesson_id, character, jlpt_level, on_reading, kun_reading, meaning_id,
@@ -4196,7 +4215,9 @@ router.put('/kanji/:id', asyncHandler(async (req, res) => {
   const level = jlptLevel ? normalizeKanjiLevel(jlptLevel) : null;
   const hasLessonId = Object.prototype.hasOwnProperty.call(req.body || {}, 'lessonId');
   const hasCompounds = Object.prototype.hasOwnProperty.call(req.body || {}, 'compounds');
-  const safeCompounds = normalizeKanjiCompounds(compounds);
+  const compoundValidation = validateKanjiCompounds(compounds, ch);
+  if (compoundValidation.error) return res.status(400).json({ error: compoundValidation.error });
+  const safeCompounds = compoundValidation.items;
   const result = await query(
     `UPDATE kanji_items SET
        character = COALESCE($2, character),

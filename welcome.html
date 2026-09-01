@@ -2824,10 +2824,32 @@
   }
   .deck-hero .dh-stat-num { font-size: 28px; font-weight: 800; color: var(--brand-red); line-height: 1; font-variant-numeric: tabular-nums; }
   .deck-hero .dh-stat-label { font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--du-ink-3); }
+  .deck-kanji-bridge {
+    margin: -6px 0 20px; padding: 15px 18px; border: 1px solid #eadbcf;
+    border-radius: 12px; background: linear-gradient(135deg, #fff9f4, var(--du-surface));
+  }
+  .deck-kanji-bridge-head { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
+  .deck-kanji-bridge-title { font-size: 13px; font-weight: 800; color: var(--du-ink); }
+  .deck-kanji-bridge-copy { margin-top: 3px; color: var(--du-ink-2); font-size: 12.5px; line-height: 1.45; }
+  .deck-kanji-links, .dm-kanji-links { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
+  .deck-kanji-link {
+    display: inline-flex; align-items: center; gap: 7px; border: 1px solid #dfcec0;
+    background: var(--du-surface); color: var(--du-ink); border-radius: 999px;
+    padding: 6px 10px 6px 8px; cursor: pointer; font: inherit; text-align: left;
+  }
+  .deck-kanji-link:hover, .deck-kanji-link:focus-visible { border-color: var(--brand-red); outline: none; }
+  .deck-kanji-link .dkl-char { font-family: 'Noto Sans JP', sans-serif; font-size: 19px; font-weight: 800; color: var(--brand-red); }
+  .deck-kanji-link .dkl-text { display: flex; flex-direction: column; gap: 1px; }
+  .deck-kanji-link .dkl-meaning { font-size: 11px; font-weight: 700; }
+  .deck-kanji-link .dkl-level { color: var(--du-ink-3); font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .dc-kanji-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+  .dc-kanji-tag { padding: 2px 6px; background: #fff4eb; color: #8b3e1d; border-radius: 999px; font-size: 9px; font-weight: 800; }
   @media (max-width: 600px) {
     .deck-hero { padding: 16px 18px; gap: 14px; }
     .deck-hero .dh-stat { padding-left: 12px; }
     .deck-hero .dh-stat-num { font-size: 22px; }
+    .deck-kanji-bridge { padding: 14px; }
+    .deck-kanji-link { flex: 1 1 calc(50% - 7px); min-width: 0; }
   }
   .deck-toolbar {
     display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
@@ -2996,6 +3018,9 @@
   .deck-ex .de-play:hover { background: var(--deck-accent, var(--brand-red)); color: #fff; border-color: var(--deck-accent, var(--brand-red)); transform: scale(1.08); }
   .deck-ex .de-play.playing { background: var(--deck-accent, var(--brand-red)); color: #fff; border-color: var(--deck-accent, var(--brand-red)); animation: pulse 0.9s infinite; }
   .deck-ex-empty { font-size: 13px; color: var(--du-ink-3); font-style: italic; }
+  .dm-kanji-context { margin: -4px 0 18px; padding: 12px 14px; background: #fff9f4; border: 1px solid #eadbcf; border-radius: 10px; }
+  .dm-kanji-context-title { font-size: 10px; color: #8b3e1d; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+  .dm-kanji-context .dm-kanji-links { margin-top: 8px; }
   .deck-modal-nav {
     display: flex; justify-content: space-between; align-items: center; gap: 12px;
     margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--du-border);
@@ -3890,7 +3915,7 @@
     position: fixed; inset: 0;
     background: rgba(15, 15, 20, .55);
     backdrop-filter: blur(3px);
-    z-index: 200;
+    z-index: 10000;
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
     animation: kanjiFade .18s ease;
@@ -3991,25 +4016,46 @@
   .kanji-compound-list {
     display: grid; gap: 6px;
   }
+  .kanji-compound-row[hidden] { display: none; }
   .kanji-compound-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 2fr);
-    gap: 12px; align-items: baseline;
-    padding: 8px 12px;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px; align-items: start;
+    padding: 11px 12px;
     background: #fafaf7;
     border: 1px solid var(--du-border, #ece9e3);
     border-radius: 8px;
     font-size: 13px;
   }
+  .kc-main { min-width: 0; }
+  .kc-wordline { display: flex; flex-wrap: wrap; gap: 7px 10px; align-items: baseline; }
   .kanji-compound-row .kc-jp {
     font-family: 'Noto Sans JP', sans-serif;
     font-size: 16px; font-weight: 700; color: #1a1a1a;
   }
+  .kanji-compound-row .kc-jp mark { padding: 0; background: transparent; color: var(--brand-red); font-weight: 900; }
   .kanji-compound-row .kc-read {
     font-family: 'Noto Sans JP', sans-serif;
     color: #6b6b6b;
   }
   .kanji-compound-row .kc-arti { color: #4a4a4a; }
+  .kc-meta { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .kc-badge { padding: 2px 6px; border-radius: 999px; background: #efece7; color: #675f55; font-size: 9px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+  .kc-example { margin-top: 7px; font-size: 12px; line-height: 1.45; color: #655d54; }
+  .kc-example .kc-example-jp { font-family: 'Noto Sans JP', sans-serif; color: #26231f; }
+  .kc-actions { display: flex; gap: 5px; }
+  .kc-action { width: 31px; height: 31px; border: 1px solid var(--du-border, #ece9e3); border-radius: 50%; background: #fff; color: #333; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+  .kc-action:hover { color: #fff; background: var(--brand-red); border-color: var(--brand-red); }
+  .kanji-usage-more { border: 0; background: transparent; color: var(--brand-red); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; padding: 7px 2px; text-align: left; }
+  .kanji-word-drill { margin-top: 12px; padding: 14px; border: 1px solid #eadbcf; background: #fff9f4; border-radius: 10px; }
+  .kwd-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .kwd-title { font-size: 13px; font-weight: 800; color: #2d2925; }
+  .kwd-sub { margin-top: 2px; font-size: 11px; color: #766c62; }
+  .kwd-prompt { margin: 12px 0 9px; font-family: 'Noto Sans JP', sans-serif; text-align: center; font-size: 25px; font-weight: 800; }
+  .kwd-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .kwd-option { padding: 9px; border: 1px solid #dfd6cd; background: #fff; border-radius: 8px; color: #2d2925; cursor: pointer; font: inherit; font-weight: 650; }
+  .kwd-option.correct { border-color: #5d936f; background: #edf7f0; color: #285d3b; }
+  .kwd-option.wrong { border-color: #bd6a65; background: #fff0ef; color: #8d302b; }
+  .kwd-feedback { min-height: 18px; margin-top: 8px; font-size: 12px; font-weight: 700; text-align: center; }
   .kanji-detail-close {
     position: absolute; top: 14px; right: 14px;
     width: 36px; height: 36px;
@@ -4040,7 +4086,11 @@
     .kanji-detail-head { flex-direction: column; gap: 14px; padding: 20px 18px 16px; }
     .kanji-detail-stroke { width: 140px; height: 140px; }
     .kanji-detail-body { padding: 16px 18px 22px; }
-    .kanji-compound-row { grid-template-columns: 1fr; gap: 2px; }
+    .kanji-detail-overlay { padding: 0; align-items: flex-end; }
+    .kanji-detail-modal { max-height: 94vh; border-radius: 16px 16px 0 0; }
+    .kanji-compound-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .kc-wordline { display: grid; gap: 2px; }
+    .kwd-options { grid-template-columns: 1fr; }
   }
 
   /* ============================================================
@@ -4408,6 +4458,7 @@ function splitJpFromContent(content) {
 function transformCourseFromApi(apiCourse) {
   return {
     name: apiCourse.title || apiCourse.slug,
+    level: (apiCourse.level || apiCourse.slug || '').toUpperCase(),
     tagline: apiCourse.description || '',
     price: '',
     modules: (apiCourse.modules || []).map((m, mi) => ({
@@ -6933,6 +6984,27 @@ window.toggleVocabBab = (key) => {
 const _kanjiListCache = new Map(); // slug -> { fetchedAt, data }
 const _kanjiByIdCache = new Map(); // id -> full kanji row (untuk detail)
 
+function kanjiUsageStatusLabel(usage) {
+  const level = usage?.introducedLevel || usage?.jlpt_level || '';
+  if (usage?.status === 'known') return `Sudah dikenal · ${level}`;
+  if (usage?.status === 'current' || usage?.status === 'current_level') return `Diperkenalkan · ${level}`;
+  if (usage?.status === 'upcoming') return `Bab berikutnya · ${level}`;
+  if (usage?.status === 'future') return `Level berikutnya · ${level}`;
+  return 'Belum dipetakan';
+}
+
+function kanjiUsageLinkHtml(usage) {
+  const tag = usage?.id ? 'button' : 'span';
+  const action = usage?.id ? ` type="button" onclick="openKanjiDetail('${escapeHtml(usage.id)}')"` : '';
+  return `<${tag} class="deck-kanji-link"${action}>
+    <span class="dkl-char" lang="ja">${escapeHtml(usage?.character || '')}</span>
+    <span class="dkl-text">
+      <span class="dkl-meaning">${escapeHtml(usage?.meaning_id || 'Kanji')}</span>
+      <span class="dkl-level">${escapeHtml(kanjiUsageStatusLabel(usage))}</span>
+    </span>
+  </${tag}>`;
+}
+
 window.openKanjiList = async () => {
   closeSidebar();
   const slug = currentState.course;
@@ -7044,7 +7116,7 @@ window.openKanjiList = async () => {
   main.innerHTML = `
     <p class="lesson-breadcrumb">${escapeHtml(courseName)} · KANJI</p>
     <h1 class="lesson-title">📝 Daftar Kanji <span class="vocab-level-chip">${escapeHtml(levelChip)}</span></h1>
-    <p class="lesson-subtitle">${subtitleParts.join(' · ')}. Klik kanji untuk lihat goresan, mnemonic, dan kombinasi kosakata.</p>
+    <p class="lesson-subtitle">${subtitleParts.join(' · ')}. Klik Kanji untuk melihat goresan, cara mengingat, dan kata yang memakainya.</p>
     <div class="module-filter" style="margin:14px 0 18px;">
       <svg class="mf-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="search" id="kanji-list-filter" placeholder="Cari kanji / arti / reading..." oninput="window.filterKanjiList(this.value)" autocomplete="off" />
@@ -7097,19 +7169,71 @@ window.filterKanjiList = (q) => {
   }
 };
 
-// ── Kanji detail modal: stroke animation (KanjiVG) + mnemonic + compounds.
+// ── Kanji detail modal: stroke animation + kata nyata yang memakai Kanji.
 let _kanjiStrokeTimer = null;
+
+function kanjiUsageKindLabel(kind) {
+  if (kind === 'single') return 'Kata tunggal';
+  if (kind === 'kanji_kana') return 'Kanji + kana';
+  if (kind === 'compound') return 'Gabungan kanji';
+  return 'Kosakata';
+}
+
+function kanjiWordMarkup(word, character) {
+  return Array.from(String(word || '')).map((char) => (
+    char === character ? `<mark>${escapeHtml(char)}</mark>` : escapeHtml(char)
+  )).join('');
+}
+
+function kanjiCompoundRowHtml(c, k, index) {
+  const moduleLabel = c.moduleTitle || (c.scope === 'manual' ? 'Pilihan pengajar' : 'Kelas ini');
+  const example = c.exampleJapanese ? `
+    <div class="kc-example">
+      <div class="kc-example-jp" lang="ja">${escapeHtml(c.exampleJapanese)}</div>
+      ${c.exampleReading ? `<div lang="ja">${escapeHtml(c.exampleReading)}</div>` : ''}
+      ${c.exampleIndonesian ? `<div>${escapeHtml(c.exampleIndonesian)}</div>` : ''}
+    </div>` : '';
+  return `<div class="kanji-compound-row${index >= 4 ? ' kc-extra' : ''}"${index >= 4 ? ' hidden' : ''}>
+    <div class="kc-main">
+      <div class="kc-wordline">
+        <span class="kc-jp" lang="ja">${kanjiWordMarkup(c.japanese, k.character)}</span>
+        <span class="kc-read" lang="ja">${escapeHtml(c.reading || '')}</span>
+        <span class="kc-arti">${escapeHtml(c.indonesian || '')}</span>
+      </div>
+      <div class="kc-meta">
+        <span class="kc-badge">${escapeHtml(kanjiUsageKindLabel(c.kind))}</span>
+        ${c.usageLevel ? `<span class="kc-badge">Level ${escapeHtml(c.usageLevel)}</span>` : ''}
+        ${moduleLabel ? `<span class="kc-badge">${escapeHtml(moduleLabel)}</span>` : ''}
+      </div>
+      ${example}
+    </div>
+    <div class="kc-actions">
+      <button type="button" class="kc-action" aria-label="Dengar ${escapeHtml(c.japanese || '')}" onclick="playKanjiUsageAudio('${escapeHtml(k.id)}',${index},this)">${AUDIO_SVG}</button>
+    </div>
+  </div>`;
+}
+
+window.playKanjiUsageAudio = (id, index, btn) => {
+  const item = (_kanjiByIdCache.get(id)?.compounds || [])[index];
+  if (item) playTTS(item.japanese || item.reading || '', btn);
+};
+
+window.toggleKanjiUsages = (btn) => {
+  const rows = btn.closest('.kanji-detail-section')?.querySelectorAll('.kc-extra') || [];
+  const willOpen = Array.from(rows).some((row) => row.hidden);
+  rows.forEach((row) => { row.hidden = !willOpen; });
+  btn.textContent = willOpen ? 'Tampilkan lebih sedikit' : `Lihat ${rows.length} kata lainnya`;
+  btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+};
 
 window.openKanjiDetail = (id) => {
   const k = _kanjiByIdCache.get(id);
   if (!k) return;
-
-  const compounds = (k.compounds || []).map((c) => `
-    <div class="kanji-compound-row">
-      <span class="kc-jp">${escapeHtml(c.japanese)}</span>
-      <span class="kc-read">${escapeHtml(c.reading || '')}</span>
-      <span class="kc-arti">${escapeHtml(c.indonesian || '')}</span>
-    </div>`).join('');
+  const usableCompounds = (k.compounds || []).filter((c) => c.japanese && c.reading && c.indonesian);
+  const compounds = usableCompounds.map((c, index) => kanjiCompoundRowHtml(c, k, index)).join('');
+  const mastered = typeof _deckReadMastery === 'function'
+    ? usableCompounds.filter((item) => _deckSummary(item, _deckReadMastery()).mastered).length
+    : 0;
 
   const overlay = document.createElement('div');
   overlay.className = 'kanji-detail-overlay';
@@ -7124,7 +7248,7 @@ window.openKanjiDetail = (id) => {
         <div class="kanji-detail-info">
           <div class="kanji-detail-meaning">${escapeHtml(k.meaning_id || '(belum ada arti)')}</div>
           <div class="kanji-detail-chips">
-            <span class="kanji-chip level">${escapeHtml(k.jlpt_level || '')}</span>
+            <span class="kanji-chip level">Diperkenalkan ${escapeHtml(k.introducedLevel || k.jlpt_level || '')}</span>
             ${k.stroke_count ? `<span class="kanji-chip">${k.stroke_count} goresan</span>` : ''}
             ${k.bab_kode ? `<span class="kanji-chip">${escapeHtml(k.bab_kode)}</span>` : ''}
           </div>
@@ -7142,12 +7266,20 @@ window.openKanjiDetail = (id) => {
           </div>` : ''}
         ${compounds ? `
           <div class="kanji-detail-section">
-            <div class="kanji-detail-section-head">📚 Kombinasi kosakata</div>
+            <div class="kanji-detail-section-head">📚 Kata yang memakai kanji ini</div>
             <div class="kanji-compound-list">${compounds}</div>
+            ${usableCompounds.length > 4 ? `<button type="button" class="kanji-usage-more" aria-expanded="false" onclick="toggleKanjiUsages(this)">Lihat ${usableCompounds.length - 4} kata lainnya</button>` : ''}
+            ${usableCompounds.length >= 2 ? `
+              <div class="kanji-word-drill" id="kanji-word-drill">
+                <div class="kwd-head">
+                  <div><div class="kwd-title">Cek pemakaian ${escapeHtml(k.character)}</div><div class="kwd-sub">${mastered}/${usableCompounds.length} kata sudah kuat · progres menyatu dengan Drill Kosakata</div></div>
+                  <button class="btn-secondary" type="button" onclick="kanjiWordDrillStart('${escapeHtml(k.id)}')">Latihan singkat</button>
+                </div>
+              </div>` : ''}
           </div>` : `
           <div class="kanji-detail-section">
-            <div class="kanji-detail-section-head">📚 Kombinasi kosakata</div>
-            <p style="color:#6b6b6b;font-size:13px;margin:0;">Belum ada kosakata yang mengandung kanji ini di kelas <strong>${escapeHtml(k.jlpt_level || '')}</strong>.</p>
+            <div class="kanji-detail-section-head">📚 Kata yang memakai kanji ini</div>
+            <p style="color:#6b6b6b;font-size:13px;margin:0;">Belum ada kata lengkap yang memakai kanji ini di bank kosakata kelas.</p>
           </div>`}
       </div>
     </div>`;
@@ -7164,7 +7296,73 @@ window.openKanjiDetail = (id) => {
 window.closeKanjiDetail = () => {
   document.querySelectorAll('.kanji-detail-overlay').forEach((el) => el.remove());
   document.body.style.overflow = '';
+  window.__kanjiWordDrill = null;
   if (_kanjiStrokeTimer) { clearTimeout(_kanjiStrokeTimer); _kanjiStrokeTimer = null; }
+};
+
+window.kanjiWordDrillStart = (id) => {
+  const k = _kanjiByIdCache.get(id);
+  const pool = (k?.compounds || []).filter((item) => item.japanese && item.reading && item.indonesian)
+    .filter((item, index, all) => all.findIndex((row) => _deckKey(row) === _deckKey(item)) === index);
+  if (pool.length < 2) return;
+  const store = _deckReadMastery();
+  const ranked = pool.map((item) => ({ item, priority: _deckPriority(_deckSummary(item, store)) + Math.random() }))
+    .sort((a, b) => b.priority - a.priority).map((row) => row.item);
+  const count = Math.min(4, ranked.length * 2);
+  const questions = Array.from({ length: count }, (_, index) => (
+    _deckMakeQuestion(pool, ranked[index % ranked.length], index < ranked.length ? 'jp2id' : 'id2jp', 0, index + 1)
+  ));
+  window.__kanjiWordDrill = { id, questions, idx: 0, correct: 0, answered: false };
+  kanjiWordDrillRender();
+};
+
+function kanjiWordDrillRender() {
+  const st = window.__kanjiWordDrill;
+  const box = document.getElementById('kanji-word-drill');
+  if (!st || !box) return;
+  if (st.idx >= st.questions.length) {
+    box.innerHTML = `<div class="kwd-head">
+      <div><div class="kwd-title">Selesai · ${st.correct}/${st.questions.length} benar</div><div class="kwd-sub">Kata yang masih lemah akan diprioritaskan di Drill Kosakata berikutnya.</div></div>
+      <button class="btn-secondary" type="button" onclick="kanjiWordDrillStart('${escapeHtml(st.id)}')">Ulangi</button>
+    </div>`;
+    return;
+  }
+  const q = st.questions[st.idx];
+  const prompt = q.dir === 'id2jp' ? escapeHtml(q.item.indonesian) : kanjiWordMarkup(q.item.japanese, _kanjiByIdCache.get(st.id)?.character || '');
+  const options = q.opts.map((item, index) => {
+    const label = q.dir === 'id2jp'
+      ? `<span lang="ja">${escapeHtml(item.japanese)}</span>${item.reading ? `<small style="display:block;margin-top:2px;color:#766c62;">${escapeHtml(item.reading)}</small>` : ''}`
+      : escapeHtml(item.indonesian);
+    return `<button class="kwd-option" type="button" onclick="kanjiWordDrillAnswer(${index})">${label}</button>`;
+  }).join('');
+  box.innerHTML = `
+    <div class="kwd-head"><div><div class="kwd-title">Cek pemakaian Kanji</div><div class="kwd-sub">Soal ${st.idx + 1}/${st.questions.length} · ${q.dir === 'id2jp' ? 'arti → kata' : 'kata → arti'}</div></div></div>
+    <div class="kwd-prompt">${prompt}</div>
+    <div class="kwd-options">${options}</div>
+    <div class="kwd-feedback" id="kwd-feedback" aria-live="polite"></div>`;
+  st.answered = false;
+}
+
+window.kanjiWordDrillAnswer = (optionIndex) => {
+  const st = window.__kanjiWordDrill;
+  if (!st || st.answered) return;
+  const q = st.questions[st.idx];
+  if (!q) return;
+  st.answered = true;
+  const correct = q.opts[optionIndex] === q.item;
+  if (correct) st.correct++;
+  _deckRecordAnswer(q.item, q.dir, correct);
+  document.querySelectorAll('#kanji-word-drill .kwd-option').forEach((button, index) => {
+    button.disabled = true;
+    if (q.opts[index] === q.item) button.classList.add('correct');
+    else if (index === optionIndex) button.classList.add('wrong');
+  });
+  const feedback = document.getElementById('kwd-feedback');
+  if (feedback) feedback.innerHTML = correct
+    ? '<span class="kdf-ok">✓ Benar</span>'
+    : `<span class="kdf-no">✗ <span lang="ja">${escapeHtml(q.item.japanese)}</span> = ${escapeHtml(q.item.indonesian)}</span>`;
+  st.idx++;
+  setTimeout(() => { if (window.__kanjiWordDrill === st) kanjiWordDrillRender(); }, correct ? 650 : 1200);
 };
 
 window.replayKanjiStrokes = (char, elId) => fetchAndPlayKanjiStrokes(char, elId);
@@ -8215,6 +8413,34 @@ function renderDeckLesson(course, module, lesson, nav) {
   const items = Array.isArray(lesson.deck) ? lesson.deck : [];
   window.__deckData = items;
   window.__deckLessonArgs = [course, module, lesson, nav];
+  const knownKanji = new Map();
+  for (const item of items) {
+    for (const usage of (Array.isArray(item.kanjiUsages) ? item.kanjiUsages : [])) {
+      if (!usage || !usage.character) continue;
+      if (usage.id) {
+        const cached = _kanjiByIdCache.get(usage.id) || {};
+        const rest = String(item.japanese || '').split(usage.character).join('');
+        const word = {
+          japanese: item.japanese || '', reading: item.reading || '', indonesian: item.indonesian || '',
+          kind: /[\u3040-\u30ff]/u.test(rest) ? 'kanji_kana' : (String(item.japanese || '') === usage.character ? 'single' : 'compound'),
+          source: 'course', scope: 'current', moduleTitle: module.title || '',
+          usageLevel: course.level || '',
+          exampleJapanese: item.examples?.[0]?.japanese || '',
+          exampleReading: item.examples?.[0]?.reading || '',
+          exampleIndonesian: item.examples?.[0]?.indonesian || '',
+        };
+        const compounds = [...(cached.compounds || []), word].filter((row, index, all) =>
+          all.findIndex((candidate) => `${candidate.japanese}::${candidate.reading}` === `${row.japanese}::${row.reading}`) === index
+        );
+        _kanjiByIdCache.set(usage.id, {
+          ...cached, ...usage,
+          jlpt_level: usage.introducedLevel || usage.jlpt_level || '',
+          compounds,
+        });
+      }
+      if (usage.status === 'known' && !knownKanji.has(usage.character)) knownKanji.set(usage.character, usage);
+    }
+  }
   const deckView = localStorage.getItem('ez_deck_view') === 'list' ? 'list' : 'card';
 
   if (!window.__deckEscWired) {
@@ -8262,12 +8488,14 @@ function renderDeckLesson(course, module, lesson, nav) {
         const jp = escapeHtml(it.japanese || '');
         const arti = escapeHtml(it.indonesian || '');
         const label = `${jp}${arti ? ' — ' + arti : ''}. Tekan Enter untuk lihat contoh kalimat.`;
+        const kanjiTags = (it.kanjiUsages || []).map((usage) => `<span class="dc-kanji-tag" title="${escapeHtml(kanjiUsageStatusLabel(usage))}">${escapeHtml(usage.character)} · ${escapeHtml(usage.introducedLevel || '?')}</span>`).join('');
         const audioBtn = `<button class="dc-audio" type="button" aria-label="Dengar pengucapan ${jp}" onclick="event.stopPropagation();playDeckAudio(${idx}, this)">${AUDIO_SVG}</button>`;
         if (deckView === 'list') {
           return `<div class="deck-list-item" role="button" tabindex="0" aria-label="${label}" data-deck-search="${escapeHtml(search)}" onclick="openDeckModal(${idx})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDeckModal(${idx})}">
             <div class="dli-jp" lang="ja">${jp}</div>
             ${it.reading ? `<div class="dli-kana" lang="ja">${escapeHtml(it.reading)}</div>` : ''}
             <div class="dli-meaning">${arti}</div>
+            ${kanjiTags ? `<div class="dc-kanji-tags">${kanjiTags}</div>` : ''}
             ${audioBtn}
           </div>`;
         }
@@ -8276,6 +8504,7 @@ function renderDeckLesson(course, module, lesson, nav) {
           <div class="dc-jp" lang="ja">${jp}</div>
           ${it.reading ? `<div class="dc-kana" lang="ja">${escapeHtml(it.reading)}</div>` : ''}
           <div class="dc-meaning">${arti}</div>
+          ${kanjiTags ? `<div class="dc-kanji-tags">${kanjiTags}</div>` : ''}
           <span class="dc-len" aria-hidden="true">Klik untuk contoh</span>
         </div>`;
       }).join('')}<div class="deck-empty-filter" id="deck-empty-filter" hidden></div></div>`;
@@ -8296,6 +8525,17 @@ function renderDeckLesson(course, module, lesson, nav) {
       <div class="kana-drill-body" id="deck-drill-body"></div>
     </div>` : '';
 
+  const kanjiBridgeBlock = knownKanji.size ? `
+    <section class="deck-kanji-bridge" aria-labelledby="deck-kanji-bridge-title">
+      <div class="deck-kanji-bridge-head">
+        <div>
+          <div class="deck-kanji-bridge-title" id="deck-kanji-bridge-title">Kanji lama, kata baru</div>
+          <div class="deck-kanji-bridge-copy">Kanji ini sudah pernah diperkenalkan. Di Bab ini kamu belajar pemakaiannya dalam kata yang baru.</div>
+        </div>
+      </div>
+      <div class="deck-kanji-links">${Array.from(knownKanji.values()).map((usage) => kanjiUsageLinkHtml(usage)).join('')}</div>
+    </section>` : '';
+
   // Video opsional di atas grid (pola sama dgn kana, welcome.html ~8394).
   // Deck tanpa video_url TIDAK menampilkan apa-apa (tanpa placeholder).
   const deckVideoUrl = (lesson.videoUrl || '').trim();
@@ -8311,6 +8551,7 @@ function renderDeckLesson(course, module, lesson, nav) {
     <p class="lesson-subtitle">${module.title}${lesson.duration ? ' — ' + lesson.duration : ''}</p>
     ${deckVideoBlock}
     ${heroBlock}
+    ${kanjiBridgeBlock}
     <div id="deck-card-wrap">
       ${toolbar}
       ${cardsHtml}
@@ -8331,6 +8572,7 @@ function renderDeckLesson(course, module, lesson, nav) {
           </div>
           <button class="dm-headaudio" type="button" aria-label="Dengar kata">${AUDIO_SVG}</button>
         </div>
+        <div class="dm-kanji-context" id="dm-kanji-context" hidden></div>
         <div class="deck-modal-label">Contoh Kalimat · 例文</div>
         <div class="deck-ex-list" id="deck-ex-list"></div>
         <div class="deck-modal-nav">
@@ -9357,7 +9599,7 @@ function renderKanjiLesson(course, module, lesson, nav) {
   }
   const intro = (lesson.body && lesson.body.trim())
     ? lesson.body
-    : 'Klik karakter untuk lihat goresan, mnemonic, dan kombinasi kosakata.';
+    : 'Klik karakter untuk melihat goresan, cara mengingat, dan kata nyata yang memakai Kanji ini.';
 
   const kanjiToolbar = items.length > 0 ? `
     <div class="deck-toolbar" style="margin-top:16px;">
@@ -10094,6 +10336,14 @@ window.openDeckModal = (idx) => {
   modal.querySelector('.dm-kana').textContent = it.reading || '';
   modal.querySelector('.dm-romaji').textContent = it.romaji || '';
   modal.querySelector('.dm-arti').textContent = it.indonesian || '';
+  const kanjiContext = document.getElementById('dm-kanji-context');
+  const kanjiUsages = Array.isArray(it.kanjiUsages) ? it.kanjiUsages : [];
+  if (kanjiContext) {
+    kanjiContext.hidden = kanjiUsages.length === 0;
+    kanjiContext.innerHTML = kanjiUsages.length ? `
+      <div class="dm-kanji-context-title">Kanji di kata ini</div>
+      <div class="dm-kanji-links">${kanjiUsages.map((usage) => kanjiUsageLinkHtml(usage)).join('')}</div>` : '';
+  }
   const headAudio = modal.querySelector('.dm-headaudio');
   headAudio.onclick = () => playDeckAudio(idx, headAudio);
   const list = document.getElementById('deck-ex-list');

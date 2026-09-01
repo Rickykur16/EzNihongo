@@ -7201,7 +7201,7 @@ function renderKanjiManager(ctx, items) {
       ? '<div class="empty">Pelajaran ini belum punya kanji. Klik <strong>+ Kanji</strong> atau import dari Notion.</div>'
       : `<div style="overflow-x:auto;"><table><thead><tr>
           <th>Karakter</th><th>Level</th><th>On</th><th>Kun</th><th>Arti</th>
-          <th>Mnemonic</th><th>Kombinasi</th><th>Goresan</th><th></th>
+          <th>Mnemonic</th><th>Kata</th><th>Goresan</th><th></th>
         </tr></thead><tbody>${rows}</tbody></table></div>`}
     <div class="modal-actions" style="margin-top:16px;"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `);
@@ -7236,6 +7236,19 @@ function collectKanjiCompounds(form) {
     reading: (tr.querySelector('input[name="compoundReading"]')?.value || '').trim(),
     indonesian: (tr.querySelector('input[name="compoundIndonesian"]')?.value || '').trim(),
   })).filter((c) => c.japanese || c.reading || c.indonesian);
+}
+
+function validateKanjiCompoundForm(compounds, character) {
+  for (let i = 0; i < compounds.length; i++) {
+    const item = compounds[i];
+    if (!item.japanese || !item.reading || !item.indonesian) {
+      return `Kata #${i + 1}: kata, bacaan, dan arti wajib diisi lengkap.`;
+    }
+    if (character && !item.japanese.includes(character)) {
+      return `Kata #${i + 1} harus mengandung kanji ${character}.`;
+    }
+  }
+  return '';
 }
 
 window.openKanjiItemForm = (id) => {
@@ -7293,7 +7306,7 @@ window.openKanjiItemForm = (id) => {
           placeholder="contoh: 一 = satu garis horizontal, gampang inget angka 1">${escapeHtml(v.mnemonic || '')}</textarea>
       </div>
       <div class="field">
-        <label>Kombinasi kosakata</label>
+        <label>Kata yang memakai Kanji ini (opsional)</label>
         <div style="overflow-x:auto;">
           <table style="font-size:12px;">
             <thead><tr><th>Kanji / kata</th><th>Kana</th><th>Arti Bahasa Indonesia</th><th></th></tr></thead>
@@ -7301,8 +7314,8 @@ window.openKanjiItemForm = (id) => {
           </table>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;flex-wrap:wrap;">
-          <span style="font-size:11px;color:var(--ink-500);">Contoh: 日本語 · にほんご · bahasa Jepang.</span>
-          <button type="button" class="btn btn-ghost" onclick="addKanjiCompoundRow()">+ Tambah kombinasi</button>
+          <span style="font-size:11px;color:var(--ink-500);">Isi hanya kata utama pilihan pengajar. Sistem otomatis melengkapi dari Deck Kosakata. Bentuk ber-okurigana seperti 食べる tetap valid.</span>
+          <button type="button" class="btn btn-ghost" onclick="addKanjiCompoundRow()">+ Tambah kata utama</button>
         </div>
       </div>
       <div class="field-row">
@@ -7330,6 +7343,9 @@ async function submitKanjiItem(e, id) {
   e.preventDefault();
   const form = e.target;
   const ctx = STATE.kanjiManagerCtx;
+  const compounds = collectKanjiCompounds(form);
+  const compoundError = validateKanjiCompoundForm(compounds, form.character.value.trim());
+  if (compoundError) { notify(compoundError, true); return; }
   const body = {
     lessonId: ctx?.lessonId || null,
     character: form.character.value.trim(),
@@ -7338,7 +7354,7 @@ async function submitKanjiItem(e, id) {
     kunReading: form.kunReading.value.trim() || null,
     meaningId: form.meaningId.value.trim() || null,
     mnemonic: form.mnemonic.value.trim() || null,
-    compounds: collectKanjiCompounds(form),
+    compounds,
     strokeCount: form.strokeCount.value === '' ? null : Number(form.strokeCount.value),
     babKode: form.babKode.value.trim() || null,
     sortOrder: Number(form.sortOrder.value) || 0,

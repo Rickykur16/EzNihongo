@@ -2,7 +2,12 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
 import { asyncHandler, requireAuth } from '../middleware.js';
-import { loadCourseVocab, deriveCompounds } from '../kanji-compounds.js';
+import {
+  loadCourseVocab,
+  deriveCompounds,
+  loadKanjiCatalog,
+  deriveKanjiUsages,
+} from '../kanji-compounds.js';
 import { userCanAccessCourse, requireLessonCourseAccess } from '../entitlements.js';
 
 const router = Router();
@@ -60,6 +65,7 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
   );
 
   const moduleIds = modules.rows.map((m) => m.id);
+  const moduleSortById = new Map(modules.rows.map((m) => [m.id, Number(m.sort_order) || 0]));
   const lessonsByModule = {};
   const vocabByModule = {};
   const vocabByLesson = {};
@@ -140,13 +146,14 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
     if (deckLessonIds.length > 0) {
       const deckRows = await query(
         `SELECT di.lesson_id, di.sort_order, di.accent_color,
-                v.id, v.japanese, v.reading, v.romaji, v.indonesian, v.category
+                v.id, v.module_id, v.japanese, v.reading, v.romaji, v.indonesian, v.category
          FROM lesson_deck_items di
          JOIN module_vocabulary v ON v.id = di.vocabulary_id
          WHERE di.lesson_id = ANY($1::uuid[])
          ORDER BY di.lesson_id, di.sort_order ASC, v.japanese ASC`,
         [deckLessonIds]
       );
+      const kanjiCatalog = await loadKanjiCatalog();
       const vocabIds = [...new Set(deckRows.rows.map((r) => r.id))];
       const examplesByVocab = {};
       if (vocabIds.length > 0) {
@@ -172,6 +179,10 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
           category: r.category,
           accentColor: r.accent_color,
           examples: examplesByVocab[r.id] || [],
+          kanjiUsages: deriveKanjiUsages(r.japanese, kanjiCatalog, {
+            currentLevel: course.rows[0].level,
+            currentModuleSort: moduleSortById.get(r.module_id),
+          }),
         });
       }
     }
@@ -191,7 +202,9 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
       // Derive contoh kosakata sama seperti "Daftar Kanji" (/api/kanji) supaya
       // kanji yang sama tampil identik di pelajaran & Daftar Kanji.
       const courseVocab = await loadCourseVocab(req.params.slug);
+      const lessonModuleById = new Map(lessons.rows.map((l) => [l.id, l.module_id]));
       for (const r of kanjiRows.rows) {
+        const moduleId = lessonModuleById.get(r.lesson_id);
         (kanjiByLesson[r.lesson_id] ||= []).push({
           id: r.id,
           character: r.character,
@@ -200,7 +213,11 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
           kun_reading: r.kun_reading,
           meaning_id: r.meaning_id,
           mnemonic: r.mnemonic,
-          compounds: deriveCompounds(r.character, r.compounds, courseVocab),
+          compounds: deriveCompounds(r.character, r.compounds, courseVocab, {
+            moduleId,
+            moduleSort: moduleSortById.get(moduleId),
+            courseLevel: course.rows[0].level,
+          }),
           stroke_count: r.stroke_count,
           bab_kode: r.bab_kode,
         });
@@ -309,7 +326,8 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
 // Platform content itself, not just metadata.
 router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
   const lesson = await query(
-    `SELECT l.*, m.course_id, m.title AS module_title, c.slug AS course_slug,
+    `SELECT l.*, m.course_id, m.title AS module_title, m.sort_order AS module_sort,
+            c.slug AS course_slug, c.level AS course_level,
             vs.provider AS video_provider,
             vs.external_id AS video_external_id,
             vs.title AS video_source_title,
@@ -367,7 +385,7 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
   if (row.type === 'deck') {
     const deckRows = await query(
       `SELECT di.sort_order, di.accent_color,
-              v.id, v.japanese, v.reading, v.romaji, v.indonesian, v.category
+              v.id, v.module_id, v.japanese, v.reading, v.romaji, v.indonesian, v.category
        FROM lesson_deck_items di
        JOIN module_vocabulary v ON v.id = di.vocabulary_id
        WHERE di.lesson_id = $1
@@ -389,6 +407,7 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
         });
       }
     }
+    const kanjiCatalog = await loadKanjiCatalog();
     response.deck = deckRows.rows.map((r) => ({
       id: r.id,
       japanese: r.japanese,
@@ -398,6 +417,10 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
       category: r.category,
       accentColor: r.accent_color,
       examples: examplesByVocab[r.id] || [],
+      kanjiUsages: deriveKanjiUsages(r.japanese, kanjiCatalog, {
+        currentLevel: row.course_level,
+        currentModuleSort: row.module_sort,
+      }),
     }));
   }
 
@@ -413,7 +436,11 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
     const courseVocab = await loadCourseVocab(row.course_slug);
     response.kanji = kanjiRows.rows.map((r) => ({
       ...r,
-      compounds: deriveCompounds(r.character, r.compounds, courseVocab),
+      compounds: deriveCompounds(r.character, r.compounds, courseVocab, {
+        moduleId: row.module_id,
+        moduleSort: row.module_sort,
+        courseLevel: row.course_level,
+      }),
     }));
   }
 
