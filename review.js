@@ -1,5 +1,6 @@
 (() => {
   const app = document.getElementById('review-app');
+  const dashboardUrl = 'dashboard.html?v=20260902-1';
   let session = null;
   let index = 0;
   let selectedOrder = [];
@@ -10,7 +11,7 @@
 
   function errorCard(error, retry) {
     const expired = String(error?.message) === 'AUTH_EXPIRED';
-    app.innerHTML = `<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Review belum bisa dimuat</h1><p class="error">${esc(ezStudentErrorMessage(error, 'Smart Review'))}</p><div class="review-actions">${expired ? '<a class="back-link" href="login.html?next=review.html">Masuk kembali</a>' : '<button class="primary" id="retry-review" type="button">Coba lagi</button>'}<a class="back-link" href="dashboard.html">Kembali ke Dashboard</a></div></section>`;
+    app.innerHTML = `<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Review belum bisa dimuat</h1><p class="error">${esc(ezStudentErrorMessage(error, 'Smart Review'))}</p><div class="review-actions">${expired ? '<a class="back-link" href="login.html?next=review.html">Masuk kembali</a>' : '<button class="primary" id="retry-review" type="button">Coba lagi</button>'}<a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a></div></section>`;
     document.getElementById('retry-review')?.addEventListener('click', retry);
   }
   async function loadHome() {
@@ -24,7 +25,7 @@
   function renderHome(summary) {
     const total = Number(summary.total) || 0;
     const counts = Object.keys(labels).map((key) => categoryButton(key, Number(summary.byCategory?.[key]) || 0)).join('');
-    app.innerHTML = `<section class="summary-card"><div class="eyebrow">復習 · SMART REVIEW</div><h1 class="review-title">Ulangi yang sudah dipelajari.</h1><p class="total">${total ? `${total} item perlu direview` : 'Belum ada item review yang siap.'}</p><div class="counts">${counts}</div>${total ? '<button class="primary" id="start-mixed" type="button">Mulai Smart Review</button>' : '<p class="subtle">Review hari ini selesai. Lanjutkan belajar untuk membuka materi review berikutnya.</p>'}<div class="category-row">${Object.keys(labels).map((key) => `<button type="button" data-category="${key}" ${(Number(summary.byCategory?.[key]) || 0) ? '' : 'disabled'}>${labels[key]}</button>`).join('')}</div><div class="review-actions"><a class="back-link" href="dashboard.html">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
+    app.innerHTML = `<section class="summary-card"><div class="eyebrow">復習 · SMART REVIEW</div><h1 class="review-title">Ulangi yang sudah dipelajari.</h1><p class="total">${total ? `${total} item perlu direview` : 'Belum ada item review yang siap.'}</p><div class="counts">${counts}</div>${total ? '<button class="primary" id="start-mixed" type="button">Mulai Smart Review</button>' : '<p class="subtle">Review hari ini selesai. Lanjutkan belajar untuk membuka materi review berikutnya.</p>'}<div class="category-row">${Object.keys(labels).map((key) => `<button type="button" data-category="${key}" ${(Number(summary.byCategory?.[key]) || 0) ? '' : 'disabled'}>${labels[key]}</button>`).join('')}</div><div class="review-actions"><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
     app.querySelector('#start-mixed')?.addEventListener('click', () => start('mixed'));
     app.querySelectorAll('[data-category]').forEach((button) => button.addEventListener('click', () => start(button.dataset.category)));
   }
@@ -66,7 +67,7 @@
     }
   }
   function finish() {
-    app.innerHTML = `<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Sesi selesai.</h1><p>Kamu menjawab ${correctAnswers} dari ${session.questions.length} item dengan benar.</p><p class="subtle">Hasil sesi ini sudah dipakai untuk menjadwalkan review berikutnya.</p><div class="review-actions"><button class="primary" id="back-home" type="button">Review Lagi</button><a class="back-link" href="dashboard.html">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
+    app.innerHTML = `<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Sesi selesai.</h1><p>Kamu menjawab ${correctAnswers} dari ${session.questions.length} item dengan benar.</p><p class="subtle">Hasil sesi ini sudah dipakai untuk menjadwalkan review berikutnya.</p><div class="review-actions"><button class="primary" id="back-home" type="button">Review Lagi</button><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
     document.getElementById('back-home').addEventListener('click', loadHome);
   }
   document.getElementById('logout').addEventListener('click', () => ezLogout());

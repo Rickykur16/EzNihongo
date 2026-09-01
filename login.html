@@ -56,13 +56,26 @@
 <script src="api-client.js"></script>
 <script>
   const GOOGLE_CLIENT_ID = '998431349663-20kog1i9aeln8d7c21r8bi1ha084078o.apps.googleusercontent.com';
+  const STUDENT_RELEASE = '20260902-1';
+
+  function dashboardEntry(source = '') {
+    const sourceUrl = new URL(source || 'dashboard.html', window.location.href);
+    const params = new URLSearchParams({ v: STUDENT_RELEASE });
+    const course = sourceUrl.searchParams.get('course');
+    if (course) params.set('course', course);
+    if (sourceUrl.searchParams.get('new')) params.set('new', '1');
+    return `dashboard.html?${params}`;
+  }
 
   function getNextUrl() {
     const params = new URLSearchParams(window.location.search);
     const next = params.get('next');
     const decoded = next ? decodeURIComponent(next) : 'dashboard.html';
     // Guard against open redirect — only allow relative paths
-    if (/^https?:|^\/\//.test(decoded)) return 'dashboard.html';
+    if (/^https?:|^\/\//.test(decoded)) return dashboardEntry();
+    // Dashboard selalu menjadi pintu masuk siswa. `welcome.html` tetap dapat
+    // dibuka sesudahnya lewat menu Belajar, tetapi bukan tujuan pertama login.
+    if (/^(?:\.\/)?(?:welcome|dashboard)\.html(?:[?#]|$)/.test(decoded)) return dashboardEntry(decoded);
     return decoded;
   }
 

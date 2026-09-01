@@ -1,5 +1,6 @@
 (() => {
   const app = document.getElementById('dashboard-app');
+  const release = '20260902-1';
   const labels = { kana: 'Kana', vocabulary: 'Kosakata', kanji: 'Kanji', grammar: 'Grammar' };
   const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
 
@@ -16,8 +17,8 @@
     if (next) { params.set('module', next.chapter.slug); params.set('lesson', next.lesson.slug); }
     return `welcome.html?${params}`;
   }
-  const reviewUrl = (category = 'mixed') => category === 'mixed' ? 'review.html' : `review.html?category=${encodeURIComponent(category)}`;
-  const courseUrl = (path, course) => `${path}?course=${encodeURIComponent(course)}`;
+  const reviewUrl = (category = 'mixed') => category === 'mixed' ? `review.html?v=${release}` : `review.html?v=${release}&category=${encodeURIComponent(category)}`;
+  const courseUrl = (path, course) => `${path}?v=${release}&course=${encodeURIComponent(course)}`;
   const formatDate = (value) => value ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '';
   function errorMarkup(error) {
     const expired = String(error?.message) === 'AUTH_EXPIRED';

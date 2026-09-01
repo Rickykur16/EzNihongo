@@ -1,5 +1,6 @@
 (() => {
   const app = document.getElementById('app');
+  const release = '20260902-1';
   let data = null;
   let tab = 'upcoming';
   const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
@@ -31,7 +32,7 @@
       const dashboard = await api(`/dashboard/me${requested ? `?course=${encodeURIComponent(requested)}` : ''}`);
       if (!dashboard.course) { app.innerHTML = '<div class="page"><div class="empty"><strong>Belum ada kelas aktif.</strong><br>Daftar atau aktifkan kelas untuk melihat Live Class.</div></div>'; return; }
       document.getElementById('learn-nav').href = `welcome.html?course=${encodeURIComponent(dashboard.course.slug)}`;
-      document.getElementById('progress-nav').href = `progress.html?course=${encodeURIComponent(dashboard.course.slug)}`;
+      document.getElementById('progress-nav').href = `progress.html?v=${release}&course=${encodeURIComponent(dashboard.course.slug)}`;
       data = await api(`/live-classes?course=${encodeURIComponent(dashboard.course.slug)}`);
       if (new URLSearchParams(location.search).get('tab') === 'recordings') tab = 'recordings';
       render();
