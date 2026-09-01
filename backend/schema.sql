@@ -304,7 +304,7 @@ CREATE TABLE IF NOT EXISTS grammar_attempts (
   concept_signal TEXT,
   feedback TEXT,
   correction TEXT,
-  eval_source TEXT NOT NULL DEFAULT 'ai' CHECK (eval_source IN ('ai', 'cache')),
+  eval_source TEXT NOT NULL DEFAULT 'ai' CHECK (eval_source IN ('ai', 'cache', 'smart_review')),
   model TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -551,6 +551,57 @@ CREATE TABLE IF NOT EXISTS user_progress (
 CREATE INDEX IF NOT EXISTS idx_progress_user ON user_progress(user_id);
 CREATE INDEX IF NOT EXISTS idx_progress_lesson ON user_progress(lesson_id);
 
+CREATE TABLE IF NOT EXISTS live_classes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  title TEXT NOT NULL CHECK (char_length(BTRIM(title)) BETWEEN 1 AND 240),
+  description TEXT,
+  starts_at TIMESTAMPTZ NOT NULL,
+  ends_at TIMESTAMPTZ,
+  meeting_url TEXT,
+  recording_url TEXT,
+  status TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (ends_at IS NULL OR ends_at > starts_at)
+);
+CREATE INDEX IF NOT EXISTS idx_live_classes_course_schedule ON live_classes(course_id, status, starts_at);
+
+CREATE TABLE IF NOT EXISTS live_class_lessons (
+  live_class_id UUID NOT NULL REFERENCES live_classes(id) ON DELETE CASCADE,
+  lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+  sort_order INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (live_class_id, lesson_id)
+);
+CREATE INDEX IF NOT EXISTS idx_live_class_lessons_lesson ON live_class_lessons(lesson_id);
+
+-- Smart Review session metadata is intentionally short lived.  It only keeps
+-- server-generated questions/replay protection; authoritative evidence stays
+-- in user_practice_state/practice_attempts and grammar_attempts.
+CREATE TABLE IF NOT EXISTS smart_review_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  category TEXT NOT NULL CHECK (category IN ('mixed', 'kana', 'vocabulary', 'kanji', 'grammar')),
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_smart_review_sessions_user_expiry
+  ON smart_review_sessions(user_id, expires_at DESC);
+
+CREATE TABLE IF NOT EXISTS smart_review_session_items (
+  session_id UUID NOT NULL REFERENCES smart_review_sessions(id) ON DELETE CASCADE,
+  question_index INT NOT NULL CHECK (question_index >= 0),
+  item_type TEXT NOT NULL CHECK (item_type IN ('kana', 'vocabulary', 'kanji', 'grammar')),
+  item_id UUID NOT NULL,
+  skill TEXT NOT NULL,
+  lesson_id UUID REFERENCES lessons(id) ON DELETE SET NULL,
+  payload JSONB NOT NULL,
+  answered_at TIMESTAMPTZ,
+  PRIMARY KEY (session_id, question_index)
+);
+CREATE INDEX IF NOT EXISTS idx_smart_review_session_items_item
+  ON smart_review_session_items(item_type, item_id);
+
 -- Blob progres main site (peta "lesson selesai" + skor kuis) untuk sync
 -- lintas device. Frontend merge local+cloud lalu tulis balik union.
 CREATE TABLE IF NOT EXISTS user_learning_state (
@@ -717,6 +768,90 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS live_classes_updated_at ON live_classes;
+CREATE TRIGGER live_classes_updated_at BEFORE UPDATE ON live_classes
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- ===== LEARNING DATA FOUNDATIONS =====
+-- Main-course Kana/Vocabulary/Kanji practice is relational.  Grammar keeps
+-- using grammar_attempts because its mastery evidence is intentionally richer
+-- than generic correct/total counters.
+CREATE TABLE IF NOT EXISTS user_practice_state (
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  -- Grammar references are reserved for its existing rich evidence model;
+  -- generic correct/total state is not used to calculate Grammar mastery.
+  item_type TEXT NOT NULL CHECK (item_type IN ('kana', 'vocabulary', 'kanji', 'grammar')),
+  item_id UUID NOT NULL,
+  skill TEXT NOT NULL CHECK (char_length(skill) BETWEEN 1 AND 200),
+  attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+  correct INTEGER NOT NULL DEFAULT 0 CHECK (correct >= 0 AND correct <= attempts),
+  streak INTEGER NOT NULL DEFAULT 0 CHECK (streak >= 0),
+  last_seen_at TIMESTAMPTZ,
+  last_reviewed_at TIMESTAMPTZ,
+  next_review_at TIMESTAMPTZ,
+  mastery_state TEXT NOT NULL DEFAULT 'new' CHECK (mastery_state IN ('new', 'learning', 'mastered')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, item_type, item_id, skill)
+);
+CREATE INDEX IF NOT EXISTS idx_user_practice_state_due ON user_practice_state (user_id, next_review_at);
+CREATE INDEX IF NOT EXISTS idx_user_practice_state_item ON user_practice_state (item_type, item_id);
+
+CREATE TABLE IF NOT EXISTS practice_attempts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  course_id UUID REFERENCES courses(id) ON DELETE SET NULL,
+  lesson_id UUID REFERENCES lessons(id) ON DELETE SET NULL,
+  item_type TEXT NOT NULL CHECK (item_type IN ('kana', 'vocabulary', 'kanji', 'grammar')),
+  item_id UUID NOT NULL,
+  skill TEXT NOT NULL CHECK (char_length(skill) BETWEEN 1 AND 200),
+  is_correct BOOLEAN NOT NULL,
+  source TEXT NOT NULL CHECK (source IN ('lesson_drill', 'smart_review', 'quiz', 'grammar_task')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_practice_attempts_user_created ON practice_attempts (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_practice_attempts_user_item ON practice_attempts (user_id, item_type, item_id, skill, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_practice_attempts_lesson ON practice_attempts (lesson_id, created_at DESC) WHERE lesson_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS user_practice_legacy_imports (
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  source TEXT NOT NULL CHECK (source = 'welcome_local_mastery_v1'),
+  item_type TEXT NOT NULL CHECK (item_type IN ('kana', 'vocabulary', 'kanji', 'grammar')),
+  legacy_key TEXT NOT NULL,
+  item_id UUID NOT NULL,
+  imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, source, item_type, legacy_key)
+);
+CREATE INDEX IF NOT EXISTS idx_practice_legacy_imports_item ON user_practice_legacy_imports (item_type, item_id);
+
+CREATE OR REPLACE FUNCTION validate_practice_item_reference() RETURNS TRIGGER AS $$
+DECLARE exists_item BOOLEAN := FALSE;
+BEGIN
+  CASE NEW.item_type
+    WHEN 'kana' THEN SELECT EXISTS (SELECT 1 FROM kana_items WHERE id = NEW.item_id) INTO exists_item;
+    WHEN 'vocabulary' THEN SELECT EXISTS (SELECT 1 FROM module_vocabulary WHERE id = NEW.item_id) INTO exists_item;
+    WHEN 'kanji' THEN SELECT EXISTS (SELECT 1 FROM kanji_items WHERE id = NEW.item_id) INTO exists_item;
+    WHEN 'grammar' THEN SELECT EXISTS (SELECT 1 FROM module_grammar WHERE id = NEW.item_id) INTO exists_item;
+  END CASE;
+  IF NOT exists_item THEN
+    RAISE EXCEPTION 'Unknown % practice item %', NEW.item_type, NEW.item_id USING ERRCODE = '23503';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS user_practice_state_item_reference ON user_practice_state;
+CREATE TRIGGER user_practice_state_item_reference
+  BEFORE INSERT OR UPDATE OF item_type, item_id ON user_practice_state
+  FOR EACH ROW EXECUTE FUNCTION validate_practice_item_reference();
+DROP TRIGGER IF EXISTS practice_attempts_item_reference ON practice_attempts;
+CREATE TRIGGER practice_attempts_item_reference
+  BEFORE INSERT OR UPDATE OF item_type, item_id ON practice_attempts
+  FOR EACH ROW EXECUTE FUNCTION validate_practice_item_reference();
+DROP TRIGGER IF EXISTS user_practice_state_updated_at ON user_practice_state;
+CREATE TRIGGER user_practice_state_updated_at
+  BEFORE UPDATE ON user_practice_state FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'video_sources_updated_at') THEN

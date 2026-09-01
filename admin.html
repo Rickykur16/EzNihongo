@@ -268,6 +268,7 @@ let STATE = {
   selectedModule: null,
   lessons: [],
   videoSources: [],
+  liveClasses: [],
   users: [],
   discussions: [],
 };
@@ -728,6 +729,7 @@ function renderApp() {
       <button data-tab="orders">Pesanan</button>
       <button data-tab="discussions">Diskusi</button>
       <button data-tab="tts">TTS Cache</button>
+      <button data-tab="live">Live Class</button>
       <button data-tab="ai">AI</button>
     </nav>
     <main>
@@ -741,6 +743,7 @@ function renderApp() {
       <section class="pane" data-pane="orders"></section>
       <section class="pane" data-pane="discussions"></section>
       <section class="pane" data-pane="tts"></section>
+      <section class="pane" data-pane="live"></section>
       <section class="pane" data-pane="ai"></section>
     </main>
   `;
@@ -767,8 +770,84 @@ function renderTab() {
   else if (STATE.tab === 'orders') { renderOrders(); }
   else if (STATE.tab === 'discussions') { loadDiscussions().then(renderDiscussions); }
   else if (STATE.tab === 'tts') { renderTtsCachePane(); }
+  else if (STATE.tab === 'live') { loadLiveClasses().then(renderLiveClasses); }
   else if (STATE.tab === 'ai') { renderAiSettings(); }
 }
+
+// ─────────────────────────────────────────────────────────────
+// LIVE CLASS — metadata saja; Pelajaran tetap berasal dari kurikulum kanonis.
+// ─────────────────────────────────────────────────────────────
+const liveLessonCache = new Map();
+function liveClassErrorMessage(error) {
+  const messages = {
+    invalid_courseId: 'Pilih kursus yang valid.', invalid_title: 'Judul Live Class wajib diisi (maksimal 240 karakter).',
+    invalid_startsAt: 'Isi waktu mulai yang valid.', endsAt_must_be_after_startsAt: 'Waktu selesai harus setelah waktu mulai.',
+    invalid_status: 'Pilih status Live Class yang valid.', invalid_meetingUrl: 'Meeting URL harus berupa alamat http(s) yang valid.',
+    invalid_recordingUrl: 'Recording URL harus berupa alamat http(s) yang valid.', invalid_lessonIds: 'Pelajaran terkait tidak valid.',
+    related_lessons_must_belong_to_course: 'Pelajaran terkait harus berasal dari kursus yang dipilih.', course_not_found: 'Kursus tidak ditemukan.',
+  };
+  return messages[error?.message] || 'Live Class belum dapat disimpan. Periksa data lalu coba lagi.';
+}
+function liveDateInput(value) {
+  if (!value) return '';
+  const date = new Date(value); if (Number.isNaN(date.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+async function loadLiveClasses() {
+  try { const data = await api('/admin/live-classes'); STATE.liveClasses = data.liveClasses || []; }
+  catch (error) { STATE.liveClasses = []; notify('Gagal memuat Live Class: ' + error.message, true); }
+}
+async function loadLiveLessons(courseId) {
+  if (liveLessonCache.has(courseId)) return liveLessonCache.get(courseId);
+  try {
+    const data = await api('/admin/live-classes/lessons?courseId=' + encodeURIComponent(courseId));
+    const lessons = data.lessons || [];
+    liveLessonCache.set(courseId, lessons); return lessons;
+  } catch (error) { notify('Pelajaran tidak bisa dimuat: ' + error.message, true); return []; }
+}
+function renderLiveClasses() {
+  const pane = document.querySelector('[data-pane="live"]'); if (!pane) return;
+  const rows = (STATE.liveClasses || []).map((item) => `<tr><td><strong>${escapeHtml(item.title)}</strong><br><span class="pill">${escapeHtml(item.courseTitle)}</span></td><td>${escapeHtml(new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.startsAt)))}</td><td><span class="badge ${item.status === 'cancelled' ? 'badge-off' : 'badge-on'}">${item.status === 'scheduled' ? 'Jadwal' : item.status === 'completed' ? 'Selesai' : 'Dibatalkan'}</span></td><td>${item.relatedLessons?.length ? item.relatedLessons.map((lesson) => escapeHtml(lesson.title)).join(', ') : '—'}</td><td class="actions"><button class="btn btn-ghost" onclick="editLiveClass('${item.id}')">Edit</button><button class="btn btn-danger" onclick="deleteLiveClass('${item.id}', '${escapeHtml(item.title).replace(/'/g, "\\'")}')">Hapus</button></td></tr>`).join('');
+  pane.innerHTML = `<h2>Live Class</h2><p style="color:#666;font-size:13px;margin-top:-6px;">Jadwal, URL meeting/rekaman, dan tautan ke Pelajaran yang sudah ada.</p><div class="toolbar"><button class="btn btn-primary" onclick="newLiveClass()">+ Live Class</button><button class="btn btn-ghost" onclick="loadLiveClasses().then(renderLiveClasses)">↻ Refresh</button></div>${rows ? `<table><thead><tr><th>Judul / Kursus</th><th>Mulai</th><th>Status</th><th>Pelajaran terkait</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">Belum ada Live Class.</div>'}`;
+}
+function liveLessonPicker(lessons, selected) {
+  if (!lessons.length) return '<div class="empty" style="padding:12px;">Tidak ada Pelajaran yang dapat dipilih untuk kursus ini.</div>';
+  return lessons.map((lesson) => `<label style="display:block;padding:6px 0;border-bottom:1px solid #eee;font-family:var(--font-body);font-size:13px;"><input type="checkbox" name="lessonIds" value="${lesson.id}" ${selected.has(lesson.id) ? 'checked' : ''} /> <strong>${escapeHtml(lesson.module.title)}</strong> · ${escapeHtml(lesson.title)}</label>`).join('');
+}
+async function openLiveClassForm(item = null) {
+  const defaultCourse = item?.courseId || STATE.courses[0]?.id || '';
+  const selected = new Set((item?.relatedLessons || []).map((lesson) => lesson.id));
+  const lessons = defaultCourse ? await loadLiveLessons(defaultCourse) : [];
+  const courseOptions = STATE.courses.map((course) => `<option value="${course.id}" ${course.id === defaultCourse ? 'selected' : ''}>${escapeHtml(course.title)}</option>`).join('');
+  openModal(`<h3>${item ? 'Edit' : 'Live Class Baru'}</h3><form id="live-class-form"><div class="field"><label>Kursus</label><select name="courseId" id="live-course" required>${courseOptions}</select></div><div class="field"><label>Judul</label><input name="title" value="${escapeHtml(item?.title || '')}" required maxlength="240" /></div><div class="field"><label>Deskripsi / topik</label><textarea name="description" rows="3">${escapeHtml(item?.description || '')}</textarea></div><div class="field-row"><div class="field"><label>Mulai</label><input type="datetime-local" name="startsAt" value="${liveDateInput(item?.startsAt)}" required /><small>Ditampilkan dalam zona waktu browser admin.</small></div><div class="field"><label>Selesai (opsional)</label><input type="datetime-local" name="endsAt" value="${liveDateInput(item?.endsAt)}" /></div></div><div class="field-row"><div class="field"><label>Meeting URL</label><input type="url" name="meetingUrl" value="${escapeHtml(item?.meetingUrl || '')}" placeholder="https://…" /></div><div class="field"><label>Recording URL</label><input type="url" name="recordingUrl" value="${escapeHtml(item?.recordingUrl || '')}" placeholder="https://…" /></div></div><div class="field"><label>Status</label><select name="status"><option value="scheduled" ${item?.status === 'scheduled' || !item ? 'selected' : ''}>Jadwal</option><option value="completed" ${item?.status === 'completed' ? 'selected' : ''}>Selesai</option><option value="cancelled" ${item?.status === 'cancelled' ? 'selected' : ''}>Dibatalkan</option></select></div><div class="field"><label>Pelajaran terkait (opsional)</label><div id="live-lesson-picker" style="max-height:220px;overflow:auto;border:1px solid #ddd;border-radius:7px;padding:0 10px;">${liveLessonPicker(lessons, selected)}</div></div><div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button><button type="submit" class="btn btn-primary">Simpan</button></div></form>`);
+  const form = document.getElementById('live-class-form'); form.__selectedLiveLessons = selected;
+  document.getElementById('live-course').addEventListener('change', refreshLiveLessonPicker);
+  form.addEventListener('submit', (event) => submitLiveClass(event, item?.id || null));
+}
+window.refreshLiveLessonPicker = async () => {
+  const form = document.getElementById('live-class-form'); if (!form) return;
+  form.__selectedLiveLessons = new Set([...form.querySelectorAll('input[name="lessonIds"]:checked')].map((input) => input.value));
+  const picker = document.getElementById('live-lesson-picker'); picker.textContent = 'Memuat Pelajaran…';
+  const lessons = await loadLiveLessons(document.getElementById('live-course').value);
+  picker.innerHTML = liveLessonPicker(lessons, form.__selectedLiveLessons);
+};
+window.newLiveClass = () => openLiveClassForm();
+window.editLiveClass = (id) => openLiveClassForm((STATE.liveClasses || []).find((item) => item.id === id));
+async function submitLiveClass(event, id) {
+  event.preventDefault(); const form = event.target; const fd = new FormData(form);
+  const starts = new Date(fd.get('startsAt')); const endsRaw = fd.get('endsAt'); const ends = endsRaw ? new Date(endsRaw) : null;
+  const body = { courseId: fd.get('courseId'), title: fd.get('title').trim(), description: fd.get('description').trim() || null, startsAt: starts.toISOString(), endsAt: ends ? ends.toISOString() : null, meetingUrl: fd.get('meetingUrl').trim() || null, recordingUrl: fd.get('recordingUrl').trim() || null, status: fd.get('status'), lessonIds: fd.getAll('lessonIds') };
+  const endSubmit = beginSubmit(form);
+  try { await api('/admin/live-classes' + (id ? '/' + id : ''), { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) }); closeModal(); await loadLiveClasses(); renderLiveClasses(); notify('Live Class tersimpan'); }
+  catch (error) { notify(liveClassErrorMessage(error), true); }
+  finally { endSubmit(); }
+}
+window.deleteLiveClass = async (id, title) => {
+  if (!confirm(`Hapus Live Class "${title}"?`)) return;
+  try { await api('/admin/live-classes/' + id, { method: 'DELETE' }); await loadLiveClasses(); renderLiveClasses(); notify('Live Class dihapus'); }
+  catch (error) { notify('Gagal hapus Live Class: ' + error.message, true); }
+};
 
 // ─────────────────────────────────────────────────────────────
 // AI SETTINGS — prompt catatan coaching (belajar adaptif)

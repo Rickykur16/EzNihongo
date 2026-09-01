@@ -4391,8 +4391,12 @@
       <span>Menu</span>
     </button>
   </div>
-  <a href="welcome.html" class="dash-nav-brand"><img src="logo.png" alt="EzNihongo"/></a>
+  <a href="dashboard.html" class="dash-nav-brand"><img src="logo.png" alt="EzNihongo"/></a>
   <div class="dash-nav-right">
+    <a href="dashboard.html" class="logout-btn" style="text-decoration:none" aria-label="Buka Dashboard">Dashboard</a>
+    <a href="review.html" class="logout-btn" style="text-decoration:none" aria-label="Buka Smart Review">Review</a>
+    <a href="live.html" class="logout-btn" style="text-decoration:none" aria-label="Buka Live Class">Live Class</a>
+    <a href="progress.html" class="logout-btn" style="text-decoration:none" aria-label="Buka Progress">Progress</a>
     <button class="logout-btn" type="button" onclick="logout()" aria-label="Keluar dari akun">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       <span class="logout-btn-label">Keluar</span>
@@ -4682,6 +4686,7 @@ function setProgress(obj) {
 // Progres + skor kuis disimpan di localStorage (per-device) lalu di-push ke
 // /api/learning-state supaya ikut akun. Boot menarik blob & union-merge.
 let _cloudPushTimer = null;
+let _progressReconcileTimer = null;
 function _scheduleCloudPush() {
   if (typeof window.ezApi !== 'function') return;
   clearTimeout(_cloudPushTimer);
@@ -4692,11 +4697,17 @@ async function pushLearningStateToCloud() {
   try {
     const progress = getProgress();
     const quizScores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
-    await window.ezApi('/learning-state', {
+    const response = await window.ezApi('/learning-state', {
       method: 'PUT',
       body: JSON.stringify({ progress, quizScores }),
     });
+    if (response.ok) scheduleLessonProgressReconciliation();
   } catch {}
+}
+function scheduleLessonProgressReconciliation() {
+  if (typeof window.ezApi !== 'function') return;
+  clearTimeout(_progressReconcileTimer);
+  _progressReconcileTimer = setTimeout(reconcileLessonProgressToServer, 150);
 }
 function _mergeProgress(a, b) {
   const out = JSON.parse(JSON.stringify(a || {}));
@@ -4725,9 +4736,204 @@ async function syncLearningStateFromServer() {
     const afterQ = JSON.stringify(_mergeQuizScores(cloud.quizScores || {}, JSON.parse(beforeQ)));
     localStorage.setItem('ez_quiz_scores', afterQ);
     _scheduleCloudPush();
+    // The blob stays as a backwards-compatible cache during transition.  Its
+    // completion flags reconcile only after the merged blob has been PUT, so
+    // first-device local progress is not read from a stale server snapshot.
     return beforeP !== afterP || beforeQ !== afterQ;
   } catch {}
   return false;
+}
+
+function syncLessonCompletionToServer(lesson) {
+  if (!lesson?.apiId || typeof window.ezApi !== 'function') return;
+  // Deliberately fire-and-forget: local completion, unlocks, and navigation
+  // remain immediate while the server independently makes the transition
+  // idempotent and awards XP only once.
+  window.ezApi(`/progress/lesson/${encodeURIComponent(lesson.apiId)}/complete`, {
+    method: 'POST',
+  }).catch(() => {});
+}
+
+function reconcileLessonProgressToServer() {
+  if (typeof window.ezApi !== 'function') return;
+  window.ezApi('/progress/reconcile', { method: 'POST' }).catch(() => {});
+}
+
+function _currentPracticeLesson() {
+  return findLesson(currentState.course, currentState.moduleId, currentState.lessonId);
+}
+
+function _recordPracticeAttempt(itemType, item, skill, isCorrect) {
+  const lesson = _currentPracticeLesson();
+  if (!item?.id || !lesson?.apiId || typeof window.ezApi !== 'function') return;
+  // Local state has already changed before this request is started, preserving
+  // the current drill's offline-first responsiveness.
+  window.ezApi('/practice/attempts', {
+    method: 'POST',
+    body: JSON.stringify({
+      itemType,
+      itemId: item.id,
+      skill,
+      isCorrect: !!isCorrect,
+      source: 'lesson_drill',
+      lessonId: lesson.apiId,
+    }),
+  }).catch(() => {});
+}
+
+function _practiceTimestamp(value) {
+  const ms = value ? new Date(value).getTime() : 0;
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function _mergeRemotePracticeDirection(localDir, remote) {
+  const remoteAttempts = Math.max(0, Number(remote?.attempts) || 0);
+  const remoteCorrect = Math.min(remoteAttempts, Math.max(0, Number(remote?.correct) || 0));
+  const localAttempts = Math.max(0, Number(localDir?.attempts) || 0);
+  const localCorrect = Math.min(localAttempts, Math.max(0, Number(localDir?.correct) || 0));
+  const remoteIsNewer = _practiceTimestamp(remote?.lastSeenAt) >= (Number(localDir?.lastSeen) || 0);
+  const attempts = Math.max(localAttempts, remoteAttempts);
+  return {
+    attempts,
+    correct: Math.min(attempts, Math.max(localCorrect, remoteCorrect)),
+    streak: remoteIsNewer ? Math.max(0, Number(remote?.streak) || 0) : Math.max(0, Number(localDir?.streak) || 0),
+    lastSeen: Math.max(Number(localDir?.lastSeen) || 0, _practiceTimestamp(remote?.lastSeenAt)),
+  };
+}
+
+function _practiceBase64Url(value) {
+  try {
+    const bytes = new TextEncoder().encode(String(value || ''));
+    let binary = '';
+    bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  } catch { return ''; }
+}
+
+function _practiceBase64UrlDecode(value) {
+  try {
+    const padded = String(value || '').replace(/-/g, '+').replace(/_/g, '/')
+      + '==='.slice((String(value || '').length + 3) % 4);
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  } catch { return ''; }
+}
+
+function _kanjiWordPracticeSkill(direction, usage) {
+  const encoded = _practiceBase64Url(_kanjiWordKey(usage));
+  return encoded ? `word:${direction}:${encoded}` : direction;
+}
+
+function _mergePracticeStateFromServer(itemType, pool, states) {
+  if (!Array.isArray(pool) || !Array.isArray(states) || !states.length) return false;
+  const byId = new Map(pool.filter((item) => item?.id).map((item) => [item.id, item]));
+  let changed = false;
+  if (itemType === 'kana') {
+    const store = _kanaReadMastery();
+    for (const remote of states) {
+      const item = byId.get(remote.itemId);
+      if (!item || !['k2r', 'r2k'].includes(remote.skill)) continue;
+      const stat = _kanaStat(item, store);
+      stat[remote.skill] = _mergeRemotePracticeDirection(stat[remote.skill], remote);
+      store.items[_kanaKey(item)] = stat;
+      changed = true;
+    }
+    if (changed) try { localStorage.setItem(KANA_MASTERY_KEY, JSON.stringify(store)); } catch {}
+  } else if (itemType === 'vocabulary') {
+    const store = _deckReadMastery();
+    for (const remote of states) {
+      const item = byId.get(remote.itemId);
+      if (!item || !DECK_DRILL_DIRECTIONS.includes(remote.skill)) continue;
+      const stat = _deckStat(item, store);
+      stat[remote.skill] = _mergeRemotePracticeDirection(stat[remote.skill], remote);
+      store.items[_deckKey(item)] = stat;
+      changed = true;
+    }
+    if (changed) try { localStorage.setItem(DECK_MASTERY_KEY, JSON.stringify(store)); } catch {}
+  } else if (itemType === 'kanji') {
+    const store = _kanjiReadMastery();
+    for (const remote of states) {
+      const item = byId.get(remote.itemId);
+      if (!item) continue;
+      if (KANJI_CHARACTER_DIRECTIONS.includes(remote.skill)) {
+        const stat = _kanjiStat(item, store);
+        stat[remote.skill] = _mergeRemotePracticeDirection(stat[remote.skill], remote);
+        store.items[item.character] = stat;
+        changed = true;
+      } else if (remote.skill.startsWith('word:')) {
+        const [, direction, encoded] = remote.skill.split(':', 3);
+        const wordKey = _practiceBase64UrlDecode(encoded);
+        if (!KANJI_WORD_DIRECTIONS.includes(direction) || !wordKey) continue;
+        const stat = _kanjiWordStat({ japanese: wordKey.split('::')[0], reading: wordKey.split('::')[1] }, store);
+        stat[direction] = _mergeRemotePracticeDirection(stat[direction], remote);
+        store.words[wordKey] = stat;
+        changed = true;
+      }
+    }
+    if (changed) try { localStorage.setItem(KANJI_MASTERY_KEY, JSON.stringify(store)); } catch {}
+  }
+  return changed;
+}
+
+async function syncPracticeStateForLesson(itemType, lessonApiId, pool, onMerged) {
+  if (!lessonApiId || typeof window.ezApi !== 'function') return;
+  try {
+    const res = await window.ezApi(`/practice/state?lessonId=${encodeURIComponent(lessonApiId)}&itemType=${encodeURIComponent(itemType)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (_mergePracticeStateFromServer(itemType, pool, data.states || [])) onMerged?.();
+  } catch {}
+}
+
+function _legacyKanjiWordOwners(legacyWordKeys) {
+  const owners = {};
+  const wanted = new Set(Array.isArray(legacyWordKeys) ? legacyWordKeys : []);
+  if (!wanted.size) return owners;
+  for (const course of Object.values(COURSE_CONTENT || {})) {
+    for (const module of (course.modules || [])) {
+      for (const lesson of (module.lessons || [])) {
+        for (const item of (lesson.kanji || [])) {
+          if (!item?.id) continue;
+          for (const word of (item.compounds || [])) {
+            const key = _kanjiWordKey(word);
+            if (!key || key === '::' || !wanted.has(key)) continue;
+            (owners[key] ||= []).push(item.id);
+          }
+        }
+      }
+    }
+  }
+  for (const key of Object.keys(owners)) owners[key] = [...new Set(owners[key])];
+  return owners;
+}
+
+async function importLegacyMasteryToServer() {
+  if (localStorage.getItem('ez_practice_legacy_import_v1') === '1' || typeof window.ezApi !== 'function') return;
+  const parse = (key, fallback) => {
+    try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); } catch { return fallback; }
+  };
+  const kana = parse(KANA_MASTERY_KEY, { version: 1, items: {} });
+  const vocabulary = parse(DECK_MASTERY_KEY, { version: 1, items: {} });
+  const kanji = parse(KANJI_MASTERY_KEY, { version: 2, items: {}, words: {} });
+  const mastery = {
+    kana,
+    vocabulary,
+    kanji,
+    kanjiWordOwners: _legacyKanjiWordOwners(Object.keys(kanji?.words || {})),
+  };
+  try {
+    const res = await window.ezApi('/practice/import-legacy', {
+      method: 'POST', body: JSON.stringify({ mastery }),
+    });
+    if (!res.ok) return;
+    const outcome = await res.json().catch(() => ({}));
+    // Keep every source localStorage key as a cache/fallback.  This marker
+    // merely avoids re-uploading the same snapshot on this browser.  Leave it
+    // unset when identities are currently inaccessible/ambiguous so a later
+    // entitled session can safely retry; the server ledger prevents doubles.
+    if (!Number(outcome.unresolved)) localStorage.setItem('ez_practice_legacy_import_v1', '1');
+  } catch {}
 }
 
 // ═══════════════════════════════════════════════
@@ -5744,9 +5950,11 @@ async function finishQuiz() {
     const [slug, mId, lId] = key.split(':');
     const allProgress = getProgress();
     const cp = allProgress[slug] || {};
+    const wasAlreadyDone = !!cp[`${mId}:${lId}`];
     cp[`${mId}:${lId}`] = true;
     allProgress[slug] = cp;
     setProgress(allProgress);
+    if (!wasAlreadyDone) syncLessonCompletionToServer(findLesson(slug, mId, lId));
   }
   addXP(bonusXP, passed ? 'lulus kuis' : 'mencoba kuis');
   if (passed) fireConfetti();
@@ -6574,6 +6782,11 @@ function renderSidebar() {
       <div class="modules-list">${modulesHtml}</div>
       <div class="modules-empty" id="modules-empty" style="display:none;">Tidak ada modul yang cocok.</div>
       <div class="sidebar-quicklinks">
+        <button class="quicklink" type="button" onclick="location.href='review.html'">
+          <span class="ql-ico">🔁</span>
+          <span class="ql-text">Smart Review</span>
+          <span class="ql-arr">→</span>
+        </button>
         <button class="quicklink" type="button" onclick="openVocabList()">
           <span class="ql-ico">📒</span>
           <span class="ql-text">Daftar Kosakata</span>
@@ -8518,7 +8731,13 @@ function renderDeckLesson(course, module, lesson, nav) {
       </button>
     </div>
   `;
-  if (deckDrillPool.length >= 2) deckDrillShowOverview();
+  if (deckDrillPool.length >= 2) {
+    deckDrillShowOverview();
+    syncPracticeStateForLesson('vocabulary', lesson.apiId, items, () => {
+      if (!_currentPracticeLesson() || _currentPracticeLesson().apiId !== lesson.apiId || window.__deckDrill) return;
+      deckDrillShowOverview();
+    });
+  }
 }
 
 window.setDeckView = (view) => {
@@ -9070,7 +9289,13 @@ window.gtPopupComplete = () => {
     cp[ctx.lessonKey] = true;
     allProgress[currentState.course] = cp;
     setProgress(allProgress);
-    if (!wasDone) addXP(10, 'tugas grammar selesai');
+    if (!wasDone) {
+      addXP(10, 'tugas grammar selesai');
+      const course = COURSE_CONTENT[currentState.course];
+      const module = course?.modules?.find((item) => item.id === ctx.moduleId);
+      const taskLesson = module?.lessons?.find((item) => `${module.id}:${item.id}` === ctx.lessonKey);
+      syncLessonCompletionToServer(taskLesson);
+    }
   }
   closeGrammarTaskPopup();
   window.__gtPopupCtx = null;
@@ -9602,7 +9827,13 @@ function renderKanjiLesson(course, module, lesson, nav) {
       </button>
     </div>
   `;
-  if (kanjiDrillPool.length >= 2) kanjiDrillShowOverview();
+  if (kanjiDrillPool.length >= 2) {
+    kanjiDrillShowOverview();
+    syncPracticeStateForLesson('kanji', lesson.apiId, items, () => {
+      if (!_currentPracticeLesson() || _currentPracticeLesson().apiId !== lesson.apiId || window.__kanjiDrill) return;
+      kanjiDrillShowOverview();
+    });
+  }
 }
 
 // ── Kana lesson — video + chart gojuon (grouped per baris) + modal goresan
@@ -9732,7 +9963,13 @@ function renderKanaLesson(course, module, lesson, nav) {
       </button>
     </div>
   `;
-  if (items.length >= 2) kanaDrillShowOverview();
+  if (items.length >= 2) {
+    kanaDrillShowOverview();
+    syncPracticeStateForLesson('kana', lesson.apiId, items, () => {
+      if (!_currentPracticeLesson() || _currentPracticeLesson().apiId !== lesson.apiId || window.__kanaDrill) return;
+      kanaDrillShowOverview();
+    });
+  }
 }
 
 window.playKanaAudio = (idx, btn) => {
@@ -9829,8 +10066,8 @@ window.closeKanaModal = () => {
   if (ret && typeof ret.focus === 'function') { try { ret.focus(); } catch (e) { /* noop */ } }
 };
 
-// Drill adaptif dua arah. Penguasaan disimpan lokal per karakter dan arah agar
-// soal berikutnya memprioritaskan kana yang baru, sering salah, atau belum diuji.
+// Drill adaptif dua arah. Cache lokal menjaga respons instan; state yang sama
+// juga disinkronkan ke akun per karakter dan arah saat online.
 const KANA_MASTERY_KEY = 'ez_kana_mastery_v1';
 const KANA_DRILL_SESSION_COUNT = 3;
 const KANA_DRILL_ITEMS_PER_SESSION = 12;
@@ -9931,6 +10168,7 @@ function _kanaRecordAnswer(item, dir, correct) {
   target.lastSeen = Date.now();
   store.items[key] = stat;
   try { localStorage.setItem(KANA_MASTERY_KEY, JSON.stringify(store)); } catch (e) { /* storage can be unavailable */ }
+  _recordPracticeAttempt('kana', item, dir, correct);
 }
 
 // Distraktor dipilih dari kelompok/bunyi yang mirip, tetapi romaji tetap unik
@@ -10049,7 +10287,7 @@ function kanaDrillShowOverview() {
       <div class="kana-session-step"><b>2</b><span>Balik arah</span></div>
       <div class="kana-session-step"><b>3</b><span>Penguatan</span></div>
     </div>
-    <div class="kana-mastery-note"><strong>3 sesi, maksimal 12 soal per sesi.</strong> Soal baru dan yang sering salah muncul lebih dulu. Jawaban salah akan muncul lagi setelah beberapa soal. Tabel Kana disembunyikan selama latihan dan progres tersimpan di perangkat ini.</div>
+    <div class="kana-mastery-note"><strong>3 sesi, maksimal 12 soal per sesi.</strong> Soal baru dan yang sering salah muncul lebih dulu. Jawaban salah akan muncul lagi setelah beberapa soal. Tabel Kana disembunyikan selama latihan dan progres tersimpan di perangkat ini serta disinkronkan ke akun saat online.</div>
     ${preview.length ? `<div class="kana-weak-preview"><span class="kana-weak-label">Fokus berikutnya</span>${preview.map(({ item, summary }) => `<span class="kana-weak-chip"><b lang="ja">${escapeHtml(item.character)}</b> ${escapeHtml(item.romaji)} · ${escapeHtml(_kanaDirectionLabel(_kanaWeakDirection(summary)))}</span>`).join('')}</div>` : ''}`;
   window.__kanaDrill = null;
   _kanaSetFocus(false);
@@ -10327,8 +10565,8 @@ window.closeDeckModal = () => {
   }
 };
 
-// Drill adaptif kosakata tiga arah. Progres disimpan lokal per kata agar
-// kosakata baru dan yang paling lemah diprioritaskan pada latihan berikutnya.
+// Drill adaptif kosakata tiga arah. Cache lokal menjaga respons instan,
+// kemudian state per kata disinkronkan ke akun saat online.
 const DECK_MASTERY_KEY = 'ez_deck_mastery_v1';
 const DECK_DRILL_SESSION_COUNT = 3;
 const DECK_DRILL_ITEMS_PER_SESSION = 12;
@@ -10438,6 +10676,7 @@ function _deckRecordAnswer(item, dir, correct) {
   target.lastSeen = Date.now();
   store.items[key] = stat;
   try { localStorage.setItem(DECK_MASTERY_KEY, JSON.stringify(store)); } catch (e) { /* storage can be unavailable */ }
+  _recordPracticeAttempt('vocabulary', item, dir, correct);
 }
 
 function _deckMakeQuestion(pool, item, dir, retryCount, baseOrder) {
@@ -10519,7 +10758,7 @@ function deckDrillShowOverview() {
       <div class="kana-session-step"><b>2</b><span>Balik arah</span></div>
       <div class="kana-session-step"><b>3</b><span>Dengar & kuatkan</span></div>
     </div>
-    <div class="kana-mastery-note"><strong>3 sesi, maksimal 12 soal per sesi.</strong> Kata baru dan yang sering salah muncul lebih dulu. Jawaban salah akan muncul lagi setelah beberapa soal. Daftar kartu disembunyikan selama latihan dan progres tersimpan di perangkat ini.</div>
+    <div class="kana-mastery-note"><strong>3 sesi, maksimal 12 soal per sesi.</strong> Kata baru dan yang sering salah muncul lebih dulu. Jawaban salah akan muncul lagi setelah beberapa soal. Daftar kartu disembunyikan selama latihan dan progres tersimpan di perangkat ini serta disinkronkan ke akun saat online.</div>
     ${preview.length ? `<div class="kana-weak-preview"><span class="kana-weak-label">Fokus berikutnya</span>${preview.map(({ item, summary }) => `<span class="kana-weak-chip"><b lang="ja">${escapeHtml(item.japanese)}</b> · ${escapeHtml(_deckDirectionLabel(_deckWeakDirection(summary)))}</span>`).join('')}</div>` : ''}`;
   window.__deckDrill = null;
   _deckSetFocus(false);
@@ -10943,6 +11182,7 @@ function _kanjiRecordAnswer(item, direction, correct, usage = null) {
   if (isWordQuestion) store.words[_kanjiWordKey(usage)] = stat;
   else store.items[item.character] = stat;
   try { localStorage.setItem(KANJI_MASTERY_KEY, JSON.stringify(store)); } catch (e) { /* storage can be unavailable */ }
+  _recordPracticeAttempt('kanji', item, isWordQuestion ? _kanjiWordPracticeSkill(direction, usage) : direction, correct);
 }
 
 function _kanjiPickUsage(item, preferred) {
@@ -11837,7 +12077,11 @@ window.markCompleteAndNext = () => {
   allProgress[currentState.course] = courseProgress;
   setProgress(allProgress);
 
-  if (!wasAlreadyDone) addXP(10, 'lesson selesai');
+  if (!wasAlreadyDone) {
+    addXP(10, 'lesson selesai');
+    const lesson = findLesson(currentState.course, currentState.moduleId, currentState.lessonId);
+    syncLessonCompletionToServer(lesson);
+  }
 
   // Navigasi & hitungan progres pakai lesson terlihat saja (tugas-popup yang
   // tersembunyi tidak ikut dihitung — ia overlay terikat pelajaran pemicunya).
@@ -12512,6 +12756,14 @@ const S = (window.AISenpai = {
   } else {
     renderCourseTabs(selected);
     renderLearning(selected);
+    // Dashboard's Continue Learning link opens the protected, existing lesson
+    // renderer at the selected Section/Bab/Pelajaran — no parallel UI tree.
+    const targetModule = params.get('module');
+    const targetLesson = params.get('lesson');
+    const selectedCourse = COURSE_CONTENT[selected];
+    if (targetModule && targetLesson && selectedCourse?.modules?.some((m) => m.id === targetModule && m.lessons.some((l) => l.id === targetLesson))) {
+      selectLesson(targetModule, targetLesson);
+    }
     // AI Senpai widget — mount setelah first paint (tidak blok critical path).
     try { AISenpai.init(); } catch {}
   }
@@ -12523,6 +12775,11 @@ const S = (window.AISenpai = {
   if (selected) {
     fetchCmsCourses().then(() => renderCourseTabs(selected)).catch(() => {});
   }
+
+  // Import the existing device-local drill aggregates once, after the
+  // entitlement-gated course payload is available to resolve canonical IDs.
+  // It is intentionally background-only and never removes the local cache.
+  importLegacyMasteryToServer();
 
   // Sync progres lintas device → kalau ada perubahan, refresh tanda ✓ di
   // sidebar saja (jangan re-render penuh — bisa menendang user dari lesson

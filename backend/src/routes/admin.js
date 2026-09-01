@@ -4,6 +4,7 @@ import path from 'path';
 import rateLimit from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
 import { query, withTransaction } from '../db.js';
+import { isCanonicalUuid, validateLiveClassFields } from '../live-class-admin-rules.js';
 import { requireAuth, requireAdmin, asyncHandler } from '../middleware.js';
 import {
   isAdminEmail,
@@ -4664,6 +4665,93 @@ router.post('/tts/tags', asyncHandler(async (req, res) => {
 router.delete('/tts/tags/:tag', asyncHandler(async (req, res) => {
   const tag = String(req.params.tag || '').toLowerCase();
   await query(`DELETE FROM tts_tag_library WHERE tag = $1`, [tag]);
+  res.json({ ok: true });
+}));
+
+// ── Live Class management ────────────────────────────────────────────────
+async function liveClassPayload(body) {
+  const courseId = String(body?.courseId || '').trim();
+  const title = String(body?.title || '').trim();
+  const description = String(body?.description || '').trim().slice(0, 4000) || null;
+  const status = String(body?.status || 'scheduled');
+  const lessonIds = [...new Set(Array.isArray(body?.lessonIds) ? body.lessonIds.map(String).filter(Boolean) : [])];
+  const validation = validateLiveClassFields({ courseId, title, startsAt: body?.startsAt, endsAt: body?.endsAt, meetingUrl: body?.meetingUrl, recordingUrl: body?.recordingUrl, status });
+  if (!validation.ok) return { error: validation.error };
+  if (!lessonIds.every(isCanonicalUuid)) return { error: 'invalid_lessonIds' };
+  const course = await query(`SELECT id FROM courses WHERE id = $1 LIMIT 1`, [courseId]);
+  if (!course.rows.length) return { error: 'course_not_found' };
+  if (lessonIds.length) {
+    const lessons = await query(`SELECT l.id FROM lessons l JOIN modules m ON m.id = l.module_id WHERE l.id = ANY($1::uuid[]) AND m.course_id = $2`, [lessonIds, courseId]);
+    if (lessons.rows.length !== lessonIds.length) return { error: 'related_lessons_must_belong_to_course' };
+  }
+  return { courseId, title, description, startsAt: validation.startsAt, endsAt: validation.endsAt, meetingUrl: validation.meetingUrl, recordingUrl: validation.recordingUrl, status, lessonIds };
+}
+
+async function adminLiveClassRows(courseId = null) {
+  const rows = await query(
+    `SELECT lc.*, c.title AS course_title, l.id AS lesson_id, l.title AS lesson_title, l.slug AS lesson_slug,
+            m.title AS module_title, m.slug AS module_slug, m.section_name, lcl.sort_order AS lesson_sort
+       FROM live_classes lc JOIN courses c ON c.id = lc.course_id
+       LEFT JOIN live_class_lessons lcl ON lcl.live_class_id = lc.id
+       LEFT JOIN lessons l ON l.id = lcl.lesson_id LEFT JOIN modules m ON m.id = l.module_id
+      WHERE ($1::uuid IS NULL OR lc.course_id = $1)
+      ORDER BY lc.starts_at DESC, lcl.sort_order`, [courseId]
+  );
+  const out = new Map();
+  for (const row of rows.rows) {
+    if (!out.has(row.id)) out.set(row.id, { id: row.id, courseId: row.course_id, courseTitle: row.course_title, title: row.title, description: row.description, startsAt: row.starts_at, endsAt: row.ends_at, meetingUrl: row.meeting_url, recordingUrl: row.recording_url, status: row.status, relatedLessons: [] });
+    if (row.lesson_id) out.get(row.id).relatedLessons.push({ id: row.lesson_id, title: row.lesson_title, slug: row.lesson_slug, chapter: { title: row.module_title, slug: row.module_slug }, section: row.section_name || null });
+  }
+  return [...out.values()];
+}
+
+router.get('/live-classes', asyncHandler(async (req, res) => {
+  const courseId = req.query.courseId ? String(req.query.courseId) : null;
+  if (courseId && !isCanonicalUuid(courseId)) return res.status(400).json({ error: 'invalid_courseId' });
+  res.json({ liveClasses: await adminLiveClassRows(courseId) });
+}));
+
+router.get('/live-classes/lessons', asyncHandler(async (req, res) => {
+  const courseId = String(req.query.courseId || '').trim();
+  if (!courseId) return res.status(400).json({ error: 'courseId_required' });
+  if (!isCanonicalUuid(courseId)) return res.status(400).json({ error: 'invalid_courseId' });
+  const lessons = await query(
+    `SELECT l.id, l.slug, l.title, m.id AS module_id, m.slug AS module_slug,
+            m.title AS module_title, m.section_name
+       FROM lessons l JOIN modules m ON m.id = l.module_id
+      WHERE m.course_id = $1 ORDER BY m.sort_order, l.sort_order, l.created_at`, [courseId]
+  );
+  res.json({ lessons: lessons.rows.map((row) => ({ id: row.id, slug: row.slug, title: row.title, module: { id: row.module_id, slug: row.module_slug, title: row.module_title, section: row.section_name || null } })) });
+}));
+
+router.post('/live-classes', asyncHandler(async (req, res) => {
+  const value = await liveClassPayload(req.body); if (value.error) return res.status(400).json({ error: value.error });
+  const liveClass = await withTransaction(async (client) => {
+    const created = await client.query(`INSERT INTO live_classes (course_id, title, description, starts_at, ends_at, meeting_url, recording_url, status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`, [value.courseId, value.title, value.description, value.startsAt, value.endsAt, value.meetingUrl, value.recordingUrl, value.status]);
+    for (const [sortOrder, lessonId] of value.lessonIds.entries()) await client.query(`INSERT INTO live_class_lessons (live_class_id, lesson_id, sort_order) VALUES ($1,$2,$3)`, [created.rows[0].id, lessonId, sortOrder]);
+    return created.rows[0];
+  });
+  res.status(201).json({ liveClass: (await adminLiveClassRows()).find((row) => row.id === liveClass.id) });
+}));
+
+router.put('/live-classes/:id', asyncHandler(async (req, res) => {
+  if (!isCanonicalUuid(req.params.id)) return res.status(400).json({ error: 'invalid_live_class_id' });
+  const value = await liveClassPayload(req.body); if (value.error) return res.status(400).json({ error: value.error });
+  const updated = await withTransaction(async (client) => {
+    const row = await client.query(`UPDATE live_classes SET course_id=$2,title=$3,description=$4,starts_at=$5,ends_at=$6,meeting_url=$7,recording_url=$8,status=$9 WHERE id=$1 RETURNING id`, [req.params.id, value.courseId, value.title, value.description, value.startsAt, value.endsAt, value.meetingUrl, value.recordingUrl, value.status]);
+    if (!row.rows.length) return null;
+    await client.query(`DELETE FROM live_class_lessons WHERE live_class_id = $1`, [req.params.id]);
+    for (const [sortOrder, lessonId] of value.lessonIds.entries()) await client.query(`INSERT INTO live_class_lessons (live_class_id, lesson_id, sort_order) VALUES ($1,$2,$3)`, [req.params.id, lessonId, sortOrder]);
+    return row.rows[0];
+  });
+  if (!updated) return res.status(404).json({ error: 'not_found' });
+  res.json({ liveClass: (await adminLiveClassRows()).find((row) => row.id === updated.id) });
+}));
+
+router.delete('/live-classes/:id', asyncHandler(async (req, res) => {
+  if (!isCanonicalUuid(req.params.id)) return res.status(400).json({ error: 'invalid_live_class_id' });
+  const removed = await query(`DELETE FROM live_classes WHERE id = $1 RETURNING id`, [req.params.id]);
+  if (!removed.rows.length) return res.status(404).json({ error: 'not_found' });
   res.json({ ok: true });
 }));
 

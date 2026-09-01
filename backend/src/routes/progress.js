@@ -3,6 +3,7 @@ import { query, withAdvisoryLock } from '../db.js';
 import { requireAuth, asyncHandler } from '../middleware.js';
 import { isAdminEmail } from '../auth.js';
 import { requireLessonCourseAccess } from '../entitlements.js';
+import { completeLessonWithStats, reconcileLegacyProgress } from '../progress-service.js';
 
 const router = Router();
 
@@ -33,44 +34,23 @@ router.get('/progress/lesson/:lessonId', requireLessonCourseAccess('lessonId'), 
 
 // POST /api/progress/lesson/:lessonId/complete
 router.post('/progress/lesson/:lessonId/complete', requireLessonCourseAccess('lessonId'), asyncHandler(async (req, res) => {
-  const lesson = await query(
-    `SELECT id, duration_minutes FROM lessons WHERE id = $1 LIMIT 1`,
-    [req.params.lessonId]
+  const outcome = await withAdvisoryLock(
+    `lesson-complete:${req.user.id}:${req.params.lessonId}`,
+    (client) => completeLessonWithStats(client, { userId: req.user.id, lessonId: req.params.lessonId })
   );
-  if (lesson.rows.length === 0) return res.status(404).json({ error: 'Lesson not found' });
+  if (!outcome.found) return res.status(404).json({ error: 'Lesson not found' });
+  res.json({ ok: true, firstComplete: outcome.firstComplete });
+}));
 
-  const upsert = await query(
-    `INSERT INTO user_progress (user_id, lesson_id, completed, completed_at)
-     VALUES ($1, $2, TRUE, NOW())
-     ON CONFLICT (user_id, lesson_id) DO UPDATE
-     SET completed = TRUE, completed_at = COALESCE(user_progress.completed_at, NOW()), updated_at = NOW()
-     RETURNING (xmax = 0) AS inserted`,
-    [req.user.id, req.params.lessonId]
+// POST /api/progress/reconcile — move legacy learning-state completion flags
+// into canonical user_progress.  Safe to call on every signed-in boot: only
+// missing FALSE/NULL → TRUE rows change, and historical XP is never minted.
+router.post('/progress/reconcile', asyncHandler(async (req, res) => {
+  const outcome = await withAdvisoryLock(
+    `progress-reconcile:${req.user.id}`,
+    (client) => reconcileLegacyProgress(client, req.user.id)
   );
-  const isFirstComplete = upsert.rows[0].inserted;
-
-  if (isFirstComplete) {
-    const mins = lesson.rows[0].duration_minutes || 0;
-    const xpGained = 10 + mins;
-    await query(
-      `INSERT INTO user_stats (user_id, xp, total_lessons_completed, total_minutes_learned, last_active_date)
-       VALUES ($1, $2, 1, $3, CURRENT_DATE)
-       ON CONFLICT (user_id) DO UPDATE
-       SET xp = user_stats.xp + $2,
-           total_lessons_completed = user_stats.total_lessons_completed + 1,
-           total_minutes_learned = user_stats.total_minutes_learned + $3,
-           streak_days = CASE
-             WHEN user_stats.last_active_date = CURRENT_DATE THEN user_stats.streak_days
-             WHEN user_stats.last_active_date = CURRENT_DATE - 1 THEN user_stats.streak_days + 1
-             ELSE 1
-           END,
-           last_active_date = CURRENT_DATE,
-           updated_at = NOW()`,
-      [req.user.id, xpGained, mins]
-    );
-  }
-
-  res.json({ ok: true, firstComplete: isFirstComplete });
+  res.json({ ok: true, candidates: outcome.candidates, reconciled: outcome.reconciled });
 }));
 
 // In-progress attempt token TTL — kalau user refresh dalam window ini,

@@ -60,9 +60,9 @@
   function getNextUrl() {
     const params = new URLSearchParams(window.location.search);
     const next = params.get('next');
-    const decoded = next ? decodeURIComponent(next) : 'welcome.html';
+    const decoded = next ? decodeURIComponent(next) : 'dashboard.html';
     // Guard against open redirect — only allow relative paths
-    if (/^https?:|^\/\//.test(decoded)) return 'welcome.html';
+    if (/^https?:|^\/\//.test(decoded)) return 'dashboard.html';
     return decoded;
   }
 
