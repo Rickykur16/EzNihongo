@@ -3838,7 +3838,7 @@
     .kana-drill-head > div:first-child { width: 100%; }
     .kana-drill-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
     .kana-drill-actions .btn-primary, .kana-drill-actions .btn-secondary { width: 100%; padding-inline: 9px; }
-    :is(#kana-drill-weak-btn, #deck-drill-weak-btn)[hidden] + .btn-primary { grid-column: 1 / -1; }
+    :is(#kana-drill-weak-btn, #deck-drill-weak-btn, #kanji-drill-weak-btn)[hidden] + .btn-primary { grid-column: 1 / -1; }
     .kana-mastery-summary { gap: 6px; }
     .kana-mastery-card { padding: 11px 8px; text-align: center; }
     .kana-mastery-card strong { font-size: 21px; }
@@ -4046,16 +4046,6 @@
   .kc-action { width: 31px; height: 31px; border: 1px solid var(--du-border, #ece9e3); border-radius: 50%; background: #fff; color: #333; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
   .kc-action:hover { color: #fff; background: var(--brand-red); border-color: var(--brand-red); }
   .kanji-usage-more { border: 0; background: transparent; color: var(--brand-red); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; padding: 7px 2px; text-align: left; }
-  .kanji-word-drill { margin-top: 12px; padding: 14px; border: 1px solid #eadbcf; background: #fff9f4; border-radius: 10px; }
-  .kwd-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .kwd-title { font-size: 13px; font-weight: 800; color: #2d2925; }
-  .kwd-sub { margin-top: 2px; font-size: 11px; color: #766c62; }
-  .kwd-prompt { margin: 12px 0 9px; font-family: 'Noto Sans JP', sans-serif; text-align: center; font-size: 25px; font-weight: 800; }
-  .kwd-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-  .kwd-option { padding: 9px; border: 1px solid #dfd6cd; background: #fff; border-radius: 8px; color: #2d2925; cursor: pointer; font: inherit; font-weight: 650; }
-  .kwd-option.correct { border-color: #5d936f; background: #edf7f0; color: #285d3b; }
-  .kwd-option.wrong { border-color: #bd6a65; background: #fff0ef; color: #8d302b; }
-  .kwd-feedback { min-height: 18px; margin-top: 8px; font-size: 12px; font-weight: 700; text-align: center; }
   .kanji-detail-close {
     position: absolute; top: 14px; right: 14px;
     width: 36px; height: 36px;
@@ -4090,7 +4080,6 @@
     .kanji-detail-modal { max-height: 94vh; border-radius: 16px 16px 0 0; }
     .kanji-compound-row { grid-template-columns: minmax(0, 1fr) auto; }
     .kc-wordline { display: grid; gap: 2px; }
-    .kwd-options { grid-template-columns: 1fr; }
   }
 
   /* ============================================================
@@ -7231,9 +7220,6 @@ window.openKanjiDetail = (id) => {
   if (!k) return;
   const usableCompounds = (k.compounds || []).filter((c) => c.japanese && c.reading && c.indonesian);
   const compounds = usableCompounds.map((c, index) => kanjiCompoundRowHtml(c, k, index)).join('');
-  const mastered = typeof _deckReadMastery === 'function'
-    ? usableCompounds.filter((item) => _deckSummary(item, _deckReadMastery()).mastered).length
-    : 0;
 
   const overlay = document.createElement('div');
   overlay.className = 'kanji-detail-overlay';
@@ -7269,13 +7255,6 @@ window.openKanjiDetail = (id) => {
             <div class="kanji-detail-section-head">📚 Kata yang memakai kanji ini</div>
             <div class="kanji-compound-list">${compounds}</div>
             ${usableCompounds.length > 4 ? `<button type="button" class="kanji-usage-more" aria-expanded="false" onclick="toggleKanjiUsages(this)">Lihat ${usableCompounds.length - 4} kata lainnya</button>` : ''}
-            ${usableCompounds.length >= 2 ? `
-              <div class="kanji-word-drill" id="kanji-word-drill">
-                <div class="kwd-head">
-                  <div><div class="kwd-title">Cek pemakaian ${escapeHtml(k.character)}</div><div class="kwd-sub">${mastered}/${usableCompounds.length} kata sudah kuat · progres menyatu dengan Drill Kosakata</div></div>
-                  <button class="btn-secondary" type="button" onclick="kanjiWordDrillStart('${escapeHtml(k.id)}')">Latihan singkat</button>
-                </div>
-              </div>` : ''}
           </div>` : `
           <div class="kanji-detail-section">
             <div class="kanji-detail-section-head">📚 Kata yang memakai kanji ini</div>
@@ -7296,73 +7275,7 @@ window.openKanjiDetail = (id) => {
 window.closeKanjiDetail = () => {
   document.querySelectorAll('.kanji-detail-overlay').forEach((el) => el.remove());
   document.body.style.overflow = '';
-  window.__kanjiWordDrill = null;
   if (_kanjiStrokeTimer) { clearTimeout(_kanjiStrokeTimer); _kanjiStrokeTimer = null; }
-};
-
-window.kanjiWordDrillStart = (id) => {
-  const k = _kanjiByIdCache.get(id);
-  const pool = (k?.compounds || []).filter((item) => item.japanese && item.reading && item.indonesian)
-    .filter((item, index, all) => all.findIndex((row) => _deckKey(row) === _deckKey(item)) === index);
-  if (pool.length < 2) return;
-  const store = _deckReadMastery();
-  const ranked = pool.map((item) => ({ item, priority: _deckPriority(_deckSummary(item, store)) + Math.random() }))
-    .sort((a, b) => b.priority - a.priority).map((row) => row.item);
-  const count = Math.min(4, ranked.length * 2);
-  const questions = Array.from({ length: count }, (_, index) => (
-    _deckMakeQuestion(pool, ranked[index % ranked.length], index < ranked.length ? 'jp2id' : 'id2jp', 0, index + 1)
-  ));
-  window.__kanjiWordDrill = { id, questions, idx: 0, correct: 0, answered: false };
-  kanjiWordDrillRender();
-};
-
-function kanjiWordDrillRender() {
-  const st = window.__kanjiWordDrill;
-  const box = document.getElementById('kanji-word-drill');
-  if (!st || !box) return;
-  if (st.idx >= st.questions.length) {
-    box.innerHTML = `<div class="kwd-head">
-      <div><div class="kwd-title">Selesai · ${st.correct}/${st.questions.length} benar</div><div class="kwd-sub">Kata yang masih lemah akan diprioritaskan di Drill Kosakata berikutnya.</div></div>
-      <button class="btn-secondary" type="button" onclick="kanjiWordDrillStart('${escapeHtml(st.id)}')">Ulangi</button>
-    </div>`;
-    return;
-  }
-  const q = st.questions[st.idx];
-  const prompt = q.dir === 'id2jp' ? escapeHtml(q.item.indonesian) : kanjiWordMarkup(q.item.japanese, _kanjiByIdCache.get(st.id)?.character || '');
-  const options = q.opts.map((item, index) => {
-    const label = q.dir === 'id2jp'
-      ? `<span lang="ja">${escapeHtml(item.japanese)}</span>${item.reading ? `<small style="display:block;margin-top:2px;color:#766c62;">${escapeHtml(item.reading)}</small>` : ''}`
-      : escapeHtml(item.indonesian);
-    return `<button class="kwd-option" type="button" onclick="kanjiWordDrillAnswer(${index})">${label}</button>`;
-  }).join('');
-  box.innerHTML = `
-    <div class="kwd-head"><div><div class="kwd-title">Cek pemakaian Kanji</div><div class="kwd-sub">Soal ${st.idx + 1}/${st.questions.length} · ${q.dir === 'id2jp' ? 'arti → kata' : 'kata → arti'}</div></div></div>
-    <div class="kwd-prompt">${prompt}</div>
-    <div class="kwd-options">${options}</div>
-    <div class="kwd-feedback" id="kwd-feedback" aria-live="polite"></div>`;
-  st.answered = false;
-}
-
-window.kanjiWordDrillAnswer = (optionIndex) => {
-  const st = window.__kanjiWordDrill;
-  if (!st || st.answered) return;
-  const q = st.questions[st.idx];
-  if (!q) return;
-  st.answered = true;
-  const correct = q.opts[optionIndex] === q.item;
-  if (correct) st.correct++;
-  _deckRecordAnswer(q.item, q.dir, correct);
-  document.querySelectorAll('#kanji-word-drill .kwd-option').forEach((button, index) => {
-    button.disabled = true;
-    if (q.opts[index] === q.item) button.classList.add('correct');
-    else if (index === optionIndex) button.classList.add('wrong');
-  });
-  const feedback = document.getElementById('kwd-feedback');
-  if (feedback) feedback.innerHTML = correct
-    ? '<span class="kdf-ok">✓ Benar</span>'
-    : `<span class="kdf-no">✗ <span lang="ja">${escapeHtml(q.item.japanese)}</span> = ${escapeHtml(q.item.indonesian)}</span>`;
-  st.idx++;
-  setTimeout(() => { if (window.__kanjiWordDrill === st) kanjiWordDrillRender(); }, correct ? 650 : 1200);
 };
 
 window.replayKanjiStrokes = (char, elId) => fetchAndPlayKanjiStrokes(char, elId);
@@ -9634,18 +9547,21 @@ function renderKanjiLesson(course, module, lesson, nav) {
           </button>`).join('')}
       </div>`;
 
-  // Drill recall (client-side, tanpa persistensi/XP, pola sama dgn drill
-  // kosakata/kana — antrian-sampai-tuntas). Kanji tanpa arti tidak bisa
-  // dibikin soal apapun jadi disaring dari pool.
+  // Drill Kanji memakai mesin adaptif yang sama polanya dengan drill Kana dan
+  // Kosakata: progres persisten, tiga sesi, retry terjadwal, dan fokus lemah.
+  // Kata pemakaian dari modal ikut masuk pada sesi konteks di sini.
   const kanjiDrillPool = items.filter((k) => k.character && k.meaning_id);
   const drillBlock = kanjiDrillPool.length >= 2 ? `
     <div class="kana-drill" id="kanji-drill">
       <div class="kana-drill-head">
         <div>
-          <div class="kana-drill-title">🎯 Latihan Kanji</div>
-          <div class="kana-drill-sub">Kartu yang sudah benar tidak akan diulang.</div>
+          <div class="kana-drill-title">🎯 Drill Adaptif Kanji</div>
+          <div class="kana-drill-sub">Kenali karakter, balik arah, lalu gunakan bacaan dan kata nyata sesuai kelemahanmu.</div>
         </div>
-        <button class="btn-primary" type="button" onclick="kanjiDrillStart()">Mulai Drill</button>
+        <div class="kana-drill-actions">
+          <button class="btn-secondary" id="kanji-drill-weak-btn" type="button" onclick="kanjiDrillStart('weak')" hidden>Fokus Kelemahan</button>
+          <button class="btn-primary" type="button" onclick="kanjiDrillStart('adaptive')">Mulai Latihan</button>
+        </div>
       </div>
       <div class="kana-drill-body" id="kanji-drill-body"></div>
     </div>` : '';
@@ -9664,8 +9580,10 @@ function renderKanjiLesson(course, module, lesson, nav) {
         <div class="dh-stat-label">kanji</div>
       </div>
     </div>
-    ${kanjiToolbar}
-    ${tilesHtml}
+    <div id="kanji-card-wrap">
+      ${kanjiToolbar}
+      ${tilesHtml}
+    </div>
     ${drillBlock}
     <div class="lesson-footer">
       <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
@@ -9674,6 +9592,7 @@ function renderKanjiLesson(course, module, lesson, nav) {
       </button>
     </div>
   `;
+  if (kanjiDrillPool.length >= 2) kanjiDrillShowOverview();
 }
 
 // ── Kana lesson — video + chart gojuon (grouped per baris) + modal goresan
@@ -10802,113 +10721,443 @@ window.deckDrillAnswer = (oi) => {
   setTimeout(() => { if (window.__deckDrill === st) deckDrillRender(); }, correct ? 700 : 1700);
 };
 
-// Drill recall kanji: pola identik drill kosakata (antrian-sampai-tuntas).
-// Kanji tanpa reading tidak dapat mode char2reading — otomatis jatuh balik
-// ke char2meaning/meaning2char (juga kalau pool "punya reading" terlalu kecil
-// untuk 2+ opsi).
+// Drill Kanji adaptif. Modal Kanji tetap menjadi tempat belajar/referensi;
+// seluruh retrieval practice (karakter, arti, bacaan, dan kata pemakaian)
+// berjalan di satu infrastruktur ini.
+const KANJI_MASTERY_KEY = 'ez_kanji_mastery_v1';
+const KANJI_DRILL_SESSION_COUNT = 3;
+const KANJI_DRILL_ITEMS_PER_SESSION = 12;
+const KANJI_DRILL_DIRECTIONS = ['char2meaning', 'meaning2char', 'char2reading', 'word2reading', 'reading2word'];
+
 window.setKanjiView = (view) => {
   localStorage.setItem('ez_kanji_view', view === 'list' ? 'list' : 'card');
   const args = window.__kanjiLessonArgs;
   if (args) renderKanjiLesson(...args);
 };
-window.kanjiDrillStart = () => {
-  const pool = (window.__kanjiDrillPool || []).filter((k) => k.character && k.meaning_id);
+
+function _kanjiReading(item) {
+  return [item.kun_reading, item.on_reading].filter(Boolean).join(' · ');
+}
+
+function _kanjiItemUsages(item) {
+  const seen = new Set();
+  return (item.compounds || []).filter((word) => word.japanese && word.reading && word.indonesian).filter((word) => {
+    const key = `${String(word.japanese).trim().toLowerCase()}::${String(word.reading).trim().toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function _kanjiUsagePool(pool) {
+  const seen = new Set();
+  const out = [];
+  for (const kanji of pool || []) {
+    for (const word of _kanjiItemUsages(kanji)) {
+      const key = `${String(word.japanese).trim().toLowerCase()}::${String(word.reading).trim().toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ ...word, ownerCharacter: kanji.character });
+    }
+  }
+  return out;
+}
+
+function _kanjiAvailableDirections(item, pool) {
+  const directions = ['char2meaning', 'meaning2char'];
+  if (_kanjiReading(item) && pool.filter((row) => _kanjiReading(row)).length >= 2) directions.push('char2reading');
+  const usages = _kanjiItemUsages(item);
+  const usagePool = _kanjiUsagePool(pool);
+  if (usages.length && new Set(usagePool.map((word) => String(word.reading).trim().toLowerCase())).size >= 2) directions.push('word2reading');
+  if (usages.length && new Set(usagePool.map((word) => String(word.japanese).trim().toLowerCase())).size >= 2) directions.push('reading2word');
+  return directions;
+}
+
+function _kanjiReadMastery() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(KANJI_MASTERY_KEY) || '{}');
+    return parsed && typeof parsed === 'object' && parsed.items && typeof parsed.items === 'object'
+      ? parsed
+      : { version: 1, items: {} };
+  } catch (e) {
+    return { version: 1, items: {} };
+  }
+}
+
+function _kanjiEmptyDir() {
+  return { attempts: 0, correct: 0, streak: 0, lastSeen: 0 };
+}
+
+function _kanjiStat(item, store) {
+  const saved = (store || _kanjiReadMastery()).items[item.character] || {};
+  const stat = {};
+  for (const direction of KANJI_DRILL_DIRECTIONS) {
+    const row = saved[direction] || _kanjiEmptyDir();
+    const attempts = Math.max(0, Number(row.attempts) || 0);
+    stat[direction] = {
+      attempts,
+      correct: Math.min(attempts, Math.max(0, Number(row.correct) || 0)),
+      streak: Math.max(0, Number(row.streak) || 0),
+      lastSeen: Math.max(0, Number(row.lastSeen) || 0),
+    };
+  }
+  return stat;
+}
+
+function _kanjiDirStrength(stat) {
+  if (!stat.attempts) return -0.35;
+  return (stat.correct / stat.attempts) + Math.min(stat.streak, 3) * 0.08 + Math.min(stat.attempts, 4) * 0.03;
+}
+
+function _kanjiSummary(item, pool, store) {
+  const stat = _kanjiStat(item, store);
+  const directions = _kanjiAvailableDirections(item, pool);
+  const attempts = directions.reduce((sum, direction) => sum + stat[direction].attempts, 0);
+  const correct = directions.reduce((sum, direction) => sum + stat[direction].correct, 0);
+  const accuracy = attempts ? correct / attempts : 0;
+  const testedAll = directions.every((direction) => stat[direction].attempts > 0);
+  const streak = directions.reduce((sum, direction) => sum + stat[direction].streak, 0);
+  const mastered = attempts >= directions.length && testedAll && accuracy >= 0.8 && streak >= directions.length;
+  return { stat, directions, attempts, correct, accuracy, mastered };
+}
+
+function _kanjiWeakDirection(item, pool, summary, contextOnly = false) {
+  let directions = summary.directions;
+  if (contextOnly) {
+    const contextDirections = directions.filter((direction) => !['char2meaning', 'meaning2char'].includes(direction));
+    if (contextDirections.length) {
+      // Dahulukan pemakaian kata pada sesi konteks. Bacaan karakter tetap
+      // dipantau dan akan naik prioritas setelah arah kata sudah pernah diuji.
+      directions = contextDirections.sort((a, b) => {
+        const rank = { word2reading: 0, reading2word: 1, char2reading: 2 };
+        return (rank[a] ?? 9) - (rank[b] ?? 9);
+      });
+    }
+  }
+  const untested = directions.find((direction) => summary.stat[direction].attempts === 0);
+  if (untested) return untested;
+  return directions.map((direction) => ({
+    direction,
+    wrong: summary.stat[direction].attempts - summary.stat[direction].correct,
+    strength: _kanjiDirStrength(summary.stat[direction]),
+  })).sort((a, b) => b.wrong - a.wrong || a.strength - b.strength)[0].direction;
+}
+
+function _kanjiDirectionLabel(direction) {
+  if (direction === 'char2meaning') return 'Kanji → arti';
+  if (direction === 'meaning2char') return 'arti → Kanji';
+  if (direction === 'char2reading') return 'Kanji → bacaan';
+  if (direction === 'word2reading') return 'kata → bacaan';
+  return 'bacaan → kata';
+}
+
+function _kanjiPriority(summary) {
+  if (!summary.attempts) return 7;
+  const weakest = Math.min(...summary.directions.map((direction) => _kanjiDirStrength(summary.stat[direction])));
+  const lastSeen = Math.max(...summary.directions.map((direction) => summary.stat[direction].lastSeen));
+  const ageBoost = !lastSeen ? 1 : Math.max(0, Math.min(1.5, (Date.now() - lastSeen) / 86400000 / 14));
+  return (summary.mastered ? 0 : 4) + (1 - summary.accuracy) * 5 + Math.max(0, 1 - weakest) * 2 + ageBoost;
+}
+
+function _kanjiRecordAnswer(item, direction, correct) {
+  const store = _kanjiReadMastery();
+  const stat = _kanjiStat(item, store);
+  const target = stat[direction];
+  target.attempts += 1;
+  if (correct) target.correct += 1;
+  target.streak = correct ? target.streak + 1 : 0;
+  target.lastSeen = Date.now();
+  store.items[item.character] = stat;
+  try { localStorage.setItem(KANJI_MASTERY_KEY, JSON.stringify(store)); } catch (e) { /* storage can be unavailable */ }
+}
+
+function _kanjiPickUsage(item, preferred) {
+  const usages = _kanjiItemUsages(item);
+  if (!usages.length) return null;
+  if (preferred) {
+    const matched = usages.find((word) => word.japanese === preferred.japanese && word.reading === preferred.reading);
+    if (matched) return matched;
+  }
+  return usages[Math.floor(Math.random() * usages.length)];
+}
+
+function _kanjiMakeQuestion(pool, item, direction, retryCount = 0, baseOrder = 1, preferredUsage = null) {
+  let base = pool;
+  let keyFn = (row) => row.meaning_id;
+  let usage = null;
+  let correct = item;
+  if (direction === 'meaning2char') keyFn = (row) => row.character;
+  else if (direction === 'char2reading') {
+    base = pool.filter((row) => _kanjiReading(row));
+    keyFn = (row) => _kanjiReading(row);
+  } else if (direction === 'word2reading' || direction === 'reading2word') {
+    base = _kanjiUsagePool(pool);
+    usage = _kanjiPickUsage(item, preferredUsage);
+    correct = base.find((word) => usage && word.japanese === usage.japanese && word.reading === usage.reading) || usage;
+    keyFn = direction === 'word2reading' ? (word) => word.reading : (word) => word.japanese;
+  }
+  const distractors = pickDistractors(base, correct, Math.min(3, base.length - 1), keyFn);
+  return {
+    item, direction, usage, correct,
+    opts: _deckShuffle([correct, ...distractors]),
+    retryCount,
+    isRetry: retryCount > 0,
+    baseOrder,
+  };
+}
+
+function _kanjiSetFocus(active) {
+  const cards = document.getElementById('kanji-card-wrap');
+  if (cards) cards.hidden = !!active;
+  if (active) {
+    const drill = document.getElementById('kanji-drill');
+    if (drill) requestAnimationFrame(() => drill.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+}
+
+function _kanjiSessionInfo(number) {
+  return ({
+    1: { label: 'Kenali', description: 'Lihat Kanji lalu pilih arti yang tepat.' },
+    2: { label: 'Balik arah', description: 'Lihat arti lalu pilih Kanji yang tepat.' },
+    3: { label: 'Bacaan & konteks', description: 'Latih bacaan dan kata nyata dari Kanji yang masih lemah.' },
+  })[number];
+}
+
+function _kanjiBeginSession(st, number, questions) {
+  st.session = number;
+  st.questions = questions;
+  st.idx = 0;
+  st.targetCount = questions.length;
+  st.resolved = new Set();
+  st.sessionAttempts = 0;
+  st.sessionCorrect = 0;
+  st.sessionWrong = 0;
+  st.streak = 0;
+  st.baseQuestionCount += questions.length;
+  kanjiDrillRender();
+}
+
+function _kanjiWeakItems(pool) {
+  const store = _kanjiReadMastery();
+  return pool.map((item) => ({ item, summary: _kanjiSummary(item, pool, store) }))
+    .filter((row) => row.summary.attempts > 0 && !row.summary.mastered)
+    .sort((a, b) => _kanjiPriority(b.summary) - _kanjiPriority(a.summary));
+}
+
+function kanjiDrillShowOverview() {
+  const pool = (window.__kanjiDrillPool || []).filter((item) => item.character && item.meaning_id);
   const body = document.getElementById('kanji-drill-body');
   if (!body) return;
   if (pool.length < 2) { body.innerHTML = '<div class="kana-drill-progress">Kanji belum cukup untuk drill.</div>'; return; }
-  const queue = pool.slice().sort(() => Math.random() - 0.5);
-  window.__kanjiDrill = { pool, queue, mastered: 0, wrong: 0, total: queue.length, current: null, currentQ: null, answered: false };
-  kanjiDrillAdvance();
-};
-function kanjiDrillAdvance() {
-  const st = window.__kanjiDrill;
-  if (!st) return;
-  if (st.queue.length === 0) { st.current = null; kanjiDrillRender(); return; }
-  const item = st.queue.shift();
-  st.current = item;
-  const readingPool = st.pool.filter((k) => k.kun_reading || k.on_reading);
-  const hasReading = !!(item.kun_reading || item.on_reading);
-  const modes = ['char2meaning', 'meaning2char'];
-  if (hasReading && readingPool.length >= 2) modes.push('char2reading');
-  const dir = modes[Math.floor(Math.random() * modes.length)];
-  let base, keyFn;
-  if (dir === 'char2reading') { base = readingPool; keyFn = (x) => x.kun_reading || x.on_reading; }
-  else if (dir === 'meaning2char') { base = st.pool; keyFn = (x) => x.character; }
-  else { base = st.pool; keyFn = (x) => x.meaning_id; }
-  const optsCount = Math.min(4, base.length);
-  const distract = pickDistractors(base, item, optsCount - 1, keyFn);
-  const opts = [item, ...distract].sort(() => Math.random() - 0.5);
-  st.currentQ = { dir, opts };
-  st.answered = false;
-  kanjiDrillRender();
+  const store = _kanjiReadMastery();
+  const rows = pool.map((item) => ({ item, summary: _kanjiSummary(item, pool, store) }));
+  const mastered = rows.filter((row) => row.summary.mastered).length;
+  const review = rows.filter((row) => row.summary.attempts > 0 && !row.summary.mastered);
+  const fresh = rows.length - mastered - review.length;
+  const wordCount = new Set(_kanjiUsagePool(pool).map((word) => `${word.japanese}::${word.reading}`)).size;
+  const weakBtn = document.getElementById('kanji-drill-weak-btn');
+  if (weakBtn) weakBtn.hidden = review.length === 0;
+  const preview = review.slice().sort((a, b) => _kanjiPriority(b.summary) - _kanjiPriority(a.summary)).slice(0, 5);
+  body.innerHTML = `
+    <div class="kana-mastery-summary" aria-label="Ringkasan penguasaan Kanji">
+      <div class="kana-mastery-card mastered"><strong>${mastered}</strong><span>Dikuasai</span></div>
+      <div class="kana-mastery-card review"><strong>${review.length}</strong><span>Perlu diulang</span></div>
+      <div class="kana-mastery-card"><strong>${fresh}</strong><span>Belum dilatih</span></div>
+    </div>
+    <div class="kana-session-plan" aria-label="Tiga sesi latihan Kanji">
+      <div class="kana-session-step"><b>1</b><span>Kanji → arti</span></div>
+      <div class="kana-session-step"><b>2</b><span>Arti → Kanji</span></div>
+      <div class="kana-session-step"><b>3</b><span>Bacaan & kata</span></div>
+    </div>
+    <div class="kana-mastery-note"><strong>Satu Drill Kanji, tiga sesi.</strong> Sesi terakhir otomatis memakai ${wordCount} kata dari detail Kanji jika tersedia. Jawaban salah muncul lagi setelah beberapa soal, kartu disembunyikan selama latihan, dan kelemahan tersimpan di perangkat ini.</div>
+    ${preview.length ? `<div class="kana-weak-preview"><span class="kana-weak-label">Fokus berikutnya</span>${preview.map(({ item, summary }) => `<span class="kana-weak-chip"><b lang="ja">${escapeHtml(item.character)}</b> · ${escapeHtml(_kanjiDirectionLabel(_kanjiWeakDirection(item, pool, summary)))}</span>`).join('')}</div>` : ''}`;
+  window.__kanjiDrill = null;
+  _kanjiSetFocus(false);
 }
+
+window.kanjiDrillShowOverview = kanjiDrillShowOverview;
+
+window.kanjiDrillStart = (mode = 'adaptive') => {
+  const pool = (window.__kanjiDrillPool || []).filter((item) => item.character && item.meaning_id);
+  const body = document.getElementById('kanji-drill-body');
+  if (!body) return;
+  if (pool.length < 2) { body.innerHTML = '<div class="kana-drill-progress">Kanji belum cukup untuk drill.</div>'; return; }
+  const store = _kanjiReadMastery();
+  let ranked = pool.map((item) => ({ item, summary: _kanjiSummary(item, pool, store) }));
+  if (mode === 'weak') ranked = ranked.filter((row) => row.summary.attempts > 0 && !row.summary.mastered);
+  else {
+    const pending = ranked.filter((row) => !row.summary.mastered);
+    if (pending.length) ranked = pending;
+  }
+  if (!ranked.length) { kanjiDrillShowOverview(); return; }
+  ranked = ranked.map((row) => ({ ...row, priority: _kanjiPriority(row.summary) + Math.random() * 1.25 }))
+    .sort((a, b) => b.priority - a.priority);
+  const selected = ranked.slice(0, Math.min(ranked.length, KANJI_DRILL_ITEMS_PER_SESSION)).map((row) => row.item);
+  const questions = selected.map((item, index) => _kanjiMakeQuestion(pool, item, 'char2meaning', 0, index + 1));
+  const st = {
+    pool, selected, mode, session: 1,
+    attempts: 0, correct: 0, wrong: 0, firstCorrect: 0, baseQuestionCount: 0,
+    streak: 0, bestStreak: 0, mistakeCharacters: new Set(),
+  };
+  window.__kanjiDrill = st;
+  _kanjiSetFocus(true);
+  _kanjiBeginSession(st, 1, questions);
+};
+
+window.kanjiDrillNextSession = () => {
+  const st = window.__kanjiDrill;
+  if (!st || st.session >= KANJI_DRILL_SESSION_COUNT) return;
+  const next = st.session + 1;
+  let rows = _deckShuffle(st.selected).map((item) => ({ item, summary: _kanjiSummary(item, st.pool) }));
+  if (next === 3) rows.sort((a, b) => (
+    Number(st.mistakeCharacters.has(b.item.character)) - Number(st.mistakeCharacters.has(a.item.character))
+    || _kanjiPriority(b.summary) - _kanjiPriority(a.summary)
+  ));
+  const questions = rows.map(({ item, summary }, index) => {
+    const direction = next === 2 ? 'meaning2char' : _kanjiWeakDirection(item, st.pool, summary, true);
+    return _kanjiMakeQuestion(st.pool, item, direction, 0, index + 1);
+  });
+  _kanjiBeginSession(st, next, questions);
+};
+
+function _kanjiWeaknessMarkup(pool) {
+  const weak = _kanjiWeakItems(pool).slice(0, 5);
+  if (!weak.length) return '';
+  return `<div class="kana-weakness-list">
+    <div class="kana-weakness-title">Kanji yang perlu diperkuat</div>
+    ${weak.map(({ item, summary }) => `<div class="kana-weakness-item deck-weakness-item">
+      <div class="deck-weakness-word" lang="ja">${escapeHtml(item.character)}<small>${escapeHtml(_kanjiReading(item) || 'belum ada bacaan')}</small></div>
+      <div class="kana-weakness-info"><strong>${escapeHtml(item.meaning_id)}</strong><span>Fokus: ${escapeHtml(_kanjiDirectionLabel(_kanjiWeakDirection(item, pool, summary)))}</span></div>
+      <div class="kana-weakness-rate">${Math.round(summary.accuracy * 100)}%</div>
+    </div>`).join('')}
+  </div>`;
+}
+
 function kanjiDrillRender() {
   const st = window.__kanjiDrill;
   const body = document.getElementById('kanji-drill-body');
   if (!st || !body) return;
-  if (!st.current) {
+  if (st.idx >= st.questions.length) {
+    if (st.session < KANJI_DRILL_SESSION_COUNT) {
+      const sessionPct = st.sessionAttempts ? Math.round((st.sessionCorrect / st.sessionAttempts) * 100) : 0;
+      const next = _kanjiSessionInfo(st.session + 1);
+      body.innerHTML = `<div class="kana-session-break">
+        <div class="kana-session-check">✓</div>
+        <h3>Sesi ${st.session} selesai</h3>
+        <p>${sessionPct}% akurat · ${st.sessionCorrect} benar, ${st.sessionWrong} salah</p>
+        <div class="kana-session-next"><strong>Berikutnya: ${escapeHtml(next.label)}</strong><br>${escapeHtml(next.description)}</div>
+        <button class="btn-primary" type="button" onclick="kanjiDrillNextSession()">Lanjut Sesi ${st.session + 1}</button>
+      </div>`;
+      return;
+    }
+    const pct = st.attempts ? Math.round((st.correct / st.attempts) * 100) : 0;
+    const recallPct = st.baseQuestionCount ? Math.round((st.firstCorrect / st.baseQuestionCount) * 100) : 0;
+    const weakCount = _kanjiWeakItems(st.pool).length;
+    _kanjiSetFocus(false);
     body.innerHTML = `<div class="kana-drill-result">
-      <div class="kdr-score">${st.total} kartu dikuasai</div>
-      <div class="kdr-pct">${st.wrong} kali salah${st.wrong === 0 ? ' — sempurna! 🎉' : ' — terus berlatih ya.'}</div>
-      <button class="btn-primary" type="button" onclick="kanjiDrillStart()">Ulangi Drill</button>
+      <div class="kdr-score">${pct}%</div>
+      <div class="kdr-pct">3 sesi selesai · ${st.correct} benar, ${st.wrong} salah</div>
+      <div class="kdr-caption">${recallPct}% langsung ingat tanpa pengulangan · runtun terbaik ${st.bestStreak}</div>
+      ${_kanjiWeaknessMarkup(st.pool)}
+      <div class="kana-drill-result-actions">
+        <button class="btn-secondary" type="button" onclick="kanjiDrillShowOverview()">Lihat Perkembangan</button>
+        ${weakCount ? '<button class="btn-secondary" type="button" onclick="kanjiDrillStart(\'weak\')">Latih Kelemahan</button>' : ''}
+        <button class="btn-primary" type="button" onclick="kanjiDrillStart('adaptive')">Latihan Lagi</button>
+      </div>
     </div>`;
     return;
   }
-  const q = st.currentQ;
-  const item = st.current;
-  const remaining = st.queue.length + 1;
+  const q = st.questions[st.idx];
+  const item = q.item;
   let promptHtml, hint, optsHtml;
-  if (q.dir === 'meaning2char') {
+  if (q.direction === 'meaning2char') {
     hint = 'Karakter yang mana?';
     promptHtml = `<div class="kana-drill-prompt" style="font-size:28px;">${escapeHtml(item.meaning_id)}</div>`;
-    optsHtml = q.opts.map((o, oi) => `<button class="kana-drill-opt" type="button" data-oi="${oi}" lang="ja" onclick="kanjiDrillAnswer(${oi})">${escapeHtml(o.character)}</button>`).join('');
-  } else if (q.dir === 'char2reading') {
+    optsHtml = q.opts.map((option, index) => `<button class="kana-drill-opt" type="button" data-oi="${index}" lang="ja" onclick="kanjiDrillAnswer(${index})">${escapeHtml(option.character)}</button>`).join('');
+  } else if (q.direction === 'char2reading') {
     hint = 'Cara bacanya?';
     promptHtml = `<div class="kana-drill-prompt" lang="ja">${escapeHtml(item.character)}</div>`;
-    optsHtml = q.opts.map((o, oi) => `<button class="kana-drill-opt" type="button" data-oi="${oi}" lang="ja" onclick="kanjiDrillAnswer(${oi})">${escapeHtml(o.kun_reading || o.on_reading)}</button>`).join('');
+    optsHtml = q.opts.map((option, index) => `<button class="kana-drill-opt" type="button" data-oi="${index}" lang="ja" onclick="kanjiDrillAnswer(${index})">${escapeHtml(_kanjiReading(option))}</button>`).join('');
+  } else if (q.direction === 'word2reading') {
+    hint = 'Bagaimana kata ini dibaca?';
+    promptHtml = `<div class="kana-drill-prompt" lang="ja">${kanjiWordMarkup(q.usage.japanese, item.character)}<div style="font-size:14px;font-weight:600;color:var(--du-ink-3,#8a8a8a);margin-top:4px;">${escapeHtml(q.usage.indonesian)}</div></div>`;
+    optsHtml = q.opts.map((option, index) => `<button class="kana-drill-opt" type="button" data-oi="${index}" lang="ja" onclick="kanjiDrillAnswer(${index})">${escapeHtml(option.reading)}</button>`).join('');
+  } else if (q.direction === 'reading2word') {
+    hint = 'Pilih penulisan yang tepat.';
+    promptHtml = `<div class="kana-drill-prompt" lang="ja">${escapeHtml(q.usage.reading)}<div style="font-family:var(--font-body);font-size:14px;font-weight:600;color:var(--du-ink-3,#8a8a8a);margin-top:4px;">${escapeHtml(q.usage.indonesian)}</div></div>`;
+    optsHtml = q.opts.map((option, index) => `<button class="kana-drill-opt" type="button" data-oi="${index}" lang="ja" onclick="kanjiDrillAnswer(${index})">${escapeHtml(option.japanese)}</button>`).join('');
   } else {
     hint = 'Artinya?';
     promptHtml = `<div class="kana-drill-prompt" lang="ja">${escapeHtml(item.character)}</div>`;
-    optsHtml = q.opts.map((o, oi) => `<button class="kana-drill-opt" type="button" data-oi="${oi}" onclick="kanjiDrillAnswer(${oi})">${escapeHtml(o.meaning_id)}</button>`).join('');
+    optsHtml = q.opts.map((option, index) => `<button class="kana-drill-opt" type="button" data-oi="${index}" onclick="kanjiDrillAnswer(${index})">${escapeHtml(option.meaning_id)}</button>`).join('');
   }
+  const resolved = st.resolved.size;
+  const accuracy = st.sessionAttempts ? Math.round((st.sessionCorrect / st.sessionAttempts) * 100) : 0;
+  const sessionProgress = st.targetCount ? resolved / st.targetCount : 0;
+  const progress = Math.round((((st.session - 1) + sessionProgress) / KANJI_DRILL_SESSION_COUNT) * 100);
+  const sessionInfo = _kanjiSessionInfo(st.session);
   body.innerHTML = `
-    <div class="kana-drill-progress">Tersisa ${remaining} dari ${st.total} · Salah ${st.wrong}x</div>
+    <div class="kana-drill-session-meta">
+      <span>Sesi <strong>${st.session}/${KANJI_DRILL_SESSION_COUNT}</strong></span>
+      <span>Selesai <strong>${resolved}/${st.targetCount}</strong></span>
+      <span>Akurasi <strong>${accuracy}%</strong></span>
+      <span>Runtun <strong>${st.streak}</strong></span>
+    </div>
+    <div class="kana-drill-meter" role="progressbar" aria-label="Kemajuan tiga sesi Drill Kanji" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><span style="width:${progress}%"></span></div>
+    <div class="kana-drill-progress">Sesi ${st.session}: ${escapeHtml(sessionInfo.label)} · ${q.isRetry ? `Ulang soal ${q.baseOrder}` : `Soal ${q.baseOrder} dari ${st.targetCount}`} · ${escapeHtml(_kanjiDirectionLabel(q.direction))}</div>
     ${promptHtml}
     <div class="kana-drill-hint">${hint}</div>
     <div class="kana-drill-opts">${optsHtml}</div>
-    <div class="kana-drill-feedback" id="kanji-drill-feedback"></div>`;
+    <div class="kana-drill-feedback" id="kanji-drill-feedback" aria-live="polite"></div>`;
+  st.answered = false;
 }
+
 window.kanjiDrillAnswer = (oi) => {
   const st = window.__kanjiDrill;
-  if (!st || st.answered || !st.current) return;
-  const q = st.currentQ;
+  if (!st || st.answered) return;
+  const q = st.questions[st.idx];
+  if (!q) return;
   st.answered = true;
-  const correct = q.opts[oi] === st.current;
+  const correct = q.opts[oi] === q.correct;
+  st.attempts++;
+  st.sessionAttempts++;
+  _kanjiRecordAnswer(q.item, q.direction, correct);
   if (correct) {
-    st.mastered++;
+    st.correct++;
+    st.sessionCorrect++;
+    st.streak++;
+    st.bestStreak = Math.max(st.bestStreak, st.streak);
+    if (!q.isRetry) st.firstCorrect++;
+    st.resolved.add(q.item.character);
   } else {
     st.wrong++;
-    const q2 = st.queue;
-    const minPos = Math.min(2, q2.length);
-    const pos = q2.length === 0 ? 0 : minPos + Math.floor(Math.random() * (q2.length - minPos + 1));
-    q2.splice(pos, 0, st.current);
+    st.sessionWrong++;
+    st.streak = 0;
+    st.mistakeCharacters.add(q.item.character);
+    if (q.retryCount < 2) {
+      const retry = _kanjiMakeQuestion(st.pool, q.item, q.direction, q.retryCount + 1, q.baseOrder, q.usage);
+      st.questions.splice(Math.min(st.questions.length, st.idx + 3), 0, retry);
+    } else st.resolved.add(q.item.character);
   }
   document.querySelectorAll('#kanji-drill-body .kana-drill-opt').forEach((b, i) => {
     b.disabled = true;
-    if (q.opts[i] === st.current) b.classList.add('correct');
+    if (q.opts[i] === q.correct) b.classList.add('correct');
     else if (i === oi) b.classList.add('wrong');
   });
   const fb = document.getElementById('kanji-drill-feedback');
   if (fb) {
-    const isJa = q.dir === 'meaning2char' || q.dir === 'char2reading';
-    const answerLabel = q.dir === 'meaning2char' ? st.current.character
-      : q.dir === 'char2reading' ? (st.current.kun_reading || st.current.on_reading)
-      : st.current.meaning_id;
+    const usageAnswer = q.usage ? `<strong lang="ja">${escapeHtml(q.usage.japanese)}</strong> (${escapeHtml(q.usage.reading)}) = ${escapeHtml(q.usage.indonesian)}` : '';
+    const answerLabel = q.direction === 'meaning2char' ? q.item.character
+      : q.direction === 'char2reading' ? _kanjiReading(q.item)
+      : q.direction === 'char2meaning' ? q.item.meaning_id
+      : usageAnswer;
+    const isJa = ['meaning2char', 'char2reading'].includes(q.direction);
     fb.innerHTML = correct
-      ? '<span class="kdf-ok">✓ Benar!</span>'
-      : `<span class="kdf-no">✗ Jawaban: <strong${isJa ? ' lang="ja"' : ''}>${escapeHtml(answerLabel)}</strong></span>`;
+      ? `<span class="kdf-ok">✓ ${q.isRetry ? 'Sudah ingat!' : 'Benar!'}</span>`
+      : `<span class="kdf-no">✗ Jawaban: ${q.usage ? answerLabel : `<strong${isJa ? ' lang="ja"' : ''}>${escapeHtml(answerLabel)}</strong>`}${q.retryCount < 2 ? ' · akan muncul lagi' : ''}</span>`;
   }
-  setTimeout(() => { if (window.__kanjiDrill === st) kanjiDrillAdvance(); }, correct ? 750 : 1500);
+  st.idx++;
+  setTimeout(() => { if (window.__kanjiDrill === st) kanjiDrillRender(); }, correct ? 700 : 1700);
 };
 
 // Tugas grammar yang dikaitkan ke pelajaran pemicu (popupAfterLessonId) hanya
