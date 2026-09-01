@@ -4299,7 +4299,7 @@
   .gt-result-body { padding-left: 36px; font-size: 14px; line-height: 1.6; color: var(--du-ink-2); }
   .gt-result-body :lang(ja) { font-family: var(--font-jp); }
 
-  #gt-progress-hint {
+  #gt-progress-hint, .lesson-progress-hint {
     text-align: center; font-size: 12px; color: var(--du-ink-3);
     margin: 6px 0 14px; font-family: var(--font-mono); font-weight: 600; letter-spacing: 0.02em;
   }
@@ -4779,6 +4779,66 @@ function _recordPracticeAttempt(itemType, item, skill, isCorrect) {
       lessonId: lesson.apiId,
     }),
   }).catch(() => {});
+}
+
+// Gate "Tandai Selesai" behind having attempted every item in the lesson at
+// least once — mirrors gtUpdateComplete()'s pattern for grammar_task.
+// Smart Review treats attempts===0 as due-for-review by design, so a
+// completed-but-undrilled deck/kana/kanji lesson floods it with items the
+// student never actually practiced; this closes that at the source instead
+// of loosening Smart Review's own logic.
+function _applyDrillCompletionGate(btn, hintEl, { total, attemptedCount, isDone, hasNext, noun }) {
+  if (!btn) return;
+  // total < 2 mirrors every drill widget's own "not enough items to quiz"
+  // floor (deckDrillPool.length >= 2 / kanjiDrillPool.length >= 2 / kana's
+  // inline pool.length < 2 guard) — below that, there is no UI to attempt
+  // the lone item through, so the gate must not lock the student out.
+  const done = isDone || total < 2 || attemptedCount >= total;
+  btn.disabled = !done;
+  btn.style.opacity = done ? '' : '0.5';
+  btn.style.cursor = done ? '' : 'not-allowed';
+  btn.textContent = done
+    ? (isDone ? (hasNext ? 'Lanjut →' : 'Selesai ✓') : (hasNext ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓'))
+    : `Latih semua ${noun} dulu`;
+  if (hintEl) hintEl.textContent = total < 2 ? '' : `${attemptedCount} / ${total} ${noun} sudah dilatih`;
+}
+
+function deckUpdateComplete() {
+  const btn = document.getElementById('deck-complete-btn');
+  if (!btn) return;
+  // Same drillable-item filter as the widget itself (welcome.html:10792) —
+  // an item missing japanese/indonesian can never be attempted, so it must
+  // not count toward the gate either.
+  const items = (window.__deckData || []).filter((it) => it.japanese && it.indonesian);
+  const nav = window.__deckLessonArgs?.[3] || {};
+  const attemptedCount = items.filter((it) => _deckSummary(it).attempts > 0).length;
+  _applyDrillCompletionGate(btn, document.getElementById('deck-progress-hint'),
+    { total: items.length, attemptedCount, isDone: nav.isDone, hasNext: !!nav.next, noun: 'kata' });
+}
+
+function kanaUpdateComplete() {
+  const btn = document.getElementById('kana-complete-btn');
+  if (!btn) return;
+  // Same filter as kanaDrillShowOverview() (welcome.html:10320).
+  const items = (window.__kanaData || []).filter((k) => k.character && k.romaji);
+  const nav = window.__kanaLessonArgs?.[3] || {};
+  const attemptedCount = items.filter((it) => _kanaSummary(it).attempts > 0).length;
+  _applyDrillCompletionGate(btn, document.getElementById('kana-progress-hint'),
+    { total: items.length, attemptedCount, isDone: nav.isDone, hasNext: !!nav.next, noun: 'huruf' });
+}
+
+function kanjiUpdateComplete() {
+  const btn = document.getElementById('kanji-complete-btn');
+  if (!btn) return;
+  // window.__kanjiDrillPool holds the RAW lesson kanji list (assigned at
+  // renderKanjiLesson's top) — every other reader of it (welcome.html:11358,
+  // :11396) re-applies this same character/meaning_id filter, so mirror that
+  // here rather than trusting the name.
+  const items = (window.__kanjiDrillPool || []).filter((item) => item.character && item.meaning_id);
+  const nav = window.__kanjiLessonArgs?.[3] || {};
+  const attemptedCount = items.filter((it) => _kanjiSummary(it, null).attempts > 0).length;
+  _applyDrillCompletionGate(btn, document.getElementById('kanji-progress-hint'),
+    { total: items.length, attemptedCount, isDone: nav.isDone, hasNext: !!nav.next, noun: 'kanji' });
 }
 
 function _practiceTimestamp(value) {
@@ -8724,16 +8784,17 @@ function renderDeckLesson(course, module, lesson, nav) {
         </div>
       </div>
     </div>
+    <div id="deck-progress-hint" class="lesson-progress-hint"></div>
     <div class="lesson-footer">
       <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
-      <button class="btn-primary" onclick="markCompleteAndNext()">
-        ${isDone ? (next ? 'Lanjut →' : 'Selesai ✓') : (next ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓')}
-      </button>
+      <button class="btn-primary" id="deck-complete-btn" onclick="markCompleteAndNext()"></button>
     </div>
   `;
+  deckUpdateComplete();
   if (deckDrillPool.length >= 2) {
     deckDrillShowOverview();
     syncPracticeStateForLesson('vocabulary', lesson.apiId, items, () => {
+      deckUpdateComplete();
       if (!_currentPracticeLesson() || _currentPracticeLesson().apiId !== lesson.apiId || window.__deckDrill) return;
       deckDrillShowOverview();
     });
@@ -9820,16 +9881,17 @@ function renderKanjiLesson(course, module, lesson, nav) {
       ${tilesHtml}
     </div>
     ${drillBlock}
+    <div id="kanji-progress-hint" class="lesson-progress-hint"></div>
     <div class="lesson-footer">
       <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
-      <button class="btn-primary" onclick="markCompleteAndNext()">
-        ${isDone ? (next ? 'Lanjut →' : 'Selesai ✓') : (next ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓')}
-      </button>
+      <button class="btn-primary" id="kanji-complete-btn" onclick="markCompleteAndNext()"></button>
     </div>
   `;
+  kanjiUpdateComplete();
   if (kanjiDrillPool.length >= 2) {
     kanjiDrillShowOverview();
     syncPracticeStateForLesson('kanji', lesson.apiId, items, () => {
+      kanjiUpdateComplete();
       if (!_currentPracticeLesson() || _currentPracticeLesson().apiId !== lesson.apiId || window.__kanjiDrill) return;
       kanjiDrillShowOverview();
     });
@@ -9842,6 +9904,7 @@ function renderKanaLesson(course, module, lesson, nav) {
   const { prev, next, isDone } = nav || {};
   const items = Array.isArray(lesson.kana) ? lesson.kana : [];
   window.__kanaData = items;
+  window.__kanaLessonArgs = [course, module, lesson, nav];
   window.__kanaDrill = null;
 
   if (!window.__kanaEscWired) {
@@ -9956,16 +10019,17 @@ function renderKanaLesson(course, module, lesson, nav) {
     <div id="kana-chart-wrap">${chartHtml}</div>
     ${drillBlock}
     ${modalMarkup}
+    <div id="kana-progress-hint" class="lesson-progress-hint"></div>
     <div class="lesson-footer">
       <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
-      <button class="btn-primary" onclick="markCompleteAndNext()">
-        ${isDone ? (next ? 'Lanjut →' : 'Selesai ✓') : (next ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓')}
-      </button>
+      <button class="btn-primary" id="kana-complete-btn" onclick="markCompleteAndNext()"></button>
     </div>
   `;
+  kanaUpdateComplete();
   if (items.length >= 2) {
     kanaDrillShowOverview();
     syncPracticeStateForLesson('kana', lesson.apiId, items, () => {
+      kanaUpdateComplete();
       if (!_currentPracticeLesson() || _currentPracticeLesson().apiId !== lesson.apiId || window.__kanaDrill) return;
       kanaDrillShowOverview();
     });
@@ -10169,6 +10233,7 @@ function _kanaRecordAnswer(item, dir, correct) {
   store.items[key] = stat;
   try { localStorage.setItem(KANA_MASTERY_KEY, JSON.stringify(store)); } catch (e) { /* storage can be unavailable */ }
   _recordPracticeAttempt('kana', item, dir, correct);
+  kanaUpdateComplete();
 }
 
 // Distraktor dipilih dari kelompok/bunyi yang mirip, tetapi romaji tetap unik
@@ -10677,6 +10742,7 @@ function _deckRecordAnswer(item, dir, correct) {
   store.items[key] = stat;
   try { localStorage.setItem(DECK_MASTERY_KEY, JSON.stringify(store)); } catch (e) { /* storage can be unavailable */ }
   _recordPracticeAttempt('vocabulary', item, dir, correct);
+  deckUpdateComplete();
 }
 
 function _deckMakeQuestion(pool, item, dir, retryCount, baseOrder) {
@@ -11183,6 +11249,7 @@ function _kanjiRecordAnswer(item, direction, correct, usage = null) {
   else store.items[item.character] = stat;
   try { localStorage.setItem(KANJI_MASTERY_KEY, JSON.stringify(store)); } catch (e) { /* storage can be unavailable */ }
   _recordPracticeAttempt('kanji', item, isWordQuestion ? _kanjiWordPracticeSkill(direction, usage) : direction, correct);
+  kanjiUpdateComplete();
 }
 
 function _kanjiPickUsage(item, preferred) {

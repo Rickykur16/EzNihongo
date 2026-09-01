@@ -65,6 +65,83 @@
 
 ## Konvensi penting
 
+      **Lesson deck/kana/kanji sekarang wajib di-drill dulu (min. 1x per
+      item) sebelum bisa ditandai selesai** — follow-up dari catatan Smart
+      Review di bawah ini. Saat user mengonfirmasi apakah Smart Review
+      "sudah sesuai fungsinya untuk review latihan yang sudah dikerjakan
+      sebelumnya", ketahuan celahnya: tombol "Tandai Selesai & Lanjut →" di
+      lesson `deck`/`kana`/`kanji` (`welcome.html`) selalu aktif tanpa
+      syarat — `POST /api/progress/lesson/:id/complete` →
+      `completeLessonWithStats()` (`backend/src/progress-service.js`) tidak
+      pernah mengecek `practice_attempts`. Karena "🎯 Drill Adaptif" murni
+      opsional, kondisi "lesson selesai tapi item belum pernah dilatih"
+      adalah kasus UMUM, dan Smart Review (`isReviewNeeded()`,
+      `attempts === 0` = butuh direview, BY DESIGN) jadi dibanjiri item yang
+      belum pernah benar-benar dicoba sama sekali. **Perbaikan di
+      sumbernya, bukan di Smart Review**: gate client-side baru, MENIRU
+      PERSIS pola `gtUpdateComplete()` yang sudah lama dipakai lesson
+      `grammar_task` (tombol disabled + hint progress + label berubah
+      sampai syarat terpenuhi) — bukan pola baru. Tiga wrapper baru
+      `deckUpdateComplete()`/`kanaUpdateComplete()`/`kanjiUpdateComplete()`
+      + helper bersama `_applyDrillCompletionGate()`
+      (`welcome.html`, dekat `_recordPracticeAttempt`). Ambang batas:
+      **attempts ≥ 1 per item (skill apa saja)**, BUKAN harus benar, BUKAN
+      mastery penuh — jawaban salah tetap menghitung sebagai "sudah
+      dicoba". Dipanggil di 3 titik per lesson type: render awal, tiap
+      `syncPracticeStateForLesson(...)`'s `onMerged` callback (state dari
+      device lain), dan tiap kali jawaban drill tersimpan (`_deckRecordAnswer`/
+      `_kanaRecordAnswer`/`_kanjiRecordAnswer`) — supaya tombol ter-unlock
+      LIVE tanpa reload begitu item terakhir dicoba. **Enforcement
+      client-side saja** (disepakati eksplisit dengan user) — backend
+      (`completeLessonWithStats`) TIDAK diubah, konsisten dengan
+      `grammar_task` yang juga tidak punya precondition server-side.
+      `reconcileLegacyProgress()` (migrasi progress lama dari
+      `user_learning_state.progress` blob, dipanggil tiap login) juga TIDAK
+      disentuh — jalur itu murni migrasi data historis dari SEBELUM
+      completion-gate ini ada, terpisah total dari jalur completion baru
+      (`markCompleteAndNext()` → `syncLessonCompletionToServer()` →
+      endpoint yang sama persis). **Jebakan yang ketahuan saat implementasi**:
+      (1) item mentah (`window.__deckData`/`__kanaData`/`__kanjiDrillPool`)
+      HARUS difilter persis sama dengan yang dipakai widget drill-nya
+      sendiri (`it.japanese && it.indonesian` / `k.character && k.romaji` /
+      `item.character && item.meaning_id`) — kalau tidak, satu item cacat
+      (field kosong) yang tidak mungkin di-drill akan mengunci lesson
+      selamanya; (2) ambang "cukup untuk didrill" widget adalah `< 2` item
+      (`deckDrillPool.length >= 2` dkk), BUKAN `=== 0` — lesson dengan
+      tepat 1 item drillable tidak punya UI drill sama sekali, jadi gate
+      harus auto-lolos di bawah 2 item juga, bukan cuma di 0; (3)
+      `window.__kanjiDrillPool` ternyata menyimpan list MENTAH (bukan yang
+      sudah difilter) — nama variabelnya menyesatkan, dua pembaca lain yang
+      sudah ada (`welcome.html:11358`, `:11396`) sama-sama memfilter ulang
+      tiap dipakai, jadi ikuti pola itu, jangan percaya nama variabelnya;
+      (4) `nav.isDone` bersumber dari BLOB LOKAL `ez_progress`
+      (`getProgress()`/`localStorage`, disinkron lewat `/api/learning-state`)
+      — BUKAN dari tabel relasional `user_progress` yang dibaca Smart
+      Review/`completeLessonWithStats()`. Dua sistem tracking completion
+      ini berjalan paralel dan cuma disatukan satu-arah lewat
+      `reconcileLegacyProgress()`; sempat salah simulasi saat testing
+      (set `user_progress.completed=TRUE` langsung via SQL tidak membuat
+      tombol menampilkan "Lanjut →", karena `isDone` tidak pernah membaca
+      tabel itu) — perbaikan tes dilakukan dengan set `localStorage
+      ez_progress` langsung, sesuai apa yang benar-benar dibaca `nav.isDone`.
+      Divalidasi end-to-end via Playwright (Postgres lokal dari
+      `schema.sql` + seed course/module/lesson dummy, backend asli, browser
+      asli — bukan mock DOM): ketiga tipe lesson terbukti terkunci di
+      0/N, tetap terkunci di (N-1)/N, dan ter-unlock LIVE tanpa reload
+      persis saat item terakhir dicoba (termasuk kasus jawaban SALAH tetap
+      membuka gate — sesuai desain "attempts", bukan "correct"); regression
+      check `grammar_task` dikonfirmasi tidak berubah; kasus lesson yang
+      sudah pernah selesai sebelumnya dikonfirmasi tidak ter-lock ulang.
+      **Batasan cakupan yang disadari, bukan diabaikan diam-diam**: kanji
+      punya skill KATA-MAJEMUK terpisah (`word2reading` dst, via
+      `_kanjiWordSummary`) yang Smart Review JUGA jadikan candidate
+      (`deriveCompounds` di `smart-review-service.js`) — gate ini HANYA
+      menyasar skill KARAKTER (`char2meaning`/`meaning2char`), karena daftar
+      kata-majemuk baru pasti setelah lesson vocab LAIN juga selesai
+      (lintas-lesson, tidak bisa digate per-lesson dengan bersih). Sama,
+      vocabulary yang nempel langsung ke lesson `video`/`text` (bukan
+      `deck`) tidak punya UI drill sama sekali di situ, jadi tidak digate.
+
       **Smart Review: SETIAP submit jawaban gagal 500 ("Jawaban belum bisa
       dimuat...")** — user melaporkan "tidak responsif" saat memilih jawaban
       di `review.html`; ternyata bukan bug UI/klik, melainkan pesan fallback
