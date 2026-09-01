@@ -3804,13 +3804,16 @@
   .kana-weakness-info strong { display: block; color: var(--du-ink, #1b1410); font-size: 12.5px; }
   .kana-weakness-info span { color: var(--du-ink-3, #8a8a8a); font-size: 11px; }
   .kana-weakness-rate { color: #9a6818; font-size: 11.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .deck-weakness-item { grid-template-columns: minmax(90px, .8fr) minmax(0, 1.2fr) auto; }
+  .deck-weakness-word { min-width: 0; color: var(--du-ink, #1b1410); font-family: 'Noto Sans JP', sans-serif; font-size: 18px; font-weight: 800; line-height: 1.3; overflow-wrap: anywhere; }
+  .deck-weakness-word small { display: block; margin-top: 2px; color: var(--du-ink-3, #8a8a8a); font-size: 10.5px; font-weight: 600; }
   @media (max-width: 560px) {
     .kana-drill { padding: 16px 14px; }
     .kana-drill-head { align-items: stretch; }
     .kana-drill-head > div:first-child { width: 100%; }
     .kana-drill-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
     .kana-drill-actions .btn-primary, .kana-drill-actions .btn-secondary { width: 100%; padding-inline: 9px; }
-    #kana-drill-weak-btn[hidden] + .btn-primary { grid-column: 1 / -1; }
+    :is(#kana-drill-weak-btn, #deck-drill-weak-btn)[hidden] + .btn-primary { grid-column: 1 / -1; }
     .kana-mastery-summary { gap: 6px; }
     .kana-mastery-card { padding: 11px 8px; text-align: center; }
     .kana-mastery-card strong { font-size: 21px; }
@@ -3821,6 +3824,8 @@
     .kana-drill-opts { gap: 8px; }
     .kana-drill-opt { min-height: 56px; padding: 11px 8px; font-size: 21px; }
     .kana-weakness-item { grid-template-columns: 40px minmax(0, 1fr) auto; padding-inline: 4px; }
+    .kana-weakness-item.deck-weakness-item { grid-template-columns: minmax(74px, .8fr) minmax(0, 1.2fr) auto; }
+    .deck-weakness-word { font-size: 15px; }
     .kana-drill-result-actions { display: grid; grid-template-columns: 1fr; }
     .kana-drill-result-actions button { width: 100%; }
   }
@@ -8275,19 +8280,18 @@ function renderDeckLesson(course, module, lesson, nav) {
         </div>`;
       }).join('')}<div class="deck-empty-filter" id="deck-empty-filter" hidden></div></div>`;
 
-  // Drill recall (client-side, tanpa persistensi/XP, sama seperti kana —
-  // welcome.html ~8465). Beda dari kana: kartu yang dijawab benar dikeluarkan
-  // dari antrian (tidak diulang lagi sesi ini), kartu salah masuk lagi ke
-  // antrian sampai semua kartu "dikuasai".
   const deckDrillPool = items.filter((it) => it.japanese && it.indonesian);
   const drillBlock = deckDrillPool.length >= 2 ? `
     <div class="kana-drill" id="deck-drill">
       <div class="kana-drill-head">
         <div>
-          <div class="kana-drill-title">🎯 Latihan Kosakata</div>
-          <div class="kana-drill-sub">Kartu yang sudah benar tidak akan diulang.</div>
+          <div class="kana-drill-title">🎯 Drill Adaptif Kosakata</div>
+          <div class="kana-drill-sub">Latihan mengenali, mengingat, dan mendengar kata berdasarkan kelemahanmu.</div>
         </div>
-        <button class="btn-primary" type="button" onclick="deckDrillStart()">Mulai Drill</button>
+        <div class="kana-drill-actions">
+          <button class="btn-secondary" id="deck-drill-weak-btn" type="button" onclick="deckDrillStart('weak')" hidden>Fokus Kelemahan</button>
+          <button class="btn-primary" type="button" onclick="deckDrillStart('adaptive')">Mulai Latihan</button>
+        </div>
       </div>
       <div class="kana-drill-body" id="deck-drill-body"></div>
     </div>` : '';
@@ -8307,8 +8311,10 @@ function renderDeckLesson(course, module, lesson, nav) {
     <p class="lesson-subtitle">${module.title}${lesson.duration ? ' — ' + lesson.duration : ''}</p>
     ${deckVideoBlock}
     ${heroBlock}
-    ${toolbar}
-    ${cardsHtml}
+    <div id="deck-card-wrap">
+      ${toolbar}
+      ${cardsHtml}
+    </div>
     ${drillBlock}
     <div class="deck-modal-backdrop" id="deck-modal-backdrop" onclick="if(event.target===this)closeDeckModal()">
       <div class="deck-modal" id="deck-modal" role="dialog" aria-modal="true" aria-labelledby="deck-modal-jp" tabindex="-1">
@@ -8347,6 +8353,7 @@ function renderDeckLesson(course, module, lesson, nav) {
       </button>
     </div>
   `;
+  if (deckDrillPool.length >= 2) deckDrillShowOverview();
 }
 
 window.setDeckView = (view) => {
@@ -10141,47 +10148,314 @@ window.closeDeckModal = () => {
   }
 };
 
-// Drill recall kosakata: antrian-sampai-tuntas (client-side, tanpa
-// persistensi/XP). Kartu benar keluar dari antrian, kartu salah masuk lagi
-// ke posisi acak (bukan langsung soal berikutnya) supaya diulang sampai benar.
-window.deckDrillStart = () => {
+// Drill adaptif kosakata tiga arah. Progres disimpan lokal per kata agar
+// kosakata baru dan yang paling lemah diprioritaskan pada latihan berikutnya.
+const DECK_MASTERY_KEY = 'ez_deck_mastery_v1';
+const DECK_DRILL_SESSION_COUNT = 3;
+const DECK_DRILL_ITEMS_PER_SESSION = 12;
+const DECK_DRILL_DIRECTIONS = ['jp2id', 'id2jp', 'audio2id'];
+
+function _deckShuffle(list) {
+  const out = list.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function _deckKey(item) {
+  return [item.japanese || '', item.reading || '', item.indonesian || '']
+    .map((part) => String(part).trim().toLowerCase())
+    .join('::');
+}
+
+function _deckEmptyDir() {
+  return { attempts: 0, correct: 0, streak: 0, lastSeen: 0 };
+}
+
+function _deckReadMastery() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DECK_MASTERY_KEY) || '{}');
+    return parsed && typeof parsed === 'object' && parsed.items && typeof parsed.items === 'object'
+      ? parsed
+      : { version: 1, items: {} };
+  } catch (e) {
+    return { version: 1, items: {} };
+  }
+}
+
+function _deckStat(item, store) {
+  const saved = (store || _deckReadMastery()).items[_deckKey(item)] || {};
+  const normalizeDir = (dir) => {
+    const attempts = Math.max(0, Number(dir && dir.attempts) || 0);
+    return {
+      attempts,
+      correct: Math.min(attempts, Math.max(0, Number(dir && dir.correct) || 0)),
+      streak: Math.max(0, Number(dir && dir.streak) || 0),
+      lastSeen: Math.max(0, Number(dir && dir.lastSeen) || 0),
+    };
+  };
+  return {
+    japanese: item.japanese,
+    reading: item.reading || '',
+    indonesian: item.indonesian,
+    jp2id: normalizeDir(saved.jp2id || _deckEmptyDir()),
+    id2jp: normalizeDir(saved.id2jp || _deckEmptyDir()),
+    audio2id: normalizeDir(saved.audio2id || _deckEmptyDir()),
+  };
+}
+
+function _deckSummary(item, store) {
+  const stat = _deckStat(item, store);
+  const attempts = DECK_DRILL_DIRECTIONS.reduce((sum, dir) => sum + stat[dir].attempts, 0);
+  const correct = DECK_DRILL_DIRECTIONS.reduce((sum, dir) => sum + stat[dir].correct, 0);
+  const accuracy = attempts ? correct / attempts : 0;
+  const testedAll = DECK_DRILL_DIRECTIONS.every((dir) => stat[dir].attempts > 0);
+  const streak = DECK_DRILL_DIRECTIONS.reduce((sum, dir) => sum + stat[dir].streak, 0);
+  const mastered = attempts >= 3 && testedAll && accuracy >= 0.8 && streak >= 3;
+  return { stat, attempts, correct, accuracy, mastered };
+}
+
+function _deckDirStrength(dir) {
+  if (!dir.attempts) return -0.35;
+  return (dir.correct / dir.attempts) + Math.min(dir.streak, 3) * 0.08 + Math.min(dir.attempts, 4) * 0.03;
+}
+
+function _deckWeakDirection(summary) {
+  const untested = DECK_DRILL_DIRECTIONS.find((dir) => summary.stat[dir].attempts === 0);
+  if (untested) return untested;
+  const rows = DECK_DRILL_DIRECTIONS.map((dir) => ({
+    dir,
+    wrong: Math.max(0, summary.stat[dir].attempts - summary.stat[dir].correct),
+    strength: _deckDirStrength(summary.stat[dir]),
+  }));
+  rows.sort((a, b) => b.wrong - a.wrong || a.strength - b.strength);
+  return rows[0].dir;
+}
+
+function _deckDirectionLabel(dir) {
+  if (dir === 'jp2id') return 'Jepang → arti';
+  if (dir === 'id2jp') return 'arti → Jepang';
+  return 'dengar → arti';
+}
+
+function _deckPriority(summary) {
+  if (!summary.attempts) return 7;
+  const weakest = Math.min(...DECK_DRILL_DIRECTIONS.map((dir) => _deckDirStrength(summary.stat[dir])));
+  const lastSeen = Math.max(...DECK_DRILL_DIRECTIONS.map((dir) => summary.stat[dir].lastSeen));
+  const ageBoost = !lastSeen ? 1 : Math.max(0, Math.min(1.5, (Date.now() - lastSeen) / 86400000 / 14));
+  return (summary.mastered ? 0 : 4) + (1 - summary.accuracy) * 5 + Math.max(0, 1 - weakest) * 2 + ageBoost;
+}
+
+function _deckRecordAnswer(item, dir, correct) {
+  const store = _deckReadMastery();
+  const key = _deckKey(item);
+  const stat = _deckStat(item, store);
+  const target = stat[dir];
+  target.attempts += 1;
+  if (correct) target.correct += 1;
+  target.streak = correct ? target.streak + 1 : 0;
+  target.lastSeen = Date.now();
+  store.items[key] = stat;
+  try { localStorage.setItem(DECK_MASTERY_KEY, JSON.stringify(store)); } catch (e) { /* storage can be unavailable */ }
+}
+
+function _deckMakeQuestion(pool, item, dir, retryCount, baseOrder) {
+  const keyFn = dir === 'id2jp'
+    ? (entry) => String(entry.japanese || '').trim().toLowerCase()
+    : (entry) => String(entry.indonesian || '').trim().toLowerCase();
+  const distract = pickDistractors(pool, item, Math.min(3, pool.length - 1), keyFn);
+  return {
+    item,
+    dir,
+    opts: _deckShuffle([item, ...distract]),
+    retryCount: retryCount || 0,
+    isRetry: (retryCount || 0) > 0,
+    baseOrder: baseOrder || 1,
+  };
+}
+
+function _deckSetFocus(active) {
+  const cards = document.getElementById('deck-card-wrap');
+  if (cards) cards.hidden = !!active;
+  if (active) {
+    const drill = document.getElementById('deck-drill');
+    if (drill) requestAnimationFrame(() => drill.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+}
+
+function _deckSessionInfo(number) {
+  const sessions = {
+    1: { label: 'Kenali', description: 'Lihat kata Jepang lalu pilih arti yang tepat.' },
+    2: { label: 'Balik arah', description: 'Lihat arti lalu pilih kata Jepang yang tepat.' },
+    3: { label: 'Penguatan', description: 'Dengar kata atau perkuat arah yang masih paling lemah.' },
+  };
+  return sessions[number] || sessions[1];
+}
+
+function _deckBeginSession(st, number, questions) {
+  st.session = number;
+  st.questions = questions;
+  st.idx = 0;
+  st.targetCount = questions.length;
+  st.answered = false;
+  st.resolved = new Set();
+  st.sessionAttempts = 0;
+  st.sessionCorrect = 0;
+  st.sessionWrong = 0;
+  st.streak = 0;
+  st.baseQuestionCount += questions.length;
+  deckDrillRender();
+}
+
+function _deckWeakItems(pool) {
+  const store = _deckReadMastery();
+  return pool.map((item) => ({ item, summary: _deckSummary(item, store) }))
+    .filter((row) => row.summary.attempts > 0 && !row.summary.mastered)
+    .sort((a, b) => _deckPriority(b.summary) - _deckPriority(a.summary));
+}
+
+function deckDrillShowOverview() {
   const pool = (window.__deckData || []).filter((it) => it.japanese && it.indonesian);
   const body = document.getElementById('deck-drill-body');
   if (!body) return;
   if (pool.length < 2) { body.innerHTML = '<div class="kana-drill-progress">Kata belum cukup untuk drill.</div>'; return; }
-  const queue = pool.slice().sort(() => Math.random() - 0.5);
-  window.__deckDrill = { pool, queue, mastered: 0, wrong: 0, total: queue.length, current: null, currentQ: null, answered: false };
-  deckDrillAdvance();
-};
-function deckDrillAdvance() {
-  const st = window.__deckDrill;
-  if (!st) return;
-  if (st.queue.length === 0) { st.current = null; deckDrillRender(); return; }
-  st.current = st.queue.shift();
-  const optsCount = Math.min(4, st.pool.length);
-  const dir = ['jp2id', 'id2jp', 'audio2id'][Math.floor(Math.random() * 3)];
-  const keyFn = dir === 'id2jp' ? (x) => x.japanese : (x) => x.indonesian;
-  const distract = pickDistractors(st.pool, st.current, optsCount - 1, keyFn);
-  const opts = [st.current, ...distract].sort(() => Math.random() - 0.5);
-  st.currentQ = { dir, opts };
-  st.answered = false;
-  deckDrillRender();
+  const store = _deckReadMastery();
+  const rows = pool.map((item) => ({ item, summary: _deckSummary(item, store) }));
+  const mastered = rows.filter((row) => row.summary.mastered).length;
+  const review = rows.filter((row) => row.summary.attempts > 0 && !row.summary.mastered);
+  const fresh = rows.length - mastered - review.length;
+  const weakBtn = document.getElementById('deck-drill-weak-btn');
+  if (weakBtn) weakBtn.hidden = review.length === 0;
+  const preview = review.slice().sort((a, b) => _deckPriority(b.summary) - _deckPriority(a.summary)).slice(0, 5);
+  body.innerHTML = `
+    <div class="kana-mastery-summary" aria-label="Ringkasan penguasaan kosakata">
+      <div class="kana-mastery-card mastered"><strong>${mastered}</strong><span>Dikuasai</span></div>
+      <div class="kana-mastery-card review"><strong>${review.length}</strong><span>Perlu diulang</span></div>
+      <div class="kana-mastery-card"><strong>${fresh}</strong><span>Belum dilatih</span></div>
+    </div>
+    <div class="kana-session-plan" aria-label="Tiga sesi latihan kosakata">
+      <div class="kana-session-step"><b>1</b><span>Kenali</span></div>
+      <div class="kana-session-step"><b>2</b><span>Balik arah</span></div>
+      <div class="kana-session-step"><b>3</b><span>Dengar & kuatkan</span></div>
+    </div>
+    <div class="kana-mastery-note"><strong>3 sesi, maksimal 12 soal per sesi.</strong> Kata baru dan yang sering salah muncul lebih dulu. Jawaban salah akan muncul lagi setelah beberapa soal. Daftar kartu disembunyikan selama latihan dan progres tersimpan di perangkat ini.</div>
+    ${preview.length ? `<div class="kana-weak-preview"><span class="kana-weak-label">Fokus berikutnya</span>${preview.map(({ item, summary }) => `<span class="kana-weak-chip"><b lang="ja">${escapeHtml(item.japanese)}</b> · ${escapeHtml(_deckDirectionLabel(_deckWeakDirection(summary)))}</span>`).join('')}</div>` : ''}`;
+  window.__deckDrill = null;
+  _deckSetFocus(false);
 }
+
+window.deckDrillShowOverview = deckDrillShowOverview;
+
+window.deckDrillStart = (mode = 'adaptive') => {
+  const pool = (window.__deckData || []).filter((it) => it.japanese && it.indonesian);
+  const body = document.getElementById('deck-drill-body');
+  if (!body) return;
+  if (pool.length < 2) { body.innerHTML = '<div class="kana-drill-progress">Kata belum cukup untuk drill.</div>'; return; }
+  const store = _deckReadMastery();
+  let ranked = pool.map((item) => ({ item, summary: _deckSummary(item, store) }));
+  if (mode === 'weak') {
+    ranked = ranked.filter((row) => row.summary.attempts > 0 && !row.summary.mastered);
+  } else {
+    const pending = ranked.filter((row) => !row.summary.mastered);
+    if (pending.length) ranked = pending;
+  }
+  if (!ranked.length) { deckDrillShowOverview(); return; }
+  ranked = ranked.map((row) => ({ ...row, priority: _deckPriority(row.summary) + Math.random() * 1.25 }))
+    .sort((a, b) => b.priority - a.priority);
+  const targetCount = Math.min(ranked.length, DECK_DRILL_ITEMS_PER_SESSION);
+  const selected = ranked.slice(0, targetCount);
+  const questions = selected.map(({ item }, index) => _deckMakeQuestion(pool, item, 'jp2id', 0, index + 1));
+  const st = {
+    pool,
+    selected: selected.map((row) => row.item),
+    mode,
+    session: 1,
+    attempts: 0,
+    correct: 0,
+    wrong: 0,
+    firstCorrect: 0,
+    baseQuestionCount: 0,
+    streak: 0,
+    bestStreak: 0,
+    mistakeKeys: new Set(),
+  };
+  window.__deckDrill = st;
+  _deckSetFocus(true);
+  _deckBeginSession(st, 1, questions);
+};
+
+window.deckDrillNextSession = () => {
+  const st = window.__deckDrill;
+  if (!st || st.session >= DECK_DRILL_SESSION_COUNT) return;
+  const next = st.session + 1;
+  let rows = _deckShuffle(st.selected).map((item) => ({ item, summary: _deckSummary(item) }));
+  if (next === 3) {
+    rows = rows.sort((a, b) => {
+      const mistakeDiff = Number(st.mistakeKeys.has(_deckKey(b.item))) - Number(st.mistakeKeys.has(_deckKey(a.item)));
+      return mistakeDiff || (_deckPriority(b.summary) - _deckPriority(a.summary));
+    });
+  }
+  const questions = rows.map(({ item, summary }, index) => {
+    const dir = next === 2 ? 'id2jp' : _deckWeakDirection(summary);
+    return _deckMakeQuestion(st.pool, item, dir, 0, index + 1);
+  });
+  _deckBeginSession(st, next, questions);
+};
+
+function _deckWeaknessMarkup(pool) {
+  const weak = _deckWeakItems(pool).slice(0, 5);
+  if (!weak.length) return '';
+  return `<div class="kana-weakness-list">
+    <div class="kana-weakness-title">Kosakata yang perlu diperkuat</div>
+    ${weak.map(({ item, summary }) => {
+      const pct = Math.round(summary.accuracy * 100);
+      return `<div class="kana-weakness-item deck-weakness-item">
+        <div class="deck-weakness-word" lang="ja">${escapeHtml(item.japanese)}${item.reading && item.reading !== item.japanese ? `<small>${escapeHtml(item.reading)}</small>` : ''}</div>
+        <div class="kana-weakness-info"><strong>${escapeHtml(item.indonesian)}</strong><span>Fokus: ${escapeHtml(_deckDirectionLabel(_deckWeakDirection(summary)))}</span></div>
+        <div class="kana-weakness-rate">${pct}%</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
 function deckDrillRender() {
   const st = window.__deckDrill;
   const body = document.getElementById('deck-drill-body');
   if (!st || !body) return;
-  if (!st.current) {
+  if (st.idx >= st.questions.length) {
+    if (st.session < DECK_DRILL_SESSION_COUNT) {
+      const sessionPct = st.sessionAttempts ? Math.round((st.sessionCorrect / st.sessionAttempts) * 100) : 0;
+      const next = _deckSessionInfo(st.session + 1);
+      body.innerHTML = `<div class="kana-session-break">
+        <div class="kana-session-check">✓</div>
+        <h3>Sesi ${st.session} selesai</h3>
+        <p>${sessionPct}% akurat · ${st.sessionCorrect} benar, ${st.sessionWrong} salah</p>
+        <div class="kana-session-next"><strong>Berikutnya: ${escapeHtml(next.label)}</strong><br>${escapeHtml(next.description)}</div>
+        <button class="btn-primary" type="button" onclick="deckDrillNextSession()">Lanjut Sesi ${st.session + 1}</button>
+      </div>`;
+      return;
+    }
+    const pct = st.attempts ? Math.round((st.correct / st.attempts) * 100) : 0;
+    const recallPct = st.baseQuestionCount ? Math.round((st.firstCorrect / st.baseQuestionCount) * 100) : 0;
+    const weakCount = _deckWeakItems(st.pool).length;
+    _deckSetFocus(false);
     body.innerHTML = `<div class="kana-drill-result">
-      <div class="kdr-score">${st.total} kartu dikuasai</div>
-      <div class="kdr-pct">${st.wrong} kali salah${st.wrong === 0 ? ' — sempurna! 🎉' : ' — terus berlatih ya.'}</div>
-      <button class="btn-primary" type="button" onclick="deckDrillStart()">Ulangi Drill</button>
+      <div class="kdr-score">${pct}%</div>
+      <div class="kdr-pct">3 sesi selesai · ${st.correct} benar, ${st.wrong} salah</div>
+      <div class="kdr-caption">${recallPct}% langsung ingat tanpa pengulangan · runtun terbaik ${st.bestStreak}</div>
+      ${_deckWeaknessMarkup(st.pool)}
+      <div class="kana-drill-result-actions">
+        <button class="btn-secondary" type="button" onclick="deckDrillShowOverview()">Lihat Perkembangan</button>
+        ${weakCount ? '<button class="btn-secondary" type="button" onclick="deckDrillStart(\'weak\')">Latih Kelemahan</button>' : ''}
+        <button class="btn-primary" type="button" onclick="deckDrillStart('adaptive')">Latihan Lagi</button>
+      </div>
     </div>`;
     return;
   }
-  const q = st.currentQ;
-  const item = st.current;
-  const remaining = st.queue.length + 1;
+  const q = st.questions[st.idx];
+  const item = q.item;
   let promptHtml, hint, optsHtml;
   if (q.dir === 'audio2id') {
     hint = 'Dengar lalu pilih artinya.';
@@ -10189,59 +10463,93 @@ function deckDrillRender() {
       style="display:flex;align-items:center;justify-content:center;width:64px;height:64px;margin:10px auto 2px;border-radius:50%;border:1px solid var(--du-border,#ece8e1);background:var(--du-surface,#fff);color:var(--brand-red,#C8102E);cursor:pointer;">${AUDIO_SVG}</button>`;
     optsHtml = q.opts.map((o, oi) => `<button class="kana-drill-opt" type="button" data-oi="${oi}" onclick="deckDrillAnswer(${oi})">${escapeHtml(o.indonesian)}</button>`).join('');
   } else if (q.dir === 'jp2id') {
-    hint = 'Artinya?';
+    hint = 'Apa artinya?';
     promptHtml = `<div class="kana-drill-prompt" lang="ja">${escapeHtml(item.japanese)}${item.reading ? `<div style="font-size:14px;font-weight:600;color:var(--du-ink-3,#8a8a8a);margin-top:4px;">${escapeHtml(item.reading)}</div>` : ''}</div>`;
     optsHtml = q.opts.map((o, oi) => `<button class="kana-drill-opt" type="button" data-oi="${oi}" onclick="deckDrillAnswer(${oi})">${escapeHtml(o.indonesian)}</button>`).join('');
   } else {
-    hint = 'Kata yang mana?';
+    hint = 'Kata Jepang yang mana?';
     promptHtml = `<div class="kana-drill-prompt" style="font-size:28px;">${escapeHtml(item.indonesian)}</div>`;
     optsHtml = q.opts.map((o, oi) => `<button class="kana-drill-opt" type="button" data-oi="${oi}" lang="ja" onclick="deckDrillAnswer(${oi})">
-      <span style="display:block;">${escapeHtml(o.japanese)}</span>
+      <span style="display:block;font-size:18px;">${escapeHtml(o.japanese)}</span>
       ${o.reading && o.reading !== o.japanese ? `<span style="display:block;font-size:12px;font-weight:600;color:var(--du-ink-3,#8a8a8a);margin-top:3px;">${escapeHtml(o.reading)}</span>` : ''}
     </button>`).join('');
   }
+  const resolved = st.resolved.size;
+  const accuracy = st.sessionAttempts ? Math.round((st.sessionCorrect / st.sessionAttempts) * 100) : 0;
+  const sessionProgress = st.targetCount ? resolved / st.targetCount : 0;
+  const progress = Math.round((((st.session - 1) + sessionProgress) / DECK_DRILL_SESSION_COUNT) * 100);
+  const sessionInfo = _deckSessionInfo(st.session);
   body.innerHTML = `
-    <div class="kana-drill-progress">Tersisa ${remaining} dari ${st.total} · Salah ${st.wrong}x</div>
+    <div class="kana-drill-session-meta">
+      <span>Sesi <strong>${st.session}/${DECK_DRILL_SESSION_COUNT}</strong></span>
+      <span>Selesai <strong>${resolved}/${st.targetCount}</strong></span>
+      <span>Akurasi <strong>${accuracy}%</strong></span>
+      <span>Runtun <strong>${st.streak}</strong></span>
+    </div>
+    <div class="kana-drill-meter" role="progressbar" aria-label="Kemajuan tiga sesi drill kosakata" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><span style="width:${progress}%"></span></div>
+    <div class="kana-drill-progress">Sesi ${st.session}: ${escapeHtml(sessionInfo.label)} · ${q.isRetry ? `Ulang soal ${q.baseOrder}` : `Soal ${q.baseOrder} dari ${st.targetCount}`} · ${escapeHtml(_deckDirectionLabel(q.dir))}</div>
     ${promptHtml}
     <div class="kana-drill-hint">${hint}</div>
     <div class="kana-drill-opts">${optsHtml}</div>
-    <div class="kana-drill-feedback" id="deck-drill-feedback"></div>`;
+    <div class="kana-drill-feedback" id="deck-drill-feedback" aria-live="polite"></div>`;
+  st.answered = false;
   if (q.dir === 'audio2id') deckDrillPlayAudio();
 }
+
 window.deckDrillPlayAudio = (btn) => {
   const st = window.__deckDrill;
-  if (!st || !st.current) return;
-  playTTS(st.current.japanese || st.current.reading || '', btn || document.getElementById('deck-drill-audio'));
+  const q = st && st.questions && st.questions[st.idx];
+  if (!q || !q.item) return;
+  playTTS(q.item.japanese || q.item.reading || '', btn || document.getElementById('deck-drill-audio'));
 };
+
 window.deckDrillAnswer = (oi) => {
   const st = window.__deckDrill;
-  if (!st || st.answered || !st.current) return;
-  const q = st.currentQ;
+  if (!st || st.answered) return;
+  const q = st.questions[st.idx];
+  if (!q) return;
   st.answered = true;
-  const correct = q.opts[oi] === st.current;
+  const correct = q.opts[oi] === q.item;
+  const key = _deckKey(q.item);
+  st.attempts++;
+  st.sessionAttempts++;
+  _deckRecordAnswer(q.item, q.dir, correct);
   if (correct) {
-    st.mastered++;
+    st.correct++;
+    st.sessionCorrect++;
+    st.streak++;
+    st.bestStreak = Math.max(st.bestStreak, st.streak);
+    if (!q.isRetry) st.firstCorrect++;
+    st.resolved.add(key);
   } else {
     st.wrong++;
-    const q2 = st.queue;
-    const minPos = Math.min(2, q2.length);
-    const pos = q2.length === 0 ? 0 : minPos + Math.floor(Math.random() * (q2.length - minPos + 1));
-    q2.splice(pos, 0, st.current);
+    st.sessionWrong++;
+    st.streak = 0;
+    st.mistakeKeys.add(key);
+    if (q.retryCount < 2) {
+      const retry = _deckMakeQuestion(st.pool, q.item, q.dir, q.retryCount + 1, q.baseOrder);
+      const insertAt = Math.min(st.questions.length, st.idx + 3);
+      st.questions.splice(insertAt, 0, retry);
+    } else {
+      st.resolved.add(key);
+    }
   }
-  document.querySelectorAll('#deck-drill-body .kana-drill-opt').forEach((b, i) => {
-    b.disabled = true;
-    if (q.opts[i] === st.current) b.classList.add('correct');
-    else if (i === oi) b.classList.add('wrong');
+  document.querySelectorAll('#deck-drill-body .kana-drill-opt').forEach((button, index) => {
+    button.disabled = true;
+    if (q.opts[index] === q.item) button.classList.add('correct');
+    else if (index === oi) button.classList.add('wrong');
   });
   const fb = document.getElementById('deck-drill-feedback');
   if (fb) {
-    const answerLabel = q.dir === 'id2jp' ? st.current.japanese : st.current.indonesian;
-    const showReading = q.dir === 'id2jp' && st.current.reading && st.current.reading !== st.current.japanese;
+    const reading = q.item.reading && q.item.reading !== q.item.japanese
+      ? ` <span lang="ja">(${escapeHtml(q.item.reading)})</span>`
+      : '';
     fb.innerHTML = correct
-      ? '<span class="kdf-ok">✓ Benar!</span>'
-      : `<span class="kdf-no">✗ Jawaban: <strong${q.dir === 'id2jp' ? ' lang="ja"' : ''}>${escapeHtml(answerLabel)}</strong>${showReading ? ` <span lang="ja">(${escapeHtml(st.current.reading)})</span>` : ''}</span>`;
+      ? `<span class="kdf-ok">✓ ${q.isRetry ? 'Sudah ingat!' : 'Benar!'}</span>`
+      : `<span class="kdf-no">✗ <strong lang="ja">${escapeHtml(q.item.japanese)}</strong>${reading} = ${escapeHtml(q.item.indonesian)}${q.retryCount < 2 ? ' · akan muncul lagi' : ''}</span>`;
   }
-  setTimeout(() => { if (window.__deckDrill === st) deckDrillAdvance(); }, correct ? 750 : 1500);
+  st.idx++;
+  setTimeout(() => { if (window.__deckDrill === st) deckDrillRender(); }, correct ? 700 : 1700);
 };
 
 // Drill recall kanji: pola identik drill kosakata (antrian-sampai-tuntas).
