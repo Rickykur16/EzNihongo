@@ -17,7 +17,7 @@
   function render() {
     const recording = tab === 'recordings';
     const items = recording ? data.recordings : data.upcoming;
-    app.innerHTML = `<div class="page"><section class="hero"><div class="eyebrow">LIVE CLASS</div><h1>${esc(data.course.title)}</h1><p class="muted">Kelas langsung dan rekaman yang terhubung ke Pelajaran yang sudah ada.</p></section><div class="tabs" role="tablist" aria-label="Jenis Live Class"><button class="${!recording ? 'active' : ''}" data-tab="upcoming" type="button" role="tab" aria-selected="${!recording}">Upcoming</button><button class="${recording ? 'active' : ''}" data-tab="recordings" type="button" role="tab" aria-selected="${recording}">Recordings</button></div>${cards(items, recording)}</div>`;
+    app.innerHTML = `<div class="page"><section class="hero"><div class="eyebrow">生配信 · LIVE CLASS</div><h1>${esc(data.course.title)}</h1><p>Kelas langsung dan rekaman yang terhubung ke Pelajaran yang sudah ada.</p></section><div class="tabs" role="tablist" aria-label="Jenis Live Class"><button class="${!recording ? 'active' : ''}" data-tab="upcoming" type="button" role="tab" aria-selected="${!recording}">Mendatang</button><button class="${recording ? 'active' : ''}" data-tab="recordings" type="button" role="tab" aria-selected="${recording}">Rekaman</button></div>${cards(items, recording)}</div>`;
     app.querySelectorAll('[data-tab]').forEach((button) => { button.onclick = () => { tab = button.dataset.tab; render(); }; });
   }
   function renderError(error) {

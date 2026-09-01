@@ -1,3 +1,157 @@
-/* Shared navigation for the student platform pages.  Belajar keeps its
-   established in-lesson header; the other destinations use this compact bar. */
-.student-nav{min-height:66px;padding:10px max(20px,calc((100vw - 1080px)/2));display:flex;align-items:center;gap:20px;background:#fff;border-bottom:1px solid #e3e8e2}.student-nav .brand{flex:0 0 auto}.student-nav .brand img{display:block;height:35px;mix-blend-mode:multiply}.student-nav nav{display:flex;align-items:center;gap:16px;flex:1;min-width:0}.student-nav nav a{color:#647169;text-decoration:none;font-weight:750;white-space:nowrap;border-radius:7px;padding:6px 2px}.student-nav nav a[aria-current="page"]{color:#215c43;box-shadow:inset 0 -2px #215c43}.student-nav button{flex:0 0 auto;border:1px solid #d8ded8;background:#fff;color:#304238;padding:8px 11px;border-radius:9px;font:inherit;font-weight:750;cursor:pointer}.student-nav a:focus-visible,.student-nav button:focus-visible,.tabs button:focus-visible,.btn:focus-visible,.primary:focus-visible,.secondary:focus-visible,.category-row button:focus-visible,.count:focus-visible,.option:focus-visible,.token:focus-visible{outline:3px solid #91bda5;outline-offset:3px}@media(max-width:720px){.student-nav{gap:12px;padding-inline:16px}.student-nav nav{gap:10px;overflow-x:auto;scrollbar-width:thin;padding-block:3px}.student-nav .brand img{height:31px}.student-nav button{padding:7px 9px;font-size:13px}}
+/* Shared navigation for Dashboard, Belajar, Review, Live Class, and Progress. */
+.student-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  min-height: 68px;
+  padding: 10px max(24px, calc((100vw - 1120px) / 2));
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  background: rgba(253, 252, 249, 0.92);
+  border-bottom: 1px solid var(--paper-300);
+  box-shadow: 0 1px 0 rgba(20, 15, 10, 0.02);
+  backdrop-filter: blur(16px);
+}
+
+.student-nav .brand {
+  flex: 0 0 auto;
+  border-radius: var(--radius-sm);
+}
+
+.student-nav .brand img {
+  display: block;
+  width: auto;
+  height: 36px;
+  mix-blend-mode: multiply;
+}
+
+.student-nav nav {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+
+.student-nav nav a {
+  position: relative;
+  min-height: 38px;
+  padding: 9px 11px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-500);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color var(--duration-fast), color var(--duration-fast);
+}
+
+.student-nav nav a:hover {
+  background: var(--paper-200);
+  color: var(--ink-900);
+}
+
+.student-nav nav a[aria-current="page"] {
+  background: var(--brand-red-soft);
+  color: var(--brand-red);
+}
+
+.student-nav nav a[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  right: 11px;
+  bottom: 4px;
+  left: 11px;
+  height: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--brand-red);
+}
+
+.student-nav > button {
+  min-height: 38px;
+  flex: 0 0 auto;
+  border: 1px solid var(--paper-300);
+  border-radius: var(--radius-md);
+  background: var(--surface-white);
+  color: var(--ink-700);
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.student-nav > button:hover {
+  border-color: var(--brand-red);
+  background: var(--brand-red-soft);
+  color: var(--brand-red);
+}
+
+.student-nav a:focus-visible,
+.student-nav button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@media (max-width: 760px) {
+  body {
+    padding-bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+
+  .student-nav {
+    position: relative;
+    min-height: 58px;
+    padding: 9px 16px;
+    justify-content: space-between;
+    backdrop-filter: none;
+  }
+
+  .student-nav .brand img {
+    height: 32px;
+  }
+
+  .student-nav > button {
+    min-height: 36px;
+    padding: 7px 11px;
+  }
+
+  .student-nav nav {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 60;
+    height: calc(62px + env(safe-area-inset-bottom));
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
+    background: rgba(255, 255, 255, 0.96);
+    border-top: 1px solid var(--paper-300);
+    box-shadow: 0 -8px 28px rgba(20, 15, 10, 0.08);
+    backdrop-filter: blur(16px);
+  }
+
+  .student-nav nav a {
+    min-width: 0;
+    min-height: 50px;
+    padding: 8px 2px 7px;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    font-size: 10.5px;
+    line-height: 1.15;
+    text-align: center;
+    text-overflow: ellipsis;
+  }
+
+  .student-nav nav a[aria-current="page"]::after {
+    right: 28%;
+    bottom: 4px;
+    left: 28%;
+  }
+}
