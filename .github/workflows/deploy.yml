@@ -50,6 +50,12 @@ jobs:
             git fetch --all --prune
             git reset --hard origin/main
 
+            # HTML menentukan versi asset dan redirect entry siswa. Jangan
+            # biarkan browser menyimpan index/dashboard lama lintas deploy.
+            install -m 0644 backend/deploy/nginx-html-cache.conf /etc/nginx/conf.d/eznihongo-html-cache.conf
+            nginx -t
+            systemctl reload nginx
+
             cd backend
             # --omit=dev sengaja: backend hanya punya runtime deps; lock-checked
             # install lebih cepat dan menjamin parity dengan CI di atas.
