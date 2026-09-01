@@ -156,3 +156,13 @@ window.ezLogout = ezLogout;
 window.ezGetMe = ezGetMe;
 window.mirrorUserToLocal = mirrorUserToLocal;
 window.ezRequireAuth = ezRequireAuth;
+
+// Keep student-facing API failures clear and consistent across the new
+// platform pages; route/error codes should never be shown to learners.
+function ezStudentErrorMessage(error, subject = 'Halaman ini') {
+  const code = String(error?.message || '');
+  if (code === 'AUTH_EXPIRED') return 'Sesi kamu sudah berakhir. Silakan masuk kembali.';
+  if (code === 'not_enrolled' || code === 'course_not_found') return 'Akses ke kelas ini tidak tersedia atau sudah tidak aktif.';
+  return `${subject} belum bisa dimuat. Periksa koneksi internet lalu coba lagi.`;
+}
+window.ezStudentErrorMessage = ezStudentErrorMessage;

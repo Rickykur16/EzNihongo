@@ -24,5 +24,6 @@ export function organizeStudentLiveClasses(liveClasses, now = new Date()) {
   }).sort((a, b) => new Date(value(a, 'startsAt', 'starts_at')) - new Date(value(b, 'startsAt', 'starts_at')));
   const recordings = (liveClasses || []).filter((item) => value(item, 'status', 'status') === 'completed' && !!value(item, 'recordingUrl', 'recording_url'))
     .sort((a, b) => new Date(value(b, 'startsAt', 'starts_at')) - new Date(value(a, 'startsAt', 'starts_at')));
-  return { next: upcoming[0] || null, upcoming, recordings };
+  const completedWithoutRecording = (liveClasses || []).filter((item) => value(item, 'status', 'status') === 'completed' && !value(item, 'recordingUrl', 'recording_url')).length;
+  return { next: upcoming[0] || null, upcoming, recordings, completedWithoutRecording };
 }

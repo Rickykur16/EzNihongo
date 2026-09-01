@@ -21,6 +21,7 @@ test('student recordings contain only completed classes that have a recording UR
     { id: 'scheduled', status: 'scheduled', startsAt: '2026-08-31T12:00:00Z', recordingUrl: 'https://example.test/not-ready' },
   ], now);
   assert.deepEqual(lists.recordings.map((item) => item.id), ['recording']);
+  assert.equal(lists.completedWithoutRecording, 1);
 });
 
 test('Join Class opens only from fifteen minutes before the class until its end', () => {

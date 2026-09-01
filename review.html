@@ -6,9 +6,12 @@
   <title>Smart Review — EzNihongo</title>
   <link rel="stylesheet" href="styles/tokens.css">
   <link rel="stylesheet" href="review.css">
+  <link rel="stylesheet" href="styles/student-nav.css">
+  <link rel="stylesheet" href="styles/student-platform.css">
+  <link rel="stylesheet" href="styles/review-polish.css">
 </head>
 <body>
-  <header class="review-nav"><a href="welcome.html" class="brand"><img src="logo.png" alt="EzNihongo"></a><a href="welcome.html" class="back-link">← Kembali belajar</a></header>
+  <header class="student-nav"><a href="dashboard.html" class="brand"><img src="logo.png" alt="EzNihongo"></a><nav aria-label="Navigasi siswa"><a href="dashboard.html">Dashboard</a><a href="welcome.html">Belajar</a><a aria-current="page" href="review.html">Review</a><a href="live.html">Live Class</a><a href="progress.html">Progress</a></nav><button id="logout" type="button">Keluar</button></header>
   <main class="review-main" id="review-app" aria-live="polite"><p class="loading">Memuat Smart Review…</p></main>
   <script src="api-client.js"></script>
   <script src="review.js"></script>

@@ -45,13 +45,13 @@ export async function loadEntitledLiveClasses(user, courseSlug) {
   const courseRow = course.rows[0];
   const [scheduled, completed] = await Promise.all([
     classesWithLessons(courseRow.id, `lc.status = 'scheduled' AND COALESCE(lc.ends_at, lc.starts_at + INTERVAL '3 hours') >= NOW()`, []),
-    classesWithLessons(courseRow.id, `lc.status = 'completed' AND lc.recording_url IS NOT NULL`, []),
+    classesWithLessons(courseRow.id, `lc.status = 'completed'`, []),
   ]);
   return { course: courseRow, ...organizeStudentLiveClasses([...scheduled, ...completed]) };
 }
 
 export async function loadLiveClassSummary(user, courseSlug) {
   const data = await loadEntitledLiveClasses(user, courseSlug);
-  if (data.error) return { next: null, recentRecordings: [] };
-  return { next: data.next, recentRecordings: data.recordings.slice(0, 3) };
+  if (data.error) return { next: null, recentRecordings: [], completedWithoutRecording: 0 };
+  return { next: data.next, recentRecordings: data.recordings.slice(0, 3), completedWithoutRecording: data.completedWithoutRecording };
 }
