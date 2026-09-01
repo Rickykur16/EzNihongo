@@ -131,7 +131,7 @@ function renderCourseUI(course) {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-        window.location.href = `../dashboard.html?course=${encodeURIComponent(course.slug)}&new=1`;
+        window.location.href = `../dashboard.html?v=20260902-1&course=${encodeURIComponent(course.slug)}&new=1`;
       } catch (err) {
         btn.textContent = "Lanjut ke Pembayaran →";
         btn.disabled = false;
@@ -183,7 +183,7 @@ async function init() {
     enrolled = JSON.parse(localStorage.getItem("ez_courses") || "[]");
   }
   if (enrolled.includes(slug)) {
-    window.location.replace(`../dashboard.html?course=${encodeURIComponent(slug)}`);
+    window.location.replace(`../dashboard.html?v=20260902-1&course=${encodeURIComponent(slug)}`);
     return;
   }
 

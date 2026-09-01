@@ -146,7 +146,7 @@ function renderOrder(data) {
     body.innerHTML = `
       <p style="margin-bottom:14px;">${statusBadge(order.status)}</p>
       <p style="color:#525252;line-height:1.7;">Pembayaranmu sudah diverifikasi. Kelas sudah bisa diakses sekarang.</p>
-      <a href="../dashboard.html${order.courseSlug ? "?course=" + encodeURIComponent(order.courseSlug) : ""}"
+      <a href="../dashboard.html?v=20260902-1${order.courseSlug ? "&course=" + encodeURIComponent(order.courseSlug) : ""}"
          class="c-submit" style="display:block;text-align:center;text-decoration:none;margin-top:16px;">Buka Dashboard →</a>`;
     return;
   }
