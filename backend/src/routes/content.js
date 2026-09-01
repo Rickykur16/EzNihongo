@@ -202,6 +202,7 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
       // Derive contoh kosakata sama seperti "Daftar Kanji" (/api/kanji) supaya
       // kanji yang sama tampil identik di pelajaran & Daftar Kanji.
       const courseVocab = await loadCourseVocab(req.params.slug);
+      const kanjiCatalog = await loadKanjiCatalog();
       const lessonModuleById = new Map(lessons.rows.map((l) => [l.id, l.module_id]));
       for (const r of kanjiRows.rows) {
         const moduleId = lessonModuleById.get(r.lesson_id);
@@ -217,6 +218,7 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
             moduleId,
             moduleSort: moduleSortById.get(moduleId),
             courseLevel: course.rows[0].level,
+            kanjiCatalog,
           }),
           stroke_count: r.stroke_count,
           bab_kode: r.bab_kode,
@@ -434,12 +436,14 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
       [row.id]
     );
     const courseVocab = await loadCourseVocab(row.course_slug);
+    const kanjiCatalog = await loadKanjiCatalog();
     response.kanji = kanjiRows.rows.map((r) => ({
       ...r,
       compounds: deriveCompounds(r.character, r.compounds, courseVocab, {
         moduleId: row.module_id,
         moduleSort: row.module_sort,
         courseLevel: row.course_level,
+        kanjiCatalog,
       }),
     }));
   }

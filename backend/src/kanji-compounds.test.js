@@ -7,10 +7,12 @@ import {
   extractKanjiCharacters,
   kanjiUsageKind,
   normalizeKanjiCompounds,
+  vocabularyKanjiLevel,
 } from './kanji-compounds.js';
 
 test('extracts unique Han characters without kana or punctuation', () => {
   assert.deepEqual(extractKanjiCharacters('日記を日本で書く。'), ['日', '記', '本', '書']);
+  assert.deepEqual(extractKanjiCharacters('時々・二〇二四年'), ['時', '二', '四', '年']);
 });
 
 test('keeps single, compound, and okurigana forms distinct', () => {
@@ -31,6 +33,11 @@ test('normalizes complete manual words, validates target, and deduplicates', () 
 });
 
 test('manual words stay first while same-level vocabulary can come from another Bab', () => {
+  const kanjiCatalog = buildKanjiCatalog([
+    { id: 'day', character: '日', introduced_level: 'N5' },
+    { id: 'book', character: '本', introduced_level: 'N5' },
+    { id: 'language', character: '語', introduced_level: 'N4' },
+  ]);
   const vocab = [
     { vocabulary_id: 'v1', module_id: 'm1', course_level: 'N4', module_title: 'Bab 1', module_sort: 1, vocab_sort: 1, japanese: '日本', reading: 'にほん', indonesian: 'Jepang' },
     { vocabulary_id: 'v2', module_id: 'm2', course_level: 'N4', module_title: 'Bab 2', module_sort: 2, vocab_sort: 1, japanese: '日本語', reading: 'にほんご', indonesian: 'bahasa Jepang', example_japanese: '日本語を話します。' },
@@ -38,17 +45,22 @@ test('manual words stay first while same-level vocabulary can come from another 
   ];
   const result = deriveCompounds('日', [
     { japanese: '日本語', reading: 'にほんご', indonesian: 'bahasa Jepang' },
-  ], vocab, { moduleId: 'm2', moduleSort: 2, courseLevel: 'N4' });
+  ], vocab, { moduleId: 'm2', moduleSort: 2, courseLevel: 'N4', kanjiCatalog });
   assert.equal(result.length, 2);
   assert.equal(result[0].japanese, '日本語');
   assert.equal(result[0].source, 'manual');
   assert.equal(result[0].scope, 'current');
   assert.equal(result[0].usageLevel, 'N4');
+  assert.equal(vocabularyKanjiLevel('日本', kanjiCatalog), 'N5');
   assert.equal(result[0].exampleJapanese, '日本語を話します。');
   assert.equal(result[1].japanese, '日本');
 });
 
 test('returns every same-level word without a cap and excludes later JLPT levels', () => {
+  const kanjiCatalog = buildKanjiCatalog([
+    { id: 'day', character: '日', introduced_level: 'N5' },
+    { id: 'book', character: '本', introduced_level: 'N5' },
+  ]);
   const vocab = Array.from({ length: 10 }, (_, index) => ({
     vocabulary_id: `v${index + 1}`,
     module_id: 'm5',
@@ -76,11 +88,33 @@ test('returns every same-level word without a cap and excludes later JLPT levels
     moduleId: 'm5',
     moduleSort: 5,
     courseLevel: 'N5',
+    kanjiCatalog,
   });
 
   assert.equal(result.length, 10);
   assert.ok(result.every((item) => item.usageLevel === 'N5'));
   assert.ok(result.every((item) => item.japanese !== '休日'));
+});
+
+test('rejects words containing a higher-level or unregistered Kanji even inside an N5 course', () => {
+  const kanjiCatalog = buildKanjiCatalog([
+    { id: 'language', character: '語', introduced_level: 'N5' },
+    { id: 'outside', character: '外', introduced_level: 'N5' },
+    { id: 'come', character: '来', introduced_level: 'N5' },
+    { id: 'english', character: '英', introduced_level: 'N4' },
+  ]);
+  const vocab = [
+    { vocabulary_id: 'polite', module_id: 'm3', course_level: 'N5', module_title: 'Bab 3', module_sort: 3, vocab_sort: 1, japanese: '丁寧語', reading: 'ていねいご', indonesian: 'bahasa sopan' },
+    { vocabulary_id: 'english', module_id: 'm17', course_level: 'N5', module_title: 'Bab 17', module_sort: 17, vocab_sort: 1, japanese: '英語', reading: 'えいご', indonesian: 'Inggris' },
+    { vocabulary_id: 'loanword', module_id: 'm3', course_level: 'N5', module_title: 'Bab 3', module_sort: 3, vocab_sort: 2, japanese: '外来語', reading: 'がいらいご', indonesian: 'kata serapan' },
+  ];
+
+  const result = deriveCompounds('語', [
+    { japanese: '謙譲語', reading: 'けんじょうご', indonesian: 'bahasa merendah' },
+  ], vocab, { moduleId: 'm3', moduleSort: 3, courseLevel: 'N5', kanjiCatalog });
+
+  assert.deepEqual(result.map((item) => item.japanese), ['外来語']);
+  assert.equal(result[0].usageLevel, 'N5');
 });
 
 test('catalog keeps earliest introduction and classifies later-level usage as known', () => {

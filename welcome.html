@@ -7191,7 +7191,7 @@ function kanjiCompoundRowHtml(c, k, index) {
       </div>
       <div class="kc-meta">
         <span class="kc-badge">${escapeHtml(kanjiUsageKindLabel(c.kind))}</span>
-        ${c.usageLevel ? `<span class="kc-badge">Level ${escapeHtml(c.usageLevel)}</span>` : ''}
+        ${c.usageLevel ? `<span class="kc-badge">Kanji ${escapeHtml(c.usageLevel)}</span>` : ''}
         ${moduleLabel ? `<span class="kc-badge">${escapeHtml(moduleLabel)}</span>` : ''}
       </div>
       ${example}
@@ -8327,8 +8327,16 @@ function renderDeckLesson(course, module, lesson, nav) {
   window.__deckData = items;
   window.__deckLessonArgs = [course, module, lesson, nav];
   const knownKanji = new Map();
+  const levelRank = { N5: 1, N4: 2, N3: 3, N2: 4, N1: 5 };
   for (const item of items) {
-    for (const usage of (Array.isArray(item.kanjiUsages) ? item.kanjiUsages : [])) {
+    const itemKanjiUsages = Array.isArray(item.kanjiUsages) ? item.kanjiUsages : [];
+    const wordFitsLevel = itemKanjiUsages.length > 0
+      && itemKanjiUsages.every((usage) => usage && !['future', 'unregistered'].includes(usage.status));
+    const wordKanjiLevel = itemKanjiUsages.reduce((highest, usage) => {
+      const level = String(usage?.introducedLevel || usage?.jlpt_level || '').toUpperCase();
+      return (levelRank[level] || 0) > (levelRank[highest] || 0) ? level : highest;
+    }, '');
+    for (const usage of itemKanjiUsages) {
       if (!usage || !usage.character) continue;
       if (usage.id) {
         const cached = _kanjiByIdCache.get(usage.id) || {};
@@ -8337,14 +8345,16 @@ function renderDeckLesson(course, module, lesson, nav) {
           japanese: item.japanese || '', reading: item.reading || '', indonesian: item.indonesian || '',
           kind: /[\u3040-\u30ff]/u.test(rest) ? 'kanji_kana' : (String(item.japanese || '') === usage.character ? 'single' : 'compound'),
           source: 'course', scope: 'current', moduleTitle: module.title || '',
-          usageLevel: course.level || '',
+          usageLevel: wordKanjiLevel,
           exampleJapanese: item.examples?.[0]?.japanese || '',
           exampleReading: item.examples?.[0]?.reading || '',
           exampleIndonesian: item.examples?.[0]?.indonesian || '',
         };
-        const compounds = [...(cached.compounds || []), word].filter((row, index, all) =>
-          all.findIndex((candidate) => `${candidate.japanese}::${candidate.reading}` === `${row.japanese}::${row.reading}`) === index
-        );
+        const compounds = wordFitsLevel
+          ? [...(cached.compounds || []), word].filter((row, index, all) =>
+              all.findIndex((candidate) => `${candidate.japanese}::${candidate.reading}` === `${row.japanese}::${row.reading}`) === index
+            )
+          : (cached.compounds || []);
         _kanjiByIdCache.set(usage.id, {
           ...cached, ...usage,
           jlpt_level: usage.introducedLevel || usage.jlpt_level || '',

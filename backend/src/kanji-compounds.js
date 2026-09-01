@@ -34,7 +34,9 @@ export function extractKanjiCharacters(value) {
   const out = [];
   const seen = new Set();
   for (const char of Array.from(clean(value))) {
-    if (!/\p{Script=Han}/u.test(char) || seen.has(char)) continue;
+    // Unified_Ideograph mengecualikan tanda pengulangan 々 dan angka gaya 〇;
+    // keduanya bukan karakter Kanji mandiri yang perlu dicari levelnya.
+    if (!/\p{Unified_Ideograph}/u.test(char) || seen.has(char)) continue;
     seen.add(char);
     out.push(char);
   }
@@ -179,6 +181,34 @@ export function deriveKanjiUsages(japanese, catalog, context = {}) {
   });
 }
 
+// Sebuah kata aman ditampilkan di detail Kanji level aktif hanya jika setiap
+// Kanji penyusunnya sudah punya level yang diketahui dan diperkenalkan paling
+// lambat di level tersebut. Contoh: 英語 yang tersimpan di course N5 tetap
+// ditolak bila 英 baru terdaftar di N4; Kanji tanpa katalog juga ditolak.
+export function vocabularyKanjiLevel(japanese, catalog) {
+  const characters = extractKanjiCharacters(japanese);
+  if (!(catalog instanceof Map) || characters.length === 0) return '';
+  let highestLevel = '';
+  let highestRank = 0;
+  for (const character of characters) {
+    const found = catalog.get(character);
+    if (!found) return '';
+    const introducedRank = levelRank(found.introducedLevel);
+    if (introducedRank === 99) return '';
+    if (introducedRank > highestRank) {
+      highestRank = introducedRank;
+      highestLevel = clean(found.introducedLevel).toUpperCase();
+    }
+  }
+  return highestLevel;
+}
+
+export function vocabularyKanjiFitsLevel(japanese, catalog, currentLevel) {
+  const wordLevel = vocabularyKanjiLevel(japanese, catalog);
+  const currentRank = levelRank(currentLevel);
+  return !!wordLevel && currentRank !== 99 && levelRank(wordLevel) <= currentRank;
+}
+
 function compoundScope(vocab, context) {
   const moduleId = clean(context.moduleId);
   const currentSort = Number(context.moduleSort) || 0;
@@ -229,18 +259,24 @@ export function deriveCompounds(character, manualCompounds, vocab, context = {})
   const target = clean(character);
   if (!target) return [];
   const currentLevel = clean(context.courseLevel).toUpperCase();
+  const kanjiCatalog = context.kanjiCatalog;
   const automatic = (vocab || [])
     .filter((row) => !currentLevel || clean(row.course_level).toUpperCase() === currentLevel)
     .filter((row) => clean(row.japanese).includes(target))
     .filter((row) => clean(row.japanese) && clean(row.reading) && clean(row.indonesian))
-    .map((row) => enrichCompound(row, target, context))
+    .filter((row) => vocabularyKanjiFitsLevel(row.japanese, kanjiCatalog, currentLevel))
+    .map((row) => ({
+      ...enrichCompound(row, target, context),
+      usageLevel: vocabularyKanjiLevel(row.japanese, kanjiCatalog),
+    }))
     .sort((a, b) => autoCompoundOrder(a, b, context));
   const autoByKey = new Map();
   for (const row of automatic) if (!autoByKey.has(compoundKey(row))) autoByKey.set(compoundKey(row), row);
 
   const out = [];
   const seen = new Set();
-  for (const manual of normalizeKanjiCompounds(manualCompounds, target)) {
+  for (const manual of normalizeKanjiCompounds(manualCompounds, target)
+    .filter((row) => vocabularyKanjiFitsLevel(row.japanese, kanjiCatalog, currentLevel))) {
     const key = compoundKey(manual);
     const matched = autoByKey.get(key) || {};
     out.push({
@@ -249,7 +285,7 @@ export function deriveCompounds(character, manualCompounds, vocab, context = {})
       kind: matched.kind || kanjiUsageKind(manual.japanese, target),
       source: 'manual',
       scope: matched.scope || 'manual',
-      usageLevel: matched.usageLevel || clean(context.courseLevel).toUpperCase(),
+      usageLevel: matched.usageLevel || vocabularyKanjiLevel(manual.japanese, kanjiCatalog),
     });
     seen.add(key);
   }
