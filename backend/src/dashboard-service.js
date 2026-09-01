@@ -4,6 +4,7 @@ import { loadMastery, focusSentence } from './grammar-mastery.js';
 import { buildReviewCandidates } from './routes/smart-review.js';
 import { summarizeCandidates } from './smart-review-service.js';
 import { masteryDisplay, structuralProgressAndNext, weeklyInsight } from './dashboard-rules.js';
+import { loadLiveClassSummary } from './live-class-service.js';
 
 const WEEK_DAYS = 7;
 
@@ -124,11 +125,11 @@ export async function loadDashboard(user, courseSlug) {
   const courses = await accessibleCourses(user); const selected = courses.find((course) => course.slug === courseSlug) || courses[0] || null;
   if (!selected) return { courses: [], course: null, continueLearning: null, review: { total: 0, byCategory: {} }, mastery: null, focus: null, weeklyActivity: null, weeklyInsight: null, liveClass: null };
   const course = await structuralCourse(user.id, selected);
-  const [reviewData, generic, grammar, activity, profile] = await Promise.all([
-    buildReviewCandidates(user), genericMastery(user.id, selected.id), grammarMastery(user.id, selected.id), weeklyActivity(user.id, selected.id), query(`SELECT full_name FROM users WHERE id = $1`, [user.id]),
+  const [reviewData, generic, grammar, activity, profile, liveClass] = await Promise.all([
+    buildReviewCandidates(user), genericMastery(user.id, selected.id), grammarMastery(user.id, selected.id), weeklyActivity(user.id, selected.id), query(`SELECT full_name FROM users WHERE id = $1`, [user.id]), loadLiveClassSummary(user, selected.slug),
   ]);
   const review = summarizeCandidates(reviewData.candidates.filter((candidate) => candidate.courseId === selected.id));
   const mastery = { ...generic, grammar: grammar.display };
   const focus = pickFocus(mastery, grammar, review, course.continueLearning);
-  return { greetingName: String(profile.rows[0]?.full_name || '').trim().split(/\s+/)[0] || null, courses: courses.map(({ id, slug, title, level }) => ({ id, slug, title, level })), course: { id: course.id, slug: course.slug, title: course.title, level: course.level, progress: course.progress }, continueLearning: course.continueLearning, review, mastery, focus, weeklyActivity: activity, weeklyInsight: weeklyInsight({ reviewDue: review.total, ...activity, focus }), liveClass: null };
+  return { greetingName: String(profile.rows[0]?.full_name || '').trim().split(/\s+/)[0] || null, courses: courses.map(({ id, slug, title, level }) => ({ id, slug, title, level })), course: { id: course.id, slug: course.slug, title: course.title, level: course.level, progress: course.progress }, continueLearning: course.continueLearning, review, mastery, focus, weeklyActivity: activity, weeklyInsight: weeklyInsight({ reviewDue: review.total, ...activity, focus }), liveClass };
 }

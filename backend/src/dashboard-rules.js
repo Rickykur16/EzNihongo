@@ -6,6 +6,14 @@ export function masteryDisplay({ attempts = 0, correct = 0 }) {
   return { label: 'Kuat', percentage, attempts };
 }
 
+export function masteryDisplayFromPercentage({ attempts = 0, percentage = null }) {
+  if (attempts < 3 || percentage == null) return { label: 'Belum cukup data', percentage: null, attempts };
+  const rounded = Math.round(percentage);
+  if (rounded < 60) return { label: 'Perlu latihan', percentage: rounded, attempts };
+  if (rounded < 80) return { label: 'Sedang berkembang', percentage: rounded, attempts };
+  return { label: 'Kuat', percentage: rounded, attempts };
+}
+
 export function weeklyInsight({ reviewDue = 0, activeDays = 0, attempts = 0, accuracy = null, accuracyTrend = null, focus = null }) {
   if (reviewDue > 0 && activeDays === 0) return { kind: 'small_review', message: 'Mulai pelan: selesaikan satu sesi Smart Review singkat hari ini.', action: 'review' };
   if (reviewDue > 0) return { kind: 'due_review', message: `${reviewDue} item sudah siap diulang. Prioritaskan Smart Review sebelum materi baru.`, action: 'review' };
