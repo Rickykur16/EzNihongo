@@ -13,6 +13,17 @@ const CATALOG_TTL = 5 * 60 * 1000;
 const vocabCache = new Map(); // slug -> { ts, rows }
 let catalogCache = null; // { ts, value: Map }
 
+// Admin mutations must be visible immediately. Without explicit invalidation,
+// an edited vocabulary/kanji row can keep producing stale usage metadata for
+// up to five minutes even though the database update already succeeded.
+export function invalidateCourseVocabCache() {
+  vocabCache.clear();
+}
+
+export function invalidateKanjiCatalogCache() {
+  catalogCache = null;
+}
+
 async function dbQuery(text, params) {
   const { query } = await import('./db.js');
   return query(text, params);

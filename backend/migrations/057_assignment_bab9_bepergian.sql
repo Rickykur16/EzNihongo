@@ -181,7 +181,7 @@ BEGIN
     (29, 'vocabulary', 3, 'かばんと スーツケースは（　）です。',
         'Jawabannya にもつ (barang bawaan), kategori umum untuk tas dan koper. きっぷ, パスポート, よやく bukan kategori barang bawaan.'),
     (30, 'vocabulary', 3, '「（　）くうこうまで 行きますか。」「タクシーで 行きます。」',
-        'Jawabannya どうやって (bagaimana caranya), dijawab dengan cara transportasi タクシーで. なんで berarti "kenapa/dengan apa" (kurang presisi untuk cara), いつ menanyakan waktu, だれと menanyakan teman — ketiganya kurang tepat untuk menanyakan CARA pergi.'),
+        'Jawabannya どうやって (bagaimana caranya), dijawab dengan cara transportasi タクシーで. なんで biasanya berarti "kenapa/mengapa"; sebagai 何で dalam konteks alat dapat berarti "dengan apa", sehingga bentuk kana saja ambigu. Untuk menanyakan CARA secara jelas, どうやって paling tepat. いつ menanyakan waktu dan だれと menanyakan teman.'),
 
     -- ===== もんだい1 文の文法1 (31-50) — 4 pola grammar Bab 9 =====
     (31, 'grammar'::TEXT, 1, 'あした がっこうへ（　）。',

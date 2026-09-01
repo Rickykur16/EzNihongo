@@ -32,6 +32,13 @@ import {
   TTS_ELEVEN_MODEL,
   TTS_SETTINGS_VERSION,
 } from './tts.js';
+import {
+  loadCourseVocab,
+  deriveCompounds,
+  loadKanjiCatalog,
+  invalidateCourseVocabCache,
+  invalidateKanjiCatalogCache,
+} from '../kanji-compounds.js';
 
 const router = Router();
 
@@ -318,6 +325,8 @@ router.post('/courses', asyncHandler(async (req, res) => {
       isFree === true ? true : (isFree === false ? false : null),
     ]
   );
+  invalidateCourseVocabCache();
+  invalidateKanjiCatalogCache();
   res.status(201).json({ course: result.rows[0] });
 }));
 
@@ -363,6 +372,8 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
     ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  invalidateCourseVocabCache();
+  invalidateKanjiCatalogCache();
   res.json({ course: result.rows[0] });
 }));
 
@@ -381,6 +392,8 @@ router.delete('/courses/:id', asyncHandler(async (req, res) => {
     });
   }
   await query(`DELETE FROM courses WHERE id = $1`, [req.params.id]);
+  invalidateCourseVocabCache();
+  invalidateKanjiCatalogCache();
   res.json({ ok: true });
 }));
 
@@ -427,6 +440,8 @@ router.post('/modules', asyncHandler(async (req, res) => {
       JSON.stringify(typeof quizSpec === 'object' && quizSpec ? quizSpec : {}),
     ]
   );
+  invalidateCourseVocabCache();
+  invalidateKanjiCatalogCache();
   res.status(201).json({ module: result.rows[0] });
 }));
 
@@ -470,11 +485,15 @@ router.put('/modules/:id', asyncHandler(async (req, res) => {
     ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  invalidateCourseVocabCache();
+  invalidateKanjiCatalogCache();
   res.json({ module: result.rows[0] });
 }));
 
 router.delete('/modules/:id', asyncHandler(async (req, res) => {
   await query(`DELETE FROM modules WHERE id = $1`, [req.params.id]);
+  invalidateCourseVocabCache();
+  invalidateKanjiCatalogCache();
   res.json({ ok: true });
 }));
 
@@ -501,6 +520,7 @@ router.post('/module-vocabulary', asyncHandler(async (req, res) => {
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
     [moduleId, lessonId || null, japanese, reading || null, romaji || null, indonesian || null, category || null, note || null, sortOrder || 0]
   );
+  invalidateCourseVocabCache();
   res.status(201).json({ vocabulary: result.rows[0] });
 }));
 
@@ -523,11 +543,13 @@ router.put('/module-vocabulary/:id', asyncHandler(async (req, res) => {
     [req.params.id, lessonId || null, japanese, reading, romaji, indonesian, category, note, sortOrder, hasLesson]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  invalidateCourseVocabCache();
   res.json({ vocabulary: result.rows[0] });
 }));
 
 router.delete('/module-vocabulary/:id', asyncHandler(async (req, res) => {
   await query(`DELETE FROM module_vocabulary WHERE id = $1`, [req.params.id]);
+  invalidateCourseVocabCache();
   res.json({ ok: true });
 }));
 
@@ -552,6 +574,7 @@ router.post('/module-vocabulary/bulk', asyncHandler(async (req, res) => {
     }
     return out;
   });
+  invalidateCourseVocabCache();
   res.status(201).json({ vocabulary: inserted });
 }));
 
@@ -603,6 +626,7 @@ router.post('/vocabulary-examples', asyncHandler(async (req, res) => {
      VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
     [vocabularyId, japanese, reading || null, highlight || null, indonesian || null, sortOrder || 0]
   );
+  invalidateCourseVocabCache();
   res.status(201).json({ example: r.rows[0] });
 }));
 
@@ -622,11 +646,13 @@ router.put('/vocabulary-examples/:id', asyncHandler(async (req, res) => {
     [req.params.id, japanese, highlight || null, indonesian, hasHighlight, sortOrder, hasReading, reading || null]
   );
   if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  invalidateCourseVocabCache();
   res.json({ example: r.rows[0] });
 }));
 
 router.delete('/vocabulary-examples/:id', asyncHandler(async (req, res) => {
   await query(`DELETE FROM vocabulary_examples WHERE id = $1`, [req.params.id]);
+  invalidateCourseVocabCache();
   res.json({ ok: true });
 }));
 
@@ -1009,6 +1035,7 @@ async function upsertNotionVocab(moduleId, pages) {
     }
     vocabIds.push(id);
   }
+  invalidateCourseVocabCache();
   return { imported, updated, total, vocabIds };
 }
 
@@ -3194,6 +3221,7 @@ router.post('/lessons', asyncHandler(async (req, res) => {
       popupAfterLessonId || null,
     ]
   );
+  invalidateKanjiCatalogCache();
   res.status(201).json({ lesson: result.rows[0] });
 }));
 
@@ -3301,11 +3329,13 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
 
   if (outcome.notFound) return res.status(404).json({ error: 'Not found' });
   if (outcome.error) return res.status(400).json({ error: outcome.error });
+  invalidateKanjiCatalogCache();
   res.json({ lesson: outcome.lesson });
 }));
 
 router.delete('/lessons/:id', asyncHandler(async (req, res) => {
   await query(`DELETE FROM lessons WHERE id = $1`, [req.params.id]);
+  invalidateKanjiCatalogCache();
   res.json({ ok: true });
 }));
 
@@ -4149,14 +4179,45 @@ function validateKanjiCompounds(value, character = '') {
 // 'kanji'), bukan tab admin global.
 router.get('/lessons/:lessonId/kanji', asyncHandler(async (req, res) => {
   const result = await query(
-    `SELECT id, character, jlpt_level, on_reading, kun_reading, meaning_id,
-            mnemonic, compounds, stroke_count, bab_kode, sort_order
-       FROM kanji_items
-      WHERE lesson_id = $1
-      ORDER BY sort_order ASC, character ASC`,
+    `SELECT k.id, k.character, k.jlpt_level, k.on_reading, k.kun_reading,
+            k.meaning_id, k.mnemonic, k.compounds, k.stroke_count, k.bab_kode,
+            k.sort_order, l.module_id, m.sort_order AS module_sort,
+            c.slug AS course_slug, c.level AS course_level
+       FROM kanji_items k
+       JOIN lessons l ON l.id = k.lesson_id
+       JOIN modules m ON m.id = l.module_id
+       JOIN courses c ON c.id = m.course_id
+      WHERE k.lesson_id = $1
+      ORDER BY k.sort_order ASC, k.character ASC`,
     [req.params.lessonId]
   );
-  res.json({ kanji: result.rows });
+  if (result.rows.length === 0) return res.json({ kanji: [] });
+
+  const context = result.rows[0];
+  const [vocab, kanjiCatalog] = await Promise.all([
+    loadCourseVocab(context.course_slug),
+    loadKanjiCatalog(),
+  ]);
+  const kanji = result.rows.map((row) => ({
+    id: row.id,
+    character: row.character,
+    jlpt_level: row.jlpt_level,
+    on_reading: row.on_reading,
+    kun_reading: row.kun_reading,
+    meaning_id: row.meaning_id,
+    mnemonic: row.mnemonic,
+    compounds: row.compounds,
+    usages: deriveCompounds(row.character, row.compounds, vocab, {
+      moduleId: row.module_id,
+      moduleSort: row.module_sort,
+      courseLevel: row.course_level,
+      kanjiCatalog,
+    }),
+    stroke_count: row.stroke_count,
+    bab_kode: row.bab_kode,
+    sort_order: row.sort_order,
+  }));
+  res.json({ kanji });
 }));
 
 router.post('/kanji', asyncHandler(async (req, res) => {
@@ -4203,6 +4264,7 @@ router.post('/kanji', asyncHandler(async (req, res) => {
       hasCompounds,
     ]
   );
+  invalidateKanjiCatalogCache();
   res.status(201).json({ kanji: result.rows[0] });
 }));
 
@@ -4251,11 +4313,13 @@ router.put('/kanji/:id', asyncHandler(async (req, res) => {
     ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  invalidateKanjiCatalogCache();
   res.json({ kanji: result.rows[0] });
 }));
 
 router.delete('/kanji/:id', asyncHandler(async (req, res) => {
   await query(`DELETE FROM kanji_items WHERE id = $1`, [req.params.id]);
+  invalidateKanjiCatalogCache();
   res.json({ ok: true });
 }));
 
@@ -4275,6 +4339,7 @@ router.post('/kanji/:id/move', asyncHandler(async (req, res) => {
     [targetLessonId, sortOrder ?? null, req.params.id]
   );
   if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  invalidateKanjiCatalogCache();
   res.json({ kanji: r.rows[0] });
 }));
 
@@ -4435,6 +4500,7 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', notionImportLimiter, a
     diagnostic.hint = 'DB Notion-mu kosong atau integration belum di-share ke DB tersebut (notion.so → Share → Add connection → pilih integration).';
   }
 
+  invalidateKanjiCatalogCache();
   res.json({
     imported,
     updated,
