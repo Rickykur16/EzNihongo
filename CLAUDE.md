@@ -65,6 +65,35 @@
 
 ## Konvensi penting
 
+      **Smart Review: SETIAP submit jawaban gagal 500 ("Jawaban belum bisa
+      dimuat...")** — user melaporkan "tidak responsif" saat memilih jawaban
+      di `review.html`; ternyata bukan bug UI/klik, melainkan pesan fallback
+      generik `ezStudentErrorMessage()` yang muncul karena
+      `POST /review/sessions/:sessionId/answers` betul-betul gagal di server,
+      untuk KEDUA tipe soal (pilihan ganda maupun susun-kata grammar) dan
+      SETIAP kali, tanpa syarat data apa pun. Root cause murni SQL: query
+      `lockedSessionItem()` (`backend/src/routes/smart-review.js`) memakai
+      `LEFT JOIN lessons l ... LEFT JOIN modules m ...` lalu `FOR UPDATE`
+      polos — Postgres menolak ini dengan
+      `error: FOR UPDATE cannot be applied to the nullable side of an outer
+      join` (code `0A000`) karena `l`/`m` ada di sisi nullable outer join.
+      Error ini tidak tertangkap sebagai salah satu kode terstruktur
+      (`session_not_found`/`already_answered`/dst), jadi jatuh ke handler
+      500 generik (`server.js`) → pesan generik di klien. **Tidak
+      ketahuan oleh test unit yang ada** (`learning-foundations.test.js`
+      dkk memakai `client.query` tiruan, bukan Postgres sungguhan — semantik
+      SQL spesifik-Postgres begini tidak pernah tereksekusi beneran).
+      Diagnosis dilakukan dengan bootstrap Postgres lokal dari
+      `schema.sql`, seed data minimal (course/module/lesson/vocab/grammar +
+      enrollment + progress completed), mint token JWT langsung (skip alur
+      Google OAuth), lalu memanggil endpoint asli lewat curl — errornya
+      langsung muncul di log server pertama kali dicoba. Fix: tambah
+      `FOR UPDATE OF si` (cuma kunci baris `smart_review_session_items`,
+      satu-satunya yang benar-benar di-UPDATE oleh handler ini — tidak perlu
+      mengunci `l`/`m`/`s`). Divalidasi: skenario yang sebelumnya 500 (index
+      grammar-arrange DAN vocabulary-choice, jawaban benar maupun salah)
+      semuanya 200 setelah fix, `npm test` 37/37 tetap hijau.
+
       **migration 128: kalimat pendek 2-bunsetsu selalu jatuh ke pilihan
       ganda, walau siblingnya (di Tugas Bunpou lain) sudah susun kalimat** —
       user: "Kenapa bab 3 yang bagian tugas bunpou pertama masih pilihan
