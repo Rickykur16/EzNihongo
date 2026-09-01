@@ -86,7 +86,8 @@ router.get('/kanji', asyncHandler(async (req, res) => {
     `SELECT k.id, k.character, k.jlpt_level, k.on_reading, k.kun_reading,
             k.meaning_id, k.mnemonic, k.compounds, k.stroke_count, k.bab_kode, k.sort_order,
             l.id AS lesson_id, l.title AS lesson_title, l.sort_order AS lesson_sort,
-            m.id AS module_id, m.title AS module_title, m.sort_order AS module_sort
+            m.id AS module_id, m.title AS module_title, m.sort_order AS module_sort,
+            c.level AS course_level
        FROM kanji_items k
        JOIN lessons l ON l.id = k.lesson_id
        JOIN modules m ON m.id = l.module_id
@@ -105,7 +106,11 @@ router.get('/kanji', asyncHandler(async (req, res) => {
     on_reading: k.on_reading, kun_reading: k.kun_reading,
     meaning_id: k.meaning_id, mnemonic: k.mnemonic,
     stroke_count: k.stroke_count, bab_kode: k.bab_kode,
-    compounds: deriveCompounds(k.character, k.compounds, vocab),
+    compounds: deriveCompounds(k.character, k.compounds, vocab, {
+      moduleId: k.module_id,
+      moduleSort: k.module_sort,
+      courseLevel: k.course_level,
+    }),
   });
 
   // Group by lesson (1 Bab = 1 pelajaran tipe kanji).

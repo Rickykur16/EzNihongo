@@ -30,6 +30,9 @@ jobs:
       - name: Syntax-check backend sources
         working-directory: backend
         run: find src migrations scripts -name '*.js' -o -name '*.mjs' | xargs -I{} node --check {}
+      - name: Test backend helpers
+        working-directory: backend
+        run: npm test
 
   deploy:
     needs: ci
