@@ -8,8 +8,8 @@
 // Tidak pakai cache Notion table — kanji_items kecil (<500 row per
 // level), query DB langsung cukup cepat. Browser cache 5 menit.
 //
-// Compound vocab per kanji: di-fetch dari module_vocabulary milik course
-// slug yang sama, di-filter in-memory by japanese.includes(char), cap 8.
+// Compound vocab per kanji diambil dari module_vocabulary course yang sama,
+// lalu diverifikasi terhadap level setiap Kanji penyusun katanya.
 
 import { Router } from 'express';
 import { asyncHandler } from '../middleware.js';
@@ -21,7 +21,7 @@ import {
   richTextPlain,
   notionPlainPageId,
 } from '../notion.js';
-import { loadCourseVocab, deriveCompounds } from '../kanji-compounds.js';
+import { loadCourseVocab, deriveCompounds, loadKanjiCatalog } from '../kanji-compounds.js';
 
 const router = Router();
 
@@ -101,6 +101,7 @@ router.get('/kanji', asyncHandler(async (req, res) => {
   // sama dipakai juga oleh /api/courses/:slug supaya pelajaran & Daftar Kanji
   // menampilkan contoh kosakata yang identik).
   const vocab = await loadCourseVocab(slug);
+  const kanjiCatalog = await loadKanjiCatalog();
   const attach = (k) => ({
     id: k.id, character: k.character, jlpt_level: k.jlpt_level,
     on_reading: k.on_reading, kun_reading: k.kun_reading,
@@ -110,6 +111,7 @@ router.get('/kanji', asyncHandler(async (req, res) => {
       moduleId: k.module_id,
       moduleSort: k.module_sort,
       courseLevel: k.course_level,
+      kanjiCatalog,
     }),
   });
 
