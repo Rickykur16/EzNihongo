@@ -304,7 +304,7 @@ CREATE TABLE IF NOT EXISTS grammar_attempts (
   concept_signal TEXT,
   feedback TEXT,
   correction TEXT,
-  eval_source TEXT NOT NULL DEFAULT 'ai' CHECK (eval_source IN ('ai', 'cache')),
+  eval_source TEXT NOT NULL DEFAULT 'ai' CHECK (eval_source IN ('ai', 'cache', 'smart_review')),
   model TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -550,6 +550,33 @@ CREATE TABLE IF NOT EXISTS user_progress (
 
 CREATE INDEX IF NOT EXISTS idx_progress_user ON user_progress(user_id);
 CREATE INDEX IF NOT EXISTS idx_progress_lesson ON user_progress(lesson_id);
+
+-- Smart Review session metadata is intentionally short lived.  It only keeps
+-- server-generated questions/replay protection; authoritative evidence stays
+-- in user_practice_state/practice_attempts and grammar_attempts.
+CREATE TABLE IF NOT EXISTS smart_review_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  category TEXT NOT NULL CHECK (category IN ('mixed', 'kana', 'vocabulary', 'kanji', 'grammar')),
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_smart_review_sessions_user_expiry
+  ON smart_review_sessions(user_id, expires_at DESC);
+
+CREATE TABLE IF NOT EXISTS smart_review_session_items (
+  session_id UUID NOT NULL REFERENCES smart_review_sessions(id) ON DELETE CASCADE,
+  question_index INT NOT NULL CHECK (question_index >= 0),
+  item_type TEXT NOT NULL CHECK (item_type IN ('kana', 'vocabulary', 'kanji', 'grammar')),
+  item_id UUID NOT NULL,
+  skill TEXT NOT NULL,
+  lesson_id UUID REFERENCES lessons(id) ON DELETE SET NULL,
+  payload JSONB NOT NULL,
+  answered_at TIMESTAMPTZ,
+  PRIMARY KEY (session_id, question_index)
+);
+CREATE INDEX IF NOT EXISTS idx_smart_review_session_items_item
+  ON smart_review_session_items(item_type, item_id);
 
 -- Blob progres main site (peta "lesson selesai" + skor kuis) untuk sync
 -- lintas device. Frontend merge local+cloud lalu tulis balik union.
