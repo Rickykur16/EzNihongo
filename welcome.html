@@ -4304,6 +4304,13 @@
     margin: 6px 0 14px; font-family: var(--font-mono); font-weight: 600; letter-spacing: 0.02em;
   }
 
+  .lesson-progress-resume {
+    margin-left: 8px; padding: 5px 12px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--brand-red, #C8102E); background: transparent;
+    color: var(--brand-red, #C8102E); font: inherit; font-size: 12px; font-weight: 700;
+  }
+  .lesson-progress-resume:hover { background: var(--brand-red, #C8102E); color: #fff; }
+
   .gt-footer__actions { display: flex; justify-content: flex-end; gap: 10px; }
   .gt-btn {
     padding: 11px 20px; border-radius: 12px; border: none;
@@ -4787,7 +4794,7 @@ function _recordPracticeAttempt(itemType, item, skill, isCorrect) {
 // completed-but-undrilled deck/kana/kanji lesson floods it with items the
 // student never actually practiced; this closes that at the source instead
 // of loosening Smart Review's own logic.
-function _applyDrillCompletionGate(btn, hintEl, { total, attemptedCount, isDone, hasNext, noun }) {
+function _applyDrillCompletionGate(btn, hintEl, { total, attemptedCount, isDone, hasNext, noun, resumeAction }) {
   if (!btn) return;
   // total < 2 mirrors every drill widget's own "not enough items to quiz"
   // floor (deckDrillPool.length >= 2 / kanjiDrillPool.length >= 2 / kana's
@@ -4800,7 +4807,19 @@ function _applyDrillCompletionGate(btn, hintEl, { total, attemptedCount, isDone,
   btn.textContent = done
     ? (isDone ? (hasNext ? 'Lanjut →' : 'Selesai ✓') : (hasNext ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓'))
     : `Latih semua ${noun} dulu`;
-  if (hintEl) hintEl.textContent = total < 2 ? '' : `${attemptedCount} / ${total} ${noun} sudah dilatih`;
+  if (!hintEl) return;
+  if (done) {
+    hintEl.innerHTML = total < 2 ? '' : `${attemptedCount} / ${total} ${noun} sudah dilatih`;
+    return;
+  }
+  // Locked: say how far along they are AND give them the way back in. A
+  // student who quit a drill halfway would otherwise have to work out on
+  // their own that the fix is scrolling up and starting another run — the
+  // button below jumps straight into a session built only from the items
+  // they have never attempted.
+  hintEl.innerHTML = `${attemptedCount} / ${total} ${noun} sudah dilatih`
+    + ` <button type="button" class="lesson-progress-resume" onclick="${resumeAction}">`
+    + `Lanjutkan latihan · ${total - attemptedCount} ${noun} tersisa</button>`;
 }
 
 function deckUpdateComplete() {
@@ -4813,7 +4832,8 @@ function deckUpdateComplete() {
   const nav = window.__deckLessonArgs?.[3] || {};
   const attemptedCount = items.filter((it) => _deckSummary(it).attempts > 0).length;
   _applyDrillCompletionGate(btn, document.getElementById('deck-progress-hint'),
-    { total: items.length, attemptedCount, isDone: nav.isDone, hasNext: !!nav.next, noun: 'kata' });
+    { total: items.length, attemptedCount, isDone: nav.isDone, hasNext: !!nav.next, noun: 'kata',
+      resumeAction: "deckDrillStart('fresh')" });
 }
 
 function kanaUpdateComplete() {
@@ -4824,7 +4844,8 @@ function kanaUpdateComplete() {
   const nav = window.__kanaLessonArgs?.[3] || {};
   const attemptedCount = items.filter((it) => _kanaSummary(it).attempts > 0).length;
   _applyDrillCompletionGate(btn, document.getElementById('kana-progress-hint'),
-    { total: items.length, attemptedCount, isDone: nav.isDone, hasNext: !!nav.next, noun: 'huruf' });
+    { total: items.length, attemptedCount, isDone: nav.isDone, hasNext: !!nav.next, noun: 'huruf',
+      resumeAction: "kanaDrillStart('fresh')" });
 }
 
 function kanjiUpdateComplete() {
@@ -4838,7 +4859,8 @@ function kanjiUpdateComplete() {
   const nav = window.__kanjiLessonArgs?.[3] || {};
   const attemptedCount = items.filter((it) => _kanjiSummary(it, null).attempts > 0).length;
   _applyDrillCompletionGate(btn, document.getElementById('kanji-progress-hint'),
-    { total: items.length, attemptedCount, isDone: nav.isDone, hasNext: !!nav.next, noun: 'kanji' });
+    { total: items.length, attemptedCount, isDone: nav.isDone, hasNext: !!nav.next, noun: 'kanji',
+      resumeAction: "kanjiDrillStart('fresh')" });
 }
 
 function _practiceTimestamp(value) {
@@ -10369,6 +10391,9 @@ window.kanaDrillStart = (mode = 'adaptive') => {
   let ranked = pool.map((item) => ({ item, summary: _kanaSummary(item, store) }));
   if (mode === 'weak') {
     ranked = ranked.filter((row) => row.summary.attempts > 0 && !row.summary.mastered);
+  } else if (mode === 'fresh') {
+    // Lihat catatan mode 'fresh' di deckDrillStart.
+    ranked = ranked.filter((row) => !row.summary.attempts);
   } else {
     // Kana yang sudah dikuasai keluar dari putaran berikutnya selama masih ada
     // materi baru/lemah. Bila semuanya dikuasai, seluruh pool kembali menjadi
@@ -10378,7 +10403,8 @@ window.kanaDrillStart = (mode = 'adaptive') => {
   }
   if (!ranked.length) { kanaDrillShowOverview(); return; }
   ranked = ranked.map((row) => ({ ...row, priority: _kanaPriority(row.summary) + Math.random() * 1.25 }))
-    .sort((a, b) => b.priority - a.priority);
+    // Belum pernah dicoba selalu didahulukan — lihat catatan di deckDrillStart.
+    .sort((a, b) => (Number(!b.summary.attempts) - Number(!a.summary.attempts)) || (b.priority - a.priority));
   const targetCount = Math.min(ranked.length, KANA_DRILL_ITEMS_PER_SESSION);
   const selected = ranked.slice(0, targetCount);
   const questions = selected.map(({ item }, index) => {
@@ -10841,13 +10867,22 @@ window.deckDrillStart = (mode = 'adaptive') => {
   let ranked = pool.map((item) => ({ item, summary: _deckSummary(item, store) }));
   if (mode === 'weak') {
     ranked = ranked.filter((row) => row.summary.attempts > 0 && !row.summary.mastered);
+  } else if (mode === 'fresh') {
+    // "Lanjutkan latihan" dari gate penyelesaian pelajaran: hanya kata yang
+    // belum pernah dicoba sama sekali, supaya sisa yang menahan tombol
+    // "Tandai Selesai" benar-benar terhabiskan.
+    ranked = ranked.filter((row) => !row.summary.attempts);
   } else {
     const pending = ranked.filter((row) => !row.summary.mastered);
     if (pending.length) ranked = pending;
   }
   if (!ranked.length) { deckDrillShowOverview(); return; }
   ranked = ranked.map((row) => ({ ...row, priority: _deckPriority(row.summary) + Math.random() * 1.25 }))
-    .sort((a, b) => b.priority - a.priority);
+    // Belum pernah dicoba selalu didahulukan, apa pun prioritasnya. Tanpa
+    // pagar ini, kata yang sering salah (prioritas bisa >11 vs 7 untuk yang
+    // baru) bisa terus mengisi ke-12 slot sesi dan kata yang belum tersentuh
+    // tidak pernah muncul — pelajaran jadi mustahil diselesaikan.
+    .sort((a, b) => (Number(!b.summary.attempts) - Number(!a.summary.attempts)) || (b.priority - a.priority));
   const targetCount = Math.min(ranked.length, DECK_DRILL_ITEMS_PER_SESSION);
   const selected = ranked.slice(0, targetCount);
   const questions = selected.map(({ item }, index) => _deckMakeQuestion(pool, item, 'jp2id', 0, index + 1));
@@ -11424,7 +11459,11 @@ window.kanjiDrillStart = (mode = 'adaptive') => {
   if (mode === 'weak') rankedCharacters = rankedCharacters.filter((row) => (
     (row.summary.attempts > 0 && !row.summary.mastered) || weakWordOwners.has(row.item.character)
   ));
-  else {
+  else if (mode === 'fresh') {
+    // Lihat catatan mode 'fresh' di deckDrillStart. Sengaja memakai attempts
+    // tingkat KARAKTER saja — itu yang dihitung gate penyelesaian pelajaran.
+    rankedCharacters = rankedCharacters.filter((row) => !row.summary.attempts);
+  } else {
     const pending = rankedCharacters.filter((row) => !row.summary.mastered || pendingWordOwners.has(row.item.character));
     if (pending.length) rankedCharacters = pending;
   }
@@ -11432,10 +11471,16 @@ window.kanjiDrillStart = (mode = 'adaptive') => {
     ...row,
     priority: Math.max(_kanjiPriority(row.summary), wordPriorityByOwner.get(row.item.character) || 0) + Math.random() * 1.25,
   }))
-    .sort((a, b) => b.priority - a.priority);
+    // Belum pernah dicoba selalu didahulukan — lihat catatan di deckDrillStart.
+    .sort((a, b) => (Number(!b.summary.attempts) - Number(!a.summary.attempts)) || (b.priority - a.priority));
 
   let rankedWords = wordRows;
   if (mode === 'weak') rankedWords = rankedWords.filter((row) => row.summary.attempts > 0 && !row.summary.mastered);
+  // Mode 'fresh' mengejar karakter yang masih menahan gate penyelesaian
+  // pelajaran. Soal kata-majemuk biasanya memakan separuh kuota sesi
+  // (charQuota/wordQuota di bawah) dan tidak dihitung gate, jadi di mode ini
+  // seluruh kuota diberikan ke karakternya.
+  else if (mode === 'fresh') rankedWords = [];
   else {
     const pending = rankedWords.filter((row) => !row.summary.mastered);
     if (pending.length) rankedWords = pending;

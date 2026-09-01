@@ -65,6 +65,47 @@
 
 ## Konvensi penting
 
+      **Cara siswa MELANJUTKAN latihan yang belum selesai** (menyusul gate
+      di bawah; ditanyakan user: "kalau siswa latihan tapi belum selesai
+      semua, bagaimana melanjutkan sisanya?"). Yang sudah aman sejak awal:
+      tiap jawaban langsung tersimpan ke localStorage DAN dikirim ke server
+      saat itu juga (`_deckRecordAnswer` → `_recordPracticeAttempt`), jadi
+      berhenti di tengah sesi tidak menghapus apa pun. Yang TIDAK aman dan
+      diperbaiki di sini, dua hal: **(1) satu run drill maksimal 12 item**
+      (`*_DRILL_ITEMS_PER_SESSION`, dan ketiga sesinya memakai 12 item yang
+      SAMA) — lesson >12 item mustahil selesai dalam satu run, wajib klik
+      "Mulai Latihan" berkali-kali; **(2) tidak ada jaminan item sisa
+      kebagian** — prioritas item yang belum pernah dicoba cuma 7
+      (`_deckPriority`: `if (!summary.attempts) return 7`), sedangkan item
+      yang sering salah bisa mencapai ~11,7, ditambah `Math.random()*1.25`.
+      Jadi siswa bisa terus mendapat item yang itu-itu lagi sementara sisa
+      item tak pernah muncul — dan karena gate menahan tombol "Tandai
+      Selesai", pelajaran jadi MUSTAHIL diselesaikan. Diukur langsung:
+      dengan 5 kata dibuat sering-salah dan 15 kata belum pernah dicoba,
+      sebelum perbaikan 5 slot sesi direbut kata yang sering salah.
+      **Perbaikan (a) jaminan urutan**: comparator sort di ketiga
+      `*DrillStart` diberi kunci pertama "belum pernah dicoba didahulukan"
+      (`(Number(!b.summary.attempts) - Number(!a.summary.attempts)) || (b.priority - a.priority)`)
+      — hasil ukur ulang: 12/12 slot diisi kata yang belum pernah dicoba.
+      **Perbaikan (b) mode `'fresh'` + tombol**: mode baru di ketiga
+      `*DrillStart` (di samping `'adaptive'`/`'weak'`) yang HANYA mengambil
+      item `attempts === 0`, dipanggil dari tombol baru "Lanjutkan latihan ·
+      N tersisa" yang kini muncul di dalam hint gate saat masih terkunci
+      (`_applyDrillCompletionGate`, param `resumeAction`). Catatan: tombol
+      lama "Latih Kelemahan" TIDAK bisa dipakai untuk ini — filternya
+      `attempts > 0`, persis mengecualikan item yang dikejar gate. Khusus
+      kanji, mode `'fresh'` juga meng-set `rankedWords = []`: sesi kanji
+      normalnya membagi kuota 50/50 dengan soal kata-majemuk (`charQuota`/
+      `wordQuota`), padahal kata-majemuk TIDAK dihitung gate, jadi di mode
+      ini seluruh kuota diberikan ke karakternya. Divalidasi via Playwright
+      pada deck 20 kata: run pertama ambil 12 → gate 12/20 → keluar & buka
+      lagi tetap 12/20 (progres utuh) → klik "Lanjutkan latihan" ambil
+      TEPAT 8 kata sisa yang semuanya belum pernah dicoba → 20/20, tombol
+      terbuka, tombol lanjut hilang sendiri; kana & kanji ikut diverifikasi
+      (kanji: 2 karakter + 0 kata-majemuk, sesuai maksud). Kalau mode
+      `'fresh'` dipanggil saat tidak ada item tersisa, jatuh ke
+      `*DrillShowOverview()` dengan aman (sudah diuji).
+
       **Lesson deck/kana/kanji sekarang wajib di-drill dulu (min. 1x per
       item) sebelum bisa ditandai selesai** — follow-up dari catatan Smart
       Review di bawah ini. Saat user mengonfirmasi apakah Smart Review
