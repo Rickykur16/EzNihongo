@@ -3,10 +3,12 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Dashboard - EzNihongo</title>
+<meta name="theme-color" content="#faf7f2"/>
+<title>Belajar — EzNihongo</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="styles/tokens.css"/>
 <link rel="stylesheet" href="styles/components.css"/>
+<link rel="stylesheet" href="styles/student-nav.css?v=20260902-2"/>
 <style>
   * { box-sizing: border-box; }
   html {
@@ -4377,6 +4379,126 @@
     .greeting-resume .gr-label { display: none; }
     .greeting-resume .gr-title { max-width: 200px; }
   }
+
+  /* ── Lesson navigation: one shell across the student area ── */
+  .lesson-student-nav {
+    z-index: 100;
+  }
+  .lesson-nav-leading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 0 0 auto;
+  }
+  .lesson-student-nav .sidebar-toggle {
+    min-height: 38px;
+    padding: 8px 11px;
+    border-color: var(--paper-300);
+    background: var(--surface-white);
+  }
+  .lesson-student-nav .sidebar-toggle:hover {
+    border-color: var(--brand-red);
+    background: var(--brand-red-soft);
+    color: var(--brand-red);
+    box-shadow: none;
+  }
+  .lesson-student-nav .lesson-logout {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  body.lesson-drawer-open #ai-senpai {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  @media (min-width: 861px) {
+    .sidebar {
+      top: 68px;
+      height: calc(100vh - 68px);
+    }
+  }
+
+  @media (max-width: 860px) {
+    body {
+      padding-bottom: calc(68px + env(safe-area-inset-bottom));
+    }
+    .lesson-student-nav {
+      position: sticky;
+      min-height: 58px;
+      padding: 9px 14px;
+      justify-content: space-between;
+      gap: 10px;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    .lesson-student-nav .lesson-nav-leading {
+      min-width: 0;
+      gap: 10px;
+    }
+    .lesson-student-nav .brand img {
+      height: 30px;
+    }
+    .lesson-student-nav .sidebar-toggle.visible {
+      display: inline-flex;
+      min-height: 36px;
+      padding: 7px 10px;
+    }
+    .lesson-student-nav > nav {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 60;
+      height: calc(62px + env(safe-area-inset-bottom));
+      padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 2px;
+      background: rgba(255, 255, 255, 0.97);
+      border-top: 1px solid var(--paper-300);
+      box-shadow: 0 -8px 28px rgba(20, 15, 10, 0.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    .lesson-student-nav > nav a {
+      min-width: 0;
+      min-height: 50px;
+      padding: 8px 2px 7px;
+      justify-content: center;
+      overflow: hidden;
+      border-radius: var(--radius-md);
+      font-size: 10.5px;
+      line-height: 1.15;
+      text-align: center;
+      text-overflow: ellipsis;
+    }
+    .lesson-student-nav > nav a[aria-current="page"]::after {
+      right: 28%;
+      bottom: 4px;
+      left: 28%;
+    }
+    .lesson-student-nav .lesson-logout {
+      width: 38px;
+      min-height: 36px;
+      padding: 7px;
+    }
+    .lesson-student-nav .lesson-logout-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    #ai-senpai {
+      bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+    }
+  }
   @media (prefers-reduced-motion: reduce) {
     #ai-senpai *, #ai-senpai *::before, #ai-senpai *::after { animation: none !important; }
   }
@@ -4384,25 +4506,26 @@
 </head>
 <body>
 
-<nav class="dash-nav">
-  <div class="dash-nav-left">
-    <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Buka menu" onclick="toggleSidebar()">
+<header class="student-nav lesson-student-nav">
+  <div class="lesson-nav-leading">
+    <a href="dashboard.html?v=20260902-2" class="brand"><img src="logo.png" alt="EzNihongo"/></a>
+    <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Buka daftar pelajaran" aria-expanded="false" onclick="toggleSidebar()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
-      <span>Menu</span>
+      <span>Materi</span>
     </button>
   </div>
-  <a href="dashboard.html?v=20260902-1" class="dash-nav-brand"><img src="logo.png" alt="EzNihongo"/></a>
-  <div class="dash-nav-right">
-    <a href="dashboard.html?v=20260902-1" class="logout-btn" style="text-decoration:none" aria-label="Buka Dashboard">Dashboard</a>
-    <a href="review.html?v=20260902-1" class="logout-btn" style="text-decoration:none" aria-label="Buka Smart Review">Review</a>
-    <a href="live.html?v=20260902-1" class="logout-btn" style="text-decoration:none" aria-label="Buka Live Class">Live Class</a>
-    <a href="progress.html?v=20260902-1" class="logout-btn" style="text-decoration:none" aria-label="Buka Progress">Progress</a>
-    <button class="logout-btn" type="button" onclick="logout()" aria-label="Keluar dari akun">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      <span class="logout-btn-label">Keluar</span>
-    </button>
-  </div>
-</nav>
+  <nav aria-label="Navigasi siswa">
+    <a href="dashboard.html?v=20260902-2">Dashboard</a>
+    <a href="welcome.html" aria-current="page">Belajar</a>
+    <a href="review.html?v=20260902-2">Review</a>
+    <a href="live.html?v=20260902-2">Live Class</a>
+    <a href="progress.html?v=20260902-2">Progress</a>
+  </nav>
+  <button class="lesson-logout" type="button" onclick="logout()" aria-label="Keluar dari akun">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    <span class="lesson-logout-label">Keluar</span>
+  </button>
+</header>
 <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
 
 <div class="banner" id="success-banner">
@@ -11947,8 +12070,9 @@ const isDesktop = () => window.innerWidth >= 861;
 function updateMobileSidebarToggle(isOpen) {
   const btn = document.getElementById('sidebar-toggle');
   const btnLabel = btn && btn.querySelector('span');
-  if (btnLabel) btnLabel.textContent = isOpen ? 'Tutup' : 'Menu';
-  if (btn) btn.setAttribute('aria-label', isOpen ? 'Tutup menu' : 'Buka menu');
+  if (btnLabel) btnLabel.textContent = isOpen ? 'Tutup' : 'Materi';
+  if (btn) btn.setAttribute('aria-label', isOpen ? 'Tutup daftar pelajaran' : 'Buka daftar pelajaran');
+  if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
 }
 function applySidebarCollapse(collapsed) {
   const layout = document.querySelector('.learning-layout');
@@ -11956,8 +12080,9 @@ function applySidebarCollapse(collapsed) {
   layout.classList.toggle('sidebar-collapsed', collapsed);
   const btn = document.getElementById('sidebar-toggle');
   const btnLabel = btn && btn.querySelector('span');
-  if (btnLabel) btnLabel.textContent = collapsed ? 'Menu' : 'Tutup';
+  if (btnLabel) btnLabel.textContent = collapsed ? 'Materi' : 'Tutup';
   if (btn) btn.setAttribute('aria-label', collapsed ? 'Buka menu' : 'Tutup menu');
+  if (btn) btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
   const handle = document.getElementById('sidebar-handle');
   if (handle) {
     const label = collapsed ? 'Buka sidebar' : 'Tutup sidebar';
@@ -11981,6 +12106,7 @@ window.toggleSidebar = () => {
   if (!sb) return;
   const isOpen = sb.classList.toggle('mobile-open');
   if (bd) bd.classList.toggle('show', isOpen);
+  document.body.classList.toggle('lesson-drawer-open', isOpen);
   document.body.style.overflow = isOpen ? 'hidden' : '';
   updateMobileSidebarToggle(isOpen);
 };
@@ -11990,9 +12116,17 @@ window.closeSidebar = () => {
   const bd = document.getElementById('sidebar-backdrop');
   if (sb) sb.classList.remove('mobile-open');
   if (bd) bd.classList.remove('show');
+  document.body.classList.remove('lesson-drawer-open');
   document.body.style.overflow = '';
   updateMobileSidebarToggle(false);
 };
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && document.getElementById('sidebar')?.classList.contains('mobile-open')) {
+    closeSidebar();
+    document.getElementById('sidebar-toggle')?.focus();
+  }
+});
 
 // Sync state when crossing the desktop breakpoint.
 window.addEventListener('resize', () => {
