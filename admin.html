@@ -7170,23 +7170,25 @@ async function openKanjiManager(ctx) {
 }
 
 function renderKanjiManager(ctx, items) {
-  const titleEsc = escapeHtml(ctx.lessonTitle).replace(/'/g, '&#39;');
-  const rows = items.map((k) => `
-    <tr>
+  const rows = items.map((k) => {
+    const usageCount = Array.isArray(k.usages) ? k.usages.length : 0;
+    return `<tr>
       <td style="font-family:'Noto Sans JP',sans-serif;font-size:28px;font-weight:700;line-height:1;text-align:center;width:60px;">${escapeHtml(k.character)}</td>
       <td><span class="pill">${escapeHtml(k.jlpt_level)}</span></td>
       <td style="font-family:'Noto Sans JP',sans-serif;">${escapeHtml(k.on_reading || '-')}</td>
       <td style="font-family:'Noto Sans JP',sans-serif;">${escapeHtml(k.kun_reading || '-')}</td>
       <td>${escapeHtml(k.meaning_id || '-')}</td>
       <td style="max-width:220px;font-size:12px;color:#555;">${escapeHtml((k.mnemonic || '').replace(/<[^>]*>/g, '').slice(0, 90))}${(k.mnemonic || '').length > 90 ? '…' : ''}</td>
-      <td>${Array.isArray(k.compounds) && k.compounds.length ? k.compounds.length : '-'}</td>
+      <td><strong>${usageCount}</strong></td>
       <td>${k.stroke_count || '-'}</td>
       <td class="actions">
+        <button class="btn btn-ghost" onclick='openKanjiUsageManager("${k.id}")'>Penggunaan</button>
         <button class="btn btn-ghost" onclick='editKanjiItem("${k.id}")'>Edit</button>
         <button class="btn btn-danger" onclick='deleteKanjiItem("${k.id}", "${escapeHtml(k.character).replace(/"/g, '&quot;')}")'>Hapus</button>
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
   openKanjiModal(`
     <h3>Kelola Kanji — ${escapeHtml(ctx.lessonTitle)}</h3>
     <p style="margin-top:-6px;color:var(--ink-500);font-size:13px;">
@@ -7201,13 +7203,204 @@ function renderKanjiManager(ctx, items) {
       ? '<div class="empty">Pelajaran ini belum punya kanji. Klik <strong>+ Kanji</strong> atau import dari Notion.</div>'
       : `<div style="overflow-x:auto;"><table><thead><tr>
           <th>Karakter</th><th>Level</th><th>On</th><th>Kun</th><th>Arti</th>
-          <th>Mnemonic</th><th>Kata</th><th>Goresan</th><th></th>
+          <th>Mnemonic</th><th>Penggunaan</th><th>Goresan</th><th></th>
         </tr></thead><tbody>${rows}</tbody></table></div>`}
     <div class="modal-actions" style="margin-top:16px;"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `);
   STATE.kanjiManagerCtx = ctx;
   STATE.kanjiManagerItems = items;
 }
+
+function kanjiUsageKey(item) {
+  return `${String(item?.japanese || '').trim().toLowerCase()}::${String(item?.reading || '').trim().toLowerCase()}`;
+}
+
+function kanjiUsageInputs(item) {
+  return `
+    <td><input name="usageJapanese" value="${escapeHtml(item.japanese || '')}" lang="ja" aria-label="Kata Jepang"
+      style="font-family:'Noto Sans JP',sans-serif;min-width:130px;" /></td>
+    <td><input name="usageReading" value="${escapeHtml(item.reading || '')}" lang="ja" aria-label="Bacaan kana"
+      style="font-family:'Noto Sans JP',sans-serif;min-width:130px;" /></td>
+    <td><input name="usageIndonesian" value="${escapeHtml(item.indonesian || '')}" aria-label="Arti Bahasa Indonesia"
+      style="min-width:170px;" /></td>`;
+}
+
+function kanjiUsageValues(row) {
+  return {
+    japanese: (row.querySelector('[name="usageJapanese"]')?.value || '').trim(),
+    reading: (row.querySelector('[name="usageReading"]')?.value || '').trim(),
+    indonesian: (row.querySelector('[name="usageIndonesian"]')?.value || '').trim(),
+  };
+}
+
+function kanjiUsageRows(k) {
+  const visible = Array.isArray(k.usages) ? k.usages : [];
+  const manual = Array.isArray(k.compounds) ? k.compounds : [];
+  const manualIndex = new Map(manual.map((item, index) => [kanjiUsageKey(item), index]));
+  const visibleManual = new Set(
+    visible.filter((item) => item.source === 'manual').map(kanjiUsageKey)
+  );
+  const rows = visible.map((item) => {
+    const isManual = item.source === 'manual';
+    const index = isManual ? (manualIndex.get(kanjiUsageKey(item)) ?? -1) : -1;
+    const source = isManual
+      ? '<span class="pill" style="background:#fff4d6;color:#7a5700;">Kata utama</span>'
+      : `<span class="pill" style="background:#e8f2ff;color:#245a91;">Deck${item.moduleTitle ? ' · ' + escapeHtml(item.moduleTitle) : ''}</span>`;
+    const actions = isManual
+      ? `<button class="btn btn-primary" onclick='saveManualKanjiUsage(this,"${k.id}",${index})'>Simpan</button>
+         <button class="btn btn-danger-soft" onclick='deleteManualKanjiUsage("${k.id}",${index})'>Hapus</button>`
+      : `<button class="btn btn-primary" onclick='saveKanjiUsageVocabulary(this,"${item.vocabularyId}","${k.id}")'>Simpan</button>`;
+    return `<tr data-usage-source="${isManual ? 'manual' : 'course'}">
+      ${kanjiUsageInputs(item)}
+      <td>${source}</td>
+      <td class="actions">${actions}</td>
+    </tr>`;
+  });
+
+  // Entri manual yang gagal filter level/registrasi memang tidak tampil ke
+  // siswa, tetapi tetap ditunjukkan di admin supaya bisa diperbaiki/dihapus.
+  manual.forEach((item, index) => {
+    if (visibleManual.has(kanjiUsageKey(item))) return;
+    rows.push(`<tr data-usage-source="manual" style="background:#fff8f5;">
+      ${kanjiUsageInputs(item)}
+      <td>
+        <span class="pill" style="background:#fff4d6;color:#7a5700;">Kata utama</span><br>
+        <span style="display:inline-block;margin-top:5px;font-size:11px;color:var(--danger);">Tidak tampil: level atau Kanji penyusun belum cocok.</span>
+      </td>
+      <td class="actions">
+        <button class="btn btn-primary" onclick='saveManualKanjiUsage(this,"${k.id}",${index})'>Simpan</button>
+        <button class="btn btn-danger-soft" onclick='deleteManualKanjiUsage("${k.id}",${index})'>Hapus</button>
+      </td>
+    </tr>`);
+  });
+  return rows.join('');
+}
+
+window.openKanjiUsageManager = (id) => {
+  const k = (STATE.kanjiManagerItems || []).find((item) => item.id === id);
+  if (!k) return;
+  const visible = Array.isArray(k.usages) ? k.usages : [];
+  const manualCount = (Array.isArray(k.compounds) ? k.compounds : []).length;
+  const automaticCount = visible.filter((item) => item.source !== 'manual').length;
+  const rows = kanjiUsageRows(k);
+  openKanjiModal(`
+    <h3>Penggunaan ${escapeHtml(k.character)}</h3>
+    <p style="margin-top:-6px;color:var(--ink-500);font-size:13px;line-height:1.55;">
+      Ini adalah kata yang memakai <strong style="font-family:'Noto Sans JP',sans-serif;">${escapeHtml(k.character)}</strong>.
+      Kata dari Deck mengubah bank kosakata dan berlaku di semua tempat. Kata utama tersimpan khusus pada kartu Kanji ini.
+    </p>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin:12px 0 14px;">
+      <span class="pill"><strong>${visible.length}</strong> tampil di dashboard</span>
+      <span class="pill"><strong>${automaticCount}</strong> dari Deck</span>
+      <span class="pill"><strong>${manualCount}</strong> kata utama tersimpan</span>
+    </div>
+    ${rows
+      ? `<div style="overflow-x:auto;"><table style="font-size:12px;">
+          <thead><tr><th>Kata</th><th>Bacaan</th><th>Arti</th><th>Sumber</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>`
+      : '<div class="empty">Belum ada penggunaan yang cocok untuk level ini.</div>'}
+    <div class="modal-actions" style="justify-content:space-between;flex-wrap:wrap;">
+      <button class="btn btn-ghost" onclick='openKanjiItemForm("${k.id}")'>+ Tambah kata utama</button>
+      <button class="btn btn-ghost" onclick="openKanjiManager(STATE.kanjiManagerCtx)">← Kembali</button>
+    </div>
+  `);
+};
+
+function kanjiItemUpdateBody(k, compounds) {
+  return {
+    lessonId: STATE.kanjiManagerCtx?.lessonId || null,
+    character: k.character,
+    jlptLevel: k.jlpt_level,
+    onReading: k.on_reading || null,
+    kunReading: k.kun_reading || null,
+    meaningId: k.meaning_id || null,
+    mnemonic: k.mnemonic || null,
+    compounds,
+    strokeCount: k.stroke_count == null ? null : Number(k.stroke_count),
+    babKode: k.bab_kode || null,
+    sortOrder: Number(k.sort_order) || 0,
+  };
+}
+
+async function refreshKanjiUsageManager(kanjiId) {
+  const ctx = STATE.kanjiManagerCtx;
+  await openKanjiManager(ctx);
+  openKanjiUsageManager(kanjiId);
+}
+
+window.saveKanjiUsageVocabulary = async (btn, vocabularyId, kanjiId) => {
+  const row = btn?.closest('tr');
+  const k = (STATE.kanjiManagerItems || []).find((item) => item.id === kanjiId);
+  if (!row || !k || !vocabularyId || vocabularyId === 'null') return;
+  const values = kanjiUsageValues(row);
+  if (!values.japanese || !values.reading || !values.indonesian) {
+    notify('Kata, bacaan, dan arti wajib diisi lengkap.', true);
+    return;
+  }
+  if (!values.japanese.includes(k.character) && !confirm(
+    `Kata baru tidak lagi mengandung ${k.character}, jadi akan hilang dari daftar penggunaan kanji ini. Tetap simpan?`
+  )) return;
+  const previousText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan…';
+  try {
+    await api('/admin/module-vocabulary/' + vocabularyId, {
+      method: 'PUT', body: JSON.stringify(values),
+    });
+    notify('Penggunaan dari Deck diperbarui');
+    await refreshKanjiUsageManager(kanjiId);
+  } catch (err) {
+    notify('Gagal menyimpan penggunaan: ' + err.message, true);
+    btn.disabled = false;
+    btn.textContent = previousText;
+  }
+};
+
+window.saveManualKanjiUsage = async (btn, kanjiId, index) => {
+  const row = btn?.closest('tr');
+  const k = (STATE.kanjiManagerItems || []).find((item) => item.id === kanjiId);
+  if (!row || !k || index < 0) return;
+  const values = kanjiUsageValues(row);
+  if (!values.japanese || !values.reading || !values.indonesian) {
+    notify('Kata, bacaan, dan arti wajib diisi lengkap.', true);
+    return;
+  }
+  if (!values.japanese.includes(k.character)) {
+    notify(`Kata utama harus mengandung kanji ${k.character}.`, true);
+    return;
+  }
+  const compounds = Array.isArray(k.compounds) ? k.compounds.map((item) => ({ ...item })) : [];
+  if (!compounds[index]) return;
+  compounds[index] = values;
+  const previousText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan…';
+  try {
+    await api('/admin/kanji/' + kanjiId, {
+      method: 'PUT', body: JSON.stringify(kanjiItemUpdateBody(k, compounds)),
+    });
+    notify('Kata utama diperbarui');
+    await refreshKanjiUsageManager(kanjiId);
+  } catch (err) {
+    notify('Gagal menyimpan kata utama: ' + err.message, true);
+    btn.disabled = false;
+    btn.textContent = previousText;
+  }
+};
+
+window.deleteManualKanjiUsage = async (kanjiId, index) => {
+  const k = (STATE.kanjiManagerItems || []).find((item) => item.id === kanjiId);
+  if (!k || index < 0 || !confirm('Hapus kata utama ini dari kartu Kanji?')) return;
+  const compounds = (Array.isArray(k.compounds) ? k.compounds : []).filter((_, i) => i !== index);
+  try {
+    await api('/admin/kanji/' + kanjiId, {
+      method: 'PUT', body: JSON.stringify(kanjiItemUpdateBody(k, compounds)),
+    });
+    notify('Kata utama dihapus');
+    await refreshKanjiUsageManager(kanjiId);
+  } catch (err) { notify('Gagal menghapus kata utama: ' + err.message, true); }
+};
 
 function kanjiCompoundRowHtml(item) {
   const c = item || {};
