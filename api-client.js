@@ -142,7 +142,7 @@ async function ezRequireAuth(loginPath) {
   if (!user) {
     const path = loginPath || 'login.html';
     const here = location.pathname.replace(/^\//, '') + location.search;
-    location.replace(path + '?next=' + encodeURIComponent(here || 'welcome.html'));
+    location.replace(path + '?next=' + encodeURIComponent(here || 'dashboard.html'));
     return null;
   }
   return user;

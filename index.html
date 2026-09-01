@@ -21,7 +21,7 @@
     const user = JSON.parse(localStorage.getItem('ez_user') || 'null');
     const courses = JSON.parse(localStorage.getItem('ez_courses') || '[]');
     if (user && Array.isArray(courses) && courses.length > 0) {
-      window.location.replace('welcome.html');
+      window.location.replace('dashboard.html');
     }
   } catch (e) {}
 })();
@@ -29,7 +29,7 @@
 // Authoritative path: once api-client loads, hit /enrollments/me via ezApi
 // (which attaches the Bearer access token + auto-refreshes on 401). If the
 // server confirms at least one enrollment — including admin-implicit ones —
-// redirect to welcome.html. Covers new devices, cleared storage, and
+// redirect to dashboard.html. Covers new devices, cleared storage, and
 // out-of-band enrollment (e.g. SQL grant, admin login, post-login return
 // to landing).
 window.addEventListener('load', async () => {
@@ -43,7 +43,7 @@ window.addEventListener('load', async () => {
     const slugs = (data.enrollments || []).map(e => e.slug).filter(Boolean);
     if (slugs.length > 0) {
       localStorage.setItem('ez_courses', JSON.stringify(slugs));
-      window.location.replace('welcome.html');
+      window.location.replace('dashboard.html');
     }
   } catch (e) {}
 });
@@ -324,7 +324,7 @@ function ModernNav() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 40 }}>
           {loaded && user && (
             <>
-              <a href="welcome.html" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', padding: '6px 10px', borderRadius: 999 }}>
+              <a href="dashboard.html" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', padding: '6px 10px', borderRadius: 999 }}>
                 {user.avatar ? (
                   <img src={user.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
                 ) : (

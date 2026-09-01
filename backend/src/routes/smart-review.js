@@ -60,7 +60,10 @@ async function grammarTaskData(lessonId) {
   return { items: task.rows.map(enrich), pool: module.rows.map(enrich) };
 }
 
-async function buildCandidates(user) {
+// Shared by the Dashboard aggregator.  Keeping this as the one source means
+// the home-card counts and a started Review session always have identical
+// learned-scope and due-item rules.
+export async function buildReviewCandidates(user) {
   const scope = await accessScope(user); const rows = await genericRows(scope);
   const baseRows = filterReviewScope([...rows.kana.map((item) => ({ lessonId: item.lesson_id, courseId: item.course_id, category: 'kana', item })), ...rows.vocabulary.map((item) => ({ lessonId: item.lesson_id, courseId: item.course_id, category: 'vocabulary', item })), ...rows.kanji.map((item) => ({ lessonId: item.lesson_id, courseId: item.course_id, category: 'kanji', item }))], { completedLessonIds: scope.completedLessonIds, accessibleCourseIds: scope.courseIds });
   const states = stateMap((await query(`SELECT * FROM user_practice_state WHERE user_id = $1`, [user.id])).rows); const candidates = [];
@@ -90,11 +93,11 @@ async function buildCandidates(user) {
 
 function asPublic(candidate, question) { return { category: candidate.category, itemType: candidate.category, itemId: candidate.itemId, skill: candidate.skill, lessonId: candidate.lessonId, priority: reviewPriority(candidate), question }; }
 
-router.get('/summary', asyncHandler(async (req, res) => { const { candidates } = await buildCandidates(req.user); res.json({ ...summarizeCandidates(candidates), categories: REVIEW_CATEGORIES }); }));
+router.get('/summary', asyncHandler(async (req, res) => { const { candidates } = await buildReviewCandidates(req.user); res.json({ ...summarizeCandidates(candidates), categories: REVIEW_CATEGORIES }); }));
 
 router.post('/sessions', asyncHandler(async (req, res) => {
   const category = String(req.body?.category || 'mixed').toLowerCase(); if (category !== 'mixed' && !REVIEW_CATEGORIES.includes(category)) return res.status(400).json({ error: 'invalid_category' });
-  const { candidates, pools } = await buildCandidates(req.user); const selected = selectReviewCandidates(candidates, { category, limit: req.body?.limit });
+  const { candidates, pools } = await buildReviewCandidates(req.user); const selected = selectReviewCandidates(candidates, { category, limit: req.body?.limit });
   if (!selected.length) return res.json({ category, sessionId: null, questions: [], summary: summarizeCandidates(candidates) });
   const session = await withAdvisoryLock(`smart-review-session:${req.user.id}`, async (client) => {
     const created = await client.query(`INSERT INTO smart_review_sessions (user_id, category, expires_at) VALUES ($1,$2,NOW() + ($3 || ' minutes')::interval) RETURNING id, expires_at`, [req.user.id, category, String(SESSION_MINUTES)]); const questions = [];

@@ -47,5 +47,5 @@
     } catch (error) { feedback.textContent = `Jawaban belum tersimpan: ${error.message}`; feedback.className = 'feedback error'; if (button) button.disabled = false; }
   }
   function finish() { app.innerHTML = '<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Sesi selesai.</h1><p>Terima kasih sudah mengulang materi yang telah dipelajari.</p><button class="primary" id="back-home" type="button">Lihat Review</button></section>'; document.getElementById('back-home').addEventListener('click', loadHome); }
-  (async () => { const user = await ezRequireAuth('login.html'); if (user) loadHome(); })();
+  (async () => { const user = await ezRequireAuth('login.html'); const category = new URLSearchParams(location.search).get('category'); if (user) (category && ['kana','vocabulary','kanji','grammar'].includes(category) ? start(category) : loadHome()); })();
 })();
