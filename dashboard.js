@@ -1,6 +1,7 @@
 (() => {
   const app = document.getElementById('dashboard-app');
-  const release = '20260902-1';
+  const release = '20260902-4';
+  const progressReconcileVersion = 'ez_progress_reconcile_v2';
   const labels = { kana: 'Kana', vocabulary: 'Kosakata', kanji: 'Kanji', grammar: 'Grammar' };
   const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
 
@@ -9,6 +10,29 @@
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw Error(body.error || 'request_failed');
     return body;
+  }
+  async function reconcileCachedProgress() {
+    let progress = {};
+    let quizScores = {};
+    try {
+      progress = JSON.parse(localStorage.getItem('ez_progress') || '{}');
+      quizScores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
+    } catch {}
+    const hasProgress = progress && typeof progress === 'object' && !Array.isArray(progress)
+      && Object.values(progress).some((course) => course && typeof course === 'object' && Object.values(course).some((done) => done === true));
+    const needsRepair = localStorage.getItem('ez_progress_pending_sync') === '1'
+      || (hasProgress && localStorage.getItem(progressReconcileVersion) !== '1');
+    if (!needsRepair) return true;
+    try {
+      const saved = await ezApi('/learning-state', {
+        method: 'PUT',
+        body: JSON.stringify({ progress, quizScores }),
+      });
+      if (!saved.ok) return false;
+      localStorage.removeItem('ez_progress_pending_sync');
+      localStorage.setItem(progressReconcileVersion, '1');
+      return true;
+    } catch { return false; }
   }
   function learnUrl(data) {
     const course = data.course?.slug; const next = data.continueLearning;
@@ -46,9 +70,9 @@
       : '<h2>Belum ada kelas terjadwal</h2><p class="muted">Kelas dan rekaman akan muncul di sini saat tersedia.</p>';
     const recordings = (live.recentRecordings || []).map((item) => `<li>${esc(item.title)} <a target="_blank" rel="noopener" href="${esc(item.recordingUrl)}">Tonton</a></li>`).join('');
     app.innerHTML = `<section class="hero"><div><div class="eyebrow">学習ダッシュボード · DASHBOARD</div><h1>${data.greetingName ? `Halo, ${esc(data.greetingName)}.` : 'Halo.'}</h1><p class="muted">${esc(course.level || course.slug.toUpperCase())} · ${course.progress.percentage}% kurikulum selesai</p></div>${data.courses?.length > 1 ? `<label class="course-switch"><span>Kelas aktif</span><select class="course-select" id="course-select" aria-label="Pilih kelas">${data.courses.map((item) => `<option value="${esc(item.slug)}" ${item.id === course.id ? 'selected' : ''}>${esc(item.title)}</option>`).join('')}</select></label>` : ''}</section>
-    <section class="grid"><article class="card"><div class="eyebrow">PROGRES KELAS</div><div class="course-progress">${course.progress.percentage}% selesai</div><div class="curriculum-bar" role="progressbar" aria-label="Progres kurikulum" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${course.progress.percentage}"><i style="width:${course.progress.percentage}%"></i></div><p class="muted">${course.progress.completedLessons} dari ${course.progress.totalLessons} Pelajaran selesai. Ini progres kurikulum, bukan mastery.</p><a class="secondary compact-action" href="${courseUrl('progress.html', course.slug)}">Lihat Progress</a></article><article class="card continue-card"><div class="eyebrow">LANJUT BELAJAR</div>${next ? `<div class="continue-label">${esc(next.section || 'Kurikulum')} · ${esc(next.chapter.title)}</div><div class="continue-title">${esc(next.lesson.title)}</div><a class="primary" href="${learnUrl(data)}">Lanjut Belajar</a>` : '<div class="continue-title">Kurikulum selesai</div><p class="muted">Semua Pelajaran pada kelas ini sudah selesai.</p>'}</article></section>
-    <section class="grid"><article class="card"><div class="eyebrow">SMART REVIEW</div><div class="review-count">${review.total} item perlu direview</div><div class="counts">${Object.entries(labels).map(([key, label]) => `<div class="count"><strong>${Number(review.byCategory?.[key]) || 0}</strong><span>${label}</span></div>`).join('')}</div>${review.total ? `<a class="primary" href="${reviewUrl()}">Mulai Review</a>` : '<p class="muted">Review hari ini selesai. Lanjutkan belajar untuk membuka materi review berikutnya.</p>'}</article><article class="card live"><div class="eyebrow">LIVE CLASS · NEXT CLASS</div>${liveMarkup}${recordings ? `<div class="eyebrow recordings-label">RECENT RECORDINGS</div><ul class="live-recordings">${recordings}</ul>` : ''}<a class="secondary live-all" href="${courseUrl('live.html', course.slug)}">Lihat Semua</a></article></section>
-    <section class="card"><div class="performance"><div><div class="eyebrow">PERFORMA BELAJAR</div><h2>Bukti latihan, bukan progres kurikulum.</h2>${Object.entries(labels).map(([key]) => masteryRow(key, mastery[key])).join('')}</div><aside class="focus"><div class="eyebrow">FOKUS BELAJARMU</div>${focusMarkup}</aside></div></section>
+    <section class="grid dashboard-primary"><article class="card continue-card"><div class="eyebrow">LANJUT BELAJAR</div>${next ? `<div class="continue-label">${esc(next.section || 'Kurikulum')} · ${esc(next.chapter.title)}</div><div class="continue-title">${esc(next.lesson.title)}</div><a class="primary" href="${learnUrl(data)}">Lanjut Belajar</a>` : '<div class="continue-title">Kurikulum selesai</div><p class="muted">Semua Pelajaran pada kelas ini sudah selesai.</p>'}</article><article class="card progress-card"><div class="eyebrow">PROGRES KELAS</div><div class="course-progress">${course.progress.percentage}% selesai</div><div class="curriculum-bar" role="progressbar" aria-label="Progres kurikulum" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${course.progress.percentage}"><i style="width:${course.progress.percentage}%"></i></div><p class="muted">${course.progress.completedLessons} dari ${course.progress.totalLessons} Pelajaran selesai. Ini progres kurikulum, bukan mastery.</p><a class="secondary compact-action" href="${courseUrl('progress.html', course.slug)}">Lihat Progress</a></article></section>
+    <section class="grid dashboard-secondary"><article class="card review-card"><div class="eyebrow">SMART REVIEW</div><div class="review-count">${review.total} item perlu direview</div><div class="counts">${Object.entries(labels).map(([key, label]) => `<div class="count"><strong>${Number(review.byCategory?.[key]) || 0}</strong><span>${label}</span></div>`).join('')}</div>${review.total ? `<a class="primary" href="${reviewUrl()}">Mulai Review</a>` : '<p class="muted">Review hari ini selesai. Lanjutkan belajar untuk membuka materi review berikutnya.</p>'}</article><article class="card live"><div class="eyebrow">LIVE CLASS · NEXT CLASS</div>${liveMarkup}${recordings ? `<div class="eyebrow recordings-label">RECENT RECORDINGS</div><ul class="live-recordings">${recordings}</ul>` : ''}<a class="secondary live-all" href="${courseUrl('live.html', course.slug)}">Lihat Semua</a></article></section>
+    <section class="card performance-card"><div class="performance"><div><div class="eyebrow">PERFORMA BELAJAR</div><h2>Bukti latihan, bukan progres kurikulum.</h2>${Object.entries(labels).map(([key]) => masteryRow(key, mastery[key])).join('')}</div><aside class="focus"><div class="eyebrow">FOKUS BELAJARMU</div>${focusMarkup}</aside></div></section>
     <section class="card activity-card"><div class="eyebrow">AKTIVITAS MINGGU INI</div><h2>Perilaku belajar, bukan mastery.</h2><div class="activity"><div class="metric"><strong>${activity.activeDays || 0}</strong><span>hari aktif</span></div><div class="metric"><strong>${activity.lessonsCompleted || 0}</strong><span>Pelajaran selesai</span></div><div class="metric"><strong>${activity.reviewQuestions || 0}</strong><span>review selesai</span></div><div class="metric"><strong>${activity.accuracy == null ? '—' : `${activity.accuracy}%`}</strong><span>akurasi latihan</span></div></div><div class="insight">${esc(data.weeklyInsight?.message || 'Belum cukup data untuk melihat insight minggu ini.')}</div></section>`;
     document.getElementById('course-select')?.addEventListener('change', (event) => load(event.target.value));
   }
@@ -57,5 +81,9 @@
     catch (error) { app.innerHTML = errorMarkup(error); document.getElementById('retry-dashboard')?.addEventListener('click', () => load(course)); }
   }
   document.getElementById('logout').addEventListener('click', () => ezLogout());
-  (async () => { if (await ezRequireAuth('login.html')) load(new URLSearchParams(location.search).get('course') || ''); })();
+  (async () => {
+    if (!(await ezRequireAuth('login.html'))) return;
+    await reconcileCachedProgress();
+    await load(new URLSearchParams(location.search).get('course') || '');
+  })();
 })();

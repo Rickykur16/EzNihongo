@@ -24,6 +24,59 @@ export function normalizeLegacyProgress(progress) {
   return result;
 }
 
+// The lesson page still keeps a slug-keyed cache for instant/offline rendering,
+// while Dashboard reads the relational user_progress table. Overlay canonical
+// rows into that cache so both surfaces always use the same completion facts.
+// Completion is monotonic: canonical TRUE may add a flag, never remove one.
+export function mergeCanonicalLessonProgress(progress, canonicalRows) {
+  const source = progress && typeof progress === 'object' && !Array.isArray(progress)
+    ? progress
+    : {};
+  const out = {};
+  for (const [courseSlug, courseProgress] of Object.entries(source)) {
+    out[courseSlug] = courseProgress && typeof courseProgress === 'object' && !Array.isArray(courseProgress)
+      ? { ...courseProgress }
+      : {};
+  }
+  for (const row of canonicalRows || []) {
+    const courseSlug = String(row?.course_slug || '').trim();
+    const moduleSlug = String(row?.module_slug || '').trim();
+    const lessonSlug = String(row?.lesson_slug || '').trim();
+    if (!courseSlug || !moduleSlug || !lessonSlug) continue;
+    out[courseSlug] ||= {};
+    out[courseSlug][`${moduleSlug}:${lessonSlug}`] = true;
+  }
+  return out;
+}
+
+export function mergeCompletionProgress(a, b) {
+  const out = {};
+  for (const source of [a, b]) {
+    if (!source || typeof source !== 'object' || Array.isArray(source)) continue;
+    for (const [courseSlug, courseProgress] of Object.entries(source)) {
+      if (!courseProgress || typeof courseProgress !== 'object' || Array.isArray(courseProgress)) continue;
+      out[courseSlug] ||= {};
+      for (const [lessonKey, value] of Object.entries(courseProgress)) {
+        out[courseSlug][lessonKey] = out[courseSlug][lessonKey] === true || value === true
+          ? true
+          : value;
+      }
+    }
+  }
+  return out;
+}
+
+export function mergeBestQuizScores(a, b) {
+  const out = {};
+  for (const source of [a, b]) {
+    if (!source || typeof source !== 'object' || Array.isArray(source)) continue;
+    for (const [key, value] of Object.entries(source)) {
+      out[key] = Math.max(Number(out[key]) || 0, Number(value) || 0);
+    }
+  }
+  return out;
+}
+
 export function normalizeLegacyPracticeStat(value) {
   const raw = value && typeof value === 'object' ? value : {};
   const attempts = Math.max(0, Math.min(1_000_000, Math.floor(Number(raw.attempts) || 0)));

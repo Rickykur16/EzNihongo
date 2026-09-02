@@ -3,7 +3,7 @@ import { isAdminEmail } from './auth.js';
 import { loadMastery, focusSentence } from './grammar-mastery.js';
 import { buildReviewCandidates } from './routes/smart-review.js';
 import { summarizeCandidates } from './smart-review-service.js';
-import { masteryDisplay, structuralProgressAndNext, weeklyInsight } from './dashboard-rules.js';
+import { isVisibleCurriculumLesson, masteryDisplay, structuralProgressAndNext, weeklyInsight } from './dashboard-rules.js';
 import { loadLiveClassSummary } from './live-class-service.js';
 
 const WEEK_DAYS = 7;
@@ -23,7 +23,7 @@ async function accessibleCourses(user) {
 
 async function structuralCourse(userId, course) {
   const lessons = await query(
-    `SELECT l.id, l.slug, l.title, l.type, l.sort_order, m.id AS module_id, m.slug AS module_slug,
+    `SELECT l.id, l.slug, l.title, l.type, l.popup_after_lesson_id, l.sort_order, m.id AS module_id, m.slug AS module_slug,
             m.title AS module_title, m.section_name, m.sort_order AS module_sort,
             p.completed, p.completed_at
        FROM lessons l JOIN modules m ON m.id = l.module_id
@@ -31,7 +31,7 @@ async function structuralCourse(userId, course) {
       WHERE m.course_id = $2
       ORDER BY m.sort_order, l.sort_order, l.created_at`, [userId, course.id]
   );
-  const rows = lessons.rows;
+  const rows = lessons.rows.filter(isVisibleCurriculumLesson);
   const structural = structuralProgressAndNext(rows);
   const next = structural.next;
   return {
@@ -101,7 +101,7 @@ async function weeklyActivity(userId, courseId) {
             (SELECT COALESCE(SUM(correct::int), 0)::int FROM evidence) AS correct,
             ((SELECT COUNT(*)::int FROM practice_attempts WHERE user_id = $1 AND course_id = $2 AND source = 'smart_review' AND created_at >= NOW() - INTERVAL '7 days')
              + (SELECT COUNT(*)::int FROM grammar_attempts ga JOIN module_grammar g ON g.id = ga.grammar_id JOIN modules m ON m.id = g.module_id WHERE ga.user_id = $1 AND m.course_id = $2 AND ga.eval_source = 'smart_review' AND ga.created_at >= NOW() - INTERVAL '7 days')) AS review_questions,
-            (SELECT COUNT(*)::int FROM user_progress p JOIN lessons l ON l.id = p.lesson_id JOIN modules m ON m.id = l.module_id WHERE p.user_id = $1 AND p.completed = TRUE AND p.completed_at >= NOW() - INTERVAL '7 days' AND m.course_id = $2) AS lessons_completed,
+            (SELECT COUNT(*)::int FROM user_progress p JOIN lessons l ON l.id = p.lesson_id JOIN modules m ON m.id = l.module_id WHERE p.user_id = $1 AND p.completed = TRUE AND p.completed_at >= NOW() - INTERVAL '7 days' AND m.course_id = $2 AND NOT (l.type = 'grammar_task' AND l.popup_after_lesson_id IS NOT NULL)) AS lessons_completed,
             (SELECT COUNT(*)::int FROM previous) AS previous_attempts,
             (SELECT COALESCE(SUM(correct::int), 0)::int FROM previous) AS previous_correct`, [userId, courseId]
   );

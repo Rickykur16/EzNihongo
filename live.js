@@ -1,6 +1,6 @@
 (() => {
   const app = document.getElementById('app');
-  const release = '20260902-1';
+  const release = '20260902-4';
   let data = null;
   let tab = 'upcoming';
   const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
