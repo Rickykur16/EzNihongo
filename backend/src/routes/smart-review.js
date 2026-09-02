@@ -6,7 +6,7 @@ import { isAdminEmail } from '../auth.js';
 import { recordPracticeAttemptWithState } from '../practice-service.js';
 import { loadMastery } from '../grammar-mastery.js';
 import { deriveDrills, publicDrill, arrangeIsCorrect } from '../grammar-drills.js';
-import { REVIEW_CATEGORIES, SMART_REVIEW_SOURCE, filterReviewScope, isReviewNeeded, makeReviewQuestion, publicQuestion, reviewPriority, selectReviewCandidates, summarizeCandidates } from '../smart-review-service.js';
+import { REVIEW_CATEGORIES, SMART_REVIEW_SOURCE, filterReviewScope, isReviewNeeded, makeReviewQuestion, pickCompoundOwners, publicQuestion, reviewPriority, selectReviewCandidates, summarizeCandidates } from '../smart-review-service.js';
 import { deriveCompounds, extractKanjiCharacters, loadKanjiCatalog } from '../kanji-compounds.js';
 
 const router = Router();
@@ -15,6 +15,7 @@ const SESSION_MINUTES = 45;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 // Matches welcome.html's _kanjiWordKey/_kanjiWordPracticeSkill exactly so a
 // Smart Review answer hydrates the existing Kanji adaptive mastery cache.
+const WORD_DIRECTIONS = ['word2reading', 'word2meaning', 'meaning2word', 'reading2word'];
 const wordSkill = (direction, word) => `word:${direction}:${Buffer.from(`${String(word.japanese || '').trim().toLowerCase()}::${String(word.reading || '').trim().toLowerCase()}`, 'utf8').toString('base64url')}`;
 const parseDistractors = (raw) => String(raw || '').split(/\r?\n/).map((value) => value.trim()).filter(Boolean).slice(0, 6);
 
@@ -70,11 +71,17 @@ export async function buildReviewCandidates(user) {
   const add = (base, skill, extra = {}) => candidates.push({ ...base, itemId: base.item.id, skill, state: states.get(`${base.category}:${base.item.id}:${skill}`) || {}, ...extra });
   for (const base of baseRows) { if (base.category === 'kana') { add(base, 'k2r'); add(base, 'r2k'); } if (base.category === 'vocabulary') { add(base, 'jp2id'); add(base, 'id2jp'); add(base, 'audio2id'); } }
   const catalog = await loadKanjiCatalog(); const learnedChars = new Set(rows.kanji.map((item) => item.character));
-  for (const base of baseRows.filter((row) => row.category === 'kanji')) {
-    add(base, 'char2meaning'); add(base, 'meaning2char');
+  const kanjiBases = baseRows.filter((row) => row.category === 'kanji');
+  for (const base of kanjiBases) { add(base, 'char2meaning'); add(base, 'meaning2char'); }
+  // One entry per (kanji, word) pair, then a single owner per word — see
+  // pickCompoundOwners(). Without this the same word is added once per kanji it
+  // contains, producing an identical question tracked as two separate items.
+  const wordEntries = [];
+  for (const base of kanjiBases) {
     const words = deriveCompounds(base.item.character, base.item.compounds, rows.vocabulary.map((v) => ({ vocabulary_id: v.id, module_id: null, course_level: base.item.course_level, japanese: v.japanese, reading: v.reading, indonesian: v.indonesian, module_sort: 0, vocab_sort: 0 })), { courseLevel: base.item.course_level, moduleId: base.item.module_id, moduleSort: base.item.module_sort, kanjiCatalog: catalog }).filter((word) => extractKanjiCharacters(word.japanese).every((char) => learnedChars.has(char)));
-    for (const word of words) for (const direction of ['word2reading', 'word2meaning', 'meaning2word', 'reading2word']) add(base, wordSkill(direction, word), { word });
+    for (const word of words) wordEntries.push({ key: `${word.japanese}::${word.reading}`, baseId: base.item.id, hasState: WORD_DIRECTIONS.some((direction) => states.has(`kanji:${base.item.id}:${wordSkill(direction, word)}`)), base, word });
   }
+  for (const { base, word } of pickCompoundOwners(wordEntries).values()) for (const direction of WORD_DIRECTIONS) add(base, wordSkill(direction, word), { word });
   if (scope.courseIds.length) {
     const links = await query(`SELECT DISTINCT gi.grammar_id, gi.lesson_id, m.course_id FROM lesson_grammar_task_items gi JOIN lessons l ON l.id = gi.lesson_id JOIN modules m ON m.id = l.module_id JOIN user_progress p ON p.lesson_id = l.id WHERE p.user_id = $1 AND p.completed = TRUE AND m.course_id = ANY($2::uuid[])`, [user.id, scope.courseIds]);
     const mastery = await loadMastery(user.id, links.rows.map((row) => row.grammar_id)); const cache = new Map();

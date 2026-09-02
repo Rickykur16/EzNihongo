@@ -181,6 +181,45 @@
       kirim terkunci di 2/3 dan terbuka di 3/3, susunan benar → "Benar" →
       lanjut sendiri.
 
+      **Smart Review: satu kata majemuk dihitung sebagai DUA item, jadi soalnya
+      terus kembali** — user: "saya berkali kali dapet soal 先生 がくせい",
+      lalu diperjelas "pertanyaan hiragana jawaban kanji" (arah `reading2word`)
+      dan — ini yang menentukan — **"itu saya tidak salah tapi muncul berkali
+      kali"**. Koreksi itu penting: teori pertama saya (jawaban salah →
+      `nextReviewDelayMs` mengembalikan 0 → langsung jatuh tempo lagi) TIDAK
+      berlaku, dan dibuang. Akar sebenarnya: `deriveCompounds()` dipanggil
+      SEKALI PER KARAKTER, jadi 学生 diturunkan dua kali — di bawah 学 dan di
+      bawah 生 (先生 juga: 先 dan 生). Kedua salinan punya `skill` IDENTIK
+      (`wordSkill()` cuma memakai japanese+reading) tapi `itemId` berbeda (id
+      kanji), sedangkan `user_practice_state` di-key
+      `(user_id, item_type, item_id, skill)` — jadi keduanya item terpisah:
+      soal yang sama bisa muncul 2x dalam satu sesi, DAN menjawab benar salinan
+      pertama tidak menyentuh salinan kedua (tetap `attempts = 0`, tetap jatuh
+      tempo, kembali lagi). Diukur lewat fungsi asli: satu kata 2-kanji
+      menghasilkan **8 kandidat, bukan 4**. Perbaikannya helper murni baru
+      `pickCompoundOwners()` (`smart-review-service.js`) + pemakaiannya di
+      `buildReviewCandidates()`: tiap kata diklaim SATU kanji saja (16→8
+      kandidat pada fixture 先生/学生). **Dua jebakan yang dijaga**: (1) query
+      `kanji_items` di `genericRows()` TIDAK punya `ORDER BY`, jadi urutan
+      kedatangan tidak stabil — kalau pemiliknya ikut berubah tiap sesi, state
+      lama jadi yatim dan soalnya justru muncul lagi sebagai "baru"; karena itu
+      tie-break-nya `baseId` terkecil, bukan yang pertama datang; (2) kanji yang
+      SUDAH menyimpan state siswa untuk kata itu selalu menang, supaya progres
+      yang sudah ada tidak terbuang. Ketiga tes barunya dibuktikan MENGGIGIT
+      (helper diganti versi naif → 3 tes gagal). **Yang BELUM diselesaikan dan
+      bukan bagian dari perbaikan ini**: panjang intervalnya sendiri. Smart
+      Review memakai tangga streak tetap `nextReviewDelayMs()`
+      (`learning-foundations.js`): salah→0, streak1→1 hari, 2-3→3 hari,
+      4-5→7 hari, ≥6→14 hari (mentok). **Smart Review TIDAK memakai FSRS** —
+      ditanyakan user. FSRS v5 sungguhan ada di repo (`app/fsrs.js`, kurva
+      power-law + 19 bobot) tapi cuma dipakai PWA Kanji dan disimpan di
+      `kanji_progress.fsrs_data`; tidak ada satu pun berkas Smart Review yang
+      membacanya. Jadi walau duplikatnya sudah hilang, item yang dijawab benar
+      tetap kembali tiap 1/3/7/14 hari — memindahkan Smart Review ke FSRS
+      adalah pekerjaan terpisah (butuh kolom difficulty/stability di
+      `user_practice_state`, migrasi data, pemetaan benar/salah ke rating
+      FSRS, dan penjadwal itu dipakai BERSAMA drill di pelajaran).
+
       **Smart Review: soal salah TIDAK lagi berpindah sendiri** — user:
       "reviewnya terlalu cepat berganti setelah dikerjakan, jadi waktu untuk
       berfikir dimana yang salah terlalu pendek". Sebelumnya `review.js`

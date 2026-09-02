@@ -83,6 +83,29 @@ export function selectReviewCandidates(candidates, { category = 'mixed', limit =
   return out;
 }
 
+// A compound word is re-derived once per kanji it contains, because
+// deriveCompounds() runs per character — 学生 comes back under both 学 and 生.
+// The copies carry an IDENTICAL skill but a different itemId (the kanji), so
+// practice state is stored per copy: answering one leaves the other at
+// attempts = 0, still due, and the same question returns. Each word therefore
+// gets exactly one owner.
+//
+// Preference order matters. A kanji that already holds the learner's state for
+// this word wins, so existing progress is never orphaned; otherwise the lowest
+// baseId wins, which keeps ownership stable between sessions (the kanji query
+// has no ORDER BY, so arrival order alone would not be).
+export function pickCompoundOwners(entries) {
+  const owners = new Map();
+  for (const entry of entries || []) {
+    const current = owners.get(entry.key);
+    const better = !current
+      || (entry.hasState && !current.hasState)
+      || (entry.hasState === current.hasState && String(entry.baseId) < String(current.baseId));
+    if (better) owners.set(entry.key, entry);
+  }
+  return owners;
+}
+
 function hash(value) {
   let n = 0x811c9dc5;
   for (const char of String(value)) { n ^= char.charCodeAt(0); n = Math.imul(n, 0x01000193) >>> 0; }
