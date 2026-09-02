@@ -87,7 +87,24 @@ export async function buildReviewCandidates(user) {
       candidates.push({ category: 'grammar', itemId: item.id, lessonId: link.lesson_id, courseId: link.course_id, skill: raw.step === 1 ? 'recognition' : 'controlled', item, grammarDrill: raw, state: { attempts: m?.attempts || 0, correct: m?.passedCount || 0, streak: 0, lastSeenAt: m?.lastAttemptAt || null, nextReviewAt }, mistakes: Math.max(0, (m?.attempts || 0) - (m?.passedCount || 0)) });
     }
   }
-  const pools = { kanaCharacters: rows.kana.map((row) => row.character), kanaRomaji: rows.kana.map((row) => row.romaji), vocabJapanese: rows.vocabulary.map((row) => row.japanese), vocabIndonesian: rows.vocabulary.map((row) => row.indonesian), vocabReadingByJapanese: Object.fromEntries(rows.vocabulary.map((row) => [row.japanese, row.reading || null])), kanjiCharacters: rows.kanji.map((row) => row.character), kanjiMeanings: rows.kanji.map((row) => row.meaning_id), words: candidates.filter((row) => row.word).map((row) => row.word.japanese), wordReadings: candidates.filter((row) => row.word).map((row) => row.word.reading), wordMeanings: candidates.filter((row) => row.word).map((row) => row.word.indonesian) };
+  const pools = {
+    kanaCharactersByKind: {
+      hiragana: rows.kana.filter((row) => row.kind === 'hiragana').map((row) => row.character),
+      katakana: rows.kana.filter((row) => row.kind === 'katakana').map((row) => row.character),
+    },
+    kanaRomajiByKind: {
+      hiragana: rows.kana.filter((row) => row.kind === 'hiragana').map((row) => row.romaji),
+      katakana: rows.kana.filter((row) => row.kind === 'katakana').map((row) => row.romaji),
+    },
+    vocabJapanese: rows.vocabulary.map((row) => row.japanese),
+    vocabIndonesian: rows.vocabulary.map((row) => row.indonesian),
+    vocabReadingByJapanese: Object.fromEntries(rows.vocabulary.map((row) => [row.japanese, row.reading || null])),
+    kanjiCharacters: rows.kanji.map((row) => row.character),
+    kanjiMeanings: rows.kanji.map((row) => row.meaning_id),
+    words: candidates.filter((row) => row.word).map((row) => row.word.japanese),
+    wordReadings: candidates.filter((row) => row.word).map((row) => row.word.reading),
+    wordMeanings: candidates.filter((row) => row.word).map((row) => row.word.indonesian),
+  };
   return { candidates: candidates.filter((candidate) => isReviewNeeded(candidate)), pools };
 }
 

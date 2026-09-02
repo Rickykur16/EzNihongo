@@ -80,12 +80,15 @@
 
   function renderQuestion() {
     const item = session.questions[index]; const question = item.question; const options = question.options || [];
+    const tagLabel = item.category === 'kana' && question.script
+      ? `${labels[item.category]} · ${question.script}`
+      : labels[item.category];
     const arrange = question.variant === 'arrange';
     const answerUi = arrange
       ? `<div class="arrange-answer" id="arrange-answer" aria-label="Kalimat yang kamu susun"></div><div class="arrange" id="arrange" aria-label="Kepingan kata"></div><div class="answer-row"><button class="primary" id="submit-arrange" type="button">Periksa jawaban</button><button class="token" id="reset-arrange" type="button">Ulangi</button></div>`
       : `<div class="options">${options.map((option, optionIndex) => `<button class="option" type="button" data-option="${optionIndex}">${esc(option)}${question.optionReadings?.[optionIndex] && question.optionReadings[optionIndex] !== option ? `<small>${esc(question.optionReadings[optionIndex])}</small>` : ''}</button>`).join('')}</div>`;
     const progressPercent = Math.round(((index + 1) / session.questions.length) * 100);
-    app.innerHTML = `<section class="question-card"><div class="progress">SOAL ${index + 1} DARI ${session.questions.length}</div><div class="review-progress-bar" role="progressbar" aria-label="Progres sesi review" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progressPercent}"><i style="width:${progressPercent}%"></i></div><span class="tag">${labels[item.category]}</span><h1 class="prompt">${esc(question.prompt)}</h1>${question.audioText ? '<button class="token" id="play-audio" type="button">▶ Putar audio</button>' : ''}${question.reading ? `<p class="hint">${esc(question.reading)}</p>` : ''}${question.meaning ? `<p class="hint">${esc(question.meaning)}</p>` : ''}${question.example?.japanese ? `<p class="hint">${esc(question.example.japanese)}</p>` : ''}${question.example?.indonesian ? `<p class="hint">${esc(question.example.indonesian)}</p>` : ''}${question.sentence ? `<p class="hint">${esc(question.sentence)}</p>` : ''}${question.indonesian ? `<p class="hint">${esc(question.indonesian)}</p>` : ''}${answerUi}<p class="feedback" id="feedback" aria-live="polite"></p><div class="review-actions" id="answer-actions"></div></section>`;
+    app.innerHTML = `<section class="question-card"><div class="progress">SOAL ${index + 1} DARI ${session.questions.length}</div><div class="review-progress-bar" role="progressbar" aria-label="Progres sesi review" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progressPercent}"><i style="width:${progressPercent}%"></i></div><span class="tag">${esc(tagLabel)}</span><h1 class="prompt">${esc(question.prompt)}</h1>${question.instruction ? `<p class="hint">${esc(question.instruction)}</p>` : ''}${question.audioText ? '<button class="token" id="play-audio" type="button">▶ Putar audio</button>' : ''}${question.reading ? `<p class="hint">${esc(question.reading)}</p>` : ''}${question.meaning ? `<p class="hint">${esc(question.meaning)}</p>` : ''}${question.example?.japanese ? `<p class="hint">${esc(question.example.japanese)}</p>` : ''}${question.example?.indonesian ? `<p class="hint">${esc(question.example.indonesian)}</p>` : ''}${question.sentence ? `<p class="hint">${esc(question.sentence)}</p>` : ''}${question.indonesian ? `<p class="hint">${esc(question.indonesian)}</p>` : ''}${answerUi}<p class="feedback" id="feedback" aria-live="polite"></p><div class="review-actions" id="answer-actions"></div></section>`;
     app.querySelector('#play-audio')?.addEventListener('click', () => playAudio(question.audioText));
     app.querySelectorAll('[data-option]').forEach((button) => button.addEventListener('click', () => answer({ optionIndex: Number(button.dataset.option) }, button)));
     if (arrange) renderArrange(question);
@@ -124,7 +127,7 @@
       // milik siswa, bukan angka tebakan — tampilkan jawaban benarnya lalu
       // tunggu mereka menekan "Lanjut".
       const answerText = correctAnswerText(session.questions[index].question, result);
-      feedback.innerHTML = `Belum tepat — item ini akan muncul lebih cepat.${answerText ? `<span class="answer-key">Jawaban benar: <b>${esc(answerText)}</b></span>` : ''}`;
+      feedback.innerHTML = `Belum tepat. Soal ini akan diulang lebih cepat.${answerText ? `<span class="answer-key">Jawaban benar: <b>${esc(answerText)}</b></span>` : ''}`;
       const actions = document.getElementById('answer-actions');
       if (actions) {
         actions.innerHTML = '<button class="primary" id="review-next" type="button">Lanjut →</button>';
