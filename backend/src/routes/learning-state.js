@@ -1,35 +1,36 @@
 import { Router } from 'express';
 import { query, withAdvisoryLock } from '../db.js';
 import { requireAuth, asyncHandler } from '../middleware.js';
-import { mergeBestQuizScores, mergeCanonicalLessonProgress, mergeCompletionProgress } from '../learning-foundations.js';
+import { mergeBestQuizScores, mergeCompletionProgress, mergeCurrentLessonProgress } from '../learning-foundations.js';
 import { reconcileLegacyProgress } from '../progress-service.js';
 
 const router = Router();
 router.use(requireAuth);
 
 // GET /api/learning-state — slug-keyed cache used by the lesson page.
-// Legacy/device flags live in user_learning_state, then canonical relational
-// user_progress completions are overlaid so Dashboard and Belajar agree.
+// Legacy/device flags live in user_learning_state. Only keys that still map to
+// the current lesson catalog are returned, with canonical relational
+// user_progress completions overlaid so Dashboard and Belajar agree.
 router.get('/', asyncHandler(async (req, res) => {
-  const [row, canonical] = await Promise.all([
+  const [row, catalog] = await Promise.all([
     query(
       `SELECT progress, quiz_scores, updated_at
        FROM user_learning_state WHERE user_id = $1 LIMIT 1`,
       [req.user.id]
     ),
     query(
-      `SELECT c.slug AS course_slug, m.slug AS module_slug, l.slug AS lesson_slug
-         FROM user_progress p
-         JOIN lessons l ON l.id = p.lesson_id
+      `SELECT c.slug AS course_slug, m.slug AS module_slug, l.slug AS lesson_slug,
+              COALESCE(p.completed, FALSE) AS completed
+         FROM lessons l
          JOIN modules m ON m.id = l.module_id
          JOIN courses c ON c.id = m.course_id
-        WHERE p.user_id = $1 AND p.completed = TRUE`,
+         LEFT JOIN user_progress p ON p.lesson_id = l.id AND p.user_id = $1`,
       [req.user.id]
     ),
   ]);
   const data = row.rows[0];
   res.json({
-    progress: mergeCanonicalLessonProgress(data?.progress || {}, canonical.rows),
+    progress: mergeCurrentLessonProgress(data?.progress || {}, catalog.rows),
     quizScores: data?.quiz_scores || {},
     updatedAt: data?.updated_at || null,
   });
@@ -64,6 +65,16 @@ router.put('/', asyncHandler(async (req, res) => {
       );
       const mergedProgress = mergeCompletionProgress(current.rows[0]?.progress || {}, progress);
       const mergedQuizScores = mergeBestQuizScores(current.rows[0]?.quiz_scores || {}, quizScores);
+      const catalog = await client.query(
+        `SELECT c.slug AS course_slug, m.slug AS module_slug, l.slug AS lesson_slug,
+                COALESCE(p.completed, FALSE) AS completed
+           FROM lessons l
+           JOIN modules m ON m.id = l.module_id
+           JOIN courses c ON c.id = m.course_id
+           LEFT JOIN user_progress p ON p.lesson_id = l.id AND p.user_id = $1`,
+        [req.user.id]
+      );
+      const currentProgress = mergeCurrentLessonProgress(mergedProgress, catalog.rows);
       await client.query(
         `INSERT INTO user_learning_state (user_id, progress, quiz_scores)
          VALUES ($1, $2::jsonb, $3::jsonb)
@@ -71,7 +82,7 @@ router.put('/', asyncHandler(async (req, res) => {
            SET progress = EXCLUDED.progress,
                quiz_scores = EXCLUDED.quiz_scores,
                updated_at = NOW()`,
-        [req.user.id, JSON.stringify(mergedProgress), JSON.stringify(mergedQuizScores)]
+        [req.user.id, JSON.stringify(currentProgress), JSON.stringify(mergedQuizScores)]
       );
       const reconciliation = await reconcileLegacyProgress(client, req.user.id);
       return { reconciliation };

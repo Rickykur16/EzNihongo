@@ -7,6 +7,7 @@ import {
   hasPracticeScopeAccess,
   mergeBestQuizScores,
   mergeCanonicalLessonProgress,
+  mergeCurrentLessonProgress,
   mergeCompletionProgress,
   mergeImportedPracticeState,
   normalizeLegacyPracticeStat,
@@ -93,6 +94,28 @@ test('canonical lesson progress is overlaid into the lesson-page cache without l
     n4: { 'bab-2:reading': true },
   });
   assert.notEqual(merged.n5, legacy.n5);
+});
+
+test('current lesson catalog removes stale keys while preserving valid and canonical completions', () => {
+  const merged = mergeCurrentLessonProgress({
+    n5: {
+      'bab-1:intro': true,
+      'bab-lama:dihapus': true,
+      'bab-2:belum': false,
+    },
+    removed_course: { 'bab-1:intro': true },
+  }, [
+    { course_slug: 'n5', module_slug: 'bab-1', lesson_slug: 'intro', completed: false },
+    { course_slug: 'n5', module_slug: 'bab-2', lesson_slug: 'belum', completed: false },
+    { course_slug: 'n5', module_slug: 'bab-2', lesson_slug: 'server', completed: true },
+  ]);
+  assert.deepEqual(merged, {
+    n5: {
+      'bab-1:intro': true,
+      'bab-2:belum': false,
+      'bab-2:server': true,
+    },
+  });
 });
 
 test('server learning-state merge is monotonic across devices', () => {
