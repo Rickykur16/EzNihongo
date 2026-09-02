@@ -1,0 +1,158 @@
+/* Keep the lesson itself central; overview tools support it without pushing it away. */
+.learning-workspace {
+  min-width: 0;
+  flex: 1;
+}
+
+.learning-overview {
+  width: min(100%, 980px);
+  padding: 24px 44px 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+.learning-overview:has(#reco-panel:not(:empty)) {
+  grid-template-columns: minmax(0, 1.2fr) minmax(290px, .8fr);
+}
+
+#reco-panel:empty { display: none; }
+
+.learning-overview .greeting-banner {
+  min-width: 0;
+  min-height: 132px;
+  padding: 22px 24px;
+  gap: 16px;
+  overflow: hidden;
+  border: 1px solid var(--du-border, #ece9e3);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 88% 50%, rgba(178, 0, 36, .055), transparent 52%),
+    #fff;
+  box-shadow: var(--du-shadow-sm, 0 3px 12px rgba(27, 20, 16, .06));
+}
+
+.learning-overview .greeting-banner::before {
+  right: -8px;
+  font-size: 128px;
+}
+
+.learning-overview .greeting-jp {
+  font-size: clamp(22px, 2.7vw, 30px);
+  line-height: 1.25;
+}
+
+/* The current lesson is already open directly below; a second "resume" CTA is redundant. */
+.learning-overview .greeting-resume { display: none; }
+
+.learning-overview .greeting-time {
+  padding: 12px 16px;
+  border-radius: 14px;
+}
+
+.learning-overview .reco-panel-wrap {
+  height: 100%;
+  padding: 0;
+}
+
+.learning-overview .reco-panel {
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #f0e0da;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--du-shadow-sm, 0 3px 12px rgba(27, 20, 16, .06));
+}
+
+.reco-panel > summary {
+  min-height: 58px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #1b1410;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+  list-style: none;
+}
+
+.reco-panel > summary::-webkit-details-marker { display: none; }
+.reco-panel > summary:hover { background: #fff8f5; }
+.reco-panel > summary:focus-visible {
+  outline: 2px solid var(--brand-red);
+  outline-offset: -3px;
+}
+
+.reco-summary-action {
+  color: var(--brand-red);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.reco-summary-action::after { content: " +"; }
+.reco-panel[open] .reco-summary-action::after { content: " −"; }
+
+.reco-content {
+  max-height: 260px;
+  padding: 0 16px 16px;
+  overflow-y: auto;
+  border-top: 1px solid #f5ebe6;
+}
+
+@media (min-width: 861px) {
+  .learning-layout.sidebar-collapsed .learning-overview,
+  .learning-layout.sidebar-collapsed .main-content {
+    max-width: 1120px;
+    padding-right: 60px;
+    padding-left: 60px;
+  }
+
+  .learning-workspace .main-content {
+    padding-top: 22px;
+    padding-bottom: 180px;
+  }
+}
+
+@media (max-width: 860px) {
+  .learning-overview {
+    width: 100%;
+    padding: 18px 24px 0;
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+  }
+
+  .learning-workspace .main-content {
+    padding-top: 20px;
+    padding-bottom: 160px;
+  }
+}
+
+@media (max-width: 600px) {
+  .learning-overview { padding: 14px 16px 0; }
+
+  .learning-overview .greeting-banner {
+    min-height: 0;
+    padding: 17px 18px;
+    border-radius: 15px;
+  }
+
+  .learning-overview .greeting-banner::before {
+    right: -2px;
+    font-size: 94px;
+  }
+
+  .learning-overview .greeting-jp { font-size: 21px; }
+  .learning-overview .greeting-id { max-width: 86%; font-size: 12.5px; }
+  .learning-overview .greeting-time { display: none; }
+  .learning-overview .reco-panel { border-radius: 14px; }
+  .reco-panel > summary { min-height: 52px; padding: 12px 14px; }
+  .reco-content { max-height: 230px; padding: 0 14px 14px; }
+
+  .learning-workspace .main-content {
+    padding: 18px 16px 150px;
+  }
+}
