@@ -107,6 +107,52 @@
       migrasi. **Bab 3 tetap di luar jangkauan** — harus diperbaiki lewat
       admin, atau lewat migrasi lanjutan kalau teks persisnya diberikan.
 
+      **migration 136: sisa 4 pola berjargon, ketahuan DARI LOG DEPLOY 135** —
+      pagar "laporkan saja, jangan gagalkan" di 135 terbukti berguna: log
+      deploy run #336 mencetak 4 baris di luar cakupan yang masih memakai kata
+      `plain` — `V (ない形)` → negatif plain, `V (た形)` → lampau plain,
+      `V (なかった形)` → lampau negatif plain, `い-adj plain` → bentuk plain
+      い-adj. Keempatnya **tidak ada di repo** (`grep` seluruh
+      `backend/migrations/` nihil), jadi diisi manual lewat admin — persis
+      kategori yang selama ini tidak terlihat dari sini. **Pelajaran alurnya**:
+      NOTICE di log deploy adalah satu-satunya cara mendapat teks `pattern`
+      baris admin; sebelum 135 di-deploy, migrasi ini mustahil ditulis. Kalau
+      nanti ada lagi konten admin yang perlu disentuh migrasi, tempuh urutan
+      yang sama — pasang NOTICE dulu, baca log, baru tulis migrasi berikutnya.
+      Diganti `plain` → `santai` (kosakata yang sudah dipakai 135), istilah
+      pelajaran (bentuk negatif/lampau, kata sifat, kata kerja) tetap
+      DIPERTAHANKAN sesuai koreksi user di 135. **`pattern` sengaja TIDAK
+      diubah**, termasuk `い-adj plain` yang namanya sendiri berbunyi "plain"
+      dan ikut tampil di pertanyaan ("Apa fungsi い-adj plain?") — dikonfirmasi
+      user. Alasannya: teks `pattern` dipakai sebagai kunci pencocokan
+      antar-migrasi (090-097 FIND-OR-CREATE lewat pattern persis), jadi
+      menggantinya berisiko membuat migrasi berikutnya menyisipkan baris
+      DUPLIKAT alih-alih memakai ulang. Konsekuensi diterima sadar: satu kata
+      "plain" masih terlihat siswa di prompt pola itu; perbaikannya lewat
+      admin. **Jebakan `sameMeaning` — diukur, bukan ditebak**: godaannya
+      memberi arti yang sama persis dengan arti 135 (mis. dua-duanya "bentuk
+      negatif santai (〜ない)"), dan `sameMeaning()` membuang opsi yang saling
+      memuat sehingga pengecoh bisa habis → `buildRecognitionDrill()` NULL →
+      soal HILANG tanpa error. Diuji lewat kode asli: pada modul berisi 8 pola
+      (4 admin + 4 Bab 14) arti kembar ternyata **tidak** merusak apa pun —
+      sibling-nya masih cukup. Yang benar-benar rusak adalah **modul kecil**:
+      di modul 3 pola dengan sepasang arti kembar, KETIGA polanya kehilangan
+      soal (termasuk pola yang artinya sendiri unik, karena dua siblingnya
+      saling membatalkan); di modul 4 pola dengan dua pasang kembar, keempatnya
+      hilang. Karena modul asal 4 baris admin ini tidak terlihat dari repo,
+      artinya sengaja dibedakan strukturnya ("bentuk lampau negatif untuk
+      bicara santai" vs "bentuk lampau negatif santai") sebagai asuransi murah
+      — dan dengan teks itu keempat skenario di atas lolos semua. Divalidasi
+      di Postgres sungguhan: DB baru + `schema.sql` + replay 000→136 (132
+      migrasi) bersih, fresh install melewati 4 pola itu dengan NOTICE (bukan
+      error), fixture mirip produksi → 4 baris ter-update & 0 sisa "plain",
+      idempoten, dan tiga pagar (15-60 huruf, satu kalimat, jargon
+      cakupan-sendiri) dibuktikan MENGGIGIT lewat runner asli — migrasi gagal
+      DAN data tetap utuh (`run.js` membungkus satu file dalam satu
+      BEGIN/COMMIT, jadi rollback-nya penuh; catatan: `psql` tanpa `-1`
+      meng-autocommit tiap DO block, jadi tes assertion lewat psql polos
+      menyesatkan — pakai runner atau `psql -1`).
+
       **Susun-kata di Smart Review: katanya tidak pernah benar-benar
       berpindah** — user: "untuk susun kata di review, kata tidak bisa di
       drag atau di susun". Bukan salah paham user, memang cacat: seluruh
