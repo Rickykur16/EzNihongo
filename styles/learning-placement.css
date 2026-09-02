@@ -5,7 +5,16 @@
 }
 
 .learning-overview {
-  width: min(100%, 980px);
+  /* Must mirror .main-content's own sizing, or the greeting card and the
+     lesson card below it never share an edge:
+       - margin-inline: auto — .main-content is centred (margin: 0 auto);
+         without this the overview hugs the left edge (300px apart at 1920px).
+       - max-width, NOT width — the sidebar-collapsed rule below raises both to
+         1120px, and a fixed `width` would ignore it, leaving the overview
+         pinned at 980px while the lesson card widens (140px apart). */
+  width: 100%;
+  max-width: 980px;
+  margin-inline: auto;
   padding: 24px 44px 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
