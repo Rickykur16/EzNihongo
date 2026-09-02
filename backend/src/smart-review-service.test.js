@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { applyPracticeAttempt } from './learning-foundations.js';
 import { deriveDrills, publicDrill } from './grammar-drills.js';
-import { SMART_REVIEW_SOURCE, filterReviewScope, isReviewNeeded, makeReviewQuestion, pickCompoundOwners, reviewPriority, selectReviewCandidates, summarizeCandidates } from './smart-review-service.js';
+import { SMART_REVIEW_SOURCE, filterReviewScope, isReviewNeeded, makeReviewQuestion, pickCompoundOwners, unlockedSkills, reviewPriority, selectReviewCandidates, summarizeCandidates } from './smart-review-service.js';
 
 const now = new Date('2026-09-01T00:00:00.000Z');
 const candidate = (category, itemId, priorityState = {}) => ({ category, itemId, skill: 'k2r', state: priorityState, item: { id: itemId, character: 'あ', romaji: 'a' } });
@@ -98,9 +98,12 @@ test('vocabulary reverse-direction review preserves reading labels', () => {
 test('Smart Review scheduling returns incorrect answers sooner and expands successful spacing', () => {
   const incorrect = applyPracticeAttempt({ attempts: 3, correct: 2, streak: 2 }, { isCorrect: false, now });
   const first = applyPracticeAttempt(null, { isCorrect: true, now });
-  const second = applyPracticeAttempt(first, { isCorrect: true, now });
-  assert.equal(incorrect.nextReviewAt, now.toISOString());
-  assert.ok(new Date(second.nextReviewAt) > new Date(first.nextReviewAt));
+  const second = applyPracticeAttempt(first, { isCorrect: true, now: new Date(first.nextReviewAt) });
+  // A miss comes back within minutes; a hit pushes further out each time, and
+  // keeps pushing — the old ladder stopped growing at 14 days.
+  assert.ok(new Date(incorrect.nextReviewAt) - now <= 5 * 60_000);
+  assert.ok(new Date(second.nextReviewAt) - new Date(first.nextReviewAt)
+    > new Date(first.nextReviewAt) - now);
 });
 
 test('shared practice attempts use the canonical Smart Review source', () => {
@@ -151,4 +154,53 @@ test('ownership is stable when no copy has state, regardless of arrival order', 
     { key: 'w', baseId: 'k-b', hasState: false },
   ]).get('w').baseId;
   assert.equal(forward, reversed);
+});
+
+// A lesson drill only ever asks ONE direction per item, so after finishing a
+// lesson the rest still had attempts = 0 and were treated as due immediately.
+// The learner answers correctly, then Smart Review asks the same word again in
+// a direction they were never taught — "itu saya tidak salah tapi muncul
+// berkali kali".
+const dir = (skill, attempts, fsrsState = null) => ({
+  key: `vocabulary:w1:${skill}`, itemType: 'vocabulary', itemId: 'w1', skill, attempts, fsrsState,
+});
+
+test('an unpractised direction stays locked while its practised sibling is still shaky', () => {
+  const unlocked = unlockedSkills([
+    dir('jp2id', 3, 'learning'),
+    dir('id2jp', 0),
+    dir('audio2id', 0),
+  ]);
+  assert.deepEqual([...unlocked], ['vocabulary:w1:jp2id']);
+});
+
+test('once a practised direction reaches FSRS review, the siblings open up', () => {
+  const unlocked = unlockedSkills([
+    dir('jp2id', 3, 'review'),
+    dir('id2jp', 0),
+    dir('audio2id', 0),
+  ]);
+  assert.equal(unlocked.size, 3);
+});
+
+test('an item with no history still offers exactly one direction, deterministically', () => {
+  const entries = [dir('jp2id', 0), dir('id2jp', 0), dir('audio2id', 0)];
+  const forward = unlockedSkills(entries);
+  const reversed = unlockedSkills([...entries].reverse());
+  assert.equal(forward.size, 1);
+  // Unstable ownership would make the item look new every session — the exact
+  // failure mode this gate exists to prevent.
+  assert.deepEqual([...forward], [...reversed]);
+});
+
+test('directions are gated per item, not across the whole deck', () => {
+  const other = (skill, attempts, fsrsState = null) => ({
+    key: `vocabulary:w2:${skill}`, itemType: 'vocabulary', itemId: 'w2', skill, attempts, fsrsState,
+  });
+  const unlocked = unlockedSkills([
+    dir('jp2id', 5, 'review'), dir('id2jp', 0),
+    other('jp2id', 1, 'learning'), other('id2jp', 0),
+  ]);
+  assert.ok(unlocked.has('vocabulary:w1:id2jp'));
+  assert.ok(!unlocked.has('vocabulary:w2:id2jp'));
 });

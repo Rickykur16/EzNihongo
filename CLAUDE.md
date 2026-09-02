@@ -181,6 +181,54 @@
       kirim terkunci di 2/3 dan terbuka di 3/3, susunan benar → "Benar" →
       lanjut sendiri.
 
+      **Penjadwalan pindah ke FSRS-5, dan drill pelajaran ikut menjadwalkan** —
+      user: "yg sudah hafal tapi di tagih tiap 2 minggu", lalu meminta FSRS
+      "dimulai sejak latihan dari pelajarannya" dan menegaskan **"Gunakan rumus
+      fsrs yang biasa dipakai aplikasi hafalan"**. Tangga lama
+      `nextReviewDelayMs()` mentok di 14 hari SELAMANYA (streak 6 atau 600 sama
+      saja), jadi item yang sudah dikuasai tetap menagih ~26x setahun. Sekarang
+      `backend/src/fsrs.js` (FSRS-5 kanonik): deret intervalnya jadi
+      **3 → 11 → 35 → 101 → 269 → 669 → 1563 → 3454** hari, tanpa plafon.
+      **`app/fsrs.js` SENGAJA TIDAK di-port** — file itu mengaku FSRS v5 tapi
+      `calcUpdateDifficulty()`-nya menukar peran w6/w7, membuang linear damping,
+      dan meng-anchor ke D0(3) alih-alih D0(4); karena w6 = 1.0651 > 1 koefisien
+      mean-reversion jadi negatif dan **difficulty beku di ~5.31** (diukur: 5x
+      salah beruntun sama sekali tidak menaikkannya, 5x Easy tidak
+      menurunkannya). Artinya adaptasi per-item — inti FSRS — mati di PWA Kanji,
+      dan itu **belum diperbaiki** karena memperbaikinya akan menjadwal ulang
+      semua kartu kanji yang sudah berjalan di sana; keputusan terpisah.
+      `w17`/`w18` (short-term) juga dideklarasikan tapi tidak pernah dipakai di
+      file itu. Rumus resmi diverifikasi dari wiki open-spaced-repetition,
+      termasuk urutan yang menentukan: **stability memakai D SEBELUM diperbarui**
+      (`S'r(D,S,R,G)` tanpa prima) — simulasi cepat yang memakai D sesudahnya
+      memberi angka berbeda (270/672/1571) dan itu KELIRU. Rating biner
+      dipetakan benar→Good(3), salah→Again(1), jadi `w15`/`w16` (Hard/Easy)
+      tidak pernah terpakai. **Migrasi 137** menambah 5 kolom
+      (`fsrs_stability/difficulty/state/reps/lapses`, semua nullable) dan
+      MENYEED dari tangga lama — tanpa seed, progres siswa hangus DAN gate di
+      bawah tidak punya bahan sama sekali. `next_review_at`/`last_reviewed_at`
+      lama dipakai ulang sebagai `due`/`lastReview`; `mastery_state` tidak
+      disentuh (CHECK-nya cuma kenal new/learning/mastered).
+      **Gate arah-baru** (`unlockedSkills()`): drill pelajaran hanya melatih
+      SATU arah per item dan gate "Tandai Selesai" cuma menuntut 1 percobaan per
+      item, jadi arah lain selalu `attempts = 0` → dianggap jatuh tempo sekarang
+      juga → "baru dijawab benar kok ditanya lagi". Sekarang arah yang belum
+      dilatih menunggu sampai ada arah lain pada item yang sama mencapai
+      `fsrs_state = 'review'`; item tanpa state sama sekali tetap memunculkan
+      TEPAT SATU arah (dipilih deterministik — pilihan yang goyah akan membuat
+      item terus terlihat "baru", persis kegagalan yang mau dicegah).
+      **Jebakan yang ketahuan dari tes sendiri**: `cardFrom()` semula cuma
+      membaca bentuk snake_case dari DB, padahal `applyPracticeAttempt`
+      mengembalikan state di `fsrs.*` — mengumpankan balik hasilnya (pola yang
+      wajar, dan dipakai tes lama) membuat kartu terbaca sebagai BARU lagi dan
+      seluruh riwayatnya hilang. Produksi kebetulan aman karena membaca dari DB.
+      Divalidasi: replay 000→137 di DB baru bersih, fixture warisan ter-seed
+      benar (streak 7/interval 14 hari → `review` stability 14; streak 1 →
+      `learning` stability 1; belum pernah dicoba → NULL), idempoten, dan
+      end-to-end lewat `recordPracticeAttemptWithState` asli. Dua pagar
+      dibuktikan MENGGIGIT: memasang kembali rumus difficulty `app/fsrs.js`
+      menggagalkan 2 tes, gate versi naif menggagalkan 3.
+
       **Smart Review: satu kata majemuk dihitung sebagai DUA item, jadi soalnya
       terus kembali** — user: "saya berkali kali dapet soal 先生 がくせい",
       lalu diperjelas "pertanyaan hiragana jawaban kanji" (arah `reading2word`)

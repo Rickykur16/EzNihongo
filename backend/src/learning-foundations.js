@@ -1,3 +1,5 @@
+import { AGAIN, GOOD, emptyCard, reviewCard } from './fsrs.js';
+
 // Shared, side-effect-free learning-data rules.  Keeping these rules here
 // lets route tests exercise idempotency without requiring a live PostgreSQL
 // instance.
@@ -126,6 +128,9 @@ export function masteryStateFor({ attempts = 0, correct = 0, streak = 0 }) {
     : 'learning';
 }
 
+// Superseded by FSRS (see fsrs.js) and no longer used for scheduling.  Kept
+// because its ladder is what migration 137 seeds existing rows from, and the
+// tests contrast the two to prove the 14-day ceiling is gone.
 export function nextReviewDelayMs({ correct, streak }) {
   if (!correct) return 0;
   if (streak >= 6) return 14 * 24 * 60 * 60 * 1000;
@@ -134,21 +139,50 @@ export function nextReviewDelayMs({ correct, streak }) {
   return 24 * 60 * 60 * 1000;
 }
 
+// Reads the FSRS card off whatever shape the caller has: snake_case straight
+// from Postgres, camelCase once mapped, or the nested `fsrs` object that this
+// function itself returns.  The last one matters — feeding a previous result
+// back in is the natural way to chain attempts, and missing it silently
+// restarts the card as new, throwing away its whole history.
+function cardFrom(row) {
+  const nested = row.fsrs || {};
+  return {
+    ...emptyCard(),
+    stability: Number(row.fsrs_stability ?? row.fsrsStability ?? nested.stability) || 0,
+    difficulty: Number(row.fsrs_difficulty ?? row.fsrsDifficulty ?? nested.difficulty) || 0,
+    state: row.fsrs_state ?? row.fsrsState ?? nested.state ?? 'new',
+    reps: Number(row.fsrs_reps ?? row.fsrsReps ?? nested.reps) || 0,
+    lapses: Number(row.fsrs_lapses ?? row.fsrsLapses ?? nested.lapses) || 0,
+    lastReviewAt: row.last_reviewed_at ?? row.lastReviewedAt ?? null,
+  };
+}
+
 export function applyPracticeAttempt(current, { isCorrect, now = new Date() }) {
   const old = current || {};
   const attempts = Math.max(0, Number(old.attempts) || 0) + 1;
   const correct = Math.max(0, Number(old.correct) || 0) + (isCorrect ? 1 : 0);
   const streak = isCorrect ? Math.max(0, Number(old.streak) || 0) + 1 : 0;
   const seenAt = now instanceof Date ? now : new Date(now);
-  const nextReviewAt = new Date(seenAt.getTime() + nextReviewDelayMs({ correct: isCorrect, streak }));
+  // The app records only right/wrong, so the four-level FSRS grade collapses
+  // to Good / Again.  attempts/correct/streak/masteryState keep their old
+  // meaning — the adaptive drill UI and reviewPriority() still read them; only
+  // the schedule now comes from FSRS.
+  const card = reviewCard(cardFrom(old), isCorrect ? GOOD : AGAIN, { now: seenAt });
   return {
     attempts,
     correct,
     streak,
     lastSeenAt: seenAt.toISOString(),
     lastReviewedAt: seenAt.toISOString(),
-    nextReviewAt: nextReviewAt.toISOString(),
+    nextReviewAt: card.dueAt,
     masteryState: masteryStateFor({ attempts, correct, streak }),
+    fsrs: {
+      stability: card.stability,
+      difficulty: card.difficulty,
+      state: card.state,
+      reps: card.reps,
+      lapses: card.lapses,
+    },
   };
 }
 
