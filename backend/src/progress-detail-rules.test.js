@@ -11,9 +11,10 @@ test('per-Bab structural progress has the same completion semantics as Dashboard
 });
 
 test('Progress mastery reuses evidence thresholds instead of inventing a percentage', () => {
-  assert.deepEqual(masteryDisplayFromPercentage({ attempts: 2, percentage: 100 }), { label: 'Belum cukup data', percentage: null, attempts: 2 });
-  assert.equal(masteryDisplayFromPercentage({ attempts: 4, percentage: 55 }).label, 'Perlu latihan');
-  assert.equal(masteryDisplayFromPercentage({ attempts: 4, percentage: 85 }).label, 'Kuat');
+  assert.deepEqual(masteryDisplayFromPercentage({ attempts: 2, percentage: 100 }), { label: 'Belum cukup latihan', percentage: null, attempts: 2 });
+  assert.equal(masteryDisplayFromPercentage({ attempts: 4, percentage: 55 }).label, 'Perlu diperkuat');
+  assert.equal(masteryDisplayFromPercentage({ attempts: 4, percentage: 85 }).label, 'Baik');
+  assert.equal(masteryDisplayFromPercentage({ attempts: 10, percentage: 95 }).label, 'Sangat baik');
 });
 
 test('Bab stay grouped by their existing Section without changing their order', () => {
