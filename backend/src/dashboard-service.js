@@ -3,7 +3,7 @@ import { isAdminEmail } from './auth.js';
 import { loadMastery, focusSentence } from './grammar-mastery.js';
 import { buildReviewCandidates } from './routes/smart-review.js';
 import { summarizeCandidates } from './smart-review-service.js';
-import { isVisibleCurriculumLesson, masteryDisplay, structuralProgressAndNext, weeklyInsight } from './dashboard-rules.js';
+import { isVisibleCurriculumLesson, masteryDisplay, masteryDisplayFromPercentage, structuralProgressAndNext, weeklyInsight } from './dashboard-rules.js';
 import { loadLiveClassSummary } from './live-class-service.js';
 
 const WEEK_DAYS = 7;
@@ -78,10 +78,8 @@ async function grammarMastery(userId, courseId) {
   const analyzed = [...mastery.values()].filter((row) => row.score != null);
   const weak = concepts.rows.map((concept) => ({ concept, mastery: mastery.get(concept.id) })).filter(({ mastery: m }) => m && (m.state === 'NEEDS_PRACTICE' || m.dueReview));
   const percentage = analyzed.length ? Math.round(analyzed.reduce((sum, row) => sum + row.score, 0) / analyzed.length) : null;
-  const display = percentage == null ? { label: 'Belum cukup data', percentage: null, attempts: [...mastery.values()].reduce((sum, row) => sum + row.attempts, 0) }
-    : percentage < 60 ? { label: 'Perlu latihan', percentage, attempts: [...mastery.values()].reduce((sum, row) => sum + row.attempts, 0) }
-      : percentage < 80 ? { label: 'Sedang berkembang', percentage, attempts: [...mastery.values()].reduce((sum, row) => sum + row.attempts, 0) }
-        : { label: 'Kuat', percentage, attempts: [...mastery.values()].reduce((sum, row) => sum + row.attempts, 0) };
+  const attempts = [...mastery.values()].reduce((sum, row) => sum + row.attempts, 0);
+  const display = masteryDisplayFromPercentage({ attempts, percentage });
   return { display, weak, mastery };
 }
 
@@ -114,8 +112,8 @@ async function weeklyActivity(userId, courseId) {
 function pickFocus(mastery, grammar, review, continueLearning) {
   const grammarWeak = grammar.weak.sort((a, b) => (a.mastery.score ?? 100) - (b.mastery.score ?? 100))[0];
   if (grammarWeak) return { category: 'grammar', title: grammarWeak.concept.pattern, detail: focusSentence(grammarWeak.concept.pattern, grammarWeak.mastery, grammarWeak.mastery.dominantError), action: 'review', reviewCategory: 'grammar' };
-  const weakGeneric = Object.entries(mastery).map(([category, value]) => ({ category, value })).filter(({ value }) => value.label === 'Perlu latihan').sort((a, b) => (a.value.percentage || 100) - (b.value.percentage || 100))[0];
-  if (weakGeneric) return { category: weakGeneric.category, title: weakGeneric.category === 'vocabulary' ? 'Kosakata' : weakGeneric.category[0].toUpperCase() + weakGeneric.category.slice(1), detail: 'Perkuat kembali arah latihan yang masih lemah.', action: 'review', reviewCategory: weakGeneric.category };
+  const weakGeneric = Object.entries(mastery).map(([category, value]) => ({ category, value })).filter(({ value }) => value.percentage != null && value.percentage < 60).sort((a, b) => a.value.percentage - b.value.percentage)[0];
+  if (weakGeneric) return { category: weakGeneric.category, title: weakGeneric.category === 'vocabulary' ? 'Kosakata' : weakGeneric.category[0].toUpperCase() + weakGeneric.category.slice(1), detail: 'Latih kembali bagian ini agar semakin mantap.', action: 'review', reviewCategory: weakGeneric.category };
   if (review.total > 0) return { category: 'review', title: 'Smart Review', detail: 'Ada materi yang sudah dipelajari dan siap diulang.', action: 'review', reviewCategory: 'mixed' };
   if (continueLearning) return { category: 'continue', title: continueLearning.lesson.title, detail: 'Lanjutkan pelajaran berikutnya dalam kurikulum.', action: 'continue' };
   return null;

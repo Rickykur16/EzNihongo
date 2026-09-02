@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { isVisibleCurriculumLesson, masteryDisplay, structuralProgressAndNext, weeklyInsight } from './dashboard-rules.js';
 
 test('dashboard mastery never turns missing evidence into 0 percent', () => {
-  assert.deepEqual(masteryDisplay({ attempts: 0, correct: 0 }), { label: 'Belum cukup data', percentage: null, attempts: 0 });
-  assert.equal(masteryDisplay({ attempts: 3, correct: 1 }).label, 'Perlu latihan');
-  assert.equal(masteryDisplay({ attempts: 5, correct: 4 }).label, 'Kuat');
+  assert.deepEqual(masteryDisplay({ attempts: 0, correct: 0 }), { label: 'Belum cukup latihan', percentage: null, attempts: 0 });
+  assert.equal(masteryDisplay({ attempts: 3, correct: 1 }).label, 'Perlu diperkuat');
+  assert.equal(masteryDisplay({ attempts: 5, correct: 4 }).label, 'Baik');
+  assert.equal(masteryDisplay({ attempts: 10, correct: 9 }).label, 'Sangat baik');
 });
 
 test('weekly insight prioritizes due review and uses deterministic neutral fallbacks', () => {
