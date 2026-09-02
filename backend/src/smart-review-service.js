@@ -108,8 +108,18 @@ export function makeReviewQuestion(candidate, pools) {
   let prompt; let answer;
   if (candidate.category === 'kana') {
     const romaji = item.romaji;
-    if (candidate.skill === 'k2r') { prompt = item.character; answer = romaji; return { kind: 'choice', prompt, ...choices(answer, pools.kanaRomaji, seed) }; }
-    prompt = romaji; answer = item.character; return { kind: 'choice', prompt, ...choices(answer, pools.kanaCharacters, seed) };
+    const kanaKind = item.kind === 'katakana' ? 'katakana' : 'hiragana';
+    const script = kanaKind === 'katakana' ? 'Katakana' : 'Hiragana';
+    const characterPool = pools.kanaCharactersByKind?.[kanaKind] || [];
+    const romajiPool = pools.kanaRomajiByKind?.[kanaKind] || [];
+    if (candidate.skill === 'k2r') {
+      prompt = item.character;
+      answer = romaji;
+      return { kind: 'choice', prompt, script, instruction: `Pilih bunyi ${script} yang tepat.`, ...choices(answer, romajiPool, seed) };
+    }
+    prompt = romaji;
+    answer = item.character;
+    return { kind: 'choice', prompt, script, instruction: `Pilih karakter ${script} yang tepat.`, ...choices(answer, characterPool, seed) };
   }
   if (candidate.category === 'vocabulary') {
     if (candidate.skill === 'jp2id') { prompt = item.japanese; answer = item.indonesian; return { kind: 'choice', prompt, reading: item.reading || null, ...choices(answer, pools.vocabIndonesian, seed) }; }

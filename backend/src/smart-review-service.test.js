@@ -46,6 +46,44 @@ test('category session is scoped and gracefully returns fewer than twenty items'
   assert.ok(selected.every((row) => row.category === 'kana'));
 });
 
+test('kana reverse question identifies the script and never mixes equivalent Hiragana and Katakana answers', () => {
+  const pools = {
+    kanaCharactersByKind: {
+      hiragana: ['ぞ', 'ち', 'りゃ'],
+      katakana: ['ゾ', 'チ', 'リャ'],
+    },
+    kanaRomajiByKind: {
+      hiragana: ['zo', 'chi', 'rya'],
+      katakana: ['zo', 'chi', 'rya'],
+    },
+  };
+  const question = makeReviewQuestion({
+    category: 'kana',
+    itemId: 'katakana-zo',
+    skill: 'r2k',
+    item: { character: 'ゾ', romaji: 'zo', kind: 'katakana' },
+  }, pools);
+  assert.equal(question.script, 'Katakana');
+  assert.equal(question.instruction, 'Pilih karakter Katakana yang tepat.');
+  assert.ok(question.options.includes('ゾ'));
+  assert.equal(question.options.includes('ぞ'), false);
+});
+
+test('kana forward question uses distractor sounds from the same script', () => {
+  const question = makeReviewQuestion({
+    category: 'kana',
+    itemId: 'hiragana-zo',
+    skill: 'k2r',
+    item: { character: 'ぞ', romaji: 'zo', kind: 'hiragana' },
+  }, {
+    kanaCharactersByKind: { hiragana: ['ぞ', 'ち'], katakana: ['ゾ', 'チ'] },
+    kanaRomajiByKind: { hiragana: ['zo', 'chi'], katakana: ['zo', 'chi'] },
+  });
+  assert.equal(question.script, 'Hiragana');
+  assert.equal(question.instruction, 'Pilih bunyi Hiragana yang tepat.');
+  assert.deepEqual(new Set(question.options), new Set(['zo', 'chi']));
+});
+
 test('kanji contextual review question retains word directional skills', () => {
   const q = makeReviewQuestion({ category: 'kanji', itemId: 'k', skill: 'word2reading:abc', item: { character: '日' }, word: { japanese: '日本', reading: 'にほん', indonesian: 'Jepang' } }, { wordReadings: ['にほん', 'にち'], wordMeanings: [], words: [], kanjiMeanings: [], kanjiCharacters: [] });
   assert.equal(q.prompt, '日本');
