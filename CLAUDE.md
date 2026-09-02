@@ -65,6 +65,34 @@
 
 ## Konvensi penting
 
+      **Susun-kata di Smart Review: katanya tidak pernah benar-benar
+      berpindah** — user: "untuk susun kata di review, kata tidak bisa di
+      drag atau di susun". Bukan salah paham user, memang cacat: seluruh
+      kepingan ditaruh di SATU kotak (`.arrange`) dan diketuk hanya
+      men-toggle class `.selected` (ganti warna) — kepingannya tetap di
+      tempat, TIDAK ADA baris jawaban, tidak ada nomor urut, jadi siswa
+      tidak bisa melihat kalimat yang sedang disusun sebelum menekan
+      "Periksa jawaban". CLAUDE.md sendiri menyebut desainnya "ala Duolingo,
+      ketuk bukan drag", tapi separuh desainnya (baris jawaban) tidak pernah
+      dibuat. Sekarang DUA ZONA: `#arrange-answer` (kalimat yang disusun,
+      border solid merah) di atas `#arrange` (kepingan tersisa, border
+      putus-putus). Ketuk di kepingan → kata PINDAH ke baris jawaban; ketuk
+      di baris jawaban → kembali ke kepingan. Tetap ketuk (bukan drag):
+      target sentuh lebih besar, tanpa pustaka DnD, dan konsisten dengan
+      keputusan awal. Fungsi `renderArrange(question)` membangun ulang kedua
+      zona dari `selectedOrder`, dipanggil saat render + tiap ketukan +
+      tombol "Ulangi" (tidak lagi `renderQuestion()` penuh). Class
+      `.token.selected` jadi mati dan sudah dihapus dari review.css.
+      **Sekalian menutup jebakan**: tombol "Periksa jawaban" kini DIKUNCI
+      sampai semua kepingan dipakai (labelnya jadi "Pakai semua kata
+      (n/total)") — `arrangeIsCorrect()` menilai susunan yang panjangnya
+      tidak sama dengan jumlah kepingan sebagai SALAH, jadi sebelumnya siswa
+      bisa tidak sengaja mengirim susunan setengah jadi dan langsung dihitung
+      gagal. Divalidasi di viewport HP (390×844): ketuk → kata pindah,
+      urutan terbaca, ketuk di baris jawaban → balik ke kepingan, tombol
+      kirim terkunci di 2/3 dan terbuka di 3/3, susunan benar → "Benar" →
+      lanjut sendiri.
+
       **Smart Review: soal salah TIDAK lagi berpindah sendiri** — user:
       "reviewnya terlalu cepat berganti setelah dikerjakan, jadi waktu untuk
       berfikir dimana yang salah terlalu pendek". Sebelumnya `review.js`
