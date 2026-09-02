@@ -4850,6 +4850,27 @@ function _mergeQuizScores(a, b) {
   for (const k in (b || {})) out[k] = Math.max(out[k] || 0, b[k] || 0);
   return out;
 }
+function _pruneProgressToHydratedCourses() {
+  const current = getProgress();
+  const next = { ...current };
+  for (const [courseSlug, course] of Object.entries(COURSE_CONTENT)) {
+    const cached = current[courseSlug] && typeof current[courseSlug] === 'object'
+      ? current[courseSlug]
+      : {};
+    const valid = {};
+    for (const module of course.modules || []) {
+      for (const lesson of module.lessons || []) {
+        const key = `${module.id}:${lesson.id}`;
+        if (Object.hasOwn(cached, key)) valid[key] = cached[key];
+      }
+    }
+    next[courseSlug] = valid;
+  }
+  const before = JSON.stringify(current);
+  const after = JSON.stringify(next);
+  if (before !== after) localStorage.setItem('ez_progress', after);
+  return before !== after;
+}
 // Tarik blob server saat boot, union-merge dengan localStorage (completion
 // monoton — sekali selesai tetap selesai), lalu push balik supaya item
 // lokal-only ikut naik ke cloud. Gagal/offline → diam, pakai localStorage.
@@ -6648,7 +6669,7 @@ function renderLearning(courseSlug) {
     const progress = getProgress()[courseSlug] || {};
     let found = false;
     for (const m of course.modules) {
-      for (const l of m.lessons) {
+      for (const l of visibleLessons(m)) {
         const key = `${m.id}:${l.id}`;
         if (!progress[key]) {
           currentState.moduleId = m.id;
@@ -6660,8 +6681,9 @@ function renderLearning(courseSlug) {
       if (found) break;
     }
     if (!found) {
-      currentState.moduleId = course.modules[0].id;
-      currentState.lessonId = course.modules[0].lessons[0].id;
+      const first = course.modules.flatMap((m) => visibleLessons(m).map((l) => ({ m, l })))[0];
+      currentState.moduleId = first?.m.id || course.modules[0].id;
+      currentState.lessonId = first?.l.id || course.modules[0].lessons[0].id;
     }
   }
   currentState.course = courseSlug;
@@ -6722,9 +6744,10 @@ function renderSidebar() {
     }
   }
 
-  const totalLessons = course.modules.reduce((s, m) => s + m.lessons.length, 0);
-  const doneLessons = Object.values(progress).filter(v => v).length;
-  const pct = Math.round((doneLessons / totalLessons) * 100);
+  const curriculumLessons = course.modules.flatMap((m) => visibleLessons(m).map((l) => ({ module: m, lesson: l })));
+  const totalLessons = curriculumLessons.length;
+  const doneLessons = curriculumLessons.filter(({ module, lesson }) => progress[`${module.id}:${lesson.id}`] === true).length;
+  const pct = totalLessons ? Math.round((doneLessons / totalLessons) * 100) : 0;
 
   const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan', deck: 'Kosakata', kanji: 'Kanji', kana: 'Kana', grammar_task: 'Tata Bahasa' };
   // SVG icons compact-style ala Udemy (play / question / book / cards / kanji).
@@ -6821,10 +6844,10 @@ function renderSidebar() {
   // "Lainnya".
   const modulesHtml = sectionBuckets.map((b) => {
     const sectionDone = b.modules.reduce((n, m) =>
-      n + m.lessons.filter((l) => progress[`${m.id}:${l.id}`]).length, 0);
-    const sectionTotal = b.modules.reduce((n, m) => n + m.lessons.length, 0);
+      n + visibleLessons(m).filter((l) => progress[`${m.id}:${l.id}`] === true).length, 0);
+    const sectionTotal = b.modules.reduce((n, m) => n + visibleLessons(m).length, 0);
     const sectionDurMin = b.modules.reduce((n, m) =>
-      n + m.lessons.reduce((mm, l) => mm + (l.durationMinutes || 0), 0), 0);
+      n + visibleLessons(m).reduce((mm, l) => mm + (l.durationMinutes || 0), 0), 0);
     const isSecOpen = _expandedSections.has(b.name);
     const safeName = b.name.replace(/'/g, "\\'");
     const metaParts = [`${sectionDone} / ${sectionTotal}`];
@@ -12901,6 +12924,10 @@ const S = (window.AISenpai = {
       hydrateEnrolledCourses(),
       syncLearningStateFromServer({ reconcile: true }),
     ]);
+    // The server already removed obsolete lesson slugs from its canonical
+    // cache. Remove the same stale keys locally after the current catalog has
+    // hydrated so sidebar totals cannot count deleted or renamed lessons.
+    _pruneProgressToHydratedCourses();
   } catch (err) {
     // Auth died between the ezGetMe check above and this sync (rare, but
     // possible if the refresh cookie was invalidated mid-load). Bounce to

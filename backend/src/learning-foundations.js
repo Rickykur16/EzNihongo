@@ -49,6 +49,33 @@ export function mergeCanonicalLessonProgress(progress, canonicalRows) {
   return out;
 }
 
+// Return only keys that still resolve to the current lesson catalog. This
+// prevents renamed/deleted lesson slugs from living forever in the legacy
+// cache and inflating the Belajar sidebar even though Dashboard correctly
+// reads the relational user_progress table.
+export function mergeCurrentLessonProgress(progress, catalogRows) {
+  const source = progress && typeof progress === 'object' && !Array.isArray(progress)
+    ? progress
+    : {};
+  const out = {};
+  for (const row of catalogRows || []) {
+    const courseSlug = String(row?.course_slug || '').trim();
+    const moduleSlug = String(row?.module_slug || '').trim();
+    const lessonSlug = String(row?.lesson_slug || '').trim();
+    if (!courseSlug || !moduleSlug || !lessonSlug) continue;
+    const key = `${moduleSlug}:${lessonSlug}`;
+    const cachedCourse = source[courseSlug];
+    const hasCachedValue = cachedCourse && typeof cachedCourse === 'object' && !Array.isArray(cachedCourse)
+      && Object.hasOwn(cachedCourse, key);
+    const cachedValue = hasCachedValue ? cachedCourse[key] : undefined;
+    const value = row.completed === true || cachedValue === true ? true : cachedValue;
+    if (value === undefined) continue;
+    out[courseSlug] ||= {};
+    out[courseSlug][key] = value;
+  }
+  return out;
+}
+
 export function mergeCompletionProgress(a, b) {
   const out = {};
   for (const source of [a, b]) {
