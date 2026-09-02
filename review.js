@@ -1,6 +1,6 @@
 (() => {
   const app = document.getElementById('review-app');
-  const dashboardUrl = 'dashboard.html?v=20260902-1';
+  const dashboardUrl = 'dashboard.html?v=20260902-4';
   let session = null;
   let index = 0;
   let selectedOrder = [];
@@ -25,7 +25,7 @@
   function renderHome(summary) {
     const total = Number(summary.total) || 0;
     const counts = Object.keys(labels).map((key) => categoryButton(key, Number(summary.byCategory?.[key]) || 0)).join('');
-    app.innerHTML = `<section class="summary-card"><div class="eyebrow">復習 · SMART REVIEW</div><h1 class="review-title">Ulangi yang sudah dipelajari.</h1><p class="total">${total ? `${total} item perlu direview` : 'Belum ada item review yang siap.'}</p><div class="counts">${counts}</div>${total ? '<button class="primary" id="start-mixed" type="button">Mulai Smart Review</button>' : '<p class="subtle">Review hari ini selesai. Lanjutkan belajar untuk membuka materi review berikutnya.</p>'}<div class="category-row">${Object.keys(labels).map((key) => `<button type="button" data-category="${key}" ${(Number(summary.byCategory?.[key]) || 0) ? '' : 'disabled'}>${labels[key]}</button>`).join('')}</div><div class="review-actions"><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
+    app.innerHTML = `<section class="summary-card"><div class="eyebrow">復習 · SMART REVIEW</div><h1 class="review-title">Ulangi yang sudah dipelajari.</h1><p class="total">${total ? `${total} item perlu direview` : 'Belum ada item review yang siap.'}</p><div class="counts" aria-label="Pilih kategori review">${counts}</div>${total ? '<button class="primary" id="start-mixed" type="button">Mulai Smart Review</button>' : '<p class="subtle">Review hari ini selesai. Lanjutkan belajar untuk membuka materi review berikutnya.</p>'}<div class="review-actions"><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
     app.querySelector('#start-mixed')?.addEventListener('click', () => start('mixed'));
     app.querySelectorAll('[data-category]').forEach((button) => button.addEventListener('click', () => start(button.dataset.category)));
   }

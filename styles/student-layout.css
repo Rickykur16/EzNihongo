@@ -1,0 +1,245 @@
+/* Placement and hierarchy shared by the student-facing overview pages. */
+.dashboard,
+#progress-app .page,
+#app .page {
+  width: min(1120px, calc(100% - 48px));
+  margin: clamp(28px, 4vw, 46px) auto 84px;
+}
+
+.dashboard > .hero,
+#progress-app .page > .hero,
+#app .page > .hero {
+  min-height: 0;
+  margin-bottom: 24px;
+  padding: 0 2px 24px;
+  overflow: visible;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  border: 0;
+  border-bottom: 1px solid var(--paper-300);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink-900);
+  box-shadow: none;
+}
+
+#app .page > .hero::after {
+  top: auto;
+  right: 2px;
+  bottom: -10px;
+  padding-left: 10px;
+  background: var(--paper-50);
+  color: var(--paper-300);
+  font-size: 50px;
+  transform: none;
+}
+
+#app .page > .hero {
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0;
+}
+
+#app .page > .hero .eyebrow { color: var(--brand-red); }
+#app .page > .hero h1 {
+  max-width: 720px;
+  color: var(--ink-900);
+  font-size: clamp(32px, 5vw, 48px);
+}
+#app .page > .hero p {
+  max-width: 680px;
+  color: var(--ink-500);
+}
+
+/* Dashboard: the next learning action is the first and largest destination. */
+.dashboard .dashboard-primary {
+  grid-template-columns: minmax(0, 1.32fr) minmax(280px, .68fr);
+}
+
+.dashboard .dashboard-secondary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dashboard > .grid > .card,
+.dashboard .performance-card,
+.dashboard .activity-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard > .grid > .card > .primary,
+.dashboard > .grid > .card > .secondary,
+.dashboard .focus > .primary,
+.dashboard .focus > .secondary {
+  align-self: flex-start;
+  margin-top: auto;
+}
+
+.dashboard .continue-card {
+  min-height: 252px;
+  justify-content: center;
+  padding: clamp(24px, 3vw, 34px);
+}
+
+.dashboard .continue-card .primary { min-width: 172px; }
+.dashboard .progress-card { min-height: 252px; }
+.dashboard .review-card,
+.dashboard .live { min-height: 286px; }
+.dashboard .performance-card { margin-top: 2px; }
+.dashboard .activity-card { margin-top: 18px; }
+
+/* Progress: summary first, then performance and the next recommended action. */
+#progress-app .progress-summary {
+  grid-template-columns: minmax(0, 1.18fr) minmax(300px, .82fr);
+  margin: 0 0 16px;
+}
+
+#progress-app .progress-summary > .card {
+  min-height: 196px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+#progress-app .progress-insights {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr);
+  gap: 16px;
+  margin-bottom: 34px;
+}
+
+#progress-app .progress-insights > .card { min-width: 0; }
+#progress-app .trend-card {
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+#progress-app .trend-card .btn {
+  align-self: flex-start;
+  margin-top: auto;
+}
+#progress-app .sections { margin-top: 0; }
+
+/* Live Class uses the same page intro instead of an unrelated oversized hero. */
+#app .tabs {
+  width: fit-content;
+  margin: 0 0 18px;
+  padding: 4px;
+  border: 1px solid var(--paper-300);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, .78);
+}
+
+#app .tabs button {
+  min-width: 124px;
+  border-color: transparent;
+  background: transparent;
+}
+
+#app .tabs button.active,
+#app .tabs button[aria-selected="true"] {
+  border-color: var(--ink-900);
+  background: var(--ink-900);
+  color: #fff;
+}
+
+#app .list .card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 28px;
+  align-items: start;
+}
+
+#app .list .card > :not(.actions) { grid-column: 1; }
+#app .list .card > .actions {
+  grid-column: 2;
+  grid-row: 1 / span 5;
+  align-self: center;
+  margin-top: 0;
+}
+
+/* Review remains focused, while navigation is visually separated from the task. */
+.review-main {
+  width: min(820px, calc(100% - 48px));
+  margin: clamp(28px, 4vw, 46px) auto 84px;
+}
+
+.review-main .summary-card,
+.review-main .question-card,
+.review-main .empty-card {
+  padding: clamp(26px, 5vw, 44px);
+}
+
+.review-main .summary-card .counts { margin-bottom: 18px; }
+.review-main .summary-card > .primary { min-height: 48px; }
+.review-main .review-actions {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--paper-200);
+}
+
+@media (max-width: 900px) {
+  .dashboard .dashboard-primary,
+  .dashboard .dashboard-secondary,
+  #progress-app .progress-summary,
+  #progress-app .progress-insights {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard .continue-card,
+  .dashboard .progress-card,
+  .dashboard .review-card,
+  .dashboard .live,
+  #progress-app .progress-summary > .card { min-height: 0; }
+}
+
+@media (max-width: 700px) {
+  .dashboard,
+  #progress-app .page,
+  #app .page,
+  .review-main {
+    width: min(100% - 28px, 1120px);
+    margin: 24px auto 42px;
+  }
+
+  .dashboard > .hero,
+  #progress-app .page > .hero,
+  #app .page > .hero {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 18px;
+    padding-bottom: 18px;
+  }
+
+  #app .page > .hero::after { display: none; }
+  #app .tabs { width: 100%; }
+  #app .tabs button { min-width: 0; flex: 1; }
+  #app .list .card { display: block; }
+  #app .list .card > .actions { margin-top: 16px; }
+
+  .dashboard .dashboard-primary { gap: 12px; }
+  .dashboard .continue-card { padding: 22px; }
+  .dashboard .continue-card .primary,
+  .dashboard > .grid > .card > .primary,
+  .dashboard > .grid > .card > .secondary,
+  .dashboard .focus > .primary,
+  .dashboard .focus > .secondary,
+  #progress-app .trend-card .btn { width: 100%; align-self: stretch; }
+
+  .review-main .review-actions { align-items: stretch; }
+}
+
+@media (max-width: 380px) {
+  .dashboard,
+  #progress-app .page,
+  #app .page,
+  .review-main { width: min(100% - 20px, 1120px); }
+
+  .dashboard .card,
+  #progress-app .card,
+  #app .card { padding: 17px; }
+}

@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="styles/tokens.css"/>
 <link rel="stylesheet" href="styles/components.css"/>
-<link rel="stylesheet" href="styles/student-nav.css?v=20260902-2"/>
+<link rel="stylesheet" href="styles/student-nav.css?v=20260902-4"/>
 <style>
   * { box-sizing: border-box; }
   html {
@@ -4503,23 +4503,24 @@
     #ai-senpai *, #ai-senpai *::before, #ai-senpai *::after { animation: none !important; }
   }
 </style>
+<link rel="stylesheet" href="styles/learning-placement.css?v=20260902-4"/>
 </head>
 <body>
 
 <header class="student-nav lesson-student-nav">
   <div class="lesson-nav-leading">
-    <a href="dashboard.html?v=20260902-2" class="brand"><img src="logo.png" alt="EzNihongo"/></a>
+    <a href="dashboard.html?v=20260902-4" class="brand"><img src="logo.png" alt="EzNihongo"/></a>
     <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Buka daftar pelajaran" aria-expanded="false" onclick="toggleSidebar()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
       <span>Materi</span>
     </button>
   </div>
   <nav aria-label="Navigasi siswa">
-    <a href="dashboard.html?v=20260902-2">Dashboard</a>
+    <a href="dashboard.html?v=20260902-4">Dashboard</a>
     <a href="welcome.html" aria-current="page">Belajar</a>
-    <a href="review.html?v=20260902-2">Review</a>
-    <a href="live.html?v=20260902-2">Live Class</a>
-    <a href="progress.html?v=20260902-2">Progress</a>
+    <a href="review.html?v=20260902-4">Review</a>
+    <a href="live.html?v=20260902-4">Live Class</a>
+    <a href="progress.html?v=20260902-4">Progress</a>
   </nav>
   <button class="lesson-logout" type="button" onclick="logout()" aria-label="Keluar dari akun">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -6492,16 +6493,18 @@ function recoPanelHtml(data) {
     </div>` : '';
   return `
     <div class="reco-panel-wrap">
-      <section class="reco-panel" aria-label="Fokus belajarmu">
-        <h2 style="margin:0 0 13px;font-size:16px;font-weight:900;color:#1B1410;">🎯 Fokus belajarmu</h2>
-        ${bars}
-        ${lessons ? `<div style="margin-top:13px;">
-          <div style="font-size:11px;font-weight:800;color:#6b5d49;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;">Ulangi pelajaran ini</div>
-          ${lessons}
-        </div>` : ''}
-        ${grammarHtml}
-        ${note}
-      </section>
+      <details class="reco-panel">
+        <summary><span>🎯 Fokus belajarmu</span><span class="reco-summary-action">Lihat</span></summary>
+        <div class="reco-content">
+          ${bars}
+          ${lessons ? `<div style="margin-top:13px;">
+            <div style="font-size:11px;font-weight:800;color:#6b5d49;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;">Ulangi pelajaran ini</div>
+            ${lessons}
+          </div>` : ''}
+          ${grammarHtml}
+          ${note}
+        </div>
+      </details>
     </div>`;
 }
 
@@ -6664,11 +6667,15 @@ function renderLearning(courseSlug) {
   currentState.course = courseSlug;
 
   document.getElementById('app-root').innerHTML = `
-    ${greetingBannerHtml()}
-    <div id="reco-panel"></div>
     <div class="learning-layout">
       <aside class="sidebar" id="sidebar"></aside>
-      <main class="main-content" id="main-content"></main>
+      <div class="learning-workspace">
+        <div class="learning-overview">
+          ${greetingBannerHtml()}
+          <div id="reco-panel"></div>
+        </div>
+        <main class="main-content" id="main-content"></main>
+      </div>
     </div>
     <button class="sidebar-handle" id="sidebar-handle" type="button" aria-label="Tutup sidebar" title="Tutup sidebar" onclick="toggleSidebar()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -6916,7 +6923,7 @@ function renderSidebar() {
       <div class="modules-list">${modulesHtml}</div>
       <div class="modules-empty" id="modules-empty" style="display:none;">Tidak ada modul yang cocok.</div>
       <div class="sidebar-quicklinks">
-        <button class="quicklink" type="button" onclick="location.href='review.html?v=20260902-1'">
+        <button class="quicklink" type="button" onclick="location.href='review.html?v=20260902-4'">
           <span class="ql-ico">🔁</span>
           <span class="ql-text">Smart Review</span>
           <span class="ql-arr">→</span>
