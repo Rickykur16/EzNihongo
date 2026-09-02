@@ -39,19 +39,70 @@
     } catch (error) { errorCard(error, () => start(category)); }
   }
   function playAudio(text) { if ('speechSynthesis' in window && text) { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(text)); } }
+  // Susun-kalimat dua zona ala Duolingo: kata yang diketuk BERPINDAH ke baris
+  // jawaban (bukan sekadar berubah warna di tempat), jadi kalimat yang sedang
+  // disusun benar-benar terlihat dan bisa diperiksa sebelum dikirim. Ketuk
+  // lagi di baris jawaban untuk mengembalikannya. Tetap ketuk, bukan drag —
+  // target sentuhnya jauh lebih besar dan tidak butuh pustaka DnD.
+  function renderArrange(question) {
+    const tokens = question.tokens || [];
+    const answerZone = document.getElementById('arrange-answer');
+    const poolZone = document.getElementById('arrange');
+    if (!answerZone || !poolZone) return;
+    const chip = (tokenIndex, position) => `<button type="button" class="token" data-token="${tokenIndex}"${position === null ? '' : ` data-answer-pos="${position}"`}>${esc(tokens[tokenIndex])}</button>`;
+    answerZone.innerHTML = selectedOrder.length
+      ? selectedOrder.map((tokenIndex, position) => chip(tokenIndex, position)).join('')
+      : '<span class="arrange-empty">Ketuk kata di bawah untuk menyusun kalimat.</span>';
+    poolZone.innerHTML = tokens
+      .map((_, tokenIndex) => tokenIndex)
+      .filter((tokenIndex) => !selectedOrder.includes(tokenIndex))
+      .map((tokenIndex) => chip(tokenIndex, null))
+      .join('') || '<span class="arrange-empty">Semua kata sudah dipakai.</span>';
+    answerZone.querySelectorAll('[data-answer-pos]').forEach((button) => button.addEventListener('click', () => {
+      selectedOrder = selectedOrder.filter((_, position) => position !== Number(button.dataset.answerPos));
+      renderArrange(question);
+    }));
+    poolZone.querySelectorAll('[data-token]').forEach((button) => button.addEventListener('click', () => {
+      selectedOrder = [...selectedOrder, Number(button.dataset.token)];
+      renderArrange(question);
+    }));
+    // Server menilai susunan yang belum lengkap sebagai SALAH (panjangnya tidak
+    // sama dengan jumlah kepingan), jadi jangan biarkan terkirim setengah jadi.
+    const submit = document.getElementById('submit-arrange');
+    if (submit) {
+      const ready = selectedOrder.length === tokens.length && tokens.length > 0;
+      submit.disabled = !ready;
+      submit.style.opacity = ready ? '' : '0.5';
+      submit.style.cursor = ready ? '' : 'not-allowed';
+      submit.textContent = ready ? 'Periksa jawaban' : `Pakai semua kata (${selectedOrder.length}/${tokens.length})`;
+    }
+  }
+
   function renderQuestion() {
     const item = session.questions[index]; const question = item.question; const options = question.options || [];
     const arrange = question.variant === 'arrange';
     const answerUi = arrange
-      ? `<div class="arrange" id="arrange">${(question.tokens || []).map((token, itemIndex) => `<button type="button" class="token" data-token="${itemIndex}" aria-pressed="false">${esc(token)}</button>`).join('')}</div><div class="answer-row"><button class="primary" id="submit-arrange" type="button">Periksa jawaban</button><button class="token" id="reset-arrange" type="button">Ulangi</button></div>`
+      ? `<div class="arrange-answer" id="arrange-answer" aria-label="Kalimat yang kamu susun"></div><div class="arrange" id="arrange" aria-label="Kepingan kata"></div><div class="answer-row"><button class="primary" id="submit-arrange" type="button">Periksa jawaban</button><button class="token" id="reset-arrange" type="button">Ulangi</button></div>`
       : `<div class="options">${options.map((option, optionIndex) => `<button class="option" type="button" data-option="${optionIndex}">${esc(option)}${question.optionReadings?.[optionIndex] && question.optionReadings[optionIndex] !== option ? `<small>${esc(question.optionReadings[optionIndex])}</small>` : ''}</button>`).join('')}</div>`;
     const progressPercent = Math.round(((index + 1) / session.questions.length) * 100);
-    app.innerHTML = `<section class="question-card"><div class="progress">SOAL ${index + 1} DARI ${session.questions.length}</div><div class="review-progress-bar" role="progressbar" aria-label="Progres sesi review" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progressPercent}"><i style="width:${progressPercent}%"></i></div><span class="tag">${labels[item.category]}</span><h1 class="prompt">${esc(question.prompt)}</h1>${question.audioText ? '<button class="token" id="play-audio" type="button">▶ Putar audio</button>' : ''}${question.reading ? `<p class="hint">${esc(question.reading)}</p>` : ''}${question.meaning ? `<p class="hint">${esc(question.meaning)}</p>` : ''}${question.example?.japanese ? `<p class="hint">${esc(question.example.japanese)}</p>` : ''}${question.example?.indonesian ? `<p class="hint">${esc(question.example.indonesian)}</p>` : ''}${question.sentence ? `<p class="hint">${esc(question.sentence)}</p>` : ''}${question.indonesian ? `<p class="hint">${esc(question.indonesian)}</p>` : ''}${answerUi}<p class="feedback" id="feedback" aria-live="polite"></p></section>`;
+    app.innerHTML = `<section class="question-card"><div class="progress">SOAL ${index + 1} DARI ${session.questions.length}</div><div class="review-progress-bar" role="progressbar" aria-label="Progres sesi review" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progressPercent}"><i style="width:${progressPercent}%"></i></div><span class="tag">${labels[item.category]}</span><h1 class="prompt">${esc(question.prompt)}</h1>${question.audioText ? '<button class="token" id="play-audio" type="button">▶ Putar audio</button>' : ''}${question.reading ? `<p class="hint">${esc(question.reading)}</p>` : ''}${question.meaning ? `<p class="hint">${esc(question.meaning)}</p>` : ''}${question.example?.japanese ? `<p class="hint">${esc(question.example.japanese)}</p>` : ''}${question.example?.indonesian ? `<p class="hint">${esc(question.example.indonesian)}</p>` : ''}${question.sentence ? `<p class="hint">${esc(question.sentence)}</p>` : ''}${question.indonesian ? `<p class="hint">${esc(question.indonesian)}</p>` : ''}${answerUi}<p class="feedback" id="feedback" aria-live="polite"></p><div class="review-actions" id="answer-actions"></div></section>`;
     app.querySelector('#play-audio')?.addEventListener('click', () => playAudio(question.audioText));
     app.querySelectorAll('[data-option]').forEach((button) => button.addEventListener('click', () => answer({ optionIndex: Number(button.dataset.option) }, button)));
-    app.querySelectorAll('[data-token]').forEach((button) => button.addEventListener('click', () => { const token = Number(button.dataset.token); selectedOrder = selectedOrder.includes(token) ? selectedOrder.filter((value) => value !== token) : [...selectedOrder, token]; app.querySelectorAll('[data-token]').forEach((node) => { const selected = selectedOrder.includes(Number(node.dataset.token)); node.classList.toggle('selected', selected); node.setAttribute('aria-pressed', selected); }); }));
-    app.querySelector('#reset-arrange')?.addEventListener('click', () => { selectedOrder = []; renderQuestion(); });
+    if (arrange) renderArrange(question);
+    app.querySelector('#reset-arrange')?.addEventListener('click', () => { selectedOrder = []; renderArrange(question); });
     app.querySelector('#submit-arrange')?.addEventListener('click', () => answer({ order: selectedOrder }, app.querySelector('#submit-arrange')));
+  }
+  function advance() {
+    index += 1; selectedOrder = [];
+    if (index < session.questions.length) renderQuestion(); else finish();
+  }
+  // Jawaban benar dalam bentuk teks. Untuk susun-kalimat inilah SATU-SATUNYA
+  // tempat siswa bisa melihat urutan yang benar — `correctOrder` dikirim
+  // server justru untuk ini, dan sebelumnya dibuang begitu saja.
+  function correctAnswerText(question, result) {
+    if (Array.isArray(result.correctOrder)) return result.correctOrder.join(' ');
+    const options = question.options || [];
+    return Number.isInteger(result.correctIndex) ? (options[result.correctIndex] || '') : '';
   }
   async function answer(payload, button) {
     const feedback = document.getElementById('feedback'); if (button) button.disabled = true;
@@ -59,9 +110,30 @@
       const result = await api(`/review/sessions/${session.sessionId}/answers`, { method: 'POST', body: JSON.stringify({ questionIndex: index, ...payload }) });
       if (result.passed) correctAnswers += 1;
       app.querySelectorAll('[data-option]').forEach((node) => { node.disabled = true; if (Number(node.dataset.option) === result.correctIndex) node.classList.add('correct'); });
+      // Kepingan susun-kalimat juga dikunci: soal yang sudah dijawab tidak
+      // boleh bisa diutak-atik lagi sambil siswa membaca pembahasannya.
+      app.querySelectorAll('[data-token]').forEach((node) => { node.disabled = true; });
+      app.querySelector('#reset-arrange')?.setAttribute('disabled', 'disabled');
       if (button && !result.passed) button.classList.add('wrong');
-      feedback.textContent = result.passed ? 'Benar — review berikutnya akan dijadwalkan lebih jauh.' : 'Belum tepat — item ini akan muncul lebih cepat.';
-      setTimeout(() => { index += 1; selectedOrder = []; if (index < session.questions.length) renderQuestion(); else finish(); }, 900);
+      if (result.passed) {
+        feedback.textContent = 'Benar — review berikutnya akan dijadwalkan lebih jauh.';
+        setTimeout(advance, 900);
+        return;
+      }
+      // Salah: JANGAN pindah sendiri. Waktu untuk mencerna kesalahan adalah
+      // milik siswa, bukan angka tebakan — tampilkan jawaban benarnya lalu
+      // tunggu mereka menekan "Lanjut".
+      const answerText = correctAnswerText(session.questions[index].question, result);
+      feedback.innerHTML = `Belum tepat — item ini akan muncul lebih cepat.${answerText ? `<span class="answer-key">Jawaban benar: <b>${esc(answerText)}</b></span>` : ''}`;
+      const actions = document.getElementById('answer-actions');
+      if (actions) {
+        actions.innerHTML = '<button class="primary" id="review-next" type="button">Lanjut →</button>';
+        const nextButton = document.getElementById('review-next');
+        nextButton.addEventListener('click', advance);
+        nextButton.focus();
+      } else {
+        setTimeout(advance, 2500);
+      }
     } catch (error) {
       feedback.textContent = ezStudentErrorMessage(error, 'Jawaban'); feedback.className = 'feedback error'; if (button) button.disabled = false;
     }

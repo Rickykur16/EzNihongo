@@ -65,6 +65,104 @@
 
 ## Konvensi penting
 
+      **migration 135: istilah asing di arti pola grammar diganti — BEDAH,
+      bukan tulis ulang** — user: "soal kanji menggunakan bahasa yg terlalu
+      tinggi dan susah, saya ingin merubah penjelasan fungsinya". Setelah
+      ditelusuri, yang dimaksud BUKAN soal kanji (soal kanji cuma memakai
+      `kanji_items.meaning_id` + kata majemuk, tidak ada teks "fungsi" sama
+      sekali) melainkan soal grammar Step 1 yang promptnya harfiah
+      `Apa fungsi 〜X?` dengan pilihan dari `module_grammar.meaning`.
+      **Pelajaran soal proses**: draf pertama menulis ulang SEMUA 48 arti jadi
+      gaya "untuk bilang ..." — ditolak user DUA KALI, pertama karena
+      hasilnya janggal dalam bahasa Indonesia ("menyangkal sifat",
+      "menempelkan sifat di depan benda"), lalu dengan koreksi yang
+      menentukan: **"bentuk negatif masih bisa dipahami, bentuk lampau juga
+      masih bisa dipahami"**. Jadi jangan samaratakan: istilah pelajaran yang
+      memang dipakai siswa (bentuk negatif, bentuk lampau, kata sifat, kata
+      benda, kata kerja, partikel, objek, subjek, kata bantu bilangan)
+      DIPERTAHANKAN; yang diganti hanya yang benar-benar asing bagi pemula
+      (afirmatif, demonstratif, konstruksi, plain, non-lampau, moda
+      transportasi, konjugasi, posisi relatif, "verb"). Hasilnya 22 pola di
+      Bab 4/6/7/8/9/10/12/14 disentuh, sisanya (Bab 5, 11, 16, dan sebagian
+      Bab 4/8/9) TIDAK sama sekali — mis. `kata sifat い menerangkan kata
+      benda langsung` dibiarkan apa adanya. **Jebakan yang dijaga**: pengecoh
+      Step 1 diambil dari arti pola LAIN di bab yang sama lalu disaring
+      `balancedMeaning()`; kalau tersisa < 2 pengecoh,
+      `buildRecognitionDrill()` mengembalikan NULL dan SOALNYA HILANG tanpa
+      error. Karena itu (a) migrasi punya assertion 15-60 huruf + "harus satu
+      kalimat" (`shortMeaning()` cuma memakai kalimat pertama), dan (b)
+      sebelum ditulis, keseimbangan panjang tiap bab dihitung ulang dengan
+      MENGGABUNG arti baru + arti lama yang tidak diubah — hasilnya tiap bab
+      tetap punya ≥2 pengecoh dan tidak ada dua arti yang saling memuat.
+      Perubahan ini justru memperbaiki ambangnya: `negatif kini` (12 huruf,
+      sudah mepet) naik jadi 23. **Pagar assertion sempat salah rancang**:
+      versi pertama memindai SELURUH tabel dan meng-EXCEPTION kalau ada
+      jargon di mana pun — artinya satu baris Bab 3 (bank polanya diisi
+      manual lewat admin, TIDAK terlihat dari repo) sanggup menggagalkan
+      seluruh deploy. Diperbaiki: EXCEPTION hanya untuk pola dalam cakupan
+      migrasi ini sendiri, baris di luar cakupan cuma NOTICE. Divalidasi di
+      Postgres lokal: pola tak ditemukan dilewati dengan NOTICE (bukan
+      error), idempoten, baris "Bab 3 palsu" berjargon hanya bikin NOTICE,
+      dan pola dalam cakupan yang sengaja dirusak benar-benar menggagalkan
+      migrasi. **Bab 3 tetap di luar jangkauan** — harus diperbaiki lewat
+      admin, atau lewat migrasi lanjutan kalau teks persisnya diberikan.
+
+      **Susun-kata di Smart Review: katanya tidak pernah benar-benar
+      berpindah** — user: "untuk susun kata di review, kata tidak bisa di
+      drag atau di susun". Bukan salah paham user, memang cacat: seluruh
+      kepingan ditaruh di SATU kotak (`.arrange`) dan diketuk hanya
+      men-toggle class `.selected` (ganti warna) — kepingannya tetap di
+      tempat, TIDAK ADA baris jawaban, tidak ada nomor urut, jadi siswa
+      tidak bisa melihat kalimat yang sedang disusun sebelum menekan
+      "Periksa jawaban". CLAUDE.md sendiri menyebut desainnya "ala Duolingo,
+      ketuk bukan drag", tapi separuh desainnya (baris jawaban) tidak pernah
+      dibuat. Sekarang DUA ZONA: `#arrange-answer` (kalimat yang disusun,
+      border solid merah) di atas `#arrange` (kepingan tersisa, border
+      putus-putus). Ketuk di kepingan → kata PINDAH ke baris jawaban; ketuk
+      di baris jawaban → kembali ke kepingan. Tetap ketuk (bukan drag):
+      target sentuh lebih besar, tanpa pustaka DnD, dan konsisten dengan
+      keputusan awal. Fungsi `renderArrange(question)` membangun ulang kedua
+      zona dari `selectedOrder`, dipanggil saat render + tiap ketukan +
+      tombol "Ulangi" (tidak lagi `renderQuestion()` penuh). Class
+      `.token.selected` jadi mati dan sudah dihapus dari review.css.
+      **Sekalian menutup jebakan**: tombol "Periksa jawaban" kini DIKUNCI
+      sampai semua kepingan dipakai (labelnya jadi "Pakai semua kata
+      (n/total)") — `arrangeIsCorrect()` menilai susunan yang panjangnya
+      tidak sama dengan jumlah kepingan sebagai SALAH, jadi sebelumnya siswa
+      bisa tidak sengaja mengirim susunan setengah jadi dan langsung dihitung
+      gagal. Divalidasi di viewport HP (390×844): ketuk → kata pindah,
+      urutan terbaca, ketuk di baris jawaban → balik ke kepingan, tombol
+      kirim terkunci di 2/3 dan terbuka di 3/3, susunan benar → "Benar" →
+      lanjut sendiri.
+
+      **Smart Review: soal salah TIDAK lagi berpindah sendiri** — user:
+      "reviewnya terlalu cepat berganti setelah dikerjakan, jadi waktu untuk
+      berfikir dimana yang salah terlalu pendek". Sebelumnya `review.js`
+      memakai `setTimeout(..., 900)` DATAR untuk benar maupun salah
+      (bandingkan widget drill di `welcome.html` yang sudah membedakan:
+      700ms benar / 1700ms salah). Sekarang: **benar → tetap otomatis
+      ~900ms** (tidak ada yang perlu dipelajari, jangan perlambat siswa yang
+      sudah bisa), **salah → tidak pindah sama sekali** sampai siswa menekan
+      tombol "Lanjut →" (`#review-next`, di container baru
+      `#answer-actions`). Waktu berpikir jadi milik siswa, bukan angka
+      tebakan. **Sekalian menutup bug yang lebih parah**: untuk soal
+      SUSUN-KALIMAT, jawaban benarnya SELAMA INI TIDAK PERNAH DITAMPILKAN —
+      server sudah mengirim `correctOrder` (lihat `smart-review.js`:
+      `correctOrder: payload.variant === 'arrange' ? payload.answer : ...`)
+      tapi `review.js` cuma memakai `correctIndex` (pilihan ganda) dan
+      membuang `correctOrder` begitu saja. Jadi siswa yang salah menyusun
+      kalimat tidak pernah tahu susunan benarnya, mau diberi waktu berapa
+      lama pun. Helper baru `correctAnswerText()` merangkai `correctOrder`
+      jadi kalimat (atau mengambil `options[correctIndex]` untuk pilihan
+      ganda), ditampilkan di blok `.answer-key` (review.css). Kepingan
+      susun-kalimat + tombol "Ulangi" ikut di-disable setelah dijawab —
+      soal yang sudah dinilai tidak boleh bisa diutak-atik lagi sambil
+      pembahasannya dibaca. Divalidasi lewat browser asli: jawaban SALAH →
+      ditunggu 4+ detik masih di soal yang sama, `.answer-key` menampilkan
+      「わたしは にほんごを べんきょうします」, tombol "Lanjut →" ada;
+      jawaban BENAR → tidak ada tombol Lanjut, pindah sendiri dalam ~1,3
+      detik.
+
       **Cara siswa MELANJUTKAN latihan yang belum selesai** (menyusul gate
       di bawah; ditanyakan user: "kalau siswa latihan tapi belum selesai
       semua, bagaimana melanjutkan sisanya?"). Yang sudah aman sejak awal:

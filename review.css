@@ -208,6 +208,27 @@ body {
   font-weight: 700;
 }
 
+/* Jawaban benar untuk soal yang salah — dibaca sambil berpikir, jadi diberi
+   ruang sendiri dan ukuran yang nyaman untuk teks Jepang. */
+.answer-key {
+  display: block;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--success, #3b6d11);
+  border-radius: 12px;
+  background: var(--success-soft, #eaf3de);
+  color: var(--success, #3b6d11);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.answer-key b {
+  font-family: "Noto Sans JP", "Shippori Mincho", sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
 .arrange {
   min-height: 70px;
   margin: 18px 0;
@@ -221,15 +242,38 @@ body {
   background: var(--paper-50, #fdfcf9);
 }
 
+/* Baris jawaban: kalimat yang sedang disusun. Digarisbawahi solid supaya
+   terbaca sebagai "tempat menaruh kata", beda dari kotak kepingan di bawahnya
+   yang bergaris putus-putus. */
+.arrange-answer {
+  min-height: 62px;
+  margin: 18px 0 10px;
+  padding: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  border: 2px solid var(--brand-red, #c8102e);
+  border-radius: 13px;
+  background: var(--brand-red-soft, #fff0f2);
+}
+
+.arrange-answer .token {
+  border-color: var(--brand-red, #c8102e);
+  color: var(--brand-red, #c8102e);
+  font-weight: 700;
+}
+
+.arrange-empty {
+  color: var(--ink-500, #8a8378);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .token {
   padding: 9px 12px;
   cursor: pointer;
-}
-
-.token.selected {
-  border-color: var(--brand-red, #c8102e);
-  background: var(--brand-red-soft, #fff0f2);
-  color: var(--brand-red, #c8102e);
 }
 
 .answer-row {
