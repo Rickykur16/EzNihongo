@@ -108,7 +108,12 @@ router.post('/sessions', asyncHandler(async (req, res) => {
 }));
 
 async function lockedSessionItem(client, user, sessionId, index) {
-  const result = await client.query(`SELECT si.*, s.user_id, s.expires_at, m.course_id FROM smart_review_session_items si JOIN smart_review_sessions s ON s.id = si.session_id LEFT JOIN lessons l ON l.id = si.lesson_id LEFT JOIN modules m ON m.id = l.module_id WHERE si.session_id = $1 AND si.question_index = $2 FOR UPDATE`, [sessionId, index]); const row = result.rows[0];
+  // FOR UPDATE OF si — Postgres refuses a plain FOR UPDATE here because
+  // lessons/modules sit on the nullable side of a LEFT JOIN ("FOR UPDATE
+  // cannot be applied to the nullable side of an outer join"); si is the
+  // only row this handler actually updates (answered_at), so it's also the
+  // only one that needs locking.
+  const result = await client.query(`SELECT si.*, s.user_id, s.expires_at, m.course_id FROM smart_review_session_items si JOIN smart_review_sessions s ON s.id = si.session_id LEFT JOIN lessons l ON l.id = si.lesson_id LEFT JOIN modules m ON m.id = l.module_id WHERE si.session_id = $1 AND si.question_index = $2 FOR UPDATE OF si`, [sessionId, index]); const row = result.rows[0];
   if (!row || row.user_id !== user.id) return { error: 'session_not_found', status: 404 }; if (new Date(row.expires_at) <= new Date()) return { error: 'session_expired', status: 410 }; if (row.answered_at) return { error: 'already_answered', status: 409 };
   if (!row.lesson_id || !(await userCanAccessCourse(user, row.course_id))) return { error: 'not_enrolled', status: 403 };
   const complete = await client.query(`SELECT 1 FROM user_progress WHERE user_id = $1 AND lesson_id = $2 AND completed = TRUE`, [user.id, row.lesson_id]); if (!complete.rows.length) return { error: 'lesson_not_completed', status: 403 }; return { row };
