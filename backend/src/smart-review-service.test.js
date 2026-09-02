@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { applyPracticeAttempt } from './learning-foundations.js';
 import { deriveDrills, publicDrill } from './grammar-drills.js';
-import { SMART_REVIEW_SOURCE, filterReviewScope, isReviewNeeded, makeReviewQuestion, reviewPriority, selectReviewCandidates, summarizeCandidates } from './smart-review-service.js';
+import { SMART_REVIEW_SOURCE, filterReviewScope, isReviewNeeded, makeReviewQuestion, pickCompoundOwners, reviewPriority, selectReviewCandidates, summarizeCandidates } from './smart-review-service.js';
 
 const now = new Date('2026-09-01T00:00:00.000Z');
 const candidate = (category, itemId, priorityState = {}) => ({ category, itemId, skill: 'k2r', state: priorityState, item: { id: itemId, character: 'あ', romaji: 'a' } });
@@ -112,4 +112,43 @@ test('grammar review uses the existing derived drill and keeps answer data out o
   const raw = deriveDrills([grammar], [grammar]).get('g1').step1;
   assert.ok(raw);
   assert.equal(Object.hasOwn(publicDrill(raw), 'correctIndex'), false);
+});
+
+// 学生 contains both 学 and 生, so deriveCompounds() yields it twice — once per
+// kanji. Both copies share a skill and differ only in itemId, so before this
+// each word was two review items: the identical question showed up twice in a
+// session, and answering one left the other due. Reported as "tidak salah tapi
+// muncul berkali kali".
+test('a compound word claims exactly one kanji owner', () => {
+  const owners = pickCompoundOwners([
+    { key: '学生::がくせい', baseId: 'k-gaku', hasState: false },
+    { key: '学生::がくせい', baseId: 'k-sei', hasState: false },
+    { key: '先生::せんせい', baseId: 'k-sen', hasState: false },
+    { key: '先生::せんせい', baseId: 'k-sei', hasState: false },
+  ]);
+  assert.equal(owners.size, 2);
+  assert.deepEqual([...owners.keys()].sort(), ['先生::せんせい', '学生::がくせい']);
+});
+
+test('the kanji already holding practice state keeps the word, so progress is not orphaned', () => {
+  // k-sei arrives second and sorts later, but it is where the learner's
+  // answers live; re-parenting the word would reset it to attempts = 0 and
+  // bring the question straight back.
+  const owners = pickCompoundOwners([
+    { key: '学生::がくせい', baseId: 'k-gaku', hasState: false },
+    { key: '学生::がくせい', baseId: 'k-sei', hasState: true },
+  ]);
+  assert.equal(owners.get('学生::がくせい').baseId, 'k-sei');
+});
+
+test('ownership is stable when no copy has state, regardless of arrival order', () => {
+  const forward = pickCompoundOwners([
+    { key: 'w', baseId: 'k-b', hasState: false },
+    { key: 'w', baseId: 'k-a', hasState: false },
+  ]).get('w').baseId;
+  const reversed = pickCompoundOwners([
+    { key: 'w', baseId: 'k-a', hasState: false },
+    { key: 'w', baseId: 'k-b', hasState: false },
+  ]).get('w').baseId;
+  assert.equal(forward, reversed);
 });
