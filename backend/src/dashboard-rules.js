@@ -33,3 +33,8 @@ export function structuralProgressAndNext(rows) {
     next: lessons.find((row) => !row.completed) || null,
   };
 }
+
+export function isVisibleCurriculumLesson(row = {}) {
+  const popupAfterLessonId = row.popup_after_lesson_id ?? row.popupAfterLessonId;
+  return !(row.type === 'grammar_task' && popupAfterLessonId);
+}

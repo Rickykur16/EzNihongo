@@ -5,6 +5,9 @@ import { recordPracticeAttemptWithState } from './practice-service.js';
 import {
   applyPracticeAttempt,
   hasPracticeScopeAccess,
+  mergeBestQuizScores,
+  mergeCanonicalLessonProgress,
+  mergeCompletionProgress,
   mergeImportedPracticeState,
   normalizeLegacyPracticeStat,
   normalizeLegacyProgress,
@@ -68,6 +71,41 @@ test('legacy progress parser accepts only true completion flags', () => {
     n5: { 'bab-1:intro': true, 'bab-1:reading': false, malformed: true },
     n4: null,
   }), [{ courseSlug: 'n5', moduleSlug: 'bab-1', lessonSlug: 'intro' }]);
+});
+
+test('canonical lesson progress is overlaid into the lesson-page cache without losing local completions', () => {
+  const legacy = {
+    n5: { 'bab-1:intro': true, 'bab-1:local-only': true },
+    malformed: null,
+  };
+  const merged = mergeCanonicalLessonProgress(legacy, [
+    { course_slug: 'n5', module_slug: 'bab-1', lesson_slug: 'server-complete' },
+    { course_slug: 'n4', module_slug: 'bab-2', lesson_slug: 'reading' },
+    { course_slug: '', module_slug: 'ignored', lesson_slug: 'ignored' },
+  ]);
+  assert.deepEqual(merged, {
+    n5: {
+      'bab-1:intro': true,
+      'bab-1:local-only': true,
+      'bab-1:server-complete': true,
+    },
+    malformed: {},
+    n4: { 'bab-2:reading': true },
+  });
+  assert.notEqual(merged.n5, legacy.n5);
+});
+
+test('server learning-state merge is monotonic across devices', () => {
+  assert.deepEqual(mergeCompletionProgress(
+    { n5: { 'bab-1:intro': true, 'bab-1:server-only': true } },
+    { n5: { 'bab-1:intro': false, 'bab-1:phone-only': true }, n4: { 'bab-2:kana': true } },
+  ), {
+    n5: { 'bab-1:intro': true, 'bab-1:server-only': true, 'bab-1:phone-only': true },
+    n4: { 'bab-2:kana': true },
+  });
+  assert.deepEqual(mergeBestQuizScores({ quizA: 80, quizB: 75 }, { quizA: 60, quizC: 90 }), {
+    quizA: 80, quizB: 75, quizC: 90,
+  });
 });
 
 test('recording a practice attempt updates counters, streak, and due time once', () => {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { masteryDisplay, structuralProgressAndNext, weeklyInsight } from './dashboard-rules.js';
+import { isVisibleCurriculumLesson, masteryDisplay, structuralProgressAndNext, weeklyInsight } from './dashboard-rules.js';
 
 test('dashboard mastery never turns missing evidence into 0 percent', () => {
   assert.deepEqual(masteryDisplay({ attempts: 0, correct: 0 }), { label: 'Belum cukup data', percentage: null, attempts: 0 });
@@ -18,4 +18,16 @@ test('Continue Learning uses structural completion order, not mastery', () => {
   const result = structuralProgressAndNext([{ id: 'one', completed: true }, { id: 'two', completed: false }, { id: 'three', completed: false }]);
   assert.equal(result.percentage, 33);
   assert.equal(result.next.id, 'two');
+});
+
+test('Dashboard curriculum count matches the visible lesson list', () => {
+  const lessons = [
+    { id: 'text', type: 'text', completed: true },
+    { id: 'standalone-task', type: 'grammar_task', completed: false, popup_after_lesson_id: null },
+    { id: 'popup-task', type: 'grammar_task', completed: false, popup_after_lesson_id: 'trigger' },
+  ].filter(isVisibleCurriculumLesson);
+  const result = structuralProgressAndNext(lessons);
+  assert.equal(result.totalLessons, 2);
+  assert.equal(result.completedLessons, 1);
+  assert.equal(result.next.id, 'standalone-task');
 });

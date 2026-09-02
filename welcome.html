@@ -4802,21 +4802,26 @@ function getProgress() {
 }
 function setProgress(obj) {
   localStorage.setItem('ez_progress', JSON.stringify(obj));
+  localStorage.setItem('ez_progress_pending_sync', '1');
   _scheduleCloudPush();
 }
 
-// ── Sync progres lintas device (blob per user, mirror kanji_progress) ──
-// Progres + skor kuis disimpan di localStorage (per-device) lalu di-push ke
-// /api/learning-state supaya ikut akun. Boot menarik blob & union-merge.
+// ── Sync progres lintas device ──
+// user_progress di server adalah sumber utama. localStorage hanya cache cepat
+// dan fallback offline; /api/learning-state merge lintas device lalu langsung
+// merekonsiliasi setiap flag selesai ke user_progress sebelum merespons.
 let _cloudPushTimer = null;
-let _progressReconcileTimer = null;
 function _scheduleCloudPush() {
   if (typeof window.ezApi !== 'function') return;
   clearTimeout(_cloudPushTimer);
   _cloudPushTimer = setTimeout(pushLearningStateToCloud, 1200);
 }
+function markProgressCacheSynced() {
+  localStorage.removeItem('ez_progress_pending_sync');
+  localStorage.setItem('ez_progress_reconcile_v2', '1');
+}
 async function pushLearningStateToCloud() {
-  if (typeof window.ezApi !== 'function') return;
+  if (typeof window.ezApi !== 'function') return false;
   try {
     const progress = getProgress();
     const quizScores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
@@ -4824,17 +4829,19 @@ async function pushLearningStateToCloud() {
       method: 'PUT',
       body: JSON.stringify({ progress, quizScores }),
     });
-    if (response.ok) scheduleLessonProgressReconciliation();
-  } catch {}
-}
-function scheduleLessonProgressReconciliation() {
-  if (typeof window.ezApi !== 'function') return;
-  clearTimeout(_progressReconcileTimer);
-  _progressReconcileTimer = setTimeout(reconcileLessonProgressToServer, 150);
+    if (response.ok) markProgressCacheSynced();
+    return response.ok;
+  } catch { return false; }
 }
 function _mergeProgress(a, b) {
   const out = JSON.parse(JSON.stringify(a || {}));
-  for (const c in (b || {})) out[c] = Object.assign({}, out[c], b[c]);
+  for (const c in (b || {})) {
+    out[c] ||= {};
+    for (const key in (b[c] || {})) {
+      const incoming = b[c][key];
+      out[c][key] = out[c][key] === true || incoming === true ? true : incoming;
+    }
+  }
   return out;
 }
 function _mergeQuizScores(a, b) {
@@ -4846,7 +4853,7 @@ function _mergeQuizScores(a, b) {
 // monoton — sekali selesai tetap selesai), lalu push balik supaya item
 // lokal-only ikut naik ke cloud. Gagal/offline → diam, pakai localStorage.
 // Return true bila localStorage berubah (caller bisa re-render tanda ✓).
-async function syncLearningStateFromServer() {
+async function syncLearningStateFromServer({ reconcile = false } = {}) {
   if (typeof window.ezApi !== 'function') return false;
   try {
     const res = await window.ezApi('/learning-state');
@@ -4858,7 +4865,11 @@ async function syncLearningStateFromServer() {
     const beforeQ = localStorage.getItem('ez_quiz_scores') || '{}';
     const afterQ = JSON.stringify(_mergeQuizScores(cloud.quizScores || {}, JSON.parse(beforeQ)));
     localStorage.setItem('ez_quiz_scores', afterQ);
-    _scheduleCloudPush();
+    if (reconcile) {
+      if (!(await pushLearningStateToCloud())) _scheduleCloudPush();
+    } else {
+      _scheduleCloudPush();
+    }
     // The blob stays as a backwards-compatible cache during transition.  Its
     // completion flags reconcile only after the merged blob has been PUT, so
     // first-device local progress is not read from a stale server snapshot.
@@ -4867,19 +4878,18 @@ async function syncLearningStateFromServer() {
   return false;
 }
 
-function syncLessonCompletionToServer(lesson) {
-  if (!lesson?.apiId || typeof window.ezApi !== 'function') return;
-  // Deliberately fire-and-forget: local completion, unlocks, and navigation
-  // remain immediate while the server independently makes the transition
-  // idempotent and awards XP only once.
-  window.ezApi(`/progress/lesson/${encodeURIComponent(lesson.apiId)}/complete`, {
-    method: 'POST',
-  }).catch(() => {});
-}
+async function syncLessonCompletionToServer(lesson) {
+  if (!lesson?.apiId || typeof window.ezApi !== 'function') return false;
+  try {
+    const response = await window.ezApi(`/progress/lesson/${encodeURIComponent(lesson.apiId)}/complete`, {
+      method: 'POST',
+    });
+    if (response.ok) return true;
+  } catch {}
 
-function reconcileLessonProgressToServer() {
-  if (typeof window.ezApi !== 'function') return;
-  window.ezApi('/progress/reconcile', { method: 'POST' }).catch(() => {});
+  // Fallback for a transient failure: persist the slug cache immediately,
+  // then reconcile it into canonical user_progress before navigation.
+  return pushLearningStateToCloud();
 }
 
 function _currentPracticeLesson() {
@@ -6073,11 +6083,12 @@ async function finishQuiz() {
     const [slug, mId, lId] = key.split(':');
     const allProgress = getProgress();
     const cp = allProgress[slug] || {};
-    const wasAlreadyDone = !!cp[`${mId}:${lId}`];
     cp[`${mId}:${lId}`] = true;
     allProgress[slug] = cp;
     setProgress(allProgress);
-    if (!wasAlreadyDone) syncLessonCompletionToServer(findLesson(slug, mId, lId));
+    // The quiz result is not considered navigable until canonical completion
+    // has been persisted; Dashboard reads that canonical table directly.
+    await syncLessonCompletionToServer(findLesson(slug, mId, lId));
   }
   addXP(bonusXP, passed ? 'lulus kuis' : 'mencoba kuis');
   if (passed) fireConfetti();
@@ -8849,7 +8860,7 @@ function renderDeckLesson(course, module, lesson, nav) {
     </div>
     <div class="lesson-footer">
       <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
-      <button class="btn-primary" onclick="markCompleteAndNext()">
+      <button class="btn-primary" onclick="markCompleteAndNext(this)">
         ${isDone ? (next ? 'Lanjut →' : 'Selesai ✓') : (next ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓')}
       </button>
     </div>
@@ -9332,7 +9343,7 @@ function renderGrammarTaskLesson(course, module, lesson, nav) {
     <div id="gt-progress-hint"></div>
     <div class="lesson-footer">
       <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
-      <button class="btn-primary" id="gt-complete-btn" onclick="markCompleteAndNext()"></button>
+      <button class="btn-primary" id="gt-complete-btn" onclick="markCompleteAndNext(this)"></button>
     </div>
   `;
   gtUpdateComplete();
@@ -9403,8 +9414,15 @@ window.gtPopupDismiss = () => {
 };
 
 // Selesaikan tugas: tandai task lesson selesai + XP, tutup, lanjut.
-window.gtPopupComplete = () => {
+window.gtPopupComplete = async () => {
+  const completeButton = document.querySelector('.gt-popup #gt-complete-btn');
+  if (completeButton?.getAttribute('aria-busy') === 'true') return;
+  if (completeButton) {
+    completeButton.disabled = true;
+    completeButton.setAttribute('aria-busy', 'true');
+  }
   const ctx = window.__gtPopupCtx;
+  let serverCompletion = Promise.resolve(false);
   if (ctx) {
     const allProgress = getProgress();
     const cp = allProgress[currentState.course] || {};
@@ -9412,14 +9430,13 @@ window.gtPopupComplete = () => {
     cp[ctx.lessonKey] = true;
     allProgress[currentState.course] = cp;
     setProgress(allProgress);
-    if (!wasDone) {
-      addXP(10, 'tugas grammar selesai');
-      const course = COURSE_CONTENT[currentState.course];
-      const module = course?.modules?.find((item) => item.id === ctx.moduleId);
-      const taskLesson = module?.lessons?.find((item) => `${module.id}:${item.id}` === ctx.lessonKey);
-      syncLessonCompletionToServer(taskLesson);
-    }
+    if (!wasDone) addXP(10, 'tugas grammar selesai');
+    const course = COURSE_CONTENT[currentState.course];
+    const module = course?.modules?.find((item) => item.id === ctx.moduleId);
+    const taskLesson = module?.lessons?.find((item) => `${module.id}:${item.id}` === ctx.lessonKey);
+    serverCompletion = syncLessonCompletionToServer(taskLesson);
   }
+  await serverCompletion;
   closeGrammarTaskPopup();
   window.__gtPopupCtx = null;
   if (ctx && ctx.onDone) ctx.onDone();
@@ -9945,7 +9962,7 @@ function renderKanjiLesson(course, module, lesson, nav) {
     ${drillBlock}
     <div class="lesson-footer">
       <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
-      <button class="btn-primary" onclick="markCompleteAndNext()">
+      <button class="btn-primary" onclick="markCompleteAndNext(this)">
         ${isDone ? (next ? 'Lanjut →' : 'Selesai ✓') : (next ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓')}
       </button>
     </div>
@@ -10081,7 +10098,7 @@ function renderKanaLesson(course, module, lesson, nav) {
     ${modalMarkup}
     <div class="lesson-footer">
       <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
-      <button class="btn-primary" onclick="markCompleteAndNext()">
+      <button class="btn-primary" onclick="markCompleteAndNext(this)">
         ${isDone ? (next ? 'Lanjut →' : 'Selesai ✓') : (next ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓')}
       </button>
     </div>
@@ -11979,7 +11996,7 @@ function renderLesson() {
       <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">
         ← Sebelumnya
       </button>
-      <button class="btn-primary" onclick="markCompleteAndNext()">
+      <button class="btn-primary" onclick="markCompleteAndNext(this)">
         ${isDone ? (next ? 'Lanjut →' : 'Selesai ✓') : (next ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓')}
       </button>
     </div>
@@ -12201,7 +12218,12 @@ window.toggleSidebarSection = (name) => {
   reanchor();
 };
 
-window.markCompleteAndNext = () => {
+window.markCompleteAndNext = async (triggerButton) => {
+  if (triggerButton?.disabled) return;
+  if (triggerButton) {
+    triggerButton.disabled = true;
+    triggerButton.setAttribute('aria-busy', 'true');
+  }
   const course = COURSE_CONTENT[currentState.course];
   const key = `${currentState.moduleId}:${currentState.lessonId}`;
   const allProgress = getProgress();
@@ -12211,11 +12233,12 @@ window.markCompleteAndNext = () => {
   allProgress[currentState.course] = courseProgress;
   setProgress(allProgress);
 
-  if (!wasAlreadyDone) {
-    addXP(10, 'lesson selesai');
-    const lesson = findLesson(currentState.course, currentState.moduleId, currentState.lessonId);
-    syncLessonCompletionToServer(lesson);
-  }
+  if (!wasAlreadyDone) addXP(10, 'lesson selesai');
+  // Always retry the idempotent canonical write, even if the local cache was
+  // already TRUE. This repairs older sessions whose fire-and-forget request
+  // was interrupted while moving to Dashboard.
+  const lesson = findLesson(currentState.course, currentState.moduleId, currentState.lessonId);
+  const serverCompletion = syncLessonCompletionToServer(lesson);
 
   // Navigasi & hitungan progres pakai lesson terlihat saja (tugas-popup yang
   // tersembunyi tidak ikut dihitung — ia overlay terikat pelajaran pemicunya).
@@ -12245,7 +12268,8 @@ window.markCompleteAndNext = () => {
     try { if (window.AISenpai && AISenpai._started) AISenpai.refresh(); } catch {}
   };
 
-  const finalize = () => {
+  const finalize = async () => {
+    await serverCompletion;
     if (courseComplete) {
       showCompletion({
         title: '🎌 Selamat! Kelas Selesai',
@@ -12855,10 +12879,10 @@ const S = (window.AISenpai = {
   // Spinner langsung supaya layar tidak blank selama fetch kritis.
   renderBootSkeleton();
 
-  // ── Critical path: hanya yang dibutuhkan untuk first paint ──
-  // Enrollments (course mana yang dimiliki) + konten course terpilih. CMS
-  // catalog & sync progres cloud TIDAK diblok di sini — renderCourseTabs
-  // degrade tanpa CMS, renderLearning pakai progres localStorage.
+  // ── Critical path: data yang menentukan first paint ──
+  // Konten dan learning-state dimuat paralel. Endpoint learning-state sudah
+  // meng-overlay user_progress kanonik, sehingga Dashboard dan Belajar tidak
+  // sempat menampilkan jumlah selesai yang berbeda saat halaman dibuka.
   const params = new URLSearchParams(window.location.search);
   try {
     await syncEnrollmentsFromServer();
@@ -12866,7 +12890,10 @@ const S = (window.AISenpai = {
     // banner sukses SEBELUM first paint supaya paywall tidak berkedip dulu.
     // Hanya jalan saat ?new ada (rare) — handleNewEnrollment re-sync sendiri.
     if (params.get('new')) await handleNewEnrollment();
-    await hydrateEnrolledCourses();
+    await Promise.all([
+      hydrateEnrolledCourses(),
+      syncLearningStateFromServer({ reconcile: true }),
+    ]);
   } catch (err) {
     // Auth died between the ezGetMe check above and this sync (rare, but
     // possible if the refresh cookie was invalidated mid-load). Bounce to
@@ -12915,13 +12942,6 @@ const S = (window.AISenpai = {
   // It is intentionally background-only and never removes the local cache.
   importLegacyMasteryToServer();
 
-  // Sync progres lintas device → kalau ada perubahan, refresh tanda ✓ di
-  // sidebar saja (jangan re-render penuh — bisa menendang user dari lesson
-  // yang sedang dibuka). renderSidebar sudah preserve scroll + expanded state.
-  syncLearningStateFromServer().then((changed) => {
-    if (changed && document.getElementById('sidebar')) renderSidebar();
-    try { if (window.AISenpai && AISenpai._started) AISenpai.refresh(); } catch {}
-  });
 })();
 </script>
 

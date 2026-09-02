@@ -18,6 +18,7 @@ export async function loadProgressDetail(user, courseSlug) {
             COUNT(l.id)::int AS total_lessons,
             COUNT(*) FILTER (WHERE p.completed)::int AS completed_lessons
        FROM modules m LEFT JOIN lessons l ON l.module_id = m.id
+        AND NOT (l.type = 'grammar_task' AND l.popup_after_lesson_id IS NOT NULL)
        LEFT JOIN user_progress p ON p.lesson_id = l.id AND p.user_id = $1
       WHERE m.course_id = $2 GROUP BY m.id ORDER BY m.sort_order, m.created_at`, [user.id, courseId]
   );

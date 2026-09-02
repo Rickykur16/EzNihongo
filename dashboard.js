@@ -1,6 +1,7 @@
 (() => {
   const app = document.getElementById('dashboard-app');
-  const release = '20260902-1';
+  const release = '20260902-3';
+  const progressReconcileVersion = 'ez_progress_reconcile_v2';
   const labels = { kana: 'Kana', vocabulary: 'Kosakata', kanji: 'Kanji', grammar: 'Grammar' };
   const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
 
@@ -9,6 +10,29 @@
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw Error(body.error || 'request_failed');
     return body;
+  }
+  async function reconcileCachedProgress() {
+    let progress = {};
+    let quizScores = {};
+    try {
+      progress = JSON.parse(localStorage.getItem('ez_progress') || '{}');
+      quizScores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
+    } catch {}
+    const hasProgress = progress && typeof progress === 'object' && !Array.isArray(progress)
+      && Object.values(progress).some((course) => course && typeof course === 'object' && Object.values(course).some((done) => done === true));
+    const needsRepair = localStorage.getItem('ez_progress_pending_sync') === '1'
+      || (hasProgress && localStorage.getItem(progressReconcileVersion) !== '1');
+    if (!needsRepair) return true;
+    try {
+      const saved = await ezApi('/learning-state', {
+        method: 'PUT',
+        body: JSON.stringify({ progress, quizScores }),
+      });
+      if (!saved.ok) return false;
+      localStorage.removeItem('ez_progress_pending_sync');
+      localStorage.setItem(progressReconcileVersion, '1');
+      return true;
+    } catch { return false; }
   }
   function learnUrl(data) {
     const course = data.course?.slug; const next = data.continueLearning;
@@ -57,5 +81,9 @@
     catch (error) { app.innerHTML = errorMarkup(error); document.getElementById('retry-dashboard')?.addEventListener('click', () => load(course)); }
   }
   document.getElementById('logout').addEventListener('click', () => ezLogout());
-  (async () => { if (await ezRequireAuth('login.html')) load(new URLSearchParams(location.search).get('course') || ''); })();
+  (async () => {
+    if (!(await ezRequireAuth('login.html'))) return;
+    await reconcileCachedProgress();
+    await load(new URLSearchParams(location.search).get('course') || '');
+  })();
 })();
