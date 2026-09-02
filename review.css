@@ -208,6 +208,27 @@ body {
   font-weight: 700;
 }
 
+/* Jawaban benar untuk soal yang salah — dibaca sambil berpikir, jadi diberi
+   ruang sendiri dan ukuran yang nyaman untuk teks Jepang. */
+.answer-key {
+  display: block;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--success, #3b6d11);
+  border-radius: 12px;
+  background: var(--success-soft, #eaf3de);
+  color: var(--success, #3b6d11);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.answer-key b {
+  font-family: "Noto Sans JP", "Shippori Mincho", sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
 .arrange {
   min-height: 70px;
   margin: 18px 0;

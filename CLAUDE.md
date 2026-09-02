@@ -65,6 +65,34 @@
 
 ## Konvensi penting
 
+      **Smart Review: soal salah TIDAK lagi berpindah sendiri** — user:
+      "reviewnya terlalu cepat berganti setelah dikerjakan, jadi waktu untuk
+      berfikir dimana yang salah terlalu pendek". Sebelumnya `review.js`
+      memakai `setTimeout(..., 900)` DATAR untuk benar maupun salah
+      (bandingkan widget drill di `welcome.html` yang sudah membedakan:
+      700ms benar / 1700ms salah). Sekarang: **benar → tetap otomatis
+      ~900ms** (tidak ada yang perlu dipelajari, jangan perlambat siswa yang
+      sudah bisa), **salah → tidak pindah sama sekali** sampai siswa menekan
+      tombol "Lanjut →" (`#review-next`, di container baru
+      `#answer-actions`). Waktu berpikir jadi milik siswa, bukan angka
+      tebakan. **Sekalian menutup bug yang lebih parah**: untuk soal
+      SUSUN-KALIMAT, jawaban benarnya SELAMA INI TIDAK PERNAH DITAMPILKAN —
+      server sudah mengirim `correctOrder` (lihat `smart-review.js`:
+      `correctOrder: payload.variant === 'arrange' ? payload.answer : ...`)
+      tapi `review.js` cuma memakai `correctIndex` (pilihan ganda) dan
+      membuang `correctOrder` begitu saja. Jadi siswa yang salah menyusun
+      kalimat tidak pernah tahu susunan benarnya, mau diberi waktu berapa
+      lama pun. Helper baru `correctAnswerText()` merangkai `correctOrder`
+      jadi kalimat (atau mengambil `options[correctIndex]` untuk pilihan
+      ganda), ditampilkan di blok `.answer-key` (review.css). Kepingan
+      susun-kalimat + tombol "Ulangi" ikut di-disable setelah dijawab —
+      soal yang sudah dinilai tidak boleh bisa diutak-atik lagi sambil
+      pembahasannya dibaca. Divalidasi lewat browser asli: jawaban SALAH →
+      ditunggu 4+ detik masih di soal yang sama, `.answer-key` menampilkan
+      「わたしは にほんごを べんきょうします」, tombol "Lanjut →" ada;
+      jawaban BENAR → tidak ada tombol Lanjut, pindah sendiri dalam ~1,3
+      detik.
+
       **Cara siswa MELANJUTKAN latihan yang belum selesai** (menyusul gate
       di bawah; ditanyakan user: "kalau siswa latihan tapi belum selesai
       semua, bagaimana melanjutkan sisanya?"). Yang sudah aman sejak awal:
