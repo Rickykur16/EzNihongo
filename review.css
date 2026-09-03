@@ -313,3 +313,40 @@ body {
   background: var(--brand-red-soft, #fff0f2);
   color: var(--brand-red, #c8102e);
 }
+
+/* Kontrol audio soal "dengar lalu tebak arti". Dulu memakai .token — class
+   yang sama dengan kepingan kata soal susun-kalimat — jadi tidak terbaca
+   sebagai tombol suara. Target sentuhnya juga dinaikkan ke 44px, ukuran
+   minimum yang nyaman di HP. */
+.audio-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: 4px 0 14px;
+  padding: 10px 18px;
+  border: 1.5px solid var(--paper-300, #e5e0d8);
+  border-radius: 999px;
+  background: var(--paper-100, #fff);
+  color: var(--ink-900, #1b1410);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.audio-btn:hover { border-color: var(--brand-red, #c8102e); }
+
+.audio-btn.playing {
+  border-color: var(--brand-red, #c8102e);
+  background: var(--brand-red-soft, #fff0f2);
+  color: var(--brand-red, #c8102e);
+}
+
+/* Autoplay ditolak browser (mis. dibuka lewat tautan "Latihan Fokus", yang
+   memulai sesi tanpa gesture). Dulu keadaan ini SENYAP tanpa penjelasan. */
+.audio-btn.needs-tap {
+  border-color: var(--brand-red, #c8102e);
+  background: var(--brand-red, #c8102e);
+  color: #fff;
+}

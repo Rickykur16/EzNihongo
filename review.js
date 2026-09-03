@@ -26,8 +26,8 @@
     const total = Number(summary.total) || 0;
     const counts = Object.keys(labels).map((key) => categoryButton(key, Number(summary.byCategory?.[key]) || 0)).join('');
     app.innerHTML = `<section class="summary-card"><div class="eyebrow">復習 · SMART REVIEW</div><h1 class="review-title">Ulangi yang sudah dipelajari.</h1><p class="total">${total ? `${total} item perlu direview` : 'Belum ada item review yang siap.'}</p><div class="counts" aria-label="Pilih kategori review">${counts}</div>${total ? '<button class="primary" id="start-mixed" type="button">Mulai Smart Review</button>' : '<p class="subtle">Review hari ini selesai. Lanjutkan belajar untuk membuka materi review berikutnya.</p>'}<div class="review-actions"><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
-    app.querySelector('#start-mixed')?.addEventListener('click', () => start('mixed'));
-    app.querySelectorAll('[data-category]').forEach((button) => button.addEventListener('click', () => start(button.dataset.category)));
+    app.querySelector('#start-mixed')?.addEventListener('click', () => { unlockAudio(); start('mixed'); });
+    app.querySelectorAll('[data-category]').forEach((button) => button.addEventListener('click', () => { unlockAudio(); start(button.dataset.category); }));
   }
   async function start(category) {
     app.innerHTML = '<p class="loading">Menyiapkan sesi review…</p>';
@@ -51,7 +51,6 @@
   // pelajaran langsung terpakai ulang, tanpa generate baru.
   let ttsVersion = '';
   let ttsVersionAsked = false;
-  let currentAudio = null;
   async function initTtsVersion() {
     if (ttsVersionAsked) return;
     ttsVersionAsked = true;
@@ -62,8 +61,39 @@
   }
   initTtsVersion();
 
+  // SATU elemen audio untuk seluruh halaman, bukan satu per soal. Safari iOS
+  // hanya mengizinkan pemutaran otomatis pada elemen yang PERNAH diputar di
+  // dalam call stack sebuah gesture, jadi elemen baru tiap soal tidak akan
+  // pernah "unlocked" di sana. Diukur di Chromium ber-autoplay ketat, kedua
+  // bentuk sama-sama jalan — jadi ini asuransi untuk iOS (yang tidak bisa
+  // diuji dari sini), bukan perbaikan atas yang terukur.
+  const player = new Audio();
+  player.preload = 'auto';
+  // WAV senyap 1 frame — cukup untuk membuka kunci elemen di dalam gesture.
+  const SILENT = 'data:audio/wav;base64,UklGRiUAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQEAAACA';
+  let unlocked = false;
+  // WAJIB dipanggil di dalam handler klik dan SEBELUM `await` apa pun: setelah
+  // start() menunggu fetch, aktivasi transient-nya sudah lewat.
+  function unlockAudio() {
+    if (unlocked) return;
+    unlocked = true;
+    try {
+      player.src = SILENT;
+      const promise = player.play();
+      if (promise?.then) promise.then(() => player.pause()).catch(() => { /* noop */ });
+    } catch { /* noop */ }
+  }
+
+  // Setiap pemutaran menaikkan generasi, supaya event dari src LAMA (error /
+  // ended yang datang telat) tidak mengubah tombol soal yang sedang tampil.
+  let audioGeneration = 0;
+  const PLAY_LABEL = '🔊 Putar suara';
+  const REPLAY_LABEL = '🔊 Putar lagi';
+  const TAP_LABEL = '🔊 Ketuk untuk memutar';
+
   function stopAudio() {
-    if (currentAudio) { try { currentAudio.pause(); currentAudio.src = ''; } catch { /* noop */ } currentAudio = null; }
+    audioGeneration += 1;
+    try { player.pause(); } catch { /* noop */ }
     if ('speechSynthesis' in window) speechSynthesis.cancel();
   }
 
@@ -82,25 +112,44 @@
     const plain = String(text || '').trim();
     if (!plain) return;
     stopAudio();
+    const generation = audioGeneration;
+    const stale = () => generation !== audioGeneration;
     btn?.classList.add('playing');
+    btn?.classList.remove('needs-tap');
+
     // Jangan jatuh ke Web Speech kalau audio server sudah benar-benar
     // berbunyi: play() bisa menolak setelah pemutaran dimulai (quirk
     // autoplay), dan tanpa penjaga ini dua suara berbunyi bersamaan.
     let serverPlaying = false;
     let fellBack = false;
     const fallback = () => {
-      if (serverPlaying || fellBack) return;
+      if (stale() || serverPlaying || fellBack) return;
       fellBack = true;
       speakFallback(plain, btn);
     };
+    // Autoplay yang DITOLAK kebijakan browser bukan kegagalan server, dan
+    // Web Speech diblokir oleh aktivasi yang sama — memanggilnya cuma
+    // menghasilkan senyap tanpa penjelasan. Yang benar: bilang ke siswa
+    // bahwa audionya tinggal diketuk. Ini yang terjadi pada tautan
+    // "Latihan Fokus" (review.html?category=…), yang memulai sesi tanpa
+    // gesture apa pun di halaman itu.
+    const askForTap = () => {
+      if (stale()) return;
+      btn?.classList.remove('playing');
+      if (btn) { btn.classList.add('needs-tap'); btn.textContent = TAP_LABEL; }
+    };
     try {
-      const url = `${EZ_API_BASE}/tts?text=${encodeURIComponent(plain)}${ttsVersion ? `&v=${encodeURIComponent(ttsVersion)}` : ''}`;
-      const audio = new Audio(url);
-      currentAudio = audio;
-      audio.onplaying = () => { serverPlaying = true; };
-      audio.onended = () => btn?.classList.remove('playing');
-      audio.onerror = fallback;
-      audio.play().catch(fallback);
+      player.src = `${EZ_API_BASE}/tts?text=${encodeURIComponent(plain)}${ttsVersion ? `&v=${encodeURIComponent(ttsVersion)}` : ''}`;
+      player.onplaying = () => {
+        if (stale()) return;
+        serverPlaying = true;
+        if (btn) { btn.classList.remove('needs-tap'); btn.textContent = REPLAY_LABEL; }
+      };
+      player.onended = () => { if (!stale()) btn?.classList.remove('playing'); };
+      player.onerror = fallback;
+      player.play().catch((error) => {
+        if (error?.name === 'NotAllowedError') askForTap(); else fallback();
+      });
     } catch { fallback(); }
   }
   // Susun-kalimat dua zona ala Duolingo: kata yang diketuk BERPINDAH ke baris
@@ -152,7 +201,7 @@
       ? `<div class="arrange-answer" id="arrange-answer" aria-label="Kalimat yang kamu susun"></div><div class="arrange" id="arrange" aria-label="Kepingan kata"></div><div class="answer-row"><button class="primary" id="submit-arrange" type="button">Periksa jawaban</button><button class="token" id="reset-arrange" type="button">Ulangi</button></div>`
       : `<div class="options">${options.map((option, optionIndex) => `<button class="option" type="button" data-option="${optionIndex}">${esc(option)}${question.optionReadings?.[optionIndex] && question.optionReadings[optionIndex] !== option ? `<small>${esc(question.optionReadings[optionIndex])}</small>` : ''}</button>`).join('')}</div>`;
     const progressPercent = Math.round(((index + 1) / session.questions.length) * 100);
-    app.innerHTML = `<section class="question-card"><div class="progress">SOAL ${index + 1} DARI ${session.questions.length}</div><div class="review-progress-bar" role="progressbar" aria-label="Progres sesi review" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progressPercent}"><i style="width:${progressPercent}%"></i></div><span class="tag">${esc(tagLabel)}</span><h1 class="prompt">${esc(question.prompt)}</h1>${question.instruction ? `<p class="hint">${esc(question.instruction)}</p>` : ''}${question.audioText ? '<button class="token" id="play-audio" type="button">▶ Putar audio</button>' : ''}${question.reading ? `<p class="hint">${esc(question.reading)}</p>` : ''}${question.meaning ? `<p class="hint">${esc(question.meaning)}</p>` : ''}${question.example?.japanese ? `<p class="hint">${esc(question.example.japanese)}</p>` : ''}${question.example?.indonesian ? `<p class="hint">${esc(question.example.indonesian)}</p>` : ''}${question.sentence ? `<p class="hint">${esc(question.sentence)}</p>` : ''}${question.indonesian ? `<p class="hint">${esc(question.indonesian)}</p>` : ''}${answerUi}<p class="feedback" id="feedback" aria-live="polite"></p><div class="review-actions" id="answer-actions"></div></section>`;
+    app.innerHTML = `<section class="question-card"><div class="progress">SOAL ${index + 1} DARI ${session.questions.length}</div><div class="review-progress-bar" role="progressbar" aria-label="Progres sesi review" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progressPercent}"><i style="width:${progressPercent}%"></i></div><span class="tag">${esc(tagLabel)}</span><h1 class="prompt">${esc(question.prompt)}</h1>${question.instruction ? `<p class="hint">${esc(question.instruction)}</p>` : ''}${question.audioText ? '<button class="audio-btn" id="play-audio" type="button">🔊 Putar suara</button>' : ''}${question.reading ? `<p class="hint">${esc(question.reading)}</p>` : ''}${question.meaning ? `<p class="hint">${esc(question.meaning)}</p>` : ''}${question.example?.japanese ? `<p class="hint">${esc(question.example.japanese)}</p>` : ''}${question.example?.indonesian ? `<p class="hint">${esc(question.example.indonesian)}</p>` : ''}${question.sentence ? `<p class="hint">${esc(question.sentence)}</p>` : ''}${question.indonesian ? `<p class="hint">${esc(question.indonesian)}</p>` : ''}${answerUi}<p class="feedback" id="feedback" aria-live="polite"></p><div class="review-actions" id="answer-actions"></div></section>`;
     const audioBtn = app.querySelector('#play-audio');
     if (audioBtn) {
       audioBtn.addEventListener('click', () => playAudio(question.audioText, audioBtn));
