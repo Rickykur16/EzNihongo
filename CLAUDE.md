@@ -65,6 +65,45 @@
 
 ## Konvensi penting
 
+      **Autoplay audio Smart Review: yang rusak cuma jalur deep-link, dan
+      tesnya sendiri yang menyembunyikannya** — user: "aku ingin suara langsung
+      di putar saat soal muncul dan user bisa putar audio sendiri jika kurang
+      jelas". Kedua fitur itu SUDAH ada sejak PR #264 (`review.js` memanggil
+      `playAudio()` saat render + tombol putar), jadi yang diminta bukan fitur
+      baru melainkan fitur yang tidak berbunyi. **Hipotesis awal saya SALAH dan
+      dibantah oleh pengukuran**: saya menduga `new Audio()` per soal membuat
+      autoplay ditolak; diukur di Chromium dengan
+      `--autoplay-policy=document-user-activation-required`, jalur "Mulai Smart
+      Review" ternyata **berbunyi normal** sebelum maupun sesudah perbaikan
+      (sticky user activation Chromium menutupi elemen baru, bahkan setelah
+      `await` fetch). Yang benar-benar rusak dan reproducible: **jalur
+      `review.html?category=…`** — dipakai tombol "Latihan Fokus" di dashboard
+      (`dashboard.js:45` `reviewUrl()`) — memulai sesi TANPA gesture apa pun di
+      halaman itu, jadi `play()` ditolak `NotAllowedError`. Dua akibatnya:
+      (1) kodenya lalu memanggil Web Speech, padahal `speechSynthesis.speak()`
+      **diblokir aktivasi yang sama** → senyap total tanpa penjelasan; (2)
+      tombolnya tetap ber-class `playing` — jadi tampak sedang memutar padahal
+      tidak ada suara sama sekali. Sekarang `NotAllowedError` dibedakan dari
+      kegagalan sungguhan: yang pertama mengubah tombol jadi
+      "🔊 Ketuk untuk memutar" (`.needs-tap`), yang kedua tetap jatuh ke Web
+      Speech ber-`lang='ja-JP'` seperti sebelumnya. Elemen `Audio` tunggal +
+      `unlockAudio()` di dalam handler klik (SEBELUM `await` — setelah fetch,
+      aktivasi transient sudah lewat) tetap dipasang, tapi **sebagai asuransi
+      iOS yang TIDAK bisa diuji dari sini**, bukan sebagai perbaikan atas yang
+      terukur. Tombolnya juga pindah dari class `.token` (sama dengan kepingan
+      kata soal susun-kalimat) ke `.audio-btn` 44px. **Pelajaran soal tes, dua
+      kali kena**: (a) Chromium headless mengizinkan autoplay TANPA SYARAT
+      secara default — itulah kenapa PR #264 lolos tes tapi tetap senyap di HP;
+      tes audio WAJIB memakai flag autoplay ketat di atas, kalau tidak bug
+      kelas ini tak akan pernah muncul; (b) probe `el.currentSrc` MENYESATKAN —
+      nilainya tertinggal di belakang algoritma pemilihan sumber, jadi setelah
+      `player.src = …` ia masih menyebut URI unlock yang senyap dan pemutaran
+      yang berhasil terhitung nol; pakai `el.src` yang di-set sinkron. Jebakan
+      data: menjawab soal menulis `user_practice_state`, lalu `unlockedSkills()`
+      membuka arah non-audio — tanpa menghapus tabel itu antar-run, run kedua
+      dapat soal `jp2id` dan "tombol audio tidak ada" terlihat seperti bug
+      padahal bukan.
+
       **Layar buntu siswa sekarang menyebut akun yang sedang login** — user:
       "Maducelik@gmail.com saya kasih akses dari admin tapi gabisa akses
       materi". Ditelusuri: **tidak ada bug di sisi server**. Grant admin
