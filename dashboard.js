@@ -3,6 +3,7 @@
   const release = '20260902-5';
   const progressReconcileVersion = 'ez_progress_reconcile_v2';
   const labels = { kana: 'Kana', vocabulary: 'Kosakata', kanji: 'Kanji', grammar: 'Grammar' };
+  let signedInUser = null;
   const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
 
   async function get(path) {
@@ -54,7 +55,7 @@
   }
   function render(data) {
     if (!data.course) {
-      app.innerHTML = '<section class="card state-card"><div class="eyebrow">DASHBOARD</div><h1>Belum ada kelas aktif</h1><p class="muted">Kelas aktif akan muncul setelah pendaftaran selesai.</p><a class="primary" href="welcome.html">Buka Belajar</a></section>';
+      app.innerHTML = `<section class="card state-card"><div class="eyebrow">DASHBOARD</div><h1>Belum ada kelas aktif</h1><p class="muted">Kelas aktif akan muncul setelah pendaftaran selesai.</p>${ezSignedInAsHtml(signedInUser)}<a class="primary" href="welcome.html">Buka Belajar</a></section>`;
       return;
     }
     const course = data.course; const next = data.continueLearning; const review = data.review || { total: 0, byCategory: {} };
@@ -82,7 +83,9 @@
   }
   document.getElementById('logout').addEventListener('click', () => ezLogout());
   (async () => {
-    if (!(await ezRequireAuth('login.html'))) return;
+    const me = await ezRequireAuth('login.html');
+    if (!me) return;
+    signedInUser = me;
     await reconcileCachedProgress();
     await load(new URLSearchParams(location.search).get('course') || '');
   })();

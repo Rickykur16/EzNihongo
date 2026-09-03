@@ -3,6 +3,7 @@
   const release = '20260902-4';
   let data = null;
   let tab = 'upcoming';
+  let signedInUser = null;
   const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
   const fmt = (value, options = { dateStyle: 'medium', timeStyle: 'short' }) => value ? new Intl.DateTimeFormat('id-ID', options).format(new Date(value)) : '';
   const lessonUrl = (course, lesson) => `welcome.html?course=${encodeURIComponent(course)}&module=${encodeURIComponent(lesson.chapter.slug)}&lesson=${encodeURIComponent(lesson.slug)}`;
@@ -30,7 +31,7 @@
     try {
       const requested = new URLSearchParams(location.search).get('course') || '';
       const dashboard = await api(`/dashboard/me${requested ? `?course=${encodeURIComponent(requested)}` : ''}`);
-      if (!dashboard.course) { app.innerHTML = '<div class="page"><div class="empty"><strong>Belum ada kelas aktif.</strong><br>Daftar atau aktifkan kelas untuk melihat Live Class.</div></div>'; return; }
+      if (!dashboard.course) { app.innerHTML = `<div class="page"><div class="empty"><strong>Belum ada kelas aktif.</strong><br>Daftar atau aktifkan kelas untuk melihat Live Class.${ezSignedInAsHtml(signedInUser)}</div></div>`; return; }
       document.getElementById('learn-nav').href = `welcome.html?course=${encodeURIComponent(dashboard.course.slug)}`;
       document.getElementById('progress-nav').href = `progress.html?v=${release}&course=${encodeURIComponent(dashboard.course.slug)}`;
       data = await api(`/live-classes?course=${encodeURIComponent(dashboard.course.slug)}`);
@@ -39,5 +40,8 @@
     } catch (error) { renderError(error); }
   }
   document.getElementById('logout').onclick = () => ezLogout();
-  (async () => { if (await ezRequireAuth('login.html')) load(); })();
+  (async () => {
+    signedInUser = await ezRequireAuth('login.html');
+    if (signedInUser) load();
+  })();
 })();

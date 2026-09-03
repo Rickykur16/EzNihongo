@@ -2,6 +2,7 @@
   const app = document.getElementById('progress-app');
   const release = '20260902-5';
   const labels = { kana: 'Kana', vocabulary: 'Kosakata', kanji: 'Kanji', grammar: 'Grammar' };
+  let signedInUser = null;
   const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
   async function api(path) { const response = await ezApi(path); const body = await response.json().catch(() => ({})); if (!response.ok) throw Error(body.error || 'request_failed'); return body; }
   const url = (path, course) => `${path}?v=${release}&course=${encodeURIComponent(course)}`;
@@ -20,7 +21,7 @@
     return 'Akurasi latihan stabil dibanding 7 hari sebelumnya.';
   }
   function render(data) {
-    if (!data.course) { app.innerHTML = '<div class="page"><div class="empty"><strong>Belum ada kelas aktif.</strong><br>Kelas aktif akan muncul setelah pendaftaran selesai.</div></div>'; return; }
+    if (!data.course) { app.innerHTML = `<div class="page"><div class="empty"><strong>Belum ada kelas aktif.</strong><br>Kelas aktif akan muncul setelah pendaftaran selesai.${ezSignedInAsHtml(signedInUser)}</div></div>`; return; }
     const course = data.course; const activity = data.weeklyActivity || {}; const masteryData = data.mastery || {};
     const grouped = new Map(); for (const item of data.chapters || []) { const section = item.section || 'Kurikulum'; if (!grouped.has(section)) grouped.set(section, []); grouped.get(section).push(item); }
     document.getElementById('learn-nav').href = url('welcome.html', course.slug);
@@ -35,5 +36,8 @@
   }
   async function load(course = '') { try { render(await api(`/progress/me${course ? `?course=${encodeURIComponent(course)}` : ''}`)); } catch (error) { renderError(error, course); } }
   document.getElementById('logout').onclick = () => ezLogout();
-  (async () => { if (await ezRequireAuth('login.html')) load(new URLSearchParams(location.search).get('course') || ''); })();
+  (async () => {
+    signedInUser = await ezRequireAuth('login.html');
+    if (signedInUser) load(new URLSearchParams(location.search).get('course') || '');
+  })();
 })();
