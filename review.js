@@ -38,7 +38,71 @@
       renderQuestion();
     } catch (error) { errorCard(error, () => start(category)); }
   }
-  function playAudio(text) { if ('speechSynthesis' in window && text) { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(text)); } }
+  // "Dengar lalu tebak arti" (audio2id) sebelumnya hanya memanggil
+  // speechSynthesis TANPA menyetel lang, jadi browser memakai suara default
+  // pengguna (id-ID/en-US) untuk teks Jepang — di banyak perangkat hasilnya
+  // senyap, dan infra TTS server tidak pernah dipakai sama sekali.
+  //
+  // Sekarang meniru playTTS()/speakJapanese() di welcome.html: ambil audio
+  // dari /api/tts (ElevenLabs, di-cache di tabel tts_cache DAN di browser
+  // selama setahun), dengan Web Speech ber-lang ja-JP sebagai cadangan kalau
+  // endpoint-nya mati atau belum dikonfigurasi. Karena kunci cache-nya teks —
+  // bukan fitur pemanggilnya — kata yang sudah pernah dibunyikan drill
+  // pelajaran langsung terpakai ulang, tanpa generate baru.
+  let ttsVersion = '';
+  let ttsVersionAsked = false;
+  let currentAudio = null;
+  async function initTtsVersion() {
+    if (ttsVersionAsked) return;
+    ttsVersionAsked = true;
+    try {
+      const response = await fetch(`${EZ_API_BASE}/tts/version`);
+      if (response.ok) ttsVersion = String((await response.json()).version || '');
+    } catch { /* versi hanya untuk cache-busting; tanpa itu tetap jalan */ }
+  }
+  initTtsVersion();
+
+  function stopAudio() {
+    if (currentAudio) { try { currentAudio.pause(); currentAudio.src = ''; } catch { /* noop */ } currentAudio = null; }
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+  }
+
+  function speakFallback(text, btn) {
+    if (!('speechSynthesis' in window)) { btn?.classList.remove('playing'); return; }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ja-JP';
+    utterance.rate = 0.9;
+    utterance.onend = () => btn?.classList.remove('playing');
+    utterance.onerror = () => btn?.classList.remove('playing');
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utterance);
+  }
+
+  function playAudio(text, btn) {
+    const plain = String(text || '').trim();
+    if (!plain) return;
+    stopAudio();
+    btn?.classList.add('playing');
+    // Jangan jatuh ke Web Speech kalau audio server sudah benar-benar
+    // berbunyi: play() bisa menolak setelah pemutaran dimulai (quirk
+    // autoplay), dan tanpa penjaga ini dua suara berbunyi bersamaan.
+    let serverPlaying = false;
+    let fellBack = false;
+    const fallback = () => {
+      if (serverPlaying || fellBack) return;
+      fellBack = true;
+      speakFallback(plain, btn);
+    };
+    try {
+      const url = `${EZ_API_BASE}/tts?text=${encodeURIComponent(plain)}${ttsVersion ? `&v=${encodeURIComponent(ttsVersion)}` : ''}`;
+      const audio = new Audio(url);
+      currentAudio = audio;
+      audio.onplaying = () => { serverPlaying = true; };
+      audio.onended = () => btn?.classList.remove('playing');
+      audio.onerror = fallback;
+      audio.play().catch(fallback);
+    } catch { fallback(); }
+  }
   // Susun-kalimat dua zona ala Duolingo: kata yang diketuk BERPINDAH ke baris
   // jawaban (bukan sekadar berubah warna di tempat), jadi kalimat yang sedang
   // disusun benar-benar terlihat dan bisa diperiksa sebelum dikirim. Ketuk
@@ -89,7 +153,14 @@
       : `<div class="options">${options.map((option, optionIndex) => `<button class="option" type="button" data-option="${optionIndex}">${esc(option)}${question.optionReadings?.[optionIndex] && question.optionReadings[optionIndex] !== option ? `<small>${esc(question.optionReadings[optionIndex])}</small>` : ''}</button>`).join('')}</div>`;
     const progressPercent = Math.round(((index + 1) / session.questions.length) * 100);
     app.innerHTML = `<section class="question-card"><div class="progress">SOAL ${index + 1} DARI ${session.questions.length}</div><div class="review-progress-bar" role="progressbar" aria-label="Progres sesi review" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progressPercent}"><i style="width:${progressPercent}%"></i></div><span class="tag">${esc(tagLabel)}</span><h1 class="prompt">${esc(question.prompt)}</h1>${question.instruction ? `<p class="hint">${esc(question.instruction)}</p>` : ''}${question.audioText ? '<button class="token" id="play-audio" type="button">▶ Putar audio</button>' : ''}${question.reading ? `<p class="hint">${esc(question.reading)}</p>` : ''}${question.meaning ? `<p class="hint">${esc(question.meaning)}</p>` : ''}${question.example?.japanese ? `<p class="hint">${esc(question.example.japanese)}</p>` : ''}${question.example?.indonesian ? `<p class="hint">${esc(question.example.indonesian)}</p>` : ''}${question.sentence ? `<p class="hint">${esc(question.sentence)}</p>` : ''}${question.indonesian ? `<p class="hint">${esc(question.indonesian)}</p>` : ''}${answerUi}<p class="feedback" id="feedback" aria-live="polite"></p><div class="review-actions" id="answer-actions"></div></section>`;
-    app.querySelector('#play-audio')?.addEventListener('click', () => playAudio(question.audioText));
+    const audioBtn = app.querySelector('#play-audio');
+    if (audioBtn) {
+      audioBtn.addEventListener('click', () => playAudio(question.audioText, audioBtn));
+      // Diputar sendiri begitu soal muncul, sama seperti drill di pelajaran
+      // (renderDeckDrill di welcome.html).  Kebijakan autoplay browser bisa
+      // menolaknya, dan tombolnya adalah jaring pengamannya.
+      playAudio(question.audioText, audioBtn);
+    }
     app.querySelectorAll('[data-option]').forEach((button) => button.addEventListener('click', () => answer({ optionIndex: Number(button.dataset.option) }, button)));
     if (arrange) renderArrange(question);
     app.querySelector('#reset-arrange')?.addEventListener('click', () => { selectedOrder = []; renderArrange(question); });
