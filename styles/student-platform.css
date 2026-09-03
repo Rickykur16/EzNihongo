@@ -203,6 +203,23 @@ a {
   margin-top: 18px;
 }
 
+/* "Belum ada kelas aktif" is nearly always a second Google account rather
+   than a missing entitlement, so every dead end names the account it is
+   speaking about and offers the way out. See ezSignedInAsHtml(). */
+.signed-in-as {
+  font-size: 13px;
+  color: var(--ink-500);
+  margin: 14px 0 0;
+}
+
+.signed-in-as a {
+  color: var(--brand-red, #c8102e);
+}
+
+.state-card .signed-in-as {
+  margin-bottom: 18px;
+}
+
 .tabs button[aria-selected="true"],
 .tabs button.active {
   border-color: var(--ink-900);

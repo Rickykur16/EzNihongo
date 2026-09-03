@@ -903,6 +903,13 @@
     line-height: 1.6;
     margin: 0 0 28px;
   }
+  /* Which account is this? The one fact that explains "kelas saya hilang". */
+  .paywall .signed-in-as {
+    font-size: 13px;
+    color: #8a7d66;
+    margin: -10px 0 20px;
+  }
+  .paywall .signed-in-as a { color: var(--brand-red); }
   .paywall-cta {
     display: inline-block;
     background: var(--brand-red);
@@ -6661,7 +6668,6 @@ function renderPaywall() {
   // still render the shell and let the fallback fetch fill in below.
   const cmsList = Array.isArray(_cmsCourses) ? _cmsCourses : [];
   const plansHtml = cmsList.map(renderPaywallCard).join('');
-  const loggedInEmail = (session && session.email) || '';
 
   document.getElementById('app-root').innerHTML = `
     <main class="paywall">
@@ -6669,7 +6675,7 @@ function renderPaywall() {
         <div class="paywall-lock">🔒</div>
         <h1>Kamu belum memiliki akses kelas</h1>
         <p>Untuk mulai belajar, pilih kelas dan selesaikan pembayaran terlebih dahulu. Sekali bayar, akses konten 1 tahun penuh.</p>
-        ${loggedInEmail ? `<p style="font-size:13px;color:#8a7d66;margin-top:-10px;margin-bottom:20px;">Login sebagai <strong>${loggedInEmail}</strong> · <a href="#" onclick="event.preventDefault(); window.ezLogout();" style="color:var(--brand-red);">Ganti akun</a></p>` : ''}
+        ${ezSignedInAsHtml(session)}
         <a href="index.html#pricing" class="paywall-cta">Pilih Kelas Sekarang →</a>
 
         <div class="paywall-plans" id="paywall-plans">

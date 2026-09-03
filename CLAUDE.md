@@ -65,6 +65,48 @@
 
 ## Konvensi penting
 
+      **Layar buntu siswa sekarang menyebut akun yang sedang login** — user:
+      "Maducelik@gmail.com saya kasih akses dari admin tapi gabisa akses
+      materi". Ditelusuri: **tidak ada bug di sisi server**. Grant admin
+      (`POST /admin/user-access/grant`) menulis `status='active'`,
+      `expires_at=NULL` (modal admin memang tidak pernah mengirim `expiresAt`),
+      dan `ON CONFLICT (user_id, course_id) DO UPDATE` mengaktifkan kembali
+      baris yang pernah dicabut; pembacaannya IDENTIK di tiga tempat —
+      `hasCourseAccess()` (`entitlements.js`), `GET /enrollments/me`
+      (`routes/progress.js`), `accessibleCourses()` (`dashboard-service.js`) —
+      semuanya `status='active' AND (expires_at IS NULL OR expires_at > NOW())`,
+      tanpa syarat tersembunyi. **Yang menentukan**: `dashboard.js` menulis
+      "Belum ada kelas aktif" HANYA saat `data.course` kosong, dan itu HANYA
+      terjadi kalau `accessibleCourses()` mengembalikan array kosong (kegagalan
+      lain — jaringan, sesi mati — jatuh ke `errorMarkup()` yang beda). Jadi
+      gejala itu berarti server benar-benar melihat **nol enrollment aktif untuk
+      user_id yang sedang login** → akun yang login bukan akun yang diberi
+      akses. Masalahnya, layar itu **tidak menyebut akun mana**, jadi fakta satu
+      -satunya yang menjelaskan semuanya justru tak terlihat oleh siswa MAUPUN
+      admin yang melihat screenshot-nya. Helper baru `ezSignedInAsHtml()`
+      (`api-client.js`, sebelah `ezStudentErrorMessage` — preseden teks siswa
+      lintas halaman) dipakai di `dashboard.js:57`, `progress.js:23`,
+      `live.js:33`, dan paywall `welcome.html` yang SUDAH punya baris itu sejak
+      dulu tapi sebagai salinan inline sendiri (sekarang satu sumber; sekalian
+      email-nya jadi di-escape, dulu mentah). Sumber email: nilai kembalian
+      `ezRequireAuth()` — ketiga halaman sudah memanggilnya tapi MEMBUANG
+      hasilnya — dengan cadangan `localStorage.ez_user`. **Jebakan saat menguji**:
+      (1) `welcome.html:4561` membaca `localStorage.ez_user` SECARA SINKRON
+      sebelum skrip apa pun, jadi tes browser wajib menyemainya lewat
+      `addInitScript`, bukan `page.evaluate` setelah navigasi — tanpa itu
+      halaman langsung lompat ke `login.html` dan paywall tidak pernah
+      ter-render; (2) `authLimiter` 10 request/menit **per IP** membuat tes
+      multi-context berturut-turut kena 429 pada /auth/refresh, yang terlihat
+      persis seperti "sesi gagal" — beri jeda 60 detik antar konteks, jangan
+      salah kira itu bug aplikasi. **Tidak dikerjakan (sadar)**: unique index
+      `lower(email)` di `users` (kolomnya `TEXT UNIQUE` case-sensitive, tapi
+      Google OAuth satu-satunya jalur daftar siswa — `register.html` cuma
+      redirect ke `login.html` — jadi duplikat beda-huruf praktis mustahil untuk
+      Gmail; kalau suatu saat terbukti ada, tempuh konvensi 135/136: migrasi
+      ber-`RAISE NOTICE` dulu, baca log deploy, baru migrasi yang menindak), dan
+      `renderCmsOnlyCourseStub` (`welcome.html:6721`) yang keliru bilang
+      "Pembayaran kamu tercatat" walau penyebabnya bisa sekadar fetch gagal.
+
       **migration 135: istilah asing di arti pola grammar diganti — BEDAH,
       bukan tulis ulang** — user: "soal kanji menggunakan bahasa yg terlalu
       tinggi dan susah, saya ingin merubah penjelasan fungsinya". Setelah
