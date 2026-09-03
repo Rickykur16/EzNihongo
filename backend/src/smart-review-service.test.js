@@ -84,10 +84,41 @@ test('kana forward question uses distractor sounds from the same script', () => 
   assert.deepEqual(new Set(question.options), new Set(['zo', 'chi']));
 });
 
-test('kanji contextual review question retains word directional skills', () => {
-  const q = makeReviewQuestion({ category: 'kanji', itemId: 'k', skill: 'word2reading:abc', item: { character: '日' }, word: { japanese: '日本', reading: 'にほん', indonesian: 'Jepang' } }, { wordReadings: ['にほん', 'にち'], wordMeanings: [], words: [], kanjiMeanings: [], kanjiCharacters: [] });
+test('kanji contextual review question parses the production word skill shape', () => {
+  const q = makeReviewQuestion({ category: 'kanji', itemId: 'k', skill: 'word:word2reading:abc', item: { character: '日' }, word: { japanese: '日本', reading: 'にほん', indonesian: 'Jepang' } }, { wordReadings: ['にほん', 'にち'], wordMeanings: [], words: [], kanjiMeanings: [], kanjiCharacters: [] });
   assert.equal(q.prompt, '日本');
+  assert.equal(q.instruction, 'Pilih bacaan yang tepat.');
   assert.ok(q.options.includes('にほん'));
+});
+
+test('all four production compound skills render four distinct questions', () => {
+  const base = { category: 'kanji', itemId: 'k', item: { character: '日' }, word: { japanese: '日本', reading: 'にほん', indonesian: 'Jepang' } };
+  const pools = {
+    wordReadings: ['にほん', 'にち'],
+    wordMeanings: ['Jepang', 'sekolah'],
+    words: ['日本', '学校'],
+    kanjiMeanings: [],
+    kanjiCharacters: [],
+  };
+  const questions = ['word2reading', 'word2meaning', 'meaning2word', 'reading2word']
+    .map((direction) => makeReviewQuestion({ ...base, skill: `word:${direction}:abc` }, pools));
+  assert.deepEqual(questions.map((q) => q.instruction), [
+    'Pilih bacaan yang tepat.',
+    'Pilih arti yang tepat.',
+    'Pilih kata Jepang yang tepat.',
+    'Pilih penulisan yang tepat.',
+  ]);
+  assert.deepEqual(questions.map((q) => q.prompt), ['日本', '日本', 'Jepang', 'にほん']);
+  assert.deepEqual(questions.map((q) => q.options[q.correctIndex]), ['にほん', 'Jepang', '日本', '日本']);
+});
+
+test('one compound word appears at most once in a review session', () => {
+  const word = { japanese: '学生', reading: 'がくせい', indonesian: 'siswa' };
+  const rows = ['word2reading', 'word2meaning', 'meaning2word', 'reading2word'].map((direction) => ({
+    category: 'kanji', itemId: 'k-student', skill: `word:${direction}:student`, item: { id: 'k-student', character: '学' }, word, state: {},
+  }));
+  const selected = selectReviewCandidates(rows, { category: 'kanji', limit: 20 });
+  assert.equal(selected.length, 1);
 });
 
 test('vocabulary reverse-direction review preserves reading labels', () => {
@@ -174,13 +205,22 @@ test('an unpractised direction stays locked while its practised sibling is still
   assert.deepEqual([...unlocked], ['vocabulary:w1:jp2id']);
 });
 
-test('once a practised direction reaches FSRS review, the siblings open up', () => {
+test('once a practised direction reaches FSRS review, only one new sibling opens', () => {
   const unlocked = unlockedSkills([
     dir('jp2id', 3, 'review'),
     dir('id2jp', 0),
     dir('audio2id', 0),
   ]);
-  assert.equal(unlocked.size, 3);
+  assert.deepEqual([...unlocked].sort(), ['vocabulary:w1:audio2id', 'vocabulary:w1:jp2id']);
+});
+
+test('the next sibling stays locked while the newly introduced direction is learning', () => {
+  const unlocked = unlockedSkills([
+    dir('jp2id', 3, 'review'),
+    dir('audio2id', 1, 'learning'),
+    dir('id2jp', 0),
+  ]);
+  assert.deepEqual([...unlocked].sort(), ['vocabulary:w1:audio2id', 'vocabulary:w1:jp2id']);
 });
 
 test('an item with no history still offers exactly one direction, deterministically', () => {
@@ -203,4 +243,23 @@ test('directions are gated per item, not across the whole deck', () => {
   ]);
   assert.ok(unlocked.has('vocabulary:w1:id2jp'));
   assert.ok(!unlocked.has('vocabulary:w2:id2jp'));
+});
+
+test('compound direction gates are independent for different words owned by one Kanji', () => {
+  const wordDir = (encoded, skill, attempts, fsrsState = null) => ({
+    key: `kanji:k1:word:${skill}:${encoded}`,
+    itemType: 'kanji',
+    itemId: 'k1',
+    skill: `word:${skill}:${encoded}`,
+    attempts,
+    fsrsState,
+  });
+  const unlocked = unlockedSkills([
+    wordDir('student', 'word2reading', 3, 'review'),
+    wordDir('student', 'word2meaning', 0),
+    wordDir('teacher', 'word2reading', 0),
+    wordDir('teacher', 'word2meaning', 0),
+  ]);
+  assert.ok(unlocked.has('kanji:k1:word:word2meaning:student'));
+  assert.ok(unlocked.has('kanji:k1:word:word2meaning:teacher'));
 });

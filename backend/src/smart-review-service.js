@@ -60,23 +60,35 @@ export function selectReviewCandidates(candidates, { category = 'mixed', limit =
       || String(a.category).localeCompare(String(b.category))
       || String(a.itemId).localeCompare(String(b.itemId))
       || String(a.skill).localeCompare(String(b.skill)));
-  if (category !== 'mixed') return ranked.slice(0, max);
+  // A session should test a memory once, not exhaust every direction for the
+  // same Kana/word/Kanji back-to-back. The highest-priority due direction wins
+  // this session; the remaining directions keep their own FSRS schedule and
+  // can appear in a later session.
+  const sessionRanked = [];
+  const seenFamilies = new Set();
+  for (const candidate of ranked) {
+    const family = reviewFamilyKey(candidate);
+    if (seenFamilies.has(family)) continue;
+    seenFamilies.add(family);
+    sessionRanked.push(candidate);
+  }
+  if (category !== 'mixed') return sessionRanked.slice(0, max);
 
   // A soft 65% cap only defers an item when another category is nearly as
   // urgent.  It preserves need-driven mixes instead of an artificial 25/25/25/25.
   const out = [];
   const counts = Object.fromEntries(REVIEW_CATEGORIES.map((key) => [key, 0]));
   const softCap = Math.ceil(max * 0.65);
-  for (const candidate of ranked) {
+  for (const candidate of sessionRanked) {
     if (out.length >= max) break;
-    const alternative = ranked.find((row) => !out.includes(row) && row.category !== candidate.category
+    const alternative = sessionRanked.find((row) => !out.includes(row) && row.category !== candidate.category
       && counts[row.category] < softCap && row.priority >= candidate.priority - 15);
     if (counts[candidate.category] >= softCap && alternative) continue;
     out.push(candidate);
     counts[candidate.category] += 1;
   }
   // Deferred candidates fill any remaining places; fewer than max remains valid.
-  for (const candidate of ranked) {
+  for (const candidate of sessionRanked) {
     if (out.length >= max) break;
     if (!out.includes(candidate)) out.push(candidate);
   }
@@ -123,7 +135,13 @@ export function pickCompoundOwners(entries) {
 export function unlockedSkills(entries) {
   const byItem = new Map();
   for (const entry of entries || []) {
-    const key = `${entry.itemType}:${entry.itemId}`;
+    // Compound directions are stored under their owner Kanji id, so grouping
+    // by itemId alone mixes every word owned by that Kanji. The encoded word
+    // suffix is the actual memory family and must be scheduled independently.
+    const parts = String(entry.skill || '').split(':');
+    const key = entry.itemType === 'kanji' && parts[0] === 'word' && parts[2]
+      ? `${entry.itemType}:${entry.itemId}:word:${parts.slice(2).join(':')}`
+      : `${entry.itemType}:${entry.itemId}`;
     if (!byItem.has(key)) byItem.set(key, []);
     byItem.get(key).push(entry);
   }
@@ -138,11 +156,27 @@ export function unlockedSkills(entries) {
       if (first) out.add(first.key);
       continue;
     }
-    if (practised.some((entry) => entry.fsrsState === 'review')) {
-      for (const entry of group) out.add(entry.key);
+    // Unlock only one new direction at a time. Opening every sibling as soon
+    // as one direction reaches review made the same word return three times
+    // immediately. A new sibling must itself settle into FSRS review before
+    // the next direction is introduced.
+    if (practised.every((entry) => entry.fsrsState === 'review')) {
+      const next = group.filter((entry) => entry.attempts === 0)
+        .sort((a, b) => String(a.skill).localeCompare(String(b.skill)))[0];
+      if (next) out.add(next.key);
     }
   }
   return out;
+}
+
+// One pedagogical memory per session, regardless of how many directions are
+// currently due. Compound words use their content identity because their state
+// is stored under a Kanji owner; other categories already have stable item ids.
+export function reviewFamilyKey(candidate = {}) {
+  if (candidate.category === 'kanji' && candidate.word) {
+    return `kanji-word:${String(candidate.word.japanese || '').trim().toLowerCase()}::${String(candidate.word.reading || '').trim().toLowerCase()}`;
+  }
+  return `${candidate.category || 'unknown'}:${candidate.itemId || candidate.item?.id || ''}`;
 }
 
 function hash(value) {
@@ -194,10 +228,16 @@ export function makeReviewQuestion(candidate, pools) {
       if (candidate.skill === 'char2meaning') { prompt = item.character; answer = item.meaning_id; return { kind: 'choice', prompt, ...choices(answer, pools.kanjiMeanings, seed) }; }
       prompt = item.meaning_id; answer = item.character; return { kind: 'choice', prompt, ...choices(answer, pools.kanjiCharacters, seed) };
     }
-    if (candidate.skill.startsWith('word2reading')) { prompt = word.japanese; answer = word.reading; return { kind: 'choice', prompt, meaning: word.indonesian, ...choices(answer, pools.wordReadings, seed) }; }
-    if (candidate.skill.startsWith('word2meaning')) { prompt = word.japanese; answer = word.indonesian; return { kind: 'choice', prompt, ...choices(answer, pools.wordMeanings, seed) }; }
-    if (candidate.skill.startsWith('meaning2word')) { prompt = word.indonesian; answer = word.japanese; return { kind: 'choice', prompt, reading: word.reading, ...choices(answer, pools.words, seed) }; }
-    prompt = word.reading; answer = word.japanese; return { kind: 'choice', prompt, meaning: word.indonesian, ...choices(answer, pools.words, seed) };
+    // Production keys are `word:<direction>:<encoded-word>`. The previous
+    // startsWith('word2reading') checks never matched that shape, so all four
+    // directions fell through to reading2word and rendered the same question.
+    const skillParts = String(candidate.skill || '').split(':');
+    const direction = skillParts[0] === 'word' ? skillParts[1] : skillParts[0];
+    if (direction === 'word2reading') { prompt = word.japanese; answer = word.reading; return { kind: 'choice', prompt, instruction: 'Pilih bacaan yang tepat.', meaning: word.indonesian, ...choices(answer, pools.wordReadings, seed) }; }
+    if (direction === 'word2meaning') { prompt = word.japanese; answer = word.indonesian; return { kind: 'choice', prompt, instruction: 'Pilih arti yang tepat.', ...choices(answer, pools.wordMeanings, seed) }; }
+    if (direction === 'meaning2word') { prompt = word.indonesian; answer = word.japanese; return { kind: 'choice', prompt, instruction: 'Pilih kata Jepang yang tepat.', reading: word.reading, ...choices(answer, pools.words, seed) }; }
+    if (direction === 'reading2word') { prompt = word.reading; answer = word.japanese; return { kind: 'choice', prompt, instruction: 'Pilih penulisan yang tepat.', meaning: word.indonesian, ...choices(answer, pools.words, seed) }; }
+    return null;
   }
   return null;
 }
