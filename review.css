@@ -304,3 +304,12 @@ body {
   .answer-row { align-items: stretch; flex-direction: column; }
   .answer-row .primary { width: 100%; }
 }
+
+/* Tombol audio sedang berbunyi — umpan balik yang sama seperti tombol audio
+   di halaman pelajaran, supaya siswa tahu suaranya sedang diputar (dan bahwa
+   menekan lagi akan mengulanginya). */
+.token.playing {
+  border-color: var(--brand-red, #c8102e);
+  background: var(--brand-red-soft, #fff0f2);
+  color: var(--brand-red, #c8102e);
+}
