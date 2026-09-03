@@ -49,6 +49,28 @@
     const expired = String(error?.message) === 'AUTH_EXPIRED';
     return `<section class="card state-card"><div class="eyebrow">DASHBOARD</div><h1>Dashboard belum bisa dimuat</h1><p class="muted">${esc(ezStudentErrorMessage(error, 'Dashboard'))}</p>${expired ? '<a class="primary" href="login.html?next=dashboard.html">Masuk kembali</a>' : '<button class="secondary" id="retry-dashboard" type="button">Coba lagi</button>'}</section>`;
   }
+  // Mirrors ACTIONABLE_STATUSES in backend/src/routes/orders.js and the
+  // labels in courses/order.html's STATUS_META — kept in sync by hand since
+  // the API doesn't expose a "still needs attention" flag directly.
+  const ACTIONABLE_ORDER_STATUSES = { pending_payment: 'Menunggu Transfer', awaiting_review: 'Menunggu Verifikasi Admin', rejected: 'Bukti Ditolak — Upload Ulang' };
+  // A student who uploaded proof and lost the order.html URL previously had
+  // no way back to it short of WhatsApp support — this closes that dead end.
+  // Placed above whatever render() drew (course dashboard OR the "Belum ada
+  // kelas aktif" empty state) since a pending order can exist in either case,
+  // e.g. this is exactly the state a payment-not-yet-approved student in the
+  // "belum ada kelas aktif" screen is in — that message alone reads like a
+  // broken grant when it's really just an order still awaiting review.
+  async function renderPendingOrderBanner() {
+    let orders;
+    try { orders = (await get('/orders/me')).orders || []; } catch { return; }
+    const actionable = orders.filter((order) => ACTIONABLE_ORDER_STATUSES[order.status]);
+    if (!actionable.length) return;
+    const html = actionable.map((order) => `<a class="pending-order-row" href="courses/order.html?id=${encodeURIComponent(order.id)}">
+      <strong>${esc(order.courseTitle || order.orderNumber)}</strong>
+      <span>${esc(ACTIONABLE_ORDER_STATUSES[order.status])}</span>
+    </a>`).join('');
+    app.insertAdjacentHTML('afterbegin', `<section class="card pending-order-banner"><div class="eyebrow">PESANAN SAYA</div>${html}</section>`);
+  }
   function masteryRow(key, value = {}) {
     const percent = value.percentage;
     return `<div class="mastery-row"><strong>${labels[key]}</strong><div class="bar" aria-label="${labels[key]} ${percent == null ? 'belum cukup latihan' : `${percent}%`}"><i style="width:${percent == null ? 0 : percent}%"></i></div><span class="state">${percent == null ? 'Belum cukup latihan' : `${percent}% · `}${esc(value.label || 'Belum cukup latihan')}</span></div>`;
@@ -78,7 +100,10 @@
     document.getElementById('course-select')?.addEventListener('change', (event) => load(event.target.value));
   }
   async function load(course = '') {
-    try { render(await get(`/dashboard/me${course ? `?course=${encodeURIComponent(course)}` : ''}`)); }
+    try {
+      render(await get(`/dashboard/me${course ? `?course=${encodeURIComponent(course)}` : ''}`));
+      renderPendingOrderBanner();
+    }
     catch (error) { app.innerHTML = errorMarkup(error); document.getElementById('retry-dashboard')?.addEventListener('click', () => load(course)); }
   }
   document.getElementById('logout').addEventListener('click', () => ezLogout());

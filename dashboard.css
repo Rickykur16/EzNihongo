@@ -254,6 +254,30 @@ body {
   color: var(--ink-700, #4a453e);
 }
 
+/* A student who uploaded payment proof and lost the order.html URL had no
+   way back to it — this closes that dead end by surfacing it right on the
+   page they land on after logging back in. */
+.pending-order-banner {
+  margin-bottom: 20px;
+  padding: 16px 20px;
+}
+.pending-order-banner::before { background: var(--warning, #854f0b); }
+.pending-order-banner .eyebrow { color: var(--warning, #854f0b); }
+.pending-order-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--warning-soft, #faeeda);
+  color: var(--ink-900, #1a1815);
+  text-decoration: none;
+}
+.pending-order-row:hover { box-shadow: var(--focus-ring, 0 0 0 3px rgba(133, 79, 11, 0.25)); }
+.pending-order-row span { font-size: 13px; color: var(--warning, #854f0b); font-weight: 600; }
+
 @media (max-width: 820px) {
   .grid,
   .performance { grid-template-columns: 1fr; }
