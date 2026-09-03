@@ -65,6 +65,67 @@
 
 ## Konvensi penting
 
+      **Sistem pembayaran main site: dianalisis, DITOLAK Midtrans & deteksi
+      mutasi bank otomatis, dan satu bug produksi serius ditemukan tak
+      sengaja** — user minta analisis sistem pembayaran + koneksinya ke
+      UI/UX landing page. Temuan alur intinya (state machine order di
+      `orders.js`, grant akses di `admin.js` saat approve) sudah solid, tidak
+      ada bug. Yang bermasalah ada di titik sambung UI↔backend, plus satu
+      celah operasional besar (nihil notifikasi admin). User menolak Midtrans
+      (sudah ada infra jalan di PWA Kanji — `subscription.js` — tapi user
+      tidak mau ketergantungan payment gateway pihak ketiga), dan menolak
+      juga "deteksi mutasi bank otomatis" gaya Moota setelah diberi tahu
+      risikonya: cara kerjanya minta kredensial internet banking pengguna
+      langsung (dikonfirmasi dari halaman marketing Moota sendiri), yang
+      melanggar ToS kebanyakan bank — alternatif Open Banking/OAuth (mis.
+      Brick) lebih aman tapi belum matang untuk merchant kecil di Indonesia.
+      **Keputusan akhir: perbaiki sistem manual yang ada, nihil pihak ketiga
+      baru.** Tiga perbaikan: (1) notifikasi admin via Telegram bot
+      (`notifyAdminNewProof()` di `orders.js`, best-effort — kosong/gagal
+      tidak pernah menggagalkan upload siswa, env var `TELEGRAM_BOT_TOKEN`/
+      `TELEGRAM_ADMIN_CHAT_ID` kosong = no-op, dipilih atas email karena
+      backend tidak punya dependency email sama sekali dan atas WA Business
+      API karena itu perlu verifikasi bisnis ke Meta); (2) hapus tombol
+      metode pembayaran kosmetik di `courses/detail.html` (GoPay/OVO/QRIS/
+      Kartu Kredit bisa diklik tapi `course.js` lama sendiri berkomentar
+      "cosmetic for now" — submit SELALU bikin order transfer manual apa pun
+      yang dipilih); (3) banner "Pesanan Saya" di `dashboard.js` (fetch
+      `/orders/me`, tampil kalau ada order `pending_payment`/
+      `awaiting_review`/`rejected` — sebelumnya siswa yang kehilangan URL
+      `order.html?id=...` tidak punya jalan balik sama sekali kecuali
+      WhatsApp manual; ditaruh di KEDUA cabang render `dashboard.js`, termasuk
+      layar "Belum ada kelas aktif" — situasi order `awaiting_review` tanpa
+      enrollment PERSIS gejala kasus Maducelik sebelumnya, gejalanya sama
+      tapi sebabnya beda, jadi banner ini menutup ambiguitas itu juga).
+      **Bug produksi tak terduga, ditemukan saat verifikasi (bukan dicari)**:
+      `courses/detail.html` (halaman checkout) selalu menampilkan "Kelas
+      tidak ditemukan" untuk SIAPA PUN, terverifikasi lewat curl langsung ke
+      backend (tanpa token → 401 `Missing token` pada `GET /api/courses`,
+      padahal endpoint itu memang didesain publik — `content.js:28`, tanpa
+      `requireAuth`). Akar masalah: `server.js` me-mount `grammarAnalysisRouter`
+      (yang punya `router.use(requireAuth)` TANPA path filter,
+      `grammar-analysis.js:17`) SEBELUM beberapa router lain yang punya
+      endpoint publik (`contentRouter`, `notionPublicRouter`,
+      `kanjiPublicRouter`) — middleware blanket itu menolak SEMUA request
+      `/api/*` tanpa token yang lewat situ duluan, sebelum sempat mencapai
+      handler publik yang sebenarnya. Diperparah oleh `course.js`'s
+      `fetchCourseBySlug()` yang pakai `fetch()` mentah (bukan `window.ezApi()`),
+      jadi TIDAK PERNAH mengirim bearer token walau siswa sudah login — hasil
+      gabungannya: checkout kursus kemungkinan besar 100% tidak bisa diakses
+      di produksi sebelum fix ini. `index.html`/testimonial section aman
+      karena punya fallback konten hardcoded (degradasi diam-diam, tidak
+      terlihat rusak), tapi `courses/detail.html` tidak punya fallback sama
+      sekali. **Fix**: pindahkan `app.use('/api', grammarAnalysisRouter)` ke
+      urutan PALING TERAKHIR di antara router `/api` (setelah semua yang
+      punya endpoint publik) — rute grammar-analysis sendiri tetap
+      ter-`requireAuth` seperti semula, cuma tidak lagi membayangi router
+      lain. Divalidasi lewat curl langsung ke backend (tanpa proxy):
+      `GET /api/courses` tanpa token 401→200 setelah fix; rute
+      grammar-analysis sungguhan (`GET /grammar/mastery/me`) tetap 401 tanpa
+      token dan 200 dengan token valid — proteksinya sendiri tidak melemah.
+      Sengaja TIDAK diaudit ulang urutan SEMUA router lain di `server.js`
+      untuk pola serupa — hanya yang ketahuan lewat pengujian nyata jalur ini.
+
       **Autoplay audio Smart Review: yang rusak cuma jalur deep-link, dan
       tesnya sendiri yang menyembunyikannya** — user: "aku ingin suara langsung
       di putar saat soal muncul dan user bisa putar audio sendiri jika kurang

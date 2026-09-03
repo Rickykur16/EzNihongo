@@ -100,20 +100,10 @@ function renderCourseUI(course) {
   if (modulesEl) modulesEl.closest("section").querySelector('h2:nth-of-type(2)')?.remove();
   if (modulesEl) modulesEl.remove();
 
-  const payOptions = document.querySelectorAll(".c-pay-option");
-  payOptions.forEach(opt => {
-    opt.addEventListener("click", () => {
-      payOptions.forEach(o => o.classList.remove("active"));
-      opt.classList.add("active");
-    });
-  });
-
   // Free courses (is_free === true) self-enroll instantly, same as before.
   // Everything else (paid, or not yet classified by an admin — see
-  // migration 121) goes through the order/manual-transfer flow. The
-  // payment-method buttons above are cosmetic for now — only bank transfer
-  // is wired up server-side (POST /api/orders), so the submit handler
-  // always creates a manual-transfer order regardless of which is active.
+  // migration 121) goes through the order/manual-transfer flow — the only
+  // method actually wired up server-side (POST /api/orders).
   const submitBtn = document.getElementById("c-submit");
   if (course.is_free !== true) submitBtn.textContent = "Buat Pesanan →";
 

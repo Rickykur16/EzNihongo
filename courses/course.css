@@ -192,37 +192,6 @@ h1, h2, h3 { font-family: var(--font-body); letter-spacing: -0.02em; }
   font-family: var(--font-mono);
 }
 
-/* ── Payment ── */
-.c-payment-options {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin: 16px 0 20px;
-}
-.c-pay-option {
-  padding: 12px;
-  border: 1px solid var(--paper-300);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  background: var(--surface-white);
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink-700);
-  text-align: center;
-  transition: border-color var(--duration-fast) var(--ease-standard),
-              color var(--duration-fast) var(--ease-standard),
-              background var(--duration-fast) var(--ease-standard);
-}
-.c-pay-option:hover { border-color: var(--brand-red); color: var(--brand-red); }
-.c-pay-option:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.c-pay-option.active {
-  border-color: var(--brand-red);
-  background: var(--brand-red-soft);
-  color: var(--brand-red);
-  font-weight: 700;
-}
-
 .c-submit {
   width: 100%;
   background: var(--brand-red);
@@ -256,6 +225,38 @@ h1, h2, h3 { font-family: var(--font-body); letter-spacing: -0.02em; }
 }
 .c-help a { color: var(--brand-red); font-weight: 600; text-decoration: none; }
 .c-help a:hover { text-decoration: underline; }
+
+/* ── Payment proof upload form (order.html) ──
+   Highest-friction step in the whole checkout flow, and previously rendered
+   with bare browser defaults — .field/.field-row had no rules anywhere. */
+.field { margin-bottom: 14px; }
+.field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-700);
+  margin-bottom: 6px;
+}
+.field input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--paper-300);
+  border-radius: var(--radius-sm);
+  background: var(--surface-white);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink-900);
+  box-sizing: border-box;
+}
+.field input:focus-visible { outline: none; border-color: var(--brand-red); box-shadow: var(--focus-ring); }
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 480px) {
+  .field-row { grid-template-columns: 1fr; }
+}
 
 /* ── Footer ── */
 .c-footer {
