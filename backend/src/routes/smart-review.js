@@ -6,7 +6,7 @@ import { isAdminEmail } from '../auth.js';
 import { recordPracticeAttemptWithState } from '../practice-service.js';
 import { loadMastery } from '../grammar-mastery.js';
 import { deriveDrills, publicDrill, arrangeIsCorrect } from '../grammar-drills.js';
-import { REVIEW_CATEGORIES, SMART_REVIEW_SOURCE, filterReviewScope, isReviewNeeded, makeReviewQuestion, pickCompoundOwners, publicQuestion, reviewPriority, selectReviewCandidates, summarizeCandidates } from '../smart-review-service.js';
+import { REVIEW_CATEGORIES, SMART_REVIEW_SOURCE, filterReviewScope, isReviewNeeded, makeReviewQuestion, pickCompoundOwners, unlockedSkills, publicQuestion, reviewPriority, selectReviewCandidates, summarizeCandidates } from '../smart-review-service.js';
 import { deriveCompounds, extractKanjiCharacters, loadKanjiCatalog } from '../kanji-compounds.js';
 
 const router = Router();
@@ -21,7 +21,7 @@ const parseDistractors = (raw) => String(raw || '').split(/\r?\n/).map((value) =
 
 function stateMap(rows) {
   const out = new Map();
-  for (const row of rows) out.set(`${row.item_type}:${row.item_id}:${row.skill}`, { attempts: Number(row.attempts) || 0, correct: Number(row.correct) || 0, streak: Number(row.streak) || 0, lastSeenAt: row.last_seen_at, nextReviewAt: row.next_review_at });
+  for (const row of rows) out.set(`${row.item_type}:${row.item_id}:${row.skill}`, { attempts: Number(row.attempts) || 0, correct: Number(row.correct) || 0, streak: Number(row.streak) || 0, lastSeenAt: row.last_seen_at, nextReviewAt: row.next_review_at, fsrsState: row.fsrs_state });
   return out;
 }
 
@@ -112,7 +112,22 @@ export async function buildReviewCandidates(user) {
     wordReadings: candidates.filter((row) => row.word).map((row) => row.word.reading),
     wordMeanings: candidates.filter((row) => row.word).map((row) => row.word.indonesian),
   };
-  return { candidates: candidates.filter((candidate) => isReviewNeeded(candidate)), pools };
+  // Gate arah-baru: arah yang belum pernah dilatih menunggu sampai arah lain
+  // pada item yang sama benar-benar mantap (FSRS 'review').  Grammar punya
+  // model mastery sendiri dan tidak lewat user_practice_state, jadi dilewati.
+  const unlocked = unlockedSkills(candidates
+    .filter((candidate) => candidate.category !== 'grammar')
+    .map((candidate) => ({
+      key: `${candidate.category}:${candidate.itemId}:${candidate.skill}`,
+      itemType: candidate.category,
+      itemId: candidate.itemId,
+      skill: candidate.skill,
+      attempts: Number(candidate.state?.attempts) || 0,
+      fsrsState: candidate.state?.fsrsState || null,
+    })));
+  const gated = candidates.filter((candidate) => candidate.category === 'grammar'
+    || unlocked.has(`${candidate.category}:${candidate.itemId}:${candidate.skill}`));
+  return { candidates: gated.filter((candidate) => isReviewNeeded(candidate)), pools };
 }
 
 function asPublic(candidate, question) { return { category: candidate.category, itemType: candidate.category, itemId: candidate.itemId, skill: candidate.skill, lessonId: candidate.lessonId, priority: reviewPriority(candidate), question }; }

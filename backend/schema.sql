@@ -791,6 +791,15 @@ CREATE TABLE IF NOT EXISTS user_practice_state (
   last_reviewed_at TIMESTAMPTZ,
   next_review_at TIMESTAMPTZ,
   mastery_state TEXT NOT NULL DEFAULT 'new' CHECK (mastery_state IN ('new', 'learning', 'mastered')),
+  -- FSRS-5 memory state (backend/src/fsrs.js).  next_review_at doubles as the
+  -- card's `due` and last_reviewed_at as its `lastReview`, so only the five
+  -- values below are extra.  Nullable: a row written before migration 137 is
+  -- still valid and is treated as a fresh card on its next answer.
+  fsrs_stability DOUBLE PRECISION,
+  fsrs_difficulty DOUBLE PRECISION,
+  fsrs_state TEXT CHECK (fsrs_state IN ('new', 'learning', 'review', 'relearning')),
+  fsrs_reps INTEGER,
+  fsrs_lapses INTEGER,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (user_id, item_type, item_id, skill)

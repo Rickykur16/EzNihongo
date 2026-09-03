@@ -136,12 +136,19 @@ test('recording a practice attempt updates counters, streak, and due time once',
   assert.equal(first.attempts, 1);
   assert.equal(first.correct, 1);
   assert.equal(first.streak, 1);
-  assert.equal(first.nextReviewAt, '2026-01-02T00:00:00.000Z');
+  // FSRS S0(Good): a first correct answer buys 3 days, not the old ladder's 1.
+  assert.equal(first.nextReviewAt, '2026-01-04T00:00:00.000Z');
+  assert.equal(first.fsrs.state, 'review');
+  assert.ok(first.fsrs.stability > 0 && first.fsrs.difficulty > 0);
 
-  const retry = applyPracticeAttempt(first, { isCorrect: false, now: new Date('2026-01-02T00:00:00Z') });
+  const retry = applyPracticeAttempt(first, { isCorrect: false, now: new Date('2026-01-04T00:00:00Z') });
   assert.deepEqual({ attempts: retry.attempts, correct: retry.correct, streak: retry.streak },
     { attempts: 2, correct: 1, streak: 0 });
-  assert.equal(retry.nextReviewAt, '2026-01-02T00:00:00.000Z');
+  // A lapse drops into relearning a minute out — deliberately NOT "due right
+  // now" like the old ladder's delay of 0.
+  assert.equal(retry.fsrs.state, 'relearning');
+  assert.equal(retry.fsrs.lapses, 1);
+  assert.equal(retry.nextReviewAt, '2026-01-04T00:01:00.000Z');
 });
 
 test('practice-state upsert records each immutable attempt exactly once', async () => {

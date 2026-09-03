@@ -106,6 +106,45 @@ export function pickCompoundOwners(entries) {
   return owners;
 }
 
+// One word carries several directions (jp2id / id2jp / audio2id, or the four
+// compound-word directions), but a lesson drill only ever asks ONE of them per
+// item, and the "Tandai Selesai" gate only requires one attempt per item. So
+// after finishing a lesson every remaining direction still had attempts = 0 and
+// isReviewNeeded() called it due immediately — the learner answers 学生
+// correctly in the lesson and Smart Review asks for 学生 again straight away,
+// in a direction they were never taught. Reported as "itu saya tidak salah tapi
+// muncul berkali kali".
+//
+// A direction the learner has never practised now waits until a direction they
+// HAVE practised on the same item has reached FSRS 'review' — i.e. the memory
+// actually took hold, not merely one lucky answer. An item with no history at
+// all still offers exactly one direction, otherwise material practised before
+// this rule existed would become permanently invisible.
+export function unlockedSkills(entries) {
+  const byItem = new Map();
+  for (const entry of entries || []) {
+    const key = `${entry.itemType}:${entry.itemId}`;
+    if (!byItem.has(key)) byItem.set(key, []);
+    byItem.get(key).push(entry);
+  }
+  const out = new Set();
+  for (const group of byItem.values()) {
+    const practised = group.filter((entry) => entry.attempts > 0);
+    for (const entry of practised) out.add(entry.key);
+    if (!practised.length) {
+      // Deterministic pick so the same direction is offered every session; an
+      // unstable choice would keep looking "new" and defeat the whole point.
+      const first = [...group].sort((a, b) => String(a.skill).localeCompare(String(b.skill)))[0];
+      if (first) out.add(first.key);
+      continue;
+    }
+    if (practised.some((entry) => entry.fsrsState === 'review')) {
+      for (const entry of group) out.add(entry.key);
+    }
+  }
+  return out;
+}
+
 function hash(value) {
   let n = 0x811c9dc5;
   for (const char of String(value)) { n ^= char.charCodeAt(0); n = Math.imul(n, 0x01000193) >>> 0; }
