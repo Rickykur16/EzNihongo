@@ -834,6 +834,25 @@ CREATE TABLE IF NOT EXISTS user_practice_legacy_imports (
 );
 CREATE INDEX IF NOT EXISTS idx_practice_legacy_imports_item ON user_practice_legacy_imports (item_type, item_id);
 
+-- Wajib diisi persis saat siswa enroll/checkout kursus pertamanya (bukan saat
+-- daftar akun Google) — lihat migration 138. Baris ADA = sudah lengkap (semua
+-- field NOT NULL); TIDAK ADA = belum pernah diminta.
+CREATE TABLE IF NOT EXISTS user_marketing_profile (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  birth_date DATE NOT NULL,
+  province TEXT NOT NULL,
+  city TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  learning_goal TEXT NOT NULL CHECK (learning_goal IN ('jlpt', 'kerja_jepang', 'hobi', 'kuliah', 'lainnya')),
+  referral_source TEXT NOT NULL CHECK (referral_source IN ('instagram', 'tiktok', 'youtube', 'google', 'teman_keluarga', 'lainnya')),
+  consented_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_user_marketing_profile_province ON user_marketing_profile(province);
+CREATE INDEX IF NOT EXISTS idx_user_marketing_profile_learning_goal ON user_marketing_profile(learning_goal);
+CREATE INDEX IF NOT EXISTS idx_user_marketing_profile_referral_source ON user_marketing_profile(referral_source);
+
 CREATE OR REPLACE FUNCTION validate_practice_item_reference() RETURNS TRIGGER AS $$
 DECLARE exists_item BOOLEAN := FALSE;
 BEGIN
@@ -925,6 +944,10 @@ DO $$ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'kanji_items_updated_at') THEN
     CREATE TRIGGER kanji_items_updated_at BEFORE UPDATE ON kanji_items
+      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'user_marketing_profile_updated_at') THEN
+    CREATE TRIGGER user_marketing_profile_updated_at BEFORE UPDATE ON user_marketing_profile
       FOR EACH ROW EXECUTE FUNCTION set_updated_at();
   END IF;
 END $$;

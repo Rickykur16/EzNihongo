@@ -6625,13 +6625,43 @@ window.deleteTestimonial = async (id, name) => {
 // token drops stale responses so an in-flight "load more" can't concatenate
 // onto a list a newer search already replaced (and vice-versa).
 let _usersReqSeq = 0;
+// Kept in sync by hand with backend/src/routes/profile.js (LEARNING_GOALS/
+// REFERRAL_SOURCES) and courses/course.js (same option lists, for the
+// checkout form) — see profile.js's comment for why this isn't a shared file.
+const LEARNING_GOAL_LABELS = { jlpt: 'Lulus JLPT', kerja_jepang: 'Kerja di Jepang', hobi: 'Hobi', kuliah: 'Kuliah/beasiswa', lainnya: 'Lainnya' };
+const REFERRAL_SOURCE_LABELS = { instagram: 'Instagram', tiktok: 'TikTok', youtube: 'YouTube', google: 'Google', teman_keluarga: 'Teman/keluarga', lainnya: 'Lainnya' };
+const MARKETING_PROVINCES = [
+  'Aceh', 'Sumatera Utara', 'Sumatera Barat', 'Riau', 'Kepulauan Riau', 'Jambi',
+  'Sumatera Selatan', 'Kepulauan Bangka Belitung', 'Bengkulu', 'Lampung',
+  'DKI Jakarta', 'Jawa Barat', 'Jawa Tengah', 'DI Yogyakarta', 'Jawa Timur', 'Banten',
+  'Bali', 'Nusa Tenggara Barat', 'Nusa Tenggara Timur',
+  'Kalimantan Barat', 'Kalimantan Tengah', 'Kalimantan Selatan', 'Kalimantan Timur', 'Kalimantan Utara',
+  'Sulawesi Utara', 'Sulawesi Tengah', 'Sulawesi Selatan', 'Sulawesi Tenggara', 'Gorontalo', 'Sulawesi Barat',
+  'Maluku', 'Maluku Utara',
+  'Papua', 'Papua Barat', 'Papua Selatan', 'Papua Tengah', 'Papua Pegunungan', 'Papua Barat Daya',
+];
+
+function usersFilterParams() {
+  const params = new URLSearchParams();
+  if (STATE.usersQuery) params.set('q', STATE.usersQuery);
+  if (STATE.usersProvince) params.set('province', STATE.usersProvince);
+  if (STATE.usersLearningGoal) params.set('learningGoal', STATE.usersLearningGoal);
+  if (STATE.usersReferralSource) params.set('referralSource', STATE.usersReferralSource);
+  return params;
+}
 async function loadUsers(opts = {}) {
   const q = opts.q != null ? opts.q : (STATE.usersQuery || '');
   STATE.usersQuery = q;
+  if (opts.province != null) STATE.usersProvince = opts.province;
+  if (opts.learningGoal != null) STATE.usersLearningGoal = opts.learningGoal;
+  if (opts.referralSource != null) STATE.usersReferralSource = opts.referralSource;
   const offset = opts.append ? (STATE.users || []).length : 0;
   const seq = ++_usersReqSeq;
   try {
-    const d = await api('/admin/users?limit=100&offset=' + offset + '&q=' + encodeURIComponent(q));
+    const params = usersFilterParams();
+    params.set('limit', '100');
+    params.set('offset', String(offset));
+    const d = await api('/admin/users?' + params.toString());
     if (seq !== _usersReqSeq) return; // superseded by a newer request
     STATE.usersTotal = d.total != null ? d.total : (d.users || []).length;
     STATE.users = opts.append ? [...(STATE.users || []), ...(d.users || [])] : (d.users || []);
@@ -6639,11 +6669,21 @@ async function loadUsers(opts = {}) {
 }
 function renderUsers() {
   const pane = document.querySelector('[data-pane="users"]');
-  // Shell holds the search box (kept across result re-renders so it stays
-  // focused while typing); #users-result holds the table + pager.
+  const provinceOptions = MARKETING_PROVINCES.map((p) => `<option value="${escapeHtml(p)}" ${STATE.usersProvince === p ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('');
+  const goalOptions = Object.entries(LEARNING_GOAL_LABELS).map(([v, label]) => `<option value="${v}" ${STATE.usersLearningGoal === v ? 'selected' : ''}>${label}</option>`).join('');
+  const referralOptions = Object.entries(REFERRAL_SOURCE_LABELS).map(([v, label]) => `<option value="${v}" ${STATE.usersReferralSource === v ? 'selected' : ''}>${label}</option>`).join('');
+  // Shell holds the search box + marketing-profile filters (kept across
+  // result re-renders so the search box stays focused while typing);
+  // #users-result holds the table + pager.
   pane.innerHTML = `
     <h2>Pengguna</h2>
-    <input id="users-filter" type="search" placeholder="Cari nama atau email (semua pengguna)…" autocomplete="off" value="${escapeHtml(STATE.usersQuery || '')}" style="max-width:340px;margin-bottom:12px;" />
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
+      <input id="users-filter" type="search" placeholder="Cari nama atau email…" autocomplete="off" value="${escapeHtml(STATE.usersQuery || '')}" style="max-width:280px;" />
+      <select id="users-province-filter"><option value="">Semua provinsi</option>${provinceOptions}</select>
+      <select id="users-goal-filter"><option value="">Semua tujuan belajar</option>${goalOptions}</select>
+      <select id="users-referral-filter"><option value="">Semua sumber</option>${referralOptions}</select>
+      <button class="btn btn-ghost" onclick="exportUsersCSV(this)">⬇ Export CSV</button>
+    </div>
     <div id="users-result"></div>
   `;
   const input = document.getElementById('users-filter');
@@ -6651,6 +6691,18 @@ function renderUsers() {
     await loadUsers({ q: input.value });
     renderUsersResult();
   }, 280));
+  document.getElementById('users-province-filter')?.addEventListener('change', async (e) => {
+    await loadUsers({ province: e.target.value });
+    renderUsersResult();
+  });
+  document.getElementById('users-goal-filter')?.addEventListener('change', async (e) => {
+    await loadUsers({ learningGoal: e.target.value });
+    renderUsersResult();
+  });
+  document.getElementById('users-referral-filter')?.addEventListener('change', async (e) => {
+    await loadUsers({ referralSource: e.target.value });
+    renderUsersResult();
+  });
   renderUsersResult();
 }
 function renderUsersResult() {
@@ -6659,12 +6711,13 @@ function renderUsersResult() {
   const users = STATE.users || [];
   const total = STATE.usersTotal != null ? STATE.usersTotal : users.length;
   if (users.length === 0) {
-    wrap.innerHTML = `<div class="empty">${STATE.usersQuery ? 'Tidak ada pengguna cocok pencarian.' : 'Belum ada pengguna.'}</div>`;
+    wrap.innerHTML = `<div class="empty">${STATE.usersQuery || STATE.usersProvince || STATE.usersLearningGoal || STATE.usersReferralSource ? 'Tidak ada pengguna cocok filter.' : 'Belum ada pengguna.'}</div>`;
     return;
   }
   const rows = users.map((u) => `
     <tr>
       <td><strong>${escapeHtml(u.full_name || '-')}</strong><br><span style="font-size:11px;color:#737373;">${escapeHtml(u.email)}</span></td>
+      <td>${u.city ? `${escapeHtml(u.city)}, ${escapeHtml(u.province)}` : '<span style="color:#a3a3a3;">-</span>'}</td>
       <td>${u.xp || 0}</td>
       <td>${u.streak_days || 0}</td>
       <td>${u.total_lessons_completed || 0}</td>
@@ -6678,7 +6731,7 @@ function renderUsersResult() {
     : '';
   wrap.innerHTML = `
     <div style="font-size:12px;color:#737373;margin-bottom:8px;">Menampilkan ${users.length} dari ${total} pengguna.</div>
-    <table><thead><tr><th>Nama / email</th><th>XP</th><th>Streak</th><th>Lesson selesai</th><th>Aktif terakhir</th><th>Bergabung</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <table><thead><tr><th>Nama / email</th><th>Domisili</th><th>XP</th><th>Streak</th><th>Lesson selesai</th><th>Aktif terakhir</th><th>Bergabung</th><th></th></tr></thead><tbody>${rows}</tbody></table>
     ${more}
   `;
 }
@@ -6686,6 +6739,27 @@ window.usersLoadMore = async (btn) => {
   if (btn) { btn.disabled = true; btn.textContent = 'Memuat…'; }
   await loadUsers({ append: true });
   renderUsersResult();
+};
+
+// Bypass api()'s JSON parsing — this response is a CSV file, downloaded via
+// a temporary blob link rather than shown on-page. Same filters as whatever
+// the Pengguna table is currently showing (usersFilterParams()).
+window.exportUsersCSV = async (btn) => {
+  if (btn) { btn.disabled = true; btn.textContent = 'Menyiapkan…'; }
+  try {
+    const res = await ezApi('/admin/users/marketing-export?' + usersFilterParams().toString());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `siswa-eznihongo-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) { notify('Gagal export CSV: ' + e.message, true); }
+  if (btn) { btn.disabled = false; btn.textContent = '⬇ Export CSV'; }
 };
 
 // Beri Akses dari tab Pengguna — modal per-user. Pakai endpoint yang sama

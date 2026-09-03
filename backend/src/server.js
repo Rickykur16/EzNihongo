@@ -28,6 +28,7 @@ import smartReviewRouter from './routes/smart-review.js';
 import dashboardRouter from './routes/dashboard.js';
 import liveClassesRouter from './routes/live-classes.js';
 import progressDetailRouter from './routes/progress-detail.js';
+import profileRouter from './routes/profile.js';
 
 // Fail fast on missing env vars. Every deploy needs these; without them the
 // app silently degrades (bad auth, no DB, open CORS). Crashing at startup
@@ -102,6 +103,7 @@ app.use('/api', contentRouter);
 app.use('/api', progressRouter);
 app.use('/api', recommendationsRouter);
 app.use('/api', ordersRouter);
+app.use('/api', profileRouter);
 // grammarAnalysisRouter has `router.use(requireAuth)` with no path filter
 // (grammar-analysis.js:17) — mounted with no prefix beyond '/api', that
 // middleware fires for every unauthenticated /api/* request that reaches it,

@@ -6,6 +6,7 @@ import { query, withTransaction, withAdvisoryLock } from '../db.js';
 import { requireAuth, asyncHandler } from '../middleware.js';
 import { isAdminEmail } from '../auth.js';
 import { hasCourseAccess } from '../entitlements.js';
+import { notifyAdmin } from '../telegram.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -46,33 +47,17 @@ async function getBankAccounts() {
 }
 
 // Admin used to learn about a new payment proof only by remembering to open
-// the Pesanan tab — nothing pinged them. A Telegram bot is a one-way,
-// admin-owned notification pipe: free, no credential-sharing with a third
-// party (unlike a bank-mutation reader), no new dependency (fetch is
-// built into Node). Same optional-env-var shape as ELEVENLABS_API_KEY in
-// tts.js — unset means the feature no-ops, not that anything errors.
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const TELEGRAM_ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '';
-
-// Best-effort: a Telegram outage or missing config must never fail the
-// student's proof upload, so every failure is swallowed here, not thrown.
+// the Pesanan tab — nothing pinged them. See ../telegram.js for why Telegram
+// and why this is best-effort (never fails the student's proof upload).
 async function notifyAdminNewProof(order) {
-  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_ADMIN_CHAT_ID) return;
-  try {
-    const amount = Number(order.amount_idr) || 0;
-    const text = [
-      '🧾 Bukti pembayaran baru',
-      `Pesanan: ${order.order_number}`,
-      `Kursus: ${order.course_title_snapshot}`,
-      `Nominal: Rp ${amount.toLocaleString('id-ID')}`,
-      'https://eznihongo.com/admin.html',
-    ].join('\n');
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: TELEGRAM_ADMIN_CHAT_ID, text }),
-    });
-  } catch { /* best-effort — see comment above */ }
+  const amount = Number(order.amount_idr) || 0;
+  await notifyAdmin([
+    '🧾 Bukti pembayaran baru',
+    `Pesanan: ${order.order_number}`,
+    `Kursus: ${order.course_title_snapshot}`,
+    `Nominal: Rp ${amount.toLocaleString('id-ID')}`,
+    'https://eznihongo.com/admin.html',
+  ].join('\n'));
 }
 
 function serializeOrder(order) {

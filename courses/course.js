@@ -75,7 +75,82 @@ function renderUnavailable(course) {
   `;
 }
 
-function renderCourseUI(course) {
+// Kept in sync by hand with the same list in backend/src/routes/profile.js
+// (PROVINCES) — see that file's comment for why this isn't a shared JSON.
+const PROVINCES = [
+  'Aceh', 'Sumatera Utara', 'Sumatera Barat', 'Riau', 'Kepulauan Riau', 'Jambi',
+  'Sumatera Selatan', 'Kepulauan Bangka Belitung', 'Bengkulu', 'Lampung',
+  'DKI Jakarta', 'Jawa Barat', 'Jawa Tengah', 'DI Yogyakarta', 'Jawa Timur', 'Banten',
+  'Bali', 'Nusa Tenggara Barat', 'Nusa Tenggara Timur',
+  'Kalimantan Barat', 'Kalimantan Tengah', 'Kalimantan Selatan', 'Kalimantan Timur', 'Kalimantan Utara',
+  'Sulawesi Utara', 'Sulawesi Tengah', 'Sulawesi Selatan', 'Sulawesi Tenggara', 'Gorontalo', 'Sulawesi Barat',
+  'Maluku', 'Maluku Utara',
+  'Papua', 'Papua Barat', 'Papua Selatan', 'Papua Tengah', 'Papua Pegunungan', 'Papua Barat Daya',
+];
+const LEARNING_GOALS = [
+  ['jlpt', 'Lulus JLPT (N5–N1)'],
+  ['kerja_jepang', 'Kerja di Jepang (SSW / Tokutei Ginou)'],
+  ['hobi', 'Hobi / minat pribadi'],
+  ['kuliah', 'Kuliah / beasiswa ke Jepang'],
+  ['lainnya', 'Lainnya'],
+];
+const REFERRAL_SOURCES = [
+  ['instagram', 'Instagram'],
+  ['tiktok', 'TikTok'],
+  ['youtube', 'YouTube'],
+  ['google', 'Google / pencarian'],
+  ['teman_keluarga', 'Teman / keluarga'],
+  ['lainnya', 'Lainnya'],
+];
+
+// Required exactly once per student, at their first enrollment — not at
+// account signup. Rendered inline inside #c-checkout-form so filling it in
+// and submitting the enrollment/order is one action, not two separate steps.
+// A student enrolling in a second course never sees this (hasProfile is
+// already true by then).
+function profileFieldsHtml() {
+  const provinceOptions = PROVINCES.map(p => `<option value="${p}">${p}</option>`).join("");
+  const goalOptions = LEARNING_GOALS.map(([v, label]) => `<option value="${v}">${label}</option>`).join("");
+  const referralOptions = REFERRAL_SOURCES.map(([v, label]) => `<option value="${v}">${label}</option>`).join("");
+  return `
+    <div id="c-profile-fields">
+      <p style="font-size:13px;color:#485f84;margin:16px 0 10px;font-weight:600;">Lengkapi data diri (cuma sekali, untuk kelas pertamamu)</p>
+      <div class="field"><label>Tanggal lahir</label><input type="date" id="c-birth-date" required /></div>
+      <div class="field-row">
+        <div class="field"><label>Provinsi domisili</label><select id="c-province" required><option value="" disabled selected>Pilih provinsi</option>${provinceOptions}</select></div>
+        <div class="field"><label>Kota/Kabupaten</label><input type="text" id="c-city" maxlength="100" required /></div>
+      </div>
+      <div class="field"><label>Nomor WhatsApp</label><input type="tel" id="c-phone" placeholder="08xxxxxxxxxx" required /></div>
+      <div class="field-row">
+        <div class="field"><label>Tujuan belajar</label><select id="c-learning-goal" required><option value="" disabled selected>Pilih tujuan</option>${goalOptions}</select></div>
+        <div class="field"><label>Dari mana tahu EzNihongo?</label><select id="c-referral-source" required><option value="" disabled selected>Pilih sumber</option>${referralOptions}</select></div>
+      </div>
+      <div class="field" style="display:flex;align-items:flex-start;gap:8px;">
+        <input type="checkbox" id="c-consent" required style="margin-top:4px;" />
+        <label for="c-consent" style="font-weight:400;font-size:13px;">Saya setuju data ini dipakai EzNihongo untuk keperluan operasional (mis. info lokasi ujian) dan riset/pengembangan pemasaran, sesuai <a href="../privacy.html" target="_blank" rel="noopener noreferrer">Kebijakan Privasi</a>.</label>
+      </div>
+    </div>
+  `;
+}
+
+async function saveProfileFields() {
+  const res = await window.ezApi("/profile/marketing", {
+    method: "PUT",
+    body: JSON.stringify({
+      birthDate: document.getElementById("c-birth-date").value,
+      province: document.getElementById("c-province").value,
+      city: document.getElementById("c-city").value.trim(),
+      phone: document.getElementById("c-phone").value.trim(),
+      learningGoal: document.getElementById("c-learning-goal").value,
+      referralSource: document.getElementById("c-referral-source").value,
+      consent: document.getElementById("c-consent").checked,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+}
+
+function renderCourseUI(course, needsProfile) {
   const title = course.title || course.slug;
   const tagline = course.tagline || course.description || "";
   const priceLabel = course.price_label
@@ -106,15 +181,25 @@ function renderCourseUI(course) {
   // method actually wired up server-side (POST /api/orders).
   const submitBtn = document.getElementById("c-submit");
   if (course.is_free !== true) submitBtn.textContent = "Buat Pesanan →";
+  const defaultLabel = submitBtn.textContent;
+
+  if (needsProfile) {
+    submitBtn.insertAdjacentHTML("beforebegin", profileFieldsHtml());
+  }
 
   document.getElementById("c-checkout-form").addEventListener("submit", async e => {
     e.preventDefault();
     const btn = document.getElementById("c-submit");
     btn.disabled = true;
 
-    if (course.is_free === true) {
-      btn.textContent = "Memproses...";
-      try {
+    try {
+      if (needsProfile) {
+        btn.textContent = "Menyimpan data...";
+        await saveProfileFields();
+      }
+
+      if (course.is_free === true) {
+        btn.textContent = "Memproses...";
         const res = await window.ezApi("/enrollments", {
           method: "POST",
           body: JSON.stringify({ courseSlug: course.slug }),
@@ -122,16 +207,10 @@ function renderCourseUI(course) {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         window.location.href = `../dashboard.html?v=20260902-1&course=${encodeURIComponent(course.slug)}&new=1`;
-      } catch (err) {
-        btn.textContent = "Lanjut ke Pembayaran →";
-        btn.disabled = false;
-        alert("Gagal mendaftar: " + (err.message || "coba lagi sebentar."));
+        return;
       }
-      return;
-    }
 
-    btn.textContent = "Membuat pesanan...";
-    try {
+      btn.textContent = "Membuat pesanan...";
       const res = await window.ezApi("/orders", {
         method: "POST",
         body: JSON.stringify({ courseSlug: course.slug }),
@@ -140,9 +219,9 @@ function renderCourseUI(course) {
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       window.location.href = `order.html?id=${encodeURIComponent(data.order.id)}`;
     } catch (err) {
-      btn.textContent = "Buat Pesanan →";
+      btn.textContent = defaultLabel;
       btn.disabled = false;
-      alert("Gagal membuat pesanan: " + (err.message || "coba lagi sebentar."));
+      alert("Gagal memproses: " + (err.message || "coba lagi sebentar."));
     }
   });
 }
@@ -191,7 +270,19 @@ async function init() {
     return;
   }
 
-  renderCourseUI(course);
+  // Asked once per student, at whichever course they enroll in first — a
+  // student enrolling in a second course already has hasProfile true and
+  // sees the normal checkout form with no extra fields. Defaults to true
+  // (show the fields) on a failed check: this is meant to be mandatory, so
+  // an unconfirmed status should err toward asking again, not silently
+  // letting someone through unasked.
+  let needsProfile = true;
+  try {
+    const res = await window.ezApi("/profile/marketing");
+    if (res.ok) needsProfile = !(await res.json()).hasProfile;
+  } catch { /* keep needsProfile = true — see comment above */ }
+
+  renderCourseUI(course, needsProfile);
 }
 
 document.addEventListener("DOMContentLoaded", init);
