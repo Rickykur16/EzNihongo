@@ -3695,35 +3695,89 @@ router.delete('/testimonials/:id', asyncHandler(async (req, res) => {
 
 // ===== USERS (admin view only) =====
 
-router.get('/users', asyncHandler(async (req, res) => {
-  // Server-side search + pagination so users beyond the old hard cap of 500
-  // are reachable (search by name/email; page with limit/offset).
+// Shared between the paginated list below and the CSV export — the export
+// is meant to pull exactly what the admin is currently looking at (same
+// search + same marketing-profile filters), not the whole table.
+function buildUserFilters(req) {
   const q = String(req.query.q || '').trim();
-  const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 100));
-  const offset = Math.max(0, Number(req.query.offset) || 0);
+  const province = String(req.query.province || '').trim();
+  const learningGoal = String(req.query.learningGoal || '').trim();
+  const referralSource = String(req.query.referralSource || '').trim();
   const params = [];
-  let where = '';
+  const clauses = [];
   if (q) {
     params.push('%' + q + '%');
     const p = `$${params.length}`;
-    where = `WHERE (u.email ILIKE ${p} OR u.full_name ILIKE ${p} OR u.google_name ILIKE ${p})`;
+    clauses.push(`(u.email ILIKE ${p} OR u.full_name ILIKE ${p} OR u.google_name ILIKE ${p})`);
   }
-  const totalRes = await query(`SELECT COUNT(*)::int AS n FROM users u ${where}`, params);
+  if (province) { params.push(province); clauses.push(`mp.province = $${params.length}`); }
+  if (learningGoal) { params.push(learningGoal); clauses.push(`mp.learning_goal = $${params.length}`); }
+  if (referralSource) { params.push(referralSource); clauses.push(`mp.referral_source = $${params.length}`); }
+  return { where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '', params };
+}
+
+router.get('/users', asyncHandler(async (req, res) => {
+  // Server-side search + pagination so users beyond the old hard cap of 500
+  // are reachable (search by name/email; page with limit/offset).
+  const { where, params } = buildUserFilters(req);
+  const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 100));
+  const offset = Math.max(0, Number(req.query.offset) || 0);
+  const totalRes = await query(
+    `SELECT COUNT(*)::int AS n FROM users u LEFT JOIN user_marketing_profile mp ON mp.user_id = u.id ${where}`,
+    params
+  );
   const listParams = params.slice();
   listParams.push(limit, offset);
   const result = await query(
     `SELECT u.id, u.email, u.full_name, u.google_name, u.avatar_url, u.created_at,
             COALESCE(s.xp, 0) AS xp, COALESCE(s.streak_days, 0) AS streak_days,
             COALESCE(s.total_lessons_completed, 0) AS total_lessons_completed,
-            s.last_active_date
+            s.last_active_date,
+            mp.birth_date, mp.province, mp.city, mp.phone, mp.learning_goal, mp.referral_source
      FROM users u
      LEFT JOIN user_stats s ON s.user_id = u.id
+     LEFT JOIN user_marketing_profile mp ON mp.user_id = u.id
      ${where}
      ORDER BY u.created_at DESC
      LIMIT $${listParams.length - 1} OFFSET $${listParams.length}`,
     listParams
   );
   res.json({ users: result.rows, total: totalRes.rows[0].n });
+}));
+
+// GET /admin/users/marketing-export — CSV of every student matching the
+// current filters (not paginated, unlike /users above), for pulling into
+// spreadsheets or ads-audience tools. This is what actually makes the data
+// usable for "pengembangan marketing" — an HTML table alone doesn't.
+router.get('/users/marketing-export', asyncHandler(async (req, res) => {
+  const { where, params } = buildUserFilters(req);
+  const result = await query(
+    `SELECT u.full_name, u.email, mp.birth_date, mp.province, mp.city, mp.phone,
+            mp.learning_goal, mp.referral_source, u.created_at
+     FROM users u
+     LEFT JOIN user_marketing_profile mp ON mp.user_id = u.id
+     ${where}
+     ORDER BY u.created_at DESC`,
+    params
+  );
+  const header = ['Nama', 'Email', 'Tanggal Lahir', 'Provinsi', 'Kota', 'WhatsApp', 'Tujuan Belajar', 'Sumber Referral', 'Bergabung'];
+  const csvEscape = (v) => {
+    const s = v == null ? '' : String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  // pg returns DATE/TIMESTAMPTZ columns as JS Date objects — String(date)
+  // gives the verbose "Thu Jan 01 1998 00:00:00 GMT+0000 (...)" form, not
+  // useful in a spreadsheet. Format explicitly instead.
+  const asDate = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
+  const rows = result.rows.map((r) => [
+    r.full_name, r.email, asDate(r.birth_date), r.province || '', r.city || '', r.phone || '',
+    r.learning_goal || '', r.referral_source || '', asDate(r.created_at),
+  ].map(csvEscape).join(','));
+  const csv = [header.join(','), ...rows].join('\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="siswa-eznihongo-${new Date().toISOString().slice(0, 10)}.csv"`);
+  // BOM supaya Excel membuka UTF-8 dengan benar (nama/kota berkarakter non-ASCII).
+  res.send('\uFEFF' + csv);
 }));
 
 // ===== AKSES DASHBOARD (course entitlement grants) =====

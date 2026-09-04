@@ -226,9 +226,10 @@ h1, h2, h3 { font-family: var(--font-body); letter-spacing: -0.02em; }
 .c-help a { color: var(--brand-red); font-weight: 600; text-decoration: none; }
 .c-help a:hover { text-decoration: underline; }
 
-/* ── Payment proof upload form (order.html) ──
-   Highest-friction step in the whole checkout flow, and previously rendered
-   with bare browser defaults — .field/.field-row had no rules anywhere. */
+/* ── Payment proof upload form (order.html) + required profile fields
+   (detail.html, courses/course.js profileFieldsHtml) ──
+   Highest-friction steps in the checkout flow, previously rendered with
+   bare browser defaults — .field/.field-row had no rules anywhere. */
 .field { margin-bottom: 14px; }
 .field label {
   display: block;
@@ -237,7 +238,8 @@ h1, h2, h3 { font-family: var(--font-body); letter-spacing: -0.02em; }
   color: var(--ink-700);
   margin-bottom: 6px;
 }
-.field input {
+.field input:not([type="checkbox"]),
+.field select {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--paper-300);
@@ -248,7 +250,9 @@ h1, h2, h3 { font-family: var(--font-body); letter-spacing: -0.02em; }
   color: var(--ink-900);
   box-sizing: border-box;
 }
-.field input:focus-visible { outline: none; border-color: var(--brand-red); box-shadow: var(--focus-ring); }
+.field input:not([type="checkbox"]):focus-visible,
+.field select:focus-visible { outline: none; border-color: var(--brand-red); box-shadow: var(--focus-ring); }
+.field input[type="checkbox"] { width: 16px; height: 16px; flex-shrink: 0; }
 .field-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

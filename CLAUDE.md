@@ -65,6 +65,78 @@
 
 ## Konvensi penting
 
+      **Data siswa (tanggal lahir/domisili/WhatsApp/tujuan belajar/referral)
+      kini wajib diisi TEPAT saat enroll kursus pertama, bukan saat daftar
+      akun** — user: "Saya perlu data siswa yang lengkap saat pendaftaran
+      guna klasifikasi untuk pengembangan marketing di masa depan", lalu
+      dikoreksi user sendiri lewat beberapa putaran sebelum implementasi
+      ditulis: paling penting tanggal lahir + domisili + kontak untuk
+      operasional (arahkan ke lokasi ujian terdekat), field wajib PERSIS
+      saat proses enroll/bayar (bukan opsional di dashboard), akun Google
+      OAuth sendiri TIDAK disentuh sama sekali. **Skema baru**
+      (`migration 138`, tabel `user_marketing_profile`, terpisah dari
+      `users` — pola sama dengan `user_stats`/`user_enrollments`): tidak ada
+      kolom status — baris ADA berarti sudah lengkap (semua kolom
+      `NOT NULL`), baris TIDAK ADA berarti belum pernah ditanya. **Sekali
+      per siswa, bukan sekali per kursus**: `courses/course.js`'s `init()`
+      memanggil `GET /profile/marketing` sebelum render checkout — default
+      `needsProfile = true` (FAIL-CLOSED: kalau fetch gagal atau status
+      tidak jelas, field tetap ditampilkan, bukan diam-diam dilewati) dan
+      hanya jadi `false` kalau server mengonfirmasi `hasProfile: true`. Field
+      tampil di `#c-checkout-form` untuk jalur GRATIS maupun BERBAYAR
+      (form yang sama); submit handler manggil `PUT /profile/marketing`
+      SEBELUM `POST /enrollments`/`POST /orders` yang sudah ada — dua
+      panggilan berurutan yang disengaja terpisah (bukan digabung satu
+      endpoint besar) supaya logika order/enrollment yang sudah teruji tidak
+      ikut dirisikokan. **Nomor WhatsApp sengaja dibedakan dari field lain**
+      di teks consent — bukan fakta pasif seperti tanggal lahir, tapi kontak
+      yang akan dipakai AKTIF menghubungi siswa, jadi `privacy.html`
+      (halaman kebijakan privasi baru, sebelumnya nihil di repo — dicek
+      dulu) memisahkan eksplisit dua tujuan: operasional (arahkan lokasi
+      ujian JLPT terdekat) vs riset/pengembangan marketing (segmentasi
+      agregat) — tidak digabung samar jadi satu "marketing". Checkbox
+      consent wajib dicentang (validasi client DAN server), berbasis UU PDP
+      (UU No. 27/2022) — halaman ini draf yang ditulis mudah dipahami,
+      eksplisit disebutkan BUKAN pengganti nasihat hukum profesional.
+      **Notifikasi admin pakai bot Telegram yang SAMA dengan PR bukti
+      pembayaran sebelumnya** — user: "Kan tadi pake bot telegram untuk
+      notifnya" — ditarik jadi helper bersama `backend/src/telegram.js`
+      (`notifyAdmin(text)`, best-effort, no-op kalau env var kosong,
+      try/catch menyeluruh), `orders.js`'s `notifyAdminNewProof` di-refactor
+      memakainya juga (menghapus duplikasi fetch/env-var yang sebelumnya ada
+      di sana). **Admin** (`admin.html`/`admin.js` tab Pengguna): 3 dropdown
+      filter (provinsi/tujuan belajar/sumber referral) + tombol "⬇ Export
+      CSV" (`GET /admin/users/marketing-export`, menghormati filter aktif,
+      `text/csv` dengan BOM UTF-8 ditulis eksplisit sebagai escape sequence
+      `\uFEFF` — bukan karakter BOM literal ditempel di source, supaya tetap
+      terbaca jelas). **Dua bug
+      ditemukan & diperbaiki saat verifikasi sendiri (bukan dilaporkan
+      user)**: (1) tanggal di CSV export sempat ter-render sebagai string
+      locale verbose (`"Thu Jan 01 1998 00:00:00 GMT+0000..."`) karena
+      driver `pg` mengembalikan kolom `DATE`/`TIMESTAMPTZ` sebagai objek JS
+      `Date` dan `String(date)` memicu format itu — diperbaiki dengan helper
+      `asDate()` (`toISOString().slice(0,10)`); (2) BOM sempat ditempel
+      sebagai karakter literal invisible di source alih-alih escape sequence
+      — diperbaiki jadi `'\uFEFF'` eksplisit. **Sengaja di luar scope**
+      (bukan kelupaan): tidak ada backfill/jaring pengaman untuk siswa lama
+      yang tidak pernah enroll kursus baru lagi setelah fitur ini jalan —
+      pemicunya murni aksi enroll; tidak ada logika pencocokan otomatis ke
+      lokasi ujian terdekat, cuma data mentahnya dikumpulkan + bisa
+      difilter/export. Divalidasi end-to-end: Postgres lokal + backend asli
+      + Chromium asli (siswa baru → field wajib muncul di checkout gratis
+      maupun berbayar → submit lengkap+consent → lanjut otomatis ke
+      enrollment/order seperti biasa → siswa yang sama enroll kursus kedua
+      → field TIDAK muncul lagi; validasi server digigit langsung via POST
+      manual dengan consent `false`/field kosong/tidak valid → 400 dengan
+      kode error jelas, tidak ada baris tertulis; kegagalan Telegram
+      sungguhan — `api.telegram.org` diblokir egress proxy sandbox ini —
+      dibuktikan tidak pernah bocor jadi kegagalan submit siswa); admin
+      Pengguna diklik langsung lewat Playwright (bukan cuma endpoint
+      di-curl): 3 dropdown filter mempersempit tabel dengan benar
+      (provinsi Jawa Barat → 1 baris, tujuan belajar jlpt → 2 baris), tombol
+      Export CSV mengunduh file yang menghormati filter aktif; `npm test`
+      55/55 tetap hijau.
+
       **Sistem pembayaran main site: dianalisis, DITOLAK Midtrans & deteksi
       mutasi bank otomatis, dan satu bug produksi serius ditemukan tak
       sengaja** — user minta analisis sistem pembayaran + koneksinya ke
