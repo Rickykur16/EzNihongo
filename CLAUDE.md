@@ -71,6 +71,49 @@
 
 ## Konvensi penting
 
+      **Masa aktif langganan: backend sudah mendukungnya sejak lama, UI-nya
+      yang tidak pernah mengirim** — user: "sekaligus atur berapa lama
+      langganan aktif dari admin". Ternyata ini bukan fitur baru:
+      `POST /admin/user-access/grant` SUDAH menerima `expiresAt` lengkap
+      dengan validasinya (`invalid_expires_at`, `expires_at_in_past`),
+      `user_enrollments.expires_at` sudah ada, `hasCourseAccess()` +
+      `accessibleCourses()` + `GET /enrollments/me` semua sudah menyaring
+      `expires_at > NOW()`, dan `enrollmentStatusBadge()` di admin bahkan
+      sudah menampilkan badge "Kadaluarsa". Yang tidak ada CUMA input di
+      UI-nya — `uaGrant`/`grantAccess` tidak pernah mengirim `expiresAt`
+      (persis seperti yang sudah dicatat di catatan Maducelik), jadi SEMUA
+      akses manual selama ini terlanjur permanen. **Jadi tidak ada endpoint
+      baru, tidak ada migrasi** — murni menyambungkan yang sudah ada.
+      Dinyatakan sebagai **DURASI** (Selamanya/1/3/6/12 bulan), bukan
+      tanggal, karena itu cara langganan dijual ("3 bulan"), bukan "sampai
+      14 Maret". Ditaruh di `userAccessPanelHtml()` yang dipakai BERSAMA
+      oleh modal tab Pengguna dan tab Beri Akses, jadi keduanya dapat
+      sekaligus — id select diturunkan dari `courseSelectId` yang memang
+      sudah diparameterkan (`${courseSelectId}-dur`, `-ext-${courseId}`)
+      supaya dua panel tidak bentrok. **Perpanjangan dihitung dari tanggal
+      berakhir yang SEKARANG, bukan dari hari ini** (`expiryFromMonths`
+      memakai `from` kalau masih di masa depan) supaya sisa hari langganan
+      yang masih berjalan tidak hangus; kalau sudah kedaluwarsa, dihitung
+      dari sekarang. Tombol Terapkan memakai ulang endpoint grant yang sama
+      — `ON CONFLICT (user_id, course_id) DO UPDATE` di sana memang sudah
+      meng-update `expires_at`. **Jebakan tanggal yang dijaga**:
+      `setMonth(getMonth()+n)` bawaan JS membuat 31 Januari + 1 bulan
+      melompat ke **3 Maret**, bukan 28 Februari — langganan yang berakhir
+      di bulan yang salah itu sulit disadari, jadi ada `addMonthsClamped()`
+      yang menjepit ke hari terakhir bulan target (diuji: 31 Jan→28 Feb,
+      31 Jan 2028→29 Feb kabisat, 31 Mei→30 Jun). Divalidasi di Postgres
+      asli + backend asli + Chromium asli pada KEDUA panel: beri akses
+      3 bulan → berakhir tepat +3 bulan; perpanjang +6 bulan dari sisa yang
+      ada → 5 Des 2026 jadi 5 Jun 2027 (bukan 5 Mar, membuktikan sisa hari
+      tidak hangus); ubah jadi Selamanya → `expires_at` NULL; enrollment
+      kedaluwarsa (26/8) diperpanjang 1 bulan → 5/10 dihitung dari sekarang
+      DAN badge kembali dari "Kadaluarsa" ke "Aktif"; penegakan aksesnya
+      dikonfirmasi lewat aturan produksi (akses jadi 0 begitu lewat
+      tanggal). `npm test` 55/55 hijau. **Sengaja tidak dibuat**: pilihan
+      tanggal bebas (durasi dinilai cukup; backend menerimanya kalau suatu
+      saat diperlukan) dan otomatisasi apa pun — perpanjangan tetap aksi
+      admin, belum ada penjadwal.
+
       **Hak hapus data: dijanjikan `privacy.html`, ternyata NIHIL
       implementasinya — dan `DELETE FROM users` bukan jawabannya** — ditemukan
       saat user minta "Lihat cara penyimpanan data user yg sudah ada". Audit
