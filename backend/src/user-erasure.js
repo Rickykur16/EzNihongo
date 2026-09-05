@@ -1,4 +1,4 @@
-// Menjalankan hak "hapus data" yang dijanjikan privacy.html bagian 5.
+// Menjalankan hak "hapus data" yang dijanjikan privacy.html bagian 9.
 //
 // Alurnya admin-only dan disengaja: privacy.html menyuruh siswa menghubungi
 // lewat WhatsApp dengan menyebutkan email akunnya, bukan menekan tombol
@@ -12,7 +12,7 @@
 //      bukti transfer — dan juga untuk admin yang pernah me-review.
 //   2. `orders.user_id` justru ON DELETE CASCADE, jadi kalaupun pagar (1)
 //      dilepas, hard delete akan MENGHANCURKAN catatan pembayaran — padahal
-//      privacy.html bagian 4 secara eksplisit mencadangkan hak menyimpannya
+//      privacy.html bagian 6 secara eksplisit mencadangkan hak menyimpannya
 //      ("kecuali ada kewajiban hukum ... misalnya catatan transaksi
 //      pembayaran").
 // Jadi hard delete bukan cuma sulit, tapi memang bertentangan dengan
@@ -46,7 +46,7 @@ const WIPE_TABLES = [
 // dengan alasannya. Dipakai assertUserTablesCovered() supaya tabel baru yang
 // ditambahkan migrasi berikutnya tidak diam-diam lolos dari penghapusan.
 const HANDLED_SEPARATELY = {
-  // Catatan keuangan — dipertahankan sesuai carve-out privacy.html bagian 4,
+  // Catatan keuangan — dipertahankan sesuai carve-out privacy.html bagian 6,
   // kolom PII-nya di-scrub, bukan barisnya dihapus.
   orders: 'catatan keuangan, dipertahankan',
   order_payments: 'catatan keuangan, kolom PII di-scrub',
@@ -79,7 +79,7 @@ export async function assertUserTablesCovered(client) {
   }
 }
 
-// Hak "menarik persetujuan" (privacy.html bagian 5) tanpa menghapus akun:
+// Hak "menarik persetujuan" (privacy.html bagian 9) tanpa menghapus akun:
 // data profil marketing hilang, akun + akses kursus + progres belajar tetap.
 // Karena baris user_marketing_profile yang ADA berarti "sudah pernah mengisi"
 // (lihat migration 138), menghapusnya juga berarti siswa akan diminta mengisi

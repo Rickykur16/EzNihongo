@@ -6925,7 +6925,7 @@ async function refreshUserAccessModal(email) {
   `, { className: 'modal-lg' });
 }
 
-// Panel hak data pribadi — menjalankan janji di privacy.html bagian 5.
+// Panel hak data pribadi — menjalankan janji di privacy.html bagian 9.
 // Alurnya memang manual lewat admin: privacy.html menyuruh siswa menghubungi
 // via WhatsApp menyebutkan email akunnya, jadi di sinilah permintaan itu
 // dieksekusi. Dua tingkat sengaja dipisah supaya permintaan ringan ("jangan
@@ -6940,14 +6940,14 @@ function privacyRightsPanelHtml(user, orders) {
   if (erased) {
     return `<div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--line,#e5e5e5);">
       <h3 style="margin:0 0 8px;font-size:15px;">Hak data pribadi</h3>
-      <div class="empty">Akun ini sudah dihapus atas permintaan pengguna. Catatan pembayarannya sengaja dipertahankan (lihat privacy.html bagian 4).</div>
+      <div class="empty">Akun ini sudah dihapus atas permintaan pengguna. Catatan pembayarannya sengaja dipertahankan (lihat privacy.html bagian 6 dan 7).</div>
     </div>`;
   }
   return `
   <div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--line,#e5e5e5);">
     <h3 style="margin:0 0 4px;font-size:15px;">Hak data pribadi</h3>
     <p style="margin:0 0 12px;font-size:12px;color:var(--ink-500,#8a8378);">
-      Dipakai saat siswa memakai haknya lewat WhatsApp (privacy.html bagian 5).
+      Dipakai saat siswa memakai haknya lewat WhatsApp (privacy.html bagian 9).
     </p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
       <button class="btn btn-ghost" onclick="uaDropMarketing('${escapeHtml(email)}')">
