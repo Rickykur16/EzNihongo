@@ -71,6 +71,39 @@
 
 ## Konvensi penting
 
+      **Siswa sekarang tahu sisa masa aktifnya sendiri** — user: "Buat juga
+      siswa tahu berapa lama sisa masa aktif akunnya". Lanjutan langsung dari
+      catatan di bawah: setelah admin bisa mengatur masa aktif, siswa masih
+      buta terhadapnya — `expires_at` selama ini dipakai server MURNI sebagai
+      penyaring (`accessibleCourses()` menyaringnya tapi tidak pernah
+      meng-SELECT-nya, dan payload `/dashboard/me` mem-whitelist field
+      sehingga tidak akan lolos walau di-select), jadi akses siswa bisa
+      hilang mendadak tanpa satu pun peringatan sebelumnya. Diperbaiki di
+      tiga titik: query `accessibleCourses()` ikut mengambil `e.expires_at`
+      (cabang admin memakai `NULL::timestamptz` eksplisit supaya akses
+      implisit admin terbaca "tanpa batas waktu", BUKAN "sudah berakhir"),
+      payload meneruskannya sebagai `expiresAt` di `courses[]` maupun
+      `course`, dan `dashboard.js` merender `accessNotice()` di hero.
+      **Ditaruh di `dashboard.html`, bukan `welcome.html`** — komentar
+      `login.html` sendiri menyatakan "Dashboard selalu menjadi pintu masuk
+      siswa". Ambang peringatan 14 hari: di bawah itu notifikasinya berubah
+      menonjol (warna peringatan yang sama dengan banner pesanan) dan
+      memunculkan tautan WhatsApp admin untuk perpanjang; di atas itu
+      tampil tenang sebagai teks abu-abu biasa. Nomor WhatsApp-nya sama
+      dengan 6 tempat lain di repo (dicek konsisten). **Detail yang mudah
+      salah**: sisa hari dibulatkan ke ATAS (`Math.ceil`) — kalau tidak,
+      langganan yang berakhir besok pagi terbaca "0 hari"; dan
+      `expires_at` NULL (permanen) TIDAK menampilkan apa pun, bukan
+      "berakhir hari ini". Divalidasi lewat Chromium asli untuk lima
+      kondisi: 91 hari (tenang, tanpa tautan), 5 hari (menonjol + tautan
+      perpanjang), 20 jam (berbunyi "tinggal 1 hari lagi", membuktikan
+      pembulatan ke atas), permanen (tidak tampil sama sekali), dan akun
+      admin (tidak tampil — tidak salah dianggap berakhir). `npm test`
+      55/55 hijau. **Sengaja tidak dikerjakan**: `welcome.html` tidak
+      disentuh (pintu masuknya dashboard), dan tidak ada email/notifikasi
+      pengingat otomatis — peringatannya muncul saat siswa membuka
+      dashboard, belum ada penjadwal.
+
       **Masa aktif langganan: backend sudah mendukungnya sejak lama, UI-nya
       yang tidak pernah mengirim** — user: "sekaligus atur berapa lama
       langganan aktif dari admin". Ternyata ini bukan fitur baru:

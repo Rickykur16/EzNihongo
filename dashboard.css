@@ -278,6 +278,25 @@ body {
 .pending-order-row:hover { box-shadow: var(--focus-ring, 0 0 0 3px rgba(133, 79, 11, 0.25)); }
 .pending-order-row span { font-size: 13px; color: var(--warning, #854f0b); font-weight: 600; }
 
+/* Sisa masa aktif kelas di hero. Tenang saja saat masih lama, dan baru
+   menonjol (memakai warna peringatan yang sama dengan banner pesanan) saat
+   sudah dekat berakhir — supaya siswa sempat memperpanjang, bukan baru sadar
+   setelah aksesnya hilang. */
+.access-notice {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--ink-500, #6f6a63);
+}
+.access-notice.urgent {
+  display: inline-block;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--warning-soft, #faeeda);
+  color: var(--warning, #854f0b);
+  font-weight: 600;
+}
+.access-notice.urgent a { color: inherit; }
+
 @media (max-width: 820px) {
   .grid,
   .performance { grid-template-columns: 1fr; }
