@@ -31,15 +31,21 @@
   `sudo rclone ls r2:eznihongo-backups`. Lihat session sebelumnya untuk
   step lengkapnya.
 
-- [ ] **GPG encryption pada dump** sebelum di-upload offsite. Dump berisi
-  email user + raw webhook Midtrans (PII + payment data). Tambahkan
+- [ ] **GPG encryption pada dump** sebelum di-upload offsite. **Bobotnya naik
+  sejak migration 138** — satu `db.dump` sekarang berisi email + tanggal lahir
+  + nomor WhatsApp + domisili + foto bukti transfer (BYTEA di
+  `order_payments.proof_image`), bukan lagi cuma progres belajar. Tambahkan
   `gpg --symmetric --cipher-algo AES256` di `backup.sh` sebelum
   `rclone copy`. Passphrase simpan di password manager, bukan di repo.
   Hanya relevan setelah offsite hidup.
 
-- [ ] **`pg_dumpall --globals-only`** terpisah untuk role / grant. Saat ini
-  `backup.sh` cuma dump database `eznihongo` — kalau VPS rebuild dari nol,
-  role `eznihongo_app` + grant-nya harus dibikin manual dulu.
+- [x] **`pg_dumpall --globals-only`** terpisah untuk role / grant — SUDAH ADA,
+  catatan ini ternyata basi (dikoreksi 2026-09-04 saat audit penyimpanan data
+  user). `backup.sh:66` menjalankan
+  `pg_dumpall --globals-only --no-role-passwords` dan menyimpannya sebagai
+  `globals.sql` di dalam arsip harian, persis seperti yang diminta item ini.
+  Catatan lama bilang "backup.sh cuma dump database eznihongo" — itu tidak
+  benar lagi.
 
 - [ ] **Test restore ke staging** — tulisan ini ga akan jadi backup beneran
   sampai pernah dicoba di-restore. Minimal sekali per bulan ke Postgres
@@ -64,6 +70,77 @@
   hardening berikutnya, butuh perubahan di sisi VPS.
 
 ## Konvensi penting
+
+      **Hak hapus data: dijanjikan `privacy.html`, ternyata NIHIL
+      implementasinya — dan `DELETE FROM users` bukan jawabannya** — ditemukan
+      saat user minta "Lihat cara penyimpanan data user yg sudah ada". Audit
+      itu memunculkan celah kepatuhan dari PR sebelumnya sendiri:
+      `privacy.html` bagian 5 (yang ditulis di PR #268) menjanjikan hak
+      lihat/koreksi/hapus, tapi di seluruh kodebase **tidak ada satu pun**
+      `DELETE FROM users`, endpoint hapus akun, atau jalur apa pun untuk
+      menjalankannya. **Klaim pertama saya di sesi ini SALAH dan dikoreksi
+      oleh pengukuran**: saya bilang "struktur CASCADE-nya sudah siap, yang
+      tidak ada cuma pemicunya" — dibuktikan di Postgres asli, `DELETE FROM
+      users` justru **GAGAL TOTAL** dengan foreign key violation
+      (`order_payments_submitted_by_fkey`) untuk siswa mana pun yang pernah
+      mengunggah bukti transfer, DAN untuk admin mana pun yang pernah
+      me-review — karena `order_payments.submitted_by`/`.reviewed_by` tidak
+      punya klausa `ON DELETE` sama sekali (default NO ACTION). Lebih jauh:
+      `orders.user_id` justru `ON DELETE CASCADE`, jadi kalaupun pagar itu
+      dilepas, hard delete akan **MENGHANCURKAN catatan pembayaran** yang
+      `privacy.html` bagian 4 secara eksplisit cadangkan hak simpannya. Jadi
+      hard delete bukan cuma sulit, tapi bertentangan dengan kebijakan kita
+      sendiri. **Keputusan: anonimisasi di tempat** (`backend/src/user-erasure.js`)
+      — baris `users` dipertahankan sebagai batu nisan (`email` →
+      `dihapus-<uuid>@dihapus.invalid`, `google_id` → `dihapus-<uuid>`, keduanya
+      memakai UUID user sendiri karena kolomnya UNIQUE NOT NULL, sekaligus
+      membebaskan `google_id` lama supaya orang yang sama bisa mendaftar ulang
+      sebagai user baru). **KONSEKUENSI YANG MUDAH TERLEWAT: karena baris
+      `users` TIDAK dihapus, ke-15 `ON DELETE CASCADE` yang menempel ke users
+      TIDAK ADA YANG JALAN** — tiap tabel satelit wajib dibersihkan eksplisit,
+      dan melewatkan satu berarti data pribadi tertinggal diam-diam. Karena
+      repo ini rutin menambah tabel per-user (yang terbaru `user_marketing_profile`
+      di 138), dipasang pagar `assertUserTablesCovered()` yang **menanyakan
+      langsung ke katalog Postgres** tabel apa saja yang menunjuk `users(id)`
+      lalu MENOLAK menjalankan penghapusan kalau ada yang belum terdaftar di
+      `WIPE_TABLES`/`HANDLED_SEPARATELY` — dibuktikan menggigit lewat tabel
+      palsu. **Dua jebakan yang ketahuan dari pengukuran, bukan tebakan**:
+      (1) `discussions.parent_id` CASCADE ke DIRINYA SENDIRI, jadi hard-delete
+      komentar induk milik siswa akan ikut **menghapus balasan orang lain** —
+      karena itu di tabel ini konten di-scrub + `is_deleted = TRUE` (flag yang
+      memang sudah dihormati `routes/discussions.js`) dan barisnya
+      dipertahankan; diverifikasi balasan admin selamat. (2) `proof_image`
+      adalah foto slip bank berisi nama + nomor rekening, item paling padat PII
+      di sistem — barisnya dipertahankan sebagai catatan transaksi, tapi
+      gambar + `claimed_sender_name` + `raw_payload`-nya dibuang; catatan
+      nominal/tanggal/nomor pesanan sudah cukup untuk keperluan penyimpanan
+      yang dicadangkan kebijakan, fotonya tidak. **Dua tingkat sengaja
+      dipisah**: `DELETE /admin/users/:email/marketing-profile` (tarik
+      persetujuan — akun, akses kursus, dan progres belajar TETAP; diverifikasi
+      akses & progres utuh setelahnya) vs `POST /admin/users/:email/erase`
+      (hapus akun, wajib mengetik ulang email persis sebagai konfirmasi, satu
+      `withTransaction` penuh supaya kegagalan di tengah tidak meninggalkan
+      akun setengah terhapus). Admin-only dan itu memang sesuai janjinya —
+      `privacy.html` menyuruh siswa menghubungi lewat WhatsApp menyebutkan
+      email akunnya, jadi tidak ada endpoint self-service. Admin tidak boleh
+      menghapus akunnya sendiri (`cannot_erase_self`) karena akan kehilangan
+      sesi di tengah aksi dan bisa mengunci semua orang keluar. `privacy.html`
+      bagian 4 sekalian diperjelas supaya janjinya cocok dengan yang
+      benar-benar dilakukan sistem (menyebut eksplisit foto bukti transfer
+      dihapus, catatan transaksi dipertahankan tanpa menunjuk identitas).
+      Divalidasi di Postgres asli + backend asli + Chromium asli: siswa dengan
+      bukti transfer berhasil dianonimkan (kasus yang tadinya memblokir
+      DELETE), `orders` bertahan, audit programatik 0 PII tersisa, idempoten
+      (run kedua semua 0, batu nisan tidak tertimpa berlapis), empat pagar
+      endpoint menggigit (konfirmasi tidak cocok 400, user tidak ada 404,
+      hapus diri sendiri 400, tanpa token 401), dan modal admin diklik langsung
+      lewat Playwright (konfirmasi salah ditolak di client, dua tombol jalan,
+      modal tertutup + tabel refresh setelah hapus). `npm test` 55/55 hijau.
+      **Sengaja di luar scope**: tidak ada self-service untuk siswa (kebijakan
+      sendiri mengarahkan ke WhatsApp), tidak ada ekspor "semua data saya" per
+      siswa (hak lihat sudah terlayani tab Pengguna admin), dan `kanji_users`
+      (realm PWA terpisah) TIDAK tersentuh — punya tabel & alur sendiri, perlu
+      keputusan terpisah.
 
       **Data siswa (tanggal lahir/domisili/WhatsApp/tujuan belajar/referral)
       kini wajib diisi TEPAT saat enroll kursus pertama, bukan saat daftar
