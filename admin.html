@@ -5085,6 +5085,7 @@ function renderDeckTable(items) {
         <button class="btn btn-ghost" onclick="deckEditWord('${it.vocabulary_id}')" title="Edit 日本語/kana/romaji/arti/kategori kata ini">✏️ Edit</button>
         <button class="btn btn-ghost" onclick="deckManageExamples('${it.vocabulary_id}')">Contoh (${it.example_count || 0})</button>
         <button class="btn btn-ghost" onclick="deckGenImage('${it.vocabulary_id}', this)" title="Generate ilustrasi (AI). Klik lagi untuk regenerate.">✨ Gambar</button>
+        <button class="btn btn-ghost" onclick="deckGenAudio('${it.vocabulary_id}', this)" title="Dengar suara AI kata ini, hapus cache &amp; generate ulang kalau pengucapannya salah">🔊 Suara</button>
         <button class="btn btn-danger" onclick="deckRemove('${it.vocabulary_id}')">Keluarkan</button>
       </td>
     </tr>`;
@@ -6010,6 +6011,71 @@ function deckShowImagePreview(vid, fromCache) {
   `);
   const mc = document.getElementById('modal-content');
   if (mc) mc.style.maxWidth = '460px';
+}
+
+// Suara AI (ElevenLabs) per kata deck. Teks yang dipakai HARUS sama persis
+// dengan yang dipakai siswa (playDeckAudio: japanese || reading) supaya hapus
+// cache di sini benar-benar mengubah apa yang mereka dengar. Cache tts_cache
+// di-key dari hash teks — kalau spelling katanya sendiri salah, benerin lewat
+// ✏️ Edit dulu (otomatis dapat hash baru); tombol ini buat kasus teks sudah
+// benar tapi pengucapan AI-nya yang meleset/aneh.
+function deckAudioText(vid) {
+  const it = (window.__deckItems || []).find((x) => x.vocabulary_id === vid);
+  return ((it && (it.japanese || it.reading)) || '').trim();
+}
+
+window.deckGenAudio = async (vid, btn) => {
+  const text = deckAudioText(vid);
+  if (!text) { notify('Kata kosong, tidak bisa generate suara', true); return; }
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    await deckShowAudioPreview(vid, text);
+  } catch (err) {
+    notify('Gagal generate suara: ' + err.message, true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+  }
+};
+
+window.deckRegenAudio = async (vid) => {
+  const text = deckAudioText(vid);
+  if (!text) return;
+  const btn = document.getElementById('deck-audio-regen');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  try {
+    await ezApi('/admin/tts/cache', { method: 'DELETE', body: JSON.stringify({ text }) });
+    await deckShowAudioPreview(vid, text);
+    notify('Suara baru berhasil di-generate');
+  } catch (err) {
+    notify('Gagal regenerate suara: ' + err.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = '🔊 Suara baru'; }
+  }
+};
+
+async function deckShowAudioPreview(vid, text) {
+  const r = await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({ text }) });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.detail || err.error || ('HTTP ' + r.status));
+  }
+  const blob = await r.blob();
+  const url = URL.createObjectURL(blob);
+  openModal(`
+    <h3>Suara kosakata</h3>
+    <p lang="ja" style="font-size:19px;font-weight:700;margin:0 0 10px;">${escapeHtml(text)}</p>
+    <audio controls autoplay src="${url}" style="width:100%;"></audio>
+    <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:10px 0 12px;">
+      Audio ElevenLabs, di-cache per teks persis. Kalau pengucapannya salah/aneh,
+      klik suara baru untuk hapus cache lalu generate ulang.
+    </p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="closeModal()">Tutup</button>
+      <button type="button" class="btn btn-primary" id="deck-audio-regen" onclick="deckRegenAudio('${vid}')">🔊 Suara baru</button>
+    </div>
+  `);
+  const mc = document.getElementById('modal-content');
+  if (mc) mc.style.maxWidth = '420px';
 }
 
 // Generate contoh kalimat (AI) untuk kosakata yang sedang dibuka. Hasil
