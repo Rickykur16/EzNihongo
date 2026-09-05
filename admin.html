@@ -6789,6 +6789,45 @@ function enrollmentStatusBadge(e) {
   return '<span class="badge badge-on">Aktif</span>';
 }
 
+// Masa aktif langganan. Backend (POST /admin/user-access/grant) sudah lama
+// menerima `expiresAt` lengkap dengan validasinya — yang tidak pernah ada cuma
+// cara mengisinya dari UI, jadi semua akses manual terlanjur permanen.
+// Dinyatakan sebagai DURASI, bukan tanggal, karena itu cara langganan dijual
+// ("3 bulan"), bukan "sampai 14 Maret".
+const ACCESS_DURATIONS = [
+  ['', 'Selamanya'],
+  ['1', '1 bulan'],
+  ['3', '3 bulan'],
+  ['6', '6 bulan'],
+  ['12', '12 bulan'],
+];
+
+// Menambah n bulan dengan menjaga tanggal tetap masuk akal: 31 Januari + 1
+// bulan jadi 28/29 Februari, bukan melompat ke 3 Maret seperti perilaku
+// bawaan setMonth(). Langganan yang tiba-tiba berakhir di bulan berikutnya
+// itu salah hitung yang sulit disadari.
+function addMonthsClamped(from, months) {
+  const d = new Date(from.getTime());
+  const targetDay = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + months);
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(targetDay, lastDay));
+  return d;
+}
+
+// null = permanen (kolom expires_at NULL). `from` dipakai saat memperpanjang
+// langganan yang masih berjalan supaya sisa harinya tidak hangus.
+function expiryFromMonths(months, from) {
+  if (!months) return null;
+  const base = from && from.getTime() > Date.now() ? from : new Date();
+  return addMonthsClamped(base, Number(months)).toISOString();
+}
+
+function durationOptionsHtml() {
+  return ACCESS_DURATIONS.map(([v, label]) => `<option value="${v}">${label}</option>`).join('');
+}
+
 function courseAccessLabelText(c) {
   if (c.is_free === true) return 'Gratis';
   if (c.is_free === false) return 'Berbayar';
@@ -6796,7 +6835,7 @@ function courseAccessLabelText(c) {
 }
 
 function userAccessPanelHtml(d, opts) {
-  const { courseSelectId, revokeFn, grantFn } = opts;
+  const { courseSelectId, revokeFn, grantFn, extendFn } = opts;
   // Only rows that are actively blocking access should hide a course from
   // the grant dropdown — a revoked or expired enrollment row still exists
   // in d.enrollments, but the admin needs to be able to re-grant it (the
@@ -6814,8 +6853,11 @@ function userAccessPanelHtml(d, opts) {
       <td><strong>${escapeHtml(e.title)}</strong> <span class="pill">${escapeHtml(e.level || '-')}</span></td>
       <td>${escapeHtml(ENROLLMENT_SOURCE_LABEL[e.source] || e.source || '-')}</td>
       <td>${enrollmentStatusBadge(e)}</td>
-      <td style="font-size:12px;">${new Date(e.enrolled_at).toLocaleDateString('id-ID')}${e.expires_at ? '<br>sampai ' + new Date(e.expires_at).toLocaleDateString('id-ID') : ''}</td>
-      <td class="actions">${e.status === 'active' ? `<button class="btn btn-danger" onclick="${revokeFn}('${escapeHtml(d.user.email)}','${e.course_id}')">Cabut</button>` : ''}</td>
+      <td style="font-size:12px;">${new Date(e.enrolled_at).toLocaleDateString('id-ID')}${e.expires_at ? '<br>sampai ' + new Date(e.expires_at).toLocaleDateString('id-ID') : '<br><span style="color:#737373;">selamanya</span>'}</td>
+      <td class="actions">${e.status === 'active' ? `
+        <select id="${courseSelectId}-ext-${e.course_id}" style="font-size:12px;padding:3px 6px;">${durationOptionsHtml()}</select>
+        <button class="btn btn-ghost" onclick="${extendFn}('${escapeHtml(d.user.email)}','${escapeHtml(e.slug)}','${e.course_id}','${e.expires_at || ''}')">Terapkan</button>
+        <button class="btn btn-danger" onclick="${revokeFn}('${escapeHtml(d.user.email)}','${e.course_id}')">Cabut</button>` : ''}</td>
     </tr>`).join('');
   const grantable = (d.courses || []).filter((c) => !enrolledIds.has(c.id));
   const courseOpts = grantable.map((c) =>
@@ -6841,12 +6883,19 @@ function userAccessPanelHtml(d, opts) {
       <label style="font-size:13px;">Beri akses manual ke kursus<br>
         <select id="${courseSelectId}" style="margin-top:4px;min-width:280px;">${courseOpts}</select>
       </label>
+      <label style="font-size:13px;">Masa aktif<br>
+        <select id="${courseSelectId}-dur" style="margin-top:4px;min-width:130px;">${durationOptionsHtml()}</select>
+      </label>
       <button class="btn btn-primary" onclick="${grantFn}('${escapeHtml(d.user.email)}')">Beri akses</button>
     </div>` : '<p style="margin-top:14px;color:#737373;font-size:13px;">User sudah punya akses ke semua kursus terbit.</p>'}
 
     <h3 style="margin:18px 0 6px;font-size:14px;">Kursus yang sudah diakses</h3>
     ${enrRows
-      ? `<table><thead><tr><th>Kursus</th><th>Asal</th><th>Status</th><th>Sejak</th><th></th></tr></thead><tbody>${enrRows}</tbody></table>`
+      ? `<table><thead><tr><th>Kursus</th><th>Asal</th><th>Status</th><th>Sejak</th><th>Masa aktif</th></tr></thead><tbody>${enrRows}</tbody></table>
+         <p style="margin:6px 0 0;font-size:12px;color:#737373;">
+           Perpanjangan ditambahkan dari tanggal berakhir yang sekarang, jadi sisa hari
+           langganan yang masih berjalan tidak hangus. Pilih "Selamanya" untuk akses tanpa batas waktu.
+         </p>`
       : '<div class="empty">Belum punya akses kursus apa pun.</div>'}
 
     <h3 style="margin:18px 0 6px;font-size:14px;">Riwayat pesanan</h3>
@@ -6870,7 +6919,7 @@ async function refreshUserAccessModal(email) {
   }
   openModal(`
     <h2 style="margin-top:0;">Profil Akses</h2>
-    ${userAccessPanelHtml(d, { courseSelectId: 'ua-course', revokeFn: 'uaRevoke', grantFn: 'uaGrant' })}
+    ${userAccessPanelHtml(d, { courseSelectId: 'ua-course', revokeFn: 'uaRevoke', grantFn: 'uaGrant', extendFn: 'uaExtend' })}
     ${privacyRightsPanelHtml(d.user, d.orders)}
     <div style="margin-top:18px;text-align:right;"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `, { className: 'modal-lg' });
@@ -6976,11 +7025,29 @@ window.uaEraseAccount = async (email, btn) => {
 window.uaGrant = async (email) => {
   const courseSlug = document.getElementById('ua-course')?.value;
   if (!courseSlug) { notify('Pilih kursus dulu', true); return; }
+  const expiresAt = expiryFromMonths(document.getElementById('ua-course-dur')?.value);
   try {
-    const r = await api('/admin/user-access/grant', { method: 'POST', body: JSON.stringify({ email, courseSlug }) });
+    const r = await api('/admin/user-access/grant', { method: 'POST', body: JSON.stringify({ email, courseSlug, expiresAt }) });
     notify(r.alreadyEnrolled ? 'User sudah punya akses kursus itu' : 'Akses diberikan');
     await refreshUserAccessModal(email);
   } catch (err) { notify('Gagal beri akses: ' + err.message, true); }
+};
+
+// Ubah masa aktif enrollment yang sudah ada. Memakai endpoint grant yang sama —
+// ON CONFLICT (user_id, course_id) DO UPDATE di sana memang sudah meng-update
+// expires_at, jadi tidak perlu endpoint baru.
+window.uaExtend = async (email, courseSlug, courseId, currentExpiry) => {
+  const months = document.getElementById('ua-course-ext-' + courseId)?.value;
+  const expiresAt = expiryFromMonths(months, currentExpiry ? new Date(currentExpiry) : null);
+  const label = expiresAt
+    ? 'sampai ' + new Date(expiresAt).toLocaleDateString('id-ID')
+    : 'selamanya (tanpa batas waktu)';
+  if (!confirm(`Ubah masa aktif kursus ini jadi ${label}?`)) return;
+  try {
+    await api('/admin/user-access/grant', { method: 'POST', body: JSON.stringify({ email, courseSlug, expiresAt }) });
+    notify('Masa aktif diperbarui — ' + label);
+    await refreshUserAccessModal(email);
+  } catch (err) { notify('Gagal mengubah masa aktif: ' + err.message, true); }
 };
 
 window.uaRevoke = async (email, courseId) => {
@@ -7007,7 +7074,7 @@ function renderAccess() {
   } else if (r && r.user) {
     resultHtml = `
       <div class="card" style="margin-top:16px;padding:16px;border:1px solid var(--line,#e5e5e5);border-radius:10px;">
-        ${userAccessPanelHtml(r, { courseSelectId: 'ac-course', revokeFn: 'revokeAccess', grantFn: 'grantAccess' })}
+        ${userAccessPanelHtml(r, { courseSelectId: 'ac-course', revokeFn: 'revokeAccess', grantFn: 'grantAccess', extendFn: 'extendAccess' })}
       </div>`;
   }
   pane.innerHTML = `
@@ -7046,11 +7113,27 @@ window.lookupAccess = async () => {
 window.grantAccess = async (email) => {
   const courseSlug = document.getElementById('ac-course')?.value;
   if (!courseSlug) { notify('Pilih kursus dulu', true); return; }
+  const expiresAt = expiryFromMonths(document.getElementById('ac-course-dur')?.value);
   try {
-    const d = await api('/admin/user-access/grant', { method: 'POST', body: JSON.stringify({ email, courseSlug }) });
+    const d = await api('/admin/user-access/grant', { method: 'POST', body: JSON.stringify({ email, courseSlug, expiresAt }) });
     notify(d.alreadyEnrolled ? 'User sudah punya akses kursus itu' : 'Akses diberikan');
     await lookupAccess();
   } catch (err) { notify('Gagal beri akses: ' + err.message, true); }
+};
+
+// Kembaran uaExtend untuk panel tab "Beri Akses" (id select & refresh beda).
+window.extendAccess = async (email, courseSlug, courseId, currentExpiry) => {
+  const months = document.getElementById('ac-course-ext-' + courseId)?.value;
+  const expiresAt = expiryFromMonths(months, currentExpiry ? new Date(currentExpiry) : null);
+  const label = expiresAt
+    ? 'sampai ' + new Date(expiresAt).toLocaleDateString('id-ID')
+    : 'selamanya (tanpa batas waktu)';
+  if (!confirm(`Ubah masa aktif kursus ini jadi ${label}?`)) return;
+  try {
+    await api('/admin/user-access/grant', { method: 'POST', body: JSON.stringify({ email, courseSlug, expiresAt }) });
+    notify('Masa aktif diperbarui — ' + label);
+    await lookupAccess();
+  } catch (err) { notify('Gagal mengubah masa aktif: ' + err.message, true); }
 };
 
 window.revokeAccess = async (email, courseId) => {

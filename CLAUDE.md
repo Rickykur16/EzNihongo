@@ -71,6 +71,82 @@
 
 ## Konvensi penting
 
+      **Siswa sekarang tahu sisa masa aktifnya sendiri** — user: "Buat juga
+      siswa tahu berapa lama sisa masa aktif akunnya". Lanjutan langsung dari
+      catatan di bawah: setelah admin bisa mengatur masa aktif, siswa masih
+      buta terhadapnya — `expires_at` selama ini dipakai server MURNI sebagai
+      penyaring (`accessibleCourses()` menyaringnya tapi tidak pernah
+      meng-SELECT-nya, dan payload `/dashboard/me` mem-whitelist field
+      sehingga tidak akan lolos walau di-select), jadi akses siswa bisa
+      hilang mendadak tanpa satu pun peringatan sebelumnya. Diperbaiki di
+      tiga titik: query `accessibleCourses()` ikut mengambil `e.expires_at`
+      (cabang admin memakai `NULL::timestamptz` eksplisit supaya akses
+      implisit admin terbaca "tanpa batas waktu", BUKAN "sudah berakhir"),
+      payload meneruskannya sebagai `expiresAt` di `courses[]` maupun
+      `course`, dan `dashboard.js` merender `accessNotice()` di hero.
+      **Ditaruh di `dashboard.html`, bukan `welcome.html`** — komentar
+      `login.html` sendiri menyatakan "Dashboard selalu menjadi pintu masuk
+      siswa". Ambang peringatan 14 hari: di bawah itu notifikasinya berubah
+      menonjol (warna peringatan yang sama dengan banner pesanan) dan
+      memunculkan tautan WhatsApp admin untuk perpanjang; di atas itu
+      tampil tenang sebagai teks abu-abu biasa. Nomor WhatsApp-nya sama
+      dengan 6 tempat lain di repo (dicek konsisten). **Detail yang mudah
+      salah**: sisa hari dibulatkan ke ATAS (`Math.ceil`) — kalau tidak,
+      langganan yang berakhir besok pagi terbaca "0 hari"; dan
+      `expires_at` NULL (permanen) TIDAK menampilkan apa pun, bukan
+      "berakhir hari ini". Divalidasi lewat Chromium asli untuk lima
+      kondisi: 91 hari (tenang, tanpa tautan), 5 hari (menonjol + tautan
+      perpanjang), 20 jam (berbunyi "tinggal 1 hari lagi", membuktikan
+      pembulatan ke atas), permanen (tidak tampil sama sekali), dan akun
+      admin (tidak tampil — tidak salah dianggap berakhir). `npm test`
+      55/55 hijau. **Sengaja tidak dikerjakan**: `welcome.html` tidak
+      disentuh (pintu masuknya dashboard), dan tidak ada email/notifikasi
+      pengingat otomatis — peringatannya muncul saat siswa membuka
+      dashboard, belum ada penjadwal.
+
+      **Masa aktif langganan: backend sudah mendukungnya sejak lama, UI-nya
+      yang tidak pernah mengirim** — user: "sekaligus atur berapa lama
+      langganan aktif dari admin". Ternyata ini bukan fitur baru:
+      `POST /admin/user-access/grant` SUDAH menerima `expiresAt` lengkap
+      dengan validasinya (`invalid_expires_at`, `expires_at_in_past`),
+      `user_enrollments.expires_at` sudah ada, `hasCourseAccess()` +
+      `accessibleCourses()` + `GET /enrollments/me` semua sudah menyaring
+      `expires_at > NOW()`, dan `enrollmentStatusBadge()` di admin bahkan
+      sudah menampilkan badge "Kadaluarsa". Yang tidak ada CUMA input di
+      UI-nya — `uaGrant`/`grantAccess` tidak pernah mengirim `expiresAt`
+      (persis seperti yang sudah dicatat di catatan Maducelik), jadi SEMUA
+      akses manual selama ini terlanjur permanen. **Jadi tidak ada endpoint
+      baru, tidak ada migrasi** — murni menyambungkan yang sudah ada.
+      Dinyatakan sebagai **DURASI** (Selamanya/1/3/6/12 bulan), bukan
+      tanggal, karena itu cara langganan dijual ("3 bulan"), bukan "sampai
+      14 Maret". Ditaruh di `userAccessPanelHtml()` yang dipakai BERSAMA
+      oleh modal tab Pengguna dan tab Beri Akses, jadi keduanya dapat
+      sekaligus — id select diturunkan dari `courseSelectId` yang memang
+      sudah diparameterkan (`${courseSelectId}-dur`, `-ext-${courseId}`)
+      supaya dua panel tidak bentrok. **Perpanjangan dihitung dari tanggal
+      berakhir yang SEKARANG, bukan dari hari ini** (`expiryFromMonths`
+      memakai `from` kalau masih di masa depan) supaya sisa hari langganan
+      yang masih berjalan tidak hangus; kalau sudah kedaluwarsa, dihitung
+      dari sekarang. Tombol Terapkan memakai ulang endpoint grant yang sama
+      — `ON CONFLICT (user_id, course_id) DO UPDATE` di sana memang sudah
+      meng-update `expires_at`. **Jebakan tanggal yang dijaga**:
+      `setMonth(getMonth()+n)` bawaan JS membuat 31 Januari + 1 bulan
+      melompat ke **3 Maret**, bukan 28 Februari — langganan yang berakhir
+      di bulan yang salah itu sulit disadari, jadi ada `addMonthsClamped()`
+      yang menjepit ke hari terakhir bulan target (diuji: 31 Jan→28 Feb,
+      31 Jan 2028→29 Feb kabisat, 31 Mei→30 Jun). Divalidasi di Postgres
+      asli + backend asli + Chromium asli pada KEDUA panel: beri akses
+      3 bulan → berakhir tepat +3 bulan; perpanjang +6 bulan dari sisa yang
+      ada → 5 Des 2026 jadi 5 Jun 2027 (bukan 5 Mar, membuktikan sisa hari
+      tidak hangus); ubah jadi Selamanya → `expires_at` NULL; enrollment
+      kedaluwarsa (26/8) diperpanjang 1 bulan → 5/10 dihitung dari sekarang
+      DAN badge kembali dari "Kadaluarsa" ke "Aktif"; penegakan aksesnya
+      dikonfirmasi lewat aturan produksi (akses jadi 0 begitu lewat
+      tanggal). `npm test` 55/55 hijau. **Sengaja tidak dibuat**: pilihan
+      tanggal bebas (durasi dinilai cukup; backend menerimanya kalau suatu
+      saat diperlukan) dan otomatisasi apa pun — perpanjangan tetap aksi
+      admin, belum ada penjadwal.
+
       **Hak hapus data: dijanjikan `privacy.html`, ternyata NIHIL
       implementasinya — dan `DELETE FROM users` bukan jawabannya** — ditemukan
       saat user minta "Lihat cara penyimpanan data user yg sudah ada". Audit

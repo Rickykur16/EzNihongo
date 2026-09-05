@@ -10,15 +10,20 @@ const WEEK_DAYS = 7;
 
 export { masteryDisplay, weeklyInsight } from './dashboard-rules.js';
 
+// expires_at ikut diambil (bukan cuma disaring) supaya siswa bisa diberi tahu
+// sisa masa aktifnya sendiri — sebelumnya kolom ini hanya dipakai sebagai
+// penyaring, jadi siswa tidak punya cara tahu kapan aksesnya berakhir sampai
+// tiba-tiba hilang. Akses admin bersifat implisit tanpa baris enrollment,
+// jadi expires_at-nya null (= tanpa batas waktu), bukan "sudah berakhir".
 async function accessibleCourses(user) {
   const enrolled = await query(
-    `SELECT c.id, c.slug, c.title, c.level, c.sort_order
+    `SELECT c.id, c.slug, c.title, c.level, c.sort_order, e.expires_at
        FROM user_enrollments e JOIN courses c ON c.id = e.course_id
       WHERE e.user_id = $1 AND e.status = 'active' AND (e.expires_at IS NULL OR e.expires_at > NOW())
       ORDER BY c.sort_order, c.created_at`, [user.id]
   );
   if (!(await isAdminEmail(user.email))) return enrolled.rows;
-  return (await query(`SELECT id, slug, title, level, sort_order FROM courses WHERE is_published = TRUE ORDER BY sort_order, created_at`)).rows;
+  return (await query(`SELECT id, slug, title, level, sort_order, NULL::timestamptz AS expires_at FROM courses WHERE is_published = TRUE ORDER BY sort_order, created_at`)).rows;
 }
 
 async function structuralCourse(userId, course) {
@@ -129,5 +134,5 @@ export async function loadDashboard(user, courseSlug) {
   const review = summarizeCandidates(reviewData.candidates.filter((candidate) => candidate.courseId === selected.id));
   const mastery = { ...generic, grammar: grammar.display };
   const focus = pickFocus(mastery, grammar, review, course.continueLearning);
-  return { greetingName: String(profile.rows[0]?.full_name || '').trim().split(/\s+/)[0] || null, courses: courses.map(({ id, slug, title, level }) => ({ id, slug, title, level })), course: { id: course.id, slug: course.slug, title: course.title, level: course.level, progress: course.progress }, continueLearning: course.continueLearning, review, mastery, focus, weeklyActivity: activity, weeklyInsight: weeklyInsight({ reviewDue: review.total, ...activity, focus }), liveClass };
+  return { greetingName: String(profile.rows[0]?.full_name || '').trim().split(/\s+/)[0] || null, courses: courses.map(({ id, slug, title, level, expires_at }) => ({ id, slug, title, level, expiresAt: expires_at || null })), course: { id: course.id, slug: course.slug, title: course.title, level: course.level, progress: course.progress, expiresAt: course.expires_at || null }, continueLearning: course.continueLearning, review, mastery, focus, weeklyActivity: activity, weeklyInsight: weeklyInsight({ reviewDue: review.total, ...activity, focus }), liveClass };
 }

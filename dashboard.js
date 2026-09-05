@@ -71,6 +71,31 @@
     </a>`).join('');
     app.insertAdjacentHTML('afterbegin', `<section class="card pending-order-banner"><div class="eyebrow">PESANAN SAYA</div>${html}</section>`);
   }
+  // Sisa masa aktif kelas. Sebelumnya expires_at cuma dipakai server sebagai
+  // penyaring, jadi akses siswa bisa hilang tanpa pernah ada peringatan sama
+  // sekali. Ambang 14 hari dipilih supaya masih ada waktu menghubungi admin
+  // sebelum benar-benar terkunci, bukan pemberitahuan di hari terakhir.
+  const RENEW_WA = 'https://wa.me/6281294894557';
+  const EXPIRY_WARNING_DAYS = 14;
+
+  function accessNotice(course) {
+    if (!course?.expiresAt) return '';
+    const end = new Date(course.expiresAt);
+    if (Number.isNaN(end.getTime())) return '';
+    // Dibulatkan ke atas supaya "berakhir besok pagi" tidak terbaca "0 hari".
+    const daysLeft = Math.ceil((end.getTime() - Date.now()) / 86400000);
+    const tanggal = new Intl.DateTimeFormat('id-ID', { dateStyle: 'long' }).format(end);
+    const sisa = daysLeft <= 0 ? 'berakhir hari ini'
+      : daysLeft === 1 ? 'tinggal 1 hari lagi'
+      : `tinggal ${daysLeft} hari lagi`;
+    const mendesak = daysLeft <= EXPIRY_WARNING_DAYS;
+    return `<p class="access-notice${mendesak ? ' urgent' : ''}">
+      Masa aktif kelas sampai <strong>${esc(tanggal)}</strong> · ${esc(sisa)}${
+        mendesak ? ` — <a href="${RENEW_WA}" target="_blank" rel="noopener">hubungi admin untuk perpanjang</a>` : ''
+      }
+    </p>`;
+  }
+
   function masteryRow(key, value = {}) {
     const percent = value.percentage;
     return `<div class="mastery-row"><strong>${labels[key]}</strong><div class="bar" aria-label="${labels[key]} ${percent == null ? 'belum cukup latihan' : `${percent}%`}"><i style="width:${percent == null ? 0 : percent}%"></i></div><span class="state">${percent == null ? 'Belum cukup latihan' : `${percent}% · `}${esc(value.label || 'Belum cukup latihan')}</span></div>`;
@@ -92,7 +117,7 @@
       ? `<h2>${esc(live.next.title)}</h2><p class="muted">${formatDate(live.next.startsAt)}</p>${live.next.canJoin ? `<a class="primary" target="_blank" rel="noopener" href="${esc(live.next.meetingUrl)}">Join Class</a>` : `<a class="secondary" href="${courseUrl('live.html', course.slug)}">Lihat jadwal</a>`}`
       : '<h2>Belum ada kelas terjadwal</h2><p class="muted">Kelas dan rekaman akan muncul di sini saat tersedia.</p>';
     const recordings = (live.recentRecordings || []).map((item) => `<li>${esc(item.title)} <a target="_blank" rel="noopener" href="${esc(item.recordingUrl)}">Tonton</a></li>`).join('');
-    app.innerHTML = `<section class="hero"><div><div class="eyebrow">学習ダッシュボード · DASHBOARD</div><h1>${data.greetingName ? `Halo, ${esc(data.greetingName)}.` : 'Halo.'}</h1><p class="muted">${esc(course.level || course.slug.toUpperCase())} · ${course.progress.percentage}% kurikulum selesai</p></div>${data.courses?.length > 1 ? `<label class="course-switch"><span>Kelas aktif</span><select class="course-select" id="course-select" aria-label="Pilih kelas">${data.courses.map((item) => `<option value="${esc(item.slug)}" ${item.id === course.id ? 'selected' : ''}>${esc(item.title)}</option>`).join('')}</select></label>` : ''}</section>
+    app.innerHTML = `<section class="hero"><div><div class="eyebrow">学習ダッシュボード · DASHBOARD</div><h1>${data.greetingName ? `Halo, ${esc(data.greetingName)}.` : 'Halo.'}</h1><p class="muted">${esc(course.level || course.slug.toUpperCase())} · ${course.progress.percentage}% kurikulum selesai</p>${accessNotice(course)}</div>${data.courses?.length > 1 ? `<label class="course-switch"><span>Kelas aktif</span><select class="course-select" id="course-select" aria-label="Pilih kelas">${data.courses.map((item) => `<option value="${esc(item.slug)}" ${item.id === course.id ? 'selected' : ''}>${esc(item.title)}</option>`).join('')}</select></label>` : ''}</section>
     <section class="grid dashboard-primary"><article class="card continue-card"><div class="eyebrow">LANJUT BELAJAR</div>${next ? `<div class="continue-label">${esc(next.section || 'Kurikulum')} · ${esc(next.chapter.title)}</div><div class="continue-title">${esc(next.lesson.title)}</div><a class="primary" href="${learnUrl(data)}">Lanjut Belajar</a>` : '<div class="continue-title">Kurikulum selesai</div><p class="muted">Semua pelajaran pada kelas ini sudah selesai.</p>'}</article><article class="card progress-card"><div class="eyebrow">PROGRES KELAS</div><div class="course-progress">${course.progress.percentage}% selesai</div><div class="curriculum-bar" role="progressbar" aria-label="Progres kurikulum" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${course.progress.percentage}"><i style="width:${course.progress.percentage}%"></i></div><p class="muted">${course.progress.completedLessons} dari ${course.progress.totalLessons} pelajaran telah diselesaikan.</p><a class="secondary compact-action" href="${courseUrl('progress.html', course.slug)}">Lihat Progres</a></article></section>
     <section class="grid dashboard-secondary"><article class="card review-card"><div class="eyebrow">SMART REVIEW</div><div class="review-count">${review.total} item perlu direview</div><div class="counts">${Object.entries(labels).map(([key, label]) => `<div class="count"><strong>${Number(review.byCategory?.[key]) || 0}</strong><span>${label}</span></div>`).join('')}</div>${review.total ? `<a class="primary" href="${reviewUrl()}">Mulai Review</a>` : '<p class="muted">Review hari ini selesai. Lanjutkan belajar untuk membuka materi review berikutnya.</p>'}</article><article class="card live"><div class="eyebrow">LIVE CLASS · NEXT CLASS</div>${liveMarkup}${recordings ? `<div class="eyebrow recordings-label">RECENT RECORDINGS</div><ul class="live-recordings">${recordings}</ul>` : ''}<a class="secondary live-all" href="${courseUrl('live.html', course.slug)}">Lihat Semua</a></article></section>
     <section class="card performance-card"><div class="performance"><div><div class="eyebrow">PERKEMBANGAN KEMAMPUAN</div><h2>Kemampuanmu saat ini</h2>${Object.entries(labels).map(([key]) => masteryRow(key, mastery[key])).join('')}</div><aside class="focus"><div class="eyebrow">FOKUS BELAJARMU</div>${focusMarkup}</aside></div></section>
