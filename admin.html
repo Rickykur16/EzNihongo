@@ -6871,9 +6871,107 @@ async function refreshUserAccessModal(email) {
   openModal(`
     <h2 style="margin-top:0;">Profil Akses</h2>
     ${userAccessPanelHtml(d, { courseSelectId: 'ua-course', revokeFn: 'uaRevoke', grantFn: 'uaGrant' })}
+    ${privacyRightsPanelHtml(d.user, d.orders)}
     <div style="margin-top:18px;text-align:right;"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `, { className: 'modal-lg' });
 }
+
+// Panel hak data pribadi — menjalankan janji di privacy.html bagian 5.
+// Alurnya memang manual lewat admin: privacy.html menyuruh siswa menghubungi
+// via WhatsApp menyebutkan email akunnya, jadi di sinilah permintaan itu
+// dieksekusi. Dua tingkat sengaja dipisah supaya permintaan ringan ("jangan
+// pakai data saya untuk marketing") tidak dijawab dengan menghapus akun.
+function privacyRightsPanelHtml(user, orders) {
+  const email = user?.email || '';
+  const erased = /^dihapus-.*@dihapus\.invalid$/.test(email);
+  // Fitur hapus ditujukan untuk user yang tidak pernah membayar; yang sudah
+  // membayar datanya dipertahankan sebagai catatan historis pelanggan. Order
+  // sudah ikut di payload /admin/user-access, jadi tidak perlu query tambahan.
+  const paidOrders = (orders || []).filter((o) => o.status === 'approved').length;
+  if (erased) {
+    return `<div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--line,#e5e5e5);">
+      <h3 style="margin:0 0 8px;font-size:15px;">Hak data pribadi</h3>
+      <div class="empty">Akun ini sudah dihapus atas permintaan pengguna. Catatan pembayarannya sengaja dipertahankan (lihat privacy.html bagian 4).</div>
+    </div>`;
+  }
+  return `
+  <div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--line,#e5e5e5);">
+    <h3 style="margin:0 0 4px;font-size:15px;">Hak data pribadi</h3>
+    <p style="margin:0 0 12px;font-size:12px;color:var(--ink-500,#8a8378);">
+      Dipakai saat siswa memakai haknya lewat WhatsApp (privacy.html bagian 5).
+    </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <button class="btn btn-ghost" onclick="uaDropMarketing('${escapeHtml(email)}')">
+        Tarik persetujuan marketing
+      </button>
+      <span style="font-size:12px;color:var(--ink-500,#8a8378);">Akun &amp; akses kursus tetap.</span>
+    </div>
+    <div style="margin-top:14px;padding:12px;border:1px solid #f0c4c4;border-radius:8px;background:#fff8f8;">
+      <strong style="font-size:13px;color:#a12b2b;">Hapus akun (tidak bisa dibatalkan)</strong>
+      <p style="margin:6px 0 10px;font-size:12px;color:var(--ink-700,#4a4a4a);">
+        Menghapus profil, akses, progres belajar, sesi login, dan foto bukti transfer.
+        Catatan transaksi (nomor pesanan &amp; nominal) sengaja dipertahankan.
+        Ketik ulang email untuk mengonfirmasi.
+      </p>
+      ${paidOrders > 0 ? `
+      <div style="margin:0 0 10px;padding:10px;border:1px solid #e0b050;border-radius:6px;background:#fffaf0;">
+        <strong style="font-size:12px;color:#8a5a00;">⚠ User ini pernah membayar (${paidOrders} pesanan lunas)</strong>
+        <p style="margin:5px 0 8px;font-size:12px;color:var(--ink-700,#4a4a4a);">
+          Fitur hapus ditujukan untuk user yang tidak pernah membayar. Data siswa
+          berbayar dimaksudkan tetap tersimpan sebagai catatan historis pelanggan.
+        </p>
+        <label style="display:flex;gap:7px;align-items:flex-start;font-size:12px;cursor:pointer;">
+          <input type="checkbox" id="ua-erase-ack-paid" style="margin-top:2px;flex-shrink:0;" />
+          <span>Saya tetap ingin menghapus akun ini beserta catatan historisnya.</span>
+        </label>
+      </div>` : ''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input id="ua-erase-confirm" type="text" placeholder="${escapeHtml(email)}"
+               autocomplete="off" style="flex:1;min-width:220px;padding:8px 10px;border:1px solid var(--line,#ddd);border-radius:6px;font-size:13px;" />
+        <button class="btn" style="background:#a12b2b;color:#fff;border-color:#a12b2b;"
+                onclick="uaEraseAccount('${escapeHtml(email)}', this)">Hapus akun</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+window.uaDropMarketing = async (email) => {
+  if (!confirm(`Hapus data profil marketing milik ${email}?\n\nAkun dan akses kursusnya TIDAK dihapus. Siswa akan diminta mengisi lagi kalau nanti enroll kursus baru.`)) return;
+  try {
+    const r = await api('/admin/users/' + encodeURIComponent(email) + '/marketing-profile', { method: 'DELETE' });
+    notify(r.deleted ? 'Data profil marketing dihapus' : 'Siswa ini memang belum pernah mengisi data profil');
+    await refreshUserAccessModal(email);
+  } catch (err) { notify('Gagal menghapus: ' + err.message, true); }
+};
+
+window.uaEraseAccount = async (email, btn) => {
+  const confirmEmail = document.getElementById('ua-erase-confirm')?.value.trim() || '';
+  if (confirmEmail.toLowerCase() !== email.toLowerCase()) {
+    notify('Email konfirmasi tidak cocok — ketik persis emailnya', true);
+    return;
+  }
+  // Centang ini cuma muncul kalau user pernah membayar (lihat panel di atas).
+  // Tidak ada = user non-pembayar, jalur normal fitur ini.
+  const ackBox = document.getElementById('ua-erase-ack-paid');
+  if (ackBox && !ackBox.checked) {
+    notify('User ini pernah membayar — centang dulu konfirmasi catatan historisnya', true);
+    return;
+  }
+  if (!confirm(`HAPUS AKUN ${email}?\n\nTidak bisa dibatalkan. Progres belajar, akses kursus, dan foto bukti transfernya hilang permanen.`)) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Menghapus…'; }
+  try {
+    await api('/admin/users/' + encodeURIComponent(email) + '/erase', {
+      method: 'POST',
+      body: JSON.stringify({ confirmEmail, acknowledgePaidHistory: !!ackBox }),
+    });
+    notify('Akun dihapus');
+    closeModal();
+    if (STATE.tab === 'users') { await loadUsers(); renderUsers(); }
+  } catch (err) {
+    notify('Gagal menghapus akun: ' + err.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = 'Hapus akun'; }
+  }
+};
 
 window.uaGrant = async (email) => {
   const courseSlug = document.getElementById('ua-course')?.value;

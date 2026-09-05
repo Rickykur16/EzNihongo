@@ -15,6 +15,7 @@ import {
 import { COACH_PROMPT_DEFAULT } from './recommendations.js';
 import { callClaude, anthropicEnabled, ANTHROPIC_GEN_MODEL } from '../anthropic.js';
 import { controlledSlot, slotShaped } from '../grammar-drills.js';
+import { deleteMarketingProfile, eraseUserAccount } from '../user-erasure.js';
 import {
   NOTION_BAB_DB_ID_DEFAULT,
   NOTION_VOCAB_LESSON_RELATION,
@@ -3907,6 +3908,71 @@ router.post('/user-access/revoke', asyncHandler(async (req, res) => {
   );
   if (upd.rows.length === 0) return res.status(404).json({ error: 'enrollment_not_found' });
   res.json({ ok: true });
+}));
+
+// ===== HAK HAPUS DATA (privacy.html bagian 5) =====
+// Admin-only dan itu memang sesuai janjinya: privacy.html menyuruh siswa
+// menghubungi lewat WhatsApp menyebutkan email akunnya, bukan menekan tombol
+// sendiri. Lihat backend/src/user-erasure.js untuk alasan teknis kenapa
+// penghapusan akun berbentuk anonimisasi, bukan DELETE.
+
+// DELETE /api/admin/users/:email/marketing-profile — tarik persetujuan saja.
+// Akun, akses kursus, dan progres belajar TIDAK disentuh. Ini permintaan yang
+// paling mungkin datang ("jangan pakai data saya untuk marketing"), jadi
+// sengaja dipisah dari penghapusan akun supaya admin tidak perlu memakai palu
+// besar untuk keperluan kecil.
+router.delete('/users/:email/marketing-profile', asyncHandler(async (req, res) => {
+  const email = String(req.params.email || '').trim().toLowerCase();
+  if (!email) return res.status(400).json({ error: 'email_required' });
+
+  const userRow = await query(`SELECT id FROM users WHERE lower(email) = $1 LIMIT 1`, [email]);
+  const user = userRow.rows[0];
+  if (!user) return res.status(404).json({ error: 'user_not_found' });
+
+  const result = await withTransaction((client) => deleteMarketingProfile(client, user.id));
+  res.json({ ok: true, ...result });
+}));
+
+// POST /api/admin/users/:email/erase — { confirmEmail, acknowledgePaidHistory? }
+// → hapus akun. Tidak bisa dibatalkan, jadi admin wajib mengetik ulang email
+// yang persis sama sebagai konfirmasi (pola yang sama dengan konfirmasi hapus
+// repo di GitHub) — tombol saja terlalu mudah kepencet untuk aksi
+// seireversibel ini. Seluruhnya dalam SATU transaksi: kalau ada satu tabel
+// gagal dibersihkan, semuanya di-rollback dan akunnya tetap utuh — jauh lebih
+// baik daripada akun setengah terhapus yang datanya tercecer.
+router.post('/users/:email/erase', asyncHandler(async (req, res) => {
+  const email = String(req.params.email || '').trim().toLowerCase();
+  const confirmEmail = String(req.body?.confirmEmail || '').trim().toLowerCase();
+  if (!email) return res.status(400).json({ error: 'email_required' });
+  if (confirmEmail !== email) return res.status(400).json({ error: 'confirmation_mismatch' });
+
+  const userRow = await query(`SELECT id, email FROM users WHERE lower(email) = $1 LIMIT 1`, [email]);
+  const user = userRow.rows[0];
+  if (!user) return res.status(404).json({ error: 'user_not_found' });
+
+  // Admin tidak boleh menghapus akunnya sendiri: dia akan kehilangan sesi di
+  // tengah aksi dan (kalau itu admin terakhir) mengunci semua orang keluar.
+  if (String(user.id) === String(req.user.id)) {
+    return res.status(400).json({ error: 'cannot_erase_self' });
+  }
+
+  // Fitur ini ditujukan untuk user yang TIDAK pernah membayar. Siswa yang
+  // sudah pernah membayar datanya sengaja dipertahankan sebagai catatan
+  // historis pelanggan, dan penghapusan tidak bisa dibatalkan — jadi
+  // kebijakan itu dikunci di sini, bukan diandalkan pada ingatan admin saat
+  // menekan tombol. Masih bisa ditembus kalau memang disengaja, tapi harus
+  // eksplisit.
+  const paid = await query(
+    `SELECT count(*)::int AS n FROM orders WHERE user_id = $1 AND status = 'approved'`,
+    [user.id]
+  );
+  const paidOrders = paid.rows[0]?.n || 0;
+  if (paidOrders > 0 && req.body?.acknowledgePaidHistory !== true) {
+    return res.status(409).json({ error: 'user_has_paid_orders', paidOrders });
+  }
+
+  const summary = await withTransaction((client) => eraseUserAccount(client, user.id));
+  res.json({ ok: true, summary, paidOrders });
 }));
 
 // ===== ORDERS (Phase 2 — manual bank transfer payment verification) =====
