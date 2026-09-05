@@ -3933,13 +3933,13 @@ router.delete('/users/:email/marketing-profile', asyncHandler(async (req, res) =
   res.json({ ok: true, ...result });
 }));
 
-// POST /api/admin/users/:email/erase — { confirmEmail } → hapus akun.
-// Tidak bisa dibatalkan, jadi admin wajib mengetik ulang email yang persis
-// sama sebagai konfirmasi (pola yang sama dengan konfirmasi hapus repo di
-// GitHub) — tombol saja terlalu mudah kepencet untuk aksi seireversibel ini.
-// Seluruhnya dalam SATU transaksi: kalau ada satu tabel gagal dibersihkan,
-// semuanya di-rollback dan akunnya tetap utuh — jauh lebih baik daripada
-// akun setengah terhapus yang datanya tercecer.
+// POST /api/admin/users/:email/erase — { confirmEmail, acknowledgePaidHistory? }
+// → hapus akun. Tidak bisa dibatalkan, jadi admin wajib mengetik ulang email
+// yang persis sama sebagai konfirmasi (pola yang sama dengan konfirmasi hapus
+// repo di GitHub) — tombol saja terlalu mudah kepencet untuk aksi
+// seireversibel ini. Seluruhnya dalam SATU transaksi: kalau ada satu tabel
+// gagal dibersihkan, semuanya di-rollback dan akunnya tetap utuh — jauh lebih
+// baik daripada akun setengah terhapus yang datanya tercecer.
 router.post('/users/:email/erase', asyncHandler(async (req, res) => {
   const email = String(req.params.email || '').trim().toLowerCase();
   const confirmEmail = String(req.body?.confirmEmail || '').trim().toLowerCase();
@@ -3956,8 +3956,23 @@ router.post('/users/:email/erase', asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'cannot_erase_self' });
   }
 
+  // Fitur ini ditujukan untuk user yang TIDAK pernah membayar. Siswa yang
+  // sudah pernah membayar datanya sengaja dipertahankan sebagai catatan
+  // historis pelanggan, dan penghapusan tidak bisa dibatalkan — jadi
+  // kebijakan itu dikunci di sini, bukan diandalkan pada ingatan admin saat
+  // menekan tombol. Masih bisa ditembus kalau memang disengaja, tapi harus
+  // eksplisit.
+  const paid = await query(
+    `SELECT count(*)::int AS n FROM orders WHERE user_id = $1 AND status = 'approved'`,
+    [user.id]
+  );
+  const paidOrders = paid.rows[0]?.n || 0;
+  if (paidOrders > 0 && req.body?.acknowledgePaidHistory !== true) {
+    return res.status(409).json({ error: 'user_has_paid_orders', paidOrders });
+  }
+
   const summary = await withTransaction((client) => eraseUserAccount(client, user.id));
-  res.json({ ok: true, summary });
+  res.json({ ok: true, summary, paidOrders });
 }));
 
 // ===== ORDERS (Phase 2 — manual bank transfer payment verification) =====

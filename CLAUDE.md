@@ -141,6 +141,28 @@
       siswa (hak lihat sudah terlayani tab Pengguna admin), dan `kanji_users`
       (realm PWA terpisah) TIDAK tersentuh — punya tabel & alur sendiri, perlu
       keputusan terpisah.
+      **Kebijakan pemakaian fiturnya (dari user, dan sekarang dikunci di
+      kode)**: tombol hapus ditujukan untuk **user yang TIDAK pernah
+      membayar**; siswa yang SUDAH membayar datanya sengaja dipertahankan
+      sebagai catatan historis pelanggan, dan akunnya nanti jadi nonaktif saat
+      langganan habis (pekerjaan terpisah, belum dikerjakan). Karena kebijakan
+      yang cuma ada di kepala pasti akan tertukar saat salah pencet — dan
+      penghapusan tidak bisa dibatalkan — `POST /admin/users/:email/erase`
+      menolak `409 user_has_paid_orders` kalau user punya order berstatus
+      `approved`, kecuali body memuat `acknowledgePaidHistory: true`; admin.html
+      menampilkan peringatan + centang konfirmasi tambahan yang HANYA muncul
+      untuk pembayar (data ordernya sudah ikut di payload
+      `/admin/user-access`, tidak perlu query baru). Diverifikasi: pembayar
+      tanpa flag → 409 **dan tidak ada satu baris pun tersentuh** (profil,
+      akses, order masih utuh setelah penolakan); dengan flag → jalan dan order
+      lunasnya tetap bertahan; non-pembayar → jalan tanpa perlu flag sama
+      sekali (jalur utama). **Jebakan saat menguji UI-nya**: memanggil
+      `openUserAccess()` untuk user lain segera setelah penghapusan sukses
+      membuat pemeriksaan membaca DOM modal yang belum selesai diganti — sempat
+      terlihat seperti peringatan "pernah membayar" bocor ke user non-pembayar.
+      Bukan bug: dengan `waitForSelector` pada modal barunya, hasilnya benar.
+      Kalau menulis tes modal admin lagi, tunggu elemen modal BARU, jangan
+      andalkan `waitForTimeout` setelah aksi yang menutup modal.
 
       **Data siswa (tanggal lahir/domisili/WhatsApp/tujuan belajar/referral)
       kini wajib diisi TEPAT saat enroll kursus pertama, bukan saat daftar
