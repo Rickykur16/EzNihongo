@@ -71,6 +71,45 @@
 
 ## Konvensi penting
 
+      **migration 139: dua contoh per pola dulu cuma tukar nama di template
+      yang sama** — user: "dalam satu pembahasan pola, kamu membuat yang 1
+      dan kedua dengan kalimat yg sama, harusnya jangan sama". Root cause:
+      migration 126/127/128 menulis 4 pola Bab 3 (〜は〜です／
+      〜は〜じゃありません／〜は〜ですか／〜も) dengan kerangka PERSIS SAMA —
+      [orang]は/も [negara]の [profesi]です — cuma nama orang/negara/profesi
+      yang ditukar; 2 pola Bab 4 (この／その／あの／どの + 名詞,
+      だれの〜ですか) juga menukar demonstratif+kata-benda di kerangka
+      identik. Tidak ketahuan di pengecekan duplikat literal (teksnya
+      beda), tapi strukturnya berulang — siswa cuma berlatih SATU bentuk
+      kalimat berkali-kali dengan kata diganti, bukan variasi pemakaian
+      pola sesungguhnya. **Perbaikan Bab 3**: satu contoh KELUARGA (pendek,
+      ditaruh pertama untuk materi Step 1) + satu contoh たなかさん dengan
+      negara/institusi (≥3 bunsetsu, dipakai Step 2 susun-kalimat); profesi
+      & anggota keluarga TIDAK diulang antar pola (dokter/ayah,
+      perawat/ibu, karyawan/kakak laki-laki, guru/kakak perempuan) —
+      kosakatanya ikut variatif, bukan cuma strukturnya. **Perbaikan
+      Bab 4**: contoh kedua diganti STRUKTUR kalimatnya, bukan cuma kata
+      bendanya (この／その／あの／どの + 名詞: satu predikat kepemilikan
+      「わたしのです」 + satu predikat identitas 「たなかさんです」;
+      だれの〜ですか: satu bentuk 「Xは だれのNですか」 + satu bentuk
+      「Xは だれのですか」ᅟ— N-nya di subjek, bukan di frasa tanya).
+      `139_grammar_examples_bab3_4_variety.sql` — replay DELETE+INSERT sama
+      seperti 127/128, dipersempit ke Bab 3+4 (bab lain kontennya tidak
+      berubah). **Nomor migrasi 129 sudah dipakai file lain** (`129_youtube_
+      video_segments.sql`) saat PR ini di-merge belakangan setelah banyak
+      pekerjaan lain masuk ke `main` — file ini diganti nomor jadi 139
+      (migrasi berikutnya yang tersedia) sebelum merge, isi/logikanya sama
+      persis dengan yang divalidasi sebelumnya. Divalidasi: cakupan arrange
+      TETAP 34/44 (cuma struktur yang diganti, jumlah bunsetsu dijaga), 0
+      opsi timpang/kembar; end-to-end lewat endpoint asli mengonfirmasi
+      Step 1 & Step 2 keempat pola Bab 3 sekarang genuinely beda
+      subjek+predikat, bukan template yang diulang. **Belum diaudit**: pola
+      serupa mungkin masih ada di Bab 5-11 (mis. おいくつですか／何歳ですか
+      pakai umur 23 yang sama di kedua contoh, 〜は[い-adj]くないです pakai
+      kata sifat たかい yang sama) — belum diperbaiki karena belum
+      dilaporkan, prioritas lebih rendah dari Bab 3/4 yang templatenya
+      paling mencolok.
+
       **`privacy.html` ditulis ulang dengan bahasa baku** — user: "Privacy html
       ga pake bahasa baku, buat seperti website-website resmi yang lain".
       Register diubah total (`kamu` → `Anda`, "kalau" → "apabila/dalam hal",
