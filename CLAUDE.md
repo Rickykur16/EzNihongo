@@ -110,6 +110,51 @@
       dilaporkan, prioritas lebih rendah dari Bab 3/4 yang templatenya
       paling mencolok.
 
+      **Halaman Syarat & Ketentuan (`terms.html`) dibuat** — user: "lanjut ke
+      syarat dan ketentuan", dengan penegasan "seperti yang ada di website
+      resmi pada umumnya, gunakan bahasa yang baku". Gaya, blok CSS, dan
+      struktur menyalin `privacy.html` (prefix kelas `tc-` supaya tidak
+      bentrok), 15 bagian bernomor, register baku yang sama (`Anda`,
+      `apabila`, `sebagaimana dimaksud`). **Isinya diturunkan dari perilaku
+      sistem yang sebenarnya, bukan template generik**: pesanan berlaku
+      3 hari (`NOW() + INTERVAL '3 days'` di `orders.js:168`), pembayaran
+      transfer manual dengan nomor pesanan wajib di berita transfer, bukti
+      JPG/PNG/WEBP/PDF maks 5MB (dari `courses/order.html`), verifikasi
+      manual admin + jalur bukti ditolak, masa aktif bisa permanen atau
+      berjangka dengan peringatan menjelang berakhir (dari PR #270),
+      pendaftaran hanya lewat Google, kolom diskusi yang penghapusannya
+      men-scrub konten dan mempertahankan balasan orang lain (persis
+      `user-erasure.js`), serta fitur AI yang keluarannya bisa keliru dan
+      dibatasi pemakaiannya.
+      **Dua keputusan bisnis diambil user, bukan dikarang**: (1) refund —
+      pada dasarnya tidak ada karena materi digital langsung bisa diakses
+      seluruhnya, TAPI tetap diberikan untuk pembayaran ganda, akses yang
+      tidak pernah aktif karena kesalahan kami, dan kelas yang dibatalkan;
+      pengecualian itu sengaja ada karena "sama sekali tidak ada refund"
+      berisiko dianggap klausula baku yang dilarang UU 8/1999; (2) EzNihongo
+      dinyatakan tanpa mengklaim bentuk badan hukum apa pun (perorangan),
+      sama seperti `privacy.html`.
+      **Rujukan silang sengaja TANPA nomor bagian** — `terms.html` menaut ke
+      `privacy.html` dengan menyebut namanya saja, tidak pernah "bagian N".
+      Ini menghindari terulangnya insiden 10 rujukan basi saat penomoran
+      `privacy.html` bergeser (lihat catatan di bawah).
+      **Tautan footer**: "Syarat & Ketentuan" kini tertaut dari 10 halaman
+      berpasangan dengan Kebijakan Privasi. Di `index.html` kedua tautan
+      DIBUNGKUS SATU `<span>` — induknya `display:flex` + `space-between`,
+      jadi teks pemisah `{' · '}` yang berdiri sendiri akan jadi flex item
+      tersendiri dan ikut terlempar melebar. Komentar lama di situ yang
+      bilang "Syarat & Ketentuan sengaja belum ditaut" sudah tidak berlaku
+      dan ikut diperbarui. Diverifikasi lewat Chromium asli (390px):
+      15 bagian ter-render, tanpa scroll horizontal, 0 kata informal, dan
+      tautan footer dicek di 11 halaman. **Jebakan yang KEMBALI menggigit**:
+      `courses/order.html` terbaca `terms.html` alih-alih `../terms.html`
+      karena halamannya mengalihkan ke `login.html` saat belum login —
+      persis artefak yang sudah dicatat untuk `courses/detail.html` dulu;
+      dipastikan benar lewat `curl` ke berkas yang disajikan.
+      `index.html` tidak bisa dirender di sandbox ini (unpkg diblokir egress
+      proxy), jadi JSX-nya divalidasi dengan mengekstrak blok
+      `<script type="text/babel">` lalu di-parse Prettier.
+
       **`privacy.html` ditulis ulang dengan bahasa baku** — user: "Privacy html
       ga pake bahasa baku, buat seperti website-website resmi yang lain".
       Register diubah total (`kamu` → `Anda`, "kalau" → "apabila/dalam hal",
