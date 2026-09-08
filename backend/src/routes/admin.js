@@ -3910,7 +3910,7 @@ router.post('/user-access/revoke', asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
-// ===== HAK HAPUS DATA (privacy.html bagian 5) =====
+// ===== HAK HAPUS DATA (privacy.html bagian 9) =====
 // Admin-only dan itu memang sesuai janjinya: privacy.html menyuruh siswa
 // menghubungi lewat WhatsApp menyebutkan email akunnya, bukan menekan tombol
 // sendiri. Lihat backend/src/user-erasure.js untuk alasan teknis kenapa
