@@ -31,15 +31,21 @@
   `sudo rclone ls r2:eznihongo-backups`. Lihat session sebelumnya untuk
   step lengkapnya.
 
-- [ ] **GPG encryption pada dump** sebelum di-upload offsite. Dump berisi
-  email user + raw webhook Midtrans (PII + payment data). Tambahkan
+- [ ] **GPG encryption pada dump** sebelum di-upload offsite. **Bobotnya naik
+  sejak migration 138** — satu `db.dump` sekarang berisi email + tanggal lahir
+  + nomor WhatsApp + domisili + foto bukti transfer (BYTEA di
+  `order_payments.proof_image`), bukan lagi cuma progres belajar. Tambahkan
   `gpg --symmetric --cipher-algo AES256` di `backup.sh` sebelum
   `rclone copy`. Passphrase simpan di password manager, bukan di repo.
   Hanya relevan setelah offsite hidup.
 
-- [ ] **`pg_dumpall --globals-only`** terpisah untuk role / grant. Saat ini
-  `backup.sh` cuma dump database `eznihongo` — kalau VPS rebuild dari nol,
-  role `eznihongo_app` + grant-nya harus dibikin manual dulu.
+- [x] **`pg_dumpall --globals-only`** terpisah untuk role / grant — SUDAH ADA,
+  catatan ini ternyata basi (dikoreksi 2026-09-04 saat audit penyimpanan data
+  user). `backup.sh:66` menjalankan
+  `pg_dumpall --globals-only --no-role-passwords` dan menyimpannya sebagai
+  `globals.sql` di dalam arsip harian, persis seperti yang diminta item ini.
+  Catatan lama bilang "backup.sh cuma dump database eznihongo" — itu tidak
+  benar lagi.
 
 - [ ] **Test restore ke staging** — tulisan ini ga akan jadi backup beneran
   sampai pernah dicoba di-restore. Minimal sekali per bulan ke Postgres
@@ -65,7 +71,7 @@
 
 ## Konvensi penting
 
-      **migration 129: dua contoh per pola dulu cuma tukar nama di template
+      **migration 139: dua contoh per pola dulu cuma tukar nama di template
       yang sama** — user: "dalam satu pembahasan pola, kamu membuat yang 1
       dan kedua dengan kalimat yg sama, harusnya jangan sama". Root cause:
       migration 126/127/128 menulis 4 pola Bab 3 (〜は〜です／
@@ -87,17 +93,783 @@
       「わたしのです」 + satu predikat identitas 「たなかさんです」;
       だれの〜ですか: satu bentuk 「Xは だれのNですか」 + satu bentuk
       「Xは だれのですか」ᅟ— N-nya di subjek, bukan di frasa tanya).
-      `129_grammar_examples_bab3_4_variety.sql` — replay DELETE+INSERT sama
+      `139_grammar_examples_bab3_4_variety.sql` — replay DELETE+INSERT sama
       seperti 127/128, dipersempit ke Bab 3+4 (bab lain kontennya tidak
-      berubah). Divalidasi: cakupan arrange TETAP 34/44 (cuma struktur yang
-      diganti, jumlah bunsetsu dijaga), 0 opsi timpang/kembar; end-to-end
-      lewat endpoint asli mengonfirmasi Step 1 & Step 2 keempat pola Bab 3
-      sekarang genuinely beda subjek+predikat, bukan template yang diulang.
-      **Belum diaudit**: pola serupa mungkin masih ada di Bab 5-11 (mis.
-      おいくつですか／何歳ですか pakai umur 23 yang sama di kedua contoh,
-      〜は[い-adj]くないです pakai kata sifat たかい yang sama) — belum
-      diperbaiki karena belum dilaporkan, prioritas lebih rendah dari
-      Bab 3/4 yang templatenya paling mencolok.
+      berubah). **Nomor migrasi 129 sudah dipakai file lain** (`129_youtube_
+      video_segments.sql`) saat PR ini di-merge belakangan setelah banyak
+      pekerjaan lain masuk ke `main` — file ini diganti nomor jadi 139
+      (migrasi berikutnya yang tersedia) sebelum merge, isi/logikanya sama
+      persis dengan yang divalidasi sebelumnya. Divalidasi: cakupan arrange
+      TETAP 34/44 (cuma struktur yang diganti, jumlah bunsetsu dijaga), 0
+      opsi timpang/kembar; end-to-end lewat endpoint asli mengonfirmasi
+      Step 1 & Step 2 keempat pola Bab 3 sekarang genuinely beda
+      subjek+predikat, bukan template yang diulang. **Belum diaudit**: pola
+      serupa mungkin masih ada di Bab 5-11 (mis. おいくつですか／何歳ですか
+      pakai umur 23 yang sama di kedua contoh, 〜は[い-adj]くないです pakai
+      kata sifat たかい yang sama) — belum diperbaiki karena belum
+      dilaporkan, prioritas lebih rendah dari Bab 3/4 yang templatenya
+      paling mencolok.
+
+      **Siswa sekarang tahu sisa masa aktifnya sendiri** — user: "Buat juga
+      siswa tahu berapa lama sisa masa aktif akunnya". Lanjutan langsung dari
+      catatan di bawah: setelah admin bisa mengatur masa aktif, siswa masih
+      buta terhadapnya — `expires_at` selama ini dipakai server MURNI sebagai
+      penyaring (`accessibleCourses()` menyaringnya tapi tidak pernah
+      meng-SELECT-nya, dan payload `/dashboard/me` mem-whitelist field
+      sehingga tidak akan lolos walau di-select), jadi akses siswa bisa
+      hilang mendadak tanpa satu pun peringatan sebelumnya. Diperbaiki di
+      tiga titik: query `accessibleCourses()` ikut mengambil `e.expires_at`
+      (cabang admin memakai `NULL::timestamptz` eksplisit supaya akses
+      implisit admin terbaca "tanpa batas waktu", BUKAN "sudah berakhir"),
+      payload meneruskannya sebagai `expiresAt` di `courses[]` maupun
+      `course`, dan `dashboard.js` merender `accessNotice()` di hero.
+      **Ditaruh di `dashboard.html`, bukan `welcome.html`** — komentar
+      `login.html` sendiri menyatakan "Dashboard selalu menjadi pintu masuk
+      siswa". Ambang peringatan 14 hari: di bawah itu notifikasinya berubah
+      menonjol (warna peringatan yang sama dengan banner pesanan) dan
+      memunculkan tautan WhatsApp admin untuk perpanjang; di atas itu
+      tampil tenang sebagai teks abu-abu biasa. Nomor WhatsApp-nya sama
+      dengan 6 tempat lain di repo (dicek konsisten). **Detail yang mudah
+      salah**: sisa hari dibulatkan ke ATAS (`Math.ceil`) — kalau tidak,
+      langganan yang berakhir besok pagi terbaca "0 hari"; dan
+      `expires_at` NULL (permanen) TIDAK menampilkan apa pun, bukan
+      "berakhir hari ini". Divalidasi lewat Chromium asli untuk lima
+      kondisi: 91 hari (tenang, tanpa tautan), 5 hari (menonjol + tautan
+      perpanjang), 20 jam (berbunyi "tinggal 1 hari lagi", membuktikan
+      pembulatan ke atas), permanen (tidak tampil sama sekali), dan akun
+      admin (tidak tampil — tidak salah dianggap berakhir). `npm test`
+      55/55 hijau. **Sengaja tidak dikerjakan**: `welcome.html` tidak
+      disentuh (pintu masuknya dashboard), dan tidak ada email/notifikasi
+      pengingat otomatis — peringatannya muncul saat siswa membuka
+      dashboard, belum ada penjadwal.
+
+      **Masa aktif langganan: backend sudah mendukungnya sejak lama, UI-nya
+      yang tidak pernah mengirim** — user: "sekaligus atur berapa lama
+      langganan aktif dari admin". Ternyata ini bukan fitur baru:
+      `POST /admin/user-access/grant` SUDAH menerima `expiresAt` lengkap
+      dengan validasinya (`invalid_expires_at`, `expires_at_in_past`),
+      `user_enrollments.expires_at` sudah ada, `hasCourseAccess()` +
+      `accessibleCourses()` + `GET /enrollments/me` semua sudah menyaring
+      `expires_at > NOW()`, dan `enrollmentStatusBadge()` di admin bahkan
+      sudah menampilkan badge "Kadaluarsa". Yang tidak ada CUMA input di
+      UI-nya — `uaGrant`/`grantAccess` tidak pernah mengirim `expiresAt`
+      (persis seperti yang sudah dicatat di catatan Maducelik), jadi SEMUA
+      akses manual selama ini terlanjur permanen. **Jadi tidak ada endpoint
+      baru, tidak ada migrasi** — murni menyambungkan yang sudah ada.
+      Dinyatakan sebagai **DURASI** (Selamanya/1/3/6/12 bulan), bukan
+      tanggal, karena itu cara langganan dijual ("3 bulan"), bukan "sampai
+      14 Maret". Ditaruh di `userAccessPanelHtml()` yang dipakai BERSAMA
+      oleh modal tab Pengguna dan tab Beri Akses, jadi keduanya dapat
+      sekaligus — id select diturunkan dari `courseSelectId` yang memang
+      sudah diparameterkan (`${courseSelectId}-dur`, `-ext-${courseId}`)
+      supaya dua panel tidak bentrok. **Perpanjangan dihitung dari tanggal
+      berakhir yang SEKARANG, bukan dari hari ini** (`expiryFromMonths`
+      memakai `from` kalau masih di masa depan) supaya sisa hari langganan
+      yang masih berjalan tidak hangus; kalau sudah kedaluwarsa, dihitung
+      dari sekarang. Tombol Terapkan memakai ulang endpoint grant yang sama
+      — `ON CONFLICT (user_id, course_id) DO UPDATE` di sana memang sudah
+      meng-update `expires_at`. **Jebakan tanggal yang dijaga**:
+      `setMonth(getMonth()+n)` bawaan JS membuat 31 Januari + 1 bulan
+      melompat ke **3 Maret**, bukan 28 Februari — langganan yang berakhir
+      di bulan yang salah itu sulit disadari, jadi ada `addMonthsClamped()`
+      yang menjepit ke hari terakhir bulan target (diuji: 31 Jan→28 Feb,
+      31 Jan 2028→29 Feb kabisat, 31 Mei→30 Jun). Divalidasi di Postgres
+      asli + backend asli + Chromium asli pada KEDUA panel: beri akses
+      3 bulan → berakhir tepat +3 bulan; perpanjang +6 bulan dari sisa yang
+      ada → 5 Des 2026 jadi 5 Jun 2027 (bukan 5 Mar, membuktikan sisa hari
+      tidak hangus); ubah jadi Selamanya → `expires_at` NULL; enrollment
+      kedaluwarsa (26/8) diperpanjang 1 bulan → 5/10 dihitung dari sekarang
+      DAN badge kembali dari "Kadaluarsa" ke "Aktif"; penegakan aksesnya
+      dikonfirmasi lewat aturan produksi (akses jadi 0 begitu lewat
+      tanggal). `npm test` 55/55 hijau. **Sengaja tidak dibuat**: pilihan
+      tanggal bebas (durasi dinilai cukup; backend menerimanya kalau suatu
+      saat diperlukan) dan otomatisasi apa pun — perpanjangan tetap aksi
+      admin, belum ada penjadwal.
+
+      **Hak hapus data: dijanjikan `privacy.html`, ternyata NIHIL
+      implementasinya — dan `DELETE FROM users` bukan jawabannya** — ditemukan
+      saat user minta "Lihat cara penyimpanan data user yg sudah ada". Audit
+      itu memunculkan celah kepatuhan dari PR sebelumnya sendiri:
+      `privacy.html` bagian 5 (yang ditulis di PR #268) menjanjikan hak
+      lihat/koreksi/hapus, tapi di seluruh kodebase **tidak ada satu pun**
+      `DELETE FROM users`, endpoint hapus akun, atau jalur apa pun untuk
+      menjalankannya. **Klaim pertama saya di sesi ini SALAH dan dikoreksi
+      oleh pengukuran**: saya bilang "struktur CASCADE-nya sudah siap, yang
+      tidak ada cuma pemicunya" — dibuktikan di Postgres asli, `DELETE FROM
+      users` justru **GAGAL TOTAL** dengan foreign key violation
+      (`order_payments_submitted_by_fkey`) untuk siswa mana pun yang pernah
+      mengunggah bukti transfer, DAN untuk admin mana pun yang pernah
+      me-review — karena `order_payments.submitted_by`/`.reviewed_by` tidak
+      punya klausa `ON DELETE` sama sekali (default NO ACTION). Lebih jauh:
+      `orders.user_id` justru `ON DELETE CASCADE`, jadi kalaupun pagar itu
+      dilepas, hard delete akan **MENGHANCURKAN catatan pembayaran** yang
+      `privacy.html` bagian 4 secara eksplisit cadangkan hak simpannya. Jadi
+      hard delete bukan cuma sulit, tapi bertentangan dengan kebijakan kita
+      sendiri. **Keputusan: anonimisasi di tempat** (`backend/src/user-erasure.js`)
+      — baris `users` dipertahankan sebagai batu nisan (`email` →
+      `dihapus-<uuid>@dihapus.invalid`, `google_id` → `dihapus-<uuid>`, keduanya
+      memakai UUID user sendiri karena kolomnya UNIQUE NOT NULL, sekaligus
+      membebaskan `google_id` lama supaya orang yang sama bisa mendaftar ulang
+      sebagai user baru). **KONSEKUENSI YANG MUDAH TERLEWAT: karena baris
+      `users` TIDAK dihapus, ke-15 `ON DELETE CASCADE` yang menempel ke users
+      TIDAK ADA YANG JALAN** — tiap tabel satelit wajib dibersihkan eksplisit,
+      dan melewatkan satu berarti data pribadi tertinggal diam-diam. Karena
+      repo ini rutin menambah tabel per-user (yang terbaru `user_marketing_profile`
+      di 138), dipasang pagar `assertUserTablesCovered()` yang **menanyakan
+      langsung ke katalog Postgres** tabel apa saja yang menunjuk `users(id)`
+      lalu MENOLAK menjalankan penghapusan kalau ada yang belum terdaftar di
+      `WIPE_TABLES`/`HANDLED_SEPARATELY` — dibuktikan menggigit lewat tabel
+      palsu. **Dua jebakan yang ketahuan dari pengukuran, bukan tebakan**:
+      (1) `discussions.parent_id` CASCADE ke DIRINYA SENDIRI, jadi hard-delete
+      komentar induk milik siswa akan ikut **menghapus balasan orang lain** —
+      karena itu di tabel ini konten di-scrub + `is_deleted = TRUE` (flag yang
+      memang sudah dihormati `routes/discussions.js`) dan barisnya
+      dipertahankan; diverifikasi balasan admin selamat. (2) `proof_image`
+      adalah foto slip bank berisi nama + nomor rekening, item paling padat PII
+      di sistem — barisnya dipertahankan sebagai catatan transaksi, tapi
+      gambar + `claimed_sender_name` + `raw_payload`-nya dibuang; catatan
+      nominal/tanggal/nomor pesanan sudah cukup untuk keperluan penyimpanan
+      yang dicadangkan kebijakan, fotonya tidak. **Dua tingkat sengaja
+      dipisah**: `DELETE /admin/users/:email/marketing-profile` (tarik
+      persetujuan — akun, akses kursus, dan progres belajar TETAP; diverifikasi
+      akses & progres utuh setelahnya) vs `POST /admin/users/:email/erase`
+      (hapus akun, wajib mengetik ulang email persis sebagai konfirmasi, satu
+      `withTransaction` penuh supaya kegagalan di tengah tidak meninggalkan
+      akun setengah terhapus). Admin-only dan itu memang sesuai janjinya —
+      `privacy.html` menyuruh siswa menghubungi lewat WhatsApp menyebutkan
+      email akunnya, jadi tidak ada endpoint self-service. Admin tidak boleh
+      menghapus akunnya sendiri (`cannot_erase_self`) karena akan kehilangan
+      sesi di tengah aksi dan bisa mengunci semua orang keluar. `privacy.html`
+      bagian 4 sekalian diperjelas supaya janjinya cocok dengan yang
+      benar-benar dilakukan sistem (menyebut eksplisit foto bukti transfer
+      dihapus, catatan transaksi dipertahankan tanpa menunjuk identitas).
+      Divalidasi di Postgres asli + backend asli + Chromium asli: siswa dengan
+      bukti transfer berhasil dianonimkan (kasus yang tadinya memblokir
+      DELETE), `orders` bertahan, audit programatik 0 PII tersisa, idempoten
+      (run kedua semua 0, batu nisan tidak tertimpa berlapis), empat pagar
+      endpoint menggigit (konfirmasi tidak cocok 400, user tidak ada 404,
+      hapus diri sendiri 400, tanpa token 401), dan modal admin diklik langsung
+      lewat Playwright (konfirmasi salah ditolak di client, dua tombol jalan,
+      modal tertutup + tabel refresh setelah hapus). `npm test` 55/55 hijau.
+      **Sengaja di luar scope**: tidak ada self-service untuk siswa (kebijakan
+      sendiri mengarahkan ke WhatsApp), tidak ada ekspor "semua data saya" per
+      siswa (hak lihat sudah terlayani tab Pengguna admin), dan `kanji_users`
+      (realm PWA terpisah) TIDAK tersentuh — punya tabel & alur sendiri, perlu
+      keputusan terpisah.
+      **Kebijakan pemakaian fiturnya (dari user, dan sekarang dikunci di
+      kode)**: tombol hapus ditujukan untuk **user yang TIDAK pernah
+      membayar**; siswa yang SUDAH membayar datanya sengaja dipertahankan
+      sebagai catatan historis pelanggan, dan akunnya nanti jadi nonaktif saat
+      langganan habis (pekerjaan terpisah, belum dikerjakan). Karena kebijakan
+      yang cuma ada di kepala pasti akan tertukar saat salah pencet — dan
+      penghapusan tidak bisa dibatalkan — `POST /admin/users/:email/erase`
+      menolak `409 user_has_paid_orders` kalau user punya order berstatus
+      `approved`, kecuali body memuat `acknowledgePaidHistory: true`; admin.html
+      menampilkan peringatan + centang konfirmasi tambahan yang HANYA muncul
+      untuk pembayar (data ordernya sudah ikut di payload
+      `/admin/user-access`, tidak perlu query baru). Diverifikasi: pembayar
+      tanpa flag → 409 **dan tidak ada satu baris pun tersentuh** (profil,
+      akses, order masih utuh setelah penolakan); dengan flag → jalan dan order
+      lunasnya tetap bertahan; non-pembayar → jalan tanpa perlu flag sama
+      sekali (jalur utama). **Jebakan saat menguji UI-nya**: memanggil
+      `openUserAccess()` untuk user lain segera setelah penghapusan sukses
+      membuat pemeriksaan membaca DOM modal yang belum selesai diganti — sempat
+      terlihat seperti peringatan "pernah membayar" bocor ke user non-pembayar.
+      Bukan bug: dengan `waitForSelector` pada modal barunya, hasilnya benar.
+      Kalau menulis tes modal admin lagi, tunggu elemen modal BARU, jangan
+      andalkan `waitForTimeout` setelah aksi yang menutup modal.
+
+      **Data siswa (tanggal lahir/domisili/WhatsApp/tujuan belajar/referral)
+      kini wajib diisi TEPAT saat enroll kursus pertama, bukan saat daftar
+      akun** — user: "Saya perlu data siswa yang lengkap saat pendaftaran
+      guna klasifikasi untuk pengembangan marketing di masa depan", lalu
+      dikoreksi user sendiri lewat beberapa putaran sebelum implementasi
+      ditulis: paling penting tanggal lahir + domisili + kontak untuk
+      operasional (arahkan ke lokasi ujian terdekat), field wajib PERSIS
+      saat proses enroll/bayar (bukan opsional di dashboard), akun Google
+      OAuth sendiri TIDAK disentuh sama sekali. **Skema baru**
+      (`migration 138`, tabel `user_marketing_profile`, terpisah dari
+      `users` — pola sama dengan `user_stats`/`user_enrollments`): tidak ada
+      kolom status — baris ADA berarti sudah lengkap (semua kolom
+      `NOT NULL`), baris TIDAK ADA berarti belum pernah ditanya. **Sekali
+      per siswa, bukan sekali per kursus**: `courses/course.js`'s `init()`
+      memanggil `GET /profile/marketing` sebelum render checkout — default
+      `needsProfile = true` (FAIL-CLOSED: kalau fetch gagal atau status
+      tidak jelas, field tetap ditampilkan, bukan diam-diam dilewati) dan
+      hanya jadi `false` kalau server mengonfirmasi `hasProfile: true`. Field
+      tampil di `#c-checkout-form` untuk jalur GRATIS maupun BERBAYAR
+      (form yang sama); submit handler manggil `PUT /profile/marketing`
+      SEBELUM `POST /enrollments`/`POST /orders` yang sudah ada — dua
+      panggilan berurutan yang disengaja terpisah (bukan digabung satu
+      endpoint besar) supaya logika order/enrollment yang sudah teruji tidak
+      ikut dirisikokan. **Nomor WhatsApp sengaja dibedakan dari field lain**
+      di teks consent — bukan fakta pasif seperti tanggal lahir, tapi kontak
+      yang akan dipakai AKTIF menghubungi siswa, jadi `privacy.html`
+      (halaman kebijakan privasi baru, sebelumnya nihil di repo — dicek
+      dulu) memisahkan eksplisit dua tujuan: operasional (arahkan lokasi
+      ujian JLPT terdekat) vs riset/pengembangan marketing (segmentasi
+      agregat) — tidak digabung samar jadi satu "marketing". Checkbox
+      consent wajib dicentang (validasi client DAN server), berbasis UU PDP
+      (UU No. 27/2022) — halaman ini draf yang ditulis mudah dipahami,
+      eksplisit disebutkan BUKAN pengganti nasihat hukum profesional.
+      **Notifikasi admin pakai bot Telegram yang SAMA dengan PR bukti
+      pembayaran sebelumnya** — user: "Kan tadi pake bot telegram untuk
+      notifnya" — ditarik jadi helper bersama `backend/src/telegram.js`
+      (`notifyAdmin(text)`, best-effort, no-op kalau env var kosong,
+      try/catch menyeluruh), `orders.js`'s `notifyAdminNewProof` di-refactor
+      memakainya juga (menghapus duplikasi fetch/env-var yang sebelumnya ada
+      di sana). **Admin** (`admin.html`/`admin.js` tab Pengguna): 3 dropdown
+      filter (provinsi/tujuan belajar/sumber referral) + tombol "⬇ Export
+      CSV" (`GET /admin/users/marketing-export`, menghormati filter aktif,
+      `text/csv` dengan BOM UTF-8 ditulis eksplisit sebagai escape sequence
+      `\uFEFF` — bukan karakter BOM literal ditempel di source, supaya tetap
+      terbaca jelas). **Dua bug
+      ditemukan & diperbaiki saat verifikasi sendiri (bukan dilaporkan
+      user)**: (1) tanggal di CSV export sempat ter-render sebagai string
+      locale verbose (`"Thu Jan 01 1998 00:00:00 GMT+0000..."`) karena
+      driver `pg` mengembalikan kolom `DATE`/`TIMESTAMPTZ` sebagai objek JS
+      `Date` dan `String(date)` memicu format itu — diperbaiki dengan helper
+      `asDate()` (`toISOString().slice(0,10)`); (2) BOM sempat ditempel
+      sebagai karakter literal invisible di source alih-alih escape sequence
+      — diperbaiki jadi `'\uFEFF'` eksplisit. **Sengaja di luar scope**
+      (bukan kelupaan): tidak ada backfill/jaring pengaman untuk siswa lama
+      yang tidak pernah enroll kursus baru lagi setelah fitur ini jalan —
+      pemicunya murni aksi enroll; tidak ada logika pencocokan otomatis ke
+      lokasi ujian terdekat, cuma data mentahnya dikumpulkan + bisa
+      difilter/export. Divalidasi end-to-end: Postgres lokal + backend asli
+      + Chromium asli (siswa baru → field wajib muncul di checkout gratis
+      maupun berbayar → submit lengkap+consent → lanjut otomatis ke
+      enrollment/order seperti biasa → siswa yang sama enroll kursus kedua
+      → field TIDAK muncul lagi; validasi server digigit langsung via POST
+      manual dengan consent `false`/field kosong/tidak valid → 400 dengan
+      kode error jelas, tidak ada baris tertulis; kegagalan Telegram
+      sungguhan — `api.telegram.org` diblokir egress proxy sandbox ini —
+      dibuktikan tidak pernah bocor jadi kegagalan submit siswa); admin
+      Pengguna diklik langsung lewat Playwright (bukan cuma endpoint
+      di-curl): 3 dropdown filter mempersempit tabel dengan benar
+      (provinsi Jawa Barat → 1 baris, tujuan belajar jlpt → 2 baris), tombol
+      Export CSV mengunduh file yang menghormati filter aktif; `npm test`
+      55/55 tetap hijau.
+
+      **Sistem pembayaran main site: dianalisis, DITOLAK Midtrans & deteksi
+      mutasi bank otomatis, dan satu bug produksi serius ditemukan tak
+      sengaja** — user minta analisis sistem pembayaran + koneksinya ke
+      UI/UX landing page. Temuan alur intinya (state machine order di
+      `orders.js`, grant akses di `admin.js` saat approve) sudah solid, tidak
+      ada bug. Yang bermasalah ada di titik sambung UI↔backend, plus satu
+      celah operasional besar (nihil notifikasi admin). User menolak Midtrans
+      (sudah ada infra jalan di PWA Kanji — `subscription.js` — tapi user
+      tidak mau ketergantungan payment gateway pihak ketiga), dan menolak
+      juga "deteksi mutasi bank otomatis" gaya Moota setelah diberi tahu
+      risikonya: cara kerjanya minta kredensial internet banking pengguna
+      langsung (dikonfirmasi dari halaman marketing Moota sendiri), yang
+      melanggar ToS kebanyakan bank — alternatif Open Banking/OAuth (mis.
+      Brick) lebih aman tapi belum matang untuk merchant kecil di Indonesia.
+      **Keputusan akhir: perbaiki sistem manual yang ada, nihil pihak ketiga
+      baru.** Tiga perbaikan: (1) notifikasi admin via Telegram bot
+      (`notifyAdminNewProof()` di `orders.js`, best-effort — kosong/gagal
+      tidak pernah menggagalkan upload siswa, env var `TELEGRAM_BOT_TOKEN`/
+      `TELEGRAM_ADMIN_CHAT_ID` kosong = no-op, dipilih atas email karena
+      backend tidak punya dependency email sama sekali dan atas WA Business
+      API karena itu perlu verifikasi bisnis ke Meta); (2) hapus tombol
+      metode pembayaran kosmetik di `courses/detail.html` (GoPay/OVO/QRIS/
+      Kartu Kredit bisa diklik tapi `course.js` lama sendiri berkomentar
+      "cosmetic for now" — submit SELALU bikin order transfer manual apa pun
+      yang dipilih); (3) banner "Pesanan Saya" di `dashboard.js` (fetch
+      `/orders/me`, tampil kalau ada order `pending_payment`/
+      `awaiting_review`/`rejected` — sebelumnya siswa yang kehilangan URL
+      `order.html?id=...` tidak punya jalan balik sama sekali kecuali
+      WhatsApp manual; ditaruh di KEDUA cabang render `dashboard.js`, termasuk
+      layar "Belum ada kelas aktif" — situasi order `awaiting_review` tanpa
+      enrollment PERSIS gejala kasus Maducelik sebelumnya, gejalanya sama
+      tapi sebabnya beda, jadi banner ini menutup ambiguitas itu juga).
+      **Bug produksi tak terduga, ditemukan saat verifikasi (bukan dicari)**:
+      `courses/detail.html` (halaman checkout) selalu menampilkan "Kelas
+      tidak ditemukan" untuk SIAPA PUN, terverifikasi lewat curl langsung ke
+      backend (tanpa token → 401 `Missing token` pada `GET /api/courses`,
+      padahal endpoint itu memang didesain publik — `content.js:28`, tanpa
+      `requireAuth`). Akar masalah: `server.js` me-mount `grammarAnalysisRouter`
+      (yang punya `router.use(requireAuth)` TANPA path filter,
+      `grammar-analysis.js:17`) SEBELUM beberapa router lain yang punya
+      endpoint publik (`contentRouter`, `notionPublicRouter`,
+      `kanjiPublicRouter`) — middleware blanket itu menolak SEMUA request
+      `/api/*` tanpa token yang lewat situ duluan, sebelum sempat mencapai
+      handler publik yang sebenarnya. Diperparah oleh `course.js`'s
+      `fetchCourseBySlug()` yang pakai `fetch()` mentah (bukan `window.ezApi()`),
+      jadi TIDAK PERNAH mengirim bearer token walau siswa sudah login — hasil
+      gabungannya: checkout kursus kemungkinan besar 100% tidak bisa diakses
+      di produksi sebelum fix ini. `index.html`/testimonial section aman
+      karena punya fallback konten hardcoded (degradasi diam-diam, tidak
+      terlihat rusak), tapi `courses/detail.html` tidak punya fallback sama
+      sekali. **Fix**: pindahkan `app.use('/api', grammarAnalysisRouter)` ke
+      urutan PALING TERAKHIR di antara router `/api` (setelah semua yang
+      punya endpoint publik) — rute grammar-analysis sendiri tetap
+      ter-`requireAuth` seperti semula, cuma tidak lagi membayangi router
+      lain. Divalidasi lewat curl langsung ke backend (tanpa proxy):
+      `GET /api/courses` tanpa token 401→200 setelah fix; rute
+      grammar-analysis sungguhan (`GET /grammar/mastery/me`) tetap 401 tanpa
+      token dan 200 dengan token valid — proteksinya sendiri tidak melemah.
+      Sengaja TIDAK diaudit ulang urutan SEMUA router lain di `server.js`
+      untuk pola serupa — hanya yang ketahuan lewat pengujian nyata jalur ini.
+
+      **Autoplay audio Smart Review: yang rusak cuma jalur deep-link, dan
+      tesnya sendiri yang menyembunyikannya** — user: "aku ingin suara langsung
+      di putar saat soal muncul dan user bisa putar audio sendiri jika kurang
+      jelas". Kedua fitur itu SUDAH ada sejak PR #264 (`review.js` memanggil
+      `playAudio()` saat render + tombol putar), jadi yang diminta bukan fitur
+      baru melainkan fitur yang tidak berbunyi. **Hipotesis awal saya SALAH dan
+      dibantah oleh pengukuran**: saya menduga `new Audio()` per soal membuat
+      autoplay ditolak; diukur di Chromium dengan
+      `--autoplay-policy=document-user-activation-required`, jalur "Mulai Smart
+      Review" ternyata **berbunyi normal** sebelum maupun sesudah perbaikan
+      (sticky user activation Chromium menutupi elemen baru, bahkan setelah
+      `await` fetch). Yang benar-benar rusak dan reproducible: **jalur
+      `review.html?category=…`** — dipakai tombol "Latihan Fokus" di dashboard
+      (`dashboard.js:45` `reviewUrl()`) — memulai sesi TANPA gesture apa pun di
+      halaman itu, jadi `play()` ditolak `NotAllowedError`. Dua akibatnya:
+      (1) kodenya lalu memanggil Web Speech, padahal `speechSynthesis.speak()`
+      **diblokir aktivasi yang sama** → senyap total tanpa penjelasan; (2)
+      tombolnya tetap ber-class `playing` — jadi tampak sedang memutar padahal
+      tidak ada suara sama sekali. Sekarang `NotAllowedError` dibedakan dari
+      kegagalan sungguhan: yang pertama mengubah tombol jadi
+      "🔊 Ketuk untuk memutar" (`.needs-tap`), yang kedua tetap jatuh ke Web
+      Speech ber-`lang='ja-JP'` seperti sebelumnya. Elemen `Audio` tunggal +
+      `unlockAudio()` di dalam handler klik (SEBELUM `await` — setelah fetch,
+      aktivasi transient sudah lewat) tetap dipasang, tapi **sebagai asuransi
+      iOS yang TIDAK bisa diuji dari sini**, bukan sebagai perbaikan atas yang
+      terukur. Tombolnya juga pindah dari class `.token` (sama dengan kepingan
+      kata soal susun-kalimat) ke `.audio-btn` 44px. **Pelajaran soal tes, dua
+      kali kena**: (a) Chromium headless mengizinkan autoplay TANPA SYARAT
+      secara default — itulah kenapa PR #264 lolos tes tapi tetap senyap di HP;
+      tes audio WAJIB memakai flag autoplay ketat di atas, kalau tidak bug
+      kelas ini tak akan pernah muncul; (b) probe `el.currentSrc` MENYESATKAN —
+      nilainya tertinggal di belakang algoritma pemilihan sumber, jadi setelah
+      `player.src = …` ia masih menyebut URI unlock yang senyap dan pemutaran
+      yang berhasil terhitung nol; pakai `el.src` yang di-set sinkron. Jebakan
+      data: menjawab soal menulis `user_practice_state`, lalu `unlockedSkills()`
+      membuka arah non-audio — tanpa menghapus tabel itu antar-run, run kedua
+      dapat soal `jp2id` dan "tombol audio tidak ada" terlihat seperti bug
+      padahal bukan.
+
+      **Layar buntu siswa sekarang menyebut akun yang sedang login** — user:
+      "Maducelik@gmail.com saya kasih akses dari admin tapi gabisa akses
+      materi". Ditelusuri: **tidak ada bug di sisi server**. Grant admin
+      (`POST /admin/user-access/grant`) menulis `status='active'`,
+      `expires_at=NULL` (modal admin memang tidak pernah mengirim `expiresAt`),
+      dan `ON CONFLICT (user_id, course_id) DO UPDATE` mengaktifkan kembali
+      baris yang pernah dicabut; pembacaannya IDENTIK di tiga tempat —
+      `hasCourseAccess()` (`entitlements.js`), `GET /enrollments/me`
+      (`routes/progress.js`), `accessibleCourses()` (`dashboard-service.js`) —
+      semuanya `status='active' AND (expires_at IS NULL OR expires_at > NOW())`,
+      tanpa syarat tersembunyi. **Yang menentukan**: `dashboard.js` menulis
+      "Belum ada kelas aktif" HANYA saat `data.course` kosong, dan itu HANYA
+      terjadi kalau `accessibleCourses()` mengembalikan array kosong (kegagalan
+      lain — jaringan, sesi mati — jatuh ke `errorMarkup()` yang beda). Jadi
+      gejala itu berarti server benar-benar melihat **nol enrollment aktif untuk
+      user_id yang sedang login** → akun yang login bukan akun yang diberi
+      akses. Masalahnya, layar itu **tidak menyebut akun mana**, jadi fakta satu
+      -satunya yang menjelaskan semuanya justru tak terlihat oleh siswa MAUPUN
+      admin yang melihat screenshot-nya. Helper baru `ezSignedInAsHtml()`
+      (`api-client.js`, sebelah `ezStudentErrorMessage` — preseden teks siswa
+      lintas halaman) dipakai di `dashboard.js:57`, `progress.js:23`,
+      `live.js:33`, dan paywall `welcome.html` yang SUDAH punya baris itu sejak
+      dulu tapi sebagai salinan inline sendiri (sekarang satu sumber; sekalian
+      email-nya jadi di-escape, dulu mentah). Sumber email: nilai kembalian
+      `ezRequireAuth()` — ketiga halaman sudah memanggilnya tapi MEMBUANG
+      hasilnya — dengan cadangan `localStorage.ez_user`. **Jebakan saat menguji**:
+      (1) `welcome.html:4561` membaca `localStorage.ez_user` SECARA SINKRON
+      sebelum skrip apa pun, jadi tes browser wajib menyemainya lewat
+      `addInitScript`, bukan `page.evaluate` setelah navigasi — tanpa itu
+      halaman langsung lompat ke `login.html` dan paywall tidak pernah
+      ter-render; (2) `authLimiter` 10 request/menit **per IP** membuat tes
+      multi-context berturut-turut kena 429 pada /auth/refresh, yang terlihat
+      persis seperti "sesi gagal" — beri jeda 60 detik antar konteks, jangan
+      salah kira itu bug aplikasi. **Tidak dikerjakan (sadar)**: unique index
+      `lower(email)` di `users` (kolomnya `TEXT UNIQUE` case-sensitive, tapi
+      Google OAuth satu-satunya jalur daftar siswa — `register.html` cuma
+      redirect ke `login.html` — jadi duplikat beda-huruf praktis mustahil untuk
+      Gmail; kalau suatu saat terbukti ada, tempuh konvensi 135/136: migrasi
+      ber-`RAISE NOTICE` dulu, baca log deploy, baru migrasi yang menindak), dan
+      `renderCmsOnlyCourseStub` (`welcome.html:6721`) yang keliru bilang
+      "Pembayaran kamu tercatat" walau penyebabnya bisa sekadar fetch gagal.
+
+      **migration 135: istilah asing di arti pola grammar diganti — BEDAH,
+      bukan tulis ulang** — user: "soal kanji menggunakan bahasa yg terlalu
+      tinggi dan susah, saya ingin merubah penjelasan fungsinya". Setelah
+      ditelusuri, yang dimaksud BUKAN soal kanji (soal kanji cuma memakai
+      `kanji_items.meaning_id` + kata majemuk, tidak ada teks "fungsi" sama
+      sekali) melainkan soal grammar Step 1 yang promptnya harfiah
+      `Apa fungsi 〜X?` dengan pilihan dari `module_grammar.meaning`.
+      **Pelajaran soal proses**: draf pertama menulis ulang SEMUA 48 arti jadi
+      gaya "untuk bilang ..." — ditolak user DUA KALI, pertama karena
+      hasilnya janggal dalam bahasa Indonesia ("menyangkal sifat",
+      "menempelkan sifat di depan benda"), lalu dengan koreksi yang
+      menentukan: **"bentuk negatif masih bisa dipahami, bentuk lampau juga
+      masih bisa dipahami"**. Jadi jangan samaratakan: istilah pelajaran yang
+      memang dipakai siswa (bentuk negatif, bentuk lampau, kata sifat, kata
+      benda, kata kerja, partikel, objek, subjek, kata bantu bilangan)
+      DIPERTAHANKAN; yang diganti hanya yang benar-benar asing bagi pemula
+      (afirmatif, demonstratif, konstruksi, plain, non-lampau, moda
+      transportasi, konjugasi, posisi relatif, "verb"). Hasilnya 22 pola di
+      Bab 4/6/7/8/9/10/12/14 disentuh, sisanya (Bab 5, 11, 16, dan sebagian
+      Bab 4/8/9) TIDAK sama sekali — mis. `kata sifat い menerangkan kata
+      benda langsung` dibiarkan apa adanya. **Jebakan yang dijaga**: pengecoh
+      Step 1 diambil dari arti pola LAIN di bab yang sama lalu disaring
+      `balancedMeaning()`; kalau tersisa < 2 pengecoh,
+      `buildRecognitionDrill()` mengembalikan NULL dan SOALNYA HILANG tanpa
+      error. Karena itu (a) migrasi punya assertion 15-60 huruf + "harus satu
+      kalimat" (`shortMeaning()` cuma memakai kalimat pertama), dan (b)
+      sebelum ditulis, keseimbangan panjang tiap bab dihitung ulang dengan
+      MENGGABUNG arti baru + arti lama yang tidak diubah — hasilnya tiap bab
+      tetap punya ≥2 pengecoh dan tidak ada dua arti yang saling memuat.
+      Perubahan ini justru memperbaiki ambangnya: `negatif kini` (12 huruf,
+      sudah mepet) naik jadi 23. **Pagar assertion sempat salah rancang**:
+      versi pertama memindai SELURUH tabel dan meng-EXCEPTION kalau ada
+      jargon di mana pun — artinya satu baris Bab 3 (bank polanya diisi
+      manual lewat admin, TIDAK terlihat dari repo) sanggup menggagalkan
+      seluruh deploy. Diperbaiki: EXCEPTION hanya untuk pola dalam cakupan
+      migrasi ini sendiri, baris di luar cakupan cuma NOTICE. Divalidasi di
+      Postgres lokal: pola tak ditemukan dilewati dengan NOTICE (bukan
+      error), idempoten, baris "Bab 3 palsu" berjargon hanya bikin NOTICE,
+      dan pola dalam cakupan yang sengaja dirusak benar-benar menggagalkan
+      migrasi. **Bab 3 tetap di luar jangkauan** — harus diperbaiki lewat
+      admin, atau lewat migrasi lanjutan kalau teks persisnya diberikan.
+
+      **migration 136: sisa 4 pola berjargon, ketahuan DARI LOG DEPLOY 135** —
+      pagar "laporkan saja, jangan gagalkan" di 135 terbukti berguna: log
+      deploy run #336 mencetak 4 baris di luar cakupan yang masih memakai kata
+      `plain` — `V (ない形)` → negatif plain, `V (た形)` → lampau plain,
+      `V (なかった形)` → lampau negatif plain, `い-adj plain` → bentuk plain
+      い-adj. Keempatnya **tidak ada di repo** (`grep` seluruh
+      `backend/migrations/` nihil), jadi diisi manual lewat admin — persis
+      kategori yang selama ini tidak terlihat dari sini. **Pelajaran alurnya**:
+      NOTICE di log deploy adalah satu-satunya cara mendapat teks `pattern`
+      baris admin; sebelum 135 di-deploy, migrasi ini mustahil ditulis. Kalau
+      nanti ada lagi konten admin yang perlu disentuh migrasi, tempuh urutan
+      yang sama — pasang NOTICE dulu, baca log, baru tulis migrasi berikutnya.
+      Diganti `plain` → `santai` (kosakata yang sudah dipakai 135), istilah
+      pelajaran (bentuk negatif/lampau, kata sifat, kata kerja) tetap
+      DIPERTAHANKAN sesuai koreksi user di 135. **`pattern` sengaja TIDAK
+      diubah**, termasuk `い-adj plain` yang namanya sendiri berbunyi "plain"
+      dan ikut tampil di pertanyaan ("Apa fungsi い-adj plain?") — dikonfirmasi
+      user. Alasannya: teks `pattern` dipakai sebagai kunci pencocokan
+      antar-migrasi (090-097 FIND-OR-CREATE lewat pattern persis), jadi
+      menggantinya berisiko membuat migrasi berikutnya menyisipkan baris
+      DUPLIKAT alih-alih memakai ulang. Konsekuensi diterima sadar: satu kata
+      "plain" masih terlihat siswa di prompt pola itu; perbaikannya lewat
+      admin. **Jebakan `sameMeaning` — diukur, bukan ditebak**: godaannya
+      memberi arti yang sama persis dengan arti 135 (mis. dua-duanya "bentuk
+      negatif santai (〜ない)"), dan `sameMeaning()` membuang opsi yang saling
+      memuat sehingga pengecoh bisa habis → `buildRecognitionDrill()` NULL →
+      soal HILANG tanpa error. Diuji lewat kode asli: pada modul berisi 8 pola
+      (4 admin + 4 Bab 14) arti kembar ternyata **tidak** merusak apa pun —
+      sibling-nya masih cukup. Yang benar-benar rusak adalah **modul kecil**:
+      di modul 3 pola dengan sepasang arti kembar, KETIGA polanya kehilangan
+      soal (termasuk pola yang artinya sendiri unik, karena dua siblingnya
+      saling membatalkan); di modul 4 pola dengan dua pasang kembar, keempatnya
+      hilang. Karena modul asal 4 baris admin ini tidak terlihat dari repo,
+      artinya sengaja dibedakan strukturnya ("bentuk lampau negatif untuk
+      bicara santai" vs "bentuk lampau negatif santai") sebagai asuransi murah
+      — dan dengan teks itu keempat skenario di atas lolos semua. Divalidasi
+      di Postgres sungguhan: DB baru + `schema.sql` + replay 000→136 (132
+      migrasi) bersih, fresh install melewati 4 pola itu dengan NOTICE (bukan
+      error), fixture mirip produksi → 4 baris ter-update & 0 sisa "plain",
+      idempoten, dan tiga pagar (15-60 huruf, satu kalimat, jargon
+      cakupan-sendiri) dibuktikan MENGGIGIT lewat runner asli — migrasi gagal
+      DAN data tetap utuh (`run.js` membungkus satu file dalam satu
+      BEGIN/COMMIT, jadi rollback-nya penuh; catatan: `psql` tanpa `-1`
+      meng-autocommit tiap DO block, jadi tes assertion lewat psql polos
+      menyesatkan — pakai runner atau `psql -1`).
+
+      **Susun-kata di Smart Review: katanya tidak pernah benar-benar
+      berpindah** — user: "untuk susun kata di review, kata tidak bisa di
+      drag atau di susun". Bukan salah paham user, memang cacat: seluruh
+      kepingan ditaruh di SATU kotak (`.arrange`) dan diketuk hanya
+      men-toggle class `.selected` (ganti warna) — kepingannya tetap di
+      tempat, TIDAK ADA baris jawaban, tidak ada nomor urut, jadi siswa
+      tidak bisa melihat kalimat yang sedang disusun sebelum menekan
+      "Periksa jawaban". CLAUDE.md sendiri menyebut desainnya "ala Duolingo,
+      ketuk bukan drag", tapi separuh desainnya (baris jawaban) tidak pernah
+      dibuat. Sekarang DUA ZONA: `#arrange-answer` (kalimat yang disusun,
+      border solid merah) di atas `#arrange` (kepingan tersisa, border
+      putus-putus). Ketuk di kepingan → kata PINDAH ke baris jawaban; ketuk
+      di baris jawaban → kembali ke kepingan. Tetap ketuk (bukan drag):
+      target sentuh lebih besar, tanpa pustaka DnD, dan konsisten dengan
+      keputusan awal. Fungsi `renderArrange(question)` membangun ulang kedua
+      zona dari `selectedOrder`, dipanggil saat render + tiap ketukan +
+      tombol "Ulangi" (tidak lagi `renderQuestion()` penuh). Class
+      `.token.selected` jadi mati dan sudah dihapus dari review.css.
+      **Sekalian menutup jebakan**: tombol "Periksa jawaban" kini DIKUNCI
+      sampai semua kepingan dipakai (labelnya jadi "Pakai semua kata
+      (n/total)") — `arrangeIsCorrect()` menilai susunan yang panjangnya
+      tidak sama dengan jumlah kepingan sebagai SALAH, jadi sebelumnya siswa
+      bisa tidak sengaja mengirim susunan setengah jadi dan langsung dihitung
+      gagal. Divalidasi di viewport HP (390×844): ketuk → kata pindah,
+      urutan terbaca, ketuk di baris jawaban → balik ke kepingan, tombol
+      kirim terkunci di 2/3 dan terbuka di 3/3, susunan benar → "Benar" →
+      lanjut sendiri.
+
+      **Penjadwalan pindah ke FSRS-5, dan drill pelajaran ikut menjadwalkan** —
+      user: "yg sudah hafal tapi di tagih tiap 2 minggu", lalu meminta FSRS
+      "dimulai sejak latihan dari pelajarannya" dan menegaskan **"Gunakan rumus
+      fsrs yang biasa dipakai aplikasi hafalan"**. Tangga lama
+      `nextReviewDelayMs()` mentok di 14 hari SELAMANYA (streak 6 atau 600 sama
+      saja), jadi item yang sudah dikuasai tetap menagih ~26x setahun. Sekarang
+      `backend/src/fsrs.js` (FSRS-5 kanonik): deret intervalnya jadi
+      **3 → 11 → 35 → 101 → 269 → 669 → 1563 → 3454** hari, tanpa plafon.
+      **`app/fsrs.js` SENGAJA TIDAK di-port** — file itu mengaku FSRS v5 tapi
+      `calcUpdateDifficulty()`-nya menukar peran w6/w7, membuang linear damping,
+      dan meng-anchor ke D0(3) alih-alih D0(4); karena w6 = 1.0651 > 1 koefisien
+      mean-reversion jadi negatif dan **difficulty beku di ~5.31** (diukur: 5x
+      salah beruntun sama sekali tidak menaikkannya, 5x Easy tidak
+      menurunkannya). Artinya adaptasi per-item — inti FSRS — mati di PWA Kanji,
+      dan itu **belum diperbaiki** karena memperbaikinya akan menjadwal ulang
+      semua kartu kanji yang sudah berjalan di sana; keputusan terpisah.
+      `w17`/`w18` (short-term) juga dideklarasikan tapi tidak pernah dipakai di
+      file itu. Rumus resmi diverifikasi dari wiki open-spaced-repetition,
+      termasuk urutan yang menentukan: **stability memakai D SEBELUM diperbarui**
+      (`S'r(D,S,R,G)` tanpa prima) — simulasi cepat yang memakai D sesudahnya
+      memberi angka berbeda (270/672/1571) dan itu KELIRU. Rating biner
+      dipetakan benar→Good(3), salah→Again(1), jadi `w15`/`w16` (Hard/Easy)
+      tidak pernah terpakai. **Migrasi 137** menambah 5 kolom
+      (`fsrs_stability/difficulty/state/reps/lapses`, semua nullable) dan
+      MENYEED dari tangga lama — tanpa seed, progres siswa hangus DAN gate di
+      bawah tidak punya bahan sama sekali. `next_review_at`/`last_reviewed_at`
+      lama dipakai ulang sebagai `due`/`lastReview`; `mastery_state` tidak
+      disentuh (CHECK-nya cuma kenal new/learning/mastered).
+      **Gate arah-baru** (`unlockedSkills()`): drill pelajaran hanya melatih
+      SATU arah per item dan gate "Tandai Selesai" cuma menuntut 1 percobaan per
+      item, jadi arah lain selalu `attempts = 0` → dianggap jatuh tempo sekarang
+      juga → "baru dijawab benar kok ditanya lagi". Sekarang arah yang belum
+      dilatih menunggu sampai ada arah lain pada item yang sama mencapai
+      `fsrs_state = 'review'`; item tanpa state sama sekali tetap memunculkan
+      TEPAT SATU arah (dipilih deterministik — pilihan yang goyah akan membuat
+      item terus terlihat "baru", persis kegagalan yang mau dicegah).
+      **Jebakan yang ketahuan dari tes sendiri**: `cardFrom()` semula cuma
+      membaca bentuk snake_case dari DB, padahal `applyPracticeAttempt`
+      mengembalikan state di `fsrs.*` — mengumpankan balik hasilnya (pola yang
+      wajar, dan dipakai tes lama) membuat kartu terbaca sebagai BARU lagi dan
+      seluruh riwayatnya hilang. Produksi kebetulan aman karena membaca dari DB.
+      Divalidasi: replay 000→137 di DB baru bersih, fixture warisan ter-seed
+      benar (streak 7/interval 14 hari → `review` stability 14; streak 1 →
+      `learning` stability 1; belum pernah dicoba → NULL), idempoten, dan
+      end-to-end lewat `recordPracticeAttemptWithState` asli. Dua pagar
+      dibuktikan MENGGIGIT: memasang kembali rumus difficulty `app/fsrs.js`
+      menggagalkan 2 tes, gate versi naif menggagalkan 3.
+
+      **Smart Review: satu kata majemuk dihitung sebagai DUA item, jadi soalnya
+      terus kembali** — user: "saya berkali kali dapet soal 先生 がくせい",
+      lalu diperjelas "pertanyaan hiragana jawaban kanji" (arah `reading2word`)
+      dan — ini yang menentukan — **"itu saya tidak salah tapi muncul berkali
+      kali"**. Koreksi itu penting: teori pertama saya (jawaban salah →
+      `nextReviewDelayMs` mengembalikan 0 → langsung jatuh tempo lagi) TIDAK
+      berlaku, dan dibuang. Akar sebenarnya: `deriveCompounds()` dipanggil
+      SEKALI PER KARAKTER, jadi 学生 diturunkan dua kali — di bawah 学 dan di
+      bawah 生 (先生 juga: 先 dan 生). Kedua salinan punya `skill` IDENTIK
+      (`wordSkill()` cuma memakai japanese+reading) tapi `itemId` berbeda (id
+      kanji), sedangkan `user_practice_state` di-key
+      `(user_id, item_type, item_id, skill)` — jadi keduanya item terpisah:
+      soal yang sama bisa muncul 2x dalam satu sesi, DAN menjawab benar salinan
+      pertama tidak menyentuh salinan kedua (tetap `attempts = 0`, tetap jatuh
+      tempo, kembali lagi). Diukur lewat fungsi asli: satu kata 2-kanji
+      menghasilkan **8 kandidat, bukan 4**. Perbaikannya helper murni baru
+      `pickCompoundOwners()` (`smart-review-service.js`) + pemakaiannya di
+      `buildReviewCandidates()`: tiap kata diklaim SATU kanji saja (16→8
+      kandidat pada fixture 先生/学生). **Dua jebakan yang dijaga**: (1) query
+      `kanji_items` di `genericRows()` TIDAK punya `ORDER BY`, jadi urutan
+      kedatangan tidak stabil — kalau pemiliknya ikut berubah tiap sesi, state
+      lama jadi yatim dan soalnya justru muncul lagi sebagai "baru"; karena itu
+      tie-break-nya `baseId` terkecil, bukan yang pertama datang; (2) kanji yang
+      SUDAH menyimpan state siswa untuk kata itu selalu menang, supaya progres
+      yang sudah ada tidak terbuang. Ketiga tes barunya dibuktikan MENGGIGIT
+      (helper diganti versi naif → 3 tes gagal). **Yang BELUM diselesaikan dan
+      bukan bagian dari perbaikan ini**: panjang intervalnya sendiri. Smart
+      Review memakai tangga streak tetap `nextReviewDelayMs()`
+      (`learning-foundations.js`): salah→0, streak1→1 hari, 2-3→3 hari,
+      4-5→7 hari, ≥6→14 hari (mentok). **Smart Review TIDAK memakai FSRS** —
+      ditanyakan user. FSRS v5 sungguhan ada di repo (`app/fsrs.js`, kurva
+      power-law + 19 bobot) tapi cuma dipakai PWA Kanji dan disimpan di
+      `kanji_progress.fsrs_data`; tidak ada satu pun berkas Smart Review yang
+      membacanya. Jadi walau duplikatnya sudah hilang, item yang dijawab benar
+      tetap kembali tiap 1/3/7/14 hari — memindahkan Smart Review ke FSRS
+      adalah pekerjaan terpisah (butuh kolom difficulty/stability di
+      `user_practice_state`, migrasi data, pemetaan benar/salah ke rating
+      FSRS, dan penjadwal itu dipakai BERSAMA drill di pelajaran).
+
+      **Smart Review: soal salah TIDAK lagi berpindah sendiri** — user:
+      "reviewnya terlalu cepat berganti setelah dikerjakan, jadi waktu untuk
+      berfikir dimana yang salah terlalu pendek". Sebelumnya `review.js`
+      memakai `setTimeout(..., 900)` DATAR untuk benar maupun salah
+      (bandingkan widget drill di `welcome.html` yang sudah membedakan:
+      700ms benar / 1700ms salah). Sekarang: **benar → tetap otomatis
+      ~900ms** (tidak ada yang perlu dipelajari, jangan perlambat siswa yang
+      sudah bisa), **salah → tidak pindah sama sekali** sampai siswa menekan
+      tombol "Lanjut →" (`#review-next`, di container baru
+      `#answer-actions`). Waktu berpikir jadi milik siswa, bukan angka
+      tebakan. **Sekalian menutup bug yang lebih parah**: untuk soal
+      SUSUN-KALIMAT, jawaban benarnya SELAMA INI TIDAK PERNAH DITAMPILKAN —
+      server sudah mengirim `correctOrder` (lihat `smart-review.js`:
+      `correctOrder: payload.variant === 'arrange' ? payload.answer : ...`)
+      tapi `review.js` cuma memakai `correctIndex` (pilihan ganda) dan
+      membuang `correctOrder` begitu saja. Jadi siswa yang salah menyusun
+      kalimat tidak pernah tahu susunan benarnya, mau diberi waktu berapa
+      lama pun. Helper baru `correctAnswerText()` merangkai `correctOrder`
+      jadi kalimat (atau mengambil `options[correctIndex]` untuk pilihan
+      ganda), ditampilkan di blok `.answer-key` (review.css). Kepingan
+      susun-kalimat + tombol "Ulangi" ikut di-disable setelah dijawab —
+      soal yang sudah dinilai tidak boleh bisa diutak-atik lagi sambil
+      pembahasannya dibaca. Divalidasi lewat browser asli: jawaban SALAH →
+      ditunggu 4+ detik masih di soal yang sama, `.answer-key` menampilkan
+      「わたしは にほんごを べんきょうします」, tombol "Lanjut →" ada;
+      jawaban BENAR → tidak ada tombol Lanjut, pindah sendiri dalam ~1,3
+      detik.
+
+      **Cara siswa MELANJUTKAN latihan yang belum selesai** (menyusul gate
+      di bawah; ditanyakan user: "kalau siswa latihan tapi belum selesai
+      semua, bagaimana melanjutkan sisanya?"). Yang sudah aman sejak awal:
+      tiap jawaban langsung tersimpan ke localStorage DAN dikirim ke server
+      saat itu juga (`_deckRecordAnswer` → `_recordPracticeAttempt`), jadi
+      berhenti di tengah sesi tidak menghapus apa pun. Yang TIDAK aman dan
+      diperbaiki di sini, dua hal: **(1) satu run drill maksimal 12 item**
+      (`*_DRILL_ITEMS_PER_SESSION`, dan ketiga sesinya memakai 12 item yang
+      SAMA) — lesson >12 item mustahil selesai dalam satu run, wajib klik
+      "Mulai Latihan" berkali-kali; **(2) tidak ada jaminan item sisa
+      kebagian** — prioritas item yang belum pernah dicoba cuma 7
+      (`_deckPriority`: `if (!summary.attempts) return 7`), sedangkan item
+      yang sering salah bisa mencapai ~11,7, ditambah `Math.random()*1.25`.
+      Jadi siswa bisa terus mendapat item yang itu-itu lagi sementara sisa
+      item tak pernah muncul — dan karena gate menahan tombol "Tandai
+      Selesai", pelajaran jadi MUSTAHIL diselesaikan. Diukur langsung:
+      dengan 5 kata dibuat sering-salah dan 15 kata belum pernah dicoba,
+      sebelum perbaikan 5 slot sesi direbut kata yang sering salah.
+      **Perbaikan (a) jaminan urutan**: comparator sort di ketiga
+      `*DrillStart` diberi kunci pertama "belum pernah dicoba didahulukan"
+      (`(Number(!b.summary.attempts) - Number(!a.summary.attempts)) || (b.priority - a.priority)`)
+      — hasil ukur ulang: 12/12 slot diisi kata yang belum pernah dicoba.
+      **Perbaikan (b) mode `'fresh'` + tombol**: mode baru di ketiga
+      `*DrillStart` (di samping `'adaptive'`/`'weak'`) yang HANYA mengambil
+      item `attempts === 0`, dipanggil dari tombol baru "Lanjutkan latihan ·
+      N tersisa" yang kini muncul di dalam hint gate saat masih terkunci
+      (`_applyDrillCompletionGate`, param `resumeAction`). Catatan: tombol
+      lama "Latih Kelemahan" TIDAK bisa dipakai untuk ini — filternya
+      `attempts > 0`, persis mengecualikan item yang dikejar gate. Khusus
+      kanji, mode `'fresh'` juga meng-set `rankedWords = []`: sesi kanji
+      normalnya membagi kuota 50/50 dengan soal kata-majemuk (`charQuota`/
+      `wordQuota`), padahal kata-majemuk TIDAK dihitung gate, jadi di mode
+      ini seluruh kuota diberikan ke karakternya. Divalidasi via Playwright
+      pada deck 20 kata: run pertama ambil 12 → gate 12/20 → keluar & buka
+      lagi tetap 12/20 (progres utuh) → klik "Lanjutkan latihan" ambil
+      TEPAT 8 kata sisa yang semuanya belum pernah dicoba → 20/20, tombol
+      terbuka, tombol lanjut hilang sendiri; kana & kanji ikut diverifikasi
+      (kanji: 2 karakter + 0 kata-majemuk, sesuai maksud). Kalau mode
+      `'fresh'` dipanggil saat tidak ada item tersisa, jatuh ke
+      `*DrillShowOverview()` dengan aman (sudah diuji).
+
+      **Lesson deck/kana/kanji sekarang wajib di-drill dulu (min. 1x per
+      item) sebelum bisa ditandai selesai** — follow-up dari catatan Smart
+      Review di bawah ini. Saat user mengonfirmasi apakah Smart Review
+      "sudah sesuai fungsinya untuk review latihan yang sudah dikerjakan
+      sebelumnya", ketahuan celahnya: tombol "Tandai Selesai & Lanjut →" di
+      lesson `deck`/`kana`/`kanji` (`welcome.html`) selalu aktif tanpa
+      syarat — `POST /api/progress/lesson/:id/complete` →
+      `completeLessonWithStats()` (`backend/src/progress-service.js`) tidak
+      pernah mengecek `practice_attempts`. Karena "🎯 Drill Adaptif" murni
+      opsional, kondisi "lesson selesai tapi item belum pernah dilatih"
+      adalah kasus UMUM, dan Smart Review (`isReviewNeeded()`,
+      `attempts === 0` = butuh direview, BY DESIGN) jadi dibanjiri item yang
+      belum pernah benar-benar dicoba sama sekali. **Perbaikan di
+      sumbernya, bukan di Smart Review**: gate client-side baru, MENIRU
+      PERSIS pola `gtUpdateComplete()` yang sudah lama dipakai lesson
+      `grammar_task` (tombol disabled + hint progress + label berubah
+      sampai syarat terpenuhi) — bukan pola baru. Tiga wrapper baru
+      `deckUpdateComplete()`/`kanaUpdateComplete()`/`kanjiUpdateComplete()`
+      + helper bersama `_applyDrillCompletionGate()`
+      (`welcome.html`, dekat `_recordPracticeAttempt`). Ambang batas:
+      **attempts ≥ 1 per item (skill apa saja)**, BUKAN harus benar, BUKAN
+      mastery penuh — jawaban salah tetap menghitung sebagai "sudah
+      dicoba". Dipanggil di 3 titik per lesson type: render awal, tiap
+      `syncPracticeStateForLesson(...)`'s `onMerged` callback (state dari
+      device lain), dan tiap kali jawaban drill tersimpan (`_deckRecordAnswer`/
+      `_kanaRecordAnswer`/`_kanjiRecordAnswer`) — supaya tombol ter-unlock
+      LIVE tanpa reload begitu item terakhir dicoba. **Enforcement
+      client-side saja** (disepakati eksplisit dengan user) — backend
+      (`completeLessonWithStats`) TIDAK diubah, konsisten dengan
+      `grammar_task` yang juga tidak punya precondition server-side.
+      `reconcileLegacyProgress()` (migrasi progress lama dari
+      `user_learning_state.progress` blob, dipanggil tiap login) juga TIDAK
+      disentuh — jalur itu murni migrasi data historis dari SEBELUM
+      completion-gate ini ada, terpisah total dari jalur completion baru
+      (`markCompleteAndNext()` → `syncLessonCompletionToServer()` →
+      endpoint yang sama persis). **Jebakan yang ketahuan saat implementasi**:
+      (1) item mentah (`window.__deckData`/`__kanaData`/`__kanjiDrillPool`)
+      HARUS difilter persis sama dengan yang dipakai widget drill-nya
+      sendiri (`it.japanese && it.indonesian` / `k.character && k.romaji` /
+      `item.character && item.meaning_id`) — kalau tidak, satu item cacat
+      (field kosong) yang tidak mungkin di-drill akan mengunci lesson
+      selamanya; (2) ambang "cukup untuk didrill" widget adalah `< 2` item
+      (`deckDrillPool.length >= 2` dkk), BUKAN `=== 0` — lesson dengan
+      tepat 1 item drillable tidak punya UI drill sama sekali, jadi gate
+      harus auto-lolos di bawah 2 item juga, bukan cuma di 0; (3)
+      `window.__kanjiDrillPool` ternyata menyimpan list MENTAH (bukan yang
+      sudah difilter) — nama variabelnya menyesatkan, dua pembaca lain yang
+      sudah ada (`welcome.html:11358`, `:11396`) sama-sama memfilter ulang
+      tiap dipakai, jadi ikuti pola itu, jangan percaya nama variabelnya;
+      (4) `nav.isDone` bersumber dari BLOB LOKAL `ez_progress`
+      (`getProgress()`/`localStorage`, disinkron lewat `/api/learning-state`)
+      — BUKAN dari tabel relasional `user_progress` yang dibaca Smart
+      Review/`completeLessonWithStats()`. Dua sistem tracking completion
+      ini berjalan paralel dan cuma disatukan satu-arah lewat
+      `reconcileLegacyProgress()`; sempat salah simulasi saat testing
+      (set `user_progress.completed=TRUE` langsung via SQL tidak membuat
+      tombol menampilkan "Lanjut →", karena `isDone` tidak pernah membaca
+      tabel itu) — perbaikan tes dilakukan dengan set `localStorage
+      ez_progress` langsung, sesuai apa yang benar-benar dibaca `nav.isDone`.
+      Divalidasi end-to-end via Playwright (Postgres lokal dari
+      `schema.sql` + seed course/module/lesson dummy, backend asli, browser
+      asli — bukan mock DOM): ketiga tipe lesson terbukti terkunci di
+      0/N, tetap terkunci di (N-1)/N, dan ter-unlock LIVE tanpa reload
+      persis saat item terakhir dicoba (termasuk kasus jawaban SALAH tetap
+      membuka gate — sesuai desain "attempts", bukan "correct"); regression
+      check `grammar_task` dikonfirmasi tidak berubah; kasus lesson yang
+      sudah pernah selesai sebelumnya dikonfirmasi tidak ter-lock ulang.
+      **Batasan cakupan yang disadari, bukan diabaikan diam-diam**: kanji
+      punya skill KATA-MAJEMUK terpisah (`word2reading` dst, via
+      `_kanjiWordSummary`) yang Smart Review JUGA jadikan candidate
+      (`deriveCompounds` di `smart-review-service.js`) — gate ini HANYA
+      menyasar skill KARAKTER (`char2meaning`/`meaning2char`), karena daftar
+      kata-majemuk baru pasti setelah lesson vocab LAIN juga selesai
+      (lintas-lesson, tidak bisa digate per-lesson dengan bersih). Sama,
+      vocabulary yang nempel langsung ke lesson `video`/`text` (bukan
+      `deck`) tidak punya UI drill sama sekali di situ, jadi tidak digate.
+
+      **Smart Review: SETIAP submit jawaban gagal 500 ("Jawaban belum bisa
+      dimuat...")** — user melaporkan "tidak responsif" saat memilih jawaban
+      di `review.html`; ternyata bukan bug UI/klik, melainkan pesan fallback
+      generik `ezStudentErrorMessage()` yang muncul karena
+      `POST /review/sessions/:sessionId/answers` betul-betul gagal di server,
+      untuk KEDUA tipe soal (pilihan ganda maupun susun-kata grammar) dan
+      SETIAP kali, tanpa syarat data apa pun. Root cause murni SQL: query
+      `lockedSessionItem()` (`backend/src/routes/smart-review.js`) memakai
+      `LEFT JOIN lessons l ... LEFT JOIN modules m ...` lalu `FOR UPDATE`
+      polos — Postgres menolak ini dengan
+      `error: FOR UPDATE cannot be applied to the nullable side of an outer
+      join` (code `0A000`) karena `l`/`m` ada di sisi nullable outer join.
+      Error ini tidak tertangkap sebagai salah satu kode terstruktur
+      (`session_not_found`/`already_answered`/dst), jadi jatuh ke handler
+      500 generik (`server.js`) → pesan generik di klien. **Tidak
+      ketahuan oleh test unit yang ada** (`learning-foundations.test.js`
+      dkk memakai `client.query` tiruan, bukan Postgres sungguhan — semantik
+      SQL spesifik-Postgres begini tidak pernah tereksekusi beneran).
+      Diagnosis dilakukan dengan bootstrap Postgres lokal dari
+      `schema.sql`, seed data minimal (course/module/lesson/vocab/grammar +
+      enrollment + progress completed), mint token JWT langsung (skip alur
+      Google OAuth), lalu memanggil endpoint asli lewat curl — errornya
+      langsung muncul di log server pertama kali dicoba. Fix: tambah
+      `FOR UPDATE OF si` (cuma kunci baris `smart_review_session_items`,
+      satu-satunya yang benar-benar di-UPDATE oleh handler ini — tidak perlu
+      mengunci `l`/`m`/`s`). Divalidasi: skenario yang sebelumnya 500 (index
+      grammar-arrange DAN vocabulary-choice, jawaban benar maupun salah)
+      semuanya 200 setelah fix, `npm test` 37/37 tetap hijau.
 
       **migration 128: kalimat pendek 2-bunsetsu selalu jatuh ke pilihan
       ganda, walau siblingnya (di Tugas Bunpou lain) sudah susun kalimat** —

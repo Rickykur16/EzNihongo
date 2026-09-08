@@ -6,6 +6,8 @@ import { query, withTransaction, withAdvisoryLock } from '../db.js';
 import { requireAuth, asyncHandler } from '../middleware.js';
 import { isAdminEmail } from '../auth.js';
 import { hasCourseAccess } from '../entitlements.js';
+import { notifyAdmin } from '../telegram.js';
+import { uploadLimits, uploadErrorHandler } from '../upload-safety.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -43,6 +45,20 @@ async function getBankAccounts() {
   } catch {
     return [];
   }
+}
+
+// Admin used to learn about a new payment proof only by remembering to open
+// the Pesanan tab — nothing pinged them. See ../telegram.js for why Telegram
+// and why this is best-effort (never fails the student's proof upload).
+async function notifyAdminNewProof(order) {
+  const amount = Number(order.amount_idr) || 0;
+  await notifyAdmin([
+    '🧾 Bukti pembayaran baru',
+    `Pesanan: ${order.order_number}`,
+    `Kursus: ${order.course_title_snapshot}`,
+    `Nominal: Rp ${amount.toLocaleString('id-ID')}`,
+    'https://eznihongo.com/admin.html',
+  ].join('\n'));
 }
 
 function serializeOrder(order) {
@@ -213,7 +229,7 @@ router.post('/orders/:id/cancel', asyncHandler(async (req, res) => {
 // ---- Payment proof upload ----
 const proofUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: uploadLimits(5 * 1024 * 1024, 4),
   fileFilter: (req, file, cb) => {
     const allowed = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
     if (!allowed.has(file.mimetype)) return cb(new Error('Only JPEG, PNG, WEBP or PDF files are allowed'));
@@ -278,6 +294,7 @@ router.post('/orders/:id/payment-proof', proofLimiter, proofUpload.single('file'
       return ins.rows[0];
     });
 
+    await notifyAdminNewProof(order);
     res.status(201).json({ payment: serializePayment(payment) });
   })
 );
@@ -301,6 +318,7 @@ router.get('/orders/:id/payments/:paymentId/proof', asyncHandler(async (req, res
   res.send(row.proof_image);
 }));
 
+router.use(uploadErrorHandler);
 router.use((err, req, res, next) => {
   if (err instanceof multer.MulterError || err?.message?.includes('allowed')) {
     return res.status(400).json({ error: err.message });

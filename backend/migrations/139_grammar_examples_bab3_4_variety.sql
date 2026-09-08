@@ -1,4 +1,4 @@
--- 129_grammar_examples_bab3_4_variety.sql — Diversifikasi contoh Bab 3 & 4:
+-- 139_grammar_examples_bab3_4_variety.sql — Diversifikasi contoh Bab 3 & 4:
 -- dua contoh per pola dibuat BEDA topik/subjek/predikat, bukan cuma tukar
 -- nama di kerangka kalimat yang sama.
 --
@@ -57,12 +57,12 @@ BEGIN
    OFFSET 2 LIMIT 1;
 
   IF v_module_id IS NULL THEN
-    RAISE NOTICE '129: modul Bab 3 tidak ditemukan — skip.';
+    RAISE NOTICE '139: modul Bab 3 tidak ditemukan — skip.';
     RETURN;
   END IF;
 
   IF v_module_title !~* '(perkenalan|kosakata)' THEN
-    RAISE NOTICE '129: modul Bab 3 terbaca "%" — dilanjutkan tetap, tapi cek manual kalau meleset.', v_module_title;
+    RAISE NOTICE '139: modul Bab 3 terbaca "%" — dilanjutkan tetap, tapi cek manual kalau meleset.', v_module_title;
   END IF;
 
   v_pola := $json$[
@@ -164,7 +164,7 @@ BEGIN
 
     IF v_grammar_id IS NULL THEN
       v_skipped_pattern := v_skipped_pattern + 1;
-      RAISE NOTICE '129: Bab 3 pola "%" tidak ditemukan di module_grammar — skip.', (r.value->>'pattern');
+      RAISE NOTICE '139: Bab 3 pola "%" tidak ditemukan di module_grammar — skip.', (r.value->>'pattern');
       CONTINUE;
     END IF;
 
@@ -179,7 +179,7 @@ BEGIN
     v_replaced := v_replaced + 1;
   END LOOP;
 
-  RAISE NOTICE '129: Bab 3 "%" — % pola ditimpa, % pattern tidak ketemu.',
+  RAISE NOTICE '139: Bab 3 "%" — % pola ditimpa, % pattern tidak ketemu.',
     v_module_title, v_replaced, v_skipped_pattern;
 END $$;
 
@@ -204,12 +204,12 @@ BEGIN
    OFFSET 3 LIMIT 1;
 
   IF v_module_id IS NULL THEN
-    RAISE NOTICE '129: modul Bab 4 tidak ditemukan — skip.';
+    RAISE NOTICE '139: modul Bab 4 tidak ditemukan — skip.';
     RETURN;
   END IF;
 
   IF v_module_title !~* '(benda|sekitar)' THEN
-    RAISE NOTICE '129: modul Bab 4 terbaca "%" — dilanjutkan tetap, tapi cek manual kalau meleset.', v_module_title;
+    RAISE NOTICE '139: modul Bab 4 terbaca "%" — dilanjutkan tetap, tapi cek manual kalau meleset.', v_module_title;
   END IF;
 
   v_pola := $json$[
@@ -296,7 +296,7 @@ BEGIN
 
     IF v_grammar_id IS NULL THEN
       v_skipped_pattern := v_skipped_pattern + 1;
-      RAISE NOTICE '129: Bab 4 pola "%" tidak ditemukan di module_grammar — skip.', (r.value->>'pattern');
+      RAISE NOTICE '139: Bab 4 pola "%" tidak ditemukan di module_grammar — skip.', (r.value->>'pattern');
       CONTINUE;
     END IF;
 
@@ -311,7 +311,7 @@ BEGIN
     v_replaced := v_replaced + 1;
   END LOOP;
 
-  RAISE NOTICE '129: Bab 4 "%" — % pola ditimpa, % pattern tidak ketemu.',
+  RAISE NOTICE '139: Bab 4 "%" — % pola ditimpa, % pattern tidak ketemu.',
     v_module_title, v_replaced, v_skipped_pattern;
 END $$;
 

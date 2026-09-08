@@ -8,8 +8,8 @@
 // Tidak pakai cache Notion table — kanji_items kecil (<500 row per
 // level), query DB langsung cukup cepat. Browser cache 5 menit.
 //
-// Compound vocab per kanji: di-fetch dari module_vocabulary milik course
-// slug yang sama, di-filter in-memory by japanese.includes(char), cap 8.
+// Compound vocab per kanji diambil dari module_vocabulary course yang sama,
+// lalu diverifikasi terhadap level setiap Kanji penyusun katanya.
 
 import { Router } from 'express';
 import { asyncHandler } from '../middleware.js';
@@ -21,7 +21,7 @@ import {
   richTextPlain,
   notionPlainPageId,
 } from '../notion.js';
-import { loadCourseVocab, deriveCompounds } from '../kanji-compounds.js';
+import { loadCourseVocab, deriveCompounds, loadKanjiCatalog } from '../kanji-compounds.js';
 
 const router = Router();
 
@@ -86,7 +86,8 @@ router.get('/kanji', asyncHandler(async (req, res) => {
     `SELECT k.id, k.character, k.jlpt_level, k.on_reading, k.kun_reading,
             k.meaning_id, k.mnemonic, k.compounds, k.stroke_count, k.bab_kode, k.sort_order,
             l.id AS lesson_id, l.title AS lesson_title, l.sort_order AS lesson_sort,
-            m.id AS module_id, m.title AS module_title, m.sort_order AS module_sort
+            m.id AS module_id, m.title AS module_title, m.sort_order AS module_sort,
+            c.level AS course_level
        FROM kanji_items k
        JOIN lessons l ON l.id = k.lesson_id
        JOIN modules m ON m.id = l.module_id
@@ -100,12 +101,18 @@ router.get('/kanji', asyncHandler(async (req, res) => {
   // sama dipakai juga oleh /api/courses/:slug supaya pelajaran & Daftar Kanji
   // menampilkan contoh kosakata yang identik).
   const vocab = await loadCourseVocab(slug);
+  const kanjiCatalog = await loadKanjiCatalog();
   const attach = (k) => ({
     id: k.id, character: k.character, jlpt_level: k.jlpt_level,
     on_reading: k.on_reading, kun_reading: k.kun_reading,
     meaning_id: k.meaning_id, mnemonic: k.mnemonic,
     stroke_count: k.stroke_count, bab_kode: k.bab_kode,
-    compounds: deriveCompounds(k.character, k.compounds, vocab),
+    compounds: deriveCompounds(k.character, k.compounds, vocab, {
+      moduleId: k.module_id,
+      moduleSort: k.module_sort,
+      courseLevel: k.course_level,
+      kanjiCatalog,
+    }),
   });
 
   // Group by lesson (1 Bab = 1 pelajaran tipe kanji).

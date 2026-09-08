@@ -1,0 +1,11 @@
+.compact-action { margin-top: 3px; padding: 8px 11px; font-size: 13px; }
+.activity-card { margin-top: 18px; }
+.state-card { max-width: 620px; margin: 52px auto; }
+.recordings-label { margin-top: 18px; }
+.live-recordings { margin: 7px 0 12px; padding-left: 18px; color: var(--ink-700); }
+.live-recordings a { color: var(--brand-red); font-weight: 700; }
+.live-all { margin-top: 4px; }
+
+@media (max-width: 620px) {
+  .state-card { margin: 32px 0; }
+}

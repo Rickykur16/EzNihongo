@@ -1,0 +1,142 @@
+(() => {
+  const app = document.getElementById('dashboard-app');
+  const release = '20260902-5';
+  const progressReconcileVersion = 'ez_progress_reconcile_v2';
+  const labels = { kana: 'Kana', vocabulary: 'Kosakata', kanji: 'Kanji', grammar: 'Grammar' };
+  let signedInUser = null;
+  const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
+
+  async function get(path) {
+    const response = await ezApi(path);
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw Error(body.error || 'request_failed');
+    return body;
+  }
+  async function reconcileCachedProgress() {
+    let progress = {};
+    let quizScores = {};
+    try {
+      progress = JSON.parse(localStorage.getItem('ez_progress') || '{}');
+      quizScores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
+    } catch {}
+    const hasProgress = progress && typeof progress === 'object' && !Array.isArray(progress)
+      && Object.values(progress).some((course) => course && typeof course === 'object' && Object.values(course).some((done) => done === true));
+    const needsRepair = localStorage.getItem('ez_progress_pending_sync') === '1'
+      || (hasProgress && localStorage.getItem(progressReconcileVersion) !== '1');
+    if (!needsRepair) return true;
+    try {
+      const saved = await ezApi('/learning-state', {
+        method: 'PUT',
+        body: JSON.stringify({ progress, quizScores }),
+      });
+      if (!saved.ok) return false;
+      localStorage.removeItem('ez_progress_pending_sync');
+      localStorage.setItem(progressReconcileVersion, '1');
+      return true;
+    } catch { return false; }
+  }
+  function learnUrl(data) {
+    const course = data.course?.slug; const next = data.continueLearning;
+    if (!course) return 'welcome.html';
+    const params = new URLSearchParams({ course });
+    if (next) { params.set('module', next.chapter.slug); params.set('lesson', next.lesson.slug); }
+    return `welcome.html?${params}`;
+  }
+  const reviewUrl = (category = 'mixed') => category === 'mixed' ? `review.html?v=${release}` : `review.html?v=${release}&category=${encodeURIComponent(category)}`;
+  const courseUrl = (path, course) => `${path}?v=${release}&course=${encodeURIComponent(course)}`;
+  const formatDate = (value) => value ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '';
+  function errorMarkup(error) {
+    const expired = String(error?.message) === 'AUTH_EXPIRED';
+    return `<section class="card state-card"><div class="eyebrow">DASHBOARD</div><h1>Dashboard belum bisa dimuat</h1><p class="muted">${esc(ezStudentErrorMessage(error, 'Dashboard'))}</p>${expired ? '<a class="primary" href="login.html?next=dashboard.html">Masuk kembali</a>' : '<button class="secondary" id="retry-dashboard" type="button">Coba lagi</button>'}</section>`;
+  }
+  // Mirrors ACTIONABLE_STATUSES in backend/src/routes/orders.js and the
+  // labels in courses/order.html's STATUS_META — kept in sync by hand since
+  // the API doesn't expose a "still needs attention" flag directly.
+  const ACTIONABLE_ORDER_STATUSES = { pending_payment: 'Menunggu Transfer', awaiting_review: 'Menunggu Verifikasi Admin', rejected: 'Bukti Ditolak — Upload Ulang' };
+  // A student who uploaded proof and lost the order.html URL previously had
+  // no way back to it short of WhatsApp support — this closes that dead end.
+  // Placed above whatever render() drew (course dashboard OR the "Belum ada
+  // kelas aktif" empty state) since a pending order can exist in either case,
+  // e.g. this is exactly the state a payment-not-yet-approved student in the
+  // "belum ada kelas aktif" screen is in — that message alone reads like a
+  // broken grant when it's really just an order still awaiting review.
+  async function renderPendingOrderBanner() {
+    let orders;
+    try { orders = (await get('/orders/me')).orders || []; } catch { return; }
+    const actionable = orders.filter((order) => ACTIONABLE_ORDER_STATUSES[order.status]);
+    if (!actionable.length) return;
+    const html = actionable.map((order) => `<a class="pending-order-row" href="courses/order.html?id=${encodeURIComponent(order.id)}">
+      <strong>${esc(order.courseTitle || order.orderNumber)}</strong>
+      <span>${esc(ACTIONABLE_ORDER_STATUSES[order.status])}</span>
+    </a>`).join('');
+    app.insertAdjacentHTML('afterbegin', `<section class="card pending-order-banner"><div class="eyebrow">PESANAN SAYA</div>${html}</section>`);
+  }
+  // Sisa masa aktif kelas. Sebelumnya expires_at cuma dipakai server sebagai
+  // penyaring, jadi akses siswa bisa hilang tanpa pernah ada peringatan sama
+  // sekali. Ambang 14 hari dipilih supaya masih ada waktu menghubungi admin
+  // sebelum benar-benar terkunci, bukan pemberitahuan di hari terakhir.
+  const RENEW_WA = 'https://wa.me/6281294894557';
+  const EXPIRY_WARNING_DAYS = 14;
+
+  function accessNotice(course) {
+    if (!course?.expiresAt) return '';
+    const end = new Date(course.expiresAt);
+    if (Number.isNaN(end.getTime())) return '';
+    // Dibulatkan ke atas supaya "berakhir besok pagi" tidak terbaca "0 hari".
+    const daysLeft = Math.ceil((end.getTime() - Date.now()) / 86400000);
+    const tanggal = new Intl.DateTimeFormat('id-ID', { dateStyle: 'long' }).format(end);
+    const sisa = daysLeft <= 0 ? 'berakhir hari ini'
+      : daysLeft === 1 ? 'tinggal 1 hari lagi'
+      : `tinggal ${daysLeft} hari lagi`;
+    const mendesak = daysLeft <= EXPIRY_WARNING_DAYS;
+    return `<p class="access-notice${mendesak ? ' urgent' : ''}">
+      Masa aktif kelas sampai <strong>${esc(tanggal)}</strong> · ${esc(sisa)}${
+        mendesak ? ` — <a href="${RENEW_WA}" target="_blank" rel="noopener">hubungi admin untuk perpanjang</a>` : ''
+      }
+    </p>`;
+  }
+
+  function masteryRow(key, value = {}) {
+    const percent = value.percentage;
+    return `<div class="mastery-row"><strong>${labels[key]}</strong><div class="bar" aria-label="${labels[key]} ${percent == null ? 'belum cukup latihan' : `${percent}%`}"><i style="width:${percent == null ? 0 : percent}%"></i></div><span class="state">${percent == null ? 'Belum cukup latihan' : `${percent}% · `}${esc(value.label || 'Belum cukup latihan')}</span></div>`;
+  }
+  function render(data) {
+    if (!data.course) {
+      app.innerHTML = `<section class="card state-card"><div class="eyebrow">DASHBOARD</div><h1>Belum ada kelas aktif</h1><p class="muted">Kelas aktif akan muncul setelah pendaftaran selesai.</p>${ezSignedInAsHtml(signedInUser)}<a class="primary" href="welcome.html">Buka Belajar</a></section>`;
+      return;
+    }
+    const course = data.course; const next = data.continueLearning; const review = data.review || { total: 0, byCategory: {} };
+    const mastery = data.mastery || {}; const activity = data.weeklyActivity || {}; const focus = data.focus; const live = data.liveClass || {};
+    const focusMarkup = focus
+      ? `<h3>${esc(focus.title)}</h3><p class="muted">${esc(focus.detail)}</p><a class="secondary" href="${focus.action === 'continue' ? learnUrl(data) : reviewUrl(focus.reviewCategory || 'mixed')}">${focus.action === 'continue' ? 'Lanjut Belajar' : 'Latihan Fokus'}</a>`
+      : '<p class="muted">Belum ada rekomendasi khusus. Lanjutkan latihan agar kami dapat menentukan fokus berikutnya.</p>';
+    document.getElementById('learn-nav').href = learnUrl(data);
+    document.getElementById('live-nav').href = courseUrl('live.html', course.slug);
+    document.getElementById('progress-nav').href = courseUrl('progress.html', course.slug);
+    const liveMarkup = live.next
+      ? `<h2>${esc(live.next.title)}</h2><p class="muted">${formatDate(live.next.startsAt)}</p>${live.next.canJoin ? `<a class="primary" target="_blank" rel="noopener" href="${esc(live.next.meetingUrl)}">Join Class</a>` : `<a class="secondary" href="${courseUrl('live.html', course.slug)}">Lihat jadwal</a>`}`
+      : '<h2>Belum ada kelas terjadwal</h2><p class="muted">Kelas dan rekaman akan muncul di sini saat tersedia.</p>';
+    const recordings = (live.recentRecordings || []).map((item) => `<li>${esc(item.title)} <a target="_blank" rel="noopener" href="${esc(item.recordingUrl)}">Tonton</a></li>`).join('');
+    app.innerHTML = `<section class="hero"><div><div class="eyebrow">学習ダッシュボード · DASHBOARD</div><h1>${data.greetingName ? `Halo, ${esc(data.greetingName)}.` : 'Halo.'}</h1><p class="muted">${esc(course.level || course.slug.toUpperCase())} · ${course.progress.percentage}% kurikulum selesai</p>${accessNotice(course)}</div>${data.courses?.length > 1 ? `<label class="course-switch"><span>Kelas aktif</span><select class="course-select" id="course-select" aria-label="Pilih kelas">${data.courses.map((item) => `<option value="${esc(item.slug)}" ${item.id === course.id ? 'selected' : ''}>${esc(item.title)}</option>`).join('')}</select></label>` : ''}</section>
+    <section class="grid dashboard-primary"><article class="card continue-card"><div class="eyebrow">LANJUT BELAJAR</div>${next ? `<div class="continue-label">${esc(next.section || 'Kurikulum')} · ${esc(next.chapter.title)}</div><div class="continue-title">${esc(next.lesson.title)}</div><a class="primary" href="${learnUrl(data)}">Lanjut Belajar</a>` : '<div class="continue-title">Kurikulum selesai</div><p class="muted">Semua pelajaran pada kelas ini sudah selesai.</p>'}</article><article class="card progress-card"><div class="eyebrow">PROGRES KELAS</div><div class="course-progress">${course.progress.percentage}% selesai</div><div class="curriculum-bar" role="progressbar" aria-label="Progres kurikulum" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${course.progress.percentage}"><i style="width:${course.progress.percentage}%"></i></div><p class="muted">${course.progress.completedLessons} dari ${course.progress.totalLessons} pelajaran telah diselesaikan.</p><a class="secondary compact-action" href="${courseUrl('progress.html', course.slug)}">Lihat Progres</a></article></section>
+    <section class="grid dashboard-secondary"><article class="card review-card"><div class="eyebrow">SMART REVIEW</div><div class="review-count">${review.total} item perlu direview</div><div class="counts">${Object.entries(labels).map(([key, label]) => `<div class="count"><strong>${Number(review.byCategory?.[key]) || 0}</strong><span>${label}</span></div>`).join('')}</div>${review.total ? `<a class="primary" href="${reviewUrl()}">Mulai Review</a>` : '<p class="muted">Review hari ini selesai. Lanjutkan belajar untuk membuka materi review berikutnya.</p>'}</article><article class="card live"><div class="eyebrow">LIVE CLASS · NEXT CLASS</div>${liveMarkup}${recordings ? `<div class="eyebrow recordings-label">RECENT RECORDINGS</div><ul class="live-recordings">${recordings}</ul>` : ''}<a class="secondary live-all" href="${courseUrl('live.html', course.slug)}">Lihat Semua</a></article></section>
+    <section class="card performance-card"><div class="performance"><div><div class="eyebrow">PERKEMBANGAN KEMAMPUAN</div><h2>Kemampuanmu saat ini</h2>${Object.entries(labels).map(([key]) => masteryRow(key, mastery[key])).join('')}</div><aside class="focus"><div class="eyebrow">FOKUS BELAJARMU</div>${focusMarkup}</aside></div></section>
+    <section class="card activity-card"><div class="eyebrow">AKTIVITAS MINGGU INI</div><h2>Ringkasan belajarmu minggu ini</h2><div class="activity"><div class="metric"><strong>${activity.activeDays || 0}</strong><span>hari aktif</span></div><div class="metric"><strong>${activity.lessonsCompleted || 0}</strong><span>pelajaran selesai</span></div><div class="metric"><strong>${activity.reviewQuestions || 0}</strong><span>review selesai</span></div><div class="metric"><strong>${activity.accuracy == null ? '—' : `${activity.accuracy}%`}</strong><span>akurasi latihan</span></div></div><div class="insight">${esc(data.weeklyInsight?.message || 'Belum cukup aktivitas untuk menampilkan rangkuman minggu ini.')}</div></section>`;
+    document.getElementById('course-select')?.addEventListener('change', (event) => load(event.target.value));
+  }
+  async function load(course = '') {
+    try {
+      render(await get(`/dashboard/me${course ? `?course=${encodeURIComponent(course)}` : ''}`));
+      renderPendingOrderBanner();
+    }
+    catch (error) { app.innerHTML = errorMarkup(error); document.getElementById('retry-dashboard')?.addEventListener('click', () => load(course)); }
+  }
+  document.getElementById('logout').addEventListener('click', () => ezLogout());
+  (async () => {
+    const me = await ezRequireAuth('login.html');
+    if (!me) return;
+    signedInUser = me;
+    await reconcileCachedProgress();
+    await load(new URLSearchParams(location.search).get('course') || '');
+  })();
+})();

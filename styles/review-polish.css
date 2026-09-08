@@ -1,0 +1,9 @@
+.review-actions { display: flex; gap: 9px; flex-wrap: wrap; align-items: center; margin-top: 24px; }
+.review-actions .primary { width: auto; }
+.summary-card .category-row { margin-bottom: 0; }
+
+@media (max-width: 620px) {
+  .review-actions { align-items: stretch; flex-direction: column; }
+  .review-actions .primary,
+  .review-actions .back-link { width: 100%; text-align: center; }
+}

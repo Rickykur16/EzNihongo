@@ -142,7 +142,7 @@ async function ezRequireAuth(loginPath) {
   if (!user) {
     const path = loginPath || 'login.html';
     const here = location.pathname.replace(/^\//, '') + location.search;
-    location.replace(path + '?next=' + encodeURIComponent(here || 'welcome.html'));
+    location.replace(path + '?next=' + encodeURIComponent(here || 'dashboard.html'));
     return null;
   }
   return user;
@@ -156,3 +156,36 @@ window.ezLogout = ezLogout;
 window.ezGetMe = ezGetMe;
 window.mirrorUserToLocal = mirrorUserToLocal;
 window.ezRequireAuth = ezRequireAuth;
+
+// Keep student-facing API failures clear and consistent across the new
+// platform pages; route/error codes should never be shown to learners.
+function ezStudentErrorMessage(error, subject = 'Halaman ini') {
+  const code = String(error?.message || '');
+  if (code === 'AUTH_EXPIRED') return 'Sesi kamu sudah berakhir. Silakan masuk kembali.';
+  if (code === 'not_enrolled' || code === 'course_not_found') return 'Akses ke kelas ini tidak tersedia atau sudah tidak aktif.';
+  return `${subject} belum bisa dimuat. Periksa koneksi internet lalu coba lagi.`;
+}
+window.ezStudentErrorMessage = ezStudentErrorMessage;
+
+// "Kelas kamu tidak muncul" is almost never a broken entitlement — it is
+// almost always a second Google account. A student who lands on one of the
+// dead-end screens ("Belum ada kelas aktif", the paywall) cannot tell which
+// account they are signed in as, and neither can the admin who is looking at
+// their screenshot, so the one fact that settles it is the one fact nobody
+// can see. Print it on every dead end, with a way straight out.
+//
+// Pass the user object from ezRequireAuth() when the caller has it; otherwise
+// this falls back to the ez_user mirror written by mirrorUserToLocal().
+function ezSignedInAsHtml(user) {
+  let email = user && user.email;
+  if (!email) {
+    try { email = JSON.parse(localStorage.getItem('ez_user') || '{}').email; } catch {}
+  }
+  if (!email) return '';
+  const safe = String(email).replace(/[&<>'"]/g, (char) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
+  })[char]);
+  return `<p class="signed-in-as">Login sebagai <strong>${safe}</strong> · `
+    + `<a href="#" onclick="event.preventDefault(); window.ezLogout();">Ganti akun</a></p>`;
+}
+window.ezSignedInAsHtml = ezSignedInAsHtml;

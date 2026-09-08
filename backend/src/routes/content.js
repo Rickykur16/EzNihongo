@@ -2,7 +2,12 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
 import { asyncHandler, requireAuth } from '../middleware.js';
-import { loadCourseVocab, deriveCompounds } from '../kanji-compounds.js';
+import {
+  loadCourseVocab,
+  deriveCompounds,
+  loadKanjiCatalog,
+  deriveKanjiUsages,
+} from '../kanji-compounds.js';
 import { userCanAccessCourse, requireLessonCourseAccess } from '../entitlements.js';
 
 const router = Router();
@@ -60,6 +65,7 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
   );
 
   const moduleIds = modules.rows.map((m) => m.id);
+  const moduleSortById = new Map(modules.rows.map((m) => [m.id, Number(m.sort_order) || 0]));
   const lessonsByModule = {};
   const vocabByModule = {};
   const vocabByLesson = {};
@@ -71,14 +77,24 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
   const grammarTaskByLesson = {};
 
   if (moduleIds.length > 0) {
-    // Include content + video_url so the dashboard can render lesson bodies
-    // without an extra round-trip per lesson. Quiz questions are still
+    // Include content + video metadata so the dashboard can render lesson
+    // bodies and YouTube segments without an extra round-trip per lesson.
+    // Quiz questions are still
     // lazy-loaded via /api/lessons/:id (smaller default payload for long courses).
     const [lessons, vocab, grammar] = await Promise.all([
       query(
-        `SELECT id, module_id, slug, title, type, content, video_url, duration_minutes, sort_order, popup_after_lesson_id
-         FROM lessons WHERE module_id = ANY($1::uuid[])
-         ORDER BY sort_order ASC, created_at ASC`,
+        `SELECT l.id, l.module_id, l.slug, l.title, l.type, l.content,
+                l.video_url, l.video_source_id, l.video_start_seconds,
+                l.video_end_seconds, l.duration_minutes, l.sort_order,
+                l.popup_after_lesson_id,
+                vs.provider AS video_provider,
+                vs.external_id AS video_external_id,
+                vs.title AS video_source_title,
+                vs.duration_seconds AS video_source_duration_seconds
+           FROM lessons l
+           LEFT JOIN video_sources vs ON vs.id = l.video_source_id
+          WHERE l.module_id = ANY($1::uuid[])
+          ORDER BY l.sort_order ASC, l.created_at ASC`,
         [moduleIds]
       ),
       query(
@@ -130,13 +146,14 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
     if (deckLessonIds.length > 0) {
       const deckRows = await query(
         `SELECT di.lesson_id, di.sort_order, di.accent_color,
-                v.id, v.japanese, v.reading, v.romaji, v.indonesian, v.category
+                v.id, v.module_id, v.japanese, v.reading, v.romaji, v.indonesian, v.category
          FROM lesson_deck_items di
          JOIN module_vocabulary v ON v.id = di.vocabulary_id
          WHERE di.lesson_id = ANY($1::uuid[])
          ORDER BY di.lesson_id, di.sort_order ASC, v.japanese ASC`,
         [deckLessonIds]
       );
+      const kanjiCatalog = await loadKanjiCatalog();
       const vocabIds = [...new Set(deckRows.rows.map((r) => r.id))];
       const examplesByVocab = {};
       if (vocabIds.length > 0) {
@@ -162,6 +179,10 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
           category: r.category,
           accentColor: r.accent_color,
           examples: examplesByVocab[r.id] || [],
+          kanjiUsages: deriveKanjiUsages(r.japanese, kanjiCatalog, {
+            currentLevel: course.rows[0].level,
+            currentModuleSort: moduleSortById.get(r.module_id),
+          }),
         });
       }
     }
@@ -181,7 +202,10 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
       // Derive contoh kosakata sama seperti "Daftar Kanji" (/api/kanji) supaya
       // kanji yang sama tampil identik di pelajaran & Daftar Kanji.
       const courseVocab = await loadCourseVocab(req.params.slug);
+      const kanjiCatalog = await loadKanjiCatalog();
+      const lessonModuleById = new Map(lessons.rows.map((l) => [l.id, l.module_id]));
       for (const r of kanjiRows.rows) {
+        const moduleId = lessonModuleById.get(r.lesson_id);
         (kanjiByLesson[r.lesson_id] ||= []).push({
           id: r.id,
           character: r.character,
@@ -190,7 +214,12 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
           kun_reading: r.kun_reading,
           meaning_id: r.meaning_id,
           mnemonic: r.mnemonic,
-          compounds: deriveCompounds(r.character, r.compounds, courseVocab),
+          compounds: deriveCompounds(r.character, r.compounds, courseVocab, {
+            moduleId,
+            moduleSort: moduleSortById.get(moduleId),
+            courseLevel: course.rows[0].level,
+            kanjiCatalog,
+          }),
           stroke_count: r.stroke_count,
           bab_kode: r.bab_kode,
         });
@@ -299,10 +328,16 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
 // Platform content itself, not just metadata.
 router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
   const lesson = await query(
-    `SELECT l.*, m.course_id, m.title AS module_title, c.slug AS course_slug
+    `SELECT l.*, m.course_id, m.title AS module_title, m.sort_order AS module_sort,
+            c.slug AS course_slug, c.level AS course_level,
+            vs.provider AS video_provider,
+            vs.external_id AS video_external_id,
+            vs.title AS video_source_title,
+            vs.duration_seconds AS video_source_duration_seconds
      FROM lessons l
      JOIN modules m ON m.id = l.module_id
      JOIN courses c ON c.id = m.course_id
+     LEFT JOIN video_sources vs ON vs.id = l.video_source_id
      WHERE l.id = $1 AND c.is_published = TRUE
      LIMIT 1`,
     [req.params.id]
@@ -321,6 +356,15 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
     type: row.type,
     content: row.content,
     videoUrl: row.video_url,
+    videoSource: row.video_source_id ? {
+      id: row.video_source_id,
+      provider: row.video_provider,
+      externalId: row.video_external_id,
+      title: row.video_source_title,
+      durationSeconds: row.video_source_duration_seconds,
+    } : null,
+    videoStartSeconds: row.video_start_seconds,
+    videoEndSeconds: row.video_end_seconds,
     durationMinutes: row.duration_minutes,
   };
 
@@ -343,7 +387,7 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
   if (row.type === 'deck') {
     const deckRows = await query(
       `SELECT di.sort_order, di.accent_color,
-              v.id, v.japanese, v.reading, v.romaji, v.indonesian, v.category
+              v.id, v.module_id, v.japanese, v.reading, v.romaji, v.indonesian, v.category
        FROM lesson_deck_items di
        JOIN module_vocabulary v ON v.id = di.vocabulary_id
        WHERE di.lesson_id = $1
@@ -365,6 +409,7 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
         });
       }
     }
+    const kanjiCatalog = await loadKanjiCatalog();
     response.deck = deckRows.rows.map((r) => ({
       id: r.id,
       japanese: r.japanese,
@@ -374,6 +419,10 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
       category: r.category,
       accentColor: r.accent_color,
       examples: examplesByVocab[r.id] || [],
+      kanjiUsages: deriveKanjiUsages(r.japanese, kanjiCatalog, {
+        currentLevel: row.course_level,
+        currentModuleSort: row.module_sort,
+      }),
     }));
   }
 
@@ -387,9 +436,15 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
       [row.id]
     );
     const courseVocab = await loadCourseVocab(row.course_slug);
+    const kanjiCatalog = await loadKanjiCatalog();
     response.kanji = kanjiRows.rows.map((r) => ({
       ...r,
-      compounds: deriveCompounds(r.character, r.compounds, courseVocab),
+      compounds: deriveCompounds(r.character, r.compounds, courseVocab, {
+        moduleId: row.module_id,
+        moduleSort: row.module_sort,
+        courseLevel: row.course_level,
+        kanjiCatalog,
+      }),
     }));
   }
 

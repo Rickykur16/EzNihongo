@@ -267,6 +267,8 @@ let STATE = {
   modules: [],
   selectedModule: null,
   lessons: [],
+  videoSources: [],
+  liveClasses: [],
   users: [],
   discussions: [],
 };
@@ -289,6 +291,32 @@ function formatDurationShort(minutes) {
   const h = Math.floor(n / 60);
   const rem = Math.round(n - h * 60);
   return rem === 0 ? `${h}j` : `${h}j ${rem}m`;
+}
+
+function formatVideoTimestamp(seconds) {
+  const n = Number(seconds);
+  if (!Number.isFinite(n) || n < 0) return '';
+  const total = Math.floor(n);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return h
+    ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+// Accept mm:ss, hh:mm:ss, or a whole number of seconds. Keeping parsing in
+// the editor avoids forcing authors to calculate timestamps by hand.
+function parseVideoTimestamp(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  if (/^\d+$/.test(raw)) return Number(raw);
+  const parts = raw.split(':');
+  if (parts.length < 2 || parts.length > 3 || parts.some((p) => !/^\d{1,2}$/.test(p))) return NaN;
+  const nums = parts.map(Number);
+  const [h, m, s] = parts.length === 3 ? nums : [0, nums[0], nums[1]];
+  if (m > 59 || s > 59) return NaN;
+  return h * 3600 + m * 60 + s;
 }
 
 // Slug rules: lowercase, digits, hyphens only. No leading/trailing/double hyphens.
@@ -394,7 +422,7 @@ async function bootAdmin() {
   if (!user.isAdmin) { showLock('Akun ini bukan admin. Hubungi pengelola untuk akses.'); return; }
   CURRENT_USER = user;
   renderApp();
-  await loadCourses();
+  await Promise.all([loadCourses(), loadVideoSources()]);
   renderTab();
 }
 bootAdmin();
@@ -701,6 +729,7 @@ function renderApp() {
       <button data-tab="orders">Pesanan</button>
       <button data-tab="discussions">Diskusi</button>
       <button data-tab="tts">TTS Cache</button>
+      <button data-tab="live">Live Class</button>
       <button data-tab="ai">AI</button>
     </nav>
     <main>
@@ -714,6 +743,7 @@ function renderApp() {
       <section class="pane" data-pane="orders"></section>
       <section class="pane" data-pane="discussions"></section>
       <section class="pane" data-pane="tts"></section>
+      <section class="pane" data-pane="live"></section>
       <section class="pane" data-pane="ai"></section>
     </main>
   `;
@@ -740,8 +770,84 @@ function renderTab() {
   else if (STATE.tab === 'orders') { renderOrders(); }
   else if (STATE.tab === 'discussions') { loadDiscussions().then(renderDiscussions); }
   else if (STATE.tab === 'tts') { renderTtsCachePane(); }
+  else if (STATE.tab === 'live') { loadLiveClasses().then(renderLiveClasses); }
   else if (STATE.tab === 'ai') { renderAiSettings(); }
 }
+
+// ─────────────────────────────────────────────────────────────
+// LIVE CLASS — metadata saja; Pelajaran tetap berasal dari kurikulum kanonis.
+// ─────────────────────────────────────────────────────────────
+const liveLessonCache = new Map();
+function liveClassErrorMessage(error) {
+  const messages = {
+    invalid_courseId: 'Pilih kursus yang valid.', invalid_title: 'Judul Live Class wajib diisi (maksimal 240 karakter).',
+    invalid_startsAt: 'Isi waktu mulai yang valid.', endsAt_must_be_after_startsAt: 'Waktu selesai harus setelah waktu mulai.',
+    invalid_status: 'Pilih status Live Class yang valid.', invalid_meetingUrl: 'Meeting URL harus berupa alamat http(s) yang valid.',
+    invalid_recordingUrl: 'Recording URL harus berupa alamat http(s) yang valid.', invalid_lessonIds: 'Pelajaran terkait tidak valid.',
+    related_lessons_must_belong_to_course: 'Pelajaran terkait harus berasal dari kursus yang dipilih.', course_not_found: 'Kursus tidak ditemukan.',
+  };
+  return messages[error?.message] || 'Live Class belum dapat disimpan. Periksa data lalu coba lagi.';
+}
+function liveDateInput(value) {
+  if (!value) return '';
+  const date = new Date(value); if (Number.isNaN(date.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+async function loadLiveClasses() {
+  try { const data = await api('/admin/live-classes'); STATE.liveClasses = data.liveClasses || []; }
+  catch (error) { STATE.liveClasses = []; notify('Gagal memuat Live Class: ' + error.message, true); }
+}
+async function loadLiveLessons(courseId) {
+  if (liveLessonCache.has(courseId)) return liveLessonCache.get(courseId);
+  try {
+    const data = await api('/admin/live-classes/lessons?courseId=' + encodeURIComponent(courseId));
+    const lessons = data.lessons || [];
+    liveLessonCache.set(courseId, lessons); return lessons;
+  } catch (error) { notify('Pelajaran tidak bisa dimuat: ' + error.message, true); return []; }
+}
+function renderLiveClasses() {
+  const pane = document.querySelector('[data-pane="live"]'); if (!pane) return;
+  const rows = (STATE.liveClasses || []).map((item) => `<tr><td><strong>${escapeHtml(item.title)}</strong><br><span class="pill">${escapeHtml(item.courseTitle)}</span></td><td>${escapeHtml(new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.startsAt)))}</td><td><span class="badge ${item.status === 'cancelled' ? 'badge-off' : 'badge-on'}">${item.status === 'scheduled' ? 'Jadwal' : item.status === 'completed' ? 'Selesai' : 'Dibatalkan'}</span></td><td>${item.relatedLessons?.length ? item.relatedLessons.map((lesson) => escapeHtml(lesson.title)).join(', ') : '—'}</td><td class="actions"><button class="btn btn-ghost" onclick="editLiveClass('${item.id}')">Edit</button><button class="btn btn-danger" onclick="deleteLiveClass('${item.id}', '${escapeHtml(item.title).replace(/'/g, "\\'")}')">Hapus</button></td></tr>`).join('');
+  pane.innerHTML = `<h2>Live Class</h2><p style="color:#666;font-size:13px;margin-top:-6px;">Jadwal, URL meeting/rekaman, dan tautan ke Pelajaran yang sudah ada.</p><div class="toolbar"><button class="btn btn-primary" onclick="newLiveClass()">+ Live Class</button><button class="btn btn-ghost" onclick="loadLiveClasses().then(renderLiveClasses)">↻ Refresh</button></div>${rows ? `<table><thead><tr><th>Judul / Kursus</th><th>Mulai</th><th>Status</th><th>Pelajaran terkait</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">Belum ada Live Class.</div>'}`;
+}
+function liveLessonPicker(lessons, selected) {
+  if (!lessons.length) return '<div class="empty" style="padding:12px;">Tidak ada Pelajaran yang dapat dipilih untuk kursus ini.</div>';
+  return lessons.map((lesson) => `<label style="display:block;padding:6px 0;border-bottom:1px solid #eee;font-family:var(--font-body);font-size:13px;"><input type="checkbox" name="lessonIds" value="${lesson.id}" ${selected.has(lesson.id) ? 'checked' : ''} /> <strong>${escapeHtml(lesson.module.title)}</strong> · ${escapeHtml(lesson.title)}</label>`).join('');
+}
+async function openLiveClassForm(item = null) {
+  const defaultCourse = item?.courseId || STATE.courses[0]?.id || '';
+  const selected = new Set((item?.relatedLessons || []).map((lesson) => lesson.id));
+  const lessons = defaultCourse ? await loadLiveLessons(defaultCourse) : [];
+  const courseOptions = STATE.courses.map((course) => `<option value="${course.id}" ${course.id === defaultCourse ? 'selected' : ''}>${escapeHtml(course.title)}</option>`).join('');
+  openModal(`<h3>${item ? 'Edit' : 'Live Class Baru'}</h3><form id="live-class-form"><div class="field"><label>Kursus</label><select name="courseId" id="live-course" required>${courseOptions}</select></div><div class="field"><label>Judul</label><input name="title" value="${escapeHtml(item?.title || '')}" required maxlength="240" /></div><div class="field"><label>Deskripsi / topik</label><textarea name="description" rows="3">${escapeHtml(item?.description || '')}</textarea></div><div class="field-row"><div class="field"><label>Mulai</label><input type="datetime-local" name="startsAt" value="${liveDateInput(item?.startsAt)}" required /><small>Ditampilkan dalam zona waktu browser admin.</small></div><div class="field"><label>Selesai (opsional)</label><input type="datetime-local" name="endsAt" value="${liveDateInput(item?.endsAt)}" /></div></div><div class="field-row"><div class="field"><label>Meeting URL</label><input type="url" name="meetingUrl" value="${escapeHtml(item?.meetingUrl || '')}" placeholder="https://…" /></div><div class="field"><label>Recording URL</label><input type="url" name="recordingUrl" value="${escapeHtml(item?.recordingUrl || '')}" placeholder="https://…" /></div></div><div class="field"><label>Status</label><select name="status"><option value="scheduled" ${item?.status === 'scheduled' || !item ? 'selected' : ''}>Jadwal</option><option value="completed" ${item?.status === 'completed' ? 'selected' : ''}>Selesai</option><option value="cancelled" ${item?.status === 'cancelled' ? 'selected' : ''}>Dibatalkan</option></select></div><div class="field"><label>Pelajaran terkait (opsional)</label><div id="live-lesson-picker" style="max-height:220px;overflow:auto;border:1px solid #ddd;border-radius:7px;padding:0 10px;">${liveLessonPicker(lessons, selected)}</div></div><div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button><button type="submit" class="btn btn-primary">Simpan</button></div></form>`);
+  const form = document.getElementById('live-class-form'); form.__selectedLiveLessons = selected;
+  document.getElementById('live-course').addEventListener('change', refreshLiveLessonPicker);
+  form.addEventListener('submit', (event) => submitLiveClass(event, item?.id || null));
+}
+window.refreshLiveLessonPicker = async () => {
+  const form = document.getElementById('live-class-form'); if (!form) return;
+  form.__selectedLiveLessons = new Set([...form.querySelectorAll('input[name="lessonIds"]:checked')].map((input) => input.value));
+  const picker = document.getElementById('live-lesson-picker'); picker.textContent = 'Memuat Pelajaran…';
+  const lessons = await loadLiveLessons(document.getElementById('live-course').value);
+  picker.innerHTML = liveLessonPicker(lessons, form.__selectedLiveLessons);
+};
+window.newLiveClass = () => openLiveClassForm();
+window.editLiveClass = (id) => openLiveClassForm((STATE.liveClasses || []).find((item) => item.id === id));
+async function submitLiveClass(event, id) {
+  event.preventDefault(); const form = event.target; const fd = new FormData(form);
+  const starts = new Date(fd.get('startsAt')); const endsRaw = fd.get('endsAt'); const ends = endsRaw ? new Date(endsRaw) : null;
+  const body = { courseId: fd.get('courseId'), title: fd.get('title').trim(), description: fd.get('description').trim() || null, startsAt: starts.toISOString(), endsAt: ends ? ends.toISOString() : null, meetingUrl: fd.get('meetingUrl').trim() || null, recordingUrl: fd.get('recordingUrl').trim() || null, status: fd.get('status'), lessonIds: fd.getAll('lessonIds') };
+  const endSubmit = beginSubmit(form);
+  try { await api('/admin/live-classes' + (id ? '/' + id : ''), { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) }); closeModal(); await loadLiveClasses(); renderLiveClasses(); notify('Live Class tersimpan'); }
+  catch (error) { notify(liveClassErrorMessage(error), true); }
+  finally { endSubmit(); }
+}
+window.deleteLiveClass = async (id, title) => {
+  if (!confirm(`Hapus Live Class "${title}"?`)) return;
+  try { await api('/admin/live-classes/' + id, { method: 'DELETE' }); await loadLiveClasses(); renderLiveClasses(); notify('Live Class dihapus'); }
+  catch (error) { notify('Gagal hapus Live Class: ' + error.message, true); }
+};
 
 // ─────────────────────────────────────────────────────────────
 // AI SETTINGS — prompt catatan coaching (belajar adaptif)
@@ -980,6 +1086,18 @@ async function loadModulesForCourse(courseSlug) {
     const d = await api('/courses/' + courseSlug);
     STATE.modules = d.course?.modules || [];
   } catch (e) { STATE.modules = []; notify('Gagal load modul: ' + e.message, true); }
+}
+
+async function loadVideoSources() {
+  try {
+    const d = await api('/admin/video-sources');
+    STATE.videoSources = Array.isArray(d.sources) ? d.sources : [];
+  } catch (e) {
+    STATE.videoSources = [];
+    // The normal lesson editor (including legacy Bunny URL) remains usable
+    // while a deployment is rolling and the new endpoint is not available.
+    console.warn('Gagal memuat sumber YouTube:', e.message);
+  }
 }
 
 function renderModules() {
@@ -1944,8 +2062,60 @@ window.closeLessonDrawer = () => {
   renderLessonListPane();
 };
 
+function supportsVideoSegment(type) {
+  return type === 'video' || type === 'kana';
+}
+
+function youtubeSegmentFieldsHtml(l) {
+  const selected = l.video_source_id || '';
+  const selectedValue = selected || (l.id ? '' : '__new__');
+  const sources = STATE.videoSources || [];
+  const savedSourceMissingFromPicker = selected && !sources.some((source) => source.id === selected);
+  const sourceOptions = (savedSourceMissingFromPicker
+    ? [{ id: selected, title: 'Sumber tersimpan (daftar belum termuat)', external_id: '' }]
+    : []).concat(sources).map((source) => {
+    const label = source.title || `YouTube · ${source.external_id}`;
+    const used = Number(source.lesson_count) || 0;
+    return `<option value="${source.id}" ${selectedValue === source.id ? 'selected' : ''}>${escapeHtml(label)}${used ? ` · ${used} pelajaran` : ''}</option>`;
+  }).join('');
+  const adding = selectedValue === '__new__';
+  const hasSource = !!selectedValue;
+  return `
+    <div class="field" data-youtube-segment-only style="display:${supportsVideoSegment(l.type) ? '' : 'none'};margin-top:12px;padding:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;">
+      <label>Sumber YouTube</label>
+      <select name="videoSourceId" data-video-source-select>
+        <option value="" ${!selectedValue ? 'selected' : ''}>— gunakan embed legacy di bawah —</option>
+        ${sourceOptions}
+        <option value="__new__" ${adding ? 'selected' : ''}>+ Tambah video YouTube baru</option>
+      </select>
+      <div data-new-youtube-source style="display:${adding ? '' : 'none'};margin-top:10px;">
+        <label style="font-size:12px;">URL YouTube</label>
+        <input name="youtubeSourceUrl" value="" placeholder="https://youtu.be/... atau https://youtube.com/watch?v=..." autocomplete="off" />
+        <label style="font-size:12px;margin-top:8px;">Nama sumber <span style="font-weight:400;color:#737373;">(opsional, agar mudah dipilih lagi)</span></label>
+        <input name="youtubeSourceTitle" value="" placeholder="Contoh: Bab 1 — video lengkap" maxlength="240" />
+      </div>
+      <div data-video-segment-range style="display:${hasSource ? '' : 'none'};margin-top:10px;">
+        <div class="field-row">
+          <div class="field">
+            <label>Mulai</label>
+            <input name="videoStart" value="${escapeHtml(formatVideoTimestamp(l.video_start_seconds ?? 0) || '00:00')}" placeholder="00:00" inputmode="numeric" />
+          </div>
+          <div class="field">
+            <label>Selesai</label>
+            <input name="videoEnd" value="${escapeHtml(formatVideoTimestamp(l.video_end_seconds))}" placeholder="contoh 04:30" inputmode="numeric" />
+          </div>
+        </div>
+        <div style="font-size:11px;color:#9a3412;margin-top:4px;">Format <code>mm:ss</code> atau <code>hh:mm:ss</code>. Setiap pelajaran memakai rentang berbeda dari video sumber yang sama.</div>
+      </div>
+    </div>`;
+}
+
 function lessonFormHtml(l) {
-  l = l || { slug: '', title: '', type: 'text', content: '', video_url: '', duration_minutes: '', sort_order: 0 };
+  l = l || {
+    slug: '', title: '', type: 'text', content: '', video_url: '',
+    video_source_id: '', video_start_seconds: null, video_end_seconds: null,
+    duration_minutes: '', sort_order: 0,
+  };
   return `
     <h3>${l.id ? 'Edit Pelajaran' : 'Pelajaran Baru'}</h3>
     <form id="lesson-form">
@@ -1981,7 +2151,7 @@ function lessonFormHtml(l) {
       </div>
       <div class="field" data-kana-only style="display:${l.type === 'kana' ? '' : 'none'};">
         <div style="font-size:12px;color:#525252;font-family:var(--font-body);background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;padding:8px 12px;">
-          <strong>Hiragana/Katakana:</strong> setelah simpan, klik tombol <strong>Kelola Kana</strong> di daftar pelajaran untuk memilih karakter dari bank + contoh kata. Isi <strong>Video URL</strong> di bawah untuk menampilkan video di atas chart. Field "Konten" opsional sebagai pengantar.
+          <strong>Hiragana/Katakana:</strong> setelah simpan, klik tombol <strong>Kelola Kana</strong> di daftar pelajaran untuk memilih karakter dari bank + contoh kata. Pilih <strong>Sumber YouTube</strong> dan atur timeline untuk menampilkan potongan video di atas chart; URL embed lain tetap tersedia sebagai opsi legacy. Field "Konten" opsional sebagai pengantar.
         </div>
       </div>
       <div class="field" data-grammar-task-only style="display:${l.type === 'grammar_task' ? '' : 'none'};">
@@ -2007,8 +2177,9 @@ function lessonFormHtml(l) {
         </div>
         <div data-preview-panel class="lesson-preview" style="display:none;"></div>
       </div>
+      ${youtubeSegmentFieldsHtml(l)}
       <div class="field-row">
-        <div class="field field-video" data-video-only style="display:${l.type === 'video' ? '' : 'none'};"><label>Video URL (Bunny Stream)</label><input name="videoUrl" value="${escapeHtml(l.video_url || '')}" /></div>
+        <div class="field field-video" data-video-only style="display:${l.type === 'video' || l.type === 'kana' || l.type === 'deck' ? '' : 'none'};"><label>URL embed lain / Bunny Stream <span style="font-weight:400;color:#737373;">(opsional)</span></label><input name="videoUrl" value="${escapeHtml(l.video_url || '')}" placeholder="Dipakai untuk video lama yang bukan YouTube" /></div>
         <div class="field"><label>Durasi (menit)</label><input type="number" name="durationMinutes" value="${l.duration_minutes || ''}" /></div>
       </div>
       <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${l.sort_order}" /></div>
@@ -2045,6 +2216,7 @@ function lessonFormHtml(l) {
 function wireLessonTypeVisibility(form) {
   const typeSel = form.querySelector('select[name="type"]');
   const videoField = form.querySelector('.field-video');
+  const youtubeSegmentField = form.querySelector('[data-youtube-segment-only]');
   const deckHint = form.querySelector('.field-deck-hint');
   const kanjiHint = form.querySelector('[data-kanji-only]');
   const kanaHint = form.querySelector('[data-kana-only]');
@@ -2055,6 +2227,7 @@ function wireLessonTypeVisibility(form) {
     // Video URL relevan untuk tipe video, kana (video di atas chart kana),
     // dan deck (video opsional di atas grid kosakata).
     if (videoField) videoField.style.display = (typeSel.value === 'video' || typeSel.value === 'kana' || typeSel.value === 'deck') ? '' : 'none';
+    if (youtubeSegmentField) youtubeSegmentField.style.display = supportsVideoSegment(typeSel.value) ? '' : 'none';
     if (deckHint) deckHint.style.display = typeSel.value === 'deck' ? '' : 'none';
     if (kanjiHint) kanjiHint.style.display = typeSel.value === 'kanji' ? '' : 'none';
     if (kanaHint) kanaHint.style.display = typeSel.value === 'kana' ? '' : 'none';
@@ -2063,6 +2236,21 @@ function wireLessonTypeVisibility(form) {
   };
   apply();
   typeSel.addEventListener('change', apply);
+  wireYouTubeSegmentEditor(form);
+}
+
+function wireYouTubeSegmentEditor(form) {
+  const sourceSelect = form.querySelector('[data-video-source-select]');
+  if (!sourceSelect) return;
+  const newSource = form.querySelector('[data-new-youtube-source]');
+  const range = form.querySelector('[data-video-segment-range]');
+  const apply = () => {
+    const value = sourceSelect.value;
+    if (newSource) newSource.style.display = value === '__new__' ? '' : 'none';
+    if (range) range.style.display = value ? '' : 'none';
+  };
+  apply();
+  sourceSelect.addEventListener('change', apply);
 }
 // WYSIWYG rich-text editor. Replaces a textarea with a contenteditable div
 // + hidden input (so FormData still carries the HTML value under the same name).
@@ -2304,13 +2492,42 @@ async function submitLesson(e, id, moduleId) {
       }
     }
   }
+  const selectedVideoSource = supportsVideoSegment(type) ? String(fd.get('videoSourceId') || '').trim() : '';
+  const wantsNewVideoSource = selectedVideoSource === '__new__';
+  let videoStartSeconds = null;
+  let videoEndSeconds = null;
+  if (selectedVideoSource) {
+    videoStartSeconds = parseVideoTimestamp(fd.get('videoStart'));
+    videoEndSeconds = parseVideoTimestamp(fd.get('videoEnd'));
+    if (!Number.isInteger(videoStartSeconds) || videoStartSeconds < 0) {
+      notify('Waktu mulai video tidak valid. Gunakan format mm:ss atau hh:mm:ss.', true);
+      return;
+    }
+    if (!Number.isInteger(videoEndSeconds) || videoEndSeconds <= videoStartSeconds) {
+      notify('Waktu selesai harus lebih besar dari waktu mulai.', true);
+      return;
+    }
+    if (wantsNewVideoSource && !(fd.get('youtubeSourceUrl') || '').trim()) {
+      notify('Tempel URL YouTube untuk sumber video baru.', true);
+      return;
+    }
+  }
+  const manualDuration = Number(fd.get('durationMinutes')) || null;
+  const segmentDuration = selectedVideoSource
+    ? Math.max(1, Math.ceil((videoEndSeconds - videoStartSeconds) / 60))
+    : null;
   const body = {
     slug,
     title: fd.get('title').trim(),
     type,
     content: fd.get('content').trim() || null,
-    videoUrl: (type === 'video' || type === 'kana') ? ((fd.get('videoUrl') || '').trim() || null) : null,
-    durationMinutes: Number(fd.get('durationMinutes')) || null,
+    // Legacy/direct embeds are kept for Bunny and existing non-YouTube
+    // lessons; new YouTube playback uses videoSourceId below.
+    videoUrl: (type === 'video' || type === 'kana' || type === 'deck') ? ((fd.get('videoUrl') || '').trim() || null) : null,
+    videoSourceId: selectedVideoSource && !wantsNewVideoSource ? selectedVideoSource : null,
+    videoStartSeconds,
+    videoEndSeconds,
+    durationMinutes: manualDuration || segmentDuration,
     sortOrder: Number(fd.get('sortOrder')) || 0,
     // Hanya grammar_task yang punya pelajaran pemicu; tipe lain selalu null
     // (juga meng-clear kalau lesson diubah dari grammar_task ke tipe lain).
@@ -2329,6 +2546,20 @@ async function submitLesson(e, id, moduleId) {
   }
   const endSubmit = beginSubmit(e.target);
   try {
+    if (wantsNewVideoSource) {
+      const d = await api('/admin/video-sources', {
+        method: 'POST',
+        body: JSON.stringify({
+          youtubeUrl: (fd.get('youtubeSourceUrl') || '').trim(),
+          title: (fd.get('youtubeSourceTitle') || '').trim() || null,
+        }),
+      });
+      if (!d.source?.id) throw new Error('Sumber YouTube tidak dapat dibuat');
+      body.videoSourceId = d.source.id;
+      const at = (STATE.videoSources || []).findIndex((s) => s.id === d.source.id);
+      if (at >= 0) STATE.videoSources[at] = { ...STATE.videoSources[at], ...d.source };
+      else STATE.videoSources.unshift({ ...d.source, lesson_count: 0 });
+    }
     let saved;
     if (id) {
       const d = await api('/admin/lessons/' + id, { method: 'PUT', body: JSON.stringify(body) });
@@ -4854,6 +5085,7 @@ function renderDeckTable(items) {
         <button class="btn btn-ghost" onclick="deckEditWord('${it.vocabulary_id}')" title="Edit 日本語/kana/romaji/arti/kategori kata ini">✏️ Edit</button>
         <button class="btn btn-ghost" onclick="deckManageExamples('${it.vocabulary_id}')">Contoh (${it.example_count || 0})</button>
         <button class="btn btn-ghost" onclick="deckGenImage('${it.vocabulary_id}', this)" title="Generate ilustrasi (AI). Klik lagi untuk regenerate.">✨ Gambar</button>
+        <button class="btn btn-ghost" onclick="deckGenAudio('${it.vocabulary_id}', this)" title="Dengar suara AI kata ini, hapus cache &amp; generate ulang kalau pengucapannya salah">🔊 Suara</button>
         <button class="btn btn-danger" onclick="deckRemove('${it.vocabulary_id}')">Keluarkan</button>
       </td>
     </tr>`;
@@ -5781,6 +6013,71 @@ function deckShowImagePreview(vid, fromCache) {
   if (mc) mc.style.maxWidth = '460px';
 }
 
+// Suara AI (ElevenLabs) per kata deck. Teks yang dipakai HARUS sama persis
+// dengan yang dipakai siswa (playDeckAudio: japanese || reading) supaya hapus
+// cache di sini benar-benar mengubah apa yang mereka dengar. Cache tts_cache
+// di-key dari hash teks — kalau spelling katanya sendiri salah, benerin lewat
+// ✏️ Edit dulu (otomatis dapat hash baru); tombol ini buat kasus teks sudah
+// benar tapi pengucapan AI-nya yang meleset/aneh.
+function deckAudioText(vid) {
+  const it = (window.__deckItems || []).find((x) => x.vocabulary_id === vid);
+  return ((it && (it.japanese || it.reading)) || '').trim();
+}
+
+window.deckGenAudio = async (vid, btn) => {
+  const text = deckAudioText(vid);
+  if (!text) { notify('Kata kosong, tidak bisa generate suara', true); return; }
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    await deckShowAudioPreview(vid, text);
+  } catch (err) {
+    notify('Gagal generate suara: ' + err.message, true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+  }
+};
+
+window.deckRegenAudio = async (vid) => {
+  const text = deckAudioText(vid);
+  if (!text) return;
+  const btn = document.getElementById('deck-audio-regen');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  try {
+    await ezApi('/admin/tts/cache', { method: 'DELETE', body: JSON.stringify({ text }) });
+    await deckShowAudioPreview(vid, text);
+    notify('Suara baru berhasil di-generate');
+  } catch (err) {
+    notify('Gagal regenerate suara: ' + err.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = '🔊 Suara baru'; }
+  }
+};
+
+async function deckShowAudioPreview(vid, text) {
+  const r = await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({ text }) });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.detail || err.error || ('HTTP ' + r.status));
+  }
+  const blob = await r.blob();
+  const url = URL.createObjectURL(blob);
+  openModal(`
+    <h3>Suara kosakata</h3>
+    <p lang="ja" style="font-size:19px;font-weight:700;margin:0 0 10px;">${escapeHtml(text)}</p>
+    <audio controls autoplay src="${url}" style="width:100%;"></audio>
+    <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:10px 0 12px;">
+      Audio ElevenLabs, di-cache per teks persis. Kalau pengucapannya salah/aneh,
+      klik suara baru untuk hapus cache lalu generate ulang.
+    </p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="closeModal()">Tutup</button>
+      <button type="button" class="btn btn-primary" id="deck-audio-regen" onclick="deckRegenAudio('${vid}')">🔊 Suara baru</button>
+    </div>
+  `);
+  const mc = document.getElementById('modal-content');
+  if (mc) mc.style.maxWidth = '420px';
+}
+
 // Generate contoh kalimat (AI) untuk kosakata yang sedang dibuka. Hasil
 // ditambahkan sebagai baris BELUM tersimpan — admin review lalu klik Simpan.
 window.deckGenExamples = async () => {
@@ -6394,13 +6691,43 @@ window.deleteTestimonial = async (id, name) => {
 // token drops stale responses so an in-flight "load more" can't concatenate
 // onto a list a newer search already replaced (and vice-versa).
 let _usersReqSeq = 0;
+// Kept in sync by hand with backend/src/routes/profile.js (LEARNING_GOALS/
+// REFERRAL_SOURCES) and courses/course.js (same option lists, for the
+// checkout form) — see profile.js's comment for why this isn't a shared file.
+const LEARNING_GOAL_LABELS = { jlpt: 'Lulus JLPT', kerja_jepang: 'Kerja di Jepang', hobi: 'Hobi', kuliah: 'Kuliah/beasiswa', lainnya: 'Lainnya' };
+const REFERRAL_SOURCE_LABELS = { instagram: 'Instagram', tiktok: 'TikTok', youtube: 'YouTube', google: 'Google', teman_keluarga: 'Teman/keluarga', lainnya: 'Lainnya' };
+const MARKETING_PROVINCES = [
+  'Aceh', 'Sumatera Utara', 'Sumatera Barat', 'Riau', 'Kepulauan Riau', 'Jambi',
+  'Sumatera Selatan', 'Kepulauan Bangka Belitung', 'Bengkulu', 'Lampung',
+  'DKI Jakarta', 'Jawa Barat', 'Jawa Tengah', 'DI Yogyakarta', 'Jawa Timur', 'Banten',
+  'Bali', 'Nusa Tenggara Barat', 'Nusa Tenggara Timur',
+  'Kalimantan Barat', 'Kalimantan Tengah', 'Kalimantan Selatan', 'Kalimantan Timur', 'Kalimantan Utara',
+  'Sulawesi Utara', 'Sulawesi Tengah', 'Sulawesi Selatan', 'Sulawesi Tenggara', 'Gorontalo', 'Sulawesi Barat',
+  'Maluku', 'Maluku Utara',
+  'Papua', 'Papua Barat', 'Papua Selatan', 'Papua Tengah', 'Papua Pegunungan', 'Papua Barat Daya',
+];
+
+function usersFilterParams() {
+  const params = new URLSearchParams();
+  if (STATE.usersQuery) params.set('q', STATE.usersQuery);
+  if (STATE.usersProvince) params.set('province', STATE.usersProvince);
+  if (STATE.usersLearningGoal) params.set('learningGoal', STATE.usersLearningGoal);
+  if (STATE.usersReferralSource) params.set('referralSource', STATE.usersReferralSource);
+  return params;
+}
 async function loadUsers(opts = {}) {
   const q = opts.q != null ? opts.q : (STATE.usersQuery || '');
   STATE.usersQuery = q;
+  if (opts.province != null) STATE.usersProvince = opts.province;
+  if (opts.learningGoal != null) STATE.usersLearningGoal = opts.learningGoal;
+  if (opts.referralSource != null) STATE.usersReferralSource = opts.referralSource;
   const offset = opts.append ? (STATE.users || []).length : 0;
   const seq = ++_usersReqSeq;
   try {
-    const d = await api('/admin/users?limit=100&offset=' + offset + '&q=' + encodeURIComponent(q));
+    const params = usersFilterParams();
+    params.set('limit', '100');
+    params.set('offset', String(offset));
+    const d = await api('/admin/users?' + params.toString());
     if (seq !== _usersReqSeq) return; // superseded by a newer request
     STATE.usersTotal = d.total != null ? d.total : (d.users || []).length;
     STATE.users = opts.append ? [...(STATE.users || []), ...(d.users || [])] : (d.users || []);
@@ -6408,11 +6735,21 @@ async function loadUsers(opts = {}) {
 }
 function renderUsers() {
   const pane = document.querySelector('[data-pane="users"]');
-  // Shell holds the search box (kept across result re-renders so it stays
-  // focused while typing); #users-result holds the table + pager.
+  const provinceOptions = MARKETING_PROVINCES.map((p) => `<option value="${escapeHtml(p)}" ${STATE.usersProvince === p ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('');
+  const goalOptions = Object.entries(LEARNING_GOAL_LABELS).map(([v, label]) => `<option value="${v}" ${STATE.usersLearningGoal === v ? 'selected' : ''}>${label}</option>`).join('');
+  const referralOptions = Object.entries(REFERRAL_SOURCE_LABELS).map(([v, label]) => `<option value="${v}" ${STATE.usersReferralSource === v ? 'selected' : ''}>${label}</option>`).join('');
+  // Shell holds the search box + marketing-profile filters (kept across
+  // result re-renders so the search box stays focused while typing);
+  // #users-result holds the table + pager.
   pane.innerHTML = `
     <h2>Pengguna</h2>
-    <input id="users-filter" type="search" placeholder="Cari nama atau email (semua pengguna)…" autocomplete="off" value="${escapeHtml(STATE.usersQuery || '')}" style="max-width:340px;margin-bottom:12px;" />
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
+      <input id="users-filter" type="search" placeholder="Cari nama atau email…" autocomplete="off" value="${escapeHtml(STATE.usersQuery || '')}" style="max-width:280px;" />
+      <select id="users-province-filter"><option value="">Semua provinsi</option>${provinceOptions}</select>
+      <select id="users-goal-filter"><option value="">Semua tujuan belajar</option>${goalOptions}</select>
+      <select id="users-referral-filter"><option value="">Semua sumber</option>${referralOptions}</select>
+      <button class="btn btn-ghost" onclick="exportUsersCSV(this)">⬇ Export CSV</button>
+    </div>
     <div id="users-result"></div>
   `;
   const input = document.getElementById('users-filter');
@@ -6420,6 +6757,18 @@ function renderUsers() {
     await loadUsers({ q: input.value });
     renderUsersResult();
   }, 280));
+  document.getElementById('users-province-filter')?.addEventListener('change', async (e) => {
+    await loadUsers({ province: e.target.value });
+    renderUsersResult();
+  });
+  document.getElementById('users-goal-filter')?.addEventListener('change', async (e) => {
+    await loadUsers({ learningGoal: e.target.value });
+    renderUsersResult();
+  });
+  document.getElementById('users-referral-filter')?.addEventListener('change', async (e) => {
+    await loadUsers({ referralSource: e.target.value });
+    renderUsersResult();
+  });
   renderUsersResult();
 }
 function renderUsersResult() {
@@ -6428,12 +6777,13 @@ function renderUsersResult() {
   const users = STATE.users || [];
   const total = STATE.usersTotal != null ? STATE.usersTotal : users.length;
   if (users.length === 0) {
-    wrap.innerHTML = `<div class="empty">${STATE.usersQuery ? 'Tidak ada pengguna cocok pencarian.' : 'Belum ada pengguna.'}</div>`;
+    wrap.innerHTML = `<div class="empty">${STATE.usersQuery || STATE.usersProvince || STATE.usersLearningGoal || STATE.usersReferralSource ? 'Tidak ada pengguna cocok filter.' : 'Belum ada pengguna.'}</div>`;
     return;
   }
   const rows = users.map((u) => `
     <tr>
       <td><strong>${escapeHtml(u.full_name || '-')}</strong><br><span style="font-size:11px;color:#737373;">${escapeHtml(u.email)}</span></td>
+      <td>${u.city ? `${escapeHtml(u.city)}, ${escapeHtml(u.province)}` : '<span style="color:#a3a3a3;">-</span>'}</td>
       <td>${u.xp || 0}</td>
       <td>${u.streak_days || 0}</td>
       <td>${u.total_lessons_completed || 0}</td>
@@ -6447,7 +6797,7 @@ function renderUsersResult() {
     : '';
   wrap.innerHTML = `
     <div style="font-size:12px;color:#737373;margin-bottom:8px;">Menampilkan ${users.length} dari ${total} pengguna.</div>
-    <table><thead><tr><th>Nama / email</th><th>XP</th><th>Streak</th><th>Lesson selesai</th><th>Aktif terakhir</th><th>Bergabung</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <table><thead><tr><th>Nama / email</th><th>Domisili</th><th>XP</th><th>Streak</th><th>Lesson selesai</th><th>Aktif terakhir</th><th>Bergabung</th><th></th></tr></thead><tbody>${rows}</tbody></table>
     ${more}
   `;
 }
@@ -6455,6 +6805,27 @@ window.usersLoadMore = async (btn) => {
   if (btn) { btn.disabled = true; btn.textContent = 'Memuat…'; }
   await loadUsers({ append: true });
   renderUsersResult();
+};
+
+// Bypass api()'s JSON parsing — this response is a CSV file, downloaded via
+// a temporary blob link rather than shown on-page. Same filters as whatever
+// the Pengguna table is currently showing (usersFilterParams()).
+window.exportUsersCSV = async (btn) => {
+  if (btn) { btn.disabled = true; btn.textContent = 'Menyiapkan…'; }
+  try {
+    const res = await ezApi('/admin/users/marketing-export?' + usersFilterParams().toString());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `siswa-eznihongo-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) { notify('Gagal export CSV: ' + e.message, true); }
+  if (btn) { btn.disabled = false; btn.textContent = '⬇ Export CSV'; }
 };
 
 // Beri Akses dari tab Pengguna — modal per-user. Pakai endpoint yang sama
@@ -6484,6 +6855,45 @@ function enrollmentStatusBadge(e) {
   return '<span class="badge badge-on">Aktif</span>';
 }
 
+// Masa aktif langganan. Backend (POST /admin/user-access/grant) sudah lama
+// menerima `expiresAt` lengkap dengan validasinya — yang tidak pernah ada cuma
+// cara mengisinya dari UI, jadi semua akses manual terlanjur permanen.
+// Dinyatakan sebagai DURASI, bukan tanggal, karena itu cara langganan dijual
+// ("3 bulan"), bukan "sampai 14 Maret".
+const ACCESS_DURATIONS = [
+  ['', 'Selamanya'],
+  ['1', '1 bulan'],
+  ['3', '3 bulan'],
+  ['6', '6 bulan'],
+  ['12', '12 bulan'],
+];
+
+// Menambah n bulan dengan menjaga tanggal tetap masuk akal: 31 Januari + 1
+// bulan jadi 28/29 Februari, bukan melompat ke 3 Maret seperti perilaku
+// bawaan setMonth(). Langganan yang tiba-tiba berakhir di bulan berikutnya
+// itu salah hitung yang sulit disadari.
+function addMonthsClamped(from, months) {
+  const d = new Date(from.getTime());
+  const targetDay = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + months);
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(targetDay, lastDay));
+  return d;
+}
+
+// null = permanen (kolom expires_at NULL). `from` dipakai saat memperpanjang
+// langganan yang masih berjalan supaya sisa harinya tidak hangus.
+function expiryFromMonths(months, from) {
+  if (!months) return null;
+  const base = from && from.getTime() > Date.now() ? from : new Date();
+  return addMonthsClamped(base, Number(months)).toISOString();
+}
+
+function durationOptionsHtml() {
+  return ACCESS_DURATIONS.map(([v, label]) => `<option value="${v}">${label}</option>`).join('');
+}
+
 function courseAccessLabelText(c) {
   if (c.is_free === true) return 'Gratis';
   if (c.is_free === false) return 'Berbayar';
@@ -6491,7 +6901,7 @@ function courseAccessLabelText(c) {
 }
 
 function userAccessPanelHtml(d, opts) {
-  const { courseSelectId, revokeFn, grantFn } = opts;
+  const { courseSelectId, revokeFn, grantFn, extendFn } = opts;
   // Only rows that are actively blocking access should hide a course from
   // the grant dropdown — a revoked or expired enrollment row still exists
   // in d.enrollments, but the admin needs to be able to re-grant it (the
@@ -6509,8 +6919,11 @@ function userAccessPanelHtml(d, opts) {
       <td><strong>${escapeHtml(e.title)}</strong> <span class="pill">${escapeHtml(e.level || '-')}</span></td>
       <td>${escapeHtml(ENROLLMENT_SOURCE_LABEL[e.source] || e.source || '-')}</td>
       <td>${enrollmentStatusBadge(e)}</td>
-      <td style="font-size:12px;">${new Date(e.enrolled_at).toLocaleDateString('id-ID')}${e.expires_at ? '<br>sampai ' + new Date(e.expires_at).toLocaleDateString('id-ID') : ''}</td>
-      <td class="actions">${e.status === 'active' ? `<button class="btn btn-danger" onclick="${revokeFn}('${escapeHtml(d.user.email)}','${e.course_id}')">Cabut</button>` : ''}</td>
+      <td style="font-size:12px;">${new Date(e.enrolled_at).toLocaleDateString('id-ID')}${e.expires_at ? '<br>sampai ' + new Date(e.expires_at).toLocaleDateString('id-ID') : '<br><span style="color:#737373;">selamanya</span>'}</td>
+      <td class="actions">${e.status === 'active' ? `
+        <select id="${courseSelectId}-ext-${e.course_id}" style="font-size:12px;padding:3px 6px;">${durationOptionsHtml()}</select>
+        <button class="btn btn-ghost" onclick="${extendFn}('${escapeHtml(d.user.email)}','${escapeHtml(e.slug)}','${e.course_id}','${e.expires_at || ''}')">Terapkan</button>
+        <button class="btn btn-danger" onclick="${revokeFn}('${escapeHtml(d.user.email)}','${e.course_id}')">Cabut</button>` : ''}</td>
     </tr>`).join('');
   const grantable = (d.courses || []).filter((c) => !enrolledIds.has(c.id));
   const courseOpts = grantable.map((c) =>
@@ -6536,12 +6949,19 @@ function userAccessPanelHtml(d, opts) {
       <label style="font-size:13px;">Beri akses manual ke kursus<br>
         <select id="${courseSelectId}" style="margin-top:4px;min-width:280px;">${courseOpts}</select>
       </label>
+      <label style="font-size:13px;">Masa aktif<br>
+        <select id="${courseSelectId}-dur" style="margin-top:4px;min-width:130px;">${durationOptionsHtml()}</select>
+      </label>
       <button class="btn btn-primary" onclick="${grantFn}('${escapeHtml(d.user.email)}')">Beri akses</button>
     </div>` : '<p style="margin-top:14px;color:#737373;font-size:13px;">User sudah punya akses ke semua kursus terbit.</p>'}
 
     <h3 style="margin:18px 0 6px;font-size:14px;">Kursus yang sudah diakses</h3>
     ${enrRows
-      ? `<table><thead><tr><th>Kursus</th><th>Asal</th><th>Status</th><th>Sejak</th><th></th></tr></thead><tbody>${enrRows}</tbody></table>`
+      ? `<table><thead><tr><th>Kursus</th><th>Asal</th><th>Status</th><th>Sejak</th><th>Masa aktif</th></tr></thead><tbody>${enrRows}</tbody></table>
+         <p style="margin:6px 0 0;font-size:12px;color:#737373;">
+           Perpanjangan ditambahkan dari tanggal berakhir yang sekarang, jadi sisa hari
+           langganan yang masih berjalan tidak hangus. Pilih "Selamanya" untuk akses tanpa batas waktu.
+         </p>`
       : '<div class="empty">Belum punya akses kursus apa pun.</div>'}
 
     <h3 style="margin:18px 0 6px;font-size:14px;">Riwayat pesanan</h3>
@@ -6565,19 +6985,135 @@ async function refreshUserAccessModal(email) {
   }
   openModal(`
     <h2 style="margin-top:0;">Profil Akses</h2>
-    ${userAccessPanelHtml(d, { courseSelectId: 'ua-course', revokeFn: 'uaRevoke', grantFn: 'uaGrant' })}
+    ${userAccessPanelHtml(d, { courseSelectId: 'ua-course', revokeFn: 'uaRevoke', grantFn: 'uaGrant', extendFn: 'uaExtend' })}
+    ${privacyRightsPanelHtml(d.user, d.orders)}
     <div style="margin-top:18px;text-align:right;"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `, { className: 'modal-lg' });
 }
 
+// Panel hak data pribadi — menjalankan janji di privacy.html bagian 5.
+// Alurnya memang manual lewat admin: privacy.html menyuruh siswa menghubungi
+// via WhatsApp menyebutkan email akunnya, jadi di sinilah permintaan itu
+// dieksekusi. Dua tingkat sengaja dipisah supaya permintaan ringan ("jangan
+// pakai data saya untuk marketing") tidak dijawab dengan menghapus akun.
+function privacyRightsPanelHtml(user, orders) {
+  const email = user?.email || '';
+  const erased = /^dihapus-.*@dihapus\.invalid$/.test(email);
+  // Fitur hapus ditujukan untuk user yang tidak pernah membayar; yang sudah
+  // membayar datanya dipertahankan sebagai catatan historis pelanggan. Order
+  // sudah ikut di payload /admin/user-access, jadi tidak perlu query tambahan.
+  const paidOrders = (orders || []).filter((o) => o.status === 'approved').length;
+  if (erased) {
+    return `<div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--line,#e5e5e5);">
+      <h3 style="margin:0 0 8px;font-size:15px;">Hak data pribadi</h3>
+      <div class="empty">Akun ini sudah dihapus atas permintaan pengguna. Catatan pembayarannya sengaja dipertahankan (lihat privacy.html bagian 4).</div>
+    </div>`;
+  }
+  return `
+  <div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--line,#e5e5e5);">
+    <h3 style="margin:0 0 4px;font-size:15px;">Hak data pribadi</h3>
+    <p style="margin:0 0 12px;font-size:12px;color:var(--ink-500,#8a8378);">
+      Dipakai saat siswa memakai haknya lewat WhatsApp (privacy.html bagian 5).
+    </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <button class="btn btn-ghost" onclick="uaDropMarketing('${escapeHtml(email)}')">
+        Tarik persetujuan marketing
+      </button>
+      <span style="font-size:12px;color:var(--ink-500,#8a8378);">Akun &amp; akses kursus tetap.</span>
+    </div>
+    <div style="margin-top:14px;padding:12px;border:1px solid #f0c4c4;border-radius:8px;background:#fff8f8;">
+      <strong style="font-size:13px;color:#a12b2b;">Hapus akun (tidak bisa dibatalkan)</strong>
+      <p style="margin:6px 0 10px;font-size:12px;color:var(--ink-700,#4a4a4a);">
+        Menghapus profil, akses, progres belajar, sesi login, dan foto bukti transfer.
+        Catatan transaksi (nomor pesanan &amp; nominal) sengaja dipertahankan.
+        Ketik ulang email untuk mengonfirmasi.
+      </p>
+      ${paidOrders > 0 ? `
+      <div style="margin:0 0 10px;padding:10px;border:1px solid #e0b050;border-radius:6px;background:#fffaf0;">
+        <strong style="font-size:12px;color:#8a5a00;">⚠ User ini pernah membayar (${paidOrders} pesanan lunas)</strong>
+        <p style="margin:5px 0 8px;font-size:12px;color:var(--ink-700,#4a4a4a);">
+          Fitur hapus ditujukan untuk user yang tidak pernah membayar. Data siswa
+          berbayar dimaksudkan tetap tersimpan sebagai catatan historis pelanggan.
+        </p>
+        <label style="display:flex;gap:7px;align-items:flex-start;font-size:12px;cursor:pointer;">
+          <input type="checkbox" id="ua-erase-ack-paid" style="margin-top:2px;flex-shrink:0;" />
+          <span>Saya tetap ingin menghapus akun ini beserta catatan historisnya.</span>
+        </label>
+      </div>` : ''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input id="ua-erase-confirm" type="text" placeholder="${escapeHtml(email)}"
+               autocomplete="off" style="flex:1;min-width:220px;padding:8px 10px;border:1px solid var(--line,#ddd);border-radius:6px;font-size:13px;" />
+        <button class="btn" style="background:#a12b2b;color:#fff;border-color:#a12b2b;"
+                onclick="uaEraseAccount('${escapeHtml(email)}', this)">Hapus akun</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+window.uaDropMarketing = async (email) => {
+  if (!confirm(`Hapus data profil marketing milik ${email}?\n\nAkun dan akses kursusnya TIDAK dihapus. Siswa akan diminta mengisi lagi kalau nanti enroll kursus baru.`)) return;
+  try {
+    const r = await api('/admin/users/' + encodeURIComponent(email) + '/marketing-profile', { method: 'DELETE' });
+    notify(r.deleted ? 'Data profil marketing dihapus' : 'Siswa ini memang belum pernah mengisi data profil');
+    await refreshUserAccessModal(email);
+  } catch (err) { notify('Gagal menghapus: ' + err.message, true); }
+};
+
+window.uaEraseAccount = async (email, btn) => {
+  const confirmEmail = document.getElementById('ua-erase-confirm')?.value.trim() || '';
+  if (confirmEmail.toLowerCase() !== email.toLowerCase()) {
+    notify('Email konfirmasi tidak cocok — ketik persis emailnya', true);
+    return;
+  }
+  // Centang ini cuma muncul kalau user pernah membayar (lihat panel di atas).
+  // Tidak ada = user non-pembayar, jalur normal fitur ini.
+  const ackBox = document.getElementById('ua-erase-ack-paid');
+  if (ackBox && !ackBox.checked) {
+    notify('User ini pernah membayar — centang dulu konfirmasi catatan historisnya', true);
+    return;
+  }
+  if (!confirm(`HAPUS AKUN ${email}?\n\nTidak bisa dibatalkan. Progres belajar, akses kursus, dan foto bukti transfernya hilang permanen.`)) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Menghapus…'; }
+  try {
+    await api('/admin/users/' + encodeURIComponent(email) + '/erase', {
+      method: 'POST',
+      body: JSON.stringify({ confirmEmail, acknowledgePaidHistory: !!ackBox }),
+    });
+    notify('Akun dihapus');
+    closeModal();
+    if (STATE.tab === 'users') { await loadUsers(); renderUsers(); }
+  } catch (err) {
+    notify('Gagal menghapus akun: ' + err.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = 'Hapus akun'; }
+  }
+};
+
 window.uaGrant = async (email) => {
   const courseSlug = document.getElementById('ua-course')?.value;
   if (!courseSlug) { notify('Pilih kursus dulu', true); return; }
+  const expiresAt = expiryFromMonths(document.getElementById('ua-course-dur')?.value);
   try {
-    const r = await api('/admin/user-access/grant', { method: 'POST', body: JSON.stringify({ email, courseSlug }) });
+    const r = await api('/admin/user-access/grant', { method: 'POST', body: JSON.stringify({ email, courseSlug, expiresAt }) });
     notify(r.alreadyEnrolled ? 'User sudah punya akses kursus itu' : 'Akses diberikan');
     await refreshUserAccessModal(email);
   } catch (err) { notify('Gagal beri akses: ' + err.message, true); }
+};
+
+// Ubah masa aktif enrollment yang sudah ada. Memakai endpoint grant yang sama —
+// ON CONFLICT (user_id, course_id) DO UPDATE di sana memang sudah meng-update
+// expires_at, jadi tidak perlu endpoint baru.
+window.uaExtend = async (email, courseSlug, courseId, currentExpiry) => {
+  const months = document.getElementById('ua-course-ext-' + courseId)?.value;
+  const expiresAt = expiryFromMonths(months, currentExpiry ? new Date(currentExpiry) : null);
+  const label = expiresAt
+    ? 'sampai ' + new Date(expiresAt).toLocaleDateString('id-ID')
+    : 'selamanya (tanpa batas waktu)';
+  if (!confirm(`Ubah masa aktif kursus ini jadi ${label}?`)) return;
+  try {
+    await api('/admin/user-access/grant', { method: 'POST', body: JSON.stringify({ email, courseSlug, expiresAt }) });
+    notify('Masa aktif diperbarui — ' + label);
+    await refreshUserAccessModal(email);
+  } catch (err) { notify('Gagal mengubah masa aktif: ' + err.message, true); }
 };
 
 window.uaRevoke = async (email, courseId) => {
@@ -6604,7 +7140,7 @@ function renderAccess() {
   } else if (r && r.user) {
     resultHtml = `
       <div class="card" style="margin-top:16px;padding:16px;border:1px solid var(--line,#e5e5e5);border-radius:10px;">
-        ${userAccessPanelHtml(r, { courseSelectId: 'ac-course', revokeFn: 'revokeAccess', grantFn: 'grantAccess' })}
+        ${userAccessPanelHtml(r, { courseSelectId: 'ac-course', revokeFn: 'revokeAccess', grantFn: 'grantAccess', extendFn: 'extendAccess' })}
       </div>`;
   }
   pane.innerHTML = `
@@ -6643,11 +7179,27 @@ window.lookupAccess = async () => {
 window.grantAccess = async (email) => {
   const courseSlug = document.getElementById('ac-course')?.value;
   if (!courseSlug) { notify('Pilih kursus dulu', true); return; }
+  const expiresAt = expiryFromMonths(document.getElementById('ac-course-dur')?.value);
   try {
-    const d = await api('/admin/user-access/grant', { method: 'POST', body: JSON.stringify({ email, courseSlug }) });
+    const d = await api('/admin/user-access/grant', { method: 'POST', body: JSON.stringify({ email, courseSlug, expiresAt }) });
     notify(d.alreadyEnrolled ? 'User sudah punya akses kursus itu' : 'Akses diberikan');
     await lookupAccess();
   } catch (err) { notify('Gagal beri akses: ' + err.message, true); }
+};
+
+// Kembaran uaExtend untuk panel tab "Beri Akses" (id select & refresh beda).
+window.extendAccess = async (email, courseSlug, courseId, currentExpiry) => {
+  const months = document.getElementById('ac-course-ext-' + courseId)?.value;
+  const expiresAt = expiryFromMonths(months, currentExpiry ? new Date(currentExpiry) : null);
+  const label = expiresAt
+    ? 'sampai ' + new Date(expiresAt).toLocaleDateString('id-ID')
+    : 'selamanya (tanpa batas waktu)';
+  if (!confirm(`Ubah masa aktif kursus ini jadi ${label}?`)) return;
+  try {
+    await api('/admin/user-access/grant', { method: 'POST', body: JSON.stringify({ email, courseSlug, expiresAt }) });
+    notify('Masa aktif diperbarui — ' + label);
+    await lookupAccess();
+  } catch (err) { notify('Gagal mengubah masa aktif: ' + err.message, true); }
 };
 
 window.revokeAccess = async (email, courseId) => {
@@ -7018,23 +7570,25 @@ async function openKanjiManager(ctx) {
 }
 
 function renderKanjiManager(ctx, items) {
-  const titleEsc = escapeHtml(ctx.lessonTitle).replace(/'/g, '&#39;');
-  const rows = items.map((k) => `
-    <tr>
+  const rows = items.map((k) => {
+    const usageCount = Array.isArray(k.usages) ? k.usages.length : 0;
+    return `<tr>
       <td style="font-family:'Noto Sans JP',sans-serif;font-size:28px;font-weight:700;line-height:1;text-align:center;width:60px;">${escapeHtml(k.character)}</td>
       <td><span class="pill">${escapeHtml(k.jlpt_level)}</span></td>
       <td style="font-family:'Noto Sans JP',sans-serif;">${escapeHtml(k.on_reading || '-')}</td>
       <td style="font-family:'Noto Sans JP',sans-serif;">${escapeHtml(k.kun_reading || '-')}</td>
       <td>${escapeHtml(k.meaning_id || '-')}</td>
       <td style="max-width:220px;font-size:12px;color:#555;">${escapeHtml((k.mnemonic || '').replace(/<[^>]*>/g, '').slice(0, 90))}${(k.mnemonic || '').length > 90 ? '…' : ''}</td>
-      <td>${Array.isArray(k.compounds) && k.compounds.length ? k.compounds.length : '-'}</td>
+      <td><strong>${usageCount}</strong></td>
       <td>${k.stroke_count || '-'}</td>
       <td class="actions">
+        <button class="btn btn-ghost" onclick='openKanjiUsageManager("${k.id}")'>Penggunaan</button>
         <button class="btn btn-ghost" onclick='editKanjiItem("${k.id}")'>Edit</button>
         <button class="btn btn-danger" onclick='deleteKanjiItem("${k.id}", "${escapeHtml(k.character).replace(/"/g, '&quot;')}")'>Hapus</button>
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
   openKanjiModal(`
     <h3>Kelola Kanji — ${escapeHtml(ctx.lessonTitle)}</h3>
     <p style="margin-top:-6px;color:var(--ink-500);font-size:13px;">
@@ -7049,13 +7603,204 @@ function renderKanjiManager(ctx, items) {
       ? '<div class="empty">Pelajaran ini belum punya kanji. Klik <strong>+ Kanji</strong> atau import dari Notion.</div>'
       : `<div style="overflow-x:auto;"><table><thead><tr>
           <th>Karakter</th><th>Level</th><th>On</th><th>Kun</th><th>Arti</th>
-          <th>Mnemonic</th><th>Kombinasi</th><th>Goresan</th><th></th>
+          <th>Mnemonic</th><th>Penggunaan</th><th>Goresan</th><th></th>
         </tr></thead><tbody>${rows}</tbody></table></div>`}
     <div class="modal-actions" style="margin-top:16px;"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `);
   STATE.kanjiManagerCtx = ctx;
   STATE.kanjiManagerItems = items;
 }
+
+function kanjiUsageKey(item) {
+  return `${String(item?.japanese || '').trim().toLowerCase()}::${String(item?.reading || '').trim().toLowerCase()}`;
+}
+
+function kanjiUsageInputs(item) {
+  return `
+    <td><input name="usageJapanese" value="${escapeHtml(item.japanese || '')}" lang="ja" aria-label="Kata Jepang"
+      style="font-family:'Noto Sans JP',sans-serif;min-width:130px;" /></td>
+    <td><input name="usageReading" value="${escapeHtml(item.reading || '')}" lang="ja" aria-label="Bacaan kana"
+      style="font-family:'Noto Sans JP',sans-serif;min-width:130px;" /></td>
+    <td><input name="usageIndonesian" value="${escapeHtml(item.indonesian || '')}" aria-label="Arti Bahasa Indonesia"
+      style="min-width:170px;" /></td>`;
+}
+
+function kanjiUsageValues(row) {
+  return {
+    japanese: (row.querySelector('[name="usageJapanese"]')?.value || '').trim(),
+    reading: (row.querySelector('[name="usageReading"]')?.value || '').trim(),
+    indonesian: (row.querySelector('[name="usageIndonesian"]')?.value || '').trim(),
+  };
+}
+
+function kanjiUsageRows(k) {
+  const visible = Array.isArray(k.usages) ? k.usages : [];
+  const manual = Array.isArray(k.compounds) ? k.compounds : [];
+  const manualIndex = new Map(manual.map((item, index) => [kanjiUsageKey(item), index]));
+  const visibleManual = new Set(
+    visible.filter((item) => item.source === 'manual').map(kanjiUsageKey)
+  );
+  const rows = visible.map((item) => {
+    const isManual = item.source === 'manual';
+    const index = isManual ? (manualIndex.get(kanjiUsageKey(item)) ?? -1) : -1;
+    const source = isManual
+      ? '<span class="pill" style="background:#fff4d6;color:#7a5700;">Kata utama</span>'
+      : `<span class="pill" style="background:#e8f2ff;color:#245a91;">Deck${item.moduleTitle ? ' · ' + escapeHtml(item.moduleTitle) : ''}</span>`;
+    const actions = isManual
+      ? `<button class="btn btn-primary" onclick='saveManualKanjiUsage(this,"${k.id}",${index})'>Simpan</button>
+         <button class="btn btn-danger-soft" onclick='deleteManualKanjiUsage("${k.id}",${index})'>Hapus</button>`
+      : `<button class="btn btn-primary" onclick='saveKanjiUsageVocabulary(this,"${item.vocabularyId}","${k.id}")'>Simpan</button>`;
+    return `<tr data-usage-source="${isManual ? 'manual' : 'course'}">
+      ${kanjiUsageInputs(item)}
+      <td>${source}</td>
+      <td class="actions">${actions}</td>
+    </tr>`;
+  });
+
+  // Entri manual yang gagal filter level/registrasi memang tidak tampil ke
+  // siswa, tetapi tetap ditunjukkan di admin supaya bisa diperbaiki/dihapus.
+  manual.forEach((item, index) => {
+    if (visibleManual.has(kanjiUsageKey(item))) return;
+    rows.push(`<tr data-usage-source="manual" style="background:#fff8f5;">
+      ${kanjiUsageInputs(item)}
+      <td>
+        <span class="pill" style="background:#fff4d6;color:#7a5700;">Kata utama</span><br>
+        <span style="display:inline-block;margin-top:5px;font-size:11px;color:var(--danger);">Tidak tampil: level atau Kanji penyusun belum cocok.</span>
+      </td>
+      <td class="actions">
+        <button class="btn btn-primary" onclick='saveManualKanjiUsage(this,"${k.id}",${index})'>Simpan</button>
+        <button class="btn btn-danger-soft" onclick='deleteManualKanjiUsage("${k.id}",${index})'>Hapus</button>
+      </td>
+    </tr>`);
+  });
+  return rows.join('');
+}
+
+window.openKanjiUsageManager = (id) => {
+  const k = (STATE.kanjiManagerItems || []).find((item) => item.id === id);
+  if (!k) return;
+  const visible = Array.isArray(k.usages) ? k.usages : [];
+  const manualCount = (Array.isArray(k.compounds) ? k.compounds : []).length;
+  const automaticCount = visible.filter((item) => item.source !== 'manual').length;
+  const rows = kanjiUsageRows(k);
+  openKanjiModal(`
+    <h3>Penggunaan ${escapeHtml(k.character)}</h3>
+    <p style="margin-top:-6px;color:var(--ink-500);font-size:13px;line-height:1.55;">
+      Ini adalah kata yang memakai <strong style="font-family:'Noto Sans JP',sans-serif;">${escapeHtml(k.character)}</strong>.
+      Kata dari Deck mengubah bank kosakata dan berlaku di semua tempat. Kata utama tersimpan khusus pada kartu Kanji ini.
+    </p>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin:12px 0 14px;">
+      <span class="pill"><strong>${visible.length}</strong> tampil di dashboard</span>
+      <span class="pill"><strong>${automaticCount}</strong> dari Deck</span>
+      <span class="pill"><strong>${manualCount}</strong> kata utama tersimpan</span>
+    </div>
+    ${rows
+      ? `<div style="overflow-x:auto;"><table style="font-size:12px;">
+          <thead><tr><th>Kata</th><th>Bacaan</th><th>Arti</th><th>Sumber</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>`
+      : '<div class="empty">Belum ada penggunaan yang cocok untuk level ini.</div>'}
+    <div class="modal-actions" style="justify-content:space-between;flex-wrap:wrap;">
+      <button class="btn btn-ghost" onclick='openKanjiItemForm("${k.id}")'>+ Tambah kata utama</button>
+      <button class="btn btn-ghost" onclick="openKanjiManager(STATE.kanjiManagerCtx)">← Kembali</button>
+    </div>
+  `);
+};
+
+function kanjiItemUpdateBody(k, compounds) {
+  return {
+    lessonId: STATE.kanjiManagerCtx?.lessonId || null,
+    character: k.character,
+    jlptLevel: k.jlpt_level,
+    onReading: k.on_reading || null,
+    kunReading: k.kun_reading || null,
+    meaningId: k.meaning_id || null,
+    mnemonic: k.mnemonic || null,
+    compounds,
+    strokeCount: k.stroke_count == null ? null : Number(k.stroke_count),
+    babKode: k.bab_kode || null,
+    sortOrder: Number(k.sort_order) || 0,
+  };
+}
+
+async function refreshKanjiUsageManager(kanjiId) {
+  const ctx = STATE.kanjiManagerCtx;
+  await openKanjiManager(ctx);
+  openKanjiUsageManager(kanjiId);
+}
+
+window.saveKanjiUsageVocabulary = async (btn, vocabularyId, kanjiId) => {
+  const row = btn?.closest('tr');
+  const k = (STATE.kanjiManagerItems || []).find((item) => item.id === kanjiId);
+  if (!row || !k || !vocabularyId || vocabularyId === 'null') return;
+  const values = kanjiUsageValues(row);
+  if (!values.japanese || !values.reading || !values.indonesian) {
+    notify('Kata, bacaan, dan arti wajib diisi lengkap.', true);
+    return;
+  }
+  if (!values.japanese.includes(k.character) && !confirm(
+    `Kata baru tidak lagi mengandung ${k.character}, jadi akan hilang dari daftar penggunaan kanji ini. Tetap simpan?`
+  )) return;
+  const previousText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan…';
+  try {
+    await api('/admin/module-vocabulary/' + vocabularyId, {
+      method: 'PUT', body: JSON.stringify(values),
+    });
+    notify('Penggunaan dari Deck diperbarui');
+    await refreshKanjiUsageManager(kanjiId);
+  } catch (err) {
+    notify('Gagal menyimpan penggunaan: ' + err.message, true);
+    btn.disabled = false;
+    btn.textContent = previousText;
+  }
+};
+
+window.saveManualKanjiUsage = async (btn, kanjiId, index) => {
+  const row = btn?.closest('tr');
+  const k = (STATE.kanjiManagerItems || []).find((item) => item.id === kanjiId);
+  if (!row || !k || index < 0) return;
+  const values = kanjiUsageValues(row);
+  if (!values.japanese || !values.reading || !values.indonesian) {
+    notify('Kata, bacaan, dan arti wajib diisi lengkap.', true);
+    return;
+  }
+  if (!values.japanese.includes(k.character)) {
+    notify(`Kata utama harus mengandung kanji ${k.character}.`, true);
+    return;
+  }
+  const compounds = Array.isArray(k.compounds) ? k.compounds.map((item) => ({ ...item })) : [];
+  if (!compounds[index]) return;
+  compounds[index] = values;
+  const previousText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan…';
+  try {
+    await api('/admin/kanji/' + kanjiId, {
+      method: 'PUT', body: JSON.stringify(kanjiItemUpdateBody(k, compounds)),
+    });
+    notify('Kata utama diperbarui');
+    await refreshKanjiUsageManager(kanjiId);
+  } catch (err) {
+    notify('Gagal menyimpan kata utama: ' + err.message, true);
+    btn.disabled = false;
+    btn.textContent = previousText;
+  }
+};
+
+window.deleteManualKanjiUsage = async (kanjiId, index) => {
+  const k = (STATE.kanjiManagerItems || []).find((item) => item.id === kanjiId);
+  if (!k || index < 0 || !confirm('Hapus kata utama ini dari kartu Kanji?')) return;
+  const compounds = (Array.isArray(k.compounds) ? k.compounds : []).filter((_, i) => i !== index);
+  try {
+    await api('/admin/kanji/' + kanjiId, {
+      method: 'PUT', body: JSON.stringify(kanjiItemUpdateBody(k, compounds)),
+    });
+    notify('Kata utama dihapus');
+    await refreshKanjiUsageManager(kanjiId);
+  } catch (err) { notify('Gagal menghapus kata utama: ' + err.message, true); }
+};
 
 function kanjiCompoundRowHtml(item) {
   const c = item || {};
@@ -7084,6 +7829,19 @@ function collectKanjiCompounds(form) {
     reading: (tr.querySelector('input[name="compoundReading"]')?.value || '').trim(),
     indonesian: (tr.querySelector('input[name="compoundIndonesian"]')?.value || '').trim(),
   })).filter((c) => c.japanese || c.reading || c.indonesian);
+}
+
+function validateKanjiCompoundForm(compounds, character) {
+  for (let i = 0; i < compounds.length; i++) {
+    const item = compounds[i];
+    if (!item.japanese || !item.reading || !item.indonesian) {
+      return `Kata #${i + 1}: kata, bacaan, dan arti wajib diisi lengkap.`;
+    }
+    if (character && !item.japanese.includes(character)) {
+      return `Kata #${i + 1} harus mengandung kanji ${character}.`;
+    }
+  }
+  return '';
 }
 
 window.openKanjiItemForm = (id) => {
@@ -7141,7 +7899,7 @@ window.openKanjiItemForm = (id) => {
           placeholder="contoh: 一 = satu garis horizontal, gampang inget angka 1">${escapeHtml(v.mnemonic || '')}</textarea>
       </div>
       <div class="field">
-        <label>Kombinasi kosakata</label>
+        <label>Kata yang memakai Kanji ini (opsional)</label>
         <div style="overflow-x:auto;">
           <table style="font-size:12px;">
             <thead><tr><th>Kanji / kata</th><th>Kana</th><th>Arti Bahasa Indonesia</th><th></th></tr></thead>
@@ -7149,8 +7907,8 @@ window.openKanjiItemForm = (id) => {
           </table>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;flex-wrap:wrap;">
-          <span style="font-size:11px;color:var(--ink-500);">Contoh: 日本語 · にほんご · bahasa Jepang.</span>
-          <button type="button" class="btn btn-ghost" onclick="addKanjiCompoundRow()">+ Tambah kombinasi</button>
+          <span style="font-size:11px;color:var(--ink-500);">Isi hanya kata utama pilihan pengajar. Sistem otomatis melengkapi dari Deck Kosakata. Bentuk ber-okurigana seperti 食べる tetap valid.</span>
+          <button type="button" class="btn btn-ghost" onclick="addKanjiCompoundRow()">+ Tambah kata utama</button>
         </div>
       </div>
       <div class="field-row">
@@ -7178,6 +7936,9 @@ async function submitKanjiItem(e, id) {
   e.preventDefault();
   const form = e.target;
   const ctx = STATE.kanjiManagerCtx;
+  const compounds = collectKanjiCompounds(form);
+  const compoundError = validateKanjiCompoundForm(compounds, form.character.value.trim());
+  if (compoundError) { notify(compoundError, true); return; }
   const body = {
     lessonId: ctx?.lessonId || null,
     character: form.character.value.trim(),
@@ -7186,7 +7947,7 @@ async function submitKanjiItem(e, id) {
     kunReading: form.kunReading.value.trim() || null,
     meaningId: form.meaningId.value.trim() || null,
     mnemonic: form.mnemonic.value.trim() || null,
-    compounds: collectKanjiCompounds(form),
+    compounds,
     strokeCount: form.strokeCount.value === '' ? null : Number(form.strokeCount.value),
     babKode: form.babKode.value.trim() || null,
     sortOrder: Number(form.sortOrder.value) || 0,

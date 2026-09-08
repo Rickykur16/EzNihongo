@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import { requireAuth, requireAdmin } from '../middleware.js';
+import { uploadLimits, uploadErrorHandler } from '../upload-safety.js';
 
 const router = Router();
 
@@ -31,7 +32,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: uploadLimits(5 * 1024 * 1024),
   fileFilter: (req, file, cb) => {
     if (!ALLOWED_MIME.has(file.mimetype)) {
       return cb(new Error('Only JPEG, PNG, WEBP, GIF images are allowed'));
@@ -46,6 +47,7 @@ router.post('/', requireAuth, requireAdmin, upload.single('file'), (req, res) =>
   res.status(201).json({ url: publicUrl, size: req.file.size, mime: req.file.mimetype });
 });
 
+router.use(uploadErrorHandler);
 router.use((err, req, res, next) => {
   if (err) return res.status(400).json({ error: err.message });
   next();

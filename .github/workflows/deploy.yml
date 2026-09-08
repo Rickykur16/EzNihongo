@@ -30,6 +30,9 @@ jobs:
       - name: Syntax-check backend sources
         working-directory: backend
         run: find src migrations scripts -name '*.js' -o -name '*.mjs' | xargs -I{} node --check {}
+      - name: Test backend helpers
+        working-directory: backend
+        run: npm test
 
   deploy:
     needs: ci
@@ -46,6 +49,12 @@ jobs:
             cd /var/www/eznihongo
             git fetch --all --prune
             git reset --hard origin/main
+
+            # HTML menentukan versi asset dan redirect entry siswa. Jangan
+            # biarkan browser menyimpan index/dashboard lama lintas deploy.
+            install -m 0644 backend/deploy/nginx-html-cache.conf /etc/nginx/conf.d/eznihongo-html-cache.conf
+            nginx -t
+            systemctl reload nginx
 
             cd backend
             # --omit=dev sengaja: backend hanya punya runtime deps; lock-checked

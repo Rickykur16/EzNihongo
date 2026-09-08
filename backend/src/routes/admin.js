@@ -4,6 +4,7 @@ import path from 'path';
 import rateLimit from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
 import { query, withTransaction } from '../db.js';
+import { isCanonicalUuid, validateLiveClassFields } from '../live-class-admin-rules.js';
 import { requireAuth, requireAdmin, asyncHandler } from '../middleware.js';
 import {
   isAdminEmail,
@@ -14,6 +15,7 @@ import {
 import { COACH_PROMPT_DEFAULT } from './recommendations.js';
 import { callClaude, anthropicEnabled, ANTHROPIC_GEN_MODEL } from '../anthropic.js';
 import { controlledSlot, slotShaped } from '../grammar-drills.js';
+import { deleteMarketingProfile, eraseUserAccount } from '../user-erasure.js';
 import {
   NOTION_BAB_DB_ID_DEFAULT,
   NOTION_VOCAB_LESSON_RELATION,
@@ -32,11 +34,115 @@ import {
   TTS_ELEVEN_MODEL,
   TTS_SETTINGS_VERSION,
 } from './tts.js';
+import {
+  loadCourseVocab,
+  deriveCompounds,
+  loadKanjiCatalog,
+  invalidateCourseVocabCache,
+  invalidateKanjiCatalogCache,
+} from '../kanji-compounds.js';
 
 const router = Router();
 
 // Every route in this file requires admin
 router.use(requireAuth, requireAdmin);
+
+// ── YouTube video sources ────────────────────────────────────────────────
+// Store an ID, never an embed URL. The same source can then be picked by many
+// lessons, each with its own start/end range. This accepts the share, watch,
+// embed, shorts, live, and youtu.be forms that creators commonly paste.
+const YOUTUBE_VIDEO_ID_RE = /^[A-Za-z0-9_-]{6,64}$/;
+
+function parseYouTubeSource(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  if (YOUTUBE_VIDEO_ID_RE.test(raw)) {
+    return { externalId: raw, sourceUrl: `https://www.youtube.com/watch?v=${raw}` };
+  }
+
+  let url;
+  try {
+    url = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+  } catch {
+    return null;
+  }
+  const host = url.hostname.toLowerCase().replace(/^www\./, '');
+  const parts = url.pathname.split('/').filter(Boolean);
+  let externalId = '';
+
+  if (host === 'youtu.be') {
+    externalId = parts[0] || '';
+  } else if (host === 'youtube.com' || host.endsWith('.youtube.com') ||
+             host === 'youtube-nocookie.com' || host.endsWith('.youtube-nocookie.com')) {
+    if (url.pathname === '/watch') externalId = url.searchParams.get('v') || '';
+    else if (['embed', 'shorts', 'live', 'v'].includes(parts[0])) externalId = parts[1] || '';
+  }
+
+  if (!YOUTUBE_VIDEO_ID_RE.test(externalId)) return null;
+  return {
+    externalId,
+    sourceUrl: `https://www.youtube.com/watch?v=${externalId}`,
+  };
+}
+
+function normalizeSegment(sourceIdValue, startValue, endValue) {
+  const sourceId = String(sourceIdValue || '').trim() || null;
+  const hasStart = startValue !== undefined && startValue !== null && startValue !== '';
+  const hasEnd = endValue !== undefined && endValue !== null && endValue !== '';
+  if (!sourceId) {
+    if (hasStart || hasEnd) return { error: 'Pilih sumber YouTube untuk memakai rentang waktu video.' };
+    return { videoSourceId: null, videoStartSeconds: null, videoEndSeconds: null };
+  }
+
+  const start = hasStart ? Number(startValue) : 0;
+  const end = hasEnd ? Number(endValue) : null;
+  if (!Number.isInteger(start) || start < 0) {
+    return { error: 'Waktu mulai video harus berupa detik bulat positif atau nol.' };
+  }
+  if (!Number.isInteger(end) || end <= start) {
+    return { error: 'Waktu selesai video harus lebih besar dari waktu mulai.' };
+  }
+  return { videoSourceId: sourceId, videoStartSeconds: start, videoEndSeconds: end };
+}
+
+function supportsVideoSegment(type) {
+  return type === 'video' || type === 'kana';
+}
+
+// GET /api/admin/video-sources — source picker for reusable YouTube videos.
+router.get('/video-sources', asyncHandler(async (_req, res) => {
+  const sources = await query(
+    `SELECT vs.id, vs.provider, vs.external_id, vs.source_url, vs.title,
+            vs.duration_seconds, vs.created_at, vs.updated_at,
+            COUNT(l.id)::int AS lesson_count
+       FROM video_sources vs
+       LEFT JOIN lessons l ON l.video_source_id = vs.id
+      GROUP BY vs.id
+      ORDER BY vs.updated_at DESC, vs.created_at DESC`
+  );
+  res.json({ sources: sources.rows });
+}));
+
+// POST /api/admin/video-sources — creates (or reuses) a canonical YouTube
+// source. No YouTube Data API key is needed just to embed a known video.
+router.post('/video-sources', asyncHandler(async (req, res) => {
+  const parsed = parseYouTubeSource(req.body?.youtubeUrl);
+  if (!parsed) {
+    return res.status(400).json({ error: 'URL YouTube tidak valid. Tempel URL watch, share, embed, shorts, atau ID video.' });
+  }
+  const title = String(req.body?.title || '').trim().slice(0, 240) || null;
+  const created = await query(
+    `INSERT INTO video_sources (provider, external_id, source_url, title)
+     VALUES ('youtube', $1, $2, $3)
+     ON CONFLICT (provider, external_id) DO UPDATE
+       SET source_url = EXCLUDED.source_url,
+           title = COALESCE(EXCLUDED.title, video_sources.title),
+           updated_at = NOW()
+     RETURNING *`,
+    [parsed.externalId, parsed.sourceUrl, title]
+  );
+  res.status(201).json({ source: created.rows[0], reused: created.rows[0].created_at !== created.rows[0].updated_at });
+}));
 
 // POST /api/admin/set-password — admin meng-set/ubah password (self-service).
 // Tanpa `email` → set password milik admin yang sedang login. Dengan `email`
@@ -221,6 +327,8 @@ router.post('/courses', asyncHandler(async (req, res) => {
       isFree === true ? true : (isFree === false ? false : null),
     ]
   );
+  invalidateCourseVocabCache();
+  invalidateKanjiCatalogCache();
   res.status(201).json({ course: result.rows[0] });
 }));
 
@@ -266,6 +374,8 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
     ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  invalidateCourseVocabCache();
+  invalidateKanjiCatalogCache();
   res.json({ course: result.rows[0] });
 }));
 
@@ -284,6 +394,8 @@ router.delete('/courses/:id', asyncHandler(async (req, res) => {
     });
   }
   await query(`DELETE FROM courses WHERE id = $1`, [req.params.id]);
+  invalidateCourseVocabCache();
+  invalidateKanjiCatalogCache();
   res.json({ ok: true });
 }));
 
@@ -330,6 +442,8 @@ router.post('/modules', asyncHandler(async (req, res) => {
       JSON.stringify(typeof quizSpec === 'object' && quizSpec ? quizSpec : {}),
     ]
   );
+  invalidateCourseVocabCache();
+  invalidateKanjiCatalogCache();
   res.status(201).json({ module: result.rows[0] });
 }));
 
@@ -373,11 +487,15 @@ router.put('/modules/:id', asyncHandler(async (req, res) => {
     ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  invalidateCourseVocabCache();
+  invalidateKanjiCatalogCache();
   res.json({ module: result.rows[0] });
 }));
 
 router.delete('/modules/:id', asyncHandler(async (req, res) => {
   await query(`DELETE FROM modules WHERE id = $1`, [req.params.id]);
+  invalidateCourseVocabCache();
+  invalidateKanjiCatalogCache();
   res.json({ ok: true });
 }));
 
@@ -404,6 +522,7 @@ router.post('/module-vocabulary', asyncHandler(async (req, res) => {
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
     [moduleId, lessonId || null, japanese, reading || null, romaji || null, indonesian || null, category || null, note || null, sortOrder || 0]
   );
+  invalidateCourseVocabCache();
   res.status(201).json({ vocabulary: result.rows[0] });
 }));
 
@@ -426,11 +545,13 @@ router.put('/module-vocabulary/:id', asyncHandler(async (req, res) => {
     [req.params.id, lessonId || null, japanese, reading, romaji, indonesian, category, note, sortOrder, hasLesson]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  invalidateCourseVocabCache();
   res.json({ vocabulary: result.rows[0] });
 }));
 
 router.delete('/module-vocabulary/:id', asyncHandler(async (req, res) => {
   await query(`DELETE FROM module_vocabulary WHERE id = $1`, [req.params.id]);
+  invalidateCourseVocabCache();
   res.json({ ok: true });
 }));
 
@@ -455,6 +576,7 @@ router.post('/module-vocabulary/bulk', asyncHandler(async (req, res) => {
     }
     return out;
   });
+  invalidateCourseVocabCache();
   res.status(201).json({ vocabulary: inserted });
 }));
 
@@ -506,6 +628,7 @@ router.post('/vocabulary-examples', asyncHandler(async (req, res) => {
      VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
     [vocabularyId, japanese, reading || null, highlight || null, indonesian || null, sortOrder || 0]
   );
+  invalidateCourseVocabCache();
   res.status(201).json({ example: r.rows[0] });
 }));
 
@@ -525,11 +648,13 @@ router.put('/vocabulary-examples/:id', asyncHandler(async (req, res) => {
     [req.params.id, japanese, highlight || null, indonesian, hasHighlight, sortOrder, hasReading, reading || null]
   );
   if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  invalidateCourseVocabCache();
   res.json({ example: r.rows[0] });
 }));
 
 router.delete('/vocabulary-examples/:id', asyncHandler(async (req, res) => {
   await query(`DELETE FROM vocabulary_examples WHERE id = $1`, [req.params.id]);
+  invalidateCourseVocabCache();
   res.json({ ok: true });
 }));
 
@@ -912,6 +1037,7 @@ async function upsertNotionVocab(moduleId, pages) {
     }
     vocabIds.push(id);
   }
+  invalidateCourseVocabCache();
   return { imported, updated, total, vocabIds };
 }
 
@@ -3060,7 +3186,8 @@ router.post('/module-grammar/bulk', asyncHandler(async (req, res) => {
 
 router.post('/lessons', asyncHandler(async (req, res) => {
   const {
-    moduleId, slug, title, type, content, videoUrl, durationMinutes, sortOrder,
+    moduleId, slug, title, type, content, videoUrl, videoSourceId,
+    videoStartSeconds, videoEndSeconds, durationMinutes, sortOrder,
     passingScorePct, questionsPerAttempt, cooldownHours, popupAfterLessonId,
   } = req.body || {};
   if (!moduleId || !slug || !title) {
@@ -3068,27 +3195,42 @@ router.post('/lessons', asyncHandler(async (req, res) => {
   }
   const slugErr = badSlug(slug);
   if (slugErr) return res.status(400).json({ error: slugErr });
+  // Video and kana lessons can share one YouTube source while using different
+  // timeline ranges. Legacy video_url remains independent for Bunny content.
+  const acceptsVideoSegment = supportsVideoSegment(type);
+  const segment = normalizeSegment(
+    acceptsVideoSegment ? videoSourceId : null,
+    acceptsVideoSegment ? videoStartSeconds : null,
+    acceptsVideoSegment ? videoEndSeconds : null
+  );
+  if (segment.error) return res.status(400).json({ error: segment.error });
   const result = await query(
     `INSERT INTO lessons (
-       module_id, slug, title, type, content, video_url, duration_minutes, sort_order,
-       passing_score_pct, questions_per_attempt, cooldown_hours, popup_after_lesson_id
-     )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+       module_id, slug, title, type, content, video_url,
+       video_source_id, video_start_seconds, video_end_seconds,
+       duration_minutes, sort_order, passing_score_pct, questions_per_attempt,
+       cooldown_hours, popup_after_lesson_id
+      )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
     [
       moduleId, slug, title, type || 'text',
-      content || null, videoUrl || null, durationMinutes || null, sortOrder || 0,
+      content || null, videoUrl || null,
+      segment.videoSourceId, segment.videoStartSeconds, segment.videoEndSeconds,
+      durationMinutes || null, sortOrder || 0,
       passingScorePct != null && passingScorePct !== '' ? Number(passingScorePct) : 70,
       questionsPerAttempt != null && questionsPerAttempt !== '' ? Number(questionsPerAttempt) : null,
       cooldownHours != null && cooldownHours !== '' ? Number(cooldownHours) : 12,
       popupAfterLessonId || null,
     ]
   );
+  invalidateKanjiCatalogCache();
   res.status(201).json({ lesson: result.rows[0] });
 }));
 
 router.put('/lessons/:id', asyncHandler(async (req, res) => {
   const {
-    slug, title, type, content, videoUrl, durationMinutes, sortOrder,
+    slug, title, type, content, videoUrl, videoSourceId, videoStartSeconds,
+    videoEndSeconds, durationMinutes, sortOrder,
     passingScorePct, questionsPerAttempt, cooldownHours, popupAfterLessonId,
   } = req.body || {};
   if (slug !== undefined && slug !== null) {
@@ -3097,6 +3239,9 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
   }
   const hasQPA = Object.prototype.hasOwnProperty.call(req.body || {}, 'questionsPerAttempt');
   const hasPopup = Object.prototype.hasOwnProperty.call(req.body || {}, 'popupAfterLessonId');
+  const hasVideoSource = Object.prototype.hasOwnProperty.call(req.body || {}, 'videoSourceId');
+  const hasVideoStart = Object.prototype.hasOwnProperty.call(req.body || {}, 'videoStartSeconds');
+  const hasVideoEnd = Object.prototype.hasOwnProperty.call(req.body || {}, 'videoEndSeconds');
 
   // Lesson type-switch cleanup: kalau type berubah dari yang punya konten
   // (quiz/kanji/deck), hapus konten lama sebelum UPDATE. Tanpa ini,
@@ -3109,60 +3254,90 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
   // A crash between the DELETEs and the UPDATE would orphan content and lose
   // student history with no consistent state to recover to.
   const outcome = await withTransaction(async (client) => {
-    if (type) {
-      const cur = await client.query(`SELECT type FROM lessons WHERE id = $1 LIMIT 1`, [req.params.id]);
-      if (cur.rows.length === 0) return { notFound: true };
-      const oldType = cur.rows[0].type;
-      if (oldType !== type) {
-        if (oldType === 'quiz') {
-          await client.query(`DELETE FROM quiz_questions WHERE lesson_id = $1`, [req.params.id]);
-          await client.query(`DELETE FROM quiz_attempts WHERE lesson_id = $1`, [req.params.id]);
-        } else if (oldType === 'kanji') {
-          await client.query(`DELETE FROM kanji_items WHERE lesson_id = $1`, [req.params.id]);
-        } else if (oldType === 'deck') {
-          await client.query(`DELETE FROM lesson_deck_items WHERE lesson_id = $1`, [req.params.id]);
-        } else if (oldType === 'kana') {
-          await client.query(`DELETE FROM lesson_kana_items WHERE lesson_id = $1`, [req.params.id]);
-        } else if (oldType === 'grammar_task') {
-          await client.query(`DELETE FROM lesson_grammar_task_items WHERE lesson_id = $1`, [req.params.id]);
-        }
+    const cur = await client.query(
+      `SELECT type, video_source_id, video_start_seconds, video_end_seconds
+         FROM lessons WHERE id = $1 LIMIT 1`,
+      [req.params.id]
+    );
+    if (cur.rows.length === 0) return { notFound: true };
+    const current = cur.rows[0];
+    const oldType = current.type;
+    if (type && oldType !== type) {
+      if (oldType === 'quiz') {
+        await client.query(`DELETE FROM quiz_questions WHERE lesson_id = $1`, [req.params.id]);
+        await client.query(`DELETE FROM quiz_attempts WHERE lesson_id = $1`, [req.params.id]);
+      } else if (oldType === 'kanji') {
+        await client.query(`DELETE FROM kanji_items WHERE lesson_id = $1`, [req.params.id]);
+      } else if (oldType === 'deck') {
+        await client.query(`DELETE FROM lesson_deck_items WHERE lesson_id = $1`, [req.params.id]);
+      } else if (oldType === 'kana') {
+        await client.query(`DELETE FROM lesson_kana_items WHERE lesson_id = $1`, [req.params.id]);
+      } else if (oldType === 'grammar_task') {
+        await client.query(`DELETE FROM lesson_grammar_task_items WHERE lesson_id = $1`, [req.params.id]);
       }
     }
 
-    const result = await client.query(
-      `UPDATE lessons SET
-         slug = COALESCE($2, slug),
-         title = COALESCE($3, title),
-         type = COALESCE($4, type),
-         content = COALESCE($5, content),
-         video_url = COALESCE($6, video_url),
-         duration_minutes = COALESCE($7, duration_minutes),
-         sort_order = COALESCE($8, sort_order),
-         passing_score_pct = COALESCE($9, passing_score_pct),
-         questions_per_attempt = CASE WHEN $11::boolean THEN $10 ELSE questions_per_attempt END,
-         cooldown_hours = COALESCE($12, cooldown_hours),
-         popup_after_lesson_id = CASE WHEN $14::boolean THEN $13 ELSE popup_after_lesson_id END
-       WHERE id = $1 RETURNING *`,
-      [
-        req.params.id, slug, title, type, content, videoUrl, durationMinutes, sortOrder,
-        passingScorePct != null && passingScorePct !== '' ? Number(passingScorePct) : null,
-        hasQPA && questionsPerAttempt !== '' && questionsPerAttempt != null ? Number(questionsPerAttempt) : null,
-        hasQPA,
-        cooldownHours != null && cooldownHours !== '' ? Number(cooldownHours) : null,
-        hasPopup && popupAfterLessonId ? popupAfterLessonId : null,
-        hasPopup,
-      ]
-    );
+      // PUT also supports partial callers. Only fields actually supplied in
+      // the payload replace a saved segment; the admin editor sends all three
+      // so it can deliberately clear the source when lesson type changes.
+      const effectiveType = type || oldType;
+      const acceptsVideoSegment = supportsVideoSegment(effectiveType);
+      const segment = normalizeSegment(
+        acceptsVideoSegment
+          ? (hasVideoSource ? videoSourceId : current.video_source_id)
+          : null,
+        acceptsVideoSegment
+          ? (hasVideoStart ? videoStartSeconds : current.video_start_seconds)
+          : null,
+        acceptsVideoSegment
+          ? (hasVideoEnd ? videoEndSeconds : current.video_end_seconds)
+          : null
+      );
+      if (segment.error) return { error: segment.error };
+
+      const result = await client.query(
+        `UPDATE lessons SET
+          slug = COALESCE($2, slug),
+          title = COALESCE($3, title),
+          type = COALESCE($4, type),
+          content = COALESCE($5, content),
+          video_url = COALESCE($6, video_url),
+          video_source_id = CASE WHEN $10::boolean THEN $7 ELSE video_source_id END,
+          video_start_seconds = CASE WHEN $11::boolean THEN $8 ELSE video_start_seconds END,
+          video_end_seconds = CASE WHEN $12::boolean THEN $9 ELSE video_end_seconds END,
+          duration_minutes = COALESCE($13, duration_minutes),
+          sort_order = COALESCE($14, sort_order),
+          passing_score_pct = COALESCE($15, passing_score_pct),
+          questions_per_attempt = CASE WHEN $17::boolean THEN $16 ELSE questions_per_attempt END,
+          cooldown_hours = COALESCE($18, cooldown_hours),
+          popup_after_lesson_id = CASE WHEN $20::boolean THEN $19 ELSE popup_after_lesson_id END
+        WHERE id = $1 RETURNING *`,
+        [
+          req.params.id, slug, title, type, content, videoUrl,
+          segment.videoSourceId, segment.videoStartSeconds, segment.videoEndSeconds,
+          true, true, true,
+          durationMinutes, sortOrder,
+          passingScorePct != null && passingScorePct !== '' ? Number(passingScorePct) : null,
+          hasQPA && questionsPerAttempt !== '' && questionsPerAttempt != null ? Number(questionsPerAttempt) : null,
+          hasQPA,
+          cooldownHours != null && cooldownHours !== '' ? Number(cooldownHours) : null,
+          hasPopup && popupAfterLessonId ? popupAfterLessonId : null,
+          hasPopup,
+        ]
+      );
     if (result.rows.length === 0) return { notFound: true };
     return { lesson: result.rows[0] };
   });
 
   if (outcome.notFound) return res.status(404).json({ error: 'Not found' });
+  if (outcome.error) return res.status(400).json({ error: outcome.error });
+  invalidateKanjiCatalogCache();
   res.json({ lesson: outcome.lesson });
 }));
 
 router.delete('/lessons/:id', asyncHandler(async (req, res) => {
   await query(`DELETE FROM lessons WHERE id = $1`, [req.params.id]);
+  invalidateKanjiCatalogCache();
   res.json({ ok: true });
 }));
 
@@ -3521,35 +3696,89 @@ router.delete('/testimonials/:id', asyncHandler(async (req, res) => {
 
 // ===== USERS (admin view only) =====
 
-router.get('/users', asyncHandler(async (req, res) => {
-  // Server-side search + pagination so users beyond the old hard cap of 500
-  // are reachable (search by name/email; page with limit/offset).
+// Shared between the paginated list below and the CSV export — the export
+// is meant to pull exactly what the admin is currently looking at (same
+// search + same marketing-profile filters), not the whole table.
+function buildUserFilters(req) {
   const q = String(req.query.q || '').trim();
-  const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 100));
-  const offset = Math.max(0, Number(req.query.offset) || 0);
+  const province = String(req.query.province || '').trim();
+  const learningGoal = String(req.query.learningGoal || '').trim();
+  const referralSource = String(req.query.referralSource || '').trim();
   const params = [];
-  let where = '';
+  const clauses = [];
   if (q) {
     params.push('%' + q + '%');
     const p = `$${params.length}`;
-    where = `WHERE (u.email ILIKE ${p} OR u.full_name ILIKE ${p} OR u.google_name ILIKE ${p})`;
+    clauses.push(`(u.email ILIKE ${p} OR u.full_name ILIKE ${p} OR u.google_name ILIKE ${p})`);
   }
-  const totalRes = await query(`SELECT COUNT(*)::int AS n FROM users u ${where}`, params);
+  if (province) { params.push(province); clauses.push(`mp.province = $${params.length}`); }
+  if (learningGoal) { params.push(learningGoal); clauses.push(`mp.learning_goal = $${params.length}`); }
+  if (referralSource) { params.push(referralSource); clauses.push(`mp.referral_source = $${params.length}`); }
+  return { where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '', params };
+}
+
+router.get('/users', asyncHandler(async (req, res) => {
+  // Server-side search + pagination so users beyond the old hard cap of 500
+  // are reachable (search by name/email; page with limit/offset).
+  const { where, params } = buildUserFilters(req);
+  const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 100));
+  const offset = Math.max(0, Number(req.query.offset) || 0);
+  const totalRes = await query(
+    `SELECT COUNT(*)::int AS n FROM users u LEFT JOIN user_marketing_profile mp ON mp.user_id = u.id ${where}`,
+    params
+  );
   const listParams = params.slice();
   listParams.push(limit, offset);
   const result = await query(
     `SELECT u.id, u.email, u.full_name, u.google_name, u.avatar_url, u.created_at,
             COALESCE(s.xp, 0) AS xp, COALESCE(s.streak_days, 0) AS streak_days,
             COALESCE(s.total_lessons_completed, 0) AS total_lessons_completed,
-            s.last_active_date
+            s.last_active_date,
+            mp.birth_date, mp.province, mp.city, mp.phone, mp.learning_goal, mp.referral_source
      FROM users u
      LEFT JOIN user_stats s ON s.user_id = u.id
+     LEFT JOIN user_marketing_profile mp ON mp.user_id = u.id
      ${where}
      ORDER BY u.created_at DESC
      LIMIT $${listParams.length - 1} OFFSET $${listParams.length}`,
     listParams
   );
   res.json({ users: result.rows, total: totalRes.rows[0].n });
+}));
+
+// GET /admin/users/marketing-export — CSV of every student matching the
+// current filters (not paginated, unlike /users above), for pulling into
+// spreadsheets or ads-audience tools. This is what actually makes the data
+// usable for "pengembangan marketing" — an HTML table alone doesn't.
+router.get('/users/marketing-export', asyncHandler(async (req, res) => {
+  const { where, params } = buildUserFilters(req);
+  const result = await query(
+    `SELECT u.full_name, u.email, mp.birth_date, mp.province, mp.city, mp.phone,
+            mp.learning_goal, mp.referral_source, u.created_at
+     FROM users u
+     LEFT JOIN user_marketing_profile mp ON mp.user_id = u.id
+     ${where}
+     ORDER BY u.created_at DESC`,
+    params
+  );
+  const header = ['Nama', 'Email', 'Tanggal Lahir', 'Provinsi', 'Kota', 'WhatsApp', 'Tujuan Belajar', 'Sumber Referral', 'Bergabung'];
+  const csvEscape = (v) => {
+    const s = v == null ? '' : String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  // pg returns DATE/TIMESTAMPTZ columns as JS Date objects — String(date)
+  // gives the verbose "Thu Jan 01 1998 00:00:00 GMT+0000 (...)" form, not
+  // useful in a spreadsheet. Format explicitly instead.
+  const asDate = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
+  const rows = result.rows.map((r) => [
+    r.full_name, r.email, asDate(r.birth_date), r.province || '', r.city || '', r.phone || '',
+    r.learning_goal || '', r.referral_source || '', asDate(r.created_at),
+  ].map(csvEscape).join(','));
+  const csv = [header.join(','), ...rows].join('\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="siswa-eznihongo-${new Date().toISOString().slice(0, 10)}.csv"`);
+  // BOM supaya Excel membuka UTF-8 dengan benar (nama/kota berkarakter non-ASCII).
+  res.send('\uFEFF' + csv);
 }));
 
 // ===== AKSES DASHBOARD (course entitlement grants) =====
@@ -3679,6 +3908,71 @@ router.post('/user-access/revoke', asyncHandler(async (req, res) => {
   );
   if (upd.rows.length === 0) return res.status(404).json({ error: 'enrollment_not_found' });
   res.json({ ok: true });
+}));
+
+// ===== HAK HAPUS DATA (privacy.html bagian 5) =====
+// Admin-only dan itu memang sesuai janjinya: privacy.html menyuruh siswa
+// menghubungi lewat WhatsApp menyebutkan email akunnya, bukan menekan tombol
+// sendiri. Lihat backend/src/user-erasure.js untuk alasan teknis kenapa
+// penghapusan akun berbentuk anonimisasi, bukan DELETE.
+
+// DELETE /api/admin/users/:email/marketing-profile — tarik persetujuan saja.
+// Akun, akses kursus, dan progres belajar TIDAK disentuh. Ini permintaan yang
+// paling mungkin datang ("jangan pakai data saya untuk marketing"), jadi
+// sengaja dipisah dari penghapusan akun supaya admin tidak perlu memakai palu
+// besar untuk keperluan kecil.
+router.delete('/users/:email/marketing-profile', asyncHandler(async (req, res) => {
+  const email = String(req.params.email || '').trim().toLowerCase();
+  if (!email) return res.status(400).json({ error: 'email_required' });
+
+  const userRow = await query(`SELECT id FROM users WHERE lower(email) = $1 LIMIT 1`, [email]);
+  const user = userRow.rows[0];
+  if (!user) return res.status(404).json({ error: 'user_not_found' });
+
+  const result = await withTransaction((client) => deleteMarketingProfile(client, user.id));
+  res.json({ ok: true, ...result });
+}));
+
+// POST /api/admin/users/:email/erase — { confirmEmail, acknowledgePaidHistory? }
+// → hapus akun. Tidak bisa dibatalkan, jadi admin wajib mengetik ulang email
+// yang persis sama sebagai konfirmasi (pola yang sama dengan konfirmasi hapus
+// repo di GitHub) — tombol saja terlalu mudah kepencet untuk aksi
+// seireversibel ini. Seluruhnya dalam SATU transaksi: kalau ada satu tabel
+// gagal dibersihkan, semuanya di-rollback dan akunnya tetap utuh — jauh lebih
+// baik daripada akun setengah terhapus yang datanya tercecer.
+router.post('/users/:email/erase', asyncHandler(async (req, res) => {
+  const email = String(req.params.email || '').trim().toLowerCase();
+  const confirmEmail = String(req.body?.confirmEmail || '').trim().toLowerCase();
+  if (!email) return res.status(400).json({ error: 'email_required' });
+  if (confirmEmail !== email) return res.status(400).json({ error: 'confirmation_mismatch' });
+
+  const userRow = await query(`SELECT id, email FROM users WHERE lower(email) = $1 LIMIT 1`, [email]);
+  const user = userRow.rows[0];
+  if (!user) return res.status(404).json({ error: 'user_not_found' });
+
+  // Admin tidak boleh menghapus akunnya sendiri: dia akan kehilangan sesi di
+  // tengah aksi dan (kalau itu admin terakhir) mengunci semua orang keluar.
+  if (String(user.id) === String(req.user.id)) {
+    return res.status(400).json({ error: 'cannot_erase_self' });
+  }
+
+  // Fitur ini ditujukan untuk user yang TIDAK pernah membayar. Siswa yang
+  // sudah pernah membayar datanya sengaja dipertahankan sebagai catatan
+  // historis pelanggan, dan penghapusan tidak bisa dibatalkan — jadi
+  // kebijakan itu dikunci di sini, bukan diandalkan pada ingatan admin saat
+  // menekan tombol. Masih bisa ditembus kalau memang disengaja, tapi harus
+  // eksplisit.
+  const paid = await query(
+    `SELECT count(*)::int AS n FROM orders WHERE user_id = $1 AND status = 'approved'`,
+    [user.id]
+  );
+  const paidOrders = paid.rows[0]?.n || 0;
+  if (paidOrders > 0 && req.body?.acknowledgePaidHistory !== true) {
+    return res.status(409).json({ error: 'user_has_paid_orders', paidOrders });
+  }
+
+  const summary = await withTransaction((client) => eraseUserAccount(client, user.id));
+  res.json({ ok: true, summary, paidOrders });
 }));
 
 // ===== ORDERS (Phase 2 — manual bank transfer payment verification) =====
@@ -3975,13 +4269,30 @@ function normalizeKanjiLevel(value) {
   const v = String(value || '').toUpperCase();
   return KANJI_LEVELS.includes(v) ? v : 'N5';
 }
-function normalizeKanjiCompounds(value) {
-  if (!Array.isArray(value)) return [];
-  return value.map((item) => ({
-    japanese: String(item?.japanese || '').trim(),
-    reading: String(item?.reading || '').trim(),
-    indonesian: String(item?.indonesian || '').trim(),
-  })).filter((item) => item.japanese || item.reading || item.indonesian);
+function validateKanjiCompounds(value, character = '') {
+  if (!Array.isArray(value)) return { items: [], error: null };
+  const target = String(character || '').trim();
+  const items = [];
+  const seen = new Set();
+  for (let i = 0; i < value.length; i++) {
+    const item = {
+      japanese: String(value[i]?.japanese || '').trim(),
+      reading: String(value[i]?.reading || '').trim(),
+      indonesian: String(value[i]?.indonesian || '').trim(),
+    };
+    if (!item.japanese && !item.reading && !item.indonesian) continue;
+    if (!item.japanese || !item.reading || !item.indonesian) {
+      return { items: [], error: `Kata #${i + 1}: kata, bacaan, dan arti wajib diisi lengkap` };
+    }
+    if (target && !item.japanese.includes(target)) {
+      return { items: [], error: `Kata #${i + 1} harus mengandung kanji ${target}` };
+    }
+    const key = `${item.japanese.toLowerCase()}::${item.reading.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push(item);
+  }
+  return { items, error: null };
 }
 
 // List kanji per pelajaran. Lesson scope dipake admin "Kelola Kanji"
@@ -3989,14 +4300,45 @@ function normalizeKanjiCompounds(value) {
 // 'kanji'), bukan tab admin global.
 router.get('/lessons/:lessonId/kanji', asyncHandler(async (req, res) => {
   const result = await query(
-    `SELECT id, character, jlpt_level, on_reading, kun_reading, meaning_id,
-            mnemonic, compounds, stroke_count, bab_kode, sort_order
-       FROM kanji_items
-      WHERE lesson_id = $1
-      ORDER BY sort_order ASC, character ASC`,
+    `SELECT k.id, k.character, k.jlpt_level, k.on_reading, k.kun_reading,
+            k.meaning_id, k.mnemonic, k.compounds, k.stroke_count, k.bab_kode,
+            k.sort_order, l.module_id, m.sort_order AS module_sort,
+            c.slug AS course_slug, c.level AS course_level
+       FROM kanji_items k
+       JOIN lessons l ON l.id = k.lesson_id
+       JOIN modules m ON m.id = l.module_id
+       JOIN courses c ON c.id = m.course_id
+      WHERE k.lesson_id = $1
+      ORDER BY k.sort_order ASC, k.character ASC`,
     [req.params.lessonId]
   );
-  res.json({ kanji: result.rows });
+  if (result.rows.length === 0) return res.json({ kanji: [] });
+
+  const context = result.rows[0];
+  const [vocab, kanjiCatalog] = await Promise.all([
+    loadCourseVocab(context.course_slug),
+    loadKanjiCatalog(),
+  ]);
+  const kanji = result.rows.map((row) => ({
+    id: row.id,
+    character: row.character,
+    jlpt_level: row.jlpt_level,
+    on_reading: row.on_reading,
+    kun_reading: row.kun_reading,
+    meaning_id: row.meaning_id,
+    mnemonic: row.mnemonic,
+    compounds: row.compounds,
+    usages: deriveCompounds(row.character, row.compounds, vocab, {
+      moduleId: row.module_id,
+      moduleSort: row.module_sort,
+      courseLevel: row.course_level,
+      kanjiCatalog,
+    }),
+    stroke_count: row.stroke_count,
+    bab_kode: row.bab_kode,
+    sort_order: row.sort_order,
+  }));
+  res.json({ kanji });
 }));
 
 router.post('/kanji', asyncHandler(async (req, res) => {
@@ -4008,7 +4350,9 @@ router.post('/kanji', asyncHandler(async (req, res) => {
   if (!ch) return res.status(400).json({ error: 'character required' });
   const level = normalizeKanjiLevel(jlptLevel);
   const hasCompounds = Object.prototype.hasOwnProperty.call(req.body || {}, 'compounds');
-  const safeCompounds = normalizeKanjiCompounds(compounds);
+  const compoundValidation = validateKanjiCompounds(compounds, ch);
+  if (compoundValidation.error) return res.status(400).json({ error: compoundValidation.error });
+  const safeCompounds = compoundValidation.items;
   const result = await query(
     `INSERT INTO kanji_items (
        lesson_id, character, jlpt_level, on_reading, kun_reading, meaning_id,
@@ -4041,6 +4385,7 @@ router.post('/kanji', asyncHandler(async (req, res) => {
       hasCompounds,
     ]
   );
+  invalidateKanjiCatalogCache();
   res.status(201).json({ kanji: result.rows[0] });
 }));
 
@@ -4053,7 +4398,9 @@ router.put('/kanji/:id', asyncHandler(async (req, res) => {
   const level = jlptLevel ? normalizeKanjiLevel(jlptLevel) : null;
   const hasLessonId = Object.prototype.hasOwnProperty.call(req.body || {}, 'lessonId');
   const hasCompounds = Object.prototype.hasOwnProperty.call(req.body || {}, 'compounds');
-  const safeCompounds = normalizeKanjiCompounds(compounds);
+  const compoundValidation = validateKanjiCompounds(compounds, ch);
+  if (compoundValidation.error) return res.status(400).json({ error: compoundValidation.error });
+  const safeCompounds = compoundValidation.items;
   const result = await query(
     `UPDATE kanji_items SET
        character = COALESCE($2, character),
@@ -4087,11 +4434,13 @@ router.put('/kanji/:id', asyncHandler(async (req, res) => {
     ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  invalidateKanjiCatalogCache();
   res.json({ kanji: result.rows[0] });
 }));
 
 router.delete('/kanji/:id', asyncHandler(async (req, res) => {
   await query(`DELETE FROM kanji_items WHERE id = $1`, [req.params.id]);
+  invalidateKanjiCatalogCache();
   res.json({ ok: true });
 }));
 
@@ -4111,6 +4460,7 @@ router.post('/kanji/:id/move', asyncHandler(async (req, res) => {
     [targetLessonId, sortOrder ?? null, req.params.id]
   );
   if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  invalidateKanjiCatalogCache();
   res.json({ kanji: r.rows[0] });
 }));
 
@@ -4271,6 +4621,7 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', notionImportLimiter, a
     diagnostic.hint = 'DB Notion-mu kosong atau integration belum di-share ke DB tersebut (notion.so → Share → Add connection → pilih integration).';
   }
 
+  invalidateKanjiCatalogCache();
   res.json({
     imported,
     updated,
@@ -4434,6 +4785,93 @@ router.post('/tts/tags', asyncHandler(async (req, res) => {
 router.delete('/tts/tags/:tag', asyncHandler(async (req, res) => {
   const tag = String(req.params.tag || '').toLowerCase();
   await query(`DELETE FROM tts_tag_library WHERE tag = $1`, [tag]);
+  res.json({ ok: true });
+}));
+
+// ── Live Class management ────────────────────────────────────────────────
+async function liveClassPayload(body) {
+  const courseId = String(body?.courseId || '').trim();
+  const title = String(body?.title || '').trim();
+  const description = String(body?.description || '').trim().slice(0, 4000) || null;
+  const status = String(body?.status || 'scheduled');
+  const lessonIds = [...new Set(Array.isArray(body?.lessonIds) ? body.lessonIds.map(String).filter(Boolean) : [])];
+  const validation = validateLiveClassFields({ courseId, title, startsAt: body?.startsAt, endsAt: body?.endsAt, meetingUrl: body?.meetingUrl, recordingUrl: body?.recordingUrl, status });
+  if (!validation.ok) return { error: validation.error };
+  if (!lessonIds.every(isCanonicalUuid)) return { error: 'invalid_lessonIds' };
+  const course = await query(`SELECT id FROM courses WHERE id = $1 LIMIT 1`, [courseId]);
+  if (!course.rows.length) return { error: 'course_not_found' };
+  if (lessonIds.length) {
+    const lessons = await query(`SELECT l.id FROM lessons l JOIN modules m ON m.id = l.module_id WHERE l.id = ANY($1::uuid[]) AND m.course_id = $2`, [lessonIds, courseId]);
+    if (lessons.rows.length !== lessonIds.length) return { error: 'related_lessons_must_belong_to_course' };
+  }
+  return { courseId, title, description, startsAt: validation.startsAt, endsAt: validation.endsAt, meetingUrl: validation.meetingUrl, recordingUrl: validation.recordingUrl, status, lessonIds };
+}
+
+async function adminLiveClassRows(courseId = null) {
+  const rows = await query(
+    `SELECT lc.*, c.title AS course_title, l.id AS lesson_id, l.title AS lesson_title, l.slug AS lesson_slug,
+            m.title AS module_title, m.slug AS module_slug, m.section_name, lcl.sort_order AS lesson_sort
+       FROM live_classes lc JOIN courses c ON c.id = lc.course_id
+       LEFT JOIN live_class_lessons lcl ON lcl.live_class_id = lc.id
+       LEFT JOIN lessons l ON l.id = lcl.lesson_id LEFT JOIN modules m ON m.id = l.module_id
+      WHERE ($1::uuid IS NULL OR lc.course_id = $1)
+      ORDER BY lc.starts_at DESC, lcl.sort_order`, [courseId]
+  );
+  const out = new Map();
+  for (const row of rows.rows) {
+    if (!out.has(row.id)) out.set(row.id, { id: row.id, courseId: row.course_id, courseTitle: row.course_title, title: row.title, description: row.description, startsAt: row.starts_at, endsAt: row.ends_at, meetingUrl: row.meeting_url, recordingUrl: row.recording_url, status: row.status, relatedLessons: [] });
+    if (row.lesson_id) out.get(row.id).relatedLessons.push({ id: row.lesson_id, title: row.lesson_title, slug: row.lesson_slug, chapter: { title: row.module_title, slug: row.module_slug }, section: row.section_name || null });
+  }
+  return [...out.values()];
+}
+
+router.get('/live-classes', asyncHandler(async (req, res) => {
+  const courseId = req.query.courseId ? String(req.query.courseId) : null;
+  if (courseId && !isCanonicalUuid(courseId)) return res.status(400).json({ error: 'invalid_courseId' });
+  res.json({ liveClasses: await adminLiveClassRows(courseId) });
+}));
+
+router.get('/live-classes/lessons', asyncHandler(async (req, res) => {
+  const courseId = String(req.query.courseId || '').trim();
+  if (!courseId) return res.status(400).json({ error: 'courseId_required' });
+  if (!isCanonicalUuid(courseId)) return res.status(400).json({ error: 'invalid_courseId' });
+  const lessons = await query(
+    `SELECT l.id, l.slug, l.title, m.id AS module_id, m.slug AS module_slug,
+            m.title AS module_title, m.section_name
+       FROM lessons l JOIN modules m ON m.id = l.module_id
+      WHERE m.course_id = $1 ORDER BY m.sort_order, l.sort_order, l.created_at`, [courseId]
+  );
+  res.json({ lessons: lessons.rows.map((row) => ({ id: row.id, slug: row.slug, title: row.title, module: { id: row.module_id, slug: row.module_slug, title: row.module_title, section: row.section_name || null } })) });
+}));
+
+router.post('/live-classes', asyncHandler(async (req, res) => {
+  const value = await liveClassPayload(req.body); if (value.error) return res.status(400).json({ error: value.error });
+  const liveClass = await withTransaction(async (client) => {
+    const created = await client.query(`INSERT INTO live_classes (course_id, title, description, starts_at, ends_at, meeting_url, recording_url, status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`, [value.courseId, value.title, value.description, value.startsAt, value.endsAt, value.meetingUrl, value.recordingUrl, value.status]);
+    for (const [sortOrder, lessonId] of value.lessonIds.entries()) await client.query(`INSERT INTO live_class_lessons (live_class_id, lesson_id, sort_order) VALUES ($1,$2,$3)`, [created.rows[0].id, lessonId, sortOrder]);
+    return created.rows[0];
+  });
+  res.status(201).json({ liveClass: (await adminLiveClassRows()).find((row) => row.id === liveClass.id) });
+}));
+
+router.put('/live-classes/:id', asyncHandler(async (req, res) => {
+  if (!isCanonicalUuid(req.params.id)) return res.status(400).json({ error: 'invalid_live_class_id' });
+  const value = await liveClassPayload(req.body); if (value.error) return res.status(400).json({ error: value.error });
+  const updated = await withTransaction(async (client) => {
+    const row = await client.query(`UPDATE live_classes SET course_id=$2,title=$3,description=$4,starts_at=$5,ends_at=$6,meeting_url=$7,recording_url=$8,status=$9 WHERE id=$1 RETURNING id`, [req.params.id, value.courseId, value.title, value.description, value.startsAt, value.endsAt, value.meetingUrl, value.recordingUrl, value.status]);
+    if (!row.rows.length) return null;
+    await client.query(`DELETE FROM live_class_lessons WHERE live_class_id = $1`, [req.params.id]);
+    for (const [sortOrder, lessonId] of value.lessonIds.entries()) await client.query(`INSERT INTO live_class_lessons (live_class_id, lesson_id, sort_order) VALUES ($1,$2,$3)`, [req.params.id, lessonId, sortOrder]);
+    return row.rows[0];
+  });
+  if (!updated) return res.status(404).json({ error: 'not_found' });
+  res.json({ liveClass: (await adminLiveClassRows()).find((row) => row.id === updated.id) });
+}));
+
+router.delete('/live-classes/:id', asyncHandler(async (req, res) => {
+  if (!isCanonicalUuid(req.params.id)) return res.status(400).json({ error: 'invalid_live_class_id' });
+  const removed = await query(`DELETE FROM live_classes WHERE id = $1 RETURNING id`, [req.params.id]);
+  if (!removed.rows.length) return res.status(404).json({ error: 'not_found' });
   res.json({ ok: true });
 }));
 
