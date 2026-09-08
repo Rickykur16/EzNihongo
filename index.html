@@ -203,11 +203,10 @@ const SHARED_CONTENT = {
   },
   footer: {
     tagline: "Platform belajar bahasa Jepang untuk generasi yang ingin membawa kariernya ke Jepang.",
-    columns: [
-      { title: "Produk", links: ["Kurikulum", "Live Class", "SSW / Tokutei", "JLPT Prep", "Kaiwa Session"] },
-      { title: "Perusahaan", links: ["Tentang", "Sensei", "Karier", "Blog", "Partner"] },
-      { title: "Dukungan", links: ["Pusat Bantuan", "Kontak", "Kebijakan Privasi", "Syarat & Ketentuan"] },
-    ],
+    // Catatan: `columns` sebelumnya ada di sini berisi daftar judul tautan
+    // (termasuk "Kebijakan Privasi") yang TIDAK PERNAH dirender oleh komponen
+    // Footer — data mati yang membuat kebijakan privasi seolah tertaut padahal
+    // tidak. Dihapus; tautan legal yang sungguhan ada di footer di bawah.
     copyright: "© 2026 EzNihongo. Dibangun dengan ♥ untuk calon-calon pejuang yen.",
   },
 };
@@ -1077,6 +1076,11 @@ function ModernFooter() {
         </div>
         <div style={{ paddingTop: 24, borderTop: '1px solid #e5e5e5', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, fontSize: 13, color: '#808080' }}>
           <span>{f.copyright}</span>
+          {/* Kebijakan Privasi wajib bisa dijangkau dari mana saja, bukan cuma
+              dari kotak centang di checkout. "Syarat & Ketentuan" sengaja belum
+              ditaut karena halamannya memang belum ada — tautan mati ke dokumen
+              legal lebih buruk daripada tidak ada tautan sama sekali. */}
+          <a href="privacy.html" style={{ color: '#808080', textDecoration: 'underline' }}>Kebijakan Privasi</a>
           <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Made in Okinawa, Japan 🇯🇵</span>
         </div>
       </div>

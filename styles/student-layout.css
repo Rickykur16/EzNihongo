@@ -243,3 +243,20 @@
   #progress-app .card,
   #app .card { padding: 17px; }
 }
+
+/* Baris legal di dasar halaman siswa. Kebijakan Privasi wajib bisa dijangkau
+   dari halaman mana pun, bukan cuma dari kotak centang di checkout — halaman
+   siswa (dashboard/review/progres/live) sebelumnya tidak punya footer sama
+   sekali. Sengaja tenang dan kecil supaya tidak bersaing dengan konten. */
+.student-legal {
+  width: min(100% - 28px, 1120px);
+  margin: 8px auto 32px;
+  padding-top: 18px;
+  border-top: 1px solid var(--paper-300, #e8e1d3);
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--ink-500, #8a8378);
+  text-align: center;
+}
+.student-legal a { color: inherit; text-decoration: underline; }
+.student-legal a:hover { color: var(--brand-red, #c8102e); }

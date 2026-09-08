@@ -71,6 +71,37 @@
 
 ## Konvensi penting
 
+      **`privacy.html` ditulis ulang dengan bahasa baku** — user: "Privacy html
+      ga pake bahasa baku, buat seperti website-website resmi yang lain".
+      Register diubah total (`kamu` → `Anda`, "kalau" → "apabila/dalam hal",
+      "kami hapus" → "Kami akan menghapus"), memakai istilah UU PDP yang
+      sebenarnya (**Subjek Data Pribadi**, **Pengendali Data Pribadi**,
+      **Prosesor Data Pribadi**), dan strukturnya jadi 11 bagian bernomor
+      seperti kebijakan privasi situs resmi. **Nada informal di halaman lain
+      SENGAJA tidak diubah** — `index.html` dkk memakai "kamu" sebagai suara
+      merek aplikasi belajar; yang formal cuma dokumen hukumnya, dan itu
+      memang lazim. **Substansi janjinya dijaga identik** dengan yang
+      benar-benar dilakukan sistem (cakupan penghapusan tetap persis seperti
+      `user-erasure.js`: apa yang dihapus, dianonimkan, dan dipertahankan).
+      **Tiga bagian BARU ditambahkan** karena situs resmi selalu punya dan
+      isinya memang benar: (1) **Pengungkapan kepada Pihak Ketiga** — dicek
+      langsung ke kode, bukan dikarang: Google (autentikasi), Anthropic
+      (kalimat latihan siswa via `{{sentence}}` di grammar-task, percakapan
+      tutor, DAN nama depan siswa lewat `{{studentName}}` di
+      `recommendations.js:203`), ElevenLabs + OpenAI (materi saja, bukan data
+      pribadi); (2) **Keamanan** — sengaja TIDAK mengklaim enkripsi saat
+      penyimpanan, karena GPG pada backup masih TODO; yang ditulis hanya yang
+      nyata (HTTPS/TLS, token disimpan sebagai hash, akses admin dibatasi,
+      pencadangan berkala) plus kalimat jujur bahwa tidak ada sistem yang
+      aman mutlak; (3) **Perubahan atas Kebijakan**. **Jebakan yang ketahuan
+      dan diperbaiki**: penomoran bagian bergeser (retensi 4→6, hak 5→9),
+      dan ada **10 rujukan "privacy.html bagian 4/5"** yang jadi salah arah
+      di `user-erasure.js`, `routes/admin.js`, `admin.html`, dan CLAUDE.md
+      sendiri — semuanya ikut diperbarui. Kalau menomori ulang bagian
+      halaman ini lagi, `grep -rn "privacy.html bagian"` dulu. Diverifikasi
+      lewat Chromium di viewport HP (390px): 11 bagian ter-render, tanpa
+      scroll horizontal, 0 sisa kata "kamu"; `npm test` 55/55 hijau.
+
       **Siswa sekarang tahu sisa masa aktifnya sendiri** — user: "Buat juga
       siswa tahu berapa lama sisa masa aktif akunnya". Lanjutan langsung dari
       catatan di bawah: setelah admin bisa mengatur masa aktif, siswa masih
@@ -151,7 +182,7 @@
       implementasinya — dan `DELETE FROM users` bukan jawabannya** — ditemukan
       saat user minta "Lihat cara penyimpanan data user yg sudah ada". Audit
       itu memunculkan celah kepatuhan dari PR sebelumnya sendiri:
-      `privacy.html` bagian 5 (yang ditulis di PR #268) menjanjikan hak
+      `privacy.html` bagian 9 (yang ditulis di PR #268) menjanjikan hak
       lihat/koreksi/hapus, tapi di seluruh kodebase **tidak ada satu pun**
       `DELETE FROM users`, endpoint hapus akun, atau jalur apa pun untuk
       menjalankannya. **Klaim pertama saya di sesi ini SALAH dan dikoreksi
@@ -164,7 +195,7 @@
       punya klausa `ON DELETE` sama sekali (default NO ACTION). Lebih jauh:
       `orders.user_id` justru `ON DELETE CASCADE`, jadi kalaupun pagar itu
       dilepas, hard delete akan **MENGHANCURKAN catatan pembayaran** yang
-      `privacy.html` bagian 4 secara eksplisit cadangkan hak simpannya. Jadi
+      `privacy.html` bagian 6 secara eksplisit cadangkan hak simpannya. Jadi
       hard delete bukan cuma sulit, tapi bertentangan dengan kebijakan kita
       sendiri. **Keputusan: anonimisasi di tempat** (`backend/src/user-erasure.js`)
       — baris `users` dipertahankan sebagai batu nisan (`email` →
