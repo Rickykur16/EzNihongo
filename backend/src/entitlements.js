@@ -7,6 +7,7 @@
 // preview/QA content without a real enrollment row.
 import { query } from './db.js';
 import { isAdminEmail } from './auth.js';
+import { asyncHandler } from './middleware.js';
 
 // 'expired' is not a stored status — a row is only usable while
 // status='active' AND (no expiry or the expiry hasn't passed yet).
@@ -52,8 +53,11 @@ export async function courseIdForGrammarId(grammarId) {
 // :lessonId) and 403s unless the caller has access to that lesson's course.
 // Must run after requireAuth. Attaches req.courseId for the handler to reuse.
 export function requireLessonCourseAccess(paramName = 'lessonId') {
-  return async (req, res, next) => {
+  return asyncHandler(async (req, res, next) => {
     const lessonId = req.params[paramName];
+    if (typeof lessonId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lessonId)) {
+      return res.status(400).json({ error: 'invalid_lesson_id' });
+    }
     const courseId = await courseIdForLessonId(lessonId);
     if (!courseId) return res.status(404).json({ error: 'Lesson not found' });
     if (!(await userCanAccessCourse(req.user, courseId))) {
@@ -61,5 +65,5 @@ export function requireLessonCourseAccess(paramName = 'lessonId') {
     }
     req.courseId = courseId;
     next();
-  };
+  });
 }

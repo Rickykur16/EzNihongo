@@ -7,6 +7,7 @@ import { requireAuth, asyncHandler } from '../middleware.js';
 import { isAdminEmail } from '../auth.js';
 import { hasCourseAccess } from '../entitlements.js';
 import { notifyAdmin } from '../telegram.js';
+import { uploadLimits, uploadErrorHandler } from '../upload-safety.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -228,7 +229,7 @@ router.post('/orders/:id/cancel', asyncHandler(async (req, res) => {
 // ---- Payment proof upload ----
 const proofUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: uploadLimits(5 * 1024 * 1024, 4),
   fileFilter: (req, file, cb) => {
     const allowed = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
     if (!allowed.has(file.mimetype)) return cb(new Error('Only JPEG, PNG, WEBP or PDF files are allowed'));
@@ -317,6 +318,7 @@ router.get('/orders/:id/payments/:paymentId/proof', asyncHandler(async (req, res
   res.send(row.proof_image);
 }));
 
+router.use(uploadErrorHandler);
 router.use((err, req, res, next) => {
   if (err instanceof multer.MulterError || err?.message?.includes('allowed')) {
     return res.status(400).json({ error: err.message });

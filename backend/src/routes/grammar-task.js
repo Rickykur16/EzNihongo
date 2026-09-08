@@ -7,6 +7,7 @@ import { asyncHandler, requireAuth } from '../middleware.js';
 import { userCanAccessCourse, courseIdForLessonId, requireLessonCourseAccess } from '../entitlements.js';
 import { callClaude, ANTHROPIC_MODEL, anthropicEnabled } from '../anthropic.js';
 import { deriveDrills, publicDrill, arrangeIsCorrect } from '../grammar-drills.js';
+import { uploadLimits, uploadErrorHandler } from '../upload-safety.js';
 
 const router = Router();
 
@@ -577,7 +578,7 @@ router.post('/grammar-task/drill-answer', requireAuth, drillLimiter, asyncHandle
 const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY || '';
 const ELEVEN_STT_MODEL = process.env.ELEVENLABS_STT_MODEL || 'scribe_v1';
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: uploadLimits(2 * 1024 * 1024) });
 
 const sttLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -624,4 +625,5 @@ router.post('/grammar-task/transcribe', requireAuth, sttLimiter, upload.single('
   })
 );
 
+router.use(uploadErrorHandler);
 export default router;
