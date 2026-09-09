@@ -71,6 +71,62 @@
 
 ## Konvensi penting
 
+      **Smart Review: satu item ditanya dua arah berurutan, dan satu kanji
+      menguasai sesi** — user: "学 dan 校 memiliki kombinasi 学生, sehingga
+      muncul di soal berkali kali", dan "soal muncul langsung tanpa diacak
+      misal, 花 artinya apa, lalu soal berikutnya bunga kanjinya apa".
+      **Akar keduanya SATU dan diukur, bukan ditebak.** Tie-break di
+      `selectReviewCandidates()` (prioritas → kategori → `itemId` → `skill`)
+      MENJAMIN semua arah milik item yang sama berdampingan dan terurut
+      alfabet — `char2meaning` selalu tepat sebelum `meaning2char`. Item yang
+      belum dilatih punya prioritas identik, jadi tie-break itulah yang
+      menentukan urutan. Dan urutan itu langsung jadi urutan di layar:
+      `routes/smart-review.js` memasukkan hasilnya apa adanya sebagai
+      `question_index`, **tidak ada pengacakan di jalur Smart Review sama
+      sekali**, dan `review.js` mengambil `session.questions[index]` langsung.
+      Gejala pertama BUKAN duplikasi kata: `pickCompoundOwners()` sudah benar
+      (kunci `japanese::reading`, 学生 memang cuma diklaim satu kanji). Yang
+      terjadi, tiap kata menambah EMPAT kandidat (`WORD_DIRECTIONS`) dan
+      `itemId`-nya adalah id kanji pemiliknya — **sama dengan `itemId` soal
+      karakternya sendiri** — jadi 学 menyumbang soal karakter + 4 arah × tiap
+      katanya, semuanya berdampingan.
+      **Ini bukan sekadar rapi-rapi: soal pertama MEMBOCORKAN jawaban soal
+      kedua.** Menanyakan "花 artinya apa" lalu "bunga kanjinya apa" di sesi
+      yang sama membuat siswa cuma mengingat layar sebelumnya, bukan diuji.
+      Karena itu perbaikannya BUKAN menjauhkan posisi, tapi **satu arah per
+      pokok soal per sesi** (`oneDirectionPerSubject`) — dua arah item yang
+      sama tidak boleh satu sesi sama sekali. Pokok soal untuk kata majemuk
+      adalah KATA-nya (kunci sama persis dengan `pickCompoundOwners`), bukan
+      kanji pemiliknya, karena satu kanji punya banyak kata dan tiap kata
+      layak gilirannya. Ditambah `MAX_PER_OWNER = 2` supaya satu kanji tidak
+      menguasai sesi, dan `spaceByOwner()` supaya dua soal pemilik yang sama
+      tidak berdampingan. Arah yang tersisa TIDAK hilang — penjadwalan FSRS
+      per-arah tidak disentuh, arah lain muncul di sesi berikutnya, dan itu
+      justru pengulangan berjarak yang benar. Polanya menyamakan Smart Review
+      dengan drill pelajaran (`_kanjiBuildSessionQuestions` di `welcome.html`)
+      yang sejak awal memang cuma menanyakan satu arah per item per sesi.
+      **Jebakan penyebaran**: "ambil kandidat berikutnya yang pemiliknya beda"
+      TIDAK cukup — ia menghabiskan pemilik lain lebih dulu lalu menyisakan
+      soal pemilik yang sama menumpuk di ekor (terukur: a,b,a,b,c,c, dan tes
+      penyebaran GAGAL dengan versi naif itu). Jadi tiap langkah memilih
+      pemilik dengan SISA TERBANYAK.
+      Divalidasi di Postgres asli + backend asli + Chromium asli, dan yang
+      menentukan: skenario yang sama dijalankan DUA KALI di data yang sama —
+      dengan kode lama endpoint `POST /review/sessions` mengembalikan 20 soal
+      berisi 学生 EMPAT KALI BERTURUT-TURUT (posisi 8-11, keempat arahnya) dan
+      tiap kanji dua arah, dengan 9 pasangan berdampingan; dengan perbaikan
+      jadi 0 pokok soal berulang dan 0 pasangan berdampingan. Dicek juga
+      sesinya TIDAK menyusut untuk siswa bermateri banyak (29 kanji → tetap
+      penuh 20 soal). 6 tes baru dibuktikan MENGGIGIT (kembalikan perilaku
+      lama → keenamnya gagal). `npm test` 68 tes, 67 hijau — satu kegagalan
+      (`server-safety.test.js:173`) sudah ada di `main` sebelum perubahan ini
+      dan hijau di CI; sandbox memakai Node 22, CI/VPS Node 20.
+      **Belum dikerjakan (sadar)**: drill pelajaran `welcome.html` memakai
+      sesi 1 = semua `char2meaning`, sesi 2 = semua `meaning2char`; untuk pool
+      kecil sesi 2 langsung menyusul sesi 1 sehingga kebocoran serupa bisa
+      muncul di sana. Tidak diubah karena itu desain pengulangan berjarak yang
+      disengaja dan gejala yang dilaporkan cocok dengan Smart Review.
+
       **migration 139: dua contoh per pola dulu cuma tukar nama di template
       yang sama** — user: "dalam satu pembahasan pola, kamu membuat yang 1
       dan kedua dengan kalimat yg sama, harusnya jangan sama". Root cause:

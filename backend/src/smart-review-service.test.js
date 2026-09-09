@@ -204,3 +204,80 @@ test('directions are gated per item, not across the whole deck', () => {
   assert.ok(unlocked.has('vocabulary:w1:id2jp'));
   assert.ok(!unlocked.has('vocabulary:w2:id2jp'));
 });
+
+// 花 dulu ditanya "artinya apa" lalu PERSIS di soal berikutnya "bunga kanjinya
+// apa". Penyebabnya tie-break di selectReviewCandidates (kategori → itemId →
+// skill): item yang belum dilatih punya prioritas identik, jadi tie-break itu
+// MENJAMIN semua arah milik item yang sama berdampingan dan terurut alfabet
+// (`char2meaning` sebelum `meaning2char`). Urutan itu langsung jadi urutan di
+// layar — routes/smart-review.js memasukkan hasilnya apa adanya sebagai
+// question_index, tidak ada pengacakan di mana pun.
+//
+// Ini bukan cuma soal rapi: soal pertama MEMBOCORKAN jawaban soal kedua.
+const kanji = (itemId, skill, extra = {}) => ({
+  category: 'kanji', itemId, skill, lessonId: 'l1', courseId: 'c1', state: {}, ...extra,
+});
+
+test('dua arah item yang sama tidak pernah masuk satu sesi — soal pertama membocorkan jawaban kedua', () => {
+  const selected = selectReviewCandidates([
+    kanji('k-hana', 'char2meaning'),
+    kanji('k-hana', 'meaning2char'),
+  ], { category: 'kanji', limit: 20 });
+  assert.equal(selected.length, 1);
+});
+
+test('kosakata dan kana ikut terlindungi — jp2id membocorkan id2jp', () => {
+  const vocab = (skill) => ({ category: 'vocabulary', itemId: 'v1', skill, lessonId: 'l1', courseId: 'c1', state: {} });
+  const selected = selectReviewCandidates([vocab('jp2id'), vocab('id2jp'), vocab('audio2id')], { category: 'vocabulary' });
+  assert.equal(selected.length, 1);
+});
+
+// Satu kata majemuk menyumbang EMPAT kandidat (WORD_DIRECTIONS), dan itemId-nya
+// adalah id kanji pemiliknya — sama dengan itemId soal karakternya sendiri.
+// Jadi 学 sanggup memunculkan soal karakter + 4 arah × tiap katanya, semuanya
+// berdampingan: "muncul di soal berkali kali".
+const word = (itemId, skill, japanese, reading) => kanji(itemId, skill, { word: { japanese, reading } });
+
+test('satu kata majemuk ditanya satu arah saja, walau punya empat arah', () => {
+  const selected = selectReviewCandidates([
+    word('k-gaku', 'word2meaning:学生', '学生', 'がくせい'),
+    word('k-gaku', 'word2reading:学生', '学生', 'がくせい'),
+    word('k-gaku', 'meaning2word:学生', '学生', 'がくせい'),
+    word('k-gaku', 'reading2word:学生', '学生', 'がくせい'),
+  ], { category: 'kanji' });
+  assert.equal(selected.length, 1);
+});
+
+test('satu kanji dengan banyak kata majemuk tidak menguasai sesi', () => {
+  const candidates = [kanji('k-gaku', 'char2meaning'), kanji('k-gaku', 'meaning2char')];
+  for (const w of ['学生', '学校', '大学', '学年', '入学']) {
+    for (const d of ['word2meaning', 'word2reading', 'meaning2word', 'reading2word']) {
+      candidates.push(word('k-gaku', `${d}:${w}`, w, w));
+    }
+  }
+  const selected = selectReviewCandidates(candidates, { category: 'kanji', limit: 20 });
+  // 22 kandidat mentah, tapi satu kanji pemilik cuma boleh menyumbang 2 soal.
+  assert.equal(selected.length, 2);
+});
+
+test('kata yang sama tetap satu soal walau diklaim dua kanji berbeda', () => {
+  const selected = selectReviewCandidates([
+    word('k-gaku', 'word2meaning:a', '学生', 'がくせい'),
+    word('k-sei', 'word2meaning:b', '学生', 'がくせい'),
+  ], { category: 'kanji' });
+  assert.equal(selected.length, 1);
+});
+
+test('soal dengan pemilik yang sama tidak pernah berdampingan', () => {
+  const candidates = [];
+  for (const owner of ['k-a', 'k-b', 'k-c']) {
+    candidates.push(kanji(owner, 'char2meaning'));
+    candidates.push(word(owner, `word2meaning:${owner}`, `${owner}語`, `${owner}ご`));
+  }
+  const selected = selectReviewCandidates(candidates, { category: 'kanji', limit: 20 });
+  assert.equal(selected.length, 6);
+  for (let i = 1; i < selected.length; i += 1) {
+    assert.notEqual(selected[i].itemId, selected[i - 1].itemId,
+      `pemilik ${selected[i].itemId} berdampingan di posisi ${i - 1} dan ${i}`);
+  }
+});
