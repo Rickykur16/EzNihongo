@@ -3788,6 +3788,8 @@
   .kana-mastery-card.mastered { background: #f0fdf4; border-color: #bbebcd; }
   .kana-mastery-card.review { background: #fff8ec; border-color: #f1dfb8; }
   .kana-mastery-note { margin-top: 12px; color: var(--du-ink-2, #555); font-size: 12.5px; line-height: 1.55; }
+  .drill-size-control { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; font-weight: 600; color: var(--du-ink-2, #555); }
+  .drill-size-control select { font: inherit; padding: 7px 10px; border: 1px solid #e5e5e5; border-radius: 8px; background: #fff; color: inherit; min-height: 40px; }
   .kana-mastery-note strong { color: var(--du-ink, #1b1410); }
   .kana-session-plan { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 12px; }
   .kana-session-step { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 9px 10px; border: 1px solid #e9e4dc; border-radius: 11px; background: #fff; color: var(--du-ink-2, #555); font-size: 11.5px; font-weight: 700; }
@@ -10332,11 +10334,94 @@ window.closeKanaModal = () => {
   if (ret && typeof ret.focus === 'function') { try { ret.focus(); } catch (e) { /* noop */ } }
 };
 
+// ── Jumlah soal per sesi drill: diatur siswa ──────────────────────────────
+//
+// Dulu ketiga drill memakai plafon 12 yang di-hardcode. Untuk kana dan
+// kosakata plafon itu wajar, tapi untuk KANJI hampir tidak pernah tercapai:
+// `window.__kanjiDrillPool = lesson.kanji` — kolamnya cuma kanji milik
+// pelajaran itu sendiri, dan satu bab memang hanya memperkenalkan sedikit
+// kanji (Bab 20 cuma 来・令). Jadi siswa melihat "sesi kanji cuma 3 soal"
+// padahal tidak ada yang rusak; bahannya memang segitu.
+//
+// Disimpan per-perangkat di localStorage, mengikuti preferensi siswa lain di
+// file ini (`ez_kana_view`/`ez_deck_view`/`ez_dialog_speed`) — tanpa migrasi
+// dan tanpa endpoint baru.
+const DRILL_SIZE_KEY = 'ez_drill_size';
+const DRILL_SIZE_DEFAULT = 12;
+const DRILL_SIZE_MIN = 4;
+const DRILL_SIZE_MAX = 50;
+const DRILL_SIZE_CHOICES = [4, 8, 12, 16, 20, 30, 40, 50];
+
+function _drillItemsPerSession() {
+  let raw = NaN;
+  try { raw = Number(localStorage.getItem(DRILL_SIZE_KEY)); } catch { /* storage diblokir */ }
+  if (!Number.isFinite(raw) || raw <= 0) return DRILL_SIZE_DEFAULT;
+  return Math.max(DRILL_SIZE_MIN, Math.min(DRILL_SIZE_MAX, Math.round(raw)));
+}
+
+// Jarak minimal antara dua soal dari ITEM yang sama. Bukan angka baru: ini
+// konvensi yang sudah dipakai requeue jawaban salah di file ini
+// (`st.questions.splice(st.idx + 3, ...)`).
+const DRILL_SAME_ITEM_GAP = 3;
+
+// Sesi diisi sampai `target` dengan menambah ARAH LAIN dari item yang sudah
+// terpilih, bukan dibiarkan pendek. Ronde pertama memberi SATU arah untuk
+// setiap item lebih dulu, baru ronde berikutnya menambah arah kedua, dst —
+// jadi selama itemnya banyak, arah kedua sudah otomatis berjauhan.
+function _drillExpandToTarget(rows, target, directionsFor) {
+  const out = [];
+  let maxDirections = 0;
+  for (const row of rows) maxDirections = Math.max(maxDirections, directionsFor(row).length);
+  for (let round = 0; round < maxDirections; round += 1) {
+    for (const row of rows) {
+      const directions = directionsFor(row);
+      if (round < directions.length) out.push({ row, direction: directions[round] });
+    }
+  }
+  return out.slice(0, Math.max(0, target));
+}
+
+// Untuk kolam yang SANGAT kecil (pelajaran 2-3 kanji) ronde di atas belum
+// cukup: arah kedua sebuah item bisa mendarat tepat setelah arah pertamanya.
+// "花 artinya apa" lalu langsung "bunga kanjinya apa" bukan menguji — soal
+// pertama sudah memberi tahu jawaban soal kedua. Jadi disebar di sini.
+function _drillSpaceSameItem(entries, keyOf, gap = DRILL_SAME_ITEM_GAP) {
+  const remaining = entries.slice();
+  const out = [];
+  while (remaining.length) {
+    const recent = out.slice(-gap).map((entry) => keyOf(entry.row));
+    let index = remaining.findIndex((entry) => !recent.includes(keyOf(entry.row)));
+    if (index === -1) index = 0; // kolamnya terlalu kecil — tidak ada pilihan lain
+    out.push(remaining.splice(index, 1)[0]);
+  }
+  return out;
+}
+
+// Kontrol di panel ringkasan drill. `scope` menentukan panel mana yang
+// digambar ulang setelah nilainya berubah.
+function _drillSizeControlHtml(scope) {
+  const current = _drillItemsPerSession();
+  const options = DRILL_SIZE_CHOICES
+    .map((n) => `<option value="${n}"${n === current ? ' selected' : ''}>${n} soal</option>`)
+    .join('');
+  return `<label class="drill-size-control">Soal per sesi
+    <select aria-label="Jumlah soal per sesi" onchange="setDrillSize(this.value, '${scope}')">${options}</select>
+  </label>`;
+}
+
+window.setDrillSize = (value, scope) => {
+  const n = Math.max(DRILL_SIZE_MIN, Math.min(DRILL_SIZE_MAX, Math.round(Number(value) || DRILL_SIZE_DEFAULT)));
+  try { localStorage.setItem(DRILL_SIZE_KEY, String(n)); } catch { /* storage diblokir */ }
+  if (scope === 'kana') kanaDrillShowOverview();
+  else if (scope === 'deck') deckDrillShowOverview();
+  else if (scope === 'kanji') kanjiDrillShowOverview();
+};
+
 // Drill adaptif dua arah. Cache lokal menjaga respons instan; state yang sama
 // juga disinkronkan ke akun per karakter dan arah saat online.
 const KANA_MASTERY_KEY = 'ez_kana_mastery_v1';
 const KANA_DRILL_SESSION_COUNT = 3;
-const KANA_DRILL_ITEMS_PER_SESSION = 12;
+const KANA_DRILL_DIRECTIONS = ['k2r', 'r2k'];
 
 function _kanaShuffle(list) {
   const out = list.slice();
@@ -10554,7 +10639,8 @@ function kanaDrillShowOverview() {
       <div class="kana-session-step"><b>2</b><span>Balik arah</span></div>
       <div class="kana-session-step"><b>3</b><span>Penguatan</span></div>
     </div>
-    <div class="kana-mastery-note"><strong>3 sesi, maksimal 12 soal per sesi.</strong> Soal baru dan yang sering salah muncul lebih dulu. Jawaban salah akan muncul lagi setelah beberapa soal. Tabel Kana disembunyikan selama latihan dan progres tersimpan di perangkat ini serta disinkronkan ke akun saat online.</div>
+    ${_drillSizeControlHtml('kana')}
+    <div class="kana-mastery-note"><strong>3 sesi, maksimal ${_drillItemsPerSession()} soal per sesi.</strong> Soal baru dan yang sering salah muncul lebih dulu. Jawaban salah akan muncul lagi setelah beberapa soal. Tabel Kana disembunyikan selama latihan dan progres tersimpan di perangkat ini serta disinkronkan ke akun saat online.</div>
     ${preview.length ? `<div class="kana-weak-preview"><span class="kana-weak-label">Fokus berikutnya</span>${preview.map(({ item, summary }) => `<span class="kana-weak-chip"><b lang="ja">${escapeHtml(item.character)}</b> ${escapeHtml(item.romaji)} · ${escapeHtml(_kanaDirectionLabel(_kanaWeakDirection(summary)))}</span>`).join('')}</div>` : ''}`;
   window.__kanaDrill = null;
   _kanaSetFocus(false);
@@ -10585,11 +10671,15 @@ window.kanaDrillStart = (mode = 'adaptive') => {
   ranked = ranked.map((row) => ({ ...row, priority: _kanaPriority(row.summary) + Math.random() * 1.25 }))
     // Belum pernah dicoba selalu didahulukan — lihat catatan di deckDrillStart.
     .sort((a, b) => (Number(!b.summary.attempts) - Number(!a.summary.attempts)) || (b.priority - a.priority));
-  const targetCount = Math.min(ranked.length, KANA_DRILL_ITEMS_PER_SESSION);
-  const selected = ranked.slice(0, targetCount);
-  const questions = selected.map(({ item }, index) => {
-    return _kanaMakeQuestion(pool, item, 'k2r', 0, index + 1);
-  });
+  const target = _drillItemsPerSession();
+  const selected = ranked.slice(0, Math.min(ranked.length, target));
+  // Arah utama sesi 1 lebih dulu untuk SETIAP item, baru arah lain menambal
+  // kalau itemnya kurang dari jumlah soal yang diminta siswa.
+  const entries = _drillSpaceSameItem(
+    _drillExpandToTarget(selected, target, () => ['k2r', ...KANA_DRILL_DIRECTIONS.filter((d) => d !== 'k2r')]),
+    (row) => _kanaKey(row.item)
+  );
+  const questions = entries.map(({ row, direction }, index) => _kanaMakeQuestion(pool, row.item, direction, 0, index + 1));
   const st = {
     pool,
     selected: selected.map((row) => row.item),
@@ -10620,12 +10710,14 @@ window.kanaDrillNextSession = () => {
       return mistakeDiff || (_kanaPriority(b.summary) - _kanaPriority(a.summary));
     });
   }
-  const questions = rows.map(({ item, summary }, index) => {
-    const dir = next === 2
-      ? 'r2k'
-      : _kanaWeakDirection(summary);
-    return _kanaMakeQuestion(st.pool, item, dir, 0, index + 1);
-  });
+  const entries = _drillSpaceSameItem(
+    _drillExpandToTarget(rows, _drillItemsPerSession(), ({ summary }) => {
+      const primary = next === 2 ? 'r2k' : _kanaWeakDirection(summary);
+      return [primary, ...KANA_DRILL_DIRECTIONS.filter((d) => d !== primary)];
+    }),
+    (row) => _kanaKey(row.item)
+  );
+  const questions = entries.map(({ row, direction }, index) => _kanaMakeQuestion(st.pool, row.item, direction, 0, index + 1));
   _kanaBeginSession(st, next, questions);
 };
 
@@ -10840,7 +10932,6 @@ window.closeDeckModal = () => {
 // kemudian state per kata disinkronkan ke akun saat online.
 const DECK_MASTERY_KEY = 'ez_deck_mastery_v1';
 const DECK_DRILL_SESSION_COUNT = 3;
-const DECK_DRILL_ITEMS_PER_SESSION = 12;
 const DECK_DRILL_DIRECTIONS = ['jp2id', 'id2jp', 'audio2id'];
 
 function _deckShuffle(list) {
@@ -11030,7 +11121,8 @@ function deckDrillShowOverview() {
       <div class="kana-session-step"><b>2</b><span>Balik arah</span></div>
       <div class="kana-session-step"><b>3</b><span>Dengar & kuatkan</span></div>
     </div>
-    <div class="kana-mastery-note"><strong>3 sesi, maksimal 12 soal per sesi.</strong> Kata baru dan yang sering salah muncul lebih dulu. Jawaban salah akan muncul lagi setelah beberapa soal. Daftar kartu disembunyikan selama latihan dan progres tersimpan di perangkat ini serta disinkronkan ke akun saat online.</div>
+    ${_drillSizeControlHtml('deck')}
+    <div class="kana-mastery-note"><strong>3 sesi, maksimal ${_drillItemsPerSession()} soal per sesi.</strong> Kata baru dan yang sering salah muncul lebih dulu. Jawaban salah akan muncul lagi setelah beberapa soal. Daftar kartu disembunyikan selama latihan dan progres tersimpan di perangkat ini serta disinkronkan ke akun saat online.</div>
     ${preview.length ? `<div class="kana-weak-preview"><span class="kana-weak-label">Fokus berikutnya</span>${preview.map(({ item, summary }) => `<span class="kana-weak-chip"><b lang="ja">${escapeHtml(item.japanese)}</b> · ${escapeHtml(_deckDirectionLabel(_deckWeakDirection(summary)))}</span>`).join('')}</div>` : ''}`;
   window.__deckDrill = null;
   _deckSetFocus(false);
@@ -11063,9 +11155,13 @@ window.deckDrillStart = (mode = 'adaptive') => {
     // baru) bisa terus mengisi ke-12 slot sesi dan kata yang belum tersentuh
     // tidak pernah muncul — pelajaran jadi mustahil diselesaikan.
     .sort((a, b) => (Number(!b.summary.attempts) - Number(!a.summary.attempts)) || (b.priority - a.priority));
-  const targetCount = Math.min(ranked.length, DECK_DRILL_ITEMS_PER_SESSION);
-  const selected = ranked.slice(0, targetCount);
-  const questions = selected.map(({ item }, index) => _deckMakeQuestion(pool, item, 'jp2id', 0, index + 1));
+  const target = _drillItemsPerSession();
+  const selected = ranked.slice(0, Math.min(ranked.length, target));
+  const entries = _drillSpaceSameItem(
+    _drillExpandToTarget(selected, target, () => ['jp2id', ...DECK_DRILL_DIRECTIONS.filter((d) => d !== 'jp2id')]),
+    (row) => _deckKey(row.item)
+  );
+  const questions = entries.map(({ row, direction }, index) => _deckMakeQuestion(pool, row.item, direction, 0, index + 1));
   const st = {
     pool,
     selected: selected.map((row) => row.item),
@@ -11096,10 +11192,14 @@ window.deckDrillNextSession = () => {
       return mistakeDiff || (_deckPriority(b.summary) - _deckPriority(a.summary));
     });
   }
-  const questions = rows.map(({ item, summary }, index) => {
-    const dir = next === 2 ? 'id2jp' : _deckWeakDirection(summary);
-    return _deckMakeQuestion(st.pool, item, dir, 0, index + 1);
-  });
+  const entries = _drillSpaceSameItem(
+    _drillExpandToTarget(rows, _drillItemsPerSession(), ({ summary }) => {
+      const primary = next === 2 ? 'id2jp' : _deckWeakDirection(summary);
+      return [primary, ...DECK_DRILL_DIRECTIONS.filter((d) => d !== primary)];
+    }),
+    (row) => _deckKey(row.item)
+  );
+  const questions = entries.map(({ row, direction }, index) => _deckMakeQuestion(st.pool, row.item, direction, 0, index + 1));
   _deckBeginSession(st, next, questions);
 };
 
@@ -11256,7 +11356,7 @@ window.deckDrillAnswer = (oi) => {
 // berjalan di satu infrastruktur ini.
 const KANJI_MASTERY_KEY = 'ez_kanji_mastery_v1';
 const KANJI_DRILL_SESSION_COUNT = 3;
-const KANJI_DRILL_ITEMS_PER_SESSION = 12;
+const KANJI_CHAR_DIRECTIONS = ['char2meaning', 'meaning2char'];
 const KANJI_CHARACTER_DIRECTIONS = ['char2meaning', 'meaning2char'];
 const KANJI_WORD_DIRECTIONS = ['word2reading', 'word2meaning', 'meaning2word', 'reading2word'];
 
@@ -11521,29 +11621,50 @@ function _kanjiSessionInfo(number) {
 function _kanjiBuildSessionQuestions(st, number) {
   const store = _kanjiReadMastery();
   const usagePool = _kanjiUsagePool(st.pool);
-  const questions = [];
+  const rows = [];
 
   st.focusCharacters.forEach((item) => {
     const summary = _kanjiSummary(item, st.pool, store);
-    let direction;
-    if (number === 1) direction = 'char2meaning';
-    else if (number === 2) direction = 'meaning2char';
-    else direction = _kanjiWeakDirection(summary);
-    questions.push(_kanjiMakeQuestion(st.pool, item, direction, 0, 1));
+    let primary;
+    if (number === 1) primary = 'char2meaning';
+    else if (number === 2) primary = 'meaning2char';
+    else primary = _kanjiWeakDirection(summary);
+    rows.push({
+      item,
+      word: null,
+      key: `char:${item.character}`,
+      directions: [primary, ...KANJI_CHAR_DIRECTIONS.filter((d) => d !== primary)],
+    });
   });
 
   st.focusWords.forEach((word, index) => {
     const item = st.pool.find((row) => row.character === word.ownerCharacter);
     if (!item) return;
     const summary = _kanjiWordSummary(word, usagePool, store);
-    let direction;
-    if (number === 1) direction = _kanjiWeakInDirections(summary, ['word2meaning', 'word2reading'], index % 2);
-    else if (number === 2) direction = _kanjiWeakInDirections(summary, ['meaning2word', 'reading2word'], index % 2);
-    else direction = _kanjiWeakWordDirection(summary);
-    if (direction) questions.push(_kanjiMakeQuestion(st.pool, item, direction, 0, 1, word));
+    let primary;
+    if (number === 1) primary = _kanjiWeakInDirections(summary, ['word2meaning', 'word2reading'], index % 2);
+    else if (number === 2) primary = _kanjiWeakInDirections(summary, ['meaning2word', 'reading2word'], index % 2);
+    else primary = _kanjiWeakWordDirection(summary);
+    if (!primary) return;
+    const available = _kanjiWordAvailableDirections(word, usagePool);
+    rows.push({
+      item,
+      word,
+      key: `word:${_kanjiWordKey(word)}`,
+      directions: [primary, ...available.filter((d) => d !== primary)],
+    });
   });
 
-  return _deckShuffle(questions).map((question, index) => ({ ...question, baseOrder: index + 1 }));
+  // Diacak DULU, baru diperluas dan disebar — mengacak SESUDAHNYA akan
+  // merusak jarak antar-arah yang baru saja dijaga.
+  const entries = _drillSpaceSameItem(
+    _drillExpandToTarget(_deckShuffle(rows), _drillItemsPerSession(), (row) => row.directions),
+    (row) => row.key
+  );
+  return entries.map(({ row, direction }, index) => ({
+    ..._kanjiMakeQuestion(st.pool, row.item, direction, 0, 1, row.word || undefined),
+    baseOrder: index + 1,
+  }));
 }
 
 function _kanjiBeginSession(st, number, questions) {
@@ -11611,7 +11732,8 @@ function kanjiDrillShowOverview() {
       <div class="kana-session-step"><b>2</b><span>Balik arti & bacaan</span></div>
       <div class="kana-session-step"><b>3</b><span>Campuran adaptif</span></div>
     </div>
-    <div class="kana-mastery-note"><strong>Kanji dan kata tidak dipisahkan.</strong> Kanji tunggal menguji arti, sedangkan bacaan selalu diuji melalui kata nyata agar on’yomi dan kun’yomi memiliki konteks. Ada ${wordCount} kata tersedia; ${wordMastered} sudah dikuasai. Setiap sesi maksimal 12 soal, lalu materi baru dan yang lemah bergiliran pada latihan berikutnya.</div>
+    ${_drillSizeControlHtml('kanji')}
+    <div class="kana-mastery-note"><strong>Kanji dan kata tidak dipisahkan.</strong> Kanji tunggal menguji arti, sedangkan bacaan selalu diuji melalui kata nyata agar on’yomi dan kun’yomi memiliki konteks. Ada ${wordCount} kata tersedia; ${wordMastered} sudah dikuasai. Setiap sesi maksimal ${_drillItemsPerSession()} soal, lalu materi baru dan yang lemah bergiliran pada latihan berikutnya.</div>
     ${preview.length ? `<div class="kana-weak-preview"><span class="kana-weak-label">Fokus berikutnya</span>${preview.map(({ item, summary }) => `<span class="kana-weak-chip"><b lang="ja">${escapeHtml(item.character)}</b> · ${escapeHtml(_kanjiDirectionLabel(_kanjiWeakDirection(summary)))}</span>`).join('')}</div>` : ''}`;
   window.__kanjiDrill = null;
   _kanjiSetFocus(false);
@@ -11674,8 +11796,9 @@ window.kanjiDrillStart = (mode = 'adaptive') => {
 
   if (!rankedCharacters.length && !rankedWords.length) { kanjiDrillShowOverview(); return; }
   const hasBoth = rankedCharacters.length > 0 && rankedWords.length > 0;
-  const charQuota = hasBoth ? Math.ceil(KANJI_DRILL_ITEMS_PER_SESSION / 2) : KANJI_DRILL_ITEMS_PER_SESSION;
-  const wordQuota = hasBoth ? Math.floor(KANJI_DRILL_ITEMS_PER_SESSION / 2) : KANJI_DRILL_ITEMS_PER_SESSION;
+  const drillTarget = _drillItemsPerSession();
+  const charQuota = hasBoth ? Math.ceil(drillTarget / 2) : drillTarget;
+  const wordQuota = hasBoth ? Math.floor(drillTarget / 2) : drillTarget;
   const focusCharacterRows = rankedCharacters.slice(0, Math.min(rankedCharacters.length, charQuota));
   const focusWordRows = rankedWords.slice(0, Math.min(rankedWords.length, wordQuota));
   const remaining = [
@@ -11683,7 +11806,7 @@ window.kanjiDrillStart = (mode = 'adaptive') => {
     ...rankedWords.slice(focusWordRows.length).map((row) => ({ ...row, kind: 'word' })),
   ].sort((a, b) => b.priority - a.priority);
   for (const row of remaining) {
-    if (focusCharacterRows.length + focusWordRows.length >= KANJI_DRILL_ITEMS_PER_SESSION) break;
+    if (focusCharacterRows.length + focusWordRows.length >= drillTarget) break;
     if (row.kind === 'character') focusCharacterRows.push(row);
     else focusWordRows.push(row);
   }
