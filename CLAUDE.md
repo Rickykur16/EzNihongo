@@ -71,6 +71,52 @@
 
 ## Konvensi penting
 
+      **Siswa bisa mengatur jumlah soal per sesi drill** — user: "Kok sesi
+      kanji cuma 3 soal?" lalu "buat agar user bisa mengatur berapa soal yg
+      akan muncul", dengan batas atas 50. **Bukan 12 soal yang dipotong jadi
+      3** — memang cuma segitu bahannya: `window.__kanjiDrillPool =
+      lesson.kanji` (`welcome.html`), kolamnya HANYA kanji milik pelajaran itu
+      sendiri, dan satu bab memang cuma memperkenalkan sedikit kanji (Bab 20 =
+      来・令 → 2; Bab 14 = 立休入出 → 4). Jadi `*_DRILL_ITEMS_PER_SESSION = 12`
+      itu PLAFON, bukan target, dan untuk kanji hampir tidak pernah tercapai.
+      Karena itu pengatur jumlah saja tidak cukup — diatur 12 pun bahannya
+      tetap 3, sehingga sesi juga harus diisi arah tambahan.
+      **Keputusan user**: soal tambahan diambil dengan menanyakan LEBIH BANYAK
+      ARAH per item (bukan menarik kanji dari bab lain), berlaku untuk ketiga
+      drill. Saya sempat menyarankan sebaliknya karena kelas masalah yang sama
+      baru diperbaiki di Smart Review; user memilih ini dan itu sah — drill
+      pelajaran adalah alat BELAJAR, bukan penilaian, dan ia memang SUDAH
+      menanyakan dua arah item yang sama (sesi 1 kenali, sesi 2 balik arah).
+      Yang merusak bukan "dua arah dalam satu sesi", melainkan **dua arah yang
+      BERDAMPINGAN** — itu yang dijaga `_drillSpaceSameItem()`.
+      **Jaraknya bukan angka baru**: `DRILL_SAME_ITEM_GAP = 3` mengikuti
+      konvensi requeue jawaban salah yang sudah ada di file yang sama
+      (`st.questions.splice(st.idx + 3, ...)`).
+      Setelan disimpan per-perangkat di `localStorage` (`ez_drill_size`),
+      mengikuti preferensi siswa lain di file itu (`ez_kanji_view`/
+      `ez_deck_view`/`ez_dialog_speed`) — tanpa migrasi, tanpa endpoint baru.
+      **Jebakan yang dijaga**: teks panel "3 sesi, maksimal 12 soal per sesi"
+      meng-hardcode angka 12 di TIGA tempat; ketiganya ikut dinamis, kalau
+      tidak teksnya berbohong begitu siswa mengubah angka. Dan di
+      `_kanjiBuildSessionQuestions` pengacakan dipindah ke DEPAN (acak rows
+      dulu, baru perluas + sebar) — `_deckShuffle` di akhir seperti versi lama
+      akan MERUSAK jarak yang baru saja dijaga.
+      **Batas atasnya jujur, tidak berpura-pura**: jumlah soal maksimum = item
+      × arah tersedia. Kanji punya 2 arah per karakter, jadi pelajaran 3 kanji
+      mentok di 6 soal walau disetel 50; kosakata 3 arah → 9. Sesi diisi
+      sebanyak yang bahannya izinkan.
+      Divalidasi di Chromium asli dengan pelajaran 3 item, diukur sebelum DAN
+      sesudah pada data yang sama: sebelum 3 soal untuk setelan berapa pun;
+      sesudah 4 soal (setelan 4), 6 soal (setelan 12 maupun 50, plafon
+      sebenarnya), kosakata 9 soal, kana 6 soal — dan **jarak minimum antara
+      dua soal item yang sama = 3 di semua kasus**. Teks panel + nilai kontrol
+      ikut berubah, setelan bertahan setelah reload penuh. `npm test` 68 tes,
+      67 hijau (satu kegagalan `server-safety.test.js:173` sudah ada di `main`,
+      hijau di CI — sandbox Node 22, CI/VPS Node 20).
+      **Sengaja tidak diubah**: batas 20 soal Smart Review (server,
+      `selectReviewCandidates`) dan jumlah sesi yang tetap 3 — tiap sesi adalah
+      tahap berbeda (kenali → balik arah → kuatkan), bukan pengulangan.
+
       **Smart Review: satu item ditanya dua arah berurutan, dan satu kanji
       menguasai sesi** — user: "学 dan 校 memiliki kombinasi 学生, sehingga
       muncul di soal berkali kali", dan "soal muncul langsung tanpa diacak
