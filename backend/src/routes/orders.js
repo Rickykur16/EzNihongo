@@ -266,6 +266,18 @@ router.post('/orders/:id/payment-proof', proofLimiter, proofUpload.single('file'
     }
 
     const payment = await withTransaction(async (client) => {
+      // Lock/transition the order BEFORE touching its payments, just like
+      // approve/reject/cancel. Recheck the state after any concurrent writer
+      // finishes; the earlier read is only an ownership/fast-failure check.
+      const updated = await client.query(
+        `UPDATE orders SET status = 'awaiting_review', updated_at = NOW()
+          WHERE id = $1 AND user_id = $2 AND status = ANY($3::text[])
+            AND expires_at > clock_timestamp()
+          RETURNING id`,
+        [order.id, req.user.id, ACTIONABLE_STATUSES]
+      );
+      if (updated.rows.length === 0) return null;
+
       // A fresh submission supersedes whatever was still pending review —
       // the admin queue should only ever show the latest attempt as actionable.
       await client.query(
@@ -287,12 +299,9 @@ router.post('/orders/:id/payment-proof', proofLimiter, proofUpload.single('file'
           req.user.id,
         ]
       );
-      await client.query(
-        `UPDATE orders SET status = 'awaiting_review', updated_at = NOW() WHERE id = $1`,
-        [order.id]
-      );
       return ins.rows[0];
     });
+    if (!payment) return res.status(409).json({ error: 'order_not_open' });
 
     await notifyAdminNewProof(order);
     res.status(201).json({ payment: serializePayment(payment) });

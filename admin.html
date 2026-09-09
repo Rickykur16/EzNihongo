@@ -7341,12 +7341,14 @@ function renderOrdersResult() {
     }`;
 }
 
-window.openOrderDetail = async (orderId) => {
+window.openOrderDetail = async (orderId, reviewedPaymentId) => {
   let d;
   try { d = await api('/admin/orders/' + orderId); }
   catch (err) { notify('Gagal load detail: ' + err.message, true); return; }
   const { order, payments } = d;
-  const pending = payments.find((p) => p.status === 'pending');
+  const pending = order.status === 'awaiting_review'
+    ? payments.find((p) => p.status === 'pending' && (!reviewedPaymentId || p.id === reviewedPaymentId))
+    : null;
   const rows = payments.map((p) => `
     <div style="border:1px solid var(--line,#e5e5e5);border-radius:8px;padding:12px;margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
@@ -7376,6 +7378,7 @@ window.openOrderDetail = async (orderId) => {
     </p>
     <h4 style="margin:14px 0 6px;font-size:13px;">Riwayat bukti transfer</h4>
     ${rows}
+    ${reviewedPaymentId && !pending ? '<p>Bukti atau status pesanan sudah berubah. Tutup dan buka kembali detail untuk meninjau bukti terbaru.</p>' : ''}
     ${pending ? `
       <div style="margin-top:6px;">
         <label style="font-size:13px;">Alasan tolak (wajib kalau menolak)<br>
@@ -7384,8 +7387,8 @@ window.openOrderDetail = async (orderId) => {
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" onclick="closeModal()">Tutup</button>
-        <button type="button" class="btn btn-danger" onclick="rejectOrder('${order.id}')">Tolak</button>
-        <button type="button" class="btn btn-primary" onclick="approveOrder('${order.id}')">Setujui &amp; Beri Akses</button>
+        <button type="button" class="btn btn-danger" onclick="rejectOrder('${order.id}','${pending.id}')">Tolak</button>
+        <button type="button" class="btn btn-primary" onclick="approveOrder('${order.id}','${pending.id}')">Setujui &amp; Beri Akses</button>
       </div>` : `
       <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>`
     }
@@ -7404,29 +7407,35 @@ window.viewOrderProof = async (orderId, paymentId) => {
       ${isPdf
         ? `<a href="${url}" target="_blank" class="btn btn-primary">Buka PDF di tab baru</a>`
         : `<img src="${url}" style="max-width:100%;border-radius:8px;border:1px solid var(--line,#e5e5e5);" />`}
-      <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="openOrderDetail('${orderId}','${paymentId}')">Kembali ke pesanan</button></div>
     `, { className: 'modal-lg' });
   } catch (err) { notify('Gagal muat bukti: ' + err.message, true); }
 };
 
-window.approveOrder = async (orderId) => {
+function notifyOrderReviewError(action, err) {
+  const conflict = ['payment_not_pending', 'order_not_approvable', 'order_not_rejectable'].includes(err.body?.error);
+  notify(conflict
+    ? 'Bukti atau status pesanan sudah berubah. Tutup dan buka kembali detail, lalu periksa bukti terbaru sebelum memutuskan.'
+    : 'Gagal ' + action + ': ' + err.message, true);
+}
+window.approveOrder = async (orderId, paymentId) => {
   if (!confirm('Setujui pesanan ini? Siswa akan langsung dapat akses kursus.')) return;
   try {
-    await api('/admin/orders/' + orderId + '/approve', { method: 'POST', body: JSON.stringify({}) });
+    await api('/admin/orders/' + orderId + '/approve', { method: 'POST', body: JSON.stringify({ paymentId }) });
     notify('Pesanan disetujui — akses diberikan');
     closeModal();
     await loadOrders(); renderOrdersResult();
-  } catch (err) { notify('Gagal menyetujui: ' + err.message, true); }
+  } catch (err) { notifyOrderReviewError('menyetujui', err); }
 };
-window.rejectOrder = async (orderId) => {
+window.rejectOrder = async (orderId, paymentId) => {
   const reason = (document.getElementById('ord-reject-reason')?.value || '').trim();
   if (!reason) { notify('Isi alasan penolakan dulu', true); return; }
   try {
-    await api('/admin/orders/' + orderId + '/reject', { method: 'POST', body: JSON.stringify({ reason }) });
+    await api('/admin/orders/' + orderId + '/reject', { method: 'POST', body: JSON.stringify({ paymentId, reason }) });
     notify('Pesanan ditolak');
     closeModal();
     await loadOrders(); renderOrdersResult();
-  } catch (err) { notify('Gagal menolak: ' + err.message, true); }
+  } catch (err) { notifyOrderReviewError('menolak', err); }
 };
 
 // ─────────────────────────────────────────────────────────────

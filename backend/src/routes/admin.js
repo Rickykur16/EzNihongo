@@ -3983,7 +3983,6 @@ router.post('/users/:email/erase', asyncHandler(async (req, res) => {
 // at order-creation or proof-upload time. See backend/src/routes/orders.js
 // for the student-facing side and migration 121 for the schema.
 
-const ORDER_ACTIONABLE_STATUSES = ['pending_payment', 'awaiting_review', 'rejected'];
 function orderEffectiveStatus(order) {
   if (order.status === 'approved' || order.status === 'cancelled') return order.status;
   if (new Date(order.expires_at).getTime() < Date.now()) return 'expired';
@@ -4078,27 +4077,32 @@ router.get('/orders/:id', asyncHandler(async (req, res) => {
   });
 }));
 
-// POST /api/admin/orders/:id/approve — { paymentId? } (defaults to the
-// order's current pending attempt). Grants access atomically: guarded
+// POST /api/admin/orders/:id/approve — { paymentId } from the reviewed detail.
+// Never select a replacement proof on the admin's behalf. Grants access atomically: guarded
 // status transitions on both order_payments and orders, then the
 // user_enrollments upsert, all in one transaction — a duplicate/concurrent
 // approve call finds nothing left in 'pending'/'awaiting_review' and 409s
 // before it ever reaches the enrollment upsert.
 router.post('/orders/:id/approve', asyncHandler(async (req, res) => {
   const orderId = req.params.id;
-  let paymentId = req.body?.paymentId;
-  if (!paymentId) {
-    const p = await query(
-      `SELECT id FROM order_payments WHERE order_id = $1 AND status = 'pending'
-        ORDER BY submitted_at DESC LIMIT 1`,
-      [orderId]
-    );
-    paymentId = p.rows[0]?.id;
+  const paymentId = req.body?.paymentId;
+  if (typeof paymentId !== 'string' || !isCanonicalUuid(paymentId)) {
+    return res.status(400).json({ error: 'valid_payment_id_required' });
   }
-  if (!paymentId) return res.status(404).json({ error: 'no_pending_payment' });
 
   try {
     const result = await withTransaction(async (client) => {
+      // All payment writers acquire the order row first to serialize with
+      // uploads/cancellation and avoid opposite-order row-lock deadlocks.
+      const orderRes = await client.query(
+        `UPDATE orders SET status = 'approved', approved_at = NOW(), updated_at = NOW()
+          WHERE id = $1 AND status = 'awaiting_review' AND expires_at > clock_timestamp()
+          RETURNING *`,
+        [orderId]
+      );
+      if (orderRes.rows.length === 0) throw Object.assign(new Error('order_not_approvable'), { code: 'ORDER_CONFLICT' });
+      const order = orderRes.rows[0];
+
       const payRes = await client.query(
         `UPDATE order_payments SET status = 'approved', reviewed_by = $1, reviewed_at = NOW()
           WHERE id = $2 AND order_id = $3 AND status = 'pending'
@@ -4106,15 +4110,6 @@ router.post('/orders/:id/approve', asyncHandler(async (req, res) => {
         [req.user.id, paymentId, orderId]
       );
       if (payRes.rows.length === 0) throw Object.assign(new Error('payment_not_pending'), { code: 'ORDER_CONFLICT' });
-
-      const orderRes = await client.query(
-        `UPDATE orders SET status = 'approved', approved_at = NOW(), updated_at = NOW()
-          WHERE id = $1 AND status = 'awaiting_review' AND expires_at > NOW()
-          RETURNING *`,
-        [orderId]
-      );
-      if (orderRes.rows.length === 0) throw Object.assign(new Error('order_not_approvable'), { code: 'ORDER_CONFLICT' });
-      const order = orderRes.rows[0];
 
       await client.query(
         `INSERT INTO user_enrollments (user_id, course_id, status, source, order_id, expires_at, revoked_at)
@@ -4136,26 +4131,28 @@ router.post('/orders/:id/approve', asyncHandler(async (req, res) => {
   }
 }));
 
-// POST /api/admin/orders/:id/reject — { paymentId?, reason } — reason required.
+// POST /api/admin/orders/:id/reject — { paymentId, reason } — both required.
 // NOT terminal for the order: the student can submit a new proof, which
 // flips the order back to 'awaiting_review' (see orders.js payment-proof).
 router.post('/orders/:id/reject', asyncHandler(async (req, res) => {
   const orderId = req.params.id;
   const reason = String(req.body?.reason || '').trim();
   if (!reason) return res.status(400).json({ error: 'reason_required' });
-  let paymentId = req.body?.paymentId;
-  if (!paymentId) {
-    const p = await query(
-      `SELECT id FROM order_payments WHERE order_id = $1 AND status = 'pending'
-        ORDER BY submitted_at DESC LIMIT 1`,
-      [orderId]
-    );
-    paymentId = p.rows[0]?.id;
+  const paymentId = req.body?.paymentId;
+  if (typeof paymentId !== 'string' || !isCanonicalUuid(paymentId)) {
+    return res.status(400).json({ error: 'valid_payment_id_required' });
   }
-  if (!paymentId) return res.status(404).json({ error: 'no_pending_payment' });
 
   try {
     const result = await withTransaction(async (client) => {
+      const orderRes = await client.query(
+        `UPDATE orders SET status = 'rejected', updated_at = NOW()
+          WHERE id = $1 AND status = 'awaiting_review'
+          RETURNING *`,
+        [orderId]
+      );
+      if (orderRes.rows.length === 0) throw Object.assign(new Error('order_not_rejectable'), { code: 'ORDER_CONFLICT' });
+
       const payRes = await client.query(
         `UPDATE order_payments
             SET status = 'rejected', reviewed_by = $1, reviewed_at = NOW(), rejection_reason = $2
@@ -4165,13 +4162,6 @@ router.post('/orders/:id/reject', asyncHandler(async (req, res) => {
       );
       if (payRes.rows.length === 0) throw Object.assign(new Error('payment_not_pending'), { code: 'ORDER_CONFLICT' });
 
-      const orderRes = await client.query(
-        `UPDATE orders SET status = 'rejected', updated_at = NOW()
-          WHERE id = $1 AND status = 'awaiting_review'
-          RETURNING *`,
-        [orderId]
-      );
-      if (orderRes.rows.length === 0) throw Object.assign(new Error('order_not_rejectable'), { code: 'ORDER_CONFLICT' });
       return { order: orderRes.rows[0] };
     });
     res.json({ ok: true, order: { id: result.order.id, status: orderEffectiveStatus(result.order) } });
