@@ -51,16 +51,111 @@ export function summarizeCandidates(candidates) {
   return { total: Object.values(byCategory).reduce((sum, count) => sum + count, 0), byCategory };
 }
 
+// Berapa soal boleh disumbangkan satu kanji pemilik dalam satu sesi: soal
+// karakternya sendiri + satu kata majemuk miliknya. Tanpa batas ini, satu
+// kanji dengan lima kata majemuk sanggup menguasai seluruh sesi.
+const MAX_PER_OWNER = 2;
+
+// "Pokok soal" — satuan yang cuma boleh ditanya SATU ARAH per sesi.
+// Untuk kata majemuk, satuannya kata itu sendiri (kunci yang sama persis
+// dengan pickCompoundOwners: japanese::reading), BUKAN kanji pemiliknya —
+// satu kanji memiliki banyak kata dan tiap kata layak gilirannya sendiri.
+export function reviewSubjectKey(candidate) {
+  const word = candidate?.word;
+  if (word) return `word:${String(word.japanese || '').trim().toLowerCase()}::${String(word.reading || '').trim().toLowerCase()}`;
+  return `${candidate?.category}:${candidate?.itemId}`;
+}
+
+// Pemilik soal. Untuk kata majemuk `itemId` memang id kanji pemiliknya
+// (lihat routes/smart-review.js), jadi kunci ini otomatis menyatukan soal
+// karakter 学 dengan soal 学生 — persis yang perlu dibatasi dan dijauhkan.
+export function reviewOwnerKey(candidate) {
+  return `${candidate?.category}:${candidate?.itemId}`;
+}
+
+// SATU ARAH PER POKOK SOAL PER SESI.
+//
+// Ini bukan sekadar merapikan urutan, tapi menutup kebocoran jawaban:
+// menanyakan "花 artinya apa" lalu "bunga kanjinya apa" di sesi yang sama
+// berarti soal pertama sudah memberi tahu jawaban soal kedua — siswa tidak
+// diuji, cuma diminta mengingat layar sebelumnya. Menjauhkan posisinya saja
+// tidak cukup; keduanya memang tidak boleh satu sesi.
+//
+// Arah yang tersisa TIDAK hilang: penjadwalan FSRS per-arah tidak disentuh,
+// jadi arah lain muncul di sesi berikutnya — dan itu justru pengulangan
+// berjarak yang benar. Pola ini menyamakan Smart Review dengan drill
+// pelajaran (`_kanjiBuildSessionQuestions` di welcome.html), yang sejak awal
+// memang cuma menanyakan satu arah per item per sesi.
+function oneDirectionPerSubject(ranked) {
+  const seen = new Set();
+  const perOwner = new Map();
+  const out = [];
+  for (const candidate of ranked) {
+    const subject = reviewSubjectKey(candidate);
+    if (seen.has(subject)) continue;
+    const owner = reviewOwnerKey(candidate);
+    const used = perOwner.get(owner) || 0;
+    if (used >= MAX_PER_OWNER) continue;
+    seen.add(subject);
+    perOwner.set(owner, used + 1);
+    out.push(candidate);
+  }
+  return out;
+}
+
+// Setelah batas di atas, satu kanji masih bisa menyumbang dua soal — dan
+// keduanya akan berdampingan karena urutannya murni menurut prioritas.
+// Penyebaran ini menyisipkan soal pemilik lain di antaranya. Sengaja
+// deterministik, bukan acak: pengacakan murni tetap bisa menempelkan dua soal
+// 学 secara kebetulan, dan yang deterministik bisa diuji.
+// JEBAKAN: "ambil kandidat berikutnya yang pemiliknya beda dari yang barusan"
+// terlihat cukup, tapi TIDAK — ia menghabiskan pemilik lain lebih dulu lalu
+// menyisakan soal-soal pemilik yang sama menumpuk di ekor (diukur: a,b,a,b,c,c).
+// Jadi tiap langkah memilih pemilik dengan SISA TERBANYAK di antara yang boleh,
+// yang menjamin penyebaran selama susunannya memang mungkin.
+export function spaceByOwner(selected) {
+  const remaining = [...(selected || [])];
+  const out = [];
+  let lastOwner = null;
+  while (remaining.length) {
+    const left = new Map();
+    for (const candidate of remaining) {
+      const owner = reviewOwnerKey(candidate);
+      left.set(owner, (left.get(owner) || 0) + 1);
+    }
+    let index = -1;
+    let best = -1;
+    for (let i = 0; i < remaining.length; i += 1) {
+      const owner = reviewOwnerKey(remaining[i]);
+      if (owner === lastOwner) continue;
+      const count = left.get(owner);
+      // Seri dimenangkan yang datang lebih dulu, jadi urutan prioritas asli
+      // tetap dihormati sejauh penyebarannya mengizinkan.
+      if (count > best) { best = count; index = i; }
+    }
+    if (index === -1) index = 0; // cuma tersisa pemilik yang sama — tidak ada pilihan lain
+    const [next] = remaining.splice(index, 1);
+    out.push(next);
+    lastOwner = reviewOwnerKey(next);
+  }
+  return out;
+}
+
 export function selectReviewCandidates(candidates, { category = 'mixed', limit = 20 } = {}) {
   const max = Math.max(1, Math.min(20, Number(limit) || 20));
-  const ranked = (candidates || [])
+  // Urutan tie-break di bawah (kategori → itemId → skill) MENJAMIN semua arah
+  // milik item yang sama jadi berdampingan dan terurut alfabet — itulah yang
+  // dulu memunculkan "花 artinya apa" tepat sebelum "bunga kanjinya apa".
+  // Urutannya sendiri tetap dipertahankan supaya seleksi deterministik;
+  // dampaknya yang ditutup oleh oneDirectionPerSubject + spaceByOwner.
+  const ranked = oneDirectionPerSubject((candidates || [])
     .filter((candidate) => isReviewNeeded(candidate) && (category === 'mixed' || candidate.category === category))
     .map((candidate) => ({ ...candidate, priority: reviewPriority(candidate) }))
     .sort((a, b) => b.priority - a.priority
       || String(a.category).localeCompare(String(b.category))
       || String(a.itemId).localeCompare(String(b.itemId))
-      || String(a.skill).localeCompare(String(b.skill)));
-  if (category !== 'mixed') return ranked.slice(0, max);
+      || String(a.skill).localeCompare(String(b.skill))));
+  if (category !== 'mixed') return spaceByOwner(ranked.slice(0, max));
 
   // A soft 65% cap only defers an item when another category is nearly as
   // urgent.  It preserves need-driven mixes instead of an artificial 25/25/25/25.
@@ -80,7 +175,7 @@ export function selectReviewCandidates(candidates, { category = 'mixed', limit =
     if (out.length >= max) break;
     if (!out.includes(candidate)) out.push(candidate);
   }
-  return out;
+  return spaceByOwner(out);
 }
 
 // A compound word is re-derived once per kanji it contains, because
