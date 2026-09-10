@@ -49,21 +49,31 @@ export async function courseIdForGrammarId(grammarId) {
   return r.rows[0]?.course_id || null;
 }
 
+const CANONICAL_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function authorizeLessonCourseAccess(req, res, next, lessonId) {
+  if (typeof lessonId !== 'string' || !CANONICAL_UUID.test(lessonId)) {
+    return res.status(400).json({ error: 'invalid_lesson_id' });
+  }
+  const courseId = await courseIdForLessonId(lessonId);
+  if (!courseId) return res.status(404).json({ error: 'Lesson not found' });
+  if (!(await userCanAccessCourse(req.user, courseId))) {
+    return res.status(403).json({ error: 'not_enrolled' });
+  }
+  req.courseId = courseId;
+  next();
+}
+
 // Middleware — resolves the course via a lesson id route param (default
 // :lessonId) and 403s unless the caller has access to that lesson's course.
 // Must run after requireAuth. Attaches req.courseId for the handler to reuse.
 export function requireLessonCourseAccess(paramName = 'lessonId') {
-  return asyncHandler(async (req, res, next) => {
-    const lessonId = req.params[paramName];
-    if (typeof lessonId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lessonId)) {
-      return res.status(400).json({ error: 'invalid_lesson_id' });
-    }
-    const courseId = await courseIdForLessonId(lessonId);
-    if (!courseId) return res.status(404).json({ error: 'Lesson not found' });
-    if (!(await userCanAccessCourse(req.user, courseId))) {
-      return res.status(403).json({ error: 'not_enrolled' });
-    }
-    req.courseId = courseId;
-    next();
-  });
+  return asyncHandler((req, res, next) =>
+    authorizeLessonCourseAccess(req, res, next, req.params[paramName]));
+}
+
+// Same entitlement check for legacy endpoints that carry lessonId in JSON.
+export function requireLessonBodyCourseAccess(fieldName = 'lessonId') {
+  return asyncHandler((req, res, next) =>
+    authorizeLessonCourseAccess(req, res, next, req.body?.[fieldName]));
 }
