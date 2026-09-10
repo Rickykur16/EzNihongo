@@ -21,7 +21,7 @@ function completionClient({ completed = false } = {}) {
     progress,
     stats,
     async query(sql, params) {
-      if (sql.includes('SELECT id, duration_minutes FROM lessons')) {
+      if (sql.includes('SELECT id, duration_minutes, type FROM lessons')) {
         return { rows: [{ id: params[0], duration_minutes: 15 }], rowCount: 1 };
       }
       if (sql.includes('INSERT INTO user_progress')) {

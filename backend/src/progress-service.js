@@ -3,10 +3,18 @@
 
 export async function completeLessonWithStats(client, { userId, lessonId }) {
   const lesson = await client.query(
-    `SELECT id, duration_minutes FROM lessons WHERE id = $1 LIMIT 1`,
+    `SELECT id, duration_minutes, type FROM lessons WHERE id = $1 LIMIT 1`,
     [lessonId]
   );
   if (lesson.rows.length === 0) return { found: false, firstComplete: false };
+  if (lesson.rows[0].type === 'quiz') {
+    const passed = await client.query(
+      `SELECT 1 FROM quiz_attempts WHERE user_id = $1 AND lesson_id = $2
+         AND completed_at IS NOT NULL AND grading_result->>'passed' = 'true'
+       LIMIT 1`, [userId, lessonId]
+    );
+    if (!passed.rows.length) return { found: true, firstComplete: false, requiresQuizPass: true };
+  }
 
   // `WHERE user_progress.completed IS DISTINCT FROM TRUE` makes the returned
   // row exactly the one-time FALSE/NULL → TRUE transition.  It works even
@@ -52,6 +60,7 @@ export async function reconcileLegacyProgress(client, userId) {
   // Legacy blobs only say an item is complete; they do not carry a trustworthy
   // completion timestamp.  Keep completed_at NULL for records reconstructed
   // here and do not award retrospective XP or stats.
+  // Quiz flags are excluded: only a graded submission can complete a quiz.
   const result = await client.query(
     `WITH legacy_lessons AS (
        SELECT DISTINCT l.id AS lesson_id
@@ -69,6 +78,7 @@ export async function reconcileLegacyProgress(client, userId) {
                     AND progress_entry.legacy_key = m.slug || ':' || l.slug
        WHERE uls.user_id = $1
          AND progress_entry.is_completed = 'true'::jsonb
+         AND l.type <> 'quiz'
      ), transitioned AS (
        INSERT INTO user_progress (user_id, lesson_id, completed, completed_at)
        SELECT $1, lesson_id, TRUE, NULL
