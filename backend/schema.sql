@@ -429,10 +429,12 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
   total_questions INT,
   attempt_token UUID DEFAULT gen_random_uuid(),
   sampled_question_ids JSONB,
+  grading_result JSONB,
+  submitted_answers JSONB,
   started_at TIMESTAMPTZ,
   -- NULL = attempt sedang berjalan, belum disubmit. Penanda ini yang dipakai
-  -- pengaman anti double-submit di /quiz-attempt (WHERE completed_at IS NULL)
-  -- dan oleh lessonAttemptStatus (ORDER BY ... NULLS LAST). Sempat salah
+  -- pengaman submit/replay di /quiz-attempt (transaction + quiz lock)
+  -- dan oleh lessonAttemptStatus. Sempat salah
   -- dideklarasikan NOT NULL DEFAULT NOW() — lihat migration 123.
   completed_at TIMESTAMPTZ
 );

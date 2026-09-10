@@ -1,6 +1,9 @@
 name: Deploy to VPS
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
@@ -8,7 +11,7 @@ on:
 # Cegah dua deploy paralel race di VPS yang sama (git reset + migrate +
 # restart bisa saling injak kalau dua push berdekatan).
 concurrency:
-  group: deploy-vps
+  group: deploy-vps${{ github.event_name == 'pull_request' && format('-pr-{0}', github.event.number) || '' }}
   cancel-in-progress: false
 
 jobs:
@@ -17,6 +20,20 @@ jobs:
   # pernah membunuh production.
   ci:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: local-ci-test
+          POSTGRES_DB: eznihongo_payment_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,11 +47,14 @@ jobs:
       - name: Syntax-check backend sources
         working-directory: backend
         run: find src migrations scripts -name '*.js' -o -name '*.mjs' | xargs -I{} node --check {}
-      - name: Test backend helpers
+      - name: Test backend and payment transactions
         working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:local-ci-test@127.0.0.1:5432/eznihongo_payment_test
         run: npm test
 
   deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: ci
     runs-on: ubuntu-latest
     steps:

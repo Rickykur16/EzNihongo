@@ -6137,65 +6137,69 @@ window.nextQuizQuestion = () => {
 };
 
 async function finishQuiz() {
+  const state = quizState;
+  if (!state || state.submitting || state.submitted) return;
+  state.submitting = true;
   destroyAllListeningPlayers();
-  const { questions, correct, key, answers, attemptToken, passingScorePct } = quizState;
-  const clientTotal = questions.length;
+  const { questions, key, answers, attemptToken } = state;
   const main = document.getElementById('main-content');
-  main.innerHTML = `
-    <div class="quiz-container">
-      <div class="quiz-results">
-        <h2>Menyimpan hasil...</h2>
-        <div class="score-circle">…</div>
-      </div>
-    </div>
-  `;
+  main.innerHTML = `<div class="quiz-container"><div class="quiz-results">
+    <h2>Menyimpan hasil...</h2><div class="score-circle">…</div>
+  </div></div>`;
 
-  let score = correct;
-  let total = clientTotal;
-  let passing = passingScorePct || 70;
-  let serverPassed = null;
-  let nextAttemptAt = null;
-  let cooldownHours = 12;
+  let data;
   try {
     const [slug, mId, lId] = key.split(':');
-    const lesson = findLesson(slug, mId, lId);
-    const lessonApiId = lesson?.apiId;
-    invalidateQuizStatus(lessonApiId);
-    if (lessonApiId && typeof window.ezApi === 'function') {
-      const res = await window.ezApi(`/progress/lesson/${encodeURIComponent(lessonApiId)}/quiz-attempt`, {
-        method: 'POST',
-        body: JSON.stringify({ attemptToken, answers }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (typeof data.score === 'number' && typeof data.total === 'number' && data.total > 0) {
-          score = data.score;
-          total = data.total;
-        }
-        if (typeof data.passingScorePct === 'number') passing = data.passingScorePct;
-        if (typeof data.passed === 'boolean') serverPassed = data.passed;
-        if (data.nextAttemptAt) nextAttemptAt = data.nextAttemptAt;
-        if (typeof data.cooldownHours === 'number') cooldownHours = data.cooldownHours;
-        if (typeof data.removedFromPool === 'number') {
-          quizState.removedFromPool = data.removedFromPool;
-        }
-      }
+    const lessonApiId = findLesson(slug, mId, lId)?.apiId;
+    if (!lessonApiId || !attemptToken || typeof window.ezApi !== 'function') {
+      throw new Error('quiz_connection_unavailable');
     }
+    const res = await window.ezApi(`/progress/lesson/${encodeURIComponent(lessonApiId)}/quiz-attempt`, {
+      method: 'POST', body: JSON.stringify({ attemptToken, answers }),
+    });
+    data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'quiz_submit_failed');
+    if (!Number.isInteger(data.score) || !Number.isInteger(data.total)
+        || data.total <= 0 || data.total !== questions.length || data.score < 0 || data.score > data.total
+        || typeof data.passed !== 'boolean' || !Number.isFinite(data.passingScorePct)
+        || (data.passed && data.completionSaved !== true)
+        || !data.correctByQuestion || questions.some(q => typeof data.correctByQuestion[q.questionId] !== 'boolean')) {
+      throw new Error('invalid_quiz_result');
+    }
+    invalidateQuizStatus(lessonApiId);
   } catch (err) {
-    console.warn('quiz-attempt submission failed:', err?.message || err);
+    if (quizState !== state) return;
+    const changed = ['quiz_questions_changed', 'already_submitted', 'attempt_not_found', 'lesson_not_quiz'].includes(err.message);
+    const incomplete = err.message === 'answers_incomplete_or_duplicate';
+    const message = changed
+      ? 'Soal atau sesi kuis sudah berubah. Kembali ke kuis untuk memuat status terbaru.'
+      : incomplete ? 'Jawab semua soal terlebih dahulu, lalu kirim kembali hasilnya.'
+      : 'Hasil belum dapat dikonfirmasi. Jawaban tetap tersedia di halaman ini. Periksa koneksi lalu kirim ulang hasil.';
+    main.innerHTML = `<div class="quiz-container"><div class="quiz-results">
+      <h2>Hasil belum terkonfirmasi</h2><p>${message}</p>
+      <div class="quiz-results-btns">${changed
+        ? '<button class="btn-primary" onclick="window.retryQuiz()">Kembali ke kuis</button>'
+        : '<button class="btn-primary" onclick="finishQuiz()">Kirim ulang hasil</button><button class="btn-ghost" onclick="renderQuizQuestion(document.getElementById(\'main-content\'))">Kembali ke soal</button>'}
+      </div></div></div>`;
+    return;
+  } finally {
+    state.submitting = false;
   }
-
-  const pct = total > 0 ? Math.round((score / total) * 100) : 0;
-  const passed = serverPassed != null ? serverPassed : pct >= passing;
+  if (quizState !== state) return;
+  state.submitted = true;
+  const { score, total, passed, nextAttemptAt, cooldownHours } = data;
+  const passing = data.passingScorePct;
+  const pct = Math.round((score / total) * 100);
   const bonusXP = passed ? 20 : 10;
+  state.correctByIndex = Object.fromEntries(questions.map((q, i) => [i, data.correctByQuestion[q.questionId]]));
 
-  // Save best score localStorage (UI-only, server is source of truth).
-  const scores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
-  scores[key] = Math.max(scores[key] || 0, pct);
-  localStorage.setItem('ez_quiz_scores', JSON.stringify(scores));
-  _scheduleCloudPush();
-
-  // Mark lesson done if passed (unlock next).
+  // Local caches are updated only after the server confirms its transaction.
+  try {
+    const scores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
+    scores[key] = Math.max(scores[key] || 0, pct);
+    localStorage.setItem('ez_quiz_scores', JSON.stringify(scores));
+    _scheduleCloudPush();
+  } catch (err) { console.warn('Quiz score cache unavailable:', err?.message); }
   if (passed) {
     const [slug, mId, lId] = key.split(':');
     const allProgress = getProgress();
@@ -6203,12 +6207,11 @@ async function finishQuiz() {
     cp[`${mId}:${lId}`] = true;
     allProgress[slug] = cp;
     setProgress(allProgress);
-    // The quiz result is not considered navigable until canonical completion
-    // has been persisted; Dashboard reads that canonical table directly.
-    await syncLessonCompletionToServer(findLesson(slug, mId, lId));
+    // Canonical completion and XP were saved with the attempt on the server.
   }
   addXP(bonusXP, passed ? 'lulus kuis' : 'mencoba kuis');
   if (passed) fireConfetti();
+
 
   // Per-kategori breakdown — kasih siswa info materi mana yg lemah.
   const byCategory = {};
@@ -6230,9 +6233,6 @@ async function finishQuiz() {
       </div>`;
     }).join('');
 
-  const removedNote = quizState.removedFromPool
-    ? `<p style="color:#92400e;font-size:13px;margin:8px 0;background:#fef3c7;padding:8px 12px;border-radius:6px;text-align:left;">⚠️ ${quizState.removedFromPool} soal dari attempt-mu di-update admin saat mengerjakan, jadi tidak dihitung. Total disesuaikan jadi ${total} soal.</p>`
-    : '';
   const noCooldownResult = (cooldownHours || 0) <= 0;
   const cooldownLine = nextAttemptAt && !noCooldownResult
     ? `<p style="color:#525252;font-size:13px;margin:14px 0 6px;">Bisa coba lagi pada <strong>${fmtNextAt(nextAttemptAt)}</strong> (${cooldownHours} jam dari sekarang).</p>`
@@ -6253,7 +6253,6 @@ async function finishQuiz() {
         <div class="score-circle">${pct}%</div>
         <p style="color:#485f84;margin:0 0 12px;">Benar ${score} dari ${total} soal</p>
         ${catBlock ? `<div style="background:#f9fafb;border-radius:8px;padding:10px 16px;margin:12px 0;text-align:left;font-size:14px;">${catBlock}</div>` : ''}
-        ${removedNote}
         ${cooldownLine}
         <div class="quiz-results-btns">
           <button class="btn-primary" onclick="window.continueAfterQuiz()">${passed ? 'Lanjut ke materi →' : 'Kembali ke pelajaran'}</button>

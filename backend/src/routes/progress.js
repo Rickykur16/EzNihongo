@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { submitQuizAttempt } from '../quiz-submission.js';
 import { query, withAdvisoryLock } from '../db.js';
 import { requireAuth, asyncHandler } from '../middleware.js';
 import { isAdminEmail } from '../auth.js';
@@ -39,6 +40,7 @@ router.post('/progress/lesson/:lessonId/complete', requireLessonCourseAccess('le
     (client) => completeLessonWithStats(client, { userId: req.user.id, lessonId: req.params.lessonId })
   );
   if (!outcome.found) return res.status(404).json({ error: 'Lesson not found' });
+  if (outcome.requiresQuizPass) return res.status(409).json({ error: 'quiz_pass_required' });
   res.json({ ok: true, firstComplete: outcome.firstComplete });
 }));
 
@@ -70,7 +72,7 @@ async function lessonAttemptStatus(userId, lessonId, cooldownHours, runQuery = q
             started_at, completed_at
        FROM quiz_attempts
       WHERE user_id = $1 AND lesson_id = $2
-      ORDER BY completed_at DESC NULLS LAST, started_at DESC NULLS LAST
+      ORDER BY COALESCE(completed_at, started_at) DESC NULLS LAST, started_at DESC NULLS LAST, id DESC
       LIMIT 1`,
     [userId, lessonId]
   );
@@ -276,143 +278,19 @@ router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('
 }));
 
 // POST /api/progress/lesson/:lessonId/quiz-attempt
-// Submit attempt. Body: { attemptToken, answers: [{ questionId, optionId }] }
-// Update row existing (yang dibuat di /quiz/start) — bukan INSERT baru.
-// Compute passed = (score/total)*100 >= passing_score_pct. Return next
-// attempt window.
+// One transaction saves the authoritative grade, detailed answers and passed
+// lesson completion. Retrying the same token returns the persisted response.
 router.post('/progress/lesson/:lessonId/quiz-attempt', requireLessonCourseAccess('lessonId'), asyncHandler(async (req, res) => {
   const lessonId = req.params.lessonId;
-  const { attemptToken } = req.body || {};
-  const rawAnswers = Array.isArray(req.body?.answers) ? req.body.answers : [];
-  if (!attemptToken) return res.status(400).json({ error: 'attemptToken required' });
-
-  const attemptRes = await query(
-    `SELECT id, sampled_question_ids, started_at, completed_at, score
-       FROM quiz_attempts
-      WHERE user_id = $1 AND lesson_id = $2 AND attempt_token = $3
-      LIMIT 1`,
-    [req.user.id, lessonId, attemptToken]
+  const outcome = await withAdvisoryLock(`quiz:${req.user.id}:${lessonId}`, client =>
+    submitQuizAttempt(client, {
+      userId: req.user.id, lessonId,
+      attemptToken: req.body?.attemptToken, answers: req.body?.answers,
+    })
   );
-  if (attemptRes.rows.length === 0) {
-    return res.status(404).json({ error: 'attempt_not_found' });
-  }
-  const attempt = attemptRes.rows[0];
-  if (attempt.completed_at && attempt.score !== null) {
-    return res.status(409).json({ error: 'already_submitted' });
-  }
-
-  const sampledIds = Array.isArray(attempt.sampled_question_ids) ? attempt.sampled_question_ids : [];
-  const sampledSet = new Set(sampledIds);
-
-  const lessonRow = await query(
-    `SELECT passing_score_pct, cooldown_hours FROM lessons WHERE id = $1 LIMIT 1`,
-    [lessonId]
-  );
-  const passingScorePct = lessonRow.rows[0]?.passing_score_pct ?? 70;
-  const cooldownHours = lessonRow.rows[0]?.cooldown_hours ?? 12;
-
-  const rows = await query(
-    `SELECT q.id AS question_id, q.question_category, q.grammar_id,
-            o.id AS option_id, o.is_correct
-       FROM quiz_questions q
-       LEFT JOIN quiz_options o ON o.question_id = q.id
-      WHERE q.id = ANY($1::uuid[])`,
-    [sampledIds]
-  );
-
-  const optionLookup = new Map();
-  const questionIds = new Set();
-  const categoryByQuestion = new Map();
-  // Konsep grammar per soal (migration 122) — NULL untuk semua soal yang belum
-  // ditautkan admin, yang berarti soal itu tetap dihitung di kategori 'grammar'
-  // seperti sebelumnya tapi tidak masuk analisis per-pola.
-  const grammarByQuestion = new Map();
-  for (const r of rows.rows) {
-    questionIds.add(r.question_id);
-    categoryByQuestion.set(r.question_id, r.question_category || 'vocabulary');
-    grammarByQuestion.set(r.question_id, r.grammar_id || null);
-    if (r.option_id) {
-      optionLookup.set(r.option_id, {
-        questionId: r.question_id,
-        isCorrect: !!r.is_correct,
-      });
-    }
-  }
-
-  // Soal yang dihapus admin saat attempt sedang berlangsung: count them
-  // sebagai "removed from pool" — bukan dihitung salah (unfair) dan bukan
-  // dihitung benar (cheat-enabling). Total = soal yg masih valid saat
-  // grading. Kalau SEMUA soal hilang, treat sebagai 0/0 — frontend kasih
-  // info "soal sudah berubah, coba lagi nanti".
-  const removedFromPool = sampledIds.filter((id) => !questionIds.has(id)).length;
-  const validSampledIds = sampledIds.filter((id) => questionIds.has(id));
-  const total = validSampledIds.length;
-
-  const correctByQuestion = {};
-  for (const qid of validSampledIds) correctByQuestion[qid] = false;
-
-  for (const a of rawAnswers) {
-    if (!sampledSet.has(a?.questionId)) continue;
-    if (!questionIds.has(a?.questionId)) continue;
-    const opt = optionLookup.get(a?.optionId);
-    if (!opt) continue;
-    if (opt.questionId !== a.questionId) continue;
-    if (opt.isCorrect) correctByQuestion[opt.questionId] = true;
-  }
-  const score = Object.values(correctByQuestion).filter(Boolean).length;
-  const pct = total > 0 ? (score / total) * 100 : 0;
-  const passed = pct >= passingScorePct;
-
-  // Atomic UPDATE — `AND completed_at IS NULL` mencegah double-submit
-  // race condition: kalau 2 request concurrent klik submit cepat-cepat,
-  // request kedua dapet rowCount=0 (row udah completed) → 409 instead
-  // of overwriting score yang valid.
-  const upd = await query(
-    `UPDATE quiz_attempts
-        SET score = $1, total_questions = $2, completed_at = NOW()
-      WHERE id = $3 AND completed_at IS NULL`,
-    [score, total, attempt.id]
-  );
-  if (upd.rowCount === 0) {
-    return res.status(409).json({ error: 'already_submitted' });
-  }
-
-  // Simpan hasil per-soal (benar/salah + kategori snapshot) untuk deteksi
-  // kelemahan adaptif (lihat routes/recommendations.js). Best-effort: error di
-  // sini tidak boleh menggagalkan submit — skor sudah ke-commit di atas.
-  if (validSampledIds.length > 0) {
-    try {
-      const valueSql = [];
-      const params = [];
-      let i = 1;
-      for (const qid of validSampledIds) {
-        params.push(
-          attempt.id, req.user.id, lessonId, qid,
-          categoryByQuestion.get(qid) || 'vocabulary',
-          grammarByQuestion.get(qid) || null,
-          !!correctByQuestion[qid]
-        );
-        valueSql.push(`($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}::uuid, $${i++})`);
-      }
-      await query(
-        `INSERT INTO quiz_question_results
-           (attempt_id, user_id, lesson_id, question_id, question_category, grammar_id, is_correct)
-         VALUES ${valueSql.join(', ')}`,
-        params
-      );
-    } catch (err) {
-      console.error('quiz_question_results insert failed:', err.message);
-    }
-  }
-
-  const nextAttemptAt = new Date(Date.now() + cooldownHours * 3600 * 1000).toISOString();
-  res.json({
-    score, total, correctByQuestion,
-    passingScorePct, passed,
-    cooldownHours, nextAttemptAt,
-    ...(removedFromPool > 0 ? { removedFromPool } : {}),
-  });
+  res.status(outcome.status).json(outcome.body);
 }));
+
 
 // GET /api/progress/lesson/:lessonId/quiz-status
 // Cooldown + last attempt info, dipakai welcome.html quiz landing.
