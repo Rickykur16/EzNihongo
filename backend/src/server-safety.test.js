@@ -55,6 +55,7 @@ mock.method(db, 'query', async (sql) => {
 });
 mock.method(db, 'connect', async () => ({
   async query(sql, params) {
+    if (sql.includes('UPDATE orders')) return { rows: [{ id: orderId }] };
     if (sql.includes('INSERT INTO order_payments')) {
       paymentFields = params;
       return { rows: [{ id: 'test-payment', status: 'pending', proof_mime: params[2] }] };
