@@ -258,8 +258,15 @@
   color: var(--success, #3b6d11);
 }
 
+#sidebar .lesson-item.done .lesson-check {
+  border-color: var(--success, #3b6d11);
+  background: var(--success, #3b6d11);
+  color: #fff;
+}
+
 #sidebar .progress-fill {
   background: var(--learning-blue-600);
+  box-shadow: none;
 }
 
 .course-tab {
@@ -271,6 +278,17 @@
   background: var(--paper-100, #faf7f2);
   color: var(--ink-700, #4a453e);
   opacity: 1;
+}
+
+.course-tab.active:hover {
+  background: var(--learning-blue-800);
+  color: #fff;
+}
+
+.course-tab.locked:hover {
+  border-color: var(--ink-500, #6f6a63);
+  background: var(--paper-200, #f2ede3);
+  color: var(--ink-900, #1a1815);
 }
 
 #sidebar .course-option .opt-name,
