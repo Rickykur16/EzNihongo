@@ -437,6 +437,10 @@ body {
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 
 .audio-btn:hover:not(:disabled):not(.playing):not(.needs-tap) {
@@ -449,6 +453,7 @@ body {
   outline: 3px solid var(--learning-blue-700);
   outline-offset: 2px;
   box-shadow: 0 0 0 2px var(--surface-white);
+  transition-duration: 0ms;
 }
 
 .audio-btn.playing {
@@ -483,6 +488,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   #review-app .review-progress-bar i { transition: none; }
+  #review-app .audio-btn { transition-duration: 0ms; }
   #review-app .option:hover:not(:disabled),
   #review-app .primary:hover:not(:disabled),
   #review-app .primary:active:not(:disabled) { transform: none; }

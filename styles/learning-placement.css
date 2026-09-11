@@ -636,3 +636,254 @@
     padding-bottom: calc(120px + env(safe-area-inset-bottom));
   }
 }
+
+/* Motion stays close to the action it confirms. This late student-only layer
+   also normalizes legacy literal timings without changing lesson behavior. */
+.lesson-student-nav :is(.sidebar-toggle, .lesson-logout),
+#app-root :is(
+  .greeting-resume,
+  .course-tab,
+  .course-option,
+  .sidebar-logout-btn,
+  .sidebar-section-header,
+  .module-header,
+  .lesson-item,
+  .play-btn,
+  .btn-primary,
+  .btn-secondary,
+  .paywall-cta,
+  .mini-plan,
+  .flashcard-cta,
+  .quiz-option,
+  .quiz-next-btn,
+  .rating-btn,
+  .back-to-lesson-btn,
+  .pronounce-btn,
+  .reco-lesson,
+  .sidebar-handle,
+  .quicklink,
+  .resource-card,
+  .vocab-section-toggle,
+  .vocab-bab-toggle,
+  .ba-toggle,
+  .grammar-block-toggle,
+  .ge-play,
+  .deck-card,
+  .dc-audio,
+  .deck-list-item,
+  .dm-headaudio,
+  .de-play,
+  .deck-modal-nav button,
+  .quiz-image-option,
+  .quiz-q-listen-btn,
+  .gk-play,
+  .gk-scene-line,
+  .gk-line-play,
+  .qlp-btn,
+  .qlp-play,
+  .qlp-track,
+  .kana-cell,
+  .kana-drill-opt,
+  .kanji-tile,
+  .kanji-list-item,
+  .kc-action,
+  .kanji-detail-close,
+  .kanji-replay-btn,
+  .gt-popup__close,
+  .gt-card__example-audio,
+  .gt-textarea,
+  .lesson-progress-resume,
+  .gt-btn--ghost,
+  .gt-btn--primary
+) {
+  transition-property: background-color, border-color, color, box-shadow, transform;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-standard);
+}
+
+#app-root :is(
+  .course-picker-caret,
+  .ss-caret,
+  .m-caret,
+  .vs-caret,
+  .vb-caret,
+  .ql-arr,
+  .dc-len,
+  .gk-word,
+  .gt-mic__core
+) {
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-standard);
+}
+
+#app-root :is(
+  .sidebar,
+  .course-picker-list,
+  .lessons
+),
+.sidebar-backdrop,
+body > .xp-toast {
+  transition-duration: var(--duration-base);
+  transition-delay: 0ms;
+  transition-timing-function: var(--ease-standard);
+}
+
+#app-root :is(
+  .quiz-feedback,
+  .deck-modal,
+  .gt-popup-overlay,
+  .gt-popup,
+  .gt-result
+),
+body > .completion-overlay,
+body > .completion-overlay .completion-modal,
+#ai-senpai .senpai-panel {
+  animation-duration: var(--duration-base) !important;
+  animation-delay: 0ms !important;
+}
+
+#app-root :is(
+  .progress-fill,
+  .goal-ring-fill,
+  .quiz-progress-fill,
+  .ba-bar-fill,
+  .kana-drill-meter span
+) {
+  transition-duration: var(--duration-base);
+  transition-timing-function: var(--ease-standard);
+}
+
+#app-root .flashcard-inner {
+  transition-duration: var(--duration-slow);
+  transition-timing-function: var(--ease-standard);
+}
+
+#app-root .quiz-results .trophy { animation-duration: var(--duration-slow); }
+
+/* The clock is already refreshed once per minute; a looping colon adds noise. */
+.learning-overview .gt-colon { animation: none; opacity: .65; }
+
+/* Keep legacy hover feedback within the two-pixel motion budget. */
+#app-root .quiz-option:hover:not(.disabled) { transform: translateX(2px); }
+#app-root .mini-plan:hover,
+#app-root .deck-card:hover { transform: translateY(-2px); }
+#app-root .deck-card:focus-visible,
+#app-root .kana-cell:focus-visible { transform: none; }
+
+#app-root :is(
+  .play-btn,
+  .ge-play,
+  .deck-card .dc-audio,
+  .deck-ex .de-play,
+  .gt-card__example-audio
+):hover {
+  transform: translateY(-1px);
+}
+
+#app-root .deck-list-item .dc-audio:hover { transform: translateY(-50%); }
+#app-root :is(.quiz-q-listen-btn, .qlp-btn):active { transform: translateY(2px); }
+
+#ai-senpai .senpai-orb-btn {
+  animation-duration: var(--duration-base);
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-standard);
+}
+
+#ai-senpai .senpai-orb-btn:hover { transform: translateY(-2px); }
+#ai-senpai .senpai-orb-btn:active { transform: translateY(2px); }
+
+/* Paw, halo, and notification pulse are decorative. One brief cue is enough. */
+#ai-senpai .senpai-orb-btn > span,
+#ai-senpai .senpai-orb-btn > svg g {
+  animation-duration: var(--duration-base) !important;
+  animation-iteration-count: 1 !important;
+}
+
+.lesson-student-nav :is(a, button):focus-visible,
+#app-root :is(a, button, input, select, textarea, summary, [role="button"]):focus-visible,
+#ai-senpai button:focus-visible {
+  transition-duration: 0ms !important;
+  transition-delay: 0ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lesson-student-nav *,
+  .lesson-student-nav *::before,
+  .lesson-student-nav *::after,
+  #app-root *,
+  #app-root *::before,
+  #app-root *::after,
+  .sidebar-backdrop,
+  body > .completion-overlay,
+  body > .completion-overlay *,
+  body > .xp-toast,
+  .confetti-piece,
+  #ai-senpai *,
+  #ai-senpai *::before,
+  #ai-senpai *::after {
+    animation-duration: 0ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    transition-delay: 0ms !important;
+  }
+
+  .confetti-piece { display: none !important; }
+
+  #app-root :is(
+    .pronounce-btn.playing,
+    .ge-play.playing,
+    .dc-audio.playing,
+    .dm-headaudio.playing,
+    .de-play.playing,
+    .quiz-q-listen-btn.playing,
+    .gt-mic__ring,
+    .gt-mic__wave i,
+    .gt-mic__spinner,
+    [style*="animation:ezBootSpin"]
+  ),
+  #ai-senpai *,
+  #ai-senpai *::before,
+  #ai-senpai *::after {
+    animation: none !important;
+  }
+
+  #app-root :is(
+    .greeting-resume,
+    .reco-lesson,
+    .play-btn,
+    .btn-primary,
+    .btn-secondary,
+    .quiz-next-btn,
+    .quiz-option,
+    .rating-btn,
+    .flashcard-cta,
+    .paywall-cta,
+    .mini-plan,
+    .resource-card,
+    .ge-play,
+    .deck-card,
+    .deck-card .dc-audio,
+    .deck-ex .de-play,
+    .quiz-image-option,
+    .quiz-q-listen-btn,
+    .gk-play,
+    .qlp-btn,
+    .kana-cell,
+    .kana-drill-opt,
+    .kanji-tile,
+    .gt-card__example-audio,
+    .gt-btn--primary
+  ):is(:hover, :active, :focus-visible),
+  #app-root .quicklink:hover .ql-arr,
+  #app-root .gt-mic:hover:not(.recording):not(.processing) .gt-mic__core,
+  #app-root .gt-mic:active:not(.processing) .gt-mic__core,
+  #ai-senpai .senpai-orb-btn:is(:hover, :active, :focus-visible) {
+    transform: none !important;
+  }
+
+  /* This translation positions the audio button; reduced motion must retain it. */
+  #app-root .deck-list-item .dc-audio:is(:hover, :active, :focus-visible) {
+    transform: translateY(-50%) !important;
+  }
+}

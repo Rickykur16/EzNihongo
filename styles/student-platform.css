@@ -138,6 +138,7 @@ a {
   outline: 3px solid var(--learning-blue-700);
   outline-offset: 2px;
   box-shadow: 0 0 0 2px var(--surface-white);
+  transition-duration: 0ms;
 }
 
 .primary:disabled,
@@ -274,5 +275,39 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .loading::before { animation-duration: 1.8s; }
+  .loading::before { animation: none; }
+
+  .primary,
+  .secondary,
+  .btn,
+  .back-link,
+  .token,
+  .tabs button,
+  .category-row button,
+  .count,
+  .option,
+  .course-select {
+    transition-duration: 0ms;
+  }
+
+  .primary:hover:not(:disabled),
+  .primary:active:not(:disabled),
+  .secondary:hover:not(:disabled),
+  .secondary:active:not(:disabled),
+  .btn:hover:not(:disabled),
+  .btn:active:not(:disabled),
+  .back-link:hover,
+  .back-link:active,
+  .token:hover:not(:disabled),
+  .token:active:not(:disabled),
+  .tabs button:hover:not(:disabled),
+  .tabs button:active:not(:disabled),
+  .category-row button:hover:not(:disabled),
+  .category-row button:active:not(:disabled),
+  .count:hover:not(:disabled),
+  .count:active:not(:disabled),
+  .option:hover:not(:disabled),
+  .option:active:not(:disabled) {
+    transform: none !important;
+  }
 }
