@@ -165,3 +165,148 @@
     padding: 18px 16px 150px;
   }
 }
+
+/* Deep Blue course and curriculum states. Completion stays separate from mastery. */
+#sidebar .course-picker {
+  border-color: var(--learning-blue-200);
+  background: var(--surface-white, #fff);
+  box-shadow: none;
+}
+
+#sidebar .course-picker-bar {
+  min-height: 48px;
+  background: var(--surface-white, #fff);
+}
+
+#sidebar .course-picker-level,
+.course-tab.active {
+  background: var(--learning-blue-900);
+  color: #fff;
+  box-shadow: none;
+}
+
+#sidebar .course-option {
+  min-height: 44px;
+  opacity: 1;
+}
+
+#sidebar .course-option.active {
+  border-left-color: var(--learning-blue-700);
+  background: var(--learning-blue-100);
+}
+
+#sidebar .course-option.active .level-chip {
+  border-color: var(--learning-blue-700);
+  background: var(--learning-blue-700);
+  color: #fff;
+}
+
+#sidebar .course-option.active .opt-status {
+  color: var(--learning-blue-700);
+}
+
+#sidebar .course-option.locked {
+  border-left-color: var(--ink-500, #6f6a63);
+  background: var(--paper-100, #faf7f2);
+  color: var(--ink-700, #4a453e);
+  cursor: pointer;
+}
+
+#sidebar .course-option.locked:hover {
+  background: var(--paper-200, #f2ede3);
+}
+
+#sidebar .course-option.locked .opt-status {
+  color: var(--ink-700, #4a453e);
+}
+
+#sidebar .sidebar-section,
+#sidebar .module {
+  border-color: var(--paper-300, #e8e1d3);
+  background: transparent;
+}
+
+#sidebar .sidebar-section.open {
+  background: var(--surface-white, #fff);
+}
+
+#sidebar .sidebar-section.current > .sidebar-section-header,
+#sidebar .module.current > .module-header {
+  background: var(--learning-blue-100);
+  color: var(--learning-blue-800);
+  box-shadow: inset 3px 0 0 var(--learning-blue-700);
+}
+
+#sidebar .sidebar-section.complete > .sidebar-section-header .ss-meta,
+#sidebar .module.complete > .module-header .m-meta {
+  color: var(--success, #3b6d11);
+  font-weight: 700;
+}
+
+#sidebar .lesson-item.current,
+#sidebar .lesson-item.current:hover {
+  border-left-color: var(--learning-blue-700);
+  background: var(--learning-blue-100);
+}
+
+#sidebar .lesson-item.current .lesson-title-text {
+  color: var(--learning-blue-800);
+}
+
+#sidebar .lesson-item.done .lesson-check,
+#sidebar .lesson-item.done .lesson-title-text {
+  color: var(--success, #3b6d11);
+}
+
+#sidebar .lesson-item.done .lesson-check {
+  border-color: var(--success, #3b6d11);
+  background: var(--success, #3b6d11);
+  color: #fff;
+}
+
+#sidebar .progress-fill {
+  background: var(--learning-blue-600);
+  box-shadow: none;
+}
+
+.course-tab {
+  min-height: 44px;
+}
+
+.course-tab.locked {
+  border-color: var(--ink-500, #6f6a63);
+  background: var(--paper-100, #faf7f2);
+  color: var(--ink-700, #4a453e);
+  opacity: 1;
+}
+
+.course-tab.active:hover {
+  background: var(--learning-blue-800);
+  color: #fff;
+}
+
+.course-tab.locked:hover {
+  border-color: var(--ink-500, #6f6a63);
+  background: var(--paper-200, #f2ede3);
+  color: var(--ink-900, #1a1815);
+}
+
+#sidebar .course-option .opt-name,
+#sidebar .course-picker-name,
+#sidebar .ss-name,
+#sidebar .m-name,
+#sidebar .lesson-title-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+#sidebar .course-picker-bar:focus-visible,
+#sidebar .course-option:focus-visible,
+#sidebar .sidebar-section-header:focus-visible,
+#sidebar .module-header:focus-visible,
+#sidebar .lesson-item:focus-visible,
+.course-tab:focus-visible {
+  outline: 3px solid var(--learning-blue-700);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #fff;
+}
