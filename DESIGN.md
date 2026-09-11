@@ -293,6 +293,32 @@ QA covers themes the affected surface already supports. For the main student web
 - Compare representative before and after page weight and interaction responsiveness using the same data, viewport, cache state, and font availability.
 - A visual PR must not materially regress Core Web Vitals. If a regression appears, remove or simplify the visual effect before release.
 
+### Measured rollout verification (PR20)
+
+The transfer comparison uses baseline `a9642f1` and the final post-PR19 integration snapshot `18a907194a97ea4cde1bdb1832f835989a78a4d5`. Each value below is the change in a cold first-party HTML/CSS/JavaScript proxy, with gzip level 9 applied separately to each response. External fonts and CDNs, images, API responses, headers, and cache reuse across pages are excluded.
+
+| Surface | Gzip change | First-party request change |
+| --- | ---: | ---: |
+| Landing (`index.html`) | +902 B | 0 |
+| Login | +664 B | 0 |
+| Registration, password reset, and auth callback redirects | 0 B | 0 |
+| Forgot password | +435 B | 0 |
+| Course detail | +706 B | 0 |
+| Order / checkout | +886 B | 0 |
+| Dashboard | +779 B | 0 |
+| Belajar (`welcome.html`) | +7,089 B | +2 |
+| Smart Review | +1,170 B | 0 |
+| Progres | +1,159 B | 0 |
+| Live Class | +1,336 B | 0 |
+| Privacy | +388 B | 0 |
+| Terms | +387 B | 0 |
+
+The two intentional Belajar requests are `learning-state.js` and `styles/learning-state.css`. No third-party runtime dependency, package or lockfile change, font, image, or other binary asset was added. The student pages now use one aligned cache key for `styles/student-layout.css`, so navigation does not fetch the same file under multiple rollout versions.
+
+The final offline interaction checks ran sequentially in headless Edge with synthetic APIs, reduced motion, fresh contexts, fallback fonts, alternating revision order, and 11 measured samples per revision at 1x CPU. Dashboard medians changed by approximately 0.0 ms for DOMContentLoaded, -69.2 ms for synthetic content readiness, +0.013 ms for script duration, and +0.216 ms for layout duration; its first-party and API request counts were unchanged. Belajar paywall medians changed by +7.5 ms, +26.6 ms, +0.257 ms, and -0.242 ms respectively; it added the two expected first-party learning-state assets while its API request count remained unchanged. All sampled primary controls remained focusable and no page error occurred. These are directional local measurements, not production Web Vitals. A separate 4x CPU run produced sign-changing layout deltas under CPU contention and font fallback, so those timings were rejected rather than presented as evidence.
+
+No bulk CSS deletion was performed. The only exact redundant rules found would save about 8 gzip bytes and did not justify cache churn. Two larger pre-existing costs remain explicit backlog rather than part of this visual rollout: the landing page uses React development UMD builds plus in-browser Babel compilation, and `welcome.html` remains a roughly 600 KB HTML monolith with about 420 KB of inline JavaScript and 177 KB of inline CSS.
+
 ## CSS ownership and cascade
 
 The existing stylesheet order is part of runtime behavior. A change must inspect the final computed result, not only the rule where a value was written.
