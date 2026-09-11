@@ -28,6 +28,35 @@ body {
 .hero p { margin: 0; max-width: 680px; }
 .hero .course-switch { min-width: 220px; }
 
+#progress-app .hero .course-switch {
+  width: min(320px, 100%);
+  min-width: 0;
+}
+
+#progress-app .course-select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+#progress-app .hero > *,
+#progress-app .card,
+#progress-app .sections > *,
+#progress-app .chapters,
+#progress-app .chapter,
+#progress-app .chapter-top > *,
+#progress-app .mastery-row > * { min-width: 0; }
+
+#progress-app .hero h1,
+#progress-app .card h2,
+#progress-app .card p,
+#progress-app .section-title,
+#progress-app .chapter h3,
+#progress-app .chapter .muted,
+#progress-app .chapter-top > strong,
+#progress-app .pill,
+#progress-app .state { overflow-wrap: anywhere; }
+
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -35,15 +64,17 @@ body {
   margin: 16px 0;
 }
 
-.card {
+#progress-app .card {
   position: relative;
   overflow: hidden;
   border: 1px solid var(--paper-300, #e8e1d3);
   border-radius: 17px;
+  background: var(--surface-white, #fff);
+  box-shadow: none;
   padding: 22px;
 }
 
-.card::before {
+#progress-app .card::before {
   content: "";
   position: absolute;
   top: 0;
@@ -53,88 +84,131 @@ body {
   background: var(--paper-300, #e8e1d3);
 }
 
-.card h2,
-.sections h2 {
+#progress-app .card h2,
+#progress-app .sections h2 {
   margin: 6px 0 8px;
   color: var(--ink-900, #1a1815);
   font-family: "Shippori Mincho", serif;
   line-height: 1.3;
 }
 
-.number {
+#progress-app .number {
   margin-top: 5px;
-  color: var(--brand-red, #c8102e);
+  color: var(--learning-blue-900, #19345f);
   font: 700 clamp(36px, 6vw, 54px)/1.1 "Shippori Mincho", serif;
   letter-spacing: -.045em;
 }
 
-.course-progress-bar,
-.chapter-progress-bar {
+#progress-app .course-progress-bar,
+#progress-app .chapter-progress-bar {
   overflow: hidden;
   border-radius: 999px;
   background: var(--paper-200, #f2ede3);
 }
 
-.course-progress-bar {
+#progress-app .course-progress-bar {
   height: 8px;
   margin: 16px 0 8px;
 }
 
-.chapter-progress-bar {
+#progress-app .chapter-progress-bar {
   height: 6px;
   margin-top: 13px;
 }
 
-.course-progress-bar i,
-.chapter-progress-bar i {
+#progress-app .course-progress-bar i,
+#progress-app .chapter-progress-bar i {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--brand-red, #c8102e), #e11d48);
+  background: var(--learning-blue-600, #4165a8);
 }
 
-.mastery {
+#progress-app .card.progress-overview {
+  border-color: var(--learning-blue-900, #19345f);
+  background: var(--learning-blue-900, #19345f);
+  color: var(--learning-blue-100, #eef3fa);
+  box-shadow: var(--elev-2, 0 4px 12px rgba(20, 15, 10, .06));
+}
+
+#progress-app .card.progress-overview::before {
+  background: var(--learning-blue-500, #5a7db7);
+}
+
+#progress-app .progress-overview .eyebrow { color: var(--learning-blue-200, #dce6f5); }
+#progress-app .progress-overview .number { color: var(--surface-white, #fff); }
+#progress-app .progress-overview .muted { color: var(--learning-blue-100, #eef3fa); }
+
+#progress-app .progress-overview .course-progress-bar {
+  border: 1px solid var(--learning-blue-200, #dce6f5);
+  background: var(--learning-blue-700, #334e8c);
+}
+
+#progress-app .progress-overview .course-progress-bar i {
+  background: var(--learning-blue-100, #eef3fa);
+}
+
+#progress-app .card.activity-overview {
+  border-color: var(--learning-blue-200, #dce6f5);
+  background: var(--learning-blue-100, #eef3fa);
+}
+
+#progress-app .card.activity-overview::before { background: var(--learning-blue-600, #4165a8); }
+#progress-app .activity-overview .eyebrow { color: var(--learning-blue-700, #334e8c); }
+#progress-app .activity-overview h2 { color: var(--learning-blue-900, #19345f); }
+#progress-app .activity-overview .muted { color: var(--ink-700, #4a453e); }
+
+#progress-app .mastery {
   display: grid;
   gap: 0;
   margin-top: 12px;
 }
 
-.mastery-row {
+#progress-app .mastery-row {
   display: grid;
-  grid-template-columns: 105px minmax(100px, 1fr) minmax(145px, auto);
+  grid-template-columns: minmax(78px, 105px) minmax(100px, 1fr) minmax(145px, .8fr);
   gap: 12px;
   align-items: center;
   padding: 12px 0;
   border-bottom: 1px solid var(--paper-200, #f2ede3);
 }
 
-.mastery-row:last-child { border-bottom: 0; }
-.mastery-row strong { font-size: 13px; }
+#progress-app .mastery-row:last-child { border-bottom: 0; }
+#progress-app .mastery-row strong { font-size: 13px; }
 
-.bar {
+#progress-app .bar {
   height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--paper-200, #f2ede3);
+  background: var(--learning-blue-200, #dce6f5);
 }
 
-.bar i {
+#progress-app .bar i {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--brand-red, #c8102e);
+  background: var(--learning-blue-600, #4165a8);
 }
 
-.state { color: var(--ink-500, #8a8378); font-size: 12px; }
+#progress-app .state { color: var(--ink-700, #4a453e); font-size: 12px; }
 
-.trend-card {
+#progress-app .card.mastery-card { border-color: var(--learning-blue-200, #dce6f5); }
+#progress-app .card.mastery-card::before { background: var(--learning-blue-600, #4165a8); }
+#progress-app .mastery-card .eyebrow { color: var(--learning-blue-700, #334e8c); }
+#progress-app .mastery-card h2 { color: var(--learning-blue-900, #19345f); }
+
+#progress-app .card.trend-card {
   margin-top: 16px;
-  background: linear-gradient(135deg, var(--brand-red-soft, #fff0f2), #fff 65%);
+  border-color: var(--learning-blue-200, #dce6f5);
+  background: var(--learning-blue-100, #eef3fa);
 }
 
-.trend-card::before { background: var(--brand-red, #c8102e); }
+#progress-app .card.trend-card::before { background: var(--learning-blue-700, #334e8c); }
+#progress-app .trend-card .eyebrow { color: var(--learning-blue-700, #334e8c); }
+#progress-app .trend-card > p:first-of-type { color: var(--learning-blue-900, #19345f); font-weight: 700; }
+#progress-app .trend-card .muted { color: var(--ink-700, #4a453e); }
 
-.btn {
+#progress-app .btn {
   padding: 10px 14px;
   display: inline-flex;
   align-items: center;
@@ -142,75 +216,96 @@ body {
   text-decoration: none;
 }
 
-.sections {
+#progress-app .sections {
   display: grid;
   gap: 20px;
   margin-top: 32px;
 }
 
-.section-title {
+#progress-app .section-title {
   margin: 0 0 9px;
-  color: var(--ink-500, #8a8378);
+  color: var(--ink-700, #4a453e);
   font-family: "JetBrains Mono", monospace;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: .08em;
   text-transform: uppercase;
 }
 
-.chapters { display: grid; gap: 10px; }
+#progress-app .chapters { display: grid; gap: 10px; }
 
-.chapter {
+#progress-app .chapter {
   border: 1px solid var(--paper-300, #e8e1d3);
   border-radius: 13px;
+  background: var(--surface-white, #fff);
+  box-shadow: none;
   padding: 16px 18px;
 }
 
-.chapter-top {
+#progress-app .chapter-top {
   display: flex;
   gap: 18px;
   justify-content: space-between;
   align-items: start;
 }
 
-.chapter h3 {
+#progress-app .chapter h3 {
   margin: 0 0 2px;
   color: var(--ink-900, #1a1815);
   font-family: "Shippori Mincho", serif;
   font-size: 18px;
 }
 
-.chapter-top > strong {
+#progress-app .chapter-top > strong {
   flex: 0 0 auto;
-  color: var(--brand-red, #c8102e);
+  color: var(--learning-blue-700, #334e8c);
   font-size: 13px;
 }
 
-.chapter-meta {
+#progress-app .chapter-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
   margin-top: 12px;
 }
 
-.pill {
+#progress-app .pill {
   padding: 4px 9px;
   border: 1px solid var(--paper-200, #f2ede3);
   border-radius: 999px;
   background: var(--paper-100, #faf7f2);
   color: var(--ink-700, #4a453e);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-decoration: none;
 }
 
-a.pill:hover {
-  border-color: var(--brand-red, #c8102e);
-  background: var(--brand-red-soft, #fff0f2);
-  color: var(--brand-red, #c8102e);
+#progress-app a.pill {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 12px;
+  border-color: var(--warning, #854f0b);
+  background: var(--warning-soft, #faeeda);
+  color: var(--warning, #854f0b);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
-.empty {
+#progress-app a.pill:hover {
+  border-color: var(--warning, #854f0b);
+  background: var(--warning-soft, #faeeda);
+  color: var(--warning, #854f0b);
+  text-decoration-thickness: 2px;
+}
+
+#progress-app a.pill:focus-visible {
+  outline: 3px solid var(--learning-blue-700, #334e8c);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--surface-white, #fff);
+}
+
+#progress-app .empty {
   padding: 36px;
   border: 1px dashed var(--paper-400, #d4ccb8);
   border-radius: 15px;
@@ -218,24 +313,34 @@ a.pill:hover {
 }
 
 @media (max-width: 720px) {
-  .page {
+  #progress-app .page {
     width: min(100% - 28px, 1040px);
     margin: 26px auto 42px;
   }
 
-  .hero {
+  #progress-app .hero {
     align-items: stretch;
     flex-direction: column;
     gap: 18px;
     padding-bottom: 20px;
   }
 
-  .hero h1 { font-size: 34px; }
-  .grid { grid-template-columns: 1fr; gap: 13px; }
-  .card { padding: 19px; border-radius: 15px; }
-  .mastery-row { grid-template-columns: 78px minmax(70px, 1fr); }
-  .mastery-row .state { grid-column: 2; }
-  .chapter-top { gap: 8px; }
-  .chapter { padding: 15px; }
-  .btn { width: 100%; }
+  #progress-app .hero .course-switch { width: 100%; }
+  #progress-app .hero h1 { font-size: 34px; }
+  #progress-app .grid { grid-template-columns: 1fr; gap: 13px; }
+  #progress-app .card { padding: 19px; border-radius: 15px; }
+  #progress-app .mastery-row { grid-template-columns: 78px minmax(0, 1fr); }
+  #progress-app .mastery-row .state { grid-column: 2; }
+  #progress-app .chapter-top { gap: 8px; }
+  #progress-app .chapter { padding: 15px; }
+  #progress-app .btn { width: 100%; }
+}
+
+@media (max-width: 480px) {
+  #progress-app .chapter-top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  #progress-app .chapter-top > strong { flex-basis: auto; }
 }

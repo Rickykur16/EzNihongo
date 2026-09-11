@@ -8,7 +8,13 @@
   const url = (path, course) => `${path}?v=${release}&course=${encodeURIComponent(course)}`;
   function mastery(key, value = {}) {
     const percent = value.percentage;
-    return `<div class="mastery-row"><strong>${labels[key]}</strong><div class="bar" aria-label="${labels[key]} ${percent == null ? 'belum cukup latihan' : `${percent}%`}"><i style="width:${percent == null ? 0 : percent}%"></i></div><span class="state">${percent == null ? 'Belum cukup latihan' : `${percent}% · `}${esc(value.label || 'Belum cukup latihan')}</span></div>`;
+    const state = percent == null
+      ? esc(value.label || 'Belum cukup latihan')
+      : `${percent}%${value.label ? ` · ${esc(value.label)}` : ''}`;
+    const barA11y = percent == null
+      ? 'aria-hidden="true"'
+      : `role="progressbar" aria-label="${labels[key]}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"`;
+    return `<div class="mastery-row"><strong>${labels[key]}</strong><div class="bar" ${barA11y}><i style="width:${percent == null ? 0 : percent}%"></i></div><span class="state">${state}</span></div>`;
   }
   function chapter(item) {
     const performance = item.performance || {};
