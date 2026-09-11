@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles/tokens.css"/>
 <link rel="stylesheet" href="styles/components.css"/>
-<link rel="stylesheet" href="index.css?v=20260911-1"/>
+<link rel="stylesheet" href="index.css?v=20260911-2"/>
 </head>
 <body>
 <script>
@@ -291,6 +291,8 @@ function ModernNav() {
   const [scrolled, setScrolled] = React.useState(false);
   const [user, setUser] = React.useState(null);
   const [loaded, setLoaded] = React.useState(false);
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const menuButton = React.useRef(null);
 
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -306,48 +308,93 @@ function ModernNav() {
     })();
   }, []);
 
+  React.useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key !== 'Escape' || !menuOpen) return;
+      setMenuOpen(false);
+      window.requestAnimationFrame(() => menuButton.current?.focus());
+    };
+    const onResize = () => {
+      if (window.innerWidth > 768) setMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    window.addEventListener('resize', onResize);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [menuOpen]);
+
   const initial = user ? (user.name || user.email || 'U').charAt(0).toUpperCase() : '';
 
+  const authActions = (mobile = false) => (
+    <div className={mobile ? 'ez-mobile-auth' : 'ez-nav-auth'}>
+      {loaded && user && (
+        <>
+          <a href="dashboard.html?v=20260902-1" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', padding: '6px 10px', borderRadius: 999 }}>
+            {user.avatar ? (
+              <img src={user.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+            ) : (
+              <div aria-hidden="true" style={{ width: 32, height: 32, borderRadius: '50%', background: '#C8102E', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700 }}>{initial}</div>
+            )}
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#0a0a0a', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name}</span>
+          </a>
+          <button type="button" style={{ fontSize: 13, color: 'var(--ink-700)', fontWeight: 500, padding: '8px 14px', borderRadius: 8, border: '1.5px solid var(--paper-300)', background: 'var(--surface-white)', cursor: 'pointer' }}
+            onClick={() => window.ezLogout()}>
+            Keluar
+          </button>
+        </>
+      )}
+      {loaded && !user && (
+        <>
+          <button type="button" className="ez-btn ez-btn-ghost" onClick={() => window.location.href = 'login.html'}>
+            Masuk
+          </button>
+          <button type="button" className="ez-btn ez-btn-primary" onClick={() => window.location.href = 'login.html'}>
+            Daftar
+          </button>
+        </>
+      )}
+    </div>
+  );
+
   return (
-    <nav className="ez-public-nav" style={{
+    <nav className="ez-public-nav" aria-label="Navigasi utama" style={{
       position: 'sticky', top: 0, zIndex: 100,
       background: 'var(--paper-50)',
       borderBottom: scrolled ? '1px solid var(--paper-300)' : '1px solid var(--paper-200)',
       transition: 'border-color var(--duration-fast) var(--ease-standard)',
     }}>
       <div className="ez-nav-inner">
-        <a href="#" onClick={e => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <a href="#" onClick={e => { e.preventDefault(); setMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <img src="logo.png" alt="EzNihongo" style={{ height: 52 }} />
         </a>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 40 }}>
-          {loaded && user && (
-            <>
-              <a href="dashboard.html?v=20260902-1" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', padding: '6px 10px', borderRadius: 999 }}>
-                {user.avatar ? (
-                  <img src={user.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#C8102E', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700 }}>{initial}</div>
-                )}
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#0a0a0a', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name}</span>
-              </a>
-              <button style={{ fontSize: 13, color: 'var(--ink-700)', fontWeight: 500, padding: '8px 14px', borderRadius: 8, border: '1.5px solid var(--paper-300)', background: 'var(--surface-white)', cursor: 'pointer' }}
-                onClick={() => window.ezLogout()}>
-                Keluar
-              </button>
-            </>
-          )}
-          {loaded && !user && (
-            <>
-              <button className="ez-btn ez-btn-ghost" onClick={() => window.location.href = 'login.html'}>
-                Masuk
-              </button>
-              <button className="ez-btn ez-btn-primary" onClick={() => window.location.href = 'login.html'}>
-                Daftar
-              </button>
-            </>
-          )}
+        <div className="ez-nav-links">
+          {SHARED_CONTENT.nav.map((item) => (
+            <a key={item.href} href={item.href}>{item.label}</a>
+          ))}
         </div>
+        {authActions()}
+        <button
+          ref={menuButton}
+          id="public-menu-toggle"
+          type="button"
+          className="ez-hamburger"
+          aria-label={menuOpen ? 'Tutup menu navigasi' : 'Buka menu navigasi'}
+          aria-expanded={menuOpen}
+          aria-controls="public-mobile-menu"
+          onClick={() => setMenuOpen((value) => !value)}>
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+        </button>
+      </div>
+      <div id="public-mobile-menu" className={`ez-mobile-menu${menuOpen ? ' open' : ''}`} hidden={!menuOpen}>
+        {SHARED_CONTENT.nav.map((item) => (
+          <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)}>{item.label}</a>
+        ))}
+        {authActions(true)}
       </div>
     </nav>
   );
@@ -753,11 +800,34 @@ function ModernPricing() {
   React.useEffect(() => { if (active >= plans.length) setActive(0); }, [plans.length, active]);
   const [animating, setAnimating] = React.useState(false);
   const touchStart = React.useRef(null);
+  const tabRefs = React.useRef([]);
+  const animationTimer = React.useRef(null);
 
-  const switchPlan = (idx) => {
-    if (idx === active || animating) return;
+  React.useEffect(() => () => window.clearTimeout(animationTimer.current), []);
+
+  const switchPlan = (idx, immediate = false) => {
+    if (idx === active) return;
+    if (animating && !immediate) return;
+    window.clearTimeout(animationTimer.current);
+    if (immediate) {
+      setAnimating(false);
+      setActive(idx);
+      return;
+    }
     setAnimating(true);
-    setTimeout(() => { setActive(idx); setAnimating(false); }, 220);
+    animationTimer.current = window.setTimeout(() => { setActive(idx); setAnimating(false); }, 220);
+  };
+
+  const handleTabKeyDown = (event, index) => {
+    let next = null;
+    if (event.key === 'ArrowRight') next = (index + 1) % plans.length;
+    if (event.key === 'ArrowLeft') next = (index - 1 + plans.length) % plans.length;
+    if (event.key === 'Home') next = 0;
+    if (event.key === 'End') next = plans.length - 1;
+    if (next === null) return;
+    event.preventDefault();
+    switchPlan(next, true);
+    window.requestAnimationFrame(() => tabRefs.current[next]?.focus());
   };
 
   const mouseStart = React.useRef(null);
@@ -808,7 +878,7 @@ function ModernPricing() {
               if (idx < 0) return null;
               g.idx = idx;
               return (
-              <button key={i} aria-pressed={active === g.idx} onClick={() => switchPlan(g.idx)} style={{
+              <button key={i} type="button" aria-pressed={active === g.idx} onClick={() => switchPlan(g.idx)} style={{
                 display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRadius: 8,
               background: active === g.idx ? 'var(--learning-blue-100)' : 'var(--paper-100)',
                 border: `1.5px solid ${active === g.idx ? g.color : 'var(--paper-300)'}`,
@@ -824,9 +894,12 @@ function ModernPricing() {
         </div>
 
         {/* Tab selector */}
-        <div className="reveal" style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 36, flexWrap: 'wrap' }}>
+        <div className="reveal" role="tablist" aria-label="Pilih kelas" style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 36, flexWrap: 'wrap' }}>
           {plans.map((pl, i) => (
-            <button key={i} aria-pressed={active === i} onClick={() => switchPlan(i)} style={{
+            <button key={i} type="button" role="tab" id={`pricing-tab-${i}`}
+              aria-selected={active === i} aria-controls="pricing-panel" tabIndex={active === i ? 0 : -1}
+              ref={(node) => { tabRefs.current[i] = node; }}
+              onKeyDown={(event) => handleTabKeyDown(event, i)} onClick={() => switchPlan(i)} style={{
               padding: '8px 20px', borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
               background: active === i ? 'var(--learning-blue-700)' : 'var(--surface-white)',
               color: active === i ? '#fff' : 'var(--ink-700)',
@@ -839,7 +912,8 @@ function ModernPricing() {
         </div>
 
         {/* Single sliding card */}
-        <div className="reveal" style={{ maxWidth: 800, margin: '0 auto', cursor: 'grab' }}
+        <div className="reveal" id="pricing-panel" role="tabpanel" aria-labelledby={`pricing-tab-${active}`} tabIndex="0"
+          style={{ maxWidth: 800, margin: '0 auto', cursor: 'grab' }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           onMouseDown={handleMouseDown}
@@ -913,6 +987,7 @@ function ModernPricing() {
 
             {plan.available ? (
               <button
+                type="button"
                 className="ez-btn ez-btn-primary ez-btn-lg"
                 style={{ width: '100%', marginTop: 32, fontSize: 16, fontWeight: 700 }}
                 onClick={() => {
@@ -926,6 +1001,7 @@ function ModernPricing() {
               </button>
             ) : (
               <button
+                type="button"
                 className="ez-btn ez-btn-ghost"
                 style={{ width: '100%', marginTop: 32, fontSize: 16 }}
                 disabled>
@@ -934,12 +1010,6 @@ function ModernPricing() {
             )}
           </div>
 
-          {/* Dot indicators */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 24 }}>
-            {plans.map((_, i) => (
-              <button key={i} aria-label={`Tampilkan paket ${plans[i].level}`} aria-pressed={active === i} onClick={() => switchPlan(i)} className="ez-carousel-dot" />
-            ))}
-          </div>
         </div>
 
         <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--ink-700)', maxWidth: 680, margin: '40px auto 0', lineHeight: 1.6 }}>{p.note}</p>
@@ -999,11 +1069,11 @@ function ModernFAQ() {
         <div className="reveal">
           {f.items.map((item, i) => (
             <div key={i} style={{ background: 'var(--surface-white)', border: '1px solid var(--paper-300)', borderRadius: 12, marginBottom: 10, overflow: 'hidden', transition: 'border-color var(--duration-fast) var(--ease-standard)' }}>
-              <button aria-expanded={open === i} aria-controls={`faq-panel-${i}`} onClick={() => setOpen(open === i ? -1 : i)} style={{ width: '100%', textAlign: 'left', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, fontSize: 'clamp(14px, 2vw, 16px)', fontWeight: 600, color: '#0a0a0a' }}>
+              <button type="button" id={`faq-button-${i}`} aria-expanded={open === i} aria-controls={`faq-panel-${i}`} onClick={() => setOpen(open === i ? -1 : i)} style={{ width: '100%', textAlign: 'left', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, fontSize: 'clamp(14px, 2vw, 16px)', fontWeight: 600, color: '#0a0a0a' }}>
                 <span>{item.q}</span>
-                <span style={{ fontSize: 22, fontWeight: 300, transform: open === i ? 'rotate(45deg)' : 'rotate(0)', transition: 'transform 0.3s', color: '#C8102E', flexShrink: 0 }}>+</span>
+                <span aria-hidden="true" style={{ fontSize: 22, fontWeight: 300, transform: open === i ? 'rotate(45deg)' : 'rotate(0)', transition: 'transform 0.3s', color: '#C8102E', flexShrink: 0 }}>+</span>
               </button>
-              <div id={`faq-panel-${i}`} aria-hidden={open !== i} style={{ maxHeight: open === i ? 260 : 0, overflow: 'hidden', transition: 'max-height var(--duration-base) var(--ease-standard)' }}>
+              <div id={`faq-panel-${i}`} role="region" aria-labelledby={`faq-button-${i}`} aria-hidden={open !== i} hidden={open !== i} style={{ maxHeight: open === i ? 260 : 0, overflow: 'hidden', transition: 'max-height var(--duration-base) var(--ease-standard)' }}>
                 <p style={{ padding: '0 24px 22px', fontSize: 15, color: '#525252', lineHeight: 1.7 }}>{item.a}</p>
               </div>
             </div>
@@ -1382,17 +1452,19 @@ function App() {
     <div className="ez-public-app" style={{ fontFamily: "'Inter', system-ui, sans-serif", background: "var(--paper-100)", color: "var(--ink-900)" }}>
       <FloatingWA />
       <ModernNav />
-      <ModernHero />
-      <div style={{ background: 'var(--paper-100)' }}>
-        <ModernFeatures />
-        <ModernStory />
-      </div>
-      <ModernSensei />
-      <ModernTestimonials />
-      <ModernPricing />
-      <ModernFAQ />
-      <ModernJoinCTA />
-      <DiscordSection />
+      <main id="main-content">
+        <ModernHero />
+        <div style={{ background: 'var(--paper-100)' }}>
+          <ModernFeatures />
+          <ModernStory />
+        </div>
+        <ModernSensei />
+        <ModernTestimonials />
+        <ModernPricing />
+        <ModernFAQ />
+        <ModernJoinCTA />
+        <DiscordSection />
+      </main>
       <ModernFooter />
     </div>
   );

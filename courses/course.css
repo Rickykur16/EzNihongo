@@ -295,7 +295,7 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; }
 .c-footer p {
   margin: 0;
   font-size: 13px;
-  color: var(--ink-500);
+  color: var(--ink-700);
 }
 .c-footer strong { color: var(--brand-red); font-weight: 700; }
 
@@ -326,6 +326,31 @@ body :where(a, button, input, select):focus-visible {
   font-size: 13px;
   font-weight: 600;
 }
+
+.c-form-status,
+.c-form-alert {
+  margin: 0 0 12px;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.c-form-status {
+  border: 1px solid var(--learning-blue-200);
+  background: var(--learning-blue-100);
+  color: var(--learning-blue-800);
+}
+
+.c-form-status:empty { display: none; }
+
+.c-form-alert {
+  border: 1px solid #fecaca;
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.c-form-alert[hidden] { display: none; }
 
 .c-card code {
   border-radius: var(--radius-sm);

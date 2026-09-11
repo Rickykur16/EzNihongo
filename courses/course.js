@@ -15,8 +15,8 @@ function getSlugFromPage() {
 function renderError(title, message, backHref) {
   const wrap = document.getElementById("c-wrap") || document.body;
   wrap.innerHTML = `
-    <div style="max-width:520px;margin:80px auto;padding:40px 24px;text-align:center;">
-      <div style="font-size:48px;margin-bottom:16px;">${backHref ? '🔒' : '❓'}</div>
+    <div role="alert" style="max-width:520px;margin:80px auto;padding:40px 24px;text-align:center;">
+      <div aria-hidden="true" style="font-size:48px;margin-bottom:16px;">${backHref ? '🔒' : '❓'}</div>
       <h1 style="font-size:26px;margin:0 0 12px;color:#0a0a0a;">${title}</h1>
       <p style="color:#525252;line-height:1.6;margin:0 0 24px;">${message}</p>
       <a href="${backHref || '../index.html#pricing'}"
@@ -190,16 +190,23 @@ function renderCourseUI(course, needsProfile) {
   document.getElementById("c-checkout-form").addEventListener("submit", async e => {
     e.preventDefault();
     const btn = document.getElementById("c-submit");
+    const status = document.getElementById("c-checkout-status");
+    const error = document.getElementById("c-checkout-error");
+    status.textContent = "";
+    error.textContent = "";
+    error.hidden = true;
     btn.disabled = true;
 
     try {
       if (needsProfile) {
         btn.textContent = "Menyimpan data...";
+        status.textContent = "Menyimpan data profil...";
         await saveProfileFields();
       }
 
       if (course.is_free === true) {
         btn.textContent = "Memproses...";
+        status.textContent = "Memproses pendaftaran kelas...";
         const res = await window.ezApi("/enrollments", {
           method: "POST",
           body: JSON.stringify({ courseSlug: course.slug }),
@@ -211,6 +218,7 @@ function renderCourseUI(course, needsProfile) {
       }
 
       btn.textContent = "Membuat pesanan...";
+      status.textContent = "Membuat pesanan...";
       const res = await window.ezApi("/orders", {
         method: "POST",
         body: JSON.stringify({ courseSlug: course.slug }),
@@ -221,7 +229,9 @@ function renderCourseUI(course, needsProfile) {
     } catch (err) {
       btn.textContent = defaultLabel;
       btn.disabled = false;
-      alert("Gagal memproses: " + (err.message || "coba lagi sebentar."));
+      status.textContent = "";
+      error.textContent = "Gagal memproses: " + (err.message || "coba lagi sebentar.");
+      error.hidden = false;
     }
   });
 }

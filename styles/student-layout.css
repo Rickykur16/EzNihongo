@@ -50,7 +50,7 @@
 }
 #app .page > .hero p {
   max-width: 680px;
-  color: var(--ink-500);
+  color: var(--ink-700);
 }
 
 /* Dashboard: the next learning action is the first and largest destination. */
@@ -255,8 +255,22 @@
   border-top: 1px solid var(--paper-300, #e8e1d3);
   font-family: var(--font-body);
   font-size: 12px;
-  color: var(--ink-500, #8a8378);
+  color: var(--ink-700, #4a453e);
   text-align: center;
 }
-.student-legal a { color: inherit; text-decoration: underline; }
+.student-legal a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding-inline: 3px;
+  color: inherit;
+  text-decoration: underline;
+}
 .student-legal a:hover { color: var(--brand-red, #c8102e); }
+
+.live-recordings a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding-inline: 4px;
+}
