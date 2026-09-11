@@ -137,7 +137,7 @@ a {
 .course-select:focus-visible {
   outline: 3px solid var(--learning-blue-700);
   outline-offset: 2px;
-  box-shadow: none;
+  box-shadow: 0 0 0 2px var(--surface-white);
 }
 
 .primary:disabled,
