@@ -128,9 +128,9 @@
   width: fit-content;
   margin: 0 0 18px;
   padding: 4px;
-  border: 1px solid var(--paper-300);
+  border: 1px solid var(--learning-blue-200);
   border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, .78);
+  background: var(--learning-blue-100);
 }
 
 #app .tabs button {
@@ -141,8 +141,8 @@
 
 #app .tabs button.active,
 #app .tabs button[aria-selected="true"] {
-  border-color: var(--ink-900);
-  background: var(--ink-900);
+  border-color: var(--learning-blue-700);
+  background: var(--learning-blue-700);
   color: #fff;
 }
 
