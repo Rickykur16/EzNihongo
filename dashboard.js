@@ -98,7 +98,10 @@
 
   function masteryRow(key, value = {}) {
     const percent = value.percentage;
-    return `<div class="mastery-row"><strong>${labels[key]}</strong><div class="bar" aria-label="${labels[key]} ${percent == null ? 'belum cukup latihan' : `${percent}%`}"><i style="width:${percent == null ? 0 : percent}%"></i></div><span class="state">${percent == null ? 'Belum cukup latihan' : `${percent}% · `}${esc(value.label || 'Belum cukup latihan')}</span></div>`;
+    const state = percent == null
+      ? esc(value.label || 'Belum cukup latihan')
+      : `${percent}%${value.label ? ` · ${esc(value.label)}` : ''}`;
+    return `<div class="mastery-row"><strong>${labels[key]}</strong><div class="bar" aria-label="${labels[key]} ${percent == null ? 'belum cukup latihan' : `${percent}%`}"><i style="width:${percent == null ? 0 : percent}%"></i></div><span class="state">${state}</span></div>`;
   }
   function render(data) {
     if (!data.course) {
