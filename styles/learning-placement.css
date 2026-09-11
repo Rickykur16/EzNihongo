@@ -232,11 +232,24 @@
   background: var(--surface-white, #fff);
 }
 
-#sidebar .sidebar-section.current > .sidebar-section-header,
-#sidebar .module.current > .module-header {
+/* Only the deepest visible node on the current lesson path is selected.
+   Expanding another accordion must not make it look like the current lesson. */
+#sidebar .sidebar-section.current:not(.open) > .sidebar-section-header,
+#sidebar .module.current:not(.open) > .module-header {
   background: var(--learning-blue-100);
   color: var(--learning-blue-800);
   box-shadow: inset 3px 0 0 var(--learning-blue-700);
+}
+
+#sidebar .sidebar-section.current:not(.open) > .sidebar-section-header .ss-name,
+#sidebar .sidebar-section.current:not(.open) > .sidebar-section-header .ss-caret,
+#sidebar .module.current:not(.open) > .module-header .m-name,
+#sidebar .module.current:not(.open) > .module-header .m-caret {
+  color: var(--learning-blue-800);
+}
+
+#sidebar .module.open .m-caret {
+  color: var(--ink-500, #6f6a63);
 }
 
 #sidebar .sidebar-section.complete > .sidebar-section-header .ss-meta,
@@ -247,7 +260,7 @@
 
 #sidebar .lesson-item.current,
 #sidebar .lesson-item.current:hover {
-  border-left-color: var(--learning-blue-700);
+  box-shadow: inset 3px 0 0 var(--learning-blue-700);
   background: var(--learning-blue-100);
 }
 
@@ -256,7 +269,7 @@
 }
 
 #sidebar .lesson-item.done .lesson-check,
-#sidebar .lesson-item.done .lesson-title-text {
+#sidebar .lesson-item.done:not(.current) .lesson-title-text {
   color: var(--success, #3b6d11);
 }
 
