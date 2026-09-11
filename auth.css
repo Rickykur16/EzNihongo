@@ -1,10 +1,14 @@
 /* Auth pages — tokens-driven styling. Import tokens.css + components.css first in HTML. */
 
+*, *::before, *::after { box-sizing: border-box; }
+html { color-scheme: light; }
+
 /* ── Layout ── */
 body {
   font-family: var(--font-body);
   background: var(--paper-100);
   color: var(--ink-900);
+  color-scheme: light;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -12,7 +16,7 @@ body {
 }
 
 h1, h2, h3 {
-  font-family: var(--font-body);
+  font-family: var(--font-display);
   letter-spacing: -0.02em;
 }
 
@@ -57,7 +61,7 @@ main {
 .auth-subtitle {
   font-family: var(--font-body);
   font-size: 14px;
-  color: var(--ink-500);
+  color: var(--ink-700);
   margin: 0;
   line-height: 1.5;
 }
@@ -68,7 +72,7 @@ main {
   border: 1px solid var(--paper-300);
   border-radius: var(--radius-lg);
   padding: var(--space-7);
-  box-shadow: var(--elev-2);
+  box-shadow: var(--elev-1);
 }
 
 /* ── Google Button ── */
@@ -91,17 +95,19 @@ main {
   font-weight: 600;
   color: var(--ink-900);
   box-sizing: border-box;
+  min-height: 44px;
 }
 
 .google-btn:hover {
-  background: var(--paper-100);
-  border-color: var(--paper-400);
+  background: var(--learning-blue-100);
+  border-color: var(--learning-blue-500);
   box-shadow: var(--elev-1);
 }
 
 .google-btn:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
+  outline: 3px solid var(--learning-blue-700);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px var(--surface-white);
 }
 
 /* ── Divider ── */
@@ -142,13 +148,26 @@ main {
   background: var(--surface-white);
   outline: none;
   box-sizing: border-box;
+  min-height: 44px;
   transition: border-color var(--duration-fast) var(--ease-standard),
               box-shadow var(--duration-fast) var(--ease-standard);
 }
 
-.auth-input:focus {
-  border-color: var(--brand-red);
-  box-shadow: var(--focus-ring);
+.auth-input:focus-visible {
+  border-color: var(--learning-blue-700);
+  outline: 3px solid var(--learning-blue-700);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px var(--surface-white);
+}
+
+.auth-input::placeholder { color: var(--ink-700); opacity: 1; }
+
+.auth-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink-700);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .auth-error {
@@ -174,6 +193,7 @@ main {
               box-shadow var(--duration-fast) var(--ease-standard),
               transform var(--duration-fast) var(--ease-standard);
   margin-top: 4px;
+  min-height: 44px;
 }
 
 .auth-submit-btn:hover {
@@ -183,8 +203,17 @@ main {
 }
 
 .auth-submit-btn:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
+  outline: 3px solid var(--learning-blue-700);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px var(--surface-white);
+}
+
+.auth-submit-btn:disabled {
+  background: var(--paper-200);
+  color: var(--ink-700);
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
 /* ── Footer text ── */
@@ -192,12 +221,12 @@ main {
   text-align: center;
   margin-top: 20px;
   font-size: 13px;
-  color: var(--ink-500);
+  color: var(--ink-700);
   font-family: var(--font-body);
 }
 
 .auth-link {
-  color: var(--brand-red);
+  color: var(--learning-blue-700);
   font-weight: 600;
   text-decoration: none;
 }
@@ -214,7 +243,7 @@ main {
 
 .forgot-link a {
   font-size: 12px;
-  color: var(--brand-red);
+  color: var(--learning-blue-700);
   font-weight: 600;
   text-decoration: none;
   font-family: var(--font-body);
@@ -235,11 +264,46 @@ footer {
 .footer-text {
   font-family: var(--font-body);
   font-size: 13px;
-  color: var(--ink-500);
+  color: var(--ink-700);
   margin: 0;
 }
 
 .footer-brand {
   font-weight: 700;
   color: var(--brand-red);
+}
+
+.auth-header a,
+footer a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+}
+
+footer a { color: var(--learning-blue-700); }
+
+.auth-header a:focus-visible,
+footer a:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 3px solid var(--learning-blue-700);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px var(--surface-white);
+}
+
+.auth-wrap,
+.auth-card,
+.auth-title,
+.auth-subtitle,
+.footer-text {
+  overflow-wrap: anywhere;
+}
+
+#google-btn-container {
+  min-height: 44px;
+  align-items: center;
+}
+
+@media (max-width: 480px) {
+  main { padding: 32px 16px; }
+  .auth-card { padding: var(--space-5); }
 }
