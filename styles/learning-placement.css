@@ -1,4 +1,6 @@
 /* Keep the lesson itself central; overview tools support it without pushing it away. */
+:root { color-scheme: light; }
+
 .learning-workspace {
   min-width: 0;
   flex: 1;
@@ -604,6 +606,37 @@
   outline-offset: 3px;
   box-shadow: 0 0 0 2px #fff;
 }
+
+/* Student-shell accessibility fallback. Keep it local to the learning page so
+   admin and the standalone Kanji app retain their own visual systems. */
+.lesson-student-nav :is(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible,
+#app-root :is(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible,
+body > footer :is(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible,
+#ai-senpai :is(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
+  outline: 3px solid var(--learning-blue-700) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 2px var(--surface-white, #fff) !important;
+}
+
+.reco-summary-action,
+#app-root .course-tab :is(.lock-icon, .price-hint),
+#sidebar .course-picker-level,
+#sidebar .course-option .level-chip,
+#sidebar .course-option .opt-status,
+#sidebar .sidebar-footer .email-line,
+#sidebar .progress-sub,
+#sidebar .m-meta,
+#sidebar .lesson-meta-row,
+#sidebar .lesson-duration {
+  font-size: 12px;
+}
+
+#sidebar .course-option:not(.active) .opt-status,
+#sidebar .sidebar-footer .email-line {
+  color: var(--ink-700, #4a453e);
+}
+
+#sidebar .sidebar-footer .email-line { overflow-wrap: anywhere; }
 
 @media (max-width: 860px) {
   .learning-workspace .main-content {

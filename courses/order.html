@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="../styles/tokens.css"/>
 <link rel="stylesheet" href="../styles/components.css"/>
-<link rel="stylesheet" href="course.css?v=20260911-1"/>
+<link rel="stylesheet" href="course.css?v=20260911-2"/>
 </head>
 <body>
 
@@ -23,7 +23,8 @@
       <h1 class="c-title" id="o-title">Memuat...</h1>
       <p class="c-subtitle" id="o-subtitle"></p>
     </header>
-    <section class="c-card" id="o-body"></section>
+    <p class="ez-sr-only" id="o-live-status" role="status" aria-live="polite" aria-atomic="true"></p>
+    <section class="c-card" id="o-body" aria-labelledby="o-title" aria-busy="true"></section>
   </div>
 </main>
 
@@ -99,7 +100,14 @@ function uploadFormHtml(order) {
       <div class="field"><label for="o-amount">Jumlah yang ditransfer (opsional)</label><input type="number" id="o-amount" name="claimedAmountIdr" placeholder="${order.amountIdr}" /></div>
       <button type="submit" class="c-submit" id="o-upload-btn">${isRejected ? "Upload Ulang Bukti" : "Kirim Bukti Transfer"}</button>
     </form>
-    <p id="o-upload-err" style="color:var(--danger);font-size:13px;margin-top:8px;display:none;"></p>`;
+    <p id="o-upload-err" role="alert" aria-live="assertive" aria-atomic="true" hidden style="color:var(--danger);font-size:13px;margin-top:8px;"></p>`;
+}
+
+let _lastOrderLiveStatus = "";
+function setOrderLiveStatus(message) {
+  if (message === _lastOrderLiveStatus) return;
+  _lastOrderLiveStatus = message;
+  document.getElementById("o-live-status").textContent = message;
 }
 
 async function wireUploadForm(order) {
@@ -109,11 +117,13 @@ async function wireUploadForm(order) {
     e.preventDefault();
     const btn = document.getElementById("o-upload-btn");
     const errEl = document.getElementById("o-upload-err");
-    errEl.style.display = "none";
+    errEl.textContent = "";
+    errEl.hidden = true;
     const fileEl = document.getElementById("o-file");
     if (!fileEl.files[0]) return;
     btn.disabled = true;
     btn.textContent = "Mengunggah...";
+    setOrderLiveStatus("Mengunggah bukti transfer...");
     try {
       const fd = new FormData(form);
       const res = await window.ezApi(`/orders/${encodeURIComponent(order.id)}/payment-proof`, {
@@ -122,10 +132,12 @@ async function wireUploadForm(order) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setOrderLiveStatus("Bukti transfer berhasil dikirim. Memperbarui status pesanan...");
       await loadAndRender();
     } catch (err) {
+      setOrderLiveStatus("");
       errEl.textContent = "Gagal upload: " + (err.message || "coba lagi.");
-      errEl.style.display = "block";
+      errEl.hidden = false;
       btn.disabled = false;
       btn.textContent = "Kirim Bukti Transfer";
     }
@@ -140,6 +152,9 @@ function renderOrder(data) {
     `No. Pesanan <code>${esc(order.orderNumber)}</code> · ${formatRupiah(order.amountIdr)}`;
 
   const body = document.getElementById("o-body");
+  body.setAttribute("aria-busy", "false");
+  const statusMeta = STATUS_META[order.status] || { label: order.status, tone: "muted" };
+  setOrderLiveStatus(`Status pesanan: ${statusMeta.label}.`);
   const latestPayment = (payments || [])[0];
 
   if (order.status === "approved") {
@@ -189,17 +204,24 @@ function renderOrder(data) {
 let _pollTimer = null;
 async function loadAndRender() {
   const id = getOrderId();
+  const body = document.getElementById("o-body");
   if (!id) {
     document.getElementById("o-title").textContent = "Pesanan tidak ditemukan";
+    setOrderLiveStatus("");
+    body.setAttribute("aria-busy", "false");
+    body.innerHTML = `<p role="alert" style="color:var(--danger);">Alamat halaman tidak menyertakan nomor pesanan.</p>`;
     return;
   }
+  body.setAttribute("aria-busy", "true");
   try {
     const res = await window.ezApi(`/orders/${encodeURIComponent(id)}`);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       document.getElementById("o-title").textContent = "Pesanan tidak ditemukan";
-      document.getElementById("o-body").innerHTML =
-        `<p style="color:var(--ink-700);">${esc(data.error || "Pesanan ini tidak bisa diakses.")}</p>`;
+      setOrderLiveStatus("");
+      body.setAttribute("aria-busy", "false");
+      body.innerHTML =
+        `<p role="alert" style="color:var(--ink-700);">${esc(data.error || "Pesanan ini tidak bisa diakses.")}</p>`;
       return;
     }
     const data = await res.json();
@@ -211,7 +233,9 @@ async function loadAndRender() {
       _pollTimer = setTimeout(loadAndRender, 30000);
     }
   } catch (err) {
-    document.getElementById("o-body").innerHTML = `<p style="color:var(--danger);">Gagal memuat: ${esc(err.message)}</p>`;
+    setOrderLiveStatus("");
+    body.setAttribute("aria-busy", "false");
+    body.innerHTML = `<p role="alert" style="color:var(--danger);">Gagal memuat: ${esc(err.message)}</p>`;
   }
 }
 

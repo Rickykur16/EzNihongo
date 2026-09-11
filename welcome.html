@@ -206,7 +206,7 @@
     font-weight: 700;
   }
   .greeting-jp .san {
-    color: #999;
+    color: var(--ink-700);
     font-weight: 400;
     font-size: 0.65em;
     margin-left: 3px;
@@ -452,7 +452,7 @@
   }
   .course-option.locked { opacity: 0.75; }
   .course-option.locked .opt-status { color: var(--brand-red); }
-  .course-option.active .opt-status { color: #16a34a; font-weight: 700; }
+  .course-option.active .opt-status { color: var(--success); font-weight: 700; }
 
   /* Sidebar footer (logout) */
   .sidebar-footer {
@@ -4489,7 +4489,7 @@
     #ai-senpai *, #ai-senpai *::before, #ai-senpai *::after { animation: none !important; }
   }
 </style>
-<link rel="stylesheet" href="styles/learning-placement.css?v=20260911-5"/>
+<link rel="stylesheet" href="styles/learning-placement.css?v=20260911-6"/>
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
 </head>
 <body>
@@ -4497,7 +4497,7 @@
 <header class="student-nav lesson-student-nav">
   <div class="lesson-nav-leading">
     <a href="dashboard.html?v=20260902-4" class="brand"><img src="logo.png" alt="EzNihongo"/></a>
-    <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Buka daftar pelajaran" aria-expanded="false" onclick="toggleSidebar()">
+    <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Buka daftar pelajaran" aria-expanded="false" aria-controls="sidebar" onclick="toggleSidebar()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
       <span>Materi</span>
     </button>
@@ -4514,7 +4514,7 @@
     <span class="lesson-logout-label">Keluar</span>
   </button>
 </header>
-<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+<div class="sidebar-backdrop" id="sidebar-backdrop" aria-hidden="true" onclick="closeSidebar(true)"></div>
 
 <div class="banner" id="success-banner">
   ✓ Pembayaran berhasil! Selamat datang di <strong id="new-course-name"></strong>. Mulai belajar di bawah.
@@ -6762,7 +6762,7 @@ function renderLearning(courseSlug) {
         <main class="main-content" id="main-content"></main>
       </div>
     </div>
-    <button class="sidebar-handle" id="sidebar-handle" type="button" aria-label="Tutup sidebar" title="Tutup sidebar" onclick="toggleSidebar()">
+    <button class="sidebar-handle" id="sidebar-handle" type="button" aria-label="Tutup sidebar" title="Tutup sidebar" aria-controls="sidebar" aria-expanded="true" onclick="toggleSidebar()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
     </button>
   `;
@@ -6774,7 +6774,7 @@ function renderLearning(courseSlug) {
   if (isDesktop()) {
     applySidebarCollapse(localStorage.getItem(SIDEBAR_KEY) === '1');
   } else {
-    closeSidebar();
+    setMobileSidebarOpen(false);
   }
 }
 
@@ -6786,6 +6786,10 @@ function learningStateAttributes(value) {
 function renderSidebar() {
   const course = COURSE_CONTENT[currentState.course];
   const progress = getProgress()[currentState.course] || {};
+  const sidebar = document.getElementById('sidebar');
+  const restoreDrawerCloseFocus = !isDesktop()
+    && sidebar?.classList.contains('mobile-open')
+    && sidebar.contains(document.activeElement);
 
   // Preserve sidebar scroll across re-render. innerHTML swap di bawah
   // ngedestroy .sidebar-scroll lama → tanpa restore ini, klik section/Bab
@@ -6988,7 +6992,7 @@ function renderSidebar() {
   const email = session?.email || '';
 
   document.getElementById('sidebar').innerHTML = `
-    <button class="sidebar-close" type="button" aria-label="Tutup menu" onclick="closeSidebar()">
+    <button class="sidebar-close" type="button" aria-label="Tutup menu" onclick="closeSidebar(true)">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
     </button>
 
@@ -7071,6 +7075,11 @@ function renderSidebar() {
 
   const newScroll = document.querySelector('.sidebar-scroll');
   if (newScroll && savedScrollTop) newScroll.scrollTop = savedScrollTop;
+  if (restoreDrawerCloseFocus) {
+    window.requestAnimationFrame(() => {
+      if (sidebar?.classList.contains('mobile-open')) sidebar.querySelector('.sidebar-close')?.focus();
+    });
+  }
 }
 
 window.toggleCoursePicker = () => {
@@ -12339,6 +12348,11 @@ window.selectLesson = (moduleId, lessonId) => {
 
 const SIDEBAR_KEY = 'eznihongo:sidebarCollapsed';
 const isDesktop = () => window.innerWidth >= 861;
+let mobileSidebarOpener = null;
+let mobileSidebarBodyOverflow = '';
+let lastSidebarDesktopState = isDesktop();
+const mobileSidebarInerted = new Set();
+
 function updateMobileSidebarToggle(isOpen) {
   const btn = document.getElementById('sidebar-toggle');
   const btnLabel = btn && btn.querySelector('span');
@@ -12360,13 +12374,136 @@ function applySidebarCollapse(collapsed) {
     const label = collapsed ? 'Buka sidebar' : 'Tutup sidebar';
     handle.setAttribute('aria-label', label);
     handle.setAttribute('title', label);
+    handle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
   }
 }
 window.applySidebarCollapse = applySidebarCollapse;
 
-window.toggleSidebar = () => {
-  // Desktop: collapse/expand persistent sidebar. Mobile: drawer.
+function setMobileSidebarBackgroundInert(inert) {
+  if (!inert) {
+    mobileSidebarInerted.forEach((element) => {
+      element.inert = false;
+      element.removeAttribute('inert');
+    });
+    mobileSidebarInerted.clear();
+    return;
+  }
+
+  const selectors = [
+    '.lesson-student-nav',
+    '.learning-workspace',
+    '#sidebar-handle',
+    '#success-banner',
+    'body > footer',
+    '#ai-senpai',
+  ];
+  selectors.forEach((selector) => {
+    document.querySelectorAll(selector).forEach((element) => {
+      if (element.hasAttribute('inert')) return;
+      element.inert = true;
+      element.setAttribute('inert', '');
+      mobileSidebarInerted.add(element);
+    });
+  });
+}
+
+function clearMobileSidebarState() {
+  const sb = document.getElementById('sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  if (sb) {
+    sb.classList.remove('mobile-open');
+    sb.inert = false;
+    sb.removeAttribute('inert');
+    sb.removeAttribute('aria-hidden');
+    sb.removeAttribute('role');
+    sb.removeAttribute('aria-modal');
+    sb.removeAttribute('aria-label');
+  }
+  if (bd) bd.classList.remove('show');
+  setMobileSidebarBackgroundInert(false);
+  document.body.classList.remove('lesson-drawer-open');
+  document.body.style.overflow = mobileSidebarBodyOverflow;
+  updateMobileSidebarToggle(false);
+}
+
+function setMobileSidebarOpen(open, { restoreFocus = false, moveFocus = false } = {}) {
   if (isDesktop()) {
+    clearMobileSidebarState();
+    return;
+  }
+
+  const sb = document.getElementById('sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  if (!sb) return;
+  const wasOpen = sb.classList.contains('mobile-open');
+
+  if (open) {
+    if (!wasOpen) {
+      const activeElement = document.activeElement;
+      mobileSidebarOpener = activeElement instanceof HTMLElement
+        && activeElement !== document.body
+        && activeElement !== document.documentElement
+        ? activeElement
+        : document.getElementById('sidebar-toggle');
+      mobileSidebarBodyOverflow = document.body.style.overflow;
+    }
+    sb.inert = false;
+    sb.removeAttribute('inert');
+    sb.removeAttribute('aria-hidden');
+    sb.setAttribute('role', 'dialog');
+    sb.setAttribute('aria-modal', 'true');
+    sb.setAttribute('aria-label', 'Daftar pelajaran');
+    sb.classList.add('mobile-open');
+    if (bd) bd.classList.add('show');
+    document.body.classList.add('lesson-drawer-open');
+    document.body.style.overflow = 'hidden';
+    setMobileSidebarBackgroundInert(true);
+    updateMobileSidebarToggle(true);
+    if (moveFocus) {
+      const focusCloseButton = () => {
+        if (sb.classList.contains('mobile-open')) sb.querySelector('.sidebar-close')?.focus({ preventScroll: true });
+      };
+      focusCloseButton();
+      window.requestAnimationFrame(focusCloseButton);
+    }
+    return;
+  }
+
+  sb.classList.remove('mobile-open');
+  sb.inert = true;
+  sb.setAttribute('inert', '');
+  sb.setAttribute('aria-hidden', 'true');
+  sb.removeAttribute('role');
+  sb.removeAttribute('aria-modal');
+  sb.removeAttribute('aria-label');
+  if (bd) bd.classList.remove('show');
+  setMobileSidebarBackgroundInert(false);
+  document.body.classList.remove('lesson-drawer-open');
+  document.body.style.overflow = mobileSidebarBodyOverflow;
+  updateMobileSidebarToggle(false);
+
+  if (restoreFocus && wasOpen) {
+    const fallback = document.getElementById('sidebar-toggle');
+    const target = mobileSidebarOpener?.isConnected ? mobileSidebarOpener : fallback;
+    window.requestAnimationFrame(() => target?.focus());
+  }
+  mobileSidebarOpener = null;
+}
+
+function mobileSidebarFocusableElements(sidebar) {
+  return Array.from(sidebar.querySelectorAll(
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])'
+  )).filter((element) => {
+    if (element.closest('[hidden], [aria-hidden="true"], [inert]')) return false;
+    const style = window.getComputedStyle(element);
+    return style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0;
+  });
+}
+
+window.toggleSidebar = () => {
+  // Desktop: collapse/expand persistent sidebar. Mobile: modal drawer.
+  if (isDesktop()) {
+    clearMobileSidebarState();
     const cur = localStorage.getItem(SIDEBAR_KEY) === '1';
     const next = !cur;
     localStorage.setItem(SIDEBAR_KEY, next ? '1' : '0');
@@ -12374,39 +12511,55 @@ window.toggleSidebar = () => {
     return;
   }
   const sb = document.getElementById('sidebar');
-  const bd = document.getElementById('sidebar-backdrop');
-  if (!sb) return;
-  const isOpen = sb.classList.toggle('mobile-open');
-  if (bd) bd.classList.toggle('show', isOpen);
-  document.body.classList.toggle('lesson-drawer-open', isOpen);
-  document.body.style.overflow = isOpen ? 'hidden' : '';
-  updateMobileSidebarToggle(isOpen);
+  setMobileSidebarOpen(!sb?.classList.contains('mobile-open'), {
+    restoreFocus: true,
+    moveFocus: true,
+  });
 };
 
-window.closeSidebar = () => {
-  const sb = document.getElementById('sidebar');
-  const bd = document.getElementById('sidebar-backdrop');
-  if (sb) sb.classList.remove('mobile-open');
-  if (bd) bd.classList.remove('show');
-  document.body.classList.remove('lesson-drawer-open');
-  document.body.style.overflow = '';
-  updateMobileSidebarToggle(false);
+window.closeSidebar = (restoreFocus = false) => {
+  setMobileSidebarOpen(false, { restoreFocus });
 };
 
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && document.getElementById('sidebar')?.classList.contains('mobile-open')) {
-    closeSidebar();
-    document.getElementById('sidebar-toggle')?.focus();
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar?.classList.contains('mobile-open') || isDesktop()) return;
+
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeSidebar(true);
+    return;
+  }
+
+  if (event.key === 'Tab') {
+    const focusable = mobileSidebarFocusableElements(sidebar);
+    if (!focusable.length) {
+      event.preventDefault();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (event.shiftKey && (active === first || !sidebar.contains(active))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (active === last || !sidebar.contains(active))) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 });
 
 // Sync state when crossing the desktop breakpoint.
 window.addEventListener('resize', () => {
-  if (isDesktop()) {
-    closeSidebar();
+  const desktop = isDesktop();
+  if (desktop === lastSidebarDesktopState) return;
+  lastSidebarDesktopState = desktop;
+  if (desktop) {
+    clearMobileSidebarState();
     applySidebarCollapse(localStorage.getItem(SIDEBAR_KEY) === '1');
   } else {
-    closeSidebar();
+    setMobileSidebarOpen(false);
   }
 });
 
@@ -12599,7 +12752,7 @@ window.switchCourse = async (slug) => {
     window.location.href = `courses/detail.html?slug=${encodeURIComponent(slug)}`;
     return;
   }
-  if (slug === currentState.course) { closeSidebar(); return; }
+  if (slug === currentState.course) { closeSidebar(true); return; }
   currentState.moduleId = null;
   currentState.lessonId = null;
   history.replaceState({}, '', `welcome.html?course=${slug}`);

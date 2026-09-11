@@ -160,6 +160,13 @@ a {
   color: var(--ink-700);
 }
 
+body :where(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 3px solid var(--learning-blue-700) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 2px var(--surface-white) !important;
+}
+
 .option:disabled {
   cursor: not-allowed;
   opacity: 1;
@@ -233,7 +240,10 @@ a {
   font-size: 13px;
   color: var(--ink-700);
   margin: 14px 0 0;
+  overflow-wrap: anywhere;
 }
+
+.signed-in-as :is(strong, a) { overflow-wrap: anywhere; }
 
 .signed-in-as a {
   color: var(--brand-red, #c8102e);
