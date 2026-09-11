@@ -4489,7 +4489,8 @@
     #ai-senpai *, #ai-senpai *::before, #ai-senpai *::after { animation: none !important; }
   }
 </style>
-<link rel="stylesheet" href="styles/learning-placement.css?v=20260902-5"/>
+<link rel="stylesheet" href="styles/learning-placement.css?v=20260911-1"/>
+<link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
 </head>
 <body>
 
@@ -4526,6 +4527,7 @@
 </footer>
 
 <script src="api-client.js"></script>
+<script src="learning-state.js?v=20260911-1"></script>
 <script>
 // ═══════════════════════════════════════════════
 // AUTH GUARD — self-hosted API session
@@ -6778,6 +6780,11 @@ function renderLearning(courseSlug) {
   }
 }
 
+function learningStateAttributes(value) {
+  const state = window.EzLearningState?.normalize(value);
+  return state ? `data-learning-state="${state}" data-learning-evidence="authoritative"` : '';
+}
+
 function renderSidebar() {
   const course = COURSE_CONTENT[currentState.course];
   const progress = getProgress()[currentState.course] || {};
@@ -6870,6 +6877,7 @@ function renderSidebar() {
       const aria = `${l.title}, ${typeLabel}${durTxt ? ', ' + durTxt : ''}${isDone ? ', selesai' : ''}${isCurrent ? ', sedang dibuka' : ''}`;
       return `
         <li class="lesson-item ${isCurrent ? 'current' : ''} ${isDone ? 'done' : ''}"
+            ${isDone ? 'data-completion-state="complete"' : ''} ${isCurrent ? 'data-selection-state="current"' : ''}
             role="button" tabindex="0" aria-label="${escapeHtml(aria)}" aria-current="${isCurrent ? 'page' : 'false'}"
             onclick="selectLesson('${m.id}', '${l.id}')"
             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectLesson('${m.id}','${l.id}')}">
@@ -6886,10 +6894,13 @@ function renderSidebar() {
     }).join('');
 
     const isOpen = _expandedModules.has(m.id);
+    const isCurrentModule = m.id === currentState.moduleId;
+    const isComplete = moduleTotal > 0 && moduleDone === moduleTotal;
     const metaParts = [`${moduleDone} / ${moduleTotal}`];
     if (moduleDur) metaParts.push(formatDurationCompact(moduleDur));
     return `
-      <div class="module ${isOpen ? 'open' : ''}" data-module="${m.id}">
+      <div class="module ${isOpen ? 'open' : ''} ${isCurrentModule ? 'current' : ''} ${isComplete ? 'complete' : ''}"
+           data-module="${m.id}" ${isComplete ? 'data-completion-state="complete"' : ''}>
         <button class="module-header" type="button" aria-expanded="${isOpen ? 'true' : 'false'}" onclick="toggleModule('${m.id}')">
           <div class="m-info">
             <span class="m-name">${escapeHtml(m.title)}</span>
@@ -6912,11 +6923,14 @@ function renderSidebar() {
     const sectionDurMin = b.modules.reduce((n, m) =>
       n + visibleLessons(m).reduce((mm, l) => mm + (l.durationMinutes || 0), 0), 0);
     const isSecOpen = _expandedSections.has(b.name);
+    const isCurrentSection = b.modules.some((m) => m.id === currentState.moduleId);
+    const isComplete = sectionTotal > 0 && sectionDone === sectionTotal;
     const safeName = b.name.replace(/'/g, "\\'");
     const metaParts = [`${sectionDone} / ${sectionTotal}`];
     if (sectionDurMin) metaParts.push(formatDurationCompact(sectionDurMin));
     return `
-      <div class="sidebar-section ${isSecOpen ? 'open' : ''}" data-section="${escapeHtml(b.name)}">
+      <div class="sidebar-section ${isSecOpen ? 'open' : ''} ${isCurrentSection ? 'current' : ''} ${isComplete ? 'complete' : ''}"
+           data-section="${escapeHtml(b.name)}" ${isComplete ? 'data-completion-state="complete"' : ''}>
         <button class="sidebar-section-header" type="button"
                 aria-expanded="${isSecOpen ? 'true' : 'false'}"
                 onclick="toggleSidebarSection('${escapeHtml(safeName)}')">
@@ -6954,7 +6968,7 @@ function renderSidebar() {
     const isActive = slug === currentState.course;
     const classes = ['course-option'];
     if (isActive) classes.push('active');
-    if (!isEnrolled) classes.push('locked');
+    if (!isEnrolled) classes.push('locked', 'ez-learning-state-surface');
     const status = isActive
       ? '<span class="opt-status">✓ Aktif</span>'
       : (!isEnrolled ? '<span class="opt-status">🔒 Upgrade</span>' : '<span class="opt-status">Pindah →</span>');
@@ -6963,6 +6977,7 @@ function renderSidebar() {
       : (isEnrolled ? `Pindah ke ${name}` : `${name}, terkunci — buka halaman upgrade`);
     return `
       <button type="button" class="${classes.join(' ')}" onclick="switchCourse('${slug}')"
+              ${!isEnrolled ? learningStateAttributes('locked') : ''}
               aria-label="${escapeHtml(aria)}" ${isActive ? 'aria-current="true"' : ''}>
         <span class="level-chip">${slug.toUpperCase()}</span>
         <span class="opt-name">${name}</span>
@@ -12571,10 +12586,10 @@ function renderCourseTabs(activeSlug) {
     const isActive = slug === activeSlug;
     const classes = ['course-tab'];
     if (isActive) classes.push('active');
-    if (!isEnrolled) classes.push('locked');
+    if (!isEnrolled) classes.push('locked', 'ez-learning-state-surface');
     const lockIcon = !isEnrolled ? '<span class="lock-icon">🔒</span>' : '';
     const title = tagline ? `${name} — ${tagline}` : name;
-    return `<button class="${classes.join(' ')}" onclick="switchCourse('${slug}')" title="${title}">${slug.toUpperCase()}${lockIcon}</button>`;
+    return `<button class="${classes.join(' ')}" ${!isEnrolled ? learningStateAttributes('locked') : ''} onclick="switchCourse('${slug}')" title="${title}">${slug.toUpperCase()}${lockIcon}</button>`;
   }).join('');
   const nav = document.getElementById('course-tabs');
   if (nav) nav.innerHTML = tabs;
