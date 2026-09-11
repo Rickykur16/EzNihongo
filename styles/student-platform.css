@@ -135,11 +135,9 @@ a {
 .count:focus-visible,
 .option:focus-visible,
 .course-select:focus-visible {
-  outline: 2px solid var(--surface-white);
+  outline: 3px solid var(--learning-blue-700);
   outline-offset: 2px;
-  box-shadow:
-    0 0 0 5px var(--learning-blue-700),
-    0 0 0 8px var(--learning-blue-ring);
+  box-shadow: none;
 }
 
 .primary:disabled,
@@ -147,11 +145,31 @@ a {
 .btn:disabled,
 .token:disabled,
 .category-row button:disabled,
-.count:disabled,
+.count:disabled {
+  cursor: not-allowed;
+  border-color: var(--paper-400);
+  background: var(--paper-200);
+  color: var(--ink-700);
+  box-shadow: none;
+  opacity: 1;
+  transform: none;
+}
+
+.count:disabled span {
+  color: var(--ink-700);
+}
+
 .option:disabled {
   cursor: not-allowed;
-  opacity: 0.68;
+  opacity: 1;
   transform: none;
+}
+
+.option:disabled:not(.correct):not(.wrong) {
+  border-color: var(--paper-400);
+  background: var(--paper-200);
+  color: var(--ink-700);
+  box-shadow: none;
 }
 
 .course-switch {
