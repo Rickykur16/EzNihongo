@@ -2,7 +2,7 @@
 
 This document defines the approved visual direction for the EzNihongo website and authenticated student experience. It is the contract for the incremental Deep Blue UI rollout. Repository behavior, routes, labels, data, and access rules remain authoritative.
 
-This document has no runtime effect. Token snippets, layout rules, motion budgets, and QA criteria below define requirements for later changes; they do not claim that those changes are already implemented or validated.
+This document is a normative contract. Token snippets, layout rules, motion budgets, and QA criteria define requirements; repository code and merged pull requests establish what has been implemented and validated.
 
 The intended result is warm paper, EzNihongo red, deep blue learning surfaces, Japanese editorial typography, restrained motion, and clear hierarchy. Deep blue supports learning and intelligence. It does not replace the red brand identity.
 
@@ -83,7 +83,7 @@ Brand red and danger are distinct roles even when both appear red. A visual roll
 
 ### Learning blue family
 
-The next token change adds this family to `styles/tokens.css` without altering existing token values:
+The approved learning-blue family is:
 
 ```css
 --learning-blue-900: #19345F;
