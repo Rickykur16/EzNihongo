@@ -232,24 +232,17 @@
   background: var(--surface-white, #fff);
 }
 
-/* Only the deepest visible node on the current lesson path is selected.
-   Expanding another accordion must not make it look like the current lesson. */
-#sidebar .sidebar-section.current:not(.open) > .sidebar-section-header,
-#sidebar .module.current:not(.open) > .module-header {
+/* Chapter headers reflect the expanded accordion, independently of the
+   current lesson. Collapsed chapters must not retain a blue highlight. */
+#sidebar .module.open > .module-header {
   background: var(--learning-blue-100);
   color: var(--learning-blue-800);
   box-shadow: inset 3px 0 0 var(--learning-blue-700);
 }
 
-#sidebar .sidebar-section.current:not(.open) > .sidebar-section-header .ss-name,
-#sidebar .sidebar-section.current:not(.open) > .sidebar-section-header .ss-caret,
-#sidebar .module.current:not(.open) > .module-header .m-name,
-#sidebar .module.current:not(.open) > .module-header .m-caret {
+#sidebar .module.open > .module-header .m-name,
+#sidebar .module.open > .module-header .m-caret {
   color: var(--learning-blue-800);
-}
-
-#sidebar .module.open .m-caret {
-  color: var(--ink-500, #6f6a63);
 }
 
 #sidebar .sidebar-section.complete > .sidebar-section-header .ss-meta,
