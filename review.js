@@ -25,7 +25,7 @@
   function renderHome(summary) {
     const total = Number(summary.total) || 0;
     const counts = Object.keys(labels).map((key) => categoryButton(key, Number(summary.byCategory?.[key]) || 0)).join('');
-    app.innerHTML = `<section class="summary-card"><div class="eyebrow">復習 · SMART REVIEW</div><h1 class="review-title">Ulangi yang sudah dipelajari.</h1><p class="total">${total ? `${total} item perlu direview` : 'Belum ada item review yang siap.'}</p><div class="counts" aria-label="Pilih kategori review">${counts}</div>${total ? '<button class="primary" id="start-mixed" type="button">Mulai Smart Review</button>' : '<p class="subtle">Review hari ini selesai. Lanjutkan belajar untuk membuka materi review berikutnya.</p>'}<div class="review-actions"><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
+    app.innerHTML = `<section class="summary-card"><div class="eyebrow">復習 · SMART REVIEW</div><h1 class="review-title">Ulangi yang sudah dipelajari.</h1><p class="total${total ? ' review-due' : ''}">${total ? `${total} item perlu direview` : 'Belum ada item review yang siap.'}</p><div class="counts" aria-label="Pilih kategori review">${counts}</div>${total ? '<button class="primary" id="start-mixed" type="button">Mulai Smart Review</button>' : '<p class="subtle">Review hari ini selesai. Lanjutkan belajar untuk membuka materi review berikutnya.</p>'}<div class="review-actions"><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
     app.querySelector('#start-mixed')?.addEventListener('click', () => { unlockAudio(); start('mixed'); });
     app.querySelectorAll('[data-category]').forEach((button) => button.addEventListener('click', () => { unlockAudio(); start(button.dataset.category); }));
   }
@@ -157,7 +157,7 @@
   // disusun benar-benar terlihat dan bisa diperiksa sebelum dikirim. Ketuk
   // lagi di baris jawaban untuk mengembalikannya. Tetap ketuk, bukan drag —
   // target sentuhnya jauh lebih besar dan tidak butuh pustaka DnD.
-  function renderArrange(question) {
+  function renderArrange(question, focusTarget = null) {
     const tokens = question.tokens || [];
     const answerZone = document.getElementById('arrange-answer');
     const poolZone = document.getElementById('arrange');
@@ -172,12 +172,14 @@
       .map((tokenIndex) => chip(tokenIndex, null))
       .join('') || '<span class="arrange-empty">Semua kata sudah dipakai.</span>';
     answerZone.querySelectorAll('[data-answer-pos]').forEach((button) => button.addEventListener('click', () => {
+      const tokenIndex = Number(button.dataset.token);
       selectedOrder = selectedOrder.filter((_, position) => position !== Number(button.dataset.answerPos));
-      renderArrange(question);
+      renderArrange(question, { zone: 'pool', tokenIndex });
     }));
     poolZone.querySelectorAll('[data-token]').forEach((button) => button.addEventListener('click', () => {
-      selectedOrder = [...selectedOrder, Number(button.dataset.token)];
-      renderArrange(question);
+      const tokenIndex = Number(button.dataset.token);
+      selectedOrder = [...selectedOrder, tokenIndex];
+      renderArrange(question, { zone: 'answer', tokenIndex });
     }));
     // Server menilai susunan yang belum lengkap sebagai SALAH (panjangnya tidak
     // sama dengan jumlah kepingan), jadi jangan biarkan terkirim setengah jadi.
@@ -185,13 +187,15 @@
     if (submit) {
       const ready = selectedOrder.length === tokens.length && tokens.length > 0;
       submit.disabled = !ready;
-      submit.style.opacity = ready ? '' : '0.5';
-      submit.style.cursor = ready ? '' : 'not-allowed';
       submit.textContent = ready ? 'Periksa jawaban' : `Pakai semua kata (${selectedOrder.length}/${tokens.length})`;
+    }
+    if (focusTarget) {
+      const zone = focusTarget.zone === 'answer' ? answerZone : poolZone;
+      zone.querySelector(`[data-token="${focusTarget.tokenIndex}"]`)?.focus();
     }
   }
 
-  function renderQuestion() {
+  function renderQuestion({ focusPrompt = false } = {}) {
     const item = session.questions[index]; const question = item.question; const options = question.options || [];
     const tagLabel = item.category === 'kana' && question.script
       ? `${labels[item.category]} · ${question.script}`
@@ -201,7 +205,7 @@
       ? `<div class="arrange-answer" id="arrange-answer" aria-label="Kalimat yang kamu susun"></div><div class="arrange" id="arrange" aria-label="Kepingan kata"></div><div class="answer-row"><button class="primary" id="submit-arrange" type="button">Periksa jawaban</button><button class="token" id="reset-arrange" type="button">Ulangi</button></div>`
       : `<div class="options">${options.map((option, optionIndex) => `<button class="option" type="button" data-option="${optionIndex}">${esc(option)}${question.optionReadings?.[optionIndex] && question.optionReadings[optionIndex] !== option ? `<small>${esc(question.optionReadings[optionIndex])}</small>` : ''}</button>`).join('')}</div>`;
     const progressPercent = Math.round(((index + 1) / session.questions.length) * 100);
-    app.innerHTML = `<section class="question-card"><div class="progress">SOAL ${index + 1} DARI ${session.questions.length}</div><div class="review-progress-bar" role="progressbar" aria-label="Progres sesi review" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progressPercent}"><i style="width:${progressPercent}%"></i></div><span class="tag">${esc(tagLabel)}</span><h1 class="prompt">${esc(question.prompt)}</h1>${question.instruction ? `<p class="hint">${esc(question.instruction)}</p>` : ''}${question.audioText ? '<button class="audio-btn" id="play-audio" type="button">🔊 Putar suara</button>' : ''}${question.reading ? `<p class="hint">${esc(question.reading)}</p>` : ''}${question.meaning ? `<p class="hint">${esc(question.meaning)}</p>` : ''}${question.example?.japanese ? `<p class="hint">${esc(question.example.japanese)}</p>` : ''}${question.example?.indonesian ? `<p class="hint">${esc(question.example.indonesian)}</p>` : ''}${question.sentence ? `<p class="hint">${esc(question.sentence)}</p>` : ''}${question.indonesian ? `<p class="hint">${esc(question.indonesian)}</p>` : ''}${answerUi}<p class="feedback" id="feedback" aria-live="polite"></p><div class="review-actions" id="answer-actions"></div></section>`;
+    app.innerHTML = `<section class="question-card"><div class="progress">SOAL ${index + 1} DARI ${session.questions.length}</div><div class="review-progress-bar" role="progressbar" aria-label="Progres sesi review" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progressPercent}"><i style="width:${progressPercent}%"></i></div><span class="tag">${esc(tagLabel)}</span><h1 class="prompt" tabindex="-1">${esc(question.prompt)}</h1>${question.instruction ? `<p class="hint">${esc(question.instruction)}</p>` : ''}${question.audioText ? '<button class="audio-btn" id="play-audio" type="button">🔊 Putar suara</button>' : ''}${question.reading ? `<p class="hint">${esc(question.reading)}</p>` : ''}${question.meaning ? `<p class="hint">${esc(question.meaning)}</p>` : ''}${question.example?.japanese ? `<p class="hint">${esc(question.example.japanese)}</p>` : ''}${question.example?.indonesian ? `<p class="hint">${esc(question.example.indonesian)}</p>` : ''}${question.sentence ? `<p class="hint">${esc(question.sentence)}</p>` : ''}${question.indonesian ? `<p class="hint">${esc(question.indonesian)}</p>` : ''}${answerUi}<p class="feedback" id="feedback" aria-live="polite"></p><div class="review-actions" id="answer-actions"></div></section>`;
     const audioBtn = app.querySelector('#play-audio');
     if (audioBtn) {
       audioBtn.addEventListener('click', () => playAudio(question.audioText, audioBtn));
@@ -214,10 +218,11 @@
     if (arrange) renderArrange(question);
     app.querySelector('#reset-arrange')?.addEventListener('click', () => { selectedOrder = []; renderArrange(question); });
     app.querySelector('#submit-arrange')?.addEventListener('click', () => answer({ order: selectedOrder }, app.querySelector('#submit-arrange')));
+    if (focusPrompt) app.querySelector('.prompt')?.focus();
   }
   function advance() {
     index += 1; selectedOrder = [];
-    if (index < session.questions.length) renderQuestion(); else finish();
+    if (index < session.questions.length) renderQuestion({ focusPrompt: true }); else finish();
   }
   // Jawaban benar dalam bentuk teks. Untuk susun-kalimat inilah SATU-SATUNYA
   // tempat siswa bisa melihat urutan yang benar — `correctOrder` dikirim
@@ -231,13 +236,14 @@
     const feedback = document.getElementById('feedback'); if (button) button.disabled = true;
     try {
       const result = await api(`/review/sessions/${session.sessionId}/answers`, { method: 'POST', body: JSON.stringify({ questionIndex: index, ...payload }) });
+      feedback.className = 'feedback';
       if (result.passed) correctAnswers += 1;
       app.querySelectorAll('[data-option]').forEach((node) => { node.disabled = true; if (Number(node.dataset.option) === result.correctIndex) node.classList.add('correct'); });
       // Kepingan susun-kalimat juga dikunci: soal yang sudah dijawab tidak
       // boleh bisa diutak-atik lagi sambil siswa membaca pembahasannya.
       app.querySelectorAll('[data-token]').forEach((node) => { node.disabled = true; });
       app.querySelector('#reset-arrange')?.setAttribute('disabled', 'disabled');
-      if (button && !result.passed) button.classList.add('wrong');
+      if (button) button.classList.add(result.passed ? 'correct' : 'wrong');
       if (result.passed) {
         feedback.textContent = 'Benar — review berikutnya akan dijadwalkan lebih jauh.';
         setTimeout(advance, 900);
