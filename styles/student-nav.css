@@ -52,7 +52,9 @@
   line-height: 1;
   text-decoration: none;
   white-space: nowrap;
-  transition: background-color var(--duration-fast), color var(--duration-fast);
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 
 .student-nav nav a:hover {
@@ -88,6 +90,10 @@
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 
 .student-nav > button:hover {
@@ -101,6 +107,7 @@
   outline: 3px solid var(--learning-blue-700);
   outline-offset: 2px;
   box-shadow: 0 0 0 2px var(--surface-white);
+  transition-duration: 0ms;
 }
 
 @media (max-width: 760px) {
