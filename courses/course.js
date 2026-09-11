@@ -114,16 +114,16 @@ function profileFieldsHtml() {
   const referralOptions = REFERRAL_SOURCES.map(([v, label]) => `<option value="${v}">${label}</option>`).join("");
   return `
     <div id="c-profile-fields">
-      <p style="font-size:13px;color:#485f84;margin:16px 0 10px;font-weight:600;">Lengkapi data diri (cuma sekali, untuk kelas pertamamu)</p>
-      <div class="field"><label>Tanggal lahir</label><input type="date" id="c-birth-date" required /></div>
+      <p class="c-payment-method" style="margin-top:16px;">Lengkapi data diri (cuma sekali, untuk kelas pertamamu)</p>
+      <div class="field"><label for="c-birth-date">Tanggal lahir</label><input type="date" id="c-birth-date" required /></div>
       <div class="field-row">
-        <div class="field"><label>Provinsi domisili</label><select id="c-province" required><option value="" disabled selected>Pilih provinsi</option>${provinceOptions}</select></div>
-        <div class="field"><label>Kota/Kabupaten</label><input type="text" id="c-city" maxlength="100" required /></div>
+        <div class="field"><label for="c-province">Provinsi domisili</label><select id="c-province" required><option value="" disabled selected>Pilih provinsi</option>${provinceOptions}</select></div>
+        <div class="field"><label for="c-city">Kota/Kabupaten</label><input type="text" id="c-city" maxlength="100" required /></div>
       </div>
-      <div class="field"><label>Nomor WhatsApp</label><input type="tel" id="c-phone" placeholder="08xxxxxxxxxx" required /></div>
+      <div class="field"><label for="c-phone">Nomor WhatsApp</label><input type="tel" id="c-phone" placeholder="08xxxxxxxxxx" required /></div>
       <div class="field-row">
-        <div class="field"><label>Tujuan belajar</label><select id="c-learning-goal" required><option value="" disabled selected>Pilih tujuan</option>${goalOptions}</select></div>
-        <div class="field"><label>Dari mana tahu EzNihongo?</label><select id="c-referral-source" required><option value="" disabled selected>Pilih sumber</option>${referralOptions}</select></div>
+        <div class="field"><label for="c-learning-goal">Tujuan belajar</label><select id="c-learning-goal" required><option value="" disabled selected>Pilih tujuan</option>${goalOptions}</select></div>
+        <div class="field"><label for="c-referral-source">Dari mana tahu EzNihongo?</label><select id="c-referral-source" required><option value="" disabled selected>Pilih sumber</option>${referralOptions}</select></div>
       </div>
       <div class="field" style="display:flex;align-items:flex-start;gap:8px;">
         <input type="checkbox" id="c-consent" required style="margin-top:4px;" />

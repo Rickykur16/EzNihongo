@@ -8,19 +8,26 @@
 <link rel="stylesheet" href="styles/tokens.css"/>
 <link rel="stylesheet" href="styles/components.css"/>
 <style>
-  .pv-nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; }
+  html { color-scheme: light; }
+  body { margin: 0; background: var(--paper-100); color: var(--ink-900); }
+  .pv-nav { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 24px; background: var(--paper-50); border-bottom: 1px solid var(--paper-300); }
+  .pv-nav a { display: inline-flex; min-height: 44px; align-items: center; }
   .pv-nav img { height: 32px; }
-  .pv-nav a.pv-back { color: var(--ink-700); font-family: var(--font-body); font-size: 14px; text-decoration: none; }
-  .pv-main { max-width: 720px; margin: 0 auto; padding: 8px 24px 80px; font-family: var(--font-body); color: var(--ink-700); line-height: 1.7; }
-  .pv-main h1 { font-family: var(--font-display); color: var(--ink-900); font-size: 32px; margin: 12px 0 4px; }
-  .pv-updated { font-size: 13px; color: var(--ink-500, #8a8378); margin-bottom: 32px; }
-  .pv-main h2 { font-family: var(--font-display); color: var(--ink-900); font-size: 20px; margin: 36px 0 10px; }
-  .pv-main p, .pv-main li { font-size: 15px; }
+  .pv-nav a.pv-back { color: var(--learning-blue-700); font-family: var(--font-body); font-size: 14px; font-weight: 600; text-decoration: none; }
+  .pv-nav a.pv-back:hover { color: var(--learning-blue-900); }
+  .pv-main { max-width: 720px; margin: 0 auto; padding: 32px 24px 80px; font-family: var(--font-body); color: var(--ink-700); line-height: 1.75; overflow-wrap: anywhere; }
+  .pv-main h1 { font-family: var(--font-display); color: var(--ink-900); font-size: clamp(30px, 6vw, 42px); line-height: 1.2; margin: 12px 0 4px; }
+  .pv-updated { font-size: 13px; color: var(--ink-700); margin-bottom: 32px; }
+  .pv-main h2 { border-left: 3px solid var(--learning-blue-200); padding-left: 12px; font-family: var(--font-display); color: var(--ink-900); font-size: 21px; line-height: 1.35; margin: 36px 0 10px; }
+  .pv-main p, .pv-main li { font-size: 16px; }
   .pv-main ul { padding-left: 20px; }
   .pv-main li { margin-bottom: 8px; }
-  .pv-main a { color: var(--brand-red); }
-  .pv-notice { background: var(--paper-100, #faf7f2); border: 1px solid var(--paper-300, #e8e1d3); border-radius: 10px; padding: 16px 18px; font-size: 13px; margin-top: 40px; }
-  .pv-footer { text-align: center; padding: 24px; font-family: var(--font-body); font-size: 13px; color: var(--ink-500, #8a8378); }
+  .pv-main a, .pv-footer a { color: var(--learning-blue-700); }
+  .pv-notice { background: var(--learning-blue-100); border: 1px solid var(--learning-blue-200); border-radius: var(--radius-md); padding: 16px 18px; color: var(--learning-blue-900); font-size: 13px; margin-top: 40px; }
+  .pv-footer { border-top: 1px solid var(--paper-300); text-align: center; padding: 24px; font-family: var(--font-body); font-size: 13px; color: var(--ink-700); }
+  .pv-footer a { display: inline-flex; min-height: 44px; align-items: center; }
+  .pv-nav a:focus-visible, .pv-main a:focus-visible, .pv-footer a:focus-visible { border-radius: var(--radius-sm); outline: 3px solid var(--learning-blue-700); outline-offset: 3px; box-shadow: 0 0 0 2px var(--surface-white); }
+  @media (max-width: 480px) { .pv-nav { padding: 10px 16px; } .pv-main { padding: 24px 18px 64px; } }
 </style>
 </head>
 <body>

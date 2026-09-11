@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="styles/tokens.css"/>
 <link rel="stylesheet" href="styles/components.css"/>
-<link rel="stylesheet" href="auth.css"/>
+<link rel="stylesheet" href="auth.css?v=20260911-1"/>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -40,6 +40,7 @@
           Akun baru terdeteksi. Masukkan nama tampilan kamu:
         </p>
         <form id="profile-form" class="auth-form">
+          <label for="full-name" class="auth-label">Nama lengkap</label>
           <input id="full-name" type="text" placeholder="Nama lengkap" required maxlength="100" class="auth-input"/>
           <button type="submit" class="auth-submit-btn">Lanjutkan</button>
         </form>
