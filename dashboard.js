@@ -3,6 +3,20 @@
   const release = '20260902-5';
   const progressReconcileVersion = 'ez_progress_reconcile_v2';
   const labels = { kana: 'Kana', vocabulary: 'Kosakata', kanji: 'Kanji', grammar: 'Grammar' };
+  const continueBackdrops = [
+    { src: 'assets/dashboard/continue-kyoto-night.webp', position: 'center 56%' },
+    { src: 'assets/dashboard/continue-hakone-torii.webp', position: 'center 48%' },
+    { src: 'assets/dashboard/continue-sakura-train.webp', position: 'center 50%' },
+  ];
+  const continueBackdrop = (() => {
+    const storageKey = 'ez_continue_backdrop';
+    let previous = -1;
+    try { previous = Number.parseInt(localStorage.getItem(storageKey) || '-1', 10); } catch {}
+    const choices = continueBackdrops.map((_, index) => index).filter((index) => index !== previous);
+    const index = choices[Math.floor(Math.random() * choices.length)] ?? 0;
+    try { localStorage.setItem(storageKey, String(index)); } catch {}
+    return continueBackdrops[index];
+  })();
   let signedInUser = null;
   const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
 
@@ -125,6 +139,11 @@
     <section class="grid dashboard-secondary"><article class="card progress-card"><div class="eyebrow">PROGRES KELAS</div><div class="course-progress">${course.progress.percentage}% selesai</div><div class="curriculum-bar" role="progressbar" aria-label="Progres kurikulum" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${course.progress.percentage}"><i style="width:${course.progress.percentage}%"></i></div><p class="muted">${course.progress.completedLessons} dari ${course.progress.totalLessons} pelajaran telah diselesaikan.</p><a class="secondary compact-action" href="${courseUrl('progress.html', course.slug)}">Lihat Progres</a></article><article class="card live"><div class="eyebrow">LIVE CLASS · NEXT CLASS</div>${liveMarkup}${recordings ? `<div class="eyebrow recordings-label">RECENT RECORDINGS</div><ul class="live-recordings">${recordings}</ul>` : ''}<a class="secondary live-all" href="${courseUrl('live.html', course.slug)}">Lihat Semua</a></article></section>
     <section class="card performance-card"><div class="performance"><div><div class="eyebrow">PERKEMBANGAN KEMAMPUAN</div><h2>Kemampuanmu saat ini</h2>${Object.entries(labels).map(([key]) => masteryRow(key, mastery[key])).join('')}</div><aside class="focus"><div class="eyebrow">FOKUS BELAJARMU</div>${focusMarkup}</aside></div></section>
     <section class="card activity-card"><div class="eyebrow">AKTIVITAS MINGGU INI</div><h2>Ringkasan belajarmu minggu ini</h2><div class="activity"><div class="metric"><strong>${activity.activeDays || 0}</strong><span>hari aktif</span></div><div class="metric"><strong>${activity.lessonsCompleted || 0}</strong><span>pelajaran selesai</span></div><div class="metric"><strong>${activity.reviewQuestions || 0}</strong><span>review selesai</span></div><div class="metric"><strong>${activity.accuracy == null ? '—' : `${activity.accuracy}%`}</strong><span>akurasi latihan</span></div></div><div class="insight">${esc(data.weeklyInsight?.message || 'Belum cukup aktivitas untuk menampilkan rangkuman minggu ini.')}</div></section>`;
+    const continueCard = app.querySelector('.continue-card');
+    if (continueCard && continueBackdrop) {
+      continueCard.style.setProperty('--continue-bg-image', `url("${continueBackdrop.src}")`);
+      continueCard.style.setProperty('--continue-bg-position', continueBackdrop.position);
+    }
     document.getElementById('course-select')?.addEventListener('change', (event) => load(event.target.value));
   }
   async function load(course = '') {
