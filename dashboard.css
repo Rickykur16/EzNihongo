@@ -131,17 +131,30 @@ body {
 }
 
 .card.continue-card {
-  background: var(--learning-blue-900);
+  background-color: var(--learning-blue-900);
+  background-image:
+    linear-gradient(90deg, rgba(10, 27, 55, .96) 0%, rgba(16, 43, 82, .9) 48%, rgba(18, 47, 88, .68) 100%),
+    linear-gradient(0deg, rgba(7, 21, 43, .48), rgba(7, 21, 43, .12)),
+    var(--continue-bg-image, none);
+  background-position: center, center, var(--continue-bg-position, center);
+  background-repeat: no-repeat;
+  background-size: cover;
   border-color: var(--learning-blue-900);
   color: var(--learning-blue-100);
   box-shadow: var(--elev-3);
 }
 
 .card.continue-card::before { background: var(--learning-blue-500); }
-.card.continue-card .eyebrow { color: var(--learning-blue-200); }
-.card.continue-card .continue-title { color: #fff; }
+.card.continue-card .eyebrow { color: #dce8fb; }
+.card.continue-card .continue-title {
+  color: #fff;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, .42);
+}
 .card.continue-card .continue-label,
-.card.continue-card .muted { color: var(--learning-blue-100); }
+.card.continue-card .muted {
+  color: #f5f8fd;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, .52);
+}
 
 .continue-label {
   margin-top: 18px;
@@ -219,7 +232,16 @@ body {
 .card.progress-card .eyebrow { color: var(--learning-blue-700); }
 .card.progress-card .course-progress { color: var(--learning-blue-900); }
 
-.live { border-style: solid; }
+.card.live {
+  border-style: solid;
+  background-color: var(--surface-white, #fff);
+  background-image:
+    linear-gradient(90deg, rgba(255, 253, 249, .98) 0%, rgba(255, 253, 249, .94) 56%, rgba(255, 253, 249, .72) 100%),
+    url("assets/dashboard/live-japanese-room.webp");
+  background-position: center, center 52%;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
 .live::before { background: var(--warning, #854f0b); }
 .live h2 { font-size: 22px; }
 
@@ -275,6 +297,16 @@ body {
   color: var(--learning-blue-900);
   font-family: "Shippori Mincho", serif;
   font-size: 19px;
+}
+
+.card.activity-card {
+  background-color: var(--surface-white, #fff);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .86), rgba(255, 255, 255, .86)),
+    url("assets/dashboard/activity-paper-texture.webp");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
 .activity {
