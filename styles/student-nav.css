@@ -110,10 +110,9 @@
 
   .student-nav {
     position: relative;
-    min-height: 58px;
-    padding: 9px 16px;
+    min-height: 64px;
+    padding: 10px 16px;
     justify-content: space-between;
-    backdrop-filter: none;
   }
 
   .student-nav .brand img {
@@ -121,8 +120,8 @@
   }
 
   .student-nav > button {
-    min-height: 36px;
-    padding: 7px 11px;
+    min-height: 44px;
+    padding: 10px 12px;
   }
 
   .student-nav nav {
@@ -136,10 +135,9 @@
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 2px;
-    background: rgba(255, 255, 255, 0.96);
+    background: var(--surface-white);
     border-top: 1px solid var(--paper-300);
-    box-shadow: 0 -8px 28px rgba(20, 15, 10, 0.08);
-    backdrop-filter: blur(16px);
+    box-shadow: 0 -4px 18px rgba(20, 15, 10, 0.08);
   }
 
   .student-nav nav a {
@@ -149,10 +147,13 @@
     justify-content: center;
     overflow: hidden;
     border-radius: var(--radius-md);
-    font-size: 10.5px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: -0.025em;
     line-height: 1.15;
     text-align: center;
-    text-overflow: ellipsis;
+    text-overflow: clip;
+    white-space: normal;
   }
 
   .student-nav nav a[aria-current="page"]::after {
