@@ -73,6 +73,23 @@ body {
   cursor: pointer;
 }
 
+#app .tabs button:hover:not([aria-selected="true"]) {
+  border-color: var(--learning-blue-500);
+  background: var(--learning-blue-100);
+  color: var(--learning-blue-800);
+}
+
+.live-tabpanel {
+  min-width: 0;
+}
+
+.live-tabpanel:focus-visible {
+  border-radius: var(--radius-md);
+  outline: 3px solid var(--learning-blue-700);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 2px var(--surface-white);
+}
+
 .list { display: grid; gap: 13px; }
 
 .card {
@@ -90,8 +107,11 @@ body {
   bottom: 0;
   left: 0;
   width: 4px;
-  background: var(--brand-red, #c8102e);
+  background: var(--learning-blue-600);
 }
+
+.upcoming-card .eyebrow { color: var(--info); }
+.recording-card .eyebrow { color: var(--success); }
 
 .card h2 {
   margin: 5px 0 5px;
@@ -100,6 +120,10 @@ body {
   font-size: 23px;
   line-height: 1.35;
 }
+
+.card h2,
+.card p,
+.related li { overflow-wrap: anywhere; }
 
 .card p { color: var(--ink-700, #4a453e); }
 .meta { font-size: 13px; font-weight: 600; }
@@ -123,17 +147,28 @@ body {
   margin: 15px 0 0;
   padding: 0;
   list-style: none;
-  border-top: 1px solid var(--paper-200, #f2ede3);
+  border-top: 1px solid var(--learning-blue-200);
 }
 
 .related li {
   padding: 10px 0;
-  border-bottom: 1px solid var(--paper-200, #f2ede3);
+  border-bottom: 1px solid var(--learning-blue-200);
   color: var(--ink-700, #4a453e);
   font-size: 13px;
 }
 
-.related a { font-weight: 700; }
+.related a {
+  color: var(--learning-blue-700);
+  font-weight: 700;
+}
+
+.related a:hover { color: var(--learning-blue-900); }
+.related a:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 3px solid var(--learning-blue-700);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--surface-white);
+}
 
 .empty {
   padding: 42px 28px;
