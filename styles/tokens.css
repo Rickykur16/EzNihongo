@@ -11,6 +11,16 @@
   --brand-red-soft: #fff0f2;
   --brand-red-ring: rgba(200, 16, 46, 0.25);
 
+  /* Learning blue (additive; student usage is opt-in) */
+  --learning-blue-900: #19345F;
+  --learning-blue-800: #244477;
+  --learning-blue-700: #334E8C;
+  --learning-blue-600: #4165A8;
+  --learning-blue-500: #5A7DB7;
+  --learning-blue-200: #DCE6F5;
+  --learning-blue-100: #EEF3FA;
+  --learning-blue-ring: rgba(51, 78, 140, 0.22);
+
   /* Paper (warm neutrals) */
   --paper-50: #fdfcf9;
   --paper-100: #faf7f2;
