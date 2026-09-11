@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import { query, withTransaction } from '../db.js';
 import { isCanonicalUuid, validateLiveClassFields } from '../live-class-admin-rules.js';
 import { requireAuth, requireAdmin, asyncHandler } from '../middleware.js';
+import { requireCompanyAdmin, fail } from '../company-policy.js';
 import {
   isAdminEmail,
   isEnvAdminEmail,
@@ -45,7 +46,7 @@ import {
 const router = Router();
 
 // Every route in this file requires admin
-router.use(requireAuth, requireAdmin);
+router.use(requireAuth, requireCompanyAdmin);
 
 // ── YouTube video sources ────────────────────────────────────────────────
 // Store an ID, never an embed URL. The same source can then be picked by many
@@ -3256,13 +3257,14 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
   const outcome = await withTransaction(async (client) => {
     const cur = await client.query(
       `SELECT type, video_source_id, video_start_seconds, video_end_seconds
-         FROM lessons WHERE id = $1 LIMIT 1`,
+         FROM lessons WHERE id = $1 LIMIT 1 FOR UPDATE`,
       [req.params.id]
     );
     if (cur.rows.length === 0) return { notFound: true };
     const current = cur.rows[0];
     const oldType = current.type;
     if (type && oldType !== type) {
+      if (req.companyAccess && !req.companyAccess.isAdmin) throw fail(403, 'owner_required_for_type_change');
       if (oldType === 'quiz') {
         await client.query(`DELETE FROM quiz_questions WHERE lesson_id = $1`, [req.params.id]);
         await client.query(`DELETE FROM quiz_attempts WHERE lesson_id = $1`, [req.params.id]);

@@ -260,6 +260,16 @@ const modal = document.getElementById('modal');
 const modalContent = document.getElementById('modal-content');
 
 let CURRENT_USER = null;
+let STAFF_ACCESS = null;
+const ADMIN_TAB_CAPABILITIES = Object.freeze({
+  courses: 'curriculum.manage', modules: 'curriculum.manage', lessons: 'curriculum.manage',
+  sensei: 'marketing.content.manage', testimonials: 'marketing.content.manage',
+  users: 'students.manage', access: 'enrollments.manage', orders: 'orders.review',
+  discussions: 'discussions.moderate', tts: 'tts.manage', live: 'live_classes.manage', ai: 'ai_settings.manage',
+});
+let adminDataLoads = new Map();
+let adminTabRequest = 0;
+let adminBootRequest = 0;
 let STATE = {
   tab: 'courses',
   courses: [],
@@ -416,14 +426,62 @@ function showLogin(errMsg) {
   });
 }
 
+// Staff discovery is separate from the shared student auth client. Capability
+// menus are not API authorization; restricted staff remains disabled in 1A.
+function canOpenAdminTab(tab) {
+  return Object.prototype.hasOwnProperty.call(ADMIN_TAB_CAPABILITIES, tab) &&
+    STAFF_ACCESS?.tabs.includes(tab) && STAFF_ACCESS.capabilities.includes(ADMIN_TAB_CAPABILITIES[tab]);
+}
+
+async function loadAdminAccess(user) {
+  const res = await ezApi('/staff/capabilities', { cache: 'no-store' });
+  // New HTML can arrive before the backend restarts. Only the old endpoint's
+  // 404 may use legacy menus, and only for a freshly verified existing admin.
+  if (res.status === 404 && user.isAdmin === true) {
+    return { version: 1, authorizationMode: 'legacy-admin-only', isStaff: true, isAdmin: true,
+      tabs: Object.keys(ADMIN_TAB_CAPABILITIES),
+      capabilities: [...new Set([...Object.values(ADMIN_TAB_CAPABILITIES), 'admins.manage'])] };
+  }
+  if (!res.ok) throw new Error('staff_access_unavailable');
+  const access = await res.json();
+  if (user.isAdmin !== true && access?.authorizationMode !== 'company-rbac-v1') throw new Error('invalid_staff_access');
+  if (access?.version !== 1 || !['legacy-admin-only','company-rbac-v1'].includes(access.authorizationMode) ||
+      access.isStaff !== true || (access.authorizationMode === 'legacy-admin-only' && access.isAdmin !== true) ||
+      !Array.isArray(access.tabs) || !Array.isArray(access.capabilities) ||
+      !access.capabilities.every((capability) => typeof capability === 'string') ||
+      !access.tabs.every((tab) => Object.prototype.hasOwnProperty.call(ADMIN_TAB_CAPABILITIES, tab) &&
+        access.capabilities.includes(ADMIN_TAB_CAPABILITIES[tab]))) {
+    throw new Error('invalid_staff_access');
+  }
+  return access;
+}
+
 async function bootAdmin() {
-  const user = await ezGetMe();
-  if (!user) { showLogin(); return; }
-  if (!user.isAdmin) { showLock('Akun ini bukan admin. Hubungi pengelola untuk akses.'); return; }
-  CURRENT_USER = user;
-  renderApp();
-  await Promise.all([loadCourses(), loadVideoSources()]);
-  renderTab();
+  const request = ++adminBootRequest;
+  CURRENT_USER = null;
+  STAFF_ACCESS = null;
+  adminDataLoads = new Map();
+  adminTabRequest++;
+  root.innerHTML = '<p role="status" style="padding:24px;">Memeriksa akses admin…</p>';
+  try {
+    const user = await ezGetMe();
+    if (request !== adminBootRequest) return;
+    if (!user) { showLogin(); return; }
+    const access = await loadAdminAccess(user);
+    if (request !== adminBootRequest) return;
+    CURRENT_USER = user;
+    STAFF_ACCESS = access;
+    const firstTab = Object.keys(ADMIN_TAB_CAPABILITIES).find(canOpenAdminTab);
+    if (!firstTab) { showLock('Belum ada menu yang diizinkan untuk akun ini.'); return; }
+    renderApp();
+    await switchTab(firstTab);
+  } catch {
+    if (request !== adminBootRequest) return;
+    CURRENT_USER = null;
+    STAFF_ACCESS = null;
+    showLock('Akses admin belum dapat diverifikasi. Silakan coba lagi.');
+    root.querySelector('.lock-card').appendChild(el('<button class="btn btn-ghost" type="button" onclick="bootAdmin()">Coba lagi</button>'));
+  }
 }
 bootAdmin();
 
@@ -712,9 +770,10 @@ function renderApp() {
       <h1>EzNihongo Admin</h1>
       <div class="meta">
         <span>${escapeHtml(CURRENT_USER.fullName || CURRENT_USER.email)}</span>
-        <span class="badge badge-admin">Admin</span>
-        <button onclick="openAdminsModal()">Kelola Admin</button>
-        <button onclick="openPasswordModal()">Ubah Password</button>
+        <span class="badge badge-admin">${STAFF_ACCESS?.isAdmin ? 'Admin' : 'Staf'}</span>
+        <a href="company.html">Ruang kerja</a>
+        ${STAFF_ACCESS?.capabilities.includes('admins.manage') ? '<button onclick="openAdminsModal()">Kelola Admin</button>' : ''}
+        ${STAFF_ACCESS?.isAdmin ? '<button onclick="openPasswordModal()">Ubah Password</button>' : ''}
         <button onclick="ezLogout()">Keluar</button>
       </div>
     </header>
@@ -748,16 +807,52 @@ function renderApp() {
     </main>
   `;
   document.querySelectorAll('nav.tabs button').forEach((btn) => {
+    btn.hidden = !canOpenAdminTab(btn.dataset.tab);
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
 }
 
+async function ensureAdminTabData(tab) {
+  const loadOnce = (key, loader) => {
+    if (!adminDataLoads.has(key)) {
+      const loads = adminDataLoads;
+      const pending = Promise.resolve().then(loader).then((ok) => {
+        if (ok === false) loads.delete(key);
+        return ok;
+      }, (error) => { loads.delete(key); throw error; });
+      loads.set(key, pending);
+    }
+    return adminDataLoads.get(key);
+  };
+  const needsCourses = ['courses', 'modules', 'lessons', 'testimonials', 'live'].includes(tab);
+  const [coursesReady] = await Promise.all([
+    needsCourses ? loadOnce('courses', loadCourses) : true,
+    tab === 'lessons' ? loadOnce('videoSources', loadVideoSources) : true,
+  ]);
+  // Missing YouTube sources remain non-blocking for legacy lesson editors.
+  if (coursesReady === false) throw new Error('courses_unavailable');
+}
+
 async function switchTab(tab) {
+  if (!canOpenAdminTab(tab)) return;
+  const request = ++adminTabRequest;
   STATE.tab = tab;
-  renderTab();
+  document.querySelectorAll('nav.tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('section.pane').forEach((p) => p.classList.toggle('active', p.dataset.pane === tab));
+  const pane = document.querySelector(`[data-pane="${tab}"]`);
+  pane.innerHTML = '<p role="status">Memuat…</p>';
+  try {
+    await ensureAdminTabData(tab);
+    if (request !== adminTabRequest) return;
+    renderTab();
+  } catch {
+    if (request !== adminTabRequest) return;
+    pane.innerHTML = `<p role="alert">Data menu belum dapat dimuat.</p><button class="btn btn-ghost" type="button" onclick="switchTab('${tab}')">Coba lagi</button>`;
+  }
 }
 
 function renderTab() {
+  if (!canOpenAdminTab(STATE.tab)) return;
   document.querySelectorAll('nav.tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === STATE.tab));
   document.querySelectorAll('section.pane').forEach((p) => p.classList.toggle('active', p.dataset.pane === STATE.tab));
   if (STATE.tab === 'courses') renderCourses();
@@ -899,8 +994,8 @@ window.coachPromptSave = async () => {
 // COURSES
 // ─────────────────────────────────────────────────────────────
 async function loadCourses() {
-  try { const d = await api('/admin/courses'); STATE.courses = d.courses || []; }
-  catch (e) { notify('Gagal load kursus: ' + e.message, true); }
+  try { const d = await api('/admin/courses'); STATE.courses = d.courses || []; return true; }
+  catch (e) { notify('Gagal load kursus: ' + e.message, true); return false; }
 }
 
 function renderCourses() {
@@ -1092,11 +1187,13 @@ async function loadVideoSources() {
   try {
     const d = await api('/admin/video-sources');
     STATE.videoSources = Array.isArray(d.sources) ? d.sources : [];
+    return true;
   } catch (e) {
     STATE.videoSources = [];
     // The normal lesson editor (including legacy Bunny URL) remains usable
     // while a deployment is rolling and the new endpoint is not available.
     console.warn('Gagal memuat sumber YouTube:', e.message);
+    return false;
   }
 }
 

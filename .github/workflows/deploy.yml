@@ -52,6 +52,8 @@ jobs:
         env:
           TEST_DATABASE_URL: postgresql://postgres:local-ci-test@127.0.0.1:5432/eznihongo_payment_test
         run: npm test
+      - name: Test student learning-state contract
+        run: node --test learning-state.test.js
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -60,15 +62,40 @@ jobs:
     steps:
       - name: Pull, install, migrate, restart, healthcheck
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
         with:
           host: 168.144.107.34
           username: root
           key: ${{ secrets.VPS_SSH_KEY }}
+          envs: DEPLOY_SHA
           script: |
             set -euo pipefail
+            # Jangan memasang ujung main yang mungkin belum diuji oleh run ini.
+            if [[ ! "${DEPLOY_SHA:-}" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "FATAL: DEPLOY_SHA harus full commit SHA dari workflow"
+              exit 1
+            fi
             cd /var/www/eznihongo
-            git fetch --all --prune
-            git reset --hard origin/main
+            git fetch --prune origin +refs/heads/main:refs/remotes/origin/main
+            git cat-file -e "${DEPLOY_SHA}^{commit}"
+            if ! git merge-base --is-ancestor "$DEPLOY_SHA" origin/main; then
+              echo "FATAL: commit yang diuji tidak lagi berada pada main"
+              exit 1
+            fi
+            previous_sha=$(git rev-parse HEAD)
+            # Re-run lama tidak boleh diam-diam menurunkan versi kode setelah
+            # migrasi yang lebih baru. Rollback harus melalui review terpisah.
+            if ! git merge-base --is-ancestor "$previous_sha" "$DEPLOY_SHA"; then
+              echo "FATAL: deploy bukan fast-forward dari $previous_sha ke $DEPLOY_SHA"
+              exit 1
+            fi
+            git reset --hard "$DEPLOY_SHA"
+            if [ "$(git rev-parse HEAD)" != "$DEPLOY_SHA" ]; then
+              echo "FATAL: checkout tidak cocok dengan commit yang diuji"
+              exit 1
+            fi
+            echo "Release checkout: $previous_sha -> $DEPLOY_SHA"
 
             # HTML menentukan versi asset dan redirect entry siswa. Jangan
             # biarkan browser menyimpan index/dashboard lama lintas deploy.
@@ -100,4 +127,4 @@ jobs:
               journalctl -u eznihongo-api -n 50 --no-pager || true
               exit 1
             fi
-            echo "Deploy ok at $(date)"
+            echo "Deploy ok: $DEPLOY_SHA at $(date)"

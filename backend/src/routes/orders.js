@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import { query, withTransaction, withAdvisoryLock } from '../db.js';
 import { requireAuth, asyncHandler } from '../middleware.js';
 import { isAdminEmail } from '../auth.js';
+import { canReadCompanyProof } from '../company-policy.js';
 import { hasCourseAccess } from '../entitlements.js';
 import { notifyAdmin } from '../telegram.js';
 import { uploadLimits, uploadErrorHandler } from '../upload-safety.js';
@@ -313,7 +314,9 @@ router.post('/orders/:id/payment-proof', proofLimiter, proofUpload.single('file'
 router.get('/orders/:id/payments/:paymentId/proof', asyncHandler(async (req, res) => {
   const order = await loadOrderOr404(req.params.id, res);
   if (!order) return;
-  if (!(await requireOwnerOrAdmin(order, req, res))) return;
+  if (order.user_id !== req.user.id && !(await isAdminEmail(req.user.email)) && !(await canReadCompanyProof(req))) {
+    return res.status(403).json({ error: 'not_order_owner' });
+  }
 
   const p = await query(
     `SELECT proof_image, proof_mime FROM order_payments WHERE id = $1 AND order_id = $2 LIMIT 1`,

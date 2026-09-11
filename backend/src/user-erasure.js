@@ -1,3 +1,5 @@
+import { inspectStaffErasureTables, eraseStaffUserData } from './staff-erasure.js';
+
 // Menjalankan hak "hapus data" yang dijanjikan privacy.html bagian 9.
 //
 // Alurnya admin-only dan disengaja: privacy.html menyuruh siswa menghubungi
@@ -64,19 +66,25 @@ const HANDLED_SEPARATELY = {
 // penghapusan kalau ada yang belum dipertimbangkan — gagal terang-terangan
 // jauh lebih baik daripada diam-diam meninggalkan data pribadi.
 export async function assertUserTablesCovered(client) {
+  const staffTables = await inspectStaffErasureTables(client);
   const { rows } = await client.query(
-    `SELECT DISTINCT c.conrelid::regclass::text AS tabel
+    `SELECT DISTINCT c.conrelid::regclass::text AS tabel, child.relname AS relation_name,
+            child.relnamespace = parent.relnamespace AS same_schema
        FROM pg_constraint c
+       JOIN pg_class child ON child.oid = c.conrelid
+       JOIN pg_class parent ON parent.oid = c.confrelid
       WHERE c.contype = 'f' AND c.confrelid = 'users'::regclass`
   );
   const known = new Set([...WIPE_TABLES, ...Object.keys(HANDLED_SEPARATELY)]);
-  const unknown = rows.map((r) => r.tabel).filter((t) => !known.has(t));
+  const unknown = rows.filter(r => !known.has(r.tabel) &&
+    !(r.same_schema && staffTables.has(r.relation_name))).map(r => r.tabel);
   if (unknown.length) {
     throw new Error(
       `user_erasure_incomplete: tabel ber-FK ke users belum ditangani: ${unknown.join(', ')}. ` +
       `Tambahkan ke WIPE_TABLES atau HANDLED_SEPARATELY di backend/src/user-erasure.js.`
     );
   }
+  return staffTables;
 }
 
 // Hak "menarik persetujuan" (privacy.html bagian 9) tanpa menghapus akun:
@@ -96,9 +104,12 @@ export async function deleteMarketingProfile(client, userId) {
 // Penghapusan akun penuh. Idempoten: menjalankannya dua kali aman, yang kedua
 // tidak menemukan apa-apa lagi untuk dibersihkan.
 export async function eraseUserAccount(client, userId) {
-  await assertUserTablesCovered(client);
+  // Same transaction/client as the caller. Future staff grants must take this
+  // user lock too and reject tombstone accounts before creating membership.
+  await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [userId]);
+  const staffTables = await assertUserTablesCovered(client);
 
-  const wiped = {};
+  const wiped = await eraseStaffUserData(client, userId, staffTables);
   for (const table of WIPE_TABLES) {
     // Nama tabel berasal dari konstanta di file ini saja, tidak pernah dari
     // input request — jadi interpolasi di sini bukan jalur injeksi.
