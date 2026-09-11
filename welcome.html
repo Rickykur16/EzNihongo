@@ -4364,7 +4364,11 @@
     font-family: var(--font-body, 'Inter', system-ui, sans-serif);
   }
   #ai-senpai .ez-jp { font-family: var(--font-jp, 'Noto Sans JP', sans-serif); }
-  #ai-senpai button { font-family: inherit; }
+  #ai-senpai button {
+    min-width: 44px;
+    min-height: 44px;
+    font-family: inherit;
+  }
   @keyframes senpaiAppear { 0%{opacity:0;transform:scale(.4) translateY(40px)} 70%{opacity:1;transform:scale(1.08) translateY(-4px)} 100%{opacity:1;transform:scale(1) translateY(0)} }
   @keyframes senpaiPaw { 0%,100%{transform:rotate(-8deg)} 50%{transform:rotate(8deg)} }
   @keyframes senpaiPulse { 0%{box-shadow:0 0 0 0 rgba(200,16,46,.42)} 100%{box-shadow:0 0 0 30px rgba(200,16,46,0)} }
@@ -4377,6 +4381,28 @@
   #ai-senpai .senpai-orb-btn { position:relative; border:0; padding:0; cursor:pointer; background:transparent; outline:none; animation: senpaiAppear 480ms cubic-bezier(.34,1.56,.64,1); transition: transform .18s cubic-bezier(.2,.7,.3,1); }
   #ai-senpai .senpai-orb-btn:hover { transform: scale(1.06) translateY(-3px); }
   #ai-senpai .senpai-orb-btn:active { transform: scale(.94) translateY(2px); }
+  #ai-senpai .senpai-icon-btn {
+    flex-basis: 44px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+  }
+  #ai-senpai .senpai-dismiss-btn,
+  #ai-senpai #senpai-input { min-height: 44px !important; }
+  #ai-senpai .senpai-digest-panel {
+    display: flex;
+    flex-direction: column;
+  }
+  #ai-senpai .senpai-digest-scroll {
+    flex: 1;
+    min-height: 0;
+  }
+  #ai-senpai :is(button, input):focus-visible {
+    outline: 3px solid var(--learning-blue-700) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 2px var(--surface-white) !important;
+  }
   #ai-senpai .senpai-scroll::-webkit-scrollbar { width:6px; }
   #ai-senpai .senpai-scroll::-webkit-scrollbar-thumb { background:#E8DFD7; border-radius:999px; }
   #ai-senpai[data-mode="peek"][data-compact="true"] > div:first-child { display: none !important; }
@@ -4483,6 +4509,9 @@
     }
     #ai-senpai {
       bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+    }
+    #ai-senpai .senpai-panel {
+      max-height: calc(100dvh - 168px) !important;
     }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -6267,6 +6296,7 @@ window.continueAfterQuiz = () => {
 let flashState = null;
 
 window.openFlashcards = (courseSlug) => {
+  const completeMobileContentFocus = prepareMobileSidebarContentFocus();
   closeSidebar();
   const cards = FLASHCARD_DATA[courseSlug];
   if (!cards || cards.length === 0) {
@@ -6278,10 +6308,12 @@ window.openFlashcards = (courseSlug) => {
         <button class="btn-secondary" style="margin-top:20px;" onclick="renderLesson()">← Kembali ke Materi</button>
       </div>
     `;
+    completeMobileContentFocus();
     return;
   }
   flashState = { course: courseSlug, cards: [...cards].sort(() => Math.random() - 0.5), idx: 0, flipped: false };
   renderFlashcard();
+  completeMobileContentFocus();
 };
 
 function renderFlashcard() {
@@ -6787,9 +6819,11 @@ function renderSidebar() {
   const course = COURSE_CONTENT[currentState.course];
   const progress = getProgress()[currentState.course] || {};
   const sidebar = document.getElementById('sidebar');
+  const focusedDrawerControl = document.activeElement;
   const restoreDrawerCloseFocus = !isDesktop()
     && sidebar?.classList.contains('mobile-open')
-    && sidebar.contains(document.activeElement);
+    && sidebar.contains(focusedDrawerControl)
+    && !focusedDrawerControl?.matches('.sidebar-section-header, .module-header');
 
   // Preserve sidebar scroll across re-render. innerHTML swap di bawah
   // ngedestroy .sidebar-scroll lama → tanpa restore ini, klik section/Bab
@@ -7115,6 +7149,7 @@ window.openHelp = () => {
 // resort. When the response carries `sections`, render a 2-level accordion
 // (section → Bab → kosakata) with mutex behaviour at both levels.
 window.openVocabList = async () => {
+  const completeMobileContentFocus = prepareMobileSidebarContentFocus();
   closeSidebar();
   const slug = currentState.course;
   const course = COURSE_CONTENT[slug];
@@ -7248,6 +7283,7 @@ window.openVocabList = async () => {
       <p class="lesson-subtitle" style="margin-top:12px;">Belum ada kosakata untuk kelas ini.</p>
     `;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    completeMobileContentFocus();
     return;
   }
 
@@ -7336,6 +7372,7 @@ window.openVocabList = async () => {
     ${bodyHtml}
   `;
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  completeMobileContentFocus();
 };
 
 window.filterVocabList = (q) => {
@@ -7457,6 +7494,7 @@ function kanjiUsageLinkHtml(usage) {
 }
 
 window.openKanjiList = async () => {
+  const completeMobileContentFocus = prepareMobileSidebarContentFocus();
   closeSidebar();
   const slug = currentState.course;
   const course = COURSE_CONTENT[slug];
@@ -7503,6 +7541,7 @@ window.openKanjiList = async () => {
         Daftar kanji belum di-isi admin untuk kelas ini.
       </p>`;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    completeMobileContentFocus();
     return;
   }
 
@@ -7575,6 +7614,7 @@ window.openKanjiList = async () => {
     ${bodyHtml}
   `;
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  completeMobileContentFocus();
 };
 
 window.filterKanjiList = (q) => {
@@ -12315,6 +12355,7 @@ function _sectionOfModule(moduleId) {
 }
 
 window.selectLesson = (moduleId, lessonId) => {
+  const completeMobileContentFocus = prepareMobileSidebarContentFocus();
   // Cleanup lesson-scoped state sebelum pindah — listening player + kanji
   // detail overlay + kanji stroke timer + kanji modal stale state.
   // Tanpa ini, audio terus jalan / modal stack / timer fight pas ganti
@@ -12344,6 +12385,7 @@ window.selectLesson = (moduleId, lessonId) => {
   renderLesson();
   closeSidebar();
   window.scrollTo({ top: 0, behavior: 'auto' });
+  completeMobileContentFocus();
 };
 
 const SIDEBAR_KEY = 'eznihongo:sidebarCollapsed';
@@ -12352,6 +12394,36 @@ let mobileSidebarOpener = null;
 let mobileSidebarBodyOverflow = '';
 let lastSidebarDesktopState = isDesktop();
 const mobileSidebarInerted = new Set();
+
+function prepareMobileSidebarContentFocus() {
+  const sidebar = document.getElementById('sidebar');
+  const shouldMoveFocus = !isDesktop() && sidebar?.classList.contains('mobile-open');
+  const source = document.activeElement;
+  return () => {
+    if (!shouldMoveFocus || isDesktop()) return;
+    window.requestAnimationFrame(() => {
+      const active = document.activeElement;
+      const focusStayedOnSource = active === source;
+      const focusWasLost = !active?.isConnected
+        || active === document.body
+        || active === document.documentElement;
+      if (!focusStayedOnSource && !focusWasLost) return;
+
+      const main = document.getElementById('main-content')
+        || document.querySelector('#app-root main');
+      if (!main) return;
+      const target = main.querySelector('.lesson-title, h1, h2') || main;
+      const needsTabIndex = !target.matches(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]'
+      );
+      if (needsTabIndex) target.setAttribute('tabindex', '-1');
+      target.focus({ preventScroll: true });
+      if (needsTabIndex) {
+        target.addEventListener('blur', () => target.removeAttribute('tabindex'), { once: true });
+      }
+    });
+  };
+}
 
 function updateMobileSidebarToggle(isOpen) {
   const btn = document.getElementById('sidebar-toggle');
@@ -12583,6 +12655,7 @@ function _sidebarAnchor(kind, key) {
   };
   const before = findHdr();
   const beforeTop = before ? before.getBoundingClientRect().top : null;
+  const restoreHeaderFocus = before === document.activeElement;
   // Kembalikan fungsi "re-anchor" untuk dipanggil setelah renderSidebar().
   return () => {
     if (beforeTop == null) return;
@@ -12591,6 +12664,20 @@ function _sidebarAnchor(kind, key) {
     if (!after || !scroller) return;
     // Geser scroll sebesar perpindahan header di layar → header diam di tempat.
     scroller.scrollTop += after.getBoundingClientRect().top - beforeTop;
+    if (restoreHeaderFocus) {
+      window.requestAnimationFrame(() => {
+        const sidebar = document.getElementById('sidebar');
+        const mobile = !isDesktop();
+        if (mobile && !sidebar?.classList.contains('mobile-open')) return;
+        const active = document.activeElement;
+        const focusWasLost = !active?.isConnected
+          || active === document.body
+          || active === document.documentElement;
+        const focusIsDrawerFallback = mobile && active?.classList.contains('sidebar-close');
+        if (!focusWasLost && !focusIsDrawerFallback) return;
+        findHdr()?.focus({ preventScroll: true });
+      });
+    }
   };
 }
 
@@ -12753,11 +12840,13 @@ window.switchCourse = async (slug) => {
     return;
   }
   if (slug === currentState.course) { closeSidebar(true); return; }
+  const completeMobileContentFocus = prepareMobileSidebarContentFocus();
   currentState.moduleId = null;
   currentState.lessonId = null;
   history.replaceState({}, '', `welcome.html?course=${slug}`);
   renderLearning(slug);
   closeSidebar();
+  completeMobileContentFocus();
 };
 
 // ═══════════════════════════════════════════════
@@ -13110,7 +13199,7 @@ const S = (window.AISenpai = {
           <div style="font-size:9.5px;font-weight:900;letter-spacing:.06em;color:${meta.color};text-transform:uppercase;">${S.esc(meta.label)}</div>
           <div style="font-size:12px;font-weight:700;color:#1B1410;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${S.esc(r.title)}</div>
         </div>
-        <button onclick="event.stopPropagation();AISenpai.dismissPeek()" style="flex:0 0 22px;width:22px;height:22px;border-radius:6px;border:0;background:transparent;color:#9A8A82;cursor:pointer;font-size:13px;">✕</button>
+        <button class="senpai-dismiss-btn senpai-icon-btn" aria-label="Tutup pengingat" onclick="event.stopPropagation();AISenpai.dismissPeek()" style="flex:0 0 22px;width:22px;height:22px;border-radius:6px;border:0;background:transparent;color:#9A8A82;cursor:pointer;font-size:13px;">✕</button>
       </div>
       ${more}
     </div>`;
@@ -13127,9 +13216,9 @@ const S = (window.AISenpai = {
       <div style="font-size:11.5px;color:#7A6A60;margin-bottom:11px;line-height:1.35;">${S.esc(r.sub)} — Aku sudah nungguin nih 🐾</div>
       <div style="display:flex;gap:6px;">
         <button onclick="AISenpai.act('${r.id}')" style="flex:1;border:0;cursor:pointer;background:#C8102E;color:#fff;font-weight:900;font-size:12px;padding:10px;border-radius:12px;box-shadow:0 3px 0 #a50d26;">Mulai sekarang</button>
-        <button onclick="AISenpai.dismissToast()" style="border:0;background:#FFF1D6;cursor:pointer;color:#7A4A00;font-weight:800;font-size:12px;padding:10px 11px;border-radius:12px;">Nanti</button>
+        <button class="senpai-dismiss-btn" onclick="AISenpai.dismissToast()" style="border:0;background:#FFF1D6;cursor:pointer;color:#7A4A00;font-weight:800;font-size:12px;padding:10px 11px;border-radius:12px;">Nanti</button>
       </div>
-      <button onclick="AISenpai.dismissToast()" style="position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:6px;border:0;background:transparent;color:#9A8A82;cursor:pointer;font-size:13px;">✕</button>
+      <button class="senpai-dismiss-btn senpai-icon-btn" aria-label="Tutup pengingat" onclick="AISenpai.dismissToast()" style="position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:6px;border:0;background:transparent;color:#9A8A82;cursor:pointer;font-size:13px;">✕</button>
     </div>`;
   },
 
@@ -13158,13 +13247,13 @@ const S = (window.AISenpai = {
         <div style="display:flex;flex-direction:column;gap:5px;">${items}</div>
       </div>`;
     }).join('');
-    return `<div class="senpai-panel" style="margin-bottom:12px;width:326px;background:#fff;border-radius:22px;box-shadow:0 24px 56px rgba(27,20,16,.2),0 0 0 1.5px #F0E0DA;overflow:hidden;animation:senpaiPanelIn 380ms cubic-bezier(.34,1.56,.64,1);transform-origin:bottom right;">
+    return `<div class="senpai-panel senpai-digest-panel" style="margin-bottom:12px;width:326px;background:#fff;border-radius:22px;box-shadow:0 24px 56px rgba(27,20,16,.2),0 0 0 1.5px #F0E0DA;overflow:hidden;animation:senpaiPanelIn 380ms cubic-bezier(.34,1.56,.64,1);transform-origin:bottom right;">
       <div style="padding:12px 12px 12px 14px;background:linear-gradient(180deg,#fff0f2 0%,#FFF8F1 100%);border-bottom:1px solid #F0E0DA;position:relative;">
         <div style="font-size:10px;font-weight:900;letter-spacing:.14em;color:#a50d26;text-transform:uppercase;"><span class="ez-jp">招き猫</span> Digest</div>
         <div style="font-size:15px;font-weight:900;color:#1B1410;margin-top:2px;">${S.reminders.length} hal menunggu</div>
-        <button onclick="AISenpai.closePanel()" style="position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:7px;border:0;background:#fff;color:#7A6A60;cursor:pointer;box-shadow:0 2px 6px rgba(27,20,16,.1);font-size:13px;">✕</button>
+        <button class="senpai-dismiss-btn senpai-icon-btn" aria-label="Tutup ringkasan AI Senpai" onclick="AISenpai.closePanel()" style="position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:7px;border:0;background:#fff;color:#7A6A60;cursor:pointer;box-shadow:0 2px 6px rgba(27,20,16,.1);font-size:13px;">✕</button>
       </div>
-      <div class="senpai-scroll" style="max-height:320px;overflow-y:auto;padding:8px 10px 4px;">${groupsHtml}</div>
+      <div class="senpai-scroll senpai-digest-scroll" style="max-height:320px;overflow-y:auto;padding:8px 10px 4px;">${groupsHtml}</div>
       <div style="padding:10px 12px 12px;border-top:1px solid #F0E0DA;display:flex;background:#FFFBF6;">
         <button onclick="AISenpai.openExpanded()" style="margin-left:auto;border:0;cursor:pointer;background:#C8102E;color:#fff;font-weight:900;font-size:11.5px;padding:8px 12px;border-radius:10px;box-shadow:0 2.5px 0 #a50d26;">Buka chat 💬</button>
       </div>
@@ -13195,7 +13284,7 @@ const S = (window.AISenpai = {
         }).join('')}</div></div>`
       : '';
     const mic = S.voiceSupported()
-      ? `<button id="senpai-mic" title="Rekam suara" onclick="AISenpai.toggleVoice()" style="flex:0 0 32px;width:32px;height:32px;border-radius:10px;border:0;background:#fff0f2;color:#C8102E;display:flex;align-items:center;justify-content:center;cursor:pointer;">🎤</button>`
+      ? `<button id="senpai-mic" class="senpai-icon-btn" aria-label="Rekam suara" title="Rekam suara" onclick="AISenpai.toggleVoice()" style="flex:0 0 32px;width:32px;height:32px;border-radius:10px;border:0;background:#fff0f2;color:#C8102E;display:flex;align-items:center;justify-content:center;cursor:pointer;">🎤</button>`
       : '';
     return `<div class="senpai-panel" style="margin-bottom:12px;width:340px;height:560px;max-height:78vh;background:#fff;border-radius:24px;box-shadow:0 28px 70px rgba(27,20,16,.22),0 0 0 1.5px #F0E0DA;display:flex;flex-direction:column;position:relative;animation:senpaiPanelIn 420ms cubic-bezier(.34,1.56,.64,1);transform-origin:bottom right;">
       <div style="position:absolute;top:-46px;left:14px;z-index:2;filter:drop-shadow(0 6px 12px rgba(27,20,16,.12));">${S.manekiSVG(72, 'up', 'happy', false)}</div>
@@ -13203,7 +13292,7 @@ const S = (window.AISenpai = {
         <div style="font-size:10px;font-weight:900;letter-spacing:.16em;color:#a50d26;"><span class="ez-jp">招き猫</span> · MANEKO CHAN</div>
         <div style="font-weight:900;font-size:16px;color:#1B1410;margin-top:2px;">Maneko-chan</div>
         <div style="font-size:11px;color:#7A6A60;font-weight:700;margin-top:1px;"><span style="display:inline-block;width:6px;height:6px;border-radius:999px;background:#4FB58E;margin-right:5px;vertical-align:middle;"></span>Online · siap bantu</div>
-        <button onclick="AISenpai.closePanel()" style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:8px;border:0;background:#fff;color:#7A6A60;cursor:pointer;box-shadow:0 2px 6px rgba(27,20,16,.1);font-size:15px;">✕</button>
+        <button class="senpai-dismiss-btn senpai-icon-btn" aria-label="Tutup chat AI Senpai" onclick="AISenpai.closePanel()" style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:8px;border:0;background:#fff;color:#7A6A60;cursor:pointer;box-shadow:0 2px 6px rgba(27,20,16,.1);font-size:15px;">✕</button>
       </div>
       ${strip}
       <div id="senpai-chat-scroll" class="senpai-scroll" style="flex:1;padding:8px 12px 4px;overflow-y:auto;border-top:1px solid #F0E0DA;margin-top:6px;">
@@ -13211,9 +13300,9 @@ const S = (window.AISenpai = {
       </div>
       <div style="padding:10px 12px 12px;border-top:1px solid #F0E0DA;background:#FFFBF6;border-radius:0 0 24px 24px;">
         <div style="display:flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #F0E0DA;border-radius:14px;padding:6px 6px 6px 12px;">
-          <input id="senpai-input" placeholder="Tanya aku apa saja…" style="flex:1;border:0;outline:0;background:transparent;font-family:inherit;font-size:12.5px;color:#1B1410;min-width:0;"/>
+          <input id="senpai-input" aria-label="Pesan untuk AI Senpai" placeholder="Tanya aku apa saja…" style="flex:1;border:0;outline:0;background:transparent;font-family:inherit;font-size:12.5px;color:#1B1410;min-width:0;"/>
           ${mic}
-          <button onclick="AISenpai.sendInput()" style="flex:0 0 32px;width:32px;height:32px;border-radius:10px;border:0;background:#C8102E;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 0 #a50d26;font-size:15px;">➤</button>
+          <button class="senpai-icon-btn" aria-label="Kirim pesan" onclick="AISenpai.sendInput()" style="flex:0 0 32px;width:32px;height:32px;border-radius:10px;border:0;background:#C8102E;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 0 #a50d26;font-size:15px;">➤</button>
         </div>
       </div>
     </div>`;

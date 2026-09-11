@@ -31,6 +31,7 @@ body {
 #progress-app .hero .course-switch {
   width: min(320px, 100%);
   min-width: 0;
+  flex-shrink: 0;
 }
 
 #progress-app .course-select {

@@ -44,7 +44,15 @@ body {
 .hero .course-switch {
   position: relative;
   z-index: 1;
-  min-width: 220px;
+  width: min(320px, 100%);
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+#dashboard-app .course-select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .grid {
@@ -141,6 +149,14 @@ body {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: .02em;
+}
+
+.continue-label,
+.live-recordings,
+.live-recordings li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .continue-title {
