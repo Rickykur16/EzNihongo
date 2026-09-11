@@ -54,6 +54,21 @@ body {
   margin-bottom: 18px;
 }
 
+.hero > *,
+.card,
+.performance > *,
+.focus { min-width: 0; }
+
+.hero h1,
+.card h2,
+.card p,
+.continue-title,
+.focus h3,
+.insight,
+.access-notice,
+.pending-order-row,
+.state { overflow-wrap: anywhere; }
+
 .card {
   position: relative;
   overflow: hidden;
