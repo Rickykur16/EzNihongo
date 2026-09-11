@@ -599,6 +599,12 @@
   box-shadow: 0 0 0 2px #fff;
 }
 
+#ai-senpai .senpai-orb-btn:focus-visible {
+  outline: 3px solid var(--learning-blue-700);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px #fff;
+}
+
 @media (max-width: 860px) {
   .learning-workspace .main-content {
     padding: 22px 24px calc(230px + env(safe-area-inset-bottom));
@@ -623,4 +629,10 @@
 
   .learning-workspace .lesson-footer .btn-primary,
   .learning-workspace .lesson-footer .btn-secondary { width: 100%; }
+}
+
+@media (max-width: 760px) {
+  body > footer {
+    padding-bottom: calc(120px + env(safe-area-inset-bottom));
+  }
 }
