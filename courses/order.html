@@ -5,9 +5,9 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Status Pesanan - EzNihongo</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="../styles/tokens.css"/>
+<link rel="stylesheet" href="../styles/tokens.css?v=20260911-1"/>
 <link rel="stylesheet" href="../styles/components.css"/>
-<link rel="stylesheet" href="course.css"/>
+<link rel="stylesheet" href="course.css?v=20260911-2"/>
 </head>
 <body>
 
@@ -23,7 +23,8 @@
       <h1 class="c-title" id="o-title">Memuat...</h1>
       <p class="c-subtitle" id="o-subtitle"></p>
     </header>
-    <section class="c-card" id="o-body"></section>
+    <p class="ez-sr-only" id="o-live-status" role="status" aria-live="polite" aria-atomic="true"></p>
+    <section class="c-card" id="o-body" aria-labelledby="o-title" aria-busy="true"></section>
   </div>
 </main>
 
@@ -53,10 +54,10 @@ const STATUS_META = {
   cancelled: { label: "Dibatalkan", tone: "muted" },
 };
 const TONE_STYLE = {
-  warn: "background:#fff4e5;color:#b45309;border:1px solid #fde68a;",
-  ok: "background:#dcfce7;color:#15803d;border:1px solid #86efac;",
-  bad: "background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;",
-  muted: "background:#f5f5f5;color:#737373;border:1px solid #e5e5e5;",
+  warn: "background:var(--warning-soft);color:var(--warning);border:1px solid #e7c78b;",
+  ok: "background:var(--success-soft);color:var(--success);border:1px solid #b8d49d;",
+  bad: "background:var(--danger-soft);color:var(--danger);border:1px solid #fecaca;",
+  muted: "background:var(--paper-200);color:var(--ink-700);border:1px solid var(--paper-300);",
 };
 function statusBadge(status) {
   const meta = STATUS_META[status] || { label: status, tone: "muted" };
@@ -69,17 +70,17 @@ function getOrderId() {
 
 function bankAccountsHtml(accounts, orderNumber) {
   if (!accounts || accounts.length === 0) {
-    return `<p style="color:#b45309;">Rekening belum dikonfigurasi admin. Hubungi kami via WhatsApp untuk instruksi transfer.</p>`;
+    return `<p style="color:var(--warning);">Rekening belum dikonfigurasi admin. Hubungi kami via WhatsApp untuk instruksi transfer.</p>`;
   }
   const rows = accounts.map(a => `
-    <div style="border:1px solid #e8e0d2;border-radius:10px;padding:14px 16px;margin-bottom:10px;">
-      <div style="font-weight:700;color:#0a0a0a;">${esc(a.bankName)}${a.label ? " · " + esc(a.label) : ""}</div>
+    <div style="border:1px solid var(--paper-300);border-radius:10px;padding:14px 16px;margin-bottom:10px;background:var(--paper-50);">
+      <div style="font-weight:700;color:var(--ink-900);">${esc(a.bankName)}${a.label ? " · " + esc(a.label) : ""}</div>
       <div style="font-family:monospace;font-size:18px;margin:4px 0;">${esc(a.accountNumber)}</div>
-      <div style="color:#525252;font-size:13px;">a.n. ${esc(a.accountHolder)}</div>
+      <div style="color:var(--ink-700);font-size:13px;">a.n. ${esc(a.accountHolder)}</div>
     </div>`).join("");
   return `
     ${rows}
-    <p style="font-size:13px;color:#485f84;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:10px 12px;">
+    <p style="font-size:13px;color:var(--info);background:var(--info-soft);border:1px solid #bfd2ee;border-radius:8px;padding:10px 12px;">
       Wajib cantumkan <strong>${esc(orderNumber)}</strong> di berita transfer, supaya admin bisa mencocokkan pembayaranmu.
     </p>`;
 }
@@ -87,19 +88,26 @@ function bankAccountsHtml(accounts, orderNumber) {
 function uploadFormHtml(order) {
   const isRejected = order.status === "rejected";
   return `
-    ${isRejected ? `<p style="color:#b91c1c;font-size:13px;margin-bottom:12px;">Bukti sebelumnya ditolak — lihat alasan di atas, lalu upload ulang bukti yang benar.</p>` : ""}
+    ${isRejected ? `<p style="color:var(--danger);font-size:13px;margin-bottom:12px;">Bukti sebelumnya ditolak — lihat alasan di atas, lalu upload ulang bukti yang benar.</p>` : ""}
     <form id="o-proof-form" style="margin-top:6px;">
-      <div class="field"><label>Bukti transfer (JPG/PNG/WEBP/PDF, maks 5MB)</label>
+      <div class="field"><label for="o-file">Bukti transfer (JPG/PNG/WEBP/PDF, maks 5MB)</label>
         <input type="file" name="file" id="o-file" accept="image/jpeg,image/png,image/webp,application/pdf" required />
       </div>
       <div class="field-row">
-        <div class="field"><label>Bank pengirim (opsional)</label><input name="claimedBankName" placeholder="BCA" /></div>
-        <div class="field"><label>Nama pengirim (opsional)</label><input name="claimedSenderName" /></div>
+        <div class="field"><label for="o-bank-name">Bank pengirim (opsional)</label><input id="o-bank-name" name="claimedBankName" placeholder="BCA" /></div>
+        <div class="field"><label for="o-sender-name">Nama pengirim (opsional)</label><input id="o-sender-name" name="claimedSenderName" /></div>
       </div>
-      <div class="field"><label>Jumlah yang ditransfer (opsional)</label><input type="number" name="claimedAmountIdr" placeholder="${order.amountIdr}" /></div>
+      <div class="field"><label for="o-amount">Jumlah yang ditransfer (opsional)</label><input type="number" id="o-amount" name="claimedAmountIdr" placeholder="${order.amountIdr}" /></div>
       <button type="submit" class="c-submit" id="o-upload-btn">${isRejected ? "Upload Ulang Bukti" : "Kirim Bukti Transfer"}</button>
     </form>
-    <p id="o-upload-err" style="color:#b91c1c;font-size:13px;margin-top:8px;display:none;"></p>`;
+    <p id="o-upload-err" role="alert" aria-live="assertive" aria-atomic="true" hidden style="color:var(--danger);font-size:13px;margin-top:8px;"></p>`;
+}
+
+let _lastOrderLiveStatus = "";
+function setOrderLiveStatus(message) {
+  if (message === _lastOrderLiveStatus) return;
+  _lastOrderLiveStatus = message;
+  document.getElementById("o-live-status").textContent = message;
 }
 
 async function wireUploadForm(order) {
@@ -109,11 +117,13 @@ async function wireUploadForm(order) {
     e.preventDefault();
     const btn = document.getElementById("o-upload-btn");
     const errEl = document.getElementById("o-upload-err");
-    errEl.style.display = "none";
+    errEl.textContent = "";
+    errEl.hidden = true;
     const fileEl = document.getElementById("o-file");
     if (!fileEl.files[0]) return;
     btn.disabled = true;
     btn.textContent = "Mengunggah...";
+    setOrderLiveStatus("Mengunggah bukti transfer...");
     try {
       const fd = new FormData(form);
       const res = await window.ezApi(`/orders/${encodeURIComponent(order.id)}/payment-proof`, {
@@ -122,10 +132,12 @@ async function wireUploadForm(order) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setOrderLiveStatus("Bukti transfer berhasil dikirim. Memperbarui status pesanan...");
       await loadAndRender();
     } catch (err) {
+      setOrderLiveStatus("");
       errEl.textContent = "Gagal upload: " + (err.message || "coba lagi.");
-      errEl.style.display = "block";
+      errEl.hidden = false;
       btn.disabled = false;
       btn.textContent = "Kirim Bukti Transfer";
     }
@@ -140,12 +152,15 @@ function renderOrder(data) {
     `No. Pesanan <code>${esc(order.orderNumber)}</code> · ${formatRupiah(order.amountIdr)}`;
 
   const body = document.getElementById("o-body");
+  body.setAttribute("aria-busy", "false");
+  const statusMeta = STATUS_META[order.status] || { label: order.status, tone: "muted" };
+  setOrderLiveStatus(`Status pesanan: ${statusMeta.label}.`);
   const latestPayment = (payments || [])[0];
 
   if (order.status === "approved") {
     body.innerHTML = `
       <p style="margin-bottom:14px;">${statusBadge(order.status)}</p>
-      <p style="color:#525252;line-height:1.7;">Pembayaranmu sudah diverifikasi. Kelas sudah bisa diakses sekarang.</p>
+      <p style="color:var(--ink-700);line-height:1.7;">Pembayaranmu sudah diverifikasi. Kelas sudah bisa diakses sekarang.</p>
       <a href="../dashboard.html?v=20260902-1${order.courseSlug ? "&course=" + encodeURIComponent(order.courseSlug) : ""}"
          class="c-submit" style="display:block;text-align:center;text-decoration:none;margin-top:16px;">Buka Dashboard →</a>`;
     return;
@@ -154,7 +169,7 @@ function renderOrder(data) {
   if (order.status === "expired" || order.status === "cancelled") {
     body.innerHTML = `
       <p style="margin-bottom:14px;">${statusBadge(order.status)}</p>
-      <p style="color:#525252;line-height:1.7;">
+      <p style="color:var(--ink-700);line-height:1.7;">
         ${order.status === "expired"
           ? "Pesanan ini sudah lewat batas waktu pembayaran."
           : "Pesanan ini sudah dibatalkan."}
@@ -167,16 +182,16 @@ function renderOrder(data) {
 
   // pending_payment / awaiting_review / rejected — all still actionable.
   const rejectionNote = order.status === "rejected" && latestPayment?.rejectionReason
-    ? `<div style="background:#fee2e2;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;margin-bottom:14px;color:#b91c1c;font-size:13px;">
+    ? `<div style="background:var(--danger-soft);border:1px solid #fecaca;border-radius:8px;padding:10px 12px;margin-bottom:14px;color:var(--danger);font-size:13px;">
          Alasan ditolak: ${esc(latestPayment.rejectionReason)}
        </div>`
     : "";
   const reviewNote = order.status === "awaiting_review"
-    ? `<p style="color:#525252;font-size:13px;margin-bottom:14px;">Bukti sudah dikirim dan sedang direview admin. Kalau salah upload, kirim ulang di bawah ini.</p>`
+    ? `<p style="color:var(--ink-700);font-size:13px;margin-bottom:14px;">Bukti sudah dikirim dan sedang direview admin. Kalau salah upload, kirim ulang di bawah ini.</p>`
     : "";
 
   body.innerHTML = `
-    <p style="margin-bottom:14px;">${statusBadge(order.status)} <span style="font-size:12px;color:#8a7d66;">Kadaluarsa ${fmtDate(order.expiresAt)}</span></p>
+    <p style="margin-bottom:14px;">${statusBadge(order.status)} <span style="font-size:12px;color:var(--ink-700);">Kadaluarsa ${fmtDate(order.expiresAt)}</span></p>
     ${rejectionNote}${reviewNote}
     <h2>Instruksi Transfer</h2>
     ${bankAccountsHtml(bankAccounts, order.orderNumber)}
@@ -189,17 +204,24 @@ function renderOrder(data) {
 let _pollTimer = null;
 async function loadAndRender() {
   const id = getOrderId();
+  const body = document.getElementById("o-body");
   if (!id) {
     document.getElementById("o-title").textContent = "Pesanan tidak ditemukan";
+    setOrderLiveStatus("");
+    body.setAttribute("aria-busy", "false");
+    body.innerHTML = `<p role="alert" style="color:var(--danger);">Alamat halaman tidak menyertakan nomor pesanan.</p>`;
     return;
   }
+  body.setAttribute("aria-busy", "true");
   try {
     const res = await window.ezApi(`/orders/${encodeURIComponent(id)}`);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       document.getElementById("o-title").textContent = "Pesanan tidak ditemukan";
-      document.getElementById("o-body").innerHTML =
-        `<p style="color:#525252;">${esc(data.error || "Pesanan ini tidak bisa diakses.")}</p>`;
+      setOrderLiveStatus("");
+      body.setAttribute("aria-busy", "false");
+      body.innerHTML =
+        `<p role="alert" style="color:var(--ink-700);">${esc(data.error || "Pesanan ini tidak bisa diakses.")}</p>`;
       return;
     }
     const data = await res.json();
@@ -211,7 +233,9 @@ async function loadAndRender() {
       _pollTimer = setTimeout(loadAndRender, 30000);
     }
   } catch (err) {
-    document.getElementById("o-body").innerHTML = `<p style="color:#b91c1c;">Gagal memuat: ${esc(err.message)}</p>`;
+    setOrderLiveStatus("");
+    body.setAttribute("aria-busy", "false");
+    body.innerHTML = `<p role="alert" style="color:var(--danger);">Gagal memuat: ${esc(err.message)}</p>`;
   }
 }
 

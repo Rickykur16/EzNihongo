@@ -6,9 +6,9 @@
 <meta name="theme-color" content="#faf7f2"/>
 <title>Belajar — EzNihongo</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="styles/tokens.css"/>
+<link rel="stylesheet" href="styles/tokens.css?v=20260911-1"/>
 <link rel="stylesheet" href="styles/components.css"/>
-<link rel="stylesheet" href="styles/student-nav.css?v=20260902-4"/>
+<link rel="stylesheet" href="styles/student-nav.css?v=20260911-3"/>
 <style>
   * { box-sizing: border-box; }
   html {
@@ -206,7 +206,7 @@
     font-weight: 700;
   }
   .greeting-jp .san {
-    color: #999;
+    color: var(--ink-700);
     font-weight: 400;
     font-size: 0.65em;
     margin-left: 3px;
@@ -293,27 +293,22 @@
     min-height: 0;
   }
 
-  /* ── Sidebar (drawer, all widths) ──
-     Layered bg: soft red radial glow at top + warm cream→white gradient +
-     subtle diagonal grain to kill the flat-white feel. Decorative ::before
-     adds a thin red accent line. */
+  /* ── Sidebar (drawer, all widths) ── */
   .sidebar {
-    background:
-      radial-gradient(720px 240px at 50% -80px, rgba(178,0,36,0.08) 0%, transparent 65%),
-      linear-gradient(180deg, #fcfaf5 0%, #ffffff 42%, #fdfbf7 100%);
-    border-right: 1px solid #ece9e3;
+    background: var(--paper-50);
+    border-right: 1px solid var(--learning-blue-200);
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
     -webkit-overflow-scrolling: touch;
     position: fixed;
     top: 0; left: 0;
-    width: 86vw; max-width: 360px; height: 100vh;
+    width: 86vw; max-width: 360px; height: 100vh; height: 100dvh;
     z-index: 1100;
     transform: translateX(-100%);
     transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: transform;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    box-shadow: var(--elev-4);
     padding: 64px 22px 24px;
     display: flex;
     flex-direction: column;
@@ -323,19 +318,14 @@
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 3px;
-    background: linear-gradient(90deg,
-      transparent 0%,
-      rgba(178,0,36,0.35) 20%,
-      rgba(178,0,36,0.55) 50%,
-      rgba(178,0,36,0.35) 80%,
-      transparent 100%);
+    background: var(--learning-blue-700);
     pointer-events: none;
     z-index: 1;
   }
   .sidebar.mobile-open { transform: translateX(0); }
   .sidebar-backdrop {
     position: fixed; inset: 0;
-    background: rgba(0,0,0,0.45);
+    background: var(--surface-overlay);
     z-index: 1050;
     opacity: 0; pointer-events: none;
     transition: opacity 0.25s;
@@ -347,12 +337,19 @@
     display: flex;
     position: absolute;
     top: 14px; right: 14px;
-    width: 36px; height: 36px;
+    width: 44px; height: 44px;
     align-items: center; justify-content: center;
-    background: #f5f5f7; border: none; border-radius: 50%;
-    cursor: pointer; color: #191c1d;
+    background: var(--surface-white);
+    border: 1px solid var(--learning-blue-500);
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--learning-blue-700);
   }
-  .sidebar-close:hover { background: #e8e8e8; }
+  .sidebar-close:hover {
+    border-color: var(--learning-blue-700);
+    background: var(--learning-blue-100);
+    color: var(--learning-blue-800);
+  }
   .sidebar-scroll {
     flex: 1; min-height: 0;
     overflow-y: auto;
@@ -455,7 +452,7 @@
   }
   .course-option.locked { opacity: 0.75; }
   .course-option.locked .opt-status { color: var(--brand-red); }
-  .course-option.active .opt-status { color: #16a34a; font-weight: 700; }
+  .course-option.active .opt-status { color: var(--success); font-weight: 700; }
 
   /* Sidebar footer (logout) */
   .sidebar-footer {
@@ -1931,8 +1928,8 @@
   /* ── SIDEBAR ────────────────────────────────────────────────────── */
   .sidebar {
     padding: 68px 22px 22px;
-    background: var(--du-surface);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.22);
+    background: var(--paper-50);
+    box-shadow: var(--elev-4);
   }
   .course-picker {
     border-radius: 14px;
@@ -2286,11 +2283,15 @@
   /* — Keyboard focus visibility (WCAG 2.4.7) + sentuh ≥44px di mobile — */
   .course-tab:focus-visible,
   .logout-btn:focus-visible,
-  .sidebar-toggle:focus-visible,
-  .sidebar-close:focus-visible,
   .quicklink:focus-visible {
     outline: 2px solid var(--brand-red);
     outline-offset: 2px;
+  }
+  .sidebar-toggle:focus-visible,
+  .sidebar-close:focus-visible {
+    outline: 3px solid var(--learning-blue-700);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--surface-white);
   }
   @media (max-width: 860px) {
     .course-tab, .quicklink, .logout-btn, .sidebar-toggle { min-height: 44px; }
@@ -4363,7 +4364,11 @@
     font-family: var(--font-body, 'Inter', system-ui, sans-serif);
   }
   #ai-senpai .ez-jp { font-family: var(--font-jp, 'Noto Sans JP', sans-serif); }
-  #ai-senpai button { font-family: inherit; }
+  #ai-senpai button {
+    min-width: 44px;
+    min-height: 44px;
+    font-family: inherit;
+  }
   @keyframes senpaiAppear { 0%{opacity:0;transform:scale(.4) translateY(40px)} 70%{opacity:1;transform:scale(1.08) translateY(-4px)} 100%{opacity:1;transform:scale(1) translateY(0)} }
   @keyframes senpaiPaw { 0%,100%{transform:rotate(-8deg)} 50%{transform:rotate(8deg)} }
   @keyframes senpaiPulse { 0%{box-shadow:0 0 0 0 rgba(200,16,46,.42)} 100%{box-shadow:0 0 0 30px rgba(200,16,46,0)} }
@@ -4376,6 +4381,28 @@
   #ai-senpai .senpai-orb-btn { position:relative; border:0; padding:0; cursor:pointer; background:transparent; outline:none; animation: senpaiAppear 480ms cubic-bezier(.34,1.56,.64,1); transition: transform .18s cubic-bezier(.2,.7,.3,1); }
   #ai-senpai .senpai-orb-btn:hover { transform: scale(1.06) translateY(-3px); }
   #ai-senpai .senpai-orb-btn:active { transform: scale(.94) translateY(2px); }
+  #ai-senpai .senpai-icon-btn {
+    flex-basis: 44px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+  }
+  #ai-senpai .senpai-dismiss-btn,
+  #ai-senpai #senpai-input { min-height: 44px !important; }
+  #ai-senpai .senpai-digest-panel {
+    display: flex;
+    flex-direction: column;
+  }
+  #ai-senpai .senpai-digest-scroll {
+    flex: 1;
+    min-height: 0;
+  }
+  #ai-senpai :is(button, input):focus-visible {
+    outline: 3px solid var(--learning-blue-700) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 2px var(--surface-white) !important;
+  }
   #ai-senpai .senpai-scroll::-webkit-scrollbar { width:6px; }
   #ai-senpai .senpai-scroll::-webkit-scrollbar-thumb { background:#E8DFD7; border-radius:999px; }
   #ai-senpai[data-mode="peek"][data-compact="true"] > div:first-child { display: none !important; }
@@ -4407,15 +4434,16 @@
     flex: 0 0 auto;
   }
   .lesson-student-nav .sidebar-toggle {
-    min-height: 38px;
-    padding: 8px 11px;
-    border-color: var(--paper-300);
+    min-height: 44px;
+    padding: 10px 12px;
+    border-color: var(--learning-blue-500);
     background: var(--surface-white);
+    color: var(--learning-blue-700);
   }
   .lesson-student-nav .sidebar-toggle:hover {
-    border-color: var(--brand-red);
-    background: var(--brand-red-soft);
-    color: var(--brand-red);
+    border-color: var(--learning-blue-700);
+    background: var(--learning-blue-100);
+    color: var(--learning-blue-800);
     box-shadow: none;
   }
   .lesson-student-nav .lesson-logout {
@@ -4437,13 +4465,10 @@
   }
 
   @media (max-width: 860px) {
-    body {
-      padding-bottom: calc(68px + env(safe-area-inset-bottom));
-    }
     .lesson-student-nav {
       position: sticky;
-      min-height: 58px;
-      padding: 9px 14px;
+      min-height: 64px;
+      padding: 10px 14px;
       justify-content: space-between;
       gap: 10px;
       backdrop-filter: none;
@@ -4458,47 +4483,13 @@
     }
     .lesson-student-nav .sidebar-toggle.visible {
       display: inline-flex;
-      min-height: 36px;
-      padding: 7px 10px;
-    }
-    .lesson-student-nav > nav {
-      position: fixed;
-      right: 0;
-      bottom: 0;
-      left: 0;
-      z-index: 60;
-      height: calc(62px + env(safe-area-inset-bottom));
-      padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 2px;
-      background: rgba(255, 255, 255, 0.97);
-      border-top: 1px solid var(--paper-300);
-      box-shadow: 0 -8px 28px rgba(20, 15, 10, 0.08);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-    }
-    .lesson-student-nav > nav a {
-      min-width: 0;
-      min-height: 50px;
-      padding: 8px 2px 7px;
-      justify-content: center;
-      overflow: hidden;
-      border-radius: var(--radius-md);
-      font-size: 10.5px;
-      line-height: 1.15;
-      text-align: center;
-      text-overflow: ellipsis;
-    }
-    .lesson-student-nav > nav a[aria-current="page"]::after {
-      right: 28%;
-      bottom: 4px;
-      left: 28%;
+      min-height: 44px;
+      padding: 10px 12px;
     }
     .lesson-student-nav .lesson-logout {
-      width: 38px;
-      min-height: 36px;
-      padding: 7px;
+      width: 44px;
+      min-height: 44px;
+      padding: 10px;
     }
     .lesson-student-nav .lesson-logout-label {
       position: absolute;
@@ -4511,22 +4502,31 @@
       white-space: nowrap;
       border: 0;
     }
+  }
+  @media (max-width: 760px) {
+    body {
+      padding-bottom: calc(68px + env(safe-area-inset-bottom));
+    }
     #ai-senpai {
       bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+    }
+    #ai-senpai .senpai-panel {
+      max-height: calc(100dvh - 168px) !important;
     }
   }
   @media (prefers-reduced-motion: reduce) {
     #ai-senpai *, #ai-senpai *::before, #ai-senpai *::after { animation: none !important; }
   }
 </style>
-<link rel="stylesheet" href="styles/learning-placement.css?v=20260902-5"/>
+<link rel="stylesheet" href="styles/learning-placement.css?v=20260911-6"/>
+<link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
 </head>
 <body>
 
 <header class="student-nav lesson-student-nav">
   <div class="lesson-nav-leading">
     <a href="dashboard.html?v=20260902-4" class="brand"><img src="logo.png" alt="EzNihongo"/></a>
-    <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Buka daftar pelajaran" aria-expanded="false" onclick="toggleSidebar()">
+    <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Buka daftar pelajaran" aria-expanded="false" aria-controls="sidebar" onclick="toggleSidebar()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
       <span>Materi</span>
     </button>
@@ -4543,7 +4543,7 @@
     <span class="lesson-logout-label">Keluar</span>
   </button>
 </header>
-<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+<div class="sidebar-backdrop" id="sidebar-backdrop" aria-hidden="true" onclick="closeSidebar(true)"></div>
 
 <div class="banner" id="success-banner">
   ✓ Pembayaran berhasil! Selamat datang di <strong id="new-course-name"></strong>. Mulai belajar di bawah.
@@ -4556,6 +4556,7 @@
 </footer>
 
 <script src="api-client.js"></script>
+<script src="learning-state.js?v=20260911-1"></script>
 <script>
 // ═══════════════════════════════════════════════
 // AUTH GUARD — self-hosted API session
@@ -4970,8 +4971,6 @@ function _applyDrillCompletionGate(btn, hintEl, { total, attemptedCount, isDone,
   // the lone item through, so the gate must not lock the student out.
   const done = isDone || total < 2 || attemptedCount >= total;
   btn.disabled = !done;
-  btn.style.opacity = done ? '' : '0.5';
-  btn.style.cursor = done ? '' : 'not-allowed';
   btn.textContent = done
     ? (isDone ? (hasNext ? 'Lanjut →' : 'Selesai ✓') : (hasNext ? 'Tandai Selesai & Lanjut →' : 'Tandai Selesai ✓'))
     : `Latih semua ${noun} dulu`;
@@ -5400,7 +5399,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
   const canAttempt = status.canAttempt;
   const ctaButton = canAttempt
     ? `<button class="btn-primary" onclick="window.startQuizAttempt('${escapeAttr(key)}')" style="padding:14px 28px;font-size:16px;">Mulai Kuis →</button>`
-    : `<button class="btn-primary" disabled style="padding:14px 28px;font-size:16px;opacity:.5;cursor:not-allowed;">⏱ Tunggu ${fmtCooldown(status.cooldownHoursLeft)}</button>`;
+    : `<button class="btn-primary" disabled style="padding:14px 28px;font-size:16px;">⏱ Tunggu ${fmtCooldown(status.cooldownHoursLeft)}</button>`;
 
   const noCooldown = (status.cooldownHours || 0) <= 0;
   const cooldownNote = canAttempt
@@ -6297,6 +6296,7 @@ window.continueAfterQuiz = () => {
 let flashState = null;
 
 window.openFlashcards = (courseSlug) => {
+  const completeMobileContentFocus = prepareMobileSidebarContentFocus();
   closeSidebar();
   const cards = FLASHCARD_DATA[courseSlug];
   if (!cards || cards.length === 0) {
@@ -6308,10 +6308,12 @@ window.openFlashcards = (courseSlug) => {
         <button class="btn-secondary" style="margin-top:20px;" onclick="renderLesson()">← Kembali ke Materi</button>
       </div>
     `;
+    completeMobileContentFocus();
     return;
   }
   flashState = { course: courseSlug, cards: [...cards].sort(() => Math.random() - 0.5), idx: 0, flipped: false };
   renderFlashcard();
+  completeMobileContentFocus();
 };
 
 function renderFlashcard() {
@@ -6792,7 +6794,7 @@ function renderLearning(courseSlug) {
         <main class="main-content" id="main-content"></main>
       </div>
     </div>
-    <button class="sidebar-handle" id="sidebar-handle" type="button" aria-label="Tutup sidebar" title="Tutup sidebar" onclick="toggleSidebar()">
+    <button class="sidebar-handle" id="sidebar-handle" type="button" aria-label="Tutup sidebar" title="Tutup sidebar" aria-controls="sidebar" aria-expanded="true" onclick="toggleSidebar()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
     </button>
   `;
@@ -6804,13 +6806,24 @@ function renderLearning(courseSlug) {
   if (isDesktop()) {
     applySidebarCollapse(localStorage.getItem(SIDEBAR_KEY) === '1');
   } else {
-    closeSidebar();
+    setMobileSidebarOpen(false);
   }
+}
+
+function learningStateAttributes(value) {
+  const state = window.EzLearningState?.normalize(value);
+  return state ? `data-learning-state="${state}" data-learning-evidence="authoritative"` : '';
 }
 
 function renderSidebar() {
   const course = COURSE_CONTENT[currentState.course];
   const progress = getProgress()[currentState.course] || {};
+  const sidebar = document.getElementById('sidebar');
+  const focusedDrawerControl = document.activeElement;
+  const restoreDrawerCloseFocus = !isDesktop()
+    && sidebar?.classList.contains('mobile-open')
+    && sidebar.contains(focusedDrawerControl)
+    && !focusedDrawerControl?.matches('.sidebar-section-header, .module-header');
 
   // Preserve sidebar scroll across re-render. innerHTML swap di bawah
   // ngedestroy .sidebar-scroll lama → tanpa restore ini, klik section/Bab
@@ -6900,6 +6913,7 @@ function renderSidebar() {
       const aria = `${l.title}, ${typeLabel}${durTxt ? ', ' + durTxt : ''}${isDone ? ', selesai' : ''}${isCurrent ? ', sedang dibuka' : ''}`;
       return `
         <li class="lesson-item ${isCurrent ? 'current' : ''} ${isDone ? 'done' : ''}"
+            ${isDone ? 'data-completion-state="complete"' : ''} ${isCurrent ? 'data-selection-state="current"' : ''}
             role="button" tabindex="0" aria-label="${escapeHtml(aria)}" aria-current="${isCurrent ? 'page' : 'false'}"
             onclick="selectLesson('${m.id}', '${l.id}')"
             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectLesson('${m.id}','${l.id}')}">
@@ -6916,10 +6930,13 @@ function renderSidebar() {
     }).join('');
 
     const isOpen = _expandedModules.has(m.id);
+    const isCurrentModule = m.id === currentState.moduleId;
+    const isComplete = moduleTotal > 0 && moduleDone === moduleTotal;
     const metaParts = [`${moduleDone} / ${moduleTotal}`];
     if (moduleDur) metaParts.push(formatDurationCompact(moduleDur));
     return `
-      <div class="module ${isOpen ? 'open' : ''}" data-module="${m.id}">
+      <div class="module ${isOpen ? 'open' : ''} ${isCurrentModule ? 'current' : ''} ${isComplete ? 'complete' : ''}"
+           data-module="${m.id}" ${isComplete ? 'data-completion-state="complete"' : ''}>
         <button class="module-header" type="button" aria-expanded="${isOpen ? 'true' : 'false'}" onclick="toggleModule('${m.id}')">
           <div class="m-info">
             <span class="m-name">${escapeHtml(m.title)}</span>
@@ -6942,11 +6959,14 @@ function renderSidebar() {
     const sectionDurMin = b.modules.reduce((n, m) =>
       n + visibleLessons(m).reduce((mm, l) => mm + (l.durationMinutes || 0), 0), 0);
     const isSecOpen = _expandedSections.has(b.name);
+    const isCurrentSection = b.modules.some((m) => m.id === currentState.moduleId);
+    const isComplete = sectionTotal > 0 && sectionDone === sectionTotal;
     const safeName = b.name.replace(/'/g, "\\'");
     const metaParts = [`${sectionDone} / ${sectionTotal}`];
     if (sectionDurMin) metaParts.push(formatDurationCompact(sectionDurMin));
     return `
-      <div class="sidebar-section ${isSecOpen ? 'open' : ''}" data-section="${escapeHtml(b.name)}">
+      <div class="sidebar-section ${isSecOpen ? 'open' : ''} ${isCurrentSection ? 'current' : ''} ${isComplete ? 'complete' : ''}"
+           data-section="${escapeHtml(b.name)}" ${isComplete ? 'data-completion-state="complete"' : ''}>
         <button class="sidebar-section-header" type="button"
                 aria-expanded="${isSecOpen ? 'true' : 'false'}"
                 onclick="toggleSidebarSection('${escapeHtml(safeName)}')">
@@ -6984,7 +7004,7 @@ function renderSidebar() {
     const isActive = slug === currentState.course;
     const classes = ['course-option'];
     if (isActive) classes.push('active');
-    if (!isEnrolled) classes.push('locked');
+    if (!isEnrolled) classes.push('locked', 'ez-learning-state-surface');
     const status = isActive
       ? '<span class="opt-status">✓ Aktif</span>'
       : (!isEnrolled ? '<span class="opt-status">🔒 Upgrade</span>' : '<span class="opt-status">Pindah →</span>');
@@ -6993,6 +7013,7 @@ function renderSidebar() {
       : (isEnrolled ? `Pindah ke ${name}` : `${name}, terkunci — buka halaman upgrade`);
     return `
       <button type="button" class="${classes.join(' ')}" onclick="switchCourse('${slug}')"
+              ${!isEnrolled ? learningStateAttributes('locked') : ''}
               aria-label="${escapeHtml(aria)}" ${isActive ? 'aria-current="true"' : ''}>
         <span class="level-chip">${slug.toUpperCase()}</span>
         <span class="opt-name">${name}</span>
@@ -7005,7 +7026,7 @@ function renderSidebar() {
   const email = session?.email || '';
 
   document.getElementById('sidebar').innerHTML = `
-    <button class="sidebar-close" type="button" aria-label="Tutup menu" onclick="closeSidebar()">
+    <button class="sidebar-close" type="button" aria-label="Tutup menu" onclick="closeSidebar(true)">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
     </button>
 
@@ -7088,6 +7109,11 @@ function renderSidebar() {
 
   const newScroll = document.querySelector('.sidebar-scroll');
   if (newScroll && savedScrollTop) newScroll.scrollTop = savedScrollTop;
+  if (restoreDrawerCloseFocus) {
+    window.requestAnimationFrame(() => {
+      if (sidebar?.classList.contains('mobile-open')) sidebar.querySelector('.sidebar-close')?.focus();
+    });
+  }
 }
 
 window.toggleCoursePicker = () => {
@@ -7123,6 +7149,7 @@ window.openHelp = () => {
 // resort. When the response carries `sections`, render a 2-level accordion
 // (section → Bab → kosakata) with mutex behaviour at both levels.
 window.openVocabList = async () => {
+  const completeMobileContentFocus = prepareMobileSidebarContentFocus();
   closeSidebar();
   const slug = currentState.course;
   const course = COURSE_CONTENT[slug];
@@ -7256,6 +7283,7 @@ window.openVocabList = async () => {
       <p class="lesson-subtitle" style="margin-top:12px;">Belum ada kosakata untuk kelas ini.</p>
     `;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    completeMobileContentFocus();
     return;
   }
 
@@ -7344,6 +7372,7 @@ window.openVocabList = async () => {
     ${bodyHtml}
   `;
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  completeMobileContentFocus();
 };
 
 window.filterVocabList = (q) => {
@@ -7465,6 +7494,7 @@ function kanjiUsageLinkHtml(usage) {
 }
 
 window.openKanjiList = async () => {
+  const completeMobileContentFocus = prepareMobileSidebarContentFocus();
   closeSidebar();
   const slug = currentState.course;
   const course = COURSE_CONTENT[slug];
@@ -7511,6 +7541,7 @@ window.openKanjiList = async () => {
         Daftar kanji belum di-isi admin untuk kelas ini.
       </p>`;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    completeMobileContentFocus();
     return;
   }
 
@@ -7583,6 +7614,7 @@ window.openKanjiList = async () => {
     ${bodyHtml}
   `;
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  completeMobileContentFocus();
 };
 
 window.filterKanjiList = (q) => {
@@ -9585,8 +9617,6 @@ function gtUpdateComplete() {
   const passedCount = Object.values(st.passed).filter(Boolean).length;
   const done = st.isDone || st.evalDisabled || st.total === 0 || passedCount >= st.total;
   btn.disabled = !done;
-  btn.style.opacity = done ? '' : '0.5';
-  btn.style.cursor = done ? '' : 'not-allowed';
   let normalLabel;
   if (st.isPopup) {
     normalLabel = 'Selesai ✓';
@@ -12325,6 +12355,7 @@ function _sectionOfModule(moduleId) {
 }
 
 window.selectLesson = (moduleId, lessonId) => {
+  const completeMobileContentFocus = prepareMobileSidebarContentFocus();
   // Cleanup lesson-scoped state sebelum pindah — listening player + kanji
   // detail overlay + kanji stroke timer + kanji modal stale state.
   // Tanpa ini, audio terus jalan / modal stack / timer fight pas ganti
@@ -12354,10 +12385,46 @@ window.selectLesson = (moduleId, lessonId) => {
   renderLesson();
   closeSidebar();
   window.scrollTo({ top: 0, behavior: 'auto' });
+  completeMobileContentFocus();
 };
 
 const SIDEBAR_KEY = 'eznihongo:sidebarCollapsed';
 const isDesktop = () => window.innerWidth >= 861;
+let mobileSidebarOpener = null;
+let mobileSidebarBodyOverflow = '';
+let lastSidebarDesktopState = isDesktop();
+const mobileSidebarInerted = new Set();
+
+function prepareMobileSidebarContentFocus() {
+  const sidebar = document.getElementById('sidebar');
+  const shouldMoveFocus = !isDesktop() && sidebar?.classList.contains('mobile-open');
+  const source = document.activeElement;
+  return () => {
+    if (!shouldMoveFocus || isDesktop()) return;
+    window.requestAnimationFrame(() => {
+      const active = document.activeElement;
+      const focusStayedOnSource = active === source;
+      const focusWasLost = !active?.isConnected
+        || active === document.body
+        || active === document.documentElement;
+      if (!focusStayedOnSource && !focusWasLost) return;
+
+      const main = document.getElementById('main-content')
+        || document.querySelector('#app-root main');
+      if (!main) return;
+      const target = main.querySelector('.lesson-title, h1, h2') || main;
+      const needsTabIndex = !target.matches(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]'
+      );
+      if (needsTabIndex) target.setAttribute('tabindex', '-1');
+      target.focus({ preventScroll: true });
+      if (needsTabIndex) {
+        target.addEventListener('blur', () => target.removeAttribute('tabindex'), { once: true });
+      }
+    });
+  };
+}
+
 function updateMobileSidebarToggle(isOpen) {
   const btn = document.getElementById('sidebar-toggle');
   const btnLabel = btn && btn.querySelector('span');
@@ -12379,13 +12446,136 @@ function applySidebarCollapse(collapsed) {
     const label = collapsed ? 'Buka sidebar' : 'Tutup sidebar';
     handle.setAttribute('aria-label', label);
     handle.setAttribute('title', label);
+    handle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
   }
 }
 window.applySidebarCollapse = applySidebarCollapse;
 
-window.toggleSidebar = () => {
-  // Desktop: collapse/expand persistent sidebar. Mobile: drawer.
+function setMobileSidebarBackgroundInert(inert) {
+  if (!inert) {
+    mobileSidebarInerted.forEach((element) => {
+      element.inert = false;
+      element.removeAttribute('inert');
+    });
+    mobileSidebarInerted.clear();
+    return;
+  }
+
+  const selectors = [
+    '.lesson-student-nav',
+    '.learning-workspace',
+    '#sidebar-handle',
+    '#success-banner',
+    'body > footer',
+    '#ai-senpai',
+  ];
+  selectors.forEach((selector) => {
+    document.querySelectorAll(selector).forEach((element) => {
+      if (element.hasAttribute('inert')) return;
+      element.inert = true;
+      element.setAttribute('inert', '');
+      mobileSidebarInerted.add(element);
+    });
+  });
+}
+
+function clearMobileSidebarState() {
+  const sb = document.getElementById('sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  if (sb) {
+    sb.classList.remove('mobile-open');
+    sb.inert = false;
+    sb.removeAttribute('inert');
+    sb.removeAttribute('aria-hidden');
+    sb.removeAttribute('role');
+    sb.removeAttribute('aria-modal');
+    sb.removeAttribute('aria-label');
+  }
+  if (bd) bd.classList.remove('show');
+  setMobileSidebarBackgroundInert(false);
+  document.body.classList.remove('lesson-drawer-open');
+  document.body.style.overflow = mobileSidebarBodyOverflow;
+  updateMobileSidebarToggle(false);
+}
+
+function setMobileSidebarOpen(open, { restoreFocus = false, moveFocus = false } = {}) {
   if (isDesktop()) {
+    clearMobileSidebarState();
+    return;
+  }
+
+  const sb = document.getElementById('sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  if (!sb) return;
+  const wasOpen = sb.classList.contains('mobile-open');
+
+  if (open) {
+    if (!wasOpen) {
+      const activeElement = document.activeElement;
+      mobileSidebarOpener = activeElement instanceof HTMLElement
+        && activeElement !== document.body
+        && activeElement !== document.documentElement
+        ? activeElement
+        : document.getElementById('sidebar-toggle');
+      mobileSidebarBodyOverflow = document.body.style.overflow;
+    }
+    sb.inert = false;
+    sb.removeAttribute('inert');
+    sb.removeAttribute('aria-hidden');
+    sb.setAttribute('role', 'dialog');
+    sb.setAttribute('aria-modal', 'true');
+    sb.setAttribute('aria-label', 'Daftar pelajaran');
+    sb.classList.add('mobile-open');
+    if (bd) bd.classList.add('show');
+    document.body.classList.add('lesson-drawer-open');
+    document.body.style.overflow = 'hidden';
+    setMobileSidebarBackgroundInert(true);
+    updateMobileSidebarToggle(true);
+    if (moveFocus) {
+      const focusCloseButton = () => {
+        if (sb.classList.contains('mobile-open')) sb.querySelector('.sidebar-close')?.focus({ preventScroll: true });
+      };
+      focusCloseButton();
+      window.requestAnimationFrame(focusCloseButton);
+    }
+    return;
+  }
+
+  sb.classList.remove('mobile-open');
+  sb.inert = true;
+  sb.setAttribute('inert', '');
+  sb.setAttribute('aria-hidden', 'true');
+  sb.removeAttribute('role');
+  sb.removeAttribute('aria-modal');
+  sb.removeAttribute('aria-label');
+  if (bd) bd.classList.remove('show');
+  setMobileSidebarBackgroundInert(false);
+  document.body.classList.remove('lesson-drawer-open');
+  document.body.style.overflow = mobileSidebarBodyOverflow;
+  updateMobileSidebarToggle(false);
+
+  if (restoreFocus && wasOpen) {
+    const fallback = document.getElementById('sidebar-toggle');
+    const target = mobileSidebarOpener?.isConnected ? mobileSidebarOpener : fallback;
+    window.requestAnimationFrame(() => target?.focus());
+  }
+  mobileSidebarOpener = null;
+}
+
+function mobileSidebarFocusableElements(sidebar) {
+  return Array.from(sidebar.querySelectorAll(
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])'
+  )).filter((element) => {
+    if (element.closest('[hidden], [aria-hidden="true"], [inert]')) return false;
+    const style = window.getComputedStyle(element);
+    return style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0;
+  });
+}
+
+window.toggleSidebar = () => {
+  // Desktop: collapse/expand persistent sidebar. Mobile: modal drawer.
+  if (isDesktop()) {
+    clearMobileSidebarState();
     const cur = localStorage.getItem(SIDEBAR_KEY) === '1';
     const next = !cur;
     localStorage.setItem(SIDEBAR_KEY, next ? '1' : '0');
@@ -12393,39 +12583,55 @@ window.toggleSidebar = () => {
     return;
   }
   const sb = document.getElementById('sidebar');
-  const bd = document.getElementById('sidebar-backdrop');
-  if (!sb) return;
-  const isOpen = sb.classList.toggle('mobile-open');
-  if (bd) bd.classList.toggle('show', isOpen);
-  document.body.classList.toggle('lesson-drawer-open', isOpen);
-  document.body.style.overflow = isOpen ? 'hidden' : '';
-  updateMobileSidebarToggle(isOpen);
+  setMobileSidebarOpen(!sb?.classList.contains('mobile-open'), {
+    restoreFocus: true,
+    moveFocus: true,
+  });
 };
 
-window.closeSidebar = () => {
-  const sb = document.getElementById('sidebar');
-  const bd = document.getElementById('sidebar-backdrop');
-  if (sb) sb.classList.remove('mobile-open');
-  if (bd) bd.classList.remove('show');
-  document.body.classList.remove('lesson-drawer-open');
-  document.body.style.overflow = '';
-  updateMobileSidebarToggle(false);
+window.closeSidebar = (restoreFocus = false) => {
+  setMobileSidebarOpen(false, { restoreFocus });
 };
 
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && document.getElementById('sidebar')?.classList.contains('mobile-open')) {
-    closeSidebar();
-    document.getElementById('sidebar-toggle')?.focus();
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar?.classList.contains('mobile-open') || isDesktop()) return;
+
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeSidebar(true);
+    return;
+  }
+
+  if (event.key === 'Tab') {
+    const focusable = mobileSidebarFocusableElements(sidebar);
+    if (!focusable.length) {
+      event.preventDefault();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (event.shiftKey && (active === first || !sidebar.contains(active))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (active === last || !sidebar.contains(active))) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 });
 
 // Sync state when crossing the desktop breakpoint.
 window.addEventListener('resize', () => {
-  if (isDesktop()) {
-    closeSidebar();
+  const desktop = isDesktop();
+  if (desktop === lastSidebarDesktopState) return;
+  lastSidebarDesktopState = desktop;
+  if (desktop) {
+    clearMobileSidebarState();
     applySidebarCollapse(localStorage.getItem(SIDEBAR_KEY) === '1');
   } else {
-    closeSidebar();
+    setMobileSidebarOpen(false);
   }
 });
 
@@ -12449,6 +12655,7 @@ function _sidebarAnchor(kind, key) {
   };
   const before = findHdr();
   const beforeTop = before ? before.getBoundingClientRect().top : null;
+  const restoreHeaderFocus = before === document.activeElement;
   // Kembalikan fungsi "re-anchor" untuk dipanggil setelah renderSidebar().
   return () => {
     if (beforeTop == null) return;
@@ -12457,6 +12664,20 @@ function _sidebarAnchor(kind, key) {
     if (!after || !scroller) return;
     // Geser scroll sebesar perpindahan header di layar → header diam di tempat.
     scroller.scrollTop += after.getBoundingClientRect().top - beforeTop;
+    if (restoreHeaderFocus) {
+      window.requestAnimationFrame(() => {
+        const sidebar = document.getElementById('sidebar');
+        const mobile = !isDesktop();
+        if (mobile && !sidebar?.classList.contains('mobile-open')) return;
+        const active = document.activeElement;
+        const focusWasLost = !active?.isConnected
+          || active === document.body
+          || active === document.documentElement;
+        const focusIsDrawerFallback = mobile && active?.classList.contains('sidebar-close');
+        if (!focusWasLost && !focusIsDrawerFallback) return;
+        findHdr()?.focus({ preventScroll: true });
+      });
+    }
   };
 }
 
@@ -12601,10 +12822,10 @@ function renderCourseTabs(activeSlug) {
     const isActive = slug === activeSlug;
     const classes = ['course-tab'];
     if (isActive) classes.push('active');
-    if (!isEnrolled) classes.push('locked');
+    if (!isEnrolled) classes.push('locked', 'ez-learning-state-surface');
     const lockIcon = !isEnrolled ? '<span class="lock-icon">🔒</span>' : '';
     const title = tagline ? `${name} — ${tagline}` : name;
-    return `<button class="${classes.join(' ')}" onclick="switchCourse('${slug}')" title="${title}">${slug.toUpperCase()}${lockIcon}</button>`;
+    return `<button class="${classes.join(' ')}" ${!isEnrolled ? learningStateAttributes('locked') : ''} onclick="switchCourse('${slug}')" title="${title}">${slug.toUpperCase()}${lockIcon}</button>`;
   }).join('');
   const nav = document.getElementById('course-tabs');
   if (nav) nav.innerHTML = tabs;
@@ -12618,12 +12839,14 @@ window.switchCourse = async (slug) => {
     window.location.href = `courses/detail.html?slug=${encodeURIComponent(slug)}`;
     return;
   }
-  if (slug === currentState.course) { closeSidebar(); return; }
+  if (slug === currentState.course) { closeSidebar(true); return; }
+  const completeMobileContentFocus = prepareMobileSidebarContentFocus();
   currentState.moduleId = null;
   currentState.lessonId = null;
   history.replaceState({}, '', `welcome.html?course=${slug}`);
   renderLearning(slug);
   closeSidebar();
+  completeMobileContentFocus();
 };
 
 // ═══════════════════════════════════════════════
@@ -12976,7 +13199,7 @@ const S = (window.AISenpai = {
           <div style="font-size:9.5px;font-weight:900;letter-spacing:.06em;color:${meta.color};text-transform:uppercase;">${S.esc(meta.label)}</div>
           <div style="font-size:12px;font-weight:700;color:#1B1410;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${S.esc(r.title)}</div>
         </div>
-        <button onclick="event.stopPropagation();AISenpai.dismissPeek()" style="flex:0 0 22px;width:22px;height:22px;border-radius:6px;border:0;background:transparent;color:#9A8A82;cursor:pointer;font-size:13px;">✕</button>
+        <button class="senpai-dismiss-btn senpai-icon-btn" aria-label="Tutup pengingat" onclick="event.stopPropagation();AISenpai.dismissPeek()" style="flex:0 0 22px;width:22px;height:22px;border-radius:6px;border:0;background:transparent;color:#9A8A82;cursor:pointer;font-size:13px;">✕</button>
       </div>
       ${more}
     </div>`;
@@ -12993,9 +13216,9 @@ const S = (window.AISenpai = {
       <div style="font-size:11.5px;color:#7A6A60;margin-bottom:11px;line-height:1.35;">${S.esc(r.sub)} — Aku sudah nungguin nih 🐾</div>
       <div style="display:flex;gap:6px;">
         <button onclick="AISenpai.act('${r.id}')" style="flex:1;border:0;cursor:pointer;background:#C8102E;color:#fff;font-weight:900;font-size:12px;padding:10px;border-radius:12px;box-shadow:0 3px 0 #a50d26;">Mulai sekarang</button>
-        <button onclick="AISenpai.dismissToast()" style="border:0;background:#FFF1D6;cursor:pointer;color:#7A4A00;font-weight:800;font-size:12px;padding:10px 11px;border-radius:12px;">Nanti</button>
+        <button class="senpai-dismiss-btn" onclick="AISenpai.dismissToast()" style="border:0;background:#FFF1D6;cursor:pointer;color:#7A4A00;font-weight:800;font-size:12px;padding:10px 11px;border-radius:12px;">Nanti</button>
       </div>
-      <button onclick="AISenpai.dismissToast()" style="position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:6px;border:0;background:transparent;color:#9A8A82;cursor:pointer;font-size:13px;">✕</button>
+      <button class="senpai-dismiss-btn senpai-icon-btn" aria-label="Tutup pengingat" onclick="AISenpai.dismissToast()" style="position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:6px;border:0;background:transparent;color:#9A8A82;cursor:pointer;font-size:13px;">✕</button>
     </div>`;
   },
 
@@ -13024,13 +13247,13 @@ const S = (window.AISenpai = {
         <div style="display:flex;flex-direction:column;gap:5px;">${items}</div>
       </div>`;
     }).join('');
-    return `<div class="senpai-panel" style="margin-bottom:12px;width:326px;background:#fff;border-radius:22px;box-shadow:0 24px 56px rgba(27,20,16,.2),0 0 0 1.5px #F0E0DA;overflow:hidden;animation:senpaiPanelIn 380ms cubic-bezier(.34,1.56,.64,1);transform-origin:bottom right;">
+    return `<div class="senpai-panel senpai-digest-panel" style="margin-bottom:12px;width:326px;background:#fff;border-radius:22px;box-shadow:0 24px 56px rgba(27,20,16,.2),0 0 0 1.5px #F0E0DA;overflow:hidden;animation:senpaiPanelIn 380ms cubic-bezier(.34,1.56,.64,1);transform-origin:bottom right;">
       <div style="padding:12px 12px 12px 14px;background:linear-gradient(180deg,#fff0f2 0%,#FFF8F1 100%);border-bottom:1px solid #F0E0DA;position:relative;">
         <div style="font-size:10px;font-weight:900;letter-spacing:.14em;color:#a50d26;text-transform:uppercase;"><span class="ez-jp">招き猫</span> Digest</div>
         <div style="font-size:15px;font-weight:900;color:#1B1410;margin-top:2px;">${S.reminders.length} hal menunggu</div>
-        <button onclick="AISenpai.closePanel()" style="position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:7px;border:0;background:#fff;color:#7A6A60;cursor:pointer;box-shadow:0 2px 6px rgba(27,20,16,.1);font-size:13px;">✕</button>
+        <button class="senpai-dismiss-btn senpai-icon-btn" aria-label="Tutup ringkasan AI Senpai" onclick="AISenpai.closePanel()" style="position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:7px;border:0;background:#fff;color:#7A6A60;cursor:pointer;box-shadow:0 2px 6px rgba(27,20,16,.1);font-size:13px;">✕</button>
       </div>
-      <div class="senpai-scroll" style="max-height:320px;overflow-y:auto;padding:8px 10px 4px;">${groupsHtml}</div>
+      <div class="senpai-scroll senpai-digest-scroll" style="max-height:320px;overflow-y:auto;padding:8px 10px 4px;">${groupsHtml}</div>
       <div style="padding:10px 12px 12px;border-top:1px solid #F0E0DA;display:flex;background:#FFFBF6;">
         <button onclick="AISenpai.openExpanded()" style="margin-left:auto;border:0;cursor:pointer;background:#C8102E;color:#fff;font-weight:900;font-size:11.5px;padding:8px 12px;border-radius:10px;box-shadow:0 2.5px 0 #a50d26;">Buka chat 💬</button>
       </div>
@@ -13061,7 +13284,7 @@ const S = (window.AISenpai = {
         }).join('')}</div></div>`
       : '';
     const mic = S.voiceSupported()
-      ? `<button id="senpai-mic" title="Rekam suara" onclick="AISenpai.toggleVoice()" style="flex:0 0 32px;width:32px;height:32px;border-radius:10px;border:0;background:#fff0f2;color:#C8102E;display:flex;align-items:center;justify-content:center;cursor:pointer;">🎤</button>`
+      ? `<button id="senpai-mic" class="senpai-icon-btn" aria-label="Rekam suara" title="Rekam suara" onclick="AISenpai.toggleVoice()" style="flex:0 0 32px;width:32px;height:32px;border-radius:10px;border:0;background:#fff0f2;color:#C8102E;display:flex;align-items:center;justify-content:center;cursor:pointer;">🎤</button>`
       : '';
     return `<div class="senpai-panel" style="margin-bottom:12px;width:340px;height:560px;max-height:78vh;background:#fff;border-radius:24px;box-shadow:0 28px 70px rgba(27,20,16,.22),0 0 0 1.5px #F0E0DA;display:flex;flex-direction:column;position:relative;animation:senpaiPanelIn 420ms cubic-bezier(.34,1.56,.64,1);transform-origin:bottom right;">
       <div style="position:absolute;top:-46px;left:14px;z-index:2;filter:drop-shadow(0 6px 12px rgba(27,20,16,.12));">${S.manekiSVG(72, 'up', 'happy', false)}</div>
@@ -13069,7 +13292,7 @@ const S = (window.AISenpai = {
         <div style="font-size:10px;font-weight:900;letter-spacing:.16em;color:#a50d26;"><span class="ez-jp">招き猫</span> · MANEKO CHAN</div>
         <div style="font-weight:900;font-size:16px;color:#1B1410;margin-top:2px;">Maneko-chan</div>
         <div style="font-size:11px;color:#7A6A60;font-weight:700;margin-top:1px;"><span style="display:inline-block;width:6px;height:6px;border-radius:999px;background:#4FB58E;margin-right:5px;vertical-align:middle;"></span>Online · siap bantu</div>
-        <button onclick="AISenpai.closePanel()" style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:8px;border:0;background:#fff;color:#7A6A60;cursor:pointer;box-shadow:0 2px 6px rgba(27,20,16,.1);font-size:15px;">✕</button>
+        <button class="senpai-dismiss-btn senpai-icon-btn" aria-label="Tutup chat AI Senpai" onclick="AISenpai.closePanel()" style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:8px;border:0;background:#fff;color:#7A6A60;cursor:pointer;box-shadow:0 2px 6px rgba(27,20,16,.1);font-size:15px;">✕</button>
       </div>
       ${strip}
       <div id="senpai-chat-scroll" class="senpai-scroll" style="flex:1;padding:8px 12px 4px;overflow-y:auto;border-top:1px solid #F0E0DA;margin-top:6px;">
@@ -13077,9 +13300,9 @@ const S = (window.AISenpai = {
       </div>
       <div style="padding:10px 12px 12px;border-top:1px solid #F0E0DA;background:#FFFBF6;border-radius:0 0 24px 24px;">
         <div style="display:flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #F0E0DA;border-radius:14px;padding:6px 6px 6px 12px;">
-          <input id="senpai-input" placeholder="Tanya aku apa saja…" style="flex:1;border:0;outline:0;background:transparent;font-family:inherit;font-size:12.5px;color:#1B1410;min-width:0;"/>
+          <input id="senpai-input" aria-label="Pesan untuk AI Senpai" placeholder="Tanya aku apa saja…" style="flex:1;border:0;outline:0;background:transparent;font-family:inherit;font-size:12.5px;color:#1B1410;min-width:0;"/>
           ${mic}
-          <button onclick="AISenpai.sendInput()" style="flex:0 0 32px;width:32px;height:32px;border-radius:10px;border:0;background:#C8102E;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 0 #a50d26;font-size:15px;">➤</button>
+          <button class="senpai-icon-btn" aria-label="Kirim pesan" onclick="AISenpai.sendInput()" style="flex:0 0 32px;width:32px;height:32px;border-radius:10px;border:0;background:#C8102E;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 0 #a50d26;font-size:15px;">➤</button>
         </div>
       </div>
     </div>`;

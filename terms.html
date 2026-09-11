@@ -5,22 +5,29 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Syarat &amp; Ketentuan - EzNihongo</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;600;700&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="styles/tokens.css"/>
+<link rel="stylesheet" href="styles/tokens.css?v=20260911-1"/>
 <link rel="stylesheet" href="styles/components.css"/>
 <style>
-  .tc-nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; }
+  html { color-scheme: light; }
+  body { margin: 0; background: var(--paper-100); color: var(--ink-900); }
+  .tc-nav { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 24px; background: var(--paper-50); border-bottom: 1px solid var(--paper-300); }
+  .tc-nav a { display: inline-flex; min-height: 44px; align-items: center; }
   .tc-nav img { height: 32px; }
-  .tc-nav a.tc-back { color: var(--ink-700); font-family: var(--font-body); font-size: 14px; text-decoration: none; }
-  .tc-main { max-width: 720px; margin: 0 auto; padding: 8px 24px 80px; font-family: var(--font-body); color: var(--ink-700); line-height: 1.7; }
-  .tc-main h1 { font-family: var(--font-display); color: var(--ink-900); font-size: 32px; margin: 12px 0 4px; }
-  .tc-updated { font-size: 13px; color: var(--ink-500, #8a8378); margin-bottom: 32px; }
-  .tc-main h2 { font-family: var(--font-display); color: var(--ink-900); font-size: 20px; margin: 36px 0 10px; }
-  .tc-main p, .tc-main li { font-size: 15px; }
+  .tc-nav a.tc-back { color: var(--learning-blue-700); font-family: var(--font-body); font-size: 14px; font-weight: 600; text-decoration: none; }
+  .tc-nav a.tc-back:hover { color: var(--learning-blue-900); }
+  .tc-main { max-width: 720px; margin: 0 auto; padding: 32px 24px 80px; font-family: var(--font-body); color: var(--ink-700); line-height: 1.75; overflow-wrap: anywhere; }
+  .tc-main h1 { font-family: var(--font-display); color: var(--ink-900); font-size: clamp(30px, 6vw, 42px); line-height: 1.2; margin: 12px 0 4px; }
+  .tc-updated { font-size: 13px; color: var(--ink-700); margin-bottom: 32px; }
+  .tc-main h2 { border-left: 3px solid var(--learning-blue-200); padding-left: 12px; font-family: var(--font-display); color: var(--ink-900); font-size: 21px; line-height: 1.35; margin: 36px 0 10px; }
+  .tc-main p, .tc-main li { font-size: 16px; }
   .tc-main ul { padding-left: 20px; }
   .tc-main li { margin-bottom: 8px; }
-  .tc-main a { color: var(--brand-red); }
-  .tc-notice { background: var(--paper-100, #faf7f2); border: 1px solid var(--paper-300, #e8e1d3); border-radius: 10px; padding: 16px 18px; font-size: 13px; margin-top: 40px; }
-  .tc-footer { text-align: center; padding: 24px; font-family: var(--font-body); font-size: 13px; color: var(--ink-500, #8a8378); }
+  .tc-main a, .tc-footer a { color: var(--learning-blue-700); }
+  .tc-notice { background: var(--learning-blue-100); border: 1px solid var(--learning-blue-200); border-radius: var(--radius-md); padding: 16px 18px; color: var(--learning-blue-900); font-size: 13px; margin-top: 40px; }
+  .tc-footer { border-top: 1px solid var(--paper-300); text-align: center; padding: 24px; font-family: var(--font-body); font-size: 13px; color: var(--ink-700); }
+  .tc-footer a { display: inline-flex; min-height: 44px; align-items: center; }
+  .tc-nav a:focus-visible, .tc-main a:focus-visible, .tc-footer a:focus-visible { border-radius: var(--radius-sm); outline: 3px solid var(--learning-blue-700); outline-offset: 3px; box-shadow: 0 0 0 2px var(--surface-white); }
+  @media (max-width: 480px) { .tc-nav { padding: 10px 16px; } .tc-main { padding: 24px 18px 64px; } }
 </style>
 </head>
 <body>

@@ -7,15 +7,20 @@
   padding: 10px max(24px, calc((100vw - 1120px) / 2));
   display: flex;
   align-items: center;
-  gap: 30px;
-  background: rgba(253, 252, 249, 0.92);
+  gap: 24px;
+  background: var(--surface-white);
   border-bottom: 1px solid var(--paper-300);
-  box-shadow: 0 1px 0 rgba(20, 15, 10, 0.02);
-  backdrop-filter: blur(16px);
+  box-shadow: var(--elev-1);
 }
 
 .student-nav .brand {
+  min-width: 44px;
+  min-height: 44px;
   flex: 0 0 auto;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-sm);
 }
 
@@ -36,23 +41,25 @@
 
 .student-nav nav a {
   position: relative;
-  min-height: 38px;
-  padding: 9px 11px;
+  min-height: 44px;
+  padding: 11px 12px;
   display: inline-flex;
   align-items: center;
-  color: var(--ink-500);
+  color: var(--ink-700);
   border-radius: var(--radius-md);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1;
   text-decoration: none;
   white-space: nowrap;
-  transition: background-color var(--duration-fast), color var(--duration-fast);
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 
 .student-nav nav a:hover {
-  background: var(--paper-200);
-  color: var(--ink-900);
+  background: var(--learning-blue-100);
+  color: var(--learning-blue-800);
 }
 
 .student-nav nav a[aria-current="page"] {
@@ -72,29 +79,35 @@
 }
 
 .student-nav > button {
-  min-height: 38px;
+  min-height: 44px;
   flex: 0 0 auto;
-  border: 1px solid var(--paper-300);
+  border: 1px solid var(--learning-blue-500);
   border-radius: var(--radius-md);
   background: var(--surface-white);
-  color: var(--ink-700);
-  padding: 8px 12px;
+  color: var(--learning-blue-700);
+  padding: 10px 13px;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 
 .student-nav > button:hover {
-  border-color: var(--brand-red);
-  background: var(--brand-red-soft);
-  color: var(--brand-red);
+  border-color: var(--learning-blue-700);
+  background: var(--learning-blue-100);
+  color: var(--learning-blue-800);
 }
 
 .student-nav a:focus-visible,
 .student-nav button:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
+  outline: 3px solid var(--learning-blue-700);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--surface-white);
+  transition-duration: 0ms;
 }
 
 @media (max-width: 760px) {
@@ -104,10 +117,9 @@
 
   .student-nav {
     position: relative;
-    min-height: 58px;
-    padding: 9px 16px;
+    min-height: 64px;
+    padding: 10px 16px;
     justify-content: space-between;
-    backdrop-filter: none;
   }
 
   .student-nav .brand img {
@@ -115,8 +127,8 @@
   }
 
   .student-nav > button {
-    min-height: 36px;
-    padding: 7px 11px;
+    min-height: 44px;
+    padding: 10px 12px;
   }
 
   .student-nav nav {
@@ -130,10 +142,9 @@
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 2px;
-    background: rgba(255, 255, 255, 0.96);
+    background: var(--surface-white);
     border-top: 1px solid var(--paper-300);
-    box-shadow: 0 -8px 28px rgba(20, 15, 10, 0.08);
-    backdrop-filter: blur(16px);
+    box-shadow: 0 -4px 18px rgba(20, 15, 10, 0.08);
   }
 
   .student-nav nav a {
@@ -143,10 +154,13 @@
     justify-content: center;
     overflow: hidden;
     border-radius: var(--radius-md);
-    font-size: 10.5px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: -0.025em;
     line-height: 1.15;
     text-align: center;
-    text-overflow: ellipsis;
+    text-overflow: clip;
+    white-space: normal;
   }
 
   .student-nav nav a[aria-current="page"]::after {

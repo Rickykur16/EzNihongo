@@ -1,4 +1,6 @@
 /* Keep the lesson itself central; overview tools support it without pushing it away. */
+:root { color-scheme: light; }
+
 .learning-workspace {
   min-width: 0;
   flex: 1;
@@ -163,5 +165,758 @@
 
   .learning-workspace .main-content {
     padding: 18px 16px 150px;
+  }
+}
+
+/* Deep Blue course and curriculum states. Completion stays separate from mastery. */
+#sidebar .course-picker {
+  border-color: var(--learning-blue-200);
+  background: var(--surface-white, #fff);
+  box-shadow: none;
+}
+
+#sidebar .course-picker-bar {
+  min-height: 48px;
+  background: var(--surface-white, #fff);
+}
+
+#sidebar .course-picker-level,
+.course-tab.active {
+  background: var(--learning-blue-900);
+  color: #fff;
+  box-shadow: none;
+}
+
+#sidebar .course-option {
+  min-height: 44px;
+  opacity: 1;
+}
+
+#sidebar .course-option.active {
+  border-left-color: var(--learning-blue-700);
+  background: var(--learning-blue-100);
+}
+
+#sidebar .course-option.active .level-chip {
+  border-color: var(--learning-blue-700);
+  background: var(--learning-blue-700);
+  color: #fff;
+}
+
+#sidebar .course-option.active .opt-status {
+  color: var(--learning-blue-700);
+}
+
+#sidebar .course-option.locked {
+  border-left-color: var(--ink-500, #6f6a63);
+  background: var(--paper-100, #faf7f2);
+  color: var(--ink-700, #4a453e);
+  cursor: pointer;
+}
+
+#sidebar .course-option.locked:hover {
+  background: var(--paper-200, #f2ede3);
+}
+
+#sidebar .course-option.locked .opt-status {
+  color: var(--ink-700, #4a453e);
+}
+
+#sidebar .sidebar-section,
+#sidebar .module {
+  border-color: var(--paper-300, #e8e1d3);
+  background: transparent;
+}
+
+#sidebar .sidebar-section.open {
+  background: var(--surface-white, #fff);
+}
+
+#sidebar .sidebar-section.current > .sidebar-section-header,
+#sidebar .module.current > .module-header {
+  background: var(--learning-blue-100);
+  color: var(--learning-blue-800);
+  box-shadow: inset 3px 0 0 var(--learning-blue-700);
+}
+
+#sidebar .sidebar-section.complete > .sidebar-section-header .ss-meta,
+#sidebar .module.complete > .module-header .m-meta {
+  color: var(--success, #3b6d11);
+  font-weight: 700;
+}
+
+#sidebar .lesson-item.current,
+#sidebar .lesson-item.current:hover {
+  border-left-color: var(--learning-blue-700);
+  background: var(--learning-blue-100);
+}
+
+#sidebar .lesson-item.current .lesson-title-text {
+  color: var(--learning-blue-800);
+}
+
+#sidebar .lesson-item.done .lesson-check,
+#sidebar .lesson-item.done .lesson-title-text {
+  color: var(--success, #3b6d11);
+}
+
+#sidebar .lesson-item.done .lesson-check {
+  border-color: var(--success, #3b6d11);
+  background: var(--success, #3b6d11);
+  color: #fff;
+}
+
+#sidebar .progress-fill {
+  background: var(--learning-blue-600);
+  box-shadow: none;
+}
+
+.course-tab {
+  min-height: 44px;
+}
+
+.course-tab.locked {
+  border-color: var(--ink-500, #6f6a63);
+  background: var(--paper-100, #faf7f2);
+  color: var(--ink-700, #4a453e);
+  opacity: 1;
+}
+
+.course-tab.active:hover {
+  background: var(--learning-blue-800);
+  color: #fff;
+}
+
+.course-tab.locked:hover {
+  border-color: var(--ink-500, #6f6a63);
+  background: var(--paper-200, #f2ede3);
+  color: var(--ink-900, #1a1815);
+}
+
+#sidebar .course-option .opt-name,
+#sidebar .course-picker-name,
+#sidebar .ss-name,
+#sidebar .m-name,
+#sidebar .lesson-title-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+#sidebar .lesson-type-badge,
+#sidebar .lesson-duration {
+  font-size: 12px;
+}
+
+#sidebar .course-picker-bar:focus-visible,
+#sidebar .course-option:focus-visible,
+#sidebar .sidebar-section-header:focus-visible,
+#sidebar .module-header:focus-visible,
+#sidebar .lesson-item:focus-visible,
+.course-tab:focus-visible {
+  outline: 3px solid var(--learning-blue-700);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.sidebar-handle:focus-visible,
+.reco-panel > summary:focus-visible,
+.quicklink:focus-visible {
+  outline: 3px solid var(--learning-blue-700);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+/* Reading workspace and lesson navigation. */
+.learning-workspace .main-content {
+  max-width: 980px;
+  padding-top: 28px;
+  padding-bottom: 240px;
+}
+
+.learning-workspace .lesson-breadcrumb {
+  max-width: 100%;
+  margin-bottom: 14px;
+  padding: 5px 10px;
+  border: 1px solid var(--learning-blue-200);
+  border-radius: 999px;
+  background: var(--learning-blue-100);
+  color: var(--learning-blue-700);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.learning-workspace .lesson-breadcrumb span {
+  color: var(--learning-blue-700);
+  opacity: 1;
+}
+
+.learning-workspace .lesson-title,
+.learning-workspace .lesson-subtitle,
+.learning-workspace .lesson-body,
+.learning-workspace .module-intro,
+.learning-workspace .lesson-extra-card,
+.learning-workspace .resource-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.learning-workspace .lesson-title {
+  color: var(--ink-900, #1a1815);
+  font-family: var(--font-display, "Shippori Mincho", serif);
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.2;
+}
+
+.learning-workspace .lesson-subtitle {
+  margin-bottom: 28px;
+  color: var(--ink-700, #4a453e);
+  font-size: 16px;
+}
+
+.learning-workspace .video-player,
+.learning-workspace .youtube-segment-player {
+  border: 1px solid var(--learning-blue-900);
+  border-radius: 14px;
+  background: var(--learning-blue-900);
+  box-shadow: var(--elev-1);
+}
+
+.learning-workspace .video-player::before {
+  background: none;
+}
+
+.learning-workspace .play-btn {
+  width: 64px;
+  height: 64px;
+  background: var(--brand-red);
+  box-shadow: var(--elev-2);
+}
+
+.learning-workspace .video-meta,
+.learning-workspace .video-soon,
+.learning-workspace .youtube-segment-caption,
+.learning-workspace .youtube-segment-range,
+.learning-workspace .youtube-segment-source {
+  font-size: 12px;
+}
+
+.learning-workspace .video-soon {
+  border-color: rgba(255, 255, 255, .42);
+  background: rgba(255, 255, 255, .12);
+  backdrop-filter: none;
+}
+
+.learning-workspace .youtube-segment-caption {
+  border-color: var(--learning-blue-200);
+  background: var(--learning-blue-100);
+  color: var(--ink-700, #4a453e);
+  box-shadow: none;
+}
+
+.learning-workspace .youtube-segment-range {
+  background: var(--surface-white, #fff);
+  color: var(--learning-blue-700);
+}
+
+.learning-workspace .lesson-body {
+  margin-bottom: 26px;
+  padding: 30px 32px;
+  border: 1px solid var(--paper-300, #e8e1d3);
+  border-radius: 14px;
+  background: var(--surface-white, #fff);
+  box-shadow: none;
+}
+
+.learning-workspace .lesson-body h2 {
+  color: var(--ink-900, #1a1815);
+  font-size: 20px;
+}
+
+.learning-workspace .lesson-body p {
+  color: var(--ink-700, #4a453e);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.learning-workspace .lesson-body .jp {
+  padding: 16px 20px;
+  border-left: 4px solid var(--learning-blue-700);
+  border-radius: 8px;
+  background: var(--learning-blue-100);
+  color: var(--learning-blue-900);
+  box-shadow: none;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.learning-workspace .lesson-body .jp span {
+  color: var(--learning-blue-700);
+}
+
+.learning-workspace .module-intro {
+  padding: 24px 26px;
+  border-color: var(--learning-blue-200);
+  border-radius: 14px;
+  background: var(--learning-blue-100);
+  box-shadow: none;
+}
+
+.learning-workspace .module-intro-eyebrow,
+.learning-workspace .module-intro-section-title {
+  color: var(--learning-blue-700);
+  font-size: 12px;
+}
+
+.learning-workspace .module-intro h2 {
+  color: var(--learning-blue-900);
+}
+
+.learning-workspace .module-intro-meta .pill-accent {
+  border-color: var(--learning-blue-200);
+  background: var(--surface-white, #fff);
+  color: var(--learning-blue-700);
+}
+
+.learning-workspace .cando-list li::before {
+  background: var(--surface-white, #fff);
+  color: var(--learning-blue-700);
+}
+
+.learning-workspace .skill-bar-fill,
+.learning-workspace .quiz-progress-fill {
+  background: var(--learning-blue-600);
+}
+
+.learning-workspace .lesson-extra-card {
+  border-color: var(--paper-300, #e8e1d3);
+  border-radius: 12px;
+  box-shadow: none;
+  overflow-x: auto;
+}
+
+.learning-workspace .lesson-tabs {
+  margin-top: 28px;
+  overflow: visible;
+  border: 0;
+  border-top: 1px solid var(--paper-300, #e8e1d3);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.learning-workspace .tabs-body {
+  padding: 22px 0 0;
+}
+
+.learning-workspace .resource-card {
+  min-height: 52px;
+  border-color: var(--paper-300, #e8e1d3);
+  background: var(--surface-white, #fff);
+  box-shadow: none;
+}
+
+.learning-workspace .resource-card:hover {
+  border-color: var(--learning-blue-700);
+  background: var(--learning-blue-100);
+  box-shadow: none;
+  transform: none;
+}
+
+.learning-workspace .res-ico {
+  border-color: var(--learning-blue-200);
+  background: var(--learning-blue-100);
+}
+
+.learning-workspace .res-sub,
+.learning-workspace .lesson-type-badge,
+.learning-workspace .lesson-duration,
+.learning-workspace .vocab-table th,
+.learning-workspace .vocab-cat,
+.learning-workspace .vocab-source-note {
+  font-size: 12px;
+}
+
+.learning-workspace .lesson-footer {
+  align-items: center;
+  margin-top: 30px;
+  padding-top: 22px;
+  border-top: 1px solid var(--paper-300, #e8e1d3);
+}
+
+.learning-workspace .btn-primary,
+.learning-workspace .btn-secondary,
+.learning-workspace .quiz-next-btn,
+.learning-workspace .lesson-progress-resume {
+  min-height: 44px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.learning-workspace .btn-primary,
+.learning-workspace .quiz-next-btn {
+  border: 1px solid var(--brand-red);
+  background: var(--brand-red);
+  color: #fff;
+  box-shadow: none;
+}
+
+.learning-workspace .btn-primary:hover:not(:disabled),
+.learning-workspace .quiz-next-btn:hover:not(:disabled) {
+  border-color: var(--brand-red-hover);
+  background: var(--brand-red-hover);
+  box-shadow: var(--elev-1);
+}
+
+.learning-workspace .btn-secondary {
+  border: 1px solid var(--learning-blue-500);
+  background: var(--surface-white, #fff);
+  color: var(--learning-blue-700);
+}
+
+.learning-workspace .btn-secondary:hover:not(:disabled) {
+  border-color: var(--learning-blue-700);
+  background: var(--learning-blue-100);
+  color: var(--learning-blue-800);
+}
+
+.learning-workspace .btn-primary:disabled,
+.learning-workspace .btn-secondary:disabled,
+.learning-workspace .quiz-next-btn:disabled {
+  border-color: var(--paper-400, #d4ccb8);
+  background: var(--paper-200, #f2ede3);
+  color: var(--ink-700, #4a453e);
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 1;
+  transform: none;
+}
+
+.learning-workspace a:focus-visible,
+.learning-workspace button:focus-visible,
+.learning-workspace [role="button"]:focus-visible,
+.learning-workspace summary:focus-visible {
+  outline: 3px solid var(--learning-blue-700);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+#ai-senpai .senpai-orb-btn:focus-visible {
+  outline: 3px solid var(--learning-blue-700);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+/* Student-shell accessibility fallback. Keep it local to the learning page so
+   admin and the standalone Kanji app retain their own visual systems. */
+.lesson-student-nav :is(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible,
+#app-root :is(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible,
+body > footer :is(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible,
+#ai-senpai :is(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
+  outline: 3px solid var(--learning-blue-700) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 2px var(--surface-white, #fff) !important;
+}
+
+.reco-summary-action,
+#app-root .course-tab :is(.lock-icon, .price-hint),
+#sidebar .course-picker-level,
+#sidebar .course-option .level-chip,
+#sidebar .course-option .opt-status,
+#sidebar .sidebar-footer .email-line,
+#sidebar .progress-sub,
+#sidebar .m-meta,
+#sidebar .lesson-meta-row,
+#sidebar .lesson-duration {
+  font-size: 12px;
+}
+
+#sidebar .course-option:not(.active) .opt-status,
+#sidebar .sidebar-footer .email-line {
+  color: var(--ink-700, #4a453e);
+}
+
+#sidebar .sidebar-footer .email-line { overflow-wrap: anywhere; }
+
+@media (max-width: 860px) {
+  .learning-workspace .main-content {
+    padding: 22px 24px calc(230px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 600px) {
+  .learning-workspace .main-content {
+    padding: 18px 16px calc(230px + env(safe-area-inset-bottom));
+  }
+
+  .learning-workspace .lesson-title { font-size: 30px; }
+  .learning-workspace .lesson-subtitle { font-size: 15px; }
+  .learning-workspace .lesson-body,
+  .learning-workspace .module-intro,
+  .learning-workspace .lesson-extra-card { padding: 20px 18px; }
+
+  .learning-workspace .lesson-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .learning-workspace .lesson-footer .btn-primary,
+  .learning-workspace .lesson-footer .btn-secondary { width: 100%; }
+}
+
+@media (max-width: 760px) {
+  body > footer {
+    padding-bottom: calc(120px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Motion stays close to the action it confirms. This late student-only layer
+   also normalizes legacy literal timings without changing lesson behavior. */
+.lesson-student-nav :is(.sidebar-toggle, .lesson-logout),
+#app-root :is(
+  .greeting-resume,
+  .course-tab,
+  .course-option,
+  .sidebar-logout-btn,
+  .sidebar-section-header,
+  .module-header,
+  .lesson-item,
+  .play-btn,
+  .btn-primary,
+  .btn-secondary,
+  .paywall-cta,
+  .mini-plan,
+  .flashcard-cta,
+  .quiz-option,
+  .quiz-next-btn,
+  .rating-btn,
+  .back-to-lesson-btn,
+  .pronounce-btn,
+  .reco-lesson,
+  .sidebar-handle,
+  .quicklink,
+  .resource-card,
+  .vocab-section-toggle,
+  .vocab-bab-toggle,
+  .ba-toggle,
+  .grammar-block-toggle,
+  .ge-play,
+  .deck-card,
+  .dc-audio,
+  .deck-list-item,
+  .dm-headaudio,
+  .de-play,
+  .deck-modal-nav button,
+  .quiz-image-option,
+  .quiz-q-listen-btn,
+  .gk-play,
+  .gk-scene-line,
+  .gk-line-play,
+  .qlp-btn,
+  .qlp-play,
+  .qlp-track,
+  .kana-cell,
+  .kana-drill-opt,
+  .kanji-tile,
+  .kanji-list-item,
+  .kc-action,
+  .kanji-detail-close,
+  .kanji-replay-btn,
+  .gt-popup__close,
+  .gt-card__example-audio,
+  .gt-textarea,
+  .lesson-progress-resume,
+  .gt-btn--ghost,
+  .gt-btn--primary
+) {
+  transition-property: background-color, border-color, color, box-shadow, transform;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-standard);
+}
+
+#app-root :is(
+  .course-picker-caret,
+  .ss-caret,
+  .m-caret,
+  .vs-caret,
+  .vb-caret,
+  .ql-arr,
+  .dc-len,
+  .gk-word,
+  .gt-mic__core
+) {
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-standard);
+}
+
+#app-root :is(
+  .sidebar,
+  .course-picker-list,
+  .lessons
+),
+.sidebar-backdrop,
+body > .xp-toast {
+  transition-duration: var(--duration-base);
+  transition-delay: 0ms;
+  transition-timing-function: var(--ease-standard);
+}
+
+#app-root :is(
+  .quiz-feedback,
+  .deck-modal,
+  .gt-popup-overlay,
+  .gt-popup,
+  .gt-result
+),
+body > .completion-overlay,
+body > .completion-overlay .completion-modal,
+#ai-senpai .senpai-panel {
+  animation-duration: var(--duration-base) !important;
+  animation-delay: 0ms !important;
+}
+
+#app-root :is(
+  .progress-fill,
+  .goal-ring-fill,
+  .quiz-progress-fill,
+  .ba-bar-fill,
+  .kana-drill-meter span
+) {
+  transition-duration: var(--duration-base);
+  transition-timing-function: var(--ease-standard);
+}
+
+#app-root .flashcard-inner {
+  transition-duration: var(--duration-slow);
+  transition-timing-function: var(--ease-standard);
+}
+
+#app-root .quiz-results .trophy { animation-duration: var(--duration-slow); }
+
+/* The clock is already refreshed once per minute; a looping colon adds noise. */
+.learning-overview .gt-colon { animation: none; opacity: .65; }
+
+/* Keep legacy hover feedback within the two-pixel motion budget. */
+#app-root .quiz-option:hover:not(.disabled) { transform: translateX(2px); }
+#app-root .mini-plan:hover,
+#app-root .deck-card:hover { transform: translateY(-2px); }
+#app-root .deck-card:focus-visible,
+#app-root .kana-cell:focus-visible { transform: none; }
+
+#app-root :is(
+  .play-btn,
+  .ge-play,
+  .deck-card .dc-audio,
+  .deck-ex .de-play,
+  .gt-card__example-audio
+):hover {
+  transform: translateY(-1px);
+}
+
+#app-root .deck-list-item .dc-audio:hover { transform: translateY(-50%); }
+#app-root :is(.quiz-q-listen-btn, .qlp-btn):active { transform: translateY(2px); }
+
+#ai-senpai .senpai-orb-btn {
+  animation-duration: var(--duration-base);
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-standard);
+}
+
+#ai-senpai .senpai-orb-btn:hover { transform: translateY(-2px); }
+#ai-senpai .senpai-orb-btn:active { transform: translateY(2px); }
+
+/* Paw, halo, and notification pulse are decorative. One brief cue is enough. */
+#ai-senpai .senpai-orb-btn > span,
+#ai-senpai .senpai-orb-btn > svg g {
+  animation-duration: var(--duration-base) !important;
+  animation-iteration-count: 1 !important;
+}
+
+.lesson-student-nav :is(a, button):focus-visible,
+#app-root :is(a, button, input, select, textarea, summary, [role="button"]):focus-visible,
+#ai-senpai button:focus-visible {
+  transition-duration: 0ms !important;
+  transition-delay: 0ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lesson-student-nav *,
+  .lesson-student-nav *::before,
+  .lesson-student-nav *::after,
+  #app-root *,
+  #app-root *::before,
+  #app-root *::after,
+  .sidebar-backdrop,
+  body > .completion-overlay,
+  body > .completion-overlay *,
+  body > .xp-toast,
+  .confetti-piece,
+  #ai-senpai *,
+  #ai-senpai *::before,
+  #ai-senpai *::after {
+    animation-duration: 0ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    transition-delay: 0ms !important;
+  }
+
+  .confetti-piece { display: none !important; }
+
+  #app-root :is(
+    .pronounce-btn.playing,
+    .ge-play.playing,
+    .dc-audio.playing,
+    .dm-headaudio.playing,
+    .de-play.playing,
+    .quiz-q-listen-btn.playing,
+    .gt-mic__ring,
+    .gt-mic__wave i,
+    .gt-mic__spinner,
+    [style*="animation:ezBootSpin"]
+  ),
+  #ai-senpai *,
+  #ai-senpai *::before,
+  #ai-senpai *::after {
+    animation: none !important;
+  }
+
+  #app-root :is(
+    .greeting-resume,
+    .reco-lesson,
+    .play-btn,
+    .btn-primary,
+    .btn-secondary,
+    .quiz-next-btn,
+    .quiz-option,
+    .rating-btn,
+    .flashcard-cta,
+    .paywall-cta,
+    .mini-plan,
+    .resource-card,
+    .ge-play,
+    .deck-card,
+    .deck-card .dc-audio,
+    .deck-ex .de-play,
+    .quiz-image-option,
+    .quiz-q-listen-btn,
+    .gk-play,
+    .qlp-btn,
+    .kana-cell,
+    .kana-drill-opt,
+    .kanji-tile,
+    .gt-card__example-audio,
+    .gt-btn--primary
+  ):is(:hover, :active, :focus-visible),
+  #app-root .quicklink:hover .ql-arr,
+  #app-root .gt-mic:hover:not(.recording):not(.processing) .gt-mic__core,
+  #app-root .gt-mic:active:not(.processing) .gt-mic__core,
+  #ai-senpai .senpai-orb-btn:is(:hover, :active, :focus-visible) {
+    transform: none !important;
+  }
+
+  /* This translation positions the audio button; reduced motion must retain it. */
+  #app-root .deck-list-item .dc-audio:is(:hover, :active, :focus-visible) {
+    transform: translateY(-50%) !important;
   }
 }

@@ -44,7 +44,15 @@ body {
 .hero .course-switch {
   position: relative;
   z-index: 1;
-  min-width: 220px;
+  width: min(320px, 100%);
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+#dashboard-app .course-select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .grid {
@@ -53,6 +61,21 @@ body {
   gap: 18px;
   margin-bottom: 18px;
 }
+
+.hero > *,
+.card,
+.performance > *,
+.focus { min-width: 0; }
+
+.hero h1,
+.card h2,
+.card p,
+.continue-title,
+.focus h3,
+.insight,
+.access-notice,
+.pending-order-row,
+.state { overflow-wrap: anywhere; }
 
 .card {
   position: relative;
@@ -104,30 +127,36 @@ body {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--brand-red, #c8102e), #e11d48);
+  background: var(--learning-blue-600);
 }
 
 .card.continue-card {
-  background:
-    linear-gradient(135deg, rgba(255,255,255,.035), transparent 60%),
-    var(--ink-900, #1a1815);
-  border-color: var(--ink-900, #1a1815);
-  color: var(--paper-300, #e8e1d3);
-  box-shadow: 0 16px 40px rgba(26, 24, 21, .14);
+  background: var(--learning-blue-900);
+  border-color: var(--learning-blue-900);
+  color: var(--learning-blue-100);
+  box-shadow: var(--elev-3);
 }
 
-.card.continue-card::before { background: var(--brand-red, #c8102e); }
-.card.continue-card .eyebrow { color: #ff8799; }
+.card.continue-card::before { background: var(--learning-blue-500); }
+.card.continue-card .eyebrow { color: var(--learning-blue-200); }
 .card.continue-card .continue-title { color: #fff; }
 .card.continue-card .continue-label,
-.card.continue-card .muted { color: var(--paper-400, #d4ccb8); }
+.card.continue-card .muted { color: var(--learning-blue-100); }
 
 .continue-label {
   margin-top: 18px;
-  color: var(--ink-500, #8a8378);
+  color: var(--ink-700, #4a453e);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: .02em;
+}
+
+.continue-label,
+.live-recordings,
+.live-recordings li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .continue-title {
@@ -158,16 +187,37 @@ body {
 .count {
   min-width: 0;
   padding: 11px 7px;
-  border: 1px solid var(--paper-200, #f2ede3);
-  border-radius: 11px;
-  background: var(--paper-50, #fdfcf9);
+  border: 0;
+  border-left: 1px solid var(--learning-blue-200);
+  border-radius: 0;
+  background: transparent;
   text-align: center;
 }
 
 .count strong,
 .count span { display: block; }
-.count strong { color: var(--ink-900, #1a1815); font-size: 20px; }
-.count span { color: var(--ink-500, #8a8378); font-size: 10px; }
+.count:first-child { border-left: 0; }
+.count strong { color: var(--learning-blue-900); font-size: 20px; }
+.count span { color: var(--learning-blue-700); font-size: 12px; }
+
+.card.review-card {
+  border-color: var(--learning-blue-200);
+  background: var(--learning-blue-100);
+}
+.card.review-card::before { background: var(--learning-blue-700); }
+.card.review-card .eyebrow { color: var(--learning-blue-700); }
+.card.review-card .review-count { color: var(--learning-blue-900); }
+.card.review-card .counts {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--learning-blue-200);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .72);
+}
+
+.card.progress-card::before { background: var(--learning-blue-600); }
+.card.progress-card .eyebrow { color: var(--learning-blue-700); }
+.card.progress-card .course-progress { color: var(--learning-blue-900); }
 
 .live { border-style: solid; }
 .live::before { background: var(--warning, #854f0b); }
@@ -202,26 +252,27 @@ body {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--brand-red, #c8102e);
+  background: var(--learning-blue-600);
 }
 
 .state {
-  color: var(--ink-500, #8a8378);
+  color: var(--ink-700, #4a453e);
   font-size: 12px;
   text-align: right;
 }
 
 .focus {
   position: relative;
-  border: 1px solid var(--paper-300, #e8e1d3);
+  border: 1px solid var(--learning-blue-200);
   border-radius: 14px;
-  background: var(--paper-100, #faf7f2);
+  background: var(--learning-blue-100);
   padding: 18px;
 }
 
+.focus .eyebrow { color: var(--learning-blue-700); }
 .focus h3 {
   margin: 8px 0 5px;
-  color: var(--ink-900, #1a1815);
+  color: var(--learning-blue-900);
   font-family: "Shippori Mincho", serif;
   font-size: 19px;
 }
@@ -234,24 +285,26 @@ body {
 }
 
 .metric {
-  padding: 14px;
-  border: 1px solid var(--paper-200, #f2ede3);
-  border-radius: 12px;
-  background: var(--paper-50, #fdfcf9);
+  padding: 12px 14px;
+  border: 0;
+  border-left: 1px solid var(--learning-blue-200);
+  border-radius: 0;
+  background: transparent;
 }
 
+.metric:first-child { border-left: 0; }
 .metric strong,
 .metric span { display: block; }
-.metric strong { color: var(--ink-900, #1a1815); font: 700 24px/1.2 "Shippori Mincho", serif; }
-.metric span { margin-top: 5px; color: var(--ink-500, #8a8378); font-size: 11px; }
+.metric strong { color: var(--learning-blue-900); font: 700 24px/1.2 "Shippori Mincho", serif; }
+.metric span { margin-top: 5px; color: var(--ink-700, #4a453e); font-size: 12px; }
 
 .insight {
   margin-top: 14px;
   padding: 13px 15px;
-  border-left: 3px solid var(--brand-red, #c8102e);
+  border-left: 3px solid var(--learning-blue-700);
   border-radius: 4px 10px 10px 4px;
-  background: var(--brand-red-soft, #fff0f2);
-  color: var(--ink-700, #4a453e);
+  background: var(--learning-blue-100);
+  color: var(--learning-blue-800);
 }
 
 /* A student who uploaded payment proof and lost the order.html URL had no
@@ -285,7 +338,7 @@ body {
 .access-notice {
   margin: 10px 0 0;
   font-size: 13px;
-  color: var(--ink-500, #6f6a63);
+  color: var(--ink-700, #4a453e);
 }
 .access-notice.urgent {
   display: inline-block;
@@ -321,6 +374,10 @@ body {
   .grid { gap: 14px; margin-bottom: 14px; }
   .counts,
   .activity { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .count:nth-child(odd),
+  .metric:nth-child(odd) { border-left: 0; }
+  .count:nth-child(n + 3),
+  .metric:nth-child(n + 3) { border-top: 1px solid var(--learning-blue-200); }
   .mastery-row { grid-template-columns: 78px minmax(70px, 1fr); }
   .mastery-row .state { grid-column: 2; text-align: left; }
   .primary,

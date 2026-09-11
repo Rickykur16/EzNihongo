@@ -15,8 +15,8 @@ function getSlugFromPage() {
 function renderError(title, message, backHref) {
   const wrap = document.getElementById("c-wrap") || document.body;
   wrap.innerHTML = `
-    <div style="max-width:520px;margin:80px auto;padding:40px 24px;text-align:center;">
-      <div style="font-size:48px;margin-bottom:16px;">${backHref ? '🔒' : '❓'}</div>
+    <div role="alert" style="max-width:520px;margin:80px auto;padding:40px 24px;text-align:center;">
+      <div aria-hidden="true" style="font-size:48px;margin-bottom:16px;">${backHref ? '🔒' : '❓'}</div>
       <h1 style="font-size:26px;margin:0 0 12px;color:#0a0a0a;">${title}</h1>
       <p style="color:#525252;line-height:1.6;margin:0 0 24px;">${message}</p>
       <a href="${backHref || '../index.html#pricing'}"
@@ -114,16 +114,16 @@ function profileFieldsHtml() {
   const referralOptions = REFERRAL_SOURCES.map(([v, label]) => `<option value="${v}">${label}</option>`).join("");
   return `
     <div id="c-profile-fields">
-      <p style="font-size:13px;color:#485f84;margin:16px 0 10px;font-weight:600;">Lengkapi data diri (cuma sekali, untuk kelas pertamamu)</p>
-      <div class="field"><label>Tanggal lahir</label><input type="date" id="c-birth-date" required /></div>
+      <p class="c-payment-method" style="margin-top:16px;">Lengkapi data diri (cuma sekali, untuk kelas pertamamu)</p>
+      <div class="field"><label for="c-birth-date">Tanggal lahir</label><input type="date" id="c-birth-date" required /></div>
       <div class="field-row">
-        <div class="field"><label>Provinsi domisili</label><select id="c-province" required><option value="" disabled selected>Pilih provinsi</option>${provinceOptions}</select></div>
-        <div class="field"><label>Kota/Kabupaten</label><input type="text" id="c-city" maxlength="100" required /></div>
+        <div class="field"><label for="c-province">Provinsi domisili</label><select id="c-province" required><option value="" disabled selected>Pilih provinsi</option>${provinceOptions}</select></div>
+        <div class="field"><label for="c-city">Kota/Kabupaten</label><input type="text" id="c-city" maxlength="100" required /></div>
       </div>
-      <div class="field"><label>Nomor WhatsApp</label><input type="tel" id="c-phone" placeholder="08xxxxxxxxxx" required /></div>
+      <div class="field"><label for="c-phone">Nomor WhatsApp</label><input type="tel" id="c-phone" placeholder="08xxxxxxxxxx" required /></div>
       <div class="field-row">
-        <div class="field"><label>Tujuan belajar</label><select id="c-learning-goal" required><option value="" disabled selected>Pilih tujuan</option>${goalOptions}</select></div>
-        <div class="field"><label>Dari mana tahu EzNihongo?</label><select id="c-referral-source" required><option value="" disabled selected>Pilih sumber</option>${referralOptions}</select></div>
+        <div class="field"><label for="c-learning-goal">Tujuan belajar</label><select id="c-learning-goal" required><option value="" disabled selected>Pilih tujuan</option>${goalOptions}</select></div>
+        <div class="field"><label for="c-referral-source">Dari mana tahu EzNihongo?</label><select id="c-referral-source" required><option value="" disabled selected>Pilih sumber</option>${referralOptions}</select></div>
       </div>
       <div class="field" style="display:flex;align-items:flex-start;gap:8px;">
         <input type="checkbox" id="c-consent" required style="margin-top:4px;" />
@@ -190,16 +190,23 @@ function renderCourseUI(course, needsProfile) {
   document.getElementById("c-checkout-form").addEventListener("submit", async e => {
     e.preventDefault();
     const btn = document.getElementById("c-submit");
+    const status = document.getElementById("c-checkout-status");
+    const error = document.getElementById("c-checkout-error");
+    status.textContent = "";
+    error.textContent = "";
+    error.hidden = true;
     btn.disabled = true;
 
     try {
       if (needsProfile) {
         btn.textContent = "Menyimpan data...";
+        status.textContent = "Menyimpan data profil...";
         await saveProfileFields();
       }
 
       if (course.is_free === true) {
         btn.textContent = "Memproses...";
+        status.textContent = "Memproses pendaftaran kelas...";
         const res = await window.ezApi("/enrollments", {
           method: "POST",
           body: JSON.stringify({ courseSlug: course.slug }),
@@ -211,6 +218,7 @@ function renderCourseUI(course, needsProfile) {
       }
 
       btn.textContent = "Membuat pesanan...";
+      status.textContent = "Membuat pesanan...";
       const res = await window.ezApi("/orders", {
         method: "POST",
         body: JSON.stringify({ courseSlug: course.slug }),
@@ -221,7 +229,9 @@ function renderCourseUI(course, needsProfile) {
     } catch (err) {
       btn.textContent = defaultLabel;
       btn.disabled = false;
-      alert("Gagal memproses: " + (err.message || "coba lagi sebentar."));
+      status.textContent = "";
+      error.textContent = "Gagal memproses: " + (err.message || "coba lagi sebentar.");
+      error.hidden = false;
     }
   });
 }
