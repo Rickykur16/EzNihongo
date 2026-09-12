@@ -4,7 +4,7 @@ import { isCanonicalUuid } from './live-class-admin-rules.js';
 import { requireAdmin } from './middleware.js';
 
 export const DIVISIONS = Object.freeze({ technology: 'Product & Technology', academic: 'Academic & Learning',
-  marketing: 'Growth & Marketing', operations: 'Student Success & Operations', finance: 'Finance' });
+  marketing: 'Growth & Marketing', operations: 'Operasional Siswa', finance: 'Finance' });
 export const ROLE_CATALOG = Object.freeze({
   technology: ['work.technology', 'legacy.technology', 'insights.technology'],
   academic: ['work.academic', 'legacy.academic', 'legacy.course_picker', 'insights.academic'],

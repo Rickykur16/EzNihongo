@@ -1,6 +1,7 @@
 import { createInsightsView } from './company-insights.js?v=productivity-20260912';
 import { createDeskView } from './company-desk.js?v=unified-admin-20260912';
 import { templatesFor, canCreateFollowUp, historyLabel } from './company-productivity.js?v=productivity-20260912';
+import { createStudentOperations } from './student-operations.js?v=operations-20260912';
 
 export async function mountCompanyWorkspace(host,{user,companyAccess,onRoute,canOpenTool=()=>false,onSourceOrder}) {
   const response=await fetch(new URL('./company-workspace.html',import.meta.url),{cache:'no-store'});
@@ -11,17 +12,18 @@ const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;
 const labels={task:'Pekerjaan',case:'Kasus',campaign:'Kampanye',content:'Konten',release:'Rilis'};
 const statuses={draft:'Draf',ready:'Siap dikerjakan',doing:'Dikerjakan',blocked:'Terhambat',review:'Perlu review',done:'Selesai',archived:'Arsip',new:'Baru',triaged:'Ditinjau',waiting:'Menunggu',resolved:'Ditangani',approved:'Disetujui',active:'Aktif',paused:'Dijeda',completed:'Selesai',scheduled:'Terjadwal',published:'Terbit',measured:'Dievaluasi',testing:'Diuji',merged:'Merged',deployed:'Terpasang',verified:'Terverifikasi'};
 const descriptions={technology:'Backlog dan rilis. Pisahkan status merged, terpasang, dan terverifikasi.',academic:'Pekerjaan materi dan pemeriksaan akademik. Editor materi existing tetap tersedia.',marketing:'Kampanye, review konten, kalender publikasi, dan tautan UTM.',operations:'Tindak lanjut siswa dan kasus diskusi. Data belajar tetap di sistem existing.',finance:'Kasus review bukti pembayaran. Status pembayaran berasal dari transaksi existing.'};
-let access=companyAccess,division,items=[],courses=[],current=null,generation=0,insightsView,deskView,boardCursor='',boardNext=null,boardHistory=[];
+let access=companyAccess,division,items=[],courses=[],current=null,generation=0,insightsView,deskView,operationsView,boardCursor='',boardNext=null,boardHistory=[];
 let boardFilters={},editorGeneration=0,assigneeGeneration=0,historyGeneration=0,linkGeneration=0,dirty=false,editorBusy=false,assigneesReady=false;
 function editorError(error){return error.message==='work_version_conflict'?'Pekerjaan berubah oleh anggota lain. Catatan Anda tetap di formulir; salin perubahan lalu buka ulang pekerjaan untuk mengambil versi terbaru.':error.message;}
 function canLeave(){
+ if(operationsView&&!operationsView.canLeave())return false;
  if(!$('editor').open||division==='academic')return true;
  if(editorBusy){$('editor-notice').textContent='Tunggu sampai penyimpanan selesai.';return false;}
  return !dirty||confirm('Perubahan belum disimpan. Buang perubahan dan lanjutkan?');
 }
 function closeEditor(){editorGeneration++;assigneeGeneration++;historyGeneration++;linkGeneration++;dirty=false;$('editor').close();}
 function resetBoardPages(){boardCursor='';boardNext=null;boardHistory=[];}
-function showWork(){insightsView?.close();deskView?.close();for(const id of ['toolbar','content','pagination','create-button'])$(id).hidden=false;$('board-filters').hidden=division==='academic';$('context').textContent='PEKERJAAN TIM';}
+function showWork(){operationsView?.close();$('title').hidden=$('subtitle').hidden=$('context').hidden=false;insightsView?.close();deskView?.close();for(const id of ['toolbar','content','pagination','create-button'])$(id).hidden=false;$('board-filters').hidden=division==='academic';$('context').textContent='PEKERJAAN TIM';}
 function showInsights(){deskView?.close();generation++;for(const id of ['toolbar','board-filters','content','pagination','create-button'])$(id).hidden=true;$('title').textContent='Data & Insights';$('context').textContent='PEMBELAJARAN → PERBAIKAN BISNIS';$('subtitle').textContent='Ringkasan berbasis bukti untuk keputusan lintas divisi. Data belajar existing tidak diubah.';host.querySelectorAll('[data-division]').forEach(b=>b.removeAttribute('aria-current'));notice('');}
 function showDesk(mode){insightsView?.close();generation++;for(const id of ['toolbar','board-filters','content','pagination','create-button'])$(id).hidden=true;$('title').textContent=mode==='calendar'?'Kalender Marketing':'Pusat Kerja Harian';$('context').textContent='AGENDA TIM';$('subtitle').textContent=mode==='calendar'?'Agenda bulanan dari jadwal yang sudah dicatat; tidak menerbitkan konten otomatis.':'Satu antrean untuk tugas pribadi, review, dan target lintas divisi sesuai izin.';host.querySelectorAll('[data-division]').forEach(b=>b.removeAttribute('aria-current'));notice('');}
 async function api(path,body,method=body?'POST':'GET'){
@@ -141,6 +143,15 @@ deskView=createDeskView({root:host,api,access,courses,statuses,labels,onOpen:sho
 }});
 return {
   open(key) {
+    operationsView?.close();$('title').hidden=$('subtitle').hidden=$('context').hidden=false;
+    if(key==='operations'){
+      if(!access.studentOperations?.enabled||(!access.isAdmin&&!access.scopes?.operations))throw new Error('operations_scope_required');
+      if(!operationsView)operationsView=createStudentOperations({root:host,api,access,courses,onOpen:()=>{
+        insightsView?.close();deskView?.close();generation++;
+        for(const id of ['toolbar','board-filters','content','pagination','create-button','title','subtitle','context'])$(id).hidden=true;notice('');
+      }});
+      operationsView.open();return;
+    }
     if(key.startsWith('work:')){const id=key.slice(5);if(!access.divisions.some(d=>d.id===id))throw new Error('division_scope_required');selectDivision(id);return;}
     const ids={desk:'desk-button',calendar:'calendar-button',insights:'insights-button',members:'members-button',jobs:'jobs-button'};
     const button=$(ids[key]);if(!button||button.hidden)throw new Error('workspace_view_unavailable');
@@ -154,7 +165,7 @@ return {
     if(key==='jobs')for(const id of ['toolbar','board-filters','pagination','create-button'])$(id).hidden=true;
   },
   canLeave,
-  close(){generation++;closeEditor();insightsView?.close();deskView?.close();host.querySelectorAll('dialog[open]').forEach(d=>d.close());},
+  close(){generation++;closeEditor();operationsView?.close();insightsView?.close();deskView?.close();host.querySelectorAll('dialog[open]').forEach(d=>d.close());},
 };
 
 }

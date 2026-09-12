@@ -2,6 +2,7 @@
 // Absent tables are allowed; an unexpected shape is not silently whitelisted.
 // All calls use the erasure transaction's client, never the pool.
 import { companyErasureContracts, eraseCompanyData } from './company-erasure-contract.js';
+import { operationsErasureContracts, eraseOperationsData } from './student-operations-erasure.js';
 const required = (type) => ({ type, notNull: true });
 const nullable = (type) => ({ type, notNull: false });
 const fk = (column, target, targetColumn, onDelete) => ({ column, target, targetColumn, onDelete });
@@ -11,6 +12,7 @@ const contracts = {
       action: required('text'), entity_id: nullable('uuid'), actor_erased_at: nullable('timestamp with time zone') },
     foreignKeys: [fk('actor_user_id', 'users', 'id', 'n')],
   },
+  ...operationsErasureContracts,
   ...companyErasureContracts,
   staff_memberships: {
     columns: { id: required('uuid'), user_id: required('uuid'), role_key: required('text'), status: required('text'),
@@ -101,6 +103,7 @@ export async function inspectStaffErasureTables(client) {
       JOIN pg_class u ON u.oid = 'users'::regclass
      WHERE c.contype = 'f' AND parent.relnamespace = u.relnamespace AND parent.relname = ANY($1::text[])`, [tableNames]);
   const dependentPairs = new Set(['staff_membership_scopes:staff_memberships',
+    'student_operation_events:student_operation_cases',
     'company_work_events:company_work_items', 'company_outbox:company_work_items']);
   if (dependents.some(row => !row.same_schema || !dependentPairs.has(`${row.child_table}:${row.parent_table}`))) incompatible('unknown dependent staff table');
   return present;
@@ -112,6 +115,7 @@ export async function eraseStaffUserData(client, userId, tables) {
     result.finance_audit_scrubbed = (await client.query(`UPDATE ${qualified(tables.get('finance_audit'))}
       SET actor_user_id=NULL,actor_erased_at=COALESCE(actor_erased_at,NOW()) WHERE actor_user_id=$1`,[userId])).rowCount;
   }
+  Object.assign(result,await eraseOperationsData(client,userId,tables,qualified));
   if (tables.has('staff_memberships')) {
     const table = qualified(tables.get('staff_memberships'));
     // Only the erased user's memberships/scopes disappear. A grant by this
