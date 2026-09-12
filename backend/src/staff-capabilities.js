@@ -20,7 +20,7 @@ const DIVISIONS = [
   { id: 'academic', name: 'Academic & Learning' },
   { id: 'marketing', name: 'Growth & Marketing' },
   { id: 'operations', name: 'Student Success & Operations' },
-  { id: 'finance', name: 'Finance & Business Administration' },
+  { id: 'finance', name: 'Finance' },
 ];
 
 export function describeLegacyStaffAccess(isAdmin) {

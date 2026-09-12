@@ -6,6 +6,11 @@ const required = (type) => ({ type, notNull: true });
 const nullable = (type) => ({ type, notNull: false });
 const fk = (column, target, targetColumn, onDelete) => ({ column, target, targetColumn, onDelete });
 const contracts = {
+  finance_audit: {
+    columns: { id: required('uuid'), actor_user_id: nullable('uuid'), occurred_at: required('timestamp with time zone'),
+      action: required('text'), entity_id: nullable('uuid'), actor_erased_at: nullable('timestamp with time zone') },
+    foreignKeys: [fk('actor_user_id', 'users', 'id', 'n')],
+  },
   ...companyErasureContracts,
   staff_memberships: {
     columns: { id: required('uuid'), user_id: required('uuid'), role_key: required('text'), status: required('text'),
@@ -103,6 +108,10 @@ export async function inspectStaffErasureTables(client) {
 
 export async function eraseStaffUserData(client, userId, tables) {
   const result = await eraseCompanyData(client, userId, tables, qualified);
+  if (tables.has('finance_audit')) {
+    result.finance_audit_scrubbed = (await client.query(`UPDATE ${qualified(tables.get('finance_audit'))}
+      SET actor_user_id=NULL,actor_erased_at=COALESCE(actor_erased_at,NOW()) WHERE actor_user_id=$1`,[userId])).rowCount;
+  }
   if (tables.has('staff_memberships')) {
     const table = qualified(tables.get('staff_memberships'));
     // Only the erased user's memberships/scopes disappear. A grant by this
