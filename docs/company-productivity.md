@@ -33,7 +33,7 @@ Academic tidak mendapatkan template, filter tambahan, riwayat baru, atau tombol 
 2. Pipeline existing menjalankan migrasi standar saat deploy; paket ini tidak menambahkan migration. Jangan menjalankan runner Company atau mengaktifkan sakelar produksi sebagai bagian dari paket ini.
 3. Menu pencarian bekerja saat Company dimatikan. Board/SOP/riwayat/Insights memerlukan modul existing yang sudah diaktifkan dengan schema/izin yang sesuai. Deployment UI tidak mengaktifkannya.
 4. Uji dengan akun owner dan staf terbatas: login, menu, kursus/materi/kuis, pesanan, pembatasan kursus, dan draft Insights.
-5. Bila UI perlu rollback, redeploy commit release sebelumnya melalui proses normal. Tidak perlu menghapus tabel atau data pekerjaan; jangan menimpa database dengan snapshot lama.
+5. Bila UI perlu rollback, buat commit revert perubahan UI melalui review terpisah, lalu deploy dengan pipeline normal. Pipeline menolak checkout release lama yang bukan fast-forward; jangan melewati pengaman itu. Tidak perlu menghapus tabel atau data pekerjaan; jangan menimpa database dengan snapshot lama.
 
 ## Pengujian
 
