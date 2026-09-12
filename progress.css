@@ -127,7 +127,14 @@ body {
 
 #progress-app .card.progress-overview {
   border-color: var(--learning-blue-900, #19345f);
-  background: var(--learning-blue-900, #19345f);
+  background-color: var(--learning-blue-900, #19345f);
+  background-image:
+    linear-gradient(90deg, rgba(9, 29, 59, .96) 0%, rgba(18, 48, 91, .9) 52%, rgba(18, 48, 91, .64) 100%),
+    linear-gradient(0deg, rgba(7, 22, 45, .42), rgba(7, 22, 45, .08)),
+    url("assets/dashboard/progress-fuji-dawn.webp");
+  background-position: center, center, center 44%;
+  background-repeat: no-repeat;
+  background-size: cover;
   color: var(--learning-blue-100, #eef3fa);
   box-shadow: var(--elev-2, 0 4px 12px rgba(20, 15, 10, .06));
 }
@@ -136,9 +143,20 @@ body {
   background: var(--learning-blue-500, #5a7db7);
 }
 
-#progress-app .progress-overview .eyebrow { color: var(--learning-blue-200, #dce6f5); }
-#progress-app .progress-overview .number { color: var(--surface-white, #fff); }
-#progress-app .progress-overview .muted { color: var(--learning-blue-100, #eef3fa); }
+#progress-app .progress-overview .eyebrow {
+  color: var(--learning-blue-200, #dce6f5);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, .28);
+}
+
+#progress-app .progress-overview .number {
+  color: var(--surface-white, #fff);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, .28);
+}
+
+#progress-app .progress-overview .muted {
+  color: var(--learning-blue-100, #eef3fa);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, .3);
+}
 
 #progress-app .progress-overview .course-progress-bar {
   border: 1px solid var(--learning-blue-200, #dce6f5);
