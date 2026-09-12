@@ -1,15 +1,20 @@
-import { createInsightsView } from './company-insights.js';
-import { createDeskView } from './company-desk.js';
-const $=id=>document.getElementById(id);
+import { createInsightsView } from './company-insights.js?v=unified-admin-20260912';
+import { createDeskView } from './company-desk.js?v=unified-admin-20260912';
+
+export async function mountCompanyWorkspace(host,{user,companyAccess,onRoute}) {
+  const response=await fetch(new URL('./company-workspace.html',import.meta.url),{cache:'no-store'});
+  if(!response.ok)throw new Error('workspace_template_unavailable');
+  host.innerHTML=await response.text();
+const $=id=>host.querySelector('#'+id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const labels={task:'Pekerjaan',case:'Kasus',campaign:'Kampanye',content:'Konten',release:'Rilis'};
 const statuses={draft:'Draf',ready:'Siap dikerjakan',doing:'Dikerjakan',blocked:'Terhambat',review:'Perlu review',done:'Selesai',archived:'Arsip',new:'Baru',triaged:'Ditinjau',waiting:'Menunggu',resolved:'Ditangani',approved:'Disetujui',active:'Aktif',paused:'Dijeda',completed:'Selesai',scheduled:'Terjadwal',published:'Terbit',measured:'Dievaluasi',testing:'Diuji',merged:'Merged',deployed:'Terpasang',verified:'Terverifikasi'};
 const descriptions={technology:'Backlog dan rilis. Pisahkan status merged, terpasang, dan terverifikasi.',academic:'Pekerjaan materi dan pemeriksaan akademik. Editor materi existing tetap tersedia.',marketing:'Kampanye, review konten, kalender publikasi, dan tautan UTM.',operations:'Tindak lanjut siswa dan kasus diskusi. Data belajar tetap di sistem existing.',finance:'Kasus review bukti pembayaran. Status pembayaran berasal dari transaksi existing.'};
-let access,division,items=[],courses=[],current=null,generation=0,insightsView,deskView,boardCursor='',boardNext=null,boardHistory=[];
+let access=companyAccess,division,items=[],courses=[],current=null,generation=0,insightsView,deskView,boardCursor='',boardNext=null,boardHistory=[];
 function resetBoardPages(){boardCursor='';boardNext=null;boardHistory=[];}
 function showWork(){insightsView?.close();deskView?.close();for(const id of ['toolbar','content','pagination','create-button'])$(id).hidden=false;$('context').textContent='PEKERJAAN TIM';}
-function showInsights(){deskView?.close();generation++;for(const id of ['toolbar','content','pagination','create-button'])$(id).hidden=true;$('title').textContent='Data & Insights';$('context').textContent='PEMBELAJARAN → PERBAIKAN BISNIS';$('subtitle').textContent='Ringkasan berbasis bukti untuk keputusan lintas divisi. Data belajar existing tidak diubah.';document.querySelectorAll('[data-division]').forEach(b=>b.removeAttribute('aria-current'));notice('');}
-function showDesk(mode){insightsView?.close();generation++;for(const id of ['toolbar','content','pagination','create-button'])$(id).hidden=true;$('title').textContent=mode==='calendar'?'Kalender Marketing':'Pusat Kerja Harian';$('context').textContent='AGENDA TIM';$('subtitle').textContent=mode==='calendar'?'Agenda bulanan dari jadwal yang sudah dicatat; tidak menerbitkan konten otomatis.':'Satu antrean untuk tugas pribadi, review, dan target lintas divisi sesuai izin.';document.querySelectorAll('[data-division]').forEach(b=>b.removeAttribute('aria-current'));notice('');}
+function showInsights(){deskView?.close();generation++;for(const id of ['toolbar','content','pagination','create-button'])$(id).hidden=true;$('title').textContent='Data & Insights';$('context').textContent='PEMBELAJARAN → PERBAIKAN BISNIS';$('subtitle').textContent='Ringkasan berbasis bukti untuk keputusan lintas divisi. Data belajar existing tidak diubah.';host.querySelectorAll('[data-division]').forEach(b=>b.removeAttribute('aria-current'));notice('');}
+function showDesk(mode){insightsView?.close();generation++;for(const id of ['toolbar','content','pagination','create-button'])$(id).hidden=true;$('title').textContent=mode==='calendar'?'Kalender Marketing':'Pusat Kerja Harian';$('context').textContent='AGENDA TIM';$('subtitle').textContent=mode==='calendar'?'Agenda bulanan dari jadwal yang sudah dicatat; tidak menerbitkan konten otomatis.':'Satu antrean untuk tugas pribadi, review, dan target lintas divisi sesuai izin.';host.querySelectorAll('[data-division]').forEach(b=>b.removeAttribute('aria-current'));notice('');}
 async function api(path,body,method=body?'POST':'GET'){
  const res=await ezApi('/company'+path,{method,cache:'no-store',...(body?{body:JSON.stringify(body)}:{})});const data=await res.json();if(!res.ok)throw new Error(data.error||'Permintaan gagal');return data;
 }
@@ -23,7 +28,7 @@ function render(){
  $('previous').disabled=!boardHistory.length;$('next').disabled=!boardNext;$('page-label').textContent=`Halaman ${boardHistory.length+1}`;
 }
 async function load(){const ticket=++generation;$('refresh-button').disabled=true;$('previous').disabled=true;$('next').disabled=true;try{const params=new URLSearchParams({division,...($('filter').value?{status:$('filter').value}:{}),...(boardCursor?{cursor:boardCursor}:{})});const data=await api('/work?'+params);if(ticket!==generation)return;items=data.items;boardNext=data.nextCursor;render();notice('');}catch(e){if(ticket===generation){items=[];$('content').innerHTML='';notice(e.message,true);}}finally{if(ticket===generation)$('refresh-button').disabled=false;}}
-function selectDivision(id){showWork();division=id;resetBoardPages();$('title').textContent=access.divisions.find(d=>d.id===id).name;$('subtitle').textContent=descriptions[id];$('sync-button').hidden=!['finance','operations'].includes(id)||Array.isArray(access.scopes[id]);document.querySelectorAll('[data-division]').forEach(b=>b.setAttribute('aria-current',String(b.dataset.division===id)));load();}
+function selectDivision(id){showWork();division=id;resetBoardPages();$('title').textContent=access.divisions.find(d=>d.id===id).name;$('subtitle').textContent=descriptions[id];$('sync-button').hidden=!['finance','operations'].includes(id)||Array.isArray(access.scopes[id]);host.querySelectorAll('[data-division]').forEach(b=>b.setAttribute('aria-current',String(b.dataset.division===id)));load();}
 function options(values,selected=''){return values.map(([value,label])=>`<option value="${esc(value)}" ${value===selected?'selected':''}>${esc(label)}</option>`).join('');}
 async function assignees(){const f=$('work-form');try{const result=await api(`/assignees?division=${division}&courseId=${encodeURIComponent(f.elements.courseId.value)}`);f.elements.assignedTo.innerHTML=options([['','Belum ditugaskan'],...result.people.map(p=>[p.id,p.full_name||p.id])],current?.assigned_to||'');}catch{f.elements.assignedTo.innerHTML='<option value="">Belum ditugaskan</option>';}}
 async function edit(item=null){
@@ -42,13 +47,42 @@ async function edit(item=null){
 $('work-form').elements.courseId.onchange=assignees;
 $('work-form').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,button=form.querySelector('button[type=submit]');button.disabled=true;const d=Object.fromEntries(new FormData(form));d.division=division;d.kind=current?.kind||d.kind;d.scheduledAt=d.scheduledAt?new Date(d.scheduledAt).toISOString():null;d.courseId=d.courseId||null;d.assignedTo=d.assignedTo||null;if(current)d.version=current.version;try{await api(current?'/work/'+current.id:'/work',d,current?'PATCH':'POST');$('editor').close();await load();notice('Pekerjaan tersimpan.');}catch(e){$('editor-notice').textContent=e.message;}finally{button.disabled=false;}};
 $('utm-form').onsubmit=async e=>{e.preventDefault();try{const r=await api('/work/'+current.id+'/link',Object.fromEntries(new FormData(e.currentTarget)));$('utm-result').value=r.url;}catch(e){$('editor-notice').textContent=e.message;}};
-async function members(){const result=await api('/members');$('member-list').innerHTML=result.members.map(m=>`<div class="member-row"><strong>${esc(m.email)}</strong><br>${esc(m.role_key)} · ${esc(m.status)}<br><span class="meta">${esc(m.scopes.map(s=>s.type==='global'?'Global':s.courseId).join(', '))} · Berlaku: ${esc(date(m.expires_at))}</span>${m.status==='active'?`<br><button data-revoke="${m.id}">Cabut akses</button>`:''}</div>`).join('')||'<p>Belum ada staf terbatas.</p>';document.querySelectorAll('[data-revoke]').forEach(b=>b.onclick=async()=>{if(!confirm('Cabut keanggotaan ini? Akun, progres, dan pembelian tidak dihapus.'))return;try{await api('/members/'+b.dataset.revoke+'/revoke',{});await members();}catch(e){$('member-notice').textContent=e.message;}});}
+async function members(){const result=await api('/members');$('member-list').innerHTML=result.members.map(m=>`<div class="member-row"><strong>${esc(m.email)}</strong><br>${esc(m.role_key)} · ${esc(m.status)}<br><span class="meta">${esc(m.scopes.map(s=>s.type==='global'?'Global':s.courseId).join(', '))} · Berlaku: ${esc(date(m.expires_at))}</span>${m.status==='active'?`<br><button data-revoke="${m.id}">Cabut akses</button>`:''}</div>`).join('')||'<p>Belum ada staf terbatas.</p>';host.querySelectorAll('[data-revoke]').forEach(b=>b.onclick=async()=>{if(!confirm('Cabut keanggotaan ini? Akun, progres, dan pembelian tidak dihapus.'))return;try{await api('/members/'+b.dataset.revoke+'/revoke',{});await members();}catch(e){$('member-notice').textContent=e.message;}});}
 $('member-form').onsubmit=async e=>{e.preventDefault();const b=e.currentTarget.querySelector('button');b.disabled=true;const d=Object.fromEntries(new FormData(e.currentTarget));try{const people=await api('/people?email='+encodeURIComponent(d.email));if(people.people.length!==1)throw new Error('Akun existing tidak ditemukan secara unik.');await api('/members',{userId:people.people[0].id,role:d.role,scopes:[d.courseId?{type:'course',courseId:d.courseId}:{type:'global'}],expiresAt:d.expiresAt?new Date(d.expiresAt).toISOString():null});$('member-notice').textContent='Akses tersimpan. Aktivasi staf mengikuti sakelar server.';await members();}catch(e){$('member-notice').textContent=e.message;}finally{b.disabled=false;}};
 $('members-button').onclick=async()=>{$('member-notice').textContent='';$('members').showModal();try{await members();}catch(e){$('member-notice').textContent=e.message;}};
 $('jobs-button').onclick=async()=>{showWork();const ticket=++generation;try{const r=await api('/jobs');if(ticket!==generation)return;notice(`${r.jobs.filter(j=>j.state==='failed').length} pengingat gagal dari ${r.jobs.length} pekerjaan terbaru. Pengingat tidak memublikasikan konten.`);$('content').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Pengingat</th><th>Status</th><th>Percobaan</th></tr></thead><tbody>${r.jobs.map(j=>`<tr><td>${esc(date(j.available_at))}</td><td>${esc(j.state)}</td><td>${j.attempts}</td></tr>`).join('')}</tbody></table></div>`;}catch(e){if(ticket===generation)notice(e.message,true);}};
 $('sync-button').onclick=async()=>{try{const r=await api('/cases/sync',{division});await load();notice(`${r.created} kasus baru. Status transaksi tidak diubah.`);}catch(e){notice(e.message,true);}};
-document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+host.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
 $('create-button').onclick=()=>edit();$('refresh-button').onclick=()=>{resetBoardPages();load();};$('filter').onchange=()=>{resetBoardPages();load();};
 $('previous').onclick=()=>{if(boardHistory.length){boardCursor=boardHistory.pop();load();}};$('next').onclick=()=>{if(boardNext){boardHistory.push(boardCursor);boardCursor=boardNext;load();}};
-async function boot(){try{const user=await ezGetMe();if(!user){$('subtitle').textContent='Masuk menggunakan akun EzNihongo yang telah diberi akses.';$('content').innerHTML='<a href="login.html?next=company.html">Masuk ke EzNihongo</a>';return;}access=await api('/access');access.userId=user.id;courses=(await api('/courses')).courses;$('divisions').innerHTML=access.divisions.map(d=>`<button data-division="${d.id}">${esc(d.name)}</button>`).join('');document.querySelectorAll('[data-division]').forEach(b=>b.onclick=()=>selectDivision(b.dataset.division));$('filter').innerHTML=options([['','Semua status'],...Object.entries(statuses)]);$('members-button').hidden=!access.isAdmin;$('jobs-button').hidden=!access.isAdmin;$('member-form').elements.role.innerHTML=options(access.divisions.map(d=>[d.id,d.name]));$('member-form').elements.courseId.innerHTML=options([['','Global — seluruh divisi'],...courses.map(c=>[c.id,c.title])]);insightsView=createInsightsView({api,access,courses,onOpen:showInsights});deskView=createDeskView({api,access,courses,statuses,labels,onOpen:showDesk,onItem:item=>{selectDivision(item.division_key);edit(item);}});$('toolbar').hidden=false;$('pagination').hidden=false;$('create-button').hidden=false;selectDivision(access.divisions[0].id);}catch(e){$('subtitle').textContent='Ruang kerja belum tersedia untuk akun ini.';notice(e.message,true);$('content').innerHTML='<button id="retry">Coba lagi</button>';$('retry').onclick=boot;}}
-boot();
+
+access.userId=user.id;
+courses=(await api('/courses')).courses;
+$('divisions').innerHTML=access.divisions.map(d=>`<button data-division="${d.id}">${esc(d.name)}</button>`).join('');
+host.querySelectorAll('[data-division]').forEach(b=>b.onclick=()=>selectDivision(b.dataset.division));
+$('filter').innerHTML=options([['','Semua status'],...Object.entries(statuses)]);
+$('members-button').hidden=!access.isAdmin;$('jobs-button').hidden=!access.isAdmin;
+$('member-form').elements.role.innerHTML=options(access.divisions.map(d=>[d.id,d.name]));
+$('member-form').elements.courseId.innerHTML=options([['','Global — seluruh divisi'],...courses.map(c=>[c.id,c.title])]);
+insightsView=createInsightsView({root:host,api,access,courses,onOpen:showInsights});
+deskView=createDeskView({root:host,api,access,courses,statuses,labels,onOpen:showDesk,onItem:item=>{
+  selectDivision(item.division_key);onRoute?.('work:'+item.division_key);edit(item);
+}});
+return {
+  open(key) {
+    if(key.startsWith('work:')){const id=key.slice(5);if(!access.divisions.some(d=>d.id===id))throw new Error('division_scope_required');selectDivision(id);return;}
+    const ids={desk:'desk-button',calendar:'calendar-button',insights:'insights-button',members:'members-button',jobs:'jobs-button'};
+    const button=$(ids[key]);if(!button||button.hidden)throw new Error('workspace_view_unavailable');
+    if(key==='members'||key==='jobs'){
+      showWork();generation++;$('title').textContent=key==='members'?'Akses staf':'Pengingat';
+      $('subtitle').textContent=key==='members'?'Pengelolaan staf terbatas; hak admin penuh tetap terpisah.':'Pengingat internal, bukan publikasi otomatis.';
+      for(const id of ['toolbar','pagination','create-button'])$(id).hidden=true;
+      $('content').innerHTML='';notice('');
+    }
+    button.onclick();
+    if(key==='jobs')for(const id of ['toolbar','pagination','create-button'])$(id).hidden=true;
+  },
+  close(){generation++;insightsView?.close();deskView?.close();host.querySelectorAll('dialog[open]').forEach(d=>d.close());},
+};
+
+}

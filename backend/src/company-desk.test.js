@@ -18,7 +18,7 @@ test('daily desk, calendar and server filtering on isolated PostgreSQL', {skip:!
   process.env.COMPANY_INSIGHTS_ENABLED='false';
   const {db}=await import('./db.js'), {signAccessToken,signRefreshToken}=await import('./auth.js');
   const {signKanjiAccessToken}=await import('./kanji-auth.js');
-  const {default:company}=await import('./routes/company.js');
+  const {default:company}=await import('./routes/company.js');const {default:staff}=await import('./routes/staff.js');
   const {parseWorkFilters,readCompanyWork}=await import('./company-read-work.js');
   const {requestAccess}=await import('./company-policy.js');
   let server;
@@ -39,7 +39,7 @@ test('daily desk, calendar and server filtering on isolated PostgreSQL', {skip:!
   await control.query("INSERT INTO courses VALUES ($1,'N5','n5'),($2,'N4','n4')",[c1,c2]);
   await control.query("INSERT INTO orders VALUES ($1,'approved',NOW()-INTERVAL '1 day')",[order]);
   await control.query("INSERT INTO user_progress VALUES ($1,true,'student data sentinel')",[ids.student]);
-  const app=express();app.use(express.json());app.use('/api/company',company);
+  const app=express();app.use(express.json());app.use('/api/company',company);app.use('/api/staff',staff);
   server=app.listen(0,'127.0.0.1');await once(server,'listening');const base=`http://127.0.0.1:${server.address().port}`;
   async function request(who,path,body,token){
     const res=await fetch(base+'/api/company'+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+(token||await signAccessToken(ids[who],who+'@example.invalid')),'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
@@ -152,7 +152,7 @@ test('daily desk, calendar and server filtering on isolated PostgreSQL', {skip:!
 
   if(process.env.COMPANY_BROWSER_QA==='true')await t.test('browser: cross-division desk, whole-database search, local calendar, mobile and existing editor',async()=>{
     const {chromium}=await import(pathToFileURL(process.env.COMPANY_PLAYWRIGHT_MODULE).href);
-    for(const file of ['company.html','src/company.js','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/company.css','styles/tokens.css','api-client.js','logo.png'])app.get('/'+file,(req,res)=>res.sendFile(fileURLToPath(new URL('../../'+file,import.meta.url))));
+    for(const file of ['company.html','admin.html','src/admin-workspace.js','src/company-workspace.html','styles/admin-workspace.css','styles/components.css','src/company.js','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/company.css','styles/tokens.css','api-client.js','logo.png'])app.get('/'+file,(req,res)=>res.sendFile(fileURLToPath(new URL('../../'+file,import.meta.url))));
     const browser=await chromium.launch({executablePath:process.env.COMPANY_BROWSER_EXECUTABLE,headless:true}),errors=[],writes=[];
     try{
       async function contextFor(who){
@@ -166,7 +166,7 @@ test('daily desk, calendar and server filtering on isolated PostgreSQL', {skip:!
           return route.continue();});
         const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/company.html');return{page,context};
       }
-      const {page,context}=await contextFor('owner');await page.locator('#desk-button').click();
+      const {page,context}=await contextFor('owner');await page.locator('#workspace-nav [data-workspace="desk"]').click();
       await page.locator('#desk-summary [data-bucket=mine]').waitFor();
       const firstId=await page.locator('[data-desk-item]').first().getAttribute('data-desk-item');
       await page.locator('#desk-next').click();await page.waitForFunction(()=>document.querySelector('#desk-page-label').textContent==='Halaman 2');
@@ -182,7 +182,7 @@ test('daily desk, calendar and server filtering on isolated PostgreSQL', {skip:!
       await page.locator('#desk-results').getByRole('button',{name:'Review materi N5',exact:true}).click();
       await page.locator('#editor[open]').waitFor();assert.equal(await page.locator('#work-form [name=title]').inputValue(),'Review materi N5');
       assert.equal(await page.locator('#title').textContent(),'Academic & Learning');await page.locator('#editor [data-close]').first().click();
-      await page.locator('#calendar-button').click();await page.locator('#desk-filters [name=month]').fill('2026-09');
+      await page.locator('#workspace-nav [data-workspace="calendar"]').click();await page.locator('#desk-filters [name=month]').fill('2026-09');
       await page.locator('#desk-filters [name=q]').fill('Agenda');
       const response=page.waitForResponse(r=>r.url().includes('/company/calendar?')&&r.url().includes('q=Agenda'));
       await page.locator('#desk-filters button[type=submit]').click();const calendar=await response;
@@ -193,18 +193,18 @@ test('daily desk, calendar and server filtering on isolated PostgreSQL', {skip:!
       // Delayed reads must not paint after leaving the desk.
       let release,started,finished;const held=new Promise(r=>release=r),entered=new Promise(r=>started=r),handled=new Promise(r=>finished=r);
       await page.route('**/api/company/desk?**',async route=>{started();await held;await route.continue();finished();});
-      await page.locator('#desk-button').click();await entered;
-      await page.locator('[data-division=finance]').click();release();await handled;await page.unroute('**/api/company/desk?**');
+      await page.locator('#workspace-nav [data-workspace="desk"]').click();await entered;
+      await page.locator('#workspace-nav [data-workspace="work:finance"]').click();release();await handled;await page.unroute('**/api/company/desk?**');
       await page.locator('#content').getByRole('button',{name:'Review transaksi',exact:true}).waitFor();
       assert.equal(await page.locator('#desk-panel').isHidden(),true);
       assert.equal(await page.evaluate(()=>localStorage.getItem('ez_progress')),'desk-sentinel');
-      const limited=await contextFor('mixed');await limited.page.setViewportSize({width:390,height:844});await limited.page.locator('#desk-button').click();
+      const limited=await contextFor('mixed');await limited.page.setViewportSize({width:390,height:844});await limited.page.locator('#workspace-menu-toggle').click();await limited.page.locator('#workspace-nav [data-workspace="desk"]').click();
       await limited.page.locator('#desk-summary [data-bucket=mine]').click();
       await limited.page.locator('#desk-results').getByRole('button',{name:'Review materi N5',exact:true}).waitFor();
       assert.equal(await limited.page.locator('#desk-results tbody tr').count(),1);assert.doesNotMatch(await limited.page.locator('#desk-panel').textContent(),/RAHASIA/);
       assert.ok(await limited.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
       if(process.env.COMPANY_QA_OUTPUT_DIR)await limited.page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-desk-mobile.png',fullPage:true});
-      const finance=await contextFor('finance');await finance.page.locator('#desk-button').waitFor();assert.equal(await finance.page.locator('#calendar-button').isHidden(),true);
+      const finance=await contextFor('finance');await finance.page.locator('#workspace-nav [data-workspace="desk"]').waitFor();assert.equal(await finance.page.locator('#workspace-nav [data-workspace="calendar"]').isHidden(),true);
       assert.deepEqual(errors,[]);assert.deepEqual(writes,[]);await finance.context.close();await limited.context.close();await context.close();
     }finally{await browser.close();}
   });

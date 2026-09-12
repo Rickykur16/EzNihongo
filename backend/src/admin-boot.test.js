@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { describeLegacyStaffAccess, STAFF_TAB_CAPABILITIES } from './staff-capabilities.js';
 
 const html = await readFile(new URL('../../admin.html', import.meta.url), 'utf8');
+const workspaceSource = await readFile(new URL('../../src/admin-workspace.js', import.meta.url), 'utf8');
 const slice = (start, end) => {
   const from = html.indexOf(start), to = html.indexOf(end, from);
   assert.ok(from > 0 && to > from);
@@ -18,20 +19,24 @@ const source = [
   slice('async function loadVideoSources()', 'function renderModules()'),
 ].join('\n');
 
-function setup({ user = { isAdmin: true, fullName: 'Local admin' }, status = 200, access = describeLegacyStaffAccess(true) } = {}) {
+function setup({ user = { isAdmin: true, fullName: 'Local admin' }, status = 200, access = describeLegacyStaffAccess(true), hash } = {}) {
   const calls = [], rendered = [], notices = [];
   const panes = Object.fromEntries(Object.keys(STAFF_TAB_CAPABILITIES).map(tab => [tab, {
-    dataset: { pane: tab }, innerHTML: '', classList: { toggle() {} },
+    dataset: { pane: tab }, innerHTML: '', classList: { toggle() {}, remove() {} },
   }]));
-  const buttons = Object.keys(panes).map(tab => ({ dataset: { tab }, classList: { toggle() {} }, addEventListener() {} }));
-  const state = { status, access, user, courseFailure: false, videoFailure: false, delayCourses: null, delayAccess: null, lock: '', login: false };
+  const buttons = Object.keys(panes).map(tab => ({ dataset: { tab, workspace:'tab:'+tab }, classList: { toggle() {} }, addEventListener() {}, setAttribute() {}, removeAttribute() {} }));
+  const extras=Object.fromEntries(['workspace-home','company-workspace','workspace-sidebar','workspace-menu-toggle'].map(id=>[id,{innerHTML:'',hidden:false,setAttribute(){},classList:{toggle(){},remove(){}}}]));
+  const location={hash:hash??'#view=tab:'+(access?.tabs?.[0]||'courses')};
+  const all=selector=>selector.includes('section.pane')?Object.values(panes):buttons;
+  const state = { status, access, user, courseFailure: false, videoFailure: false, delayCourses: null, delayAccess: null, lock: '', login: false, companyStatus:404, companyBody:{error:'company_workspace_disabled'} };
   const ctx = vm.createContext({
-    root: { innerHTML: '', querySelector: () => ({ appendChild() {} }) },
+    root: { innerHTML: '', querySelector: selector => selector==='.lock-card'?{appendChild(){}}:extras[selector.slice(1)], querySelectorAll:all },
     document: { querySelectorAll: selector => selector === 'nav.tabs button' ? buttons : Object.values(panes),
       querySelector: selector => panes[selector.match(/data-pane="([^"]+)"/)[1]] },
     ezGetMe: async () => state.user,
     ezApi: async path => {
       calls.push(path);
+      if(path==='/company/access')return{status:state.companyStatus,ok:state.companyStatus===200,json:async()=>state.companyBody};
       const response = { status: state.status, ok: state.status === 200, json: async () => state.access };
       if (state.delayAccess) await state.delayAccess;
       return response;
@@ -51,7 +56,8 @@ function setup({ user = { isAdmin: true, fullName: 'Local admin' }, status = 200
     },
     showLock: message => { state.lock = message; }, showLogin: () => { state.login = true; },
     el: value => value, escapeHtml: value => String(value),
-    notify: message => notices.push(message), console: { warn() {} },
+    notify: message => notices.push(message), console: { warn() {} }, URLSearchParams,AbortController,setTimeout,clearTimeout,
+    location, history:{replaceState(a,b,hash){location.hash=hash;}},
     loadSensei: async () => {}, renderSenseiList: () => rendered.push('sensei'),
     loadTestimonials: async () => {}, renderTestimonials: () => rendered.push('testimonials'),
     loadUsers: async () => {}, renderUsers: () => rendered.push('users'),
@@ -62,8 +68,8 @@ function setup({ user = { isAdmin: true, fullName: 'Local admin' }, status = 200
     renderAiSettings: () => rendered.push('ai'), renderCourses: () => rendered.push('courses'),
     renderModules: () => rendered.push('modules'), renderLessons: () => rendered.push('lessons'),
   });
-  vm.runInContext(source, ctx);
-  return { ctx, state, calls, rendered, panes, buttons, boot: () => ctx.bootAdmin(), tab: name => ctx.switchTab(name) };
+  vm.runInContext(workspaceSource, ctx);vm.runInContext(source, ctx);
+  return { ctx, state, calls, rendered, panes, buttons, extras, boot: () => ctx.bootAdmin(), tab: name => ctx.switchTab(name) };
 }
 
 test('browser tab capability mapping matches the server catalogue', () => {
@@ -73,7 +79,7 @@ test('browser tab capability mapping matches the server catalogue', () => {
 
 test('legacy admin boots with every menu and loads courses but not video sources', async () => {
   const f = setup(); await f.boot();
-  assert.deepEqual(f.calls, ['/staff/capabilities', '/admin/courses']);
+  assert.deepEqual(f.calls, ['/staff/capabilities', '/company/access', '/admin/courses']);
   assert.deepEqual(f.rendered, ['courses']);
   assert.ok(f.buttons.every(button => !button.hidden));
 });
@@ -121,15 +127,15 @@ test('menu-filter fixture chooses its first allowed tab without prefetching curr
   // Synthetic navigation fixture, not an enabled Finance-only production role.
   const f = setup({ access: { ...describeLegacyStaffAccess(true), tabs: ['orders'], capabilities: ['orders.review'] } });
   await f.boot(); await f.tab('courses'); await f.tab('unknown');
-  assert.deepEqual(f.calls, ['/staff/capabilities']);
+  assert.deepEqual(f.calls, ['/staff/capabilities', '/company/access']);
   assert.deepEqual(f.rendered, ['orders']);
-  assert.equal(f.buttons.filter(button => !button.hidden).length, 1);
+  assert.equal(vm.runInContext('workspaceRoutes.filter(route=>route.tab).length',f.ctx),1);
 });
 
 test('prerequisites load lazily once and survive normal tab switches', async () => {
   const f = setup(); await f.boot();
   for (const tab of ['orders', 'modules', 'lessons', 'live', 'testimonials', 'lessons']) await f.tab(tab);
-  assert.deepEqual(f.calls, ['/staff/capabilities', '/admin/courses', '/admin/video-sources']);
+  assert.deepEqual(f.calls, ['/staff/capabilities', '/company/access', '/admin/courses', '/admin/video-sources']);
   assert.equal(f.rendered.filter(tab => tab === 'lessons').length, 2);
 });
 
@@ -178,4 +184,33 @@ test('an older successful boot cannot reopen menus after a newer denied boot', a
   await f.boot(); release(); await earlier;
   assert.equal(f.rendered.length, 0);
   assert.equal(vm.runInContext('STAFF_ACCESS', f.ctx), null);
+});
+
+test('default entry is one division overview and works with Company disabled',async()=>{
+  const f=setup({hash:''});await f.boot();
+  assert.deepEqual(f.calls,['/staff/capabilities','/company/access']);
+  assert.deepEqual(f.rendered,[]);assert.equal(f.extras['workspace-home'].hidden,false);
+  assert.match(f.extras['workspace-home'].innerHTML,/bukan kegagalan login/);
+  assert.equal(vm.runInContext('workspaceRoutes.filter(r=>r.tab).length',f.ctx),12);
+  assert.equal(vm.runInContext('workspaceRoutes.some(r=>r.key==="desk")',f.ctx),false);
+});
+
+test('company outage never locks existing authorized admin tools',async()=>{
+  const f=setup({hash:''});f.state.companyStatus=503;await f.boot();await f.tab('orders');
+  assert.deepEqual(f.rendered,['orders']);assert.equal(f.state.lock,'');
+});
+
+test('course-scoped staff with no legacy permission can open the work-only shell',async()=>{
+  const access={version:1,authorizationMode:'company-rbac-v1',isAdmin:false,isStaff:true,tabs:[],capabilities:[]};
+  const f=setup({user:{isAdmin:false},access,hash:''});
+  f.state.companyStatus=200;f.state.companyBody={version:1,isAdmin:false,divisions:[{id:'academic',name:'Academic & Learning'}],scopes:{academic:['11111111-1111-4111-8111-111111111111']},flows:{}};
+  await f.boot();assert.equal(f.state.lock,'');
+  assert.deepEqual(JSON.parse(vm.runInContext('JSON.stringify(workspaceRoutes.map(r=>r.key))',f.ctx)),['home','desk','work:academic']);
+  assert.ok(!f.calls.some(p=>p.startsWith('/admin/')));
+});
+
+test('every existing admin tool is mapped exactly once to a division',()=>{
+  const f=setup();const tabs=JSON.parse(vm.runInContext('JSON.stringify(EzAdminWorkspace.divisions.flatMap(d=>d.tabs))',f.ctx));
+  assert.deepEqual([...tabs].sort(),Object.keys(STAFF_TAB_CAPABILITIES).sort());assert.equal(new Set(tabs).size,tabs.length);
+  for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))if(match[1].trim())new vm.Script(match[1]);
 });

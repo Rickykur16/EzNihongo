@@ -1,26 +1,6 @@
 <!doctype html>
-<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ruang Kerja · EzNihongo</title><link rel="icon" href="logo.png"><link rel="stylesheet" href="styles/tokens.css"><link rel="stylesheet" href="styles/company.css">
-</head><body>
-<header><a class="brand" href="company.html">EzNihongo <span>Ruang Kerja</span></a><div><a href="admin.html">Panel existing</a> <a href="dashboard.html">Dashboard siswa</a></div></header>
-<div class="layout"><aside><p class="eyebrow">DIVISI</p><nav id="divisions" aria-label="Divisi"></nav><button id="desk-button" hidden>Pusat Kerja Harian</button><button id="calendar-button" hidden>Kalender Marketing</button><button id="insights-button" hidden>Data &amp; Insights</button><button id="members-button" hidden>Akses staf</button><button id="jobs-button" hidden>Pengingat</button></aside>
-<main><div class="heading"><div><p class="eyebrow" id="context">PEKERJAAN TIM</p><h1 id="title">Ruang kerja</h1><p id="subtitle">Memeriksa akses…</p></div><button id="create-button" hidden>+ Pekerjaan baru</button></div>
-<p id="notice" role="status" aria-live="polite"></p><div class="toolbar" id="toolbar" hidden><label>Status <select id="filter"><option value="">Semua status</option></select></label><button id="refresh-button">Muat ulang</button><button id="sync-button" hidden>Ambil kasus terbaru</button></div>
-<div id="content" aria-live="polite"></div><div id="pagination" hidden><button id="previous">Sebelumnya</button><span id="page-label"></span><button id="next">Berikutnya</button></div>
-<section id="insights-panel" aria-label="Data dan insight pembelajaran" hidden></section>
-<section id="desk-panel" aria-label="Pusat kerja dan kalender" hidden></section>
-</main></div>
-<dialog id="editor"><form id="work-form"><div class="heading"><h2 id="editor-title">Pekerjaan baru</h2><button type="button" data-close aria-label="Tutup">×</button></div>
-<p class="hint">Jangan tulis data siswa, nomor rekening, token, atau rahasia di catatan. Gunakan kasus internal sebagai rujukan.</p>
-<label>Jenis<select name="kind"></select></label><label>Judul<input name="title" required maxlength="160"></label>
-<label>Masalah, hasil yang diharapkan, dan kriteria selesai<textarea name="description" rows="5" maxlength="6000"></textarea></label>
-<div class="fields"><label>Prioritas<select name="priority"><option value="normal">Normal</option><option value="urgent">Insiden mendesak</option><option value="high">Tinggi</option><option value="low">Rendah</option></select></label><label>Cakupan kursus<select name="courseId"><option value="">Lintas kursus</option></select></label></div>
-<label>Penanggung jawab<select name="assignedTo"><option value="">Belum ditugaskan</option></select></label>
-<label>Tautan rujukan / tujuan kampanye (HTTPS)<input name="linkUrl" type="url" placeholder="https://"></label>
-<div class="fields"><label>Jadwal / target lokal<input name="scheduledAt" type="datetime-local"></label><label>Commit SHA rilis<input name="releaseSha" maxlength="40" placeholder="40 karakter, khusus rilis"></label></div>
-<label>URL hasil publikasi (diisi setelah terbit)<input name="publishedUrl" type="url" placeholder="https://"></label>
-<p id="editor-notice" role="status"></p><div class="actions"><button type="button" data-close>Batal</button><button type="submit">Simpan</button></div></form>
-<div id="transitions"></div><div id="link-builder" hidden><h3>Tautan kampanye</h3><form id="utm-form"><div class="fields"><label>Sumber<input name="source" value="instagram" required pattern="[a-zA-Z0-9_-]+"></label><label>Media<input name="medium" value="organic" required pattern="[a-zA-Z0-9_-]+"></label></div><label>Varian<input name="content" pattern="[a-zA-Z0-9_-]+"></label><button>Buat tautan UTM</button><label>Hasil<input id="utm-result" readonly></label></form><p class="hint">Tautan UTM bukan bukti penjualan. Publikasi dan angka penjualan tidak dibuat otomatis.</p></div></dialog>
-<dialog id="members"><div class="heading"><h2>Akses staf</h2><button data-close aria-label="Tutup">×</button></div><p>Gunakan akun existing. Akses admin penuh tidak diubah oleh pengaturan ini.</p>
-<form id="member-form"><label>Email akun<input name="email" type="email" required></label><label>Divisi<select name="role"></select></label><label>Cakupan<select name="courseId"><option value="">Global — seluruh divisi</option></select></label><label>Berlaku sampai (opsional)<input name="expiresAt" type="datetime-local"></label><p class="hint">Cakupan kursus membatasi board. Editor legacy hanya tersedia untuk grant global.</p><button>Simpan akses</button></form><p id="member-notice" role="status"></p><div id="member-list"></div></dialog>
-<script src="api-client.js"></script><script type="module" src="src/company.js"></script></body></html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ruang Kerja · EzNihongo</title></head><body>
+<p>Ruang Kerja telah disatukan dengan pengelolaan perusahaan. <a href="admin.html">Buka Ruang Kerja</a>.</p>
+<script>location.replace('admin.html');</script>
+</body></html>

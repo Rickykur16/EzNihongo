@@ -174,7 +174,7 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
   });
   if(process.env.COMPANY_BROWSER_QA==='true')await t.test('real browser: create, transition, campaign link, role isolation and mobile',async()=>{
     const {chromium}=await import(pathToFileURL(process.env.COMPANY_PLAYWRIGHT_MODULE).href);
-    for(const path of ['company.html','src/company.js','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/company.css','styles/tokens.css','api-client.js','logo.png'])app.get('/'+path,(req,res)=>res.sendFile(fileURLToPath(new URL('../../'+path,import.meta.url))));
+    for(const path of ['company.html','admin.html','src/admin-workspace.js','src/company-workspace.html','styles/admin-workspace.css','styles/components.css','src/company.js','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/company.css','styles/tokens.css','api-client.js','logo.png'])app.get('/'+path,(req,res)=>res.sendFile(fileURLToPath(new URL('../../'+path,import.meta.url))));
     const browser=await chromium.launch({executablePath:process.env.COMPANY_BROWSER_EXECUTABLE,headless:true});
     const errors=[];
     try {
@@ -192,6 +192,7 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
         const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));return{context,page};
       }
       const {context,page}=await contextFor('owner');await page.goto(base.replace('/api','')+'/company.html');
+      await page.locator('#workspace-nav [data-workspace="work:technology"]').click();
       await page.getByRole('button',{name:'+ Pekerjaan baru',exact:true}).click();
       await page.locator('#work-form input[name=title]').fill('Browser acceptance task');
       await page.locator('#work-form button[type=submit]').click();
@@ -199,7 +200,7 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
       await page.locator('#transitions').getByRole('button',{name:'Siap dikerjakan',exact:true}).click();
       await page.locator('#transitions .badge').filter({hasText:'Siap dikerjakan'}).waitFor();
       await page.locator('#editor [data-close]').first().click();
-      await page.getByRole('button',{name:'Growth & Marketing',exact:true}).click();
+      await page.locator('#workspace-nav [data-workspace="work:marketing"]').click();
       await page.getByRole('button',{name:'+ Pekerjaan baru',exact:true}).click();
       await page.locator('#work-form select[name=kind]').selectOption('campaign');
       await page.locator('#work-form input[name=title]').fill('Kampanye N5 — browser');
@@ -210,13 +211,19 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
       await page.waitForFunction(()=>document.getElementById('utm-result').value.includes('utm_campaign='));
       await page.locator('#editor [data-close]').first().click();
       assert.equal(await page.evaluate(()=>localStorage.getItem('ez_progress')),'company-qa-sentinel');
+      await page.locator('#workspace-nav [data-workspace="tab:courses"]').click();
+      await page.locator('[data-pane=courses] table').waitFor();
+      assert.equal(await page.locator('#company-workspace').isHidden(),true);
+      await page.locator('#workspace-nav [data-workspace="work:marketing"]').click();
+      await page.getByRole('button',{name:'Kampanye N5 — browser',exact:true}).waitFor();
+      assert.equal(await page.locator('[data-pane=courses]').isHidden(),true);
       if(process.env.COMPANY_QA_OUTPUT_DIR)await page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-company-desktop.png',fullPage:true});
-      await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Student Success & Operations',exact:true}).click();
+      await page.setViewportSize({width:390,height:844});await page.locator('#workspace-menu-toggle').click();await page.locator('#workspace-nav [data-workspace="work:operations"]').click();
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
       if(process.env.COMPANY_QA_OUTPUT_DIR)await page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-company-mobile.png',fullPage:true});
       const limited=await contextFor('finance');await limited.page.goto(base.replace('/api','')+'/company.html');
-      await limited.page.getByRole('button',{name:'Finance & Business Administration',exact:true}).waitFor();
-      assert.equal(await limited.page.locator('#divisions button').count(),1);
+      await limited.page.locator('#workspace-nav [data-workspace="work:finance"]').waitFor();
+      assert.equal(await limited.page.locator('#workspace-nav [data-workspace^="work:"]').count(),1);
       assert.equal(await limited.page.locator('#members-button:visible').count(),0);
       assert.equal(await limited.page.evaluate(()=>localStorage.getItem('ez_progress')),'company-qa-sentinel');
       assert.deepEqual(errors,[]);await limited.context.close();await context.close();
