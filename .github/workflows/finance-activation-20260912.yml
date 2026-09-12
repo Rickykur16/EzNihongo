@@ -1,0 +1,52 @@
+name: Activate Finance for merged PR 310
+
+# Operational branch only. Does not merge or deploy feature-branch app code.
+on:
+  push:
+    branches: [codex/finance-activation-20260912]
+
+permissions:
+  contents: read
+
+# Share the production deployment lock so configuration and code cannot race.
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check operations/finance-20260912/activate.mjs
+      - run: node --test operations/finance-20260912/activate.test.mjs
+
+  activate:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare reviewed activation script
+        run: |
+          echo "FINANCE_SCRIPT=$(base64 -w0 operations/finance-20260912/activate.mjs)" >> "$GITHUB_ENV"
+          echo "FINANCE_SCRIPT_SHA=$(sha256sum operations/finance-20260912/activate.mjs | cut -d' ' -f1)" >> "$GITHUB_ENV"
+      - name: Backup, restore rehearsal, migrate, enable and verify
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 168.144.107.34
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: FINANCE_SCRIPT,FINANCE_SCRIPT_SHA
+          command_timeout: 18m
+          script: |
+            set -euo pipefail
+            umask 077
+            activation_script=$(mktemp /tmp/eznihongo-finance-activation-XXXXXXXX.mjs)
+            trap 'rm -f -- "$activation_script"' EXIT
+            printf '%s' "$FINANCE_SCRIPT" | base64 --decode > "$activation_script"
+            printf '%s  %s\n' "$FINANCE_SCRIPT_SHA" "$activation_script" | sha256sum --check --status
+            flock -n /run/lock/eznihongo-finance-activation.lock node "$activation_script" --activate-pr-310
