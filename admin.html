@@ -7,8 +7,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="styles/tokens.css"/>
 <link rel="stylesheet" href="styles/components.css"/>
-<link rel="stylesheet" href="styles/admin-workspace.css?v=menu-flow-20260912"/>
-<link rel="stylesheet" href="styles/company.css?v=unified-admin-20260912"/>
+<link rel="stylesheet" href="styles/admin-workspace.css?v=productivity-20260912"/>
+<link rel="stylesheet" href="styles/company.css?v=productivity-20260912"/>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; font-family: var(--font-body); background: var(--paper-100); color: var(--ink-900); }
@@ -253,7 +253,7 @@
 </div>
 
 <script src="api-client.js"></script>
-<script src="src/admin-workspace.js?v=menu-flow-20260912"></script>
+<script src="src/admin-workspace.js?v=productivity-20260912"></script>
 <script>
 // ─────────────────────────────────────────────────────────────
 // Bootstrapping & auth
@@ -797,6 +797,7 @@ function renderApp() {
       <div class="meta">
         <span>${escapeHtml(CURRENT_USER.fullName || CURRENT_USER.email)}</span>
         <span class="badge badge-admin">${STAFF_ACCESS?.isAdmin ? 'Admin' : 'Staf'}</span>
+        <button id="workspace-search-open" type="button" aria-haspopup="dialog" aria-controls="workspace-search">Cari menu <kbd>Ctrl K</kbd></button>
         <a href="dashboard.html">Dashboard siswa</a>
         ${STAFF_ACCESS?.capabilities.includes('admins.manage') ? '<button onclick="openAdminsModal()">Kelola Admin</button>' : ''}
         ${STAFF_ACCESS?.isAdmin ? '<button onclick="openPasswordModal()">Ubah Password</button>' : ''}
@@ -812,13 +813,45 @@ function renderApp() {
         ${Object.keys(ADMIN_TAB_CAPABILITIES).map(tab=>`<section class="pane" data-pane="${tab}"></section>`).join('')}
         <section id="company-workspace" aria-label="Pekerjaan perusahaan" hidden></section>
       </main>
-    </div>`;
+    </div>
+    <dialog id="workspace-search" aria-labelledby="workspace-search-title">
+      <div class="workspace-search-heading"><h2 id="workspace-search-title">Cari menu</h2><button id="workspace-search-close" type="button" aria-label="Tutup pencarian">Tutup</button></div>
+      <label for="workspace-search-query">Nama menu, divisi, atau fungsi</label><input id="workspace-search-query" type="search" autocomplete="off" placeholder="Contoh: pembayaran, materi, siswa" />
+      <ul id="workspace-search-results" aria-live="polite"></ul>
+    </dialog>`;
   root.querySelector('#workspace-menu-toggle').onclick = () => {
     const open=root.querySelector('#workspace-sidebar').classList.toggle('is-open');
     root.querySelector('#workspace-menu-toggle').setAttribute('aria-expanded',String(open));
   };
+  root.querySelector('#workspace-search-open').onclick=openWorkspaceSearch;
+  root.querySelector('#workspace-search-close').onclick=()=>root.querySelector('#workspace-search').close();
+  root.querySelector('#workspace-search-query').oninput=renderWorkspaceSearch;
+  root.querySelector('#workspace-search-query').onkeydown=event=>{
+    if(event.key==='Escape'){event.preventDefault();root.querySelector('#workspace-search').close();return;}
+    const first=root.querySelector('#workspace-search-results button');
+    if(first&&event.key==='Enter'){event.preventDefault();first.click();}
+    if(first&&event.key==='ArrowDown'){event.preventDefault();first.focus();}
+  };
   bindWorkspaceNavigation();
 }
+function renderWorkspaceSearch(){
+  const results=root.querySelector('#workspace-search-results');
+  const matches=EzAdminWorkspace.search(workspaceRoutes,root.querySelector('#workspace-search-query').value);
+  results.innerHTML=matches.length?matches.map(item=>`<li><button type="button" data-search-route="${escapeHtml(item.key)}">${escapeHtml(item.label)}</button></li>`).join(''):'<li class="workspace-search-empty">Menu tidak ditemukan.</li>';
+  results.querySelectorAll('[data-search-route]').forEach(button=>button.onclick=()=>{
+    root.querySelector('#workspace-search').close();openWorkspace(button.dataset.searchRoute);
+  });
+}
+function openWorkspaceSearch(){
+  const dialog=root.querySelector('#workspace-search');
+  if(!dialog||document.querySelector('dialog[open],#modal.show'))return;
+  root.querySelector('#workspace-search-query').value='';renderWorkspaceSearch();dialog.showModal();root.querySelector('#workspace-search-query').focus();
+}
+document.addEventListener('keydown',event=>{
+  if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'&&!event.altKey&&root.querySelector('#workspace-search')){
+    event.preventDefault();openWorkspaceSearch();
+  }
+});
 function bindWorkspaceNavigation() {
   root.querySelectorAll('[data-workspace]').forEach(button=>button.onclick=()=>openWorkspace(button.dataset.workspace));
   root.querySelectorAll('#workspace-nav details').forEach(group=>group.ontoggle=()=>{
@@ -850,7 +883,12 @@ async function ensureCompanyWorkspace() {
   if(companyMount)return companyMount;
   if(!companyMountPromise){
     const boot=adminBootRequest,host=root.querySelector('#company-workspace'),user=CURRENT_USER,companyAccess=COMPANY_ACCESS;
-    const pending=import('./src/company.js?v=menu-flow-20260912').then(module=>module.mountCompanyWorkspace(host,{user,companyAccess,onRoute:markWorkspaceRoute})).then(instance=>{
+    const pending=import('./src/company.js?v=productivity-20260912').then(module=>module.mountCompanyWorkspace(host,{user,companyAccess,onRoute:markWorkspaceRoute,canOpenTool:canOpenAdminTab,onSourceOrder:async id=>{
+      if(!canOpenAdminTab('orders')||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))return;
+      const request=adminTabRequest+1;
+      await switchTab('orders');
+      if(request===adminTabRequest&&STATE.tab==='orders')await openOrderDetail(id);
+    }})).then(instance=>{
       if(boot!==adminBootRequest||!host.isConnected){instance.close();throw new Error('workspace_boot_changed');}
       companyMount=instance;return instance;
     }).catch(error=>{if(companyMountPromise===pending)companyMountPromise=null;throw error;});
@@ -861,6 +899,7 @@ async function ensureCompanyWorkspace() {
 async function openWorkspace(key) {
   if(!workspaceRoutes.some(r=>r.key===key))return;
   if(key.startsWith('tab:'))return switchTab(key.slice(4));
+  if(companyMount?.canLeave&&!companyMount.canLeave())return;
   const request=++adminTabRequest;
   STATE.tab='';hideWorkspaceExtras();markWorkspaceRoute(key);
   root.querySelectorAll('section.pane').forEach(p=>p.classList.remove('active'));
@@ -904,6 +943,7 @@ async function ensureAdminTabData(tab) {
 
 async function switchTab(tab,context=null) {
   if (!canOpenAdminTab(tab)) return;
+  if(companyMount?.canLeave&&!companyMount.canLeave())return;
   const request = ++adminTabRequest;
   hideWorkspaceExtras();markWorkspaceRoute('tab:'+tab);
   STATE.tab = tab;

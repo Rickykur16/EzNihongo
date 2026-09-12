@@ -174,9 +174,11 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
   });
   if(process.env.COMPANY_BROWSER_QA==='true')await t.test('real browser: create, transition, campaign link, role isolation and mobile',async()=>{
     const {chromium}=await import(pathToFileURL(process.env.COMPANY_PLAYWRIGHT_MODULE).href);
-    for(const path of ['company.html','admin.html','src/admin-workspace.js','src/company-workspace.html','styles/admin-workspace.css','styles/components.css','src/company.js','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/company.css','styles/tokens.css','api-client.js','logo.png'])app.get('/'+path,(req,res)=>res.sendFile(fileURLToPath(new URL('../../'+path,import.meta.url))));
+    for(const path of ['company.html','admin.html','src/admin-workspace.js','src/company-workspace.html','styles/admin-workspace.css','styles/components.css','src/company.js','src/company-productivity.js','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/company.css','styles/tokens.css','api-client.js','logo.png'])app.get('/'+path,(req,res)=>res.sendFile(fileURLToPath(new URL('../../'+path,import.meta.url))));
     const browser=await chromium.launch({executablePath:process.env.COMPANY_BROWSER_EXECUTABLE,headless:true});
     const errors=[];
+    const legacySnapshot=async()=>{const result={};for(const table of ['users','courses','modules','lessons','user_progress','orders','order_payments','user_enrollments'])result[table]=(await control.query(`SELECT COALESCE(jsonb_agg(r ORDER BY to_jsonb(r)::text),'[]'::jsonb) data FROM ${table} r`)).rows[0].data;return result;};
+    const legacyBefore=await legacySnapshot();
     try {
       async function contextFor(who){
         const context=await browser.newContext({viewport:{width:1440,height:900}});
@@ -194,7 +196,20 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
       const {context,page}=await contextFor('owner');await page.goto(base.replace('/api','')+'/company.html');
       await page.locator('#workspace-nav [data-group=technology]>summary').click();
       await page.locator('#workspace-nav [data-workspace="work:technology"]').click();
+      await page.route('**/api/company/assignees?**',route=>route.fulfill({status:503,json:{error:'fixture_unavailable'}}));
       await page.getByRole('button',{name:'+ Pekerjaan baru',exact:true}).click();
+      await page.locator('#assignee-retry').waitFor();await page.locator('#work-form [name=title]').fill('Draf menunggu akses');
+      await page.locator('#work-form button[type=submit]').click();assert.equal(await page.locator('#editor').isVisible(),true);
+      await page.unroute('**/api/company/assignees?**');await page.locator('#assignee-retry').click();
+      await page.waitForFunction(()=>!document.querySelector('#work-form [name=assignedTo]').disabled);assert.equal(await page.locator('#work-form [name=title]').inputValue(),'Draf menunggu akses');
+      await page.locator('#work-form [name=title]').fill('');
+      const countBefore=(await control.query('SELECT count(*) FROM company_work_items')).rows[0].count;
+      await page.locator('#work-template-tools summary').click();await page.locator('#work-template').selectOption('bug');await page.locator('#work-template-apply').click();
+      assert.match(await page.locator('#work-form [name=description]').inputValue(),/langkah reproduksi/);
+      assert.equal((await control.query('SELECT count(*) FROM company_work_items')).rows[0].count,countBefore);
+      page.once('dialog',dialog=>dialog.dismiss());await page.locator('#editor [data-close]').first().click();assert.equal(await page.locator('#editor').isVisible(),true);
+      page.once('dialog',dialog=>dialog.dismiss());await page.evaluate(()=>switchTab('orders'));assert.equal(await page.locator('#editor').isVisible(),true);
+      await page.locator('#work-form [name=title]').fill('Draf milik saya');page.once('dialog',dialog=>dialog.dismiss());await page.locator('#work-template-apply').click();assert.equal(await page.locator('#work-form [name=title]').inputValue(),'Draf milik saya');
       assert.equal(await page.locator('#work-form [name=releaseSha]').isVisible(),false);
       await page.locator('#work-form [name=kind]').selectOption('release');
       await page.locator('#work-form [name=releaseSha]').fill('a'.repeat(40));
@@ -207,9 +222,21 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
       await page.locator('#work-form input[name=title]').fill('Browser acceptance task');
       await page.locator('#work-form button[type=submit]').click();
       await page.getByRole('button',{name:'Browser acceptance task',exact:true}).click();
+      await page.locator('#work-history summary').click();await page.locator('#work-history-list li').filter({hasText:'Pekerjaan dibuat'}).waitFor();
+      await page.locator('#work-form [name=description]').fill('Catatan belum disimpan');
+      await page.locator('#transitions').getByRole('button',{name:'Siap dikerjakan',exact:true}).click();await page.getByText('Simpan perubahan detail terlebih dahulu sebelum mengubah status.',{exact:true}).waitFor();
+      await page.route('**/api/company/work/*',route=>route.request().method()==='PATCH'?route.fulfill({status:409,json:{error:'work_version_conflict'}}):route.continue());
+      await page.locator('#work-form button[type=submit]').click();await page.locator('#editor-notice').filter({hasText:'Pekerjaan berubah oleh anggota lain'}).waitFor();
+      assert.equal(await page.locator('#work-form [name=description]').inputValue(),'Catatan belum disimpan');await page.unroute('**/api/company/work/*');
+      await page.locator('#work-form button[type=submit]').click();await page.getByRole('button',{name:'Browser acceptance task',exact:true}).click();
       await page.locator('#transitions').getByRole('button',{name:'Siap dikerjakan',exact:true}).click();
       await page.locator('#transitions .badge').filter({hasText:'Siap dikerjakan'}).waitFor();
+      await page.locator('#work-history summary').click();await page.locator('#work-history-list li').filter({hasText:'Status diperbarui'}).waitFor();
       await page.locator('#editor [data-close]').first().click();
+      await page.locator('#board-filters [name=q]').fill('Browser acceptance');await page.locator('#board-filters [name=assignee]').selectOption('unassigned');await page.locator('#board-filters [name=priority]').selectOption('normal');
+      await page.locator('#board-filters button[type=submit]').click();await page.waitForFunction(()=>document.querySelectorAll('#content [data-item]').length===1);
+      await page.locator('#board-filters [name=assignee]').selectOption('me');await page.locator('#board-filters button[type=submit]').click();await page.locator('#content .empty').waitFor();
+      await page.locator('#board-reset').click();await page.getByRole('button',{name:'Browser acceptance task',exact:true}).waitFor();
       await page.locator('#workspace-nav [data-group=marketing]>summary').click();
       await page.locator('#workspace-nav [data-workspace="work:marketing"]').click();
       await page.getByRole('button',{name:'+ Pekerjaan baru',exact:true}).click();
@@ -222,9 +249,16 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
       await page.getByRole('button',{name:'Kampanye N5 — browser',exact:true}).click();
       await page.getByRole('button',{name:'Buat tautan UTM',exact:true}).click();
       await page.waitForFunction(()=>document.getElementById('utm-result').value.includes('utm_campaign='));
+      await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.testCopiedLink=text;}}}));
+      await page.locator('#utm-copy').click();await page.getByText('Tautan disalin.',{exact:true}).waitFor();
+      assert.equal(await page.evaluate(()=>window.testCopiedLink),await page.locator('#utm-result').inputValue());
+      await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{throw new Error('fixture denied');}}}));
+      await page.locator('#utm-copy').click();await page.getByText('Salin manual dengan Ctrl+C / Cmd+C.',{exact:true}).waitFor();
       await page.locator('#editor [data-close]').first().click();
       assert.equal(await page.evaluate(()=>localStorage.getItem('ez_progress')),'company-qa-sentinel');
       await page.locator('#workspace-nav [data-group=academic]>summary').click();
+      await page.locator('#workspace-nav [data-workspace="work:academic"]').click();assert.equal(await page.locator('#board-filters').isVisible(),false);
+      await page.getByRole('button',{name:'+ Pekerjaan baru',exact:true}).click();assert.equal(await page.locator('#work-template-tools').isVisible(),false);await page.locator('#editor [data-close]').first().click();
       await page.locator('#workspace-nav [data-workspace="tab:courses"]').click();
       await page.locator('[data-pane=courses] table').waitFor();
       assert.equal(await page.locator('#company-workspace').isHidden(),true);
@@ -232,10 +266,10 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
       await page.locator('#workspace-nav [data-workspace="work:marketing"]').click();
       await page.getByRole('button',{name:'Kampanye N5 — browser',exact:true}).waitFor();
       assert.equal(await page.locator('[data-pane=courses]').isHidden(),true);
-      if(process.env.COMPANY_QA_OUTPUT_DIR)await page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-company-desktop.png',fullPage:true});
+      if(process.env.COMPANY_QA_OUTPUT_DIR)await page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-productivity-desktop.png',fullPage:true});
       await page.setViewportSize({width:390,height:844});await page.locator('#workspace-menu-toggle').click();await page.locator('#workspace-nav [data-group=operations]>summary').click();await page.locator('#workspace-nav [data-workspace="work:operations"]').click();
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
-      if(process.env.COMPANY_QA_OUTPUT_DIR)await page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-company-mobile.png',fullPage:true});
+      if(process.env.COMPANY_QA_OUTPUT_DIR)await page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-productivity-mobile.png',fullPage:true});
       const limited=await contextFor('finance');await limited.page.goto(base.replace('/api','')+'/company.html');
       await limited.page.locator('#workspace-nav [data-group=finance]>summary').waitFor();
       assert.equal(await limited.page.locator('#workspace-nav details').count(),1);
@@ -243,8 +277,20 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
       await limited.page.locator('#workspace-nav [data-workspace="work:finance"]').waitFor();
       assert.equal(await limited.page.locator('#workspace-nav [data-workspace^="work:"]').count(),1);
       assert.equal(await limited.page.locator('#members-button:visible').count(),0);
+      await limited.page.locator('#workspace-nav [data-workspace="work:finance"]').click();
+      const financeCase=(await request('finance','/company/work?division=finance')).data.items.find(i=>i.source_order_id);
+      await limited.page.locator('[data-item="'+financeCase.id+'"]').click();await limited.page.locator('#work-source-order').click();
+      await limited.page.locator('#modal h3').filter({hasText:'Pesanan CASE-TEST'}).waitFor();
       assert.equal(await limited.page.evaluate(()=>localStorage.getItem('ez_progress')),'company-qa-sentinel');
-      assert.deepEqual(errors,[]);await limited.context.close();await context.close();
+      await limited.context.close();
+      await grant('finance','finance',[{type:'course',courseId:c1}]);
+      const scopedFinance=await contextFor('finance');await scopedFinance.page.goto(base.replace('/api','')+'/admin.html');
+      await scopedFinance.page.locator('#workspace-nav [data-group=finance]>summary').click();await scopedFinance.page.locator('#workspace-nav [data-workspace="work:finance"]').click();
+      await scopedFinance.page.locator('[data-item="'+financeCase.id+'"]').click();
+      assert.equal(await scopedFinance.page.locator('#work-source-order').isVisible(),false);
+      assert.equal(await scopedFinance.page.locator('#workspace-nav [data-workspace="tab:orders"]').count(),0);
+      assert.deepEqual(await legacySnapshot(),legacyBefore);
+      assert.deepEqual(errors,[]);await scopedFinance.context.close();await context.close();
     } finally {await browser.close();}
   });
 });

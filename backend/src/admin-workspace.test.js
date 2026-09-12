@@ -10,7 +10,7 @@ if(process.env.COMPANY_BROWSER_QA==='true')test('unified admin browser regressio
   const browser=await chromium.launch({executablePath:process.env.COMPANY_BROWSER_EXECUTABLE,headless:true});
   t.after(()=>browser.close());
   const origin='http://eznihongo.test';
-  const files=['admin.html','company.html','api-client.js','src/admin-workspace.js','src/company.js','src/company-workspace.html','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/tokens.css','styles/components.css','styles/admin-workspace.css','styles/company.css'];
+  const files=['admin.html','company.html','api-client.js','src/admin-workspace.js','src/company.js','src/company-productivity.js','src/company-workspace.html','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/tokens.css','styles/components.css','styles/admin-workspace.css','styles/company.css'];
   const course={id:'11111111-1111-4111-8111-111111111111',slug:'n5',title:'Kursus Uji N5',level:'N5',sort_order:1,is_published:true,is_available:true,is_free:false};
   const lesson={id:'33333333-3333-4333-8333-333333333333',slug:'materi-1',title:'Materi asli siswa',type:'text',content:'Materi asli — jangan diubah',sort_order:1};
   const quiz={id:'44444444-4444-4444-8444-444444444444',slug:'kuis-1',title:'Kuis asli siswa',type:'quiz',sort_order:2,questions_per_attempt:10,cooldown_hours:0};
@@ -74,6 +74,27 @@ if(process.env.COMPANY_BROWSER_QA==='true')test('unified admin browser regressio
     if(await group.count()&&!await group.evaluate(el=>el.open))await group.locator('summary').click();
     await button.click();
   }});
+  await t.test('quick menu search supports keyboard, Indonesian aliases, empty results and mobile without writes',()=>scenario({},async({page})=>{
+    await page.locator('#workspace-search-open').waitFor();await page.keyboard.press('Control+k');
+    await page.locator('#workspace-search[open]').waitFor();
+    await page.locator('#workspace-search-query').fill('pembayaran');
+    assert.equal(await page.locator('#workspace-search-results button').count(),1);
+    await page.keyboard.press('Enter');await page.getByText('Tidak ada pesanan untuk filter ini.',{exact:true}).waitFor();
+    await page.locator('#workspace-search-open').click();await page.locator('#workspace-search-query').fill('<img onerror=alert(1)>');
+    assert.equal(await page.locator('#workspace-search-results button').count(),0);
+    assert.equal(await page.locator('#workspace-search-results img').count(),0);
+    await page.keyboard.press('Escape');assert.equal(await page.locator('#workspace-search').isVisible(),false);
+    await page.setViewportSize({width:390,height:844});await page.locator('#workspace-search-open').click();
+    await page.locator('#workspace-search-query').fill('audio');await page.keyboard.press('ArrowDown');
+    assert.equal(await page.evaluate(()=>document.activeElement.dataset.searchRoute),'tab:tts');
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    if(process.env.COMPANY_QA_OUTPUT_DIR)await page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-productivity-search-mobile.png',fullPage:true});
+  }));
+  await t.test('quick search cannot discover tools outside the staff capability list',()=>scenario({access:{version:1,authorizationMode:'company-rbac-v1',isAdmin:false,isStaff:true,tabs:['users'],capabilities:['students.manage']}},async({page})=>{
+    await page.locator('#workspace-search-open').click();await page.locator('#workspace-search-query').fill('pembayaran');
+    assert.equal(await page.locator('#workspace-search-results button').count(),0);
+    await page.locator('#workspace-search-query').fill('siswa');assert.equal(await page.locator('#workspace-search-results button').count(),1);
+  }));
   await t.test('password login and old workspace URL lead to one shell even with Company disabled',()=>scenario({loggedIn:false,entry:'/company.html'},async({page,calls})=>{
     await page.getByRole('heading',{name:'Masuk Ruang Kerja',exact:true}).waitFor();assert.equal(new URL(page.url()).pathname,'/admin.html');
     await page.locator('#admin-login-form [name=email]').fill('admin@example.invalid');

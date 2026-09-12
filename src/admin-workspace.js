@@ -77,5 +77,13 @@
     if(new Set(data.divisions.map(d=>d.id)).size!==data.divisions.length)throw new Error('invalid_company_access');
     return data;
   }
-  global.EzAdminWorkspace=Object.freeze({divisions,labels,routes,navigation,overview,workflow,validateCompany});
+  function search(items,query){
+    const aliases={courses:'kelas kurikulum',modules:'bab',lessons:'materi soal quiz kuis',orders:'pembayaran transfer verifikasi',access:'enrollment masa aktif',users:'siswa murid',tts:'audio suara cache',ai:'prompt coaching',live:'jadwal kelas pertemuan',sensei:'guru pengajar',testimonials:'ulasan',desk:'tugas harian antrean',insights:'data analisis laporan',calendar:'jadwal konten',members:'karyawan staf izin',jobs:'notifikasi pengingat'};
+    const words=String(query||'').trim().toLocaleLowerCase('id-ID').split(/\s+/).filter(Boolean);
+    return items.filter(item=>{
+      const text=[item.label,item.group,shortNames[item.group],aliases[item.tab||item.key],item.key.startsWith('work:')?'tugas pekerjaan proyek':''].join(' ').toLocaleLowerCase('id-ID');
+      return words.every(word=>text.includes(word));
+    });
+  }
+  global.EzAdminWorkspace=Object.freeze({divisions,labels,routes,navigation,overview,workflow,search,validateCompany});
 })(globalThis);

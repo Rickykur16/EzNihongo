@@ -152,7 +152,7 @@ test('daily desk, calendar and server filtering on isolated PostgreSQL', {skip:!
 
   if(process.env.COMPANY_BROWSER_QA==='true')await t.test('browser: cross-division desk, whole-database search, local calendar, mobile and existing editor',async()=>{
     const {chromium}=await import(pathToFileURL(process.env.COMPANY_PLAYWRIGHT_MODULE).href);
-    for(const file of ['company.html','admin.html','src/admin-workspace.js','src/company-workspace.html','styles/admin-workspace.css','styles/components.css','src/company.js','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/company.css','styles/tokens.css','api-client.js','logo.png'])app.get('/'+file,(req,res)=>res.sendFile(fileURLToPath(new URL('../../'+file,import.meta.url))));
+    for(const file of ['company.html','admin.html','src/admin-workspace.js','src/company-workspace.html','styles/admin-workspace.css','styles/components.css','src/company.js','src/company-productivity.js','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/company.css','styles/tokens.css','api-client.js','logo.png'])app.get('/'+file,(req,res)=>res.sendFile(fileURLToPath(new URL('../../'+file,import.meta.url))));
     const browser=await chromium.launch({executablePath:process.env.COMPANY_BROWSER_EXECUTABLE,headless:true}),errors=[],writes=[];
     try{
       async function contextFor(who){

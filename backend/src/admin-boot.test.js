@@ -25,13 +25,13 @@ function setup({ user = { isAdmin: true, fullName: 'Local admin' }, status = 200
     dataset: { pane: tab }, innerHTML: '', classList: { toggle() {}, remove() {} },querySelector(){return{};},
   }]));
   const buttons = Object.keys(panes).map(tab => ({ dataset: { tab, workspace:'tab:'+tab }, classList: { toggle() {} }, addEventListener() {}, setAttribute() {}, removeAttribute() {} }));
-  const extras=Object.fromEntries(['workspace-flow','workspace-home','company-workspace','workspace-sidebar','workspace-menu-toggle'].map(id=>[id,{innerHTML:'',hidden:false,setAttribute(){},querySelectorAll(){return[];},classList:{toggle(){},remove(){}}}]));
+  const extras=Object.fromEntries(['workspace-search-open','workspace-search-close','workspace-search-query','workspace-flow','workspace-home','company-workspace','workspace-sidebar','workspace-menu-toggle'].map(id=>[id,{innerHTML:'',hidden:false,setAttribute(){},querySelectorAll(){return[];},classList:{toggle(){},remove(){}}}]));
   const location={hash:hash??'#view=tab:'+(access?.tabs?.[0]||'courses')};
   const all=selector=>selector.includes('section.pane')?Object.values(panes):selector==='#workspace-nav details'?[]:buttons;
   const state = { status, access, user, courseFailure: false, videoFailure: false, delayCourses: null, delayAccess: null, lock: '', login: false, companyStatus:404, companyBody:{error:'company_workspace_disabled'} };
   const ctx = vm.createContext({
     root: { innerHTML: '', querySelector: selector => selector==='.lock-card'?{appendChild(){}}:extras[selector.slice(1)], querySelectorAll:all },
-    document: { querySelectorAll: selector => selector === 'nav.tabs button' ? buttons : Object.values(panes),
+    document: { addEventListener(){},querySelectorAll: selector => selector === 'nav.tabs button' ? buttons : Object.values(panes),
       querySelector: selector => panes[selector.match(/data-pane="([^"]+)"/)[1]] },
     ezGetMe: async () => state.user,
     ezApi: async path => {
@@ -214,6 +214,23 @@ test('every existing admin tool is mapped exactly once to a division',()=>{
   const f=setup();const tabs=JSON.parse(vm.runInContext('JSON.stringify(EzAdminWorkspace.divisions.flatMap(d=>d.tabs))',f.ctx));
   assert.deepEqual([...tabs].sort(),Object.keys(STAFF_TAB_CAPABILITIES).sort());assert.equal(new Set(tabs).size,tabs.length);
   for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))if(match[1].trim())new vm.Script(match[1]);
+});
+
+test('quick search only matches authorized menus and supports Indonesian aliases without broadening access',async()=>{
+  const f=setup({hash:''});await f.boot();
+  const search=query=>JSON.parse(vm.runInContext(`JSON.stringify(EzAdminWorkspace.search(workspaceRoutes,${JSON.stringify(query)}).map(r=>r.key))`,f.ctx));
+  assert.deepEqual(search('  PEMBAYARAN  '),['tab:orders']);
+  assert.deepEqual(search('finance pembayaran'),['tab:orders']);
+  assert.deepEqual(search('<img onerror=alert(1)>'),[]);
+  vm.runInContext('workspaceRoutes=workspaceRoutes.filter(r=>r.key==="tab:users")',f.ctx);
+  assert.deepEqual(search('pembayaran'),[]);assert.deepEqual(search('murid'),['tab:users']);
+});
+
+test('cancelled Company draft navigation leaves the current route and editor intact',async()=>{
+  const f=setup({hash:''});await f.boot();
+  vm.runInContext('companyMount={canLeave:()=>false,close:()=>{throw new Error("must not discard")}}',f.ctx);
+  await f.tab('orders');await f.ctx.openWorkspace('home');
+  assert.deepEqual(f.rendered,[]);
 });
 
 test('every permitted menu has an explicit workflow without granting linked editor access',()=>{

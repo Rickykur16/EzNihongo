@@ -1,4 +1,5 @@
 import { renderInsightsGuide } from './company-insights-guide.js';
+import { canCreateFollowUp, followUpDraft } from './company-productivity.js?v=productivity-20260912';
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const metricCopy = {
   activation: ['Aktivasi ≤7 hari', 'Enrollment pada minggu sebelumnya dengan bukti latihan/kuis dalam 7 hari sejak enrollment. Bukan rasio pendaftar atau pembeli.'],
@@ -14,7 +15,7 @@ const messages = {
   insights_rate_limit: 'Tunggu satu menit sebelum mencoba lagi.',
 };
 
-export function createInsightsView({ root=document, api, access, courses, onOpen }) {
+export function createInsightsView({ root=document, api, access, courses, onOpen, onFollowUp }) {
   const panel = root.querySelector('#insights-panel'), button = root.querySelector('#insights-button');
   let generation = 0;
   const scopes = access.insights?.enabled ? access.insights.scopes : {};
@@ -36,10 +37,10 @@ export function createInsightsView({ root=document, api, access, courses, onOpen
   }
   form.elements.division.onchange = chooseCourses; form.elements.courseId.onchange = clear; chooseCourses();
   form.onsubmit = async event => {
-    event.preventDefault(); const ticket = ++generation;
+    event.preventDefault(); const ticket = ++generation, division=form.elements.division.value, courseId=form.elements.courseId.value;
     submit.disabled = true; report.innerHTML = ''; status.textContent = 'Menghitung ringkasan…';
     try {
-      const data = await api('/insights?' + new URLSearchParams({ division: form.elements.division.value, courseId: form.elements.courseId.value }));
+      const data = await api('/insights?' + new URLSearchParams({ division, courseId }));
       if (ticket !== generation || panel.hidden) return;
       const day = value => new Date(value).toLocaleDateString('id-ID', { timeZone: 'UTC', dateStyle: 'medium' });
       status.textContent = `Minggu UTC ${day(data.window.start)} sampai sebelum ${day(data.window.end)}. Snapshot ${new Date(data.generatedAt).toLocaleString('id-ID')}${data.cached ? ' · ringkasan tersimpan sementara' : ''}.`;
@@ -47,6 +48,12 @@ export function createInsightsView({ root=document, api, access, courses, onOpen
         const m = data[key], available = m.status === 'available';
         return `<article class="insight-card" data-metric="${key}"><h2>${title}</h2><p class="insight-value">${available ? esc(m.percent) + '%' : '—'}</p><p>${available ? `${esc(m.numerator)} / ${esc(m.denominator)} ${key === 'completion' ? 'pasangan siswa–pelajaran' : key === 'dataQuality' ? 'record latihan' : 'siswa'}` : 'Bukti belum cukup untuk ditampilkan dengan aman.'}</p><p class="hint">${definition}</p></article>`;
       }).join('')}</div><section class="insight-notes"><h2>Batas pembacaan data</h2><p>Minimal ${esc(data.minLearners)} siswa per kelompok; kelompok hasil kecil juga disembunyikan. Ini mengurangi paparan, bukan jaminan anonimisasi. Bukti berasal dari kuis yang disubmit, latihan, dan grammar dengan rujukan pelajaran yang valid.</p><p>Login, page view, XP, state FSRS, dan waktu sinkronisasi progres bukan bukti aktivitas di laporan ini. Aktivitas offline yang belum tersinkron, latihan tanpa rujukan pelajaran, serta histori sebelum pencatatan belum tercakup. Completion adalah status saat snapshot, bukan status historis di akhir minggu.</p><p>Belum ada atribusi kampanye, pendapatan, daftar siswa berisiko, notifikasi otomatis, atau klaim sebab-akibat. Ringkasan dihitung saat diminta dan dipakai ulang maksimal 5 menit; bukan job terjadwal.</p></section>`;
+      if(onFollowUp&&canCreateFollowUp(access,division,courseId)){
+        const action=document.createElement('div');action.className='insight-followup';
+        action.innerHTML='<button type="button" id="insights-followup">Buat tindak lanjut</button><span class="hint">Buka draf pekerjaan dari ringkasan ini.</span>';
+        action.querySelector('button').onclick=()=>{if(ticket===generation&&!panel.hidden)onFollowUp(followUpDraft({division,courseId,courseTitle:courses.find(c=>c.id===courseId)?.title||'Kursus',report:data}));};
+        report.querySelector('.insight-cards').after(action);
+      }
       if (data.detailAccess) report.insertAdjacentHTML('beforeend', `<section class="insight-notes"><h2>Materi untuk ditinjau</h2><p>Hingga 20 pelajaran berdasarkan persentase salah. Jawaban pertama per siswa–soal dalam minggu laporan, lalu rata-rata per siswa agar pengulangan tidak mendominasi. Sering salah tidak otomatis berarti materi buruk.</p>${data.difficulties.length ? `<div class="table-wrap"><table><thead><tr><th>Pelajaran</th><th>Siswa</th><th>Rata-rata salah</th></tr></thead><tbody>${data.difficulties.map(d => `<tr><td>${esc(d.title)}</td><td>${esc(d.learners)}</td><td>${esc(d.incorrectPercent)}%</td></tr>`).join('')}</tbody></table></div>` : '<p>Belum ada kelompok pelajaran dengan sampel yang cukup untuk ditampilkan.</p>'}<p class="hint">Tindak lanjut: Academic memeriksa soal/penjelasan; Product memeriksa hambatan teknis. Buat pekerjaan review di board setelah memeriksa konteks. Tidak ada tugas atau perubahan materi otomatis.</p></section>`);
     } catch (error) {
       if (ticket === generation) { report.innerHTML = ''; status.textContent = messages[error.message] || 'Ringkasan gagal dimuat. Coba lagi atau hubungi pengelola.'; }
