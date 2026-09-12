@@ -31,6 +31,14 @@ export async function activate(ops) {
   }
 }
 
+export async function inspectSchema(client, inspect) {
+  await client.query('BEGIN');
+  try {
+    await client.query("SET LOCAL lock_timeout='5s'; SET LOCAL statement_timeout='15s'");
+    return await inspect(client);
+  } finally { await client.query('ROLLBACK'); }
+}
+
 export function snapshotFiles(files, backupDirectory) {
   const snapshots = files.map((file, i) => {
     if (!existsSync(file)) return { file, absent: true };
@@ -173,7 +181,7 @@ async function main() {
             assert.equal((await restored.query('SELECT current_database() AS db')).rows[0].db, scratch);
             await applyFinanceMigration(restored);
             assert.equal(await applyFinanceMigration(restored), false, 'Migration must be repeatable');
-            await inspectStaffErasureTables(restored);
+            await inspectSchema(restored, inspectStaffErasureTables);
             await restored.query('BEGIN');
             try {
               await restored.query("INSERT INTO finance_settings(id,start_date) VALUES(true,'2026-09-12') ON CONFLICT DO NOTHING");
@@ -191,7 +199,7 @@ async function main() {
       },
       async migrate() {
         await applyFinanceMigration(database);
-        await inspectStaffErasureTables(database);
+        await inspectSchema(database, inspectStaffErasureTables);
         assert.ok((await database.query("SELECT to_regclass('finance_settings') IS NOT NULL AS ready")).rows[0].ready);
         // Only inspect settings; starting dates, balances and transactions remain
         // business inputs supplied by the owner through the Finance UI.
