@@ -253,7 +253,7 @@
 </div>
 
 <script src="api-client.js"></script>
-<script src="src/admin-workspace.js?v=productivity-20260912"></script>
+<script src="src/admin-workspace.js?v=finance-name-20260912"></script>
 <script>
 // ─────────────────────────────────────────────────────────────
 // Bootstrapping & auth
@@ -268,6 +268,7 @@ let COMPANY_ACCESS = null;
 let workspaceRoutes = [];
 let companyMount = null;
 let companyMountPromise = null;
+let financeMount = null;
 const ADMIN_TAB_CAPABILITIES = Object.freeze({
   courses: 'curriculum.manage', modules: 'curriculum.manage', lessons: 'curriculum.manage',
   sensei: 'marketing.content.manage', testimonials: 'marketing.content.manage',
@@ -470,6 +471,7 @@ async function bootAdmin() {
   STAFF_ACCESS = null;
   COMPANY_ACCESS = null;
   companyMount?.close();companyMount = null;companyMountPromise = null;
+  financeMount?.close();financeMount = null;
   workspaceRoutes = [];
   adminDataLoads = new Map();
   adminTabRequest++;
@@ -482,9 +484,10 @@ async function bootAdmin() {
     if (request !== adminBootRequest) return;
     CURRENT_USER = user;
     STAFF_ACCESS = access;
-    const company = await loadCompanyAvailability(access);
+    const [company,finance] = await Promise.all([loadCompanyAvailability(access),loadFinanceAvailability(access)]);
     if (request !== adminBootRequest) return;
     COMPANY_ACCESS = company.access;
+    access.finance = finance;
     workspaceRoutes = EzAdminWorkspace.routes(access, COMPANY_ACCESS, canOpenAdminTab);
     if (workspaceRoutes.length === 1) { showLock('Belum ada menu yang diizinkan untuk akun ini. Hubungi pengelola untuk memeriksa akses staf.'); return; }
     renderApp();
@@ -508,6 +511,13 @@ async function loadCompanyAvailability(staff) {
     return{status:'available',access:EzAdminWorkspace.validateCompany(data,staff)};
   }catch{return{status:'unavailable',access:null};}
   finally{clearTimeout(timer);}
+}
+async function loadFinanceAvailability(staff) {
+  if(!staff.isAdmin&&!staff.tabs.includes('orders'))return null;
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),4000);
+  try{const res=await ezApi('/finance/access',{cache:'no-store',signal:controller.signal});
+    const data=await res.json().catch(()=>null);return res.ok&&data?.version===1&&data.enabled===true?data:null;
+  }catch{return null;}finally{clearTimeout(timer);}
 }
 bootAdmin();
 
@@ -812,6 +822,7 @@ function renderApp() {
         <section id="workspace-home"></section>
         ${Object.keys(ADMIN_TAB_CAPABILITIES).map(tab=>`<section class="pane" data-pane="${tab}"></section>`).join('')}
         <section id="company-workspace" aria-label="Pekerjaan perusahaan" hidden></section>
+        <section id="finance-workspace" aria-label="Finance" hidden></section>
       </main>
     </div>
     <dialog id="workspace-search" aria-labelledby="workspace-search-title">
@@ -876,8 +887,10 @@ function markWorkspaceRoute(key) {
 }
 function hideWorkspaceExtras() {
   companyMount?.close();
+  financeMount?.close();financeMount=null;
   root.querySelector('#workspace-home').hidden=true;
   root.querySelector('#company-workspace').hidden=true;
+  const finance=root.querySelector('#finance-workspace');if(finance)finance.hidden=true;
 }
 async function ensureCompanyWorkspace() {
   if(companyMount)return companyMount;
@@ -900,9 +913,17 @@ async function openWorkspace(key) {
   if(!workspaceRoutes.some(r=>r.key===key))return;
   if(key.startsWith('tab:'))return switchTab(key.slice(4));
   if(companyMount?.canLeave&&!companyMount.canLeave())return;
+  if(financeMount?.canLeave&&!financeMount.canLeave())return;
   const request=++adminTabRequest;
   STATE.tab='';hideWorkspaceExtras();markWorkspaceRoute(key);
   root.querySelectorAll('section.pane').forEach(p=>p.classList.remove('active'));
+  if(key==='finance'){
+    const host=root.querySelector('#finance-workspace');host.hidden=false;host.innerHTML='<p role="status">Memuat Finance…</p>';
+    try{const module=await import('./src/finance.js?v=finance-company-report-20260912');if(request!==adminTabRequest)return;
+      financeMount=module.mountFinance(host,{api:ezApi,onOrder:id=>openOrderDetail(id),access:STAFF_ACCESS.finance});
+    }catch{if(request===adminTabRequest)host.innerHTML='<p role="alert">Finance gagal dimuat. Buka menu kembali untuk mencoba lagi.</p>';}
+    return;
+  }
   if(key==='home'){
     const home=root.querySelector('#workspace-home');home.hidden=false;
     home.innerHTML=EzAdminWorkspace.overview(workspaceRoutes);
@@ -944,6 +965,7 @@ async function ensureAdminTabData(tab) {
 async function switchTab(tab,context=null) {
   if (!canOpenAdminTab(tab)) return;
   if(companyMount?.canLeave&&!companyMount.canLeave())return;
+  if(financeMount?.canLeave&&!financeMount.canLeave())return;
   const request = ++adminTabRequest;
   hideWorkspaceExtras();markWorkspaceRoute('tab:'+tab);
   STATE.tab = tab;

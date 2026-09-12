@@ -28,7 +28,7 @@ function setup({ user = { isAdmin: true, fullName: 'Local admin' }, status = 200
   const extras=Object.fromEntries(['workspace-search-open','workspace-search-close','workspace-search-query','workspace-flow','workspace-home','company-workspace','workspace-sidebar','workspace-menu-toggle'].map(id=>[id,{innerHTML:'',hidden:false,setAttribute(){},querySelectorAll(){return[];},classList:{toggle(){},remove(){}}}]));
   const location={hash:hash??'#view=tab:'+(access?.tabs?.[0]||'courses')};
   const all=selector=>selector.includes('section.pane')?Object.values(panes):selector==='#workspace-nav details'?[]:buttons;
-  const state = { status, access, user, courseFailure: false, videoFailure: false, delayCourses: null, delayAccess: null, lock: '', login: false, companyStatus:404, companyBody:{error:'company_workspace_disabled'} };
+  const state = { status, access, user, courseFailure: false, videoFailure: false, delayCourses: null, delayAccess: null, lock: '', login: false, companyStatus:404, companyBody:{error:'company_workspace_disabled'},financeStatus:404,financeBody:{error:'finance_disabled'} };
   const ctx = vm.createContext({
     root: { innerHTML: '', querySelector: selector => selector==='.lock-card'?{appendChild(){}}:extras[selector.slice(1)], querySelectorAll:all },
     document: { addEventListener(){},querySelectorAll: selector => selector === 'nav.tabs button' ? buttons : Object.values(panes),
@@ -37,6 +37,7 @@ function setup({ user = { isAdmin: true, fullName: 'Local admin' }, status = 200
     ezApi: async path => {
       calls.push(path);
       if(path==='/company/access')return{status:state.companyStatus,ok:state.companyStatus===200,json:async()=>state.companyBody};
+      if(path==='/finance/access')return{status:state.financeStatus,ok:state.financeStatus===200,json:async()=>state.financeBody};
       const response = { status: state.status, ok: state.status === 200, json: async () => state.access };
       if (state.delayAccess) await state.delayAccess;
       return response;
@@ -77,9 +78,17 @@ test('browser tab capability mapping matches the server catalogue', () => {
   assert.deepEqual(JSON.parse(vm.runInContext('JSON.stringify(ADMIN_TAB_CAPABILITIES)', f.ctx)), STAFF_TAB_CAPABILITIES);
 });
 
+test('Finance discovery adds its own workspace while a failed module keeps legacy admin available',async()=>{
+  const active=setup({hash:'#view=home'});active.state.financeStatus=200;
+  active.state.financeBody={version:1,enabled:true,ready:true,canManage:true};await active.boot();
+  assert.equal(active.state.lock,'');assert.match(active.extras['workspace-home'].innerHTML,/Pusat Finance/);
+  for(const status of [403,404,503]){const f=setup({hash:'#view=home'});f.state.financeStatus=status;await f.boot();
+    assert.equal(f.state.lock,'');assert.match(f.extras['workspace-home'].innerHTML,/Pesanan/);assert.doesNotMatch(f.extras['workspace-home'].innerHTML,/Pusat Finance/);}
+});
+
 test('legacy admin boots with every menu and loads courses but not video sources', async () => {
   const f = setup(); await f.boot();
-  assert.deepEqual(f.calls, ['/staff/capabilities', '/company/access', '/admin/courses']);
+  assert.deepEqual(f.calls, ['/staff/capabilities', '/company/access', '/finance/access', '/admin/courses']);
   assert.deepEqual(f.rendered, ['courses']);
   assert.ok(f.buttons.every(button => !button.hidden));
 });
@@ -127,7 +136,7 @@ test('menu-filter fixture chooses its first allowed tab without prefetching curr
   // Synthetic navigation fixture, not an enabled Finance-only production role.
   const f = setup({ access: { ...describeLegacyStaffAccess(true), tabs: ['orders'], capabilities: ['orders.review'] } });
   await f.boot(); await f.tab('courses'); await f.tab('unknown');
-  assert.deepEqual(f.calls, ['/staff/capabilities', '/company/access']);
+  assert.deepEqual(f.calls, ['/staff/capabilities', '/company/access', '/finance/access']);
   assert.deepEqual(f.rendered, ['orders']);
   assert.equal(vm.runInContext('workspaceRoutes.filter(route=>route.tab).length',f.ctx),1);
 });
@@ -135,7 +144,7 @@ test('menu-filter fixture chooses its first allowed tab without prefetching curr
 test('prerequisites load lazily once and survive normal tab switches', async () => {
   const f = setup(); await f.boot();
   for (const tab of ['orders', 'modules', 'lessons', 'live', 'testimonials', 'lessons']) await f.tab(tab);
-  assert.deepEqual(f.calls, ['/staff/capabilities', '/company/access', '/admin/courses', '/admin/video-sources']);
+  assert.deepEqual(f.calls, ['/staff/capabilities', '/company/access', '/finance/access', '/admin/courses', '/admin/video-sources']);
   assert.equal(f.rendered.filter(tab => tab === 'lessons').length, 2);
 });
 
@@ -188,7 +197,7 @@ test('an older successful boot cannot reopen menus after a newer denied boot', a
 
 test('default entry is one division overview and works with Company disabled',async()=>{
   const f=setup({hash:''});await f.boot();
-  assert.deepEqual(f.calls,['/staff/capabilities','/company/access']);
+  assert.deepEqual(f.calls,['/staff/capabilities','/company/access','/finance/access']);
   assert.deepEqual(f.rendered,[]);assert.equal(f.extras['workspace-home'].hidden,false);
   assert.match(f.extras['workspace-home'].innerHTML,/<h1>Ringkasan<\/h1>/);
   assert.doesNotMatch(f.extras['workspace-home'].innerHTML,/workspace-module-status|belum diaktifkan|Periksa ulang modul/);

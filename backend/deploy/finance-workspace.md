@@ -1,0 +1,53 @@
+# Finance tahap 1 — kursus EzNihongo
+
+Modul ini menyediakan pembukuan internal di `admin.html#view=finance`. Cakupan: pesanan kursus, pengalokasian penerimaan ke rekening, tagihan biaya, pembayaran sebagian/penuh, transfer internal, mutasi CSV, rekonsiliasi sebagian, koreksi, pengakuan pendapatan manual, laporan saldo dan kas, dokumen cetak, serta tutup/buka periode dengan riwayat. App Kanji tidak digunakan sebagai sumber Finance.
+
+## Aktivasi
+
+Rilis kode terlebih dahulu dengan `FINANCE_ENABLED=false`. Tanpa flag, endpoint mengembalikan `finance_disabled` dan menu Finance existing tetap memuat Pesanan. Modul ini independen dari aktivasi Company untuk owner. Tidak ada migrasi Finance yang dipanggil oleh boot server, `npm run migrate`, atau pipeline existing.
+
+1. Uji staging pada schema legacy lengkap dan hak runtime yang sesuai. Verifikasi backup dan uji restore sebelum menambah schema produksi. Pengujian fixture bukan pengganti pemeriksaan ini.
+2. Tetapkan rekening, saldo awal, tanggal mulai dan kebijakan pengakuan pendapatan. Saldo awal harus mengecualikan penerimaan yang akan dicatat dari transaksi sejak tanggal mulai. Sistem memakai IDR bulat, maksimum Rp1 triliun per transaksi.
+3. Jalankan dari `backend/` pada target yang sudah ditinjau: `FINANCE_DATABASE_URL=<target> node finance-migrations/run.js --apply`. Variabel ini sengaja berbeda dari DATABASE_URL. Migration menambah tabel Finance dan checksum dalam satu transaksi, dengan lock timeout. Tidak memberi role staf atau mengubah baris pembelajaran.
+4. Atur `FINANCE_ENABLED=true`, `FINANCE_TIMEZONE=Asia/Jayapura` (atau zona bisnis yang sudah diputuskan), lalu restart API melalui prosedur deploy existing. Zona yang sudah dipakai untuk tanggal pembukuan sebaiknya tidak diganti di tengah periode.
+5. Owner membuka Pusat Finance, mengisi tanggal mulai, menambah rekening serta saldo awal, lalu melakukan sinkronisasi kursus, pencatatan biaya, rekonsiliasi dan pemeriksaan laporan. Periksa pembayaran/enrollment, editor dan halaman siswa sesudah rilis.
+
+Rollback: nonaktifkan `FINANCE_ENABLED` untuk menghentikan akses Finance. Pertahankan kode cleanup yang mengenal `finance_audit` setelah schema dibuat; jangan menghapus tabel atau memulihkan database siswa lama untuk membatalkan UI. Tidak ada aksi produksi pada pekerjaan pengembangan ini.
+
+## Model dan aturan
+
+- Setiap baris `finance_entries` memiliki debit dan kredit bernominal sama. Transaksi server diserialisasi dengan advisory lock Finance; jurnal tidak dapat di-update/delete. Koreksi membuat pembalik tertaut. Akun sistem dan transaksi sumber tidak dapat diedit melalui API.
+- Sinkronisasi hanya membaca `orders` IDR approved dengan minimal satu `order_payments` approved. Maksimum 200 order per tindakan; tombol dapat diulang. Satu order hanya menghasilkan satu entri kursus. Sinkronisasi tidak mengubah status order, bukti, enrollment atau progres. Backlog pada periode laporan ditampilkan; sinkronisasi belum terjadwal otomatis.
+- Penerimaan awal masuk akun penerimaan belum dialokasikan / pembayaran diterima di muka. Owner menentukan rekening yang benar-benar menerima uang dan tanggalnya. Pendapatan diakui terpisah, manual dengan dasar layanan yang diberikan. Jangan menggunakan pengakuan pendapatan sebagai tanda kecocokan bank.
+- Tagihan disimpan sebagai draf, bukti PNG/JPEG/PDF sampai 5 MB dapat dilampirkan selama draf. Approval membukukan biaya/utang; pencatatan pembayaran memindahkan utang ke rekening. Tidak ada transfer uang eksternal. Pembayaran sebagian didukung; total tidak boleh lebih besar daripada tagihan.
+- Alokasi ulang setelah koreksi tidak boleh bertanggal lebih awal daripada perubahan alokasi terakhir pada sumber tersebut. Ini menjaga agar laporan historis tidak mengalami saldo alokasi negatif.
+- Transfer internal menggerakkan dua rekening tanpa menambah pendapatan/biaya. Ringkasan kas masuk/keluar mengecualikan saldo awal dan transfer internal, serta memperhitungkan pembalik.
+- Setiap file CSV memiliki fingerprint server; impor file identik tidak menggandakan baris. Referensi bank nonkosong harus unik pada rekening untuk baris aktif. Tanpa referensi, dua transfer sah dengan tanggal/nominal sama tetap dapat dicatat; file berbeda yang tumpang-tindih perlu diperiksa operator. Impor keliru dapat dibatalkan bila semua pencocokan sudah dilepas dan tanggal masih terbuka; riwayat impor dipertahankan.
+- Rekonsiliasi memastikan rekening, arah dan sisa nominal sesuai pada mutasi maupun entri. Beberapa mutasi dapat cocok dengan satu entri dan sebaliknya. Transfer internal dapat direkonsiliasi di kedua rekening.
+- Periode tutup memblokir posting mundur, pelepasan pencocokan dan perubahan impor. Penutupan memeriksa draf biaya, pembayaran kursus yang belum dibukukan, mutasi belum cocok dan entri bank belum direkonsiliasi. Owner dapat membuka kembali sejak tanggal tertentu dengan alasan; riwayat batas periode dan alasan disimpan.
+
+## Akses, data dan batas
+
+Owner dapat melakukan semua tindakan Finance. Staf dengan grant global `legacy.finance` aktif dapat membaca Finance dan membuat draf/lampiran. Approval, pembukuan, rekonsiliasi, pengaturan rekening dan perubahan periode adalah owner-only. Course-scoped, role lain, revoked/expired grant, token refresh dan principal app lain tidak mendapat akses.
+
+Writer mengunci dan memeriksa ulang identitas utama, serta grant, sebelum menulis. Audit hanya menyimpan referensi aktor/action/entity; cleanup existing mengosongkan aktor pada `finance_audit` dengan pemeriksaan kontrak tabel. Invoice tidak menyimpan salinan identitas siswa. Bukti pengeluaran, nama vendor dan uraian mutasi adalah dokumen keuangan; kebijakan retensinya harus ditetapkan sebelum dipakai produksi. Hindari menulis data pribadi siswa di uraian bebas.
+
+Daftar menggunakan halaman 100 baris; angka laporan dijumlahkan oleh server untuk seluruh periode (maksimal 366 hari per permintaan laporan). Ekspor buku transaksi mengambil satu snapshot query, maksimal 10.000 baris; jumlah lebih besar meminta periode dipersempit. Kandidat rekonsiliasi menampilkan 200 entri terbuka terdekat menurut tanggal. Laporan saldo berbentuk neraca saldo internal, bukan paket laporan pajak atau neraca formal yang sudah direview akuntan.
+
+Tab Laporan menyediakan pilihan bulanan, kuartalan kalender (Q1 Januari–Maret sampai Q4 Oktober–Desember), dan tahunan Januari–Desember, dengan pemilihan tahun. Ringkasan berisi pendapatan diakui, biaya dibukukan, laba/rugi, kas masuk/keluar operasional dan arus kas bersih, disertai rincian akun dan neraca saldo. PDF melalui cetak browser serta CSV mengikuti periode yang dipilih. Klik akun membuka buku transaksi pada periode yang sama.
+
+Urutan penyajian untuk layar, cetak/PDF dan CSV: (1) ringkasan manajemen dan perbandingan, (2) laporan laba rugi dengan pendapatan lalu beban menurut jenis, (3) posisi keuangan: aset, liabilitas, ekuitas, (4) perubahan ekuitas, (5) arus kas operasional dan rekonsiliasi saldo, (6) catatan laporan, (7) lampiran neraca saldo. Komponen merujuk pada https://www.ifrs.org/issued-standards/list-of-standards/ias-1-presentation-of-financial-statements/; urutan ini adalah pilihan penyajian laporan manajemen, bukan urutan wajib atau klaim kepatuhan IFRS.
+
+Model `companyStatements` memakai saldo agregat server dan aritmetika BigInt untuk ketiga format keluaran. Ekuitas mencakup saldo akun modal ditambah akumulasi laba/rugi seluruh pembukuan, bukan hanya laba bulan terpilih. Perubahan ekuitas menelusuri saldo awal, perubahan akun modal, hasil periode dan saldo akhir. Pemeriksaan neraca serta perubahan ekuitas menampilkan selisih yang seharusnya nol. Arus kas memisahkan operasi dari selisih saldo kas (termasuk saldo awal yang dimasukkan dalam periode); selisih tersebut tidak otomatis dianggap arus pendanaan. Belum ada klasifikasi HPP/pajak/penyusutan, lancar/tidak lancar, investasi/pendanaan atau penghasilan komprehensif lain, sehingga bagian tersebut dijelaskan dalam catatan dan tidak ditampilkan seolah bernilai nol.
+
+Formulir nominal menyediakan kalkulator opsional jumlah × tarif − potongan. Jumlah dapat memiliki dua angka desimal (misalnya 2,5 jam melalui input angka browser); tarif dan potongan adalah rupiah bulat. Aritmetika memakai BigInt dengan pembulatan setengah ke atas ke rupiah terdekat. Mode kalkulator mengisi nominal otomatis dan menolak total nol/negatif serta subtotal di atas Rp1 triliun. API tetap memvalidasi nominal akhir seperti biasa. Kalkulator adalah bantuan input: hanya nominal akhirnya disimpan, bukan rincian jumlah/tarif sebagai item faktur. Draf tidak memengaruhi laporan sampai disetujui dan dibukukan; laporan kemudian menghitung ulang agregat dari jurnal pada setiap pemuatan, tanpa formula manual.
+
+Perbandingan menggunakan periode kalender sebelumnya penuh, termasuk pergantian tahun. Endpoint `/report` menerima `compareFrom` dan `compareTo` opsional yang divalidasi seperti periode utama; kedua periode dibaca dalam satu transaksi repeatable-read read-only. Nominal agregat tetap berupa string bilangan bulat. Bila awal periode mendahului tanggal mulai pembukuan, antarmuka memberi catatan cakupan; pembanding yang belum lengkap tidak diperlakukan sebagai nol dan selisih disembunyikan. Periode berjalan/mendatang diberi keterangan; tidak ada proyeksi dan tidak ada prorata. Cakupan ini memeriksa tanggal mulai, bukan sertifikasi kelengkapan seluruh pencatatan. Laporan yang gagal dimuat tidak mempertahankan angka periode lama.
+
+CSV awal mendukung satu kolom nominal bertanda atau kolom debit/kredit terpisah, tanggal ISO atau DD/MM/YYYY, format rupiah bulat atau Indonesia, dan pemetaan kolom dengan pratinjau. XLSX, OCR, koneksi bank otomatis, pembayaran API, rekonsiliasi otomatis, pengeluaran berulang, anggaran, refund, payroll/honor dari absensi, piutang/cicilan kursus, multi-mata-uang dan laporan pajak belum termasuk tahap ini. Kuitansi/tagihan adalah dokumen administrasi dari order, bukan faktur pajak. Keputusan menyetujui bukti pembayaran tetap memakai menu Pesanan existing.
+
+## Pengujian
+
+`TEST_DATABASE_URL` wajib menunjuk database loopback dengan nama mengandung `test` untuk fixture PostgreSQL. `finance.test.js` mencakup migrasi, idempotensi, saldo, pembayaran berlebih, concurrency, CSV, rekonsiliasi, koreksi, periode, RBAC dan cleanup.
+
+`FINANCE_BROWSER_QA=true` bersama `COMPANY_PLAYWRIGHT_MODULE` dan `COMPANY_BROWSER_EXECUTABLE` menjalankan `finance-browser.test.js` di browser asli. Auth/discovery menggunakan akun sintetis; seluruh API Finance memakai backend dan PostgreSQL nyata. `FINANCE_SCREENSHOT_DIR` opsional untuk screenshot desktop/ponsel. Semua schema fixture dihapus saat tes selesai.
