@@ -54,6 +54,8 @@ jobs:
         run: npm test
       - name: Test student learning-state contract
         run: node --test learning-state.test.js
+      - name: Test landing CMS price publication
+        run: node --test landing-cms.test.js
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

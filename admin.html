@@ -1188,6 +1188,8 @@ function courseFormHtml(c) {
       <div class="field"><label>Deskripsi (paragraf panjang)</label><textarea name="description" class="rich-text" rows="3">${escapeHtml(c.description || '')}</textarea></div>
 
       <h4 style="margin-top:18px;">Harga &amp; Marketing</h4>
+      <div class="field"><label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" name="landingPricePublished" value="true" ${c.landing_price_published === true ? 'checked' : ''} style="width:auto;" />Harga sudah final — tampilkan di landing page</label><small>Biarkan tidak dicentang selama harga belum ditentukan. Angka harga lama tidak otomatis ditampilkan.</small></div>
+      <div class="field"><label>Jadwal untuk landing page</label><input name="landingSchedule" value="${escapeHtml(c.landing_schedule || '')}" maxlength="240" placeholder="Hari, jam, dan zona waktu kelas" /><small>Bootcamp: kelas online 2 kali seminggu. Kosongkan jika hari dan jam belum final. Jangan isi tautan meeting di sini.</small></div>
       <div class="field-row">
         <div class="field"><label>Harga (angka, IDR)</label><input type="number" name="priceIdr" value="${c.price_idr ?? ''}" placeholder="349000" /></div>
         <div class="field"><label>Label harga (tampil)</label><input name="priceLabel" value="${escapeHtml(c.price_label || '')}" placeholder="Rp 349rb" /></div>
@@ -1272,6 +1274,8 @@ async function submitCourse(e, id) {
     features,
     ctaLabel: fd.get('ctaLabel').trim() || null,
     isFeatured: !!fd.get('isFeatured'),
+    landingPricePublished: fd.get('landingPricePublished') === 'true',
+    landingSchedule: String(fd.get('landingSchedule') || '').trim(),
     // '' (Belum ditentukan) is omitted entirely — undefined on the wire —
     // so the backend leaves is_free untouched (new course: stays NULL;
     // existing course: keeps its current value) rather than coercing it.
