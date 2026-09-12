@@ -20,6 +20,8 @@ Grant course hanya mengizinkan board pada course tersebut; **tidak** memberi aks
 
 Realm utama divalidasi terhadap akun saat ini pada batas staf; Kanji, refresh JWT, atau identitas email/ID yang tidak cocok ditolak. Shared auth siswa tidak diubah menjadi auth staf. Endpoint lama di luar allowlist tetap memakai guard existing; bukan klaim seluruh kelemahan auth legacy sudah diaudit/diperbaiki.
 
+Tambahan opt-in: menu **Data & Insights** untuk aktivasi belajar, completion pelajaran aktif, retensi antarminggu dan review materi. Permission Insights yang sesuai juga mengikuti scope course, tanpa membuka handler legacy agregat. Lihat [definisi, akses, privasi dan batas beban](company-insights.md). Sumber tetap read-only; tanpa migration/data mart baru, atribusi revenue atau scheduler laporan.
+
 ## Cara kerja board
 
 - Create/edit/assignment memakai transaksi dan optimistic version. Penyimpanan dari revisi lama mendapat 409, bukan menimpa perubahan orang lain.
@@ -40,7 +42,7 @@ Tidak ada salinan narasi di event log. Namun kolom teks masih memerlukan kebijak
 
 ## Aktivasi bertahap — bukan bagian otomatis deployment
 
-Default ketiga flag pada `company.env.example` adalah false. Tidak ada startup hook yang membuat tabel, memberi role, menjalankan worker, atau mengirim pesan.
+Default semua flag pada `company.env.example` adalah false, termasuk tambahan `COMPANY_INSIGHTS_ENABLED`. Tidak ada startup hook yang membuat tabel, memberi role, menjalankan worker, atau mengirim pesan. Insights memerlukan canary dan gate tersendiri sesuai panduannya.
 
 1. Cocokkan baseline, runtime/grants, backup dan uji restore. Jalankan suite pada Node 20/PostgreSQL 16 CI serta staging berschema lengkap. Gunakan data sintetis, integrasi outbound dimatikan, bukan akun nyata untuk tes erase.
 2. Release kode kompatibilitas terbaru dengan semua flag false. Kode cleanup harus sudah terpasang dan semua proses lama berhenti sebelum tabel perusahaan ditambahkan. Versi cleanup tahap 1A lama hanya memahami tabel staf, **belum cukup untuk tabel company**.

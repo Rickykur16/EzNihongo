@@ -3,10 +3,11 @@
 <title>Ruang Kerja · EzNihongo</title><link rel="icon" href="logo.png"><link rel="stylesheet" href="styles/tokens.css"><link rel="stylesheet" href="styles/company.css">
 </head><body>
 <header><a class="brand" href="company.html">EzNihongo <span>Ruang Kerja</span></a><div><a href="admin.html">Panel existing</a> <a href="dashboard.html">Dashboard siswa</a></div></header>
-<div class="layout"><aside><p class="eyebrow">DIVISI</p><nav id="divisions" aria-label="Divisi"></nav><button id="members-button" hidden>Akses staf</button><button id="jobs-button" hidden>Pengingat</button></aside>
+<div class="layout"><aside><p class="eyebrow">DIVISI</p><nav id="divisions" aria-label="Divisi"></nav><button id="insights-button" hidden>Data &amp; Insights</button><button id="members-button" hidden>Akses staf</button><button id="jobs-button" hidden>Pengingat</button></aside>
 <main><div class="heading"><div><p class="eyebrow" id="context">PEKERJAAN TIM</p><h1 id="title">Ruang kerja</h1><p id="subtitle">Memeriksa akses…</p></div><button id="create-button" hidden>+ Pekerjaan baru</button></div>
 <p id="notice" role="status" aria-live="polite"></p><div class="toolbar" id="toolbar" hidden><label>Status <select id="filter"><option value="">Semua status</option></select></label><button id="refresh-button">Muat ulang</button><button id="sync-button" hidden>Ambil kasus terbaru</button></div>
 <div id="content" aria-live="polite"></div><div id="pagination" hidden><button id="previous">Sebelumnya</button><span id="page-label"></span><button id="next">Berikutnya</button></div>
+<section id="insights-panel" aria-label="Data dan insight pembelajaran" hidden></section>
 </main></div>
 <dialog id="editor"><form id="work-form"><div class="heading"><h2 id="editor-title">Pekerjaan baru</h2><button type="button" data-close aria-label="Tutup">×</button></div>
 <p class="hint">Jangan tulis data siswa, nomor rekening, token, atau rahasia di catatan. Gunakan kasus internal sebagai rujukan.</p>

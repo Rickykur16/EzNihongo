@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import { query, withTransaction } from '../db.js';
 import { asyncHandler } from '../middleware.js';
-import { companyEnabled, staffEnabled, requestAccess, accessFor, liveAdmin, allowed, fail, DIVISIONS, ROLE_CATALOG, companyError } from '../company-policy.js';
+import { companyEnabled, staffEnabled, insightsEnabled, requestAccess, accessFor, liveAdmin, allowed, fail, DIVISIONS, ROLE_CATALOG, companyError } from '../company-policy.js';
 import { FLOWS, fields, initialStatus, optionalId, validateTransition, campaignLink } from '../company-work.js';
+import { readInsights } from '../company-insights.js';
+import rateLimit from 'express-rate-limit';
 
 const router = Router();
 router.use((req,res,next) => {
@@ -59,8 +61,33 @@ function scopeFilter(access,division,params) {
 
 router.get('/access',asyncHandler(async(req,res)=> {
   res.json({version:1,isAdmin:req.access.isAdmin,staffEnabled:staffEnabled(),divisions:req.access.divisions.map(id=>({id,name:DIVISIONS[id]})),
+    insights: { enabled: insightsEnabled(), scopes: !insightsEnabled() ? {} : Object.fromEntries(Object.keys(DIVISIONS).flatMap(d => {
+      const permission = 'insights.' + d;
+      if (allowed(req.access, permission)) return [[d, 'global']];
+      const ids = req.access.grants.filter(g => g.permission_key === permission && g.scope_type === 'course').map(g => g.course_id);
+      return ids.length ? [[d, ids]] : [];
+    })) },
     flows:FLOWS,roles:req.access.isAdmin?Object.keys(ROLE_CATALOG):[],
     scopes:req.access.isAdmin ? {} : Object.fromEntries(req.access.divisions.map(d=>[d, allowed(req.access,'work.'+d)?'global':req.access.grants.filter(g=>g.permission_key==='work.'+d).map(g=>g.course_id)]))});
+}));
+const insightsLimit = rateLimit({ windowMs: 60000, limit: 20, keyGenerator: req => req.access.user.id,
+  standardHeaders: true, legacyHeaders: false, message: { error: 'insights_rate_limit' } });
+router.get('/insights', insightsLimit, asyncHandler(async(req,res)=> {
+  if (!insightsEnabled()) throw fail(404, 'company_insights_disabled');
+  // Fixed complete UTC weeks and one explicitly authorized course: no custom
+  // user/date filters, exports, global totals or cross-course scope unions.
+  if (Object.keys(req.query).some(k => !['division', 'courseId'].includes(k))) throw fail(400, 'invalid_insights_filter');
+  const division = req.query.division, courseId = optionalId(req.query.courseId);
+  if (typeof division !== 'string' || !Object.hasOwn(DIVISIONS, division) || !courseId) throw fail(400, 'insights_division_and_course_required');
+  const permission = 'insights.' + division;
+  if (!allowed(req.access, permission, courseId)) throw fail(403, 'insights_scope_required');
+  const report = await readInsights(courseId);
+  // Re-evaluate identity/expiry/revocation even on a cache hit and after a slow
+  // calculation. Cached metrics never act as an authorization cache.
+  const currentAccess = await requestAccess(req);
+  if (!insightsEnabled() || !allowed(currentAccess, permission, courseId)) throw fail(403, 'insights_scope_required');
+  const detailed = ['technology', 'academic'].includes(division);
+  res.json({ ...report, difficulties: detailed ? report.difficulties : undefined, detailAccess: detailed });
 }));
 router.get('/members',asyncHandler(async(req,res)=> {
   owner(req.access);

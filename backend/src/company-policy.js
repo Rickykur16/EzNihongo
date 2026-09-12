@@ -6,13 +6,14 @@ import { requireAdmin } from './middleware.js';
 export const DIVISIONS = Object.freeze({ technology: 'Product & Technology', academic: 'Academic & Learning',
   marketing: 'Growth & Marketing', operations: 'Student Success & Operations', finance: 'Finance & Business Administration' });
 export const ROLE_CATALOG = Object.freeze({
-  technology: ['work.technology', 'legacy.technology'],
-  academic: ['work.academic', 'legacy.academic', 'legacy.course_picker'],
-  marketing: ['work.marketing', 'legacy.marketing'],
-  operations: ['work.operations', 'legacy.operations', 'legacy.course_picker', 'legacy.discussions'],
-  finance: ['work.finance', 'legacy.finance', 'orders.proof.read'],
+  technology: ['work.technology', 'legacy.technology', 'insights.technology'],
+  academic: ['work.academic', 'legacy.academic', 'legacy.course_picker', 'insights.academic'],
+  marketing: ['work.marketing', 'legacy.marketing', 'insights.marketing'],
+  operations: ['work.operations', 'legacy.operations', 'legacy.course_picker', 'legacy.discussions', 'insights.operations'],
+  finance: ['work.finance', 'legacy.finance', 'orders.proof.read', 'insights.finance'],
 });
 export const companyEnabled = () => process.env.COMPANY_WORKSPACE_ENABLED === 'true';
+export const insightsEnabled = () => companyEnabled() && process.env.COMPANY_INSIGHTS_ENABLED === 'true';
 export const staffEnabled = () => companyEnabled() && process.env.COMPANY_STAFF_ENABLED === 'true';
 export function fail(status, message) { return Object.assign(new Error(message), { status }); }
 
