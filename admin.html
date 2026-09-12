@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="styles/tokens.css"/>
 <link rel="stylesheet" href="styles/components.css"/>
-<link rel="stylesheet" href="styles/admin-workspace.css"/>
+<link rel="stylesheet" href="styles/admin-workspace.css?v=compact-nav-20260912"/>
 <link rel="stylesheet" href="styles/company.css?v=unified-admin-20260912"/>
 <style>
   * { box-sizing: border-box; }
@@ -253,7 +253,7 @@
 </div>
 
 <script src="api-client.js"></script>
-<script src="src/admin-workspace.js"></script>
+<script src="src/admin-workspace.js?v=compact-nav-20260912"></script>
 <script>
 // ─────────────────────────────────────────────────────────────
 // Bootstrapping & auth
@@ -265,7 +265,6 @@ const modalContent = document.getElementById('modal-content');
 let CURRENT_USER = null;
 let STAFF_ACCESS = null;
 let COMPANY_ACCESS = null;
-let companyAvailability = 'unavailable';
 let workspaceRoutes = [];
 let companyMount = null;
 let companyMountPromise = null;
@@ -485,7 +484,7 @@ async function bootAdmin() {
     STAFF_ACCESS = access;
     const company = await loadCompanyAvailability(access);
     if (request !== adminBootRequest) return;
-    COMPANY_ACCESS = company.access;companyAvailability = company.status;
+    COMPANY_ACCESS = company.access;
     workspaceRoutes = EzAdminWorkspace.routes(access, COMPANY_ACCESS, canOpenAdminTab);
     if (workspaceRoutes.length === 1) { showLock('Belum ada menu yang diizinkan untuk akun ini. Hubungi pengelola untuk memeriksa akses staf.'); return; }
     renderApp();
@@ -821,8 +820,16 @@ function renderApp() {
 }
 function bindWorkspaceNavigation() {
   root.querySelectorAll('[data-workspace]').forEach(button=>button.onclick=()=>openWorkspace(button.dataset.workspace));
+  root.querySelectorAll('#workspace-nav details').forEach(group=>group.ontoggle=()=>{
+    if(group.open)root.querySelectorAll('#workspace-nav details').forEach(other=>{if(other!==group)other.open=false;});
+  });
 }
 function markWorkspaceRoute(key) {
+  const activeGroup=workspaceRoutes.find(route=>route.key===key)?.group;
+  root.querySelectorAll('#workspace-nav details').forEach(group=>{
+    const active=group.dataset.group===activeGroup;
+    group.open=active;group.setAttribute('data-active',String(active));
+  });
   root.querySelectorAll('#workspace-nav [data-workspace]').forEach(button=>{
     if(button.dataset.workspace===key)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
   });
@@ -855,8 +862,7 @@ async function openWorkspace(key) {
   root.querySelectorAll('section.pane').forEach(p=>p.classList.remove('active'));
   if(key==='home'){
     const home=root.querySelector('#workspace-home');home.hidden=false;
-    home.innerHTML=EzAdminWorkspace.overview(workspaceRoutes,companyAvailability)+
-      (companyAvailability==='available'?'':'<p><button class="btn btn-ghost" onclick="bootAdmin()">Periksa ulang modul pekerjaan</button></p>');
+    home.innerHTML=EzAdminWorkspace.overview(workspaceRoutes);
     bindWorkspaceNavigation();return;
   }
   const host=root.querySelector('#company-workspace');host.hidden=false;

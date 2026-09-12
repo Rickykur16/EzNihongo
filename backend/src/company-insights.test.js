@@ -217,7 +217,7 @@ test('Insights PostgreSQL aggregates, gates, privacy, and non-mutation', { skip:
         const started=new Promise(r=>{entered=r;});
         await page.route('**/api/company/insights?**',async route=>{entered();await barrier;await route.continue();});
         await page.getByRole('button',{name:'Muat ringkasan',exact:true}).click();await started;
-        await page.locator('#workspace-menu-toggle').click();await page.locator('#workspace-nav [data-workspace^="work:"]').first().click();
+        await page.locator('#workspace-menu-toggle').click();await page.locator('#workspace-nav details>summary').first().click();await page.locator('#workspace-nav [data-workspace^="work:"]').first().click();
         const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/company/insights');release();await response;
         await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         await page.locator('#workspace-menu-toggle').click();await page.getByRole('button',{name:'Data & Insights',exact:true}).click();

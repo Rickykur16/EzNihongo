@@ -192,6 +192,7 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
         const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));return{context,page};
       }
       const {context,page}=await contextFor('owner');await page.goto(base.replace('/api','')+'/company.html');
+      await page.locator('#workspace-nav [data-group=technology]>summary').click();
       await page.locator('#workspace-nav [data-workspace="work:technology"]').click();
       await page.getByRole('button',{name:'+ Pekerjaan baru',exact:true}).click();
       await page.locator('#work-form input[name=title]').fill('Browser acceptance task');
@@ -200,6 +201,7 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
       await page.locator('#transitions').getByRole('button',{name:'Siap dikerjakan',exact:true}).click();
       await page.locator('#transitions .badge').filter({hasText:'Siap dikerjakan'}).waitFor();
       await page.locator('#editor [data-close]').first().click();
+      await page.locator('#workspace-nav [data-group=marketing]>summary').click();
       await page.locator('#workspace-nav [data-workspace="work:marketing"]').click();
       await page.getByRole('button',{name:'+ Pekerjaan baru',exact:true}).click();
       await page.locator('#work-form select[name=kind]').selectOption('campaign');
@@ -211,17 +213,22 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
       await page.waitForFunction(()=>document.getElementById('utm-result').value.includes('utm_campaign='));
       await page.locator('#editor [data-close]').first().click();
       assert.equal(await page.evaluate(()=>localStorage.getItem('ez_progress')),'company-qa-sentinel');
+      await page.locator('#workspace-nav [data-group=academic]>summary').click();
       await page.locator('#workspace-nav [data-workspace="tab:courses"]').click();
       await page.locator('[data-pane=courses] table').waitFor();
       assert.equal(await page.locator('#company-workspace').isHidden(),true);
+      await page.locator('#workspace-nav [data-group=marketing]>summary').click();
       await page.locator('#workspace-nav [data-workspace="work:marketing"]').click();
       await page.getByRole('button',{name:'Kampanye N5 — browser',exact:true}).waitFor();
       assert.equal(await page.locator('[data-pane=courses]').isHidden(),true);
       if(process.env.COMPANY_QA_OUTPUT_DIR)await page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-company-desktop.png',fullPage:true});
-      await page.setViewportSize({width:390,height:844});await page.locator('#workspace-menu-toggle').click();await page.locator('#workspace-nav [data-workspace="work:operations"]').click();
+      await page.setViewportSize({width:390,height:844});await page.locator('#workspace-menu-toggle').click();await page.locator('#workspace-nav [data-group=operations]>summary').click();await page.locator('#workspace-nav [data-workspace="work:operations"]').click();
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
       if(process.env.COMPANY_QA_OUTPUT_DIR)await page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-company-mobile.png',fullPage:true});
       const limited=await contextFor('finance');await limited.page.goto(base.replace('/api','')+'/company.html');
+      await limited.page.locator('#workspace-nav [data-group=finance]>summary').waitFor();
+      assert.equal(await limited.page.locator('#workspace-nav details').count(),1);
+      await limited.page.locator('#workspace-nav [data-group=finance]>summary').click();
       await limited.page.locator('#workspace-nav [data-workspace="work:finance"]').waitFor();
       assert.equal(await limited.page.locator('#workspace-nav [data-workspace^="work:"]').count(),1);
       assert.equal(await limited.page.locator('#members-button:visible').count(),0);

@@ -27,7 +27,7 @@ function setup({ user = { isAdmin: true, fullName: 'Local admin' }, status = 200
   const buttons = Object.keys(panes).map(tab => ({ dataset: { tab, workspace:'tab:'+tab }, classList: { toggle() {} }, addEventListener() {}, setAttribute() {}, removeAttribute() {} }));
   const extras=Object.fromEntries(['workspace-home','company-workspace','workspace-sidebar','workspace-menu-toggle'].map(id=>[id,{innerHTML:'',hidden:false,setAttribute(){},classList:{toggle(){},remove(){}}}]));
   const location={hash:hash??'#view=tab:'+(access?.tabs?.[0]||'courses')};
-  const all=selector=>selector.includes('section.pane')?Object.values(panes):buttons;
+  const all=selector=>selector.includes('section.pane')?Object.values(panes):selector==='#workspace-nav details'?[]:buttons;
   const state = { status, access, user, courseFailure: false, videoFailure: false, delayCourses: null, delayAccess: null, lock: '', login: false, companyStatus:404, companyBody:{error:'company_workspace_disabled'} };
   const ctx = vm.createContext({
     root: { innerHTML: '', querySelector: selector => selector==='.lock-card'?{appendChild(){}}:extras[selector.slice(1)], querySelectorAll:all },
@@ -190,7 +190,8 @@ test('default entry is one division overview and works with Company disabled',as
   const f=setup({hash:''});await f.boot();
   assert.deepEqual(f.calls,['/staff/capabilities','/company/access']);
   assert.deepEqual(f.rendered,[]);assert.equal(f.extras['workspace-home'].hidden,false);
-  assert.match(f.extras['workspace-home'].innerHTML,/bukan kegagalan login/);
+  assert.match(f.extras['workspace-home'].innerHTML,/<h1>Ringkasan<\/h1>/);
+  assert.doesNotMatch(f.extras['workspace-home'].innerHTML,/workspace-module-status|belum diaktifkan|Periksa ulang modul/);
   assert.equal(vm.runInContext('workspaceRoutes.filter(r=>r.tab).length',f.ctx),12);
   assert.equal(vm.runInContext('workspaceRoutes.some(r=>r.key==="desk")',f.ctx),false);
 });

@@ -182,7 +182,7 @@ test('daily desk, calendar and server filtering on isolated PostgreSQL', {skip:!
       await page.locator('#desk-results').getByRole('button',{name:'Review materi N5',exact:true}).click();
       await page.locator('#editor[open]').waitFor();assert.equal(await page.locator('#work-form [name=title]').inputValue(),'Review materi N5');
       assert.equal(await page.locator('#title').textContent(),'Academic & Learning');await page.locator('#editor [data-close]').first().click();
-      await page.locator('#workspace-nav [data-workspace="calendar"]').click();await page.locator('#desk-filters [name=month]').fill('2026-09');
+      await page.locator('#workspace-nav [data-group=marketing]>summary').click();await page.locator('#workspace-nav [data-workspace="calendar"]').click();await page.locator('#desk-filters [name=month]').fill('2026-09');
       await page.locator('#desk-filters [name=q]').fill('Agenda');
       const response=page.waitForResponse(r=>r.url().includes('/company/calendar?')&&r.url().includes('q=Agenda'));
       await page.locator('#desk-filters button[type=submit]').click();const calendar=await response;
@@ -194,7 +194,7 @@ test('daily desk, calendar and server filtering on isolated PostgreSQL', {skip:!
       let release,started,finished;const held=new Promise(r=>release=r),entered=new Promise(r=>started=r),handled=new Promise(r=>finished=r);
       await page.route('**/api/company/desk?**',async route=>{started();await held;await route.continue();finished();});
       await page.locator('#workspace-nav [data-workspace="desk"]').click();await entered;
-      await page.locator('#workspace-nav [data-workspace="work:finance"]').click();release();await handled;await page.unroute('**/api/company/desk?**');
+      await page.locator('#workspace-nav [data-group=finance]>summary').click();await page.locator('#workspace-nav [data-workspace="work:finance"]').click();release();await handled;await page.unroute('**/api/company/desk?**');
       await page.locator('#content').getByRole('button',{name:'Review transaksi',exact:true}).waitFor();
       assert.equal(await page.locator('#desk-panel').isHidden(),true);
       assert.equal(await page.evaluate(()=>localStorage.getItem('ez_progress')),'desk-sentinel');

@@ -9,6 +9,7 @@
     {id:'finance',name:'Finance & Business Administration',description:'Pesanan, pembayaran dan administrasi.',tabs:['orders']},
   ];
   const labels={courses:'Kursus',modules:'Modul',lessons:'Pelajaran & Kuis',live:'Live Class',sensei:'Sensei',testimonials:'Testimoni',users:'Pengguna',discussions:'Diskusi',access:'Beri Akses',orders:'Pesanan',tts:'TTS Cache',ai:'AI'};
+  const shortNames={technology:'Produk & Teknologi',academic:'Akademik',marketing:'Marketing',operations:'Operasional Siswa',finance:'Keuangan'};
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function hasWork(company,id){return !!company?.divisions?.some(d=>d.id===id)&&(company.isAdmin===true||company.scopes?.[id]==='global'||(Array.isArray(company.scopes?.[id])&&company.scopes[id].length>0));}
   function routes(staff,company,canOpen){
@@ -25,12 +26,15 @@
   }
   function navigation(items){
     const button=item=>`<button type="button" data-workspace="${esc(item.key)}"${item.tab?` data-tab="${esc(item.tab)}"`:''}>${esc(item.label)}</button>`;
-    const section=(key,title)=>{const children=items.filter(i=>i.group===key);return children.length?`<section class="workspace-nav-group" data-group="${key}"><h2>${title}</h2>${children.map(button).join('')}</section>`:'';};
-    return section('general','Ruang Kerja')+divisions.map(d=>section(d.id,d.name)).join('')+section('settings','Pengelolaan');
+    const section=(key,title)=>{
+      const children=items.filter(i=>i.group===key);if(!children.length)return '';
+      if(key==='general')return `<section class="workspace-nav-group workspace-nav-general">${children.map(button).join('')}</section>`;
+      return `<details class="workspace-nav-group" data-group="${key}" name="workspace-division"><summary>${esc(title)}<span aria-hidden="true">›</span></summary><div class="workspace-submenu">${children.map(button).join('')}</div></details>`;
+    };
+    return section('general')+divisions.map(d=>section(d.id,shortNames[d.id])).join('')+section('settings','Pengaturan');
   }
-  function overview(items,availability){
-    const message=availability==='disabled'?'Modul tugas, kalender dan Insights belum diaktifkan di server. Ini bukan kegagalan login. Pengelolaan operasional di setiap divisi tetap tersedia.':availability==='available'?'Pilih divisi untuk mengelola operasional dan pekerjaan tim dalam satu panel.':'Status modul pekerjaan belum dapat diperiksa. Menu operasional yang sudah diizinkan tetap tersedia; coba lagi untuk memeriksa modul pekerjaan.';
-    return `<div class="workspace-intro"><p class="workspace-eyebrow">SATU PANEL · LIMA DIVISI</p><h1>Ruang Kerja EzNihongo</h1><p>Kelola bisnis dan pembelajaran dari satu tempat, menggunakan akun serta data yang sudah ada.</p></div><p id="workspace-module-status" class="workspace-status" role="status">${message}</p><div class="workspace-cards">${divisions.map(d=>{
+  function overview(items){
+    return `<div class="workspace-intro"><h1>Ringkasan</h1></div><div class="workspace-cards">${divisions.map(d=>{
       const links=items.filter(i=>i.group===d.id);if(!links.length)return '';
       return `<section class="workspace-card"><h2>${d.name}</h2><p>${d.description}</p><div>${links.map(i=>`<button type="button" class="btn btn-ghost" data-workspace="${esc(i.key)}">${esc(i.label)}</button>`).join('')}</div></section>`;
     }).join('')}</div>`;

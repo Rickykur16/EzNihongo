@@ -61,17 +61,51 @@ if(process.env.COMPANY_BROWSER_QA==='true')test('unified admin browser regressio
       assert.equal(JSON.stringify({course,module}),original);
     }catch(error){error.message+='\nBrowser errors: '+JSON.stringify(errors);throw error;}finally{await context.close();}
   }
-  const nav=(page,key)=>page.locator('#workspace-nav [data-workspace="'+key+'"]');
+  const nav=(page,key)=>({async click(){
+    const button=page.locator('#workspace-nav [data-workspace="'+key+'"]');
+    await button.waitFor({state:'attached'});
+    const group=button.locator('xpath=ancestor::details[1]');
+    if(await group.count()&&!await group.evaluate(el=>el.open))await group.locator('summary').click();
+    await button.click();
+  }});
   await t.test('password login and old workspace URL lead to one shell even with Company disabled',()=>scenario({loggedIn:false,entry:'/company.html'},async({page,calls})=>{
     await page.getByRole('heading',{name:'Masuk Ruang Kerja',exact:true}).waitFor();assert.equal(new URL(page.url()).pathname,'/admin.html');
     await page.locator('#admin-login-form [name=email]').fill('admin@example.invalid');
     await page.locator('#admin-login-form [name=password]').fill('wrong-fixture');await page.locator('#admin-login-form button').click();
     await page.getByText('Email atau password salah.',{exact:true}).waitFor();
     await page.locator('#admin-login-form [name=email]').fill('admin@example.invalid');await page.locator('#admin-login-form [name=password]').fill('fixture-password-only');await page.locator('#admin-login-form button').click();
-    await page.locator('#workspace-home h1').waitFor();assert.match(await page.locator('#workspace-module-status').textContent(),/bukan kegagalan login/);
+    await page.locator('#workspace-home h1').waitFor();assert.equal(await page.locator('#workspace-module-status').count(),0);
+    assert.doesNotMatch(await page.locator('#workspace-home').textContent(),/bukan kegagalan login|belum diaktifkan|Periksa ulang modul|menggunakan akun serta data/);
     assert.equal(await page.locator('#workspace-nav [data-tab]').count(),12);assert.equal(await page.locator('iframe').count(),0);
+    assert.equal(await page.locator('#workspace-nav details[open]').count(),0);
+    assert.equal(await page.locator('#workspace-nav summary:visible').count(),5);
+    assert.equal(await page.locator('#workspace-nav [data-workspace]:visible').count(),1);
     assert.equal(await page.getByRole('link',{name:'Panel existing',exact:true}).count(),0);assert.ok(!calls.some(p=>p.startsWith('/api/admin/')));
     if(process.env.COMPANY_QA_OUTPUT_DIR)await page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-unified-admin-desktop.png',fullPage:true});
+  }));
+  await t.test('division accordion opens only one group and supports keyboard without fetching business data',()=>scenario({},async({page,calls})=>{
+    const academic=page.locator('#workspace-nav [data-group=academic]'),finance=page.locator('#workspace-nav [data-group=finance]');
+    await academic.locator('summary').focus();await page.keyboard.press('Enter');
+    await academic.locator('[data-workspace="tab:courses"]').waitFor();
+    assert.equal(await page.locator('#workspace-nav details[open]').count(),1);
+    await finance.locator('summary').click();await finance.locator('[data-workspace="tab:orders"]').waitFor();
+    assert.equal(await academic.evaluate(el=>el.open),false);
+    assert.equal(await page.locator('#workspace-nav details[open]').count(),1);
+    await finance.locator('summary').focus();await page.keyboard.press('Space');
+    await page.waitForFunction(()=>!document.querySelector('#workspace-nav details[open]'));
+    assert.ok(!calls.some(path=>path.startsWith('/api/admin/')));
+  }));
+  await t.test('deep links and overview shortcuts reveal only the active division, including mobile',()=>scenario({entry:'/admin.html#view=tab%3Aorders'},async({page})=>{
+    await page.getByText('Tidak ada pesanan untuk filter ini.',{exact:true}).waitFor();
+    assert.equal(await page.locator('#workspace-nav details[open]').getAttribute('data-group'),'finance');
+    assert.equal(await page.locator('#workspace-nav [aria-current=page]').getAttribute('data-workspace'),'tab:orders');
+    await nav(page,'home').click();assert.equal(await page.locator('#workspace-nav details[open]').count(),0);
+    await page.locator('#workspace-home [data-workspace="tab:courses"]').click();await page.locator('[data-pane=courses] table').waitFor();
+    assert.equal(await page.locator('#workspace-nav details[open]').getAttribute('data-group'),'academic');
+    await page.setViewportSize({width:390,height:844});await page.locator('#workspace-menu-toggle').click();
+    await page.locator('#workspace-nav [data-workspace="tab:courses"]').waitFor();
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    if(process.env.COMPANY_QA_OUTPUT_DIR)await page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-compact-sidebar-mobile.png',fullPage:true});
   }));
   await t.test('course, module, lesson and quiz editors keep original IDs/content without automatic saves',()=>scenario({},async({page,calls})=>{
     await nav(page,'tab:courses').click();await page.locator('[data-pane=courses] table').waitFor();
@@ -93,7 +127,7 @@ if(process.env.COMPANY_BROWSER_QA==='true')test('unified admin browser regressio
     assert.equal(new URL(page.url()).pathname,'/admin.html');
   }));
   await t.test('unavailable Company service does not disable authorized admin tools',()=>scenario({companyStatus:503},async({page})=>{
-    await page.locator('#workspace-module-status').waitFor();assert.match(await page.locator('#workspace-module-status').textContent(),/belum dapat diperiksa/);
+    await page.locator('#workspace-home h1').waitFor();assert.equal(await page.locator('#workspace-module-status').count(),0);
     await nav(page,'tab:courses').click();await page.locator('[data-pane=courses] table').waitFor();
   }));
   await t.test('invalid access fails closed and students never request business data',()=>scenario({student:true},async({page,calls})=>{
