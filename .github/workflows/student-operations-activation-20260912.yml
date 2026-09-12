@@ -1,0 +1,68 @@
+name: Activate Student Operations for merged PR 311
+
+# Operational branch only. Does not merge or deploy feature-branch app code.
+on:
+  push:
+    branches: [codex/student-operations-activation-20260912]
+
+permissions:
+  contents: read
+
+# Share the production deployment lock so configuration and code cannot race.
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: local-ci-test
+          POSTGRES_DB: eznihongo_activation_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check operations/student-operations-20260912/activate.mjs
+      - run: npm ci --prefix backend
+      - run: node --test operations/student-operations-20260912/activate.test.mjs backend/src/student-operations.test.js
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:local-ci-test@127.0.0.1:5432/eznihongo_activation_test
+
+  activate:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare reviewed activation script
+        run: |
+          echo "OPERATIONS_SCRIPT=$(base64 -w0 operations/student-operations-20260912/activate.mjs)" >> "$GITHUB_ENV"
+          echo "OPERATIONS_SCRIPT_SHA=$(sha256sum operations/student-operations-20260912/activate.mjs | cut -d' ' -f1)" >> "$GITHUB_ENV"
+      - name: Backup, restore rehearsal, migrate, enable and verify
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 168.144.107.34
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: OPERATIONS_SCRIPT,OPERATIONS_SCRIPT_SHA
+          command_timeout: 18m
+          script: |
+            set -euo pipefail
+            umask 077
+            activation_script=$(mktemp /tmp/eznihongo-operations-activation-XXXXXXXX.mjs)
+            trap 'rm -f -- "$activation_script"' EXIT
+            printf '%s' "$OPERATIONS_SCRIPT" | base64 --decode > "$activation_script"
+            printf '%s  %s\n' "$OPERATIONS_SCRIPT_SHA" "$activation_script" | sha256sum --check --status
+            flock -n /run/lock/eznihongo-operations-activation.lock node "$activation_script" --activate-pr-311
