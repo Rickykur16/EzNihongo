@@ -3,8 +3,8 @@ const buckets = {open:'Semua pekerjaan terbuka',mine:'Pekerjaan saya',unassigned
 const summaryLabels = {mine:'Pekerjaan saya',unassigned:'Belum ditugaskan',review:'Review / pengujian',overdue:'Lewat target'};
 const errors = {work_list_unavailable:'Antrean belum dapat dimuat. Coba lagi; data tidak dianggap kosong.',work_access_changed:'Izin telah berubah. Muat ulang halaman untuk memeriksa akses.',work_scope_required:'Filter berada di luar cakupan akses Anda.',invalid_work_cursor:'Antrean atau filter telah berubah. Gunakan Muat ulang untuk mulai dari halaman pertama.',work_list_rate_limit:'Terlalu banyak permintaan. Tunggu satu menit sebelum mencoba lagi.'};
 
-export function createDeskView({api,access,courses,statuses,labels,onOpen,onItem}) {
-  const panel=document.getElementById('desk-panel'), deskButton=document.getElementById('desk-button'), calendarButton=document.getElementById('calendar-button');
+export function createDeskView({root=document,api,access,courses,statuses,labels,onOpen,onItem}) {
+  const panel=root.querySelector('#desk-panel'), deskButton=root.querySelector('#desk-button'), calendarButton=root.querySelector('#calendar-button');
   const hasWork=d=>access.isAdmin||access.scopes[d]==='global'||(Array.isArray(access.scopes[d])&&access.scopes[d].length>0);
   const divisions=access.divisions.filter(d=>hasWork(d.id));
   deskButton.hidden=!divisions.length;calendarButton.hidden=!divisions.some(d=>d.id==='marketing');

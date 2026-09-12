@@ -3,10 +3,12 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Admin · EzNihongo</title>
+<title>Ruang Kerja · EzNihongo</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="styles/tokens.css"/>
 <link rel="stylesheet" href="styles/components.css"/>
+<link rel="stylesheet" href="styles/admin-workspace.css?v=menu-flow-20260912"/>
+<link rel="stylesheet" href="styles/company.css?v=unified-admin-20260912"/>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; font-family: var(--font-body); background: var(--paper-100); color: var(--ink-900); }
@@ -251,6 +253,7 @@
 </div>
 
 <script src="api-client.js"></script>
+<script src="src/admin-workspace.js?v=menu-flow-20260912"></script>
 <script>
 // ─────────────────────────────────────────────────────────────
 // Bootstrapping & auth
@@ -261,6 +264,10 @@ const modalContent = document.getElementById('modal-content');
 
 let CURRENT_USER = null;
 let STAFF_ACCESS = null;
+let COMPANY_ACCESS = null;
+let workspaceRoutes = [];
+let companyMount = null;
+let companyMountPromise = null;
 const ADMIN_TAB_CAPABILITIES = Object.freeze({
   courses: 'curriculum.manage', modules: 'curriculum.manage', lessons: 'curriculum.manage',
   sensei: 'marketing.content.manage', testimonials: 'marketing.content.manage',
@@ -383,7 +390,7 @@ function showLock(message) {
   root.innerHTML = `
     <div class="lock-screen">
       <div class="lock-card">
-        <h2 style="margin-top:0;">Akses Admin</h2>
+        <h2 style="margin-top:0;">Akses Ruang Kerja</h2>
         <p style="color:#525252;font-family:var(--font-body);font-size:14px;line-height:1.5;">${escapeHtml(message)}</p>
         <a href="login.html?next=admin.html" class="btn btn-primary" style="display:inline-block;text-decoration:none;margin-top:8px;">Masuk</a>
       </div>
@@ -396,8 +403,8 @@ function showLogin(errMsg) {
   root.innerHTML = `
     <div class="lock-screen">
       <div class="lock-card">
-        <h2 style="margin-top:0;">Masuk Admin</h2>
-        <p style="color:#525252;font-family:var(--font-body);font-size:14px;line-height:1.5;">Masuk dengan email &amp; password admin.</p>
+        <h2 style="margin-top:0;">Masuk Ruang Kerja</h2>
+        <p style="color:#525252;font-family:var(--font-body);font-size:14px;line-height:1.5;">Gunakan email &amp; password admin yang sudah ada, atau akun Google yang telah diberi akses. Tidak perlu akun baru.</p>
         <div id="admin-login-err" style="display:${errMsg ? 'block' : 'none'};background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;padding:9px 12px;border-radius:8px;font-family:var(--font-body);font-size:13px;margin-bottom:12px;text-align:left;">${escapeHtml(errMsg || '')}</div>
         <form id="admin-login-form" style="display:flex;flex-direction:column;gap:10px;text-align:left;">
           <input name="email" type="email" placeholder="Email" required autocomplete="username"
@@ -448,6 +455,7 @@ async function loadAdminAccess(user) {
   if (access?.version !== 1 || !['legacy-admin-only','company-rbac-v1'].includes(access.authorizationMode) ||
       access.isStaff !== true || (access.authorizationMode === 'legacy-admin-only' && access.isAdmin !== true) ||
       !Array.isArray(access.tabs) || !Array.isArray(access.capabilities) ||
+      (access.authorizationMode === 'legacy-admin-only' && access.tabs.length === 0) ||
       !access.capabilities.every((capability) => typeof capability === 'string') ||
       !access.tabs.every((tab) => Object.prototype.hasOwnProperty.call(ADMIN_TAB_CAPABILITIES, tab) &&
         access.capabilities.includes(ADMIN_TAB_CAPABILITIES[tab]))) {
@@ -460,9 +468,12 @@ async function bootAdmin() {
   const request = ++adminBootRequest;
   CURRENT_USER = null;
   STAFF_ACCESS = null;
+  COMPANY_ACCESS = null;
+  companyMount?.close();companyMount = null;companyMountPromise = null;
+  workspaceRoutes = [];
   adminDataLoads = new Map();
   adminTabRequest++;
-  root.innerHTML = '<p role="status" style="padding:24px;">Memeriksa akses admin…</p>';
+  root.innerHTML = '<p role="status" style="padding:24px;">Memeriksa akses Ruang Kerja…</p>';
   try {
     const user = await ezGetMe();
     if (request !== adminBootRequest) return;
@@ -471,10 +482,14 @@ async function bootAdmin() {
     if (request !== adminBootRequest) return;
     CURRENT_USER = user;
     STAFF_ACCESS = access;
-    const firstTab = Object.keys(ADMIN_TAB_CAPABILITIES).find(canOpenAdminTab);
-    if (!firstTab) { showLock('Belum ada menu yang diizinkan untuk akun ini.'); return; }
+    const company = await loadCompanyAvailability(access);
+    if (request !== adminBootRequest) return;
+    COMPANY_ACCESS = company.access;
+    workspaceRoutes = EzAdminWorkspace.routes(access, COMPANY_ACCESS, canOpenAdminTab);
+    if (workspaceRoutes.length === 1) { showLock('Belum ada menu yang diizinkan untuk akun ini. Hubungi pengelola untuk memeriksa akses staf.'); return; }
     renderApp();
-    await switchTab(firstTab);
+    const requested = new URLSearchParams(location.hash.slice(1)).get('view');
+    await openWorkspace(workspaceRoutes.some(r=>r.key===requested)?requested:'home');
   } catch {
     if (request !== adminBootRequest) return;
     CURRENT_USER = null;
@@ -482,6 +497,17 @@ async function bootAdmin() {
     showLock('Akses admin belum dapat diverifikasi. Silakan coba lagi.');
     root.querySelector('.lock-card').appendChild(el('<button class="btn btn-ghost" type="button" onclick="bootAdmin()">Coba lagi</button>'));
   }
+}
+async function loadCompanyAvailability(staff) {
+  const controller = new AbortController(), timer = setTimeout(()=>controller.abort(),6000);
+  try {
+    const res = await ezApi('/company/access',{cache:'no-store',signal:controller.signal});
+    const data = await res.json().catch(()=>null);
+    if(res.status===404&&data?.error==='company_workspace_disabled')return{status:'disabled',access:null};
+    if(!res.ok)return{status:'unavailable',access:null};
+    return{status:'available',access:EzAdminWorkspace.validateCompany(data,staff)};
+  }catch{return{status:'unavailable',access:null};}
+  finally{clearTimeout(timer);}
 }
 bootAdmin();
 
@@ -766,50 +792,93 @@ function openAdminsModal() {
 // ─────────────────────────────────────────────────────────────
 function renderApp() {
   root.innerHTML = `
-    <header>
-      <h1>EzNihongo Admin</h1>
+    <header class="workspace-header">
+      <h1>EzNihongo · Ruang Kerja</h1>
       <div class="meta">
         <span>${escapeHtml(CURRENT_USER.fullName || CURRENT_USER.email)}</span>
         <span class="badge badge-admin">${STAFF_ACCESS?.isAdmin ? 'Admin' : 'Staf'}</span>
-        <a href="company.html">Ruang kerja</a>
+        <a href="dashboard.html">Dashboard siswa</a>
         ${STAFF_ACCESS?.capabilities.includes('admins.manage') ? '<button onclick="openAdminsModal()">Kelola Admin</button>' : ''}
         ${STAFF_ACCESS?.isAdmin ? '<button onclick="openPasswordModal()">Ubah Password</button>' : ''}
         <button onclick="ezLogout()">Keluar</button>
+        <button id="workspace-menu-toggle" aria-controls="workspace-sidebar" aria-expanded="false">Menu divisi</button>
       </div>
     </header>
-    <nav class="tabs">
-      <button data-tab="courses">Kursus</button>
-      <button data-tab="modules">Modul</button>
-      <button data-tab="lessons">Pelajaran &amp; Kuis</button>
-      <button data-tab="sensei">Sensei</button>
-      <button data-tab="testimonials">Testimoni</button>
-      <button data-tab="users">Pengguna</button>
-      <button data-tab="access">Beri Akses</button>
-      <button data-tab="orders">Pesanan</button>
-      <button data-tab="discussions">Diskusi</button>
-      <button data-tab="tts">TTS Cache</button>
-      <button data-tab="live">Live Class</button>
-      <button data-tab="ai">AI</button>
-    </nav>
-    <main>
-      <section class="pane" data-pane="courses"></section>
-      <section class="pane" data-pane="modules"></section>
-      <section class="pane" data-pane="lessons"></section>
-      <section class="pane" data-pane="sensei"></section>
-      <section class="pane" data-pane="testimonials"></section>
-      <section class="pane" data-pane="users"></section>
-      <section class="pane" data-pane="access"></section>
-      <section class="pane" data-pane="orders"></section>
-      <section class="pane" data-pane="discussions"></section>
-      <section class="pane" data-pane="tts"></section>
-      <section class="pane" data-pane="live"></section>
-      <section class="pane" data-pane="ai"></section>
-    </main>
-  `;
-  document.querySelectorAll('nav.tabs button').forEach((btn) => {
-    btn.hidden = !canOpenAdminTab(btn.dataset.tab);
-    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    <div class="workspace-layout">
+      <aside id="workspace-sidebar" class="workspace-sidebar"><nav id="workspace-nav" aria-label="Divisi dan pengelolaan">${EzAdminWorkspace.navigation(workspaceRoutes)}</nav></aside>
+      <main class="workspace-main">
+        <section id="workspace-flow" aria-label="Alur menu" hidden></section>
+        <section id="workspace-home"></section>
+        ${Object.keys(ADMIN_TAB_CAPABILITIES).map(tab=>`<section class="pane" data-pane="${tab}"></section>`).join('')}
+        <section id="company-workspace" aria-label="Pekerjaan perusahaan" hidden></section>
+      </main>
+    </div>`;
+  root.querySelector('#workspace-menu-toggle').onclick = () => {
+    const open=root.querySelector('#workspace-sidebar').classList.toggle('is-open');
+    root.querySelector('#workspace-menu-toggle').setAttribute('aria-expanded',String(open));
+  };
+  bindWorkspaceNavigation();
+}
+function bindWorkspaceNavigation() {
+  root.querySelectorAll('[data-workspace]').forEach(button=>button.onclick=()=>openWorkspace(button.dataset.workspace));
+  root.querySelectorAll('#workspace-nav details').forEach(group=>group.ontoggle=()=>{
+    if(group.open)root.querySelectorAll('#workspace-nav details').forEach(other=>{if(other!==group)other.open=false;});
   });
+}
+function markWorkspaceRoute(key) {
+  const flow=root.querySelector('#workspace-flow');
+  flow.innerHTML=EzAdminWorkspace.workflow(key,workspaceRoutes);flow.hidden=!flow.innerHTML;
+  flow.querySelectorAll('[data-workspace]').forEach(button=>button.onclick=()=>openWorkspace(button.dataset.workspace));
+  const activeGroup=workspaceRoutes.find(route=>route.key===key)?.group;
+  root.querySelectorAll('#workspace-nav details').forEach(group=>{
+    const active=group.dataset.group===activeGroup;
+    group.open=active;group.setAttribute('data-active',String(active));
+  });
+  root.querySelectorAll('#workspace-nav [data-workspace]').forEach(button=>{
+    if(button.dataset.workspace===key)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
+  });
+  root.querySelector('#workspace-sidebar').classList.remove('is-open');
+  root.querySelector('#workspace-menu-toggle').setAttribute('aria-expanded','false');
+  history.replaceState(null,'','#view='+encodeURIComponent(key));
+}
+function hideWorkspaceExtras() {
+  companyMount?.close();
+  root.querySelector('#workspace-home').hidden=true;
+  root.querySelector('#company-workspace').hidden=true;
+}
+async function ensureCompanyWorkspace() {
+  if(companyMount)return companyMount;
+  if(!companyMountPromise){
+    const boot=adminBootRequest,host=root.querySelector('#company-workspace'),user=CURRENT_USER,companyAccess=COMPANY_ACCESS;
+    const pending=import('./src/company.js?v=menu-flow-20260912').then(module=>module.mountCompanyWorkspace(host,{user,companyAccess,onRoute:markWorkspaceRoute})).then(instance=>{
+      if(boot!==adminBootRequest||!host.isConnected){instance.close();throw new Error('workspace_boot_changed');}
+      companyMount=instance;return instance;
+    }).catch(error=>{if(companyMountPromise===pending)companyMountPromise=null;throw error;});
+    companyMountPromise=pending;
+  }
+  return companyMountPromise;
+}
+async function openWorkspace(key) {
+  if(!workspaceRoutes.some(r=>r.key===key))return;
+  if(key.startsWith('tab:'))return switchTab(key.slice(4));
+  const request=++adminTabRequest;
+  STATE.tab='';hideWorkspaceExtras();markWorkspaceRoute(key);
+  root.querySelectorAll('section.pane').forEach(p=>p.classList.remove('active'));
+  if(key==='home'){
+    const home=root.querySelector('#workspace-home');home.hidden=false;
+    home.innerHTML=EzAdminWorkspace.overview(workspaceRoutes);
+    bindWorkspaceNavigation();return;
+  }
+  const host=root.querySelector('#company-workspace');host.hidden=false;
+  if(!companyMount)host.innerHTML='<p role="status">Memuat pekerjaan perusahaan…</p>';
+  try{
+    const instance=await ensureCompanyWorkspace();
+    if(request!==adminTabRequest)return;
+    instance.open(key);
+  }catch{
+    if(request!==adminTabRequest)return;
+    host.innerHTML='<p role="alert">Modul pekerjaan belum dapat dimuat. Menu operasional divisi tetap tersedia.</p><button class="btn btn-ghost" onclick="bootAdmin()">Periksa ulang akses</button>';
+  }
 }
 
 async function ensureAdminTabData(tab) {
@@ -833,27 +902,41 @@ async function ensureAdminTabData(tab) {
   if (coursesReady === false) throw new Error('courses_unavailable');
 }
 
-async function switchTab(tab) {
+async function switchTab(tab,context=null) {
   if (!canOpenAdminTab(tab)) return;
   const request = ++adminTabRequest;
+  hideWorkspaceExtras();markWorkspaceRoute('tab:'+tab);
   STATE.tab = tab;
-  document.querySelectorAll('nav.tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
   document.querySelectorAll('section.pane').forEach((p) => p.classList.toggle('active', p.dataset.pane === tab));
   const pane = document.querySelector(`[data-pane="${tab}"]`);
   pane.innerHTML = '<p role="status">Memuat…</p>';
   try {
     await ensureAdminTabData(tab);
     if (request !== adminTabRequest) return;
+    if(context?.courseId){
+      const course=STATE.courses.find(c=>c.id===context.courseId);
+      if(!course||!['modules','lessons'].includes(tab))throw new Error('invalid_course_context');
+      const data=await api('/courses/'+encodeURIComponent(course.slug));
+      if(request!==adminTabRequest)return;
+      STATE.selectedCourse=course.slug;STATE.modules=data.course?.modules||[];
+      STATE.selectedModule=null;STATE.activeLessonId=null;STATE.lessons=[];
+      STATE.lessonSearch='';STATE.lessonFilter='all';
+    }
+    if(context?.moduleId){
+      if(tab!=='lessons'||!STATE.modules.some(m=>m.id===context.moduleId))throw new Error('invalid_module_context');
+      STATE.selectedModule=context.moduleId;STATE.activeLessonId=null;
+      STATE.lessonSearch='';STATE.lessonFilter='all';
+    }
     renderTab();
   } catch {
     if (request !== adminTabRequest) return;
-    pane.innerHTML = `<p role="alert">Data menu belum dapat dimuat.</p><button class="btn btn-ghost" type="button" onclick="switchTab('${tab}')">Coba lagi</button>`;
+    pane.innerHTML = '<p role="alert">Data menu belum dapat dimuat.</p><button class="btn btn-ghost" type="button">Coba lagi</button>';
+    pane.querySelector('button').onclick=()=>switchTab(tab,context);
   }
 }
 
 function renderTab() {
   if (!canOpenAdminTab(STATE.tab)) return;
-  document.querySelectorAll('nav.tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === STATE.tab));
   document.querySelectorAll('section.pane').forEach((p) => p.classList.toggle('active', p.dataset.pane === STATE.tab));
   if (STATE.tab === 'courses') renderCourses();
   else if (STATE.tab === 'modules') renderModules();
@@ -1020,6 +1103,7 @@ function renderCourses() {
               : '<span class="badge" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;">Belum ditentukan</span>')
       }</td>
       <td class="actions">
+        ${canOpenAdminTab('modules')?`<button class="btn btn-primary" onclick="switchTab('modules',{courseId:'${c.id}'})">Kelola Modul</button>`:''}
         <button class="btn btn-ghost" onclick="editCourse('${c.id}')">Edit</button>
         <button class="btn btn-danger" onclick="deleteCourse('${c.id}', '${escapeHtml(c.title).replace(/'/g, "\\'")}')">Hapus</button>
       </td>
@@ -1228,6 +1312,7 @@ function renderModules() {
             <td>${vocabCount}</td>
             <td>${grammarCount}</td>
             <td class="actions">
+              ${canOpenAdminTab('lessons')?`<button class="btn btn-primary" onclick="switchTab('lessons',{moduleId:'${m.id}'})">Materi &amp; Kuis</button>`:''}
               <button class="btn btn-ghost" onclick="editModule('${m.id}')">Edit</button>
               <button class="btn btn-danger" onclick="deleteModule('${m.id}', '${escapeHtml(m.title).replace(/'/g, "\\'")}')">Hapus</button>
             </td>
@@ -1257,6 +1342,7 @@ function renderModules() {
   `;
   document.getElementById('course-picker').addEventListener('change', async (e) => {
     STATE.selectedCourse = e.target.value || null;
+    STATE.selectedModule = null;STATE.activeLessonId = null;
     if (STATE.selectedCourse) await loadModulesForCourse(STATE.selectedCourse);
     else STATE.modules = [];
     renderModules();
@@ -4152,25 +4238,22 @@ async function renderTtsCachePane() {
   pane.innerHTML = `
     <div style="max-width:720px;">
       <h2 style="margin-top:0;">TTS Cache Management</h2>
-      <p style="color:var(--ink-500);font-size:13px;">
-        Audio MP3 dari ElevenLabs di-cache di Postgres supaya satu string japanese
-        cuma hit API sekali. Bump <code>SETTINGS_VERSION</code> (voice settings ubah)
-        bikin entry lama jadi orphan — bypass hash key beda, tapi tetep makan disk.
-      </p>
       <div id="ttsCacheStatsBox" style="background:#f9fafb;border:1px solid var(--paper-300);border-radius:8px;padding:14px;margin-top:12px;">
         <div style="color:var(--ink-500);font-size:13px;">Loading stats...</div>
       </div>
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
         <button type="button" class="btn btn-ghost" onclick="loadTtsCacheStats()">↻ Refresh stats</button>
         <button type="button" class="btn btn-danger" onclick="cleanupTtsOrphans()" id="ttsOrphanBtn" disabled>🧹 Hapus orphan</button>
-        <button type="button" class="btn btn-danger" onclick="nukeAllTtsCache()" style="margin-left:auto;">⚠️ Nuke semua cache</button>
       </div>
+      <details class="workspace-secondary" id="tts-advanced"><summary>Pemeliharaan lanjutan</summary>
+      <button type="button" class="btn btn-danger" onclick="nukeAllTtsCache()">Hapus seluruh cache audio</button>
       <p style="font-size:12px;color:var(--ink-500);margin-top:14px;">
         <strong>Hapus orphan</strong> aman: cuma entry dgn versi settings beda dari current.
         Entry valid versi current (yang masih dipake) tidak akan tersentuh.
         <br>
         <strong>Nuke semua</strong> hapus everything → semua soal regen dari ElevenLabs pas first play (kena cost ~10-20k char).
       </p>
+      </details>
     </div>
   `;
   loadTtsCacheStats();
@@ -6842,11 +6925,13 @@ function renderUsers() {
     <h2>Pengguna</h2>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
       <input id="users-filter" type="search" placeholder="Cari nama atau email…" autocomplete="off" value="${escapeHtml(STATE.usersQuery || '')}" style="max-width:280px;" />
+      <button class="btn btn-ghost" onclick="exportUsersCSV(this)">⬇ Export CSV</button>
+    </div>
+    <details id="users-advanced-filters" ${STATE.usersProvince || STATE.usersLearningGoal || STATE.usersReferralSource ? 'open' : ''}><summary>Filter tambahan</summary><div class="workspace-filter-fields">
       <select id="users-province-filter"><option value="">Semua provinsi</option>${provinceOptions}</select>
       <select id="users-goal-filter"><option value="">Semua tujuan belajar</option>${goalOptions}</select>
       <select id="users-referral-filter"><option value="">Semua sumber</option>${referralOptions}</select>
-      <button class="btn btn-ghost" onclick="exportUsersCSV(this)">⬇ Export CSV</button>
-    </div>
+    </div></details>
     <div id="users-result"></div>
   `;
   const input = document.getElementById('users-filter');
@@ -7242,11 +7327,6 @@ function renderAccess() {
   }
   pane.innerHTML = `
     <h2>Beri Akses Dashboard</h2>
-    <p style="color:#737373;font-size:13px;margin-top:-4px;max-width:640px;">
-      Cari user untuk lihat kursus yang sudah diakses + riwayat pesanan mereka, dan beri
-      akses manual kalau perlu (tanpa mereka harus checkout/bayar). User harus sudah
-      pernah daftar/login di eznihongo.com dulu.
-    </p>
     <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:14px;">
       <label style="font-size:13px;">Email user<br>
         <input id="ac-email" type="email" placeholder="user@email.com" style="margin-top:4px;min-width:280px;"
@@ -7417,11 +7497,6 @@ function renderOrdersResult() {
     </tr>`).join('');
   pane.innerHTML = `
     <h2>Pesanan</h2>
-    <p style="color:#737373;font-size:13px;margin-top:-4px;max-width:640px;">
-      Verifikasi bukti transfer bank manual. Menyetujui pesanan adalah satu-satunya cara akses kursus
-      berbayar terbuka — tidak ada akses sebelum disetujui.
-    </p>
-    ${bankAccountsCardHtml()}
     <div class="toolbar" style="flex-wrap:wrap;">
       <select id="ord-status-filter" onchange="loadOrders({status:this.value}).then(renderOrdersResult)">
         ${['awaiting_review', 'pending_payment', 'rejected', 'approved', 'expired', 'cancelled', '']
@@ -7435,7 +7510,8 @@ function renderOrdersResult() {
     ${(STATE.orders || []).length === 0
       ? '<div class="empty">Tidak ada pesanan untuk filter ini.</div>'
       : `<table><thead><tr><th>No. Pesanan</th><th>Siswa</th><th>Kursus</th><th>Jumlah</th><th>Status</th><th>Dibuat</th><th></th></tr></thead><tbody>${rows}</tbody></table>`
-    }`;
+    }
+    <details id="order-bank-settings" class="workspace-secondary"><summary>Pengaturan rekening penerima</summary>${bankAccountsCardHtml()}</details>`;
 }
 
 window.openOrderDetail = async (orderId, reviewedPaymentId) => {

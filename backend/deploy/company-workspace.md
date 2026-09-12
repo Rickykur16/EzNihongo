@@ -1,5 +1,7 @@
 # Ruang kerja perusahaan — paket MVP opt-in
 
+Pembaruan antarmuka: [satu panel Ruang Kerja](unified-admin-workspace.md) kini menyatukan menu operasional existing dan modul Company pada `admin.html`. `company.html` menjadi alias; akses ke menu admin tidak bergantung pada aktifnya modul Company. Catatan schema/aktivasi opt-in di bawah tetap berlaku untuk modul tugas, staf dan Insights, bukan syarat mengganti navigasi admin.
+
 Status: implementasi lokal untuk review. Tidak sama dengan seluruh roadmap selesai atau izin deploy produksi. Gunakan dokumen ini untuk versi terbaru; dokumen staff-foundation dan staff-data-contract mencatat tahap persiapan sebelumnya.
 
 ## Yang tersedia

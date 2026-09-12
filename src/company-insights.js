@@ -14,8 +14,8 @@ const messages = {
   insights_rate_limit: 'Tunggu satu menit sebelum mencoba lagi.',
 };
 
-export function createInsightsView({ api, access, courses, onOpen }) {
-  const panel = document.getElementById('insights-panel'), button = document.getElementById('insights-button');
+export function createInsightsView({ root=document, api, access, courses, onOpen }) {
+  const panel = root.querySelector('#insights-panel'), button = root.querySelector('#insights-button');
   let generation = 0;
   const scopes = access.insights?.enabled ? access.insights.scopes : {};
   const divisions = access.divisions.filter(d => Object.hasOwn(scopes, d.id));

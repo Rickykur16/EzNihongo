@@ -39,7 +39,7 @@ test('Insights PostgreSQL aggregates, gates, privacy, and non-mutation', { skip:
   const { db } = await import('./db.js');
   const { signAccessToken, signRefreshToken } = await import('./auth.js');
   const { signKanjiAccessToken } = await import('./kanji-auth.js');
-  const { default: company } = await import('./routes/company.js');
+  const { default: company } = await import('./routes/company.js');const {default:staff}=await import('./routes/staff.js');
   let server;
   t.after(async () => {
     if (server) { server.closeAllConnections(); await new Promise(r => server.close(r)); }
@@ -102,7 +102,7 @@ test('Insights PostgreSQL aggregates, gates, privacy, and non-mutation', { skip:
   const sourceTables=['users','courses','modules','lessons','user_enrollments','user_progress','quiz_attempts','quiz_question_results','practice_attempts','grammar_attempts'];
   const snapshot=async()=>{const result={};for(const name of sourceTables)result[name]=(await control.query(`SELECT COALESCE(jsonb_agg(r ORDER BY to_jsonb(r)::text),'[]'::jsonb) AS data FROM ${name} r`)).rows[0].data;return result;};
   const before=await snapshot();
-  const app=express();app.use(express.json());app.use('/api/company',company);
+  const app=express();app.use(express.json());app.use('/api/company',company);app.use('/api/staff',staff);
   app.use((e,req,res,next)=>res.status(e.status||500).json({error:e.message}));
   server=app.listen(0,'127.0.0.1');await once(server,'listening');const base=`http://127.0.0.1:${server.address().port}`;
   async function request(who,path,body,token) {
@@ -179,7 +179,7 @@ test('Insights PostgreSQL aggregates, gates, privacy, and non-mutation', { skip:
   });
   if(process.env.COMPANY_BROWSER_QA==='true')await t.test('browser Insights: role views, XSS escape, stale responses and mobile; progress preserved',async()=>{
     const {chromium}=await import(pathToFileURL(process.env.COMPANY_PLAYWRIGHT_MODULE).href);
-    for(const file of ['company.html','src/company.js','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/company.css','styles/tokens.css','api-client.js','logo.png'])app.get('/'+file,(req,res)=>res.sendFile(fileURLToPath(new URL('../../'+file,import.meta.url))));
+    for(const file of ['company.html','admin.html','src/admin-workspace.js','src/company-workspace.html','styles/admin-workspace.css','styles/components.css','src/company.js','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/company.css','styles/tokens.css','api-client.js','logo.png'])app.get('/'+file,(req,res)=>res.sendFile(fileURLToPath(new URL('../../'+file,import.meta.url))));
     const browser=await chromium.launch({executablePath:process.env.COMPANY_BROWSER_EXECUTABLE,headless:true});
     try {
       for(const who of ['academic','marketing']) {
@@ -217,10 +217,10 @@ test('Insights PostgreSQL aggregates, gates, privacy, and non-mutation', { skip:
         const started=new Promise(r=>{entered=r;});
         await page.route('**/api/company/insights?**',async route=>{entered();await barrier;await route.continue();});
         await page.getByRole('button',{name:'Muat ringkasan',exact:true}).click();await started;
-        await page.locator('#divisions button').first().click();
+        await page.locator('#workspace-menu-toggle').click();await page.locator('#workspace-nav details>summary').first().click();await page.locator('#workspace-nav [data-workspace^="work:"]').first().click();
         const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/company/insights');release();await response;
         await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-        await page.getByRole('button',{name:'Data & Insights',exact:true}).click();
+        await page.locator('#workspace-menu-toggle').click();await page.getByRole('button',{name:'Data & Insights',exact:true}).click();
         assert.equal(await page.locator('.insight-card').count(),0);
         assert.equal(await page.evaluate(()=>localStorage.getItem('ez_progress')),'insights-sentinel');assert.deepEqual(errors,[]);
         await context.close();
