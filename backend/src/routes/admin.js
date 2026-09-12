@@ -4,6 +4,7 @@ import path from 'path';
 import rateLimit from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
 import { query, withTransaction } from '../db.js';
+import { landingCourseFields } from '../landing-course-fields.js';
 import { isCanonicalUuid, validateLiveClassFields } from '../live-class-admin-rules.js';
 import { requireAuth, requireAdmin, asyncHandler } from '../middleware.js';
 import { requireCompanyAdmin, fail } from '../company-policy.js';
@@ -311,14 +312,16 @@ router.post('/courses', asyncHandler(async (req, res) => {
   if (!slug || !title) return res.status(400).json({ error: 'slug and title required' });
   const slugErr = badSlug(slug);
   if (slugErr) return res.status(400).json({ error: slugErr });
+  const landing = landingCourseFields(req.body, true);
+  if (landing.error) return res.status(400).json({ error: landing.error });
   // isFree is tri-state (true/false/null = "not yet classified") — pass
   // through as-is rather than coercing with !!, which would collapse
   // "unclassified" into "paid". See migration 121.
   const result = await query(
     `INSERT INTO courses
        (slug, title, description, level, thumbnail_url, sort_order, is_published, is_available,
-        price_idr, price_label, period_label, tagline, features, cta_label, is_featured, is_free)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
+        price_idr, price_label, period_label, tagline, features, cta_label, is_featured, is_free, landing_price_published, landing_schedule)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING *`,
     [
       slug, title, description || null, level || null, thumbnailUrl || null,
       sortOrder || 0, !!isPublished, isAvailable !== false,
@@ -326,6 +329,7 @@ router.post('/courses', asyncHandler(async (req, res) => {
       JSON.stringify(Array.isArray(features) ? features : []),
       ctaLabel || null, !!isFeatured,
       isFree === true ? true : (isFree === false ? false : null),
+      landing.pricePublished, landing.schedule,
     ]
   );
   invalidateCourseVocabCache();
@@ -346,6 +350,8 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
   // Omitted (undefined) keeps the existing value — it never collapses to
   // NULL/paid just because a caller didn't include the field.
   const isFreeExplicit = isFree === true || isFree === false;
+  const landing = landingCourseFields(req.body);
+  if (landing.error) return res.status(400).json({ error: landing.error });
   const result = await query(
     `UPDATE courses SET
        slug = COALESCE($2, slug),
@@ -364,6 +370,8 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
        cta_label = COALESCE($15, cta_label),
        is_featured = COALESCE($16, is_featured),
        is_free = CASE WHEN $17 THEN $18::boolean ELSE is_free END,
+       landing_price_published = COALESCE($19::boolean, landing_price_published),
+       landing_schedule = COALESCE($20, landing_schedule),
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
     [
@@ -372,6 +380,7 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
       Array.isArray(features) ? JSON.stringify(features) : null,
       ctaLabel, isFeatured,
       isFreeExplicit, isFreeExplicit ? isFree : null,
+      landing.pricePublished, landing.schedule,
     ]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
