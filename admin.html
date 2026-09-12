@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="styles/tokens.css"/>
 <link rel="stylesheet" href="styles/components.css"/>
 <link rel="stylesheet" href="styles/admin-workspace.css?v=productivity-20260912"/>
+<link rel="stylesheet" href="styles/student-operations.css?v=operations-20260912"/>
 <link rel="stylesheet" href="styles/company.css?v=productivity-20260912"/>
 <style>
   * { box-sizing: border-box; }
@@ -253,7 +254,7 @@
 </div>
 
 <script src="api-client.js"></script>
-<script src="src/admin-workspace.js?v=finance-name-20260912"></script>
+<script src="src/admin-workspace.js?v=operations-20260912"></script>
 <script>
 // ─────────────────────────────────────────────────────────────
 // Bootstrapping & auth
@@ -896,7 +897,7 @@ async function ensureCompanyWorkspace() {
   if(companyMount)return companyMount;
   if(!companyMountPromise){
     const boot=adminBootRequest,host=root.querySelector('#company-workspace'),user=CURRENT_USER,companyAccess=COMPANY_ACCESS;
-    const pending=import('./src/company.js?v=productivity-20260912').then(module=>module.mountCompanyWorkspace(host,{user,companyAccess,onRoute:markWorkspaceRoute,canOpenTool:canOpenAdminTab,onSourceOrder:async id=>{
+    const pending=import('./src/company.js?v=operations-20260912').then(module=>module.mountCompanyWorkspace(host,{user,companyAccess,onRoute:markWorkspaceRoute,canOpenTool:canOpenAdminTab,onSourceOrder:async id=>{
       if(!canOpenAdminTab('orders')||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))return;
       const request=adminTabRequest+1;
       await switchTab('orders');

@@ -5,7 +5,7 @@
     {id:'technology',name:'Product & Technology',description:'Pengembangan produk, rilis dan tooling.',tabs:['tts','ai']},
     {id:'academic',name:'Academic & Learning',description:'Kurikulum, materi, kuis dan kelas.',tabs:['courses','modules','lessons','live']},
     {id:'marketing',name:'Growth & Marketing',description:'Kampanye, konten, sensei dan testimoni.',tabs:['sensei','testimonials']},
-    {id:'operations',name:'Student Success & Operations',description:'Layanan siswa, diskusi dan akses belajar.',tabs:['users','discussions','access']},
+    {id:'operations',name:'Operasional Siswa',description:'Onboarding, progres, keluhan dan pendampingan belajar.',tabs:['users','discussions','access']},
     {id:'finance',name:'Finance',description:'Pesanan, pembayaran dan administrasi.',tabs:['orders']},
   ];
   const labels={courses:'Kursus',modules:'Modul',lessons:'Pelajaran & Kuis',live:'Live Class',sensei:'Sensei',testimonials:'Testimoni',users:'Pengguna',discussions:'Diskusi',access:'Beri Akses',orders:'Pesanan',tts:'TTS Cache',ai:'AI'};
@@ -18,6 +18,7 @@
     if(company?.insights?.enabled&&Object.keys(company.insights.scopes||{}).length)result.push({key:'insights',label:'Data & Insights',group:'general'});
     for(const d of divisions){
       if(d.id==='finance'&&staff.finance?.enabled)result.push({key:'finance',label:'Pusat Finance',group:'finance'});
+      if(d.id==='operations'&&company?.studentOperations?.enabled&&hasWork(company,d.id))result.push({key:'operations',label:'Pusat Operasional Siswa',group:'operations'});
       if(hasWork(company,d.id))result.push({key:'work:'+d.id,label:d.id==='technology'?'Pekerjaan & Rilis':d.id==='marketing'?'Pekerjaan & Kampanye':'Pekerjaan Tim',group:d.id});
       for(const tab of d.tabs)if(canOpen(tab))result.push({key:'tab:'+tab,label:labels[tab],group:d.id,tab});
       if(d.id==='marketing'&&hasWork(company,d.id))result.push({key:'calendar',label:'Kalender Marketing',group:d.id});
@@ -41,6 +42,7 @@
     }).join('')}</div>`;
   }
   const menuFlows={
+    operations:['Pilih siswa atau antrean','Catat kebutuhan & PIC','Tindak lanjuti sampai selesai'],
     courses:['Kursus','Modul','Materi & Kuis'],modules:['Kursus','Modul','Materi & Kuis'],lessons:['Kursus','Modul','Materi & Kuis'],
     live:['Pilih kursus & jadwal','Hubungkan materi','Simpan kelas'],
     sensei:['Isi profil & foto','Atur status tampil','Simpan profil'],

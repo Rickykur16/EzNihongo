@@ -19,7 +19,7 @@ const DIVISIONS = [
   { id: 'technology', name: 'Product & Technology' },
   { id: 'academic', name: 'Academic & Learning' },
   { id: 'marketing', name: 'Growth & Marketing' },
-  { id: 'operations', name: 'Student Success & Operations' },
+  { id: 'operations', name: 'Operasional Siswa' },
   { id: 'finance', name: 'Finance' },
 ];
 
