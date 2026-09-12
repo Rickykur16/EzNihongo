@@ -174,7 +174,7 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
   });
   if(process.env.COMPANY_BROWSER_QA==='true')await t.test('real browser: create, transition, campaign link, role isolation and mobile',async()=>{
     const {chromium}=await import(pathToFileURL(process.env.COMPANY_PLAYWRIGHT_MODULE).href);
-    for(const path of ['company.html','src/company.js','src/company-insights.js','src/company-insights-guide.js','styles/company.css','styles/tokens.css','api-client.js','logo.png'])app.get('/'+path,(req,res)=>res.sendFile(fileURLToPath(new URL('../../'+path,import.meta.url))));
+    for(const path of ['company.html','src/company.js','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/company.css','styles/tokens.css','api-client.js','logo.png'])app.get('/'+path,(req,res)=>res.sendFile(fileURLToPath(new URL('../../'+path,import.meta.url))));
     const browser=await chromium.launch({executablePath:process.env.COMPANY_BROWSER_EXECUTABLE,headless:true});
     const errors=[];
     try {

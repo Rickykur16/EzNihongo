@@ -4,6 +4,7 @@ import { asyncHandler } from '../middleware.js';
 import { companyEnabled, staffEnabled, insightsEnabled, requestAccess, accessFor, liveAdmin, allowed, fail, DIVISIONS, ROLE_CATALOG, companyError } from '../company-policy.js';
 import { FLOWS, fields, initialStatus, optionalId, validateTransition, campaignLink } from '../company-work.js';
 import { readInsights } from '../company-insights.js';
+import { readCompanyWork } from '../company-read-work.js';
 import rateLimit from 'express-rate-limit';
 
 const router = Router();
@@ -52,13 +53,6 @@ async function validateAssignee(client,access, data) {
   const targetAccess = await accessFor(assignee,client);
   if (!allowed(targetAccess,'work.'+data.division,data.courseId)) throw fail(400,'assignee_lacks_division_access');
 }
-function scopeFilter(access,division,params) {
-  if (allowed(access,'work.'+division)) return 'TRUE';
-  const ids = access.grants.filter(g=>g.permission_key === 'work.'+division && g.scope_type === 'course').map(g=>g.course_id);
-  params.push(ids);
-  return `w.course_id = ANY($${params.length}::uuid[])`;
-}
-
 router.get('/access',asyncHandler(async(req,res)=> {
   res.json({version:1,isAdmin:req.access.isAdmin,staffEnabled:staffEnabled(),divisions:req.access.divisions.map(id=>({id,name:DIVISIONS[id]})),
     insights: { enabled: insightsEnabled(), scopes: !insightsEnabled() ? {} : Object.fromEntries(Object.keys(DIVISIONS).flatMap(d => {
@@ -160,18 +154,12 @@ router.get('/assignees',asyncHandler(async(req,res)=> {
   res.json({people:[...new Map([...r.rows,...self.rows].map(u=>[u.id,u])).values()]});
 }));
 router.get('/work',asyncHandler(async(req,res)=> {
-  const division=String(req.query.division||''); if(!req.access.divisions.includes(division))throw fail(403,'division_required');
-  const params=[division]; const scope=scopeFilter(req.access,division,params);
-  const limit=Math.max(1,Math.min(100,Number.parseInt(req.query.limit,10)||50));
-  const offset=Math.max(0,Math.min(10000,Number.parseInt(req.query.offset,10)||0));
-  params.push(limit,offset);
-  const r=await query(`SELECT w.*, CASE WHEN o.id IS NULL THEN NULL WHEN o.status IN ('approved','cancelled') THEN o.status
-     WHEN o.expires_at < NOW() THEN 'expired' ELSE o.status END AS source_payment_status
-    FROM company_work_items w LEFT JOIN orders o ON o.id=w.source_order_id WHERE w.division_key=$1 AND (${scope})
-    ORDER BY CASE w.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END,w.updated_at DESC,w.id
-    LIMIT $${params.length-1} OFFSET $${params.length}` ,params);
-  res.json({items:r.rows,limit,offset});
+  res.json(await readCompanyWork(req,'board'));
 }));
+const deskLimit = rateLimit({windowMs:60000,limit:60,keyGenerator:req=>req.access.user.id,
+  standardHeaders:true,legacyHeaders:false,message:{error:'work_list_rate_limit'}});
+router.get('/desk',deskLimit,asyncHandler(async(req,res)=>res.json(await readCompanyWork(req,'desk'))));
+router.get('/calendar',deskLimit,asyncHandler(async(req,res)=>res.json(await readCompanyWork(req,'calendar'))));
 router.post('/work',asyncHandler(async(req,res)=> {
   const d=fields(req.body); check(req.access,d.division,d.courseId);
   if (d.kind==='case') throw fail(400,'use_case_sync');

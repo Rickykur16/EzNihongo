@@ -52,7 +52,7 @@ test('Insights PostgreSQL aggregates, gates, privacy, and non-mutation', { skip:
     CREATE TABLE courses(id uuid PRIMARY KEY,title text,slug text);
     CREATE TABLE modules(id uuid PRIMARY KEY,course_id uuid REFERENCES courses(id));
     CREATE TABLE lessons(id uuid PRIMARY KEY,module_id uuid REFERENCES modules(id),title text);
-    CREATE TABLE orders(id uuid PRIMARY KEY);
+    CREATE TABLE orders(id uuid PRIMARY KEY,status text,expires_at timestamptz);
     CREATE TABLE discussions(id uuid PRIMARY KEY);
     CREATE TABLE user_enrollments(user_id uuid REFERENCES users(id),course_id uuid REFERENCES courses(id),enrolled_at timestamptz,PRIMARY KEY(user_id,course_id));
     CREATE TABLE user_progress(user_id uuid REFERENCES users(id),lesson_id uuid REFERENCES lessons(id),completed boolean,completed_at timestamptz,note text,PRIMARY KEY(user_id,lesson_id));
@@ -179,7 +179,7 @@ test('Insights PostgreSQL aggregates, gates, privacy, and non-mutation', { skip:
   });
   if(process.env.COMPANY_BROWSER_QA==='true')await t.test('browser Insights: role views, XSS escape, stale responses and mobile; progress preserved',async()=>{
     const {chromium}=await import(pathToFileURL(process.env.COMPANY_PLAYWRIGHT_MODULE).href);
-    for(const file of ['company.html','src/company.js','src/company-insights.js','src/company-insights-guide.js','styles/company.css','styles/tokens.css','api-client.js','logo.png'])app.get('/'+file,(req,res)=>res.sendFile(fileURLToPath(new URL('../../'+file,import.meta.url))));
+    for(const file of ['company.html','src/company.js','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/company.css','styles/tokens.css','api-client.js','logo.png'])app.get('/'+file,(req,res)=>res.sendFile(fileURLToPath(new URL('../../'+file,import.meta.url))));
     const browser=await chromium.launch({executablePath:process.env.COMPANY_BROWSER_EXECUTABLE,headless:true});
     try {
       for(const who of ['academic','marketing']) {
