@@ -39,11 +39,43 @@
       return `<section class="workspace-card"><h2>${d.name}</h2><p>${d.description}</p><div>${links.map(i=>`<button type="button" class="btn btn-ghost" data-workspace="${esc(i.key)}">${esc(i.label)}</button>`).join('')}</div></section>`;
     }).join('')}</div>`;
   }
+  const menuFlows={
+    courses:['Kursus','Modul','Materi & Kuis'],modules:['Kursus','Modul','Materi & Kuis'],lessons:['Kursus','Modul','Materi & Kuis'],
+    live:['Pilih kursus & jadwal','Hubungkan materi','Simpan kelas'],
+    sensei:['Isi profil & foto','Atur status tampil','Simpan profil'],
+    testimonials:['Isi cerita siswa','Pilih kelas & status','Simpan testimoni'],
+    users:['Cari siswa','Buka Kelola Akses','Periksa akses & riwayat'],
+    discussions:['Cari komentar','Tinjau isi','Hapus atau pulihkan'],
+    access:['Cari email siswa','Pilih kursus & durasi','Kelola akses'],
+    orders:['Pilih pesanan','Periksa bukti transfer','Setujui atau tolak'],
+    tts:['Periksa statistik','Tinjau cache lama','Konfirmasi pembersihan'],
+    ai:['Buka pengaturan','Edit prompt','Simpan prompt'],
+    desk:['Pilih antrean','Buka pekerjaan','Perbarui status'],
+    calendar:['Pilih bulan','Filter agenda','Buka pekerjaan'],
+    insights:['Pilih cakupan','Muat ringkasan','Tinjau temuan'],
+    members:['Cari akun','Pilih divisi & cakupan','Simpan akses'],
+    jobs:['Lihat status pengingat','Periksa jumlah percobaan'],
+    'work:technology':['Buat tugas atau rilis','Tetapkan penanggung jawab','Perbarui status'],
+    'work:academic':['Buat pekerjaan materi','Tetapkan penanggung jawab','Review hasil'],
+    'work:marketing':['Pilih kampanye atau konten','Atur penanggung jawab & jadwal','Review hasil'],
+    'work:operations':['Pilih tugas atau kasus','Tetapkan penanggung jawab','Tindak lanjuti'],
+    'work:finance':['Pilih tugas atau kasus','Tinjau transaksi terkait','Tindak lanjuti'],
+  };
+  function workflow(key,items){
+    const item=items.find(i=>i.key===key),id=item?.tab||key,steps=menuFlows[id];
+    if(!item||!steps)return '';
+    const curriculum=['courses','modules','lessons'],linked=curriculum.includes(id);
+    const group=shortNames[item.group]||(item.group==='settings'?'Pengaturan':'Ruang Kerja');
+    return `<nav class="workspace-breadcrumb" aria-label="Lokasi menu"><button type="button" data-workspace="home">Ringkasan</button><span aria-hidden="true">/</span><span>${esc(group)}</span><span aria-hidden="true">/</span><span>${esc(item.label)}</span></nav><ol class="workspace-steps" aria-label="Alur ${esc(item.label)}">${steps.map((label,index)=>{
+      const target=linked?'tab:'+curriculum[index]:null,allowed=target&&items.some(i=>i.key===target);
+      return `<li>${allowed?`<button type="button" data-workspace="${target}"${target===key?' aria-current="step"':''}>${index+1}. ${esc(label)}</button>`:`<span>${index+1}. ${esc(label)}</span>`}</li>`;
+    }).join('')}</ol>`;
+  }
   function validateCompany(data,staff){
     if(data?.version!==1||typeof data.isAdmin!=='boolean'||data.isAdmin!==staff.isAdmin||!Array.isArray(data.divisions)||!data.divisions.length||!data.scopes||!data.flows)throw new Error('invalid_company_access');
     if(data.divisions.some(d=>!divisions.some(known=>known.id===d.id)||typeof d.name!=='string'))throw new Error('invalid_company_access');
     if(new Set(data.divisions.map(d=>d.id)).size!==data.divisions.length)throw new Error('invalid_company_access');
     return data;
   }
-  global.EzAdminWorkspace=Object.freeze({divisions,labels,routes,navigation,overview,validateCompany});
+  global.EzAdminWorkspace=Object.freeze({divisions,labels,routes,navigation,overview,workflow,validateCompany});
 })(globalThis);

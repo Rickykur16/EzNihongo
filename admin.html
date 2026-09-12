@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="styles/tokens.css"/>
 <link rel="stylesheet" href="styles/components.css"/>
-<link rel="stylesheet" href="styles/admin-workspace.css?v=compact-nav-20260912"/>
+<link rel="stylesheet" href="styles/admin-workspace.css?v=menu-flow-20260912"/>
 <link rel="stylesheet" href="styles/company.css?v=unified-admin-20260912"/>
 <style>
   * { box-sizing: border-box; }
@@ -253,7 +253,7 @@
 </div>
 
 <script src="api-client.js"></script>
-<script src="src/admin-workspace.js?v=compact-nav-20260912"></script>
+<script src="src/admin-workspace.js?v=menu-flow-20260912"></script>
 <script>
 // ─────────────────────────────────────────────────────────────
 // Bootstrapping & auth
@@ -807,6 +807,7 @@ function renderApp() {
     <div class="workspace-layout">
       <aside id="workspace-sidebar" class="workspace-sidebar"><nav id="workspace-nav" aria-label="Divisi dan pengelolaan">${EzAdminWorkspace.navigation(workspaceRoutes)}</nav></aside>
       <main class="workspace-main">
+        <section id="workspace-flow" aria-label="Alur menu" hidden></section>
         <section id="workspace-home"></section>
         ${Object.keys(ADMIN_TAB_CAPABILITIES).map(tab=>`<section class="pane" data-pane="${tab}"></section>`).join('')}
         <section id="company-workspace" aria-label="Pekerjaan perusahaan" hidden></section>
@@ -825,6 +826,9 @@ function bindWorkspaceNavigation() {
   });
 }
 function markWorkspaceRoute(key) {
+  const flow=root.querySelector('#workspace-flow');
+  flow.innerHTML=EzAdminWorkspace.workflow(key,workspaceRoutes);flow.hidden=!flow.innerHTML;
+  flow.querySelectorAll('[data-workspace]').forEach(button=>button.onclick=()=>openWorkspace(button.dataset.workspace));
   const activeGroup=workspaceRoutes.find(route=>route.key===key)?.group;
   root.querySelectorAll('#workspace-nav details').forEach(group=>{
     const active=group.dataset.group===activeGroup;
@@ -846,7 +850,7 @@ async function ensureCompanyWorkspace() {
   if(companyMount)return companyMount;
   if(!companyMountPromise){
     const boot=adminBootRequest,host=root.querySelector('#company-workspace'),user=CURRENT_USER,companyAccess=COMPANY_ACCESS;
-    const pending=import('./src/company.js?v=unified-admin-20260912').then(module=>module.mountCompanyWorkspace(host,{user,companyAccess,onRoute:markWorkspaceRoute})).then(instance=>{
+    const pending=import('./src/company.js?v=menu-flow-20260912').then(module=>module.mountCompanyWorkspace(host,{user,companyAccess,onRoute:markWorkspaceRoute})).then(instance=>{
       if(boot!==adminBootRequest||!host.isConnected){instance.close();throw new Error('workspace_boot_changed');}
       companyMount=instance;return instance;
     }).catch(error=>{if(companyMountPromise===pending)companyMountPromise=null;throw error;});
@@ -898,7 +902,7 @@ async function ensureAdminTabData(tab) {
   if (coursesReady === false) throw new Error('courses_unavailable');
 }
 
-async function switchTab(tab) {
+async function switchTab(tab,context=null) {
   if (!canOpenAdminTab(tab)) return;
   const request = ++adminTabRequest;
   hideWorkspaceExtras();markWorkspaceRoute('tab:'+tab);
@@ -909,10 +913,25 @@ async function switchTab(tab) {
   try {
     await ensureAdminTabData(tab);
     if (request !== adminTabRequest) return;
+    if(context?.courseId){
+      const course=STATE.courses.find(c=>c.id===context.courseId);
+      if(!course||!['modules','lessons'].includes(tab))throw new Error('invalid_course_context');
+      const data=await api('/courses/'+encodeURIComponent(course.slug));
+      if(request!==adminTabRequest)return;
+      STATE.selectedCourse=course.slug;STATE.modules=data.course?.modules||[];
+      STATE.selectedModule=null;STATE.activeLessonId=null;STATE.lessons=[];
+      STATE.lessonSearch='';STATE.lessonFilter='all';
+    }
+    if(context?.moduleId){
+      if(tab!=='lessons'||!STATE.modules.some(m=>m.id===context.moduleId))throw new Error('invalid_module_context');
+      STATE.selectedModule=context.moduleId;STATE.activeLessonId=null;
+      STATE.lessonSearch='';STATE.lessonFilter='all';
+    }
     renderTab();
   } catch {
     if (request !== adminTabRequest) return;
-    pane.innerHTML = `<p role="alert">Data menu belum dapat dimuat.</p><button class="btn btn-ghost" type="button" onclick="switchTab('${tab}')">Coba lagi</button>`;
+    pane.innerHTML = '<p role="alert">Data menu belum dapat dimuat.</p><button class="btn btn-ghost" type="button">Coba lagi</button>';
+    pane.querySelector('button').onclick=()=>switchTab(tab,context);
   }
 }
 
@@ -1084,6 +1103,7 @@ function renderCourses() {
               : '<span class="badge" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;">Belum ditentukan</span>')
       }</td>
       <td class="actions">
+        ${canOpenAdminTab('modules')?`<button class="btn btn-primary" onclick="switchTab('modules',{courseId:'${c.id}'})">Kelola Modul</button>`:''}
         <button class="btn btn-ghost" onclick="editCourse('${c.id}')">Edit</button>
         <button class="btn btn-danger" onclick="deleteCourse('${c.id}', '${escapeHtml(c.title).replace(/'/g, "\\'")}')">Hapus</button>
       </td>
@@ -1292,6 +1312,7 @@ function renderModules() {
             <td>${vocabCount}</td>
             <td>${grammarCount}</td>
             <td class="actions">
+              ${canOpenAdminTab('lessons')?`<button class="btn btn-primary" onclick="switchTab('lessons',{moduleId:'${m.id}'})">Materi &amp; Kuis</button>`:''}
               <button class="btn btn-ghost" onclick="editModule('${m.id}')">Edit</button>
               <button class="btn btn-danger" onclick="deleteModule('${m.id}', '${escapeHtml(m.title).replace(/'/g, "\\'")}')">Hapus</button>
             </td>
@@ -1321,6 +1342,7 @@ function renderModules() {
   `;
   document.getElementById('course-picker').addEventListener('change', async (e) => {
     STATE.selectedCourse = e.target.value || null;
+    STATE.selectedModule = null;STATE.activeLessonId = null;
     if (STATE.selectedCourse) await loadModulesForCourse(STATE.selectedCourse);
     else STATE.modules = [];
     renderModules();
@@ -4216,25 +4238,22 @@ async function renderTtsCachePane() {
   pane.innerHTML = `
     <div style="max-width:720px;">
       <h2 style="margin-top:0;">TTS Cache Management</h2>
-      <p style="color:var(--ink-500);font-size:13px;">
-        Audio MP3 dari ElevenLabs di-cache di Postgres supaya satu string japanese
-        cuma hit API sekali. Bump <code>SETTINGS_VERSION</code> (voice settings ubah)
-        bikin entry lama jadi orphan — bypass hash key beda, tapi tetep makan disk.
-      </p>
       <div id="ttsCacheStatsBox" style="background:#f9fafb;border:1px solid var(--paper-300);border-radius:8px;padding:14px;margin-top:12px;">
         <div style="color:var(--ink-500);font-size:13px;">Loading stats...</div>
       </div>
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
         <button type="button" class="btn btn-ghost" onclick="loadTtsCacheStats()">↻ Refresh stats</button>
         <button type="button" class="btn btn-danger" onclick="cleanupTtsOrphans()" id="ttsOrphanBtn" disabled>🧹 Hapus orphan</button>
-        <button type="button" class="btn btn-danger" onclick="nukeAllTtsCache()" style="margin-left:auto;">⚠️ Nuke semua cache</button>
       </div>
+      <details class="workspace-secondary" id="tts-advanced"><summary>Pemeliharaan lanjutan</summary>
+      <button type="button" class="btn btn-danger" onclick="nukeAllTtsCache()">Hapus seluruh cache audio</button>
       <p style="font-size:12px;color:var(--ink-500);margin-top:14px;">
         <strong>Hapus orphan</strong> aman: cuma entry dgn versi settings beda dari current.
         Entry valid versi current (yang masih dipake) tidak akan tersentuh.
         <br>
         <strong>Nuke semua</strong> hapus everything → semua soal regen dari ElevenLabs pas first play (kena cost ~10-20k char).
       </p>
+      </details>
     </div>
   `;
   loadTtsCacheStats();
@@ -6906,11 +6925,13 @@ function renderUsers() {
     <h2>Pengguna</h2>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
       <input id="users-filter" type="search" placeholder="Cari nama atau email…" autocomplete="off" value="${escapeHtml(STATE.usersQuery || '')}" style="max-width:280px;" />
+      <button class="btn btn-ghost" onclick="exportUsersCSV(this)">⬇ Export CSV</button>
+    </div>
+    <details id="users-advanced-filters" ${STATE.usersProvince || STATE.usersLearningGoal || STATE.usersReferralSource ? 'open' : ''}><summary>Filter tambahan</summary><div class="workspace-filter-fields">
       <select id="users-province-filter"><option value="">Semua provinsi</option>${provinceOptions}</select>
       <select id="users-goal-filter"><option value="">Semua tujuan belajar</option>${goalOptions}</select>
       <select id="users-referral-filter"><option value="">Semua sumber</option>${referralOptions}</select>
-      <button class="btn btn-ghost" onclick="exportUsersCSV(this)">⬇ Export CSV</button>
-    </div>
+    </div></details>
     <div id="users-result"></div>
   `;
   const input = document.getElementById('users-filter');
@@ -7306,11 +7327,6 @@ function renderAccess() {
   }
   pane.innerHTML = `
     <h2>Beri Akses Dashboard</h2>
-    <p style="color:#737373;font-size:13px;margin-top:-4px;max-width:640px;">
-      Cari user untuk lihat kursus yang sudah diakses + riwayat pesanan mereka, dan beri
-      akses manual kalau perlu (tanpa mereka harus checkout/bayar). User harus sudah
-      pernah daftar/login di eznihongo.com dulu.
-    </p>
     <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:14px;">
       <label style="font-size:13px;">Email user<br>
         <input id="ac-email" type="email" placeholder="user@email.com" style="margin-top:4px;min-width:280px;"
@@ -7481,11 +7497,6 @@ function renderOrdersResult() {
     </tr>`).join('');
   pane.innerHTML = `
     <h2>Pesanan</h2>
-    <p style="color:#737373;font-size:13px;margin-top:-4px;max-width:640px;">
-      Verifikasi bukti transfer bank manual. Menyetujui pesanan adalah satu-satunya cara akses kursus
-      berbayar terbuka — tidak ada akses sebelum disetujui.
-    </p>
-    ${bankAccountsCardHtml()}
     <div class="toolbar" style="flex-wrap:wrap;">
       <select id="ord-status-filter" onchange="loadOrders({status:this.value}).then(renderOrdersResult)">
         ${['awaiting_review', 'pending_payment', 'rejected', 'approved', 'expired', 'cancelled', '']
@@ -7499,7 +7510,8 @@ function renderOrdersResult() {
     ${(STATE.orders || []).length === 0
       ? '<div class="empty">Tidak ada pesanan untuk filter ini.</div>'
       : `<table><thead><tr><th>No. Pesanan</th><th>Siswa</th><th>Kursus</th><th>Jumlah</th><th>Status</th><th>Dibuat</th><th></th></tr></thead><tbody>${rows}</tbody></table>`
-    }`;
+    }
+    <details id="order-bank-settings" class="workspace-secondary"><summary>Pengaturan rekening penerima</summary>${bankAccountsCardHtml()}</details>`;
 }
 
 window.openOrderDetail = async (orderId, reviewedPaymentId) => {

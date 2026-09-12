@@ -31,6 +31,12 @@ async function load(){const ticket=++generation;$('refresh-button').disabled=tru
 function selectDivision(id){showWork();division=id;resetBoardPages();$('title').textContent=access.divisions.find(d=>d.id===id).name;$('subtitle').textContent=descriptions[id];$('sync-button').hidden=!['finance','operations'].includes(id)||Array.isArray(access.scopes[id]);host.querySelectorAll('[data-division]').forEach(b=>b.setAttribute('aria-current',String(b.dataset.division===id)));load();}
 function options(values,selected=''){return values.map(([value,label])=>`<option value="${esc(value)}" ${value===selected?'selected':''}>${esc(label)}</option>`).join('');}
 async function assignees(){const f=$('work-form');try{const result=await api(`/assignees?division=${division}&courseId=${encodeURIComponent(f.elements.courseId.value)}`);f.elements.assignedTo.innerHTML=options([['','Belum ditugaskan'],...result.people.map(p=>[p.id,p.full_name||p.id])],current?.assigned_to||'');}catch{f.elements.assignedTo.innerHTML='<option value="">Belum ditugaskan</option>';}}
+function workFields(){
+ const form=$('work-form'),kind=current?.kind||form.elements.kind.value;
+ form.querySelectorAll('[data-work-kinds]').forEach(field=>{
+   field.hidden=!field.dataset.workKinds.split(' ').includes(kind)&&!field.querySelector('input').value;
+ });
+}
 async function edit(item=null){
  current=item;$('editor-notice').textContent='';$('editor-title').textContent=item?'Detail pekerjaan':'Pekerjaan baru';const f=$('work-form');f.reset();
  const kinds=division==='marketing'?['task','campaign','content']:division==='technology'?['task','release']:['task'];if(item&&!kinds.includes(item.kind))kinds.push(item.kind);
@@ -39,12 +45,14 @@ async function edit(item=null){
  f.elements.courseId.innerHTML=options([...(Array.isArray(access.scopes[division])?[]:[['','Lintas kursus']]),...allowedCourses.map(c=>[c.id,c.title])],item?.course_id||'');
  const mapping={title:'title',description:'description',priority:'priority',linkUrl:'link_url',releaseSha:'release_sha',publishedUrl:'published_url'};
  for(const [key,col]of Object.entries(mapping))f.elements[key].value=item?.[col]??(key==='priority'?'normal':'');f.elements.scheduledAt.value=localDate(item?.scheduled_at);
+ workFields();
  f.querySelector('button[type=submit]').disabled=item?.status==='archived';
  $('transitions').innerHTML=item?`<span class="badge">${esc(statuses[item.status])}</span>`+(access.flows[item.kind][item.status]||[]).map(s=>`<button data-status="${s}">${esc(statuses[s])}</button>`).join(''):'';
  $('transitions').querySelectorAll('button').forEach(b=>b.onclick=async()=>{b.disabled=true;try{const r=await api('/work/'+item.id,{version:item.version,status:b.dataset.status},'PATCH');await load();await edit(r.item);}catch(e){$('editor-notice').textContent=e.message;}finally{b.disabled=false;}});
  $('link-builder').hidden=item?.kind!=='campaign';$('utm-result').value='';if(!$('editor').open)$('editor').showModal();await assignees();
 }
 $('work-form').elements.courseId.onchange=assignees;
+$('work-form').elements.kind.onchange=workFields;
 $('work-form').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,button=form.querySelector('button[type=submit]');button.disabled=true;const d=Object.fromEntries(new FormData(form));d.division=division;d.kind=current?.kind||d.kind;d.scheduledAt=d.scheduledAt?new Date(d.scheduledAt).toISOString():null;d.courseId=d.courseId||null;d.assignedTo=d.assignedTo||null;if(current)d.version=current.version;try{await api(current?'/work/'+current.id:'/work',d,current?'PATCH':'POST');$('editor').close();await load();notice('Pekerjaan tersimpan.');}catch(e){$('editor-notice').textContent=e.message;}finally{button.disabled=false;}};
 $('utm-form').onsubmit=async e=>{e.preventDefault();try{const r=await api('/work/'+current.id+'/link',Object.fromEntries(new FormData(e.currentTarget)));$('utm-result').value=r.url;}catch(e){$('editor-notice').textContent=e.message;}};
 async function members(){const result=await api('/members');$('member-list').innerHTML=result.members.map(m=>`<div class="member-row"><strong>${esc(m.email)}</strong><br>${esc(m.role_key)} · ${esc(m.status)}<br><span class="meta">${esc(m.scopes.map(s=>s.type==='global'?'Global':s.courseId).join(', '))} · Berlaku: ${esc(date(m.expires_at))}</span>${m.status==='active'?`<br><button data-revoke="${m.id}">Cabut akses</button>`:''}</div>`).join('')||'<p>Belum ada staf terbatas.</p>';host.querySelectorAll('[data-revoke]').forEach(b=>b.onclick=async()=>{if(!confirm('Cabut keanggotaan ini? Akun, progres, dan pembelian tidak dihapus.'))return;try{await api('/members/'+b.dataset.revoke+'/revoke',{});await members();}catch(e){$('member-notice').textContent=e.message;}});}

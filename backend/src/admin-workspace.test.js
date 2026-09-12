@@ -18,7 +18,7 @@ if(process.env.COMPANY_BROWSER_QA==='true')test('unified admin browser regressio
   const original=JSON.stringify({course,module});
   async function scenario(options,check){
     const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();page.setDefaultTimeout(6000);
-    const state={loggedIn:true,student:false,capabilityStatus:200,companyStatus:404,courseFailures:0,...options},calls=[],writes=[],errors=[];
+    const state={loggedIn:true,student:false,capabilityStatus:200,companyStatus:404,courseFailures:0,moduleFailures:0,...options},calls=[],writes=[],errors=[];
     const user={id:'55555555-5555-4555-8555-555555555555',email:'admin@example.invalid',fullName:'Admin Uji Lokal',isAdmin:!state.student};
     await context.addInitScript(()=>{localStorage.setItem('ez_progress','unified-progress-sentinel');localStorage.setItem('ez_quiz_scores','unified-quiz-sentinel');});
     page.on('pageerror',e=>errors.push(e.message));
@@ -39,7 +39,9 @@ if(process.env.COMPANY_BROWSER_QA==='true')test('unified admin browser regressio
         else if(path==='/api/company/access'){status=state.companyStatus;body={error:status===404?'company_workspace_disabled':'temporarily_unavailable'};}
         else if(path==='/api/admin/courses'){
           if(state.courseFailures-->0){status=503;body={error:'fixture_unavailable'};}else body={courses:[course]};
-        }else if(path==='/api/courses/n5')body={course:{...course,modules:[module]}};
+        }else if(path==='/api/courses/n5'){
+          if(state.moduleFailures-->0){status=503;body={error:'fixture_unavailable'};}else body={course:{...course,modules:[module]}};
+        }
         else if(path==='/api/admin/video-sources')body={sources:[]};
         else if(path===`/api/admin/lessons/${quiz.id}/quiz`)body={questions:[]};
         else if(path==='/api/admin/orders')body={orders:[],total:0};
@@ -47,6 +49,10 @@ if(process.env.COMPANY_BROWSER_QA==='true')test('unified admin browser regressio
         else if(path==='/api/admin/sensei')body={sensei:[]};
         else if(path==='/api/admin/testimonials')body={testimonials:[]};
         else if(path==='/api/admin/live-classes')body={liveClasses:[]};
+        else if(path==='/api/admin/users')body={users:[],total:0};
+        else if(path==='/api/admin/discussions')body={discussions:[],total:0};
+        else if(path==='/api/admin/settings/coaching-note-prompt')body={value:'Prompt uji lokal',default:'Default uji lokal'};
+        else if(path==='/api/admin/tts/cache/stats')body={count:0,orphan_count:0,current_count:0,current_version:'fixture'};
         else{status=404;body={error:'fixture_route_not_found'};}
         return route.fulfill({status,json:body});
       }
@@ -120,6 +126,50 @@ if(process.env.COMPANY_BROWSER_QA==='true')test('unified admin browser regressio
     await page.waitForFunction(()=>document.getElementById('modal').classList.contains('show'));
     assert.ok(calls.includes('/api/admin/lessons/'+quiz.id+'/quiz'));
     if(process.env.COMPANY_QA_OUTPUT_DIR)await page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-unified-admin-quiz.png',fullPage:true});
+  }));
+  await t.test('course to module to lesson shortcuts preserve curriculum context and original content',()=>scenario({},async({page})=>{
+    await nav(page,'tab:courses').click();
+    await page.locator('[data-pane=courses]').getByRole('button',{name:'Kelola Modul',exact:true}).click();
+    await page.locator('[data-pane=modules]').getByText('Bab pertama',{exact:true}).waitFor();
+    assert.equal(await page.locator('#course-picker').inputValue(),'n5');
+    await page.locator('[data-pane=modules]').getByRole('button',{name:'Materi & Kuis',exact:true}).click();
+    await page.locator('[data-lesson-id="'+lesson.id+'"]').click();
+    assert.equal(await page.locator('#lesson-module-picker').inputValue(),module.id);
+    assert.equal(await page.locator('#drawer-lesson-form [name=content]').inputValue(),lesson.content);
+    assert.equal(await page.locator('#workspace-flow [aria-current=step]').getAttribute('data-workspace'),'tab:lessons');
+    await page.locator('#workspace-flow [data-workspace="tab:modules"]').click();
+    assert.equal(await page.locator('#course-picker').inputValue(),'n5');
+    await page.locator('#course-picker').selectOption('');
+    await page.locator('#workspace-flow [data-workspace="tab:lessons"]').click();
+    assert.equal(await page.locator('#lesson-module-picker').isDisabled(),true);
+    assert.equal(await page.locator('[data-lesson-id]').count(),0);
+  }));
+  await t.test('curriculum shortcut retries the same context after a read failure',()=>scenario({moduleFailures:1},async({page,calls})=>{
+    await nav(page,'tab:courses').click();
+    await page.locator('[data-pane=courses]').getByRole('button',{name:'Kelola Modul',exact:true}).click();
+    await page.locator('[data-pane=modules]').getByRole('button',{name:'Coba lagi',exact:true}).click();
+    await page.locator('[data-pane=modules]').getByText('Bab pertama',{exact:true}).waitFor();
+    assert.equal(await page.locator('#course-picker').inputValue(),'n5');
+    assert.equal(calls.filter(path=>path==='/api/courses/n5').length,2);
+  }));
+  await t.test('all twelve existing menus expose a short workflow and secondary controls stay folded',()=>scenario({},async({page})=>{
+    const menus={courses:'[data-pane=courses] table',modules:'#course-picker',lessons:'#lesson-course-picker',live:'[data-pane=live] .empty',sensei:'[data-pane=sensei] .empty',testimonials:'[data-pane=testimonials] .empty',users:'#users-filter',discussions:'#disc-filter',access:'#ac-email',orders:'#ord-status-filter',tts:'#ttsCacheStatsBox',ai:'#coach-prompt'};
+    for(const [tab,ready] of Object.entries(menus)){
+      await nav(page,'tab:'+tab).click();await page.locator(ready).waitFor();
+      assert.ok(await page.locator('#workspace-flow .workspace-steps li').count()>=2);
+    }
+    await nav(page,'tab:tts').click();await page.locator('#tts-advanced').waitFor();
+    assert.equal(await page.locator('#tts-advanced button').isVisible(),false);
+    await nav(page,'tab:users').click();await page.locator('#users-filter').waitFor();
+    assert.equal(await page.locator('#users-province-filter').isVisible(),false);
+    await page.locator('#users-advanced-filters summary').click();await page.locator('#users-province-filter').waitFor();
+    await nav(page,'tab:orders').click();await page.locator('#ord-status-filter').waitFor();
+    assert.equal(await page.locator('#ord-status-filter').inputValue(),'awaiting_review');
+    assert.equal(await page.locator('#bank-accounts-rows').isVisible(),false);
+    if(process.env.COMPANY_QA_OUTPUT_DIR)await page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-menu-flow-finance.png',fullPage:true});
+    await page.locator('#order-bank-settings summary').click();
+    await page.getByRole('button',{name:'+ Rekening',exact:true}).click();
+    assert.equal(await page.locator('[data-bank-row]').count(),1);
   }));
   await t.test('Finance stays in the same page and uses existing payment routes',()=>scenario({},async({page,calls})=>{
     await nav(page,'tab:orders').click();await page.getByText('Tidak ada pesanan untuk filter ini.',{exact:true}).waitFor();

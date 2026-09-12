@@ -22,10 +22,10 @@ const source = [
 function setup({ user = { isAdmin: true, fullName: 'Local admin' }, status = 200, access = describeLegacyStaffAccess(true), hash } = {}) {
   const calls = [], rendered = [], notices = [];
   const panes = Object.fromEntries(Object.keys(STAFF_TAB_CAPABILITIES).map(tab => [tab, {
-    dataset: { pane: tab }, innerHTML: '', classList: { toggle() {}, remove() {} },
+    dataset: { pane: tab }, innerHTML: '', classList: { toggle() {}, remove() {} },querySelector(){return{};},
   }]));
   const buttons = Object.keys(panes).map(tab => ({ dataset: { tab, workspace:'tab:'+tab }, classList: { toggle() {} }, addEventListener() {}, setAttribute() {}, removeAttribute() {} }));
-  const extras=Object.fromEntries(['workspace-home','company-workspace','workspace-sidebar','workspace-menu-toggle'].map(id=>[id,{innerHTML:'',hidden:false,setAttribute(){},classList:{toggle(){},remove(){}}}]));
+  const extras=Object.fromEntries(['workspace-flow','workspace-home','company-workspace','workspace-sidebar','workspace-menu-toggle'].map(id=>[id,{innerHTML:'',hidden:false,setAttribute(){},querySelectorAll(){return[];},classList:{toggle(){},remove(){}}}]));
   const location={hash:hash??'#view=tab:'+(access?.tabs?.[0]||'courses')};
   const all=selector=>selector.includes('section.pane')?Object.values(panes):selector==='#workspace-nav details'?[]:buttons;
   const state = { status, access, user, courseFailure: false, videoFailure: false, delayCourses: null, delayAccess: null, lock: '', login: false, companyStatus:404, companyBody:{error:'company_workspace_disabled'} };
@@ -214,4 +214,19 @@ test('every existing admin tool is mapped exactly once to a division',()=>{
   const f=setup();const tabs=JSON.parse(vm.runInContext('JSON.stringify(EzAdminWorkspace.divisions.flatMap(d=>d.tabs))',f.ctx));
   assert.deepEqual([...tabs].sort(),Object.keys(STAFF_TAB_CAPABILITIES).sort());assert.equal(new Set(tabs).size,tabs.length);
   for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))if(match[1].trim())new vm.Script(match[1]);
+});
+
+test('every permitted menu has an explicit workflow without granting linked editor access',()=>{
+  const f=setup();
+  const catalogue=vm.runInContext(`(()=>{
+    const staff={isAdmin:true},company={isAdmin:true,divisions:EzAdminWorkspace.divisions,insights:{enabled:true,scopes:{academic:'global'}}};
+    const items=EzAdminWorkspace.routes(staff,company,()=>true);
+    return items.filter(i=>i.key!=='home').map(i=>({key:i.key,html:EzAdminWorkspace.workflow(i.key,items)}));
+  })()`,f.ctx);
+  assert.equal(catalogue.length,22);
+  assert.ok(catalogue.every(item=>item.html.includes('workspace-steps')));
+  const limited=vm.runInContext(`EzAdminWorkspace.workflow('tab:modules',[{key:'home',group:'general',label:'Ringkasan'},{key:'tab:modules',tab:'modules',group:'academic',label:'Modul'}])`,f.ctx);
+  assert.match(limited,/data-workspace="tab:modules"/);
+  assert.doesNotMatch(limited,/data-workspace="tab:(courses|lessons)"/);
+  assert.equal(vm.runInContext(`EzAdminWorkspace.workflow('tab:orders',[])`,f.ctx),'');
 });

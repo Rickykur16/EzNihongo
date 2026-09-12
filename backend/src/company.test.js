@@ -195,6 +195,15 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
       await page.locator('#workspace-nav [data-group=technology]>summary').click();
       await page.locator('#workspace-nav [data-workspace="work:technology"]').click();
       await page.getByRole('button',{name:'+ Pekerjaan baru',exact:true}).click();
+      assert.equal(await page.locator('#work-form [name=releaseSha]').isVisible(),false);
+      await page.locator('#work-form [name=kind]').selectOption('release');
+      await page.locator('#work-form [name=releaseSha]').fill('a'.repeat(40));
+      await page.locator('#work-form [name=kind]').selectOption('task');
+      assert.equal(await page.locator('#work-form [name=releaseSha]').inputValue(),'a'.repeat(40));
+      assert.equal(await page.locator('#work-form [name=releaseSha]').isVisible(),true);
+      await page.locator('#work-form [name=releaseSha]').fill('');
+      await page.locator('#work-form [name=kind]').selectOption('release');await page.locator('#work-form [name=kind]').selectOption('task');
+      assert.equal(await page.locator('#work-form [name=releaseSha]').isVisible(),false);
       await page.locator('#work-form input[name=title]').fill('Browser acceptance task');
       await page.locator('#work-form button[type=submit]').click();
       await page.getByRole('button',{name:'Browser acceptance task',exact:true}).click();
@@ -205,6 +214,8 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
       await page.locator('#workspace-nav [data-workspace="work:marketing"]').click();
       await page.getByRole('button',{name:'+ Pekerjaan baru',exact:true}).click();
       await page.locator('#work-form select[name=kind]').selectOption('campaign');
+      assert.equal(await page.locator('#work-form [name=releaseSha]').isVisible(),false);
+      assert.equal(await page.locator('#work-form [name=publishedUrl]').isVisible(),true);
       await page.locator('#work-form input[name=title]').fill('Kampanye N5 — browser');
       await page.locator('#work-form input[name=linkUrl]').fill('https://eznihongo.com/courses/n5.html');
       await page.locator('#work-form button[type=submit]').click();
