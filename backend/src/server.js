@@ -29,6 +29,8 @@ import dashboardRouter from './routes/dashboard.js';
 import liveClassesRouter from './routes/live-classes.js';
 import progressDetailRouter from './routes/progress-detail.js';
 import profileRouter from './routes/profile.js';
+import staffRouter from './routes/staff.js';
+import companyRouter from './routes/company.js';
 
 // Fail fast on missing env vars. Every deploy needs these; without them the
 // app silently degrades (bad auth, no DB, open CORS). Crashing at startup
@@ -84,6 +86,8 @@ app.use('/api/auth', authRouter);
 app.use('/api/kanji-auth', kanjiAuthRouter);
 app.use('/api/discussions', discussionsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/staff', staffRouter);
+app.use('/api/company', companyRouter);
 app.use('/api/uploads', uploadsRouter);
 app.use('/api/subscription', subscriptionRouter);
 app.use('/api/kanji-progress', kanjiProgressRouter);
@@ -121,6 +125,7 @@ app.use('/api', (req, res) => {
 // Error handler
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
+  if (err?.status && Number.isInteger(err.status) && err.status >= 400 && err.status < 500) return res.status(err.status).json({ error: err.message });
   console.error('API error:', err);
   if (err?.code === '23505') {
     return res.status(409).json({ error: 'Conflict (unique constraint)' });

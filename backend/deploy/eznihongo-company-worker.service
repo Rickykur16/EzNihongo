@@ -1,0 +1,18 @@
+[Unit]
+Description=EzNihongo company reminders (opt-in)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/eznihongo/backend
+EnvironmentFile=/var/www/eznihongo/backend/.env
+ExecStart=/usr/bin/node scripts/company-worker.js
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
