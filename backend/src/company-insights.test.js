@@ -179,17 +179,18 @@ test('Insights PostgreSQL aggregates, gates, privacy, and non-mutation', { skip:
   });
   if(process.env.COMPANY_BROWSER_QA==='true')await t.test('browser Insights: role views, XSS escape, stale responses and mobile; progress preserved',async()=>{
     const {chromium}=await import(pathToFileURL(process.env.COMPANY_PLAYWRIGHT_MODULE).href);
-    for(const file of ['company.html','admin.html','src/admin-workspace.js','src/company-workspace.html','styles/admin-workspace.css','styles/components.css','src/company.js','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/company.css','styles/tokens.css','api-client.js','logo.png'])app.get('/'+file,(req,res)=>res.sendFile(fileURLToPath(new URL('../../'+file,import.meta.url))));
+    for(const file of ['company.html','admin.html','src/admin-workspace.js','src/company-workspace.html','styles/admin-workspace.css','styles/components.css','src/company.js','src/company-productivity.js','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/company.css','styles/tokens.css','api-client.js','logo.png'])app.get('/'+file,(req,res)=>res.sendFile(fileURLToPath(new URL('../../'+file,import.meta.url))));
     const browser=await chromium.launch({executablePath:process.env.COMPANY_BROWSER_EXECUTABLE,headless:true});
     try {
-      for(const who of ['academic','marketing']) {
-        const context=await browser.newContext({viewport:{width:1440,height:1000}}), errors=[];
+      for(const who of ['academic','marketing','operations','finance','technology']) {
+        const context=await browser.newContext({viewport:{width:1440,height:1000}}), errors=[],writes=[];
         await context.addInitScript(()=>localStorage.setItem('ez_progress','insights-sentinel'));
         const token=await signAccessToken(ids[who],who+'@example.invalid'), user={id:ids[who],email:who+'@example.invalid',fullName:who,isAdmin:false};
         await context.route('**/*',async route=>{
           const url=new URL(route.request().url());if(url.origin!==base)return route.abort();
           if(url.pathname==='/api/auth/refresh')return route.fulfill({json:{accessToken:token,user}});
           if(url.pathname==='/api/auth/me')return route.fulfill({json:{user}});
+          if(url.pathname.startsWith('/api/company')&&route.request().method()!=='GET')writes.push(url.pathname);
           return route.continue();
         });
         const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/company.html');
@@ -203,8 +204,20 @@ test('Insights PostgreSQL aggregates, gates, privacy, and non-mutation', { skip:
         await page.locator('#insights-guide summary').filter({hasText:'Apakah siswa benar-benar belajar?'}).click();
         assert.match(await page.locator('#insights-guide details').first().textContent(),/IES/);
         assert.equal(await page.locator('#insights-filters select[name=division] option').count(),1);
-        assert.equal(await page.getByRole('heading',{name:'Materi untuk ditinjau',exact:true}).count(),who==='academic'?1:0);
+        assert.equal(await page.getByRole('heading',{name:'Materi untuk ditinjau',exact:true}).count(),['academic','technology'].includes(who)?1:0);
         assert.equal(await page.locator('#insights-report uji').count(),0);
+        assert.equal(await page.locator('#insights-followup').count(),who==='academic'?0:1);
+        if(who!=='academic'){
+          await page.locator('#insights-followup').click();await page.locator('#editor[open]').waitFor();
+          assert.equal(await page.locator('#work-form [name=courseId]').inputValue(),c1);
+          assert.equal(await page.locator('#work-form [name=title]').inputValue(),'Tindak lanjut Insights: Fixture N5');
+          const draft=await page.locator('#work-form [name=description]').inputValue();assert.match(draft,/50%/);assert.match(draft,/67%/);assert.match(draft,/Snapshot:/);assert.doesNotMatch(draft,/private-|PRIVATE|sentence|user_id/);
+          assert.deepEqual(writes,[]);
+          if(who==='marketing'&&process.env.COMPANY_QA_OUTPUT_DIR)await page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-insights-followup-draft.png',fullPage:true});
+          page.once('dialog',dialog=>dialog.dismiss());await page.keyboard.press('Escape');assert.equal(await page.locator('#editor').isVisible(),true);
+          page.once('dialog',dialog=>dialog.accept());await page.keyboard.press('Escape');assert.equal(await page.locator('#editor').isVisible(),false);
+          await page.getByRole('button',{name:'Data & Insights',exact:true}).click();await page.getByRole('button',{name:'Muat ringkasan',exact:true}).click();await page.locator('.insight-card').first().waitFor();
+        }
         if(who==='academic'&&process.env.COMPANY_QA_OUTPUT_DIR)await page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-insights-desktop.png',fullPage:true});
         await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
         if(who==='academic'&&process.env.COMPANY_QA_OUTPUT_DIR)await page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-insights-mobile.png',fullPage:true});
@@ -222,9 +235,10 @@ test('Insights PostgreSQL aggregates, gates, privacy, and non-mutation', { skip:
         await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         await page.locator('#workspace-menu-toggle').click();await page.getByRole('button',{name:'Data & Insights',exact:true}).click();
         assert.equal(await page.locator('.insight-card').count(),0);
-        assert.equal(await page.evaluate(()=>localStorage.getItem('ez_progress')),'insights-sentinel');assert.deepEqual(errors,[]);
+        assert.equal(await page.evaluate(()=>localStorage.getItem('ez_progress')),'insights-sentinel');assert.deepEqual(errors,[]);assert.deepEqual(writes,[]);
         await context.close();
       }
+      assert.deepEqual(await snapshot(),before);
     } finally {await browser.close();}
   });
 });
