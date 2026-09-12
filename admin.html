@@ -63,6 +63,31 @@
   .modal-backdrop.show { display: flex; }
   .modal { background: var(--surface-white); border-radius: var(--radius-lg); padding: var(--space-6); width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: var(--elev-3); }
   .modal h3 { margin: 0 0 16px; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .modal.user-access-modal { max-width: 960px; min-width: 0; overflow-wrap: anywhere; }
+  .user-access-panel { container: user-access / inline-size; min-width: 0; overflow-wrap: anywhere; }
+  .user-access-identity { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .user-access-identity > * { min-width: 0; }
+  .user-access-grant { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-top: 14px; }
+  .user-access-grant label { min-width: 0; max-width: 100%; font-size: 13px; }
+  .user-access-grant .user-access-course { flex: 1 1 280px; }
+  .user-access-grant select { min-width: 0; max-width: 100%; margin-top: 4px; }
+  .user-access-table { table-layout: fixed; }
+  .user-access-enrollments th:last-child { width: 32%; }
+  .user-access-panel td.actions { white-space: normal; }
+  .user-access-row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .user-access-row-actions select { flex: 1 1 115px; min-width: 0; width: auto; max-width: 100%; min-height: 34px; font-size: 12px; padding: 3px 6px; }
+  .user-access-panel td.actions .btn { margin: 0; min-height: 34px; }
+  /* Reflow based on the panel width, including narrow modals and zoomed views. */
+  @container user-access (max-width: 680px) {
+    .user-access-table, .user-access-table tbody { display: block; }
+    .user-access-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .user-access-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 1px solid var(--paper-300); }
+    .user-access-table tr:last-child { border-bottom: 0; }
+    .user-access-table td { display: block; min-width: 0; border: 0; }
+    .user-access-table td:first-child, .user-access-table td:last-child { grid-column: 1 / -1; }
+    .user-access-table td::before { content: attr(data-label); display: block; margin-bottom: 6px; color: var(--ink-700); font-size: 11px; font-weight: 600; }
+    .user-access-row-actions select { flex-basis: 100%; width: 100%; }
+  }
   .field { margin-bottom: var(--space-4); }
   .field label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-700); margin-bottom: 6px; font-family: var(--font-body); }
   .field-row { display: flex; gap: 12px; }
@@ -7165,14 +7190,14 @@ function userAccessPanelHtml(d, opts) {
   );
   const enrRows = (d.enrollments || []).map((e) => `
     <tr>
-      <td><strong>${escapeHtml(e.title)}</strong> <span class="pill">${escapeHtml(e.level || '-')}</span></td>
-      <td>${escapeHtml(ENROLLMENT_SOURCE_LABEL[e.source] || e.source || '-')}</td>
-      <td>${enrollmentStatusBadge(e)}</td>
-      <td style="font-size:12px;">${new Date(e.enrolled_at).toLocaleDateString('id-ID')}${e.expires_at ? '<br>sampai ' + new Date(e.expires_at).toLocaleDateString('id-ID') : '<br><span style="color:#737373;">selamanya</span>'}</td>
-      <td class="actions">${e.status === 'active' ? `
-        <select id="${courseSelectId}-ext-${e.course_id}" style="font-size:12px;padding:3px 6px;">${durationOptionsHtml()}</select>
+      <td data-label="Kursus"><strong>${escapeHtml(e.title)}</strong> <span class="pill">${escapeHtml(e.level || '-')}</span></td>
+      <td data-label="Asal">${escapeHtml(ENROLLMENT_SOURCE_LABEL[e.source] || e.source || '-')}</td>
+      <td data-label="Status">${enrollmentStatusBadge(e)}</td>
+      <td data-label="Sejak" style="font-size:12px;">${new Date(e.enrolled_at).toLocaleDateString('id-ID')}${e.expires_at ? '<br>sampai ' + new Date(e.expires_at).toLocaleDateString('id-ID') : '<br><span style="color:#737373;">selamanya</span>'}</td>
+      <td class="actions" data-label="Masa aktif">${e.status === 'active' ? `<div class="user-access-row-actions">
+        <select id="${courseSelectId}-ext-${e.course_id}" aria-label="Masa aktif ${escapeHtml(e.title)}">${durationOptionsHtml()}</select>
         <button class="btn btn-ghost" onclick="${extendFn}('${escapeHtml(d.user.email)}','${escapeHtml(e.slug)}','${e.course_id}','${e.expires_at || ''}')">Terapkan</button>
-        <button class="btn btn-danger" onclick="${revokeFn}('${escapeHtml(d.user.email)}','${e.course_id}')">Cabut</button>` : ''}</td>
+        <button class="btn btn-danger" onclick="${revokeFn}('${escapeHtml(d.user.email)}','${e.course_id}')">Cabut</button></div>` : ''}</td>
     </tr>`).join('');
   const grantable = (d.courses || []).filter((c) => !enrolledIds.has(c.id));
   const courseOpts = grantable.map((c) =>
@@ -7180,33 +7205,34 @@ function userAccessPanelHtml(d, opts) {
   ).join('');
   const orderRows = (d.orders || []).map((o) => `
     <tr>
-      <td><code style="font-size:11px;">${escapeHtml(o.order_number)}</code></td>
-      <td>${escapeHtml(o.course_title_snapshot)}</td>
-      <td>${formatIdr(o.amount_idr)}</td>
-      <td>${orderStatusBadge(o.status)}</td>
-      <td style="font-size:12px;">${new Date(o.created_at).toLocaleDateString('id-ID')}</td>
-      <td class="actions"><button class="btn btn-ghost" onclick="openOrderDetail('${o.id}')">Detail</button></td>
+      <td data-label="No. Pesanan"><code style="font-size:11px;">${escapeHtml(o.order_number)}</code></td>
+      <td data-label="Kursus">${escapeHtml(o.course_title_snapshot)}</td>
+      <td data-label="Jumlah">${formatIdr(o.amount_idr)}</td>
+      <td data-label="Status">${orderStatusBadge(o.status)}</td>
+      <td data-label="Dibuat" style="font-size:12px;">${new Date(o.created_at).toLocaleDateString('id-ID')}</td>
+      <td class="actions" data-label="Tindakan"><button class="btn btn-ghost" onclick="openOrderDetail('${o.id}')">Detail</button></td>
     </tr>`).join('');
 
   return `
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <div class="user-access-panel">
+    <div class="user-access-identity">
       <strong>${escapeHtml(d.user.full_name || '-')}</strong>
       <span style="font-size:12px;color:#737373;">${escapeHtml(d.user.email)}</span>
     </div>
     ${grantable.length ? `
-    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:14px;">
-      <label style="font-size:13px;">Beri akses manual ke kursus<br>
-        <select id="${courseSelectId}" style="margin-top:4px;min-width:280px;">${courseOpts}</select>
+    <div class="user-access-grant">
+      <label class="user-access-course">Beri akses manual ke kursus<br>
+        <select id="${courseSelectId}">${courseOpts}</select>
       </label>
-      <label style="font-size:13px;">Masa aktif<br>
-        <select id="${courseSelectId}-dur" style="margin-top:4px;min-width:130px;">${durationOptionsHtml()}</select>
+      <label>Masa aktif<br>
+        <select id="${courseSelectId}-dur">${durationOptionsHtml()}</select>
       </label>
       <button class="btn btn-primary" onclick="${grantFn}('${escapeHtml(d.user.email)}')">Beri akses</button>
     </div>` : '<p style="margin-top:14px;color:#737373;font-size:13px;">User sudah punya akses ke semua kursus terbit.</p>'}
 
     <h3 style="margin:18px 0 6px;font-size:14px;">Kursus yang sudah diakses</h3>
     ${enrRows
-      ? `<table><thead><tr><th>Kursus</th><th>Asal</th><th>Status</th><th>Sejak</th><th>Masa aktif</th></tr></thead><tbody>${enrRows}</tbody></table>
+      ? `<table class="user-access-table user-access-enrollments"><thead><tr><th>Kursus</th><th>Asal</th><th>Status</th><th>Sejak</th><th>Masa aktif</th></tr></thead><tbody>${enrRows}</tbody></table>
          <p style="margin:6px 0 0;font-size:12px;color:#737373;">
            Perpanjangan ditambahkan dari tanggal berakhir yang sekarang, jadi sisa hari
            langganan yang masih berjalan tidak hangus. Pilih "Selamanya" untuk akses tanpa batas waktu.
@@ -7215,8 +7241,9 @@ function userAccessPanelHtml(d, opts) {
 
     <h3 style="margin:18px 0 6px;font-size:14px;">Riwayat pesanan</h3>
     ${orderRows
-      ? `<table><thead><tr><th>No. Pesanan</th><th>Kursus</th><th>Jumlah</th><th>Status</th><th>Dibuat</th><th></th></tr></thead><tbody>${orderRows}</tbody></table>`
+      ? `<table class="user-access-table"><thead><tr><th>No. Pesanan</th><th>Kursus</th><th>Jumlah</th><th>Status</th><th>Dibuat</th><th>Tindakan</th></tr></thead><tbody>${orderRows}</tbody></table>`
       : '<div class="empty">Belum pernah membuat pesanan.</div>'}
+    </div>
   `;
 }
 
@@ -7237,7 +7264,7 @@ async function refreshUserAccessModal(email) {
     ${userAccessPanelHtml(d, { courseSelectId: 'ua-course', revokeFn: 'uaRevoke', grantFn: 'uaGrant', extendFn: 'uaExtend' })}
     ${privacyRightsPanelHtml(d.user, d.orders)}
     <div style="margin-top:18px;text-align:right;"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
-  `, { className: 'modal-lg' });
+  `, { className: 'user-access-modal' });
 }
 
 // Panel hak data pribadi — menjalankan janji di privacy.html bagian 9.
