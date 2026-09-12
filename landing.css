@@ -19,3 +19,13 @@
 .header{background:var(--paper-50);isolation:isolate}
 .header .brand img,.footer-top>div>img{mix-blend-mode:multiply}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important;animation:none!important}}
+
+/* Licensed supporting photo for the bootcamp introduction. */
+.programs .bootcamp-heading{align-items:center;gap:52px}
+.programs .bootcamp-heading>.bootcamp-overview{flex:1.1;max-width:440px;min-width:0}
+.bootcamp-photo{margin:0 0 18px}
+.bootcamp-photo img{width:100%;height:auto;aspect-ratio:1400/933;object-fit:cover;border-radius:36px 8px 8px 8px;border:1px solid var(--paper-300)}
+.bootcamp-photo figcaption{margin-top:8px;font-size:11px;line-height:1.6;color:var(--ink-700)}
+.bootcamp-photo figcaption a{text-decoration:underline;text-underline-offset:3px}
+.bootcamp-overview>p{font-size:16px;line-height:1.8;color:var(--ink-700)}
+@media(max-width:800px){.programs .bootcamp-heading{gap:28px;align-items:stretch}.programs .bootcamp-heading>.bootcamp-overview{max-width:none;flex:auto}.bootcamp-photo img{border-top-left-radius:24px}}
