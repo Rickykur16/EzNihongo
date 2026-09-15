@@ -1,4 +1,4 @@
-import { normalizeDraft, compileTurn, needsReading, tokenizeWithReadings, suggestReadings, INTENTS } from './src/grammar-dialogue-core.mjs';
+import { normalizeDraft, compileTurn, needsReading, tokenizeWithReadings, suggestReadings, INTENTS } from './src/grammar-dialogue-core.js';
 import { escapeDialogue as esc } from './grammar-dialogue.js';
 
 const apiPath = id => '/admin/grammar-dialogues/' + id;

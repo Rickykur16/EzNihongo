@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { legacyDraft, normalizeDraft, compileTurn, prepareDialogue, toKatakana,
-  tokenizeWithReadings, suggestReadings, vocabularyDictionary, dialogueTimings } from '../../src/grammar-dialogue-core.mjs';
+  tokenizeWithReadings, suggestReadings, vocabularyDictionary, dialogueTimings } from '../../src/grammar-dialogue-core.js';
 import { audioFingerprint, generateDialogueAudio, providerError, sendAudioBytes } from './grammar-dialogue-audio.js';
 
 const voices = { N: 'NarratorVoice12345678', A: 'FemaleVoice123456789', B: 'MaleVoice12345678901' };

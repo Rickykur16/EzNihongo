@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { once } from 'node:events';
-import { legacyDraft, suggestReadings } from '../../src/grammar-dialogue-core.mjs';
+import { legacyDraft, suggestReadings } from '../../src/grammar-dialogue-core.js';
 
 test('dialogue publication, previews, concurrent edits, reports and rollback on PostgreSQL', {
   skip: !process.env.TEST_DATABASE_URL && 'Set TEST_DATABASE_URL to run isolated PostgreSQL integration tests',
