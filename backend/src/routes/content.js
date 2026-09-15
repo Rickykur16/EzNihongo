@@ -104,7 +104,8 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
         [moduleIds]
       ),
       query(
-        `SELECT id, module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, sort_order
+        `SELECT id, module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, sort_order,
+          EXISTS (SELECT 1 FROM grammar_dialogue_drafts d WHERE d.grammar_id = module_grammar.id) AS has_dialogue_draft
          FROM module_grammar WHERE module_id = ANY($1::uuid[])
          ORDER BY sort_order ASC, created_at ASC`,
         [moduleIds]
