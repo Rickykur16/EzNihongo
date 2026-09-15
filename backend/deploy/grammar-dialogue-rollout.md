@@ -8,7 +8,7 @@ version, so do not opt in more material than the review team can process.
 
 ## Deployment
 
-Deploy the backend, shared src/grammar-dialogue-core.mjs, both frontend scripts,
+Deploy the backend, shared src/grammar-dialogue-core.js, both frontend scripts,
 the stylesheet, admin.html and welcome.html together. Run npm run migrate from
 backend before restarting eznihongo-api. Migration 142 creates draft, version,
 publication and report tables; it does not rewrite curriculum or old TTS caches.

@@ -4,7 +4,7 @@ import rateLimit from 'express-rate-limit';
 import { query, withAdvisoryLock } from '../db.js';
 import { asyncHandler } from '../middleware.js';
 import { isCanonicalUuid } from '../live-class-admin-rules.js';
-import { legacyDraft, normalizeDraft, prepareDialogue, suggestReadings, vocabularyDictionary } from '../../../src/grammar-dialogue-core.mjs';
+import { legacyDraft, normalizeDraft, prepareDialogue, suggestReadings, vocabularyDictionary } from '../../../src/grammar-dialogue-core.js';
 import { defaultDialogueVoices, audioFingerprint, generateDialogueAudio, sendAudioBytes } from '../grammar-dialogue-audio.js';
 
 export const grammarDialogueAdminRouter = Router();

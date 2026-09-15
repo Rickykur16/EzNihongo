@@ -1,4 +1,4 @@
-import { legacyDraft, toHiragana } from './src/grammar-dialogue-core.mjs';
+import { legacyDraft, toHiragana } from './src/grammar-dialogue-core.js';
 
 export const escapeDialogue = value => String(value ?? '').replace(/[&<>"']/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);

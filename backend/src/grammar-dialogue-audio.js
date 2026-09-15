@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { prepareDialogue, dialogueTimings } from '../../src/grammar-dialogue-core.mjs';
+import { prepareDialogue, dialogueTimings } from '../../src/grammar-dialogue-core.js';
 
 export const AUDIO_PIPELINE_VERSION = 'grammar-dialogue-1';
 export function defaultDialogueVoices(env = process.env) {
