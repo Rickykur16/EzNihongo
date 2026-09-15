@@ -94,7 +94,7 @@ class DialogueEditor {
       draft.turns.map((turn, i) => this.turnHtml(turn, i)).join('') +
       '<button class="gd-button" data-gde-action="add-turn">Tambah ucapan</button></section>' +
       '<aside class="gd-editor-preview"><h3>Preview &amp; publikasi</h3>' +
-      '<label>Metode audio<select data-gde-engine><option value="dialogue-v3">Dialog utuh (v3)</option><option value="turns-v2">Per ucapan (v2, pembanding)</option></select></label>' +
+      '<label>Metode audio<select data-gde-engine><option value="turns-v2">Per ucapan (v2, disarankan)</option><option value="dialogue-v3">Dialog utuh (v3, eksperimen)</option></select></label>' +
       '<p class="gd-hint">Preview memakai kredit ElevenLabs dan membuat ulang seluruh dialog. Versi lama tetap tersimpan.</p>' +
       '<button class="gd-button gd-primary" data-gde-lock data-gde-action="generate">Buat preview baru</button>' +
       '<p data-gde-estimate></p><grammar-dialogue data-admin></grammar-dialogue>' +

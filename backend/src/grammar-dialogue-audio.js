@@ -1,7 +1,9 @@
 import crypto from 'node:crypto';
-import { prepareDialogue, dialogueTimings } from '../../src/grammar-dialogue-core.js';
+import { prepareDialogue, dialogueTimings, ROLES } from '../../src/grammar-dialogue-core.js';
 
-export const AUDIO_PIPELINE_VERSION = 'grammar-dialogue-1';
+// Bump whenever spoken input or voice settings change, so a cached fingerprint
+// never stands in for audio a different pipeline would have produced.
+export const AUDIO_PIPELINE_VERSION = 'grammar-dialogue-2';
 export function defaultDialogueVoices(env = process.env) {
   return {
     N: env.ELEVENLABS_VOICE_NARRATOR || env.ELEVENLABS_VOICE_ID || '',
@@ -27,6 +29,18 @@ export function providerError(status, detail) {
   if (status === 429) return 'ElevenLabs sedang membatasi permintaan. Coba beberapa saat lagi.';
   return 'Generasi ElevenLabs gagal (HTTP ' + status + '). Konfigurasi terpublikasi tidak berubah.';
 }
+
+// Copied verbatim from VOICE_SETTINGS in routes/tts.js, where they were tuned by
+// ear for this exact material: dialogue speakers get low stability + real style so
+// the delivery follows the sentence instead of reciting it, and a sub-1.0 speed to
+// match JLPT listening pace. That module is a Router with load-time side effects
+// (rate limiter, env reads, db import) and does not export these, so they are
+// duplicated here rather than imported — keep the two in sync by hand.
+const DIALOGUE_VOICE_SETTINGS = {
+  narrator: { stability: 0.55, similarity_boost: 0.8, style: 0, use_speaker_boost: true, speed: 0.95 },
+  female: { stability: 0.35, similarity_boost: 0.75, style: 0.4, use_speaker_boost: true, speed: 0.92 },
+  male: { stability: 0.35, similarity_boost: 0.75, style: 0.4, use_speaker_boost: true, speed: 0.92 },
+};
 
 // Never retry paid generation automatically: an interrupted request may have been charged.
 export async function generateDialogueAudio(raw, engine, {
@@ -66,7 +80,7 @@ export async function generateDialogueAudio(raw, engine, {
     const data = await request('https://api.elevenlabs.io/v1/text-to-speech/' +
       encodeURIComponent(input.voice_id) + '/with-timestamps?output_format=mp3_44100_128', {
       text: input.text, model_id: 'eleven_multilingual_v2', apply_text_normalization: 'off',
-      voice_settings: { stability: 0.55, similarity_boost: 0.75, style: 0, speed: 1 },
+      voice_settings: DIALOGUE_VOICE_SETTINGS[ROLES[draft.turns[i].speaker]],
     });
     const audio = Buffer.from(data.audio_base64, 'base64');
     const endTimes = data.alignment?.character_end_times_seconds;

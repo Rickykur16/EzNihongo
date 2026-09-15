@@ -133,6 +133,10 @@ test('v2 audition uses separate audio ranges and neutral kana without expression
   const output = await generateDialogueAudio(draft, 'turns-v2', { apiKey: 'test-secret', voices, fetcher: async (_url, options) => {
     const body = JSON.parse(options.body);
     assert.equal(body.model_id, 'eleven_multilingual_v2'); assert.doesNotMatch(body.text, /\[/);
+    // Flat delivery (high stability, style 0) is what made generated dialogue
+    // sound recited; speakers must get the expressive preset from tts.js.
+    assert.deepEqual(body.voice_settings,
+      { stability: 0.35, similarity_boost: 0.75, style: 0.4, use_speaker_boost: true, speed: 0.92 });
     calls++;
     return new Response(JSON.stringify({ audio_base64: Buffer.from('audio' + calls).toString('base64'),
       alignment: { character_end_times_seconds: [0.5, 1.2] } }));
@@ -141,6 +145,19 @@ test('v2 audition uses separate audio ranges and neutral kana without expression
   const [a, b] = output.alignment.turns;
   assert.equal(output.audio.subarray(a.byteStart, a.byteEnd).toString(), 'audio1');
   assert.equal(output.audio.subarray(b.byteStart, b.byteEnd).toString(), 'audio2');
+});
+test('narrator is voiced with the calm preset while dialogue speakers stay expressive', async () => {
+  const draft = legacyDraft({ example_dialog: 'N: ふたりははなします。\nA: はい。',
+    example_dialog_id: 'N: Dua orang berbicara.\nA: Ya.' }, voices);
+  draft.turns.forEach(turn => { turn.reviewed = true; });
+  const sent = [];
+  await generateDialogueAudio(draft, 'turns-v2', { apiKey: 'test-secret', voices, fetcher: async (_url, options) => {
+    sent.push(JSON.parse(options.body).voice_settings);
+    return new Response(JSON.stringify({ audio_base64: Buffer.from('audio').toString('base64'),
+      alignment: { character_end_times_seconds: [0.5, 1.2] } }));
+  } });
+  assert.equal(sent[0].stability, 0.55); assert.equal(sent[0].speed, 0.95); assert.equal(sent[0].style, 0);
+  assert.equal(sent[1].stability, 0.35); assert.equal(sent[1].speed, 0.92); assert.equal(sent[1].style, 0.4);
 });
 test('paid generation failures are not retried and permission errors do not expose credentials', async () => {
   let calls = 0;
