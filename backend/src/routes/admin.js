@@ -3102,21 +3102,34 @@ router.post('/module-grammar', asyncHandler(async (req, res) => {
 
 router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
   const { lessonId, pattern, meaning, example, notes, exampleDialog, exampleDialogId, sortOrder } = req.body || {};
-  const hasLesson = Object.prototype.hasOwnProperty.call(req.body || {}, 'lessonId');
-  const hasDialogId = Object.prototype.hasOwnProperty.call(req.body || {}, 'exampleDialogId');
+  // COALESCE(new, old) can't tell "clear this field" (new = null) from "field
+  // omitted" — it silently keeps the old value either way, so clearing a
+  // field in the admin editor and saving never actually persisted as empty.
+  // hasOwnProperty distinguishes the two, same pattern already used below for
+  // lessonId/exampleDialogId.
+  const has = (key) => Object.prototype.hasOwnProperty.call(req.body || {}, key);
+  const hasLesson = has('lessonId');
+  const hasDialogId = has('exampleDialogId');
+  const hasPattern = has('pattern');
+  const hasMeaning = has('meaning');
+  const hasExample = has('example');
+  const hasNotes = has('notes');
+  const hasExampleDialog = has('exampleDialog');
+  const hasSortOrder = has('sortOrder');
   const result = await query(
     `UPDATE module_grammar SET
        lesson_id = CASE WHEN $9::boolean THEN $2 ELSE lesson_id END,
-       pattern = COALESCE($3, pattern),
-       meaning = COALESCE($4, meaning),
-       example = COALESCE($5, example),
-       notes = COALESCE($6, notes),
-       example_dialog = COALESCE($7, example_dialog),
-       sort_order = COALESCE($8, sort_order),
+       pattern = CASE WHEN $12::boolean THEN $3 ELSE pattern END,
+       meaning = CASE WHEN $13::boolean THEN $4 ELSE meaning END,
+       example = CASE WHEN $14::boolean THEN $5 ELSE example END,
+       notes = CASE WHEN $15::boolean THEN $6 ELSE notes END,
+       example_dialog = CASE WHEN $16::boolean THEN $7 ELSE example_dialog END,
+       sort_order = CASE WHEN $17::boolean THEN $8 ELSE sort_order END,
        example_dialog_id = CASE WHEN $11::boolean THEN $10 ELSE example_dialog_id END,
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
-    [req.params.id, lessonId || null, pattern, meaning, example, notes, exampleDialog, sortOrder, hasLesson, exampleDialogId || null, hasDialogId]
+    [req.params.id, lessonId || null, pattern, meaning, example, notes, exampleDialog, sortOrder, hasLesson, exampleDialogId || null, hasDialogId,
+      hasPattern, hasMeaning, hasExample, hasNotes, hasExampleDialog, hasSortOrder]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ grammar: result.rows[0] });
