@@ -165,7 +165,11 @@ export function compileTurn(turn) {
   }
   return turn.tokens.map(token => {
     if (needsReading(token.text) && !token.reading.trim()) throw new Error('Bacaan belum diisi: ' + token.text);
-    const spoken = token.reading.trim() ? toKatakana(token.reading.trim()) : token.text;
+    // Hiragana, not katakana: katakana reads as loanword-style speech to the
+    // TTS model even for native words, which is the likely cause of choppy,
+    // word-by-word-sounding audio. Hiragana keeps the whole sentence in one
+    // natural register, same script the furigana display already uses.
+    const spoken = token.reading.trim() ? toHiragana(token.reading.trim()) : token.text;
     if (!SPEECH.test(spoken)) throw new Error('Gunakan bacaan kana untuk: ' + token.text);
     return spoken;
   }).join('');

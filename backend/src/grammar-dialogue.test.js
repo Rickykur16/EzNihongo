@@ -21,8 +21,8 @@ function fixture() {
 
 test('word readings include okurigana and retain Japanese particles', () => {
   const draft = fixture();
-  assert.equal(compileTurn(draft.turns[0]), 'アシタはガッコウにイキマス。');
-  assert.equal(compileTurn(draft.turns[1]), 'タナカさんもイキマス。');
+  assert.equal(compileTurn(draft.turns[0]), 'あしたはがっこうにいきます。');
+  assert.equal(compileTurn(draft.turns[1]), 'たなかさんもいきます。');
   assert.equal(draft.turns[0].japanese, '明日は学校に行きます。');
   assert.equal(toKatakana('う\u3099ぁっきゃー'), 'ヴァッキャー');
 });
@@ -34,7 +34,7 @@ test('ambiguous vocabulary is not guessed and explicit context overrides it', ()
   assert.deepEqual(vocabulary, [{ text: '学校', reading: 'ガッコウ' }]);
   const draft = legacyDraft({ example_dialog: 'A: 明日。', example_dialog_id: 'A: Besok.' }, voices);
   draft.dictionary = [{ text: '明日', reading: 'あす' }];
-  assert.equal(compileTurn(suggestReadings(draft, vocabulary).turns[0]), 'アス。');
+  assert.equal(compileTurn(suggestReadings(draft, vocabulary).turns[0]), 'あす。');
 });
 test('manual corrections stay at their source offsets, including repeated words', () => {
   const text = '明日と明日';
@@ -45,17 +45,17 @@ test('manual corrections stay at their source offsets, including repeated words'
 test('names in the speaker dictionary apply when mentioned by the other speaker', () => {
   const draft = legacyDraft({ example_dialog: 'B: 田中さん。', example_dialog_id: 'B: Tanaka.' }, voices);
   draft.speakers[1].name = '田中'; draft.speakers[1].reading = 'たなか';
-  assert.equal(compileTurn(suggestReadings(draft).turns[0]), 'タナカさん。');
+  assert.equal(compileTurn(suggestReadings(draft).turns[0]), 'たなかさん。');
 });
 test('updated dictionary suggestions replace old suggestions but not manual corrections', () => {
   let draft = fixture();
   draft.turns.forEach(turn => { turn.reviewed = false; });
   draft.dictionary[0].reading = 'あす';
   draft = suggestReadings(draft);
-  assert.equal(compileTurn(draft.turns[0]), 'アスはガッコウにイキマス。');
+  assert.equal(compileTurn(draft.turns[0]), 'あすはがっこうにいきます。');
   draft.turns[0].tokens[0].reading = 'あした';
   draft.turns[0].tokens[0].source = 'manual';
-  assert.equal(compileTurn(suggestReadings(draft).turns[0]), 'アシタはガッコウにイキマス。');
+  assert.equal(compileTurn(suggestReadings(draft).turns[0]), 'あしたはがっこうにいきます。');
 });
 test('unreviewed, missing, Latin, numeric and mismatched readings cannot reach TTS', () => {
   const draft = fixture();
@@ -117,7 +117,7 @@ test('dialogue generator sends reviewed kana, explicit v3 and Japanese language 
     assert.equal(body.model_id, 'eleven_v3');
     assert.equal(body.language_code, 'ja');
     assert.equal(body.apply_text_normalization, 'off');
-    assert.equal(body.inputs[0].text, '[curious] アシタはガッコウにイキマス。');
+    assert.equal(body.inputs[0].text, '[curious] あしたはがっこうにいきます。');
     assert.ok(body.inputs.every(input => !/\p{Script=Han}/u.test(input.text)));
     return new Response(JSON.stringify({ audio_base64: Buffer.from('audio').toString('base64'), voice_segments: [
       { dialogue_input_index: 0, start_time_seconds: 0, end_time_seconds: 2 },
