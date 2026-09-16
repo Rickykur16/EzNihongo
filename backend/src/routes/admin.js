@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { grammarDialogueAdminRouter } from './grammar-dialogue.js';
 import fs from 'fs';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
@@ -49,7 +48,6 @@ const router = Router();
 
 // Every route in this file requires admin
 router.use(requireAuth, requireCompanyAdmin);
-router.use('/grammar-dialogues', grammarDialogueAdminRouter);
 
 // ── YouTube video sources ────────────────────────────────────────────────
 // Store an ID, never an embed URL. The same source can then be picked by many
