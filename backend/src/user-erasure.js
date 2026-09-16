@@ -42,6 +42,10 @@ const WIPE_TABLES = [
   'quiz_attempts',
   'grammar_attempts',
   'smart_review_sessions',
+  // Bunpou Flow pilot (migration 147) — short-lived like smart_review_sessions
+  // above; grammar_task_session_items cascades off session_id, not user_id,
+  // so it needs no entry of its own here.
+  'grammar_task_sessions',
 ];
 
 // Tabel ber-FK ke users yang SENGAJA tidak masuk WIPE_TABLES, masing-masing

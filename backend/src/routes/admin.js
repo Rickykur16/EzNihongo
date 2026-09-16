@@ -43,6 +43,12 @@ import {
   invalidateCourseVocabCache,
   invalidateKanjiCatalogCache,
 } from '../kanji-compounds.js';
+import { loadTaskConcepts, loadModulePool } from './grammar-task.js';
+import {
+  contentRevisionId,
+  validateCompanionEnvelope,
+  sanitizeCompanionEnvelope,
+} from '../bunpou-flow-service.js';
 
 const router = Router();
 
@@ -1648,6 +1654,156 @@ router.put('/module-grammar/:id/distractors', asyncHandler(async (req, res) => {
   );
   if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ ok: true, distractors: s1, controlled: s2 });
+}));
+
+// ── Bunpou Flow pilot: Pendamping Bunpou companion editor (Paket 1) ────────
+// Draft/publish workflow for the JSONB envelope on ONE source lesson's
+// bunpou_flow_draft/bunpou_flow_published (migration 147). Never touches
+// module_grammar, grammar_examples, or lessons.content — this is additive
+// companion content only, and the pilot flag/lesson id that decide whether
+// it is ever served to a student live in app_settings (see
+// bunpou-flow-config.js), not here.
+
+// Scope = this lesson's own grammar cards UNION the grammar points actually
+// picked into its paired Tugas Bunpou (if one exists yet) — matches the
+// implementation plan's "semua grammarId milik lesson/tugas terkait".
+async function bunpouFlowScope(lessonId) {
+  const [own, task] = await Promise.all([
+    query(`SELECT id FROM module_grammar WHERE lesson_id = $1`, [lessonId]),
+    query(`SELECT id FROM lessons WHERE type = 'grammar_task' AND popup_after_lesson_id = $1 LIMIT 1`, [lessonId]),
+  ]);
+  const taskLessonId = task.rows[0]?.id || null;
+  const taskItems = taskLessonId
+    ? await query(`SELECT grammar_id FROM lesson_grammar_task_items WHERE lesson_id = $1`, [taskLessonId])
+    : { rows: [] };
+  const grammarIds = [...new Set([
+    ...own.rows.map((r) => r.id),
+    ...taskItems.rows.map((r) => r.grammar_id),
+  ])];
+  return { grammarIds, taskLessonId };
+}
+
+// Fingerprints the live content this lesson's companion is checked against
+// (pattern/meaning/examples/distractors of every pattern in scope) so the
+// editor can flag "materi berubah sejak draft/publikasi ini disimpan"
+// without re-reading every field by eye. Purely a staleness signal for the
+// admin UI — grading itself never depends on this value (each practice
+// session freezes its own drill snapshot at creation time regardless; see
+// routes/grammar-task-sessions.js).
+async function currentSourceFingerprint(taskLessonId) {
+  if (!taskLessonId) return null;
+  const [items, pool] = await Promise.all([loadTaskConcepts(taskLessonId), loadModulePool(taskLessonId)]);
+  return contentRevisionId(items, pool);
+}
+
+router.get('/lessons/:lessonId/bunpou-flow', asyncHandler(async (req, res) => {
+  const lesson = await query(
+    `SELECT id, title, bunpou_flow_draft, bunpou_flow_published FROM lessons WHERE id = $1`,
+    [req.params.lessonId]
+  );
+  if (lesson.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  const { grammarIds, taskLessonId } = await bunpouFlowScope(req.params.lessonId);
+  const patternRows = grammarIds.length
+    ? await query(`SELECT id, pattern FROM module_grammar WHERE id = ANY($1::uuid[])`, [grammarIds])
+    : { rows: [] };
+  res.json({
+    lessonId: req.params.lessonId,
+    lessonTitle: lesson.rows[0].title,
+    taskLessonId,
+    grammarIds,
+    patterns: Object.fromEntries(patternRows.rows.map((r) => [r.id, r.pattern])),
+    currentFingerprint: await currentSourceFingerprint(taskLessonId),
+    draft: lesson.rows[0].bunpou_flow_draft || null,
+    published: lesson.rows[0].bunpou_flow_published || null,
+  });
+}));
+
+router.put('/lessons/:lessonId/bunpou-flow/draft', asyncHandler(async (req, res) => {
+  const { grammarIds, taskLessonId } = await bunpouFlowScope(req.params.lessonId);
+  const check = validateCompanionEnvelope(req.body, grammarIds);
+  if (!check.ok) return res.status(400).json({ error: 'invalid_envelope', details: check.errors });
+
+  const sanitized = sanitizeCompanionEnvelope(req.body);
+  sanitized.editor = { email: req.user.email, at: new Date().toISOString() };
+  sanitized.sourceFingerprint = await currentSourceFingerprint(taskLessonId);
+
+  const r = await query(
+    `UPDATE lessons SET bunpou_flow_draft = $2, updated_at = NOW() WHERE id = $1 RETURNING bunpou_flow_draft`,
+    [req.params.lessonId, JSON.stringify(sanitized)]
+  );
+  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ ok: true, draft: r.rows[0].bunpou_flow_draft });
+}));
+
+// Publishing is deliberately its own explicit action (never implied by
+// saving a draft) and requires `confirm: true` in the body — "tindakan
+// publish harus eksplisit dan tercatat" (implementation plan §5). It always
+// (re-)validates the CURRENT draft against the CURRENT scope, so a grammar
+// point removed from the task after the draft was written cannot slip a
+// now-out-of-scope overlay into what students see.
+router.post('/lessons/:lessonId/bunpou-flow/publish', asyncHandler(async (req, res) => {
+  if (!(req.body || {}).confirm) return res.status(400).json({ error: 'confirm_required' });
+
+  const lesson = await query(`SELECT bunpou_flow_draft FROM lessons WHERE id = $1`, [req.params.lessonId]);
+  if (lesson.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  const draft = lesson.rows[0].bunpou_flow_draft;
+  if (!draft) return res.status(400).json({ error: 'no_draft_to_publish' });
+
+  const { grammarIds, taskLessonId } = await bunpouFlowScope(req.params.lessonId);
+  const check = validateCompanionEnvelope(draft, grammarIds);
+  if (!check.ok) return res.status(400).json({ error: 'invalid_envelope', details: check.errors });
+
+  const sanitized = sanitizeCompanionEnvelope(draft);
+  sanitized.publishedBy = { email: req.user.email, at: new Date().toISOString() };
+  sanitized.sourceFingerprint = await currentSourceFingerprint(taskLessonId);
+
+  const r = await query(
+    `UPDATE lessons SET bunpou_flow_published = $2, updated_at = NOW() WHERE id = $1 RETURNING bunpou_flow_published`,
+    [req.params.lessonId, JSON.stringify(sanitized)]
+  );
+  res.json({ ok: true, published: r.rows[0].bunpou_flow_published });
+}));
+
+// Flag + pilot lesson id — plain app_settings rows (same mechanism as
+// grammar_eval_prompt), read together by bunpou-flow-config.js. Enabling
+// requires the target to actually be a lesson with a companion already
+// published, so a typo'd or forgotten-to-publish lesson id can not be
+// switched live by accident.
+router.get('/settings/bunpou-flow-pilot', asyncHandler(async (req, res) => {
+  const r = await query(
+    `SELECT key, value FROM app_settings WHERE key IN ('bunpou_flow_pilot_enabled','bunpou_flow_pilot_lesson_id')`
+  );
+  const byKey = Object.fromEntries(r.rows.map((row) => [row.key, row.value]));
+  res.json({
+    enabled: byKey.bunpou_flow_pilot_enabled === 'true',
+    lessonId: byKey.bunpou_flow_pilot_lesson_id || null,
+  });
+}));
+
+router.put('/settings/bunpou-flow-pilot', asyncHandler(async (req, res) => {
+  const enabled = (req.body || {}).enabled === true;
+  const lessonId = String((req.body || {}).lessonId || '').trim() || null;
+  if (enabled && !lessonId) return res.status(400).json({ error: 'lesson_id_required_to_enable' });
+  if (lessonId) {
+    const lesson = await query(`SELECT bunpou_flow_published FROM lessons WHERE id = $1`, [lessonId]);
+    if (lesson.rows.length === 0) return res.status(404).json({ error: 'lesson_not_found' });
+    if (enabled && !lesson.rows[0].bunpou_flow_published) {
+      return res.status(400).json({ error: 'lesson_has_no_published_companion' });
+    }
+  }
+  await withTransaction(async (client) => {
+    await client.query(
+      `INSERT INTO app_settings (key, value, updated_at) VALUES ('bunpou_flow_pilot_enabled', $1, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+      [enabled ? 'true' : 'false']
+    );
+    await client.query(
+      `INSERT INTO app_settings (key, value, updated_at) VALUES ('bunpou_flow_pilot_lesson_id', $1, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+      [lessonId]
+    );
+  });
+  res.json({ ok: true, enabled, lessonId });
 }));
 
 // Bank pola grammar milik MODUL sebuah pelajaran — dipakai dropdown "Pola

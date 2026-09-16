@@ -1104,7 +1104,26 @@ async function renderAiSettings() {
     def = p.default || '';
   } catch { /* tetap render editor; backend pakai default */ }
   window.__coachPromptDefault = def;
+  let bf = { enabled: false, lessonId: '' };
+  try { bf = await api('/admin/settings/bunpou-flow-pilot'); } catch { /* default off */ }
   pane.innerHTML = `
+    <div style="max-width:760px;border:1px solid #e5e5e5;border-radius:10px;padding:18px 20px;background:#fff;margin-bottom:18px;">
+      <h2 style="margin:0 0 4px;">Bunpou Flow — pilot satu pelajaran</h2>
+      <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 14px;">
+        Mengaktifkan lapisan pendamping (tujuan, arahan menyimak, pembahasan Step 1/2, dan sesi
+        Tugas Bunpou yang bisa dilanjutkan setelah refresh) untuk <strong>satu</strong> pelajaran.
+        Pelajaran lain tidak terpengaruh sama sekali. Isi Pendamping Bunpou dan publikasikan dulu
+        lewat drawer pelajaran (tombol 🧭 Pendamping Bunpou) sebelum diaktifkan di sini.
+      </p>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px;">
+        <input type="checkbox" id="bf-pilot-enabled" ${bf.enabled ? 'checked' : ''} />
+        Aktifkan untuk pelajaran di bawah
+      </label>
+      <label style="font-size:12px;color:#737373;">ID pelajaran (source lesson, bukan Tugas Bunpou)</label>
+      <input id="bf-pilot-lesson-id" value="${escapeHtml(bf.lessonId || '')}" placeholder="UUID pelajaran"
+        style="width:100%;font-size:13px;margin:2px 0 10px;font-family:monospace;" />
+      <button type="button" class="btn btn-primary" onclick="bfPilotSaveSettings()">Simpan</button>
+    </div>
     <div style="max-width:760px;border:1px solid #e5e5e5;border-radius:10px;padding:18px 20px;background:#fff;">
       <h2 style="margin:0 0 4px;">Catatan Coaching Adaptif (Maneko-chan)</h2>
       <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 14px;">
@@ -1121,6 +1140,15 @@ async function renderAiSettings() {
       </div>
     </div>`;
 }
+
+window.bfPilotSaveSettings = async () => {
+  const enabled = !!document.getElementById('bf-pilot-enabled')?.checked;
+  const lessonId = (document.getElementById('bf-pilot-lesson-id')?.value || '').trim();
+  try {
+    await api('/admin/settings/bunpou-flow-pilot', { method: 'PUT', body: JSON.stringify({ enabled, lessonId: lessonId || null }) });
+    notify('Pengaturan Bunpou Flow tersimpan');
+  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+};
 
 window.coachPromptResetDefault = () => {
   const ta = document.getElementById('coach-prompt');
@@ -2256,7 +2284,8 @@ function drawerHtml(l, mod, courseId) {
         </div>
         ${grammarFastAddBarHtml()}
         <div id="items-wrap" style="overflow-x:auto;">${renderItemTable('grammar', items)}</div>
-      </div>`;
+      </div>
+      ${items.length ? drawerContentBtn(`manageBunpouFlow('${l.id}', '${titleEsc}')`, '🧭 Pendamping Bunpou', null) : ''}`;
   } else if (l.type === 'deck') {
     content = drawerContentBtn(`manageDeck('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')`, 'Kelola Deck', (l.deck || []).length);
   } else if (l.type === 'kanji') {
@@ -4664,6 +4693,130 @@ window.grammarManageExamples = async (grammarId) => {
     <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>
   `);
   modalContent.style.maxWidth = '900px';
+};
+
+// ── Bunpou Flow pilot: Pendamping Bunpou (Paket 1) ────────────────────────
+// Draft/publish editor for the companion envelope (migration 147) on ONE
+// source lesson — tujuan pelajaran, arahan menyimak per pola, dan overlay
+// feedback Step 1/2 per pola. Never touches Pola/Arti/Contoh themselves;
+// those stay editable only via the existing Bunpou (文法) item table above.
+function bfFieldBlock(gid, pattern, env) {
+  const dir = (env.directions || {})[gid] || '';
+  const ov = ((env.overlays || {})[gid]) || {};
+  const s1 = ov.step1 || {}, s2 = ov.step2 || {};
+  return `
+    <div style="border:1px solid var(--paper-300,#e5e5e5);border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+      <div style="font-weight:600;font-size:13px;margin-bottom:6px;" lang="ja">${escapeHtml(pattern || gid)}</div>
+      <label style="font-size:11px;color:#737373;">Arahan menyimak (opsional — tampil di kartu dialog)</label>
+      <textarea id="bf-dir-${gid}" rows="2" style="width:100%;font-size:13px;margin:2px 0 8px;">${escapeHtml(dir)}</textarea>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div>
+          <label style="font-size:11px;color:#737373;">Step 1 — petunjuk</label>
+          <textarea id="bf-h1-${gid}" rows="2" style="width:100%;font-size:12px;">${escapeHtml(s1.hint || '')}</textarea>
+          <label style="font-size:11px;color:#737373;">Step 1 — pembahasan</label>
+          <textarea id="bf-e1-${gid}" rows="2" style="width:100%;font-size:12px;">${escapeHtml(s1.explanation || '')}</textarea>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#737373;">Step 2 — petunjuk</label>
+          <textarea id="bf-h2-${gid}" rows="2" style="width:100%;font-size:12px;">${escapeHtml(s2.hint || '')}</textarea>
+          <label style="font-size:11px;color:#737373;">Step 2 — pembahasan</label>
+          <textarea id="bf-e2-${gid}" rows="2" style="width:100%;font-size:12px;">${escapeHtml(s2.explanation || '')}</textarea>
+        </div>
+      </div>
+    </div>`;
+}
+
+window.manageBunpouFlow = async (lessonId, lessonTitle) => {
+  let d;
+  try {
+    d = await api('/admin/lessons/' + lessonId + '/bunpou-flow');
+  } catch (err) { notify('Gagal load Pendamping Bunpou: ' + err.message, true); return; }
+  window.__bfCtx = { lessonId, grammarIds: d.grammarIds || [], patterns: d.patterns || {} };
+
+  const env = d.draft || d.published || {};
+  const staleDraft = d.draft && d.draft.sourceFingerprint && d.draft.sourceFingerprint !== d.currentFingerprint;
+  const stalePublished = !d.draft && d.published && d.published.sourceFingerprint && d.published.sourceFingerprint !== d.currentFingerprint;
+  const noTask = !d.taskLessonId;
+
+  openModal(`
+    <h3>🧭 Pendamping Bunpou — ${escapeHtml(lessonTitle || d.lessonTitle || '')}</h3>
+    <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 10px;">
+      Lapisan opsional: tujuan singkat pelajaran, arahan menyimak per pola, dan
+      pembahasan Step 1/2 Tugas Bunpou. Tidak mengubah materi asli. Belum tampil
+      ke siswa mana pun sampai dipublikasikan DAN diaktifkan lewat pengaturan flag.
+    </p>
+    ${noTask ? `<div style="font-size:12px;color:#b91c1c;background:#fee2e2;border-radius:6px;padding:8px 10px;margin-bottom:10px;font-family:var(--font-body);">
+      Pelajaran ini belum punya Tugas Bunpou pasangan (popup setelah pelajaran ini) — pembahasan
+      Step 1/2 di bawah baru relevan setelah tugasnya ada.
+    </div>` : ''}
+    ${staleDraft ? `<div style="font-size:12px;color:#92400e;background:#fef3c7;border-radius:6px;padding:8px 10px;margin-bottom:10px;font-family:var(--font-body);">
+      ⚠ Materi (pola/arti/contoh) berubah sejak draft ini terakhir disimpan — tinjau ulang sebelum publikasi.
+    </div>` : ''}
+    ${stalePublished ? `<div style="font-size:12px;color:#92400e;background:#fef3c7;border-radius:6px;padding:8px 10px;margin-bottom:10px;font-family:var(--font-body);">
+      ⚠ Materi berubah sejak versi terpublikasi ini disimpan.
+    </div>` : ''}
+    <label style="font-size:12px;color:#404040;">Tujuan pelajaran (satu kalimat, opsional)</label>
+    <textarea id="bf-objective" rows="2" style="width:100%;font-size:13px;margin:2px 0 12px;"
+      placeholder="Siswa dapat mengenali dan menggunakan pola ...">${escapeHtml(env.objective || '')}</textarea>
+    <div id="bf-fields">${(d.grammarIds || []).map((gid) => bfFieldBlock(gid, d.patterns[gid], env)).join('') || '<p style="font-size:12px;color:#737373;">Pelajaran ini belum punya pola grammar.</p>'}</div>
+    <div style="font-size:11px;color:#a3a3a3;font-family:var(--font-body);margin:4px 0;">
+      ${d.published ? `Terpublikasi oleh ${escapeHtml(d.published.publishedBy?.email || '?')} · ${d.published.publishedBy?.at ? new Date(d.published.publishedBy.at).toLocaleString('id-ID') : ''}` : 'Belum pernah dipublikasikan.'}
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button type="button" class="btn btn-ghost" onclick="bfSaveDraft()">Simpan Draft</button>
+      <button type="button" class="btn btn-primary" onclick="bfPublish()">Publikasikan</button>
+    </div>
+  `);
+  modalContent.style.maxWidth = '720px';
+};
+
+function bfCollectEnvelope() {
+  const ctx = window.__bfCtx;
+  const objective = (document.getElementById('bf-objective')?.value || '').trim();
+  const directions = {}, overlays = {};
+  for (const gid of ctx.grammarIds) {
+    const dir = (document.getElementById('bf-dir-' + gid)?.value || '').trim();
+    if (dir) directions[gid] = dir;
+    const h1 = (document.getElementById('bf-h1-' + gid)?.value || '').trim();
+    const e1 = (document.getElementById('bf-e1-' + gid)?.value || '').trim();
+    const h2 = (document.getElementById('bf-h2-' + gid)?.value || '').trim();
+    const e2 = (document.getElementById('bf-e2-' + gid)?.value || '').trim();
+    const tiers = {};
+    if (h1 || e1) tiers.step1 = { ...(h1 && { hint: h1 }), ...(e1 && { explanation: e1 }) };
+    if (h2 || e2) tiers.step2 = { ...(h2 && { hint: h2 }), ...(e2 && { explanation: e2 }) };
+    if (Object.keys(tiers).length) overlays[gid] = tiers;
+  }
+  return { objective: objective || undefined, directions, overlays };
+}
+
+window.bfSaveDraft = async () => {
+  const ctx = window.__bfCtx;
+  if (!ctx) return;
+  try {
+    await api('/admin/lessons/' + ctx.lessonId + '/bunpou-flow/draft', {
+      method: 'PUT', body: JSON.stringify(bfCollectEnvelope()),
+    });
+    notify('Draft Pendamping Bunpou tersimpan');
+    closeModal();
+  } catch (err) { notify('Gagal menyimpan draft: ' + err.message, true); }
+};
+
+window.bfPublish = async () => {
+  const ctx = window.__bfCtx;
+  if (!ctx) return;
+  if (!confirm('Publikasikan Pendamping Bunpou ini?\n\nIsi form saat ini akan disimpan sebagai draft lalu langsung '
+    + 'diterbitkan ke siswa (setelah flag pilot juga diaktifkan untuk pelajaran ini).')) return;
+  try {
+    await api('/admin/lessons/' + ctx.lessonId + '/bunpou-flow/draft', {
+      method: 'PUT', body: JSON.stringify(bfCollectEnvelope()),
+    });
+    await api('/admin/lessons/' + ctx.lessonId + '/bunpou-flow/publish', {
+      method: 'POST', body: JSON.stringify({ confirm: true }),
+    });
+    notify('Pendamping Bunpou dipublikasikan');
+    closeModal();
+  } catch (err) { notify('Gagal publikasi: ' + err.message, true); }
 };
 
 // ── Pengecoh Step 1 Tugas Bunpou (migration 124) ──────────────────────────

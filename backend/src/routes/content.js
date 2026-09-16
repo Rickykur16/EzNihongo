@@ -9,6 +9,8 @@ import {
   deriveKanjiUsages,
 } from '../kanji-compounds.js';
 import { userCanAccessCourse, requireLessonCourseAccess } from '../entitlements.js';
+import { loadPilotConfig } from '../bunpou-flow-config.js';
+import { publicCompanionView } from '../bunpou-flow-service.js';
 
 const router = Router();
 
@@ -295,6 +297,20 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
     }
   }
 
+  // Bunpou Flow pilot: at most one lesson in the entire catalogue can carry
+  // this, and only when an admin has both flipped the flag and published a
+  // snapshot for it. Fetched as its own narrow query — never by widening the
+  // lessons SELECT above, which is spread wholesale (`...l`) into every
+  // lesson below; adding bunpou_flow_published there would leak the raw
+  // envelope onto lessons this pilot has nothing to do with, and
+  // bunpou_flow_draft (editor-only) must never reach this endpoint at all.
+  const pilotConfig = await loadPilotConfig();
+  let pilotCompanion = null;
+  if (pilotConfig.enabled && pilotConfig.lessonId) {
+    const pub = await query(`SELECT bunpou_flow_published FROM lessons WHERE id = $1`, [pilotConfig.lessonId]);
+    pilotCompanion = publicCompanionView(pub.rows[0]?.bunpou_flow_published);
+  }
+
   res.json({
     course: {
       ...course.rows[0],
@@ -314,6 +330,7 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
             kanji: kanjiByLesson[l.id] || [],
             kana: kanaByLesson[l.id] || [],
             grammarTask: grammarTaskByLesson[l.id] || [],
+            ...(pilotCompanion && l.id === pilotConfig.lessonId ? { bunpouFlow: pilotCompanion } : {}),
           })),
           vocabulary: vocabByModule[m.id] || [],
           grammar: grammarByModule[m.id] || [],
@@ -367,6 +384,16 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
     videoEndSeconds: row.video_end_seconds,
     durationMinutes: row.duration_minutes,
   };
+
+  // See the matching comment in GET /courses/:slug — `row` here carries
+  // bunpou_flow_draft too (via `l.*` above), which must never reach a
+  // response; only bunpou_flow_published is read, and only for the one
+  // lesson the pilot is currently scoped to.
+  const pilotConfig = await loadPilotConfig();
+  if (pilotConfig.enabled && pilotConfig.lessonId === row.id) {
+    const companion = publicCompanionView(row.bunpou_flow_published);
+    if (companion) response.bunpouFlow = companion;
+  }
 
   if (row.type === 'quiz') {
     // Quiz lessons: jangan dump soal. Frontend ambil soal via

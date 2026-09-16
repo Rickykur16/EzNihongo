@@ -8,7 +8,7 @@ import { eraseUserAccount } from './user-erasure.js';
 const contract = await readFile(new URL('../contracts/staff-schema-v1.sql', import.meta.url), 'utf8');
 const wipeTables = ['sessions', 'user_marketing_profile', 'user_enrollments', 'user_progress', 'user_learning_state',
   'user_stats', 'user_practice_state', 'user_practice_legacy_imports', 'practice_attempts', 'quiz_question_results',
-  'quiz_attempts', 'grammar_attempts', 'smart_review_sessions'];
+  'quiz_attempts', 'grammar_attempts', 'smart_review_sessions', 'grammar_task_sessions'];
 const quote = value => '"' + value.replaceAll('"', '""') + '"';
 
 test('staff schema remains a test contract outside the automatic migration directory', async () => {

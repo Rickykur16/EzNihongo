@@ -358,7 +358,10 @@ export function parseDistractors(raw) {
 // Pola + contohnya untuk satu lesson tugas. Dipakai dua-duanya oleh endpoint
 // daftar soal dan endpoint penilaian, supaya soal yang dinilai persis soal
 // yang dikirim (penurunannya deterministik).
-async function loadTaskConcepts(lessonId) {
+// Exported for backend/src/routes/grammar-task-sessions.js (Bunpou Flow
+// pilot) — reused as-is, not duplicated, so both routes always derive
+// questions from the identical query.
+export async function loadTaskConcepts(lessonId) {
   const rows = await query(
     `SELECT g.id, g.pattern, g.meaning, g.recognition_distractors, g.controlled_distractors, gi.sort_order
        FROM lesson_grammar_task_items gi
@@ -391,7 +394,7 @@ async function loadTaskConcepts(lessonId) {
 // Seluruh pola satu BAB (modul pelajaran ini), dipakai sebagai sumber pengecoh.
 // Bukan sebatas pola di tugas ini: tugas kedua tiap bab sering cuma berisi 2
 // pola, yang berarti hanya 1 pengecoh dan Step 1 hilang. Lihat deriveDrills().
-async function loadModulePool(lessonId) {
+export async function loadModulePool(lessonId) {
   const rows = await query(
     `SELECT g.id, g.pattern, g.meaning, g.recognition_distractors, g.controlled_distractors
        FROM module_grammar g
