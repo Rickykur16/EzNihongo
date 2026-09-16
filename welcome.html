@@ -8027,7 +8027,7 @@ function renderLessonGrammar(lesson) {
                 <span class="grammar-block-chevron" aria-hidden="true">▾</span>
               </button>
               <div class="grammar-block-content">
-                ${g.has_dialogue_draft
+                ${g.has_published_dialogue
                   ? `<grammar-dialogue data-grammar-id="${escapeHtml(g.id || '')}" data-legacy="${escapeHtml(dialog)}" data-translation="${escapeHtml(g.example_dialog_id || '')}" data-pattern="${escapeHtml(g.pattern || '')}"></grammar-dialogue>`
                   : grammarKaraokeHtml(dialog, `g${i}`, g.example_dialog_id || '')}
               </div>

@@ -104,8 +104,20 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
         [moduleIds]
       ),
       query(
+        // Gate on PUBLISHED audio, not on a saved draft. A draft alone means an
+        // admin merely started editing — switching students to the new player
+        // then strands them on a dialogue with no audio at all until the
+        // generate → review → publish cycle finishes, silently losing the
+        // working karaoke audio they had. Conditions mirror the student
+        // endpoint in routes/grammar-dialogue.js exactly, so the two can never
+        // disagree about whether audio exists.
         `SELECT id, module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, sort_order,
-          EXISTS (SELECT 1 FROM grammar_dialogue_drafts d WHERE d.grammar_id = module_grammar.id) AS has_dialogue_draft
+          EXISTS (
+            SELECT 1 FROM grammar_dialogue_publications p
+              JOIN grammar_dialogue_versions v ON v.id = p.version_id AND v.grammar_id = p.grammar_id
+             WHERE p.grammar_id = module_grammar.id
+               AND v.status = 'ready' AND v.reviewed_at IS NOT NULL
+          ) AS has_published_dialogue
          FROM module_grammar WHERE module_id = ANY($1::uuid[])
          ORDER BY sort_order ASC, created_at ASC`,
         [moduleIds]
