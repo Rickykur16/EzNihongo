@@ -210,13 +210,21 @@ const VOICE_SETTINGS = {
 // supaya emotion tag [questioning]/[excited]/dll jalan.
 const NARRATOR_MODEL_OVERRIDE = 'eleven_multilingual_v2';
 
-export async function fetchElevenAudio(voiceId, text, role = 'single', retry = 0) {
+export async function fetchElevenAudio(voiceId, text, role = 'single', matchAligned = false, retry = 0) {
   const settings = VOICE_SETTINGS[role] || VOICE_SETTINGS.single;
-  const modelId = role === 'narrator' ? NARRATOR_MODEL_OVERRIDE : ELEVEN_MODEL;
-  // Narrator dipaksa v2 → tag emotion [calm]/[questioning]/dll bakal dibaca
-  // literal. Strip tag dari text supaya gak keluar sebagai kata "calm" /
-  // "questioning" di audio.
-  const cleanText = role === 'narrator'
+  // `matchAligned` = generate exactly what fetchElevenAudioAligned would
+  // produce for this (voiceId, text, role) — used by the admin preview
+  // endpoint so testing a non-narrator turn there sounds identical to what
+  // students actually hear. Without it, admin previews on ELEVEN_MODEL (prod:
+  // v3, tags preserved) while /api/tts/aligned ALWAYS forces
+  // NARRATOR_MODEL_OVERRIDE (v2) + strips tags for every role — the same
+  // turn could sound different in the two places despite sharing a voiceId.
+  const forceReliable = role === 'narrator' || matchAligned;
+  const modelId = forceReliable ? NARRATOR_MODEL_OVERRIDE : ELEVEN_MODEL;
+  // Narrator (and matchAligned) dipaksa v2 → tag emotion [calm]/[questioning]/
+  // dll bakal dibaca literal. Strip tag dari text supaya gak keluar sebagai
+  // kata "calm" / "questioning" di audio.
+  const cleanText = forceReliable
     ? text.replace(/\[[a-z_]{1,24}\]\s*/gi, '').trim()
     : text;
   const upstream = await fetch(
@@ -241,7 +249,7 @@ export async function fetchElevenAudio(voiceId, text, role = 'single', retry = 0
     // 500-503. Backoff: 500ms × (retry+1). Max 3 retries.
     if (retry < 3 && (upstream.status === 409 || upstream.status === 429 || upstream.status >= 500)) {
       await new Promise((r) => setTimeout(r, 500 * (retry + 1)));
-      return fetchElevenAudio(voiceId, text, role, retry + 1);
+      return fetchElevenAudio(voiceId, text, role, matchAligned, retry + 1);
     }
     const err = new Error(`ElevenLabs ${upstream.status}: ${detail.slice(0, 200)}`);
     err.upstreamStatus = upstream.status;
@@ -283,7 +291,11 @@ export async function fetchElevenVoices() {
 // /with-timestamps balikin audio + alignment per-karakter. Dipaksa pakai
 // eleven_multilingual_v2 (model yg support timestamps reliable; v3 belum
 // tentu) + strip [emotion tag] biar gak kebaca literal sebagai kata.
-const ALIGNED_MODEL = 'eleven_multilingual_v2';
+// SENGAJA disamakan dgn NARRATOR_MODEL_OVERRIDE (bukan cuma kebetulan sama
+// value) — fetchElevenAudio's `matchAligned` harus generate PERSIS yang
+// fungsi ini hasilkan; alias ini menjamin keduanya gak bisa diam-diam
+// berbeda lagi kalau salah satu diubah nanti.
+const ALIGNED_MODEL = NARRATOR_MODEL_OVERRIDE;
 
 async function fetchElevenAudioAligned(voiceId, text, role = 'single', retry = 0) {
   const settings = VOICE_SETTINGS[role] || VOICE_SETTINGS.single;

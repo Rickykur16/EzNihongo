@@ -288,6 +288,81 @@
       terpisah dari branch yang di-restart dari `main` terbaru (bukan
       ditumpuk di atas histori yang sudah merge).
 
+      **Follow-up KEDUA: preview dialog admin tidak match dengan yang
+      didengar siswa** — user: "Hasil yg di play di dashboard berbeda
+      dengan yang di cek dari ruang kerja". Root cause BUKAN voice_id
+      (`voiceForSpeaker` dipanggil sama persis di kedua jalur, identitas
+      suara identik) — murni MODEL ElevenLabs + PERLAKUAN TAG EMOSI yang
+      beda antara dua fungsi generate yang sudah lama ada, sebelum pivot
+      ElevenLabs manapun:
+      - Tombol "🔊 Tes giliran ini" admin → `POST /admin/tts/preview` →
+        `fetchElevenAudio()`: untuk giliran NON-narator ("dialogue"), pakai
+        `ELEVEN_MODEL` (env var `ELEVENLABS_MODEL`, di produksi kemungkinan
+        besar diset ke v3 spesifik supaya emotion tag `[excited]`/`[calm]`/
+        dll bisa jalan — lihat komentar lama di file yg sama) DAN tag emosi
+        TIDAK di-strip dari teks.
+      - Yang BENAR-BENAR didengar siswa (`window.grammarKaraokePlay` di
+        welcome.html — SATU-SATUNYA jalur pemutaran dialog grammar sisi
+        siswa, dikonfirmasi lewat grep menyeluruh, bukan diasumsikan) →
+        `GET /api/tts/aligned` → `fetchElevenAudioAligned()`: SELALU
+        dipaksa `eleven_multilingual_v2` (komentar lama: "model yg support
+        timestamps reliable; v3 belum tentu") DAN tag emosi SELALU
+        di-strip, apa pun role-nya.
+      Untuk giliran NARATOR kedua jalur sudah SAMA dari awal
+      (`fetchElevenAudio` juga sudah memaksa v2+strip untuk role narrator
+      sejak sebelum sesi ini) — bug murni mengenai giliran KARAKTER
+      (non-narator), persis yang dilaporkan user.
+      **Perbaikan SEMPIT** (bukan menyamakan kedua fungsi generate
+      seluruhnya): `fetchElevenAudio()` dapat parameter baru `matchAligned`
+      (default `false` — SEMUA pemanggil lama, yaitu `/api/tts` dialog+
+      single dan cabang single-voice/vocab `/admin/tts/preview`, nol
+      perubahan perilaku). Kalau `true`, fungsi ini generate PERSIS seperti
+      `fetchElevenAudioAligned`: model dipaksa `eleven_multilingual_v2` +
+      tag emosi selalu di-strip, TERLEPAS dari role. `ALIGNED_MODEL`
+      diubah jadi alias langsung dari `NARRATOR_MODEL_OVERRIDE`
+      (`const ALIGNED_MODEL = NARRATOR_MODEL_OVERRIDE`) — dua konstanta yang
+      SEBELUMNYA kebetulan sama nilainya sekarang dijamin gak bisa diam-diam
+      berbeda lagi kalau salah satu diubah nanti. `matchAligned=true` DIPAKAI
+      HANYA di `/admin/tts/preview`'s loop dialog (admin.js) — bukan di
+      `/api/tts` (yang tetap perlu `ELEVEN_MODEL`+tag utuh buat quiz
+      listening `audio_script`, fitur terpisah yang sudah benar dan tidak
+      boleh ikut berubah). **Kenapa arah perbaikannya bukan sebaliknya**
+      (bikin `fetchElevenAudioAligned` ikut pakai `ELEVEN_MODEL` supaya
+      preview tidak perlu diubah): komentar aslinya eksplisit bilang v3
+      belum tentu reliable buat endpoint `/with-timestamps` — resikonya
+      merusak fitur karaoke word-highlight (lebih berharga & lebih susah
+      dites ulang dari sandbox ini) demi menyamakan preview; jadi arahnya
+      "preview mengikuti kenyataan", bukan sebaliknya. **Vocab/single-voice
+      preview TIDAK ikut disentuh** — `deckShowAudioPreview` (preview admin)
+      dan pemutaran vocab asli siswa (`ttsUrl`/`playTTS`) SAMA-SAMA lewat
+      `/api/tts` biasa (bukan aligned), sudah konsisten dari awal.
+      **Cache staleness yang disadari, SENGAJA belum diotomatisasi**:
+      `ttsHashKey(text, voices)` tidak memasukkan model/`matchAligned` ke
+      hash — giliran yang SUDAH pernah di-test lewat tombol ini SEBELUM fix
+      ini deploy akan tetap mengembalikan audio lama dari cache (tidak
+      otomatis ke-regenerate) sampai baris cache itu dihapus manual
+      (`DELETE /admin/tts/cache` body `{text}`, tool yang sudah ada — pola
+      sama dengan `deckRegenAudio` untuk vocab) atau teksnya diedit (hash
+      otomatis berubah). TIDAK dibuat `admDialogRowTest` auto-clear-cache
+      dulu (kayak `deckRegenAudio`) karena itu mengorbankan caching untuk
+      testing berulang yang teksnya TIDAK berubah — trade-off cost vs.
+      freshness yang lebih baik diputuskan user, bukan diam-diam dipilih.
+      Dampak transisi ini kemungkinan kecil: fitur giliran-per-turn ini baru
+      saja merge (PR #321/#322) di sesi yang sama, jadi baru sedikit giliran
+      yang sempat di-test sebelum fix ini ada.
+      **Divalidasi**: 2 tes baru (`tts.test.js`, mock `global.fetch` — pola
+      BARU di codebase ini, tidak ada precedent sebelumnya, tapi jaringan
+      ElevenLabs diblokir egress sandbox jadi ini satu-satunya cara
+      memverifikasi payload request tanpa panggilan asli) membuktikan
+      langsung: role dialogue+matchAligned=false → model=`ELEVEN_MODEL`
+      live+tag utuh (perilaku lama, tidak berubah); role dialogue+
+      matchAligned=true → model=`eleven_multilingual_v2`+tag ke-strip
+      (perilaku baru, cocok dgn aligned); role narrator+matchAligned apa
+      pun → selalu v2+strip (regresi-check, tidak berubah dari awal).
+      `npm test` penuh dgn `TEST_DATABASE_URL`: 290 tes, 289 hijau, 1 skip
+      lama tak terkait (butuh browser), 0 gagal — naik dari 288 (sesi
+      sebelumnya) karena 2 tes baru ini.
+
       **Bunpou Flow pilot (Paket 0+1 dari rencana Codex) — session Tugas
       Bunpou yang tahan refresh, konten pendamping opsional, BELUM
       diaktifkan** — user melampirkan

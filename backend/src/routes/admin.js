@@ -4850,7 +4850,12 @@ router.post('/tts/preview', asyncHandler(async (req, res) => {
       for (let i = 0; i < turns.length; i++) {
         const isLast = i === turns.length - 1;
         const textWithBreak = isLast ? turns[i].text : `${turns[i].text} <break time="700ms" />`;
-        buffers.push(await fetchElevenAudio(turnVoices[i].voiceId, textWithBreak, turnVoices[i].role));
+        // matchAligned=true — this preview must sound identical to what
+        // students actually hear via fetchElevenAudioAligned (the real
+        // karaoke player), which always forces the reliable model + strips
+        // tags regardless of role. Without this, a non-narrator turn tested
+        // here used the live ELEVEN_MODEL with tags preserved instead.
+        buffers.push(await fetchElevenAudio(turnVoices[i].voiceId, textWithBreak, turnVoices[i].role, true));
       }
       combined = Buffer.concat(buffers);
     } else {
