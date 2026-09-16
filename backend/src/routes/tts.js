@@ -117,15 +117,20 @@ function sendAudio(res, buf, contentType) {
   res.send(buf);
 }
 
-// Detect JLPT-style dialog: lines like "A: ...", "B: ...", "女: ...", "男: ...".
-// Speaker label = 1-10 char before first colon. Return turns array, or null
-// kalau bukan dialog (plain text). Satu baris ber-prefix juga dianggap dialog
-// (mis. soal 即時応答 cuma 1 ucapan) — dapet voice sesuai role & prefix-nya
-// gak ikut kebaca; teks polos tanpa prefix tetap null → single-voice fallback.
+// Detect JLPT-style dialog: lines like "A: ...", "B: ...", "女: ...", "男: ...",
+// or a real character name ("アンナ: ...", "ハディ: ..." — see dialogue_speakers,
+// migration 148). Speaker label = 1-12 char before first colon, either ASCII
+// (legacy TTS routing codes: N/A/B/W/F/M, still produced by the AI dialog
+// generator) or a kanji/kana run (a chosen speaker name, or the legacy
+// 男/女/男の人/女の人 words — now a case of the same character class rather
+// than a separate alternative). Return turns array, or null kalau bukan
+// dialog (plain text). Satu baris ber-prefix juga dianggap dialog (mis. soal
+// 即時応答 cuma 1 ucapan) — dapet voice sesuai role & prefix-nya gak ikut
+// kebaca; teks polos tanpa prefix tetap null → single-voice fallback.
 export function parseDialog(text) {
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean);
   if (lines.length === 0) return null;
-  const SPEAKER_RE = /^([A-Za-z0-9]{1,12}|男|女|男性|女性|男の人|女の人):\s*(.+)$/;
+  const SPEAKER_RE = /^([A-Za-z0-9]{1,12}|[一-龥ぁ-んァ-ヶー]{1,12}):\s*(.+)$/;
   const turns = [];
   for (const line of lines) {
     const m = line.match(SPEAKER_RE);
@@ -142,33 +147,59 @@ export function parseDialog(text) {
   return turns.length >= 1 ? turns : null;
 }
 
-// Map speaker label → { voiceId, role }. 3 roles: narrator/female/male.
+// Map speaker label → { voiceId, role }. Roles: narrator/dialogue/single.
 // - Narrator: N / Narrator / ナレーター / Nasi → formal calm
-// - Female: A / W / F / 女 / nama cewe umum → conversational expressive
-// - Male: B / M / 男 / nama cowo umum → conversational expressive
+// - Dialogue: everything else — a registered character voiced by a REAL
+//   ElevenLabs voice_id (see dialogue_speakers / loadSpeakerRegistry below),
+//   or (unregistered legacy content) a guessed env voice by gender-word/
+//   letter pattern, or plain alternation. All of these get the SAME
+//   voice_settings preset — tuning never depended on the female/male split,
+//   only voice IDENTITY did, so there is nothing to distinguish once
+//   identity comes from a real voice_id instead of a binary guess.
+//
+// `registry` (optional, Map<name, voiceId>, see dialogue_speakers /
+// loadSpeakerRegistry below) is checked BEFORE the pattern guesses — an
+// admin-assigned real ElevenLabs voice always wins over guessing. Without
+// it (existing 2-arg callers), behaviour is unchanged: a chosen name that
+// isn't in the registry yet still gets a reasonable voice from the
+// patterns/alternation below rather than erroring, so a stale or missing
+// registry never breaks generation, it just falls back to a guess.
 const NARRATOR_PATTERNS = /^(n|narrator|nasi|ナレーター|nrs)$/;
 const FEMALE_PATTERNS = /^(a|w|f|女|onna|cewe|cewek|female|woman|women|yumi|aiko|hana|sakura|mei|emi|wanita)/;
 const MALE_PATTERNS = /^(b|m|男|otoko|cowo|cowok|male|man|men|ken|taro|hiroshi|takeshi|jiro|pria)/;
-export function voiceForSpeaker(speaker, orderIndex) {
+export function voiceForSpeaker(speaker, orderIndex, registry) {
   const s = String(speaker || '').toLowerCase();
   if (NARRATOR_PATTERNS.test(s)) return { voiceId: ELEVEN_VOICE_NARRATOR, role: 'narrator' };
-  if (FEMALE_PATTERNS.test(s)) return { voiceId: ELEVEN_VOICE_FEMALE, role: 'female' };
-  if (MALE_PATTERNS.test(s)) return { voiceId: ELEVEN_VOICE_MALE, role: 'male' };
-  // Unknown → alternate by order (genap=female, ganjil=male)
+  const known = registry && registry.get(String(speaker || '').trim());
+  if (known) return { voiceId: known, role: 'dialogue' };
+  if (FEMALE_PATTERNS.test(s)) return { voiceId: ELEVEN_VOICE_FEMALE, role: 'dialogue' };
+  if (MALE_PATTERNS.test(s)) return { voiceId: ELEVEN_VOICE_MALE, role: 'dialogue' };
+  // Unknown → alternate by order (genap=female-env, ganjil=male-env)
   return orderIndex % 2 === 0
-    ? { voiceId: ELEVEN_VOICE_FEMALE, role: 'female' }
-    : { voiceId: ELEVEN_VOICE_MALE, role: 'male' };
+    ? { voiceId: ELEVEN_VOICE_FEMALE, role: 'dialogue' }
+    : { voiceId: ELEVEN_VOICE_MALE, role: 'dialogue' };
+}
+
+// Loaded once per request and threaded through to voiceForSpeaker — a named
+// speaker's voice never depends on which letter code they used to be.
+// Map<name, voiceId> — voiceId is a REAL ElevenLabs voice_id chosen by the
+// admin from ElevenLabs' own catalog (see fetchElevenVoices below), not a
+// female/male bucket.
+export async function loadSpeakerRegistry() {
+  const r = await query('SELECT name, voice_id FROM dialogue_speakers');
+  return new Map(r.rows.map((row) => [row.name, row.voice_id]));
 }
 
 // Per-role voice_settings — narrator formal-steady (style 0 = neutral-clear,
 // gak interpret emosi), dialog speaker conversational-expressive (style tinggi
 // + low stability → follow text emotion / tag inflection). Speed < 1.0 = pace
 // JLPT real test (~0.9-0.95). Settings ini bisa di-tune per taste — bump
-// SETTINGS_VERSION kalau mau invalidate cache full.
+// SETTINGS_VERSION kalau mau invalidate cache full. Satu preset `dialogue`
+// dipakai SEMUA speaker non-narrator apa pun voice_id-nya — identitas suara
+// datang dari voice_id itu sendiri (ElevenLabs), bukan dari role ini.
 const VOICE_SETTINGS = {
   narrator: { stability: 0.55, similarity_boost: 0.8,  style: 0.0,  use_speaker_boost: true, speed: 0.95 },
-  female:   { stability: 0.35, similarity_boost: 0.75, style: 0.4,  use_speaker_boost: true, speed: 0.92 },
-  male:     { stability: 0.35, similarity_boost: 0.75, style: 0.4,  use_speaker_boost: true, speed: 0.92 },
+  dialogue: { stability: 0.35, similarity_boost: 0.75, style: 0.4,  use_speaker_boost: true, speed: 0.92 },
   single:   { stability: 0.4,  similarity_boost: 0.8,  style: 0.0,  use_speaker_boost: true, speed: 1.0 }, // legacy vocab/sentence
 };
 
@@ -217,6 +248,35 @@ export async function fetchElevenAudio(voiceId, text, role = 'single', retry = 0
     throw err;
   }
   return Buffer.from(await upstream.arrayBuffer());
+}
+
+export function elevenLabsEnabled() {
+  return !!ELEVEN_API_KEY;
+}
+
+// GET https://api.elevenlabs.io/v1/voices — powers the admin dialogue
+// editor's speaker picker, so an admin assigns a genuine ElevenLabs voice
+// (real name + voice_id) per character instead of a binary female/male
+// bucket. Read-only, no caching (admin-only, low call volume) — always
+// fresh so a voice renamed/added/removed in the ElevenLabs dashboard shows
+// up immediately rather than through a stale local copy.
+export async function fetchElevenVoices() {
+  const upstream = await fetch('https://api.elevenlabs.io/v1/voices', {
+    headers: { 'xi-api-key': ELEVEN_API_KEY },
+  });
+  if (!upstream.ok) {
+    const detail = await upstream.text().catch(() => '');
+    const err = new Error(`ElevenLabs voices ${upstream.status}: ${detail.slice(0, 200)}`);
+    err.upstreamStatus = upstream.status;
+    throw err;
+  }
+  const data = await upstream.json();
+  return (Array.isArray(data.voices) ? data.voices : []).map((v) => ({
+    voiceId: v.voice_id,
+    name: v.name,
+    previewUrl: v.preview_url || null,
+    labels: v.labels || {},
+  }));
 }
 
 // Timestamp-capable generation untuk karaoke subtitle. Endpoint
@@ -284,8 +344,9 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
   // Detect dialog vs single-voice. Single-voice fallback kalau parse gagal.
   const turns = parseDialog(text);
   const isDialog = !!turns;
+  const registry = isDialog ? await loadSpeakerRegistry() : null;
   const turnVoices = isDialog
-    ? turns.map((t, i) => voiceForSpeaker(t.speaker, i))
+    ? turns.map((t, i) => voiceForSpeaker(t.speaker, i, registry))
     : [{ voiceId: ELEVEN_VOICE_ID, role: 'single' }];
   const voices = turnVoices.map((v) => v.voiceId);
 
@@ -376,8 +437,9 @@ router.get('/tts/aligned', optionalAuth, ttsLimiter, asyncHandler(async (req, re
   const turns = parseDialog(text);
   const isDialog = !!turns;
   const effTurns = isDialog ? turns : [{ speaker: '', text }];
+  const registry = isDialog ? await loadSpeakerRegistry() : null;
   const turnVoices = isDialog
-    ? turns.map((t, i) => voiceForSpeaker(t.speaker, i))
+    ? turns.map((t, i) => voiceForSpeaker(t.speaker, i, registry))
     : [{ voiceId: ELEVEN_VOICE_ID, role: 'single' }];
   const voices = turnVoices.map((v) => v.voiceId);
 

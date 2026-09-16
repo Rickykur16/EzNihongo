@@ -71,6 +71,179 @@
 
 ## Konvensi penting
 
+      **Dialog grammar: speaker asli dipilih dari SUARA ELEVENLABS ASLI —
+      bukan kode A/B, dan bukan bucket perempuan/laki-laki — plus tes audio
+      per giliran, independen** — user: "gunakan nama speaker aslinya yg bisa
+      di pilih dari ruang kerja daripada kode N A B", lalu "Buat bisa di isi
+      per giliran... tes audio pergiliran jadi jika ada satu giliran yg jelek
+      cukup yg itu saja yg di generate ulang". Draf PERTAMA (dijelaskan di
+      bawah) memetakan nama karakter ke SATU dari 2 voice env perempuan/
+      laki-laki — user mengoreksi tegas setelah melihatnya: **"AKU INGIN
+      SPEAKERNYA BISA DIPILIH BERDASARKAN NAMA ASLI DARI ELEVENLABS"**, yaitu
+      katalog suara SUNGGUHAN milik akun ElevenLabs (banyak voice_id berbeda),
+      bukan kategori generik dua pilihan. Bagian ini mendokumentasikan desain
+      AKHIR setelah pivot; arsitektur besarnya (registry kecil, tanpa draft/
+      publish, tanpa endpoint publik baru) sama seperti draf pertama — yang
+      berubah murni SUMBER identitas suara.
+      **Diperiksa dulu terhadap sejarah, bukan langsung dibangun**: permintaan
+      awal nyaris identik dengan fitur "Bacaan & audio" yang di-build LALU
+      DI-REVERT TOTAL persis sehari sebelum baseline sesi ini (`ff8f8e4`,
+      ~1.178 baris, 4 tabel, alur draft→generate→review→publish) — dalam satu
+      hari fitur itu menghasilkan 4 insiden produksi: MIME .mjs mematikan
+      fitur, draft tersimpan membungkam audio yang sudah bunyi, dialog tidak
+      muncul di pelajaran, dan endpoint publik tanpa autentikasi. Root cause
+      dibaca dari commit revert + isi asli fitur itu (git show pada commit
+      sebelum revert) sebelum menulis kode apa pun.
+      **Ternyata TIDAK perlu mengulang pola itu**: `POST /admin/tts/preview`
+      (sudah lama ada, admin-only) men-cache murni berdasar HASH TEKS PERSIS
+      yang dikirim — kirim satu giliran ("アンナ: はじめまして。") alih-alih
+      dialog utuh, dan giliran itu dapat entri cache SENDIRI, terpisah dari
+      giliran lain. Itu sudah cukup untuk "tes + regenerate per giliran
+      independen" tanpa infrastruktur baru apa pun. Format penyimpanan
+      (`module_grammar.example_dialog`/`example_dialog_id`, teks
+      "PREFIX: kalimat" per baris) SENGAJA TIDAK diubah — hanya CARA
+      MENGEDITNYA yang baru (editor per-baris di admin), dan
+      `parseDialog()`/`voiceForSpeaker()` (`backend/src/routes/tts.js`,
+      dipakai bersama endpoint publik `/api/tts`+`/api/tts/aligned`, endpoint
+      admin `/admin/tts/preview`, DAN generator soal listening JLPT) diperluas
+      SECARA ADITIF: prefix boleh kode lama (N/A/B/男/女/dst, dipertahankan
+      utuh untuk generator AI listening yang masih menghasilkan format itu)
+      ATAU nama asli (kelas karakter kanji+kana). Nol tabel baru untuk
+      konten, nol endpoint publik baru, nol modul ES module baru.
+      **Migrasi 148 diamandemen DI TEMPAT** (bukan ditumpuk migrasi susulan —
+      PR-nya belum merge saat pivot ini dikerjakan, jadi berlaku konvensi yang
+      sama dengan migrasi konten: aman diedit langsung): kolom
+      `voice_role TEXT CHECK (IN female/male)` diganti `voice_id TEXT NOT NULL`
+      + `voice_name TEXT NOT NULL` — `voice_id` = ID suara ElevenLabs asli
+      yang benar-benar dipakai untuk generate, `voice_name` cuma label
+      tampilan (nama suara itu di ElevenLabs, mis. "Rachel") supaya admin
+      tidak perlu fetch ulang katalog buat lihat pemetaan yang sudah ada.
+      **10 baris seed DIHAPUS TOTAL** (bukan diisi voice_id baru) — beda dari
+      role female/male yang cuma dua pilihan tetap, voice_id ElevenLabs
+      sungguhan tidak bisa ditebak/dikarang dari sandbox ini; tabel sengaja
+      mulai KOSONG, admin mengisi sendiri dari katalog live saat pertama kali
+      memakai editor.
+      **`voiceForSpeaker()`/`loadSpeakerRegistry()`**: registry sekarang
+      `Map<name, voiceId>` (bukan `Map<name, role>`) — hit registry
+      mengembalikan `voiceId` ASLI langsung dengan `role: 'dialogue'` generik;
+      tebakan pola lama (huruf/kata gender, `FEMALE_PATTERNS`/`MALE_PATTERNS`)
+      TETAP jadi fallback untuk konten lama yang belum di-assign, juga
+      `role: 'dialogue'`. `VOICE_SETTINGS.female`/`.male` digabung jadi SATU
+      `VOICE_SETTINGS.dialogue` — diperiksa dulu, keduanya SUDAH identik dari
+      awal (tuning suara tidak pernah bergantung gender, cuma pemilihan voice
+      ID-nya), jadi penggabungan ini murni pembersihan nama kunci, TIDAK
+      mengubah byte audio untuk (voiceId, text) yang sama — `SETTINGS_VERSION`
+      sengaja TIDAK di-bump, cache TTS existing tidak perlu invalidasi.
+      **Endpoint baru `GET /admin/elevenlabs/voices`** (read-only, admin-only,
+      `legacy.academic`) — proxy tipis ke `GET https://api.elevenlabs.io/v1/voices`
+      pakai `ELEVENLABS_API_KEY` yang sudah ada; 503 `elevenlabs_disabled`
+      kalau key kosong (pola sama dengan `anthropicEnabled()`/`OPENAI_API_KEY`
+      di endpoint gambar kosakata). Sengaja TIDAK di-cache — daftar suara
+      jarang dipanggil (admin-only) dan harus selalu segar kalau ada suara
+      baru/berganti nama di dashboard ElevenLabs.
+      **Ketahuan lewat pengukuran, bukan disangka** (dari draf pertama,
+      tetap relevan): menelusuri siapa=A/siapa=B di keenam dialog Bab 3
+      menemukan TIGA mismatch gender nyata yang sudah lama ada — サリ dan
+      ミナ (nama perempuan) dikode "B" sehingga divoice LAKI-LAKI, dan ハディ
+      (nama laki-laki) dikode "A" sehingga divoice PEREMPUAN, karena
+      `voiceForSpeaker` cuma menebak dari HURUF kode, tidak pernah tahu siapa
+      sebenarnya sedang bicara. Tidak diperbaiki lewat migrasi konten (di
+      luar scope, dan dialog Bab 3 belum pernah live — PR ini belum merge),
+      tapi otomatis benar begitu admin membuka dialog itu lewat editor baru
+      dan memilih suara ElevenLabs untuk tiap karakter.
+      **Editor admin** (`admin.html`, tombol baru "🎭 Giliran" di sebelah
+      "✨ Dialog"/"✨ Translate" yang tetap dipertahankan apa adanya): per
+      giliran — pilih Narator atau nama dari `dialogue_speakers`, dua
+      textarea (JP/ID), tombol "🔊 Tes giliran ini" (fetch blob dari
+      `/admin/tts/preview`, exact pola yang sudah dipakai
+      `deckShowAudioPreview` untuk audio kosakata), naik/turun/hapus giliran.
+      **"+ Speaker baru…" TIDAK lagi `prompt()`/`confirm()` native** (OK=
+      perempuan, Batal=laki-laki, dari draf pertama) — diganti modal
+      sungguhan: fetch katalog ElevenLabs sekali per sesi modal
+      (`admLoadElevenVoices`), `<select>` berisi nama+label suara ASLI
+      (gender/aksen dari `labels` ElevenLabs kalau ada), plus tombol
+      "▶ Dengar contoh suara" yang memutar `preview_url` ElevenLabs LANGSUNG
+      di elemen `<audio>` (URL publik ElevenLabs, tidak lewat proxy backend
+      kita) — supaya admin bisa membandingkan suara SEBELUM menetapkannya ke
+      karakter, bukan menebak dari nama. Dropdown speaker per giliran
+      (`admSpeakerOptionsHtml`) sekarang menampilkan `NamaKarakter —
+      NamaSuaraElevenLabs` (mis. "アンナ — Rachel"), bukan ikon ♀/♂. "Isi ke
+      baris" MENULIS ULANG kedua textarea asli lalu admin tetap klik Simpan
+      yang sudah ada — sengaja tidak auto-save, konsisten dengan
+      `grmrGenDialog`/`grmrTranslateDialog` yang sudah lebih dulu begitu
+      ("review lalu klik Simpan"). **Dipertimbangkan lalu SENGAJA TIDAK
+      dibuat**: auto-warm cache dialog gabungan setelah simpan (supaya siswa
+      pertama tidak menunggu generate) — dibatalkan setelah sadar
+      `/admin/tts/preview` meng-hash dengan cara yang SAMA dengan `/api/tts`
+      biasa, BUKAN `/api/tts/aligned` (hash `'aligned4\n'+text`, dipakai
+      player karaoke siswa sungguhan) — men-warm lewat endpoint admin akan
+      mengisi entri cache yang tidak pernah dibaca siswa, kelihatan jalan
+      padahal tidak berguna sama sekali. Daripada mengirim sesuatu yang
+      diam-diam salah, fitur ini tidak dibuat; siswa pertama tetap menunggu
+      generate sekali seperti perilaku hari ini, bukan regresi baru.
+      **`resolveSpeakerNames()`** (welcome.html, heuristik tebak-nama dari
+      teks dialog untuk kode lama) TIDAK dihapus dan TIDAK disentuh pivot
+      ini — dialog LAMA yang masih berkode A/B tetap butuh itu, dan
+      welcome.html sama sekali tidak membaca field `role` dari TTS (dicek
+      ulang: satu-satunya `.role` di file itu adalah pengelompokan pesan
+      chat tutor Anthropic, bukan audio dialog) sehingga pivot voice_id tidak
+      punya dampak apa pun di sisi siswa. RBAC: `GET/POST/PUT
+      /admin/dialogue-speakers` + `GET /admin/elevenlabs/voices` =
+      `legacy.academic` (sama seperti grammar-examples), `DELETE
+      /dialogue-speakers/:id` = owner-only — pola identik dengan pasangan
+      serupa di `company-route-policy.js`.
+      **Bug nyata ditemukan sekaligus diperbaiki, bukan cuma pivot fitur**:
+      `tts.test.js` (7 tes unit dari draf pertama) ternyata ditaruh di
+      `backend/src/routes/tts.test.js` — padahal `package.json`'s
+      `"test": "node --test src/*.test.js"` HANYA meng-glob file LANGSUNG di
+      `src/` (shell glob POSIX, bukan Node recursive discovery), tidak turun
+      ke subfolder, dan CI memanggil skrip `npm test` yang SAMA. Akibatnya
+      ketujuh tes itu **TIDAK PERNAH benar-benar jalan lewat `npm test`
+      maupun CI** sejak dibuat — klaim "281 tes, 280 hijau" di badan PR #321
+      kemungkinan besar tidak pernah benar-benar tervalidasi lewat jalur yang
+      diklaim. Ketahuan justru saat memverifikasi ulang cakupan tes untuk
+      pivot ini (bukan dicari). Diperbaiki: `git mv` ke
+      `backend/src/tts.test.js` (flat, mengikuti konvensi SEMUA 30+ file tes
+      lain di repo — `tts.js` adalah satu-satunya modul di `src/routes/`
+      yang pernah punya tes sendiri, dan lokasi tesnya tetap harus flat) +
+      perbaiki import path (`./tts.js` → `./routes/tts.js`). Satu assertion
+      di dalamnya JUGA salah dan baru ketahuan begitu file akhirnya benar-
+      benar dieksekusi: tes "unregistered real name still gets a usable
+      voice" sempat menuntut `result.voiceId` truthy — padahal nilainya
+      bergantung env var `ELEVENLABS_VOICE_FEMALE`/`_MALE`/`_ID` yang sah
+      kosong di banyak environment (termasuk sandbox tes ini sendiri);
+      diganti mengecek `role === 'dialogue'` + `'voiceId' in result`
+      (invariant yang benar-benar dijamin kode, bukan konfigurasi
+      environment).
+      Divalidasi ulang penuh setelah pivot: Postgres 16 lokal baru
+      (`schema.sql` + replay 000→148) — migrasi 148 versi baru applied
+      bersih, tabel `dialogue_speakers` kosong tanpa seed persis seperti
+      didesain; backend asli di-boot + JWT admin di-mint langsung (skip
+      OAuth) → CRUD penuh lewat curl (body lama `{voiceRole}` ditolak 400
+      karena skema memang sudah beda, body baru `{voiceId,voiceName}` 201,
+      duplikat nama 409, `PUT` ganti suara 200 dikonfirmasi lewat SELECT
+      langsung, `DELETE` 200); `GET /admin/elevenlabs/voices` tanpa
+      `ELEVENLABS_API_KEY` → 503 bersih; `POST /admin/tts/preview` dengan
+      prefix nama terdaftar mengonfirmasi pipeline
+      parseDialog→loadSpeakerRegistry→voiceForSpeaker→fetchElevenAudio
+      sampai ke panggilan jaringan sungguhan (gagal di situ HANYA karena
+      sandbox ini diblokir ke `api.elevenlabs.io`, dikonfirmasi dari pesan
+      error proxy, bukan crash kode); dan yang paling langsung — skrip Node
+      terpisah memanggil `loadSpeakerRegistry()`+`voiceForSpeaker()` ASLI
+      terhadap baris yang baru di-INSERT, mengonfirmasi resolusi
+      mengembalikan PERSIS `voice_id` yang tersimpan di database, bukan
+      tebakan. Setelah `tts.test.js` dipindah, `npm test` polos (tanpa DB)
+      naik jadi 193 tes, 184 hijau, 0 gagal, 9 skip (semua butuh DB); dengan
+      `TEST_DATABASE_URL` di-set, 288 tes, 287 hijau, 1 skip lama tak
+      terkait (`student-operations-browser.test.js`, butuh browser), 0
+      gagal — termasuk regresi eksplisit bahwa SEMUA bentuk kode lama
+      (N/A/B/男/女/男の人/女の人) dan generator dialog AI (masih menghasilkan
+      format kode) tetap jalan byte-per-byte sama. **Belum bisa diverifikasi
+      dari sandbox ini** (sama seperti draf pertama): isi sungguhan katalog
+      ElevenLabs (perlu `ELEVENLABS_API_KEY` + akses `api.elevenlabs.io`,
+      dua-duanya tidak tersedia di sini) dan rendering visual modal picker
+      baru di browser sungguhan.
+
       **Bunpou Flow pilot (Paket 0+1 dari rencana Codex) — session Tugas
       Bunpou yang tahan refresh, konten pendamping opsional, BELUM
       diaktifkan** — user melampirkan

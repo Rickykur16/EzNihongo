@@ -8107,7 +8107,10 @@ window.grammarBlockToggle = (btn) => {
 
 function parseDialogLinesFE(text) {
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean);
-  const SPK = /^([A-Za-z0-9]{1,12}|男|女|男性|女性|男の人|女の人):\s*(.+)$/;
+  // Mirrors backend/src/routes/tts.js#parseDialog's SPEAKER_RE exactly — a
+  // real chosen name (アンナ, ハディ, ...) is a valid prefix here too, not
+  // just the legacy ASCII/gender-word codes.
+  const SPK = /^([A-Za-z0-9]{1,12}|[一-龥ぁ-んァ-ヶー]{1,12}):\s*(.+)$/;
   const turns = [];
   for (const line of lines) {
     const m = line.match(SPK);
@@ -8115,17 +8118,28 @@ function parseDialogLinesFE(text) {
     else if (turns.length) turns[turns.length - 1].text += ' ' + line;
     else turns.push({ speaker: '', text: line });
   }
+  // Only a legacy code (bare ASCII, or one of the old gender words) is
+  // guessed at — a speaker whose prefix is already a real name must never
+  // be second-guessed by a heuristic built for the case where the code
+  // ISN'T the name.
   const names = resolveSpeakerNames(turns);
+  const isLegacyCode = (s) => /^[A-Za-z0-9]{1,12}$/.test(s) || ['男', '女', '男性', '女性', '男の人', '女の人'].includes(s);
   for (const t of turns) {
-    if (names[t.speaker]) t.displayName = names[t.speaker];
+    if (isLegacyCode(t.speaker) && names[t.speaker]) t.displayName = names[t.speaker];
   }
   return turns;
 }
 
-// Auto-deteksi nama tokoh dari teks dialog supaya label "A"/"B" (kode TTS) bisa
-// di-render sebagai nama asli (mis. 田中, 山田) di sisi siswa. Admin tetap pakai
-// N/A/B karena ElevenLabs butuh prefix itu untuk routing suara narrator/cewe/cowo.
-// Strategi:
+// Auto-deteksi nama tokoh dari teks dialog supaya label kode legacy ("A"/"B")
+// bisa di-render sebagai nama asli (mis. 田中, 山田) di sisi siswa — perlu
+// untuk dialog LAMA yang ditulis sebelum admin bisa memilih nama asli
+// langsung (dialogue_speakers, migration 148). Dialog BARU yang sudah
+// memakai nama asli sebagai prefix (mis. "アンナ: ...") tidak butuh fungsi
+// ini sama sekali: r.speaker sudah berupa nama, dan gkBubbleHtml/
+// gkSpeakerStyles sudah lama fallback ke r.speaker kapan pun displayName
+// tidak di-set — jadi turn bernama TIDAK PERNAH melewati heuristik di bawah
+// (lihat pemakaiannya di parseDialogLinesFE: hanya kode legacy yang dicek
+// terhadap hasil fungsi ini). Strategi guessing (khusus kode legacy):
 //  1. Self-intro: "私は○○です" → kode pembicara itu = ○○.
 //  2. Address-elimination: tiap pembicara menyebut "○○さん" = menyapa lawan
 //     bicara, jadi nama mereka sendiri = nama yang TIDAK mereka sebut.
