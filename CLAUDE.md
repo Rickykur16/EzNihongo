@@ -71,6 +71,211 @@
 
 ## Konvensi penting
 
+      **Bunpou Flow pilot (Paket 0+1 dari rencana Codex) — session Tugas
+      Bunpou yang tahan refresh, konten pendamping opsional, BELUM
+      diaktifkan** — user melampirkan
+      `EzNihongo_Bunpou_Codex_Implementation_Plan.pdf` (v1.0, 16 Sep 2026,
+      baseline commit `5595b5e1a4bc7b306e424bfaa691419b83244c5c` — persis HEAD
+      saat sesi ini mulai) dengan instruksi eksplisit: kerjakan Paket 0+1
+      saja sebagai satu PR terpisah, Paket 2-4 (Smart Review, mastery
+      shadow-mode, animasi dialog) TIDAK sekaligus, dan jangan merge/deploy/
+      migrasi produksi otomatis. Dokumennya sendiri sangat hati-hati —
+      berulang kali menegaskan "jangan buat mesin belajar kedua", "jangan
+      kirim kunci jawaban sebelum pengungkapan diizinkan", "jangan mengubah
+      materi N5/N4 yang sudah ada".
+      **Paket 0 (pemeriksaan) menemukan konteks yang sangat relevan**: commit
+      TEPAT SEBELUM baseline (`ff8f8e4`, di hari yang sama) adalah REVERT
+      total fitur "audio dialog ter-review" — fitur besar (~1.178 baris, 4
+      tabel) yang dalam SATU HARI menghasilkan 4 insiden produksi (endpoint
+      publik tanpa autentikasi, MIME .mjs mematikan fitur, draft membungkam
+      audio, dialog tidak muncul). Ini jadi peringatan konkret, bukan abstrak,
+      untuk tetap kecil dan hati-hati di paket ini. Dua klaim teknis dokumen
+      diverifikasi BENAR terhadap kode nyata (bukan diasumsikan): (1) handler
+      jawaban pilihan ganda (`grammar-task.js`'s `POST /drill-answer`) memang
+      mengembalikan `correctIndex` tanpa syarat menang/kalah — kebocoran nyata
+      yang jadi alasan utama sesi baru ini; (2) `grammar_attempts.eval_source`
+      memang punya CHECK constraint `('ai','cache','smart_review')` — kolom
+      baru (`evaluation_kind`) sengaja dipakai untuk deterministic-vs-ai,
+      bukan mengubah enum itu.
+      **Pilot lesson TIDAK diaktifkan — dan memang tidak bisa dari sandbox
+      ini**: sandbox ini tidak punya akses database produksi, jadi ID
+      pelajaran N5 asli tidak bisa diverifikasi. Sesuai instruksi dokumen
+      sendiri ("kalau data belum tersedia, implementasikan jalur nonaktif")
+      — `app_settings.bunpou_flow_pilot_enabled` default TIDAK ADA (=false)
+      dan `bunpou_flow_pilot_lesson_id` dibiarkan kosong. **Mengaktifkan
+      butuh admin manusia**: pilih satu pelajaran N5 asli yang lengkap
+      (video+grammar+contoh+dialog+tugas valid), isi & publikasikan
+      Pendamping Bunpou-nya lewat tombol baru "🧭 Pendamping Bunpou" di
+      drawer pelajaran admin, baru nyalakan flag di tab AI → "Bunpou Flow —
+      pilot satu pelajaran" (endpoint menolak enable tanpa companion yang
+      sudah dipublikasikan, lihat `PUT /admin/settings/bunpou-flow-pilot`).
+      **Migrasi 147** (aditif murni): dua kolom JSONB nullable di `lessons`
+      (`bunpou_flow_draft`/`bunpou_flow_published`, envelope berisi objective/
+      directions per-grammarId/overlays Step1-2 per-grammarId); tabel baru
+      `grammar_task_sessions`+`grammar_task_session_items` (pola SAMA dengan
+      `smart_review_sessions` migration 133 — TANPA kolom status, "aktif"
+      dihitung dari `expires_at` seperti konvensi `user_enrollments`, bukan
+      pola baru); kolom metadata nullable di `grammar_attempts`
+      (`practice_session_id`, `question_fingerprint`, `assistance_state`,
+      `evaluation_kind`, dst) untuk Paket 2/3 nanti — TIDAK dipakai model
+      mastery yang ada (`grammar-mastery.js`'s `loadMastery` SELECT kolom
+      eksplisit, jadi kolom baru aman). **Jebakan yang KETAHUAN lewat
+      `npm test` (bukan dicari)**: menambah `grammar_task_sessions` ke
+      `WIPE_TABLES` (`user-erasure.js`, wajib — tabelnya punya `user_id` FK
+      ke `users`, kalau tidak `assertUserTablesCovered()` akan menolak
+      seluruh penghapusan akun) mematahkan DUA file test yang masing-masing
+      HAND-ROLL skema minimal sendiri mencerminkan `WIPE_TABLES`
+      (`company.test.js`, `user-erasure.test.js`) — keduanya cuma jalan kalau
+      `TEST_DATABASE_URL` di-set, jadi baru ketahuan setelah sengaja
+      menjalankan `npm test` DENGAN env itu, bukan skip default. Ditambahkan
+      `grammar_task_sessions` ke daftar tabel stub di keduanya. Registrasi
+      route admin baru juga wajib di `company-route-policy.js`
+      (`LEGACY_ROUTES`, dites `company.test.js` — daftar itu harus PERSIS
+      cocok urutan+isi route di `admin.js`) — kelima route baru diberi
+      permission `null` (owner-only), sengaja LEBIH ketat dari
+      `legacy.academic` yang dipakai endpoint grammar lain, karena dua di
+      antaranya (`/settings/bunpou-flow-pilot`) mengontrol flag pilot
+      SELURUH PLATFORM, bukan konten satu pelajaran.
+      **Session API** (`backend/src/routes/grammar-task-sessions.js`, baru,
+      di-mount terpisah dari `grammar-task.js` yang tidak boleh diubah
+      perilakunya): `POST /sessions` (buat/resume, deteksi versi konten lewat
+      hash `contentRevisionId`), `GET /sessions/:id`, dan
+      `POST /sessions/:id/items/:itemId/{answer,hint,reveal}`. Menurunkan
+      soal lewat `deriveDrills()`/`arrangeIsCorrect()` yang SAMA persis
+      dengan endpoint lama (`loadTaskConcepts`/`loadModulePool` di
+      `grammar-task.js` diekspor — cuma tambah kata `export`, tanpa ubah
+      logika — supaya tidak duplikat query). **Kunci jawaban BENAR-BENAR
+      ditahan**: `/answer` tidak pernah mengirim correctIndex/correctOrder
+      kecuali item sudah `passed`; `/reveal` endpoint TERPISAH, menolak 403
+      kalau `wrong_count` sendiri (per-item, per-sesi, tanpa perlu window
+      30-menit seperti endpoint lama karena counternya memang mulai dari nol
+      tiap sesi baru) belum mencapai `DRILL_MAX_WRONG=2` — sama persis
+      dengan `GT_MAX_WRONG` legacy tapi disimpan sebagai konstanta terpisah
+      di `bunpou-flow-service.js` (bukan re-export dari `grammar-task.js`,
+      supaya file itu benar-benar tidak tersentuh). **Anti-gaming yang
+      terukur, bukan ditebak**: `question_fingerprint` (hash soal+jawaban
+      persis) dicatat di tiap `grammar_attempts`, dan sesi BARU mengecek
+      riwayat fingerprint yang sama sebelum menganggap suatu jawaban
+      "mandiri" — supaya sesi lama kedaluwarsa lalu bikin sesi baru tidak
+      mencuci "sudah pernah lihat kuncinya" jadi bersih lagi. Idempotensi
+      submit pakai `(user_id, request_id)` unique index PLUS
+      `last_request_payload_hash` per-item: request_id sama + payload sama →
+      hasil tersimpan diulang (aman untuk retry jaringan); request_id sama +
+      payload BEDA → 409 eksplisit, bukan diam-diam menimpa jawaban pertama.
+      **Admin**: bagian "🧭 Pendamping Bunpou" di drawer pelajaran (hanya
+      lesson type text/video yang punya grammar) — draft/publish terpisah,
+      publish wajib `confirm:true` dan selalu validasi ULANG cakupan
+      grammarId saat itu juga (bukan cuma saat draft disimpan). Tab AI dapat
+      kartu baru toggle pilot + lesson ID.
+      **Frontend** (`welcome.html`): perubahan tampilan (tujuan satu kalimat,
+      arahan menyimak per-pola, banner tugas pindah ke bawah kartu grammar)
+      SEMUANYA di belakang `lesson.bunpouFlow` — lesson lain (100% dari yang
+      ada sekarang, karena flag belum pernah dinyalakan) rendernya identik
+      byte-per-byte dengan sebelum PR ini. Sisi drill Step 1/2
+      (`gtLoadDrills`/`gtAnswerDrill`/`gtArrSubmit`) dapat cabang mode-sesi
+      di `window.__gtSourceLesson.bunpouFlow`, TAPI reuse `gtRenderStep`/
+      `gtRenderArrange` yang sama persis — `publicSessionItem()` di backend
+      sengaja memakai nama field identik dengan bentuk drill lama
+      (prompt/example/sentence/options/tokens/variant) supaya tidak perlu
+      renderer kedua. Reveal dipanggil dari client HANYA saat counter
+      client-side (`window.__gtWrong`) sendiri mencapai `GT_MAX_WRONG` —
+      bukan begitu server bilang eligible — supaya waktu pembukaan jawaban
+      terasa identik dengan pengalaman lama walau sekarang lewat sesi
+      (kasus resume dengan riwayat salah sebelumnya jadi butuh satu kali
+      salah tambahan sebelum reveal, bukan langsung terbuka — sengaja,
+      never-leak lebih penting daripada expose-satu-percobaan-lebih-cepat).
+      Sesi gagal dimuat TIDAK jatuh ke `gtUnlockAllSteps()` (itu untuk klien
+      lama yang endpointnya memang tak ada) — tampil "Gagal memuat, coba
+      lagi" jujur, Step 3 tetap terkunci.
+      **Divalidasi**: Postgres 16 lokal + backend asli + curl (bukan cuma
+      dibaca) — migrasi 147 idempoten (re-run dua kali bersih) di atas
+      replay `schema.sql`+000-147 penuh; fixture course/lesson/grammar/task/
+      user asli, JWT di-mint langsung (skip Google OAuth); sesi
+      dibuat→resume (revision sama → session id sama)→jawab benar & salah
+      (step choice DAN arrange)→reveal ditolak sebelum ambang, diterima
+      tepat di ambang→GET setelah reveal tetap menampilkan kunci (state
+      tersimpan, bukan sekali pakai)→replay request_id sama aman, request_id
+      sama+payload beda 409→akses lintas-user 404 (bukan 403, tidak
+      mengonfirmasi sesi ada)→akses course dicabut di tengah sesi → 403 di
+      GET maupun POST session baru. Endpoint admin: scope-check menolak
+      grammarId di luar lesson/tugas, publish tanpa confirm 400, settings
+      menolak enable tanpa companion published maupun lesson ID palsu, non-
+      admin 403. 20 tes baru (`grammar-task-sessions-ui.test.js`, teknik vm-
+      slice yang sama dengan `admin-boot.test.js`/`quiz-result-ui.test.js` —
+      menjalankan KODE ASLI welcome.html, bukan reimplementasi) membuktikan
+      resume/idempotensi/expired/reveal-timing/legacy-tak-berubah. `npm test`
+      269/270 hijau (1 skip lama tak terkait) dengan `TEST_DATABASE_URL` di-
+      set. **Belum diverifikasi**: rendering visual tujuan/arahan/banner di
+      browser sungguhan (ditelusuri lewat baca kode, bukan Playwright — butuh
+      auth cookie/JWT nyata yang belum disiapkan sesi ini); aksesibilitas
+      (aria-expanded, kontras, IME composition guard) belum diaudit ulang
+      karena tidak ada elemen baru yang menambah kompleksitas interaksi di
+      luar yang sudah ada. **Sengaja di luar cakupan Paket 1**: tombol/UI
+      "Minta petunjuk" TIDAK dibuat (endpoint hint ADA & teruji, tapi tidak
+      ada konten hint kurasi admin di mana pun untuk dipakai — menambah
+      tombol tanpa isi cuma mengarang UI); Paket 2 (soal pemahaman dialog +
+      perluasan Smart Review), Paket 3 (kebijakan mastery shadow-mode), Paket
+      4 (animasi dialog) — nihil, sesuai instruksi user secara eksplisit.
+      **Review adversarial sebelum PR — agent Opus rate-limited, diganti
+      review manual, menemukan 2 bug nyata**: sesuai instruksi user "gunakan
+      model yg lebih tinggi untuk tugas yg lebih susah", satu agent
+      `general-purpose` dengan `model: opus` sempat dikirim untuk mereview
+      `grammar-task-sessions.js` secara independen. Agent itu GAGAL total —
+      "You've hit your session limit" (429) — dan TIDAK menghasilkan temuan
+      apa pun; bukan "Opus sudah cek dan aman", melainkan tidak sempat jalan
+      sama sekali. Sebagai gantinya saya sendiri membaca ulang seluruh file
+      secara adversarial terhadap 7 kategori (konkurensi/idempotensi,
+      kebocoran kunci jawaban, cakupan otorisasi, kebenaran migrasi, isolasi
+      lesson non-pilot, kebenaran RBAC, bug lain) — dan menemukan 2 bug
+      nyata plus 1 kekurangan kecil, ketiganya diperbaiki lalu DIBUKTIKAN
+      lewat Postgres+Express+curl asli (fixture baru: 1 course/module/2
+      lesson/3 pola grammar), bukan cuma dibaca:
+      (1) **`/answer` bisa melaporkan 200 padahal transaksinya batal** —
+      catch di sekitar INSERT `grammar_attempts` menangkap kode error
+      `23505` (unique `(user_id, request_id)`, dipakai mendeteksi retry
+      request_id yang sama dari item LAIN) tanpa `SAVEPOINT`. Di Postgres,
+      SATU statement gagal membuat SELURUH transaksi aborted sampai
+      ROLLBACK — `catch` di level JS tidak mengubah itu. Efeknya: `COMMIT`
+      yang dipanggil `withTransaction` sesudahnya diam-diam menjadi
+      ROLLBACK, ikut membuang UPDATE `grammar_task_session_items` (nilai
+      wrongCount/passed item itu sendiri) yang seharusnya tetap tersimpan —
+      padahal handler sudah kadung membalas 200 dengan `publicSessionItem`
+      seolah tersimpan. Reproduksi nyata: kirim `requestId` yang SAMA untuk
+      DUA item berbeda milik user yang sama — jawaban item pertama sukses,
+      jawaban item KEDUA (yang seharusnya tetap valid untuk itemnya sendiri)
+      dibalas 200 tapi GET sesi berikutnya menunjukkan item itu KEMBALI
+      seperti belum dijawab. Frontend yang ada (`gtNewRequestId()` bikin
+      UUID baru tiap panggilan `gtSubmitAnswer`, selalu per-item) tidak
+      memicu ini hari ini, tapi endpoint publik ini bisa dipanggil langsung
+      oleh klien apa pun — bug transaksi tetap nyata terlepas dari perilaku
+      satu frontend. Perbaikan: `SAVEPOINT` sebelum INSERT,
+      `ROLLBACK TO SAVEPOINT` di catch-nya — jadi HANYA insert
+      `grammar_attempts` yang batal, UPDATE item tetap commit. Dibuktikan:
+      skenario tabrakan di atas diulang lewat curl setelah fix → POST kedua
+      tetap 200 DAN GET sesudahnya (transaksi terpisah) benar-benar
+      menunjukkan item kedua tersimpan `passed:true`.
+      (2) **`isPilotLesson` TIDAK pernah dicek ulang di GET/answer/hint/
+      reveal** — komentar header file sendiri mengklaim "every mutating
+      request re-verifies... the pilot flag is on for this lesson", tapi
+      `loadOwnedActiveSession` (dipakai keempat endpoint itu) nyatanya cuma
+      cek kepemilikan+kedaluwarsa+akses kursus, TIDAK flag pilot — hanya
+      `POST /sessions` (create/resume) yang mengeceknya. Akibatnya: admin
+      mematikan flag (mis. karena companion yang sudah dipublikasi ternyata
+      salah) TIDAK menghentikan sesi yang sudah terlanjur dibuat sampai
+      dengan 120 menit ke depan — termasuk hint/reveal yang overlay-nya
+      sudah dibekukan ke snapshot sejak sesi dibuat. Diperbaiki dengan
+      menambah pengecekan `isPilotLesson` yang sama di dalam
+      `loadOwnedActiveSession`. Dibuktikan lewat curl: matikan
+      `bunpou_flow_pilot_enabled` di tengah sesi yang masih aktif → GET,
+      answer, hint, DAN reveal keempatnya sekarang 403
+      `pilot_not_enabled_for_lesson` (sebelum fix, keempatnya tetap 200).
+      (3) Kekurangan kecil: `GET /sessions/:id` tidak diberi `sessionLimiter`
+      yang sama dengan keempat endpoint sejenis lainnya di file ini —
+      ditambahkan untuk konsisten, bukan karena ada insiden. Setelah ketiga
+      perbaikan, `npm test` diulang penuh (bukan cuma file baru): 271 tes,
+      270 lulus, 1 skip lama tak terkait, 0 gagal — tidak ada regresi dari
+      fix ini maupun dari perbaikan resume `_gtApplyDrills` sebelumnya.
+
       **Siswa bisa mengatur jumlah soal per sesi drill** — user: "Kok sesi
       kanji cuma 3 soal?" lalu "buat agar user bisa mengatur berapa soal yg
       akan muncul", dengan batas atas 50. **Bukan 12 soal yang dipotong jadi

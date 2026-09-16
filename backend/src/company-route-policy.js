@@ -59,6 +59,16 @@ export const LEGACY_ROUTES = [
   ["POST", "/module-grammar/generate-distractors-bulk", "legacy.academic"],
   ["GET", "/module-grammar/:id/distractors", "legacy.academic"],
   ["PUT", "/module-grammar/:id/distractors", "legacy.academic"],
+  // Bunpou Flow pilot (migration 147) — new, still-inactive content-authoring
+  // and a global pilot on/off switch. Deliberately owner-only for now rather
+  // than reusing legacy.academic: unlike the distractor/example editors
+  // above, the settings pair below controls a platform-wide flag, not one
+  // lesson's own content.
+  ["GET", "/lessons/:lessonId/bunpou-flow", null],
+  ["PUT", "/lessons/:lessonId/bunpou-flow/draft", null],
+  ["POST", "/lessons/:lessonId/bunpou-flow/publish", null],
+  ["GET", "/settings/bunpou-flow-pilot", null],
+  ["PUT", "/settings/bunpou-flow-pilot", null],
   ["GET", "/lessons/:lessonId/grammar-bank", "legacy.academic"],
   ["POST", "/lessons/:lessonId/generate-quiz", "legacy.academic"],
   ["POST", "/generate-question-options", "legacy.academic"],

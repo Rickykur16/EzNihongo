@@ -4638,6 +4638,12 @@ function transformCourseFromApi(apiCourse) {
           kana: Array.isArray(l.kana) ? l.kana : [],
           grammarTask: Array.isArray(l.grammarTask) ? l.grammarTask : [],
           popupAfterLessonId: l.popup_after_lesson_id || null,
+          // Bunpou Flow pilot (Paket 1) — present on AT MOST one lesson in the
+          // whole catalogue, and only once an admin has both published a
+          // companion and flipped the pilot flag for it (see
+          // bunpou-flow-config.js). Absent on every other lesson, so every
+          // check below is a plain truthiness check, not a flag lookup.
+          bunpouFlow: (l.bunpouFlow && typeof l.bunpouFlow === 'object') ? l.bunpouFlow : null,
         };
       }),
     })),
@@ -8025,6 +8031,7 @@ function renderLessonGrammar(lesson) {
                 <span class="grammar-block-chevron" aria-hidden="true">▾</span>
               </button>
               <div class="grammar-block-content">
+                ${lesson.bunpouFlow?.directions?.[g.id] ? `<p class="grammar-listening-direction" style="margin:0 0 8px;font-size:13px;color:#525252;">🎧 ${escapeHtml(lesson.bunpouFlow.directions[g.id])}</p>` : ''}
                 ${grammarKaraokeHtml(dialog, `g${i}`, g.example_dialog_id || '')}
               </div>
             </div>` : ''}
@@ -9180,6 +9187,14 @@ const GT_MAX_WRONG = 2;
 
 async function gtLoadDrills(lessonId) {
   if (typeof window.ezApi !== 'function') { gtUnlockAllSteps(); return; }
+  // Bunpou Flow pilot (Paket 1): only for the one Tugas Bunpou whose
+  // triggering lesson currently carries a published companion. Every other
+  // task lesson — which is every task lesson today, until a pilot is
+  // actually turned on — falls straight through to the unchanged legacy
+  // fetch below.
+  if (window.__gtSourceLesson && window.__gtSourceLesson.bunpouFlow) {
+    return gtLoadDrillsSession(lessonId);
+  }
   let data;
   try {
     const r = await window.ezApi('/grammar-task/lesson/' + encodeURIComponent(lessonId) + '/drills');
@@ -9189,6 +9204,17 @@ async function gtLoadDrills(lessonId) {
   if (window.__gtLessonId !== lessonId) return; // sudah pindah pelajaran
   const byGrammar = {};
   for (const d of (data.drills || [])) byGrammar[d.grammarId] = d;
+  _gtApplyDrills(byGrammar);
+}
+
+// Cat bersama gtLoadDrills (legacy) dan gtLoadDrillsSession (pilot): kedua
+// jalur berakhir dengan bentuk {grammarId: {step1, step2}} yang sama persis,
+// jadi render + "tahap mana yang tersedia" + auto-advance cukup ditulis
+// sekali. Untuk legacy, drill.answered/drill.passed selalu undefined —
+// falsy — sehingga baris resume di bawah persis reproduksi perilaku lama
+// (sembunyikan arti, mulai dari tahap pertama yang tersedia) tanpa syarat
+// tambahan apa pun.
+function _gtApplyDrills(byGrammar) {
   window.__gtDrills = byGrammar;
   window.__gtWrong = {};
   window.__gtAvail = {};
@@ -9201,8 +9227,67 @@ async function gtLoadDrills(lessonId) {
     // Jawaban Step 1 = arti pola, dan arti itu tercetak di kepala kartu.
     // Kalau dibiarkan, soalnya cuma mencocokkan teks yang ada tepat di atasnya.
     // Disembunyikan sampai Step 1 dijawab, lalu dibuka sebagai materi bacaan.
-    if (d.step1) gtSetMeaningHidden(pi, true);
-    gtAdvance(pi, 0); // buka tahap tersedia yang pertama
+    if (d.step1 && !d.step1.answered) gtSetMeaningHidden(pi, true);
+    // Resume (pilot only): sesi yang dimuat ulang setelah refresh/popup
+    // ditutup-dibuka harus menampilkan tahap yang SAMA, bukan mengulang dari
+    // awal — lihat T10 di rencana implementasi. Ditulis TERPISAH dari
+    // pemilihan tahap pembuka di bawah supaya kasus KEDUANYA sudah lulus
+    // (resume setelah Step 1 dan Step 2 dua-duanya selesai) menandai
+    // keduanya passed, bukan cuma yang pertama diperiksa.
+    if (d.step1 && d.step1.passed) gtMarkStepPassed(pi, 1);
+    if (d.step2 && d.step2.passed) gtMarkStepPassed(pi, 2);
+    if (d.step2 && d.step2.passed) gtAdvance(pi, 2);
+    else if (d.step1 && d.step1.passed) gtAdvance(pi, 1);
+    else gtAdvance(pi, 0); // buka tahap tersedia yang pertama
+  });
+}
+
+// ── Bunpou Flow pilot: sesi Step 1/2 tersimpan di server (Paket 1) ────────
+// Merender lewat gtRenderStep/gtRenderArrange yang SAMA dengan jalur lama —
+// bentuk item dari publicSessionItem() (backend/src/bunpou-flow-service.js)
+// sengaja memakai nama field yang identik (prompt/example/sentence/
+// indonesian/options/tokens/variant) supaya tidak perlu renderer kedua.
+// Server yang memutuskan resume vs sesi baru (lihat POST /grammar-task/
+// sessions), jadi di sini tidak ada logika "apakah sudah ada sesi" sama
+// sekali — cukup panggil, lalu render apa pun yang kembali.
+async function gtLoadDrillsSession(lessonId) {
+  const src = window.__gtSourceLesson;
+  let data;
+  try {
+    const r = await window.ezApi('/grammar-task/sessions', {
+      method: 'POST',
+      body: JSON.stringify({ sourceLessonId: src.apiId }),
+    });
+    if (!r.ok) { gtRenderSessionError(); return; }
+    data = await r.json();
+  } catch { gtRenderSessionError(); return; }
+  if (window.__gtLessonId !== lessonId) return; // sudah pindah pelajaran
+  window.__gtSessionId = data.sessionId;
+  window.__gtItemIds = {};
+  const byGrammar = {};
+  for (const it of (data.items || [])) {
+    (byGrammar[it.grammarId] = byGrammar[it.grammarId] || {})[it.step === 1 ? 'step1' : 'step2'] = it;
+    window.__gtItemIds[`${it.grammarId}-${it.step}`] = it.itemId;
+  }
+  _gtApplyDrills(byGrammar);
+}
+
+// Sesi gagal dimuat/dipulihkan. TIDAK memanggil gtUnlockAllSteps(): fallback
+// itu ada untuk KLIEN LAMA yang endpoint drill-nya memang tidak tersedia,
+// bukan untuk kegagalan jaringan sesaat pada jalur pilot — membukanya di
+// sini akan diam-diam "meluluskan" Step 1/2 padahal belum benar-benar
+// dikerjakan. Materi (kartu pola, contoh, dialog di atas) tetap terbaca;
+// yang terkunci hanya soal derivasinya, dengan jalan jujur untuk mencoba lagi.
+function gtRenderSessionError() {
+  const scope = _gtScope();
+  (window.__gtData || []).forEach((_it, pi) => {
+    for (const step of [1, 2]) {
+      const body = scope.querySelector(`#gt-step${step}-${pi} .gt-step__body`);
+      if (body) {
+        body.innerHTML = '<span class="gt-step__lockmsg">Gagal memuat sesi latihan.</span> '
+          + '<button type="button" class="gt-retry" onclick="gtLoadDrills(window.__gtLessonId)">Coba lagi</button>';
+      }
+    }
   });
 }
 
@@ -9321,6 +9406,63 @@ window.gtArrReturn = (pi, pos) => {
   gtArrPaint(pi, drill);
 };
 
+// ── Satu titik kirim jawaban, dipakai gtAnswerDrill (pilihan ganda) DAN
+// gtArrSubmit (susun kalimat) ─────────────────────────────────────────────
+// Bentuk balik SELALU {passed, correctIndex, correctOrder, japanese} (atau
+// {expired:true}, atau null kalau gagal total) supaya kode verdict di kedua
+// pemanggil tidak perlu tahu jalur mana yang sedang aktif. correctIndex/
+// correctOrder/japanese TIDAK diminta di sini untuk jalur pilot — itu tugas
+// gtRevealAnswer, dipanggil pemanggil HANYA saat window.__gtWrong sendiri
+// sudah mencapai GT_MAX_WRONG, supaya waktu pengungkapan identik dengan
+// jalur lama (client-side counter yang sama) walau server sudah lama siap
+// membukanya (mis. setelah resume sesi dengan riwayat salah).
+async function gtSubmitAnswer(it, step, payload) {
+  if (window.__gtSessionId) {
+    const itemId = (window.__gtItemIds || {})[`${it.id}-${step}`];
+    if (!itemId) return null;
+    let r;
+    try {
+      r = await window.ezApi(`/grammar-task/sessions/${window.__gtSessionId}/items/${itemId}/answer`, {
+        method: 'POST',
+        body: JSON.stringify({ ...payload, requestId: gtNewRequestId() }),
+      });
+    } catch { return null; }
+    if (r.status === 410) return { expired: true };
+    if (!r.ok) return null;
+    const d = await r.json();
+    return { passed: d.passed, correctIndex: d.correctIndex ?? null, correctOrder: d.correctOrder ?? null, japanese: d.japanese ?? null };
+  }
+  try {
+    const r = await window.ezApi('/grammar-task/drill-answer', {
+      method: 'POST',
+      body: JSON.stringify({ lessonId: window.__gtLessonId, grammarId: it.id, step, ...payload }),
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return { passed: d.passed, correctIndex: d.correctIndex ?? null, correctOrder: d.correctOrder ?? null, japanese: d.japanese ?? null };
+  } catch { return null; }
+}
+
+function gtNewRequestId() {
+  try { return crypto.randomUUID(); } catch { return `${Date.now()}-${Math.random()}`; }
+}
+
+// Buka kunci jawaban lewat sesi pilot — dipanggil hanya setelah jatah salah
+// client-side sendiri habis (lihat komentar gtSubmitAnswer di atas). Server
+// menolak kalau menurut catatannya sendiri jatah itu belum habis (403
+// reveal_not_eligible); di sini itu ditangani sama seperti kegagalan
+// jaringan lain — pesan "pelajari lagi materinya", bukan error mentah.
+async function gtRevealAnswer(it, step) {
+  const itemId = (window.__gtItemIds || {})[`${it.id}-${step}`];
+  if (!itemId) return null;
+  try {
+    const r = await window.ezApi(`/grammar-task/sessions/${window.__gtSessionId}/items/${itemId}/reveal`, { method: 'POST' });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return { correctIndex: d.correctIndex ?? null, correctOrder: d.correctOrder ?? null, japanese: d.japanese ?? null };
+  } catch { return null; }
+}
+
 window.gtArrSubmit = async (pi) => {
   const it = (window.__gtData || [])[pi];
   const drill = gtArrDrill(pi);
@@ -9335,16 +9477,15 @@ window.gtArrSubmit = async (pi) => {
   if (go) go.disabled = true;
   if (verdict) verdict.textContent = 'Memeriksa…';
 
-  let d;
-  try {
-    const r = await window.ezApi('/grammar-task/drill-answer', {
-      method: 'POST',
-      body: JSON.stringify({ lessonId: window.__gtLessonId, grammarId: it.id, step: 2, order }),
-    });
-    if (!r.ok) throw new Error('bad');
-    d = await r.json();
-  } catch {
+  const d = await gtSubmitAnswer(it, 2, { order });
+  if (!d) {
     if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--no">Gagal memeriksa, coba lagi.</span>';
+    if (go) go.disabled = false;
+    return;
+  }
+  if (d.expired) {
+    if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--no">Sesi latihan sudah kedaluwarsa.</span> '
+      + '<button type="button" class="gt-retry" onclick="gtLoadDrills(window.__gtLessonId)">Mulai sesi baru</button>';
     if (go) go.disabled = false;
     return;
   }
@@ -9362,11 +9503,14 @@ window.gtArrSubmit = async (pi) => {
     if (window.__gtWrong[key] >= GT_MAX_WRONG) {
       // Kalimat yang benar baru dibuka di sini — sebelum dinilai, server tidak
       // pernah mengirimkannya. Tahap berikutnya ikut dilepas supaya siswa
-      // tidak mentok permanen.
+      // tidak mentok permanen. Jalur pilot memintanya eksplisit lewat
+      // gtRevealAnswer (dicatat sebagai pembukaan jawaban di server); jalur
+      // lama sudah membawanya di `d` seperti sebelumnya.
+      const reveal = window.__gtSessionId ? await gtRevealAnswer(it, 2) : d;
       // Server hanya mengirim kuncinya kalau jatah salahnya memang sudah
       // habis menurut catatannya sendiri. Kalau tidak dikirim (mis. pencatatan
       // percobaan gagal), jangan tampilkan kotak kosong.
-      const right = d.japanese || (d.correctOrder || []).join(' ');
+      const right = reveal ? (reveal.japanese || (reveal.correctOrder || []).join(' ')) : '';
       if (verdict) {
         verdict.innerHTML = right
           ? '<span class="gt-step__verdict--no">Belum tepat. Urutan yang benar:</span>'
@@ -9421,16 +9565,15 @@ window.gtAnswerDrill = async (pi, step, optionIndex) => {
   buttons.forEach((b) => { b.disabled = true; });
   if (verdict) verdict.textContent = 'Memeriksa…';
 
-  let d;
-  try {
-    const r = await window.ezApi('/grammar-task/drill-answer', {
-      method: 'POST',
-      body: JSON.stringify({ lessonId: window.__gtLessonId, grammarId: it.id, step, optionIndex }),
-    });
-    if (!r.ok) throw new Error('bad');
-    d = await r.json();
-  } catch {
+  const d = await gtSubmitAnswer(it, step, { optionIndex });
+  if (!d) {
     if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--no">Gagal memeriksa, coba lagi.</span>';
+    buttons.forEach((b) => { b.disabled = false; });
+    return;
+  }
+  if (d.expired) {
+    if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--no">Sesi latihan sudah kedaluwarsa.</span> '
+      + '<button type="button" class="gt-retry" onclick="gtLoadDrills(window.__gtLessonId)">Mulai sesi baru</button>';
     buttons.forEach((b) => { b.disabled = false; });
     return;
   }
@@ -9450,10 +9593,16 @@ window.gtAnswerDrill = async (pi, step, optionIndex) => {
     const giveUp = window.__gtWrong[key] >= GT_MAX_WRONG;
     if (giveUp) {
       // Buka jawabannya dan lepaskan tahap berikutnya — siswa tidak boleh
-      // mentok permanen di pilihan ganda.
-      const right = buttons[d.correctIndex];
+      // mentok permanen di pilihan ganda. Jalur pilot memintanya eksplisit
+      // lewat gtRevealAnswer; jalur lama sudah membawanya di `d`.
+      const reveal = window.__gtSessionId ? await gtRevealAnswer(it, step) : d;
+      const right = (reveal && reveal.correctIndex != null) ? buttons[reveal.correctIndex] : null;
       if (right) right.classList.add('gt-opt--correct');
-      if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--no">Belum tepat. Jawaban yang benar ditandai hijau — pelajari lalu lanjut.</span>';
+      if (verdict) {
+        verdict.innerHTML = right
+          ? '<span class="gt-step__verdict--no">Belum tepat. Jawaban yang benar ditandai hijau — pelajari lalu lanjut.</span>'
+          : '<span class="gt-step__verdict--no">Belum tepat. Pelajari lagi materinya, lalu lanjut.</span>';
+      }
       if (step === 1) gtSetMeaningHidden(pi, false);
       gtAdvance(pi, step);
     } else {
@@ -9480,6 +9629,13 @@ function renderGrammarTaskLesson(course, module, lesson, nav) {
   window.__gtData = items;
   window.__gtLessonId = lesson.apiId;
   window.__gtPopupCtx = null;
+  // Bunpou Flow pilot (Paket 1): resolved once per render, from data already
+  // in COURSE_CONTENT — no extra request. Non-null only when this task's
+  // triggering lesson is the one lesson the pilot is currently scoped to;
+  // every other Tugas Bunpou keeps gtLoadDrills() on the legacy path below.
+  window.__gtSourceLesson = _findLessonByApiId(course, lesson.popupAfterLessonId);
+  window.__gtSessionId = null;
+  window.__gtItemIds = null;
   const sttOn = _gtSttSupported();
   window.__gtState = { passed: {}, total: gtTotalRequired(items), evalDisabled: false, isDone: !!isDone, hasNext: !!next, isPopup: false };
 
@@ -9526,6 +9682,10 @@ function openGrammarTaskPopup(course, taskMod, taskLesson, onDone) {
   window.__gtLessonId = taskLesson.apiId;
   window.__gtState = { passed: {}, total: gtTotalRequired(items), evalDisabled: false, isDone: false, hasNext: false, isPopup: true };
   window.__gtPopupCtx = { moduleId: taskMod.id, lessonKey: `${taskMod.id}:${taskLesson.id}`, onDone: (typeof onDone === 'function' ? onDone : null) };
+  // See the matching comment in renderGrammarTaskLesson.
+  window.__gtSourceLesson = _findLessonByApiId(course, taskLesson.popupAfterLessonId);
+  window.__gtSessionId = null;
+  window.__gtItemIds = null;
 
   const overlay = document.createElement('div');
   overlay.className = 'gt-popup-overlay';
@@ -12019,6 +12179,20 @@ function gtIsPopupTask(l) {
 function visibleLessons(m) {
   return (m.lessons || []).filter((l) => !gtIsPopupTask(l));
 }
+// Cari lesson (lintas semua modul course ini) berdasarkan apiId. Dipakai
+// Bunpou Flow pilot untuk menemukan kembali source lesson dari
+// taskLesson.popupAfterLessonId, supaya sesi latihan tahu lesson MANA yang
+// harus dicek flag pilotnya (lihat window.__gtSourceLesson di bawah).
+function _findLessonByApiId(course, apiId) {
+  if (!apiId) return null;
+  for (const m of course.modules) {
+    for (const l of m.lessons) {
+      if (l.apiId === apiId) return l;
+    }
+  }
+  return null;
+}
+
 // Cari tugas-popup (grammar_task) yang dipicu oleh lesson tertentu (by apiId).
 function gtPendingTaskFor(course, lesson) {
   if (!lesson || !lesson.apiId) return null;
@@ -12279,12 +12453,26 @@ function renderLesson() {
          <button type="button" class="btn-primary" style="padding:8px 18px;" onclick="gtOpenTaskPopup('${pend.taskMod.id}','${pend.taskLesson.id}')">Kerjakan Tugas</button>
        </div>`);
 
+  // Bunpou Flow pilot (Paket 1). Two additive changes, both scoped to the
+  // ONE lesson with lesson.bunpouFlow present — every other lesson renders
+  // byte-for-byte as before:
+  //   - a one-sentence objective, only when the admin actually wrote one
+  //     (an absent/empty objective renders nothing — never a placeholder);
+  //   - the task banner moves from above the video to after the grammar
+  //     section, as the primary access point once the material's been seen.
+  //     Never rendered twice: isPilotLesson picks exactly one of the two slots.
+  const isPilotLesson = !!lesson.bunpouFlow;
+  const objectiveBlock = (isPilotLesson && lesson.bunpouFlow.objective)
+    ? `<p class="lesson-objective" style="margin:6px 0 0;font-size:14px;color:#404040;">🎯 ${escapeHtml(lesson.bunpouFlow.objective)}</p>`
+    : '';
+
   document.getElementById('main-content').innerHTML = `
     <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · ${lesson.type.toUpperCase()}</p>
     <h1 class="lesson-title">${lesson.title}</h1>
     <p class="lesson-subtitle">${module.title} — ${lesson.duration}</p>
+    ${objectiveBlock}
 
-    ${taskBanner}
+    ${isPilotLesson ? '' : taskBanner}
 
     ${introBlock}
 
@@ -12293,6 +12481,8 @@ function renderLesson() {
     ${bodyBlock}
 
     ${renderLessonExtras(lesson)}
+
+    ${isPilotLesson ? taskBanner : ''}
 
     ${renderLessonMaterials(module, lesson)}
 
