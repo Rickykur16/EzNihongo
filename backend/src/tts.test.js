@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseDialog, voiceForSpeaker, fetchElevenAudio, TTS_ELEVEN_MODEL } from './routes/tts.js';
+import { parseDialog, voiceForSpeaker, fetchElevenAudio, generateDialogSegments, TTS_ELEVEN_MODEL } from './routes/tts.js';
 
 // Mocks global fetch for the duration of one test — fetchElevenAudio calls
 // the bare global `fetch(...)` (no import), resolved at call time, so
@@ -90,35 +90,44 @@ test('voiceForSpeaker: an unregistered real name still gets a usable (guessed) v
   assert.ok('voiceId' in result);
 });
 
-test('fetchElevenAudio: matchAligned forces the same model+tag-handling as fetchElevenAudioAligned for a non-narrator role', async (t) => {
+test('generateDialogSegments: one segment per turn, in order, via the exact same generation path as /api/tts and /admin/tts/preview', async (t) => {
   const calls = mockElevenFetch(t);
-  const text = 'こんにちは [excited] 元気ですか';
+  const turns = [
+    { speaker: 'N', text: '[calm] アンナさんとハディさんが話しています。' },
+    { speaker: 'アンナ', text: 'こんにちは [excited] お元気ですか。' },
+    { speaker: 'ハディ', text: 'はい、元気です。' },
+  ];
+  const turnVoices = [
+    { voiceId: 'voice_narrator', role: 'narrator' },
+    { voiceId: 'voice_anna', role: 'dialogue' },
+    { voiceId: 'voice_hadi', role: 'dialogue' },
+  ];
 
-  await fetchElevenAudio('voice1', text, 'dialogue', false);
-  await fetchElevenAudio('voice1', text, 'dialogue', true);
+  const { segments, combined } = await generateDialogSegments(turns, turnVoices);
 
-  assert.equal(calls.length, 2);
-  // Real /api/tts behaviour (matchAligned=false, the default): live
-  // ELEVEN_MODEL, emotion tags preserved for ElevenLabs to interpret.
-  assert.equal(calls[0].body.model_id, TTS_ELEVEN_MODEL);
-  assert.match(calls[0].body.text, /\[excited\]/);
-  // Admin preview (matchAligned=true): must match what
-  // fetchElevenAudioAligned actually generates for students — hard-locked
-  // to eleven_multilingual_v2, tags stripped before they ever reach
-  // ElevenLabs — regardless of what ELEVEN_MODEL happens to be configured to.
-  assert.equal(calls[1].body.model_id, 'eleven_multilingual_v2');
-  assert.doesNotMatch(calls[1].body.text, /\[excited\]/);
-});
-
-test('fetchElevenAudio: narrator role is unaffected by matchAligned — already forced onto the reliable model either way', async (t) => {
-  const calls = mockElevenFetch(t);
-  const text = '[calm] 男の人と女の人が話しています。';
-
-  await fetchElevenAudio('voice1', text, 'narrator', false);
-  await fetchElevenAudio('voice1', text, 'narrator', true);
-
+  assert.equal(calls.length, 3);
+  assert.equal(segments.length, 3);
+  // No special-casing left anywhere in this path: narrator still forces the
+  // reliable model + strips tags (unchanged, always true in fetchElevenAudio
+  // itself), and a "dialogue" turn uses the SAME live TTS_ELEVEN_MODEL with
+  // tags preserved that /api/tts and /admin/tts/preview would use for the
+  // identical (voiceId, text, role) — there is only one way this ever
+  // happens now, so nothing can drift out of sync between them again.
   assert.equal(calls[0].body.model_id, 'eleven_multilingual_v2');
-  assert.equal(calls[1].body.model_id, 'eleven_multilingual_v2');
   assert.doesNotMatch(calls[0].body.text, /\[calm\]/);
-  assert.doesNotMatch(calls[1].body.text, /\[calm\]/);
+  assert.equal(calls[1].body.model_id, TTS_ELEVEN_MODEL);
+  assert.match(calls[1].body.text, /\[excited\]/);
+  assert.equal(calls[2].body.model_id, TTS_ELEVEN_MODEL);
+  // No SSML <break> tags — unlike /api/tts's single-concatenated-blob output,
+  // each turn here is its own independently-playable clip; the player
+  // inserts its own gap between segments client-side instead.
+  assert.doesNotMatch(calls[0].body.text, /<break/);
+  assert.doesNotMatch(calls[1].body.text, /<break/);
+  segments.forEach((seg, i) => {
+    assert.equal(seg.speaker, turns[i].speaker);
+    assert.equal(seg.role, turnVoices[i].role);
+    assert.equal(seg.content_type, 'audio/mpeg');
+    assert.equal(typeof seg.audio_base64, 'string');
+  });
+  assert.ok(Buffer.isBuffer(combined));
 });

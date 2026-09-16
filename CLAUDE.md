@@ -363,6 +363,114 @@
       lama tak terkait (butuh browser), 0 gagal — naik dari 288 (sesi
       sebelumnya) karena 2 tes baru ini.
 
+      **Follow-up KETIGA — user membatalkan fitur karaoke itu sendiri,
+      bukan cuma minta fix model-nya**: setelah laporan di atas dijelaskan
+      (preview vs dashboard beda karena `/api/tts/aligned` dikunci ke v2
+      demi timestamp), user menjawab **"Tidak perlu bentuk karaoke lagi.
+      Jadi tidak perlu pertimbangkan time stamp."** — bukan menyetujui
+      perbaikan `matchAligned`, melainkan menghapus alasan perbaikan itu
+      perlu ada sama sekali: kalau tidak ada lagi fitur yang butuh
+      timestamp, tidak ada lagi DUA jalur generate yang bisa berbeda.
+      Ditanya lewat AskUserQuestion scope persisnya (highlight per-KATA
+      dihapus, atau seluruh UI chat-bubble/avatar/toggle-arti/kontrol
+      kecepatan ikut dibongkar) — user memilih **pertahankan bubble +
+      highlight per-baris, hapus HANYA highlight per-kata**.
+      **Perbaikan `matchAligned` DIBATALKAN (revert), bukan dipertahankan
+      berdampingan**: dengan `fetchElevenAudioAligned` dihapus total, tidak
+      ada lagi "kenyataan" yang perlu di-mirror oleh preview — `matchAligned`
+      jadi tak berguna. `fetchElevenAudio()` dikembalikan ke signature+
+      perilaku semula (`matchAligned` dibuang), pemanggilan di
+      `/admin/tts/preview` (admin.js) dikembalikan ke 3-argumen semula. Ini
+      BUKAN dua langkah maju-mundur yang sia-sia — draf pertama (matchAligned)
+      adalah perbaikan yang BENAR untuk premis SAAT ITU (karaoke masih ada,
+      dua model HARUS tetap beda demi reliability timestamp); begitu
+      premisnya hilang (karaoke dihapus), solusi yang lebih baik bukan
+      "mirror kenyataan" tapi "hapus sumber perbedaannya" — akar masalah
+      hilang total, bukan ditambal.
+      **Dihapus total dari `backend/src/routes/tts.js`**: `fetchElevenAudioAligned()`,
+      `segmentWords()`, `AUX_MERGE`, `GK_BREAK_RE`, import `tiny-segmenter`
+      (dan dependency-nya di `package.json` — tidak dipakai di tempat lain
+      manapun di repo, dikonfirmasi grep). `ALIGNED_MODEL` juga hilang
+      (sempat jadi alias `NARRATOR_MODEL_OVERRIDE` di follow-up KEDUA,
+      sekarang tidak perlu ada sama sekali).
+      **Endpoint baru `GET /api/tts/dialog`** menggantikan `GET /api/tts/aligned`
+      (nama lama sengaja TIDAK dipertahankan — "aligned" merujuk ke
+      timestamp yang sudah tidak ada, mempertahankan nama akan menyesatkan
+      pembaca kode berikutnya): tiap giliran dialog tetap dapat SATU audio
+      segment sendiri (perlu dipertahankan untuk fitur yang TETAP ada:
+      putar berurutan dgn baris aktif ter-highlight, DAN klik satu baris =
+      putar giliran itu saja) — tapi generate-nya sekarang lewat
+      `generateDialogSegments()`, helper baru yang manggil `fetchElevenAudio()`
+      POLOS, PERSIS cara `/api/tts` dan `/admin/tts/preview` manggilnya.
+      **Ini yang benar-benar menutup akar masalah**: sekarang cuma ADA SATU
+      cara audio giliran dialog di-generate, dipakai oleh ketiga tempat
+      (siswa, quiz listening, preview admin) — tidak mungkin lagi ada dua
+      fungsi yang diam-diam berbeda treatment model/tag-nya, karena tidak
+      ada fungsi kedua lagi. Cache key dapat prefix baru `dialogsegs1\n`
+      (beda dari `aligned4\n` lama) — baris cache lama jadi orphan permanen
+      (tidak pernah kebaca lagi oleh kode manapun), dibiarkan membusuk
+      alih-alih migrasi pembersihan khusus (biaya kecil, tidak sepadan
+      dengan risiko menyentuh tabel cache produksi untuk PR yang belum
+      merge). Kolom `tts_cache.alignment` (migration 022, JSONB, nullable)
+      dipakai ulang apa adanya untuk bentuk payload baru (`{segments,
+      format:'dialog-segments-v1'}`, tanpa `words`/timestamp) — tidak perlu
+      migrasi baru, kolomnya sudah cukup generik.
+      **Frontend (`welcome.html`)**: `grammarKaraokePlay` disederhanakan
+      besar-besaran — transkrip yang ditampilkan SETELAH audio ke-load
+      sekarang IDENTIK dengan tampilan statis SEBELUM audio ke-load (dulu
+      dua kode berbeda: statis pakai teks polos, sesudah-load membangun
+      `<span class="gk-word">` per kata dari `words[]` backend), jadi
+      `grammarKaraokePlay` sekarang tinggal manggil ulang
+      `renderKaraokeStatic(dialog, key, dialogId)` yang sudah ada — BUKAN
+      duplikasi logika baru. `gkPlaySegment` kehilangan seluruh blok
+      `timeupdate` listener + `st.spans`/`st.wordTimes` (yang menghitung
+      highlight per-karakter dari `times[]`) — yang tersisa cuma
+      `gkSyncActiveLine(key, si)` (TIDAK diubah sama sekali — fungsi ini
+      dari awal SUDAH murni per-baris, terpisah total dari mekanisme
+      per-kata) dipanggil di titik yang sama persis seperti sebelumnya.
+      CSS `.gk-word`/`.gk-word.gk-done`/`.gk-word.gk-active`/`.gk-punct`
+      dihapus (dikonfirmasi grep: nol referensi tersisa di mana pun).
+      **Divalidasi ulang**: `npm test` penuh 289 tes, 288 hijau, 1 skip
+      lama tak terkait, 0 gagal (turun dari 290 karena 2 tes `matchAligned`
+      dihapus, naik lagi +1 dari tes baru `generateDialogSegments` yang
+      me-mock `global.fetch` — membuktikan giliran narator tetap
+      v2+strip DAN giliran dialogue biasa memakai `ELEVEN_MODEL` hidup+tag
+      utuh, TANPA SSML `<break>` — persis perilaku `/api/tts`/
+      `/admin/tts/preview`, tidak ada percabangan tersembunyi). Endpoint
+      baru divalidasi end-to-end lewat Postgres+Express asli (fixture
+      course/module/lesson/`module_grammar.example_dialog` baru): teks tak
+      dikenal → 403; teks dikenal tapi bukan bentuk dialog → 400
+      `not_a_dialog`; dialog yang dikenal → lolos whitelist+parse+
+      speaker-registry+voice-resolve, gagal PERSIS di panggilan jaringan
+      ElevenLabs yang diblokir sandbox ini (502 `tts_upstream`) — bukan
+      crash kode. **Jebakan lingkungan ketahuan saat validasi ini** (bukan
+      bug kode): `eznihongo_test` di sandbox ini sempat masih berskema
+      `dialogue_speakers` LAMA (`voice_role` female/male) walau
+      `schema_migrations` sudah mencatat
+      148 sebagai "applied" — sisa dari migrasi 148 versi DRAFT PERTAMA
+      yang sempat jalan di sini sebelum diamandemen di tempat (lihat
+      follow-up pertama di atas); `CREATE TABLE IF NOT EXISTS` di migrasi
+      148 tidak meng-ALTER tabel yang sudah ada, dan runner melewati
+      migrasi yang sudah tercatat "applied", jadi database sandbox lama
+      TIDAK otomatis ikut ter-update walau file migrasinya sudah benar.
+      Diperbaiki (lokal, bukan menyentuh produksi): `DROP TABLE
+      dialogue_speakers` + hapus baris `148_dialogue_speakers.sql` dari
+      `schema_migrations` + re-run migrator. **Pelajaran buat sesi
+      selanjutnya**: kalau meng-amend migrasi yang BELUM merge lalu tes
+      integrasi tiba-tiba gagal dengan "column does not exist" pada tabel
+      yang migrasi itu SENDIRI buat, curiga dulu ke skema database sandbox
+      yang basi (dibuat dari draf migrasi SEBELUM diamandemen), bukan ke
+      kode aplikasi — solusinya drop+rebuild tabel itu di database
+      sandbox, BUKAN mengubah kode supaya cocok dengan skema lama.
+      **Belum diverifikasi dari sandbox ini**: rendering visual browser
+      sungguhan (bubble + highlight per-baris berjalan, tombol putar
+      per-baris) — ditelusuri lewat pembacaan kode line-by-line (fungsi
+      render yang dipakai persis SAMA dengan tampilan statis yang sudah
+      lama live, dan `gkSyncActiveLine` yang menggerakkan highlight sama
+      sekali tidak disentuh perubahan ini), bukan dikonfirmasi lewat
+      Playwright — audio ElevenLabs sungguhan tetap tidak bisa dites dari
+      sini (diblokir egress) terlepas dari perubahan apa pun di atas.
+
       **Bunpou Flow pilot (Paket 0+1 dari rencana Codex) — session Tugas
       Bunpou yang tahan refresh, konten pendamping opsional, BELUM
       diaktifkan** — user melampirkan
