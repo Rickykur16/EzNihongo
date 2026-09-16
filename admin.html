@@ -4670,14 +4670,17 @@ window.grmrTranslateDialog = async (btn) => {
 // tersimpan (example_dialog/example_dialog_id tetap "PREFIX: teks" persis
 // seperti sebelumnya, dan tombol ✨ Dialog/✨ Translate di atas tetap jalan
 // apa adanya). Yang berubah cuma CARA MENGEDITNYA: per giliran, dengan nama
-// speaker asli (bukan kode A/B) yang bisa dipilih dari daftar
-// dialogue_speakers, dan tes audio SATU giliran lewat /admin/tts/preview
-// yang sudah lama ada — endpoint itu men-cache per teks PERSIS yang dikirim,
-// jadi mengganti satu baris tidak menyentuh cache baris lain sama sekali.
-// Sengaja BUKAN pengulangan fitur "Bacaan & audio" yang di-revert (lihat
-// migration 148 & 146): tidak ada draft/version/publish, tidak ada endpoint
-// publik baru, tidak ada modul ES module baru — murni UI admin di atas
-// infrastruktur yang sudah ada dan sudah battle-tested.
+// karakter asli (bukan kode A/B) yang bisa dipilih dari daftar
+// dialogue_speakers, tiap karakter divoice oleh SUARA ELEVENLABS ASLI (bukan
+// bucket perempuan/laki-laki generik — nama+voice_id dipilih langsung dari
+// katalog akun ElevenLabs lewat GET /admin/elevenlabs/voices, dengan tombol
+// dengar contoh sebelum menetapkan), dan tes audio SATU giliran lewat
+// /admin/tts/preview yang sudah lama ada — endpoint itu men-cache per teks
+// PERSIS yang dikirim, jadi mengganti satu baris tidak menyentuh cache baris
+// lain sama sekali. Sengaja BUKAN pengulangan fitur "Bacaan & audio" yang
+// di-revert (lihat migration 148 & 146): tidak ada draft/version/publish,
+// tidak ada endpoint publik baru, tidak ada modul ES module baru — murni UI
+// admin di atas infrastruktur yang sudah ada dan sudah battle-tested.
 const DIALOG_SPK_RE = /^([A-Za-z0-9]{1,12}|[一-龥ぁ-んァ-ヶー]{1,12}):\s*(.+)$/;
 
 function admParseDialogPair(jpText, idText) {
@@ -4732,7 +4735,7 @@ function admSpeakerOptionsHtml(selected) {
   const known = (window.__dialogSpeakers || []);
   const opts = [`<option value="N"${selected === 'N' ? ' selected' : ''}>🎙️ Narator</option>`];
   for (const s of known) {
-    opts.push(`<option value="${escapeHtml(s.name)}"${selected === s.name ? ' selected' : ''}>${s.voice_role === 'female' ? '♀' : '♂'} ${escapeHtml(s.name)}</option>`);
+    opts.push(`<option value="${escapeHtml(s.name)}"${selected === s.name ? ' selected' : ''}>${escapeHtml(s.name)} — ${escapeHtml(s.voice_name)}</option>`);
   }
   const isKnownOrNarrator = selected === 'N' || known.some((s) => s.name === selected);
   if (!isKnownOrNarrator && selected) {
@@ -4801,18 +4804,99 @@ window.admDialogRowDelete = (i) => { window.__dialogRows.splice(i, 1); admRender
 window.admDialogRowAdd = () => { window.__dialogRows.push({ speaker: 'N', jp: '', id: '' }); admRenderDialogModal(); };
 window.admDialogRowSpeakerChange = async (i, sel) => {
   if (sel.value === '__new__') {
-    const name = (prompt('Nama speaker baru (mis. アンナ):') || '').trim();
-    if (!name) { admRenderDialogModal(); return; }
-    const isFemale = confirm(`Suara untuk "${name}":\nOK = perempuan, Batal = laki-laki`);
-    try {
-      await api('/admin/dialogue-speakers', { method: 'POST', body: JSON.stringify({ name, voiceRole: isFemale ? 'female' : 'male' }) });
-      await admLoadDialogSpeakers(true);
-      window.__dialogRows[i].speaker = name;
-    } catch (err) { notify('Gagal menambah speaker: ' + err.message, true); }
-    admRenderDialogModal();
+    await admNewSpeakerFlow(i);
     return;
   }
   window.__dialogRows[i].speaker = sel.value;
+};
+
+// + Speaker baru: nama karakter (bebas, tampil di dialog) dipasangkan dengan
+// SATU suara nyata dari katalog ElevenLabs akun ini — bukan prompt()/confirm()
+// perempuan-atau-laki-laki. Katalog di-fetch sekali per sesi modal
+// (window.__elevenVoices), dan tombol "dengar contoh" memutar preview_url
+// ElevenLabs langsung (URL publik, tidak lewat backend kita) supaya admin
+// bisa membandingkan suara SEBELUM menetapkannya ke karakter.
+async function admLoadElevenVoices(force) {
+  if (window.__elevenVoices && !force) return window.__elevenVoices;
+  const d = await api('/admin/elevenlabs/voices');
+  window.__elevenVoices = d.voices || [];
+  return window.__elevenVoices;
+}
+
+async function admNewSpeakerFlow(i) {
+  let voices;
+  try {
+    voices = await admLoadElevenVoices();
+  } catch (err) {
+    notify('Gagal memuat daftar suara ElevenLabs: ' + err.message, true);
+    admRenderDialogModal();
+    return;
+  }
+  if (voices.length === 0) {
+    notify('Tidak ada suara ditemukan di akun ElevenLabs ini', true);
+    admRenderDialogModal();
+    return;
+  }
+  window.__newSpeakerRowIndex = i;
+  openModal(admNewSpeakerModalHtml(voices));
+}
+
+function admNewSpeakerModalHtml(voices) {
+  const opts = voices.map((v, idx) => {
+    const label = [v.name, v.labels?.gender, v.labels?.accent].filter(Boolean).join(' · ');
+    return `<option value="${idx}">${escapeHtml(label)}</option>`;
+  }).join('');
+  return `
+    <h3>+ Speaker baru dari ElevenLabs</h3>
+    <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 10px;">
+      Nama karakter tampil di naskah dialog & transkrip siswa (mis. アンナ).
+      Suara ElevenLabs menentukan bagaimana karakter itu benar-benar terdengar —
+      pilih suara ASLI dari akun ElevenLabs ini, dengar dulu contohnya kalau perlu.
+    </p>
+    <label style="display:block;font-size:12px;margin-bottom:4px;">Nama karakter (tampil di dialog)</label>
+    <input id="ns-name" placeholder="mis. アンナ" style="width:100%;margin-bottom:10px;box-sizing:border-box;" />
+    <label style="display:block;font-size:12px;margin-bottom:4px;">Suara ElevenLabs</label>
+    <select id="ns-voice" style="width:100%;margin-bottom:6px;box-sizing:border-box;">${opts}</select>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="admNewSpeakerPreview()">▶ Dengar contoh suara</button>
+    <audio id="ns-preview" controls style="height:28px;width:100%;display:none;margin-top:6px;"></audio>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="admNewSpeakerCancel()">Batal</button>
+      <button type="button" class="btn btn-primary" onclick="admNewSpeakerSave()">Tambah speaker</button>
+    </div>
+  `;
+}
+
+window.admNewSpeakerPreview = () => {
+  const voices = window.__elevenVoices || [];
+  const idx = Number(document.getElementById('ns-voice')?.value);
+  const v = voices[idx];
+  const audio = document.getElementById('ns-preview');
+  if (!v || !audio) return;
+  if (!v.previewUrl) { notify('Suara ini tidak punya contoh audio dari ElevenLabs', true); return; }
+  audio.src = v.previewUrl;
+  audio.style.display = '';
+  audio.play().catch(() => {});
+};
+
+window.admNewSpeakerCancel = () => { admRenderDialogModal(); };
+
+window.admNewSpeakerSave = async () => {
+  const name = (document.getElementById('ns-name')?.value || '').trim();
+  const voices = window.__elevenVoices || [];
+  const idx = Number(document.getElementById('ns-voice')?.value);
+  const v = voices[idx];
+  if (!name) { notify('Isi nama karakter dulu', true); return; }
+  if (!v) { notify('Pilih suara ElevenLabs dulu', true); return; }
+  try {
+    await api('/admin/dialogue-speakers', {
+      method: 'POST',
+      body: JSON.stringify({ name, voiceId: v.voiceId, voiceName: v.name }),
+    });
+    await admLoadDialogSpeakers(true);
+    const i = window.__newSpeakerRowIndex;
+    if (window.__dialogRows[i]) window.__dialogRows[i].speaker = name;
+  } catch (err) { notify('Gagal menambah speaker: ' + err.message, true); }
+  admRenderDialogModal();
 };
 window.admDialogRowTest = async (i, btn) => {
   const r = window.__dialogRows[i];

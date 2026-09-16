@@ -33,6 +33,8 @@ import {
   voiceForSpeaker,
   loadSpeakerRegistry,
   fetchElevenAudio,
+  fetchElevenVoices,
+  elevenLabsEnabled,
   TTS_ELEVEN_VOICE_ID,
   TTS_ELEVEN_MODEL,
   TTS_SETTINGS_VERSION,
@@ -4870,27 +4872,47 @@ router.post('/tts/preview', asyncHandler(async (req, res) => {
   res.send(combined);
 }));
 
+// ── ElevenLabs voice catalog (admin-only) ───────────────────────────────────
+// Backs the dialogue editor's speaker picker: lists the account's REAL
+// ElevenLabs voices (name + voice_id) so an admin assigns a genuine voice
+// per character instead of typing a name and picking female/male. Read-only,
+// no DB involved — always a live call, so a voice added/renamed/removed in
+// the ElevenLabs dashboard shows up immediately.
+router.get('/elevenlabs/voices', asyncHandler(async (req, res) => {
+  if (!elevenLabsEnabled()) {
+    return res.status(503).json({ error: 'elevenlabs_disabled', detail: 'ELEVENLABS_API_KEY belum diset.' });
+  }
+  try {
+    const voices = await fetchElevenVoices();
+    res.json({ voices });
+  } catch (err) {
+    console.error('ElevenLabs voices:', err.message);
+    res.status(502).json({ error: 'elevenlabs_upstream', detail: err.message });
+  }
+}));
+
 // ── Dialogue speaker registry (migration 148) ──────────────────────────────
 // A named speaker ("アンナ", "ハディ", ...) an admin can pick in the grammar
-// dialogue editor instead of the bare TTS routing code (A/B). Deliberately
-// just a name→voice-role lookup — see the migration for why this isn't a
-// repeat of the reverted "Bacaan & audio" pipeline.
-const VOICE_ROLES = new Set(['female', 'male']);
-
+// dialogue editor instead of the bare TTS routing code (A/B), voiced by a
+// REAL ElevenLabs voice_id (picked from the catalog above) rather than a
+// female/male bucket. Deliberately just a name→voice_id lookup — see the
+// migration for why this isn't a repeat of the reverted "Bacaan & audio"
+// pipeline.
 router.get('/dialogue-speakers', asyncHandler(async (req, res) => {
-  const r = await query('SELECT id, name, voice_role FROM dialogue_speakers ORDER BY name ASC');
+  const r = await query('SELECT id, name, voice_id, voice_name FROM dialogue_speakers ORDER BY name ASC');
   res.json({ speakers: r.rows });
 }));
 
 router.post('/dialogue-speakers', asyncHandler(async (req, res) => {
   const name = String((req.body || {}).name || '').trim().slice(0, 30);
-  const voiceRole = String((req.body || {}).voiceRole || '');
+  const voiceId = String((req.body || {}).voiceId || '').trim().slice(0, 100);
+  const voiceName = String((req.body || {}).voiceName || '').trim().slice(0, 100);
   if (!name) return res.status(400).json({ error: 'name required' });
-  if (!VOICE_ROLES.has(voiceRole)) return res.status(400).json({ error: 'voiceRole must be female or male' });
+  if (!voiceId || !voiceName) return res.status(400).json({ error: 'voiceId and voiceName required (pick a real ElevenLabs voice)' });
   try {
     const r = await query(
-      `INSERT INTO dialogue_speakers (name, voice_role) VALUES ($1, $2) RETURNING id, name, voice_role`,
-      [name, voiceRole]
+      `INSERT INTO dialogue_speakers (name, voice_id, voice_name) VALUES ($1, $2, $3) RETURNING id, name, voice_id, voice_name`,
+      [name, voiceId, voiceName]
     );
     res.status(201).json({ speaker: r.rows[0] });
   } catch (err) {
@@ -4902,13 +4924,14 @@ router.post('/dialogue-speakers', asyncHandler(async (req, res) => {
 router.put('/dialogue-speakers/:id', asyncHandler(async (req, res) => {
   if (!isCanonicalUuid(req.params.id)) return res.status(400).json({ error: 'invalid id' });
   const name = String((req.body || {}).name || '').trim().slice(0, 30);
-  const voiceRole = String((req.body || {}).voiceRole || '');
+  const voiceId = String((req.body || {}).voiceId || '').trim().slice(0, 100);
+  const voiceName = String((req.body || {}).voiceName || '').trim().slice(0, 100);
   if (!name) return res.status(400).json({ error: 'name required' });
-  if (!VOICE_ROLES.has(voiceRole)) return res.status(400).json({ error: 'voiceRole must be female or male' });
+  if (!voiceId || !voiceName) return res.status(400).json({ error: 'voiceId and voiceName required (pick a real ElevenLabs voice)' });
   try {
     const r = await query(
-      `UPDATE dialogue_speakers SET name = $2, voice_role = $3 WHERE id = $1 RETURNING id, name, voice_role`,
-      [req.params.id, name, voiceRole]
+      `UPDATE dialogue_speakers SET name = $2, voice_id = $3, voice_name = $4 WHERE id = $1 RETURNING id, name, voice_id, voice_name`,
+      [req.params.id, name, voiceId, voiceName]
     );
     if (r.rows.length === 0) return res.status(404).json({ error: 'not_found' });
     res.json({ speaker: r.rows[0] });

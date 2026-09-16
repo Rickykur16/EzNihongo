@@ -1,7 +1,10 @@
 -- 148_dialogue_speakers.sql — named-speaker registry for grammar dialogues,
 -- so the admin dialogue editor can assign a real character name (アンナ,
 -- ハディ, ...) instead of the bare TTS routing code (A/B) that
--- `voiceForSpeaker()` (backend/src/routes/tts.js) has used until now.
+-- `voiceForSpeaker()` (backend/src/routes/tts.js) has used until now, AND
+-- assign that character a REAL ElevenLabs voice (voice_id) picked from
+-- ElevenLabs' own catalog — not a binary female/male bucket mapped to only
+-- 2 env-configured voices.
 --
 -- Deliberately ONE small lookup table, not a content pipeline: this is not
 -- a repeat of the reverted "Bacaan & audio" feature (migration 142, dropped
@@ -15,32 +18,24 @@
 -- Narrator is intentionally NOT a speaker row here: it stays the fixed "N"
 -- code (matched by NARRATOR_PATTERNS in tts.js) — a narrator doesn't have a
 -- character name to pick, only the two dialogue participants do.
+--
+-- `voice_id` = the ElevenLabs voice_id verbatim (e.g. picked from
+-- GET /v1/voices via the new admin endpoint) — the actual sound identity.
+-- `voice_name` = that voice's own display name at ElevenLabs (e.g.
+-- "Rachel"), stored alongside purely so the admin UI can show "アンナ →
+-- Rachel" without re-fetching the whole catalog on every page load; it is
+-- never used for TTS routing (voice_id alone decides that) and is allowed
+-- to go stale if a voice is later renamed upstream.
+--
+-- No seed data: unlike a role ('female'/'male'), a real voice_id cannot be
+-- guessed or invented — it only exists inside a specific ElevenLabs
+-- account's catalog, which this migration has no way to see. The registry
+-- starts empty; an admin populates it live from the fetched catalog the
+-- first time they use the per-turn dialogue editor's speaker picker.
 CREATE TABLE IF NOT EXISTS dialogue_speakers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL UNIQUE,
-  voice_role TEXT NOT NULL CHECK (voice_role IN ('female', 'male')),
+  voice_id TEXT NOT NULL,
+  voice_name TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
--- Seed with the cast already used (as bare A/B codes) across Bab 3's six
--- grammar dialogues (migrations 143-145) — the first real content an admin
--- will likely re-edit with the new picker. Roles are read from context, not
--- guessed from the A/B code: three of these currently get the WRONG voice
--- gender under the old code-based routing (B always maps to the male voice
--- regardless of who's actually speaking) — サリ, ミナ and ハディ are cases
--- in point (Sari/Mina are female speakers coded B; Hadi is a male speaker
--- coded A). Re-saving those dialogues with named speakers fixes this as a
--- side effect; this migration only seeds names, it does not touch
--- module_grammar content.
-INSERT INTO dialogue_speakers (name, voice_role) VALUES
-  ('アンナ', 'female'),
-  ('ハディ', 'male'),
-  ('リナ', 'female'),
-  ('ケビン', 'male'),
-  ('マリア', 'female'),
-  ('リョウ', 'male'),
-  ('デウィ', 'female'),
-  ('サリ', 'female'),
-  ('ミナ', 'female'),
-  ('ユウト', 'male')
-ON CONFLICT (name) DO NOTHING;

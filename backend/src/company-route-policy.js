@@ -132,6 +132,9 @@ export const LEGACY_ROUTES = [
   ["POST", "/kanji/:id/move", "legacy.academic"],
   ["POST", "/lessons/:lessonId/import-notion-kanji-bab", "legacy.academic"],
   ["POST", "/tts/preview", null],
+  // ElevenLabs voice catalog (read-only, admin-only) — feeds the dialogue
+  // editor's speaker picker with real ElevenLabs voices.
+  ["GET", "/elevenlabs/voices", "legacy.academic"],
   // Dialogue speaker registry (migration 148) — same permission split as
   // grammar-examples above: read/write is content management, delete is
   // owner-only.
