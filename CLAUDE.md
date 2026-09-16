@@ -71,6 +71,51 @@
 
 ## Konvensi penting
 
+      **Pola 〜は〜ですか Bab 3: arti Step 1 bukan materi & contoh Step 2
+      salah register keluarga** — ditemukan lewat review manual modal admin
+      "🎯 Pengecoh Step 1/2" (screenshot user), dipertajam pertanyaan user
+      sendiri ("Apakah AB itu aneh sih") soal teks Step 1. Dua bug terpisah
+      di SATU baris `module_grammar`/`grammar_examples`, sama-sama dari
+      migration 139: (1) `meaning` ("Arti", jawaban benar Step 1) cuma
+      "Apakah A B?" — bukan salah gramatikal (predikat nominal Indonesia
+      memang tanpa kopula), tapi melanggar niat field ini sendiri (komentar
+      `grammar-drills.js`: arti "ditulis untuk dibaca sebagai materi", bukan
+      echo rumus) DAN `balancedMeaning()` mensyaratkan opsi sebanding
+      panjang — 11 karakter berdampingan dengan 3 pengecoh kurasi admin
+      (46-57 karakter) berarti jawaban benar bisa ditebak murni dari
+      PANJANGNYA tanpa paham Jepang sama sekali. Diganti "Menanyakan apakah
+      A adalah B dalam bentuk sopan" (47 karakter, notasi A/B dipertahankan
+      — sudah diajarkan eksplisit di Bab 3, migration 042: "AはBです berarti
+      A adalah B"). (2) Contoh kalimat pertama (dipakai Step 2) —
+      "あには かいしゃいんですか。" — pakai あに (istilah keluarga SENDIRI,
+      dipakai bicara TENTANG keluarga sendiri KEPADA orang lain), padahal
+      terjemahannya menanyakan keluarga LAWAN BICARA ("Apakah kakak
+      laki-lakimu karyawan?"); menanyakan keluarga ORANG LAIN wajib
+      おにいさん (bentuk hormat). Tiga contoh keluarga lain di migration 139
+      (ちちは.../ははは.../あねも...) semuanya PERNYATAAN soal keluarga
+      sendiri — itu memang benar pakai istilah rendah; pola ini
+      satu-satunya PERTANYAAN soal keluarga orang lain di migrasi itu, jadi
+      satu-satunya yang salah register. Diganti
+      "おにいさんは かいしゃいんですか。".
+      Sumber migration 139 diedit langsung di repo untuk (2) (fresh install
+      lewat 000-148 benar sejak awal); `meaning` (1) tidak pernah diisi
+      lewat migrasi apa pun (bank pola Bab 3 diisi manual lewat admin, sama
+      seperti 126/127/128) — migration **148**
+      (`148_grammar_bab3_desuka_fix.sql`) satu-satunya tempat perbaikannya,
+      dua UPDATE idempoten (WHERE mencocokkan teks lama persis, aman
+      di-re-run). Divalidasi di Postgres 16 lokal: (a) 148 dijalankan dua
+      kali terhadap fixture meniru state production (module_grammar.meaning
+      = teks lama, grammar_examples.japanese = teks lama) — run pertama 2
+      baris berubah, run kedua 0 baris (idempoten, tanpa error); (b) 139
+      (sumber, sudah diedit) dijalankan fresh dari nol terhadap 6 pola Bab 3
+      + 5 pola Bab 4 — applied bersih, contoh yang dihasilkan sudah langsung
+      benar (おにいさん) tanpa perlu 148; (c) 148 dijalankan LAGI di atas
+      hasil fresh-install 139 — no-op aman (meaning di jalur fresh-install
+      memang tidak pernah "Apakah A B?", examples sudah benar). Distractor
+      Step 2 yang sudah admin tulis (ではない／でしたか／ですね) TIDAK diubah
+      — ketiganya tetap jelas salah untuk kalimat baru, tidak perlu ditulis
+      ulang.
+
       **Bunpou Flow pilot (Paket 0+1 dari rencana Codex) — session Tugas
       Bunpou yang tahan refresh, konten pendamping opsional, BELUM
       diaktifkan** — user melampirkan

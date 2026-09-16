@@ -100,7 +100,7 @@ BEGIN
     "pattern": "〜は〜ですか",
     "examples": [
       {
-        "jp": "あには かいしゃいんですか。",
+        "jp": "おにいさんは かいしゃいんですか。",
         "hl": "ですか",
         "id": "Apakah kakak laki-lakimu karyawan?"
       },
