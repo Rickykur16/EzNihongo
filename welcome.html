@@ -4520,8 +4520,6 @@
 </style>
 <link rel="stylesheet" href="styles/learning-placement.css?v=20260912-2"/>
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
-<link rel="stylesheet" href="styles/grammar-dialogue.css?v=1"/>
-<script type="module" src="grammar-dialogue.js?v=1"></script>
 </head>
 <body>
 
@@ -8027,9 +8025,7 @@ function renderLessonGrammar(lesson) {
                 <span class="grammar-block-chevron" aria-hidden="true">▾</span>
               </button>
               <div class="grammar-block-content">
-                ${g.has_published_dialogue
-                  ? `<grammar-dialogue data-grammar-id="${escapeHtml(g.id || '')}" data-legacy="${escapeHtml(dialog)}" data-translation="${escapeHtml(g.example_dialog_id || '')}" data-pattern="${escapeHtml(g.pattern || '')}"></grammar-dialogue>`
-                  : grammarKaraokeHtml(dialog, `g${i}`, g.example_dialog_id || '')}
+                ${grammarKaraokeHtml(dialog, `g${i}`, g.example_dialog_id || '')}
               </div>
             </div>` : ''}
             ${g.notes ? `<div class="grammar-notes">${escapeHtml(g.notes)}</div>` : ''}
@@ -8049,7 +8045,6 @@ window.__gk = window.__gk || {};
 // Stop + buang semua karaoke player (dipanggil pas pindah lesson supaya
 // audio lama gak terus main; key g0/g1 di-reuse antar render).
 function gkStopAll() {
-  window.GrammarDialogue?.stopAll();
   for (const k of Object.keys(window.__gk)) {
     const st = window.__gk[k];
     if (st) {
@@ -8082,7 +8077,6 @@ window.grammarBlockToggle = (btn) => {
   const block = btn.closest('.grammar-collapsible');
   if (!block) return;
   const isDialog = block.classList.contains('grammar-dialog-block');
-  if (isDialog) window.GrammarDialogue?.stopAll();
   const isCollapsed = block.hasAttribute('data-collapsed');
   if (isCollapsed) {
     if (isDialog) {

@@ -10,8 +10,6 @@
 <link rel="stylesheet" href="styles/admin-workspace.css?v=productivity-20260912"/>
 <link rel="stylesheet" href="styles/student-operations.css?v=operations-20260912"/>
 <link rel="stylesheet" href="styles/company.css?v=productivity-20260912"/>
-<link rel="stylesheet" href="styles/grammar-dialogue.css?v=1"/>
-<script type="module" src="grammar-dialogue-admin.js?v=1"></script>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; font-family: var(--font-body); background: var(--paper-100); color: var(--ink-900); }
@@ -4578,7 +4576,6 @@ function itemRowHtml(item, fields, kind) {
     return `<td><input name="${f.name}" value="${escapeHtml(item[f.name] || '')}" style="${f.style}" /></td>`;
   }).join('');
   const aiButtons = kind === 'grammar' ? `
-    ${item.id ? `<button type="button" class="btn btn-primary btn-sm" onclick="window.GrammarDialogueAdmin.open('${item.id}')">Bacaan &amp; audio</button>` : ''}
     ${item.id ? `<button type="button" class="btn btn-ghost btn-sm" title="Kelola contoh kalimat (multi)" onclick="grammarManageExamples('${item.id}', this)">📝 Contoh</button>` : ''}
     ${item.id ? `<button type="button" class="btn btn-ghost btn-sm" title="Pengecoh soal Step 1 Tugas Bunpou" onclick="grammarManageDistractors('${item.id}')">🎯 Pengecoh</button>` : ''}
     <button type="button" class="btn btn-ghost btn-sm" title="Generate dialog 3-suara N/A/B (AI) dari Pola + Arti" onclick="grmrGenDialog(this)">✨ Dialog</button>
@@ -4992,7 +4989,6 @@ window.saveItemRow = async (btn) => {
       // Swap × button to server-delete variant
       const actionsCell = tr.querySelector('td.actions');
       actionsCell.innerHTML = `
-        ${kind === 'grammar' && saved?.id ? `<button type="button" class="btn btn-primary" onclick="window.GrammarDialogueAdmin.open('${saved.id}')">Bacaan &amp; audio</button>` : ''}
         <button type="button" class="btn btn-primary" onclick="saveItemRow(this)">Simpan</button>
         <button type="button" class="btn btn-danger" onclick="deleteItemRow(this)">×</button>
       `;
