@@ -4609,6 +4609,7 @@ function itemRowHtml(item, fields, kind) {
     ${item.id ? `<button type="button" class="btn btn-ghost btn-sm" title="Pengecoh soal Step 1 Tugas Bunpou" onclick="grammarManageDistractors('${item.id}')">🎯 Pengecoh</button>` : ''}
     <button type="button" class="btn btn-ghost btn-sm" title="Generate dialog 3-suara N/A/B (AI) dari Pola + Arti" onclick="grmrGenDialog(this)">✨ Dialog</button>
     <button type="button" class="btn btn-ghost btn-sm" title="Terjemahkan dialog (AI) ke Bahasa Indonesia" onclick="grmrTranslateDialog(this)">✨ Translate</button>
+    <button type="button" class="btn btn-ghost btn-sm" title="Edit dialog per giliran: pilih nama speaker asli, tes audio per baris" onclick="grmrManageDialog(this)">🎭 Giliran</button>
   ` : '';
   return `
     <tr data-id="${item.id || ''}" data-kind="${kind}">
@@ -4662,6 +4663,177 @@ window.grmrTranslateDialog = async (btn) => {
     notify('Terjemahan dialog dibuat — review lalu klik Simpan');
   } catch (err) { notify('Gagal: ' + err.message, true); }
   finally { btn.disabled = false; btn.textContent = orig; }
+};
+
+// === Dialog per-giliran (migration 148: dialogue_speakers) ===
+// Editor terpisah dari dua textarea flat di atas — TIDAK mengganti format
+// tersimpan (example_dialog/example_dialog_id tetap "PREFIX: teks" persis
+// seperti sebelumnya, dan tombol ✨ Dialog/✨ Translate di atas tetap jalan
+// apa adanya). Yang berubah cuma CARA MENGEDITNYA: per giliran, dengan nama
+// speaker asli (bukan kode A/B) yang bisa dipilih dari daftar
+// dialogue_speakers, dan tes audio SATU giliran lewat /admin/tts/preview
+// yang sudah lama ada — endpoint itu men-cache per teks PERSIS yang dikirim,
+// jadi mengganti satu baris tidak menyentuh cache baris lain sama sekali.
+// Sengaja BUKAN pengulangan fitur "Bacaan & audio" yang di-revert (lihat
+// migration 148 & 146): tidak ada draft/version/publish, tidak ada endpoint
+// publik baru, tidak ada modul ES module baru — murni UI admin di atas
+// infrastruktur yang sudah ada dan sudah battle-tested.
+const DIALOG_SPK_RE = /^([A-Za-z0-9]{1,12}|[一-龥ぁ-んァ-ヶー]{1,12}):\s*(.+)$/;
+
+function admParseDialogPair(jpText, idText) {
+  const parseOne = (text) => String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
+    .map((line) => {
+      const m = line.match(DIALOG_SPK_RE);
+      return m ? { speaker: m[1], text: m[2].trim() } : { speaker: '', text: line };
+    });
+  const jp = parseOne(jpText);
+  const id = parseOne(idText);
+  const n = Math.max(jp.length, id.length);
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    rows.push({
+      speaker: (jp[i] && jp[i].speaker) || (id[i] && id[i].speaker) || 'N',
+      jp: (jp[i] && jp[i].text) || '',
+      id: (id[i] && id[i].text) || '',
+    });
+  }
+  return rows;
+}
+// Baris kosong (jp kosong setelah trim) dibuang — bukan diserialisasi jadi
+// "PREFIX: " kosong, yang akan lolos parseDialog() sebagai giliran nyata.
+function admSerializeDialogPair(rows) {
+  const kept = (rows || []).filter((r) => (r.jp || '').trim());
+  return {
+    jp: kept.map((r) => `${r.speaker}: ${r.jp.trim()}`).join('\n'),
+    id: kept.map((r) => `${r.speaker}: ${(r.id || '').trim()}`).join('\n'),
+  };
+}
+
+async function admLoadDialogSpeakers(force) {
+  if (window.__dialogSpeakers && !force) return window.__dialogSpeakers;
+  const d = await api('/admin/dialogue-speakers');
+  window.__dialogSpeakers = d.speakers || [];
+  return window.__dialogSpeakers;
+}
+
+window.grmrManageDialog = async (btn) => {
+  const tr = btn.closest('tr'); if (!tr) return;
+  const jpTa = tr.querySelector('textarea[name="example_dialog"]');
+  const idTa = tr.querySelector('textarea[name="example_dialog_id"]');
+  if (!jpTa || !idTa) return;
+  try { await admLoadDialogSpeakers(); } catch (err) { notify('Gagal memuat daftar speaker: ' + err.message, true); return; }
+  window.__dialogRows = admParseDialogPair(jpTa.value, idTa.value);
+  if (window.__dialogRows.length === 0) window.__dialogRows.push({ speaker: 'N', jp: '', id: '' });
+  window.__dialogTargetTa = { jp: jpTa, id: idTa };
+  admRenderDialogModal();
+};
+
+function admSpeakerOptionsHtml(selected) {
+  const known = (window.__dialogSpeakers || []);
+  const opts = [`<option value="N"${selected === 'N' ? ' selected' : ''}>🎙️ Narator</option>`];
+  for (const s of known) {
+    opts.push(`<option value="${escapeHtml(s.name)}"${selected === s.name ? ' selected' : ''}>${s.voice_role === 'female' ? '♀' : '♂'} ${escapeHtml(s.name)}</option>`);
+  }
+  const isKnownOrNarrator = selected === 'N' || known.some((s) => s.name === selected);
+  if (!isKnownOrNarrator && selected) {
+    opts.push(`<option value="${escapeHtml(selected)}" selected>⚠️ "${escapeHtml(selected)}" (kode lama, pilih ulang)</option>`);
+  }
+  opts.push(`<option value="__new__">+ Speaker baru…</option>`);
+  return opts.join('');
+}
+
+function admDialogRowHtml(r, i) {
+  return `
+    <div class="dlg-row" style="border:1px solid #e5e5e5;border-radius:8px;padding:10px;margin-bottom:8px;">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+        <select onchange="admDialogRowSpeakerChange(${i}, this)" style="min-width:170px;">${admSpeakerOptionsHtml(r.speaker)}</select>
+        <span style="flex:1;"></span>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogRowMove(${i},-1)" title="Naik">↑</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogRowMove(${i},1)" title="Turun">↓</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="admDialogRowDelete(${i})" title="Hapus giliran">×</button>
+      </div>
+      <textarea rows="2" placeholder="Teks Jepang…" style="width:100%;font-family:var(--font-mono);font-size:12px;margin-bottom:4px;box-sizing:border-box;" oninput="admDialogRowEdit(${i},'jp',this.value)">${escapeHtml(r.jp)}</textarea>
+      <textarea rows="2" placeholder="Terjemahan…" style="width:100%;font-size:12px;margin-bottom:6px;box-sizing:border-box;" oninput="admDialogRowEdit(${i},'id',this.value)">${escapeHtml(r.id)}</textarea>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogRowTest(${i}, this)">🔊 Tes giliran ini</button>
+        <audio id="dlg-audio-${i}" controls style="height:28px;flex:1;display:none;"></audio>
+      </div>
+    </div>`;
+}
+
+function admDialogModalHtml() {
+  const rows = window.__dialogRows || [];
+  const totalChars = rows.reduce((n, r) => n + r.jp.length + r.speaker.length + 2, 0);
+  const mismatched = rows.filter((r) => !!r.jp.trim() !== !!r.id.trim()).length;
+  return `
+    <h3>🎭 Kelola dialog per giliran</h3>
+    <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 10px;">
+      Pilih Narator atau nama speaker asli per giliran (bukan kode A/B) — suaranya
+      ditentukan dari nama yang dipilih, bukan ditebak dari kode. Tes audio per
+      giliran pakai cache yang sama dengan yang dipakai siswa: ganti satu baris
+      tidak menggenerate ulang baris lain.
+    </p>
+    <div id="dlg-rows">${rows.map((r, i) => admDialogRowHtml(r, i)).join('')}</div>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogRowAdd()">+ Tambah giliran</button>
+    <div style="font-size:11px;color:${totalChars > 1500 ? '#dc2626' : '#a3a3a3'};font-family:var(--font-body);margin:10px 0;">
+      ${totalChars} / 1500 karakter (batas gabungan TTS)${mismatched ? ` · ⚠️ ${mismatched} giliran teks/terjemahan tidak sepadan` : ''}
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button type="button" class="btn btn-primary" onclick="admDialogSave()">Isi ke baris (lalu klik Simpan)</button>
+    </div>
+  `;
+}
+function admRenderDialogModal() {
+  openModal(admDialogModalHtml());
+  const mc = document.getElementById('modal-content');
+  if (mc) mc.style.maxWidth = '640px';
+}
+
+window.admDialogRowEdit = (i, field, value) => { if (window.__dialogRows[i]) window.__dialogRows[i][field] = value; };
+window.admDialogRowMove = (i, dir) => {
+  const rows = window.__dialogRows; const j = i + dir;
+  if (j < 0 || j >= rows.length) return;
+  const tmp = rows[i]; rows[i] = rows[j]; rows[j] = tmp;
+  admRenderDialogModal();
+};
+window.admDialogRowDelete = (i) => { window.__dialogRows.splice(i, 1); admRenderDialogModal(); };
+window.admDialogRowAdd = () => { window.__dialogRows.push({ speaker: 'N', jp: '', id: '' }); admRenderDialogModal(); };
+window.admDialogRowSpeakerChange = async (i, sel) => {
+  if (sel.value === '__new__') {
+    const name = (prompt('Nama speaker baru (mis. アンナ):') || '').trim();
+    if (!name) { admRenderDialogModal(); return; }
+    const isFemale = confirm(`Suara untuk "${name}":\nOK = perempuan, Batal = laki-laki`);
+    try {
+      await api('/admin/dialogue-speakers', { method: 'POST', body: JSON.stringify({ name, voiceRole: isFemale ? 'female' : 'male' }) });
+      await admLoadDialogSpeakers(true);
+      window.__dialogRows[i].speaker = name;
+    } catch (err) { notify('Gagal menambah speaker: ' + err.message, true); }
+    admRenderDialogModal();
+    return;
+  }
+  window.__dialogRows[i].speaker = sel.value;
+};
+window.admDialogRowTest = async (i, btn) => {
+  const r = window.__dialogRows[i];
+  if (!r || !r.jp.trim()) { notify('Isi teks Jepang dulu', true); return; }
+  const orig = btn.textContent; btn.disabled = true; btn.textContent = '…';
+  try {
+    const text = `${r.speaker}: ${r.jp.trim()}`;
+    const resp = await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({ text }) });
+    if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || e.error || ('HTTP ' + resp.status)); }
+    const blob = await resp.blob();
+    const audio = document.getElementById(`dlg-audio-${i}`);
+    if (audio) { audio.src = URL.createObjectURL(blob); audio.style.display = ''; audio.play().catch(() => {}); }
+  } catch (err) { notify('Gagal generate audio: ' + err.message, true); }
+  finally { btn.disabled = false; btn.textContent = orig; }
+};
+window.admDialogSave = () => {
+  const { jp, id } = admSerializeDialogPair(window.__dialogRows || []);
+  const target = window.__dialogTargetTa;
+  if (target) { target.jp.value = jp; target.id.value = id; }
+  closeModal();
+  notify('Dialog terisi — review lalu klik Simpan pada baris ini');
 };
 
 // === Multi contoh grammar (mirror deckManageExamples) ===

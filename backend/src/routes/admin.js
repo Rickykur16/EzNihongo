@@ -31,6 +31,7 @@ import {
   ttsHashKey,
   parseDialog,
   voiceForSpeaker,
+  loadSpeakerRegistry,
   fetchElevenAudio,
   TTS_ELEVEN_VOICE_ID,
   TTS_ELEVEN_MODEL,
@@ -4820,8 +4821,9 @@ router.post('/tts/preview', asyncHandler(async (req, res) => {
   // Detect dialog. Single-voice fallback.
   const turns = parseDialog(text);
   const isDialog = !!turns;
+  const registry = isDialog ? await loadSpeakerRegistry() : null;
   const turnVoices = isDialog
-    ? turns.map((t, i) => voiceForSpeaker(t.speaker, i))
+    ? turns.map((t, i) => voiceForSpeaker(t.speaker, i, registry))
     : [{ voiceId: TTS_ELEVEN_VOICE_ID, role: 'single' }];
   const voices = turnVoices.map((v) => v.voiceId);
 
@@ -4866,6 +4868,64 @@ router.post('/tts/preview', asyncHandler(async (req, res) => {
   res.set('Content-Type', 'audio/mpeg');
   res.set('Cache-Control', 'private, no-cache');
   res.send(combined);
+}));
+
+// ── Dialogue speaker registry (migration 148) ──────────────────────────────
+// A named speaker ("アンナ", "ハディ", ...) an admin can pick in the grammar
+// dialogue editor instead of the bare TTS routing code (A/B). Deliberately
+// just a name→voice-role lookup — see the migration for why this isn't a
+// repeat of the reverted "Bacaan & audio" pipeline.
+const VOICE_ROLES = new Set(['female', 'male']);
+
+router.get('/dialogue-speakers', asyncHandler(async (req, res) => {
+  const r = await query('SELECT id, name, voice_role FROM dialogue_speakers ORDER BY name ASC');
+  res.json({ speakers: r.rows });
+}));
+
+router.post('/dialogue-speakers', asyncHandler(async (req, res) => {
+  const name = String((req.body || {}).name || '').trim().slice(0, 30);
+  const voiceRole = String((req.body || {}).voiceRole || '');
+  if (!name) return res.status(400).json({ error: 'name required' });
+  if (!VOICE_ROLES.has(voiceRole)) return res.status(400).json({ error: 'voiceRole must be female or male' });
+  try {
+    const r = await query(
+      `INSERT INTO dialogue_speakers (name, voice_role) VALUES ($1, $2) RETURNING id, name, voice_role`,
+      [name, voiceRole]
+    );
+    res.status(201).json({ speaker: r.rows[0] });
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'name_taken' });
+    throw err;
+  }
+}));
+
+router.put('/dialogue-speakers/:id', asyncHandler(async (req, res) => {
+  if (!isCanonicalUuid(req.params.id)) return res.status(400).json({ error: 'invalid id' });
+  const name = String((req.body || {}).name || '').trim().slice(0, 30);
+  const voiceRole = String((req.body || {}).voiceRole || '');
+  if (!name) return res.status(400).json({ error: 'name required' });
+  if (!VOICE_ROLES.has(voiceRole)) return res.status(400).json({ error: 'voiceRole must be female or male' });
+  try {
+    const r = await query(
+      `UPDATE dialogue_speakers SET name = $2, voice_role = $3 WHERE id = $1 RETURNING id, name, voice_role`,
+      [req.params.id, name, voiceRole]
+    );
+    if (r.rows.length === 0) return res.status(404).json({ error: 'not_found' });
+    res.json({ speaker: r.rows[0] });
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'name_taken' });
+    throw err;
+  }
+}));
+
+router.delete('/dialogue-speakers/:id', asyncHandler(async (req, res) => {
+  if (!isCanonicalUuid(req.params.id)) return res.status(400).json({ error: 'invalid id' });
+  // No FK from anywhere to this table (see migration 148) — a dialogue
+  // referencing this name by its plain-text prefix keeps working after
+  // delete, it just falls back to the pattern/alternation guess in
+  // voiceForSpeaker() like an unknown name always has.
+  await query('DELETE FROM dialogue_speakers WHERE id = $1', [req.params.id]);
+  res.json({ ok: true });
 }));
 
 // DELETE /api/admin/tts/cache — body { text } → cari cache entry yang

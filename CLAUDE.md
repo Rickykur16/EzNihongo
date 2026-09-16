@@ -71,6 +71,92 @@
 
 ## Konvensi penting
 
+      **Dialog grammar: speaker asli yang bisa dipilih dari admin, ganti kode
+      A/B — dan tes audio per giliran, independen** — user: "gunakan nama
+      speaker aslinya yg bisa di pilih dari ruang kerja daripada kode N A B",
+      lalu "Buat bisa di isi per giliran... tes audio pergiliran jadi jika
+      ada satu giliran yg jelek cukup yg itu saja yg di generate ulang".
+      **Diperiksa dulu terhadap sejarah, bukan langsung dibangun**: permintaan
+      ini nyaris identik dengan fitur "Bacaan & audio" yang di-build LALU
+      DI-REVERT TOTAL persis sehari sebelum baseline sesi ini (`ff8f8e4`,
+      ~1.178 baris, 4 tabel, alur draft→generate→review→publish) — dalam satu
+      hari fitur itu menghasilkan 4 insiden produksi: MIME .mjs mematikan
+      fitur, draft tersimpan membungkam audio yang sudah bunyi, dialog tidak
+      muncul di pelajaran, dan endpoint publik tanpa autentikasi. Root cause
+      dibaca dari commit revert + isi asli fitur itu (git show pada commit
+      sebelum revert) sebelum menulis kode apa pun.
+      **Ternyata TIDAK perlu mengulang pola itu**: `POST /admin/tts/preview`
+      (sudah lama ada, admin-only) men-cache murni berdasar HASH TEKS PERSIS
+      yang dikirim — kirim satu giliran ("アンナ: はじめまして。") alih-alih
+      dialog utuh, dan giliran itu dapat entri cache SENDIRI, terpisah dari
+      giliran lain. Itu sudah cukup untuk "tes + regenerate per giliran
+      independen" tanpa infrastruktur baru apa pun. Format penyimpanan
+      (`module_grammar.example_dialog`/`example_dialog_id`, teks
+      "PREFIX: kalimat" per baris) SENGAJA TIDAK diubah — hanya CARA
+      MENGEDITNYA yang baru (editor per-baris di admin), dan
+      `parseDialog()`/`voiceForSpeaker()` (`backend/src/routes/tts.js`,
+      dipakai bersama endpoint publik `/api/tts`+`/api/tts/aligned`, endpoint
+      admin `/admin/tts/preview`, DAN generator soal listening JLPT) diperluas
+      SECARA ADITIF: prefix boleh kode lama (N/A/B/男/女/dst, dipertahankan
+      utuh untuk generator AI listening yang masih menghasilkan format itu)
+      ATAU nama asli (kelas karakter kanji+kana). Nol tabel baru untuk
+      konten, nol endpoint publik baru, nol modul ES module baru.
+      **Migrasi 148** (`dialogue_speakers`, satu tabel kecil: id/name/
+      voice_role) — registry nama↔suara yang dipakai `voiceForSpeaker()`
+      SEBELUM tebakan pola: `known = registry.get(speaker)` menang atas
+      `FEMALE_PATTERNS`/`MALE_PATTERNS`. Diseed dengan 10 tokoh yang sudah
+      dipakai dialog Bab 3 (migration 143-145) sebagai kode A/B. **Ketahuan
+      lewat pengukuran, bukan disangka**: menelusuri siapa=A/siapa=B di
+      keenam dialog Bab 3 menemukan TIGA mismatch gender nyata yang sudah
+      lama ada — サリ dan ミナ (nama perempuan) dikode "B" sehingga divoice
+      LAKI-LAKI, dan ハディ (nama laki-laki) dikode "A" sehingga divoice
+      PEREMPUAN, karena `voiceForSpeaker` cuma menebak dari HURUF kode, tidak
+      pernah tahu siapa sebenarnya sedang bicara. Tidak diperbaiki lewat
+      migrasi konten (di luar scope), tapi otomatis benar begitu admin
+      membuka dialog itu lewat editor baru dan memilih nama asli.
+      **Editor admin** (`admin.html`, tombol baru "🎭 Giliran" di sebelah
+      "✨ Dialog"/"✨ Translate" yang tetap dipertahankan apa adanya): per
+      giliran — pilih Narator atau nama dari `dialogue_speakers` (atau "+
+      Speaker baru…", nama+gender lewat prompt/confirm native — pragmatis,
+      bukan modal bersarang), dua textarea (JP/ID), tombol "🔊 Tes giliran
+      ini" (fetch blob dari `/admin/tts/preview`, exact pola yang sudah
+      dipakai `deckShowAudioPreview` untuk audio kosakata), naik/turun/hapus
+      giliran. "Isi ke baris" MENULIS ULANG kedua textarea asli lalu admin
+      tetap klik Simpan yang sudah ada — sengaja tidak auto-save, konsisten
+      dengan `grmrGenDialog`/`grmrTranslateDialog` yang sudah lebih dulu
+      begitu ("review lalu klik Simpan"). **Dipertimbangkan lalu SENGAJA
+      TIDAK dibuat**: auto-warm cache dialog gabungan setelah simpan (supaya
+      siswa pertama tidak menunggu generate) — dibatalkan setelah sadar
+      `/admin/tts/preview` meng-hash dengan cara yang SAMA dengan `/api/tts`
+      biasa, BUKAN `/api/tts/aligned` (hash `'aligned4\n'+text`, dipakai
+      player karaoke siswa sungguhan) — men-warm lewat endpoint admin akan
+      mengisi entri cache yang tidak pernah dibaca siswa, kelihatan jalan
+      padahal tidak berguna sama sekali. Daripada mengirim sesuatu yang
+      diam-diam salah, fitur ini tidak dibuat; siswa pertama tetap menunggu
+      generate sekali seperti perilaku hari ini, bukan regresi baru.
+      **`resolveSpeakerNames()`** (welcome.html, heuristik tebak-nama dari
+      teks dialog untuk kode lama) TIDAK dihapus — dialog LAMA yang masih
+      berkode A/B tetap butuh itu. Yang berubah: giliran yang speaker-nya
+      SUDAH nama asli tidak pernah lagi melewati heuristik itu sama sekali
+      (dicek eksplisit lewat `isLegacyCode()`), karena `r.displayName ||
+      r.speaker` di `gkBubbleHtml` sudah lama fallback ke `r.speaker` — kalau
+      tidak dijaga, nama asli yang KEBETULAN disebut ulang di baris lain bisa
+      salah ditimpa oleh tebakan "address-elimination" yang didesain untuk
+      kode, bukan nama. RBAC: `GET/POST/PUT /admin/dialogue-speakers` =
+      `legacy.academic` (sama seperti grammar-examples), `DELETE` = owner-
+      only — pola identik dengan pasangan serupa di `company-route-policy.js`.
+      Divalidasi: Postgres lokal + backend asli + curl — CRUD penuh (create,
+      409 nama dobel, 400 voiceRole invalid, rename, delete, 401 tanpa
+      token), dan `/admin/tts/preview` dengan prefix nama asli dikonfirmasi
+      menembus parseDialog→loadSpeakerRegistry→voiceForSpeaker sampai ke
+      panggilan jaringan (gagal di situ karena sandbox ini tidak punya akses
+      ke api.elevenlabs.io — bukan crash kode). 17 tes baru — 7 unit di
+      `tts.test.js` + 10 dari dua VM-slice UI test (masing-masing 6 dan 4) —
+      membuat full suite naik jadi 281 tes, 280 hijau 1 skip lama,
+      0 gagal — termasuk regresi eksplisit bahwa SEMUA bentuk kode lama
+      (N/A/B/男/女/男の人/女の人) dan generator dialog AI (masih menghasilkan
+      format kode) tetap jalan byte-per-byte sama.
+
       **Bunpou Flow pilot (Paket 0+1 dari rencana Codex) — session Tugas
       Bunpou yang tahan refresh, konten pendamping opsional, BELUM
       diaktifkan** — user melampirkan

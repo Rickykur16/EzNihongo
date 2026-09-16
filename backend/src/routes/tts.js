@@ -117,15 +117,20 @@ function sendAudio(res, buf, contentType) {
   res.send(buf);
 }
 
-// Detect JLPT-style dialog: lines like "A: ...", "B: ...", "女: ...", "男: ...".
-// Speaker label = 1-10 char before first colon. Return turns array, or null
-// kalau bukan dialog (plain text). Satu baris ber-prefix juga dianggap dialog
-// (mis. soal 即時応答 cuma 1 ucapan) — dapet voice sesuai role & prefix-nya
-// gak ikut kebaca; teks polos tanpa prefix tetap null → single-voice fallback.
+// Detect JLPT-style dialog: lines like "A: ...", "B: ...", "女: ...", "男: ...",
+// or a real character name ("アンナ: ...", "ハディ: ..." — see dialogue_speakers,
+// migration 148). Speaker label = 1-12 char before first colon, either ASCII
+// (legacy TTS routing codes: N/A/B/W/F/M, still produced by the AI dialog
+// generator) or a kanji/kana run (a chosen speaker name, or the legacy
+// 男/女/男の人/女の人 words — now a case of the same character class rather
+// than a separate alternative). Return turns array, or null kalau bukan
+// dialog (plain text). Satu baris ber-prefix juga dianggap dialog (mis. soal
+// 即時応答 cuma 1 ucapan) — dapet voice sesuai role & prefix-nya gak ikut
+// kebaca; teks polos tanpa prefix tetap null → single-voice fallback.
 export function parseDialog(text) {
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean);
   if (lines.length === 0) return null;
-  const SPEAKER_RE = /^([A-Za-z0-9]{1,12}|男|女|男性|女性|男の人|女の人):\s*(.+)$/;
+  const SPEAKER_RE = /^([A-Za-z0-9]{1,12}|[一-龥ぁ-んァ-ヶー]{1,12}):\s*(.+)$/;
   const turns = [];
   for (const line of lines) {
     const m = line.match(SPEAKER_RE);
@@ -146,18 +151,36 @@ export function parseDialog(text) {
 // - Narrator: N / Narrator / ナレーター / Nasi → formal calm
 // - Female: A / W / F / 女 / nama cewe umum → conversational expressive
 // - Male: B / M / 男 / nama cowo umum → conversational expressive
+//
+// `registry` (optional, Map<name, 'female'|'male'>, see dialogue_speakers /
+// loadSpeakerRegistry below) is checked BEFORE the pattern guesses — an
+// admin-assigned name always wins over guessing. Without it (existing
+// 2-arg callers), behaviour is unchanged: a chosen name that isn't in the
+// registry yet still gets a reasonable voice from the patterns/alternation
+// below rather than erroring, so a stale or missing registry never breaks
+// generation, it just falls back to a guess.
 const NARRATOR_PATTERNS = /^(n|narrator|nasi|ナレーター|nrs)$/;
 const FEMALE_PATTERNS = /^(a|w|f|女|onna|cewe|cewek|female|woman|women|yumi|aiko|hana|sakura|mei|emi|wanita)/;
 const MALE_PATTERNS = /^(b|m|男|otoko|cowo|cowok|male|man|men|ken|taro|hiroshi|takeshi|jiro|pria)/;
-export function voiceForSpeaker(speaker, orderIndex) {
+export function voiceForSpeaker(speaker, orderIndex, registry) {
   const s = String(speaker || '').toLowerCase();
   if (NARRATOR_PATTERNS.test(s)) return { voiceId: ELEVEN_VOICE_NARRATOR, role: 'narrator' };
+  const known = registry && registry.get(String(speaker || '').trim());
+  if (known === 'female') return { voiceId: ELEVEN_VOICE_FEMALE, role: 'female' };
+  if (known === 'male') return { voiceId: ELEVEN_VOICE_MALE, role: 'male' };
   if (FEMALE_PATTERNS.test(s)) return { voiceId: ELEVEN_VOICE_FEMALE, role: 'female' };
   if (MALE_PATTERNS.test(s)) return { voiceId: ELEVEN_VOICE_MALE, role: 'male' };
   // Unknown → alternate by order (genap=female, ganjil=male)
   return orderIndex % 2 === 0
     ? { voiceId: ELEVEN_VOICE_FEMALE, role: 'female' }
     : { voiceId: ELEVEN_VOICE_MALE, role: 'male' };
+}
+
+// Loaded once per request and threaded through to voiceForSpeaker — a named
+// speaker's voice never depends on which letter code they used to be.
+export async function loadSpeakerRegistry() {
+  const r = await query('SELECT name, voice_role FROM dialogue_speakers');
+  return new Map(r.rows.map((row) => [row.name, row.voice_role]));
 }
 
 // Per-role voice_settings — narrator formal-steady (style 0 = neutral-clear,
@@ -284,8 +307,9 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
   // Detect dialog vs single-voice. Single-voice fallback kalau parse gagal.
   const turns = parseDialog(text);
   const isDialog = !!turns;
+  const registry = isDialog ? await loadSpeakerRegistry() : null;
   const turnVoices = isDialog
-    ? turns.map((t, i) => voiceForSpeaker(t.speaker, i))
+    ? turns.map((t, i) => voiceForSpeaker(t.speaker, i, registry))
     : [{ voiceId: ELEVEN_VOICE_ID, role: 'single' }];
   const voices = turnVoices.map((v) => v.voiceId);
 
@@ -376,8 +400,9 @@ router.get('/tts/aligned', optionalAuth, ttsLimiter, asyncHandler(async (req, re
   const turns = parseDialog(text);
   const isDialog = !!turns;
   const effTurns = isDialog ? turns : [{ speaker: '', text }];
+  const registry = isDialog ? await loadSpeakerRegistry() : null;
   const turnVoices = isDialog
-    ? turns.map((t, i) => voiceForSpeaker(t.speaker, i))
+    ? turns.map((t, i) => voiceForSpeaker(t.speaker, i, registry))
     : [{ voiceId: ELEVEN_VOICE_ID, role: 'single' }];
   const voices = turnVoices.map((v) => v.voiceId);
 
