@@ -4591,25 +4591,29 @@ const GRAMMAR_FIELDS = [
   { name: 'pattern', label: 'Pola', style: 'min-width:150px;' },
   { name: 'meaning', label: 'Arti', style: 'min-width:140px;' },
   { name: 'notes', label: 'Catatan sensei', style: 'min-width:160px;' },
-  { name: 'example_dialog', bodyKey: 'exampleDialog', label: 'Dialog contoh (A:/B:)', style: 'min-width:220px;', type: 'textarea',
-    placeholder: 'N: 男の人と女の人が話しています。\nA: お国は どちらですか。\nB: インドネシアです。' },
-  { name: 'example_dialog_id', bodyKey: 'exampleDialogId', label: 'Dialog terjemahan (parallel)', style: 'min-width:200px;', type: 'textarea',
-    placeholder: 'N: Tanaka dan Yamada sedang berbicara.\nA: Anda dari mana?\nB: Saya dari Indonesia.' },
+  // hidden: true — no visible column, no direct typing. The ONLY way to read
+  // or write these is the "🎭 Giliran" per-turn editor (grmrManageDialog
+  // below), which still stores its state in these same-named textareas
+  // (just not rendered as a table cell) so saveItemRow/addItemRow need no
+  // special-casing. See grmrManageDialog's own comment for why the raw
+  // flat-textarea editing surface (and its ✨ Dialog/✨ Translate buttons)
+  // were removed rather than merely joined by the new picker.
+  { name: 'example_dialog', bodyKey: 'exampleDialog', type: 'textarea', hidden: true },
+  { name: 'example_dialog_id', bodyKey: 'exampleDialogId', type: 'textarea', hidden: true },
 ];
 
 function itemRowHtml(item, fields, kind) {
   const cells = fields.map((f) => {
     if (f.type === 'textarea') {
-      return `<td><textarea name="${f.name}" rows="3" placeholder="${escapeHtml(f.placeholder || '')}" style="${f.style}font-family:var(--font-mono);font-size:11px;">${escapeHtml(item[f.name] || '')}</textarea></td>`;
+      const td = f.hidden ? '<td style="display:none;">' : '<td>';
+      return `${td}<textarea name="${f.name}" rows="3" placeholder="${escapeHtml(f.placeholder || '')}" style="${f.style || ''}font-family:var(--font-mono);font-size:11px;">${escapeHtml(item[f.name] || '')}</textarea></td>`;
     }
     return `<td><input name="${f.name}" value="${escapeHtml(item[f.name] || '')}" style="${f.style}" /></td>`;
   }).join('');
   const aiButtons = kind === 'grammar' ? `
     ${item.id ? `<button type="button" class="btn btn-ghost btn-sm" title="Kelola contoh kalimat (multi)" onclick="grammarManageExamples('${item.id}', this)">📝 Contoh</button>` : ''}
     ${item.id ? `<button type="button" class="btn btn-ghost btn-sm" title="Pengecoh soal Step 1 Tugas Bunpou" onclick="grammarManageDistractors('${item.id}')">🎯 Pengecoh</button>` : ''}
-    <button type="button" class="btn btn-ghost btn-sm" title="Generate dialog 3-suara N/A/B (AI) dari Pola + Arti" onclick="grmrGenDialog(this)">✨ Dialog</button>
-    <button type="button" class="btn btn-ghost btn-sm" title="Terjemahkan dialog (AI) ke Bahasa Indonesia" onclick="grmrTranslateDialog(this)">✨ Translate</button>
-    <button type="button" class="btn btn-ghost btn-sm" title="Edit dialog per giliran: pilih nama speaker asli, tes audio per baris" onclick="grmrManageDialog(this)">🎭 Giliran</button>
+    <button type="button" class="btn btn-ghost btn-sm" title="Buat/edit dialog per giliran: generate AI, pilih nama speaker asli + suara ElevenLabs, tes audio per baris" onclick="grmrManageDialog(this)">🎭 Dialog</button>
   ` : '';
   return `
     <tr data-id="${item.id || ''}" data-kind="${kind}">
@@ -4624,63 +4628,28 @@ function itemRowHtml(item, fields, kind) {
   `;
 }
 
-// Tombol AI per baris grammar — populate field example_dialog dari Pola + Arti.
-// Admin review lalu klik Simpan untuk persist.
-window.grmrGenDialog = async (btn) => {
-  const tr = btn.closest('tr'); if (!tr) return;
-  const pattern = (tr.querySelector('input[name="pattern"]')?.value || '').trim();
-  const meaning = (tr.querySelector('input[name="meaning"]')?.value || '').trim();
-  if (!pattern) { notify('Isi Pola dulu', true); return; }
-  const orig = btn.textContent; btn.disabled = true; btn.textContent = '…';
-  try {
-    const d = await api('/admin/generate-grammar-dialog', {
-      method: 'POST', body: JSON.stringify({ pattern, meaning }),
-    });
-    const dlg = (d.dialog || '').trim();
-    if (!dlg) { notify('AI tidak menghasilkan dialog', true); return; }
-    const ta = tr.querySelector('textarea[name="example_dialog"]');
-    if (ta) ta.value = dlg;
-    notify('Dialog dibuat AI — review lalu klik Simpan');
-  } catch (err) { notify('Gagal: ' + err.message, true); }
-  finally { btn.disabled = false; btn.textContent = orig; }
-};
-
-// Translate dialog yang sudah ada di textarea → isi textarea example_dialog_id
-// (struktur paralel: tiap baris N:/A:/B: di-terjemahkan ke 1 baris ID).
-window.grmrTranslateDialog = async (btn) => {
-  const tr = btn.closest('tr'); if (!tr) return;
-  const dialog = (tr.querySelector('textarea[name="example_dialog"]')?.value || '').trim();
-  if (!dialog) { notify('Isi Dialog dulu (atau klik ✨ Dialog)', true); return; }
-  const orig = btn.textContent; btn.disabled = true; btn.textContent = '…';
-  try {
-    const d = await api('/admin/generate-dialog-translation', {
-      method: 'POST', body: JSON.stringify({ dialog }),
-    });
-    const id = (d.dialog_id || '').trim();
-    if (!id) { notify('AI tidak menghasilkan terjemahan', true); return; }
-    const ta = tr.querySelector('textarea[name="example_dialog_id"]');
-    if (ta) ta.value = id;
-    notify('Terjemahan dialog dibuat — review lalu klik Simpan');
-  } catch (err) { notify('Gagal: ' + err.message, true); }
-  finally { btn.disabled = false; btn.textContent = orig; }
-};
-
 // === Dialog per-giliran (migration 148: dialogue_speakers) ===
-// Editor terpisah dari dua textarea flat di atas — TIDAK mengganti format
-// tersimpan (example_dialog/example_dialog_id tetap "PREFIX: teks" persis
-// seperti sebelumnya, dan tombol ✨ Dialog/✨ Translate di atas tetap jalan
-// apa adanya). Yang berubah cuma CARA MENGEDITNYA: per giliran, dengan nama
-// karakter asli (bukan kode A/B) yang bisa dipilih dari daftar
-// dialogue_speakers, tiap karakter divoice oleh SUARA ELEVENLABS ASLI (bukan
-// bucket perempuan/laki-laki generik — nama+voice_id dipilih langsung dari
-// katalog akun ElevenLabs lewat GET /admin/elevenlabs/voices, dengan tombol
-// dengar contoh sebelum menetapkan), dan tes audio SATU giliran lewat
-// /admin/tts/preview yang sudah lama ada — endpoint itu men-cache per teks
-// PERSIS yang dikirim, jadi mengganti satu baris tidak menyentuh cache baris
-// lain sama sekali. Sengaja BUKAN pengulangan fitur "Bacaan & audio" yang
-// di-revert (lihat migration 148 & 146): tidak ada draft/version/publish,
-// tidak ada endpoint publik baru, tidak ada modul ES module baru — murni UI
-// admin di atas infrastruktur yang sudah ada dan sudah battle-tested.
+// SATU-SATUNYA cara membuat/mengedit example_dialog/example_dialog_id — tidak
+// ada lagi kolom textarea mentah yang bisa diketik langsung di baris tabel
+// (GRAMMAR_FIELDS menandainya hidden: true, lihat komentar di sana), dan
+// tombol lama ✨ Dialog/✨ Translate yang dulu menulis LANGSUNG ke textarea
+// itu sudah DIHAPUS — fungsinya pindah ke dalam modal ini sebagai
+// admDialogGenerate/admDialogTranslate, supaya satu tempat mengurus generate
+// AI → edit per giliran → pilih nama+suara ElevenLabs → tes audio → simpan,
+// bukan dua alur terpisah yang bisa saling menimpa. Format PENYIMPANAN
+// (example_dialog/example_dialog_id, teks "PREFIX: kalimat" per baris) TETAP
+// TIDAK BERUBAH — textarea itu sendiri masih ada di DOM (cuma display:none),
+// jadi saveItemRow/addItemRow tidak perlu tahu apa pun soal perubahan ini.
+// Tiap karakter divoice oleh SUARA ELEVENLABS ASLI (bukan bucket perempuan/
+// laki-laki generik — nama+voice_id dipilih langsung dari katalog akun
+// ElevenLabs lewat GET /admin/elevenlabs/voices, dengan tombol dengar contoh
+// sebelum menetapkan), dan tes audio SATU giliran lewat /admin/tts/preview
+// yang sudah lama ada — endpoint itu men-cache per teks PERSIS yang dikirim,
+// jadi mengganti satu baris tidak menyentuh cache baris lain sama sekali.
+// Sengaja BUKAN pengulangan fitur "Bacaan & audio" yang di-revert (lihat
+// migration 148 & 146): tidak ada draft/version/publish, tidak ada endpoint
+// publik baru, tidak ada modul ES module baru — murni UI admin di atas
+// infrastruktur yang sudah ada dan sudah battle-tested.
 const DIALOG_SPK_RE = /^([A-Za-z0-9]{1,12}|[一-龥ぁ-んァ-ヶー]{1,12}):\s*(.+)$/;
 
 function admParseDialogPair(jpText, idText) {
@@ -4728,7 +4697,54 @@ window.grmrManageDialog = async (btn) => {
   window.__dialogRows = admParseDialogPair(jpTa.value, idTa.value);
   if (window.__dialogRows.length === 0) window.__dialogRows.push({ speaker: 'N', jp: '', id: '' });
   window.__dialogTargetTa = { jp: jpTa, id: idTa };
+  window.__dialogTr = tr;
   admRenderDialogModal();
+};
+
+// ✨ Generate draft (AI): pakai Pola + Arti baris ini untuk mengarang dialog
+// baru (masih kode N/A/B — model belum tahu nama karakter pilihan admin),
+// MENIMPA seluruh baris yang sedang diedit. Endpoint sama dengan tombol lama
+// ✨ Dialog yang sudah dihapus dari tabel.
+window.admDialogGenerate = async (btn) => {
+  const tr = window.__dialogTr;
+  const pattern = (tr?.querySelector('input[name="pattern"]')?.value || '').trim();
+  const meaning = (tr?.querySelector('input[name="meaning"]')?.value || '').trim();
+  if (!pattern) { notify('Isi Pola dulu (kolom di baris tabel)', true); return; }
+  if ((window.__dialogRows || []).some((r) => r.jp.trim()) &&
+      !confirm('Ini akan MENIMPA semua giliran yang sudah ada di sini. Lanjut?')) return;
+  const orig = btn.textContent; btn.disabled = true; btn.textContent = '…';
+  try {
+    const d = await api('/admin/generate-grammar-dialog', { method: 'POST', body: JSON.stringify({ pattern, meaning }) });
+    const dlg = (d.dialog || '').trim();
+    if (!dlg) { notify('AI tidak menghasilkan dialog', true); return; }
+    window.__dialogRows = admParseDialogPair(dlg, '');
+    notify('Draft dibuat AI — speaker masih kode lama (N/A/B), pilih nama+suara asli per giliran lalu Simpan');
+  } catch (err) { notify('Gagal: ' + err.message, true); }
+  finally { btn.disabled = false; btn.textContent = orig; admRenderDialogModal(); }
+};
+
+// ✨ Translate semua: terjemahkan teks JP giliran yang ADA sekarang (apa pun
+// nama speaker-nya — kode lama atau nama asli) ke Indonesia, satu giliran =
+// satu baris. Dicocokkan per POSISI (bukan per prefix), jadi tetap benar
+// walau prefix balasan AI tidak persis sama dengan yang dikirim.
+window.admDialogTranslate = async (btn) => {
+  const { jp } = admSerializeDialogPair(window.__dialogRows || []);
+  if (!jp.trim()) { notify('Isi teks Jepang dulu (✨ Generate draft atau tulis manual per giliran)', true); return; }
+  const orig = btn.textContent; btn.disabled = true; btn.textContent = '…';
+  try {
+    const d = await api('/admin/generate-dialog-translation', { method: 'POST', body: JSON.stringify({ dialog: jp }) });
+    const idText = (d.dialog_id || '').trim();
+    if (!idText) { notify('AI tidak menghasilkan terjemahan', true); return; }
+    const idLines = idText.split('\n').map((l) => l.trim()).filter(Boolean);
+    const rowsWithText = (window.__dialogRows || []).filter((r) => r.jp.trim());
+    rowsWithText.forEach((r, i) => {
+      const line = idLines[i] || '';
+      const m = line.match(DIALOG_SPK_RE);
+      r.id = (m ? m[2] : line).trim();
+    });
+    notify('Terjemahan diisi — review lalu Simpan');
+  } catch (err) { notify('Gagal: ' + err.message, true); }
+  finally { btn.disabled = false; btn.textContent = orig; admRenderDialogModal(); }
 };
 
 function admSpeakerOptionsHtml(selected) {
@@ -4769,13 +4785,17 @@ function admDialogModalHtml() {
   const totalChars = rows.reduce((n, r) => n + r.jp.length + r.speaker.length + 2, 0);
   const mismatched = rows.filter((r) => !!r.jp.trim() !== !!r.id.trim()).length;
   return `
-    <h3>🎭 Kelola dialog per giliran</h3>
+    <h3>🎭 Dialog</h3>
     <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 10px;">
       Pilih Narator atau nama speaker asli per giliran (bukan kode A/B) — suaranya
       ditentukan dari nama yang dipilih, bukan ditebak dari kode. Tes audio per
       giliran pakai cache yang sama dengan yang dipakai siswa: ganti satu baris
       tidak menggenerate ulang baris lain.
     </p>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogGenerate(this)" title="Karang dialog baru (AI) dari Pola + Arti baris ini — menimpa giliran yang ada">✨ Generate draft (AI)</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogTranslate(this)" title="Terjemahkan teks Jepang tiap giliran ke Indonesia (AI)">✨ Translate semua (AI)</button>
+    </div>
     <div id="dlg-rows">${rows.map((r, i) => admDialogRowHtml(r, i)).join('')}</div>
     <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogRowAdd()">+ Tambah giliran</button>
     <div style="font-size:11px;color:${totalChars > 1500 ? '#dc2626' : '#a3a3a3'};font-family:var(--font-body);margin:10px 0;">
@@ -5318,7 +5338,7 @@ window.grmrGenExamples = async () => {
 
 function renderItemTable(kind, items) {
   const fields = kind === 'vocab' ? VOCAB_FIELDS : GRAMMAR_FIELDS;
-  const heads = fields.map((f) => `<th>${f.label}</th>`).join('');
+  const heads = fields.filter((f) => !f.hidden).map((f) => `<th>${f.label}</th>`).join('');
   const rows = items.map((it) => itemRowHtml(it, fields, kind)).join('');
   return `
     <table style="font-size:12px;">

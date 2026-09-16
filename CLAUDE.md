@@ -243,6 +243,50 @@
       ElevenLabs (perlu `ELEVENLABS_API_KEY` + akses `api.elevenlabs.io`,
       dua-duanya tidak tersedia di sini) dan rendering visual modal picker
       baru di browser sungguhan.
+      **Follow-up SETELAH PR di atas merge & deploy**: user membuka admin
+      dan melaporkan "metode yang lama masih ada" (tombol ✨ Dialog/
+      ✨ Translate) DAN "kolom yg langsung di ketik semua masih ada" (dua
+      textarea mentah `example_dialog`/`example_dialog_id` yang memang
+      sengaja dipertahankan apa adanya di desain pertama). Ini bukan bug —
+      persis seperti yang tertulis di atas ("tombol ✨ Dialog/✨ Translate
+      yang tetap dipertahankan apa adanya") — tapi user secara eksplisit
+      minta dihapus, bukan sekadar didampingi. **"🎭 Giliran" diganti
+      "🎭 Dialog" dan jadi SATU-SATUNYA cara** membuat/mengedit dialog:
+      (1) `GRAMMAR_FIELDS`'s dua entri textarea diberi `hidden: true` —
+      `itemRowHtml` merender-nya sebagai `<td style="display:none;">`
+      (textarea-nya SENGAJA TIDAK dihapus dari DOM, cuma disembunyikan dari
+      tampilan, supaya `saveItemRow`/`grmrManageDialog` yang membaca lewat
+      `tr.querySelector('textarea[name="..."]')` tidak perlu tahu apa pun
+      soal perubahan ini — zero refactor di jalur simpan), dan
+      `renderItemTable`'s header di-filter `!f.hidden` supaya kolom tabel
+      tetap sejajar; (2) `window.grmrGenDialog`/`grmrTranslateDialog`
+      (nempel di tombol lama, menulis LANGSUNG ke textarea now-hidden)
+      DIHAPUS TOTAL, fungsinya pindah jadi `admDialogGenerate`/
+      `admDialogTranslate` DI DALAM modal "🎭 Dialog" (endpoint sama:
+      `/admin/generate-grammar-dialog` dari Pola+Arti baris,
+      `/admin/generate-dialog-translation` dari teks JP giliran yang ADA
+      sekarang apa pun nama speaker-nya) — jadi generate→edit per giliran→
+      pilih nama+suara ElevenLabs→tes audio→simpan sekarang satu alur, bukan
+      dua alur terpisah yang bisa saling menimpa. `admDialogTranslate`
+      mencocokkan baris balasan AI ke `window.__dialogRows` PER POSISI
+      (bukan per prefix) — tetap benar walau prefix balasan AI tidak persis
+      sama dengan yang dikirim (mis. AI menulis "N:" padahal barisnya
+      sekarang "アンナ:"), karena cuma bagian TEKS yang diambil, prefix
+      dibuang. Format `module_grammar.example_dialog`/`example_dialog_id`
+      (storage) TIDAK BERUBAH SAMA SEKALI — perubahan ini murni permukaan
+      admin.html. Divalidasi: VM-slice ad-hoc terhadap `itemRowHtml`/
+      `GRAMMAR_FIELDS` asli (bukan reimplementasi) mengonfirmasi header
+      tabel HANYA 3 kolom (Pola/Arti/Catatan, tanpa "Dialog contoh"/"Dialog
+      terjemahan"), kedua textarea tetap ter-render dengan `name` yang benar
+      di dalam `<td style="display:none;">`, tombol row HANYA 📝 Contoh/
+      🎯 Pengecoh/🎭 Dialog (nol jejak ✨ Dialog/✨ Translate/`grmrGenDialog`);
+      syntax-check `new Function()` atas SELURUH script admin.html bersih;
+      `npm test` diulang penuh 288/287 hijau 1 skip lama tak terkait, 0 baru
+      gagal — Postgres lokal sempat down di tengah sesi ini (`ECONNREFUSED`,
+      bukan disebabkan perubahan kode), restart lalu re-run mengonfirmasi
+      hijau. **Karena ini follow-up SETELAH PR #321 sudah merge**, ini PR
+      terpisah dari branch yang di-restart dari `main` terbaru (bukan
+      ditumpuk di atas histori yang sudah merge).
 
       **Bunpou Flow pilot (Paket 0+1 dari rencana Codex) — session Tugas
       Bunpou yang tahan refresh, konten pendamping opsional, BELUM
