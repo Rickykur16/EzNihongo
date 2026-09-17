@@ -6,6 +6,11 @@ import { isAdminEmail } from '../auth.js';
 import { recordPracticeAttemptWithState } from '../practice-service.js';
 import { loadMastery } from '../grammar-mastery.js';
 import { deriveDrills, publicDrill, arrangeIsCorrect } from '../grammar-drills.js';
+import { loadPilotConfig } from '../bunpou-flow-config.js';
+import {
+  dialogCheckDrills, attemptSourceFor, primaryErrorFor,
+  STEP_DIALOG_COMPREHENSION,
+} from '../bunpou-flow-service.js';
 import { REVIEW_CATEGORIES, SMART_REVIEW_SOURCE, filterReviewScope, isReviewNeeded, makeReviewQuestion, pickCompoundOwners, unlockedSkills, publicQuestion, reviewPriority, selectReviewCandidates, summarizeCandidates } from '../smart-review-service.js';
 import { deriveCompounds, extractKanjiCharacters, loadKanjiCatalog } from '../kanji-compounds.js';
 
@@ -83,15 +88,64 @@ export async function buildReviewCandidates(user) {
   }
   for (const { base, word } of pickCompoundOwners(wordEntries).values()) for (const direction of WORD_DIRECTIONS) add(base, wordSkill(direction, word), { word });
   if (scope.courseIds.length) {
+    // ── Paket 2: pemeriksaan mandiri masuk lewat jalur kandidat yang SAMA ──
+    // Bukan antrean baru dan bukan kandidat tambahan: satu pola tetap
+    // menyumbang PALING BANYAK satu soal, persis seperti sebelumnya. Yang
+    // berubah hanya PILIHAN soalnya — kalau pelajaran pilot punya
+    // pemeriksaan yang layak dan keluarganya belum pernah dikerjakan,
+    // soal itu yang dipakai menggantikan drill Step 1/2 sisi yang sama.
+    //
+    // Kenapa harus begitu: reviewSubjectKey() untuk grammar adalah
+    // `grammar:<itemId>`, jadi oneDirectionPerSubject() hanya meloloskan
+    // SATU kandidat per pola per sesi. Mendorong kandidat ekstra di sini
+    // hanya akan kalah tie-break dan tidak pernah muncul — fitur yang
+    // kelihatan jadi padahal mati.
+    const pilot = await loadPilotConfig();
+    let pilotChecks = null;
+    let pilotTaskLessonId = null;
+    if (pilot.enabled && pilot.lessonId) {
+      const pilotRow = await query(
+        `SELECT t.id AS task_lesson_id, s.bunpou_flow_published
+           FROM lessons s
+           LEFT JOIN lessons t ON t.type = 'grammar_task' AND t.popup_after_lesson_id = s.id
+          WHERE s.id = $1`,
+        [pilot.lessonId]
+      );
+      pilotTaskLessonId = pilotRow.rows[0]?.task_lesson_id || null;
+      const published = pilotRow.rows[0]?.bunpou_flow_published || null;
+      if (pilotTaskLessonId && published && published.dialogChecks) pilotChecks = published.dialogChecks;
+    }
+    // Keluarga soal yang sudah benar-benar dikerjakan siswa ini belakangan —
+    // dipakai supaya pemeriksaan tidak menyajikan ulang varian yang terlalu
+    // dekat dengan yang baru saja dijawab (rencana Paket 2).
+    const recentFamilies = new Set(pilotChecks
+      ? (await query(
+          `SELECT DISTINCT check_family_id FROM grammar_attempts
+            WHERE user_id = $1 AND check_family_id IS NOT NULL
+              AND created_at > NOW() - INTERVAL '21 days'`,
+          [user.id]
+        )).rows.map((r) => r.check_family_id)
+      : []);
     const links = await query(`SELECT DISTINCT gi.grammar_id, gi.lesson_id, m.course_id FROM lesson_grammar_task_items gi JOIN lessons l ON l.id = gi.lesson_id JOIN modules m ON m.id = l.module_id JOIN user_progress p ON p.lesson_id = l.id WHERE p.user_id = $1 AND p.completed = TRUE AND m.course_id = ANY($2::uuid[])`, [user.id, scope.courseIds]);
     const mastery = await loadMastery(user.id, links.rows.map((row) => row.grammar_id)); const cache = new Map();
     for (const link of links.rows) {
       if (!cache.has(link.lesson_id)) cache.set(link.lesson_id, await grammarTaskData(link.lesson_id)); const { items, pool } = cache.get(link.lesson_id); const item = items.find((row) => row.id === link.grammar_id); if (!item) continue;
-      const drills = deriveDrills(items, pool).get(item.id); const m = mastery.get(item.id); const raw = (m?.recognitionAttempts || 0) > (m?.productionAttempts || 0) ? (drills.step2 || drills.step1) : (drills.step1 || drills.step2); if (!raw) continue;
+      const drills = deriveDrills(items, pool).get(item.id); const m = mastery.get(item.id);
+      // Kebijakan pemilihan sisi (recognition vs controlled) TIDAK diubah:
+      // sisi dengan bukti lebih tipis yang dilatih, sama persis seperti
+      // sebelum Paket 2.
+      let raw = (m?.recognitionAttempts || 0) > (m?.productionAttempts || 0) ? (drills.step2 || drills.step1) : (drills.step1 || drills.step2);
+      if (!raw) continue;
+      if (pilotChecks && link.lesson_id === pilotTaskLessonId) {
+        const wantComprehension = raw.step === 1;
+        const check = dialogCheckDrills(pilotChecks[item.id])
+          .find((form) => (form.step === STEP_DIALOG_COMPREHENSION) === wantComprehension);
+        if (check && !recentFamilies.has(check.checkFamilyId)) raw = check;
+      }
       const nextReviewAt = !m || m.state === 'UNSEEN' || m.state === 'LEARNING' || m.state === 'NEEDS_PRACTICE' || m.dueReview
         ? new Date(0).toISOString()
         : new Date(new Date(m.lastAttemptAt).getTime() + (21 * 86400000)).toISOString();
-      candidates.push({ category: 'grammar', itemId: item.id, lessonId: link.lesson_id, courseId: link.course_id, skill: raw.step === 1 ? 'recognition' : 'controlled', item, grammarDrill: raw, state: { attempts: m?.attempts || 0, correct: m?.passedCount || 0, streak: 0, lastSeenAt: m?.lastAttemptAt || null, nextReviewAt }, mistakes: Math.max(0, (m?.attempts || 0) - (m?.passedCount || 0)) });
+      candidates.push({ category: 'grammar', itemId: item.id, lessonId: link.lesson_id, courseId: link.course_id, skill: attemptSourceFor(raw.step), item, grammarDrill: raw, state: { attempts: m?.attempts || 0, correct: m?.passedCount || 0, streak: 0, lastSeenAt: m?.lastAttemptAt || null, nextReviewAt }, mistakes: Math.max(0, (m?.attempts || 0) - (m?.passedCount || 0)) });
     }
   }
   const pools = {
@@ -163,7 +217,7 @@ router.post('/sessions/:sessionId/answers', asyncHandler(async (req, res) => {
   if (!UUID.test(sessionId) || !Number.isInteger(questionIndex) || questionIndex < 0) return res.status(400).json({ error: 'invalid_answer' });
   const result = await withAdvisoryLock(`smart-review-answer:${req.user.id}:${sessionId}:${questionIndex}`, async (client) => {
     const access = await lockedSessionItem(client, req.user, sessionId, questionIndex); if (access.error) return access; const row = access.row; const payload = row.payload; let passed;
-    if (row.item_type === 'grammar') { const arrange = Array.isArray(order); if (arrange !== (payload.variant === 'arrange')) return { error: 'drill_changed', status: 409 }; passed = arrange ? arrangeIsCorrect(payload, order) : Number.isInteger(optionIndex) && optionIndex === payload.correctIndex; const value = arrange ? order.map((i) => payload.tokens[i]).filter(Boolean).join(' ') : (payload.options?.[optionIndex] || ''); const primary = passed ? null : (payload.step === 1 ? 'meaning_mismatch' : 'wrong_grammar_pattern'); await client.query(`INSERT INTO grammar_attempts (user_id, grammar_id, lesson_id, source, input_mode, sentence, correct, uses_pattern, passed, primary_error, error_types, eval_source) VALUES ($1,$2,$3,$4,'text',$5,$6,$6,$6,$7,$8,$9)`, [req.user.id, row.item_id, row.lesson_id, payload.step === 1 ? 'recognition' : 'controlled', String(value).slice(0, 200), passed, primary, primary ? [primary] : [], SMART_REVIEW_SOURCE]); }
+    if (row.item_type === 'grammar') { const arrange = Array.isArray(order); if (arrange !== (payload.variant === 'arrange')) return { error: 'drill_changed', status: 409 }; passed = arrange ? arrangeIsCorrect(payload, order) : Number.isInteger(optionIndex) && optionIndex === payload.correctIndex; const value = arrange ? order.map((i) => payload.tokens[i]).filter(Boolean).join(' ') : (payload.options?.[optionIndex] || ''); const primary = passed ? null : primaryErrorFor(payload.step, payload.rule); await client.query(`INSERT INTO grammar_attempts (user_id, grammar_id, lesson_id, source, input_mode, sentence, correct, uses_pattern, passed, primary_error, error_types, eval_source, check_family_id) VALUES ($1,$2,$3,$4,'text',$5,$6,$6,$6,$7,$8,$9,$10)`, [req.user.id, row.item_id, row.lesson_id, attemptSourceFor(payload.step), String(value).slice(0, 200), passed, primary, primary ? [primary] : [], SMART_REVIEW_SOURCE, payload.checkFamilyId || null]); }
     else { if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex >= (payload.options || []).length) return { error: 'invalid_option', status: 400 }; passed = optionIndex === payload.correctIndex; const state = await recordPracticeAttemptWithState(client, { userId: req.user.id, courseId: row.course_id, lessonId: row.lesson_id, itemType: row.item_type, itemId: row.item_id, skill: row.skill, isCorrect: passed, source: SMART_REVIEW_SOURCE }); await client.query(`UPDATE smart_review_session_items SET answered_at = NOW() WHERE session_id = $1 AND question_index = $2`, [sessionId, questionIndex]); return { passed, correctIndex: payload.correctIndex, state }; }
     await client.query(`UPDATE smart_review_session_items SET answered_at = NOW() WHERE session_id = $1 AND question_index = $2`, [sessionId, questionIndex]); return { passed, correctIndex: payload.correctIndex, correctOrder: payload.variant === 'arrange' ? payload.answer : undefined };
   });

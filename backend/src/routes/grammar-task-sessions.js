@@ -31,6 +31,7 @@ import {
   contentRevisionId, questionFingerprint, deriveAssistanceState, independentEligible,
   publicSessionItem, overlayFor, isPilotLesson, primaryErrorFor, answerSentenceFor,
   SESSION_MINUTES, DRILL_MAX_WRONG, EVIDENCE_SCHEMA_VERSION,
+  dialogCheckDrills, attemptSourceFor,
 } from '../bunpou-flow-service.js';
 
 const router = Router();
@@ -52,12 +53,24 @@ const sessionLimiter = rateLimit({
 // the same order Step 1 then Step 2 would appear per pattern — order has no
 // grading effect (items are addressed by opaque itemId) but keeps the GET
 // response stable and easy to eyeball while testing.
-function plannedItems(items, drillsByGrammar) {
+function plannedItems(items, drillsByGrammar, published) {
   const out = [];
   for (const item of items) {
     const d = drillsByGrammar.get(item.id) || {};
     if (d.step1) out.push({ grammarId: item.id, step: 1, drill: d.step1 });
     if (d.step2) out.push({ grammarId: item.id, step: 2, drill: d.step2 });
+  }
+  // Paket 2: pemeriksaan mandiri ditempatkan di AKHIR tugas yang sudah ada,
+  // bukan sebagai halaman assessment kedua (rencana Paket 2). Karena
+  // seluruh blok ini di-push setelah loop Step 1/2 di atas, urutan item
+  // sesi menjadi: semua Step 1/2 dulu, baru pemeriksaan. Pola yang
+  // pemeriksaannya belum layak sekadar tidak menyumbang item — tidak
+  // memblokir pola lain, dan tidak pernah diganti soal karangan.
+  const checks = (published && published.dialogChecks) || {};
+  for (const item of items) {
+    for (const drill of dialogCheckDrills(checks[item.id])) {
+      out.push({ grammarId: item.id, step: drill.step, drill });
+    }
   }
   return out;
 }
@@ -150,11 +163,11 @@ router.post('/grammar-task/sessions', requireAuth, sessionLimiter, asyncHandler(
   }
   const contentChanged = existing.rows.length > 0;
 
-  const drillsByGrammar = deriveDrills(items, pool);
-  const planned = plannedItems(items, drillsByGrammar);
-
   const sourceRow = await query(`SELECT bunpou_flow_published FROM lessons WHERE id = $1`, [sourceLessonId]);
   const published = sourceRow.rows[0]?.bunpou_flow_published || null;
+
+  const drillsByGrammar = deriveDrills(items, pool);
+  const planned = plannedItems(items, drillsByGrammar, published);
 
   const session = await withTransaction(async (client) => {
     const ins = await client.query(
@@ -169,7 +182,10 @@ router.post('/grammar-task/sessions', requireAuth, sessionLimiter, asyncHandler(
       const snapshot = {
         ...p.drill,
         overlayHint: overlay?.hint || null,
-        overlayExplanation: overlay?.explanation || null,
+        // deriveDrills() tidak pernah menghasilkan `explanation` (dicek:
+        // nol kemunculan di grammar-drills.js), jadi fallback ini nol-dampak
+        // untuk Step 1/2 dan hanya menyalurkan pembahasan soal pemeriksaan.
+        overlayExplanation: overlay?.explanation || p.drill.explanation || null,
       };
       const fingerprint = questionFingerprint(p.grammarId, p.step, p.drill);
       await client.query(
@@ -322,16 +338,21 @@ router.post('/grammar-task/sessions/:id/items/:itemId/answer', requireAuth, sess
              correct, uses_pattern, passed, primary_error, error_types, eval_source,
              practice_session_id, practice_item_id, content_revision_id, question_fingerprint,
              request_id, request_payload_hash, attempt_ordinal, assistance_state,
-             independent_eligible, evaluation_kind, evidence_schema_version
+             independent_eligible, evaluation_kind, evidence_schema_version,
+             check_family_id
            ) VALUES ($1,$2,$3,$4,'text',$5,$6,$6,$6,$7,$8,'ai',
-             $9,$10,$11,$12,$13,$14,$15,$16,$17,'deterministic',$18)`,
+             $9,$10,$11,$12,$13,$14,$15,$16,$17,'deterministic',$18,$19)`,
           [
             req.user.id, item.grammar_id, session.task_lesson_id,
-            item.step === 1 ? 'recognition' : 'controlled',
+            attemptSourceFor(item.step),
             sentence, passed, primaryError, primaryError ? [primaryError] : [],
             session.id, req.params.itemId, session.content_revision_id, item.question_fingerprint,
             requestId, payloadHash, attemptOrdinalRes.rows[0].n, assistanceState,
             independentEligible(assistanceState), EVIDENCE_SCHEMA_VERSION,
+            // NULL untuk Step 1/2 biasa; terisi hanya untuk item pemeriksaan,
+            // supaya Smart Review bisa melihat keluarga soal apa yang sudah
+            // benar-benar dikerjakan siswa ini.
+            drill.checkFamilyId || null,
           ]
         );
       } catch (err) {

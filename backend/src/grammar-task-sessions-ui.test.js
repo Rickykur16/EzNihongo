@@ -81,11 +81,20 @@ test('_gtApplyDrills with legacy (no answered/passed fields) hides meaning and a
   const step1 = { prompt: 'Apa fungsi X?', options: ['a', 'b', 'c'] };
   const step2 = { prompt: 'Lengkapi', options: ['a', 'b'] };
   ctx._gtApplyDrills({ g1: { step1, step2 } });
-  assert.deepEqual(calls.renderStep, [{ pi: 0, step: 1, drill: step1 }, { pi: 0, step: 2, drill: step2 }]);
+  // Paket 2 menambah dua slot pemeriksaan di akhir tiap kartu. Tanpa konten
+  // pemeriksaan keduanya tetap DIRENDER dengan drill undefined — itulah yang
+  // membuat gtRenderStep menyembunyikan section-nya (el.style.display =
+  // 'none'), bukan meninggalkan kotak kosong di layar.
+  assert.deepEqual(calls.renderStep, [
+    { pi: 0, step: 1, drill: step1 },
+    { pi: 0, step: 2, drill: step2 },
+    { pi: 0, step: 4, drill: undefined },
+    { pi: 0, step: 5, drill: undefined },
+  ]);
   assert.deepEqual(calls.setMeaningHidden, [{ pi: 0, hidden: true }]);
   assert.deepEqual(calls.markStepPassed, []);
   assert.deepEqual(calls.advance, [{ pi: 0, fromStep: 0 }]);
-  assert.deepEqual(plain(ctx.window.__gtAvail), { 0: { 1: true, 2: true } });
+  assert.deepEqual(plain(ctx.window.__gtAvail), { 0: { 1: true, 2: true, 4: false, 5: false } });
 });
 
 test('_gtApplyDrills resume: a passed step1 marks passed and advances from step 1, not step 0', () => {
@@ -170,7 +179,42 @@ test('gtLoadDrillsSession creates/resumes a session, maps itemIds by grammarId-s
   await ctx.gtLoadDrillsSession('task-1');
   assert.equal(ctx.window.__gtSessionId, 'sess-1');
   assert.deepEqual(plain(ctx.window.__gtItemIds), { 'g1-1': 'item-1', 'g1-2': 'item-2' });
-  assert.equal(calls.renderStep.length, 2);
+  // 1, 2, dan dua slot pemeriksaan kosong (step 4/5) — lihat catatan di tes
+  // _gtApplyDrills di atas.
+  assert.equal(calls.renderStep.length, 4);
+  assert.deepEqual(calls.renderStep.slice(2).map((c) => [c.step, c.drill]), [[4, undefined], [5, undefined]]);
+});
+
+// REGRESI Paket 2. Sebelum perbaikan ini, pemetaan slot berbunyi
+// `it.step === 1 ? 'step1' : 'step2'`, sehingga item step 4 lalu step 5
+// berturut-turut MENIMPA soal Step 2 pada pola yang sama — Step 2 hilang
+// diam-diam dan yang tampil di slot itu justru soal pemeriksaan.
+test('gtLoadDrillsSession maps dialog-check items to their own slots instead of clobbering step 2', async () => {
+  const { ctx, calls, setEzApi } = setup();
+  ctx.window.__gtSourceLesson = { apiId: 'src-1', bunpouFlow: {} };
+  ctx.window.__gtLessonId = 'task-1';
+  ctx.window.__gtData = [{ id: 'g1' }];
+  const step2 = { itemId: 'item-2', grammarId: 'g1', step: 2, prompt: 'p2', options: ['a', 'b'] };
+  const check1 = { itemId: 'item-4', grammarId: 'g1', step: 4, prompt: 'Apa isi dialognya?', options: ['a', 'b', 'c'] };
+  const check2 = { itemId: 'item-5', grammarId: 'g1', step: 5, prompt: 'Mana yang benar?', options: ['x', 'y', 'z'] };
+  setEzApi(async () => ({
+    ok: true, json: async () => ({
+      sessionId: 'sess-1',
+      items: [
+        { itemId: 'item-1', grammarId: 'g1', step: 1, prompt: 'p1', options: ['a'] },
+        step2, check1, check2,
+      ],
+    }),
+  }));
+  await ctx.gtLoadDrillsSession('task-1');
+  assert.deepEqual(plain(ctx.window.__gtItemIds), {
+    'g1-1': 'item-1', 'g1-2': 'item-2', 'g1-4': 'item-4', 'g1-5': 'item-5',
+  });
+  const byStep = Object.fromEntries(calls.renderStep.map((c) => [c.step, c.drill]));
+  assert.equal(byStep[2].itemId, 'item-2', 'Step 2 tidak boleh tertimpa soal pemeriksaan');
+  assert.equal(byStep[4].itemId, 'item-4');
+  assert.equal(byStep[5].itemId, 'item-5');
+  assert.deepEqual(plain(ctx.window.__gtAvail), { 0: { 1: true, 2: true, 4: true, 5: true } });
 });
 
 test('gtLoadDrillsSession does not apply a resumed session for a lesson the student has since navigated away from', async () => {

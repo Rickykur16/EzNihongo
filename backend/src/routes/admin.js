@@ -49,7 +49,7 @@ import {
 import { loadTaskConcepts, loadModulePool } from './grammar-task.js';
 import {
   contentRevisionId,
-  validateCompanionEnvelope,
+  dialogCheckAvailability, validateCompanionEnvelope,
   sanitizeCompanionEnvelope,
 } from '../bunpou-flow-service.js';
 
@@ -1718,6 +1718,15 @@ router.get('/lessons/:lessonId/bunpou-flow', asyncHandler(async (req, res) => {
     currentFingerprint: await currentSourceFingerprint(taskLessonId),
     draft: lesson.rows[0].bunpou_flow_draft || null,
     published: lesson.rows[0].bunpou_flow_published || null,
+    // Paket 2: kelayakan pemeriksaan mandiri per pola, dihitung SERVER-side
+    // dengan fungsi yang sama persis yang nanti dipakai session API untuk
+    // memutuskan menyajikan atau tidak. Editor tidak menghitung sendiri,
+    // supaya "hijau di admin tapi tidak muncul ke siswa" tidak mungkin
+    // terjadi karena dua salinan aturan yang berbeda.
+    checkAvailability: Object.fromEntries(grammarIds.map((gid) => [
+      gid,
+      dialogCheckAvailability(((lesson.rows[0].bunpou_flow_draft || lesson.rows[0].bunpou_flow_published || {}).dialogChecks || {})[gid]),
+    ])),
   });
 }));
 
