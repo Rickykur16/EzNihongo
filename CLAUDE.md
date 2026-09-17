@@ -680,6 +680,60 @@
       nihil. Belum diverifikasi dari sandbox ini: rendering visual langkah 4/5
       di browser sungguhan.
 
+      **Soal pemeriksaan mandiri Bab 3 DIISI (migrasi 151)** — user: "Lewat
+      migrasi, merge". Melengkapi Paket 2 (migrasi 150): mekanismenya sudah
+      jalan tapi `dialogChecks` masih kosong, jadi jalurnya nonaktif. Konvensi
+      yang sama dengan 126/149: konten siswa ditulis & direview sebagai diff,
+      bukan diketik lewat admin.
+      **Soal pemahaman diturunkan dari NASKAH dialog** (bukan mengulang arti
+      pola): siapa yang mengaku insinyur, negara mana yang disebut setelah
+      menyangkal, apa yang ditanyakan balik di akhir, kenapa pertanyaan
+      ber-〜も dijawab dengan 〜は, dari universitas mana, dan apa yang sedang
+      dilakukan orang yang memakai 〜よ. **Soal pembanding** menguji pola yang
+      sama di kalimat LAIN (bukan kalimat yang ada di dialog).
+      **ATURAN NAMA TOKOH BERLAKU JUGA UNTUK KALIMAT PEMBANDING — dan pagar
+      verifikasi menangkap pelanggarannya, bukan saya yang ingat**: draf
+      pertama memakai 「たなかさん」 sebagai subjek kalimat pembanding
+      (「たなかさんは いしゃです」). たなか ternyata TOKOH di dialog Bab 3
+      (guru bahasa Jepang di dialog 〜の, guru di dialog 〜も), jadi menyebutnya
+      dokter di soal akan membingungkan siswa yang baru saja mendengar
+      dialognya. 「やまださん」 juga dibuang — nama tokoh produksi bisa apa
+      pun (user sendiri sudah mengganti ハディ→山口), jadi nama APA PUN
+      berisiko bentrok. Subjek kalimat pembanding sekarang わたし / あのひと,
+      bebas nama selamanya. Pelajaran: pagar "nol nama tokoh" jangan cuma
+      diterapkan ke teks arahan (149) tapi juga ke opsi dan kalimat contoh —
+      dan tulis pagarnya sebagai assertion yang dijalankan, bukan niat.
+      **MERGE, bukan timpa**: 149 sudah menulis objective + directions ke
+      envelope yang sama. `||` pada JSONB hanya mengganti kunci `dialogChecks`
+      dan membiarkan sisanya utuh, termasuk editan admin sesudahnya —
+      dibuktikan lewat assertion bahwa objective + directions 149 masih ada
+      setelah 151 jalan.
+      **Kelayakan dijamin lewat konstruksi**: opsi soal pemahaman SELALU
+      berbahasa Indonesia dan opsi pembanding SELALU kalimat Jepang, jadi
+      keduanya tidak mungkin sekeluarga (`dialogCheckFamilyId` meng-hash opsi
+      terurut + jawaban). Ada pagar SQL terpisah yang meng-EXCEPTION kalau
+      satu opsi pun beririsan antara kedua soal — kalau beririsan,
+      pemeriksaannya akan diam-diam dianggap "terlalu dekat" dan tidak pernah
+      disajikan.
+      **Divalidasi di Postgres asli** dengan fixture meniru produksi (11 baris
+      untuk 6 konsep, dua set penamaan, dua pelajaran), dialognya diisi dengan
+      menjalankan migrasi 145 ASLI lalu 149 ASLI — jadi diuji terhadap data
+      yang benar-benar ditulis migrasi itu, bukan string tempelan: 14/14
+      pemeriksaan lolos, termasuk yang menentukan — **fungsi JS ASLI**
+      (`dialogCheckAvailability`, `dialogCheckDrills`,
+      `validateCompanionEnvelope`) mengonfirmasi 11/11 pemeriksaan LAYAK, 0
+      pasangan sekeluarga, 22 item sesi diturunkan, dan envelope draft+
+      published dua-duanya lolos validator dengan scope sungguhan.
+      **Lima pagar dibuktikan MENGGIGIT**: idempoten (md5 sama setelah
+      re-run); jumlah opsi di luar 3-4 → EXCEPTION; indeks jawaban di luar
+      jangkauan → EXCEPTION; opsi beririsan antar dua soal → EXCEPTION; dan
+      dialog yang ditulis ulang admin → baris itu DIKELUARKAN dengan NOTICE
+      (11 → 9), bukan diberi soal yang jawabannya tidak ada di dialognya.
+      `npm test` 306 tes, 305 hijau, 1 skip lama tak terkait, 0 gagal.
+      **Pilot tetap tidak disentuh** — `app_settings` tidak diubah sama
+      sekali, jadi migrasi ini nol dampak ke siswa sampai admin menyalakan
+      pilot untuk pelajaran itu.
+
       **Bunpou Flow pilot (Paket 0+1 dari rencana Codex) — session Tugas
       Bunpou yang tahan refresh, konten pendamping opsional, BELUM
       diaktifkan** — user melampirkan
