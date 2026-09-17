@@ -471,6 +471,87 @@
       Playwright — audio ElevenLabs sungguhan tetap tidak bisa dites dari
       sini (diblokir egress) terlepas dari perubahan apa pun di atas.
 
+      **Pendamping Bunpou Bab 3 DIISI (migrasi 149) — arahan ditulis untuk
+      DIALOGNYA, bukan untuk nama polanya** — user: "Sekarang isikan
+      pendamping bunpou agar sesuai dengan konteks dialog". Isi companion
+      (lihat entri "Bunpou Flow pilot" di bawah untuk fiturnya) selama ini
+      kosong; Paket 1 sengaja berhenti di jalur nonaktif karena sandbox tidak
+      punya data produksi. Yang membuat pengisian ini akhirnya bisa dikerjakan
+      dari repo: dialog Bab 3 SUDAH ada di repo (migrasi 143/144/145), jadi
+      teks yang diterangkan arahan itu bisa dibaca langsung, tidak ditebak.
+      **Ditulis sebagai migrasi, bukan diketik lewat admin** — konvensi yang
+      user tetapkan sendiri waktu tombol AI "Lengkapi contoh" dihapus dan
+      diganti migration 126: konten siswa ditulis & direview sebagai diff.
+      Editor "🧭 Pendamping Bunpou" tetap jalan normal di atas hasilnya.
+      **Kenapa "sesuai konteks dialog" itu harfiah**: `directions` dirender DI
+      DALAM blok "💬 Dialog contoh", TEPAT DI ATAS pemutar dialog, sebagai
+      "🎧 …" (`welcome.html:8031`) — jadi tiap arahan menunjuk giliran yang
+      benar-benar terdengar di dialog di bawahnya, bukan mengulang arti pola
+      (arti sudah ada di kartu). Contoh yang paling menunjukkan bedanya:
+      arahan 〜も tidak menjelaskan "juga", melainkan menyuruh menyimak
+      giliran TERAKHIR dialognya — pertanyaannya たなかさんも tapi jawabannya
+      たなかさんは, karena begitu ternyata tidak sama, も berganti は.
+      Poin itu cuma ada kalau dialognya dibaca.
+      **Dicocokkan lewat ISI dialog, bukan teks pattern**: Bab 3 punya SEBELAS
+      baris untuk ENAM konsep — dua set penamaan berdampingan, dan teks
+      pattern set B (buatan admin) tidak bisa dipercaya karakter per karakter
+      (〜 U+301C vs ～ U+FF5E, ／ vs /); ini temuan migrasi 145, bukan dugaan.
+      Karena arahan menerangkan dialognya, tiap baris dicocokkan lewat penanda
+      unik DI DALAM `example_dialog` (どうぞよろしくおねがいします / オースト
+      ラリア / おしごとはなんですか / たなかさんもがくせい / さくらだいがく /
+      ユウトさん) — keenamnya dicek saling eksklusif terhadap keenam dialog
+      145. Baris yang dialognya sudah ditulis ulang admin DILEWATI dengan
+      NOTICE: arahan yang menyebut giliran yang sudah tidak ada lebih buruk
+      daripada tidak ada arahan sama sekali.
+      **`overlays` SENGAJA TIDAK diisi** (padahal envelope-nya menyediakan
+      step1/step2 hint+explanation): backend-nya memang sudah tersalur
+      (`overlayFor` → snapshot sesi → `publicSessionItem`), TAPI tidak ada
+      yang merendernya di sisi siswa — tombol "Minta petunjuk" belum dibuat
+      (sudah tercatat di luar cakupan Paket 1), dan jalur reveal sesi
+      (`welcome.html:9432`) cuma membaca correctIndex/correctOrder/japanese,
+      field `explanation` dibuang. Mengisinya = menulis teks yang tidak pernah
+      sampai ke siswa, kelas kesalahan yang sama dengan auto-warm cache dialog
+      yang dulu sengaja dibatalkan. Isi overlays setelah UI-nya ada.
+      **Pilot TIDAK dinyalakan**: `bunpou_flow_pilot_enabled`/`_lesson_id`
+      tidak disentuh sama sekali, dan `content.js:393` hanya melampirkan
+      companion kalau `enabled AND lessonId = row.id` — jadi migrasi ini NOL
+      dampak ke siswa sampai admin menyalakannya sendiri di tab AI. Migrasi
+      mencetak `lesson_id` yang perlu diisi lewat NOTICE.
+      **Cakupan disamakan dengan `bunpouFlowScope()`** (`routes/admin.js`):
+      directions tiap envelope hanya memuat baris milik pelajaran itu sendiri,
+      supaya draft hasil migrasi tidak ditolak "grammarId di luar cakupan"
+      kalau admin membukanya lalu menekan Simpan. Stempel editor/publishedBy
+      memakai tanggal TETAP (bukan NOW()) supaya re-run byte-identik.
+      **Divalidasi di Postgres asli** dengan fixture yang meniru produksi (11
+      baris, dua set penamaan, semuanya tertaut ke satu pelajaran "Tata
+      Bahasa"), dan dialognya diisi dengan menjalankan migrasi 145 ASLI —
+      jadi klasifikasi diuji terhadap data yang benar-benar ditulis 145, bukan
+      string yang ditempel manual: **11/11 baris dapat arahan yang cocok
+      dengan dialognya sendiri, termasuk keenam baris set B**. Ditambah:
+      idempoten (md5 sama setelah re-run), jalur lewati menggigit (dialog
+      diganti → NOTICE + baris itu dikeluarkan, tinggal 10, bukan dikasih
+      arahan ngawur), pagar panjang menggigit (arahan >300 char → EXCEPTION),
+      fresh install aman (tanpa course n5 → skip bersih). **Validator JS ASLI**
+      (`validateCompanionEnvelope` + scope dihitung persis seperti
+      `bunpouFlowScope`) meluluskan draft & published, dan
+      `sanitizeCompanionEnvelope` round-trip tidak menghilangkan isi. **E2E
+      lewat server asli**: flag mati → `bunpouFlow` tidak terlampir sama
+      sekali; flag hidup → objective + 11 arahan sampai ke payload pelajaran,
+      `overlays` maupun `bunpou_flow_draft` tidak ikut bocor. `npm test` 289
+      tes, 288 hijau, 1 skip lama, 0 gagal.
+      **Jebakan saat menulis tesnya** (bukan bug produk, tapi sempat terlihat
+      seperti bug): `GET /api/lessons/:id` membungkus payloadnya
+      `res.json({ lesson: response })` (`content.js:531`), jadi companion ada
+      di `body.lesson.bunpouFlow`, bukan `body.bunpouFlow` — sempat terbaca
+      "flag hidup tapi tidak terlampir". Kalau menulis tes endpoint ini lagi,
+      cek dulu bentuk pembungkusnya sebelum menyimpulkan ada regresi.
+      **Sisa untuk manusia**: pilih pelajaran pilot lalu nyalakan flag (butuh
+      companion yang sudah published — sudah dipenuhi migrasi ini), dan
+      putuskan apakah sebelas baris kembar Bab 3 mau dirapikan jadi enam
+      (membereskan baris kembar adalah keputusan konten tersendiri, sudah
+      dicatat sejak 145; selama masih kembar, dua baris konsep yang sama
+      memang dapat arahan yang sama).
+
       **Bunpou Flow pilot (Paket 0+1 dari rencana Codex) — session Tugas
       Bunpou yang tahan refresh, konten pendamping opsional, BELUM
       diaktifkan** — user melampirkan
