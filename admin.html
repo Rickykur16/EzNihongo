@@ -1138,8 +1138,89 @@ async function renderAiSettings() {
         <button type="button" class="btn btn-ghost" onclick="coachPromptResetDefault()">Isi Default</button>
         <button type="button" class="btn btn-primary" onclick="coachPromptSave()">Simpan Prompt</button>
       </div>
+    </div>
+    <div style="max-width:760px;border:1px solid #e5e5e5;border-radius:10px;padding:18px 20px;background:#fff;margin-top:18px;">
+      <h2 style="margin:0 0 4px;">Kebijakan penguasaan &mdash; mode shadow</h2>
+      <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 6px;">
+        Menghitung kebijakan penilaian <strong>usulan</strong> di samping kebijakan yang berjalan, lalu
+        menunjukkan di mana keduanya berbeda. <strong>Tidak ada yang berubah untuk siswa</strong> &mdash;
+        label, progres, XP, dan antrean review semuanya masih memakai kebijakan lama.
+      </p>
+      <p style="font-size:12px;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:8px 10px;font-family:var(--font-body);margin:0 0 12px;">
+        Angka ambang batas di kebijakan usulan <strong>belum diratifikasi</strong>. Nilainya ada supaya
+        perbandingan ini bisa dijalankan sama sekali, bukan sebagai usulan nilai final &mdash; itu
+        keputusan Anda setelah melihat hasilnya.
+      </p>
+      <label style="font-size:12px;color:#737373;">ID pelajaran (kosongkan untuk memakai pelajaran pilot)</label>
+      <input id="ms-shadow-lesson" placeholder="UUID pelajaran"
+        style="width:100%;font-size:13px;margin:2px 0 10px;font-family:monospace;" />
+      <button type="button" class="btn btn-primary" onclick="msShadowRun()">Hitung perbandingan</button>
+      <div id="ms-shadow-out" style="margin-top:14px;"></div>
     </div>`;
 }
+
+// Paket 3 — layar tinjauan shadow. Read-only: endpoint-nya tidak menulis apa
+// pun, dan kartu ini tidak punya tombol untuk mengaktifkan kebijakan usulan.
+// Mengaktifkannya adalah keputusan terpisah setelah hasil di bawah ditinjau.
+const MS_FLAG_LABEL = {
+  recognition_only: 'lulus tanpa satu pun kalimat produksi',
+  assisted_passes_only: 'semua jawaban benar setelah dibantu',
+  repeated_question: 'soal yang sama diulang-ulang',
+  has_production_or_retention: 'ada bukti produksi/retensi sungguhan',
+  limited_history: 'riwayat lama tanpa metadata bukti',
+};
+
+window.msShadowRun = async () => {
+  const out = document.getElementById('ms-shadow-out');
+  const lessonId = (document.getElementById('ms-shadow-lesson')?.value || '').trim();
+  out.innerHTML = '<p style="font-size:13px;color:#737373;">Menghitung&hellip;</p>';
+  let d;
+  try {
+    d = await api('/admin/grammar-mastery/shadow' + (lessonId ? ('?lessonId=' + encodeURIComponent(lessonId)) : ''));
+  } catch (err) {
+    out.innerHTML = `<p style="font-size:13px;color:#b91c1c;">Gagal: ${escapeHtml(err.message)}</p>`;
+    return;
+  }
+
+  const cov = d.metadataCoverage || {};
+  // Angka cakupan ditaruh PALING ATAS dan bukan sebagai catatan kaki: tanpa
+  // itu, "sekian konsep turun dari MASTERED" terbaca seolah siswa memburuk,
+  // padahal riwayat lama memang tidak pernah mencatat apakah jawabannya
+  // dibantu atau soalnya diulang.
+  const covWarn = (cov.pct == null || cov.pct < 50);
+  const rows = (d.samples || []).map((sp) => `
+    <tr>
+      <td style="font-size:12px;" lang="ja">${escapeHtml(sp.pattern || '')}</td>
+      <td style="font-size:12px;">${escapeHtml(sp.from || '')} &rarr; <strong>${escapeHtml(sp.to || '')}</strong></td>
+      <td style="font-size:12px;color:#525252;">${escapeHtml((sp.withheldReasons || []).join('; ') || '-')}</td>
+      <td style="font-size:12px;color:#737373;">${sp.attempts} percobaan &middot; ${sp.independentAttempts} mandiri &middot; ${sp.distinctQuestions} soal beda &middot; ${sp.productionPasses} produksi lulus</td>
+    </tr>`).join('');
+
+  out.innerHTML = `
+    <div style="font-size:13px;padding:10px 12px;border-radius:8px;margin-bottom:12px;
+                background:${covWarn ? '#fef3c7' : '#f0fdf4'};border:1px solid ${covWarn ? '#fde68a' : '#bbf7d0'};">
+      <strong>Cakupan metadata bukti: ${cov.pct == null ? 'tidak ada percobaan' : cov.pct + '%'}</strong>
+      (${cov.withMetadata || 0} dari ${cov.attempts || 0} percobaan).
+      ${covWarn ? 'Sebagian besar riwayat ditulis sebelum metadata ini ada, jadi perbedaan di bawah lebih banyak mencerminkan <em>data yang tidak tercatat</em> daripada kemampuan siswa. Riwayat seperti itu dihitung sebagai bukti terbatas &mdash; tidak pernah diubah jadi gagal.' : ''}
+    </div>
+    <p style="font-size:13px;margin:0 0 8px;">
+      Kebijakan aktif: <code>${escapeHtml(d.activePolicy || '')}</code> &middot;
+      usulan: <code>${escapeHtml(d.proposedPolicy || '')}</code> &middot;
+      ${d.studentsScanned} siswa dipindai &middot;
+      <strong>${d.totals?.changed || 0}</strong> dari ${d.totals?.concepts || 0} konsep berbeda hasilnya.
+    </p>
+    <ul style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 12px;padding-left:18px;">
+      ${Object.entries(d.byFlag || {}).map(([f, n]) => `<li>${escapeHtml(MS_FLAG_LABEL[f] || f)}: <strong>${n}</strong></li>`).join('') || '<li>tidak ada temuan</li>'}
+    </ul>
+    ${rows ? `<table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="text-align:left;border-bottom:1px solid #e5e5e5;">
+        <th style="font-size:11px;color:#737373;padding:4px 0;">Pola</th>
+        <th style="font-size:11px;color:#737373;">Perubahan</th>
+        <th style="font-size:11px;color:#737373;">Alasan ditahan</th>
+        <th style="font-size:11px;color:#737373;">Bukti</th>
+      </tr></thead><tbody>${rows}</tbody></table>`
+    : '<p style="font-size:13px;color:#737373;">Tidak ada konsep yang hasilnya berbeda.</p>'}`;
+};
 
 window.bfPilotSaveSettings = async () => {
   const enabled = !!document.getElementById('bf-pilot-enabled')?.checked;

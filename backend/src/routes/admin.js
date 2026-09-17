@@ -52,6 +52,8 @@ import {
   dialogCheckAvailability, validateCompanionEnvelope,
   sanitizeCompanionEnvelope,
 } from '../bunpou-flow-service.js';
+import { loadMasteryShadow, summarizeShadow } from '../grammar-mastery-shadow.js';
+import { V2_CONFIG, POLICY_V2, POLICY_SETTING_KEY, resolvePolicy } from '../grammar-mastery-policy.js';
 
 const router = Router();
 
@@ -1816,6 +1818,90 @@ router.put('/settings/bunpou-flow-pilot', asyncHandler(async (req, res) => {
     );
   });
   res.json({ ok: true, enabled, lessonId });
+}));
+
+// ── Paket 3: tinjauan MODE SHADOW kebijakan penguasaan ────────────────────
+// Read-only sepenuhnya. Menghitung kebijakan usulan (v2) di samping
+// kebijakan berjalan (v1) untuk siswa yang punya percobaan pada pola-pola
+// satu pelajaran, lalu melaporkan perbedaannya. TIDAK menulis apa pun, dan
+// tidak satu pun jalur siswa memanggil kode ini.
+//
+// Ini bahan keputusan aktivasi, BUKAN aktivasinya: rencana Paket 3 menaruh
+// gerbangnya pada pemilik produk ("Pemilik produk meninjau kebijakan dan
+// sampel perbedaan shadow ... Sebelum itu, flag penilaian baru tetap mati").
+router.get('/grammar-mastery/shadow', asyncHandler(async (req, res) => {
+  const pilot = await query(
+    `SELECT value FROM app_settings WHERE key = 'bunpou_flow_pilot_lesson_id'`
+  );
+  const lessonId = String(req.query.lessonId || pilot.rows[0]?.value || '').trim();
+  if (!lessonId) return res.status(400).json({ error: 'lesson_id_required' });
+
+  const grammar = await query(
+    `SELECT id, pattern FROM module_grammar WHERE lesson_id = $1 ORDER BY sort_order, created_at`,
+    [lessonId]
+  );
+  if (grammar.rows.length === 0) return res.status(404).json({ error: 'no_grammar_for_lesson' });
+  const ids = grammar.rows.map((r) => r.id);
+  const patterns = Object.fromEntries(grammar.rows.map((r) => [r.id, r.pattern]));
+
+  // Dibatasi supaya satu klik admin tidak memindai seluruh basis siswa.
+  const students = await query(
+    `SELECT DISTINCT user_id FROM grammar_attempts
+      WHERE grammar_id = ANY($1::uuid[])
+      ORDER BY user_id LIMIT 50`,
+    [ids]
+  );
+
+  const totals = { concepts: 0, changed: 0, unchanged: 0, limitedHistoryConcepts: 0 };
+  const byFlag = {};
+  const coverage = { attempts: 0, withMetadata: 0 };
+  const samples = [];
+
+  for (const row of students.rows) {
+    const shadow = await loadMasteryShadow(row.user_id, ids);
+    const sum = summarizeShadow(shadow);
+    totals.concepts += sum.concepts;
+    totals.changed += sum.changed;
+    totals.unchanged += sum.unchanged;
+    totals.limitedHistoryConcepts += sum.limitedHistoryConcepts;
+    coverage.attempts += sum.metadataCoverage.attempts;
+    coverage.withMetadata += sum.metadataCoverage.withMetadata;
+    for (const [flag, n] of Object.entries(sum.byFlag)) byFlag[flag] = (byFlag[flag] || 0) + n;
+
+    for (const c of shadow.concepts) {
+      if (!c.diff.changed || samples.length >= 40) continue;
+      samples.push({
+        pattern: patterns[c.grammarId] || c.grammarId,
+        from: c.diff.from,
+        to: c.diff.to,
+        withheldReasons: c.diff.withheldReasons,
+        flags: c.diff.flags,
+        evidenceQuality: c.v2.evidenceQuality,
+        attempts: c.v1.attempts,
+        independentAttempts: c.v2.evidence.independentAttempts,
+        distinctQuestions: c.v2.evidence.distinctQuestions,
+        productionPasses: c.v2.evidence.passed.production,
+      });
+    }
+  }
+
+  const setting = await query(`SELECT value FROM app_settings WHERE key = $1`, [POLICY_SETTING_KEY]);
+  res.json({
+    lessonId,
+    studentsScanned: students.rows.length,
+    activePolicy: resolvePolicy(setting.rows[0]?.value),
+    proposedPolicy: POLICY_V2,
+    // Ditandai eksplisit supaya layar admin tidak pernah menampilkan angka
+    // ini seolah sudah jadi kebijakan.
+    config: V2_CONFIG,
+    totals,
+    byFlag,
+    metadataCoverage: {
+      ...coverage,
+      pct: coverage.attempts ? Math.round((coverage.withMetadata / coverage.attempts) * 100) : null,
+    },
+    samples,
+  });
 }));
 
 // Bank pola grammar milik MODUL sebuah pelajaran — dipakai dropdown "Pola

@@ -69,6 +69,9 @@ export const LEGACY_ROUTES = [
   ["POST", "/lessons/:lessonId/bunpou-flow/publish", null],
   ["GET", "/settings/bunpou-flow-pilot", null],
   ["PUT", "/settings/bunpou-flow-pilot", null],
+  // Paket 3: tinjauan shadow, read-only, owner-only (membaca riwayat
+  // percobaan lintas siswa).
+  ["GET", "/grammar-mastery/shadow", null],
   ["GET", "/lessons/:lessonId/grammar-bank", "legacy.academic"],
   ["POST", "/lessons/:lessonId/generate-quiz", "legacy.academic"],
   ["POST", "/generate-question-options", "legacy.academic"],
