@@ -569,6 +569,117 @@
       dicatat sejak 145; selama masih kembar, dua baris konsep yang sama
       memang dapat arahan yang sama).
 
+      **Paket 2 (pemeriksaan mandiri + Smart Review) — migrasi 150** — user:
+      "Garap paket 2 sekarang". Sumbernya bagian 7 PDF rencana Codex
+      (`EzNihongo_Bunpou_Codex_Implementation_Plan.pdf`), yang di sandbox ini
+      HARUS diekstrak sendiri: PDF-nya Type0/Identity-H tanpa teks mentah, jadi
+      dibaca lewat skrip zlib + peta ToUnicode `beginbfchar` (4 CMap, 0
+      konflik). Kalau perlu baca rencana itu lagi, jangan andalkan `pdftotext`
+      /`pypdf` — keduanya tidak tersedia/rusak di sini.
+      **Tiga batasan skema yang MENENTUKAN desain, diaudit dulu bukan
+      diasumsikan**: (1) `grammar_attempts.source` CHECK
+      ('production','controlled','recognition') — TIDAK diperluas, mengikuti
+      konvensi yang sudah berjalan (migrasi 147 memilih kolom metadata baru
+      `evaluation_kind` daripada mengubah enum; `grammar-mastery.js#loadMastery`
+      bahkan melipat `quiz_question_results` ke dalam `'recognition'`); (2)
+      `grammar_task_session_items.step` CHECK (1,2) — INI yang dilebarkan jadi
+      (1,2,4,5); (3) index UNIQUE `(session_id, grammar_id, step)` yang sudah
+      ada otomatis menjamin maksimal satu soal pemahaman + satu pembanding per
+      pola per sesi, jadi tidak perlu pagar baru.
+      **Angka 3 SENGAJA dilewati** — tetap dicadangkan untuk Step 3 Tugas
+      Bunpou (produksi kalimat bebas, dinilai evaluator, tidak pernah disimpan
+      sebagai item sesi). step 4 = soal pemahaman dialog (dari NASKAH ASLI),
+      step 5 = soal pembanding (pola sama, kalimat/situasi LAIN). Pemetaan
+      bukti: step 4 → `source='recognition'`, step 5 → `source='controlled'`,
+      lewat satu helper `attemptSourceFor()` (bukan ternary inline yang
+      tersebar) supaya jenis item berikutnya tidak bisa diam-diam jatuh ke
+      'controlled' karena satu file lain lupa diperbarui.
+      **Item family ID diturunkan, bukan diketik admin**: `dialogCheckFamilyId()`
+      meng-hash OPSI YANG SUDAH DIURUTKAN + jawaban benar, dan SENGAJA TIDAK
+      memasukkan teks pertanyaan — yang dilarang rencana adalah "soal
+      pembanding yang sekadar memindahkan posisi opsi", dan memindah posisi
+      tidak mengubah pertanyaan sama sekali. Karena opsi diurutkan sebelum
+      di-hash, permutasi murni menghasilkan family IDENTIK dan langsung
+      ditolak; dua soal yang kebetulan memakai opsi sama tapi jawabannya beda
+      tetap dihitung keluarga berbeda (itu memang dua soal berbeda).
+      Normalisasi perbandingan membuang spasi/U+3000/tanda baca JP+Latin dan
+      NFKC, jadi 「はい、そうです。」 dan 「はい そうです」 dihitung sama.
+      **Kalau pembanding tidak layak, pemeriksaan TIDAK disajikan** — bukan
+      disajikan separuh, bukan diganti soal karangan. `dialogCheckDrills()`
+      mengembalikan array KOSONG kecuali kedua soal ada, sah, dan beda
+      keluarga.
+      **Sanitizer membuang soal UTUH kalau ada opsi kosong**, bukan menyaring
+      opsi kosongnya: menyaring akan menggeser indeks dan diam-diam
+      memindahkan kunci jawaban ke opsi lain. Editor admin juga hanya membuang
+      baris kosong DI UJUNG textarea, tidak di tengah — server yang menolak
+      dengan pesan jelas.
+      **Integrasi Smart Review = memperluas PEMILIHAN, bukan menambah
+      antrean.** Ini penting dan hampir salah: `reviewSubjectKey()` untuk
+      grammar adalah `grammar:<itemId>`, jadi `oneDirectionPerSubject()` cuma
+      meloloskan SATU kandidat per pola per sesi — mendorong kandidat ekstra
+      akan kalah tie-break (`skill` alfabet: 'controlled' menang) dan tidak
+      pernah muncul, yaitu fitur yang kelihatan jadi padahal mati. Jadi
+      `buildReviewCandidates` tetap menghasilkan maksimal satu kandidat per
+      pola; yang berubah hanya soal MANA yang dipakai: kalau pelajaran pilot
+      punya pemeriksaan layak untuk sisi yang sedang dilatih DAN keluarganya
+      belum pernah dikerjakan (dilihat dari kolom baru
+      `grammar_attempts.check_family_id`, jendela 21 hari), soal itu yang
+      dipakai menggantikan drill Step 1/2. Kebijakan pemilihan SISI
+      (recognition vs controlled, dari perbandingan attempts) TIDAK diubah,
+      dan parameter jadwal tidak disentuh sama sekali — rencana melarang
+      hardcode interval baru. `skill` tetap bernilai 'recognition'/'controlled'
+      sehingga tidak ada kosakata skill baru yang bocor ke
+      `smart_review_session_items`.
+      **Bug nyata ditemukan & ditutup, bukan cuma fitur baru**: `welcome.html`
+      memetakan slot item sesi dengan `it.step === 1 ? 'step1' : 'step2'` —
+      begitu step 4/5 ada, keduanya berturut-turut MENIMPA soal Step 2 pada
+      pola yang sama dan Step 2 hilang diam-diam. Diganti peta eksplisit
+      `{1:'step1',2:'step2',4:'check1',5:'check2'}`. Dibuktikan MENGGIGIT:
+      mengembalikan pemetaan lama membuat tes regresi baru gagal, lalu hijau
+      lagi setelah dikembalikan. `gtRenderStep` juga diberi cabang khusus
+      step ≥ 4 (prompt saja) — cabang step 2 akan merender satu div kalimat
+      KOSONG karena soal pemeriksaan tidak punya `sentence`.
+      **Pemeriksaan dibuka BERSAMA Step 3, bukan setelahnya** — Step 3 adalah
+      produksi kalimat bebas yang dinilai evaluator dan TIDAK PERNAH memanggil
+      `gtAdvance`, jadi merantai langkah 4/5 di sana akan membuat keduanya
+      tidak pernah terbuka. Lagipula ini pemeriksaan mandiri, bukan gerbang
+      kelulusan.
+      **Editor admin**: bagian "Pemeriksaan mandiri (akhir tugas)" di modal
+      🧭 Pendamping Bunpou, dua soal per pola (pertanyaan, opsi satu per
+      baris, nomor jawaban, pembahasan). Badge kelayakan DIHITUNG SERVER
+      (`GET .../bunpou-flow` → `checkAvailability`) dengan fungsi yang sama
+      persis yang dipakai session API, supaya tidak mungkin "hijau di admin
+      tapi tidak muncul ke siswa". Endpoint draft/publish TIDAK diubah sama
+      sekali — keduanya sudah meneruskan seluruh envelope lewat
+      `validateCompanionEnvelope`/`sanitizeCompanionEnvelope` bersama, jadi
+      `dialogChecks` mengalir otomatis begitu service-nya diperluas.
+      **Divalidasi**: 16 tes unit baru (`bunpou-flow-checks.test.js`, flat di
+      `src/` — glob `node --test src/*.test.js` tidak turun ke subfolder,
+      pelajaran dari `tts.test.js`) + 1 tes regresi UI vm-slice + E2E terhadap
+      Postgres & Express ASLI (fixture 2 pelajaran sumber, 3 pola, satu
+      pemeriksaan layak dan satu yang pembandingnya cuma diacak): 16/16 —
+      pola layak dapat step 4&5, pola dengan pembanding teracak TIDAK dapat
+      apa-apa, pemeriksaan berada di AKHIR daftar item, kunci jawaban ditahan
+      sebelum dijawab lalu terbuka (berikut pembahasan) setelah benar, bukti
+      tertulis `source='recognition'` + `check_family_id` terisi, kandidat
+      review tetap maksimal satu per pola dengan skill lama, pemeriksaan
+      pelajaran NON-pilot tidak bocor, dan mematikan flag menghapus
+      pemeriksaan dari kandidat TANPA ikut menghapus kandidat grammar biasa.
+      Migrasi 150 idempoten (di-replay di atas skema yang sudah berubah:
+      kolom/index dilewati, CHECK tetap benar). `npm test` 306 tes, 305 hijau,
+      1 skip lama tak terkait, 0 gagal (naik dari 289).
+      **Jebakan saat menulis tesnya**: `POST /sessions/:id/items/:id/answer`
+      mengembalikan `publicSessionItem` LANGSUNG, tidak dibungkus `{item}` —
+      kebalikan dari `GET /api/lessons/:id` yang membungkus `{lesson}`. Cek
+      bentuk pembungkusnya dulu sebelum menyimpulkan ada regresi.
+      **Sengaja DI LUAR cakupan**: konten soal pemeriksaan untuk Bab 3 belum
+      ditulis (mekanismenya jalan, tapi `dialogChecks` masih kosong — sesuai
+      instruksi rencana "kalau data belum tersedia, implementasikan jalur
+      nonaktif"; mengarang soal yang belum ditinjau justru dilarang eksplisit).
+      Paket 3 (kebijakan mastery shadow-mode) dan Paket 4 (animasi dialog)
+      nihil. Belum diverifikasi dari sandbox ini: rendering visual langkah 4/5
+      di browser sungguhan.
+
       **Bunpou Flow pilot (Paket 0+1 dari rencana Codex) — session Tugas
       Bunpou yang tahan refresh, konten pendamping opsional, BELUM
       diaktifkan** — user melampirkan

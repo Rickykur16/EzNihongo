@@ -188,6 +188,22 @@ export function validateCompanionEnvelope(envelope, grammarIds) {
     }
   }
 
+  if (env.dialogChecks != null) {
+    if (!isPlainObject(env.dialogChecks)) {
+      errors.push('dialogChecks harus berupa object {grammarId: {comprehension, comparison}}');
+    } else {
+      for (const [gid, check] of Object.entries(env.dialogChecks)) {
+        if (!known.has(gid)) errors.push(`dialogChecks memuat grammarId di luar cakupan: ${gid}`);
+        if (!isPlainObject(check)) { errors.push(`dialogChecks.${gid} harus berupa object`); continue; }
+        for (const [field, label] of [['comprehension', 'soal pemahaman'], ['comparison', 'soal pembanding']]) {
+          if (check[field] == null) continue;
+          const r = validateDialogCheckQuestion(check[field], `${gid} ${label}`);
+          if (!r.ok) errors.push(...r.errors);
+        }
+      }
+    }
+  }
+
   return { ok: errors.length === 0, errors };
 }
 
@@ -222,6 +238,32 @@ export function sanitizeCompanionEnvelope(raw) {
     }
     if (Object.keys(overlays).length) out.overlays = overlays;
   }
+  if (isPlainObject(env.dialogChecks)) {
+    const checks = {};
+    for (const [gid, check] of Object.entries(env.dialogChecks)) {
+      if (!isPlainObject(check)) continue;
+      const cleaned = {};
+      for (const field of ['comprehension', 'comparison']) {
+        const q = check[field];
+        if (!isPlainObject(q)) continue;
+        const prompt = String(q.prompt ?? '').trim();
+        // Opsi TIDAK disaring dari yang kosong: membuang satu opsi di tengah
+        // akan menggeser indeks dan diam-diam memindahkan kunci jawaban ke
+        // opsi lain. Soal yang punya opsi kosong dibuang utuh, bukan
+        // "dirapikan" jadi soal yang jawabannya salah.
+        const options = Array.isArray(q.options) ? q.options.map((o) => String(o ?? '').trim()) : [];
+        if (!prompt || options.length < CHECK_MIN_OPTIONS || options.some((o) => !o)) continue;
+        const idx = Number(q.correctIndex);
+        if (!Number.isInteger(idx) || idx < 0 || idx >= options.length) continue;
+        const outQ = { prompt, options, correctIndex: idx };
+        const ex = String(q.explanation ?? '').trim();
+        if (ex) outQ.explanation = ex;
+        cleaned[field] = outQ;
+      }
+      if (Object.keys(cleaned).length) checks[gid] = cleaned;
+    }
+    if (Object.keys(checks).length) out.dialogChecks = checks;
+  }
   if (typeof env.sourceFingerprint === 'string' && env.sourceFingerprint) out.sourceFingerprint = env.sourceFingerprint;
   for (const stampField of ['editor', 'publishedBy']) {
     const stamp = env[stampField];
@@ -248,7 +290,21 @@ export const RULE_ERROR = {
 };
 
 export function primaryErrorFor(step, drillRule) {
-  return step === 1 ? 'meaning_mismatch' : (RULE_ERROR[drillRule] || 'wrong_grammar_pattern');
+  // Step 1 (fungsi pola) dan step 4 (pemahaman dialog) sama-sama menguji
+  // MAKNA, jadi kegagalannya dilabeli sama; step 2 dan 5 menguji pemakaian
+  // bentuk di kalimat, jadi jatuh ke label pola/aturan.
+  if (step === STEP_RECOGNITION || step === STEP_DIALOG_COMPREHENSION) return 'meaning_mismatch';
+  return RULE_ERROR[drillRule] || 'wrong_grammar_pattern';
+}
+
+// Satu-satunya tempat step -> grammar_attempts.source dipetakan. Dibuat
+// sebagai fungsi (bukan ekspresi inline di route) supaya penambahan jenis
+// item berikutnya tidak bisa diam-diam jatuh ke 'controlled' karena sebuah
+// ternary di file lain tidak ikut diperbarui.
+export function attemptSourceFor(step) {
+  if (step === STEP_RECOGNITION) return 'recognition';
+  if (step === STEP_CONTROLLED) return 'controlled';
+  return DIALOG_CHECK_SOURCE[step] || 'controlled';
 }
 
 // Same 200-char text-of-the-answer convention as the legacy
@@ -296,4 +352,160 @@ export function overlayFor(published, grammarId, step) {
 // routes/grammar-task-sessions.js#loadPilotConfig).
 export function isPilotLesson(config, lessonId) {
   return !!(config && config.enabled && config.lessonId && lessonId && config.lessonId === lessonId);
+}
+
+// ── Paket 2: pemeriksaan mandiri (soal pemahaman dialog + pembanding) ──────
+// Nomor step dipakai sebagai satu-satunya pembeda jenis item sesi, supaya
+// seluruh mesin Paket 1 (publicSessionItem, handler /answer, fingerprint,
+// index UNIQUE slot) berlaku apa adanya tanpa kolom "kind" baru. Angka 3
+// SENGAJA dilewati — lihat komentar panjang di migrasi 150.
+export const STEP_RECOGNITION = 1;
+export const STEP_CONTROLLED = 2;
+export const STEP_DIALOG_COMPREHENSION = 4;
+export const STEP_DIALOG_COMPARISON = 5;
+export const DIALOG_CHECK_STEPS = Object.freeze([STEP_DIALOG_COMPREHENSION, STEP_DIALOG_COMPARISON]);
+
+// Bukti pemeriksaan ditulis ke bucket grammar_attempts.source yang SUDAH ADA
+// (enum-nya sengaja tidak diperluas, lihat migrasi 150): pemahaman dialog
+// adalah bukti mengenali makna pola di konteks, pembanding adalah bukti
+// memakai pola itu di kalimat lain.
+export const DIALOG_CHECK_SOURCE = Object.freeze({
+  [STEP_DIALOG_COMPREHENSION]: 'recognition',
+  [STEP_DIALOG_COMPARISON]: 'controlled',
+});
+
+const CHECK_PROMPT_MAX = 300;
+const CHECK_OPTION_MAX = 160;
+const CHECK_EXPLANATION_MAX = 500;
+const CHECK_MIN_OPTIONS = 3;
+const CHECK_MAX_OPTIONS = 4;
+
+// Normalisasi khusus perbandingan "seberapa mirip dua soal" — bukan untuk
+// ditampilkan. Spasi (termasuk U+3000), tanda baca Jepang/Latin, dan beda
+// lebar karakter dibuang supaya "はい、そうです。" dan "はい そうです"
+// dihitung sebagai jawaban yang sama, bukan dua opsi berbeda.
+function normalizeCheckText(value) {
+  return String(value ?? '')
+    .normalize('NFKC')
+    .replace(/[\s　]+/g, '')
+    .replace(/[。、．，・!?！？「」『』（）()]/g, '')
+    .toLowerCase();
+}
+
+// Item family ID internal (rencana Paket 2: "Gunakan item family ID internal
+// untuk mendeteksi variasi yang terlalu dekat").
+//
+// SENGAJA tidak memasukkan teks pertanyaan: yang dilarang rencana itu
+// "soal pembanding yang sekadar memindahkan posisi opsi dari soal yang baru
+// dikerjakan", dan pemindahan posisi tidak mengubah teks pertanyaan sama
+// sekali. Karena opsi diurutkan sebelum di-hash, permutasi murni menghasilkan
+// family yang IDENTIK dan langsung ketahuan. Jawaban benar ikut di-hash,
+// sehingga dua soal yang memakai opsi sama tapi menanyakan hal berbeda
+// (jawaban benarnya beda) tetap dihitung sebagai keluarga yang berbeda —
+// itu memang dua soal yang berbeda, bukan variasi dangkal.
+export function dialogCheckFamilyId(question) {
+  const q = isPlainObject(question) ? question : {};
+  const options = Array.isArray(q.options) ? q.options : [];
+  const answer = options[Number(q.correctIndex)];
+  return sha256(stableStringify({
+    o: options.map(normalizeCheckText).filter(Boolean).sort(),
+    a: normalizeCheckText(answer),
+  })).slice(0, 16);
+}
+
+// Validasi struktural satu soal. `label` cuma untuk pesan error yang bisa
+// dibaca admin.
+export function validateDialogCheckQuestion(question, label) {
+  const errors = [];
+  if (!isPlainObject(question)) return { ok: false, errors: [`${label} harus berupa object`] };
+
+  const prompt = String(question.prompt ?? '').trim();
+  if (!prompt) errors.push(`${label}: pertanyaan wajib diisi`);
+  else if (prompt.length > CHECK_PROMPT_MAX) errors.push(`${label}: pertanyaan melebihi ${CHECK_PROMPT_MAX} karakter`);
+
+  const options = Array.isArray(question.options) ? question.options.map((o) => String(o ?? '').trim()) : null;
+  if (!options) {
+    errors.push(`${label}: options harus berupa array`);
+  } else {
+    if (options.length < CHECK_MIN_OPTIONS || options.length > CHECK_MAX_OPTIONS) {
+      errors.push(`${label}: jumlah opsi harus ${CHECK_MIN_OPTIONS}-${CHECK_MAX_OPTIONS}, sekarang ${options.length}`);
+    }
+    if (options.some((o) => !o)) errors.push(`${label}: ada opsi kosong`);
+    if (options.some((o) => o.length > CHECK_OPTION_MAX)) errors.push(`${label}: ada opsi melebihi ${CHECK_OPTION_MAX} karakter`);
+    // Dua opsi yang secara makna sama membuat soal punya lebih dari satu
+    // jawaban benar — tidak bisa dinilai adil, jadi ditolak di sini bukan
+    // dibiarkan lolos ke siswa.
+    const normalized = options.map(normalizeCheckText);
+    if (new Set(normalized).size !== normalized.length) errors.push(`${label}: ada opsi kembar`);
+
+    const idx = Number(question.correctIndex);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= options.length) {
+      errors.push(`${label}: correctIndex harus menunjuk salah satu opsi`);
+    }
+  }
+
+  if (question.explanation != null && String(question.explanation).length > CHECK_EXPLANATION_MAX) {
+    errors.push(`${label}: pembahasan melebihi ${CHECK_EXPLANATION_MAX} karakter`);
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
+// Apakah pemeriksaan untuk satu pola benar-benar layak disajikan ke siswa.
+//
+// Rencana Paket 2, harfiah: "Bila tidak ada soal pembanding yang layak,
+// tandai pemeriksaan belum tersedia. Jangan meloloskan siswa berdasarkan
+// soal rekaan yang belum ditinjau." Jadi fungsi ini TIDAK pernah mengarang
+// pengganti dan tidak pernah menyajikan separuh pemeriksaan — kedua soal
+// harus ada, sah, dan berasal dari keluarga yang berbeda.
+export function dialogCheckAvailability(check) {
+  const c = isPlainObject(check) ? check : {};
+  if (!isPlainObject(c.comprehension) && !isPlainObject(c.comparison)) {
+    return { available: false, reason: 'belum_ada_soal' };
+  }
+  const comp = validateDialogCheckQuestion(c.comprehension, 'soal pemahaman');
+  if (!comp.ok) return { available: false, reason: 'pemahaman_tidak_sah', errors: comp.errors };
+
+  const cmp = validateDialogCheckQuestion(c.comparison, 'soal pembanding');
+  if (!cmp.ok) return { available: false, reason: 'pembanding_tidak_sah', errors: cmp.errors };
+
+  const famA = dialogCheckFamilyId(c.comprehension);
+  const famB = dialogCheckFamilyId(c.comparison);
+  if (famA === famB) {
+    return {
+      available: false,
+      reason: 'pembanding_terlalu_dekat',
+      errors: ['soal pembanding memakai opsi dan jawaban yang sama dengan soal pemahaman — ganti kalimat/situasinya, bukan urutan opsinya'],
+      familyId: famA,
+    };
+  }
+  return { available: true, families: { comprehension: famA, comparison: famB } };
+}
+
+// Menurunkan dua item sesi (pemahaman + pembanding) dari satu entri
+// dialogChecks. Mengembalikan array KOSONG kalau pemeriksaannya tidak layak
+// — tidak pernah separuh, dan tidak pernah mengarang pengganti: rencana
+// Paket 2 melarang meloloskan siswa lewat soal yang belum ditinjau.
+//
+// Bentuk yang dikembalikan sengaja meniru keluaran deriveDrills()
+// (variant/prompt/options/correctIndex), supaya publicSessionItem(),
+// handler /answer, questionFingerprint(), dan renderer Step 1 di
+// welcome.html semuanya berlaku apa adanya — nol renderer kedua.
+export function dialogCheckDrills(check) {
+  const avail = dialogCheckAvailability(check);
+  if (!avail.available) return [];
+  const build = (q, step, kind, familyId) => ({
+    variant: 'choice',
+    step,
+    prompt: String(q.prompt).trim(),
+    options: q.options.map((o) => String(o).trim()),
+    correctIndex: Number(q.correctIndex),
+    checkKind: kind,
+    checkFamilyId: familyId,
+    explanation: q.explanation ? String(q.explanation).trim() : null,
+  });
+  return [
+    build(check.comprehension, STEP_DIALOG_COMPREHENSION, 'comprehension', avail.families.comprehension),
+    build(check.comparison, STEP_DIALOG_COMPARISON, 'comparison', avail.families.comparison),
+  ];
 }

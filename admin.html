@@ -4976,8 +4976,50 @@ window.grammarManageExamples = async (grammarId) => {
 // source lesson — tujuan pelajaran, arahan menyimak per pola, dan overlay
 // feedback Step 1/2 per pola. Never touches Pola/Arti/Contoh themselves;
 // those stay editable only via the existing Bunpou (文法) item table above.
-function bfFieldBlock(gid, pattern, env) {
+// Paket 2 — satu soal pemeriksaan. Opsi ditulis satu per baris supaya
+// jumlahnya bebas 3-4 tanpa DOM berlapis; nomor jawaban DIISI MANUAL dan
+// dicocokkan server, bukan ditebak dari urutan. Baris kosong di TENGAH
+// sengaja tidak dibuang saat dikumpulkan: membuangnya akan menggeser nomor
+// jawaban diam-diam, jadi lebih baik server menolaknya dengan pesan jelas.
+function bfCheckBlock(gid, field, label, q) {
+  const opts = Array.isArray(q.options) ? q.options.join('\n') : '';
+  const idx = Number.isInteger(q.correctIndex) ? q.correctIndex + 1 : 1;
+  return `
+    <div style="border:1px dashed var(--paper-300,#e5e5e5);border-radius:6px;padding:8px 10px;margin-top:6px;">
+      <div style="font-size:11px;font-weight:600;color:#404040;margin-bottom:4px;">${escapeHtml(label)}</div>
+      <label style="font-size:11px;color:#737373;">Pertanyaan</label>
+      <textarea id="bf-${field}-q-${gid}" rows="2" style="width:100%;font-size:12px;margin:2px 0 6px;">${escapeHtml(q.prompt || '')}</textarea>
+      <label style="font-size:11px;color:#737373;">Opsi — satu per baris (3-4 baris)</label>
+      <textarea id="bf-${field}-o-${gid}" rows="4" style="width:100%;font-size:12px;margin:2px 0 6px;">${escapeHtml(opts)}</textarea>
+      <label style="font-size:11px;color:#737373;">Nomor baris jawaban benar</label>
+      <input type="number" min="1" max="4" id="bf-${field}-c-${gid}" value="${idx}" style="width:70px;font-size:12px;margin:2px 0 6px;display:block;" />
+      <label style="font-size:11px;color:#737373;">Pembahasan (tampil setelah dijawab)</label>
+      <textarea id="bf-${field}-e-${gid}" rows="2" style="width:100%;font-size:12px;">${escapeHtml(q.explanation || '')}</textarea>
+    </div>`;
+}
+
+// Status kelayakan DIHITUNG SERVER (GET .../bunpou-flow -> checkAvailability)
+// dengan fungsi yang sama persis yang dipakai session API. Editor tidak
+// menghitung ulang, supaya tidak mungkin "hijau di admin tapi tidak muncul
+// ke siswa".
+function bfAvailBadge(avail) {
+  const a = avail || {};
+  if (a.available) {
+    return '<span style="font-size:11px;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:99px;padding:1px 8px;">&#10003; pemeriksaan aktif</span>';
+  }
+  const why = {
+    belum_ada_soal: 'belum diisi',
+    pemahaman_tidak_sah: 'soal pemahaman belum lengkap',
+    pembanding_tidak_sah: 'soal pembanding belum lengkap',
+    pembanding_terlalu_dekat: 'pembanding terlalu mirip soal pemahaman',
+  }[a.reason] || 'belum tersedia';
+  const detail = (a.errors || []).join('; ');
+  return `<span title="${escapeHtml(detail)}" style="font-size:11px;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:99px;padding:1px 8px;">belum tersedia &mdash; ${escapeHtml(why)}</span>`;
+}
+
+function bfFieldBlock(gid, pattern, env, avail) {
   const dir = (env.directions || {})[gid] || '';
+  const check = ((env.dialogChecks || {})[gid]) || {};
   const ov = ((env.overlays || {})[gid]) || {};
   const s1 = ov.step1 || {}, s2 = ov.step2 || {};
   return `
@@ -4998,6 +5040,19 @@ function bfFieldBlock(gid, pattern, env) {
           <label style="font-size:11px;color:#737373;">Step 2 — pembahasan</label>
           <textarea id="bf-e2-${gid}" rows="2" style="width:100%;font-size:12px;">${escapeHtml(s2.explanation || '')}</textarea>
         </div>
+      </div>
+      <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--paper-300,#e5e5e5);">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:11px;font-weight:600;color:#404040;">Pemeriksaan mandiri (akhir tugas)</span>
+          ${bfAvailBadge(avail)}
+        </div>
+        <p style="font-size:11px;color:#737373;font-family:var(--font-body);margin:4px 0 0;">
+          Soal pemahaman diambil dari <strong>naskah dialog</strong> pelajaran ini. Soal pembanding menguji
+          pola yang sama di <strong>kalimat/situasi lain</strong> &mdash; bukan soal yang sama dengan opsi diacak.
+          Keduanya harus terisi dan berbeda; kalau tidak, pemeriksaan tidak disajikan ke siswa.
+        </p>
+        ${bfCheckBlock(gid, 'cmp1', 'Soal pemahaman dialog', check.comprehension || {})}
+        ${bfCheckBlock(gid, 'cmp2', 'Soal pembanding', check.comparison || {})}
       </div>
     </div>`;
 }
@@ -5034,7 +5089,7 @@ window.manageBunpouFlow = async (lessonId, lessonTitle) => {
     <label style="font-size:12px;color:#404040;">Tujuan pelajaran (satu kalimat, opsional)</label>
     <textarea id="bf-objective" rows="2" style="width:100%;font-size:13px;margin:2px 0 12px;"
       placeholder="Siswa dapat mengenali dan menggunakan pola ...">${escapeHtml(env.objective || '')}</textarea>
-    <div id="bf-fields">${(d.grammarIds || []).map((gid) => bfFieldBlock(gid, d.patterns[gid], env)).join('') || '<p style="font-size:12px;color:#737373;">Pelajaran ini belum punya pola grammar.</p>'}</div>
+    <div id="bf-fields">${(d.grammarIds || []).map((gid) => bfFieldBlock(gid, d.patterns[gid], env, (d.checkAvailability || {})[gid])).join('') || '<p style="font-size:12px;color:#737373;">Pelajaran ini belum punya pola grammar.</p>'}</div>
     <div style="font-size:11px;color:#a3a3a3;font-family:var(--font-body);margin:4px 0;">
       ${d.published ? `Terpublikasi oleh ${escapeHtml(d.published.publishedBy?.email || '?')} · ${d.published.publishedBy?.at ? new Date(d.published.publishedBy.at).toLocaleString('id-ID') : ''}` : 'Belum pernah dipublikasikan.'}
     </div>
@@ -5063,7 +5118,30 @@ function bfCollectEnvelope() {
     if (h2 || e2) tiers.step2 = { ...(h2 && { hint: h2 }), ...(e2 && { explanation: e2 }) };
     if (Object.keys(tiers).length) overlays[gid] = tiers;
   }
-  return { objective: objective || undefined, directions, overlays };
+  const dialogChecks = {};
+  for (const gid of ctx.grammarIds) {
+    const q = (field) => {
+      const prompt = (document.getElementById(`bf-${field}-q-${gid}`)?.value || '').trim();
+      const rawOpts = document.getElementById(`bf-${field}-o-${gid}`)?.value || '';
+      const correct = Number(document.getElementById(`bf-${field}-c-${gid}`)?.value || 0);
+      const explanation = (document.getElementById(`bf-${field}-e-${gid}`)?.value || '').trim();
+      // Hanya baris kosong DI UJUNG yang dibuang. Baris kosong di tengah
+      // sengaja dipertahankan supaya nomor jawaban tidak bergeser diam-diam —
+      // server yang menolaknya dengan pesan "ada opsi kosong".
+      const options = rawOpts.replace(/\s+$/, '').split('\n').map((o) => o.trim());
+      if (!prompt && options.every((o) => !o)) return null;
+      const out = { prompt, options, correctIndex: correct - 1 };
+      if (explanation) out.explanation = explanation;
+      return out;
+    };
+    const comprehension = q('cmp1');
+    const comparison = q('cmp2');
+    const pair = {};
+    if (comprehension) pair.comprehension = comprehension;
+    if (comparison) pair.comparison = comparison;
+    if (Object.keys(pair).length) dialogChecks[gid] = pair;
+  }
+  return { objective: objective || undefined, directions, overlays, dialogChecks };
 }
 
 window.bfSaveDraft = async () => {

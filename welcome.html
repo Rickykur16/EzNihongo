@@ -9136,6 +9136,14 @@ function gtCardsHtml(items, sttOn, showDots) {
           <p class="gt-help">${hint}</p>
           ${slots}
         </section>
+        <section class="gt-step gt-step--locked" data-step="4" id="gt-step4-${pi}">
+          <div class="gt-step__head"><span class="gt-step__num">4</span><span class="gt-step__title">Cek pemahaman dialog</span></div>
+          <div class="gt-step__body"><span class="gt-step__lockmsg">Selesaikan langkah sebelumnya dulu.</span></div>
+        </section>
+        <section class="gt-step gt-step--locked" data-step="5" id="gt-step5-${pi}">
+          <div class="gt-step__head"><span class="gt-step__num">5</span><span class="gt-step__title">Coba di kalimat lain</span></div>
+          <div class="gt-step__body"><span class="gt-step__lockmsg">Selesaikan langkah sebelumnya dulu.</span></div>
+        </section>
       </div>
     </article>`;
   }).join('');
@@ -9192,8 +9200,13 @@ function _gtApplyDrills(byGrammar) {
     const d = byGrammar[it.id] || {};
     gtRenderStep(pi, 1, d.step1);
     gtRenderStep(pi, 2, d.step2);
+    // Paket 2: pemeriksaan mandiri di akhir tugas. Tidak pernah separuh —
+    // server hanya mengirim keduanya atau tidak sama sekali (lihat
+    // dialogCheckDrills), jadi di sini tidak ada kasus "cuma ada satu".
+    gtRenderStep(pi, 4, d.check1);
+    gtRenderStep(pi, 5, d.check2);
     // Peta tahap yang BENAR-BENAR punya soal. Step 3 (produksi) selalu ada.
-    window.__gtAvail[pi] = { 1: !!d.step1, 2: !!d.step2 };
+    window.__gtAvail[pi] = { 1: !!d.step1, 2: !!d.step2, 4: !!d.check1, 5: !!d.check2 };
     // Jawaban Step 1 = arti pola, dan arti itu tercetak di kepala kartu.
     // Kalau dibiarkan, soalnya cuma mencocokkan teks yang ada tepat di atasnya.
     // Disembunyikan sampai Step 1 dijawab, lalu dibuka sebagai materi bacaan.
@@ -9236,7 +9249,12 @@ async function gtLoadDrillsSession(lessonId) {
   window.__gtItemIds = {};
   const byGrammar = {};
   for (const it of (data.items || [])) {
-    (byGrammar[it.grammarId] = byGrammar[it.grammarId] || {})[it.step === 1 ? 'step1' : 'step2'] = it;
+    // Pemetaan EKSPLISIT per nomor step. Versi lama memakai
+    // `it.step === 1 ? 'step1' : 'step2'`, yang sejak Paket 2 akan membuat
+    // item pemeriksaan (step 4/5) menimpa soal Step 2 pada pola yang sama.
+    const slot = { 1: 'step1', 2: 'step2', 4: 'check1', 5: 'check2' }[it.step];
+    if (!slot) continue;
+    (byGrammar[it.grammarId] = byGrammar[it.grammarId] || {})[slot] = it;
     window.__gtItemIds[`${it.grammarId}-${it.step}`] = it.itemId;
   }
   _gtApplyDrills(byGrammar);
@@ -9268,7 +9286,16 @@ function gtRenderSessionError() {
 function gtAdvance(pi, fromStep) {
   const avail = (window.__gtAvail || {})[pi] || {};
   for (let st = fromStep + 1; st <= 3; st++) {
-    if (st === 3 || avail[st]) { gtOpenStep(pi, st); return; }
+    if (st === 3 || avail[st]) {
+      gtOpenStep(pi, st);
+      // Pemeriksaan mandiri dibuka bersamaan dengan Step 3, bukan setelah
+      // Step 3 dinilai: Step 3 adalah produksi kalimat bebas yang dinilai
+      // evaluator dan tidak pernah memanggil gtAdvance, jadi merantainya di
+      // sana akan membuat langkah 4/5 tidak pernah terbuka sama sekali.
+      // Lagipula ini pemeriksaan mandiri, bukan gerbang kelulusan.
+      if (st === 3) for (const cs of [4, 5]) if (avail[cs]) gtOpenStep(pi, cs);
+      return;
+    }
   }
 }
 
@@ -9278,7 +9305,7 @@ function gtUnlockAllSteps() {
   window.__gtAvail = {};
   (window.__gtData || []).forEach((_it, pi) => {
     gtSetMeaningHidden(pi, false);
-    for (const st of [1, 2]) {
+    for (const st of [1, 2, 4, 5]) {
       const el = _gtScope().querySelector(`#gt-step${st}-${pi}`);
       if (el) el.style.display = 'none';
     }
@@ -9291,7 +9318,12 @@ function gtRenderStep(pi, step, drill) {
   if (!el) return;
   const body = el.querySelector('.gt-step__body');
   if (!drill) { el.style.display = 'none'; return; }
-  const ctx = step === 1
+  // Soal pemeriksaan (step 4/5) hanya punya prompt + opsi: tidak ada
+  // `sentence`, jadi cabang step 2 di bawah akan merender satu div kalimat
+  // KOSONG kalau dipakai apa adanya.
+  const ctx = step >= 4
+    ? `<div class="gt-step__q">${escapeHtml(drill.prompt || '')}</div>`
+    : step === 1
     ? `${drill.example ? `<div class="gt-step__sentence" lang="ja">${escapeHtml(drill.example.japanese || '')}</div>
         ${drill.example.indonesian ? `<div class="gt-step__id">${escapeHtml(drill.example.indonesian)}</div>` : ''}` : ''}
        <div class="gt-step__q">${escapeHtml(drill.prompt || '')}</div>`
@@ -9306,7 +9338,7 @@ function gtRenderStep(pi, step, drill) {
   const opts = (drill.options || []).map((o, oi) => `
     <button type="button" class="gt-opt" id="gt-opt-${step}-${pi}-${oi}" onclick="gtAnswerDrill(${pi}, ${step}, ${oi})">
       <span class="gt-opt__key">${GT_OPT_KEYS[oi] || (oi + 1)}</span>
-      <span lang="${step === 1 ? 'id' : 'ja'}">${escapeHtml(o)}</span>
+      <span lang="${(step === 1 || step === 4) ? 'id' : 'ja'}">${escapeHtml(o)}</span>
     </button>`).join('');
   body.innerHTML = `${ctx}<div class="gt-opts">${opts}</div><div class="gt-step__verdict" id="gt-verdict-${step}-${pi}"></div>`;
 }
