@@ -3465,6 +3465,89 @@
   .gk-scene-line.gk-line-active { background: rgba(178,0,36,0.07); }
   .gk-scene-line .gk-text { font-size: 15px; color: #5a4a42; line-height: 1.45; }
   .gk-scene-line .gk-line-id { margin-top: 2px; color: #9a8a82; font-size: 12px; }
+  /* ── PANGGUNG DIALOG (Paket 4) ────────────────────────────────────────
+     Lapisan VISUAL di dalam blok "Dialog contoh" yang sudah ada — bukan hero
+     atau halaman baru. Tiap pembicara non-narator punya satu "actor" dengan
+     DUA state: diam dan sedang bicara. Identitasnya (inisial + warna) datang
+     dari sumber yang SAMA PERSIS dengan bubble di bawahnya (gkSpeakerStyles +
+     gkAvatarText), jadi keduanya tidak mungkin berbeda.
+
+     Seluruh gerak digerakkan EVENT elemen Audio asli (play/pause/ended), tidak
+     ada timer adegan mandiri — lihat gkStageBind(). Tanpa audio berjalan,
+     panggung ini diam total. */
+  .gk-stage {
+    position: relative; display: flex; align-items: flex-end; justify-content: center;
+    gap: clamp(18px, 8vw, 54px);
+    /* Tinggi TETAP: actor membesar/mengecil saat berganti state, dan tanpa
+       tinggi tetap pergantian itu akan menggeser seluruh transkrip di
+       bawahnya tiap ganti pembicara. */
+    height: 104px; margin: 0 auto 12px; padding: 0 12px;
+    border-radius: 14px; overflow: hidden;
+    background: linear-gradient(180deg, #fbf6f2 0%, var(--gk-stage-tint, #f4ece6) 100%);
+    transition: background .45s ease;
+  }
+  /* Garis tanah tipis — "latar sederhana", bukan ilustrasi adegan. */
+  .gk-stage::after {
+    content: ''; position: absolute; left: 10%; right: 10%; bottom: 20px;
+    height: 1px; background: rgba(27,20,16,0.07);
+  }
+  .gk-actor {
+    position: relative; z-index: 1; display: flex; flex-direction: column;
+    align-items: center; gap: 6px; padding-bottom: 14px;
+    opacity: .45; filter: saturate(.55);
+    transform: translateY(3px) scale(.92); transform-origin: bottom center;
+    transition: opacity .28s ease, filter .28s ease, transform .28s ease;
+  }
+  .gk-actor-body {
+    width: 46px; height: 46px; border-radius: 50%;
+    background: var(--sp, var(--brand-red)); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: 16px;
+    box-shadow: 0 3px 10px rgba(27,20,16,0.14);
+  }
+  .gk-actor-name {
+    font-size: 11px; font-weight: 800; color: #5a4a42; max-width: 92px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* State KEDUA: sedang bicara. Ditambahkan/dicabut hanya oleh event audio. */
+  .gk-actor.is-speaking { opacity: 1; filter: none; transform: translateY(0) scale(1); }
+  .gk-actor.is-speaking .gk-actor-body {
+    box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--sp, var(--brand-red)), 0 6px 16px rgba(27,20,16,0.18);
+    /* Durasi ikut kecepatan pemutaran: 1.25× → gerak 1.25× lebih cepat. */
+    animation: gkActorTalk calc(1.1s / var(--gk-rate, 1)) ease-in-out infinite;
+  }
+  @keyframes gkActorTalk {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+  /* Indikator suara — tiga bar kecil, hanya muncul saat bicara. */
+  .gk-actor-sound { display: flex; align-items: flex-end; gap: 2px; height: 9px; opacity: 0; transition: opacity .2s ease; }
+  .gk-actor.is-speaking .gk-actor-sound { opacity: 1; }
+  .gk-actor-sound i {
+    display: block; width: 2px; height: 3px; border-radius: 1px;
+    background: var(--sp-deep, var(--brand-red));
+  }
+  .gk-actor.is-speaking .gk-actor-sound i {
+    animation: gkSound calc(.62s / var(--gk-rate, 1)) ease-in-out infinite;
+  }
+  .gk-actor.is-speaking .gk-actor-sound i:nth-child(2) { animation-delay: .12s; }
+  .gk-actor.is-speaking .gk-actor-sound i:nth-child(3) { animation-delay: .24s; }
+  @keyframes gkSound {
+    0%, 100% { height: 3px; }
+    50% { height: 9px; }
+  }
+  /* Kontrol statis: siswa boleh mematikan panggungnya sama sekali. Dipakai
+     juga sebagai pembanding saat menguji apakah animasi membantu. */
+  .grammar-karaoke[data-stage="off"] .gk-stage { display: none; }
+  /* Reduced motion: penekanan pembicara aktif TETAP (itu informasi, bukan
+     hiasan), yang dimatikan hanya gerakannya. */
+  @media (prefers-reduced-motion: reduce) {
+    .gk-actor.is-speaking .gk-actor-body,
+    .gk-actor.is-speaking .gk-actor-sound i { animation: none; }
+    .gk-actor.is-speaking .gk-actor-sound i { height: 6px; }
+    .gk-actor { transition: opacity .01s linear, filter .01s linear, transform .01s linear; }
+    .gk-stage { transition: none; }
+  }
   /* conversation bubbles */
   .gk-text { font-family: 'Noto Sans JP', sans-serif; }
   .gk-bubbles { display: flex; flex-direction: column; }
@@ -8212,7 +8295,10 @@ function gkSpeakerStyles(rows) {
   rows.forEach((r) => { const s = r.speaker; if (s && s !== 'N' && !codes.includes(s)) codes.push(s); });
   const map = {};
   codes.forEach((c, i) => {
-    map[c] = { side: i % 2 === 0 ? 'left' : 'right', pal: GK_PALETTES[i % GK_PALETTES.length] };
+    // `idx` dipakai panggung (Paket 4) untuk mencocokkan baris ke actor lewat
+    // atribut ANGKA — kode pembicara sekarang bisa berupa nama Jepang asli
+    // ("アンナ"), yang tidak aman dipakai langsung di selector atribut.
+    map[c] = { idx: i, side: i % 2 === 0 ? 'left' : 'right', pal: GK_PALETTES[i % GK_PALETTES.length] };
   });
   return map;
 }
@@ -8238,6 +8324,14 @@ function gkGetSpeed() {
 function gkArtiLabel(mode) {
   return mode === 'always' ? 'Arti: selalu' : mode === 'off' ? 'Arti: off' : 'Arti: tap';
 }
+// Panggung dialog (Paket 4) boleh dimatikan siswa — sekaligus jadi KONTROL
+// STATIS yang diminta rencana untuk membandingkan animasi vs tanpa animasi
+// pada materi, soal, dan kebijakan yang sama.
+function gkGetStageMode() {
+  try { const v = localStorage.getItem('ez_dialog_stage'); if (v === 'on' || v === 'off') return v; } catch (e) {}
+  return 'on';
+}
+function gkStageLabel(mode) { return mode === 'off' ? 'Panggung: off' : 'Panggung: on'; }
 
 // Narator (speaker 'N') → kartu "Situasi" di atas. Tetap clickable (punya
 // segment audio sendiri) + terjemahan selalu tampil (tidak kena mode tap).
@@ -8252,14 +8346,14 @@ function gkSceneHtml(rows, key) {
 // Satu baris percakapan → chat bubble (avatar + nama + bubble berwarna di
 // sisi pembicara). Tombol putar per-baris + reveal arti (mode tap).
 function gkBubbleHtml(r, key, styles) {
-  const sp = styles[r.speaker] || { side: 'left', pal: GK_PALETTES[0] };
+  const sp = styles[r.speaker] || { idx: 0, side: 'left', pal: GK_PALETTES[0] };
   const avatar = gkAvatarText(r.displayName || r.speaker);
   const name = escapeHtml(r.displayName || r.speaker || '');
   const arti = r.idText
     ? `<div class="gk-arti"><button type="button" class="gk-reveal" onclick="window.gkRevealArti(this)">${GK_EYE_SVG} Lihat arti</button><div class="gk-line-id">${escapeHtml(r.idText)}</div></div>`
     : '';
   return `
-    <div class="gk-line gk-side-${sp.side}" data-line-index="${r.index}" style="${gkVars(sp.pal)}">
+    <div class="gk-line gk-side-${sp.side}" data-line-index="${r.index}" data-sp-idx="${sp.idx}" style="${gkVars(sp.pal)}">
       <div class="gk-avatar">${escapeHtml(avatar)}</div>
       <div class="gk-bubble-col">
         ${name ? `<div class="gk-name">${name}</div>` : ''}
@@ -8273,14 +8367,41 @@ function gkBubbleHtml(r, key, styles) {
       </div>
     </div>`;
 }
-// Susun transcript: scene (narator) di atas + bubble percakapan. rows[i] =
-// { speaker, displayName, inner, idText, index }. index = segment index audio.
+// Panggung: satu actor per pembicara non-narator, urut kemunculan. Inisial dan
+// warnanya diambil dari gkAvatarText/gkSpeakerStyles yang SAMA dengan bubble di
+// bawahnya, jadi identitas di panggung tidak mungkin berbeda dari transkrip —
+// dan tidak ada identitas yang dikarang: kalau dialognya tidak menyebut nama,
+// yang tampil adalah kode pembicaranya apa adanya, sama seperti bubble.
+function gkStageHtml(lineRows, styles) {
+  const seen = [];
+  for (const r of lineRows) if (!seen.some((x) => x.speaker === r.speaker)) seen.push(r);
+  if (!seen.length) return '';
+  const actors = seen.map((r) => {
+    const sp = styles[r.speaker] || { idx: 0, pal: GK_PALETTES[0] };
+    const label = r.displayName || r.speaker || '';
+    return `
+    <div class="gk-actor" data-sp-idx="${sp.idx}" data-tint="${sp.pal.soft}" style="${gkVars(sp.pal)}">
+      <div class="gk-actor-sound" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="gk-actor-body">${escapeHtml(gkAvatarText(label))}</div>
+      <div class="gk-actor-name">${escapeHtml(label)}</div>
+    </div>`;
+  }).join('');
+  // aria-hidden: panggung murni dekoratif — nama, teks, dan tombol putar
+  // semuanya sudah ada di transkrip di bawahnya, jadi pembaca layar tidak
+  // perlu mendengar semuanya dua kali.
+  return `<div class="gk-stage" aria-hidden="true">${actors}</div>`;
+}
+
+// Susun transcript: scene (narator) di atas + panggung + bubble percakapan.
+// rows[i] = { speaker, displayName, inner, idText, index }. index = segment
+// index audio.
 function gkComposeHtml(rows, key, styles) {
   const sceneRows = rows.filter((r) => r.speaker === 'N');
   const lineRows = rows.filter((r) => r.speaker !== 'N');
   const scene = sceneRows.length ? gkSceneHtml(sceneRows, key) : '';
+  const stage = gkStageHtml(lineRows, styles);
   const bubbles = lineRows.map((r) => gkBubbleHtml(r, key, styles)).join('');
-  return scene + `<div class="gk-bubbles">${bubbles}</div>`;
+  return scene + stage + `<div class="gk-bubbles">${bubbles}</div>`;
 }
 
 // Cycle mode arti (tap → selalu → off) — global untuk semua dialog di halaman.
@@ -8290,12 +8411,21 @@ window.gkCycleArti = (key, btn) => {
   document.querySelectorAll('.grammar-karaoke').forEach((el) => el.setAttribute('data-arti', next));
   document.querySelectorAll('.gk-arti-toggle').forEach((b) => { b.textContent = gkArtiLabel(next); });
 };
+// Nyalakan/matikan panggung — global untuk semua dialog di halaman, sama
+// seperti mode arti dan kecepatan.
+window.gkToggleStage = (key, btn) => {
+  const next = gkGetStageMode() === 'off' ? 'on' : 'off';
+  try { localStorage.setItem('ez_dialog_stage', next); } catch (e) {}
+  document.querySelectorAll('.grammar-karaoke').forEach((el) => el.setAttribute('data-stage', next));
+  document.querySelectorAll('.gk-stage-toggle').forEach((b) => { b.textContent = gkStageLabel(next); });
+};
 // Set kecepatan playback — global; aktif live untuk player yang sedang load.
 window.gkSetSpeed = (key, rate, btn) => {
   const r = parseFloat(rate) || 1;
   try { localStorage.setItem('ez_dialog_speed', String(r)); } catch (e) {}
   document.querySelectorAll('.grammar-karaoke').forEach((el) => {
     el.setAttribute('data-speed', String(r));
+    gkStageRate(el, r);
     el.querySelectorAll('.gk-speed .gk-seg-btn').forEach((b) => b.classList.toggle('is-on', parseFloat(b.dataset.v) === r));
   });
   for (const k of Object.keys(window.__gk)) {
@@ -8341,9 +8471,10 @@ function renderKaraokeStatic(text, key, dialogIdText) {
 function grammarKaraokeHtml(dialogText, key, dialogIdText) {
   const arti = gkGetArtiMode();
   const speed = gkGetSpeed();
+  const stage = gkGetStageMode();
   const speeds = [0.75, 1, 1.25];
   return `
-    <div class="grammar-karaoke" id="gk-${key}" data-dialog="${escapeHtml(dialogText)}" data-dialog-id="${escapeHtml(dialogIdText || '')}" data-arti="${arti}" data-speed="${speed}">
+    <div class="grammar-karaoke" id="gk-${key}" data-dialog="${escapeHtml(dialogText)}" data-dialog-id="${escapeHtml(dialogIdText || '')}" data-arti="${arti}" data-speed="${speed}" data-stage="${stage}" style="--gk-rate:${speed};">
       <div class="gk-toolbar">
         <button type="button" class="gk-play" onclick="window.grammarKaraokePlay('${key}')">▶ Putar dialog</button>
         <div class="gk-seg gk-speed">
@@ -8351,6 +8482,7 @@ function grammarKaraokeHtml(dialogText, key, dialogIdText) {
         </div>
         <span class="gk-tool-div"></span>
         <button type="button" class="gk-arti-toggle" onclick="window.gkCycleArti('${key}',this)">${gkArtiLabel(arti)}</button>
+        <button type="button" class="gk-arti-toggle gk-stage-toggle" onclick="window.gkToggleStage('${key}',this)">${gkStageLabel(stage)}</button>
         <span class="gk-status"></span>
       </div>
       <div class="gk-transcript">${renderKaraokeStatic(dialogText, key, dialogIdText)}</div>
@@ -8402,6 +8534,7 @@ function gkPlaySegment(key, si) {
   const audio = new Audio('data:' + (seg.content_type || 'audio/mpeg') + ';base64,' + seg.audio_base64);
   st.audio = audio;
   try { audio.playbackRate = st.rate || 1; } catch (e) {}
+  gkStageBind(key, audio, si);
   audio.addEventListener('ended', () => {
     if (st.stopped) return;
     // playOnce: dipanggil dari grammarKaraokeJumpTo — jangan auto-advance.
@@ -8414,6 +8547,56 @@ function gkPlaySegment(key, si) {
     st._gap = setTimeout(() => gkPlaySegment(key, si + 1), 450);
   });
   const p = audio.play(); if (p && p.catch) p.catch(() => {});
+}
+
+// ── Panggung: sinkronisasi (Paket 4) ────────────────────────────────────
+// Prinsip yang menentukan seluruh desain ini: panggung TIDAK punya state
+// machine sendiri. Ia hanya bereaksi pada event elemen Audio yang benar-benar
+// diputar (play/pause/ended), jadi jeda, ganti kecepatan, klik ulang satu
+// baris, ganti pelajaran, dan kegagalan audio otomatis tersinkron — tidak ada
+// timer adegan yang bisa terus berjalan setelah suaranya berhenti.
+function gkStageEls(key) {
+  const root = document.getElementById('gk-' + key);
+  return root ? { root, stage: root.querySelector('.gk-stage') } : null;
+}
+// Semua actor kembali diam. Dipanggil saat jeda, selesai, dan saat highlight
+// baris dibersihkan.
+function gkStageIdle(key) {
+  const els = gkStageEls(key);
+  if (!els || !els.stage) return;
+  els.stage.querySelectorAll('.gk-actor').forEach((a) => a.classList.remove('is-speaking'));
+  els.stage.style.removeProperty('--gk-stage-tint');
+}
+// Tandai actor pemilik segment `si` sebagai sedang bicara. Pemiliknya dibaca
+// dari baris transkrip segment itu (data-sp-idx), bukan ditebak — jadi kalau
+// segment itu milik narator (tidak punya actor), hasilnya semua actor diam,
+// yang memang benar: tidak ada tokoh yang sedang bicara.
+function gkStageSpeak(key, si) {
+  const els = gkStageEls(key);
+  if (!els || !els.stage) return;
+  const line = els.root.querySelector(`.gk-line[data-line-index="${si}"]`);
+  const idx = line ? line.dataset.spIdx : null;
+  let tint = null;
+  els.stage.querySelectorAll('.gk-actor').forEach((a) => {
+    const on = idx != null && a.dataset.spIdx === idx;
+    a.classList.toggle('is-speaking', on);
+    if (on) tint = a.dataset.tint;
+  });
+  if (tint) els.stage.style.setProperty('--gk-stage-tint', tint);
+  else els.stage.style.removeProperty('--gk-stage-tint');
+}
+// Pasang panggung ke SATU elemen audio. Ini satu-satunya tempat panggung
+// mulai/berhenti bergerak.
+function gkStageBind(key, audio, si) {
+  audio.addEventListener('play', () => gkStageSpeak(key, si));
+  audio.addEventListener('pause', () => gkStageIdle(key));
+  audio.addEventListener('ended', () => gkStageIdle(key));
+}
+// Kecepatan pemutaran → durasi animasi, supaya gerak actor ikut melambat di
+// 0.75× dan mengencang di 1.25× alih-alih berjalan sendiri.
+function gkStageRate(root, rate) {
+  const stage = root && root.querySelector('.gk-stage');
+  if (stage) stage.style.setProperty('--gk-rate', String(rate || 1));
 }
 
 // Sync class .gk-line-active ke baris/narator dgn data-line-index === activeSi
@@ -8429,6 +8612,10 @@ function gkSyncActiveLine(key, activeSi) {
     // Mode tap: mendengar suatu baris otomatis reveal artinya (cek pemahaman).
     if (on && tap && el.classList.contains('gk-line')) el.classList.add('gk-revealed');
   });
+  // Panggung hanya DIBERSIHKAN di sini. Menyalakannya bukan urusan fungsi ini:
+  // gkPlaySegment memanggilnya SEBELUM audio benar-benar berbunyi, jadi kalau
+  // actor dinyalakan di sini ia akan bergerak lebih dulu dari suaranya.
+  if (activeSi < 0) gkStageIdle(key);
 }
 
 window.grammarKaraokePlay = async (key) => {
