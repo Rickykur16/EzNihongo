@@ -734,6 +734,128 @@
       sekali, jadi migrasi ini nol dampak ke siswa sampai admin menyalakan
       pilot untuk pelajaran itu.
 
+      **Paket 3 (kebijakan penguasaan — MODE SHADOW, belum diaktifkan)** —
+      user: "langsung lanjut ke paket selanjutnya". Sumbernya bagian 8 PDF
+      rencana Codex. **Batas yang ditetapkan rencana, dikutip harfiah karena
+      ia yang menentukan bentuk seluruh paket ini**: "Codex boleh membuat
+      konfigurasi dan test case, tetapi tidak boleh memilih threshold baru
+      lalu mengaktifkannya sebagai kebijakan resmi." Jadi paket ini TIDAK
+      mengubah satu pun penilaian yang dilihat siswa — ia menghitung
+      kebijakan usulan DI SAMPING yang berjalan supaya bedanya bisa ditinjau.
+      **`grammar-mastery.js` NOL BARIS BERUBAH** — itu jaminan terkuatnya,
+      dan sengaja dijaga begitu. File itu dibaca LIMA jalur siswa
+      (`dashboard-service.js`, `progress-detail-service.js`,
+      `routes/smart-review.js` — penjadwalan!, `routes/recommendations.js`,
+      `routes/grammar-analysis.js`); menambah kolom ke query-nya demi satu
+      layar admin adalah risiko yang tidak perlu diambil. Karena itu pemuat
+      shadow (`grammar-mastery-shadow.js`) menjalankan query SENDIRI yang
+      MENCERMINKAN `loadMastery` (window/limit/UNION `quiz_question_results`
+      sama persis) plus kolom metadata; kalau v1 yang dihitung di sini
+      berbeda dari v1 yang dilihat siswa, seluruh perbandingannya tidak ada
+      artinya — jadi itu yang dites langsung (lihat validasi di bawah).
+      **v2 TIDAK PERNAH menjatuhkan siswa yang tidak dijatuhkan v1.** Ia
+      memakai ulang `computeConceptMastery` apa adanya — termasuk seluruh
+      aturan kegagalan — dan HANYA boleh MENAHAN klaim `MASTERED` jadi
+      `PROGRESSING` ketika buktinya tipis, dengan `withheldReasons[]`.
+      Alasannya langsung dari rencana: kekhawatiran yang disebut bukan
+      "siswa terlalu jarang gagal", melainkan penguasaan yang DIKLAIM dari
+      empat jawaban pengenalan, dari jawaban yang semuanya benar SETELAH
+      dibantu, atau dari soal yang sama diulang-ulang. Menambah cara baru
+      untuk GAGAL = perhitungan ulang destruktif atas riwayat, yang dilarang
+      eksplisit. `score` juga sengaja TIDAK diubah: akurasi berbobotnya
+      memang tidak berubah, yang berubah cuma seberapa yakin kita
+      menyebutnya penguasaan.
+      **Riwayat lama = bukti TERBATAS, bukan kegagalan.** Percobaan sebelum
+      Paket 1/2 tidak punya `assistance_state`/`independent_eligible`/
+      `question_fingerprint`/`evaluation_kind` — diklasifikasikan `limited`,
+      tidak pernah dihitung sebagai kegagalan, tidak pernah menurunkan state,
+      cuma tidak menambah keyakinan.
+      **Bug nyata ditemukan dari CHECK-nya sendiri, bukan dari kode**: CHECK
+      migrasi 147 mengizinkan `assistance_state = 'unknown'`. Draf pertama
+      `classifyAttempt()` cuma mengenal tiga state berbantuan
+      (`hint_served`/`answer_served`/`correction_served`), sehingga baris
+      ber-`'unknown'` jatuh ke cabang terakhir dan dihitung sebagai bukti
+      MANDIRI — mengklaim kemandirian dari baris yang tulisannya sendiri
+      berbunyi "tidak diketahui", persis kelas over-claiming yang jadi alasan
+      Paket 3 ada. Ketahuan saat fixture E2E ditolak constraint (`'none'`
+      bukan nilai sah; yang benar `'none_observed'`), lalu constraint-nya
+      dibaca utuh. Hari ini tidak ada kode yang menulis `'unknown'`
+      (`deriveAssistanceState` cuma menghasilkan tiga nilai), jadi ini
+      pagar untuk data masa depan/impor — diperbaiki jadi `LIMITED`, dan
+      tesnya dibuktikan MENGGIGIT (hapus satu baris fix → tes gagal).
+      **Identitas soal untuk menghitung VARIASI**: `question_fingerprint`
+      (Paket 1) dulu, `check_family_id` (Paket 2) kalau ada; dua-duanya
+      kosong → tidak menyumbang variasi yang diketahui, sekali lagi bukan
+      pelanggaran. **Retensi** = keberhasilan mandiri berjarak >= 7 hari dari
+      keberhasilan mandiri SEBELUMNYA — karena itu `summarizeEvidence`
+      memproses baris dari yang TERLAMA (`[...rows].reverse()`), padahal
+      `computeConceptMastery` menerima terbaru-dulu; kalau urutannya ikut
+      terbaru-dulu, "sebelumnya" jadi "sesudahnya" dan retensinya terbalik.
+      **Layar tinjauan** (`GET /admin/grammar-mastery/shadow`, read-only,
+      owner-only `null` di `company-route-policy.js` — sama ketatnya dengan
+      pasangan `/settings/bunpou-flow-pilot`, karena ia membaca riwayat
+      percobaan LINTAS siswa): memindai maksimal 50 siswa yang punya
+      percobaan pada pola pelajaran itu, `lessonId` opsional (default ke
+      `bunpou_flow_pilot_lesson_id`). Kartu ketiga di tab AI admin.
+      **Angka CAKUPAN METADATA ditaruh PALING ATAS, bukan sebagai catatan
+      kaki** — ini keputusan yang paling menentukan cara layar itu dibaca:
+      karena pilot BELUM PERNAH dinyalakan, praktis SELURUH riwayat produksi
+      tidak punya metadata bukti, jadi v2 akan menahan `MASTERED` hampir di
+      mana-mana. Tanpa angka cakupan di depan, "80% konsep turun dari
+      Dikuasai" terbaca seolah siswa memburuk, padahal yang terjadi adalah
+      data yang tidak pernah tercatat. Di bawah 50% latarnya jadi peringatan
+      amber dengan kalimat eksplisit bahwa ini soal data, bukan kemampuan.
+      **Kartunya sengaja TIDAK punya tombol mengaktifkan** kebijakan usulan —
+      `app_settings.grammar_mastery_policy` tidak pernah ditulis dari mana
+      pun di PR ini, dan `resolvePolicy()` mengembalikan v1 untuk nilai apa
+      pun selain string `'v2'` persis. Mengaktifkan adalah keputusan
+      pemilik produk setelah menatap hasilnya; ada tes yang menegaskan tidak
+      ada `<button>`/`onclick`/`PUT`/`POST` di kartu itu.
+      **Divalidasi**: 14 tes unit `grammar-mastery-policy.test.js` +
+      9 tes vm-slice `grammar-mastery-shadow-ui.test.js` (menjalankan KODE
+      ASLI admin.html, bukan reimplementasi) + E2E 33/33 terhadap Postgres &
+      Express ASLI dengan lima siswa yang tiap-tiapnya mewakili satu kasus
+      tinjauan rencana: riwayat lama tanpa metadata, bukti lengkap
+      (mandiri+retensi+produksi), semua lulus setelah dibantu, soal sama
+      diulang empat kali, dan satu siswa yang v1 sendiri TIDAK luluskan.
+      Yang paling menentukan dari E2E itu: (a) `loadMastery()` ASLI — jalur
+      siswa sungguhan — dipanggil berdampingan dengan shadow dan v1-nya
+      terbukti IDENTIK (state/score/attempts/passedCount) untuk kelima siswa;
+      (b) siswa yang v2 tahan TETAP dilabeli `MASTERED` oleh kebijakan aktif;
+      (c) sidik jari md5 seluruh `grammar_attempts`+`app_settings`+`lessons`
+      sebelum & sesudah panggilan endpoint IDENTIK — endpoint ini tidak
+      menulis apa pun; (d) `grammar_mastery_policy` tetap tidak ter-set.
+      Ditambah pagar 403 non-admin, 401 tanpa token, 404 pelajaran tanpa
+      grammar, 400 tanpa lessonId & tanpa pilot, dan fallback ke lesson pilot.
+      **Pagar struktural**: satu tes memindai SELURUH modul sisi siswa dan
+      menolak kalau ada yang meng-import `grammar-mastery-policy` atau
+      `grammar-mastery-shadow` — dibuktikan menggigit dengan menyisipkan
+      import palsu ke `dashboard-service.js` (tes gagal), lalu dikembalikan.
+      `npm test` dengan `TEST_DATABASE_URL`: 329 tes, 328 hijau, 1 skip lama
+      tak terkait (butuh browser), 0 gagal — naik dari 306.
+      **Jebakan lingkungan & tes yang dicatat**: (1) `signAccessToken(userId,
+      email)` mengembalikan PROMISE dan menerima DUA argumen posisional —
+      memanggilnya tanpa `await` membuat header jadi
+      `Bearer [object Promise]` dan SETIAP panggilan balas 401, yang terlihat
+      persis seperti bug otorisasi; (2) `users` TIDAK punya kolom `role` —
+      admin ditentukan `isAdminEmail()` (env `ADMIN_EMAILS` + tabel
+      `admin_emails`), jadi fixture admin cukup user biasa dengan email yang
+      cocok; (3) `grammar_attempts` menuntut `sentence`/`correct`/
+      `uses_pattern` NOT NULL dan `eval_source` NOT NULL — kode drill asli
+      (`grammar-task.js:522`) meng-hardcode `eval_source='ai'` bahkan untuk
+      soal deterministik, jadi fixture mengikuti itu supaya faithful;
+      (4) `created_at` fixture dibikin UNIK per baris — dua baris berwaktu
+      identik membuat `ORDER BY created_at DESC` punya tie-break
+      non-deterministik dan perbandingan "v1 shadow == v1 aktif" jadi rapuh
+      karena fixture-nya, bukan kodenya.
+      **Sengaja DI LUAR cakupan**: kebijakan usulan TIDAK diaktifkan dan
+      angka ambangnya (`V2_CONFIG`, bertanda `ratified: false`) BUKAN usulan
+      nilai final — ada supaya perbandingannya bisa dijalankan sama sekali.
+      Tidak ada backfill metadata untuk riwayat lama (tidak mungkin: datanya
+      memang tidak pernah dicatat). Paket 4 (animasi dialog) nihil. Belum
+      diverifikasi dari sandbox ini: rendering visual kartu shadow di
+      browser sungguhan.
+
       **Bunpou Flow pilot (Paket 0+1 dari rencana Codex) — session Tugas
       Bunpou yang tahan refresh, konten pendamping opsional, BELUM
       diaktifkan** — user melampirkan
