@@ -489,20 +489,37 @@
       benar-benar terdengar di dialog di bawahnya, bukan mengulang arti pola
       (arti sudah ada di kartu). Contoh yang paling menunjukkan bedanya:
       arahan 〜も tidak menjelaskan "juga", melainkan menyuruh menyimak
-      giliran TERAKHIR dialognya — pertanyaannya たなかさんも tapi jawabannya
-      たなかさんは, karena begitu ternyata tidak sama, も berganti は.
-      Poin itu cuma ada kalau dialognya dibaca.
+      giliran TERAKHIR dialognya — pertanyaannya memakai 〜も tapi jawabannya
+      berganti ke 〜は, karena begitu ternyata tidak sama, も tidak dipakai
+      lagi. Poin itu cuma ada kalau dialognya dibaca.
       **Dicocokkan lewat ISI dialog, bukan teks pattern**: Bab 3 punya SEBELAS
       baris untuk ENAM konsep — dua set penamaan berdampingan, dan teks
       pattern set B (buatan admin) tidak bisa dipercaya karakter per karakter
       (〜 U+301C vs ～ U+FF5E, ／ vs /); ini temuan migrasi 145, bukan dugaan.
       Karena arahan menerangkan dialognya, tiap baris dicocokkan lewat penanda
-      unik DI DALAM `example_dialog` (どうぞよろしくおねがいします / オースト
-      ラリア / おしごとはなんですか / たなかさんもがくせい / さくらだいがく /
-      ユウトさん) — keenamnya dicek saling eksklusif terhadap keenam dialog
-      145. Baris yang dialognya sudah ditulis ulang admin DILEWATI dengan
-      NOTICE: arahan yang menyebut giliran yang sudah tidak ada lebih buruk
-      daripada tidak ada arahan sama sekali.
+      unik DI DALAM `example_dialog` — diukur: keenam dialog 145 masing-masing
+      kena TEPAT SATU penanda, dialog asing kena nol. Baris yang dialognya
+      sudah ditulis ulang admin DILEWATI dengan NOTICE yang sekalian mencetak
+      baris pertama dialognya (alur 135→136: sandbox tidak bisa melihat
+      produksi, jadi log deploy adalah satu-satunya cara tahu isi dialog yang
+      sudah diganti — baca log, baru tulis migrasi lanjutannya).
+      **NAMA TOKOH TIDAK DIPAKAI DI MANA PUN — dikoreksi user, dan ini
+      pelajaran yang lebih besar dari satu nama salah**: draf pertama menyebut
+      nama tokoh dari dialog versi REPO ("Hadi juga cuma bilang ハディです",
+      "Kevin menyangkal dua kali") dan memakai 「たなかさんもがくせい」/
+      「ユウトさん」 sebagai penanda. User: **"Lah namanya udah bukan hadi tapi
+      yamguchi"** — nama tokoh di produksi sudah diganti lewat editor 🎭 Dialog
+      yang baru saja dibuat sesi ini. Nama tokoh adalah bagian dialog yang
+      PALING gampang berubah, apalagi sekarang menggantinya cuma beberapa
+      klik; arahan yang menyebut nama otomatis basi tiap kali admin mengganti
+      tokoh, dan penanda yang memuat nama akan gagal mencocokkan. Sekarang
+      keduanya cuma bergantung struktur giliran + partikel (〜も vs 〜は, ね vs
+      よ, dst) — tetap konkret karena menunjuk kalimat yang benar-benar
+      terdengar, tapi tahan ganti nama. **Dibuktikan MENGGIGIT**: dialog
+      fixture di-rename ハディ→山口 dan ユウト→やまだ, lalu versi lama
+      (penanda bernama) dijalankan → baris ね・よ DILEWATI, cuma 10 arahan;
+      versi baru → 11 arahan, 0 dilewati, dan 0 arahan memuat nama tokoh.
+      Kalau menulis arahan lagi: jangan sebut nama tokoh, sebut gilirannya.
       **`overlays` SENGAJA TIDAK diisi** (padahal envelope-nya menyediakan
       step1/step2 hint+explanation): backend-nya memang sudah tersalur
       (`overlayFor` → snapshot sesi → `publicSessionItem`), TAPI tidak ada

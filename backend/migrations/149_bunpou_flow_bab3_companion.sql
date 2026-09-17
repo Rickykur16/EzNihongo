@@ -45,6 +45,19 @@
 -- Karena arahan ini menerangkan DIALOGNYA — bukan nama polanya — tiap baris
 -- dicocokkan lewat penanda unik di dalam example_dialog itu sendiri. Keenam
 -- penanda di bawah dicek saling eksklusif terhadap keenam dialog 145.
+--
+-- TANPA NAMA TOKOH, DI ARAHAN MAUPUN DI PENANDA — ini dikoreksi user setelah
+-- draf pertama: "Lah namanya udah bukan hadi tapi yamguchi". Draf pertama
+-- menyebut nama tokoh dari dialog versi REPO (Hadi/Kevin/Yuto) dan memakai
+-- 「たなかさん…」/「ユウトさん」 sebagai penanda, padahal nama tokoh di
+-- produksi sudah diganti admin lewat editor 🎭 Dialog yang baru. Nama tokoh
+-- adalah bagian dialog yang PALING gampang berubah — apalagi sekarang
+-- menggantinya cuma beberapa klik — jadi arahan maupun penanda tidak boleh
+-- bergantung padanya. Yang dipakai sekarang hanya struktur giliran dan
+-- partikelnya (〜も vs 〜は, ね vs よ, dst): tetap konkret karena menunjuk
+-- kalimat yang benar-benar terdengar, tapi tidak ikut basi kalau tokohnya
+-- berganti nama. Kalau suatu saat menulis arahan lagi: jangan sebut nama
+-- tokoh, sebut gilirannya.
 -- Baris yang dialognya BUKAN salah satu dialog itu (mis. sudah ditulis ulang
 -- admin) DILEWATI dengan NOTICE — arahan yang menyebut giliran yang sudah
 -- tidak ada akan menyesatkan siswa, dan lebih baik kosong daripada
@@ -98,12 +111,12 @@ BEGIN
   -- di dialog 145 untuk konsep itu — kalau dialognya diganti, arahannya ikut
   -- harus ditulis ulang (itulah sebabnya pencocokan di bawah berbasis isi).
   v_arahan := $json${
-  "kopula": "Hitung berapa kali わたしは muncul: Anna memakainya untuk nama dan asal, tapi langsung bilang がくせいです tanpa わたしは. Hadi juga cuma bilang ハディです. Kalau topiknya sudah jelas, bagian 〜は boleh hilang — yang wajib tetap ada hanya です di akhir.",
-  "negatif": "Kevin menyangkal dua kali, dan dua-duanya berpola sama: いいえ、〜じゃありません lalu langsung disusul kalimat 〜です yang membetulkan. Perhatikan bahwa menyangkal tidak pernah berdiri sendiri di dialog ini — selalu ada jawaban benarnya sesudahnya.",
-  "tanya": "Kalimat tanyanya sama persis dengan kalimat berita, cuma ditambah か di akhir: かいしゃいんです → かいしゃいんですか. Lihat jawabannya — mengulang kata bendanya tanpa か. Di giliran terakhir Ryo balik bertanya ke Maria dengan pola yang sama.",
-  "juga": "Dengarkan sampai giliran terakhir. Pertanyaannya memakai たなかさんも, tapi jawabannya たなかさんは — begitu ternyata tidak sama, も langsung berganti は. も cuma dipakai kalau hal yang sama memang berlaku.",
-  "milik": "Ada tiga の di sini: さくらだいがくの がくせい, にほんごがっこうの がくせい, にほんごの せんせい. Polanya selalu sama — kata sebelum の menerangkan kata sesudahnya, entah tempat asal atau bidang yang diajarkan.",
-  "partikel": "Bandingkan ね dan よ di dialog ini. ね dipakai saat penutur merasa sudah tahu lalu minta persetujuan — Yuto memakainya untuk menebak pekerjaan Hadi. よ dipakai saat memberi kabar baru: Hadi menjawab エンジニアですよ justru untuk membetulkan tebakan itu."
+  "kopula": "Hitung berapa kali わたしは muncul. Penutur pertama memakainya untuk nama dan asal, lalu langsung bilang がくせいです tanpa わたしは — lawan bicaranya pun menyebut namanya tanpa わたしは. Kalau topiknya sudah jelas, bagian 〜は boleh hilang; yang wajib tetap ada hanya です di akhir.",
+  "negatif": "Ada dua jawaban yang diawali いいえ, dan dua-duanya berpola sama: 〜じゃありません lalu langsung disusul kalimat 〜です yang membetulkan. Perhatikan bahwa menyangkal tidak pernah berdiri sendiri di dialog ini — selalu ada jawaban benarnya sesudahnya.",
+  "tanya": "Kalimat tanyanya sama persis dengan kalimat berita, cuma ditambah か di akhir: 〜です → 〜ですか. Lihat jawabannya — mengulang kata bendanya tanpa か. Di giliran terakhir pertanyaannya dibalikkan ke lawan bicara dengan pola yang sama.",
+  "juga": "Dengarkan sampai giliran terakhir. Pertanyaannya memakai 〜も, tapi jawabannya berganti ke 〜は — begitu ternyata tidak sama, も tidak dipakai lagi. も hanya untuk hal yang memang berlaku sama.",
+  "milik": "Ada tiga の di dialog ini, dan polanya selalu sama: kata sebelum の menerangkan kata sesudahnya — nama kampus/sekolah untuk がくせい, dan bidang yang diajarkan untuk せんせい.",
+  "partikel": "Bandingkan ね dan よ. ね dipakai saat penutur merasa sudah tahu lalu minta persetujuan — dua giliran pertama memakainya untuk menebak. よ dipakai saat memberi kabar baru: jawaban 〜ですよ justru membetulkan tebakan yang salah."
 }$json$;
 
   -- Pagar panjang, disamakan dengan validateCompanionEnvelope
@@ -121,7 +134,7 @@ BEGIN
   -- Baris Bab 3 yang punya dialog tapi dialognya tidak dikenali → lapor,
   -- jangan tebak. (Konvensi 135/136: satu deploy sekaligus mengisi & melapor.)
   FOR r IN
-    SELECT g.pattern, coalesce(l.title, '(tidak tertaut)') AS lesson_title
+    SELECT g.pattern, g.example_dialog, coalesce(l.title, '(tidak tertaut)') AS lesson_title
       FROM module_grammar g
       LEFT JOIN lessons l ON l.id = g.lesson_id
      WHERE g.module_id = v_module_id
@@ -129,14 +142,18 @@ BEGIN
        AND g.example_dialog NOT LIKE '%どうぞよろしくおねがいします%'
        AND g.example_dialog NOT LIKE '%オーストラリア%'
        AND g.example_dialog NOT LIKE '%おしごとはなんですか%'
-       AND g.example_dialog NOT LIKE '%たなかさんもがくせい%'
-       AND g.example_dialog NOT LIKE '%さくらだいがく%'
-       AND g.example_dialog NOT LIKE '%ユウトさん%'
+       AND g.example_dialog NOT LIKE '%わたしもがくせい%'
+       AND g.example_dialog NOT LIKE '%にほんごの%'
+       AND g.example_dialog NOT LIKE '%ですよ%'
      ORDER BY g.sort_order ASC, g.created_at ASC
   LOOP
     v_skipped := v_skipped + 1;
-    RAISE NOTICE '149: pola "%" (pelajaran: %) dialognya tidak dikenali — arahan dilewati, bukan ditebak.',
-      r.pattern, r.lesson_title;
+    -- Cetak juga baris pertama dialognya. Sandbox tidak bisa melihat
+    -- database produksi, jadi log deploy adalah satu-satunya cara tahu isi
+    -- dialog yang sudah ditulis ulang admin — persis alur 135 → 136: pasang
+    -- NOTICE dulu, baca log, baru tulis migrasi lanjutannya.
+    RAISE NOTICE '149: pola "%" (pelajaran: %) dialognya tidak dikenali — arahan dilewati, bukan ditebak. Baris pertama: "%"',
+      r.pattern, r.lesson_title, left(split_part(r.example_dialog, E'\n', 1), 60);
   END LOOP;
 
   FOR r IN
@@ -147,9 +164,9 @@ BEGIN
                WHEN g.example_dialog LIKE '%どうぞよろしくおねがいします%' THEN 'kopula'
                WHEN g.example_dialog LIKE '%オーストラリア%'               THEN 'negatif'
                WHEN g.example_dialog LIKE '%おしごとはなんですか%'          THEN 'tanya'
-               WHEN g.example_dialog LIKE '%たなかさんもがくせい%'          THEN 'juga'
-               WHEN g.example_dialog LIKE '%さくらだいがく%'               THEN 'milik'
-               WHEN g.example_dialog LIKE '%ユウトさん%'                   THEN 'partikel'
+               WHEN g.example_dialog LIKE '%わたしもがくせい%'             THEN 'juga'
+               WHEN g.example_dialog LIKE '%にほんごの%'                   THEN 'milik'
+               WHEN g.example_dialog LIKE '%ですよ%'                       THEN 'partikel'
                ELSE NULL
              END AS konsep
         FROM module_grammar g
