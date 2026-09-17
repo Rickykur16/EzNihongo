@@ -1,6 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseDialog, voiceForSpeaker } from './routes/tts.js';
+import { parseDialog, voiceForSpeaker, fetchElevenAudio, generateDialogSegments, TTS_ELEVEN_MODEL } from './routes/tts.js';
+
+// Mocks global fetch for the duration of one test — fetchElevenAudio calls
+// the bare global `fetch(...)` (no import), resolved at call time, so
+// swapping it here never touches a real ElevenLabs endpoint (blocked in this
+// sandbox anyway). Returns just enough of a Response shape for the function
+// to succeed and captures every call's parsed JSON body for inspection.
+function mockElevenFetch(t) {
+  const calls = [];
+  const original = global.fetch;
+  global.fetch = async (url, opts) => {
+    calls.push({ url, body: JSON.parse(opts.body) });
+    return { ok: true, arrayBuffer: async () => new ArrayBuffer(4) };
+  };
+  t.after(() => { global.fetch = original; });
+  return calls;
+}
 
 test('parseDialog still accepts every legacy prefix form unchanged', () => {
   assert.deepEqual(parseDialog('N: 男の人と女の人が話しています。\nA: どちらですか。\nB: インドネシアです。'), [
@@ -72,4 +88,46 @@ test('voiceForSpeaker: an unregistered real name still gets a usable (guessed) v
   const result = voiceForSpeaker('新しい名前', 0, registry);
   assert.equal(result.role, 'dialogue');
   assert.ok('voiceId' in result);
+});
+
+test('generateDialogSegments: one segment per turn, in order, via the exact same generation path as /api/tts and /admin/tts/preview', async (t) => {
+  const calls = mockElevenFetch(t);
+  const turns = [
+    { speaker: 'N', text: '[calm] アンナさんとハディさんが話しています。' },
+    { speaker: 'アンナ', text: 'こんにちは [excited] お元気ですか。' },
+    { speaker: 'ハディ', text: 'はい、元気です。' },
+  ];
+  const turnVoices = [
+    { voiceId: 'voice_narrator', role: 'narrator' },
+    { voiceId: 'voice_anna', role: 'dialogue' },
+    { voiceId: 'voice_hadi', role: 'dialogue' },
+  ];
+
+  const { segments, combined } = await generateDialogSegments(turns, turnVoices);
+
+  assert.equal(calls.length, 3);
+  assert.equal(segments.length, 3);
+  // No special-casing left anywhere in this path: narrator still forces the
+  // reliable model + strips tags (unchanged, always true in fetchElevenAudio
+  // itself), and a "dialogue" turn uses the SAME live TTS_ELEVEN_MODEL with
+  // tags preserved that /api/tts and /admin/tts/preview would use for the
+  // identical (voiceId, text, role) — there is only one way this ever
+  // happens now, so nothing can drift out of sync between them again.
+  assert.equal(calls[0].body.model_id, 'eleven_multilingual_v2');
+  assert.doesNotMatch(calls[0].body.text, /\[calm\]/);
+  assert.equal(calls[1].body.model_id, TTS_ELEVEN_MODEL);
+  assert.match(calls[1].body.text, /\[excited\]/);
+  assert.equal(calls[2].body.model_id, TTS_ELEVEN_MODEL);
+  // No SSML <break> tags — unlike /api/tts's single-concatenated-blob output,
+  // each turn here is its own independently-playable clip; the player
+  // inserts its own gap between segments client-side instead.
+  assert.doesNotMatch(calls[0].body.text, /<break/);
+  assert.doesNotMatch(calls[1].body.text, /<break/);
+  segments.forEach((seg, i) => {
+    assert.equal(seg.speaker, turns[i].speaker);
+    assert.equal(seg.role, turnVoices[i].role);
+    assert.equal(seg.content_type, 'audio/mpeg');
+    assert.equal(typeof seg.audio_base64, 'string');
+  });
+  assert.ok(Buffer.isBuffer(combined));
 });

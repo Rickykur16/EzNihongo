@@ -1,62 +1,10 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
-import TinySegmenter from 'tiny-segmenter';
 import { query } from '../db.js';
 import { asyncHandler, optionalAuth } from '../middleware.js';
 
 const router = Router();
-
-// Segmentasi kata Jepang buat karaoke (highlight per-kata, partikel
-// ke-pisah). TinySegmenter = pure-JS, no dictionary, akurat buat teks
-// kanji+kana umum (N5). Dipakai pas generate aligned (hasil ke-cache).
-const segmenter = new TinySegmenter();
-const GK_BREAK_RE = /^[\s　、。，．！？!?…「」『』（）()・]+$/;
-
-// Auxiliary / infleksi yang harus NEMPEL ke kata kerja/sifat/kopula di
-// depannya (bunsetsu-level), bukan jadi kata sendiri. TinySegmenter mecah
-// per-morfem (話し|て|い|ます) → tanpa merge highlight-nya lompat-lompat.
-// Partikel kasus (は が を に へ と も の から まで dll) SENGAJA gak di sini
-// supaya tetap jadi pemisah kata.
-const AUX_MERGE = new Set([
-  'て', 'で', 'た', 'だ', 'い', 'いる', 'いた', 'ます', 'まし', 'ました', 'ません',
-  'ましょ', 'ましょう', 'ない', 'なかっ', 'なかった', 'なく', 'なくて', 'ず',
-  'える', 'てる', 'たい', 'たく', 'です', 'でし', 'でした', 'でしょ', 'でしょう',
-  'だっ', 'だった', 'れ', 'れる', 'られ', 'られる', 'せ', 'せる', 'させ', 'させる',
-  'よう', 'う', 'ろ', 'なさい', 'ください', 'ね', 'よ', 'ちゃ', 'じゃ',
-]);
-
-// chars[] + times[] (per-karakter dari ElevenLabs) → words[] per-kata
-// (bunsetsu: kata kerja + auxiliary jadi satu, partikel kepisah).
-// words[i] = { text, start, end } untuk kata; { text, start:null } untuk
-// pemisah (spasi/tanda baca, gak di-highlight).
-function segmentWords(chars, times) {
-  const joined = chars.join('');
-  const tokens = segmenter.segment(joined);
-  const words = [];
-  let ci = 0;
-  for (const tok of tokens) {
-    const arr = Array.from(tok);
-    const startIdx = ci;
-    const endIdx = ci + arr.length - 1;
-    ci += arr.length;
-    if (GK_BREAK_RE.test(tok)) {
-      words.push({ text: tok, start: null });
-      continue;
-    }
-    const s = times[startIdx] ? times[startIdx][0] : 0;
-    const e = times[endIdx] ? times[endIdx][1] : s;
-    const prev = words[words.length - 1];
-    if (AUX_MERGE.has(tok) && prev && prev.start != null) {
-      // Gabung auxiliary ke kata di depannya — extend rentang waktu.
-      prev.text += tok;
-      prev.end = e;
-    } else {
-      words.push({ text: tok, start: s, end: e });
-    }
-  }
-  return words;
-}
 
 // Natural-voice TTS via ElevenLabs, cached permanently in Postgres so the
 // upstream API is hit at most once per unique string. If ELEVENLABS_API_KEY is
@@ -279,45 +227,30 @@ export async function fetchElevenVoices() {
   }));
 }
 
-// Timestamp-capable generation untuk karaoke subtitle. Endpoint
-// /with-timestamps balikin audio + alignment per-karakter. Dipaksa pakai
-// eleven_multilingual_v2 (model yg support timestamps reliable; v3 belum
-// tentu) + strip [emotion tag] biar gak kebaca literal sebagai kata.
-const ALIGNED_MODEL = 'eleven_multilingual_v2';
-
-async function fetchElevenAudioAligned(voiceId, text, role = 'single', retry = 0) {
-  const settings = VOICE_SETTINGS[role] || VOICE_SETTINGS.single;
-  const cleanText = String(text).replace(/\[[a-z_]{1,24}\]\s*/gi, '').trim();
-  const upstream = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}/with-timestamps?output_format=mp3_44100_128`,
-    {
-      method: 'POST',
-      headers: {
-        'xi-api-key': ELEVEN_API_KEY,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({ text: cleanText, model_id: ALIGNED_MODEL, voice_settings: settings }),
-    }
-  );
-  if (!upstream.ok) {
-    const detail = await upstream.text().catch(() => '');
-    if (retry < 3 && (upstream.status === 409 || upstream.status === 429 || upstream.status >= 500)) {
-      await new Promise((r) => setTimeout(r, 500 * (retry + 1)));
-      return fetchElevenAudioAligned(voiceId, text, role, retry + 1);
-    }
-    const err = new Error(`ElevenLabs TS ${upstream.status}: ${detail.slice(0, 200)}`);
-    err.upstreamStatus = upstream.status;
-    throw err;
+// Generates one independently-playable audio segment per dialogue turn,
+// for the dialogue player (chat bubbles, per-line play button, per-line
+// highlight while that turn is playing — see /tts/dialog below and
+// grammarKaraokePlay in welcome.html). Same generation path as /tts and
+// /admin/tts/preview (fetchElevenAudio, no special-casing) — there is
+// deliberately only one way a "dialogue"-role turn ever gets generated
+// now, so a turn tested in the admin preview always sounds identical to
+// what students hear. No SSML <break> tag between turns (unlike /tts's
+// single-concatenated-blob output) — the player already inserts its own
+// ~450ms gap client-side between segments.
+export async function generateDialogSegments(turns, turnVoices) {
+  const buffers = [];
+  const segments = [];
+  for (let i = 0; i < turns.length; i++) {
+    const buf = await fetchElevenAudio(turnVoices[i].voiceId, turns[i].text, turnVoices[i].role);
+    buffers.push(buf);
+    segments.push({
+      speaker: turns[i].speaker,
+      role: turnVoices[i].role,
+      audio_base64: buf.toString('base64'),
+      content_type: 'audio/mpeg',
+    });
   }
-  const data = await upstream.json();
-  const al = data.alignment || {};
-  return {
-    buffer: Buffer.from(data.audio_base64 || '', 'base64'),
-    chars: Array.isArray(al.characters) ? al.characters : [],
-    starts: Array.isArray(al.character_start_times_seconds) ? al.character_start_times_seconds : [],
-    ends: Array.isArray(al.character_end_times_seconds) ? al.character_end_times_seconds : [],
-  };
+  return { segments, combined: Buffer.concat(buffers) };
 }
 
 // GET /api/tts?text=<plain japanese OR dialog "A: ... B: ...">
@@ -409,14 +342,18 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
   return sendAudio(res, combined, 'audio/mpeg');
 }));
 
-// GET /api/tts/aligned?text= — karaoke subtitle. Balikin JSON:
-//   { audio_base64, content_type, alignment: { segments, duration } }
-// alignment.segments[i] = { speaker, role, chars:[...], times:[[s,e],...] }
-// dengan times = waktu audio GLOBAL (detik) buat tiap karakter. Audio =
-// concat MP3 per turn (offset waktu kumulatif via byte-size). Beda cache
-// entry dari /api/tts (prefix "aligned"), gak ada SSML break (biar
-// alignment bersih), model dipaksa v2 (timestamp reliable).
-router.get('/tts/aligned', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
+// GET /api/tts/dialog?text=<dialog "A: ... B: ...">
+// Per-turn segmented audio for the dialogue player: each turn gets its own
+// independently-playable clip, so the client can play them sequentially
+// with a highlighted "active" line, or jump straight to any single line.
+// A plain concatenated blob (like /api/tts returns) can't support either
+// of those — hence a separate endpoint with its own cache entries.
+// Formerly returned per-character timestamps for word-by-word karaoke
+// highlighting (endpoint was /tts/aligned) — that feature was removed, so
+// this no longer calls ElevenLabs' /with-timestamps variant or computes
+// any alignment; it just generates each turn's audio once, the same way
+// /api/tts and /admin/tts/preview do.
+router.get('/tts/dialog', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
   const text = String(req.query.text || '').trim();
   if (!text) return res.status(400).json({ error: 'text required' });
   if (text.length > MAX_TEXT_LEN) return res.status(400).json({ error: 'text too long' });
@@ -435,17 +372,15 @@ router.get('/tts/aligned', optionalAuth, ttsLimiter, asyncHandler(async (req, re
   if (known.rows.length === 0) return res.status(403).json({ error: 'unknown text' });
 
   const turns = parseDialog(text);
-  const isDialog = !!turns;
-  const effTurns = isDialog ? turns : [{ speaker: '', text }];
-  const registry = isDialog ? await loadSpeakerRegistry() : null;
-  const turnVoices = isDialog
-    ? turns.map((t, i) => voiceForSpeaker(t.speaker, i, registry))
-    : [{ voiceId: ELEVEN_VOICE_ID, role: 'single' }];
+  if (!turns) return res.status(400).json({ error: 'not_a_dialog' });
+  const registry = await loadSpeakerRegistry();
+  const turnVoices = turns.map((t, i) => voiceForSpeaker(t.speaker, i, registry));
   const voices = turnVoices.map((v) => v.voiceId);
 
-  // "aligned4" = words[] dengan auxiliary di-merge ke kata kerja
-  // (bunsetsu). Bump dari aligned3 supaya regenerate segmentasi baru.
-  const key = hashKey('aligned4\n' + text, voices);
+  // Own cache-key prefix ("dialogsegs1") — distinct from /api/tts's plain
+  // hash and from the old "aligned4" prefix, so this never collides with
+  // (or accidentally reads back) a cache row shaped for either of those.
+  const key = hashKey('dialogsegs1\n' + text, voices);
   const cached = await query(
     `SELECT alignment FROM tts_cache WHERE text_hash = $1`,
     [key]
@@ -456,46 +391,30 @@ router.get('/tts/aligned', optionalAuth, ttsLimiter, asyncHandler(async (req, re
   }
 
   const dialogVoicesEmpty = !ELEVEN_VOICE_FEMALE && !ELEVEN_VOICE_MALE && !ELEVEN_VOICE_NARRATOR;
-  if (!ELEVEN_API_KEY || (!isDialog && !ELEVEN_VOICE_ID) || (isDialog && dialogVoicesEmpty)) {
+  if (!ELEVEN_API_KEY || dialogVoicesEmpty) {
     return res.status(503).json({ error: 'tts_disabled' });
   }
 
-  // Tiap turn = segment terpisah: audio sendiri + waktu karakter RELATIF
-  // ke awal segment (bukan global). Frontend mainin berurutan.
+  let segments;
   let combined;
-  const segments = [];
   try {
-    const buffers = [];
-    for (let i = 0; i < effTurns.length; i++) {
-      const r = await fetchElevenAudioAligned(turnVoices[i].voiceId, effTurns[i].text, turnVoices[i].role);
-      buffers.push(r.buffer);
-      const times = r.starts.map((s, j) => [
-        +Number(s).toFixed(3),
-        +Number(r.ends[j] ?? s).toFixed(3),
-      ]);
-      segments.push({
-        speaker: effTurns[i].speaker || '',
-        role: turnVoices[i].role,
-        words: segmentWords(r.chars, times),
-        audio_base64: r.buffer.toString('base64'),
-        content_type: 'audio/mpeg',
-      });
-    }
-    combined = Buffer.concat(buffers);
+    const result = await generateDialogSegments(turns, turnVoices);
+    segments = result.segments;
+    combined = result.combined;
   } catch (err) {
-    console.error('TTS aligned upstream:', err.message);
+    console.error('TTS dialog upstream:', err.message);
     return res.status(502).json({ error: 'tts_upstream' });
   }
 
-  const alignment = { segments, format: 'segments-v3-words' };
+  const payload = { segments, format: 'dialog-segments-v1' };
   await query(
     `INSERT INTO tts_cache (text_hash, text, provider, voice, model, audio, content_type, byte_size, settings_version, alignment)
      VALUES ($1,$2,'elevenlabs',$3,$4,$5,'audio/mpeg',$6,$7,$8)
      ON CONFLICT (text_hash) DO UPDATE SET
        audio = EXCLUDED.audio, byte_size = EXCLUDED.byte_size, alignment = EXCLUDED.alignment`,
-    [key, text, voices.join(','), ALIGNED_MODEL, combined, combined.length, SETTINGS_VERSION, JSON.stringify(alignment)]
+    [key, text, voices.join(','), ELEVEN_MODEL, combined, combined.length, SETTINGS_VERSION, JSON.stringify(payload)]
   );
-  return res.json(alignment);
+  return res.json(payload);
 }));
 
 // GET /api/tts/version — public, untuk frontend append `?v=` ke URL TTS

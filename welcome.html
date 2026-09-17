@@ -3402,7 +3402,9 @@
   /* ── Dialog Contoh — chat-bubble redesign ─────────────────────────
      Tiap pembicara punya avatar + bubble berwarna di sisinya sendiri
      (kiri/kanan), narator jadi kartu "Situasi" di atas, terjemahan bisa
-     tap-to-reveal. Highlight per-kata (gk-word) tetap dari aligned TTS. */
+     tap-to-reveal. Baris yang sedang diputar di-highlight sebagai satu
+     blok (.gk-line-active) — bukan per-kata, fitur karaoke word-timing
+     sudah dihapus bersama timestamp ElevenLabs. */
   .grammar-karaoke {
     margin: 12px 0 0;
     background: #fff;
@@ -3519,11 +3521,6 @@
   .grammar-karaoke[data-arti="tap"] .gk-bubbles .gk-line.gk-revealed .gk-line-id { display: block; animation: gkReveal .28s ease; }
   .grammar-karaoke[data-arti="tap"] .gk-bubbles .gk-line.gk-revealed .gk-reveal { display: none; }
   @keyframes gkReveal { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
-  /* word-level karaoke highlight (dari aligned TTS) */
-  .gk-punct { color: inherit; }
-  .gk-word { border-radius: 4px; padding: 0 1px; transition: color .1s, background .1s; }
-  .gk-word.gk-done { color: #1a1a1a; }
-  .gk-word.gk-active { color: #fff; background: var(--sp, var(--brand-red)); padding: 1px 3px; }
   .qlp-head {
     display: flex; align-items: center; justify-content: space-between;
     gap: 12px;
@@ -8043,10 +8040,14 @@ function renderLessonGrammar(lesson) {
   `;
 }
 
-// ── Karaoke dialog player (Todai-style) ───────────────────────────
-// Full transcript keliatan; karakter yang lagi diucapin di-highlight
-// ngikutin audio. Timing dari /api/tts/aligned (alignment per-karakter
-// ElevenLabs). Lazy: audio + alignment baru di-fetch pas user klik play.
+// ── Dialog player (chat bubbles) ───────────────────────────
+// Full transcript keliatan; baris yang lagi diputar di-highlight sebagai
+// satu blok (bubble/kartu situasi), bukan per-kata — dulu ada highlight
+// per-kata dari /api/tts/aligned (timestamp ElevenLabs), tapi fitur karaoke
+// itu dihapus sehingga timestamp tidak lagi dibutuhkan; audio sekarang dari
+// /api/tts/dialog (satu segment per giliran, generate biasa lewat
+// fetchElevenAudio — sama persis dengan /api/tts dan /admin/tts/preview).
+// Lazy: audio baru di-fetch pas user klik play.
 window.__gk = window.__gk || {};
 
 // Stop + buang semua karaoke player (dipanggil pas pindah lesson supaya
@@ -8381,9 +8382,10 @@ window.grammarKaraokeJumpTo = async (key, li) => {
   window.grammarKaraokePlay(key);
 };
 
-// Putar segment ke-si secara berurutan. Tiap segment audio sendiri +
-// waktu karakter RELATIF ke awal segment → highlight akurat, gak ada
-// drift/offset estimation. Jeda ~450ms antar segment.
+// Putar segment ke-si secara berurutan. Highlight per-BARIS (bukan
+// per-kata — fitur karaoke word-timing sudah dihapus, lihat gkSyncActiveLine)
+// via class .gk-line-active pada baris yang sedang diputar. Jeda ~450ms
+// antar segment.
 function gkPlaySegment(key, si) {
   const st = window.__gk[key];
   if (!st || st.stopped) return;
@@ -8391,36 +8393,16 @@ function gkPlaySegment(key, si) {
   if (si >= segs.length) {
     st.curSeg = 0; st.audio = null; st.ended = true; st.playOnce = false;
     if (st.playBtn) st.playBtn.textContent = '↻ Ulangi';
-    st.spans.flat().forEach((sp) => sp && sp.classList.remove('gk-active'));
     gkSyncActiveLine(key, -1);
     return;
   }
   st.curSeg = si; st.ended = false;
-  // Tandai segment sebelumnya 'done', segment ini + sesudahnya reset.
-  st.spans.forEach((arr, idx) => arr.forEach((sp) => {
-    if (!sp) return;
-    sp.classList.remove('gk-active');
-    sp.classList.toggle('gk-done', idx < si);
-  }));
   gkSyncActiveLine(key, si);
   const seg = segs[si];
   const audio = new Audio('data:' + (seg.content_type || 'audio/mpeg') + ';base64,' + seg.audio_base64);
   st.audio = audio;
   try { audio.playbackRate = st.rate || 1; } catch (e) {}
-  const times = (st.wordTimes && st.wordTimes[si]) || [];
-  const spans = st.spans[si] || [];
-  audio.addEventListener('timeupdate', () => {
-    const tt = audio.currentTime;
-    for (let j = 0; j < spans.length; j++) {
-      const sp = spans[j]; const t = times[j];
-      if (!sp || !t) continue;
-      if (tt >= t[1]) { sp.classList.add('gk-done'); sp.classList.remove('gk-active'); }
-      else if (tt >= t[0]) { sp.classList.add('gk-active'); sp.classList.remove('gk-done'); }
-      else { sp.classList.remove('gk-active', 'gk-done'); }
-    }
-  });
   audio.addEventListener('ended', () => {
-    spans.forEach((sp) => sp && (sp.classList.add('gk-done'), sp.classList.remove('gk-active')));
     if (st.stopped) return;
     // playOnce: dipanggil dari grammarKaraokeJumpTo — jangan auto-advance.
     if (st.playOnce) {
@@ -8471,7 +8453,7 @@ window.grammarKaraokePlay = async (key) => {
     }
     return;
   }
-  // Pertama kali: fetch alignment + audio per segment, render, lalu play.
+  // Pertama kali: fetch audio per segment, render, lalu play.
   const dialog = el.dataset.dialog || '';
   const statusEl = el.querySelector('.gk-status');
   const playBtn = el.querySelector('.gk-play');
@@ -8479,42 +8461,16 @@ window.grammarKaraokePlay = async (key) => {
   if (statusEl) statusEl.textContent = 'Memuat… (pertama kali ~5-10 detik)';
   if (playBtn) playBtn.disabled = true;
   try {
-    const r = await fetch('/api/tts/aligned?text=' + encodeURIComponent(dialog));
+    const r = await fetch('/api/tts/dialog?text=' + encodeURIComponent(dialog));
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
     const segs = (data && data.segments) || [];
     if (!segs.length) throw new Error('no segments');
-    // Resolve nama tokoh sekali dari teks dialog (sama logikanya dengan
-    // renderKaraokeStatic) → seg.speaker (kode A/B/N) di-label sebagai nama.
-    const nameMap = resolveSpeakerNames(parseDialogLinesFE(dialog));
-    // Terjemahan Indonesia (kalau ada) — paralel per-baris dgn dialog Jepang.
-    const idMap = parseDialogIdMap(el.dataset.dialogId || '');
-    // Render span per-kata (words[] dari backend, partikel udah ke-pisah).
-    // Pemisah (start null = spasi/tanda baca) render polos, gak di-highlight.
-    const renderInner = (seg, si) => {
-      let wi = 0;
-      return (seg.words || []).map((w) => {
-        if (w.start == null) return `<span class="gk-punct">${escapeHtml(w.text)}</span>`;
-        return `<span class="gk-word" data-k="${si}_${wi++}">${escapeHtml(w.text)}</span>`;
-      }).join('');
-    };
-    // Bangun bubble (struktur sama dgn renderKaraokeStatic) — span per-kata
-    // sebagai inner supaya highlight aligned tetap jalan di dalam bubble.
-    const styles = gkSpeakerStyles(segs);
-    const rows = segs.map((seg, si) => ({
-      speaker: seg.speaker,
-      displayName: nameMap[seg.speaker] || seg.speaker,
-      inner: renderInner(seg, si),
-      idText: idMap[si] || '',
-      index: si,
-    }));
-    transcript.innerHTML = gkComposeHtml(rows, key, styles);
-    const spans = segs.map((seg, si) =>
-      (seg.words || []).filter((w) => w.start != null)
-        .map((_, idx) => transcript.querySelector(`.gk-word[data-k="${si}_${idx}"]`)));
-    const wordTimes = segs.map((seg) =>
-      (seg.words || []).filter((w) => w.start != null).map((w) => [w.start, w.end]));
-    st = { segments: segs, spans, wordTimes, curSeg: 0, audio: null, stopped: false, ended: false, playOnce: false, playBtn, rate: parseFloat(el.dataset.speed) || 1 };
+    // Transkrip sekarang IDENTIK dengan tampilan statis sebelum play (tidak
+    // ada lagi span per-kata buat highlight karaoke) — pakai ulang fungsi
+    // yang sama, bukan duplikat logikanya.
+    transcript.innerHTML = renderKaraokeStatic(dialog, key, el.dataset.dialogId || '');
+    st = { segments: segs, curSeg: 0, audio: null, stopped: false, ended: false, playOnce: false, playBtn, rate: parseFloat(el.dataset.speed) || 1 };
     window.__gk[key] = st;
     if (statusEl) statusEl.textContent = '';
     if (playBtn) { playBtn.disabled = false; playBtn.textContent = '❚❚ Jeda'; }

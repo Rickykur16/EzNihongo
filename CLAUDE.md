@@ -288,6 +288,287 @@
       terpisah dari branch yang di-restart dari `main` terbaru (bukan
       ditumpuk di atas histori yang sudah merge).
 
+      **Follow-up KEDUA: preview dialog admin tidak match dengan yang
+      didengar siswa** — user: "Hasil yg di play di dashboard berbeda
+      dengan yang di cek dari ruang kerja". Root cause BUKAN voice_id
+      (`voiceForSpeaker` dipanggil sama persis di kedua jalur, identitas
+      suara identik) — murni MODEL ElevenLabs + PERLAKUAN TAG EMOSI yang
+      beda antara dua fungsi generate yang sudah lama ada, sebelum pivot
+      ElevenLabs manapun:
+      - Tombol "🔊 Tes giliran ini" admin → `POST /admin/tts/preview` →
+        `fetchElevenAudio()`: untuk giliran NON-narator ("dialogue"), pakai
+        `ELEVEN_MODEL` (env var `ELEVENLABS_MODEL`, di produksi kemungkinan
+        besar diset ke v3 spesifik supaya emotion tag `[excited]`/`[calm]`/
+        dll bisa jalan — lihat komentar lama di file yg sama) DAN tag emosi
+        TIDAK di-strip dari teks.
+      - Yang BENAR-BENAR didengar siswa (`window.grammarKaraokePlay` di
+        welcome.html — SATU-SATUNYA jalur pemutaran dialog grammar sisi
+        siswa, dikonfirmasi lewat grep menyeluruh, bukan diasumsikan) →
+        `GET /api/tts/aligned` → `fetchElevenAudioAligned()`: SELALU
+        dipaksa `eleven_multilingual_v2` (komentar lama: "model yg support
+        timestamps reliable; v3 belum tentu") DAN tag emosi SELALU
+        di-strip, apa pun role-nya.
+      Untuk giliran NARATOR kedua jalur sudah SAMA dari awal
+      (`fetchElevenAudio` juga sudah memaksa v2+strip untuk role narrator
+      sejak sebelum sesi ini) — bug murni mengenai giliran KARAKTER
+      (non-narator), persis yang dilaporkan user.
+      **Perbaikan SEMPIT** (bukan menyamakan kedua fungsi generate
+      seluruhnya): `fetchElevenAudio()` dapat parameter baru `matchAligned`
+      (default `false` — SEMUA pemanggil lama, yaitu `/api/tts` dialog+
+      single dan cabang single-voice/vocab `/admin/tts/preview`, nol
+      perubahan perilaku). Kalau `true`, fungsi ini generate PERSIS seperti
+      `fetchElevenAudioAligned`: model dipaksa `eleven_multilingual_v2` +
+      tag emosi selalu di-strip, TERLEPAS dari role. `ALIGNED_MODEL`
+      diubah jadi alias langsung dari `NARRATOR_MODEL_OVERRIDE`
+      (`const ALIGNED_MODEL = NARRATOR_MODEL_OVERRIDE`) — dua konstanta yang
+      SEBELUMNYA kebetulan sama nilainya sekarang dijamin gak bisa diam-diam
+      berbeda lagi kalau salah satu diubah nanti. `matchAligned=true` DIPAKAI
+      HANYA di `/admin/tts/preview`'s loop dialog (admin.js) — bukan di
+      `/api/tts` (yang tetap perlu `ELEVEN_MODEL`+tag utuh buat quiz
+      listening `audio_script`, fitur terpisah yang sudah benar dan tidak
+      boleh ikut berubah). **Kenapa arah perbaikannya bukan sebaliknya**
+      (bikin `fetchElevenAudioAligned` ikut pakai `ELEVEN_MODEL` supaya
+      preview tidak perlu diubah): komentar aslinya eksplisit bilang v3
+      belum tentu reliable buat endpoint `/with-timestamps` — resikonya
+      merusak fitur karaoke word-highlight (lebih berharga & lebih susah
+      dites ulang dari sandbox ini) demi menyamakan preview; jadi arahnya
+      "preview mengikuti kenyataan", bukan sebaliknya. **Vocab/single-voice
+      preview TIDAK ikut disentuh** — `deckShowAudioPreview` (preview admin)
+      dan pemutaran vocab asli siswa (`ttsUrl`/`playTTS`) SAMA-SAMA lewat
+      `/api/tts` biasa (bukan aligned), sudah konsisten dari awal.
+      **Cache staleness yang disadari, SENGAJA belum diotomatisasi**:
+      `ttsHashKey(text, voices)` tidak memasukkan model/`matchAligned` ke
+      hash — giliran yang SUDAH pernah di-test lewat tombol ini SEBELUM fix
+      ini deploy akan tetap mengembalikan audio lama dari cache (tidak
+      otomatis ke-regenerate) sampai baris cache itu dihapus manual
+      (`DELETE /admin/tts/cache` body `{text}`, tool yang sudah ada — pola
+      sama dengan `deckRegenAudio` untuk vocab) atau teksnya diedit (hash
+      otomatis berubah). TIDAK dibuat `admDialogRowTest` auto-clear-cache
+      dulu (kayak `deckRegenAudio`) karena itu mengorbankan caching untuk
+      testing berulang yang teksnya TIDAK berubah — trade-off cost vs.
+      freshness yang lebih baik diputuskan user, bukan diam-diam dipilih.
+      Dampak transisi ini kemungkinan kecil: fitur giliran-per-turn ini baru
+      saja merge (PR #321/#322) di sesi yang sama, jadi baru sedikit giliran
+      yang sempat di-test sebelum fix ini ada.
+      **Divalidasi**: 2 tes baru (`tts.test.js`, mock `global.fetch` — pola
+      BARU di codebase ini, tidak ada precedent sebelumnya, tapi jaringan
+      ElevenLabs diblokir egress sandbox jadi ini satu-satunya cara
+      memverifikasi payload request tanpa panggilan asli) membuktikan
+      langsung: role dialogue+matchAligned=false → model=`ELEVEN_MODEL`
+      live+tag utuh (perilaku lama, tidak berubah); role dialogue+
+      matchAligned=true → model=`eleven_multilingual_v2`+tag ke-strip
+      (perilaku baru, cocok dgn aligned); role narrator+matchAligned apa
+      pun → selalu v2+strip (regresi-check, tidak berubah dari awal).
+      `npm test` penuh dgn `TEST_DATABASE_URL`: 290 tes, 289 hijau, 1 skip
+      lama tak terkait (butuh browser), 0 gagal — naik dari 288 (sesi
+      sebelumnya) karena 2 tes baru ini.
+
+      **Follow-up KETIGA — user membatalkan fitur karaoke itu sendiri,
+      bukan cuma minta fix model-nya**: setelah laporan di atas dijelaskan
+      (preview vs dashboard beda karena `/api/tts/aligned` dikunci ke v2
+      demi timestamp), user menjawab **"Tidak perlu bentuk karaoke lagi.
+      Jadi tidak perlu pertimbangkan time stamp."** — bukan menyetujui
+      perbaikan `matchAligned`, melainkan menghapus alasan perbaikan itu
+      perlu ada sama sekali: kalau tidak ada lagi fitur yang butuh
+      timestamp, tidak ada lagi DUA jalur generate yang bisa berbeda.
+      Ditanya lewat AskUserQuestion scope persisnya (highlight per-KATA
+      dihapus, atau seluruh UI chat-bubble/avatar/toggle-arti/kontrol
+      kecepatan ikut dibongkar) — user memilih **pertahankan bubble +
+      highlight per-baris, hapus HANYA highlight per-kata**.
+      **Perbaikan `matchAligned` DIBATALKAN (revert), bukan dipertahankan
+      berdampingan**: dengan `fetchElevenAudioAligned` dihapus total, tidak
+      ada lagi "kenyataan" yang perlu di-mirror oleh preview — `matchAligned`
+      jadi tak berguna. `fetchElevenAudio()` dikembalikan ke signature+
+      perilaku semula (`matchAligned` dibuang), pemanggilan di
+      `/admin/tts/preview` (admin.js) dikembalikan ke 3-argumen semula. Ini
+      BUKAN dua langkah maju-mundur yang sia-sia — draf pertama (matchAligned)
+      adalah perbaikan yang BENAR untuk premis SAAT ITU (karaoke masih ada,
+      dua model HARUS tetap beda demi reliability timestamp); begitu
+      premisnya hilang (karaoke dihapus), solusi yang lebih baik bukan
+      "mirror kenyataan" tapi "hapus sumber perbedaannya" — akar masalah
+      hilang total, bukan ditambal.
+      **Dihapus total dari `backend/src/routes/tts.js`**: `fetchElevenAudioAligned()`,
+      `segmentWords()`, `AUX_MERGE`, `GK_BREAK_RE`, import `tiny-segmenter`
+      (dan dependency-nya di `package.json` — tidak dipakai di tempat lain
+      manapun di repo, dikonfirmasi grep). `ALIGNED_MODEL` juga hilang
+      (sempat jadi alias `NARRATOR_MODEL_OVERRIDE` di follow-up KEDUA,
+      sekarang tidak perlu ada sama sekali).
+      **Endpoint baru `GET /api/tts/dialog`** menggantikan `GET /api/tts/aligned`
+      (nama lama sengaja TIDAK dipertahankan — "aligned" merujuk ke
+      timestamp yang sudah tidak ada, mempertahankan nama akan menyesatkan
+      pembaca kode berikutnya): tiap giliran dialog tetap dapat SATU audio
+      segment sendiri (perlu dipertahankan untuk fitur yang TETAP ada:
+      putar berurutan dgn baris aktif ter-highlight, DAN klik satu baris =
+      putar giliran itu saja) — tapi generate-nya sekarang lewat
+      `generateDialogSegments()`, helper baru yang manggil `fetchElevenAudio()`
+      POLOS, PERSIS cara `/api/tts` dan `/admin/tts/preview` manggilnya.
+      **Ini yang benar-benar menutup akar masalah**: sekarang cuma ADA SATU
+      cara audio giliran dialog di-generate, dipakai oleh ketiga tempat
+      (siswa, quiz listening, preview admin) — tidak mungkin lagi ada dua
+      fungsi yang diam-diam berbeda treatment model/tag-nya, karena tidak
+      ada fungsi kedua lagi. Cache key dapat prefix baru `dialogsegs1\n`
+      (beda dari `aligned4\n` lama) — baris cache lama jadi orphan permanen
+      (tidak pernah kebaca lagi oleh kode manapun), dibiarkan membusuk
+      alih-alih migrasi pembersihan khusus (biaya kecil, tidak sepadan
+      dengan risiko menyentuh tabel cache produksi untuk PR yang belum
+      merge). Kolom `tts_cache.alignment` (migration 022, JSONB, nullable)
+      dipakai ulang apa adanya untuk bentuk payload baru (`{segments,
+      format:'dialog-segments-v1'}`, tanpa `words`/timestamp) — tidak perlu
+      migrasi baru, kolomnya sudah cukup generik.
+      **Frontend (`welcome.html`)**: `grammarKaraokePlay` disederhanakan
+      besar-besaran — transkrip yang ditampilkan SETELAH audio ke-load
+      sekarang IDENTIK dengan tampilan statis SEBELUM audio ke-load (dulu
+      dua kode berbeda: statis pakai teks polos, sesudah-load membangun
+      `<span class="gk-word">` per kata dari `words[]` backend), jadi
+      `grammarKaraokePlay` sekarang tinggal manggil ulang
+      `renderKaraokeStatic(dialog, key, dialogId)` yang sudah ada — BUKAN
+      duplikasi logika baru. `gkPlaySegment` kehilangan seluruh blok
+      `timeupdate` listener + `st.spans`/`st.wordTimes` (yang menghitung
+      highlight per-karakter dari `times[]`) — yang tersisa cuma
+      `gkSyncActiveLine(key, si)` (TIDAK diubah sama sekali — fungsi ini
+      dari awal SUDAH murni per-baris, terpisah total dari mekanisme
+      per-kata) dipanggil di titik yang sama persis seperti sebelumnya.
+      CSS `.gk-word`/`.gk-word.gk-done`/`.gk-word.gk-active`/`.gk-punct`
+      dihapus (dikonfirmasi grep: nol referensi tersisa di mana pun).
+      **Divalidasi ulang**: `npm test` penuh 289 tes, 288 hijau, 1 skip
+      lama tak terkait, 0 gagal (turun dari 290 karena 2 tes `matchAligned`
+      dihapus, naik lagi +1 dari tes baru `generateDialogSegments` yang
+      me-mock `global.fetch` — membuktikan giliran narator tetap
+      v2+strip DAN giliran dialogue biasa memakai `ELEVEN_MODEL` hidup+tag
+      utuh, TANPA SSML `<break>` — persis perilaku `/api/tts`/
+      `/admin/tts/preview`, tidak ada percabangan tersembunyi). Endpoint
+      baru divalidasi end-to-end lewat Postgres+Express asli (fixture
+      course/module/lesson/`module_grammar.example_dialog` baru): teks tak
+      dikenal → 403; teks dikenal tapi bukan bentuk dialog → 400
+      `not_a_dialog`; dialog yang dikenal → lolos whitelist+parse+
+      speaker-registry+voice-resolve, gagal PERSIS di panggilan jaringan
+      ElevenLabs yang diblokir sandbox ini (502 `tts_upstream`) — bukan
+      crash kode. **Jebakan lingkungan ketahuan saat validasi ini** (bukan
+      bug kode): `eznihongo_test` di sandbox ini sempat masih berskema
+      `dialogue_speakers` LAMA (`voice_role` female/male) walau
+      `schema_migrations` sudah mencatat
+      148 sebagai "applied" — sisa dari migrasi 148 versi DRAFT PERTAMA
+      yang sempat jalan di sini sebelum diamandemen di tempat (lihat
+      follow-up pertama di atas); `CREATE TABLE IF NOT EXISTS` di migrasi
+      148 tidak meng-ALTER tabel yang sudah ada, dan runner melewati
+      migrasi yang sudah tercatat "applied", jadi database sandbox lama
+      TIDAK otomatis ikut ter-update walau file migrasinya sudah benar.
+      Diperbaiki (lokal, bukan menyentuh produksi): `DROP TABLE
+      dialogue_speakers` + hapus baris `148_dialogue_speakers.sql` dari
+      `schema_migrations` + re-run migrator. **Pelajaran buat sesi
+      selanjutnya**: kalau meng-amend migrasi yang BELUM merge lalu tes
+      integrasi tiba-tiba gagal dengan "column does not exist" pada tabel
+      yang migrasi itu SENDIRI buat, curiga dulu ke skema database sandbox
+      yang basi (dibuat dari draf migrasi SEBELUM diamandemen), bukan ke
+      kode aplikasi — solusinya drop+rebuild tabel itu di database
+      sandbox, BUKAN mengubah kode supaya cocok dengan skema lama.
+      **Belum diverifikasi dari sandbox ini**: rendering visual browser
+      sungguhan (bubble + highlight per-baris berjalan, tombol putar
+      per-baris) — ditelusuri lewat pembacaan kode line-by-line (fungsi
+      render yang dipakai persis SAMA dengan tampilan statis yang sudah
+      lama live, dan `gkSyncActiveLine` yang menggerakkan highlight sama
+      sekali tidak disentuh perubahan ini), bukan dikonfirmasi lewat
+      Playwright — audio ElevenLabs sungguhan tetap tidak bisa dites dari
+      sini (diblokir egress) terlepas dari perubahan apa pun di atas.
+
+      **Pendamping Bunpou Bab 3 DIISI (migrasi 149) — arahan ditulis untuk
+      DIALOGNYA, bukan untuk nama polanya** — user: "Sekarang isikan
+      pendamping bunpou agar sesuai dengan konteks dialog". Isi companion
+      (lihat entri "Bunpou Flow pilot" di bawah untuk fiturnya) selama ini
+      kosong; Paket 1 sengaja berhenti di jalur nonaktif karena sandbox tidak
+      punya data produksi. Yang membuat pengisian ini akhirnya bisa dikerjakan
+      dari repo: dialog Bab 3 SUDAH ada di repo (migrasi 143/144/145), jadi
+      teks yang diterangkan arahan itu bisa dibaca langsung, tidak ditebak.
+      **Ditulis sebagai migrasi, bukan diketik lewat admin** — konvensi yang
+      user tetapkan sendiri waktu tombol AI "Lengkapi contoh" dihapus dan
+      diganti migration 126: konten siswa ditulis & direview sebagai diff.
+      Editor "🧭 Pendamping Bunpou" tetap jalan normal di atas hasilnya.
+      **Kenapa "sesuai konteks dialog" itu harfiah**: `directions` dirender DI
+      DALAM blok "💬 Dialog contoh", TEPAT DI ATAS pemutar dialog, sebagai
+      "🎧 …" (`welcome.html:8031`) — jadi tiap arahan menunjuk giliran yang
+      benar-benar terdengar di dialog di bawahnya, bukan mengulang arti pola
+      (arti sudah ada di kartu). Contoh yang paling menunjukkan bedanya:
+      arahan 〜も tidak menjelaskan "juga", melainkan menyuruh menyimak
+      giliran TERAKHIR dialognya — pertanyaannya memakai 〜も tapi jawabannya
+      berganti ke 〜は, karena begitu ternyata tidak sama, も tidak dipakai
+      lagi. Poin itu cuma ada kalau dialognya dibaca.
+      **Dicocokkan lewat ISI dialog, bukan teks pattern**: Bab 3 punya SEBELAS
+      baris untuk ENAM konsep — dua set penamaan berdampingan, dan teks
+      pattern set B (buatan admin) tidak bisa dipercaya karakter per karakter
+      (〜 U+301C vs ～ U+FF5E, ／ vs /); ini temuan migrasi 145, bukan dugaan.
+      Karena arahan menerangkan dialognya, tiap baris dicocokkan lewat penanda
+      unik DI DALAM `example_dialog` — diukur: keenam dialog 145 masing-masing
+      kena TEPAT SATU penanda, dialog asing kena nol. Baris yang dialognya
+      sudah ditulis ulang admin DILEWATI dengan NOTICE yang sekalian mencetak
+      baris pertama dialognya (alur 135→136: sandbox tidak bisa melihat
+      produksi, jadi log deploy adalah satu-satunya cara tahu isi dialog yang
+      sudah diganti — baca log, baru tulis migrasi lanjutannya).
+      **NAMA TOKOH TIDAK DIPAKAI DI MANA PUN — dikoreksi user, dan ini
+      pelajaran yang lebih besar dari satu nama salah**: draf pertama menyebut
+      nama tokoh dari dialog versi REPO ("Hadi juga cuma bilang ハディです",
+      "Kevin menyangkal dua kali") dan memakai 「たなかさんもがくせい」/
+      「ユウトさん」 sebagai penanda. User: **"Lah namanya udah bukan hadi tapi
+      yamguchi"** — nama tokoh di produksi sudah diganti lewat editor 🎭 Dialog
+      yang baru saja dibuat sesi ini. Nama tokoh adalah bagian dialog yang
+      PALING gampang berubah, apalagi sekarang menggantinya cuma beberapa
+      klik; arahan yang menyebut nama otomatis basi tiap kali admin mengganti
+      tokoh, dan penanda yang memuat nama akan gagal mencocokkan. Sekarang
+      keduanya cuma bergantung struktur giliran + partikel (〜も vs 〜は, ね vs
+      よ, dst) — tetap konkret karena menunjuk kalimat yang benar-benar
+      terdengar, tapi tahan ganti nama. **Dibuktikan MENGGIGIT**: dialog
+      fixture di-rename ハディ→山口 dan ユウト→やまだ, lalu versi lama
+      (penanda bernama) dijalankan → baris ね・よ DILEWATI, cuma 10 arahan;
+      versi baru → 11 arahan, 0 dilewati, dan 0 arahan memuat nama tokoh.
+      Kalau menulis arahan lagi: jangan sebut nama tokoh, sebut gilirannya.
+      **`overlays` SENGAJA TIDAK diisi** (padahal envelope-nya menyediakan
+      step1/step2 hint+explanation): backend-nya memang sudah tersalur
+      (`overlayFor` → snapshot sesi → `publicSessionItem`), TAPI tidak ada
+      yang merendernya di sisi siswa — tombol "Minta petunjuk" belum dibuat
+      (sudah tercatat di luar cakupan Paket 1), dan jalur reveal sesi
+      (`welcome.html:9432`) cuma membaca correctIndex/correctOrder/japanese,
+      field `explanation` dibuang. Mengisinya = menulis teks yang tidak pernah
+      sampai ke siswa, kelas kesalahan yang sama dengan auto-warm cache dialog
+      yang dulu sengaja dibatalkan. Isi overlays setelah UI-nya ada.
+      **Pilot TIDAK dinyalakan**: `bunpou_flow_pilot_enabled`/`_lesson_id`
+      tidak disentuh sama sekali, dan `content.js:393` hanya melampirkan
+      companion kalau `enabled AND lessonId = row.id` — jadi migrasi ini NOL
+      dampak ke siswa sampai admin menyalakannya sendiri di tab AI. Migrasi
+      mencetak `lesson_id` yang perlu diisi lewat NOTICE.
+      **Cakupan disamakan dengan `bunpouFlowScope()`** (`routes/admin.js`):
+      directions tiap envelope hanya memuat baris milik pelajaran itu sendiri,
+      supaya draft hasil migrasi tidak ditolak "grammarId di luar cakupan"
+      kalau admin membukanya lalu menekan Simpan. Stempel editor/publishedBy
+      memakai tanggal TETAP (bukan NOW()) supaya re-run byte-identik.
+      **Divalidasi di Postgres asli** dengan fixture yang meniru produksi (11
+      baris, dua set penamaan, semuanya tertaut ke satu pelajaran "Tata
+      Bahasa"), dan dialognya diisi dengan menjalankan migrasi 145 ASLI —
+      jadi klasifikasi diuji terhadap data yang benar-benar ditulis 145, bukan
+      string yang ditempel manual: **11/11 baris dapat arahan yang cocok
+      dengan dialognya sendiri, termasuk keenam baris set B**. Ditambah:
+      idempoten (md5 sama setelah re-run), jalur lewati menggigit (dialog
+      diganti → NOTICE + baris itu dikeluarkan, tinggal 10, bukan dikasih
+      arahan ngawur), pagar panjang menggigit (arahan >300 char → EXCEPTION),
+      fresh install aman (tanpa course n5 → skip bersih). **Validator JS ASLI**
+      (`validateCompanionEnvelope` + scope dihitung persis seperti
+      `bunpouFlowScope`) meluluskan draft & published, dan
+      `sanitizeCompanionEnvelope` round-trip tidak menghilangkan isi. **E2E
+      lewat server asli**: flag mati → `bunpouFlow` tidak terlampir sama
+      sekali; flag hidup → objective + 11 arahan sampai ke payload pelajaran,
+      `overlays` maupun `bunpou_flow_draft` tidak ikut bocor. `npm test` 289
+      tes, 288 hijau, 1 skip lama, 0 gagal.
+      **Jebakan saat menulis tesnya** (bukan bug produk, tapi sempat terlihat
+      seperti bug): `GET /api/lessons/:id` membungkus payloadnya
+      `res.json({ lesson: response })` (`content.js:531`), jadi companion ada
+      di `body.lesson.bunpouFlow`, bukan `body.bunpouFlow` — sempat terbaca
+      "flag hidup tapi tidak terlampir". Kalau menulis tes endpoint ini lagi,
+      cek dulu bentuk pembungkusnya sebelum menyimpulkan ada regresi.
+      **Sisa untuk manusia**: pilih pelajaran pilot lalu nyalakan flag (butuh
+      companion yang sudah published — sudah dipenuhi migrasi ini), dan
+      putuskan apakah sebelas baris kembar Bab 3 mau dirapikan jadi enam
+      (membereskan baris kembar adalah keputusan konten tersendiri, sudah
+      dicatat sejak 145; selama masih kembar, dua baris konsep yang sama
+      memang dapat arahan yang sama).
+
       **Bunpou Flow pilot (Paket 0+1 dari rencana Codex) — session Tugas
       Bunpou yang tahan refresh, konten pendamping opsional, BELUM
       diaktifkan** — user melampirkan
