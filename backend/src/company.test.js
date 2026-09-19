@@ -32,14 +32,27 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
   const {companyError}=await import('./company-policy.js');const {eraseUserAccount}=await import('./user-erasure.js');
   const {processCompanyJob,claimCompanyJob}=await import('./company-outbox.js');
   let server;
-  t.after(async()=>{if(server){server.closeAllConnections();await new Promise(r=>server.close(r));}await db.end();await control.query(`DROP SCHEMA ${schema} CASCADE`);await control.end();});
+  t.after(async()=>{
+    try {
+      if(server){server.closeAllConnections();await new Promise(r=>server.close(r));}
+    } finally {
+      try { await control.query('ROLLBACK'); }
+      finally {
+        try { await db.end(); }
+        finally {
+          try { await control.query(`DROP SCHEMA ${schema} CASCADE`); }
+          finally { await control.end(); }
+        }
+      }
+    }
+  });
   await control.query(`CREATE TABLE users(id uuid PRIMARY KEY,email text UNIQUE,full_name text,google_id text,google_name text,avatar_url text,updated_at timestamptz);
     CREATE TABLE admin_emails(email text);CREATE TABLE courses(id uuid PRIMARY KEY,title text,slug text,sort_order integer DEFAULT 0,created_at timestamptz DEFAULT NOW());
     CREATE TABLE modules(id uuid PRIMARY KEY,course_id uuid REFERENCES courses(id));CREATE TABLE lessons(id uuid PRIMARY KEY,module_id uuid REFERENCES modules(id),title text,type text,video_source_id uuid,video_start_seconds integer,video_end_seconds integer);
     CREATE TABLE discussions(id uuid PRIMARY KEY,user_id uuid REFERENCES users(id),lesson_id uuid REFERENCES lessons(id),parent_id uuid REFERENCES discussions(id),content text,is_deleted boolean DEFAULT FALSE,created_at timestamptz DEFAULT NOW(),updated_at timestamptz);
     CREATE TABLE user_enrollments(user_id uuid REFERENCES users(id),course_id uuid REFERENCES courses(id),PRIMARY KEY(user_id,course_id));`);
   for(const file of ['120_course_entitlements.sql','121_course_orders.sql'])await control.query(await readFile(new URL('../migrations/'+file,import.meta.url),'utf8'));
-  for(const name of ['sessions','user_marketing_profile','user_progress','user_learning_state','user_stats','user_practice_state','user_practice_legacy_imports','practice_attempts','quiz_question_results','quiz_attempts','grammar_attempts','smart_review_sessions','grammar_task_sessions'])await control.query(`CREATE TABLE ${name}(user_id uuid REFERENCES users(id))`);
+  for(const name of ['sessions','user_marketing_profile','user_progress','user_learning_state','user_stats','user_practice_state','user_practice_legacy_imports','practice_attempts','quiz_question_results','quiz_attempts','grammar_attempts','smart_review_sessions','grammar_task_requests','grammar_task_sessions'])await control.query(`CREATE TABLE ${name}(user_id uuid REFERENCES users(id))`);
   const ids=Object.fromEntries(['owner','technology','academic','marketing','operations','finance','student','scoped','erased'].map(k=>[k,randomUUID()]));
   for(const [key,id]of Object.entries(ids))await control.query('INSERT INTO users(id,email,full_name,google_id) VALUES ($1,$2,$3,$3)',[id,key+'@example.invalid',key]);
   const c1=randomUUID(),c2=randomUUID();await control.query("INSERT INTO courses(id,title,slug) VALUES ($1,'N5','n5'),($2,'N4','n4')",[c1,c2]);
@@ -166,8 +179,12 @@ test('company workflows and RBAC on disposable PostgreSQL', {skip:!process.env.T
     await grant('erased','marketing');const own=(await make('erased','marketing')).data.item;
     const other=(await make('marketing','marketing')).data.item;
     const before=(await control.query('SELECT * FROM company_work_items ORDER BY id')).rows;
+    await control.query('INSERT INTO grammar_task_requests(user_id) VALUES ($1),($2)',[ids.erased,ids.marketing]);
+    const requestsBefore=(await control.query('SELECT * FROM grammar_task_requests ORDER BY user_id')).rows;
     await control.query('BEGIN');await eraseUserAccount(control,ids.erased);await control.query('ROLLBACK');assert.deepEqual((await control.query('SELECT * FROM company_work_items ORDER BY id')).rows,before);
+    assert.deepEqual((await control.query('SELECT * FROM grammar_task_requests ORDER BY user_id')).rows,requestsBefore);
     await control.query('BEGIN');await eraseUserAccount(control,ids.erased);await control.query('COMMIT');
+    assert.deepEqual((await control.query('SELECT * FROM grammar_task_requests ORDER BY user_id')).rows,[{user_id:ids.marketing}]);
     assert.equal((await control.query('SELECT status FROM company_work_items WHERE id=$1',[own.id])).rows[0].status,'archived');
     assert.deepEqual(JSON.parse(JSON.stringify((await control.query('SELECT * FROM company_work_items WHERE id=$1',[other.id])).rows[0])),other);
     assert.equal((await request('erased','/company/access')).status,401);
