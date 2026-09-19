@@ -93,7 +93,7 @@ test('options group course and bab, show titles and readiness, and keep UUIDs ou
   assert.match(pilot, /<optgroup label="N5 \/ Bab 1">/);
   assert.match(pilot, /Perkenalan - Siap diaktifkan/);
   assert.match(pilot, /Waktu - Belum siap: Materi berubah sejak publikasi/);
-  assert.match(pilot, new RegExp(`<option value="${staleId}"[^>]*disabled>`));
+  assert.doesNotMatch(pilot, new RegExp(`<option value="${staleId}"[^>]*disabled`));
   assert.doesNotMatch(nodes['ms-shadow-lesson'].innerHTML, new RegExp(`<option value="${staleId}"[^>]*disabled`));
   assert.doesNotMatch(pilot.replace(/<[^>]*>/g, ''), /[0-9a-f]{8}-[0-9a-f-]{27}/);
   assert.equal(nodes['bf-pilot-enabled'].checked, true);
@@ -109,6 +109,27 @@ test('titles, grouping labels and readiness reasons are escaped', () => {
   assert.match(options, /&lt;img/);
   assert.match(options, /&quot;&gt;&lt;script&gt;/);
   assert.match(options, /&lt;unsafe&gt;/);
+});
+
+test('an all-unready catalog remains selectable for editing without enabling activation', async () => {
+  const { ctx, nodes, state } = setup();
+  state.settings = { enabled: false, lessonId: null, lessons: [fixture().lessons[1]] };
+  await ctx.bfPilotLoadOptions();
+  assert.equal(nodes['bf-pilot-lesson-id'].disabled, false);
+  assert.doesNotMatch(nodes['bf-pilot-lesson-id'].innerHTML, /<option[^>]*disabled/);
+  nodes['bf-pilot-lesson-id'].value = staleId;
+  ctx.bfPilotUpdateControls();
+  assert.equal(nodes['bf-pilot-edit'].disabled, false);
+  assert.equal(nodes['bf-pilot-enabled'].disabled, true);
+  assert.match(nodes['bf-pilot-status'].textContent, /Edit Pendamping Bunpou/);
+  ctx.bfPilotEditCompanion('bf-pilot-lesson-id');
+  assert.deepEqual(state.edits, [[staleId, 'Waktu']]);
+  assert.equal(writes(state).length, 0, 'selecting and editing must not write pilot settings');
+  nodes['bf-pilot-enabled'].checked = true;
+  ctx.bfPilotUpdateControls();
+  assert.equal(nodes['bf-pilot-save'].disabled, true);
+  await ctx.bfPilotSaveSettings();
+  assert.equal(writes(state).length, 0, 'unready activation stays blocked even if the checkbox is forced');
 });
 
 test('failed or malformed GET cannot turn unknown settings into a writable default', async () => {

@@ -1185,8 +1185,9 @@ function bfPilotLessonOptions(settings, selectedId, shadow = false) {
     html += `<option value="${escapeHtml(selectedId)}" selected disabled>Pelajaran tersimpan tidak tersedia</option>`;
   }
   for (const [group, lessons] of groups) {
+    // Unready lessons must remain selectable so admins can open their editor.
     html += `<optgroup label="${escapeHtml(group)}">` + lessons.map(lesson =>
-      `<option value="${escapeHtml(lesson.id)}" ${lesson.id === selectedId ? 'selected' : ''} ${!shadow && !lesson.ready ? 'disabled' : ''}>${escapeHtml(lesson.title)} - ${escapeHtml(bfPilotReadiness(lesson))}</option>`
+      `<option value="${escapeHtml(lesson.id)}" ${lesson.id === selectedId ? 'selected' : ''}>${escapeHtml(lesson.title)} - ${escapeHtml(bfPilotReadiness(lesson))}</option>`
     ).join('') + '</optgroup>';
   }
   return html;
@@ -1249,7 +1250,9 @@ window.bfPilotUpdateControls = () => {
   document.getElementById('ms-shadow-edit').disabled = locked || !shadowLesson;
   if (locked) return;
   document.getElementById('bf-pilot-status').textContent = !settings.lessons.length
-    ? 'Belum ada pelajaran Bunpou.' : picker.value ? bfPilotReadiness(lesson) : 'Pilih pelajaran yang siap untuk mengaktifkan pilot.';
+    ? 'Belum ada pelajaran Bunpou.' : picker.value
+      ? bfPilotReadiness(lesson) + (lesson && !lesson.ready ? '. Buka Edit Pendamping Bunpou untuk menyiapkannya.' : '')
+      : 'Pilih pelajaran untuk ditinjau. Pilot hanya dapat diaktifkan setelah pelajaran siap.';
   document.getElementById('ms-shadow-status').textContent = shadow.value
     ? bfPilotReadiness(shadowLesson) : 'Pilih pelajaran untuk perbandingan.';
 };
