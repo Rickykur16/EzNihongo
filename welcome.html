@@ -4518,6 +4518,7 @@
 </style>
 <link rel="stylesheet" href="styles/learning-placement.css?v=20260912-2"/>
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
+<link rel="stylesheet" href="styles/dialogue-scene.css?v=2">
 </head>
 <body>
 
@@ -4554,6 +4555,9 @@
 </footer>
 
 <script src="api-client.js"></script>
+<script src="assets/dialogue/catalog.js?v=1"></script>
+<script src="src/dialogue-furigana.js?v=1"></script>
+<script src="src/dialogue-scene.js?v=2"></script>
 <script src="learning-state.js?v=20260911-1"></script>
 <script>
 // ═══════════════════════════════════════════════
@@ -8030,7 +8034,7 @@ function renderLessonGrammar(lesson) {
               </button>
               <div class="grammar-block-content">
                 ${lesson.bunpouFlow?.directions?.[g.id] ? `<p class="grammar-listening-direction" style="margin:0 0 8px;font-size:13px;color:#525252;">🎧 ${escapeHtml(lesson.bunpouFlow.directions[g.id])}</p>` : ''}
-                ${grammarKaraokeHtml(dialog, `g${i}`, g.example_dialog_id || '')}
+                ${grammarKaraokeHtml(dialog, `g${i}`, g.example_dialog_id || '', g.dialog_scene, g.id, g.dialog_furigana)}
               </div>
             </div>` : ''}
             ${g.notes ? `<div class="grammar-notes">${escapeHtml(g.notes)}</div>` : ''}
@@ -8058,6 +8062,8 @@ function gkStopAll() {
     const st = window.__gk[k];
     if (st) {
       st.stopped = true;
+      st.controller?.abort();
+      window.EzDialogue?.sync(document.getElementById('gk-' + k), -1, 'idle');
       if (st._gap) { clearTimeout(st._gap); st._gap = null; }
       if (st.audio) { try { st.audio.pause(); } catch {} st.audio.src = ''; }
     }
@@ -8072,10 +8078,18 @@ function gkStopOne(key) {
   const st = window.__gk[key];
   if (!st) return;
   st.stopped = true;
+  st.controller?.abort();
+  if (st.loading) delete window.__gk[key];
   if (st._gap) { clearTimeout(st._gap); st._gap = null; }
   if (st.audio) { try { st.audio.pause(); } catch {} st.audio = null; }
   st.playOnce = false;
   if (st.playBtn) st.playBtn.textContent = st.ended ? '↻ Ulangi' : '▶ Putar dialog';
+  if (st.playBtn) st.playBtn.disabled = false;
+  const player = document.getElementById('gk-' + key);
+  if (player) delete player.dataset.jumpTo;
+  const status = document.getElementById('gk-' + key)?.querySelector('.gk-status');
+  if (status) status.textContent = '';
+  window.EzDialogue?.sync(document.getElementById('gk-' + key), -1, 'idle');
   gkSyncActiveLine(key, -1);
 }
 
@@ -8098,6 +8112,7 @@ window.grammarBlockToggle = (btn) => {
       });
     }
     block.removeAttribute('data-collapsed');
+    if (isDialog) window.EzDialogue?.mount(block);
   } else {
     block.setAttribute('data-collapsed', '1');
     if (isDialog) {
@@ -8208,12 +8223,14 @@ const GK_PLAY_TRI = '<svg width="13" height="13" viewBox="0 0 24 24" fill="curre
 const GK_EYE_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
 
 // Map kode pembicara non-narator → { side, pal } (urutan kemunculan).
-function gkSpeakerStyles(rows) {
+function gkSpeakerStyles(rows, dialogScene) {
   const codes = [];
   rows.forEach((r) => { const s = r.speaker; if (s && s !== 'N' && !codes.includes(s)) codes.push(s); });
   const map = {};
   codes.forEach((c, i) => {
     map[c] = { side: i % 2 === 0 ? 'left' : 'right', pal: GK_PALETTES[i % GK_PALETTES.length] };
+    const p = dialogScene?.participants?.find(p => p.speaker === c);
+    if (p) map[c].side = p.position;
   });
   return map;
 }
@@ -8325,36 +8342,38 @@ function parseDialogIdMap(dialogIdText) {
 // Static transcript (semua text keliatan) sebelum audio di-load: narator →
 // kartu Situasi, sisanya → chat bubble. Struktur identik dgn versi audio
 // supaya layout tidak loncat saat audio selesai load.
-function renderKaraokeStatic(text, key, dialogIdText) {
+function renderKaraokeStatic(text, key, dialogIdText, dialogScene, furigana) {
   const turns = parseDialogLinesFE(text);
   const idMap = parseDialogIdMap(dialogIdText);
-  const styles = gkSpeakerStyles(turns);
+  const styles = gkSpeakerStyles(turns, dialogScene);
   const rows = turns.map((t, i) => ({
     speaker: t.speaker,
-    displayName: t.displayName || t.speaker,
-    inner: escapeHtml(t.text),
+    displayName: dialogScene?.participants?.find(p => p.speaker === t.speaker)?.displayName || t.displayName || t.speaker,
+    inner: window.EzFurigana ? EzFurigana.html(t.text,EzFurigana.lineFor(furigana,i,t)) : escapeHtml(t.text),
     idText: idMap[i] || '',
     index: i,
   }));
   return gkComposeHtml(rows, key, styles);
 }
 
-function grammarKaraokeHtml(dialogText, key, dialogIdText) {
+function grammarKaraokeHtml(dialogText, key, dialogIdText, dialogScene = null, grammarId = '', furigana = null) {
   const arti = gkGetArtiMode();
   const speed = gkGetSpeed();
   const speeds = [0.75, 1, 1.25];
   return `
-    <div class="grammar-karaoke" id="gk-${key}" data-dialog="${escapeHtml(dialogText)}" data-dialog-id="${escapeHtml(dialogIdText || '')}" data-arti="${arti}" data-speed="${speed}">
+    <div class="grammar-karaoke" id="gk-${key}" data-dialog="${escapeHtml(dialogText)}" data-dialog-id="${escapeHtml(dialogIdText || '')}" data-dialog-scene="${escapeHtml(JSON.stringify(dialogScene))}" data-dialog-furigana="${escapeHtml(JSON.stringify(furigana))}" data-furigana="${window.EzFurigana?.preference() === false ? 'off' : 'on'}" data-audio-ready="${dialogScene?.audioReady !== false}" data-grammar-id="${escapeHtml(grammarId)}" data-arti="${arti}" data-speed="${speed}">
       <div class="gk-toolbar">
-        <button type="button" class="gk-play" onclick="window.grammarKaraokePlay('${key}')">▶ Putar dialog</button>
+        <button type="button" class="gk-play" ${dialogScene?.audioReady === false ? 'disabled' : ''} onclick="window.grammarKaraokePlay('${key}')">▶ Putar dialog</button>
         <div class="gk-seg gk-speed">
           ${speeds.map((v) => `<button type="button" class="gk-seg-btn${v === speed ? ' is-on' : ''}" data-v="${v}" onclick="window.gkSetSpeed('${key}',${v},this)">${v}×</button>`).join('')}
         </div>
         <span class="gk-tool-div"></span>
         <button type="button" class="gk-arti-toggle" onclick="window.gkCycleArti('${key}',this)">${gkArtiLabel(arti)}</button>
-        <span class="gk-status"></span>
+        <button type="button" class="gk-furigana-toggle" aria-pressed="${window.EzFurigana?.preference() !== false}" onclick="EzFurigana.toggle()">${window.EzFurigana?.label(EzFurigana.preference()) || 'Furigana: aktif'}</button>
+        <span class="gk-status">${dialogScene?.audioReady === false ? 'Audio belum tersedia' : ''}</span>
       </div>
-      <div class="gk-transcript">${renderKaraokeStatic(dialogText, key, dialogIdText)}</div>
+      ${window.EzDialogue?.html(dialogScene, parseDialogLinesFE(dialogText), furigana) || ''}
+      <div class="gk-transcript">${renderKaraokeStatic(dialogText, key, dialogIdText, dialogScene, furigana)}</div>
     </div>
   `;
 }
@@ -8367,12 +8386,12 @@ window.grammarKaraokeJumpTo = async (key, li) => {
   if (!Number.isInteger(li2) || li2 < 0) return;
   let st = window.__gk[key];
   if (st && st.segments) {
+    if (li2 >= st.segments.length) return;
     // Sudah loaded: stop yg sedang berjalan + play single segment.
     if (st.audio) { try { st.audio.pause(); } catch {} st.audio = null; }
     if (st._gap) { clearTimeout(st._gap); st._gap = null; }
     st.stopped = false; st.ended = false; st.playOnce = true;
     if (st.playBtn) st.playBtn.textContent = '❚❚ Jeda';
-    if (li2 >= st.segments.length) return;
     gkPlaySegment(key, li2);
     return;
   }
@@ -8398,13 +8417,32 @@ function gkPlaySegment(key, si) {
     return;
   }
   st.curSeg = si; st.ended = false;
-  gkSyncActiveLine(key, si);
+  st.nextSeg = si;
   const seg = segs[si];
   const audio = new Audio('data:' + (seg.content_type || 'audio/mpeg') + ';base64,' + seg.audio_base64);
   st.audio = audio;
   try { audio.playbackRate = st.rate || 1; } catch (e) {}
+  const current = () => window.__gk[key] === st && st.audio === audio;
+  const sceneState = state => { if (current()) window.EzDialogue?.sync(document.getElementById('gk-' + key), si, state); };
+  audio.addEventListener('playing', () => { if (!current() || st.stopped) return; gkSyncActiveLine(key, si); sceneState('speaking'); });
+  audio.addEventListener('pause', () => sceneState('paused'));
+  audio.addEventListener('waiting', () => sceneState('paused'));
+  audio.addEventListener('stalled', () => sceneState('paused'));
+  const failed = () => {
+    if (!current()) return;
+    st.stopped = true;
+    gkSyncActiveLine(key, -1);
+    window.EzDialogue?.sync(document.getElementById('gk-' + key), -1, 'idle');
+    const root = document.getElementById('gk-' + key);
+    if (root?.querySelector('.gk-status')) root.querySelector('.gk-status').textContent = 'Audio tidak tersedia';
+    if (st.playBtn) st.playBtn.textContent = '▶ Putar dialog';
+    st.audio = null;
+  };
+  audio.addEventListener('error', failed);
+  st.onPlayError = failed;
   audio.addEventListener('ended', () => {
-    if (st.stopped) return;
+    if (!current() || st.stopped) return;
+    window.EzDialogue?.sync(document.getElementById('gk-' + key), -1, 'idle');
     // playOnce: dipanggil dari grammarKaraokeJumpTo — jangan auto-advance.
     if (st.playOnce) {
       st.playOnce = false; st.ended = true; st.audio = null;
@@ -8412,9 +8450,10 @@ function gkPlaySegment(key, si) {
       gkSyncActiveLine(key, -1);
       return;
     }
-    st._gap = setTimeout(() => gkPlaySegment(key, si + 1), 450);
+    st.audio = null; st.nextSeg = si + 1;
+    st._gap = setTimeout(() => { st._gap = null; gkPlaySegment(key, si + 1); }, 450);
   });
-  const p = audio.play(); if (p && p.catch) p.catch(() => {});
+  const p = audio.play(); if (p && p.catch) p.catch(failed);
 }
 
 // Sync class .gk-line-active ke baris/narator dgn data-line-index === activeSi
@@ -8422,6 +8461,7 @@ function gkPlaySegment(key, si) {
 function gkSyncActiveLine(key, activeSi) {
   const root = document.getElementById('gk-' + key);
   if (!root) return;
+  if (activeSi < 0) window.EzDialogue?.sync(root, -1, 'idle');
   const tap = root.getAttribute('data-arti') === 'tap';
   root.querySelectorAll('[data-line-index]').forEach((el) => {
     const li = Number(el.dataset.lineIndex);
@@ -8435,22 +8475,30 @@ function gkSyncActiveLine(key, activeSi) {
 window.grammarKaraokePlay = async (key) => {
   const el = document.getElementById('gk-' + key);
   if (!el) return;
+  if (el.dataset.audioReady === 'false') return;
   let st = window.__gk[key];
+  if (st?.loading) return;
+  window.EzDialogue?.mount(el);
   // Sudah ke-load: toggle play/pause/replay.
   if (st && st.segments) {
-    if (st.audio && !st.audio.paused) {
+    if (st._gap) {
+      clearTimeout(st._gap); st._gap = null; st.stopped = true;
+      if (st.playBtn) st.playBtn.textContent = '▶ Putar dialog';
+      window.EzDialogue?.sync(el, -1, 'idle');
+    } else if (st.audio && !st.audio.paused) {
       st.stopped = true;
       if (st._gap) { clearTimeout(st._gap); st._gap = null; }
       st.audio.pause();
       if (st.playBtn) st.playBtn.textContent = '▶ Putar dialog';
     } else if (st.ended || !st.audio) {
+      const next = st.ended ? 0 : (st.nextSeg || 0);
       st.stopped = false; st.ended = false;
       if (st.playBtn) st.playBtn.textContent = '❚❚ Jeda';
-      gkPlaySegment(key, 0);
+      gkPlaySegment(key, next);
     } else {
       st.stopped = false;
       if (st.playBtn) st.playBtn.textContent = '❚❚ Jeda';
-      const p = st.audio.play(); if (p && p.catch) p.catch(() => {});
+      const p = st.audio.play(); if (p && p.catch) p.catch(st.onPlayError || (() => {}));
     }
     return;
   }
@@ -8461,16 +8509,21 @@ window.grammarKaraokePlay = async (key) => {
   const transcript = el.querySelector('.gk-transcript');
   if (statusEl) statusEl.textContent = 'Memuat… (pertama kali ~5-10 detik)';
   if (playBtn) playBtn.disabled = true;
+  const request = {loading:true, stopped:false, playBtn, controller:new AbortController()};
+  window.__gk[key] = request;
   try {
-    const r = await fetch('/api/tts/dialog?text=' + encodeURIComponent(dialog));
+    const r = await fetch('/api/tts/dialog?text=' + encodeURIComponent(dialog) + (el.dataset.grammarId ? '&grammarId=' + encodeURIComponent(el.dataset.grammarId) : ''), {signal:request.controller.signal});
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
+    if (window.__gk[key] !== request || request.stopped || !el.isConnected) return;
     const segs = (data && data.segments) || [];
     if (!segs.length) throw new Error('no segments');
     // Transkrip sekarang IDENTIK dengan tampilan statis sebelum play (tidak
     // ada lagi span per-kata buat highlight karaoke) — pakai ulang fungsi
     // yang sama, bukan duplikat logikanya.
-    transcript.innerHTML = renderKaraokeStatic(dialog, key, el.dataset.dialogId || '');
+    let furigana;
+    try { furigana = JSON.parse(el.dataset.dialogFurigana || 'null'); } catch { furigana = null; }
+    transcript.innerHTML = renderKaraokeStatic(dialog, key, el.dataset.dialogId || '', window.EzDialogue?.read(el), furigana);
     st = { segments: segs, curSeg: 0, audio: null, stopped: false, ended: false, playOnce: false, playBtn, rate: parseFloat(el.dataset.speed) || 1 };
     window.__gk[key] = st;
     if (statusEl) statusEl.textContent = '';
@@ -8489,6 +8542,8 @@ window.grammarKaraokePlay = async (key) => {
     }
     gkPlaySegment(key, 0);
   } catch (e) {
+    if (window.__gk[key] !== request || request.stopped) return;
+    delete window.__gk[key];
     if (statusEl) statusEl.textContent = 'Audio tidak tersedia';
     if (playBtn) playBtn.disabled = false;
   }

@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { sceneTurnVoices, validateSceneVoices } from '../dialogue-scene.js';
+import { isCanonicalUuid } from '../live-class-admin-rules.js';
 import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
@@ -373,8 +375,17 @@ router.get('/tts/dialog', optionalAuth, ttsLimiter, asyncHandler(async (req, res
 
   const turns = parseDialog(text);
   if (!turns) return res.status(400).json({ error: 'not_a_dialog' });
+  let scene = null;
+  if (req.query.grammarId) {
+    if (!isCanonicalUuid(req.query.grammarId)) return res.status(400).json({error: 'invalid grammarId'});
+    const grammar = await query('SELECT dialog_scene FROM module_grammar WHERE id = $1 AND example_dialog = $2', [req.query.grammarId, text]);
+    if (!grammar.rows.length) return res.status(409).json({error: 'dialog_changed'});
+    scene = grammar.rows[0].dialog_scene;
+  }
   const registry = await loadSpeakerRegistry();
-  const turnVoices = turns.map((t, i) => voiceForSpeaker(t.speaker, i, registry));
+  let turnVoices;
+  try { turnVoices = sceneTurnVoices(turns, scene, (t, i) => voiceForSpeaker(t.speaker, i, registry)); }
+  catch (err) { return res.status(422).json({error: 'dialog_voice_missing', detail: err.message}); }
   const voices = turnVoices.map((v) => v.voiceId);
 
   // Own cache-key prefix ("dialogsegs1") — distinct from /api/tts's plain
@@ -390,14 +401,14 @@ router.get('/tts/dialog', optionalAuth, ttsLimiter, asyncHandler(async (req, res
     return res.json(cached.rows[0].alignment);
   }
 
-  const dialogVoicesEmpty = !ELEVEN_VOICE_FEMALE && !ELEVEN_VOICE_MALE && !ELEVEN_VOICE_NARRATOR;
-  if (!ELEVEN_API_KEY || dialogVoicesEmpty) {
+  if (!ELEVEN_API_KEY || voices.some(v => !v)) {
     return res.status(503).json({ error: 'tts_disabled' });
   }
 
   let segments;
   let combined;
   try {
+    await validateSceneVoices(scene, fetchElevenVoices);
     const result = await generateDialogSegments(turns, turnVoices);
     segments = result.segments;
     combined = result.combined;
