@@ -64,6 +64,7 @@ function admin(){
   const ctx={window:null,document:{getElementById:()=>null},notify:()=>{},admLoadElevenVoices:async()=>[]};
   ctx.window=ctx;ctx.EzDialogue={catalog:dialogueCatalog,esc:s=>String(s??''),html:()=>'',mount:()=>{}};
   ctx.admRenderDialogModal=()=>{};ctx.__dialogSpeakers=profiles;ctx.__dialogRows=[{speaker:'A',jp:'hello'},{speaker:'B',jp:'hi'}];
+  ctx.admLoadDialogSpeakers=async()=>profiles;
   vm.runInNewContext(source,ctx);return ctx;
 }
 test('choosing a character autofills name/voice; switching clears override only for that slot',async()=>{
@@ -75,10 +76,10 @@ test('choosing a character autofills name/voice; switching clears override only 
   assert.equal(c.__dialogScene.participants[1].displayName,'Keep');
   ui.character(0,'hadi-pratama');assert.equal(c.__dialogScene.participants[0].characterKey,'daniel-foster');
 });
-test('profile updates do not mutate old snapshots; explicit refresh opts in',()=>{
+test('profile updates do not mutate old snapshots; explicit refresh opts in',async()=>{
   const c=admin(),ui=c.EzDialogueAdmin;ui.toggle(true);
   c.__dialogSpeakers[0].voice_id='new-voice';c.__dialogSpeakers[0].profile_version=2;
-  assert.equal(c.__dialogScene.participants[0].voiceId,'v0');ui.latest(0);
+  assert.equal(c.__dialogScene.participants[0].voiceId,'v0');await ui.latest(0);
   assert.equal(c.__dialogScene.participants[0].voiceId,'new-voice');assert.equal(c.__dialogScene.participants[0].profileVersion,2);
 });
 test('save/load round trip preserves custom snapshot; unmapped rows fail',()=>{

@@ -3381,7 +3381,7 @@ router.post('/module-grammar', asyncHandler(async (req, res) => {
   const result = await query(
     `INSERT INTO module_grammar (module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, sort_order, dialog_scene)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb) RETURNING *`,
-    [moduleId, lessonId || null, pattern, meaning || null, example || null, notes || null, exampleDialog || null, exampleDialogId || null, sortOrder || 0, JSON.stringify(scene)]
+    [moduleId, lessonId || null, pattern, meaning || null, example || null, notes || null, exampleDialog || null, exampleDialogId || null, sortOrder || 0, scene ? JSON.stringify(scene) : null]
   );
   res.status(201).json({ grammar: result.rows[0] });
 }));

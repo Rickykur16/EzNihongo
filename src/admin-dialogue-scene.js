@@ -76,7 +76,12 @@
     async custom(i,on){const scene=ensure(),p=scene.participants[i];if(!on){scene.participants[i]=snapshot(p.characterKey,p.position,p.speaker);}else{p.custom=true;try{await admLoadElevenVoices();}catch{notify('Katalog suara belum tersedia.',true);}}render();},
     field(i,field,value){if(field==='displayName')ensure().participants[i][field]=value;},
     voice(i,id){const v=(window.__elevenVoices||[]).find(v=>v.voiceId===id);Object.assign(ensure().participants[i],{voiceId:v?.voiceId||null,voiceName:v?.name||''});render();},
-    latest(i){const scene=ensure(),p=scene.participants[i];scene.participants[i]=snapshot(p.characterKey,p.position,p.speaker);render();},
+    async latest(i){
+      const scene=ensure(),p=scene.participants[i];
+      try{await admLoadDialogSpeakers(true);}catch(err){notify('Gagal memuat profil terbaru: '+err.message,true);return;}
+      if(current()!==scene || scene.participants[i]!==p)return;
+      scene.participants[i]=snapshot(p.characterKey,p.position,p.speaker);render();
+    },
     editProfile,
     back(){stopPreview();render();},
     previewVoice(){const v=(window.__elevenVoices||[]).find(v=>v.voiceId===document.getElementById('ez-profile-voice').value);const a=document.getElementById('ez-profile-audio');if(!v?.previewUrl){notify('Sampel suara tidak tersedia.',true);return;}a.src=v.previewUrl;a.hidden=false;a.play().catch(()=>notify('Sampel tidak dapat diputar.',true));},
