@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {readFile} from 'node:fs/promises';
+import pg from 'pg';
+
+test('scene migration is additive, repeatable, and preserves existing profile voices', {skip:!process.env.TEST_DATABASE_URL}, async t=>{
+  const url=new URL(process.env.TEST_DATABASE_URL);
+  assert.ok(['postgres:','postgresql:'].includes(url.protocol));
+  assert.ok(['localhost','127.0.0.1','[::1]'].includes(url.hostname));
+  assert.match(url.pathname,/test/i);
+  assert.ok(!url.searchParams.has('host')&&!url.searchParams.has('hostaddr'));
+  const schema='dialogue_scene_test_'+randomUUID().replaceAll('-','');
+  const db=new pg.Client({connectionString:url.href,connectionTimeoutMillis:5000});await db.connect();
+  t.after(async()=>{try{assert.match(schema,/^dialogue_scene_test_[a-f0-9]{32}$/);await db.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);}finally{await db.end();}});
+  await db.query(`CREATE SCHEMA "${schema}";SET search_path TO "${schema}";CREATE TABLE module_grammar(id UUID PRIMARY KEY, example_dialog TEXT);`);
+  await db.query(await readFile(new URL('../migrations/148_dialogue_speakers.sql',import.meta.url),'utf8'));
+  await db.query("INSERT INTO dialogue_speakers(name,voice_id,voice_name) VALUES ('Anna Wijaya','existing-voice','Existing voice'),('アンナ','legacy-voice','Legacy voice')");
+  await db.query("INSERT INTO module_grammar VALUES ($1,'A: old dialogue')",[randomUUID()]);
+  const sql=await readFile(new URL('../migrations/153_dialogue_scenes.sql',import.meta.url),'utf8');
+  await db.query(sql);await db.query(sql);
+  const profiles=(await db.query('SELECT * FROM dialogue_speakers ORDER BY name')).rows;
+  assert.equal(profiles.filter(p=>p.character_key).length,6);
+  assert.equal(profiles.find(p=>p.character_key==='anna-wijaya').voice_id,'existing-voice');
+  assert.equal(profiles.find(p=>p.name==='アンナ').voice_id,'legacy-voice');
+  assert.equal(profiles.find(p=>p.character_key==='daniel-foster').voice_id,'');
+  const grammar=(await db.query('SELECT * FROM module_grammar')).rows[0];
+  assert.equal(grammar.dialog_scene,null);assert.equal(grammar.example_dialog,'A: old dialogue');
+  await assert.rejects(db.query("INSERT INTO dialogue_speakers(name,voice_id,voice_name,character_key) VALUES ('Duplicate','','','anna-wijaya')"),{code:'23505'});
+});

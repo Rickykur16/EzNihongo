@@ -244,6 +244,7 @@
   tr.row-drop-before td { box-shadow: inset 0 2px 0 0 var(--brand-red); }
   tr.row-drop-after td { box-shadow: inset 0 -2px 0 0 var(--brand-red); }
 </style>
+<link rel="stylesheet" href="styles/dialogue-scene.css?v=1">
 </head>
 <body>
 
@@ -254,6 +255,9 @@
 </div>
 
 <script src="api-client.js"></script>
+<script src="assets/dialogue/catalog.js?v=1"></script>
+<script src="src/dialogue-scene.js?v=1"></script>
+<script src="src/admin-dialogue-scene.js?v=1"></script>
 <script src="src/admin-workspace.js?v=operations-20260912"></script>
 <script>
 // ─────────────────────────────────────────────────────────────
@@ -564,6 +568,20 @@ function openModal(html, opts = {}) {
   }
 }
 function closeModal() {
+  modalContent.querySelectorAll('audio').forEach(audio => { audio.pause(); audio.removeAttribute('src'); });
+  // Dialog can be opened from the grammar table inside this same modal.
+  // Restore the live nodes, not innerHTML, so unsaved row values survive.
+  const parent = window.__dialogParentModal;
+  if (parent) {
+    window.__dialogParentModal = null;
+    modalContent.replaceChildren(...parent.nodes);
+    modalContent.className = parent.className;
+    modalContent.style.maxWidth = parent.maxWidth;
+    modal.classList.add('show');
+    _modalDirty = true;
+    _modalDismissOnBackdrop = parent.dismissOnBackdrop;
+    return;
+  }
   modal.classList.remove('show');
   modalContent.innerHTML = '';
   modalContent.className = 'modal';
@@ -4803,13 +4821,15 @@ const GRAMMAR_FIELDS = [
   // were removed rather than merely joined by the new picker.
   { name: 'example_dialog', bodyKey: 'exampleDialog', type: 'textarea', hidden: true },
   { name: 'example_dialog_id', bodyKey: 'exampleDialogId', type: 'textarea', hidden: true },
+  { name: 'dialog_scene', bodyKey: 'dialogScene', type: 'textarea', hidden: true },
 ];
 
 function itemRowHtml(item, fields, kind) {
   const cells = fields.map((f) => {
     if (f.type === 'textarea') {
       const td = f.hidden ? '<td style="display:none;">' : '<td>';
-      return `${td}<textarea name="${f.name}" rows="3" placeholder="${escapeHtml(f.placeholder || '')}" style="${f.style || ''}font-family:var(--font-mono);font-size:11px;">${escapeHtml(item[f.name] || '')}</textarea></td>`;
+      const value = f.name === 'dialog_scene' && item[f.name] ? JSON.stringify(item[f.name]) : (item[f.name] || '');
+      return `${td}<textarea name="${f.name}" rows="3" placeholder="${escapeHtml(f.placeholder || '')}" style="${f.style || ''}font-family:var(--font-mono);font-size:11px;">${escapeHtml(value)}</textarea></td>`;
     }
     return `<td><input name="${f.name}" value="${escapeHtml(item[f.name] || '')}" style="${f.style}" /></td>`;
   }).join('');
@@ -4901,7 +4921,13 @@ window.grmrManageDialog = async (btn) => {
   if (window.__dialogRows.length === 0) window.__dialogRows.push({ speaker: 'N', jp: '', id: '' });
   window.__dialogTargetTa = { jp: jpTa, id: idTa };
   window.__dialogTr = tr;
+  window.__dialogParentModal = tr.closest('#modal-content') ? {
+    nodes: [...modalContent.childNodes], className: modalContent.className,
+    maxWidth: modalContent.style.maxWidth, dismissOnBackdrop: _modalDismissOnBackdrop,
+  } : null;
+  window.EzDialogueAdmin.load(tr);
   admRenderDialogModal();
+  window.markModalClean?.();
 };
 
 // ✨ Generate draft (AI): pakai Pola + Arti baris ini untuk mengarang dialog
@@ -4921,6 +4947,12 @@ window.admDialogGenerate = async (btn) => {
     const dlg = (d.dialog || '').trim();
     if (!dlg) { notify('AI tidak menghasilkan dialog', true); return; }
     window.__dialogRows = admParseDialogPair(dlg, '');
+    if (window.__dialogScene) {
+      window.__dialogRows.forEach(r => {
+        if (r.speaker === 'A') r.speaker = window.__dialogScene.participants[0].speaker;
+        else if (r.speaker === 'B') r.speaker = window.__dialogScene.participants[1].speaker;
+      });
+    }
     notify('Draft dibuat AI — speaker masih kode lama (N/A/B), pilih nama+suara asli per giliran lalu Simpan');
   } catch (err) { notify('Gagal: ' + err.message, true); }
   finally { btn.disabled = false; btn.textContent = orig; admRenderDialogModal(); }
@@ -4951,12 +4983,14 @@ window.admDialogTranslate = async (btn) => {
 };
 
 function admSpeakerOptionsHtml(selected) {
-  const known = (window.__dialogSpeakers || []);
+  const participants = window.__dialogScene?.participants || [];
+  const known = (window.__dialogSpeakers || []).filter(s => !s.character_key && !participants.some(p => p.speaker === s.name));
   const opts = [`<option value="N"${selected === 'N' ? ' selected' : ''}>🎙️ Narator</option>`];
+  opts.push(window.EzDialogueAdmin?.options(selected) || '');
   for (const s of known) {
     opts.push(`<option value="${escapeHtml(s.name)}"${selected === s.name ? ' selected' : ''}>${escapeHtml(s.name)} — ${escapeHtml(s.voice_name)}</option>`);
   }
-  const isKnownOrNarrator = selected === 'N' || known.some((s) => s.name === selected);
+  const isKnownOrNarrator = selected === 'N' || known.some((s) => s.name === selected) || participants.some(p => p.speaker === selected);
   if (!isKnownOrNarrator && selected) {
     opts.push(`<option value="${escapeHtml(selected)}" selected>⚠️ "${escapeHtml(selected)}" (kode lama, pilih ulang)</option>`);
   }
@@ -4965,6 +4999,8 @@ function admSpeakerOptionsHtml(selected) {
 }
 
 function admDialogRowHtml(r, i) {
+  const missingVoice = window.__dialogScene && r.speaker !== 'N' &&
+    !window.__dialogScene.participants.find(p => p.speaker === r.speaker)?.voiceId;
   return `
     <div class="dlg-row" style="border:1px solid #e5e5e5;border-radius:8px;padding:10px;margin-bottom:8px;">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
@@ -4977,7 +5013,7 @@ function admDialogRowHtml(r, i) {
       <textarea rows="2" placeholder="Teks Jepang…" style="width:100%;font-family:var(--font-mono);font-size:12px;margin-bottom:4px;box-sizing:border-box;" oninput="admDialogRowEdit(${i},'jp',this.value)">${escapeHtml(r.jp)}</textarea>
       <textarea rows="2" placeholder="Terjemahan…" style="width:100%;font-size:12px;margin-bottom:6px;box-sizing:border-box;" oninput="admDialogRowEdit(${i},'id',this.value)">${escapeHtml(r.id)}</textarea>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogRowTest(${i}, this)">🔊 Tes giliran ini</button>
+        <button type="button" class="btn btn-ghost btn-sm" ${missingVoice ? 'disabled title="Suara pemeran belum diatur"' : ''} onclick="admDialogRowTest(${i}, this)">🔊 ${missingVoice ? 'Suara belum diatur' : 'Tes giliran ini'}</button>
         <audio id="dlg-audio-${i}" controls style="height:28px;flex:1;display:none;"></audio>
       </div>
     </div>`;
@@ -4989,6 +5025,7 @@ function admDialogModalHtml() {
   const mismatched = rows.filter((r) => !!r.jp.trim() !== !!r.id.trim()).length;
   return `
     <h3>🎭 Dialog</h3>
+    ${window.EzDialogueAdmin?.html() || ''}
     <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 10px;">
       Pilih Narator atau nama speaker asli per giliran (bukan kode A/B) — suaranya
       ditentukan dari nama yang dipilih, bukan ditebak dari kode. Tes audio per
@@ -5011,9 +5048,12 @@ function admDialogModalHtml() {
   `;
 }
 function admRenderDialogModal() {
+  document.querySelectorAll('#modal-content audio').forEach(audio => { audio.pause(); audio.removeAttribute('src'); });
   openModal(admDialogModalHtml());
   const mc = document.getElementById('modal-content');
   if (mc) mc.style.maxWidth = '640px';
+  window.EzDialogueAdmin?.mount();
+  window.markModalDirty?.();
 }
 
 window.admDialogRowEdit = (i, field, value) => { if (window.__dialogRows[i]) window.__dialogRows[i][field] = value; };
@@ -5031,6 +5071,7 @@ window.admDialogRowSpeakerChange = async (i, sel) => {
     return;
   }
   window.__dialogRows[i].speaker = sel.value;
+  admRenderDialogModal();
 };
 
 // + Speaker baru: nama karakter (bebas, tampil di dialog) dipasangkan dengan
@@ -5127,7 +5168,7 @@ window.admDialogRowTest = async (i, btn) => {
   const orig = btn.textContent; btn.disabled = true; btn.textContent = '…';
   try {
     const text = `${r.speaker}: ${r.jp.trim()}`;
-    const resp = await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({ text }) });
+    const resp = await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({ text, dialogScene: window.__dialogScene || null }) });
     if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || e.error || ('HTTP ' + resp.status)); }
     const blob = await resp.blob();
     const audio = document.getElementById(`dlg-audio-${i}`);
@@ -5136,6 +5177,8 @@ window.admDialogRowTest = async (i, btn) => {
   finally { btn.disabled = false; btn.textContent = orig; }
 };
 window.admDialogSave = () => {
+  try { window.EzDialogueAdmin?.save(window.__dialogTr); }
+  catch (err) { notify(err.message, true); return; }
   const { jp, id } = admSerializeDialogPair(window.__dialogRows || []);
   const target = window.__dialogTargetTa;
   if (target) { target.jp.value = jp; target.id.value = id; }
@@ -5735,6 +5778,10 @@ window.saveItemRow = async (btn) => {
   for (const f of fields) {
     const input = tr.querySelector(`[name="${f.name}"]`);
     body[f.bodyKey || f.name] = (input && input.value.trim()) || null;
+  }
+  if (kind === 'grammar') {
+    try { body.dialogScene = body.dialogScene ? JSON.parse(body.dialogScene) : null; }
+    catch { notify('Pengaturan karakter tidak valid. Buka kembali editor Dialog.', true); return; }
   }
   // Validation
   if (kind === 'vocab' && !body.japanese) { notify('Japanese wajib diisi', true); return; }

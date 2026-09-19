@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { dialogueCatalog, normalizeDialogScene, sceneTurnVoices, validateSceneVoices } from '../dialogue-scene.js';
 import fs from 'fs';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
@@ -3374,10 +3375,13 @@ Balas HANYA JSON valid:
 router.post('/module-grammar', asyncHandler(async (req, res) => {
   const { moduleId, lessonId, pattern, meaning, example, notes, exampleDialog, exampleDialogId, sortOrder } = req.body || {};
   if (!moduleId || !pattern) return res.status(400).json({ error: 'moduleId and pattern required' });
+  let scene;
+  try { scene = normalizeDialogScene(req.body.dialogScene); }
+  catch (err) { return res.status(400).json({ error: err.message }); }
   const result = await query(
-    `INSERT INTO module_grammar (module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, sort_order)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-    [moduleId, lessonId || null, pattern, meaning || null, example || null, notes || null, exampleDialog || null, exampleDialogId || null, sortOrder || 0]
+    `INSERT INTO module_grammar (module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, sort_order, dialog_scene)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb) RETURNING *`,
+    [moduleId, lessonId || null, pattern, meaning || null, example || null, notes || null, exampleDialog || null, exampleDialogId || null, sortOrder || 0, JSON.stringify(scene)]
   );
   res.status(201).json({ grammar: result.rows[0] });
 }));
@@ -3398,6 +3402,9 @@ router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
   const hasNotes = has('notes');
   const hasExampleDialog = has('exampleDialog');
   const hasSortOrder = has('sortOrder');
+  let scene;
+  try { scene = has('dialogScene') ? normalizeDialogScene(req.body.dialogScene) : null; }
+  catch (err) { return res.status(400).json({ error: err.message }); }
   const result = await query(
     `UPDATE module_grammar SET
        lesson_id = CASE WHEN $9::boolean THEN $2 ELSE lesson_id END,
@@ -3408,10 +3415,11 @@ router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
        example_dialog = CASE WHEN $16::boolean THEN $7 ELSE example_dialog END,
        sort_order = CASE WHEN $17::boolean THEN $8 ELSE sort_order END,
        example_dialog_id = CASE WHEN $11::boolean THEN $10 ELSE example_dialog_id END,
+       dialog_scene = CASE WHEN $18::boolean THEN $19::jsonb ELSE dialog_scene END,
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
     [req.params.id, lessonId || null, pattern, meaning, example, notes, exampleDialog, sortOrder, hasLesson, exampleDialogId || null, hasDialogId,
-      hasPattern, hasMeaning, hasExample, hasNotes, hasExampleDialog, hasSortOrder]
+      hasPattern, hasMeaning, hasExample, hasNotes, hasExampleDialog, hasSortOrder, has('dialogScene'), scene ? JSON.stringify(scene) : null]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ grammar: result.rows[0] });
@@ -4949,9 +4957,13 @@ router.post('/tts/preview', asyncHandler(async (req, res) => {
   const turns = parseDialog(text);
   const isDialog = !!turns;
   const registry = isDialog ? await loadSpeakerRegistry() : null;
-  const turnVoices = isDialog
-    ? turns.map((t, i) => voiceForSpeaker(t.speaker, i, registry))
-    : [{ voiceId: TTS_ELEVEN_VOICE_ID, role: 'single' }];
+  let scene, turnVoices;
+  try {
+    scene = normalizeDialogScene(req.body.dialogScene);
+    turnVoices = isDialog
+      ? sceneTurnVoices(turns, scene, (t, i) => voiceForSpeaker(t.speaker, i, registry))
+      : [{ voiceId: TTS_ELEVEN_VOICE_ID, role: 'single' }];
+  } catch (err) { return res.status(400).json({error: err.message}); }
   const voices = turnVoices.map((v) => v.voiceId);
 
   // Cek cache dulu — kalau hit, gak kena cost ElevenLabs.
@@ -4970,6 +4982,7 @@ router.post('/tts/preview', asyncHandler(async (req, res) => {
   // Generate baru.
   let combined;
   try {
+    await validateSceneVoices(scene, fetchElevenVoices);
     if (isDialog) {
       const buffers = [];
       for (let i = 0; i < turns.length; i++) {
@@ -5024,7 +5037,7 @@ router.get('/elevenlabs/voices', asyncHandler(async (req, res) => {
 // migration for why this isn't a repeat of the reverted "Bacaan & audio"
 // pipeline.
 router.get('/dialogue-speakers', asyncHandler(async (req, res) => {
-  const r = await query('SELECT id, name, voice_id, voice_name FROM dialogue_speakers ORDER BY name ASC');
+  const r = await query('SELECT id, name, voice_id, voice_name, character_key, default_display_name, profile_version FROM dialogue_speakers ORDER BY name ASC');
   res.json({ speakers: r.rows });
 }));
 
@@ -5048,6 +5061,25 @@ router.post('/dialogue-speakers', asyncHandler(async (req, res) => {
 
 router.put('/dialogue-speakers/:id', asyncHandler(async (req, res) => {
   if (!isCanonicalUuid(req.params.id)) return res.status(400).json({ error: 'invalid id' });
+  const current = await query('SELECT * FROM dialogue_speakers WHERE id = $1', [req.params.id]);
+  const profile = current.rows[0];
+  if (!profile) return res.status(404).json({ error: 'not_found' });
+  if (profile.character_key) {
+    const character = dialogueCatalog.characters.find(c => c.key === profile.character_key);
+    const displayName = String(req.body?.displayName || '').trim();
+    const voiceId = String(req.body?.voiceId || '').trim();
+    if (!character || !displayName || displayName.length > 40) return res.status(400).json({error: 'Nama tampilan tidak valid.'});
+    let voice = null;
+    if (voiceId) {
+      try { voice = (await fetchElevenVoices()).find(v => v.voiceId === voiceId); }
+      catch { return res.status(502).json({error: 'Katalog suara tidak tersedia.'}); }
+      if (!voice) return res.status(400).json({error: 'Pilih suara dari katalog ElevenLabs.'});
+    }
+    const saved = await query(`UPDATE dialogue_speakers SET default_display_name = $2,
+      voice_id = $3, voice_name = $4, profile_version = profile_version + 1
+      WHERE id = $1 RETURNING *`, [req.params.id, displayName, voiceId, voice?.name || '']);
+    return res.json({speaker: saved.rows[0]});
+  }
   const name = String((req.body || {}).name || '').trim().slice(0, 30);
   const voiceId = String((req.body || {}).voiceId || '').trim().slice(0, 100);
   const voiceName = String((req.body || {}).voiceName || '').trim().slice(0, 100);
@@ -5068,6 +5100,8 @@ router.put('/dialogue-speakers/:id', asyncHandler(async (req, res) => {
 
 router.delete('/dialogue-speakers/:id', asyncHandler(async (req, res) => {
   if (!isCanonicalUuid(req.params.id)) return res.status(400).json({ error: 'invalid id' });
+  const profile = await query('SELECT character_key FROM dialogue_speakers WHERE id = $1', [req.params.id]);
+  if (profile.rows[0]?.character_key) return res.status(409).json({error: 'Karakter resmi tidak dapat dihapus.'});
   // No FK from anywhere to this table (see migration 148) — a dialogue
   // referencing this name by its plain-text prefix keeps working after
   // delete, it just falls back to the pattern/alternation guess in

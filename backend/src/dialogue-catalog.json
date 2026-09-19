@@ -1,0 +1,17 @@
+{
+  "characters": [
+    {"key":"anna-wijaya","name":"Anna Wijaya","displayName":"アンナ","asset":"anna","color":"#b74746"},
+    {"key":"hadi-pratama","name":"Hadi Pratama","displayName":"ハディ","asset":"hadi","color":"#345a80"},
+    {"key":"aoi-takahashi","name":"Aoi Takahashi","displayName":"葵","asset":"aoi","color":"#28735f"},
+    {"key":"ren-mori","name":"Ren Mori","displayName":"蓮","asset":"ren","color":"#926716"},
+    {"key":"claire-bennett","name":"Claire Bennett","displayName":"クレア","asset":"claire","color":"#883c62"},
+    {"key":"daniel-foster","name":"Daniel Foster","displayName":"ダニエル","asset":"daniel","color":"#237780"}
+  ],
+  "backgrounds": [
+    {"key":"classroom","name":"Kelas","asset":"kelas"},
+    {"key":"cafe","name":"Kafe","asset":"kafe"},
+    {"key":"station","name":"Stasiun","asset":"stasiun"},
+    {"key":"park","name":"Taman","asset":"taman"},
+    {"key":"none","name":"Tanpa latar","asset":null}
+  ]
+}
