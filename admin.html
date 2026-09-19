@@ -244,7 +244,7 @@
   tr.row-drop-before td { box-shadow: inset 0 2px 0 0 var(--brand-red); }
   tr.row-drop-after td { box-shadow: inset 0 -2px 0 0 var(--brand-red); }
 </style>
-<link rel="stylesheet" href="styles/dialogue-scene.css?v=1">
+<link rel="stylesheet" href="styles/dialogue-scene.css?v=2">
 </head>
 <body>
 
@@ -256,8 +256,10 @@
 
 <script src="api-client.js"></script>
 <script src="assets/dialogue/catalog.js?v=1"></script>
-<script src="src/dialogue-scene.js?v=1"></script>
-<script src="src/admin-dialogue-scene.js?v=1"></script>
+<script src="src/dialogue-furigana.js?v=1"></script>
+<script src="src/admin-dialogue-furigana.js?v=1"></script>
+<script src="src/dialogue-scene.js?v=2"></script>
+<script src="src/admin-dialogue-scene.js?v=2"></script>
 <script src="src/admin-workspace.js?v=operations-20260912"></script>
 <script>
 // ─────────────────────────────────────────────────────────────
@@ -4822,13 +4824,14 @@ const GRAMMAR_FIELDS = [
   { name: 'example_dialog', bodyKey: 'exampleDialog', type: 'textarea', hidden: true },
   { name: 'example_dialog_id', bodyKey: 'exampleDialogId', type: 'textarea', hidden: true },
   { name: 'dialog_scene', bodyKey: 'dialogScene', type: 'textarea', hidden: true },
+  { name: 'dialog_furigana', bodyKey: 'dialogFurigana', type: 'textarea', hidden: true },
 ];
 
 function itemRowHtml(item, fields, kind) {
   const cells = fields.map((f) => {
     if (f.type === 'textarea') {
       const td = f.hidden ? '<td style="display:none;">' : '<td>';
-      const value = f.name === 'dialog_scene' && item[f.name] ? JSON.stringify(item[f.name]) : (item[f.name] || '');
+      const value = ['dialog_scene','dialog_furigana'].includes(f.name) && item[f.name] ? JSON.stringify(item[f.name]) : (item[f.name] || '');
       return `${td}<textarea name="${f.name}" rows="3" placeholder="${escapeHtml(f.placeholder || '')}" style="${f.style || ''}font-family:var(--font-mono);font-size:11px;">${escapeHtml(value)}</textarea></td>`;
     }
     return `<td><input name="${f.name}" value="${escapeHtml(item[f.name] || '')}" style="${f.style}" /></td>`;
@@ -4926,6 +4929,7 @@ window.grmrManageDialog = async (btn) => {
     maxWidth: modalContent.style.maxWidth, dismissOnBackdrop: _modalDismissOnBackdrop,
   } : null;
   window.EzDialogueAdmin.load(tr);
+  window.EzDialogueFuriganaAdmin.load(tr);
   admRenderDialogModal();
   window.markModalClean?.();
 };
@@ -5011,6 +5015,7 @@ function admDialogRowHtml(r, i) {
         <button type="button" class="btn btn-danger btn-sm" onclick="admDialogRowDelete(${i})" title="Hapus giliran">×</button>
       </div>
       <textarea rows="2" placeholder="Teks Jepang…" style="width:100%;font-family:var(--font-mono);font-size:12px;margin-bottom:4px;box-sizing:border-box;" oninput="admDialogRowEdit(${i},'jp',this.value)">${escapeHtml(r.jp)}</textarea>
+      <div id="dlg-furigana-${i}">${window.EzDialogueFuriganaAdmin?.fields(r,i) || ''}</div>
       <textarea rows="2" placeholder="Terjemahan…" style="width:100%;font-size:12px;margin-bottom:6px;box-sizing:border-box;" oninput="admDialogRowEdit(${i},'id',this.value)">${escapeHtml(r.id)}</textarea>
       <div style="display:flex;gap:8px;align-items:center;">
         <button type="button" class="btn btn-ghost btn-sm" ${missingVoice ? 'disabled title="Suara pemeran belum diatur"' : ''} onclick="admDialogRowTest(${i}, this)">🔊 ${missingVoice ? 'Suara belum diatur' : 'Tes giliran ini'}</button>
@@ -5056,7 +5061,11 @@ function admRenderDialogModal() {
   window.markModalDirty?.();
 }
 
-window.admDialogRowEdit = (i, field, value) => { if (window.__dialogRows[i]) window.__dialogRows[i][field] = value; };
+window.admDialogRowEdit = (i, field, value) => {
+  if (!window.__dialogRows[i]) return;
+  window.__dialogRows[i][field] = value;
+  if (field === 'jp') window.EzDialogueFuriganaAdmin?.changed(i);
+};
 window.admDialogRowMove = (i, dir) => {
   const rows = window.__dialogRows; const j = i + dir;
   if (j < 0 || j >= rows.length) return;
@@ -5177,6 +5186,8 @@ window.admDialogRowTest = async (i, btn) => {
   finally { btn.disabled = false; btn.textContent = orig; }
 };
 window.admDialogSave = () => {
+  try { window.EzDialogueFuriganaAdmin?.save(window.__dialogTr); }
+  catch (err) { notify(err.message, true); return; }
   try { window.EzDialogueAdmin?.save(window.__dialogTr); }
   catch (err) { notify(err.message, true); return; }
   const { jp, id } = admSerializeDialogPair(window.__dialogRows || []);
@@ -5782,6 +5793,8 @@ window.saveItemRow = async (btn) => {
   if (kind === 'grammar') {
     try { body.dialogScene = body.dialogScene ? JSON.parse(body.dialogScene) : null; }
     catch { notify('Pengaturan karakter tidak valid. Buka kembali editor Dialog.', true); return; }
+    try { body.dialogFurigana = body.dialogFurigana ? JSON.parse(body.dialogFurigana) : null; }
+    catch { notify('Bacaan furigana tidak valid. Buka kembali editor Dialog.', true); return; }
   }
   // Validation
   if (kind === 'vocab' && !body.japanese) { notify('Japanese wajib diisi', true); return; }

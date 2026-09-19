@@ -19,7 +19,7 @@ const fixture=()=>({schemaVersion:1,enabled:true,backgroundKey:'classroom',parti
   {characterKey:'anna-wijaya',position:'left',speaker:'A',displayName:'Anna',voiceId:'anna-voice',voiceName:'Anna Voice',profileVersion:1,custom:false},
   {characterKey:'hadi-pratama',position:'right',speaker:'B',displayName:'Hadi',voiceId:'hadi-voice',voiceName:'Hadi Voice',profileVersion:1,custom:false}
 ]});
-let saved=fixture(),known=true,grammarMatches=true,available=['anna-voice','hadi-voice'],upstream=[],cache=new Map(),writes=[];
+let saved=fixture(),savedFurigana=null,known=true,grammarMatches=true,available=['anna-voice','hadi-voice'],upstream=[],cache=new Map(),writes=[];
 const profiles=[{id, name:'Anna Wijaya', character_key:'anna-wijaya',default_display_name:'Anna',voice_id:'anna-voice',voice_name:'Anna Voice',profile_version:1}];
 mock.method(db,'query',async(sql,p=[])=>{
   if(sql.includes('FROM admin_emails'))return{rows:[]};
@@ -34,8 +34,8 @@ mock.method(db,'query',async(sql,p=[])=>{
   if(sql.includes('SELECT character_key FROM dialogue_speakers'))return{rows:[{character_key:'anna-wijaya'}]};
   if(sql.includes('FROM dialogue_speakers ORDER'))return{rows:profiles};
   if(sql.includes('UPDATE dialogue_speakers SET default_display_name')){Object.assign(profiles[0],{default_display_name:p[1],voice_id:p[2],voice_name:p[3],profile_version:profiles[0].profile_version+1});return{rows:profiles};}
-  if(sql.includes('INSERT INTO module_grammar')){saved=JSON.parse(p[9]);return{rows:[{id,dialog_scene:saved}]};}
-  if(sql.includes('UPDATE module_grammar SET')){if(p[17])saved=p[18]?JSON.parse(p[18]):null;return{rows:[{id,dialog_scene:saved}]};}
+  if(sql.includes('INSERT INTO module_grammar')){saved=JSON.parse(p[9]);savedFurigana=p[10]?JSON.parse(p[10]):null;return{rows:[{id,dialog_scene:saved,dialog_furigana:savedFurigana}]};}
+  if(sql.includes('UPDATE module_grammar SET')){if(p[17])saved=p[18]?JSON.parse(p[18]):null;if(p[19])savedFurigana=p[20]?JSON.parse(p[20]):null;return{rows:[{id,dialog_scene:saved,dialog_furigana:savedFurigana}]};}
   throw Error('Unexpected query: '+sql);
 });
 const realFetch=globalThis.fetch;
@@ -99,4 +99,14 @@ test('admin preview honors custom snapshot and refuses missing voice',async()=>{
   assert.equal(r.status,200);assert.ok(upstream.some(u=>u.includes('/text-to-speech/anna-voice')));
   const s=fixture();s.participants[0].voiceId=null;
   assert.equal((await request('/api/admin/tts/preview',{method:'POST',body:{text:'A: こんにちは。',dialogScene:s}})).status,400);
+});
+test('furigana persists independently, rejects unsafe readings, preserves omissions and supports clearing',async()=>{
+  const furigana={schemaVersion:1,lines:[{speaker:'A',text:'今日',readings:[{start:0,end:2,reading:'きょう'}]}]};
+  let r=await request('/api/admin/module-grammar/'+id,{method:'PUT',body:{dialogFurigana:furigana}});
+  assert.equal(r.status,200);assert.deepEqual(r.body.grammar.dialog_furigana,furigana);
+  r=await request('/api/admin/module-grammar/'+id,{method:'PUT',body:{meaning:'new meaning'}});
+  assert.deepEqual(r.body.grammar.dialog_furigana,furigana);
+  r=await request('/api/admin/module-grammar/'+id,{method:'PUT',body:{dialogFurigana:{schemaVersion:1,lines:[{...furigana.lines[0],readings:[{start:0,end:2,reading:'<script>'}]}]}}});
+  assert.equal(r.status,400);
+  r=await request('/api/admin/module-grammar/'+id,{method:'PUT',body:{dialogFurigana:null}});assert.equal(r.body.grammar.dialog_furigana,null);
 });

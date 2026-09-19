@@ -4518,7 +4518,7 @@
 </style>
 <link rel="stylesheet" href="styles/learning-placement.css?v=20260912-2"/>
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
-<link rel="stylesheet" href="styles/dialogue-scene.css?v=1">
+<link rel="stylesheet" href="styles/dialogue-scene.css?v=2">
 </head>
 <body>
 
@@ -4556,7 +4556,8 @@
 
 <script src="api-client.js"></script>
 <script src="assets/dialogue/catalog.js?v=1"></script>
-<script src="src/dialogue-scene.js?v=1"></script>
+<script src="src/dialogue-furigana.js?v=1"></script>
+<script src="src/dialogue-scene.js?v=2"></script>
 <script src="learning-state.js?v=20260911-1"></script>
 <script>
 // ═══════════════════════════════════════════════
@@ -8033,7 +8034,7 @@ function renderLessonGrammar(lesson) {
               </button>
               <div class="grammar-block-content">
                 ${lesson.bunpouFlow?.directions?.[g.id] ? `<p class="grammar-listening-direction" style="margin:0 0 8px;font-size:13px;color:#525252;">🎧 ${escapeHtml(lesson.bunpouFlow.directions[g.id])}</p>` : ''}
-                ${grammarKaraokeHtml(dialog, `g${i}`, g.example_dialog_id || '', g.dialog_scene, g.id)}
+                ${grammarKaraokeHtml(dialog, `g${i}`, g.example_dialog_id || '', g.dialog_scene, g.id, g.dialog_furigana)}
               </div>
             </div>` : ''}
             ${g.notes ? `<div class="grammar-notes">${escapeHtml(g.notes)}</div>` : ''}
@@ -8341,26 +8342,26 @@ function parseDialogIdMap(dialogIdText) {
 // Static transcript (semua text keliatan) sebelum audio di-load: narator →
 // kartu Situasi, sisanya → chat bubble. Struktur identik dgn versi audio
 // supaya layout tidak loncat saat audio selesai load.
-function renderKaraokeStatic(text, key, dialogIdText, dialogScene) {
+function renderKaraokeStatic(text, key, dialogIdText, dialogScene, furigana) {
   const turns = parseDialogLinesFE(text);
   const idMap = parseDialogIdMap(dialogIdText);
   const styles = gkSpeakerStyles(turns, dialogScene);
   const rows = turns.map((t, i) => ({
     speaker: t.speaker,
     displayName: dialogScene?.participants?.find(p => p.speaker === t.speaker)?.displayName || t.displayName || t.speaker,
-    inner: escapeHtml(t.text),
+    inner: window.EzFurigana ? EzFurigana.html(t.text,EzFurigana.lineFor(furigana,i,t)) : escapeHtml(t.text),
     idText: idMap[i] || '',
     index: i,
   }));
   return gkComposeHtml(rows, key, styles);
 }
 
-function grammarKaraokeHtml(dialogText, key, dialogIdText, dialogScene = null, grammarId = '') {
+function grammarKaraokeHtml(dialogText, key, dialogIdText, dialogScene = null, grammarId = '', furigana = null) {
   const arti = gkGetArtiMode();
   const speed = gkGetSpeed();
   const speeds = [0.75, 1, 1.25];
   return `
-    <div class="grammar-karaoke" id="gk-${key}" data-dialog="${escapeHtml(dialogText)}" data-dialog-id="${escapeHtml(dialogIdText || '')}" data-dialog-scene="${escapeHtml(JSON.stringify(dialogScene))}" data-audio-ready="${dialogScene?.audioReady !== false}" data-grammar-id="${escapeHtml(grammarId)}" data-arti="${arti}" data-speed="${speed}">
+    <div class="grammar-karaoke" id="gk-${key}" data-dialog="${escapeHtml(dialogText)}" data-dialog-id="${escapeHtml(dialogIdText || '')}" data-dialog-scene="${escapeHtml(JSON.stringify(dialogScene))}" data-dialog-furigana="${escapeHtml(JSON.stringify(furigana))}" data-furigana="${window.EzFurigana?.preference() === false ? 'off' : 'on'}" data-audio-ready="${dialogScene?.audioReady !== false}" data-grammar-id="${escapeHtml(grammarId)}" data-arti="${arti}" data-speed="${speed}">
       <div class="gk-toolbar">
         <button type="button" class="gk-play" ${dialogScene?.audioReady === false ? 'disabled' : ''} onclick="window.grammarKaraokePlay('${key}')">▶ Putar dialog</button>
         <div class="gk-seg gk-speed">
@@ -8368,10 +8369,11 @@ function grammarKaraokeHtml(dialogText, key, dialogIdText, dialogScene = null, g
         </div>
         <span class="gk-tool-div"></span>
         <button type="button" class="gk-arti-toggle" onclick="window.gkCycleArti('${key}',this)">${gkArtiLabel(arti)}</button>
+        <button type="button" class="gk-furigana-toggle" aria-pressed="${window.EzFurigana?.preference() !== false}" onclick="EzFurigana.toggle()">${window.EzFurigana?.label(EzFurigana.preference()) || 'Furigana: aktif'}</button>
         <span class="gk-status">${dialogScene?.audioReady === false ? 'Audio belum tersedia' : ''}</span>
       </div>
-      ${window.EzDialogue?.html(dialogScene, parseDialogLinesFE(dialogText)) || ''}
-      <div class="gk-transcript">${renderKaraokeStatic(dialogText, key, dialogIdText, dialogScene)}</div>
+      ${window.EzDialogue?.html(dialogScene, parseDialogLinesFE(dialogText), furigana) || ''}
+      <div class="gk-transcript">${renderKaraokeStatic(dialogText, key, dialogIdText, dialogScene, furigana)}</div>
     </div>
   `;
 }
@@ -8519,7 +8521,9 @@ window.grammarKaraokePlay = async (key) => {
     // Transkrip sekarang IDENTIK dengan tampilan statis sebelum play (tidak
     // ada lagi span per-kata buat highlight karaoke) — pakai ulang fungsi
     // yang sama, bukan duplikat logikanya.
-    transcript.innerHTML = renderKaraokeStatic(dialog, key, el.dataset.dialogId || '', window.EzDialogue?.read(el));
+    let furigana;
+    try { furigana = JSON.parse(el.dataset.dialogFurigana || 'null'); } catch { furigana = null; }
+    transcript.innerHTML = renderKaraokeStatic(dialog, key, el.dataset.dialogId || '', window.EzDialogue?.read(el), furigana);
     st = { segments: segs, curSeg: 0, audio: null, stopped: false, ended: false, playOnce: false, playBtn, rate: parseFloat(el.dataset.speed) || 1 };
     window.__gk[key] = st;
     if (statusEl) statusEl.textContent = '';

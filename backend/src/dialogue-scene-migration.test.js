@@ -19,6 +19,8 @@ test('scene migration is additive, repeatable, and preserves existing profile vo
   await db.query("INSERT INTO module_grammar VALUES ($1,'A: old dialogue')",[randomUUID()]);
   const sql=await readFile(new URL('../migrations/153_dialogue_scenes.sql',import.meta.url),'utf8');
   await db.query(sql);await db.query(sql);
+  const readingsSql=await readFile(new URL('../migrations/154_dialogue_furigana.sql',import.meta.url),'utf8');
+  await db.query(readingsSql);await db.query(readingsSql);
   const profiles=(await db.query('SELECT * FROM dialogue_speakers ORDER BY name')).rows;
   assert.equal(profiles.filter(p=>p.character_key).length,6);
   assert.equal(profiles.find(p=>p.character_key==='anna-wijaya').voice_id,'existing-voice');
@@ -26,5 +28,6 @@ test('scene migration is additive, repeatable, and preserves existing profile vo
   assert.equal(profiles.find(p=>p.character_key==='daniel-foster').voice_id,'');
   const grammar=(await db.query('SELECT * FROM module_grammar')).rows[0];
   assert.equal(grammar.dialog_scene,null);assert.equal(grammar.example_dialog,'A: old dialogue');
+  assert.equal(grammar.dialog_furigana,null);
   await assert.rejects(db.query("INSERT INTO dialogue_speakers(name,voice_id,voice_name,character_key) VALUES ('Duplicate','','','anna-wijaya')"),{code:'23505'});
 });

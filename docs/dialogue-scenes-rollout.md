@@ -9,7 +9,8 @@ the lesson-picker fix from PR #328 as its base; it does not activate the pilot.
 
 ## Deployment
 
-1. Run the normal migration pipeline, including `153_dialogue_scenes.sql`, before
+1. Run the normal migration pipeline, including `153_dialogue_scenes.sql` and
+   `154_dialogue_furigana.sql`, before
    serving the new API and frontend. Migration 148 must already be applied.
 2. Deploy backend and static assets from the same release. There are no additional
    runtime dependencies or provider credentials in frontend code.
@@ -47,6 +48,30 @@ The source manifest is `backend/src/dialogue-catalog.json`; the checked-in brows
 catalog at `assets/dialogue/catalog.js` must match it. Backgrounds are 77-168 KB at
 desktop width and 28-56 KB at mobile width. Characters are 23-30 KB plus 14-17 KB
 per silhouette mask. Only the opened student dialogue loads scene images.
+
+## Furigana
+
+The student toolbar has an independent Furigana toggle, on by default, persisted
+in localStorage. It affects both the stage caption and the full transcript,
+including narrator lines. It does not change translation mode or audio playback.
+
+The existing per-turn editor has a reading input for each contiguous kanji group,
+with a live ruby preview. Admin enters or corrects the kana reading directly;
+there is no automatic reading guess or provider call. Empty readings are allowed
+and leave those kanji unannotated. Save into the row, then save the grammar row.
+This also works for legacy dialogues without a visual character scene.
+
+Annotations are stored separately in `module_grammar.dialog_furigana`, using
+speaker/text snapshots and exact UTF-16 character ranges. Reordering editor rows
+moves their annotations with them. Editing Japanese text clears its old readings;
+stale snapshots from other content edits render as plain text. Readings and source
+text are escaped, never accepted as HTML. Japanese TTS input and cache keys remain
+unchanged. Both browser and server use `src/dialogue-furigana.js` for validation.
+
+Run `node --test src/dialogue-furigana.test.js src/dialogue-scene-api.test.js`
+from backend for annotation validation, stale text, editor persistence and TTS
+separation. Browser QA additionally checks toggle/reload, corrections, per-turn
+audio captions and mobile layout with real ruby markup.
 
 ## Verification
 

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import dialogueFurigana from '../../../src/dialogue-furigana.js';
 import { publicDialogScene } from '../dialogue-scene.js';
 import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
@@ -107,7 +108,7 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
         [moduleIds]
       ),
       query(
-        `SELECT id, module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, dialog_scene, sort_order
+        `SELECT id, module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, dialog_scene, dialog_furigana, sort_order
          FROM module_grammar WHERE module_id = ANY($1::uuid[])
          ORDER BY sort_order ASC, created_at ASC`,
         [moduleIds]
@@ -139,6 +140,8 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
     }
     for (const g of grammar.rows) {
       g.dialog_scene = publicDialogScene(g.dialog_scene);
+      try { g.dialog_furigana = dialogueFurigana.normalize(g.dialog_furigana); }
+      catch { g.dialog_furigana = null; }
       g.examples = grammarExamplesByGrammar[g.id] || [];
       (grammarByModule[g.module_id] ||= []).push(g);
       if (g.lesson_id) (grammarByLesson[g.lesson_id] ||= []).push(g);

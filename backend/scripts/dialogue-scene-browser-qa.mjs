@@ -19,8 +19,8 @@ const modalSource=slice(admin,'let _modalDirty = false;', '// User-initiated dis
 const styles=[...welcome.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m=>m[1]).join('\n');
 const fixture=`<!doctype html><html lang="id"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/styles/tokens.css"><link rel="stylesheet" href="/styles/components.css"><style>${styles}
 body{display:block!important;background:#f4f6f5!important;margin:0!important;min-height:100vh;padding:16px!important;box-sizing:border-box}main{max-width:850px;margin:auto}.qa-title{font:600 18px system-ui;margin:0 0 16px}.qa-note{font:12px system-ui;color:#666}#modal-content{background:white;padding:16px;max-width:640px;margin:auto;box-sizing:border-box;width:100%}#modal-content textarea{max-width:100%}input,select,button,textarea{font-family:system-ui;max-width:100%;box-sizing:border-box}select,input,button{padding:7px}.modal-actions{display:flex;gap:8px;margin-top:12px}.btn{cursor:pointer;border:1px solid #ccc;background:white;border-radius:4px}.btn-primary{background:#b81e18;color:white}#saved-row{display:none}
-</style><link rel="stylesheet" href="/styles/dialogue-scene.css"><main><h1 class="qa-title">Dialog Bunpou</h1><p class="qa-note">Pratinjau integrasi lokal. Data uji; suara ElevenLabs belum terhubung.</p><div id="student"></div><div id="modal"><div id="modal-content"></div></div><table id="saved-row"><tr><td><textarea name="example_dialog"></textarea><textarea name="example_dialog_id"></textarea><textarea name="dialog_scene"></textarea></td></tr></table></main>
-<script src="/assets/dialogue/catalog.js"></script><script src="/src/dialogue-scene.js"></script><script src="/src/admin-dialogue-scene.js"></script>
+</style><link rel="stylesheet" href="/styles/dialogue-scene.css"><main><h1 class="qa-title">Dialog Bunpou</h1><p class="qa-note">Pratinjau integrasi lokal. Data uji; suara ElevenLabs belum terhubung.</p><div id="student"></div><div id="modal"><div id="modal-content"></div></div><table id="saved-row"><tr><td><textarea name="example_dialog"></textarea><textarea name="example_dialog_id"></textarea><textarea name="dialog_scene"></textarea><textarea name="dialog_furigana"></textarea></td></tr></table></main>
+<script src="/assets/dialogue/catalog.js"></script><script src="/src/dialogue-furigana.js"></script><script src="/src/admin-dialogue-furigana.js"></script><script src="/src/dialogue-scene.js"></script><script src="/src/admin-dialogue-scene.js"></script>
 <script>window.escapeHtml=EzDialogue.esc;window.notify=(text)=>{window.lastNotice=text};window.modal=document.getElementById('modal');window.modalContent=document.getElementById('modal-content');${modalSource}</script><script>${studentSource}</script><script>${adminSource}</script>
 <script>
 window.__dialogSpeakers=EZ_DIALOGUE_CATALOG.characters.map((c,i)=>({id:'profile-'+i,name:c.name,character_key:c.key,default_display_name:c.displayName,voice_id:'voice'+i,voice_name:'Suara contoh '+(i+1),profile_version:1}));
@@ -28,8 +28,10 @@ window.__elevenVoices=__dialogSpeakers.map(p=>({voiceId:p.voice_id,name:p.voice_
 window.api=async(url,opts)=>{if(url==='/admin/elevenlabs/voices')return{voices:__elevenVoices};if(url==='/admin/dialogue-speakers')return{speakers:__dialogSpeakers};if(url.startsWith('/admin/dialogue-speakers/')&&opts?.method==='PUT'){const p=__dialogSpeakers.find(p=>p.id===url.split('/').pop()),b=JSON.parse(opts.body);Object.assign(p,{default_display_name:b.displayName,voice_id:b.voiceId,voice_name:__elevenVoices.find(v=>v.voiceId===b.voiceId)?.name||'',profile_version:p.profile_version+1});return{speaker:p};}throw Error(url)};
 window.__dialogRows=admParseDialogPair('N: 学校で話しています。\\nA: 今日、図書館へ行きますか。\\nB: はい、三時ごろ行きます。','N: Di sekolah.\\nA: Hari ini ke perpustakaan?\\nB: Ya, sekitar pukul tiga.');
 window.__dialogTr=document.querySelector('#saved-row tr');window.__dialogTargetTa={jp:__dialogTr.querySelector('[name="example_dialog"]'),id:__dialogTr.querySelector('[name="example_dialog_id"]')};
+const sampleReadings={'学校':'がっこう','話':'はな','今日':'きょう','図書館':'としょかん','行':'い','三時':'さんじ'};
+__dialogRows.forEach(r=>{r.furiganaText=r.jp.trim();r.furigana=EzFurigana.groups(r.furiganaText).map(s=>({start:s.start,end:s.end,reading:sampleReadings[s.text]}));});
 window.__dialogScene=null;EzDialogueAdmin.toggle(true);
-window.renderStudent=()=>{const pair=admSerializeDialogPair(__dialogRows);document.getElementById('student').innerHTML='<div class="grammar-dialog-block grammar-collapsible"><button onclick="grammarBlockToggle(this)">Dialog contoh</button>'+grammarKaraokeHtml(pair.jp,'qa',pair.id,__dialogScene,'11111111-1111-4111-8111-111111111111')+'</div>';EzDialogue.mount(document.getElementById('student'));};renderStudent();
+window.renderStudent=()=>{const pair=admSerializeDialogPair(__dialogRows);document.getElementById('student').innerHTML='<div class="grammar-dialog-block grammar-collapsible"><button onclick="grammarBlockToggle(this)">Dialog contoh</button>'+grammarKaraokeHtml(pair.jp,'qa',pair.id,__dialogScene,'11111111-1111-4111-8111-111111111111',EzDialogueFuriganaAdmin.data())+'</div>';EzDialogue.mount(document.getElementById('student'));};renderStudent();
 </script></html>`;
 const server=http.createServer(async(req,res)=>{
   try{
@@ -47,10 +49,26 @@ console.log(base+'/preview.html');
 if(!process.env.EZ_QA_SERVE){
 const browser=await chromium.launch({headless:true,...(process.env.EZ_QA_BROWSER ? {executablePath:process.env.EZ_QA_BROWSER}: {})});
 try{
-  const page=await browser.newPage({viewport:{width:1280,height:1000}}),errors=[],assets=[];
+  const page=await browser.newPage({viewport:{width:1280,height:1000}}),errors=[],assets=new Map();
   page.on('pageerror',e=>errors.push(e.message));
-  page.on('response',r=>{if(/\.(webp|png)$/.test(r.url()))assets.push(r);});
+  page.on('response',r=>{if(r.ok()&&/\.(webp|png)$/.test(r.url()))assets.set(r.url(),r.body().then(b=>b.length).catch(()=>null));});
   await page.goto(base);await page.waitForFunction(()=>[...document.querySelectorAll('.ez-dialog-actor img')].every(i=>i.complete&&i.naturalWidth&&getComputedStyle(i).visibility==='visible'));
+  const originalDialog=await page.locator('#gk-qa').getAttribute('data-dialog');
+  assert.equal(await page.locator('#student .ez-dialog-caption rt').first().textContent(),'きょう');
+  assert.equal(await page.locator('#student .gk-transcript rt').count(),7);
+  await page.getByRole('button',{name:'Furigana: aktif',exact:true}).click();
+  assert.equal(await page.locator('#student .ez-dialog-caption rt').first().evaluate(e=>getComputedStyle(e).display),'none');
+  assert.equal(await page.locator('#student .gk-transcript rt').first().evaluate(e=>getComputedStyle(e).display),'none');
+  await page.reload();
+  assert.equal(await page.locator('#gk-qa').getAttribute('data-furigana'),'off');
+  await page.getByRole('button',{name:'Furigana: nonaktif',exact:true}).click();
+  await page.getByLabel('Bacaan 今日 (1)',{exact:true}).fill('こんにち');
+  await page.evaluate(()=>{admDialogSave();EzDialogueFuriganaAdmin.load(__dialogTr);admRenderDialogModal();renderStudent();});
+  assert.equal(await page.locator('#student .ez-dialog-caption rt').first().textContent(),'こんにち');
+  assert.equal(await page.locator('#gk-qa').getAttribute('data-dialog'),originalDialog);
+  await page.getByLabel('Bacaan 今日 (1)',{exact:true}).fill('きょう');
+  await page.evaluate(()=>renderStudent());
+  console.log('PASS furigana toggle/reload, admin correction/save/reload, untouched TTS text');
   const slots=page.locator('.ez-scene-slot');
   await slots.nth(0).getByLabel('Pemeran',{exact:true}).selectOption('daniel-foster');
   assert.equal(await slots.nth(0).getByLabel('Nama tampilan',{exact:true}).inputValue(),'ダニエル');
@@ -89,6 +107,8 @@ try{
   assert.equal(await stage.getAttribute('data-state'),'idle');
   await page.evaluate(()=>{grammarKaraokeJumpTo('qa',2);lastAudio.dispatchEvent(new Event('playing'));});
   assert.equal(await page.locator('#student .ez-dialog-actor.is-speaking').getAttribute('data-position'),'right');
+  assert.equal(await page.locator('#student .ez-dialog-caption rt').first().textContent(),'さんじ');
+  assert.equal(await page.locator('#student .gk-transcript rt').count(),7);
   await page.evaluate(()=>lastAudio.dispatchEvent(new Event('error')));assert.equal(await stage.getAttribute('data-state'),'idle');
   assert.equal(await page.locator('#student .gk-status').textContent(),'Audio tidak tersedia');
   await page.evaluate(()=>{gkStopAll();window.fetch=()=>new Promise(resolve=>{window.resolveAudio=resolve});grammarKaraokePlay('qa');gkStopAll();renderStudent();resolveAudio({ok:true,json:async()=>({segments:[{audio_base64:'late'}]})});});
@@ -125,7 +145,7 @@ try{
   });
   console.log('PASS nested grammar modal returns live editable row after dialog save');
   assert.deepEqual(errors,[]);
-  const unique=new Map();for(const r of assets)if(r.ok())unique.set(r.url(),(await r.body()).length);
+  const unique=new Map();for(const [url,bytes] of assets){const size=await bytes;if(size!==null)unique.set(url,size);}
   console.log('PASS 360/390/768/1280px, reduced motion, opaque clothing, image failure preserves transcript');
   console.log('Observed asset response bytes:',JSON.stringify(Object.fromEntries(unique)));
 }finally{await browser.close();server.close();}

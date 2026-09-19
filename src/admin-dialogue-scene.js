@@ -46,7 +46,7 @@
           <button type="button" class="btn btn-ghost btn-sm" onclick="EzDialogueAdmin.latest(${i})">Gunakan profil terbaru</button>
         </div>`;
       }).join('')}</div>
-      <div id="ez-admin-scene-preview">${window.EzDialogue.html(scene,window.__dialogRows.map(r=>({speaker:r.speaker,text:r.jp})))}</div>
+      <div id="ez-admin-scene-preview">${window.EzDialogue.html(scene,window.__dialogRows.map(r=>({speaker:r.speaker,text:r.jp.trim()})),window.EzDialogueFuriganaAdmin?.data())}</div>
     </section>`;
   }
   function render() { window.admRenderDialogModal(); }

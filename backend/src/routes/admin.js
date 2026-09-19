@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import dialogueFurigana from '../../../src/dialogue-furigana.js';
 import { dialogueCatalog, normalizeDialogScene, sceneTurnVoices, validateSceneVoices } from '../dialogue-scene.js';
 import fs from 'fs';
 import path from 'path';
@@ -3375,13 +3376,13 @@ Balas HANYA JSON valid:
 router.post('/module-grammar', asyncHandler(async (req, res) => {
   const { moduleId, lessonId, pattern, meaning, example, notes, exampleDialog, exampleDialogId, sortOrder } = req.body || {};
   if (!moduleId || !pattern) return res.status(400).json({ error: 'moduleId and pattern required' });
-  let scene;
-  try { scene = normalizeDialogScene(req.body.dialogScene); }
+  let scene, furigana;
+  try { scene = normalizeDialogScene(req.body.dialogScene); furigana = dialogueFurigana.normalize(req.body.dialogFurigana); }
   catch (err) { return res.status(400).json({ error: err.message }); }
   const result = await query(
-    `INSERT INTO module_grammar (module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, sort_order, dialog_scene)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb) RETURNING *`,
-    [moduleId, lessonId || null, pattern, meaning || null, example || null, notes || null, exampleDialog || null, exampleDialogId || null, sortOrder || 0, scene ? JSON.stringify(scene) : null]
+    `INSERT INTO module_grammar (module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, sort_order, dialog_scene, dialog_furigana)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb) RETURNING *`,
+    [moduleId, lessonId || null, pattern, meaning || null, example || null, notes || null, exampleDialog || null, exampleDialogId || null, sortOrder || 0, scene ? JSON.stringify(scene) : null, furigana ? JSON.stringify(furigana) : null]
   );
   res.status(201).json({ grammar: result.rows[0] });
 }));
@@ -3402,8 +3403,11 @@ router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
   const hasNotes = has('notes');
   const hasExampleDialog = has('exampleDialog');
   const hasSortOrder = has('sortOrder');
-  let scene;
-  try { scene = has('dialogScene') ? normalizeDialogScene(req.body.dialogScene) : null; }
+  let scene, furigana;
+  try {
+    scene = has('dialogScene') ? normalizeDialogScene(req.body.dialogScene) : null;
+    furigana = has('dialogFurigana') ? dialogueFurigana.normalize(req.body.dialogFurigana) : null;
+  }
   catch (err) { return res.status(400).json({ error: err.message }); }
   const result = await query(
     `UPDATE module_grammar SET
@@ -3416,10 +3420,12 @@ router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
        sort_order = CASE WHEN $17::boolean THEN $8 ELSE sort_order END,
        example_dialog_id = CASE WHEN $11::boolean THEN $10 ELSE example_dialog_id END,
        dialog_scene = CASE WHEN $18::boolean THEN $19::jsonb ELSE dialog_scene END,
+       dialog_furigana = CASE WHEN $20::boolean THEN $21::jsonb ELSE dialog_furigana END,
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
     [req.params.id, lessonId || null, pattern, meaning, example, notes, exampleDialog, sortOrder, hasLesson, exampleDialogId || null, hasDialogId,
-      hasPattern, hasMeaning, hasExample, hasNotes, hasExampleDialog, hasSortOrder, has('dialogScene'), scene ? JSON.stringify(scene) : null]
+      hasPattern, hasMeaning, hasExample, hasNotes, hasExampleDialog, hasSortOrder, has('dialogScene'), scene ? JSON.stringify(scene) : null,
+      has('dialogFurigana'), furigana ? JSON.stringify(furigana) : null]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ grammar: result.rows[0] });
