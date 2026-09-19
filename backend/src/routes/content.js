@@ -10,7 +10,7 @@ import {
 } from '../kanji-compounds.js';
 import { userCanAccessCourse, requireLessonCourseAccess } from '../entitlements.js';
 import { loadPilotConfig } from '../bunpou-flow-config.js';
-import { publicCompanionView } from '../bunpou-flow-service.js';
+import { pilotPublicCompanion } from '../bunpou-flow-content.js';
 
 const router = Router();
 
@@ -307,8 +307,7 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
   const pilotConfig = await loadPilotConfig();
   let pilotCompanion = null;
   if (pilotConfig.enabled && pilotConfig.lessonId) {
-    const pub = await query(`SELECT bunpou_flow_published FROM lessons WHERE id = $1`, [pilotConfig.lessonId]);
-    pilotCompanion = publicCompanionView(pub.rows[0]?.bunpou_flow_published);
+    pilotCompanion = await pilotPublicCompanion(pilotConfig.lessonId);
   }
 
   res.json({
@@ -391,7 +390,7 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
   // lesson the pilot is currently scoped to.
   const pilotConfig = await loadPilotConfig();
   if (pilotConfig.enabled && pilotConfig.lessonId === row.id) {
-    const companion = publicCompanionView(row.bunpou_flow_published);
+    const companion = await pilotPublicCompanion(row.id);
     if (companion) response.bunpouFlow = companion;
   }
 

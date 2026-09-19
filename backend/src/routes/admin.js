@@ -16,7 +16,7 @@ import {
 } from '../auth.js';
 import { COACH_PROMPT_DEFAULT } from './recommendations.js';
 import { callClaude, anthropicEnabled, ANTHROPIC_GEN_MODEL } from '../anthropic.js';
-import { controlledSlot, slotShaped } from '../grammar-drills.js';
+import { controlledSlot, slotShaped, deriveDrills } from '../grammar-drills.js';
 import { deleteMarketingProfile, eraseUserAccount } from '../user-erasure.js';
 import {
   NOTION_BAB_DB_ID_DEFAULT,
@@ -48,11 +48,12 @@ import {
 } from '../kanji-compounds.js';
 import { loadTaskConcepts, loadModulePool } from './grammar-task.js';
 import {
-  contentRevisionId,
+  contentRevisionId, companionDraftRevision,
   dialogCheckAvailability, validateCompanionEnvelope,
   sanitizeCompanionEnvelope,
 } from '../bunpou-flow-service.js';
 import { loadMasteryShadow, summarizeShadow } from '../grammar-mastery-shadow.js';
+import { loadPilotLessonOptions } from '../bunpou-pilot-catalog.js';
 import { V2_CONFIG, POLICY_V2, POLICY_SETTING_KEY, resolvePolicy } from '../grammar-mastery-policy.js';
 
 const router = Router();
@@ -1711,14 +1712,21 @@ router.get('/lessons/:lessonId/bunpou-flow', asyncHandler(async (req, res) => {
   const patternRows = grammarIds.length
     ? await query(`SELECT id, pattern FROM module_grammar WHERE id = ANY($1::uuid[])`, [grammarIds])
     : { rows: [] };
+  const reviewItems = taskLessonId ? await loadTaskConcepts(taskLessonId) : [];
+  const reviewPool = taskLessonId ? await loadModulePool(taskLessonId) : [];
+  const reviewDrills = deriveDrills(reviewItems, reviewPool);
   res.json({
     lessonId: req.params.lessonId,
     lessonTitle: lesson.rows[0].title,
     taskLessonId,
     grammarIds,
     patterns: Object.fromEntries(patternRows.rows.map((r) => [r.id, r.pattern])),
-    currentFingerprint: await currentSourceFingerprint(taskLessonId),
+    currentFingerprint: taskLessonId ? contentRevisionId(reviewItems, reviewPool) : null,
+    reviewItems: reviewItems.map(item => ({ grammarId: item.id, pattern: item.pattern,
+      meaning: item.meaning, dialog: item.example_dialog, dialogTranslation: item.example_dialog_id,
+      instruction: item.instruction, ...reviewDrills.get(item.id) })),
     draft: lesson.rows[0].bunpou_flow_draft || null,
+    draftRevision: companionDraftRevision(lesson.rows[0].bunpou_flow_draft),
     published: lesson.rows[0].bunpou_flow_published || null,
     // Paket 2: kelayakan pemeriksaan mandiri per pola, dihitung SERVER-side
     // dengan fungsi yang sama persis yang nanti dipakai session API untuk
@@ -1737,16 +1745,22 @@ router.put('/lessons/:lessonId/bunpou-flow/draft', asyncHandler(async (req, res)
   const check = validateCompanionEnvelope(req.body, grammarIds);
   if (!check.ok) return res.status(400).json({ error: 'invalid_envelope', details: check.errors });
 
+  const fingerprint = await currentSourceFingerprint(taskLessonId);
+  if (!fingerprint || req.body?.sourceFingerprint !== fingerprint) {
+    return res.status(409).json({ error: 'Materi berubah atau belum ditinjau. Buka ulang pendamping dan periksa soal sebelum menyimpan.' });
+  }
+
   const sanitized = sanitizeCompanionEnvelope(req.body);
   sanitized.editor = { email: req.user.email, at: new Date().toISOString() };
-  sanitized.sourceFingerprint = await currentSourceFingerprint(taskLessonId);
+  sanitized.sourceFingerprint = fingerprint;
 
   const r = await query(
     `UPDATE lessons SET bunpou_flow_draft = $2, updated_at = NOW() WHERE id = $1 RETURNING bunpou_flow_draft`,
     [req.params.lessonId, JSON.stringify(sanitized)]
   );
   if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-  res.json({ ok: true, draft: r.rows[0].bunpou_flow_draft });
+  res.json({ ok: true, draft: r.rows[0].bunpou_flow_draft,
+    draftRevision: companionDraftRevision(r.rows[0].bunpou_flow_draft) });
 }));
 
 // Publishing is deliberately its own explicit action (never implied by
@@ -1756,25 +1770,34 @@ router.put('/lessons/:lessonId/bunpou-flow/draft', asyncHandler(async (req, res)
 // point removed from the task after the draft was written cannot slip a
 // now-out-of-scope overlay into what students see.
 router.post('/lessons/:lessonId/bunpou-flow/publish', asyncHandler(async (req, res) => {
-  if (!(req.body || {}).confirm) return res.status(400).json({ error: 'confirm_required' });
+  if (req.body?.confirm !== true) return res.status(400).json({ error: 'confirm_required' });
 
   const lesson = await query(`SELECT bunpou_flow_draft FROM lessons WHERE id = $1`, [req.params.lessonId]);
   if (lesson.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   const draft = lesson.rows[0].bunpou_flow_draft;
   if (!draft) return res.status(400).json({ error: 'no_draft_to_publish' });
+  if (!req.body?.draftRevision || req.body.draftRevision !== companionDraftRevision(draft)) {
+    return res.status(409).json({ error: 'Draft berubah sejak ditinjau. Buka ulang pendamping sebelum publikasi.' });
+  }
 
   const { grammarIds, taskLessonId } = await bunpouFlowScope(req.params.lessonId);
   const check = validateCompanionEnvelope(draft, grammarIds);
   if (!check.ok) return res.status(400).json({ error: 'invalid_envelope', details: check.errors });
+  const fingerprint = await currentSourceFingerprint(taskLessonId);
+  if (!fingerprint || draft.sourceFingerprint !== fingerprint) {
+    return res.status(409).json({ error: 'Materi berubah sejak draft diperiksa. Tinjau dan simpan ulang draft.' });
+  }
 
   const sanitized = sanitizeCompanionEnvelope(draft);
   sanitized.publishedBy = { email: req.user.email, at: new Date().toISOString() };
-  sanitized.sourceFingerprint = await currentSourceFingerprint(taskLessonId);
+  sanitized.sourceFingerprint = fingerprint;
 
   const r = await query(
-    `UPDATE lessons SET bunpou_flow_published = $2, updated_at = NOW() WHERE id = $1 RETURNING bunpou_flow_published`,
-    [req.params.lessonId, JSON.stringify(sanitized)]
+    `UPDATE lessons SET bunpou_flow_published = $2, updated_at = NOW()
+      WHERE id = $1 AND bunpou_flow_draft = $3::jsonb RETURNING bunpou_flow_published`,
+    [req.params.lessonId, JSON.stringify(sanitized), JSON.stringify(draft)]
   );
+  if (!r.rows.length) return res.status(409).json({ error: 'Draft berubah saat publikasi. Tinjau ulang pendamping.' });
   res.json({ ok: true, published: r.rows[0].bunpou_flow_published });
 }));
 
@@ -1791,6 +1814,7 @@ router.get('/settings/bunpou-flow-pilot', asyncHandler(async (req, res) => {
   res.json({
     enabled: byKey.bunpou_flow_pilot_enabled === 'true',
     lessonId: byKey.bunpou_flow_pilot_lesson_id || null,
+    lessons: await loadPilotLessonOptions(),
   });
 }));
 
@@ -1798,11 +1822,16 @@ router.put('/settings/bunpou-flow-pilot', asyncHandler(async (req, res) => {
   const enabled = (req.body || {}).enabled === true;
   const lessonId = String((req.body || {}).lessonId || '').trim() || null;
   if (enabled && !lessonId) return res.status(400).json({ error: 'lesson_id_required_to_enable' });
-  if (lessonId) {
+  if (lessonId && !isCanonicalUuid(lessonId)) return res.status(400).json({ error: 'Pilih pelajaran dari daftar.' });
+  if (enabled && lessonId) {
     const lesson = await query(`SELECT bunpou_flow_published FROM lessons WHERE id = $1`, [lessonId]);
     if (lesson.rows.length === 0) return res.status(404).json({ error: 'lesson_not_found' });
     if (enabled && !lesson.rows[0].bunpou_flow_published) {
       return res.status(400).json({ error: 'lesson_has_no_published_companion' });
+    }
+    if (enabled) {
+      const selected = (await loadPilotLessonOptions()).find(row => row.id === lessonId);
+      if (!selected?.ready) return res.status(409).json({ error: selected?.reason || 'Pelajaran belum siap untuk pilot.' });
     }
   }
   await withTransaction(async (client) => {
@@ -1880,7 +1909,8 @@ router.get('/grammar-mastery/shadow', asyncHandler(async (req, res) => {
         attempts: c.v1.attempts,
         independentAttempts: c.v2.evidence.independentAttempts,
         distinctQuestions: c.v2.evidence.distinctQuestions,
-        productionPasses: c.v2.evidence.passed.production,
+        productionPasses: c.v2.evidence.eligibleProductionPasses,
+        totalProductionPasses: c.v2.evidence.passed.production,
       });
     }
   }

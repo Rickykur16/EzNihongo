@@ -62,8 +62,8 @@ export const V2_CONFIG = Object.freeze({
   // kasus "soal yang sama berulang" — lihat compareMastery().
   minDistinctQuestions: 2,
 
-  // Berapa kalimat produksi (bebas, dinilai evaluator) yang harus pernah
-  // lulus sebelum penguasaan diklaim penuh.
+  // Berapa kalimat produksi MANDIRI (bebas, dinilai evaluator) yang harus
+  // pernah lulus sebelum penguasaan diklaim penuh.
   minProductionPasses: 1,
 
   // Jarak hari antara dua keberhasilan mandiri supaya yang kedua dihitung
@@ -109,10 +109,6 @@ export function hasEvidenceMetadata(row) {
 export function classifyAttempt(row, { previousPassAt = null, config = V2_CONFIG } = {}) {
   const r = isPlainObject(row) ? row : {};
 
-  // Produksi dinilai lebih dulu: kalimat bebas selalu bukti produksi, apa pun
-  // metadata lainnya.
-  if (r.source === 'production') return EVIDENCE.PRODUCTION;
-
   // Riwayat lama — dan baris yang bantuannya eksplisit 'unknown': jenisnya
   // tidak diketahui, jadi tidak diklaim apa-apa.
   if (!hasEvidenceMetadata(r)) return EVIDENCE.LIMITED;
@@ -121,6 +117,12 @@ export function classifyAttempt(row, { previousPassAt = null, config = V2_CONFIG
   if (r.independent_eligible === false || ASSISTED_STATES.has(r.assistance_state)) {
     return EVIDENCE.ASSISTED;
   }
+
+  // Partial metadata cannot establish independence, even for production.
+  if (r.independent_eligible !== true || r.assistance_state !== 'none_observed') {
+    return EVIDENCE.LIMITED;
+  }
+  if (r.source === 'production') return EVIDENCE.PRODUCTION;
 
   // Keberhasilan mandiri yang berjarak cukup dari keberhasilan mandiri
   // sebelumnya dihitung sebagai retensi — bukan state terpisah, melainkan
@@ -160,16 +162,37 @@ export function summarizeEvidence(rows, { config = V2_CONFIG } = {}) {
   let unknownVariety = 0;
   let previousPassAt = null;
   let aiProductionPasses = 0;
+  let independentAiProductionPasses = 0;
+  const productionTally = { independent: 0, assisted: 0, limited: 0 };
+  const productionPassed = { ...productionTally };
 
   for (const row of chronological) {
     const kind = classifyAttempt(row, { previousPassAt, config });
-    tally[kind] += 1;
+    const isProduction = row.source === 'production';
+    // Keep production totals (including legacy/assisted rows) compatible
+    // with admin reports; the separate breakdown records their confidence.
+    const tallyKind = isProduction ? EVIDENCE.PRODUCTION : kind;
+    tally[tallyKind] += 1;
+    if (isProduction) {
+      const confidence = kind === EVIDENCE.PRODUCTION ? EVIDENCE.INDEPENDENT : kind;
+      productionTally[confidence] += 1;
+      if (row.passed) {
+        productionPassed[confidence] += 1;
+        // Explicit evaluator metadata wins; cache/unknown legacy sources
+        // retain the conservative AI treatment used by the shadow report.
+        const isAi = row.evaluation_kind === 'ai'
+          || (row.evaluation_kind !== 'deterministic' && row.eval_source !== 'smart_review');
+        if (isAi) {
+          aiProductionPasses += 1;
+          if (kind === EVIDENCE.PRODUCTION) independentAiProductionPasses += 1;
+        }
+      }
+    }
     if (row.passed) {
-      passed[kind] += 1;
+      passed[tallyKind] += 1;
       if (kind === EVIDENCE.INDEPENDENT || kind === EVIDENCE.RETENTION) {
         previousPassAt = row.created_at;
       }
-      if (kind === EVIDENCE.PRODUCTION && row.eval_source !== 'smart_review') aiProductionPasses += 1;
     }
     if (kind === EVIDENCE.INDEPENDENT || kind === EVIDENCE.RETENTION) {
       const id = questionIdentity(row);
@@ -183,6 +206,15 @@ export function summarizeEvidence(rows, { config = V2_CONFIG } = {}) {
     distinctQuestions: distinctQuestions.size,
     unknownVariety,
     aiProductionPasses,
+    independentProductionAttempts: productionTally.independent,
+    independentProductionPasses: productionPassed.independent,
+    assistedProductionAttempts: productionTally.assisted,
+    assistedProductionPasses: productionPassed.assisted,
+    limitedProductionAttempts: productionTally.limited,
+    limitedProductionPasses: productionPassed.limited,
+    // Only this subset may satisfy the existing production requirement.
+    eligibleProductionPasses: productionPassed.independent
+      - (config.countAiProductionAsEvidence ? 0 : independentAiProductionPasses),
     independentPasses: passed[EVIDENCE.INDEPENDENT] + passed[EVIDENCE.RETENTION],
     independentAttempts: tally[EVIDENCE.INDEPENDENT] + tally[EVIDENCE.RETENTION],
   };
@@ -215,8 +247,8 @@ export function computeConceptMasteryV2(rows, now = Date.now(), config = V2_CONF
     if (evidence.distinctQuestions < config.minDistinctQuestions) {
       reasons.push('variasi soal belum cukup');
     }
-    if (evidence.passed[EVIDENCE.PRODUCTION] < config.minProductionPasses) {
-      reasons.push('belum ada kalimat produksi yang lulus');
+    if (evidence.eligibleProductionPasses < config.minProductionPasses) {
+      reasons.push('bukti kalimat produksi mandiri yang lulus belum cukup');
     }
     if (reasons.length) state = 'PROGRESSING';
   }
@@ -230,8 +262,9 @@ export function computeConceptMasteryV2(rows, now = Date.now(), config = V2_CONF
     policy: POLICY_V2,
     evidence,
     withheldReasons: reasons,
-    evidenceQuality: evidence.tally[EVIDENCE.LIMITED] > 0
-      && evidence.independentAttempts === 0 ? 'limited' : 'tracked',
+    evidenceQuality: (evidence.tally[EVIDENCE.LIMITED] > 0 || evidence.limitedProductionAttempts > 0)
+      && evidence.independentAttempts === 0 && evidence.independentProductionAttempts === 0
+      ? 'limited' : 'tracked',
   };
 }
 
@@ -246,7 +279,8 @@ export function compareMastery(v1, v2) {
     flags.push('recognition_only');
   }
   // "semua benar setelah bantuan".
-  if (ev.passed[EVIDENCE.ASSISTED] > 0 && ev.independentPasses === 0) {
+  if ((ev.passed[EVIDENCE.ASSISTED] > 0 || ev.assistedProductionPasses > 0)
+    && ev.independentPasses === 0 && ev.independentProductionPasses === 0) {
     flags.push('assisted_passes_only');
   }
   // "banyak pengulangan soal sama".
@@ -255,12 +289,12 @@ export function compareMastery(v1, v2) {
   }
   // "bukti produksi/retensi yang benar-benar ada" — sisi positifnya, supaya
   // tinjauan tidak cuma melihat kasus yang mencurigakan.
-  if (ev.passed[EVIDENCE.PRODUCTION] > 0 || ev.passed[EVIDENCE.RETENTION] > 0) {
+  if (ev.eligibleProductionPasses > 0 || ev.passed[EVIDENCE.RETENTION] > 0) {
     flags.push('has_production_or_retention');
   }
   // Riwayat lama tanpa metadata: dilaporkan apa adanya, tidak diperlakukan
   // sebagai kegagalan.
-  if (ev.tally[EVIDENCE.LIMITED] > 0) flags.push('limited_history');
+  if (ev.tally[EVIDENCE.LIMITED] > 0 || ev.limitedProductionAttempts > 0) flags.push('limited_history');
 
   return {
     changed: (v1?.state || null) !== (v2?.state || null),

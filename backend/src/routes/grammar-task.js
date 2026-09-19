@@ -19,6 +19,7 @@ const router = Router();
 // (app_settings.grammar_eval_prompt), placeholder diisi per evaluasi. Hasil
 // di-cache (kalimat identik per grammar tidak panggil AI lagi).
 const MAX_SENTENCE_LEN = 200;
+export const GRAMMAR_EVAL_TIMEOUT_MS = 45_000;
 
 // System statis (cacheable) — instruksi inti yang tak berubah antar evaluasi.
 const EVAL_SYSTEM = `You are a meticulous Japanese-language teacher grading short sentences written by Indonesian students. Always reply with a single valid JSON object and nothing else.`;
@@ -211,6 +212,60 @@ function extractJson(text) {
   try { return JSON.parse(s.slice(start, end + 1)); } catch { return null; }
 }
 
+function evaluationError(status, message) {
+  return Object.assign(new Error(message), { status });
+}
+
+// Shared evaluator: cache writes are allowed, but attempt evidence belongs to
+// the caller. Snapshot fingerprints keep edited content out of older caches.
+export async function evaluateGrammarSentence({ grammar, grammarId, instruction = '', sentence, inputMode = 'text' }) {
+  const cacheIdentity = grammar.fingerprint
+    ? `grammar-eval-snapshot-v1|${JSON.stringify([ANTHROPIC_MODEL, grammarId, grammar.fingerprint,
+      grammar.pattern, grammar.meaning, grammar.example, instruction, sentence])}`
+    : `grammar-eval-v2|${ANTHROPIC_MODEL}|${grammarId}|${instruction}|${sentence}`;
+  const key = crypto.createHash('sha256')
+    .update(cacheIdentity)
+    .digest('hex');
+  let result = null;
+  let evalSource = 'cache';
+  const cached = await query(`SELECT result FROM grammar_eval_cache WHERE eval_hash = $1`, [key]);
+  if (cached.rows.length > 0) {
+    query(`UPDATE grammar_eval_cache SET last_used_at = NOW() WHERE eval_hash = $1`, [key]).catch(() => {});
+    result = normalizeEval(cached.rows[0].result);
+  }
+  if (!result) {
+    if (!anthropicEnabled()) throw evaluationError(503, 'eval_disabled');
+    const tpl = await loadEvalPrompt();
+    const userContent = fillTemplate(tpl, {
+      pattern: grammar.pattern || '', meaning: grammar.meaning || '', example: grammar.example || '',
+      instruction: instruction || '(bebas — buat kalimat apa saja yang memakai pola ini)', sentence,
+    }) + OUTPUT_CONTRACT;
+    let timer;
+    let text;
+    try {
+      text = await Promise.race([
+        callClaude({ system: EVAL_SYSTEM, userContent, maxTokens: 700 }),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(evaluationError(504, 'eval_timeout')), GRAMMAR_EVAL_TIMEOUT_MS);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+    if (text == null) throw evaluationError(502, 'eval_upstream');
+    const parsed = extractJson(text);
+    if (!parsed) throw evaluationError(502, 'eval_parse');
+    result = normalizeEval(parsed);
+    evalSource = 'ai';
+    await query(
+      `INSERT INTO grammar_eval_cache (eval_hash, grammar_id, sentence, result, model)
+       VALUES ($1, $2, $3, $4, $5) ON CONFLICT (eval_hash) DO NOTHING`,
+      [key, grammarId, sentence, JSON.stringify(result), ANTHROPIC_MODEL]
+    );
+  }
+  return { result: applyInputMode(result, inputMode), evalSource, model: ANTHROPIC_MODEL };
+}
+
 const evalLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 20,
@@ -276,51 +331,14 @@ router.post('/grammar-task/evaluate', requireAuth, evalLimiter, asyncHandler(asy
     }
   }
 
-  // Namespace v2: entri cache lama hanya memuat 4 field kontrak lama. Kalau
-  // key-nya tidak dibedakan, kalimat yang pernah dinilai sebelum rilis ini
-  // akan selamanya disajikan tanpa klasifikasi error. Biayanya satu panggilan
-  // AI sekali per kalimat lama; entri lama jadi dorman, bukan salah.
-  const key = crypto.createHash('sha256')
-    .update(`grammar-eval-v2|${ANTHROPIC_MODEL}|${grammarId}|${instruction}|${sentence}`)
-    .digest('hex');
-
-  let result = null;
-  let evalSource = 'cache';
-  const cached = await query(`SELECT result FROM grammar_eval_cache WHERE eval_hash = $1`, [key]);
-  if (cached.rows.length > 0) {
-    query(`UPDATE grammar_eval_cache SET last_used_at = NOW() WHERE eval_hash = $1`, [key]).catch(() => {});
-    result = normalizeEval(cached.rows[0].result);
+  let evaluation;
+  try {
+    evaluation = await evaluateGrammarSentence({ grammar, grammarId, instruction, sentence, inputMode });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    throw err;
   }
-
-  if (!result) {
-    if (!anthropicEnabled()) return res.status(503).json({ error: 'eval_disabled' });
-
-    const tpl = await loadEvalPrompt();
-    const userContent = fillTemplate(tpl, {
-      pattern: grammar.pattern || '',
-      meaning: grammar.meaning || '',
-      example: grammar.example || '',
-      instruction: instruction || '(bebas — buat kalimat apa saja yang memakai pola ini)',
-      sentence,
-    }) + OUTPUT_CONTRACT;
-
-    const text = await callClaude({ system: EVAL_SYSTEM, userContent, maxTokens: 700 });
-    if (text == null) return res.status(502).json({ error: 'eval_upstream' });
-    const parsed = extractJson(text);
-    if (!parsed) return res.status(502).json({ error: 'eval_parse' });
-
-    result = normalizeEval(parsed);
-    evalSource = 'ai';
-    // Cache menyimpan hasil BEBAS-MODE (lihat applyInputMode) supaya satu
-    // kalimat identik cukup satu entri, diketik maupun diucapkan.
-    await query(
-      `INSERT INTO grammar_eval_cache (eval_hash, grammar_id, sentence, result, model)
-       VALUES ($1, $2, $3, $4, $5) ON CONFLICT (eval_hash) DO NOTHING`,
-      [key, grammarId, sentence, JSON.stringify(result), ANTHROPIC_MODEL]
-    );
-  }
-
-  const finalResult = applyInputMode(result, inputMode);
+  const { result: finalResult, evalSource, model } = evaluation;
 
   // DI LUAR cabang cache — kalau pencatatan ikut di dalamnya, kalimat yang
   // kebetulan sama dengan kalimat siswa lain akan hilang total dari analisis.
@@ -332,7 +350,7 @@ router.post('/grammar-task/evaluate', requireAuth, evalLimiter, asyncHandler(asy
     sentence,
     result: finalResult,
     evalSource,
-    model: ANTHROPIC_MODEL,
+    model,
   });
 
   return res.json(finalResult);
@@ -363,7 +381,9 @@ export function parseDistractors(raw) {
 // questions from the identical query.
 export async function loadTaskConcepts(lessonId) {
   const rows = await query(
-    `SELECT g.id, g.pattern, g.meaning, g.recognition_distractors, g.controlled_distractors, gi.sort_order
+    `SELECT g.id, g.pattern, g.meaning, g.example, g.example_dialog, g.example_dialog_id,
+            g.recognition_distractors, g.controlled_distractors, gi.sort_order,
+            gi.instruction, gi.required_count AS "requiredCount"
        FROM lesson_grammar_task_items gi
        JOIN module_grammar g ON g.id = gi.grammar_id
       WHERE gi.lesson_id = $1

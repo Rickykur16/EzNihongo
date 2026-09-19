@@ -7,6 +7,7 @@ import { recordPracticeAttemptWithState } from '../practice-service.js';
 import { loadMastery } from '../grammar-mastery.js';
 import { deriveDrills, publicDrill, arrangeIsCorrect } from '../grammar-drills.js';
 import { loadPilotConfig } from '../bunpou-flow-config.js';
+import { loadCompanionContext } from '../bunpou-flow-content.js';
 import {
   dialogCheckDrills, attemptSourceFor, primaryErrorFor,
   STEP_DIALOG_COMPREHENSION,
@@ -104,16 +105,9 @@ export async function buildReviewCandidates(user) {
     let pilotChecks = null;
     let pilotTaskLessonId = null;
     if (pilot.enabled && pilot.lessonId) {
-      const pilotRow = await query(
-        `SELECT t.id AS task_lesson_id, s.bunpou_flow_published
-           FROM lessons s
-           LEFT JOIN lessons t ON t.type = 'grammar_task' AND t.popup_after_lesson_id = s.id
-          WHERE s.id = $1`,
-        [pilot.lessonId]
-      );
-      pilotTaskLessonId = pilotRow.rows[0]?.task_lesson_id || null;
-      const published = pilotRow.rows[0]?.bunpou_flow_published || null;
-      if (pilotTaskLessonId && published && published.dialogChecks) pilotChecks = published.dialogChecks;
+      const context = await loadCompanionContext(pilot.lessonId);
+      pilotTaskLessonId = context?.taskLessonId || null;
+      if (context?.current) pilotChecks = context.published.dialogChecks || null;
     }
     // Keluarga soal yang sudah benar-benar dikerjakan siswa ini belakangan —
     // dipakai supaya pemeriksaan tidak menyajikan ulang varian yang terlalu
