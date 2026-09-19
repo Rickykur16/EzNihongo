@@ -42,6 +42,7 @@ const WIPE_TABLES = [
   'quiz_attempts',
   'grammar_attempts',
   'smart_review_sessions',
+  'grammar_task_requests',
   // Bunpou Flow pilot (migration 147) — short-lived like smart_review_sessions
   // above; grammar_task_session_items cascades off session_id, not user_id,
   // so it needs no entry of its own here.
@@ -108,6 +109,7 @@ export async function deleteMarketingProfile(client, userId) {
 // Penghapusan akun penuh. Idempoten: menjalankannya dua kali aman, yang kedua
 // tidak menemukan apa-apa lagi untuk dibersihkan.
 export async function eraseUserAccount(client, userId) {
+  await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['bunpou:' + userId]);
   // Same transaction/client as the caller. Future staff grants must take this
   // user lock too and reject tombstone accounts before creating membership.
   await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [userId]);

@@ -1,6 +1,6 @@
 // Bunpou Flow pilot (Paket 1) — server-authorized practice sessions for
-// Tugas Bunpou Step 1 (recognition) / Step 2 (controlled), so a student's
-// progress through those two steps survives a page refresh or a popup
+// Tugas Bunpou practice, so a student's
+// progress survives a page refresh or a popup
 // close/reopen. This is NOT a second grading engine: questions are derived
 // with the exact same grammar-drills.js helpers the legacy
 // POST /grammar-task/drill-answer endpoint uses, and graded answers still
@@ -13,10 +13,8 @@
 // A misconfigured or manipulated sourceLessonId/lessonId can not reach
 // content from another course or a lesson the pilot isn't scoped to (T04).
 //
-// Kept in its own file rather than appended to routes/grammar-task.js so
-// that file — one of the ones this pilot must not otherwise change the
-// behaviour of — stays untouched apart from the two `export` keywords noted
-// in loadTaskConcepts/loadModulePool.
+// Production reuses the legacy evaluator, with reservation and finalization
+// outside its AI call. New evidence stays in the same grammar_attempts table.
 
 import { Router } from 'express';
 import crypto from 'crypto';
@@ -25,13 +23,15 @@ import { query, withTransaction } from '../db.js';
 import { asyncHandler, requireAuth } from '../middleware.js';
 import { userCanAccessCourse, courseIdForLessonId } from '../entitlements.js';
 import { deriveDrills, arrangeIsCorrect } from '../grammar-drills.js';
-import { loadTaskConcepts, loadModulePool } from './grammar-task.js';
 import { loadPilotConfig } from '../bunpou-flow-config.js';
+import { loadCompanionContext } from '../bunpou-flow-content.js';
+import { submitProduction } from '../bunpou-production.js';
+import { pilotAccessError, sessionAccessError, taskScopeError } from '../bunpou-session-access.js';
 import {
-  contentRevisionId, questionFingerprint, deriveAssistanceState, independentEligible,
+  questionFingerprint, deriveAssistanceState, independentEligible,
   publicSessionItem, overlayFor, isPilotLesson, primaryErrorFor, answerSentenceFor,
   SESSION_MINUTES, DRILL_MAX_WRONG, EVIDENCE_SCHEMA_VERSION,
-  dialogCheckDrills, attemptSourceFor,
+  dialogCheckDrills, attemptSourceFor, sessionRevisionId,
 } from '../bunpou-flow-service.js';
 
 const router = Router();
@@ -48,6 +48,9 @@ const sessionLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many requests, slow down' },
 });
+const productionLimiter = rateLimit({ windowMs: 60 * 1000, limit: 20,
+  standardHeaders: 'draft-7', legacyHeaders: false,
+  message: { error: 'Too many requests, slow down' } });
 
 // Builds the (grammarId, step, drill) rows a fresh session should store, in
 // the same order Step 1 then Step 2 would appear per pattern — order has no
@@ -111,12 +114,19 @@ async function loadOwnedActiveSession(req, res, sessionId) {
   return session;
 }
 
-async function itemsForSession(sessionId) {
-  const r = await query(
+async function itemsForSession(sessionId, client = { query }) {
+  const r = await client.query(
     `SELECT * FROM grammar_task_session_items WHERE session_id = $1 ORDER BY step ASC, grammar_id ASC`,
     [sessionId]
   );
   return r.rows.map(publicSessionItem);
+}
+
+async function productionsForSession(sessionId, client = { query }) {
+  const r = await client.query(`SELECT grammar_id AS "grammarId", slot, sentence, result,
+    request_id AS "requestId", passed, assistance_state AS "assistanceState"
+    FROM grammar_task_productions WHERE session_id = $1 ORDER BY grammar_id, slot`, [sessionId]);
+  return r.rows;
 }
 
 // POST /api/grammar-task/sessions   body: { sourceLessonId }
@@ -132,49 +142,36 @@ router.post('/grammar-task/sessions', requireAuth, sessionLimiter, asyncHandler(
   }
   if (!(await assertCourseAccess(req, res, sourceLessonId))) return;
 
-  const taskRow = await query(
-    `SELECT id FROM lessons WHERE type = 'grammar_task' AND popup_after_lesson_id = $1 LIMIT 1`,
-    [sourceLessonId]
-  );
-  const taskLessonId = taskRow.rows[0]?.id;
-  if (!taskLessonId) return res.status(404).json({ error: 'no_task_for_lesson' });
-
-  const [items, pool] = await Promise.all([
-    loadTaskConcepts(taskLessonId),
-    loadModulePool(taskLessonId),
-  ]);
-  const revisionId = contentRevisionId(items, pool);
-
-  const existing = await query(
-    `SELECT * FROM grammar_task_sessions
-      WHERE user_id = $1 AND task_lesson_id = $2 AND expires_at > NOW()
-      ORDER BY created_at DESC LIMIT 1`,
-    [req.user.id, taskLessonId]
-  );
-  if (existing.rows.length > 0 && existing.rows[0].content_revision_id === revisionId) {
-    const session = existing.rows[0];
-    return res.json({
-      sessionId: session.id,
-      taskLessonId,
-      expiresAt: session.expires_at,
-      contentChanged: false,
-      items: await itemsForSession(session.id),
-    });
-  }
-  const contentChanged = existing.rows.length > 0;
-
-  const sourceRow = await query(`SELECT bunpou_flow_published FROM lessons WHERE id = $1`, [sourceLessonId]);
-  const published = sourceRow.rows[0]?.bunpou_flow_published || null;
+  const context = await loadCompanionContext(sourceLessonId);
+  if (!context) return res.status(404).json({ error: 'no_task_for_lesson' });
+  if (!context.current) return res.status(409).json({ error: 'companion_needs_review' });
+  const { taskLessonId, items, pool, published, fingerprint } = context;
+  const revisionId = sessionRevisionId(fingerprint, published);
 
   const drillsByGrammar = deriveDrills(items, pool);
   const planned = plannedItems(items, drillsByGrammar, published);
 
   const session = await withTransaction(async (client) => {
+    await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, ['bunpou:' + req.user.id]);
+    const denied = await pilotAccessError(client, req.user, sourceLessonId);
+    if (denied) return { denied };
+    const scopeError = await taskScopeError(client, sourceLessonId, taskLessonId, items.map(item => item.id));
+    if (scopeError) return { denied: scopeError };
+    const existing = await client.query(
+      `SELECT * FROM grammar_task_sessions WHERE user_id = $1 AND task_lesson_id = $2
+       AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1`, [req.user.id, taskLessonId]);
+    if (existing.rows[0]?.content_revision_id === revisionId) return { ...existing.rows[0], contentChanged: false };
+    const productionSnapshot = items.map(item => ({
+      grammarId: item.id, pattern: item.pattern, meaning: item.meaning,
+      example: item.example, instruction: item.instruction || '',
+      requiredCount: Math.max(1, Number(item.requiredCount) || 1),
+      fingerprint: questionFingerprint(item.id, 3, { prompt: item.instruction, sentence: item.pattern, example: item.example }),
+    }));
     const ins = await client.query(
-      `INSERT INTO grammar_task_sessions (user_id, source_lesson_id, task_lesson_id, content_revision_id, expires_at)
-       VALUES ($1, $2, $3, $4, NOW() + ($5 || ' minutes')::interval)
+      `INSERT INTO grammar_task_sessions (user_id, source_lesson_id, task_lesson_id, content_revision_id, expires_at, production_snapshot)
+       VALUES ($1, $2, $3, $4, NOW() + ($5 || ' minutes')::interval, $6)
        RETURNING id, expires_at`,
-      [req.user.id, sourceLessonId, taskLessonId, revisionId, String(SESSION_MINUTES)]
+      [req.user.id, sourceLessonId, taskLessonId, revisionId, String(SESSION_MINUTES), JSON.stringify(productionSnapshot)]
     );
     const created = ins.rows[0];
     for (const p of planned) {
@@ -194,15 +191,17 @@ router.post('/grammar-task/sessions', requireAuth, sessionLimiter, asyncHandler(
         [created.id, p.grammarId, p.step, fingerprint, JSON.stringify(snapshot)]
       );
     }
-    return created;
+    return { ...created, contentChanged: existing.rows.length > 0 };
   });
 
+  if (session.denied) return res.status(session.denied.status).json({ error: session.denied.error });
   res.json({
     sessionId: session.id,
     taskLessonId,
     expiresAt: session.expires_at,
-    contentChanged,
+    contentChanged: session.contentChanged,
     items: await itemsForSession(session.id),
+    productions: await productionsForSession(session.id),
   });
 }));
 
@@ -211,39 +210,74 @@ router.get('/grammar-task/sessions/:id', requireAuth, sessionLimiter, asyncHandl
   const session = await loadOwnedActiveSession(req, res, req.params.id);
   if (!session) return;
 
-  const [items, pool] = await Promise.all([
-    loadTaskConcepts(session.task_lesson_id),
-    loadModulePool(session.task_lesson_id),
-  ]);
-  const contentChanged = contentRevisionId(items, pool) !== session.content_revision_id;
+  const context = await loadCompanionContext(session.source_lesson_id);
+  const contentChanged = !context?.current || sessionRevisionId(context.fingerprint, context.published) !== session.content_revision_id;
 
-  res.json({
-    sessionId: session.id,
-    taskLessonId: session.task_lesson_id,
-    expiresAt: session.expires_at,
-    contentChanged,
-    items: await itemsForSession(session.id),
+  const result = await withTransaction(async client => {
+    await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, ['bunpou:' + req.user.id]);
+    const denied = await sessionAccessError(client, req.user, session.id);
+    if (denied) return { status: denied.status, body: { error: denied.error } };
+    return { status: 200, body: { sessionId: session.id, taskLessonId: session.task_lesson_id,
+      expiresAt: session.expires_at, contentChanged,
+      items: await itemsForSession(session.id, client),
+      productions: await productionsForSession(session.id, client) } };
   });
+  res.status(result.status).json(result.body);
+}));
+
+router.post('/grammar-task/sessions/:id/production', requireAuth, productionLimiter, asyncHandler(async (req, res) => {
+  const session = await loadOwnedActiveSession(req, res, req.params.id);
+  if (!session) return;
+  const result = await submitProduction({ session, user: req.user, body: req.body || {},
+    assertAccess: async client => !(await sessionAccessError(client, req.user, session.id)),
+  });
+  res.status(result.status).json(result.body);
 }));
 
 // POST /api/grammar-task/sessions/:id/items/:itemId/answer
 // body: { optionIndex } for a choice item, or { order: number[] } for an
-// arrange item; optional { requestId } for replay-safe idempotency.
+// arrange item; required { requestId } for replay-safe idempotency.
 router.post('/grammar-task/sessions/:id/items/:itemId/answer', requireAuth, sessionLimiter,
   asyncHandler(async (req, res) => {
     const session = await loadOwnedActiveSession(req, res, req.params.id);
     if (!session) return;
     if (!isUuid(req.params.itemId)) return res.status(400).json({ error: 'invalid_item_id' });
 
-    const requestId = (req.body || {}).requestId ? String(req.body.requestId).slice(0, 200) : null;
+    const requestId = typeof req.body?.requestId === 'string' ? req.body.requestId.trim() : '';
+    if (!requestId || requestId.length > 200) return res.status(400).json({ error: 'invalid_request_id' });
     const order = Array.isArray((req.body || {}).order) ? req.body.order : null;
-    const optionIndex = Number((req.body || {}).optionIndex);
+    const optionIndex = (req.body || {}).optionIndex;
     const isArrangeSubmit = order != null;
     if (!isArrangeSubmit && !Number.isInteger(optionIndex)) {
       return res.status(400).json({ error: 'optionIndex or order required' });
     }
 
     const result = await withTransaction(async (client) => {
+      await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, ['bunpou:' + req.user.id]);
+      const denied = await sessionAccessError(client, req.user, session.id);
+      if (denied) return { status: denied.status, body: { error: denied.error } };
+      const payloadHash = crypto.createHash('sha256').update(JSON.stringify({
+        sessionId: session.id, itemId: req.params.itemId,
+        optionIndex: isArrangeSubmit ? null : optionIndex, order,
+      })).digest('hex');
+      const previous = await client.query(
+        `SELECT * FROM grammar_task_requests WHERE user_id = $1 AND request_id = $2 FOR UPDATE`,
+        [req.user.id, requestId]);
+      if (previous.rows[0]) {
+        const saved = previous.rows[0];
+        if (saved.operation !== 'answer' || saved.payload_hash !== payloadHash) {
+          return { status: 409, body: { error: 'request_id_conflict' } };
+        }
+        return saved.response ? { status: 200, body: saved.response }
+          : { status: 409, body: { error: 'evaluation_pending' } };
+      }
+      const oldRequest = await client.query(`SELECT 1 FROM grammar_attempts WHERE user_id = $1 AND request_id = $2`, [req.user.id, requestId]);
+      if (oldRequest.rows.length) return { status: 409, body: { error: 'request_id_conflict' } };
+      const remember = async (body) => {
+        await client.query(`INSERT INTO grammar_task_requests (user_id,request_id,session_id,payload_hash,operation,response)
+          VALUES ($1,$2,$3,$4,'answer',$5)`, [req.user.id, requestId, session.id, payloadHash, JSON.stringify(body)]);
+        return { status: 200, body };
+      };
       const r = await client.query(
         `SELECT * FROM grammar_task_session_items
           WHERE session_id = $1 AND item_id = $2 FOR UPDATE`,
@@ -258,27 +292,16 @@ router.post('/grammar-task/sessions/:id/items/:itemId/answer', requireAuth, sess
       if (!isArrange && (optionIndex < 0 || optionIndex >= (drill.options || []).length)) {
         return { status: 400, body: { error: 'optionIndex out of range' } };
       }
-
-      const payloadHash = crypto.createHash('sha256')
-        .update(JSON.stringify({ optionIndex: isArrange ? null : optionIndex, order: isArrange ? order : null }))
-        .digest('hex');
-
-      // A request id is only ever reused by (a) the same client retrying the
-      // exact same submit (network timeout, double click) or (b) a bug/abuse
-      // sending a second, different answer under the first one's id. (a)
-      // replays the stored outcome; (b) is rejected outright rather than
-      // silently regrading over the first answer (T09).
-      if (requestId && item.last_request_id === requestId) {
-        if (item.last_request_payload_hash === payloadHash) {
-          return { status: 200, body: publicSessionItem(item) };
-        }
-        return { status: 409, body: { error: 'request_id_conflict' } };
+      if (isArrange && (order.length !== drill.tokens.length || new Set(order).size !== order.length
+        || order.some(index => !Number.isInteger(index) || index < 0 || index >= drill.tokens.length))) {
+        return { status: 400, body: { error: 'invalid_order' } };
       }
+
       // A solved item stays solved — answering it again (network retry,
       // double click, a second tab) must not mint another grammar_attempts
       // row or XP-equivalent progress (T08).
-      if (item.passed === true) {
-        return { status: 200, body: publicSessionItem(item) };
+      if (item.passed === true || item.revealed_at) {
+        return remember({ ...publicSessionItem(item), alreadyCompleted: true });
       }
 
       const passed = isArrange ? arrangeIsCorrect(drill, order) : (optionIndex === drill.correctIndex);
@@ -301,16 +324,17 @@ router.post('/grammar-task/sessions/:id/items/:itemId/answer', requireAuth, sess
       // in an earlier, now-expired session — taints this attempt too; a new
       // session must not launder a memorized key back into "independent".
       const taintedRes = await client.query(
-        `SELECT 1 FROM grammar_attempts
-          WHERE user_id = $1 AND question_fingerprint = $2
-            AND assistance_state IN ('answer_served', 'correction_served')
-          LIMIT 1`,
-        [req.user.id, item.question_fingerprint]
+        `SELECT i.revealed_at, i.hint_served_at, i.passed FROM grammar_task_session_items i
+          JOIN grammar_task_sessions s ON s.id = i.session_id
+          WHERE s.user_id = $1 AND i.question_fingerprint = $2
+            AND (i.revealed_at IS NOT NULL OR i.hint_served_at IS NOT NULL OR i.passed = TRUE)
+            AND i.item_id <> $3`,
+        [req.user.id, item.question_fingerprint, item.item_id]
       );
       const assistanceState = deriveAssistanceState({
-        hintServedAt: item.hint_served_at,
+        hintServedAt: item.hint_served_at || taintedRes.rows.some(row => row.hint_served_at),
         revealedAt: item.revealed_at,
-        tainted: taintedRes.rows.length > 0,
+        tainted: taintedRes.rows.some(row => row.revealed_at || row.passed),
       });
 
       const attemptOrdinalRes = await client.query(
@@ -320,18 +344,8 @@ router.post('/grammar-task/sessions/:id/items/:itemId/answer', requireAuth, sess
       const primaryError = passed ? null : primaryErrorFor(item.step, drill.rule);
       const sentence = answerSentenceFor(drill, { isArrange, order, optionIndex });
 
-      // A plain try/catch around the INSERT is not enough on its own: once
-      // any statement errors inside a Postgres transaction, the whole
-      // transaction is aborted until it hits a ROLLBACK (or a ROLLBACK TO a
-      // SAVEPOINT) — catching the JS error without one still leaves the
-      // session/item UPDATE above unable to COMMIT (it silently becomes a
-      // ROLLBACK), even though this handler would otherwise report 200 with
-      // the graded result as if it had been saved. The SAVEPOINT scopes a
-      // request_id collision (e.g. the same id reused across two different
-      // items) to just this INSERT, so the item's own grading update still
-      // commits.
-      await client.query('SAVEPOINT grammar_attempts_insert');
-      try {
+      // The request record, item state and attempt commit together. Any
+      // constraint/storage error rolls back the entire transition.
         await client.query(
           `INSERT INTO grammar_attempts (
              user_id, grammar_id, lesson_id, source, input_mode, sentence,
@@ -355,17 +369,8 @@ router.post('/grammar-task/sessions/:id/items/:itemId/answer', requireAuth, sess
             drill.checkFamilyId || null,
           ]
         );
-      } catch (err) {
-        // Same replay guarded by the DB unique(user_id, request_id) index
-        // instead of the in-memory check above (a second request that raced
-        // past the SELECT before this one committed) — not a grading failure,
-        // the row lock above already ensured only one of them updated the
-        // item, so just report the (already-updated) item state.
-        if (err.code !== '23505') throw err;
-        await client.query('ROLLBACK TO SAVEPOINT grammar_attempts_insert');
-      }
-
-      return { status: 200, body: publicSessionItem(upd.rows[0]) };
+      return remember({ ...publicSessionItem(upd.rows[0]), assistanceState,
+        independentEligible: independentEligible(assistanceState) });
     });
 
     res.status(result.status).json(result.body);
@@ -383,6 +388,9 @@ router.post('/grammar-task/sessions/:id/items/:itemId/hint', requireAuth, sessio
     if (!isUuid(req.params.itemId)) return res.status(400).json({ error: 'invalid_item_id' });
 
     const result = await withTransaction(async (client) => {
+      await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, ['bunpou:' + req.user.id]);
+      const denied = await sessionAccessError(client, req.user, session.id);
+      if (denied) return { status: denied.status, body: { error: denied.error } };
       const r = await client.query(
         `SELECT * FROM grammar_task_session_items WHERE session_id = $1 AND item_id = $2 FOR UPDATE`,
         [session.id, req.params.itemId]
@@ -414,6 +422,9 @@ router.post('/grammar-task/sessions/:id/items/:itemId/reveal', requireAuth, sess
     if (!isUuid(req.params.itemId)) return res.status(400).json({ error: 'invalid_item_id' });
 
     const result = await withTransaction(async (client) => {
+      await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, ['bunpou:' + req.user.id]);
+      const denied = await sessionAccessError(client, req.user, session.id);
+      if (denied) return { status: denied.status, body: { error: denied.error } };
       const r = await client.query(
         `SELECT * FROM grammar_task_session_items WHERE session_id = $1 AND item_id = $2 FOR UPDATE`,
         [session.id, req.params.itemId]

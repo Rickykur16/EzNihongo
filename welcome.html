@@ -2655,6 +2655,7 @@
     cursor: pointer; font-family: inherit;
   }
   .gt-arr__go:disabled { opacity: .4; cursor: default; }
+  .gt-arr__bank[hidden], .gt-arr__go[hidden] { display: none; }
 
   /* Kartu hasil produksi (Step 4) — rincian per aspek, bukan satu paragraf. */
   .gt-check { display: flex; align-items: flex-start; gap: 7px; font-size: 13.5px; margin-bottom: 3px; }
@@ -9100,7 +9101,9 @@ function gtCardsHtml(items, sttOn, showDots) {
   if (!items || items.length === 0) {
     return '<div class="deck-empty">Belum ada pola grammar untuk tugas ini.</div>';
   }
-  return items.map((it, pi) => {
+  const sessionNotice = window.__gtSourceLesson?.bunpouFlow
+    ? '<div id="gt-session-notice" class="gt-callout" role="status" aria-live="polite" hidden></div>' : '';
+  return sessionNotice + items.map((it, pi) => {
     const count = Math.max(1, Number(it.requiredCount) || 1);
     const pattern = escapeHtml(it.pattern || '');
     const meaning = escapeHtml(it.meaning || '');
@@ -9195,9 +9198,18 @@ async function gtLoadDrills(lessonId) {
 function _gtApplyDrills(byGrammar) {
   window.__gtDrills = byGrammar;
   window.__gtWrong = {};
+  window.__gtDone = {};
   window.__gtAvail = {};
   (window.__gtData || []).forEach((it, pi) => {
     const d = byGrammar[it.id] || {};
+    if (window.__gtSessionId) {
+      for (const step of [1, 2, 3, 4, 5]) {
+        const el = _gtScope().querySelector(`#gt-step${step}-${pi}`);
+        if (!el) continue;
+        el.classList.remove('gt-step--passed');
+        el.classList.toggle('gt-step--locked', step !== 1);
+      }
+    }
     gtRenderStep(pi, 1, d.step1);
     gtRenderStep(pi, 2, d.step2);
     // Paket 2: pemeriksaan mandiri di akhir tugas. Tidak pernah separuh —
@@ -9210,19 +9222,107 @@ function _gtApplyDrills(byGrammar) {
     // Jawaban Step 1 = arti pola, dan arti itu tercetak di kepala kartu.
     // Kalau dibiarkan, soalnya cuma mencocokkan teks yang ada tepat di atasnya.
     // Disembunyikan sampai Step 1 dijawab, lalu dibuka sebagai materi bacaan.
-    if (d.step1 && !d.step1.answered) gtSetMeaningHidden(pi, true);
+    if (window.__gtSessionId) gtSetMeaningHidden(pi, !!d.step1 && !d.step1.answered && !gtItemDone(d.step1));
+    else if (d.step1 && !d.step1.answered && !gtItemDone(d.step1)) gtSetMeaningHidden(pi, true);
     // Resume (pilot only): sesi yang dimuat ulang setelah refresh/popup
     // ditutup-dibuka harus menampilkan tahap yang SAMA, bukan mengulang dari
     // awal — lihat T10 di rencana implementasi. Ditulis TERPISAH dari
     // pemilihan tahap pembuka di bawah supaya kasus KEDUANYA sudah lulus
     // (resume setelah Step 1 dan Step 2 dua-duanya selesai) menandai
     // keduanya passed, bukan cuma yang pertama diperiksa.
-    if (d.step1 && d.step1.passed) gtMarkStepPassed(pi, 1);
-    if (d.step2 && d.step2.passed) gtMarkStepPassed(pi, 2);
-    if (d.step2 && d.step2.passed) gtAdvance(pi, 2);
-    else if (d.step1 && d.step1.passed) gtAdvance(pi, 1);
+    for (const [step, drill] of [[1, d.step1], [2, d.step2], [4, d.check1], [5, d.check2]]) {
+      if (!drill) continue;
+      window.__gtWrong[`${pi}-${step}`] = Number(drill.wrongCount) || 0;
+      if (drill.passed) gtMarkStepPassed(pi, step);
+      if (gtItemDone(drill)) gtRestoreDoneItem(pi, step, drill);
+    }
+    if (gtItemDone(d.step2)) gtAdvance(pi, 2);
+    else if (gtItemDone(d.step1)) gtAdvance(pi, 1);
     else gtAdvance(pi, 0); // buka tahap tersedia yang pertama
+    if (gtItemDone(d.check1) || gtItemDone(d.check2)) gtAdvance(pi, 2);
   });
+}
+
+function gtItemDone(item) {
+  return !!(item && (item.passed || item.revealed || item.completed));
+}
+
+function gtSessionItem(it, step, update) {
+  const name = { 1: 'step1', 2: 'step2', 4: 'check1', 5: 'check2' }[step];
+  if (!it || !name) return {};
+  window.__gtDrills = window.__gtDrills || {};
+  const drills = window.__gtDrills[it.id] = window.__gtDrills[it.id] || {};
+  if (update) {
+    drills[name] = { ...drills[name], ...update };
+    const pi = (window.__gtData || []).findIndex((entry) => entry.id === it.id);
+    const hint = _gtScope().querySelector(`#gt-hint-${step}-${pi}`);
+    if (hint && !drills[name].hintAvailable) hint.innerHTML = escapeHtml(drills[name].hint || '');
+  }
+  return drills[name] || {};
+}
+
+function gtExplanationHtml(it, step) {
+  const explanation = window.__gtSessionId && gtSessionItem(it, step).explanation;
+  return explanation ? `<div class="gt-step__id">${escapeHtml(explanation)}</div>` : '';
+}
+
+function gtHintHtml(pi, step, drill) {
+  if (!window.__gtSessionId) return '';
+  return `<div id="gt-hint-${step}-${pi}">${drill.hint
+    ? escapeHtml(drill.hint)
+    : drill.hintAvailable ? `<button type="button" class="gt-retry" onclick="gtShowHint(${pi}, ${step}, this)">Petunjuk</button>` : ''}</div>`;
+}
+
+window.gtShowHint = async (pi, step, btn) => {
+  const it = (window.__gtData || [])[pi];
+  const sessionId = window.__gtSessionId;
+  const itemId = it && (window.__gtItemIds || {})[`${it.id}-${step}`];
+  if (!sessionId || !itemId || !gtSessionItem(it, step).hintAvailable || btn.disabled) return;
+  btn.disabled = true;
+  try {
+    const res = await window.ezApi(`/grammar-task/sessions/${sessionId}/items/${itemId}/hint`, { method: 'POST' });
+    if (!res.ok) throw new Error('hint unavailable');
+    const data = await res.json();
+    if (window.__gtSessionId !== sessionId) return;
+    gtSessionItem(it, step, { hint: data.hint || null, hintAvailable: false });
+    const el = _gtScope().querySelector(`#gt-hint-${step}-${pi}`);
+    if (el) el.innerHTML = data.hint ? escapeHtml(data.hint) : 'Petunjuk belum tersedia.';
+  } catch {
+    btn.disabled = false;
+    btn.textContent = 'Coba petunjuk lagi';
+  }
+};
+
+function gtRestoreDoneItem(pi, step, drill) {
+  const scope = _gtScope();
+  window.__gtDone = window.__gtDone || {};
+  window.__gtDone[`${pi}-${step}`] = true;
+  if (Number.isInteger(drill.wrongCount)) (window.__gtWrong = window.__gtWrong || {})[`${pi}-${step}`] = drill.wrongCount;
+  gtOpenStep(pi, step);
+  scope.querySelectorAll(`[id^="gt-opt-${step}-${pi}-"]`).forEach((b, oi) => {
+    b.disabled = true;
+    if (oi === drill.correctIndex) b.classList.add('gt-opt--correct');
+  });
+  const right = drill.japanese || (drill.correctOrder || []).join(' ');
+  if (drill.variant === 'arrange') gtFreezeArrange(pi, drill);
+  const verdict = scope.querySelector(`#gt-verdict-${step}-${pi}`);
+  if (verdict) verdict.innerHTML = (drill.passed
+    ? '<span class="gt-step__verdict--ok">Benar</span>'
+    : '<span class="gt-step__verdict--no">Jawaban sudah dibuka. Pelajari lalu lanjut.</span>')
+    + (right ? `<div class="gt-step__sentence" lang="ja">${escapeHtml(right)}</div>` : '')
+    + gtExplanationHtml((window.__gtData || [])[pi], step);
+}
+
+function gtFreezeArrange(pi, drill) {
+  const scope = _gtScope();
+  scope.querySelectorAll(`#gt-arr-bank-${pi} button, #gt-arr-slot-${pi} button`).forEach((b) => { b.disabled = true; });
+  const go = scope.querySelector(`#gt-arr-go-${pi}`);
+  if (go) { go.disabled = true; go.hidden = true; }
+  const bank = scope.querySelector(`#gt-arr-bank-${pi}`);
+  if (bank) bank.hidden = true;
+  const slot = scope.querySelector(`#gt-arr-slot-${pi}`);
+  const right = drill.japanese || (drill.correctOrder || []).join(' ');
+  if (slot && right) slot.textContent = right;
 }
 
 // ── Bunpou Flow pilot: sesi Step 1/2 tersimpan di server (Paket 1) ────────
@@ -9235,16 +9335,38 @@ function _gtApplyDrills(byGrammar) {
 // sekali — cukup panggil, lalu render apa pun yang kembali.
 async function gtLoadDrillsSession(lessonId) {
   const src = window.__gtSourceLesson;
+  const priorSessionId = window.__gtSessionId;
+  const priorState = window.__gtState;
+  const current = () => window.__gtLessonId === lessonId && window.__gtState === priorState;
+  const reviewMessage = 'Pendamping sedang ditinjau. Materi tetap tersedia.';
+  let notice = '';
   let data;
   try {
-    const r = await window.ezApi('/grammar-task/sessions', {
+    let r = await window.ezApi('/grammar-task/sessions', {
       method: 'POST',
       body: JSON.stringify({ sourceLessonId: src.apiId }),
     });
-    if (!r.ok) { gtRenderSessionError(); return; }
+    if (!current()) return;
+    if (r.status === 409) {
+      const error = await r.json();
+      if (!current()) return;
+      if (error.error === 'companion_needs_review') {
+        notice = reviewMessage;
+        if (priorSessionId) {
+          r = await window.ezApi(`/grammar-task/sessions/${priorSessionId}`);
+          if (!current()) return;
+        }
+      }
+    }
+    if (!r.ok) { gtRenderSessionError(notice || undefined); return; }
     data = await r.json();
-  } catch { gtRenderSessionError(); return; }
-  if (window.__gtLessonId !== lessonId) return; // sudah pindah pelajaran
+  } catch { if (current()) gtRenderSessionError(notice || undefined); return; }
+  if (!current()) return;
+  const newSession = data.sessionId !== priorSessionId;
+  if (data.contentChanged) notice += (notice ? ' ' : '') + (notice
+    ? 'Materi sumber berubah. Sesi aktif tetap memakai materi yang tersimpan.'
+    : 'Materi sumber berubah. Sesi latihan baru dimulai.');
+  gtSessionNotice(notice);
   window.__gtSessionId = data.sessionId;
   window.__gtItemIds = {};
   const byGrammar = {};
@@ -9258,6 +9380,47 @@ async function gtLoadDrillsSession(lessonId) {
     window.__gtItemIds[`${it.grammarId}-${it.step}`] = it.itemId;
   }
   _gtApplyDrills(byGrammar);
+  gtRestoreProductions(data.productions || [], newSession);
+}
+
+function gtSessionNotice(message) {
+  const el = _gtScope().querySelector('#gt-session-notice');
+  if (el) { el.textContent = message; el.hidden = !message; }
+}
+
+function gtRestoreProductions(productions, reset = false) {
+  const scope = _gtScope();
+  window.__gtProductions = {};
+  if (window.__gtState) window.__gtState.passed = {};
+  if (reset) (window.__gtData || []).forEach((it, pi) => {
+    for (let si = 0; si < Math.max(1, Number(it.requiredCount) || 1); si++) {
+      const key = `${pi}-${si}`;
+      const ta = scope.querySelector(`#gt-input-${key}`);
+      if (ta) ta.value = '';
+      if (scope.querySelector(`#gt-said-${key}`)) _gtSetSaid(key, '', scope);
+      const result = scope.querySelector(`#gt-result-${key}`);
+      if (result) { result.hidden = true; result.innerHTML = ''; }
+    }
+  });
+  for (const production of productions) {
+    const pi = (window.__gtData || []).findIndex((it) => it.id === production.grammarId);
+    const si = production.slot;
+    if (pi < 0 || !Number.isInteger(si) || si < 0 || si >= Math.max(1, Number(window.__gtData[pi].requiredCount) || 1)) continue;
+    const key = `${pi}-${si}`;
+    window.__gtProductions[key] = production;
+    const ta = scope.querySelector(`#gt-input-${key}`);
+    if (ta) ta.value = production.sentence || '';
+    _gtSetSaid(key, production.sentence || '', scope);
+    const result = scope.querySelector(`#gt-result-${key}`);
+    if (result && production.result) {
+      result.hidden = false;
+      result.className = `gt-result gt-result--${production.passed ? 'success' : 'error'}`;
+      result.innerHTML = gtFeedbackHtml(production.result, production.sentence || '', pi, si);
+    }
+    if (window.__gtState) window.__gtState.passed[key] = !!production.passed;
+    gtAdvance(pi, 2);
+  }
+  gtUpdateComplete();
 }
 
 // Sesi gagal dimuat/dipulihkan. TIDAK memanggil gtUnlockAllSteps(): fallback
@@ -9266,13 +9429,14 @@ async function gtLoadDrillsSession(lessonId) {
 // sini akan diam-diam "meluluskan" Step 1/2 padahal belum benar-benar
 // dikerjakan. Materi (kartu pola, contoh, dialog di atas) tetap terbaca;
 // yang terkunci hanya soal derivasinya, dengan jalan jujur untuk mencoba lagi.
-function gtRenderSessionError() {
+function gtRenderSessionError(message = 'Gagal memuat sesi latihan.') {
   const scope = _gtScope();
+  gtSessionNotice(message);
   (window.__gtData || []).forEach((_it, pi) => {
     for (const step of [1, 2]) {
       const body = scope.querySelector(`#gt-step${step}-${pi} .gt-step__body`);
       if (body) {
-        body.innerHTML = '<span class="gt-step__lockmsg">Gagal memuat sesi latihan.</span> '
+        body.innerHTML = `<span class="gt-step__lockmsg">${escapeHtml(message)}</span> `
           + '<button type="button" class="gt-retry" onclick="gtLoadDrills(window.__gtLessonId)">Coba lagi</button>';
       }
     }
@@ -9318,6 +9482,7 @@ function gtRenderStep(pi, step, drill) {
   if (!el) return;
   const body = el.querySelector('.gt-step__body');
   if (!drill) { el.style.display = 'none'; return; }
+  el.style.display = '';
   // Soal pemeriksaan (step 4/5) hanya punya prompt + opsi: tidak ada
   // `sentence`, jadi cabang step 2 di bawah akan merender satu div kalimat
   // KOSONG kalau dipakai apa adanya.
@@ -9340,7 +9505,7 @@ function gtRenderStep(pi, step, drill) {
       <span class="gt-opt__key">${GT_OPT_KEYS[oi] || (oi + 1)}</span>
       <span lang="${(step === 1 || step === 4) ? 'id' : 'ja'}">${escapeHtml(o)}</span>
     </button>`).join('');
-  body.innerHTML = `${ctx}<div class="gt-opts">${opts}</div><div class="gt-step__verdict" id="gt-verdict-${step}-${pi}"></div>`;
+  body.innerHTML = `${ctx}<div class="gt-opts">${opts}</div>${gtHintHtml(pi, step, drill)}<div class="gt-step__verdict" id="gt-verdict-${step}-${pi}"></div>`;
 }
 
 // ── Susun kalimat ────────────────────────────────────────────────────────
@@ -9358,7 +9523,7 @@ function gtRenderArrange(pi, body, drill) {
     <div class="gt-arr__bank" id="gt-arr-bank-${pi}">${bank}</div>
     <button type="button" class="gt-arr__go" id="gt-arr-go-${pi}" disabled
       onclick="gtArrSubmit(${pi})">Periksa</button>
-    <div class="gt-step__verdict" id="gt-verdict-2-${pi}"></div>`;
+    ${gtHintHtml(pi, 2, drill)}<div class="gt-step__verdict" id="gt-verdict-2-${pi}"></div>`;
   window.__gtArr = window.__gtArr || {};
   window.__gtArr[pi] = [];
   gtArrPaint(pi, drill);
@@ -9390,6 +9555,7 @@ function gtArrDrill(pi) {
 }
 
 window.gtArrTake = (pi, ti) => {
+  if (window.__gtSessionId && (window.__gtDone || {})[`${pi}-2`]) return;
   const drill = gtArrDrill(pi);
   if (!drill) return;
   const picked = (window.__gtArr || {})[pi] || [];
@@ -9400,6 +9566,7 @@ window.gtArrTake = (pi, ti) => {
 };
 
 window.gtArrReturn = (pi, pos) => {
+  if (window.__gtSessionId && (window.__gtDone || {})[`${pi}-2`]) return;
   const drill = gtArrDrill(pi);
   if (!drill) return;
   const picked = (window.__gtArr || {})[pi] || [];
@@ -9410,29 +9577,23 @@ window.gtArrReturn = (pi, pos) => {
 
 // ── Satu titik kirim jawaban, dipakai gtAnswerDrill (pilihan ganda) DAN
 // gtArrSubmit (susun kalimat) ─────────────────────────────────────────────
-// Bentuk balik SELALU {passed, correctIndex, correctOrder, japanese} (atau
-// {expired:true}, atau null kalau gagal total) supaya kode verdict di kedua
-// pemanggil tidak perlu tahu jalur mana yang sedang aktif. correctIndex/
-// correctOrder/japanese TIDAK diminta di sini untuk jalur pilot — itu tugas
-// gtRevealAnswer, dipanggil pemanggil HANYA saat window.__gtWrong sendiri
-// sudah mencapai GT_MAX_WRONG, supaya waktu pengungkapan identik dengan
-// jalur lama (client-side counter yang sama) walau server sudah lama siap
-// membukanya (mis. setelah resume sesi dengan riwayat salah).
+// Keep the legacy result shape; retain the full public item for session
+// feedback and resume. A failed transport must not create another attempt.
 async function gtSubmitAnswer(it, step, payload) {
   if (window.__gtSessionId) {
+    const sessionId = window.__gtSessionId;
     const itemId = (window.__gtItemIds || {})[`${it.id}-${step}`];
     if (!itemId) return null;
-    let r;
     try {
-      r = await window.ezApi(`/grammar-task/sessions/${window.__gtSessionId}/items/${itemId}/answer`, {
-        method: 'POST',
-        body: JSON.stringify({ ...payload, requestId: gtNewRequestId() }),
-      });
+      const { status, data: d } = await gtSessionRequest(`/grammar-task/sessions/${sessionId}/items/${itemId}/answer`, payload);
+      if (window.__gtSessionId !== sessionId) return null;
+      if (status === 410) return { expired: true };
+      if (status === 409) return d?.error === 'evaluation_pending' ? { pending: true } : null;
+      if (status !== 200 || typeof d?.passed !== 'boolean') return null;
+      gtSessionItem(it, step, d);
+      return { passed: d.passed, correctIndex: d.correctIndex ?? null, correctOrder: d.correctOrder ?? null, japanese: d.japanese ?? null,
+        ...(d.alreadyCompleted === true ? { alreadyCompleted: true } : {}) };
     } catch { return null; }
-    if (r.status === 410) return { expired: true };
-    if (!r.ok) return null;
-    const d = await r.json();
-    return { passed: d.passed, correctIndex: d.correctIndex ?? null, correctOrder: d.correctOrder ?? null, japanese: d.japanese ?? null };
   }
   try {
     const r = await window.ezApi('/grammar-task/drill-answer', {
@@ -9449,18 +9610,45 @@ function gtNewRequestId() {
   try { return crypto.randomUUID(); } catch { return `${Date.now()}-${Math.random()}`; }
 }
 
-// Buka kunci jawaban lewat sesi pilot — dipanggil hanya setelah jatah salah
-// client-side sendiri habis (lihat komentar gtSubmitAnswer di atas). Server
-// menolak kalau menurut catatannya sendiri jatah itu belum habis (403
-// reveal_not_eligible); di sini itu ditangani sama seperti kegagalan
-// jaringan lain — pesan "pelajari lagi materinya", bukan error mentah.
+async function gtSessionRequest(path, payload) {
+  const requests = window.__gtRequests = window.__gtRequests || new Map();
+  const key = `${path}:${JSON.stringify(payload)}`;
+  let request = requests.get(key);
+  if (!request) {
+    request = { requestId: gtNewRequestId(), pending: null };
+    requests.set(key, request);
+  }
+  if (request.pending) return request.pending;
+  request.pending = (async () => {
+    const res = await window.ezApi(path, {
+      method: 'POST', body: JSON.stringify({ ...payload, requestId: request.requestId }),
+    });
+    if (!res.ok) {
+      const data = res.status === 409 ? await res.json().catch(() => null) : null;
+      return { status: res.status || 500, data, requestId: request.requestId };
+    }
+    const data = await res.json();
+    const finalResult = path.endsWith('/production')
+      ? data?.saved === true && typeof data.correct === 'boolean' && typeof data.usesPattern === 'boolean'
+      : typeof data?.passed === 'boolean';
+    if (res.ok && finalResult) requests.delete(key);
+    return { status: res.status || (res.ok ? 200 : 500), data, requestId: request.requestId };
+  })();
+  try { return await request.pending; }
+  finally { request.pending = null; }
+}
+
+// Only a successful server reveal completes an assisted session item.
 async function gtRevealAnswer(it, step) {
+  const sessionId = window.__gtSessionId;
   const itemId = (window.__gtItemIds || {})[`${it.id}-${step}`];
   if (!itemId) return null;
   try {
-    const r = await window.ezApi(`/grammar-task/sessions/${window.__gtSessionId}/items/${itemId}/reveal`, { method: 'POST' });
+    const r = await window.ezApi(`/grammar-task/sessions/${sessionId}/items/${itemId}/reveal`, { method: 'POST' });
     if (!r.ok) return null;
     const d = await r.json();
+    if (window.__gtSessionId !== sessionId) return null;
+    gtSessionItem(it, step, { ...d, revealed: true, completed: true });
     return { correctIndex: d.correctIndex ?? null, correctOrder: d.correctOrder ?? null, japanese: d.japanese ?? null };
   } catch { return null; }
 }
@@ -9469,9 +9657,14 @@ window.gtArrSubmit = async (pi) => {
   const it = (window.__gtData || [])[pi];
   const drill = gtArrDrill(pi);
   if (!it || !drill) return;
+  if (window.__gtSessionId && (window.__gtDone || {})[`${pi}-2`]) return;
   const scope = _gtScope();
   const order = ((window.__gtArr || {})[pi] || []).slice();
   if (order.length !== drill.tokens.length) return;
+  const busy = window.__gtItemBusy = window.__gtItemBusy || {};
+  const busyKey = `${window.__gtSessionId}:${it.id}:2`;
+  if (window.__gtSessionId && busy[busyKey]) return;
+  if (window.__gtSessionId) busy[busyKey] = true;
 
   const slot = scope.querySelector(`#gt-arr-slot-${pi}`);
   const go = scope.querySelector(`#gt-arr-go-${pi}`);
@@ -9479,9 +9672,9 @@ window.gtArrSubmit = async (pi) => {
   if (go) go.disabled = true;
   if (verdict) verdict.textContent = 'Memeriksa…';
 
-  const d = await gtSubmitAnswer(it, 2, { order });
-  if (!d) {
-    if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--no">Gagal memeriksa, coba lagi.</span>';
+  const d = await gtSubmitAnswer(it, 2, { order }).finally(() => { delete busy[busyKey]; });
+  if (!d || d.pending) {
+    if (verdict) verdict.innerHTML = `<span class="gt-step__verdict--no">${d?.pending ? 'Penilaian masih diproses, coba lagi.' : 'Gagal memeriksa, coba lagi.'}</span>`;
     if (go) go.disabled = false;
     return;
   }
@@ -9491,17 +9684,28 @@ window.gtArrSubmit = async (pi) => {
     if (go) go.disabled = false;
     return;
   }
+  if (d.alreadyCompleted) {
+    gtRestoreDoneItem(pi, 2, gtSessionItem(it, 2));
+    if (d.passed) gtMarkStepPassed(pi, 2);
+    gtAdvance(pi, 2);
+    return;
+  }
 
   if (d.passed) {
     if (slot) slot.classList.add('gt-arr--ok');
-    if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--ok">✓ Benar</span>';
+    if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--ok">✓ Benar</span>' + gtExplanationHtml(it, 2);
+    if (window.__gtSessionId) {
+      (window.__gtDone = window.__gtDone || {})[`${pi}-2`] = true;
+      gtFreezeArrange(pi, gtSessionItem(it, 2));
+    }
     gtMarkStepPassed(pi, 2);
     gtAdvance(pi, 2);
   } else {
     if (slot) slot.classList.add('gt-arr--no');
     const key = `${pi}-2`;
     window.__gtWrong = window.__gtWrong || {};
-    window.__gtWrong[key] = (window.__gtWrong[key] || 0) + 1;
+    const item = window.__gtSessionId && gtSessionItem(it, 2);
+    window.__gtWrong[key] = item?.itemId && Number.isInteger(item.wrongCount) ? item.wrongCount : (window.__gtWrong[key] || 0) + 1;
     if (window.__gtWrong[key] >= GT_MAX_WRONG) {
       // Kalimat yang benar baru dibuka di sini — sebelum dinilai, server tidak
       // pernah mengirimkannya. Tahap berikutnya ikut dilepas supaya siswa
@@ -9509,6 +9713,10 @@ window.gtArrSubmit = async (pi) => {
       // gtRevealAnswer (dicatat sebagai pembukaan jawaban di server); jalur
       // lama sudah membawanya di `d` seperti sebelumnya.
       const reveal = window.__gtSessionId ? await gtRevealAnswer(it, 2) : d;
+      if (window.__gtSessionId && !reveal) {
+        if (verdict) verdict.innerHTML = `<span class="gt-step__verdict--no">Gagal membuka jawaban.</span> <button type="button" class="gt-retry" onclick="gtRetryReveal(${pi}, 2)">Coba lagi</button>`;
+        return;
+      }
       // Server hanya mengirim kuncinya kalau jatah salahnya memang sudah
       // habis menurut catatannya sendiri. Kalau tidak dikirim (mis. pencatatan
       // percobaan gagal), jangan tampilkan kotak kosong.
@@ -9518,6 +9726,11 @@ window.gtArrSubmit = async (pi) => {
           ? '<span class="gt-step__verdict--no">Belum tepat. Urutan yang benar:</span>'
             + `<div class="gt-step__sentence" style="margin-top:7px" lang="ja">${escapeHtml(right)}</div>`
           : '<span class="gt-step__verdict--no">Belum tepat. Pelajari lagi contoh kalimatnya di atas, lalu lanjut.</span>';
+      }
+      if (verdict) verdict.innerHTML += gtExplanationHtml(it, 2);
+      if (window.__gtSessionId) {
+        (window.__gtDone = window.__gtDone || {})[key] = true;
+        gtFreezeArrange(pi, gtSessionItem(it, 2));
       }
       gtAdvance(pi, 2);
     } else {
@@ -9529,6 +9742,7 @@ window.gtArrSubmit = async (pi) => {
 };
 
 window.gtArrRetry = (pi) => {
+  if (window.__gtSessionId && (window.__gtDone || {})[`${pi}-2`]) return;
   const drill = gtArrDrill(pi);
   if (!drill) return;
   const scope = _gtScope();
@@ -9561,15 +9775,20 @@ function gtMarkStepPassed(pi, step) {
 window.gtAnswerDrill = async (pi, step, optionIndex) => {
   const it = (window.__gtData || [])[pi];
   if (!it) return;
+  if (window.__gtSessionId && (window.__gtDone || {})[`${pi}-${step}`]) return;
+  const busy = window.__gtItemBusy = window.__gtItemBusy || {};
+  const busyKey = `${window.__gtSessionId}:${it.id}:${step}`;
+  if (window.__gtSessionId && busy[busyKey]) return;
+  if (window.__gtSessionId) busy[busyKey] = true;
   const scope = _gtScope();
   const verdict = scope.querySelector(`#gt-verdict-${step}-${pi}`);
   const buttons = [...scope.querySelectorAll(`[id^="gt-opt-${step}-${pi}-"]`)];
   buttons.forEach((b) => { b.disabled = true; });
   if (verdict) verdict.textContent = 'Memeriksa…';
 
-  const d = await gtSubmitAnswer(it, step, { optionIndex });
-  if (!d) {
-    if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--no">Gagal memeriksa, coba lagi.</span>';
+  const d = await gtSubmitAnswer(it, step, { optionIndex }).finally(() => { delete busy[busyKey]; });
+  if (!d || d.pending) {
+    if (verdict) verdict.innerHTML = `<span class="gt-step__verdict--no">${d?.pending ? 'Penilaian masih diproses, coba lagi.' : 'Gagal memeriksa, coba lagi.'}</span>`;
     buttons.forEach((b) => { b.disabled = false; });
     return;
   }
@@ -9579,11 +9798,19 @@ window.gtAnswerDrill = async (pi, step, optionIndex) => {
     buttons.forEach((b) => { b.disabled = false; });
     return;
   }
+  if (d.alreadyCompleted) {
+    gtRestoreDoneItem(pi, step, gtSessionItem(it, step));
+    if (d.passed) gtMarkStepPassed(pi, step);
+    if (step === 1) gtSetMeaningHidden(pi, false);
+    gtAdvance(pi, step);
+    return;
+  }
 
   const chosen = buttons[optionIndex];
   if (d.passed) {
     if (chosen) chosen.classList.add('gt-opt--correct');
-    if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--ok">✓ Benar</span>';
+    if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--ok">✓ Benar</span>' + gtExplanationHtml(it, step);
+    if (window.__gtSessionId) (window.__gtDone = window.__gtDone || {})[`${pi}-${step}`] = true;
     gtMarkStepPassed(pi, step);
     if (step === 1) gtSetMeaningHidden(pi, false); // arti boleh dibaca lagi
     gtAdvance(pi, step);
@@ -9591,13 +9818,18 @@ window.gtAnswerDrill = async (pi, step, optionIndex) => {
     if (chosen) chosen.classList.add('gt-opt--wrong');
     const key = `${pi}-${step}`;
     window.__gtWrong = window.__gtWrong || {};
-    window.__gtWrong[key] = (window.__gtWrong[key] || 0) + 1;
+    const item = window.__gtSessionId && gtSessionItem(it, step);
+    window.__gtWrong[key] = item?.itemId && Number.isInteger(item.wrongCount) ? item.wrongCount : (window.__gtWrong[key] || 0) + 1;
     const giveUp = window.__gtWrong[key] >= GT_MAX_WRONG;
     if (giveUp) {
       // Buka jawabannya dan lepaskan tahap berikutnya — siswa tidak boleh
       // mentok permanen di pilihan ganda. Jalur pilot memintanya eksplisit
       // lewat gtRevealAnswer; jalur lama sudah membawanya di `d`.
       const reveal = window.__gtSessionId ? await gtRevealAnswer(it, step) : d;
+      if (window.__gtSessionId && !reveal) {
+        if (verdict) verdict.innerHTML = `<span class="gt-step__verdict--no">Gagal membuka jawaban.</span> <button type="button" class="gt-retry" onclick="gtRetryReveal(${pi}, ${step})">Coba lagi</button>`;
+        return;
+      }
       const right = (reveal && reveal.correctIndex != null) ? buttons[reveal.correctIndex] : null;
       if (right) right.classList.add('gt-opt--correct');
       if (verdict) {
@@ -9605,6 +9837,8 @@ window.gtAnswerDrill = async (pi, step, optionIndex) => {
           ? '<span class="gt-step__verdict--no">Belum tepat. Jawaban yang benar ditandai hijau — pelajari lalu lanjut.</span>'
           : '<span class="gt-step__verdict--no">Belum tepat. Pelajari lagi materinya, lalu lanjut.</span>';
       }
+      if (verdict) verdict.innerHTML += gtExplanationHtml(it, step);
+      if (window.__gtSessionId) (window.__gtDone = window.__gtDone || {})[key] = true;
       if (step === 1) gtSetMeaningHidden(pi, false);
       gtAdvance(pi, step);
     } else {
@@ -9616,6 +9850,7 @@ window.gtAnswerDrill = async (pi, step, optionIndex) => {
 };
 
 window.gtRetryDrill = (pi, step) => {
+  if (window.__gtSessionId && (window.__gtDone || {})[`${pi}-${step}`]) return;
   const scope = _gtScope();
   scope.querySelectorAll(`[id^="gt-opt-${step}-${pi}-"]`).forEach((b) => {
     b.disabled = false;
@@ -9623,6 +9858,14 @@ window.gtRetryDrill = (pi, step) => {
   });
   const verdict = scope.querySelector(`#gt-verdict-${step}-${pi}`);
   if (verdict) verdict.innerHTML = '';
+};
+
+window.gtRetryReveal = async (pi, step) => {
+  const it = (window.__gtData || [])[pi];
+  if (!it || !await gtRevealAnswer(it, step)) return;
+  gtRestoreDoneItem(pi, step, gtSessionItem(it, step));
+  if (step === 1) gtSetMeaningHidden(pi, false);
+  gtAdvance(pi, step);
 };
 
 function renderGrammarTaskLesson(course, module, lesson, nav) {
@@ -10095,7 +10338,7 @@ function gtFeedbackHtml(d, sentence, pi, si) {
       </div>` : ''}
       ${d.primaryError && GT_ERROR_LABEL[d.primaryError] && d.feedback
         ? `<div class="gt-field"><div class="gt-field__label">💡 Catatan</div><div>${escapeHtml(d.feedback)}</div></div>` : ''}
-      <button type="button" class="gt-retry" onclick="gtRetryProduction(${pi}, ${si})">Coba lagi</button>
+      <button type="button" class="gt-retry" onclick="gtRetryProduction(${pi}, ${si})">${window.__gtSessionId ? 'Perbaiki kalimat' : 'Coba lagi'}</button>
     </div>`;
 }
 
@@ -10109,6 +10352,13 @@ window.gtRetryProduction = (pi, si) => {
   const result = scope.querySelector(`#gt-result-${key}`);
   if (result) result.hidden = true;
   const ta = scope.querySelector(`#gt-input-${key}`);
+  if (window.__gtSessionId) {
+    const sentence = _gtGetSentence(key, scope);
+    if (ta) { ta.value = sentence; ta.hidden = false; ta.disabled = false; try { ta.focus(); } catch {} }
+    const said = scope.querySelector(`#gt-said-${key}`);
+    if (said) said.hidden = true;
+    return;
+  }
   if (ta) ta.value = '';
   _gtSetSaid(key, '', scope);
   const status = scope.querySelector(`#gt-status-${key}`);
@@ -10127,7 +10377,15 @@ async function gtRunEval(pi, si, opts) {
   const result = scope.querySelector(`#gt-result-${key}`);
   if (!it || !result) return;
   const sentence = _gtGetSentence(key, scope);
+  const sessionId = window.__gtSessionId;
+  const state = window.__gtState;
+  const current = () => window.__gtSessionId === sessionId && window.__gtState === state && (!opts.guard || opts.guard());
   const showResult = (cls, html) => { result.hidden = false; result.className = `gt-result${cls ? ' ' + cls : ''}`; result.innerHTML = html; };
+  const retryHtml = (message) => `<div class="gt-result-body">${escapeHtml(message)} <button type="button" class="gt-retry" onclick="gtRunEval(${pi}, ${si}, {fromSpeech: ${!!opts.fromSpeech}})">Coba lagi</button></div>`;
+  if (!sessionId && window.__gtSourceLesson?.bunpouFlow) {
+    showResult('', '<div class="gt-result-body">Sesi latihan belum siap.</div>');
+    return;
+  }
   if (!sentence) {
     if (opts.fromSpeech) {
       const status = scope.querySelector(`#gt-status-${key}`);
@@ -10140,6 +10398,37 @@ async function gtRunEval(pi, si, opts) {
   }
   try { if (typeof opts.onStart === 'function') opts.onStart(); } catch {}
   try {
+    if (sessionId) {
+      const { status, data: d, requestId } = await gtSessionRequest(`/grammar-task/sessions/${sessionId}/production`, {
+        grammarId: it.id, slot: si, sentence, inputMode: opts.fromSpeech ? 'speech' : 'text',
+      });
+      if (!current()) return;
+      if (status === 410) {
+        showResult('', '<div class="gt-result-body">Sesi latihan sudah kedaluwarsa. <button type="button" class="gt-retry" onclick="gtLoadDrills(window.__gtLessonId)">Mulai sesi baru</button></div>');
+        return;
+      }
+      if (status === 409 && d?.error === 'production_completed') {
+        showResult('', '<div class="gt-result-body">Kalimat pada bagian ini sudah tersimpan dari sesi lain. Muat ulang sesi. <button type="button" class="gt-retry" onclick="gtLoadDrills(window.__gtLessonId)">Muat ulang sesi</button></div>');
+        return;
+      }
+      if (status === 409 && d?.error === 'evaluation_pending') {
+        showResult('', retryHtml('Penilaian masih diproses, coba lagi.'));
+        return;
+      }
+      if (status !== 200 || d?.saved !== true || typeof d.correct !== 'boolean' || typeof d.usesPattern !== 'boolean') {
+        showResult('', retryHtml('Gagal memeriksa, coba lagi.'));
+        return;
+      }
+      const ok = d.correct && d.usesPattern;
+      (window.__gtProductions = window.__gtProductions || {})[key] = {
+        grammarId: it.id, slot: si, sentence, result: d, requestId,
+        passed: ok, assistanceState: d.assistanceState ?? d.attempt?.assistanceState,
+      };
+      if (state) { state.passed[key] = !!ok; gtUpdateComplete(); }
+      scheduleBunpouAnalysisRefresh();
+      showResult(ok ? 'gt-result--success' : 'gt-result--error', gtFeedbackHtml(d, sentence, pi, si));
+      return;
+    }
     const res = await window.ezApi('/grammar-task/evaluate', {
       method: 'POST',
       // inputMode dipakai server untuk membedakan salah dengar STT dari
@@ -10164,6 +10453,10 @@ async function gtRunEval(pi, si, opts) {
     showResult(ok ? 'gt-result--success' : 'gt-result--error',
       gtFeedbackHtml(d, sentence, pi, si));
   } catch (e) {
+    if (sessionId) {
+      if (current()) showResult('', retryHtml('Gagal memeriksa, coba lagi.'));
+      return;
+    }
     if (opts.guard && !opts.guard()) return;
     showResult('gt-result--error', '<div class="gt-result-body" style="padding-left:0;">Gagal memeriksa, coba lagi.</div>');
   } finally {

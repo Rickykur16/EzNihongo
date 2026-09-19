@@ -55,13 +55,30 @@ export function contentRevisionId(items, pool) {
     id: r.id,
     pattern: r.pattern,
     meaning: r.meaning,
+    example: r.example,
+    dialog: r.example_dialog,
+    dialogTranslation: r.example_dialog_id,
+    instruction: r.instruction,
+    requiredCount: r.requiredCount,
     recognitionDistractors: r.recognitionDistractors || [],
     controlledDistractors: r.controlledDistractors || [],
     examples: (r.examples || []).map((e) => ({
       japanese: e.japanese, highlight: e.highlight, indonesian: e.indonesian,
     })),
   }));
-  return sha256(stableStringify({ items: shape(items), pool: shape(pool) }));
+  return sha256(stableStringify({ derivationVersion: 2, items: shape(items), pool: shape(pool) }));
+}
+
+export function companionIsCurrent(published, fingerprint) {
+  return !!published?.sourceFingerprint && published.sourceFingerprint === fingerprint;
+}
+
+export function sessionRevisionId(fingerprint, published) {
+  return sha256(stableStringify({ fingerprint, published }));
+}
+
+export function companionDraftRevision(draft) {
+  return draft ? sha256(stableStringify(draft)) : null;
 }
 
 // Identifies one specific question actually shown to a student — not just
@@ -125,8 +142,11 @@ export function publicSessionItem(row) {
     tokens: isArrange ? (snap.tokens || null) : null,
     wrongCount: row.wrong_count || 0,
     passed: row.passed === true,
+    revealed: !!row.revealed_at,
+    completed: revealed,
+    saved: true,
     answered: row.answered_at != null,
-    hintAvailable: !!(snap.overlayHint) && !row.hint_served_at,
+    hintAvailable: !!(snap.overlayHint) && !row.hint_served_at && !revealed,
     hint: row.hint_served_at ? (snap.overlayHint || null) : null,
     revealEligible: !revealed && (row.wrong_count || 0) >= DRILL_MAX_WRONG,
   };

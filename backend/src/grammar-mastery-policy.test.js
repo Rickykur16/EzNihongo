@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { computeConceptMastery } from './grammar-mastery.js';
+import { summarizeShadow } from './grammar-mastery-shadow.js';
 import {
   computeConceptMasteryV2, compareMastery, summarizeEvidence, classifyAttempt,
   hasEvidenceMetadata, resolvePolicy, EVIDENCE, V2_CONFIG, POLICY_V1, POLICY_V2,
@@ -93,15 +94,114 @@ test('the same question answered four times counts as one question', () => {
 
 test('real production evidence lets mastery stand', () => {
   const rows = [
-    { passed: true, created_at: at(0), source: 'production', eval_source: 'ai' },
+    independent(0, { source: 'production', eval_source: 'ai' }),
     independent(1), independent(2), independent(3),
   ];
   const v1 = computeConceptMastery(rows, NOW);
   const v2 = computeConceptMasteryV2(rows, NOW);
   assert.equal(v1.state, 'MASTERED');
   assert.equal(v2.state, 'MASTERED', 'tidak ditahan');
+  assert.equal(v2.evidence.independentProductionPasses, 1);
+  assert.equal(v2.evidence.eligibleProductionPasses, 1);
   assert.deepEqual(v2.withheldReasons, []);
   assert.ok(compareMastery(v1, v2).flags.includes('has_production_or_retention'));
+});
+
+for (const assistance_state of ['hint_served', 'answer_served', 'correction_served']) {
+  test(`${assistance_state} production plus three independent recognition passes stays progressing`, () => {
+    // Explicit assistance overrides even a contradictory eligibility marker.
+    const rows = [
+      independent(0, { source: 'production', assistance_state }),
+      independent(1), independent(2), independent(3),
+    ];
+    const v1 = computeConceptMastery(rows, NOW);
+    const v2 = computeConceptMasteryV2(rows, NOW);
+    assert.equal(classifyAttempt(rows[0]), EVIDENCE.ASSISTED);
+    assert.equal(v1.state, 'MASTERED');
+    assert.equal(v2.state, 'PROGRESSING');
+    assert.equal(v2.evidence.independentPasses, 3);
+    assert.equal(v2.evidence.independentProductionPasses, 0);
+    assert.equal(v2.evidence.assistedProductionAttempts, 1);
+    assert.equal(v2.evidence.assistedProductionPasses, 1);
+    assert.equal(v2.evidence.tally.production, 1);
+    assert.equal(v2.evidence.passed.production, 1);
+    assert.equal(v2.passedCount, 4);
+    assert.equal(v2.score, v1.score);
+    assert.equal(v2.withheldReasons.length, 1);
+    assert.match(v2.withheldReasons[0], /produksi mandiri/);
+    const flags = compareMastery(v1, v2).flags;
+    assert.ok(!flags.includes('recognition_only'));
+    assert.ok(!flags.includes('has_production_or_retention'));
+  });
+}
+
+test('production confidence counts preserve passed and failed attempts without double counting', () => {
+  const rows = [
+    independent(0, { source: 'production' }),
+    independent(1, { source: 'production', passed: false }),
+    independent(2, { source: 'production', independent_eligible: false }),
+    independent(3, { source: 'production', assistance_state: 'correction_served', passed: false }),
+    legacy(4, { source: 'production' }),
+    legacy(5, { source: 'production', passed: false }),
+    independent(6),
+  ];
+  const ev = summarizeEvidence(rows);
+  assert.equal(ev.tally.production, 6);
+  assert.equal(ev.passed.production, 3);
+  for (const confidence of ['independent', 'assisted', 'limited']) {
+    assert.equal(ev[`${confidence}ProductionAttempts`], 2);
+    assert.equal(ev[`${confidence}ProductionPasses`], 1);
+  }
+  assert.equal(Object.values(ev.tally).reduce((a, b) => a + b, 0), rows.length);
+  assert.equal(Object.values(ev.passed).reduce((a, b) => a + b, 0), 4);
+  assert.equal(ev.independentAttempts, 1);
+  assert.equal(ev.distinctQuestions, 1);
+});
+
+test('production assistance is reflected in comparison flags without hiding independent production', () => {
+  const rows = [0, 1, 2, 3].map((i) => independent(i, {
+    source: 'production', assistance_state: 'correction_served', independent_eligible: false,
+  }));
+  const flags = compareMastery(computeConceptMastery(rows, NOW), computeConceptMasteryV2(rows, NOW)).flags;
+  assert.ok(flags.includes('assisted_passes_only'));
+  assert.ok(!flags.includes('has_production_or_retention'));
+  rows[0] = independent(0, { source: 'production' });
+  assert.ok(!compareMastery(computeConceptMastery(rows, NOW), computeConceptMasteryV2(rows, NOW))
+    .flags.includes('assisted_passes_only'));
+});
+
+test('the AI production flag filters qualifying passes while preserving total and independent evidence', () => {
+  const cases = [
+    [{ evaluation_kind: 'ai', eval_source: 'ai' }, true],
+    [{ eval_source: 'cache' }, true],
+    [{}, true],
+    [{ evaluation_kind: 'ai', eval_source: 'smart_review' }, true],
+    [{ evaluation_kind: 'deterministic', eval_source: 'ai' }, false],
+    [{ eval_source: 'smart_review' }, false],
+  ];
+  for (const [metadata, isAi] of cases) {
+    const rows = [independent(0, { source: 'production', ...metadata }), independent(1), independent(2), independent(3)];
+    for (const countAiProductionAsEvidence of [true, false]) {
+      const v2 = computeConceptMasteryV2(rows, NOW, { ...V2_CONFIG, countAiProductionAsEvidence });
+      const qualifies = !isAi || countAiProductionAsEvidence;
+      assert.equal(v2.state, qualifies ? 'MASTERED' : 'PROGRESSING', JSON.stringify(metadata));
+      assert.equal(v2.evidence.passed.production, 1);
+      assert.equal(v2.evidence.independentProductionPasses, 1);
+      assert.equal(v2.evidence.aiProductionPasses, Number(isAi));
+      assert.equal(v2.evidence.eligibleProductionPasses, Number(qualifies));
+      assert.equal(compareMastery(computeConceptMastery(rows, NOW), v2)
+        .flags.includes('has_production_or_retention'), qualifies);
+    }
+  }
+  const mixed = summarizeEvidence([
+    independent(0, { source: 'production', evaluation_kind: 'deterministic' }),
+    independent(1, { source: 'production', evaluation_kind: 'ai', assistance_state: 'correction_served' }),
+    legacy(2, { source: 'production', eval_source: 'ai' }),
+  ], { config: { ...V2_CONFIG, countAiProductionAsEvidence: false } });
+  assert.equal(mixed.passed.production, 3);
+  assert.equal(mixed.aiProductionPasses, 2);
+  assert.equal(mixed.independentProductionPasses, 1);
+  assert.equal(mixed.eligibleProductionPasses, 1, 'assisted/limited AI passes do not subtract independent deterministic passes');
 });
 
 // ── Riwayat lama ──────────────────────────────────────────────────────────
@@ -116,6 +216,59 @@ test('legacy attempts carry no evidence metadata and are classified as limited, 
   // passedCount berasal dari v1 dan TIDAK boleh dinolkan.
   assert.equal(v2.passedCount, 4);
   assert.ok(compareMastery(computeConceptMastery(rows, NOW), v2).flags.includes('limited_history'));
+});
+
+test('legacy production stays limited confidence and retains successful evidence in shadow reports', () => {
+  const rows = [0, 1, 2, 3].map((i) => legacy(i, { source: 'production' }));
+  const original = structuredClone(rows);
+  const v1 = computeConceptMastery(rows, NOW);
+  const v2 = computeConceptMasteryV2(rows, NOW);
+  assert.equal(v1.state, 'MASTERED');
+  assert.equal(v2.state, 'PROGRESSING');
+  assert.equal(v2.evidenceQuality, 'limited');
+  assert.equal(v2.passedCount, 4);
+  assert.equal(v2.score, v1.score);
+  assert.equal(v2.evidence.passed.production, 4);
+  assert.equal(v2.evidence.limitedProductionPasses, 4);
+  assert.equal(v2.evidence.independentProductionPasses, 0);
+  assert.equal(v2.evidence.assistedProductionPasses, 0);
+  const diff = compareMastery(v1, v2);
+  assert.deepEqual(diff.flags, ['limited_history']);
+  const report = summarizeShadow({ concepts: [{ v1, v2, diff }] });
+  assert.equal(report.limitedHistoryConcepts, 1);
+  assert.equal(report.byFlag.limited_history, 1);
+  assert.deepEqual(rows, original);
+});
+
+test('partial and unknown metadata never establish independence, production eligibility, or retention', () => {
+  const partials = [
+    {},
+    { evaluation_kind: 'ai' },
+    { evaluation_kind: 'deterministic', question_fingerprint: 'partial' },
+    { independent_eligible: true },
+    { assistance_state: 'none_observed' },
+    { assistance_state: 'none_observed', independent_eligible: null },
+    { assistance_state: 'none_observed', independent_eligible: 'true' },
+    { assistance_state: 'unknown', independent_eligible: true },
+    { assistance_state: 'unknown', independent_eligible: false },
+    { assistance_state: 'unexpected', independent_eligible: true },
+  ];
+  for (const source of ['recognition', 'production']) {
+    for (const metadata of partials) {
+      const row = legacy(0, { source, ...metadata });
+      assert.equal(classifyAttempt(row, { previousPassAt: at(30) }), EVIDENCE.LIMITED, JSON.stringify(row));
+      const v2 = computeConceptMasteryV2([row, independent(1), independent(2), independent(3)], NOW);
+      assert.equal(v2.state, 'PROGRESSING');
+      assert.equal(v2.evidence.independentAttempts, 3);
+      assert.equal(v2.evidence.distinctQuestions, 3);
+      assert.equal(v2.evidence.independentProductionPasses, 0);
+      assert.equal(v2.evidence.limitedProductionPasses, source === 'production' ? 1 : 0);
+      assert.equal(v2.evidence.tally.retention, 0);
+      assert.equal(v2.passedCount, 4);
+    }
+  }
+  const ev = summarizeEvidence([independent(0), legacy(30, { evaluation_kind: 'ai' })]);
+  assert.equal(ev.tally.retention, 0, 'partial evidence cannot seed subsequent retention');
 });
 
 test("an attempt whose assistance is recorded as 'unknown' is never counted as independent", () => {
@@ -155,8 +308,10 @@ test('two passes in the same sitting are not retention', () => {
   assert.equal(ev.tally[EVIDENCE.RETENTION], 0);
 });
 
-test('a free sentence is production evidence whatever its metadata', () => {
-  assert.equal(classifyAttempt({ source: 'production', passed: true }), EVIDENCE.PRODUCTION);
+test('production classification requires explicit independence but source totals retain every sentence', () => {
+  assert.equal(classifyAttempt(legacy(0, { source: 'production' })), EVIDENCE.LIMITED);
+  assert.equal(classifyAttempt(independent(0, { source: 'production' })), EVIDENCE.PRODUCTION);
+  assert.equal(summarizeEvidence([legacy(0, { source: 'production' })]).tally.production, 1);
 });
 
 // ── Pagar struktural: jalur siswa tidak boleh menyentuh kebijakan usulan ──
