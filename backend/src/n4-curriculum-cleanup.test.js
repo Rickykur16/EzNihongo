@@ -195,4 +195,37 @@ test('N4 curriculum migration and legacy cleanup preserve canonical content and 
   assert.deepEqual(await rows('SELECT * FROM kanji_items ORDER BY id'),kanjiBefore);
   assert.deepEqual(await rows('SELECT * FROM courses ORDER BY id'),coursesBefore);
   t.diagnostic('PASS: migration 159, 403 cards/388 unique words across 24 decks, kana, reuse and repair legacy reading, preserve editor meanings, alternate readings, IDs, rerun, N5, lessons, grammar, kanji and publication state.');
+  const n5Module = (await rows("SELECT id FROM modules WHERE slug='n5-sentinel'"))[0].id;
+  const n5Deck = (await db.query("INSERT INTO lessons(module_id,slug,title,type) VALUES($1,'vocab','N5 deck','deck') RETURNING id",[n5Module])).rows[0].id;
+  const n5Mono = (await rows("SELECT id FROM module_vocabulary WHERE module_id=(SELECT id FROM modules WHERE slug='n5-sentinel') AND japanese='物'"))[0].id;
+  const n5Guide = (await db.query("INSERT INTO module_vocabulary(module_id,japanese,reading,indonesian) VALUES($1,'案内する','あんないする','memandu') RETURNING id",[n5Module])).rows[0].id;
+  await db.query('INSERT INTO lesson_deck_items(lesson_id,vocabulary_id,sort_order) VALUES($1,$2,1),($1,$3,2)',[n5Deck,n5Mono,n5Guide]);
+  const n5BeforeExpansion = await rows(`SELECT d.*,v.japanese FROM lesson_deck_items d JOIN module_vocabulary v ON v.id=d.vocabulary_id
+    JOIN lessons l ON l.id=d.lesson_id JOIN modules m ON m.id=l.module_id WHERE m.slug='n5-sentinel' ORDER BY d.sort_order`);
+  const lessonsBeforeExpansion = await rows('SELECT * FROM lessons ORDER BY id');
+  const grammarBeforeExpansion = await rows('SELECT * FROM module_grammar ORDER BY id');
+  const kanjiBeforeExpansion = await rows('SELECT * FROM kanji_items ORDER BY id');
+  await migrate('160_expand_n4_vocabulary_without_n5.sql');
+  const expanded = await rows(`SELECT d.*,v.japanese,v.reading FROM lesson_deck_items d JOIN module_vocabulary v ON v.id=d.vocabulary_id
+    JOIN lessons l ON l.id=d.lesson_id JOIN modules m ON m.id=l.module_id JOIN courses c ON c.id=m.course_id
+    WHERE c.slug='n4' ORDER BY d.lesson_id,d.sort_order`);
+  assert.equal(expanded.length,892);
+  assert.ok(expanded.every(d=>/^[ぁ-ゖァ-ヺー・ ]+$/.test(d.reading)));
+  assert.equal((await rows(`SELECT count(*)::int AS n FROM lesson_deck_items a JOIN lessons al ON al.id=a.lesson_id
+    JOIN modules am ON am.id=al.module_id JOIN courses ac ON ac.id=am.course_id JOIN module_vocabulary av ON av.id=a.vocabulary_id
+    JOIN lesson_deck_items b ON true JOIN lessons bl ON bl.id=b.lesson_id JOIN modules bm ON bm.id=bl.module_id
+    JOIN courses bc ON bc.id=bm.course_id JOIN module_vocabulary bv ON bv.id=b.vocabulary_id
+    WHERE ac.slug='n4' AND bc.slug='n5' AND btrim(av.japanese)=btrim(bv.japanese)`))[0].n,0);
+  assert.equal((await rows("SELECT count(*)::int AS n FROM curriculum_cleanup_archive WHERE cleanup_key='160-n4-remove-n5-overlap'"))[0].n,2);
+  assert.deepEqual(await rows(`SELECT d.*,v.japanese FROM lesson_deck_items d JOIN module_vocabulary v ON v.id=d.vocabulary_id
+    JOIN lessons l ON l.id=d.lesson_id JOIN modules m ON m.id=l.module_id WHERE m.slug='n5-sentinel' ORDER BY d.sort_order`),n5BeforeExpansion);
+  assert.deepEqual(await rows('SELECT * FROM lessons ORDER BY id'),lessonsBeforeExpansion);
+  assert.deepEqual(await rows('SELECT * FROM module_grammar ORDER BY id'),grammarBeforeExpansion);
+  assert.deepEqual(await rows('SELECT * FROM kanji_items ORDER BY id'),kanjiBeforeExpansion);
+  const expandedBeforeRerun = await rows('SELECT * FROM lesson_deck_items ORDER BY lesson_id,vocabulary_id');
+  const vocabularyBeforeRerun = await rows('SELECT * FROM module_vocabulary ORDER BY id');
+  await migrate('160_expand_n4_vocabulary_without_n5.sql');
+  assert.deepEqual(await rows('SELECT * FROM lesson_deck_items ORDER BY lesson_id,vocabulary_id'),expandedBeforeRerun);
+  assert.deepEqual(await rows('SELECT * FROM module_vocabulary ORDER BY id'),vocabularyBeforeRerun);
+  t.diagnostic('PASS: migration 160 removes N5 overlaps from N4, archives removed links, adds N4 vocabulary with kana, preserves N5/curriculum/kanji/editor data, and reruns safely.');
 });
