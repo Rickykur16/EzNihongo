@@ -3,6 +3,7 @@ import dialogueFurigana from '../../../src/dialogue-furigana.js';
 import { publicDialogScene } from '../dialogue-scene.js';
 import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
+import { isAdminEmail } from '../auth.js';
 import { asyncHandler, requireAuth } from '../middleware.js';
 import {
   loadCourseVocab,
@@ -46,12 +47,14 @@ router.get('/courses', asyncHandler(async (req, res) => {
 // only served to callers with an active entitlement for this course (or
 // admins) — course access is per course_id, so N5 access never unlocks N4.
 router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
+  // The curriculum editor also uses this route for unpublished courses.
+  const canPreviewDraft = await isAdminEmail(req.user.email);
   const course = await query(
     `SELECT id, slug, title, description, level, thumbnail_url
      FROM courses
-     WHERE slug = $1 AND is_published = TRUE
+     WHERE slug = $1 AND (is_published = TRUE OR $2::boolean)
      LIMIT 1`,
-    [req.params.slug]
+    [req.params.slug, canPreviewDraft]
   );
   if (course.rows.length === 0) return res.status(404).json({ error: 'Course not found' });
   if (!(await userCanAccessCourse(req.user, course.rows[0].id))) {
@@ -348,6 +351,7 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
 // Same entitlement gate as /api/courses/:slug — this is the Learning
 // Platform content itself, not just metadata.
 router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
+  const canPreviewDraft = await isAdminEmail(req.user.email);
   const lesson = await query(
     `SELECT l.*, m.course_id, m.title AS module_title, m.sort_order AS module_sort,
             c.slug AS course_slug, c.level AS course_level,
@@ -359,9 +363,9 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
      JOIN modules m ON m.id = l.module_id
      JOIN courses c ON c.id = m.course_id
      LEFT JOIN video_sources vs ON vs.id = l.video_source_id
-     WHERE l.id = $1 AND c.is_published = TRUE
+     WHERE l.id = $1 AND (c.is_published = TRUE OR $2::boolean)
      LIMIT 1`,
-    [req.params.id]
+    [req.params.id, canPreviewDraft]
   );
   if (lesson.rows.length === 0) return res.status(404).json({ error: 'Lesson not found' });
   if (!(await userCanAccessCourse(req.user, lesson.rows[0].course_id))) {
