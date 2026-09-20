@@ -16,6 +16,22 @@ function setup() {
   return context;
 }
 
+function setupRenderer(progress = {}) {
+  const renderEnd = html.indexOf('function renderLessonVocab(', start);
+  assert.ok(renderEnd > end, 'module intro renderer marker not found');
+  const context = vm.createContext({
+    visibleLessons: (module) => (module.lessons || []).filter((lesson) => !lesson.hidden),
+    getProgress: () => ({ n5: progress }),
+    currentState: { course: 'n5' },
+    escapeHtml: (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[char]),
+    formatDurationLong: (minutes) => `${minutes} menit`,
+  });
+  vm.runInContext(html.slice(start, renderEnd), context);
+  return context;
+}
+
 const moduleData = {
   id: 'bab-1',
   totalMinutes: null,
@@ -54,4 +70,29 @@ test('completed module offers review while keeping real lesson totals', () => {
   assert.equal(plan.percent, 100);
   assert.equal(plan.nextLesson.id, 'a');
   assert.equal(plan.actionLabel, 'Tinjau ulang modul');
+});
+
+test('approved intro renders a plain syllabus without the rejected dashboard panels', () => {
+  const context = setupRenderer();
+  const output = context.renderModuleIntro({
+    ...moduleData,
+    num: '01',
+    title: 'Perkenalan',
+    description: 'Siapkan percakapan pertamamu.',
+    candoStatements: ['Memperkenalkan diri.'],
+    scenario: 'Bertemu teman baru di kelas.',
+  });
+  assert.match(output, /module-intro-brief/);
+  assert.match(output, /Alur modul/);
+  assert.match(output, /Mulai di sini/);
+  assert.match(output, /module-intro-start/);
+  assert.doesNotMatch(output, /module-intro-progress|module-intro-layout|pill/);
+});
+
+test('approved intro points a returning student to the first unfinished lesson', () => {
+  const context = setupRenderer({ 'bab-1:a': true });
+  const output = context.renderModuleIntro({ ...moduleData, num: '01', title: 'Perkenalan' });
+  assert.match(output, /Lanjut di sini/);
+  assert.match(output, /Lanjutkan belajar/);
+  assert.match(output, /<strong class="module-intro-start-title">[^<]*<\/strong>/);
 });

@@ -2331,131 +2331,85 @@
   .res-sub { font-size: 11.5px; color: #6b7280; margin-top: 2px; }
   .res-arr { color: var(--brand-red); font-size: 14px; font-weight: 700; }
 
-  /* ── GUIDED MODULE INTRO ───────────────────────────────────────── */
+  /* ── MODULE INTRO SYLLABUS ─────────────────────────────────────── */
   .module-intro { width: 100%; color: var(--du-ink); }
-  .module-intro-header {
-    padding: 8px 0 28px;
-    border-bottom: 1px solid var(--du-border);
-  }
+  .module-intro-header { padding: 4px 0 28px; border-bottom: 1px solid var(--du-border); }
   .module-intro-eyebrow {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0;
-    text-transform: uppercase;
-    color: var(--du-accent);
-    margin-bottom: 8px;
+    margin: 0 0 20px;
+    font-size: 11px; font-weight: 750; letter-spacing: 0;
+    text-transform: uppercase; color: var(--du-accent);
   }
   .module-intro h2 {
-    font-family: var(--font-display);
-    font-size: clamp(26px, 5vw, 38px);
-    font-weight: 700;
-    letter-spacing: 0;
-    color: var(--du-ink);
-    margin: 0 0 6px;
-    line-height: 1.18;
+    max-width: 720px; margin: 0;
+    font-family: var(--font-display); font-size: clamp(28px, 5vw, 38px);
+    font-weight: 700; letter-spacing: 0; line-height: 1.18; color: var(--du-ink);
   }
   .module-intro .module-intro-sub {
-    font-family: var(--font-jp);
-    font-size: 15px;
-    color: var(--du-ink-3);
-    margin: 0 0 12px;
+    margin: 7px 0 0;
+    font-family: var(--font-jp); font-size: 15px; color: var(--du-ink-3);
   }
   .module-intro-description {
-    max-width: 680px;
-    margin: 0;
-    font-size: 15px;
-    line-height: 1.65;
-    color: var(--du-ink-2);
+    max-width: 690px; margin: 22px 0 0;
+    font-size: 16px; line-height: 1.7; color: var(--du-ink-2);
   }
   .module-intro-meta {
-    display: flex; flex-wrap: wrap; gap: 8px 20px;
-    margin: 20px 0 0;
+    display: flex; flex-wrap: wrap; gap: 8px 24px;
+    margin: 18px 0 0; padding-top: 18px;
   }
   .module-intro-meta span {
-    display: inline-flex; align-items: center;
-    font-size: 12px; font-weight: 600;
-    color: var(--du-ink-3);
+    font-size: 12px; font-weight: 600; color: var(--du-ink-3);
   }
-  .module-intro-actions {
-    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-    margin-top: 24px;
-  }
-  .module-intro-actions .btn-primary { min-height: 44px; padding: 11px 22px; }
-  .module-intro-progress-copy { font-size: 12px; color: var(--du-ink-3); }
-  .module-intro-progress {
-    width: 100%; max-width: 420px; height: 5px;
-    background: var(--du-border-soft);
-    overflow: hidden;
-  }
-  .module-intro-progress > span {
-    display: block; height: 100%;
-    background: var(--brand-red);
-  }
-  .module-intro-layout {
-    display: grid;
-    grid-template-columns: minmax(0, .85fr) minmax(320px, 1.15fr);
-    gap: 48px;
-    padding-top: 30px;
+  .module-intro-brief {
+    display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 34px;
+    padding: 30px 0; border-bottom: 1px solid var(--du-border);
   }
   .module-intro-section-title {
-    font-size: 16px; font-weight: 700;
-    letter-spacing: 0;
-    color: var(--du-ink);
-    margin: 0 0 12px;
+    margin: 0; font-size: 13px; font-weight: 750; letter-spacing: 0; color: var(--du-ink);
   }
   .cando-list {
     list-style: none; margin: 0; padding: 0;
   }
   .cando-list li {
     position: relative;
-    padding: 6px 0 6px 26px;
+    padding: 0 0 12px 24px;
     font-size: 14px; line-height: 1.55;
     color: var(--du-ink-2);
   }
+  .cando-list li:last-child { padding-bottom: 0; }
   .cando-list li::before {
-    content: '✓';
-    position: absolute; left: 0; top: 6px;
-    width: 18px; height: 18px;
-    background: var(--du-accent-soft);
-    color: var(--du-accent);
-    font-size: 11px; font-weight: 800;
-    display: inline-flex; align-items: center; justify-content: center;
+    content: ''; position: absolute; left: 2px; top: 8px;
+    width: 7px; height: 7px; background: var(--brand-red);
   }
-  .module-intro-scenario { margin-top: 28px; }
   .scenario-box {
-    background: var(--du-surface-2);
-    border-left: 3px solid var(--brand-red);
-    padding: 13px 16px;
-    font-size: 14px; line-height: 1.6;
+    margin: 0; padding: 0 0 0 18px; background: transparent;
+    border-left: 2px solid var(--du-border);
+    font-size: 14px; line-height: 1.65;
     color: var(--du-ink-2);
   }
-  .module-learning-path { border-top: 1px solid var(--du-border); }
+  .module-learning-path-head {
+    display: flex; align-items: end; justify-content: space-between; gap: 20px;
+    margin: 34px 0 8px;
+  }
+  .module-learning-path-head h3 { margin: 0; font-size: 18px; }
+  .module-learning-path-head span { font-size: 12px; color: var(--du-ink-3); }
   .module-path-item {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 30px minmax(0, 1fr) auto;
-    gap: 12px;
-    align-items: center;
-    padding: 14px 4px;
-    border: 0;
-    border-bottom: 1px solid var(--du-border);
-    background: transparent;
-    color: inherit;
-    text-align: left;
-    font: inherit;
-    cursor: pointer;
+    width: 100%; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 14px; align-items: center; padding: 16px 8px;
+    border: 0; border-bottom: 1px solid var(--du-border);
+    background: transparent; color: inherit; text-align: left; font: inherit; cursor: pointer;
   }
   .module-path-item:hover { background: var(--du-surface-2); }
   .module-path-item:focus-visible { outline: 2px solid var(--brand-red); outline-offset: -2px; }
-  .module-path-item.next { background: var(--du-accent-soft); }
+  .module-path-item.next { background: var(--du-surface); box-shadow: inset 3px 0 var(--brand-red); }
   .module-path-number {
-    width: 26px; height: 26px;
+    width: 28px; height: 28px;
     display: inline-flex; align-items: center; justify-content: center;
     border: 1px solid var(--du-border);
     background: var(--du-surface);
     color: var(--du-ink-3);
     font-size: 12px; font-weight: 700;
   }
+  .module-path-item.next .module-path-number { border-color: var(--brand-red); color: var(--brand-red); }
   .module-path-item.done .module-path-number {
     background: var(--success-green, #2E7D52);
     border-color: var(--success-green, #2E7D52);
@@ -2478,22 +2432,29 @@
     white-space: nowrap;
   }
   .module-path-empty { padding: 18px 0; font-size: 14px; color: var(--du-ink-3); }
+  .module-intro-start {
+    display: flex; justify-content: space-between; align-items: center; gap: 24px;
+    margin-top: 30px; padding-top: 22px; border-top: 2px solid var(--du-ink);
+  }
+  .module-intro-start-label {
+    display: block; font-size: 11px; font-weight: 750;
+    color: var(--du-ink-3); text-transform: uppercase;
+  }
+  .module-intro-start-title { display: block; margin-top: 5px; font-size: 14px; font-weight: 700; }
+  .module-intro-start .btn-primary { min-height: 44px; padding: 10px 20px; }
   .module-summary-item .lesson-check {
     border: 0;
     background: transparent;
     color: var(--du-meta, #595959);
   }
   .module-summary-item.current .lesson-check { color: var(--brand-red); }
-  @media (max-width: 760px) {
-    .module-intro-layout { grid-template-columns: 1fr; gap: 32px; }
-  }
   @media (max-width: 600px) {
     .module-intro-header { padding-top: 2px; }
-    .module-intro-actions { align-items: stretch; }
-    .module-intro-actions .btn-primary { width: 100%; }
-    .module-intro-progress-copy { width: 100%; }
-    .module-path-item { grid-template-columns: 30px minmax(0, 1fr); }
+    .module-intro-brief { grid-template-columns: 1fr; gap: 14px; padding: 24px 0; }
+    .module-path-item { grid-template-columns: 34px minmax(0, 1fr); }
     .module-path-state { grid-column: 2; }
+    .module-intro-start { align-items: stretch; flex-direction: column; }
+    .module-intro-start .btn-primary { width: 100%; }
   }
 
   /* ── LESSON VOCAB TABLE ────────────────────────────────────────── */
@@ -8039,12 +8000,17 @@ function renderModuleIntro(module) {
   const meta = [];
   if (module.cefrLevel) meta.push(`<span>Level CEFR ${escapeHtml(module.cefrLevel)}</span>`);
   if (plan.totalMinutes) meta.push(`<span>${escapeHtml(formatDurationLong(plan.totalMinutes))}</span>`);
+  meta.push(`<span>${plan.lessons.length} materi</span>`);
   if (module.jfTopic) meta.push(`<span>Topik: ${escapeHtml(module.jfTopic)}</span>`);
   const path = plan.lessons.map((lesson, index) => {
     const done = progress[`${module.id}:${lesson.id}`] === true;
-    const isNext = !done && lesson.id === plan.nextLesson?.id;
+    const isNext = lesson.id === plan.nextLesson?.id
+      && (!done || plan.completed === plan.lessons.length);
     const duration = formatDurationLong(lesson.durationMinutes);
     const type = typeLabels[String(lesson.type || 'text').toLowerCase()] || 'Materi';
+    const state = isNext
+      ? (plan.completed === plan.lessons.length ? 'Tinjau ulang' : plan.completed ? 'Lanjut di sini' : 'Mulai di sini')
+      : done ? 'Selesai' : '';
     return `
       <button class="module-path-item ${done ? 'done' : ''} ${isNext ? 'next' : ''}" type="button"
           onclick="selectLesson('${module.id}','${lesson.id}')">
@@ -8053,52 +8019,50 @@ function renderModuleIntro(module) {
           <span class="module-path-title">${escapeHtml(lesson.title)}</span>
           <span class="module-path-meta">${escapeHtml([type, duration].filter(Boolean).join(' · '))}</span>
         </span>
-        <span class="module-path-state">${done ? 'Selesai' : isNext ? 'Berikutnya' : ''}</span>
+        <span class="module-path-state">${state}</span>
       </button>`;
   }).join('');
+  const startLabel = plan.completed === plan.lessons.length && plan.lessons.length
+    ? 'Tinjau ulang dari'
+    : plan.completed ? 'Lanjut dari' : 'Pelajaran pertama';
 
   return `
     <div class="module-intro">
       <header class="module-intro-header">
-        <div class="module-intro-eyebrow">Ringkasan modul ${escapeHtml(module.num)}</div>
+        <div class="module-intro-eyebrow">Modul ${escapeHtml(module.num)} · Intro</div>
         <h2>${escapeHtml(module.title)}</h2>
         ${module.titleEn ? `<p class="module-intro-sub" lang="ja">${escapeHtml(module.titleEn)}</p>` : ''}
         <p class="module-intro-description">${escapeHtml(description)}</p>
         ${meta.length ? `<div class="module-intro-meta">${meta.join('')}</div>` : ''}
-        <div class="module-intro-actions">
-          <button class="btn-primary" type="button" ${plan.nextLesson ? `onclick="selectLesson('${module.id}','${plan.nextLesson.id}')"` : 'disabled'}>
-            ${escapeHtml(plan.actionLabel)} →
-          </button>
-          <div class="module-intro-progress-copy">
-            <div>${plan.completed} dari ${plan.lessons.length} pelajaran selesai</div>
-            <div class="module-intro-progress" role="progressbar" aria-label="Progres modul" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${plan.percent}">
-              <span style="width:${plan.percent}%"></span>
-            </div>
-          </div>
-        </div>
       </header>
-      <div class="module-intro-layout">
+      <section class="module-intro-brief" aria-labelledby="module-outcomes-title">
+        <h3 class="module-intro-section-title" id="module-outcomes-title">Setelah selesai</h3>
+        <ul class="cando-list">
+          ${hasCando
+            ? module.candoStatements.map((statement) => `<li>${escapeHtml(statement)}</li>`).join('')
+            : `<li>Selesaikan materi modul ini sesuai urutan sampai latihan akhir.</li>`}
+        </ul>
+      </section>
+      ${hasScenario ? `
+        <section class="module-intro-brief" aria-labelledby="module-scenario-title">
+          <h3 class="module-intro-section-title" id="module-scenario-title">Situasi latihan</h3>
+          <p class="scenario-box">${escapeHtml(module.scenario)}</p>
+        </section>` : ''}
+      <div class="module-learning-path-head">
+        <h3 id="module-path-title">Alur modul</h3>
+        <span>Kerjakan dari atas ke bawah</span>
+      </div>
+      <section class="module-learning-path" aria-labelledby="module-path-title">
+        ${path || '<div class="module-path-empty">Materi modul ini sedang disiapkan.</div>'}
+      </section>
+      <div class="module-intro-start">
         <div>
-          <section aria-labelledby="module-outcomes-title">
-            <h3 class="module-intro-section-title" id="module-outcomes-title">Target belajar</h3>
-            <ul class="cando-list">
-              ${hasCando
-                ? module.candoStatements.map((statement) => `<li>${escapeHtml(statement)}</li>`).join('')
-                : `<li>Selesaikan rangkaian materi sesuai urutan hingga latihan akhir.</li>`}
-            </ul>
-          </section>
-          ${hasScenario ? `
-            <section class="module-intro-scenario" aria-labelledby="module-scenario-title">
-              <h3 class="module-intro-section-title" id="module-scenario-title">Situasi yang akan dilatih</h3>
-              <div class="scenario-box">${escapeHtml(module.scenario)}</div>
-            </section>` : ''}
+          <span class="module-intro-start-label">${startLabel}</span>
+          <strong class="module-intro-start-title">${plan.nextLesson ? escapeHtml(plan.nextLesson.title) : 'Belum ada materi'}</strong>
         </div>
-        <section aria-labelledby="module-path-title">
-          <h3 class="module-intro-section-title" id="module-path-title">Urutan belajar</h3>
-          <div class="module-learning-path">
-            ${path || '<div class="module-path-empty">Materi modul ini sedang disiapkan.</div>'}
-          </div>
-        </section>
+        <button class="btn-primary" type="button" ${plan.nextLesson ? `onclick="selectLesson('${module.id}','${plan.nextLesson.id}')"` : 'disabled'}>
+          ${escapeHtml(plan.actionLabel)}
+        </button>
       </div>
     </div>`;
 }
