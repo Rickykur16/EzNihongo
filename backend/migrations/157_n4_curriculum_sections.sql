@@ -20,9 +20,8 @@ BEGIN
     v_section := CASE
       WHEN v_chapter <= 4 THEN 'Penjelasan, Waktu & Kemampuan'
       WHEN v_chapter <= 9 THEN 'Tindakan, Keadaan & Perubahan'
-      WHEN v_chapter <= 12 THEN 'Alasan, Dugaan & Perasaan'
-      WHEN v_chapter <= 16 THEN 'Pengandaian, Tujuan & Instruksi'
-      WHEN v_chapter <= 18 THEN 'Memberi, Menerima & Bantuan'
+      WHEN v_chapter <= 14 THEN 'Alasan, Dugaan & Pengandaian'
+      WHEN v_chapter <= 18 THEN 'Tujuan, Instruksi & Interaksi'
       WHEN v_chapter <= 20 THEN 'Informasi, Perbandingan & Kondisi'
       WHEN v_chapter <= 22 THEN 'Pasif & Kausatif'
       ELSE 'Bahasa Hormat & Merendah'
