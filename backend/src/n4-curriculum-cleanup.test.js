@@ -163,4 +163,36 @@ test('N4 curriculum migration and legacy cleanup preserve canonical content and 
   await migrate('158_n4_remove_legacy_lessons.sql');
   assert.equal((await rows('SELECT count(*)::int AS n FROM curriculum_cleanup_archive'))[0].n,archive.length);
   t.diagnostic('PASS: migration 158 removes only 253 old lessons/123 grammar; new curriculum and kanji unchanged; recursive recovery snapshots include quizzes/options/results/progress/composite mappings/SET NULL vocabulary; rerun safe.');
+  const module1 = (await rows("SELECT id FROM modules WHERE slug LIKE 'n4-b01-%'"))[0].id;
+  const reused = (await db.query("INSERT INTO module_vocabulary(module_id,japanese,reading,indonesian,note) VALUES($1,'物','mono','Editor meaning','Editor note') RETURNING id", [module1])).rows[0].id;
+  await db.query("INSERT INTO module_vocabulary(module_id,japanese,reading) VALUES($1,'事','じ')", [module1]);
+  await db.exec("INSERT INTO module_vocabulary(module_id,japanese,reading) SELECT id,'物','mono' FROM modules WHERE slug='n5-sentinel'");
+  const n5Words = await rows("SELECT v.* FROM module_vocabulary v JOIN modules m ON m.id=v.module_id WHERE m.slug='n5-sentinel'");
+  const coursesBefore = await rows('SELECT * FROM courses ORDER BY id');
+  await migrate('159_n4_vocabulary_decks.sql');
+  const deckCounts = await rows(`SELECT m.sort_order,count(d.vocabulary_id)::int AS n FROM modules m
+    JOIN courses c ON c.id=m.course_id JOIN lessons l ON l.module_id=m.id
+    JOIN lesson_deck_items d ON d.lesson_id=l.id WHERE c.slug='n4'
+    GROUP BY m.id ORDER BY m.sort_order`);
+  assert.deepEqual(deckCounts.map(d=>d.n), [18,18,18,16,17,15,20,17,17,16,16,16,16,14,16,16,18,16,16,18,16,18,17,18]);
+  const deckRows = await rows(`SELECT d.*,v.japanese,v.reading FROM lesson_deck_items d JOIN module_vocabulary v ON v.id=d.vocabulary_id ORDER BY d.lesson_id,d.sort_order`);
+  assert.equal(deckRows.length,403);
+  assert.ok(deckRows.every(d=>/^[ぁ-ゖァ-ヺー・ ]+$/.test(d.reading)));
+  assert.equal(new Set(deckRows.map(d=>`${d.lesson_id}:${d.japanese}`)).size,403);
+  assert.equal(new Set(deckRows.map(d=>`${d.japanese}:${d.reading}`)).size,388);
+  assert.deepEqual((await db.query('SELECT reading,indonesian,note FROM module_vocabulary WHERE id=$1',[reused])).rows,
+    [{reading:'もの',indonesian:'Editor meaning',note:'Editor note'}]);
+  assert.ok(deckRows.some(d=>d.vocabulary_id===reused));
+  assert.equal((await rows("SELECT reading FROM module_vocabulary WHERE japanese='事' AND reading='じ'"))[0].reading,'じ');
+  assert.equal((await rows('SELECT count(*)::int AS n FROM lesson_deck_items d JOIN lessons l ON l.id=d.lesson_id JOIN module_vocabulary v ON v.id=d.vocabulary_id WHERE l.module_id<>v.module_id'))[0].n,0);
+  const wordsBeforeRerun = await rows('SELECT * FROM module_vocabulary ORDER BY id');
+  await migrate('159_n4_vocabulary_decks.sql');
+  assert.deepEqual(await rows('SELECT * FROM module_vocabulary ORDER BY id'),wordsBeforeRerun);
+  assert.deepEqual(await rows(`SELECT d.*,v.japanese,v.reading FROM lesson_deck_items d JOIN module_vocabulary v ON v.id=d.vocabulary_id ORDER BY d.lesson_id,d.sort_order`),deckRows);
+  assert.deepEqual(await rows("SELECT v.* FROM module_vocabulary v JOIN modules m ON m.id=v.module_id WHERE m.slug='n5-sentinel'"),n5Words);
+  assert.deepEqual(await rows('SELECT * FROM lessons ORDER BY id'),retainedLessons);
+  assert.deepEqual(await rows('SELECT * FROM module_grammar ORDER BY id'),retainedGrammar);
+  assert.deepEqual(await rows('SELECT * FROM kanji_items ORDER BY id'),kanjiBefore);
+  assert.deepEqual(await rows('SELECT * FROM courses ORDER BY id'),coursesBefore);
+  t.diagnostic('PASS: migration 159, 403 cards/388 unique words across 24 decks, kana, reuse and repair legacy reading, preserve editor meanings, alternate readings, IDs, rerun, N5, lessons, grammar, kanji and publication state.');
 });
