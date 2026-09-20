@@ -2331,60 +2331,77 @@
   .res-sub { font-size: 11.5px; color: #6b7280; margin-top: 2px; }
   .res-arr { color: var(--brand-red); font-size: 14px; font-weight: 700; }
 
-  /* ── MODULE INTRO PANEL ────────────────────────────────────────── */
-  .module-intro {
-    background: var(--du-surface);
-    border: 1px solid var(--du-border);
-    border-radius: 18px;
-    padding: 26px 28px;
-    margin-bottom: 22px;
-    box-shadow: var(--du-shadow-sm);
+  /* ── GUIDED MODULE INTRO ───────────────────────────────────────── */
+  .module-intro { width: 100%; color: var(--du-ink); }
+  .module-intro-header {
+    padding: 8px 0 28px;
+    border-bottom: 1px solid var(--du-border);
   }
   .module-intro-eyebrow {
     font-size: 11px;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0;
     text-transform: uppercase;
     color: var(--du-accent);
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
   .module-intro h2 {
     font-family: var(--font-display);
-    font-size: 22px;
+    font-size: clamp(26px, 5vw, 38px);
     font-weight: 700;
-    letter-spacing: -0.005em;
+    letter-spacing: 0;
     color: var(--du-ink);
-    margin: 0 0 4px;
+    margin: 0 0 6px;
+    line-height: 1.18;
   }
   .module-intro .module-intro-sub {
-    font-size: 13.5px;
+    font-family: var(--font-jp);
+    font-size: 15px;
     color: var(--du-ink-3);
-    margin: 0 0 14px;
+    margin: 0 0 12px;
   }
-  .module-intro-meta {
-    display: flex; flex-wrap: wrap; gap: 8px;
-    margin-bottom: 16px;
-  }
-  .module-intro-meta .pill {
-    display: inline-flex; align-items: center;
-    padding: 5px 12px;
-    border-radius: 999px;
-    background: var(--du-surface-2);
-    border: 1px solid var(--du-border);
-    font-size: 12px; font-weight: 600;
+  .module-intro-description {
+    max-width: 680px;
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.65;
     color: var(--du-ink-2);
   }
-  .module-intro-meta .pill-accent {
-    background: var(--du-accent-soft);
-    border-color: var(--du-accent-soft-2);
-    color: var(--du-accent);
+  .module-intro-meta {
+    display: flex; flex-wrap: wrap; gap: 8px 20px;
+    margin: 20px 0 0;
+  }
+  .module-intro-meta span {
+    display: inline-flex; align-items: center;
+    font-size: 12px; font-weight: 600;
+    color: var(--du-ink-3);
+  }
+  .module-intro-actions {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    margin-top: 24px;
+  }
+  .module-intro-actions .btn-primary { min-height: 44px; padding: 11px 22px; }
+  .module-intro-progress-copy { font-size: 12px; color: var(--du-ink-3); }
+  .module-intro-progress {
+    width: 100%; max-width: 420px; height: 5px;
+    background: var(--du-border-soft);
+    overflow: hidden;
+  }
+  .module-intro-progress > span {
+    display: block; height: 100%;
+    background: var(--brand-red);
+  }
+  .module-intro-layout {
+    display: grid;
+    grid-template-columns: minmax(0, .85fr) minmax(320px, 1.15fr);
+    gap: 48px;
+    padding-top: 30px;
   }
   .module-intro-section-title {
-    font-size: 12px; font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--du-ink-3);
-    margin: 16px 0 8px;
+    font-size: 16px; font-weight: 700;
+    letter-spacing: 0;
+    color: var(--du-ink);
+    margin: 0 0 12px;
   }
   .cando-list {
     list-style: none; margin: 0; padding: 0;
@@ -2399,46 +2416,84 @@
     content: '✓';
     position: absolute; left: 0; top: 6px;
     width: 18px; height: 18px;
-    border-radius: 50%;
     background: var(--du-accent-soft);
     color: var(--du-accent);
     font-size: 11px; font-weight: 800;
     display: inline-flex; align-items: center; justify-content: center;
   }
+  .module-intro-scenario { margin-top: 28px; }
   .scenario-box {
     background: var(--du-surface-2);
-    border-radius: 12px;
-    padding: 12px 16px;
+    border-left: 3px solid var(--brand-red);
+    padding: 13px 16px;
     font-size: 14px; line-height: 1.6;
     color: var(--du-ink-2);
   }
-  .skill-bars {
-    display: flex; flex-direction: column; gap: 6px;
-  }
-  .skill-bar-row {
+  .module-learning-path { border-top: 1px solid var(--du-border); }
+  .module-path-item {
+    width: 100%;
     display: grid;
-    grid-template-columns: 120px 1fr 48px;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    gap: 12px;
     align-items: center;
-    gap: 10px;
-    font-size: 12.5px;
-    color: var(--du-ink-2);
+    padding: 14px 4px;
+    border: 0;
+    border-bottom: 1px solid var(--du-border);
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
   }
-  .skill-bar-label { font-weight: 600; }
-  .skill-bar-track {
-    height: 8px;
-    background: var(--du-surface-2);
-    border-radius: 999px;
-    overflow: hidden;
+  .module-path-item:hover { background: var(--du-surface-2); }
+  .module-path-item:focus-visible { outline: 2px solid var(--brand-red); outline-offset: -2px; }
+  .module-path-item.next { background: var(--du-accent-soft); }
+  .module-path-number {
+    width: 26px; height: 26px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--du-border);
+    background: var(--du-surface);
+    color: var(--du-ink-3);
+    font-size: 12px; font-weight: 700;
   }
-  .skill-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--brand-red) 0%, #e11d48 100%);
-    border-radius: 999px;
+  .module-path-item.done .module-path-number {
+    background: var(--success-green, #2E7D52);
+    border-color: var(--success-green, #2E7D52);
+    color: #fff;
   }
-  .skill-bar-pct { text-align: right; font-weight: 600; color: var(--du-ink-3); }
+  .module-path-title {
+    display: block;
+    font-size: 14px; font-weight: 650; line-height: 1.35;
+    color: var(--du-ink);
+  }
+  .module-path-meta {
+    display: block;
+    margin-top: 3px;
+    font-size: 11.5px;
+    color: var(--du-ink-3);
+  }
+  .module-path-state {
+    font-size: 11px; font-weight: 700;
+    color: var(--du-accent);
+    white-space: nowrap;
+  }
+  .module-path-empty { padding: 18px 0; font-size: 14px; color: var(--du-ink-3); }
+  .module-summary-item .lesson-check {
+    border: 0;
+    background: transparent;
+    color: var(--du-meta, #595959);
+  }
+  .module-summary-item.current .lesson-check { color: var(--brand-red); }
+  @media (max-width: 760px) {
+    .module-intro-layout { grid-template-columns: 1fr; gap: 32px; }
+  }
   @media (max-width: 600px) {
-    .module-intro { padding: 20px 18px; border-radius: 14px; }
-    .skill-bar-row { grid-template-columns: 96px 1fr 40px; font-size: 12px; }
+    .module-intro-header { padding-top: 2px; }
+    .module-intro-actions { align-items: stretch; }
+    .module-intro-actions .btn-primary { width: 100%; }
+    .module-intro-progress-copy { width: 100%; }
+    .module-path-item { grid-template-columns: 30px minmax(0, 1fr); }
+    .module-path-state { grid-column: 2; }
   }
 
   /* ── LESSON VOCAB TABLE ────────────────────────────────────────── */
@@ -4601,6 +4656,7 @@ function transformCourseFromApi(apiCourse) {
       id: m.slug,
       num: String(mi + 1).padStart(2, '0'),
       title: m.title,
+      description: m.description || '',
       titleEn: m.title_en || '',
       jfTopic: m.jf_topic || '',
       cefrLevel: m.cefr_level || '',
@@ -6733,7 +6789,7 @@ function renderBootError(err) {
   `;
 }
 
-let currentState = { course: null, moduleId: null, lessonId: null };
+let currentState = { course: null, moduleId: null, lessonId: null, view: 'lesson' };
 
 function renderCmsOnlyCourseStub(courseSlug) {
   const root = document.getElementById('app-root');
@@ -6770,23 +6826,33 @@ function renderLearning(courseSlug) {
 
   if (!currentState.moduleId) {
     const progress = getProgress()[courseSlug] || {};
+    const hasStudied = Object.values(progress).some((value) => value === true);
+    if (!hasStudied) {
+      const firstModule = course.modules[0];
+      const firstLesson = firstModule && visibleLessons(firstModule)[0];
+      currentState.moduleId = firstModule?.id || null;
+      currentState.lessonId = firstLesson?.id || null;
+      currentState.view = 'intro';
+    }
     let found = false;
-    for (const m of course.modules) {
+    for (const m of hasStudied ? course.modules : []) {
       for (const l of visibleLessons(m)) {
         const key = `${m.id}:${l.id}`;
         if (!progress[key]) {
           currentState.moduleId = m.id;
           currentState.lessonId = l.id;
+          currentState.view = 'lesson';
           found = true;
           break;
         }
       }
       if (found) break;
     }
-    if (!found) {
+    if (hasStudied && !found) {
       const first = course.modules.flatMap((m) => visibleLessons(m).map((l) => ({ m, l })))[0];
       currentState.moduleId = first?.m.id || course.modules[0].id;
       currentState.lessonId = first?.l.id || course.modules[0].lessons[0].id;
+      currentState.view = 'lesson';
     }
   }
   currentState.course = courseSlug;
@@ -6852,7 +6918,7 @@ function renderSidebar() {
     _expandedSections.clear();
     _expandedModules.clear();
     const hasStudied = Object.values(progress).some((v) => v);
-    if (hasStudied && currentState.moduleId) {
+    if ((hasStudied || currentState.view === 'intro') && currentState.moduleId) {
       _expandedSections.add(_sectionOfModule(currentState.moduleId));
       _expandedModules.add(currentState.moduleId);
     }
@@ -6909,10 +6975,27 @@ function renderSidebar() {
     const moduleDone = lessons.filter((l) => progress[`${m.id}:${l.id}`]).length;
     const moduleTotal = lessons.length;
 
-    const lessonsHtml = lessons.map(l => {
+    const isIntroCurrent = m.id === currentState.moduleId && currentState.view === 'intro';
+    const introHtml = `
+      <li class="lesson-item module-summary-item ${isIntroCurrent ? 'current' : ''}"
+          ${isIntroCurrent ? 'data-selection-state="current"' : ''}
+          role="button" tabindex="0" aria-label="Ringkasan modul ${escapeHtml(m.title)}${isIntroCurrent ? ', sedang dibuka' : ''}"
+          aria-current="${isIntroCurrent ? 'page' : 'false'}"
+          onclick="selectModuleIntro('${m.id}')"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectModuleIntro('${m.id}')}" >
+        <span class="lesson-check" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        </span>
+        <div class="lesson-info">
+          <div class="lesson-title-text">Ringkasan modul</div>
+          <div class="lesson-meta-row"><span>Tujuan dan urutan belajar</span></div>
+        </div>
+      </li>`;
+
+    const lessonsHtml = introHtml + lessons.map(l => {
       const key = `${m.id}:${l.id}`;
       const isDone = !!progress[key];
-      const isCurrent = m.id === currentState.moduleId && l.id === currentState.lessonId;
+      const isCurrent = currentState.view !== 'intro' && m.id === currentState.moduleId && l.id === currentState.lessonId;
       const typeKey = (l.type || 'text').toLowerCase();
       const typeLabel = TYPE_LABEL[typeKey] || typeKey.toUpperCase();
       const typeIcon = TYPE_ICON[typeKey] || TYPE_ICON.text;
@@ -7924,37 +8007,100 @@ function formatDurationCompact(minutes) {
   return m === 0 ? `${h} jam` : `${h} jam ${m} mnt`;
 }
 
+function getModuleIntroPlan(module, progress = {}) {
+  const lessons = visibleLessons(module);
+  const completed = lessons.filter((lesson) => progress[`${module.id}:${lesson.id}`] === true).length;
+  const nextLesson = lessons.find((lesson) => progress[`${module.id}:${lesson.id}`] !== true) || lessons[0] || null;
+  const totalMinutes = Number(module.totalMinutes)
+    || lessons.reduce((total, lesson) => total + (Number(lesson.durationMinutes) || 0), 0);
+  return {
+    lessons,
+    completed,
+    nextLesson,
+    totalMinutes,
+    percent: lessons.length ? Math.round((completed / lessons.length) * 100) : 0,
+    actionLabel: completed === lessons.length && lessons.length > 0
+      ? 'Tinjau ulang modul'
+      : completed > 0 ? 'Lanjutkan belajar' : 'Mulai modul',
+  };
+}
+
 function renderModuleIntro(module) {
+  const progress = getProgress()[currentState.course] || {};
+  const plan = getModuleIntroPlan(module, progress);
   const hasCando = Array.isArray(module.candoStatements) && module.candoStatements.length > 0;
   const hasScenario = !!(module.scenario && module.scenario.trim());
-  const durationText = formatDurationLong(module.totalMinutes);
-  if (!hasCando && !hasScenario && !module.cefrLevel && !durationText && !module.jfTopic && !module.titleEn) {
-    return '';
-  }
-
-  const pills = [];
-  if (module.cefrLevel) pills.push(`<span class="pill pill-accent">CEFR ${escapeHtml(module.cefrLevel)}</span>`);
-  if (durationText) pills.push(`<span class="pill">⏱ ${escapeHtml(durationText)}</span>`);
-  if (module.jfTopic) pills.push(`<span class="pill">${escapeHtml(module.jfTopic)}</span>`);
+  const description = (module.description || '').trim()
+    || `Pelajari ${plan.lessons.length} materi dalam urutan yang sudah disiapkan.`;
+  const typeLabels = {
+    video: 'Video', quiz: 'Kuis', text: 'Bacaan', deck: 'Kosakata',
+    kanji: 'Kanji', kana: 'Kana', grammar_task: 'Latihan tata bahasa',
+  };
+  const meta = [];
+  if (module.cefrLevel) meta.push(`<span>Level CEFR ${escapeHtml(module.cefrLevel)}</span>`);
+  if (plan.totalMinutes) meta.push(`<span>${escapeHtml(formatDurationLong(plan.totalMinutes))}</span>`);
+  if (module.jfTopic) meta.push(`<span>Topik: ${escapeHtml(module.jfTopic)}</span>`);
+  const path = plan.lessons.map((lesson, index) => {
+    const done = progress[`${module.id}:${lesson.id}`] === true;
+    const isNext = !done && lesson.id === plan.nextLesson?.id;
+    const duration = formatDurationLong(lesson.durationMinutes);
+    const type = typeLabels[String(lesson.type || 'text').toLowerCase()] || 'Materi';
+    return `
+      <button class="module-path-item ${done ? 'done' : ''} ${isNext ? 'next' : ''}" type="button"
+          onclick="selectLesson('${module.id}','${lesson.id}')">
+        <span class="module-path-number" aria-hidden="true">${done ? '✓' : index + 1}</span>
+        <span>
+          <span class="module-path-title">${escapeHtml(lesson.title)}</span>
+          <span class="module-path-meta">${escapeHtml([type, duration].filter(Boolean).join(' · '))}</span>
+        </span>
+        <span class="module-path-state">${done ? 'Selesai' : isNext ? 'Berikutnya' : ''}</span>
+      </button>`;
+  }).join('');
 
   return `
     <div class="module-intro">
-      <div class="module-intro-eyebrow">Modul ${escapeHtml(module.num)}</div>
-      <h2>${escapeHtml(module.title)}</h2>
-      ${module.titleEn ? `<p class="module-intro-sub">${escapeHtml(module.titleEn)}</p>` : ''}
-      ${pills.length ? `<div class="module-intro-meta">${pills.join('')}</div>` : ''}
-      ${hasCando ? `
-        <div class="module-intro-section-title">Setelah modul ini kamu akan bisa:</div>
-        <ul class="cando-list">
-          ${module.candoStatements.map((c) => `<li>${escapeHtml(c)}</li>`).join('')}
-        </ul>
-      ` : ''}
-      ${hasScenario ? `
-        <div class="module-intro-section-title">Skenario</div>
-        <div class="scenario-box">${escapeHtml(module.scenario)}</div>
-      ` : ''}
-    </div>
-  `;
+      <header class="module-intro-header">
+        <div class="module-intro-eyebrow">Ringkasan modul ${escapeHtml(module.num)}</div>
+        <h2>${escapeHtml(module.title)}</h2>
+        ${module.titleEn ? `<p class="module-intro-sub" lang="ja">${escapeHtml(module.titleEn)}</p>` : ''}
+        <p class="module-intro-description">${escapeHtml(description)}</p>
+        ${meta.length ? `<div class="module-intro-meta">${meta.join('')}</div>` : ''}
+        <div class="module-intro-actions">
+          <button class="btn-primary" type="button" ${plan.nextLesson ? `onclick="selectLesson('${module.id}','${plan.nextLesson.id}')"` : 'disabled'}>
+            ${escapeHtml(plan.actionLabel)} →
+          </button>
+          <div class="module-intro-progress-copy">
+            <div>${plan.completed} dari ${plan.lessons.length} pelajaran selesai</div>
+            <div class="module-intro-progress" role="progressbar" aria-label="Progres modul" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${plan.percent}">
+              <span style="width:${plan.percent}%"></span>
+            </div>
+          </div>
+        </div>
+      </header>
+      <div class="module-intro-layout">
+        <div>
+          <section aria-labelledby="module-outcomes-title">
+            <h3 class="module-intro-section-title" id="module-outcomes-title">Target belajar</h3>
+            <ul class="cando-list">
+              ${hasCando
+                ? module.candoStatements.map((statement) => `<li>${escapeHtml(statement)}</li>`).join('')
+                : `<li>Selesaikan rangkaian materi sesuai urutan hingga latihan akhir.</li>`}
+            </ul>
+          </section>
+          ${hasScenario ? `
+            <section class="module-intro-scenario" aria-labelledby="module-scenario-title">
+              <h3 class="module-intro-section-title" id="module-scenario-title">Situasi yang akan dilatih</h3>
+              <div class="scenario-box">${escapeHtml(module.scenario)}</div>
+            </section>` : ''}
+        </div>
+        <section aria-labelledby="module-path-title">
+          <h3 class="module-intro-section-title" id="module-path-title">Urutan belajar</h3>
+          <div class="module-learning-path">
+            ${path || '<div class="module-path-empty">Materi modul ini sedang disiapkan.</div>'}
+          </div>
+        </section>
+      </div>
+    </div>`;
 }
 
 function renderLessonVocab(lesson) {
@@ -12727,7 +12873,19 @@ function renderLesson() {
   destroyYoutubeSegmentPlayer();
   const course = COURSE_CONTENT[currentState.course];
   const module = course.modules.find(m => m.id === currentState.moduleId);
+  if (!module) return;
+  if (currentState.view === 'intro') {
+    window.__tutorCompact = false;
+    setTutorHidden(false);
+    document.getElementById('main-content').innerHTML = renderModuleIntro(module);
+    return;
+  }
   const lesson = module.lessons.find(l => l.id === currentState.lessonId);
+  if (!lesson) {
+    currentState.view = 'intro';
+    document.getElementById('main-content').innerHTML = renderModuleIntro(module);
+    return;
+  }
   updateTutorVisibility();
   const progress = getProgress()[currentState.course] || {};
   const key = `${module.id}:${lesson.id}`;
@@ -12775,14 +12933,7 @@ function renderLesson() {
   // legacy direct/Bunny embeds, then the existing coming-soon placeholder.
   const videoBlock = lesson.type === 'video' ? renderVideoLessonPlayer(lesson) : '';
 
-  // Show module intro panel only on the first lesson of a module (orientation).
-  const isFirstOfModule = module.lessons[0]?.id === lesson.id;
-  const introBlock = isFirstOfModule ? renderModuleIntro(module) : '';
-
-  // When the intro panel is rendered, the first lesson's body duplicates the
-  // same info (importer-generated markdown). Skip the body block to avoid
-  // showing both.
-  const bodyBlock = introBlock ? '' : `
+  const bodyBlock = `
     <div class="lesson-body">
       <h2>Catatan Pelajaran ${lesson.jp ? `<button class="pronounce-btn" style="vertical-align:middle;font-size:11px;" onclick="window.speakLessonJP(this)">🔊 Putar Jepang</button>` : ''}</h2>
       <p>${lesson.body}</p>
@@ -12823,8 +12974,6 @@ function renderLesson() {
     ${objectiveBlock}
 
     ${isPilotLesson ? '' : taskBanner}
-
-    ${introBlock}
 
     ${videoBlock}
 
@@ -12921,6 +13070,29 @@ window.selectLesson = (moduleId, lessonId) => {
   _expandedModules.add(moduleId);
   currentState.moduleId = moduleId;
   currentState.lessonId = lessonId;
+  currentState.view = 'lesson';
+  renderSidebar();
+  renderLesson();
+  closeSidebar();
+  window.scrollTo({ top: 0, behavior: 'auto' });
+  completeMobileContentFocus();
+};
+
+window.selectModuleIntro = (moduleId) => {
+  const completeMobileContentFocus = prepareMobileSidebarContentFocus();
+  try { destroyAllListeningPlayers(); } catch {}
+  try { window.closeKanjiDetail?.(); } catch {}
+  try { window.closeKanaModal?.(); } catch {}
+  const sec = _sectionOfModule(moduleId);
+  _expandedSections.clear();
+  _expandedSections.add(sec);
+  for (const otherId of [..._expandedModules]) {
+    if (otherId !== moduleId && _sectionOfModule(otherId) === sec) _expandedModules.delete(otherId);
+  }
+  _expandedModules.add(moduleId);
+  currentState.moduleId = moduleId;
+  currentState.lessonId = null;
+  currentState.view = 'intro';
   renderSidebar();
   renderLesson();
   closeSidebar();
@@ -13296,6 +13468,7 @@ window.markCompleteAndNext = async (triggerButton) => {
     if (next) {
       currentState.moduleId = next.m.id;
       currentState.lessonId = next.l.id;
+      currentState.view = 'lesson';
     }
     renderSidebar();
     renderLesson();
@@ -13383,6 +13556,7 @@ window.switchCourse = async (slug) => {
   const completeMobileContentFocus = prepareMobileSidebarContentFocus();
   currentState.moduleId = null;
   currentState.lessonId = null;
+  currentState.view = 'lesson';
   history.replaceState({}, '', `welcome.html?course=${slug}`);
   renderLearning(slug);
   closeSidebar();
