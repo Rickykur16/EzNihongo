@@ -1169,27 +1169,158 @@
   }
   .quiz-next-btn:hover { background: var(--brand-red-hover); }
 
-  /* Quiz Results */
-  .quiz-results { text-align: center; padding: 32px 24px; }
-  .quiz-results .trophy { font-size: 64px; margin-bottom: 12px; animation: bounce 0.6s; }
-  @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-  .quiz-results h2 { font-size: 26px; font-weight: 800; margin: 0 0 4px; }
-  .quiz-results .subtitle { color: #485f84; font-size: 14px; margin-bottom: 24px; }
-  .quiz-results .score-circle {
-    width: 140px; height: 140px; border-radius: 50%;
-    background: #fff; border: 8px solid var(--brand-red);
-    display: flex; align-items: center; justify-content: center;
-    margin: 0 auto 24px;
-    font-size: 36px; font-weight: 800; color: var(--brand-red);
-    box-shadow: 0 10px 30px rgba(178, 0, 36, 0.15);
+  /* Quiz results */
+  .quiz-container.quiz-results-shell {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 36px 42px 42px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
-  .quiz-results .xp-earned {
-    display: inline-block; padding: 10px 22px;
-    background: linear-gradient(135deg, var(--brand-red), #e11d48);
-    color: #fff; border-radius: 999px;
-    font-weight: 700; font-size: 14px; margin-bottom: 24px;
+  .quiz-results { color: #20252a; }
+  .quiz-results-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
   }
-  .quiz-results-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .quiz-results-kicker {
+    margin: 0 0 10px;
+    color: #58616a;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+  .quiz-results h2 {
+    margin: 0;
+    color: #20252a;
+    font-size: 32px;
+    font-weight: 750;
+    line-height: 1.18;
+    letter-spacing: 0;
+  }
+  .quiz-results .subtitle {
+    max-width: 56ch;
+    margin: 10px 0 0;
+    color: #5f6871;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .quiz-results-status {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 22px;
+    padding: 6px 10px;
+    border: 1px solid #b6dec7;
+    border-radius: 4px;
+    background: #eff9f2;
+    color: #1e7048;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .quiz-results:not(.is-passed) .quiz-results-status {
+    border-color: #edcebb;
+    background: #fff7ef;
+    color: #955020;
+  }
+  .quiz-results-score {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: end;
+    gap: 20px 34px;
+    margin-top: 32px;
+    padding: 22px 0 28px;
+    border-top: 1px solid #e5e8e8;
+    border-bottom: 1px solid #e5e8e8;
+  }
+  .quiz-results-score-number {
+    font-size: 74px;
+    font-weight: 750;
+    line-height: 1;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .quiz-results-score-detail { padding-bottom: 5px; }
+  .quiz-results-score-detail strong {
+    display: block;
+    font-size: 17px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .quiz-results-score-detail span { display: block; margin-top: 3px; color: #667078; font-size: 13px; }
+  .quiz-results-meter {
+    grid-column: 1 / -1;
+    height: 8px;
+    border-radius: 4px;
+    background: #e9edeb;
+    overflow: hidden;
+  }
+  .quiz-results-meter > span {
+    display: block;
+    width: var(--result-progress);
+    height: 100%;
+    background: #277b52;
+    transform-origin: left;
+    animation: quiz-result-fill .8s ease-out both;
+  }
+  .quiz-results:not(.is-passed) .quiz-results-meter > span { background: #b46b38; }
+  @keyframes quiz-result-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  .quiz-results-breakdown { margin-top: 32px; }
+  .quiz-results-breakdown-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .quiz-results-breakdown h3 { margin: 0; color: #20252a; font-size: 16px; font-weight: 700; letter-spacing: 0; }
+  .quiz-results-breakdown-note { color: #667078; font-size: 12px; white-space: nowrap; }
+  .quiz-result-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 100px 48px;
+    align-items: center;
+    gap: 18px;
+    min-height: 43px;
+    border-bottom: 1px solid #eef0ef;
+    font-size: 13px;
+  }
+  .quiz-result-row:first-child { border-top: 1px solid #eef0ef; }
+  .quiz-result-row-label { min-width: 0; overflow-wrap: anywhere; }
+  .quiz-result-row-meter { display: block; height: 5px; border-radius: 3px; background: #e9edeb; overflow: hidden; }
+  .quiz-result-row-meter > span { display: block; width: var(--section-progress); height: 100%; background: #4b9770; }
+  .quiz-result-row.is-focus .quiz-result-row-meter > span { background: #c48553; }
+  .quiz-result-row-score { text-align: right; white-space: nowrap; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .quiz-result-row.is-focus .quiz-result-row-score { color: #965320; }
+  .quiz-results-footer { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-top: 28px; }
+  .quiz-results-next { margin: 0; color: #5f6871; font-size: 13px; line-height: 1.5; }
+  .quiz-results-btns { display: flex; align-items: center; justify-content: flex-end; gap: 14px; flex-wrap: wrap; }
+  .quiz-results-btns .btn-primary { min-height: 44px; border-radius: 6px; box-shadow: none; white-space: nowrap; }
+  .quiz-results-btns .btn-primary:hover { box-shadow: none; }
+  .quiz-results-btns .quiz-results-link { padding: 10px 4px; border: 0; background: none; color: #59636b; font: 600 13px var(--font-body); cursor: pointer; }
+  .quiz-results-btns .quiz-results-link:hover { color: var(--brand-red); text-decoration: underline; }
+  @media (max-width: 600px) {
+    .quiz-container.quiz-results-shell { padding: 26px 18px 34px; }
+    .quiz-results-head { flex-direction: column; gap: 4px; }
+    .quiz-results h2 { font-size: 26px; }
+    .quiz-results-status { margin-top: 12px; }
+    .quiz-results-score { margin-top: 26px; gap: 14px 18px; }
+    .quiz-results-score-number { font-size: 58px; }
+    .quiz-results-score-detail strong { font-size: 15px; }
+    .quiz-results-breakdown-head { flex-wrap: wrap; }
+    .quiz-results-breakdown-note { white-space: normal; }
+    .quiz-result-row { grid-template-columns: minmax(0, 1fr) 56px; gap: 8px 12px; padding: 9px 0; }
+    .quiz-result-row-meter { grid-column: 1 / -1; grid-row: 2; }
+    .quiz-results-footer { align-items: stretch; flex-direction: column; gap: 16px; }
+    .quiz-results-btns { justify-content: flex-start; }
+  }
+  @media (max-width: 380px) {
+    .quiz-results-score { grid-template-columns: 1fr; }
+  }
 
   /* ── Flashcard ── */
   .flashcard-wrap { max-width: 520px; margin: 0 auto; padding: 20px 0; }
@@ -6280,8 +6411,8 @@ async function finishQuiz() {
   destroyAllListeningPlayers();
   const { questions, key, answers, attemptToken } = state;
   const main = document.getElementById('main-content');
-  main.innerHTML = `<div class="quiz-container"><div class="quiz-results">
-    <h2>Menyimpan hasil...</h2><div class="score-circle">…</div>
+  main.innerHTML = `<div class="quiz-container quiz-results-shell"><div class="quiz-results">
+    <p class="quiz-results-kicker">Hasil kuis</p><h2>Menyimpan hasil...</h2>
   </div></div>`;
 
   let data;
@@ -6312,8 +6443,8 @@ async function finishQuiz() {
       ? 'Soal atau sesi kuis sudah berubah. Kembali ke kuis untuk memuat status terbaru.'
       : incomplete ? 'Jawab semua soal terlebih dahulu, lalu kirim kembali hasilnya.'
       : 'Hasil belum dapat dikonfirmasi. Jawaban tetap tersedia di halaman ini. Periksa koneksi lalu kirim ulang hasil.';
-    main.innerHTML = `<div class="quiz-container"><div class="quiz-results">
-      <h2>Hasil belum terkonfirmasi</h2><p>${message}</p>
+    main.innerHTML = `<div class="quiz-container quiz-results-shell"><div class="quiz-results">
+      <p class="quiz-results-kicker">Hasil kuis</p><h2>Hasil belum terkonfirmasi</h2><p class="subtitle">${message}</p>
       <div class="quiz-results-btns">${changed
         ? '<button class="btn-primary" onclick="window.retryQuiz()">Kembali ke kuis</button>'
         : '<button class="btn-primary" onclick="finishQuiz()">Kirim ulang hasil</button><button class="btn-ghost" onclick="renderQuizQuestion(document.getElementById(\'main-content\'))">Kembali ke soal</button>'}
@@ -6352,10 +6483,11 @@ async function finishQuiz() {
     // Canonical completion and XP were saved with the attempt on the server.
   }
   addXP(bonusXP, passed ? 'lulus kuis' : 'mencoba kuis');
-  if (passed) fireConfetti();
+  const placementKind = kanaPlacementMeta({ id: key.split(':')[2] })?.kind;
+  if (passed && !placementKind) fireConfetti();
 
 
-  // Per-kategori breakdown — kasih siswa info materi mana yg lemah.
+  // Per-kategori breakdown untuk kuis biasa; tes kana memakai sectionResults.
   const byCategory = {};
   QUIZ_CAT_ORDER.forEach((c) => { byCategory[c] = [0, 0]; });
   for (let i = 0; i < questions.length; i++) {
@@ -6368,17 +6500,18 @@ async function finishQuiz() {
     .map((c) => {
       const [right, n] = byCategory[c];
       const label = QUIZ_CATEGORY_META[c]?.label || c;
-      const ok = right === n;
-      return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;">
-        <span>${label}</span>
-        <strong style="color:${ok ? '#15803d' : '#525252'};">${right} / ${n}</strong>
+      return `<div class="quiz-result-row${right < n ? ' is-focus' : ''}">
+        <span class="quiz-result-row-label">${escapeHtml(label)}</span>
+        <span class="quiz-result-row-meter" style="--section-progress:${Math.round(right / n * 100)}%" aria-hidden="true"><span></span></span>
+        <strong class="quiz-result-row-score">${right} / ${n}</strong>
       </div>`;
     }).join('');
   const sectionResults = Array.isArray(data.sectionResults) ? data.sectionResults : [];
   const sectionBlock = sectionResults.map((section) => `
-    <div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #eee;">
-      <span>${escapeHtml(section.sectionLabel || `Bagian ${section.sectionNumber}`)}</span>
-      <strong style="color:${section.passed ? '#15803d' : '#a16207'};white-space:nowrap;">${section.score} / ${section.total}${section.passed ? ' ✓' : ''}</strong>
+    <div class="quiz-result-row${section.passed ? '' : ' is-focus'}">
+      <span class="quiz-result-row-label">${escapeHtml(section.sectionLabel || `Bagian ${section.sectionNumber}`)}</span>
+      <span class="quiz-result-row-meter" style="--section-progress:${Math.round(Math.min(1, Math.max(0, Number(section.score) / Math.max(1, Number(section.total)))) * 100)}%" aria-hidden="true"><span></span></span>
+      <strong class="quiz-result-row-score">${Number(section.score)} / ${Number(section.total)}</strong>
     </div>`).join('');
   const focusCount = sectionResults.filter((section) => !section.passed).length;
 
@@ -6386,34 +6519,43 @@ async function finishQuiz() {
   const proficiencyCount = Array.isArray(data.proficiencyCompletions)
     ? data.proficiencyCompletions.length
     : 0;
-  const cooldownLine = nextAttemptAt && !noCooldownResult
-    ? `<p style="color:#525252;font-size:13px;margin:14px 0 6px;">Bisa coba lagi pada <strong>${fmtNextAt(nextAttemptAt)}</strong> (${cooldownHours} jam dari sekarang).</p>`
-    : (noCooldownResult
-      ? `<p style="color:#15803d;font-size:13px;margin:14px 0 6px;">Tanpa cooldown — bisa retake kapan saja.</p>`
-      : '');
+  const resultNote = passed
+    ? (proficiencyCount
+      ? `${proficiencyCount} latihan kana dasar ditandai tuntas.`
+      : 'Materi berikutnya sudah terbuka.')
+    : (nextAttemptAt && !noCooldownResult
+      ? `Tes dapat diulang pada ${fmtNextAt(nextAttemptAt)}.`
+      : 'Kamu dapat mengulang tes kapan saja.');
 
   main.innerHTML = `
-    <div class="quiz-container">
-      <div class="quiz-results">
-        <div class="trophy">${passed ? '🏆' : '💪'}</div>
-        <h2>${passed ? 'Lulus!' : 'Belum Lulus'}</h2>
-        <p class="subtitle">${passed
-          ? (proficiencyCount
-            ? `${proficiencyCount} latihan kana dasar ditandai tuntas. Kamu bisa langsung lanjut.`
-            : 'Materi berikutnya sudah ke-unlock.')
-          : (sectionResults.length
-            ? `Nilai total belum mencapai ${passing}%. Coba lagi setelah melatih bagian yang masih sulit.`
-            : noCooldownResult
-            ? `Skor minimal lulus: ${passing}%. Coba lagi sekarang.`
-            : `Skor minimal lulus: ${passing}%. Coba lagi setelah ${cooldownHours} jam.`)}</p>
-        <div class="score-circle">${pct}%</div>
-        <p style="color:#485f84;margin:0 0 12px;">Benar ${score} dari ${total} soal</p>
-        ${catBlock && !sectionBlock ? `<div style="background:#f9fafb;border-radius:8px;padding:10px 16px;margin:12px 0;text-align:left;font-size:14px;">${catBlock}</div>` : ''}
-        ${sectionBlock ? `<div style="background:#f9fafb;border-radius:8px;padding:10px 16px;margin:12px 0;text-align:left;font-size:14px;"><div style="font-size:12px;font-weight:700;color:#525252;margin-bottom:4px;">Hasil per bagian</div>${sectionBlock}</div>` : ''}
-        ${focusCount ? `<p style="color:#73510d;font-size:13px;margin:8px 0 0;">${focusCount} bagian bisa dilatih lagi. Ini tidak mengubah kelulusan berdasarkan nilai total.</p>` : ''}
-        ${cooldownLine}
-        <div class="quiz-results-btns">
-          <button class="btn-primary" onclick="window.continueAfterQuiz()">${passed ? 'Lanjut ke materi →' : 'Kembali ke pelajaran'}</button>
+    <div class="quiz-container quiz-results-shell">
+      <div class="quiz-results${passed ? ' is-passed' : ''}">
+        <div class="quiz-results-head">
+          <div>
+            <p class="quiz-results-kicker">${placementKind ? `Hasil tes membaca ${placementKind}` : 'Hasil kuis'}</p>
+            <h2>${passed ? 'Siap lanjut belajar' : 'Perlu latihan lagi'}</h2>
+            <p class="subtitle">${passed
+              ? 'Tes selesai. Hasil ini sudah tersimpan di progres belajarmu.'
+              : `Skor belum mencapai batas lulus ${passing}%. Periksa bagian yang masih sulit, lalu coba lagi.`}</p>
+          </div>
+          <span class="quiz-results-status">${passed ? '✓ Lulus' : 'Belum lulus'}</span>
+        </div>
+        <div class="quiz-results-score">
+          <strong class="quiz-results-score-number">${pct}%</strong>
+          <div class="quiz-results-score-detail"><strong>${score} dari ${total} benar</strong><span>Batas lulus ${passing}%</span></div>
+          <div class="quiz-results-meter" style="--result-progress:${pct}%" aria-hidden="true"><span></span></div>
+        </div>
+        ${sectionBlock || catBlock ? `<section class="quiz-results-breakdown" aria-labelledby="quiz-breakdown-title">
+          <div class="quiz-results-breakdown-head"><h3 id="quiz-breakdown-title">${sectionBlock ? 'Hasil per bagian' : 'Hasil per kategori'}</h3>
+            ${focusCount ? `<span class="quiz-results-breakdown-note">${focusCount} bagian untuk dilatih lagi</span>` : ''}</div>
+          <div class="quiz-results-breakdown-list">${sectionBlock || catBlock}</div>
+        </section>` : ''}
+        <div class="quiz-results-footer">
+          <p class="quiz-results-next">${resultNote}</p>
+          <div class="quiz-results-btns">
+            ${passed && noCooldownResult ? '<button class="quiz-results-link" onclick="window.retryQuiz()">Ulangi tes</button>' : ''}
+            <button class="btn-primary" onclick="${passed ? 'window.continueAfterQuiz()' : 'window.retryQuiz()'}">${passed ? 'Lanjut belajar →' : 'Kembali ke tes'}</button>
+          </div>
         </div>
       </div>
     </div>

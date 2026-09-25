@@ -28,6 +28,7 @@ function setup() {
     addXP:()=>effects.xp++,fireConfetti:()=>effects.confetti++,renderSidebar:()=>{},
     QUIZ_CAT_ORDER:['vocabulary'],QUIZ_CATEGORY_META:{vocabulary:{label:'Kosakata'}},
     normalizeQuizCategory:()=> 'vocabulary',fmtNextAt:x=>x,
+    kanaPlacementMeta:()=>null,escapeHtml:(value)=>value,
   });
   vm.runInContext(html.slice(start,end),ctx);
   return {ctx,main,effects,result,state};
@@ -43,7 +44,7 @@ for (const failure of ['http500','network','invalid-json','missing-api','invalid
     if(failure==='zero-total')result.total=0;
     await ctx.finishQuiz();
     assert.match(main.innerHTML,/Hasil belum terkonfirmasi/);
-    assert.doesNotMatch(main.innerHTML,/Lulus!|ke-unlock/);
+    assert.doesNotMatch(main.innerHTML,/Siap lanjut belajar|✓ Lulus/);
     assert.equal(effects.xp+effects.confetti+effects.progress+effects.cache,0);
     assert.equal(state.submitting,false);
     assert.equal(state.answers.length,2);
@@ -63,13 +64,13 @@ test('retry keeps the token/answers and only applies the server-confirmed result
   assert.equal(effects.progress,1);
   assert.equal(effects.confetti,1);
   assert.equal(state.submitted,true);
-  assert.match(main.innerHTML,/Lulus!/);
+  assert.match(main.innerHTML,/✓ Lulus/);
 });
 test('server failure grade overrides optimistic client score and category feedback',async()=>{
   const {ctx,main,effects,result}=setup();
   Object.assign(result,{score:0,passed:false,completionSaved:false,correctByQuestion:{q1:false,q2:false}});
   await ctx.finishQuiz();
-  assert.match(main.innerHTML,/Belum Lulus/);
+  assert.match(main.innerHTML,/Belum lulus/);
   assert.match(main.innerHTML,/0 \/ 2/);
   assert.equal(effects.progress,0);
   assert.equal(effects.confetti,0);
@@ -101,7 +102,8 @@ test('a passed kana placement marks server-confirmed prerequisite lessons comple
 });
 
 test('kana placement shows a 2/4 section as feedback without contradicting a passing total',async()=>{
-  const {ctx,main,result,state}=setup();
+  const {ctx,main,result,state,effects}=setup();
+  ctx.kanaPlacementMeta=()=>({kind:'Hiragana'});
   state.questions=Array.from({length:32},(_,i)=>({questionId:`q${i}`,category:'vocabulary'}));
   state.answers=state.questions.map((question)=>({questionId:question.questionId,optionId:'o1'}));
   result.correctByQuestion=Object.fromEntries(state.questions.map((question,i)=>[question.questionId,i<30]));
@@ -114,12 +116,25 @@ test('kana placement shows a 2/4 section as feedback without contradicting a pas
   });
   ctx.escapeHtml=(value)=>value;
   await ctx.finishQuiz();
-  assert.match(main.innerHTML,/Lulus!/);
+  assert.match(main.innerHTML,/✓ Lulus/);
   assert.match(main.innerHTML,/94%/);
+  assert.match(main.innerHTML,/Hasil tes membaca Hiragana/);
   assert.match(main.innerHTML,/Bagian G/);
   assert.match(main.innerHTML,/2 \/ 4/);
-  assert.match(main.innerHTML,/Ini tidak mengubah kelulusan/);
-  assert.doesNotMatch(main.innerHTML,/Belum Lulus|Custom|Kosakata/);
+  assert.match(main.innerHTML,/1 bagian untuk dilatih lagi/);
+  assert.match(main.innerHTML,/Lanjut belajar/);
+  assert.doesNotMatch(main.innerHTML,/Belum lulus|Custom|Kosakata|score-circle|trophy/);
+  assert.equal(effects.confetti,0);
+});
+
+test('a failed assessment offers a return to the test, not a next-lesson action',async()=>{
+  const {ctx,main,result}=setup();
+  Object.assign(result,{score:1,passed:false,completionSaved:false,correctByQuestion:{q1:true,q2:false}});
+  await ctx.finishQuiz();
+  assert.match(main.innerHTML,/Perlu latihan lagi/);
+  assert.match(main.innerHTML,/Kembali ke tes/);
+  assert.match(main.innerHTML,/onclick="window.retryQuiz\(\)"/);
+  assert.doesNotMatch(main.innerHTML,/Lanjut belajar/);
 });
 
 function renderKanaLanding(passed) {

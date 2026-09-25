@@ -789,7 +789,6 @@ body > .completion-overlay .completion-modal,
   transition-timing-function: var(--ease-standard);
 }
 
-#app-root .quiz-results .trophy { animation-duration: var(--duration-slow); }
 
 /* The clock is already refreshed once per minute; a looping colon adds noise. */
 .learning-overview .gt-colon { animation: none; opacity: .65; }
