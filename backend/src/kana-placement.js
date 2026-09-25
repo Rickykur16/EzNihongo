@@ -70,7 +70,7 @@ export function gradeKanaPlacement(questions, answersByQuestion, passingScorePct
     total,
     correctByQuestion,
     sectionResults,
-    passed: overallPassed && sectionResults.length > 0 && sectionResults.every((section) => section.passed),
+    passed: overallPassed,
   };
 }
 
