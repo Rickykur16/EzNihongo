@@ -89,7 +89,7 @@ test('romaji grading accepts common equivalents but preserves long-vowel distinc
   assert.equal(isKanaReadingCorrect('kouri', 'koori'), false);
 });
 
-test('kana placement requires 85 percent overall and at least three of four in every section', () => {
+test('kana placement uses the total score while section scores remain diagnostic', () => {
   const questions = [];
   const answers = new Map();
   for (let section = 1; section <= 7; section += 1) {
@@ -99,16 +99,42 @@ test('kana placement requires 85 percent overall and at least three of four in e
       answers.set(id, { correct: !(section === 7 && n > 2) });
     }
   }
-  const failedSection = gradeKanaPlacement(questions, answers, 85);
-  assert.equal(failedSection.score, 26);
-  assert.equal(failedSection.passed, false);
-  assert.equal(failedSection.sectionResults.at(-1).passed, false);
+  const weakSection = gradeKanaPlacement(questions, answers, 85);
+  assert.equal(weakSection.score, 26);
+  assert.equal(weakSection.passed, true);
+  assert.equal(weakSection.sectionResults.at(-1).passed, false);
 
   answers.set('7-3', { correct: true });
   const passed = gradeKanaPlacement(questions, answers, 85);
   assert.equal(passed.score, 27);
   assert.equal(passed.passed, true);
   assert.ok(passed.sectionResults.every((section) => section.minimumCorrect === 3));
+
+  for (let section = 1; section <= 7; section += 1) {
+    for (let n = 1; n <= 4; n += 1) {
+      answers.set(`${section}-${n}`, { correct: !(section >= 6 && n >= 2) });
+    }
+  }
+  const belowThreshold = gradeKanaPlacement(questions, answers, 85);
+  assert.equal(belowThreshold.score, 22);
+  assert.equal(belowThreshold.passed, false);
+});
+
+test('30 of 32 katakana readings pass even with one 2/4 section', () => {
+  const questions = [];
+  const answers = new Map();
+  for (let section = 1; section <= 8; section += 1) {
+    for (let n = 1; n <= 4; n += 1) {
+      const id = `${section}-${n}`;
+      questions.push({ question_id: id, section_number: section });
+      answers.set(id, { correct: !(section === 7 && n > 2) });
+    }
+  }
+  const result = gradeKanaPlacement(questions, answers, 85);
+  assert.equal(result.score, 30);
+  assert.equal(result.total, 32);
+  assert.equal(result.passed, true);
+  assert.equal(result.sectionResults[6].score, 2);
 });
 
 test('passed kana assessments remove only that script from Smart Review', () => {

@@ -69,7 +69,7 @@ const ATTEMPT_RESUME_MINUTES = 30;
 // race condition. Default ke global query() (auto-pool connect).
 async function lessonAttemptStatus(userId, lessonId, cooldownHours, runQuery = query) {
   const r = await runQuery(
-    `SELECT id, attempt_token, score, total_questions, sampled_question_ids,
+    `SELECT id, attempt_token, score, total_questions, sampled_question_ids, grading_result,
             started_at, completed_at
        FROM quiz_attempts
       WHERE user_id = $1 AND lesson_id = $2
@@ -113,6 +113,7 @@ async function lessonAttemptStatus(userId, lessonId, cooldownHours, runQuery = q
       score: a.score,
       totalQuestions: a.total_questions,
       completedAt: a.completed_at,
+      passed: typeof a.grading_result?.passed === 'boolean' ? a.grading_result.passed : null,
     } : null,
     canAttempt,
     nextAttemptAt: canAttempt ? null : new Date(nextMs).toISOString(),

@@ -5412,7 +5412,7 @@ async function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
   container.innerHTML = `
     <div class="quiz-container">
       <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:28px 26px;max-width:680px;margin:0 auto;">
-        <div style="font-size:11px;color:#b91c1c;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin-bottom:6px;">📋 Assignment Harian</div>
+        <div style="font-size:11px;color:#b91c1c;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin-bottom:6px;">${kanaPlacementMeta({ id: lessonId }) ? 'Tes Diagnostik Kana' : 'Assignment Harian'}</div>
         <h2 style="margin:0 0 18px;font-size:24px;font-weight:800;line-height:1.3;">${escapeHtml(lessonTitle)}</h2>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;">
           ${[1,2,3,4].map(() => `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;height:54px;"><div style="background:#eee;height:10px;width:60%;border-radius:4px;margin-bottom:8px;"></div><div style="background:#eee;height:14px;width:40%;border-radius:4px;"></div></div>`).join('')}
@@ -5447,18 +5447,24 @@ function fmtNextAt(iso) {
 }
 
 function renderQuizLandingCard(container, key, lessonTitle, status) {
+  const [navSlug, navMid, navLid] = String(key).split(':');
+  const placement = kanaPlacementMeta({ id: navLid });
   const last = status.lastAttempt;
   const lastPct = last ? Math.round((last.score / Math.max(1, last.totalQuestions)) * 100) : null;
-  const lastPassed = last ? lastPct >= status.passingScorePct : false;
+  const placementResultPending = !!placement && !!last && typeof last.passed !== 'boolean';
+  const lastPassed = last ? (typeof last.passed === 'boolean' ? last.passed : !placement && lastPct >= status.passingScorePct) : false;
+  const completedPlacement = !!placement && lastPassed;
 
   let lastBlock = '';
   if (last) {
-    const badge = lastPassed
+    const badge = placementResultPending
+      ? `<span style="background:#f3f4f6;color:#525252;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;">Status belum tersinkron</span>`
+      : lastPassed
       ? `<span style="background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;">✓ Lulus</span>`
       : `<span style="background:#fee2e2;color:#b91c1c;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;">Belum lulus</span>`;
     lastBlock = `
       <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;margin-top:18px;">
-        <div style="font-size:11px;color:#737373;letter-spacing:.04em;text-transform:uppercase;font-weight:700;margin-bottom:6px;">Attempt terakhir</div>
+        <div style="font-size:11px;color:#737373;letter-spacing:.04em;text-transform:uppercase;font-weight:700;margin-bottom:6px;">${placement ? 'Hasil tes terakhir' : 'Attempt terakhir'}</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <strong style="font-size:18px;">${last.score} / ${last.totalQuestions}</strong>
           <span style="color:#525252;">(${lastPct}%)</span>
@@ -5481,8 +5487,6 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
 
   // Navigasi pelajaran (gate lunak): "Sebelumnya" selalu ada; "Lanjut →" hanya
   // kalau attempt terakhir LULUS — kuis tetap jadi gerbang kalau belum lulus.
-  const [navSlug, navMid, navLid] = String(key).split(':');
-  const placement = kanaPlacementMeta({ id: navLid });
   let navPrev = null, navNext = null;
   const navCourse = COURSE_CONTENT[navSlug];
   if (navCourse) {
@@ -5490,10 +5494,10 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
     const navI = navAll.findIndex(x => x.m.id === navMid && x.l.id === navLid);
     if (navI >= 0) { navPrev = navAll[navI - 1]; navNext = navAll[navI + 1]; }
   }
-  const navFooter = (navPrev || (lastPassed && navNext)) ? `
+  const navFooter = (navPrev || (lastPassed && navNext && !completedPlacement)) ? `
     <div class="lesson-footer" style="max-width:680px;margin:14px auto 0;">
       <button class="btn-secondary" ${!navPrev ? 'disabled' : ''} onclick="${navPrev ? `selectLesson('${navPrev.m.id}','${navPrev.l.id}')` : ''}">← Sebelumnya</button>
-      ${lastPassed && navNext ? `<button class="btn-primary" onclick="selectLesson('${navNext.m.id}','${navNext.l.id}')">Lanjut →</button>` : ''}
+      ${lastPassed && navNext && !completedPlacement ? `<button class="btn-primary" onclick="selectLesson('${navNext.m.id}','${navNext.l.id}')">Lanjut →</button>` : ''}
     </div>` : '';
 
   container.innerHTML = `
@@ -5501,7 +5505,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
       <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:28px 26px;max-width:680px;margin:0 auto;">
         <div style="font-size:11px;color:#b91c1c;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin-bottom:6px;">${placement ? 'Tes Diagnostik Kana' : 'Assignment Harian'}</div>
         <h2 style="margin:0 0 18px;font-size:24px;font-weight:800;line-height:1.3;">${escapeHtml(lessonTitle)}</h2>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;">
+        ${!completedPlacement ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;">
           <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
             <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">Pool soal</div>
             <div style="font-size:18px;font-weight:800;margin-top:2px;">${status.poolSize}</div>
@@ -5518,18 +5522,25 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
             <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">Cooldown</div>
             <div style="font-size:18px;font-weight:800;margin-top:2px;">${(status.cooldownHours || 0) > 0 ? `${status.cooldownHours}h` : 'Tanpa'}</div>
           </div>
-        </div>
+        </div>` : ''}
         <p style="color:#525252;font-size:14px;line-height:1.6;margin:0 0 4px;">
-          ${placement
-            ? `Tes ini mengambil empat soal dari setiap bagian: tiga jawaban romaji diketik dan satu pilihan ganda. Lulus memerlukan minimal 85% total dan 3/4 benar di setiap bagian.`
+          ${completedPlacement
+            ? `Tes membaca ${placement.kind} sudah tuntas. Kamu bisa langsung lanjut ke materi berikutnya.`
+            : placement
+            ? `Tes ini mengambil empat soal dari setiap bagian: tiga jawaban romaji diketik dan satu pilihan ganda. Lulus jika nilai total minimal ${status.passingScorePct}%. Nilai per bagian hanya membantu menemukan bacaan yang perlu dilatih.`
             : `Tiap attempt, sistem ambil <strong>${status.questionsPerAttempt}</strong> soal acak dari pool <strong>${status.poolSize}</strong> — jadi soal bisa beda tiap retry.`}
         </p>
-        <p style="color:#525252;font-size:13px;line-height:1.6;margin:0 0 22px;">
+        ${!completedPlacement ? `<p style="color:#525252;font-size:13px;line-height:1.6;margin:0 0 22px;">
           ${cooldownNote}
-        </p>
+        </p>` : ''}
         ${lastBlock}
-        <div style="margin-top:24px;text-align:center;">
-          ${canAttempt && placement
+        <div style="margin-top:24px;display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap;">
+          ${completedPlacement
+            ? `${navNext ? `<button class="btn-primary" onclick="selectLesson('${navNext.m.id}','${navNext.l.id}')" style="padding:14px 28px;font-size:16px;">Lanjut belajar →</button>` : ''}
+               ${canAttempt ? `<button class="btn-secondary" onclick="window.startQuizAttempt('${escapeAttr(key)}')" style="padding:14px 20px;font-size:14px;">Ulangi tes</button>` : ''}`
+            : placementResultPending
+            ? `<button class="btn-secondary" onclick="window.location.reload()" style="padding:14px 20px;font-size:14px;">Perbarui status</button>`
+            : canAttempt && placement
             ? `<button class="btn-primary" onclick="window.startQuizAttempt('${escapeAttr(key)}')" style="padding:14px 28px;font-size:16px;">Mulai Tes Kemampuan →</button>`
             : ctaButton}
         </div>
@@ -6367,8 +6378,9 @@ async function finishQuiz() {
   const sectionBlock = sectionResults.map((section) => `
     <div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #eee;">
       <span>${escapeHtml(section.sectionLabel || `Bagian ${section.sectionNumber}`)}</span>
-      <strong style="color:${section.passed ? '#15803d' : '#b91c1c'};">${section.score} / ${section.total}${section.passed ? ' ✓' : ''}</strong>
+      <strong style="color:${section.passed ? '#15803d' : '#a16207'};white-space:nowrap;">${section.score} / ${section.total}${section.passed ? ' ✓' : ''}</strong>
     </div>`).join('');
+  const focusCount = sectionResults.filter((section) => !section.passed).length;
 
   const noCooldownResult = (cooldownHours || 0) <= 0;
   const proficiencyCount = Array.isArray(data.proficiencyCompletions)
@@ -6390,14 +6402,15 @@ async function finishQuiz() {
             ? `${proficiencyCount} latihan kana dasar ditandai tuntas. Kamu bisa langsung lanjut.`
             : 'Materi berikutnya sudah ke-unlock.')
           : (sectionResults.length
-            ? `Belum memenuhi ${passing}% total dan minimal 3/4 benar pada setiap bagian.`
+            ? `Nilai total belum mencapai ${passing}%. Coba lagi setelah melatih bagian yang masih sulit.`
             : noCooldownResult
             ? `Skor minimal lulus: ${passing}%. Coba lagi sekarang.`
             : `Skor minimal lulus: ${passing}%. Coba lagi setelah ${cooldownHours} jam.`)}</p>
         <div class="score-circle">${pct}%</div>
         <p style="color:#485f84;margin:0 0 12px;">Benar ${score} dari ${total} soal</p>
-        ${catBlock ? `<div style="background:#f9fafb;border-radius:8px;padding:10px 16px;margin:12px 0;text-align:left;font-size:14px;">${catBlock}</div>` : ''}
-        ${sectionBlock ? `<div style="background:#f9fafb;border-radius:8px;padding:10px 16px;margin:12px 0;text-align:left;font-size:14px;">${sectionBlock}</div>` : ''}
+        ${catBlock && !sectionBlock ? `<div style="background:#f9fafb;border-radius:8px;padding:10px 16px;margin:12px 0;text-align:left;font-size:14px;">${catBlock}</div>` : ''}
+        ${sectionBlock ? `<div style="background:#f9fafb;border-radius:8px;padding:10px 16px;margin:12px 0;text-align:left;font-size:14px;"><div style="font-size:12px;font-weight:700;color:#525252;margin-bottom:4px;">Hasil per bagian</div>${sectionBlock}</div>` : ''}
+        ${focusCount ? `<p style="color:#73510d;font-size:13px;margin:8px 0 0;">${focusCount} bagian bisa dilatih lagi. Ini tidak mengubah kelulusan berdasarkan nilai total.</p>` : ''}
         ${cooldownLine}
         <div class="quiz-results-btns">
           <button class="btn-primary" onclick="window.continueAfterQuiz()">${passed ? 'Lanjut ke materi →' : 'Kembali ke pelajaran'}</button>

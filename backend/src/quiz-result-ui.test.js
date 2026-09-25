@@ -10,6 +10,9 @@ assert.ok(start > 0 && end > start);
 const answerStart = html.indexOf('function setQuizAnswerPayload(');
 const answerEnd = html.indexOf('window.pickQuizAnswer = async', answerStart);
 assert.ok(answerStart > 0 && answerEnd > answerStart);
+const landingStart = html.indexOf('function renderQuizLandingCard(');
+const landingEnd = html.indexOf('function escapeAttr(', landingStart);
+assert.ok(landingStart > 0 && landingEnd > landingStart);
 function setup() {
   const main = { innerHTML: '' }, effects = { xp:0, confetti:0, progress:0, cache:0, calls:[] };
   const state = { key:'n5:bab1:quiz', attemptToken:'token', correct:2,
@@ -95,6 +98,75 @@ test('a passed kana placement marks server-confirmed prerequisite lessons comple
   assert.equal(saved.n5['bab1:quiz'],true);
   assert.equal(saved.n5['bab1:hiragana-1'],true);
   assert.equal(saved.n5['bab1:hiragana-2'],true);
+});
+
+test('kana placement shows a 2/4 section as feedback without contradicting a passing total',async()=>{
+  const {ctx,main,result,state}=setup();
+  state.questions=Array.from({length:32},(_,i)=>({questionId:`q${i}`,category:'vocabulary'}));
+  state.answers=state.questions.map((question)=>({questionId:question.questionId,optionId:'o1'}));
+  result.correctByQuestion=Object.fromEntries(state.questions.map((question,i)=>[question.questionId,i<30]));
+  Object.assign(result,{
+    score:30,total:32,passed:true,passingScorePct:85,
+    sectionResults:[
+      {sectionNumber:1,sectionLabel:'Bagian A',score:4,total:4,passed:true},
+      {sectionNumber:7,sectionLabel:'Bagian G',score:2,total:4,passed:false},
+    ],
+  });
+  ctx.escapeHtml=(value)=>value;
+  await ctx.finishQuiz();
+  assert.match(main.innerHTML,/Lulus!/);
+  assert.match(main.innerHTML,/94%/);
+  assert.match(main.innerHTML,/Bagian G/);
+  assert.match(main.innerHTML,/2 \/ 4/);
+  assert.match(main.innerHTML,/Ini tidak mengubah kelulusan/);
+  assert.doesNotMatch(main.innerHTML,/Belum Lulus|Custom|Kosakata/);
+});
+
+function renderKanaLanding(passed) {
+  const main={innerHTML:''};
+  const lesson={id:'assignment-bab-2-katakana'};
+  const next={id:'lesson-next'};
+  const ctx=vm.createContext({
+    COURSE_CONTENT:{n5:{modules:[{id:'bab2',lessons:[lesson,next]}]}},
+    visibleLessons:(module)=>module.lessons,
+    kanaPlacementMeta:(item)=>item.id===lesson.id ? {kind:'Katakana'} : null,
+    escapeHtml:(value)=>value,
+    escapeAttr:(value)=>value,
+    fmtCooldown:()=> '0 jam',
+    fmtNextAt:()=>'',
+    window:{},
+  });
+  vm.runInContext(html.slice(landingStart,landingEnd),ctx);
+  ctx.renderQuizLandingCard(main,`n5:bab2:${lesson.id}`,'Assignment Bab 2: Tes Membaca Katakana',{
+    lastAttempt:{score:30,totalQuestions:32,passed},
+    passingScorePct:85,poolSize:60,questionsPerAttempt:32,
+    cooldownHours:0,canAttempt:true,
+  });
+  return main.innerHTML;
+}
+
+test('passed kana landing continues learning and makes retake secondary',()=>{
+  const htmlResult=renderKanaLanding(true);
+  assert.match(htmlResult,/30 \/ 32/);
+  assert.match(htmlResult,/Lulus/);
+  assert.match(htmlResult,/Lanjut belajar/);
+  assert.match(htmlResult,/Ulangi tes/);
+  assert.doesNotMatch(htmlResult,/Mulai Tes Kemampuan|3\/4 benar|Pool soal/);
+  assert.equal((htmlResult.match(/Lanjut belajar/g)||[]).length,1);
+});
+
+test('kana landing trusts official grading when a high score was still rejected',()=>{
+  const htmlResult=renderKanaLanding(false);
+  assert.match(htmlResult,/Belum lulus/);
+  assert.match(htmlResult,/Mulai Tes Kemampuan/);
+  assert.doesNotMatch(htmlResult,/Lanjut belajar|3\/4 benar/);
+});
+
+test('kana landing does not infer a pass when server grading is unavailable',()=>{
+  const htmlResult=renderKanaLanding(null);
+  assert.match(htmlResult,/Status belum tersinkron/);
+  assert.match(htmlResult,/Perbarui status/);
+  assert.doesNotMatch(htmlResult,/Lanjut belajar|✓ Lulus|Mulai Tes Kemampuan/);
 });
 
 test('clearing a typed kana answer makes the assessment incomplete again',()=>{
