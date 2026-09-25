@@ -86,6 +86,9 @@ test('approved intro renders a plain syllabus without the rejected dashboard pan
   assert.match(output, /Alur modul/);
   assert.match(output, /Mulai di sini/);
   assert.match(output, /module-intro-start/);
+  assert.match(output, /<h1>Perkenalan<\/h1>/);
+  assert.match(output, /0 dari 2 materi selesai/);
+  assert.ok(output.indexOf('module-intro-start') < output.indexOf('module-learning-path-head'));
   assert.doesNotMatch(output, /module-intro-progress|module-intro-layout|pill/);
 });
 
@@ -108,6 +111,8 @@ test('kana chapter offers a direct placement test instead of requiring character
   });
   assert.match(output, /Sudah bisa membaca Hiragana/);
   assert.match(output, /Tes kemampuan Hiragana/);
+  assert.match(output, /module-intro-placement/);
+  assert.match(output, /class="btn-secondary" type="button" onclick="selectLesson\('bab-1','assignment-bab-1-hiragana'\)"/);
   assert.match(output, /tanpa mengulang karakter satu per satu/);
   assert.match(output, /selectLesson\('bab-1','assignment-bab-1-hiragana'\)/);
 });

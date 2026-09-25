@@ -461,30 +461,23 @@
 }
 
 .learning-workspace .module-intro {
-  padding: 24px 26px;
-  border-color: var(--learning-blue-200);
-  border-radius: 14px;
-  background: var(--learning-blue-100);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
 }
 
-.learning-workspace .module-intro-eyebrow,
-.learning-workspace .module-intro-section-title {
-  color: var(--learning-blue-700);
-  font-size: 12px;
+.learning-workspace .module-intro-eyebrow {
+  color: var(--brand-red);
 }
 
-.learning-workspace .module-intro h2 {
-  color: var(--learning-blue-900);
+.learning-workspace .module-intro h1 {
+  color: var(--ink-900, #1a1815);
 }
 
 .learning-workspace .module-intro-meta .pill-accent {
   border-color: var(--learning-blue-200);
-  background: var(--surface-white, #fff);
-  color: var(--learning-blue-700);
-}
-
-.learning-workspace .cando-list li::before {
   background: var(--surface-white, #fff);
   color: var(--learning-blue-700);
 }
@@ -658,7 +651,6 @@ body > footer :is(a, button, input, select, textarea, summary, [role="button"], 
   .learning-workspace .lesson-title { font-size: 30px; }
   .learning-workspace .lesson-subtitle { font-size: 15px; }
   .learning-workspace .lesson-body,
-  .learning-workspace .module-intro,
   .learning-workspace .lesson-extra-card { padding: 20px 18px; }
 
   .learning-workspace .lesson-footer {

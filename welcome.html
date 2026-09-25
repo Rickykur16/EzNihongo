@@ -2333,15 +2333,22 @@
 
   /* ── MODULE INTRO SYLLABUS ─────────────────────────────────────── */
   .module-intro { width: 100%; color: var(--du-ink); }
-  .module-intro-header { padding: 4px 0 28px; border-bottom: 1px solid var(--du-border); }
+  .module-intro-header { padding: 4px 0 24px; }
+  .module-intro-topline {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+  }
   .module-intro-eyebrow {
-    margin: 0 0 20px;
-    font-size: 11px; font-weight: 750; letter-spacing: 0;
+    margin: 0; font-size: 12px; font-weight: 750;
     text-transform: uppercase; color: var(--du-accent);
   }
-  .module-intro h2 {
+  .module-intro-count {
+    color: var(--du-ink-3); font-size: 12px; font-weight: 650;
+    font-variant-numeric: tabular-nums;
+  }
+  .module-intro h1 {
     max-width: 720px; margin: 0;
-    font-family: var(--font-display); font-size: clamp(28px, 5vw, 38px);
+    font-family: var(--font-display); font-size: clamp(28px, 3vw, 36px);
     font-weight: 700; letter-spacing: 0; line-height: 1.18; color: var(--du-ink);
   }
   .module-intro .module-intro-sub {
@@ -2349,22 +2356,27 @@
     font-family: var(--font-jp); font-size: 15px; color: var(--du-ink-3);
   }
   .module-intro-description {
-    max-width: 690px; margin: 22px 0 0;
-    font-size: 16px; line-height: 1.7; color: var(--du-ink-2);
+    max-width: 690px; margin: 16px 0 0;
+    font-size: 15px; line-height: 1.65; color: var(--du-ink-2);
   }
   .module-intro-meta {
-    display: flex; flex-wrap: wrap; gap: 8px 24px;
-    margin: 18px 0 0; padding-top: 18px;
+    display: flex; flex-wrap: wrap; gap: 6px 20px;
+    margin: 16px 0 0;
   }
   .module-intro-meta span {
     font-size: 12px; font-weight: 600; color: var(--du-ink-3);
   }
+  .module-intro-context {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 32px; border-bottom: 1px solid var(--du-border);
+  }
+  .module-intro-context.single { grid-template-columns: minmax(0, 1fr); }
+  .module-intro-context.single .module-intro-brief { max-width: 680px; }
   .module-intro-brief {
-    display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 34px;
-    padding: 30px 0; border-bottom: 1px solid var(--du-border);
+    min-width: 0; padding: 26px 0;
   }
   .module-intro-section-title {
-    margin: 0; font-size: 13px; font-weight: 750; letter-spacing: 0; color: var(--du-ink);
+    margin: 0 0 12px; font-size: 13px; font-weight: 750; color: var(--du-ink);
   }
   .cando-list {
     list-style: none; margin: 0; padding: 0;
@@ -2381,20 +2393,19 @@
     width: 7px; height: 7px; background: var(--brand-red);
   }
   .scenario-box {
-    margin: 0; padding: 0 0 0 18px; background: transparent;
-    border-left: 2px solid var(--du-border);
+    margin: 0; padding: 0; background: transparent;
     font-size: 14px; line-height: 1.65;
     color: var(--du-ink-2);
   }
   .module-learning-path-head {
     display: flex; align-items: end; justify-content: space-between; gap: 20px;
-    margin: 34px 0 8px;
+    margin: 28px 0 8px;
   }
-  .module-learning-path-head h3 { margin: 0; font-size: 18px; }
+  .module-learning-path-head h2 { margin: 0; font-size: 18px; }
   .module-learning-path-head span { font-size: 12px; color: var(--du-ink-3); }
   .module-path-item {
     width: 100%; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto;
-    gap: 14px; align-items: center; padding: 16px 8px;
+    gap: 14px; align-items: center; padding: 14px 8px;
     border: 0; border-bottom: 1px solid var(--du-border);
     background: transparent; color: inherit; text-align: left; font: inherit; cursor: pointer;
   }
@@ -2434,7 +2445,8 @@
   .module-path-empty { padding: 18px 0; font-size: 14px; color: var(--du-ink-3); }
   .module-intro-start {
     display: flex; justify-content: space-between; align-items: center; gap: 24px;
-    margin-top: 30px; padding-top: 22px; border-top: 2px solid var(--du-ink);
+    padding: 22px 0; border-top: 1px solid var(--du-border);
+    border-bottom: 1px solid var(--du-border);
   }
   .module-intro-start-label {
     display: block; font-size: 11px; font-weight: 750;
@@ -2442,6 +2454,14 @@
   }
   .module-intro-start-title { display: block; margin-top: 5px; font-size: 14px; font-weight: 700; }
   .module-intro-start .btn-primary { min-height: 44px; padding: 10px 20px; }
+  .module-intro-placement {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px 24px; padding: 18px 0;
+    border-bottom: 1px solid var(--du-border);
+  }
+  .module-intro-placement .module-intro-section-title { margin-bottom: 4px; }
+  .module-intro-placement p { max-width: 560px; margin: 0; color: var(--du-ink-2); font-size: 13px; line-height: 1.5; }
+  .module-intro-placement .btn-secondary { min-height: 44px; flex-shrink: 0; }
   .module-summary-item .lesson-check {
     border: 0;
     background: transparent;
@@ -2450,11 +2470,15 @@
   .module-summary-item.current .lesson-check { color: var(--brand-red); }
   @media (max-width: 600px) {
     .module-intro-header { padding-top: 2px; }
-    .module-intro-brief { grid-template-columns: 1fr; gap: 14px; padding: 24px 0; }
+    .module-intro-context { grid-template-columns: 1fr; gap: 0; }
+    .module-intro-brief { padding: 20px 0; }
+    .module-intro-brief + .module-intro-brief { border-top: 1px solid var(--du-border); }
     .module-path-item { grid-template-columns: 34px minmax(0, 1fr); }
     .module-path-state { grid-column: 2; }
     .module-intro-start { align-items: stretch; flex-direction: column; }
     .module-intro-start .btn-primary { width: 100%; }
+    .module-intro-placement { align-items: stretch; flex-direction: column; }
+    .module-intro-placement .btn-secondary { width: 100%; }
   }
 
   /* ── LESSON VOCAB TABLE ────────────────────────────────────────── */
@@ -4553,7 +4577,7 @@
     #ai-senpai *, #ai-senpai *::before, #ai-senpai *::after { animation: none !important; }
   }
 </style>
-<link rel="stylesheet" href="styles/learning-placement.css?v=20260912-2"/>
+<link rel="stylesheet" href="styles/learning-placement.css?v=20260925-1"/>
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
 <link rel="stylesheet" href="styles/dialogue-scene.css?v=2">
 </head>
@@ -8113,7 +8137,6 @@ function renderModuleIntro(module) {
   const meta = [];
   if (module.cefrLevel) meta.push(`<span>Level CEFR ${escapeHtml(module.cefrLevel)}</span>`);
   if (plan.totalMinutes) meta.push(`<span>${escapeHtml(formatDurationLong(plan.totalMinutes))}</span>`);
-  meta.push(`<span>${plan.lessons.length} materi</span>`);
   if (module.jfTopic) meta.push(`<span>Topik: ${escapeHtml(module.jfTopic)}</span>`);
   const path = plan.lessons.map((lesson, index) => {
     const done = progress[`${module.id}:${lesson.id}`] === true;
@@ -8139,44 +8162,28 @@ function renderModuleIntro(module) {
     ? 'Tinjau ulang dari'
     : plan.completed ? 'Lanjut dari' : 'Pelajaran pertama';
   const placementBlock = kanaPlacement && !kanaAssessmentDone ? `
-    <section class="module-intro-brief" aria-labelledby="kana-placement-title">
-      <h3 class="module-intro-section-title" id="kana-placement-title">Sudah bisa membaca ${kanaPlacement.kind}?</h3>
-      <p class="scenario-box">Langsung ambil tes kemampuan. Jika lulus, latihan ${kanaPlacement.kind} dasar akan ditandai tuntas dan kamu bisa melanjutkan tanpa mengulang karakter satu per satu.</p>
-      <button class="btn-primary" type="button" onclick="selectLesson('${module.id}','${kanaAssessment.id}')">
-        ${kanaPlacement.label} →
+    <section class="module-intro-placement" aria-labelledby="kana-placement-title">
+      <div>
+        <h2 class="module-intro-section-title" id="kana-placement-title">Sudah bisa membaca ${kanaPlacement.kind}?</h2>
+        <p>Jika lulus tes, latihan ${kanaPlacement.kind} dasar ditandai tuntas tanpa mengulang karakter satu per satu.</p>
+      </div>
+      <button class="btn-secondary" type="button" onclick="selectLesson('${module.id}','${kanaAssessment.id}')">
+        ${kanaPlacement.label}
       </button>
     </section>` : '';
 
   return `
     <div class="module-intro">
       <header class="module-intro-header">
-        <div class="module-intro-eyebrow">Modul ${escapeHtml(module.num)} · Intro</div>
-        <h2>${escapeHtml(module.title)}</h2>
+        <div class="module-intro-topline">
+          <span class="module-intro-eyebrow">Modul ${escapeHtml(module.num)}</span>
+          ${plan.lessons.length ? `<span class="module-intro-count">${plan.completed} dari ${plan.lessons.length} materi selesai</span>` : ''}
+        </div>
+        <h1>${escapeHtml(module.title)}</h1>
         ${module.titleEn ? `<p class="module-intro-sub" lang="ja">${escapeHtml(module.titleEn)}</p>` : ''}
         <p class="module-intro-description">${escapeHtml(description)}</p>
         ${meta.length ? `<div class="module-intro-meta">${meta.join('')}</div>` : ''}
       </header>
-      <section class="module-intro-brief" aria-labelledby="module-outcomes-title">
-        <h3 class="module-intro-section-title" id="module-outcomes-title">Setelah selesai</h3>
-        <ul class="cando-list">
-          ${hasCando
-            ? module.candoStatements.map((statement) => `<li>${escapeHtml(statement)}</li>`).join('')
-            : `<li>Selesaikan materi modul ini sesuai urutan sampai latihan akhir.</li>`}
-        </ul>
-      </section>
-      ${hasScenario ? `
-        <section class="module-intro-brief" aria-labelledby="module-scenario-title">
-          <h3 class="module-intro-section-title" id="module-scenario-title">Situasi latihan</h3>
-          <p class="scenario-box">${escapeHtml(module.scenario)}</p>
-        </section>` : ''}
-      ${placementBlock}
-      <div class="module-learning-path-head">
-        <h3 id="module-path-title">Alur modul</h3>
-        <span>Kerjakan dari atas ke bawah</span>
-      </div>
-      <section class="module-learning-path" aria-labelledby="module-path-title">
-        ${path || '<div class="module-path-empty">Materi modul ini sedang disiapkan.</div>'}
-      </section>
       <div class="module-intro-start">
         <div>
           <span class="module-intro-start-label">${startLabel}</span>
@@ -8186,6 +8193,29 @@ function renderModuleIntro(module) {
           ${escapeHtml(plan.actionLabel)}
         </button>
       </div>
+      ${placementBlock}
+      <div class="module-intro-context ${hasScenario ? '' : 'single'}">
+        <section class="module-intro-brief" aria-labelledby="module-outcomes-title">
+          <h2 class="module-intro-section-title" id="module-outcomes-title">Setelah selesai</h2>
+          <ul class="cando-list">
+            ${hasCando
+              ? module.candoStatements.map((statement) => `<li>${escapeHtml(statement)}</li>`).join('')
+              : `<li>Selesaikan materi modul ini sesuai urutan sampai latihan akhir.</li>`}
+          </ul>
+        </section>
+        ${hasScenario ? `
+          <section class="module-intro-brief" aria-labelledby="module-scenario-title">
+            <h2 class="module-intro-section-title" id="module-scenario-title">Situasi latihan</h2>
+            <p class="scenario-box">${escapeHtml(module.scenario)}</p>
+          </section>` : ''}
+      </div>
+      <div class="module-learning-path-head">
+        <h2 id="module-path-title">Alur modul</h2>
+        <span>${plan.lessons.length} materi</span>
+      </div>
+      <section class="module-learning-path" aria-labelledby="module-path-title">
+        ${path || '<div class="module-path-empty">Materi modul ini sedang disiapkan.</div>'}
+      </section>
     </div>`;
 }
 
