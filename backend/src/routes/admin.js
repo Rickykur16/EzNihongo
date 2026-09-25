@@ -57,8 +57,27 @@ import {
 import { loadMasteryShadow, summarizeShadow } from '../grammar-mastery-shadow.js';
 import { loadPilotLessonOptions } from '../bunpou-pilot-catalog.js';
 import { V2_CONFIG, POLICY_V2, POLICY_SETTING_KEY, resolvePolicy } from '../grammar-mastery-policy.js';
+import {
+  grammarExampleLearningScopeWarnings,
+  grammarLearningScopeWarnings,
+  lessonContentLearningScopeWarnings,
+  quizLearningScopeWarnings,
+  vocabularyExampleLearningScopeWarnings,
+} from '../learning-scope-warnings.js';
 
 const router = Router();
+
+async function safeLearningWarnings(loadWarnings) {
+  try {
+    return await loadWarnings();
+  } catch (err) {
+    console.error('Learning-scope warning check failed:', err.message);
+    return [{
+      code: 'scope_check_unavailable',
+      message: 'Konten tersimpan, tetapi pemeriksaan alur belajar sedang tidak tersedia. Periksa kembali materi bab ini.',
+    }];
+  }
+}
 
 // Every route in this file requires admin
 router.use(requireAuth, requireCompanyAdmin);
@@ -653,7 +672,8 @@ router.post('/vocabulary-examples', asyncHandler(async (req, res) => {
     [vocabularyId, japanese, reading || null, highlight || null, indonesian || null, sortOrder || 0]
   );
   invalidateCourseVocabCache();
-  res.status(201).json({ example: r.rows[0] });
+  const warnings = await safeLearningWarnings(() => vocabularyExampleLearningScopeWarnings(r.rows[0].id));
+  res.status(201).json({ example: r.rows[0], warnings });
 }));
 
 router.put('/vocabulary-examples/:id', asyncHandler(async (req, res) => {
@@ -673,7 +693,8 @@ router.put('/vocabulary-examples/:id', asyncHandler(async (req, res) => {
   );
   if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   invalidateCourseVocabCache();
-  res.json({ example: r.rows[0] });
+  const warnings = await safeLearningWarnings(() => vocabularyExampleLearningScopeWarnings(r.rows[0].id));
+  res.json({ example: r.rows[0], warnings });
 }));
 
 router.delete('/vocabulary-examples/:id', asyncHandler(async (req, res) => {
@@ -3384,7 +3405,8 @@ router.post('/module-grammar', asyncHandler(async (req, res) => {
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb) RETURNING *`,
     [moduleId, lessonId || null, pattern, meaning || null, example || null, notes || null, exampleDialog || null, exampleDialogId || null, sortOrder || 0, scene ? JSON.stringify(scene) : null, furigana ? JSON.stringify(furigana) : null]
   );
-  res.status(201).json({ grammar: result.rows[0] });
+  const warnings = await safeLearningWarnings(() => grammarLearningScopeWarnings(result.rows[0].id));
+  res.status(201).json({ grammar: result.rows[0], warnings });
 }));
 
 router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
@@ -3428,7 +3450,8 @@ router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
       has('dialogFurigana'), furigana ? JSON.stringify(furigana) : null]
   );
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-  res.json({ grammar: result.rows[0] });
+  const warnings = await safeLearningWarnings(() => grammarLearningScopeWarnings(result.rows[0].id));
+  res.json({ grammar: result.rows[0], warnings });
 }));
 
 // === grammar_examples CRUD (mirror vocabulary-examples) ===
@@ -3450,7 +3473,8 @@ router.post('/grammar-examples', asyncHandler(async (req, res) => {
      VALUES ($1,$2,$3,$4,$5) RETURNING *`,
     [grammarId, japanese, highlight || null, indonesian || null, sortOrder || 0]
   );
-  res.status(201).json({ example: r.rows[0] });
+  const warnings = await safeLearningWarnings(() => grammarExampleLearningScopeWarnings(r.rows[0].id));
+  res.status(201).json({ example: r.rows[0], warnings });
 }));
 
 router.put('/grammar-examples/:id', asyncHandler(async (req, res) => {
@@ -3467,7 +3491,8 @@ router.put('/grammar-examples/:id', asyncHandler(async (req, res) => {
     [req.params.id, japanese, highlight || null, indonesian, hasHighlight, sortOrder]
   );
   if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-  res.json({ example: r.rows[0] });
+  const warnings = await safeLearningWarnings(() => grammarExampleLearningScopeWarnings(r.rows[0].id));
+  res.json({ example: r.rows[0], warnings });
 }));
 
 router.delete('/grammar-examples/:id', asyncHandler(async (req, res) => {
@@ -3771,7 +3796,8 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
     return row;
   });
 
-  res.status(201).json({ question: q });
+  const warnings = await safeLearningWarnings(() => quizLearningScopeWarnings(q.id));
+  res.status(201).json({ question: q, warnings });
 }));
 
 router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
@@ -3852,7 +3878,8 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
   });
 
   if (!updated) return res.status(404).json({ error: 'Not found' });
-  res.json({ question: updated });
+  const warnings = await safeLearningWarnings(() => quizLearningScopeWarnings(updated.id));
+  res.json({ question: updated, warnings });
 }));
 
 router.delete('/quiz-questions/:id', asyncHandler(async (req, res) => {
@@ -3892,7 +3919,10 @@ router.put('/lessons/:lessonId/quiz/sections/:category/:number', asyncHandler(as
       WHERE lesson_id = $1 AND question_category = $2 AND section_number = $7`,
     [lessonId, cat, labelNorm, instructionNorm, hasLabel, hasInstruction, sectionNo, hasPassage, passageNorm]
   );
-  res.json({ ok: true, updated: result.rowCount });
+  const warnings = hasPassage
+    ? await safeLearningWarnings(() => lessonContentLearningScopeWarnings(lessonId, [passageNorm]))
+    : [];
+  res.json({ ok: true, updated: result.rowCount, warnings });
 }));
 
 // Delete whole section — semua soal di (lesson, category, number) terhapus.

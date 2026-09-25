@@ -96,3 +96,30 @@ test('approved intro points a returning student to the first unfinished lesson',
   assert.match(output, /Lanjutkan belajar/);
   assert.match(output, /<strong class="module-intro-start-title">[^<]*<\/strong>/);
 });
+
+test('kana chapter offers a direct placement test instead of requiring character-by-character review', () => {
+  const context = setupRenderer();
+  const output = context.renderModuleIntro({
+    ...moduleData,
+    lessons: [
+      { id: 'hiragana-1', type: 'kana', title: 'Hiragana 1' },
+      { id: 'assignment-bab-1-hiragana', type: 'quiz', title: 'Tes Membaca Hiragana' },
+    ],
+  });
+  assert.match(output, /Sudah bisa membaca Hiragana/);
+  assert.match(output, /Tes kemampuan Hiragana/);
+  assert.match(output, /tanpa mengulang karakter satu per satu/);
+  assert.match(output, /selectLesson\('bab-1','assignment-bab-1-hiragana'\)/);
+});
+
+test('completed kana assessment no longer shows the placement prompt', () => {
+  const context = setupRenderer({ 'bab-1:assignment-bab-1-hiragana': true });
+  const output = context.renderModuleIntro({
+    ...moduleData,
+    lessons: [
+      { id: 'hiragana-1', type: 'kana', title: 'Hiragana 1' },
+      { id: 'assignment-bab-1-hiragana', type: 'quiz', title: 'Tes Membaca Hiragana' },
+    ],
+  });
+  assert.doesNotMatch(output, /Sudah bisa membaca Hiragana/);
+});

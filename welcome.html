@@ -3705,6 +3705,27 @@
     background: #fde8e8;
     color: var(--danger);
   }
+  .quiz-paper .quiz-option.selected {
+    background: #fff1f2;
+    box-shadow: inset 0 0 0 2px var(--brand-red, #c8102e);
+    color: #7f1d1d;
+  }
+  .quiz-text-answer {
+    width: min(100%, 460px);
+    min-height: 54px;
+    padding: 12px 14px;
+    border: 2px solid #d4d4d4;
+    border-radius: 6px;
+    background: #fff;
+    color: #111820;
+    font-family: var(--font-body);
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .quiz-text-answer:focus {
+    border-color: var(--brand-red, #c8102e);
+    outline: 3px solid rgba(200, 16, 46, .12);
+  }
   .quiz-paper .quiz-option.correct .quiz-option-letter,
   .quiz-paper .quiz-option.wrong .quiz-option-letter {
     background: transparent;
@@ -4729,6 +4750,7 @@ function transformQuestionFromApi(apiQ) {
   const optionIds = sorted.map((o) => o.id);
   return {
     q, jp, options, optionIds, optionImages,
+    questionType: apiQ.question_type || apiQ.questionType || 'multiple_choice',
     correct: -1,
     explain: apiQ.explanation || '',
     questionId: apiQ.id,
@@ -5436,6 +5458,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
   // Navigasi pelajaran (gate lunak): "Sebelumnya" selalu ada; "Lanjut →" hanya
   // kalau attempt terakhir LULUS — kuis tetap jadi gerbang kalau belum lulus.
   const [navSlug, navMid, navLid] = String(key).split(':');
+  const placement = kanaPlacementMeta({ id: navLid });
   let navPrev = null, navNext = null;
   const navCourse = COURSE_CONTENT[navSlug];
   if (navCourse) {
@@ -5452,7 +5475,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
   container.innerHTML = `
     <div class="quiz-container">
       <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:28px 26px;max-width:680px;margin:0 auto;">
-        <div style="font-size:11px;color:#b91c1c;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin-bottom:6px;">📋 Assignment Harian</div>
+        <div style="font-size:11px;color:#b91c1c;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin-bottom:6px;">${placement ? 'Tes Diagnostik Kana' : 'Assignment Harian'}</div>
         <h2 style="margin:0 0 18px;font-size:24px;font-weight:800;line-height:1.3;">${escapeHtml(lessonTitle)}</h2>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;">
           <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
@@ -5473,14 +5496,18 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
           </div>
         </div>
         <p style="color:#525252;font-size:14px;line-height:1.6;margin:0 0 4px;">
-          Tiap attempt, sistem ambil <strong>${status.questionsPerAttempt}</strong> soal acak dari pool <strong>${status.poolSize}</strong> — jadi soal bisa beda tiap retry.
+          ${placement
+            ? `Tes ini mengambil empat soal dari setiap bagian: tiga jawaban romaji diketik dan satu pilihan ganda. Lulus memerlukan minimal 85% total dan 3/4 benar di setiap bagian.`
+            : `Tiap attempt, sistem ambil <strong>${status.questionsPerAttempt}</strong> soal acak dari pool <strong>${status.poolSize}</strong> — jadi soal bisa beda tiap retry.`}
         </p>
         <p style="color:#525252;font-size:13px;line-height:1.6;margin:0 0 22px;">
           ${cooldownNote}
         </p>
         ${lastBlock}
         <div style="margin-top:24px;text-align:center;">
-          ${ctaButton}
+          ${canAttempt && placement
+            ? `<button class="btn-primary" onclick="window.startQuizAttempt('${escapeAttr(key)}')" style="padding:14px 28px;font-size:16px;">Mulai Tes Kemampuan →</button>`
+            : ctaButton}
         </div>
       </div>
       ${navFooter}
@@ -5533,6 +5560,7 @@ window.startQuizAttempt = async (key) => {
       activeCategory: firstQuizCategoryWithQuestions(questions),
       attemptToken: data.attemptToken,
       passingScorePct: data.passingScorePct,
+      deferFeedback: !!kanaPlacementMeta({ id: lId }),
     };
     renderQuizQuestion(main);
   } catch (err) {
@@ -5906,6 +5934,8 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
   const letters = ['1', '2', '3', '4', '5'];
   const answered = !!quizState.answeredByIndex?.[qi];
   const selected = quizState.selectedByIndex?.[qi];
+  const deferred = !!quizState.deferFeedback;
+  const isTyped = q.questionType === 'fill_blank';
   const isListening = normalizeQuizCategory(q.category) === 'listening';
   const hasAudioScript = isListening && q.audioScript && q.audioScript.trim();
 
@@ -5943,14 +5973,24 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
   const imagedCount = optionImages.filter(Boolean).length;
   const useImageGrid = imagedCount >= Math.max(2, Math.floor(q.options.length / 2));
 
-  const optionsHtml = useImageGrid
+  const optionsHtml = isTyped
+    ? `<div class="quiz-text-answer-wrap">
+        <label class="sr-only" for="quiz-text-answer-${qi}">Jawaban romaji soal ${questionNumber}</label>
+        <input class="quiz-text-answer" id="quiz-text-answer-${qi}" type="text"
+          value="${escapeHtml(typeof selected === 'string' ? selected : '')}"
+          placeholder="Ketik romaji" maxlength="200" autocomplete="off" autocapitalize="none" spellcheck="false"
+          oninput="window.setQuizTextAnswer(${qi}, this.value)" />
+      </div>`
+    : useImageGrid
     ? `<div class="quiz-options-image-grid" id="quiz-options-${qi}">
         ${q.options.map((opt, i) => {
           const img = optionImages[i];
-          const stateCls = `${answered ? 'disabled' : ''} ${answered && i === q.correct ? 'correct' : ''} ${answered && i === selected && i !== q.correct ? 'wrong' : ''}`;
+          const stateCls = deferred
+            ? (i === selected ? 'selected' : '')
+            : `${answered ? 'disabled' : ''} ${answered && i === q.correct ? 'correct' : ''} ${answered && i === selected && i !== q.correct ? 'wrong' : ''}`;
           return `
             <button class="quiz-image-option ${stateCls}" data-idx="${i}"
-              onclick="window.pickQuizAnswer(${qi}, ${i})">
+              onclick="${deferred ? 'window.setQuizChoiceAnswer' : 'window.pickQuizAnswer'}(${qi}, ${i})">
               <span class="qio-num">${letters[i]}</span>
               ${img
                 ? `<img class="qio-img" src="${escapeHtml(img)}" alt="Pilihan ${letters[i]}" loading="lazy" />`
@@ -5961,8 +6001,8 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
       </div>`
     : `<div class="quiz-options" id="quiz-options-${qi}">
         ${q.options.map((opt, i) => `
-          <button class="quiz-option ${answered ? 'disabled' : ''} ${answered && i === q.correct ? 'correct' : ''} ${answered && i === selected && i !== q.correct ? 'wrong' : ''}"
-            data-idx="${i}" onclick="window.pickQuizAnswer(${qi}, ${i})">
+          <button class="quiz-option ${deferred ? (i === selected ? 'selected' : '') : `${answered ? 'disabled' : ''} ${answered && i === q.correct ? 'correct' : ''} ${answered && i === selected && i !== q.correct ? 'wrong' : ''}`}"
+            data-idx="${i}" onclick="${deferred ? 'window.setQuizChoiceAnswer' : 'window.pickQuizAnswer'}(${qi}, ${i})">
             <span class="quiz-option-letter">${letters[i]}</span>
             <span>${escapeHtml(opt)}</span>
           </button>
@@ -6015,7 +6055,7 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
       ${perQuestionAudio}
       ${optionsHtml}
       <div class="quiz-feedback" id="quiz-feedback-${qi}">
-        ${answered ? `<div class="quiz-explanation"><strong>${quizState.correctByIndex[qi] ? '✓ Benar!' : '✗ Belum tepat'}</strong> — ${sanitizeHtml(q.explain || 'Jawaban kamu sudah dicatat.')}</div>` : ''}
+        ${answered && !deferred ? `<div class="quiz-explanation"><strong>${quizState.correctByIndex[qi] ? '✓ Benar!' : '✗ Belum tepat'}</strong> — ${sanitizeHtml(q.explain || 'Jawaban kamu sudah dicatat.')}</div>` : ''}
       </div>
       ${transcriptBlock}
     </article>
@@ -6053,7 +6093,45 @@ window.setQuizCategory = (category) => {
   renderQuizQuestion(document.getElementById('main-content'));
 };
 
+function setQuizAnswerPayload(questionIndex, payload) {
+  const question = quizState?.questions?.[questionIndex];
+  if (!question?.questionId) return;
+  const existing = quizState.answers.findIndex((answer) => answer.questionId === question.questionId);
+  if (!payload) {
+    if (existing >= 0) quizState.answers.splice(existing, 1);
+    delete quizState.answeredByIndex[questionIndex];
+  } else {
+    const answer = { questionId: question.questionId, ...payload };
+    if (existing >= 0) quizState.answers[existing] = answer;
+    else quizState.answers.push(answer);
+    quizState.answeredByIndex[questionIndex] = true;
+  }
+  updateQuizPaperProgress();
+}
+
+window.setQuizTextAnswer = (questionIndex, value) => {
+  if (!quizState?.deferFeedback) return;
+  const raw = String(value || '');
+  quizState.selectedByIndex[questionIndex] = raw;
+  setQuizAnswerPayload(questionIndex, raw.trim() ? { textAnswer: raw.trim() } : null);
+};
+
+window.setQuizChoiceAnswer = (questionIndex, optionIndex) => {
+  if (!quizState?.deferFeedback) return;
+  const question = quizState.questions[questionIndex];
+  const optionId = question?.optionIds?.[optionIndex];
+  if (!optionId) return;
+  quizState.selectedByIndex[questionIndex] = optionIndex;
+  setQuizAnswerPayload(questionIndex, { optionId });
+  document.querySelectorAll(`#quiz-options-${questionIndex} .quiz-option, #quiz-options-${questionIndex} .quiz-image-option`)
+    .forEach((button, index) => button.classList.toggle('selected', index === optionIndex));
+};
+
 window.pickQuizAnswer = async (questionIndex, optionIndex) => {
+  if (quizState?.deferFeedback) {
+    window.setQuizChoiceAnswer(questionIndex, optionIndex);
+    return;
+  }
   const qi = typeof optionIndex === 'number' ? questionIndex : quizState.idx;
   const i = typeof optionIndex === 'number' ? optionIndex : questionIndex;
   if (quizState.answeredByIndex?.[qi]) return;
@@ -6229,6 +6307,11 @@ async function finishQuiz() {
     const allProgress = getProgress();
     const cp = allProgress[slug] || {};
     cp[`${mId}:${lId}`] = true;
+    for (const completion of Array.isArray(data.proficiencyCompletions) ? data.proficiencyCompletions : []) {
+      if (completion?.moduleSlug && completion?.lessonSlug) {
+        cp[`${completion.moduleSlug}:${completion.lessonSlug}`] = true;
+      }
+    }
     allProgress[slug] = cp;
     setProgress(allProgress);
     // Canonical completion and XP were saved with the attempt on the server.
@@ -6256,8 +6339,17 @@ async function finishQuiz() {
         <strong style="color:${ok ? '#15803d' : '#525252'};">${right} / ${n}</strong>
       </div>`;
     }).join('');
+  const sectionResults = Array.isArray(data.sectionResults) ? data.sectionResults : [];
+  const sectionBlock = sectionResults.map((section) => `
+    <div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #eee;">
+      <span>${escapeHtml(section.sectionLabel || `Bagian ${section.sectionNumber}`)}</span>
+      <strong style="color:${section.passed ? '#15803d' : '#b91c1c'};">${section.score} / ${section.total}${section.passed ? ' ✓' : ''}</strong>
+    </div>`).join('');
 
   const noCooldownResult = (cooldownHours || 0) <= 0;
+  const proficiencyCount = Array.isArray(data.proficiencyCompletions)
+    ? data.proficiencyCompletions.length
+    : 0;
   const cooldownLine = nextAttemptAt && !noCooldownResult
     ? `<p style="color:#525252;font-size:13px;margin:14px 0 6px;">Bisa coba lagi pada <strong>${fmtNextAt(nextAttemptAt)}</strong> (${cooldownHours} jam dari sekarang).</p>`
     : (noCooldownResult
@@ -6270,13 +6362,18 @@ async function finishQuiz() {
         <div class="trophy">${passed ? '🏆' : '💪'}</div>
         <h2>${passed ? 'Lulus!' : 'Belum Lulus'}</h2>
         <p class="subtitle">${passed
-          ? 'Materi berikutnya sudah ke-unlock.'
-          : (noCooldownResult
+          ? (proficiencyCount
+            ? `${proficiencyCount} latihan kana dasar ditandai tuntas. Kamu bisa langsung lanjut.`
+            : 'Materi berikutnya sudah ke-unlock.')
+          : (sectionResults.length
+            ? `Belum memenuhi ${passing}% total dan minimal 3/4 benar pada setiap bagian.`
+            : noCooldownResult
             ? `Skor minimal lulus: ${passing}%. Coba lagi sekarang.`
             : `Skor minimal lulus: ${passing}%. Coba lagi setelah ${cooldownHours} jam.`)}</p>
         <div class="score-circle">${pct}%</div>
         <p style="color:#485f84;margin:0 0 12px;">Benar ${score} dari ${total} soal</p>
         ${catBlock ? `<div style="background:#f9fafb;border-radius:8px;padding:10px 16px;margin:12px 0;text-align:left;font-size:14px;">${catBlock}</div>` : ''}
+        ${sectionBlock ? `<div style="background:#f9fafb;border-radius:8px;padding:10px 16px;margin:12px 0;text-align:left;font-size:14px;">${sectionBlock}</div>` : ''}
         ${cooldownLine}
         <div class="quiz-results-btns">
           <button class="btn-primary" onclick="window.continueAfterQuiz()">${passed ? 'Lanjut ke materi →' : 'Kembali ke pelajaran'}</button>
@@ -7986,11 +8083,27 @@ function getModuleIntroPlan(module, progress = {}) {
   };
 }
 
+function kanaPlacementMeta(lesson) {
+  const slug = lesson && lesson.id;
+  if (slug === 'assignment-bab-1-hiragana') {
+    return { kind: 'Hiragana', label: 'Tes kemampuan Hiragana' };
+  }
+  if (slug === 'assignment-bab-2-katakana') {
+    return { kind: 'Katakana', label: 'Tes kemampuan Katakana' };
+  }
+  return null;
+}
+
 function renderModuleIntro(module) {
   const progress = getProgress()[currentState.course] || {};
   const plan = getModuleIntroPlan(module, progress);
   const hasCando = Array.isArray(module.candoStatements) && module.candoStatements.length > 0;
   const hasScenario = !!(module.scenario && module.scenario.trim());
+  const kanaAssessment = plan.lessons.find((lesson) => kanaPlacementMeta(lesson));
+  const kanaPlacement = kanaAssessment ? kanaPlacementMeta(kanaAssessment) : null;
+  const kanaAssessmentDone = kanaAssessment
+    ? progress[`${module.id}:${kanaAssessment.id}`] === true
+    : false;
   const description = (module.description || '').trim()
     || `Pelajari ${plan.lessons.length} materi dalam urutan yang sudah disiapkan.`;
   const typeLabels = {
@@ -8025,6 +8138,14 @@ function renderModuleIntro(module) {
   const startLabel = plan.completed === plan.lessons.length && plan.lessons.length
     ? 'Tinjau ulang dari'
     : plan.completed ? 'Lanjut dari' : 'Pelajaran pertama';
+  const placementBlock = kanaPlacement && !kanaAssessmentDone ? `
+    <section class="module-intro-brief" aria-labelledby="kana-placement-title">
+      <h3 class="module-intro-section-title" id="kana-placement-title">Sudah bisa membaca ${kanaPlacement.kind}?</h3>
+      <p class="scenario-box">Langsung ambil tes kemampuan. Jika lulus, latihan ${kanaPlacement.kind} dasar akan ditandai tuntas dan kamu bisa melanjutkan tanpa mengulang karakter satu per satu.</p>
+      <button class="btn-primary" type="button" onclick="selectLesson('${module.id}','${kanaAssessment.id}')">
+        ${kanaPlacement.label} →
+      </button>
+    </section>` : '';
 
   return `
     <div class="module-intro">
@@ -8048,6 +8169,7 @@ function renderModuleIntro(module) {
           <h3 class="module-intro-section-title" id="module-scenario-title">Situasi latihan</h3>
           <p class="scenario-box">${escapeHtml(module.scenario)}</p>
         </section>` : ''}
+      ${placementBlock}
       <div class="module-learning-path-head">
         <h3 id="module-path-title">Alur modul</h3>
         <span>Kerjakan dari atas ke bawah</span>

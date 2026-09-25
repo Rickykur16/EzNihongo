@@ -14,6 +14,7 @@ import {
 } from '../bunpou-flow-service.js';
 import { REVIEW_CATEGORIES, SMART_REVIEW_SOURCE, filterReviewScope, isReviewNeeded, makeReviewQuestion, pickCompoundOwners, unlockedSkills, publicQuestion, reviewPriority, selectReviewCandidates, summarizeCandidates } from '../smart-review-service.js';
 import { deriveCompounds, extractKanjiCharacters, loadKanjiCatalog } from '../kanji-compounds.js';
+import { excludePlacedKana, passedKanaKinds } from '../kana-placement.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -36,9 +37,27 @@ async function accessScope(user) {
   const ids = new Set(enrolled.rows.map((row) => row.course_id));
   if (await isAdminEmail(user.email)) for (const row of (await query(`SELECT id FROM courses WHERE is_published = TRUE`)).rows) ids.add(row.id);
   const courseIds = [...ids];
-  if (!courseIds.length) return { courseIds, completedLessonIds: [] };
-  const progress = await query(`SELECT p.lesson_id FROM user_progress p JOIN lessons l ON l.id = p.lesson_id JOIN modules m ON m.id = l.module_id WHERE p.user_id = $1 AND p.completed = TRUE AND m.course_id = ANY($2::uuid[])`, [user.id, courseIds]);
-  return { courseIds, completedLessonIds: progress.rows.map((row) => row.lesson_id) };
+  if (!courseIds.length) return { courseIds, completedLessonIds: [], passedKanaKinds: new Set() };
+  const [progress, kanaAssessments] = await Promise.all([
+    query(`SELECT p.lesson_id FROM user_progress p JOIN lessons l ON l.id = p.lesson_id JOIN modules m ON m.id = l.module_id WHERE p.user_id = $1 AND p.completed = TRUE AND m.course_id = ANY($2::uuid[])`, [user.id, courseIds]),
+    query(`SELECT DISTINCT l.slug
+             FROM quiz_attempts qa
+             JOIN lessons l ON l.id = qa.lesson_id
+             JOIN modules m ON m.id = l.module_id
+             JOIN courses c ON c.id = m.course_id
+            WHERE qa.user_id = $1
+              AND qa.completed_at IS NOT NULL
+              AND qa.grading_result->>'passed' = 'true'
+              AND m.course_id = ANY($2::uuid[])
+              AND c.slug = 'n5'
+              AND l.slug IN ('assignment-bab-1-hiragana', 'assignment-bab-2-katakana')`,
+      [user.id, courseIds]),
+  ]);
+  return {
+    courseIds,
+    completedLessonIds: progress.rows.map((row) => row.lesson_id),
+    passedKanaKinds: passedKanaKinds(kanaAssessments.rows.map((row) => row.slug)),
+  };
 }
 
 async function genericRows(scope) {
@@ -52,7 +71,11 @@ async function genericRows(scope) {
   // Vocabulary linked directly to a completed (non-deck) lesson is equally learned.
   const direct = await query(`SELECT DISTINCT ON (v.id) v.id, v.japanese, v.reading, v.indonesian, v.lesson_id, m.course_id FROM module_vocabulary v JOIN modules m ON m.id = v.module_id WHERE m.course_id = ANY($1::uuid[]) AND v.lesson_id = ANY($2::uuid[]) ORDER BY v.id`, args);
   const vocab = new Map(vocabulary.rows.map((row) => [row.id, row])); for (const row of direct.rows) if (!vocab.has(row.id)) vocab.set(row.id, row);
-  return { kana: kana.rows, vocabulary: [...vocab.values()], kanji: kanji.rows };
+  return {
+    kana: excludePlacedKana(kana.rows, scope.passedKanaKinds),
+    vocabulary: [...vocab.values()],
+    kanji: kanji.rows,
+  };
 }
 
 async function grammarTaskData(lessonId) {

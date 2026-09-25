@@ -607,13 +607,14 @@ document.addEventListener('keydown', (e) => {
 // same coordinate) so several can be read at once. Errors dwell much longer
 // than successes and every toast is click-to-dismiss — so a long error message
 // is never cut off after 2.4s.
-function notify(msg, isErr) {
+function notify(msg, isErr, isWarn) {
   let stack = document.getElementById('toast-stack');
   if (!stack) {
     stack = el('<div id="toast-stack" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:2000;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;"></div>');
     document.body.appendChild(stack);
   }
-  const t = el(`<div role="status" title="Klik untuk tutup" style="display:flex;align-items:flex-start;gap:10px;max-width:min(90vw,460px);background:${isErr ? '#991b1b' : '#0a0a0a'};color:#fff;padding:10px 14px;border-radius:8px;font-size:13px;line-height:1.45;font-family:var(--font-body);box-shadow:0 6px 24px rgba(0,0,0,.25);pointer-events:auto;cursor:pointer;animation:toastIn .18s ease;"><span style="flex:1;">${escapeHtml(msg)}</span><span aria-hidden="true" style="opacity:.55;font-size:15px;line-height:1.3;">×</span></div>`);
+  const background = isErr ? '#991b1b' : (isWarn ? '#92400e' : '#0a0a0a');
+  const t = el(`<div role="status" title="Klik untuk tutup" style="display:flex;align-items:flex-start;gap:10px;max-width:min(90vw,560px);background:${background};color:#fff;padding:10px 14px;border-radius:8px;font-size:13px;line-height:1.45;font-family:var(--font-body);box-shadow:0 6px 24px rgba(0,0,0,.25);pointer-events:auto;cursor:pointer;animation:toastIn .18s ease;"><span style="flex:1;">${escapeHtml(msg)}</span><span aria-hidden="true" style="opacity:.55;font-size:15px;line-height:1.3;">×</span></div>`);
   let done = false;
   const remove = () => {
     if (done) return; done = true;
@@ -622,7 +623,16 @@ function notify(msg, isErr) {
   };
   t.addEventListener('click', remove);
   stack.appendChild(t);
-  setTimeout(remove, isErr ? 7000 : 2600);
+  setTimeout(remove, isErr ? 7000 : (isWarn ? 12000 : 2600));
+}
+
+function notifyLearningWarnings(result) {
+  const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
+  if (!warnings.length) return 0;
+  const messages = [...new Set(warnings.map((warning) => warning.message).filter(Boolean))];
+  const message = messages.slice(0, 4).join(' ') + (messages.length > 4 ? ` +${messages.length - 4} peringatan lain.` : '');
+  notify('Peringatan alur belajar: ' + message, false, true);
+  return warnings.length;
 }
 
 // Disable a form's submit button(s) while an async submit handler runs so a
@@ -3404,6 +3414,7 @@ window.listenGenSave = async () => {
   if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
   const s = _listenGenSection || { number: 1, label: 'Listening', instruction: '' };
   let saved = 0;
+  const learningWarnings = [];
   try {
     // Kalau section listening nomor ini sudah ada: append setelah sort_order
     // terakhir + pertahankan label/instruksi existing (jangan ditimpa).
@@ -3433,7 +3444,7 @@ window.listenGenSave = async () => {
       })).filter((o) => o.text);
       if (options.length < 2) continue;
       if (!options.some((o) => o.isCorrect)) options[0].isCorrect = true;
-      await api('/admin/quiz-questions', {
+      const savedResult = await api('/admin/quiz-questions', {
         method: 'POST',
         body: JSON.stringify({
           lessonId: _listenGenCtx.lessonId,
@@ -3449,6 +3460,7 @@ window.listenGenSave = async () => {
           options,
         }),
       });
+      learningWarnings.push(...(savedResult.warnings || []));
       saved++;
       // Uncheck as we go: if the loop dies mid-way, a retry won't re-POST (and
       // duplicate) the ones already saved.
@@ -3456,6 +3468,7 @@ window.listenGenSave = async () => {
       if (incEl) incEl.checked = false;
     }
     notify(saved + ' soal listening tersimpan.');
+    notifyLearningWarnings({ warnings: learningWarnings });
     closeModal();
     manageQuiz(_listenGenCtx.lessonId, _listenGenCtx.lessonTitle);
   } catch (err) {
@@ -3692,6 +3705,7 @@ window.jlptGenSave = async () => {
   if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
   const s = _jlptGenSection || { number: 1, label: 'Section 1', instruction: '' };
   let saved = 0;
+  const learningWarnings = [];
   try {
     // Section existing: append setelah sort_order terakhir + pertahankan
     // label/instruksi (pola sama dgn listenGenSave).
@@ -3720,7 +3734,7 @@ window.jlptGenSave = async () => {
       })).filter((o) => o.text);
       if (options.length < 2) continue;
       if (!options.some((o) => o.isCorrect)) options[0].isCorrect = true;
-      await api('/admin/quiz-questions', {
+      const savedResult = await api('/admin/quiz-questions', {
         method: 'POST',
         body: JSON.stringify({
           lessonId: _jlptGenCtx.lessonId,
@@ -3736,6 +3750,7 @@ window.jlptGenSave = async () => {
           options,
         }),
       });
+      learningWarnings.push(...(savedResult.warnings || []));
       saved++;
       // Uncheck as we go so a retry after a mid-loop failure doesn't duplicate
       // the ones already saved.
@@ -3743,6 +3758,7 @@ window.jlptGenSave = async () => {
       if (incEl) incEl.checked = false;
     }
     notify(saved + ' soal JLPT tersimpan.');
+    notifyLearningWarnings({ warnings: learningWarnings });
     closeModal();
     manageQuiz(_jlptGenCtx.lessonId, _jlptGenCtx.lessonTitle);
   } catch (err) {
@@ -4167,7 +4183,7 @@ async function submitSection(e, ctx) {
   if (ctx.mode === 'edit') {
     const endSubmit = beginSubmit(form);
     try {
-      await api(`/admin/lessons/${lessonId}/quiz/sections/${ctx.category}/${ctx.number}`, {
+      const savedResult = await api(`/admin/lessons/${lessonId}/quiz/sections/${ctx.category}/${ctx.number}`, {
         method: 'PUT',
         body: JSON.stringify({
           sectionLabel: label,
@@ -4176,6 +4192,7 @@ async function submitSection(e, ctx) {
         }),
       });
       notify('Section tersimpan');
+      notifyLearningWarnings(savedResult);
       manageQuiz(lessonId, lessonTitle);
     } catch (err) { notify('Gagal simpan: ' + err.message, true); }
     finally { endSubmit(); }
@@ -4784,8 +4801,9 @@ async function submitQuestion(e, qid, ctx) {
   const andNew = !!(e.submitter && e.submitter.dataset && e.submitter.dataset.andNew === '1');
   const endSubmit = beginSubmit(form);
   try {
-    if (qid) await api('/admin/quiz-questions/' + qid, { method: 'PUT', body: JSON.stringify(body) });
-    else await api('/admin/quiz-questions', { method: 'POST', body: JSON.stringify(body) });
+    const savedResult = qid
+      ? await api('/admin/quiz-questions/' + qid, { method: 'PUT', body: JSON.stringify(body) })
+      : await api('/admin/quiz-questions', { method: 'POST', body: JSON.stringify(body) });
     // Pertanyaan tersave = section pasti udah ada di DB → drop pending.
     _pendingSection = null;
     if (andNew) {
@@ -4796,6 +4814,7 @@ async function submitQuestion(e, qid, ctx) {
       notify('Pertanyaan tersimpan');
       manageQuiz(lessonId, lessonTitle, { focusSection: { category, number } });
     }
+    notifyLearningWarnings(savedResult);
   } catch (err) { notify('Gagal simpan: ' + err.message, true); }
   finally { endSubmit(); }
 }
@@ -5667,17 +5686,19 @@ window.grmrSaveExample = async (btn) => {
   };
   if (!body.japanese) { notify('Kalimat JP wajib diisi', true); return; }
   try {
+    let savedResult;
     if (id) {
-      await api('/admin/grammar-examples/' + id, { method: 'PUT', body: JSON.stringify(body) });
+      savedResult = await api('/admin/grammar-examples/' + id, { method: 'PUT', body: JSON.stringify(body) });
     } else {
-      const d = await api('/admin/grammar-examples', { method: 'POST', body: JSON.stringify(body) });
-      if (d.example && d.example.id) {
-        tr.dataset.exId = d.example.id;
+      savedResult = await api('/admin/grammar-examples', { method: 'POST', body: JSON.stringify(body) });
+      if (savedResult.example && savedResult.example.id) {
+        tr.dataset.exId = savedResult.example.id;
         const cell = tr.querySelector('td:last-child');
         cell.innerHTML = `<button type="button" class="btn btn-primary" onclick="grmrSaveExample(this)">Simpan</button><button type="button" class="btn btn-danger" onclick="grmrDeleteExample(this)">×</button>`;
       }
     }
     notify('Tersimpan');
+    notifyLearningWarnings(savedResult);
   } catch (err) { notify('Gagal simpan: ' + err.message, true); }
 };
 
@@ -5801,11 +5822,12 @@ window.saveItemRow = async (btn) => {
   if (kind === 'grammar' && !body.pattern) { notify('Pattern wajib diisi', true); return; }
   const endpoint = kind === 'vocab' ? '/admin/module-vocabulary' : '/admin/module-grammar';
   try {
+    let savedResult;
     if (id) {
-      await api(endpoint + '/' + id, { method: 'PUT', body: JSON.stringify(body) });
+      savedResult = await api(endpoint + '/' + id, { method: 'PUT', body: JSON.stringify(body) });
     } else {
-      const d = await api(endpoint, { method: 'POST', body: JSON.stringify(body) });
-      const saved = d.vocabulary || d.grammar;
+      savedResult = await api(endpoint, { method: 'POST', body: JSON.stringify(body) });
+      const saved = savedResult.vocabulary || savedResult.grammar;
       if (saved && saved.id) tr.dataset.id = saved.id;
       // Swap × button to server-delete variant
       const actionsCell = tr.querySelector('td.actions');
@@ -5815,6 +5837,7 @@ window.saveItemRow = async (btn) => {
       `;
     }
     notify('Tersimpan');
+    notifyLearningWarnings(savedResult);
     // Refresh hitungan di background (modul) / daftar pelajaran (drawer tetap utuh).
     if (STATE.selectedCourse) loadModulesForCourse(STATE.selectedCourse).then(() => {
       if (STATE.tab === 'modules') renderModules();
@@ -7197,18 +7220,20 @@ window.deckSaveExample = async (btn) => {
   };
   if (!body.japanese) { notify('Kalimat JP wajib diisi', true); return; }
   try {
+    let savedResult;
     if (id) {
-      await api('/admin/vocabulary-examples/' + id, { method: 'PUT', body: JSON.stringify(body) });
+      savedResult = await api('/admin/vocabulary-examples/' + id, { method: 'PUT', body: JSON.stringify(body) });
     } else {
-      const d = await api('/admin/vocabulary-examples', { method: 'POST', body: JSON.stringify(body) });
-      if (d.example && d.example.id) {
-        tr.dataset.exId = d.example.id;
+      savedResult = await api('/admin/vocabulary-examples', { method: 'POST', body: JSON.stringify(body) });
+      if (savedResult.example && savedResult.example.id) {
+        tr.dataset.exId = savedResult.example.id;
         const cell = tr.querySelector('td:last-child');
         cell.innerHTML = `<button type="button" class="btn btn-primary" onclick="deckSaveExample(this)">Simpan</button><button type="button" class="btn btn-danger" onclick="deckDeleteExample(this)">×</button>`;
       }
       deckBumpExampleCount(vid, 1);
     }
     notify('Tersimpan');
+    notifyLearningWarnings(savedResult);
   } catch (err) { notify('Gagal simpan: ' + err.message, true); }
 };
 

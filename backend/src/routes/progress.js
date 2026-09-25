@@ -5,6 +5,7 @@ import { requireAuth, asyncHandler } from '../middleware.js';
 import { isAdminEmail } from '../auth.js';
 import { requireLessonCourseAccess } from '../entitlements.js';
 import { completeLessonWithStats, reconcileLegacyProgress } from '../progress-service.js';
+import { kanaAssessmentKind, sampleKanaPlacementQuestions } from '../kana-placement.js';
 
 const router = Router();
 
@@ -187,11 +188,11 @@ router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('
   // Lesson meta + pool IDs paralel — di luar lock karena read-only & idempotent.
   const [lessonRow, poolIdsRes] = await Promise.all([
     query(
-      `SELECT id, type, passing_score_pct, questions_per_attempt, cooldown_hours
+      `SELECT id, slug, type, passing_score_pct, questions_per_attempt, cooldown_hours
          FROM lessons WHERE id = $1 LIMIT 1`,
       [lessonId]
     ),
-    query(`SELECT id FROM quiz_questions WHERE lesson_id = $1`, [lessonId]),
+    query(`SELECT id, section_number, question_type FROM quiz_questions WHERE lesson_id = $1`, [lessonId]),
   ]);
   if (lessonRow.rows.length === 0) return res.status(404).json({ error: 'Lesson not found' });
   const lesson = lessonRow.rows[0];
@@ -199,7 +200,8 @@ router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('
 
   const passingScorePct = lesson.passing_score_pct ?? 70;
   const cooldownHours = lesson.cooldown_hours ?? 12;
-  const allIds = poolIdsRes.rows.map((r) => r.id);
+  const poolRows = poolIdsRes.rows;
+  const allIds = poolRows.map((r) => r.id);
   if (allIds.length === 0) return res.status(404).json({ error: 'Lesson has no quiz questions' });
 
   // Critical section — lock per (user, lesson). Status check & INSERT
@@ -217,7 +219,9 @@ router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('
         return { kind: 'resume', inProgress: status.inProgress };
       }
 
-      const sampledIds = sampleQuestionIds(allIds, lesson.questions_per_attempt);
+      const sampledIds = kanaAssessmentKind(lesson.slug)
+        ? sampleKanaPlacementQuestions(poolRows, lesson.questions_per_attempt).map((row) => row.id)
+        : sampleQuestionIds(allIds, lesson.questions_per_attempt);
       const insertRes = await runQuery(
         `INSERT INTO quiz_attempts (user_id, lesson_id, attempt_token, sampled_question_ids, started_at)
          VALUES ($1, $2, gen_random_uuid(), $3::jsonb, NOW())
