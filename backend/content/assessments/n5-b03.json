@@ -116,7 +116,7 @@
         "category": "vocabulary",
         "mode": "choice",
         "objective": "identity",
-        "prompt": "Kartu profil menyebut profesi Deni: perawat. Lengkapi: デニさんは（　）です。",
+        "prompt": "Lengkapi perkenalan profesi Deni: デニさんは（　）です。",
         "options": [
           "いしゃ",
           "かいしゃいん",
@@ -634,7 +634,7 @@
         "category": "vocabulary",
         "mode": "choice",
         "objective": "identity",
-        "prompt": "Kartu menyebut kewarganegaraan Mina: Jepang. Lengkapi: ミナさんは（　）です。",
+        "prompt": "Lengkapi kewarganegaraan Mina: ミナさんは（　）です。",
         "options": [
           "にほんじん",
           "ちゅうごくじん",

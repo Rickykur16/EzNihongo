@@ -4748,7 +4748,7 @@
   © 2026 <strong>EzNihongo</strong> · <a href="privacy.html">Kebijakan Privasi</a> · <a href="terms.html">Syarat &amp; Ketentuan</a>
 </footer>
 
-<script src="api-client.js?v=20260926-assignment"></script>
+<script src="api-client.js?v=20260926-assignment-v2"></script>
 <script src="assets/dialogue/catalog.js?v=1"></script>
 <script src="src/dialogue-furigana.js?v=1"></script>
 <script src="src/dialogue-scene.js?v=2"></script>
@@ -4909,7 +4909,10 @@ function transformQuestionFromApi(apiQ) {
     q, jp, options, optionIds, optionImages,
     questionType: apiQ.question_type || apiQ.questionType || 'multiple_choice',
     correct: -1,
-    explain: apiQ.explanation || '',
+    // Explanations are review material, never assessment material. They are
+    // fetched only after submission; keeping this blank also protects legacy
+    // quiz payloads if an older endpoint accidentally includes the field.
+    explain: '',
     questionId: apiQ.id,
     category: normalizeQuizCategory(apiQ.question_category || apiQ.questionCategory),
     sectionNumber: Number(apiQ.section_number || apiQ.sectionNumber) || 1,
@@ -5521,13 +5524,12 @@ window.speakJapanese = speakJapanese;
 // ═══════════════════════════════════════════════
 let quizState = null;
 
-// A started assignment remains the learning task until submission succeeds.
+// An unfinished assignment can be resumed from its lesson card. It does not
+// lock the rest of the course or redirect the learner on site boot.
 window.__requiredAssignment = null;
 window.setRequiredAssignment = (key, attemptToken) => { window.__requiredAssignment = {key, attemptToken}; };
 window.blockAssignmentNavigation = (key) => {
-  if (!window.__requiredAssignment || window.__requiredAssignment.key === key) return false;
-  showToast('Selesaikan dan kirim semua jawaban assignment yang sedang berjalan terlebih dahulu.', 3500);
-  return true;
+  return false;
 };
 function quizLocalDraftKey(state) { return `ez_assignment_draft:${session?.id || 'unknown'}:${state.attemptToken}`; }
 function storeQuizLocalDraft(state) {
@@ -5707,9 +5709,9 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
             : placement
             ? `Tes ini mengambil empat soal dari setiap bagian: tiga jawaban romaji diketik dan satu pilihan ganda. Lulus jika nilai total minimal ${status.passingScorePct}%. Nilai per bagian hanya membantu menemukan bacaan yang perlu dilatih.`
             : status.resumingLegacy
-            ? `Sesi versi sebelumnya masih berjalan. Lanjutkan ${status.questionsPerAttempt} soal yang sama dengan aturan penilaian sesi tersebut. Paket baru dipakai pada percobaan berikutnya.`
+            ? `Ada sesi versi sebelumnya yang belum selesai. Kamu bisa melanjutkannya kapan saja dari tombol di atas; paket dan aturan sesi tetap dipertahankan.`
             : chapter
-            ? `24 soal pilihan ganda: 6 aksara dan kosakata, 10 tata bahasa dan ungkapan, 4 membaca, serta 4 menyimak. Dua paket digunakan bergantian. Lulus dengan total minimal 70%, tiap kategori minimal 50%, serta minimal satu jawaban benar untuk setiap tujuan. Pembahasan dan transkrip audio muncul setelah semua jawaban dikirim. Siapkan audio.`
+            ? `${status.questionsPerAttempt} soal pilihan ganda: ${status.questionsPerAttempt === 24 ? '6 aksara dan kosakata, 10 tata bahasa dan ungkapan, 4 membaca, serta 4 menyimak. ' : ''}Lulus dengan total minimal 70%, tiap kategori minimal 50%, serta minimal satu jawaban benar untuk setiap tujuan. Pembahasan dan transkrip audio muncul setelah semua jawaban dikirim. Siapkan audio.`
             : `Tiap attempt, sistem ambil <strong>${status.questionsPerAttempt}</strong> soal acak dari pool <strong>${status.poolSize}</strong> — jadi soal bisa beda tiap retry.`}
         </p>
         ${chapter ? `<details style="margin:12px 0"><summary>Tujuan yang diuji</summary><ul>${(status.objectives || []).map(o => `<li>${escapeHtml(o.canDo)}</li>`).join('')}</ul></details>` : ''}
@@ -5796,7 +5798,6 @@ window.startQuizAttempt = async (key, resume = null) => {
       viewEpoch,
       draftStatus: data.draftEnabled || data.assessmentVersion ? 'Jawaban tersimpan otomatis setelah diisi.' : '',
     };
-    window.setRequiredAssignment?.(key, data.attemptToken);
     const draftAnswers = recoverQuizLocalDraft(quizState, data.draftAnswers || []);
     for (const answer of draftAnswers) {
       const qi = questions.findIndex(q => q.questionId === answer.questionId);
@@ -6358,7 +6359,7 @@ function renderQuizQuestion(container) {
 
   container.innerHTML = `
     <div class="quiz-container quiz-paper">
-      <p class="quiz-required-note">Assignment wajib diselesaikan. Jawab seluruh ${total} soal lalu kirim jawaban. Jika website ditutup, sesi ini akan dilanjutkan saat dibuka kembali.</p>
+      <p class="quiz-required-note">Jawab seluruh ${total} soal lalu kirim jawaban untuk melihat hasil. Jika website ditutup, progres tersimpan dan bisa dilanjutkan kapan saja.</p>
       <div class="quiz-paper-tabs" role="tablist" aria-label="Kategori kuis">
         ${renderQuizCategoryTabs(questions)}
       </div>
@@ -13427,9 +13428,6 @@ function _sectionOfModule(moduleId) {
 }
 
 window.selectLesson = (moduleId, lessonId) => {
-  if (window.blockAssignmentNavigation?.(getQuizKey(currentState.course, moduleId, lessonId))) return;
-  if (window.__requiredAssignment && quizState && !quizState.submitted &&
-      window.__requiredAssignment.key === getQuizKey(currentState.course, moduleId, lessonId)) { closeSidebar(); return; }
   const completeMobileContentFocus = prepareMobileSidebarContentFocus();
   // Cleanup lesson-scoped state sebelum pindah — listening player + kanji
   // detail overlay + kanji stroke timer + kanji modal stale state.
@@ -14449,7 +14447,6 @@ const S = (window.AISenpai = {
   // meng-overlay user_progress kanonik, sehingga Dashboard dan Belajar tidak
   // sempat menampilkan jumlah selesai yang berbeda saat halaman dibuka.
   const params = new URLSearchParams(window.location.search);
-  let pendingAssignment = null;
   try {
     await syncEnrollmentsFromServer();
     // Balik dari checkout (?new=<slug>): selesaikan resolusi enrollment +
@@ -14459,7 +14456,6 @@ const S = (window.AISenpai = {
     await Promise.all([
       hydrateEnrolledCourses(),
       syncLearningStateFromServer({ reconcile: true }),
-      window.ezGetUnfinishedAssignment().then(attempt=>{pendingAssignment=attempt;}),
     ]);
     // The server already removed obsolete lesson slugs from its canonical
     // cache. Remove the same stale keys locally after the current catalog has
@@ -14481,22 +14477,11 @@ const S = (window.AISenpai = {
   // handleNewEnrollment may rewrite the URL to ?course=<new slug>; re-read.
   const requested = new URLSearchParams(window.location.search).get('course');
   const enrolled = getEnrolledCourses();
-  const pendingCourse = pendingAssignment && COURSE_CONTENT[pendingAssignment.courseSlug];
-  const pendingModule = pendingCourse?.modules.find(m=>m.id===pendingAssignment.moduleSlug);
-  const pendingLesson = pendingModule?.lessons.find(l=>l.apiId===pendingAssignment.lessonId);
-  const resumePending = !!pendingLesson && enrolled.includes(pendingAssignment.courseSlug);
-  const selected = resumePending ? pendingAssignment.courseSlug : enrolled.includes(requested) ? requested : enrolled[0];
+  const selected = enrolled.includes(requested) ? requested : enrolled[0];
 
   if (enrolled.length === 0) {
     renderPaywall();
   } else {
-    if (resumePending) {
-      currentState.moduleId = pendingModule.id;
-      currentState.lessonId = pendingLesson.id;
-      currentState.view = 'lesson';
-      window.setRequiredAssignment(getQuizKey(selected,pendingModule.id,pendingLesson.id), pendingAssignment.attemptToken);
-      history.replaceState({}, '', `welcome.html?course=${encodeURIComponent(selected)}&module=${encodeURIComponent(pendingModule.id)}&lesson=${encodeURIComponent(pendingLesson.id)}`);
-    }
     renderCourseTabs(selected);
     renderLearning(selected);
     // Dashboard's Continue Learning link opens the protected, existing lesson
@@ -14504,11 +14489,11 @@ const S = (window.AISenpai = {
     const targetModule = params.get('module');
     const targetLesson = params.get('lesson');
     const selectedCourse = COURSE_CONTENT[selected];
-    if (!resumePending && targetModule && targetLesson && selectedCourse?.modules?.some((m) => m.id === targetModule && m.lessons.some((l) => l.id === targetLesson))) {
+    if (targetModule && targetLesson && selectedCourse?.modules?.some((m) => m.id === targetModule && m.lessons.some((l) => l.id === targetLesson))) {
       selectLesson(targetModule, targetLesson);
     }
     const focusLesson = params.get('focusLesson');
-    if (!resumePending && focusLesson) {
+    if (focusLesson) {
       for (const slug of enrolled) {
         const course = COURSE_CONTENT[slug];
         const module = course?.modules.find(m => m.lessons.some(l => l.apiId === focusLesson));
