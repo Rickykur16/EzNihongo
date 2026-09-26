@@ -282,8 +282,13 @@ test('independent Bunpou backend safety review', { timeout: 90_000 }, async t =>
   await t.test('publishing rejects a replaced draft revision and accepts a freshly reviewed draft', async () => {
     const sourceFingerprint = await publishSource();
     const params = { lessonId: id(4) };
-    const save = objective => invoke(admin, '/lessons/:lessonId/bunpou-flow/draft', 'put',
-      { schemaVersion: 1, sourceFingerprint, objective }, params);
+    let draftRevision = null;
+    const save = async objective => {
+      const response = await invoke(admin, '/lessons/:lessonId/bunpou-flow/draft', 'put',
+        { schemaVersion: 1, sourceFingerprint, objective, draftRevision }, params);
+      if (response.status === 200) draftRevision = response.body.draftRevision;
+      return response;
+    };
     const reviewed = await save('Editor A reviewed this'); assert.equal(reviewed.status, 200);
     assert.ok(reviewed.body.draftRevision);
     assert.equal((await save('Editor B replaced the draft')).status, 200);

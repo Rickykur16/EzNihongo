@@ -95,9 +95,12 @@ test('grammar round trip: additive update preserves omitted scene and explicit n
   saved=fixture();
 });
 test('reusable profile uses real provider voice and cannot rename/delete official identity',async()=>{
+  const savedSceneBefore=structuredClone(saved);
   let r=await request('/api/admin/dialogue-speakers/'+id,{method:'PUT',body:{name:'hacked',displayName:'Anna Baru',voiceId:'missing'}});assert.equal(r.status,400);
   r=await request('/api/admin/dialogue-speakers/'+id,{method:'PUT',body:{name:'hacked',displayName:'Anna Baru',voiceId:'hadi-voice'}});assert.equal(r.status,200);
-  assert.equal(r.body.speaker.name,'Anna Wijaya');assert.equal(r.body.speaker.profile_version,2);assert.equal(saved.participants[0].voiceId,'anna-voice');
+  assert.equal(r.body.speaker.name,'Anna Wijaya');assert.equal(r.body.speaker.profile_version,2);
+  assert.deepEqual(saved,savedSceneBefore,'profile defaults must not rewrite the learner-visible scene snapshot');
+  assert.equal(saved.participants[0].voiceId,'anna-voice');
   assert.equal((await request('/api/admin/dialogue-speakers/'+id,{method:'DELETE'})).status,409);
 });
 test('student generation uses snapshot voice, cache changes when voice changes, provider availability enforced',async()=>{

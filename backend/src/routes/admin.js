@@ -57,7 +57,8 @@ import {
 import { loadMasteryShadow, summarizeShadow } from '../grammar-mastery-shadow.js';
 import { loadPilotLessonOptions } from '../bunpou-pilot-catalog.js';
 import { BoundaryContextError, getCurriculumBoundary } from '../curriculum-boundary.js';
-import { validateAndWriteContent, boundaryWriteHttpError, lockCurriculumCourse, lockCurriculumGraph } from '../curriculum-content-service.js';
+import { validateAndWriteContent, boundaryWriteHttpError, lockCurriculumCourse,
+  lockCurriculumCourses, lockCurriculumGraph } from '../curriculum-content-service.js';
 import { validateContentAgainstBoundary } from '../curriculum-boundary-validator.js';
 import { validateBunpouPublish } from '../curriculum-bunpou-validation.js';
 import { deckReadingSourceFingerprint, distractorSourceFingerprint,
@@ -144,6 +145,177 @@ async function adminBoundaryWrite(res, options) {
     res.status(response.statusCode).json(response.body);
     return null;
   }
+}
+
+async function adminLockedMutation(res, loadCourseIds, mutate) {
+  try {
+    return await withTransaction(async client => {
+      const initial = [...new Set(await loadCourseIds(client))].sort();
+      if (!initial.length) return { missing: true };
+      await lockCurriculumCourses(client, initial);
+      const current = [...new Set(await loadCourseIds(client))].sort();
+      if (JSON.stringify(initial) !== JSON.stringify(current)) {
+        throw new BoundaryContextError('boundary_context_mismatch');
+      }
+      return { value: await mutate(client) };
+    });
+  } catch (error) {
+    if (error instanceof BoundaryContextError) {
+      res.status(422).json({ error: error.code || error.message });
+      return null;
+    }
+    if (Number.isInteger(error?.status) && error.status >= 400 && error.status < 600) {
+      res.status(error.status).json({ error: error.message });
+      return null;
+    }
+    throw error;
+  }
+}
+
+// Global banks may be visible in any course. Until per-consumer validation is
+// available, edit them only while every course is off, under the exclusive
+// graph lock so a mode/topology change cannot race the check and write.
+async function globalOffQuery(res, sql, params, { expectedGlobalKanjiId } = {}) {
+  const result = await withTransaction(async client => {
+    await lockCurriculumGraph(client, { exclusive: true });
+    if (expectedGlobalKanjiId) {
+      const current = await client.query('SELECT lesson_id FROM kanji_items WHERE id=$1 FOR UPDATE',
+        [expectedGlobalKanjiId]);
+      if (current.rows[0]?.lesson_id) return { scopeChanged: true };
+    }
+    const active = await client.query(`SELECT id FROM courses
+      WHERE COALESCE(curriculum_boundary_mode,'off') <> 'off' LIMIT 1`);
+    if (active.rows.length) return null;
+    return client.query(sql, params);
+  });
+  if (result?.scopeChanged) res.status(409).json({ error: 'kanji_scope_changed' });
+  else if (!result) res.status(409).json({ error: 'global_bank_requires_off_mode' });
+  return result?.scopeChanged ? null : result;
+}
+
+const courseIdsForLesson = async (client, lessonId) => (await client.query(
+  'SELECT DISTINCT m.course_id FROM lessons l JOIN modules m ON m.id=l.module_id WHERE l.id=$1',
+  [lessonId])).rows.map(row => row.course_id);
+const courseIdsForGrammar = async (client, grammarId) => (await client.query(
+  'SELECT DISTINCT m.course_id FROM module_grammar g JOIN modules m ON m.id=g.module_id WHERE g.id=$1',
+  [grammarId])).rows.map(row => row.course_id);
+const courseIdsForVocabulary = async (client, vocabularyId) => (await client.query(
+  'SELECT DISTINCT m.course_id FROM module_vocabulary v JOIN modules m ON m.id=v.module_id WHERE v.id=$1',
+  [vocabularyId])).rows.map(row => row.course_id);
+const courseIdsForVocabularyAndConsumers = async (client, vocabularyId) => (await client.query(`
+  SELECT m.course_id FROM module_vocabulary v JOIN modules m ON m.id=v.module_id WHERE v.id=$1
+  UNION SELECT m.course_id FROM lesson_deck_items di JOIN lessons l ON l.id=di.lesson_id
+    JOIN modules m ON m.id=l.module_id WHERE di.vocabulary_id=$1`, [vocabularyId]))
+  .rows.map(row => row.course_id);
+const courseIdsForGrammarAndConsumers = async (client, grammarId) => (await client.query(`
+  SELECT m.course_id FROM module_grammar g JOIN modules m ON m.id=g.module_id WHERE g.id=$1
+  UNION SELECT m.course_id FROM lesson_grammar_task_items gi JOIN lessons l ON l.id=gi.lesson_id
+    JOIN modules m ON m.id=l.module_id WHERE gi.grammar_id=$1
+  UNION SELECT m.course_id FROM quiz_questions q JOIN lessons l ON l.id=q.lesson_id
+    JOIN modules m ON m.id=l.module_id WHERE q.grammar_id=$1`, [grammarId]))
+  .rows.map(row => row.course_id);
+const courseIdsForBunpouPair = async (client, lessonId) => (await client.query(`
+  SELECT m.course_id FROM lessons l JOIN modules m ON m.id=l.module_id WHERE l.id=$1
+  UNION SELECT m.course_id FROM lessons task JOIN modules m ON m.id=task.module_id
+    WHERE task.popup_after_lesson_id=$1 AND task.type='grammar_task'`, [lessonId]))
+  .rows.map(row => row.course_id);
+
+function kanjiBoundaryFields(row) {
+  return [
+    ...['character', 'on_reading', 'kun_reading', 'meaning_id', 'mnemonic', 'bab_kode']
+      .map(name => boundaryField(`kanji.${name}`, row[name])),
+    ...boundaryFieldsFrom('kanji.compounds', row.compounds),
+  ];
+}
+
+async function kanjiWriteCandidate(client, id, proposed, targetLessonId, locked) {
+  const old = id ? (await client.query(`SELECT * FROM kanji_items WHERE id=$1
+    ${locked ? 'FOR UPDATE' : ''}`, [id])).rows[0] : null;
+  if (id && !old) throw new BoundaryContextError('kanji_not_found');
+  const lessonId = targetLessonId === undefined ? old?.lesson_id : targetLessonId;
+  if (!lessonId) throw new BoundaryContextError('kanji_global_scope_unresolved');
+  const sourceCourses = old?.lesson_id ? await courseIdsForLesson(client, old.lesson_id) : [];
+  const merged = { ...old, ...proposed };
+  return { scope: { lessonId }, relatedCourseIds: sourceCourses,
+    contentType: 'kanji_compound_assessed', operation: 'live_write', contentId: id || null,
+    fields: kanjiBoundaryFields(merged), currentRevision: old?.updated_at,
+    expectedBoundaryFingerprint: proposed.boundaryFingerprint };
+}
+
+export async function kanjiUpsertCandidate(client, values, lessonId, hasCompounds, locked = false) {
+  const existing = await client.query(`SELECT * FROM kanji_items
+    WHERE character=$1 AND jlpt_level=$2 AND lesson_id=$3
+    ${locked ? 'FOR UPDATE' : ''}`, [values.character, values.jlpt_level, lessonId]);
+  const row = existing.rows[0] || null;
+  const proposed = { ...values,
+    compounds: hasCompounds ? values.compounds : row?.compounds || [],
+  };
+  const candidate = await kanjiWriteCandidate(client, row?.id || null, proposed, lessonId, locked);
+  return { ...candidate, expectedRevision: values.expectedRevision,
+    contentIsNewOrChanged: true };
+}
+
+export async function linkedContentCandidate(client, lessonId, ids, type, instructions = []) {
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  const table = type === 'deck' ? 'module_vocabulary' : type === 'grammar' ? 'module_grammar' : 'kana_items';
+  const key = type === 'deck' ? 'vocabulary' : type === 'grammar' ? 'grammar' : 'kana';
+  const source = uniqueIds.length ? await client.query(type === 'kana'
+    ? `SELECT k.* FROM kana_items k WHERE k.id=ANY($1::uuid[]) ORDER BY k.id`
+    :
+    `SELECT s.*,m.course_id FROM ${table} s JOIN modules m ON m.id=s.module_id
+       WHERE s.id=ANY($1::uuid[]) ORDER BY s.id`, [uniqueIds]) : { rows: [] };
+  if (source.rows.length !== uniqueIds.length) throw new BoundaryContextError(`${key}_owner_unresolved`);
+  if (type !== 'kana' && source.rows.length) {
+    if (type === 'deck') {
+      const lesson = await client.query('SELECT module_id FROM lessons WHERE id=$1', [lessonId]);
+      if (!lesson.rows.length || source.rows.some(row => row.module_id !== lesson.rows[0].module_id)) {
+        throw new BoundaryContextError('vocabulary_deck_owner_mismatch');
+      }
+    }
+    const reachable = await client.query(`WITH RECURSIVE courses(id) AS (
+      SELECT m.course_id FROM lessons l JOIN modules m ON m.id=l.module_id WHERE l.id=$1
+      UNION SELECT p.prerequisite_course_id FROM course_prerequisites p JOIN courses c ON c.id=p.course_id
+    ) SELECT id FROM courses`, [lessonId]);
+    const allowed = new Set(reachable.rows.map(row => row.id));
+    if (source.rows.some(row => !allowed.has(row.course_id))) {
+      throw new BoundaryContextError(`${key}_lesson_owner_mismatch`);
+    }
+  }
+  const fields = source.rows.flatMap((row, index) => {
+    if (type === 'grammar') return [
+      ...['pattern', 'meaning', 'example', 'notes', 'example_dialog', 'example_dialog_id',
+        'recognition_distractors', 'controlled_distractors', 'communication_goal']
+        .map(name => boundaryField(`items[${index}].${name}`, row[name])),
+      ...dialogueVisibleFields(row.dialog_scene, row.dialog_furigana)
+        .map(field => ({ ...field, path: `items[${index}].${field.path}` })),
+    ];
+    if (type === 'kana') return ['character', 'romaji', 'mnemonic', 'group_label']
+      .map(name => boundaryField(`items[${index}].${name}`, row[name]));
+    return ['japanese', 'reading', 'romaji', 'indonesian', 'category', 'note']
+      .map(name => boundaryField(`items[${index}].${name}`, row[name]));
+  });
+  if ((type === 'deck' || type === 'grammar') && uniqueIds.length) {
+    const exampleTable = type === 'deck' ? 'vocabulary_examples' : 'grammar_examples';
+    const ownerColumn = type === 'deck' ? 'vocabulary_id' : 'grammar_id';
+    const readingColumn = type === 'deck' ? 'reading' : 'NULL::text AS reading';
+    const examples = await client.query(`SELECT ${ownerColumn},japanese,${readingColumn},highlight,indonesian
+      FROM ${exampleTable} WHERE ${ownerColumn}=ANY($1::uuid[])
+      ORDER BY ${ownerColumn},sort_order,created_at,id`, [uniqueIds]);
+    fields.push(...examples.rows.flatMap((row, index) =>
+      ['japanese', 'reading', 'highlight', 'indonesian']
+        .map(name => boundaryField(`${type}Examples[${index}].${name}`, row[name]))));
+  }
+  if (type === 'kana' && uniqueIds.length) {
+    const examples = await client.query(`SELECT kana_id,japanese,reading,highlight,indonesian
+      FROM kana_examples WHERE kana_id=ANY($1::uuid[]) ORDER BY kana_id,sort_order,created_at,id`, [uniqueIds]);
+    fields.push(...examples.rows.flatMap((row, index) =>
+      ['japanese', 'reading', 'highlight', 'indonesian']
+        .map(name => boundaryField(`kanaExamples[${index}].${name}`, row[name]))));
+  }
+  fields.push(...instructions.map((value, index) => boundaryField(`items[${index}].instruction`, value)));
+  return { scope: { lessonId }, contentType: type === 'deck' ? 'vocabulary_example' :
+      type === 'grammar' ? 'grammar_example' : 'reading', operation: 'live_write', fields,
+    relatedCourseIds: source.rows.map(row => row.course_id).filter(Boolean) };
 }
 
 // Bulk jobs persist per item. Keep every failure visible after earlier items
@@ -768,7 +940,9 @@ router.put('/module-vocabulary/:id', asyncHandler(async (req, res) => {
 }));
 
 router.delete('/module-vocabulary/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM module_vocabulary WHERE id = $1`, [req.params.id]);
+  const result = await adminLockedMutation(res, client => courseIdsForVocabularyAndConsumers(client, req.params.id),
+    client => client.query('DELETE FROM module_vocabulary WHERE id=$1', [req.params.id]));
+  if (!result) return;
   invalidateCourseVocabCache();
   res.json({ ok: true });
 }));
@@ -911,7 +1085,12 @@ router.put('/vocabulary-examples/:id', asyncHandler(async (req, res) => {
 }));
 
 router.delete('/vocabulary-examples/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM vocabulary_examples WHERE id = $1`, [req.params.id]);
+  const result = await adminLockedMutation(res, async client => {
+    const example = await client.query('SELECT vocabulary_id FROM vocabulary_examples WHERE id=$1', [req.params.id]);
+    return example.rows.length ? courseIdsForVocabularyAndConsumers(client, example.rows[0].vocabulary_id) : [];
+  },
+  client => client.query('DELETE FROM vocabulary_examples WHERE id=$1', [req.params.id]));
+  if (!result) return;
   invalidateCourseVocabCache();
   res.json({ ok: true });
 }));
@@ -934,15 +1113,19 @@ router.get('/lessons/:lessonId/deck-items', asyncHandler(async (req, res) => {
 router.post('/lessons/:lessonId/deck-items', asyncHandler(async (req, res) => {
   const { vocabularyId, sortOrder, accentColor } = req.body || {};
   if (!vocabularyId) return res.status(400).json({ error: 'vocabularyId required' });
-  const r = await query(
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: client => linkedContentCandidate(client, req.params.lessonId, [vocabularyId], 'deck'),
+    write: async client => (await client.query(
     `INSERT INTO lesson_deck_items (lesson_id, vocabulary_id, sort_order, accent_color)
      VALUES ($1,$2,$3,$4)
      ON CONFLICT (lesson_id, vocabulary_id)
        DO UPDATE SET sort_order = EXCLUDED.sort_order, accent_color = EXCLUDED.accent_color
      RETURNING *`,
     [req.params.lessonId, vocabularyId, sortOrder ?? 0, accentColor || null]
-  );
-  res.status(201).json({ item: r.rows[0] });
+    )).rows[0],
+  });
+  if (!guarded) return;
+  res.status(201).json({ item: guarded.value, validation: guarded.report });
 }));
 
 router.put('/lessons/:lessonId/deck-items', asyncHandler(async (req, res) => {
@@ -950,7 +1133,10 @@ router.put('/lessons/:lessonId/deck-items', asyncHandler(async (req, res) => {
   if (!Array.isArray(items)) return res.status(400).json({ error: 'items[] required' });
   // Whole reorder/upsert applied atomically — a partial failure must not leave
   // the deck with a mix of old and new sort orders.
-  await withTransaction(async (client) => {
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: client => linkedContentCandidate(client, req.params.lessonId,
+      items.map(item => item?.vocabularyId), 'deck'),
+    write: async client => {
     for (let i = 0; i < items.length; i++) {
       const it = items[i] || {};
       if (!it.vocabularyId) continue;
@@ -962,15 +1148,22 @@ router.put('/lessons/:lessonId/deck-items', asyncHandler(async (req, res) => {
         [req.params.lessonId, it.vocabularyId, it.sortOrder ?? i, it.accentColor || null]
       );
     }
+    return { ok: true };
+    },
   });
-  res.json({ ok: true });
+  if (!guarded) return;
+  res.json({ ok: true, validation: guarded.report });
 }));
 
 router.delete('/lessons/:lessonId/deck-items/:vocabularyId', asyncHandler(async (req, res) => {
-  await query(
+  const guarded = await adminLockedMutation(res, async client => [
+    ...await courseIdsForLesson(client, req.params.lessonId),
+    ...await courseIdsForVocabulary(client, req.params.vocabularyId),
+  ], client => client.query(
     `DELETE FROM lesson_deck_items WHERE lesson_id = $1 AND vocabulary_id = $2`,
     [req.params.lessonId, req.params.vocabularyId]
-  );
+  ));
+  if (!guarded) return;
   res.json({ ok: true });
 }));
 
@@ -1012,7 +1205,7 @@ router.post('/kana', asyncHandler(async (req, res) => {
   if (!ch) return res.status(400).json({ error: 'character required' });
   const kd = kind === 'katakana' ? 'katakana' : 'hiragana';
   const variant = KANA_VARIANTS.includes(variantType) ? variantType : 'base';
-  const result = await query(
+  const result = await globalOffQuery(res,
     `INSERT INTO kana_items (character, kind, romaji, mnemonic, group_label, variant_type, sort_order)
      VALUES ($1,$2,$3,$4,$5,$6,$7)
      ON CONFLICT (kind, character) DO UPDATE SET
@@ -1023,6 +1216,7 @@ router.post('/kana', asyncHandler(async (req, res) => {
     [ch, kd, String(romaji || '').trim() || ch, (mnemonic && String(mnemonic).trim()) || null,
      (groupLabel && String(groupLabel).trim()) || null, variant, Number(sortOrder) || 0]
   );
+  if (!result) return;
   res.status(201).json({ kana: result.rows[0] });
 }));
 
@@ -1030,7 +1224,7 @@ router.put('/kana/:id', asyncHandler(async (req, res) => {
   const { character, kind, romaji, mnemonic, groupLabel, variantType, sortOrder } = req.body || {};
   const kd = kind === 'hiragana' || kind === 'katakana' ? kind : null;
   const variant = variantType && KANA_VARIANTS.includes(variantType) ? variantType : null;
-  const result = await query(
+  const result = await globalOffQuery(res,
     `UPDATE kana_items SET
        character = COALESCE($2, character),
        kind = COALESCE($3, kind),
@@ -1047,12 +1241,13 @@ router.put('/kana/:id', asyncHandler(async (req, res) => {
      (groupLabel && String(groupLabel).trim()) || null,
      variant, sortOrder != null && sortOrder !== '' ? Number(sortOrder) : null]
   );
+  if (!result) return;
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ kana: result.rows[0] });
 }));
 
 router.delete('/kana/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM kana_items WHERE id = $1`, [req.params.id]);
+  if (!await globalOffQuery(res, `DELETE FROM kana_items WHERE id = $1`, [req.params.id])) return;
   res.json({ ok: true });
 }));
 
@@ -1070,17 +1265,18 @@ router.get('/kana-examples', asyncHandler(async (req, res) => {
 router.post('/kana-examples', asyncHandler(async (req, res) => {
   const { kanaId, japanese, reading, highlight, indonesian, sortOrder } = req.body || {};
   if (!kanaId || !japanese) return res.status(400).json({ error: 'kanaId and japanese required' });
-  const r = await query(
+  const r = await globalOffQuery(res,
     `INSERT INTO kana_examples (kana_id, japanese, reading, highlight, indonesian, sort_order)
      VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
     [kanaId, japanese, reading || null, highlight || null, indonesian || null, sortOrder || 0]
   );
+  if (!r) return;
   res.status(201).json({ example: r.rows[0] });
 }));
 
 router.put('/kana-examples/:id', asyncHandler(async (req, res) => {
   const { japanese, reading, highlight, indonesian, sortOrder } = req.body || {};
-  const r = await query(
+  const r = await globalOffQuery(res,
     `UPDATE kana_examples SET
        japanese = COALESCE($2, japanese),
        reading = $3, highlight = $4, indonesian = $5,
@@ -1088,12 +1284,13 @@ router.put('/kana-examples/:id', asyncHandler(async (req, res) => {
      WHERE id = $1 RETURNING *`,
     [req.params.id, japanese, reading || null, highlight || null, indonesian || null, sortOrder]
   );
+  if (!r) return;
   if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ example: r.rows[0] });
 }));
 
 router.delete('/kana-examples/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM kana_examples WHERE id = $1`, [req.params.id]);
+  if (!await globalOffQuery(res, `DELETE FROM kana_examples WHERE id = $1`, [req.params.id])) return;
   res.json({ ok: true });
 }));
 
@@ -1114,21 +1311,28 @@ router.get('/lessons/:lessonId/kana-items', asyncHandler(async (req, res) => {
 router.post('/lessons/:lessonId/kana-items', asyncHandler(async (req, res) => {
   const { kanaId, sortOrder } = req.body || {};
   if (!kanaId) return res.status(400).json({ error: 'kanaId required' });
-  const r = await query(
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: client => linkedContentCandidate(client, req.params.lessonId, [kanaId], 'kana'),
+    write: async client => (await client.query(
     `INSERT INTO lesson_kana_items (lesson_id, kana_id, sort_order)
      VALUES ($1,$2,$3)
      ON CONFLICT (lesson_id, kana_id) DO UPDATE SET sort_order = EXCLUDED.sort_order
      RETURNING *`,
     [req.params.lessonId, kanaId, sortOrder ?? 0]
-  );
-  res.status(201).json({ item: r.rows[0] });
+    )).rows[0],
+  });
+  if (!guarded) return;
+  res.status(201).json({ item: guarded.value, validation: guarded.report });
 }));
 
 router.put('/lessons/:lessonId/kana-items', asyncHandler(async (req, res) => {
   const { items } = req.body || {};
   if (!Array.isArray(items)) return res.status(400).json({ error: 'items[] required' });
   // Whole reorder/upsert applied atomically.
-  await withTransaction(async (client) => {
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: client => linkedContentCandidate(client, req.params.lessonId,
+      items.map(item => item?.kanaId), 'kana'),
+    write: async client => {
     for (let i = 0; i < items.length; i++) {
       const it = items[i] || {};
       if (!it.kanaId) continue;
@@ -1139,15 +1343,20 @@ router.put('/lessons/:lessonId/kana-items', asyncHandler(async (req, res) => {
         [req.params.lessonId, it.kanaId, it.sortOrder ?? i]
       );
     }
+    return { ok: true };
+    },
   });
-  res.json({ ok: true });
+  if (!guarded) return;
+  res.json({ ok: true, validation: guarded.report });
 }));
 
 router.delete('/lessons/:lessonId/kana-items/:kanaId', asyncHandler(async (req, res) => {
-  await query(
+  const guarded = await adminLockedMutation(res, client => courseIdsForLesson(client, req.params.lessonId),
+  client => client.query(
     `DELETE FROM lesson_kana_items WHERE lesson_id = $1 AND kana_id = $2`,
     [req.params.lessonId, req.params.kanaId]
-  );
+  ));
+  if (!guarded) return;
   res.json({ ok: true });
 }));
 
@@ -1170,7 +1379,10 @@ router.put('/lessons/:lessonId/grammar-task-items', asyncHandler(async (req, res
   const { items } = req.body || {};
   if (!Array.isArray(items)) return res.status(400).json({ error: 'items[] required' });
   // Whole task-item set applied atomically.
-  await withTransaction(async (client) => {
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: client => linkedContentCandidate(client, req.params.lessonId,
+      items.map(item => item?.grammarId), 'grammar', items.map(item => item?.instruction)),
+    write: async client => {
     for (let i = 0; i < items.length; i++) {
       const it = items[i] || {};
       if (!it.grammarId) continue;
@@ -1185,15 +1397,22 @@ router.put('/lessons/:lessonId/grammar-task-items', asyncHandler(async (req, res
         [req.params.lessonId, it.grammarId, it.sortOrder ?? i, (it.instruction || '').trim() || null, reqCount]
       );
     }
+    return { ok: true };
+    },
   });
-  res.json({ ok: true });
+  if (!guarded) return;
+  res.json({ ok: true, validation: guarded.report });
 }));
 
 router.delete('/lessons/:lessonId/grammar-task-items/:grammarId', asyncHandler(async (req, res) => {
-  await query(
+  const guarded = await adminLockedMutation(res, async client => [
+    ...await courseIdsForLesson(client, req.params.lessonId),
+    ...await courseIdsForGrammar(client, req.params.grammarId),
+  ], client => client.query(
     `DELETE FROM lesson_grammar_task_items WHERE lesson_id = $1 AND grammar_id = $2`,
     [req.params.lessonId, req.params.grammarId]
-  );
+  ));
+  if (!guarded) return;
   res.json({ ok: true });
 }));
 
@@ -1948,7 +2167,23 @@ router.put('/module-grammar/:id/distractors', asyncHandler(async (req, res) => {
   const s1 = Array.isArray(body.distractors) ? body.distractors.map(String) : cleanLines(body.value);
   const s2 = cleanLines(body.controlled);
 
-  const r = await query(
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: async (client, { locked }) => {
+      const current = await client.query(`SELECT * FROM module_grammar WHERE id=$1
+        ${locked ? 'FOR UPDATE' : ''}`, [req.params.id]);
+      if (!current.rows.length) throw new BoundaryContextError('grammar_not_found');
+      const row = current.rows[0];
+      const recognition = hasS1 ? (s1.length ? s1.join('\n') : null) : row.recognition_distractors;
+      const controlled = hasS2 ? (s2.length ? s2.join('\n') : null) : row.controlled_distractors;
+      return { scope: { grammarId: row.id, moduleId: row.module_id, lessonId: row.lesson_id || undefined },
+        contentType: 'grammar_distractors', operation: 'live_write', contentId: row.id,
+        fields: [boundaryField('recognitionDistractors', recognition),
+          boundaryField('controlledDistractors', controlled)],
+        contentIsNewOrChanged: recognition !== row.recognition_distractors || controlled !== row.controlled_distractors,
+        expectedRevision: body.expectedRevision, currentRevision: row.updated_at,
+        expectedBoundaryFingerprint: body.boundaryFingerprint };
+    },
+    write: async client => (await client.query(
     `UPDATE module_grammar SET
        recognition_distractors = CASE WHEN $3::boolean THEN $2 ELSE recognition_distractors END,
        controlled_distractors  = CASE WHEN $5::boolean THEN $4 ELSE controlled_distractors END,
@@ -1959,9 +2194,10 @@ router.put('/module-grammar/:id/distractors', asyncHandler(async (req, res) => {
       s1.length ? s1.join('\n') : null, hasS1,
       s2.length ? s2.join('\n') : null, hasS2,
     ]
-  );
-  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-  res.json({ ok: true, distractors: s1, controlled: s2 });
+    )).rows[0],
+  });
+  if (!guarded) return;
+  res.json({ ok: true, distractors: s1, controlled: s2, validation: guarded.report });
 }));
 
 // ── Bunpou Flow pilot: Pendamping Bunpou companion editor (Paket 1) ────────
@@ -2043,26 +2279,28 @@ router.get('/lessons/:lessonId/bunpou-flow', asyncHandler(async (req, res) => {
 }));
 
 router.put('/lessons/:lessonId/bunpou-flow/draft', asyncHandler(async (req, res) => {
-  const { grammarIds, taskLessonId } = await bunpouFlowScope(req.params.lessonId);
-  const check = validateCompanionEnvelope(req.body, grammarIds);
-  if (!check.ok) return res.status(400).json({ error: 'invalid_envelope', details: check.errors });
-
-  const fingerprint = await currentSourceFingerprint(taskLessonId);
-  if (!fingerprint || req.body?.sourceFingerprint !== fingerprint) {
-    return res.status(409).json({ error: 'Materi berubah atau belum ditinjau. Buka ulang pendamping dan periksa soal sebelum menyimpan.' });
-  }
-
-  const sanitized = sanitizeCompanionEnvelope(req.body);
-  sanitized.editor = { email: req.user.email, at: new Date().toISOString() };
-  sanitized.sourceFingerprint = fingerprint;
-
-  const r = await query(
-    `UPDATE lessons SET bunpou_flow_draft = $2, updated_at = NOW() WHERE id = $1 RETURNING bunpou_flow_draft`,
-    [req.params.lessonId, JSON.stringify(sanitized)]
-  );
-  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-  res.json({ ok: true, draft: r.rows[0].bunpou_flow_draft,
-    draftRevision: companionDraftRevision(r.rows[0].bunpou_flow_draft) });
+  const guarded = await adminLockedMutation(res, client => courseIdsForBunpouPair(client, req.params.lessonId),
+    async client => {
+      const lesson = await client.query('SELECT bunpou_flow_draft FROM lessons WHERE id=$1 FOR UPDATE',
+        [req.params.lessonId]);
+      if (!lesson.rows.length) throw fail(404, 'lesson_not_found');
+      const revision = companionDraftRevision(lesson.rows[0].bunpou_flow_draft);
+      if ((req.body?.draftRevision ?? null) !== revision) throw fail(409, 'draft_changed_since_editor_open');
+      const dbQuery = client.query.bind(client);
+      const { grammarIds, taskLessonId } = await bunpouFlowScope(req.params.lessonId, dbQuery);
+      const check = validateCompanionEnvelope(req.body, grammarIds);
+      if (!check.ok) throw fail(400, 'invalid_envelope');
+      const fingerprint = await currentSourceFingerprint(taskLessonId, dbQuery);
+      if (!fingerprint || req.body?.sourceFingerprint !== fingerprint) throw fail(409, 'source_changed_since_review');
+      const sanitized = sanitizeCompanionEnvelope(req.body);
+      sanitized.editor = { email: req.user.email, at: new Date().toISOString() };
+      sanitized.sourceFingerprint = fingerprint;
+      return (await client.query(`UPDATE lessons SET bunpou_flow_draft=$2,updated_at=NOW()
+        WHERE id=$1 RETURNING bunpou_flow_draft`, [req.params.lessonId, JSON.stringify(sanitized)])).rows[0];
+    });
+  if (!guarded) return;
+  res.json({ ok: true, draft: guarded.value.bunpou_flow_draft,
+    draftRevision: companionDraftRevision(guarded.value.bunpou_flow_draft) });
 }));
 
 // Publishing is deliberately its own explicit action (never implied by
@@ -2091,7 +2329,9 @@ router.post('/lessons/:lessonId/bunpou-flow/publish', asyncHandler(async (req, r
       const fingerprint = await currentSourceFingerprint(taskLessonId, dbQuery);
       if (!fingerprint || draft.sourceFingerprint !== fingerprint) throw fail(409, 'source_changed_since_review');
       const sanitized = sanitizeCompanionEnvelope(draft);
+      const relatedCourseIds = taskLessonId ? await courseIdsForLesson(client, taskLessonId) : [];
       return { scope: { moduleId: row.module_id, lessonId: row.id },
+        relatedCourseIds,
         contentType: 'dialogue_comprehension', operation: 'publish', contentId: row.id,
         fields: boundaryFieldsFrom('bunpouFlowPublished', sanitized), draft, sanitized, fingerprint,
         expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
@@ -3916,12 +4156,19 @@ router.put('/grammar-examples/:id', asyncHandler(async (req, res) => {
 }));
 
 router.delete('/grammar-examples/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM grammar_examples WHERE id = $1`, [req.params.id]);
+  const result = await adminLockedMutation(res, async client => {
+    const example = await client.query('SELECT grammar_id FROM grammar_examples WHERE id=$1', [req.params.id]);
+    return example.rows.length ? courseIdsForGrammarAndConsumers(client, example.rows[0].grammar_id) : [];
+  },
+  client => client.query('DELETE FROM grammar_examples WHERE id=$1', [req.params.id]));
+  if (!result) return;
   res.json({ ok: true });
 }));
 
 router.delete('/module-grammar/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM module_grammar WHERE id = $1`, [req.params.id]);
+  const result = await adminLockedMutation(res, client => courseIdsForGrammarAndConsumers(client, req.params.id),
+    client => client.query('DELETE FROM module_grammar WHERE id=$1', [req.params.id]));
+  if (!result) return;
   res.json({ ok: true });
 }));
 
@@ -4134,7 +4381,9 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
 }));
 
 router.delete('/lessons/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM lessons WHERE id = $1`, [req.params.id]);
+  const result = await adminLockedMutation(res, client => courseIdsForLesson(client, req.params.id),
+    client => client.query('DELETE FROM lessons WHERE id=$1', [req.params.id]));
+  if (!result) return;
   invalidateKanjiCatalogCache();
   res.json({ ok: true });
 }));
@@ -4373,7 +4622,11 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
 }));
 
 router.delete('/quiz-questions/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM quiz_questions WHERE id = $1`, [req.params.id]);
+  const result = await adminLockedMutation(res, async client => (await client.query(
+    `SELECT m.course_id FROM quiz_questions q JOIN lessons l ON l.id=q.lesson_id
+      JOIN modules m ON m.id=l.module_id WHERE q.id=$1`, [req.params.id])).rows.map(row => row.course_id),
+  client => client.query('DELETE FROM quiz_questions WHERE id=$1', [req.params.id]));
+  if (!result) return;
   res.json({ ok: true });
 }));
 
@@ -4435,12 +4688,13 @@ router.delete('/lessons/:lessonId/quiz/sections/:category/:number', asyncHandler
   const { lessonId, category, number } = req.params;
   const cat = normalizeQuizCategory(category);
   const sectionNo = normalizeQuizSectionNumber(number);
-  const result = await query(
+  const guarded = await adminLockedMutation(res, client => courseIdsForLesson(client, lessonId), client => client.query(
     `DELETE FROM quiz_questions
       WHERE lesson_id = $1 AND question_category = $2 AND section_number = $3`,
     [lessonId, cat, sectionNo]
-  );
-  res.json({ ok: true, deleted: result.rowCount });
+  ));
+  if (!guarded) return;
+  res.json({ ok: true, deleted: guarded.value?.rowCount || 0 });
 }));
 
 // ===== SENSEI =====
@@ -5200,8 +5454,7 @@ router.post('/kanji', asyncHandler(async (req, res) => {
   const compoundValidation = validateKanjiCompounds(compounds, ch);
   if (compoundValidation.error) return res.status(400).json({ error: compoundValidation.error });
   const safeCompounds = compoundValidation.items;
-  const result = await query(
-    `INSERT INTO kanji_items (
+  const sql = `INSERT INTO kanji_items (
        lesson_id, character, jlpt_level, on_reading, kun_reading, meaning_id,
        mnemonic, compounds, stroke_count, bab_kode, sort_order
      )
@@ -5216,8 +5469,8 @@ router.post('/kanji', asyncHandler(async (req, res) => {
        bab_kode = EXCLUDED.bab_kode,
        sort_order = EXCLUDED.sort_order,
        updated_at = NOW()
-     RETURNING *`,
-    [
+     RETURNING *`;
+  const params = [
       lessonId || null,
       ch,
       level,
@@ -5230,10 +5483,20 @@ router.post('/kanji', asyncHandler(async (req, res) => {
       (babKode && String(babKode).trim()) || null,
       Number(sortOrder) || 0,
       hasCompounds,
-    ]
-  );
+    ];
+  const result = lessonId ? await adminBoundaryWrite(res, {
+    prepare: (client, { locked }) => kanjiUpsertCandidate(client, {
+      character: ch, jlpt_level: level,
+      on_reading: params[3], kun_reading: params[4], meaning_id: params[5],
+      mnemonic: params[6], compounds: safeCompounds, bab_kode: params[9],
+      expectedRevision: req.body?.expectedRevision,
+      boundaryFingerprint: req.body?.boundaryFingerprint }, lessonId, hasCompounds, locked),
+    write: async client => (await client.query(sql, params)).rows[0],
+  }) : await globalOffQuery(res, sql, params);
+  if (!result) return;
   invalidateKanjiCatalogCache();
-  res.status(201).json({ kanji: result.rows[0] });
+  res.status(201).json({ kanji: lessonId ? result.value : result.rows[0],
+    ...(lessonId ? { validation: result.report } : {}) });
 }));
 
 router.put('/kanji/:id', asyncHandler(async (req, res) => {
@@ -5248,8 +5511,7 @@ router.put('/kanji/:id', asyncHandler(async (req, res) => {
   const compoundValidation = validateKanjiCompounds(compounds, ch);
   if (compoundValidation.error) return res.status(400).json({ error: compoundValidation.error });
   const safeCompounds = compoundValidation.items;
-  const result = await query(
-    `UPDATE kanji_items SET
+  const sql = `UPDATE kanji_items SET
        character = COALESCE($2, character),
        jlpt_level = COALESCE($3, jlpt_level),
        on_reading = $4,
@@ -5260,10 +5522,11 @@ router.put('/kanji/:id', asyncHandler(async (req, res) => {
        bab_kode = $9,
        sort_order = COALESCE($10, sort_order),
        lesson_id = CASE WHEN $12::boolean THEN $11 ELSE lesson_id END,
-       compounds = CASE WHEN $14::boolean THEN $13::jsonb ELSE kanji_items.compounds END
+       compounds = CASE WHEN $14::boolean THEN $13::jsonb ELSE kanji_items.compounds END,
+       updated_at = NOW()
      WHERE id = $1
-     RETURNING *`,
-    [
+     RETURNING *`;
+  const params = [
       req.params.id,
       ch || null,
       level,
@@ -5278,15 +5541,48 @@ router.put('/kanji/:id', asyncHandler(async (req, res) => {
       hasLessonId,
       JSON.stringify(safeCompounds),
       hasCompounds,
-    ]
-  );
-  if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+    ];
+  const existing = await query('SELECT lesson_id FROM kanji_items WHERE id=$1', [req.params.id]);
+  if (!existing.rows.length) return res.status(404).json({ error: 'Not found' });
+  const targetLessonId = hasLessonId ? (lessonId || null) : existing.rows[0].lesson_id;
+  let result;
+  if (!targetLessonId) {
+    result = await globalOffQuery(res, sql, params,
+      !hasLessonId ? { expectedGlobalKanjiId: req.params.id } : {});
+    if (!result) return;
+  } else {
+    result = await adminBoundaryWrite(res, {
+      prepare: async (client, { locked }) => {
+        const old = (await client.query('SELECT * FROM kanji_items WHERE id=$1', [req.params.id])).rows[0];
+        if (!old) throw new BoundaryContextError('kanji_not_found');
+        const merged = { character: ch || old.character, on_reading: params[3], kun_reading: params[4],
+          meaning_id: params[5], mnemonic: params[6], bab_kode: params[8],
+          compounds: hasCompounds ? safeCompounds : old.compounds,
+          boundaryFingerprint: req.body?.boundaryFingerprint };
+        const candidate = await kanjiWriteCandidate(client, req.params.id, merged,
+          hasLessonId ? (lessonId || null) : undefined, locked);
+        return { ...candidate, expectedRevision: req.body?.expectedRevision };
+      },
+      write: async client => (await client.query(sql, params)).rows[0],
+    });
+    if (!result) return;
+  }
   invalidateKanjiCatalogCache();
-  res.json({ kanji: result.rows[0] });
+  res.json({ kanji: targetLessonId ? result.value : result.rows[0],
+    ...(targetLessonId ? { validation: result.report } : {}) });
 }));
 
 router.delete('/kanji/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM kanji_items WHERE id = $1`, [req.params.id]);
+  const existing = await query('SELECT lesson_id FROM kanji_items WHERE id=$1', [req.params.id]);
+  const lessonId = existing.rows[0]?.lesson_id;
+  const guarded = lessonId
+    ? await adminLockedMutation(res, async client => (await client.query(
+      `SELECT m.course_id FROM kanji_items k JOIN lessons l ON l.id=k.lesson_id
+        JOIN modules m ON m.id=l.module_id WHERE k.id=$1`, [req.params.id])).rows.map(row => row.course_id),
+      client => client.query('DELETE FROM kanji_items WHERE id=$1', [req.params.id]))
+    : await globalOffQuery(res, 'DELETE FROM kanji_items WHERE id=$1', [req.params.id],
+      { expectedGlobalKanjiId: req.params.id });
+  if (!guarded) return;
   invalidateKanjiCatalogCache();
   res.json({ ok: true });
 }));
@@ -5297,7 +5593,18 @@ router.delete('/kanji/:id', asyncHandler(async (req, res) => {
 router.post('/kanji/:id/move', asyncHandler(async (req, res) => {
   const { targetLessonId, sortOrder } = req.body || {};
   if (!targetLessonId) return res.status(400).json({ error: 'targetLessonId required' });
-  const r = await query(
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: async (client, { locked }) => {
+      const old = (await client.query(`SELECT * FROM kanji_items WHERE id=$1
+        ${locked ? 'FOR UPDATE' : ''}`, [req.params.id])).rows[0];
+      if (!old) throw new BoundaryContextError('kanji_not_found');
+      return kanjiWriteCandidate(client, req.params.id, {
+        character: old.character, on_reading: old.on_reading, kun_reading: old.kun_reading,
+        meaning_id: old.meaning_id, mnemonic: old.mnemonic, compounds: old.compounds,
+        bab_kode: old.bab_kode, boundaryFingerprint: req.body?.boundaryFingerprint,
+      }, targetLessonId, locked);
+    },
+    write: async client => (await client.query(
     `UPDATE kanji_items
         SET lesson_id = $1,
             sort_order = COALESCE($2, sort_order),
@@ -5305,10 +5612,11 @@ router.post('/kanji/:id/move', asyncHandler(async (req, res) => {
       WHERE id = $3
       RETURNING *`,
     [targetLessonId, sortOrder ?? null, req.params.id]
-  );
-  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+    )).rows[0],
+  });
+  if (!guarded) return;
   invalidateKanjiCatalogCache();
-  res.json({ kanji: r.rows[0] });
+  res.json({ kanji: guarded.value, validation: guarded.report });
 }));
 
 // Bulk-import kanji dari Notion DB "📖 Kanji" ke satu pelajaran. Mirror

@@ -3,7 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import pg from 'pg';
-import { validateAndWriteContent, BoundaryWriteError, lockCurriculumCourse, lockCurriculumGraph } from './curriculum-content-service.js';
+import { validateAndWriteContent, BoundaryWriteError, lockCurriculumCourse,
+  lockCurriculumCourses, lockCurriculumGraph } from './curriculum-content-service.js';
 import { BoundaryUnavailableError } from './curriculum-boundary.js';
 
 test('PostgreSQL manual example: enforce rolls back, warn stores exact text and report', {
@@ -84,6 +85,16 @@ test('PostgreSQL manual example: enforce rolls back, warn stores exact text and 
   assert.equal(recovered.value.japanese, japanese);
   assert.equal((await client.query("SELECT count(*)::int AS n FROM curriculum_boundary_reports WHERE decision='unavailable'")).rows[0].n, 1);
 
+  // Removing an existing violation is remediation, so enforce must not block
+  // the delete. A historical validation report can remain after content removal.
+  await client.query("UPDATE courses SET curriculum_boundary_mode='enforce' WHERE id=$1", [courseId]);
+  await client.query('BEGIN');
+  await lockCurriculumCourses(client, [courseId]);
+  await client.query('DELETE FROM vocabulary_examples WHERE id=$1', [written.value.id]);
+  await client.query('COMMIT');
+  assert.equal((await client.query('SELECT count(*)::int AS n FROM vocabulary_examples WHERE id=$1',
+    [written.value.id])).rows[0].n, 0);
+
   const [dependentId, independentId] = [randomUUID(), randomUUID()];
   await client.query(`INSERT INTO courses(id,slug,title,level) VALUES
     ($1,'n4','N4','N4'),($2,'n3','N3','N3')`, [dependentId, independentId]);
@@ -93,6 +104,17 @@ test('PostgreSQL manual example: enforce rolls back, warn stores exact text and 
   await second.connect();
   t.after(async () => second.end());
   await second.query(`SET search_path TO ${schema}`);
+  // Both sessions request the same multi-course union in opposite order.
+  // Stable union sorting must let both commit rather than deadlock.
+  const oppositeOrder = async (db, ids) => {
+    await db.query('BEGIN');
+    try { await lockCurriculumCourses(db, ids); await db.query('COMMIT'); }
+    catch (error) { await db.query('ROLLBACK'); throw error; }
+  };
+  await Promise.all([
+    oppositeOrder(client, [dependentId, independentId]),
+    oppositeOrder(second, [independentId, dependentId]),
+  ]);
   await client.query('BEGIN');
   await lockCurriculumCourse(client, courseId);
   await second.query('BEGIN');
