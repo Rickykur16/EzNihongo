@@ -5467,7 +5467,7 @@ window.manageBunpouFlow = async (lessonId, lessonTitle) => {
   try {
     d = await api('/admin/lessons/' + lessonId + '/bunpou-flow');
   } catch (err) { notify('Gagal load Pendamping Bunpou: ' + err.message, true); return; }
-  window.__bfCtx = { lessonId, grammarIds: d.grammarIds || [], patterns: d.patterns || {}, currentFingerprint: d.currentFingerprint, reviewItems: d.reviewItems || [] };
+  window.__bfCtx = { lessonId, draftRevision: d.draftRevision || null, grammarIds: d.grammarIds || [], patterns: d.patterns || {}, currentFingerprint: d.currentFingerprint, reviewItems: d.reviewItems || [] };
 
   const env = d.draft || d.published || {};
   const staleDraft = d.draft && d.draft.sourceFingerprint && d.draft.sourceFingerprint !== d.currentFingerprint;
@@ -5552,16 +5552,33 @@ function bfCollectEnvelope() {
   return { sourceFingerprint: ctx.currentFingerprint, objective: objective || undefined, directions, overlays, dialogChecks };
 }
 
+async function bfPersistDraft(ctx) {
+  const envelope = bfCollectEnvelope();
+  envelope.draftRevision = ctx.draftRevision || null;
+  const saved = await api('/admin/lessons/' + ctx.lessonId + '/bunpou-flow/draft', {
+    method: 'PUT', body: JSON.stringify(envelope),
+  });
+  if (typeof saved?.draftRevision !== 'string' || !saved.draftRevision.trim()) {
+    throw new Error('Revisi draft tidak tersedia. Buka ulang pendamping sebelum menyimpan.');
+  }
+  ctx.draftRevision = saved.draftRevision;
+  return saved;
+}
+
+function bfDraftSaveError(error) {
+  if (error?.status === 409) {
+    notify(`Draft atau materi sumber berubah sejak dibuka. Isi editor tetap terbuka; muat ulang dan tinjau perubahan sebelum menyimpan lagi. ${error.message || ''}`, true);
+  } else notify('Gagal menyimpan draft: ' + error.message, true);
+}
+
 window.bfSaveDraft = async () => {
   const ctx = window.__bfCtx;
   if (!ctx) return;
   try {
-    await api('/admin/lessons/' + ctx.lessonId + '/bunpou-flow/draft', {
-      method: 'PUT', body: JSON.stringify(bfCollectEnvelope()),
-    });
+    await bfPersistDraft(ctx);
     notify('Draft Pendamping Bunpou tersimpan');
     closeModal();
-  } catch (err) { notify('Gagal menyimpan draft: ' + err.message, true); }
+  } catch (err) { bfDraftSaveError(err); }
 };
 
 window.bfPublish = async () => {
@@ -5574,19 +5591,17 @@ window.bfPublish = async () => {
   if (!confirm('Publikasikan Pendamping Bunpou ini?\n\nIsi form saat ini akan disimpan sebagai draft lalu langsung '
     + 'diterbitkan ke siswa (setelah flag pilot juga diaktifkan untuk pelajaran ini).')) return;
   try {
-    const saved = await api('/admin/lessons/' + ctx.lessonId + '/bunpou-flow/draft', {
-      method: 'PUT', body: JSON.stringify(bfCollectEnvelope()),
-    });
-    if (typeof saved?.draftRevision !== 'string' || !saved.draftRevision.trim()) {
-      throw new Error('Revisi draft tidak tersedia. Buka ulang pendamping sebelum publikasi.');
-    }
+    const saved = await bfPersistDraft(ctx);
     await api('/admin/lessons/' + ctx.lessonId + '/bunpou-flow/publish', {
       method: 'POST', body: JSON.stringify({ confirm: true, draftRevision: saved.draftRevision }),
     });
     notify('Pendamping Bunpou dipublikasikan');
     closeModal();
     if (document.getElementById('bf-pilot-panel')) await bfPilotLoadOptions();
-  } catch (err) { notify('Gagal publikasi: ' + err.message, true); }
+  } catch (err) {
+    if (err?.status === 409) bfDraftSaveError(err);
+    else notify('Gagal publikasi: ' + err.message, true);
+  }
 };
 
 // ── Pengecoh Step 1 Tugas Bunpou (migration 124) ──────────────────────────

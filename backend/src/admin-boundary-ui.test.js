@@ -106,6 +106,48 @@ test('bulk callers present item summaries and request failures instead of generi
   assert.match(readings, /batchRequestErrorMessage\('Generate kana', err\)/);
 });
 
+test('Bunpou draft saves send the loaded revision and advance it after each save', async () => {
+  const start = html.indexOf('async function bfPersistDraft(ctx)');
+  const end = html.indexOf('function bfDraftSaveError(error)', start);
+  assert.ok(start > 0 && end > start, 'Bunpou draft persistence helper markers not found');
+  const requests = [], revisions = ['rev-2', 'rev-3'];
+  const ctx = vm.createContext({
+    bfCollectEnvelope: () => ({ objective: 'draft' }),
+    api: async (_path, options) => {
+      requests.push(JSON.parse(options.body));
+      return { draftRevision: revisions.shift() };
+    },
+  });
+  vm.runInContext(html.slice(start, end), ctx);
+  const draftCtx = { lessonId: 'lesson-1', draftRevision: 'rev-1' };
+  await ctx.bfPersistDraft(draftCtx);
+  await ctx.bfPersistDraft(draftCtx);
+  assert.equal(requests[0].draftRevision, 'rev-1');
+  assert.equal(requests[1].draftRevision, 'rev-2');
+  assert.equal(draftCtx.draftRevision, 'rev-3');
+});
+
+test('Bunpou 409 keeps the editor open and reports that the draft changed', async () => {
+  const start = html.indexOf('function bfDraftSaveError(error)');
+  const end = html.indexOf('window.bfPublish =', start);
+  assert.ok(start > 0 && end > start, 'Bunpou draft save handler markers not found');
+  const notices = [];
+  let closeCount = 0;
+  const input = { value: 'unsaved editor text' };
+  const ctx = vm.createContext({
+    window: { __bfCtx: { lessonId: 'lesson-1', draftRevision: 'stale' } },
+    notify: (...args) => notices.push(args),
+    closeModal: () => { closeCount++; },
+    bfPersistDraft: async () => { throw Object.assign(new Error('draft_changed_since_review'), { status: 409 }); },
+  });
+  vm.runInContext(html.slice(start, end), ctx);
+  await ctx.window.bfSaveDraft();
+  assert.equal(closeCount, 0, 'conflicting save must not close the modal');
+  assert.equal(input.value, 'unsaved editor text');
+  assert.match(notices[0][0], /Draft atau materi sumber berubah/);
+  assert.match(notices[0][0], /tetap terbuka/);
+});
+
 test('api preserves HTTP status and structured response body for guarded errors', async () => {
   const apiStart = html.indexOf('async function api(path, opts)');
   const apiEnd = html.indexOf('// Modal dirty-tracking', apiStart);

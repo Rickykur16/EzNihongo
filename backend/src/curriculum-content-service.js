@@ -31,17 +31,22 @@ export async function lockCurriculumGraph(client, { exclusive = false } = {}) {
     : 'SELECT pg_advisory_xact_lock_shared(hashtext($1))', ['curriculum-boundary:graph']);
 }
 
-export async function lockCurriculumCourse(client, courseId) {
-  if (!courseId) throw new BoundaryContextError('course_not_found');
+export async function lockCurriculumCourses(client, courseIds) {
+  const ids = [...new Set(courseIds || [])].sort();
+  if (!ids.length || ids.some(id => !id)) throw new BoundaryContextError('course_not_found');
   await lockCurriculumGraph(client);
   const closure = await client.query(`WITH RECURSIVE required(id) AS (
-      SELECT $1::uuid
+      SELECT unnest($1::uuid[])
       UNION
       SELECT p.prerequisite_course_id FROM course_prerequisites p JOIN required r ON r.id=p.course_id
-    ) SELECT id FROM required ORDER BY id::text`, [courseId]);
+    ) SELECT id FROM required ORDER BY id::text`, [ids]);
   for (const row of closure.rows) {
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`curriculum-boundary:${row.id}`]);
   }
+}
+
+export async function lockCurriculumCourse(client, courseId) {
+  return lockCurriculumCourses(client, [courseId]);
 }
 
 async function insertReport(client, { boundary, course, candidate, report, decision, contentId = null }) {
@@ -120,13 +125,16 @@ export async function validateAndWriteContent({
           { status: 'schema_invalid', valid: false, violations: [{ code: 'invalid_content_schema' }] });
       }
       const course = await loadBoundaryWriteCourse(client, preliminary.scope);
-      await lockCurriculumCourse(client, course.id);
+      const lockIds = [...new Set([course.id, ...(preliminary.relatedCourseIds || [])])].sort();
+      await lockCurriculumCourses(client, lockIds);
       const candidate = await prepare(client, { locked: true });
       if (!candidate?.scope || !candidate.contentType || !Array.isArray(candidate.fields)) {
         throw new BoundaryContextError('boundary_context_mismatch');
       }
       const lockedCourse = await loadBoundaryWriteCourse(client, candidate.scope);
       if (lockedCourse.id !== course.id) throw new BoundaryContextError('boundary_context_mismatch');
+      if (JSON.stringify([...new Set([lockedCourse.id, ...(candidate.relatedCourseIds || [])])].sort()) !==
+          JSON.stringify(lockIds)) throw new BoundaryContextError('boundary_context_mismatch');
       const operation = candidate.operation || 'live_write';
       const structural = validate({ ...candidate, boundary: null, operation });
       if (structural.status === 'schema_invalid') {
