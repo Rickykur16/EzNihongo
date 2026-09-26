@@ -8,6 +8,7 @@ export const LEGACY_ROUTES = [
   ["POST", "/admins", null],
   ["DELETE", "/admins/:email", null],
   ["GET", "/courses", "legacy.course_picker"],
+  ["GET", "/curriculum-boundary", null],
   ["POST", "/courses", null],
   ["PUT", "/courses/:id", null],
   ["DELETE", "/courses/:id", null],
