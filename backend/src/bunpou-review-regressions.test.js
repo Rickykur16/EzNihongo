@@ -60,14 +60,16 @@ test('independent Bunpou backend safety review', { timeout: 90_000 }, async t =>
   await pg.exec(`
     CREATE TABLE users(id uuid PRIMARY KEY, email text, google_id text, full_name text,
       google_name text, avatar_url text, updated_at timestamptz DEFAULT NOW());
-    CREATE TABLE courses(id uuid PRIMARY KEY, title text DEFAULT 'Course', level text DEFAULT 'N5',
+    CREATE TABLE courses(id uuid PRIMARY KEY, slug text, title text DEFAULT 'Course', level text DEFAULT 'N5',
+      curriculum_boundary_mode text NOT NULL DEFAULT 'off',
       is_published boolean DEFAULT true, is_available boolean DEFAULT true, sort_order int DEFAULT 0);
     CREATE TABLE modules(id uuid PRIMARY KEY, course_id uuid REFERENCES courses(id), title text DEFAULT 'Module', sort_order int DEFAULT 0);
-    CREATE TABLE lessons(id uuid PRIMARY KEY, module_id uuid REFERENCES modules(id), title text DEFAULT 'Source',
+    CREATE TABLE lessons(id uuid PRIMARY KEY, module_id uuid REFERENCES modules(id), slug text, title text DEFAULT 'Source',
       type text, popup_after_lesson_id uuid REFERENCES lessons(id), sort_order int DEFAULT 0,
       video_url text DEFAULT 'video', video_source_id uuid, updated_at timestamptz DEFAULT NOW());
     CREATE TABLE module_grammar(id uuid PRIMARY KEY, module_id uuid REFERENCES modules(id), lesson_id uuid REFERENCES lessons(id),
-      pattern text, meaning text, example text, example_dialog text, example_dialog_id text,
+      pattern text, meaning text, example text, notes text, example_dialog text, example_dialog_id text,
+      communication_goal text,
       recognition_distractors text, controlled_distractors text, sort_order int DEFAULT 0, created_at timestamptz DEFAULT NOW());
     CREATE TABLE grammar_examples(grammar_id uuid REFERENCES module_grammar(id), japanese text, highlight text,
       indonesian text, sort_order int DEFAULT 0, created_at timestamptz DEFAULT NOW());
@@ -77,6 +79,19 @@ test('independent Bunpou backend safety review', { timeout: 90_000 }, async t =>
       lesson_id uuid REFERENCES lessons(id), source text, input_mode text, sentence text, correct boolean, uses_pattern boolean,
       passed boolean, primary_error text, error_types text[], eval_source text, created_at timestamptz DEFAULT NOW());
     CREATE TABLE app_settings(key text PRIMARY KEY, value text, updated_at timestamptz DEFAULT NOW());
+    CREATE TABLE course_prerequisites(course_id uuid REFERENCES courses(id), prerequisite_course_id uuid REFERENCES courses(id),
+      PRIMARY KEY(course_id, prerequisite_course_id));
+    CREATE TABLE module_vocabulary(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), module_id uuid REFERENCES modules(id),
+      lesson_id uuid REFERENCES lessons(id), japanese text, reading text, romaji text, indonesian text, category text, note text);
+    CREATE TABLE kanji_items(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), lesson_id uuid REFERENCES lessons(id),
+      character text, bab_kode text, jlpt_level text, on_reading text, kun_reading text, meaning_id text,
+      mnemonic text, compounds jsonb);
+    CREATE TABLE lesson_deck_items(lesson_id uuid REFERENCES lessons(id), vocabulary_id uuid REFERENCES module_vocabulary(id));
+    CREATE TABLE curriculum_boundary_reports(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), course_id uuid,
+      module_id uuid, lesson_id uuid, content_type text, content_id uuid, content_fingerprint text,
+      boundary_fingerprint text, validator_version text, policy_version text, operation text, mode text,
+      validation_status text, decision text, violations jsonb, warnings jsonb, usage jsonb,
+      integrity_issues jsonb, correlation_id text);
     CREATE TABLE user_enrollments(user_id uuid REFERENCES users(id), course_id uuid REFERENCES courses(id), status text, expires_at timestamptz);
     CREATE TABLE admin_emails(email text);
     CREATE TABLE orders(user_id uuid REFERENCES users(id));

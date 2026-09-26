@@ -29,6 +29,7 @@ const fakeQuery=async(sql,p=[])=>{
   if(['BEGIN','COMMIT','ROLLBACK','SAVEPOINT boundary_resolve','RELEASE SAVEPOINT boundary_resolve',
     'ROLLBACK TO SAVEPOINT boundary_resolve'].includes(sql))return{rows:[]};
   if(sql.includes('pg_advisory_xact_lock'))return{rows:[]};
+  if(sql.includes('WITH RECURSIVE required'))return{rows:[{id}]};
   if(sql.includes('SELECT c.id,c.curriculum_boundary_mode AS mode,m.id AS module_id'))return{rows:[{id,mode:'off',module_id:id}]};
   if(sql.includes('boundary:courses'))return{rows:[{id,slug:'n5',level:'N5',curriculum_boundary_mode:'off'}]};
   if(sql.includes('boundary:edges'))return{rows:[]};

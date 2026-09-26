@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import pg from 'pg';
-import { validateAndWriteContent, BoundaryWriteError } from './curriculum-content-service.js';
+import { validateAndWriteContent, BoundaryWriteError, lockCurriculumCourse, lockCurriculumGraph } from './curriculum-content-service.js';
 import { BoundaryUnavailableError } from './curriculum-boundary.js';
 
 test('PostgreSQL manual example: enforce rolls back, warn stores exact text and report', {
@@ -83,4 +83,36 @@ test('PostgreSQL manual example: enforce rolls back, warn stores exact text and 
   assert.equal(recovered.report.status, 'unavailable');
   assert.equal(recovered.value.japanese, japanese);
   assert.equal((await client.query("SELECT count(*)::int AS n FROM curriculum_boundary_reports WHERE decision='unavailable'")).rows[0].n, 1);
+
+  const [dependentId, independentId] = [randomUUID(), randomUUID()];
+  await client.query(`INSERT INTO courses(id,slug,title,level) VALUES
+    ($1,'n4','N4','N4'),($2,'n3','N3','N3')`, [dependentId, independentId]);
+  await client.query('INSERT INTO course_prerequisites(course_id,prerequisite_course_id) VALUES ($1,$2)',
+    [dependentId, courseId]);
+  const second = new pg.Client({ connectionString: url.href, statement_timeout: 30000 });
+  await second.connect();
+  t.after(async () => second.end());
+  await second.query(`SET search_path TO ${schema}`);
+  await client.query('BEGIN');
+  await lockCurriculumCourse(client, courseId);
+  await second.query('BEGIN');
+  await second.query("SET LOCAL lock_timeout='150ms'");
+  await assert.rejects(lockCurriculumCourse(second, dependentId), error => error.code === '55P03');
+  await second.query('ROLLBACK');
+  await client.query('COMMIT');
+
+  await client.query('BEGIN');
+  await second.query('BEGIN');
+  await lockCurriculumCourse(client, courseId);
+  await lockCurriculumCourse(second, independentId);
+  await second.query('COMMIT');
+  await client.query('COMMIT');
+
+  await client.query('BEGIN');
+  await lockCurriculumGraph(client, { exclusive: true });
+  await second.query('BEGIN');
+  await second.query("SET LOCAL lock_timeout='150ms'");
+  await assert.rejects(lockCurriculumCourse(second, independentId), error => error.code === '55P03');
+  await second.query('ROLLBACK');
+  await client.query('COMMIT');
 });

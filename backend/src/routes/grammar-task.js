@@ -379,8 +379,8 @@ export function parseDistractors(raw) {
 // Exported for backend/src/routes/grammar-task-sessions.js (Bunpou Flow
 // pilot) — reused as-is, not duplicated, so both routes always derive
 // questions from the identical query.
-export async function loadTaskConcepts(lessonId) {
-  const rows = await query(
+export async function loadTaskConcepts(lessonId, dbQuery = query) {
+  const rows = await dbQuery(
     `SELECT g.id, g.pattern, g.meaning, g.example, g.example_dialog, g.example_dialog_id,
             g.recognition_distractors, g.controlled_distractors, gi.sort_order,
             gi.instruction, gi.required_count AS "requiredCount"
@@ -392,7 +392,7 @@ export async function loadTaskConcepts(lessonId) {
   );
   if (rows.rows.length === 0) return [];
   const ids = rows.rows.map((r) => r.id);
-  const ex = await query(
+  const ex = await dbQuery(
     `SELECT grammar_id, japanese, highlight, indonesian
        FROM grammar_examples WHERE grammar_id = ANY($1::uuid[])
       ORDER BY grammar_id, sort_order ASC, created_at ASC`,
@@ -414,8 +414,8 @@ export async function loadTaskConcepts(lessonId) {
 // Seluruh pola satu BAB (modul pelajaran ini), dipakai sebagai sumber pengecoh.
 // Bukan sebatas pola di tugas ini: tugas kedua tiap bab sering cuma berisi 2
 // pola, yang berarti hanya 1 pengecoh dan Step 1 hilang. Lihat deriveDrills().
-export async function loadModulePool(lessonId) {
-  const rows = await query(
+export async function loadModulePool(lessonId, dbQuery = query) {
+  const rows = await dbQuery(
     `SELECT g.id, g.pattern, g.meaning, g.recognition_distractors, g.controlled_distractors
        FROM module_grammar g
        JOIN lessons l ON l.module_id = g.module_id
@@ -424,7 +424,7 @@ export async function loadModulePool(lessonId) {
     [lessonId]
   );
   if (rows.rows.length === 0) return [];
-  const ex = await query(
+  const ex = await dbQuery(
     `SELECT grammar_id, japanese, highlight, indonesian
        FROM grammar_examples WHERE grammar_id = ANY($1::uuid[])
       ORDER BY grammar_id, sort_order ASC, created_at ASC`,

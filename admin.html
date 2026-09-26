@@ -539,6 +539,7 @@ async function api(path, opts) {
     const msg = data.detail || data.error || ('HTTP ' + res.status);
     const err = new Error(msg);
     err.body = data;
+    err.status = res.status;
     throw err;
   }
   return data;
@@ -627,12 +628,94 @@ function notify(msg, isErr, isWarn) {
 }
 
 function notifyLearningWarnings(result) {
+  const decisionText = boundaryReportMessage(result);
+  if (decisionText) notify(decisionText, false, /reject|block|review/i.test(decisionText));
   const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
   if (!warnings.length) return 0;
   const messages = [...new Set(warnings.map((warning) => warning.message).filter(Boolean))];
   const message = messages.slice(0, 4).join(' ') + (messages.length > 4 ? ` +${messages.length - 4} peringatan lain.` : '');
   notify('Peringatan alur belajar: ' + message, false, true);
   return warnings.length;
+}
+
+// Guarded content saves return a decision/report on success and may return the
+// same report with HTTP 422/409/503. Keep the report readable in the toast and
+// let callers leave their editor DOM untouched on failure.
+function boundaryReportMessage(value) {
+  const report = value?.report || value?.validation || value?.boundaryReport || value;
+  if (!report || typeof report !== 'object') return '';
+  const decision = value?.decision || report.decision;
+  const label = typeof decision === 'string' ? decision : (decision?.action || decision?.decision || '');
+  const entries = [ ...(report.violations || []), ...(report.warnings || []), ...(report.integrityIssues || report.integrity_issues || []) ];
+  const lines = entries.slice(0, 3).map((item) => {
+    const field = item.field || item.path || item.code || 'Konten';
+    return `${field}: ${item.message || item.detail || item.code || 'perlu ditinjau'}`;
+  });
+  const head = label ? `Keputusan validasi: ${label}.` : (report.status ? `Validasi: ${report.status}.` : '');
+  return [head, ...lines].filter(Boolean).join(' ');
+}
+
+function summarizeGuardedBatchOutcome(savedItems, failedItems, legacyFailed) {
+  const saved = Array.isArray(savedItems) ? savedItems : [];
+  const failed = Array.isArray(failedItems) ? failedItems : [];
+  const legacy = Array.isArray(legacyFailed) ? legacyFailed : [];
+  const reports = [...saved, ...failed].map((item) => item?.validation).filter(Boolean);
+  const issues = reports.flatMap((report) => [
+    ...(report.warnings || []), ...(report.violations || []),
+    ...(report.integrityIssues || report.integrity_issues || []),
+  ]);
+  const issueText = (item) => {
+    const key = item.field || item.path || item.code || 'Konten';
+    return `${key}: ${item.message || item.detail || item.code || 'perlu ditinjau'}`;
+  };
+  const parts = [`Berhasil ${saved.length}`, `gagal ${Math.max(failed.length, legacy.length)}`];
+  if (issues.length) parts.push(`catatan validasi ${issues.length}: ${[...new Set(issues.map(issueText))].slice(0, 2).join('; ')}`);
+  const failures = failed.slice(0, 3).map((item) => {
+    const id = item.id ? String(item.id).slice(0, 12) : 'item';
+    const code = item.error || 'gagal';
+    const status = item.status ? ` HTTP ${item.status}` : '';
+    const validation = item.validation ? boundaryReportMessage({ report: item.validation }) : '';
+    return `${id}: ${code}${status}${validation ? ` — ${validation}` : ''}`;
+  });
+  if (!failed.length && legacy.length) failures.push(...legacy.slice(0, 3).map((name) => String(name)));
+  if (failures.length) parts.push(`detail: ${failures.join('; ')}${failed.length > 3 ? `; +${failed.length - 3} kegagalan` : ''}`);
+  return { savedCount: saved.length, failedCount: Math.max(failed.length, legacy.length), issueCount: issues.length, message: parts.join(' · ') };
+}
+
+function batchRequestErrorMessage(label, error) {
+  const status = error?.status ? `HTTP ${error.status}: ` : '';
+  const report = boundaryReportMessage(error?.body);
+  return `${label} berhenti. ${status}${error?.body?.detail || error?.body?.error || error?.message || 'Terjadi kesalahan.'}${report ? ` ${report}` : ''}`;
+}
+
+function notifyBoundarySaveError(error) {
+  const status = error?.status;
+  const lead = status === 422 ? 'Save ditolak oleh validasi.'
+    : status === 409 ? 'Data berubah sejak editor dibuka.'
+    : status === 503 ? 'Validasi/konteks kurikulum sedang tidak tersedia.'
+    : 'Gagal simpan:';
+  const report = boundaryReportMessage(error?.body);
+  notify(`${lead} ${report || error?.message || 'Coba lagi.'} Isi editor tetap tersedia; periksa field yang ditandai lalu simpan ulang.`, true);
+}
+
+function updateSavedRowRevision(row, savedRecord) {
+  const revision = savedRecord?.updated_at || savedRecord?.revision;
+  if (row?.dataset && revision != null && revision !== '') row.dataset.revision = String(revision);
+}
+
+async function attachBoundarySaveMetadata(body, scope, expectedRevision) {
+  if (expectedRevision != null && expectedRevision !== '') body.expectedRevision = expectedRevision;
+  try {
+    const params = new URLSearchParams();
+    for (const key of ['courseId', 'moduleId', 'lessonId', 'grammarId']) {
+      if (scope?.[key]) params.set(key, scope[key]);
+    }
+    if ([...params.keys()].some((key) => ['moduleId', 'lessonId', 'grammarId'].includes(key))) {
+      const boundary = await api('/admin/curriculum-boundary?' + params.toString());
+      if (boundary?.boundaryFingerprint) body.boundaryFingerprint = boundary.boundaryFingerprint;
+    }
+  } catch { /* Informational metadata is optional; the write route remains authoritative. */ }
+  return body;
 }
 
 // Disable a form's submit button(s) while an async submit handler runs so a
@@ -3045,6 +3128,8 @@ async function submitLesson(e, id, moduleId) {
     // (juga meng-clear kalau lesson diubah dari grammar_task ke tipe lain).
     popupAfterLessonId: type === 'grammar_task' ? ((fd.get('popupAfterLessonId') || '').trim() || null) : null,
   };
+  const existingLesson = id && (STATE.lessons || []).find((x) => x.id === id);
+  await attachBoundarySaveMetadata(body, { moduleId: moduleId || existingLesson?.module_id || STATE.selectedModule, lessonId: id }, existingLesson?.updated_at);
   if (type === 'quiz') {
     const qpaRaw = (fd.get('questionsPerAttempt') || '').toString().trim();
     // Pakai Number().valueOf() bukan `Number() || N` karena 0 itu valid value
@@ -3073,12 +3158,13 @@ async function submitLesson(e, id, moduleId) {
       else STATE.videoSources.unshift({ ...d.source, lesson_count: 0 });
     }
     let saved;
+    let savedResult;
     if (id) {
-      const d = await api('/admin/lessons/' + id, { method: 'PUT', body: JSON.stringify(body) });
-      saved = d.lesson;
+      savedResult = await api('/admin/lessons/' + id, { method: 'PUT', body: JSON.stringify(body) });
+      saved = savedResult.lesson;
     } else {
-      const d = await api('/admin/lessons', { method: 'POST', body: JSON.stringify({ ...body, moduleId }) });
-      saved = d.lesson;
+      savedResult = await api('/admin/lessons', { method: 'POST', body: JSON.stringify({ ...body, moduleId }) });
+      saved = savedResult.lesson;
     }
     // Patch STATE in-place (hindari refetch /api/courses/:slug penuh tiap simpan).
     applyLessonSaveToState(saved, id, moduleId);
@@ -3091,7 +3177,8 @@ async function submitLesson(e, id, moduleId) {
       renderLessons();
     }
     notify('Pelajaran tersimpan');
-  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+    notifyLearningWarnings(savedResult);
+  } catch (err) { notifyBoundarySaveError(err); }
   finally { endSubmit(); }
 }
 
@@ -4796,6 +4883,8 @@ async function submitQuestion(e, qid, ctx) {
   if (form.grammarId) body.grammarId = form.grammarId.value || null;
   if (category === 'reading') body.passage = passage || null;
   if (!qid) body.lessonId = lessonId;
+  const existingQuestion = ctx.question || ctx.q || null;
+  await attachBoundarySaveMetadata(body, { lessonId }, existingQuestion?.revision);
   // "Simpan & tambah" keeps the admin in the rapid add-question loop instead of
   // bouncing back to the section list and hunting for the section every time.
   const andNew = !!(e.submitter && e.submitter.dataset && e.submitter.dataset.andNew === '1');
@@ -4815,7 +4904,7 @@ async function submitQuestion(e, qid, ctx) {
       manageQuiz(lessonId, lessonTitle, { focusSection: { category, number } });
     }
     notifyLearningWarnings(savedResult);
-  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+  } catch (err) { notifyBoundarySaveError(err); }
   finally { endSubmit(); }
 }
 
@@ -4861,7 +4950,7 @@ function itemRowHtml(item, fields, kind) {
     <button type="button" class="btn btn-ghost btn-sm" title="Buat/edit dialog per giliran: generate AI, pilih nama speaker asli + suara ElevenLabs, tes audio per baris" onclick="grmrManageDialog(this)">🎭 Dialog</button>
   ` : '';
   return `
-    <tr data-id="${item.id || ''}" data-kind="${kind}">
+    <tr data-id="${item.id || ''}" data-kind="${kind}" data-revision="${escapeHtml(item.updated_at || '')}">
       ${cells}
       <td><input type="number" name="sortOrder" value="${item.sort_order || 0}" style="width:60px;" /></td>
       <td class="actions">
@@ -5607,6 +5696,10 @@ window.grmrGenDistractorsAll = async () => {
 
   let totalSaved = 0;
   const allFailed = [];
+  const allSavedItems = [];
+  const allFailedItems = [];
+  let finalRemaining = 0;
+  let finalSkipped = 0;
   let guard = 0;
   try {
     for (;;) {
@@ -5617,11 +5710,17 @@ window.grmrGenDistractorsAll = async () => {
         method: 'POST', body: JSON.stringify({ fromGrammarId: ctx.grammarId, limit: 6 }),
       });
       totalSaved += d.saved || 0;
+      if (Array.isArray(d.savedItems)) allSavedItems.push(...d.savedItems);
+      if (Array.isArray(d.failedItems)) allFailedItems.push(...d.failedItems);
       if (Array.isArray(d.failed)) allFailed.push(...d.failed);
+      finalRemaining = Number(d.remaining) || 0;
+      finalSkipped = Number(d.skippedNoMeaning) || 0;
+      const batchSummary = summarizeGuardedBatchOutcome(d.savedItems, d.failedItems, d.failed);
       if (box) {
         box.textContent = `Tersimpan: ${totalSaved} pola · Sisa: ${d.remaining}`
           + (d.skippedNoMeaning ? ` · Dilewati (kolom Arti kosong): ${d.skippedNoMeaning}` : '')
-          + (allFailed.length ? `\nGagal: ${allFailed.join(', ')}` : '');
+          + `\nBatch: ${batchSummary.message}`
+          + (allFailed.length ? `\nGagal: ${allFailed.slice(0, 3).join(', ')}${allFailed.length > 3 ? ` (+${allFailed.length - 3})` : ''}` : '');
       }
       if (!d.remaining) break;
       // Tidak ada kemajuan sama sekali di batch ini → berhenti, jangan berputar.
@@ -5630,10 +5729,13 @@ window.grmrGenDistractorsAll = async () => {
         break;
       }
     }
-    notify(`Selesai — ${totalSaved} pola terisi`);
+    const summary = summarizeGuardedBatchOutcome(allSavedItems, allFailedItems, allFailed);
+    notify(`Selesai — ${totalSaved} pola terisi; tersisa ${finalRemaining}; dilewati tanpa Arti ${finalSkipped}. ${summary.message}`,
+      summary.failedCount > 0, summary.issueCount > 0);
   } catch (err) {
-    notify('Gagal generate massal: ' + err.message, true);
-    if (box) box.textContent += '\nBerhenti karena error: ' + err.message;
+    const message = batchRequestErrorMessage('Bulk generate pengecoh', err);
+    notify(message, true);
+    if (box) box.textContent += `\n${message}`;
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '🚀 Isi semua pola yang masih kosong'; }
     if (one) one.disabled = false;
@@ -5656,7 +5758,7 @@ window.grmrSaveDistractors = async () => {
 
 function grmrExRowHtml(gid, e) {
   e = e || {};
-  return `<tr data-ex-id="${e.id || ''}" data-grmr="${gid}">
+  return `<tr data-ex-id="${e.id || ''}" data-grmr="${gid}" data-revision="${escapeHtml(e.revision || e.updated_at || '')}">
     <td><input name="japanese" value="${escapeHtml(e.japanese || '')}" lang="ja" style="min-width:220px;width:100%;" placeholder="例: 私は学生です。" /></td>
     <td><input name="highlight" value="${escapeHtml(e.highlight != null ? e.highlight : '')}" lang="ja" placeholder="" style="width:90px;" /></td>
     <td><input name="indonesian" value="${escapeHtml(e.indonesian || '')}" style="min-width:180px;width:100%;" placeholder="Saya adalah siswa." /></td>
@@ -5685,6 +5787,7 @@ window.grmrSaveExample = async (btn) => {
     sortOrder: Number(tr.querySelector('input[name="sortOrder"]').value) || 0,
   };
   if (!body.japanese) { notify('Kalimat JP wajib diisi', true); return; }
+  await attachBoundarySaveMetadata(body, { grammarId: gid }, tr.dataset.revision);
   try {
     let savedResult;
     if (id) {
@@ -5697,9 +5800,10 @@ window.grmrSaveExample = async (btn) => {
         cell.innerHTML = `<button type="button" class="btn btn-primary" onclick="grmrSaveExample(this)">Simpan</button><button type="button" class="btn btn-danger" onclick="grmrDeleteExample(this)">×</button>`;
       }
     }
+    updateSavedRowRevision(tr, savedResult.example);
     notify('Tersimpan');
     notifyLearningWarnings(savedResult);
-  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+  } catch (err) { notifyBoundarySaveError(err); }
 };
 
 window.grmrDeleteExample = async (btn) => {
@@ -5820,6 +5924,7 @@ window.saveItemRow = async (btn) => {
   // Validation
   if (kind === 'vocab' && !body.japanese) { notify('Japanese wajib diisi', true); return; }
   if (kind === 'grammar' && !body.pattern) { notify('Pattern wajib diisi', true); return; }
+  await attachBoundarySaveMetadata(body, { moduleId: ctx.moduleId, lessonId: ctx.lessonId }, tr.dataset.revision);
   const endpoint = kind === 'vocab' ? '/admin/module-vocabulary' : '/admin/module-grammar';
   try {
     let savedResult;
@@ -5836,6 +5941,7 @@ window.saveItemRow = async (btn) => {
         <button type="button" class="btn btn-danger" onclick="deleteItemRow(this)">×</button>
       `;
     }
+    updateSavedRowRevision(tr, savedResult.vocabulary || savedResult.grammar);
     notify('Tersimpan');
     notifyLearningWarnings(savedResult);
     // Refresh hitungan di background (modul) / daftar pelajaran (drawer tetap utuh).
@@ -5843,7 +5949,7 @@ window.saveItemRow = async (btn) => {
       if (STATE.tab === 'modules') renderModules();
       else if (STATE.tab === 'lessons') refreshLessonsView();
     });
-  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+  } catch (err) { notifyBoundarySaveError(err); }
 };
 
 window.deleteItemRow = async (btn) => {
@@ -5878,10 +5984,11 @@ window.grmrFastAdd = async (e) => {
   const meaning = (mIn && mIn.value.trim()) || '';
   const btn = document.getElementById('gfa-btn'); if (btn) btn.disabled = true;
   try {
-    const d = await api('/admin/module-grammar', { method: 'POST', body: JSON.stringify({
+    const payload = await attachBoundarySaveMetadata({
       moduleId: ctx.moduleId, lessonId: ctx.lessonId, pattern, meaning: meaning || null,
       sortOrder: document.querySelectorAll('#items-body tr').length,
-    }) });
+    }, { moduleId: ctx.moduleId, lessonId: ctx.lessonId });
+    const d = await api('/admin/module-grammar', { method: 'POST', body: JSON.stringify(payload) });
     const saved = d.grammar;
     const tbody = document.getElementById('items-body');
     if (tbody && saved) tbody.appendChild(el(itemRowHtml(saved, GRAMMAR_FIELDS, 'grammar')));
@@ -5896,7 +6003,7 @@ window.grmrFastAdd = async (e) => {
     if (mod && saved) { mod.grammar = mod.grammar || []; mod.grammar.push(saved); }
     if (STATE.tab === 'modules') renderModules();
     else refreshLessonsView();
-  } catch (err) { notify('Gagal: ' + err.message, true); }
+  } catch (err) { notifyBoundarySaveError(err); }
   finally { if (btn) btn.disabled = false; }
 };
 
@@ -5953,12 +6060,14 @@ window.submitBulk = async (kind, lessonId, lessonTitle, moduleId) => {
   if (items.length === 0) { notify('Tidak ada baris valid', true); return; }
   const endpoint = kind === 'vocab' ? '/admin/module-vocabulary/bulk' : '/admin/module-grammar/bulk';
   try {
-    await api(endpoint, { method: 'POST', body: JSON.stringify({ moduleId, items, replace: false }) });
+    const body = await attachBoundarySaveMetadata({ moduleId, items, replace: false }, { moduleId, lessonId });
+    const result = await api(endpoint, { method: 'POST', body: JSON.stringify(body) });
+    notifyLearningWarnings(result);
     notify(items.length + ' item di-import');
     // Refresh STATE dulu supaya hitungan & drawer akurat.
     if (STATE.selectedCourse) await loadModulesForCourse(STATE.selectedCourse);
     bulkPasteReturn(kind, lessonId, lessonTitle, moduleId);
-  } catch (err) { notify('Gagal import: ' + err.message, true); }
+  } catch (err) { notifyBoundarySaveError(err); }
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -6663,10 +6772,12 @@ window.deckGenAllReadings = async () => {
       method: 'POST', body: JSON.stringify({}),
     });
     const total = d.total || 0, updated = d.updated || 0;
+    const summary = summarizeGuardedBatchOutcome(d.updatedItems, d.failedItems);
     if (total === 0) notify('Semua contoh sudah punya kana.');
-    else notify(updated + ' dari ' + total + ' contoh diisi kana' + (updated < total ? ' (' + (total - updated) + ' gagal — coba lagi)' : ''));
+    else notify(`${updated} dari ${total} contoh diisi kana. ${summary.message}`,
+      summary.failedCount > 0, summary.issueCount > 0);
   } catch (err) {
-    notify('Gagal generate kana: ' + err.message, true);
+    notify(batchRequestErrorMessage('Generate kana', err), true);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = orig || '✨ Generate kana (AI)'; }
   }
@@ -6794,6 +6905,7 @@ window.deckSaveWord = async (vid) => {
     category: (document.getElementById('ew-cat').value || '').trim(),
   };
   try {
+    await attachBoundarySaveMetadata(payload, { moduleId: window.__deckCtx?.moduleId, lessonId: window.__deckCtx?.lessonId });
     const d = await api('/admin/module-vocabulary/' + vid, { method: 'PUT', body: JSON.stringify(payload) });
     const v = d.vocabulary || {};
     const it = (window.__deckItems || []).find((x) => x.vocabulary_id === vid);
@@ -6803,7 +6915,7 @@ window.deckSaveWord = async (vid) => {
     }
     const p = document.getElementById('deck-panel'); if (p) p.innerHTML = '';
     deckRerender(); notify('Tersimpan');
-  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+  } catch (err) { notifyBoundarySaveError(err); }
 };
 
 window.deckShowBank = () => {
@@ -6937,14 +7049,15 @@ window.deckSubmitBulk = async () => {
   }).filter((x) => x && x.japanese);
   if (items.length === 0) { notify('Tidak ada baris valid', true); return; }
   try {
-    const d = await api('/admin/module-vocabulary/bulk', { method: 'POST', body: JSON.stringify({ moduleId: ctx.moduleId, items: items.map((x) => ({ ...x, lessonId: null })), replace: false }) });
+    const body = await attachBoundarySaveMetadata({ moduleId: ctx.moduleId, items: items.map((x) => ({ ...x, lessonId: null })), replace: false }, { moduleId: ctx.moduleId, lessonId: ctx.lessonId });
+    const d = await api('/admin/module-vocabulary/bulk', { method: 'POST', body: JSON.stringify(body) });
     const created = d.vocabulary || [];
     const startSort = (window.__deckItems || []).length;
     await api('/admin/lessons/' + ctx.lessonId + '/deck-items', { method: 'PUT', body: JSON.stringify({ items: created.map((v, i) => ({ vocabularyId: v.id, sortOrder: startSort + i })) }) });
     notify(created.length + ' kata di-import ke deck');
     deckRefreshList();
     manageDeck(ctx.lessonId, ctx.lessonTitle, ctx.moduleId, ctx.courseId || '');
-  } catch (err) { notify('Gagal import: ' + err.message, true); }
+  } catch (err) { notifyBoundarySaveError(err); }
 };
 
 // ── TTS preview (ElevenLabs → Web Speech fallback) ──
@@ -7007,7 +7120,7 @@ window.deckPlayExampleTts = (btn) => {
 // ── examples editor (own modal, returns to deck) ──
 function deckExampleRowHtml(vid, jp, e) {
   e = e || {};
-  return `<tr data-ex-id="${e.id || ''}" data-exvid="${vid}">
+  return `<tr data-ex-id="${e.id || ''}" data-exvid="${vid}" data-revision="${escapeHtml(e.revision || e.updated_at || '')}">
     <td><input name="japanese" value="${escapeHtml(e.japanese || '')}" lang="ja" style="min-width:220px;width:100%;" placeholder="例: 今日はいい天気です。" /></td>
     <td><input name="reading" value="${escapeHtml(e.reading || '')}" lang="ja" style="min-width:170px;width:100%;" placeholder="きょうはいいてんきです。" /></td>
     <td><input name="highlight" value="${escapeHtml(e.highlight != null ? e.highlight : '')}" lang="ja" placeholder="${escapeHtml(jp)}" style="width:90px;" /></td>
@@ -7219,6 +7332,7 @@ window.deckSaveExample = async (btn) => {
     sortOrder: Number(tr.querySelector('input[name="sortOrder"]').value) || 0,
   };
   if (!body.japanese) { notify('Kalimat JP wajib diisi', true); return; }
+  await attachBoundarySaveMetadata(body, { moduleId: window.__deckCtx?.moduleId, lessonId: window.__deckCtx?.lessonId }, tr.dataset.revision);
   try {
     let savedResult;
     if (id) {
@@ -7232,9 +7346,10 @@ window.deckSaveExample = async (btn) => {
       }
       deckBumpExampleCount(vid, 1);
     }
+    updateSavedRowRevision(tr, savedResult.example);
     notify('Tersimpan');
     notifyLearningWarnings(savedResult);
-  } catch (err) { notify('Gagal simpan: ' + err.message, true); }
+  } catch (err) { notifyBoundarySaveError(err); }
 };
 
 window.deckDeleteExample = async (btn) => {
