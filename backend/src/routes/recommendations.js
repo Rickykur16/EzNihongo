@@ -1,3 +1,4 @@
+import { independentEvidenceSql } from '../maneko-assistance.js';
 import { Router } from 'express';
 import crypto from 'crypto';
 import { query } from '../db.js';
@@ -65,8 +66,8 @@ router.get('/recommendations/me', asyncHandler(async (req, res) => {
     `SELECT question_category,
             COUNT(*)::int AS attempts,
             SUM((is_correct)::int)::int AS correct
-       FROM quiz_question_results
-      WHERE user_id = $1 AND created_at > NOW() - make_interval(days => $2::int)
+       FROM quiz_question_results qr
+      WHERE ${independentEvidenceSql({ item: 'qr.grammar_id' }, 'qr')} AND user_id = $1 AND created_at > NOW() - make_interval(days => $2::int)
       GROUP BY question_category`,
     [req.user.id, LOOKBACK_DAYS]
   );
@@ -97,11 +98,11 @@ router.get('/recommendations/me', asyncHandler(async (req, res) => {
   try {
     const seen = await query(
       `SELECT DISTINCT grammar_id FROM (
-          SELECT grammar_id FROM grammar_attempts
-           WHERE user_id = $1 AND created_at > NOW() - make_interval(days => $2::int)
+          SELECT grammar_id FROM grammar_attempts ga
+           WHERE ${independentEvidenceSql({ item: 'ga.grammar_id' }, 'ga')} AND user_id = $1 AND created_at > NOW() - make_interval(days => $2::int)
           UNION ALL
-          SELECT grammar_id FROM quiz_question_results
-           WHERE user_id = $1 AND grammar_id IS NOT NULL
+          SELECT grammar_id FROM quiz_question_results qr
+           WHERE ${independentEvidenceSql({ item: 'qr.grammar_id' }, 'qr')} AND user_id = $1 AND grammar_id IS NOT NULL
              AND created_at > NOW() - make_interval(days => $2::int)
        ) t WHERE grammar_id IS NOT NULL`,
       [req.user.id, LOOKBACK_DAYS]

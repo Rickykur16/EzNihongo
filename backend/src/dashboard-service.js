@@ -1,3 +1,4 @@
+import { independentEvidenceSql } from './maneko-assistance.js';
 import { query } from './db.js';
 import { isAdminEmail } from './auth.js';
 import { loadMastery, focusSentence } from './grammar-mastery.js';
@@ -88,22 +89,28 @@ async function grammarMastery(userId, courseId) {
   return { display, weak, mastery };
 }
 
-async function weeklyActivity(userId, courseId) {
+export async function weeklyActivity(userId, courseId) {
   const result = await query(
-    `WITH evidence AS (
-       SELECT created_at, is_correct AS correct FROM practice_attempts WHERE user_id = $1 AND course_id = $2 AND created_at >= NOW() - INTERVAL '7 days'
+    `WITH activity AS (
+       SELECT created_at FROM practice_attempts WHERE user_id = $1 AND course_id = $2 AND created_at >= NOW() - INTERVAL '7 days'
        UNION ALL
-       SELECT ga.created_at, ga.passed FROM grammar_attempts ga JOIN module_grammar g ON g.id = ga.grammar_id JOIN modules m ON m.id = g.module_id WHERE ga.user_id = $1 AND m.course_id = $2 AND ga.created_at >= NOW() - INTERVAL '7 days'
+       SELECT ga.created_at FROM grammar_attempts ga JOIN module_grammar g ON g.id = ga.grammar_id JOIN modules m ON m.id = g.module_id WHERE ga.user_id = $1 AND m.course_id = $2 AND ga.created_at >= NOW() - INTERVAL '7 days'
+       UNION ALL
+       SELECT si.answered_at FROM smart_review_session_items si JOIN smart_review_sessions s ON s.id = si.session_id JOIN lessons l ON l.id = si.lesson_id JOIN modules m ON m.id = l.module_id WHERE s.user_id = $1 AND m.course_id = $2 AND si.answered_at >= NOW() - INTERVAL '7 days'
+     ), evidence AS (
+       SELECT created_at, is_correct AS correct FROM practice_attempts pa WHERE ${independentEvidenceSql({ item: 'pa.item_id', type: 'pa.item_type' }, 'pa')} AND user_id = $1 AND course_id = $2 AND created_at >= NOW() - INTERVAL '7 days'
+       UNION ALL
+       SELECT ga.created_at, ga.passed FROM grammar_attempts ga JOIN module_grammar g ON g.id = ga.grammar_id JOIN modules m ON m.id = g.module_id WHERE ${independentEvidenceSql({ item: 'ga.grammar_id' }, 'ga')} AND ga.user_id = $1 AND m.course_id = $2 AND ga.created_at >= NOW() - INTERVAL '7 days'
      ), previous AS (
-       SELECT is_correct AS correct FROM practice_attempts WHERE user_id = $1 AND course_id = $2 AND created_at >= NOW() - INTERVAL '14 days' AND created_at < NOW() - INTERVAL '7 days'
+       SELECT is_correct AS correct FROM practice_attempts pa WHERE ${independentEvidenceSql({ item: 'pa.item_id', type: 'pa.item_type' }, 'pa')} AND user_id = $1 AND course_id = $2 AND created_at >= NOW() - INTERVAL '14 days' AND created_at < NOW() - INTERVAL '7 days'
        UNION ALL
-       SELECT ga.passed FROM grammar_attempts ga JOIN module_grammar g ON g.id = ga.grammar_id JOIN modules m ON m.id = g.module_id WHERE ga.user_id = $1 AND m.course_id = $2 AND ga.created_at >= NOW() - INTERVAL '14 days' AND ga.created_at < NOW() - INTERVAL '7 days'
+       SELECT ga.passed FROM grammar_attempts ga JOIN module_grammar g ON g.id = ga.grammar_id JOIN modules m ON m.id = g.module_id WHERE ${independentEvidenceSql({ item: 'ga.grammar_id' }, 'ga')} AND ga.user_id = $1 AND m.course_id = $2 AND ga.created_at >= NOW() - INTERVAL '14 days' AND ga.created_at < NOW() - INTERVAL '7 days'
      )
-     SELECT (SELECT COUNT(DISTINCT DATE(created_at))::int FROM evidence) AS active_days,
+     SELECT (SELECT COUNT(DISTINCT DATE(created_at))::int FROM activity) AS active_days,
             (SELECT COUNT(*)::int FROM evidence) AS attempts,
             (SELECT COALESCE(SUM(correct::int), 0)::int FROM evidence) AS correct,
-            ((SELECT COUNT(*)::int FROM practice_attempts WHERE user_id = $1 AND course_id = $2 AND source = 'smart_review' AND created_at >= NOW() - INTERVAL '7 days')
-             + (SELECT COUNT(*)::int FROM grammar_attempts ga JOIN module_grammar g ON g.id = ga.grammar_id JOIN modules m ON m.id = g.module_id WHERE ga.user_id = $1 AND m.course_id = $2 AND ga.eval_source = 'smart_review' AND ga.created_at >= NOW() - INTERVAL '7 days')) AS review_questions,
+            ((SELECT COUNT(*)::int FROM practice_attempts pa WHERE ${independentEvidenceSql({ item: 'pa.item_id', type: 'pa.item_type' }, 'pa')} AND user_id = $1 AND course_id = $2 AND source = 'smart_review' AND created_at >= NOW() - INTERVAL '7 days')
+             + (SELECT COUNT(*)::int FROM grammar_attempts ga JOIN module_grammar g ON g.id = ga.grammar_id JOIN modules m ON m.id = g.module_id WHERE ${independentEvidenceSql({ item: 'ga.grammar_id' }, 'ga')} AND ga.user_id = $1 AND m.course_id = $2 AND ga.eval_source = 'smart_review' AND ga.created_at >= NOW() - INTERVAL '7 days')) AS review_questions,
             (SELECT COUNT(*)::int FROM user_progress p JOIN lessons l ON l.id = p.lesson_id JOIN modules m ON m.id = l.module_id WHERE p.user_id = $1 AND p.completed = TRUE AND p.completed_at >= NOW() - INTERVAL '7 days' AND m.course_id = $2 AND NOT (l.type = 'grammar_task' AND l.popup_after_lesson_id IS NOT NULL)) AS lessons_completed,
             (SELECT COUNT(*)::int FROM previous) AS previous_attempts,
             (SELECT COALESCE(SUM(correct::int), 0)::int FROM previous) AS previous_correct`, [userId, courseId]

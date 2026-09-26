@@ -4711,6 +4711,8 @@
 <link rel="stylesheet" href="styles/learning-placement.css?v=20260925-1"/>
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
 <link rel="stylesheet" href="styles/dialogue-scene.css?v=2">
+<link rel="stylesheet" href="maneko.css?v=20260926-1">
+<script src="maneko.js?v=20260926-1"></script>
 </head>
 <body>
 
@@ -6813,119 +6815,6 @@ function refreshGreetingBanner() {
 
 setInterval(refreshGreetingBanner, 60 * 1000);
 
-// ── Fokus belajar (rekomendasi adaptif) ──────────────────────────────
-// Panel "Fokus belajarmu": akurasi per kategori (Kosakata/Tata Bahasa/
-// Menyimak) + pelajaran untuk diulang + catatan coaching Maneko-chan. Data
-// dari GET /api/recommendations/me (backend/src/routes/recommendations.js).
-// Disembunyikan kalau belum ada data kuis; endpoint men-degradasi anggun
-// tanpa AI (noteSource 'rule').
-const RECO_CAT_ORDER = QUIZ_CAT_ORDER;
-
-async function loadRecommendations() {
-  const host = document.getElementById('reco-panel');
-  if (!host) return;
-  if (typeof window.ezApi !== 'function') { host.innerHTML = ''; return; }
-  try {
-    const r = await window.ezApi('/recommendations/me');
-    if (!r.ok) { host.innerHTML = ''; return; }
-    const data = await r.json();
-    host.innerHTML = recoPanelHtml(data);
-  } catch {
-    host.innerHTML = '';
-  }
-}
-
-function recoCategoryBar(c) {
-  const pct = Math.round((c.accuracy || 0) * 100);
-  const color = c.weak ? '#E5484D' : (pct >= 85 ? '#2E7D52' : '#E0A100');
-  const sub = c.insufficientData
-    ? `${c.attempts} soal · data belum cukup`
-    : `${pct}% · ${c.correct}/${c.attempts} benar`;
-  return `
-    <div style="margin-bottom:10px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;color:#1B1410;margin-bottom:5px;">
-        <span>${escapeHtml(c.label || c.category)}${c.weak ? ' <span style="color:#E5484D;">⚠</span>' : ''}</span>
-        <span style="color:#6b5d49;font-weight:600;">${escapeHtml(sub)}</span>
-      </div>
-      <div style="height:8px;border-radius:6px;background:#F0E0DA;overflow:hidden;">
-        <div style="height:100%;width:${pct}%;background:${color};border-radius:6px;transition:width .5s ease;"></div>
-      </div>
-    </div>`;
-}
-
-function recoLessonChip(rec) {
-  // API mengembalikan UUID backend (rec.id). Model konten frontend pakai slug
-  // sebagai id (l.id = slug) dan menyimpan UUID di l.apiId — selectLesson
-  // butuh (moduleSlug, lessonSlug). Cocokkan via apiId lalu pakai slug.
-  const course = COURSE_CONTENT[currentState.course];
-  let mod = null, les = null;
-  if (course) {
-    for (const m of course.modules) {
-      const l = m.lessons.find((l) => l.apiId === rec.id);
-      if (l) { mod = m; les = l; break; }
-    }
-  }
-  const title = escapeHtml(rec.title || (les && les.title) || 'Pelajaran');
-  if (mod && les) {
-    return `<button type="button" class="reco-lesson"
-        onclick="selectLesson('${mod.id}','${les.id}')"
-        style="display:block;width:100%;text-align:left;border:1px solid #F0E0DA;background:#fffafb;border-radius:10px;padding:9px 12px;margin-bottom:6px;cursor:pointer;font-size:13px;color:#1B1410;font-weight:600;">
-        ${title}<span aria-hidden="true" style="float:right;color:#6b5d49;">→</span>
-      </button>`;
-  }
-  return `<div style="border:1px solid #F0E0DA;background:#fffafb;border-radius:10px;padding:9px 12px;margin-bottom:6px;font-size:13px;color:#5b4f42;font-weight:600;">${title}</div>`;
-}
-
-function recoPanelHtml(data) {
-  if (!data || !data.hasData) return '';
-  const cats = (Array.isArray(data.categories) ? data.categories.slice() : [])
-    .sort((a, b) => RECO_CAT_ORDER.indexOf(a.category) - RECO_CAT_ORDER.indexOf(b.category));
-  // Siswa bisa punya sinyal Bunpou tanpa pernah mengerjakan kuis sama sekali —
-  // panelnya tetap berguna walau bar kategorinya kosong.
-  if (cats.length === 0 && !(data.weakGrammar || []).length) return '';
-  const bars = cats.map(recoCategoryBar).join('');
-  const lessonsArr = Array.isArray(data.recommendedLessons) ? data.recommendedLessons : [];
-  const lessons = lessonsArr.map(recoLessonChip).join('');
-  // Pola grammar yang masih meleset — lebih actionable daripada "Tata Bahasa
-  // 62%", karena menyebut pola yang mana dan menautkan ke tugas latihannya.
-  const wg = Array.isArray(data.weakGrammar) ? data.weakGrammar : [];
-  const grammarHtml = wg.length === 0 ? '' : `
-    <div style="margin-top:13px;">
-      <div style="font-size:11px;font-weight:800;color:#6b5d49;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;">Pola yang perlu latihan</div>
-      ${wg.map((g) => `
-        <div style="border:1px solid #F0E0DA;background:#fffafb;border-radius:10px;padding:9px 12px;margin-bottom:6px;">
-          <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;">
-            <span lang="ja" style="font-size:14px;font-weight:800;color:#1B1410;">${escapeHtml(g.pattern || '')}</span>
-            <span style="font-size:12px;color:#6b5d49;font-weight:700;">${g.score != null ? g.score + '%' : ''}</span>
-          </div>
-          ${g.message ? `<div style="font-size:12px;color:#5b4f42;margin-top:3px;line-height:1.5;">${escapeHtml(g.message)}</div>` : ''}
-        </div>`).join('')}
-    </div>`;
-  const note = data.coachingNote ? `
-    <div style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding:12px 13px;border-radius:12px;background:#FFF7F4;border:1.5px solid #F0E0DA;">
-      <div style="font-size:22px;line-height:1;flex-shrink:0;">🐾</div>
-      <div>
-        <div style="font-weight:900;font-size:13px;color:#1B1410;">Maneko-chan</div>
-        <div style="font-size:13px;color:#5b4f42;margin-top:2px;line-height:1.55;">${escapeHtml(data.coachingNote)}</div>
-      </div>
-    </div>` : '';
-  return `
-    <div class="reco-panel-wrap">
-      <details class="reco-panel">
-        <summary><span>🎯 Fokus belajarmu</span><span class="reco-summary-action">Lihat</span></summary>
-        <div class="reco-content">
-          ${bars}
-          ${lessons ? `<div style="margin-top:13px;">
-            <div style="font-size:11px;font-weight:800;color:#6b5d49;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;">Ulangi pelajaran ini</div>
-            ${lessons}
-          </div>` : ''}
-          ${grammarHtml}
-          ${note}
-        </div>
-      </details>
-    </div>`;
-}
-
 // ═══════════════════════════════════════════════
 // RENDER
 // ═══════════════════════════════════════════════
@@ -7100,7 +6989,6 @@ function renderLearning(courseSlug) {
       <div class="learning-workspace">
         <div class="learning-overview">
           ${greetingBannerHtml()}
-          <div id="reco-panel"></div>
         </div>
         <main class="main-content" id="main-content"></main>
       </div>
@@ -7112,7 +7000,6 @@ function renderLearning(courseSlug) {
 
   renderSidebar();
   renderLesson();
-  loadRecommendations();
   document.getElementById('sidebar-toggle')?.classList.add('visible');
   if (isDesktop()) {
     applySidebarCollapse(localStorage.getItem(SIDEBAR_KEY) === '1');
@@ -12982,6 +12869,7 @@ window.__tutorHidden = false;
 window.__tutorCompact = false;
 function setTutorHidden(hidden) {
   window.__tutorHidden = !!hidden;
+  if (hidden) window.Maneko?.close();
   const el = document.getElementById('ai-senpai');
   if (el) el.style.display = hidden ? 'none' : '';
 }
@@ -13913,24 +13801,7 @@ const S = (window.AISenpai = {
   },
 
   orbHTML() {
-    const has = S.reminders.length > 0;
-    const urgent = S.reminders.some((r) => r.urgency === 'high');
-    const pose = S.mode === 'expanded' ? 'high' : has ? 'wave' : 'down';
-    const mood = !has ? 'sleepy' : (S.mode === 'toast' || S.mode === 'expanded' ? 'excited' : 'happy');
-    const badge = S.mode === 'expanded' ? 0 : S.reminders.length;
-    const pulsing = S.mode === 'toast' || (urgent && S.mode === 'peek');
-    const halo = (has && S.mode !== 'expanded' && !pulsing)
-      ? `<span style="position:absolute;left:50%;top:52%;width:90px;height:90px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgba(200,16,46,0.16), transparent 70%);animation:senpaiHalo 3.2s ease-in-out infinite;pointer-events:none;"></span>`
-      : '';
-    const pulse = pulsing
-      ? `<span style="position:absolute;left:50%;top:52%;width:80px;height:80px;transform:translate(-50%,-50%);border-radius:50%;animation:senpaiPulse 1.8s ease-out infinite;pointer-events:none;"></span>`
-      : '';
-    const badgeEl = badge > 0
-      ? `<span style="position:absolute;top:0;right:-2px;min-width:24px;height:24px;padding:0 7px;background:#C8102E;color:#fff;border-radius:999px;border:2.5px solid #FFF8F1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;box-shadow:0 3px 0 #a50d26;animation:senpaiBadge 280ms cubic-bezier(.34,1.56,.64,1);">${badge}</span>`
-      : '';
-    return `<button class="senpai-orb-btn" style="width:86px;height:94px;filter:drop-shadow(0 14px 22px rgba(27,20,16,${has ? 0.26 : 0.18}));" aria-label="AI Senpai" onclick="AISenpai.clickOrb()">
-      ${pulse}${halo}${S.manekiSVG(86, pose, mood, false)}${badgeEl}
-    </button>`;
+    return '<button class="senpai-orb-btn" style="width:72px;height:80px" aria-label="Buka fokus belajar Maneko-chan" aria-expanded="false" aria-controls="maneko-focus-panel" onclick="AISenpai.clickOrb()"><img src="assets/maneko.svg" width="72" height="80" alt=""><span data-maneko-dot class="maneko-dot" hidden></span></button>';
   },
 
   _lessonTitle() {
@@ -13997,35 +13868,17 @@ const S = (window.AISenpai = {
 
   refresh() {
     S.reminders = S.computeReminders();
-    if (S.mode === 'idle' || S.mode === 'peek') {
-      S.mode = S.reminders.length ? 'peek' : 'idle';
-    }
-    // Auto-pop satu toast untuk reminder mendesak (sekali per sesi). Di layar
-    // HP greeting sudah menyediakan CTA lanjut belajar; toast duplikat hanya
-    // menutup video dan materi, jadi cukup tampilkan orb tutor yang ringkas.
-    const allowAutoToast = !window.matchMedia('(max-width: 480px)').matches && !window.__tutorCompact;
-    if (allowAutoToast && !S._autoToasted && (S.mode === 'peek') && S.reminders.some((r) => r.urgency === 'high')) {
-      S._autoToasted = true;
-      S.mode = 'toast';
-      clearTimeout(S._toastTimer);
-      S._toastTimer = setTimeout(() => { if (S.mode === 'toast') { S.mode = 'peek'; S.render(); } }, 7000);
-      S.render();
-      S.burst();
-      return;
-    }
+    if (['peek', 'toast', 'digest'].includes(S.mode)) S.mode = 'idle';
     S.render();
+    window.Maneko?.refresh();
   },
 
   _topReminder() { return S.reminders.find((r) => r.urgency === 'high') || S.reminders[0]; },
 
-  clickOrb() {
-    if (S.mode === 'expanded') { S.mode = S.reminders.length ? 'peek' : 'idle'; }
-    else { S.mode = 'expanded'; if (!S.chat.length) S._seedChat(); }
-    S.render();
-  },
-  openExpanded() { S.mode = 'expanded'; if (!S.chat.length) S._seedChat(); S.render(); },
+  clickOrb() { if (window.__tutorHidden) return; S.mode = 'idle'; S.render(); window.Maneko?.open(); },
+  openExpanded() { if (window.__tutorHidden) return; S.mode = 'expanded'; if (!S.chat.length) S._seedChat(); S.render(); },
   openDigest() { S.mode = 'digest'; S.render(); },
-  closePanel() { S.mode = S.reminders.length ? 'peek' : 'idle'; S.render(); },
+  closePanel() { S.mode = 'idle'; S.render(); },
   dismissPeek() { S.mode = 'idle'; S.render(); },
   dismissToast() { clearTimeout(S._toastTimer); S.mode = S.reminders.length ? 'peek' : 'idle'; S.render(); },
   act(id) { const r = S.reminders.find((x) => x.id === id); S.mode = 'idle'; S.render(); if (r && r.action) { try { r.action(); } catch {} } },
@@ -14050,7 +13903,7 @@ const S = (window.AISenpai = {
 
   send(text) {
     text = String(text || '').trim();
-    if (!text || S.typing) return;
+    if (!text || S.typing || window.__tutorHidden) return;
     S.chat.push({ from:'user', text });
     S.persist();
     S.typing = true;
@@ -14276,10 +14129,10 @@ const S = (window.AISenpai = {
       <div style="background:linear-gradient(180deg,#fff0f2 0%,#FFF8F1 100%);padding:16px 14px 12px 96px;border-radius:24px 24px 0 0;position:relative;border-bottom:1px solid #F0E0DA;">
         <div style="font-size:10px;font-weight:900;letter-spacing:.16em;color:#a50d26;"><span class="ez-jp">招き猫</span> · MANEKO CHAN</div>
         <div style="font-weight:900;font-size:16px;color:#1B1410;margin-top:2px;">Maneko-chan</div>
-        <div style="font-size:11px;color:#7A6A60;font-weight:700;margin-top:1px;"><span style="display:inline-block;width:6px;height:6px;border-radius:999px;background:#4FB58E;margin-right:5px;vertical-align:middle;"></span>Online · siap bantu</div>
+        <div style="font-size:11px;color:#7A6A60;font-weight:700;margin-top:1px;"><span style="display:inline-block;width:6px;height:6px;border-radius:999px;background:#4FB58E;margin-right:5px;vertical-align:middle;"></span>Pendamping latihan</div>
         <button class="senpai-dismiss-btn senpai-icon-btn" aria-label="Tutup chat AI Senpai" onclick="AISenpai.closePanel()" style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:8px;border:0;background:#fff;color:#7A6A60;cursor:pointer;box-shadow:0 2px 6px rgba(27,20,16,.1);font-size:15px;">✕</button>
       </div>
-      ${strip}
+      <p class="maneko-status" style="padding:0 14px">Bantuan chat dicatat sebagai latihan. Selama 30 menit, jawaban berikutnya tidak memperbarui penguasaan Smart Review.</p>
       <div id="senpai-chat-scroll" class="senpai-scroll" style="flex:1;padding:8px 12px 4px;overflow-y:auto;border-top:1px solid #F0E0DA;margin-top:6px;">
         ${bubbles}${typing}
       </div>
@@ -14326,6 +14179,7 @@ const S = (window.AISenpai = {
     // Hormati flag visibilitas kalau renderLesson sempat jalan duluan
     // (lesson quiz/grammar_task = Maneko-chan disembunyikan).
     if (window.__tutorHidden) el.style.display = 'none';
+    window.Maneko?.mount({ externalOrb: true });
     // Pakai cache hanya kalau versinya cocok — bump versi (mis. ganti nama
     // maskot / sapaan) bikin chat lama dibuang & di-seed ulang dgn teks baru.
     try { const saved = JSON.parse(sessionStorage.getItem('ez_tutor_chat') || 'null'); if (saved && saved.v === 2 && Array.isArray(saved.chat)) S.chat = saved.chat; } catch {}
@@ -14410,6 +14264,15 @@ const S = (window.AISenpai = {
     const selectedCourse = COURSE_CONTENT[selected];
     if (targetModule && targetLesson && selectedCourse?.modules?.some((m) => m.id === targetModule && m.lessons.some((l) => l.id === targetLesson))) {
       selectLesson(targetModule, targetLesson);
+    }
+    const focusLesson = params.get('focusLesson');
+    if (focusLesson) {
+      for (const slug of enrolled) {
+        const course = COURSE_CONTENT[slug];
+        const module = course?.modules.find(m => m.lessons.some(l => l.apiId === focusLesson));
+        const lesson = module?.lessons.find(l => l.apiId === focusLesson);
+        if (lesson) { if (currentState.course !== slug) { renderCourseTabs(slug); renderLearning(slug); } selectLesson(module.id, lesson.id); break; }
+      }
     }
     // AI Senpai widget — mount setelah first paint (tidak blok critical path).
     try { AISenpai.init(); } catch {}

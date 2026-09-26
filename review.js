@@ -5,6 +5,11 @@
   let index = 0;
   let selectedOrder = [];
   let correctAnswers = 0;
+  let independentAnswers = 0;
+  let assistedAnswers = 0;
+  let busy = false;
+  const results = new Map();
+  const helpLevels = new Map();
   const labels = { kana: 'Kana', vocabulary: 'Kosakata', kanji: 'Kanji', grammar: 'Grammar' };
   const api = async (path, options) => { const response = await ezApi(path, options); const body = await response.json().catch(() => ({})); if (!response.ok) throw Object.assign(new Error(body.error || 'request_failed'), { status: response.status }); return body; };
   const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
@@ -33,7 +38,7 @@
     app.innerHTML = '<p class="loading">Menyiapkan sesi review…</p>';
     try {
       session = await api('/review/sessions', { method: 'POST', body: JSON.stringify({ category, limit: 20 }) });
-      index = 0; selectedOrder = []; correctAnswers = 0;
+      index = 0; selectedOrder = []; correctAnswers = 0; independentAnswers = 0; assistedAnswers = 0; busy = false; results.clear(); helpLevels.clear();
       if (!session.questions?.length) return renderHome(session.summary || { total: 0, byCategory: {} });
       renderQuestion();
     } catch (error) { errorCard(error, () => start(category)); }
@@ -205,7 +210,8 @@
       ? `<div class="arrange-answer" id="arrange-answer" aria-label="Kalimat yang kamu susun"></div><div class="arrange" id="arrange" aria-label="Kepingan kata"></div><div class="answer-row"><button class="primary" id="submit-arrange" type="button">Periksa jawaban</button><button class="token" id="reset-arrange" type="button">Ulangi</button></div>`
       : `<div class="options">${options.map((option, optionIndex) => `<button class="option" type="button" data-option="${optionIndex}">${esc(option)}${question.optionReadings?.[optionIndex] && question.optionReadings[optionIndex] !== option ? `<small>${esc(question.optionReadings[optionIndex])}</small>` : ''}</button>`).join('')}</div>`;
     const progressPercent = Math.round(((index + 1) / session.questions.length) * 100);
-    app.innerHTML = `<section class="question-card"><div class="progress">SOAL ${index + 1} DARI ${session.questions.length}</div><div class="review-progress-bar" role="progressbar" aria-label="Progres sesi review" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progressPercent}"><i style="width:${progressPercent}%"></i></div><span class="tag">${esc(tagLabel)}</span><h1 class="prompt" tabindex="-1">${esc(question.prompt)}</h1>${question.instruction ? `<p class="hint">${esc(question.instruction)}</p>` : ''}${question.audioText ? '<button class="audio-btn" id="play-audio" type="button">🔊 Putar suara</button>' : ''}${question.reading ? `<p class="hint">${esc(question.reading)}</p>` : ''}${question.meaning ? `<p class="hint">${esc(question.meaning)}</p>` : ''}${question.example?.japanese ? `<p class="hint">${esc(question.example.japanese)}</p>` : ''}${question.example?.indonesian ? `<p class="hint">${esc(question.example.indonesian)}</p>` : ''}${question.sentence ? `<p class="hint">${esc(question.sentence)}</p>` : ''}${question.indonesian ? `<p class="hint">${esc(question.indonesian)}</p>` : ''}${answerUi}<p class="feedback" id="feedback" aria-live="polite"></p><div class="review-actions" id="answer-actions"></div></section>`;
+    app.innerHTML = `<section class="question-card"><div class="progress">SOAL ${index + 1} DARI ${session.questions.length}</div><div class="review-progress-bar" role="progressbar" aria-label="Progres sesi review" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progressPercent}"><i style="width:${progressPercent}%"></i></div><span class="tag">${esc(tagLabel)}</span><h1 class="prompt" tabindex="-1">${esc(question.prompt)}</h1>${question.instruction ? `<p class="hint">${esc(question.instruction)}</p>` : ''}${question.audioText ? '<button class="audio-btn" id="play-audio" type="button">🔊 Putar suara</button>' : ''}${question.reading ? `<p class="hint">${esc(question.reading)}</p>` : ''}${question.meaning ? `<p class="hint">${esc(question.meaning)}</p>` : ''}${question.example?.japanese ? `<p class="hint">${esc(question.example.japanese)}</p>` : ''}${question.example?.indonesian ? `<p class="hint">${esc(question.example.indonesian)}</p>` : ''}${question.sentence ? `<p class="hint">${esc(question.sentence)}</p>` : ''}${question.indonesian ? `<p class="hint">${esc(question.indonesian)}</p>` : ''}${answerUi}<p class="feedback" id="feedback" aria-live="polite"></p><div class="review-actions" id="answer-actions"></div><details class="maneko-help"><summary><img src="assets/maneko.svg" alt="">Bantuan Maneko-chan</summary><p>Petunjuk membuat soal ini menjadi latihan terbantu. Jawaban mandiri yang sudah tersimpan tetap dipertahankan. Materi terkait dapat dinilai mandiri lagi setelah 24 jam.</p><button class="maneko-primary" id="maneko-hint" type="button">Minta petunjuk</button><div id="maneko-help-output" class="maneko-help-output" role="status"></div></details><span class="maneko-status" id="maneko-evidence-status">${item.assisted ? 'Latihan terbantu · materi ini baru mendapat bantuan.' : 'Review mandiri · coba jawab tanpa petunjuk.'}</span></section>`;
+    app.querySelector('#maneko-hint')?.addEventListener('click', requestHelp);
     const audioBtn = app.querySelector('#play-audio');
     if (audioBtn) {
       audioBtn.addEventListener('click', () => playAudio(question.audioText, audioBtn));
@@ -232,43 +238,53 @@
     const options = question.options || [];
     return Number.isInteger(result.correctIndex) ? (options[result.correctIndex] || '') : '';
   }
-  async function answer(payload, button) {
-    const feedback = document.getElementById('feedback'); if (button) button.disabled = true;
-    try {
-      const result = await api(`/review/sessions/${session.sessionId}/answers`, { method: 'POST', body: JSON.stringify({ questionIndex: index, ...payload }) });
-      feedback.className = 'feedback';
-      if (result.passed) correctAnswers += 1;
-      app.querySelectorAll('[data-option]').forEach((node) => { node.disabled = true; if (Number(node.dataset.option) === result.correctIndex) node.classList.add('correct'); });
-      // Kepingan susun-kalimat juga dikunci: soal yang sudah dijawab tidak
-      // boleh bisa diutak-atik lagi sambil siswa membaca pembahasannya.
-      app.querySelectorAll('[data-token]').forEach((node) => { node.disabled = true; });
-      app.querySelector('#reset-arrange')?.setAttribute('disabled', 'disabled');
-      if (button) button.classList.add(result.passed ? 'correct' : 'wrong');
-      if (result.passed) {
-        feedback.textContent = 'Benar — review berikutnya akan dijadwalkan lebih jauh.';
-        setTimeout(advance, 900);
-        return;
-      }
-      // Salah: JANGAN pindah sendiri. Waktu untuk mencerna kesalahan adalah
-      // milik siswa, bukan angka tebakan — tampilkan jawaban benarnya lalu
-      // tunggu mereka menekan "Lanjut".
-      const answerText = correctAnswerText(session.questions[index].question, result);
-      feedback.innerHTML = `Belum tepat. Soal ini akan diulang lebih cepat.${answerText ? `<span class="answer-key">Jawaban benar: <b>${esc(answerText)}</b></span>` : ''}`;
-      const actions = document.getElementById('answer-actions');
-      if (actions) {
-        actions.innerHTML = '<button class="primary" id="review-next" type="button">Lanjut →</button>';
-        const nextButton = document.getElementById('review-next');
-        nextButton.addEventListener('click', advance);
-        nextButton.focus();
-      } else {
-        setTimeout(advance, 2500);
-      }
-    } catch (error) {
-      feedback.textContent = ezStudentErrorMessage(error, 'Jawaban'); feedback.className = 'feedback error'; if (button) button.disabled = false;
+  function setBusy(value) {
+    busy = value;
+    app.querySelectorAll('[data-option], [data-token], #submit-arrange, #reset-arrange, #maneko-hint, #review-next').forEach(node => { node.disabled = value || (results.has(index) && !['maneko-hint', 'review-next'].includes(node.id)); });
+    if (!value && !results.has(index) && session.questions[index].question.variant === 'arrange') {
+      const submit = app.querySelector('#submit-arrange');
+      if (submit) submit.disabled = selectedOrder.length !== session.questions[index].question.tokens.length;
     }
   }
+  async function requestHelp() {
+    if (busy) return;
+    const level = Math.min(3, (helpLevels.get(index) || 0) + 1);
+    const output = app.querySelector('#maneko-help-output');
+    setBusy(true);
+    try {
+      const result = await api(`/review/sessions/${session.sessionId}/help`, { method: 'POST', body: JSON.stringify({ questionIndex: index, level }) });
+      helpLevels.set(index, level);
+      const item = session.questions[index];
+      session.questions.forEach(q => { if (q.lessonId === item.lessonId || q.itemType === item.itemType && q.itemId === item.itemId) q.assisted = true; });
+      output.textContent = result.text;
+      app.querySelector('#maneko-hint').textContent = level === 1 ? 'Jelaskan lebih lanjut' : level === 2 ? 'Lihat pembahasan jawaban' : 'Baca kembali pembahasan';
+      app.querySelector('#maneko-evidence-status').textContent = results.has(index) ? 'Hasil mandiri sebelumnya tetap tersimpan. Pembahasan ini adalah latihan.' : 'Dengan bantuan · jawaban ini tidak mengubah penguasaan atau jadwal review.';
+    } catch (error) { output.textContent = ezStudentErrorMessage(error, 'Bantuan Maneko'); }
+    finally { setBusy(false); }
+  }
+  async function answer(payload, button) {
+    if (busy || results.has(index)) return;
+    const feedback = document.getElementById('feedback');
+    setBusy(true);
+    try {
+      const result = await api(`/review/sessions/${session.sessionId}/answers`, { method: 'POST', body: JSON.stringify({ questionIndex: index, ...payload }) });
+      results.set(index, result);
+      if (result.assisted) assistedAnswers += 1;
+      else { independentAnswers += 1; if (result.passed) correctAnswers += 1; }
+      feedback.className = 'feedback';
+      app.querySelectorAll('[data-option]').forEach(node => { if (Number(node.dataset.option) === result.correctIndex) node.classList.add('correct'); });
+      if (button) button.classList.add(result.passed ? 'correct' : 'wrong');
+      const answerText = correctAnswerText(session.questions[index].question, result);
+      feedback.innerHTML = (result.passed ? 'Benar.' : 'Belum tepat.') + (result.assisted ? ' Ini latihan terbantu; penguasaan dan jadwal review tetap.' : ' Hasil mandiri sudah disimpan untuk review berikutnya.') + (!result.passed && answerText ? `<span class="answer-key">Jawaban benar: <b>${esc(answerText)}</b></span>` : '');
+      if (result.assisted) app.querySelector('#maneko-evidence-status').textContent = 'Dengan bantuan · tidak dihitung dalam akurasi mandiri.';
+      const actions = document.getElementById('answer-actions');
+      actions.innerHTML = '<button class="primary" id="review-next" type="button">Lanjut →</button>';
+      actions.querySelector('button').addEventListener('click', () => { if (!busy) advance(); });
+    } catch (error) { feedback.textContent = ezStudentErrorMessage(error, 'Jawaban'); feedback.className = 'feedback error'; }
+    finally { setBusy(false); }
+  }
   function finish() {
-    app.innerHTML = `<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Sesi selesai.</h1><p>Kamu menjawab ${correctAnswers} dari ${session.questions.length} item dengan benar.</p><p class="subtle">Hasil sesi ini sudah dipakai untuk menjadwalkan review berikutnya.</p><div class="review-actions"><button class="primary" id="back-home" type="button">Review Lagi</button><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
+    app.innerHTML = `<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Sesi selesai.</h1><p>${independentAnswers ? `Kamu menjawab ${correctAnswers} dari ${independentAnswers} soal mandiri dengan benar.` : 'Sesi ini sepenuhnya latihan terbantu.'}</p><p class="subtle">${assistedAnswers} soal dikerjakan dengan bantuan. Hanya hasil mandiri yang memperbarui penguasaan dan jadwal review.</p><div class="review-actions"><button class="primary" id="back-home" type="button">Lihat jadwal review</button><a class="back-link" href="focus.html">Fokus belajar bersama Maneko</a><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
     document.getElementById('back-home').addEventListener('click', loadHome);
   }
   document.getElementById('logout').addEventListener('click', () => ezLogout());

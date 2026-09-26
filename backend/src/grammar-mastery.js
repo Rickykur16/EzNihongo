@@ -1,3 +1,4 @@
+import { independentEvidenceSql } from './maneko-assistance.js';
 // Model penguasaan (mastery) per KONSEP grammar — sadar-keyakinan.
 //
 // Identitas konsep = module_grammar.id (sudah stabil, dipakai bersama oleh
@@ -198,14 +199,14 @@ export async function loadMastery(userId, grammarIds) {
   const r = await query(
     `WITH unioned AS (
        SELECT grammar_id, passed, created_at, source, primary_error
-         FROM grammar_attempts
-        WHERE user_id = $1 AND grammar_id = ANY($2::uuid[])
+         FROM grammar_attempts ga
+        WHERE ${independentEvidenceSql({ item: 'ga.grammar_id' }, 'ga')} AND user_id = $1 AND grammar_id = ANY($2::uuid[])
           AND created_at > NOW() - make_interval(days => $3::int)
        UNION ALL
        SELECT grammar_id, is_correct AS passed, created_at,
               'recognition'::text AS source, NULL::text AS primary_error
-         FROM quiz_question_results
-        WHERE user_id = $1 AND grammar_id = ANY($2::uuid[])
+         FROM quiz_question_results qr
+        WHERE ${independentEvidenceSql({ item: 'qr.grammar_id' }, 'qr')} AND user_id = $1 AND grammar_id = ANY($2::uuid[])
           AND created_at > NOW() - make_interval(days => $3::int)
      ), ranked AS (
        SELECT *, ROW_NUMBER() OVER (PARTITION BY grammar_id ORDER BY created_at DESC) AS rn

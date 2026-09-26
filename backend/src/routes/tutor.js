@@ -1,3 +1,5 @@
+import { withAdvisoryLock } from '../db.js';
+import { evidenceLock, recordExposure } from '../maneko-assistance.js';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { asyncHandler, requireAuth } from '../middleware.js';
@@ -32,6 +34,7 @@ Aturan:
 - Pastikan setiap contoh kata/kalimat Jepang benar-benar mengandung konsep yang sedang dijelaskan dan artinya akurat. Kalau tidak yakin, jangan beri contoh itu.
 - Beri contoh kalimat yang relevan dengan level pemula bila membantu.
 - Fokus pada belajar bahasa Jepang (grammar, kosakata, kanji, budaya, tips belajar). Kalau ditanya hal di luar topik itu, arahkan kembali dengan sopan.
+- Berikan petunjuk bertahap: arahkan perhatian dulu; berikan pembahasan lengkap bila diminta. Jangan mengklaim murid sudah menguasai materi dari percakapan.
 - Dorong murid dengan nada positif, seperti senpai yang suportif.`;
 
 const tutorLimiter = rateLimit({
@@ -74,6 +77,10 @@ router.post('/tutor/chat', requireAuth, tutorLimiter, asyncHandler(async (req, r
   const system = TUTOR_SYSTEM + (lesson
     ? `\n\nKonteks: murid sedang membuka pelajaran ${level ? level + ' — ' : ''}"${lesson}". Kaitkan jawaban dengan konteks ini bila relevan.`
     : '');
+
+  // Open-ended answers may cover any concept. Persist a broad exposure BEFORE
+  // starting the provider, so streaming, reloads and another tab cannot bypass it.
+  await withAdvisoryLock(evidenceLock(req.user.id), client => recordExposure(client, { userId: req.user.id, type: 'tutor_chat' }));
 
   // Streaming (body.stream === true): balasan dikirim sebagai chunked text
   // begitu tiba dari Claude, biar di frontend muncul mengalir seperti orang

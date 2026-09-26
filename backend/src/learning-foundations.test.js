@@ -156,6 +156,7 @@ test('practice-state upsert records each immutable attempt exactly once', async 
   const attemptRows = [];
   const client = {
     async query(sql, params) {
+      if (sql.includes('pg_advisory_xact_lock') || sql.includes('FROM maneko_exposures')) return { rows: [] };
       const key = `${params[0]}:${params[1]}:${params[2]}:${params[3]}`;
       if (sql.includes('SELECT attempts, correct, streak')) {
         return { rows: state.has(key) ? [state.get(key)] : [], rowCount: state.has(key) ? 1 : 0 };
