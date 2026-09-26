@@ -61,9 +61,9 @@ export {
   SETTINGS_VERSION as TTS_SETTINGS_VERSION,
 };
 
-function sendAudio(res, buf, contentType) {
+function sendAudio(res, buf, contentType, privateResponse = false) {
   res.set('Content-Type', contentType || 'audio/mpeg');
-  res.set('Cache-Control', 'public, max-age=31536000, immutable');
+  res.set('Cache-Control', privateResponse ? 'private, no-store' : 'public, max-age=31536000, immutable');
   res.send(buf);
 }
 
@@ -266,7 +266,7 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
   const known = await query(
     `SELECT 1 WHERE EXISTS (SELECT 1 FROM module_vocabulary WHERE japanese = $1 OR reading = $1)
                 OR EXISTS (SELECT 1 FROM vocabulary_examples WHERE japanese = $1 OR reading = $1)
-                OR EXISTS (SELECT 1 FROM quiz_questions WHERE audio_script = $1)
+                OR EXISTS (SELECT 1 FROM quiz_questions WHERE audio_script = $1 AND assessment_meta->>'version' IS NULL)
                 OR EXISTS (SELECT 1 FROM module_grammar WHERE example_dialog = $1 OR example = $1)
                 OR EXISTS (SELECT 1 FROM grammar_examples WHERE japanese = $1)
                 OR EXISTS (SELECT 1 FROM kana_items WHERE character = $1)
@@ -275,6 +275,13 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
     [text]
   );
   if (known.rows.length === 0) return res.status(403).json({ error: 'unknown text' });
+
+  return renderTtsAudio(text, res);
+}));
+
+// Callers must authorize the source text first. Assessment callers use their
+// immutable, owned attempt and never send the script to the student client.
+export async function renderTtsAudio(text, res, { privateResponse = false } = {}) {
 
   // Detect dialog vs single-voice. Single-voice fallback kalau parse gagal.
   const turns = parseDialog(text);
@@ -294,7 +301,7 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
   );
   if (cached.rows.length > 0) {
     query(`UPDATE tts_cache SET last_used_at = NOW() WHERE text_hash = $1`, [key]).catch(() => {});
-    return sendAudio(res, cached.rows[0].audio, cached.rows[0].content_type);
+    return sendAudio(res, cached.rows[0].audio, cached.rows[0].content_type, privateResponse);
   }
 
   // Disabled kalau API key kosong, atau (non-dialog tanpa voice ID),
@@ -341,8 +348,8 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
      ON CONFLICT (text_hash) DO NOTHING`,
     [key, text, voices.join(','), ELEVEN_MODEL, combined, combined.length, SETTINGS_VERSION]
   );
-  return sendAudio(res, combined, 'audio/mpeg');
-}));
+  return sendAudio(res, combined, 'audio/mpeg', privateResponse);
+}
 
 // GET /api/tts/dialog?text=<dialog "A: ... B: ...">
 // Per-turn segmented audio for the dialogue player: each turn gets its own
@@ -363,7 +370,7 @@ router.get('/tts/dialog', optionalAuth, ttsLimiter, asyncHandler(async (req, res
   const known = await query(
     `SELECT 1 WHERE EXISTS (SELECT 1 FROM module_vocabulary WHERE japanese = $1 OR reading = $1)
                 OR EXISTS (SELECT 1 FROM vocabulary_examples WHERE japanese = $1 OR reading = $1)
-                OR EXISTS (SELECT 1 FROM quiz_questions WHERE audio_script = $1)
+                OR EXISTS (SELECT 1 FROM quiz_questions WHERE audio_script = $1 AND assessment_meta->>'version' IS NULL)
                 OR EXISTS (SELECT 1 FROM module_grammar WHERE example_dialog = $1 OR example = $1)
                 OR EXISTS (SELECT 1 FROM grammar_examples WHERE japanese = $1)
                 OR EXISTS (SELECT 1 FROM kana_items WHERE character = $1)

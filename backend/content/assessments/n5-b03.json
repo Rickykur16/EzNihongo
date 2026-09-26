@@ -1,0 +1,1088 @@
+{
+  "version": "n5-assessment-v2",
+  "chapter": 3,
+  "title": "Bab 3 — Perkenalan diri",
+  "objectives": [
+    {
+      "id": "identity",
+      "canDo": "Mengenali nama, negara, serta profesi dan memilih ungkapan perkenalan yang sesuai."
+    },
+    {
+      "id": "negation",
+      "canDo": "Memahami penyangkalan identitas dan memilih koreksi sopan yang sesuai situasi."
+    },
+    {
+      "id": "question",
+      "canDo": "Memilih pertanyaan dan respons yang sesuai dengan informasi identitas yang diminta."
+    },
+    {
+      "id": "addition",
+      "canDo": "Menentukan kesamaan identitas yang dinyatakan dengan も."
+    },
+    {
+      "id": "relation",
+      "canDo": "Memahami hubungan orang dengan nama, keluarga, atau profesinya memakai の."
+    },
+    {
+      "id": "stance",
+      "canDo": "Membedakan pertanyaan, permintaan konfirmasi, dan pemberian informasi baru."
+    }
+  ],
+  "boundary": {
+    "grammar": [
+      "AはBです",
+      "AはBじゃありません／ではありません",
+      "AはBですか",
+      "も",
+      "の",
+      "ね／よ"
+    ],
+    "notes": "Kana pada kalimat; target baca hanya kanji Bab3. Tidak memakai kata tunjuk Bab4, adjektiva, verba bebas, atau rantai の. Instruksi konteks berbahasa Indonesia."
+  },
+  "transferTask": {
+    "prompt": "Latihan lisan opsional, di luar skor assessment: di pertemuan kelas pertama, gunakan kartu ini: Anda Rina, orang Indonesia, pelajar; Dodi juga pelajar; profesi Yuki belum diketahui. Perkenalkan diri, sampaikan persamaan dengan Dodi, lalu tanyakan profesi Yuki dengan beberapa kalimat pendek bahasa Jepang.",
+    "rubric": [
+      "Nama, kewarganegaraan, dan profesi yang disampaikan sesuai kartu.",
+      "Pola は…です, も, dan pertanyaan …ですか digunakan dengan tepat; formulasi sah yang setara diterima.",
+      "Pertanyaan meminta informasi yang belum diketahui; pernyataan も benar-benar menyatakan kesamaan."
+    ]
+  },
+  "forms": {
+    "A": [
+      {
+        "category": "vocabulary",
+        "mode": "choice",
+        "objective": "identity",
+        "prompt": "Pilih bacaan kata bergaris bawah: わたしは <u>学生</u>です。",
+        "options": [
+          "かくせい",
+          "がくせい",
+          "がっせい",
+          "がくせ"
+        ],
+        "answer": 1,
+        "explanation": "学生 dibaca がくせい.",
+        "distractorReasons": [
+          "が memerlukan dakuten.",
+          "学生 dibaca がくせい.",
+          "Tidak ada bunyi kecil っ pada がくせい.",
+          "Bacaan kehilangan い di akhir."
+        ],
+        "id": "b03-a-v01"
+      },
+      {
+        "category": "vocabulary",
+        "mode": "choice",
+        "objective": "identity",
+        "prompt": "Pilih bacaan kata bergaris bawah: ははは <u>先生</u>です。",
+        "options": [
+          "せんせい",
+          "せいせん",
+          "ぜんせい",
+          "せんせ"
+        ],
+        "answer": 0,
+        "explanation": "先生 dibaca せんせい.",
+        "distractorReasons": [
+          "先生 dibaca せんせい.",
+          "Urutan bunyinya terbalik.",
+          "せ pertama tidak memakai dakuten.",
+          "Bacaan kehilangan い di akhir."
+        ],
+        "id": "b03-a-v02"
+      },
+      {
+        "category": "vocabulary",
+        "mode": "choice",
+        "objective": "relation",
+        "prompt": "Pilih bacaan kata bergaris bawah: わたしの <u>国</u>は タイです。",
+        "options": [
+          "こく",
+          "ぐに",
+          "くにん",
+          "くに"
+        ],
+        "answer": 3,
+        "explanation": "国 sebagai kata negara dibaca くに.",
+        "distractorReasons": [
+          "こく bukan bacaan kata 国 yang berdiri sendiri di sini.",
+          "く tidak memakai dakuten.",
+          "Tidak ada tambahan ん pada bacaan ini.",
+          "国 sebagai kata negara dibaca くに."
+        ],
+        "id": "b03-a-v03"
+      },
+      {
+        "category": "vocabulary",
+        "mode": "choice",
+        "objective": "identity",
+        "prompt": "Kartu profil menyebut profesi Deni: perawat. Lengkapi: デニさんは（　）です。",
+        "options": [
+          "いしゃ",
+          "かいしゃいん",
+          "かんごし",
+          "せんせい"
+        ],
+        "answer": 2,
+        "explanation": "かんごし berarti perawat, sesuai kartu.",
+        "distractorReasons": [
+          "いしゃ berarti dokter.",
+          "かいしゃいん berarti karyawan perusahaan.",
+          "かんごし berarti perawat, sesuai kartu.",
+          "せんせい berarti guru."
+        ],
+        "id": "b03-a-v04"
+      },
+      {
+        "category": "vocabulary",
+        "mode": "choice",
+        "objective": "identity",
+        "prompt": "Anda baru pertama kali bertemu teman kelas. Pilih salam pembuka sebelum menyebut nama.",
+        "options": [
+          "こちらこそ",
+          "はじめまして",
+          "ありがとうございます",
+          "すみません"
+        ],
+        "answer": 1,
+        "explanation": "はじめまして dipakai saat pertama berkenalan.",
+        "distractorReasons": [
+          "Ini respons timbal balik, bukan salam pembuka pertama.",
+          "はじめまして dipakai saat pertama berkenalan.",
+          "Ini ucapan terima kasih.",
+          "Ini permintaan maaf atau panggilan perhatian."
+        ],
+        "id": "b03-a-v05"
+      },
+      {
+        "category": "vocabulary",
+        "mode": "choice",
+        "objective": "relation",
+        "prompt": "Dalam perkenalan, Anda menyebut kakak perempuan Anda sendiri. Kata mana yang tepat?",
+        "options": [
+          "あね",
+          "あに",
+          "はは",
+          "ちち"
+        ],
+        "answer": 0,
+        "explanation": "あね menyebut kakak perempuan sendiri kepada orang lain.",
+        "distractorReasons": [
+          "あね menyebut kakak perempuan sendiri kepada orang lain.",
+          "あに berarti kakak laki-laki sendiri.",
+          "はは berarti ibu sendiri.",
+          "ちち berarti ayah sendiri."
+        ],
+        "id": "b03-a-v06"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "identity",
+        "prompt": "Sampaikan dengan sopan: saya seorang dokter.",
+        "options": [
+          "わたしの いしゃです。",
+          "わたしは いしゃですか。",
+          "わたしは いしゃじゃありません。",
+          "わたしは いしゃです。"
+        ],
+        "answer": 3,
+        "explanation": "は menandai topik dan です menyatakan identitas secara sopan.",
+        "distractorReasons": [
+          "の mengubahnya menjadi dokter milik/terkait saya, bukan identitas saya.",
+          "Ini bertanya, bukan menyatakan identitas.",
+          "Ini menyangkal profesi dokter.",
+          "は menandai topik dan です menyatakan identitas secara sopan."
+        ],
+        "id": "b03-a-g01"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "negation",
+        "prompt": "Kartu menyatakan Rina seorang guru, bukan karyawan perusahaan. Pilih kalimat penyangkalan yang sesuai.",
+        "options": [
+          "リナさんは かいしゃいんです。",
+          "リナさんは かいしゃいんですか。",
+          "リナさんは かいしゃいんじゃありません。",
+          "リナさんは せんせいじゃありません。"
+        ],
+        "answer": 2,
+        "explanation": "Bentuk ini menyangkal profesi karyawan sesuai kartu.",
+        "distractorReasons": [
+          "Ini menyatakan profesi yang keliru.",
+          "Ini bertanya, belum menyangkal.",
+          "Bentuk ini menyangkal profesi karyawan sesuai kartu.",
+          "Ini justru menyangkal profesi guru."
+        ],
+        "id": "b03-a-g02"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "question",
+        "prompt": "Anda belum tahu apakah Sari seorang pelajar. Ajukan pertanyaan sopan langsung.",
+        "options": [
+          "サリさんの がくせいです。",
+          "サリさんは がくせいですか。",
+          "サリさんは がくせいです。",
+          "サリさんは がくせいじゃありません。"
+        ],
+        "answer": 1,
+        "explanation": "ですか meminta informasi identitas yang belum diketahui.",
+        "distractorReasons": [
+          "の membentuk hubungan nomina, bukan pertanyaan identitas Sari.",
+          "ですか meminta informasi identitas yang belum diketahui.",
+          "Ini menyatakan identitas sebagai fakta.",
+          "Ini menyangkal identitas."
+        ],
+        "id": "b03-a-g03"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "addition",
+        "prompt": "Dewi sudah berkata bahwa ia dokter. Katakan bahwa kakak laki-laki Anda juga dokter.",
+        "options": [
+          "あにも いしゃです。",
+          "あにの いしゃです。",
+          "あには いしゃじゃありません。",
+          "あにも いしゃですか。"
+        ],
+        "answer": 0,
+        "explanation": "も menambahkan kakak sebagai orang dengan profesi sama.",
+        "distractorReasons": [
+          "も menambahkan kakak sebagai orang dengan profesi sama.",
+          "の tidak menyampaikan arti juga.",
+          "Ini menyatakan bahwa kakak bukan dokter.",
+          "Ini menanyakan, bukan menyatakan profesi kakak."
+        ],
+        "id": "b03-a-g04"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "relation",
+        "prompt": "Sampaikan nama ayah Anda: Ken. Pilih susunan yang berarti nama ayah saya adalah Ken.",
+        "options": [
+          "ちちは なまえの ケンです。",
+          "なまえの ちちは ケンです。",
+          "ちちの なまえは ケンですか。",
+          "ちちの なまえは ケンです。"
+        ],
+        "answer": 3,
+        "explanation": "の menghubungkan ayah dengan namanya.",
+        "distractorReasons": [
+          "Hubungan nama ayah tidak terbentuk dengan susunan ini.",
+          "Hubungan nomina terbalik.",
+          "Ini pertanyaan, bukan penyampaian nama.",
+          "の menghubungkan ayah dengan namanya."
+        ],
+        "id": "b03-a-g05"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "stance",
+        "prompt": "Anda sudah mendengar bahwa Yuki orang Jepang dan ingin memastikan informasi itu. Lengkapi hanya bagian akhir: ユキさんは にほんじんです（　）。",
+        "options": [
+          "も",
+          "の",
+          "ね",
+          "よ"
+        ],
+        "answer": 2,
+        "explanation": "ね meminta konfirmasi atas informasi yang sudah didengar.",
+        "distractorReasons": [
+          "も tidak ditempel setelah です untuk fungsi ini.",
+          "の bukan penutup konfirmasi sopan pada pola yang diminta.",
+          "ね meminta konfirmasi atas informasi yang sudah didengar.",
+          "よ menyampaikan informasi kepada lawan bicara, bukan meminta konfirmasi."
+        ],
+        "id": "b03-a-g06"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "relation",
+        "prompt": "Petugas meminta nama ibu Anda. Kartu keluarga: ibu = Emi; kakak perempuan = Yuna. Pilih jawaban yang sesuai.",
+        "options": [
+          "わたしの なまえは エミです。",
+          "ははの なまえは エミです。",
+          "ははの なまえは ユナです。",
+          "あねの なまえは エミです。"
+        ],
+        "answer": 1,
+        "explanation": "の menghubungkan ibu dengan namanya; Emi adalah nama ibu pada kartu.",
+        "distractorReasons": [
+          "Kalimat ini menyebut nama diri sendiri, padahal yang diminta nama ibu.",
+          "の menghubungkan ibu dengan namanya; Emi adalah nama ibu pada kartu.",
+          "Yuna adalah kakak perempuan, bukan nama ibu.",
+          "Kalimat ini menyebut nama kakak perempuan, dan namanya juga tidak sesuai kartu."
+        ],
+        "id": "b03-a-g07"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "negation",
+        "prompt": "Anda dokter, bukan perawat. Seseorang bertanya: かんごしですか。 Pilih jawaban yang meluruskan dugaan tersebut dan menyebut profesi Anda.",
+        "options": [
+          "いいえ、かんごしじゃありません。いしゃです。",
+          "はい、かんごしです。いしゃじゃありません。",
+          "いいえ、いしゃじゃありません。かんごしです。",
+          "はい、かんごしです。いしゃです。"
+        ],
+        "answer": 0,
+        "explanation": "いいえ dan じゃありません menyangkal perawat; kalimat berikutnya memberi profesi yang benar.",
+        "distractorReasons": [
+          "いいえ dan じゃありません menyangkal perawat; kalimat berikutnya memberi profesi yang benar.",
+          "Jawaban ini membenarkan perawat dan menyangkal dokter, terbalik dari situasi.",
+          "Penyangkalan diarahkan pada dokter, padahal Anda dokter.",
+          "Jawaban ini tetap mengaku sebagai perawat, padahal situasi menyatakan bukan perawat."
+        ],
+        "id": "b03-a-g08"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "question",
+        "prompt": "Pada perkenalan pertama, A meminta nama B. Pilih pertanyaan untuk A agar jawaban ini sesuai.\nA: （　）\nB: ユナです。",
+        "options": [
+          "おしごとは なんですか。",
+          "せんせいですか。",
+          "タイじんですか。",
+          "おなまえは なんですか。"
+        ],
+        "answer": 3,
+        "explanation": "Pertanyaan meminta nama; ユナです memberikan nama Yuna.",
+        "distractorReasons": [
+          "Pertanyaan meminta pekerjaan; Yuna adalah nama dalam situasi ini.",
+          "Pertanyaan ini menanyakan apakah B guru, bukan meminta namanya.",
+          "Pertanyaan ini menanyakan kewarganegaraan, bukan nama.",
+          "Pertanyaan meminta nama; ユナです memberikan nama Yuna."
+        ],
+        "id": "b03-a-g09"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "addition",
+        "prompt": "Kartu peserta: Joko dan Sari orang Indonesia; Emi orang Jepang; Ken orang Thailand. Lengkapi perkenalan dengan kalimat yang menyatakan kesamaan.\nジョコさんは インドネシアじんです。（　）",
+        "options": [
+          "サリさんも にほんじんです。",
+          "ケンさんも インドネシアじんです。",
+          "サリさんも インドネシアじんです。",
+          "エミさんも インドネシアじんです。"
+        ],
+        "answer": 2,
+        "explanation": "も menambahkan Sari sebagai orang dengan kewarganegaraan yang sama dengan Joko.",
+        "distractorReasons": [
+          "Sari bukan orang Jepang dan kalimat sebelumnya tidak menyatakan kewarganegaraan Jepang.",
+          "Ken orang Thailand, bukan orang Indonesia.",
+          "も menambahkan Sari sebagai orang dengan kewarganegaraan yang sama dengan Joko.",
+          "Emi orang Jepang, sehingga pernyataan kesamaan ini tidak sesuai kartu."
+        ],
+        "id": "b03-a-g10"
+      },
+      {
+        "category": "reading",
+        "mode": "choice",
+        "objective": "identity",
+        "prompt": "Apa profesi Anisa?",
+        "options": [
+          "かんごし",
+          "がくせい",
+          "いしゃ",
+          "せんせい"
+        ],
+        "answer": 1,
+        "explanation": "Anisa menyebut dirinya pelajar.",
+        "distractorReasons": [
+          "Teks tidak menyebut Anisa sebagai perawat.",
+          "Anisa menyebut dirinya pelajar.",
+          "Dokter adalah profesi kakaknya.",
+          "Teks tidak menyebut Anisa sebagai guru."
+        ],
+        "passage": "はじめまして。アニサです。わたしは インドネシアじんです。がくせいです。あには いしゃです。",
+        "id": "b03-a-r01"
+      },
+      {
+        "category": "reading",
+        "mode": "choice",
+        "objective": "relation",
+        "prompt": "Siapa yang berprofesi dokter?",
+        "options": [
+          "アニサさんの あに",
+          "アニサさん",
+          "アニサさんの はは",
+          "アニサさんの ちち"
+        ],
+        "answer": 0,
+        "explanation": "Dokter adalah kakak laki-laki Anisa.",
+        "distractorReasons": [
+          "Dokter adalah kakak laki-laki Anisa.",
+          "Anisa adalah pelajar.",
+          "Profesi ibu tidak diberikan.",
+          "Profesi ayah tidak diberikan."
+        ],
+        "passage": "はじめまして。アニサです。わたしは インドネシアじんです。がくせいです。あには いしゃです。",
+        "id": "b03-a-r02"
+      },
+      {
+        "category": "reading",
+        "mode": "choice",
+        "objective": "negation",
+        "prompt": "Kartu profesi mana yang cocok untuk Rina?",
+        "options": [
+          "せんせい",
+          "いしゃ",
+          "がくせい",
+          "かんごし"
+        ],
+        "answer": 3,
+        "explanation": "Rina menyangkal guru dan menyatakan perawat.",
+        "distractorReasons": [
+          "Profesi guru disangkal dalam teks.",
+          "Dokter tidak disebut sebagai profesi Rina.",
+          "Pelajar tidak disebut sebagai profesi Rina.",
+          "Rina menyangkal guru dan menyatakan perawat."
+        ],
+        "passage": "リナさんは タイじんです。せんせいじゃありません。かんごしです。デニさんも かんごしです。",
+        "id": "b03-a-r03"
+      },
+      {
+        "category": "reading",
+        "mode": "choice",
+        "objective": "addition",
+        "prompt": "Apa persamaan Rina dan Deni yang dinyatakan dalam teks?",
+        "options": [
+          "Keduanya orang Thailand.",
+          "Keduanya pelajar.",
+          "Keduanya perawat.",
+          "Keduanya guru."
+        ],
+        "answer": 2,
+        "explanation": "も menyatakan profesi perawat berlaku untuk keduanya.",
+        "distractorReasons": [
+          "Kewarganegaraan Deni tidak dinyatakan.",
+          "Teks tidak memberi profesi pelajar kepada mereka.",
+          "も menyatakan profesi perawat berlaku untuk keduanya.",
+          "Rina justru bukan guru."
+        ],
+        "passage": "リナさんは タイじんです。せんせいじゃありません。かんごしです。デニさんも かんごしです。",
+        "id": "b03-a-r04"
+      },
+      {
+        "category": "listening",
+        "mode": "choice",
+        "objective": "identity",
+        "prompt": "Siapa yang memperkenalkan diri sebagai karyawan perusahaan?",
+        "options": [
+          "Tidak ada",
+          "マリアさん",
+          "ユキさん",
+          "マリアさんと ユキさん"
+        ],
+        "answer": 1,
+        "explanation": "Maria menyebut dirinya かいしゃいん.",
+        "distractorReasons": [
+          "Maria menyebut profesi tersebut secara jelas.",
+          "Maria menyebut dirinya かいしゃいん.",
+          "Yuki menyebut dirinya guru.",
+          "Hanya Maria yang menyebut profesi karyawan."
+        ],
+        "audioScript": "A: はじめまして。わたしは マリアです。かいしゃいんです。\nB: はじめまして。わたしは ユキです。せんせいです。",
+        "id": "b03-a-l01",
+        "listeningFocus": "detail"
+      },
+      {
+        "category": "listening",
+        "mode": "choice",
+        "objective": "negation",
+        "prompt": "Dengarkan perkenalan dan pertanyaan berikutnya. Pilih jawaban Ken yang sesuai dengan perkenalannya.",
+        "options": [
+          "いいえ、いしゃです。",
+          "はい、かんごしです。",
+          "いいえ、せんせいです。",
+          "はい、いしゃです。"
+        ],
+        "answer": 0,
+        "explanation": "Ken memperkenalkan diri sebagai dokter; ia perlu menyangkal dugaan bahwa ia perawat.",
+        "distractorReasons": [
+          "Ken memperkenalkan diri sebagai dokter; ia perlu menyangkal dugaan bahwa ia perawat.",
+          "Jawaban ini membenarkan profesi perawat, berbeda dari perkenalan Ken.",
+          "Penyangkalan terhadap perawat sesuai, tetapi guru bukan profesi yang disebut Ken.",
+          "はい membenarkan dugaan perawat, sehingga tidak sesuai untuk meluruskan dugaan itu."
+        ],
+        "audioScript": "A: はじめまして。ケンです。いしゃです。\nB: ケンさんは かんごしですか。",
+        "id": "b03-a-l02",
+        "listeningFocus": "response"
+      },
+      {
+        "category": "listening",
+        "mode": "choice",
+        "objective": "addition",
+        "prompt": "Informasi mana yang benar tentang Dewi dan Sari?",
+        "options": [
+          "Hanya Dewi pelajar.",
+          "Hanya Sari pelajar.",
+          "Keduanya guru.",
+          "Keduanya pelajar."
+        ],
+        "answer": 3,
+        "explanation": "Sari membenarkan bahwa ia juga pelajar.",
+        "distractorReasons": [
+          "Sari juga menyatakan dirinya pelajar.",
+          "Dewi juga menyatakan dirinya pelajar.",
+          "Tidak ada yang mengaku guru.",
+          "Sari membenarkan bahwa ia juga pelajar."
+        ],
+        "audioScript": "A: わたしは デウィです。がくせいです。サリさんも がくせいですか。\nB: はい、わたしも がくせいです。",
+        "id": "b03-a-l03",
+        "listeningFocus": "inference"
+      },
+      {
+        "category": "listening",
+        "mode": "choice",
+        "objective": "stance",
+        "prompt": "Apa yang dilakukan Hadi dalam jawabannya?",
+        "options": [
+          "Membenarkan bahwa ia pelajar.",
+          "Memperkenalkan nama keluarganya.",
+          "Meluruskan dugaan tentang profesinya.",
+          "Menanyakan profesi lawan bicara."
+        ],
+        "answer": 2,
+        "explanation": "Hadi menyangkal pelajar dan memberi tahu bahwa ia insinyur.",
+        "distractorReasons": [
+          "Hadi justru menyangkal dugaan itu.",
+          "Jawaban membahas profesi, bukan nama keluarga.",
+          "Hadi menyangkal pelajar dan memberi tahu bahwa ia insinyur.",
+          "Jawabannya berupa informasi, bukan pertanyaan."
+        ],
+        "audioScript": "A: ハディさんは がくせいですね。\nB: いいえ、わたしは エンジニアですよ。",
+        "id": "b03-a-l04",
+        "listeningFocus": "intent"
+      }
+    ],
+    "B": [
+      {
+        "category": "vocabulary",
+        "mode": "choice",
+        "objective": "relation",
+        "prompt": "Pilih bacaan kata bergaris bawah: ちちの <u>名前</u>は ケンです。",
+        "options": [
+          "なまへ",
+          "めいまえ",
+          "なあまえ",
+          "なまえ"
+        ],
+        "answer": 3,
+        "explanation": "名前 dibaca なまえ.",
+        "distractorReasons": [
+          "え bukan ditulis へ pada kata ini.",
+          "名 pada 名前 dibaca な.",
+          "Tidak ada tambahan bunyi panjang setelah な.",
+          "名前 dibaca なまえ."
+        ],
+        "id": "b03-b-v01"
+      },
+      {
+        "category": "vocabulary",
+        "mode": "choice",
+        "objective": "identity",
+        "prompt": "Pilih bacaan kata bergaris bawah: わたしの <u>学校</u>です。",
+        "options": [
+          "かっこう",
+          "がっこ",
+          "がっこう",
+          "がこう"
+        ],
+        "answer": 2,
+        "explanation": "学校 dibaca がっこう dengan っ dan bunyi panjang.",
+        "distractorReasons": [
+          "が memerlukan dakuten.",
+          "Bacaan ini kehilangan bunyi panjang う.",
+          "学校 dibaca がっこう dengan っ dan bunyi panjang.",
+          "Bacaan ini kehilangan っ."
+        ],
+        "id": "b03-b-v02"
+      },
+      {
+        "category": "vocabulary",
+        "mode": "choice",
+        "objective": "identity",
+        "prompt": "Pilih bacaan kata bergaris bawah: タイの <u>人</u>です。",
+        "options": [
+          "ひとつ",
+          "ひと",
+          "じん",
+          "にん"
+        ],
+        "answer": 1,
+        "explanation": "人 pada ungkapan ini dibaca ひと.",
+        "distractorReasons": [
+          "ひとつ berarti satu benda, bukan bacaan 人 di sini.",
+          "人 pada ungkapan ini dibaca ひと.",
+          "じん bukan bacaan 人 setelah の pada ungkapan ini.",
+          "にん dipakai untuk hitungan tertentu, bukan ungkapan ini."
+        ],
+        "id": "b03-b-v03"
+      },
+      {
+        "category": "vocabulary",
+        "mode": "choice",
+        "objective": "identity",
+        "prompt": "Kartu menyebut kewarganegaraan Mina: Jepang. Lengkapi: ミナさんは（　）です。",
+        "options": [
+          "にほんじん",
+          "ちゅうごくじん",
+          "かんこくじん",
+          "タイじん"
+        ],
+        "answer": 0,
+        "explanation": "にほんじん berarti orang berkewarganegaraan Jepang.",
+        "distractorReasons": [
+          "にほんじん berarti orang berkewarganegaraan Jepang.",
+          "Ini berarti orang Tiongkok.",
+          "Ini berarti orang Korea.",
+          "Ini berarti orang Thailand."
+        ],
+        "id": "b03-b-v04"
+      },
+      {
+        "category": "vocabulary",
+        "mode": "choice",
+        "objective": "relation",
+        "prompt": "Anda menceritakan ibu Anda sendiri kepada teman baru. Pilih kata yang tepat.",
+        "options": [
+          "あね",
+          "ちち",
+          "あに",
+          "はは"
+        ],
+        "answer": 3,
+        "explanation": "はは dipakai untuk ibu sendiri.",
+        "distractorReasons": [
+          "あね berarti kakak perempuan sendiri.",
+          "ちち berarti ayah sendiri.",
+          "あに berarti kakak laki-laki sendiri.",
+          "はは dipakai untuk ibu sendiri."
+        ],
+        "id": "b03-b-v05"
+      },
+      {
+        "category": "vocabulary",
+        "mode": "choice",
+        "objective": "identity",
+        "prompt": "Seseorang membantu Anda. Pilih ucapan terima kasih yang sopan.",
+        "options": [
+          "どうぞ",
+          "よろしくおねがいします",
+          "ありがとうございます",
+          "はじめまして"
+        ],
+        "answer": 2,
+        "explanation": "Ungkapan ini menyampaikan terima kasih.",
+        "distractorReasons": [
+          "Ini mempersilakan atau menyerahkan sesuatu.",
+          "Ini ungkapan memohon hubungan/kerja sama, bukan ucapan terima kasih yang diminta.",
+          "Ungkapan ini menyampaikan terima kasih.",
+          "Ini salam perkenalan pertama."
+        ],
+        "id": "b03-b-v06"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "relation",
+        "prompt": "Pilih frasa yang berarti profesi ibu saya.",
+        "options": [
+          "ははも しごと",
+          "ははの しごと",
+          "しごとの はは",
+          "ははは しごと"
+        ],
+        "answer": 1,
+        "explanation": "の menghubungkan ibu dengan profesinya.",
+        "distractorReasons": [
+          "も menyatakan juga dan tidak membentuk hubungan yang diminta.",
+          "の menghubungkan ibu dengan profesinya.",
+          "Hubungannya terbalik.",
+          "は membentuk topik, bukan frasa profesi ibu."
+        ],
+        "id": "b03-b-g01"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "negation",
+        "prompt": "Anda ingin meluruskan kartu yang keliru: Anda orang Korea, bukan orang Jepang. Pilih kalimat yang sesuai.",
+        "options": [
+          "わたしは にほんじんじゃありません。",
+          "わたしは かんこくじんじゃありません。",
+          "わたしは にほんじんです。",
+          "わたしは にほんじんですか。"
+        ],
+        "answer": 0,
+        "explanation": "Kalimat ini menyangkal kewarganegaraan Jepang.",
+        "distractorReasons": [
+          "Kalimat ini menyangkal kewarganegaraan Jepang.",
+          "Ini menyangkal kewarganegaraan yang benar.",
+          "Ini membenarkan data yang keliru.",
+          "Ini bertanya, belum meluruskan data."
+        ],
+        "id": "b03-b-g02"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "question",
+        "prompt": "Anda ingin mengetahui nama lawan bicara. Pilih pertanyaan yang sesuai.",
+        "options": [
+          "おしごとは なんですか。",
+          "がくせいですか。",
+          "にほんじんですか。",
+          "おなまえは なんですか。"
+        ],
+        "answer": 3,
+        "explanation": "Pertanyaan ini meminta nama.",
+        "distractorReasons": [
+          "Ini meminta profesi.",
+          "Ini meminta konfirmasi status pelajar.",
+          "Ini meminta konfirmasi kewarganegaraan.",
+          "Pertanyaan ini meminta nama."
+        ],
+        "id": "b03-b-g03"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "addition",
+        "prompt": "Ayah Anda insinyur. Sampaikan bahwa ibu Anda juga insinyur.",
+        "options": [
+          "ははも エンジニアじゃありません。",
+          "ははも エンジニアですか。",
+          "ははも エンジニアです。",
+          "ははの エンジニアです。"
+        ],
+        "answer": 2,
+        "explanation": "も menyatakan profesi yang sama juga berlaku pada ibu.",
+        "distractorReasons": [
+          "Ini menyangkal profesi insinyur.",
+          "Ini pertanyaan, bukan informasi yang diminta.",
+          "も menyatakan profesi yang sama juga berlaku pada ibu.",
+          "の tidak menyatakan ibu juga insinyur."
+        ],
+        "id": "b03-b-g04"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "stance",
+        "prompt": "Teman mengira Anda perawat. Anda ingin memberinya informasi koreksi: Anda dokter. Pilih akhir yang menandai pemberian informasi baru: いしゃです（　）。",
+        "options": [
+          "か",
+          "よ",
+          "も",
+          "の"
+        ],
+        "answer": 1,
+        "explanation": "よ sesuai untuk menyampaikan informasi koreksi kepada teman.",
+        "distractorReasons": [
+          "か mengubahnya menjadi pertanyaan.",
+          "よ sesuai untuk menyampaikan informasi koreksi kepada teman.",
+          "も tidak ditempel setelah です untuk fungsi ini.",
+          "の bukan penutup pemberitahuan pada pola ini."
+        ],
+        "id": "b03-b-g05"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "identity",
+        "prompt": "Pilih kalimat sopan yang menyatakan bahwa orang bernama Ken adalah seorang guru.",
+        "options": [
+          "ケンさんは せんせいです。",
+          "せんせいは ケンさんですか。",
+          "ケンさんは せんせいじゃありません。",
+          "ケンさんの せんせいです。"
+        ],
+        "answer": 0,
+        "explanation": "Kalimat ini menyatakan profesi Ken secara sopan.",
+        "distractorReasons": [
+          "Kalimat ini menyatakan profesi Ken secara sopan.",
+          "Ini menanyakan identitas guru.",
+          "Ini menyatakan Ken bukan guru.",
+          "Ini berarti guru Ken, bukan Ken adalah guru."
+        ],
+        "id": "b03-b-g06"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "negation",
+        "prompt": "Pilih catatan yang sesuai dengan pernyataan ini.\nサリさんは がくせいです。ミカさんは がくせいじゃありません。せんせいです。",
+        "options": [
+          "Sari guru; Mika pelajar.",
+          "Keduanya pelajar.",
+          "Keduanya guru.",
+          "Sari pelajar; Mika guru."
+        ],
+        "answer": 3,
+        "explanation": "Sari dinyatakan pelajar. Untuk Mika, pelajar disangkal, lalu profesi guru dinyatakan.",
+        "distractorReasons": [
+          "Catatan ini menukar identitas keduanya dan mengabaikan penyangkalan untuk Mika.",
+          "Identitas pelajar hanya berlaku pada Sari; untuk Mika justru disangkal.",
+          "Guru adalah profesi Mika; Sari dinyatakan pelajar.",
+          "Sari dinyatakan pelajar. Untuk Mika, pelajar disangkal, lalu profesi guru dinyatakan."
+        ],
+        "id": "b03-b-g07"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "relation",
+        "prompt": "Anda menjelaskan keluarga sendiri. Ayah berasal dari Indonesia, ibu dari Thailand. Pilih kalimat yang menyampaikan negara ibu sesuai kartu.",
+        "options": [
+          "ははの くには インドネシアです。",
+          "ちちの くには インドネシアです。",
+          "ははの くには タイです。",
+          "ちちの くには タイです。"
+        ],
+        "answer": 2,
+        "explanation": "ははの くに menghubungkan ibu dengan negaranya, yaitu Thailand.",
+        "distractorReasons": [
+          "Indonesia adalah negara ayah, bukan negara ibu pada kartu.",
+          "Informasinya benar tentang ayah, tetapi yang diminta adalah negara ibu.",
+          "ははの くに menghubungkan ibu dengan negaranya, yaitu Thailand.",
+          "Kalimat ini menyebut negara ayah; data negaranya juga tidak sesuai."
+        ],
+        "id": "b03-b-g08"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "addition",
+        "prompt": "Kartu keluarga Anda: ayah dan kakak perempuan guru; ibu dan kakak laki-laki dokter. Anda baru berkata: ちちは せんせいです。 Pilih kelanjutan yang tepat untuk menyebut kesamaan profesi dengan ayah.",
+        "options": [
+          "あねも いしゃです。",
+          "あねも せんせいです。",
+          "あにも せんせいです。",
+          "ははも せんせいです。"
+        ],
+        "answer": 1,
+        "explanation": "Kakak perempuan juga guru; も menghubungkannya dengan profesi ayah yang baru disebut.",
+        "distractorReasons": [
+          "Kakak perempuan guru, bukan dokter; profesinya juga tidak sama dengan pernyataan tentang ayah.",
+          "Kakak perempuan juga guru; も menghubungkannya dengan profesi ayah yang baru disebut.",
+          "Kakak laki-laki dokter, sehingga tidak memiliki profesi guru yang sedang dibicarakan.",
+          "Ibu dokter, bukan guru."
+        ],
+        "id": "b03-b-g09"
+      },
+      {
+        "category": "grammar",
+        "mode": "choice",
+        "objective": "stance",
+        "prompt": "Anda sudah mendengar bahwa Ryo karyawan perusahaan. Saat bertemu Ryo, Anda ingin memastikan informasi itu, dengan maksud “Ryo karyawan perusahaan, ya.” Pilih ujaran yang sesuai.",
+        "options": [
+          "リョウさんは かいしゃいんですね。",
+          "リョウさんは かいしゃいんですよ。",
+          "リョウさんは いしゃですね。",
+          "リョウさんは いしゃですよ。"
+        ],
+        "answer": 0,
+        "explanation": "ね meminta konfirmasi atas profesi karyawan yang sudah didengar.",
+        "distractorReasons": [
+          "ね meminta konfirmasi atas profesi karyawan yang sudah didengar.",
+          "よ memberi atau menegaskan informasi kepada pendengar, bukan meminta konfirmasi dalam situasi ini.",
+          "ね meminta konfirmasi, tetapi profesi dokter tidak sesuai informasi yang didengar.",
+          "Ujaran ini memberikan informasi profesi dokter; baik profesi maupun maksudnya tidak sesuai."
+        ],
+        "id": "b03-b-g10"
+      },
+      {
+        "category": "reading",
+        "mode": "choice",
+        "objective": "identity",
+        "prompt": "Apa profesi Ken yang dinyatakan setelah penyangkalan?",
+        "options": [
+          "かいしゃいん",
+          "せんせい",
+          "いしゃ",
+          "エンジニア"
+        ],
+        "answer": 3,
+        "explanation": "Ken menyatakan dirinya insinyur.",
+        "distractorReasons": [
+          "Identitas karyawan disangkal dalam teks.",
+          "Guru adalah profesi orang tuanya.",
+          "Dokter tidak disebut.",
+          "Ken menyatakan dirinya insinyur."
+        ],
+        "passage": "わたしは ケンです。かいしゃいんじゃありません。エンジニアです。ははは せんせいです。ちちも せんせいです。",
+        "id": "b03-b-r01"
+      },
+      {
+        "category": "reading",
+        "mode": "choice",
+        "objective": "addition",
+        "prompt": "Pasangan mana yang memiliki profesi sama menurut teks?",
+        "options": [
+          "Ken dan ibunya",
+          "Ken dan kakaknya",
+          "Ayah dan ibu Ken",
+          "Ken dan ayahnya"
+        ],
+        "answer": 2,
+        "explanation": "Ayah dan ibu Ken sama-sama guru.",
+        "distractorReasons": [
+          "Ken insinyur, ibunya guru.",
+          "Kakak tidak dibahas.",
+          "Ayah dan ibu Ken sama-sama guru.",
+          "Ken insinyur, ayahnya guru."
+        ],
+        "passage": "わたしは ケンです。かいしゃいんじゃありません。エンジニアです。ははは せんせいです。ちちも せんせいです。",
+        "id": "b03-b-r02"
+      },
+      {
+        "category": "reading",
+        "mode": "choice",
+        "objective": "relation",
+        "prompt": "Siapa nama kakak perempuan Mina?",
+        "options": [
+          "アキ",
+          "ユナ",
+          "ミナ",
+          "ケン"
+        ],
+        "answer": 1,
+        "explanation": "Yuna adalah nama kakak perempuan (あね).",
+        "distractorReasons": [
+          "Aki adalah ibu (はは), bukan kakak perempuan.",
+          "Yuna adalah nama kakak perempuan (あね).",
+          "Mina adalah pembicara, bukan kakak perempuannya.",
+          "Ken adalah kakak laki-laki (あに), bukan kakak perempuan."
+        ],
+        "passage": "わたしの なまえは ミナです。くには かんこくです。あねの なまえは ユナです。あねは かんごしです。あにの なまえは ケンです。ははの なまえは アキです。",
+        "id": "b03-b-r03"
+      },
+      {
+        "category": "reading",
+        "mode": "choice",
+        "objective": "identity",
+        "prompt": "Informasi apa tentang Mina yang tersedia, selain namanya?",
+        "options": [
+          "Negaranya Korea.",
+          "Ia perawat.",
+          "Ia guru.",
+          "Ia bernama Yuna."
+        ],
+        "answer": 0,
+        "explanation": "Mina menyebut くにはかんこくです.",
+        "distractorReasons": [
+          "Mina menyebut くにはかんこくです.",
+          "Perawat adalah profesi kakaknya, bukan informasi tentang Mina.",
+          "Profesi Mina tidak diberikan.",
+          "Yuna adalah kakak Mina."
+        ],
+        "passage": "わたしの なまえは ミナです。くには かんこくです。あねの なまえは ユナです。あねは かんごしです。あにの なまえは ケンです。ははの なまえは アキです。",
+        "id": "b03-b-r04"
+      },
+      {
+        "category": "listening",
+        "mode": "choice",
+        "objective": "question",
+        "prompt": "Dengarkan pertanyaan terakhir. Pilih respons yang menjawab informasi yang diminta.",
+        "options": [
+          "スミです。",
+          "タイじんです。",
+          "ははの なまえは アキです。",
+          "かいしゃいんです。"
+        ],
+        "answer": 3,
+        "explanation": "Pertanyaan おしごとはなんですか meminta pekerjaan; かいしゃいん adalah profesi.",
+        "distractorReasons": [
+          "Ini menyebut nama, padahal nama sudah diperkenalkan dan pertanyaan terakhir meminta pekerjaan.",
+          "Ini menyebut kewarganegaraan, bukan pekerjaan.",
+          "Ini menyebut nama ibu, bukan pekerjaan diri sendiri.",
+          "Pertanyaan おしごとはなんですか meminta pekerjaan; かいしゃいん adalah profesi."
+        ],
+        "audioScript": "A: はじめまして。スミです。\nB: はじめまして。おしごとは なんですか。",
+        "id": "b03-b-l01",
+        "listeningFocus": "response"
+      },
+      {
+        "category": "listening",
+        "mode": "choice",
+        "objective": "negation",
+        "prompt": "Siapa yang kewarganegaraannya berbeda dari ayah Leo menurut audio?",
+        "options": [
+          "Hanya ibu Leo.",
+          "Tidak ada; ketiganya sama.",
+          "Leo dan ibunya.",
+          "Hanya Leo."
+        ],
+        "answer": 2,
+        "explanation": "Ayah Leo orang Amerika; Leo dan ibunya sama-sama menyatakan bukan orang Amerika, sehingga keduanya berbeda dari ayah.",
+        "distractorReasons": [
+          "Leo sendiri juga menyangkal kewarganegaraan Amerika.",
+          "Kesimpulan ini mengabaikan dua penyangkalan kewarganegaraan Amerika.",
+          "Ayah Leo orang Amerika; Leo dan ibunya sama-sama menyatakan bukan orang Amerika, sehingga keduanya berbeda dari ayah.",
+          "Selain Leo, ibunya juga disebut bukan orang Amerika."
+        ],
+        "audioScript": "A: はじめまして。レオです。ちちは アメリカじんです。わたしは アメリカじんじゃありません。ははも アメリカじんじゃありません。",
+        "id": "b03-b-l02",
+        "listeningFocus": "inference"
+      },
+      {
+        "category": "listening",
+        "mode": "choice",
+        "objective": "relation",
+        "prompt": "Hiro adalah siapa dalam keluarga Emi?",
+        "options": [
+          "Kakak perempuan Emi.",
+          "Ayah Emi.",
+          "Ibu Emi.",
+          "Kakak laki-laki Emi."
+        ],
+        "answer": 1,
+        "explanation": "Emi menyebut nama ayahnya Hiro.",
+        "distractorReasons": [
+          "Kakak perempuan tidak dibahas.",
+          "Emi menyebut nama ayahnya Hiro.",
+          "Nama ibu Emi adalah Aki.",
+          "Kakak laki-laki tidak dibahas."
+        ],
+        "audioScript": "A: わたしは エミです。ちちの なまえは ヒロです。ははの なまえは アキです。",
+        "id": "b03-b-l03",
+        "listeningFocus": "detail"
+      },
+      {
+        "category": "listening",
+        "mode": "choice",
+        "objective": "stance",
+        "prompt": "Apa maksud penutur pertama ketika memakai akhir kalimat tersebut?",
+        "options": [
+          "Memastikan informasi tentang profesi Mina.",
+          "Menyangkal bahwa Mina guru.",
+          "Memberi tahu nama Mina.",
+          "Mengucapkan terima kasih."
+        ],
+        "answer": 0,
+        "explanation": "ね meminta konfirmasi, kemudian Mina membenarkannya.",
+        "distractorReasons": [
+          "ね meminta konfirmasi, kemudian Mina membenarkannya.",
+          "Tidak ada penyangkalan pada ujaran pertama.",
+          "Ujaran membahas profesi, bukan memperkenalkan nama.",
+          "Tidak ada ucapan terima kasih."
+        ],
+        "audioScript": "A: ミナさんは せんせいですね。\nB: はい、せんせいです。",
+        "id": "b03-b-l04",
+        "listeningFocus": "intent"
+      }
+    ]
+  }
+}

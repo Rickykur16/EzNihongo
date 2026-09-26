@@ -6,11 +6,17 @@ import { isAdminEmail } from '../auth.js';
 import { requireLessonCourseAccess } from '../entitlements.js';
 import { completeLessonWithStats, reconcileLegacyProgress } from '../progress-service.js';
 import { kanaAssessmentKind, sampleKanaPlacementQuestions } from '../kana-placement.js';
+import { isChapterAssessment, createChapterSnapshot, publicChapterQuestions, publicChapterRules, validateChapterDraft } from '../chapter-assessment.js';
+import { renderTtsAudio } from './tts.js';
+import { isCanonicalUuid } from '../live-class-admin-rules.js';
+import rateLimit from 'express-rate-limit';
 
 const router = Router();
+const assessmentAudioLimiter = rateLimit({ windowMs: 60000, limit: 40, standardHeaders: 'draft-7', legacyHeaders: false });
 
 // All routes require auth
 router.use(requireAuth);
+router.use((req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
 
 // GET /api/progress/me — all lessons the user has progress on
 router.get('/progress/me', asyncHandler(async (req, res) => {
@@ -70,10 +76,11 @@ const ATTEMPT_RESUME_MINUTES = 30;
 async function lessonAttemptStatus(userId, lessonId, cooldownHours, runQuery = query) {
   const r = await runQuery(
     `SELECT id, attempt_token, score, total_questions, sampled_question_ids, grading_result,
-            started_at, completed_at
+            started_at, completed_at, assessment_snapshot, draft_answers, draft_revision
        FROM quiz_attempts
       WHERE user_id = $1 AND lesson_id = $2
-      ORDER BY COALESCE(completed_at, started_at) DESC NULLS LAST, started_at DESC NULLS LAST, id DESC
+      ORDER BY (completed_at IS NULL AND assessment_snapshot IS NOT NULL) DESC,
+        COALESCE(completed_at, started_at) DESC NULLS LAST, started_at DESC NULLS LAST, id DESC
       LIMIT 1`,
     [userId, lessonId]
   );
@@ -89,7 +96,7 @@ async function lessonAttemptStatus(userId, lessonId, cooldownHours, runQuery = q
   if (a.score === null && a.started_at) {
     const startedMs = new Date(a.started_at).getTime();
     const ageMin = (Date.now() - startedMs) / 60000;
-    if (ageMin < ATTEMPT_RESUME_MINUTES) {
+    if (isChapterAssessment(a.assessment_snapshot?.policy) || ageMin < ATTEMPT_RESUME_MINUTES) {
       return {
         lastAttempt: null,
         canAttempt: true,
@@ -103,7 +110,7 @@ async function lessonAttemptStatus(userId, lessonId, cooldownHours, runQuery = q
 
   const baseTime = a.completed_at || a.started_at;
   const baseMs = new Date(baseTime).getTime();
-  const cooldownMs = cooldownHours * 3600 * 1000;
+  const cooldownMs = (a.assessment_snapshot?.policy.cooldownHours ?? cooldownHours) * 3600 * 1000;
   const nextMs = baseMs + cooldownMs;
   const hoursLeft = Math.max(0, (nextMs - Date.now()) / 3600000);
   const canAttempt = hoursLeft <= 0;
@@ -113,6 +120,10 @@ async function lessonAttemptStatus(userId, lessonId, cooldownHours, runQuery = q
       score: a.score,
       totalQuestions: a.total_questions,
       completedAt: a.completed_at,
+      attemptToken: a.attempt_token,
+      assessmentVersion: a.assessment_snapshot?.version || null,
+      sectionResults: a.grading_result?.sectionResults || [],
+      objectiveResults: a.grading_result?.objectiveResults || [],
       passed: typeof a.grading_result?.passed === 'boolean' ? a.grading_result.passed : null,
     } : null,
     canAttempt,
@@ -189,7 +200,7 @@ router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('
   // Lesson meta + pool IDs paralel — di luar lock karena read-only & idempotent.
   const [lessonRow, poolIdsRes] = await Promise.all([
     query(
-      `SELECT id, slug, type, passing_score_pct, questions_per_attempt, cooldown_hours
+      `SELECT id, slug, type, passing_score_pct, questions_per_attempt, cooldown_hours, assessment_policy
          FROM lessons WHERE id = $1 LIMIT 1`,
       [lessonId]
     ),
@@ -201,6 +212,7 @@ router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('
 
   const passingScorePct = lesson.passing_score_pct ?? 70;
   const cooldownHours = lesson.cooldown_hours ?? 12;
+  const chapterPolicy = isChapterAssessment(lesson.assessment_policy) ? { ...lesson.assessment_policy, cooldownHours } : null;
   const poolRows = poolIdsRes.rows;
   const allIds = poolRows.map((r) => r.id);
   if (allIds.length === 0) return res.status(404).json({ error: 'Lesson has no quiz questions' });
@@ -220,20 +232,31 @@ router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('
         return { kind: 'resume', inProgress: status.inProgress };
       }
 
-      const sampledIds = kanaAssessmentKind(lesson.slug)
+      let snapshot = null;
+      if (chapterPolicy) {
+        const previous = await client.query(`SELECT assessment_snapshot->>'form' AS form FROM quiz_attempts
+          WHERE user_id=$1 AND lesson_id=$2 AND assessment_snapshot->>'version'=$3
+          ORDER BY started_at DESC, id DESC LIMIT 1`, [req.user.id, lessonId, chapterPolicy.version]);
+        const bank = await client.query(`SELECT q.*, COALESCE((SELECT jsonb_agg(to_jsonb(o) ORDER BY o.sort_order)
+          FROM quiz_options o WHERE o.question_id=q.id), '[]'::jsonb) AS options
+          FROM quiz_questions q WHERE q.lesson_id=$1 AND q.assessment_meta->>'version'=$2`, [lessonId, chapterPolicy.version]);
+        snapshot = createChapterSnapshot(chapterPolicy, bank.rows, previous.rows[0]?.form);
+      }
+      const sampledIds = snapshot ? snapshot.questions.map(q => q.id) : kanaAssessmentKind(lesson.slug)
         ? sampleKanaPlacementQuestions(poolRows, lesson.questions_per_attempt).map((row) => row.id)
         : sampleQuestionIds(allIds, lesson.questions_per_attempt);
       const insertRes = await runQuery(
-        `INSERT INTO quiz_attempts (user_id, lesson_id, attempt_token, sampled_question_ids, started_at)
-         VALUES ($1, $2, gen_random_uuid(), $3::jsonb, NOW())
+        `INSERT INTO quiz_attempts (user_id, lesson_id, attempt_token, sampled_question_ids, assessment_snapshot, started_at)
+         VALUES ($1, $2, gen_random_uuid(), $3::jsonb, $4::jsonb, NOW())
          RETURNING attempt_token, started_at`,
-        [req.user.id, lessonId, JSON.stringify(sampledIds)]
+        [req.user.id, lessonId, JSON.stringify(sampledIds), snapshot ? JSON.stringify(snapshot) : null]
       );
       return {
         kind: 'new',
         sampledIds,
         attemptToken: insertRes.rows[0].attempt_token,
         startedAt: insertRes.rows[0].started_at,
+        snapshot,
       };
     });
   } catch (err) {
@@ -250,36 +273,78 @@ router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('
       cooldownHoursLeft: s.cooldownHoursLeft,
       nextAttemptAt: s.nextAttemptAt,
       lastAttempt: s.lastAttempt,
-      passingScorePct,
+      passingScorePct: chapterPolicy?.passingScorePct ?? passingScorePct,
     });
   }
 
   if (result.kind === 'resume') {
     const ip = result.inProgress;
     const sampledIds = Array.isArray(ip.sampled_question_ids) ? ip.sampled_question_ids : [];
-    const questions = await loadQuestionsByIds(sampledIds);
-    const expiresAt = new Date(new Date(ip.started_at).getTime() + ATTEMPT_RESUME_MINUTES * 60000).toISOString();
+    const questions = ip.assessment_snapshot ? publicChapterQuestions(ip.assessment_snapshot) : await loadQuestionsByIds(sampledIds);
+    const expiresAt = ip.assessment_snapshot ? null : new Date(new Date(ip.started_at).getTime() + ATTEMPT_RESUME_MINUTES * 60000).toISOString();
     return res.json({
       resumed: true,
       attemptToken: ip.attempt_token,
       questions,
-      passingScorePct,
+      passingScorePct: ip.assessment_snapshot?.policy.passingScorePct ?? passingScorePct,
       totalQuestions: questions.length,
       expiresAt,
+      ...(ip.assessment_snapshot ? { assessmentVersion: ip.assessment_snapshot.version, assessmentForm: ip.assessment_snapshot.form,
+        assessmentRules: publicChapterRules(ip.assessment_snapshot.policy), objectives: ip.assessment_snapshot.policy.objectives,
+        draftAnswers: ip.draft_answers, draftRevision: ip.draft_revision } : {}),
     });
   }
 
   // result.kind === 'new'
-  const questions = await loadQuestionsByIds(result.sampledIds);
-  const expiresAt = new Date(new Date(result.startedAt).getTime() + ATTEMPT_RESUME_MINUTES * 60000).toISOString();
+  const questions = result.snapshot ? publicChapterQuestions(result.snapshot) : await loadQuestionsByIds(result.sampledIds);
+  const expiresAt = result.snapshot ? null : new Date(new Date(result.startedAt).getTime() + ATTEMPT_RESUME_MINUTES * 60000).toISOString();
   res.json({
     attemptToken: result.attemptToken,
     questions,
-    passingScorePct,
+    passingScorePct: result.snapshot?.policy.passingScorePct ?? passingScorePct,
     totalQuestions: questions.length,
-    poolSize: allIds.length,
+    poolSize: result.snapshot ? 48 : allIds.length,
     expiresAt,
+    ...(result.snapshot ? { assessmentVersion: result.snapshot.version, assessmentForm: result.snapshot.form,
+      assessmentRules: publicChapterRules(result.snapshot.policy), objectives: result.snapshot.policy.objectives, draftAnswers: [], draftRevision: 0 } : {}),
   });
+}));
+
+// Drafts are revision-checked so a stale tab cannot overwrite newer work.
+router.put('/progress/lesson/:lessonId/quiz/draft', requireLessonCourseAccess('lessonId'), asyncHandler(async (req, res) => {
+  const { attemptToken, answers, revision } = req.body || {};
+  if (!isCanonicalUuid(attemptToken) || !Number.isInteger(revision) || revision < 0) return res.status(400).json({ error: 'invalid_draft' });
+  const outcome = await withAdvisoryLock(`quiz:${req.user.id}:${req.params.lessonId}`, async client => {
+    const found = await client.query(`SELECT id, assessment_snapshot, completed_at, draft_revision FROM quiz_attempts
+      WHERE user_id=$1 AND lesson_id=$2 AND attempt_token=$3 FOR UPDATE`, [req.user.id, req.params.lessonId, attemptToken]);
+    const attempt = found.rows[0];
+    if (!attempt || !isChapterAssessment(attempt.assessment_snapshot?.policy)) return { status: 404, body: { error: 'attempt_not_found' } };
+    if (attempt.completed_at) return { status: 409, body: { error: 'attempt_completed' } };
+    if (attempt.draft_revision !== revision) return { status: 409, body: { error: 'draft_conflict' } };
+    if (!validateChapterDraft(attempt.assessment_snapshot, answers)) return { status: 400, body: { error: 'invalid_draft' } };
+    await client.query(`UPDATE quiz_attempts SET draft_answers=$2::jsonb, draft_revision=draft_revision+1 WHERE id=$1`, [attempt.id, JSON.stringify(answers)]);
+    return { status: 200, body: { revision: revision + 1 } };
+  });
+  res.set('Cache-Control', 'private, no-store').status(outcome.status).json(outcome.body);
+}));
+
+router.get('/progress/lesson/:lessonId/quiz/review', requireLessonCourseAccess('lessonId'), asyncHandler(async (req, res) => {
+  const token = req.query.attemptToken;
+  if (!isCanonicalUuid(token)) return res.status(400).json({ error: 'invalid_attempt_token' });
+  const found = await query(`SELECT grading_result FROM quiz_attempts WHERE user_id=$1 AND lesson_id=$2
+    AND attempt_token=$3 AND completed_at IS NOT NULL AND assessment_snapshot IS NOT NULL`, [req.user.id, req.params.lessonId, token]);
+  if (!found.rows[0]?.grading_result) return res.status(404).json({ error: 'review_not_available' });
+  res.set('Cache-Control', 'private, no-store').json(found.rows[0].grading_result);
+}));
+
+router.get('/progress/lesson/:lessonId/quiz/audio/:questionId', assessmentAudioLimiter, requireLessonCourseAccess('lessonId'), asyncHandler(async (req, res) => {
+  const token = req.query.attemptToken;
+  if (!isCanonicalUuid(token) || !isCanonicalUuid(req.params.questionId)) return res.status(400).json({ error: 'invalid_audio_request' });
+  const found = await query(`SELECT assessment_snapshot FROM quiz_attempts WHERE user_id=$1 AND lesson_id=$2 AND attempt_token=$3`, [req.user.id, req.params.lessonId, token]);
+  const snapshot = found.rows[0]?.assessment_snapshot;
+  const question = isChapterAssessment(snapshot?.policy) && snapshot.questions.find(q => q.id === req.params.questionId && q.question_category === 'listening');
+  if (!question) return res.status(404).json({ error: 'audio_not_available' });
+  return renderTtsAudio(question.audio_script, res, { privateResponse: true });
 }));
 
 // POST /api/progress/lesson/:lessonId/quiz-attempt
@@ -291,6 +356,7 @@ router.post('/progress/lesson/:lessonId/quiz-attempt', requireLessonCourseAccess
     submitQuizAttempt(client, {
       userId: req.user.id, lessonId,
       attemptToken: req.body?.attemptToken, answers: req.body?.answers,
+      draftRevision: req.body?.draftRevision,
     })
   );
   res.status(outcome.status).json(outcome.body);
@@ -302,7 +368,7 @@ router.post('/progress/lesson/:lessonId/quiz-attempt', requireLessonCourseAccess
 router.get('/progress/lesson/:lessonId/quiz-status', requireLessonCourseAccess('lessonId'), asyncHandler(async (req, res) => {
   const lessonId = req.params.lessonId;
   const lessonRow = await query(
-    `SELECT id, type, passing_score_pct, questions_per_attempt, cooldown_hours
+    `SELECT id, type, passing_score_pct, questions_per_attempt, cooldown_hours, assessment_policy
        FROM lessons WHERE id = $1 LIMIT 1`,
     [lessonId]
   );
@@ -316,15 +382,18 @@ router.get('/progress/lesson/:lessonId/quiz-status', requireLessonCourseAccess('
 
   // Pool size (untuk indikator "X soal pool, N akan diuji").
   const poolRes = await query(
-    `SELECT COUNT(*)::int AS n FROM quiz_questions WHERE lesson_id = $1`,
-    [lessonId]
+    `SELECT COUNT(*)::int AS n FROM quiz_questions WHERE lesson_id = $1
+      AND ($2::text IS NULL OR assessment_meta->>'version'=$2)`,
+    [lessonId, isChapterAssessment(lesson.assessment_policy) ? lesson.assessment_policy.version : null]
   );
   const poolSize = poolRes.rows[0]?.n || 0;
+  const resumingLegacy = !!status.inProgress && !status.inProgress.assessment_snapshot && isChapterAssessment(lesson.assessment_policy);
+  const displayPolicy = resumingLegacy ? null : status.inProgress?.assessment_snapshot?.policy || lesson.assessment_policy;
 
   res.json({
     lessonId,
-    passingScorePct,
-    questionsPerAttempt: lesson.questions_per_attempt || poolSize,
+    passingScorePct: isChapterAssessment(displayPolicy) ? publicChapterRules(displayPolicy).passingScorePct : passingScorePct,
+    questionsPerAttempt: resumingLegacy ? status.inProgress.sampled_question_ids.length : lesson.questions_per_attempt || poolSize,
     cooldownHours,
     poolSize,
     canAttempt: status.canAttempt,
@@ -332,6 +401,9 @@ router.get('/progress/lesson/:lessonId/quiz-status', requireLessonCourseAccess('
     nextAttemptAt: status.nextAttemptAt,
     lastAttempt: status.lastAttempt,
     inProgress: !!status.inProgress,
+    resumingLegacy,
+    ...(isChapterAssessment(displayPolicy) ? { assessmentVersion: displayPolicy.version,
+      assessmentRules: publicChapterRules(displayPolicy), objectives: displayPolicy.objectives } : {}),
   });
 }));
 
