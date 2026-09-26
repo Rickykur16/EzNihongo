@@ -397,6 +397,7 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
   section_label TEXT NOT NULL DEFAULT 'Section 1',
   section_instruction TEXT,
   audio_script TEXT,
+  audio_scene JSONB CONSTRAINT quiz_questions_audio_scene_object CHECK (audio_scene IS NULL OR jsonb_typeof(audio_scene) = 'object'),
   passage TEXT,
   image_url TEXT,
   correct_answer TEXT,

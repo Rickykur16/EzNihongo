@@ -13,25 +13,35 @@ assert.ok(answerStart > 0 && answerEnd > answerStart);
 const landingStart = html.indexOf('function renderQuizLandingCard(');
 const landingEnd = html.indexOf('function escapeAttr(', landingStart);
 assert.ok(landingStart > 0 && landingEnd > landingStart);
+const localDraftStart = html.indexOf('function quizLocalDraftKey(');
+const localDraftEnd = html.indexOf('function getQuizKey(', localDraftStart);
+assert.ok(localDraftStart > 0 && localDraftEnd > localDraftStart);
 function setup() {
-  const main = { innerHTML: '' }, effects = { xp:0, confetti:0, progress:0, cache:0, calls:[] };
+  const main = { innerHTML: '' }, effects = { xp:0, confetti:0, progress:0, cache:0, calls:[], removed:[], unfinishedCleared:0 };
+  const storage = new Map();
   const state = { key:'n5:bab1:quiz', attemptToken:'token', correct:2,
     questions:[{questionId:'q1',category:'vocabulary'},{questionId:'q2',category:'vocabulary'}],
     answers:[{questionId:'q1',optionId:'o1'},{questionId:'q2',optionId:'o2'}], correctByIndex:{0:true,1:true} };
   const result = { score:2,total:2,passed:true,passingScorePct:70,completionSaved:true,
     correctByQuestion:{q1:true,q2:true},cooldownHours:0,nextAttemptAt:null };
-  const ctx = vm.createContext({ quizState:state, document:{getElementById:()=>main},
-    window:{ezApi:async (...args)=>{effects.calls.push(args);return {ok:true,json:async()=>result};}},
+  const ctx = vm.createContext({ quizState:state, session:{id:'learner-a'}, document:{getElementById:()=>main},
+    window:{__requiredAssignment:{key:state.key,attemptToken:state.attemptToken},
+      ezClearUnfinishedAssignmentCache:()=>effects.unfinishedCleared++,
+      ezApi:async (...args)=>{effects.calls.push(args);return {ok:true,json:async()=>result};}},
     destroyAllListeningPlayers:()=>{},findLesson:()=>({apiId:'lesson'}),invalidateQuizStatus:()=>{},
-    console:{warn:()=>{}},localStorage:{getItem:()=>null,setItem:()=>effects.cache++},
+    console:{warn:()=>{}},localStorage:{getItem:key=>storage.get(key) ?? null,
+      setItem:(key,value)=>{storage.set(key,value);effects.cache++;},
+      removeItem:key=>{storage.delete(key);effects.removed.push(key);}},
     _scheduleCloudPush:()=>{}, getProgress:()=>({}),setProgress:()=>effects.progress++,
     addXP:()=>effects.xp++,fireConfetti:()=>effects.confetti++,renderSidebar:()=>{},
     QUIZ_CAT_ORDER:['vocabulary'],QUIZ_CATEGORY_META:{vocabulary:{label:'Kosakata'}},
     normalizeQuizCategory:()=> 'vocabulary',fmtNextAt:x=>x,
     kanaPlacementMeta:()=>null,escapeHtml:(value)=>value,
   });
+  vm.runInContext(html.slice(localDraftStart,localDraftEnd),ctx);
   vm.runInContext(html.slice(start,end),ctx);
-  return {ctx,main,effects,result,state};
+  storage.set(ctx.quizLocalDraftKey(state),JSON.stringify({answers:state.answers}));
+  return {ctx,main,effects,result,state,storage};
 }
 for (const failure of ['http500','network','invalid-json','missing-api','invalid-success','zero-total']) {
   test(`quiz ${failure} never declares a pass, writes progress or awards XP`,async()=>{
@@ -48,6 +58,9 @@ for (const failure of ['http500','network','invalid-json','missing-api','invalid
     assert.equal(effects.xp+effects.confetti+effects.progress+effects.cache,0);
     assert.equal(state.submitting,false);
     assert.equal(state.answers.length,2);
+    assert.equal(effects.removed.length,0);
+    assert.equal(effects.unfinishedCleared,0);
+    assert.equal(ctx.window.__requiredAssignment.attemptToken,state.attemptToken);
   });
 }
 test('retry keeps the token/answers and only applies the server-confirmed result once',async()=>{
@@ -64,6 +77,9 @@ test('retry keeps the token/answers and only applies the server-confirmed result
   assert.equal(effects.progress,1);
   assert.equal(effects.confetti,1);
   assert.equal(state.submitted,true);
+  assert.equal(ctx.window.__requiredAssignment,null);
+  assert.deepEqual(effects.removed,[ctx.quizLocalDraftKey(state)]);
+  assert.equal(effects.unfinishedCleared,1);
   assert.match(main.innerHTML,/✓ Lulus/);
 });
 test('server failure grade overrides optimistic client score and category feedback',async()=>{

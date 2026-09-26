@@ -4748,7 +4748,7 @@
   © 2026 <strong>EzNihongo</strong> · <a href="privacy.html">Kebijakan Privasi</a> · <a href="terms.html">Syarat &amp; Ketentuan</a>
 </footer>
 
-<script src="api-client.js"></script>
+<script src="api-client.js?v=20260926-assignment"></script>
 <script src="assets/dialogue/catalog.js?v=1"></script>
 <script src="src/dialogue-furigana.js?v=1"></script>
 <script src="src/dialogue-scene.js?v=2"></script>
@@ -5521,6 +5521,40 @@ window.speakJapanese = speakJapanese;
 // ═══════════════════════════════════════════════
 let quizState = null;
 
+// A started assignment remains the learning task until submission succeeds.
+window.__requiredAssignment = null;
+window.setRequiredAssignment = (key, attemptToken) => { window.__requiredAssignment = {key, attemptToken}; };
+window.blockAssignmentNavigation = (key) => {
+  if (!window.__requiredAssignment || window.__requiredAssignment.key === key) return false;
+  showToast('Selesaikan dan kirim semua jawaban assignment yang sedang berjalan terlebih dahulu.', 3500);
+  return true;
+};
+function quizLocalDraftKey(state) { return `ez_assignment_draft:${session?.id || 'unknown'}:${state.attemptToken}`; }
+function storeQuizLocalDraft(state) {
+  try { localStorage.setItem(quizLocalDraftKey(state), JSON.stringify({revision:state.draftRevision, answers:state.answers, inFlightAnswers:state.inFlightAnswers || null})); } catch {}
+}
+function clearQuizLocalDraft(state) {
+  try { localStorage.removeItem(quizLocalDraftKey(state)); } catch {}
+}
+function recoverQuizLocalDraft(state, serverAnswers) {
+  try {
+    const local = JSON.parse(localStorage.getItem(quizLocalDraftKey(state)) || 'null');
+    const sameBase = local?.revision === state.draftRevision;
+    // A pending request may have committed just before the page was closed.
+    const justCommitted = local?.revision + 1 === state.draftRevision &&
+      JSON.stringify(local.inFlightAnswers) === JSON.stringify(serverAnswers);
+    if ((!sameBase && !justCommitted) || !Array.isArray(local?.answers)) return serverAnswers;
+    const seen = new Set();
+    if (!local.answers.every(a=>{
+      const q=state.questions.find(q=>q.questionId===a.questionId);
+      if(!q || seen.has(a.questionId))return false;seen.add(a.questionId);
+      return ['fill_in','fill_blank'].includes(q.questionType) ? typeof a.textAnswer==='string' : q.optionIds.includes(a.optionId);
+    })) return serverAnswers;
+    if (JSON.stringify(local.answers) !== JSON.stringify(serverAnswers)) state.draftDirty = true;
+    return local.answers;
+  } catch { return serverAnswers; }
+}
+
 function getQuizKey(courseSlug, moduleId, lessonId) {
   return `${courseSlug}:${moduleId}:${lessonId}`;
 }
@@ -5528,8 +5562,11 @@ function getQuizKey(courseSlug, moduleId, lessonId) {
 // Async — fetch quiz-status, render landing card atau cooldown card.
 // Klik Mulai Kuis → startQuizAttempt() → POST /quiz/start → render paper.
 async function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
-  const viewEpoch = window.__quizNavigationEpoch = (window.__quizNavigationEpoch || 0) + 1;
   const key = getQuizKey(courseSlug, moduleId, lessonId);
+  if (quizState?.key === key && !quizState.submitted && window.__requiredAssignment?.key === key) {
+    renderQuizQuestion(container); return;
+  }
+  const viewEpoch = window.__quizNavigationEpoch = (window.__quizNavigationEpoch || 0) + 1;
   const lesson = findLesson(courseSlug, moduleId, lessonId);
   if (!lesson?.apiId) {
     container.innerHTML = `<div class="quiz-container"><p style="color:#485f84;">Kuis belum tersedia.</p></div>`;
@@ -5542,6 +5579,7 @@ async function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
   // pas status arrive. Kalau cache hit, langsung skip skeleton.
   const cached = _quizStatusCache.get(lesson.apiId);
   if (cached && (Date.now() - cached.ts) < QUIZ_STATUS_TTL) {
+    if (cached.data.inProgress) return window.startQuizAttempt(key, {resumeOnly:true, attemptToken:cached.data.inProgressAttemptToken});
     renderQuizLandingCard(container, key, lessonTitle, cached.data);
     return;
   }
@@ -5563,6 +5601,7 @@ async function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
     container.innerHTML = `<div class="quiz-container"><p style="color:#b91c1c;">Gagal load status kuis. Refresh halaman.</p></div>`;
     return;
   }
+  if (status.inProgress) return window.startQuizAttempt(key, {resumeOnly:true, attemptToken:status.inProgressAttemptToken});
   renderQuizLandingCard(container, key, lessonTitle, status);
 }
 
@@ -5696,7 +5735,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
 
 function escapeAttr(s) { return String(s).replace(/'/g, '&#39;').replace(/"/g, '&quot;'); }
 
-window.startQuizAttempt = async (key) => {
+window.startQuizAttempt = async (key, resume = null) => {
   const viewEpoch = window.__quizNavigationEpoch = (window.__quizNavigationEpoch || 0) + 1;
   const [slug, mId, lId] = key.split(':');
   const lesson = findLesson(slug, mId, lId);
@@ -5706,7 +5745,7 @@ window.startQuizAttempt = async (key) => {
   invalidateQuizStatus(lesson.apiId);
   try {
     const r = await window.ezApi(`/progress/lesson/${encodeURIComponent(lesson.apiId)}/quiz/start`, {
-      method: 'POST',
+      method: 'POST', ...(resume ? {body:JSON.stringify(resume)} : {}),
     });
     if (viewEpoch !== window.__quizNavigationEpoch) return;
     if (r.status === 429) {
@@ -5719,6 +5758,11 @@ window.startQuizAttempt = async (key) => {
     if (!r.ok) {
       const errData = await r.json().catch(() => ({}));
       if (viewEpoch !== window.__quizNavigationEpoch) return;
+      if (resume && errData.error === 'attempt_not_pending') {
+        window.__requiredAssignment = null;
+        window.ezClearUnfinishedAssignmentCache?.();
+        return renderQuizLesson(main, slug, mId, lId);
+      }
       main.innerHTML = `<div class="quiz-container"><p style="color:#b91c1c;">Gagal mulai: ${errData.error || r.status}</p></div>`;
       return;
     }
@@ -5744,14 +5788,17 @@ window.startQuizAttempt = async (key) => {
       activeCategory: firstQuizCategoryWithQuestions(questions),
       attemptToken: data.attemptToken,
       passingScorePct: data.passingScorePct,
-      deferFeedback: !!data.assessmentVersion || !!kanaPlacementMeta({ id: lId }),
+      deferFeedback: !!data.draftEnabled || !!data.assessmentVersion || !!kanaPlacementMeta({ id: lId }),
+      draftEnabled: !!data.draftEnabled || !!data.assessmentVersion,
       assessmentVersion: data.assessmentVersion || null,
       draftRevision: data.draftRevision || 0,
       lessonApiId: lesson.apiId,
       viewEpoch,
-      draftStatus: data.assessmentVersion ? 'Jawaban tersimpan otomatis setelah diisi.' : '',
+      draftStatus: data.draftEnabled || data.assessmentVersion ? 'Jawaban tersimpan otomatis setelah diisi.' : '',
     };
-    for (const answer of data.draftAnswers || []) {
+    window.setRequiredAssignment?.(key, data.attemptToken);
+    const draftAnswers = recoverQuizLocalDraft(quizState, data.draftAnswers || []);
+    for (const answer of draftAnswers) {
       const qi = questions.findIndex(q => q.questionId === answer.questionId);
       if (qi < 0) continue;
       const selected = answer.textAnswer ?? questions[qi].optionIds.indexOf(answer.optionId);
@@ -5760,7 +5807,10 @@ window.startQuizAttempt = async (key) => {
       quizState.selectedByIndex[qi] = selected;
       quizState.answeredByIndex[qi] = true;
     }
+    const nextUnanswered = questions.find((q,i)=>!quizState.answeredByIndex[i]);
+    if (nextUnanswered) quizState.activeCategory = normalizeQuizCategory(nextUnanswered.category);
     renderQuizQuestion(main);
+    if (quizState.draftDirty) scheduleChapterDraft(quizState);
   } catch (err) {
     if (viewEpoch !== window.__quizNavigationEpoch) return;
     main.innerHTML = `<div class="quiz-container"><p style="color:#b91c1c;">Network error: ${err?.message || err}</p></div>`;
@@ -6308,6 +6358,7 @@ function renderQuizQuestion(container) {
 
   container.innerHTML = `
     <div class="quiz-container quiz-paper">
+      <p class="quiz-required-note">Assignment wajib diselesaikan. Jawab seluruh ${total} soal lalu kirim jawaban. Jika website ditutup, sesi ini akan dilanjutkan saat dibuka kembali.</p>
       <div class="quiz-paper-tabs" role="tablist" aria-label="Kategori kuis">
         ${renderQuizCategoryTabs(questions)}
       </div>
@@ -6316,9 +6367,9 @@ function renderQuizQuestion(container) {
 
       <div class="quiz-paper-actions">
         <div class="quiz-progress-text" id="quiz-paper-progress">Terjawab 0 / ${total}</div>
-        <button class="quiz-next-btn" id="quiz-finish-btn" onclick="finishQuiz()" disabled>Lihat Hasil</button>
+        <button class="quiz-next-btn" id="quiz-finish-btn" onclick="finishQuiz()" disabled>Kirim jawaban &amp; lihat hasil</button>
       </div>
-      ${quizState.assessmentVersion ? `<p id="quiz-draft-status" role="status">${escapeHtml(quizState.draftStatus || '')}</p><p>Jawaban dapat diubah sebelum dikirim. Gunakan tab kategori untuk menjawab semua bagian.</p>` : ''}
+      ${quizState.draftEnabled || quizState.assessmentVersion ? `<p id="quiz-draft-status" role="status">${escapeHtml(quizState.draftStatus || '')}</p><p>Jawaban dapat diubah sebelum dikirim. Gunakan tab kategori untuk menjawab semua bagian.</p>` : ''}
     </div>
   `;
   updateQuizPaperProgress();
@@ -6347,11 +6398,12 @@ function setQuizAnswerPayload(questionIndex, payload) {
     quizState.answeredByIndex[questionIndex] = true;
   }
   updateQuizPaperProgress();
-  if (quizState.assessmentVersion) scheduleChapterDraft(quizState);
+  if (quizState.draftEnabled || quizState.assessmentVersion) scheduleChapterDraft(quizState);
 }
 
 function scheduleChapterDraft(state) {
   state.draftDirty = true;
+  storeQuizLocalDraft(state);
   clearTimeout(state.draftTimer);
   state.draftStatus = 'Menyimpan jawaban…';
   const el = document.getElementById('quiz-draft-status');
@@ -6366,8 +6418,10 @@ async function saveChapterDraft(state) {
   try {
     while (state.draftDirty && !state.submitted && !state.submitting) {
       state.draftDirty = false;
+      state.inFlightAnswers = JSON.parse(JSON.stringify(state.answers));
+      storeQuizLocalDraft(state);
       const response = await window.ezApi(`/progress/lesson/${encodeURIComponent(state.lessonApiId)}/quiz/draft`, {
-        method: 'PUT', body: JSON.stringify({ attemptToken: state.attemptToken, answers: state.answers, revision: state.draftRevision }),
+        method: 'PUT', body: JSON.stringify({ attemptToken: state.attemptToken, answers: state.inFlightAnswers, revision: state.draftRevision }),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -6375,6 +6429,8 @@ async function saveChapterDraft(state) {
         throw new Error(data.error || 'draft_save_failed');
       }
       state.draftRevision = data.revision;
+      state.inFlightAnswers = null;
+      if (state.draftDirty) storeQuizLocalDraft(state); else clearQuizLocalDraft(state);
     }
     state.draftStatus = 'Jawaban tersimpan.';
   } catch {
@@ -6555,7 +6611,7 @@ async function finishQuiz() {
       throw new Error('quiz_connection_unavailable');
     }
     const res = await window.ezApi(`/progress/lesson/${encodeURIComponent(lessonApiId)}/quiz-attempt`, {
-      method: 'POST', body: JSON.stringify({ attemptToken, answers, ...(state.assessmentVersion ? { draftRevision: state.draftRevision } : {}) }),
+      method: 'POST', body: JSON.stringify({ attemptToken, answers, ...(state.draftEnabled || state.assessmentVersion ? { draftRevision: state.draftRevision } : {}) }),
     });
     data = await res.json();
     if (!res.ok) throw new Error(data.error || 'quiz_submit_failed');
@@ -6587,6 +6643,9 @@ async function finishQuiz() {
   }
   if (quizState !== state || viewEpoch !== window.__quizNavigationEpoch) return;
   state.submitted = true;
+  clearQuizLocalDraft(state);
+  window.__requiredAssignment = null;
+  window.ezClearUnfinishedAssignmentCache?.();
   const { score, total, passed, nextAttemptAt, cooldownHours } = data;
   const passing = data.passingScorePct;
   const pct = Math.round((score / total) * 100);
@@ -13368,6 +13427,9 @@ function _sectionOfModule(moduleId) {
 }
 
 window.selectLesson = (moduleId, lessonId) => {
+  if (window.blockAssignmentNavigation?.(getQuizKey(currentState.course, moduleId, lessonId))) return;
+  if (window.__requiredAssignment && quizState && !quizState.submitted &&
+      window.__requiredAssignment.key === getQuizKey(currentState.course, moduleId, lessonId)) { closeSidebar(); return; }
   const completeMobileContentFocus = prepareMobileSidebarContentFocus();
   // Cleanup lesson-scoped state sebelum pindah — listening player + kanji
   // detail overlay + kanji stroke timer + kanji modal stale state.
@@ -13403,6 +13465,7 @@ window.selectLesson = (moduleId, lessonId) => {
 };
 
 window.selectModuleIntro = (moduleId) => {
+  if (window.blockAssignmentNavigation?.(null)) return;
   const completeMobileContentFocus = prepareMobileSidebarContentFocus();
   try { destroyAllListeningPlayers(); } catch {}
   try { window.closeKanjiDetail?.(); } catch {}
@@ -13869,6 +13932,7 @@ function renderCourseTabs(activeSlug) {
 }
 
 window.switchCourse = async (slug) => {
+  if (window.blockAssignmentNavigation?.(slug === currentState.course ? window.__requiredAssignment?.key : null)) return;
   const enrolled = getEnrolledCourses();
   if (!enrolled.includes(slug)) {
     // Route through the universal checkout page. detail.html handles
@@ -14385,6 +14449,7 @@ const S = (window.AISenpai = {
   // meng-overlay user_progress kanonik, sehingga Dashboard dan Belajar tidak
   // sempat menampilkan jumlah selesai yang berbeda saat halaman dibuka.
   const params = new URLSearchParams(window.location.search);
+  let pendingAssignment = null;
   try {
     await syncEnrollmentsFromServer();
     // Balik dari checkout (?new=<slug>): selesaikan resolusi enrollment +
@@ -14394,6 +14459,7 @@ const S = (window.AISenpai = {
     await Promise.all([
       hydrateEnrolledCourses(),
       syncLearningStateFromServer({ reconcile: true }),
+      window.ezGetUnfinishedAssignment().then(attempt=>{pendingAssignment=attempt;}),
     ]);
     // The server already removed obsolete lesson slugs from its canonical
     // cache. Remove the same stale keys locally after the current catalog has
@@ -14415,11 +14481,22 @@ const S = (window.AISenpai = {
   // handleNewEnrollment may rewrite the URL to ?course=<new slug>; re-read.
   const requested = new URLSearchParams(window.location.search).get('course');
   const enrolled = getEnrolledCourses();
-  const selected = enrolled.includes(requested) ? requested : enrolled[0];
+  const pendingCourse = pendingAssignment && COURSE_CONTENT[pendingAssignment.courseSlug];
+  const pendingModule = pendingCourse?.modules.find(m=>m.id===pendingAssignment.moduleSlug);
+  const pendingLesson = pendingModule?.lessons.find(l=>l.apiId===pendingAssignment.lessonId);
+  const resumePending = !!pendingLesson && enrolled.includes(pendingAssignment.courseSlug);
+  const selected = resumePending ? pendingAssignment.courseSlug : enrolled.includes(requested) ? requested : enrolled[0];
 
   if (enrolled.length === 0) {
     renderPaywall();
   } else {
+    if (resumePending) {
+      currentState.moduleId = pendingModule.id;
+      currentState.lessonId = pendingLesson.id;
+      currentState.view = 'lesson';
+      window.setRequiredAssignment(getQuizKey(selected,pendingModule.id,pendingLesson.id), pendingAssignment.attemptToken);
+      history.replaceState({}, '', `welcome.html?course=${encodeURIComponent(selected)}&module=${encodeURIComponent(pendingModule.id)}&lesson=${encodeURIComponent(pendingLesson.id)}`);
+    }
     renderCourseTabs(selected);
     renderLearning(selected);
     // Dashboard's Continue Learning link opens the protected, existing lesson
@@ -14427,11 +14504,11 @@ const S = (window.AISenpai = {
     const targetModule = params.get('module');
     const targetLesson = params.get('lesson');
     const selectedCourse = COURSE_CONTENT[selected];
-    if (targetModule && targetLesson && selectedCourse?.modules?.some((m) => m.id === targetModule && m.lessons.some((l) => l.id === targetLesson))) {
+    if (!resumePending && targetModule && targetLesson && selectedCourse?.modules?.some((m) => m.id === targetModule && m.lessons.some((l) => l.id === targetLesson))) {
       selectLesson(targetModule, targetLesson);
     }
     const focusLesson = params.get('focusLesson');
-    if (focusLesson) {
+    if (!resumePending && focusLesson) {
       for (const slug of enrolled) {
         const course = COURSE_CONTENT[slug];
         const module = course?.modules.find(m => m.lessons.some(l => l.apiId === focusLesson));
