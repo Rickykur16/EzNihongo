@@ -56,6 +56,7 @@ import {
 } from '../bunpou-flow-service.js';
 import { loadMasteryShadow, summarizeShadow } from '../grammar-mastery-shadow.js';
 import { loadPilotLessonOptions } from '../bunpou-pilot-catalog.js';
+import { BoundaryContextError, getCurriculumBoundary } from '../curriculum-boundary.js';
 import { V2_CONFIG, POLICY_V2, POLICY_SETTING_KEY, resolvePolicy } from '../grammar-mastery-policy.js';
 import {
   grammarExampleLearningScopeWarnings,
@@ -335,6 +336,29 @@ router.get('/courses', asyncHandler(async (req, res) => {
     `SELECT * FROM courses ORDER BY sort_order ASC, created_at ASC`
   );
   res.json({ courses: result.rows });
+}));
+
+// Read-only curriculum inspector. It remains owner-only in the explicit
+// company route policy because it exposes cross-course provenance and
+// readiness diagnostics rather than learner-facing content.
+router.get('/curriculum-boundary', asyncHandler(async (req, res) => {
+  const keys = ['courseId', 'moduleId', 'lessonId', 'grammarId'];
+  const scope = Object.fromEntries(keys.filter(key => req.query[key] != null && req.query[key] !== '')
+    .map(key => [key, req.query[key]]));
+  if (!scope.moduleId && !scope.lessonId && !scope.grammarId) {
+    return res.status(400).json({ error: 'moduleId, lessonId, or grammarId required' });
+  }
+  const invalid = keys.find(key => scope[key] != null && !isCanonicalUuid(scope[key]));
+  if (invalid) return res.status(400).json({ error: `invalid_${invalid}` });
+  try {
+    const boundary = await getCurriculumBoundary(scope);
+    res.set('Cache-Control', 'private, no-store');
+    return res.json(boundary);
+  } catch (error) {
+    if (!(error instanceof BoundaryContextError)) throw error;
+    const status = error.code.endsWith('_not_found') ? 404 : 400;
+    return res.status(status).json({ error: error.code, details: error.details });
+  }
 }));
 
 router.post('/courses', asyncHandler(async (req, res) => {
