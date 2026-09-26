@@ -49,6 +49,10 @@ const WIPE_TABLES = [
   'grammar_task_sessions',
 ];
 
+// During deploy the new backend may start before migration 165. Keep the new
+// table optional until present, while still rejecting every unknown user FK.
+const OPTIONAL_WIPE_TABLES = ['dialogue_question_attempts'];
+
 // Tabel ber-FK ke users yang SENGAJA tidak masuk WIPE_TABLES, masing-masing
 // dengan alasannya. Dipakai assertUserTablesCovered() supaya tabel baru yang
 // ditambahkan migrasi berikutnya tidak diam-diam lolos dari penghapusan.
@@ -74,14 +78,17 @@ export async function assertUserTablesCovered(client) {
   const staffTables = await inspectStaffErasureTables(client);
   const { rows } = await client.query(
     `SELECT DISTINCT c.conrelid::regclass::text AS tabel, child.relname AS relation_name,
+            child_ns.nspname AS schema_name,
             child.relnamespace = parent.relnamespace AS same_schema
        FROM pg_constraint c
        JOIN pg_class child ON child.oid = c.conrelid
+       JOIN pg_namespace child_ns ON child_ns.oid = child.relnamespace
        JOIN pg_class parent ON parent.oid = c.confrelid
       WHERE c.contype = 'f' AND c.confrelid = 'users'::regclass`
   );
-  const known = new Set([...WIPE_TABLES, ...Object.keys(HANDLED_SEPARATELY)]);
-  const unknown = rows.filter(r => !known.has(r.tabel) &&
+  const known = new Set([...WIPE_TABLES, ...OPTIONAL_WIPE_TABLES, ...Object.keys(HANDLED_SEPARATELY)]);
+  const optional = new Set(OPTIONAL_WIPE_TABLES);
+  const unknown = rows.filter(r => !known.has(r.tabel) && !(r.same_schema && optional.has(r.relation_name)) &&
     !(r.same_schema && staffTables.has(r.relation_name))).map(r => r.tabel);
   if (unknown.length) {
     throw new Error(
@@ -89,7 +96,14 @@ export async function assertUserTablesCovered(client) {
       `Tambahkan ke WIPE_TABLES atau HANDLED_SEPARATELY di backend/src/user-erasure.js.`
     );
   }
-  return staffTables;
+  const optionalWipeTables = OPTIONAL_WIPE_TABLES.flatMap(table =>
+    rows.filter(r => r.relation_name === table && r.same_schema)
+      .map(r => `${quoteIdentifier(r.schema_name)}.${quoteIdentifier(table)}`));
+  return { staffTables, optionalWipeTables };
+}
+
+function quoteIdentifier(identifier) {
+  return `"${identifier.replaceAll('"', '""')}"`;
 }
 
 // Hak "menarik persetujuan" (privacy.html bagian 9) tanpa menghapus akun:
@@ -113,14 +127,14 @@ export async function eraseUserAccount(client, userId) {
   // Same transaction/client as the caller. Future staff grants must take this
   // user lock too and reject tombstone accounts before creating membership.
   await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [userId]);
-  const staffTables = await assertUserTablesCovered(client);
+  const { staffTables, optionalWipeTables } = await assertUserTablesCovered(client);
 
   const wiped = await eraseStaffUserData(client, userId, staffTables);
-  for (const table of WIPE_TABLES) {
-    // Nama tabel berasal dari konstanta di file ini saja, tidak pernah dari
-    // input request — jadi interpolasi di sini bukan jalur injeksi.
+  for (const table of [...WIPE_TABLES, ...optionalWipeTables]) {
+    // Nama tabel berasal dari konstanta di file ini; schema untuk tabel baru
+    // diambil dari katalog FK dan di-quote, bukan dari input request.
     const res = await client.query(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
-    wiped[table] = res.rowCount;
+    wiped[table.includes('.') ? 'dialogue_question_attempts' : table] = res.rowCount;
   }
 
   // Konten diskusi: di-scrub, barisnya dipertahankan (lihat HANDLED_SEPARATELY).

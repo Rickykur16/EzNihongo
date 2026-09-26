@@ -126,3 +126,21 @@ hasil tersebut dicatat sebagai validasi PR1, bukan diklaim sebagai baseline
 bersih. Test PostgreSQL, migration runner, dan audit data tidak dijalankan karena
 `TEST_DATABASE_URL` tidak tersedia. Sesuai plan, `DATABASE_URL` dan `.env` tidak
 dibaca dan migration runner tidak dijalankan tanpa target test yang tervalidasi.
+
+## Bukti validasi PR1 setelah baseline
+
+PostgreSQL 16.13 portable kemudian dijalankan hanya pada workspace lokal dengan
+database disposable. Tidak ada service sistem, database production, atau `.env`
+repository yang digunakan.
+
+- Test migration/constraint/erasure terfokus: 20 pass, 0 fail, 0 skip.
+- Full backend suite dengan PostgreSQL: 523 test, 522 pass, 0 fail, 1 skip
+  (`operations browser`, memerlukan browser terpisah).
+- Root learning-state/landing suite: 5 pass, 0 fail.
+- Full migration runner dari `backend/schema.sql`: 162 migration applied pada
+  run pertama; run kedua melaporkan database up to date dan menerapkan 0 file.
+- Ledger berisi tepat satu `165_learning_flow_boundary_foundation.sql`.
+- Catalog memverifikasi default boundary `'off'`, session flow version `1`, dan
+  `learning_flow_communication_v1.enabled=false`.
+
+Database disposable dihentikan dan dihapus setelah setiap run.
