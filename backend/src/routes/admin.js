@@ -57,6 +57,9 @@ import {
 import { loadMasteryShadow, summarizeShadow } from '../grammar-mastery-shadow.js';
 import { loadPilotLessonOptions } from '../bunpou-pilot-catalog.js';
 import { BoundaryContextError, getCurriculumBoundary } from '../curriculum-boundary.js';
+import { validateAndWriteContent, boundaryWriteHttpError } from '../curriculum-content-service.js';
+import { validateContentAgainstBoundary } from '../curriculum-boundary-validator.js';
+import { decideBoundaryAction } from '../curriculum-boundary-policy.js';
 import { V2_CONFIG, POLICY_V2, POLICY_SETTING_KEY, resolvePolicy } from '../grammar-mastery-policy.js';
 import {
   grammarExampleLearningScopeWarnings,
@@ -82,6 +85,57 @@ async function safeLearningWarnings(loadWarnings) {
 
 // Every route in this file requires admin
 router.use(requireAuth, requireCompanyAdmin);
+
+const boundaryField = (path, value) => ({ path, text: String(value ?? '') });
+function boundaryFieldsFrom(path, value) {
+  if (typeof value === 'string') return [boundaryField(path, value)];
+  if (Array.isArray(value)) return value.flatMap((item, index) => boundaryFieldsFrom(`${path}[${index}]`, item));
+  if (value && typeof value === 'object') return Object.entries(value)
+    .flatMap(([key, item]) => boundaryFieldsFrom(`${path}.${key}`, item));
+  return [];
+}
+export function dialogueVisibleFields(scene, furigana) {
+  return [
+    ...(scene?.participants || []).flatMap((participant, index) => [
+      boundaryField(`dialogScene.participants[${index}].speaker`, participant.speaker),
+      boundaryField(`dialogScene.participants[${index}].displayName`, participant.displayName),
+    ]),
+    ...(furigana?.lines || []).flatMap((line, index) => [
+      boundaryField(`dialogFurigana.lines[${index}].speaker`, line.speaker),
+      boundaryField(`dialogFurigana.lines[${index}].text`, line.text),
+      ...(line.readings || []).map((reading, readingIndex) =>
+        boundaryField(`dialogFurigana.lines[${index}].readings[${readingIndex}].reading`, reading.reading)),
+    ]),
+  ];
+}
+async function assertBatchLessonOwnership(client, moduleId, items) {
+  const lessonIds = [...new Set(items.map(item => item?.lessonId).filter(Boolean))];
+  if (!lessonIds.length) return;
+  if (lessonIds.some(id => !isCanonicalUuid(id))) throw new BoundaryContextError('boundary_context_mismatch');
+  const owned = await client.query('SELECT id FROM lessons WHERE module_id=$1 AND id=ANY($2::uuid[])',
+    [moduleId, lessonIds]);
+  if (owned.rows.length !== lessonIds.length) throw new BoundaryContextError('boundary_context_mismatch');
+}
+export async function assertQuizGrammarReachable(client, grammarId, lessonId) {
+  if (!grammarId) return;
+  const linked = await client.query(`WITH RECURSIVE reachable(course_id) AS (
+      SELECT m.course_id FROM lessons l JOIN modules m ON m.id=l.module_id WHERE l.id=$2
+      UNION
+      SELECT p.prerequisite_course_id FROM course_prerequisites p
+        JOIN reachable r ON r.course_id=p.course_id
+    ) SELECT g.id FROM module_grammar g JOIN modules gm ON gm.id=g.module_id
+      WHERE g.id=$1 AND gm.course_id IN (SELECT course_id FROM reachable)`, [grammarId, lessonId]);
+  if (!linked.rows.length) throw new BoundaryContextError('grammar_lesson_owner_mismatch');
+}
+async function adminBoundaryWrite(res, options) {
+  try { return await validateAndWriteContent(options); }
+  catch (error) {
+    const response = boundaryWriteHttpError(error);
+    if (!response) throw error;
+    res.status(response.statusCode).json(response.body);
+    return null;
+  }
+}
 
 // ── YouTube video sources ────────────────────────────────────────────────
 // Store an ID, never an embed URL. The same source can then be picked by many
@@ -361,6 +415,33 @@ router.get('/curriculum-boundary', asyncHandler(async (req, res) => {
   }
 }));
 
+// Editor preview is informative only; every later save resolves and validates
+// again in its write transaction. The existing owner-only route policy does
+// not grant this new endpoint to company staff by default.
+router.post('/curriculum-boundary/validate', asyncHandler(async (req, res) => {
+  const input = req.body || {};
+  const keys = ['courseId', 'moduleId', 'lessonId', 'grammarId'];
+  const scope = Object.fromEntries(keys.filter(key => input.scope?.[key] != null && input.scope[key] !== '')
+    .map(key => [key, input.scope[key]]));
+  const invalid = keys.find(key => scope[key] != null && !isCanonicalUuid(scope[key]));
+  if (invalid || (!scope.moduleId && !scope.lessonId && !scope.grammarId)) {
+    return res.status(400).json({ error: invalid ? `invalid_${invalid}` : 'boundary_leaf_context_required' });
+  }
+  const operation = input.operation || 'live_write';
+  try {
+    const boundary = await getCurriculumBoundary(scope);
+    const report = validateContentAgainstBoundary({ boundary, contentType: input.contentType,
+      operation, fields: input.fields, communicationGoal: input.communicationGoal,
+      contentIsNewOrChanged: true });
+    const decision = decideBoundaryAction({ mode: boundary.course.mode, operation, report });
+    res.set('Cache-Control', 'private, no-store');
+    return res.json({ report, decision, boundaryFingerprint: boundary.boundaryFingerprint });
+  } catch (error) {
+    if (!(error instanceof BoundaryContextError)) throw error;
+    return res.status(error.code.endsWith('_not_found') ? 404 : 400).json({ error: error.code, details: error.details });
+  }
+}));
+
 router.post('/courses', asyncHandler(async (req, res) => {
   const {
     slug, title, description, level, thumbnailUrl, sortOrder, isPublished, isAvailable,
@@ -584,20 +665,43 @@ router.get('/module-vocabulary', asyncHandler(async (req, res) => {
 router.post('/module-vocabulary', asyncHandler(async (req, res) => {
   const { moduleId, lessonId, japanese, reading, romaji, indonesian, category, note, sortOrder } = req.body || {};
   if (!moduleId || !japanese) return res.status(400).json({ error: 'moduleId and japanese required' });
-  const result = await query(
-    `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, romaji, indonesian, category, note, sort_order)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-    [moduleId, lessonId || null, japanese, reading || null, romaji || null, indonesian || null, category || null, note || null, sortOrder || 0]
-  );
+  const outcome = await adminBoundaryWrite(res, {
+    prepare: async () => ({ scope: { moduleId, lessonId: lessonId || undefined },
+      contentType: 'vocabulary_example', operation: 'live_write',
+      fields: [boundaryField('japanese', japanese), boundaryField('reading', reading),
+        boundaryField('romaji', romaji), boundaryField('indonesian', indonesian),
+        boundaryField('category', category), boundaryField('note', note)],
+      expectedBoundaryFingerprint: req.body?.boundaryFingerprint }),
+    write: async client => (await client.query(
+      `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, romaji, indonesian, category, note, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [moduleId, lessonId || null, japanese, reading || null, romaji || null, indonesian || null,
+        category || null, note || null, sortOrder || 0])).rows[0],
+  });
+  if (!outcome) return;
   invalidateCourseVocabCache();
-  res.status(201).json({ vocabulary: result.rows[0] });
+  res.status(201).json({ vocabulary: outcome.value, validation: outcome.report });
 }));
 
 router.put('/module-vocabulary/:id', asyncHandler(async (req, res) => {
   const { lessonId, japanese, reading, romaji, indonesian, category, note, sortOrder } = req.body || {};
   // lessonId is special: allow explicit null to unassign. Use has-own-property semantics.
   const hasLesson = Object.prototype.hasOwnProperty.call(req.body || {}, 'lessonId');
-  const result = await query(
+  const outcome = await adminBoundaryWrite(res, {
+    prepare: async (client, { locked }) => {
+      const old = await client.query(`SELECT * FROM module_vocabulary WHERE id=$1 ${locked ? 'FOR UPDATE' : ''}`, [req.params.id]);
+      if (!old.rows.length) throw new BoundaryContextError('vocabulary_owner_unresolved');
+      const row = old.rows[0];
+      return { scope: { moduleId: row.module_id, lessonId: hasLesson ? lessonId || undefined : row.lesson_id || undefined },
+        contentType: 'vocabulary_example', contentId: row.id, operation: 'live_write',
+        fields: [boundaryField('japanese', japanese ?? row.japanese), boundaryField('reading', reading ?? row.reading),
+          boundaryField('romaji', romaji ?? row.romaji), boundaryField('indonesian', indonesian ?? row.indonesian),
+          boundaryField('category', category ?? row.category), boundaryField('note', note ?? row.note)],
+        contentIsNewOrChanged: [japanese, reading, romaji, indonesian, category, note].some(value => value != null),
+        expectedRevision: req.body?.expectedRevision, currentRevision: row.updated_at,
+        expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async client => (await client.query(
     `UPDATE module_vocabulary SET
        lesson_id = CASE WHEN $10::boolean THEN $2 ELSE lesson_id END,
        japanese = COALESCE($3, japanese),
@@ -610,10 +714,11 @@ router.put('/module-vocabulary/:id', asyncHandler(async (req, res) => {
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
     [req.params.id, lessonId || null, japanese, reading, romaji, indonesian, category, note, sortOrder, hasLesson]
-  );
-  if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+    )).rows[0],
+  });
+  if (!outcome) return;
   invalidateCourseVocabCache();
-  res.json({ vocabulary: result.rows[0] });
+  res.json({ vocabulary: outcome.value, validation: outcome.report });
 }));
 
 router.delete('/module-vocabulary/:id', asyncHandler(async (req, res) => {
@@ -627,24 +732,33 @@ router.post('/module-vocabulary/bulk', asyncHandler(async (req, res) => {
   if (!moduleId || !Array.isArray(items)) return res.status(400).json({ error: 'moduleId and items[] required' });
   // replace=true DELETEs the whole module first; without a transaction a crash
   // mid-insert leaves the module emptied or half-populated.
-  const inserted = await withTransaction(async (client) => {
-    if (replace) await client.query(`DELETE FROM module_vocabulary WHERE module_id = $1`, [moduleId]);
-    const out = [];
-    for (let i = 0; i < items.length; i++) {
-      const v = items[i] || {};
-      if (!v.japanese) continue;
-      const r = await client.query(
-        `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, romaji, indonesian, category, note, sort_order)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-        [moduleId, v.lessonId || null, v.japanese, v.reading || null, v.romaji || null, v.indonesian || null,
-         v.category || null, v.note || null, v.sortOrder ?? i]
-      );
-      out.push(r.rows[0]);
-    }
-    return out;
+  const outcome = await adminBoundaryWrite(res, {
+    prepare: async client => {
+      await assertBatchLessonOwnership(client, moduleId, items);
+      return { scope: { moduleId }, contentType: 'vocabulary_example', operation: 'live_write',
+      fields: items.flatMap((v, index) => ['japanese', 'reading', 'romaji', 'indonesian', 'category', 'note']
+        .map(key => boundaryField(`items[${index}].${key}`, v?.[key]))),
+      expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async client => {
+      if (replace) await client.query(`DELETE FROM module_vocabulary WHERE module_id = $1`, [moduleId]);
+      const out = [];
+      for (let i = 0; i < items.length; i++) {
+        const v = items[i] || {};
+        if (!v.japanese) continue;
+        const r = await client.query(
+          `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, romaji, indonesian, category, note, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+          [moduleId, v.lessonId || null, v.japanese, v.reading || null, v.romaji || null, v.indonesian || null,
+            v.category || null, v.note || null, v.sortOrder ?? i]);
+        out.push(r.rows[0]);
+      }
+      return out;
+    },
   });
+  if (!outcome) return;
   invalidateCourseVocabCache();
-  res.status(201).json({ vocabulary: inserted });
+  res.status(201).json({ vocabulary: outcome.value, validation: outcome.report });
 }));
 
 // ===== VOCAB BANK PICKER (for deck lessons) =====
@@ -690,21 +804,49 @@ router.get('/vocabulary-examples', asyncHandler(async (req, res) => {
 router.post('/vocabulary-examples', asyncHandler(async (req, res) => {
   const { vocabularyId, japanese, reading, highlight, indonesian, sortOrder } = req.body || {};
   if (!vocabularyId || !japanese) return res.status(400).json({ error: 'vocabularyId and japanese required' });
-  const r = await query(
-    `INSERT INTO vocabulary_examples (vocabulary_id, japanese, reading, highlight, indonesian, sort_order)
-     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-    [vocabularyId, japanese, reading || null, highlight || null, indonesian || null, sortOrder || 0]
-  );
+  const outcome = await adminBoundaryWrite(res, {
+    prepare: async client => {
+      const owner = await client.query('SELECT module_id,lesson_id FROM module_vocabulary WHERE id=$1', [vocabularyId]);
+      if (!owner.rows.length) throw new BoundaryContextError('vocabulary_owner_unresolved');
+      return { scope: { moduleId: owner.rows[0].module_id, lessonId: owner.rows[0].lesson_id || undefined },
+        contentType: 'vocabulary_example', operation: 'live_write',
+        fields: [boundaryField('japanese', japanese), boundaryField('reading', reading),
+          boundaryField('highlight', highlight), boundaryField('indonesian', indonesian)],
+        expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async client => (await client.query(
+      `INSERT INTO vocabulary_examples (vocabulary_id, japanese, reading, highlight, indonesian, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [vocabularyId, japanese, reading || null, highlight || null, indonesian || null, sortOrder || 0])).rows[0],
+  });
+  if (!outcome) return;
+  const row = outcome.value;
   invalidateCourseVocabCache();
-  const warnings = await safeLearningWarnings(() => vocabularyExampleLearningScopeWarnings(r.rows[0].id));
-  res.status(201).json({ example: r.rows[0], warnings });
+  const warnings = await safeLearningWarnings(() => vocabularyExampleLearningScopeWarnings(row.id));
+  res.status(201).json({ example: row, warnings, validation: outcome.report });
 }));
 
 router.put('/vocabulary-examples/:id', asyncHandler(async (req, res) => {
   const { japanese, reading, highlight, indonesian, sortOrder } = req.body || {};
   const hasHighlight = Object.prototype.hasOwnProperty.call(req.body || {}, 'highlight');
   const hasReading = Object.prototype.hasOwnProperty.call(req.body || {}, 'reading');
-  const r = await query(
+  const outcome = await adminBoundaryWrite(res, {
+    prepare: async (client, { locked }) => {
+      const old = await client.query(`SELECT e.*,v.module_id,v.lesson_id FROM vocabulary_examples e
+        JOIN module_vocabulary v ON v.id=e.vocabulary_id WHERE e.id=$1 ${locked ? 'FOR UPDATE OF e' : ''}`, [req.params.id]);
+      if (!old.rows.length) throw new BoundaryContextError('vocabulary_owner_unresolved');
+      const row = old.rows[0];
+      return { scope: { moduleId: row.module_id, lessonId: row.lesson_id || undefined }, contentType: 'vocabulary_example',
+        contentId: row.id, operation: 'live_write',
+        fields: [boundaryField('japanese', japanese ?? row.japanese),
+          boundaryField('reading', hasReading ? reading : row.reading),
+          boundaryField('highlight', hasHighlight ? highlight : row.highlight),
+          boundaryField('indonesian', indonesian ?? row.indonesian)],
+        contentIsNewOrChanged: japanese != null || hasReading || hasHighlight || indonesian != null,
+        expectedRevision: req.body?.expectedRevision, currentRevision: row.updated_at,
+        expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async client => (await client.query(
     `UPDATE vocabulary_examples SET
        japanese = COALESCE($2, japanese),
        reading = CASE WHEN $7::boolean THEN $8 ELSE reading END,
@@ -714,11 +856,12 @@ router.put('/vocabulary-examples/:id', asyncHandler(async (req, res) => {
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
     [req.params.id, japanese, highlight || null, indonesian, hasHighlight, sortOrder, hasReading, reading || null]
-  );
-  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+    )).rows[0],
+  });
+  if (!outcome) return;
   invalidateCourseVocabCache();
-  const warnings = await safeLearningWarnings(() => vocabularyExampleLearningScopeWarnings(r.rows[0].id));
-  res.json({ example: r.rows[0], warnings });
+  const warnings = await safeLearningWarnings(() => vocabularyExampleLearningScopeWarnings(outcome.value.id));
+  res.json({ example: outcome.value, warnings, validation: outcome.report });
 }));
 
 router.delete('/vocabulary-examples/:id', asyncHandler(async (req, res) => {
@@ -3419,22 +3562,35 @@ Balas HANYA JSON valid:
 }));
 
 router.post('/module-grammar', asyncHandler(async (req, res) => {
-  const { moduleId, lessonId, pattern, meaning, example, notes, exampleDialog, exampleDialogId, sortOrder } = req.body || {};
+  const { moduleId, lessonId, pattern, meaning, example, notes, exampleDialog, exampleDialogId, sortOrder, communicationGoal } = req.body || {};
   if (!moduleId || !pattern) return res.status(400).json({ error: 'moduleId and pattern required' });
   let scene, furigana;
   try { scene = normalizeDialogScene(req.body.dialogScene); furigana = dialogueFurigana.normalize(req.body.dialogFurigana); }
   catch (err) { return res.status(400).json({ error: err.message }); }
-  const result = await query(
-    `INSERT INTO module_grammar (module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, sort_order, dialog_scene, dialog_furigana)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb) RETURNING *`,
-    [moduleId, lessonId || null, pattern, meaning || null, example || null, notes || null, exampleDialog || null, exampleDialogId || null, sortOrder || 0, scene ? JSON.stringify(scene) : null, furigana ? JSON.stringify(furigana) : null]
-  );
-  const warnings = await safeLearningWarnings(() => grammarLearningScopeWarnings(result.rows[0].id));
-  res.status(201).json({ grammar: result.rows[0], warnings });
+  const outcome = await adminBoundaryWrite(res, {
+    prepare: async () => ({ scope: { moduleId, lessonId: lessonId || undefined },
+      contentType: exampleDialog || scene || furigana ? 'grammar_dialog' : 'grammar_example', operation: 'live_write',
+      communicationGoal, fields: [boundaryField('pattern', pattern), boundaryField('meaning', meaning),
+        boundaryField('example', example), boundaryField('notes', notes), boundaryField('exampleDialog', exampleDialog),
+        boundaryField('exampleDialogId', exampleDialogId), boundaryField('communicationGoal', communicationGoal),
+        ...dialogueVisibleFields(scene, furigana)],
+      expectedBoundaryFingerprint: req.body?.boundaryFingerprint }),
+    write: async client => (await client.query(
+      `INSERT INTO module_grammar (module_id, lesson_id, pattern, meaning, example, notes, example_dialog,
+        example_dialog_id, sort_order, dialog_scene, dialog_furigana, communication_goal)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12) RETURNING *`,
+      [moduleId, lessonId || null, pattern, meaning || null, example || null, notes || null,
+        exampleDialog || null, exampleDialogId || null, sortOrder || 0,
+        scene ? JSON.stringify(scene) : null, furigana ? JSON.stringify(furigana) : null,
+        communicationGoal || null])).rows[0],
+  });
+  if (!outcome) return;
+  const warnings = await safeLearningWarnings(() => grammarLearningScopeWarnings(outcome.value.id));
+  res.status(201).json({ grammar: outcome.value, warnings, validation: outcome.report });
 }));
 
 router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
-  const { lessonId, pattern, meaning, example, notes, exampleDialog, exampleDialogId, sortOrder } = req.body || {};
+  const { lessonId, pattern, meaning, example, notes, exampleDialog, exampleDialogId, sortOrder, communicationGoal } = req.body || {};
   // COALESCE(new, old) can't tell "clear this field" (new = null) from "field
   // omitted" — it silently keeps the old value either way, so clearing a
   // field in the admin editor and saving never actually persisted as empty.
@@ -3455,7 +3611,44 @@ router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
     furigana = has('dialogFurigana') ? dialogueFurigana.normalize(req.body.dialogFurigana) : null;
   }
   catch (err) { return res.status(400).json({ error: err.message }); }
-  const result = await query(
+  const outcome = await adminBoundaryWrite(res, {
+    prepare: async (client, { locked }) => {
+      const old = await client.query(`SELECT * FROM module_grammar WHERE id=$1 ${locked ? 'FOR UPDATE' : ''}`, [req.params.id]);
+      if (!old.rows.length) throw new BoundaryContextError('grammar_not_found');
+      const row = old.rows[0];
+      const effectiveLessonId = hasLesson ? lessonId : row.lesson_id;
+      const changed = (enabled, next, previous) => enabled && JSON.stringify(next ?? null) !== JSON.stringify(previous ?? null);
+      const mergedScene = has('dialogScene') ? scene : row.dialog_scene;
+      const mergedFurigana = has('dialogFurigana') ? furigana : row.dialog_furigana;
+      const goalChanged = changed(has('communicationGoal'), communicationGoal, row.communication_goal);
+      const dialogChanged = changed(hasExampleDialog, exampleDialog, row.example_dialog) ||
+        changed(hasDialogId, exampleDialogId, row.example_dialog_id) ||
+        JSON.stringify(dialogueVisibleFields(mergedScene, mergedFurigana)) !==
+          JSON.stringify(dialogueVisibleFields(row.dialog_scene, row.dialog_furigana)) ||
+        (goalChanged && Boolean(row.example_dialog || mergedScene || mergedFurigana));
+      const visibleChanged = dialogChanged || changed(hasPattern, pattern, row.pattern) ||
+        changed(hasMeaning, meaning, row.meaning) || changed(hasExample, example, row.example) ||
+        changed(hasNotes, notes, row.notes) || goalChanged;
+      // On reassignment the stored grammar still points to the old lesson;
+      // resolving both IDs would manufacture a false ownership mismatch.
+      const movingLesson = effectiveLessonId && effectiveLessonId !== row.lesson_id;
+      return { scope: { ...(!movingLesson ? { grammarId: row.id } : {}),
+          moduleId: row.module_id, lessonId: effectiveLessonId || undefined },
+        contentType: dialogChanged ? 'grammar_dialog' : 'grammar_example', contentId: row.id,
+        operation: 'live_write', communicationGoal: has('communicationGoal') ? communicationGoal : row.communication_goal,
+        fields: [boundaryField('pattern', hasPattern ? pattern : row.pattern),
+          boundaryField('meaning', hasMeaning ? meaning : row.meaning),
+          boundaryField('example', hasExample ? example : row.example),
+          boundaryField('notes', hasNotes ? notes : row.notes),
+          boundaryField('exampleDialog', hasExampleDialog ? exampleDialog : row.example_dialog),
+          boundaryField('exampleDialogId', hasDialogId ? exampleDialogId : row.example_dialog_id),
+          boundaryField('communicationGoal', has('communicationGoal') ? communicationGoal : row.communication_goal),
+          ...dialogueVisibleFields(mergedScene, mergedFurigana)],
+        contentIsNewOrChanged: visibleChanged,
+        expectedRevision: req.body?.expectedRevision, currentRevision: row.updated_at,
+        expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async client => (await client.query(
     `UPDATE module_grammar SET
        lesson_id = CASE WHEN $9::boolean THEN $2 ELSE lesson_id END,
        pattern = CASE WHEN $12::boolean THEN $3 ELSE pattern END,
@@ -3467,15 +3660,17 @@ router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
        example_dialog_id = CASE WHEN $11::boolean THEN $10 ELSE example_dialog_id END,
        dialog_scene = CASE WHEN $18::boolean THEN $19::jsonb ELSE dialog_scene END,
        dialog_furigana = CASE WHEN $20::boolean THEN $21::jsonb ELSE dialog_furigana END,
+       communication_goal = CASE WHEN $22::boolean THEN $23 ELSE communication_goal END,
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
     [req.params.id, lessonId || null, pattern, meaning, example, notes, exampleDialog, sortOrder, hasLesson, exampleDialogId || null, hasDialogId,
       hasPattern, hasMeaning, hasExample, hasNotes, hasExampleDialog, hasSortOrder, has('dialogScene'), scene ? JSON.stringify(scene) : null,
-      has('dialogFurigana'), furigana ? JSON.stringify(furigana) : null]
-  );
-  if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-  const warnings = await safeLearningWarnings(() => grammarLearningScopeWarnings(result.rows[0].id));
-  res.json({ grammar: result.rows[0], warnings });
+      has('dialogFurigana'), furigana ? JSON.stringify(furigana) : null, has('communicationGoal'), communicationGoal || null]
+    )).rows[0],
+  });
+  if (!outcome) return;
+  const warnings = await safeLearningWarnings(() => grammarLearningScopeWarnings(outcome.value.id));
+  res.json({ grammar: outcome.value, warnings, validation: outcome.report });
 }));
 
 // === grammar_examples CRUD (mirror vocabulary-examples) ===
@@ -3492,19 +3687,45 @@ router.get('/grammar-examples', asyncHandler(async (req, res) => {
 router.post('/grammar-examples', asyncHandler(async (req, res) => {
   const { grammarId, japanese, highlight, indonesian, sortOrder } = req.body || {};
   if (!grammarId || !japanese) return res.status(400).json({ error: 'grammarId and japanese required' });
-  const r = await query(
-    `INSERT INTO grammar_examples (grammar_id, japanese, highlight, indonesian, sort_order)
-     VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-    [grammarId, japanese, highlight || null, indonesian || null, sortOrder || 0]
-  );
-  const warnings = await safeLearningWarnings(() => grammarExampleLearningScopeWarnings(r.rows[0].id));
-  res.status(201).json({ example: r.rows[0], warnings });
+  const outcome = await adminBoundaryWrite(res, {
+    prepare: async client => {
+      const owner = await client.query('SELECT module_id,lesson_id FROM module_grammar WHERE id=$1', [grammarId]);
+      if (!owner.rows.length) throw new BoundaryContextError('grammar_not_found');
+      return { scope: { grammarId, moduleId: owner.rows[0].module_id, lessonId: owner.rows[0].lesson_id || undefined },
+        contentType: 'grammar_example', operation: 'live_write',
+        fields: [boundaryField('japanese', japanese), boundaryField('highlight', highlight),
+          boundaryField('indonesian', indonesian)],
+        expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async client => (await client.query(
+      `INSERT INTO grammar_examples (grammar_id, japanese, highlight, indonesian, sort_order)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [grammarId, japanese, highlight || null, indonesian || null, sortOrder || 0])).rows[0],
+  });
+  if (!outcome) return;
+  const warnings = await safeLearningWarnings(() => grammarExampleLearningScopeWarnings(outcome.value.id));
+  res.status(201).json({ example: outcome.value, warnings, validation: outcome.report });
 }));
 
 router.put('/grammar-examples/:id', asyncHandler(async (req, res) => {
   const { japanese, highlight, indonesian, sortOrder } = req.body || {};
   const hasHighlight = Object.prototype.hasOwnProperty.call(req.body || {}, 'highlight');
-  const r = await query(
+  const outcome = await adminBoundaryWrite(res, {
+    prepare: async (client, { locked }) => {
+      const old = await client.query(`SELECT e.*,g.module_id,g.lesson_id FROM grammar_examples e
+        JOIN module_grammar g ON g.id=e.grammar_id WHERE e.id=$1 ${locked ? 'FOR UPDATE OF e' : ''}`, [req.params.id]);
+      if (!old.rows.length) throw new BoundaryContextError('grammar_not_found');
+      const row = old.rows[0];
+      return { scope: { grammarId: row.grammar_id, moduleId: row.module_id, lessonId: row.lesson_id || undefined },
+        contentType: 'grammar_example', contentId: row.id, operation: 'live_write',
+        fields: [boundaryField('japanese', japanese ?? row.japanese),
+          boundaryField('highlight', hasHighlight ? highlight : row.highlight),
+          boundaryField('indonesian', indonesian ?? row.indonesian)],
+        contentIsNewOrChanged: japanese != null || hasHighlight || indonesian != null,
+        expectedRevision: req.body?.expectedRevision, currentRevision: row.updated_at,
+        expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async client => (await client.query(
     `UPDATE grammar_examples SET
        japanese = COALESCE($2, japanese),
        highlight = CASE WHEN $5::boolean THEN $3 ELSE highlight END,
@@ -3513,10 +3734,11 @@ router.put('/grammar-examples/:id', asyncHandler(async (req, res) => {
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
     [req.params.id, japanese, highlight || null, indonesian, hasHighlight, sortOrder]
-  );
-  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-  const warnings = await safeLearningWarnings(() => grammarExampleLearningScopeWarnings(r.rows[0].id));
-  res.json({ example: r.rows[0], warnings });
+    )).rows[0],
+  });
+  if (!outcome) return;
+  const warnings = await safeLearningWarnings(() => grammarExampleLearningScopeWarnings(outcome.value.id));
+  res.json({ example: outcome.value, warnings, validation: outcome.report });
 }));
 
 router.delete('/grammar-examples/:id', asyncHandler(async (req, res) => {
@@ -3534,22 +3756,34 @@ router.post('/module-grammar/bulk', asyncHandler(async (req, res) => {
   if (!moduleId || !Array.isArray(items)) return res.status(400).json({ error: 'moduleId and items[] required' });
   // replace=true wipes the module's grammar first; wrap so a crash mid-insert
   // can't leave it emptied or half-populated.
-  const inserted = await withTransaction(async (client) => {
-    if (replace) await client.query(`DELETE FROM module_grammar WHERE module_id = $1`, [moduleId]);
-    const out = [];
-    for (let i = 0; i < items.length; i++) {
-      const g = items[i] || {};
-      if (!g.pattern) continue;
-      const r = await client.query(
-        `INSERT INTO module_grammar (module_id, lesson_id, pattern, meaning, example, notes, sort_order)
-         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-        [moduleId, g.lessonId || null, g.pattern, g.meaning || null, g.example || null, g.notes || null, g.sortOrder ?? i]
-      );
-      out.push(r.rows[0]);
-    }
-    return out;
+  const outcome = await adminBoundaryWrite(res, {
+    prepare: async client => {
+      await assertBatchLessonOwnership(client, moduleId, items);
+      return { scope: { moduleId }, contentType: 'grammar_example', operation: 'live_write',
+      fields: items.flatMap((g, index) => [
+        boundaryField(`items[${index}].pattern`, g?.pattern),
+        boundaryField(`items[${index}].meaning`, g?.meaning),
+        boundaryField(`items[${index}].example`, g?.example),
+        boundaryField(`items[${index}].notes`, g?.notes),
+      ]), expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async client => {
+      if (replace) await client.query(`DELETE FROM module_grammar WHERE module_id = $1`, [moduleId]);
+      const out = [];
+      for (let i = 0; i < items.length; i++) {
+        const g = items[i] || {};
+        if (!g.pattern) continue;
+        const r = await client.query(
+          `INSERT INTO module_grammar (module_id, lesson_id, pattern, meaning, example, notes, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+          [moduleId, g.lessonId || null, g.pattern, g.meaning || null, g.example || null, g.notes || null, g.sortOrder ?? i]);
+        out.push(r.rows[0]);
+      }
+      return out;
+    },
   });
-  res.status(201).json({ grammar: inserted });
+  if (!outcome) return;
+  res.status(201).json({ grammar: outcome.value, validation: outcome.report });
 }));
 
 // ===== LESSONS =====
@@ -3574,7 +3808,11 @@ router.post('/lessons', asyncHandler(async (req, res) => {
     acceptsVideoSegment ? videoEndSeconds : null
   );
   if (segment.error) return res.status(400).json({ error: segment.error });
-  const result = await query(
+  const outcome = await adminBoundaryWrite(res, {
+    prepare: async () => ({ scope: { moduleId }, contentType: 'reading', operation: 'live_write',
+      fields: [boundaryField('title', title), boundaryField('content', content)],
+      expectedBoundaryFingerprint: req.body?.boundaryFingerprint }),
+    write: async client => (await client.query(
     `INSERT INTO lessons (
        module_id, slug, title, type, content, video_url,
        video_source_id, video_start_seconds, video_end_seconds,
@@ -3592,9 +3830,11 @@ router.post('/lessons', asyncHandler(async (req, res) => {
       cooldownHours != null && cooldownHours !== '' ? Number(cooldownHours) : 12,
       popupAfterLessonId || null,
     ]
-  );
+    )).rows[0],
+  });
+  if (!outcome) return;
   invalidateKanjiCatalogCache();
-  res.status(201).json({ lesson: result.rows[0] });
+  res.status(201).json({ lesson: outcome.value, validation: outcome.report });
 }));
 
 router.put('/lessons/:id', asyncHandler(async (req, res) => {
@@ -3623,14 +3863,25 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
   // (student progress) and other nested content before re-typing the lesson.
   // A crash between the DELETEs and the UPDATE would orphan content and lose
   // student history with no consistent state to recover to.
-  const outcome = await withTransaction(async (client) => {
-    const cur = await client.query(
-      `SELECT type, video_source_id, video_start_seconds, video_end_seconds
-         FROM lessons WHERE id = $1 LIMIT 1 FOR UPDATE`,
-      [req.params.id]
-    );
-    if (cur.rows.length === 0) return { notFound: true };
-    const current = cur.rows[0];
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: async (client, { locked }) => {
+      const cur = await client.query(`SELECT * FROM lessons WHERE id=$1 ${locked ? 'FOR UPDATE' : ''}`, [req.params.id]);
+      if (!cur.rows.length) throw new BoundaryContextError('lesson_not_found');
+      const current = cur.rows[0];
+      if (type && current.type !== type && req.companyAccess && !req.companyAccess.isAdmin) {
+        throw fail(403, 'owner_required_for_type_change');
+      }
+      return { scope: { lessonId: current.id, moduleId: current.module_id },
+        contentType: (type || current.type) === 'quiz' ? 'quiz' : 'reading',
+        contentId: current.id, operation: 'live_write', existing: current,
+        fields: [boundaryField('title', title ?? current.title),
+          boundaryField('content', content ?? current.content)],
+        contentIsNewOrChanged: title != null || content != null,
+        expectedRevision: req.body?.expectedRevision, currentRevision: current.updated_at,
+        expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async (client, candidate) => {
+    const current = candidate.existing;
     const oldType = current.type;
     if (type && oldType !== type) {
       if (req.companyAccess && !req.companyAccess.isAdmin) throw fail(403, 'owner_required_for_type_change');
@@ -3698,12 +3949,14 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
       );
     if (result.rows.length === 0) return { notFound: true };
     return { lesson: result.rows[0] };
+    },
   });
-
+  if (!guarded) return;
+  const outcome = guarded.value;
   if (outcome.notFound) return res.status(404).json({ error: 'Not found' });
   if (outcome.error) return res.status(400).json({ error: outcome.error });
   invalidateKanjiCatalogCache();
-  res.json({ lesson: outcome.lesson });
+  res.json({ lesson: outcome.lesson, validation: guarded.report });
 }));
 
 router.delete('/lessons/:id', asyncHandler(async (req, res) => {
@@ -3733,7 +3986,7 @@ router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
   );
   const lessonMeta = lessonRow.rows[0] || null;
   const questions = await query(
-    `SELECT * FROM quiz_questions
+    `SELECT *,xmin::text AS revision FROM quiz_questions
      WHERE lesson_id = $1
      ORDER BY CASE question_category
                 WHEN 'vocabulary' THEN 1
@@ -3778,14 +4031,26 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
 
   // Question + options written atomically: a crash mid-loop must not leave a
   // question with a partial option set (a broken live quiz).
-  const q = await withTransaction(async (client) => {
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: async client => {
+      await assertQuizGrammarReachable(client, grammarId, lessonId);
+      return { scope: { lessonId }, contentType: 'quiz_question', operation: 'live_write',
+      verifiedGrammarIds: grammarId ? [grammarId] : [],
+      fields: [boundaryField('question', question), boundaryField('sectionLabel', sectionTitle),
+        boundaryField('sectionInstruction', sectionInstruction), boundaryField('audioScript', audioScript),
+        boundaryField('passage', passage), boundaryField('correctAnswer', correctAnswer),
+        boundaryField('explanation', explanation),
+        ...boundaryFieldsFrom('options', options)],
+      expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async client => {
     const qRes = await client.query(
       `INSERT INTO quiz_questions (
          lesson_id, question, question_type, question_category,
          section_number, section_label, section_instruction, audio_script, passage, image_url,
          correct_answer, explanation, sort_order, grammar_id
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *,xmin::text AS revision`,
       [
         lessonId,
         question,
@@ -3818,10 +4083,11 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
       }
     }
     return row;
+    },
   });
-
-  const warnings = await safeLearningWarnings(() => quizLearningScopeWarnings(q.id));
-  res.status(201).json({ question: q, warnings });
+  if (!guarded) return;
+  const warnings = await safeLearningWarnings(() => quizLearningScopeWarnings(guarded.value.id));
+  res.status(201).json({ question: guarded.value, warnings, validation: guarded.report });
 }));
 
 router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
@@ -3845,7 +4111,32 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
   const imageUrlNorm = hasImageUrl ? ((imageUrl && String(imageUrl).trim()) || null) : null;
   // Update + wholesale option replace must be atomic: the old DELETE-then-loop
   // could wipe every option then crash, leaving a live question answerless.
-  const updated = await withTransaction(async (client) => {
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: async (client, { locked }) => {
+      const old = await client.query(`SELECT *,xmin::text AS row_revision FROM quiz_questions WHERE id=$1
+        ${locked ? 'FOR UPDATE' : ''}`, [req.params.id]);
+      if (!old.rows.length) throw new BoundaryContextError('lesson_not_found');
+      const row = old.rows[0];
+      const oldOptions = Array.isArray(options) ? [] : (await client.query(
+        'SELECT option_text,image_url FROM quiz_options WHERE question_id=$1 ORDER BY sort_order', [req.params.id])).rows;
+      const effectiveGrammarId = hasGrammarId ? grammarIdNorm : row.grammar_id;
+      await assertQuizGrammarReachable(client, effectiveGrammarId, row.lesson_id);
+      return { scope: { lessonId: row.lesson_id }, contentType: 'quiz_question',
+        contentId: row.id, operation: 'live_write', verifiedGrammarIds: effectiveGrammarId ? [effectiveGrammarId] : [],
+        fields: [boundaryField('question', question ?? row.question),
+          boundaryField('sectionLabel', sectionLabel ?? row.section_label),
+          boundaryField('sectionInstruction', hasSectionInstruction ? sectionInstruction : row.section_instruction),
+          boundaryField('audioScript', hasAudioScript ? audioScriptNorm : row.audio_script),
+          boundaryField('passage', hasPassage ? passageNorm : row.passage),
+          boundaryField('correctAnswer', correctAnswer ?? row.correct_answer),
+          boundaryField('explanation', explanation ?? row.explanation),
+          ...boundaryFieldsFrom('options', Array.isArray(options) ? options : oldOptions)],
+        contentIsNewOrChanged: [question, sectionLabel, correctAnswer, explanation].some(value => value != null) ||
+          hasSectionInstruction || hasAudioScript || hasPassage || Array.isArray(options) || hasGrammarId,
+        expectedRevision: req.body?.expectedRevision, currentRevision: row.row_revision,
+        expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async client => {
     const result = await client.query(
       `UPDATE quiz_questions SET
          question = COALESCE($2, question),
@@ -3861,7 +4152,7 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
          image_url = CASE WHEN $15::boolean THEN $14 ELSE image_url END,
          passage = CASE WHEN $17::boolean THEN $16 ELSE passage END,
          grammar_id = CASE WHEN $19::boolean THEN $18::uuid ELSE grammar_id END
-        WHERE id = $1 RETURNING *`,
+        WHERE id = $1 RETURNING *,xmin::text AS revision`,
       [
         req.params.id,
         question,
@@ -3899,11 +4190,12 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
       }
     }
     return result.rows[0];
+    },
   });
-
-  if (!updated) return res.status(404).json({ error: 'Not found' });
-  const warnings = await safeLearningWarnings(() => quizLearningScopeWarnings(updated.id));
-  res.json({ question: updated, warnings });
+  if (!guarded) return;
+  if (!guarded.value) return res.status(404).json({ error: 'Not found' });
+  const warnings = await safeLearningWarnings(() => quizLearningScopeWarnings(guarded.value.id));
+  res.json({ question: guarded.value, warnings, validation: guarded.report });
 }));
 
 router.delete('/quiz-questions/:id', asyncHandler(async (req, res) => {
@@ -3935,18 +4227,33 @@ router.put('/lessons/:lessonId/quiz/sections/:category/:number', asyncHandler(as
   const passageNorm = hasPassage
     ? ((passage && String(passage).trim()) || null)
     : null;
-  const result = await query(
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: async (client, { locked }) => {
+      const rows = await client.query(`SELECT id,section_label,section_instruction,passage
+        FROM quiz_questions WHERE lesson_id=$1 AND question_category=$2 AND section_number=$3
+        ${locked ? 'FOR UPDATE' : ''}`, [lessonId, cat, sectionNo]);
+      return { scope: { lessonId }, contentType: 'shared_passage', operation: 'live_write',
+        fields: rows.rows.flatMap((row, index) => [
+          boundaryField(`questions[${index}].sectionLabel`, hasLabel ? labelNorm : row.section_label),
+          boundaryField(`questions[${index}].sectionInstruction`, hasInstruction ? instructionNorm : row.section_instruction),
+          boundaryField(`questions[${index}].passage`, hasPassage ? passageNorm : row.passage),
+        ]), contentIsNewOrChanged: hasLabel || hasInstruction || hasPassage,
+        expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async client => (await client.query(
     `UPDATE quiz_questions
         SET section_label = CASE WHEN $5::boolean THEN $3 ELSE section_label END,
             section_instruction = CASE WHEN $6::boolean THEN $4 ELSE section_instruction END,
             passage = CASE WHEN $8::boolean THEN $9 ELSE passage END
       WHERE lesson_id = $1 AND question_category = $2 AND section_number = $7`,
     [lessonId, cat, labelNorm, instructionNorm, hasLabel, hasInstruction, sectionNo, hasPassage, passageNorm]
-  );
+    )),
+  });
+  if (!guarded) return;
   const warnings = hasPassage
     ? await safeLearningWarnings(() => lessonContentLearningScopeWarnings(lessonId, [passageNorm]))
     : [];
-  res.json({ ok: true, updated: result.rowCount, warnings });
+  res.json({ ok: true, updated: guarded.value.rowCount, warnings, validation: guarded.report });
 }));
 
 // Delete whole section — semua soal di (lesson, category, number) terhapus.
