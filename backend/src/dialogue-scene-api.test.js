@@ -20,8 +20,26 @@ const fixture=()=>({schemaVersion:1,enabled:true,backgroundKey:'classroom',parti
   {characterKey:'hadi-pratama',position:'right',speaker:'B',displayName:'Hadi',voiceId:'hadi-voice',voiceName:'Hadi Voice',profileVersion:1,custom:false}
 ]});
 let saved=fixture(),savedFurigana=null,known=true,grammarMatches=true,available=['anna-voice','hadi-voice'],upstream=[],cache=new Map(),writes=[];
+let savedPattern='test',savedMeaning=null,savedGoal=null;
 const profiles=[{id, name:'Anna Wijaya', character_key:'anna-wijaya',default_display_name:'Anna',voice_id:'anna-voice',voice_name:'Anna Voice',profile_version:1}];
-mock.method(db,'query',async(sql,p=[])=>{
+const grammarRow=()=>({id,module_id:id,lesson_id:null,pattern:savedPattern,meaning:savedMeaning,
+  example:null,notes:null,example_dialog:null,example_dialog_id:null,communication_goal:savedGoal,
+  dialog_scene:structuredClone(saved),dialog_furigana:structuredClone(savedFurigana)});
+const fakeQuery=async(sql,p=[])=>{
+  if(['BEGIN','COMMIT','ROLLBACK','SAVEPOINT boundary_resolve','RELEASE SAVEPOINT boundary_resolve',
+    'ROLLBACK TO SAVEPOINT boundary_resolve'].includes(sql))return{rows:[]};
+  if(sql.includes('pg_advisory_xact_lock'))return{rows:[]};
+  if(sql.includes('SELECT c.id,c.curriculum_boundary_mode AS mode,m.id AS module_id'))return{rows:[{id,mode:'off',module_id:id}]};
+  if(sql.includes('boundary:courses'))return{rows:[{id,slug:'n5',level:'N5',curriculum_boundary_mode:'off'}]};
+  if(sql.includes('boundary:edges'))return{rows:[]};
+  if(sql.includes('boundary:scope-grammar'))return{rows:[{id,module_id:id,lesson_id:null}]};
+  if(sql.includes('boundary:scope-module')||sql.includes('boundary:modules'))return{rows:[{id,course_id:id,sort_order:1,title:'Bab 1'}]};
+  if(sql.includes('boundary:scope-lesson')||sql.includes('boundary:lessons'))return{rows:[]};
+  if(sql.includes('boundary:vocabulary')||sql.includes('boundary:kanji')||sql.includes('boundary:decks'))return{rows:[]};
+  if(sql.includes('boundary:grammar'))return{rows:[grammarRow()]};
+  if(sql.includes("curriculum_boundary_auxiliary_terms"))return{rows:[]};
+  if(sql.includes('INSERT INTO curriculum_boundary_reports'))return{rows:[]};
+  if(sql.includes('SELECT g.example, g.example_dialog, g.module_id'))return{rows:[]};
   if(sql.includes('FROM admin_emails'))return{rows:[]};
   if(sql.startsWith('SELECT 1 WHERE EXISTS'))return{rows:known?[{}]:[]};
   if(sql.includes('SELECT dialog_scene FROM module_grammar'))return{rows:grammarMatches?[{dialog_scene:structuredClone(saved)}]:[]};
@@ -34,10 +52,13 @@ mock.method(db,'query',async(sql,p=[])=>{
   if(sql.includes('SELECT character_key FROM dialogue_speakers'))return{rows:[{character_key:'anna-wijaya'}]};
   if(sql.includes('FROM dialogue_speakers ORDER'))return{rows:profiles};
   if(sql.includes('UPDATE dialogue_speakers SET default_display_name')){Object.assign(profiles[0],{default_display_name:p[1],voice_id:p[2],voice_name:p[3],profile_version:profiles[0].profile_version+1});return{rows:profiles};}
-  if(sql.includes('INSERT INTO module_grammar')){saved=JSON.parse(p[9]);savedFurigana=p[10]?JSON.parse(p[10]):null;return{rows:[{id,dialog_scene:saved,dialog_furigana:savedFurigana}]};}
-  if(sql.includes('UPDATE module_grammar SET')){if(p[17])saved=p[18]?JSON.parse(p[18]):null;if(p[19])savedFurigana=p[20]?JSON.parse(p[20]):null;return{rows:[{id,dialog_scene:saved,dialog_furigana:savedFurigana}]};}
+  if(sql.includes('SELECT * FROM module_grammar WHERE id='))return{rows:[grammarRow()]};
+  if(sql.includes('INSERT INTO module_grammar')){saved=JSON.parse(p[9]);savedFurigana=p[10]?JSON.parse(p[10]):null;savedGoal=p[11];savedPattern=p[2];savedMeaning=p[3];return{rows:[grammarRow()]};}
+  if(sql.includes('UPDATE module_grammar SET')){if(p[17])saved=p[18]?JSON.parse(p[18]):null;if(p[19])savedFurigana=p[20]?JSON.parse(p[20]):null;if(p[12])savedMeaning=p[3];if(p[21])savedGoal=p[22];return{rows:[grammarRow()]};}
   throw Error('Unexpected query: '+sql);
-});
+};
+mock.method(db,'query',fakeQuery);
+mock.method(db,'connect',async()=>({query:fakeQuery,release(){}}));
 const realFetch=globalThis.fetch;
 mock.method(globalThis,'fetch',async(url,options)=>{
   if(String(url).startsWith('https://api.elevenlabs.io/')){
