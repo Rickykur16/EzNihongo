@@ -16,10 +16,11 @@ const report = (status = 'evaluated', valid = true) => ({ status, valid,
 
 function harness(mode, overrides = {}) {
   const calls = [];
-  const client = { query: async sql => {
+  const client = { query: async (sql, params) => {
     if (sql.includes('FROM modules m JOIN courses c')) return { rows: [{ id: COURSE, module_id: MODULE,
       mode: typeof mode === 'function' ? mode() : mode }] };
-    if (sql.includes('pg_advisory_xact_lock')) { calls.push('lock'); return { rows: [] }; }
+    if (sql.includes('WITH RECURSIVE required')) return { rows: [{ id: COURSE }] };
+    if (sql.includes('pg_advisory_xact_lock')) { calls.push(params[0].endsWith(':graph') ? 'graph_lock' : 'lock'); return { rows: [] }; }
     if (sql.includes('SAVEPOINT')) return { rows: [] };
     throw new Error(`unexpected SQL: ${sql}`);
   } };
@@ -44,14 +45,14 @@ function harness(mode, overrides = {}) {
 test('enforce rejects before mutation; rejected report is written after rollback', async () => {
   const h = harness('enforce', { validate: () => report('evaluated', false) });
   await assert.rejects(validateAndWriteContent(h.options), error => error instanceof BoundaryWriteError && error.statusCode === 422);
-  assert.deepEqual(h.calls, ['begin', 'prepare', 'lock', 'prepare', 'resolve', 'rollback', 'begin', 'report', 'commit']);
+  assert.deepEqual(h.calls, ['begin', 'prepare', 'graph_lock', 'lock', 'prepare', 'resolve', 'rollback', 'begin', 'report', 'commit']);
 });
 
 test('warn preserves exact content and commits its report in the same transaction', async () => {
   const h = harness('warn', { validate: () => report('evaluated', false) });
   const result = await validateAndWriteContent(h.options);
   assert.equal(result.decision.decision, 'allowed_with_warning');
-  assert.deepEqual(h.calls, ['begin', 'prepare', 'lock', 'prepare', 'resolve', 'write', 'report', 'commit']);
+  assert.deepEqual(h.calls, ['begin', 'prepare', 'graph_lock', 'lock', 'prepare', 'resolve', 'write', 'report', 'commit']);
 });
 
 test('enforce returns 503 when resolver unavailable, while warn reports unavailable and writes', async () => {

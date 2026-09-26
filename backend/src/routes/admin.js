@@ -57,8 +57,11 @@ import {
 import { loadMasteryShadow, summarizeShadow } from '../grammar-mastery-shadow.js';
 import { loadPilotLessonOptions } from '../bunpou-pilot-catalog.js';
 import { BoundaryContextError, getCurriculumBoundary } from '../curriculum-boundary.js';
-import { validateAndWriteContent, boundaryWriteHttpError } from '../curriculum-content-service.js';
+import { validateAndWriteContent, boundaryWriteHttpError, lockCurriculumCourse, lockCurriculumGraph } from '../curriculum-content-service.js';
 import { validateContentAgainstBoundary } from '../curriculum-boundary-validator.js';
+import { validateBunpouPublish } from '../curriculum-bunpou-validation.js';
+import { deckReadingSourceFingerprint, distractorSourceFingerprint,
+  assertGenerationSourceUnchanged } from '../curriculum-generation-source.js';
 import { decideBoundaryAction } from '../curriculum-boundary-policy.js';
 import { V2_CONFIG, POLICY_V2, POLICY_SETTING_KEY, resolvePolicy } from '../grammar-mastery-policy.js';
 import {
@@ -131,9 +134,31 @@ async function adminBoundaryWrite(res, options) {
   try { return await validateAndWriteContent(options); }
   catch (error) {
     const response = boundaryWriteHttpError(error);
-    if (!response) throw error;
+    if (!response) {
+      if (Number.isInteger(error?.status) && error.status >= 400 && error.status < 600) {
+        res.status(error.status).json({ error: error.message });
+        return null;
+      }
+      throw error;
+    }
     res.status(response.statusCode).json(response.body);
     return null;
+  }
+}
+
+// Bulk jobs persist per item. Keep every failure visible after earlier items
+// have committed instead of returning an error that suggests zero writes.
+async function bulkBoundaryWrite(options) {
+  try { return { ok: true, outcome: await validateAndWriteContent(options) }; }
+  catch (error) {
+    const response = boundaryWriteHttpError(error);
+    if (response) return { ok: false, status: response.statusCode,
+      error: response.body.error, validation: response.body.validation };
+    if (Number.isInteger(error?.status) && error.status >= 400 && error.status < 600) {
+      return { ok: false, status: error.status, error: error.message };
+    }
+    console.error('curriculum_bulk_item_failed', error);
+    return { ok: false, status: 500, error: 'bulk_item_failed' };
   }
 }
 
@@ -455,7 +480,9 @@ router.post('/courses', asyncHandler(async (req, res) => {
   // isFree is tri-state (true/false/null = "not yet classified") — pass
   // through as-is rather than coercing with !!, which would collapse
   // "unclassified" into "paid". See migration 121.
-  const result = await query(
+  const result = await withTransaction(async client => {
+    await lockCurriculumGraph(client, { exclusive: true });
+    return client.query(
     `INSERT INTO courses
        (slug, title, description, level, thumbnail_url, sort_order, is_published, is_available,
         price_idr, price_label, period_label, tagline, features, cta_label, is_featured, is_free, landing_price_published, landing_schedule)
@@ -469,7 +496,8 @@ router.post('/courses', asyncHandler(async (req, res) => {
       isFree === true ? true : (isFree === false ? false : null),
       landing.pricePublished, landing.schedule,
     ]
-  );
+    );
+  });
   invalidateCourseVocabCache();
   invalidateKanjiCatalogCache();
   res.status(201).json({ course: result.rows[0] });
@@ -490,7 +518,9 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
   const isFreeExplicit = isFree === true || isFree === false;
   const landing = landingCourseFields(req.body);
   if (landing.error) return res.status(400).json({ error: landing.error });
-  const result = await query(
+  const result = await withTransaction(async client => {
+    await lockCurriculumCourse(client, req.params.id);
+    return client.query(
     `UPDATE courses SET
        slug = COALESCE($2, slug),
        title = COALESCE($3, title),
@@ -520,7 +550,8 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
       isFreeExplicit, isFreeExplicit ? isFree : null,
       landing.pricePublished, landing.schedule,
     ]
-  );
+    );
+  });
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   invalidateCourseVocabCache();
   invalidateKanjiCatalogCache();
@@ -530,18 +561,20 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
 router.delete('/courses/:id', asyncHandler(async (req, res) => {
   // Block delete when any student has enrolled — keeps paid users from losing access silently.
   // Admins can still set the course to draft/coming_soon via PUT instead.
-  const enroll = await query(
-    `SELECT COUNT(*)::int AS n FROM user_enrollments WHERE course_id = $1`,
-    [req.params.id]
-  );
-  const n = enroll.rows[0]?.n || 0;
+  const n = await withTransaction(async client => {
+    await lockCurriculumGraph(client, { exclusive: true });
+    await lockCurriculumCourse(client, req.params.id);
+    const enroll = await client.query('SELECT COUNT(*)::int AS n FROM user_enrollments WHERE course_id=$1', [req.params.id]);
+    const count = enroll.rows[0]?.n || 0;
+    if (!count) await client.query('DELETE FROM courses WHERE id=$1', [req.params.id]);
+    return count;
+  });
   if (n > 0) {
     return res.status(409).json({
       error: `Tidak bisa hapus: ${n} siswa sudah terdaftar di kursus ini. Ubah status ke Draft supaya tidak tampil di landing.`,
       enrollmentCount: n,
     });
   }
-  await query(`DELETE FROM courses WHERE id = $1`, [req.params.id]);
   invalidateCourseVocabCache();
   invalidateKanjiCatalogCache();
   res.json({ ok: true });
@@ -574,7 +607,9 @@ router.post('/modules', asyncHandler(async (req, res) => {
   }
   const slugErr = badSlug(slug);
   if (slugErr) return res.status(400).json({ error: slugErr });
-  const result = await query(
+  const result = await withTransaction(async client => {
+    await lockCurriculumCourse(client, courseId);
+    return client.query(
     `INSERT INTO modules (
        course_id, slug, title, description, sort_order,
        jf_topic, cefr_level, title_en, scenario, section_name,
@@ -589,7 +624,8 @@ router.post('/modules', asyncHandler(async (req, res) => {
       JSON.stringify(typeof skillDistribution === 'object' && skillDistribution ? skillDistribution : {}),
       JSON.stringify(typeof quizSpec === 'object' && quizSpec ? quizSpec : {}),
     ]
-  );
+    );
+  });
   invalidateCourseVocabCache();
   invalidateKanjiCatalogCache();
   res.status(201).json({ module: result.rows[0] });
@@ -609,7 +645,11 @@ router.put('/modules/:id', asyncHandler(async (req, res) => {
   // clear the value, whereas `undefined` keeps the current value.
   const hasSection = Object.prototype.hasOwnProperty.call(req.body || {}, 'sectionName');
   const sectionNorm = hasSection ? ((sectionName && String(sectionName).trim()) || null) : null;
-  const result = await query(
+  const result = await withTransaction(async client => {
+    const owner = await client.query('SELECT course_id FROM modules WHERE id=$1', [req.params.id]);
+    if (!owner.rows.length) return { rows: [] };
+    await lockCurriculumCourse(client, owner.rows[0].course_id);
+    return client.query(
     `UPDATE modules SET
        slug = COALESCE($2, slug),
        title = COALESCE($3, title),
@@ -633,7 +673,8 @@ router.put('/modules/:id', asyncHandler(async (req, res) => {
       hasSection,
       quizSpec && typeof quizSpec === 'object' ? JSON.stringify(quizSpec) : null,
     ]
-  );
+    );
+  });
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   invalidateCourseVocabCache();
   invalidateKanjiCatalogCache();
@@ -641,7 +682,12 @@ router.put('/modules/:id', asyncHandler(async (req, res) => {
 }));
 
 router.delete('/modules/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM modules WHERE id = $1`, [req.params.id]);
+  await withTransaction(async client => {
+    const owner = await client.query('SELECT course_id FROM modules WHERE id=$1', [req.params.id]);
+    if (!owner.rows.length) return;
+    await lockCurriculumCourse(client, owner.rows[0].course_id);
+    await client.query('DELETE FROM modules WHERE id=$1', [req.params.id]);
+  });
   invalidateCourseVocabCache();
   invalidateKanjiCatalogCache();
   res.json({ ok: true });
@@ -1211,8 +1257,8 @@ router.put('/settings/coaching-note-prompt', asyncHandler(async (req, res) => {
 // `japanese`. Existing rows get reading/indonesian/category/note refreshed from
 // Notion (lesson_id + deck wiring untouched); new rows are appended. Returns
 // counts plus `vocabIds` = the resulting row id for each page (Notion order).
-async function upsertNotionVocab(moduleId, pages) {
-  const existing = await query(`SELECT id, japanese FROM module_vocabulary WHERE module_id = $1`, [moduleId]);
+async function upsertNotionVocab(moduleId, pages, dbQuery = query) {
+  const existing = await dbQuery(`SELECT id, japanese FROM module_vocabulary WHERE module_id = $1`, [moduleId]);
   const byJapanese = new Map();
   for (const r of existing.rows) {
     const j = (r.japanese || '').trim();
@@ -1231,14 +1277,14 @@ async function upsertNotionVocab(moduleId, pages) {
     const note = notionPlainText(pickProp(props, ['Note', 'Catatan'])).trim() || null;
     let id = byJapanese.get(japanese);
     if (id) {
-      await query(
+      await dbQuery(
         `UPDATE module_vocabulary SET reading = $2, indonesian = $3, category = $4, note = $5, updated_at = NOW()
          WHERE id = $1`,
         [id, reading, indonesian, category, note]
       );
       updated++;
     } else {
-      const r = await query(
+      const r = await dbQuery(
         `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, indonesian, category, note, sort_order)
          VALUES ($1, NULL, $2, $3, $4, $5, $6, $7) RETURNING id`,
         [moduleId, japanese, reading, indonesian, category, note, sort++]
@@ -1249,7 +1295,6 @@ async function upsertNotionVocab(moduleId, pages) {
     }
     vocabIds.push(id);
   }
-  invalidateCourseVocabCache();
   return { imported, updated, total, vocabIds };
 }
 
@@ -1305,23 +1350,44 @@ router.post('/lessons/:lessonId/import-notion-deck', notionImportLimiter, asyncH
   } catch (err) {
     return notionErrorResponse(res, err, 'Gagal import vocab dari Notion.');
   }
-  const { imported, updated, total, vocabIds } = await upsertNotionVocab(moduleId, pages);
-
-  const cur = await query(`SELECT vocabulary_id, sort_order FROM lesson_deck_items WHERE lesson_id = $1`, [req.params.lessonId]);
-  const inDeck = new Set(cur.rows.map((r) => r.vocabulary_id));
-  let nextSort = cur.rows.reduce((m, r) => Math.max(m, (r.sort_order ?? 0) + 1), 0);
-  let added = 0;
-  for (const vid of vocabIds) {
-    if (inDeck.has(vid)) continue;
-    inDeck.add(vid);
-    await query(
-      `INSERT INTO lesson_deck_items (lesson_id, vocabulary_id, sort_order, accent_color)
-       VALUES ($1, $2, $3, NULL) ON CONFLICT (lesson_id, vocabulary_id) DO NOTHING`,
-      [req.params.lessonId, vid, nextSort++]
-    );
-    added++;
-  }
-  res.json({ imported, updated, added, total });
+  const outcome = await adminBoundaryWrite(res, {
+    prepare: async (client, { locked }) => {
+      const current = await client.query(`SELECT id,module_id,type FROM lessons WHERE id=$1
+        ${locked ? 'FOR UPDATE' : ''}`, [req.params.lessonId]);
+      if (!current.rows.length) throw new BoundaryContextError('lesson_not_found');
+      if (current.rows[0].type !== 'deck' || current.rows[0].module_id !== moduleId) {
+        throw new BoundaryContextError('boundary_context_mismatch');
+      }
+      const fields = pages.flatMap((page, index) => {
+        const props = page.properties || {};
+        return Object.entries(props).map(([key, value]) =>
+          boundaryField(`pages[${index}].${key}`, notionPlainText(value)));
+      });
+      return { scope: { moduleId, lessonId: req.params.lessonId },
+        contentType: 'vocabulary_example', operation: 'live_write', fields,
+        expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async client => {
+      const dbQuery = client.query.bind(client);
+      const { imported, updated, total, vocabIds } = await upsertNotionVocab(moduleId, pages, dbQuery);
+      const cur = await dbQuery('SELECT vocabulary_id,sort_order FROM lesson_deck_items WHERE lesson_id=$1', [req.params.lessonId]);
+      const inDeck = new Set(cur.rows.map(row => row.vocabulary_id));
+      let nextSort = cur.rows.reduce((max, row) => Math.max(max, (row.sort_order ?? 0) + 1), 0);
+      let added = 0;
+      for (const vid of vocabIds) {
+        if (inDeck.has(vid)) continue;
+        inDeck.add(vid);
+        await dbQuery(`INSERT INTO lesson_deck_items(lesson_id,vocabulary_id,sort_order,accent_color)
+          VALUES ($1,$2,$3,NULL) ON CONFLICT(lesson_id,vocabulary_id) DO NOTHING`,
+        [req.params.lessonId, vid, nextSort++]);
+        added++;
+      }
+      return { imported, updated, added, total };
+    },
+  });
+  if (!outcome) return;
+  invalidateCourseVocabCache();
+  res.json({ ...outcome.value, validation: outcome.report });
 }));
 
 // ===== NOTION: BAB PELAJARAN (5 child pages of a Bab → EzNihongo lessons) =====
@@ -1492,19 +1558,7 @@ router.post('/modules/:moduleId/import-notion-pelajaran', notionImportLimiter, a
   if (!Array.isArray(pelajaranIds) || pelajaranIds.length === 0) {
     return res.status(400).json({ error: 'pelajaranIds[] required' });
   }
-  const mod = await query(`SELECT id FROM modules WHERE id = $1`, [moduleId]);
-  if (mod.rows.length === 0) return res.status(404).json({ error: 'module not found' });
-
-  // Avoid slug collisions within the module by tacking on a counter if needed.
-  const existing = await query(`SELECT slug FROM lessons WHERE module_id = $1`, [moduleId]);
-  const used = new Set(existing.rows.map((r) => r.slug));
-  const sortStart = await query(
-    `SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM lessons WHERE module_id = $1`,
-    [moduleId]
-  );
-  let nextSort = Number(sortStart.rows[0]?.next) || 0;
-
-  const created = [];
+  const staged = [];
   const errors = [];
   for (const pageId of pelajaranIds) {
     let page;
@@ -1522,28 +1576,45 @@ router.post('/modules/:moduleId/import-notion-pelajaran', notionImportLimiter, a
     const titleProp = page.properties && Object.values(page.properties).find((p) => p.type === 'title');
     const title = canonicalPelajaranTitle(notionPlainText(titleProp)) || '(tanpa judul)';
     const type = notionPelajaranType(title);
-    // Slug — ensure unique within module.
-    let baseSlug = slugifyJa(title);
-    let slug = baseSlug;
-    let n = 2;
-    while (used.has(slug)) { slug = `${baseSlug}-${n++}`; }
-    used.add(slug);
     // Body content as HTML.
     let html = '';
     try { html = await notionBlocksToHtml(pageId, token); }
     catch (err) { console.warn('notionBlocksToHtml failed:', err.message); }
-    try {
-      const r = await query(
-        `INSERT INTO lessons (module_id, slug, title, type, content, sort_order)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, slug, title, type, sort_order`,
-        [moduleId, slug, title, type, html || null, nextSort++]
-      );
-      created.push(r.rows[0]);
-    } catch (err) {
-      errors.push({ pageId, title, error: err.message });
-    }
+    staged.push({ pageId, title, type, html, baseSlug: slugifyJa(title) });
   }
-  res.json({ created, errors });
+  if (!staged.length) return res.json({ created: [], errors });
+  const outcome = await adminBoundaryWrite(res, {
+    prepare: async client => {
+      const mod = await client.query('SELECT id FROM modules WHERE id=$1', [moduleId]);
+      if (!mod.rows.length) throw new BoundaryContextError('module_not_found');
+      const existing = await client.query('SELECT slug FROM lessons WHERE module_id=$1', [moduleId]);
+      const used = new Set(existing.rows.map(row => row.slug));
+      const sortStart = await client.query('SELECT COALESCE(MAX(sort_order),-1)+1 AS next FROM lessons WHERE module_id=$1', [moduleId]);
+      let nextSort = Number(sortStart.rows[0]?.next) || 0;
+      const items = staged.map(item => {
+        let slug = item.baseSlug, counter = 2;
+        while (used.has(slug)) slug = `${item.baseSlug}-${counter++}`;
+        used.add(slug);
+        return { ...item, slug, sortOrder: nextSort++ };
+      });
+      return { scope: { moduleId }, contentType: 'reading', operation: 'live_write',
+        fields: items.flatMap((item, index) => [boundaryField(`items[${index}].title`, item.title),
+          boundaryField(`items[${index}].content`, item.html)]), items,
+        expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async (client, candidate) => {
+      const created = [];
+      for (const item of candidate.items) {
+        const result = await client.query(`INSERT INTO lessons(module_id,slug,title,type,content,sort_order)
+          VALUES ($1,$2,$3,$4,$5,$6) RETURNING id,slug,title,type,sort_order`,
+        [moduleId, item.slug, item.title, item.type, item.html || null, item.sortOrder]);
+        created.push(result.rows[0]);
+      }
+      return created;
+    },
+  });
+  if (!outcome) return;
+  res.json({ created: outcome.value, errors, validation: outcome.report });
 }));
 
 // ===== MODULE GRAMMAR =====
@@ -1574,17 +1645,22 @@ const DISTRACTOR_SYSTEM = `You write multiple-choice distractors for a Japanese-
 
 // Satu pola → daftar pengecoh (atau null kalau gagal). Dipakai endpoint
 // tunggal (draft untuk di-review admin) DAN endpoint massal (auto-simpan).
-async function generateDistractorsFor(item) {
+async function loadDistractorSiblings(item, dbQuery = query, locked = false) {
   // Fungsi pola LAIN di bab yang sama dikirim sebagai daftar-hindari: kalau
   // pengecoh kebetulan mendeskripsikan pola lain, soalnya jadi ambigu untuk
   // siswa yang tahu pola itu.
-  const sib = await query(
-    `SELECT pattern, meaning FROM module_grammar
+  const sib = await dbQuery(
+    `SELECT id, pattern, meaning FROM module_grammar
       WHERE module_id = $1 AND id <> $2 AND meaning IS NOT NULL AND TRIM(meaning) <> ''
-      ORDER BY sort_order ASC LIMIT 12`,
+      ORDER BY sort_order ASC, id ASC LIMIT 12 ${locked ? 'FOR SHARE' : ''}`,
     [item.module_id, item.id]
   );
-  const avoid = sib.rows.map((r) => `- ${r.pattern}: ${r.meaning}`).join('\n') || '(tidak ada)';
+  return sib.rows;
+}
+
+async function generateDistractorsFor(item, siblings = null) {
+  const currentSiblings = siblings ?? await loadDistractorSiblings(item);
+  const avoid = currentSiblings.map((r) => `- ${r.pattern}: ${r.meaning}`).join('\n') || '(tidak ada)';
 
   const userContent = `Pola grammar target: ${item.pattern}
 Fungsi yang BENAR dari pola ini: ${item.meaning}
@@ -1685,16 +1761,16 @@ Aturan:
 }
 
 // Muat satu pola LENGKAP dengan contohnya — dibutuhkan controlledSlot().
-async function loadGrammarWithExamples(id) {
-  const g = await query(
+async function loadGrammarWithExamples(id, dbQuery = query, locked = false) {
+  const g = await dbQuery(
     `SELECT id, module_id, pattern, meaning, recognition_distractors, controlled_distractors
-       FROM module_grammar WHERE id = $1`,
+       FROM module_grammar WHERE id = $1 ${locked ? 'FOR UPDATE' : ''}`,
     [id]
   );
   if (g.rows.length === 0) return null;
-  const ex = await query(
+  const ex = await dbQuery(
     `SELECT japanese, highlight, indonesian FROM grammar_examples
-      WHERE grammar_id = $1 ORDER BY sort_order ASC, created_at ASC`,
+      WHERE grammar_id = $1 ORDER BY sort_order ASC, created_at ASC, id ASC ${locked ? 'FOR SHARE' : ''}`,
     [id]
   );
   return { ...g.rows[0], examples: ex.rows };
@@ -1766,27 +1842,61 @@ router.post('/module-grammar/generate-distractors-bulk', asyncHandler(async (req
 
   let saved = 0;
   const failed = [];
+  const failedItems = [];
+  const savedItems = [];
   for (const row of batch.rows) {
+    try {
     const item = await loadGrammarWithExamples(row.id);
-    if (!item) continue;
+    if (!item) { failed.push(row.pattern); failedItems.push({ id: row.id, error: 'grammar_not_found', status: 404 }); continue; }
+    const siblings = await loadDistractorSiblings(item);
+    const sourceFingerprint = distractorSourceFingerprint(item, siblings);
     // Hanya isi kolom yang masih kosong — yang sudah dikurasi admin tidak
     // pernah ditimpa, walau baris ini terpilih karena kolom satunya kosong.
     const needS1 = !(item.recognition_distractors || '').trim();
     const needS2 = !(item.controlled_distractors || '').trim();
     const [s1, s2] = await Promise.all([
-      needS1 ? generateDistractorsFor(item) : null,
+      needS1 ? generateDistractorsFor(item, siblings) : null,
       needS2 ? generateControlledFor(item) : null,
     ]);
-    if ((needS1 && !s1) && (needS2 && !s2)) { failed.push(row.pattern); continue; }
-    await query(
-      `UPDATE module_grammar SET
-         recognition_distractors = COALESCE($2, recognition_distractors),
-         controlled_distractors  = COALESCE($3, controlled_distractors),
-         updated_at = NOW()
-       WHERE id = $1`,
-      [row.id, s1 ? s1.join('\n') : null, s2 ? s2.distractors.join('\n') : null]
-    );
+    if (!s1 && !s2) {
+      failed.push(row.pattern); failedItems.push({ id: row.id, error: 'ai_unusable', status: 502 }); continue;
+    }
+    const generatedS1 = s1 ? s1.join('\n') : null;
+    const generatedS2 = s2 ? s2.distractors.join('\n') : null;
+    const guarded = await bulkBoundaryWrite({
+      prepare: async (client, { locked }) => {
+        const dbQuery = client.query.bind(client);
+        const g = await loadGrammarWithExamples(row.id, dbQuery, locked);
+        if (!g) throw new BoundaryContextError('grammar_not_found');
+        const currentSiblings = await loadDistractorSiblings(g, dbQuery, locked);
+        assertGenerationSourceUnchanged(sourceFingerprint,
+          distractorSourceFingerprint(g, currentSiblings));
+        const recognition = (g.recognition_distractors || '').trim() ? g.recognition_distractors : generatedS1;
+        const controlled = (g.controlled_distractors || '').trim() ? g.controlled_distractors : generatedS2;
+        return { scope: { grammarId: g.id, moduleId: g.module_id, lessonId: g.lesson_id || undefined },
+          contentType: 'grammar_distractors', operation: 'generate', contentId: g.id,
+          fields: [boundaryField('recognitionDistractors', recognition), boundaryField('controlledDistractors', controlled)],
+          contentIsNewOrChanged: recognition !== g.recognition_distractors || controlled !== g.controlled_distractors,
+          recognition, controlled };
+      },
+      write: async (client, candidate) => (await client.query(`UPDATE module_grammar SET
+        recognition_distractors=COALESCE(NULLIF(TRIM(recognition_distractors),''),$2),
+        controlled_distractors=COALESCE(NULLIF(TRIM(controlled_distractors),''),$3),updated_at=NOW()
+        WHERE id=$1 RETURNING id`, [row.id, candidate.recognition, candidate.controlled])).rows[0],
+    });
+    if (!guarded.ok) {
+      failed.push(row.pattern);
+      failedItems.push({ id: row.id, error: guarded.error, status: guarded.status,
+        ...(guarded.validation ? { validation: guarded.validation } : {}) });
+      continue;
+    }
     saved++;
+    savedItems.push({ id: row.id, validation: guarded.outcome.report });
+    } catch (error) {
+      console.error('distractor_bulk_item_failed', error);
+      failed.push(row.pattern);
+      failedItems.push({ id: row.id, error: 'bulk_item_failed', status: 500 });
+    }
   }
 
   const rest = await query(`SELECT COUNT(*)::int AS n FROM (${pendingSql}) t`, [courseId]);
@@ -1800,6 +1910,8 @@ router.post('/module-grammar/generate-distractors-bulk', asyncHandler(async (req
     processed: batch.rows.length,
     saved,
     failed,
+    savedItems,
+    failedItems,
     remaining: rest.rows[0].n,
     skippedNoMeaning: noMeaning.rows[0].n,
   });
@@ -1863,14 +1975,14 @@ router.put('/module-grammar/:id/distractors', asyncHandler(async (req, res) => {
 // Scope = this lesson's own grammar cards UNION the grammar points actually
 // picked into its paired Tugas Bunpou (if one exists yet) — matches the
 // implementation plan's "semua grammarId milik lesson/tugas terkait".
-async function bunpouFlowScope(lessonId) {
+async function bunpouFlowScope(lessonId, dbQuery = query) {
   const [own, task] = await Promise.all([
-    query(`SELECT id FROM module_grammar WHERE lesson_id = $1`, [lessonId]),
-    query(`SELECT id FROM lessons WHERE type = 'grammar_task' AND popup_after_lesson_id = $1 LIMIT 1`, [lessonId]),
+    dbQuery(`SELECT id FROM module_grammar WHERE lesson_id = $1`, [lessonId]),
+    dbQuery(`SELECT id FROM lessons WHERE type = 'grammar_task' AND popup_after_lesson_id = $1 LIMIT 1`, [lessonId]),
   ]);
   const taskLessonId = task.rows[0]?.id || null;
   const taskItems = taskLessonId
-    ? await query(`SELECT grammar_id FROM lesson_grammar_task_items WHERE lesson_id = $1`, [taskLessonId])
+    ? await dbQuery(`SELECT grammar_id FROM lesson_grammar_task_items WHERE lesson_id = $1`, [taskLessonId])
     : { rows: [] };
   const grammarIds = [...new Set([
     ...own.rows.map((r) => r.id),
@@ -1886,9 +1998,9 @@ async function bunpouFlowScope(lessonId) {
 // admin UI — grading itself never depends on this value (each practice
 // session freezes its own drill snapshot at creation time regardless; see
 // routes/grammar-task-sessions.js).
-async function currentSourceFingerprint(taskLessonId) {
+async function currentSourceFingerprint(taskLessonId, dbQuery = query) {
   if (!taskLessonId) return null;
-  const [items, pool] = await Promise.all([loadTaskConcepts(taskLessonId), loadModulePool(taskLessonId)]);
+  const [items, pool] = await Promise.all([loadTaskConcepts(taskLessonId, dbQuery), loadModulePool(taskLessonId, dbQuery)]);
   return contentRevisionId(items, pool);
 }
 
@@ -1961,34 +2073,42 @@ router.put('/lessons/:lessonId/bunpou-flow/draft', asyncHandler(async (req, res)
 // now-out-of-scope overlay into what students see.
 router.post('/lessons/:lessonId/bunpou-flow/publish', asyncHandler(async (req, res) => {
   if (req.body?.confirm !== true) return res.status(400).json({ error: 'confirm_required' });
-
-  const lesson = await query(`SELECT bunpou_flow_draft FROM lessons WHERE id = $1`, [req.params.lessonId]);
-  if (lesson.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-  const draft = lesson.rows[0].bunpou_flow_draft;
-  if (!draft) return res.status(400).json({ error: 'no_draft_to_publish' });
-  if (!req.body?.draftRevision || req.body.draftRevision !== companionDraftRevision(draft)) {
-    return res.status(409).json({ error: 'Draft berubah sejak ditinjau. Buka ulang pendamping sebelum publikasi.' });
-  }
-
-  const { grammarIds, taskLessonId } = await bunpouFlowScope(req.params.lessonId);
-  const check = validateCompanionEnvelope(draft, grammarIds);
-  if (!check.ok) return res.status(400).json({ error: 'invalid_envelope', details: check.errors });
-  const fingerprint = await currentSourceFingerprint(taskLessonId);
-  if (!fingerprint || draft.sourceFingerprint !== fingerprint) {
-    return res.status(409).json({ error: 'Materi berubah sejak draft diperiksa. Tinjau dan simpan ulang draft.' });
-  }
-
-  const sanitized = sanitizeCompanionEnvelope(draft);
-  sanitized.publishedBy = { email: req.user.email, at: new Date().toISOString() };
-  sanitized.sourceFingerprint = fingerprint;
-
-  const r = await query(
-    `UPDATE lessons SET bunpou_flow_published = $2, updated_at = NOW()
-      WHERE id = $1 AND bunpou_flow_draft = $3::jsonb RETURNING bunpou_flow_published`,
-    [req.params.lessonId, JSON.stringify(sanitized), JSON.stringify(draft)]
-  );
-  if (!r.rows.length) return res.status(409).json({ error: 'Draft berubah saat publikasi. Tinjau ulang pendamping.' });
-  res.json({ ok: true, published: r.rows[0].bunpou_flow_published });
+  const outcome = await adminBoundaryWrite(res, {
+    validate: validateBunpouPublish,
+    prepare: async (client, { locked }) => {
+      const dbQuery = client.query.bind(client);
+      const lesson = await dbQuery(`SELECT id,module_id,bunpou_flow_draft FROM lessons WHERE id=$1
+        ${locked ? 'FOR UPDATE' : ''}`, [req.params.lessonId]);
+      if (!lesson.rows.length) throw fail(404, 'lesson_not_found');
+      const row = lesson.rows[0], draft = row.bunpou_flow_draft;
+      if (!draft) throw fail(400, 'no_draft_to_publish');
+      if (!req.body?.draftRevision || req.body.draftRevision !== companionDraftRevision(draft)) {
+        throw fail(409, 'draft_changed_since_review');
+      }
+      const { grammarIds, taskLessonId } = await bunpouFlowScope(row.id, dbQuery);
+      const check = validateCompanionEnvelope(draft, grammarIds);
+      if (!check.ok) throw fail(400, 'invalid_envelope');
+      const fingerprint = await currentSourceFingerprint(taskLessonId, dbQuery);
+      if (!fingerprint || draft.sourceFingerprint !== fingerprint) throw fail(409, 'source_changed_since_review');
+      const sanitized = sanitizeCompanionEnvelope(draft);
+      return { scope: { moduleId: row.module_id, lessonId: row.id },
+        contentType: 'dialogue_comprehension', operation: 'publish', contentId: row.id,
+        fields: boundaryFieldsFrom('bunpouFlowPublished', sanitized), draft, sanitized, fingerprint,
+        expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async (client, candidate) => {
+      const published = { ...candidate.sanitized,
+        publishedBy: { email: req.user.email, at: new Date().toISOString() },
+        sourceFingerprint: candidate.fingerprint };
+      const result = await client.query(`UPDATE lessons SET bunpou_flow_published=$2,updated_at=NOW()
+        WHERE id=$1 AND bunpou_flow_draft=$3::jsonb RETURNING id,bunpou_flow_published`,
+      [req.params.lessonId, JSON.stringify(published), JSON.stringify(candidate.draft)]);
+      if (!result.rows.length) throw fail(409, 'draft_changed_during_publish');
+      return result.rows[0];
+    },
+  });
+  if (!outcome) return;
+  res.json({ ok: true, published: outcome.value.bunpou_flow_published, validation: outcome.report });
 }));
 
 // Flag + pilot lesson id — plain app_settings rows (same mechanism as
@@ -3247,10 +3367,37 @@ Balas HANYA JSON valid tanpa teks lain:
 // panggil model). Idempoten — default cuma isi yang kosong; { force:true }
 // regenerate semua. Cap per run + batch supaya tidak timeout (re-run lanjut).
 const _hasKanji = (s) => /[々一-鿿]/.test(String(s || ''));
+async function saveDeckReading(deckLessonId, exampleId, reading, force, sourceFingerprint) {
+  return bulkBoundaryWrite({
+    prepare: async (client, { locked }) => {
+      const result = await client.query(`SELECT e.*,v.module_id,v.lesson_id FROM vocabulary_examples e
+        JOIN module_vocabulary v ON v.id=e.vocabulary_id WHERE e.id=$1
+        ${locked ? 'FOR UPDATE OF e' : ''}`, [exampleId]);
+      if (!result.rows.length) throw new BoundaryContextError('vocabulary_owner_unresolved');
+      const row = result.rows[0], shouldWrite = force || !String(row.reading || '').trim();
+      assertGenerationSourceUnchanged(sourceFingerprint, deckReadingSourceFingerprint(row));
+      const consumers = await client.query('SELECT lesson_id FROM lesson_deck_items WHERE vocabulary_id=$1', [row.vocabulary_id]);
+      if (consumers.rows.some(consumer => consumer.lesson_id !== deckLessonId)) {
+        // Reading is stored on the shared example, so one deck's validation
+        // cannot authorize a change visible in a second lesson context.
+        throw new BoundaryContextError('boundary_context_mismatch');
+      }
+      return { scope: { lessonId: deckLessonId },
+        contentType: 'vocabulary_example', operation: 'generate', contentId: row.id,
+        fields: [boundaryField('japanese', row.japanese), boundaryField('reading', shouldWrite ? reading : row.reading),
+          boundaryField('highlight', row.highlight), boundaryField('indonesian', row.indonesian)],
+        shouldWrite, contentIsNewOrChanged: shouldWrite };
+    },
+    write: async (client, candidate) => candidate.shouldWrite
+      ? (await client.query('UPDATE vocabulary_examples SET reading=$2,updated_at=NOW() WHERE id=$1 RETURNING id',
+        [exampleId, reading])).rows[0]
+      : { id: exampleId, skipped: true },
+  });
+}
 router.post('/lessons/:lessonId/generate-deck-readings', asyncHandler(async (req, res) => {
   const force = (req.body || {}).force === true;
   const rows = await query(
-    `SELECT e.id, e.japanese
+    `SELECT e.id, e.vocabulary_id, e.japanese, e.reading
        FROM vocabulary_examples e
        JOIN lesson_deck_items di ON di.vocabulary_id = e.vocabulary_id
       WHERE di.lesson_id = $1 AND ($2::boolean OR e.reading IS NULL OR e.reading = '')
@@ -3261,22 +3408,32 @@ router.post('/lessons/:lessonId/generate-deck-readings', asyncHandler(async (req
   const total = all.length;
   if (total === 0) return res.json({ total: 0, updated: 0, failed: 0 });
 
+  const needsAi = all.filter(row => _hasKanji(row.japanese));
+  if (needsAi.length && !anthropicEnabled()) {
+    return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.', total, updated: 0, failed: needsAi.length });
+  }
+
   let updated = 0;
+  const updatedItems = [];
+  const failedItems = [];
   const needAi = [];
   // 1) Kalimat tanpa kanji → reading == japanese (exact, tanpa AI).
   for (const r of all) {
     const jp = String(r.japanese || '').trim();
-    if (!jp) continue;
+    if (!jp) { failedItems.push({ id: r.id, error: 'empty_japanese', status: 422 }); continue; }
     if (_hasKanji(jp)) { needAi.push(r); continue; }
-    await query(`UPDATE vocabulary_examples SET reading = $1, updated_at = NOW() WHERE id = $2`, [jp.slice(0, 300), r.id]);
-    updated++;
+    const outcome = await saveDeckReading(req.params.lessonId, r.id, jp.slice(0, 300), force,
+      deckReadingSourceFingerprint(r));
+    if (!outcome.ok) failedItems.push({ id: r.id, error: outcome.error, status: outcome.status,
+      ...(outcome.validation ? { validation: outcome.validation } : {}) });
+    else if (!outcome.outcome.value.skipped) {
+      updated++;
+      updatedItems.push({ id: r.id, validation: outcome.outcome.report });
+    }
   }
 
   // 2) Sisanya (mengandung kanji) → Claude per batch.
   if (needAi.length > 0) {
-    if (!anthropicEnabled()) {
-      return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.', total, updated, failed: needAi.length });
-    }
     const BATCH = 20;
     for (let i = 0; i < needAi.length; i += BATCH) {
       const batch = needAi.slice(i, i + BATCH);
@@ -3292,25 +3449,42 @@ ${list}
 
 Balas HANYA JSON valid tanpa teks lain, "n" = nomor kalimat:
 {"items":[{"n":1,"reading":"…"}]}`;
-      const text = await callClaude({
+      let text;
+      try { text = await callClaude({
         system: 'You convert Japanese sentences to full kana readings. Reply with a single valid JSON object only.',
         userContent,
         maxTokens: 1200,
         model: ANTHROPIC_GEN_MODEL,
-      });
+      }); } catch (error) {
+        console.error('deck_reading_ai_failed', error);
+        failedItems.push(...batch.map(row => ({ id: row.id, error: 'ai_unavailable', status: 502 })));
+        continue;
+      }
       const parsed = text ? _extractJsonObject(text) : null;
       const items = parsed && Array.isArray(parsed.items) ? parsed.items : [];
+      const attempted = new Set();
       for (const it of items) {
         const n = Number(it?.n);
         const reading = String(it?.reading || '').trim().slice(0, 300);
-        if (!reading || !Number.isInteger(n) || n < 1 || n > batch.length) continue;
-        await query(`UPDATE vocabulary_examples SET reading = $1, updated_at = NOW() WHERE id = $2`, [reading, batch[n - 1].id]);
-        updated++;
+        if (!reading || !Number.isInteger(n) || n < 1 || n > batch.length || attempted.has(n)) continue;
+        attempted.add(n);
+        const row = batch[n - 1];
+        const outcome = await saveDeckReading(req.params.lessonId, row.id, reading, force,
+          deckReadingSourceFingerprint(row));
+        if (!outcome.ok) failedItems.push({ id: row.id, error: outcome.error, status: outcome.status,
+          ...(outcome.validation ? { validation: outcome.validation } : {}) });
+        else if (!outcome.outcome.value.skipped) {
+          updated++;
+          updatedItems.push({ id: row.id, validation: outcome.outcome.report });
+        }
+      }
+      for (let n = 1; n <= batch.length; n++) if (!attempted.has(n)) {
+        failedItems.push({ id: batch[n - 1].id, error: 'ai_unusable', status: 502 });
       }
     }
   }
 
-  res.json({ total, updated, failed: total - updated });
+  res.json({ total, updated, failed: failedItems.length, updatedItems, failedItems });
 }));
 
 // Generate gambar ilustrasi (AI) untuk kosakata deck — tombol "Gambar (AI)"
@@ -5219,12 +5393,7 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', notionImportLimiter, a
     }
   }
 
-  let imported = 0, updated = 0, total = 0;
-  const startSort = (await query(
-    `SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM kanji_items WHERE lesson_id = $1`,
-    [lessonId]
-  )).rows[0].next;
-  let sort = startSort;
+  const staged = [];
   // Aliases super-banyak supaya tahan beda-beda schema. Misal:
   // - On'yomi 音読み / On 音読み / On / 音読み / Onyomi / On Reading / On'yomi
   // - Meaning (ID) / Indonesian / Arti / Meaning / Bahasa Indonesia / Indo
@@ -5233,7 +5402,6 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', notionImportLimiter, a
     const props = page.properties || {};
     const character = notionPlainText(pickProp(props, ['Kanji 漢字', 'Kanji', '漢字', 'Character', 'Karakter', 'Name', 'Title'])).trim();
     if (!character) continue;
-    total++;
     const onReading = notionPlainText(pickProp(props, [
       "On'yomi 音読み", "On'yomi", 'On 音読み', 'On', '音読み', 'Onyomi', 'On Reading',
     ])).trim() || null;
@@ -5256,30 +5424,50 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', notionImportLimiter, a
     // UPDATE lesson_id (root cause deck kanji Bab lain jadi kosong,
     // didiagnosis di migration 049/050). Unique index sudah disesuaikan
     // di migration 064.
-    const existing = await query(
-      `SELECT id FROM kanji_items WHERE character = $1 AND jlpt_level = $2 AND lesson_id = $3 LIMIT 1`,
-      [character, level, lessonId]
-    );
-    if (existing.rows.length > 0) {
-      await query(
-        `UPDATE kanji_items SET
-           on_reading = $2, kun_reading = $3, meaning_id = $4, mnemonic = $5,
-           stroke_count = $6, bab_kode = COALESCE($7, bab_kode), updated_at = NOW()
-         WHERE id = $1`,
-        [existing.rows[0].id, onReading, kunReading, meaningId, mnemonic, strokeCount, babKode]
-      );
-      updated++;
-    } else {
-      await query(
-        `INSERT INTO kanji_items (
-           lesson_id, character, jlpt_level, on_reading, kun_reading, meaning_id,
-           mnemonic, stroke_count, bab_kode, sort_order
-         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [lessonId, character, level, onReading, kunReading, meaningId, mnemonic, strokeCount, babKode, sort++]
-      );
-      imported++;
-    }
+    staged.push({ character, onReading, kunReading, meaningId, mnemonic, strokeCount, babKode });
+  }
+  const total = staged.length;
+  let imported = 0, updated = 0, validation = null;
+  if (total) {
+    const outcome = await adminBoundaryWrite(res, {
+      prepare: async (client, { locked }) => {
+        const current = await client.query(`SELECT id,type FROM lessons WHERE id=$1 ${locked ? 'FOR UPDATE' : ''}`, [lessonId]);
+        if (!current.rows.length) throw new BoundaryContextError('lesson_not_found');
+        if (current.rows[0].type !== 'kanji') throw new BoundaryContextError('boundary_context_mismatch');
+        return { scope: { lessonId }, contentType: 'kanji_compound_assessed', operation: 'live_write',
+          fields: staged.flatMap((item, index) => Object.entries(item)
+            .filter(([, value]) => typeof value === 'string')
+            .map(([key, value]) => boundaryField(`items[${index}].${key}`, value))),
+          expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+      },
+      write: async client => {
+        const start = await client.query('SELECT COALESCE(MAX(sort_order),-1)+1 AS next FROM kanji_items WHERE lesson_id=$1', [lessonId]);
+        let sort = Number(start.rows[0]?.next) || 0, added = 0, changed = 0;
+        for (const item of staged) {
+          const existing = await client.query(`SELECT id FROM kanji_items
+            WHERE character=$1 AND jlpt_level=$2 AND lesson_id=$3 LIMIT 1`,
+          [item.character, level, lessonId]);
+          if (existing.rows.length) {
+            await client.query(`UPDATE kanji_items SET on_reading=$2,kun_reading=$3,meaning_id=$4,
+              mnemonic=$5,stroke_count=$6,bab_kode=COALESCE($7,bab_kode),updated_at=NOW() WHERE id=$1`,
+            [existing.rows[0].id, item.onReading, item.kunReading, item.meaningId,
+              item.mnemonic, item.strokeCount, item.babKode]);
+            changed++;
+          } else {
+            await client.query(`INSERT INTO kanji_items(lesson_id,character,jlpt_level,on_reading,kun_reading,
+              meaning_id,mnemonic,stroke_count,bab_kode,sort_order)
+              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+            [lessonId, item.character, level, item.onReading, item.kunReading, item.meaningId,
+              item.mnemonic, item.strokeCount, item.babKode, sort++]);
+            added++;
+          }
+        }
+        return { imported: added, updated: changed };
+      },
+    });
+    if (!outcome) return;
+    ({ imported, updated } = outcome.value);
+    validation = outcome.report;
   }
 
   // Diagnostic: kalau ga ada satu pun character ke-extract, kasih tahu
@@ -5303,6 +5491,7 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', notionImportLimiter, a
     matchedRelationProp,
     matchedLevelProp,
     usedFallbackUnfiltered,
+    validation,
     ...(Object.keys(diagnostic).length ? { diagnostic } : {}),
   });
 }));

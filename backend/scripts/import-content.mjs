@@ -12,7 +12,8 @@ import 'dotenv/config';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { db, query } from '../src/db.js';
+import { db, withTransaction } from '../src/db.js';
+import { lockCurriculumCourse, lockCurriculumGraph } from '../src/curriculum-content-service.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..', '..');
@@ -33,13 +34,13 @@ function composeContent(body, jp) {
   return parts.join('\n\n');
 }
 
-async function upsertCourseShell(slug, courseData) {
+async function upsertCourseShell(slug, courseData, dbQuery) {
   // Insert only if missing — never overwrite admin-curated fields. If the
   // course already exists (admin created it via panel), we just reuse its id.
-  const existing = await query(`SELECT id FROM courses WHERE slug = $1`, [slug]);
+  const existing = await dbQuery(`SELECT id FROM courses WHERE slug = $1`, [slug]);
   if (existing.rows.length > 0) return existing.rows[0].id;
 
-  const inserted = await query(
+  const inserted = await dbQuery(
     `INSERT INTO courses (slug, title, tagline, level, is_published, is_available, sort_order)
      VALUES ($1, $2, $3, $4, TRUE, TRUE, $5) RETURNING id`,
     [slug, courseData.name || slug.toUpperCase(), courseData.tagline || null,
@@ -48,9 +49,9 @@ async function upsertCourseShell(slug, courseData) {
   return inserted.rows[0].id;
 }
 
-async function upsertModule(courseId, jsonModule, sortOrder) {
+async function upsertModule(courseId, jsonModule, sortOrder, dbQuery) {
   // JSON keys: {id: "m1", num: "01", title, lessons}
-  const result = await query(
+  const result = await dbQuery(
     `INSERT INTO modules (course_id, slug, title, sort_order)
      VALUES ($1, $2, $3, $4)
      ON CONFLICT (course_id, slug) DO UPDATE
@@ -61,11 +62,11 @@ async function upsertModule(courseId, jsonModule, sortOrder) {
   return result.rows[0].id;
 }
 
-async function upsertLesson(moduleId, jsonLesson, sortOrder) {
+async function upsertLesson(moduleId, jsonLesson, sortOrder, dbQuery) {
   // JSON keys: {id, title, type, duration, body, jp}
   const content = composeContent(jsonLesson.body, jsonLesson.jp);
   const duration = parseDurationMinutes(jsonLesson.duration);
-  const result = await query(
+  const result = await dbQuery(
     `INSERT INTO lessons (module_id, slug, title, type, content, duration_minutes, sort_order)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
      ON CONFLICT (module_id, slug) DO UPDATE
@@ -79,22 +80,22 @@ async function upsertLesson(moduleId, jsonLesson, sortOrder) {
   return result.rows[0].id;
 }
 
-async function replaceQuizQuestions(lessonId, questions) {
+async function replaceQuizQuestions(lessonId, questions, dbQuery) {
   // Replace strategy: wipe old questions + options (cascades), insert fresh.
   // Safe because quiz questions have no FK dependents from user-generated data
   // except quiz_attempts which store score/total, not per-question references.
-  await query(`DELETE FROM quiz_questions WHERE lesson_id = $1`, [lessonId]);
+  await dbQuery(`DELETE FROM quiz_questions WHERE lesson_id = $1`, [lessonId]);
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i];
     const prompt = q.jp ? `${q.q}\n\n${q.jp}` : q.q;
-    const qRes = await query(
+    const qRes = await dbQuery(
       `INSERT INTO quiz_questions (lesson_id, question, question_type, explanation, sort_order)
        VALUES ($1, $2, 'multiple_choice', $3, $4) RETURNING id`,
       [lessonId, prompt, q.explain || null, i]
     );
     const questionId = qRes.rows[0].id;
     for (let j = 0; j < (q.options || []).length; j++) {
-      await query(
+      await dbQuery(
         `INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order)
          VALUES ($1, $2, $3, $4)`,
         [questionId, q.options[j], j === q.correct, j]
@@ -115,33 +116,48 @@ async function main() {
   const stats = { courses: 0, modules: 0, lessons: 0, quizzes: 0, questions: 0 };
 
   for (const [courseSlug, courseData] of Object.entries(coursesJson)) {
-    const courseId = await upsertCourseShell(courseSlug, courseData);
-    stats.courses++;
-    console.log(`→ course: ${courseSlug}`);
+    await withTransaction(async client => {
+      // This importer replaces quiz sets and changes module order. Until it
+      // stages every candidate through the validator, never run it on a
+      // boundary-enabled course; the entire course import is atomic.
+      await lockCurriculumGraph(client, { exclusive: true });
+      const dbQuery = client.query.bind(client);
+      const existing = await dbQuery('SELECT id,curriculum_boundary_mode FROM courses WHERE slug=$1', [courseSlug]);
+      if (existing.rows.length) {
+        await lockCurriculumCourse(client, existing.rows[0].id);
+        const mode = await dbQuery('SELECT curriculum_boundary_mode FROM courses WHERE id=$1', [existing.rows[0].id]);
+        if (mode.rows[0]?.curriculum_boundary_mode !== 'off') {
+          throw new Error(`course ${courseSlug}: direct import requires boundary mode off; use reviewed staging`);
+        }
+      }
+      const courseId = await upsertCourseShell(courseSlug, courseData, dbQuery);
+      stats.courses++;
+      console.log(`→ course: ${courseSlug}`);
 
-    for (let mi = 0; mi < (courseData.modules || []).length; mi++) {
-      const jsonModule = courseData.modules[mi];
-      const moduleId = await upsertModule(courseId, jsonModule, mi);
-      stats.modules++;
+      for (let mi = 0; mi < (courseData.modules || []).length; mi++) {
+        const jsonModule = courseData.modules[mi];
+        const moduleId = await upsertModule(courseId, jsonModule, mi, dbQuery);
+        stats.modules++;
 
-      for (let li = 0; li < (jsonModule.lessons || []).length; li++) {
-        const jsonLesson = jsonModule.lessons[li];
-        const lessonId = await upsertLesson(moduleId, jsonLesson, li);
-        stats.lessons++;
+        for (let li = 0; li < (jsonModule.lessons || []).length; li++) {
+          const jsonLesson = jsonModule.lessons[li];
+          const lessonId = await upsertLesson(moduleId, jsonLesson, li, dbQuery);
+          stats.lessons++;
 
-        if (jsonLesson.type === 'quiz') {
-          const quizKey = `${courseSlug}:${jsonModule.id}:${jsonLesson.id}`;
-          const questions = quizzesJson[quizKey];
-          if (Array.isArray(questions) && questions.length > 0) {
-            await replaceQuizQuestions(lessonId, questions);
-            stats.quizzes++;
-            stats.questions += questions.length;
-          } else {
-            console.warn(`  ! quiz lesson has no questions: ${quizKey}`);
+          if (jsonLesson.type === 'quiz') {
+            const quizKey = `${courseSlug}:${jsonModule.id}:${jsonLesson.id}`;
+            const questions = quizzesJson[quizKey];
+            if (Array.isArray(questions) && questions.length > 0) {
+              await replaceQuizQuestions(lessonId, questions, dbQuery);
+              stats.quizzes++;
+              stats.questions += questions.length;
+            } else {
+              console.warn(`  ! quiz lesson has no questions: ${quizKey}`);
+            }
           }
         }
       }
-    }
+    });
   }
 
   console.log('\n✓ import complete:', stats);

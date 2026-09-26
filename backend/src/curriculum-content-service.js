@@ -22,9 +22,26 @@ export class BoundaryWriteError extends Error {
   }
 }
 
+export async function lockCurriculumGraph(client, { exclusive = false } = {}) {
+  // Ordinary content writers share the graph lock; prerequisite/topology
+  // mutations take it exclusively. This stabilizes closure reads without
+  // serializing unrelated courses.
+  await client.query(exclusive
+    ? 'SELECT pg_advisory_xact_lock(hashtext($1))'
+    : 'SELECT pg_advisory_xact_lock_shared(hashtext($1))', ['curriculum-boundary:graph']);
+}
+
 export async function lockCurriculumCourse(client, courseId) {
   if (!courseId) throw new BoundaryContextError('course_not_found');
-  await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`curriculum-boundary:${courseId}`]);
+  await lockCurriculumGraph(client);
+  const closure = await client.query(`WITH RECURSIVE required(id) AS (
+      SELECT $1::uuid
+      UNION
+      SELECT p.prerequisite_course_id FROM course_prerequisites p JOIN required r ON r.id=p.course_id
+    ) SELECT id FROM required ORDER BY id::text`, [courseId]);
+  for (const row of closure.rows) {
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`curriculum-boundary:${row.id}`]);
+  }
 }
 
 async function insertReport(client, { boundary, course, candidate, report, decision, contentId = null }) {
