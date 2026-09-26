@@ -9,19 +9,9 @@ let _ezSessionUserId = null;
 let _ezLoggingOut = false;
 let _ezUnfinishedPromise = null;
 let _ezUnfinishedGeneration = 0;
-let _ezAssignmentNavigation = null;
-// Resolve sibling pages from this script, including /courses/* callers.
-const _ezSiteRoot = (() => {
-  const page = new URL(location.href);
-  const script = typeof document !== 'undefined' && document.currentScript?.src;
-  const source = new URL(script || '/api-client.js', page);
-  return new URL(source.origin === page.origin ? '.' : '/', source.origin === page.origin ? source : page);
-})();
-
 function ezClearUnfinishedAssignmentCache() {
   _ezUnfinishedGeneration++;
   _ezUnfinishedPromise = null;
-  _ezAssignmentNavigation = null;
 }
 
 function _ezBeginAuthChange() {
@@ -68,43 +58,6 @@ async function ezGetUnfinishedAssignment({ force = false } = {}) {
   _ezUnfinishedPromise = pending;
   try { return await pending; }
   finally { if (_ezUnfinishedPromise === pending) _ezUnfinishedPromise = null; }
-}
-
-function _ezIsAssignmentEntryPage() {
-  const path = location.pathname;
-  if (!path.startsWith(_ezSiteRoot.pathname)) return false;
-  const page = path.slice(_ezSiteRoot.pathname.length);
-  // Welcome owns in-page resume. Admin/company and the separately authenticated
-  // /app product stay out. Login keeps its next URL; its student destination
-  // performs this check before any existing page redirect can run.
-  return ['', 'index.html', 'dashboard.html', 'review.html', 'live.html', 'progress.html', 'focus.html',
-    'courses/detail.html', 'courses/order.html'].includes(page);
-}
-
-async function _ezResumeUnfinishedAssignment(user) {
-  if (!user || !_ezIsAssignmentEntryPage()) return user;
-  if (_ezAssignmentNavigation) return _ezAssignmentNavigation;
-  const authGeneration = _ezAuthGeneration, owner = _ezSessionUserId;
-  let attempt;
-  try { attempt = await ezGetUnfinishedAssignment(); }
-  catch (error) {
-    // An invalidated request is never a reason to erase a newer valid session.
-    if (error.message === 'AUTH_CHANGED') return authGeneration === _ezAuthGeneration && owner === _ezSessionUserId ? user : null;
-    throw error;
-  }
-  if (authGeneration !== _ezAuthGeneration || owner !== _ezSessionUserId || _ezLoggingOut) return null;
-  if (!attempt || !_ezIsAssignmentEntryPage()) return user;
-  const target = new URL('welcome.html', _ezSiteRoot);
-  target.search = new URLSearchParams({ course: attempt.courseSlug, module: attempt.moduleSlug,
-    lesson: attempt.lessonSlug, resumeAssignment: '1' }).toString();
-  // Stop callers such as landing-cms and checkout from continuing to their
-  // own location.replace after this authoritative redirect. Navigation tears
-  // down this document; no account data or resume URL is persisted locally.
-  if (!_ezAssignmentNavigation) {
-    _ezAssignmentNavigation = new Promise(() => {});
-    location.replace(target.href);
-  }
-  return _ezAssignmentNavigation;
 }
 
 async function _ezFetch(path, opts = {}) {
@@ -240,7 +193,9 @@ async function ezGetMe() {
     mirrorUserToLocal(data.user);
     user = data.user;
   } catch { if (generation === _ezAuthGeneration && !_ezLoggingOut) mirrorUserToLocal(null); return null; }
-  return _ezResumeUnfinishedAssignment(user);
+  // An unfinished assignment remains resumable from its own lesson card, but
+  // it must never hijack the page the learner intentionally opened.
+  return user;
 }
 
 function mirrorUserToLocal(user) {

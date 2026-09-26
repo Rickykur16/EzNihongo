@@ -23,7 +23,7 @@ function setup() {
   let timerId = 0;
   const ctx = vm.createContext({
     quizState:null, session:{id:'learner-a'}, QUIZ_DATA:{},
-    window:{ ezApi:async()=>{throw new Error('Unexpected request');}, ezClearUnfinishedAssignmentCache:()=>effects.cacheCleared++ },
+    window:{ ezApi:async()=>{throw new Error('Unexpected request');}, ezClearUnfinishedAssignmentCache:()=>effects.cacheCleared++, scrollTo:()=>{} },
     localStorage:{getItem:key=>storage.get(key) ?? null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)},
     document:{getElementById:()=>main,querySelectorAll:()=>[],createElement:()=>({})},
     setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),
@@ -34,6 +34,10 @@ function setup() {
     fetchQuizStatus:async()=>({inProgress:false}),
     renderQuizLandingCard:(...args)=>effects.landings.push(args),
     renderQuizQuestion:()=>effects.renders++,updateQuizPaperProgress:()=>{},
+    _sectionOfModule:()=> 'Lainnya', _expandedSections:new Set(), _expandedModules:new Set(),
+    renderSidebar:()=>{}, renderLesson:()=>{}, closeSidebar:()=>{},
+    getEnrolledCourses:()=>['n5','n4'], renderCourseTabs:()=>{}, renderLearning:()=>{},
+    history:{replaceState:()=>{}},
     QUIZ_CAT_ORDER:['vocabulary','grammar','reading','listening'],
     normalizeQuizCategory:category=>category || 'vocabulary',
     kanaPlacementMeta:()=>null,escapeHtml:value=>String(value),console,
@@ -106,7 +110,7 @@ test('resume hydrates saved choices by option ID and opens the first unanswered 
   assert.equal(ctx.quizState.activeCategory,'grammar');
   assert.equal(ctx.quizState.questions[0].optionIds[ctx.quizState.selectedByIndex[0]],'q1-a');
   assert.equal(ctx.quizState.draftEnabled,true);assert.equal(ctx.quizState.deferFeedback,true);
-  assert.equal(ctx.window.__requiredAssignment.attemptToken,'attempt-1');assert.equal(effects.renders,1);
+  assert.equal(ctx.window.__requiredAssignment,null);assert.equal(effects.renders,1);
 });
 
 test('same-revision local last edit is recovered and marked dirty for server save',()=>{
@@ -181,7 +185,7 @@ test('a later edit during an in-flight save is stored and sent with the next rev
   assert.equal(active.draftRevision,5);assert.equal(storage.has(ctx.quizLocalDraftKey(active)),false);
 });
 
-test('lesson, module-intro and other-course navigation are blocked while the assignment is pending',async()=>{
+test('lesson, module-intro and other-course navigation remain available while an assignment is pending',async()=>{
   const {ctx,effects}=setup();
   ctx.currentState={course:'n5',moduleId:'bab3',lessonId:'assignment'};
   let navigationSideEffects=0;ctx.prepareMobileSidebarContentFocus=()=>{navigationSideEffects++;return ()=>{};};
@@ -189,8 +193,8 @@ test('lesson, module-intro and other-course navigation are blocked while the ass
   vm.runInContext(source('window.switchCourse =','// AI SENPAI (Maneki)'),ctx);
   ctx.window.setRequiredAssignment('n5:bab3:assignment','attempt-1');
   ctx.window.selectLesson('bab4','other');ctx.window.selectModuleIntro('bab3');await ctx.window.switchCourse('n4');
-  assert.equal(navigationSideEffects,0);assert.equal(effects.toasts.length,3);
-  assert.equal(ctx.currentState.lessonId,'assignment');
+  assert.equal(navigationSideEffects,3);assert.equal(effects.toasts.length,0);
+  assert.equal(ctx.currentState.lessonId,null);
   assert.equal(ctx.window.blockAssignmentNavigation('n5:bab3:assignment'),false);
   ctx.window.__requiredAssignment=null;
   assert.equal(ctx.window.blockAssignmentNavigation('n4:bab1:other'),false);
@@ -212,20 +216,16 @@ async function runBoot(pendingAssignment,enrolled=['n5','n4']) {
     history:{replaceState:(_state,_title,url)=>events.push(['url',url])},
   });
   ctx.window.location=location;ctx.window.ezGetUnfinishedAssignment=async()=>pendingAssignment;
-  const body=source('  const params = new URLSearchParams(window.location.search);\n  let pendingAssignment', '  // ── Lazy / background');
+  const body=source('  const params = new URLSearchParams(window.location.search);', '  // ── Lazy / background');
   await vm.runInContext(`(async()=>{${body}})()`,ctx);
   return {ctx,effects,events};
 }
 
-test('boot prioritizes the unfinished enrolled assignment over deep links and sets navigation scope before first render',async()=>{
-  const {ctx,events}=await runBoot({courseSlug:'n5',moduleSlug:'bab3',lessonId:'lesson-api',attemptToken:'attempt-1'});
-  assert.deepEqual(events.find(e=>e[0]==='learning'),['learning','n5','bab3','assignment']);
-  assert.equal(events.some(e=>e[0]==='select'),false);
-  assert.equal(ctx.window.__requiredAssignment.key,'n5:bab3:assignment');
-  assert.equal(ctx.window.__requiredAssignment.attemptToken,'attempt-1');
+test('boot keeps the learner-selected deep link even when unfinished work exists',()=>{
+  assert.equal(html.includes('window.ezGetUnfinishedAssignment().then'),false);
+  assert.equal(html.includes('window.setRequiredAssignment(getQuizKey(selected'),false);
 });
 
-test('boot does not impose a stale or unenrolled recovery target',async()=>{
-  const {ctx,events}=await runBoot({courseSlug:'n5',moduleSlug:'bab3',lessonId:'lesson-api',attemptToken:'attempt-1'},['n4']);
-  assert.equal(events.find(e=>e[0]==='learning')[1],'n4');assert.equal(ctx.window.__requiredAssignment,null);
+test('boot does not impose a stale or unenrolled recovery target',()=>{
+  assert.doesNotMatch(html,/resumePending|pendingAssignment/);
 });

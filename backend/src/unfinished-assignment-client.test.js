@@ -85,31 +85,25 @@ test('helper allows a rolling-deploy 404 but propagates server/network/malformed
   await assert.rejects(h.ctx.ezGetUnfinishedAssignment(), /network offline/);
 });
 
-test('validated student entry redirects once and prevents caller navigation from overriding the resume target', async () => {
+test('validated student entry does not redirect to unfinished work', async () => {
   const h = setup('/index.html'); h.state.attempt = attempt;
   let followed = false;
   // Mirrors the landing/login-style continuation that used to replace a
   // chosen destination after ezGetMe returned a user.
-  void h.ctx.ezGetMe().then(user => { followed = true; if (user) h.ctx.location.replace('dashboard.html'); });
+  void h.ctx.ezGetMe().then(user => { followed = !!user; });
   void h.ctx.ezRequireAuth('login.html');
   await flush();
-  assert.equal(followed, false);
-  assert.equal(h.redirects.length, 1);
-  const target = new URL(h.redirects[0]);
-  assert.equal(target.pathname, '/welcome.html');
-  assert.equal(target.searchParams.get('course'), 'n5');
-  assert.equal(target.searchParams.get('module'), 'bab-3');
-  assert.equal(target.searchParams.get('lesson'), 'assignment-bab-3');
-  assert.equal(target.searchParams.get('resumeAssignment'), '1');
-  assert.equal(target.searchParams.has('attemptToken'), false);
-  assert.equal([...h.storage.values()].some(value => value.includes('token-a')), false);
+  await flush();
+  assert.equal(followed, true);
+  assert.equal(h.redirects.length, 0);
+  assert.equal(h.requests.filter(r => r.path.endsWith('/quiz/unfinished')).length, 0);
 });
 
-test('all actual student entry pages check unfinished work while welcome/staff/separate app do not', async () => {
+test('all actual student entry pages leave unfinished work available without checking or redirecting', async () => {
   for (const path of ['/', '/index.html', '/dashboard.html', '/review.html', '/live.html', '/progress.html', '/focus.html', '/courses/detail.html', '/courses/order.html']) {
     const h = setup(path);
     assert.equal((await h.ctx.ezGetMe()).id, userA.id, path);
-    assert.equal(h.requests.filter(r => r.path.endsWith('/quiz/unfinished')).length, 1, path);
+    assert.equal(h.requests.filter(r => r.path.endsWith('/quiz/unfinished')).length, 0, path);
     assert.equal(h.redirects.length, 0, path);
   }
   for (const path of ['/welcome.html?resumeAssignment=1', '/admin.html', '/company.html', '/src/company-workspace.html', '/app/kanji.html', '/login.html']) {
@@ -120,7 +114,7 @@ test('all actual student entry pages check unfinished work while welcome/staff/s
   }
 });
 
-test('login keeps its existing next flow, then dashboard enforces the pending assignment', async () => {
+test('login keeps its existing next flow, then dashboard does not enforce the pending assignment', async () => {
   const h = setup('/login.html'); h.state.attempt = attempt;
   assert.equal((await h.ctx.ezLoginWithGoogle('credential')).id, userA.id);
   assert.equal((await h.ctx.ezGetMe()).id, userA.id);
@@ -129,22 +123,16 @@ test('login keeps its existing next flow, then dashboard enforces the pending as
   let returned = false;
   void h.ctx.ezRequireAuth().then(() => { returned = true; });
   await flush();
-  assert.equal(returned, false);
-  assert.match(h.redirects[0], /welcome\.html\?/);
+  assert.equal(returned, true);
+  assert.equal(h.redirects.length, 0);
 });
 
-test('resume URL stays under the script deployment root and safely encodes server slugs', async () => {
+test('unfinished assignment lookup remains an explicit opt-in helper', async () => {
   const h = setup('/school/courses/order.html', { scriptPath: '/school/api-client.js?v=1' });
   h.state.attempt = { ...attempt, courseSlug: 'n5&next=https://other.invalid', moduleSlug: 'bab 3', lessonSlug: 'lesson/#?' };
-  void h.ctx.ezGetMe();
-  await flush();
-  const url = new URL(h.redirects[0]);
-  assert.equal(url.origin, 'https://example.invalid');
-  assert.equal(url.pathname, '/school/welcome.html');
-  assert.equal(url.searchParams.get('course'), h.state.attempt.courseSlug);
-  assert.equal(url.searchParams.get('module'), 'bab 3');
-  assert.equal(url.searchParams.get('lesson'), 'lesson/#?');
-  assert.equal(url.searchParams.has('next'), false);
+  assert.equal((await h.ctx.ezGetMe()).id, userA.id);
+  assert.equal(h.redirects.length, 0);
+  assert.equal(h.requests.filter(r => r.path.endsWith('/quiz/unfinished')).length, 0);
 });
 
 test('force/finish invalidation discards late pending responses without poisoning a fresh read', async () => {
@@ -179,14 +167,14 @@ test('an account switch cannot return the previous account attempt or clear the 
   assert.equal(h.redirects.length, 0);
 });
 
-test('logout cancels a pending page guard without a resume/login redirect racing the logout destination', async () => {
+test('logout still reaches the normal destination without a pending-assignment guard', async () => {
   const gate = deferred();
   const h = setup('/dashboard.html', { intercept: req => req.path.endsWith('/quiz/unfinished') ? gate.promise : undefined });
   const pending = h.ctx.ezRequireAuth();
-  await flush();
+  await pending;
   await h.ctx.ezLogout();
   gate.resolve(response({ attempt }));
-  assert.equal(await pending, null);
+  assert.equal(h.storage.has('ez_user'), false);
   assert.deepEqual(h.redirects, []);
   assert.deepEqual(h.assignments, ['index.html']);
   assert.equal(h.storage.has('ez_user'), false);
@@ -207,9 +195,9 @@ test('a refresh that finishes after logout cannot restore authentication or perf
   assert.equal(h.requests.some(r => r.path.endsWith('/quiz/unfinished')), false);
 });
 
-test('unfinished lookup failure does not turn a verified user into a guest or erase its mirror', async () => {
+test('unfinished lookup failure does not affect the verified session because it is opt-in', async () => {
   const h = setup('/dashboard.html', { intercept: req => req.path.endsWith('/quiz/unfinished') ? response({}, 503) : undefined });
-  await assert.rejects(h.ctx.ezGetMe(), /ASSIGNMENT_CHECK_FAILED/);
+  assert.equal((await h.ctx.ezGetMe()).id, userA.id);
   assert.equal(JSON.parse(h.storage.get('ez_user')).id, userA.id);
   assert.deepEqual(h.redirects, []);
 });

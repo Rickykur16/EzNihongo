@@ -16,7 +16,7 @@ test('Bab 3 voice correction preserves every question, answer, explanation and c
   Object.values(contentOnly.forms).flat().forEach(q => { delete q.audioScript; });
   // Reviewed bank before this bounded audio-role-only correction.
   const digest = createHash('sha256').update(JSON.stringify(contentOnly)).digest('hex');
-  assert.equal(digest, '838ccc95755287706dd22ffacafdbcbc29414027bfc43aeb9429eeb0603fecb1');
+  assert.equal(digest, '2a390e26a07c3ba1ee14a43d8258c55b559a616196f0ce14c085fd7df2028b21');
   assert.deepEqual(corrections.map(c => c.id), ['b03-a-l01','b03-a-l02','b03-a-l03','b03-b-l02','b03-b-l04']);
   const spokenText = script => script.split('\n').map(line => line.replace(/^[A-Z]: /, ''));
   for (const correction of corrections) {

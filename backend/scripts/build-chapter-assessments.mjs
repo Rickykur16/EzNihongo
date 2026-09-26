@@ -46,6 +46,13 @@ export function validateBank(bank) {
     for (const item of bank.forms[form]) {
       if (!new RegExp(`^b${String(bank.chapter).padStart(2,'0')}-${form.toLowerCase()}-`).test(item.id)) throw new Error(`Invalid item ID: ${item.id}`);
       if (!item.prompt?.trim() || !item.explanation?.trim() || item.mode !== 'choice' || 'acceptedAnswers' in item) throw new Error(`Every item must be multiple choice: ${item.id}`);
+      // A vocabulary/grammar stem must not state the correct option in plain
+      // text. Reading and listening deliberately put the answer in their
+      // stimulus, so those categories are excluded from this guard.
+      if (!['reading', 'listening'].includes(item.category) &&
+          item.prompt.toLocaleLowerCase().includes(item.options[item.answer].toLocaleLowerCase())) {
+        throw new Error(`Correct answer leaked into stem ${item.id}`);
+      }
       const stimulus = `${item.prompt}|${item.passage || ''}|${item.audioScript || ''}`;
       if (seenPrompts.has(stimulus)) throw new Error(`Duplicate stimulus ${item.id}`);
       seenPrompts.add(stimulus);

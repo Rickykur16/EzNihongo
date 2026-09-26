@@ -196,7 +196,7 @@ async function loadQuestionsByIds(ids, lessonId) {
               CASE WHEN audio_scene IS NULL THEN audio_script ELSE NULL END AS audio_script,
               (question_category = 'listening' AND audio_scene IS NOT NULL) AS has_audio,
               passage, image_url,
-              explanation, sort_order
+              sort_order
          FROM quiz_questions
         WHERE id = ANY($1::uuid[]) AND lesson_id=$2`,
       [ids, lessonId]
