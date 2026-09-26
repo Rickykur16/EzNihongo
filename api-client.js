@@ -4,8 +4,111 @@
 const EZ_API_BASE = (typeof window !== 'undefined' && window.EZ_API_BASE) || '/api';
 let _ezAccessToken = null;
 let _ezRefreshPromise = null;
+let _ezAuthGeneration = 0;
+let _ezSessionUserId = null;
+let _ezLoggingOut = false;
+let _ezUnfinishedPromise = null;
+let _ezUnfinishedGeneration = 0;
+let _ezAssignmentNavigation = null;
+// Resolve sibling pages from this script, including /courses/* callers.
+const _ezSiteRoot = (() => {
+  const page = new URL(location.href);
+  const script = typeof document !== 'undefined' && document.currentScript?.src;
+  const source = new URL(script || '/api-client.js', page);
+  return new URL(source.origin === page.origin ? '.' : '/', source.origin === page.origin ? source : page);
+})();
+
+function ezClearUnfinishedAssignmentCache() {
+  _ezUnfinishedGeneration++;
+  _ezUnfinishedPromise = null;
+  _ezAssignmentNavigation = null;
+}
+
+function _ezBeginAuthChange() {
+  _ezAuthGeneration++;
+  _ezAccessToken = null;
+  _ezRefreshPromise = null;
+  _ezSessionUserId = null;
+  ezClearUnfinishedAssignmentCache();
+  return _ezAuthGeneration;
+}
+
+function _ezCheckAuthGeneration(generation) {
+  if (generation !== _ezAuthGeneration || _ezLoggingOut) throw new Error('AUTH_CHANGED');
+}
+
+// Only in-flight work is shared. A completed read is never reused after an
+// assignment starts or finishes, and old-account responses cannot redirect.
+async function ezGetUnfinishedAssignment({ force = false } = {}) {
+  if (force) ezClearUnfinishedAssignmentCache();
+  if (_ezUnfinishedPromise) return _ezUnfinishedPromise;
+  const authGeneration = _ezAuthGeneration;
+  const generation = _ezUnfinishedGeneration;
+  const pending = (async () => {
+    if (!_ezAccessToken) await ezRefresh();
+    _ezCheckAuthGeneration(authGeneration);
+    const owner = _ezSessionUserId;
+    const res = await ezApi('/progress/quiz/unfinished', { cache: 'no-store' });
+    _ezCheckAuthGeneration(authGeneration);
+    if (generation !== _ezUnfinishedGeneration || owner !== _ezSessionUserId) throw new Error('AUTH_CHANGED');
+    if (res.status === 404) return null; // Client/server rolling-deploy compatibility.
+    if (!res.ok) throw new Error('ASSIGNMENT_CHECK_FAILED');
+    const data = await res.json();
+    _ezCheckAuthGeneration(authGeneration);
+    if (generation !== _ezUnfinishedGeneration || owner !== _ezSessionUserId) throw new Error('AUTH_CHANGED');
+    if (!data || !Object.prototype.hasOwnProperty.call(data, 'attempt')) throw new Error('ASSIGNMENT_CHECK_FAILED');
+    if (data.attempt === null) return null;
+    const attempt = data.attempt;
+    if (!attempt || typeof attempt !== 'object' ||
+        ['attemptToken', 'lessonId', 'lessonSlug', 'moduleSlug', 'courseSlug'].some(key => typeof attempt[key] !== 'string' || !attempt[key].trim())) {
+      throw new Error('ASSIGNMENT_CHECK_FAILED');
+    }
+    return attempt;
+  })();
+  _ezUnfinishedPromise = pending;
+  try { return await pending; }
+  finally { if (_ezUnfinishedPromise === pending) _ezUnfinishedPromise = null; }
+}
+
+function _ezIsAssignmentEntryPage() {
+  const path = location.pathname;
+  if (!path.startsWith(_ezSiteRoot.pathname)) return false;
+  const page = path.slice(_ezSiteRoot.pathname.length);
+  // Welcome owns in-page resume. Admin/company and the separately authenticated
+  // /app product stay out. Login keeps its next URL; its student destination
+  // performs this check before any existing page redirect can run.
+  return ['', 'index.html', 'dashboard.html', 'review.html', 'live.html', 'progress.html', 'focus.html',
+    'courses/detail.html', 'courses/order.html'].includes(page);
+}
+
+async function _ezResumeUnfinishedAssignment(user) {
+  if (!user || !_ezIsAssignmentEntryPage()) return user;
+  if (_ezAssignmentNavigation) return _ezAssignmentNavigation;
+  const authGeneration = _ezAuthGeneration, owner = _ezSessionUserId;
+  let attempt;
+  try { attempt = await ezGetUnfinishedAssignment(); }
+  catch (error) {
+    // An invalidated request is never a reason to erase a newer valid session.
+    if (error.message === 'AUTH_CHANGED') return authGeneration === _ezAuthGeneration && owner === _ezSessionUserId ? user : null;
+    throw error;
+  }
+  if (authGeneration !== _ezAuthGeneration || owner !== _ezSessionUserId || _ezLoggingOut) return null;
+  if (!attempt || !_ezIsAssignmentEntryPage()) return user;
+  const target = new URL('welcome.html', _ezSiteRoot);
+  target.search = new URLSearchParams({ course: attempt.courseSlug, module: attempt.moduleSlug,
+    lesson: attempt.lessonSlug, resumeAssignment: '1' }).toString();
+  // Stop callers such as landing-cms and checkout from continuing to their
+  // own location.replace after this authoritative redirect. Navigation tears
+  // down this document; no account data or resume URL is persisted locally.
+  if (!_ezAssignmentNavigation) {
+    _ezAssignmentNavigation = new Promise(() => {});
+    location.replace(target.href);
+  }
+  return _ezAssignmentNavigation;
+}
 
 async function _ezFetch(path, opts = {}) {
+  if (_ezLoggingOut) throw new Error('AUTH_CHANGED');
   const headers = { ...(opts.headers || {}) };
   const isFormData = typeof FormData !== 'undefined' && opts.body instanceof FormData;
   if (opts.body && !isFormData && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
@@ -14,12 +117,16 @@ async function _ezFetch(path, opts = {}) {
 }
 
 async function ezApi(path, opts = {}) {
+  const generation = _ezAuthGeneration;
   let res = await _ezFetch(path, opts);
+  _ezCheckAuthGeneration(generation);
   if (res.status === 401) {
     try {
       await ezRefresh();
       res = await _ezFetch(path, opts);
+      _ezCheckAuthGeneration(generation);
     } catch (e) {
+      if (generation !== _ezAuthGeneration || _ezLoggingOut || e.message === 'AUTH_CHANGED') throw new Error('AUTH_CHANGED');
       _ezAccessToken = null;
       throw new Error('AUTH_EXPIRED');
     }
@@ -28,26 +135,32 @@ async function ezApi(path, opts = {}) {
 }
 
 async function ezRefresh() {
+  if (_ezLoggingOut) throw new Error('AUTH_CHANGED');
   if (_ezRefreshPromise) return _ezRefreshPromise;
-  _ezRefreshPromise = (async () => {
+  const generation = _ezAuthGeneration;
+  const pending = (async () => {
     const res = await fetch(EZ_API_BASE + '/auth/refresh', {
       method: 'POST',
       credentials: 'include',
     });
     if (!res.ok) throw new Error('refresh_failed');
     const data = await res.json();
+    _ezCheckAuthGeneration(generation);
     _ezAccessToken = data.accessToken;
     if (data.user) mirrorUserToLocal(data.user);
     return _ezAccessToken;
   })();
-  try { return await _ezRefreshPromise; }
-  finally { _ezRefreshPromise = null; }
+  _ezRefreshPromise = pending;
+  try { return await pending; }
+  finally { if (_ezRefreshPromise === pending) _ezRefreshPromise = null; }
 }
 
 // Exchange Google ID token for app session.
 // On first-ever signup, backend returns 400 { error: 'profile_required', googleName }.
 // Caller must then retry with fullName.
 async function ezLoginWithGoogle(credential, fullName) {
+  _ezLoggingOut = false;
+  const generation = _ezBeginAuthChange();
   const body = fullName ? { credential, fullName } : { credential };
   const res = await fetch(EZ_API_BASE + '/auth/google', {
     method: 'POST',
@@ -56,6 +169,7 @@ async function ezLoginWithGoogle(credential, fullName) {
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
+  _ezCheckAuthGeneration(generation);
   if (!res.ok) {
     const err = new Error(data.message || data.error || 'login_failed');
     err.code = data.error;
@@ -71,6 +185,8 @@ async function ezLoginWithGoogle(credential, fullName) {
 // Email+password login (admin password-only / non-Google). On failure the
 // backend returns a generic 401 { error: 'invalid_credentials' }.
 async function ezLogin(email, password) {
+  _ezLoggingOut = false;
+  const generation = _ezBeginAuthChange();
   const res = await fetch(EZ_API_BASE + '/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -78,6 +194,7 @@ async function ezLogin(email, password) {
     body: JSON.stringify({ email, password }),
   });
   const data = await res.json().catch(() => ({}));
+  _ezCheckAuthGeneration(generation);
   if (!res.ok) {
     const err = new Error(data.message || data.error || 'login_failed');
     err.code = data.error;
@@ -89,12 +206,15 @@ async function ezLogin(email, password) {
 }
 
 async function ezLogout() {
+  const generation = _ezBeginAuthChange();
+  _ezLoggingOut = true;
   try {
     await fetch(EZ_API_BASE + '/auth/logout', {
       method: 'POST',
       credentials: 'include',
     });
   } catch {}
+  if (generation !== _ezAuthGeneration) return;
   _ezAccessToken = null;
   localStorage.removeItem('ez_user');
   localStorage.removeItem('ez_courses');
@@ -107,19 +227,34 @@ async function ezLogout() {
 // Validates current session. Tries refresh cookie first if no access token.
 // Returns user object or null.
 async function ezGetMe() {
+  const generation = _ezAuthGeneration;
   if (!_ezAccessToken) {
-    try { await ezRefresh(); } catch { mirrorUserToLocal(null); return null; }
+    try { await ezRefresh(); } catch { if (generation === _ezAuthGeneration) mirrorUserToLocal(null); return null; }
   }
+  let user;
   try {
     const res = await ezApi('/auth/me');
     if (!res.ok) { mirrorUserToLocal(null); return null; }
     const data = await res.json();
+    _ezCheckAuthGeneration(generation);
     mirrorUserToLocal(data.user);
-    return data.user;
-  } catch { mirrorUserToLocal(null); return null; }
+    user = data.user;
+  } catch { if (generation === _ezAuthGeneration && !_ezLoggingOut) mirrorUserToLocal(null); return null; }
+  return _ezResumeUnfinishedAssignment(user);
 }
 
 function mirrorUserToLocal(user) {
+  const userId = user?.id || null;
+  if (_ezSessionUserId !== userId) {
+    const previousUserId = _ezSessionUserId;
+    _ezSessionUserId = userId;
+    // A refresh cookie can switch accounts in another tab without this page
+    // calling a login function. Retire responses issued for the prior user.
+    if (previousUserId !== null && userId !== null) _ezAuthGeneration++;
+    // First refresh establishes the owner of an already in-flight lookup;
+    // replacing an established account invalidates its outstanding results.
+    if (previousUserId !== null || userId === null) ezClearUnfinishedAssignmentCache();
+  }
   if (!user) { localStorage.removeItem('ez_user'); return null; }
   const email = user.email || '';
   const name = user.fullName || (email ? email.split('@')[0] : 'User');
@@ -138,8 +273,10 @@ function mirrorUserToLocal(user) {
 
 // Guard helper for protected pages. Redirects to login if not authenticated.
 async function ezRequireAuth(loginPath) {
+  const generation = _ezAuthGeneration;
   const user = await ezGetMe();
   if (!user) {
+    if (generation !== _ezAuthGeneration || _ezLoggingOut) return null;
     const path = loginPath || 'login.html';
     const here = location.pathname.replace(/^\//, '') + location.search;
     location.replace(path + '?next=' + encodeURIComponent(here || 'dashboard.html'));
@@ -156,6 +293,8 @@ window.ezLogout = ezLogout;
 window.ezGetMe = ezGetMe;
 window.mirrorUserToLocal = mirrorUserToLocal;
 window.ezRequireAuth = ezRequireAuth;
+window.ezGetUnfinishedAssignment = ezGetUnfinishedAssignment;
+window.ezClearUnfinishedAssignmentCache = ezClearUnfinishedAssignmentCache;
 
 // Keep student-facing API failures clear and consistent across the new
 // platform pages; route/error codes should never be shown to learners.

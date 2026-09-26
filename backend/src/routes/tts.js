@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { sceneTurnVoices, validateSceneVoices } from '../dialogue-scene.js';
+import { normalizeDialogScene, sceneTurnVoices, validateSceneVoices } from '../dialogue-scene.js';
 import { isCanonicalUuid } from '../live-class-admin-rules.js';
 import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
@@ -46,9 +46,13 @@ const SETTINGS_VERSION = 'v6'; // jeda 1.5s setelah narrator (was 700ms)
 // berubah (single → role voice); bump global = regenerate SEMUA cache
 // (cost ElevenLabs), gak perlu.
 export function ttsHashKey(text, voices) {
-  const sortedVoices = voices.slice().sort().join(':');
+  // An unordered set collides when A and B exchange voices. Preserve the old
+  // cache only where ordering cannot matter (a single distinct voice).
+  const voiceKey = new Set(voices).size <= 1
+    ? voices.join(':')
+    : `ordered-v1:${JSON.stringify(voices)}`;
   return crypto.createHash('sha256')
-    .update(`elevenlabs|${sortedVoices}|${ELEVEN_MODEL}|${SETTINGS_VERSION}|${text}`)
+    .update(`elevenlabs|${voiceKey}|${ELEVEN_MODEL}|${SETTINGS_VERSION}|${text}`)
     .digest('hex');
 }
 // Backward alias buat code dalam file ini.
@@ -266,7 +270,7 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
   const known = await query(
     `SELECT 1 WHERE EXISTS (SELECT 1 FROM module_vocabulary WHERE japanese = $1 OR reading = $1)
                 OR EXISTS (SELECT 1 FROM vocabulary_examples WHERE japanese = $1 OR reading = $1)
-                OR EXISTS (SELECT 1 FROM quiz_questions WHERE audio_script = $1 AND assessment_meta->>'version' IS NULL)
+                OR EXISTS (SELECT 1 FROM quiz_questions WHERE audio_script = $1 AND assessment_meta->>'version' IS NULL AND audio_scene IS NULL)
                 OR EXISTS (SELECT 1 FROM module_grammar WHERE example_dialog = $1 OR example = $1)
                 OR EXISTS (SELECT 1 FROM grammar_examples WHERE japanese = $1)
                 OR EXISTS (SELECT 1 FROM kana_items WHERE character = $1)
@@ -281,15 +285,20 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
 
 // Callers must authorize the source text first. Assessment callers use their
 // immutable, owned attempt and never send the script to the student client.
-export async function renderTtsAudio(text, res, { privateResponse = false } = {}) {
+export async function renderTtsAudio(text, res, { privateResponse = false, dialogScene = null } = {}) {
 
   // Detect dialog vs single-voice. Single-voice fallback kalau parse gagal.
   const turns = parseDialog(text);
   const isDialog = !!turns;
   const registry = isDialog ? await loadSpeakerRegistry() : null;
-  const turnVoices = isDialog
-    ? turns.map((t, i) => voiceForSpeaker(t.speaker, i, registry))
-    : [{ voiceId: ELEVEN_VOICE_ID, role: 'single' }];
+  let scene, turnVoices;
+  try {
+    scene = normalizeDialogScene(dialogScene);
+    if (scene && !isDialog) throw new Error('Skrip audio harus memakai label pemeran.');
+    turnVoices = isDialog
+      ? sceneTurnVoices(turns, scene, (t, i) => voiceForSpeaker(t.speaker, i, registry))
+      : [{ voiceId: ELEVEN_VOICE_ID, role: 'single' }];
+  } catch (err) { return res.status(422).json({ error: 'dialog_voice_missing', detail: err.message }); }
   const voices = turnVoices.map((v) => v.voiceId);
 
   // Cache key includes voice list — single-voice vs dialog versions stored
@@ -304,15 +313,15 @@ export async function renderTtsAudio(text, res, { privateResponse = false } = {}
     return sendAudio(res, cached.rows[0].audio, cached.rows[0].content_type, privateResponse);
   }
 
-  // Disabled kalau API key kosong, atau (non-dialog tanpa voice ID),
-  // atau (dialog tanpa satupun voice cewe/cowo/narrator yang ke-set).
-  const dialogVoicesEmpty = !ELEVEN_VOICE_FEMALE && !ELEVEN_VOICE_MALE && !ELEVEN_VOICE_NARRATOR;
-  if (!ELEVEN_API_KEY || (!isDialog && !ELEVEN_VOICE_ID) || (isDialog && dialogVoicesEmpty)) {
+  // Explicit character voices work without female/male environment defaults.
+  // A missing voice on any actual turn must fail before contacting ElevenLabs.
+  if (!ELEVEN_API_KEY || voices.some(v => !v)) {
     return res.status(503).json({ error: 'tts_disabled' });
   }
 
   let combined;
   try {
+    await validateSceneVoices(scene, fetchElevenVoices);
     if (isDialog) {
       // Generate per turn SERIAL (bukan Promise.all paralel) karena
       // ElevenLabs free tier:
@@ -370,7 +379,7 @@ router.get('/tts/dialog', optionalAuth, ttsLimiter, asyncHandler(async (req, res
   const known = await query(
     `SELECT 1 WHERE EXISTS (SELECT 1 FROM module_vocabulary WHERE japanese = $1 OR reading = $1)
                 OR EXISTS (SELECT 1 FROM vocabulary_examples WHERE japanese = $1 OR reading = $1)
-                OR EXISTS (SELECT 1 FROM quiz_questions WHERE audio_script = $1 AND assessment_meta->>'version' IS NULL)
+                OR EXISTS (SELECT 1 FROM quiz_questions WHERE audio_script = $1 AND assessment_meta->>'version' IS NULL AND audio_scene IS NULL)
                 OR EXISTS (SELECT 1 FROM module_grammar WHERE example_dialog = $1 OR example = $1)
                 OR EXISTS (SELECT 1 FROM grammar_examples WHERE japanese = $1)
                 OR EXISTS (SELECT 1 FROM kana_items WHERE character = $1)

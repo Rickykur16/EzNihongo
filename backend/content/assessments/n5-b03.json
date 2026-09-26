@@ -492,7 +492,7 @@
           "Yuki menyebut dirinya guru.",
           "Hanya Maria yang menyebut profesi karyawan."
         ],
-        "audioScript": "A: はじめまして。わたしは マリアです。かいしゃいんです。\nB: はじめまして。わたしは ユキです。せんせいです。",
+        "audioScript": "A: はじめまして。わたしは マリアです。かいしゃいんです。\nF: はじめまして。わたしは ユキです。せんせいです。",
         "id": "b03-a-l01",
         "listeningFocus": "detail"
       },
@@ -515,7 +515,7 @@
           "Penyangkalan terhadap perawat sesuai, tetapi guru bukan profesi yang disebut Ken.",
           "はい membenarkan dugaan perawat, sehingga tidak sesuai untuk meluruskan dugaan itu."
         ],
-        "audioScript": "A: はじめまして。ケンです。いしゃです。\nB: ケンさんは かんごしですか。",
+        "audioScript": "M: はじめまして。ケンです。いしゃです。\nF: ケンさんは かんごしですか。",
         "id": "b03-a-l02",
         "listeningFocus": "response"
       },
@@ -538,7 +538,7 @@
           "Tidak ada yang mengaku guru.",
           "Sari membenarkan bahwa ia juga pelajar."
         ],
-        "audioScript": "A: わたしは デウィです。がくせいです。サリさんも がくせいですか。\nB: はい、わたしも がくせいです。",
+        "audioScript": "A: わたしは デウィです。がくせいです。サリさんも がくせいですか。\nF: はい、わたしも がくせいです。",
         "id": "b03-a-l03",
         "listeningFocus": "inference"
       },
@@ -1033,7 +1033,7 @@
           "Ayah Leo orang Amerika; Leo dan ibunya sama-sama menyatakan bukan orang Amerika, sehingga keduanya berbeda dari ayah.",
           "Selain Leo, ibunya juga disebut bukan orang Amerika."
         ],
-        "audioScript": "A: はじめまして。レオです。ちちは アメリカじんです。わたしは アメリカじんじゃありません。ははも アメリカじんじゃありません。",
+        "audioScript": "M: はじめまして。レオです。ちちは アメリカじんです。わたしは アメリカじんじゃありません。ははも アメリカじんじゃありません。",
         "id": "b03-b-l02",
         "listeningFocus": "inference"
       },
@@ -1079,7 +1079,7 @@
           "Ujaran membahas profesi, bukan memperkenalkan nama.",
           "Tidak ada ucapan terima kasih."
         ],
-        "audioScript": "A: ミナさんは せんせいですね。\nB: はい、せんせいです。",
+        "audioScript": "A: ミナさんは せんせいですね。\nF: はい、せんせいです。",
         "id": "b03-b-l04",
         "listeningFocus": "intent"
       }

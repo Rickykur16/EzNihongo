@@ -4,6 +4,7 @@
   const clone = value => JSON.parse(JSON.stringify(value));
   const profile = key => (window.__dialogSpeakers || []).find(s => s.character_key === key);
   const current = () => window.__dialogScene;
+  const listening = () => window.__dialogMode === 'listening';
   function snapshot(key, position, speaker) {
     const c = catalog.characters.find(c => c.key === key), p = profile(key);
     return {characterKey:key, position, speaker, displayName:p?.default_display_name || c.displayName,
@@ -19,6 +20,22 @@
     try { window.__dialogScene = JSON.parse(tr.querySelector('[name="dialog_scene"]')?.value || 'null'); }
     catch { window.__dialogScene = null; }
   }
+  function prepareListening() {
+    if (current()) return;
+    const speakers = [...new Set((window.__dialogRows || []).map(r=>r.speaker).filter(s=>s && s!=='N'))];
+    const used = new Set();
+    const participants = [0,1].map(i => {
+      const speaker = speakers[i] || `C${i+1}`;
+      const female = /^(a|w|f|女)$/i.test(speaker);
+      const candidates = female ? ['anna-wijaya','aoi-takahashi','claire-bennett'] : ['hadi-pratama','ren-mori','daniel-foster'];
+      const key = candidates.find(key=>!used.has(key)); used.add(key);
+      const p = snapshot(key, i===0?'left':'right', speaker);
+      // Legacy codes only suggest an initial cast. The selected voice is
+      // explicit and validated before it can be applied to the question.
+      return p;
+    });
+    window.__dialogScene = {schemaVersion:1,enabled:false,backgroundKey:'none',participants};
+  }
   function ensure() { return window.__dialogScene ||= defaults(); }
   function voiceOptions(selected) {
     const voices = window.__elevenVoices || [];
@@ -28,17 +45,18 @@
   }
   function html() {
     const scene = current() || defaults();
-    return `<section class="ez-scene-admin"><h4>Karakter &amp; latar</h4>
+    return `<section class="ez-scene-admin"><h4>${listening() ? 'Karakter &amp; suara' : 'Karakter &amp; latar'}</h4>
+      ${listening() ? '' : `
       <label><input type="checkbox" ${scene.enabled?'checked':''} onchange="EzDialogueAdmin.toggle(this.checked)"> Tampilkan panggung dialog</label>
-      <div class="ez-scene-backgrounds">${catalog.backgrounds.map(b=>`<button type="button" aria-pressed="${scene.backgroundKey===b.key}" onclick="EzDialogueAdmin.background('${b.key}')">${b.asset?`<img loading="lazy" src="/assets/dialogue/${b.key}-mobile.webp" alt="">`:'<span class="ez-no-background"></span>'}${esc(b.name)}</button>`).join('')}</div>
+      <div class="ez-scene-backgrounds">${catalog.backgrounds.map(b=>`<button type="button" aria-pressed="${scene.backgroundKey===b.key}" onclick="EzDialogueAdmin.background('${b.key}')">${b.asset?`<img loading="lazy" src="/assets/dialogue/${b.key}-mobile.webp" alt="">`:'<span class="ez-no-background"></span>'}${esc(b.name)}</button>`).join('')}</div>`}
       <div class="ez-scene-slots">${scene.participants.map((p,i)=>{
         const c = catalog.characters.find(c=>c.key===p.characterKey);
         const speakers = [...new Set([...(window.__dialogRows||[]).map(r=>r.speaker).filter(s=>s&&s!=='N'),...scene.participants.map(p=>p.speaker)])];
         const other=scene.participants[1-i];
-        return `<div class="ez-scene-slot"><div class="ez-character-name">Tokoh ${p.position==='left'?'kiri':'kanan'}</div>
+        return `<div class="ez-scene-slot"><div class="ez-character-name">${listening() ? `Karakter ${i+1}` : `Tokoh ${p.position==='left'?'kiri':'kanan'}`}</div>
           <label>Pemeran<select aria-label="Pemeran" onchange="EzDialogueAdmin.character(${i},this.value)">${catalog.characters.map(c=>`<option value="${c.key}"${c.key===p.characterKey?' selected':''}${c.key===other.characterKey?' disabled':''}>${esc(c.name)}</option>`).join('')}</select></label>
           <label>Pembicara naskah<select aria-label="Pembicara naskah" onchange="EzDialogueAdmin.mapping(${i},this.value)">${speakers.map((s,j)=>`<option value="${esc(s)}"${s===p.speaker?' selected':''}${s===other.speaker?' disabled':''}>${esc(/^[A-Z][0-9]?$/.test(s)?`Pembicara ${j+1}`:s)}</option>`).join('')}</select></label>
-          <label><input type="checkbox" ${p.custom?'checked':''} onchange="EzDialogueAdmin.custom(${i},this.checked)"> Kustom dialog ini</label>
+          <label><input type="checkbox" ${p.custom?'checked':''} onchange="EzDialogueAdmin.custom(${i},this.checked)"> Kustom ${listening()?'soal':'dialog'} ini</label>
           <label>Nama tampilan<input maxlength="40" value="${esc(p.displayName)}" ${p.custom?'':'disabled'} oninput="EzDialogueAdmin.field(${i},'displayName',this.value)"></label>
           <label>Suara<select aria-label="Suara" ${p.custom?'':'disabled'} onchange="EzDialogueAdmin.voice(${i},this.value)">${voiceOptions(p.voiceId)}</select></label>
           <small>${esc(p.voiceName || 'Suara belum diatur')}</small>
@@ -46,11 +64,11 @@
           <button type="button" class="btn btn-ghost btn-sm" onclick="EzDialogueAdmin.latest(${i})">Gunakan profil terbaru</button>
         </div>`;
       }).join('')}</div>
-      <div id="ez-admin-scene-preview">${window.EzDialogue.html(scene,window.__dialogRows.map(r=>({speaker:r.speaker,text:r.jp.trim()})),window.EzDialogueFuriganaAdmin?.data())}</div>
+      ${listening() ? '' : `<div id="ez-admin-scene-preview">${window.EzDialogue.html(scene,window.__dialogRows.map(r=>({speaker:r.speaker,text:r.jp.trim()})),window.EzDialogueFuriganaAdmin?.data())}</div>`}
     </section>`;
   }
   function render() { window.admRenderDialogModal(); }
-  function mount() { window.EzDialogue.mount(document.getElementById('ez-admin-scene-preview')); }
+  function mount() { if (!listening()) window.EzDialogue.mount(document.getElementById('ez-admin-scene-preview')); }
   function options(selected) {
     return (current()?.participants || []).map(p=>`<option value="${esc(p.speaker)}"${selected===p.speaker?' selected':''}>${esc(p.displayName)} - ${esc(catalog.characters.find(c=>c.key===p.characterKey)?.name)}</option>`).join('');
   }
@@ -68,7 +86,7 @@
   }
   function stopPreview() { const audio=document.getElementById('ez-profile-audio');if(audio){audio.pause();audio.removeAttribute('src');} }
   window.EzDialogueAdmin = {
-    html, load, mount, options,
+    html, load, mount, options, prepareListening,
     toggle(enabled){ensure().enabled=enabled;render();},
     background(key){ensure().backgroundKey=key;render();},
     character(i,key){const scene=ensure();if(scene.participants.some((p,j)=>j!==i&&p.characterKey===key))return;const p=scene.participants[i];scene.participants[i]=snapshot(key,p.position,p.speaker);render();},
@@ -95,6 +113,7 @@
       if(scene && scene.participants.some(p=>!p.displayName.trim()))throw new Error('Isi nama tampilan pemeran.');
       const speakers=new Set((window.__dialogRows||[]).filter(r=>r.jp.trim()&&r.speaker!=='N').map(r=>r.speaker));
       if(scene && [...speakers].some(s=>!scene.participants.some(p=>p.speaker===s)))throw new Error('Petakan setiap pembicara naskah ke tokoh kiri atau kanan.');
+      if(listening() && scene && [...speakers].some(s=>!scene.participants.find(p=>p.speaker===s)?.voiceId))throw new Error('Pilih suara ElevenLabs untuk setiap karakter yang berbicara.');
       const ta=tr?.querySelector('[name="dialog_scene"]');if(ta)ta.value=scene?JSON.stringify(clone(scene)):'';
     }
   };

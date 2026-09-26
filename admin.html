@@ -254,12 +254,12 @@
   <div class="modal" id="modal-content"></div>
 </div>
 
-<script src="api-client.js"></script>
+<script src="api-client.js?v=20260926-assignment"></script>
 <script src="assets/dialogue/catalog.js?v=1"></script>
 <script src="src/dialogue-furigana.js?v=1"></script>
 <script src="src/admin-dialogue-furigana.js?v=1"></script>
 <script src="src/dialogue-scene.js?v=2"></script>
-<script src="src/admin-dialogue-scene.js?v=2"></script>
+<script src="src/admin-dialogue-scene.js?v=3"></script>
 <script src="src/admin-workspace.js?v=operations-20260912"></script>
 <script>
 // ─────────────────────────────────────────────────────────────
@@ -3286,14 +3286,16 @@ function genOptionRows(prefix, i, options) {
 function listenGenRenderPreview() {
   const s = _listenGenSection || { number: 1, label: 'Listening', instruction: '' };
   const cards = _listenGenDrafts.map((q, i) => `
-    <div style="border:1px solid var(--border,#e5e5e5);border-radius:8px;padding:12px;margin-bottom:10px;">
+    <div id="lg_card_${i}" style="border:1px solid var(--border,#e5e5e5);border-radius:8px;padding:12px;margin-bottom:10px;">
       <label style="display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:8px;">
         <input type="checkbox" class="lg-inc" data-i="${i}" checked /> Soal ${i + 1}
       </label>
       <div class="field"><label>Pertanyaan (tampil di layar)</label><textarea id="lg_q_${i}" rows="2" lang="ja">${escapeHtml(q.question || '')}</textarea></div>
       <div class="field">
-        <label>Audio dialog (N: narator · A: cewe · B: cowo)</label>
-        <textarea id="lg_audio_${i}" rows="6" lang="ja" style="font-family:'Noto Sans JP',sans-serif;width:100%;font-size:14px;line-height:1.6;box-sizing:border-box;">${escapeHtml(q.audioScript || '')}</textarea>
+        <label>Dialog listening</label>
+        <textarea id="lg_scene_${i}" name="dialog_scene" hidden>${escapeHtml(q.audioScene ? JSON.stringify(q.audioScene) : '')}</textarea>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="quizManageListeningDraft(${i})">🎭 Edit dialog &amp; suara karakter</button>
+        <textarea id="lg_audio_${i}" rows="6" lang="ja" readonly aria-label="Naskah listening soal ${i+1}" style="font-family:'Noto Sans JP',sans-serif;width:100%;font-size:14px;line-height:1.6;box-sizing:border-box;">${escapeHtml(q.audioScript || '')}</textarea>
         <div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button type="button" class="btn btn-ghost btn-sm" onclick="listenGenTestAudio(${i})">🔊 Test audio</button>
           <span id="lg_tts_status_${i}" style="font-size:11px;color:var(--ink-500);"></span>
@@ -3314,7 +3316,7 @@ function listenGenRenderPreview() {
     <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 12px;">
       Akan disimpan ke section listening <strong lang="ja">${s.number}. ${escapeHtml(s.label)}</strong>
       (dibuat otomatis kalau belum ada). Edit seperlunya, hilangkan centang yang tidak mau disimpan.
-      Audio final siswa di-generate dari script ini, jadi test dulu sebelum simpan.
+      Buka editor dialog setiap soal untuk memilih suara karakter, lalu tes audio sebelum menyimpan.
     </p>
     <div style="max-height:58vh;overflow-y:auto;">${cards}</div>
     <div class="modal-actions">
@@ -3336,7 +3338,8 @@ window.listenGenTestAudio = async (i) => {
   status.textContent = 'Generating... (~5s kalau cache miss)';
   audio.style.display = 'none';
   try {
-    const r = await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({ text }) });
+    const dialogScene = JSON.parse(document.getElementById('lg_scene_' + i)?.value || 'null');
+    const r = await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({ text, dialogScene }) });
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
       status.textContent = `Error: ${err.detail || err.error || r.status}`;
@@ -3410,6 +3413,9 @@ window.jlptGenOptions = (i) => genDraftOptions({
 window.listenGenSave = async () => {
   const includes = Array.from(document.querySelectorAll('.lg-inc:checked')).map((c) => Number(c.dataset.i));
   if (includes.length === 0) { notify('Tidak ada soal dipilih', true); return; }
+  if (includes.some(i=>!document.getElementById('lg_scene_' + i)?.value)) {
+    notify('Pilih suara karakter lewat Edit dialog & suara karakter pada setiap soal yang dipilih.', true); return;
+  }
   const btn = document.getElementById('lg-save');
   if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
   const s = _listenGenSection || { number: 1, label: 'Listening', instruction: '' };
@@ -3455,6 +3461,7 @@ window.listenGenSave = async () => {
           sectionLabel,
           sectionInstruction,
           audioScript,
+          audioScene: JSON.parse(document.getElementById('lg_scene_' + i)?.value || 'null'),
           explanation: (document.getElementById('lg_exp_' + i)?.value || '').trim() || null,
           sortOrder: sort++,
           options,
@@ -4252,26 +4259,19 @@ window.openQuestionForm = (key) => {
         </div>
         ${isListening ? `
           <div class="field">
-            <label>🎧 Audio dialog (listening) — JLPT 3-voice format</label>
+            <label>🎧 Dialog listening</label>
+            <textarea name="dialog_scene" id="questionAudioScene" hidden>${escapeHtml(q.audio_scene ? JSON.stringify(q.audio_scene) : '')}</textarea>
+            <button type="button" class="btn btn-ghost" onclick="quizManageListeningDialog()">🎭 Edit dialog &amp; suara karakter</button>
+            <p style="font-size:12px;color:var(--ink-500);">Atur ucapan per giliran, pilih karakter dan suara ElevenLabs, lalu dengarkan sebelum menyimpan soal.</p>
             <textarea id="audioScriptField" name="audioScript" rows="7" lang="ja"
+              readonly aria-label="Naskah listening"
               placeholder="Format JLPT: 1 baris per turn, pakai prefix speaker.&#10;&#10;Contoh:&#10;N: 男の人と女の人が話しています。女の人はどこから来ましたか。&#10;B: お国は どちらですか。&#10;A: インドネシアです。&#10;B: 大きな町から 来ましたか。&#10;A: いいえ、小さい町から 来ました。"
               style="font-family:'Noto Sans JP',sans-serif;width:100%;font-size:14px;line-height:1.6;">${escapeHtml(q.audio_script || '')}</textarea>
             <div style="font-size:11px;color:var(--ink-500);margin-top:6px;line-height:1.6;">
-              <strong>3 role speaker:</strong>
-              <code>N:</code> narrator (bacain pertanyaan/mondai),
-              <code>A:</code> cewe (atau <code>女:</code> / nama cewe),
-              <code>B:</code> cowo (atau <code>男:</code> / nama cowo).<br>
-              Backend auto-detect → tiap turn pakai voice yang sesuai dari env (<code>ELEVENLABS_VOICE_NARRATOR</code> / <code>_FEMALE</code> / <code>_MALE</code>), concat jadi 1 MP3.
-              <br><br>
-              <strong>✨ Emotion tags</strong> (butuh <code>ELEVENLABS_MODEL=eleven_v3</code> di server):<br>
-              Inline di teks per turn, contoh: <code>A: [questioning] お国は どちらですか。</code><br>
-              Tag yang umum: <code>[questioning]</code> <code>[excited]</code> <code>[thoughtful]</code>
-              <code>[sad]</code> <code>[happy]</code> <code>[surprised]</code> <code>[shy]</code>
-              <code>[whisper]</code> <code>[laughs]</code> <code>[sigh]</code> <code>[gasp]</code> <code>[calm]</code>.
-              Tag dibaca ElevenLabs sebagai intonation, ga keluar di audio sebagai kata.
+              Naskah mengikuti editor dialog. Suara tiap pembicara tersimpan bersama soal. Naskah lama tetap dapat diputar; buka editor untuk memilih suara karakter secara khusus.
             </div>
             ${q.id && !q.audio_script ? '<div style="font-size:12px;color:#b91c1c;font-weight:600;margin-top:6px;background:#fee2e2;padding:6px 10px;border-radius:6px;">⚠️ Field kosong — soal listening ini belum ada audio buat di-play di dashboard student.</div>' : ''}
-            <div id="ttsTagPicker" style="margin-top:10px;padding:10px 12px;background:#f9fafb;border:1px solid var(--paper-300);border-radius:6px;">
+            <div id="ttsTagPicker" hidden style="margin-top:10px;padding:10px 12px;background:#f9fafb;border:1px solid var(--paper-300);border-radius:6px;">
               <div style="font-size:11px;color:var(--ink-500);margin-bottom:6px;font-weight:700;">
                 ✨ TAG EMOTION — klik buat sisipin ke posisi cursor textarea
               </div>
@@ -4508,7 +4508,7 @@ window.testTtsAudio = async () => {
   try {
     const r = await ezApi('/admin/tts/preview', {
       method: 'POST',
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, dialogScene: JSON.parse(document.getElementById('questionAudioScene')?.value || 'null') }),
     });
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
@@ -4516,6 +4516,8 @@ window.testTtsAudio = async () => {
       return;
     }
     const blob = await r.blob();
+    if (document.getElementById('ttsTestAudio') !== audio) return;
+    if (audio.src.startsWith('blob:')) URL.revokeObjectURL(audio.src);
     audio.src = URL.createObjectURL(blob);
     audio.style.display = 'block';
     audio.play();
@@ -4794,6 +4796,7 @@ async function submitQuestion(e, qid, ctx) {
   // PUT memakai presence-check, jadi mengirim null di kategori lain akan
   // menghapus tautan yang sudah ada.
   if (form.grammarId) body.grammarId = form.grammarId.value || null;
+  if (category === 'listening') body.audioScene = JSON.parse(form.querySelector('[name="dialog_scene"]')?.value || 'null');
   if (category === 'reading') body.passage = passage || null;
   if (!qid) body.lessonId = lessonId;
   // "Simpan & tambah" keeps the admin in the rapid add-question loop instead of
@@ -4939,6 +4942,7 @@ window.grmrManageDialog = async (btn) => {
   const idTa = tr.querySelector('textarea[name="example_dialog_id"]');
   if (!jpTa || !idTa) return;
   try { await admLoadDialogSpeakers(); } catch (err) { notify('Gagal memuat daftar speaker: ' + err.message, true); return; }
+  window.__dialogMode = 'grammar';
   window.__dialogRows = admParseDialogPair(jpTa.value, idTa.value);
   if (window.__dialogRows.length === 0) window.__dialogRows.push({ speaker: 'N', jp: '', id: '' });
   window.__dialogTargetTa = { jp: jpTa, id: idTa };
@@ -4952,6 +4956,34 @@ window.grmrManageDialog = async (btn) => {
   admRenderDialogModal();
   window.markModalClean?.();
 };
+
+// Reuse the grammar dialogue editor, keeping the unsaved question form alive.
+window.quizManageListeningDialog = async () => {
+  const form = document.getElementById('question-form');
+  if (!form) return;
+  return admOpenListeningDialog(form, form.audioScript);
+};
+window.quizManageListeningDraft = async (i) => {
+  const card = document.getElementById('lg_card_' + i), script = document.getElementById('lg_audio_' + i);
+  if (card && script) return admOpenListeningDialog(card, script);
+};
+async function admOpenListeningDialog(target, script) {
+  try { await admLoadDialogSpeakers(); } catch (err) { notify('Gagal memuat daftar speaker: ' + err.message, true); return; }
+  if (!target.isConnected) return;
+  window.__dialogMode = 'listening';
+  window.__dialogRows = admParseDialogPair(script.value, '');
+  if (!window.__dialogRows.length) window.__dialogRows.push({speaker:'N',jp:'',id:''});
+  window.__dialogTargetTa = {jp:script, id:null};
+  window.__dialogTr = target;
+  window.__dialogParentModal = {
+    nodes:[...modalContent.childNodes], className:modalContent.className,
+    maxWidth:modalContent.style.maxWidth, dismissOnBackdrop:_modalDismissOnBackdrop,
+  };
+  window.EzDialogueAdmin.load(target);
+  window.EzDialogueAdmin.prepareListening();
+  admRenderDialogModal();
+  window.markModalClean?.();
+}
 
 // ✨ Generate draft (AI): pakai Pola + Arti baris ini untuk mengarang dialog
 // baru (masih kode N/A/B — model belum tahu nama karakter pilihan admin),
@@ -5007,7 +5039,7 @@ window.admDialogTranslate = async (btn) => {
 
 function admSpeakerOptionsHtml(selected) {
   const participants = window.__dialogScene?.participants || [];
-  const known = (window.__dialogSpeakers || []).filter(s => !s.character_key && !participants.some(p => p.speaker === s.name));
+  const known = window.__dialogMode === 'listening' ? [] : (window.__dialogSpeakers || []).filter(s => !s.character_key && !participants.some(p => p.speaker === s.name));
   const opts = [`<option value="N"${selected === 'N' ? ' selected' : ''}>🎙️ Narator</option>`];
   opts.push(window.EzDialogueAdmin?.options(selected) || '');
   for (const s of known) {
@@ -5017,7 +5049,7 @@ function admSpeakerOptionsHtml(selected) {
   if (!isKnownOrNarrator && selected) {
     opts.push(`<option value="${escapeHtml(selected)}" selected>⚠️ "${escapeHtml(selected)}" (kode lama, pilih ulang)</option>`);
   }
-  opts.push(`<option value="__new__">+ Speaker baru…</option>`);
+  if (window.__dialogMode !== 'listening') opts.push(`<option value="__new__">+ Speaker baru…</option>`);
   return opts.join('');
 }
 
@@ -5034,8 +5066,8 @@ function admDialogRowHtml(r, i) {
         <button type="button" class="btn btn-danger btn-sm" onclick="admDialogRowDelete(${i})" title="Hapus giliran">×</button>
       </div>
       <textarea rows="2" placeholder="Teks Jepang…" style="width:100%;font-family:var(--font-mono);font-size:12px;margin-bottom:4px;box-sizing:border-box;" oninput="admDialogRowEdit(${i},'jp',this.value)">${escapeHtml(r.jp)}</textarea>
-      <div id="dlg-furigana-${i}">${window.EzDialogueFuriganaAdmin?.fields(r,i) || ''}</div>
-      <textarea rows="2" placeholder="Terjemahan…" style="width:100%;font-size:12px;margin-bottom:6px;box-sizing:border-box;" oninput="admDialogRowEdit(${i},'id',this.value)">${escapeHtml(r.id)}</textarea>
+      ${window.__dialogMode === 'listening' ? '' : `<div id="dlg-furigana-${i}">${window.EzDialogueFuriganaAdmin?.fields(r,i) || ''}</div>
+      <textarea rows="2" placeholder="Terjemahan…" style="width:100%;font-size:12px;margin-bottom:6px;box-sizing:border-box;" oninput="admDialogRowEdit(${i},'id',this.value)">${escapeHtml(r.id)}</textarea>`}
       <div style="display:flex;gap:8px;align-items:center;">
         <button type="button" class="btn btn-ghost btn-sm" ${missingVoice ? 'disabled title="Suara pemeran belum diatur"' : ''} onclick="admDialogRowTest(${i}, this)">🔊 ${missingVoice ? 'Suara belum diatur' : 'Tes giliran ini'}</button>
         <audio id="dlg-audio-${i}" controls style="height:28px;flex:1;display:none;"></audio>
@@ -5045,29 +5077,28 @@ function admDialogRowHtml(r, i) {
 
 function admDialogModalHtml() {
   const rows = window.__dialogRows || [];
+  const listening = window.__dialogMode === 'listening';
   const totalChars = rows.reduce((n, r) => n + r.jp.length + r.speaker.length + 2, 0);
   const mismatched = rows.filter((r) => !!r.jp.trim() !== !!r.id.trim()).length;
   return `
-    <h3>🎭 Dialog</h3>
+    <h3>🎭 ${listening ? 'Dialog listening' : 'Dialog'}</h3>
     ${window.EzDialogueAdmin?.html() || ''}
     <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 10px;">
       Pilih Narator atau nama speaker asli per giliran (bukan kode A/B) — suaranya
-      ditentukan dari nama yang dipilih, bukan ditebak dari kode. Tes audio per
-      giliran pakai cache yang sama dengan yang dipakai siswa: ganti satu baris
-      tidak menggenerate ulang baris lain.
+      mengikuti pengaturan karakter. Pilih “Kustom ${listening ? 'soal' : 'dialog'} ini” untuk mengganti nama atau suaranya, lalu tes setiap giliran.
     </p>
-    <div style="display:flex;gap:8px;margin-bottom:10px;">
+    ${listening ? '' : `<div style="display:flex;gap:8px;margin-bottom:10px;">
       <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogGenerate(this)" title="Karang dialog baru (AI) dari Pola + Arti baris ini — menimpa giliran yang ada">✨ Generate draft (AI)</button>
       <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogTranslate(this)" title="Terjemahkan teks Jepang tiap giliran ke Indonesia (AI)">✨ Translate semua (AI)</button>
-    </div>
+    </div>`}
     <div id="dlg-rows">${rows.map((r, i) => admDialogRowHtml(r, i)).join('')}</div>
     <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogRowAdd()">+ Tambah giliran</button>
     <div style="font-size:11px;color:${totalChars > 1500 ? '#dc2626' : '#a3a3a3'};font-family:var(--font-body);margin:10px 0;">
-      ${totalChars} / 1500 karakter (batas gabungan TTS)${mismatched ? ` · ⚠️ ${mismatched} giliran teks/terjemahan tidak sepadan` : ''}
+      ${totalChars} / 1500 karakter${!listening && mismatched ? ` · ⚠️ ${mismatched} giliran teks/terjemahan tidak sepadan` : ''}
     </div>
     <div class="modal-actions">
       <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
-      <button type="button" class="btn btn-primary" onclick="admDialogSave()">Isi ke baris (lalu klik Simpan)</button>
+      <button type="button" class="btn btn-primary" onclick="admDialogSave()">${listening ? 'Gunakan untuk soal' : 'Isi ke baris (lalu klik Simpan)'}</button>
     </div>
   `;
 }
@@ -5083,7 +5114,7 @@ function admRenderDialogModal() {
 window.admDialogRowEdit = (i, field, value) => {
   if (!window.__dialogRows[i]) return;
   window.__dialogRows[i][field] = value;
-  if (field === 'jp') window.EzDialogueFuriganaAdmin?.changed(i);
+  if (field === 'jp' && window.__dialogMode !== 'listening') window.EzDialogueFuriganaAdmin?.changed(i);
 };
 window.admDialogRowMove = (i, dir) => {
   const rows = window.__dialogRows; const j = i + dir;
@@ -5193,27 +5224,32 @@ window.admNewSpeakerSave = async () => {
 window.admDialogRowTest = async (i, btn) => {
   const r = window.__dialogRows[i];
   if (!r || !r.jp.trim()) { notify('Isi teks Jepang dulu', true); return; }
+  const audio = document.getElementById(`dlg-audio-${i}`);
   const orig = btn.textContent; btn.disabled = true; btn.textContent = '…';
   try {
     const text = `${r.speaker}: ${r.jp.trim()}`;
     const resp = await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({ text, dialogScene: window.__dialogScene || null }) });
     if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || e.error || ('HTTP ' + resp.status)); }
     const blob = await resp.blob();
-    const audio = document.getElementById(`dlg-audio-${i}`);
-    if (audio) { audio.src = URL.createObjectURL(blob); audio.style.display = ''; audio.play().catch(() => {}); }
+    if (audio && document.getElementById(`dlg-audio-${i}`) === audio) {
+      if (audio.src.startsWith('blob:')) URL.revokeObjectURL(audio.src);
+      audio.src = URL.createObjectURL(blob); audio.style.display = ''; audio.play().catch(() => {});
+    }
   } catch (err) { notify('Gagal generate audio: ' + err.message, true); }
   finally { btn.disabled = false; btn.textContent = orig; }
 };
 window.admDialogSave = () => {
-  try { window.EzDialogueFuriganaAdmin?.save(window.__dialogTr); }
+  const listening = window.__dialogMode === 'listening';
+  const { jp, id } = admSerializeDialogPair(window.__dialogRows || []);
+  if (listening && (!jp.trim() || jp.length > 1500)) { notify('Isi naskah listening, maksimal 1500 karakter.', true); return; }
+  try { if (!listening) window.EzDialogueFuriganaAdmin?.save(window.__dialogTr); }
   catch (err) { notify(err.message, true); return; }
   try { window.EzDialogueAdmin?.save(window.__dialogTr); }
   catch (err) { notify(err.message, true); return; }
-  const { jp, id } = admSerializeDialogPair(window.__dialogRows || []);
   const target = window.__dialogTargetTa;
-  if (target) { target.jp.value = jp; target.id.value = id; }
+  if (target) { target.jp.value = jp; if (target.id) target.id.value = id; }
   closeModal();
-  notify('Dialog terisi — review lalu klik Simpan pada baris ini');
+  notify(listening ? 'Dialog dan suara terisi — tes audio lengkap, lalu Simpan soal.' : 'Dialog terisi — review lalu klik Simpan pada baris ini');
 };
 
 // === Multi contoh grammar (mirror deckManageExamples) ===

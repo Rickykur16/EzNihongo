@@ -88,6 +88,12 @@ test('versioned chapter assessment migration, grading and protected HTTP lifecyc
   const started=await call(path(lessons[0],'quiz/start'));
   assert.equal(started.status,200);
   const attemptToken=started.body.attemptToken;
+  await control.query('UPDATE lessons SET questions_per_attempt=48 WHERE id=$1', [lessons[0]]);
+  const activeStatus=await call(path(lessons[0],'quiz-status'),null,'GET');
+  assert.equal(activeStatus.body.questionsPerAttempt,24,'snapshot packet count wins over stale lesson config');
+  assert.equal(activeStatus.body.totalQuestions,24);
+  assert.equal(activeStatus.body.inProgressAttemptToken,attemptToken);
+  assert.equal(started.body.draftEnabled,true);
   let snapshot=(await control.query(`SELECT assessment_snapshot FROM quiz_attempts WHERE attempt_token=$1`,[attemptToken])).rows[0].assessment_snapshot;
   const answers=snapshot.questions.map(q=>({questionId:q.id,optionId:q.options.find(o=>o.is_correct).id}));
   await t.test('public start, check and review do not reveal current answers or transcripts',async()=>{

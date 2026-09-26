@@ -37,7 +37,7 @@ export async function submitQuizAttempt(client, { userId, lessonId, attemptToken
   if (!lesson || lesson.type !== 'quiz') return invalid(409, 'lesson_not_quiz');
   const kanaKind = kanaAssessmentKind(lesson.slug);
   const chapterSnapshot = isChapterAssessment(attempt.assessment_snapshot?.policy) ? attempt.assessment_snapshot : null;
-  if (chapterSnapshot && (!Number.isInteger(draftRevision) || draftRevision !== attempt.draft_revision)) return invalid(409, 'draft_conflict');
+  if ((chapterSnapshot || draftRevision !== undefined) && (!Number.isInteger(draftRevision) || draftRevision !== attempt.draft_revision)) return invalid(409, 'draft_conflict');
   const sampledIds = Array.isArray(attempt.sampled_question_ids) ? attempt.sampled_question_ids : [];
   const sampledSet = new Set(sampledIds);
   if (!sampledIds.length || sampledSet.size !== sampledIds.length) return invalid(409, 'quiz_questions_changed');
