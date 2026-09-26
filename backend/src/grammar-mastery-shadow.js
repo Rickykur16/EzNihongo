@@ -1,3 +1,4 @@
+import { independentEvidenceSql } from './maneko-assistance.js';
 // Paket 3 — pemuat MODE SHADOW. Sengaja TERPISAH dari grammar-mastery.js.
 //
 // grammar-mastery.js adalah pembaca AKTIF: dipakai dashboard siswa,
@@ -30,8 +31,8 @@ async function loadAttemptRows(userId, ids) {
        SELECT grammar_id, passed, created_at, source, primary_error, eval_source,
               assistance_state, independent_eligible, question_fingerprint,
               evaluation_kind, check_family_id
-         FROM grammar_attempts
-        WHERE user_id = $1 AND grammar_id = ANY($2::uuid[])
+         FROM grammar_attempts ga
+        WHERE ${independentEvidenceSql({ item: 'ga.grammar_id' }, 'ga')} AND user_id = $1 AND grammar_id = ANY($2::uuid[])
           AND created_at > NOW() - make_interval(days => $3::int)
        UNION ALL
        SELECT grammar_id, is_correct AS passed, created_at,
@@ -40,8 +41,8 @@ async function loadAttemptRows(userId, ids) {
               NULL::text AS assistance_state, NULL::boolean AS independent_eligible,
               NULL::text AS question_fingerprint, NULL::text AS evaluation_kind,
               NULL::text AS check_family_id
-         FROM quiz_question_results
-        WHERE user_id = $1 AND grammar_id = ANY($2::uuid[])
+         FROM quiz_question_results qr
+        WHERE ${independentEvidenceSql({ item: 'qr.grammar_id' }, 'qr')} AND user_id = $1 AND grammar_id = ANY($2::uuid[])
           AND created_at > NOW() - make_interval(days => $3::int)
      ), ranked AS (
        SELECT *, ROW_NUMBER() OVER (PARTITION BY grammar_id ORDER BY created_at DESC) AS rn

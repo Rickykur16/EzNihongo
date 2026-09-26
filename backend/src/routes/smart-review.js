@@ -1,3 +1,4 @@
+import { assistanceFor, evidenceLock, recordExposure, reviewHelp } from '../maneko-assistance.js';
 import { Router } from 'express';
 import { query, withAdvisoryLock } from '../db.js';
 import { requireAuth, asyncHandler } from '../middleware.js';
@@ -209,36 +210,86 @@ router.post('/sessions', asyncHandler(async (req, res) => {
   const category = String(req.body?.category || 'mixed').toLowerCase(); if (category !== 'mixed' && !REVIEW_CATEGORIES.includes(category)) return res.status(400).json({ error: 'invalid_category' });
   const { candidates, pools } = await buildReviewCandidates(req.user); const selected = selectReviewCandidates(candidates, { category, limit: req.body?.limit });
   if (!selected.length) return res.json({ category, sessionId: null, questions: [], summary: summarizeCandidates(candidates) });
-  const session = await withAdvisoryLock(`smart-review-session:${req.user.id}`, async (client) => {
+  const session = await withAdvisoryLock(evidenceLock(req.user.id), async (client) => {
     const created = await client.query(`INSERT INTO smart_review_sessions (user_id, category, expires_at) VALUES ($1,$2,NOW() + ($3 || ' minutes')::interval) RETURNING id, expires_at`, [req.user.id, category, String(SESSION_MINUTES)]); const questions = [];
-    for (const candidate of selected) { const payload = candidate.category === 'grammar' ? candidate.grammarDrill : makeReviewQuestion(candidate, pools); if (!payload || (payload.options && payload.options.length < 2)) continue; const index = questions.length; await client.query(`INSERT INTO smart_review_session_items (session_id, question_index, item_type, item_id, skill, lesson_id, payload) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [created.rows[0].id, index, candidate.category, candidate.itemId, candidate.skill, candidate.lessonId, JSON.stringify(payload)]); questions.push(asPublic(candidate, candidate.category === 'grammar' ? publicDrill(payload) : publicQuestion(payload))); }
+    for (const candidate of selected) {
+      const payload = candidate.category === 'grammar' ? candidate.grammarDrill : makeReviewQuestion(candidate, pools);
+      if (!payload || (payload.options && payload.options.length < 2)) continue;
+      const index = questions.length;
+      const exposure = await assistanceFor(client, { userId: req.user.id, lessonId: candidate.lessonId, itemType: candidate.category, itemId: candidate.itemId });
+      await client.query(`INSERT INTO smart_review_session_items (session_id, question_index, item_type, item_id, skill, lesson_id, payload, assisted_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, [created.rows[0].id, index, candidate.category, candidate.itemId, candidate.skill, candidate.lessonId, JSON.stringify(payload), exposure ? new Date() : null]);
+      questions.push({ ...asPublic(candidate, candidate.category === 'grammar' ? publicDrill(payload) : publicQuestion(payload)), assisted: !!exposure });
+    }
     return { id: created.rows[0].id, expiresAt: created.rows[0].expires_at, questions };
   });
   res.status(201).json({ category, sessionId: session.id, expiresAt: session.expiresAt, questions: session.questions, summary: summarizeCandidates(candidates) });
 }));
 
-async function lockedSessionItem(client, user, sessionId, index) {
+async function lockedSessionItem(client, user, sessionId, index, allowAnswered = false) {
   // FOR UPDATE OF si — Postgres refuses a plain FOR UPDATE here because
   // lessons/modules sit on the nullable side of a LEFT JOIN ("FOR UPDATE
   // cannot be applied to the nullable side of an outer join"); si is the
   // only row this handler actually updates (answered_at), so it's also the
   // only one that needs locking.
   const result = await client.query(`SELECT si.*, s.user_id, s.expires_at, m.course_id FROM smart_review_session_items si JOIN smart_review_sessions s ON s.id = si.session_id LEFT JOIN lessons l ON l.id = si.lesson_id LEFT JOIN modules m ON m.id = l.module_id WHERE si.session_id = $1 AND si.question_index = $2 FOR UPDATE OF si`, [sessionId, index]); const row = result.rows[0];
-  if (!row || row.user_id !== user.id) return { error: 'session_not_found', status: 404 }; if (new Date(row.expires_at) <= new Date()) return { error: 'session_expired', status: 410 }; if (row.answered_at) return { error: 'already_answered', status: 409 };
+  if (!row || row.user_id !== user.id) return { error: 'session_not_found', status: 404 }; if (new Date(row.expires_at) <= new Date()) return { error: 'session_expired', status: 410 }; if (row.answered_at && !allowAnswered) return { error: 'already_answered', status: 409 };
   if (!row.lesson_id || !(await userCanAccessCourse(user, row.course_id))) return { error: 'not_enrolled', status: 403 };
   const complete = await client.query(`SELECT 1 FROM user_progress WHERE user_id = $1 AND lesson_id = $2 AND completed = TRUE`, [user.id, row.lesson_id]); if (!complete.rows.length) return { error: 'lesson_not_completed', status: 403 }; return { row };
 }
 
-router.post('/sessions/:sessionId/answers', asyncHandler(async (req, res) => {
-  const sessionId = req.params.sessionId; const questionIndex = Number(req.body?.questionIndex); const optionIndex = Number(req.body?.optionIndex); const order = req.body?.order;
-  if (!UUID.test(sessionId) || !Number.isInteger(questionIndex) || questionIndex < 0) return res.status(400).json({ error: 'invalid_answer' });
-  const result = await withAdvisoryLock(`smart-review-answer:${req.user.id}:${sessionId}:${questionIndex}`, async (client) => {
-    const access = await lockedSessionItem(client, req.user, sessionId, questionIndex); if (access.error) return access; const row = access.row; const payload = row.payload; let passed;
-    if (row.item_type === 'grammar') { const arrange = Array.isArray(order); if (arrange !== (payload.variant === 'arrange')) return { error: 'drill_changed', status: 409 }; passed = arrange ? arrangeIsCorrect(payload, order) : Number.isInteger(optionIndex) && optionIndex === payload.correctIndex; const value = arrange ? order.map((i) => payload.tokens[i]).filter(Boolean).join(' ') : (payload.options?.[optionIndex] || ''); const primary = passed ? null : primaryErrorFor(payload.step, payload.rule); await client.query(`INSERT INTO grammar_attempts (user_id, grammar_id, lesson_id, source, input_mode, sentence, correct, uses_pattern, passed, primary_error, error_types, eval_source, check_family_id) VALUES ($1,$2,$3,$4,'text',$5,$6,$6,$6,$7,$8,$9,$10)`, [req.user.id, row.item_id, row.lesson_id, attemptSourceFor(payload.step), String(value).slice(0, 200), passed, primary, primary ? [primary] : [], SMART_REVIEW_SOURCE, payload.checkFamilyId || null]); }
-    else { if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex >= (payload.options || []).length) return { error: 'invalid_option', status: 400 }; passed = optionIndex === payload.correctIndex; const state = await recordPracticeAttemptWithState(client, { userId: req.user.id, courseId: row.course_id, lessonId: row.lesson_id, itemType: row.item_type, itemId: row.item_id, skill: row.skill, isCorrect: passed, source: SMART_REVIEW_SOURCE }); await client.query(`UPDATE smart_review_session_items SET answered_at = NOW() WHERE session_id = $1 AND question_index = $2`, [sessionId, questionIndex]); return { passed, correctIndex: payload.correctIndex, state }; }
-    await client.query(`UPDATE smart_review_session_items SET answered_at = NOW() WHERE session_id = $1 AND question_index = $2`, [sessionId, questionIndex]); return { passed, correctIndex: payload.correctIndex, correctOrder: payload.variant === 'arrange' ? payload.answer : undefined };
+router.post('/sessions/:sessionId/help', asyncHandler(async (req, res) => {
+  const sessionId = req.params.sessionId;
+  const questionIndex = req.body?.questionIndex;
+  const level = req.body?.level;
+  if (!UUID.test(sessionId) || !Number.isInteger(questionIndex) || questionIndex < 0 || ![1, 2, 3].includes(level)) return res.status(400).json({ error: 'invalid_help' });
+  const result = await withAdvisoryLock(evidenceLock(req.user.id), async (client) => {
+    const access = await lockedSessionItem(client, req.user, sessionId, questionIndex, true);
+    if (access.error) return access;
+    const row = access.row;
+    // Commit exposure before returning any content; this also protects other tabs
+    // and other questions on the same lesson, across skill directions.
+    const exposure = await recordExposure(client, { userId: req.user.id, lessonId: row.lesson_id, itemType: row.item_type, itemId: row.item_id, sessionId, questionIndex, type: ['hint', 'explanation', 'answer'][level - 1] });
+    return { text: reviewHelp(row.payload, level), level, assisted: true, independentAfter: exposure.expires_at, firstResult: row.result || null };
   });
-  if (result.error) return res.status(result.status).json({ error: result.error }); return res.json(result);
+  if (result.error) return res.status(result.status).json({ error: result.error });
+  return res.json(result);
+}));
+
+router.post('/sessions/:sessionId/answers', asyncHandler(async (req, res) => {
+  const sessionId = req.params.sessionId;
+  const questionIndex = req.body?.questionIndex;
+  const optionIndex = req.body?.optionIndex;
+  const order = req.body?.order;
+  if (!UUID.test(sessionId) || !Number.isInteger(questionIndex) || questionIndex < 0) return res.status(400).json({ error: 'invalid_answer' });
+  const result = await withAdvisoryLock(evidenceLock(req.user.id), async (client) => {
+    const access = await lockedSessionItem(client, req.user, sessionId, questionIndex, true);
+    if (access.error) return access;
+    const row = access.row;
+    // Network retries return the saved first result, never write a second attempt.
+    if (row.answered_at) return row.result || { error: 'already_answered', status: 409 };
+    const payload = row.payload;
+    const arrange = payload.variant === 'arrange';
+    if (arrange) {
+      if (!Array.isArray(order) || order.length !== payload.tokens.length || new Set(order).size !== order.length || order.some(i => !Number.isInteger(i) || i < 0 || i >= payload.tokens.length)) return { error: 'invalid_order', status: 400 };
+    } else if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex >= (payload.options || []).length) return { error: 'invalid_option', status: 400 };
+    const passed = arrange ? arrangeIsCorrect(payload, order) : optionIndex === payload.correctIndex;
+    const exposure = await assistanceFor(client, { userId: req.user.id, lessonId: row.lesson_id, itemType: row.item_type, itemId: row.item_id });
+    const assisted = !!(row.assisted_at || exposure);
+    const result = { passed, assisted, evidenceEligible: !assisted, independentAfter: exposure?.expires_at || null, correctIndex: payload.correctIndex, correctOrder: arrange ? payload.answer : undefined };
+    if (!assisted) {
+      if (row.item_type === 'grammar') {
+        const value = arrange ? order.map(i => payload.tokens[i]).join(' ') : payload.options[optionIndex];
+        const primary = passed ? null : primaryErrorFor(payload.step, payload.rule);
+        await client.query(`INSERT INTO grammar_attempts (user_id, grammar_id, lesson_id, source, input_mode, sentence, correct, uses_pattern, passed, primary_error, error_types, eval_source, check_family_id) VALUES ($1,$2,$3,$4,'text',$5,$6,$6,$6,$7,$8,$9,$10)`, [req.user.id, row.item_id, row.lesson_id, attemptSourceFor(payload.step), String(value).slice(0, 200), passed, primary, primary ? [primary] : [], SMART_REVIEW_SOURCE, payload.checkFamilyId || null]);
+      } else {
+        result.state = await recordPracticeAttemptWithState(client, { userId: req.user.id, courseId: row.course_id, lessonId: row.lesson_id, itemType: row.item_type, itemId: row.item_id, skill: row.skill, isCorrect: passed, source: SMART_REVIEW_SOURCE });
+      }
+    }
+    await client.query('UPDATE smart_review_session_items SET answered_at = clock_timestamp(), result = $3 WHERE session_id = $1 AND question_index = $2', [sessionId, questionIndex, JSON.stringify(result)]);
+    return result;
+  });
+  if (result.error) return res.status(result.status).json({ error: result.error });
+  return res.json(result);
 }));
 
 export default router;

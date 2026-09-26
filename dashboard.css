@@ -256,7 +256,7 @@ body {
 
 .performance {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(250px, .75fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 28px;
 }
 
