@@ -34,7 +34,7 @@ test('quiz integrity with real HTTP and PostgreSQL', {
     CREATE TABLE module_grammar(id uuid PRIMARY KEY);
     CREATE TABLE lessons(id uuid PRIMARY KEY, module_id uuid, slug text, type text,
       duration_minutes int DEFAULT 5, passing_score_pct int DEFAULT 70,
-      cooldown_hours int DEFAULT 0, questions_per_attempt int);
+      cooldown_hours int DEFAULT 0, questions_per_attempt int, assessment_policy jsonb);
     CREATE TABLE user_enrollments(user_id uuid, course_id uuid, status text DEFAULT 'active', expires_at timestamptz);
     CREATE TABLE admin_emails(email text);
   `);

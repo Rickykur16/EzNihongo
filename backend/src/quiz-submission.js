@@ -1,4 +1,5 @@
 import { completeLessonWithStats } from './progress-service.js';
+import { isChapterAssessment, gradeChapterAssessment, chapterReview } from './chapter-assessment.js';
 import {
   completeKanaPlacementLessons,
   gradeKanaPlacement,
@@ -12,12 +13,12 @@ const invalid = (status, error) => ({ status, body: { error } });
 // Caller holds the quiz:{user}:{lesson} advisory lock in a transaction.
 // Returning success means score, detailed results, completion and stats all
 // committed together. A lost response can be replayed without grading twice.
-export async function submitQuizAttempt(client, { userId, lessonId, attemptToken, answers }) {
+export async function submitQuizAttempt(client, { userId, lessonId, attemptToken, answers, draftRevision }) {
   if (typeof attemptToken !== 'string' || !uuid.test(attemptToken)) {
     return invalid(400, 'invalid_attempt_token');
   }
   const attemptRes = await client.query(
-    `SELECT id, sampled_question_ids, completed_at, grading_result
+    `SELECT id, sampled_question_ids, completed_at, grading_result, assessment_snapshot, draft_revision
        FROM quiz_attempts
       WHERE user_id = $1 AND lesson_id = $2 AND attempt_token = $3
       FOR UPDATE`, [userId, lessonId, attemptToken]
@@ -35,6 +36,8 @@ export async function submitQuizAttempt(client, { userId, lessonId, attemptToken
   const lesson = lessonRes.rows[0];
   if (!lesson || lesson.type !== 'quiz') return invalid(409, 'lesson_not_quiz');
   const kanaKind = kanaAssessmentKind(lesson.slug);
+  const chapterSnapshot = isChapterAssessment(attempt.assessment_snapshot?.policy) ? attempt.assessment_snapshot : null;
+  if (chapterSnapshot && (!Number.isInteger(draftRevision) || draftRevision !== attempt.draft_revision)) return invalid(409, 'draft_conflict');
   const sampledIds = Array.isArray(attempt.sampled_question_ids) ? attempt.sampled_question_ids : [];
   const sampledSet = new Set(sampledIds);
   if (!sampledIds.length || sampledSet.size !== sampledIds.length) return invalid(409, 'quiz_questions_changed');
@@ -56,7 +59,9 @@ export async function submitQuizAttempt(client, { userId, lessonId, attemptToken
     if (choices.has(questionId)) return invalid(400, 'duplicate_question');
     choices.set(questionId, { optionId, textAnswer });
   }
-  const rows = await client.query(
+  const rows = chapterSnapshot ? { rows: chapterSnapshot.questions.flatMap(q =>
+    (q.options.length ? q.options : [null]).map(o => ({ ...q, question_id: q.id,
+      option_id: o?.id, is_correct: o?.is_correct }))) } : await client.query(
     `SELECT q.id AS question_id, q.question_type, q.correct_answer,
             q.question_category, q.grammar_id, q.section_number, q.section_label,
             o.id AS option_id, o.is_correct
@@ -69,12 +74,12 @@ export async function submitQuizAttempt(client, { userId, lessonId, attemptToken
     if (row.option_id) options.set(row.option_id, row);
   }
   // Never shrink the denominator when an admin deletes/moves questions.
-  if (questions.size !== sampledIds.length) return invalid(409, 'quiz_questions_changed');
+  if (questions.size !== sampledIds.length || sampledIds.some(id => !questions.has(id))) return invalid(409, 'quiz_questions_changed');
   const answersByQuestion = new Map();
   for (const [questionId, answer] of choices) {
     const question = questions.get(questionId);
     if (question.question_type === 'fill_blank') {
-      if (!answer.textAnswer || !question.correct_answer) return invalid(409, 'quiz_questions_changed');
+      if (chapterSnapshot || !answer.textAnswer || !question.correct_answer) return invalid(409, 'quiz_questions_changed');
       answersByQuestion.set(questionId, {
         correct: kanaKind
           ? isKanaReadingCorrect(answer.textAnswer, question.correct_answer)
@@ -87,9 +92,11 @@ export async function submitQuizAttempt(client, { userId, lessonId, attemptToken
     if (!option || option.question_id !== questionId) return invalid(400, 'invalid_option');
     answersByQuestion.set(questionId, { correct: !!option.is_correct });
   }
-  const passingScorePct = lesson.passing_score_pct ?? 70;
-  const cooldownHours = lesson.cooldown_hours ?? 12;
-  const grade = kanaKind
+  const passingScorePct = chapterSnapshot?.policy.passingScorePct ?? lesson.passing_score_pct ?? 70;
+  const cooldownHours = chapterSnapshot?.policy.cooldownHours ?? lesson.cooldown_hours ?? 12;
+  const grade = chapterSnapshot
+    ? gradeChapterAssessment(chapterSnapshot, answersByQuestion)
+    : kanaKind
     ? gradeKanaPlacement([...questions.values()], answersByQuestion, passingScorePct)
     : (() => {
       const correctByQuestion = Object.fromEntries(
@@ -117,7 +124,13 @@ export async function submitQuizAttempt(client, { userId, lessonId, attemptToken
     : [];
   const result = { score, total, correctByQuestion, passingScorePct, passed,
     cooldownHours, nextAttemptAt, completionSaved: passed, proficiencyCompletions,
-    ...(kanaKind ? { kanaKind, sectionResults } : {}) };
+    ...(kanaKind ? { kanaKind, sectionResults } : {}),
+    ...(chapterSnapshot ? {
+      assessmentVersion: chapterSnapshot.version, assessmentForm: chapterSnapshot.form,
+      sectionResults, objectiveResults: grade.objectiveResults,
+      review: chapterReview(chapterSnapshot, [...choices].map(([questionId, answer]) => ({ questionId, ...answer })), correctByQuestion),
+      transferTask: chapterSnapshot.policy.transferTask,
+    } : {}) };
   await client.query(
     `UPDATE quiz_attempts SET score = $1, total_questions = $2, completed_at = NOW(),
             grading_result = $3::jsonb, submitted_answers = $4::jsonb WHERE id = $5`,

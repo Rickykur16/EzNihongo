@@ -86,6 +86,40 @@ test('double click while saving sends only one request',async()=>{
   assert.equal(effects.progress,1);
 });
 
+test('leaving while a draft is saving cannot overwrite the next lesson or submit the old screen',async()=>{
+  const {ctx,main,effects,state}=setup();
+  let release;
+  state.draftPromise=new Promise(resolve=>{release=resolve;});
+  const pending=ctx.finishQuiz();
+  ctx.window.__quizNavigationEpoch=1;
+  main.innerHTML='New lesson';
+  release();await pending;
+  assert.equal(main.innerHTML,'New lesson');
+  assert.equal(effects.calls.length,0);
+  assert.equal(state.submitting,false);
+});
+
+test('late grading response leaves the newly opened lesson untouched',async()=>{
+  const {ctx,main,effects,result}=setup();
+  let release;
+  ctx.window.ezApi=async()=>{await new Promise(resolve=>{release=resolve;});return {ok:true,json:async()=>result};};
+  const pending=ctx.finishQuiz();
+  ctx.window.__quizNavigationEpoch=1;
+  main.innerHTML='New lesson';release();await pending;
+  assert.equal(main.innerHTML,'New lesson');assert.equal(effects.progress+effects.xp,0);
+});
+
+test('chapter result explains a rejected high total without claiming the score is below 70 percent',async()=>{
+  const {ctx,main,result}=setup();
+  Object.assign(result,{assessmentVersion:'n5-assessment-v2',passed:false,completionSaved:false,
+    sectionResults:[{sectionLabel:'Menyimak',score:0,total:4,minimumCorrect:2,passed:false}],
+    objectiveResults:[],review:[]});
+  await ctx.finishQuiz();
+  assert.match(main.innerHTML,/100%/);assert.match(main.innerHTML,/Belum lulus/);
+  assert.match(main.innerHTML,/Syarat total atau salah satu bagian/);
+  assert.doesNotMatch(main.innerHTML,/Skor belum mencapai/);
+});
+
 test('a passed kana placement marks server-confirmed prerequisite lessons complete locally',async()=>{
   const {ctx,result}=setup();
   result.proficiencyCompletions=[

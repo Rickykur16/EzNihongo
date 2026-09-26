@@ -4916,6 +4916,8 @@ function transformQuestionFromApi(apiQ) {
     sectionLabel: apiQ.section_label || apiQ.sectionLabel || `Section ${Number(apiQ.section_number || apiQ.sectionNumber) || 1}`,
     sectionInstruction: apiQ.section_instruction || apiQ.sectionInstruction || '',
     audioScript: apiQ.audio_script || apiQ.audioScript || '',
+    hasAudio: !!apiQ.has_audio,
+    inputHint: apiQ.input_hint || '',
     passage: apiQ.passage || '',
     sortOrder: Number(apiQ.sort_order ?? apiQ.sortOrder ?? 0) || 0,
     imageUrl: apiQ.image_url || apiQ.imageUrl || '',
@@ -5526,6 +5528,7 @@ function getQuizKey(courseSlug, moduleId, lessonId) {
 // Async — fetch quiz-status, render landing card atau cooldown card.
 // Klik Mulai Kuis → startQuizAttempt() → POST /quiz/start → render paper.
 async function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
+  const viewEpoch = window.__quizNavigationEpoch = (window.__quizNavigationEpoch || 0) + 1;
   const key = getQuizKey(courseSlug, moduleId, lessonId);
   const lesson = findLesson(courseSlug, moduleId, lessonId);
   if (!lesson?.apiId) {
@@ -5555,6 +5558,7 @@ async function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
     </div>
   `;
   const status = await fetchQuizStatus(lesson.apiId);
+  if (viewEpoch !== window.__quizNavigationEpoch) return;
   if (!status) {
     container.innerHTML = `<div class="quiz-container"><p style="color:#b91c1c;">Gagal load status kuis. Refresh halaman.</p></div>`;
     return;
@@ -5582,6 +5586,7 @@ function fmtNextAt(iso) {
 function renderQuizLandingCard(container, key, lessonTitle, status) {
   const [navSlug, navMid, navLid] = String(key).split(':');
   const placement = kanaPlacementMeta({ id: navLid });
+  const chapter = !!status.assessmentVersion && !status.resumingLegacy;
   const last = status.lastAttempt;
   const lastPct = last ? Math.round((last.score / Math.max(1, last.totalQuestions)) * 100) : null;
   const placementResultPending = !!placement && !!last && typeof last.passed !== 'boolean';
@@ -5597,18 +5602,19 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
       : `<span style="background:#fee2e2;color:#b91c1c;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;">Belum lulus</span>`;
     lastBlock = `
       <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;margin-top:18px;">
-        <div style="font-size:11px;color:#737373;letter-spacing:.04em;text-transform:uppercase;font-weight:700;margin-bottom:6px;">${placement ? 'Hasil tes terakhir' : 'Attempt terakhir'}</div>
+        <div style="font-size:11px;color:#737373;letter-spacing:.04em;text-transform:uppercase;font-weight:700;margin-bottom:6px;">${placement ? 'Hasil tes terakhir' : status.assessmentVersion && !last.assessmentVersion ? 'Hasil versi sebelumnya' : 'Attempt terakhir'}</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <strong style="font-size:18px;">${last.score} / ${last.totalQuestions}</strong>
           <span style="color:#525252;">(${lastPct}%)</span>
           ${badge}
         </div>
+        ${last.assessmentVersion ? `<button class="btn-secondary" style="margin-top:12px" onclick="window.openChapterReview('${escapeAttr(key)}','${escapeAttr(last.attemptToken)}')">Lihat pembahasan</button><div id="chapter-review"></div>` : ''}
       </div>`;
   }
 
   const canAttempt = status.canAttempt;
   const ctaButton = canAttempt
-    ? `<button class="btn-primary" onclick="window.startQuizAttempt('${escapeAttr(key)}')" style="padding:14px 28px;font-size:16px;">Mulai Kuis →</button>`
+    ? `<button class="btn-primary" onclick="window.startQuizAttempt('${escapeAttr(key)}')" style="padding:14px 28px;font-size:16px;">${status.inProgress ? 'Lanjutkan jawaban' : chapter ? 'Mulai assessment' : 'Mulai Kuis'} →</button>`
     : `<button class="btn-primary" disabled style="padding:14px 28px;font-size:16px;">⏱ Tunggu ${fmtCooldown(status.cooldownHoursLeft)}</button>`;
 
   const noCooldown = (status.cooldownHours || 0) <= 0;
@@ -5636,7 +5642,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
   container.innerHTML = `
     <div class="quiz-container">
       <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:28px 26px;max-width:680px;margin:0 auto;">
-        <div style="font-size:11px;color:#b91c1c;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin-bottom:6px;">${placement ? 'Tes Diagnostik Kana' : 'Assignment Harian'}</div>
+        <div style="font-size:11px;color:#b91c1c;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin-bottom:6px;">${placement ? 'Tes Diagnostik Kana' : chapter ? 'Assessment bab' : 'Assignment Harian'}</div>
         <h2 style="margin:0 0 18px;font-size:24px;font-weight:800;line-height:1.3;">${escapeHtml(lessonTitle)}</h2>
         ${!completedPlacement ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;">
           <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
@@ -5645,7 +5651,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
           </div>
           <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
             <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">Per attempt</div>
-            <div style="font-size:18px;font-weight:800;margin-top:2px;">${status.questionsPerAttempt} acak</div>
+            <div style="font-size:18px;font-weight:800;margin-top:2px;">${status.questionsPerAttempt} ${chapter ? 'soal' : 'acak'}</div>
           </div>
           <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
             <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">Lulus min</div>
@@ -5661,8 +5667,13 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
             ? `Tes membaca ${placement.kind} sudah tuntas. Kamu bisa langsung lanjut ke materi berikutnya.`
             : placement
             ? `Tes ini mengambil empat soal dari setiap bagian: tiga jawaban romaji diketik dan satu pilihan ganda. Lulus jika nilai total minimal ${status.passingScorePct}%. Nilai per bagian hanya membantu menemukan bacaan yang perlu dilatih.`
+            : status.resumingLegacy
+            ? `Sesi versi sebelumnya masih berjalan. Lanjutkan ${status.questionsPerAttempt} soal yang sama dengan aturan penilaian sesi tersebut. Paket baru dipakai pada percobaan berikutnya.`
+            : chapter
+            ? `24 soal pilihan ganda: 6 aksara dan kosakata, 10 tata bahasa dan ungkapan, 4 membaca, serta 4 menyimak. Dua paket digunakan bergantian. Lulus dengan total minimal 70%, tiap kategori minimal 50%, serta minimal satu jawaban benar untuk setiap tujuan. Pembahasan dan transkrip audio muncul setelah semua jawaban dikirim. Siapkan audio.`
             : `Tiap attempt, sistem ambil <strong>${status.questionsPerAttempt}</strong> soal acak dari pool <strong>${status.poolSize}</strong> — jadi soal bisa beda tiap retry.`}
         </p>
+        ${chapter ? `<details style="margin:12px 0"><summary>Tujuan yang diuji</summary><ul>${(status.objectives || []).map(o => `<li>${escapeHtml(o.canDo)}</li>`).join('')}</ul></details>` : ''}
         ${!completedPlacement ? `<p style="color:#525252;font-size:13px;line-height:1.6;margin:0 0 22px;">
           ${cooldownNote}
         </p>` : ''}
@@ -5686,6 +5697,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
 function escapeAttr(s) { return String(s).replace(/'/g, '&#39;').replace(/"/g, '&quot;'); }
 
 window.startQuizAttempt = async (key) => {
+  const viewEpoch = window.__quizNavigationEpoch = (window.__quizNavigationEpoch || 0) + 1;
   const [slug, mId, lId] = key.split(':');
   const lesson = findLesson(slug, mId, lId);
   if (!lesson?.apiId) return;
@@ -5696,18 +5708,22 @@ window.startQuizAttempt = async (key) => {
     const r = await window.ezApi(`/progress/lesson/${encodeURIComponent(lesson.apiId)}/quiz/start`, {
       method: 'POST',
     });
+    if (viewEpoch !== window.__quizNavigationEpoch) return;
     if (r.status === 429) {
       // Cooldown race condition — re-render landing dgn status terbaru.
       const status = await fetchQuizStatus(lesson.apiId);
+      if (viewEpoch !== window.__quizNavigationEpoch) return;
       if (status) renderQuizLandingCard(main, key, lesson.title || 'Kuis', status);
       return;
     }
     if (!r.ok) {
       const errData = await r.json().catch(() => ({}));
+      if (viewEpoch !== window.__quizNavigationEpoch) return;
       main.innerHTML = `<div class="quiz-container"><p style="color:#b91c1c;">Gagal mulai: ${errData.error || r.status}</p></div>`;
       return;
     }
     const data = await r.json();
+    if (viewEpoch !== window.__quizNavigationEpoch) return;
     const questions = (data.questions || []).map(transformQuestionFromApi);
     if (questions.length === 0) {
       main.innerHTML = `<div class="quiz-container"><p>Kuis ini belum punya soal.</p></div>`;
@@ -5728,10 +5744,25 @@ window.startQuizAttempt = async (key) => {
       activeCategory: firstQuizCategoryWithQuestions(questions),
       attemptToken: data.attemptToken,
       passingScorePct: data.passingScorePct,
-      deferFeedback: !!kanaPlacementMeta({ id: lId }),
+      deferFeedback: !!data.assessmentVersion || !!kanaPlacementMeta({ id: lId }),
+      assessmentVersion: data.assessmentVersion || null,
+      draftRevision: data.draftRevision || 0,
+      lessonApiId: lesson.apiId,
+      viewEpoch,
+      draftStatus: data.assessmentVersion ? 'Jawaban tersimpan otomatis setelah diisi.' : '',
     };
+    for (const answer of data.draftAnswers || []) {
+      const qi = questions.findIndex(q => q.questionId === answer.questionId);
+      if (qi < 0) continue;
+      const selected = answer.textAnswer ?? questions[qi].optionIds.indexOf(answer.optionId);
+      if (selected === -1) continue;
+      quizState.answers.push(answer);
+      quizState.selectedByIndex[qi] = selected;
+      quizState.answeredByIndex[qi] = true;
+    }
     renderQuizQuestion(main);
   } catch (err) {
+    if (viewEpoch !== window.__quizNavigationEpoch) return;
     main.innerHTML = `<div class="quiz-container"><p style="color:#b91c1c;">Network error: ${err?.message || err}</p></div>`;
   }
 };
@@ -5892,8 +5923,9 @@ function renderListeningPlayer(sectionItems, sectionNumber) {
       qi: item.index,
       orderInSection: idx + 1,
       script: (item.q.audioScript || '').trim(),
+      questionId: item.q.hasAudio ? item.q.questionId : null,
     }))
-    .filter((t) => t.script);
+    .filter((t) => t.script || t.questionId);
   if (tracks.length === 0) return '';
   const sectionKey = `s${sectionNumber}`;
   // Embed JSON via escapeHtml — handles &, <, >, ", ' all in one shot. Reader
@@ -5942,6 +5974,8 @@ function destroyAllListeningPlayers() {
       p.audio.src = '';
     }
     if (p?._jedaTimer) { clearTimeout(p._jedaTimer); p._jedaTimer = null; }
+    if (p?.objectUrl) URL.revokeObjectURL(p.objectUrl);
+    if (p) p.destroyed = true;
     delete window.__listeningPlayers[key];
   }
 }
@@ -5984,7 +6018,7 @@ function initListeningPlayers() {
           secsLeft--;
           if (secsLeft < 0) {
             if (countdownEl) countdownEl.textContent = '';
-            window.listeningJump(key, state.currentIdx + 1, true);
+            window.listeningJump(key, 1, true);
             return;
           }
           state._jedaTimer = setTimeout(tick, 1000);
@@ -6003,12 +6037,45 @@ function initListeningPlayers() {
   });
 }
 
-function loadListeningTrack(key, idx, autoplay) {
+async function loadListeningTrack(key, idx, autoplay) {
   const s = window.__listeningPlayers[key];
   if (!s) return;
   if (idx < 0 || idx >= s.tracks.length) return;
   s.currentIdx = idx;
   const t = s.tracks[idx];
+  if (t.questionId) {
+    s.audio.pause();
+    const request = s.request = (s.request || 0) + 1;
+    if (s.objectUrl) URL.revokeObjectURL(s.objectUrl);
+    s.objectUrl = null;
+    s.audio.removeAttribute('src');
+    s.loading = false;
+    updateListeningUI(key);
+    if (!autoplay) return;
+    s.loading = true;
+    updateListeningUI(key);
+    const message = s.el.querySelector('.qlp-jeda');
+    if (message) message.textContent = 'Memuat audio…';
+    try {
+      const state = quizState;
+      const response = await window.ezApi(`/progress/lesson/${encodeURIComponent(state.lessonApiId)}/quiz/audio/${encodeURIComponent(t.questionId)}?attemptToken=${encodeURIComponent(state.attemptToken)}`);
+      if (!response.ok) throw new Error('audio_unavailable');
+      const blob = await response.blob();
+      if (s.destroyed || request !== s.request) return;
+      s.objectUrl = URL.createObjectURL(blob);
+      s.audio.src = s.objectUrl;
+      if (message) message.textContent = '';
+      await s.audio.play();
+    } catch {
+      if (!s.destroyed && request === s.request) {
+        s.audio.removeAttribute('src');
+        if (message) message.textContent = 'Audio belum dapat diputar. Periksa koneksi, lalu tekan putar untuk mencoba lagi.';
+      }
+    } finally {
+      if (!s.destroyed && request === s.request) { s.loading = false; updateListeningUI(key); }
+    }
+    return;
+  }
   s.audio.src = ttsUrl(t.script);
   updateListeningUI(key);
   if (autoplay) {
@@ -6022,7 +6089,7 @@ function updateListeningUI(key) {
   if (!s) return;
   const { el, audio, tracks, currentIdx, isPlaying } = s;
   const playBtn = el.querySelector('.qlp-play');
-  if (playBtn) playBtn.textContent = isPlaying ? '❚❚' : '▶';
+  if (playBtn) { playBtn.textContent = isPlaying ? '❚❚' : '▶'; playBtn.disabled = !!s.loading; }
   const curNum = el.querySelector('.qlp-current-num');
   if (curNum) curNum.textContent = currentIdx + 1;
   const cur = el.querySelector('.qlp-cur-time');
@@ -6054,8 +6121,12 @@ function updateListeningUI(key) {
 
 window.listeningTogglePlay = (key) => {
   const s = window.__listeningPlayers[key];
-  if (!s) return;
+  if (!s || s.loading) return;
   if (s.audio.paused) {
+    if (s.tracks[s.currentIdx]?.questionId && !s.audio.getAttribute('src')) {
+      loadListeningTrack(key, s.currentIdx, true);
+      return;
+    }
     const p = s.audio.play();
     if (p && typeof p.catch === 'function') p.catch(() => {});
   } else {
@@ -6143,10 +6214,10 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
 
   const optionsHtml = isTyped
     ? `<div class="quiz-text-answer-wrap">
-        <label class="sr-only" for="quiz-text-answer-${qi}">Jawaban romaji soal ${questionNumber}</label>
+        <label for="quiz-text-answer-${qi}">${q.inputHint ? escapeHtml(q.inputHint) : `Jawaban romaji soal ${questionNumber}`}</label>
         <input class="quiz-text-answer" id="quiz-text-answer-${qi}" type="text"
           value="${escapeHtml(typeof selected === 'string' ? selected : '')}"
-          placeholder="Ketik romaji" maxlength="200" autocomplete="off" autocapitalize="none" spellcheck="false"
+          placeholder="${q.inputHint ? 'Ketik bahasa Jepang' : 'Ketik romaji'}" maxlength="200" autocomplete="off" autocapitalize="none" spellcheck="false"
           oninput="window.setQuizTextAnswer(${qi}, this.value)" />
       </div>`
     : useImageGrid
@@ -6247,6 +6318,7 @@ function renderQuizQuestion(container) {
         <div class="quiz-progress-text" id="quiz-paper-progress">Terjawab 0 / ${total}</div>
         <button class="quiz-next-btn" id="quiz-finish-btn" onclick="finishQuiz()" disabled>Lihat Hasil</button>
       </div>
+      ${quizState.assessmentVersion ? `<p id="quiz-draft-status" role="status">${escapeHtml(quizState.draftStatus || '')}</p><p>Jawaban dapat diubah sebelum dikirim. Gunakan tab kategori untuk menjawab semua bagian.</p>` : ''}
     </div>
   `;
   updateQuizPaperProgress();
@@ -6275,6 +6347,56 @@ function setQuizAnswerPayload(questionIndex, payload) {
     quizState.answeredByIndex[questionIndex] = true;
   }
   updateQuizPaperProgress();
+  if (quizState.assessmentVersion) scheduleChapterDraft(quizState);
+}
+
+function scheduleChapterDraft(state) {
+  state.draftDirty = true;
+  clearTimeout(state.draftTimer);
+  state.draftStatus = 'Menyimpan jawaban…';
+  const el = document.getElementById('quiz-draft-status');
+  if (el) el.textContent = state.draftStatus;
+  state.draftTimer = setTimeout(() => saveChapterDraft(state), 500);
+}
+
+async function saveChapterDraft(state) {
+  if (state.draftSaving || state.submitted || state.submitting || state.draftConflict) return;
+  state.draftSaving = true;
+  state.draftPromise = new Promise(resolve => { state.resolveDraftSave = resolve; });
+  try {
+    while (state.draftDirty && !state.submitted && !state.submitting) {
+      state.draftDirty = false;
+      const response = await window.ezApi(`/progress/lesson/${encodeURIComponent(state.lessonApiId)}/quiz/draft`, {
+        method: 'PUT', body: JSON.stringify({ attemptToken: state.attemptToken, answers: state.answers, revision: state.draftRevision }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        if (data.error === 'draft_conflict') state.draftConflict = true;
+        throw new Error(data.error || 'draft_save_failed');
+      }
+      state.draftRevision = data.revision;
+    }
+    state.draftStatus = 'Jawaban tersimpan.';
+  } catch {
+    state.draftStatus = state.draftConflict
+      ? 'Sesi ini juga diubah di tab lain. Muat ulang untuk memakai jawaban terbaru sebelum melanjutkan.'
+      : 'Jawaban belum tersimpan di server. Tetap di halaman ini; coba simpan lagi atau kirim seluruh jawaban setelah selesai.';
+    state.draftDirty = true;
+  } finally {
+    state.draftSaving = false;
+    state.resolveDraftSave();
+    if (quizState === state) {
+      const el = document.getElementById('quiz-draft-status');
+      if (el) {
+        el.textContent = state.draftStatus;
+        if (state.draftDirty && !state.draftConflict) {
+          const button = document.createElement('button');
+          button.textContent = 'Coba simpan lagi'; button.className = 'btn-secondary';
+          button.onclick = () => saveChapterDraft(state); el.appendChild(button);
+        }
+      }
+    }
+  }
 }
 
 window.setQuizTextAnswer = (questionIndex, value) => {
@@ -6409,7 +6531,15 @@ window.nextQuizQuestion = () => {
 async function finishQuiz() {
   const state = quizState;
   if (!state || state.submitting || state.submitted) return;
+  const viewEpoch = window.__quizNavigationEpoch;
+  if (state.draftConflict) {
+    const el = document.getElementById('quiz-draft-status');
+    if (el) el.textContent = 'Sesi diubah di tab lain. Muat ulang sebelum mengirim agar jawaban terbaru tidak tertimpa.';
+    return;
+  }
   state.submitting = true;
+  if (state.draftPromise) await state.draftPromise;
+  if (state.draftConflict || quizState !== state || viewEpoch !== window.__quizNavigationEpoch) { state.submitting = false; return; }
   destroyAllListeningPlayers();
   const { questions, key, answers, attemptToken } = state;
   const main = document.getElementById('main-content');
@@ -6425,7 +6555,7 @@ async function finishQuiz() {
       throw new Error('quiz_connection_unavailable');
     }
     const res = await window.ezApi(`/progress/lesson/${encodeURIComponent(lessonApiId)}/quiz-attempt`, {
-      method: 'POST', body: JSON.stringify({ attemptToken, answers }),
+      method: 'POST', body: JSON.stringify({ attemptToken, answers, ...(state.assessmentVersion ? { draftRevision: state.draftRevision } : {}) }),
     });
     data = await res.json();
     if (!res.ok) throw new Error(data.error || 'quiz_submit_failed');
@@ -6438,8 +6568,8 @@ async function finishQuiz() {
     }
     invalidateQuizStatus(lessonApiId);
   } catch (err) {
-    if (quizState !== state) return;
-    const changed = ['quiz_questions_changed', 'already_submitted', 'attempt_not_found', 'lesson_not_quiz'].includes(err.message);
+    if (quizState !== state || viewEpoch !== window.__quizNavigationEpoch) return;
+    const changed = ['quiz_questions_changed', 'already_submitted', 'attempt_not_found', 'lesson_not_quiz', 'draft_conflict'].includes(err.message);
     const incomplete = err.message === 'answers_incomplete_or_duplicate';
     const message = changed
       ? 'Soal atau sesi kuis sudah berubah. Kembali ke kuis untuk memuat status terbaru.'
@@ -6455,7 +6585,7 @@ async function finishQuiz() {
   } finally {
     state.submitting = false;
   }
-  if (quizState !== state) return;
+  if (quizState !== state || viewEpoch !== window.__quizNavigationEpoch) return;
   state.submitted = true;
   const { score, total, passed, nextAttemptAt, cooldownHours } = data;
   const passing = data.passingScorePct;
@@ -6513,7 +6643,7 @@ async function finishQuiz() {
     <div class="quiz-result-row${section.passed ? '' : ' is-focus'}">
       <span class="quiz-result-row-label">${escapeHtml(section.sectionLabel || `Bagian ${section.sectionNumber}`)}</span>
       <span class="quiz-result-row-meter" style="--section-progress:${Math.round(Math.min(1, Math.max(0, Number(section.score) / Math.max(1, Number(section.total)))) * 100)}%" aria-hidden="true"><span></span></span>
-      <strong class="quiz-result-row-score">${Number(section.score)} / ${Number(section.total)}</strong>
+      <strong class="quiz-result-row-score">${Number(section.score)} / ${Number(section.total)}${data.assessmentVersion ? `<small> · min ${Number(section.minimumCorrect)}</small>` : ''}</strong>
     </div>`).join('');
   const focusCount = sectionResults.filter((section) => !section.passed).length;
 
@@ -6538,13 +6668,14 @@ async function finishQuiz() {
             <h2>${passed ? 'Siap lanjut belajar' : 'Perlu latihan lagi'}</h2>
             <p class="subtitle">${passed
               ? 'Tes selesai. Hasil ini sudah tersimpan di progres belajarmu.'
+              : data.assessmentVersion ? 'Syarat total atau salah satu bagian belum terpenuhi. Periksa hasil dan tujuan yang perlu dilatih di bawah.'
               : `Skor belum mencapai batas lulus ${passing}%. Periksa bagian yang masih sulit, lalu coba lagi.`}</p>
           </div>
           <span class="quiz-results-status">${passed ? '✓ Lulus' : 'Belum lulus'}</span>
         </div>
         <div class="quiz-results-score">
           <strong class="quiz-results-score-number">${pct}%</strong>
-          <div class="quiz-results-score-detail"><strong>${score} dari ${total} benar</strong><span>Batas lulus ${passing}%</span></div>
+          <div class="quiz-results-score-detail"><strong>${score} dari ${total} benar</strong><span>${data.assessmentVersion ? `Min total ${passing}% dan syarat per bagian` : `Batas lulus ${passing}%`}</span></div>
           <div class="quiz-results-meter" style="--result-progress:${pct}%" aria-hidden="true"><span></span></div>
         </div>
         ${sectionBlock || catBlock ? `<section class="quiz-results-breakdown" aria-labelledby="quiz-breakdown-title">
@@ -6552,6 +6683,7 @@ async function finishQuiz() {
             ${focusCount ? `<span class="quiz-results-breakdown-note">${focusCount} bagian untuk dilatih lagi</span>` : ''}</div>
           <div class="quiz-results-breakdown-list">${sectionBlock || catBlock}</div>
         </section>` : ''}
+        ${data.assessmentVersion ? renderChapterReview(data) : ''}
         <div class="quiz-results-footer">
           <p class="quiz-results-next">${resultNote}</p>
           <div class="quiz-results-btns">
@@ -6564,6 +6696,38 @@ async function finishQuiz() {
   `;
   renderSidebar();
 }
+
+function renderChapterReview(data, includeSections = false) {
+  const sections = includeSections ? `<h3>Hasil per bagian</h3><ul>${(data.sectionResults || []).map(s => `<li>${s.passed ? '✓' : 'Perlu latihan:'} ${escapeHtml(s.sectionLabel)}: ${s.score}/${s.total} (minimal ${s.minimumCorrect})</li>`).join('')}</ul>` : '';
+  const goals = (data.objectiveResults || []).map(o => `<li>${o.passed ? '✓' : 'Perlu latihan:'} ${escapeHtml(o.sectionLabel)} (${o.score}/${o.total})</li>`).join('');
+  const review = (data.review || []).map((q, i) => `<details style="padding:12px 0;border-bottom:1px solid #e5e7eb">
+    <summary>${i + 1}. ${q.correct ? 'Benar' : 'Perlu diperbaiki'} — ${escapeHtml(q.category)}</summary>
+    <p>${sanitizeHtml(q.prompt)}</p>
+    ${q.passage ? `<p lang="ja" style="white-space:pre-wrap">${escapeHtml(q.passage)}</p>` : ''}
+    ${q.audioScript ? `<p><strong>Transkrip audio</strong></p><pre lang="ja" style="white-space:pre-wrap">${escapeHtml(q.audioScript)}</pre>` : ''}
+    <p>Jawabanmu: <strong>${escapeHtml(q.submittedAnswer)}</strong><br>Jawaban yang diterima: <strong>${escapeHtml(q.correctAnswer)}</strong></p>
+    <p>${escapeHtml(q.explanation || '')}</p>${q.choiceReason ? `<p>${escapeHtml(q.choiceReason)}</p>` : ''}
+  </details>`).join('');
+  const transfer = data.transferTask;
+  return `<section style="margin:20px 0;text-align:left">${sections}<h3>Tujuan dan tindak lanjut</h3><p>Tanda ✓ berarti ada bukti jawaban benar untuk tujuan tersebut; lihat juga jumlah benarnya.</p><ul>${goals}</ul>
+    <p>Latih kembali kategori dan tujuan yang masih lemah melalui materi dan latihan Bunpou bab ini. Hasil ini menunjukkan kemampuan pada tugas yang diuji.</p>
+    <details><summary>Pembahasan ${data.review?.length || 0} soal</summary>${review}</details>
+    ${transfer ? `<details style="margin-top:16px"><summary>Latihan penerapan setelah assessment</summary><p>${escapeHtml(transfer.prompt)}</p><p>Gunakan rubrik ini untuk meninjau jawabanmu atau membahasnya bersama pengajar. Latihan ini tidak dinilai otomatis.</p><ul>${(transfer.rubric || []).map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul></details>` : ''}
+  </section>`;
+}
+
+window.openChapterReview = async (key, token) => {
+  const target = document.getElementById('chapter-review');
+  const lesson = findLesson(...key.split(':'));
+  if (!target || !lesson?.apiId) return;
+  target.textContent = 'Memuat pembahasan…';
+  try {
+    const response = await window.ezApi(`/progress/lesson/${encodeURIComponent(lesson.apiId)}/quiz/review?attemptToken=${encodeURIComponent(token)}`);
+    if (!response.ok) throw new Error('review_unavailable');
+    const result = await response.json();
+    target.innerHTML = renderChapterReview(result, true);
+  } catch { target.textContent = 'Pembahasan belum dapat dimuat. Tekan Lihat pembahasan untuk mencoba lagi.'; }
+};
 
 window.retryQuiz = () => {
   // Cooldown enforced server-side. Klik retry → re-render landing card,
@@ -13028,6 +13192,7 @@ function renderVideoLessonPlayer(lesson) {
 }
 
 function renderLesson() {
+  window.__quizNavigationEpoch = (window.__quizNavigationEpoch || 0) + 1;
   gkStopAll(); // stop karaoke dialog dari lesson sebelumnya
   destroyYoutubeSegmentPlayer();
   const course = COURSE_CONTENT[currentState.course];

@@ -408,14 +408,17 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
     // POST /api/progress/lesson/:id/quiz/start (auth required, mulai attempt).
     // Endpoint ini cuma return metadata + pool size buat card landing.
     const poolRes = await query(
-      `SELECT COUNT(*)::int AS n FROM quiz_questions WHERE lesson_id = $1`,
-      [row.id]
+      `SELECT COUNT(*)::int AS n FROM quiz_questions WHERE lesson_id = $1
+        AND ($2::text IS NULL OR assessment_meta->>'version'=$2)`,
+      [row.id, row.assessment_policy?.version || null]
     );
     response.quizMeta = {
-      passingScorePct: row.passing_score_pct ?? 70,
+      passingScorePct: row.assessment_policy?.passingScorePct ?? row.passing_score_pct ?? 70,
       questionsPerAttempt: row.questions_per_attempt || poolRes.rows[0]?.n || 0,
       cooldownHours: row.cooldown_hours ?? 12,
       poolSize: poolRes.rows[0]?.n || 0,
+      assessmentVersion: row.assessment_policy?.version || null,
+      objectives: row.assessment_policy?.objectives || [],
     };
   }
 
@@ -554,7 +557,7 @@ router.post('/lessons/:lessonId/quiz/check', requireAuth, quizCheckLimiter, requ
 
   // Single round-trip: question + all options, scoped to this lesson.
   const rows = await query(
-    `SELECT q.explanation, o.id AS option_id, o.is_correct
+    `SELECT q.explanation, q.assessment_meta, o.id AS option_id, o.is_correct
        FROM quiz_questions q
        LEFT JOIN quiz_options o ON o.question_id = q.id
       WHERE q.lesson_id = $1 AND q.id = $2`,
@@ -563,6 +566,7 @@ router.post('/lessons/:lessonId/quiz/check', requireAuth, quizCheckLimiter, requ
   if (rows.rows.length === 0) {
     return res.status(404).json({ error: 'Question not found' });
   }
+  if (rows.rows[0].assessment_meta?.version) return res.status(409).json({ error: 'feedback_after_submit' });
 
   let correctOptionId = null;
   let chosen = null;
