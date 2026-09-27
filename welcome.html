@@ -4711,6 +4711,7 @@
 <link rel="stylesheet" href="styles/learning-placement.css?v=20260925-1"/>
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
 <link rel="stylesheet" href="styles/dialogue-scene.css?v=2">
+<link rel="stylesheet" href="styles/dialogue-questions.css?v=20260927-1">
 <link rel="stylesheet" href="maneko.css?v=20260926-1">
 <script src="maneko.js?v=20260926-1"></script>
 </head>
@@ -4752,6 +4753,7 @@
 <script src="assets/dialogue/catalog.js?v=1"></script>
 <script src="src/dialogue-furigana.js?v=1"></script>
 <script src="src/dialogue-scene.js?v=2"></script>
+<script src="src/dialogue-questions.js?v=20260927-1"></script>
 <script src="learning-state.js?v=20260911-1"></script>
 <script>
 // ═══════════════════════════════════════════════
@@ -8304,6 +8306,7 @@ function renderLessonGrammar(lesson) {
     <div class="lesson-extra-card">
       <h3>📖 Grammar di pelajaran ini (${sorted.length})</h3>
       <div id="bunpou-analysis"></div>
+      <div class="dq-legacy-session-slot" hidden></div>
       <div class="grammar-list">
         ${sorted.map((g, i) => {
           const dialog = (g.example_dialog || '').trim();
@@ -8338,7 +8341,9 @@ function renderLessonGrammar(lesson) {
               </button>
               <div class="grammar-block-content">
                 ${lesson.bunpouFlow?.directions?.[g.id] ? `<p class="grammar-listening-direction" style="margin:0 0 8px;font-size:13px;color:#525252;">🎧 ${escapeHtml(lesson.bunpouFlow.directions[g.id])}</p>` : ''}
+                <div class="dq-goal" data-dq-goal-for="${escapeHtml(g.id || '')}" hidden></div>
                 ${grammarKaraokeHtml(dialog, `g${i}`, g.example_dialog_id || '', g.dialog_scene, g.id, g.dialog_furigana)}
+                <div class="dq-questions" data-dq-questions-for="${escapeHtml(g.id || '')}" hidden></div>
               </div>
             </div>` : ''}
             ${g.notes ? `<div class="grammar-notes">${escapeHtml(g.notes)}</div>` : ''}
@@ -13028,6 +13033,7 @@ function renderVideoLessonPlayer(lesson) {
 }
 
 function renderLesson() {
+  window.EzDialogueQuestions?.unmount();
   gkStopAll(); // stop karaoke dialog dari lesson sebelumnya
   destroyYoutubeSegmentPlayer();
   const course = COURSE_CONTENT[currentState.course];
@@ -13156,6 +13162,8 @@ function renderLesson() {
 
   // Analisis Bunpou dimuat setelah materi tampil — tidak boleh menunda render.
   loadBunpouAnalysis(lesson);
+  window.EzDialogueQuestions?.mount({ root: document.getElementById('main-content'), lesson,
+    openLegacyTask: pend ? () => window.gtOpenTaskPopup(pend.taskMod.id, pend.taskLesson.id) : null });
 }
 
 function renderLessonMaterials(module, lesson) {
