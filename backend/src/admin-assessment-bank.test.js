@@ -12,9 +12,9 @@ test('admin listing and section mutations isolate the active bank and retain leg
     const route = source.slice(source.indexOf(marker)).split('\n}));')[0];
     return [...route.matchAll(/`([^`]+)`/g)].map(m => m[1]).find(sql => sql.startsWith(prefix));
   };
-  const list = routeSql("router.get('/lessons/:lessonId/quiz'", 'SELECT * FROM quiz_questions');
-  const update = routeSql("router.put('/lessons/:lessonId/quiz/sections/", 'UPDATE quiz_questions');
-  const remove = routeSql("router.delete('/lessons/:lessonId/quiz/sections/", 'DELETE FROM quiz_questions');
+  const list = routeSql("router.get('/lessons/:lessonId/quiz'", 'SELECT *,xmin::text AS revision FROM quiz_questions');
+  const update = routeSql("router.put('/lessons/:lessonId/quiz/sections/", 'UPDATE quiz_questions q');
+  const remove = routeSql("router.delete('/lessons/:lessonId/quiz/sections/", 'DELETE FROM quiz_questions q');
   assert.ok(list && update && remove);
   let db;
   if (process.env.TEST_PGLITE_URL) {

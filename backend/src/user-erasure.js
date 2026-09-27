@@ -1,4 +1,5 @@
 import { inspectStaffErasureTables, eraseStaffUserData } from './staff-erasure.js';
+import { createHash } from 'node:crypto';
 
 // Menjalankan hak "hapus data" yang dijanjikan privacy.html bagian 9.
 //
@@ -49,9 +50,8 @@ const WIPE_TABLES = [
   'grammar_task_sessions',
 ];
 
-// Deploy runs migrations before the new process starts. Recognize this table
-// before migration 165 creates it so account erasure keeps working throughout
-// that compatibility window; every other unknown user FK still fails closed.
+// During deploy the new backend may start before migration 165. Keep the new
+// table optional until present, while still rejecting every unknown user FK.
 const OPTIONAL_WIPE_TABLES = ['dialogue_question_attempts'];
 
 // Tabel ber-FK ke users yang SENGAJA tidak masuk WIPE_TABLES, masing-masing
@@ -136,6 +136,19 @@ export async function eraseUserAccount(client, userId) {
     // diambil dari katalog FK dan di-quote, bukan dari input request.
     const res = await client.query(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
     wiped[table.includes('.') ? 'dialogue_question_attempts' : table] = res.rowCount;
+  }
+
+  // PR9d has no users FK, so the old FK inventory cannot discover it. Its
+  // actor is a digest of the authenticated owner UUID; erase matching
+  // attestations when the additive table exists, before anonymizing users.
+  const attestationTable = await client.query(
+    `SELECT to_regclass('curriculum_readiness_attestations') AS table_name`);
+  if (attestationTable.rows[0]?.table_name) {
+    const actorDigest = `sha256:${createHash('sha256')
+      .update(JSON.stringify(String(userId))).digest('hex')}`;
+    const removed = await client.query(
+      'DELETE FROM curriculum_readiness_attestations WHERE actor_digest=$1', [actorDigest]);
+    wiped.curriculum_readiness_attestations = removed.rowCount;
   }
 
   // Konten diskusi: di-scrub, barisnya dipertahankan (lihat HANDLED_SEPARATELY).

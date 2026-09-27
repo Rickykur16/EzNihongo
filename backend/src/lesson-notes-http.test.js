@@ -14,21 +14,56 @@ const { signAccessToken } = await import('./auth.js');
 const { default: admin } = await import('./routes/admin.js');
 
 const lessonId = '11111111-1111-4111-8111-111111111111';
+const moduleId = '33333333-3333-4333-8333-333333333333';
+const courseId = '44444444-4444-4444-8444-444444444444';
+const futureModuleId = '55555555-5555-4555-8555-555555555555';
+const futureLessonId = '66666666-6666-4666-8666-666666666666';
 const lesson = {
   id: lessonId,
+  module_id: moduleId,
   slug: 'materi',
   title: 'Materi',
   type: 'text',
-  content: '<p>Catatan lama</p>',
+  content: '<p>先</p>',
   video_source_id: null,
   video_start_seconds: null,
   video_end_seconds: null,
+  updated_at: '2026-09-27T00:00:00.000Z',
 };
 const updates = [];
 
 mock.method(db, 'connect', async () => ({
   async query(sql, params = []) {
-    if (/^(BEGIN|COMMIT|ROLLBACK)$/.test(sql)) return { rows: [] };
+    if (/^(BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE)/.test(sql)) return { rows: [] };
+    if (sql.includes('SELECT * FROM lessons WHERE id=')) return { rows: [{ ...lesson }] };
+    if (sql.includes('SELECT c.id,c.curriculum_boundary_mode')) {
+      return { rows: [{ id: courseId, mode: 'enforce', module_id: moduleId }] };
+    }
+    if (sql.includes('WITH RECURSIVE required(id)')) return { rows: [{ id: courseId }] };
+    if (sql.includes('pg_advisory_xact_lock')) return { rows: [] };
+    if (sql.includes('boundary:courses')) return { rows: [{
+      id: courseId, slug: 'n5', level: 'N5', curriculum_boundary_mode: 'enforce',
+    }] };
+    if (sql.includes('boundary:edges')) return { rows: [] };
+    if (sql.includes('boundary:scope-lesson')) return { rows: [{ ...lesson }] };
+    if (sql.includes('boundary:scope-module')) {
+      return { rows: [{ id: moduleId, course_id: courseId, sort_order: 1, title: 'Bab 1' }] };
+    }
+    if (sql.includes('boundary:modules')) return { rows: [
+      { id: moduleId, course_id: courseId, sort_order: 1, title: 'Bab 1' },
+      { id: futureModuleId, course_id: courseId, sort_order: 2, title: 'Bab 2' },
+    ] };
+    if (sql.includes('boundary:lessons')) return { rows: [{ ...lesson }, {
+      id: futureLessonId, module_id: futureModuleId, slug: 'future', type: 'text',
+    }] };
+    if (sql.includes('boundary:kanji')) return { rows: [{
+      id: '77777777-7777-4777-8777-777777777777', lesson_id: futureLessonId,
+      character: '先', meaning_id: 'depan', on_reading: 'セン', kun_reading: 'さき',
+    }] };
+    if (sql.includes('boundary:vocabulary') || sql.includes('boundary:grammar') ||
+        sql.includes('boundary:decks') ||
+        sql.includes('curriculum_boundary_auxiliary_terms')) return { rows: [] };
+    if (sql.includes('INSERT INTO curriculum_boundary_reports')) return { rows: [], rowCount: 1 };
     if (sql.includes('SELECT type, video_source_id')) return { rows: [{
       type: lesson.type,
       video_source_id: lesson.video_source_id,
@@ -73,8 +108,9 @@ test('admin can clear lesson notes while omitted content remains unchanged', asy
     return { status: response.status, body: await response.json() };
   };
 
-  const cleared = await update({ content: null });
-  assert.equal(cleared.status, 200);
+  const cleared = await update({ title: 'Materi bersih', content: null });
+  assert.equal(cleared.status, 200, JSON.stringify(cleared.body));
+  assert.equal(cleared.body.lesson.title, 'Materi bersih');
   assert.equal(cleared.body.lesson.content, null);
   assert.equal(lesson.content, null);
   assert.match(updates[0].sql, /content = CASE WHEN \$21::boolean THEN \$5 ELSE content END/);

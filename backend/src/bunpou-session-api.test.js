@@ -9,6 +9,7 @@ import { readFile } from 'node:fs/promises';
 import { once } from 'node:events';
 import express from 'express';
 import pgDriver from 'pg';
+import { createLearnerFlowTelemetry } from './learning-flow-telemetry.js';
 
 const migrations = [
   '147_bunpou_flow_pilot.sql',
@@ -91,6 +92,11 @@ const schema = `
   CREATE TABLE modules (
     id UUID PRIMARY KEY, course_id UUID NOT NULL REFERENCES courses(id), title TEXT, sort_order INT DEFAULT 0
   );
+  CREATE TABLE course_prerequisites (
+    course_id UUID NOT NULL REFERENCES courses(id),
+    prerequisite_course_id UUID NOT NULL REFERENCES courses(id),
+    PRIMARY KEY (course_id, prerequisite_course_id)
+  );
   CREATE TABLE lessons (
     id UUID PRIMARY KEY, module_id UUID NOT NULL REFERENCES modules(id),
     type TEXT NOT NULL, popup_after_lesson_id UUID REFERENCES lessons(id), sort_order INT DEFAULT 0,
@@ -164,6 +170,11 @@ test('Bunpou session API with real PostgreSQL SQL', { timeout: 90_000, concurren
   for (let pass = 0; pass < 2; pass++) {
     for (const sql of migrationSql) await database.exec(sql);
   }
+  // This deliberately small pre-147 fixture cannot apply the full migration
+  // 165 (which also adds unrelated curriculum tables). Mirror its session
+  // column so this API suite exercises the current router SQL when PG exists.
+  await database.exec(`ALTER TABLE grammar_task_sessions ADD COLUMN flow_version
+    SMALLINT NOT NULL DEFAULT 1 CHECK (flow_version IN (1,2))`);
 
   const savedEnv = Object.fromEntries(['JWT_ACCESS_SECRET', 'ANTHROPIC_API_KEY', 'ADMIN_EMAILS'].map(key => [key, process.env[key]]));
   process.env.JWT_ACCESS_SECRET = 'synthetic-session-integration-secret-at-least-32-bytes';
@@ -190,8 +201,10 @@ test('Bunpou session API with real PostgreSQL SQL', { timeout: 90_000, concurren
   const { assertUserTablesCovered } = await import('./user-erasure.js');
   const token = await signAccessToken(fixture.userId, fixture.email);
   const errors = [];
+  const telemetry = [];
   const app = express();
   app.use(express.json());
+  app.use('/api', createLearnerFlowTelemetry({ logger: event => telemetry.push(event) }));
   app.use('/api', router);
   app.use((err, req, res, next) => {
     errors.push(err);
@@ -246,6 +259,7 @@ test('Bunpou session API with real PostgreSQL SQL', { timeout: 90_000, concurren
   let fingerprint;
   t.beforeEach(async () => {
     errors.length = 0;
+    telemetry.length = 0;
     await database.exec(`TRUNCATE users, courses, modules, lessons, module_grammar, grammar_examples,
       lesson_grammar_task_items, grammar_attempts, grammar_eval_cache, app_settings,
       user_enrollments, user_progress, admin_emails CASCADE`);
@@ -369,6 +383,9 @@ test('Bunpou session API with real PostgreSQL SQL', { timeout: 90_000, concurren
     assert.equal(b.wrongCount, 2);
     const before = await state();
     assert.deepEqual(await answer(session, item, wrong, 'request-A'), a);
+    assert.deepEqual(telemetry.filter(event => event.operation === 'session_answer')
+      .map(event => event.outcome), ['success', 'success', 'idempotent_replay']);
+    assert.doesNotMatch(JSON.stringify(telemetry), /request-A|request-B|student@example|answerText|correctIndex/);
     assert.deepEqual(await state(), before);
     assert.equal((await storedItem(item)).wrong_count, 2);
     assert.equal(before.grammar_attempts.length, 2);

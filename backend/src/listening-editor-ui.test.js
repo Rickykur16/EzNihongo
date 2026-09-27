@@ -87,6 +87,10 @@ function setup({ script = 'A: はじめまして。\nF: どうぞよろしく。
   };
   ctx.__dialogSpeakers = profiles;
   ctx.__elevenVoices = voices;
+  // The focused listening harness slices the shared dialog editor before the
+  // Bunpou question editor helpers; provide inert seams for grammar-mode smoke.
+  ctx.admDialogQuestionSourceSnapshot = () => '';
+  ctx.admDialogQuestionSetHtml = () => '';
   vm.runInContext(modalSource, ctx, { filename: 'admin.html:modal' });
   vm.runInContext(editorSource, ctx, { filename: 'admin.html:dialogue-editor' });
   vm.runInContext(sceneSource, ctx, { filename: 'src/admin-dialogue-scene.js' });
@@ -172,7 +176,8 @@ test('listening and grammar modes load their own scene and never leak unsaved dr
     'textarea[name="example_dialog_id"]': field('N: Situasi.\nA: Halo.'),
     '[name="dialog_scene"]': field(''),
   };
-  const tr = { querySelector: selector => grammarFields[selector] || null, closest: () => null };
+  const tr = { dataset: { id: 'grammar-fixture' },
+    querySelector: selector => grammarFields[selector] || null, closest: () => null };
   await h.ctx.grmrManageDialog({ closest: () => tr });
   assert.equal(h.ctx.__dialogMode, 'grammar');
   assert.equal(h.ctx.__dialogScene, null, 'Grammar without scene must not inherit listening scene');

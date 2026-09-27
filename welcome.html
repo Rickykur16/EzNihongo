@@ -4711,6 +4711,7 @@
 <link rel="stylesheet" href="styles/learning-placement.css?v=20260925-1"/>
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
 <link rel="stylesheet" href="styles/dialogue-scene.css?v=2">
+<link rel="stylesheet" href="styles/dialogue-questions.css?v=20260927-1">
 <link rel="stylesheet" href="maneko.css?v=20260926-1">
 <script src="maneko.js?v=20260926-1"></script>
 </head>
@@ -4752,6 +4753,7 @@
 <script src="assets/dialogue/catalog.js?v=1"></script>
 <script src="src/dialogue-furigana.js?v=1"></script>
 <script src="src/dialogue-scene.js?v=2"></script>
+<script src="src/dialogue-questions.js?v=20260927-1"></script>
 <script src="learning-state.js?v=20260911-1"></script>
 <script>
 // ═══════════════════════════════════════════════
@@ -8530,6 +8532,7 @@ function renderLessonGrammar(lesson) {
     <div class="lesson-extra-card">
       <h3>📖 Grammar di pelajaran ini (${sorted.length})</h3>
       <div id="bunpou-analysis"></div>
+      <div class="dq-legacy-session-slot" hidden></div>
       <div class="grammar-list">
         ${sorted.map((g, i) => {
           const dialog = (g.example_dialog || '').trim();
@@ -8564,7 +8567,9 @@ function renderLessonGrammar(lesson) {
               </button>
               <div class="grammar-block-content">
                 ${lesson.bunpouFlow?.directions?.[g.id] ? `<p class="grammar-listening-direction" style="margin:0 0 8px;font-size:13px;color:#525252;">🎧 ${escapeHtml(lesson.bunpouFlow.directions[g.id])}</p>` : ''}
+                <div class="dq-goal" data-dq-goal-for="${escapeHtml(g.id || '')}" hidden></div>
                 ${grammarKaraokeHtml(dialog, `g${i}`, g.example_dialog_id || '', g.dialog_scene, g.id, g.dialog_furigana)}
+                <div class="dq-questions" data-dq-questions-for="${escapeHtml(g.id || '')}" hidden></div>
               </div>
             </div>` : ''}
             ${g.notes ? `<div class="grammar-notes">${escapeHtml(g.notes)}</div>` : ''}
@@ -9686,7 +9691,7 @@ function gtCardsHtml(items, sttOn, showDots) {
   if (!items || items.length === 0) {
     return '<div class="deck-empty">Belum ada pola grammar untuk tugas ini.</div>';
   }
-  const sessionNotice = window.__gtSourceLesson?.bunpouFlow
+  const sessionNotice = window.__gtSourceLesson?.apiId
     ? '<div id="gt-session-notice" class="gt-callout" role="status" aria-live="polite" hidden></div>' : '';
   return sessionNotice + items.map((it, pi) => {
     const count = Math.max(1, Number(it.requiredCount) || 1);
@@ -9752,25 +9757,66 @@ const GT_OPT_KEYS = ['A', 'B', 'C', 'D'];
 const GT_MAX_WRONG = 2;
 
 async function gtLoadDrills(lessonId) {
-  if (typeof window.ezApi !== 'function') { gtUnlockAllSteps(); return; }
-  // Bunpou Flow pilot (Paket 1): only for the one Tugas Bunpou whose
-  // triggering lesson currently carries a published companion. Every other
-  // task lesson — which is every task lesson today, until a pilot is
-  // actually turned on — falls straight through to the unchanged legacy
-  // fetch below.
-  if (window.__gtSourceLesson && window.__gtSourceLesson.bunpouFlow) {
+  if (typeof window.ezApi !== 'function') {
+    if (window.__gtSourceLesson?.apiId) gtRenderSessionError();
+    else gtUnlockAllSteps();
+    return;
+  }
+  // A persisted v2 session survives a flag-off companion. Ask the server
+  // whenever the trusted course model identifies a source lesson.
+  if (window.__gtSourceLesson?.apiId) {
     return gtLoadDrillsSession(lessonId);
   }
+  return gtLoadLegacyDrills(lessonId);
+}
+
+async function gtLoadLegacyDrills(lessonId) {
   let data;
   try {
     const r = await window.ezApi('/grammar-task/lesson/' + encodeURIComponent(lessonId) + '/drills');
-    if (!r.ok) { gtUnlockAllSteps(); return; }
+    if (!r.ok) {
+      if (window.__gtLessonId !== lessonId) return;
+      if (window.__gtSourceLesson?.apiId) gtRenderSessionError();
+      else gtUnlockAllSteps();
+      return;
+    }
     data = await r.json();
-  } catch { gtUnlockAllSteps(); return; }
+  } catch {
+    if (window.__gtLessonId !== lessonId) return;
+    if (window.__gtSourceLesson?.apiId) gtRenderSessionError();
+    else gtUnlockAllSteps();
+    return;
+  }
   if (window.__gtLessonId !== lessonId) return; // sudah pindah pelajaran
+  window.__gtSessionMode = 'legacy';
   const byGrammar = {};
   for (const d of (data.drills || [])) byGrammar[d.grammarId] = d;
   _gtApplyDrills(byGrammar);
+}
+
+// DOM numbers are learner-facing. The session API stores original internal
+// step IDs: v1 is identical; v2's transfer-only internal 5 occupies visible 4.
+function gtInternalStep(visibleStep) {
+  return window.__gtFlowVersion === 2 && visibleStep === 4 ? 5 : visibleStep;
+}
+function gtVisibleStep(internalStep) {
+  if (window.__gtFlowVersion !== 2) return internalStep;
+  return internalStep === 5 ? 4 : internalStep === 4 ? null : internalStep;
+}
+function gtSessionSlot(internalStep) {
+  const visibleStep = gtVisibleStep(internalStep);
+  return { 1: 'step1', 2: 'step2', 4: 'check1', 5: 'check2' }[visibleStep] || null;
+}
+function gtSetCheckPresentation() {
+  (window.__gtData || []).forEach((_item, pi) => {
+    const title = _gtScope().querySelector(`#gt-step4-${pi} .gt-step__title`);
+    if (title) title.textContent = window.__gtFlowVersion === 2
+      ? 'Gunakan di situasi lain' : 'Cek pemahaman dialog';
+    if (window.__gtFlowVersion === 2) {
+      const unused = _gtScope().querySelector(`#gt-step5-${pi}`);
+      if (unused) unused.style.display = 'none';
+    }
+  });
 }
 
 // Cat bersama gtLoadDrills (legacy) dan gtLoadDrillsSession (pilot): kedua
@@ -9861,7 +9907,7 @@ function gtHintHtml(pi, step, drill) {
 window.gtShowHint = async (pi, step, btn) => {
   const it = (window.__gtData || [])[pi];
   const sessionId = window.__gtSessionId;
-  const itemId = it && (window.__gtItemIds || {})[`${it.id}-${step}`];
+  const itemId = it && (window.__gtItemIds || {})[`${it.id}-${gtInternalStep(step)}`];
   if (!sessionId || !itemId || !gtSessionItem(it, step).hintAvailable || btn.disabled) return;
   btn.disabled = true;
   try {
@@ -9922,6 +9968,7 @@ async function gtLoadDrillsSession(lessonId) {
   const src = window.__gtSourceLesson;
   const priorSessionId = window.__gtSessionId;
   const priorState = window.__gtState;
+  window.__gtSessionMode = 'resolving';
   const current = () => window.__gtLessonId === lessonId && window.__gtState === priorState;
   const reviewMessage = 'Pendamping sedang ditinjau. Materi tetap tersedia.';
   let notice = '';
@@ -9943,23 +9990,41 @@ async function gtLoadDrillsSession(lessonId) {
         }
       }
     }
+    if (r.status === 403) {
+      const error = await r.json().catch(() => ({}));
+      if (!current()) return;
+      if (error.error === 'pilot_not_enabled_for_lesson') {
+        window.__gtSessionId = null;
+        window.__gtFlowVersion = null;
+        window.__gtItemIds = null;
+        await gtLoadLegacyDrills(lessonId);
+        return;
+      }
+    }
     if (!r.ok) { gtRenderSessionError(notice || undefined); return; }
     data = await r.json();
   } catch { if (current()) gtRenderSessionError(notice || undefined); return; }
   if (!current()) return;
+  if (data.flowVersion !== 1 && data.flowVersion !== 2) {
+    gtRenderSessionError('Versi sesi latihan tidak dikenal.'); return;
+  }
   const newSession = data.sessionId !== priorSessionId;
   if (data.contentChanged) notice += (notice ? ' ' : '') + (notice
     ? 'Materi sumber berubah. Sesi aktif tetap memakai materi yang tersimpan.'
-    : 'Materi sumber berubah. Sesi latihan baru dimulai.');
+    : newSession ? 'Materi sumber berubah. Sesi latihan baru dimulai.'
+      : 'Materi sumber berubah. Sesi aktif tetap memakai materi yang tersimpan.');
   gtSessionNotice(notice);
   window.__gtSessionId = data.sessionId;
+  window.__gtFlowVersion = data.flowVersion;
+  window.__gtSessionMode = 'session';
   window.__gtItemIds = {};
+  gtSetCheckPresentation();
   const byGrammar = {};
   for (const it of (data.items || [])) {
     // Pemetaan EKSPLISIT per nomor step. Versi lama memakai
     // `it.step === 1 ? 'step1' : 'step2'`, yang sejak Paket 2 akan membuat
     // item pemeriksaan (step 4/5) menimpa soal Step 2 pada pola yang sama.
-    const slot = { 1: 'step1', 2: 'step2', 4: 'check1', 5: 'check2' }[it.step];
+    const slot = gtSessionSlot(it.step);
     if (!slot) continue;
     (byGrammar[it.grammarId] = byGrammar[it.grammarId] || {})[slot] = it;
     window.__gtItemIds[`${it.grammarId}-${it.step}`] = it.itemId;
@@ -10015,6 +10080,7 @@ function gtRestoreProductions(productions, reset = false) {
 // dikerjakan. Materi (kartu pola, contoh, dialog di atas) tetap terbaca;
 // yang terkunci hanya soal derivasinya, dengan jalan jujur untuk mencoba lagi.
 function gtRenderSessionError(message = 'Gagal memuat sesi latihan.') {
+  window.__gtSessionMode = 'error';
   const scope = _gtScope();
   gtSessionNotice(message);
   (window.__gtData || []).forEach((_it, pi) => {
@@ -10088,7 +10154,7 @@ function gtRenderStep(pi, step, drill) {
   const opts = (drill.options || []).map((o, oi) => `
     <button type="button" class="gt-opt" id="gt-opt-${step}-${pi}-${oi}" onclick="gtAnswerDrill(${pi}, ${step}, ${oi})">
       <span class="gt-opt__key">${GT_OPT_KEYS[oi] || (oi + 1)}</span>
-      <span lang="${(step === 1 || step === 4) ? 'id' : 'ja'}">${escapeHtml(o)}</span>
+      <span lang="${(step === 1 || gtInternalStep(step) === 4) ? 'id' : 'ja'}">${escapeHtml(o)}</span>
     </button>`).join('');
   body.innerHTML = `${ctx}<div class="gt-opts">${opts}</div>${gtHintHtml(pi, step, drill)}<div class="gt-step__verdict" id="gt-verdict-${step}-${pi}"></div>`;
 }
@@ -10167,7 +10233,7 @@ window.gtArrReturn = (pi, pos) => {
 async function gtSubmitAnswer(it, step, payload) {
   if (window.__gtSessionId) {
     const sessionId = window.__gtSessionId;
-    const itemId = (window.__gtItemIds || {})[`${it.id}-${step}`];
+    const itemId = (window.__gtItemIds || {})[`${it.id}-${gtInternalStep(step)}`];
     if (!itemId) return null;
     try {
       const { status, data: d } = await gtSessionRequest(`/grammar-task/sessions/${sessionId}/items/${itemId}/answer`, payload);
@@ -10226,7 +10292,7 @@ async function gtSessionRequest(path, payload) {
 // Only a successful server reveal completes an assisted session item.
 async function gtRevealAnswer(it, step) {
   const sessionId = window.__gtSessionId;
-  const itemId = (window.__gtItemIds || {})[`${it.id}-${step}`];
+  const itemId = (window.__gtItemIds || {})[`${it.id}-${gtInternalStep(step)}`];
   if (!itemId) return null;
   try {
     const r = await window.ezApi(`/grammar-task/sessions/${sessionId}/items/${itemId}/reveal`, { method: 'POST' });
@@ -10459,13 +10525,13 @@ function renderGrammarTaskLesson(course, module, lesson, nav) {
   window.__gtData = items;
   window.__gtLessonId = lesson.apiId;
   window.__gtPopupCtx = null;
-  // Bunpou Flow pilot (Paket 1): resolved once per render, from data already
-  // in COURSE_CONTENT — no extra request. Non-null only when this task's
-  // triggering lesson is the one lesson the pilot is currently scoped to;
-  // every other Tugas Bunpou keeps gtLoadDrills() on the legacy path below.
+  // Resolve the task's trusted source from COURSE_CONTENT. A persisted v2
+  // session may be resumable even if the source has no live pilot companion.
   window.__gtSourceLesson = _findLessonByApiId(course, lesson.popupAfterLessonId);
   window.__gtSessionId = null;
+  window.__gtFlowVersion = null;
   window.__gtItemIds = null;
+  window.__gtSessionMode = window.__gtSourceLesson?.apiId ? 'resolving' : 'legacy';
   const sttOn = _gtSttSupported();
   window.__gtState = { passed: {}, total: gtTotalRequired(items), evalDisabled: false, isDone: !!isDone, hasNext: !!next, isPopup: false };
 
@@ -10515,7 +10581,9 @@ function openGrammarTaskPopup(course, taskMod, taskLesson, onDone) {
   // See the matching comment in renderGrammarTaskLesson.
   window.__gtSourceLesson = _findLessonByApiId(course, taskLesson.popupAfterLessonId);
   window.__gtSessionId = null;
+  window.__gtFlowVersion = null;
   window.__gtItemIds = null;
+  window.__gtSessionMode = window.__gtSourceLesson?.apiId ? 'resolving' : 'legacy';
 
   const overlay = document.createElement('div');
   overlay.className = 'gt-popup-overlay';
@@ -10737,6 +10805,11 @@ function _gtTypeState(key, scope) {
 
 window.gtStartRecord = async (pi, si, btn, ev) => {
   if (ev && ev.cancelable) ev.preventDefault();
+  if (!gtProductionReady()) {
+    const status = _gtScope().querySelector(`#gt-status-${pi}-${si}`);
+    if (status) status.textContent = 'Sesi latihan belum siap. Coba muat ulang sesi.';
+    return;
+  }
   if (!_gtSttSupported()) return;
   const key = `${pi}-${si}`;
   // Reset: rekaman lain yang masih jalan dibuang, teks + hasil slot ini dibersihkan.
@@ -10954,6 +11027,11 @@ window.gtRetryProduction = (pi, si) => {
 // Inti penilaian kalimat (tanpa ketergantungan tombol). Dipanggil otomatis dari
 // _gtFinishRecord (mode bicara, lepas → auto-periksa) maupun dari gtInputKey
 // (Enter di fallback ketik). opts: { fromSpeech, guard, onStart, onDone }.
+function gtProductionReady() {
+  if (!window.__gtSourceLesson?.apiId) return true;
+  return (window.__gtSessionMode === 'session' && !!window.__gtSessionId)
+    || (window.__gtSessionMode === 'legacy' && !window.__gtSessionId);
+}
 async function gtRunEval(pi, si, opts) {
   opts = opts || {};
   const it = (window.__gtData || [])[pi];
@@ -10967,7 +11045,7 @@ async function gtRunEval(pi, si, opts) {
   const current = () => window.__gtSessionId === sessionId && window.__gtState === state && (!opts.guard || opts.guard());
   const showResult = (cls, html) => { result.hidden = false; result.className = `gt-result${cls ? ' ' + cls : ''}`; result.innerHTML = html; };
   const retryHtml = (message) => `<div class="gt-result-body">${escapeHtml(message)} <button type="button" class="gt-retry" onclick="gtRunEval(${pi}, ${si}, {fromSpeech: ${!!opts.fromSpeech}})">Coba lagi</button></div>`;
-  if (!sessionId && window.__gtSourceLesson?.bunpouFlow) {
+  if (!gtProductionReady()) {
     showResult('', '<div class="gt-result-body">Sesi latihan belum siap.</div>');
     return;
   }
@@ -13253,7 +13331,15 @@ function renderVideoLessonPlayer(lesson) {
     </div>`;
 }
 
+function dqPlaceTaskBanner(root, placement) {
+  if (placement?.mode !== 'inline') return;
+  const banner = root?.querySelector('[data-dq-task-banner]');
+  const afterGrammar = root?.querySelector('[data-dq-task-after-grammar]');
+  if (banner && afterGrammar) afterGrammar.appendChild(banner);
+}
+
 function renderLesson() {
+  window.EzDialogueQuestions?.unmount();
   window.__quizNavigationEpoch = (window.__quizNavigationEpoch || 0) + 1;
   gkStopAll(); // stop karaoke dialog dari lesson sebelumnya
   destroyYoutubeSegmentPlayer();
@@ -13340,18 +13426,14 @@ function renderLesson() {
          <button type="button" class="btn-primary" style="padding:8px 18px;" onclick="gtOpenTaskPopup('${pend.taskMod.id}','${pend.taskLesson.id}')">Kerjakan Tugas</button>
        </div>`);
 
-  // Bunpou Flow pilot (Paket 1). Two additive changes, both scoped to the
-  // ONE lesson with lesson.bunpouFlow present — every other lesson renders
-  // byte-for-byte as before:
-  //   - a one-sentence objective, only when the admin actually wrote one
-  //     (an absent/empty objective renders nothing — never a placeholder);
-  //   - the task banner moves from above the video to after the grammar
-  //     section, as the primary access point once the material's been seen.
-  //     Never rendered twice: isPilotLesson picks exactly one of the two slots.
+  // Preserve the v1 companion's established after-grammar banner position.
+  // Ordinary lessons start before video; authoritative inline placement may
+  // move that same node after grammar when the batch arrives.
   const isPilotLesson = !!lesson.bunpouFlow;
   const objectiveBlock = (isPilotLesson && lesson.bunpouFlow.objective)
     ? `<p class="lesson-objective" style="margin:6px 0 0;font-size:14px;color:#404040;">🎯 ${escapeHtml(lesson.bunpouFlow.objective)}</p>`
     : '';
+  const taskBannerNode = taskBanner ? `<div data-dq-task-banner>${taskBanner}</div>` : '';
 
   document.getElementById('main-content').innerHTML = `
     <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · ${lesson.type.toUpperCase()}</p>
@@ -13359,7 +13441,7 @@ function renderLesson() {
     <p class="lesson-subtitle">${module.title} — ${lesson.duration}</p>
     ${objectiveBlock}
 
-    ${isPilotLesson ? '' : taskBanner}
+    ${isPilotLesson ? '' : taskBannerNode}
 
     ${videoBlock}
 
@@ -13367,7 +13449,8 @@ function renderLesson() {
 
     ${renderLessonExtras(lesson)}
 
-    ${isPilotLesson ? taskBanner : ''}
+    ${isPilotLesson ? taskBannerNode : ''}
+    <div data-dq-task-after-grammar></div>
 
     ${renderLessonMaterials(module, lesson)}
 
@@ -13383,6 +13466,9 @@ function renderLesson() {
 
   // Analisis Bunpou dimuat setelah materi tampil — tidak boleh menunda render.
   loadBunpouAnalysis(lesson);
+  window.EzDialogueQuestions?.mount({ root: document.getElementById('main-content'), lesson,
+    openLegacyTask: pend ? () => window.gtOpenTaskPopup(pend.taskMod.id, pend.taskLesson.id) : null,
+    onPlacement: placement => dqPlaceTaskBanner(document.getElementById('main-content'), placement) });
 }
 
 function renderLessonMaterials(module, lesson) {

@@ -40,6 +40,8 @@ test('listening scenes: admin round trip, private snapshots, legacy authorizatio
     await control.query(`DROP SCHEMA ${schema} CASCADE`); await control.end();
   });
   await control.query(await readFile(new URL('../schema.sql', import.meta.url), 'utf8'));
+  await control.query(await readFile(new URL('../migrations/147_bunpou_flow_pilot.sql', import.meta.url), 'utf8'));
+  await control.query(await readFile(new URL('../migrations/165_learning_flow_boundary_foundation.sql', import.meta.url), 'utf8'));
   await control.query(await readFile(new URL('../migrations/148_dialogue_speakers.sql', import.meta.url), 'utf8'));
   await control.query('ALTER TABLE quiz_questions DROP COLUMN audio_scene');
   const migration = await readFile(new URL('../migrations/167_listening_dialog_scenes.sql', import.meta.url), 'utf8');
