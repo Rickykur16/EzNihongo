@@ -159,4 +159,41 @@ test('versioned chapter assessment migration, grading and protected HTTP lifecyc
     const next=await call(path(lessons[0],'quiz/start'));
     assert.equal(next.status,200); assert.notEqual(next.body.assessmentForm,started.body.assessmentForm);
   });
+  await t.test('JLPT v3 supports full-bank start, numbered audio choices, drafts, and delayed image/transcript review',async()=>{
+    const {banks,bankRows}=await import('../content/assessments/jlpt/index.mjs');
+    const {forms,...policy}=banks[0];
+    const rows=bankRows(banks[0]);
+    for(const row of rows){
+      const fields=Object.keys(row).filter(k=>k!=='options');
+      await control.query(`INSERT INTO quiz_questions(lesson_id,${fields.join(',')}) VALUES($1,${fields.map((_,i)=>'$'+(i+2)).join(',')})`,[lessons[1],...fields.map(k=>row[k])]);
+      for(const o of row.options)await control.query('INSERT INTO quiz_options(id,question_id,option_text,is_correct,sort_order) VALUES($1,$2,$3,$4,$5)',[o.id,row.id,o.option_text,o.is_correct,o.sort_order]);
+    }
+    await control.query('UPDATE lessons SET assessment_policy=$1,questions_per_attempt=24 WHERE id=$2',[policy,lessons[1]]);
+    const start=await call(path(lessons[1],'quiz/start'));
+    assert.equal(start.status,200);assert.equal(start.body.assessmentVersion,'n5-assessment-v3');
+    assert.equal(start.body.questions.length,24);
+    assert.doesNotMatch(JSON.stringify(start.body.questions),/spokenChoices|ordered|is_correct|audio_script|explanation/);
+    assert.equal(start.body.questions.filter(q=>q.preserve_option_order).length,2);
+    assert.equal(start.body.questions.filter(q=>q.image_url).length,1);
+    const attemptToken=start.body.attemptToken;
+    const answers=rows.map(q=>({questionId:q.id,optionId:q.options.find(o=>o.is_correct).id}));
+    assert.equal((await call(path(lessons[1],'quiz/draft'),{attemptToken,answers:answers.slice(-2),revision:0},'PUT')).status,200);
+    const resume=await call(path(lessons[1],'quiz/start'));
+    assert.deepEqual(resume.body.questions,start.body.questions);assert.deepEqual(resume.body.draftAnswers,answers.slice(-2));
+    assert.equal((await call(path(lessons[1],`quiz/review?attemptToken=${attemptToken}`),null,'GET')).status,404);
+    const audio=rows[23];
+    const audioPath=path(lessons[1],`quiz/audio/${audio.id}?attemptToken=${attemptToken}`);
+    assert.equal((await call(audioPath,null,'GET',otherToken)).status,404);
+    const {ttsHashKey,parseDialog,voiceForSpeaker}=await import('./routes/tts.js');
+    const voices=parseDialog(audio.audio_script).map((turn,i)=>voiceForSpeaker(turn.speaker,i).voiceId);
+    const bytes=Buffer.from('v3 numbered audio transport fixture');
+    await control.query('INSERT INTO tts_cache(text_hash,text,audio) VALUES($1,$2,$3)',[ttsHashKey(audio.audio_script,voices),audio.audio_script,bytes]);
+    const response=await fetch(base+audioPath,{headers:{Authorization:`Bearer ${token}`}});
+    assert.equal(response.status,200);assert.deepEqual(Buffer.from(await response.arrayBuffer()),bytes);
+    const result=await call(path(lessons[1],'quiz-attempt'),{attemptToken,answers,draftRevision:1});
+    assert.equal(result.status,200);assert.equal(result.body.score,24);assert.equal(result.body.passed,true);
+    assert.equal(result.body.review.filter(q=>q.imageUrl).length,1);
+    assert.equal(result.body.review.filter(q=>q.audioScript).length,4);
+    assert.match(result.body.review[23].audioScript,/いちばん。/);
+  });
 });
