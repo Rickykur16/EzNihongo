@@ -23,7 +23,9 @@ export function createDialogueQuestionRouter({ auth = requireAuth,
   }));
   router.post('/dialogue-questions/:id/answer', privateNoStore, auth, answerLimiter,
     asyncHandler(async (req, res) => {
-      const result = await answer(req.params.id, req.user, req.body);
+      const result = await answer(req.params.id, req.user, req.body, {
+        onDisposition: disposition => { res.locals.learningFlowDisposition = disposition; },
+      });
       res.status(200).json(result);
     }));
   router.get('/dialogue-questions/:id/attempts/latest', privateNoStore, auth, asyncHandler(async (req, res) => {

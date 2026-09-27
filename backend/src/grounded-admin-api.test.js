@@ -206,6 +206,31 @@ test('dialogue question generator requires verified source and returns review-on
   assert.equal(modelCalls, 1); assert.equal(writes, 0);
 });
 
+test('actual admin generation boundary logs one private-safe terminal event and tolerates logger failure', async t => {
+  modelOutput = JSON.stringify({ questions: [{ prompt: 'Apa yang disebutkan?',
+    options: ['Kucing', 'Anjing', 'Burung'], correctIndex: 0,
+    explanation: 'Pembicara menyebut kucing.', evidence: [{ turnIndex: 0, quote: 'ねこです' }] }] });
+  const lines = [];
+  const logger = t.mock.method(console, 'info', line => lines.push(line));
+  const route = `grammar/${grammarId}/generate-dialog-questions`;
+  const body = { sourceLessonId: lessonId, kind: 'comprehension', count: 1,
+    expectedDialogueFingerprint: dialogueFingerprint(grammar) };
+  const first = await post(route, body);
+  assert.equal(first.status, 200, JSON.stringify(first.body));
+  assert.equal(lines.length, 1);
+  const event = JSON.parse(lines[0]);
+  assert.equal(event.event, 'grounded_generation');
+  assert.equal(event.contentType, 'dialogue_comprehension');
+  assert.equal(event.mode, 'enforce');
+  assert.equal(event.outcome, 'ready');
+  assert.equal(event.providerCallCount, 1);
+  assert.doesNotMatch(lines[0], /Kucing|ねこ|grammarId|lessonId|fingerprint|correctIndex|prompt/i);
+  logger.mock.mockImplementation(() => { throw new Error('logger failed'); });
+  const second = await post(route, body);
+  assert.equal(second.status, 200);
+  assert.deepEqual(second.body, first.body);
+});
+
 test('dialogue question admin GET/PUT expose revision and reject stale set atomically', async () => {
   writes = 0;
   const route = `grammar/${grammarId}/dialogue-questions`;

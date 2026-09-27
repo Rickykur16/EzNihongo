@@ -332,7 +332,8 @@ router.post('/grammar-task/sessions/:id/items/:itemId/answer', requireAuth, sess
         if (saved.operation !== 'answer' || saved.payload_hash !== payloadHash) {
           return { status: 409, body: { error: 'request_id_conflict' } };
         }
-        return saved.response ? { status: 200, body: saved.response }
+        return saved.response ? { status: 200, body: saved.response,
+          telemetryDisposition: 'replay' }
           : { status: 409, body: { error: 'evaluation_pending' } };
       }
       const oldRequest = await client.query(`SELECT 1 FROM grammar_attempts WHERE user_id = $1 AND request_id = $2`, [req.user.id, requestId]);
@@ -437,6 +438,7 @@ router.post('/grammar-task/sessions/:id/items/:itemId/answer', requireAuth, sess
         independentEligible: independentEligible(assistanceState) });
     });
 
+    if (result.telemetryDisposition === 'replay') res.locals.learningFlowDisposition = 'replay';
     res.status(result.status).json(result.body);
   })
 );
