@@ -106,4 +106,18 @@ test('PostgreSQL dry-run and two applies are idempotent; failed boundary query r
   assert.equal(second.counts.already_present, 4);
   assert.equal(second.sourceChecksum, first.sourceChecksum);
   assert.equal((await client.query('SELECT count(*)::int AS n FROM grammar_dialog_questions')).rows[0].n, 4);
+  const beforeRefresh = (await client.query(`SELECT id,question_version,prompt,options,
+    correct_index,explanation,evidence,source_fingerprint,question_fingerprint,
+    dialogue_fingerprint FROM grammar_dialog_questions ORDER BY id`)).rows;
+  const refreshed = await backfillDialogueQuestions({ ...base, apply: true }, {
+    ...options, validationRefreshOnly: true,
+    validate: () => ({ status: 'evaluated', valid: true,
+      boundaryFingerprint: 'sha256:audit', warnings: [], violations: [] }),
+  });
+  assert.equal(refreshed.counts.review_refreshed, 4);
+  assert.deepEqual((await client.query(`SELECT id,question_version,prompt,options,
+    correct_index,explanation,evidence,source_fingerprint,question_fingerprint,
+    dialogue_fingerprint FROM grammar_dialog_questions ORDER BY id`)).rows, beforeRefresh);
+  assert.deepEqual((await client.query(`SELECT DISTINCT boundary_fingerprint
+    FROM grammar_dialog_questions`)).rows, [{ boundary_fingerprint: 'sha256:audit' }]);
 });

@@ -161,6 +161,13 @@ rollback. Lanjutkan `apply=true` hanya jika hasilnya tepat dua companion,
 dengan `apply=false`, lalu `apply=true` memakai UUID course/module yang sama.
 Workflow canary hanya mempromosikan course ke `audit` dan hanya mengizinkan
 module itu; workflow ini tidak pernah memilih `warn` atau `enforce`.
+Perubahan mode mengubah boundary fingerprint. Karena itu apply canary, di bawah
+course lock dan transaksi yang sama, memvalidasi ulang setiap pertanyaan
+`legacy_bunpou` yang sudah ada lalu memperbarui hanya `boundary_fingerprint`
+dan `validator_version` melalui compare-and-set. ID, `question_version`, teks,
+opsi, jawaban, evidence, dan provenance tidak berubah. Row hilang, source
+berubah, edit manual, hasil validasi gagal, atau readiness akhir gagal akan
+membatalkan seluruh transaksi termasuk perubahan mode dan config.
 
 Readiness menganggap integrity issue ber-`severity: warning` sebagai
 diagnostik nonblokir, sesuai status boundary `resolved`. Status

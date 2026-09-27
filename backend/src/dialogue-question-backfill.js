@@ -131,7 +131,9 @@ async function scopedLessons(client, scope) {
   [scope.courseIds, scope.moduleIds, scope.lessonIds])).rows;
 }
 
-async function inspectLesson(client, lesson, { resolveBoundary, validate, apply }) {
+async function inspectLesson(client, lesson, {
+  resolveBoundary, validate, apply, validationRefreshOnly = false,
+}) {
   const prefix = { courseId: lesson.course_id, moduleId: lesson.module_id,
     sourceLessonId: lesson.source_lesson_id };
   const sources = (await client.query(`SELECT s.id,s.module_id,s.bunpou_flow_published,
@@ -206,21 +208,54 @@ async function inspectLesson(client, lesson, { resolveBoundary, validate, apply 
       const same = existing.find(row => row.source_kind === 'legacy_bunpou' &&
         row.source_key === assessed.sourceKey);
       if (same) {
-        const status = same.source_fingerprint !== assessed.sourceFingerprint ? 'source_changed' :
-          same.state !== 'active' || same.grammar_id !== grammarId ||
+        if (same.source_fingerprint !== assessed.sourceFingerprint) {
+          outputs.push(result(scope, legacyKind, 'source_changed', { questionId: same.id,
+            sourceKey: assessed.sourceKey, sourceFingerprint: assessed.sourceFingerprint,
+            questionFingerprint: assessed.questionFingerprint })); continue;
+        }
+        const contentChanged = same.state !== 'active' || same.grammar_id !== grammarId ||
           same.source_lesson_id !== source.id || same.kind !== assessed.kind ||
           same.sort_order !== 0 ||
           same.question_fingerprint !== assessed.questionFingerprint ||
           same.dialogue_fingerprint !== assessed.dialogueFingerprint ||
-          same.boundary_fingerprint !== assessed.boundaryFingerprint ||
-          same.validator_version !== CURRICULUM_VALIDATOR_VERSION ||
           same.prompt !== assessed.candidate.prompt ||
           stable(same.options) !== stable(assessed.candidate.options) ||
           same.correct_index !== assessed.candidate.correctIndex ||
           same.explanation !== assessed.candidate.explanation ||
-          stable(same.evidence) !== stable(assessed.candidate.evidence)
-            ? 'edited_conflict' : 'already_present';
-        outputs.push(result(scope, legacyKind, status, { questionId: same.id,
+          stable(same.evidence) !== stable(assessed.candidate.evidence);
+        if (contentChanged) {
+          outputs.push(result(scope, legacyKind, 'edited_conflict', { questionId: same.id,
+            sourceKey: assessed.sourceKey, sourceFingerprint: assessed.sourceFingerprint,
+            questionFingerprint: assessed.questionFingerprint })); continue;
+        }
+        const reviewChanged = same.boundary_fingerprint !== assessed.boundaryFingerprint ||
+          same.validator_version !== CURRICULUM_VALIDATOR_VERSION;
+        if (reviewChanged && validationRefreshOnly) {
+          if (!apply) fail('validation_refresh_requires_apply');
+          const refreshed = await client.query(`UPDATE grammar_dialog_questions
+            SET boundary_fingerprint=$2,validator_version=$3
+            WHERE id=$1 AND state='active' AND source_kind='legacy_bunpou'
+              AND source_key=$4 AND source_fingerprint=$5
+              AND question_fingerprint=$6 AND dialogue_fingerprint=$7
+              AND boundary_fingerprint IS NOT DISTINCT FROM $8
+              AND validator_version IS NOT DISTINCT FROM $9
+            RETURNING id,question_version,boundary_fingerprint,validator_version`,
+          [same.id, assessed.boundaryFingerprint, CURRICULUM_VALIDATOR_VERSION,
+            assessed.sourceKey, assessed.sourceFingerprint, assessed.questionFingerprint,
+            assessed.dialogueFingerprint, same.boundary_fingerprint, same.validator_version]);
+          const updated = refreshed.rows[0];
+          if (refreshed.rowCount !== 1 || updated?.id !== same.id ||
+              updated.question_version !== same.question_version ||
+              updated.boundary_fingerprint !== assessed.boundaryFingerprint ||
+              updated.validator_version !== CURRICULUM_VALIDATOR_VERSION) {
+            fail('validation_refresh_conflict');
+          }
+          outputs.push(result(scope, legacyKind, 'review_refreshed', { questionId: same.id,
+            sourceKey: assessed.sourceKey, sourceFingerprint: assessed.sourceFingerprint,
+            questionFingerprint: assessed.questionFingerprint })); continue;
+        }
+        outputs.push(result(scope, legacyKind, reviewChanged ? 'edited_conflict' : 'already_present', {
+          questionId: same.id,
           sourceKey: assessed.sourceKey,
           sourceFingerprint: assessed.sourceFingerprint,
           questionFingerprint: assessed.questionFingerprint })); continue;
@@ -235,7 +270,7 @@ async function inspectLesson(client, lesson, { resolveBoundary, validate, apply 
         outputs.push(result(scope, legacyKind, 'skipped_conflict',
           { sourceKey: assessed.sourceKey })); continue;
       }
-      if (!apply) {
+      if (!apply || validationRefreshOnly) {
         outputs.push(result(scope, legacyKind, 'would_insert',
           { sourceKey: assessed.sourceKey, sourceFingerprint: assessed.sourceFingerprint,
             questionFingerprint: assessed.questionFingerprint }));
@@ -271,6 +306,7 @@ async function inspectLesson(client, lesson, { resolveBoundary, validate, apply 
 export async function backfillDialogueQuestions(options, {
   transaction = withTransaction, resolveBoundary = getCurriculumBoundary,
   validate = validateContentAgainstBoundary, lockCourse = lockCurriculumCourse,
+  validationRefreshOnly = false,
 } = {}) {
   const scope = validateBackfillScope(options);
   const lessons = await transaction(async client => {
@@ -282,7 +318,9 @@ export async function backfillDialogueQuestions(options, {
     const batch = await transaction(async client => {
       if (!scope.apply) await client.query('SET TRANSACTION READ ONLY');
       if (scope.apply) await lockCourse(client, lesson.course_id);
-      return inspectLesson(client, lesson, { resolveBoundary, validate, apply: scope.apply });
+      return inspectLesson(client, lesson, {
+        resolveBoundary, validate, apply: scope.apply, validationRefreshOnly,
+      });
     });
     rows.push(...batch);
   }

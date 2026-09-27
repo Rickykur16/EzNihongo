@@ -30,6 +30,8 @@ async function fixture({ missingEvidence = false, stale = false, manualConflict 
   nullGrammarAmbiguous = false, taskMappingAmbiguous = false } = {}) {
   const rows = [];
   let writes = 0;
+  let validationRefreshes = 0;
+  let validationBoundaryFingerprint = 'sha256:boundary';
   const published = { dialogChecks: { [grammarId]: {
     comprehension: missingEvidence ? { ...comprehension, evidence: undefined } : comprehension,
     comparison,
@@ -70,6 +72,21 @@ async function fixture({ missingEvidence = false, stale = false, manualConflict 
       return { rows: rows.filter(row => row.grammar_id === params[0] ||
         row.source_kind === 'legacy_bunpou' && params[1].includes(row.source_key)) };
     }
+    if (sql.includes('UPDATE grammar_dialog_questions') &&
+        sql.includes('SET boundary_fingerprint=')) {
+      const row = rows.find(candidate => candidate.id === params[0] &&
+        candidate.state === 'active' && candidate.source_kind === 'legacy_bunpou' &&
+        candidate.source_key === params[3] && candidate.source_fingerprint === params[4] &&
+        candidate.question_fingerprint === params[5] && candidate.dialogue_fingerprint === params[6] &&
+        candidate.boundary_fingerprint === params[7] && candidate.validator_version === params[8]);
+      if (!row) return { rowCount: 0, rows: [] };
+      row.boundary_fingerprint = params[1];
+      row.validator_version = params[2];
+      validationRefreshes++;
+      return { rowCount: 1, rows: [{ id: row.id, question_version: row.question_version,
+        boundary_fingerprint: row.boundary_fingerprint,
+        validator_version: row.validator_version }] };
+    }
     if (sql.includes('INSERT INTO grammar_dialog_questions')) {
       writes++;
       rows.push({ id: params[0], grammar_id: params[1], source_lesson_id: params[2],
@@ -94,9 +111,12 @@ async function fixture({ missingEvidence = false, stale = false, manualConflict 
   if (manualConflict) rows.push({ id: id(20), grammar_id: grammarId,
     kind: 'comprehension', sort_order: 0, state: 'active', source_kind: 'manual' });
   return { client, published, rows, get writes() { return writes; },
+    get validationRefreshes() { return validationRefreshes; },
+    setValidationBoundaryFingerprint(value) { validationBoundaryFingerprint = value; },
     transaction: fn => fn(client), lockCourse: async () => {},
     resolveBoundary: async () => emptyBoundary,
-    validate: () => ({ status: 'evaluated', valid: true, boundaryFingerprint: 'sha256:boundary',
+    validate: () => ({ status: 'evaluated', valid: true,
+      boundaryFingerprint: validationBoundaryFingerprint,
       warnings: [], violations: [] }) };
 }
 
@@ -207,6 +227,33 @@ test('changed source and edited imported row are reported without overwrite', as
   f.rows.find(row => row.kind === 'comprehension').validator_version = 'old';
   const oldValidator = await backfillDialogueQuestions({ ...scope, apply: true }, f);
   assert.equal(oldValidator.counts.edited_conflict, 1);
+});
+
+test('canary-only refresh revalidates exact legacy rows and changes review metadata only', async () => {
+  const f = await fixture();
+  await backfillDialogueQuestions({ ...scope, apply: true }, f);
+  const before = structuredClone(f.rows);
+  f.setValidationBoundaryFingerprint('sha256:audit-boundary');
+  const ordinary = await backfillDialogueQuestions({ ...scope, apply: true }, f);
+  assert.equal(ordinary.counts.edited_conflict, 2);
+  assert.equal(f.validationRefreshes, 0);
+
+  const refreshed = await backfillDialogueQuestions({ ...scope, apply: true }, {
+    ...f, validationRefreshOnly: true,
+  });
+  assert.equal(refreshed.counts.review_refreshed, 2);
+  assert.equal(f.validationRefreshes, 2);
+  assert.deepEqual(f.rows.map(row => ({ ...row, boundary_fingerprint: null })),
+    before.map(row => ({ ...row, boundary_fingerprint: null })));
+  assert.equal(f.rows.every(row => row.boundary_fingerprint === 'sha256:audit-boundary'), true);
+
+  f.rows[0].prompt = 'Editor mengubah soal';
+  f.setValidationBoundaryFingerprint('sha256:next-boundary');
+  const conflict = await backfillDialogueQuestions({ ...scope, apply: true }, {
+    ...f, validationRefreshOnly: true,
+  });
+  assert.equal(conflict.counts.edited_conflict, 1);
+  assert.equal(f.rows[0].boundary_fingerprint, 'sha256:audit-boundary');
 });
 
 test('family and source grounding gate do not invent missing fields', () => {
