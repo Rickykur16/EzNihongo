@@ -58,7 +58,7 @@
     mounted.root.removeEventListener('click', mounted.onClick);
     mounted = null;
   }
-  async function mount({ root, lesson, openLegacyTask } = {}) {
+  async function mount({ root, lesson, openLegacyTask, onPlacement } = {}) {
     unmount();
     if (!root || !lesson?.apiId || !Array.isArray(lesson.grammar) ||
         !lesson.grammar.some(grammar => String(grammar.example_dialog || '').trim())) return;
@@ -145,6 +145,7 @@
       if (!response.ok) return;
       const batch = await response.json();
       if (!active(context) || batch.lessonId !== lesson.apiId) return;
+      onPlacement?.(batch.placement);
       if (batch.placement?.mode === 'legacy_session') {
         const notice = root.querySelector('.dq-legacy-session-slot');
         if (notice && typeof openLegacyTask === 'function') {

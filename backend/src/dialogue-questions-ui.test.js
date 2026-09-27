@@ -70,13 +70,63 @@ test('actual welcome grammar renderer supplies hidden slots around dialogue and 
   assert.match(contentRoute, /SELECT id, module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, communication_goal, dialog_scene/);
 });
 
+test('actual welcome placement hook moves the one task banner only for authoritative inline', () => {
+  const start = welcome.indexOf('function dqPlaceTaskBanner(root, placement) {');
+  const end = welcome.indexOf('function renderLesson() {', start);
+  assert.ok(start > 0 && end > start);
+  const context = vm.createContext({});
+  vm.runInContext(welcome.slice(start, end), context);
+  const banner = { name: 'existing-task-banner' };
+  const anchor = { children: [], appendChild(node) { this.children.push(node); } };
+  const root = { querySelector: selector => selector === '[data-dq-task-banner]'
+    ? banner : selector === '[data-dq-task-after-grammar]' ? anchor : null };
+  context.dqPlaceTaskBanner(root, { mode: 'legacy' });
+  context.dqPlaceTaskBanner(root, { mode: 'legacy_session' });
+  assert.equal(anchor.children.length, 0, 'flag-off and active-v1 retain legacy order');
+  context.dqPlaceTaskBanner(root, { mode: 'inline' });
+  assert.deepEqual(anchor.children, [banner]);
+  assert.match(welcome, /data-dq-task-banner>\$\{taskBanner\}/);
+  assert.match(welcome, /onPlacement: placement => dqPlaceTaskBanner/);
+});
+
+test('actual lesson render preserves v1 after-grammar banner and ordinary before-video banner', () => {
+  const start = welcome.indexOf('function dqPlaceTaskBanner(root, placement) {');
+  const end = welcome.indexOf('function renderLessonMaterials', start);
+  const main = { innerHTML: '' };
+  const lessonRow = { id: 'l', apiId: 'source-1', type: 'video', title: 'Lesson',
+    body: 'Body', duration: '5 min', jp: '', grammar: [] };
+  const module = { id: 'm', num: '01', title: 'Module', lessons: [lessonRow] };
+  const context = vm.createContext({ window: { EzDialogueQuestions: {
+    unmount() {}, mount() {} } }, document: { getElementById: () => main },
+    currentState: { course: 'c', moduleId: 'm', lessonId: 'l', view: 'lesson' },
+    COURSE_CONTENT: { c: { name: 'Course', modules: [module] } },
+    gkStopAll() {}, destroyYoutubeSegmentPlayer() {}, updateTutorVisibility() {},
+    getProgress: () => ({}), visibleLessons: value => value.lessons,
+    renderVideoLessonPlayer: () => '<div id="video">VIDEO</div>',
+    gtPendingTaskFor: () => ({ done: false, taskMod: { id: 'm' }, taskLesson: { id: 'task' } }),
+    renderLessonExtras: () => '<div id="grammar">GRAMMAR</div>',
+    renderLessonMaterials: () => '', loadBunpouAnalysis() {}, escapeHtml });
+  vm.runInContext(welcome.slice(start, end), context);
+  context.renderLesson();
+  assert.equal((main.innerHTML.match(/data-dq-task-banner/g) || []).length, 1);
+  assert.ok(main.innerHTML.indexOf('data-dq-task-banner') < main.innerHTML.indexOf('id="video"'));
+  lessonRow.bunpouFlow = { objective: 'Goal' };
+  context.renderLesson();
+  assert.equal((main.innerHTML.match(/data-dq-task-banner/g) || []).length, 1);
+  assert.ok(main.innerHTML.indexOf('id="grammar"') < main.innerHTML.indexOf('data-dq-task-banner'));
+  assert.ok(main.innerHTML.indexOf('data-dq-task-banner') < main.innerHTML.indexOf('data-dq-task-after-grammar'));
+});
+
 test('inline batch renders escaped goal and questions without initial answer leak; legacy modes suppress them', async () => {
   const calls = [];
+  const placements = [];
   let mode = 'inline';
   const flow = controller(async (path, options) => { calls.push(path); return response(batch(mode)); });
   const root = rootFor();
-  await flow.mount({ root, lesson: lesson('lesson-1', '<b>Belanja</b>') });
+  await flow.mount({ root, lesson: lesson('lesson-1', '<b>Belanja</b>'),
+    onPlacement: value => placements.push(value.mode) });
   assert.equal(calls.length, 1);
+  assert.deepEqual(placements, ['inline']);
   assert.equal(root.goal.hidden, false);
   assert.match(root.goal.innerHTML, /&lt;b&gt;Belanja&lt;\/b&gt;/);
   assert.equal(root.questions.hidden, false);
@@ -88,8 +138,10 @@ test('inline batch renders escaped goal and questions without initial answer lea
   assert.match(fallback.goal.innerHTML, /Percakapan/);
   mode = 'legacy';
   const old = rootFor();
-  await flow.mount({ root: old, lesson: lesson() });
+  await flow.mount({ root: old, lesson: lesson(),
+    onPlacement: value => placements.push(value.mode) });
   assert.equal(old.goal.hidden, true); assert.equal(old.questions.hidden, true);
+  assert.deepEqual(placements, ['inline', 'legacy']);
   mode = 'legacy_session';
   let opened = 0;
   const resumed = rootFor();

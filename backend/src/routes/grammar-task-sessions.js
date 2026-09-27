@@ -180,6 +180,18 @@ router.post('/grammar-task/sessions', requireAuth, sessionLimiter, asyncHandler(
       return { ...existing, taskLessonId: existing.task_lesson_id,
         contentChanged: revision !== existing.content_revision_id };
     }
+    // A normal linked task has no published companion. Decide whether a new
+    // v2 session is eligible before loading companion content; otherwise the
+    // precise pilot-off response tells its client to use legacy drills. The
+    // v2 resume above deliberately precedes this live placement check.
+    const placement = !existing ? await resolveEligibility({ client, user: req.user,
+      lessonId: sourceLessonId, courseId: source.course_id,
+      moduleId: source.module_id, runtimeAvailable, sharedConfig: true,
+      ignoreActiveSession: true }) : null;
+    if (!existing && placement.mode !== 'inline') {
+      const denied = await pilotAccessError(client, req.user, sourceLessonId);
+      if (denied) return { denied };
+    }
     const context = await loadCompanionContext(sourceLessonId, dbQuery);
     if (!context) return { denied: { status: 404, error: 'no_task_for_lesson' } };
     if (!context.current) return { denied: { status: 409, error: 'companion_needs_review' } };
@@ -192,10 +204,6 @@ router.post('/grammar-task/sessions', requireAuth, sessionLimiter, asyncHandler(
         existing.content_revision_id === oldRevision) {
       return { ...existing, contentChanged: false, taskLessonId };
     }
-    const placement = await resolveEligibility({ client, user: req.user,
-      lessonId: sourceLessonId, courseId: source.course_id,
-      moduleId: source.module_id, runtimeAvailable, sharedConfig: true,
-      ignoreActiveSession: true });
     // A stale v1 session keeps its legacy path rather than upgrading midway.
     const flowVersion = chooseSessionFlowVersion({ existing, placement, runtimeAvailable });
     const denied = flowVersion === 2
