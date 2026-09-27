@@ -151,6 +151,24 @@ summary `lessonCount`, `counts`, `sourceChecksum`, dan `checksum`; cocokkan
 identik. Apply memakai unit transaksi kecil dengan course lock. Dry-run
 tidak menulis pertanyaan atau report DB.
 
+Untuk canary produksi N5 Bab 3, gunakan dua workflow owner yang saling berbagi
+lock `deploy-vps`. Jalankan **Prepare Bab 3 Learning Flow** dengan `apply=false`
+lebih dahulu. Dry-run itu mensimulasikan refresh fingerprint companion,
+backfill 12 pertanyaan, dan readiness akhir dalam satu transaksi lalu selalu
+rollback. Lanjutkan `apply=true` hanya jika hasilnya tepat dua companion,
+`would_insert: 12` (atau `already_present: 12` pada rerun), dan
+`readiness.ready: true`. Setelah apply, jalankan **Learning Flow Canary**
+dengan `apply=false`, lalu `apply=true` memakai UUID course/module yang sama.
+Workflow canary hanya mempromosikan course ke `audit` dan hanya mengizinkan
+module itu; workflow ini tidak pernah memilih `warn` atau `enforce`.
+
+Readiness menganggap integrity issue ber-`severity: warning` sebagai
+diagnostik nonblokir, sesuai status boundary `resolved`. Status
+`context_invalid`, severity `error`, atau severity yang hilang/tidak dikenal
+tetap memblokir preparation, backfill, dan aktivasi. Karena itu peringatan
+legacy vocabulary tetap terlihat dalam audit tanpa menyamarkannya sebagai
+kerusakan ownership graph.
+
 ## Manifest readiness yang gagal tertutup
 
 Migration 166 menyediakan registry **pasif** untuk mencatat klaim review:

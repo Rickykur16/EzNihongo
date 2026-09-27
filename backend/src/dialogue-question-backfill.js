@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { withTransaction } from './db.js';
 import { lockCurriculumCourse } from './curriculum-content-service.js';
-import { getCurriculumBoundary } from './curriculum-boundary.js';
+import { getCurriculumBoundary, hasBlockingIntegrityIssues } from './curriculum-boundary.js';
 import { validateContentAgainstBoundary, CURRICULUM_VALIDATOR_VERSION } from './curriculum-boundary-validator.js';
 import { companionIsCurrent, contentRevisionId, dialogCheckAvailability,
   dialogCheckFamilyId, validateDialogCheckQuestion } from './bunpou-flow-service.js';
@@ -193,7 +193,7 @@ async function inspectLesson(client, lesson, { resolveBoundary, validate, apply 
     // prevents a misleading success report or partial commit.
     const boundary = await resolveBoundary({ lessonId: source.id, grammarId }, { dbQuery });
     if (boundary.course?.id !== lesson.course_id ||
-        boundary.currentModule?.id !== lesson.module_id || boundary.integrityIssues?.length) {
+        boundary.currentModule?.id !== lesson.module_id || hasBlockingIntegrityIssues(boundary)) {
       outputs.push(result(scope, null, 'boundary_context_invalid')); continue;
     }
     const sourceKeys = ['comprehension', 'comparison'].map(legacyKind => legacySourceKey({
