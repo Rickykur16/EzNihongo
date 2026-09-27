@@ -1,8 +1,7 @@
 -- PR1 foundation. All existing learning rows retain their contents and behavior.
--- Deploy note: the previous backend's account-erasure guard will reject the
--- new users FK between migration and service restart. It fails closed before
--- anonymization; retry requests after the backend restarts. The new backend
--- handles both pre- and post-migration schemas via optional-table cleanup.
+-- Deploy prerequisite: first deploy the compatibility backend that recognizes
+-- dialogue_question_attempts as an optional erasure table. It keeps erasure
+-- available before this table exists and throughout migrate-before-restart.
 ALTER TABLE courses ADD COLUMN curriculum_boundary_mode TEXT NOT NULL DEFAULT 'off'
   CHECK (curriculum_boundary_mode IN ('off', 'audit', 'warn', 'enforce'));
 

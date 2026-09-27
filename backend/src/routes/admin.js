@@ -30,16 +30,11 @@ import {
   notionQueryAll,
 } from '../notion.js';
 import {
-  ttsHashKey,
   parseDialog,
-  voiceForSpeaker,
-  loadSpeakerRegistry,
-  fetchElevenAudio,
   fetchElevenVoices,
   elevenLabsEnabled,
-  TTS_ELEVEN_VOICE_ID,
-  TTS_ELEVEN_MODEL,
   TTS_SETTINGS_VERSION,
+  renderTtsAudio,
 } from './tts.js';
 import {
   loadCourseVocab,
@@ -4276,6 +4271,9 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
     if (slugErr) return res.status(400).json({ error: slugErr });
   }
   const hasQPA = Object.prototype.hasOwnProperty.call(req.body || {}, 'questionsPerAttempt');
+  // `null` is intentional here: the editor sends it when an admin clears the
+  // lesson notes. Only an omitted property means "keep the saved content".
+  const hasContent = Object.prototype.hasOwnProperty.call(req.body || {}, 'content');
   const hasPopup = Object.prototype.hasOwnProperty.call(req.body || {}, 'popupAfterLessonId');
   const hasVideoSource = Object.prototype.hasOwnProperty.call(req.body || {}, 'videoSourceId');
   const hasVideoStart = Object.prototype.hasOwnProperty.call(req.body || {}, 'videoStartSeconds');
@@ -4303,8 +4301,8 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
         contentType: (type || current.type) === 'quiz' ? 'quiz' : 'reading',
         contentId: current.id, operation: 'live_write', existing: current,
         fields: [boundaryField('title', title ?? current.title),
-          boundaryField('content', content ?? current.content)],
-        contentIsNewOrChanged: title != null || content != null,
+          boundaryField('content', hasContent ? content : current.content)],
+        contentIsNewOrChanged: title != null || hasContent,
         expectedRevision: req.body?.expectedRevision, currentRevision: current.updated_at,
         expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
     },
@@ -4350,7 +4348,7 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
           slug = COALESCE($2, slug),
           title = COALESCE($3, title),
           type = COALESCE($4, type),
-          content = COALESCE($5, content),
+          content = CASE WHEN $21::boolean THEN $5 ELSE content END,
           video_url = COALESCE($6, video_url),
           video_source_id = CASE WHEN $10::boolean THEN $7 ELSE video_source_id END,
           video_start_seconds = CASE WHEN $11::boolean THEN $8 ELSE video_start_seconds END,
@@ -4373,6 +4371,7 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
           cooldownHours != null && cooldownHours !== '' ? Number(cooldownHours) : null,
           hasPopup && popupAfterLessonId ? popupAfterLessonId : null,
           hasPopup,
+          hasContent,
         ]
       );
     if (result.rows.length === 0) return { notFound: true };
@@ -4408,9 +4407,20 @@ function normalizeQuizSectionNumber(value) {
   return Math.max(1, Number(value) || 1);
 }
 
+async function validateQuizAudioScene(scene, script, category) {
+  if (!scene) return;
+  if (category !== 'listening') throw new Error('Pemeran audio hanya untuk soal menyimak.');
+  const turns = parseDialog(script);
+  if (!turns) throw new Error('Skrip audio harus memakai label pemeran.');
+  // Explicit mappings are mandatory for every non-narrator turn, including
+  // when visuals are disabled. Do not silently guess a missing actor's voice.
+  sceneTurnVoices(turns, scene, () => ({ voiceId: null, role: 'narrator' }));
+  await validateSceneVoices(scene, fetchElevenVoices);
+}
+
 router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
   const lessonRow = await query(
-    `SELECT id, passing_score_pct, questions_per_attempt, cooldown_hours
+    `SELECT id, passing_score_pct, questions_per_attempt, cooldown_hours, assessment_policy
        FROM lessons WHERE id = $1 LIMIT 1`,
     [req.params.lessonId]
   );
@@ -4418,6 +4428,7 @@ router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
   const questions = await query(
     `SELECT *,xmin::text AS revision FROM quiz_questions
      WHERE lesson_id = $1
+       AND ($2::text IS NULL OR assessment_meta->>'version' = $2)
      ORDER BY CASE question_category
                 WHEN 'vocabulary' THEN 1
                 WHEN 'grammar' THEN 2
@@ -4427,7 +4438,7 @@ router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
                 ELSE 9
               END,
               section_number ASC, sort_order ASC`,
-    [req.params.lessonId]
+    [req.params.lessonId, lessonMeta?.assessment_policy?.version || null]
   );
   const qIds = questions.rows.map((q) => q.id);
   let optsByQ = {};
@@ -4450,7 +4461,7 @@ router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
 router.post('/quiz-questions', asyncHandler(async (req, res) => {
   const {
     lessonId, question, questionType, questionCategory, sectionNumber,
-    sectionLabel, sectionInstruction, audioScript, passage, imageUrl,
+    sectionLabel, sectionInstruction, audioScript, audioScene, passage, imageUrl,
     correctAnswer, explanation, sortOrder, options, grammarId,
   } = req.body || {};
   if (!lessonId || !question) return res.status(400).json({ error: 'lessonId and question required' });
@@ -4458,6 +4469,12 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
   const category = normalizeQuizCategory(questionCategory);
   const sectionNo = normalizeQuizSectionNumber(sectionNumber);
   const sectionTitle = (sectionLabel && String(sectionLabel).trim()) || `Section ${sectionNo}`;
+  const script = (audioScript && String(audioScript).trim()) || null;
+  let scene;
+  try {
+    scene = normalizeDialogScene(audioScene);
+    await validateQuizAudioScene(scene, script, category);
+  } catch (err) { return res.status(400).json({ error: err.message }); }
 
   // Question + options written atomically: a crash mid-loop must not leave a
   // question with a partial option set (a broken live quiz).
@@ -4478,9 +4495,10 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
       `INSERT INTO quiz_questions (
          lesson_id, question, question_type, question_category,
          section_number, section_label, section_instruction, audio_script, passage, image_url,
-         correct_answer, explanation, sort_order, grammar_id
+         correct_answer, explanation, sort_order, grammar_id, audio_scene
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *,xmin::text AS revision`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb)
+       RETURNING *,xmin::text AS revision`,
       [
         lessonId,
         question,
@@ -4489,7 +4507,7 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
         sectionNo,
         sectionTitle,
         sectionInstruction || null,
-        (audioScript && String(audioScript).trim()) || null,
+        script,
         (passage && String(passage).trim()) || null,
         (imageUrl && String(imageUrl).trim()) || null,
         correctAnswer || null,
@@ -4498,6 +4516,7 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
         // Tautan opsional ke pola grammar (migration 122) — bikin soal ini ikut
         // mengisi analisis per-konsep tanpa biaya AI (penilaiannya deterministik).
         (grammarId && String(grammarId).trim()) || null,
+        scene ? JSON.stringify(scene) : null,
       ]
     );
     const row = qRes.rows[0];
@@ -4523,7 +4542,7 @@ router.post('/quiz-questions', asyncHandler(async (req, res) => {
 router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
   const {
     question, questionType, questionCategory, sectionNumber,
-    sectionLabel, sectionInstruction, audioScript, passage, imageUrl,
+    sectionLabel, sectionInstruction, audioScript, audioScene, passage, imageUrl,
     correctAnswer, explanation, sortOrder, options, grammarId,
   } = req.body || {};
   const category = questionCategory ? normalizeQuizCategory(questionCategory) : null;
@@ -4534,6 +4553,10 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
   const sectionNo = sectionNumber == null ? null : normalizeQuizSectionNumber(sectionNumber);
   const hasSectionInstruction = Object.prototype.hasOwnProperty.call(req.body || {}, 'sectionInstruction');
   const hasAudioScript = Object.prototype.hasOwnProperty.call(req.body || {}, 'audioScript');
+  const hasAudioScene = Object.prototype.hasOwnProperty.call(req.body || {}, 'audioScene');
+  let scene;
+  try { scene = hasAudioScene ? normalizeDialogScene(audioScene) : null; }
+  catch (err) { return res.status(400).json({ error: err.message }); }
   const hasPassage = Object.prototype.hasOwnProperty.call(req.body || {}, 'passage');
   const hasImageUrl = Object.prototype.hasOwnProperty.call(req.body || {}, 'imageUrl');
   const audioScriptNorm = hasAudioScript ? ((audioScript && String(audioScript).trim()) || null) : null;
@@ -4547,6 +4570,15 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
         ${locked ? 'FOR UPDATE' : ''}`, [req.params.id]);
       if (!old.rows.length) throw new BoundaryContextError('lesson_not_found');
       const row = old.rows[0];
+      if (locked && (hasAudioScene || hasAudioScript || category)) {
+        try {
+          await validateQuizAudioScene(hasAudioScene ? scene : row.audio_scene,
+            hasAudioScript ? audioScriptNorm : row.audio_script, category || row.question_category);
+        } catch (error) {
+          error.status = 400;
+          throw error;
+        }
+      }
       const oldOptions = Array.isArray(options) ? [] : (await client.query(
         'SELECT option_text,image_url FROM quiz_options WHERE question_id=$1 ORDER BY sort_order', [req.params.id])).rows;
       const effectiveGrammarId = hasGrammarId ? grammarIdNorm : row.grammar_id;
@@ -4581,7 +4613,8 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
          audio_script = CASE WHEN $13::boolean THEN $12 ELSE audio_script END,
          image_url = CASE WHEN $15::boolean THEN $14 ELSE image_url END,
          passage = CASE WHEN $17::boolean THEN $16 ELSE passage END,
-         grammar_id = CASE WHEN $19::boolean THEN $18::uuid ELSE grammar_id END
+         grammar_id = CASE WHEN $19::boolean THEN $18::uuid ELSE grammar_id END,
+         audio_scene = CASE WHEN $21::boolean THEN $20::jsonb ELSE audio_scene END
         WHERE id = $1 RETURNING *,xmin::text AS revision`,
       [
         req.params.id,
@@ -4603,6 +4636,8 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
         hasPassage,
         grammarIdNorm,
         hasGrammarId,
+        scene ? JSON.stringify(scene) : null,
+        hasAudioScene,
       ]
     );
     if (result.rows.length === 0) return null;
@@ -4663,9 +4698,12 @@ router.put('/lessons/:lessonId/quiz/sections/:category/:number', asyncHandler(as
     : null;
   const guarded = await adminBoundaryWrite(res, {
     prepare: async (client, { locked }) => {
-      const rows = await client.query(`SELECT id,section_label,section_instruction,passage
-        FROM quiz_questions WHERE lesson_id=$1 AND question_category=$2 AND section_number=$3
-        ${locked ? 'FOR UPDATE' : ''}`, [lessonId, cat, sectionNo]);
+      const rows = await client.query(`SELECT q.id,q.section_label,q.section_instruction,q.passage
+        FROM quiz_questions q JOIN lessons l ON l.id=q.lesson_id
+        WHERE q.lesson_id=$1 AND q.question_category=$2 AND q.section_number=$3
+          AND (l.assessment_policy->>'version' IS NULL
+               OR q.assessment_meta->>'version'=l.assessment_policy->>'version')
+        ${locked ? 'FOR UPDATE OF q' : ''}`, [lessonId, cat, sectionNo]);
       return { scope: { lessonId }, contentType: 'shared_passage', operation: 'live_write',
         fields: rows.rows.flatMap((row, index) => [
           boundaryField(`questions[${index}].sectionLabel`, hasLabel ? labelNorm : row.section_label),
@@ -4675,11 +4713,14 @@ router.put('/lessons/:lessonId/quiz/sections/:category/:number', asyncHandler(as
         expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
     },
     write: async client => (await client.query(
-    `UPDATE quiz_questions
+    `UPDATE quiz_questions q
         SET section_label = CASE WHEN $5::boolean THEN $3 ELSE section_label END,
             section_instruction = CASE WHEN $6::boolean THEN $4 ELSE section_instruction END,
             passage = CASE WHEN $8::boolean THEN $9 ELSE passage END
-      WHERE lesson_id = $1 AND question_category = $2 AND section_number = $7`,
+       FROM lessons l
+      WHERE q.lesson_id = $1 AND l.id = q.lesson_id AND question_category = $2 AND section_number = $7
+        AND (l.assessment_policy->>'version' IS NULL
+             OR q.assessment_meta->>'version' = l.assessment_policy->>'version')`,
     [lessonId, cat, labelNorm, instructionNorm, hasLabel, hasInstruction, sectionNo, hasPassage, passageNorm]
     )),
   });
@@ -4696,8 +4737,10 @@ router.delete('/lessons/:lessonId/quiz/sections/:category/:number', asyncHandler
   const cat = normalizeQuizCategory(category);
   const sectionNo = normalizeQuizSectionNumber(number);
   const guarded = await adminLockedMutation(res, client => courseIdsForLesson(client, lessonId), client => client.query(
-    `DELETE FROM quiz_questions
-      WHERE lesson_id = $1 AND question_category = $2 AND section_number = $3`,
+    `DELETE FROM quiz_questions q USING lessons l
+      WHERE q.lesson_id = $1 AND l.id = q.lesson_id AND question_category = $2 AND section_number = $3
+        AND (l.assessment_policy->>'version' IS NULL
+             OR q.assessment_meta->>'version' = l.assessment_policy->>'version')`,
     [lessonId, cat, sectionNo]
   ));
   if (!guarded) return;
@@ -5824,61 +5867,17 @@ router.post('/tts/preview', asyncHandler(async (req, res) => {
   if (!text) return res.status(400).json({ error: 'text required' });
   if (text.length > 2000) return res.status(400).json({ error: 'text too long (max 2000 char)' });
 
-  // Detect dialog. Single-voice fallback.
-  const turns = parseDialog(text);
-  const isDialog = !!turns;
-  const registry = isDialog ? await loadSpeakerRegistry() : null;
-  let scene, turnVoices;
+  let scene;
   try {
     scene = normalizeDialogScene(req.body.dialogScene);
-    turnVoices = isDialog
-      ? sceneTurnVoices(turns, scene, (t, i) => voiceForSpeaker(t.speaker, i, registry))
-      : [{ voiceId: TTS_ELEVEN_VOICE_ID, role: 'single' }];
-  } catch (err) { return res.status(400).json({error: err.message}); }
-  const voices = turnVoices.map((v) => v.voiceId);
-
-  // Cek cache dulu — kalau hit, gak kena cost ElevenLabs.
-  const key = ttsHashKey(text, voices);
-  const cached = await query(
-    `SELECT audio, content_type FROM tts_cache WHERE text_hash = $1`,
-    [key]
-  );
-  if (cached.rows.length > 0) {
-    query(`UPDATE tts_cache SET last_used_at = NOW() WHERE text_hash = $1`, [key]).catch(() => {});
-    res.set('Content-Type', cached.rows[0].content_type || 'audio/mpeg');
-    res.set('Cache-Control', 'private, no-cache'); // admin preview, ga perlu CDN cache
-    return res.send(cached.rows[0].audio);
-  }
-
-  // Generate baru.
-  let combined;
-  try {
-    await validateSceneVoices(scene, fetchElevenVoices);
-    if (isDialog) {
-      const buffers = [];
-      for (let i = 0; i < turns.length; i++) {
-        const isLast = i === turns.length - 1;
-        const textWithBreak = isLast ? turns[i].text : `${turns[i].text} <break time="700ms" />`;
-        buffers.push(await fetchElevenAudio(turnVoices[i].voiceId, textWithBreak, turnVoices[i].role));
-      }
-      combined = Buffer.concat(buffers);
-    } else {
-      combined = await fetchElevenAudio(TTS_ELEVEN_VOICE_ID, text, 'single');
+    if (scene) {
+      const turns = parseDialog(text);
+      if (!turns) throw new Error('Skrip audio harus memakai label pemeran.');
+      sceneTurnVoices(turns, scene, () => ({ voiceId: null, role: 'narrator' }));
     }
-  } catch (err) {
-    console.error('TTS admin preview:', err.message);
-    return res.status(502).json({ error: 'tts_upstream', detail: err.message });
-  }
-
-  await query(
-    `INSERT INTO tts_cache (text_hash, text, provider, voice, model, audio, content_type, byte_size, settings_version)
-     VALUES ($1,$2,'elevenlabs',$3,$4,$5,'audio/mpeg',$6,$7)
-     ON CONFLICT (text_hash) DO NOTHING`,
-    [key, text, voices.join(','), TTS_ELEVEN_MODEL, combined, combined.length, TTS_SETTINGS_VERSION]
-  );
-  res.set('Content-Type', 'audio/mpeg');
-  res.set('Cache-Control', 'private, no-cache');
-  res.send(combined);
+  } catch (err) { return res.status(400).json({error: err.message}); }
+  // Preview and student playback share voices, pauses, validation and cache.
+  return renderTtsAudio(text, res, { privateResponse: true, dialogScene: scene });
 }));
 
 // ── ElevenLabs voice catalog (admin-only) ───────────────────────────────────

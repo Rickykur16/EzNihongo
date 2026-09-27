@@ -1,6 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseDialog, voiceForSpeaker, fetchElevenAudio, generateDialogSegments, TTS_ELEVEN_MODEL } from './routes/tts.js';
+import { parseDialog, voiceForSpeaker, fetchElevenAudio, generateDialogSegments, ttsHashKey, TTS_ELEVEN_MODEL, TTS_SETTINGS_VERSION } from './routes/tts.js';
+import { createHash } from 'node:crypto';
+
+test('TTS cache distinguishes a voice swap and preserves unambiguous legacy hashes', () => {
+  const text = 'A: はじめまして。\nB: サリです。';
+  assert.notEqual(ttsHashKey(text, ['anna', 'sari']), ttsHashKey(text, ['sari', 'anna']));
+  assert.notEqual(ttsHashKey(text, ['anna', 'anna', 'sari']), ttsHashKey(text, ['anna', 'sari', 'anna']));
+  for (const voices of [['anna'], ['anna', 'anna']]) {
+    const legacy = createHash('sha256').update(`elevenlabs|${voices.slice().sort().join(':')}|${TTS_ELEVEN_MODEL}|${TTS_SETTINGS_VERSION}|${text}`).digest('hex');
+    assert.equal(ttsHashKey(text, voices), legacy);
+  }
+});
 
 // Mocks global fetch for the duration of one test — fetchElevenAudio calls
 // the bare global `fetch(...)` (no import), resolved at call time, so

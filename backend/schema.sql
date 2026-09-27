@@ -117,6 +117,7 @@ CREATE TABLE IF NOT EXISTS lessons (
   sort_order INT DEFAULT 0,
   passing_score_pct INT NOT NULL DEFAULT 70,
   questions_per_attempt INT,
+  assessment_policy JSONB,
   cooldown_hours INT NOT NULL DEFAULT 12,
   popup_after_lesson_id UUID REFERENCES lessons(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -396,9 +397,11 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
   section_label TEXT NOT NULL DEFAULT 'Section 1',
   section_instruction TEXT,
   audio_script TEXT,
+  audio_scene JSONB CONSTRAINT quiz_questions_audio_scene_object CHECK (audio_scene IS NULL OR jsonb_typeof(audio_scene) = 'object'),
   passage TEXT,
   image_url TEXT,
   correct_answer TEXT,
+  assessment_meta JSONB,
   explanation TEXT,
   sort_order INT DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -407,6 +410,7 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
 
 CREATE INDEX IF NOT EXISTS idx_quiz_questions_lesson ON quiz_questions(lesson_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_quiz_questions_lesson_category ON quiz_questions(lesson_id, question_category, section_number, sort_order);
+CREATE INDEX IF NOT EXISTS idx_quiz_questions_assessment_version ON quiz_questions(lesson_id, ((assessment_meta->>'version')));
 CREATE INDEX IF NOT EXISTS idx_quiz_questions_grammar
   ON quiz_questions(grammar_id) WHERE grammar_id IS NOT NULL;
 
@@ -431,6 +435,9 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
   sampled_question_ids JSONB,
   grading_result JSONB,
   submitted_answers JSONB,
+  assessment_snapshot JSONB,
+  draft_answers JSONB NOT NULL DEFAULT '[]'::jsonb,
+  draft_revision INTEGER NOT NULL DEFAULT 0,
   started_at TIMESTAMPTZ,
   -- NULL = attempt sedang berjalan, belum disubmit. Penanda ini yang dipakai
   -- pengaman submit/replay di /quiz-attempt (transaction + quiz lock)
