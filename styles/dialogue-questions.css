@@ -1,0 +1,20 @@
+.dq-goal,.dq-panel,.dq-legacy-session-slot { margin:14px 0; padding:16px; border:1px solid #d9d8d2; border-radius:12px; background:#fffdf9; color:#23211e; }
+.dq-goal strong { display:block; font-size:.8rem; letter-spacing:.04em; color:#79512b; }
+.dq-goal p { margin:6px 0 0; font-size:1rem; line-height:1.55; overflow-wrap:anywhere; }
+.dq-panel h4 { margin:0 0 14px; font-size:1.04rem; }
+.dq-question + .dq-question { margin-top:20px; padding-top:20px; border-top:1px solid #dedbd6; }
+.dq-question fieldset { margin:0; padding:0; border:0; min-width:0; }
+.dq-question legend { padding:0 0 10px; font-weight:700; line-height:1.55; overflow-wrap:anywhere; }
+.dq-options { display:grid; grid-template-columns:1fr; gap:8px; }
+.dq-option { display:flex; align-items:center; gap:12px; min-height:48px; box-sizing:border-box; padding:10px 12px; border:1px solid #d6d2ca; border-radius:9px; background:#fff; cursor:pointer; line-height:1.45; overflow-wrap:anywhere; }
+.dq-option:has(input:checked) { border-color:#a6382d; background:#fff5ef; }
+.dq-option input { width:18px; height:18px; margin:0; accent-color:#a6382d; flex:none; }
+.dq-submit,.dq-reload,.dq-legacy-session-slot button { min-height:44px; margin-top:12px; padding:9px 16px; border:0; border-radius:8px; background:#a6382d; color:#fff; font:inherit; font-weight:700; cursor:pointer; }
+.dq-submit:disabled { opacity:.6; cursor:default; }
+.dq-feedback { min-height:1.4em; margin:10px 0 0; line-height:1.5; }
+.dq-error { color:#a12620; }.dq-try-again { color:#834619; }.dq-correct { color:#176646; }
+.dq-question :focus-visible,.dq-legacy-session-slot button:focus-visible { outline:3px solid #2469bc; outline-offset:3px; }
+.dq-legacy-session-slot p { margin:0; line-height:1.5; }
+@media(min-width:768px) { .dq-options { grid-template-columns:repeat(2,minmax(0,1fr)); } .dq-panel { padding:20px; } }
+@media(max-width:390px) { .dq-goal,.dq-panel,.dq-legacy-session-slot { padding:12px; } .dq-option { padding:9px; } }
+@media(prefers-reduced-motion:reduce) { .dq-panel * { scroll-behavior:auto!important; transition:none!important; animation:none!important; } }
