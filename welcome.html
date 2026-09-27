@@ -5568,9 +5568,6 @@ function getQuizKey(courseSlug, moduleId, lessonId) {
 // Klik Mulai Kuis → startQuizAttempt() → POST /quiz/start → render paper.
 async function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
   const key = getQuizKey(courseSlug, moduleId, lessonId);
-  if (quizState?.key === key && !quizState.submitted && window.__requiredAssignment?.key === key) {
-    renderQuizQuestion(container); return;
-  }
   const viewEpoch = window.__quizNavigationEpoch = (window.__quizNavigationEpoch || 0) + 1;
   const lesson = findLesson(courseSlug, moduleId, lessonId);
   if (!lesson?.apiId) {
@@ -5584,7 +5581,6 @@ async function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
   // pas status arrive. Kalau cache hit, langsung skip skeleton.
   const cached = _quizStatusCache.get(lesson.apiId);
   if (cached && (Date.now() - cached.ts) < QUIZ_STATUS_TTL) {
-    if (cached.data.inProgress) return window.startQuizAttempt(key, {resumeOnly:true, attemptToken:cached.data.inProgressAttemptToken});
     renderQuizLandingCard(container, key, lessonTitle, cached.data);
     return;
   }
@@ -5606,7 +5602,6 @@ async function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
     container.innerHTML = `<div class="quiz-container"><p style="color:#b91c1c;">Gagal load status kuis. Refresh halaman.</p></div>`;
     return;
   }
-  if (status.inProgress) return window.startQuizAttempt(key, {resumeOnly:true, attemptToken:status.inProgressAttemptToken});
   renderQuizLandingCard(container, key, lessonTitle, status);
 }
 
@@ -5628,6 +5623,18 @@ function fmtNextAt(iso) {
 }
 
 function renderQuizLandingCard(container, key, lessonTitle, status) {
+  if (status.assessmentUpdate) {
+    const update = status.assessmentUpdate;
+    container.innerHTML = `<div class="quiz-container"><div style="background:#fff;border:1px solid #d7dedb;border-radius:14px;padding:28px;max-width:680px;margin:auto">
+      <h2>${escapeHtml(lessonTitle)}</h2><h3>Assessment versi terbaru tersedia</h3>
+      <p>Sesi lama Anda berisi <strong>${Number(status.questionsPerAttempt)} soal</strong>. Versi terbaru berisi <strong>${Number(update.questionsPerAttempt)} soal</strong> ${update.version === 'n5-assessment-v3' ? 'dengan format latihan JLPT N5, termasuk listening dan susunan ★' : 'sesuai materi bab ini'}.</p>
+      <p>Mulai versi terbaru dari awal. Jawaban sesi lama tetap disimpan, tidak dihitung sebagai gagal, dan tidak menimbulkan cooldown. Anda juga bisa memilih melanjutkan sesi lama.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:22px">
+        <button class="btn-primary" onclick="window.startQuizAttempt('${escapeAttr(key)}',{upgradeFrom:'${escapeAttr(status.inProgressAttemptToken)}',assessmentVersion:'${escapeAttr(update.version)}'})">Mulai versi terbaru →</button>
+        <button class="btn-secondary" onclick="window.startQuizAttempt('${escapeAttr(key)}',{resumeOnly:true,attemptToken:'${escapeAttr(status.inProgressAttemptToken)}'})">Lanjutkan sesi lama</button>
+      </div></div></div>`;
+    return;
+  }
   const [navSlug, navMid, navLid] = String(key).split(':');
   const placement = kanaPlacementMeta({ id: navLid });
   const chapter = !!status.assessmentVersion && !status.resumingLegacy;
@@ -5658,7 +5665,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
 
   const canAttempt = status.canAttempt;
   const ctaButton = canAttempt
-    ? `<button class="btn-primary" onclick="window.startQuizAttempt('${escapeAttr(key)}')" style="padding:14px 28px;font-size:16px;">${status.inProgress ? 'Lanjutkan jawaban' : chapter ? 'Mulai assessment' : 'Mulai Kuis'} →</button>`
+    ? `<button class="btn-primary" onclick="window.startQuizAttempt('${escapeAttr(key)}'${status.inProgress ? `,{resumeOnly:true,attemptToken:'${escapeAttr(status.inProgressAttemptToken)}'}` : ''})" style="padding:14px 28px;font-size:16px;">${status.inProgress ? 'Lanjutkan jawaban' : chapter ? 'Mulai assessment' : 'Mulai Kuis'} →</button>`
     : `<button class="btn-primary" disabled style="padding:14px 28px;font-size:16px;">⏱ Tunggu ${fmtCooldown(status.cooldownHoursLeft)}</button>`;
 
   const noCooldown = (status.cooldownHours || 0) <= 0;
@@ -5763,7 +5770,7 @@ window.startQuizAttempt = async (key, resume = null) => {
     if (!r.ok) {
       const errData = await r.json().catch(() => ({}));
       if (viewEpoch !== window.__quizNavigationEpoch) return;
-      if (resume && errData.error === 'attempt_not_pending') {
+      if (resume && ['attempt_not_pending','assessment_version_changed','attempt_superseded'].includes(errData.error)) {
         window.__requiredAssignment = null;
         window.ezClearUnfinishedAssignmentCache?.();
         return renderQuizLesson(main, slug, mId, lId);

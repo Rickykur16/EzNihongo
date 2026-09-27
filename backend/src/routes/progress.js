@@ -62,8 +62,8 @@ router.post('/progress/reconcile', asyncHandler(async (req, res) => {
   res.json({ ok: true, candidates: outcome.candidates, reconciled: outcome.reconciled });
 }));
 
-// Starting an assignment commits to its saved packet until submission. There
-// is no refresh/absence TTL: reopening the site must resume the same attempt.
+// Saved packets do not expire on refresh. A learner may explicitly supersede
+// an old bank version; opening the lesson itself only shows the preview.
 function attemptQuestionCount(attempt) {
   if (isChapterAssessment(attempt?.assessment_snapshot?.policy)) return attempt.assessment_snapshot.questions?.length || 0;
   return Array.isArray(attempt?.sampled_question_ids) ? attempt.sampled_question_ids.length : 0;
@@ -84,7 +84,7 @@ router.get('/progress/quiz/unfinished', asyncHandler(async (req, res) => {
         a.started_at DESC NULLS LAST, a.id DESC) AS attempt_rank
     FROM quiz_attempts a JOIN lessons l ON l.id=a.lesson_id
       JOIN modules m ON m.id=l.module_id JOIN courses c ON c.id=m.course_id
-    WHERE a.user_id=$1 AND l.type='quiz'
+    WHERE a.user_id=$1 AND l.type='quiz' AND a.superseded_at IS NULL
       AND ($2::boolean OR (c.is_published=TRUE AND EXISTS (
         SELECT 1 FROM user_enrollments e WHERE e.user_id=$1 AND e.course_id=c.id
           AND e.status='active' AND (e.expires_at IS NULL OR e.expires_at>NOW()))))
@@ -119,7 +119,7 @@ async function lessonAttemptStatus(userId, lessonId, cooldownHours, runQuery = q
     `SELECT id, attempt_token, score, total_questions, sampled_question_ids, grading_result,
             started_at, completed_at, assessment_snapshot, draft_answers, draft_revision
        FROM quiz_attempts
-      WHERE user_id = $1 AND lesson_id = $2
+      WHERE user_id = $1 AND lesson_id = $2 AND superseded_at IS NULL
       ORDER BY (completed_at IS NULL AND assessment_snapshot IS NOT NULL) DESC,
         COALESCE(completed_at, started_at) DESC NULLS LAST, started_at DESC NULLS LAST, id DESC
       LIMIT 1`,
@@ -234,6 +234,8 @@ router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('
   const lessonId = req.params.lessonId;
   const resumeOnly = req.body?.resumeOnly === true;
   const expectedToken = req.body?.attemptToken;
+  const upgradeFrom = req.body?.upgradeFrom;
+  if (upgradeFrom !== undefined && (!isCanonicalUuid(upgradeFrom) || resumeOnly)) return res.status(400).json({ error: 'invalid_upgrade_request' });
   if (resumeOnly && !isCanonicalUuid(expectedToken)) return res.status(400).json({ error: 'invalid_attempt_token' });
 
   // Lesson meta + pool IDs paralel — di luar lock karena read-only & idempotent.
@@ -262,13 +264,27 @@ router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('
     result = await withAdvisoryLock(`quiz:${req.user.id}:${lessonId}`, async (client) => {
       const runQuery = (text, params) => client.query(text, params);
       const status = await lessonAttemptStatus(req.user.id, lessonId, cooldownHours, runQuery);
+      let supersededId = null;
+      if (upgradeFrom) {
+        if (!chapterPolicy || req.body.assessmentVersion !== chapterPolicy.version) return { kind: 'upgrade_stale' };
+        const pending = status.inProgress;
+        if (pending?.attempt_token !== upgradeFrom) {
+          // A lost response or second tab must resume the replacement, not create another.
+          const archived = await client.query(`SELECT id FROM quiz_attempts WHERE user_id=$1 AND lesson_id=$2
+            AND attempt_token=$3 AND superseded_at IS NOT NULL`, [req.user.id, lessonId, upgradeFrom]);
+          if (archived.rows.length && pending?.assessment_snapshot?.version === chapterPolicy.version) return { kind: 'resume', inProgress: pending };
+          return { kind: 'upgrade_stale' };
+        }
+        if (pending.assessment_snapshot?.version === chapterPolicy.version) return { kind: 'upgrade_stale' };
+        supersededId = pending.id;
+      }
 
       if (resumeOnly && status.inProgress?.attempt_token !== expectedToken) return { kind: 'resume_missing' };
 
       if (!status.canAttempt) {
         return { kind: 'blocked', status };
       }
-      if (status.inProgress) {
+      if (status.inProgress && !supersededId) {
         return { kind: 'resume', inProgress: status.inProgress };
       }
       if (!allIds.length) return { kind: 'empty' };
@@ -286,6 +302,7 @@ router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('
       const sampledIds = snapshot ? snapshot.questions.map(q => q.id) : kanaAssessmentKind(lesson.slug)
         ? sampleKanaPlacementQuestions(poolRows, lesson.questions_per_attempt).map((row) => row.id)
         : sampleQuestionIds(allIds, lesson.questions_per_attempt);
+      if (supersededId) await client.query('UPDATE quiz_attempts SET superseded_at=NOW() WHERE id=$1', [supersededId]);
       const insertRes = await runQuery(
         `INSERT INTO quiz_attempts (user_id, lesson_id, attempt_token, sampled_question_ids, assessment_snapshot, started_at)
          VALUES ($1, $2, gen_random_uuid(), $3::jsonb, $4::jsonb, NOW())
@@ -305,6 +322,7 @@ router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('
     return res.status(500).json({ error: 'internal_error' });
   }
 
+  if (result.kind === 'upgrade_stale') return res.status(409).json({ error: 'assessment_version_changed' });
   if (result.kind === 'resume_missing') return res.status(409).json({ error: 'attempt_not_pending' });
   if (result.kind === 'empty') return res.status(404).json({ error: 'Lesson has no quiz questions' });
   if (result.kind === 'blocked') {
@@ -361,10 +379,11 @@ router.put('/progress/lesson/:lessonId/quiz/draft', requireLessonCourseAccess('l
   const { attemptToken, answers, revision } = req.body || {};
   if (!isCanonicalUuid(attemptToken) || !Number.isInteger(revision) || revision < 0) return res.status(400).json({ error: 'invalid_draft' });
   const outcome = await withAdvisoryLock(`quiz:${req.user.id}:${req.params.lessonId}`, async client => {
-    const found = await client.query(`SELECT id, assessment_snapshot, sampled_question_ids, completed_at, draft_revision FROM quiz_attempts
+    const found = await client.query(`SELECT id, assessment_snapshot, sampled_question_ids, completed_at, draft_revision, superseded_at FROM quiz_attempts
       WHERE user_id=$1 AND lesson_id=$2 AND attempt_token=$3 FOR UPDATE`, [req.user.id, req.params.lessonId, attemptToken]);
     const attempt = found.rows[0];
     if (!attempt) return { status: 404, body: { error: 'attempt_not_found' } };
+    if (attempt.superseded_at) return { status: 409, body: { error: 'attempt_superseded' } };
     if (attempt.completed_at) return { status: 409, body: { error: 'attempt_completed' } };
     if (attempt.draft_revision !== revision) return { status: 409, body: { error: 'draft_conflict' } };
     const chapter = isChapterAssessment(attempt.assessment_snapshot?.policy);
@@ -483,6 +502,11 @@ router.get('/progress/lesson/:lessonId/quiz-status', requireLessonCourseAccess('
     lastAttempt: status.lastAttempt,
     inProgress: !!status.inProgress,
     inProgressAttemptToken: status.inProgress?.attempt_token || null,
+    assessmentUpdate: status.inProgress && isChapterAssessment(lesson.assessment_policy) &&
+      status.inProgress.assessment_snapshot?.version !== lesson.assessment_policy.version ? {
+        version: lesson.assessment_policy.version,
+        questionsPerAttempt: publicChapterRules(lesson.assessment_policy).questionsPerForm,
+      } : null,
     resumingLegacy,
     ...(isChapterAssessment(displayPolicy) ? { assessmentVersion: displayPolicy.version,
       assessmentRules: publicChapterRules(displayPolicy), objectives: displayPolicy.objectives } : {}),

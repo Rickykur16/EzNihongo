@@ -18,13 +18,14 @@ export async function submitQuizAttempt(client, { userId, lessonId, attemptToken
     return invalid(400, 'invalid_attempt_token');
   }
   const attemptRes = await client.query(
-    `SELECT id, sampled_question_ids, completed_at, grading_result, assessment_snapshot, draft_revision
+    `SELECT id, sampled_question_ids, completed_at, grading_result, assessment_snapshot, draft_revision, superseded_at
        FROM quiz_attempts
       WHERE user_id = $1 AND lesson_id = $2 AND attempt_token = $3
       FOR UPDATE`, [userId, lessonId, attemptToken]
   );
   const attempt = attemptRes.rows[0];
   if (!attempt) return invalid(404, 'attempt_not_found');
+  if (attempt.superseded_at) return invalid(409, 'attempt_superseded');
   if (attempt.completed_at) {
     return attempt.grading_result
       ? { status: 200, body: attempt.grading_result }

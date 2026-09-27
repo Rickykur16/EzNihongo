@@ -4,6 +4,37 @@ import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 const html=await readFile(new URL('../../welcome.html',import.meta.url),'utf8');
 
+test('opening an assignment always shows its preview, including cached and old pending sessions',async()=>{
+  for(const cached of [true,false])for(const update of [null,{version:'n5-assessment-v3',questionsPerAttempt:24}]){
+    const status={inProgress:true,inProgressAttemptToken:'saved-token',assessmentUpdate:update};
+    let shown;
+    const ctx=vm.createContext({window:{startQuizAttempt:()=>{throw Error('must not auto-start');}},
+      quizState:{key:'n5:b4:assignment',submitted:false},getQuizKey:(...s)=>s.join(':'),
+      findLesson:()=>({apiId:'lesson',title:'Assignment'}),QUIZ_STATUS_TTL:60000,
+      _quizStatusCache:new Map(cached?[['lesson',{ts:Date.now(),data:status}]]:[]),
+      fetchQuizStatus:async()=>status,escapeHtml:x=>x,kanaPlacementMeta:()=>null,
+      renderQuizLandingCard:(_container,_key,_title,s)=>{shown=s;}});
+    ctx.window.__requiredAssignment={key:'n5:b4:assignment'};
+    const start=html.indexOf('async function renderQuizLesson(');
+    vm.runInContext(html.slice(start,html.indexOf('function fmtCooldown',start)),ctx);
+    await ctx.renderQuizLesson({innerHTML:''},'n5','b4','assignment');
+    assert.equal(shown,status);
+  }
+});
+
+test('old-version preview offers an explicit upgrade or resume with the expected token',()=>{
+  const ctx=vm.createContext({escapeHtml:x=>x,escapeAttr:x=>x});
+  const start=html.indexOf('function renderQuizLandingCard(');
+  vm.runInContext(html.slice(start,html.indexOf('function escapeAttr',start)),ctx);
+  const container={innerHTML:''};
+  ctx.renderQuizLandingCard(container,'n5:b4:assignment','Assignment Bab 4',{
+    questionsPerAttempt:50,inProgressAttemptToken:'old-token',
+    assessmentUpdate:{version:'n5-assessment-v3',questionsPerAttempt:24}});
+  assert.match(container.innerHTML,/50 soal/);assert.match(container.innerHTML,/24 soal/);
+  assert.match(container.innerHTML,/Mulai versi terbaru/);assert.match(container.innerHTML,/Lanjutkan sesi lama/);
+  assert.match(container.innerHTML,/upgradeFrom:'old-token'/);assert.match(container.innerHTML,/resumeOnly:true/);
+});
+
 test('spoken-choice numbers retain audio order while ordinary options can shuffle',()=>{
   const ctx=vm.createContext({normalizeQuizCategory:x=>x,Math:{random:()=>0,floor:Math.floor}});
   const start=html.indexOf('function transformQuestionFromApi(');
