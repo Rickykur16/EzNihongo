@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { withTransaction } from './db.js';
 import { loadTaskConcepts, loadModulePool } from './routes/grammar-task.js';
+import { deriveDrills } from './grammar-drills.js';
 import { companionIsCurrent, contentRevisionId } from './bunpou-flow-service.js';
 import { dialogueFingerprint, dialogueTurns, questionFingerprint } from './dialogue-question-service.js';
 import { getCurriculumBoundary, hasBlockingIntegrityIssues } from './curriculum-boundary.js';
@@ -24,6 +25,27 @@ const visibleFields = (path, value) => {
   if (value && typeof value === 'object') return Object.entries(value).flatMap(([key, entry]) =>
     visibleFields(`${path}.${key}`, entry));
   return [];
+};
+const taskBoundaryPayload = (items, pool) => {
+  const drills = deriveDrills(items, pool);
+  const source = items.map(item => ({
+    pattern: item.pattern,
+    meaning: item.meaning,
+    example: item.example,
+    examples: item.examples,
+    instruction: item.instruction,
+  }));
+  const distractors = [];
+  for (const item of items) {
+    for (const drill of Object.values(drills.get(item.id) || {})) {
+      if (!drill) continue;
+      const { options = [], correctIndex, ...visibleSource } = drill;
+      const correct = Number.isInteger(correctIndex) ? options[correctIndex] : null;
+      source.push({ ...visibleSource, correct });
+      distractors.push(options.filter((_option, index) => index !== correctIndex));
+    }
+  }
+  return { source, distractors };
 };
 const fail = (status, code, readiness = null) => {
   const error = new Error(code); error.status = status; error.readiness = readiness; throw error;
@@ -122,9 +144,9 @@ async function lessonReadiness(client, lesson, { resolveBoundary = getCurriculum
       sourceCourseId: task[0]?.source_course_id || null,
       taskCourseIds: [...new Set(task.map(row => row.task_course_id).filter(Boolean))].sort() }] };
   const dbQuery = client.query.bind(client);
-  const [items, pool] = await Promise.all([
-    loadTaskConcepts(task[0].id, dbQuery), loadModulePool(task[0].id, dbQuery),
-  ]);
+  // A transaction-scoped pg client cannot execute concurrent queries safely.
+  const items = await loadTaskConcepts(task[0].id, dbQuery);
+  const pool = await loadModulePool(task[0].id, dbQuery);
   if (!items.length) issues.push(issue('flow_task_empty'));
   const currentFingerprint = contentRevisionId(items, pool);
   if (!companionIsCurrent(task[0].bunpou_flow_published, currentFingerprint)) {
@@ -146,19 +168,17 @@ async function lessonReadiness(client, lesson, { resolveBoundary = getCurriculum
       integrityIssues: boundary.integrityIssues || [] });
   } catch { issues.push(issue('flow_boundary_unavailable')); }
   if (boundary && !boundaryBlocked) {
-    const coreItems = items.map(({ recognitionDistractors, controlledDistractors,
-      recognition_distractors, controlled_distractors, ...item }) => item);
+    // Validate the exact learner-visible derivation. The module pool contains
+    // raw examples and distractors that may never be selected into a drill;
+    // treating every pool field as visible makes readiness reject content the
+    // learner cannot receive.
+    const taskPayload = taskBoundaryPayload(items, pool);
     const sourceReport = validateContentAgainstBoundary({ boundary,
       contentType: 'grammar_example', operation: 'audit',
-      fields: visibleFields('bunpou.items', coreItems) });
+      fields: visibleFields('bunpou.source', taskPayload.source) });
     const distractorReport = validateContentAgainstBoundary({ boundary,
-      contentType: 'grammar_distractors', operation: 'audit', fields: [
-        ...visibleFields('bunpou.itemDistractors', items.map(item => ({
-          recognitionDistractors: item.recognitionDistractors,
-          controlledDistractors: item.controlledDistractors,
-        }))),
-        ...visibleFields('bunpou.pool', pool),
-      ] });
+      contentType: 'grammar_distractors', operation: 'audit',
+      fields: visibleFields('bunpou.distractors', taskPayload.distractors) });
     const published = task[0].bunpou_flow_published || {};
     const companionReport = validateContentAgainstBoundary({ boundary,
       contentType: 'dialogue_transfer', operation: 'audit', fields: visibleFields('bunpou.companion', {
@@ -207,9 +227,14 @@ async function lessonReadiness(client, lesson, { resolveBoundary = getCurriculum
       const sourceReport = validateContentAgainstBoundary({ boundary,
         contentType: 'grammar_dialog', operation: 'publish',
         communicationGoal: grammar.communication_goal,
+        // Readiness audits persisted legacy content. A blank legacy goal has
+        // the documented learner fallback and is required only when the
+        // dialogue text is newly written or revised.
+        contentIsNewOrChanged: false,
         fields: visibleFields(`grammar.${grammarId}`, {
-          dialogue: grammar.example_dialog, translation: grammar.example_dialog_id,
-          communicationGoal: grammar.communication_goal, scene: grammar.dialog_scene,
+          transcript: grammar.example_dialog, turns: dialogueTurns(grammar),
+          translation: grammar.example_dialog_id,
+          communicationGoal: grammar.communication_goal,
         }) });
       if (sourceReport.valid !== true) issues.push({ code: 'flow_dialogue_boundary_invalid',
         grammarId, violations: (sourceReport.violations || []).map(entry => entry.code) });

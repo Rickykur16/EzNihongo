@@ -91,9 +91,10 @@ export async function prepareBab3LearningFlow(options, {
           fail('bab3_preparation_review_snapshot_changed');
         }
         const dbQuery = client.query.bind(client);
-        const [items, pool] = await Promise.all([
-          loadItems(source.task_lesson_id, dbQuery), loadPool(source.task_lesson_id, dbQuery),
-        ]);
+        // Keep transaction-scoped pg queries sequential; pg does not support
+        // concurrent client.query() calls on one checked-out client.
+        const items = await loadItems(source.task_lesson_id, dbQuery);
+        const pool = await loadPool(source.task_lesson_id, dbQuery);
         if (items.length !== 3 || new Set(items.map(item => item.id)).size !== 3) {
           fail('bab3_preparation_task_items_invalid');
         }
