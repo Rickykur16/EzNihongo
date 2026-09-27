@@ -22,10 +22,17 @@ const vocab = { id: vocabId, module_id: moduleId, lesson_id: lessonId,
   japanese: 'ねこ', reading: 'ねこ', indonesian: 'kucing', updated_at: '2026-09-27T00:00:00.000Z' };
 const grammar = { id: grammarId, module_id: moduleId, lesson_id: lessonId,
   pattern: '〜です', meaning: 'adalah', communication_goal: 'Memperkenalkan kucing',
-  example_dialog: 'N: ねこです。\nA: ねこです。', updated_at: '2026-09-27T00:00:00.000Z' };
-let modelOutput = '{}', modelCalls = 0, writes = 0;
+  example_dialog: 'N: ねこです。\nA: ねこです。', recognition_distractors: null,
+  controlled_distractors: 'pilihan lama', updated_at: '2026-09-27T00:00:00.000Z' };
+const deckExample = { id: id('example'), vocabulary_id: vocabId, module_id: moduleId,
+  lesson_id: lessonId, japanese: 'ねこは日です。', reading: null,
+  highlight: 'ねこ', indonesian: 'Kucing.', updated_at: '2026-09-27T00:00:00.000Z' };
+let grammarExamples = [];
+let modelOutput = '{}', modelCalls = 0, writes = 0, mutateDuringModel = null,
+  mutateBeforeTransaction = null,
+  providerUnavailable = false;
 const fakeQuery = async (sql, params = []) => {
-  if (/\b(INSERT|UPDATE|DELETE)\b/i.test(sql)) { writes++; throw Error('draft endpoint attempted a write'); }
+  if (/^\s*(INSERT|UPDATE|DELETE)\b/i.test(sql)) { writes++; throw Error('draft endpoint attempted a write'); }
   if (sql.includes('boundary:courses')) return { rows: [{ id: courseId, slug: 'n5', level: 'N5', curriculum_boundary_mode: 'enforce' }] };
   if (sql.includes('boundary:edges')) return { rows: [] };
   if (sql.includes('boundary:scope-lesson')) return { rows: [lesson] };
@@ -37,11 +44,26 @@ const fakeQuery = async (sql, params = []) => {
     { id: futureVocabId, module_id: futureId, lesson_id: null,
       japanese: 'みらい', reading: 'みらい', indonesian: 'masa depan' }] };
   if (sql.includes('boundary:grammar')) return { rows: [grammar] };
-  if (sql.includes('boundary:kanji') || sql.includes('boundary:decks')) return { rows: [] };
+  if (sql.includes('boundary:kanji')) return { rows: [{ id: id('kanji'), lesson_id: lessonId,
+    character: '日', meaning_id: 'hari', on_reading: 'ニチ', kun_reading: 'ひ' }] };
+  if (sql.includes('boundary:decks')) return { rows: [] };
   if (sql.includes('curriculum_boundary_auxiliary_terms')) return { rows: [] };
   if (sql.includes('FROM admin_emails')) return { rows: [] };
+  if (sql.includes('JOIN modules m ON m.id = g.module_id WHERE g.id =')) {
+    return { rows: [{ course_id: courseId }] };
+  }
+  if (sql.includes('SELECT COUNT(*)::int AS n FROM (')) return { rows: [{ n:
+    grammar.recognition_distractors && grammar.controlled_distractors ? 0 : 1 }] };
+  if (sql.includes('ORDER BY m.sort_order ASC, g.sort_order ASC')) {
+    return { rows: !grammar.recognition_distractors || !grammar.controlled_distractors ? [{ id: grammarId, module_id: moduleId,
+      pattern: grammar.pattern, meaning: grammar.meaning }] : [] };
+  }
+  if (sql.includes('SELECT COUNT(*)::int AS n FROM module_grammar')) return { rows: [{ n: 0 }] };
+  if (sql.includes('FROM vocabulary_examples e') && sql.includes('lesson_deck_items')) {
+    return { rows: [{ ...deckExample }] };
+  }
   if (sql.includes('FROM app_settings')) return { rows: [] };
-  if (sql.includes('FROM grammar_examples')) return { rows: [] };
+  if (sql.includes('FROM grammar_examples')) return { rows: grammarExamples.map(row => ({ ...row })) };
   if (sql.includes('FROM module_grammar') && sql.includes('pattern IS NOT NULL')) return { rows: [grammar] };
   if (sql.includes('FROM module_grammar') && sql.includes('module_id =')) return { rows: [] };
   if (sql.includes('FROM lessons l JOIN modules m ON m.id=l.module_id')) {
@@ -57,10 +79,44 @@ const fakeQuery = async (sql, params = []) => {
   throw Error(`Unexpected SQL in draft generation: ${sql}`);
 };
 mock.method(db, 'query', fakeQuery);
+mock.method(db, 'connect', async () => {
+  if (mutateBeforeTransaction) { const mutate = mutateBeforeTransaction;
+    mutateBeforeTransaction = null; mutate(); }
+  return ({
+  release() {},
+  async query(sql, params = []) {
+    if (/^(BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE)/.test(sql)) return { rows: [] };
+    if (sql.includes('pg_advisory_xact_lock')) return { rows: [] };
+    if (sql.includes('WITH RECURSIVE required')) return { rows: [{ id: courseId }] };
+    if (sql.includes('FROM modules m JOIN courses c ON c.id=m.course_id')) {
+      return { rows: [{ id: courseId, mode: 'enforce', module_id: moduleId }] };
+    }
+    if (sql.includes('INSERT INTO curriculum_boundary_reports')) return { rows: [] };
+    if (sql.includes('SELECT e.*,v.module_id,v.lesson_id FROM vocabulary_examples e')) {
+      return { rows: params[0] === deckExample.id ? [{ ...deckExample }] : [] };
+    }
+    if (sql.includes('SELECT lesson_id FROM lesson_deck_items')) {
+      return { rows: [{ lesson_id: lessonId }] };
+    }
+    if (sql.includes('UPDATE module_grammar SET')) {
+      writes++; grammar.recognition_distractors = params[1];
+      grammar.controlled_distractors = params[2];
+      return { rows: [{ id: grammarId }] };
+    }
+    if (sql.includes('UPDATE vocabulary_examples SET')) {
+      writes++; deckExample.reading = params[1];
+      return { rows: [{ id: deckExample.id }] };
+    }
+    return fakeQuery(sql, params);
+  },
+  });
+});
 const realFetch = globalThis.fetch;
 mock.method(globalThis, 'fetch', async (url, options) => {
   if (String(url).startsWith('https://api.anthropic.com/')) {
     modelCalls++;
+    if (mutateDuringModel) { const mutate = mutateDuringModel; mutateDuringModel = null; mutate(); }
+    if (providerUnavailable) return new Response('unavailable', { status: 503 });
     return new Response(JSON.stringify({ content: [{ type: 'text', text: modelOutput }] }),
       { headers: { 'Content-Type': 'application/json' } });
   }
@@ -93,7 +149,139 @@ test('all grounded draft routes reject unscoped calls before provider and never 
     ['generate-question-options', { question: 'これは何ですか。' }],
   ]) assert.equal((await post(route, body)).status, 400, route);
   assert.equal((await post('generate-grammar-example', { pattern: '〜です' })).status, 410);
+  assert.equal((await post(`lessons/${lessonId}/generate-quiz`, {})).status, 410);
   assert.equal(modelCalls, 0); assert.equal(writes, 0);
+});
+
+test('bulk distractor rejects malformed output per item without any write', async () => {
+  modelCalls = 0; writes = 0; modelOutput = JSON.stringify({ irrelevant: 'hello' });
+  const response = await post('module-grammar/generate-distractors-bulk', { fromGrammarId: grammarId, limit: 1 });
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  assert.equal(response.body.processed, 1);
+  assert.equal(response.body.saved, 0);
+  assert.equal(response.body.failedItems[0].status, 422);
+  assert.equal(response.body.failedItems[0].generation.attempts.length, 3);
+  assert.equal(modelCalls, 3); assert.equal(writes, 0);
+});
+
+test('deck readings reject malformed batch output without any item write', async () => {
+  modelCalls = 0; writes = 0; modelOutput = JSON.stringify({ examples: [null] });
+  const response = await post(`lessons/${lessonId}/generate-deck-readings`, {});
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  assert.equal(response.body.updated, 0);
+  assert.equal(response.body.failed, 1);
+  assert.equal(response.body.failedItems[0].status, 422);
+  assert.equal(response.body.failedItems[0].generation.attempts.length, 3);
+  assert.equal(modelCalls, 3); assert.equal(writes, 0);
+});
+
+test('bulk distractor writes a grounded item once and reports its validation', async () => {
+  modelCalls = 0; writes = 0;
+  grammar.recognition_distractors = null;
+  modelOutput = JSON.stringify({ recognitionDistractors: [
+    'Menunjukkan waktu lampau.', 'Menunjukkan tempat tujuan.', 'Menunjukkan larangan.' ] });
+  const response = await post('module-grammar/generate-distractors-bulk', { fromGrammarId: grammarId, limit: 1 });
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  assert.equal(response.body.saved, 1, JSON.stringify(response.body));
+  assert.equal(response.body.savedItems[0].generation.status, 'ready');
+  assert.equal(writes, 1); assert.equal(modelCalls, 1);
+});
+
+test('bulk distractor generates only the missing controlled field', async () => {
+  grammar.recognition_distractors = 'Pilihan kurasi lama.';
+  grammar.controlled_distractors = null;
+  grammarExamples = [{ japanese: 'ねこです。', highlight: 'です', indonesian: 'Ini kucing.' }];
+  writes = 0; modelCalls = 0;
+  modelOutput = JSON.stringify({ controlledDistractors: ['ます', 'でした', 'では'] });
+  const response = await post('module-grammar/generate-distractors-bulk', { fromGrammarId: grammarId, limit: 1 });
+  assert.equal(response.body.saved, 1, JSON.stringify(response.body));
+  assert.equal(grammar.recognition_distractors, 'Pilihan kurasi lama.');
+  assert.equal(grammar.controlled_distractors, 'ます\nでした\nでは');
+  assert.equal(modelCalls, 1); assert.equal(writes, 1);
+  grammar.recognition_distractors = null;
+  grammar.controlled_distractors = 'pilihan lama';
+  grammarExamples = [];
+});
+
+test('bulk distractor stale and unavailable outcomes cannot write an item', async () => {
+  grammar.recognition_distractors = null; writes = 0; modelCalls = 0;
+  modelOutput = JSON.stringify({ recognitionDistractors: [
+    'Menunjukkan waktu lampau.', 'Menunjukkan tempat tujuan.', 'Menunjukkan larangan.' ] });
+  mutateDuringModel = () => { grammar.meaning = 'berubah'; };
+  let response = await post('module-grammar/generate-distractors-bulk', { fromGrammarId: grammarId, limit: 1 });
+  assert.equal(response.body.saved, 0);
+  assert.equal(response.body.failedItems[0].generation.status, 'stale');
+  assert.equal(writes, 0);
+  grammar.meaning = 'adalah';
+  providerUnavailable = true; modelCalls = 0;
+  response = await post('module-grammar/generate-distractors-bulk', { fromGrammarId: grammarId, limit: 1 });
+  providerUnavailable = false;
+  assert.equal(response.body.saved, 0);
+  assert.equal(response.body.failedItems[0].generation.status, 'unavailable');
+  assert.equal(response.body.failedItems[0].generation.attempts.length, 3);
+  assert.equal(writes, 0);
+});
+
+test('deck reading success and stale source are isolated per item', async () => {
+  deckExample.reading = null; writes = 0; modelCalls = 0;
+  modelOutput = JSON.stringify({ examples: [{ japanese: deckExample.japanese,
+    reading: 'ねこはひです。' }] });
+  let response = await post(`lessons/${lessonId}/generate-deck-readings`, {});
+  assert.equal(response.body.updated, 1, JSON.stringify(response.body));
+  assert.equal(response.body.updatedItems[0].generation.status, 'ready');
+  assert.equal(deckExample.reading, 'ねこはひです。');
+  assert.equal(writes, 1);
+  deckExample.reading = null; writes = 0;
+  mutateDuringModel = () => { deckExample.japanese = 'ねこは月です。'; };
+  response = await post(`lessons/${lessonId}/generate-deck-readings`, {});
+  assert.equal(response.body.updated, 0, JSON.stringify(response.body));
+  assert.equal(response.body.failedItems[0].generation.status, 'stale');
+  assert.equal(writes, 0);
+  deckExample.japanese = 'ねこは日です。';
+});
+
+test('locked source recheck rejects results changed after grounded generation', async () => {
+  grammar.recognition_distractors = null; writes = 0;
+  modelOutput = JSON.stringify({ recognitionDistractors: [
+    'Menunjukkan waktu lampau.', 'Menunjukkan tempat tujuan.', 'Menunjukkan larangan.' ] });
+  mutateBeforeTransaction = () => { grammar.meaning = 'berubah sesudah AI'; };
+  let response = await post('module-grammar/generate-distractors-bulk', { fromGrammarId: grammarId, limit: 1 });
+  assert.equal(response.body.saved, 0);
+  assert.equal(response.body.failedItems[0].status, 409);
+  assert.equal(writes, 0);
+  grammar.meaning = 'adalah';
+
+  deckExample.reading = null; writes = 0;
+  modelOutput = JSON.stringify({ examples: [{ japanese: deckExample.japanese,
+    reading: 'ねこはひです。' }] });
+  mutateBeforeTransaction = () => { deckExample.japanese = 'ねこは月です。'; };
+  response = await post(`lessons/${lessonId}/generate-deck-readings`, {});
+  assert.equal(response.body.updated, 0);
+  assert.equal(response.body.failedItems[0].status, 409);
+  assert.equal(writes, 0);
+  deckExample.japanese = 'ねこは日です。';
+  mutateBeforeTransaction = () => { deckExample.indonesian = 'Arti baru.'; };
+  response = await post(`lessons/${lessonId}/generate-deck-readings`, {});
+  assert.equal(response.body.updated, 0);
+  assert.equal(response.body.failedItems[0].status, 409);
+  assert.equal(writes, 0);
+  deckExample.indonesian = 'Kucing.';
+});
+
+test('deck reading future text and provider outage reject without writes', async () => {
+  deckExample.reading = null; writes = 0; modelCalls = 0;
+  modelOutput = JSON.stringify({ examples: [{ japanese: deckExample.japanese,
+    reading: 'みらいです。' }] });
+  let response = await post(`lessons/${lessonId}/generate-deck-readings`, {});
+  assert.equal(response.body.updated, 0);
+  assert.equal(response.body.failedItems[0].generation.status, 'rejected');
+  assert.equal(writes, 0);
+  providerUnavailable = true; modelCalls = 0;
+  response = await post(`lessons/${lessonId}/generate-deck-readings`, {});
+  providerUnavailable = false;
+  assert.equal(response.body.updated, 0);
+  assert.equal(response.body.failedItems[0].generation.status, 'unavailable');
+  assert.equal(modelCalls, 3); assert.equal(writes, 0);
 });
 
 test('vocabulary batch returns compatible examples and generation report without save', async () => {

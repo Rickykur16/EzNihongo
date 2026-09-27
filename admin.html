@@ -5802,7 +5802,7 @@ window.grmrGenDistractorsAll = async () => {
   const allFailed = [];
   const allSavedItems = [];
   const allFailedItems = [];
-  let finalRemaining = 0;
+  let finalRemaining = null;
   let finalSkipped = 0;
   let guard = 0;
   try {
@@ -5810,8 +5810,9 @@ window.grmrGenDistractorsAll = async () => {
       // Pengaman: jangan pernah berputar tanpa batas kalau server terus
       // mengembalikan sisa yang sama (mis. semua pola gagal di-generate).
       if (++guard > 40) { if (box) box.textContent += '\nBerhenti otomatis — terlalu banyak putaran. Klik lagi untuk melanjutkan.'; break; }
+      const body = await attachGenerationBoundary({ fromGrammarId: ctx.grammarId, limit: 6 }, { grammarId: ctx.grammarId });
       const d = await api('/admin/module-grammar/generate-distractors-bulk', {
-        method: 'POST', body: JSON.stringify({ fromGrammarId: ctx.grammarId, limit: 6 }),
+        method: 'POST', body: JSON.stringify(body),
       });
       totalSaved += d.saved || 0;
       if (Array.isArray(d.savedItems)) allSavedItems.push(...d.savedItems);
@@ -5838,8 +5839,11 @@ window.grmrGenDistractorsAll = async () => {
       summary.failedCount > 0, summary.issueCount > 0);
   } catch (err) {
     const message = batchRequestErrorMessage('Bulk generate pengecoh', err);
-    notify(message, true);
-    if (box) box.textContent += `\n${message}`;
+    const partial = summarizeGuardedBatchOutcome(allSavedItems, allFailedItems, allFailed);
+    const remainingLabel = finalRemaining == null ? 'belum diketahui' : finalRemaining;
+    const partialMessage = `Berhenti setelah ${totalSaved} pola tersimpan; sisa terakhir ${remainingLabel}. ${partial.message} ${message}`;
+    notify(partialMessage, true);
+    if (box) box.textContent += `\n${partialMessage}`;
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '🚀 Isi semua pola yang masih kosong'; }
     if (one) one.disabled = false;
@@ -6876,8 +6880,9 @@ window.deckGenAllReadings = async () => {
   const orig = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
   try {
+    const body = await attachGenerationBoundary({ lessonId: ctx.lessonId }, { lessonId: ctx.lessonId });
     const d = await api('/admin/lessons/' + ctx.lessonId + '/generate-deck-readings', {
-      method: 'POST', body: JSON.stringify({}),
+      method: 'POST', body: JSON.stringify(body),
     });
     const total = d.total || 0, updated = d.updated || 0;
     const summary = summarizeGuardedBatchOutcome(d.updatedItems, d.failedItems);

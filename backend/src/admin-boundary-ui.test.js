@@ -102,8 +102,12 @@ test('bulk callers present item summaries and request failures instead of generi
   const readings = html.slice(html.indexOf('window.deckGenAllReadings ='), html.indexOf('window.deckMove ='));
   assert.match(distractors, /summarizeGuardedBatchOutcome\(d\.savedItems, d\.failedItems, d\.failed\)/);
   assert.match(distractors, /batchRequestErrorMessage\('Bulk generate pengecoh', err\)/);
+  assert.match(distractors, /attachGenerationBoundary\(\{ fromGrammarId: ctx\.grammarId, limit: 6 \}, \{ grammarId: ctx\.grammarId \}\)/);
+  assert.match(distractors, /Berhenti setelah \$\{totalSaved\} pola tersimpan/);
+  assert.match(distractors, /summarizeGuardedBatchOutcome\(allSavedItems, allFailedItems, allFailed\)/);
   assert.match(readings, /summarizeGuardedBatchOutcome\(d\.updatedItems, d\.failedItems\)/);
   assert.match(readings, /batchRequestErrorMessage\('Generate kana', err\)/);
+  assert.match(readings, /attachGenerationBoundary\(\{ lessonId: ctx\.lessonId \}, \{ lessonId: ctx\.lessonId \}\)/);
 });
 
 test('Bunpou draft saves send the loaded revision and advance it after each save', async () => {
