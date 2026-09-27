@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>EzNihongo Teaser — Nggak harus lewat LPK</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+  :root {
+    --red: #C8102E;
+    --navy-900: #19345F;
+    --navy-deep: #0A1730;
+    --blue-200: #DCE6F5;
+    --paper: #FAF7F2;
+    --ink-700: #4a453e;
+    --ink-500: #6f685d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #000; }
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: var(--navy-deep);
+           font-family: 'Inter', 'Noto Sans JP', sans-serif; color: #fff; -webkit-font-smoothing: antialiased; }
+  .layer { position: absolute; inset: 0; }
+  #bg { background: radial-gradient(1200px 1100px at 50% 42%, #22477F 0%, #183463 38%, #0E2143 70%, #081328 100%); }
+  #glow { background: radial-gradient(900px 900px at 50% 58%, rgba(120,160,230,0.55), rgba(120,160,230,0) 70%); opacity: 0; }
+  #grain { opacity: .07; mix-blend-mode: overlay; background-repeat: repeat; }
+  .wm { position: absolute; font-family: 'Shippori Mincho', serif; font-weight: 800; color: #fff; line-height: 1; white-space: nowrap; opacity: 0; }
+  .mask { position: absolute; overflow: hidden; padding-bottom: .14em; white-space: nowrap; }
+  .mask > span { display: inline-block; will-change: transform; }
+  .red { color: #FF3B55; }
+  .dotp { display: inline-block; width: .21em; height: .21em; border-radius: 50%; background: var(--red); margin-left: .05em; vertical-align: baseline; }
+
+  /* hook */
+  .hq { left: 96px; font-weight: 800; font-size: 108px; line-height: 1.02; letter-spacing: -.03em; }
+  #hq3 { font-weight: 900; font-size: 250px; line-height: .96; letter-spacing: -.04em; }
+  #sun { position: absolute; width: 900px; height: 900px; margin: -450px 0 0 -450px; border-radius: 50%;
+         background: radial-gradient(circle at 40% 36%, #D8263F 0%, #C8102E 55%, #A50D26 100%); box-shadow: 0 0 160px rgba(200,16,46,.35); }
+  #strike { position: absolute; overflow: hidden; height: 96px; }
+  #strike img { position: absolute; left: 0; top: 0; height: 96px; }
+  #nggak { left: 96px; font-weight: 900; font-size: 150px; line-height: 1; letter-spacing: -.04em; }
+  #ada { left: 100px; font-weight: 700; font-size: 66px; color: var(--blue-200); letter-spacing: -.01em; }
+
+  /* SSW over photo */
+  #photoWrap { overflow: hidden; }
+  #photo { position: absolute; left: 50%; top: 50%; width: 1282px; height: 1921px; margin: -960px 0 0 -641px; }
+  #photoShade { background: linear-gradient(180deg, rgba(10,23,48,.55) 0%, rgba(10,23,48,.12) 26%, rgba(10,23,48,.3) 45%, rgba(10,23,48,.9) 64%, rgba(10,23,48,1) 100%); }
+  .eyebrow { position: absolute; height: 44px; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 31px; letter-spacing: .16em;
+             color: var(--blue-200); white-space: nowrap; padding-left: 34px; line-height: 44px; }
+  .eyebrow i { position: absolute; left: 0; top: 13px; width: 18px; height: 18px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 5px rgba(200,16,46,.22); }
+  #ssw { left: 90px; font-weight: 900; font-size: 300px; line-height: .92; letter-spacing: -.05em; }
+  #ssw2 { left: 98px; font-weight: 700; font-size: 58px; letter-spacing: -.01em; }
+  #ssw2 .jp { font-family: 'Noto Sans JP', sans-serif; font-weight: 700; letter-spacing: .02em; }
+  #ssw3 { left: 100px; font-weight: 500; font-size: 40px; color: rgba(255,255,255,.88); }
+
+  /* requirements */
+  .hl { left: 96px; font-weight: 800; font-size: 96px; line-height: 1.04; letter-spacing: -.03em; }
+  .card { position: absolute; left: 96px; width: 888px; height: 196px; border-radius: 30px; background: rgba(255,255,255,.07);
+          border: 2px solid rgba(220,230,245,.2); box-shadow: 0 30px 60px rgba(2,8,22,.35); will-change: transform; }
+  .card .num { position: absolute; left: 34px; top: 52px; width: 92px; height: 92px; border-radius: 50%; background: var(--red); color: #fff;
+               font-weight: 800; font-size: 50px; line-height: 92px; text-align: center; box-shadow: 0 10px 24px rgba(200,16,46,.35); }
+  .card .t { position: absolute; left: 156px; top: 40px; font-weight: 800; font-size: 54px; letter-spacing: -.02em; white-space: nowrap; }
+  .card .s { position: absolute; left: 157px; top: 112px; font-weight: 500; font-size: 36px; color: var(--blue-200); white-space: nowrap; }
+  #pill { position: absolute; height: 76px; padding: 0 34px; border-radius: 999px; background: var(--red); color: #fff; font-weight: 800; font-size: 36px;
+          line-height: 76px; white-space: nowrap; box-shadow: 0 16px 34px rgba(200,16,46,.45); transform-origin: 20% 100%; }
+  #pill::after { content: ''; position: absolute; left: 44px; bottom: -14px; border: 14px solid transparent; border-bottom: 0; border-top-color: var(--red); }
+  .fine { position: absolute; left: 96px; width: 888px; font-weight: 500; font-size: 27px; line-height: 1.4; color: rgba(220,230,245,.66); }
+  #zoomCard { position: absolute; background: #132A52; border: 3px solid var(--red); opacity: 0; }
+
+  /* 日本語 scene */
+  #fujiWrap { position: absolute; left: 0; top: 0; width: 1080px; height: 960px; overflow: hidden; }
+  #fuji { position: absolute; left: -260px; top: 30px; width: 1600px; height: 900px; }
+  #fujiShade { position: absolute; left: 0; top: 0; width: 1080px; height: 960px;
+               background: linear-gradient(180deg, rgba(10,23,48,.45) 0%, rgba(10,23,48,0) 30%, rgba(10,23,48,.1) 60%, rgba(10,23,48,1) 97%); }
+  #nihongo { position: absolute; left: 0; width: 1080px; text-align: center; font-family: 'Shippori Mincho', serif; font-weight: 800; font-size: 250px; line-height: 1; white-space: nowrap; }
+  #nihongo span { display: inline-block; width: 250px; }
+  #nroma { position: absolute; left: 0; width: 1080px; text-align: center; font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: 36px; letter-spacing: .08em; color: rgba(255,255,255,.8); }
+  #nroma span { display: inline-block; width: 250px; }
+
+  /* bootcamp scene */
+  #studyWrap { position: absolute; left: 0; top: 0; width: 1080px; height: 900px; overflow: hidden; }
+  #study { position: absolute; left: -150px; top: 0; width: 1350px; height: 900px; }
+  #studyShade { position: absolute; left: 0; top: 0; width: 1080px; height: 900px; background: linear-gradient(180deg, rgba(10,23,48,.4) 0%, rgba(10,23,48,0) 25%, rgba(10,23,48,.15) 60%, rgba(10,23,48,1) 98%); }
+  .band { position: absolute; left: 0; top: 0; width: 1080px; height: 900px; overflow: hidden; opacity: 0; }
+  .band img { position: absolute; top: 0; width: 1620px; height: 900px; }
+  #sakura { left: -420px; } #torii { left: -280px; }
+  .bandShade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,23,48,.4) 0%, rgba(10,23,48,0) 25%, rgba(10,23,48,.15) 60%, rgba(10,23,48,1) 98%); }
+  .ilus { position: absolute; font-size: 23px; font-weight: 500; color: rgba(255,255,255,.72); letter-spacing: .02em; }
+  .chip { position: absolute; height: 78px; padding: 0 32px; border-radius: 999px; background: rgba(220,230,245,.12); border: 2px solid rgba(220,230,245,.28);
+          font-weight: 700; font-size: 36px; line-height: 74px; white-space: nowrap; transform-origin: 0 50%; }
+  .chip b { color: #FF5A70; }
+
+  /* end card */
+  .iris { position: absolute; border-radius: 50%; }
+  #irisRed { background: var(--red); }
+  #end { background: var(--paper); opacity: 0; overflow: hidden; }
+  #endTex { position: absolute; inset: -40px; background: url(/assets/dashboard/activity-paper-texture.webp) center/cover; opacity: .22; mix-blend-mode: multiply; }
+  #logo { position: absolute; left: 110px; top: 560px; width: 860px; height: 292.8px; transform-origin: 50% 50%; }
+  #logo img { position: absolute; left: 0; top: 0; width: 860px; height: 292.8px; }
+  .tag { position: absolute; left: 0; width: 1080px; text-align: center; font-weight: 800; font-size: 54px; color: var(--navy-900); letter-spacing: -.02em; }
+  #cta { position: absolute; left: 50%; top: 1112px; height: 112px; transform-origin: 50% 50%; }
+  #cta span { display: block; transform: translateX(-50%); height: 112px; line-height: 112px; padding: 0 64px; border-radius: 999px;
+              background: var(--red); color: #fff; font-weight: 700; font-size: 46px; white-space: nowrap; box-shadow: 0 18px 40px rgba(200,16,46,.28); }
+  #cta b { font-weight: 800; }
+  #endFine { position: absolute; left: 90px; width: 900px; top: 1300px; text-align: center; font-weight: 500; font-size: 27px; line-height: 1.4; color: var(--ink-500); }
+
+  /* teaser: routes */
+  .band { position: absolute; left: 0; top: 0; width: 1080px; height: 900px; overflow: hidden; }
+  .band img { position: absolute; }
+  .bandShade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,23,48,.45) 0%, rgba(10,23,48,0) 24%, rgba(10,23,48,.12) 58%, rgba(10,23,48,1) 98%); }
+  #rNight { left: -165px; top: 0; width: 1411px; height: 900px; }
+  #rTower { left: 0; top: -250px; width: 1080px; height: 1618px; }
+  #rKyoto { left: -270px; top: 0; width: 1620px; height: 900px; }
+  #counter { position: absolute; right: 96px; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 31px; letter-spacing: .1em; color: rgba(220,230,245,.6); }
+  .kj { position: absolute; left: 98px; font-family: 'Shippori Mincho', serif; font-weight: 700; font-size: 58px; color: rgba(255,255,255,.78); white-space: nowrap; }
+  .rname { left: 90px; font-weight: 900; font-size: 120px; line-height: .98; letter-spacing: -.04em; }
+  .rdesc { position: absolute; left: 98px; width: 888px; font-weight: 600; font-size: 40px; line-height: 1.3; color: rgba(255,255,255,.9); }
+  .nolpk { position: absolute; left: 96px; height: 76px; padding: 0 30px 0 22px; border-radius: 999px; background: rgba(255,255,255,.1); border: 2px solid rgba(220,230,245,.3);
+           font-weight: 800; font-size: 34px; line-height: 72px; white-space: nowrap; transform-origin: 0 50%; }
+  .nolpk i { display: inline-block; width: 40px; height: 40px; border-radius: 50%; background: #3F9A2E; margin-right: 14px; vertical-align: -9px; position: relative; }
+  .nolpk i::after { content: ''; position: absolute; left: 14px; top: 7px; width: 10px; height: 19px; border: solid #fff; border-width: 0 5px 5px 0; transform: rotate(45deg); }
+  /* teaser: route map */
+  #mapLine, #mapFill { position: absolute; left: 146px; width: 8px; border-radius: 4px; }
+  #mapLine { background: rgba(220,230,245,.18); }
+  #mapFill { background: var(--red); box-shadow: 0 0 18px rgba(200,16,46,.6); }
+  .node { position: absolute; left: 122px; width: 56px; height: 56px; border-radius: 50%; background: #132A52; border: 4px solid rgba(220,230,245,.35); }
+  .node b { position: absolute; inset: 0; text-align: center; line-height: 48px; font-weight: 800; font-size: 26px; color: rgba(220,230,245,.7); }
+  #traveller { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 8px rgba(200,16,46,.25), 0 0 30px rgba(200,16,46,.7); }
+  .st { position: absolute; left: 216px; font-weight: 800; font-size: 54px; letter-spacing: -.02em; white-space: nowrap; }
+  .ss { position: absolute; left: 218px; font-weight: 500; font-size: 36px; color: var(--blue-200); white-space: nowrap; }
+  #segera { position: absolute; left: 0; width: 1080px; top: 842px; text-align: center; font-weight: 900; font-size: 92px; letter-spacing: .08em; color: var(--red); transform-origin: 50% 50%; }
+  #url { position: absolute; left: 50%; top: 1150px; height: 100px; transform-origin: 50% 50%; }
+  #url span { display: block; transform: translateX(-50%); height: 100px; line-height: 100px; padding: 0 58px; border-radius: 999px; background: var(--navy-900); color: #fff; font-weight: 800; font-size: 44px; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="layer" id="bg"></div>
+  <div class="layer" id="glow"></div>
+  <div class="wm" id="wm"></div>
+
+  <!-- 1-2: hook -->
+  <div class="layer" id="hook">
+    <div id="sun"></div>
+    <div class="mask hq" id="hq1"><span>Kerja di Jepang</span></div>
+    <div class="mask hq" id="hq2"><span><span id="harus">harus</span> lewat</span></div>
+    <div class="mask hq" id="hq3"><span>LPK<span class="red">?</span></span></div>
+    <div id="strike"><img src="swoosh-brush.png" alt=""></div>
+    <div class="mask" id="nggak"><span>Nggak harus<i class="dotp" id="dotp"></i></span></div>
+    <div class="mask" id="ada"><span>Ada jalur lainnya.</span></div>
+  </div>
+
+  <!-- 3-5: three routes -->
+  <div class="layer" id="routes">
+    <div class="band" id="b1"><img id="rNight" src="/assets/landing/tokyo-night.jpg" alt=""><div class="bandShade"></div></div>
+    <div class="band" id="b2"><img id="rTower" src="/assets/landing/tokyo.jpg" alt=""><div class="bandShade"></div></div>
+    <div class="band" id="b3"><img id="rKyoto" src="/assets/dashboard/continue-kyoto-night.webp" alt=""><div class="bandShade"></div></div>
+    <div class="layer" id="qRed" style="background:#C8102E"></div>
+    <div id="counter">01 / 03</div>
+    <div class="eyebrow" id="re1" style="left:98px"><i></i>JALUR 1 · VISA PROFESIONAL</div>
+    <div class="kj" id="rk1">技術・人文知識・国際業務</div>
+    <div class="mask rname" id="rn1"><span>Gijinkoku</span></div>
+    <div class="rdesc" id="rd1">Untuk lulusan D3/S1, kerja sesuai bidang studi.</div>
+    <div class="nolpk" id="rc1"><i></i>Tanpa lewat LPK</div>
+    <div class="eyebrow" id="re2" style="left:98px"><i></i>JALUR 2 · SSW</div>
+    <div class="kj" id="rk2">特定技能</div>
+    <div class="mask rname" id="rn2"><span>Tokutei Ginou</span></div>
+    <div class="rdesc" id="rd2">Lulus tes bahasa Jepang + tes keterampilan bidang kerja.</div>
+    <div class="nolpk" id="rc2"><i></i>Tanpa lewat LPK</div>
+    <div class="eyebrow" id="re3" style="left:98px"><i></i>JALUR 3 · VISA AHLI</div>
+    <div class="kj" id="rk3">技能</div>
+    <div class="mask rname" id="rn3"><span>Ginou</span></div>
+    <div class="rdesc" id="rd3">Untuk tenaga ahli berpengalaman, mis. koki masakan asing (umumnya ±10 tahun).</div>
+    <div class="nolpk" id="rc3"><i></i>Tanpa lewat LPK</div>
+    <div class="fine" id="routeFine">Ringkasan umum. Syarat lengkap tiap visa berbeda dan bisa berubah; cek ketentuan resmi.</div>
+  </div>
+
+  <!-- 6: 日本語 -->
+  <div class="layer" id="nhScene">
+    <div id="fujiWrap"><img id="fuji" src="/assets/dashboard/progress-fuji-dawn.webp" alt=""><div id="fujiShade"></div></div>
+    <div id="nihongo"><span>日</span><span>本</span><span>語</span></div>
+    <div id="nroma"><span>ni</span><span>hon</span><span>go</span></div>
+    <div class="eyebrow" id="nhEb" style="left:96px"><i></i>APA PUN JALURNYA</div>
+    <div class="mask hl" id="nh1"><span>Bahasa Jepang</span></div>
+    <div class="mask hl" id="nh2"><span>jadi bekal utama.</span></div>
+  </div>
+
+  <!-- 7-9: route map with EzNihongo -->
+  <div class="layer" id="mapScene">
+    <div class="eyebrow" id="mEb" style="left:96px"><i></i>EZNIHONGO</div>
+    <div class="mask hl" id="m1"><span>Jalurmu bareng</span></div>
+    <div class="mask hl" id="m2"><span>EzNihongo:</span></div>
+    <div id="mapLine"></div><div id="mapFill"></div>
+    <div class="node" id="nd1"><b>1</b></div>
+    <div class="st" id="st1">Belajar bahasa Jepang</div>
+    <div class="ss" id="ss1">mulai dari dasar</div>
+    <div class="node" id="nd2"><b>2</b></div>
+    <div class="st" id="st2">Persiapan kerja</div>
+    <div class="ss" id="ss2">wawancara &amp; rencana jalur</div>
+    <div class="node" id="nd3"><b>3</b></div>
+    <div class="st" id="st3">Job matching</div>
+    <div class="ss" id="ss3">langsung dengan TSK di Jepang</div>
+    <div id="traveller"></div>
+    <div class="fine" id="mapFine">TSK: Tōroku Shien Kikan (登録支援機関), lembaga pendukung terdaftar untuk pekerja SSW di Jepang. Penerimaan kerja mengikuti seleksi perusahaan dan prosedur resmi.</div>
+  </div>
+
+  <!-- 10-11: end card -->
+  <div class="iris" id="irisRed"></div>
+  <div class="layer" id="end">
+    <div id="endTex"></div>
+    <div id="logo">
+      <img id="lgSwoosh" src="logo-swoosh.png" alt="">
+      <img id="lgText" src="logo-text.png" alt="">
+      <img id="lgEz" src="logo-ez.png" alt="">
+      <img id="lgTorii" src="logo-torii.png" alt="">
+      <img id="lgDot" src="logo-dot.png" alt="">
+    </div>
+    <div id="segera">SEGERA HADIR</div>
+    <div class="tag" id="tag1" style="top:972px">Kerja ke Jepang,</div>
+    <div class="tag" id="tag2" style="top:1040px">nggak harus lewat LPK.</div>
+    <div id="url"><span>eznihongo.com</span></div>
+    <div id="endFine" style="top:1310px">Penerimaan kerja mengikuti seleksi perusahaan dan prosedur resmi.</div>
+  </div>
+
+  <div class="layer" id="grain"></div>
+</div>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const BEAT = 60 / 132, BAR = 4 * BEAT;   // 11 bars = 20.000 s (music drums play half-time on this grid)
+window.DURATION = 20;
+const bar = (n, b = 0) => (n - 1) * BAR + b * BEAT;
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const p = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, u) => a + (b - a) * u;
+const eOutCubic = (u) => 1 - Math.pow(1 - u, 3);
+const eInCubic = (u) => u * u * u;
+const eInOut = (u) => (u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
+const eOutExpo = (u) => (u >= 1 ? 1 : 1 - Math.pow(2, -10 * u));
+const eOutBack = (u, s = 1.70158) => 1 + (s + 1) * Math.pow(u - 1, 3) + s * Math.pow(u - 1, 2);
+function spring(tau, zeta = 0.55, w = 15) {
+  if (tau <= 0) return 0;
+  const wd = w * Math.sqrt(1 - zeta * zeta);
+  return 1 - Math.exp(-zeta * w * tau) * (Math.cos(wd * tau) + (zeta * w / wd) * Math.sin(wd * tau));
+}
+function set(el, props) { const s = (typeof el === 'string' ? $(el) : el).style; for (const k in props) s[k] = props[k]; }
+function show(el, o) { set(el, { opacity: String(o), visibility: o <= 0.001 ? 'hidden' : 'visible' }); }
+function hash(n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+// mask line reveal: slides up from below its clip, exits upwards
+function line(id, top, tIn, tOut = 99, dur = 0.5) {
+  set(id, { top: top + 'px' });
+  const ui = eOutExpo(p(tNow, tIn, tIn + dur)), uo = eInCubic(p(tNow, tOut, tOut + 0.22));
+  $(id).firstElementChild.style.transform = `translateY(${(1 - ui) * 118 - uo * 118}%)`;
+  show(id, tNow >= tIn - 0.01 && tNow < tOut + 0.25 ? 1 : 0);
+}
+function eyebrow(id, top, tIn, tOut = 99) {
+  const u = eOutExpo(p(tNow, tIn, tIn + 0.4));
+  set(id, { top: top + 'px', transform: `translateX(${(1 - u) * -30}px)` });
+  show(id, clamp(p(tNow, tIn, tIn + 0.2) - p(tNow, tOut, tOut + 0.15)));
+  const dot = $(id).querySelector('i');
+  const ph = ((tNow) / BEAT) % 1;
+  dot.style.transform = `scale(${1 + 0.35 * Math.exp(-ph * 6)})`;
+}
+let tNow = 0;
+let M = {};   // measured layout (boot)
+
+
+const GROOVE = [3, 4, 5, 7, 8, 9];
+function render(t) {
+  tNow = t;
+  // soft glow breathes with the half-time kicks
+  let pulse = 0;
+  if (t >= bar(3) && t < bar(10)) for (const b of GROOVE) for (const s16 of [0, 7, 10]) {
+    const tk = bar(b) + s16 * BEAT / 4; if (t >= tk) pulse += Math.exp(-(t - tk) / 0.25);
+  }
+  show('glow', clamp(0.10 + 0.07 * Math.min(pulse, 1.3)) * (t < bar(10) - 0.2 ? 1 : 0));
+  // watermark kanji 道 (jalan / jalur) on the hook and the route map
+  const wms = [[0, bar(3) - 0.1, '道', 330, 120], [bar(7), bar(10) - 0.3, '道', 420, 520]];
+  let on = false;
+  for (const [a, b, ch, x, y] of wms) if (t >= a && t < b) {
+    const u = p(t, a, b); const wm = $('wm'); if (wm.textContent !== ch) wm.textContent = ch;
+    set(wm, { fontSize: '1000px', left: x + 'px', top: y + 'px', transform: `translate(${-60 * u}px, ${40 * u}px)` });
+    show(wm, 0.05 * clamp(p(t, a, a + 0.3)) * (1 - p(t, b - 0.25, b))); on = true;
+  }
+  if (!on) show('wm', 0);
+  const fi = Math.floor(t * 30);
+  $('grain').style.backgroundPosition = `${Math.floor(hash(fi) * 512)}px ${Math.floor(hash(fi + 7) * 512)}px`;
+  $('grain').style.opacity = t > bar(10) ? '0.035' : '0.07';
+  renderHook(t); renderRoutes(t); renderNihongo(t); renderMap(t); renderEnd(t);
+}
+
+// ------------------------------------------------------------ 1-2 hook
+function renderHook(t) {
+  if (t > bar(3) + 0.2) { show('hook', 0); return; }
+  show('hook', 1 - eOutCubic(p(t, bar(3) - 0.3, bar(3) - 0.08)));
+  // rising sun (brand red dot) balances the lower half; bumps with each hook word
+  let sp = 0;
+  for (const tb of [0, bar(1, 1), bar(1, 2), bar(2), bar(2, 1)]) if (t >= tb) sp += Math.exp(-(t - tb) / 0.14) * 0.025;
+  const su = eOutCubic(p(t, 0, 0.6));
+  set('sun', { left: '930px', top: (1900 - 110 * su) + 'px', transform: `scale(${0.85 + 0.15 * su + sp})` });
+  show('sun', 1 - eOutCubic(p(t, bar(3) - 0.45, bar(3) - 0.2)));
+  line('hq1', 540, 0.0);
+  line('hq2', 660, bar(1, 1));
+  // "LPK?" slams in on beat 3
+  set('hq3', { top: '776px' });
+  const u3 = p(t, bar(1, 2), bar(1, 2) + 0.34);
+  $('hq3').firstElementChild.style.transform = `translateY(${(1 - eOutExpo(u3)) * 60}%) scale(${1 + 0.3 * (1 - eOutExpo(u3))})`;
+  $('hq3').style.filter = `blur(${(1 - u3) * 10}px)`;
+  show('hq3', t >= bar(1, 2) - 0.01 ? 1 : 0);
+  // brush crosses out "harus" on the downbeat of bar 2
+  const sw = eOutCubic(p(t, bar(2) - 0.06, bar(2) + 0.14));
+  const r = M.harus;
+  set('strike', { left: (r.x - 26) + 'px', top: (r.y + r.h * 0.42 - 48) + 'px', width: ((r.w + 52) * sw) + 'px', transform: 'rotate(-4deg)', transformOrigin: '0 50%' });
+  $('strike').firstElementChild.style.width = (r.w + 52) + 'px';
+  show('strike', t >= bar(2) - 0.06 ? 1 : 0);
+  $('harus').style.opacity = String(1 - 0.55 * p(t, bar(2), bar(2) + 0.2));
+  // answer
+  line('nggak', 1080, bar(2, 1), 99, 0.45);
+  const du = spring(t - (bar(2, 1) + 0.12), 0.35, 18);
+  $('dotp').style.transform = `scale(${clamp(du, 0, 1.6)})`;
+  line('ada', 1250, bar(2, 2));
+}
+
+
+// ------------------------------------------------------------ 3-5 three routes (portal from the red dot)
+function renderRoutes(t) {
+  const a = bar(3) - 0.32, z = bar(6) + 0.06;
+  if (t < a || t > z) { show('routes', 0); return; }
+  show('routes', 1);
+  const uo = p(t, a, bar(3) + 0.12);
+  const R = lerp(M.dot.r, 1600, eInCubic(uo));
+  $('routes').style.clipPath = uo >= 1 ? 'none' : `circle(${R}px at ${M.dot.x}px ${M.dot.y}px)`;
+  $('qRed').style.opacity = String(1 - eOutCubic(p(t, a + 0.04, a + 0.3)));
+  const out = eInCubic(p(t, bar(6) - 0.32, bar(6) + 0.02));
+  $('routes').style.transform = `translateY(${-1920 * out}px)`;
+  const cur = t < bar(4) ? 1 : t < bar(5) ? 2 : 3;
+  $('counter').textContent = `0${cur} / 03`;
+  set('counter', { top: '936px' });
+  show('counter', clamp(p(t, bar(3), bar(3) + 0.2)));
+  // hard photo cut on each downbeat, then a slow push
+  [['b1', 'rNight', a, bar(4)], ['b2', 'rTower', bar(4), bar(5)], ['b3', 'rKyoto', bar(5), 99]].forEach(([band, im, t0, t1]) => {
+    show(band, t >= t0 && t < t1 ? 1 : 0);
+    const u = eOutExpo(p(t, t0, t0 + 0.45));
+    set(im, { transform: `scale(${1.14 - 0.1 * u + 0.03 * p(t, t0 + 0.45, t0 + BAR)})`, transformOrigin: '50% 45%' });
+  });
+  for (let k = 1; k <= 3; k++) {
+    const tIn = bar(k + 2) + (k === 1 ? 0.02 : 0), tOut = k < 3 ? bar(k + 3) - 0.2 : 99;
+    eyebrow('re' + k, 930, tIn, tOut);
+    const ku = eOutExpo(p(t, tIn + 0.05, tIn + 0.45));
+    set('rk' + k, { top: '988px', transform: `translateY(${(1 - ku) * 24}px)` });
+    show('rk' + k, clamp(p(t, tIn + 0.05, tIn + 0.25) - p(t, tOut, tOut + 0.15)));
+    line('rn' + k, 1054, tIn + 0.06, tOut);
+    const du = eOutExpo(p(t, tIn + 0.2, tIn + 0.6));
+    set('rd' + k, { top: '1190px', transform: `translateY(${(1 - du) * 26}px)` });
+    show('rd' + k, clamp(p(t, tIn + 0.2, tIn + 0.4) - p(t, tOut, tOut + 0.15)));
+    const c0 = bar(k + 2, 1) + 0.05;
+    const cu = spring(t - c0, 0.5, 16);
+    set('rc' + k, { top: '1330px', transform: `scale(${clamp(cu, 0, 1.25)})` });
+    show('rc' + k, t >= c0 ? clamp(p(t, c0, c0 + 0.08)) * (1 - p(t, tOut, tOut + 0.15)) : 0);
+  }
+  set('routeFine', { top: '1440px' });
+  show('routeFine', clamp(p(t, bar(3) + 0.3, bar(3) + 0.5)));
+}
+
+// ------------------------------------------------------------ 6 日本語
+function renderNihongo(t) {
+  const a = bar(6) - 0.3, z = bar(7) + 0.06;
+  if (t < a || t > z) { show('nhScene', 0); return; }
+  show('nhScene', 1);
+  const out = eInCubic(p(t, bar(7) - 0.3, bar(7) + 0.02));
+  $('nhScene').style.transform = `translateX(${-1080 * out}px)`;
+  const fu = eOutCubic(p(t, a, a + 0.5));
+  set('fujiWrap', { opacity: String(fu) });
+  set('fuji', { transform: `scale(${1.12 - 0.08 * fu - 0.03 * p(t, a + 0.5, bar(7))})` });
+  set('nihongo', { top: '760px' }); set('nroma', { top: '1030px' });
+  $('nihongo').querySelectorAll('span').forEach((s, i) => {
+    const ti = bar(6) + i * BEAT / 2, u = p(t, ti, ti + 0.24);
+    s.style.opacity = String(eOutCubic(u));
+    s.style.transform = `translateY(${(1 - eOutCubic(u)) * 60}px) scale(${1.25 - 0.25 * eOutBack(u, 2.2)})`;
+    s.style.filter = `blur(${(1 - u) * 10}px)`;
+  });
+  $('nroma').querySelectorAll('span').forEach((s, i) => {
+    const ti = bar(6) + i * BEAT / 2 + 0.08, u = eOutCubic(p(t, ti, ti + 0.25));
+    s.style.opacity = String(u); s.style.transform = `translateY(${(1 - u) * 16}px)`;
+  });
+  eyebrow('nhEb', 1126, bar(6) + 0.2);
+  line('nh1', 1184, bar(6) + 0.3);
+  line('nh2', 1284, bar(6) + 0.38);
+}
+
+
+// ------------------------------------------------------------ 7-9 route map
+const NODE_Y = [760, 980, 1200];
+function renderMap(t) {
+  const a = bar(7) - 0.3, z = bar(10) + 0.2;
+  if (t < a || t > z) { show('mapScene', 0); return; }
+  show('mapScene', 1);
+  const inn = eOutCubic(p(t, a, bar(7) + 0.06));
+  $('mapScene').style.transform = `translateX(${1080 * (1 - inn)}px)`;
+  eyebrow('mEb', 330, bar(7) + 0.02);
+  line('m1', 388, bar(7) + 0.06);
+  line('m2', 488, bar(7) + 0.12);
+  const top = NODE_Y[0] + 28, bottom = NODE_Y[2] + 28;
+  set('mapLine', { top: top + 'px', height: (bottom - top) * eOutCubic(p(t, bar(7), bar(7) + 0.6)) + 'px' });
+  // the red dot travels station to station, arriving on each downbeat
+  const arrive = [bar(7) + 0.1, bar(8) + 0.1, bar(9) + 0.1];
+  let y = NODE_Y[0] + 28;
+  if (t >= arrive[0]) y = lerp(NODE_Y[0], NODE_Y[1], eInOut(p(t, arrive[1] - 0.32, arrive[1]))) + 28;
+  if (t >= arrive[1]) y = lerp(NODE_Y[1], NODE_Y[2], eInOut(p(t, arrive[2] - 0.32, arrive[2]))) + 28;
+  set('mapFill', { top: top + 'px', height: Math.max(0, y - top) + 'px' });
+  set('traveller', { left: '150px', top: y + 'px', transform: `scale(${clamp(spring(t - (bar(7) - 0.05), 0.4, 16), 0, 1.4)})` });
+  show('traveller', t >= bar(7) - 0.05 ? 1 : 0);
+  for (let k = 1; k <= 3; k++) {
+    const ta = arrive[k - 1];
+    const act = t >= ta ? 1 : 0;
+    const pop = act ? clamp(0.85 + 0.15 * spring(t - ta, 0.45, 16) + 0.15 * Math.exp(-(t - ta) / 0.12), 0, 1.3) : 1;
+    set('nd' + k, { top: NODE_Y[k - 1] + 'px', background: act ? '#C8102E' : '#132A52', borderColor: act ? '#fff' : 'rgba(220,230,245,.35)',
+                   transform: `scale(${pop})`, boxShadow: act ? '0 0 0 10px rgba(200,16,46,.22), 0 0 32px rgba(200,16,46,.55)' : 'none' });
+    $('nd' + k).firstElementChild.style.color = act ? '#fff' : 'rgba(220,230,245,.7)';
+    show('nd' + k, clamp(p(t, bar(7) + 0.05 * k, bar(7) + 0.05 * k + 0.2)));
+    const lu = eOutExpo(p(t, ta, ta + 0.45));
+    set('st' + k, { top: (NODE_Y[k - 1] - 36) + 'px', transform: `translateX(${(1 - lu) * 40}px)` });
+    show('st' + k, t >= ta ? clamp(p(t, ta, ta + 0.15)) : 0);
+    set('ss' + k, { top: (NODE_Y[k - 1] + 34) + 'px', transform: `translateX(${(1 - eOutExpo(p(t, ta + 0.08, ta + 0.5))) * 40}px)` });
+    show('ss' + k, t >= ta + 0.08 ? clamp(p(t, ta + 0.08, ta + 0.23)) : 0);
+  }
+  set('mapFine', { top: '1350px' });
+  show('mapFine', clamp(p(t, bar(7) + 0.4, bar(7) + 0.6)));
+}
+
+// ------------------------------------------------------------ 8 end card
+function renderEnd(t) {
+  const T = bar(10);
+  const ra = T - 0.36, pa = T - 0.08;
+  const ur = eInCubic(p(t, ra, T - 0.02)), up = eOutCubic(p(t, pa, T + 0.22));
+  const cx = M.iris.x, cy = M.iris.y, R = 1650;
+  set('irisRed', { left: (cx - R) + 'px', top: (cy - R) + 'px', width: 2 * R + 'px', height: 2 * R + 'px', transform: `scale(${Math.max(ur, 0.0001)})` });
+  show('irisRed', t >= ra && t < T + 0.3 ? 1 : 0);
+  show('end', t >= pa ? 1 : 0);
+  $('end').style.clipPath = up >= 1 ? 'none' : `circle(${R * up}px at ${cx}px ${cy}px)`;
+  if (t < pa) return;
+  const LS = 860 / 2000;
+  const sw = eOutCubic(p(t, T, T + 0.34));
+  set('lgSwoosh', { clipPath: `inset(0 ${100 - sw * 100}% 0 0)` });
+  const ue = eOutExpo(p(t, T + 0.04, T + 0.4));
+  set('lgEz', { opacity: String(p(t, T + 0.04, T + 0.16)), transform: `translateY(${(1 - ue) * 36}px)` });
+  const ut = eOutExpo(p(t, T + 0.1, T + 0.46));
+  set('lgText', { opacity: String(p(t, T + 0.1, T + 0.22)), transform: `translateY(${(1 - ut) * 36}px)` });
+  const uo = spring(t - (T + 0.16), 0.42, 14);
+  set('lgTorii', { opacity: String(p(t, T + 0.16, T + 0.24)), transform: `translateY(${(1 - uo) * -70}px)` });
+  const land = bar(10, 1), fall0 = T + 0.12;
+  const dotCx = 868.5 * LS, dotCy = 256.5 * LS;
+  let dy = 0, sx = 1, sy = 1;
+  if (t < land) { const u = p(t, fall0, land); dy = -560 * (1 - u * u); }
+  else { const tb = t - land; dy = -34 * Math.max(0, Math.sin(Math.PI * clamp(tb / 0.26))); const sq = Math.exp(-tb / 0.06) * 0.28; sx = 1 + sq; sy = 1 - sq; }
+  set('lgDot', { opacity: String(p(t, fall0, fall0 + 0.05)), transformOrigin: `${dotCx}px ${dotCy + 24}px`, transform: `translateY(${dy}px) scale(${sx}, ${sy})` });
+  set('logo', { transform: `scale(${1 + 0.03 * eOutCubic(p(t, T + 0.5, 20))})` });
+  // SEGERA HADIR stamps in on beat 3 of bar 10
+  const sg = spring(t - bar(10, 2), 0.5, 14);
+  set('segera', { opacity: String(p(t, bar(10, 2), bar(10, 2) + 0.08)), transform: `scale(${1.35 - 0.35 * clamp(sg, 0, 1.2)}) rotate(${(1 - clamp(sg)) * -3}deg)` });
+  [['tag1', land + 0.02], ['tag2', land + 0.1]].forEach(([id, t0]) => {
+    const u = eOutExpo(p(t, t0, t0 + 0.5));
+    set(id, { opacity: String(p(t, t0, t0 + 0.18)), transform: `translateY(${(1 - u) * 30}px)` });
+  });
+  set('url', { opacity: String(p(t, bar(10, 2) + 0.2, bar(10, 2) + 0.28)), transform: `scale(${0.7 + 0.3 * spring(t - (bar(10, 2) + 0.2), 0.5, 15)})` });
+  set('endFine', { opacity: String(p(t, bar(10, 2) + 0.4, bar(10, 2) + 0.6)) });
+}
+
+
+async function boot() {
+  const c = document.createElement('canvas'); c.width = c.height = 512;
+  const g = c.getContext('2d'); const img = g.createImageData(512, 512);
+  let s = 1234567;
+  for (let i = 0; i < img.data.length; i += 4) { s = (s * 16807) % 2147483647; const v = (s / 2147483647) * 255; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+  g.putImageData(img, 0, 0);
+  $('grain').style.backgroundImage = `url(${c.toDataURL()})`;
+  await document.fonts.ready;
+  await Promise.all(['800 108px Inter', '900 250px Inter', '700 31px "JetBrains Mono"', '800 250px "Shippori Mincho"', '700 58px "Noto Sans JP"', '500 40px Inter']
+    .map((f) => document.fonts.load(f, '日本語道技学特定技能 ABCabc?,.')));
+  await Promise.all([...document.images].map((im) => im.decode().catch(() => {})));
+  // measure static layout: the struck word and the red period (portal origin)
+  M.harus = { x: 0, y: 0, w: 0, h: 0 }; M.dot = { x: 540, y: 1100, r: 16 }; M.iris = { x: 150, y: 1228 };
+  render(bar(2, 3));
+  const hr = $('harus').getBoundingClientRect(), dr = $('dotp').getBoundingClientRect();
+  M.harus = { x: hr.x, y: hr.y, w: hr.width, h: hr.height };
+  M.dot = { x: dr.x + dr.width / 2, y: dr.y + dr.height / 2, r: dr.width / 2 };
+  window.__ready = true;
+  render(Number(new URLSearchParams(location.search).get('t') || 0));
+}
+
+window.render = render;
+boot();
+</script>
+</body>
+</html>

@@ -8,3 +8,5 @@ composition/music_*.json
 composition/seg_ssw/
 capture/netcache/
 composition/__pycache__/
+composition/music_teaser.wav
+composition/seg_teaser/

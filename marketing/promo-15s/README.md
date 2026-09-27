@@ -1,7 +1,8 @@
 # Video promosi EzNihongo (vertikal)
 
-Dua video di folder ini:
+Tiga video di folder ini:
 
+0. `EzNihongo_Teaser_TanpaLPK_20s_1080x1920.mp4` — **teaser pra-rilis**: kerja ke Jepang nggak harus lewat LPK, ada jalur Gijinkoku / Tokutei Ginou / Ginou, dan jalurnya bisa lewat EzNihongo. Musik lo-fi "estetik". Lihat bagian *Video 3*.
 1. `EzNihongo_Promo_JalurMandiri_20s_1080x1920.mp4` — **ajakan belajar**: kerja ke Jepang jalur mandiri (SSW) tanpa lewat LPK, 20 detik, murni promosi tanpa tampilan aplikasi. Lihat bagian *Video 2*.
 2. `EzNihongo_Promo_15s_1080x1920.mp4` — tur fitur aplikasi, 15 detik (bagian di bawah ini).
 
@@ -43,6 +44,60 @@ backend + Postgres lokal, login sebagai pelajar fiktif **Rina Pratiwi**
 live class adalah data contoh (sebagian di-patch pada respons JSON di `capture/capture.cjs`,
 sisanya di `capture/fixture.sql`). Keterangan "Tampilan aplikasi EzNihongo · data contoh"
 tampil di layar selama adegan aplikasi.
+
+## Video 3 — teaser pra-rilis: nggak harus lewat LPK (20 detik)
+
+**File:** `EzNihongo_Teaser_TanpaLPK_20s_1080x1920.mp4` · 1080 × 1920 · 30 fps · 600 frame ·
+durasi kontainer **tepat 20,000 s** · audio −14,0 LUFS, peak −1,5 dBFS.
+Versi sebelum EzNihongo rilis: tanpa tampilan aplikasi, tanpa harga, CTA **"Segera hadir · eznihongo.com"**.
+
+| Waktu | Bar | Visual | Teks |
+|---|---|---|---|
+| 0,00–3,64 | 1–2 | Tipografi + matahari merah, kuas mencoret *harus* | Kerja di Jepang harus lewat **LPK?** → **Nggak harus.** Ada jalur lainnya. |
+| 3,64–5,45 | 3 | Portal titik merah → Tokyo malam | JALUR 1 · VISA PROFESIONAL · 技術・人文知識・国際業務 **Gijinkoku** · Untuk lulusan D3/S1, kerja sesuai bidang studi. · ✓ Tanpa lewat LPK |
+| 5,45–7,27 | 4 | Cut ke Tokyo Tower | JALUR 2 · SSW · 特定技能 **Tokutei Ginou** · Lulus tes bahasa Jepang + tes keterampilan bidang kerja. · ✓ Tanpa lewat LPK |
+| 7,27–9,09 | 5 | Cut ke gang restoran Kyoto | JALUR 3 · VISA AHLI · 技能 **Ginou** · Untuk tenaga ahli berpengalaman, mis. koki masakan asing (umumnya ±10 tahun). · ✓ Tanpa lewat LPK |
+| 9,09–10,91 | 6 | Swipe ke Fuji, 日本語 per ketukan (musik breakdown) | APA PUN JALURNYA · **Bahasa Jepang jadi bekal utama.** |
+| 10,91–16,36 | 7–9 | Peta rute: titik merah berjalan antar-stasiun per bar | **Jalurmu bareng EzNihongo:** ① Belajar bahasa Jepang (mulai dari dasar) ② Persiapan kerja (wawancara & rencana jalur) ③ Job matching (langsung dengan TSK di Jepang) |
+| 16,36–20,00 | 10–11 | Titik merah stasiun 3 jadi iris → logo, stempel **SEGERA HADIR** | Kerja ke Jepang, nggak harus lewat LPK. · eznihongo.com |
+
+### Akurasi klaim (video 3)
+
+- **Gijinkoku** (技術・人文知識・国際業務): syarat umumnya lulusan universitas/junior college (di
+  Indonesia umumnya D3/S1) dengan pekerjaan terkait bidang studi, atau pengalaman kerja tertentu.
+  Sejak 15 April 2026, peran yang banyak berkomunikasi dengan orang dapat mensyaratkan kemampuan
+  bahasa setara CEFR B2 (mis. JLPT N2).
+- **Tokutei Ginou (SSW)**: lulus tes bahasa (JFT-Basic A2 / JLPT N4) + tes keterampilan bidang.
+- **Ginou** (技能): visa tenaga ahli (mis. koki masakan asing), umumnya butuh ±10 tahun pengalaman.
+  Ini **bukan** 技能実習 *Ginou Jisshu* (magang), yang di Indonesia memang lewat LPK/SO.
+- Ketiga jalur di atas tidak mensyaratkan LPK, tapi tetap melalui prosedur resmi Jepang dan
+  Kementerian P2MI. Catatan kecil di layar: "Ringkasan umum. Syarat lengkap tiap visa berbeda dan bisa
+  berubah; cek ketentuan resmi."
+- **TSK** = Tōroku Shien Kikan (登録支援機関), lembaga pendukung terdaftar untuk pekerja SSW di Jepang
+  (dijelaskan di layar). Klaim "job matching langsung dengan TSK di Jepang" berasal dari pemilik
+  EzNihongo. Pastikan layanan ini benar-benar tersedia saat iklan tayang. Penyaluran/penempatan
+  pekerja migran di Indonesia memerlukan izin P3MI (UU 18/2017), jadi wording video sengaja
+  berbunyi "job matching", bukan "penyaluran/penempatan kerja".
+- Sumber (hasil pencarian web, 27 Sep 2026): portal.jp-mirai.org dan yolo-japan (syarat Gijinkoku
+  & perubahan 2026), panduan visa Skilled Labor untuk koki (hr.visajapan.jp, office-ishinagi.com),
+  ssw.center dan jftbasic.com (istilah TSK), serta sumber SSW di video 2.
+
+### Musik video 3 (lo-fi "estetik")
+
+`audio_teaser.py`: electric piano FM gaya Rhodes dengan tape wow, progresi 王道進行 (Gmaj7 → A7 →
+F#m7 → Bm7), koto jarang dan lebih "berudara", drum lo-fi half-time dengan hi-hat swing, bass hangat,
+vinyl crackle, reverse-piano swell sebagai pengganti riser, master hangat (treble dilembutkan, saturasi
+ringan) dinormalisasi ke −14 LUFS. Grid gambar tetap 132 BPM, jadi drum half-time terasa ±66 BPM.
+Semua disintesis sendiri (`synth.py`), sehingga aman untuk komersial.
+
+### Render ulang video 3
+
+```sh
+cd marketing/promo-15s/composition
+python3 audio_teaser.py                                         # -> music_teaser.wav
+PAGE=teaser.html SEG=seg_teaser node render_par.cjs 4 30 4
+SEG=seg_teaser AUDIO=music_teaser.wav DUR=20 ./encode.sh ../EzNihongo_Teaser_TanpaLPK_20s_1080x1920.mp4
+```
 
 ## Video 2 — jalur mandiri tanpa LPK (20 detik)
 
@@ -91,6 +146,8 @@ Inti pesannya: **ajakan belajar di EzNihongo**. Tanpa harga, tanpa tampilan webs
 | Gunung Fuji saat fajar | `assets/dashboard/progress-fuji-dawn.webp`, Turquo Cabbit / Unsplash | Unsplash |
 | Kereta & sakura | `assets/dashboard/continue-sakura-train.webp`, Spenser Sembrat / Unsplash | Unsplash |
 | Torii Hakone | `assets/dashboard/continue-hakone-torii.webp`, Regina Bartha / Unsplash | Unsplash |
+| Tokyo malam (video 3) | `assets/landing/tokyo-night.jpg`, Mateusz Walendzik / Pexels | Pexels |
+| Gang Kyoto malam (video 3) | `assets/dashboard/continue-kyoto-night.webp`, Julien / Unsplash | Unsplash |
 
 Semua sudah tercatat di `photo-credits.html` / `assets/dashboard/README.md`.
 

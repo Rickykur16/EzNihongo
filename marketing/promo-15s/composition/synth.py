@@ -296,27 +296,35 @@ def brush(dur=0.32):
 
 
 
-def master():
+def master(pump_depth=0.45, rev_decay=0.42, rev_level=0.35, warmth=None, drive=None, thr=0.25):
     """Sidechain pump, convolution reverb, end fade, glue compression, peak normalise.
+    The defaults are the original 15 s / 20 s promo master; the lo-fi teaser passes a
+    lighter pump, a longer softer room, a treble roll-off (warmth, Hz) and tape drive.
     Returns (stereo float32 array, peak before normalisation)."""
     pump = np.ones(N)
     for t in PUMP_TRIG:
         i = int(t * SR)
         k = np.arange(N - i) / SR
-        pump[i:] = np.minimum(pump[i:], 1 - 0.45 * np.exp(-k / 0.11))
+        pump[i:] = np.minimum(pump[i:], 1 - pump_depth * np.exp(-k / 0.11))
     # Apply pump to the bus minus drums is not tracked separately; instead duck the
     # whole reverb bus and apply a gentle overall pump (drums punch through anyway).
     n_ir = int(2.2 * SR)
     ti = np.arange(n_ir) / SR
-    irL = lp(rng.standard_normal(n_ir), 6000) * np.exp(-ti / 0.42)
-    irR = lp(rng.standard_normal(n_ir), 6000) * np.exp(-ti / 0.42)
+    irL = lp(rng.standard_normal(n_ir), 6000) * np.exp(-ti / rev_decay)
+    irR = lp(rng.standard_normal(n_ir), 6000) * np.exp(-ti / rev_decay)
     pre = int(0.018 * SR)
     irL = np.concatenate([np.zeros(pre), irL]) / np.sqrt(np.sum(irL ** 2))
     irR = np.concatenate([np.zeros(pre), irR]) / np.sqrt(np.sum(irR ** 2))
-    wetL = signal.fftconvolve(hp(REV_L, 250), irL)[:N] * 0.35 * pump
-    wetR = signal.fftconvolve(hp(REV_R, 250), irR)[:N] * 0.35 * pump
+    wetL = signal.fftconvolve(hp(REV_L, 250), irL)[:N] * rev_level * pump
+    wetR = signal.fftconvolve(hp(REV_R, 250), irR)[:N] * rev_level * pump
     mixL = hp(L + PL * pump + wetL, 36, 4)
     mixR = hp(R + PR * pump + wetR, 36, 4)
+    if warmth:
+        mixL, mixR = lp(mixL, warmth, 1), lp(mixR, warmth, 1)
+    if drive:
+        ref = max(np.abs(mixL).max(), np.abs(mixR).max())
+        mixL = np.tanh(drive * mixL / ref) * ref
+        mixR = np.tanh(drive * mixR / ref) * ref
 
     # end fade (last 0.35 s) so the file ends in silence exactly at DUR
     fade = int(0.35 * SR)
@@ -327,7 +335,6 @@ def master():
 
     # gentle glue compression (RMS, stereo linked)
     lvl = np.sqrt(lp((mixL ** 2 + mixR ** 2) / 2, 12, 1).clip(1e-12))
-    thr = 0.25
     gain = np.where(lvl > thr, (thr / lvl) ** (1 - 1 / 2.0), 1.0)
     mixL *= gain
     mixR *= gain
@@ -336,3 +343,95 @@ def master():
     mixR /= peak / 0.89
     st = np.stack([mixL, mixR], axis=1).astype(np.float32)
     return st, peak
+
+
+# ---------------------------------------------------------------- lo-fi palette (teaser)
+def ep_note(freq, dur, vel=1.0):
+    """FM electric piano (Rhodes-like): 1:1 modulator for the body, 14:1 for the tine."""
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    idx = 0.15 + 1.05 * vel * np.exp(-t * 3.0)
+    tine = 0.35 * vel * np.exp(-t * 45) * np.sin(2 * np.pi * freq * 14 * t)
+    body = np.sin(2 * np.pi * freq * t + idx * np.sin(2 * np.pi * freq * t) + tine)
+    env = np.minimum(1, t / 0.003) * np.exp(-t * (1.1 + freq / 900)) * np.minimum(1, np.maximum(0, (dur - t) / 0.08))
+    return np.tanh(1.2 * body * env) * 0.22 * vel
+
+
+def ep_chord(notes, dur, vel=1.0, strum=0.012):
+    """Returns (L, R) with Rhodes-style stereo tremolo; notes are slightly strummed."""
+    n = int(dur * SR)
+    out = np.zeros(n)
+    for i, nm in enumerate(notes):
+        d = int(i * strum * SR)
+        x = ep_note(note_hz(nm), dur - i * strum, vel * (0.9 + 0.1 * rng.random()))
+        out[d:d + len(x)] += x[:n - d]
+    t = np.arange(n) / SR
+    trem = 0.12 * np.sin(2 * np.pi * 4.2 * t)
+    return out * (1 + trem), out * (1 - trem)
+
+
+def wow(sig, depth_ms=0.9, rate=0.55, flutter=0.12):
+    """Tape wow/flutter: slowly modulated fractional delay."""
+    n = len(sig)
+    t = np.arange(n) / SR
+    d = (depth_ms / 1000) * SR * (1 + np.sin(2 * np.pi * rate * t) + flutter * np.sin(2 * np.pi * 7.3 * t))
+    return np.interp(np.arange(n) - d, np.arange(n), sig, left=0.0)
+
+
+def lofi_kick():
+    n = int(0.35 * SR)
+    t = np.arange(n) / SR
+    f = 46 + 70 * np.exp(-t * 26)
+    body = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 11)
+    click = lp(rng.standard_normal(n), 1800) * np.exp(-t * 320) * 0.25
+    return np.tanh(1.3 * (body + click)) * 0.85
+
+
+def lofi_snare():
+    n = int(0.3 * SR)
+    t = np.arange(n) / SR
+    tone = np.sin(2 * np.pi * 185 * t) * np.exp(-t * 32) * 0.45
+    nz = bp(rng.standard_normal(n), 900, 5200) * np.exp(-t * 24)
+    return lp(np.tanh(1.4 * (tone + nz)), 4800) * 0.5
+
+
+def soft_hat():
+    n = int(0.05 * SR)
+    t = np.arange(n) / SR
+    return lp(hp(rng.standard_normal(n), 6500, 2), 11000) * np.exp(-t * 85) * 0.3
+
+
+def upright(freq, dur):
+    """Warm round bass: sine + a touch of 2nd/3rd harmonic, plucked envelope."""
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    f = freq * (1 + 0.012 * np.exp(-t * 30))
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    x = np.sin(ph) + 0.25 * np.sin(2 * ph) + 0.08 * np.sin(3 * ph)
+    env = np.minimum(1, t / 0.004) * np.exp(-t * 1.6) * np.minimum(1, np.maximum(0, (dur - t) / 0.05))
+    return lp(np.tanh(1.1 * x) * env, 900) * 0.5
+
+
+def crackle(dur, rate=9.0):
+    """Vinyl bed: sparse clicks plus a little band-limited hiss (mono)."""
+    n = int(dur * SR)
+    out = bp(rng.standard_normal(n), 1500, 7000) * 0.0045
+    k = rng.poisson(rate * dur)
+    for pos, amp, ln in zip(rng.integers(0, n - 200, k), rng.uniform(0.02, 0.09, k), rng.integers(12, 60, k)):
+        out[pos:pos + ln] += amp * rng.standard_normal(ln) * np.exp(-np.arange(ln) / (ln / 3))
+    return bp(out, 700, 9000)
+
+
+def air_pad(notes, dur, attack=0.6, release=0.8):
+    """Soft sine/triangle pad with breathy filtered noise, no bright saw edge."""
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    out = np.zeros(n)
+    for nm in notes:
+        f = note_hz(nm)
+        for d in (-0.06, 0.06):
+            ph = 2 * np.pi * f * 2 ** (d / 12) * t + rng.uniform(0, 6)
+            out += np.sin(ph) + 0.12 * np.sin(3 * ph)
+    breath = bp(rng.standard_normal(n), 800, 3000) * 0.05
+    e = np.minimum(1, t / attack) * np.minimum(1, np.maximum(0, (dur - t) / release))
+    return lp(out / (2 * len(notes)) + breath, 2500) * e * 0.12
