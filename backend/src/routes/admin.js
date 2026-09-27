@@ -57,8 +57,21 @@ import {
 import { loadMasteryShadow, summarizeShadow } from '../grammar-mastery-shadow.js';
 import { loadPilotLessonOptions } from '../bunpou-pilot-catalog.js';
 import { BoundaryContextError, getCurriculumBoundary } from '../curriculum-boundary.js';
-import { validateAndWriteContent, boundaryWriteHttpError } from '../curriculum-content-service.js';
-import { validateContentAgainstBoundary } from '../curriculum-boundary-validator.js';
+import { validateAndWriteContent, boundaryWriteHttpError, lockCurriculumCourse,
+  lockCurriculumCourses, lockCurriculumGraph } from '../curriculum-content-service.js';
+import { validateContentAgainstBoundary, CURRICULUM_VALIDATOR_VERSION } from '../curriculum-boundary-validator.js';
+import { generateGroundedContent } from '../grounded-generation.js';
+import { dialogueSourceFingerprint } from '../curriculum-boundary-context.js';
+import { DialogueQuestionError, loadDialogueQuestionContext, listDialogueQuestions,
+  saveDialogueQuestions, assertDialogueQuestionLessonMoveAllowed } from '../dialogue-question-service.js';
+import { getLearningFlowSettings, saveLearningFlowSettings } from '../learning-flow-config.js';
+import { CurriculumModeError, getCurriculumBoundaryMode,
+  saveCurriculumBoundaryMode } from '../curriculum-boundary-mode.js';
+import { captureReadinessAttestation,
+  listReadinessAttestations } from '../curriculum-readiness-attestations.js';
+import { validateBunpouPublish } from '../curriculum-bunpou-validation.js';
+import { deckReadingSourceFingerprint, distractorSourceFingerprint,
+  assertGenerationSourceUnchanged } from '../curriculum-generation-source.js';
 import { decideBoundaryAction } from '../curriculum-boundary-policy.js';
 import { V2_CONFIG, POLICY_V2, POLICY_SETTING_KEY, resolvePolicy } from '../grammar-mastery-policy.js';
 import {
@@ -70,6 +83,100 @@ import {
 } from '../learning-scope-warnings.js';
 
 const router = Router();
+
+// Draft generation is deliberately separate from guarded writes. The row is
+// loaded again after Claude responds by generateGroundedContent, so a changed
+// source cannot be presented as a current draft.
+const groundedGenerationMetadata = result => ({ status: result.status,
+  report: result.report, decision: result.decision ?? null, attempts: result.attempts,
+  boundaryFingerprint: result.boundaryFingerprint ?? null,
+  sourceFingerprint: result.sourceFingerprint ?? null });
+const generationExampleCount = value => Math.max(1, Math.min(5, Math.trunc(Number(value) || 3)));
+
+async function groundedDraft({ scope, contentType, loadSource, instruction, maxTokens,
+  body, communicationGoal = '', scenario = '', trustedValidation = {},
+  expectedExampleCount = null, additionalSchemaIssues = null,
+  model = null, system = 'Create one Japanese learning-content draft. Return only one valid JSON object using the requested keys.',
+  transformCandidate = x => x }) {
+  return generateGroundedContent({ scope, contentType, loadSource, communicationGoal,
+    scenario, trustedValidation, expectedExampleCount, additionalSchemaIssues,
+    onTerminal: event => console.info(JSON.stringify(event)),
+    expectedBoundaryFingerprint: body.boundaryFingerprint || null,
+    expectedSourceFingerprint: body.sourceFingerprint || null,
+    provider: async ({ prompt, repairFeedback }) => {
+      const raw = await callClaude({
+      system,
+      userContent: `${instruction}\n\nAuthoritative curriculum context (JSON):\n${prompt}\n\n${repairFeedback
+        ? `Repair the previous output. Issues: ${JSON.stringify(repairFeedback)}\n` : ''}Return only JSON.`,
+      maxTokens,
+      ...(model ? { model } : {}),
+      });
+      if (!raw) throw new Error('ai_upstream');
+      return raw;
+    },
+    parse: raw => {
+      const parsed = typeof raw === 'string' ? _extractJsonObject(raw) : raw;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('model_output_invalid_json');
+      return transformCandidate(parsed);
+    },
+  });
+}
+
+function legacyQuizQuestionToCanonical(raw, { passage = null, listening = false } = {}) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+  const keys = listening ? ['question', 'audioScript', 'options', 'explanation'] :
+    ['question', 'options', 'explanation'];
+  if (Object.keys(raw).some(key => !keys.includes(key))) return raw;
+  const options = Array.isArray(raw.options) ? raw.options.map(option => option?.text) : raw.options;
+  const correct = Array.isArray(raw.options) ? raw.options.flatMap((option, index) =>
+    option?.isCorrect === true ? [index] : []) : [];
+  const invalidOptionShape = Array.isArray(raw.options) && raw.options.some(option =>
+    !option || typeof option !== 'object' || Array.isArray(option) ||
+    Object.keys(option).some(key => !['text', 'isCorrect'].includes(key)) ||
+    typeof option.text !== 'string' || typeof option.isCorrect !== 'boolean');
+  return { prompt: raw.question, options, correctIndex: invalidOptionShape || correct.length !== 1 ? -1 : correct[0],
+    explanation: raw.explanation,
+    ...(listening ? { audioScript: raw.audioScript } : {}),
+    ...(passage != null ? { passage } : {}) };
+}
+
+function legacyQuizBatchToCanonical(parsed, { listening = false, needsPassage = false } = {}) {
+  if (needsPassage) {
+    if (!Array.isArray(parsed.passages) || Object.keys(parsed).some(key => key !== 'passages')) return parsed;
+    return { questions: parsed.passages.flatMap(group =>
+      group && typeof group === 'object' && !Array.isArray(group) &&
+      Array.isArray(group.questions) && Object.keys(group).every(key => ['passage', 'questions'].includes(key))
+        ? group.questions.map(question => legacyQuizQuestionToCanonical(question, { passage: group.passage }))
+        : [null]) };
+  }
+  if (!Array.isArray(parsed.questions) || Object.keys(parsed).some(key => key !== 'questions')) return parsed;
+  return { questions: parsed.questions.map(question => legacyQuizQuestionToCanonical(question, { listening })) };
+}
+
+const legacyQuizOptions = question => question.options.map((text, index) =>
+  ({ text, isCorrect: index === question.correctIndex }));
+
+function grammarGenerationSignature(row) {
+  const literal = String(row.pattern || '').replace(/[〜～~（）()\[\]{}・….,/\s]/gu, '');
+  if (!/[\p{Script=Hiragana}\p{Script=Katakana}\p{Unified_Ideograph}]{2,}/u.test(literal)) return [];
+  return [{ grammarId: String(row.id), version: CURRICULUM_VALIDATOR_VERSION,
+    regex: new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'u') }];
+}
+
+function groundedResponse(res, result, fields = {}, statusOverride = null) {
+  const status = statusOverride ?? (result.status === 'stale' ? 409 : result.status === 'unavailable' ? 503 : 200);
+  const generation = groundedGenerationMetadata(result);
+  return res.status(status).json({ ...fields, candidate: result.candidate,
+    ...generation, generation });
+}
+
+function rejectGroundedResult(result, violation) {
+  result.status = 'rejected';
+  result.report = { ...result.report, valid: false,
+    violations: [...(result.report?.violations || []), violation] };
+  result.decision = decideBoundaryAction({ mode: result.context?.course?.mode || 'enforce',
+    operation: 'generate', report: result.report });
+}
 
 async function safeLearningWarnings(loadWarnings) {
   try {
@@ -85,6 +192,99 @@ async function safeLearningWarnings(loadWarnings) {
 
 // Every route in this file requires admin
 router.use(requireAuth, requireCompanyAdmin);
+
+function dialogueQuestionFailure(res, error) {
+  if (!(error instanceof DialogueQuestionError)) throw error;
+  res.set('Cache-Control', 'private, no-store');
+  return res.status(error.status).json({ error: error.code,
+    ...(error.report ? { validation: error.report, report: error.report } : {}) });
+}
+
+// Owner-only: these editor DTOs include answer keys and private transfer
+// questions. Their exact methods are also recorded in company-route-policy.
+router.get('/grammar/:id/dialogue-questions', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try {
+    const result = await listDialogueQuestions(req.params.id,
+      { sourceLessonId: req.query.sourceLessonId || null });
+    res.set('Cache-Control', 'private, no-store');
+    res.json(result);
+  } catch (error) { dialogueQuestionFailure(res, error); }
+}));
+
+router.put('/grammar/:id/dialogue-questions', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try {
+    const result = await saveDialogueQuestions(req.params.id, req.body || {});
+    res.set('Cache-Control', 'private, no-store');
+    res.json(result);
+  } catch (error) { dialogueQuestionFailure(res, error); }
+}));
+
+router.post('/grammar/:id/generate-dialog-questions', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  const body = req.body || {};
+  const kind = body.kind;
+  const count = body.count ?? 1;
+  if (!body.sourceLessonId || !body.expectedDialogueFingerprint ||
+      !['comprehension', 'transfer'].includes(kind) || !Number.isInteger(count) ||
+      count < (kind === 'comprehension' ? 1 : 0) || count > (kind === 'comprehension' ? 2 : 1)) {
+    return res.status(400).json({ error: 'dialogue_generation_context_required' });
+  }
+  let context;
+  try { context = await loadDialogueQuestionContext({ query }, req.params.id, body.sourceLessonId); }
+  catch (error) { return dialogueQuestionFailure(res, error); }
+  if (context.dialogueFingerprint !== body.expectedDialogueFingerprint) {
+    return res.status(409).json({ error: 'dialogue_changed_since_editor_open' });
+  }
+  if (!context.turns.some(turn => turn.text)) return res.status(422).json({ error: 'source_dialogue_missing' });
+  const loadSource = async () => {
+    const current = await loadDialogueQuestionContext({ query }, req.params.id, body.sourceLessonId);
+    return { turns: current.turns, grammarId: current.grammar.id,
+      sourceLessonId: current.sourceLessonId, dialogueFingerprint: current.dialogueFingerprint,
+      goal: current.grammar.communication_goal || '',
+      translation: current.grammar.example_dialog_id || '' };
+  };
+  const initialSource = await loadSource();
+  if (initialSource.dialogueFingerprint !== context.dialogueFingerprint) {
+    return res.status(409).json({ error: 'dialogue_changed_since_editor_open' });
+  }
+  const sourceFingerprint = dialogueSourceFingerprint(initialSource);
+  if (count === 0) {
+    const report = { status: 'not_run', valid: null, violations: [], warnings: [] };
+    return groundedResponse(res, { status: 'ready', candidate: { questions: [] }, report,
+      decision: { decision: 'allowed', canProceed: true, statusCode: 200, code: null },
+      attempts: [], boundaryFingerprint: null, sourceFingerprint },
+    { questions: [], dialogueFingerprint: context.dialogueFingerprint });
+  }
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled' });
+  const result = await groundedDraft({ scope: { grammarId: req.params.id,
+    lessonId: context.sourceLessonId },
+    contentType: kind === 'comprehension' ? 'dialogue_comprehension' : 'dialogue_transfer',
+    loadSource, body: { ...body, sourceFingerprint },
+    communicationGoal: context.grammar.communication_goal || '',
+    maxTokens: 1300, model: ANTHROPIC_GEN_MODEL,
+    instruction: `Create exactly ${count} ${kind} multiple-choice question(s) for the persisted Japanese dialogue. Return JSON {"questions":[{"prompt":"...","options":["...","...","..."],"correctIndex":0,"explanation":"..."${kind === 'comprehension' ? ',"evidence":[{"turnIndex":0,"quote":"exact source quote"}]' : ''}}]}. Every option, explanation and evidence quote must be grounded in the source. ${kind === 'comprehension' ? 'Evidence must cite an exact Japanese dialogue turn quote.' : 'Test transfer to a new situation; do not claim source-turn evidence.'}`,
+    additionalSchemaIssues: candidate => {
+      const questions = candidate.questions;
+      if (!Array.isArray(questions) || questions.length !== count || candidate.question != null ||
+          candidate.evidence != null) return [{ code: 'dialogue_question_count_invalid' }];
+      return questions.flatMap((question, index) =>
+        kind === 'comprehension' ? (!Array.isArray(question?.evidence) || !question.evidence.length
+          ? [{ code: 'dialogue_question_evidence_required', questionIndex: index }] : []) :
+          question?.evidence != null ? [{ code: 'transfer_evidence_not_supported', questionIndex: index }] : []);
+    } });
+  const current = await loadDialogueQuestionContext({ query }, req.params.id, body.sourceLessonId);
+  if (current.dialogueFingerprint !== context.dialogueFingerprint) {
+    result.status = 'stale';
+    result.report = { ...result.report, status: 'version_conflict', valid: null,
+      warnings: [{ code: 'dialogue_changed_during_generation' }] };
+    result.decision = decideBoundaryAction({ mode: context.grammar.boundary_mode,
+      operation: 'generate', report: result.report });
+  }
+  return groundedResponse(res, result, { questions: result.status === 'ready' ? result.candidate.questions : [],
+    dialogueFingerprint: current.dialogueFingerprint });
+}));
 
 const boundaryField = (path, value) => ({ path, text: String(value ?? '') });
 function boundaryFieldsFrom(path, value) {
@@ -131,9 +331,202 @@ async function adminBoundaryWrite(res, options) {
   try { return await validateAndWriteContent(options); }
   catch (error) {
     const response = boundaryWriteHttpError(error);
-    if (!response) throw error;
+    if (!response) {
+      if (Number.isInteger(error?.status) && error.status >= 400 && error.status < 600) {
+        res.status(error.status).json({ error: error.message });
+        return null;
+      }
+      throw error;
+    }
     res.status(response.statusCode).json(response.body);
     return null;
+  }
+}
+
+async function adminLockedMutation(res, loadCourseIds, mutate) {
+  try {
+    return await withTransaction(async client => {
+      const initial = [...new Set(await loadCourseIds(client))].sort();
+      if (!initial.length) return { missing: true };
+      await lockCurriculumCourses(client, initial);
+      const current = [...new Set(await loadCourseIds(client))].sort();
+      if (JSON.stringify(initial) !== JSON.stringify(current)) {
+        throw new BoundaryContextError('boundary_context_mismatch');
+      }
+      return { value: await mutate(client) };
+    });
+  } catch (error) {
+    if (error instanceof BoundaryContextError) {
+      res.status(422).json({ error: error.code || error.message });
+      return null;
+    }
+    if (Number.isInteger(error?.status) && error.status >= 400 && error.status < 600) {
+      res.status(error.status).json({ error: error.message });
+      return null;
+    }
+    throw error;
+  }
+}
+
+// Global banks may be visible in any course. Until per-consumer validation is
+// available, edit them only while every course is off, under the exclusive
+// graph lock so a mode/topology change cannot race the check and write.
+async function globalOffQuery(res, sql, params, { expectedGlobalKanjiId } = {}) {
+  const result = await withTransaction(async client => {
+    await lockCurriculumGraph(client, { exclusive: true });
+    if (expectedGlobalKanjiId) {
+      const current = await client.query('SELECT lesson_id FROM kanji_items WHERE id=$1 FOR UPDATE',
+        [expectedGlobalKanjiId]);
+      if (current.rows[0]?.lesson_id) return { scopeChanged: true };
+    }
+    const active = await client.query(`SELECT id FROM courses
+      WHERE COALESCE(curriculum_boundary_mode,'off') <> 'off' LIMIT 1`);
+    if (active.rows.length) return null;
+    return client.query(sql, params);
+  });
+  if (result?.scopeChanged) res.status(409).json({ error: 'kanji_scope_changed' });
+  else if (!result) res.status(409).json({ error: 'global_bank_requires_off_mode' });
+  return result?.scopeChanged ? null : result;
+}
+
+const courseIdsForLesson = async (client, lessonId) => (await client.query(
+  'SELECT DISTINCT m.course_id FROM lessons l JOIN modules m ON m.id=l.module_id WHERE l.id=$1',
+  [lessonId])).rows.map(row => row.course_id);
+const courseIdsForGrammar = async (client, grammarId) => (await client.query(
+  'SELECT DISTINCT m.course_id FROM module_grammar g JOIN modules m ON m.id=g.module_id WHERE g.id=$1',
+  [grammarId])).rows.map(row => row.course_id);
+const courseIdsForVocabulary = async (client, vocabularyId) => (await client.query(
+  'SELECT DISTINCT m.course_id FROM module_vocabulary v JOIN modules m ON m.id=v.module_id WHERE v.id=$1',
+  [vocabularyId])).rows.map(row => row.course_id);
+const courseIdsForVocabularyAndConsumers = async (client, vocabularyId) => (await client.query(`
+  SELECT m.course_id FROM module_vocabulary v JOIN modules m ON m.id=v.module_id WHERE v.id=$1
+  UNION SELECT m.course_id FROM lesson_deck_items di JOIN lessons l ON l.id=di.lesson_id
+    JOIN modules m ON m.id=l.module_id WHERE di.vocabulary_id=$1`, [vocabularyId]))
+  .rows.map(row => row.course_id);
+const courseIdsForGrammarAndConsumers = async (client, grammarId) => (await client.query(`
+  SELECT m.course_id FROM module_grammar g JOIN modules m ON m.id=g.module_id WHERE g.id=$1
+  UNION SELECT m.course_id FROM lesson_grammar_task_items gi JOIN lessons l ON l.id=gi.lesson_id
+    JOIN modules m ON m.id=l.module_id WHERE gi.grammar_id=$1
+  UNION SELECT m.course_id FROM quiz_questions q JOIN lessons l ON l.id=q.lesson_id
+    JOIN modules m ON m.id=l.module_id WHERE q.grammar_id=$1`, [grammarId]))
+  .rows.map(row => row.course_id);
+const courseIdsForBunpouPair = async (client, lessonId) => (await client.query(`
+  SELECT m.course_id FROM lessons l JOIN modules m ON m.id=l.module_id WHERE l.id=$1
+  UNION SELECT m.course_id FROM lessons task JOIN modules m ON m.id=task.module_id
+    WHERE task.popup_after_lesson_id=$1 AND task.type='grammar_task'`, [lessonId]))
+  .rows.map(row => row.course_id);
+
+function kanjiBoundaryFields(row) {
+  return [
+    ...['character', 'on_reading', 'kun_reading', 'meaning_id', 'mnemonic', 'bab_kode']
+      .map(name => boundaryField(`kanji.${name}`, row[name])),
+    ...boundaryFieldsFrom('kanji.compounds', row.compounds),
+  ];
+}
+
+async function kanjiWriteCandidate(client, id, proposed, targetLessonId, locked) {
+  const old = id ? (await client.query(`SELECT * FROM kanji_items WHERE id=$1
+    ${locked ? 'FOR UPDATE' : ''}`, [id])).rows[0] : null;
+  if (id && !old) throw new BoundaryContextError('kanji_not_found');
+  const lessonId = targetLessonId === undefined ? old?.lesson_id : targetLessonId;
+  if (!lessonId) throw new BoundaryContextError('kanji_global_scope_unresolved');
+  const sourceCourses = old?.lesson_id ? await courseIdsForLesson(client, old.lesson_id) : [];
+  const merged = { ...old, ...proposed };
+  return { scope: { lessonId }, relatedCourseIds: sourceCourses,
+    contentType: 'kanji_compound_assessed', operation: 'live_write', contentId: id || null,
+    fields: kanjiBoundaryFields(merged), currentRevision: old?.updated_at,
+    expectedBoundaryFingerprint: proposed.boundaryFingerprint };
+}
+
+export async function kanjiUpsertCandidate(client, values, lessonId, hasCompounds, locked = false) {
+  const existing = await client.query(`SELECT * FROM kanji_items
+    WHERE character=$1 AND jlpt_level=$2 AND lesson_id=$3
+    ${locked ? 'FOR UPDATE' : ''}`, [values.character, values.jlpt_level, lessonId]);
+  const row = existing.rows[0] || null;
+  const proposed = { ...values,
+    compounds: hasCompounds ? values.compounds : row?.compounds || [],
+  };
+  const candidate = await kanjiWriteCandidate(client, row?.id || null, proposed, lessonId, locked);
+  return { ...candidate, expectedRevision: values.expectedRevision,
+    contentIsNewOrChanged: true };
+}
+
+export async function linkedContentCandidate(client, lessonId, ids, type, instructions = []) {
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  const table = type === 'deck' ? 'module_vocabulary' : type === 'grammar' ? 'module_grammar' : 'kana_items';
+  const key = type === 'deck' ? 'vocabulary' : type === 'grammar' ? 'grammar' : 'kana';
+  const source = uniqueIds.length ? await client.query(type === 'kana'
+    ? `SELECT k.* FROM kana_items k WHERE k.id=ANY($1::uuid[]) ORDER BY k.id`
+    :
+    `SELECT s.*,m.course_id FROM ${table} s JOIN modules m ON m.id=s.module_id
+       WHERE s.id=ANY($1::uuid[]) ORDER BY s.id`, [uniqueIds]) : { rows: [] };
+  if (source.rows.length !== uniqueIds.length) throw new BoundaryContextError(`${key}_owner_unresolved`);
+  if (type !== 'kana' && source.rows.length) {
+    if (type === 'deck') {
+      const lesson = await client.query('SELECT module_id FROM lessons WHERE id=$1', [lessonId]);
+      if (!lesson.rows.length || source.rows.some(row => row.module_id !== lesson.rows[0].module_id)) {
+        throw new BoundaryContextError('vocabulary_deck_owner_mismatch');
+      }
+    }
+    const reachable = await client.query(`WITH RECURSIVE courses(id) AS (
+      SELECT m.course_id FROM lessons l JOIN modules m ON m.id=l.module_id WHERE l.id=$1
+      UNION SELECT p.prerequisite_course_id FROM course_prerequisites p JOIN courses c ON c.id=p.course_id
+    ) SELECT id FROM courses`, [lessonId]);
+    const allowed = new Set(reachable.rows.map(row => row.id));
+    if (source.rows.some(row => !allowed.has(row.course_id))) {
+      throw new BoundaryContextError(`${key}_lesson_owner_mismatch`);
+    }
+  }
+  const fields = source.rows.flatMap((row, index) => {
+    if (type === 'grammar') return [
+      ...['pattern', 'meaning', 'example', 'notes', 'example_dialog', 'example_dialog_id',
+        'recognition_distractors', 'controlled_distractors', 'communication_goal']
+        .map(name => boundaryField(`items[${index}].${name}`, row[name])),
+      ...dialogueVisibleFields(row.dialog_scene, row.dialog_furigana)
+        .map(field => ({ ...field, path: `items[${index}].${field.path}` })),
+    ];
+    if (type === 'kana') return ['character', 'romaji', 'mnemonic', 'group_label']
+      .map(name => boundaryField(`items[${index}].${name}`, row[name]));
+    return ['japanese', 'reading', 'romaji', 'indonesian', 'category', 'note']
+      .map(name => boundaryField(`items[${index}].${name}`, row[name]));
+  });
+  if ((type === 'deck' || type === 'grammar') && uniqueIds.length) {
+    const exampleTable = type === 'deck' ? 'vocabulary_examples' : 'grammar_examples';
+    const ownerColumn = type === 'deck' ? 'vocabulary_id' : 'grammar_id';
+    const readingColumn = type === 'deck' ? 'reading' : 'NULL::text AS reading';
+    const examples = await client.query(`SELECT ${ownerColumn},japanese,${readingColumn},highlight,indonesian
+      FROM ${exampleTable} WHERE ${ownerColumn}=ANY($1::uuid[])
+      ORDER BY ${ownerColumn},sort_order,created_at,id`, [uniqueIds]);
+    fields.push(...examples.rows.flatMap((row, index) =>
+      ['japanese', 'reading', 'highlight', 'indonesian']
+        .map(name => boundaryField(`${type}Examples[${index}].${name}`, row[name]))));
+  }
+  if (type === 'kana' && uniqueIds.length) {
+    const examples = await client.query(`SELECT kana_id,japanese,reading,highlight,indonesian
+      FROM kana_examples WHERE kana_id=ANY($1::uuid[]) ORDER BY kana_id,sort_order,created_at,id`, [uniqueIds]);
+    fields.push(...examples.rows.flatMap((row, index) =>
+      ['japanese', 'reading', 'highlight', 'indonesian']
+        .map(name => boundaryField(`kanaExamples[${index}].${name}`, row[name]))));
+  }
+  fields.push(...instructions.map((value, index) => boundaryField(`items[${index}].instruction`, value)));
+  return { scope: { lessonId }, contentType: type === 'deck' ? 'vocabulary_example' :
+      type === 'grammar' ? 'grammar_example' : 'reading', operation: 'live_write', fields,
+    relatedCourseIds: source.rows.map(row => row.course_id).filter(Boolean) };
+}
+
+// Bulk jobs persist per item. Keep every failure visible after earlier items
+// have committed instead of returning an error that suggests zero writes.
+async function bulkBoundaryWrite(options) {
+  try { return { ok: true, outcome: await validateAndWriteContent(options) }; }
+  catch (error) {
+    const response = boundaryWriteHttpError(error);
+    if (response) return { ok: false, status: response.statusCode,
+      error: response.body.error, validation: response.body.validation };
+    if (Number.isInteger(error?.status) && error.status >= 400 && error.status < 600) {
+      return { ok: false, status: error.status, error: error.message };
+    }
+    console.error('curriculum_bulk_item_failed', error);
+    return { ok: false, status: 500, error: 'bulk_item_failed' };
   }
 }
 
@@ -392,6 +785,48 @@ router.get('/courses', asyncHandler(async (req, res) => {
   res.json({ courses: result.rows });
 }));
 
+// Owner-only mode control. A mode revision is rechecked after the same graph
+// and course locks as content writers; enforce promotion remains closed until
+// a trustworthy server-owned readiness evidence registry exists.
+router.get('/courses/:id/curriculum-boundary-mode', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.json(await getCurriculumBoundaryMode(req.params.id)); }
+  catch (error) {
+    if (!(error instanceof CurriculumModeError)) throw error;
+    res.status(error.status).json({ error: error.code });
+  }
+}));
+
+router.put('/courses/:id/curriculum-boundary-mode', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.json(await saveCurriculumBoundaryMode(req.params.id, req.body)); }
+  catch (error) {
+    if (!(error instanceof CurriculumModeError)) throw error;
+    res.status(error.status).json({ error: error.code });
+  }
+}));
+
+// Passive owner attestations are never an enforce authorization. The service
+// records current server observations and marks all captured claims unverified.
+router.get('/courses/:id/readiness-attestations', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.json(await listReadinessAttestations(req.params.id, req.query.moduleId)); }
+  catch (error) {
+    if (!(error instanceof CurriculumModeError)) throw error;
+    res.status(error.status).json({ error: error.code });
+  }
+}));
+
+router.post('/courses/:id/readiness-attestations', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.status(201).json(await captureReadinessAttestation(req.params.id,
+    req.user.id, req.body)); }
+  catch (error) {
+    if (!(error instanceof CurriculumModeError)) throw error;
+    res.status(error.status).json({ error: error.code });
+  }
+}));
+
 // Read-only curriculum inspector. It remains owner-only in the explicit
 // company route policy because it exposes cross-course provenance and
 // readiness diagnostics rather than learner-facing content.
@@ -455,7 +890,9 @@ router.post('/courses', asyncHandler(async (req, res) => {
   // isFree is tri-state (true/false/null = "not yet classified") — pass
   // through as-is rather than coercing with !!, which would collapse
   // "unclassified" into "paid". See migration 121.
-  const result = await query(
+  const result = await withTransaction(async client => {
+    await lockCurriculumGraph(client, { exclusive: true });
+    return client.query(
     `INSERT INTO courses
        (slug, title, description, level, thumbnail_url, sort_order, is_published, is_available,
         price_idr, price_label, period_label, tagline, features, cta_label, is_featured, is_free, landing_price_published, landing_schedule)
@@ -469,7 +906,8 @@ router.post('/courses', asyncHandler(async (req, res) => {
       isFree === true ? true : (isFree === false ? false : null),
       landing.pricePublished, landing.schedule,
     ]
-  );
+    );
+  });
   invalidateCourseVocabCache();
   invalidateKanjiCatalogCache();
   res.status(201).json({ course: result.rows[0] });
@@ -490,7 +928,9 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
   const isFreeExplicit = isFree === true || isFree === false;
   const landing = landingCourseFields(req.body);
   if (landing.error) return res.status(400).json({ error: landing.error });
-  const result = await query(
+  const result = await withTransaction(async client => {
+    await lockCurriculumCourse(client, req.params.id);
+    return client.query(
     `UPDATE courses SET
        slug = COALESCE($2, slug),
        title = COALESCE($3, title),
@@ -520,7 +960,8 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
       isFreeExplicit, isFreeExplicit ? isFree : null,
       landing.pricePublished, landing.schedule,
     ]
-  );
+    );
+  });
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   invalidateCourseVocabCache();
   invalidateKanjiCatalogCache();
@@ -530,18 +971,20 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
 router.delete('/courses/:id', asyncHandler(async (req, res) => {
   // Block delete when any student has enrolled — keeps paid users from losing access silently.
   // Admins can still set the course to draft/coming_soon via PUT instead.
-  const enroll = await query(
-    `SELECT COUNT(*)::int AS n FROM user_enrollments WHERE course_id = $1`,
-    [req.params.id]
-  );
-  const n = enroll.rows[0]?.n || 0;
+  const n = await withTransaction(async client => {
+    await lockCurriculumGraph(client, { exclusive: true });
+    await lockCurriculumCourse(client, req.params.id);
+    const enroll = await client.query('SELECT COUNT(*)::int AS n FROM user_enrollments WHERE course_id=$1', [req.params.id]);
+    const count = enroll.rows[0]?.n || 0;
+    if (!count) await client.query('DELETE FROM courses WHERE id=$1', [req.params.id]);
+    return count;
+  });
   if (n > 0) {
     return res.status(409).json({
       error: `Tidak bisa hapus: ${n} siswa sudah terdaftar di kursus ini. Ubah status ke Draft supaya tidak tampil di landing.`,
       enrollmentCount: n,
     });
   }
-  await query(`DELETE FROM courses WHERE id = $1`, [req.params.id]);
   invalidateCourseVocabCache();
   invalidateKanjiCatalogCache();
   res.json({ ok: true });
@@ -574,7 +1017,9 @@ router.post('/modules', asyncHandler(async (req, res) => {
   }
   const slugErr = badSlug(slug);
   if (slugErr) return res.status(400).json({ error: slugErr });
-  const result = await query(
+  const result = await withTransaction(async client => {
+    await lockCurriculumCourse(client, courseId);
+    return client.query(
     `INSERT INTO modules (
        course_id, slug, title, description, sort_order,
        jf_topic, cefr_level, title_en, scenario, section_name,
@@ -589,7 +1034,8 @@ router.post('/modules', asyncHandler(async (req, res) => {
       JSON.stringify(typeof skillDistribution === 'object' && skillDistribution ? skillDistribution : {}),
       JSON.stringify(typeof quizSpec === 'object' && quizSpec ? quizSpec : {}),
     ]
-  );
+    );
+  });
   invalidateCourseVocabCache();
   invalidateKanjiCatalogCache();
   res.status(201).json({ module: result.rows[0] });
@@ -609,7 +1055,11 @@ router.put('/modules/:id', asyncHandler(async (req, res) => {
   // clear the value, whereas `undefined` keeps the current value.
   const hasSection = Object.prototype.hasOwnProperty.call(req.body || {}, 'sectionName');
   const sectionNorm = hasSection ? ((sectionName && String(sectionName).trim()) || null) : null;
-  const result = await query(
+  const result = await withTransaction(async client => {
+    const owner = await client.query('SELECT course_id FROM modules WHERE id=$1', [req.params.id]);
+    if (!owner.rows.length) return { rows: [] };
+    await lockCurriculumCourse(client, owner.rows[0].course_id);
+    return client.query(
     `UPDATE modules SET
        slug = COALESCE($2, slug),
        title = COALESCE($3, title),
@@ -633,7 +1083,8 @@ router.put('/modules/:id', asyncHandler(async (req, res) => {
       hasSection,
       quizSpec && typeof quizSpec === 'object' ? JSON.stringify(quizSpec) : null,
     ]
-  );
+    );
+  });
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   invalidateCourseVocabCache();
   invalidateKanjiCatalogCache();
@@ -641,7 +1092,12 @@ router.put('/modules/:id', asyncHandler(async (req, res) => {
 }));
 
 router.delete('/modules/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM modules WHERE id = $1`, [req.params.id]);
+  await withTransaction(async client => {
+    const owner = await client.query('SELECT course_id FROM modules WHERE id=$1', [req.params.id]);
+    if (!owner.rows.length) return;
+    await lockCurriculumCourse(client, owner.rows[0].course_id);
+    await client.query('DELETE FROM modules WHERE id=$1', [req.params.id]);
+  });
   invalidateCourseVocabCache();
   invalidateKanjiCatalogCache();
   res.json({ ok: true });
@@ -722,7 +1178,9 @@ router.put('/module-vocabulary/:id', asyncHandler(async (req, res) => {
 }));
 
 router.delete('/module-vocabulary/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM module_vocabulary WHERE id = $1`, [req.params.id]);
+  const result = await adminLockedMutation(res, client => courseIdsForVocabularyAndConsumers(client, req.params.id),
+    client => client.query('DELETE FROM module_vocabulary WHERE id=$1', [req.params.id]));
+  if (!result) return;
   invalidateCourseVocabCache();
   res.json({ ok: true });
 }));
@@ -865,7 +1323,12 @@ router.put('/vocabulary-examples/:id', asyncHandler(async (req, res) => {
 }));
 
 router.delete('/vocabulary-examples/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM vocabulary_examples WHERE id = $1`, [req.params.id]);
+  const result = await adminLockedMutation(res, async client => {
+    const example = await client.query('SELECT vocabulary_id FROM vocabulary_examples WHERE id=$1', [req.params.id]);
+    return example.rows.length ? courseIdsForVocabularyAndConsumers(client, example.rows[0].vocabulary_id) : [];
+  },
+  client => client.query('DELETE FROM vocabulary_examples WHERE id=$1', [req.params.id]));
+  if (!result) return;
   invalidateCourseVocabCache();
   res.json({ ok: true });
 }));
@@ -888,15 +1351,19 @@ router.get('/lessons/:lessonId/deck-items', asyncHandler(async (req, res) => {
 router.post('/lessons/:lessonId/deck-items', asyncHandler(async (req, res) => {
   const { vocabularyId, sortOrder, accentColor } = req.body || {};
   if (!vocabularyId) return res.status(400).json({ error: 'vocabularyId required' });
-  const r = await query(
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: client => linkedContentCandidate(client, req.params.lessonId, [vocabularyId], 'deck'),
+    write: async client => (await client.query(
     `INSERT INTO lesson_deck_items (lesson_id, vocabulary_id, sort_order, accent_color)
      VALUES ($1,$2,$3,$4)
      ON CONFLICT (lesson_id, vocabulary_id)
        DO UPDATE SET sort_order = EXCLUDED.sort_order, accent_color = EXCLUDED.accent_color
      RETURNING *`,
     [req.params.lessonId, vocabularyId, sortOrder ?? 0, accentColor || null]
-  );
-  res.status(201).json({ item: r.rows[0] });
+    )).rows[0],
+  });
+  if (!guarded) return;
+  res.status(201).json({ item: guarded.value, validation: guarded.report });
 }));
 
 router.put('/lessons/:lessonId/deck-items', asyncHandler(async (req, res) => {
@@ -904,7 +1371,10 @@ router.put('/lessons/:lessonId/deck-items', asyncHandler(async (req, res) => {
   if (!Array.isArray(items)) return res.status(400).json({ error: 'items[] required' });
   // Whole reorder/upsert applied atomically — a partial failure must not leave
   // the deck with a mix of old and new sort orders.
-  await withTransaction(async (client) => {
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: client => linkedContentCandidate(client, req.params.lessonId,
+      items.map(item => item?.vocabularyId), 'deck'),
+    write: async client => {
     for (let i = 0; i < items.length; i++) {
       const it = items[i] || {};
       if (!it.vocabularyId) continue;
@@ -916,15 +1386,22 @@ router.put('/lessons/:lessonId/deck-items', asyncHandler(async (req, res) => {
         [req.params.lessonId, it.vocabularyId, it.sortOrder ?? i, it.accentColor || null]
       );
     }
+    return { ok: true };
+    },
   });
-  res.json({ ok: true });
+  if (!guarded) return;
+  res.json({ ok: true, validation: guarded.report });
 }));
 
 router.delete('/lessons/:lessonId/deck-items/:vocabularyId', asyncHandler(async (req, res) => {
-  await query(
+  const guarded = await adminLockedMutation(res, async client => [
+    ...await courseIdsForLesson(client, req.params.lessonId),
+    ...await courseIdsForVocabulary(client, req.params.vocabularyId),
+  ], client => client.query(
     `DELETE FROM lesson_deck_items WHERE lesson_id = $1 AND vocabulary_id = $2`,
     [req.params.lessonId, req.params.vocabularyId]
-  );
+  ));
+  if (!guarded) return;
   res.json({ ok: true });
 }));
 
@@ -966,7 +1443,7 @@ router.post('/kana', asyncHandler(async (req, res) => {
   if (!ch) return res.status(400).json({ error: 'character required' });
   const kd = kind === 'katakana' ? 'katakana' : 'hiragana';
   const variant = KANA_VARIANTS.includes(variantType) ? variantType : 'base';
-  const result = await query(
+  const result = await globalOffQuery(res,
     `INSERT INTO kana_items (character, kind, romaji, mnemonic, group_label, variant_type, sort_order)
      VALUES ($1,$2,$3,$4,$5,$6,$7)
      ON CONFLICT (kind, character) DO UPDATE SET
@@ -977,6 +1454,7 @@ router.post('/kana', asyncHandler(async (req, res) => {
     [ch, kd, String(romaji || '').trim() || ch, (mnemonic && String(mnemonic).trim()) || null,
      (groupLabel && String(groupLabel).trim()) || null, variant, Number(sortOrder) || 0]
   );
+  if (!result) return;
   res.status(201).json({ kana: result.rows[0] });
 }));
 
@@ -984,7 +1462,7 @@ router.put('/kana/:id', asyncHandler(async (req, res) => {
   const { character, kind, romaji, mnemonic, groupLabel, variantType, sortOrder } = req.body || {};
   const kd = kind === 'hiragana' || kind === 'katakana' ? kind : null;
   const variant = variantType && KANA_VARIANTS.includes(variantType) ? variantType : null;
-  const result = await query(
+  const result = await globalOffQuery(res,
     `UPDATE kana_items SET
        character = COALESCE($2, character),
        kind = COALESCE($3, kind),
@@ -1001,12 +1479,13 @@ router.put('/kana/:id', asyncHandler(async (req, res) => {
      (groupLabel && String(groupLabel).trim()) || null,
      variant, sortOrder != null && sortOrder !== '' ? Number(sortOrder) : null]
   );
+  if (!result) return;
   if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ kana: result.rows[0] });
 }));
 
 router.delete('/kana/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM kana_items WHERE id = $1`, [req.params.id]);
+  if (!await globalOffQuery(res, `DELETE FROM kana_items WHERE id = $1`, [req.params.id])) return;
   res.json({ ok: true });
 }));
 
@@ -1024,17 +1503,18 @@ router.get('/kana-examples', asyncHandler(async (req, res) => {
 router.post('/kana-examples', asyncHandler(async (req, res) => {
   const { kanaId, japanese, reading, highlight, indonesian, sortOrder } = req.body || {};
   if (!kanaId || !japanese) return res.status(400).json({ error: 'kanaId and japanese required' });
-  const r = await query(
+  const r = await globalOffQuery(res,
     `INSERT INTO kana_examples (kana_id, japanese, reading, highlight, indonesian, sort_order)
      VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
     [kanaId, japanese, reading || null, highlight || null, indonesian || null, sortOrder || 0]
   );
+  if (!r) return;
   res.status(201).json({ example: r.rows[0] });
 }));
 
 router.put('/kana-examples/:id', asyncHandler(async (req, res) => {
   const { japanese, reading, highlight, indonesian, sortOrder } = req.body || {};
-  const r = await query(
+  const r = await globalOffQuery(res,
     `UPDATE kana_examples SET
        japanese = COALESCE($2, japanese),
        reading = $3, highlight = $4, indonesian = $5,
@@ -1042,12 +1522,13 @@ router.put('/kana-examples/:id', asyncHandler(async (req, res) => {
      WHERE id = $1 RETURNING *`,
     [req.params.id, japanese, reading || null, highlight || null, indonesian || null, sortOrder]
   );
+  if (!r) return;
   if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ example: r.rows[0] });
 }));
 
 router.delete('/kana-examples/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM kana_examples WHERE id = $1`, [req.params.id]);
+  if (!await globalOffQuery(res, `DELETE FROM kana_examples WHERE id = $1`, [req.params.id])) return;
   res.json({ ok: true });
 }));
 
@@ -1068,21 +1549,28 @@ router.get('/lessons/:lessonId/kana-items', asyncHandler(async (req, res) => {
 router.post('/lessons/:lessonId/kana-items', asyncHandler(async (req, res) => {
   const { kanaId, sortOrder } = req.body || {};
   if (!kanaId) return res.status(400).json({ error: 'kanaId required' });
-  const r = await query(
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: client => linkedContentCandidate(client, req.params.lessonId, [kanaId], 'kana'),
+    write: async client => (await client.query(
     `INSERT INTO lesson_kana_items (lesson_id, kana_id, sort_order)
      VALUES ($1,$2,$3)
      ON CONFLICT (lesson_id, kana_id) DO UPDATE SET sort_order = EXCLUDED.sort_order
      RETURNING *`,
     [req.params.lessonId, kanaId, sortOrder ?? 0]
-  );
-  res.status(201).json({ item: r.rows[0] });
+    )).rows[0],
+  });
+  if (!guarded) return;
+  res.status(201).json({ item: guarded.value, validation: guarded.report });
 }));
 
 router.put('/lessons/:lessonId/kana-items', asyncHandler(async (req, res) => {
   const { items } = req.body || {};
   if (!Array.isArray(items)) return res.status(400).json({ error: 'items[] required' });
   // Whole reorder/upsert applied atomically.
-  await withTransaction(async (client) => {
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: client => linkedContentCandidate(client, req.params.lessonId,
+      items.map(item => item?.kanaId), 'kana'),
+    write: async client => {
     for (let i = 0; i < items.length; i++) {
       const it = items[i] || {};
       if (!it.kanaId) continue;
@@ -1093,15 +1581,20 @@ router.put('/lessons/:lessonId/kana-items', asyncHandler(async (req, res) => {
         [req.params.lessonId, it.kanaId, it.sortOrder ?? i]
       );
     }
+    return { ok: true };
+    },
   });
-  res.json({ ok: true });
+  if (!guarded) return;
+  res.json({ ok: true, validation: guarded.report });
 }));
 
 router.delete('/lessons/:lessonId/kana-items/:kanaId', asyncHandler(async (req, res) => {
-  await query(
+  const guarded = await adminLockedMutation(res, client => courseIdsForLesson(client, req.params.lessonId),
+  client => client.query(
     `DELETE FROM lesson_kana_items WHERE lesson_id = $1 AND kana_id = $2`,
     [req.params.lessonId, req.params.kanaId]
-  );
+  ));
+  if (!guarded) return;
   res.json({ ok: true });
 }));
 
@@ -1124,7 +1617,10 @@ router.put('/lessons/:lessonId/grammar-task-items', asyncHandler(async (req, res
   const { items } = req.body || {};
   if (!Array.isArray(items)) return res.status(400).json({ error: 'items[] required' });
   // Whole task-item set applied atomically.
-  await withTransaction(async (client) => {
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: client => linkedContentCandidate(client, req.params.lessonId,
+      items.map(item => item?.grammarId), 'grammar', items.map(item => item?.instruction)),
+    write: async client => {
     for (let i = 0; i < items.length; i++) {
       const it = items[i] || {};
       if (!it.grammarId) continue;
@@ -1139,15 +1635,22 @@ router.put('/lessons/:lessonId/grammar-task-items', asyncHandler(async (req, res
         [req.params.lessonId, it.grammarId, it.sortOrder ?? i, (it.instruction || '').trim() || null, reqCount]
       );
     }
+    return { ok: true };
+    },
   });
-  res.json({ ok: true });
+  if (!guarded) return;
+  res.json({ ok: true, validation: guarded.report });
 }));
 
 router.delete('/lessons/:lessonId/grammar-task-items/:grammarId', asyncHandler(async (req, res) => {
-  await query(
+  const guarded = await adminLockedMutation(res, async client => [
+    ...await courseIdsForLesson(client, req.params.lessonId),
+    ...await courseIdsForGrammar(client, req.params.grammarId),
+  ], client => client.query(
     `DELETE FROM lesson_grammar_task_items WHERE lesson_id = $1 AND grammar_id = $2`,
     [req.params.lessonId, req.params.grammarId]
-  );
+  ));
+  if (!guarded) return;
   res.json({ ok: true });
 }));
 
@@ -1211,8 +1714,8 @@ router.put('/settings/coaching-note-prompt', asyncHandler(async (req, res) => {
 // `japanese`. Existing rows get reading/indonesian/category/note refreshed from
 // Notion (lesson_id + deck wiring untouched); new rows are appended. Returns
 // counts plus `vocabIds` = the resulting row id for each page (Notion order).
-async function upsertNotionVocab(moduleId, pages) {
-  const existing = await query(`SELECT id, japanese FROM module_vocabulary WHERE module_id = $1`, [moduleId]);
+async function upsertNotionVocab(moduleId, pages, dbQuery = query) {
+  const existing = await dbQuery(`SELECT id, japanese FROM module_vocabulary WHERE module_id = $1`, [moduleId]);
   const byJapanese = new Map();
   for (const r of existing.rows) {
     const j = (r.japanese || '').trim();
@@ -1231,14 +1734,14 @@ async function upsertNotionVocab(moduleId, pages) {
     const note = notionPlainText(pickProp(props, ['Note', 'Catatan'])).trim() || null;
     let id = byJapanese.get(japanese);
     if (id) {
-      await query(
+      await dbQuery(
         `UPDATE module_vocabulary SET reading = $2, indonesian = $3, category = $4, note = $5, updated_at = NOW()
          WHERE id = $1`,
         [id, reading, indonesian, category, note]
       );
       updated++;
     } else {
-      const r = await query(
+      const r = await dbQuery(
         `INSERT INTO module_vocabulary (module_id, lesson_id, japanese, reading, indonesian, category, note, sort_order)
          VALUES ($1, NULL, $2, $3, $4, $5, $6, $7) RETURNING id`,
         [moduleId, japanese, reading, indonesian, category, note, sort++]
@@ -1249,7 +1752,6 @@ async function upsertNotionVocab(moduleId, pages) {
     }
     vocabIds.push(id);
   }
-  invalidateCourseVocabCache();
   return { imported, updated, total, vocabIds };
 }
 
@@ -1305,23 +1807,44 @@ router.post('/lessons/:lessonId/import-notion-deck', notionImportLimiter, asyncH
   } catch (err) {
     return notionErrorResponse(res, err, 'Gagal import vocab dari Notion.');
   }
-  const { imported, updated, total, vocabIds } = await upsertNotionVocab(moduleId, pages);
-
-  const cur = await query(`SELECT vocabulary_id, sort_order FROM lesson_deck_items WHERE lesson_id = $1`, [req.params.lessonId]);
-  const inDeck = new Set(cur.rows.map((r) => r.vocabulary_id));
-  let nextSort = cur.rows.reduce((m, r) => Math.max(m, (r.sort_order ?? 0) + 1), 0);
-  let added = 0;
-  for (const vid of vocabIds) {
-    if (inDeck.has(vid)) continue;
-    inDeck.add(vid);
-    await query(
-      `INSERT INTO lesson_deck_items (lesson_id, vocabulary_id, sort_order, accent_color)
-       VALUES ($1, $2, $3, NULL) ON CONFLICT (lesson_id, vocabulary_id) DO NOTHING`,
-      [req.params.lessonId, vid, nextSort++]
-    );
-    added++;
-  }
-  res.json({ imported, updated, added, total });
+  const outcome = await adminBoundaryWrite(res, {
+    prepare: async (client, { locked }) => {
+      const current = await client.query(`SELECT id,module_id,type FROM lessons WHERE id=$1
+        ${locked ? 'FOR UPDATE' : ''}`, [req.params.lessonId]);
+      if (!current.rows.length) throw new BoundaryContextError('lesson_not_found');
+      if (current.rows[0].type !== 'deck' || current.rows[0].module_id !== moduleId) {
+        throw new BoundaryContextError('boundary_context_mismatch');
+      }
+      const fields = pages.flatMap((page, index) => {
+        const props = page.properties || {};
+        return Object.entries(props).map(([key, value]) =>
+          boundaryField(`pages[${index}].${key}`, notionPlainText(value)));
+      });
+      return { scope: { moduleId, lessonId: req.params.lessonId },
+        contentType: 'vocabulary_example', operation: 'live_write', fields,
+        expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async client => {
+      const dbQuery = client.query.bind(client);
+      const { imported, updated, total, vocabIds } = await upsertNotionVocab(moduleId, pages, dbQuery);
+      const cur = await dbQuery('SELECT vocabulary_id,sort_order FROM lesson_deck_items WHERE lesson_id=$1', [req.params.lessonId]);
+      const inDeck = new Set(cur.rows.map(row => row.vocabulary_id));
+      let nextSort = cur.rows.reduce((max, row) => Math.max(max, (row.sort_order ?? 0) + 1), 0);
+      let added = 0;
+      for (const vid of vocabIds) {
+        if (inDeck.has(vid)) continue;
+        inDeck.add(vid);
+        await dbQuery(`INSERT INTO lesson_deck_items(lesson_id,vocabulary_id,sort_order,accent_color)
+          VALUES ($1,$2,$3,NULL) ON CONFLICT(lesson_id,vocabulary_id) DO NOTHING`,
+        [req.params.lessonId, vid, nextSort++]);
+        added++;
+      }
+      return { imported, updated, added, total };
+    },
+  });
+  if (!outcome) return;
+  invalidateCourseVocabCache();
+  res.json({ ...outcome.value, validation: outcome.report });
 }));
 
 // ===== NOTION: BAB PELAJARAN (5 child pages of a Bab → EzNihongo lessons) =====
@@ -1492,19 +2015,7 @@ router.post('/modules/:moduleId/import-notion-pelajaran', notionImportLimiter, a
   if (!Array.isArray(pelajaranIds) || pelajaranIds.length === 0) {
     return res.status(400).json({ error: 'pelajaranIds[] required' });
   }
-  const mod = await query(`SELECT id FROM modules WHERE id = $1`, [moduleId]);
-  if (mod.rows.length === 0) return res.status(404).json({ error: 'module not found' });
-
-  // Avoid slug collisions within the module by tacking on a counter if needed.
-  const existing = await query(`SELECT slug FROM lessons WHERE module_id = $1`, [moduleId]);
-  const used = new Set(existing.rows.map((r) => r.slug));
-  const sortStart = await query(
-    `SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM lessons WHERE module_id = $1`,
-    [moduleId]
-  );
-  let nextSort = Number(sortStart.rows[0]?.next) || 0;
-
-  const created = [];
+  const staged = [];
   const errors = [];
   for (const pageId of pelajaranIds) {
     let page;
@@ -1522,28 +2033,45 @@ router.post('/modules/:moduleId/import-notion-pelajaran', notionImportLimiter, a
     const titleProp = page.properties && Object.values(page.properties).find((p) => p.type === 'title');
     const title = canonicalPelajaranTitle(notionPlainText(titleProp)) || '(tanpa judul)';
     const type = notionPelajaranType(title);
-    // Slug — ensure unique within module.
-    let baseSlug = slugifyJa(title);
-    let slug = baseSlug;
-    let n = 2;
-    while (used.has(slug)) { slug = `${baseSlug}-${n++}`; }
-    used.add(slug);
     // Body content as HTML.
     let html = '';
     try { html = await notionBlocksToHtml(pageId, token); }
     catch (err) { console.warn('notionBlocksToHtml failed:', err.message); }
-    try {
-      const r = await query(
-        `INSERT INTO lessons (module_id, slug, title, type, content, sort_order)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, slug, title, type, sort_order`,
-        [moduleId, slug, title, type, html || null, nextSort++]
-      );
-      created.push(r.rows[0]);
-    } catch (err) {
-      errors.push({ pageId, title, error: err.message });
-    }
+    staged.push({ pageId, title, type, html, baseSlug: slugifyJa(title) });
   }
-  res.json({ created, errors });
+  if (!staged.length) return res.json({ created: [], errors });
+  const outcome = await adminBoundaryWrite(res, {
+    prepare: async client => {
+      const mod = await client.query('SELECT id FROM modules WHERE id=$1', [moduleId]);
+      if (!mod.rows.length) throw new BoundaryContextError('module_not_found');
+      const existing = await client.query('SELECT slug FROM lessons WHERE module_id=$1', [moduleId]);
+      const used = new Set(existing.rows.map(row => row.slug));
+      const sortStart = await client.query('SELECT COALESCE(MAX(sort_order),-1)+1 AS next FROM lessons WHERE module_id=$1', [moduleId]);
+      let nextSort = Number(sortStart.rows[0]?.next) || 0;
+      const items = staged.map(item => {
+        let slug = item.baseSlug, counter = 2;
+        while (used.has(slug)) slug = `${item.baseSlug}-${counter++}`;
+        used.add(slug);
+        return { ...item, slug, sortOrder: nextSort++ };
+      });
+      return { scope: { moduleId }, contentType: 'reading', operation: 'live_write',
+        fields: items.flatMap((item, index) => [boundaryField(`items[${index}].title`, item.title),
+          boundaryField(`items[${index}].content`, item.html)]), items,
+        expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async (client, candidate) => {
+      const created = [];
+      for (const item of candidate.items) {
+        const result = await client.query(`INSERT INTO lessons(module_id,slug,title,type,content,sort_order)
+          VALUES ($1,$2,$3,$4,$5,$6) RETURNING id,slug,title,type,sort_order`,
+        [moduleId, item.slug, item.title, item.type, item.html || null, item.sortOrder]);
+        created.push(result.rows[0]);
+      }
+      return created;
+    },
+  });
+  if (!outcome) return;
+  res.json({ created: outcome.value, errors, validation: outcome.report });
 }));
 
 // ===== MODULE GRAMMAR =====
@@ -1570,157 +2098,109 @@ router.get('/module-grammar', asyncHandler(async (req, res) => {
 // Di-generate SEKALI per pola oleh admin lalu disimpan. Siswa tidak pernah
 // memicu panggilan AI untuk soal pilihan ganda — lihat prinsip "jangan
 // overuse AI" di CLAUDE.md.
-const DISTRACTOR_SYSTEM = `You write multiple-choice distractors for a Japanese-grammar course taught in Indonesian to JLPT N5/N4 beginners. Reply with plain lines only — no numbering, no bullets, no extra prose.`;
-
-// Satu pola → daftar pengecoh (atau null kalau gagal). Dipakai endpoint
-// tunggal (draft untuk di-review admin) DAN endpoint massal (auto-simpan).
-async function generateDistractorsFor(item) {
+// Sibling meanings are authoritative exclusions for draft and bulk generation.
+async function loadDistractorSiblings(item, dbQuery = query, locked = false) {
   // Fungsi pola LAIN di bab yang sama dikirim sebagai daftar-hindari: kalau
   // pengecoh kebetulan mendeskripsikan pola lain, soalnya jadi ambigu untuk
   // siswa yang tahu pola itu.
-  const sib = await query(
-    `SELECT pattern, meaning FROM module_grammar
+  const sib = await dbQuery(
+    `SELECT id, pattern, meaning FROM module_grammar
       WHERE module_id = $1 AND id <> $2 AND meaning IS NOT NULL AND TRIM(meaning) <> ''
-      ORDER BY sort_order ASC LIMIT 12`,
+      ORDER BY sort_order ASC, id ASC LIMIT 12 ${locked ? 'FOR SHARE' : ''}`,
     [item.module_id, item.id]
   );
-  const avoid = sib.rows.map((r) => `- ${r.pattern}: ${r.meaning}`).join('\n') || '(tidak ada)';
-
-  const userContent = `Pola grammar target: ${item.pattern}
-Fungsi yang BENAR dari pola ini: ${item.meaning}
-
-Fungsi pola lain di bab yang sama (JANGAN tulis ulang salah satu dari ini):
-${avoid}
-
-Tulis 3 pengecoh untuk soal pilihan ganda "Apa fungsi ${item.pattern}?".
-
-Aturan:
-- Tiap pengecoh adalah fungsi yang SALAH untuk pola target, tapi masuk akal
-  sebagai kekeliruan pemula — bukan fungsi yang benar, dan bukan fungsi pola
-  lain yang didaftarkan di atas.
-- Bahasa Indonesia, gaya dan panjang MIRIP dengan fungsi yang benar di atas
-  (satu kalimat). Opsi yang panjangnya timpang langsung ketahuan jawabannya.
-- JANGAN menyebut atau menuliskan pola targetnya sendiri (${item.pattern})
-  maupun huruf Jepangnya di dalam pengecoh — itu membocorkan jawaban.
-- Level N5/N4: pakai istilah sederhana (partikel, kata kerja, kata benda,
-  kata sifat, bentuk sopan), bukan istilah linguistik lanjutan.
-- Balas TEPAT 3 baris, satu pengecoh per baris, tanpa nomor dan tanpa tanda
-  hubung di depan.`;
-
-  const text = await callClaude({
-    system: DISTRACTOR_SYSTEM,
-    userContent,
-    maxTokens: 500,
-    model: ANTHROPIC_GEN_MODEL,
-  });
-  if (text == null) return null;
-
-  // Bersihkan penomoran/bullet yang kadang tetap muncul, buang baris yang
-  // menyalin fungsi benar, dan buang yang membocorkan pola targetnya.
-  const correct = (item.meaning || '').trim().toLowerCase();
-  const distractors = String(text)
-    .split(/\r?\n/)
-    .map((l) => l.replace(/^\s*(?:\d+[.)]|[-*•])\s*/, '').trim())
-    .filter(Boolean)
-    .filter((l) => l.toLowerCase() !== correct)
-    .filter((l) => !l.includes(item.pattern))
-    .slice(0, 3);
-
-  return distractors.length >= 2 ? distractors : null;
-}
-
-// Pengecoh Step 2: alternatif untuk POTONGAN yang dikosongkan di satu kalimat.
-// Beda dari Step 1 — di sini yang diuji BENTUK, dan syarat utamanya pengecoh
-// harus benar-benar SALAH di kalimat itu. Aturan mekanis tidak bisa menjamin
-// itu (lihat migration 125), makanya butuh AI + review admin.
-async function generateControlledFor(item) {
-  const slot = controlledSlot(item);
-  if (!slot) return null;
-
-  const userContent = `Pola grammar: ${item.pattern}
-Arti pola: ${item.meaning || '(tidak ada)'}
-
-Soal isian:
-${slot.sentence}
-${slot.indonesian ? `Arti kalimat: ${slot.indonesian}` : ''}
-Jawaban yang BENAR untuk bagian ＿＿＿ : ${slot.answer}
-
-Tulis 3 pilihan SALAH untuk mengisi ＿＿＿ pada kalimat di atas.
-
-Aturan:
-- Tiap pilihan harus kata/bentuk bahasa Jepang yang BENAR-BENAR ADA. Jangan
-  mengarang bentuk seperti "すってはいけます" atau menempelkan partikel ke
-  frasa ("書いてくださいを").
-- Tiap pilihan harus JELAS SALAH kalau dimasukkan ke kalimat itu. Ini yang
-  paling penting: kalau sebuah pilihan ternyata juga menghasilkan kalimat yang
-  benar, soalnya jadi punya dua jawaban dan tidak bisa dipakai.
-- Bentuknya mirip jawaban benar (panjang dan jenis kata sebanding), supaya
-  tidak ketahuan hanya dari bentuknya.
-- Utamakan kekeliruan yang wajar dilakukan pemula: bentuk kata kerja yang
-  keliru, partikel yang keliru, atau pola lain yang mirip tapi tidak cocok
-  konteksnya.
-- Level N5/N4. Jangan memakai kanji di luar level itu.
-- Tulis ISI ＿＿＿ saja, bukan kalimat utuh. Panjangnya sebanding dengan
-  jawaban benar dan tanpa tanda baca akhir kalimat.
-- Balas TEPAT 3 baris, satu pilihan per baris, tanpa nomor dan tanpa penjelasan.`;
-
-  const text = await callClaude({
-    system: DISTRACTOR_SYSTEM,
-    userContent,
-    maxTokens: 400,
-    model: ANTHROPIC_GEN_MODEL,
-  });
-  if (text == null) return null;
-
-  const distractors = String(text)
-    .split(/\r?\n/)
-    .map((l) => l.replace(/^\s*(?:\d+[.)]|[-*•])\s*/, '').trim())
-    .filter(Boolean)
-    // Pagar yang sama dengan penurunan otomatis: pilihan harus muat di ＿＿＿.
-    // Model kadang membalas kalimat utuh walau diminta potongan, dan pilihan
-    // sepanjang kalimat membuat soalnya bisa dijawab tanpa tahu tata bahasanya.
-    .filter((l) => slotShaped(slot.answer, l))
-    .slice(0, 3);
-  return distractors.length >= 2 ? { distractors, slot } : null;
+  return sib.rows;
 }
 
 // Muat satu pola LENGKAP dengan contohnya — dibutuhkan controlledSlot().
-async function loadGrammarWithExamples(id) {
-  const g = await query(
-    `SELECT id, module_id, pattern, meaning, recognition_distractors, controlled_distractors
-       FROM module_grammar WHERE id = $1`,
+async function loadGrammarWithExamples(id, dbQuery = query, locked = false) {
+  const g = await dbQuery(
+    `SELECT id, module_id, lesson_id, pattern, meaning, updated_at,
+       recognition_distractors, controlled_distractors
+       FROM module_grammar WHERE id = $1 ${locked ? 'FOR UPDATE' : ''}`,
     [id]
   );
   if (g.rows.length === 0) return null;
-  const ex = await query(
+  const ex = await dbQuery(
     `SELECT japanese, highlight, indonesian FROM grammar_examples
-      WHERE grammar_id = $1 ORDER BY sort_order ASC, created_at ASC`,
+      WHERE grammar_id = $1 ORDER BY sort_order ASC, created_at ASC, id ASC ${locked ? 'FOR SHARE' : ''}`,
     [id]
   );
   return { ...g.rows[0], examples: ex.rows };
+}
+
+async function generateGroundedDistractorsFor(item, siblings, body = {},
+  { needRecognition = true, needControlled = true } = {}) {
+  const slot = controlledSlot(item);
+  const includeControlled = needControlled && !!slot;
+  if (includeControlled) {
+    let boundary;
+    try { boundary = await getCurriculumBoundary({ grammarId: item.id }); }
+    catch { return { result: { status: 'unavailable', candidate: null,
+      report: { status: 'unavailable', valid: null, violations: [], warnings: [{ code: 'boundary_unavailable' }] },
+      attempts: [] }, slot, preflight: true }; }
+    const slotReport = validateContentAgainstBoundary({ boundary, contentType: 'grammar_distractors',
+      operation: 'generate', fields: [boundaryField('slot.sentence', slot.sentence),
+        boundaryField('slot.answer', slot.answer)] });
+    if (slotReport.status !== 'evaluated' || slotReport.valid !== true) {
+      return { result: { status: 'rejected', candidate: null, report: slotReport,
+        decision: decideBoundaryAction({ mode: boundary.course.mode, operation: 'generate', report: slotReport }),
+        attempts: [], boundaryFingerprint: boundary.boundaryFingerprint, sourceFingerprint: null },
+      slot, preflight: true };
+    }
+  }
+  const loadSource = async () => {
+    const current = await loadGrammarWithExamples(item.id);
+    if (!current) throw new Error('grammar_changed');
+    return { grammar: current, siblings: await loadDistractorSiblings(current),
+      slot: controlledSlot(current) };
+  };
+  const result = await groundedDraft({ scope: { grammarId: item.id },
+    contentType: 'grammar_distractors', loadSource, body,
+    maxTokens: 950, model: ANTHROPIC_GEN_MODEL,
+    instruction: `${needRecognition ? `Create exactly three Indonesian recognition distractors for persisted grammar ${JSON.stringify(item.pattern)}. Correct meaning: ${JSON.stringify(item.meaning)}. Avoid meanings of sibling grammar: ${JSON.stringify(siblings.map(row => ({ pattern: row.pattern, meaning: row.meaning })))}.` : 'Omit recognitionDistractors because they are already curated.'} ${includeControlled ? `Create exactly three Japanese controlled distractors for sentence ${JSON.stringify(slot.sentence)} and correct blank answer ${JSON.stringify(slot.answer)}.` : 'Omit controlledDistractors.'} Return only JSON {${[needRecognition ? '"recognitionDistractors":["...","...","..."]' : null,
+      includeControlled ? '"controlledDistractors":["...","...","..."]' : null].filter(Boolean).join(',')}}.`,
+    additionalSchemaIssues: candidate => {
+      const issues = [];
+      if (candidate.slot != null ||
+          (needRecognition ? candidate.recognitionDistractors?.length !== 3 : candidate.recognitionDistractors != null) ||
+          (includeControlled ? candidate.controlledDistractors?.length !== 3 : candidate.controlledDistractors != null)) {
+        issues.push({ code: 'distractor_task_shape_invalid' });
+      }
+      const correct = item.meaning.trim().toLocaleLowerCase('id');
+      const siblingMeanings = new Set(siblings.map(row => String(row.meaning || '').trim().toLocaleLowerCase('id')));
+      if (Array.isArray(candidate.recognitionDistractors) && candidate.recognitionDistractors.some(value =>
+        typeof value === 'string' && (value.trim().toLocaleLowerCase('id') === correct ||
+          siblingMeanings.has(value.trim().toLocaleLowerCase('id')) || value.includes(item.pattern)))) {
+        issues.push({ code: 'recognition_distractor_conflict' });
+      }
+      if (includeControlled && Array.isArray(candidate.controlledDistractors) && candidate.controlledDistractors.some(value =>
+        typeof value !== 'string' || value === slot.answer || !slotShaped(slot.answer, value))) {
+        issues.push({ code: 'controlled_distractor_shape_invalid' });
+      }
+      return issues;
+    } });
+  return { result, slot, preflight: false };
 }
 
 router.post('/module-grammar/:id/generate-distractors', asyncHandler(async (req, res) => {
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled' });
   const item = await loadGrammarWithExamples(req.params.id);
   if (!item) return res.status(404).json({ error: 'grammar not found' });
+  if ((req.body?.lessonId && String(req.body.lessonId) !== String(item.lesson_id)) ||
+      (req.body?.moduleId && String(req.body.moduleId) !== String(item.module_id))) {
+    return res.status(409).json({ error: 'grammar_source_mismatch' });
+  }
   if (!(item.meaning || '').trim()) {
     return res.status(400).json({ error: 'no_meaning', detail: 'Isi kolom Arti dulu — pengecoh dibuat berdasarkan fungsi yang benar.' });
   }
-  // Dua tahap sekaligus supaya admin cukup sekali klik per pola.
-  const [step1, step2] = await Promise.all([
-    generateDistractorsFor(item),
-    generateControlledFor(item),
-  ]);
-  if (!step1 && !step2) {
-    return res.status(502).json({ error: 'ai_unusable', detail: 'AI tidak menghasilkan pengecoh yang layak. Coba lagi.' });
-  }
-  // TIDAK disimpan di sini — admin review dulu lalu tekan Simpan.
-  res.json({
-    distractors: step1 || [],
-    controlled: step2 ? step2.distractors : [],
-    slot: step2 ? { sentence: step2.slot.sentence, answer: step2.slot.answer } : null,
-  });
+  const siblings = await loadDistractorSiblings(item);
+  const { result, slot, preflight } = await generateGroundedDistractorsFor(item, siblings, req.body || {});
+  return groundedResponse(res, result, { distractors: result.status === 'ready'
+    ? result.candidate.recognitionDistractors : [],
+  controlled: result.status === 'ready' ? result.candidate.controlledDistractors || [] : [],
+  slot: result.status === 'ready' && slot ? { sentence: slot.sentence, answer: slot.answer } : null },
+  preflight && result.status === 'rejected' ? 422 : null);
 }));
 
 // Generate + SIMPAN untuk semua pola satu kursus yang pengecohnya masih kosong.
@@ -1766,27 +2246,73 @@ router.post('/module-grammar/generate-distractors-bulk', asyncHandler(async (req
 
   let saved = 0;
   const failed = [];
+  const failedItems = [];
+  const savedItems = [];
   for (const row of batch.rows) {
+    try {
     const item = await loadGrammarWithExamples(row.id);
-    if (!item) continue;
+    if (!item) { failed.push(row.pattern); failedItems.push({ id: row.id, error: 'grammar_not_found', status: 404 }); continue; }
+    const siblings = await loadDistractorSiblings(item);
+    const sourceFingerprint = distractorSourceFingerprint(item, siblings);
     // Hanya isi kolom yang masih kosong — yang sudah dikurasi admin tidak
     // pernah ditimpa, walau baris ini terpilih karena kolom satunya kosong.
     const needS1 = !(item.recognition_distractors || '').trim();
     const needS2 = !(item.controlled_distractors || '').trim();
-    const [s1, s2] = await Promise.all([
-      needS1 ? generateDistractorsFor(item) : null,
-      needS2 ? generateControlledFor(item) : null,
-    ]);
-    if ((needS1 && !s1) && (needS2 && !s2)) { failed.push(row.pattern); continue; }
-    await query(
-      `UPDATE module_grammar SET
-         recognition_distractors = COALESCE($2, recognition_distractors),
-         controlled_distractors  = COALESCE($3, controlled_distractors),
-         updated_at = NOW()
-       WHERE id = $1`,
-      [row.id, s1 ? s1.join('\n') : null, s2 ? s2.distractors.join('\n') : null]
-    );
+    // Each item receives its own authoritative context and at most three
+    // provider attempts. A fingerprint supplied for the starting grammar is
+    // not authority for other grammars in this course-wide command.
+    const { result, slot } = await generateGroundedDistractorsFor(item, siblings, {},
+      { needRecognition: needS1, needControlled: needS2 });
+    if (result.status !== 'ready' || (needS2 && !slot)) {
+      const status = result.status === 'stale' ? 409 : result.status === 'unavailable' ? 503 : 422;
+      failed.push(row.pattern);
+      failedItems.push({ id: row.id, error: !slot && needS2 ? 'controlled_slot_missing' :
+        result.status === 'stale' ? 'version_conflict' : result.status === 'unavailable' ?
+          'generation_unavailable' : 'generation_rejected', status,
+        generation: groundedGenerationMetadata(result) });
+      continue;
+    }
+    const generatedS1 = needS1 ? result.candidate.recognitionDistractors.join('\n') : null;
+    const generatedS2 = needS2 ? result.candidate.controlledDistractors.join('\n') : null;
+    const guarded = await bulkBoundaryWrite({
+      prepare: async (client, { locked }) => {
+        const dbQuery = client.query.bind(client);
+        const g = await loadGrammarWithExamples(row.id, dbQuery, locked);
+        if (!g) throw new BoundaryContextError('grammar_not_found');
+        const currentSiblings = await loadDistractorSiblings(g, dbQuery, locked);
+        assertGenerationSourceUnchanged(sourceFingerprint,
+          distractorSourceFingerprint(g, currentSiblings));
+        assertGenerationSourceUnchanged(result.sourceFingerprint,
+          dialogueSourceFingerprint({ grammar: g, siblings: currentSiblings, slot: controlledSlot(g) }));
+        const recognition = (g.recognition_distractors || '').trim() ? g.recognition_distractors : generatedS1;
+        const controlled = (g.controlled_distractors || '').trim() ? g.controlled_distractors : generatedS2;
+        return { scope: { grammarId: g.id, moduleId: g.module_id, lessonId: g.lesson_id || undefined },
+          contentType: 'grammar_distractors', operation: 'generate', contentId: g.id,
+          fields: [boundaryField('recognitionDistractors', recognition), boundaryField('controlledDistractors', controlled)],
+          expectedBoundaryFingerprint: result.boundaryFingerprint,
+          contentIsNewOrChanged: recognition !== g.recognition_distractors || controlled !== g.controlled_distractors,
+          recognition, controlled };
+      },
+      write: async (client, candidate) => (await client.query(`UPDATE module_grammar SET
+        recognition_distractors=COALESCE(NULLIF(TRIM(recognition_distractors),''),$2),
+        controlled_distractors=COALESCE(NULLIF(TRIM(controlled_distractors),''),$3),updated_at=NOW()
+        WHERE id=$1 RETURNING id`, [row.id, candidate.recognition, candidate.controlled])).rows[0],
+    });
+    if (!guarded.ok) {
+      failed.push(row.pattern);
+      failedItems.push({ id: row.id, error: guarded.error, status: guarded.status,
+        generation: groundedGenerationMetadata(result),
+        ...(guarded.validation ? { validation: guarded.validation } : {}) });
+      continue;
+    }
     saved++;
+    savedItems.push({ id: row.id, validation: guarded.outcome.report,
+      generation: groundedGenerationMetadata(result) });
+    } catch (error) {
+      console.error('distractor_bulk_item_failed', error);
+      failed.push(row.pattern);
+      failedItems.push({ id: row.id, error: 'bulk_item_failed', status: 500 });
+    }
   }
 
   const rest = await query(`SELECT COUNT(*)::int AS n FROM (${pendingSql}) t`, [courseId]);
@@ -1800,6 +2326,8 @@ router.post('/module-grammar/generate-distractors-bulk', asyncHandler(async (req
     processed: batch.rows.length,
     saved,
     failed,
+    savedItems,
+    failedItems,
     remaining: rest.rows[0].n,
     skippedNoMeaning: noMeaning.rows[0].n,
   });
@@ -1836,7 +2364,23 @@ router.put('/module-grammar/:id/distractors', asyncHandler(async (req, res) => {
   const s1 = Array.isArray(body.distractors) ? body.distractors.map(String) : cleanLines(body.value);
   const s2 = cleanLines(body.controlled);
 
-  const r = await query(
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: async (client, { locked }) => {
+      const current = await client.query(`SELECT * FROM module_grammar WHERE id=$1
+        ${locked ? 'FOR UPDATE' : ''}`, [req.params.id]);
+      if (!current.rows.length) throw new BoundaryContextError('grammar_not_found');
+      const row = current.rows[0];
+      const recognition = hasS1 ? (s1.length ? s1.join('\n') : null) : row.recognition_distractors;
+      const controlled = hasS2 ? (s2.length ? s2.join('\n') : null) : row.controlled_distractors;
+      return { scope: { grammarId: row.id, moduleId: row.module_id, lessonId: row.lesson_id || undefined },
+        contentType: 'grammar_distractors', operation: 'live_write', contentId: row.id,
+        fields: [boundaryField('recognitionDistractors', recognition),
+          boundaryField('controlledDistractors', controlled)],
+        contentIsNewOrChanged: recognition !== row.recognition_distractors || controlled !== row.controlled_distractors,
+        expectedRevision: body.expectedRevision, currentRevision: row.updated_at,
+        expectedBoundaryFingerprint: body.boundaryFingerprint };
+    },
+    write: async client => (await client.query(
     `UPDATE module_grammar SET
        recognition_distractors = CASE WHEN $3::boolean THEN $2 ELSE recognition_distractors END,
        controlled_distractors  = CASE WHEN $5::boolean THEN $4 ELSE controlled_distractors END,
@@ -1847,9 +2391,10 @@ router.put('/module-grammar/:id/distractors', asyncHandler(async (req, res) => {
       s1.length ? s1.join('\n') : null, hasS1,
       s2.length ? s2.join('\n') : null, hasS2,
     ]
-  );
-  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-  res.json({ ok: true, distractors: s1, controlled: s2 });
+    )).rows[0],
+  });
+  if (!guarded) return;
+  res.json({ ok: true, distractors: s1, controlled: s2, validation: guarded.report });
 }));
 
 // ── Bunpou Flow pilot: Pendamping Bunpou companion editor (Paket 1) ────────
@@ -1863,14 +2408,14 @@ router.put('/module-grammar/:id/distractors', asyncHandler(async (req, res) => {
 // Scope = this lesson's own grammar cards UNION the grammar points actually
 // picked into its paired Tugas Bunpou (if one exists yet) — matches the
 // implementation plan's "semua grammarId milik lesson/tugas terkait".
-async function bunpouFlowScope(lessonId) {
+async function bunpouFlowScope(lessonId, dbQuery = query) {
   const [own, task] = await Promise.all([
-    query(`SELECT id FROM module_grammar WHERE lesson_id = $1`, [lessonId]),
-    query(`SELECT id FROM lessons WHERE type = 'grammar_task' AND popup_after_lesson_id = $1 LIMIT 1`, [lessonId]),
+    dbQuery(`SELECT id FROM module_grammar WHERE lesson_id = $1`, [lessonId]),
+    dbQuery(`SELECT id FROM lessons WHERE type = 'grammar_task' AND popup_after_lesson_id = $1 LIMIT 1`, [lessonId]),
   ]);
   const taskLessonId = task.rows[0]?.id || null;
   const taskItems = taskLessonId
-    ? await query(`SELECT grammar_id FROM lesson_grammar_task_items WHERE lesson_id = $1`, [taskLessonId])
+    ? await dbQuery(`SELECT grammar_id FROM lesson_grammar_task_items WHERE lesson_id = $1`, [taskLessonId])
     : { rows: [] };
   const grammarIds = [...new Set([
     ...own.rows.map((r) => r.id),
@@ -1886,9 +2431,9 @@ async function bunpouFlowScope(lessonId) {
 // admin UI — grading itself never depends on this value (each practice
 // session freezes its own drill snapshot at creation time regardless; see
 // routes/grammar-task-sessions.js).
-async function currentSourceFingerprint(taskLessonId) {
+async function currentSourceFingerprint(taskLessonId, dbQuery = query) {
   if (!taskLessonId) return null;
-  const [items, pool] = await Promise.all([loadTaskConcepts(taskLessonId), loadModulePool(taskLessonId)]);
+  const [items, pool] = await Promise.all([loadTaskConcepts(taskLessonId, dbQuery), loadModulePool(taskLessonId, dbQuery)]);
   return contentRevisionId(items, pool);
 }
 
@@ -1931,26 +2476,28 @@ router.get('/lessons/:lessonId/bunpou-flow', asyncHandler(async (req, res) => {
 }));
 
 router.put('/lessons/:lessonId/bunpou-flow/draft', asyncHandler(async (req, res) => {
-  const { grammarIds, taskLessonId } = await bunpouFlowScope(req.params.lessonId);
-  const check = validateCompanionEnvelope(req.body, grammarIds);
-  if (!check.ok) return res.status(400).json({ error: 'invalid_envelope', details: check.errors });
-
-  const fingerprint = await currentSourceFingerprint(taskLessonId);
-  if (!fingerprint || req.body?.sourceFingerprint !== fingerprint) {
-    return res.status(409).json({ error: 'Materi berubah atau belum ditinjau. Buka ulang pendamping dan periksa soal sebelum menyimpan.' });
-  }
-
-  const sanitized = sanitizeCompanionEnvelope(req.body);
-  sanitized.editor = { email: req.user.email, at: new Date().toISOString() };
-  sanitized.sourceFingerprint = fingerprint;
-
-  const r = await query(
-    `UPDATE lessons SET bunpou_flow_draft = $2, updated_at = NOW() WHERE id = $1 RETURNING bunpou_flow_draft`,
-    [req.params.lessonId, JSON.stringify(sanitized)]
-  );
-  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-  res.json({ ok: true, draft: r.rows[0].bunpou_flow_draft,
-    draftRevision: companionDraftRevision(r.rows[0].bunpou_flow_draft) });
+  const guarded = await adminLockedMutation(res, client => courseIdsForBunpouPair(client, req.params.lessonId),
+    async client => {
+      const lesson = await client.query('SELECT bunpou_flow_draft FROM lessons WHERE id=$1 FOR UPDATE',
+        [req.params.lessonId]);
+      if (!lesson.rows.length) throw fail(404, 'lesson_not_found');
+      const revision = companionDraftRevision(lesson.rows[0].bunpou_flow_draft);
+      if ((req.body?.draftRevision ?? null) !== revision) throw fail(409, 'draft_changed_since_editor_open');
+      const dbQuery = client.query.bind(client);
+      const { grammarIds, taskLessonId } = await bunpouFlowScope(req.params.lessonId, dbQuery);
+      const check = validateCompanionEnvelope(req.body, grammarIds);
+      if (!check.ok) throw fail(400, 'invalid_envelope');
+      const fingerprint = await currentSourceFingerprint(taskLessonId, dbQuery);
+      if (!fingerprint || req.body?.sourceFingerprint !== fingerprint) throw fail(409, 'source_changed_since_review');
+      const sanitized = sanitizeCompanionEnvelope(req.body);
+      sanitized.editor = { email: req.user.email, at: new Date().toISOString() };
+      sanitized.sourceFingerprint = fingerprint;
+      return (await client.query(`UPDATE lessons SET bunpou_flow_draft=$2,updated_at=NOW()
+        WHERE id=$1 RETURNING bunpou_flow_draft`, [req.params.lessonId, JSON.stringify(sanitized)])).rows[0];
+    });
+  if (!guarded) return;
+  res.json({ ok: true, draft: guarded.value.bunpou_flow_draft,
+    draftRevision: companionDraftRevision(guarded.value.bunpou_flow_draft) });
 }));
 
 // Publishing is deliberately its own explicit action (never implied by
@@ -1961,34 +2508,44 @@ router.put('/lessons/:lessonId/bunpou-flow/draft', asyncHandler(async (req, res)
 // now-out-of-scope overlay into what students see.
 router.post('/lessons/:lessonId/bunpou-flow/publish', asyncHandler(async (req, res) => {
   if (req.body?.confirm !== true) return res.status(400).json({ error: 'confirm_required' });
-
-  const lesson = await query(`SELECT bunpou_flow_draft FROM lessons WHERE id = $1`, [req.params.lessonId]);
-  if (lesson.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-  const draft = lesson.rows[0].bunpou_flow_draft;
-  if (!draft) return res.status(400).json({ error: 'no_draft_to_publish' });
-  if (!req.body?.draftRevision || req.body.draftRevision !== companionDraftRevision(draft)) {
-    return res.status(409).json({ error: 'Draft berubah sejak ditinjau. Buka ulang pendamping sebelum publikasi.' });
-  }
-
-  const { grammarIds, taskLessonId } = await bunpouFlowScope(req.params.lessonId);
-  const check = validateCompanionEnvelope(draft, grammarIds);
-  if (!check.ok) return res.status(400).json({ error: 'invalid_envelope', details: check.errors });
-  const fingerprint = await currentSourceFingerprint(taskLessonId);
-  if (!fingerprint || draft.sourceFingerprint !== fingerprint) {
-    return res.status(409).json({ error: 'Materi berubah sejak draft diperiksa. Tinjau dan simpan ulang draft.' });
-  }
-
-  const sanitized = sanitizeCompanionEnvelope(draft);
-  sanitized.publishedBy = { email: req.user.email, at: new Date().toISOString() };
-  sanitized.sourceFingerprint = fingerprint;
-
-  const r = await query(
-    `UPDATE lessons SET bunpou_flow_published = $2, updated_at = NOW()
-      WHERE id = $1 AND bunpou_flow_draft = $3::jsonb RETURNING bunpou_flow_published`,
-    [req.params.lessonId, JSON.stringify(sanitized), JSON.stringify(draft)]
-  );
-  if (!r.rows.length) return res.status(409).json({ error: 'Draft berubah saat publikasi. Tinjau ulang pendamping.' });
-  res.json({ ok: true, published: r.rows[0].bunpou_flow_published });
+  const outcome = await adminBoundaryWrite(res, {
+    validate: validateBunpouPublish,
+    prepare: async (client, { locked }) => {
+      const dbQuery = client.query.bind(client);
+      const lesson = await dbQuery(`SELECT id,module_id,bunpou_flow_draft FROM lessons WHERE id=$1
+        ${locked ? 'FOR UPDATE' : ''}`, [req.params.lessonId]);
+      if (!lesson.rows.length) throw fail(404, 'lesson_not_found');
+      const row = lesson.rows[0], draft = row.bunpou_flow_draft;
+      if (!draft) throw fail(400, 'no_draft_to_publish');
+      if (!req.body?.draftRevision || req.body.draftRevision !== companionDraftRevision(draft)) {
+        throw fail(409, 'draft_changed_since_review');
+      }
+      const { grammarIds, taskLessonId } = await bunpouFlowScope(row.id, dbQuery);
+      const check = validateCompanionEnvelope(draft, grammarIds);
+      if (!check.ok) throw fail(400, 'invalid_envelope');
+      const fingerprint = await currentSourceFingerprint(taskLessonId, dbQuery);
+      if (!fingerprint || draft.sourceFingerprint !== fingerprint) throw fail(409, 'source_changed_since_review');
+      const sanitized = sanitizeCompanionEnvelope(draft);
+      const relatedCourseIds = taskLessonId ? await courseIdsForLesson(client, taskLessonId) : [];
+      return { scope: { moduleId: row.module_id, lessonId: row.id },
+        relatedCourseIds,
+        contentType: 'dialogue_comprehension', operation: 'publish', contentId: row.id,
+        fields: boundaryFieldsFrom('bunpouFlowPublished', sanitized), draft, sanitized, fingerprint,
+        expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+    },
+    write: async (client, candidate) => {
+      const published = { ...candidate.sanitized,
+        publishedBy: { email: req.user.email, at: new Date().toISOString() },
+        sourceFingerprint: candidate.fingerprint };
+      const result = await client.query(`UPDATE lessons SET bunpou_flow_published=$2,updated_at=NOW()
+        WHERE id=$1 AND bunpou_flow_draft=$3::jsonb RETURNING id,bunpou_flow_published`,
+      [req.params.lessonId, JSON.stringify(published), JSON.stringify(candidate.draft)]);
+      if (!result.rows.length) throw fail(409, 'draft_changed_during_publish');
+      return result.rows[0];
+    },
+  });
+  if (!outcome) return;
+  res.json({ ok: true, published: outcome.value.bunpou_flow_published, validation: outcome.report });
 }));
 
 // Flag + pilot lesson id — plain app_settings rows (same mechanism as
@@ -1996,6 +2553,21 @@ router.post('/lessons/:lessonId/bunpou-flow/publish', asyncHandler(async (req, r
 // requires the target to actually be a lesson with a companion already
 // published, so a typo'd or forgotten-to-publish lesson id can not be
 // switched live by accident.
+router.get('/settings/learning-flow-communication', asyncHandler(async (_req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  res.json(await getLearningFlowSettings());
+}));
+
+router.put('/settings/learning-flow-communication', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.json(await saveLearningFlowSettings(req.body || {})); }
+  catch (error) {
+    if (!error.status) throw error;
+    res.status(error.status).json({ error: error.message,
+      ...(error.readiness ? { readiness: error.readiness } : {}) });
+  }
+}));
+
 router.get('/settings/bunpou-flow-pilot', asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT key, value FROM app_settings WHERE key IN ('bunpou_flow_pilot_enabled','bunpou_flow_pilot_lesson_id')`
@@ -2228,161 +2800,10 @@ async function _loadQuizGenPrompt() {
   }
 }
 
-// DEPRECATED: tombol "✨ Generate AI" (bulk) di admin sudah dihapus — diganti
-// generator per-mondai (generate-jlpt + generate-listening). Endpoint ini
-// dibiarkan dulu tanpa pemanggil; hapus di cleanup berikutnya bareng
-// QUIZ_KINDS/QUIZ_GEN_PROMPT_DEFAULT/settings quiz-gen-prompt.
-router.post('/lessons/:lessonId/generate-quiz', quizGenLimiter, asyncHandler(async (req, res) => {
-  const lessonId = req.params.lessonId;
-  const count = Math.min(30, Math.max(1, Number(req.body?.count) || 10));
-  let kinds = Array.isArray(req.body?.kinds) ? req.body.kinds.filter((k) => QUIZ_KINDS[k]) : [];
-  if (kinds.length === 0) kinds = ['mc_vocab', 'mc_grammar'];
-  const instruction = String(req.body?.instruction || '').slice(0, 500).trim();
-
-  const lessonRes = await query(`SELECT id, module_id, type FROM lessons WHERE id = $1`, [lessonId]);
-  if (lessonRes.rows.length === 0) return res.status(404).json({ error: 'lesson not found' });
-  const lesson = lessonRes.rows[0];
-  if (lesson.type !== 'quiz') return res.status(400).json({ error: 'lesson_not_quiz', detail: 'Pelajaran ini bukan tipe quiz' });
-
-  // Grounding: vocab (prefer deck-wired di modul) + grammar modul.
-  let vocabRes = await query(
-    `SELECT DISTINCT v.japanese, v.reading, v.indonesian, v.category
-     FROM module_vocabulary v
-     JOIN lesson_deck_items di ON di.vocabulary_id = v.id
-     JOIN lessons l ON l.id = di.lesson_id
-     WHERE l.module_id = $1 AND l.type = 'deck' AND v.japanese IS NOT NULL AND v.japanese <> ''
-     LIMIT 80`,
-    [lesson.module_id]
-  );
-  if (vocabRes.rows.length < 4) {
-    vocabRes = await query(
-      `SELECT japanese, reading, indonesian, category
-       FROM module_vocabulary
-       WHERE module_id = $1 AND japanese IS NOT NULL AND japanese <> ''
-       LIMIT 80`,
-      [lesson.module_id]
-    );
-  }
-  const grammarRes = await query(
-    `SELECT pattern, meaning, example FROM module_grammar
-     WHERE module_id = $1 AND pattern IS NOT NULL AND pattern <> ''
-     LIMIT 30`,
-    [lesson.module_id]
-  );
-
-  if (vocabRes.rows.length === 0 && grammarRes.rows.length === 0) {
-    return res.status(400).json({ error: 'not_enough_material', detail: 'Modul ini belum punya kosakata/grammar. Import materi dulu.' });
-  }
-  if (!QUIZ_ANTHROPIC_KEY) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
-
-  const vocabLines = vocabRes.rows.map((v) =>
-    `- ${v.japanese}${v.reading ? ` (${v.reading})` : ''} = ${v.indonesian || '?'}${v.category ? ` [${v.category}]` : ''}`).join('\n');
-  const grammarLines = grammarRes.rows.map((g) =>
-    `- ${g.pattern}${g.meaning ? ` = ${g.meaning}` : ''}${g.example ? `. Contoh: ${g.example}` : ''}`).join('\n');
-  const kindLines = kinds.map((k) => `- ${QUIZ_KINDS[k].label}`).join('\n');
-
-  const promptTpl = await _loadQuizGenPrompt();
-  const userContent = _fillTemplate(promptTpl, {
-    count,
-    kinds: kindLines,
-    instruction: instruction ? `Instruksi tambahan dari admin: ${instruction}` : '',
-    vocab: vocabLines || '(tidak ada)',
-    grammar: grammarLines || '(tidak ada)',
-  });
-
-  let parsed;
-  try {
-    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': QUIZ_ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: QUIZ_ANTHROPIC_MODEL,
-        max_tokens: 4096,
-        system: [{ type: 'text', text: QUIZ_GEN_SYSTEM, cache_control: { type: 'ephemeral' } }],
-        messages: [{ role: 'user', content: userContent }],
-      }),
-    });
-    if (!upstream.ok) {
-      const detail = await upstream.text().catch(() => '');
-      console.error('Anthropic quiz-gen:', upstream.status, detail.slice(0, 200));
-      return res.status(502).json({ error: 'ai_upstream' });
-    }
-    const data = await upstream.json();
-    const text = Array.isArray(data.content)
-      ? data.content.filter((b) => b.type === 'text').map((b) => b.text).join('')
-      : '';
-    parsed = _extractJsonObject(text);
-  } catch (err) {
-    console.error('Anthropic quiz-gen error:', err.message);
-    return res.status(502).json({ error: 'ai_upstream' });
-  }
-  if (!parsed || !Array.isArray(parsed.questions)) return res.status(502).json({ error: 'ai_parse' });
-
-  const allowedTypes = new Set(kinds.map((k) => QUIZ_KINDS[k].type));
-  const allowedCats = new Set(kinds.map((k) => QUIZ_KINDS[k].cat));
-  const fallbackCat = allowedCats.values().next().value;
-  const clean = [];
-  for (const q of parsed.questions) {
-    if (!q || typeof q !== 'object') continue;
-    let question = String(q.question || '').trim().slice(0, 1000);
-    if (!question) continue;
-    const qtype = q.questionType === 'fill_blank' ? 'fill_blank' : 'multiple_choice';
-    if (!allowedTypes.has(qtype)) continue;
-    let qcat = ['vocabulary', 'grammar', 'reading', 'listening'].includes(q.questionCategory) ? q.questionCategory : 'vocabulary';
-    if (!allowedCats.has(qcat)) qcat = fallbackCat;
-    const explanation = String(q.explanation || '').trim().slice(0, 1000);
-    // 1400 < MAX_TEXT_LEN tts publik (1500) — dialog JLPT bisa panjang.
-    const audioScript = String(q.audioScript || '').trim().slice(0, 1400);
-    const passage = String(q.passage || '').trim().slice(0, 4000);
-    if (qcat === 'listening' && qtype !== 'fill_blank') {
-      // Listening tanpa script dialog yang dikenali parser TTS = soal cacat
-      // (ga ada audio buat diputar siswa) → buang draft-nya.
-      const turns = parseDialog(audioScript);
-      if (!turns) continue;
-      // Wajib struktur JLPT penuh sesuai prompt: ≥3 turn, ada baris narator
-      // (N) DAN dua pembicara dialog (cewe + cowo). Menolak output model yg
-      // memperlakukan N sebagai tokoh / dialog 2-turn tanpa kerangka soal.
-      const spk = turns.map((t) => String(t.speaker).toUpperCase());
-      const hasNarrator = spk.some((s) => /^N/.test(s));
-      const hasFemale = spk.some((s) => /^(A|W|F|女)/.test(s));
-      const hasMale = spk.some((s) => /^(B|M|男)/.test(s));
-      if (turns.length < 3 || !hasNarrator || !hasFemale || !hasMale) continue;
-      // "question" = teks yang TAMPIL di soal — model kadang menyalin dialog
-      // / instruksi meta ("音声を聞いてください。N: ...") ke sini. Pangkas ke
-      // baris pertama tanpa prefix speaker; kalau masih ada pola speaker
-      // inline (dialog nyelip dalam 1 baris), ganti dengan baris narator
-      // TERAKHIR dari script (= pertanyaan yang diulang, sesuai alur JLPT).
-      question = question.split('\n')[0].replace(/^[A-Za-z]{1,3}:\s*/, '').trim();
-      if (/[A-Za-z]{1,3}:\s/.test(question)) {
-        const nTurns = turns.filter((t) => /^n/i.test(String(t.speaker)));
-        question = (nTurns.length ? nTurns[nTurns.length - 1].text : '').trim();
-        if (!question) continue;
-      }
-    }
-    if (qtype === 'fill_blank') {
-      const correctAnswer = String(q.correctAnswer || '').trim().slice(0, 200);
-      if (!correctAnswer) continue;
-      clean.push({ question, questionType: 'fill_blank', questionCategory: qcat, audioScript: '', passage: '', correctAnswer, explanation, options: [] });
-    } else {
-      let options = Array.isArray(q.options)
-        ? q.options.map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect })).filter((o) => o.text)
-        : [];
-      if (options.length < 2) continue;
-      options = options.slice(0, 6);
-      let firstCorrect = options.findIndex((o) => o.isCorrect);
-      if (firstCorrect === -1) firstCorrect = 0;
-      options = options.map((o, i) => ({ text: o.text, isCorrect: i === firstCorrect }));
-      clean.push({ question, questionType: 'multiple_choice', questionCategory: qcat, audioScript: qcat === 'listening' ? audioScript : '', passage: qcat === 'reading' ? passage : '', correctAnswer: '', explanation, options });
-    }
-    if (clean.length >= count) break;
-  }
-  if (clean.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan soal valid. Coba lagi.' });
-
-  res.json({ questions: clean, vocabPool: vocabRes.rows.length, grammarPool: grammarRes.rows.length });
+// The old bulk quiz generator has no grounded task contract. Reject its
+// legacy path; use the scoped JLPT and listening draft generators instead.
+router.post('/lessons/:lessonId/generate-quiz', quizGenLimiter, asyncHandler(async (_req, res) => {
+  res.status(410).json({ error: 'use_scoped_generate_listening_or_jlpt' });
 }));
 
 // Generate opsi pilihan ganda (AI) untuk SATU soal — dipakai tombol "Generate
@@ -2400,100 +2821,74 @@ router.post('/generate-question-options', asyncHandler(async (req, res) => {
   const body = req.body || {};
   const question = String(body.question || '').trim().slice(0, 2000);
   const category = normalizeQuizCategory(body.questionCategory);
-  const passage = String(body.passage || '').trim().slice(0, 4000);
-  const audioScript = String(body.audioScript || '').trim().slice(0, 1000);
   const taskType = String(body.taskType || '').trim();
-  const level = String(body.level || '').trim();
   const task = _taskForType(taskType);
   const optionCount = task ? (task.optionCount || 4) : 4;
+  if (!body.lessonId) return res.status(400).json({ error: 'lessonId required' });
   if (!question) return res.status(400).json({ error: 'question required' });
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
-
-  const ctxBlocks = [];
-  if (category === 'reading' && passage) ctxBlocks.push(`Teks bacaan (dokkai):\n${passage}`);
-  if (category === 'listening' && audioScript) ctxBlocks.push(`Skrip audio (listening):\n${audioScript}`);
-
-  // Kalibrasi opsi ke tipe mondai spesifik: pinjam aturan "Opsi:" dari definisi
-  // tugas (rules), buang baris contoh "Balas:" (shape jawaban penuh) karena di
-  // sini kita cuma minta opsi untuk soal yang SUDAH ada.
-  let taskGuidance = '';
-  if (task) {
-    const taskRules = String(task.rules || '').split(/\nBalas\s*:/)[0].trim();
-    const lvl = JLPT_LISTENING_TASKS[taskType]
-      ? (JLPT_LISTENING_LEVELS[level] || '')
-      : (JLPT_GEN_LEVELS[level] || '');
-    taskGuidance = `Tipe soal: ${task.name} (${task.label}).
-PENTING: soal SUDAH ada (di bawah). JANGAN bikin soal baru atau ubah teksnya — buat OPSI jawabannya saja.
-Ikuti HANYA aturan "Opsi:" untuk tipe mondai ini; ABAIKAN bagian "Format soal"/"Struktur audioScript".
-${taskRules}${lvl ? `\n\nBatasan level:\n${lvl}` : ''}`;
-  }
-
-  const userContent = `Buat ${optionCount} opsi jawaban pilihan ganda untuk soal kuis bahasa Jepang (JLPT N5/N4).
-Kategori: ${category}.
-${taskGuidance ? '\n' + taskGuidance + '\n' : ''}${ctxBlocks.join('\n\n')}
-
-Soal: ${question}
-
-Aturan:
-- Tepat ${optionCount} opsi, TEPAT 1 yang benar.${category === 'reading' ? ' Jawaban benar HARUS sesuai isi teks bacaan di atas.' : ''}${category === 'listening' ? ' Jawaban benar HARUS sesuai isi skrip audio di atas.' : ''}
-- Distraktor (opsi salah) masuk akal & sepadan (panjang/jenis mirip), bukan asal-asalan.
-${task ? '' : '- Bahasa opsi mengikuti konteks soal (Indonesia atau Jepang).\n'}- "explanation": alasan singkat WAJIB dalam Bahasa Indonesia (JANGAN bahasa Jepang; istilah Jepang boleh dikutip seperlunya) kenapa jawaban benar.
-
-Balas HANYA JSON valid tanpa teks lain (buat TEPAT ${optionCount} objek opsi):
-{"options":[{"text":"...","isCorrect":true},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false}],"explanation":"..."}`;
-
-  const text = await callClaude({ system: QUIZ_GEN_SYSTEM, userContent, maxTokens: 700 });
-  if (!text) return res.status(502).json({ error: 'ai_upstream' });
-  const parsed = _extractJsonObject(text);
-  if (!parsed || !Array.isArray(parsed.options)) return res.status(502).json({ error: 'ai_parse' });
-
-  // Jalur kalibrasi (taskType dikenal): enforce aturan opsi per tipe via
-  // _normalizeJlptOptions (mis. goi_kanji wajib hiragana). Kalau gagal, 1 retry
-  // diperketat lalu fallback generik supaya admin tak pernah terblokir.
-  if (task) {
-    let options = _normalizeJlptOptions(parsed.options, optionCount, taskType, question);
-    let explanation = String(parsed.explanation || '').trim().slice(0, 1000);
-    if (!options) {
-      const hardened = userContent + `\n\nKOREKSI: opsi sebelumnya melanggar aturan "Opsi:" di atas. ` +
-        (taskType === 'goi_kanji'
-          ? 'Setiap opsi WAJIB HIRAGANA murni (tanpa kanji/katakana/romaji).'
-          : 'Pastikan SEMUA opsi mengikuti aturan "Opsi:" tipe ini dengan ketat.');
-      const text2 = await callClaude({ system: QUIZ_GEN_SYSTEM, userContent: hardened, maxTokens: 700 });
-      const parsed2 = text2 ? _extractJsonObject(text2) : null;
-      if (parsed2 && Array.isArray(parsed2.options)) {
-        const opts2 = _normalizeJlptOptions(parsed2.options, optionCount, taskType, question);
-        if (opts2) {
-          options = opts2;
-          const exp2 = String(parsed2.explanation || '').trim().slice(0, 1000);
-          if (exp2) explanation = exp2;
-        }
-      }
+  const lesson = await query(`SELECT id,module_id,slug,type FROM lessons WHERE id=$1`, [body.lessonId]);
+  if (!lesson.rows.length) return res.status(404).json({ error: 'lesson not found' });
+  let persisted = null;
+  if (body.questionId) {
+    const stored = await query(`SELECT id,lesson_id,question,question_category,passage,audio_script,updated_at
+      FROM quiz_questions WHERE id=$1`, [body.questionId]);
+    if (!stored.rows.length) return res.status(404).json({ error: 'question not found' });
+    persisted = stored.rows[0];
+    if (String(persisted.lesson_id) !== String(body.lessonId) ||
+        question !== String(persisted.question).trim() ||
+        category !== normalizeQuizCategory(persisted.question_category)) {
+      return res.status(409).json({ error: 'question_source_mismatch' });
     }
-    if (!options) {
-      // Fallback: normalisasi generik (jangan blokir admin meski belum 100% pas tipe).
-      const generic = parsed.options
-        .map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect }))
-        .filter((o) => o.text)
-        .slice(0, optionCount);
-      if (generic.length < 2) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan opsi valid. Coba lagi.' });
-      let fc = generic.findIndex((o) => o.isCorrect);
-      if (fc === -1) fc = 0;
-      options = generic.map((o, i) => ({ text: o.text, isCorrect: i === fc }));
-    }
-    return res.json({ options, explanation });
   }
-
-  // Jalur generik (tanpa taskType) — perilaku lama, tidak berubah.
-  let options = parsed.options
-    .map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect }))
-    .filter((o) => o.text)
-    .slice(0, 6);
-  if (options.length < 2) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan opsi valid. Coba lagi.' });
-  let firstCorrect = options.findIndex((o) => o.isCorrect);
-  if (firstCorrect === -1) firstCorrect = 0;
-  options = options.map((o, i) => ({ text: o.text, isCorrect: i === firstCorrect }));
-  const explanation = String(parsed.explanation || '').trim().slice(0, 1000);
-  res.json({ options, explanation });
+  const draftPassage = String(body.passage || '').trim().slice(0, 4000);
+  const draftAudioScript = String(body.audioScript || '').trim().slice(0, 4000);
+  let boundary;
+  try { boundary = await getCurriculumBoundary({ lessonId: body.lessonId }); }
+  catch { return res.status(503).json({ error: 'boundary_unavailable' }); }
+  const sourceReport = validateContentAgainstBoundary({ boundary, contentType: 'quiz_question',
+    operation: 'generate', fields: [boundaryField('question', question),
+      boundaryField('passage', persisted?.passage || draftPassage),
+      boundaryField('audioScript', persisted?.audio_script || draftAudioScript)] });
+  if (sourceReport.status !== 'evaluated' || sourceReport.valid !== true) {
+    return groundedResponse(res, { status: 'rejected', candidate: null,
+      report: sourceReport, decision: decideBoundaryAction({ mode: boundary.course.mode,
+        operation: 'generate', report: sourceReport }), attempts: [],
+      boundaryFingerprint: boundary.boundaryFingerprint, sourceFingerprint: null },
+    { options: [] }, 422);
+  }
+  const loadSource = async () => {
+    const currentLesson = await query(`SELECT id,module_id,slug,type FROM lessons WHERE id=$1`, [body.lessonId]);
+    if (!currentLesson.rows.length) throw new Error('lesson_changed');
+    if (!persisted) return { lesson: currentLesson.rows[0], draft: {
+      question, passage: draftPassage, audioScript: draftAudioScript } };
+    const currentQuestion = await query(`SELECT id,lesson_id,question,question_category,passage,audio_script,updated_at
+      FROM quiz_questions WHERE id=$1`, [body.questionId]);
+    if (!currentQuestion.rows.length) throw new Error('question_changed');
+    return { lesson: currentLesson.rows[0], question: currentQuestion.rows[0] };
+  };
+  const sourceText = persisted?.passage || persisted?.audio_script || draftPassage || draftAudioScript || '';
+  const result = await groundedDraft({ scope: { lessonId: body.lessonId },
+    contentType: 'quiz_question', loadSource, body, maxTokens: 800,
+    scenario: `Draft question: ${question}; source: ${sourceText}`,
+    instruction: `Create exactly ${optionCount} answer options for this Japanese learning question: ${JSON.stringify(question)}. Category: ${category}. ${task ? `Task: ${task.name}. ${String(task.rules || '').split(/\nBalas\s*:/)[0]}` : ''} ${sourceText ? `Persisted source: ${sourceText}` : ''} Return {"options":[{"text":"...","isCorrect":true},{"text":"...","isCorrect":false}],"explanation":"..."}. Exactly one isCorrect must be true.`,
+    transformCandidate: parsed => {
+      if (!Array.isArray(parsed.options) || parsed.options.some(option =>
+        !option || typeof option.text !== 'string' || typeof option.isCorrect !== 'boolean')) return parsed;
+      const correct = parsed.options.flatMap((option, index) => option.isCorrect ? [index] : []);
+      if (correct.length !== 1 || typeof parsed.explanation !== 'string') return parsed;
+      return { question: { prompt: question, options: parsed.options.map(option => option.text),
+        correctIndex: correct[0], explanation: parsed.explanation } };
+    } });
+  const candidateQuestion = result.candidate?.question;
+  const options = candidateQuestion?.options?.map((text, index) =>
+    ({ text, isCorrect: index === candidateQuestion.correctIndex })) || [];
+  if (result.status === 'ready' && (options.length !== optionCount ||
+      (task && !_normalizeJlptOptions(options, optionCount, taskType, question)))) {
+    rejectGroundedResult(result, { code: 'question_options_task_mismatch' });
+  }
+  return groundedResponse(res, result, { options: result.status === 'ready' ? options : [],
+    explanation: result.status === 'ready' ? candidateQuestion?.explanation || '' : '' });
 }));
 
 // ===== GENERATOR SOAL LISTENING GAYA JLPT (Claude) =====
@@ -2636,15 +3031,21 @@ router.post('/lessons/:lessonId/generate-listening', quizGenLimiter, asyncHandle
   const taskType = String(req.body?.taskType || '');
   const task = JLPT_LISTENING_TASKS[taskType];
   if (!task) return res.status(400).json({ error: 'bad_task', detail: 'taskType harus kadai/point/hatsuwa/sokuji.' });
-  const level = JLPT_LISTENING_LEVELS[req.body?.level] ? String(req.body.level) : 'N5';
-  const count = Math.min(8, Math.max(1, Number(req.body?.count) || 3));
+  const count = Math.min(8, Math.max(1, Math.trunc(Number(req.body?.count) || 3)));
   const topic = String(req.body?.topic || '').slice(0, 300).trim();
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
 
-  const lessonRes = await query(`SELECT id, module_id, type FROM lessons WHERE id = $1`, [lessonId]);
+  const lessonRes = await query(`SELECT l.id,l.module_id,l.type,c.level
+    FROM lessons l JOIN modules m ON m.id=l.module_id JOIN courses c ON c.id=m.course_id
+    WHERE l.id=$1`, [lessonId]);
   if (lessonRes.rows.length === 0) return res.status(404).json({ error: 'lesson not found' });
   const lesson = lessonRes.rows[0];
   if (lesson.type !== 'quiz') return res.status(400).json({ error: 'lesson_not_quiz', detail: 'Pelajaran ini bukan tipe quiz' });
+  const level = String(lesson.level || '').toUpperCase();
+  if (!JLPT_LISTENING_LEVELS[level]) return res.status(422).json({ error: 'unsupported_course_level' });
+  if (req.body?.level && String(req.body.level).toUpperCase() !== level) {
+    return res.status(409).json({ error: 'course_level_mismatch' });
+  }
 
   // Grounding vocab + grammar modul — query sama dgn generate-quiz.
   let vocabRes = await query(
@@ -2703,52 +3104,48 @@ router.post('/lessons/:lessonId/generate-listening', quizGenLimiter, asyncHandle
       : '',
   });
 
-  const text = await callClaude({ system: QUIZ_GEN_SYSTEM, userContent, maxTokens: 4096, model: ANTHROPIC_GEN_MODEL });
-  if (!text) return res.status(502).json({ error: 'ai_upstream' });
-  const parsed = _extractJsonObject(text);
-  if (!parsed || !Array.isArray(parsed.questions)) return res.status(502).json({ error: 'ai_parse' });
-
-  const clean = [];
-  for (const q of parsed.questions) {
-    if (!q || typeof q !== 'object') continue;
-    // "question" = teks yang TAMPIL — kalau model kebablasan naruh dialog
-    // multi-baris di sini, ambil baris pertama saja (jangan bocorin script)
-    // dan buang prefix speaker.
-    const question = String(q.question || '').split('\n')[0]
-      .replace(/^[A-Za-z]{1,3}:\s*/, '').trim().slice(0, 1000);
-    // Batas 1400 < MAX_TEXT_LEN tts publik (1500) supaya audio pasti bisa
-    // di-generate untuk siswa.
-    const audioScript = String(q.audioScript || '').trim().slice(0, 1400);
-    if (!question || !audioScript) continue;
-    // Script harus dialog valid yang dikenali parser TTS (prefix speaker).
-    const turns = parseDialog(audioScript);
-    if (!turns) continue;
-    // Struktur per tipe mondai: dialog 1/2 wajib multi-speaker (ada cewe A
-    // DAN cowo B — semua-narator = bug satu suara); mondai 3/4 wajib pendek
-    // (opsi tidak ikut dibacakan).
-    const speakers = turns.map((t) => String(t.speaker).toUpperCase());
-    if (taskType === 'kadai' || taskType === 'point') {
-      const hasFemale = speakers.some((s) => /^(A|W|F|女)/.test(s));
-      const hasMale = speakers.some((s) => /^(B|M|男)/.test(s));
-      if (turns.length < 3 || !hasFemale || !hasMale) continue;
-    } else if (turns.length > 2) {
-      continue;
-    }
-    let options = Array.isArray(q.options)
-      ? q.options.map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect })).filter((o) => o.text)
-      : [];
-    if (options.length < 2) continue;
-    options = options.slice(0, task.optionCount);
-    let firstCorrect = options.findIndex((o) => o.isCorrect);
-    if (firstCorrect === -1) firstCorrect = 0;
-    options = options.map((o, i) => ({ text: o.text, isCorrect: i === firstCorrect }));
-    const explanation = String(q.explanation || '').trim().slice(0, 1000);
-    clean.push({ question, audioScript, options, explanation });
-    if (clean.length >= count) break;
-  }
-  if (clean.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan soal valid. Coba lagi.' });
-
-  res.json({
+  const loadSource = async () => {
+    const currentLesson = await query(`SELECT l.id,l.module_id,l.type,c.level
+      FROM lessons l JOIN modules m ON m.id=l.module_id JOIN courses c ON c.id=m.course_id
+      WHERE l.id=$1`, [lessonId]);
+    if (!currentLesson.rows.length || currentLesson.rows[0].type !== 'quiz') throw new Error('lesson_changed');
+    const currentQuestions = await query(`SELECT audio_script,question FROM quiz_questions
+      WHERE lesson_id=$1 AND question_category='listening'
+      ORDER BY created_at DESC LIMIT 30`, [lessonId]);
+    return { lesson: currentLesson.rows[0], existingQuestions: currentQuestions.rows,
+      promptTemplate: await _loadListeningGenPrompt() };
+  };
+  const result = await groundedDraft({ scope: { lessonId }, body: req.body || {},
+    contentType: 'listening_batch', loadSource, instruction: userContent,
+    system: QUIZ_GEN_SYSTEM, model: ANTHROPIC_GEN_MODEL, maxTokens: 4096,
+    transformCandidate: parsed => legacyQuizBatchToCanonical(parsed, { listening: true }),
+    additionalSchemaIssues: candidate => {
+      const issues = [];
+      if (!Array.isArray(candidate.questions) || candidate.questions.length !== count) {
+        issues.push({ code: 'listening_question_count_mismatch', expected: count });
+      }
+      for (const [index, question] of (Array.isArray(candidate.questions) ? candidate.questions : []).entries()) {
+        if (!question || typeof question.prompt !== 'string' || question.prompt.includes('\n') ||
+            /^[A-Za-z]{1,3}:\s*/u.test(question.prompt) || question.prompt.length > 1000 ||
+            !Array.isArray(question.options) || question.options.length !== task.optionCount ||
+            question.options.some(option => typeof option !== 'string' || option.length > 300)) {
+          issues.push({ code: 'listening_question_format_invalid', questionIndex: index });
+        }
+        const turns = typeof question?.audioScript === 'string' ? parseDialog(question.audioScript) : null;
+        if (!turns || (taskType === 'kadai' || taskType === 'point'
+          ? turns.length < 3 || !turns.some(turn => /^(A|W|F|女)/iu.test(String(turn.speaker))) ||
+            !turns.some(turn => /^(B|M|男)/iu.test(String(turn.speaker)))
+          : turns.length > 2)) {
+          issues.push({ code: 'listening_audio_format_invalid', questionIndex: index });
+        }
+      }
+      return issues;
+    } });
+  const clean = result.status === 'ready' ? result.candidate.questions.map(question => ({
+    question: question.prompt, audioScript: question.audioScript,
+    options: legacyQuizOptions(question), explanation: question.explanation || '',
+  })) : [];
+  return groundedResponse(res, result, {
     questions: clean,
     section: { number: task.number, label: task.label, instruction: task.instruction },
     vocabPool: vocabRes.rows.length,
@@ -3037,17 +3434,24 @@ router.post('/lessons/:lessonId/generate-jlpt', quizGenLimiter, asyncHandler(asy
   const taskType = String(req.body?.taskType || '');
   const task = JLPT_GEN_TASKS[taskType];
   if (!task) return res.status(400).json({ error: 'bad_task', detail: 'taskType tidak dikenal.' });
-  const level = JLPT_GEN_LEVELS[req.body?.level] ? String(req.body.level) : 'N5';
   // count = jumlah soal (non-passage) atau jumlah bacaan (passage task);
   // bunpou_bunshou = 1 wacana dengan `count` blank.
-  const count = Math.min(8, Math.max(1, Number(req.body?.count) || 3));
+  const count = Math.min(taskType === 'bunpou_bunshou' ? 5 : 8,
+    Math.max(1, Math.trunc(Number(req.body?.count) || 3)));
   const topic = String(req.body?.topic || '').slice(0, 300).trim();
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
 
-  const lessonRes = await query(`SELECT id, module_id, type FROM lessons WHERE id = $1`, [lessonId]);
+  const lessonRes = await query(`SELECT l.id,l.module_id,l.type,c.level
+    FROM lessons l JOIN modules m ON m.id=l.module_id JOIN courses c ON c.id=m.course_id
+    WHERE l.id=$1`, [lessonId]);
   if (lessonRes.rows.length === 0) return res.status(404).json({ error: 'lesson not found' });
   const lesson = lessonRes.rows[0];
   if (lesson.type !== 'quiz') return res.status(400).json({ error: 'lesson_not_quiz', detail: 'Pelajaran ini bukan tipe quiz' });
+  const level = String(lesson.level || '').toUpperCase();
+  if (!JLPT_GEN_LEVELS[level]) return res.status(422).json({ error: 'unsupported_course_level' });
+  if (req.body?.level && String(req.body.level).toUpperCase() !== level) {
+    return res.status(409).json({ error: 'course_level_mismatch' });
+  }
 
   // Grounding vocab + grammar modul — query sama dgn generator lain.
   let vocabRes = await query(
@@ -3111,69 +3515,70 @@ router.post('/lessons/:lessonId/generate-jlpt', quizGenLimiter, asyncHandler(asy
       : '',
   });
 
-  const text = await callClaude({
-    system: QUIZ_GEN_SYSTEM,
-    userContent,
+  const loadSource = async () => {
+    const currentLesson = await query(`SELECT l.id,l.module_id,l.type,c.level
+      FROM lessons l JOIN modules m ON m.id=l.module_id JOIN courses c ON c.id=m.course_id
+      WHERE l.id=$1`, [lessonId]);
+    if (!currentLesson.rows.length || currentLesson.rows[0].type !== 'quiz') throw new Error('lesson_changed');
+    const currentQuestions = await query(`SELECT question,passage FROM quiz_questions
+      WHERE lesson_id=$1 AND question_category=$2
+      ORDER BY created_at DESC LIMIT 30`, [lessonId, task.category]);
+    return { lesson: currentLesson.rows[0], existingQuestions: currentQuestions.rows,
+      promptTemplate: await _loadJlptGenPrompt() };
+  };
+  const result = await groundedDraft({ scope: { lessonId }, body: req.body || {},
+    contentType: 'jlpt_batch', loadSource, instruction: userContent,
+    system: QUIZ_GEN_SYSTEM, model: ANTHROPIC_GEN_MODEL,
     maxTokens: task.needsPassage ? 6000 : 4096,
-    model: ANTHROPIC_GEN_MODEL,
-  });
-  if (!text) return res.status(502).json({ error: 'ai_upstream' });
-  const parsed = _extractJsonObject(text);
-  if (!parsed) return res.status(502).json({ error: 'ai_parse' });
-
-  const clean = [];
-  if (task.needsPassage) {
-    const passages = Array.isArray(parsed.passages) ? parsed.passages : [];
-    const [minQ, maxQ] = taskType === 'bunpou_bunshou' ? [1, Math.min(count, 5)] : task.qPerPassage;
-    const passageCount = taskType === 'bunpou_bunshou' ? 1 : count;
-    for (const p of passages) {
-      if (!p || typeof p !== 'object') continue;
-      const passage = String(p.passage || '').trim().slice(0, Math.min(4000, JLPT_PASSAGE_MAXLEN[taskType] || 4000));
-      if (!passage) continue;
-      if (taskType === 'bunpou_bunshou' && !passage.includes('①')) continue;
-      const group = [];
-      for (const q of (Array.isArray(p.questions) ? p.questions : [])) {
-        if (!q || typeof q !== 'object') continue;
-        const question = _validateJlptQuestion(taskType, q.question);
-        if (!question) continue;
-        const options = _normalizeJlptOptions(q.options, task.optionCount, taskType, question);
-        if (!options) continue;
-        group.push({
-          question, passage, options,
-          explanation: String(q.explanation || '').trim().slice(0, 1000),
-        });
-        if (group.length >= maxQ) break;
+    transformCandidate: parsed => legacyQuizBatchToCanonical(parsed, { needsPassage: task.needsPassage }),
+    additionalSchemaIssues: candidate => {
+      const issues = [];
+      const questions = Array.isArray(candidate.questions) ? candidate.questions : [];
+      if (!questions.length || questions.length > 40) issues.push({ code: 'jlpt_question_count_invalid' });
+      const groups = new Map();
+      for (const [index, question] of questions.entries()) {
+        const prompt = question?.prompt;
+        const options = Array.isArray(question?.options) ? legacyQuizOptions(question) : [];
+        if (typeof prompt !== 'string' || _validateJlptQuestion(taskType, prompt) !== prompt ||
+            !Array.isArray(question?.options) || question.options.length !== task.optionCount ||
+            question.options.some(option => typeof option !== 'string' || option.length > 300) ||
+            !_normalizeJlptOptions(options, task.optionCount, taskType, prompt)) {
+          issues.push({ code: 'jlpt_task_format_invalid', questionIndex: index });
+        }
+        if (taskType === 'bunpou_kumitate' &&
+            _validateKumitate(String(prompt || ''), options, String(question?.explanation || '')) == null) {
+          issues.push({ code: 'jlpt_kumitate_invalid', questionIndex: index });
+        }
+        if (task.needsPassage) {
+          const passage = question?.passage;
+          if (typeof passage !== 'string' || !passage.trim() ||
+              passage.length > (JLPT_PASSAGE_MAXLEN[taskType] || 4000) ||
+              (taskType === 'bunpou_bunshou' && !passage.includes('①'))) {
+            issues.push({ code: 'jlpt_passage_invalid', questionIndex: index });
+          } else groups.set(passage, (groups.get(passage) || 0) + 1);
+        } else if (question?.passage != null) {
+          issues.push({ code: 'unexpected_jlpt_passage', questionIndex: index });
+        }
       }
-      // Bacaan dgn soal kurang dari minimum = buang seluruh bacaan (mis.
-      // chuubun cuma 1 soal valid → bukan format mondai-nya).
-      if (group.length < minQ) continue;
-      clean.push(...group);
-      if (clean.filter((x, i, arr) => arr.findIndex((y) => y.passage === x.passage) === i).length >= passageCount) break;
+      if (task.needsPassage) {
+        const expectedGroups = taskType === 'bunpou_bunshou' ? 1 : count;
+        const [minQ, maxQ] = taskType === 'bunpou_bunshou' ? [count, count] : task.qPerPassage;
+        if (groups.size !== expectedGroups || [...groups.values()].some(n => n < minQ || n > maxQ)) {
+          issues.push({ code: 'jlpt_passage_question_count_mismatch' });
+        }
+      } else if (questions.length !== count) issues.push({ code: 'jlpt_question_count_mismatch', expected: count });
+      return issues;
+    } });
+  const clean = result.status === 'ready' ? result.candidate.questions.map(question => {
+    let options = legacyQuizOptions(question);
+    if (taskType === 'bunpou_kumitate') {
+      const star = _validateKumitate(question.prompt, options, question.explanation || '');
+      options = options.map((option, index) => ({ ...option, isCorrect: index === star }));
     }
-  } else {
-    for (const q of (Array.isArray(parsed.questions) ? parsed.questions : [])) {
-      if (!q || typeof q !== 'object') continue;
-      const question = _validateJlptQuestion(taskType, q.question);
-      if (!question) continue;
-      let options = _normalizeJlptOptions(q.options, task.optionCount, taskType, question);
-      if (!options) continue;
-      const explanation = String(q.explanation || '').trim().slice(0, 1000);
-      // Kumitate: verifikasi permutasi (lihat _validateKumitate) — menolak
-      // puzzle palsu (opsi kata-alternatif, opsi acakan chunk yang sama,
-      // potongan tanpa partikel penyambung) DAN meng-override kunci jawaban
-      // dengan potongan yang beneran jatuh di slot ★.
-      if (taskType === 'bunpou_kumitate') {
-        const starOptIdx = _validateKumitate(question, options, explanation);
-        if (starOptIdx == null) continue;
-        options = options.map((o, i) => ({ text: o.text, isCorrect: i === starOptIdx }));
-      }
-      clean.push({ question, passage: '', options, explanation });
-      if (clean.length >= count) break;
-    }
-  }
-  if (clean.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan soal valid. Coba lagi.' });
-
-  res.json({
+    return { question: question.prompt, passage: question.passage || '',
+      options, explanation: question.explanation || '' };
+  }) : [];
+  return groundedResponse(res, result, {
     questions: clean,
     section: { number: task.number, label: task.label, instruction: task.instruction },
     category: task.category,
@@ -3187,57 +3592,40 @@ router.post('/lessons/:lessonId/generate-jlpt', quizGenLimiter, asyncHandler(asy
 // module_vocabulary. Mengembalikan daftar { japanese, highlight, indonesian }
 // untuk di-review admin sebelum disimpan ke vocabulary_examples.
 router.post('/generate-vocab-examples', asyncHandler(async (req, res) => {
-  const { vocabularyId } = req.body || {};
-  const count = Math.max(1, Math.min(5, Number((req.body || {}).count) || 3));
-  const avoidRaw = Array.isArray((req.body || {}).avoid) ? (req.body || {}).avoid : [];
-  const avoid = avoidRaw
-    .map((s) => String(s || '').trim().slice(0, 300))
-    .filter(Boolean)
-    .slice(0, 20);
+  const body = req.body || {};
+  const { vocabularyId, lessonId } = body;
   if (!vocabularyId) return res.status(400).json({ error: 'vocabularyId required' });
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
-
-  const v = await query(`SELECT japanese, reading, indonesian FROM module_vocabulary WHERE id = $1`, [vocabularyId]);
+  const v = await query(`SELECT id,module_id,lesson_id,japanese,reading,indonesian,updated_at
+    FROM module_vocabulary WHERE id=$1`, [vocabularyId]);
   if (v.rows.length === 0) return res.status(404).json({ error: 'vocab not found' });
   const word = v.rows[0];
-
-  const avoidBlock = avoid.length > 0
-    ? `\nSudah ada contoh berikut — buat yang BERBEDA dan variasikan situasi/pelaku/waktu, jangan mirip:\n${avoid.map((s) => `- ${s}`).join('\n')}\n`
-    : '';
-
-  const userContent = `Buat ${count} contoh kalimat bahasa Jepang gaya JLPT N5/N4 yang memakai kata berikut.
-Kata: ${word.japanese}${word.reading ? ` (${word.reading})` : ''}${word.indonesian ? ` = ${word.indonesian}` : ''}
-${avoidBlock}
-Aturan:
-- Tiap kalimat pendek, natural, level pemula, dan BENAR-BENAR memakai kata "${word.japanese}".
-- "highlight" = potongan persis yang muncul di kalimat untuk kata itu (biasanya "${word.japanese}" atau bentuk yang dipakai di kalimat).
-- "reading" = cara baca SELURUH kalimat dalam hiragana/katakana penuh (semua kanji diganti kana, tanpa romaji).
-- "indonesian" = terjemahan kalimat ke Bahasa Indonesia.
-- Kalimat polos, tanpa tag HTML / tanpa furigana.
-
-Balas HANYA JSON valid tanpa teks lain:
-{"examples":[{"japanese":"…","reading":"…","highlight":"${word.japanese}","indonesian":"…"}]}`;
-
-  const text = await callClaude({
-    system: 'You write Japanese example sentences for Indonesian beginner learners. Reply with a single valid JSON object only.',
-    userContent,
-    maxTokens: 800,
-  });
-  if (!text) return res.status(502).json({ error: 'ai_upstream' });
-  const parsed = _extractJsonObject(text);
-  if (!parsed || !Array.isArray(parsed.examples)) return res.status(502).json({ error: 'ai_parse' });
-
-  const examples = parsed.examples
-    .map((e) => ({
-      japanese: String(e?.japanese || '').trim().slice(0, 300),
-      reading: (String(e?.reading || '').trim().slice(0, 300)) || null,
-      highlight: (String(e?.highlight || '').trim().slice(0, 100)) || null,
-      indonesian: (String(e?.indonesian || '').trim().slice(0, 300)) || null,
-    }))
-    .filter((e) => e.japanese)
-    .slice(0, count);
-  if (examples.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan contoh valid. Coba lagi.' });
-  res.json({ examples });
+  if (lessonId && String(lessonId) !== String(word.lesson_id)) {
+    const assignment = await query(`SELECT d.lesson_id FROM lesson_deck_items d
+      JOIN lessons l ON l.id=d.lesson_id
+      WHERE d.vocabulary_id=$1 AND d.lesson_id=$2 AND l.module_id=$3`,
+    [vocabularyId, lessonId, word.module_id]);
+    if (!assignment.rows.length) {
+      return res.status(409).json({ error: 'vocabulary_lesson_mismatch' });
+    }
+  }
+  const scope = { moduleId: word.module_id, ...(lessonId || word.lesson_id ? { lessonId: lessonId || word.lesson_id } : {}) };
+  const loadSource = async () => {
+    const current = await query(`SELECT id,module_id,lesson_id,japanese,reading,indonesian,updated_at
+      FROM module_vocabulary WHERE id=$1`, [vocabularyId]);
+    if (!current.rows.length || String(current.rows[0].module_id) !== String(word.module_id)) throw new Error('source_changed');
+    return current.rows[0];
+  };
+  const result = await groundedDraft({ scope, contentType: 'vocabulary_example', loadSource, body,
+    maxTokens: 1000, expectedExampleCount: generationExampleCount(body.count),
+    instruction: `Create exactly ${generationExampleCount(body.count)} short Japanese example sentences using the persisted word ${JSON.stringify(word.japanese)} (${word.reading || ''}; ${word.indonesian || ''}). Return {"examples":[{"japanese":"...","reading":"...","highlight":"...","indonesian":"..."}]}. Every highlight must occur verbatim in its sentence. Avoid: ${JSON.stringify(Array.isArray(body.avoid) ? body.avoid.slice(0, 20) : [])}` });
+  const examples = Array.isArray(result.candidate?.examples) ? result.candidate.examples :
+    result.candidate?.japanese ? [result.candidate] : [];
+  if (result.status === 'ready' && examples.some(example => !String(example?.japanese || '').includes(String(word.japanese)) ||
+      !String(example?.japanese || '').includes(String(example?.highlight || '')))) {
+    rejectGroundedResult(result, { code: 'source_vocabulary_not_demonstrated', vocabularyId });
+  }
+  return groundedResponse(res, result, { examples: result.status === 'ready' ? examples : [] });
 }));
 
 // Backfill kana (reading) untuk contoh kalimat di sebuah deck yang masih kosong
@@ -3247,11 +3635,43 @@ Balas HANYA JSON valid tanpa teks lain:
 // panggil model). Idempoten — default cuma isi yang kosong; { force:true }
 // regenerate semua. Cap per run + batch supaya tidak timeout (re-run lanjut).
 const _hasKanji = (s) => /[々一-鿿]/.test(String(s || ''));
+async function saveDeckReading(deckLessonId, exampleId, reading, force, sourceFingerprint,
+  expectedBoundaryFingerprint = null, sourceSnapshotFingerprint = null) {
+  return bulkBoundaryWrite({
+    prepare: async (client, { locked }) => {
+      const result = await client.query(`SELECT e.*,v.module_id,v.lesson_id FROM vocabulary_examples e
+        JOIN module_vocabulary v ON v.id=e.vocabulary_id WHERE e.id=$1
+        ${locked ? 'FOR UPDATE OF e' : ''}`, [exampleId]);
+      if (!result.rows.length) throw new BoundaryContextError('vocabulary_owner_unresolved');
+      const row = result.rows[0], shouldWrite = force || !String(row.reading || '').trim();
+      assertGenerationSourceUnchanged(sourceFingerprint, deckReadingSourceFingerprint(row));
+      if (sourceSnapshotFingerprint) assertGenerationSourceUnchanged(sourceSnapshotFingerprint,
+        dialogueSourceFingerprint(row));
+      const consumers = await client.query('SELECT lesson_id FROM lesson_deck_items WHERE vocabulary_id=$1', [row.vocabulary_id]);
+      if (consumers.rows.some(consumer => consumer.lesson_id !== deckLessonId)) {
+        // Reading is stored on the shared example, so one deck's validation
+        // cannot authorize a change visible in a second lesson context.
+        throw new BoundaryContextError('boundary_context_mismatch');
+      }
+      return { scope: { lessonId: deckLessonId },
+        contentType: 'vocabulary_example', operation: 'generate', contentId: row.id,
+        expectedBoundaryFingerprint,
+        fields: [boundaryField('japanese', row.japanese), boundaryField('reading', shouldWrite ? reading : row.reading),
+          boundaryField('highlight', row.highlight), boundaryField('indonesian', row.indonesian)],
+        shouldWrite, contentIsNewOrChanged: shouldWrite };
+    },
+    write: async (client, candidate) => candidate.shouldWrite
+      ? (await client.query('UPDATE vocabulary_examples SET reading=$2,updated_at=NOW() WHERE id=$1 RETURNING id',
+        [exampleId, reading])).rows[0]
+      : { id: exampleId, skipped: true },
+  });
+}
 router.post('/lessons/:lessonId/generate-deck-readings', asyncHandler(async (req, res) => {
   const force = (req.body || {}).force === true;
   const rows = await query(
-    `SELECT e.id, e.japanese
+    `SELECT e.*, v.module_id, v.lesson_id
        FROM vocabulary_examples e
+       JOIN module_vocabulary v ON v.id = e.vocabulary_id
        JOIN lesson_deck_items di ON di.vocabulary_id = e.vocabulary_id
       WHERE di.lesson_id = $1 AND ($2::boolean OR e.reading IS NULL OR e.reading = '')
       ORDER BY e.id`,
@@ -3261,23 +3681,34 @@ router.post('/lessons/:lessonId/generate-deck-readings', asyncHandler(async (req
   const total = all.length;
   if (total === 0) return res.json({ total: 0, updated: 0, failed: 0 });
 
+  const needsAi = all.filter(row => _hasKanji(row.japanese));
+  if (needsAi.length && !anthropicEnabled()) {
+    return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.', total, updated: 0, failed: needsAi.length });
+  }
+
   let updated = 0;
+  const updatedItems = [];
+  const failedItems = [];
   const needAi = [];
   // 1) Kalimat tanpa kanji → reading == japanese (exact, tanpa AI).
   for (const r of all) {
     const jp = String(r.japanese || '').trim();
-    if (!jp) continue;
+    if (!jp) { failedItems.push({ id: r.id, error: 'empty_japanese', status: 422 }); continue; }
     if (_hasKanji(jp)) { needAi.push(r); continue; }
-    await query(`UPDATE vocabulary_examples SET reading = $1, updated_at = NOW() WHERE id = $2`, [jp.slice(0, 300), r.id]);
-    updated++;
+    const outcome = await saveDeckReading(req.params.lessonId, r.id, jp.slice(0, 300), force,
+      deckReadingSourceFingerprint(r), req.body?.boundaryFingerprint || null,
+      dialogueSourceFingerprint(r));
+    if (!outcome.ok) failedItems.push({ id: r.id, error: outcome.error, status: outcome.status,
+      ...(outcome.validation ? { validation: outcome.validation } : {}) });
+    else if (!outcome.outcome.value.skipped) {
+      updated++;
+      updatedItems.push({ id: r.id, validation: outcome.outcome.report });
+    }
   }
 
   // 2) Sisanya (mengandung kanji) → Claude per batch.
   if (needAi.length > 0) {
-    if (!anthropicEnabled()) {
-      return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.', total, updated, failed: needAi.length });
-    }
-    const BATCH = 20;
+    const BATCH = 5;
     for (let i = 0; i < needAi.length; i += BATCH) {
       const batch = needAi.slice(i, i + BATCH);
       const list = batch.map((r, j) => `${j + 1}. ${String(r.japanese).trim().slice(0, 280)}`).join('\n');
@@ -3290,27 +3721,74 @@ Aturan:
 Kalimat:
 ${list}
 
-Balas HANYA JSON valid tanpa teks lain, "n" = nomor kalimat:
-{"items":[{"n":1,"reading":"…"}]}`;
-      const text = await callClaude({
-        system: 'You convert Japanese sentences to full kana readings. Reply with a single valid JSON object only.',
-        userContent,
-        maxTokens: 1200,
-        model: ANTHROPIC_GEN_MODEL,
-      });
-      const parsed = text ? _extractJsonObject(text) : null;
-      const items = parsed && Array.isArray(parsed.items) ? parsed.items : [];
-      for (const it of items) {
-        const n = Number(it?.n);
-        const reading = String(it?.reading || '').trim().slice(0, 300);
-        if (!reading || !Number.isInteger(n) || n < 1 || n > batch.length) continue;
-        await query(`UPDATE vocabulary_examples SET reading = $1, updated_at = NOW() WHERE id = $2`, [reading, batch[n - 1].id]);
-        updated++;
+Balas HANYA JSON valid tanpa teks lain. Salin kalimat Jepang persis dan sertakan cara bacanya dalam urutan yang sama:
+{"examples":[{"japanese":"…","reading":"…"}]}`;
+      const loadSource = async () => {
+        const current = await query(`SELECT e.*,v.module_id,v.lesson_id FROM vocabulary_examples e
+          JOIN module_vocabulary v ON v.id=e.vocabulary_id
+          JOIN lesson_deck_items di ON di.vocabulary_id=e.vocabulary_id
+          WHERE di.lesson_id=$1 AND e.id=ANY($2::uuid[]) ORDER BY e.id`,
+        [req.params.lessonId, batch.map(row => row.id)]);
+        if (current.rows.length !== batch.length) throw new Error('deck_source_changed');
+        return current.rows;
+      };
+      const result = await groundedDraft({ scope: { lessonId: req.params.lessonId },
+        contentType: 'vocabulary_example', loadSource, body: req.body || {},
+        expectedExampleCount: batch.length, maxTokens: 1600, model: ANTHROPIC_GEN_MODEL,
+        instruction: userContent,
+        additionalSchemaIssues: candidate => {
+          const examples = candidate.examples;
+          if (!Array.isArray(examples) || examples.length !== batch.length) return [];
+          return examples.flatMap((example, index) => {
+            const issues = [];
+            if (!example || typeof example !== 'object' || Array.isArray(example) ||
+                typeof example.japanese !== 'string' || example.japanese !== batch[index].japanese ||
+                Object.keys(example).some(key => !['japanese', 'reading'].includes(key))) {
+              issues.push({ code: 'deck_reading_source_mismatch', exampleIndex: index });
+            }
+            if (typeof example?.reading !== 'string' || !example.reading.trim() ||
+                example.reading.length > 300 || /[々一-鿿A-Za-z]/u.test(example.reading)) {
+              issues.push({ code: 'deck_reading_format_invalid', exampleIndex: index });
+            } else {
+              let offset = 0;
+              for (const segment of batch[index].japanese.match(/[\p{Script=Hiragana}\p{Script=Katakana}]+/gu) || []) {
+                const found = example.reading.indexOf(segment, offset);
+                if (found < 0) {
+                  issues.push({ code: 'deck_reading_source_mismatch', exampleIndex: index });
+                  break;
+                }
+                offset = found + segment.length;
+              }
+            }
+            return issues;
+          });
+        } });
+      if (result.status !== 'ready') {
+        const status = result.status === 'stale' ? 409 : result.status === 'unavailable' ? 503 : 422;
+        failedItems.push(...batch.map(row => ({ id: row.id,
+          error: result.status === 'stale' ? 'version_conflict' :
+            result.status === 'unavailable' ? 'generation_unavailable' : 'generation_rejected',
+          status, generation: groundedGenerationMetadata(result) })));
+        continue;
+      }
+      for (const [index, row] of batch.entries()) {
+        const reading = result.candidate.examples[index].reading.trim();
+        const outcome = await saveDeckReading(req.params.lessonId, row.id, reading, force,
+          deckReadingSourceFingerprint(row), result.boundaryFingerprint,
+          dialogueSourceFingerprint(row));
+        if (!outcome.ok) failedItems.push({ id: row.id, error: outcome.error, status: outcome.status,
+          ...(outcome.validation ? { validation: outcome.validation } : {}),
+          generation: groundedGenerationMetadata(result) });
+        else if (!outcome.outcome.value.skipped) {
+          updated++;
+          updatedItems.push({ id: row.id, validation: outcome.outcome.report,
+            generation: groundedGenerationMetadata(result) });
+        }
       }
     }
   }
 
-  res.json({ total, updated, failed: total - updated });
+  res.json({ total, updated, failed: failedItems.length, updatedItems, failedItems });
 }));
 
 // Generate gambar ilustrasi (AI) untuk kosakata deck — tombol "Gambar (AI)"
@@ -3392,49 +3870,31 @@ router.post('/generate-vocab-image', asyncHandler(async (req, res) => {
 // generate-vocab-examples (avoid list, count, dgn terjemahan).
 router.post('/generate-grammar-examples', asyncHandler(async (req, res) => {
   const body = req.body || {};
-  const pattern = String(body.pattern || '').trim().slice(0, 200);
-  const meaning = String(body.meaning || '').trim().slice(0, 500);
-  const count = Math.max(1, Math.min(5, Number(body.count) || 3));
-  const avoidRaw = Array.isArray(body.avoid) ? body.avoid : [];
-  const avoid = avoidRaw.map((s) => String(s || '').trim().slice(0, 300)).filter(Boolean).slice(0, 20);
-  if (!pattern) return res.status(400).json({ error: 'pattern required' });
+  if (!body.grammarId) return res.status(400).json({ error: 'grammarId required' });
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
-
-  const avoidBlock = avoid.length > 0
-    ? `\nSudah ada contoh berikut — buat yang BERBEDA dan variasikan situasi/pelaku/waktu, jangan mirip:\n${avoid.map((s) => `- ${s}`).join('\n')}\n`
-    : '';
-
-  const userContent = `Buat ${count} contoh kalimat bahasa Jepang gaya JLPT N5/N4 yang memakai pola grammar berikut.
-
-Pola: ${pattern}
-${meaning ? `Arti/fungsi: ${meaning}\n` : ''}${avoidBlock}
-Aturan:
-- Tiap kalimat pendek, natural, level pemula, dan BENAR-BENAR memakai pola "${pattern}".
-- "highlight" = potongan kalimat yang menunjukkan pemakaian pola (biasanya frasa pendek yg memuat pola).
-- "indonesian" = terjemahan kalimat ke Bahasa Indonesia.
-- Kalimat polos, tanpa tag HTML / tanpa furigana.
-
-Balas HANYA JSON valid tanpa teks lain:
-{"examples":[{"japanese":"…","highlight":"…","indonesian":"…"}]}`;
-
-  const text = await callClaude({
-    system: 'You write Japanese grammar example sentences for Indonesian beginner learners. Reply with a single valid JSON object only.',
-    userContent,
-    maxTokens: 900,
-  });
-  if (!text) return res.status(502).json({ error: 'ai_upstream' });
-  const parsed = _extractJsonObject(text);
-  if (!parsed || !Array.isArray(parsed.examples)) return res.status(502).json({ error: 'ai_parse' });
-  const examples = parsed.examples
-    .map((e) => ({
-      japanese: String(e?.japanese || '').trim().slice(0, 300),
-      highlight: (String(e?.highlight || '').trim().slice(0, 100)) || null,
-      indonesian: (String(e?.indonesian || '').trim().slice(0, 300)) || null,
-    }))
-    .filter((e) => e.japanese)
-    .slice(0, count);
-  if (examples.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan contoh valid. Coba lagi.' });
-  res.json({ examples });
+  const found = await query(`SELECT id,module_id,lesson_id,pattern,meaning,communication_goal,updated_at
+    FROM module_grammar WHERE id=$1`, [body.grammarId]);
+  if (!found.rows.length) return res.status(404).json({ error: 'grammar not found' });
+  const grammar = found.rows[0];
+  if ((body.pattern && body.pattern !== grammar.pattern) ||
+      (body.meaning && body.meaning !== grammar.meaning) ||
+      (body.lessonId && String(body.lessonId) !== String(grammar.lesson_id))) {
+    return res.status(409).json({ error: 'grammar_source_mismatch' });
+  }
+  const scope = { grammarId: grammar.id };
+  const loadSource = async () => {
+    const current = await query(`SELECT id,module_id,lesson_id,pattern,meaning,communication_goal,updated_at
+      FROM module_grammar WHERE id=$1`, [grammar.id]);
+    if (!current.rows.length) throw new Error('source_changed');
+    return current.rows[0];
+  };
+  const result = await groundedDraft({ scope, contentType: 'grammar_example', loadSource, body,
+    maxTokens: 1000, expectedExampleCount: generationExampleCount(body.count),
+    trustedValidation: { grammarSignatures: grammarGenerationSignature(grammar) },
+    instruction: `Create exactly ${generationExampleCount(body.count)} short Japanese example sentences that demonstrably use persisted grammar ${JSON.stringify(grammar.pattern)} (${grammar.meaning || ''}). Return {"examples":[{"japanese":"...","highlight":"...","indonesian":"..."}]}. Avoid: ${JSON.stringify(Array.isArray(body.avoid) ? body.avoid.slice(0, 20) : [])}` });
+  const examples = Array.isArray(result.candidate?.examples) ? result.candidate.examples :
+    result.candidate?.japanese ? [result.candidate] : [];
+  return groundedResponse(res, result, { examples: result.status === 'ready' ? examples : [] });
 }));
 
 // Translate dialog 3-suara (AI) ke Bahasa Indonesia — output dgn struktur
@@ -3442,69 +3902,52 @@ Balas HANYA JSON valid tanpa teks lain:
 // terjemahan tiap turn dgn turn dialog Jepangnya.
 router.post('/generate-dialog-translation', asyncHandler(async (req, res) => {
   const body = req.body || {};
-  const dialog = String(body.dialog || '').trim().slice(0, 4000);
-  if (!dialog) return res.status(400).json({ error: 'dialog required' });
+  if (!body.grammarId) return res.status(400).json({ error: 'grammarId required' });
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
-
-  const userContent = `Terjemahkan dialog Jepang berikut ke Bahasa Indonesia yang natural.
-
-Dialog asli:
-${dialog}
-
-WAJIB: pertahankan struktur baris persis seperti aslinya — tiap baris diawali prefix yang sama (N:, A:, B:, dst). Jumlah baris harus sama dgn dialog asli. Terjemahkan tiap baris menjadi 1 baris Indonesia (tanpa pecah jadi 2 baris).
-
-Aturan terjemahan:
-- Pakai Bahasa Indonesia santai-natural sesuai konteks (bukan kaku formal kecuali konteksnya formal).
-- Pertahankan nama tokoh (mis. 田中さん → Pak Tanaka / Tanaka-san — konsisten saja).
-- Tidak ada tag HTML, tidak ada catatan tambahan.
-
-Balas HANYA JSON valid tanpa teks lain:
-{"dialog_id":"N: …\\nA: …\\nB: …\\nA: …"}`;
-
-  const text = await callClaude({
-    system: 'You translate Japanese dialog into natural Indonesian, preserving the speaker-prefix line structure exactly. Reply with a single valid JSON object only.',
-    userContent,
-    maxTokens: 800,
-  });
-  if (!text) return res.status(502).json({ error: 'ai_upstream' });
-  const parsed = _extractJsonObject(text);
-  const translation = String(parsed?.dialog_id || '').trim().slice(0, 4000);
-  if (!translation) return res.status(502).json({ error: 'ai_empty' });
-  res.json({ dialog_id: translation });
+  const found = await query(`SELECT id,module_id,lesson_id,example_dialog,example_dialog_id,updated_at
+    FROM module_grammar WHERE id=$1`, [body.grammarId]);
+  if (!found.rows.length) return res.status(404).json({ error: 'grammar not found' });
+  const grammar = found.rows[0];
+  const dialog = String(body.dialog || grammar.example_dialog || '').trim();
+  if (!dialog) return res.status(400).json({ error: 'dialog required' });
+  if (body.lessonId && String(body.lessonId) !== String(grammar.lesson_id)) {
+    return res.status(409).json({ error: 'dialog_source_mismatch' });
+  }
+  let boundary;
+  try { boundary = await getCurriculumBoundary({ grammarId: grammar.id }); }
+  catch { return res.status(503).json({ error: 'boundary_unavailable' }); }
+  const sourceReport = validateContentAgainstBoundary({ boundary, contentType: 'grammar_example',
+    operation: 'generate', fields: [boundaryField('dialog', dialog)] });
+  if (sourceReport.status !== 'evaluated' || sourceReport.valid !== true) {
+    return groundedResponse(res, { status: 'rejected', candidate: null,
+      report: sourceReport, decision: decideBoundaryAction({ mode: boundary.course.mode,
+        operation: 'generate', report: sourceReport }), attempts: [],
+      boundaryFingerprint: boundary.boundaryFingerprint, sourceFingerprint: null },
+    { dialog_id: '' }, 422);
+  }
+  const loadSource = async () => {
+    const current = await query(`SELECT id,module_id,lesson_id,example_dialog,example_dialog_id,updated_at
+      FROM module_grammar WHERE id=$1`, [grammar.id]);
+    if (!current.rows.length) throw new Error('source_changed');
+    return { grammar: current.rows[0], dialog };
+  };
+  const result = await groundedDraft({ scope: { grammarId: grammar.id },
+    contentType: 'dialogue_translation', loadSource, body, maxTokens: 750,
+    instruction: `Translate this persisted Japanese dialogue into natural Indonesian: ${JSON.stringify(dialog)}. Preserve line count and exact N:/A:/B: speaker prefixes. Return {"dialog_id":"..."}.` });
+  const originalPrefixes = dialog.split('\n').map(line => /^\s*([^:]+):/.exec(line)?.[1] || null);
+  const translationPrefixes = String(result.candidate?.dialog_id || '').split('\n')
+    .map(line => /^\s*([^:]+):/.exec(line)?.[1] || null);
+  if (result.status === 'ready' && JSON.stringify(originalPrefixes) !== JSON.stringify(translationPrefixes)) {
+    rejectGroundedResult(result, { code: 'translation_turn_alignment_invalid' });
+  }
+  return groundedResponse(res, result, { dialog_id: result.status === 'ready' ? result.candidate?.dialog_id || '' : '' });
 }));
 
 // Generate contoh kalimat (AI) untuk pola grammar — tombol "Contoh (AI)" di
 // editor grammar admin. Admin tulis pattern + meaning, AI bikin 1 kalimat
 // pendek yang memakai pola itu (level pemula).
 router.post('/generate-grammar-example', asyncHandler(async (req, res) => {
-  const body = req.body || {};
-  const pattern = String(body.pattern || '').trim().slice(0, 200);
-  const meaning = String(body.meaning || '').trim().slice(0, 500);
-  if (!pattern) return res.status(400).json({ error: 'pattern required' });
-  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
-
-  const userContent = `Buat SATU contoh kalimat bahasa Jepang yang BENAR-BENAR memakai pola grammar berikut, untuk pembelajar JLPT N5/N4.
-
-Pola: ${pattern}
-${meaning ? `Arti/fungsi: ${meaning}\n` : ''}
-Aturan:
-- Kalimat pendek (5-15 kata), natural, level pemula.
-- Tulis polos tanpa tag HTML, tanpa furigana.
-- Kalimat harus jelas menggunakan pola di atas — bukan parafrase.
-
-Balas HANYA JSON valid:
-{"example":"…"}`;
-
-  const text = await callClaude({
-    system: 'You write Japanese example sentences for Indonesian beginner learners. Reply with a single valid JSON object only.',
-    userContent,
-    maxTokens: 200,
-  });
-  if (!text) return res.status(502).json({ error: 'ai_upstream' });
-  const parsed = _extractJsonObject(text);
-  const example = String(parsed?.example || '').trim().slice(0, 300);
-  if (!example) return res.status(502).json({ error: 'ai_empty' });
-  res.json({ example });
+  res.status(410).json({ error: 'use_generate_grammar_examples_with_grammarId' });
 }));
 
 // Generate dialog 3-suara (AI) untuk pola grammar — tombol "Dialog (AI)" di
@@ -3512,53 +3955,29 @@ Balas HANYA JSON valid:
 // (format JLPT: N/A/B per baris). N = narrator, A = cewe, B = cowo.
 router.post('/generate-grammar-dialog', asyncHandler(async (req, res) => {
   const body = req.body || {};
-  const pattern = String(body.pattern || '').trim().slice(0, 200);
-  const meaning = String(body.meaning || '').trim().slice(0, 500);
-  const example = String(body.example || '').trim().slice(0, 300);
-  if (!pattern) return res.status(400).json({ error: 'pattern required' });
+  if (!body.grammarId) return res.status(400).json({ error: 'grammarId required' });
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
-
-  const userContent = `Buat dialog pendek bahasa Jepang gaya JLPT (level N5/N4) yang menampilkan pemakaian pola grammar berikut secara natural.
-
-Pola: ${pattern}
-${meaning ? `Arti/fungsi: ${meaning}\n` : ''}${example ? `Contoh kalimat: ${example}\n` : ''}
-FORMAT WAJIB (tepat seperti ini, 1 baris per turn, prefix speaker + ":"):
-N: kalimat narator yang mengenalkan situasi (1 baris).
-A: ujaran perempuan…
-B: ujaran lelaki…
-A: …
-B: …
-
-Aturan:
-- Hanya 3 peran: N (narrator), A (perempuan), B (lelaki). DILARANG peran lain.
-- 4-6 turn dialog (di luar baris narator).
-- Pola "${pattern}" muncul minimal 1x di dialog (idealnya dipakai A atau B, bukan narator).
-- Tulis polos, tanpa tag HTML, tanpa furigana, tanpa romaji.
-
-NAMA TOKOH (wajib — biar UI siswa bisa render nama, bukan kode A/B):
-- Beri 2 tokoh nama keluarga Jepang umum berbeda (mis. 田中, 山田, 鈴木, 佐藤, 高橋, 中村, 小林, 加藤). Pakai KANJI, bukan hiragana.
-- Baris N (narrator) WAJIB menyebut KEDUA nama dgn suffix さん di baris pertama (urutan = urutan bicara: nama pertama yang disebut = A, kedua = B). Contoh: "田中さんと山田さんが話しています。"
-- Dialog A/B sendiri TIDAK harus saling menyebut nama — biarkan natural seperti percakapan Jepang biasa. Pemanggilan nama hanya kalau memang pas konteks (mis. pertama kali bicara, ingin menonjolkan lawan bicara), JANGAN dipaksakan tiap turn.
-
-ATURAN KANJI (penting untuk TTS):
-- **HINDARI kanji yang punya banyak cara baca / ambigu** — output ini akan dibacakan oleh TTS (ElevenLabs). Kalau ada keraguan, TULIS DALAM HIRAGANA, bukan kanji.
-- Daftar kanji yang HARUS ditulis hiragana karena ambigu/sering salah baca TTS: 一人 (ひとり), 二人 (ふたり), 今日 (きょう), 昨日 (きのう), 明日 (あした), 一日 (いちにち), 上手 (じょうず), 下手 (へた), 大人 (おとな), 子供 (こども), 何 (なに), 人 (ひと), 大きい (おおきい), 小さい (ちいさい), 行く (いく), 来る (くる), 入る (はいる), 出る (でる).
-- Kalau ragu apakah kanji punya bacaan tunggal yang jelas, **TULIS DI HIRAGANA**. Lebih aman daripada salah dibaca TTS.
-- Boleh tetap pakai kanji untuk kata yang bacanya tunggal & umum (mis. 私, 学生, 先生, 仕事, 学校, 本, 山, 川, 日本, 中国).
-
-Balas HANYA JSON valid:
-{"dialog":"N: …\\nA: …\\nB: …\\nA: …\\nB: …"}`;
-
-  const text = await callClaude({
-    system: 'You write short Japanese dialogues in JLPT 3-role format (N/A/B) for Indonesian beginner learners. Reply with a single valid JSON object only.',
-    userContent,
-    maxTokens: 600,
+  const found = await query(`SELECT id,module_id,lesson_id,pattern,meaning,example,
+    communication_goal,example_dialog,updated_at FROM module_grammar WHERE id=$1`, [body.grammarId]);
+  if (!found.rows.length) return res.status(404).json({ error: 'grammar not found' });
+  const grammar = found.rows[0];
+  if ((body.pattern && body.pattern !== grammar.pattern) ||
+      (body.meaning && body.meaning !== grammar.meaning) ||
+      (body.lessonId && String(body.lessonId) !== String(grammar.lesson_id))) {
+    return res.status(409).json({ error: 'grammar_source_mismatch' });
+  }
+  const loadSource = async () => {
+    const current = await query(`SELECT id,module_id,lesson_id,pattern,meaning,example,
+      communication_goal,example_dialog,updated_at FROM module_grammar WHERE id=$1`, [grammar.id]);
+    if (!current.rows.length) throw new Error('source_changed');
+    return current.rows[0];
+  };
+  const result = await groundedDraft({ scope: { grammarId: grammar.id }, contentType: 'grammar_dialog',
+    loadSource, body, maxTokens: 750, communicationGoal: grammar.communication_goal || '',
+    trustedValidation: { grammarSignatures: grammarGenerationSignature(grammar) },
+    instruction: `Create a 5-line Japanese dialogue using persisted pattern ${JSON.stringify(grammar.pattern)} (${grammar.meaning || ''}). Communication goal: ${grammar.communication_goal || '(missing)'}. Use speaker-prefix lines N:, A:, B:, A:, B:. A/B should demonstrate the pattern. Return {"dialogue":"N: ...\\nA: ...\\nB: ...\\nA: ...\\nB: ..."}.` });
+  return groundedResponse(res, result, { dialog: result.status === 'ready' ? result.candidate?.dialogue || '' : '',
   });
-  if (!text) return res.status(502).json({ error: 'ai_upstream' });
-  const parsed = _extractJsonObject(text);
-  const dialog = String(parsed?.dialog || '').trim().slice(0, 2000);
-  if (!dialog) return res.status(502).json({ error: 'ai_empty' });
-  res.json({ dialog });
 }));
 
 router.post('/module-grammar', asyncHandler(async (req, res) => {
@@ -3631,7 +4050,9 @@ router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
         changed(hasNotes, notes, row.notes) || goalChanged;
       // On reassignment the stored grammar still points to the old lesson;
       // resolving both IDs would manufacture a false ownership mismatch.
-      const movingLesson = effectiveLessonId && effectiveLessonId !== row.lesson_id;
+      const movingLesson = hasLesson && (effectiveLessonId || null) !== (row.lesson_id || null);
+      if (movingLesson) await assertDialogueQuestionLessonMoveAllowed(client, row.id,
+        row.lesson_id, effectiveLessonId, { locked });
       return { scope: { ...(!movingLesson ? { grammarId: row.id } : {}),
           moduleId: row.module_id, lessonId: effectiveLessonId || undefined },
         contentType: dialogChanged ? 'grammar_dialog' : 'grammar_example', contentId: row.id,
@@ -3742,12 +4163,19 @@ router.put('/grammar-examples/:id', asyncHandler(async (req, res) => {
 }));
 
 router.delete('/grammar-examples/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM grammar_examples WHERE id = $1`, [req.params.id]);
+  const result = await adminLockedMutation(res, async client => {
+    const example = await client.query('SELECT grammar_id FROM grammar_examples WHERE id=$1', [req.params.id]);
+    return example.rows.length ? courseIdsForGrammarAndConsumers(client, example.rows[0].grammar_id) : [];
+  },
+  client => client.query('DELETE FROM grammar_examples WHERE id=$1', [req.params.id]));
+  if (!result) return;
   res.json({ ok: true });
 }));
 
 router.delete('/module-grammar/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM module_grammar WHERE id = $1`, [req.params.id]);
+  const result = await adminLockedMutation(res, client => courseIdsForGrammarAndConsumers(client, req.params.id),
+    client => client.query('DELETE FROM module_grammar WHERE id=$1', [req.params.id]));
+  if (!result) return;
   res.json({ ok: true });
 }));
 
@@ -3960,7 +4388,9 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
 }));
 
 router.delete('/lessons/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM lessons WHERE id = $1`, [req.params.id]);
+  const result = await adminLockedMutation(res, client => courseIdsForLesson(client, req.params.id),
+    client => client.query('DELETE FROM lessons WHERE id=$1', [req.params.id]));
+  if (!result) return;
   invalidateKanjiCatalogCache();
   res.json({ ok: true });
 }));
@@ -4199,7 +4629,11 @@ router.put('/quiz-questions/:id', asyncHandler(async (req, res) => {
 }));
 
 router.delete('/quiz-questions/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM quiz_questions WHERE id = $1`, [req.params.id]);
+  const result = await adminLockedMutation(res, async client => (await client.query(
+    `SELECT m.course_id FROM quiz_questions q JOIN lessons l ON l.id=q.lesson_id
+      JOIN modules m ON m.id=l.module_id WHERE q.id=$1`, [req.params.id])).rows.map(row => row.course_id),
+  client => client.query('DELETE FROM quiz_questions WHERE id=$1', [req.params.id]));
+  if (!result) return;
   res.json({ ok: true });
 }));
 
@@ -4261,12 +4695,13 @@ router.delete('/lessons/:lessonId/quiz/sections/:category/:number', asyncHandler
   const { lessonId, category, number } = req.params;
   const cat = normalizeQuizCategory(category);
   const sectionNo = normalizeQuizSectionNumber(number);
-  const result = await query(
+  const guarded = await adminLockedMutation(res, client => courseIdsForLesson(client, lessonId), client => client.query(
     `DELETE FROM quiz_questions
       WHERE lesson_id = $1 AND question_category = $2 AND section_number = $3`,
     [lessonId, cat, sectionNo]
-  );
-  res.json({ ok: true, deleted: result.rowCount });
+  ));
+  if (!guarded) return;
+  res.json({ ok: true, deleted: guarded.value?.rowCount || 0 });
 }));
 
 // ===== SENSEI =====
@@ -5026,8 +5461,7 @@ router.post('/kanji', asyncHandler(async (req, res) => {
   const compoundValidation = validateKanjiCompounds(compounds, ch);
   if (compoundValidation.error) return res.status(400).json({ error: compoundValidation.error });
   const safeCompounds = compoundValidation.items;
-  const result = await query(
-    `INSERT INTO kanji_items (
+  const sql = `INSERT INTO kanji_items (
        lesson_id, character, jlpt_level, on_reading, kun_reading, meaning_id,
        mnemonic, compounds, stroke_count, bab_kode, sort_order
      )
@@ -5042,8 +5476,8 @@ router.post('/kanji', asyncHandler(async (req, res) => {
        bab_kode = EXCLUDED.bab_kode,
        sort_order = EXCLUDED.sort_order,
        updated_at = NOW()
-     RETURNING *`,
-    [
+     RETURNING *`;
+  const params = [
       lessonId || null,
       ch,
       level,
@@ -5056,10 +5490,20 @@ router.post('/kanji', asyncHandler(async (req, res) => {
       (babKode && String(babKode).trim()) || null,
       Number(sortOrder) || 0,
       hasCompounds,
-    ]
-  );
+    ];
+  const result = lessonId ? await adminBoundaryWrite(res, {
+    prepare: (client, { locked }) => kanjiUpsertCandidate(client, {
+      character: ch, jlpt_level: level,
+      on_reading: params[3], kun_reading: params[4], meaning_id: params[5],
+      mnemonic: params[6], compounds: safeCompounds, bab_kode: params[9],
+      expectedRevision: req.body?.expectedRevision,
+      boundaryFingerprint: req.body?.boundaryFingerprint }, lessonId, hasCompounds, locked),
+    write: async client => (await client.query(sql, params)).rows[0],
+  }) : await globalOffQuery(res, sql, params);
+  if (!result) return;
   invalidateKanjiCatalogCache();
-  res.status(201).json({ kanji: result.rows[0] });
+  res.status(201).json({ kanji: lessonId ? result.value : result.rows[0],
+    ...(lessonId ? { validation: result.report } : {}) });
 }));
 
 router.put('/kanji/:id', asyncHandler(async (req, res) => {
@@ -5074,8 +5518,7 @@ router.put('/kanji/:id', asyncHandler(async (req, res) => {
   const compoundValidation = validateKanjiCompounds(compounds, ch);
   if (compoundValidation.error) return res.status(400).json({ error: compoundValidation.error });
   const safeCompounds = compoundValidation.items;
-  const result = await query(
-    `UPDATE kanji_items SET
+  const sql = `UPDATE kanji_items SET
        character = COALESCE($2, character),
        jlpt_level = COALESCE($3, jlpt_level),
        on_reading = $4,
@@ -5086,10 +5529,11 @@ router.put('/kanji/:id', asyncHandler(async (req, res) => {
        bab_kode = $9,
        sort_order = COALESCE($10, sort_order),
        lesson_id = CASE WHEN $12::boolean THEN $11 ELSE lesson_id END,
-       compounds = CASE WHEN $14::boolean THEN $13::jsonb ELSE kanji_items.compounds END
+       compounds = CASE WHEN $14::boolean THEN $13::jsonb ELSE kanji_items.compounds END,
+       updated_at = NOW()
      WHERE id = $1
-     RETURNING *`,
-    [
+     RETURNING *`;
+  const params = [
       req.params.id,
       ch || null,
       level,
@@ -5104,15 +5548,48 @@ router.put('/kanji/:id', asyncHandler(async (req, res) => {
       hasLessonId,
       JSON.stringify(safeCompounds),
       hasCompounds,
-    ]
-  );
-  if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+    ];
+  const existing = await query('SELECT lesson_id FROM kanji_items WHERE id=$1', [req.params.id]);
+  if (!existing.rows.length) return res.status(404).json({ error: 'Not found' });
+  const targetLessonId = hasLessonId ? (lessonId || null) : existing.rows[0].lesson_id;
+  let result;
+  if (!targetLessonId) {
+    result = await globalOffQuery(res, sql, params,
+      !hasLessonId ? { expectedGlobalKanjiId: req.params.id } : {});
+    if (!result) return;
+  } else {
+    result = await adminBoundaryWrite(res, {
+      prepare: async (client, { locked }) => {
+        const old = (await client.query('SELECT * FROM kanji_items WHERE id=$1', [req.params.id])).rows[0];
+        if (!old) throw new BoundaryContextError('kanji_not_found');
+        const merged = { character: ch || old.character, on_reading: params[3], kun_reading: params[4],
+          meaning_id: params[5], mnemonic: params[6], bab_kode: params[8],
+          compounds: hasCompounds ? safeCompounds : old.compounds,
+          boundaryFingerprint: req.body?.boundaryFingerprint };
+        const candidate = await kanjiWriteCandidate(client, req.params.id, merged,
+          hasLessonId ? (lessonId || null) : undefined, locked);
+        return { ...candidate, expectedRevision: req.body?.expectedRevision };
+      },
+      write: async client => (await client.query(sql, params)).rows[0],
+    });
+    if (!result) return;
+  }
   invalidateKanjiCatalogCache();
-  res.json({ kanji: result.rows[0] });
+  res.json({ kanji: targetLessonId ? result.value : result.rows[0],
+    ...(targetLessonId ? { validation: result.report } : {}) });
 }));
 
 router.delete('/kanji/:id', asyncHandler(async (req, res) => {
-  await query(`DELETE FROM kanji_items WHERE id = $1`, [req.params.id]);
+  const existing = await query('SELECT lesson_id FROM kanji_items WHERE id=$1', [req.params.id]);
+  const lessonId = existing.rows[0]?.lesson_id;
+  const guarded = lessonId
+    ? await adminLockedMutation(res, async client => (await client.query(
+      `SELECT m.course_id FROM kanji_items k JOIN lessons l ON l.id=k.lesson_id
+        JOIN modules m ON m.id=l.module_id WHERE k.id=$1`, [req.params.id])).rows.map(row => row.course_id),
+      client => client.query('DELETE FROM kanji_items WHERE id=$1', [req.params.id]))
+    : await globalOffQuery(res, 'DELETE FROM kanji_items WHERE id=$1', [req.params.id],
+      { expectedGlobalKanjiId: req.params.id });
+  if (!guarded) return;
   invalidateKanjiCatalogCache();
   res.json({ ok: true });
 }));
@@ -5123,7 +5600,18 @@ router.delete('/kanji/:id', asyncHandler(async (req, res) => {
 router.post('/kanji/:id/move', asyncHandler(async (req, res) => {
   const { targetLessonId, sortOrder } = req.body || {};
   if (!targetLessonId) return res.status(400).json({ error: 'targetLessonId required' });
-  const r = await query(
+  const guarded = await adminBoundaryWrite(res, {
+    prepare: async (client, { locked }) => {
+      const old = (await client.query(`SELECT * FROM kanji_items WHERE id=$1
+        ${locked ? 'FOR UPDATE' : ''}`, [req.params.id])).rows[0];
+      if (!old) throw new BoundaryContextError('kanji_not_found');
+      return kanjiWriteCandidate(client, req.params.id, {
+        character: old.character, on_reading: old.on_reading, kun_reading: old.kun_reading,
+        meaning_id: old.meaning_id, mnemonic: old.mnemonic, compounds: old.compounds,
+        bab_kode: old.bab_kode, boundaryFingerprint: req.body?.boundaryFingerprint,
+      }, targetLessonId, locked);
+    },
+    write: async client => (await client.query(
     `UPDATE kanji_items
         SET lesson_id = $1,
             sort_order = COALESCE($2, sort_order),
@@ -5131,10 +5619,11 @@ router.post('/kanji/:id/move', asyncHandler(async (req, res) => {
       WHERE id = $3
       RETURNING *`,
     [targetLessonId, sortOrder ?? null, req.params.id]
-  );
-  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+    )).rows[0],
+  });
+  if (!guarded) return;
   invalidateKanjiCatalogCache();
-  res.json({ kanji: r.rows[0] });
+  res.json({ kanji: guarded.value, validation: guarded.report });
 }));
 
 // Bulk-import kanji dari Notion DB "📖 Kanji" ke satu pelajaran. Mirror
@@ -5219,12 +5708,7 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', notionImportLimiter, a
     }
   }
 
-  let imported = 0, updated = 0, total = 0;
-  const startSort = (await query(
-    `SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM kanji_items WHERE lesson_id = $1`,
-    [lessonId]
-  )).rows[0].next;
-  let sort = startSort;
+  const staged = [];
   // Aliases super-banyak supaya tahan beda-beda schema. Misal:
   // - On'yomi 音読み / On 音読み / On / 音読み / Onyomi / On Reading / On'yomi
   // - Meaning (ID) / Indonesian / Arti / Meaning / Bahasa Indonesia / Indo
@@ -5233,7 +5717,6 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', notionImportLimiter, a
     const props = page.properties || {};
     const character = notionPlainText(pickProp(props, ['Kanji 漢字', 'Kanji', '漢字', 'Character', 'Karakter', 'Name', 'Title'])).trim();
     if (!character) continue;
-    total++;
     const onReading = notionPlainText(pickProp(props, [
       "On'yomi 音読み", "On'yomi", 'On 音読み', 'On', '音読み', 'Onyomi', 'On Reading',
     ])).trim() || null;
@@ -5256,30 +5739,50 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', notionImportLimiter, a
     // UPDATE lesson_id (root cause deck kanji Bab lain jadi kosong,
     // didiagnosis di migration 049/050). Unique index sudah disesuaikan
     // di migration 064.
-    const existing = await query(
-      `SELECT id FROM kanji_items WHERE character = $1 AND jlpt_level = $2 AND lesson_id = $3 LIMIT 1`,
-      [character, level, lessonId]
-    );
-    if (existing.rows.length > 0) {
-      await query(
-        `UPDATE kanji_items SET
-           on_reading = $2, kun_reading = $3, meaning_id = $4, mnemonic = $5,
-           stroke_count = $6, bab_kode = COALESCE($7, bab_kode), updated_at = NOW()
-         WHERE id = $1`,
-        [existing.rows[0].id, onReading, kunReading, meaningId, mnemonic, strokeCount, babKode]
-      );
-      updated++;
-    } else {
-      await query(
-        `INSERT INTO kanji_items (
-           lesson_id, character, jlpt_level, on_reading, kun_reading, meaning_id,
-           mnemonic, stroke_count, bab_kode, sort_order
-         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [lessonId, character, level, onReading, kunReading, meaningId, mnemonic, strokeCount, babKode, sort++]
-      );
-      imported++;
-    }
+    staged.push({ character, onReading, kunReading, meaningId, mnemonic, strokeCount, babKode });
+  }
+  const total = staged.length;
+  let imported = 0, updated = 0, validation = null;
+  if (total) {
+    const outcome = await adminBoundaryWrite(res, {
+      prepare: async (client, { locked }) => {
+        const current = await client.query(`SELECT id,type FROM lessons WHERE id=$1 ${locked ? 'FOR UPDATE' : ''}`, [lessonId]);
+        if (!current.rows.length) throw new BoundaryContextError('lesson_not_found');
+        if (current.rows[0].type !== 'kanji') throw new BoundaryContextError('boundary_context_mismatch');
+        return { scope: { lessonId }, contentType: 'kanji_compound_assessed', operation: 'live_write',
+          fields: staged.flatMap((item, index) => Object.entries(item)
+            .filter(([, value]) => typeof value === 'string')
+            .map(([key, value]) => boundaryField(`items[${index}].${key}`, value))),
+          expectedBoundaryFingerprint: req.body?.boundaryFingerprint };
+      },
+      write: async client => {
+        const start = await client.query('SELECT COALESCE(MAX(sort_order),-1)+1 AS next FROM kanji_items WHERE lesson_id=$1', [lessonId]);
+        let sort = Number(start.rows[0]?.next) || 0, added = 0, changed = 0;
+        for (const item of staged) {
+          const existing = await client.query(`SELECT id FROM kanji_items
+            WHERE character=$1 AND jlpt_level=$2 AND lesson_id=$3 LIMIT 1`,
+          [item.character, level, lessonId]);
+          if (existing.rows.length) {
+            await client.query(`UPDATE kanji_items SET on_reading=$2,kun_reading=$3,meaning_id=$4,
+              mnemonic=$5,stroke_count=$6,bab_kode=COALESCE($7,bab_kode),updated_at=NOW() WHERE id=$1`,
+            [existing.rows[0].id, item.onReading, item.kunReading, item.meaningId,
+              item.mnemonic, item.strokeCount, item.babKode]);
+            changed++;
+          } else {
+            await client.query(`INSERT INTO kanji_items(lesson_id,character,jlpt_level,on_reading,kun_reading,
+              meaning_id,mnemonic,stroke_count,bab_kode,sort_order)
+              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+            [lessonId, item.character, level, item.onReading, item.kunReading, item.meaningId,
+              item.mnemonic, item.strokeCount, item.babKode, sort++]);
+            added++;
+          }
+        }
+        return { imported: added, updated: changed };
+      },
+    });
+    if (!outcome) return;
+    ({ imported, updated } = outcome.value);
+    validation = outcome.report;
   }
 
   // Diagnostic: kalau ga ada satu pun character ke-extract, kasih tahu
@@ -5303,6 +5806,7 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', notionImportLimiter, a
     matchedRelationProp,
     matchedLevelProp,
     usedFallbackUnfiltered,
+    validation,
     ...(Object.keys(diagnostic).length ? { diagnostic } : {}),
   });
 }));

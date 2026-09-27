@@ -29,6 +29,7 @@ const fakeQuery=async(sql,p=[])=>{
   if(['BEGIN','COMMIT','ROLLBACK','SAVEPOINT boundary_resolve','RELEASE SAVEPOINT boundary_resolve',
     'ROLLBACK TO SAVEPOINT boundary_resolve'].includes(sql))return{rows:[]};
   if(sql.includes('pg_advisory_xact_lock'))return{rows:[]};
+  if(sql.includes('WITH RECURSIVE required'))return{rows:[{id}]};
   if(sql.includes('SELECT c.id,c.curriculum_boundary_mode AS mode,m.id AS module_id'))return{rows:[{id,mode:'off',module_id:id}]};
   if(sql.includes('boundary:courses'))return{rows:[{id,slug:'n5',level:'N5',curriculum_boundary_mode:'off'}]};
   if(sql.includes('boundary:edges'))return{rows:[]};
@@ -94,9 +95,12 @@ test('grammar round trip: additive update preserves omitted scene and explicit n
   saved=fixture();
 });
 test('reusable profile uses real provider voice and cannot rename/delete official identity',async()=>{
+  const savedSceneBefore=structuredClone(saved);
   let r=await request('/api/admin/dialogue-speakers/'+id,{method:'PUT',body:{name:'hacked',displayName:'Anna Baru',voiceId:'missing'}});assert.equal(r.status,400);
   r=await request('/api/admin/dialogue-speakers/'+id,{method:'PUT',body:{name:'hacked',displayName:'Anna Baru',voiceId:'hadi-voice'}});assert.equal(r.status,200);
-  assert.equal(r.body.speaker.name,'Anna Wijaya');assert.equal(r.body.speaker.profile_version,2);assert.equal(saved.participants[0].voiceId,'anna-voice');
+  assert.equal(r.body.speaker.name,'Anna Wijaya');assert.equal(r.body.speaker.profile_version,2);
+  assert.deepEqual(saved,savedSceneBefore,'profile defaults must not rewrite the learner-visible scene snapshot');
+  assert.equal(saved.participants[0].voiceId,'anna-voice');
   assert.equal((await request('/api/admin/dialogue-speakers/'+id,{method:'DELETE'})).status,409);
 });
 test('student generation uses snapshot voice, cache changes when voice changes, provider availability enforced',async()=>{
