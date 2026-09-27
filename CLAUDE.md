@@ -71,6 +71,43 @@
 
 ## Konvensi penting
 
+- **Landing page (`index.html`) diberi motion "website mahal" — keputusan user
+  MENGABAIKAN DESIGN.md** (user: "lupakan design.md", lalu "buat sekreatif mu").
+  Anggaran motion DESIGN.md (reveal 180–240ms, tanpa parallax, tanpa motif Jepang
+  berulang) sengaja TIDAK diikuti untuk landing, dan DESIGN.md TIDAK diubah — jadi
+  dokumen itu sekarang tidak cocok dengan landing; jangan "memperbaiki" landing balik
+  ke DESIGN.md tanpa tanya user. Isinya: entrance hero CSS-only (judul naik per baris,
+  foto dibuka tirai + zoom, matahari merah terbit dari balik sudut lengkung foto),
+  reveal saat scroll (IntersectionObserver di `landing.js`, cascade per batch),
+  **story "Sebelum kamu mengurungkan niat" jadi pinned scroll-story** (scroll memilih
+  adegan, progress bar, baris turun saat scroll balik; timer 6 detik lama tetap jadi
+  fallback untuk layar < 600px tinggi / reduced motion / CSS motion gagal dimuat),
+  pita tipografi kinetik (Belajar·学ぶ…) dan watermark 未来へ yang bergeser mengikuti
+  scroll (CSS scroll-driven, tanpa scroll listener).
+  **Pembagian CSS**: `landing.css` (render-blocking) hanya yang dibutuhkan frame
+  pertama; sisanya di `landing-motion.css`, di-inject oleh `landing.js` setelah parse
+  (+ `<noscript>` di index.html). Versi `?v=` file itu ditulis DI DUA TEMPAT
+  (landing.js dan noscript) — bump keduanya.
+  **Jebakan yang terukur, bukan ditebak**: (1) `clip-path` pada foto hero menunda LCP
+  desktop 1092→1684ms (elemen LCP pindah ke paragraf) — tirai sekarang di pembungkus
+  `.hero-visual`, foto ter-paint sejak frame pertama; (2) tirai warna kertas yang
+  di-clip sudut membulat yang SAMA dengan foto meninggalkan cincin anti-aliasing —
+  tirai harus di luar clip dan menjorok 2px; (3) font Jepang Google dipecah per
+  subset DAN per bobot: kanji dekoratif sempat menambah 12 file/+179KB saat load —
+  sekarang semua bobot 500 + `content-visibility:auto` (font baru diunduh saat
+  mendekati layar; `contain-intrinsic-size` = tinggi KONTEN, padding tidak dihitung);
+  (4) `<link media=print onload>` di head tetap berebut bandwidth dengan CSS kritis
+  (FCP HP +~80–200ms) — makanya di-inject dari JS. Hasil akhir vs main: font saat load
+  identik, FCP setara (noise), LCP HP dalam noise, LCP desktop ~+30ms (1,09→1,12s),
+  0 frame >33ms saat scroll dengan CPU 4x. **Jebakan alat uji**: Playwright
+  mencocokkan route dari yang TERAKHIR didaftarkan (catch-all `**/api/**` harus
+  didaftarkan pertama); screenshot `fullPage` me-resize viewport sehingga animasi CSS
+  pada elemen ber-`display` responsif (`.hero-foot`) diputar ulang — pakai screenshot
+  viewport per bagian. **Belum diverifikasi**: Safari iOS/perangkat sungguhan (hanya
+  Chromium), dan apakah nginx produksi meng-gzip CSS (proxy sandbox memblokir
+  eznihongo.com) — kalau belum, mengaktifkan `gzip_types text/css
+  application/javascript` jauh lebih berdampak daripada optimasi apa pun di atas.
+
       **Dialog grammar: speaker asli dipilih dari SUARA ELEVENLABS ASLI —
       bukan kode A/B, dan bukan bucket perempuan/laki-laki — plus tes audio
       per giliran, independen** — user: "gunakan nama speaker aslinya yg bisa
