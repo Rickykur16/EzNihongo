@@ -61,6 +61,14 @@ import { validateAndWriteContent, boundaryWriteHttpError, lockCurriculumCourse,
   lockCurriculumCourses, lockCurriculumGraph } from '../curriculum-content-service.js';
 import { validateContentAgainstBoundary, CURRICULUM_VALIDATOR_VERSION } from '../curriculum-boundary-validator.js';
 import { generateGroundedContent } from '../grounded-generation.js';
+import { dialogueSourceFingerprint } from '../curriculum-boundary-context.js';
+import { DialogueQuestionError, loadDialogueQuestionContext, listDialogueQuestions,
+  saveDialogueQuestions, assertDialogueQuestionLessonMoveAllowed } from '../dialogue-question-service.js';
+import { getLearningFlowSettings, saveLearningFlowSettings } from '../learning-flow-config.js';
+import { CurriculumModeError, getCurriculumBoundaryMode,
+  saveCurriculumBoundaryMode } from '../curriculum-boundary-mode.js';
+import { captureReadinessAttestation,
+  listReadinessAttestations } from '../curriculum-readiness-attestations.js';
 import { validateBunpouPublish } from '../curriculum-bunpou-validation.js';
 import { deckReadingSourceFingerprint, distractorSourceFingerprint,
   assertGenerationSourceUnchanged } from '../curriculum-generation-source.js';
@@ -92,6 +100,7 @@ async function groundedDraft({ scope, contentType, loadSource, instruction, maxT
   transformCandidate = x => x }) {
   return generateGroundedContent({ scope, contentType, loadSource, communicationGoal,
     scenario, trustedValidation, expectedExampleCount, additionalSchemaIssues,
+    onTerminal: event => console.info(JSON.stringify(event)),
     expectedBoundaryFingerprint: body.boundaryFingerprint || null,
     expectedSourceFingerprint: body.sourceFingerprint || null,
     provider: async ({ prompt, repairFeedback }) => {
@@ -183,6 +192,99 @@ async function safeLearningWarnings(loadWarnings) {
 
 // Every route in this file requires admin
 router.use(requireAuth, requireCompanyAdmin);
+
+function dialogueQuestionFailure(res, error) {
+  if (!(error instanceof DialogueQuestionError)) throw error;
+  res.set('Cache-Control', 'private, no-store');
+  return res.status(error.status).json({ error: error.code,
+    ...(error.report ? { validation: error.report, report: error.report } : {}) });
+}
+
+// Owner-only: these editor DTOs include answer keys and private transfer
+// questions. Their exact methods are also recorded in company-route-policy.
+router.get('/grammar/:id/dialogue-questions', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try {
+    const result = await listDialogueQuestions(req.params.id,
+      { sourceLessonId: req.query.sourceLessonId || null });
+    res.set('Cache-Control', 'private, no-store');
+    res.json(result);
+  } catch (error) { dialogueQuestionFailure(res, error); }
+}));
+
+router.put('/grammar/:id/dialogue-questions', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try {
+    const result = await saveDialogueQuestions(req.params.id, req.body || {});
+    res.set('Cache-Control', 'private, no-store');
+    res.json(result);
+  } catch (error) { dialogueQuestionFailure(res, error); }
+}));
+
+router.post('/grammar/:id/generate-dialog-questions', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  const body = req.body || {};
+  const kind = body.kind;
+  const count = body.count ?? 1;
+  if (!body.sourceLessonId || !body.expectedDialogueFingerprint ||
+      !['comprehension', 'transfer'].includes(kind) || !Number.isInteger(count) ||
+      count < (kind === 'comprehension' ? 1 : 0) || count > (kind === 'comprehension' ? 2 : 1)) {
+    return res.status(400).json({ error: 'dialogue_generation_context_required' });
+  }
+  let context;
+  try { context = await loadDialogueQuestionContext({ query }, req.params.id, body.sourceLessonId); }
+  catch (error) { return dialogueQuestionFailure(res, error); }
+  if (context.dialogueFingerprint !== body.expectedDialogueFingerprint) {
+    return res.status(409).json({ error: 'dialogue_changed_since_editor_open' });
+  }
+  if (!context.turns.some(turn => turn.text)) return res.status(422).json({ error: 'source_dialogue_missing' });
+  const loadSource = async () => {
+    const current = await loadDialogueQuestionContext({ query }, req.params.id, body.sourceLessonId);
+    return { turns: current.turns, grammarId: current.grammar.id,
+      sourceLessonId: current.sourceLessonId, dialogueFingerprint: current.dialogueFingerprint,
+      goal: current.grammar.communication_goal || '',
+      translation: current.grammar.example_dialog_id || '' };
+  };
+  const initialSource = await loadSource();
+  if (initialSource.dialogueFingerprint !== context.dialogueFingerprint) {
+    return res.status(409).json({ error: 'dialogue_changed_since_editor_open' });
+  }
+  const sourceFingerprint = dialogueSourceFingerprint(initialSource);
+  if (count === 0) {
+    const report = { status: 'not_run', valid: null, violations: [], warnings: [] };
+    return groundedResponse(res, { status: 'ready', candidate: { questions: [] }, report,
+      decision: { decision: 'allowed', canProceed: true, statusCode: 200, code: null },
+      attempts: [], boundaryFingerprint: null, sourceFingerprint },
+    { questions: [], dialogueFingerprint: context.dialogueFingerprint });
+  }
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled' });
+  const result = await groundedDraft({ scope: { grammarId: req.params.id,
+    lessonId: context.sourceLessonId },
+    contentType: kind === 'comprehension' ? 'dialogue_comprehension' : 'dialogue_transfer',
+    loadSource, body: { ...body, sourceFingerprint },
+    communicationGoal: context.grammar.communication_goal || '',
+    maxTokens: 1300, model: ANTHROPIC_GEN_MODEL,
+    instruction: `Create exactly ${count} ${kind} multiple-choice question(s) for the persisted Japanese dialogue. Return JSON {"questions":[{"prompt":"...","options":["...","...","..."],"correctIndex":0,"explanation":"..."${kind === 'comprehension' ? ',"evidence":[{"turnIndex":0,"quote":"exact source quote"}]' : ''}}]}. Every option, explanation and evidence quote must be grounded in the source. ${kind === 'comprehension' ? 'Evidence must cite an exact Japanese dialogue turn quote.' : 'Test transfer to a new situation; do not claim source-turn evidence.'}`,
+    additionalSchemaIssues: candidate => {
+      const questions = candidate.questions;
+      if (!Array.isArray(questions) || questions.length !== count || candidate.question != null ||
+          candidate.evidence != null) return [{ code: 'dialogue_question_count_invalid' }];
+      return questions.flatMap((question, index) =>
+        kind === 'comprehension' ? (!Array.isArray(question?.evidence) || !question.evidence.length
+          ? [{ code: 'dialogue_question_evidence_required', questionIndex: index }] : []) :
+          question?.evidence != null ? [{ code: 'transfer_evidence_not_supported', questionIndex: index }] : []);
+    } });
+  const current = await loadDialogueQuestionContext({ query }, req.params.id, body.sourceLessonId);
+  if (current.dialogueFingerprint !== context.dialogueFingerprint) {
+    result.status = 'stale';
+    result.report = { ...result.report, status: 'version_conflict', valid: null,
+      warnings: [{ code: 'dialogue_changed_during_generation' }] };
+    result.decision = decideBoundaryAction({ mode: context.grammar.boundary_mode,
+      operation: 'generate', report: result.report });
+  }
+  return groundedResponse(res, result, { questions: result.status === 'ready' ? result.candidate.questions : [],
+    dialogueFingerprint: current.dialogueFingerprint });
+}));
 
 const boundaryField = (path, value) => ({ path, text: String(value ?? '') });
 function boundaryFieldsFrom(path, value) {
@@ -681,6 +783,48 @@ router.get('/courses', asyncHandler(async (req, res) => {
     `SELECT * FROM courses ORDER BY sort_order ASC, created_at ASC`
   );
   res.json({ courses: result.rows });
+}));
+
+// Owner-only mode control. A mode revision is rechecked after the same graph
+// and course locks as content writers; enforce promotion remains closed until
+// a trustworthy server-owned readiness evidence registry exists.
+router.get('/courses/:id/curriculum-boundary-mode', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.json(await getCurriculumBoundaryMode(req.params.id)); }
+  catch (error) {
+    if (!(error instanceof CurriculumModeError)) throw error;
+    res.status(error.status).json({ error: error.code });
+  }
+}));
+
+router.put('/courses/:id/curriculum-boundary-mode', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.json(await saveCurriculumBoundaryMode(req.params.id, req.body)); }
+  catch (error) {
+    if (!(error instanceof CurriculumModeError)) throw error;
+    res.status(error.status).json({ error: error.code });
+  }
+}));
+
+// Passive owner attestations are never an enforce authorization. The service
+// records current server observations and marks all captured claims unverified.
+router.get('/courses/:id/readiness-attestations', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.json(await listReadinessAttestations(req.params.id, req.query.moduleId)); }
+  catch (error) {
+    if (!(error instanceof CurriculumModeError)) throw error;
+    res.status(error.status).json({ error: error.code });
+  }
+}));
+
+router.post('/courses/:id/readiness-attestations', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.status(201).json(await captureReadinessAttestation(req.params.id,
+    req.user.id, req.body)); }
+  catch (error) {
+    if (!(error instanceof CurriculumModeError)) throw error;
+    res.status(error.status).json({ error: error.code });
+  }
 }));
 
 // Read-only curriculum inspector. It remains owner-only in the explicit
@@ -1954,10 +2098,7 @@ router.get('/module-grammar', asyncHandler(async (req, res) => {
 // Di-generate SEKALI per pola oleh admin lalu disimpan. Siswa tidak pernah
 // memicu panggilan AI untuk soal pilihan ganda — lihat prinsip "jangan
 // overuse AI" di CLAUDE.md.
-const DISTRACTOR_SYSTEM = `You write multiple-choice distractors for a Japanese-grammar course taught in Indonesian to JLPT N5/N4 beginners. Reply with plain lines only — no numbering, no bullets, no extra prose.`;
-
-// Satu pola → daftar pengecoh (atau null kalau gagal). Dipakai endpoint
-// tunggal (draft untuk di-review admin) DAN endpoint massal (auto-simpan).
+// Sibling meanings are authoritative exclusions for draft and bulk generation.
 async function loadDistractorSiblings(item, dbQuery = query, locked = false) {
   // Fungsi pola LAIN di bab yang sama dikirim sebagai daftar-hindari: kalau
   // pengecoh kebetulan mendeskripsikan pola lain, soalnya jadi ambigu untuk
@@ -1969,108 +2110,6 @@ async function loadDistractorSiblings(item, dbQuery = query, locked = false) {
     [item.module_id, item.id]
   );
   return sib.rows;
-}
-
-async function generateDistractorsFor(item, siblings = null) {
-  const currentSiblings = siblings ?? await loadDistractorSiblings(item);
-  const avoid = currentSiblings.map((r) => `- ${r.pattern}: ${r.meaning}`).join('\n') || '(tidak ada)';
-
-  const userContent = `Pola grammar target: ${item.pattern}
-Fungsi yang BENAR dari pola ini: ${item.meaning}
-
-Fungsi pola lain di bab yang sama (JANGAN tulis ulang salah satu dari ini):
-${avoid}
-
-Tulis 3 pengecoh untuk soal pilihan ganda "Apa fungsi ${item.pattern}?".
-
-Aturan:
-- Tiap pengecoh adalah fungsi yang SALAH untuk pola target, tapi masuk akal
-  sebagai kekeliruan pemula — bukan fungsi yang benar, dan bukan fungsi pola
-  lain yang didaftarkan di atas.
-- Bahasa Indonesia, gaya dan panjang MIRIP dengan fungsi yang benar di atas
-  (satu kalimat). Opsi yang panjangnya timpang langsung ketahuan jawabannya.
-- JANGAN menyebut atau menuliskan pola targetnya sendiri (${item.pattern})
-  maupun huruf Jepangnya di dalam pengecoh — itu membocorkan jawaban.
-- Level N5/N4: pakai istilah sederhana (partikel, kata kerja, kata benda,
-  kata sifat, bentuk sopan), bukan istilah linguistik lanjutan.
-- Balas TEPAT 3 baris, satu pengecoh per baris, tanpa nomor dan tanpa tanda
-  hubung di depan.`;
-
-  const text = await callClaude({
-    system: DISTRACTOR_SYSTEM,
-    userContent,
-    maxTokens: 500,
-    model: ANTHROPIC_GEN_MODEL,
-  });
-  if (text == null) return null;
-
-  // Bersihkan penomoran/bullet yang kadang tetap muncul, buang baris yang
-  // menyalin fungsi benar, dan buang yang membocorkan pola targetnya.
-  const correct = (item.meaning || '').trim().toLowerCase();
-  const distractors = String(text)
-    .split(/\r?\n/)
-    .map((l) => l.replace(/^\s*(?:\d+[.)]|[-*•])\s*/, '').trim())
-    .filter(Boolean)
-    .filter((l) => l.toLowerCase() !== correct)
-    .filter((l) => !l.includes(item.pattern))
-    .slice(0, 3);
-
-  return distractors.length >= 2 ? distractors : null;
-}
-
-// Pengecoh Step 2: alternatif untuk POTONGAN yang dikosongkan di satu kalimat.
-// Beda dari Step 1 — di sini yang diuji BENTUK, dan syarat utamanya pengecoh
-// harus benar-benar SALAH di kalimat itu. Aturan mekanis tidak bisa menjamin
-// itu (lihat migration 125), makanya butuh AI + review admin.
-async function generateControlledFor(item) {
-  const slot = controlledSlot(item);
-  if (!slot) return null;
-
-  const userContent = `Pola grammar: ${item.pattern}
-Arti pola: ${item.meaning || '(tidak ada)'}
-
-Soal isian:
-${slot.sentence}
-${slot.indonesian ? `Arti kalimat: ${slot.indonesian}` : ''}
-Jawaban yang BENAR untuk bagian ＿＿＿ : ${slot.answer}
-
-Tulis 3 pilihan SALAH untuk mengisi ＿＿＿ pada kalimat di atas.
-
-Aturan:
-- Tiap pilihan harus kata/bentuk bahasa Jepang yang BENAR-BENAR ADA. Jangan
-  mengarang bentuk seperti "すってはいけます" atau menempelkan partikel ke
-  frasa ("書いてくださいを").
-- Tiap pilihan harus JELAS SALAH kalau dimasukkan ke kalimat itu. Ini yang
-  paling penting: kalau sebuah pilihan ternyata juga menghasilkan kalimat yang
-  benar, soalnya jadi punya dua jawaban dan tidak bisa dipakai.
-- Bentuknya mirip jawaban benar (panjang dan jenis kata sebanding), supaya
-  tidak ketahuan hanya dari bentuknya.
-- Utamakan kekeliruan yang wajar dilakukan pemula: bentuk kata kerja yang
-  keliru, partikel yang keliru, atau pola lain yang mirip tapi tidak cocok
-  konteksnya.
-- Level N5/N4. Jangan memakai kanji di luar level itu.
-- Tulis ISI ＿＿＿ saja, bukan kalimat utuh. Panjangnya sebanding dengan
-  jawaban benar dan tanpa tanda baca akhir kalimat.
-- Balas TEPAT 3 baris, satu pilihan per baris, tanpa nomor dan tanpa penjelasan.`;
-
-  const text = await callClaude({
-    system: DISTRACTOR_SYSTEM,
-    userContent,
-    maxTokens: 400,
-    model: ANTHROPIC_GEN_MODEL,
-  });
-  if (text == null) return null;
-
-  const distractors = String(text)
-    .split(/\r?\n/)
-    .map((l) => l.replace(/^\s*(?:\d+[.)]|[-*•])\s*/, '').trim())
-    .filter(Boolean)
-    // Pagar yang sama dengan penurunan otomatis: pilihan harus muat di ＿＿＿.
-    // Model kadang membalas kalimat utuh walau diminta potongan, dan pilihan
-    // sepanjang kalimat membuat soalnya bisa dijawab tanpa tahu tata bahasanya.
-    .filter((l) => slotShaped(slot.answer, l))
-    .slice(0, 3);
-  return distractors.length >= 2 ? { distractors, slot } : null;
 }
 
 // Muat satu pola LENGKAP dengan contohnya — dibutuhkan controlledSlot().
@@ -2090,6 +2129,60 @@ async function loadGrammarWithExamples(id, dbQuery = query, locked = false) {
   return { ...g.rows[0], examples: ex.rows };
 }
 
+async function generateGroundedDistractorsFor(item, siblings, body = {},
+  { needRecognition = true, needControlled = true } = {}) {
+  const slot = controlledSlot(item);
+  const includeControlled = needControlled && !!slot;
+  if (includeControlled) {
+    let boundary;
+    try { boundary = await getCurriculumBoundary({ grammarId: item.id }); }
+    catch { return { result: { status: 'unavailable', candidate: null,
+      report: { status: 'unavailable', valid: null, violations: [], warnings: [{ code: 'boundary_unavailable' }] },
+      attempts: [] }, slot, preflight: true }; }
+    const slotReport = validateContentAgainstBoundary({ boundary, contentType: 'grammar_distractors',
+      operation: 'generate', fields: [boundaryField('slot.sentence', slot.sentence),
+        boundaryField('slot.answer', slot.answer)] });
+    if (slotReport.status !== 'evaluated' || slotReport.valid !== true) {
+      return { result: { status: 'rejected', candidate: null, report: slotReport,
+        decision: decideBoundaryAction({ mode: boundary.course.mode, operation: 'generate', report: slotReport }),
+        attempts: [], boundaryFingerprint: boundary.boundaryFingerprint, sourceFingerprint: null },
+      slot, preflight: true };
+    }
+  }
+  const loadSource = async () => {
+    const current = await loadGrammarWithExamples(item.id);
+    if (!current) throw new Error('grammar_changed');
+    return { grammar: current, siblings: await loadDistractorSiblings(current),
+      slot: controlledSlot(current) };
+  };
+  const result = await groundedDraft({ scope: { grammarId: item.id },
+    contentType: 'grammar_distractors', loadSource, body,
+    maxTokens: 950, model: ANTHROPIC_GEN_MODEL,
+    instruction: `${needRecognition ? `Create exactly three Indonesian recognition distractors for persisted grammar ${JSON.stringify(item.pattern)}. Correct meaning: ${JSON.stringify(item.meaning)}. Avoid meanings of sibling grammar: ${JSON.stringify(siblings.map(row => ({ pattern: row.pattern, meaning: row.meaning })))}.` : 'Omit recognitionDistractors because they are already curated.'} ${includeControlled ? `Create exactly three Japanese controlled distractors for sentence ${JSON.stringify(slot.sentence)} and correct blank answer ${JSON.stringify(slot.answer)}.` : 'Omit controlledDistractors.'} Return only JSON {${[needRecognition ? '"recognitionDistractors":["...","...","..."]' : null,
+      includeControlled ? '"controlledDistractors":["...","...","..."]' : null].filter(Boolean).join(',')}}.`,
+    additionalSchemaIssues: candidate => {
+      const issues = [];
+      if (candidate.slot != null ||
+          (needRecognition ? candidate.recognitionDistractors?.length !== 3 : candidate.recognitionDistractors != null) ||
+          (includeControlled ? candidate.controlledDistractors?.length !== 3 : candidate.controlledDistractors != null)) {
+        issues.push({ code: 'distractor_task_shape_invalid' });
+      }
+      const correct = item.meaning.trim().toLocaleLowerCase('id');
+      const siblingMeanings = new Set(siblings.map(row => String(row.meaning || '').trim().toLocaleLowerCase('id')));
+      if (Array.isArray(candidate.recognitionDistractors) && candidate.recognitionDistractors.some(value =>
+        typeof value === 'string' && (value.trim().toLocaleLowerCase('id') === correct ||
+          siblingMeanings.has(value.trim().toLocaleLowerCase('id')) || value.includes(item.pattern)))) {
+        issues.push({ code: 'recognition_distractor_conflict' });
+      }
+      if (includeControlled && Array.isArray(candidate.controlledDistractors) && candidate.controlledDistractors.some(value =>
+        typeof value !== 'string' || value === slot.answer || !slotShaped(slot.answer, value))) {
+        issues.push({ code: 'controlled_distractor_shape_invalid' });
+      }
+      return issues;
+    } });
+  return { result, slot, preflight: false };
+}
+
 router.post('/module-grammar/:id/generate-distractors', asyncHandler(async (req, res) => {
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled' });
   const item = await loadGrammarWithExamples(req.params.id);
@@ -2102,54 +2195,12 @@ router.post('/module-grammar/:id/generate-distractors', asyncHandler(async (req,
     return res.status(400).json({ error: 'no_meaning', detail: 'Isi kolom Arti dulu — pengecoh dibuat berdasarkan fungsi yang benar.' });
   }
   const siblings = await loadDistractorSiblings(item);
-  const slot = controlledSlot(item);
-  if (slot) {
-    let boundary;
-    try { boundary = await getCurriculumBoundary({ grammarId: item.id }); }
-    catch { return res.status(503).json({ error: 'boundary_unavailable' }); }
-    const slotReport = validateContentAgainstBoundary({ boundary, contentType: 'grammar_distractors',
-      operation: 'generate', fields: [boundaryField('slot.sentence', slot.sentence),
-        boundaryField('slot.answer', slot.answer)] });
-    if (slotReport.status !== 'evaluated' || slotReport.valid !== true) {
-      return groundedResponse(res, { status: 'rejected', candidate: null, report: slotReport,
-        decision: decideBoundaryAction({ mode: boundary.course.mode, operation: 'generate', report: slotReport }),
-        attempts: [], boundaryFingerprint: boundary.boundaryFingerprint, sourceFingerprint: null },
-      { distractors: [], controlled: [], slot: null }, 422);
-    }
-  }
-  const source = async () => {
-    const current = await loadGrammarWithExamples(item.id);
-    if (!current) throw new Error('grammar_changed');
-    return { grammar: current, siblings: await loadDistractorSiblings(current),
-      slot: controlledSlot(current) };
-  };
-  const result = await groundedDraft({ scope: { grammarId: item.id },
-    contentType: 'grammar_distractors', loadSource: source, body: req.body || {},
-    maxTokens: 950, model: ANTHROPIC_GEN_MODEL,
-    instruction: `Create exactly three Indonesian recognition distractors for persisted grammar ${JSON.stringify(item.pattern)}. Correct meaning: ${JSON.stringify(item.meaning)}. Avoid meanings of sibling grammar: ${JSON.stringify(siblings.map(row => ({ pattern: row.pattern, meaning: row.meaning })))}. ${slot ? `Also create exactly three Japanese controlled distractors for sentence ${JSON.stringify(slot.sentence)} and correct blank answer ${JSON.stringify(slot.answer)}.` : 'There is no controlled slot; omit controlledDistractors.'} Return only JSON {"recognitionDistractors":["...","...","..."]${slot ? ',"controlledDistractors":["...","...","..."]' : ''}}.`,
-    additionalSchemaIssues: candidate => {
-      const issues = [];
-      if (candidate.slot != null || candidate.recognitionDistractors?.length !== 3 ||
-          (slot ? candidate.controlledDistractors?.length !== 3 : candidate.controlledDistractors != null)) {
-        issues.push({ code: 'distractor_task_shape_invalid' });
-      }
-      const correct = item.meaning.trim().toLocaleLowerCase('id');
-      const siblingMeanings = new Set(siblings.map(row => String(row.meaning || '').trim().toLocaleLowerCase('id')));
-      if (Array.isArray(candidate.recognitionDistractors) && candidate.recognitionDistractors.some(value =>
-        typeof value === 'string' && (value.trim().toLocaleLowerCase('id') === correct ||
-          siblingMeanings.has(value.trim().toLocaleLowerCase('id')) || value.includes(item.pattern)))) {
-        issues.push({ code: 'recognition_distractor_conflict' });
-      }
-      if (slot && Array.isArray(candidate.controlledDistractors) && candidate.controlledDistractors.some(value =>
-        typeof value !== 'string' || value === slot.answer || !slotShaped(slot.answer, value))) {
-        issues.push({ code: 'controlled_distractor_shape_invalid' });
-      }
-      return issues;
-    } });
+  const { result, slot, preflight } = await generateGroundedDistractorsFor(item, siblings, req.body || {});
   return groundedResponse(res, result, { distractors: result.status === 'ready'
     ? result.candidate.recognitionDistractors : [],
   controlled: result.status === 'ready' ? result.candidate.controlledDistractors || [] : [],
-  slot: result.status === 'ready' && slot ? { sentence: slot.sentence, answer: slot.answer } : null });
+  slot: result.status === 'ready' && slot ? { sentence: slot.sentence, answer: slot.answer } : null },
+  preflight && result.status === 'rejected' ? 422 : null);
 }));
 
 // Generate + SIMPAN untuk semua pola satu kursus yang pengecohnya masih kosong.
@@ -2207,15 +2258,22 @@ router.post('/module-grammar/generate-distractors-bulk', asyncHandler(async (req
     // pernah ditimpa, walau baris ini terpilih karena kolom satunya kosong.
     const needS1 = !(item.recognition_distractors || '').trim();
     const needS2 = !(item.controlled_distractors || '').trim();
-    const [s1, s2] = await Promise.all([
-      needS1 ? generateDistractorsFor(item, siblings) : null,
-      needS2 ? generateControlledFor(item) : null,
-    ]);
-    if (!s1 && !s2) {
-      failed.push(row.pattern); failedItems.push({ id: row.id, error: 'ai_unusable', status: 502 }); continue;
+    // Each item receives its own authoritative context and at most three
+    // provider attempts. A fingerprint supplied for the starting grammar is
+    // not authority for other grammars in this course-wide command.
+    const { result, slot } = await generateGroundedDistractorsFor(item, siblings, {},
+      { needRecognition: needS1, needControlled: needS2 });
+    if (result.status !== 'ready' || (needS2 && !slot)) {
+      const status = result.status === 'stale' ? 409 : result.status === 'unavailable' ? 503 : 422;
+      failed.push(row.pattern);
+      failedItems.push({ id: row.id, error: !slot && needS2 ? 'controlled_slot_missing' :
+        result.status === 'stale' ? 'version_conflict' : result.status === 'unavailable' ?
+          'generation_unavailable' : 'generation_rejected', status,
+        generation: groundedGenerationMetadata(result) });
+      continue;
     }
-    const generatedS1 = s1 ? s1.join('\n') : null;
-    const generatedS2 = s2 ? s2.distractors.join('\n') : null;
+    const generatedS1 = needS1 ? result.candidate.recognitionDistractors.join('\n') : null;
+    const generatedS2 = needS2 ? result.candidate.controlledDistractors.join('\n') : null;
     const guarded = await bulkBoundaryWrite({
       prepare: async (client, { locked }) => {
         const dbQuery = client.query.bind(client);
@@ -2224,11 +2282,14 @@ router.post('/module-grammar/generate-distractors-bulk', asyncHandler(async (req
         const currentSiblings = await loadDistractorSiblings(g, dbQuery, locked);
         assertGenerationSourceUnchanged(sourceFingerprint,
           distractorSourceFingerprint(g, currentSiblings));
+        assertGenerationSourceUnchanged(result.sourceFingerprint,
+          dialogueSourceFingerprint({ grammar: g, siblings: currentSiblings, slot: controlledSlot(g) }));
         const recognition = (g.recognition_distractors || '').trim() ? g.recognition_distractors : generatedS1;
         const controlled = (g.controlled_distractors || '').trim() ? g.controlled_distractors : generatedS2;
         return { scope: { grammarId: g.id, moduleId: g.module_id, lessonId: g.lesson_id || undefined },
           contentType: 'grammar_distractors', operation: 'generate', contentId: g.id,
           fields: [boundaryField('recognitionDistractors', recognition), boundaryField('controlledDistractors', controlled)],
+          expectedBoundaryFingerprint: result.boundaryFingerprint,
           contentIsNewOrChanged: recognition !== g.recognition_distractors || controlled !== g.controlled_distractors,
           recognition, controlled };
       },
@@ -2240,11 +2301,13 @@ router.post('/module-grammar/generate-distractors-bulk', asyncHandler(async (req
     if (!guarded.ok) {
       failed.push(row.pattern);
       failedItems.push({ id: row.id, error: guarded.error, status: guarded.status,
+        generation: groundedGenerationMetadata(result),
         ...(guarded.validation ? { validation: guarded.validation } : {}) });
       continue;
     }
     saved++;
-    savedItems.push({ id: row.id, validation: guarded.outcome.report });
+    savedItems.push({ id: row.id, validation: guarded.outcome.report,
+      generation: groundedGenerationMetadata(result) });
     } catch (error) {
       console.error('distractor_bulk_item_failed', error);
       failed.push(row.pattern);
@@ -2490,6 +2553,21 @@ router.post('/lessons/:lessonId/bunpou-flow/publish', asyncHandler(async (req, r
 // requires the target to actually be a lesson with a companion already
 // published, so a typo'd or forgotten-to-publish lesson id can not be
 // switched live by accident.
+router.get('/settings/learning-flow-communication', asyncHandler(async (_req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  res.json(await getLearningFlowSettings());
+}));
+
+router.put('/settings/learning-flow-communication', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.json(await saveLearningFlowSettings(req.body || {})); }
+  catch (error) {
+    if (!error.status) throw error;
+    res.status(error.status).json({ error: error.message,
+      ...(error.readiness ? { readiness: error.readiness } : {}) });
+  }
+}));
+
 router.get('/settings/bunpou-flow-pilot', asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT key, value FROM app_settings WHERE key IN ('bunpou_flow_pilot_enabled','bunpou_flow_pilot_lesson_id')`
@@ -2722,161 +2800,10 @@ async function _loadQuizGenPrompt() {
   }
 }
 
-// DEPRECATED: tombol "✨ Generate AI" (bulk) di admin sudah dihapus — diganti
-// generator per-mondai (generate-jlpt + generate-listening). Endpoint ini
-// dibiarkan dulu tanpa pemanggil; hapus di cleanup berikutnya bareng
-// QUIZ_KINDS/QUIZ_GEN_PROMPT_DEFAULT/settings quiz-gen-prompt.
-router.post('/lessons/:lessonId/generate-quiz', quizGenLimiter, asyncHandler(async (req, res) => {
-  const lessonId = req.params.lessonId;
-  const count = Math.min(30, Math.max(1, Number(req.body?.count) || 10));
-  let kinds = Array.isArray(req.body?.kinds) ? req.body.kinds.filter((k) => QUIZ_KINDS[k]) : [];
-  if (kinds.length === 0) kinds = ['mc_vocab', 'mc_grammar'];
-  const instruction = String(req.body?.instruction || '').slice(0, 500).trim();
-
-  const lessonRes = await query(`SELECT id, module_id, type FROM lessons WHERE id = $1`, [lessonId]);
-  if (lessonRes.rows.length === 0) return res.status(404).json({ error: 'lesson not found' });
-  const lesson = lessonRes.rows[0];
-  if (lesson.type !== 'quiz') return res.status(400).json({ error: 'lesson_not_quiz', detail: 'Pelajaran ini bukan tipe quiz' });
-
-  // Grounding: vocab (prefer deck-wired di modul) + grammar modul.
-  let vocabRes = await query(
-    `SELECT DISTINCT v.japanese, v.reading, v.indonesian, v.category
-     FROM module_vocabulary v
-     JOIN lesson_deck_items di ON di.vocabulary_id = v.id
-     JOIN lessons l ON l.id = di.lesson_id
-     WHERE l.module_id = $1 AND l.type = 'deck' AND v.japanese IS NOT NULL AND v.japanese <> ''
-     LIMIT 80`,
-    [lesson.module_id]
-  );
-  if (vocabRes.rows.length < 4) {
-    vocabRes = await query(
-      `SELECT japanese, reading, indonesian, category
-       FROM module_vocabulary
-       WHERE module_id = $1 AND japanese IS NOT NULL AND japanese <> ''
-       LIMIT 80`,
-      [lesson.module_id]
-    );
-  }
-  const grammarRes = await query(
-    `SELECT pattern, meaning, example FROM module_grammar
-     WHERE module_id = $1 AND pattern IS NOT NULL AND pattern <> ''
-     LIMIT 30`,
-    [lesson.module_id]
-  );
-
-  if (vocabRes.rows.length === 0 && grammarRes.rows.length === 0) {
-    return res.status(400).json({ error: 'not_enough_material', detail: 'Modul ini belum punya kosakata/grammar. Import materi dulu.' });
-  }
-  if (!QUIZ_ANTHROPIC_KEY) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
-
-  const vocabLines = vocabRes.rows.map((v) =>
-    `- ${v.japanese}${v.reading ? ` (${v.reading})` : ''} = ${v.indonesian || '?'}${v.category ? ` [${v.category}]` : ''}`).join('\n');
-  const grammarLines = grammarRes.rows.map((g) =>
-    `- ${g.pattern}${g.meaning ? ` = ${g.meaning}` : ''}${g.example ? `. Contoh: ${g.example}` : ''}`).join('\n');
-  const kindLines = kinds.map((k) => `- ${QUIZ_KINDS[k].label}`).join('\n');
-
-  const promptTpl = await _loadQuizGenPrompt();
-  const userContent = _fillTemplate(promptTpl, {
-    count,
-    kinds: kindLines,
-    instruction: instruction ? `Instruksi tambahan dari admin: ${instruction}` : '',
-    vocab: vocabLines || '(tidak ada)',
-    grammar: grammarLines || '(tidak ada)',
-  });
-
-  let parsed;
-  try {
-    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': QUIZ_ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: QUIZ_ANTHROPIC_MODEL,
-        max_tokens: 4096,
-        system: [{ type: 'text', text: QUIZ_GEN_SYSTEM, cache_control: { type: 'ephemeral' } }],
-        messages: [{ role: 'user', content: userContent }],
-      }),
-    });
-    if (!upstream.ok) {
-      const detail = await upstream.text().catch(() => '');
-      console.error('Anthropic quiz-gen:', upstream.status, detail.slice(0, 200));
-      return res.status(502).json({ error: 'ai_upstream' });
-    }
-    const data = await upstream.json();
-    const text = Array.isArray(data.content)
-      ? data.content.filter((b) => b.type === 'text').map((b) => b.text).join('')
-      : '';
-    parsed = _extractJsonObject(text);
-  } catch (err) {
-    console.error('Anthropic quiz-gen error:', err.message);
-    return res.status(502).json({ error: 'ai_upstream' });
-  }
-  if (!parsed || !Array.isArray(parsed.questions)) return res.status(502).json({ error: 'ai_parse' });
-
-  const allowedTypes = new Set(kinds.map((k) => QUIZ_KINDS[k].type));
-  const allowedCats = new Set(kinds.map((k) => QUIZ_KINDS[k].cat));
-  const fallbackCat = allowedCats.values().next().value;
-  const clean = [];
-  for (const q of parsed.questions) {
-    if (!q || typeof q !== 'object') continue;
-    let question = String(q.question || '').trim().slice(0, 1000);
-    if (!question) continue;
-    const qtype = q.questionType === 'fill_blank' ? 'fill_blank' : 'multiple_choice';
-    if (!allowedTypes.has(qtype)) continue;
-    let qcat = ['vocabulary', 'grammar', 'reading', 'listening'].includes(q.questionCategory) ? q.questionCategory : 'vocabulary';
-    if (!allowedCats.has(qcat)) qcat = fallbackCat;
-    const explanation = String(q.explanation || '').trim().slice(0, 1000);
-    // 1400 < MAX_TEXT_LEN tts publik (1500) — dialog JLPT bisa panjang.
-    const audioScript = String(q.audioScript || '').trim().slice(0, 1400);
-    const passage = String(q.passage || '').trim().slice(0, 4000);
-    if (qcat === 'listening' && qtype !== 'fill_blank') {
-      // Listening tanpa script dialog yang dikenali parser TTS = soal cacat
-      // (ga ada audio buat diputar siswa) → buang draft-nya.
-      const turns = parseDialog(audioScript);
-      if (!turns) continue;
-      // Wajib struktur JLPT penuh sesuai prompt: ≥3 turn, ada baris narator
-      // (N) DAN dua pembicara dialog (cewe + cowo). Menolak output model yg
-      // memperlakukan N sebagai tokoh / dialog 2-turn tanpa kerangka soal.
-      const spk = turns.map((t) => String(t.speaker).toUpperCase());
-      const hasNarrator = spk.some((s) => /^N/.test(s));
-      const hasFemale = spk.some((s) => /^(A|W|F|女)/.test(s));
-      const hasMale = spk.some((s) => /^(B|M|男)/.test(s));
-      if (turns.length < 3 || !hasNarrator || !hasFemale || !hasMale) continue;
-      // "question" = teks yang TAMPIL di soal — model kadang menyalin dialog
-      // / instruksi meta ("音声を聞いてください。N: ...") ke sini. Pangkas ke
-      // baris pertama tanpa prefix speaker; kalau masih ada pola speaker
-      // inline (dialog nyelip dalam 1 baris), ganti dengan baris narator
-      // TERAKHIR dari script (= pertanyaan yang diulang, sesuai alur JLPT).
-      question = question.split('\n')[0].replace(/^[A-Za-z]{1,3}:\s*/, '').trim();
-      if (/[A-Za-z]{1,3}:\s/.test(question)) {
-        const nTurns = turns.filter((t) => /^n/i.test(String(t.speaker)));
-        question = (nTurns.length ? nTurns[nTurns.length - 1].text : '').trim();
-        if (!question) continue;
-      }
-    }
-    if (qtype === 'fill_blank') {
-      const correctAnswer = String(q.correctAnswer || '').trim().slice(0, 200);
-      if (!correctAnswer) continue;
-      clean.push({ question, questionType: 'fill_blank', questionCategory: qcat, audioScript: '', passage: '', correctAnswer, explanation, options: [] });
-    } else {
-      let options = Array.isArray(q.options)
-        ? q.options.map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect })).filter((o) => o.text)
-        : [];
-      if (options.length < 2) continue;
-      options = options.slice(0, 6);
-      let firstCorrect = options.findIndex((o) => o.isCorrect);
-      if (firstCorrect === -1) firstCorrect = 0;
-      options = options.map((o, i) => ({ text: o.text, isCorrect: i === firstCorrect }));
-      clean.push({ question, questionType: 'multiple_choice', questionCategory: qcat, audioScript: qcat === 'listening' ? audioScript : '', passage: qcat === 'reading' ? passage : '', correctAnswer: '', explanation, options });
-    }
-    if (clean.length >= count) break;
-  }
-  if (clean.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan soal valid. Coba lagi.' });
-
-  res.json({ questions: clean, vocabPool: vocabRes.rows.length, grammarPool: grammarRes.rows.length });
+// The old bulk quiz generator has no grounded task contract. Reject its
+// legacy path; use the scoped JLPT and listening draft generators instead.
+router.post('/lessons/:lessonId/generate-quiz', quizGenLimiter, asyncHandler(async (_req, res) => {
+  res.status(410).json({ error: 'use_scoped_generate_listening_or_jlpt' });
 }));
 
 // Generate opsi pilihan ganda (AI) untuk SATU soal — dipakai tombol "Generate
@@ -3708,7 +3635,8 @@ router.post('/generate-vocab-examples', asyncHandler(async (req, res) => {
 // panggil model). Idempoten — default cuma isi yang kosong; { force:true }
 // regenerate semua. Cap per run + batch supaya tidak timeout (re-run lanjut).
 const _hasKanji = (s) => /[々一-鿿]/.test(String(s || ''));
-async function saveDeckReading(deckLessonId, exampleId, reading, force, sourceFingerprint) {
+async function saveDeckReading(deckLessonId, exampleId, reading, force, sourceFingerprint,
+  expectedBoundaryFingerprint = null, sourceSnapshotFingerprint = null) {
   return bulkBoundaryWrite({
     prepare: async (client, { locked }) => {
       const result = await client.query(`SELECT e.*,v.module_id,v.lesson_id FROM vocabulary_examples e
@@ -3717,6 +3645,8 @@ async function saveDeckReading(deckLessonId, exampleId, reading, force, sourceFi
       if (!result.rows.length) throw new BoundaryContextError('vocabulary_owner_unresolved');
       const row = result.rows[0], shouldWrite = force || !String(row.reading || '').trim();
       assertGenerationSourceUnchanged(sourceFingerprint, deckReadingSourceFingerprint(row));
+      if (sourceSnapshotFingerprint) assertGenerationSourceUnchanged(sourceSnapshotFingerprint,
+        dialogueSourceFingerprint(row));
       const consumers = await client.query('SELECT lesson_id FROM lesson_deck_items WHERE vocabulary_id=$1', [row.vocabulary_id]);
       if (consumers.rows.some(consumer => consumer.lesson_id !== deckLessonId)) {
         // Reading is stored on the shared example, so one deck's validation
@@ -3725,6 +3655,7 @@ async function saveDeckReading(deckLessonId, exampleId, reading, force, sourceFi
       }
       return { scope: { lessonId: deckLessonId },
         contentType: 'vocabulary_example', operation: 'generate', contentId: row.id,
+        expectedBoundaryFingerprint,
         fields: [boundaryField('japanese', row.japanese), boundaryField('reading', shouldWrite ? reading : row.reading),
           boundaryField('highlight', row.highlight), boundaryField('indonesian', row.indonesian)],
         shouldWrite, contentIsNewOrChanged: shouldWrite };
@@ -3738,8 +3669,9 @@ async function saveDeckReading(deckLessonId, exampleId, reading, force, sourceFi
 router.post('/lessons/:lessonId/generate-deck-readings', asyncHandler(async (req, res) => {
   const force = (req.body || {}).force === true;
   const rows = await query(
-    `SELECT e.id, e.vocabulary_id, e.japanese, e.reading
+    `SELECT e.*, v.module_id, v.lesson_id
        FROM vocabulary_examples e
+       JOIN module_vocabulary v ON v.id = e.vocabulary_id
        JOIN lesson_deck_items di ON di.vocabulary_id = e.vocabulary_id
       WHERE di.lesson_id = $1 AND ($2::boolean OR e.reading IS NULL OR e.reading = '')
       ORDER BY e.id`,
@@ -3764,7 +3696,8 @@ router.post('/lessons/:lessonId/generate-deck-readings', asyncHandler(async (req
     if (!jp) { failedItems.push({ id: r.id, error: 'empty_japanese', status: 422 }); continue; }
     if (_hasKanji(jp)) { needAi.push(r); continue; }
     const outcome = await saveDeckReading(req.params.lessonId, r.id, jp.slice(0, 300), force,
-      deckReadingSourceFingerprint(r));
+      deckReadingSourceFingerprint(r), req.body?.boundaryFingerprint || null,
+      dialogueSourceFingerprint(r));
     if (!outcome.ok) failedItems.push({ id: r.id, error: outcome.error, status: outcome.status,
       ...(outcome.validation ? { validation: outcome.validation } : {}) });
     else if (!outcome.outcome.value.skipped) {
@@ -3775,7 +3708,7 @@ router.post('/lessons/:lessonId/generate-deck-readings', asyncHandler(async (req
 
   // 2) Sisanya (mengandung kanji) → Claude per batch.
   if (needAi.length > 0) {
-    const BATCH = 20;
+    const BATCH = 5;
     for (let i = 0; i < needAi.length; i += BATCH) {
       const batch = needAi.slice(i, i + BATCH);
       const list = batch.map((r, j) => `${j + 1}. ${String(r.japanese).trim().slice(0, 280)}`).join('\n');
@@ -3788,39 +3721,69 @@ Aturan:
 Kalimat:
 ${list}
 
-Balas HANYA JSON valid tanpa teks lain, "n" = nomor kalimat:
-{"items":[{"n":1,"reading":"…"}]}`;
-      let text;
-      try { text = await callClaude({
-        system: 'You convert Japanese sentences to full kana readings. Reply with a single valid JSON object only.',
-        userContent,
-        maxTokens: 1200,
-        model: ANTHROPIC_GEN_MODEL,
-      }); } catch (error) {
-        console.error('deck_reading_ai_failed', error);
-        failedItems.push(...batch.map(row => ({ id: row.id, error: 'ai_unavailable', status: 502 })));
+Balas HANYA JSON valid tanpa teks lain. Salin kalimat Jepang persis dan sertakan cara bacanya dalam urutan yang sama:
+{"examples":[{"japanese":"…","reading":"…"}]}`;
+      const loadSource = async () => {
+        const current = await query(`SELECT e.*,v.module_id,v.lesson_id FROM vocabulary_examples e
+          JOIN module_vocabulary v ON v.id=e.vocabulary_id
+          JOIN lesson_deck_items di ON di.vocabulary_id=e.vocabulary_id
+          WHERE di.lesson_id=$1 AND e.id=ANY($2::uuid[]) ORDER BY e.id`,
+        [req.params.lessonId, batch.map(row => row.id)]);
+        if (current.rows.length !== batch.length) throw new Error('deck_source_changed');
+        return current.rows;
+      };
+      const result = await groundedDraft({ scope: { lessonId: req.params.lessonId },
+        contentType: 'vocabulary_example', loadSource, body: req.body || {},
+        expectedExampleCount: batch.length, maxTokens: 1600, model: ANTHROPIC_GEN_MODEL,
+        instruction: userContent,
+        additionalSchemaIssues: candidate => {
+          const examples = candidate.examples;
+          if (!Array.isArray(examples) || examples.length !== batch.length) return [];
+          return examples.flatMap((example, index) => {
+            const issues = [];
+            if (!example || typeof example !== 'object' || Array.isArray(example) ||
+                typeof example.japanese !== 'string' || example.japanese !== batch[index].japanese ||
+                Object.keys(example).some(key => !['japanese', 'reading'].includes(key))) {
+              issues.push({ code: 'deck_reading_source_mismatch', exampleIndex: index });
+            }
+            if (typeof example?.reading !== 'string' || !example.reading.trim() ||
+                example.reading.length > 300 || /[々一-鿿A-Za-z]/u.test(example.reading)) {
+              issues.push({ code: 'deck_reading_format_invalid', exampleIndex: index });
+            } else {
+              let offset = 0;
+              for (const segment of batch[index].japanese.match(/[\p{Script=Hiragana}\p{Script=Katakana}]+/gu) || []) {
+                const found = example.reading.indexOf(segment, offset);
+                if (found < 0) {
+                  issues.push({ code: 'deck_reading_source_mismatch', exampleIndex: index });
+                  break;
+                }
+                offset = found + segment.length;
+              }
+            }
+            return issues;
+          });
+        } });
+      if (result.status !== 'ready') {
+        const status = result.status === 'stale' ? 409 : result.status === 'unavailable' ? 503 : 422;
+        failedItems.push(...batch.map(row => ({ id: row.id,
+          error: result.status === 'stale' ? 'version_conflict' :
+            result.status === 'unavailable' ? 'generation_unavailable' : 'generation_rejected',
+          status, generation: groundedGenerationMetadata(result) })));
         continue;
       }
-      const parsed = text ? _extractJsonObject(text) : null;
-      const items = parsed && Array.isArray(parsed.items) ? parsed.items : [];
-      const attempted = new Set();
-      for (const it of items) {
-        const n = Number(it?.n);
-        const reading = String(it?.reading || '').trim().slice(0, 300);
-        if (!reading || !Number.isInteger(n) || n < 1 || n > batch.length || attempted.has(n)) continue;
-        attempted.add(n);
-        const row = batch[n - 1];
+      for (const [index, row] of batch.entries()) {
+        const reading = result.candidate.examples[index].reading.trim();
         const outcome = await saveDeckReading(req.params.lessonId, row.id, reading, force,
-          deckReadingSourceFingerprint(row));
+          deckReadingSourceFingerprint(row), result.boundaryFingerprint,
+          dialogueSourceFingerprint(row));
         if (!outcome.ok) failedItems.push({ id: row.id, error: outcome.error, status: outcome.status,
-          ...(outcome.validation ? { validation: outcome.validation } : {}) });
+          ...(outcome.validation ? { validation: outcome.validation } : {}),
+          generation: groundedGenerationMetadata(result) });
         else if (!outcome.outcome.value.skipped) {
           updated++;
-          updatedItems.push({ id: row.id, validation: outcome.outcome.report });
+          updatedItems.push({ id: row.id, validation: outcome.outcome.report,
+            generation: groundedGenerationMetadata(result) });
         }
-      }
-      for (let n = 1; n <= batch.length; n++) if (!attempted.has(n)) {
-        failedItems.push({ id: batch[n - 1].id, error: 'ai_unusable', status: 502 });
       }
     }
   }
@@ -4087,7 +4050,9 @@ router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
         changed(hasNotes, notes, row.notes) || goalChanged;
       // On reassignment the stored grammar still points to the old lesson;
       // resolving both IDs would manufacture a false ownership mismatch.
-      const movingLesson = effectiveLessonId && effectiveLessonId !== row.lesson_id;
+      const movingLesson = hasLesson && (effectiveLessonId || null) !== (row.lesson_id || null);
+      if (movingLesson) await assertDialogueQuestionLessonMoveAllowed(client, row.id,
+        row.lesson_id, effectiveLessonId, { locked });
       return { scope: { ...(!movingLesson ? { grammarId: row.id } : {}),
           moduleId: row.module_id, lessonId: effectiveLessonId || undefined },
         contentType: dialogChanged ? 'grammar_dialog' : 'grammar_example', contentId: row.id,

@@ -91,6 +91,7 @@ function setup({ speech = false, pilot = true } = {}) {
   w.__gtLessonId = 'task-1';
   w.__gtSourceLesson = pilot ? { apiId: 'source-1', bunpouFlow: {} } : null;
   w.__gtSessionId = pilot ? 'session-1' : null;
+  w.__gtSessionMode = pilot ? 'session' : 'legacy';
   w.__gtItemIds = { 'g1-1': 'item-1', 'g1-2': 'item-2', 'g1-4': 'item-4', 'g1-5': 'item-5' };
   w.__gtState = { passed: {}, total: 2, evalDisabled: false };
   return { ctx, w, calls, nodes, options, chips, refreshes, get: (s) => nodes.get(s), setApi: (fn) => { api = fn; } };
@@ -228,7 +229,7 @@ test('resume restores wrong counts, hints, revealed arrange, and passed stages 4
     item(4, { passed: true, completed: true, correctIndex: 1 }),
     item(5, { passed: true, completed: true, correctIndex: 0 }),
   ];
-  f.setApi(() => response({ sessionId: 'session-1', items, productions: [] }));
+  f.setApi(() => response({ sessionId: 'session-1', flowVersion: 1, items, productions: [] }));
   await f.ctx.gtLoadDrillsSession('task-1');
   assert.equal(f.w.__gtWrong['0-1'], 1);
   assert.equal(f.w.__gtWrong['0-2'], 2);
@@ -299,7 +300,7 @@ test('session resume restores production slots, feedback, assistance context, an
       passed: slot === 0, assistanceState: 'correction_served',
       result: { correct: slot === 0, usesPattern: true, feedback: '<feedback>' },
     }));
-    f.setApi(() => response({ sessionId: 'session-1', items: [], productions }));
+    f.setApi(() => response({ sessionId: 'session-1', flowVersion: 1, items: [], productions }));
     await f.ctx.gtLoadDrillsSession('task-1');
     assert.deepEqual(plain(f.w.__gtState.passed), { '0-0': true, '0-1': false });
     assert.equal(f.get('#gt-input-0-1').value, 'sentence <1>');
@@ -377,7 +378,7 @@ test('production_completed keeps the submitted sentence and offers a session rel
   assert.match(result, /Kalimat pada bagian ini sudah tersimpan dari sesi lain\. Muat ulang sesi\./);
   assert.match(result, /onclick="gtLoadDrills\(window\.__gtLessonId\)"/);
   assert.doesNotMatch(result, /Bagus|Grammar belum tepat|masih diproses/);
-  f.setApi(() => response({ sessionId: 'session-1', items: [], productions: [{
+  f.setApi(() => response({ sessionId: 'session-1', flowVersion: 1, items: [], productions: [{
     grammarId: 'g1', slot: 0, sentence: 'Saved elsewhere', requestId: 'other-request',
     passed: true, assistanceState: 'none_observed', result: { correct: true, usesPattern: true },
   }] }));
@@ -462,7 +463,7 @@ test('review conflict can resume a known active snapshot through GET with a sour
   const f = setup();
   f.setApi(({ path }) => path === '/grammar-task/sessions'
     ? response({ error: 'companion_needs_review' }, 409)
-    : response({ sessionId: 'session-1', contentChanged: true, items: [item(1, { passed: true, completed: true })], productions: [] }));
+    : response({ sessionId: 'session-1', flowVersion: 1, contentChanged: true, items: [item(1, { passed: true, completed: true })], productions: [] }));
   await f.ctx.gtLoadDrillsSession('task-1');
   assert.equal(f.calls[1].path, '/grammar-task/sessions/session-1');
   assert.equal(f.calls[1].method, undefined);
@@ -476,7 +477,7 @@ test('contentChanged announces a new session and resets old completion while sta
   f.w.__gtState.passed['0-0'] = true;
   f.get('#gt-result-0-0').hidden = false;
   f.get('#gt-input-0-0').value = 'old sentence';
-  f.setApi(() => ({ ok: true, json: async () => ({ sessionId: 'new-session', contentChanged: true, items: [item(1), item(2)], productions: [] }) }));
+  f.setApi(() => ({ ok: true, json: async () => ({ sessionId: 'new-session', flowVersion: 1, contentChanged: true, items: [item(1), item(2)], productions: [] }) }));
   await f.ctx.gtLoadDrillsSession('task-1');
   assert.match(f.get('#gt-session-notice').textContent, /Materi sumber berubah\. Sesi latihan baru dimulai/);
   assert.deepEqual(plain(f.w.__gtState.passed), {});

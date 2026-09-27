@@ -102,8 +102,12 @@ test('bulk callers present item summaries and request failures instead of generi
   const readings = html.slice(html.indexOf('window.deckGenAllReadings ='), html.indexOf('window.deckMove ='));
   assert.match(distractors, /summarizeGuardedBatchOutcome\(d\.savedItems, d\.failedItems, d\.failed\)/);
   assert.match(distractors, /batchRequestErrorMessage\('Bulk generate pengecoh', err\)/);
+  assert.match(distractors, /attachGenerationBoundary\(\{ fromGrammarId: ctx\.grammarId, limit: 6 \}, \{ grammarId: ctx\.grammarId \}\)/);
+  assert.match(distractors, /Berhenti setelah \$\{totalSaved\} pola tersimpan/);
+  assert.match(distractors, /summarizeGuardedBatchOutcome\(allSavedItems, allFailedItems, allFailed\)/);
   assert.match(readings, /summarizeGuardedBatchOutcome\(d\.updatedItems, d\.failedItems\)/);
   assert.match(readings, /batchRequestErrorMessage\('Generate kana', err\)/);
+  assert.match(readings, /attachGenerationBoundary\(\{ lessonId: ctx\.lessonId \}, \{ lessonId: ctx\.lessonId \}\)/);
 });
 
 test('Bunpou draft saves send the loaded revision and advance it after each save', async () => {
@@ -248,4 +252,84 @@ test('listening, JLPT, and single distractor runners send scope fingerprints and
   assert.ok(distractors.indexOf('if (!candidate)') < distractors.indexOf("document.getElementById('grmr-dist')"),
     'rejected/stale results must not touch the existing distractor editors');
   assert.match(distractors, /notifyGenerationError\('Generate pengecoh', err\)/);
+});
+
+test('dialogue question editor loads by owner scope and exposes bounded authored fields', () => {
+  const load = html.slice(html.indexOf('window.grmrManageDialog ='), html.indexOf('// ✨ Generate draft (AI):'));
+  const editor = html.slice(html.indexOf('function admDialogQuestionSetHtml()'), html.indexOf('window.admDialogQuestionEdit ='));
+  assert.match(load, /sourceLessonId = window\.__itemCtx\?\.lessonId/);
+  assert.match(load, /\/admin\/grammar\/\$\{encodeURIComponent\(grammarId\)\}\/dialogue-questions\?\$\{params\}/);
+  assert.match(load, /savedDialogueSnapshot = admDialogQuestionSourceSnapshot\(\)/);
+  assert.match(load, /input\.value === input\.defaultValue/);
+  assert.match(editor, /comprehension >= 2/);
+  assert.match(editor, /transfer >= 1/);
+  assert.match(editor, /prompt/);
+  assert.match(editor, /question\.options/);
+  assert.match(editor, /question\.correctIndex/);
+  assert.match(editor, /question\.explanation/);
+  assert.match(editor, /turnIndex/);
+  assert.match(editor, /entry\.quote/);
+  assert.match(html, /state\.sourcePersisted === false/);
+  assert.match(html, /displayName: participant\?\.displayName/);
+  assert.match(html, /markSavedRowValues\(tr\)/);
+  assert.match(html, /Simpan dialog lalu buka kembali editor pertanyaan/);
+});
+
+test('dialogue question generation sends persisted fingerprint and mutates only ready candidates', async () => {
+  const start = html.indexOf('window.admDialogQuestionGenerate = async');
+  const end = html.indexOf('window.admDialogQuestionSave = async', start);
+  assert.ok(start > 0 && end > start, 'dialogue-question generation handler markers not found');
+  const requests = [], notices = [];
+  const existing = [{ id: 'old', kind: 'comprehension', prompt: 'old prompt', options: ['a','b','c'], correctIndex: 0, explanation: 'why', evidence: [{ turnIndex: 0, quote: 'exact' }], current: true }];
+  const result = { status: 'stale', candidate: { questions: [{ prompt: 'new', options: ['a','b','c'], correctIndex: 0 }] } };
+  const ctx = vm.createContext({
+    window: { __dialogQuestionState: { grammarId: 'grammar-1', sourceLessonId: 'lesson-1', dialogueFingerprint: 'dialog-fp', questions: existing, busy: false } },
+    api: async (path, options) => { requests.push([path, JSON.parse(options.body)]); return result; },
+    admDialogQuestionSourceIsCurrent: () => true,
+    groundedGenerationCandidate: value => value.status === 'ready' ? value.candidate : null,
+    admRenderDialogModal: () => {}, notify: (...args) => notices.push(args),
+  });
+  vm.runInContext(html.slice(start, end), ctx);
+  await ctx.window.admDialogQuestionGenerate('comprehension', 1);
+  assert.match(requests[0][0], /grammar-1\/generate-dialog-questions$/);
+  assert.equal(requests[0][1].sourceLessonId, 'lesson-1');
+  assert.equal(requests[0][1].expectedDialogueFingerprint, 'dialog-fp');
+  assert.equal(ctx.window.__dialogQuestionState.questions[0].prompt, 'old prompt');
+  assert.equal(ctx.window.__dialogQuestionState.busy, false);
+
+  result.status = 'ready';
+  result.candidate.questions[0].evidence = [{ turnIndex: 0, quote: 'evidence' }];
+  await ctx.window.admDialogQuestionGenerate('comprehension', 1);
+  assert.equal(ctx.window.__dialogQuestionState.questions.length, 2);
+  assert.equal(ctx.window.__dialogQuestionState.questions[1].kind, 'comprehension');
+  assert.equal(JSON.stringify(ctx.window.__dialogQuestionState.questions[1].evidence[0]),
+    JSON.stringify({ turnIndex: 0, quote: 'evidence' }));
+});
+
+test('dialogue question PUT sends only editable DTO fields and advances questions revision', async () => {
+  const start = html.indexOf('window.admDialogQuestionSave = async');
+  const end = html.indexOf('// ── Pengecoh Step 1', start);
+  assert.ok(start > 0 && end > start, 'dialogue-question save handler markers not found');
+  const requests = [];
+  const q = { id: 'q-1', kind: 'comprehension', prompt: 'prompt', options: ['one','two','three'],
+    correctIndex: 1, explanation: 'explanation', evidence: [{ turnIndex: 0, quote: 'quote' }],
+    sortOrder: 0, questionVersion: 'secret-v', dialogueFingerprint: 'old-fp', current: true };
+  const ctx = vm.createContext({
+    window: { __dialogQuestionState: { grammarId: 'grammar-1', sourceLessonId: 'lesson-1', dialogueFingerprint: 'dialog-fp', questionsRevision: 'rev-1', questions: [q], busy: false } },
+    admDialogQuestionSourceIsCurrent: () => true,
+    admRenderDialogModal: () => {},
+    notify: () => {}, notifyLearningWarnings: () => {},
+    admDialogQuestionError: (_label, error) => { throw error; },
+    api: async (_path, options) => { requests.push(JSON.parse(options.body)); return {
+      dialogueFingerprint: 'dialog-fp', questionsRevision: 'rev-2', questions: [{ ...q, questionVersion: 'secret-v2' }],
+    }; },
+  });
+  vm.runInContext(html.slice(start, end), ctx);
+  await ctx.window.admDialogQuestionSave();
+  const body = requests[0];
+  assert.equal(body.expectedDialogueFingerprint, 'dialog-fp');
+  assert.equal(body.expectedQuestionsRevision, 'rev-1');
+  assert.deepEqual(Object.keys(body.questions[0]).sort(), ['correctIndex','evidence','explanation','id','kind','options','prompt','sortOrder'].sort());
+  assert.equal(ctx.window.__dialogQuestionState.questionsRevision, 'rev-2');
+  assert.equal(ctx.window.__dialogQuestionState.questions[0].questionVersion, 'secret-v2');
 });

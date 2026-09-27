@@ -763,6 +763,13 @@ function updateSavedRowRevision(row, savedRecord) {
   if (row?.dataset && revision != null && revision !== '') row.dataset.revision = String(revision);
 }
 
+function markSavedRowValues(row) {
+  row?.querySelectorAll('input, textarea, select').forEach((input) => {
+    if ('defaultValue' in input) input.defaultValue = input.value;
+    if ('defaultChecked' in input) input.defaultChecked = input.checked;
+  });
+}
+
 async function attachBoundarySaveMetadata(body, scope, expectedRevision) {
   if (expectedRevision != null && expectedRevision !== '') body.expectedRevision = expectedRevision;
   try {
@@ -5100,12 +5107,36 @@ window.grmrManageDialog = async (btn) => {
   if (window.__dialogRows.length === 0) window.__dialogRows.push({ speaker: 'N', jp: '', id: '' });
   window.__dialogTargetTa = { jp: jpTa, id: idTa };
   window.__dialogTr = tr;
+  const grammarId = tr.dataset.id || tr.getAttribute('data-id') || '';
+  const sourceLessonId = window.__itemCtx?.lessonId || '';
+  window.__dialogQuestionState = { grammarId, sourceLessonId, questions: [],
+    dialogueFingerprint: '', questionsRevision: '', loadError: '',
+    savedDialogueSnapshot: '', sourcePersisted: ['example_dialog','example_dialog_id','dialog_scene']
+      .every(name => { const input = tr.querySelector(`[name="${name}"]`); return !input || input.value === input.defaultValue; }),
+    busy: false };
+  if (grammarId && sourceLessonId) {
+    try {
+      const params = new URLSearchParams({ sourceLessonId });
+      const questionSet = await api(`/admin/grammar/${encodeURIComponent(grammarId)}/dialogue-questions?${params}`);
+      window.__dialogQuestionState = {
+        ...window.__dialogQuestionState,
+        questions: Array.isArray(questionSet.questions) ? questionSet.questions : [],
+        dialogueFingerprint: questionSet.dialogueFingerprint || '',
+        questionsRevision: questionSet.questionsRevision || '',
+      };
+    } catch (err) {
+      window.__dialogQuestionState.loadError = err?.body?.detail || err?.body?.error || err.message;
+    }
+  } else {
+    window.__dialogQuestionState.loadError = 'ID grammar atau pelajaran sumber tidak tersedia.';
+  }
   window.__dialogParentModal = tr.closest('#modal-content') ? {
     nodes: [...modalContent.childNodes], className: modalContent.className,
     maxWidth: modalContent.style.maxWidth, dismissOnBackdrop: _modalDismissOnBackdrop,
   } : null;
   window.EzDialogueAdmin.load(tr);
   window.EzDialogueFuriganaAdmin.load(tr);
+  window.__dialogQuestionState.savedDialogueSnapshot = admDialogQuestionSourceSnapshot();
   admRenderDialogModal();
   window.markModalClean?.();
 };
@@ -5235,6 +5266,7 @@ function admDialogModalHtml() {
     <div style="font-size:11px;color:${totalChars > 1500 ? '#dc2626' : '#a3a3a3'};font-family:var(--font-body);margin:10px 0;">
       ${totalChars} / 1500 karakter (batas gabungan TTS)${mismatched ? ` · ⚠️ ${mismatched} giliran teks/terjemahan tidak sepadan` : ''}
     </div>
+    ${admDialogQuestionSetHtml()}
     <div class="modal-actions">
       <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
       <button type="button" class="btn btn-primary" onclick="admDialogSave()">Isi ke baris (lalu klik Simpan)</button>
@@ -5685,6 +5717,222 @@ window.bfPublish = async () => {
   }
 };
 
+function admDialogQuestionSourceSnapshot() {
+  const { jp, id } = admSerializeDialogPair(window.__dialogRows || []);
+  const participants = (window.__dialogScene?.participants || []).map(participant => ({
+    speaker: participant?.speaker || '', displayName: participant?.displayName || participant?.speaker || '',
+  }));
+  return JSON.stringify({ jp, id, participants });
+}
+
+function admDialogQuestionSourceIsCurrent() {
+  const state = window.__dialogQuestionState;
+  if (!state?.dialogueFingerprint || state.sourcePersisted === false) return false;
+  return state.savedDialogueSnapshot === admDialogQuestionSourceSnapshot();
+}
+
+function admDialogQuestionSourceMessage() {
+  return 'Dialog belum tersimpan atau berubah. Klik “Isi ke baris”, simpan baris grammar, lalu buka kembali editor pertanyaan.';
+}
+
+function admDialogQuestionError(label, error) {
+  const code = error?.body?.error || error?.body?.detail || '';
+  if (error?.status === 409 && /question_revision_conflict/i.test(code)) {
+    notify(`${label}: set pertanyaan berubah di editor lain. Draft di layar tetap tersedia; tutup dan buka kembali editor untuk memuat versi terbaru.`, true);
+    return;
+  }
+  if (error?.status === 409 && /dialog|source/i.test(code)) {
+    notify(`${label}: ${admDialogQuestionSourceMessage()} Draft pertanyaan tetap tersedia.`, true);
+    return;
+  }
+  notifyGenerationError(label, error);
+}
+
+function admDialogQuestionSetHtml() {
+  const state = window.__dialogQuestionState || {};
+  const questions = Array.isArray(state.questions) ? state.questions : [];
+  const comprehension = questions.filter(question => question.kind === 'comprehension').length;
+  const transfer = questions.filter(question => question.kind === 'transfer').length;
+  const blocked = !state.grammarId || !state.sourceLessonId || !state.dialogueFingerprint ||
+    !!state.loadError || !!state.busy || !admDialogQuestionSourceIsCurrent();
+  return `
+    <section id="dlg-question-set" style="border-top:1px solid #ddd;margin-top:18px;padding-top:14px;">
+      <h4 style="margin:0 0 6px;">Pertanyaan dialog Bunpou</h4>
+      <p style="font-size:12px;color:#737373;margin:0 0 8px;">Set aktif: ${comprehension}/2 comprehension · ${transfer}/1 transfer. Pertanyaan terikat ke dialog tersimpan; tombol simpan langsung memperbarui set aktif learner.</p>
+      ${state.loadError ? `<div role="alert" style="color:#991b1b;margin:6px 0;">Gagal memuat set pertanyaan: ${escapeHtml(state.loadError)}</div>` : ''}
+      ${!state.loadError && (questions.some(question => question.current === false) || !admDialogQuestionSourceIsCurrent()) ? `<div role="alert" style="color:#92400e;margin:6px 0;">Dialog sumber berubah atau belum tersimpan. Simpan dialog lalu buka kembali editor pertanyaan sebelum generate/menyimpan.</div>` : ''}
+      <fieldset ${state.busy ? 'disabled' : ''} style="border:0;padding:0;margin:0;min-width:0;">
+      <div id="dlg-question-rows">${questions.map((question, index) => admDialogQuestionCardHtml(question, index)).join('')}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;">
+        <button type="button" class="btn btn-ghost btn-sm" ${blocked || comprehension >= 2 ? 'disabled' : ''} onclick="admDialogQuestionGenerate('comprehension',1)">✨ Generate comprehension</button>
+        <button type="button" class="btn btn-ghost btn-sm" ${blocked || comprehension > 0 ? 'disabled' : ''} onclick="admDialogQuestionGenerate('comprehension',2)">Generate 2</button>
+        <button type="button" class="btn btn-ghost btn-sm" ${blocked || transfer >= 1 ? 'disabled' : ''} onclick="admDialogQuestionGenerate('transfer',1)">✨ Generate transfer</button>
+        <button type="button" class="btn btn-ghost btn-sm" ${blocked || comprehension >= 2 ? 'disabled' : ''} onclick="admDialogQuestionAdd('comprehension')">+ Comprehension manual</button>
+        <button type="button" class="btn btn-ghost btn-sm" ${blocked || transfer >= 1 ? 'disabled' : ''} onclick="admDialogQuestionAdd('transfer')">+ Transfer manual</button>
+      </div>
+      </fieldset>
+      <div class="modal-actions" style="justify-content:flex-end;">
+        <button type="button" class="btn btn-primary" id="dlg-question-save" ${blocked || state.busy ? 'disabled' : ''} onclick="admDialogQuestionSave()">Simpan set pertanyaan</button>
+      </div>
+    </section>`;
+}
+
+function admDialogQuestionCardHtml(question, index) {
+  const evidence = Array.isArray(question.evidence) ? question.evidence : [];
+  const options = Array.isArray(question.options) && question.options.length >= 3 ? question.options : ['', '', ''];
+  return `<article data-question-index="${index}" style="border:1px solid #e5e5e5;border-radius:8px;padding:10px;margin:8px 0;">
+    <div style="display:flex;justify-content:space-between;gap:8px;"><strong>${question.kind === 'transfer' ? 'Transfer' : 'Comprehension'} ${index + 1}</strong><button type="button" class="btn btn-danger btn-sm" onclick="admDialogQuestionDelete(${index})">Hapus</button></div>
+    <label style="display:block;margin-top:6px;">Prompt<input style="width:100%;box-sizing:border-box;" value="${escapeHtml(question.prompt || '')}" oninput="admDialogQuestionEdit(${index},'prompt',this.value)"></label>
+    <div style="margin-top:6px;">Opsi (pilih jawaban benar)
+      ${options.map((option, optionIndex) => `<label style="display:flex;gap:6px;margin-top:4px;"><input type="radio" name="dlg-q-correct-${index}" ${Number(question.correctIndex) === optionIndex ? 'checked' : ''} onchange="admDialogQuestionCorrect(${index},${optionIndex})"><input aria-label="Opsi ${optionIndex + 1}" style="flex:1;" value="${escapeHtml(option || '')}" oninput="admDialogQuestionOption(${index},${optionIndex},this.value)">${options.length > 3 ? `<button type="button" class="btn btn-ghost btn-sm" onclick="admDialogQuestionOptionDelete(${index},${optionIndex})">×</button>` : ''}</label>`).join('')}
+      ${options.length < 4 ? `<button type="button" class="btn btn-ghost btn-sm" style="margin-top:4px;" onclick="admDialogQuestionOptionAdd(${index})">+ Opsi</button>` : ''}
+    </div>
+    <label style="display:block;margin-top:6px;">Penjelasan<input style="width:100%;box-sizing:border-box;" value="${escapeHtml(question.explanation || '')}" oninput="admDialogQuestionEdit(${index},'explanation',this.value)"></label>
+    ${question.kind === 'comprehension' ? `<div style="margin-top:8px;"><strong>Bukti dari dialog</strong>${evidence.map((entry, evidenceIndex) => `<div style="display:flex;gap:6px;margin-top:4px;"><input type="number" min="0" aria-label="Nomor giliran bukti" value="${Number.isInteger(entry.turnIndex) ? entry.turnIndex : 0}" style="width:72px;" oninput="admDialogQuestionEvidence(${index},${evidenceIndex},'turnIndex',this.value)"><input aria-label="Kutipan bukti" placeholder="Kutipan persis dari giliran" style="flex:1;" value="${escapeHtml(entry.quote || '')}" oninput="admDialogQuestionEvidence(${index},${evidenceIndex},'quote',this.value)"><button type="button" class="btn btn-ghost btn-sm" onclick="admDialogQuestionEvidenceDelete(${index},${evidenceIndex})">×</button></div>`).join('')}<button type="button" class="btn btn-ghost btn-sm" style="margin-top:4px;" onclick="admDialogQuestionEvidenceAdd(${index})">+ Bukti</button></div>` : ''}
+    ${question.current === false ? '<div role="alert" style="color:#92400e;margin-top:6px;">Pertanyaan ini berasal dari versi dialog sebelumnya.</div>' : ''}
+  </article>`;
+}
+
+window.admDialogQuestionEdit = (index, field, value) => {
+  const question = window.__dialogQuestionState?.questions?.[index];
+  if (question && ['prompt','explanation'].includes(field)) { admDialogQuestionMarkEdited(question); question[field] = value; }
+};
+function admDialogQuestionMarkEdited(question) {
+  if (question.current === false) {
+    delete question.id;
+    delete question.questionVersion;
+    delete question.dialogueFingerprint;
+    question.current = true;
+  }
+}
+window.admDialogQuestionOption = (index, optionIndex, value) => {
+  const question = window.__dialogQuestionState?.questions?.[index];
+  if (!question) return;
+  admDialogQuestionMarkEdited(question);
+  question.options ||= ['', '', ''];
+  question.options[optionIndex] = value;
+};
+window.admDialogQuestionCorrect = (index, optionIndex) => {
+  const question = window.__dialogQuestionState?.questions?.[index];
+  if (question) { admDialogQuestionMarkEdited(question); question.correctIndex = optionIndex; }
+};
+window.admDialogQuestionOptionAdd = index => {
+  const question = window.__dialogQuestionState?.questions?.[index];
+  if (!question || question.options.length >= 4) return;
+  admDialogQuestionMarkEdited(question);
+  question.options.push('');
+  admRenderDialogModal();
+};
+window.admDialogQuestionOptionDelete = (index, optionIndex) => {
+  const question = window.__dialogQuestionState?.questions?.[index];
+  if (!question || question.options.length <= 3) return;
+  admDialogQuestionMarkEdited(question);
+  question.options.splice(optionIndex, 1);
+  if (question.correctIndex === optionIndex) question.correctIndex = 0;
+  else if (question.correctIndex > optionIndex) question.correctIndex--;
+  admRenderDialogModal();
+};
+window.admDialogQuestionEvidence = (index, evidenceIndex, field, value) => {
+  const item = window.__dialogQuestionState?.questions?.[index]?.evidence?.[evidenceIndex];
+  if (!item || !['turnIndex','quote'].includes(field)) return;
+  admDialogQuestionMarkEdited(window.__dialogQuestionState.questions[index]);
+  item[field] = field === 'turnIndex' ? Number(value) : value;
+};
+window.admDialogQuestionEvidenceAdd = index => {
+  const question = window.__dialogQuestionState?.questions?.[index];
+  if (!question) return;
+  admDialogQuestionMarkEdited(question);
+  question.evidence ||= [];
+  question.evidence.push({ turnIndex: 0, quote: '' });
+  admRenderDialogModal();
+};
+window.admDialogQuestionEvidenceDelete = (index, evidenceIndex) => {
+  const question = window.__dialogQuestionState?.questions?.[index];
+  const evidence = question?.evidence;
+  if (!evidence || evidence.length <= 1) { notify('Comprehension wajib memiliki minimal satu bukti.', true); return; }
+  admDialogQuestionMarkEdited(question);
+  evidence.splice(evidenceIndex, 1);
+  admRenderDialogModal();
+};
+window.admDialogQuestionAdd = kind => {
+  const state = window.__dialogQuestionState;
+  if (!state || !['comprehension','transfer'].includes(kind)) return;
+  const count = state.questions.filter(question => question.kind === kind).length;
+  if (count >= (kind === 'comprehension' ? 2 : 1)) { notify('Batas jumlah pertanyaan untuk tipe ini sudah tercapai.', true); return; }
+  state.questions.push({ kind, prompt: '', options: ['', '', ''], correctIndex: 0,
+    explanation: '', evidence: kind === 'comprehension' ? [{ turnIndex: 0, quote: '' }] : [], sortOrder: count });
+  admRenderDialogModal();
+};
+window.admDialogQuestionDelete = index => {
+  window.__dialogQuestionState?.questions?.splice(index, 1);
+  admRenderDialogModal();
+};
+
+window.admDialogQuestionGenerate = async (kind, count) => {
+  const state = window.__dialogQuestionState;
+  if (!state?.grammarId || !state.sourceLessonId) return;
+  if (!admDialogQuestionSourceIsCurrent()) { notify(admDialogQuestionSourceMessage(), true); return; }
+  const existingCount = state.questions.filter(question => question.kind === kind).length;
+  const limit = kind === 'comprehension' ? 2 : 1;
+  if (existingCount + count > limit) { notify('Batas jumlah pertanyaan untuk tipe ini sudah tercapai.', true); return; }
+  state.busy = true;
+  admRenderDialogModal();
+  try {
+    const d = await api(`/admin/grammar/${encodeURIComponent(state.grammarId)}/generate-dialog-questions`, {
+      method: 'POST', body: JSON.stringify({ sourceLessonId: state.sourceLessonId, kind, count,
+        expectedDialogueFingerprint: state.dialogueFingerprint }),
+    });
+    if (!admDialogQuestionSourceIsCurrent()) { notify(admDialogQuestionSourceMessage(), true); return; }
+    if (d.status !== 'ready' || !Array.isArray(d.candidate?.questions)) {
+      groundedGenerationCandidate(d, 'Generate pertanyaan dialog');
+      return;
+    }
+    const candidate = groundedGenerationCandidate(d, 'Generate pertanyaan dialog');
+    if (!candidate) return;
+    state.questions = state.questions.filter(question => question.kind !== kind || question.current !== false);
+    let nextSortOrder = state.questions.filter(existing => existing.kind === kind).length;
+    const generated = candidate.questions.map(question => ({ ...question, kind,
+      options: Array.isArray(question.options) ? question.options.slice() : [],
+      evidence: Array.isArray(question.evidence) ? question.evidence.map(item => ({ ...item })) : [],
+      sortOrder: nextSortOrder++,
+    }));
+    state.questions.push(...generated);
+    notify(`Draft ${kind} dibuat (${generated.length}). Tinjau lalu simpan set pertanyaan.`);
+  } catch (err) { admDialogQuestionError('Generate pertanyaan dialog', err); }
+  finally { state.busy = false; admRenderDialogModal(); }
+};
+
+window.admDialogQuestionSave = async () => {
+  const state = window.__dialogQuestionState;
+  if (!state?.grammarId || !state.sourceLessonId) return;
+  if (!admDialogQuestionSourceIsCurrent()) { notify(admDialogQuestionSourceMessage(), true); return; }
+  if (state.questions.some(question => question.current === false)) {
+    notify('Ada pertanyaan dari dialog lama. Edit untuk meninjau ulang, hapus, atau generate ulang sebelum menyimpan.', true);
+    return;
+  }
+  const questions = state.questions.map((question, index) => ({
+    ...(question.id ? { id: question.id } : {}), kind: question.kind,
+    prompt: question.prompt, options: question.options, correctIndex: question.correctIndex,
+    explanation: question.explanation, evidence: question.kind === 'comprehension' ? question.evidence : null,
+    sortOrder: state.questions.filter(item => item.kind === question.kind).indexOf(question),
+  }));
+  state.busy = true;
+  admRenderDialogModal();
+  try {
+    const saved = await api(`/admin/grammar/${encodeURIComponent(state.grammarId)}/dialogue-questions`, {
+      method: 'PUT', body: JSON.stringify({ sourceLessonId: state.sourceLessonId,
+        expectedDialogueFingerprint: state.dialogueFingerprint,
+        expectedQuestionsRevision: state.questionsRevision, questions }),
+    });
+    state.questions = Array.isArray(saved.questions) ? saved.questions : [];
+    state.questionsRevision = saved.questionsRevision || state.questionsRevision;
+    state.dialogueFingerprint = saved.dialogueFingerprint || state.dialogueFingerprint;
+    notify('Set pertanyaan dialog tersimpan.');
+    if (Array.isArray(saved.validation)) saved.validation.forEach(item => notifyLearningWarnings(item));
+  } catch (err) { admDialogQuestionError('Simpan set pertanyaan', err); }
+  finally { state.busy = false; admRenderDialogModal(); }
+};
+
 // ── Pengecoh Step 1 Tugas Bunpou (migration 124) ──────────────────────────
 // Soal Step 1 = "Apa fungsi <pola>?". Tanpa pengecoh kurasi, pengecohnya
 // diturunkan dari arti pola LAIN di bab yang sama — terlalu mudah karena bisa
@@ -5802,7 +6050,7 @@ window.grmrGenDistractorsAll = async () => {
   const allFailed = [];
   const allSavedItems = [];
   const allFailedItems = [];
-  let finalRemaining = 0;
+  let finalRemaining = null;
   let finalSkipped = 0;
   let guard = 0;
   try {
@@ -5810,8 +6058,9 @@ window.grmrGenDistractorsAll = async () => {
       // Pengaman: jangan pernah berputar tanpa batas kalau server terus
       // mengembalikan sisa yang sama (mis. semua pola gagal di-generate).
       if (++guard > 40) { if (box) box.textContent += '\nBerhenti otomatis — terlalu banyak putaran. Klik lagi untuk melanjutkan.'; break; }
+      const body = await attachGenerationBoundary({ fromGrammarId: ctx.grammarId, limit: 6 }, { grammarId: ctx.grammarId });
       const d = await api('/admin/module-grammar/generate-distractors-bulk', {
-        method: 'POST', body: JSON.stringify({ fromGrammarId: ctx.grammarId, limit: 6 }),
+        method: 'POST', body: JSON.stringify(body),
       });
       totalSaved += d.saved || 0;
       if (Array.isArray(d.savedItems)) allSavedItems.push(...d.savedItems);
@@ -5838,8 +6087,11 @@ window.grmrGenDistractorsAll = async () => {
       summary.failedCount > 0, summary.issueCount > 0);
   } catch (err) {
     const message = batchRequestErrorMessage('Bulk generate pengecoh', err);
-    notify(message, true);
-    if (box) box.textContent += `\n${message}`;
+    const partial = summarizeGuardedBatchOutcome(allSavedItems, allFailedItems, allFailed);
+    const remainingLabel = finalRemaining == null ? 'belum diketahui' : finalRemaining;
+    const partialMessage = `Berhenti setelah ${totalSaved} pola tersimpan; sisa terakhir ${remainingLabel}. ${partial.message} ${message}`;
+    notify(partialMessage, true);
+    if (box) box.textContent += `\n${partialMessage}`;
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '🚀 Isi semua pola yang masih kosong'; }
     if (one) one.disabled = false;
@@ -6050,6 +6302,7 @@ window.saveItemRow = async (btn) => {
       `;
     }
     updateSavedRowRevision(tr, savedResult.vocabulary || savedResult.grammar);
+    markSavedRowValues(tr);
     notify('Tersimpan');
     notifyLearningWarnings(savedResult);
     // Refresh hitungan di background (modul) / daftar pelajaran (drawer tetap utuh).
@@ -6876,8 +7129,9 @@ window.deckGenAllReadings = async () => {
   const orig = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
   try {
+    const body = await attachGenerationBoundary({ lessonId: ctx.lessonId }, { lessonId: ctx.lessonId });
     const d = await api('/admin/lessons/' + ctx.lessonId + '/generate-deck-readings', {
-      method: 'POST', body: JSON.stringify({}),
+      method: 'POST', body: JSON.stringify(body),
     });
     const total = d.total || 0, updated = d.updated || 0;
     const summary = summarizeGuardedBatchOutcome(d.updatedItems, d.failedItems);

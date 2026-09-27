@@ -73,8 +73,20 @@ export function companionIsCurrent(published, fingerprint) {
   return !!published?.sourceFingerprint && published.sourceFingerprint === fingerprint;
 }
 
-export function sessionRevisionId(fingerprint, published) {
-  return sha256(stableStringify({ fingerprint, published }));
+export function sessionRevisionId(fingerprint, published, flowVersion = 1, normalizedQuestions = []) {
+  // Exact historical v1 bytes, including callers passing no third argument.
+  if (flowVersion === 1) return sha256(stableStringify({ fingerprint, published }));
+  if (flowVersion !== 2) throw new Error('invalid_flow_version');
+  return sha256(stableStringify({ flowVersion: 2, fingerprint, published,
+    normalizedQuestions: normalizedQuestions.map(row => ({
+      id: row.id, grammarId: row.grammar_id, sourceLessonId: row.source_lesson_id,
+      version: row.question_version, questionFingerprint: row.question_fingerprint,
+      dialogueFingerprint: row.dialogue_fingerprint,
+      boundaryFingerprint: row.boundary_fingerprint, kind: row.kind,
+      sortOrder: row.sort_order, sourceKind: row.source_kind,
+      sourceKey: row.source_key, sourceFingerprint: row.source_fingerprint,
+      validatorVersion: row.validator_version,
+    })).sort((a, b) => a.grammarId.localeCompare(b.grammarId) || a.id.localeCompare(b.id)) }));
 }
 
 export function companionDraftRevision(draft) {
