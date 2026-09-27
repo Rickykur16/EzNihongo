@@ -5623,18 +5623,18 @@ function fmtNextAt(iso) {
 }
 
 function renderQuizLandingCard(container, key, lessonTitle, status) {
-  if (status.assessmentUpdate) {
-    const update = status.assessmentUpdate;
-    container.innerHTML = `<div class="quiz-container"><div style="background:#fff;border:1px solid #d7dedb;border-radius:14px;padding:28px;max-width:680px;margin:auto">
-      <h2>${escapeHtml(lessonTitle)}</h2><h3>Assessment versi terbaru tersedia</h3>
-      <p>Sesi lama Anda berisi <strong>${Number(status.questionsPerAttempt)} soal</strong>. Versi terbaru berisi <strong>${Number(update.questionsPerAttempt)} soal</strong> ${update.version === 'n5-assessment-v4' ? 'dengan perbaikan kejelasan soal dan pilihan jawaban. Jawaban sesi lama tetap tersimpan' : update.version === 'n5-assessment-v3' ? 'dengan format latihan JLPT N5, termasuk listening dan susunan ★' : 'sesuai materi bab ini'}.</p>
-      <p>Mulai versi terbaru dari awal. Jawaban sesi lama tetap disimpan, tidak dihitung sebagai gagal, dan tidak menimbulkan cooldown. Anda juga bisa memilih melanjutkan sesi lama.</p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:22px">
-        <button class="btn-primary" onclick="window.startQuizAttempt('${escapeAttr(key)}',{upgradeFrom:'${escapeAttr(status.inProgressAttemptToken)}',assessmentVersion:'${escapeAttr(update.version)}'})">Mulai versi terbaru →</button>
-        <button class="btn-secondary" onclick="window.startQuizAttempt('${escapeAttr(key)}',{resumeOnly:true,attemptToken:'${escapeAttr(status.inProgressAttemptToken)}'})">Lanjutkan sesi lama</button>
-      </div></div></div>`;
-    return;
-  }
+  // Bank revisions are an implementation detail. Show the normal preview and
+  // let its single start action select the active bank atomically on the server.
+  // Do not mutate cached status or create an attempt merely by opening this page.
+  const update = status.assessmentUpdate;
+  const startOptions = update
+    ? `,{upgradeFrom:'${escapeAttr(status.inProgressAttemptToken)}',assessmentVersion:'${escapeAttr(update.version)}'}`
+    : status.inProgress ? `,{resumeOnly:true,attemptToken:'${escapeAttr(status.inProgressAttemptToken)}'}` : '';
+  if (update) status = { ...status, inProgress:false, resumingLegacy:false,
+    assessmentVersion:update.version, questionsPerAttempt:update.questionsPerAttempt,
+    passingScorePct:update.assessmentRules?.passingScorePct ?? status.passingScorePct,
+    assessmentRules:update.assessmentRules ?? status.assessmentRules,
+    objectives:update.objectives ?? status.objectives };
   const [navSlug, navMid, navLid] = String(key).split(':');
   const placement = kanaPlacementMeta({ id: navLid });
   const chapter = !!status.assessmentVersion && !status.resumingLegacy;
@@ -5653,7 +5653,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
       : `<span style="background:#fee2e2;color:#b91c1c;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;">Belum lulus</span>`;
     lastBlock = `
       <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;margin-top:18px;">
-        <div style="font-size:11px;color:#737373;letter-spacing:.04em;text-transform:uppercase;font-weight:700;margin-bottom:6px;">${placement ? 'Hasil tes terakhir' : status.assessmentVersion && !last.assessmentVersion ? 'Hasil versi sebelumnya' : 'Attempt terakhir'}</div>
+        <div style="font-size:11px;color:#737373;letter-spacing:.04em;text-transform:uppercase;font-weight:700;margin-bottom:6px;">${placement ? 'Hasil tes terakhir' : 'Hasil assessment terakhir'}</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <strong style="font-size:18px;">${last.score} / ${last.totalQuestions}</strong>
           <span style="color:#525252;">(${lastPct}%)</span>
@@ -5665,7 +5665,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
 
   const canAttempt = status.canAttempt;
   const ctaButton = canAttempt
-    ? `<button class="btn-primary" onclick="window.startQuizAttempt('${escapeAttr(key)}'${status.inProgress ? `,{resumeOnly:true,attemptToken:'${escapeAttr(status.inProgressAttemptToken)}'}` : ''})" style="padding:14px 28px;font-size:16px;">${status.inProgress ? 'Lanjutkan jawaban' : chapter ? 'Mulai assessment' : 'Mulai Kuis'} →</button>`
+    ? `<button class="btn-primary" onclick="window.startQuizAttempt('${escapeAttr(key)}'${startOptions})" style="padding:14px 28px;font-size:16px;">${status.inProgress ? 'Lanjutkan jawaban' : chapter ? 'Mulai assessment' : 'Mulai Kuis'} →</button>`
     : `<button class="btn-primary" disabled style="padding:14px 28px;font-size:16px;">⏱ Tunggu ${fmtCooldown(status.cooldownHoursLeft)}</button>`;
 
   const noCooldown = (status.cooldownHours || 0) <= 0;
@@ -5719,7 +5719,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
             : placement
             ? `Tes ini mengambil empat soal dari setiap bagian: tiga jawaban romaji diketik dan satu pilihan ganda. Lulus jika nilai total minimal ${status.passingScorePct}%. Nilai per bagian hanya membantu menemukan bacaan yang perlu dilatih.`
             : status.resumingLegacy
-            ? `Ada sesi versi sebelumnya yang belum selesai. Kamu bisa melanjutkannya kapan saja dari tombol di atas; paket dan aturan sesi tetap dipertahankan.`
+            ? `Ada jawaban yang belum selesai. Kamu bisa melanjutkannya dari tombol di bawah.`
             : chapter
             ? `${status.questionsPerAttempt} soal pilihan ganda: ${status.questionsPerAttempt === 24 ? '6 aksara dan kosakata, 10 tata bahasa dan ungkapan, 4 membaca, serta 4 menyimak. ' : ''}Lulus dengan total minimal 70%, tiap kategori minimal 50%, serta minimal satu jawaban benar untuk setiap tujuan. Pembahasan dan transkrip audio muncul setelah semua jawaban dikirim. Siapkan audio.`
             : `Tiap attempt, sistem ambil <strong>${status.questionsPerAttempt}</strong> soal acak dari pool <strong>${status.poolSize}</strong> — jadi soal bisa beda tiap retry.`}
