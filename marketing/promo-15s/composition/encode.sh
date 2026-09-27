@@ -8,7 +8,7 @@ SEG=${SEG:-seg}; AUDIO=${AUDIO:-music_raw.wav}; DUR=${DUR:-15}; TITLE=${TITLE:-"
 ffmpeg -hide_banner -loglevel error -y -f concat -safe 0 -i "$SEG/list.txt" -i "$AUDIO" \
   -map 0:v -map 1:a \
   -vf "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p" \
-  -c:v libx264 -preset slow -crf 17 -profile:v high -level:v 4.2 -g 30 -bf 2 \
+  -c:v libx264 -preset slow -crf ${CRF:-17} -profile:v high -level:v 4.2 -g 30 -bf 2 \
   -colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv \
   -af "alimiter=limit=0.84:level=false:attack=1:release=40" -c:a aac -b:a 256k -ar 48000 \
   -t "$DUR" -movflags +faststart -metadata title="$TITLE" "$1"
