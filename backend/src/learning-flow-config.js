@@ -9,9 +9,9 @@ import { CURRICULUM_VALIDATOR_VERSION,
 import { lockCurriculumCourses } from './curriculum-content-service.js';
 
 export const FLOW_SETTING_KEY = 'learning_flow_communication_v1';
-// PR6 is passive. PR7 must deliberately replace this capability only after
-// the v2 session/asset/resume path exists and its tests pass.
-export const V2_RUNTIME_AVAILABLE = false;
+// PR8b: the versioned session and learner assets are present. The persisted
+// allowlist still defaults off and readiness remains mandatory for new v2.
+export const V2_RUNTIME_AVAILABLE = true;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const EMPTY = Object.freeze({ enabled: false, courseIds: [], moduleIds: [], lessonIds: [] });
 const hash = (raw, rowRevision = null) => `sha256:${createHash('sha256')
