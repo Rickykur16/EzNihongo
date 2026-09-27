@@ -22,14 +22,31 @@ export class DialogueQuestionError extends Error {
 }
 const reject = (status, code, report) => { throw new DialogueQuestionError(status, code, report); };
 
+// A question's grammar/source lesson identity is immutable, even after the
+// question is archived. Reassignment needs an explicit provenance migration.
+export async function assertDialogueQuestionLessonMoveAllowed(client, grammarId,
+  currentLessonId, nextLessonId, { locked = false } = {}) {
+  if ((currentLessonId || null) === (nextLessonId || null)) return;
+  const linked = await client.query(`SELECT 1 FROM grammar_dialog_questions
+    WHERE grammar_id=$1 LIMIT 1 ${locked ? 'FOR SHARE' : ''}`, [grammarId]);
+  if (linked.rows.length) reject(409, 'grammar_dialog_questions_restrict_move');
+}
+
 export function dialogueTurns(grammar) {
   const scene = grammar.dialog_scene;
-  if (Array.isArray(scene?.turns) && scene.turns.length) return scene.turns.map(turn =>
-    ({ speaker: String(turn.speaker || ''), text: String(turn.text || turn.japanese || '').trim() }));
+  const visibleNames = new Map((scene?.participants || []).map(participant =>
+    [String(participant?.speaker || ''), String(participant?.displayName || participant?.speaker || '')]));
+  if (Array.isArray(scene?.turns) && scene.turns.length) {
+    return scene.turns.map(turn => ({
+      speaker: visibleNames.get(String(turn.speaker || '')) || String(turn.speaker || ''),
+      text: String(turn.text || turn.japanese || '').trim(),
+    }));
+  }
   return String(grammar.example_dialog || '').split(/\r?\n/u).map(line => line.trim()).filter(Boolean)
     .map(line => {
       const match = line.match(/^([^:：]{1,40})[:：]\s*(.*)$/u);
-      return { speaker: match ? match[1].trim() : '', text: match ? match[2].trim() : line };
+      const speaker = match ? match[1].trim() : '';
+      return { speaker: visibleNames.get(speaker) || speaker, text: match ? match[2].trim() : line };
     });
 }
 
@@ -220,11 +237,15 @@ export async function saveDialogueQuestions(grammarId, body, {
     if (boundary && (boundary.course?.id !== context.courseId ||
         boundary.course?.mode !== context.grammar.boundary_mode)) reject(422, 'boundary_context_mismatch');
     const validated = questions.map(question => {
-      const report = validateContentAgainstBoundary({ boundary,
+      const evaluated = validateContentAgainstBoundary({ boundary,
         contentType: question.kind === 'comprehension' ? 'dialogue_comprehension' : 'dialogue_transfer',
         operation: 'live_write', fields: fieldsFor(question),
         question: { prompt: question.prompt, options: question.options,
           correctIndex: question.correctIndex } });
+      const report = context.grammar.boundary_mode === 'off' &&
+        !['schema_invalid', 'context_invalid'].includes(evaluated.status)
+        ? { ...evaluated, status: 'not_run', valid: null, violations: [], warnings: [] }
+        : evaluated;
       const decision = decideBoundaryAction({ mode: context.grammar.boundary_mode,
         operation: 'live_write', report });
       if (!decision.canProceed) {

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -39,6 +39,9 @@ async function fixture(t) {
   const upstream = path.join(root, 'upstream');
   const checkout = path.join(root, 'checkout');
   const commandLog = path.join(root, 'commands.log');
+  const dropinDir = path.join(root, 'service-dropin');
+  const dropinPath = path.join(dropinDir, '10-release-sha.conf');
+  await mkdir(dropinDir);
   const git = (cwd, ...args) => execFileSync('git', [
     '-c', 'user.name=Deployment Test', '-c', 'user.email=deploy@example.invalid',
     '-c', 'commit.gpgsign=false', ...args,
@@ -80,8 +83,27 @@ async function fixture(t) {
       command git "$@"
     }
     install() { record "install $*"; }
+    mktemp() {
+      record "mktemp $*"
+      if [ "$1" != /etc/systemd/system/eznihongo-api.service.d/.release-sha.conf.XXXXXX ]; then return 98; fi
+      command mktemp "$DEPLOY_TEST_DROPIN_DIR/.release-sha.conf.XXXXXX"
+    }
+    chmod() { record "chmod $*"; command chmod "$@"; }
+    mv() {
+      record "mv $*"
+      if [ "$1" != -f ] || [ "$2" != -- ] ||
+         [ "$4" != /etc/systemd/system/eznihongo-api.service.d/10-release-sha.conf ]; then return 98; fi
+      if [ "\${DEPLOY_TEST_MV_FAIL:-}" = 1 ]; then return 1; fi
+      command mv -f -- "$3" "$DEPLOY_TEST_DROPIN_DIR/10-release-sha.conf"
+    }
     nginx() { record "nginx $*"; }
-    systemctl() { record "systemctl $*"; }
+    systemctl() {
+      record "systemctl $*"
+      if [ "$*" = 'restart eznihongo-api' ]; then
+        expected=$(printf '[Service]\\nEnvironment=RELEASE_SHA=%s' "$DEPLOY_SHA")
+        [ "$(cat "$DEPLOY_TEST_DROPIN_DIR/10-release-sha.conf")" = "$expected" ] || return 98
+      fi
+    }
     npm() {
       record "npm $*"
       if [ "$*" = 'run migrate' ] && [ "\${DEPLOY_TEST_MIGRATION_FAIL:-}" = 1 ]; then return 1; fi
@@ -95,19 +117,24 @@ async function fixture(t) {
     const result = spawnSync(bash, ['--noprofile', '--norc', '-s'], {
       cwd: checkout, input: harness + '\n' + script, encoding: 'utf8', timeout: 20000,
       env: { ...process.env, DEPLOY_SHA: sha, DEPLOY_TEST_CHECKOUT: checkout,
-        DEPLOY_TEST_LOG: commandLog, ...options },
+        DEPLOY_TEST_LOG: commandLog, DEPLOY_TEST_DROPIN_DIR: dropinDir, ...options },
     });
     assert.ifError(result.error);
     return { ...result, commands: await readFile(commandLog, 'utf8') };
   };
   const head = () => git(checkout, 'rev-parse', 'HEAD');
+  const readDropin = () => readFile(dropinPath, 'utf8').catch(error => {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  });
   const assertNoRelease = (result, expected = initial) => {
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
     assert.equal(head(), expected);
     assert.doesNotMatch(result.commands, /^(?:install|nginx|systemctl|npm|curl) /m);
     assert.doesNotMatch(result.stdout, /Deploy ok:/);
   };
-  return { upstream, checkout, initial, tested, newer, git, head, run, assertNoRelease };
+  return { upstream, checkout, initial, tested, newer, git, head, run,
+    dropinDir, dropinPath, readDropin, assertNoRelease };
 }
 
 test('deploy installs the tested commit even after main advances; same-SHA retry is allowed', async (t) => {
@@ -118,7 +145,10 @@ test('deploy installs the tested commit even after main advances; same-SHA retry
     assert.equal(f.head(), f.tested);
     assert.equal(f.git(f.checkout, 'rev-parse', 'origin/main'), f.newer);
     assert.equal(await readFile(path.join(f.checkout, 'backend', 'release.txt'), 'utf8'), 'tested');
-    assert.match(result.commands, /npm ci --omit=dev\nnpm run migrate\nsystemctl restart eznihongo-api/);
+    assert.match(result.commands, /npm ci --omit=dev\nnpm run migrate\ninstall -d -m 0755 \/etc\/systemd\/system\/eznihongo-api\.service\.d/);
+    assert.match(result.commands, /systemctl daemon-reload\nsystemctl restart eznihongo-api/);
+    assert.match(result.commands, /chmod 0644 .*\.release-sha\.conf\./);
+    assert.equal(await f.readDropin(), `[Service]\nEnvironment=RELEASE_SHA=${f.tested}\n`);
     assert.ok(result.stdout.includes(`Deploy ok: ${f.tested}`));
     assert.equal(await readFile(path.join(f.checkout, 'backend', '.env'), 'utf8'), 'LOCAL_TEST_SENTINEL=preserved\n');
     assert.equal(await readFile(path.join(f.checkout, 'uploads', 'existing.txt'), 'utf8'), 'existing upload');
@@ -131,6 +161,7 @@ test('missing, abbreviated, symbolic and malformed SHA fail before fetch or chec
     const result = await f.run(sha);
     f.assertNoRelease(result);
     assert.equal(result.commands, '');
+    assert.equal(await f.readDropin(), null);
   }
 });
 
@@ -185,10 +216,40 @@ test('checkout mismatch stops before installing dependencies or running migratio
 
 test('a failed migration cannot restart the API or claim deployment success', async (t) => {
   const f = await fixture(t);
+  const active = `[Service]\nEnvironment=RELEASE_SHA=${f.initial}\n`;
+  await writeFile(f.dropinPath, active);
   const result = await f.run(f.tested, { DEPLOY_TEST_MIGRATION_FAIL: '1' });
   assert.notEqual(result.status, 0);
-  assert.doesNotMatch(result.commands, /systemctl restart eznihongo-api|^curl /m);
+  assert.doesNotMatch(result.commands, /mktemp|mv |systemctl daemon-reload|systemctl restart eznihongo-api|^curl /m);
+  assert.equal(await f.readDropin(), active);
   assert.doesNotMatch(result.stdout, /Deploy ok:/);
+});
+
+test('a conflicting EnvironmentFile release SHA blocks metadata replacement and restart', async t => {
+  const f = await fixture(t);
+  const active = `[Service]\nEnvironment=RELEASE_SHA=${f.initial}\n`;
+  await writeFile(f.dropinPath, active);
+  await writeFile(path.join(f.checkout, 'backend', '.env'), `  RELEASE_SHA = ${f.initial}\n`);
+  const result = await f.run(f.tested);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stdout, /backend\/.env must not set RELEASE_SHA/);
+  assert.doesNotMatch(result.commands, /npm ci|npm run migrate|mktemp|mv |systemctl daemon-reload|systemctl restart eznihongo-api/);
+  assert.equal(await f.readDropin(), active);
+  assert.doesNotMatch(result.stdout, /Deploy ok:/);
+});
+
+test('failed atomic rename preserves prior metadata and retry installs the tested SHA', async t => {
+  const f = await fixture(t);
+  const active = `[Service]\nEnvironment=RELEASE_SHA=${f.initial}\n`;
+  await writeFile(f.dropinPath, active);
+  const failed = await f.run(f.tested, { DEPLOY_TEST_MV_FAIL: '1' });
+  assert.notEqual(failed.status, 0);
+  assert.equal(await f.readDropin(), active);
+  assert.doesNotMatch(failed.commands, /systemctl daemon-reload|systemctl restart eznihongo-api/);
+  assert.deepEqual(await readdir(f.dropinDir), ['10-release-sha.conf'], 'EXIT trap removes the temporary file');
+  const retry = await f.run();
+  assert.equal(retry.status, 0, retry.stdout + retry.stderr);
+  assert.equal(await f.readDropin(), `[Service]\nEnvironment=RELEASE_SHA=${f.tested}\n`);
 });
 
 test('failed health checks retain diagnostics and never claim deployment success', async (t) => {
@@ -196,6 +257,8 @@ test('failed health checks retain diagnostics and never claim deployment success
   const result = await f.run(f.tested, { DEPLOY_TEST_HEALTH_FAIL: '1' });
   assert.notEqual(result.status, 0);
   assert.equal(result.commands.match(/^curl /gm)?.length, 5);
+  assert.equal(await f.readDropin(), `[Service]\nEnvironment=RELEASE_SHA=${f.tested}\n`);
+  assert.match(result.commands, /systemctl daemon-reload\nsystemctl restart eznihongo-api/);
   assert.match(result.commands, /systemctl status eznihongo-api/);
   assert.match(result.commands, /journalctl -u eznihongo-api/);
   assert.doesNotMatch(result.stdout, /Deploy ok:/);
