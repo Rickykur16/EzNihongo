@@ -36,10 +36,17 @@ test('event schema keeps only bounded dimensions, including v2 transfer and conf
     body: { error: 'email_person@example.com' }, timestamp: '', durationMs: 1 }).errorCode, undefined);
   assert.equal(learnerFlowEvent({ operation: 'session_answer', status: 200,
     body: { passed: true, alreadyCompleted: true }, timestamp: '', durationMs: 1 }).outcome, 'already_completed');
+  assert.equal(learnerFlowEvent({ operation: 'session_answer', status: 200,
+    body: { passed: true, alreadyCompleted: true }, disposition: 'replay',
+    timestamp: '', durationMs: 1 }).outcome, 'idempotent_replay');
+  assert.equal(learnerFlowEvent({ operation: 'session_answer', status: 409,
+    body: { error: 'request_id_conflict' }, disposition: 'replay',
+    timestamp: '', durationMs: 1 }).outcome, 'conflict');
 });
 
 test('actual dialogue router emits private-safe fetch, answer, error, and empty-latest events', async () => {
   const events = [];
+  let answerCalls = 0;
   const app = express();
   app.use(express.json());
   app.use('/api', createLearnerFlowTelemetry({ logger: event => events.push(event) }));
@@ -48,10 +55,11 @@ test('actual dialogue router emits private-safe fetch, answer, error, and empty-
     answerLimiter: (_req, _res, next) => next(),
     list: async () => ({ lessonId: ID, placement: { mode: 'inline', flowVersion: 2 },
       grammars: [{ grammarId: ID, questions: [{ prompt: '秘密の質問', options: ['秘密の答え'] }] }] }),
-    answer: async (_id, _user, body) => {
+    answer: async (_id, _user, body, { onDisposition }) => {
       if (body.optionIndex === 2) {
         const error = new Error('question_version_conflict'); error.status = 409; throw error;
       }
+      onDisposition(++answerCalls === 1 ? 'new' : 'replay');
       return { attemptId: ID, correct: false, correctIndex: 1,
         explanation: '秘密の説明', requestId: body.requestId };
     },
@@ -70,6 +78,13 @@ test('actual dialogue router emits private-safe fetch, answer, error, and empty-
       body: JSON.stringify({ optionIndex: 0, requestId: ID }),
     });
     assert.equal(answer.status, 200);
+    const firstBody = await answer.text();
+    const replay = await fetch(`${base}/dialogue-questions/${ID}/answer`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ optionIndex: 0, requestId: ID }),
+    });
+    assert.equal(replay.status, 200);
+    assert.equal(await replay.text(), firstBody, 'telemetry must not alter the public response bytes');
     const stale = await fetch(`${base}/dialogue-questions/${ID}/answer`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ optionIndex: 2, requestId: ID }),
@@ -80,12 +95,13 @@ test('actual dialogue router emits private-safe fetch, answer, error, and empty-
     await tick();
     assert.deepEqual(events.map(event => [event.operation, event.status, event.outcome]), [
       ['inline_fetch', 200, 'success'], ['dialogue_answer', 200, 'success'],
+      ['dialogue_answer', 200, 'idempotent_replay'],
       ['dialogue_answer', 409, 'conflict'], ['dialogue_latest', 204, 'empty'],
     ]);
     assert.equal(events[0].placement, 'inline');
     assert.equal(events[0].flowVersion, 2);
     assert.equal(events[1].grade, 'incorrect');
-    assert.equal(events[2].errorCode, 'question_version_conflict');
+    assert.equal(events[3].errorCode, 'question_version_conflict');
     const logged = JSON.stringify(events);
     assert.doesNotMatch(logged, /private@example|秘密|requestId|correctIndex|00000000/);
   } finally {
