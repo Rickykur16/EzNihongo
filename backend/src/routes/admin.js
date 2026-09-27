@@ -67,6 +67,8 @@ import { DialogueQuestionError, loadDialogueQuestionContext, listDialogueQuestio
 import { getLearningFlowSettings, saveLearningFlowSettings } from '../learning-flow-config.js';
 import { CurriculumModeError, getCurriculumBoundaryMode,
   saveCurriculumBoundaryMode } from '../curriculum-boundary-mode.js';
+import { captureReadinessAttestation,
+  listReadinessAttestations } from '../curriculum-readiness-attestations.js';
 import { validateBunpouPublish } from '../curriculum-bunpou-validation.js';
 import { deckReadingSourceFingerprint, distractorSourceFingerprint,
   assertGenerationSourceUnchanged } from '../curriculum-generation-source.js';
@@ -98,6 +100,7 @@ async function groundedDraft({ scope, contentType, loadSource, instruction, maxT
   transformCandidate = x => x }) {
   return generateGroundedContent({ scope, contentType, loadSource, communicationGoal,
     scenario, trustedValidation, expectedExampleCount, additionalSchemaIssues,
+    onTerminal: event => console.info(JSON.stringify(event)),
     expectedBoundaryFingerprint: body.boundaryFingerprint || null,
     expectedSourceFingerprint: body.sourceFingerprint || null,
     provider: async ({ prompt, repairFeedback }) => {
@@ -797,6 +800,27 @@ router.get('/courses/:id/curriculum-boundary-mode', asyncHandler(async (req, res
 router.put('/courses/:id/curriculum-boundary-mode', asyncHandler(async (req, res) => {
   res.set('Cache-Control', 'private, no-store');
   try { res.json(await saveCurriculumBoundaryMode(req.params.id, req.body)); }
+  catch (error) {
+    if (!(error instanceof CurriculumModeError)) throw error;
+    res.status(error.status).json({ error: error.code });
+  }
+}));
+
+// Passive owner attestations are never an enforce authorization. The service
+// records current server observations and marks all captured claims unverified.
+router.get('/courses/:id/readiness-attestations', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.json(await listReadinessAttestations(req.params.id, req.query.moduleId)); }
+  catch (error) {
+    if (!(error instanceof CurriculumModeError)) throw error;
+    res.status(error.status).json({ error: error.code });
+  }
+}));
+
+router.post('/courses/:id/readiness-attestations', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.status(201).json(await captureReadinessAttestation(req.params.id,
+    req.user.id, req.body)); }
   catch (error) {
     if (!(error instanceof CurriculumModeError)) throw error;
     res.status(error.status).json({ error: error.code });

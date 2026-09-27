@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { countRequestQuery } from './request-query-count.js';
 
 const { Pool } = pg;
 
@@ -15,12 +16,24 @@ db.on('error', (err) => {
 
 export async function query(text, params) {
   const start = Date.now();
+  countRequestQuery();
   const res = await db.query(text, params);
   const duration = Date.now() - start;
   if (duration > 500) {
     console.warn(`Slow query (${duration}ms):`, text.slice(0, 100));
   }
   return res;
+}
+
+function countedClient(client) {
+  return new Proxy(client, { get(target, property) {
+    if (property === 'query') return (...args) => {
+      countRequestQuery();
+      return target.query(...args);
+    };
+    const value = Reflect.get(target, property, target);
+    return typeof value === 'function' ? value.bind(target) : value;
+  } });
 }
 
 // Serialize concurrent operations on the same logical key (e.g.
@@ -33,14 +46,15 @@ export async function query(text, params) {
 // Returns whatever fn returns.
 export async function withAdvisoryLock(key, fn) {
   const client = await db.connect();
+  const tracked = countedClient(client);
   try {
-    await client.query('BEGIN');
-    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [String(key)]);
-    const result = await fn(client);
-    await client.query('COMMIT');
+    await tracked.query('BEGIN');
+    await tracked.query('SELECT pg_advisory_xact_lock(hashtext($1))', [String(key)]);
+    const result = await fn(tracked);
+    await tracked.query('COMMIT');
     return result;
   } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
+    await tracked.query('ROLLBACK').catch(() => {});
     throw err;
   } finally {
     client.release();
@@ -59,13 +73,14 @@ export async function withAdvisoryLock(key, fn) {
 // connection and would run OUTSIDE the transaction.
 export async function withTransaction(fn) {
   const client = await db.connect();
+  const tracked = countedClient(client);
   try {
-    await client.query('BEGIN');
-    const result = await fn(client);
-    await client.query('COMMIT');
+    await tracked.query('BEGIN');
+    const result = await fn(tracked);
+    await tracked.query('COMMIT');
     return result;
   } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
+    await tracked.query('ROLLBACK').catch(() => {});
     throw err;
   } finally {
     client.release();

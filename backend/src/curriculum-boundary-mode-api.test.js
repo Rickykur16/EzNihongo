@@ -69,6 +69,30 @@ test('boundary mode routes are exact owner-only policy entries', () => {
   }
 });
 
+test('readiness attestation routes are exact owner-only policy entries', async () => {
+  for (const method of ['GET', 'POST']) {
+    assert.equal(LEGACY_ROUTES.some(([verb, path, permission]) => verb === method &&
+      path === '/courses/:id/readiness-attestations' && permission === null), true);
+    assert.equal(permissionForLegacyRoute(method,
+      `/courses/${ID}/readiness-attestations`), null);
+  }
+  process.env.COMPANY_WORKSPACE_ENABLED = 'true';
+  process.env.COMPANY_STAFF_ENABLED = 'true';
+  try {
+    for (const method of ['GET', 'POST']) {
+      const response = await fetch(`${base}/${ID}/readiness-attestations?moduleId=${ID}`, {
+        method, headers: { Authorization: `Bearer ${staff}`,
+          ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}) },
+        ...(method === 'POST' ? { body: '{}' } : {}),
+      });
+      assert.equal(response.status, 403);
+    }
+  } finally {
+    process.env.COMPANY_STAFF_ENABLED = 'false';
+    process.env.COMPANY_WORKSPACE_ENABLED = 'false';
+  }
+});
+
 test('owner HTTP contract: private GET, CAS writes, explicit enforce block, no config mutation', async () => {
   assert.equal((await read(ID, '')).status, 401);
   assert.equal((await read(ID, `Bearer ${student}`)).status, 403);

@@ -58,9 +58,9 @@ export async function saveCurriculumBoundaryMode(courseId, body, {
     if (!MODES.has(row.curriculum_boundary_mode)) fail(503, 'boundary_mode_unavailable');
     if (modeRevision(row) !== body.expectedRevision) fail(409, 'boundary_mode_revision_conflict');
     if (body.mode === row.curriculum_boundary_mode) return { result: dto(row), changed: false };
-    // No server-owned, current §15.3 readiness-evidence registry exists yet.
-    // A client-supplied manifest/report count is not proof, so promotion is
-    // unconditionally closed until a separate reviewed implementation lands.
+    // The passive attestation registry has no trusted artifact, release,
+    // browser, or pilot verifier. Claimed PASS gates are not promotion proof.
+    // Keep enforce closed until a separately reviewed verifier lands.
     if (body.mode === 'enforce') fail(422, 'enforce_readiness_evidence_unavailable');
     const updated = (await client.query(`UPDATE courses SET curriculum_boundary_mode=$2
       WHERE id=$1 AND xmin::text=$3

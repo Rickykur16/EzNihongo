@@ -13,6 +13,8 @@ export const LEGACY_ROUTES = [
   ["GET", "/courses", "legacy.course_picker"],
   ["GET", "/courses/:id/curriculum-boundary-mode", null],
   ["PUT", "/courses/:id/curriculum-boundary-mode", null],
+  ["GET", "/courses/:id/readiness-attestations", null],
+  ["POST", "/courses/:id/readiness-attestations", null],
   ["GET", "/curriculum-boundary", null],
   ["POST", "/curriculum-boundary/validate", null],
   ["POST", "/courses", null],

@@ -42,8 +42,9 @@ active v2 yang sudah diterbitkan tetap dapat dilanjutkan setelah flag OFF.
    dengan `expectedRevision` hasil GET terakhir. PUT hanya menerima mode
    `off`, `audit`, `warn`, atau `enforce` dengan schema tepat; update memegang
    lock kurikulum dan memakai CAS. Route saat ini **menolak semua promosi ke
-   enforce dengan 422 `enforce_readiness_evidence_unavailable`**, karena
-   registry manifest readiness yang terpercaya belum ada. Artifact dari
+   enforce dengan 422 `enforce_readiness_evidence_unavailable`**. Registry
+   attestation pasif menyimpan klaim owner tetapi belum dapat memverifikasi
+   artifact, observasi pilot, atau provenance release secara tepercaya. Artifact dari
    client tidak dapat meloloskan gate itu. Enforce N4 tetap `BLOCKED` walaupun
    checklist manual telah lengkap; perlu perubahan server terpisah. N5 tidak
    otomatis ikut enforce.
@@ -152,6 +153,45 @@ tidak menulis pertanyaan atau report DB.
 
 ## Manifest readiness yang gagal tertutup
 
+Migration 166 menyediakan registry **pasif** untuk mencatat klaim review:
+`GET /api/admin/courses/:id/readiness-attestations?moduleId=<uuid>` dan
+`POST /api/admin/courses/:id/readiness-attestations`. Keduanya owner-only dan
+`private, no-store`. POST menerima tepat `moduleId`, `environment: staging`,
+`commitSha` (40 hex),
+`sourceFingerprints` (`[{id, fingerprint}]`), dan `gates` dengan **semua** kode
+gate di bawah. Setiap gate berbentuk `{status, artifacts}`; status hanya
+`PASS|FAIL|SKIP|UNKNOWN|BLOCKED`, artifact berbentuk
+`{url: "https://…", sha256: "sha256:<64 hex>"}`, dan `PASS` wajib memiliki
+artifact. Jangan taruh token di URL. Actor diambil dari sesi owner di server,
+bukan body; DB hanya menyimpan digest actor yang dibersihkan lewat erasure.
+GET menunjukkan digest actor dan snapshot mode/config/boundary/commit yang
+dilihat server pada tiap catatan, snapshot server saat ini, serta
+`observedSnapshotChanged` bila observasi sekarang berubah.
+
+**Semua record masih `verificationStatus: unverified` dan
+`activationEligible: false`, termasuk yang semua gate-nya diklaim `PASS`.**
+SHA artifact, source fingerprint, commit SHA dalam body, hasil CI/browser,
+sentinel, traffic, dan persetujuan reviewer belum dapat diverifikasi dari
+server. `observedCommitSha` juga dapat null bila deployment tidak memasok
+`RELEASE_SHA` terpercaya; `claimedCommitMatchesObserved` hanya true bila
+keduanya tersedia dan sama. Digest klaim dan append-only row membuktikan isi catatan
+tidak diubah setelah capture, bukan kebenaran artifact. Tidak ada signature
+release atau verifier eksternal saat ini. Karena itu endpoint mode tetap
+menolak `enforce`; attestation bukan token promosi. Penurunan mode dan flag
+flow tetap memakai prosedur rollback masing-masing.
+
+Workflow deploy mengikat proses API ke SHA penuh yang diuji CI melalui
+`/etc/systemd/system/eznihongo-api.service.d/10-release-sha.conf` berisi
+`Environment=RELEASE_SHA=<DEPLOY_SHA>`. File dipasang secara atomik hanya
+setelah migrasi berhasil; lalu `systemctl daemon-reload`, restart, dan
+healthcheck. `backend/.env` tidak boleh mendefinisikan `RELEASE_SHA`:
+`EnvironmentFile=` pada unit systemd mengalahkan `Environment=` di drop-in,
+sehingga workflow menolak konflik sebelum mengganti metadata aktif. Kegagalan
+healthcheck tidak mencetak `Deploy ok`; metadata release perlu dibandingkan
+dengan proses yang benar-benar sehat sebelum dipakai sebagai bukti. Ikatan
+SHA runtime ini tidak memverifikasi artifact, browser evidence, atau seluruh
+gate readiness, sehingga `enforce` tetap diblokir.
+
 Simpan satu manifest per scope dan per review. Template awal di bawah sengaja
 `BLOCKED`; kosong, `SKIP`, `UNKNOWN`, fingerprint berbeda, atau evidence
 tanpa lokasi/hasil yang dapat diaudit **bukan** `PASS`. Reviewer harus
@@ -243,20 +283,64 @@ aktivasi. Contoh target engineering dalam plan adalah p95 GET tambahan
 diukur atau dibuktikan oleh repo**. Catat query count dan p95 sebelum/sesudah;
 learner read/grade tidak boleh memanggil model atau melakukan N+1 per dialog.
 
+`learning_flow_request` kini mencatat `queryCount` per request dengan
+`AsyncLocalStorage`, terpisah untuk request paralel. Hitungan mencakup
+`query()` yang diekspor oleh `db.js` dan `client.query()` melalui
+`withTransaction`/`withAdvisoryLock`, termasuk BEGIN/COMMIT/ROLLBACK dan
+advisory-lock SQL. Hitungan tidak memuat SQL atau parameternya. Nilai dibatasi
+pada 10000; `queryCountCapped: true` berarti sampel tidak layak untuk
+baseline. Pemanggilan pool mentah di luar wrapper belum diinstrumentasi.
+
+Untuk merangkum log NDJSON terpercaya secara **read-only**:
+
+```powershell
+node backend/scripts/summarize-learning-flow-baseline.mjs `
+  --input <path-to-learning-flow-events.ndjson> `
+  --environment staging --commit <40-hex-deployment-commit>
+```
+
+Input harus terdiri dari event schema 1 yang valid, termasuk queryCount;
+field pribadi/tidak dikenal, sampel capped, metadata kosong, dan input rusak
+ditolak. Output menampilkan jumlah sampel serta p50/p95 durasi dan jumlah
+query per operation dengan metode nearest-rank. Environment/commit berasal
+dari operator dan belum diverifikasi otomatis terhadap deployment; ringkasan
+bertanda `operator_supplied_unverified` dan `not_evaluated`, **bukan PASS**.
+Bandingkan baseline dan pilot pada fixture, beban, dan DB staging yang sama;
+perubahan jumlah query menurut banyaknya dialog harus diperiksa tersendiri.
+Gate performa §15 tetap `BLOCKED` sampai pengukuran representatif direview.
+
 ## Telemetry dan batas bukti
 
 Backend menghasilkan structured log `learning_flow_request` versi schema 1
 untuk batch inline, answer/latest dialogue, session create/get, production,
 answer/hint/reveal. Field tetap: `timestamp`, `operation`, `status`,
 `outcome`, `durationMs`; bila tersedia `flowVersion` 1/2, `placement`,
-`transferAvailable`, `grade`, dan `errorCode` dari allowlist. Log tidak
+`transferAvailable`, `grade`, `errorCode` dari allowlist, dan `queryCount`. Log tidak
 memuat ID learner/session/question, URL, prompt, option, jawaban, request ID,
 atau key privat. Agregasi berdasarkan operation/status/versi untuk
 memeriksa error, konflik, distribusi v1/v2, transfer dan fetch inline; cocokkan
 dengan report DB per mode/content type/course/module/code/severity.
 
-Telemetry ini **belum** menandai replay idempotent secara terpisah dari
-success, belum menyediakan agregat generation retry/source-stale atau
+Replay idempoten jawaban dialogue dan item session diberi outcome
+`idempotent_replay` dari penanda internal sesudah transaksi. Response/snapshot
+publik tidak ditambahi field telemetry. `already_completed` tetap outcome
+tersendiri untuk request baru terhadap item yang sudah selesai; conflict
+request ID tetap `conflict`. Logger yang gagal tidak mengubah respons learner.
+
+Grounded draft melalui `groundedDraft` juga mencatat satu structured event
+`grounded_generation` setelah hasil terminal: allowlist `contentType`,
+`operation=generate`, mode, outcome `ready|rejected|stale|unavailable`, jumlah
+provider call/attempt (maksimal 3), `retried`, `sourceStale`, dan durasi
+terbatas. Tidak ada ID, prompt, teks kandidat, fingerprint, atau exception.
+`ready` satu attempt menunjukkan valid-first-pass; `rejected` setelah retry
+menunjukkan hasil tetap gagal. Logger yang gagal tidak mengubah hasil draft.
+Event ini mengukur **tahap generation** saja: bulk distractor/deck reading
+dapat menolak save kemudian dengan `source_changed_since_generation` setelah
+event `ready`. Penolakan transactional itu tetap aman, tetapi belum memiliki
+label telemetry terminal-save tersendiri. Jangan menghitung event `ready`
+sebagai jumlah row yang berhasil disimpan.
+
+Telemetry ini **belum** menyediakan ringkasan agregat generation atau
 readiness dashboard. Untuk gate observasi §15, lampirkan bukti tambahan
 yang benar-benar menangkap kasus itu; jika tidak ada, biarkan `BLOCKED`.
 Jangan menafsirkan comprehension accuracy sebagai mastery baru.
