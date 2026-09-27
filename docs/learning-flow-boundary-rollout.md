@@ -42,8 +42,9 @@ active v2 yang sudah diterbitkan tetap dapat dilanjutkan setelah flag OFF.
    dengan `expectedRevision` hasil GET terakhir. PUT hanya menerima mode
    `off`, `audit`, `warn`, atau `enforce` dengan schema tepat; update memegang
    lock kurikulum dan memakai CAS. Route saat ini **menolak semua promosi ke
-   enforce dengan 422 `enforce_readiness_evidence_unavailable`**, karena
-   registry manifest readiness yang terpercaya belum ada. Artifact dari
+   enforce dengan 422 `enforce_readiness_evidence_unavailable`**. Registry
+   attestation pasif menyimpan klaim owner tetapi belum dapat memverifikasi
+   artifact, observasi pilot, atau provenance release secara tepercaya. Artifact dari
    client tidak dapat meloloskan gate itu. Enforce N4 tetap `BLOCKED` walaupun
    checklist manual telah lengkap; perlu perubahan server terpisah. N5 tidak
    otomatis ikut enforce.
@@ -151,6 +152,33 @@ identik. Apply memakai unit transaksi kecil dengan course lock. Dry-run
 tidak menulis pertanyaan atau report DB.
 
 ## Manifest readiness yang gagal tertutup
+
+Migration 166 menyediakan registry **pasif** untuk mencatat klaim review:
+`GET /api/admin/courses/:id/readiness-attestations?moduleId=<uuid>` dan
+`POST /api/admin/courses/:id/readiness-attestations`. Keduanya owner-only dan
+`private, no-store`. POST menerima tepat `moduleId`, `environment: staging`,
+`commitSha` (40 hex),
+`sourceFingerprints` (`[{id, fingerprint}]`), dan `gates` dengan **semua** kode
+gate di bawah. Setiap gate berbentuk `{status, artifacts}`; status hanya
+`PASS|FAIL|SKIP|UNKNOWN|BLOCKED`, artifact berbentuk
+`{url: "https://…", sha256: "sha256:<64 hex>"}`, dan `PASS` wajib memiliki
+artifact. Jangan taruh token di URL. Actor diambil dari sesi owner di server,
+bukan body; DB hanya menyimpan digest actor yang dibersihkan lewat erasure.
+GET menunjukkan digest actor dan snapshot mode/config/boundary/commit yang
+dilihat server pada tiap catatan, snapshot server saat ini, serta
+`observedSnapshotChanged` bila observasi sekarang berubah.
+
+**Semua record masih `verificationStatus: unverified` dan
+`activationEligible: false`, termasuk yang semua gate-nya diklaim `PASS`.**
+SHA artifact, source fingerprint, commit SHA dalam body, hasil CI/browser,
+sentinel, traffic, dan persetujuan reviewer belum dapat diverifikasi dari
+server. `observedCommitSha` juga dapat null bila deployment tidak memasok
+`RELEASE_SHA` terpercaya; `claimedCommitMatchesObserved` hanya true bila
+keduanya tersedia dan sama. Digest klaim dan append-only row membuktikan isi catatan
+tidak diubah setelah capture, bukan kebenaran artifact. Tidak ada signature
+release atau verifier eksternal saat ini. Karena itu endpoint mode tetap
+menolak `enforce`; attestation bukan token promosi. Penurunan mode dan flag
+flow tetap memakai prosedur rollback masing-masing.
 
 Simpan satu manifest per scope dan per review. Template awal di bawah sengaja
 `BLOCKED`; kosong, `SKIP`, `UNKNOWN`, fingerprint berbeda, atau evidence
