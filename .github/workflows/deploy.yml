@@ -106,11 +106,32 @@ jobs:
             systemctl reload nginx
 
             cd backend
+            # EnvironmentFile= overrides Environment= even in a drop-in.
+            # Reserve RELEASE_SHA for the deploy-owned release metadata.
+            if [ ! -r .env ]; then
+              echo "FATAL: backend/.env is missing or unreadable"
+              exit 1
+            fi
+            if grep -Eq '^[[:space:]]*(export[[:space:]]+)?RELEASE_SHA[[:space:]]*=' .env; then
+              echo "FATAL: backend/.env must not set RELEASE_SHA"
+              exit 1
+            fi
             # --omit=dev sengaja: backend hanya punya runtime deps; lock-checked
             # install lebih cepat dan menjamin parity dengan CI di atas.
             npm ci --omit=dev
             npm run migrate
 
+            # Bind the running API to this already-validated, CI-tested commit.
+            # Migration failure must leave the active service metadata intact.
+            release_dropin_dir=/etc/systemd/system/eznihongo-api.service.d
+            install -d -m 0755 "$release_dropin_dir"
+            release_tmp=$(mktemp "$release_dropin_dir/.release-sha.conf.XXXXXX")
+            trap 'test -z "${release_tmp:-}" || rm -f -- "$release_tmp"' EXIT
+            printf '[Service]\nEnvironment=RELEASE_SHA=%s\n' "$DEPLOY_SHA" > "$release_tmp"
+            chmod 0644 "$release_tmp"
+            mv -f -- "$release_tmp" "$release_dropin_dir/10-release-sha.conf"
+            release_tmp=
+            systemctl daemon-reload
             systemctl restart eznihongo-api
 
             # Healthcheck loop. systemctl restart return 0 walau ExecStart crash

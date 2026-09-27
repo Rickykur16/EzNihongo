@@ -180,6 +180,18 @@ release atau verifier eksternal saat ini. Karena itu endpoint mode tetap
 menolak `enforce`; attestation bukan token promosi. Penurunan mode dan flag
 flow tetap memakai prosedur rollback masing-masing.
 
+Workflow deploy mengikat proses API ke SHA penuh yang diuji CI melalui
+`/etc/systemd/system/eznihongo-api.service.d/10-release-sha.conf` berisi
+`Environment=RELEASE_SHA=<DEPLOY_SHA>`. File dipasang secara atomik hanya
+setelah migrasi berhasil; lalu `systemctl daemon-reload`, restart, dan
+healthcheck. `backend/.env` tidak boleh mendefinisikan `RELEASE_SHA`:
+`EnvironmentFile=` pada unit systemd mengalahkan `Environment=` di drop-in,
+sehingga workflow menolak konflik sebelum mengganti metadata aktif. Kegagalan
+healthcheck tidak mencetak `Deploy ok`; metadata release perlu dibandingkan
+dengan proses yang benar-benar sehat sebelum dipakai sebagai bukti. Ikatan
+SHA runtime ini tidak memverifikasi artifact, browser evidence, atau seluruh
+gate readiness, sehingga `enforce` tetap diblokir.
+
 Simpan satu manifest per scope dan per review. Template awal di bawah sengaja
 `BLOCKED`; kosong, `SKIP`, `UNKNOWN`, fingerprint berbeda, atau evidence
 tanpa lokasi/hasil yang dapat diaudit **bukan** `PASS`. Reviewer harus
