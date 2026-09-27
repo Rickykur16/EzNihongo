@@ -1,0 +1,610 @@
+[
+  {
+    "bab": 3,
+    "design": "DAHH23AFj1s",
+    "parts": [
+      {
+        "slug": "bunpou-n5-b3",
+        "title": null,
+        "slides": "2–4",
+        "patterns": [
+          "〜は〜です",
+          "〜は〜じゃ／ではありません",
+          "〜ですか"
+        ]
+      },
+      {
+        "slug": "bunpou2-n5-b3",
+        "title": null,
+        "slides": "5–7",
+        "patterns": [
+          "〜の〜",
+          "〜も〜です",
+          "〜文 + ね／よ"
+        ]
+      }
+    ]
+  },
+  {
+    "bab": 4,
+    "design": "DAHIOMNvS6A",
+    "parts": [
+      {
+        "slug": "bunpou1-n5-b4",
+        "title": null,
+        "slides": "2–3",
+        "patterns": [
+          "これ／それ／あれは〜です",
+          "この／その／あの／どの + [Kata Benda]"
+        ]
+      },
+      {
+        "slug": "bunpou2-n5-b4",
+        "title": null,
+        "slides": "4–6",
+        "patterns": [
+          "〜の〜",
+          "そうです／ちがいます"
+        ]
+      }
+    ]
+  },
+  {
+    "bab": 5,
+    "design": "DAHIUGwP1vU",
+    "parts": [
+      {
+        "slug": "bunpou1-n5-b5",
+        "title": null,
+        "slides": "2–3",
+        "patterns": [
+          "いくら",
+          "今〜時〜分です"
+        ],
+        "task": "tugas-bunpou-bab-5-waktu",
+        "taskTitle": "Tugas Bunpou Bab 5: Harga & Jam",
+        "taskPatterns": [
+          "これはいくらですか",
+          "今〜時〜分です"
+        ]
+      },
+      {
+        "slug": "bunpou2-n5-b5",
+        "title": null,
+        "slides": "4–5",
+        "patterns": [
+          "~から ~ まで",
+          "おいくつ/ 何さい"
+        ],
+        "task": "tugas-bunpou-bab-5-uang-umur",
+        "taskTitle": "Tugas Bunpou Bab 5: Rentang Waktu & Umur",
+        "taskPatterns": [
+          "〜時から〜時まで",
+          "おいくつですか／何歳ですか"
+        ]
+      }
+    ]
+  },
+  {
+    "bab": 6,
+    "design": "DAHIUcchMuk",
+    "parts": [
+      {
+        "slug": "bunpou1-n5-b6",
+        "title": "Bentuk Kata Sifat い (〜い・〜くない・〜かった・〜くなかった)",
+        "slides": "2–4",
+        "patterns": [
+          "〜は[い-adj]です",
+          "〜は[い-adj]くないです",
+          "〜かったです",
+          "〜くなかったです"
+        ],
+        "task": "tugas-bunpou-bab-6-bentuk-dasar",
+        "taskTitle": "Tugas Bunpou Bab 6: Bentuk Kata Sifat い",
+        "taskPatterns": [
+          "〜は[い-adj]です",
+          "〜は[い-adj]くないです",
+          "〜かったです／〜くなかったです"
+        ]
+      },
+      {
+        "slug": "bunpou2-n5-b6",
+        "title": "Penggunaan Kata Sifat い (い＋Kata Benda・とても／あまり・どうですか)",
+        "slides": "5–7",
+        "patterns": [
+          "[い-adj]+ noun",
+          "とても",
+          "あまり〜",
+          "〜はどうですか"
+        ],
+        "task": "tugas-bunpou-bab-6-lanjutan",
+        "taskTitle": "Tugas Bunpou Bab 6: Penggunaan Kata Sifat い",
+        "taskPatterns": [
+          "[い-adj]+ 名詞",
+          "とても／あまり",
+          "〜はどうですか"
+        ]
+      }
+    ]
+  },
+  {
+    "bab": 7,
+    "design": "DAHIUTPqAoI",
+    "parts": [
+      {
+        "slug": "bunpou1-n5-b7",
+        "title": null,
+        "slides": "2–4",
+        "patterns": [
+          "〜は[Kata Sifat な]です",
+          "Kata Sifat な＋Kata Benda",
+          "〜は[Kata Sifat な]じゃありません。"
+        ],
+        "task": "tugas-bunpou-bab-7-bentuk-dasar",
+        "taskTitle": null,
+        "taskPatterns": [
+          "〜は[Kata Sifat な]です",
+          "Kata Sifat な＋Kata Benda",
+          "[な-adj]じゃありません"
+        ]
+      },
+      {
+        "slug": "bunpou2-n5-b7",
+        "title": null,
+        "slides": "5–7",
+        "patterns": [
+          "Hal +が　好き/嫌い/上手/下手",
+          "〜で〜くて",
+          "Kata Sifat な＋でした/じゃありませんでした"
+        ],
+        "task": "tugas-bunpou-bab-7-lanjutan",
+        "taskTitle": null,
+        "taskPatterns": [
+          "〜が好き／嫌い／上手／下手",
+          "〜くて／〜で",
+          "〜でした／〜じゃありませんでした"
+        ]
+      }
+    ]
+  },
+  {
+    "bab": 8,
+    "design": "DAHIUjljrYk",
+    "parts": [
+      {
+        "slug": "bunpou1-n5-b8",
+        "title": "Keberadaan & Lokasi (〜に〜が・〜は〜にあります／います)",
+        "slides": "2–3",
+        "patterns": [
+          "〜に〜があります／います",
+          "〜は〜にあります／います",
+          "ここ/そこ/あそこ",
+          "こちら/そちら/あちら",
+          "Kata Benda はTempat です"
+        ],
+        "task": "tugas-bunpou-bab-8-ada-di-mana",
+        "taskTitle": "Tugas Bunpou Bab 8: Keberadaan & Lokasi",
+        "taskPatterns": [
+          "〜に〜があります／います",
+          "〜は〜にあります／います"
+        ]
+      },
+      {
+        "slug": "bunpou2-n5-b8",
+        "title": "Tanya Lokasi & Posisi (どこ・どちら・の上／下／前／後ろ／隣)",
+        "slides": "4–5",
+        "patterns": [
+          "どこに〜がありますか",
+          "どこ/どちら",
+          "Kata benda 1( benda/orang tempat) の Kata benda 2 (posisi)"
+        ],
+        "task": "tugas-bunpou-bab-8-posisi-relatif",
+        "taskTitle": "Tugas Bunpou Bab 8: Tanya Lokasi & Posisi",
+        "taskPatterns": [
+          "どこに〜がありますか",
+          "[noun]の[position]"
+        ]
+      }
+    ]
+  },
+  {
+    "bab": 9,
+    "design": "DAHIUou3MDw",
+    "parts": [
+      {
+        "slug": "bunpou1-n5-b9",
+        "title": "Arah & Transportasi (へ行きます／来ます／帰ります・で)",
+        "slides": "2–3",
+        "patterns": [
+          "〜へ行きます／来ます／帰ります",
+          "Kendaraan で　へ行きます／来ます／帰ります",
+          "〜で行きます"
+        ],
+        "task": "tugas-bunpou-bab-9-pergi-datang-pulang",
+        "taskTitle": "Tugas Bunpou Bab 9: Arah & Transportasi",
+        "taskPatterns": [
+          "〜へ行きます／来ます／帰ります",
+          "〜で行きます"
+        ]
+      },
+      {
+        "slug": "bunpou2-n5-b9",
+        "title": "Rute & Detail Perjalanan (から〜まで・いつ／どこへ／だれと)",
+        "slides": "4–5",
+        "patterns": [
+          "〜から〜まで",
+          "いつ／どこへ／だれと"
+        ],
+        "task": "tugas-bunpou-bab-9-rencana-perjalanan",
+        "taskTitle": "Tugas Bunpou Bab 9: Rute & Detail Perjalanan",
+        "taskPatterns": [
+          "〜から〜まで",
+          "いつ／どこへ／だれと"
+        ]
+      }
+    ]
+  },
+  {
+    "bab": 10,
+    "design": "DAHIaKiXdGo",
+    "parts": [
+      {
+        "slug": "bunpou1-n5-b10",
+        "title": "Objek & Bentuk Kata Kerja Sopan (を・ます／ません／ました／ませんでした)",
+        "slides": "2–5",
+        "patterns": [
+          "〜を[verb]ます",
+          "[verb]ません",
+          "[verb]ました",
+          "[verb]ませんでした"
+        ],
+        "task": "tugas-bunpou-bab-10-bentuk-kini",
+        "taskTitle": "Tugas Bunpou Bab 10: Objek & Bentuk Kata Kerja Sopan",
+        "taskPatterns": [
+          "〜を[verb]ます",
+          "[verb]ません",
+          "[verb]ました",
+          "[verb]ませんでした"
+        ]
+      },
+      {
+        "slug": "bunpou2-n5-b10",
+        "title": "Frekuensi Kegiatan (毎日・いつも・時々・よく・ぜんぜん)",
+        "slides": "6–7",
+        "patterns": [
+          "毎日／いつも／時々",
+          "よく／ぜんぜん"
+        ],
+        "task": "tugas-bunpou-bab-10-bentuk-lampau-frekuensi",
+        "taskTitle": "Tugas Bunpou Bab 10: Frekuensi Kegiatan",
+        "taskPatterns": [
+          "毎日／いつも／時々",
+          "よく／ぜんぜん"
+        ]
+      }
+    ],
+    "add": [
+      {
+        "pattern": "よく／ぜんぜん",
+        "meaning": "よく = sering; ぜんぜん + bentuk negatif = sama sekali tidak.",
+        "notes": "よく menjelaskan seberapa sering kegiatan dilakukan. Untuk makna sama sekali tidak, pasangkan ぜんぜん dengan bentuk negatif seperti ません. Bandingkan あまり + negatif (tidak terlalu sering).",
+        "examples": [
+          [
+            "よく本を読みます。",
+            "よく",
+            "Saya sering membaca buku."
+          ],
+          [
+            "ぜんぜんテレビを見ません。",
+            "ぜんぜん",
+            "Saya sama sekali tidak menonton televisi."
+          ]
+        ],
+        "instruction": "Buat satu kalimat tentang kebiasaanmu memakai よく, atau ぜんぜん dengan bentuk negatif.",
+        "requiredCount": 1
+      }
+    ]
+  },
+  {
+    "bab": 11,
+    "design": "DAHIaI54lOw",
+    "parts": [
+      {
+        "slug": "bunpou1-n5-b11",
+        "title": "Jumlah dalam Kalimat (を＋Jumlah＋Kata Kerja・が＋Jumlah＋あります／います)",
+        "slides": "2–3",
+        "patterns": [
+          "〜を[counter]+[verb]",
+          "[counter]+ あります／います"
+        ],
+        "task": "tugas-bunpou-bab-11-counter-kudasai",
+        "taskTitle": "Tugas Bunpou Bab 11: Jumlah dalam Kalimat",
+        "taskPatterns": [
+          "〜を[counter]+[verb]",
+          "[counter]+ あります／います"
+        ]
+      },
+      {
+        "slug": "bunpou2-n5-b11",
+        "title": "Tanya Jumlah & Hitungan Umum (いくつ／何人／何枚・ひとつ〜とお)",
+        "slides": "4–5",
+        "patterns": [
+          "いくつ／何人／何枚",
+          "Native counters"
+        ],
+        "task": "tugas-bunpou-bab-11-tanya-jumlah-hitung-asli",
+        "taskTitle": "Tugas Bunpou Bab 11: Tanya Jumlah & Hitungan Umum",
+        "taskPatterns": [
+          "いくつ／何人／何枚",
+          "Native counters"
+        ]
+      }
+    ]
+  },
+  {
+    "bab": 12,
+    "design": "DAHIaNCdSZ8",
+    "parts": [
+      {
+        "slug": "tata-bahasa-bab-12-konjugasi-te-form",
+        "title": "Konjugasi Bentuk Te (Golongan 1・Golongan 2・する／来る)",
+        "slides": "2–4",
+        "patterns": [
+          "Te-form Golongan 1 (u-verbs)",
+          "Te-form Golongan 2 (ru-verbs)",
+          "Te-form Tidak Beraturan"
+        ]
+      },
+      {
+        "slug": "tata-bahasa-bab-12-menghubungkan-kalimat-te-form",
+        "title": "Menghubungkan & Mengurutkan Tindakan (〜て、〜・〜てから)",
+        "slides": "5–6",
+        "patterns": [
+          "〜て、〜",
+          "〜てから"
+        ]
+      }
+    ]
+  },
+  {
+    "bab": 13,
+    "design": "DAHIaY00L-c",
+    "parts": [
+      {
+        "slug": "tata-bahasa-bab-13-progresif-permintaan",
+        "title": "Permintaan & Tindakan atau Keadaan (てください・てくれませんか・ています)",
+        "slides": "2–4",
+        "patterns": [
+          "〜てください",
+          "〜てくれませんか",
+          "〜ています"
+        ],
+        "task": "tugas-bunpou-bab-13-progresif-permintaan",
+        "taskTitle": "Tugas Bunpou Bab 13: Permintaan & Tindakan atau Keadaan",
+        "taskPatterns": [
+          "〜てください",
+          "〜てくれませんか",
+          "〜ています"
+        ]
+      },
+      {
+        "slug": "tata-bahasa-bab-13-izin-larangan",
+        "title": "Izin & Larangan (〜てもいいですか・〜てはいけません)",
+        "slides": "5–6",
+        "patterns": [
+          "〜てもいいですか",
+          "〜てはいけません"
+        ],
+        "task": "tugas-bunpou-bab-13-izin-larangan",
+        "taskTitle": null,
+        "taskPatterns": [
+          "〜てもいいですか",
+          "〜てはいけません"
+        ]
+      }
+    ]
+  },
+  {
+    "bab": 14,
+    "design": "DAHIaraizng",
+    "parts": [
+      {
+        "slug": "tata-bahasa-bab-14-bentuk-nai-kewajiban",
+        "title": "Bentuk Biasa Kata Kerja (Kamus・ない・た・なかった)",
+        "slides": "2–5",
+        "patterns": [
+          "[V-jisho] (Bentuk Kamus)",
+          "Nai-form (konjugasi)",
+          "[V-ta] (Lampau Plain)",
+          "[V-nakatta]"
+        ],
+        "task": "tugas-bunpou-bab-14-bentuk-nai-kewajiban",
+        "taskTitle": "Tugas Bunpou Bab 14: Bentuk Biasa Kata Kerja",
+        "taskPatterns": [
+          "[V-jisho] (Bentuk Kamus)",
+          "Nai-form (konjugasi)",
+          "[V-ta] (Lampau Plain)",
+          "[V-nakatta]"
+        ]
+      },
+      {
+        "slug": "tata-bahasa-bab-14-bentuk-plain",
+        "title": "Permintaan Negatif & Kewajiban (ないでください・なければなりません・なくてもいいです)",
+        "slides": "6–8",
+        "patterns": [
+          "〜ないでください",
+          "〜なければなりません",
+          "〜なくてもいいです"
+        ],
+        "task": "tugas-bunpou-bab-14-bentuk-plain",
+        "taskTitle": "Tugas Bunpou Bab 14: Permintaan Negatif & Kewajiban",
+        "taskPatterns": [
+          "〜ないでください",
+          "〜なければなりません",
+          "〜なくてもいいです"
+        ]
+      }
+    ]
+  },
+  {
+    "bab": 15,
+    "design": "DAHIarcze4k",
+    "parts": [
+      {
+        "slug": "tata-bahasa-bab-15-bahasa-pelayanan",
+        "title": "Ungkapan Pelayanan (お願いします・いかがですか・になります・お〜ください)",
+        "slides": "2–5",
+        "patterns": [
+          "〜を[counter]お願いします",
+          "〜はいかがですか",
+          "〜になります (keigo)",
+          "お〜ください"
+        ]
+      },
+      {
+        "slug": "tata-bahasa-bab-15-memutuskan-perubahan",
+        "title": "Pilihan & Perubahan (〜にします・〜くなります／〜になります)",
+        "slides": "6–7",
+        "patterns": [
+          "〜にします",
+          "〜くなります／〜になります"
+        ]
+      }
+    ]
+  },
+  {
+    "bab": 16,
+    "design": "DAHIgQ0X55w",
+    "parts": [
+      {
+        "slug": "tata-bahasa-bab-16-partikel-waktu-tanggal",
+        "title": "Waktu & Tanggal (〜に・〜月〜日)",
+        "slides": "2–3",
+        "patterns": [
+          "〜に[verb]",
+          "〜月〜日"
+        ],
+        "task": "tugas-bunpou-bab-16-partikel-waktu-tanggal",
+        "taskTitle": null,
+        "taskPatterns": [
+          "〜に[verb]",
+          "〜月〜日"
+        ]
+      },
+      {
+        "slug": "tata-bahasa-bab-16-frekuensi-bertanya-waktu",
+        "title": "Tanya Jadwal & Kegiatan Berkala (いつ／何曜日／何月何日・毎週／毎月／毎年)",
+        "slides": "4–5",
+        "patterns": [
+          "何曜日／何月何日／いつ",
+          "毎週／毎月／毎年"
+        ],
+        "task": "tugas-bunpou-bab-16-frekuensi-bertanya-waktu",
+        "taskTitle": "Tugas Bunpou Bab 16: Tanya Jadwal & Kegiatan Berkala",
+        "taskPatterns": [
+          "何曜日／何月何日／いつ",
+          "毎週／毎月／毎年"
+        ]
+      }
+    ]
+  },
+  {
+    "bab": 17,
+    "design": "DAHIgYU9n14",
+    "parts": [
+      {
+        "slug": "tata-bahasa-bab-17-suka-mahir",
+        "title": "Kesukaan & Kemahiran (が好き／嫌い・が上手／下手)",
+        "slides": "2–3",
+        "patterns": [
+          "〜が好きです／嫌いです",
+          "〜が上手です／下手です"
+        ]
+      },
+      {
+        "slug": "tata-bahasa-bab-17-kemampuan-bertanya-jenis",
+        "title": "Kemampuan & Tanya Jenis (〜ができます・どんな〜)",
+        "slides": "4–5",
+        "patterns": [
+          "〜ができます",
+          "どんな〜"
+        ]
+      }
+    ]
+  },
+  {
+    "bab": 18,
+    "design": "DAHImOpwujY",
+    "parts": [
+      {
+        "slug": "tata-bahasa-bab-18-membandingkan-dua-hal",
+        "title": "Membandingkan Dua Hal (AはBより・AよりBのほうが)",
+        "slides": "2–3",
+        "patterns": [
+          "AはBより〜です",
+          "AよりBのほうが〜"
+        ]
+      },
+      {
+        "slug": "tata-bahasa-bab-18-superlatif",
+        "title": "Tanya Perbandingan & Paling (どちらが・〜の中で〜が一番)",
+        "slides": "4–5",
+        "patterns": [
+          "AとBとどちらが〜",
+          "〜の中で〜が一番〜"
+        ]
+      }
+    ]
+  },
+  {
+    "bab": 19,
+    "design": "DAHImAhiKkU",
+    "parts": [
+      {
+        "slug": "tata-bahasa-bab-19-keinginan",
+        "title": "Menyatakan Keinginan (〜たい・〜たくない・〜が欲しい)",
+        "slides": "2–4",
+        "patterns": [
+          "〜たいです",
+          "〜たくないです",
+          "[noun]が欲しいです"
+        ]
+      },
+      {
+        "slug": "tata-bahasa-bab-19-rencana-ajakan",
+        "title": "Niat, Rencana & Ajakan (つもり・予定・ましょう／ませんか)",
+        "slides": "5–7",
+        "patterns": [
+          "〜つもりです",
+          "〜予定です",
+          "〜ましょう／ませんか"
+        ]
+      }
+    ]
+  },
+  {
+    "bab": 20,
+    "design": "DAHImSg0qdQ",
+    "parts": [
+      {
+        "slug": "tata-bahasa-bab-20-pengalaman",
+        "title": "Pengalaman (〜たことがあります／ありません)",
+        "slides": "2–3",
+        "patterns": [
+          "〜たことがあります",
+          "〜たことがありません"
+        ]
+      },
+      {
+        "slug": "tata-bahasa-bab-20-penghubung-kalimat",
+        "title": "Alasan & Penghubung Kalimat (から・が・そして／それから／でも)",
+        "slides": "4–6",
+        "patterns": [
+          "〜から (sebab)",
+          "〜が、〜",
+          "そして／それから／でも"
+        ]
+      }
+    ]
+  }
+]
