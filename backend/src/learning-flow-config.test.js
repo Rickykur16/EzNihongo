@@ -156,7 +156,7 @@ test('readiness rejects stale companion and missing normalized questions for a m
     }
     if (sql.includes('SELECT id FROM module_grammar WHERE lesson_id=')) return { rows: [{ id: grammarId }] };
     if (sql.includes('FROM module_grammar WHERE id=ANY')) return { rows: [{ id: grammarId,
-      module_id: scope.moduleId, lesson_id: scope.lessonId,
+      module_id: scope.moduleId, lesson_id: scope.lessonId, pattern: '〜です',
       example_dialog: 'A: ねこです。', example_dialog_id: 'A: Kucing.',
       communication_goal: 'Nama hewan', dialog_scene: null }] };
     if (sql.includes('FROM grammar_dialog_questions')) return { rows: [] };
@@ -173,6 +173,13 @@ test('readiness rejects stale companion and missing normalized questions for a m
   assert.equal(result.ready, false);
   assert.deepEqual(result.lessons[0].issues.map(item => item.code).sort(),
     ['flow_companion_not_current', 'flow_question_count_invalid']);
+  const stale = result.lessons[0].issues.find(item => item.code === 'flow_companion_not_current');
+  assert.equal(stale.publishedFingerprint, 'sha256:old');
+  assert.match(stale.currentFingerprint, /^[0-9a-f]{64}$/u);
+  const count = result.lessons[0].issues.find(item => item.code === 'flow_question_count_invalid');
+  assert.deepEqual({ pattern: count.pattern, comprehensionCount: count.comprehensionCount,
+    transferCount: count.transferCount },
+  { pattern: '〜です', comprehensionCount: 0, transferCount: 0 });
 });
 
 test('readiness pins every visible dialogue question to current source, review, and boundary', async () => {
