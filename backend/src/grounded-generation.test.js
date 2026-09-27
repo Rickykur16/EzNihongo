@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateGroundedContent, groundedCandidateFields } from './grounded-generation.js';
+import { generateGroundedContent, groundedCandidateFields,
+  groundedGenerationEvent } from './grounded-generation.js';
 
 const empty = () => ({ vocabulary: [], grammar: [], kanji: [] });
 function boundary(fingerprint = 'sha256:one') {
@@ -15,6 +16,62 @@ function boundary(fingerprint = 'sha256:one') {
     ] }, auxiliaryPolicy: { terms: [] }, integrityIssues: [] };
 }
 const valid = () => ({ japanese: 'こんにちは。' });
+
+test('terminal generation telemetry has only bounded labels, counts, and duration', async () => {
+  const events = [];
+  const secret = 'private-learner-prompt@example.invalid';
+  let calls = 0;
+  const result = await generateGroundedContent({ scope: { lessonId: secret },
+    contentType: 'vocabulary_example', resolveBoundary: async () => boundary(),
+    provider: async () => ++calls === 1 ? '{' : valid(),
+    onTerminal: event => events.push(event) });
+  assert.equal(result.status, 'ready');
+  assert.equal(events.length, 1);
+  assert.deepEqual({ ...events[0], durationMs: 0 }, {
+    event: 'grounded_generation', schemaVersion: 1,
+    contentType: 'vocabulary_example', operation: 'generate', mode: 'enforce',
+    outcome: 'ready', providerCallCount: 2, attemptCount: 2,
+    retried: true, sourceStale: false, durationMs: 0 });
+  assert.ok(events[0].durationMs >= 0 && events[0].durationMs <= 300000);
+  assert.doesNotMatch(JSON.stringify(events), /private-learner|こんにちは|fingerprint|prompt|lessonId/i);
+  assert.deepEqual(groundedGenerationEvent({ contentType: secret, mode: secret,
+    result: { status: secret, attempts: Array(99) }, providerCallCount: 99,
+    durationMs: Infinity }), { event: 'grounded_generation', schemaVersion: 1,
+    contentType: 'unknown', operation: 'generate', mode: 'unknown',
+    outcome: 'unavailable', providerCallCount: 3, attemptCount: 3,
+    retried: true, sourceStale: false, durationMs: 0 });
+});
+
+test('source-stale, boundary-stale, unavailable, and logger failures are terminal and response-safe', async () => {
+  const events = [];
+  let reads = 0;
+  const changedSource = await generateGroundedContent({ scope: {},
+    contentType: 'vocabulary_example', resolveBoundary: async () => boundary(),
+    loadSource: async () => ++reads === 1 ? { turns: [{ text: 'ねこ' }] }
+      : { turns: [{ text: 'いぬ' }] },
+    provider: async () => valid(), onTerminal: event => events.push(event) });
+  assert.equal(changedSource.status, 'stale');
+  assert.equal(events[0].sourceStale, true);
+  assert.equal(events[0].providerCallCount, 1);
+  let boundaryReads = 0;
+  const changedBoundary = await generateGroundedContent({ scope: {},
+    contentType: 'vocabulary_example',
+    resolveBoundary: async () => boundary(++boundaryReads === 1 ? 'sha256:one' : 'sha256:two'),
+    provider: async () => valid(), onTerminal: event => events.push(event) });
+  assert.equal(changedBoundary.status, 'stale');
+  assert.equal(events[1].sourceStale, false);
+  const unavailable = await generateGroundedContent({ scope: {},
+    contentType: 'vocabulary_example', resolveBoundary: async () => { throw Error('secret'); },
+    provider: async () => valid(), onTerminal: event => events.push(event) });
+  assert.equal(unavailable.status, 'unavailable');
+  assert.equal(events[2].mode, 'unknown');
+  assert.equal(events[2].providerCallCount, 0);
+  const ready = await generateGroundedContent({ scope: {},
+    contentType: 'vocabulary_example', resolveBoundary: async () => boundary(),
+    provider: async () => valid(), onTerminal: () => { throw Error('logger down'); } });
+  assert.equal(ready.status, 'ready');
+  assert.deepEqual(ready.candidate, valid());
+});
 
 test('malformed then future output receives bounded feedback and returns a review-only candidate', async () => {
   const calls = [];
@@ -46,6 +103,26 @@ test('three invalid model outputs stop at two repairs and remain rejected', asyn
   assert.equal(future.status, 'rejected');
   assert.equal(future.attempts.length, 3);
   assert.ok(future.report.violations.some(item => item.code === 'future_kanji'));
+});
+
+test('example batches validate every item and expose canonical indexed fields', async () => {
+  const candidate = { examples: [{ japanese: 'こんにちは。', indonesian: 'Halo.' },
+    { japanese: 'こんばんは。', indonesian: 'Selamat malam.' }] };
+  assert.deepEqual(groundedCandidateFields(candidate, 'grammar_example').map(field => field.path),
+    ['examples[0].japanese', 'examples[0].indonesian',
+      'examples[1].japanese', 'examples[1].indonesian']);
+  const ready = await generateGroundedContent({ scope: {}, contentType: 'grammar_example',
+    resolveBoundary: async () => boundary(), provider: async () => candidate });
+  assert.equal(ready.status, 'ready');
+  const malformed = await generateGroundedContent({ scope: {}, contentType: 'grammar_example',
+    resolveBoundary: async () => boundary(), provider: async () => ({ examples: [candidate.examples[0], null] }) });
+  assert.equal(malformed.status, 'rejected');
+  assert.equal(malformed.report.status, 'schema_invalid');
+  const extra = await generateGroundedContent({ scope: {}, contentType: 'grammar_example',
+    resolveBoundary: async () => boundary(), provider: async () =>
+      ({ examples: [{ japanese: 'こんにちは。', invented: '学校' }] }) });
+  assert.equal(extra.status, 'rejected');
+  assert.ok(extra.report.violations.some(item => item.code === 'invalid_example_schema'));
 });
 
 test('stale preview and changed boundary after model call never return ready', async () => {
@@ -171,4 +248,10 @@ test('grammar generation requires observed server-owned target, not a linked or 
     provider: async () => ({ japanese: 'せんせいです。' }) });
   assert.equal(observed.status, 'ready');
   assert.ok(observed.report.usage.targetGrammar.some(item => item.key === 'g1' && item.field));
+  const highlightOnly = await generateGroundedContent({ scope: {}, contentType: 'grammar_example',
+    resolveBoundary: async () => targetBoundary,
+    trustedValidation: { grammarSignatures: [{ grammarId: 'g1', version: 'v1', regex: /です/u }] },
+    provider: async () => ({ japanese: 'こんにちは。', highlight: 'です' }) });
+  assert.equal(highlightOnly.status, 'rejected');
+  assert.ok(highlightOnly.report.violations.some(item => item.code === 'target_grammar_not_demonstrated'));
 });
