@@ -169,6 +169,16 @@ tetap memblokir preparation, backfill, dan aktivasi. Karena itu peringatan
 legacy vocabulary tetap terlihat dalam audit tanpa menyamarkannya sebagai
 kerusakan ownership graph.
 
+Enam grammar legacy Bab 3 yang dipin oleh `preparationReview` migration 174
+mempertahankan pelanggaran boundary sumber lama sebagai `diagnostics` dengan
+disposition `reviewed_legacy_source`. Pengecualian ini hanya berlaku bila
+marker migration tepat, companion masih current terhadap source fingerprint,
+serta snapshot sumber dan digest payload draft/published sama persis dengan
+nilai yang ditinjau migration. Perubahan source sekecil apa pun membatalkan
+pengecualian ini. Companion yang ditampilkan flow baru serta seluruh normalized
+question tetap harus valid; marker ini bukan pengecualian umum untuk course,
+module, atau konten baru.
+
 ## Manifest readiness yang gagal tertutup
 
 Migration 166 menyediakan registry **pasif** untuk mencatat klaim review:
