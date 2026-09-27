@@ -128,13 +128,15 @@ export async function buildReviewCandidates(user) {
     // Pemeriksaan per Tugas Bunpou (lesson_id di `links`), diambil dari
     // pendamping pelajaran sumbernya yang SEDANG AKTIF saja — aturan yang sama
     // dengan yang dipakai payload pelajaran siswa (bunpou-companion-status.js).
+    // Soalnya dari set pertanyaan 🎭 Dialog, atau soal lama untuk pola yang
+    // belum dipindah (bunpou-dialog-checks.js).
     const checksByTask = new Map();
     const taskIds = [...new Set(links.rows.map((row) => row.lesson_id))];
     if (taskIds.length) {
       const sources = await query(`SELECT DISTINCT popup_after_lesson_id AS id FROM lessons
         WHERE id = ANY($1::uuid[]) AND type = 'grammar_task' AND popup_after_lesson_id IS NOT NULL`, [taskIds]);
       for (const context of (await liveCompanionContexts(sources.rows.map((row) => row.id))).values()) {
-        if (context.published.dialogChecks) checksByTask.set(context.taskLessonId, context.published.dialogChecks);
+        if (Object.keys(context.dialogChecks || {}).length) checksByTask.set(context.taskLessonId, context.dialogChecks);
       }
     }
     // Keluarga soal yang sudah benar-benar dikerjakan siswa ini belakangan —

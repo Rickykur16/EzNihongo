@@ -198,11 +198,11 @@ router.post('/grammar-task/sessions', requireAuth, sessionLimiter, asyncHandler(
     const context = await loadCompanionContext(sourceLessonId, dbQuery);
     if (!context) return { denied: { status: 404, error: 'no_task_for_lesson' } };
     if (!context.current) return { denied: { status: 409, error: 'companion_needs_review' } };
-    const { taskLessonId, items, pool, published, fingerprint } = context;
+    const { taskLessonId, items, pool, published, v1Published, fingerprint } = context;
     const scopeError = await taskScopeError(client, sourceLessonId, taskLessonId,
       items.map(item => item.id));
     if (scopeError) return { denied: scopeError };
-    const oldRevision = sessionRevisionId(fingerprint, published);
+    const oldRevision = sessionRevisionId(fingerprint, v1Published);
     if (existing?.task_lesson_id === taskLessonId &&
         existing.content_revision_id === oldRevision) {
       return { ...existing, contentChanged: false, taskLessonId };
@@ -217,11 +217,11 @@ router.post('/grammar-task/sessions', requireAuth, sessionLimiter, asyncHandler(
       sourceLessonId, items.map(item => item.id)) : [];
     const revisionId = flowVersion === 2
       ? versionedSessionRevision(fingerprint, published, 2, transfers)
-      : sessionRevisionId(fingerprint, published);
+      : sessionRevisionId(fingerprint, v1Published);
     const drillsByGrammar = deriveDrills(items, pool);
     const planned = flowVersion === 2
       ? planV2SessionItems(items, drillsByGrammar, transfers)
-      : plannedItems(items, drillsByGrammar, published);
+      : plannedItems(items, drillsByGrammar, v1Published);
     const productionSnapshot = items.map(item => ({
       grammarId: item.id, pattern: item.pattern, meaning: item.meaning,
       example: item.example, instruction: item.instruction || '',

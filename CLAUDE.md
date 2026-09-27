@@ -580,6 +580,65 @@
       data produksi Bab 3 (apakah video sudah terhubung — kalau belum, kartu
       admin akan menyebut "Video belum terhubung").
 
+      **Soal pemeriksaan dialog pindah ke editor 🎭 Dialog** (2026-09-27) —
+      user: "bagian pendamping bunpou ada yg tidak bisa di edit dari admin, yg
+      soal2 itu. Dan cara membuat dialognya masih cara lama, gk kyk yg terbaru
+      yg bisa milih profile", memilih opsi "Satukan di 🎭 Dialog". Dua sistem
+      soal hidup berdampingan: `dialogChecks` di envelope pendamping (v1, diisi
+      migrasi 151/174, diedit lewat textarea mentah di 🧭) dan
+      `grammar_dialog_questions` (migrasi 165, editor 🎭 berprofil + generate AI +
+      bukti kutipan, dipakai flow v2 yang belum aktif). Sekarang SATU tempat:
+      Tugas Bunpou langkah 4/5 + Smart Review membaca set 🎭 (comprehension
+      pertama → pemahaman, transfer → pembanding) lewat
+      `backend/src/bunpou-dialog-checks.js`, dipanggil dari
+      `loadCompanionContext` (`dialogChecks`, `checkSources`, `v1Published`).
+      **Aturan per pola, satu arah**: set lengkap & cocok dialog sekarang →
+      dipakai; ADA baris aktif tapi belum lengkap/basi → TIDAK ada soal (sengaja
+      tidak jatuh balik ke soal lama — bisa tidak cocok lagi dengan dialog yang
+      sudah diedit); belum ada set sama sekali → soal lama tetap dipakai supaya
+      Bab 3 tidak kehilangan soal selama dipindah (migrasi 165 cuma membuat
+      tabelnya, tidak ada migrasi yang mengisinya). **Stabilitas revisi**:
+      `v1Published` IDENTIK byte-per-byte dengan `published` selama belum ada
+      pola yang dipindah, jadi deploy ini tidak memulai ulang sesi v1 yang
+      berjalan; v2 tetap membaca `published` apa adanya. Menyimpan set di 🎭
+      langsung mengganti soal siswa (sesi baru, `contentChanged`) tanpa publish
+      ulang pendamping. **Admin**: kolom soal di 🧭 dihapus, diganti ringkasan soal
+      yang BENAR-BENAR dipakai + sumbernya (dihitung server, `checkSources`), tombol
+      "🎭 Edit dialog & soal" dan "✏️ Ubah arti, contoh, pengecoh"
+      (`bfOpenInGrammarTable` membuka tabel grammar pelajaran sumber, menyorot
+      barisnya, opsional langsung membuka 🎭). Di 🎭: peringatan kuning + tombol
+      "↺ Salin dari soal lama" (`GET /admin/grammar/:id/dialogue-questions` kini
+      ikut mengirim `legacyCheck`) — cuma mengisi form, TIDAK menyimpan; admin
+      melengkapi penjelasan + bukti lalu "Simpan set pertanyaan" (validator
+      set yang sudah ada tetap berlaku penuh). Soal lama tetap dibawa apa adanya
+      saat pendamping disimpan (arsip, tidak dihapus). **Bug nyata ikut
+      ditemukan**: `sanitizeCompanionEnvelope` membuang field `evidence` soal
+      lama (ditulis migrasi 174), jadi SETIAP simpan/publish lewat editor
+      diam-diam menghapus bukti kutipannya — termasuk publish Bab 3 oleh user
+      hari ini. Diperbaiki (evidence sah dipertahankan), tapi yang sudah
+      terbuang tidak bisa dipulihkan dari kode: isi ulang saat menyalin.
+      **Syarat struktural**: `sourceLessonFor()` (dialogue-question-service.js)
+      mengikat set ke `module_grammar.lesson_id` pola itu; kalau pola tugas
+      dimiliki pelajaran LAIN, set-nya tidak terbaca pendamping ini dan tombol
+      🎭 memberi tahu "Pola ini tidak ada di tabel grammar pelajaran ini". Untuk
+      Bab 3 aman — migrasi 174 memaksa semua pola tugas milik pelajaran
+      sumbernya. **Divalidasi**: 5 tes unit baru + tes integrasi sesi (set
+      menggantikan soal lama per pola) + tes admin (sumber & legacyCheck) + 4 tes
+      vm-slice admin.html; empat mutasi (fallback saat belum lengkap, abaikan
+      set, buang soal lama saat simpan, sanitizer buang evidence) masing-masing
+      DIBUKTIKAN menggagalkan tes. E2E server asli 17/17 (soal lama dipakai →
+      pindah pola 1 lewat validator asli → pola 1 dari set, pola 2 tetap lama →
+      sesi baru dinilai kunci baru → resume stabil → edit dialog → pola 1 tanpa
+      soal, bukan soal lama → Smart Review jalan). Chromium asli: 🧭 tanpa
+      textarea soal, sumber per pola benar, tombol 🎭 membuka editor pola yang
+      tepat, salin mengisi prompt/opsi/kunci + bukti kosong tanpa request
+      tulis, 390px tanpa scroll horizontal. `npm test` 865 tes, 864 hijau,
+      1 skip lama. **Jebakan tes**: urutan kunci JSONB tidak dijamin sama
+      dengan objek yang dikirim — bandingkan per field, bukan string JSON;
+      fixture SQL dengan `'\n'` literal (bukan `E'\n'`) membuat dialog satu
+      giliran. **Belum diverifikasi**: tampilan siswa langkah 4/5 di browser
+      (payload lewat HTTP saja).
+
       **Pendamping Bunpou Bab 3 DIISI (migrasi 149) — arahan ditulis untuk
       DIALOGNYA, bukan untuk nama polanya** — user: "Sekarang isikan
       pendamping bunpou agar sesuai dengan konteks dialog". Isi companion

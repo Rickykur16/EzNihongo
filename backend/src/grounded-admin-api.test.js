@@ -69,6 +69,9 @@ const fakeQuery = async (sql, params = []) => {
     return { rows: [{ ...deckExample }] };
   }
   if (sql.includes('FROM app_settings')) return { rows: [] };
+  // The dialogue-question editor also reads the source lesson's old companion
+  // questions for "Salin dari soal lama"; this fixture has none.
+  if (sql.includes('SELECT bunpou_flow_published, bunpou_flow_draft FROM lessons')) return { rows: [{}] };
   if (sql.includes('FROM grammar_examples')) return { rows: grammarExamples.map(row => ({ ...row })) };
   if (sql.includes('SELECT g.example, g.example_dialog, g.module_id')) return { rows: [] };
   if (sql.includes('FROM module_grammar') && sql.includes('pattern IS NOT NULL')) return { rows: [grammar] };
@@ -240,6 +243,7 @@ test('dialogue question admin GET/PUT expose revision and reject stale set atomi
   assert.deepEqual(listed.body.questions, []);
   assert.equal(listed.body.dialogueFingerprint, dialogueFingerprint(grammar));
   assert.equal(listed.body.questionsRevision, questionsRevision([]));
+  assert.equal(listed.body.legacyCheck, null);
   let response = await dialogueRequest(route, 'PUT', { sourceLessonId: lessonId,
     expectedDialogueFingerprint: listed.body.dialogueFingerprint,
     expectedQuestionsRevision: 'sha256:stale', questions: [] });

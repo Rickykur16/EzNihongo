@@ -105,8 +105,19 @@ const schema = `
   CREATE TABLE module_grammar (
     id UUID PRIMARY KEY, module_id UUID NOT NULL REFERENCES modules(id),
     lesson_id UUID REFERENCES lessons(id), pattern TEXT, meaning TEXT, example TEXT,
-    example_dialog TEXT, example_dialog_id TEXT, recognition_distractors TEXT,
-    controlled_distractors TEXT, sort_order INT DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW()
+    example_dialog TEXT, example_dialog_id TEXT, communication_goal TEXT, dialog_scene JSONB,
+    recognition_distractors TEXT, controlled_distractors TEXT, sort_order INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  );
+  -- Mirror of migration 165's grammar_dialog_questions (columns read by
+  -- bunpou-dialog-checks.js): the 🎭 Dialog question set is the source of
+  -- the dialog checks served by v1 sessions and Smart Review.
+  CREATE TABLE grammar_dialog_questions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), grammar_id UUID NOT NULL REFERENCES module_grammar(id),
+    source_lesson_id UUID NOT NULL REFERENCES lessons(id), kind TEXT NOT NULL CHECK (kind IN ('comprehension','transfer')),
+    prompt TEXT NOT NULL, options JSONB NOT NULL, correct_index INT NOT NULL, explanation TEXT NOT NULL,
+    evidence JSONB, sort_order INT NOT NULL DEFAULT 0, question_fingerprint TEXT NOT NULL,
+    dialogue_fingerprint TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'active'
   );
   CREATE TABLE grammar_examples (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), grammar_id UUID NOT NULL REFERENCES module_grammar(id),
@@ -571,6 +582,44 @@ test('Bunpou session API with real PostgreSQL SQL', { timeout: 90_000, concurren
     assert.equal(both.get(secondSource).taskLessonId, secondTask);
     const options = await loadCompanionLessonOptions();
     assert.deepEqual(options.map(row => [row.title, row.live]).sort(), [['Second lesson', true], ['Synthetic lesson', true]]);
+  });
+
+  await t.test('the 🎭 Dialog question set replaces the old companion questions, one pattern at a time', async () => {
+    const { dialogueFingerprint, questionFingerprint } = await import('./dialogue-question-service.js');
+    const grammar = (await query('SELECT * FROM module_grammar WHERE id = $1', [fixture.grammarId])).rows[0];
+    const insert = question => query(`INSERT INTO grammar_dialog_questions
+        (grammar_id, source_lesson_id, kind, prompt, options, correct_index, explanation, evidence,
+         sort_order, question_fingerprint, dialogue_fingerprint)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,$10)`, [fixture.grammarId, fixture.sourceId, question.kind,
+      question.prompt, JSON.stringify(question.options), question.correctIndex, question.explanation,
+      question.evidence ? JSON.stringify(question.evidence) : null, questionFingerprint(question),
+      dialogueFingerprint(grammar)]);
+    const checkPrompts = session => session.items.filter(item => item.step >= 4)
+      .map(item => [item.grammarId, item.step, item.prompt]);
+    // Before anything is moved, the old companion questions are served.
+    assert.deepEqual(checkPrompts(await create()), [
+      [fixture.grammarId, 4, 'Siapa pelajar?'], [fixture.grammarId, 5, 'Siapa guru?']]);
+    await query('DELETE FROM grammar_task_sessions');
+    // Half-moved: the old questions must not reappear next to a new set.
+    await insert({ kind: 'comprehension', prompt: 'Apa yang dikatakan penutur kedua?',
+      options: ['Memperkenalkan diri', 'Menolak ajakan', 'Menanyakan jalan'], correctIndex: 0,
+      explanation: 'Penutur kedua menyebut identitasnya.', evidence: [{ turnIndex: 1, quote: sentence }] });
+    assert.deepEqual(checkPrompts(await create()), []);
+    await insert({ kind: 'transfer', prompt: 'Pilih kalimat yang memakai pola yang sama.',
+      options: ['\u79c1\u306f\u533b\u8005\u3067\u3059\u3002', '\u533b\u8005\u3067\u3057\u305f\u3002', '\u533b\u8005\u306e\u672c\u3002'],
+      correctIndex: 0, explanation: 'Pola A は B です.' });
+    const session = await create();
+    assert.equal(session.contentChanged, true, 'a changed question set starts a fresh session');
+    assert.deepEqual(checkPrompts(session), [
+      [fixture.grammarId, 4, 'Apa yang dikatakan penutur kedua?'],
+      [fixture.grammarId, 5, 'Pilih kalimat yang memakai pola yang sama.']]);
+    const stored = (await query('SELECT content_revision_id FROM grammar_task_sessions WHERE id = $1', [session.sessionId])).rows[0];
+    assert.notEqual(stored.content_revision_id, sessionRevisionId(fingerprint, published));
+    assert.equal((await create()).sessionId, session.sessionId, 'an unchanged set resumes the same session');
+    const item = session.items.find(row => row.step === 4);
+    assertKeyHidden(item);
+    const answered = await answer(session, item, 0, randomUUID());
+    assert.equal(answered.passed, true, 'graded against the question set answer key');
   });
 
   await t.test('a published companion that stops being live falls back to legacy drills for new sessions', async () => {

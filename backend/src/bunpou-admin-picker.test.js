@@ -10,7 +10,7 @@ function slice(start, end) {
   return html.slice(from, to);
 }
 const source = slice('async function renderAiSettings()', 'window.coachPromptResetDefault');
-const companionSource = slice('function bfCheckBlock(', '// Soal Step 1 =');
+const companionSource = slice('const BF_CHECK_SOURCE_TEXT', '// Soal Step 1 =');
 const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 })[char]);
@@ -47,7 +47,12 @@ function setup() {
   const state = { data: fixture(), calls: [], notices: [], edits: [], closed: 0, confirms: [], confirmAnswer: true,
     detail: { currentFingerprint: 'source-at-preview', draftRevision: 'older-saved-draft', grammarIds: [], patterns: {} } };
   const ctx = vm.createContext({
-    document: { getElementById: id => nodes[id] || null, querySelector: () => pane },
+    document: { getElementById: id => nodes[id] || null, querySelector: () => pane,
+      querySelectorAll: () => state.rows || [] },
+    _modalDirty: false,
+    manageGrammar: async (...args) => { (state.grammarCalls ||= []).push(args); },
+    grmrManageDialog: async button => { (state.dialogCalls ||= []).push(button); },
+    admRenderDialogModal: () => { state.rendered = (state.rendered || 0) + 1; },
     escapeHtml,
     api: async (path, options) => {
       state.calls.push({ path, options });
@@ -443,4 +448,109 @@ test('shadow separates eligible independent production passes from all productio
   delete state.shadow.samples[0].totalProductionPasses;
   await ctx.msShadowRun();
   assert.doesNotMatch(nodes['ms-shadow-out'].innerHTML, /total produksi lulus/);
+});
+
+const gid = '44444444-4444-4444-8444-444444444444';
+function companionDetail(overrides = {}) {
+  return { currentFingerprint: 'fp', draftRevision: 'rev', moduleId: 'module-1', lessonTitle: 'Tata Bahasa 1',
+    grammarIds: [gid], patterns: { [gid]: '〜は〜です' },
+    reviewItems: [{ ...reviewItem(), grammarId: gid, dialog: 'A: はじめまして。\nB: ハディです。\nN: おわり',
+      dialogScene: { participants: [{ speaker: 'A', displayName: 'Anna' }, { speaker: 'B', displayName: 'Yamaguchi' }] } }],
+    published: { dialogChecks: { [gid]: { comprehension: { prompt: 'Lama?', options: ['a', 'b', 'c'], correctIndex: 1,
+      evidence: [{ turnIndex: 1, quote: 'ハディです' }] } } } },
+    checkSources: { [gid]: 'legacy' },
+    checks: { [gid]: { comprehension: { prompt: 'Lama?', options: ['a', 'b', 'c'], correctIndex: 1 } } },
+    checkAvailability: { [gid]: { available: false, reason: 'pembanding_tidak_sah' } },
+    ...overrides };
+}
+
+test('companion editor no longer edits dialogue questions; it shows what students get and where to edit', async () => {
+  const { ctx, state } = setup();
+  vm.runInContext(companionSource, ctx);
+  state.detail = companionDetail();
+  await ctx.manageBunpouFlow(liveId, 'Tata Bahasa 1');
+  assert.doesNotMatch(state.modal, /bf-cmp|Opsi — satu per baris|Nomor baris jawaban/);
+  assert.match(state.modal, /Masih memakai soal lama/);
+  assert.match(state.modal, /Lama\?[\s\S]*b <strong>\(benar\)<\/strong>/);
+  assert.match(state.modal, new RegExp(`bfOpenInGrammarTable\\('${gid}', true\\)">🎭 Edit dialog &amp; soal`));
+  assert.match(state.modal, new RegExp(`bfOpenInGrammarTable\\('${gid}', false\\)">✏️ Ubah arti, contoh, pengecoh`));
+  assert.match(state.modal, /dibuat otomatis dari <strong>Arti<\/strong>/);
+  assert.match(state.modal, /Anna: はじめまして。\nYamaguchi: ハディです。\nNarator: おわり/, 'dialogue preview uses profile names');
+  for (const [source, text] of [['dialog', /Dari set pertanyaan 🎭 Dialog/], ['dialog_incomplete', /belum lengkap/], ['none', /Belum ada soal/]]) {
+    state.detail = companionDetail({ checkSources: { [gid]: source } });
+    await ctx.manageBunpouFlow(liveId, 'Tata Bahasa 1');
+    assert.match(state.modal, text);
+  }
+});
+
+test('saving the companion keeps the old questions (with evidence) exactly as they were', async () => {
+  const { ctx, nodes, state } = setup();
+  vm.runInContext(companionSource, ctx);
+  state.detail = companionDetail();
+  await ctx.manageBunpouFlow(liveId, 'Tata Bahasa 1');
+  nodes['bf-objective'].value = 'Tujuan';
+  const envelope = ctx.bfCollectEnvelope();
+  assert.deepEqual(envelope.dialogChecks, state.detail.published.dialogChecks);
+  await ctx.bfSaveDraft();
+  assert.deepEqual(JSON.parse(writes(state)[0].options.body).dialogChecks, state.detail.published.dialogChecks);
+  state.detail = companionDetail({ published: null });
+  await ctx.manageBunpouFlow(liveId, 'Tata Bahasa 1');
+  assert.equal(ctx.bfCollectEnvelope().dialogChecks, undefined);
+});
+
+test('editor shortcuts open the lesson grammar table on that pattern and its 🎭 Dialog editor', async () => {
+  const { ctx, state } = setup();
+  vm.runInContext(companionSource, ctx);
+  state.detail = companionDetail();
+  await ctx.manageBunpouFlow(liveId, 'Tata Bahasa 1');
+  const button = { tag: 'dialog-button' };
+  const row = { dataset: { id: gid }, style: {}, querySelector: selector => (/grmrManageDialog/.test(selector) ? button : null) };
+  state.rows = [{ dataset: { id: 'other' }, style: {} }, row];
+  await ctx.bfOpenInGrammarTable(gid, true);
+  assert.deepEqual(state.grammarCalls, [[liveId, 'Tata Bahasa 1', 'module-1']]);
+  assert.deepEqual(state.dialogCalls, [button]);
+  assert.match(row.style.outline, /solid/);
+  await ctx.bfOpenInGrammarTable(gid, false);
+  assert.equal(state.dialogCalls.length, 1, 'the arti/contoh/pengecoh shortcut only opens the table');
+  ctx._modalDirty = true;
+  state.confirmAnswer = false;
+  await ctx.bfOpenInGrammarTable(gid, true);
+  assert.equal(state.grammarCalls.length, 2, 'unsaved companion edits are not discarded without confirmation');
+  assert.match(state.confirms.at(-1), /belum disimpan/);
+  ctx._modalDirty = false;
+  state.rows = [];
+  await ctx.bfOpenInGrammarTable(gid, true);
+  assert.match(state.notices.at(-1).message, /tidak ada di tabel grammar/);
+});
+
+test('the 🎭 Dialog question editor can copy the old companion questions as a reviewable draft', () => {
+  const { ctx, state } = setup();
+  vm.runInContext(companionSource, ctx);
+  ctx.admSerializeDialogPair = () => ({ jp: 'A: x', id: 'A: y' });
+  ctx.window.__dialogQuestionState = { grammarId: gid, sourceLessonId: liveId, questions: [], dialogueFingerprint: 'fp',
+    questionsRevision: 'r', savedDialogueSnapshot: JSON.stringify({ jp: 'A: x', id: 'A: y', participants: [] }), sourcePersisted: true,
+    legacyCheck: {
+      comprehension: { prompt: 'Siapa?', options: ['a', 'b', 'c'], correctIndex: 2, explanation: 'Karena.',
+        evidence: [{ turnIndex: 1, quote: 'ハディです' }] },
+      comparison: { prompt: 'Pilih', options: ['x', 'y', 'z', 'w'], correctIndex: 3 },
+    } };
+  assert.match(ctx.admDialogQuestionSetHtml(), /↺ Salin dari soal lama/);
+  assert.match(ctx.admDialogQuestionSetHtml(), /soal lama tidak dipakai lagi/);
+  ctx.admDialogQuestionCopyLegacy();
+  const [comprehension, transfer] = ctx.window.__dialogQuestionState.questions;
+  assert.deepEqual(JSON.parse(JSON.stringify(comprehension)), { kind: 'comprehension', prompt: 'Siapa?', options: ['a', 'b', 'c'],
+    correctIndex: 2, explanation: 'Karena.', evidence: [{ turnIndex: 1, quote: 'ハディです' }], sortOrder: 0 });
+  assert.deepEqual(JSON.parse(JSON.stringify(transfer)), { kind: 'transfer', prompt: 'Pilih', options: ['x', 'y', 'z', 'w'],
+    correctIndex: 3, explanation: '', evidence: [], sortOrder: 0 });
+  assert.match(state.notices.at(-1).message, /Lengkapi penjelasan/);
+  assert.equal(writes(state).length, 0, 'copying never saves by itself');
+  assert.doesNotMatch(ctx.admDialogQuestionSetHtml(), /Salin dari soal lama/, 'nothing left to copy');
+  ctx.admDialogQuestionCopyLegacy();
+  assert.equal(ctx.window.__dialogQuestionState.questions.length, 2, 'copying twice does not duplicate');
+  ctx.window.__dialogQuestionState = { questions: [], legacyCheck: { comprehension: { prompt: 'Tanpa bukti', options: ['a'], correctIndex: 5 } } };
+  ctx.admDialogQuestionCopyLegacy();
+  const copied = ctx.window.__dialogQuestionState.questions[0];
+  assert.deepEqual(JSON.parse(JSON.stringify(copied.options)), ['a', '', '']);
+  assert.equal(copied.correctIndex, 0);
+  assert.deepEqual(JSON.parse(JSON.stringify(copied.evidence)), [{ turnIndex: 0, quote: '' }]);
 });

@@ -69,8 +69,12 @@ test('independent Bunpou backend safety review', { timeout: 90_000 }, async t =>
       video_url text DEFAULT 'video', video_source_id uuid, updated_at timestamptz DEFAULT NOW());
     CREATE TABLE module_grammar(id uuid PRIMARY KEY, module_id uuid REFERENCES modules(id), lesson_id uuid REFERENCES lessons(id),
       pattern text, meaning text, example text, notes text, example_dialog text, example_dialog_id text,
-      communication_goal text,
+      communication_goal text, dialog_scene jsonb,
       recognition_distractors text, controlled_distractors text, sort_order int DEFAULT 0, created_at timestamptz DEFAULT NOW());
+    CREATE TABLE grammar_dialog_questions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), grammar_id uuid REFERENCES module_grammar(id),
+      source_lesson_id uuid REFERENCES lessons(id), kind text, prompt text, options jsonb, correct_index int,
+      explanation text, evidence jsonb, sort_order int DEFAULT 0, question_fingerprint text,
+      dialogue_fingerprint text, state text DEFAULT 'active');
     CREATE TABLE grammar_examples(grammar_id uuid REFERENCES module_grammar(id), japanese text, highlight text,
       indonesian text, sort_order int DEFAULT 0, created_at timestamptz DEFAULT NOW());
     CREATE TABLE lesson_grammar_task_items(lesson_id uuid REFERENCES lessons(id), grammar_id uuid REFERENCES module_grammar(id),
@@ -138,13 +142,14 @@ test('independent Bunpou backend safety review', { timeout: 90_000 }, async t =>
   // Invoke actual wrapped route handlers. Authentication is already established;
   // ownership, course, publication, snapshot, ledger and SQL guards remain real.
   const user = { id: id(1), email: 'review@example.invalid' };
-  async function invoke(router, path, method, body = {}, params = {}) {
+  async function invoke(router, path, method, body = {}, params = {}, queryParams = {}) {
     const layer = router.stack.find(layer => layer.route?.path === path && layer.route.methods[method]);
     assert.ok(layer, path);
     const response = { status: 200, body: null };
-    const res = { status(code) { response.status = code; return this; }, json(value) { response.body = value; return this; } };
+    const res = { status(code) { response.status = code; return this; }, json(value) { response.body = value; return this; },
+      set() { return this; } };
     let failure;
-    await layer.route.stack.at(-1).handle({ user, body, params }, res, err => { failure = err; });
+    await layer.route.stack.at(-1).handle({ user, body, params, query: queryParams }, res, err => { failure = err; });
     if (failure) throw failure;
     return response;
   }
@@ -343,6 +348,38 @@ test('independent Bunpou backend safety review', { timeout: 90_000 }, async t =>
     const republished = await invoke(admin, '/lessons/:lessonId/bunpou-flow/publish', 'post',
       { confirm: true, draftRevision: saved.body.draftRevision }, params);
     assert.equal(republished.body.live, true);
+  });
+
+  await t.test('admin shows which dialogue questions students get and offers the old ones for copying', async () => {
+    const { dialogueFingerprint, questionFingerprint } = await import('./dialogue-question-service.js');
+    const context = await loadCompanionContext(id(4));
+    const legacyCheck = {
+      comprehension: { prompt: 'Siapa yang bicara?', options: ['Ana', 'Budi', 'Citra'], correctIndex: 0,
+        explanation: 'Dari giliran pertama.', evidence: [{ turnIndex: 0, quote: 'dialog' }] },
+      comparison: { prompt: 'Pilih kalimat', options: ['satu', 'dua', 'tiga'], correctIndex: 1 },
+    };
+    await query('UPDATE lessons SET bunpou_flow_published = $2 WHERE id = $1', [id(4), JSON.stringify({
+      schemaVersion: 1, sourceFingerprint: context.fingerprint, dialogChecks: { [id(6)]: legacyCheck } })]);
+    const detail = async () => (await invoke(admin, '/lessons/:lessonId/bunpou-flow', 'get', {}, { lessonId: id(4) })).body;
+    let body = await detail();
+    assert.equal(body.moduleId, id(3));
+    assert.equal(body.checkSources[id(6)], 'legacy');
+    assert.deepEqual(body.checks[id(6)], legacyCheck);
+    const questions = await invoke(admin, '/grammar/:id/dialogue-questions', 'get', {}, { id: id(6) }, { sourceLessonId: id(4) });
+    assert.equal(questions.status, 200, JSON.stringify(questions.body));
+    assert.deepEqual(questions.body.legacyCheck, legacyCheck, 'the editor can copy the old questions, evidence included');
+    const grammar = (await query('SELECT * FROM module_grammar WHERE id = $1', [id(6)])).rows[0];
+    const question = { kind: 'comprehension', prompt: 'Baru', options: ['x', 'y', 'z'], correctIndex: 2,
+      explanation: 'Penjelasan.', evidence: [{ turnIndex: 0, quote: 'dialog' }] };
+    await query(`INSERT INTO grammar_dialog_questions (grammar_id, source_lesson_id, kind, prompt, options,
+        correct_index, explanation, evidence, question_fingerprint, dialogue_fingerprint)
+      VALUES ($1,$2,'comprehension',$3,$4,$5,$6,$7,$8,$9)`, [id(6), id(4), question.prompt,
+      JSON.stringify(question.options), question.correctIndex, question.explanation,
+      JSON.stringify(question.evidence), questionFingerprint(question), dialogueFingerprint(grammar)]);
+    body = await detail();
+    assert.equal(body.checkSources[id(6)], 'dialog_incomplete');
+    assert.equal(body.checks[id(6)], undefined, 'no old questions next to a started question set');
+    assert.equal(body.checkAvailability[id(6)].available, false);
   });
 
   await t.test('ready catalog entries have usable recognition and controlled drills', async () => {

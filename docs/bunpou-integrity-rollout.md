@@ -35,6 +35,43 @@ tetap independen. Dokumen ini tidak mencatat aktivasi produksi apa pun.
 Shadow comparison tetap punya pemilihnya sendiri, tetap read-only, dan tidak
 mengaktifkan kebijakan penguasaan usulan.
 
+## Soal pemeriksaan dialog dibuat di 🎭 Dialog
+
+Soal di akhir Tugas Bunpou (langkah 4 pemahaman, langkah 5 pembanding) dan
+soal pemeriksaan di Smart Review sekarang dibuat dan diedit di editor
+**🎭 Dialog** pada tabel grammar pelajaran sumber, di bawah dialog berprofilnya
+(tabel `grammar_dialog_questions`, set yang sama dengan flow v2). Comprehension
+pertama menjadi soal pemahaman, transfer menjadi soal pembanding. Modal 🧭
+Pendamping Bunpou tidak lagi punya kolom soal; ia menampilkan soal yang benar-
+benar dipakai siswa beserta sumbernya, tombol **🎭 Edit dialog & soal**, dan
+tombol **✏️ Ubah arti, contoh, pengecoh** (sumber soal Step 1/2).
+
+Aturan pemilihan (`backend/src/bunpou-dialog-checks.js`), per pola:
+
+- Set pertanyaan punya minimal 1 comprehension dan 1 transfer yang cocok dengan
+  dialog sekarang → dipakai (`dialog`).
+- Pola punya baris aktif di set tapi belum lengkap, atau dialognya diedit
+  sehingga soalnya perlu ditinjau ulang → **tidak ada soal pemeriksaan**
+  (`dialog_incomplete`). Sengaja TIDAK jatuh balik ke soal lama, karena soal lama
+  bisa tidak cocok lagi dengan dialog yang sekarang.
+- Belum ada set sama sekali → soal lama di envelope pendamping (`dialogChecks`)
+  tetap dipakai (`legacy`), supaya Bab 3 tidak kehilangan soal selama dipindah.
+
+Cara memindahkan soal lama: buka 🎭 Dialog pola itu → **↺ Salin dari soal
+lama** → lengkapi penjelasan dan bukti kutipan dari dialog → **Simpan set
+pertanyaan**. Tombol salin tidak menyimpan apa pun sendiri. Menyimpan set
+langsung mengganti soal yang dilihat siswa (sesi v1 baru dimulai karena
+revisinya berubah; sesi yang sedang berjalan memakai snapshot-nya). Pendamping
+tidak perlu dipublikasikan ulang. Soal lama tetap tersimpan di envelope sebagai
+arsip dan dibawa apa adanya saat pendamping disimpan lagi.
+
+Selama belum ada pola yang dipindah, revisi sesi v1 identik dengan sebelumnya,
+jadi deploy perubahan ini tidak memulai ulang sesi yang sedang berjalan.
+
+Bukti kutipan (`evidence`) soal lama dari migrasi 174 dulu dibuang diam-diam
+setiap kali pendamping disimpan lewat editor. Itu sudah diperbaiki, tapi bukti
+yang sudah terbuang tidak bisa dipulihkan dari kode: isi ulang saat menyalin.
+
 ## Deployment prerequisites
 
 - Apply additive migration 152 on isolated staging using the existing migration runner before deploying the new server. It adds a request ledger and production-slot snapshots, without rewriting attempts, curriculum, XP, completion, enrollment, or settings.

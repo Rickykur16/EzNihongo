@@ -51,6 +51,7 @@ import {
 } from '../bunpou-flow-service.js';
 import { loadMasteryShadow, summarizeShadow } from '../grammar-mastery-shadow.js';
 import { loadCompanionLessonOptions, companionLiveReason } from '../bunpou-companion-status.js';
+import { loadQuestionSets, effectiveDialogChecks } from '../bunpou-dialog-checks.js';
 import { BoundaryContextError, getCurriculumBoundary } from '../curriculum-boundary.js';
 import { validateAndWriteContent, boundaryWriteHttpError, lockCurriculumCourse,
   lockCurriculumCourses, lockCurriculumGraph } from '../curriculum-content-service.js';
@@ -202,8 +203,15 @@ router.get('/grammar/:id/dialogue-questions', asyncHandler(async (req, res) => {
   try {
     const result = await listDialogueQuestions(req.params.id,
       { sourceLessonId: req.query.sourceLessonId || null });
+    // Soal lama pola ini di Pendamping Bunpou, untuk tombol "Salin dari soal
+    // lama" di editor. Yang terpublikasi didahulukan karena itulah yang
+    // dilihat siswa selama pola ini belum dipindah.
+    const source = await query(`SELECT bunpou_flow_published, bunpou_flow_draft FROM lessons WHERE id = $1`,
+      [result.sourceLessonId]);
+    const envelope = source.rows[0]?.bunpou_flow_published || source.rows[0]?.bunpou_flow_draft || null;
+    const legacyCheck = envelope?.dialogChecks?.[req.params.id] || null;
     res.set('Cache-Control', 'private, no-store');
-    res.json(result);
+    res.json({ ...result, legacyCheck });
   } catch (error) { dialogueQuestionFailure(res, error); }
 }));
 
@@ -2435,26 +2443,34 @@ async function currentSourceFingerprint(taskLessonId, dbQuery = query) {
 
 router.get('/lessons/:lessonId/bunpou-flow', asyncHandler(async (req, res) => {
   const lesson = await query(
-    `SELECT id, title, bunpou_flow_draft, bunpou_flow_published FROM lessons WHERE id = $1`,
+    `SELECT id, title, module_id, bunpou_flow_draft, bunpou_flow_published FROM lessons WHERE id = $1`,
     [req.params.lessonId]
   );
   if (lesson.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   const { grammarIds, taskLessonId } = await bunpouFlowScope(req.params.lessonId);
+  // Soal pemeriksaan yang benar-benar dipakai siswa: set pertanyaan 🎭 Dialog,
+  // atau soal lama untuk pola yang belum dipindah (bunpou-dialog-checks.js).
+  const legacyChecks = (lesson.rows[0].bunpou_flow_published || lesson.rows[0].bunpou_flow_draft || {}).dialogChecks;
+  const effective = effectiveDialogChecks(grammarIds,
+    await loadQuestionSets(req.params.lessonId, grammarIds, query), legacyChecks);
   const patternRows = grammarIds.length
-    ? await query(`SELECT id, pattern FROM module_grammar WHERE id = ANY($1::uuid[])`, [grammarIds])
+    ? await query(`SELECT id, pattern, dialog_scene FROM module_grammar WHERE id = ANY($1::uuid[])`, [grammarIds])
     : { rows: [] };
+  const scenes = new Map(patternRows.rows.map((r) => [r.id, r.dialog_scene || null]));
   const reviewItems = taskLessonId ? await loadTaskConcepts(taskLessonId) : [];
   const reviewPool = taskLessonId ? await loadModulePool(taskLessonId) : [];
   const reviewDrills = deriveDrills(reviewItems, reviewPool);
   res.json({
     lessonId: req.params.lessonId,
     lessonTitle: lesson.rows[0].title,
+    moduleId: lesson.rows[0].module_id,
     taskLessonId,
     grammarIds,
     patterns: Object.fromEntries(patternRows.rows.map((r) => [r.id, r.pattern])),
     currentFingerprint: taskLessonId ? contentRevisionId(reviewItems, reviewPool) : null,
     reviewItems: reviewItems.map(item => ({ grammarId: item.id, pattern: item.pattern,
       meaning: item.meaning, dialog: item.example_dialog, dialogTranslation: item.example_dialog_id,
+      dialogScene: scenes.get(item.id) || null,
       instruction: item.instruction, ...reviewDrills.get(item.id) })),
     draft: lesson.rows[0].bunpou_flow_draft || null,
     draftRevision: companionDraftRevision(lesson.rows[0].bunpou_flow_draft),
@@ -2465,9 +2481,10 @@ router.get('/lessons/:lessonId/bunpou-flow', asyncHandler(async (req, res) => {
     // supaya "hijau di admin tapi tidak muncul ke siswa" tidak mungkin
     // terjadi karena dua salinan aturan yang berbeda.
     checkAvailability: Object.fromEntries(grammarIds.map((gid) => [
-      gid,
-      dialogCheckAvailability(((lesson.rows[0].bunpou_flow_draft || lesson.rows[0].bunpou_flow_published || {}).dialogChecks || {})[gid]),
+      gid, dialogCheckAvailability(effective.checks[gid]),
     ])),
+    checkSources: effective.sources,
+    checks: effective.checks,
   });
 }));
 

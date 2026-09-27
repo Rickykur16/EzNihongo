@@ -239,6 +239,18 @@ export function validateCompanionEnvelope(envelope, grammarIds) {
   return { ok: errors.length === 0, errors };
 }
 
+function sanitizeCheckEvidence(raw) {
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > 6) return null;
+  const out = [];
+  for (const entry of raw) {
+    if (!isPlainObject(entry) || !Number.isInteger(entry.turnIndex) || entry.turnIndex < 0) return null;
+    const quote = typeof entry.quote === 'string' ? entry.quote.trim() : '';
+    if (!quote) return null;
+    out.push({ turnIndex: entry.turnIndex, quote });
+  }
+  return out;
+}
+
 // Normalizes a raw envelope into the stored shape, dropping anything not
 // recognised rather than persisting arbitrary admin-supplied keys.
 export function sanitizeCompanionEnvelope(raw) {
@@ -290,6 +302,12 @@ export function sanitizeCompanionEnvelope(raw) {
         const outQ = { prompt, options, correctIndex: idx };
         const ex = String(q.explanation ?? '').trim();
         if (ex) outQ.explanation = ex;
+        // Bukti kutipan dialog (migrasi 174) dulu dibuang di sini, sehingga
+        // menyimpan pendamping lewat editor diam-diam menghapusnya. Bukti itu
+        // dibutuhkan untuk memindahkan soal ke set pertanyaan 🎭 Dialog, jadi
+        // sekarang dipertahankan kalau bentuknya sah.
+        const evidence = sanitizeCheckEvidence(q.evidence);
+        if (evidence) outQ.evidence = evidence;
         cleaned[field] = outQ;
       }
       if (Object.keys(cleaned).length) checks[gid] = cleaned;

@@ -5131,6 +5131,7 @@ window.grmrManageDialog = async (btn) => {
         questions: Array.isArray(questionSet.questions) ? questionSet.questions : [],
         dialogueFingerprint: questionSet.dialogueFingerprint || '',
         questionsRevision: questionSet.questionsRevision || '',
+        legacyCheck: questionSet.legacyCheck || null,
       };
     } catch (err) {
       window.__dialogQuestionState.loadError = err?.body?.detail || err?.body?.error || err.message;
@@ -5494,27 +5495,48 @@ window.grammarManageExamples = async (grammarId) => {
 // source lesson — tujuan pelajaran, arahan menyimak per pola, dan overlay
 // feedback Step 1/2 per pola. Never touches Pola/Arti/Contoh themselves;
 // those stay editable only via the existing Bunpou (文法) item table above.
-// Paket 2 — satu soal pemeriksaan. Opsi ditulis satu per baris supaya
-// jumlahnya bebas 3-4 tanpa DOM berlapis; nomor jawaban DIISI MANUAL dan
-// dicocokkan server, bukan ditebak dari urutan. Baris kosong di TENGAH
-// sengaja tidak dibuang saat dikumpulkan: membuangnya akan menggeser nomor
-// jawaban diam-diam, jadi lebih baik server menolaknya dengan pesan jelas.
-function bfCheckBlock(gid, field, label, q) {
-  gid = escapeHtml(gid);
-  const opts = Array.isArray(q.options) ? q.options.join('\n') : '';
-  const idx = Number.isInteger(q.correctIndex) ? q.correctIndex + 1 : 1;
+// Soal pemeriksaan dialog (akhir Tugas Bunpou + Smart Review) TIDAK lagi
+// diedit di sini: satu-satunya tempatnya editor 🎭 Dialog pola itu (set
+// pertanyaan: comprehension pertama = soal pemahaman, transfer = soal
+// pembanding). Di sini cuma ringkasan soal yang benar-benar dipakai siswa
+// beserta sumbernya, dihitung server (bunpou-dialog-checks.js).
+const BF_CHECK_SOURCE_TEXT = {
+  dialog: 'Dari set pertanyaan 🎭 Dialog.',
+  dialog_incomplete: 'Set pertanyaan 🎭 Dialog belum lengkap atau perlu ditinjau ulang karena dialognya berubah. Butuh minimal 1 comprehension dan 1 transfer yang sesuai dialog sekarang; sampai itu terpenuhi, pola ini tidak punya soal pemeriksaan.',
+  legacy: 'Masih memakai soal lama. Pindahkan lewat 🎭 Dialog → “Salin dari soal lama”, tinjau, lalu simpan set pertanyaan.',
+  none: 'Belum ada soal. Buat lewat 🎭 Dialog.',
+};
+
+function bfCheckQuestionHtml(label, q) {
+  if (!q) return '';
+  const options = Array.isArray(q.options) ? q.options : [];
+  return `<div style="margin-top:6px;">
+    <div style="font-size:11px;font-weight:600;color:#404040;">${escapeHtml(label)}</div>
+    <p style="margin:2px 0;font-size:12px;white-space:pre-wrap;">${escapeHtml(q.prompt || '')}</p>
+    <ol style="margin:2px 0;padding-left:22px;font-size:12px;">${options.map((option, index) =>
+      `<li style="white-space:pre-wrap;">${escapeHtml(option)}${index === q.correctIndex ? ' <strong>(benar)</strong>' : ''}</li>`).join('')}</ol>
+  </div>`;
+}
+
+// ID pola masuk ke string JS di dalam atribut onclick; escapeHtml saja tidak
+// cukup di posisi itu, jadi hanya karakter UUID yang diloloskan.
+const bfSafeId = gid => String(gid || '').replace(/[^0-9a-fA-F-]/g, '');
+
+function bfCheckSummary(gid, source, check, avail) {
+  const id = bfSafeId(gid);
   return `
-    <div style="border:1px dashed var(--paper-300,#e5e5e5);border-radius:6px;padding:8px 10px;margin-top:6px;">
-      <div style="font-size:11px;font-weight:600;color:#404040;margin-bottom:4px;">${escapeHtml(label)}</div>
-      <label style="font-size:11px;color:#737373;">Pertanyaan</label>
-      <textarea id="bf-${field}-q-${gid}" rows="2" style="width:100%;font-size:12px;margin:2px 0 6px;">${escapeHtml(q.prompt || '')}</textarea>
-      <label style="font-size:11px;color:#737373;">Opsi — satu per baris (3-4 baris)</label>
-      <textarea id="bf-${field}-o-${gid}" rows="4" style="width:100%;font-size:12px;margin:2px 0 6px;">${escapeHtml(opts)}</textarea>
-      <label style="font-size:11px;color:#737373;">Nomor baris jawaban benar</label>
-      <input type="number" min="1" max="4" id="bf-${field}-c-${gid}" value="${idx}" style="width:70px;font-size:12px;margin:2px 0 6px;display:block;" />
-      <label style="font-size:11px;color:#737373;">Pembahasan (tampil setelah dijawab)</label>
-      <textarea id="bf-${field}-e-${gid}" rows="2" style="width:100%;font-size:12px;">${escapeHtml(q.explanation || '')}</textarea>
-    </div>`;
+      <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--paper-300,#e5e5e5);">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:11px;font-weight:600;color:#404040;">Soal pemeriksaan dialog (akhir Tugas Bunpou)</span>
+          ${bfAvailBadge(avail)}
+        </div>
+        <p style="font-size:11px;color:#737373;font-family:var(--font-body);margin:4px 0 0;">${escapeHtml(BF_CHECK_SOURCE_TEXT[source] || BF_CHECK_SOURCE_TEXT.none)}</p>
+        ${bfCheckQuestionHtml('Soal pemahaman', check?.comprehension)}
+        ${bfCheckQuestionHtml('Soal pembanding (transfer)', check?.comparison)}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="bfOpenInGrammarTable('${id}', true)">🎭 Edit dialog &amp; soal</button>
+        </div>
+      </div>`;
 }
 
 // Status kelayakan DIHITUNG SERVER (GET .../bunpou-flow -> checkAvailability)
@@ -5559,24 +5581,38 @@ function bfReviewDrill(label, drill) {
   </div>`;
 }
 
+// Dialog ditampilkan dengan nama pemeran dari profil adegannya (bukan kode
+// A/B yang tersimpan di teks), sama seperti yang didengar siswa.
+function bfDialogWithNames(dialog, scene) {
+  const names = new Map((scene?.participants || []).map(p => [String(p?.speaker || ''), p?.displayName || p?.speaker || '']));
+  return String(dialog || '').split('\n').map(line => {
+    const match = line.match(/^([^:：]{1,40})[:：]\s*(.*)$/);
+    if (!match) return line;
+    const code = match[1].trim();
+    const name = names.get(code) || (code === 'N' ? 'Narator' : code);
+    return `${name}: ${match[2]}`;
+  }).join('\n');
+}
+
 function bfSourcePreview(item) {
   if (!item) return '<p style="font-size:12px;color:#92400e;">Pratinjau sumber dan soal belum tersedia untuk pola ini.</p>';
   const fields = [
-    ['Pola', item.pattern], ['Arti', item.meaning], ['Dialog', item.dialog],
-    ['Terjemahan dialog', item.dialogTranslation], ['Instruksi', item.instruction],
+    ['Pola', item.pattern], ['Arti', item.meaning], ['Dialog', item.dialog ? bfDialogWithNames(item.dialog, item.dialogScene) : ''],
+    ['Terjemahan dialog', item.dialogTranslation ? bfDialogWithNames(item.dialogTranslation, item.dialogScene) : ''], ['Instruksi', item.instruction],
   ];
   return `<details style="font-size:12px;margin:0 0 10px;overflow-wrap:anywhere;">
     <summary>Tinjau sumber, soal, dan kunci jawaban</summary>
     ${fields.map(([name, value]) => `<p style="margin:6px 0;white-space:pre-wrap;"><strong>${escapeHtml(name)}:</strong> ${escapeHtml(value || 'Belum tersedia')}</p>`).join('')}
+    <p style="margin:8px 0 0;color:#525252;">Soal Step 1 dan Step 2 dibuat otomatis dari <strong>Arti</strong>, <strong>📝 Contoh</strong>, dan <strong>🎯 Pengecoh</strong> pola ini &mdash; ubah sumbernya di tabel grammar, soalnya ikut berubah.</p>
+    <button type="button" class="btn btn-ghost btn-sm" style="margin-top:4px;" onclick="bfOpenInGrammarTable('${bfSafeId(item.grammarId)}', false)">✏️ Ubah arti, contoh, pengecoh</button>
     ${bfReviewDrill('Step 1', item.step1)}
     ${bfReviewDrill('Step 2', item.step2)}
   </details>`;
 }
 
-function bfFieldBlock(gid, pattern, env, avail, reviewItem) {
+function bfFieldBlock(gid, pattern, env, avail, reviewItem, source, check) {
   const fieldId = escapeHtml(gid);
   const dir = (env.directions || {})[gid] || '';
-  const check = ((env.dialogChecks || {})[gid]) || {};
   const ov = ((env.overlays || {})[gid]) || {};
   const s1 = ov.step1 || {}, s2 = ov.step2 || {};
   return `
@@ -5599,30 +5635,43 @@ function bfFieldBlock(gid, pattern, env, avail, reviewItem) {
           <textarea id="bf-e2-${fieldId}" rows="2" style="width:100%;font-size:12px;">${escapeHtml(s2.explanation || '')}</textarea>
         </div>
       </div>
-      <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--paper-300,#e5e5e5);">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <span style="font-size:11px;font-weight:600;color:#404040;">Pemeriksaan mandiri (akhir tugas)</span>
-          ${bfAvailBadge(avail)}
-        </div>
-        <p style="font-size:11px;color:#737373;font-family:var(--font-body);margin:4px 0 0;">
-          Soal pemahaman diambil dari <strong>naskah dialog</strong> pelajaran ini. Soal pembanding menguji
-          pola yang sama di <strong>kalimat/situasi lain</strong> &mdash; bukan soal yang sama dengan opsi diacak.
-          Keduanya harus terisi dan berbeda; kalau tidak, pemeriksaan tidak disajikan ke siswa.
-        </p>
-        ${bfCheckBlock(gid, 'cmp1', 'Soal pemahaman dialog', check.comprehension || {})}
-        ${bfCheckBlock(gid, 'cmp2', 'Soal pembanding', check.comparison || {})}
-      </div>
+      ${bfCheckSummary(gid, source, check, avail)}
     </div>`;
 }
+
+// Membuka tabel grammar pelajaran ini dan menyorot pola yang dipilih —
+// tempat Arti, 📝 Contoh, 🎯 Pengecoh, dan 🎭 Dialog (dialog berprofil +
+// set pertanyaan) diedit. Memakai alur tabel grammar yang sudah ada apa
+// adanya, jadi penyimpanan tetap lewat tombol Simpan baris seperti biasa.
+window.bfOpenInGrammarTable = async (grammarId, openDialog) => {
+  const ctx = window.__bfCtx;
+  if (!ctx?.lessonId || !ctx.moduleId || !grammarId) return;
+  if (typeof _modalDirty !== 'undefined' && _modalDirty &&
+      !confirm('Perubahan di Pendamping Bunpou belum disimpan dan akan hilang. Lanjut?')) return;
+  await manageGrammar(ctx.lessonId, ctx.lessonTitle, ctx.moduleId);
+  const row = [...document.querySelectorAll('#modal-content tr[data-id]')].find(tr => tr.dataset.id === grammarId);
+  if (!row) { notify('Pola ini tidak ada di tabel grammar pelajaran ini.', true); return; }
+  row.style.outline = '2px solid #f59e0b';
+  row.scrollIntoView?.({ block: 'center' });
+  if (openDialog) {
+    const button = row.querySelector('button[onclick^="grmrManageDialog"]');
+    if (button) await grmrManageDialog(button);
+  }
+};
 
 window.manageBunpouFlow = async (lessonId, lessonTitle) => {
   let d;
   try {
     d = await api('/admin/lessons/' + lessonId + '/bunpou-flow');
   } catch (err) { notify('Gagal load Pendamping Bunpou: ' + err.message, true); return; }
-  window.__bfCtx = { lessonId, draftRevision: d.draftRevision || null, grammarIds: d.grammarIds || [], patterns: d.patterns || {}, currentFingerprint: d.currentFingerprint, reviewItems: d.reviewItems || [] };
-
   const env = d.draft || d.published || {};
+  // Soal lama (dialogChecks) tidak diedit di sini lagi, tapi WAJIB ikut
+  // tersimpan apa adanya: siswa masih memakainya untuk pola yang belum
+  // dipindah ke set pertanyaan 🎭 Dialog.
+  window.__bfCtx = { lessonId, lessonTitle: lessonTitle || d.lessonTitle || '', moduleId: d.moduleId || null,
+    draftRevision: d.draftRevision || null, grammarIds: d.grammarIds || [], patterns: d.patterns || {},
+    currentFingerprint: d.currentFingerprint, reviewItems: d.reviewItems || [],
+    legacyDialogChecks: env.dialogChecks || null };
   const staleDraft = d.draft && d.draft.sourceFingerprint && d.draft.sourceFingerprint !== d.currentFingerprint;
   const stalePublished = !d.draft && d.published && d.published.sourceFingerprint && d.published.sourceFingerprint !== d.currentFingerprint;
   const noTask = !d.taskLessonId;
@@ -5648,7 +5697,7 @@ window.manageBunpouFlow = async (lessonId, lessonTitle) => {
     <label style="font-size:12px;color:#404040;">Tujuan pelajaran (satu kalimat, opsional)</label>
     <textarea id="bf-objective" rows="2" style="width:100%;font-size:13px;margin:2px 0 12px;"
       placeholder="Siswa dapat mengenali dan menggunakan pola ...">${escapeHtml(env.objective || '')}</textarea>
-    <div id="bf-fields">${window.__bfCtx.grammarIds.map((gid) => bfFieldBlock(gid, window.__bfCtx.patterns[gid], env, (d.checkAvailability || {})[gid], window.__bfCtx.reviewItems.find(item => item.grammarId === gid))).join('') || '<p style="font-size:12px;color:#737373;">Pelajaran ini belum punya pola grammar.</p>'}</div>
+    <div id="bf-fields">${window.__bfCtx.grammarIds.map((gid) => bfFieldBlock(gid, window.__bfCtx.patterns[gid], env, (d.checkAvailability || {})[gid], window.__bfCtx.reviewItems.find(item => item.grammarId === gid), (d.checkSources || {})[gid], (d.checks || {})[gid])).join('') || '<p style="font-size:12px;color:#737373;">Pelajaran ini belum punya pola grammar.</p>'}</div>
     <div style="font-size:11px;color:#a3a3a3;font-family:var(--font-body);margin:4px 0;">
       ${d.published ? `Terpublikasi oleh ${escapeHtml(d.published.publishedBy?.email || '?')} · ${d.published.publishedBy?.at ? new Date(d.published.publishedBy.at).toLocaleString('id-ID') : ''}` : 'Belum pernah dipublikasikan.'}
     </div>
@@ -5680,29 +5729,10 @@ function bfCollectEnvelope() {
     if (h2 || e2) tiers.step2 = { ...(h2 && { hint: h2 }), ...(e2 && { explanation: e2 }) };
     if (Object.keys(tiers).length) overlays[gid] = tiers;
   }
-  const dialogChecks = {};
-  for (const gid of ctx.grammarIds) {
-    const q = (field) => {
-      const prompt = (document.getElementById(`bf-${field}-q-${gid}`)?.value || '').trim();
-      const rawOpts = document.getElementById(`bf-${field}-o-${gid}`)?.value || '';
-      const correct = Number(document.getElementById(`bf-${field}-c-${gid}`)?.value || 0);
-      const explanation = (document.getElementById(`bf-${field}-e-${gid}`)?.value || '').trim();
-      // Hanya baris kosong DI UJUNG yang dibuang. Baris kosong di tengah
-      // sengaja dipertahankan supaya nomor jawaban tidak bergeser diam-diam —
-      // server yang menolaknya dengan pesan "ada opsi kosong".
-      const options = rawOpts.replace(/\s+$/, '').split('\n').map((o) => o.trim());
-      if (!prompt && options.every((o) => !o)) return null;
-      const out = { prompt, options, correctIndex: correct - 1 };
-      if (explanation) out.explanation = explanation;
-      return out;
-    };
-    const comprehension = q('cmp1');
-    const comparison = q('cmp2');
-    const pair = {};
-    if (comprehension) pair.comprehension = comprehension;
-    if (comparison) pair.comparison = comparison;
-    if (Object.keys(pair).length) dialogChecks[gid] = pair;
-  }
+  // Diteruskan apa adanya (termasuk bukti kutipannya), bukan dibaca dari
+  // form: tanpa ini, menyimpan pendamping akan menghapus soal lama yang masih
+  // dipakai siswa untuk pola yang belum dipindah.
+  const dialogChecks = ctx.legacyDialogChecks || undefined;
   return { sourceFingerprint: ctx.currentFingerprint, objective: objective || undefined, directions, overlays, dialogChecks };
 }
 
@@ -5803,7 +5833,8 @@ function admDialogQuestionSetHtml() {
   return `
     <section id="dlg-question-set" style="border-top:1px solid #ddd;margin-top:18px;padding-top:14px;">
       <h4 style="margin:0 0 6px;">Pertanyaan dialog Bunpou</h4>
-      <p style="font-size:12px;color:#737373;margin:0 0 8px;">Set aktif: ${comprehension}/2 comprehension · ${transfer}/1 transfer. Pertanyaan terikat ke dialog tersimpan; tombol simpan langsung memperbarui set aktif learner.</p>
+      <p style="font-size:12px;color:#737373;margin:0 0 8px;">Set aktif: ${comprehension}/2 comprehension · ${transfer}/1 transfer. Comprehension pertama tampil ke siswa sebagai soal pemahaman dan transfer sebagai soal pembanding di akhir Tugas Bunpou (juga di Smart Review); butuh minimal 1 dari masing-masing. Pertanyaan terikat ke dialog tersimpan; tombol simpan langsung memperbarui soal yang dilihat siswa.</p>
+      ${state.legacyCheck ? `<p style="font-size:12px;color:#92400e;background:#fef3c7;border-radius:6px;padding:6px 8px;margin:0 0 8px;">Pola ini masih punya soal lama dari Pendamping Bunpou${questions.length ? '' : ' yang masih dipakai siswa'}. Begitu set ini disimpan, soal lama tidak dipakai lagi.</p>` : ''}
       ${state.loadError ? `<div role="alert" style="color:#991b1b;margin:6px 0;">Gagal memuat set pertanyaan: ${escapeHtml(state.loadError)}</div>` : ''}
       ${!state.loadError && (questions.some(question => question.current === false) || !admDialogQuestionSourceIsCurrent()) ? `<div role="alert" style="color:#92400e;margin:6px 0;">Dialog sumber berubah atau belum tersimpan. Simpan dialog lalu buka kembali editor pertanyaan sebelum generate/menyimpan.</div>` : ''}
       <fieldset ${state.busy ? 'disabled' : ''} style="border:0;padding:0;margin:0;min-width:0;">
@@ -5814,6 +5845,7 @@ function admDialogQuestionSetHtml() {
         <button type="button" class="btn btn-ghost btn-sm" ${blocked || transfer >= 1 ? 'disabled' : ''} onclick="admDialogQuestionGenerate('transfer',1)">✨ Generate transfer</button>
         <button type="button" class="btn btn-ghost btn-sm" ${blocked || comprehension >= 2 ? 'disabled' : ''} onclick="admDialogQuestionAdd('comprehension')">+ Comprehension manual</button>
         <button type="button" class="btn btn-ghost btn-sm" ${blocked || transfer >= 1 ? 'disabled' : ''} onclick="admDialogQuestionAdd('transfer')">+ Transfer manual</button>
+        ${admDialogQuestionLegacyCopyable(state) ? `<button type="button" class="btn btn-ghost btn-sm" ${blocked ? 'disabled' : ''} onclick="admDialogQuestionCopyLegacy()">↺ Salin dari soal lama</button>` : ''}
       </div>
       </fieldset>
       <div class="modal-actions" style="justify-content:flex-end;">
@@ -5910,6 +5942,52 @@ window.admDialogQuestionAdd = kind => {
 };
 window.admDialogQuestionDelete = index => {
   window.__dialogQuestionState?.questions?.splice(index, 1);
+  admRenderDialogModal();
+};
+
+// Soal lama Pendamping Bunpou (comprehension → comprehension, comparison →
+// transfer) disalin ke form sebagai draf, BUKAN langsung disimpan: server
+// menuntut penjelasan dan bukti kutipan yang persis ada di dialog, yang
+// sering belum ada di soal lama. Admin melengkapi, lalu Simpan set pertanyaan.
+function admDialogQuestionLegacyPlan(state) {
+  const legacy = state?.legacyCheck;
+  const questions = state?.questions || [];
+  if (!legacy) return [];
+  const count = kind => questions.filter(q => q.kind === kind).length;
+  const already = (kind, prompt) => questions.some(q => q.kind === kind && (q.prompt || '').trim() === String(prompt || '').trim());
+  const plan = [];
+  if (legacy.comprehension && count('comprehension') < 2 && !already('comprehension', legacy.comprehension.prompt)) {
+    plan.push(['comprehension', legacy.comprehension]);
+  }
+  if (legacy.comparison && count('transfer') < 1 && !already('transfer', legacy.comparison.prompt)) {
+    plan.push(['transfer', legacy.comparison]);
+  }
+  return plan;
+}
+function admDialogQuestionLegacyCopyable(state) { return admDialogQuestionLegacyPlan(state).length > 0; }
+
+window.admDialogQuestionCopyLegacy = () => {
+  const state = window.__dialogQuestionState;
+  const plan = admDialogQuestionLegacyPlan(state);
+  if (!plan.length) { notify('Tidak ada soal lama yang bisa disalin (slotnya sudah terisi).', true); return; }
+  for (const [kind, legacy] of plan) {
+    const options = (Array.isArray(legacy.options) ? legacy.options : []).map(option => String(option ?? '')).slice(0, 4);
+    while (options.length < 3) options.push('');
+    const evidence = kind === 'comprehension'
+      ? (Array.isArray(legacy.evidence) && legacy.evidence.length
+        ? legacy.evidence.map(entry => ({ turnIndex: Number(entry.turnIndex) || 0, quote: String(entry.quote || '') }))
+        : [{ turnIndex: 0, quote: '' }])
+      : [];
+    state.questions.push({ kind, prompt: String(legacy.prompt || ''), options,
+      correctIndex: Number.isInteger(legacy.correctIndex) && legacy.correctIndex < options.length ? legacy.correctIndex : 0,
+      explanation: String(legacy.explanation || ''), evidence,
+      sortOrder: state.questions.filter(q => q.kind === kind).length });
+  }
+  const missing = plan.some(([kind, legacy]) => !String(legacy.explanation || '').trim() ||
+    (kind === 'comprehension' && !(Array.isArray(legacy.evidence) && legacy.evidence.length)));
+  notify(missing
+    ? 'Soal lama disalin. Lengkapi penjelasan dan bukti kutipan yang masih kosong, lalu Simpan set pertanyaan.'
+    : 'Soal lama disalin. Tinjau, lalu Simpan set pertanyaan.');
   admRenderDialogModal();
 };
 

@@ -1,6 +1,7 @@
 import { query } from './db.js';
 import { loadTaskConcepts, loadModulePool } from './routes/grammar-task.js';
 import { companionIsCurrent, contentRevisionId } from './bunpou-flow-service.js';
+import { loadQuestionSets, effectiveDialogChecks } from './bunpou-dialog-checks.js';
 
 export async function loadCompanionContext(sourceLessonId, dbQuery = query) {
   const result = await dbQuery(
@@ -32,7 +33,17 @@ export async function loadCompanionContext(sourceLessonId, dbQuery = query) {
     loadTaskConcepts(row.task_lesson_id, dbQuery), loadModulePool(row.task_lesson_id, dbQuery),
   ]);
   const fingerprint = contentRevisionId(items, pool);
-  return { taskLessonId: row.task_lesson_id, items, pool, fingerprint,
-    published: row.bunpou_flow_published,
-    current: companionIsCurrent(row.bunpou_flow_published, fingerprint) };
+  const published = row.bunpou_flow_published;
+  // Soal pemeriksaan dialog yang benar-benar dipakai (lihat
+  // bunpou-dialog-checks.js). `v1Published` hanya untuk jalur v1: sama PERSIS
+  // dengan publikasinya selama belum ada pola yang pindah ke set pertanyaan
+  // 🎭 Dialog, supaya revisi sesi v1 yang sedang berjalan tidak berubah.
+  // Jalur v2 tetap membaca `published` apa adanya.
+  const questionSets = await loadQuestionSets(sourceLessonId, items.map(item => item.id), dbQuery);
+  const effective = effectiveDialogChecks(items.map(item => item.id), questionSets, published?.dialogChecks);
+  const v1Published = effective.usesQuestionSet && published
+    ? { ...published, dialogChecks: effective.checks } : published;
+  return { taskLessonId: row.task_lesson_id, items, pool, fingerprint, published,
+    dialogChecks: effective.checks, checkSources: effective.sources, v1Published,
+    current: companionIsCurrent(published, fingerprint) };
 }

@@ -19,7 +19,7 @@ export async function currentSessionRevisionBestEffort(client, sourceLessonId, f
     let revision = null;
     if (context?.current) {
       if (flowVersion === 1) {
-        revision = sessionRevisionId(context.fingerprint, context.published);
+        revision = sessionRevisionId(context.fingerprint, context.v1Published ?? context.published);
       } else if (flowVersion === 2) {
         const transfers = await loadTransfers(client, sourceLessonId,
           context.items.map(item => item.id));
