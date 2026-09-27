@@ -1,4 +1,5 @@
 import { inspectStaffErasureTables, eraseStaffUserData } from './staff-erasure.js';
+import { createHash } from 'node:crypto';
 
 // Menjalankan hak "hapus data" yang dijanjikan privacy.html bagian 9.
 //
@@ -135,6 +136,19 @@ export async function eraseUserAccount(client, userId) {
     // diambil dari katalog FK dan di-quote, bukan dari input request.
     const res = await client.query(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
     wiped[table.includes('.') ? 'dialogue_question_attempts' : table] = res.rowCount;
+  }
+
+  // PR9d has no users FK, so the old FK inventory cannot discover it. Its
+  // actor is a digest of the authenticated owner UUID; erase matching
+  // attestations when the additive table exists, before anonymizing users.
+  const attestationTable = await client.query(
+    `SELECT to_regclass('curriculum_readiness_attestations') AS table_name`);
+  if (attestationTable.rows[0]?.table_name) {
+    const actorDigest = `sha256:${createHash('sha256')
+      .update(JSON.stringify(String(userId))).digest('hex')}`;
+    const removed = await client.query(
+      'DELETE FROM curriculum_readiness_attestations WHERE actor_digest=$1', [actorDigest]);
+    wiped.curriculum_readiness_attestations = removed.rowCount;
   }
 
   // Konten diskusi: di-scrub, barisnya dipertahankan (lihat HANDLED_SEPARATELY).

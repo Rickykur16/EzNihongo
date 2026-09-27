@@ -7,9 +7,9 @@
 // land in grammar_attempts — the one table grammar-mastery.js already reads.
 //
 // Scope is deliberately narrow and gated hard, independent of whatever the
-// frontend does: every mutating request re-verifies (a) the pilot flag is on
-// for *this* lesson specifically (isPilotLesson), and (b) the caller still
-// has course access, even if a session was created earlier while they did.
+// frontend does: v1 re-verifies the pilot flag; v2 freezes its placement at
+// issue time and survives a later rollout toggle. Both versions re-verify
+// ownership, source scope, expiry, account state, and course access.
 // A misconfigured or manipulated sourceLessonId/lessonId can not reach
 // content from another course or a lesson the pilot isn't scoped to (T04).
 //
@@ -26,15 +26,19 @@ import { deriveDrills, arrangeIsCorrect } from '../grammar-drills.js';
 import { loadPilotConfig } from '../bunpou-flow-config.js';
 import { loadCompanionContext } from '../bunpou-flow-content.js';
 import { submitProduction } from '../bunpou-production.js';
-import { pilotAccessError, sessionAccessError, taskScopeError } from '../bunpou-session-access.js';
+import { pilotAccessError, v2SessionAccessError,
+  sessionAccessError, taskScopeError } from '../bunpou-session-access.js';
+import { resolveFlowEligibility, V2_RUNTIME_AVAILABLE } from '../learning-flow-config.js';
+import { lockCurriculumCourse } from '../curriculum-content-service.js';
+import { chooseSessionFlowVersion, currentSessionRevisionBestEffort,
+  loadCurrentTransferRows, planV2SessionItems,
+  versionedSessionRevision, versionedItemFingerprint } from '../bunpou-versioned-session.js';
 import {
   questionFingerprint, deriveAssistanceState, independentEligible,
   publicSessionItem, overlayFor, isPilotLesson, primaryErrorFor, answerSentenceFor,
   SESSION_MINUTES, DRILL_MAX_WRONG, EVIDENCE_SCHEMA_VERSION,
   dialogCheckDrills, attemptSourceFor, sessionRevisionId,
 } from '../bunpou-flow-service.js';
-
-const router = Router();
 
 const CANONICAL_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function isUuid(v) { return typeof v === 'string' && CANONICAL_UUID.test(v); }
@@ -99,15 +103,18 @@ async function loadOwnedActiveSession(req, res, sessionId) {
   // that a given session id exists to a caller who does not own it.
   if (!session || session.user_id !== req.user.id) { res.status(404).json({ error: 'session_not_found' }); return null; }
   if (new Date(session.expires_at) <= new Date()) { res.status(410).json({ error: 'session_expired' }); return null; }
-  // Re-check the pilot flag on every resume/answer/hint/reveal, not just at
-  // creation — an admin flipping the flag off (or repointing it elsewhere),
-  // e.g. because a published companion turned out to have a mistake, must
-  // stop a still-open session from continuing to serve/log against it,
-  // rather than leaving it live for up to SESSION_MINUTES more.
-  const config = await loadPilotConfig();
-  if (!isPilotLesson(config, session.source_lesson_id)) {
-    res.status(403).json({ error: 'pilot_not_enabled_for_lesson' });
-    return null;
+  if (![1, 2].includes(session.flow_version)) {
+    res.status(409).json({ error: 'invalid_session_flow_version' }); return null;
+  }
+  // Legacy v1 retains its original live pilot revocation rule. v2 uses its
+  // stored version and immutable snapshot after issue; account/entitlement
+  // and scope checks still happen below and inside the mutation transaction.
+  if (session.flow_version === 1) {
+    const config = await loadPilotConfig();
+    if (!isPilotLesson(config, session.source_lesson_id)) {
+      res.status(403).json({ error: 'pilot_not_enabled_for_lesson' });
+      return null;
+    }
   }
   const courseId = await assertCourseAccess(req, res, session.source_lesson_id);
   if (!courseId) return null;
@@ -129,50 +136,106 @@ async function productionsForSession(sessionId, client = { query }) {
   return r.rows;
 }
 
+export function createGrammarTaskSessionsRouter({ runtimeAvailable = V2_RUNTIME_AVAILABLE,
+  resolveEligibility = resolveFlowEligibility } = {}) {
+const router = Router();
+
 // POST /api/grammar-task/sessions   body: { sourceLessonId }
 // Resumes the caller's most recent non-expired session for the paired task
 // lesson if its content revision still matches; otherwise starts a new one.
 router.post('/grammar-task/sessions', requireAuth, sessionLimiter, asyncHandler(async (req, res) => {
   const sourceLessonId = String((req.body || {}).sourceLessonId || '');
   if (!isUuid(sourceLessonId)) return res.status(400).json({ error: 'invalid_source_lesson_id' });
-
-  const config = await loadPilotConfig();
-  if (!isPilotLesson(config, sourceLessonId)) {
-    return res.status(403).json({ error: 'pilot_not_enabled_for_lesson' });
-  }
-  if (!(await assertCourseAccess(req, res, sourceLessonId))) return;
-
-  const context = await loadCompanionContext(sourceLessonId);
-  if (!context) return res.status(404).json({ error: 'no_task_for_lesson' });
-  if (!context.current) return res.status(409).json({ error: 'companion_needs_review' });
-  const { taskLessonId, items, pool, published, fingerprint } = context;
-  const revisionId = sessionRevisionId(fingerprint, published);
-
-  const drillsByGrammar = deriveDrills(items, pool);
-  const planned = plannedItems(items, drillsByGrammar, published);
-
   const session = await withTransaction(async (client) => {
     await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, ['bunpou:' + req.user.id]);
-    const denied = await pilotAccessError(client, req.user, sourceLessonId);
-    if (denied) return { denied };
-    const scopeError = await taskScopeError(client, sourceLessonId, taskLessonId, items.map(item => item.id));
+    const source = (await client.query(`SELECT l.module_id,m.course_id FROM lessons l
+      JOIN modules m ON m.id=l.module_id WHERE l.id=$1`, [sourceLessonId])).rows[0];
+    if (!source) return { denied: { status: 404, error: 'lesson_not_found' } };
+    await lockCurriculumCourse(client, source.course_id);
+    const lockedSource = (await client.query(`SELECT l.module_id,m.course_id FROM lessons l
+      JOIN modules m ON m.id=l.module_id WHERE l.id=$1 FOR SHARE OF l,m`,
+    [sourceLessonId])).rows[0];
+    if (!lockedSource || lockedSource.module_id !== source.module_id ||
+        lockedSource.course_id !== source.course_id) {
+      return { denied: { status: 409, error: 'session_scope_changed' } };
+    }
+    const dbQuery = client.query.bind(client);
+    const existing = (await client.query(`SELECT * FROM grammar_task_sessions
+      WHERE user_id=$1 AND source_lesson_id=$2 AND expires_at>NOW()
+      ORDER BY created_at DESC,id DESC LIMIT 1`, [req.user.id, sourceLessonId])).rows[0];
+    if (existing && ![1, 2].includes(existing.flow_version)) {
+      return { denied: { status: 409, error: 'invalid_session_flow_version' } };
+    }
+    if (existing) {
+      const denied = await sessionAccessError(client, req.user, existing.id);
+      if (denied) return { denied };
+    } else {
+      const denied = await v2SessionAccessError(client, req.user, sourceLessonId);
+      if (denied) return { denied };
+    }
+    // A v2 session is a frozen issued snapshot. Current authoring changes may
+    // change the diagnostic below, but must never replace or revoke it.
+    if (existing?.flow_version === 2) {
+      const revision = await currentSessionRevisionBestEffort(client, sourceLessonId, 2);
+      return { ...existing, taskLessonId: existing.task_lesson_id,
+        contentChanged: revision !== existing.content_revision_id };
+    }
+    // A normal linked task has no published companion. Decide whether a new
+    // v2 session is eligible before loading companion content; otherwise the
+    // precise pilot-off response tells its client to use legacy drills. The
+    // v2 resume above deliberately precedes this live placement check.
+    const placement = !existing ? await resolveEligibility({ client, user: req.user,
+      lessonId: sourceLessonId, courseId: source.course_id,
+      moduleId: source.module_id, runtimeAvailable, sharedConfig: true,
+      ignoreActiveSession: true }) : null;
+    if (!existing && placement.mode !== 'inline') {
+      const denied = await pilotAccessError(client, req.user, sourceLessonId);
+      if (denied) return { denied };
+    }
+    const context = await loadCompanionContext(sourceLessonId, dbQuery);
+    if (!context) return { denied: { status: 404, error: 'no_task_for_lesson' } };
+    if (!context.current) return { denied: { status: 409, error: 'companion_needs_review' } };
+    const { taskLessonId, items, pool, published, fingerprint } = context;
+    const scopeError = await taskScopeError(client, sourceLessonId, taskLessonId,
+      items.map(item => item.id));
     if (scopeError) return { denied: scopeError };
-    const existing = await client.query(
-      `SELECT * FROM grammar_task_sessions WHERE user_id = $1 AND task_lesson_id = $2
-       AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1`, [req.user.id, taskLessonId]);
-    if (existing.rows[0]?.content_revision_id === revisionId) return { ...existing.rows[0], contentChanged: false };
+    const oldRevision = sessionRevisionId(fingerprint, published);
+    if (existing?.task_lesson_id === taskLessonId &&
+        existing.content_revision_id === oldRevision) {
+      return { ...existing, contentChanged: false, taskLessonId };
+    }
+    // A stale v1 session keeps its legacy path rather than upgrading midway.
+    const flowVersion = chooseSessionFlowVersion({ existing, placement, runtimeAvailable });
+    const denied = flowVersion === 2
+      ? await v2SessionAccessError(client, req.user, sourceLessonId)
+      : await pilotAccessError(client, req.user, sourceLessonId);
+    if (denied) return { denied };
+    const transfers = flowVersion === 2 ? await loadCurrentTransferRows(client,
+      sourceLessonId, items.map(item => item.id)) : [];
+    const revisionId = flowVersion === 2
+      ? versionedSessionRevision(fingerprint, published, 2, transfers)
+      : sessionRevisionId(fingerprint, published);
+    const drillsByGrammar = deriveDrills(items, pool);
+    const planned = flowVersion === 2
+      ? planV2SessionItems(items, drillsByGrammar, transfers)
+      : plannedItems(items, drillsByGrammar, published);
     const productionSnapshot = items.map(item => ({
       grammarId: item.id, pattern: item.pattern, meaning: item.meaning,
       example: item.example, instruction: item.instruction || '',
       requiredCount: Math.max(1, Number(item.requiredCount) || 1),
       fingerprint: questionFingerprint(item.id, 3, { prompt: item.instruction, sentence: item.pattern, example: item.example }),
     }));
-    const ins = await client.query(
-      `INSERT INTO grammar_task_sessions (user_id, source_lesson_id, task_lesson_id, content_revision_id, expires_at, production_snapshot)
-       VALUES ($1, $2, $3, $4, NOW() + ($5 || ' minutes')::interval, $6)
-       RETURNING id, expires_at`,
-      [req.user.id, sourceLessonId, taskLessonId, revisionId, String(SESSION_MINUTES), JSON.stringify(productionSnapshot)]
-    );
+    const params = [req.user.id, sourceLessonId, taskLessonId, revisionId,
+      String(SESSION_MINUTES), JSON.stringify(productionSnapshot)];
+    const ins = flowVersion === 2 ? await client.query(
+      `INSERT INTO grammar_task_sessions
+        (user_id,source_lesson_id,task_lesson_id,content_revision_id,expires_at,
+         production_snapshot,flow_version)
+       VALUES ($1,$2,$3,$4,NOW()+($5 || ' minutes')::interval,$6,2)
+       RETURNING id,expires_at,flow_version`, params) : await client.query(
+      `INSERT INTO grammar_task_sessions (user_id, source_lesson_id, task_lesson_id, content_revision_id, expires_at, production_snapshot, flow_version)
+       VALUES ($1, $2, $3, $4, NOW() + ($5 || ' minutes')::interval, $6, 1)
+       RETURNING id, expires_at,flow_version`, params);
     const created = ins.rows[0];
     for (const p of planned) {
       const overlay = overlayFor(published, p.grammarId, p.step);
@@ -184,20 +247,21 @@ router.post('/grammar-task/sessions', requireAuth, sessionLimiter, asyncHandler(
         // untuk Step 1/2 dan hanya menyalurkan pembahasan soal pemeriksaan.
         overlayExplanation: overlay?.explanation || p.drill.explanation || null,
       };
-      const fingerprint = questionFingerprint(p.grammarId, p.step, p.drill);
+      const fingerprint = versionedItemFingerprint(p.grammarId, p.step, p.drill, flowVersion);
       await client.query(
         `INSERT INTO grammar_task_session_items (session_id, grammar_id, step, question_fingerprint, snapshot)
          VALUES ($1, $2, $3, $4, $5)`,
         [created.id, p.grammarId, p.step, fingerprint, JSON.stringify(snapshot)]
       );
     }
-    return { ...created, contentChanged: existing.rows.length > 0 };
+    return { ...created, taskLessonId, contentChanged: !!existing };
   });
 
   if (session.denied) return res.status(session.denied.status).json({ error: session.denied.error });
   res.json({
     sessionId: session.id,
-    taskLessonId,
+    taskLessonId: session.taskLessonId,
+    flowVersion: session.flow_version || 1,
     expiresAt: session.expires_at,
     contentChanged: session.contentChanged,
     items: await itemsForSession(session.id),
@@ -210,15 +274,15 @@ router.get('/grammar-task/sessions/:id', requireAuth, sessionLimiter, asyncHandl
   const session = await loadOwnedActiveSession(req, res, req.params.id);
   if (!session) return;
 
-  const context = await loadCompanionContext(session.source_lesson_id);
-  const contentChanged = !context?.current || sessionRevisionId(context.fingerprint, context.published) !== session.content_revision_id;
-
   const result = await withTransaction(async client => {
     await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, ['bunpou:' + req.user.id]);
     const denied = await sessionAccessError(client, req.user, session.id);
     if (denied) return { status: denied.status, body: { error: denied.error } };
+    const revision = await currentSessionRevisionBestEffort(client,
+      session.source_lesson_id, session.flow_version);
     return { status: 200, body: { sessionId: session.id, taskLessonId: session.task_lesson_id,
-      expiresAt: session.expires_at, contentChanged,
+      flowVersion: session.flow_version, expiresAt: session.expires_at,
+      contentChanged: revision !== session.content_revision_id,
       items: await itemsForSession(session.id, client),
       productions: await productionsForSession(session.id, client) } };
   });
@@ -268,7 +332,8 @@ router.post('/grammar-task/sessions/:id/items/:itemId/answer', requireAuth, sess
         if (saved.operation !== 'answer' || saved.payload_hash !== payloadHash) {
           return { status: 409, body: { error: 'request_id_conflict' } };
         }
-        return saved.response ? { status: 200, body: saved.response }
+        return saved.response ? { status: 200, body: saved.response,
+          telemetryDisposition: 'replay' }
           : { status: 409, body: { error: 'evaluation_pending' } };
       }
       const oldRequest = await client.query(`SELECT 1 FROM grammar_attempts WHERE user_id = $1 AND request_id = $2`, [req.user.id, requestId]);
@@ -373,6 +438,7 @@ router.post('/grammar-task/sessions/:id/items/:itemId/answer', requireAuth, sess
         independentEligible: independentEligible(assistanceState) });
     });
 
+    if (result.telemetryDisposition === 'replay') res.locals.learningFlowDisposition = 'replay';
     res.status(result.status).json(result.body);
   })
 );
@@ -449,4 +515,7 @@ router.post('/grammar-task/sessions/:id/items/:itemId/reveal', requireAuth, sess
   })
 );
 
-export default router;
+return router;
+}
+
+export default createGrammarTaskSessionsRouter();

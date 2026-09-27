@@ -62,6 +62,13 @@ import { validateAndWriteContent, boundaryWriteHttpError, lockCurriculumCourse,
 import { validateContentAgainstBoundary, CURRICULUM_VALIDATOR_VERSION } from '../curriculum-boundary-validator.js';
 import { generateGroundedContent } from '../grounded-generation.js';
 import { dialogueSourceFingerprint } from '../curriculum-boundary-context.js';
+import { DialogueQuestionError, loadDialogueQuestionContext, listDialogueQuestions,
+  saveDialogueQuestions, assertDialogueQuestionLessonMoveAllowed } from '../dialogue-question-service.js';
+import { getLearningFlowSettings, saveLearningFlowSettings } from '../learning-flow-config.js';
+import { CurriculumModeError, getCurriculumBoundaryMode,
+  saveCurriculumBoundaryMode } from '../curriculum-boundary-mode.js';
+import { captureReadinessAttestation,
+  listReadinessAttestations } from '../curriculum-readiness-attestations.js';
 import { validateBunpouPublish } from '../curriculum-bunpou-validation.js';
 import { deckReadingSourceFingerprint, distractorSourceFingerprint,
   assertGenerationSourceUnchanged } from '../curriculum-generation-source.js';
@@ -93,6 +100,7 @@ async function groundedDraft({ scope, contentType, loadSource, instruction, maxT
   transformCandidate = x => x }) {
   return generateGroundedContent({ scope, contentType, loadSource, communicationGoal,
     scenario, trustedValidation, expectedExampleCount, additionalSchemaIssues,
+    onTerminal: event => console.info(JSON.stringify(event)),
     expectedBoundaryFingerprint: body.boundaryFingerprint || null,
     expectedSourceFingerprint: body.sourceFingerprint || null,
     provider: async ({ prompt, repairFeedback }) => {
@@ -184,6 +192,99 @@ async function safeLearningWarnings(loadWarnings) {
 
 // Every route in this file requires admin
 router.use(requireAuth, requireCompanyAdmin);
+
+function dialogueQuestionFailure(res, error) {
+  if (!(error instanceof DialogueQuestionError)) throw error;
+  res.set('Cache-Control', 'private, no-store');
+  return res.status(error.status).json({ error: error.code,
+    ...(error.report ? { validation: error.report, report: error.report } : {}) });
+}
+
+// Owner-only: these editor DTOs include answer keys and private transfer
+// questions. Their exact methods are also recorded in company-route-policy.
+router.get('/grammar/:id/dialogue-questions', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try {
+    const result = await listDialogueQuestions(req.params.id,
+      { sourceLessonId: req.query.sourceLessonId || null });
+    res.set('Cache-Control', 'private, no-store');
+    res.json(result);
+  } catch (error) { dialogueQuestionFailure(res, error); }
+}));
+
+router.put('/grammar/:id/dialogue-questions', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try {
+    const result = await saveDialogueQuestions(req.params.id, req.body || {});
+    res.set('Cache-Control', 'private, no-store');
+    res.json(result);
+  } catch (error) { dialogueQuestionFailure(res, error); }
+}));
+
+router.post('/grammar/:id/generate-dialog-questions', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  const body = req.body || {};
+  const kind = body.kind;
+  const count = body.count ?? 1;
+  if (!body.sourceLessonId || !body.expectedDialogueFingerprint ||
+      !['comprehension', 'transfer'].includes(kind) || !Number.isInteger(count) ||
+      count < (kind === 'comprehension' ? 1 : 0) || count > (kind === 'comprehension' ? 2 : 1)) {
+    return res.status(400).json({ error: 'dialogue_generation_context_required' });
+  }
+  let context;
+  try { context = await loadDialogueQuestionContext({ query }, req.params.id, body.sourceLessonId); }
+  catch (error) { return dialogueQuestionFailure(res, error); }
+  if (context.dialogueFingerprint !== body.expectedDialogueFingerprint) {
+    return res.status(409).json({ error: 'dialogue_changed_since_editor_open' });
+  }
+  if (!context.turns.some(turn => turn.text)) return res.status(422).json({ error: 'source_dialogue_missing' });
+  const loadSource = async () => {
+    const current = await loadDialogueQuestionContext({ query }, req.params.id, body.sourceLessonId);
+    return { turns: current.turns, grammarId: current.grammar.id,
+      sourceLessonId: current.sourceLessonId, dialogueFingerprint: current.dialogueFingerprint,
+      goal: current.grammar.communication_goal || '',
+      translation: current.grammar.example_dialog_id || '' };
+  };
+  const initialSource = await loadSource();
+  if (initialSource.dialogueFingerprint !== context.dialogueFingerprint) {
+    return res.status(409).json({ error: 'dialogue_changed_since_editor_open' });
+  }
+  const sourceFingerprint = dialogueSourceFingerprint(initialSource);
+  if (count === 0) {
+    const report = { status: 'not_run', valid: null, violations: [], warnings: [] };
+    return groundedResponse(res, { status: 'ready', candidate: { questions: [] }, report,
+      decision: { decision: 'allowed', canProceed: true, statusCode: 200, code: null },
+      attempts: [], boundaryFingerprint: null, sourceFingerprint },
+    { questions: [], dialogueFingerprint: context.dialogueFingerprint });
+  }
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled' });
+  const result = await groundedDraft({ scope: { grammarId: req.params.id,
+    lessonId: context.sourceLessonId },
+    contentType: kind === 'comprehension' ? 'dialogue_comprehension' : 'dialogue_transfer',
+    loadSource, body: { ...body, sourceFingerprint },
+    communicationGoal: context.grammar.communication_goal || '',
+    maxTokens: 1300, model: ANTHROPIC_GEN_MODEL,
+    instruction: `Create exactly ${count} ${kind} multiple-choice question(s) for the persisted Japanese dialogue. Return JSON {"questions":[{"prompt":"...","options":["...","...","..."],"correctIndex":0,"explanation":"..."${kind === 'comprehension' ? ',"evidence":[{"turnIndex":0,"quote":"exact source quote"}]' : ''}}]}. Every option, explanation and evidence quote must be grounded in the source. ${kind === 'comprehension' ? 'Evidence must cite an exact Japanese dialogue turn quote.' : 'Test transfer to a new situation; do not claim source-turn evidence.'}`,
+    additionalSchemaIssues: candidate => {
+      const questions = candidate.questions;
+      if (!Array.isArray(questions) || questions.length !== count || candidate.question != null ||
+          candidate.evidence != null) return [{ code: 'dialogue_question_count_invalid' }];
+      return questions.flatMap((question, index) =>
+        kind === 'comprehension' ? (!Array.isArray(question?.evidence) || !question.evidence.length
+          ? [{ code: 'dialogue_question_evidence_required', questionIndex: index }] : []) :
+          question?.evidence != null ? [{ code: 'transfer_evidence_not_supported', questionIndex: index }] : []);
+    } });
+  const current = await loadDialogueQuestionContext({ query }, req.params.id, body.sourceLessonId);
+  if (current.dialogueFingerprint !== context.dialogueFingerprint) {
+    result.status = 'stale';
+    result.report = { ...result.report, status: 'version_conflict', valid: null,
+      warnings: [{ code: 'dialogue_changed_during_generation' }] };
+    result.decision = decideBoundaryAction({ mode: context.grammar.boundary_mode,
+      operation: 'generate', report: result.report });
+  }
+  return groundedResponse(res, result, { questions: result.status === 'ready' ? result.candidate.questions : [],
+    dialogueFingerprint: current.dialogueFingerprint });
+}));
 
 const boundaryField = (path, value) => ({ path, text: String(value ?? '') });
 function boundaryFieldsFrom(path, value) {
@@ -682,6 +783,48 @@ router.get('/courses', asyncHandler(async (req, res) => {
     `SELECT * FROM courses ORDER BY sort_order ASC, created_at ASC`
   );
   res.json({ courses: result.rows });
+}));
+
+// Owner-only mode control. A mode revision is rechecked after the same graph
+// and course locks as content writers; enforce promotion remains closed until
+// a trustworthy server-owned readiness evidence registry exists.
+router.get('/courses/:id/curriculum-boundary-mode', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.json(await getCurriculumBoundaryMode(req.params.id)); }
+  catch (error) {
+    if (!(error instanceof CurriculumModeError)) throw error;
+    res.status(error.status).json({ error: error.code });
+  }
+}));
+
+router.put('/courses/:id/curriculum-boundary-mode', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.json(await saveCurriculumBoundaryMode(req.params.id, req.body)); }
+  catch (error) {
+    if (!(error instanceof CurriculumModeError)) throw error;
+    res.status(error.status).json({ error: error.code });
+  }
+}));
+
+// Passive owner attestations are never an enforce authorization. The service
+// records current server observations and marks all captured claims unverified.
+router.get('/courses/:id/readiness-attestations', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.json(await listReadinessAttestations(req.params.id, req.query.moduleId)); }
+  catch (error) {
+    if (!(error instanceof CurriculumModeError)) throw error;
+    res.status(error.status).json({ error: error.code });
+  }
+}));
+
+router.post('/courses/:id/readiness-attestations', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.status(201).json(await captureReadinessAttestation(req.params.id,
+    req.user.id, req.body)); }
+  catch (error) {
+    if (!(error instanceof CurriculumModeError)) throw error;
+    res.status(error.status).json({ error: error.code });
+  }
 }));
 
 // Read-only curriculum inspector. It remains owner-only in the explicit
@@ -2410,6 +2553,21 @@ router.post('/lessons/:lessonId/bunpou-flow/publish', asyncHandler(async (req, r
 // requires the target to actually be a lesson with a companion already
 // published, so a typo'd or forgotten-to-publish lesson id can not be
 // switched live by accident.
+router.get('/settings/learning-flow-communication', asyncHandler(async (_req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  res.json(await getLearningFlowSettings());
+}));
+
+router.put('/settings/learning-flow-communication', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.json(await saveLearningFlowSettings(req.body || {})); }
+  catch (error) {
+    if (!error.status) throw error;
+    res.status(error.status).json({ error: error.message,
+      ...(error.readiness ? { readiness: error.readiness } : {}) });
+  }
+}));
+
 router.get('/settings/bunpou-flow-pilot', asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT key, value FROM app_settings WHERE key IN ('bunpou_flow_pilot_enabled','bunpou_flow_pilot_lesson_id')`
@@ -3892,7 +4050,9 @@ router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
         changed(hasNotes, notes, row.notes) || goalChanged;
       // On reassignment the stored grammar still points to the old lesson;
       // resolving both IDs would manufacture a false ownership mismatch.
-      const movingLesson = effectiveLessonId && effectiveLessonId !== row.lesson_id;
+      const movingLesson = hasLesson && (effectiveLessonId || null) !== (row.lesson_id || null);
+      if (movingLesson) await assertDialogueQuestionLessonMoveAllowed(client, row.id,
+        row.lesson_id, effectiveLessonId, { locked });
       return { scope: { ...(!movingLesson ? { grammarId: row.id } : {}),
           moduleId: row.module_id, lessonId: effectiveLessonId || undefined },
         contentType: dialogChanged ? 'grammar_dialog' : 'grammar_example', contentId: row.id,
