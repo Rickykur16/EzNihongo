@@ -3,13 +3,15 @@ import { withTransaction } from './db.js';
 import { isAdminEmail } from './auth.js';
 import { dialogueFingerprint, questionFingerprint } from './dialogue-question-service.js';
 import { lockCurriculumCourse } from './curriculum-content-service.js';
+import { resolveFlowEligibility } from './learning-flow-config.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const fail = (status, code) => { const error = new Error(code); error.status = status; throw error; };
 const digest = value => `sha256:${createHash('sha256').update(JSON.stringify(value)).digest('hex')}`;
 const placementDto = value => {
   if (value?.mode === 'inline') return { mode: 'inline', flowVersion: 2,
-    reason: String(value.reason || 'eligible'), activeSessionId: null };
+    reason: String(value.reason || 'eligible'),
+    activeSessionId: UUID.test(String(value.activeSessionId || '')) ? value.activeSessionId : null };
   if (value?.mode === 'legacy_session' && UUID.test(String(value.activeSessionId || ''))) {
     return { mode: 'legacy_session', flowVersion: 1,
       reason: String(value.reason || 'active_legacy_session'),
@@ -22,17 +24,7 @@ const placementDto = value => {
 const publicQuestion = row => ({ id: row.id, version: row.question_version,
   kind: 'comprehension', prompt: row.prompt, options: row.options, sortOrder: row.sort_order });
 
-// PR6c is passive. PR6d supplies one shared, server-side readiness/config
-// resolver to both GET and POST. Until then, the default never serves a new
-// inline question or accepts a new inline answer.
-export async function defaultDialoguePlacement({ client, user, lessonId }) {
-  const active = (await client.query(`SELECT id,flow_version FROM grammar_task_sessions
-    WHERE user_id=$1 AND source_lesson_id=$2 AND expires_at>NOW()
-    ORDER BY created_at DESC,id DESC LIMIT 1`, [user.id, lessonId])).rows[0];
-  if (active?.flow_version === 1) return { mode: 'legacy_session', reason: 'active_legacy_session',
-    activeSessionId: active.id };
-  return { mode: 'legacy', reason: 'inline_flow_not_enabled', activeSessionId: null };
-}
+export const defaultDialoguePlacement = resolveFlowEligibility;
 
 async function lessonScope(client, lessonId, user, adminCheck) {
   if (!UUID.test(String(lessonId || ''))) fail(400, 'invalid_lesson_id');
@@ -70,7 +62,8 @@ export async function listLearnerDialogueQuestions(lessonId, user, {
 } = {}) {
   return transaction(async client => {
     const lesson = await lessonScope(client, lessonId, user, adminCheck);
-    const placement = placementDto(await resolvePlacement({ client, user, lessonId, courseId: lesson.course_id }));
+    const placement = placementDto(await resolvePlacement({ client, user, lessonId,
+      courseId: lesson.course_id, moduleId: lesson.module_id }));
     if (placement.mode !== 'inline') return { lessonId, placement, grammars: [] };
     const rows = (await client.query(`SELECT q.id,q.grammar_id,q.question_version,q.prompt,
         q.options,q.sort_order,q.dialogue_fingerprint,g.example_dialog,g.example_dialog_id,
@@ -124,7 +117,8 @@ export async function answerDialogueQuestion(questionId, user, body, {
     if (!lockedLesson || lockedLesson.module_id !== lesson.module_id ||
         lockedLesson.course_id !== lesson.course_id) fail(409, 'question_owner_changed');
     const placement = placementDto(await resolvePlacement({ client, user,
-      lessonId: source.source_lesson_id, courseId: lesson.course_id }));
+      lessonId: source.source_lesson_id, courseId: lesson.course_id,
+      moduleId: lesson.module_id, sharedConfig: true }));
     if (placement.mode !== 'inline') fail(409, 'inline_placement_unavailable');
     // Authoring locks grammar before question; use the same order here.
     const grammar = (await client.query(`SELECT * FROM module_grammar WHERE id=$1 FOR SHARE`,

@@ -64,6 +64,7 @@ import { generateGroundedContent } from '../grounded-generation.js';
 import { dialogueSourceFingerprint } from '../curriculum-boundary-context.js';
 import { DialogueQuestionError, loadDialogueQuestionContext, listDialogueQuestions,
   saveDialogueQuestions, assertDialogueQuestionLessonMoveAllowed } from '../dialogue-question-service.js';
+import { getLearningFlowSettings, saveLearningFlowSettings } from '../learning-flow-config.js';
 import { validateBunpouPublish } from '../curriculum-bunpou-validation.js';
 import { deckReadingSourceFingerprint, distractorSourceFingerprint,
   assertGenerationSourceUnchanged } from '../curriculum-generation-source.js';
@@ -2505,6 +2506,21 @@ router.post('/lessons/:lessonId/bunpou-flow/publish', asyncHandler(async (req, r
 // requires the target to actually be a lesson with a companion already
 // published, so a typo'd or forgotten-to-publish lesson id can not be
 // switched live by accident.
+router.get('/settings/learning-flow-communication', asyncHandler(async (_req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  res.json(await getLearningFlowSettings());
+}));
+
+router.put('/settings/learning-flow-communication', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try { res.json(await saveLearningFlowSettings(req.body || {})); }
+  catch (error) {
+    if (!error.status) throw error;
+    res.status(error.status).json({ error: error.message,
+      ...(error.readiness ? { readiness: error.readiness } : {}) });
+  }
+}));
+
 router.get('/settings/bunpou-flow-pilot', asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT key, value FROM app_settings WHERE key IN ('bunpou_flow_pilot_enabled','bunpou_flow_pilot_lesson_id')`

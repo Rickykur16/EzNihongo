@@ -32,6 +32,7 @@ function fixture({ questionRow = question, published = true, grant = true,
     if (sql.includes('FROM lessons l JOIN modules m')) return { rows: [{ ...lesson, is_published: published }] };
     if (sql.includes('FROM user_enrollments')) return { rows: grant ? [{ '?column?': 1 }] : [] };
     if (sql.includes('FROM grammar_task_sessions')) return { rows: session ? [session] : [] };
+    if (sql.includes('FROM app_settings')) return { rows: [] };
     if (sql.includes('FROM grammar_dialog_questions q JOIN module_grammar g')) {
       return { rows: (batchRows || [questionRow]).map(row => ({ ...row, ...grammar, id: row.id,
         grammar_id: row.grammar_id, question_version: row.question_version,
