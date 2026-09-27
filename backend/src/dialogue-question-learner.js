@@ -95,9 +95,10 @@ function answerRequest(body) {
 export async function answerDialogueQuestion(questionId, user, body, {
   transaction = withTransaction, adminCheck = isAdminEmail,
   resolvePlacement = defaultDialoguePlacement, lockCourse = lockCurriculumCourse,
+  onDisposition = null,
 } = {}) {
   answerRequest(body);
-  return transaction(async client => {
+  const committed = await transaction(async client => {
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`bunpou:${user.id}`]);
     const { question: source, lesson } = await questionScope(client, questionId, user, adminCheck);
     if (source.kind !== 'comprehension') fail(404, 'question_not_found');
@@ -108,7 +109,7 @@ export async function answerDialogueQuestion(questionId, user, body, {
     [user.id, body.requestId])).rows[0];
     if (prior) {
       if (prior.request_payload_hash !== payloadHash) fail(409, 'request_id_conflict');
-      return prior.response_snapshot;
+      return { response: prior.response_snapshot, disposition: 'replay' };
     }
     await lockCourse(client, lesson.course_id);
     const lockedLesson = (await client.query(`SELECT l.module_id,m.course_id
@@ -164,8 +165,12 @@ export async function answerDialogueQuestion(questionId, user, body, {
       body.requestId, payloadHash, question.question_version, question.question_fingerprint,
       question.dialogue_fingerprint, question.boundary_fingerprint,
       JSON.stringify(snapshot), body.optionIndex, response.correct, JSON.stringify(response)]);
-    return response;
+    return { response, disposition: 'new' };
   });
+  // This callback is an internal telemetry hint, emitted only after commit.
+  // It cannot change the public snapshot or make a successful answer fail.
+  try { onDisposition?.(committed.disposition); } catch { /* passive telemetry */ }
+  return committed.response;
 }
 
 export async function latestDialogueQuestionAttempt(questionId, user, questionVersion = null, {

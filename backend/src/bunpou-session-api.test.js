@@ -9,6 +9,7 @@ import { readFile } from 'node:fs/promises';
 import { once } from 'node:events';
 import express from 'express';
 import pgDriver from 'pg';
+import { createLearnerFlowTelemetry } from './learning-flow-telemetry.js';
 
 const migrations = [
   '147_bunpou_flow_pilot.sql',
@@ -200,8 +201,10 @@ test('Bunpou session API with real PostgreSQL SQL', { timeout: 90_000, concurren
   const { assertUserTablesCovered } = await import('./user-erasure.js');
   const token = await signAccessToken(fixture.userId, fixture.email);
   const errors = [];
+  const telemetry = [];
   const app = express();
   app.use(express.json());
+  app.use('/api', createLearnerFlowTelemetry({ logger: event => telemetry.push(event) }));
   app.use('/api', router);
   app.use((err, req, res, next) => {
     errors.push(err);
@@ -256,6 +259,7 @@ test('Bunpou session API with real PostgreSQL SQL', { timeout: 90_000, concurren
   let fingerprint;
   t.beforeEach(async () => {
     errors.length = 0;
+    telemetry.length = 0;
     await database.exec(`TRUNCATE users, courses, modules, lessons, module_grammar, grammar_examples,
       lesson_grammar_task_items, grammar_attempts, grammar_eval_cache, app_settings,
       user_enrollments, user_progress, admin_emails CASCADE`);
@@ -379,6 +383,9 @@ test('Bunpou session API with real PostgreSQL SQL', { timeout: 90_000, concurren
     assert.equal(b.wrongCount, 2);
     const before = await state();
     assert.deepEqual(await answer(session, item, wrong, 'request-A'), a);
+    assert.deepEqual(telemetry.filter(event => event.operation === 'session_answer')
+      .map(event => event.outcome), ['success', 'success', 'idempotent_replay']);
+    assert.doesNotMatch(JSON.stringify(telemetry), /request-A|request-B|student@example|answerText|correctIndex/);
     assert.deepEqual(await state(), before);
     assert.equal((await storedItem(item)).wrong_count, 2);
     assert.equal(before.grammar_attempts.length, 2);
