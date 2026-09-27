@@ -183,18 +183,23 @@ test('readiness rejects stale companion and missing normalized questions for a m
 });
 
 test('readiness pins every visible dialogue question to current source, review, and boundary', async () => {
-  const grammarId = id(20), taskId = id(21), extraGrammarId = id(22);
+  const grammarId = id(20), taskId = id(21), extraGrammarId = id(22), unusedPoolId = id(25);
   const rawItem = { id: grammarId, pattern: '〜です', meaning: 'adalah', example: 'ねこです',
     example_dialog: 'A: ねこです。', example_dialog_id: 'A: Kucing.',
     recognition_distractors: null, controlled_distractors: null, sort_order: 0,
     instruction: 'Buat kalimat', requiredCount: 1 };
   const rawPool = { id: grammarId, pattern: '〜です', meaning: 'adalah',
     recognition_distractors: null, controlled_distractors: null };
-  const normalized = row => ({ ...row, recognitionDistractors: [], controlledDistractors: [], examples: [] });
-  let companionFingerprint = contentRevisionId([normalized(rawItem)], [normalized(rawPool)]);
+  const unusedPool = { id: unusedPoolId, pattern: '〜に', meaning: 'lokasi',
+    recognition_distractors: null, controlled_distractors: null,
+    examples: [{ grammar_id: unusedPoolId, japanese: '学校', highlight: '学校', indonesian: 'sekolah' }] };
+  const normalized = row => ({ ...row, recognitionDistractors: [], controlledDistractors: [],
+    examples: row.examples || [] });
+  let companionFingerprint = contentRevisionId([normalized(rawItem)],
+    [normalized(rawPool), normalized(unusedPool)]);
   const grammar = { id: grammarId, module_id: scope.moduleId, lesson_id: scope.lessonId,
     example_dialog: rawItem.example_dialog, example_dialog_id: rawItem.example_dialog_id,
-    communication_goal: 'Menyebut hewan', dialog_scene: null };
+    communication_goal: null, dialog_scene: { internalNote: '学校' } };
   const dialogue = dialogueFingerprint(grammar);
   const makeQuestion = (kind, n, evidence = null) => {
     const authored = { kind, prompt: kind === 'comprehension' ? 'Hewan apa?' : 'Pilih respons tepat.',
@@ -210,7 +215,7 @@ test('readiness pins every visible dialogue question to current source, review, 
   const questions = [makeQuestion('comprehension', 23,
     [{ turnIndex: 0, quote: 'ねこです' }]), makeQuestion('transfer', 24)];
   let extraVisible = false;
-  const client = { async query(sql) {
+  const client = { async query(sql, params) {
     if (sql.startsWith('SELECT id FROM courses')) return { rows: [] };
     if (sql.startsWith('SELECT id,course_id FROM modules')) return { rows: [{ id: scope.moduleId,
       course_id: scope.courseId }] };
@@ -221,8 +226,11 @@ test('readiness pins every visible dialogue question to current source, review, 
       source_course_id: scope.courseId, task_course_id: scope.courseId,
       bunpou_flow_published: { sourceFingerprint: companionFingerprint } }] };
     if (sql.includes('FROM lesson_grammar_task_items gi')) return { rows: [rawItem] };
-    if (sql.includes('FROM grammar_examples')) return { rows: [] };
-    if (sql.includes('FROM module_grammar g') && sql.includes('JOIN lessons l')) return { rows: [rawPool] };
+    if (sql.includes('FROM grammar_examples')) return { rows:
+      (params?.[0] || []).includes(unusedPoolId) ? unusedPool.examples : [] };
+    if (sql.includes('FROM module_grammar g') && sql.includes('JOIN lessons l')) {
+      return { rows: [rawPool, unusedPool] };
+    }
     if (sql.includes('SELECT id FROM module_grammar WHERE lesson_id=')) return { rows:
       [{ id: grammarId }, ...(extraVisible ? [{ id: extraGrammarId }] : [])] };
     if (sql.includes('FROM module_grammar WHERE id=ANY')) return { rows: [grammar] };
@@ -241,6 +249,13 @@ test('readiness pins every visible dialogue question to current source, review, 
     integrityIssues });
   const ready = await learningFlowReadiness(client, configured, { resolveBoundary });
   assert.equal(ready.ready, true);
+
+  // Raw pool examples and scene metadata are not learner-visible payloads.
+  // The blank legacy goal also uses the documented UI fallback because the
+  // persisted dialogue has not been edited.
+  futureKanji = [{ key: 'future-school', character: '学', sourceIds: [], earliestIntroduction: null }];
+  const visibleOnly = await learningFlowReadiness(client, configured, { resolveBoundary });
+  assert.equal(visibleOnly.ready, true);
 
   integrityIssues = [{ code: 'vocabulary_unplaced', severity: 'warning' }];
   const warningOnly = await learningFlowReadiness(client, configured, { resolveBoundary });
@@ -267,10 +282,10 @@ test('readiness pins every visible dialogue question to current source, review, 
   extraVisible = false;
   grammar.example_dialog = 'A: ねこです。\nB: 学校です。';
   rawItem.example_dialog = grammar.example_dialog;
-  companionFingerprint = contentRevisionId([normalized(rawItem)], [normalized(rawPool)]);
+  companionFingerprint = contentRevisionId([normalized(rawItem)],
+    [normalized(rawPool), normalized(unusedPool)]);
   const changedDialogue = dialogueFingerprint(grammar);
   for (const row of questions) row.dialogue_fingerprint = changedDialogue;
-  futureKanji = [{ key: 'future-school', character: '学', sourceIds: [], earliestIntroduction: null }];
   const unsafeSource = await learningFlowReadiness(client, configured, { resolveBoundary });
   assert.equal(unsafeSource.ready, false);
   assert.ok(unsafeSource.lessons[0].issues.some(item =>
