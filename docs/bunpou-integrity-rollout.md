@@ -1,6 +1,11 @@
 # Bunpou pilot: activation and session integrity
 
-## Activation without IDs
+This document's selector and checkbox describe the original **v1 pilot**.
+For the later v2 communication flow, see
+[learning-flow-boundary-rollout.md](learning-flow-boundary-rollout.md).
+The two flags are independent. Neither document records production activation.
+
+## V1 pilot activation without IDs
 
 1. Open the AI settings tab in the existing admin workspace.
 2. In Bunpou Flow, choose a lesson from the course/bab groups. The selector shows lesson names and readiness, not UUIDs.
@@ -25,7 +30,7 @@ Shadow comparison has a separate named selector. It remains read-only and does n
 - A completed production slot never reports a different sentence as graded. Requests competing for the same slot wait/retry instead of overwriting newer work.
 - Published companion content is checked against the actual task sources, including dialogues, instructions, examples and distractors. Stale content is withheld from new sessions and Smart Review. Existing authorized snapshots remain unchanged.
 - Publishing requires the exact draft revision returned by the reviewed save. Replacing a draft during review or publication cannot silently publish another editor's changes.
-- Session reads and writes recheck account, enrollment, pilot flag, expiry and course scope after acquiring the user lock. Account erasure takes the same lock; production checks access before reservation and again after evaluation.
+- Session reads and writes recheck account, enrollment, expiry and course scope after acquiring the user lock. V1 additionally rechecks its live pilot flag; an issued v2 session uses its persisted version and immutable snapshot, so disabling the v2 allowlist does not revoke it. Account erasure takes the same lock; production checks access before reservation and again after evaluation.
 - Student UI restores completed/revealed states, wrong counts and production results. Hints and explanations are escaped before display. Revising a sentence preserves the original text in the input; earlier attempts stay in history.
 - The shadow policy tracks independent, assisted and limited production separately. Assisted or unknown production cannot satisfy the proposed independent-production requirement. Active mastery remains unchanged.
 - Account erasure deletes request records and sessions; session deletion cascades to production snapshots and item state.
@@ -40,4 +45,6 @@ Focused tests cover source invalidation, public/private state, request replays a
 
 ## Rollback
 
-Turn off the Bunpou Flow checkbox and save. Disabling remains possible even when the old selected lesson has been removed or is no longer ready. Every session operation rechecks the flag. Keep migration 152 and the accumulated records; do not delete attempts or reverse the additive schema merely to disable the pilot.
+For a **v1 pilot** issue, turn off the Bunpou Flow checkbox and save. Disabling remains possible even when the old selected lesson has been removed or is no longer ready. V1 sessions continue to observe that flag and may no longer resume.
+
+For a **v2 communication-flow** issue, the owner disables new v2 creation through `PUT /api/admin/settings/learning-flow-communication`, using the latest `expectedConfigRevision` and preserving the explicit ID lists. Already-active v2 sessions still resume and use their frozen internal step 5; account, enrollment, scope and expiry checks remain. Do not turn off the v1 pilot flag expecting it to stop or rewrite v2 sessions. Keep migrations and accumulated records; do not delete attempts, sessions or reverse additive schema merely to disable a flow.

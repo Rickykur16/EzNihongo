@@ -1,10 +1,13 @@
 import { getCurriculumBoundary } from './curriculum-boundary.js';
+import { performance } from 'node:perf_hooks';
 import { buildGroundedContext, dialogueSourceFingerprint, GroundedContextError } from './curriculum-boundary-context.js';
 import { validateContentAgainstBoundary, validateQuestionShape } from './curriculum-boundary-validator.js';
 import { decideBoundaryAction } from './curriculum-boundary-policy.js';
 
 const QUESTION_TYPES = new Set(['dialogue_comprehension', 'dialogue_transfer', 'dialogue_question',
-  'quiz_question', 'listening_question', 'reading_question', 'quiz', 'assessment']);
+  'quiz_question', 'listening_question', 'reading_question', 'quiz', 'assessment',
+  'listening_batch', 'jlpt_batch']);
+const BATCH_QUESTION_TYPES = new Set(['listening_batch', 'jlpt_batch']);
 const GRAMMAR_CONTENT_TYPES = new Set(['grammar_dialog', 'grammar_example']);
 const demonstratesTargetGrammar = (contentType, field) => contentType === 'grammar_example'
   ? /^(?:japanese|examples\[\d+\]\.japanese)$/u.test(field || '')
@@ -23,7 +26,9 @@ const SCHEMA_KEYS = {
   reading_question: ['question', 'questions'],
   quiz: ['question', 'questions'],
   assessment: ['question', 'questions'],
-  grammar_distractors: ['recognitionDistractors', 'controlledDistractors', 'distractors'],
+  listening_batch: ['questions'],
+  jlpt_batch: ['questions'],
+  grammar_distractors: ['recognitionDistractors', 'controlledDistractors', 'distractors', 'slot'],
   distractors: ['distractors', 'options'],
   quiz_options: ['options'],
   listening: ['text', 'passage', 'dialogue'],
@@ -32,6 +37,23 @@ const SCHEMA_KEYS = {
   kanji_compound_assessed: ['japanese', 'compound'],
   kanji_compound_exploration: ['japanese', 'compound'],
 };
+const TELEMETRY_MODES = new Set(['off', 'audit', 'warn', 'enforce']);
+const TELEMETRY_OUTCOMES = new Set(['ready', 'rejected', 'stale', 'unavailable']);
+const boundedCount = value => Math.min(3, Math.max(0, Number.isInteger(value) ? value : 0));
+
+export function groundedGenerationEvent({ contentType, mode, result, providerCallCount,
+  sourceStale = false, durationMs }) {
+  return { event: 'grounded_generation', schemaVersion: 1,
+    contentType: Object.hasOwn(SCHEMA_KEYS, contentType) ? contentType : 'unknown',
+    operation: 'generate', mode: TELEMETRY_MODES.has(mode) ? mode : 'unknown',
+    outcome: TELEMETRY_OUTCOMES.has(result?.status) ? result.status : 'unavailable',
+    providerCallCount: boundedCount(providerCallCount),
+    attemptCount: boundedCount(result?.attempts?.length),
+    retried: providerCallCount > 1,
+    sourceStale: result?.status === 'stale' && sourceStale === true,
+    durationMs: Math.min(300000, Math.max(0,
+      Number.isFinite(durationMs) ? Math.round(durationMs) : 0)) };
+}
 const errorReport = (status, code, fingerprint = null) => ({ status,
   valid: status === 'schema_invalid' ? false : null, boundaryFingerprint: fingerprint,
   violations: status === 'schema_invalid' ? [{ code }] : [],
@@ -55,6 +77,8 @@ const questionFields = (question, path) => !plain(question) ? [] : [
   ...textField(`${path}.prompt`, question.prompt),
   ...stringArrayFields(`${path}.options`, question.options),
   ...textField(`${path}.explanation`, question.explanation),
+  ...textField(`${path}.audioScript`, question.audioScript),
+  ...textField(`${path}.passage`, question.passage),
   ...(Array.isArray(question.evidence) ? question.evidence.flatMap((entry, index) =>
     textField(`${path}.evidence[${index}].quote`, entry?.quote)) : []),
 ];
@@ -106,6 +130,10 @@ export function groundedCandidateFields(candidate, contentType) {
   if (['grammar_distractors', 'distractors', 'quiz_options'].includes(contentType)) return [
     ...['recognitionDistractors', 'controlledDistractors', 'distractors', 'options']
       .flatMap(key => stringArrayFields(key, candidate[key])),
+    ...(contentType === 'grammar_distractors' ? [
+      ...textField('slot.sentence', candidate.slot?.sentence),
+      ...textField('slot.answer', candidate.slot?.answer),
+    ] : []),
   ];
   if (['kanji_compound_assessed', 'kanji_compound_exploration'].includes(contentType)) return [
     ...textField('japanese', candidate.japanese),
@@ -233,24 +261,32 @@ export function groundedCandidateSchemaIssues(candidate, contentType) {
         errors.push({ code: 'invalid_dialogue_schema', field: 'dialogFurigana' });
       }
     }
-  } else if (contentType.includes('question') || contentType === 'quiz' ||
+  } else if (contentType.includes('question') || BATCH_QUESTION_TYPES.has(contentType) || contentType === 'quiz' ||
       contentType === 'assessment' || contentType === 'dialogue_comprehension' ||
       contentType === 'dialogue_transfer') {
     meaningful = candidate.question != null || candidate.questions != null;
     if (candidate.question != null && candidate.questions != null) {
       errors.push({ code: 'invalid_question_schema', field: 'question' });
     }
+    const maxQuestions = BATCH_QUESTION_TYPES.has(contentType) ? 40 : 2;
     if (candidate.questions != null && (!Array.isArray(candidate.questions) ||
-        candidate.questions.length < 1 || candidate.questions.length > 2)) {
+        candidate.questions.length < 1 || candidate.questions.length > maxQuestions)) {
       errors.push({ code: 'invalid_question_schema', field: 'questions' });
     }
     for (const [index, question] of (Array.isArray(candidate.questions) ? candidate.questions :
       candidate.question != null ? [candidate.question] : []).entries()) {
       if (plain(question) && (Object.keys(question).some(key =>
-        !['prompt', 'options', 'correctIndex', 'explanation', 'evidence'].includes(key)) ||
+        !['prompt', 'options', 'correctIndex', 'explanation', 'evidence',
+          ...(BATCH_QUESTION_TYPES.has(contentType) ? ['audioScript', 'passage'] : [])].includes(key)) ||
         (question.explanation != null && (typeof question.explanation !== 'string' ||
           question.explanation.length > 2000)))) {
         errors.push({ code: 'invalid_question_schema', field: `questions[${index}]` });
+      }
+      if (BATCH_QUESTION_TYPES.has(contentType) &&
+          ((question?.audioScript != null && (typeof question.audioScript !== 'string' || question.audioScript.length > 1400)) ||
+           (question?.passage != null && (typeof question.passage !== 'string' || question.passage.length > 4000)) ||
+           (contentType === 'listening_batch' && (typeof question?.audioScript !== 'string' || !question.audioScript.trim())))) {
+        errors.push({ code: 'invalid_question_source_field', field: `questions[${index}]` });
       }
       evidenceShape(question?.evidence, `questions[${index}].evidence`);
     }
@@ -260,6 +296,12 @@ export function groundedCandidateSchemaIssues(candidate, contentType) {
     meaningful = keys.some(key => candidate[key] != null);
     for (const key of keys) if (allowed.includes(key)) stringList(key,
       key === 'options' ? 3 : 2, key === 'options' ? 4 : 6);
+    if (contentType === 'grammar_distractors' && candidate.slot != null &&
+        (!plain(candidate.slot) || Object.keys(candidate.slot).some(key => !['sentence', 'answer'].includes(key)) ||
+         typeof candidate.slot.sentence !== 'string' || !candidate.slot.sentence.trim() ||
+         typeof candidate.slot.answer !== 'string' || !candidate.slot.answer.trim())) {
+      errors.push({ code: 'invalid_distractor_slot' });
+    }
   } else if (contentType === 'kanji_compound_assessed' || contentType === 'kanji_compound_exploration') {
     meaningful = japanese(candidate.japanese) ||
       (candidate.compound != null && JAPANESE.test(JSON.stringify(candidate.compound)));
@@ -286,7 +328,9 @@ function questionErrors(candidate, contentType, sourceDialogue) {
   if (!QUESTION_TYPES.has(contentType)) return [];
   const questions = Array.isArray(candidate.questions) ? candidate.questions :
     candidate.question ? [candidate.question] : [];
-  if (!questions.length || questions.length > 2) return [{ code: 'invalid_question_schema' }];
+  if (!questions.length || questions.length > (BATCH_QUESTION_TYPES.has(contentType) ? 40 : 2)) {
+    return [{ code: 'invalid_question_schema' }];
+  }
   const errors = questions.flatMap(question => validateQuestionShape(question));
   if (contentType !== 'dialogue_comprehension') return errors;
   const turns = Array.isArray(sourceDialogue) ? sourceDialogue : sourceDialogue?.turns;
@@ -323,14 +367,36 @@ async function callProvider(provider, args, timeoutMs) {
 }
 
 /** Draft generation only. The caller must use the guarded write service later. */
-export async function generateGroundedContent({
+export async function generateGroundedContent(options = {}) {
+  const started = performance.now();
+  let providerCallCount = 0;
+  let mode = 'unknown';
+  let sourceStale = false;
+  const provider = typeof options.provider === 'function'
+    ? (...args) => { providerCallCount++; return options.provider(...args); }
+    : options.provider;
+  const result = await generateGroundedContentInternal({ ...options, provider,
+    onBoundaryMode: value => { mode = value; },
+    onSourceStale: () => { sourceStale = true; } });
+  // Telemetry sees only fixed labels and bounded counts, after a terminal
+  // result. It is never part of the candidate/response or save decision.
+  try { options.onTerminal?.(groundedGenerationEvent({ contentType: options.contentType,
+    mode, result, providerCallCount, sourceStale,
+    durationMs: performance.now() - started })); }
+  catch { /* logging must not change generation output */ }
+  return result;
+}
+
+async function generateGroundedContentInternal({
   scope, contentType, provider, resolveBoundary = getCurriculumBoundary,
   loadSource = null, expectedBoundaryFingerprint = null, expectedSourceFingerprint = null,
   communicationGoal = '', scenario = '', contextOptions = {}, maxRepairs = 2,
   providerTimeoutMs = 30000,
   trustedValidation = {}, expectedExampleCount = null,
+  additionalSchemaIssues = null,
   parse = parseGroundedCandidate, validate = validateContentAgainstBoundary,
   decide = decideBoundaryAction,
+  onBoundaryMode = null, onSourceStale = null,
 } = {}) {
   if (typeof provider !== 'function' || typeof resolveBoundary !== 'function') {
     throw new TypeError('provider and resolveBoundary functions required');
@@ -344,6 +410,7 @@ export async function generateGroundedContent({
   try { boundary = await resolveBoundary(scope); }
   catch { return { status: 'unavailable', candidate: null, attempts,
     report: errorReport('unavailable', 'boundary_unavailable') }; }
+  onBoundaryMode?.(boundary?.course?.mode);
   const mode = boundary?.course?.mode || 'enforce';
   const decision = report => decide({ mode, operation: 'generate', report });
   if (boundary?.status !== 'resolved') {
@@ -373,6 +440,7 @@ export async function generateGroundedContent({
     return { status: 'rejected', candidate: null, report, decision: decision(report), attempts };
   }
   if (expectedSourceFingerprint && expectedSourceFingerprint !== built.sourceFingerprint) {
+    onSourceStale?.();
     const report = errorReport('version_conflict', 'source_changed_since_preview', boundary.boundaryFingerprint);
     return { status: 'stale', candidate: null, report, decision: decision(report), attempts };
   }
@@ -404,6 +472,14 @@ export async function generateGroundedContent({
     const fields = groundedCandidateFields(candidate, contentType);
     const schemaIssues = [...groundedCandidateSchemaIssues(candidate, contentType),
       ...questionErrors(candidate, contentType, sourceDialogue)];
+    if (additionalSchemaIssues) {
+      try { schemaIssues.push(...additionalSchemaIssues(candidate)); }
+      catch {
+        const unavailable = errorReport('unavailable', 'generation_task_check_unavailable', boundary.boundaryFingerprint);
+        return { status: 'unavailable', candidate, report: unavailable,
+          decision: decision(unavailable), attempts, context: built.context };
+      }
+    }
     if (expectedExampleCount != null &&
         (!Array.isArray(candidate.examples) || candidate.examples.length !== expectedExampleCount)) {
       schemaIssues.push({ code: 'example_count_mismatch', expected: expectedExampleCount });
@@ -456,9 +532,11 @@ export async function generateGroundedContent({
     return { status: 'unavailable', candidate, report: unavailable,
       decision: decision(unavailable), attempts, context: built.context };
   }
+  const sourceChanged = !!loadSource &&
+    dialogueSourceFingerprint(currentSource) !== built.sourceFingerprint;
   if (currentBoundary?.status !== 'resolved' ||
-      currentBoundary?.boundaryFingerprint !== boundary.boundaryFingerprint ||
-      (loadSource && dialogueSourceFingerprint(currentSource) !== built.sourceFingerprint)) {
+      currentBoundary?.boundaryFingerprint !== boundary.boundaryFingerprint || sourceChanged) {
+    if (sourceChanged) onSourceStale?.();
     const stale = errorReport('version_conflict', 'generation_source_changed', currentBoundary?.boundaryFingerprint);
     return { status: 'stale', candidate, report: stale, decision: decision(stale),
       attempts, context: built.context };
