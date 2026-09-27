@@ -103,18 +103,26 @@ test('transfer, stale dialogue and missing access cannot be answered', async () 
 
 test('new answer saves one immutable snapshot, exact replay succeeds, changed request conflicts', async () => {
   const f = fixture();
-  const args = { ...f, resolvePlacement: inline };
+  const dispositions = [];
+  const args = { ...f, resolvePlacement: inline,
+    transaction: async fn => { const result = await fn(f.client); dispositions.push('commit'); return result; },
+    onDisposition: value => dispositions.push(value) };
   const first = await answerDialogueQuestion(question.id, user, body, args);
   assert.equal(first.correct, true);
   assert.equal(first.correctIndex, 0);
   assert.equal(first.formativeOnly, true);
   assert.equal(f.attempts.length, 1);
   assert.equal(f.attempts[0].snapshot.correctIndex, 0);
-  const replay = await answerDialogueQuestion(question.id, user, body, { ...f });
+  const replay = await answerDialogueQuestion(question.id, user, body, args);
   assert.deepEqual(replay, first);
+  assert.deepEqual(dispositions, ['commit', 'new', 'commit', 'replay']);
+  assert.equal(Object.hasOwn(replay, 'disposition'), false);
+  assert.deepEqual(await answerDialogueQuestion(question.id, user, body,
+    { ...f, onDisposition: () => { throw new Error('logger unavailable'); } }), first);
   assert.equal(f.attempts.length, 1);
   await assert.rejects(answerDialogueQuestion(question.id, user,
     { ...body, optionIndex: 1 }, args), e => e.status === 409 && e.message === 'request_id_conflict');
+  assert.deepEqual(dispositions, ['commit', 'new', 'commit', 'replay']);
   assert.equal(f.calls.filter(call => call.sql === 'COURSE LOCK').length, 1);
 });
 

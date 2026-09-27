@@ -57,11 +57,11 @@ test('missing/invalid config fail closed with distinct revision and diagnostic',
   assert.equal((await getLearningFlowSettings({ ...configDb(null) })).readiness.ready, false);
 });
 
-test('v1 session wins and enabled allowlist still cannot activate passive PR6 runtime', async () => {
-  assert.equal(V2_RUNTIME_AVAILABLE, false);
+test('v2 capability is available but config/readiness gate new sessions; stored versions win', async () => {
+  assert.equal(V2_RUNTIME_AVAILABLE, true);
   const f = configDb();
   const args = { client: f.client, user: { id: id(5) }, ...scope };
-  const passive = await resolveFlowEligibility(args);
+  const passive = await resolveFlowEligibility({ ...args, runtimeAvailable: false });
   assert.deepEqual(passive, { mode: 'legacy', reason: 'v2_runtime_unavailable' });
   assert.equal(f.calls.some(call => call.sql.includes('grammar_dialog_questions')), false);
   const activeClient = { query: async (sql, params) => sql.includes('FROM grammar_task_sessions')
@@ -72,17 +72,16 @@ test('v1 session wins and enabled allowlist still cannot activate passive PR6 ru
   const activeV2Client = { query: async (sql, params) => sql.includes('FROM grammar_task_sessions')
     ? { rows: [{ id: id(7), flow_version: 2 }] } : f.client.query(sql, params) };
   const activeV2 = await resolveFlowEligibility({ ...args, client: activeV2Client });
-  assert.deepEqual(activeV2, { mode: 'legacy', reason: 'v2_runtime_unavailable' });
-  const resumedV2 = await resolveFlowEligibility({ ...args, client: activeV2Client,
-    runtimeAvailable: true });
-  assert.deepEqual(resumedV2, { mode: 'inline', flowVersion: 2,
+  assert.deepEqual(activeV2, { mode: 'inline', flowVersion: 2,
     reason: 'active_v2_session', activeSessionId: id(7) });
-  const ready = await resolveFlowEligibility({ ...args, runtimeAvailable: true,
+  const ready = await resolveFlowEligibility({ ...args,
     checkLessonReadiness: async () => ({ ready: true, issues: [] }) });
   assert.equal(ready.mode, 'inline');
-  const unready = await resolveFlowEligibility({ ...args, runtimeAvailable: true,
+  const unready = await resolveFlowEligibility({ ...args,
     checkLessonReadiness: async () => ({ ready: false, issues: [{ code: 'missing' }] }) });
   assert.equal(unready.mode, 'legacy');
+  const disabled = await resolveFlowEligibility({ ...args, client: configDb(null).client });
+  assert.deepEqual(disabled, { mode: 'legacy', reason: 'flow_config_missing' });
 });
 
 test('settings write is optimistic, validates readiness, and does not enable on rejection', async () => {

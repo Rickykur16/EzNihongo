@@ -2,6 +2,8 @@
 
 Tanggal discovery: 2026-09-26. Dokumen ini mencatat source checkout, bukan
 keadaan database production atau staging.
+Ini arsip PR0; nomor migration, daftar writer, dan hasil test di bawah adalah
+snapshot saat itu, bukan manifest readiness atau status rollout terkini.
 
 ## Checkout dan schema
 

@@ -20,6 +20,7 @@ import vocabImageRouter from './routes/vocab-image.js';
 import grammarTaskRouter from './routes/grammar-task.js';
 import grammarTaskSessionsRouter from './routes/grammar-task-sessions.js';
 import dialogueQuestionsRouter from './routes/dialogue-questions.js';
+import { createLearnerFlowTelemetry } from './learning-flow-telemetry.js';
 import grammarAnalysisRouter from './routes/grammar-analysis.js';
 import tutorRouter from './routes/tutor.js';
 import notionPublicRouter, { startNotionCacheRefresh } from './routes/notion-public.js';
@@ -72,6 +73,7 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
+app.use('/api', createLearnerFlowTelemetry());
 
 app.get('/api/health', async (req, res) => {
   try {
