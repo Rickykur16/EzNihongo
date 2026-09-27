@@ -91,6 +91,11 @@ const schema = `
   CREATE TABLE modules (
     id UUID PRIMARY KEY, course_id UUID NOT NULL REFERENCES courses(id), title TEXT, sort_order INT DEFAULT 0
   );
+  CREATE TABLE course_prerequisites (
+    course_id UUID NOT NULL REFERENCES courses(id),
+    prerequisite_course_id UUID NOT NULL REFERENCES courses(id),
+    PRIMARY KEY (course_id, prerequisite_course_id)
+  );
   CREATE TABLE lessons (
     id UUID PRIMARY KEY, module_id UUID NOT NULL REFERENCES modules(id),
     type TEXT NOT NULL, popup_after_lesson_id UUID REFERENCES lessons(id), sort_order INT DEFAULT 0,
@@ -164,6 +169,11 @@ test('Bunpou session API with real PostgreSQL SQL', { timeout: 90_000, concurren
   for (let pass = 0; pass < 2; pass++) {
     for (const sql of migrationSql) await database.exec(sql);
   }
+  // This deliberately small pre-147 fixture cannot apply the full migration
+  // 165 (which also adds unrelated curriculum tables). Mirror its session
+  // column so this API suite exercises the current router SQL when PG exists.
+  await database.exec(`ALTER TABLE grammar_task_sessions ADD COLUMN flow_version
+    SMALLINT NOT NULL DEFAULT 1 CHECK (flow_version IN (1,2))`);
 
   const savedEnv = Object.fromEntries(['JWT_ACCESS_SECRET', 'ANTHROPIC_API_KEY', 'ADMIN_EMAILS'].map(key => [key, process.env[key]]));
   process.env.JWT_ACCESS_SECRET = 'synthetic-session-integration-secret-at-least-32-bytes';

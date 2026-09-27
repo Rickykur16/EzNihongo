@@ -2,8 +2,8 @@ import { query } from './db.js';
 import { loadTaskConcepts, loadModulePool } from './routes/grammar-task.js';
 import { companionIsCurrent, contentRevisionId, publicCompanionView } from './bunpou-flow-service.js';
 
-export async function loadCompanionContext(sourceLessonId) {
-  const result = await query(
+export async function loadCompanionContext(sourceLessonId, dbQuery = query) {
+  const result = await dbQuery(
     `SELECT s.bunpou_flow_published, sm.course_id AS source_course_id,
             t.id AS task_lesson_id, t.module_id AS task_module_id, tm.course_id AS task_course_id
        FROM lessons s
@@ -17,7 +17,7 @@ export async function loadCompanionContext(sourceLessonId) {
   if (!row.source_course_id || row.task_course_id !== row.source_course_id) return null;
   // Check all content used by the source, task, and distractor pool. A grammar
   // card's module and its optional source lesson must agree on course scope.
-  const foreignGrammar = await query(
+  const foreignGrammar = await dbQuery(
     `SELECT 1 FROM module_grammar g
        LEFT JOIN modules gm ON gm.id = g.module_id
        LEFT JOIN lessons gl ON gl.id = g.lesson_id
@@ -29,7 +29,7 @@ export async function loadCompanionContext(sourceLessonId) {
       LIMIT 1`, [sourceLessonId, row.task_module_id, row.task_lesson_id, row.source_course_id]);
   if (foreignGrammar.rows.length) return null;
   const [items, pool] = await Promise.all([
-    loadTaskConcepts(row.task_lesson_id), loadModulePool(row.task_lesson_id),
+    loadTaskConcepts(row.task_lesson_id, dbQuery), loadModulePool(row.task_lesson_id, dbQuery),
   ]);
   const fingerprint = contentRevisionId(items, pool);
   return { taskLessonId: row.task_lesson_id, items, pool, fingerprint,

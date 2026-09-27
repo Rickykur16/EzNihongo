@@ -251,8 +251,9 @@ export async function learningFlowReadiness(client, config, options = {}) {
 
 export async function resolveFlowEligibility({ client, user, lessonId, courseId, moduleId,
   runtimeAvailable = V2_RUNTIME_AVAILABLE, resolveBoundary = getCurriculumBoundary,
-  checkLessonReadiness = lessonReadiness, sharedConfig = false } = {}) {
-  const active = (await client.query(`SELECT id,flow_version FROM grammar_task_sessions
+  checkLessonReadiness = lessonReadiness, sharedConfig = false,
+  ignoreActiveSession = false } = {}) {
+  const active = ignoreActiveSession ? null : (await client.query(`SELECT id,flow_version FROM grammar_task_sessions
     WHERE user_id=$1 AND source_lesson_id=$2 AND expires_at>NOW()
     ORDER BY created_at DESC,id DESC LIMIT 1`, [user.id, lessonId])).rows[0];
   if (active?.flow_version === 1) return { mode: 'legacy_session',
