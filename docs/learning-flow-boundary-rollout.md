@@ -283,8 +283,13 @@ atau key privat. Agregasi berdasarkan operation/status/versi untuk
 memeriksa error, konflik, distribusi v1/v2, transfer dan fetch inline; cocokkan
 dengan report DB per mode/content type/course/module/code/severity.
 
-Telemetry ini **belum** menandai replay idempotent secara terpisah dari
-success, belum menyediakan agregat generation retry/source-stale atau
+Replay idempoten jawaban dialogue dan item session diberi outcome
+`idempotent_replay` dari penanda internal sesudah transaksi. Response/snapshot
+publik tidak ditambahi field telemetry. `already_completed` tetap outcome
+tersendiri untuk request baru terhadap item yang sudah selesai; conflict
+request ID tetap `conflict`. Logger yang gagal tidak mengubah respons learner.
+
+Telemetry ini **belum** menyediakan agregat generation retry/source-stale atau
 readiness dashboard. Untuk gate observasi §15, lampirkan bukti tambahan
 yang benar-benar menangkap kasus itu; jika tidak ada, biarkan `BLOCKED`.
 Jangan menafsirkan comprehension accuracy sebagai mastery baru.
