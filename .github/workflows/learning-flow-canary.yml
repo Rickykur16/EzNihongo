@@ -1,0 +1,86 @@
+name: Learning Flow Canary
+
+on:
+  workflow_dispatch:
+    inputs:
+      course_id:
+        description: Exact course UUID reviewed for the canary
+        required: true
+        type: string
+      module_id:
+        description: Exact module UUID reviewed for the canary
+        required: true
+        type: string
+      apply:
+        description: Apply audit mode and enable this module after readiness passes
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  # Share the production deployment lock. A canary must never observe the
+  # checkout between deploy reset, migration, restart and healthcheck.
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  canary:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Preflight or activate production canary
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+          COURSE_ID: ${{ inputs.course_id }}
+          MODULE_ID: ${{ inputs.module_id }}
+          APPLY: ${{ inputs.apply }}
+        with:
+          host: 168.144.107.34
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: RELEASE_SHA,COURSE_ID,MODULE_ID,APPLY
+          script: |
+            set -euo pipefail
+            uuid='^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+            if [[ ! "$COURSE_ID" =~ $uuid ]] || [[ ! "$MODULE_ID" =~ $uuid ]]; then
+              echo 'FATAL: course_id and module_id must be canonical lowercase UUIDs'
+              exit 1
+            fi
+            cd /var/www/eznihongo
+            if [ "$(git rev-parse HEAD)" != "$RELEASE_SHA" ]; then
+              echo 'FATAL: production checkout does not match the workflow main SHA'
+              exit 1
+            fi
+            if ! systemctl is-active --quiet eznihongo-api; then
+              echo 'FATAL: eznihongo-api is not active'
+              exit 1
+            fi
+            api_pid=$(systemctl show eznihongo-api --property=MainPID --value)
+            if [[ ! "$api_pid" =~ ^[1-9][0-9]*$ ]]; then
+              echo 'FATAL: eznihongo-api has no live MainPID'
+              exit 1
+            fi
+            process_sha=$(tr '\0' '\n' < "/proc/$api_pid/environ" | sed -n 's/^RELEASE_SHA=//p' | tail -n 1)
+            if [ "$process_sha" != "$RELEASE_SHA" ]; then
+              echo 'FATAL: running API release does not match the workflow main SHA'
+              exit 1
+            fi
+            if ! curl -fsS http://127.0.0.1:3001/api/health > /dev/null; then
+              echo 'FATAL: running API healthcheck failed'
+              exit 1
+            fi
+            cd backend
+            set -a
+            . ./.env
+            set +a
+            args=(scripts/learning-flow-canary.mjs --course-id "$COURSE_ID" --module-id "$MODULE_ID")
+            if [ "$APPLY" = 'true' ]; then
+              args+=(--apply)
+            else
+              args+=(--dry-run)
+            fi
+            node "${args[@]}"
