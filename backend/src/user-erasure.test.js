@@ -4,11 +4,14 @@ import { randomUUID } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import pg from 'pg';
 import { eraseUserAccount } from './user-erasure.js';
+import { actorDigest } from './curriculum-readiness-attestations.js';
 
 const contract = await readFile(new URL('../contracts/staff-schema-v1.sql', import.meta.url), 'utf8');
+const readinessMigration = await readFile(new URL('../migrations/166_curriculum_readiness_attestations.sql', import.meta.url), 'utf8');
 const wipeTables = ['sessions', 'user_marketing_profile', 'user_enrollments', 'user_progress', 'user_learning_state',
   'user_stats', 'user_practice_state', 'user_practice_legacy_imports', 'practice_attempts', 'quiz_question_results',
   'quiz_attempts', 'grammar_attempts', 'smart_review_sessions', 'grammar_task_requests', 'grammar_task_sessions'];
+const optionalWipeTable = 'dialogue_question_attempts';
 const quote = value => '"' + value.replaceAll('"', '""') + '"';
 
 test('staff schema remains a test contract outside the automatic migration directory', async () => {
@@ -25,7 +28,7 @@ test('account erasure compatibility on PostgreSQL', {
   const url = new URL(process.env.TEST_DATABASE_URL);
   assert.ok(['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname));
   assert.match(url.pathname, /test/i, 'Use an explicitly named disposable test database');
-  async function fixture(t, { staff = true } = {}) {
+  async function fixture(t, { staff = true, learningFlow = true, readiness = false } = {}) {
     const schema = 'erasure_test_' + randomUUID().replaceAll('-', '');
     const client = new pg.Client({ connectionString: url.href, statement_timeout: 10000 });
     await client.connect();
@@ -55,14 +58,30 @@ test('account erasure compatibility on PostgreSQL', {
     for (const table of wipeTables) {
       await client.query(`CREATE TABLE ${table} (id uuid PRIMARY KEY, user_id uuid REFERENCES users(id) ON DELETE CASCADE, payload text)`);
     }
+    if (learningFlow) await client.query(`CREATE TABLE ${optionalWipeTable}
+      (id uuid PRIMARY KEY, user_id uuid REFERENCES users(id) ON DELETE RESTRICT,
+       question_snapshot jsonb NOT NULL, response_snapshot jsonb NOT NULL)`);
+    if (readiness) await client.query(readinessMigration);
     const erased = randomUUID(), other = randomUUID(), third = randomUUID(), course = randomUUID();
     for (const [id, name] of [[erased, 'erased'], [other, 'other'], [third, 'third']]) {
       await client.query('INSERT INTO users (id,email,google_id,full_name,google_name,avatar_url) VALUES ($1,$2,$3,$3,$3,$3)', [id, `${name}@example.invalid`, name]);
     }
     await client.query('INSERT INTO courses VALUES ($1)', [course]);
+    if (readiness) {
+      const attestation = (userId, id) => client.query(`INSERT INTO curriculum_readiness_attestations
+        (id,course_id,module_id,actor_digest,claim,claim_digest,observed_mode,
+         observed_mode_revision,observed_config_revision,observed_boundary_fingerprint)
+        VALUES ($1,$2,$3,$4,'{}'::jsonb,$5,'off',$5,$5,$5)`,
+      [id, course, randomUUID(), actorDigest(userId), `sha256:${'a'.repeat(64)}`]);
+      await attestation(erased, randomUUID());
+      await attestation(other, randomUUID());
+    }
     for (const table of wipeTables) {
       await client.query(`INSERT INTO ${table} VALUES ($1,$2,'owned'),($3,$4,'keep-other')`, [randomUUID(), erased, randomUUID(), other]);
     }
+    if (learningFlow) await client.query(`INSERT INTO ${optionalWipeTable} VALUES
+      ($1,$2,'{"privateKey":0}','{"correct":true}'),
+      ($3,$4,'{"privateKey":2}','{"correct":false}')`, [randomUUID(), erased, randomUUID(), other]);
     const paid = randomUUID(), otherOrder = randomUUID(), proof = randomUUID(), otherProof = randomUUID();
     await client.query("INSERT INTO orders VALUES ($1,$2,'approved',120000),($3,$4,'approved',99000)", [paid, erased, otherOrder, other]);
     for (const [id, order, owner] of [[proof, paid, erased], [otherProof, otherOrder, other]]) {
@@ -92,12 +111,15 @@ test('account erasure compatibility on PostgreSQL', {
     const rows = async table => (await client.query(`SELECT * FROM ${quote(schema)}.${quote(table)} ORDER BY 1`)).rows;
     const snapshot = async () => {
       const names = ['users', 'courses', 'orders', 'order_payments', 'discussions', ...wipeTables,
+        ...(learningFlow ? [optionalWipeTable] : []),
+        ...(readiness ? ['curriculum_readiness_attestations'] : []),
         ...(staff ? ['staff_roles', 'staff_permissions', 'staff_role_permissions', 'staff_memberships', 'staff_membership_scopes', 'staff_audit_events'] : [])];
       const result = {};
       for (const table of names) result[table] = await rows(table);
       return result;
     };
     return { client, schema, extraSchemas, erased, other, third, targetMembership, otherMembership, revokedMembership,
+      learningFlow, readiness,
       paid, proof, otherProof, parent, reply, rows, snapshot, tx,
       erase: () => tx(() => eraseUserAccount(client, erased)) };
   }
@@ -109,6 +131,7 @@ test('account erasure compatibility on PostgreSQL', {
     assert.deepEqual(after.users.filter(row => row.id !== f.erased), before.users.filter(row => row.id !== f.erased));
     assert.equal(after.users.find(row => row.id === f.erased).email, `dihapus-${f.erased}@dihapus.invalid`);
     for (const table of wipeTables) assert.deepEqual(after[table], before[table].filter(row => row.user_id !== f.erased));
+    if (f.learningFlow) assert.deepEqual(after[optionalWipeTable], before[optionalWipeTable].filter(row => row.user_id !== f.erased));
     assert.deepEqual(after.order_payments.find(row => row.id === f.otherProof), before.order_payments.find(row => row.id === f.otherProof));
     assert.equal(after.order_payments.find(row => row.id === f.proof).proof_image, null);
     assert.equal(after.order_payments.length, before.order_payments.length);
@@ -117,9 +140,10 @@ test('account erasure compatibility on PostgreSQL', {
   }
 
   await t.test('old schema needs no staff tables and retains the old summary shape', async t => {
-    const f = await fixture(t, { staff: false }); const before = await f.snapshot();
+    const f = await fixture(t, { staff: false, learningFlow: false }); const before = await f.snapshot();
     const summary = await f.erase();
     assert.ok(Object.keys(summary).every(key => !key.startsWith('staff_')));
+    assert.ok(!Object.hasOwn(summary, optionalWipeTable));
     await assertLegacyPreserved(f, before);
     assert.ok(Object.values(await f.erase()).every(count => count === 0));
   });
@@ -136,6 +160,7 @@ test('account erasure compatibility on PostgreSQL', {
   await t.test('new schema removes only owned memberships/scopes and scrubs audit links idempotently', async t => {
     const f = await fixture(t); const before = await f.snapshot();
     const summary = await f.erase();
+    assert.equal(summary.dialogue_question_attempts, 1);
     assert.equal(summary.staff_memberships, 1);
     assert.equal(summary.staff_membership_authors_scrubbed, 2);
     assert.equal(summary.staff_audit_events_scrubbed, 3);
@@ -228,6 +253,28 @@ test('account erasure compatibility on PostgreSQL', {
     await f.erase();
     assert.equal((await f.client.query(`SELECT payload FROM ${quote(decoy)}.staff_memberships`)).rows[0].payload, 'keep decoy');
     assert.equal((await f.rows('staff_memberships')).length, 2);
+  });
+
+  await t.test('erasure removes only authenticated-owner readiness attestations', async t => {
+    const f = await fixture(t, { readiness: true });
+    const before = await f.rows('curriculum_readiness_attestations');
+    assert.equal(before.length, 2);
+    assert.equal(before.some(row => row.actor_digest === actorDigest(f.erased)), true);
+    const summary = await f.erase();
+    assert.equal(summary.curriculum_readiness_attestations, 1);
+    const after = await f.rows('curriculum_readiness_attestations');
+    assert.deepEqual(after, before.filter(row => row.actor_digest !== actorDigest(f.erased)));
+    assert.equal((await f.erase()).curriculum_readiness_attestations, 0);
+  });
+
+  await t.test('a shadow legacy wipe table fails closed before anonymization', async t => {
+    const f = await fixture(t); const before = await f.snapshot();
+    const decoy = f.schema + '_decoy'; f.extraSchemas.push(decoy);
+    await f.client.query(`CREATE SCHEMA ${quote(decoy)};
+      CREATE TABLE ${quote(decoy)}.sessions (user_id uuid, payload text);
+      SET search_path TO ${quote(decoy)}, ${quote(f.schema)}`);
+    await assert.rejects(f.erase(), /user_erasure_incomplete.*sessions/);
+    assert.deepEqual(await f.snapshot(), before);
   });
 
   await t.test('erasure holds the user lock until commit for compatible future staff writers', async t => {
