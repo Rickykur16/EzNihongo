@@ -5,6 +5,7 @@ import { applyCanaryTransaction, parseArgs,
 import { db } from './db.js';
 
 const COURSE = 'a0000000-0000-4000-8000-000000000001';
+const COURSE_A = '10000000-0000-4000-8000-000000000001';
 const MODULE = 'b0000000-0000-4000-8000-000000000002';
 const OTHER = 'c0000000-0000-4000-8000-000000000003';
 
@@ -103,7 +104,7 @@ test('a malformed stored config blocks preflight and apply before inspection or 
   assert.equal(f.calls.some(([name]) => name === 'inspect' || name === 'activate'), false);
 });
 
-test('atomic activation locks and rechecks module ownership before committing settings', async () => {
+test('two-course activation takes one sorted union lock before nested writers', async () => {
   const calls = [];
   const client = { async query(sql, params) {
     calls.push(['query', sql, params]);
@@ -124,14 +125,32 @@ test('atomic activation locks and rechecks module ownership before committing se
       },
       getSettings: async options => options.transaction(async lockedClient => {
         assert.equal(lockedClient, client);
-        return { config: { enabled: false, courseIds: [], moduleIds: [OTHER], lessonIds: [] },
+        return { config: { enabled: false, courseIds: [COURSE_A],
+          moduleIds: [OTHER], lessonIds: [] },
           configRevision: 'config-1', diagnostic: null };
       }),
+      resolveCourseIds: async (lockedClient, config, targetCourseId, targetModuleId) => {
+        assert.equal(lockedClient, client);
+        assert.equal(targetCourseId, COURSE);
+        assert.equal(targetModuleId, MODULE);
+        assert.deepEqual(config.courseIds, [COURSE_A]);
+        calls.push(['resolveCourseIds']);
+        return [COURSE_A, COURSE];
+      },
+      lockCourses: async (lockedClient, courseIds) => {
+        assert.equal(lockedClient, client);
+        assert.deepEqual(courseIds, [COURSE_A, COURSE]);
+        calls.push(['lockCourses', ...courseIds]);
+      },
       saveMode: async (_id, body, options) => options.transaction(async lockedClient => {
         assert.equal(lockedClient, client); assert.equal(body.mode, 'audit');
+        calls.push(['saveMode']);
+        await options.lockCourse(lockedClient, COURSE);
         return { course: { mode: 'audit' }, modeRevision: 'mode-1' };
       }),
       saveSettings: async (body, options) => options.transaction(async lockedClient => {
+        calls.push(['saveSettings']);
+        await options.lockCourses(lockedClient, [COURSE_A, COURSE]);
         const readiness = await options.checkReadiness(lockedClient, body.config);
         return { config: body.config, configRevision: 'config-2', readiness };
       }),
@@ -142,6 +161,10 @@ test('atomic activation locks and rechecks module ownership before committing se
       },
     });
   assert.equal(result.settings.config.enabled, true);
+  assert.deepEqual(calls.filter(([name]) => name === 'resolveCourseIds').length, 2);
+  assert.ok(calls.findIndex(([name]) => name === 'lockCourses') <
+    calls.findIndex(([name]) => name === 'saveMode'));
+  assert.equal(calls.filter(([name]) => name === 'lockCourses').length, 1);
   assert.ok(calls.some(([, sql]) => typeof sql === 'string' && sql.includes('FOR UPDATE OF m')));
   assert.ok(calls.some(([, sql]) => typeof sql === 'string' && sql.includes('SELECT m.id FROM modules')));
 });

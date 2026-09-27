@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { db, withTransaction } from '../src/db.js';
 import { getCurriculumBoundaryMode,
   saveCurriculumBoundaryMode } from '../src/curriculum-boundary-mode.js';
+import { lockCurriculumCourses } from '../src/curriculum-content-service.js';
 import { getLearningFlowSettings, learningFlowReadiness,
   saveLearningFlowSettings } from '../src/learning-flow-config.js';
 
@@ -77,6 +78,32 @@ function validateSettings(settings) {
   }
 }
 
+export async function resolveCanaryCourseIds(client, config, targetCourseId, targetModuleId) {
+  const courseIds = [...new Set([...config.courseIds, targetCourseId])].sort();
+  const moduleIds = [...new Set([...config.moduleIds, targetModuleId])].sort();
+  const lessonIds = [...config.lessonIds];
+  const [courses, modules, lessons] = await Promise.all([
+    client.query('SELECT id FROM courses WHERE id=ANY($1::uuid[])', [courseIds]),
+    client.query('SELECT id,course_id FROM modules WHERE id=ANY($1::uuid[])', [moduleIds]),
+    client.query(`SELECT l.id,m.course_id FROM lessons l JOIN modules m ON m.id=l.module_id
+      WHERE l.id=ANY($1::uuid[])`, [lessonIds]),
+  ]);
+  for (const [kind, wanted, rows] of [
+    ['course', courseIds, courses.rows], ['module', moduleIds, modules.rows],
+    ['lesson', lessonIds, lessons.rows],
+  ]) {
+    const found = new Set(rows.map(row => row.id));
+    const missing = wanted.filter(id => !found.has(id));
+    if (missing.length) fail('canary_scope_id_missing', { kind, ids: missing });
+  }
+  const target = modules.rows.find(row => row.id === targetModuleId);
+  if (!target || target.course_id !== targetCourseId) fail('canary_scope_owner_mismatch');
+  return [...new Set([
+    ...courses.rows.map(row => row.id), ...modules.rows.map(row => row.course_id),
+    ...lessons.rows.map(row => row.course_id),
+  ])].sort();
+}
+
 export async function applyCanaryTransaction(options, expected, dependencies = {}) {
   const transaction = dependencies.transaction || withTransaction;
   const getMode = dependencies.getMode || getCurriculumBoundaryMode;
@@ -84,6 +111,8 @@ export async function applyCanaryTransaction(options, expected, dependencies = {
   const getSettings = dependencies.getSettings || getLearningFlowSettings;
   const saveSettings = dependencies.saveSettings || saveLearningFlowSettings;
   const checkReadiness = dependencies.checkReadiness || learningFlowReadiness;
+  const resolveCourseIds = dependencies.resolveCourseIds || resolveCanaryCourseIds;
+  const lockCourses = dependencies.lockCourses || lockCurriculumCourses;
   return transaction(async client => {
     const dbQuery = client.query.bind(client);
     const mode = await getMode(options.courseId, { dbQuery });
@@ -92,21 +121,34 @@ export async function applyCanaryTransaction(options, expected, dependencies = {
     const settings = await getSettings({ transaction: fn => fn(client) });
     validateSettings(settings);
     if (settings.configRevision !== expected.configRevision) fail('canary_state_changed');
+    const config = candidateConfig(settings.config, options.moduleId);
 
-    // Always join the curriculum graph/course lock protocol, including a
-    // no-op audit/warn save. The mode, module owner and flow config therefore
-    // remain one atomic observation through the settings commit.
+    // Resolve every allowlisted owner, then acquire the complete prerequisite
+    // closure in the shared global order before either nested writer runs.
+    // This prevents target-course-first lock inversion for multi-course scopes.
+    const courseIds = await resolveCourseIds(client, config,
+      options.courseId, options.moduleId);
+    await lockCourses(client, courseIds);
+    const lockedCourseIds = await resolveCourseIds(client, config,
+      options.courseId, options.moduleId);
+    if (JSON.stringify(lockedCourseIds) !== JSON.stringify(courseIds)) {
+      fail('canary_scope_changed');
+    }
+    const alreadyLocked = async () => {};
+
+    // The mode, module owner and flow config remain one atomic observation
+    // through the settings commit. Nested services still perform their own
+    // row, revision, scope and readiness checks without changing lock order.
     const targetMode = mode.course.mode === 'off' ? 'audit' : mode.course.mode;
     const savedMode = await saveMode(options.courseId,
       { mode: targetMode, expectedRevision: mode.modeRevision },
-      { transaction: fn => fn(client) });
+      { transaction: fn => fn(client), lockCourse: alreadyLocked });
     const module = (await client.query(`SELECT m.id,m.slug,m.title,m.course_id,
         c.slug AS course_slug,c.title AS course_title
       FROM modules m JOIN courses c ON c.id=m.course_id
       WHERE m.id=$1 AND c.id=$2 FOR UPDATE OF m`,
     [options.moduleId, options.courseId])).rows[0];
     if (!module) fail('canary_scope_owner_mismatch');
-    const config = candidateConfig(settings.config, options.moduleId);
     const guardedReadiness = async (readinessClient, candidate) => {
       if (readinessClient !== client) fail('canary_transaction_mismatch');
       const owner = (await client.query(`SELECT m.id FROM modules m
@@ -120,7 +162,8 @@ export async function applyCanaryTransaction(options, expected, dependencies = {
     };
     const saved = await saveSettings({
       expectedConfigRevision: settings.configRevision, config,
-    }, { transaction: fn => fn(client), checkReadiness: guardedReadiness });
+    }, { transaction: fn => fn(client), checkReadiness: guardedReadiness,
+      lockCourses: alreadyLocked });
     if (!saved.config.enabled || !saved.config.moduleIds.includes(options.moduleId) ||
         !saved.readiness?.ready) fail('canary_postcondition_failed', saved.readiness);
     return { mode: savedMode, settings: saved,
