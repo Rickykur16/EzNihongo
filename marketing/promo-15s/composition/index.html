@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>EzNihongo Promo 15s</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+  :root {
+    --red: #C8102E;
+    --logo-red: #B4252D;
+    --navy-900: #19345F;
+    --navy-deep: #0A1730;
+    --blue-200: #DCE6F5;
+    --paper: #FAF7F2;
+    --ink-900: #1a1815;
+    --ink-700: #4a453e;
+    --success: #3b6d11;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #000; }
+  #stage {
+    position: relative; width: 1080px; height: 1920px; overflow: hidden;
+    background: var(--navy-deep);
+    font-family: 'Inter', 'Noto Sans JP', sans-serif; color: #fff;
+    -webkit-font-smoothing: antialiased;
+  }
+  .abs { position: absolute; left: 0; top: 0; }
+  .layer { position: absolute; inset: 0; }
+  #bg {
+    background:
+      radial-gradient(1200px 1100px at 50% 42%, #22477F 0%, #183463 38%, #0E2143 70%, #081328 100%);
+  }
+  #glow { background: radial-gradient(900px 900px at 50% 60%, rgba(120,160,230,0.55), rgba(120,160,230,0) 70%); opacity: 0; }
+  #grain { opacity: .07; mix-blend-mode: overlay; background-repeat: repeat; }
+  .wm {
+    position: absolute; font-family: 'Shippori Mincho', serif; font-weight: 800;
+    color: #fff; line-height: 1; white-space: nowrap; opacity: 0; will-change: transform;
+  }
+
+  /* ---------- hook */
+  #sun { position: absolute; width: 620px; height: 620px; margin: -310px 0 0 -310px; border-radius: 50%;
+         background: radial-gradient(circle at 42% 38%, #D8263F 0%, #C8102E 55%, #A50D26 100%);
+         box-shadow: 0 0 120px rgba(200,16,46,.35); }
+  #hookChars { position: absolute; left: 0; width: 1080px; text-align: center; white-space: nowrap;
+               font-family: 'Shippori Mincho', serif; font-weight: 800; font-size: 212px; line-height: 1; }
+  #hookChars span { display: inline-block; width: 212px; }
+  #romaji { position: absolute; left: 0; width: 1080px; text-align: center; white-space: nowrap;
+            font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: 38px; letter-spacing: .08em; color: rgba(255,255,255,.82); }
+  #romaji span { display: inline-block; width: 212px; }
+  #meaningLabel { position: absolute; left: 0; width: 1080px; text-align: center; font-family: 'JetBrains Mono', monospace;
+                  font-weight: 700; font-size: 32px; letter-spacing: .22em; color: var(--blue-200); }
+  .mask { position: absolute; overflow: hidden; padding-bottom: .16em; }
+  .mask > span { display: inline-block; will-change: transform; }
+  #meaning { left: 0; width: 1080px; text-align: center; font-weight: 800; font-size: 132px; line-height: 1.05; letter-spacing: -.02em; }
+  #meaningBrush { position: absolute; width: 640px; height: 120px; overflow: hidden; }
+  #meaningBrush img { position: absolute; left: 0; top: 0; width: 640px; height: 120px; object-fit: fill; }
+
+  /* ---------- question over photo */
+  #photoWrap { overflow: hidden; }
+  #photo { position: absolute; left: 50%; top: 50%; width: 1282px; height: 1921px; margin: -960px 0 0 -641px; }
+  #photoShade { background:
+      linear-gradient(180deg, rgba(10,23,48,.78) 0%, rgba(10,23,48,.25) 30%, rgba(10,23,48,.35) 55%, rgba(10,23,48,.94) 82%, rgba(10,23,48,1) 100%); }
+  .qline { left: 96px; font-weight: 900; font-size: 138px; line-height: 1.02; letter-spacing: -.035em; white-space: nowrap; }
+  .qline .red { color: #FF3B55; }
+  #qjp { position: absolute; left: 100px; font-family: 'Shippori Mincho', serif; font-weight: 700; font-size: 46px; color: rgba(255,255,255,.78); letter-spacing: .06em; }
+
+  /* ---------- headlines */
+  .head { position: absolute; left: 96px; top: 236px; width: 900px; }
+  .eyebrow { position: relative; height: 44px; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 30px;
+             letter-spacing: .14em; color: var(--blue-200); white-space: nowrap; padding-left: 34px; line-height: 44px; }
+  .eyebrow i { position: absolute; left: 0; top: 13px; width: 18px; height: 18px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 5px rgba(200,16,46,.22); }
+  .eyebrow .jp { font-family: 'Noto Sans JP', sans-serif; letter-spacing: .04em; font-weight: 700; }
+  .hl { position: relative; overflow: hidden; height: 112px; margin-top: 2px; padding-bottom: 12px; }
+  .eyebrow + .hl { margin-top: 18px; }
+  .hl > span { display: inline-block; font-weight: 800; font-size: 96px; line-height: 100px; letter-spacing: -.03em; white-space: nowrap; will-change: transform; }
+  .sub { position: absolute; font-weight: 600; font-size: 40px; color: rgba(220,230,245,.92); white-space: nowrap; }
+  #disclaimer { position: absolute; left: 96px; top: 566px; font-size: 25px; font-weight: 500; color: rgba(220,230,245,.62); letter-spacing: .01em; }
+
+  /* ---------- phone */
+  #phoneWrap { perspective: 2600px; perspective-origin: 540px 900px; }
+  #phone { position: absolute; left: 244px; top: 615px; width: 592px; height: 1310px; border-radius: 78px;
+           background: linear-gradient(145deg, #3a3f4b, #0d1016 30%, #0b0d12 70%, #2b303a);
+           box-shadow: 0 60px 120px rgba(0,0,0,.55), 0 20px 40px rgba(0,0,0,.35), inset 0 0 0 2px rgba(255,255,255,.08);
+           transform-origin: 296px 560px; will-change: transform; }
+  #screen { position: absolute; left: 16px; top: 16px; width: 560px; height: 1278px; border-radius: 62px; overflow: hidden; background: #fff; }
+  #statusbar { position: absolute; left: 0; top: 0; width: 560px; height: 66px; background: #fff; z-index: 5; }
+  #statusbar .time { position: absolute; left: 60px; top: 21px; font-weight: 700; font-size: 25px; color: #111; letter-spacing: -.01em; }
+  #statusbar svg { position: absolute; right: 44px; top: 24px; }
+  #island { position: absolute; left: 50%; top: 14px; width: 150px; height: 42px; margin-left: -75px; background: #05060a; border-radius: 22px; z-index: 6; }
+  #view { position: absolute; left: 0; top: 66px; width: 560px; height: 1212px; overflow: hidden; background: #fff; }
+  .scr { position: absolute; left: 0; top: 0; width: 560px; height: 1212px; overflow: hidden; }
+  .scr > img { position: absolute; left: 0; top: 0; width: 560px; }
+  #glare { position: absolute; inset: 0; border-radius: 62px; pointer-events: none; z-index: 7;
+           background: linear-gradient(115deg, rgba(255,255,255,.14) 0%, rgba(255,255,255,0) 26%, rgba(255,255,255,0) 70%, rgba(255,255,255,.05) 100%); }
+  #phoneDim { position: absolute; inset: 0; border-radius: 78px; background: #081328; opacity: 0; z-index: 8; }
+
+  /* ---------- callouts */
+  .callout { position: absolute; overflow: hidden; transform-origin: 50% 50%; opacity: 0; will-change: transform;
+             box-shadow: 0 46px 90px rgba(3,10,25,.55), 0 14px 28px rgba(3,10,25,.35); background: #fff; }
+  .callout img { position: absolute; left: 0; top: 0; }
+  .ring { position: absolute; border-radius: 50%; border: 5px solid var(--red); opacity: 0; }
+  .tapdot { position: absolute; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; background: rgba(255,255,255,.9);
+            box-shadow: 0 0 0 10px rgba(255,255,255,.25), 0 10px 30px rgba(0,0,0,.35); opacity: 0; }
+  #check { position: absolute; width: 104px; height: 104px; margin: -52px 0 0 -52px; border-radius: 50%; background: var(--success);
+           box-shadow: 0 16px 36px rgba(0,0,0,.35), 0 0 0 8px rgba(255,255,255,.95); opacity: 0; }
+  .chip { position: absolute; left: 0; width: 1080px; text-align: center; opacity: 0; }
+  .chip span { display: inline-block; padding: 16px 34px; border-radius: 999px; background: rgba(5,12,28,.78);
+                   font-weight: 600; font-size: 38px; color: #fff; white-space: nowrap; box-shadow: 0 10px 30px rgba(0,0,0,.3); }
+
+  /* ---------- transitions + end card */
+  .iris { position: absolute; border-radius: 50%; }
+  #irisRed { background: var(--red); }
+  #end { background: var(--paper); opacity: 0; overflow: hidden; }
+  #endTex { position: absolute; inset: -40px; background: url(/assets/dashboard/activity-paper-texture.webp) center/cover; opacity: .22; mix-blend-mode: multiply; }
+  #logo { position: absolute; left: 110px; top: 610px; width: 860px; height: 292.8px; transform-origin: 50% 50%; }
+  #logo img { position: absolute; left: 0; top: 0; width: 860px; height: 292.8px; will-change: transform; }
+  #tagline { position: absolute; left: 0; width: 1080px; top: 968px; text-align: center; font-weight: 800; font-size: 62px; color: var(--navy-900); letter-spacing: -.02em; }
+  #tagsub { position: absolute; left: 0; width: 1080px; top: 1056px; text-align: center; font-weight: 500; font-size: 34px; color: var(--ink-700); }
+  #cta { position: absolute; left: 50%; top: 1164px; height: 112px; transform-origin: 50% 50%; }
+  #cta span { display: block; transform: translateX(-50%); height: 112px; line-height: 112px; padding: 0 64px; border-radius: 999px;
+              background: var(--red); color: #fff; font-weight: 700; font-size: 46px; white-space: nowrap; letter-spacing: -.01em;
+              box-shadow: 0 18px 40px rgba(200,16,46,.28); }
+  #cta b { font-weight: 800; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="layer" id="bg"></div>
+  <div class="layer" id="glow"></div>
+  <div class="wm" id="wm"></div>
+
+  <!-- HOOK -->
+  <div class="layer" id="hook">
+    <div id="sun"></div>
+    <div id="hookChars"><span>は</span><span>た</span><span>ら</span><span>く</span></div>
+    <div id="romaji"><span>ha</span><span>ta</span><span>ra</span><span>ku</span></div>
+    <div id="meaningLabel">ARTINYA</div>
+    <div class="mask" id="meaning"><span>bekerja</span></div>
+    <div id="meaningBrush"><img id="meaningBrushImg" src="swoosh-brush.png" alt=""></div>
+  </div>
+
+  <!-- QUESTION over photo -->
+  <div class="layer" id="qscene">
+    <div class="layer" id="photoWrap"><img id="photo" src="/assets/landing/tokyo.jpg" alt=""></div>
+    <div class="layer" id="photoShade"></div>
+    <div class="layer" id="qRed" style="background:radial-gradient(circle at 50% 34%, #D8263F 0%, #C8102E 18%, #A50D26 40%)"></div>
+    <div id="qjp">日本で働きたい？</div>
+    <div class="mask qline" id="q1"><span>Mau kerja</span></div>
+    <div class="mask qline" id="q2"><span>di Jepang<span class="red">?</span></span></div>
+  </div>
+
+  <!-- PHONE -->
+  <div class="layer" id="phoneWrap">
+    <div id="phone">
+      <div id="screen">
+        <div id="statusbar"><div class="time">9:41</div>
+          <svg width="112" height="22" viewBox="0 0 112 22"><g fill="#111">
+            <rect x="0" y="14" width="5" height="8" rx="1.5"/><rect x="8" y="10" width="5" height="12" rx="1.5"/><rect x="16" y="6" width="5" height="16" rx="1.5"/><rect x="24" y="2" width="5" height="20" rx="1.5"/>
+            <path d="M47 8.5a14 14 0 0 1 19 0l-2.2 2.3a10.8 10.8 0 0 0-14.6 0z M50.6 12.2a9 9 0 0 1 11.8 0l-2.3 2.3a5.8 5.8 0 0 0-7.2 0z M54.3 16a3.6 3.6 0 0 1 4.4 0L56.5 18.3z"/>
+            <rect x="76" y="3" width="31" height="16" rx="4.5" fill="none" stroke="#111" stroke-width="2" opacity=".45"/><rect x="79" y="6" width="22" height="10" rx="2.5"/><rect x="108.5" y="8" width="2.5" height="6" rx="1" opacity=".45"/></g></svg>
+        </div>
+        <div id="island"></div>
+        <div id="view">
+          <div class="scr" id="sDash"><img src="img/dashboard.png" alt=""></div>
+          <div class="scr" id="sVoc"><img id="vocFull" src="img/deck_full.png" alt=""><img src="img/deck_header.png" style="top:0" alt=""><img id="vocNav" src="img/deck_nav.png" alt=""></div>
+          <div class="scr" id="sDlgA"><img src="img/dialog_a.png" alt=""></div>
+          <div class="scr" id="sDlgB"><img src="img/dialog_b.png" alt=""></div>
+          <div class="scr" id="sRevQ"><img src="img/review_q.png" alt=""></div>
+          <div class="scr" id="sRevOk"><img src="img/review_ok.png" alt=""></div>
+          <div class="scr" id="sLive"><img src="img/live.png" alt=""></div>
+        </div>
+        <div id="glare"></div>
+      </div>
+      <div id="phoneDim"></div>
+    </div>
+  </div>
+
+  <!-- HEADLINES (bars 3-7) -->
+  <div class="head" id="h0"><div class="eyebrow"><i></i>DASHBOARD BELAJAR</div><div class="hl"><span>Mulai dari</span></div><div class="hl"><span>bahasanya dulu.</span></div></div>
+  <div class="head" id="h1"><div class="eyebrow"><i></i>KOSAKATA <span class="jp">語彙</span> · BAB 15</div><div class="hl"><span>Hafal</span></div><div class="hl"><span>kosakatanya,</span></div></div>
+  <div class="head" id="h2"><div class="eyebrow"><i></i>DIALOG CONTOH · BAB 15</div><div class="hl"><span>dengar</span></div><div class="hl"><span>percakapannya,</span></div></div>
+  <div class="head" id="h3"><div class="eyebrow"><i></i>SMART REVIEW <span class="jp">復習</span></div><div class="hl"><span>ulangi yang</span></div><div class="hl"><span>mulai lupa,</span></div></div>
+  <div class="head" id="h4"><div class="eyebrow"><i></i>LIVE CLASS <span class="jp">生配信</span></div><div class="hl"><span>belajar bareng</span></div><div class="hl"><span>sensei.</span></div></div>
+  <div id="disclaimer">Tampilan aplikasi EzNihongo · data contoh</div>
+
+  <!-- CALLOUTS -->
+  <div class="callout" id="cDash"></div>
+  <div class="callout" id="cVoc1"></div>
+  <div class="callout" id="cVoc2"></div>
+  <div class="callout" id="cDlgA"></div>
+  <div class="callout" id="cDlgB"></div>
+  <div class="callout" id="cRevP"></div>
+  <div class="callout" id="cRev"></div>
+  <div class="callout" id="cLive"></div>
+  <div class="chip" id="subtitle"><span id="subtitleText"></span></div>
+  <div class="chip" id="liveChip"><span>Kelas online bersama sensei · 2x seminggu</span></div>
+  <div class="ring" id="ringA"></div><div class="ring" id="ringB"></div><div class="ring" id="ring2"></div><div class="ring" id="ring3"></div>
+  <div class="tapdot" id="tapA"></div><div class="tapdot" id="tapB"></div>
+  <div id="check"><svg width="104" height="104" viewBox="0 0 104 104"><path id="checkPath" d="M31 54 L46 68 L74 38" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="70" stroke-dashoffset="70"/></svg></div>
+
+  <!-- END -->
+  <div class="iris" id="irisRed"></div>
+  <div class="layer" id="end">
+    <div id="endTex"></div>
+    <div id="logo">
+      <img id="lgSwoosh" src="logo-swoosh.png" alt="">
+      <img id="lgText" src="logo-text.png" alt="">
+      <img id="lgEz" src="logo-ez.png" alt="">
+      <img id="lgTorii" src="logo-torii.png" alt="">
+      <img id="lgDot" src="logo-dot.png" alt="">
+    </div>
+    <div id="tagline">Bootcamp Bahasa Jepang</div>
+    <div id="tagsub">Kelas online bersama sensei + dashboard belajar</div>
+    <div id="cta"><span>Daftar di <b>eznihongo.com</b></span></div>
+  </div>
+
+  <div class="layer" id="grain"></div>
+</div>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const BEAT = 60 / 128, BAR = 4 * BEAT;
+const bar = (n, b = 0) => (n - 1) * BAR + b * BEAT;
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const p = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, u) => a + (b - a) * u;
+const eOutCubic = (u) => 1 - Math.pow(1 - u, 3);
+const eInCubic = (u) => u * u * u;
+const eInOut = (u) => (u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
+const eOutExpo = (u) => (u >= 1 ? 1 : 1 - Math.pow(2, -10 * u));
+const eInExpo = (u) => (u <= 0 ? 0 : Math.pow(2, 10 * u - 10));
+const eOutBack = (u, s = 1.70158) => 1 + (s + 1) * Math.pow(u - 1, 3) + s * Math.pow(u - 1, 2);
+// critically-damped-ish spring, tau in seconds since start
+function spring(tau, zeta = 0.55, w = 15) {
+  if (tau <= 0) return 0;
+  const wd = w * Math.sqrt(1 - zeta * zeta);
+  return 1 - Math.exp(-zeta * w * tau) * (Math.cos(wd * tau) + (zeta * w / wd) * Math.sin(wd * tau));
+}
+const K = 560 / 390;            // CSS px (captured app) -> frame px on the phone screen
+const SHOT_W = 560;             // screenshot display width inside the phone
+let RECTS = {}, DECK = {};
+
+function set(el, props) { const s = (typeof el === 'string' ? $(el) : el).style; for (const k in props) s[k] = props[k]; }
+function show(el, o) { set(el, { opacity: String(o), visibility: o <= 0.001 ? 'hidden' : 'visible' }); }
+
+// deterministic hash noise for grain offsets
+function hash(n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+
+// ----------------------------------------------------------------- phone pose
+const POSES = {
+  hidden: { x: 0, y: 1500, s: 0.92, rx: 30, ry: 0, rz: -7 },
+  dash:   { x: 0, y: 64,  s: 1.10, rx: 0,  ry: 0,  rz: 0 },
+  voc:    { x: 52, y: 74, s: 1.08, rx: 0,  ry: -10, rz: 0 },
+  dlg:    { x: 0, y: 120, s: 0.98, rx: 4,  ry: 0,  rz: 0 },
+  rev:    { x: 0, y: 64,  s: 1.10, rx: 0,  ry: 0,  rz: 0 },
+  live:   { x: 40, y: 74, s: 1.08, rx: 0,  ry: -9, rz: 0 },
+};
+function mix(a, b, u) { const o = {}; for (const k in a) o[k] = lerp(a[k], b[k], u); return o; }
+function phonePose(t) {
+  let q;
+  if (t < 3.43) q = { ...POSES.hidden };
+  else if (t < 5.30) q = mix(POSES.hidden, POSES.dash, spring(t - 3.43, 0.86, 12));
+  else if (t < 7.20) q = mix(POSES.dash, POSES.voc, eInOut(p(t, 5.30, 5.90)));
+  else if (t < 9.10) q = mix(POSES.voc, POSES.dlg, eInOut(p(t, 7.20, 7.78)));
+  else if (t < 11.0) q = mix(POSES.dlg, POSES.rev, eInOut(p(t, 9.10, 9.66)));
+  else q = mix(POSES.rev, POSES.live, eInOut(p(t, 11.0, 11.56)));
+  // during the swipe-up the phone rides just below the outgoing photo's edge
+  if (t < bar(3) + 0.05) {
+    const out = eInCubic(p(t, bar(3) - 0.32, bar(3) + 0.02));
+    q.y = Math.max(q.y, 1920 * (1 - out) - 615 + 40);
+  }
+  // whip accents around bar lines
+  const whip = (c, amp) => { const u = p(t, c - 0.24, c + 0.24); return Math.sin(Math.PI * u) * amp; };
+  q.ry += whip(bar(5), 16) + whip(bar(6), -22) + whip(bar(7), 16);
+  q.rz += whip(bar(6), 2.5);
+  // idle float
+  if (t > 4.2) { q.y += Math.sin((t - 4.2) * 2.1) * 6; q.rz += Math.sin((t - 4.2) * 1.3) * 0.4; }
+  return q;
+}
+// map a point inside the (unrotated) phone to frame coords, approx for callouts
+function phoneMap(xLocal, yLocal, q) {
+  const ox = 244 + 296, oy = 615 + 560;
+  const lx = 244 + xLocal, ly = 615 + yLocal;
+  return { x: ox + (lx - ox) * q.s + q.x, y: oy + (ly - oy) * q.s + q.y };
+}
+// rect (CSS px of the captured app viewport) -> frame coords at pose q
+function rectOnPhone(r, q) {
+  const tl = phoneMap(16 + r.x * K, 16 + 66 + r.y * K, q);
+  return { x: tl.x, y: tl.y, w: r.width * K * q.s, h: r.height * K * q.s, cx: tl.x + r.width * K * q.s / 2, cy: tl.y + r.height * K * q.s / 2 };
+}
+
+// ----------------------------------------------------------------- callouts
+function buildCallout(id, img, r, radius) {
+  const el = $(id);
+  el.style.width = r.width * K + 'px'; el.style.height = r.height * K + 'px';
+  el.style.borderRadius = radius + 'px';
+  el.innerHTML = `<img src="img/${img}.png" style="width:${SHOT_W}px;left:${-r.x * K}px;top:${-r.y * K}px">`;
+}
+// place callout: start = on-phone rect (uu=0) -> target center/scale/rot (uu=1)
+function placeCallout(id, r, q, target, uu, opacity, extraScale = 1) {
+  const el = $(id);
+  const from = rectOnPhone(r, q);
+  const w = r.width * K, h = r.height * K;
+  const cx = lerp(from.cx, target.cx, uu), cy = lerp(from.cy, target.cy, uu);
+  const sc = lerp(q.s, target.s, uu) * extraScale;
+  const rot = lerp(0, target.rot || 0, uu);
+  el.style.left = (cx - w / 2) + 'px'; el.style.top = (cy - h / 2) + 'px';
+  el.style.transform = `scale(${sc}) rotate(${rot}deg)`;
+  show(el, opacity);
+  return { cx, cy, w: w * sc, h: h * sc, sc };
+}
+
+// ----------------------------------------------------------------- headlines
+const HEADS = [
+  { id: 'h0', in: bar(3) - 0.02, out: bar(4) - 0.22 },
+  { id: 'h1', in: bar(4), out: bar(5) - 0.22 },
+  { id: 'h2', in: bar(5), out: bar(6) - 0.22 },
+  { id: 'h3', in: bar(6), out: bar(7) - 0.22 },
+  { id: 'h4', in: bar(7), out: bar(8) - 0.36 },
+];
+function renderHead(h, t) {
+  const el = $(h.id);
+  if (t < h.in - 0.05 || t > h.out + 0.3) { el.style.visibility = 'hidden'; return; }
+  el.style.visibility = 'visible';
+  const eb = el.querySelector('.eyebrow');
+  const uIn = eOutExpo(p(t, h.in, h.in + 0.45));
+  const uOut = eInCubic(p(t, h.out, h.out + 0.22));
+  eb.style.opacity = String(clamp(p(t, h.in, h.in + 0.25) - p(t, h.out, h.out + 0.15)));
+  eb.style.transform = `translateX(${(1 - uIn) * -30}px)`;
+  const dot = eb.querySelector('i');
+  const beatPhase = ((t - bar(3)) / BEAT) % 1;
+  dot.style.transform = `scale(${1 + 0.35 * Math.exp(-beatPhase * 6)})`;
+  el.querySelectorAll('.hl > span').forEach((s, k) => {
+    const ui = eOutExpo(p(t, h.in + 0.07 * (k + 1), h.in + 0.07 * (k + 1) + 0.55));
+    const uo = eInCubic(p(t, h.out + 0.04 * k, h.out + 0.04 * k + 0.22));
+    s.style.transform = `translateY(${(1 - ui) * 118 - uo * 118}%)`;
+  });
+}
+
+// ----------------------------------------------------------------- main render
+function render(t) {
+  // background glow pulses with the groove kicks (bars 3..7)
+  let pulse = 0;
+  if (t >= bar(3) && t < bar(8)) {
+    for (let b = 3; b <= 7; b++) for (const s16 of [0, 6, 8, 11]) {
+      const tk = bar(b) + s16 * BEAT / 4; if (t >= tk) pulse += Math.exp(-(t - tk) / 0.16);
+    }
+  }
+  const drop = Math.exp(-Math.max(0, t - bar(3)) / 0.5) * (t >= bar(3) ? 1 : 0);
+  show('glow', clamp(0.10 + 0.10 * Math.min(pulse, 1.4) + 0.35 * drop) * (t < bar(8) - 0.2 ? 1 : 0));
+
+  // watermark kanji per scene
+  const wmList = [
+    [0, 1.8, '働'], [3.6, 5.5, '学'], [5.5, 7.4, '語'], [7.4, 9.3, '話'], [9.3, 11.2, '復'], [11.2, 13.1, '師'],
+  ];
+  let wmShown = false;
+  for (const [a, b, ch] of wmList) {
+    if (t >= a && t < b) {
+      const u = p(t, a, b);
+      const wm = $('wm');
+      if (wm.textContent !== ch) wm.textContent = ch;
+      set(wm, { fontSize: '980px', left: '380px', top: '180px', transform: `translate(${-60 * u}px, ${40 * u}px)` });
+      show(wm, 0.05 * clamp(p(t, a, a + 0.3)) * (1 - p(t, b - 0.25, b)));
+      wmShown = true;
+    }
+  }
+  if (!wmShown) show('wm', 0);
+
+  // grain (changes every output frame, 30 fps)
+  const fi = Math.floor(t * 30);
+  $('grain').style.backgroundPosition = `${Math.floor(hash(fi) * 512)}px ${Math.floor(hash(fi + 7) * 512)}px`;
+  $('grain').style.opacity = t > bar(8) ? '0.035' : '0.07';
+
+  renderHook(t);
+  renderQuestion(t);
+  renderPhone(t);
+  HEADS.forEach((h) => renderHead(h, t));
+  show('disclaimer', clamp(p(t, 3.9, 4.3) - p(t, bar(8) - 0.42, bar(8) - 0.3)));
+  renderEnd(t);
+}
+
+let HOOK_SUN = { cy: 650, r: 310 };
+function renderHook(t) {
+  if (t > 2.05) { show('hook', 0); return; }
+  show('hook', 1);
+  const lift = 170 * eInOut(p(t, bar(1, 2) - 0.02, bar(1, 2) + 0.3));
+  const cy = 820 - lift;
+  // sun: visible from frame 0 (thumb-stop), pops on the downbeat, pulses with each pluck
+  let sp = 0;
+  for (let i = 0; i < 4; i++) { const ti = i * BEAT / 2; if (t >= ti) sp += Math.exp(-(t - ti) / 0.12) * 0.035; }
+  const sunS = 0.34 + 0.66 * eOutBack(p(t, 0, 0.42), 1.6) + sp;
+  set('sun', { left: '540px', top: cy + 'px', transform: `scale(${sunS})` });
+  // characters
+  $('hookChars').style.top = (cy - 116) + 'px';
+  $('hookChars').querySelectorAll('span').forEach((s, i) => {
+    const ti = i * BEAT / 2;
+    const u = p(t, ti, ti + 0.24);
+    s.style.opacity = String(eOutCubic(u));
+    s.style.transform = `translateY(${(1 - eOutCubic(u)) * 60}px) scale(${1.25 - 0.25 * eOutBack(u, 2.2)})`;
+    s.style.filter = `blur(${(1 - u) * 10}px)`;
+  });
+  $('romaji').style.top = (cy + 188) + 'px';
+  $('romaji').querySelectorAll('span').forEach((s, i) => {
+    const ti = i * BEAT / 2 + 0.08;
+    const u = eOutCubic(p(t, ti, ti + 0.25));
+    s.style.opacity = String(u); s.style.transform = `translateY(${(1 - u) * 18}px)`;
+  });
+  // meaning
+  const tm = bar(1, 2);
+  set('meaningLabel', { top: (cy + 300) + 'px', transform: `translateY(${(1 - eOutExpo(p(t, tm, tm + 0.35))) * 20}px)` });
+  show('meaningLabel', p(t, tm, tm + 0.2));
+  set('meaning', { top: (cy + 350) + 'px' });
+  $('meaning').firstElementChild.style.transform = `translateY(${(1 - eOutExpo(p(t, tm + 0.04, tm + 0.55))) * 120}%)`;
+  const bw = eOutCubic(p(t, tm + 0.12, tm + 0.5));
+  set('meaningBrush', { left: '220px', top: (cy + 470) + 'px', width: (640 * bw) + 'px' });
+  // exit: push through camera
+  const ue = eOutCubic(p(t, bar(2) - 0.30, bar(2) - 0.06));
+  set('hook', { transform: `scale(${1 + 0.18 * ue})`, transformOrigin: `540px ${cy}px`, filter: `blur(${ue * 6}px)` });
+  $('hook').style.opacity = String(1 - ue);
+  HOOK_SUN = { cy, r: 310 * sunS };
+}
+
+function renderQuestion(t) {
+  const a = bar(2) - 0.30, z = bar(3) + 0.05;
+  if (t < a || t > z) { show('qscene', 0); return; }
+  show('qscene', 1);
+  // the red sun opens into a window onto Tokyo
+  const uo = p(t, a, bar(2) + 0.12);
+  const R = lerp(HOOK_SUN.r, 1500, eInCubic(uo));
+  $('qscene').style.clipPath = uo >= 1 ? 'none' : `circle(${R}px at 540px ${HOOK_SUN.cy}px)`;
+  $('qRed').style.opacity = String(1 - eOutCubic(p(t, a + 0.02, a + 0.26)));
+  // swipe up into the app (like the next reel)
+  const out = eInCubic(p(t, bar(3) - 0.32, bar(3) + 0.02));
+  $('qscene').style.transform = `translateY(${-1920 * out}px)`;
+  const ps = 1.34 - 0.2 * eOutCubic(p(t, a, a + 0.7)) - 0.05 * p(t, a + 0.7, bar(3));
+  set('photo', { transform: `scale(${ps})` });
+  $('photoShade').style.opacity = String(0.35 + 0.65 * eOutCubic(p(t, a + 0.1, bar(2) + 0.1)));
+  const lines = [['q1', bar(2)], ['q2', bar(2, 1)]];
+  lines.forEach(([id, t0], k) => {
+    const u = p(t, t0, t0 + 0.42);
+    set(id, { top: (1180 + k * 142) + 'px' });
+    const sp = $(id).firstElementChild;
+    sp.style.transform = `translateY(${(1 - eOutExpo(u)) * 110}%) scale(${1 + 0.12 * (1 - eOutExpo(u))})`;
+  });
+  set('qjp', { top: '1090px', transform: `translateY(${(1 - eOutExpo(p(t, bar(2, 2), bar(2, 2) + 0.4))) * 16}px)` });
+  $('qjp').style.opacity = String(p(t, bar(2, 2), bar(2, 2) + 0.3));
+}
+
+function scrShow(id, o, x = 0, y = 0) { set(id, { opacity: String(o), visibility: o <= 0.001 ? 'hidden' : 'visible', transform: `translate(${x}px, ${y}px)` }); }
+
+function renderPhone(t) {
+  if (t < 3.4 || t > bar(8) + 0.3) { show('phoneWrap', 0); ['cDash','cVoc1','cVoc2','cDlgA','cDlgB','cRevP','cRev','cLive','subtitle','liveChip','tapA','tapB','check','ringA','ringB','ring2','ring3'].forEach((i) => show(i, 0)); return; }
+  show('phoneWrap', 1);
+  const q = phonePose(t);
+  set('phone', { transform: `translate(${q.x}px, ${q.y}px) rotateX(${q.rx}deg) rotateY(${q.ry}deg) rotateZ(${q.rz}deg) scale(${q.s})` });
+
+  // ---------- screens
+  const push = eInOut(p(t, bar(3, 3) + 0.14, bar(4) + 0.02));           // dashboard -> kosakata (app navigation push)
+  scrShow('sDash', t < bar(4) + 0.05 ? 1 : 0, -560 * push);
+  const vocOn = t >= bar(3, 3) + 0.14 && t < bar(5) - 0.08;
+  // kosakata scroll: title -> first cards
+  const sc = lerp(DECK.title - 76, DECK.card - 88, eInOut(p(t, bar(4) + 0.10, bar(4) + 0.62)));
+  $('vocFull').style.top = (-sc * K) + 'px';
+  $('vocNav').style.top = (1212 - 62 * K) + 'px';
+  scrShow('sVoc', vocOn ? 1 : 0, 560 * (1 - push));
+  const x45 = p(t, bar(5) - 0.14, bar(5) + 0.02);
+  if (t >= bar(5) - 0.14 && t < bar(5) + 0.02) scrShow('sVoc', 1 - x45);
+  const dlgB = p(t, bar(5, 2), bar(5, 2) + 0.1);
+  scrShow('sDlgA', t >= bar(5) - 0.14 && t < bar(6) + 0.02 ? x45 * (1 - dlgB) * (1 - p(t, bar(6) - 0.14, bar(6) + 0.02)) : 0);
+  scrShow('sDlgB', t >= bar(5, 2) && t < bar(6) + 0.02 ? dlgB * (1 - p(t, bar(6) - 0.14, bar(6) + 0.02)) : 0);
+  const tapAns = bar(6, 2);
+  scrShow('sRevQ', t >= bar(6) - 0.14 && t < tapAns + 0.06 ? p(t, bar(6) - 0.14, bar(6) + 0.02) : 0);
+  scrShow('sRevOk', t >= tapAns + 0.06 && t < bar(7) + 0.02 ? 1 - p(t, bar(7) - 0.14, bar(7) + 0.02) : 0);
+  scrShow('sLive', t >= bar(7) - 0.14 ? p(t, bar(7) - 0.14, bar(7) + 0.02) : 0);
+
+  // phone dim for depth during the dialog pop-out
+  const dimDlg = eOutCubic(p(t, bar(5) + 0.18, bar(5) + 0.5)) * (1 - eInCubic(p(t, bar(6) - 0.3, bar(6) - 0.05)));
+  show('phoneDim', 0.55 * dimDlg);
+
+  // ---------- callouts
+  // Dashboard: "Lanjut Belajar" card lifts, then gets tapped
+  {
+    const r = RECTS.dash_continue_card;
+    const a = bar(3, 1) + 0.25, tapT = bar(3, 3);
+    const u = spring(t - a, 0.5, 16);
+    const vis = t >= a && t < bar(4) - 0.05 ? clamp(p(t, a, a + 0.08)) * (1 - p(t, bar(3, 3) + 0.14, bar(3, 3) + 0.3)) : 0;
+    const from = rectOnPhone(r, q);
+    const press = 1 - 0.04 * Math.sin(Math.PI * p(t, tapT - 0.04, tapT + 0.14));
+    placeCallout('cDash', r, q, { cx: from.cx, cy: from.cy - 26, s: q.s * 1.12, rot: -1.2 }, u, vis, press);
+    // tap ripple on the button (button sits inside the lifted card)
+    const b = RECTS.dash_continue_btn;
+    const bc = { x: from.cx + ((b.x + b.width / 2) - (r.x + r.width / 2)) * K * 1.12 * q.s, y: from.cy - 26 + ((b.y + b.height / 2) - (r.y + r.height / 2)) * K * 1.12 * q.s };
+    tapFx(t, tapT, bc.x + 60, bc.y, 'tapA', 'ringA');
+  }
+  // Kosakata: two word cards lift out, speaker pings on お客様
+  {
+    const r1 = RECTS.deck_card;
+    const r2 = { x: r1.x + r1.width + 10, y: r1.y, width: r1.width, height: r1.height };
+    const endT = bar(5) - 0.12;
+    const a1 = bar(4) + 0.66, a2 = bar(4, 2);
+    const v1 = t >= a1 - 0.02 && t < endT + 0.15 ? clamp(p(t, a1, a1 + 0.06)) * (1 - p(t, endT - 0.05, endT + 0.12)) : 0;
+    const v2 = t >= a2 - 0.02 && t < endT + 0.15 ? clamp(p(t, a2, a2 + 0.06)) * (1 - p(t, endT, endT + 0.14)) : 0;
+    const ex1 = eInCubic(p(t, endT - 0.05, endT + 0.14)), ex2 = eInCubic(p(t, endT, endT + 0.16));
+    placeCallout('cVoc1', r1, q, { cx: 262, cy: 1080 - 60 * ex1, s: 1.52 * (1 - 0.3 * ex1), rot: -5 }, spring(t - a1, 0.5, 14), v1);
+    const c2 = placeCallout('cVoc2', r2, q, { cx: 812, cy: 1290 - 60 * ex2, s: 1.52 * (1 - 0.3 * ex2), rot: 4 }, spring(t - a2, 0.5, 14), v2);
+    // speaker button of card 2 inside the callout (top-right corner)
+    const spk = RECTS.deck_speaker;
+    const offX = (spk.x + spk.width / 2 - r1.x - r1.width / 2) * K * c2.sc, offY = (spk.y + spk.height / 2 - r1.y - r1.height / 2) * K * c2.sc;
+    const ang = 4 * Math.PI / 180;
+    const sx = c2.cx + offX * Math.cos(ang) - offY * Math.sin(ang), sy = c2.cy + offX * Math.sin(ang) + offY * Math.cos(ang);
+    ringsFx(t, [a2 + 0.02, a2 + 0.47], sx, sy, v2);
+  }
+  // Dialog: the scene stage pops out of the lesson, caption follows the audio turn
+  {
+    const r = RECTS.dialog_stage;
+    const a = bar(5) + 0.16;
+    const u = spring(t - a, 0.55, 12);
+    const endT = bar(6) - 0.2;
+    const vis = t >= a - 0.02 && t < endT + 0.2 ? clamp(p(t, a, a + 0.08)) * (1 - p(t, endT, endT + 0.16)) : 0;
+    const ex = eInCubic(p(t, endT, endT + 0.18));
+    const swap = p(t, bar(5, 2), bar(5, 2) + 0.1);
+    const bump = 1 + 0.025 * Math.sin(Math.PI * p(t, bar(5, 2), bar(5, 2) + 0.22));
+    const target = { cx: 540, cy: 1178 - 40 * ex, s: 2.18 * (1 - 0.25 * ex), rot: 0 };
+    const c = placeCallout('cDlgA', r, q, target, u, vis * (1 - swap), bump);
+    placeCallout('cDlgB', r, q, target, u, vis * swap, bump);
+    // Indonesian subtitle (the lesson's "Arti" translation)
+    const txt = t < bar(5, 2) ? 'Selamat datang. Mau kopi?' : 'Iya, kopinya satu, ya.';
+    if ($('subtitleText').textContent !== txt) $('subtitleText').textContent = txt;
+    const sv = clamp(p(t, a + 0.25, a + 0.45)) * (1 - p(t, endT - 0.05, endT + 0.1)) * (1 - 0.6 * Math.sin(Math.PI * p(t, bar(5, 2) - 0.05, bar(5, 2) + 0.12)));
+    set('subtitle', { top: (c.cy + c.h / 2 + 30) + 'px', transform: `translateY(${(1 - eOutExpo(p(t, a + 0.25, a + 0.6))) * 24}px)` });
+    show('subtitle', t > a && t < endT + 0.15 ? sv : 0);
+  }
+  // Smart Review: question prompt lifts, tap the right answer, it turns green
+  {
+    const rp = RECTS.review_prompt;
+    const rpPad = { x: rp.x - 12, y: rp.y - 14, width: rp.width + 24, height: rp.height + 28 };
+    const a = bar(6) + 0.2, tapT = bar(6, 2);
+    const vp = t >= a - 0.02 && t < tapT + 0.3 ? clamp(p(t, a, a + 0.06)) * (1 - p(t, tapT - 0.1, tapT + 0.1)) : 0;
+    placeCallout('cRevP', rpPad, q, { cx: 540, cy: rectOnPhone(rpPad, q).cy - 30, s: 1.28, rot: 0 }, spring(t - a, 0.55, 15), vp);
+    const r = RECTS.review_correct;
+    const from = rectOnPhone(r, q);
+    tapFx(t, tapT, from.cx + 70, from.cy, 'tapB', 'ringB');
+    const b = tapT + 0.08, endT = bar(7) - 0.2;
+    const v = t >= b - 0.02 && t < endT + 0.2 ? clamp(p(t, b, b + 0.06)) * (1 - p(t, endT, endT + 0.14)) : 0;
+    const c = placeCallout('cRev', r, q, { cx: 520, cy: from.cy - 40, s: 1.24, rot: -1.5 }, spring(t - b, 0.5, 15), v);
+    // check badge
+    const cu = spring(t - (b + 0.12), 0.45, 16);
+    set('check', { left: (c.cx + c.w / 2 - 8) + 'px', top: (c.cy - c.h / 2 + 4) + 'px', transform: `scale(${clamp(cu, 0, 1.3)}) rotate(${(1 - clamp(cu)) * -40}deg)` });
+    show('check', t > b + 0.1 ? v : 0);
+    $('checkPath').setAttribute('stroke-dashoffset', String(70 * (1 - eOutCubic(p(t, b + 0.2, b + 0.42)))));
+  }
+  // Live Class: upcoming class card lifts
+  {
+    const r = RECTS.live_card;
+    const a = bar(7) + 0.3;
+    const endT = bar(8) - 0.32;
+    const v = t >= a - 0.02 && t < endT + 0.2 ? clamp(p(t, a, a + 0.07)) * (1 - p(t, endT, endT + 0.1)) : 0;
+    const from = rectOnPhone(r, q);
+    const c = placeCallout('cLive', r, q, { cx: from.cx - 36, cy: from.cy + 30, s: 1.16, rot: -2 }, spring(t - a, 0.5, 13), v);
+    const ca = a + 0.3;
+    set('liveChip', { top: (c.cy + c.h / 2 + 34) + 'px', transform: `translateY(${(1 - eOutExpo(p(t, ca, ca + 0.4))) * 24}px)` });
+    show('liveChip', t > ca ? clamp(p(t, ca, ca + 0.15)) * (1 - p(t, endT, endT + 0.1)) : 0);
+  }
+}
+
+function tapFx(t, t0, x, y, dotId, ringId) {
+  // finger dot arrives, presses, lifts; a white ring spreads from the press
+  const on = t > t0 - 0.12 && t < t0 + 0.3;
+  set(dotId, { left: x + 'px', top: y + 'px', transform: `scale(${1 - 0.22 * Math.sin(Math.PI * p(t, t0 - 0.04, t0 + 0.12))})` });
+  show(dotId, on ? clamp(p(t, t0 - 0.12, t0 - 0.04)) * (1 - p(t, t0 + 0.12, t0 + 0.3)) : 0);
+  const ru = p(t, t0, t0 + 0.45);
+  set(ringId, { left: (x - 45) + 'px', top: (y - 45) + 'px', width: '90px', height: '90px', transform: `scale(${1 + 1.6 * eOutCubic(ru)})`, borderColor: '#fff', borderWidth: '4px' });
+  show(ringId, t >= t0 && t < t0 + 0.45 ? 0.9 * (1 - ru) : 0);
+}
+function ringsFx(t, starts, x, y, vis) {
+  const ids = ['ring2', 'ring3'];
+  starts.forEach((t0, k) => {
+    const id = ids[k];
+    const u = p(t, t0, t0 + 0.7);
+    if (t >= t0 && t < t0 + 0.7 && vis > 0) {
+      set(id, { left: (x - 40) + 'px', top: (y - 40) + 'px', width: '80px', height: '80px', transform: `scale(${1 + 2.2 * eOutCubic(u)})`, borderColor: '#C8102E', borderWidth: '5px' });
+      show(id, 0.85 * (1 - u) * vis);
+    } else show(id, 0);
+  });
+}
+
+function renderEnd(t) {
+  const T = bar(8);
+  // red iris grows from the lifted class card, paper iris follows
+  const ra = T - 0.36, pa = T - 0.08;
+  const ur = eInCubic(p(t, ra, T - 0.02));
+  const up = eOutCubic(p(t, pa, T + 0.22));
+  const cx = 540, cy = 980, R = 1180;
+  set('irisRed', { left: (cx - R) + 'px', top: (cy - R) + 'px', width: 2 * R + 'px', height: 2 * R + 'px', transform: `scale(${Math.max(ur, 0.0001)})` });
+  show('irisRed', t >= ra && t < T + 0.3 ? 1 : 0);
+  show('end', t >= pa ? 1 : 0);
+  $('end').style.clipPath = up >= 1 ? 'none' : `circle(${R * up}px at ${cx}px ${cy}px)`;
+  if (t < pa) return;
+  // logo assembles (short): swoosh draws, letters rise, torii settles, dot drops onto the "i"
+  const LW = 860, LS = 860 / 2000;
+  const sw = eOutCubic(p(t, T + 0.0, T + 0.34));
+  set('lgSwoosh', { clipPath: `inset(0 ${100 - sw * 100}% 0 0)` });
+  const ue = eOutExpo(p(t, T + 0.04, T + 0.4));
+  set('lgEz', { opacity: String(p(t, T + 0.04, T + 0.16)), transform: `translateY(${(1 - ue) * 36}px)` });
+  const ut = eOutExpo(p(t, T + 0.1, T + 0.46));
+  set('lgText', { opacity: String(p(t, T + 0.1, T + 0.22)), transform: `translateY(${(1 - ut) * 36}px)` });
+  const uo = spring(t - (T + 0.16), 0.42, 14);
+  set('lgTorii', { opacity: String(p(t, T + 0.16, T + 0.24)), transform: `translateY(${(1 - uo) * -70}px)` });
+  // dot: falls under gravity, lands exactly on beat 2 of the last bar, squash + small bounce
+  const land = bar(8, 1), fall0 = T + 0.12;
+  const dotCx = 868.5 * LS, dotCy = 256.5 * LS;
+  let dy = 0, sx = 1, sy = 1;
+  if (t < land) { const u = p(t, fall0, land); dy = -560 * (1 - u * u); }
+  else {
+    const tb = t - land;
+    const bh = 34 * Math.max(0, Math.sin(Math.PI * clamp(tb / 0.26))) ;
+    dy = -bh;
+    const sq = Math.exp(-tb / 0.06) * 0.28;
+    sx = 1 + sq; sy = 1 - sq;
+  }
+  set('lgDot', { opacity: String(p(t, fall0, fall0 + 0.05)), transformOrigin: `${dotCx}px ${dotCy + 24}px`, transform: `translateY(${dy}px) scale(${sx}, ${sy})` });
+  const lz = 1 + 0.03 * eOutCubic(p(t, T + 0.5, 15));
+  set('logo', { transform: `scale(${lz})` });
+  // texts
+  const tg = eOutExpo(p(t, land + 0.02, land + 0.5));
+  set('tagline', { opacity: String(p(t, land + 0.02, land + 0.2)), transform: `translateY(${(1 - tg) * 30}px)` });
+  const ts = eOutExpo(p(t, land + 0.1, land + 0.6));
+  set('tagsub', { opacity: String(p(t, land + 0.1, land + 0.3)), transform: `translateY(${(1 - ts) * 30}px)` });
+  const cu = spring(t - (land + 0.22), 0.5, 15);
+  set('cta', { opacity: String(p(t, land + 0.22, land + 0.3)), transform: `scale(${0.7 + 0.3 * cu})` });
+}
+
+// ----------------------------------------------------------------- boot
+async function boot() {
+  // grain tile
+  const c = document.createElement('canvas'); c.width = c.height = 512;
+  const g = c.getContext('2d'); const img = g.createImageData(512, 512);
+  let s = 1234567;
+  for (let i = 0; i < img.data.length; i += 4) { s = (s * 16807) % 2147483647; const v = (s / 2147483647) * 255; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+  g.putImageData(img, 0, 0);
+  $('grain').style.backgroundImage = `url(${c.toDataURL()})`;
+  RECTS = await (await fetch('img/rects.json')).json();
+  DECK = await (await fetch('img/deck_scroll.json')).json();
+  buildCallout('cDash', 'dashboard', RECTS.dash_continue_card, 16 * K);
+  buildCallout('cVoc1', 'deck_grid', RECTS.deck_card, 12 * K);
+  const r1 = RECTS.deck_card;
+  buildCallout('cVoc2', 'deck_grid', { x: r1.x + r1.width + 10, y: r1.y, width: r1.width, height: r1.height }, 12 * K);
+  buildCallout('cDlgA', 'dialog_a', RECTS.dialog_stage, 12 * K);
+  buildCallout('cDlgB', 'dialog_b', RECTS.dialog_stage, 12 * K);
+  const rp = RECTS.review_prompt;
+  buildCallout('cRevP', 'review_q', { x: rp.x - 12, y: rp.y - 14, width: rp.width + 24, height: rp.height + 28 }, 14 * K);
+  buildCallout('cRev', 'review_ok', RECTS.review_correct, 10 * K);
+  buildCallout('cLive', 'live', RECTS.live_card, 16 * K);
+  await document.fonts.ready;
+  await Promise.all([...document.images].map((im) => im.decode().catch(() => {})));
+  // make sure every font face actually used is loaded
+  await Promise.all(['800 96px Inter', '900 138px Inter', '700 30px "JetBrains Mono"', '800 212px "Shippori Mincho"', '700 30px "Noto Sans JP"', '600 38px Inter', '500 34px Inter']
+    .map((f) => document.fonts.load(f, 'はたらく語彙復習生配信日本で働きたい学話師 ABCabc?,.')));
+  window.__ready = true;
+  render(Number(new URLSearchParams(location.search).get('t') || 0));
+}
+window.render = render;
+boot();
+</script>
+</body>
+</html>

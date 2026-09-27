@@ -1,0 +1,62 @@
+{
+ "dash_continue_btn": {
+  "x": 37,
+  "y": 349.65625,
+  "width": 316,
+  "height": 47.25
+ },
+ "dash_continue_card": {
+  "x": 14,
+  "y": 219.078125,
+  "width": 362,
+  "height": 200.828125
+ },
+ "deck_card": {
+  "x": 16,
+  "y": 88.140625,
+  "width": 174,
+  "height": 169.890625
+ },
+ "deck_speaker": {
+  "x": 149,
+  "y": 93.140625,
+  "width": 36,
+  "height": 36
+ },
+ "dialog_stage": {
+  "x": 55,
+  "y": 424.265625,
+  "width": 282,
+  "height": 340
+ },
+ "dialog_caption": {
+  "x": 65,
+  "y": 684.6875,
+  "width": 262,
+  "height": 69.578125
+ },
+ "review_start_btn": {
+  "x": 41,
+  "y": 476.390625,
+  "width": 308,
+  "height": 52.796875
+ },
+ "review_correct": {
+  "x": 41,
+  "y": 380.984375,
+  "width": 308,
+  "height": 58
+ },
+ "review_prompt": {
+  "x": 41,
+  "y": 220.1875,
+  "width": 308,
+  "height": 39
+ },
+ "live_card": {
+  "x": 14,
+  "y": 339,
+  "width": 362,
+  "height": 219.71875
+ }
+}
