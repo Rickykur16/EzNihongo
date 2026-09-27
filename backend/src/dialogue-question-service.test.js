@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { dialogueFingerprint, dialogueTurns, questionFingerprint, questionsRevision,
-  listDialogueQuestions, saveDialogueQuestions } from './dialogue-question-service.js';
+  listDialogueQuestions, saveDialogueQuestions,
+  assertDialogueQuestionLessonMoveAllowed } from './dialogue-question-service.js';
 
 const id = n => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const courseId = id(1), moduleId = id(2), lessonId = id(3), grammarId = id(4);
@@ -21,7 +22,24 @@ const first = { kind: 'comprehension', prompt: 'Apa yang disebutkan?',
   explanation: 'Pembicara menyebut kucing.', sortOrder: 0,
   evidence: [{ turnIndex: 0, quote: 'ねこです' }] };
 
-function harness() {
+test('lesson move guard includes archived questions and leaves same-lesson edits alone', async () => {
+  const calls = [];
+  const client = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    return { rows: [{ id: id(80), state: 'archived' }] };
+  } };
+  await assertDialogueQuestionLessonMoveAllowed(client, grammarId, lessonId, lessonId);
+  assert.equal(calls.length, 0);
+  await assert.rejects(assertDialogueQuestionLessonMoveAllowed(client, grammarId, lessonId, id(81),
+    { locked: true }), error => error.status === 409 &&
+    error.code === 'grammar_dialog_questions_restrict_move');
+  assert.match(calls[0].sql, /WHERE grammar_id=\$1 LIMIT 1 FOR SHARE/u);
+  assert.deepEqual(calls[0].params, [grammarId]);
+  await assert.rejects(assertDialogueQuestionLessonMoveAllowed(client, grammarId, lessonId, null),
+    error => error.status === 409);
+});
+
+function harness({ mode = 'enforce' } = {}) {
   let rows = [], reports = 0, contentWrites = 0;
   const copy = value => structuredClone(value);
   const client = { async query(sql, params = []) {
@@ -30,7 +48,7 @@ function harness() {
     if (sql.startsWith('SAVEPOINT') || sql.startsWith('RELEASE') ||
         sql.startsWith('ROLLBACK TO')) return { rows: [] };
     if (sql.includes('SELECT m.course_id FROM module_grammar')) return { rows: [{ course_id: courseId }] };
-    if (sql.includes('SELECT g.*,m.course_id')) return { rows: [copy(grammar)] };
+    if (sql.includes('SELECT g.*,m.course_id')) return { rows: [copy({ ...grammar, boundary_mode: mode })] };
     if (sql.includes('SELECT id,module_id FROM lessons')) return { rows: [{ id: lessonId, module_id: moduleId }] };
     if (sql.includes('SELECT * FROM grammar_dialog_questions')) {
       return { rows: copy(sql.includes("state='active'") ? rows.filter(row => row.state === 'active') : rows) };
@@ -65,7 +83,8 @@ function harness() {
     try { return await fn(client); }
     catch (error) { rows = before; reports = previousReports; contentWrites = previousWrites; throw error; }
   };
-  return { transaction, resolveBoundary: async () => boundary,
+  return { transaction, resolveBoundary: async () => ({ ...boundary,
+      course: { ...boundary.course, mode } }),
     state: () => ({ rows: copy(rows), reports, contentWrites }) };
 }
 
@@ -78,6 +97,19 @@ test('canonical private fingerprints ignore question order but track semantic ed
     dialogueFingerprint(grammar));
   assert.equal(dialogueFingerprint({ ...grammar, dialog_furigana: { lines: [{ readings: [] }] } }),
     dialogueFingerprint(grammar));
+  const sceneGrammar = { ...grammar, dialog_scene: { participants: [
+    { speaker: 'A', displayName: 'アンナ', voiceId: 'voice-one' },
+  ] } };
+  assert.notEqual(dialogueFingerprint({ ...sceneGrammar, dialog_scene: {
+    ...sceneGrammar.dialog_scene, participants: [
+      { speaker: 'A', displayName: 'ハディ', voiceId: 'voice-one' },
+    ],
+  } }), dialogueFingerprint(sceneGrammar));
+  assert.equal(dialogueFingerprint({ ...sceneGrammar, dialog_scene: {
+    ...sceneGrammar.dialog_scene, participants: [
+      { speaker: 'A', displayName: 'アンナ', voiceId: 'voice-two' },
+    ],
+  } }), dialogueFingerprint(sceneGrammar));
   assert.equal(questionsRevision([]), questionsRevision([{ state: 'archived', id: id(9) }]));
 });
 
@@ -136,4 +168,37 @@ test('enforce rejection writes a separate report after rollback without changing
   assert.equal(db.state().contentWrites, 0);
   assert.equal(db.state().rows.length, 0);
   assert.equal(db.state().reports, 1);
+});
+
+test('off mode keeps structural checks but records boundary validation as not run', async () => {
+  const db = harness({ mode: 'off' });
+  const saved = await saveDialogueQuestions(grammarId, {
+    sourceLessonId: lessonId,
+    expectedDialogueFingerprint: dialogueFingerprint(grammar),
+    expectedQuestionsRevision: questionsRevision([]),
+    questions: [{ ...first, prompt: 'みらい は です。' }],
+  }, db);
+  assert.equal(saved.validation[0].report.status, 'not_run');
+  assert.equal(saved.validation[0].report.valid, null);
+  assert.deepEqual(saved.validation[0].report.violations, []);
+  assert.equal(saved.validation[0].decision.decision, 'allowed');
+  assert.equal(db.state().contentWrites, 2);
+});
+
+test('audit and warn preserve invalid truth while allowing the reviewed set', async () => {
+  for (const mode of ['audit', 'warn']) {
+    const db = harness({ mode });
+    const current = await db.resolveBoundary();
+    const saved = await saveDialogueQuestions(grammarId, {
+      sourceLessonId: lessonId,
+      expectedDialogueFingerprint: dialogueFingerprint(grammar),
+      expectedQuestionsRevision: questionsRevision([]),
+      questions: [{ ...first, prompt: 'みらい は です。' }],
+    }, { ...db, resolveBoundary: async () => ({ ...current, future: {
+      ...current.future, vocabulary: [{ key: 'future', japanese: 'みらい', reading: 'みらい' }],
+    } }) });
+    assert.equal(saved.validation[0].report.valid, false);
+    assert.equal(saved.validation[0].decision.decision, 'allowed_with_warning');
+    assert.equal(db.state().contentWrites, 2);
+  }
 });

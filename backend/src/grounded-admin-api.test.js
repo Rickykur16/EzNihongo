@@ -32,7 +32,7 @@ const deckExample = { id: id('example'), vocabulary_id: vocabId, module_id: modu
 let grammarExamples = [];
 let modelOutput = '{}', modelCalls = 0, writes = 0, mutateDuringModel = null,
   mutateBeforeTransaction = null,
-  providerUnavailable = false;
+  providerUnavailable = false, hasNormalizedQuestion = false;
 const fakeQuery = async (sql, params = []) => {
   if (/^\s*(INSERT|UPDATE|DELETE)\b/i.test(sql)) { writes++; throw Error('draft endpoint attempted a write'); }
   if (sql.includes('boundary:courses')) return { rows: [{ id: courseId, slug: 'n5', level: 'N5', curriculum_boundary_mode: 'enforce' }] };
@@ -70,6 +70,7 @@ const fakeQuery = async (sql, params = []) => {
   }
   if (sql.includes('FROM app_settings')) return { rows: [] };
   if (sql.includes('FROM grammar_examples')) return { rows: grammarExamples.map(row => ({ ...row })) };
+  if (sql.includes('SELECT g.example, g.example_dialog, g.module_id')) return { rows: [] };
   if (sql.includes('FROM module_grammar') && sql.includes('pattern IS NOT NULL')) return { rows: [grammar] };
   if (sql.includes('FROM module_grammar') && sql.includes('module_id =')) return { rows: [] };
   if (sql.includes('FROM lessons l JOIN modules m ON m.id=l.module_id')) {
@@ -100,6 +101,9 @@ mock.method(db, 'connect', async () => {
     if (sql.includes('SELECT m.course_id FROM module_grammar g')) {
       return { rows: [{ course_id: courseId }] };
     }
+    if (sql.includes('SELECT 1 FROM grammar_dialog_questions')) {
+      return { rows: hasNormalizedQuestion ? [{ one: 1 }] : [] };
+    }
     if (sql.includes('FROM grammar_dialog_questions')) return { rows: [] };
     if (sql.includes('UPDATE grammar_dialog_questions SET state=')) return { rows: [] };
     if (sql.includes('INSERT INTO curriculum_boundary_reports')) return { rows: [] };
@@ -109,10 +113,13 @@ mock.method(db, 'connect', async () => {
     if (sql.includes('SELECT lesson_id FROM lesson_deck_items')) {
       return { rows: [{ lesson_id: lessonId }] };
     }
-    if (sql.includes('UPDATE module_grammar SET')) {
+    if (sql.includes('UPDATE module_grammar SET') && sql.includes('recognition_distractors=')) {
       writes++; grammar.recognition_distractors = params[1];
       grammar.controlled_distractors = params[2];
       return { rows: [{ id: grammarId }] };
+    }
+    if (sql.includes('UPDATE module_grammar SET')) {
+      writes++; return { rows: [{ ...grammar }] };
     }
     if (sql.includes('UPDATE vocabulary_examples SET')) {
       writes++; deckExample.reading = params[1];
@@ -146,14 +153,16 @@ async function post(route, body) {
   const response = await fetch(`http://127.0.0.1:${server.address().port}/api/admin/${route}`, {
     method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json',
       'X-Forwarded-For': `192.0.2.${requestCount++}` }, body: JSON.stringify(body) });
-  return { status: response.status, body: await response.json() };
+  return { status: response.status, cacheControl: response.headers.get('cache-control'),
+    body: await response.json() };
 }
 async function dialogueRequest(route, method, body = null) {
   const response = await fetch(`http://127.0.0.1:${server.address().port}/api/admin/${route}`, {
     method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json',
       'X-Forwarded-For': `192.0.2.${requestCount++}` },
     ...(body ? { body: JSON.stringify(body) } : {}) });
-  return { status: response.status, body: await response.json() };
+  return { status: response.status, cacheControl: response.headers.get('cache-control'),
+    body: await response.json() };
 }
 after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
   mock.restoreAll(); await db.end(); });
@@ -176,10 +185,12 @@ test('dialogue question generator requires verified source and returns review-on
   let response = await post(`grammar/${grammarId}/generate-dialog-questions`,
     { kind: 'comprehension', count: 1 });
   assert.equal(response.status, 400);
+  assert.equal(response.cacheControl, 'private, no-store');
   response = await post(`grammar/${grammarId}/generate-dialog-questions`,
     { sourceLessonId: id('other'), kind: 'comprehension', count: 1,
       expectedDialogueFingerprint: dialogueFingerprint(grammar) });
   assert.equal(response.status, 409);
+  assert.equal(response.cacheControl, 'private, no-store');
   assert.equal(modelCalls, 0);
   modelOutput = JSON.stringify({ questions: [{ prompt: 'Apa yang disebutkan?',
     options: ['Kucing', 'Anjing', 'Burung'], correctIndex: 0,
@@ -191,6 +202,7 @@ test('dialogue question generator requires verified source and returns review-on
   assert.equal(response.body.status, 'ready', JSON.stringify(response.body.report));
   assert.equal(response.body.questions[0].evidence[0].quote, 'ねこです');
   assert.equal(response.body.dialogueFingerprint, dialogueFingerprint(grammar));
+  assert.equal(response.cacheControl, 'private, no-store');
   assert.equal(modelCalls, 1); assert.equal(writes, 0);
 });
 
@@ -199,6 +211,7 @@ test('dialogue question admin GET/PUT expose revision and reject stale set atomi
   const route = `grammar/${grammarId}/dialogue-questions`;
   const listed = await dialogueRequest(route, 'GET');
   assert.equal(listed.status, 200, JSON.stringify(listed.body));
+  assert.equal(listed.cacheControl, 'private, no-store');
   assert.deepEqual(listed.body.questions, []);
   assert.equal(listed.body.dialogueFingerprint, dialogueFingerprint(grammar));
   assert.equal(listed.body.questionsRevision, questionsRevision([]));
@@ -206,12 +219,45 @@ test('dialogue question admin GET/PUT expose revision and reject stale set atomi
     expectedDialogueFingerprint: listed.body.dialogueFingerprint,
     expectedQuestionsRevision: 'sha256:stale', questions: [] });
   assert.equal(response.status, 409);
+  assert.equal(response.cacheControl, 'private, no-store');
   assert.equal(writes, 0);
   response = await dialogueRequest(route, 'PUT', { sourceLessonId: lessonId,
     expectedDialogueFingerprint: listed.body.dialogueFingerprint,
     expectedQuestionsRevision: listed.body.questionsRevision, questions: [] });
   assert.equal(response.status, 200, JSON.stringify(response.body));
+  assert.equal(response.cacheControl, 'private, no-store');
   assert.equal(response.body.questionsRevision, listed.body.questionsRevision);
+});
+
+test('grammar lesson reassignment is blocked by archived normalized questions', async () => {
+  hasNormalizedQuestion = true; writes = 0;
+  const route = `module-grammar/${grammarId}`;
+  let response = await dialogueRequest(route, 'PUT', { lessonId: id('other') });
+  assert.equal(response.status, 409, JSON.stringify(response.body));
+  assert.equal(response.body.error, 'grammar_dialog_questions_restrict_move');
+  assert.equal(writes, 0);
+  response = await dialogueRequest(route, 'PUT', { lessonId: null });
+  assert.equal(response.status, 409);
+  assert.equal(writes, 0);
+  response = await dialogueRequest(route, 'PUT', { lessonId });
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  hasNormalizedQuestion = false;
+});
+
+test('empty transfer generation has the same review envelope and never calls provider', async () => {
+  modelCalls = 0; writes = 0;
+  const response = await post(`grammar/${grammarId}/generate-dialog-questions`,
+    { sourceLessonId: lessonId, kind: 'transfer', count: 0,
+      expectedDialogueFingerprint: dialogueFingerprint(grammar) });
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  assert.equal(response.cacheControl, 'private, no-store');
+  assert.equal(response.body.status, 'ready');
+  assert.deepEqual(response.body.candidate, { questions: [] });
+  assert.deepEqual(response.body.questions, []);
+  assert.equal(response.body.report.status, 'not_run');
+  assert.equal(response.body.generation.sourceFingerprint, response.body.sourceFingerprint);
+  assert.match(response.body.sourceFingerprint, /^sha256:/u);
+  assert.equal(modelCalls, 0); assert.equal(writes, 0);
 });
 
 test('dialogue question generation repairs fabricated evidence and nested future text without save', async () => {
