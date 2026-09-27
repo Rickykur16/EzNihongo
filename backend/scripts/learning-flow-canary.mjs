@@ -207,7 +207,11 @@ export async function runCanary(options, dependencies = {}) {
 export async function main(argv = process.argv.slice(2), dependencies = {}) {
   if (!process.env.DATABASE_URL && !dependencies.getMode) fail('DATABASE_URL_required');
   const result = await runCanary(parseArgs(argv), dependencies);
-  console.log(JSON.stringify(result));
+  // Keep large readiness diagnostics visible in GitHub Actions. The SSH
+  // action can drop a single oversized line, while formatted JSON splits the
+  // readiness object across log lines and stays machine-readable once the
+  // action's per-line prefixes are removed.
+  console.log(JSON.stringify(result, null, 2));
   return result;
 }
 
