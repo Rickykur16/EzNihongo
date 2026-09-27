@@ -4,7 +4,7 @@ import { isAdminEmail } from './auth.js';
 import { loadMastery, focusSentence } from './grammar-mastery.js';
 import { buildReviewCandidates } from './routes/smart-review.js';
 import { summarizeCandidates } from './smart-review-service.js';
-import { isVisibleCurriculumLesson, masteryDisplay, masteryDisplayFromPercentage, structuralProgressAndNext, weeklyInsight } from './dashboard-rules.js';
+import { continueLearningDto, isVisibleCurriculumLesson, masteryDisplay, masteryDisplayFromPercentage, structuralProgressAndNext, weeklyInsight } from './dashboard-rules.js';
 import { loadLiveClassSummary } from './live-class-service.js';
 
 const WEEK_DAYS = 7;
@@ -31,19 +31,21 @@ async function structuralCourse(userId, course) {
   const lessons = await query(
     `SELECT l.id, l.slug, l.title, l.type, l.popup_after_lesson_id, l.sort_order, m.id AS module_id, m.slug AS module_slug,
             m.title AS module_title, m.section_name, m.sort_order AS module_sort,
-            p.completed, p.completed_at
+            p.completed, p.completed_at,
+            EXISTS (SELECT 1 FROM module_grammar g
+                     WHERE g.lesson_id = l.id AND g.module_id = m.id
+                       AND g.example_dialog ~ '[^[:space:]]') AS has_dialog
        FROM lessons l JOIN modules m ON m.id = l.module_id
        LEFT JOIN user_progress p ON p.lesson_id = l.id AND p.user_id = $1
       WHERE m.course_id = $2
-      ORDER BY m.sort_order, l.sort_order, l.created_at`, [userId, course.id]
+      ORDER BY m.sort_order, m.created_at, l.sort_order, l.created_at`, [userId, course.id]
   );
   const rows = lessons.rows.filter(isVisibleCurriculumLesson);
   const structural = structuralProgressAndNext(rows);
-  const next = structural.next;
   return {
     ...course,
     progress: { completedLessons: structural.completedLessons, totalLessons: structural.totalLessons, percentage: structural.percentage },
-    continueLearning: next ? { section: next.section_name || null, chapter: { id: next.module_id, slug: next.module_slug, title: next.module_title }, lesson: { id: next.id, slug: next.slug, title: next.title, type: next.type } } : null,
+    continueLearning: continueLearningDto(structural),
   };
 }
 
@@ -111,7 +113,7 @@ export async function weeklyActivity(userId, courseId) {
             (SELECT COALESCE(SUM(correct::int), 0)::int FROM evidence) AS correct,
             ((SELECT COUNT(*)::int FROM practice_attempts pa WHERE ${independentEvidenceSql({ item: 'pa.item_id', type: 'pa.item_type' }, 'pa')} AND user_id = $1 AND course_id = $2 AND source = 'smart_review' AND created_at >= NOW() - INTERVAL '7 days')
              + (SELECT COUNT(*)::int FROM grammar_attempts ga JOIN module_grammar g ON g.id = ga.grammar_id JOIN modules m ON m.id = g.module_id WHERE ${independentEvidenceSql({ item: 'ga.grammar_id' }, 'ga')} AND ga.user_id = $1 AND m.course_id = $2 AND ga.eval_source = 'smart_review' AND ga.created_at >= NOW() - INTERVAL '7 days')) AS review_questions,
-            (SELECT COUNT(*)::int FROM user_progress p JOIN lessons l ON l.id = p.lesson_id JOIN modules m ON m.id = l.module_id WHERE p.user_id = $1 AND p.completed = TRUE AND p.completed_at >= NOW() - INTERVAL '7 days' AND m.course_id = $2 AND NOT (l.type = 'grammar_task' AND l.popup_after_lesson_id IS NOT NULL)) AS lessons_completed,
+            (SELECT COUNT(*)::int FROM user_progress p JOIN lessons l ON l.id = p.lesson_id JOIN modules m ON m.id = l.module_id WHERE p.user_id = $1 AND p.completed = TRUE AND p.completed_at >= NOW() - INTERVAL '7 days' AND m.course_id = $2) AS lessons_completed,
             (SELECT COUNT(*)::int FROM previous) AS previous_attempts,
             (SELECT COALESCE(SUM(correct::int), 0)::int FROM previous) AS previous_correct`, [userId, courseId]
   );
@@ -127,7 +129,9 @@ function pickFocus(mastery, grammar, review, continueLearning) {
   const weakGeneric = Object.entries(mastery).map(([category, value]) => ({ category, value })).filter(({ value }) => value.percentage != null && value.percentage < 60).sort((a, b) => a.value.percentage - b.value.percentage)[0];
   if (weakGeneric) return { category: weakGeneric.category, title: weakGeneric.category === 'vocabulary' ? 'Kosakata' : weakGeneric.category[0].toUpperCase() + weakGeneric.category.slice(1), detail: 'Latih kembali bagian ini agar semakin mantap.', action: 'review', reviewCategory: weakGeneric.category };
   if (review.total > 0) return { category: 'review', title: 'Smart Review', detail: 'Ada materi yang sudah dipelajari dan siap diulang.', action: 'review', reviewCategory: 'mixed' };
-  if (continueLearning) return { category: 'continue', title: continueLearning.lesson.title, detail: 'Lanjutkan pelajaran berikutnya dalam kurikulum.', action: 'continue' };
+  if (continueLearning) return { category: 'continue',
+    title: `${continueLearning.view === 'conversation' ? 'Percakapan · ' : ''}${continueLearning.lesson.title}`,
+    detail: 'Lanjutkan langkah berikutnya dalam kurikulum.', action: 'continue' };
   return null;
 }
 

@@ -16,6 +16,10 @@ assert.ok(landingStart > 0 && landingEnd > landingStart);
 const localDraftStart = html.indexOf('function quizLocalDraftKey(');
 const localDraftEnd = html.indexOf('function getQuizKey(', localDraftStart);
 assert.ok(localDraftStart > 0 && localDraftEnd > localDraftStart);
+const sequenceStart = html.indexOf('function lessonHasConversation(');
+const sequenceEnd = html.indexOf('// ── End learning sequence', sequenceStart);
+assert.ok(sequenceStart > 0 && sequenceEnd > sequenceStart);
+const learningSequence = html.slice(sequenceStart, sequenceEnd);
 function setup() {
   const main = { innerHTML: '' }, effects = { xp:0, confetti:0, progress:0, cache:0, calls:[], removed:[], unfinishedCleared:0 };
   const storage = new Map();
@@ -201,6 +205,7 @@ function renderKanaLanding(passed) {
     fmtNextAt:()=>'',
     window:{},
   });
+  vm.runInContext(learningSequence,ctx);
   vm.runInContext(html.slice(landingStart,landingEnd),ctx);
   ctx.renderQuizLandingCard(main,`n5:bab2:${lesson.id}`,'Assignment Bab 2: Tes Membaca Katakana',{
     lastAttempt:{score:30,totalQuestions:32,passed},

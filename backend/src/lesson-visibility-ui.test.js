@@ -25,51 +25,41 @@ test('linked Tugas Bunpou stays in the learner sidebar and navigation', () => {
   );
 });
 
-test('finishing the linked popup can complete its module after the source lesson', async () => {
+test('finishing grammar opens its conversation before the pending task and never auto-opens a popup', async () => {
   const start = welcome.indexOf('window.markCompleteAndNext = async (triggerButton) => {');
   const end = welcome.indexOf('function renderCourseTabs(activeSlug) {', start);
-  assert.ok(start > 0 && end > start);
-
-  let progress = { n5: {} };
-  let finishPopup;
-  const completions = [];
-  const source = { id: 'source', apiId: 'source-api', type: 'video' };
+  const sequence = welcome.indexOf('// ── Learning sequence');
+  const sequenceEnd = welcome.indexOf('// ── End learning sequence', sequence);
+  const progress = { n5: {} };
+  const source = { id: 'source', apiId: 'source-api', type: 'video',
+    grammar: [{ example_dialog: 'A: こんにちは。' }] };
   const task = { id: 'task', apiId: 'task-api', type: 'grammar_task', popupAfterLessonId: 'source-api' };
   const module = { id: 'bab3', title: 'Bab 3', lessons: [source, task] };
   const course = { name: 'N5', modules: [module] };
+  let completions = 0, writes = 0, xp = 0;
   const context = vm.createContext({
-    window: { scrollTo() {} },
-    COURSE_CONTENT: { n5: course },
-    currentState: { course: 'n5', moduleId: 'bab3', lessonId: 'source' },
-    getProgress: () => progress,
-    setProgress: (value) => { progress = value; },
-    addXP() {},
+    window: { scrollTo() {} }, COURSE_CONTENT: { n5: course },
+    currentState: { course: 'n5', moduleId: 'bab3', lessonId: 'source', view: 'lesson' },
+    getProgress: () => progress, setProgress() {}, addXP: () => xp++,
     findLesson: () => source,
-    syncLessonCompletionToServer: async () => true,
-    visibleLessons: (item) => item.lessons,
-    gtPendingTaskFor: () => ({ done: false, taskMod: module, taskLesson: task }),
-    openGrammarTaskPopup: (_course, _module, _task, onDone) => { finishPopup = onDone; },
-    showCompletion: (value) => completions.push(value),
-    finishLearningMilestone: (_course, _module, newlyCompleted) => {
-      if (newlyCompleted) completions.push({ title: 'Kelas Selesai' });
-    },
-    renderSidebar() {},
-    renderLesson() {},
+    syncLessonCompletionToServer: async value => { assert.equal(value, source); writes++; },
+    visibleLessons: item => item.lessons,
+    openGrammarTaskPopup: () => assert.fail('must navigate to conversation before task'),
+    showCompletion: () => completions++, renderSidebar() {}, renderLesson() {},
   });
+  vm.runInContext(welcome.slice(sequence, sequenceEnd), context);
+  const milestone = welcome.indexOf('function finishLearningMilestone(course, module, newlyCompleted, onContinue) {');
+  const milestoneEnd = welcome.indexOf('window.gtOpenTaskPopup', milestone);
+  vm.runInContext(welcome.slice(milestone, milestoneEnd), context);
   vm.runInContext(welcome.slice(start, end), context);
-
-  await context.window.markCompleteAndNext({
-    disabled: false,
-    setAttribute() {},
-  });
-  assert.equal(completions.length, 0);
-  progress.n5['bab3:task'] = true;
-  await finishPopup({ completed: true, wasAlreadyDone: false });
-
-  assert.equal(completions.length, 1);
-  assert.match(completions[0].title, /Kelas Selesai/);
+  await context.window.markCompleteAndNext({ disabled: false, setAttribute() {} });
+  assert.equal(completions, 0, 'pending real task keeps course incomplete');
+  assert.equal(writes, 1); assert.equal(xp, 1);
+  assert.equal(progress.n5['bab3:source'], true);
+  assert.equal(progress.n5['bab3:task'], undefined);
+  assert.equal(context.currentState.lessonId, 'source');
+  assert.equal(context.currentState.view, 'conversation');
 });
-
 test('finishing a previously postponed popup from its banner completes the module', () => {
   const start = welcome.indexOf('function finishLearningMilestone(course, module, newlyCompleted, onContinue) {');
   const end = welcome.indexOf('function gtUpdateComplete() {', start);
