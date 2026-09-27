@@ -4898,7 +4898,8 @@ function transformQuestionFromApi(apiQ) {
   // tanpa ini draft AI cenderung menaruh jawaban benar di opsi pertama dan posisi
   // tetap sama tiap retry. Aman: penilaian server-side pakai option id (bukan
   // posisi) — ketiga array paralel di bawah ikut permutasi yang sama.
-  for (let i = sorted.length - 1; i > 0; i--) {
+  // Spoken answer numbers must stay aligned with the fixed order in the audio.
+  for (let i = apiQ.preserve_option_order ? 0 : sorted.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [sorted[i], sorted[j]] = [sorted[j], sorted[i]];
   }
@@ -6763,6 +6764,7 @@ function renderChapterReview(data, includeSections = false) {
   const review = (data.review || []).map((q, i) => `<details style="padding:12px 0;border-bottom:1px solid #e5e7eb">
     <summary>${i + 1}. ${q.correct ? 'Benar' : 'Perlu diperbaiki'} — ${escapeHtml(q.category)}</summary>
     <p>${sanitizeHtml(q.prompt)}</p>
+    ${q.imageUrl ? `<div class="quiz-q-image"><img src="${escapeHtml(q.imageUrl)}" alt="Gambar situasi soal ${i + 1}" loading="lazy" /></div>` : ''}
     ${q.passage ? `<p lang="ja" style="white-space:pre-wrap">${escapeHtml(q.passage)}</p>` : ''}
     ${q.audioScript ? `<p><strong>Transkrip audio</strong></p><pre lang="ja" style="white-space:pre-wrap">${escapeHtml(q.audioScript)}</pre>` : ''}
     <p>Jawabanmu: <strong>${escapeHtml(q.submittedAnswer)}</strong><br>Jawaban yang diterima: <strong>${escapeHtml(q.correctAnswer)}</strong></p>
@@ -8301,7 +8303,7 @@ function escapeHtml(s) {
 // untuk q.q, q.options, q.explain, q.audioScript, kanji mnemonic.
 const _SANITIZE_ALLOWED = new Set([
   'B', 'I', 'U', 'EM', 'STRONG', 'BR', 'P', 'SPAN', 'DIV',
-  'UL', 'OL', 'LI', 'H2', 'H3', 'BLOCKQUOTE', 'CODE', 'PRE', 'A',
+  'UL', 'OL', 'LI', 'H2', 'H3', 'BLOCKQUOTE', 'CODE', 'PRE', 'A', 'DETAILS', 'SUMMARY',
 ]);
 // Khusus tag A: cuma boleh href (https/http only, no javascript:).
 function sanitizeHtml(input) {

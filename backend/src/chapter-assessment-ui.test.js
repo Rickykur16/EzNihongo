@@ -4,6 +4,18 @@ import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 const html=await readFile(new URL('../../welcome.html',import.meta.url),'utf8');
 
+test('spoken-choice numbers retain audio order while ordinary options can shuffle',()=>{
+  const ctx=vm.createContext({normalizeQuizCategory:x=>x,Math:{random:()=>0,floor:Math.floor}});
+  const start=html.indexOf('function transformQuestionFromApi(');
+  vm.runInContext(html.slice(start,html.indexOf('async function hydrateEnrolledCourses',start)),ctx);
+  const options=[1,2,3].map(n=>({id:String(n),option_text:`${n}ばん`,sort_order:n}));
+  const fixed=ctx.transformQuestionFromApi({options:[...options].reverse(),preserve_option_order:true,image_url:'/assets/assessments/b4.svg'});
+  assert.deepEqual(Array.from(fixed.options),['1ばん','2ばん','3ばん']);
+  assert.deepEqual(Array.from(fixed.optionIds),['1','2','3']);
+  assert.equal(fixed.imageUrl,'/assets/assessments/b4.svg');
+  assert.notDeepEqual(Array.from(ctx.transformQuestionFromApi({options}).optionIds),['1','2','3']);
+});
+
 test('the listening player advances through all four dialogues without skipping the third',()=>{
   const events={}, jumps=[];
   const el={dataset:{sectionKey:'s4',tracks:JSON.stringify([{qi:0},{qi:1},{qi:2},{qi:3}])},querySelector:()=>({textContent:''})};

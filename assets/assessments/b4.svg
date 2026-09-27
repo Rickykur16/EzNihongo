@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="380" viewBox="0 0 640 380" role="img" aria-labelledby="title desc">
+<title id="title">AとB</title><desc id="desc">A：にほんごの ほん。。AとBが はなしています。</desc>
+<rect width="640" height="380" rx="18" fill="#fafaf7"/>
+<g fill="none" stroke="#25364a" stroke-width="3" stroke-linejoin="round"><path d="M260 150v-64h110v64z M315 86v64" fill="#fff"/><path d="M269 101h36m-36 14h36m20-14h36m-36 14h36"/>
+<circle cx="135" cy="237" r="30" fill="#fff"/><path d="M95 347v-50q40-35 80 0v50" fill="#d9e7f2"/>
+<circle cx="505" cy="237" r="30" fill="#fff"/><path d="M465 347v-50q40-35 80 0v50" fill="#f4e3d8"/>
+<path d="M175 310l82-35 M465 310l-82-35"/>
+<path d="M135 164v30m-10-12l10 12 10-12" stroke="#bd173c" stroke-width="5"/>
+<path d="M225 238q95-58 190 0" stroke-dasharray="7 7"/>
+</g><g font-family="sans-serif" text-anchor="middle" fill="#25364a"><text x="320" y="36" font-size="23">にほんごの ほん</text><text x="320" y="65" font-size="19"></text><text x="135" y="150" font-size="28" font-weight="bold">A</text><text x="505" y="192" font-size="28" font-weight="bold">B</text><text x="320" y="355" font-size="18">A → …？</text></g></svg>

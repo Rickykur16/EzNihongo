@@ -1,6 +1,7 @@
 // Versioned, bounded evidence for chapter assessments. This is not the
 // grammar-mastery policy and does not claim open-ended speaking proficiency.
 export const CHAPTER_ASSESSMENT_VERSION = 'n5-assessment-v2';
+export const JLPT_ASSESSMENT_VERSION = 'n5-assessment-v3';
 export const CHAPTER_BLUEPRINT = Object.freeze({ vocabulary: 6, grammar: 10, reading: 4, listening: 4 });
 export const CHAPTER_LABELS = Object.freeze({
   vocabulary: 'Aksara dan kosakata',
@@ -11,7 +12,7 @@ export const CHAPTER_LABELS = Object.freeze({
 export const CHAPTER_POLICY = Object.freeze({ passingScorePct: 70, categoryMinimumPct: 50, minimumObjectiveCorrect: 1, questionsPerForm: 24 });
 
 export function isChapterAssessment(policy) {
-  return policy?.version === CHAPTER_ASSESSMENT_VERSION;
+  return [CHAPTER_ASSESSMENT_VERSION, JLPT_ASSESSMENT_VERSION].includes(policy?.version);
 }
 
 export function publicChapterRules(policy) {
@@ -28,7 +29,10 @@ export function assertChapterForm(policy, rows) {
   if (new Set(rows.map(q => q.id)).size !== rows.length) throw new Error('assessment_bank_invalid');
   for (const q of rows) {
     if (!objectives.has(q.assessment_meta?.objective) || q.assessment_meta?.version !== policy.version) throw new Error('assessment_bank_invalid');
-    if (q.question_type !== 'multiple_choice' || q.options?.length !== 4 || q.options.filter(o => o.is_correct === true).length !== 1) throw new Error('assessment_bank_invalid');
+    const audioChoices = policy.version === JLPT_ASSESSMENT_VERSION && q.question_category === 'listening' &&
+      ['verbal_expression', 'quick_response'].includes(q.assessment_meta.itemType);
+    if (q.question_type !== 'multiple_choice' || q.options?.length !== (audioChoices ? 3 : 4) || q.options.filter(o => o.is_correct === true).length !== 1) throw new Error('assessment_bank_invalid');
+    if (audioChoices && q.options.some((o,i) => o.option_text !== `${i+1}ばん`)) throw new Error('assessment_bank_invalid');
     if (q.question_category === 'reading' && !q.passage?.trim()) throw new Error('assessment_bank_invalid');
     if (q.question_category === 'listening' && !q.audio_script?.trim()) throw new Error('assessment_bank_invalid');
   }
@@ -56,7 +60,9 @@ export function publicChapterQuestions(snapshot) {
     question_category: q.question_category, section_number: q.section_number,
     section_label: q.section_label, section_instruction: q.section_instruction,
     passage: q.passage || null, sort_order: q.sort_order,
+    ...(q.image_url ? { image_url: q.image_url } : {}),
     has_audio: q.question_category === 'listening',
+    ...(['verbal_expression', 'quick_response'].includes(q.assessment_meta?.itemType) ? { preserve_option_order: true } : {}),
     options: (q.options || []).map(o => ({ id: o.id, option_text: o.option_text, sort_order: o.sort_order })),
   }));
 }
@@ -91,6 +97,7 @@ export function chapterReview(snapshot, answers, correctByQuestion) {
     const selected = byId.get(q.id);
     return {
       questionId: q.id, prompt: q.question, passage: q.passage || null,
+      ...(q.image_url ? { imageUrl: q.image_url } : {}),
       audioScript: q.audio_script || null, category: q.question_category,
       correct: correctByQuestion[q.id],
       submittedAnswer: q.options.find(o => o.id === selected?.optionId)?.option_text || '',
