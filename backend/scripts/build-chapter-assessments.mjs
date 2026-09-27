@@ -14,7 +14,7 @@ export function stableId(key) {
 }
 
 export function bankRows(bank) {
-  return ['A', 'B'].flatMap((form, fi) => bank.forms[form].map((item, i) => ({
+  return Object.keys(bank.forms).flatMap((form, fi) => bank.forms[form].map((item, i) => ({
     id: stableId(item.id), question: item.prompt,
     question_type: 'multiple_choice',
     question_category: item.category, section_number: Object.keys(CHAPTER_LABELS).indexOf(item.category) + 1,
@@ -30,11 +30,13 @@ export function bankRows(bank) {
 }
 
 export function validateBank(bank) {
-  if (bank.version !== CHAPTER_ASSESSMENT_VERSION || bank.chapter !== 3) throw new Error('This release only accepts Bab 3');
+  if (bank.version !== CHAPTER_ASSESSMENT_VERSION || !Number.isInteger(bank.chapter) || bank.chapter < 3 || bank.chapter > 20) throw new Error('Invalid N5 chapter');
+  const forms = bank.chapter === 3 ? ['A', 'B'] : ['A'];
+  if (JSON.stringify(Object.keys(bank.forms)) !== JSON.stringify(forms) || (bank.chapter !== 3 && bank.selection !== 'all')) throw new Error('Invalid chapter selection mode');
   if (!bank.title?.trim() || !bank.boundary?.grammar?.length || !bank.boundary.notes?.trim() || !bank.transferTask?.prompt?.trim() || bank.transferTask.rubric?.length < 3) throw new Error(`Incomplete curriculum map: ${bank.chapter}`);
   if (bank.objectives?.some(o => !o.id || !o.canDo?.trim())) throw new Error('Invalid objectives');
   const rows = bankRows(bank);
-  for (const form of ['A','B']) {
+  for (const form of forms) {
     assertChapterForm(bank, rows.filter(q => q.assessment_meta.form === form));
     const passages = bank.forms[form].filter(q => q.category === 'reading').map(q => q.passage);
     if (new Set(passages).size !== 2 || [...new Set(passages)].some(p => passages.filter(v => v === p).length !== 2)) throw new Error(`Expected two passages with two questions each: ${bank.chapter}/${form}`);
@@ -61,7 +63,7 @@ export function validateBank(bank) {
       if (item.audioScript?.length > 1500) throw new Error(`Audio too long ${item.id}`);
     }
   }
-  if (new Set(rows.map(q => q.id)).size !== 48) throw new Error('Duplicate IDs across forms');
+  if (new Set(rows.map(q => q.id)).size !== 24 * forms.length) throw new Error('Duplicate IDs across forms');
   return rows;
 }
 
