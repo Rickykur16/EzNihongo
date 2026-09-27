@@ -23,8 +23,11 @@ const slice = (start, end) => {
 };
 const source = [
   slice('function _findLessonByApiId', 'function gtPendingTaskFor'),
+  slice('function gtTotalRequired', '// Bangun HTML kartu'),
+  slice('function gtCardsHtml', '// ── Step 1 & 2'),
   slice('const GT_OPT_KEYS', 'window.gtPlayExample ='),
 ].join('\n');
+const productionSource = slice('function gtProductionReady()', '// Fallback ketik');
 
 // Values returned from code run in the vm context are objects of a
 // DIFFERENT realm — assert.deepEqual's strict prototype check fails on them
@@ -139,13 +142,13 @@ test('_gtApplyDrills resume: a passed step2 (step1 unavailable) advances from st
 });
 
 // ── gtLoadDrills: pilot branch selection ─────────────────────────────────
-test('gtLoadDrills delegates to the session path only when the source lesson has a published companion', async () => {
+test('gtLoadDrills tries session for trusted source even without a companion', async () => {
   const { ctx } = setup();
   const sessionCalls = [];
   ctx.gtLoadDrillsSession = async (lessonId) => sessionCalls.push(lessonId);
   ctx.setEzApi?.();
 
-  ctx.window.__gtSourceLesson = { bunpouFlow: { objective: 'x' } };
+  ctx.window.__gtSourceLesson = { apiId: 'source-1' };
   await ctx.gtLoadDrills('task-1');
   assert.deepEqual(sessionCalls, ['task-1']);
 
@@ -168,7 +171,7 @@ test('gtLoadDrillsSession creates/resumes a session, maps itemIds by grammarId-s
     assert.deepEqual(JSON.parse(opts.body), { sourceLessonId: 'src-1' });
     return {
       ok: true, json: async () => ({
-        sessionId: 'sess-1',
+        sessionId: 'sess-1', flowVersion: 1,
         items: [
           { itemId: 'item-1', grammarId: 'g1', step: 1, prompt: 'p1', options: ['a'] },
           { itemId: 'item-2', grammarId: 'g1', step: 2, prompt: 'p2', variant: 'arrange', tokens: ['a'] },
@@ -199,7 +202,7 @@ test('gtLoadDrillsSession maps dialog-check items to their own slots instead of 
   const check2 = { itemId: 'item-5', grammarId: 'g1', step: 5, prompt: 'Mana yang benar?', options: ['x', 'y', 'z'] };
   setEzApi(async () => ({
     ok: true, json: async () => ({
-      sessionId: 'sess-1',
+      sessionId: 'sess-1', flowVersion: 1,
       items: [
         { itemId: 'item-1', grammarId: 'g1', step: 1, prompt: 'p1', options: ['a'] },
         step2, check1, check2,
@@ -215,6 +218,175 @@ test('gtLoadDrillsSession maps dialog-check items to their own slots instead of 
   assert.equal(byStep[4].itemId, 'item-4');
   assert.equal(byStep[5].itemId, 'item-5');
   assert.deepEqual(plain(ctx.window.__gtAvail), { 0: { 1: true, 2: true, 4: true, 5: true } });
+  const legacyHtml = ctx.gtCardsHtml([{ id: 'g1', pattern: 'A' }], false);
+  assert.match(legacyHtml, /Cek pemahaman dialog/);
+  assert.match(legacyHtml, /Coba di kalimat lain/);
+});
+
+test('v2 renders internal transfer 5 only at visible Step 4 and restores its state', async () => {
+  const { ctx, calls, setEzApi } = setup();
+  ctx.window.__gtSourceLesson = { apiId: 'src-1' }; // flag/companion absent
+  ctx.window.__gtLessonId = 'task-1';
+  ctx.window.__gtData = [{ id: 'g1', requiredCount: 2 }];
+  const title = { textContent: '' }, hiddenStep = { style: {},
+    classList: { remove() {}, toggle() {} } };
+  ctx.document.querySelector = selector => selector === '#gt-step4-0 .gt-step__title'
+    ? title : selector === '#gt-step5-0' ? hiddenStep : null;
+  const transfer = { itemId: 'item-5', grammarId: 'g1', step: 5,
+    prompt: 'Gunakan di mana?', options: ['a', 'b', 'c'],
+    wrongCount: 1, answered: true, passed: true, correctIndex: 2 };
+  setEzApi(async path => {
+    assert.equal(path, '/grammar-task/sessions');
+    return { ok: true, json: async () => ({ sessionId: 'sess-2',
+      flowVersion: 2, items: [transfer], productions: [] }) };
+  });
+  await ctx.gtLoadDrills('task-1');
+  assert.equal(ctx.window.__gtFlowVersion, 2);
+  assert.deepEqual(plain(ctx.window.__gtItemIds), { 'g1-5': 'item-5' });
+  assert.equal(calls.renderStep.find(row => row.step === 4).drill.itemId, 'item-5');
+  assert.equal(calls.renderStep.find(row => row.step === 5).drill, undefined);
+  assert.deepEqual(plain(ctx.window.__gtAvail), { 0: { 1: false, 2: false, 4: true, 5: false } });
+  assert.equal(ctx.window.__gtWrong['0-4'], 1);
+  assert.equal(ctx.window.__gtDone['0-4'], true);
+  assert.equal(title.textContent, 'Gunakan di situasi lain');
+  assert.equal(hiddenStep.style.display, 'none');
+  assert.equal(ctx.gtTotalRequired([{ requiredCount: 2 }]), 2);
+});
+
+test('v2 visible Step 4 uses internal item 5 for answer, hint and reveal', async () => {
+  const { ctx, setEzApi, calls } = setup();
+  ctx.window.__gtSessionId = 'sess-2';
+  ctx.window.__gtFlowVersion = 2;
+  ctx.window.__gtData = [{ id: 'g1' }];
+  ctx.window.__gtItemIds = { 'g1-5': 'item-5' };
+  ctx.window.__gtDrills = { g1: { check1: { hintAvailable: true } } };
+  const paths = [];
+  setEzApi(async path => {
+    paths.push(path);
+    if (path.endsWith('/answer')) return { ok: true, status: 200,
+      json: async () => ({ passed: false, wrongCount: 1 }) };
+    if (path.endsWith('/hint')) return { ok: true, json: async () => ({ hint: 'Petunjuk' }) };
+    return { ok: true, json: async () => ({ correctIndex: 1, explanation: 'Penjelasan' }) };
+  });
+  await ctx.gtSubmitAnswer({ id: 'g1' }, 4, { optionIndex: 0 });
+  await ctx.window.gtShowHint(0, 4, { disabled: false });
+  await ctx.gtRevealAnswer({ id: 'g1' }, 4);
+  assert.deepEqual(paths, ['answer', 'hint', 'reveal'].map(op =>
+    `/grammar-task/sessions/sess-2/items/item-5/${op}`));
+});
+
+test('flag-off v2 resumes, exact pilot-ineligible 403 falls back, but 500/network do not', async () => {
+  const { ctx, setEzApi, calls } = setup();
+  ctx.window.__gtSourceLesson = { apiId: 'src-1' };
+  ctx.window.__gtLessonId = 'task-1';
+  ctx.window.__gtData = [{ id: 'g1' }];
+  setEzApi(async path => path === '/grammar-task/sessions'
+    ? { ok: true, json: async () => ({ sessionId: 'sess-2', flowVersion: 2,
+      contentChanged: true, items: [{ itemId: 'item-5', grammarId: 'g1', step: 5,
+        prompt: 'transfer', options: ['a', 'b', 'c'] }] }) }
+    : { ok: true, json: async () => ({ drills: [] }) });
+  await ctx.gtLoadDrills('task-1');
+  assert.equal(ctx.window.__gtSessionId, 'sess-2');
+  assert.equal(ctx.window.__gtFlowVersion, 2);
+  assert.equal(calls.ezApi.filter(([path]) => path === '/grammar-task/lesson/task-1/drills').length, 0);
+
+  for (const failure of ['pilot', 'access', 'review', 'server', 'network']) {
+    const run = setup();
+    run.ctx.window.__gtSourceLesson = { apiId: 'src-1' };
+    run.ctx.window.__gtLessonId = 'task-1';
+    run.ctx.window.__gtData = [];
+    run.setEzApi(async path => {
+      if (path.endsWith('/drills')) return { ok: true, json: async () => ({ drills: [] }) };
+      if (failure === 'network') throw new Error('offline');
+      if (failure === 'pilot') return { ok: false, status: 403,
+        json: async () => ({ error: 'pilot_not_enabled_for_lesson' }) };
+      if (failure === 'access') return { ok: false, status: 403,
+        json: async () => ({ error: 'not_enrolled' }) };
+      if (failure === 'review') return { ok: false, status: 409,
+        json: async () => ({ error: 'companion_needs_review' }) };
+      return { ok: false, status: 500 };
+    });
+    await run.ctx.gtLoadDrills('task-1');
+    const legacyCalls = run.calls.ezApi.filter(([path]) => path.endsWith('/drills'));
+    assert.equal(legacyCalls.length, failure === 'pilot' ? 1 : 0, failure);
+    assert.equal(run.ctx.window.__gtFlowVersion || null, null);
+  }
+});
+
+test('trusted source blocks production while session resolves or fails; confirmed legacy fallback permits it', async () => {
+  const run = setup();
+  const { ctx, calls, setEzApi } = run;
+  vm.runInContext(productionSource, ctx);
+  const result = { hidden: true, className: '', innerHTML: '' };
+  ctx.document.querySelector = (selector) => selector === '#gt-result-0-0' ? result : null;
+  ctx._gtGetSentence = () => '日本語を勉強します。';
+  ctx.gtFeedbackHtml = () => '<p>Dinilai</p>';
+  let completionUpdates = 0;
+  ctx.gtUpdateComplete = () => { completionUpdates++; };
+  ctx.window.__gtSourceLesson = { apiId: 'src-1' }; // no bunpouFlow
+  ctx.window.__gtLessonId = 'task-1';
+  ctx.window.__gtData = [{ id: 'g1' }];
+  ctx.window.__gtState = { passed: {}, total: 1 };
+  ctx.window.__gtSessionMode = 'resolving';
+  let finishSession;
+  setEzApi(async path => path === '/grammar-task/sessions'
+    ? new Promise(resolve => { finishSession = resolve; })
+    : { ok: true, json: async () => ({ drills: [] }) });
+  const pending = ctx.gtLoadDrills('task-1');
+  await ctx.gtRunEval(0, 0, {});
+  assert.match(result.innerHTML, /Sesi latihan belum siap/);
+  assert.equal(calls.ezApi.some(([path]) => path === '/grammar-task/evaluate'), false);
+  assert.equal(completionUpdates, 0);
+  finishSession({ ok: false, status: 500 });
+  await pending;
+  assert.equal(ctx.window.__gtSessionMode, 'error');
+  await ctx.gtRunEval(0, 0, {});
+  assert.equal(calls.ezApi.some(([path]) => path === '/grammar-task/evaluate'), false);
+  assert.equal(completionUpdates, 0);
+
+  setEzApi(async path => {
+    if (path === '/grammar-task/sessions') return {
+      ok: false, status: 403, json: async () => ({ error: 'pilot_not_enabled_for_lesson' }),
+    };
+    if (path.endsWith('/drills')) return { ok: true, json: async () => ({ drills: [] }) };
+    if (path === '/grammar-task/evaluate') return {
+      ok: true, status: 200, json: async () => ({ correct: true, usesPattern: true }),
+    };
+    throw new Error(`unexpected path: ${path}`);
+  });
+  await ctx.gtLoadDrills('task-1');
+  assert.equal(ctx.window.__gtSessionMode, 'legacy');
+  await ctx.gtRunEval(0, 0, {});
+  assert.equal(calls.ezApi.filter(([path]) => path === '/grammar-task/evaluate').length, 1);
+  assert.equal(ctx.window.__gtState.passed['0-0'], true);
+  assert.equal(completionUpdates, 1);
+});
+
+test('trusted source network error and failed legacy drill fallback never permit production', async () => {
+  for (const failure of ['network', 'fallback-drills']) {
+    const { ctx, calls, setEzApi } = setup();
+    vm.runInContext(productionSource, ctx);
+    const result = { hidden: true, className: '', innerHTML: '' };
+    ctx.document.querySelector = selector => selector === '#gt-result-0-0' ? result : null;
+    ctx._gtGetSentence = () => '日本語を勉強します。';
+    ctx.window.__gtSourceLesson = { apiId: 'src-1' };
+    ctx.window.__gtLessonId = 'task-1';
+    ctx.window.__gtData = [{ id: 'g1' }];
+    ctx.window.__gtState = { passed: {}, total: 1 };
+    ctx.window.__gtSessionMode = 'resolving';
+    setEzApi(async path => {
+      if (path === '/grammar-task/sessions') {
+        if (failure === 'network') throw new Error('offline');
+        return { ok: false, status: 403, json: async () => ({ error: 'pilot_not_enabled_for_lesson' }) };
+      }
+      return { ok: false, status: 500 };
+    });
+    await ctx.gtLoadDrills('task-1');
+    assert.equal(ctx.window.__gtSessionMode, 'error', failure);
+    await ctx.gtRunEval(0, 0, {});
+    assert.equal(calls.ezApi.some(([path]) => path === '/grammar-task/evaluate'), false, failure);
+    assert.deepEqual(plain(ctx.window.__gtState.passed), {}, failure);
+  }
 });
 
 test('gtLoadDrillsSession does not apply a resumed session for a lesson the student has since navigated away from', async () => {
@@ -223,7 +395,7 @@ test('gtLoadDrillsSession does not apply a resumed session for a lesson the stud
   ctx.window.__gtData = [{ id: 'g1' }];
   ctx.window.__gtLessonId = 'task-2'; // already moved on by the time the response arrives
   ctx.window.__gtSessionId = null;
-  setEzApi(async () => ({ ok: true, json: async () => ({ sessionId: 'sess-1', items: [] }) }));
+  setEzApi(async () => ({ ok: true, json: async () => ({ sessionId: 'sess-1', flowVersion: 1, items: [] }) }));
   await ctx.gtLoadDrillsSession('task-1');
   assert.equal(ctx.window.__gtSessionId, null);
   assert.equal(calls.renderStep.length, 0);
@@ -321,6 +493,25 @@ function stubAnswerDom(ctx, { pi, step, optionCount }) {
   ctx.document.querySelectorAll = (sel) => (sel === `[id^="gt-opt-${step}-${pi}-"]` ? buttons : []);
   return { verdict, buttons };
 }
+
+test('v2 visible Step 4 click grades internal transfer 5 without changing production progress', async () => {
+  const { ctx, calls, setEzApi } = setup();
+  ctx.window.__gtData = [{ id: 'g1', requiredCount: 2 }];
+  ctx.window.__gtSessionId = 'sess-2';
+  ctx.window.__gtFlowVersion = 2;
+  ctx.window.__gtItemIds = { 'g1-5': 'item-5' };
+  ctx.window.__gtDrills = { g1: { check1: { prompt: 'transfer', options: ['a', 'b', 'c'] } } };
+  stubAnswerDom(ctx, { pi: 0, step: 4, optionCount: 3 });
+  setEzApi(async path => {
+    assert.equal(path, '/grammar-task/sessions/sess-2/items/item-5/answer');
+    return { ok: true, status: 200,
+      json: async () => ({ passed: true, correctIndex: 0, wrongCount: 0 }) };
+  });
+  await ctx.window.gtAnswerDrill(0, 4, 0);
+  assert.equal(ctx.window.__gtDone['0-4'], true);
+  assert.deepEqual(calls.markStepPassed, [{ pi: 0, step: 4 }]);
+  assert.equal(ctx.gtTotalRequired(ctx.window.__gtData), 2);
+});
 
 test('gtAnswerDrill (session mode): two wrong answers trigger exactly one explicit reveal call, matching legacy timing', async () => {
   const { ctx, setEzApi } = setup();
