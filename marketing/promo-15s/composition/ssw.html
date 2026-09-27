@@ -194,6 +194,7 @@
   <div class="layer" id="grain"></div>
 </div>
 
+<script src="jp-ambience.js"></script>
 <script>
 'use strict';
 const $ = (id) => document.getElementById(id);
@@ -257,6 +258,7 @@ function render(t) {
   $('grain').style.opacity = t > bar(10) ? '0.035' : '0.07';
 
   renderHook(t); renderSSW(t); renderReq(t); renderNihongo(t); renderInvite(t); renderEnd(t);
+  JPAmbience.render(t);
 }
 
 // ------------------------------------------------------------ 1-2 hook
@@ -469,6 +471,15 @@ async function boot() {
   const hr = $('harus').getBoundingClientRect(), dr = $('dotp').getBoundingClientRect();
   M.harus = { x: hr.x, y: hr.y, w: hr.width, h: hr.height };
   M.dot = { x: dr.x + dr.width / 2, y: dr.y + dr.height / 2, r: dr.width / 2 };
+  JPAmbience.mount($('stage'), {
+    waveAlpha: (t) => 0.05 * clamp(1 - p(t, bar(10) - 0.5, bar(10) - 0.2)),
+    petalsBack: (t) => 0.85 * clamp(1 - p(t, bar(10) - 0.5, bar(10) - 0.2)),
+    petalsFront: (t) => clamp(1 - p(t, bar(3) - 0.4, bar(3) - 0.1)) + clamp(p(t, bar(5) - 0.1, bar(5) + 0.3) - p(t, bar(6) - 0.4, bar(6) - 0.1))
+      + clamp(p(t, bar(10) + 0.1, bar(10) + 0.5)),
+    onPaper: (t) => t > bar(10),
+    tategaki: { text: '自分の道を、歩こう。', x: 992, y: 960, tIn: bar(6) + 0.3, tOut: bar(10) - 0.6 },
+    hanko: { char: '道', x: 905, y: 418, t: bar(10, 1) + 0.45 },
+  });
   window.__ready = true;
   render(Number(new URLSearchParams(location.search).get('t') || 0));
 }

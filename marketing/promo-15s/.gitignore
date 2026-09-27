@@ -10,3 +10,4 @@ capture/netcache/
 composition/__pycache__/
 composition/music_teaser.wav
 composition/seg_teaser/
+composition/music_*_estetik.wav

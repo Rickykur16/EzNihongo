@@ -217,6 +217,7 @@
   <div class="layer" id="grain"></div>
 </div>
 
+<script src="jp-ambience.js"></script>
 <script>
 'use strict';
 const $ = (id) => document.getElementById(id);
@@ -378,6 +379,7 @@ function render(t) {
   HEADS.forEach((h) => renderHead(h, t));
   show('disclaimer', clamp(p(t, 3.9, 4.3) - p(t, bar(8) - 0.42, bar(8) - 0.3)));
   renderEnd(t);
+  JPAmbience.render(t);
 }
 
 let HOOK_SUN = { cy: 650, r: 310 };
@@ -657,6 +659,14 @@ async function boot() {
   // make sure every font face actually used is loaded
   await Promise.all(['800 96px Inter', '900 138px Inter', '700 30px "JetBrains Mono"', '800 212px "Shippori Mincho"', '700 30px "Noto Sans JP"', '600 38px Inter', '500 34px Inter']
     .map((f) => document.fonts.load(f, 'はたらく語彙復習生配信日本で働きたい学話師 ABCabc?,.')));
+  JPAmbience.mount($('stage'), {
+    waveAlpha: (t) => 0.05 * clamp(1 - p(t, bar(8) - 0.5, bar(8) - 0.2)),
+    petalsBack: (t) => 0.9 * clamp(1 - p(t, bar(8) - 0.5, bar(8) - 0.2)),
+    petalsFront: (t) => clamp(1 - p(t, bar(3) - 0.4, bar(3) - 0.1)) + clamp(p(t, bar(8) + 0.1, bar(8) + 0.5)),
+    onPaper: (t) => t > bar(8),
+    tategaki: { text: 'まずは、日本語から。', x: 992, y: 640, tIn: bar(3) + 0.3, tOut: bar(8) - 0.6 },
+    hanko: { char: '始', x: 905, y: 468, t: bar(8, 1) + 0.45 },
+  });
   window.__ready = true;
   render(Number(new URLSearchParams(location.search).get('t') || 0));
 }

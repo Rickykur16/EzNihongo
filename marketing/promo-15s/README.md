@@ -45,6 +45,28 @@ live class adalah data contoh (sebagian di-patch pada respons JSON di `capture/c
 sisanya di `capture/fixture.sql`). Keterangan "Tampilan aplikasi EzNihongo · data contoh"
 tampil di layar selama adegan aplikasi.
 
+## Versi estetik (nuansa Jepang) — video 1 & 2
+
+Kedua video pertama sudah diperbarui ke versi "estetik" (file MP4 dengan nama yang sama; versi lama
+tetap ada di riwayat git):
+
+- **Musik lo-fi Jepang** (`audio_v1_estetik.py`, `audio_ssw_estetik.py`, bed bersama `lofi_bed.py`):
+  electric piano gaya Rhodes dengan tape wow, drum half-time, vinyl crackle, koto, **shakuhachi** di
+  adegan Tokyo Tower / SSW dan breakdown 日本語, **furin** (lonceng angin) dan **rin** (mangkuk kuil)
+  sebagai aksen. Master hangat −14 LUFS. Semua disintesis (`synth.py`), aman untuk komersial.
+  `audio.py` / `audio_ssw.py` lama tetap ada dan menghasilkan audio versi awal secara identik.
+- **Visual** (`jp-ambience.js`): kelopak sakura melayang (gerak deterministik), pola ombak seigaiha
+  samar di latar biru, tategaki 「まずは、日本語から。」 (video 1) / 「自分の道を、歩こう。」 (video 2),
+  dan hanko merah 「始」 / 「道」 di kartu penutup.
+
+Render ulang:
+
+```sh
+python3 audio_v1_estetik.py && python3 audio_ssw_estetik.py
+node render_par.cjs 4 30 4 && AUDIO=music_v1_estetik.wav ./encode.sh ../EzNihongo_Promo_15s_1080x1920.mp4
+PAGE=ssw.html SEG=seg_ssw node render_par.cjs 4 30 4 && SEG=seg_ssw AUDIO=music_ssw_estetik.wav DUR=20 ./encode.sh ../EzNihongo_Promo_JalurMandiri_20s_1080x1920.mp4
+```
+
 ## Video 3 — teaser pra-rilis: nggak harus lewat LPK (20 detik)
 
 **File:** `EzNihongo_Teaser_TanpaLPK_20s_1080x1920.mp4` · 1080 × 1920 · 30 fps · 600 frame ·

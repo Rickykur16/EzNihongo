@@ -435,3 +435,38 @@ def air_pad(notes, dur, attack=0.6, release=0.8):
     breath = bp(rng.standard_normal(n), 800, 3000) * 0.05
     e = np.minimum(1, t / attack) * np.minimum(1, np.maximum(0, (dur - t) / release))
     return lp(out / (2 * len(notes)) + breath, 2500) * e * 0.12
+
+
+# ---------------------------------------------------------------- Japanese colour (estetik versions)
+def shakuhachi(freq, dur, vel=1.0, scoop=True):
+    """Bamboo flute: soft fundamental, breathy noise, late vibrato, meri-style scoop up to pitch."""
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    cents = (-70 * np.exp(-t * 9) if scoop else 0) + 14 * np.clip((t - 0.35) / 0.4, 0, 1) * np.sin(2 * np.pi * 5.2 * t)
+    f = freq * 2 ** (cents / 1200)
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    tone = np.sin(ph) + 0.18 * np.sin(2 * ph) + 0.06 * np.sin(3 * ph)
+    env = np.minimum(1, t / 0.09) * np.minimum(1, np.maximum(0, (dur - t) / 0.25))
+    breath = bp(rng.standard_normal(n), freq * 1.2, min(freq * 4, SR * 0.4), 1) * (0.35 + 0.9 * np.exp(-t * 7))
+    return lp((tone * 0.8 + breath * 0.5) * env, 3200) * 0.2 * vel
+
+
+def furin(freq=2650.0, dur=2.2, vel=1.0):
+    """Wind chime (fūrin): bright inharmonic partials with a slow shimmer."""
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    out = np.zeros(n)
+    for ratio, amp, dec in ((1.0, 1.0, 2.2), (2.76, 0.45, 3.4), (5.40, 0.22, 5.0), (1.51, 0.3, 2.8)):
+        out += amp * np.sin(2 * np.pi * freq * ratio * t + rng.uniform(0, 6)) * np.exp(-t * dec)
+    shimmer = 1 + 0.25 * np.sin(2 * np.pi * 6.5 * t)
+    return out * shimmer * np.minimum(1, t / 0.001) * 0.05 * vel
+
+
+def rin(freq=520.0, dur=4.0, vel=1.0):
+    """Temple bowl (rin): long, slightly beating partials."""
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    out = np.zeros(n)
+    for ratio, amp, dec in ((1.0, 1.0, 0.9), (1.003, 0.6, 0.9), (2.71, 0.4, 1.6), (5.15, 0.18, 2.6)):
+        out += amp * np.sin(2 * np.pi * freq * ratio * t) * np.exp(-t * dec)
+    return out * np.minimum(1, t / 0.002) * 0.12 * vel
