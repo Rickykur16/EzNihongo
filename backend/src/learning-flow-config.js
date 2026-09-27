@@ -15,6 +15,9 @@ export const FLOW_SETTING_KEY = 'learning_flow_communication_v1';
 export const V2_RUNTIME_AVAILABLE = true;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const EMPTY = Object.freeze({ enabled: false, courseIds: [], moduleIds: [], lessonIds: [] });
+const BAB3_PREPARATION_MIGRATION = '174_prepare_bab3_learning_flow.sql';
+const BAB3_SOURCE_SLUGS = new Set(['bunpou-n5-b3', 'bunpou2-n5-b3']);
+const MD5 = /^[0-9a-f]{32}$/u;
 const hash = (raw, rowRevision = null) => `sha256:${createHash('sha256')
   .update(JSON.stringify({ raw: raw ?? null, rowRevision })).digest('hex')}`;
 const issue = code => ({ code });
@@ -32,7 +35,6 @@ const taskBoundaryPayload = (items, pool) => {
     pattern: item.pattern,
     meaning: item.meaning,
     example: item.example,
-    examples: item.examples,
     instruction: item.instruction,
   }));
   const distractors = [];
@@ -46,6 +48,22 @@ const taskBoundaryPayload = (items, pool) => {
     }
   }
   return { source, distractors };
+};
+const isReviewedLegacySource = (published, companionCurrent, owner) => {
+  const review = published?.preparationReview;
+  return companionCurrent &&
+    owner?.courseSlug === 'n5' && owner?.moduleSlug === 'n5-b3' &&
+    BAB3_SOURCE_SLUGS.has(owner?.sourceSlug) &&
+    published?.publishedBy?.email === `migration/${BAB3_PREPARATION_MIGRATION}` &&
+    review && !Array.isArray(review) &&
+    Object.keys(review).sort().join(',') ===
+      'draftPayloadMd5,migration,publishedPayloadMd5,sourceSnapshotMd5,version' &&
+    review.version === 1 && review.migration === BAB3_PREPARATION_MIGRATION &&
+    [review.sourceSnapshotMd5, review.draftPayloadMd5, review.publishedPayloadMd5]
+      .every(value => typeof value === 'string' && MD5.test(value)) &&
+    review.sourceSnapshotMd5 === owner?.sourceSnapshotMd5 &&
+    review.draftPayloadMd5 === owner?.draftPayloadMd5 &&
+    review.publishedPayloadMd5 === owner?.publishedPayloadMd5;
 };
 const fail = (status, code, readiness = null) => {
   const error = new Error(code); error.status = status; error.readiness = readiness; throw error;
@@ -87,12 +105,10 @@ export function flowScopeAllows(config, { courseId, moduleId, lessonId }) {
 
 async function scopedLessons(client, config) {
   const ids = [config.courseIds, config.moduleIds, config.lessonIds];
-  const [courses, modules, lessons] = await Promise.all([
-    client.query('SELECT id FROM courses WHERE id=ANY($1::uuid[])', [ids[0]]),
-    client.query('SELECT id,course_id FROM modules WHERE id=ANY($1::uuid[])', [ids[1]]),
-    client.query(`SELECT l.id,l.module_id,l.type,m.course_id FROM lessons l
-      JOIN modules m ON m.id=l.module_id WHERE l.id=ANY($1::uuid[])`, [ids[2]]),
-  ]);
+  const courses = await client.query('SELECT id FROM courses WHERE id=ANY($1::uuid[])', [ids[0]]);
+  const modules = await client.query('SELECT id,course_id FROM modules WHERE id=ANY($1::uuid[])', [ids[1]]);
+  const lessons = await client.query(`SELECT l.id,l.module_id,l.type,m.course_id FROM lessons l
+    JOIN modules m ON m.id=l.module_id WHERE l.id=ANY($1::uuid[])`, [ids[2]]);
   const issues = [];
   for (const [key, wanted, found] of [
     ['course', ids[0], courses.rows], ['module', ids[1], modules.rows], ['lesson', ids[2], lessons.rows],
@@ -131,9 +147,15 @@ async function scopedLessons(client, config) {
 
 async function lessonReadiness(client, lesson, { resolveBoundary = getCurriculumBoundary } = {}) {
   const issues = [];
-  const task = (await client.query(`SELECT t.id,s.bunpou_flow_published,
+  const diagnostics = [];
+  const task = (await client.query(`SELECT t.id,s.slug AS source_slug,
+      sm.slug AS module_slug,c.slug AS course_slug,s.bunpou_flow_published,
+      md5((s.bunpou_flow_draft - 'sourceFingerprint' - 'preparationReview')::text)
+        AS draft_payload_md5,
+      md5((s.bunpou_flow_published - 'sourceFingerprint' - 'preparationReview')::text)
+        AS published_payload_md5,
       sm.course_id AS source_course_id,tm.course_id AS task_course_id
-    FROM lessons s JOIN modules sm ON sm.id=s.module_id
+    FROM lessons s JOIN modules sm ON sm.id=s.module_id JOIN courses c ON c.id=sm.course_id
     LEFT JOIN lessons t ON t.popup_after_lesson_id=s.id AND t.type='grammar_task'
     LEFT JOIN modules tm ON tm.id=t.module_id
     WHERE s.id=$1 ORDER BY t.id`, [lesson.id])).rows;
@@ -149,11 +171,30 @@ async function lessonReadiness(client, lesson, { resolveBoundary = getCurriculum
   const pool = await loadModulePool(task[0].id, dbQuery);
   if (!items.length) issues.push(issue('flow_task_empty'));
   const currentFingerprint = contentRevisionId(items, pool);
-  if (!companionIsCurrent(task[0].bunpou_flow_published, currentFingerprint)) {
+  const companionCurrent = companionIsCurrent(task[0].bunpou_flow_published, currentFingerprint);
+  if (!companionCurrent) {
     issues.push({ code: 'flow_companion_not_current',
       publishedFingerprint: task[0].bunpou_flow_published?.sourceFingerprint || null,
       currentFingerprint });
   }
+  const published = task[0].bunpou_flow_published || {};
+  let sourceSnapshotMd5 = null;
+  if (published.publishedBy?.email === `migration/${BAB3_PREPARATION_MIGRATION}`) {
+    sourceSnapshotMd5 = (await client.query(`SELECT md5(
+        coalesce((SELECT jsonb_agg((to_jsonb(g) - 'created_at' - 'updated_at') ORDER BY g.id)
+          FROM module_grammar g WHERE g.module_id=$1), '[]'::jsonb)::text
+        || '|' ||
+        coalesce((SELECT jsonb_agg(to_jsonb(i) ORDER BY i.lesson_id,i.sort_order,i.grammar_id)
+          FROM lesson_grammar_task_items i JOIN lessons t2 ON t2.id=i.lesson_id
+          WHERE t2.module_id=$1), '[]'::jsonb)::text
+      ) AS source_snapshot_md5`, [lesson.module_id])).rows[0]?.source_snapshot_md5 || null;
+  }
+  const reviewedLegacySource = isReviewedLegacySource(published, companionCurrent, {
+    courseSlug: task[0].course_slug, moduleSlug: task[0].module_slug,
+    sourceSlug: task[0].source_slug, sourceSnapshotMd5,
+    draftPayloadMd5: task[0].draft_payload_md5,
+    publishedPayloadMd5: task[0].published_payload_md5,
+  });
   let boundary = null;
   let boundaryBlocked = true;
   try {
@@ -179,17 +220,20 @@ async function lessonReadiness(client, lesson, { resolveBoundary = getCurriculum
     const distractorReport = validateContentAgainstBoundary({ boundary,
       contentType: 'grammar_distractors', operation: 'audit',
       fields: visibleFields('bunpou.distractors', taskPayload.distractors) });
-    const published = task[0].bunpou_flow_published || {};
     const companionReport = validateContentAgainstBoundary({ boundary,
       contentType: 'dialogue_transfer', operation: 'audit', fields: visibleFields('bunpou.companion', {
         objective: published.objective, directions: published.directions, overlays: published.overlays,
       }) });
-    for (const [code, report] of [
-      ['flow_task_source_boundary_invalid', sourceReport],
-      ['flow_task_distractor_boundary_invalid', distractorReport],
-      ['flow_companion_boundary_invalid', companionReport],
-    ]) if (report.valid !== true) issues.push({ code,
-      violations: (report.violations || []).map(entry => entry.code) });
+    for (const [code, report, legacySource] of [
+      ['flow_task_source_boundary_invalid', sourceReport, true],
+      ['flow_task_distractor_boundary_invalid', distractorReport, true],
+      ['flow_companion_boundary_invalid', companionReport, false],
+    ]) if (report.valid !== true) {
+      const finding = { code, violations: (report.violations || []).map(entry => entry.code) };
+      if (legacySource && reviewedLegacySource) diagnostics.push({ ...finding,
+        disposition: 'reviewed_legacy_source', preparationMigration: BAB3_PREPARATION_MIGRATION });
+      else issues.push(finding);
+    }
   }
   const taskGrammarIds = [...new Set(items.map(item => item.id))];
   const visible = (await client.query(`SELECT id FROM module_grammar WHERE lesson_id=$1
@@ -236,8 +280,13 @@ async function lessonReadiness(client, lesson, { resolveBoundary = getCurriculum
           translation: grammar.example_dialog_id,
           communicationGoal: grammar.communication_goal,
         }) });
-      if (sourceReport.valid !== true) issues.push({ code: 'flow_dialogue_boundary_invalid',
-        grammarId, violations: (sourceReport.violations || []).map(entry => entry.code) });
+      if (sourceReport.valid !== true) {
+        const finding = { code: 'flow_dialogue_boundary_invalid', grammarId,
+          violations: (sourceReport.violations || []).map(entry => entry.code) };
+        if (reviewedLegacySource) diagnostics.push({ ...finding,
+          disposition: 'reviewed_legacy_source', preparationMigration: BAB3_PREPARATION_MIGRATION });
+        else issues.push(finding);
+      }
     }
     for (const row of rows) {
       if (!['manual', 'generated', 'legacy_bunpou'].includes(row.source_kind) ||
@@ -277,7 +326,7 @@ async function lessonReadiness(client, lesson, { resolveBoundary = getCurriculum
       }
     }
   }
-  return { lessonId: lesson.id, ready: issues.length === 0, issues };
+  return { lessonId: lesson.id, ready: issues.length === 0, issues, diagnostics };
 }
 
 export async function learningFlowReadiness(client, config, options = {}) {

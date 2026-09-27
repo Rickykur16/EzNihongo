@@ -255,13 +255,15 @@ export async function getCurriculumBoundary(scope, { dbQuery = query } = {}) {
     catch (error) { throw new BoundaryUnavailableError(error); }
   };
   const issues = [];
-  const [courseRows, edgeRows, scopeLessons, scopeGrammar, auxiliaryPolicy] = await Promise.all([
-    read('/* boundary:courses */ SELECT id,slug,level,curriculum_boundary_mode FROM courses'),
-    read('/* boundary:edges */ SELECT course_id,prerequisite_course_id FROM course_prerequisites'),
-    lessonId ? read('/* boundary:scope-lesson */ SELECT id,module_id,slug,type FROM lessons WHERE id=$1', [lessonId]) : [],
-    grammarId ? read('/* boundary:scope-grammar */ SELECT id,module_id,lesson_id FROM module_grammar WHERE id=$1', [grammarId]) : [],
-    loadAuxiliaryPolicy({ dbQuery, integrityIssues: issues }),
-  ]);
+  // dbQuery may be bound to one transaction-scoped pg client. Keep reads
+  // sequential so the resolver is safe both inside and outside a transaction.
+  const courseRows = await read('/* boundary:courses */ SELECT id,slug,level,curriculum_boundary_mode FROM courses');
+  const edgeRows = await read('/* boundary:edges */ SELECT course_id,prerequisite_course_id FROM course_prerequisites');
+  const scopeLessons = lessonId
+    ? await read('/* boundary:scope-lesson */ SELECT id,module_id,slug,type FROM lessons WHERE id=$1', [lessonId]) : [];
+  const scopeGrammar = grammarId
+    ? await read('/* boundary:scope-grammar */ SELECT id,module_id,lesson_id FROM module_grammar WHERE id=$1', [grammarId]) : [];
+  const auxiliaryPolicy = await loadAuxiliaryPolicy({ dbQuery, integrityIssues: issues });
   const courses = new Map(courseRows.map(row => [id(row.id), row]));
   const foundLesson = scopeLessons[0], foundGrammar = scopeGrammar[0];
   if (lessonId && !foundLesson) throw new BoundaryContextError('lesson_not_found', { lessonId });
@@ -285,14 +287,12 @@ export async function getCurriculumBoundary(scope, { dbQuery = query } = {}) {
   }
   const paths = graphPaths(id(current.course_id), courses, edgeRows, issues);
   const relevantCourseIds = [id(current.course_id), ...paths.keys()];
-  const [modules, lessons, vocabulary, grammar, kanji, decks] = await Promise.all([
-    read('/* boundary:modules */ SELECT id,course_id,sort_order,title FROM modules WHERE course_id=ANY($1::uuid[])', [relevantCourseIds]),
-    read('/* boundary:lessons */ SELECT l.id,l.module_id,l.slug,l.type FROM lessons l JOIN modules m ON m.id=l.module_id WHERE m.course_id=ANY($1::uuid[])', [relevantCourseIds]),
-    read('/* boundary:vocabulary */ SELECT v.id,v.module_id,v.lesson_id,v.japanese,v.reading,v.romaji,v.indonesian,v.category,v.note FROM module_vocabulary v JOIN modules m ON m.id=v.module_id WHERE m.course_id=ANY($1::uuid[])', [relevantCourseIds]),
-    read('/* boundary:grammar */ SELECT g.id,g.module_id,g.lesson_id,g.pattern,g.meaning,g.example,g.notes,g.example_dialog,g.example_dialog_id,g.communication_goal FROM module_grammar g JOIN modules m ON m.id=g.module_id WHERE m.course_id=ANY($1::uuid[])', [relevantCourseIds]),
-    read('/* boundary:kanji */ SELECT k.id,k.lesson_id,k.character,k.bab_kode,k.jlpt_level,k.on_reading,k.kun_reading,k.meaning_id,k.mnemonic,k.compounds FROM kanji_items k LEFT JOIN lessons l ON l.id=k.lesson_id LEFT JOIN modules m ON m.id=l.module_id WHERE m.course_id=ANY($1::uuid[]) OR k.lesson_id IS NULL', [relevantCourseIds]),
-    read('/* boundary:decks */ SELECT d.vocabulary_id,d.lesson_id,l.module_id AS deck_module_id FROM lesson_deck_items d JOIN module_vocabulary v ON v.id=d.vocabulary_id LEFT JOIN lessons l ON l.id=d.lesson_id JOIN modules m ON m.id=v.module_id WHERE m.course_id=ANY($1::uuid[])', [relevantCourseIds]),
-  ]);
+  const modules = await read('/* boundary:modules */ SELECT id,course_id,sort_order,title FROM modules WHERE course_id=ANY($1::uuid[])', [relevantCourseIds]);
+  const lessons = await read('/* boundary:lessons */ SELECT l.id,l.module_id,l.slug,l.type FROM lessons l JOIN modules m ON m.id=l.module_id WHERE m.course_id=ANY($1::uuid[])', [relevantCourseIds]);
+  const vocabulary = await read('/* boundary:vocabulary */ SELECT v.id,v.module_id,v.lesson_id,v.japanese,v.reading,v.romaji,v.indonesian,v.category,v.note FROM module_vocabulary v JOIN modules m ON m.id=v.module_id WHERE m.course_id=ANY($1::uuid[])', [relevantCourseIds]);
+  const grammar = await read('/* boundary:grammar */ SELECT g.id,g.module_id,g.lesson_id,g.pattern,g.meaning,g.example,g.notes,g.example_dialog,g.example_dialog_id,g.communication_goal FROM module_grammar g JOIN modules m ON m.id=g.module_id WHERE m.course_id=ANY($1::uuid[])', [relevantCourseIds]);
+  const kanji = await read('/* boundary:kanji */ SELECT k.id,k.lesson_id,k.character,k.bab_kode,k.jlpt_level,k.on_reading,k.kun_reading,k.meaning_id,k.mnemonic,k.compounds FROM kanji_items k LEFT JOIN lessons l ON l.id=k.lesson_id LEFT JOIN modules m ON m.id=l.module_id WHERE m.course_id=ANY($1::uuid[]) OR k.lesson_id IS NULL', [relevantCourseIds]);
+  const decks = await read('/* boundary:decks */ SELECT d.vocabulary_id,d.lesson_id,l.module_id AS deck_module_id FROM lesson_deck_items d JOIN module_vocabulary v ON v.id=d.vocabulary_id LEFT JOIN lessons l ON l.id=d.lesson_id JOIN modules m ON m.id=v.module_id WHERE m.course_id=ANY($1::uuid[])', [relevantCourseIds]);
   const moduleById = new Map(modules.map(row => [id(row.id), row]));
   const effectiveLesson = foundLesson || (foundGrammar?.lesson_id
     ? lessons.find(row => id(row.id) === id(foundGrammar.lesson_id)) : null);

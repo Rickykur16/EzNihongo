@@ -143,7 +143,8 @@ test('readiness rejects stale companion and missing normalized questions for a m
     if (sql.includes('SELECT l.id,l.module_id,l.type,m.course_id FROM lessons')) return { rows: [] };
     if (sql.includes('SELECT l.id,l.module_id')) return { rows: [{ id: scope.lessonId,
       module_id: scope.moduleId, course_id: scope.courseId, type: 'lesson' }] };
-    if (sql.includes('SELECT t.id,s.bunpou_flow_published')) return { rows: [{ id: taskId,
+    if (sql.includes('SELECT t.id,s.slug AS source_slug')) return { rows: [{ id: taskId,
+      course_slug: 'n5', module_slug: 'n5-b3', source_slug: 'bunpou-n5-b3',
       source_course_id: scope.courseId, task_course_id: scope.courseId,
       bunpou_flow_published: { sourceFingerprint: 'sha256:old' } }] };
     if (sql.includes('FROM lesson_grammar_task_items gi')) return { rows: [{ id: grammarId,
@@ -197,6 +198,7 @@ test('readiness pins every visible dialogue question to current source, review, 
     examples: row.examples || [] });
   let companionFingerprint = contentRevisionId([normalized(rawItem)],
     [normalized(rawPool), normalized(unusedPool)]);
+  let published = {};
   const grammar = { id: grammarId, module_id: scope.moduleId, lesson_id: scope.lessonId,
     example_dialog: rawItem.example_dialog, example_dialog_id: rawItem.example_dialog_id,
     communication_goal: null, dialog_scene: { internalNote: '学校' } };
@@ -215,6 +217,7 @@ test('readiness pins every visible dialogue question to current source, review, 
   const questions = [makeQuestion('comprehension', 23,
     [{ turnIndex: 0, quote: 'ねこです' }]), makeQuestion('transfer', 24)];
   let extraVisible = false;
+  let sourceSnapshotMd5 = 'a'.repeat(32);
   const client = { async query(sql, params) {
     if (sql.startsWith('SELECT id FROM courses')) return { rows: [] };
     if (sql.startsWith('SELECT id,course_id FROM modules')) return { rows: [{ id: scope.moduleId,
@@ -222,9 +225,13 @@ test('readiness pins every visible dialogue question to current source, review, 
     if (sql.includes('SELECT l.id,l.module_id,l.type,m.course_id FROM lessons')) return { rows: [] };
     if (sql.includes('SELECT l.id,l.module_id')) return { rows: [{ id: scope.lessonId,
       module_id: scope.moduleId, course_id: scope.courseId, type: 'video' }] };
-    if (sql.includes('SELECT t.id,s.bunpou_flow_published')) return { rows: [{ id: taskId,
+    if (sql.includes('SELECT t.id,s.slug AS source_slug')) return { rows: [{ id: taskId,
+      course_slug: 'n5', module_slug: 'n5-b3', source_slug: 'bunpou-n5-b3',
+      draft_payload_md5: 'b'.repeat(32), published_payload_md5: 'c'.repeat(32),
       source_course_id: scope.courseId, task_course_id: scope.courseId,
-      bunpou_flow_published: { sourceFingerprint: companionFingerprint } }] };
+      bunpou_flow_published: { ...published, sourceFingerprint: companionFingerprint } }] };
+    if (sql.includes('AS source_snapshot_md5')) return { rows: [{
+      source_snapshot_md5: sourceSnapshotMd5 }] };
     if (sql.includes('FROM lesson_grammar_task_items gi')) return { rows: [rawItem] };
     if (sql.includes('FROM grammar_examples')) return { rows:
       (params?.[0] || []).includes(unusedPoolId) ? unusedPool.examples : [] };
@@ -290,6 +297,32 @@ test('readiness pins every visible dialogue question to current source, review, 
   assert.equal(unsafeSource.ready, false);
   assert.ok(unsafeSource.lessons[0].issues.some(item =>
     item.code === 'flow_dialogue_boundary_invalid' && item.violations.includes('future_kanji')));
+
+  published = { publishedBy: { email: 'migration/174_prepare_bab3_learning_flow.sql' },
+    preparationReview: { version: 1, migration: '174_prepare_bab3_learning_flow.sql',
+      sourceSnapshotMd5: 'a'.repeat(32), draftPayloadMd5: 'b'.repeat(32),
+      publishedPayloadMd5: 'c'.repeat(32) } };
+  const reviewedLegacy = await learningFlowReadiness(client, configured, { resolveBoundary });
+  assert.equal(reviewedLegacy.ready, true);
+  assert.ok(reviewedLegacy.lessons[0].diagnostics.some(item =>
+    item.code === 'flow_dialogue_boundary_invalid' &&
+    item.disposition === 'reviewed_legacy_source'));
+
+  // A source-only edit can leave the companion fingerprint unchanged. The
+  // migration review must stop applying as soon as the live source snapshot
+  // differs from the snapshot that was explicitly reviewed.
+  sourceSnapshotMd5 = 'd'.repeat(32);
+  const changedAfterReview = await learningFlowReadiness(client, configured, { resolveBoundary });
+  assert.equal(changedAfterReview.ready, false);
+  assert.ok(changedAfterReview.lessons[0].issues.some(item =>
+    item.code === 'flow_dialogue_boundary_invalid'));
+
+  sourceSnapshotMd5 = 'a'.repeat(32);
+  published.preparationReview = { ...published.preparationReview, unreviewed: true };
+  const forgedMarker = await learningFlowReadiness(client, configured, { resolveBoundary });
+  assert.equal(forgedMarker.ready, false);
+  assert.ok(forgedMarker.lessons[0].issues.some(item =>
+    item.code === 'flow_dialogue_boundary_invalid'));
 });
 
 test('learning flow settings policy is exact and owner only', () => {

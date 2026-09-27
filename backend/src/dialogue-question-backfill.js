@@ -104,12 +104,12 @@ export function assessLegacyQuestion({ check, legacyKind, grammar, sourceLessonI
 }
 
 async function scopedLessons(client, scope) {
-  const [courses, modules, lessons] = await Promise.all([
-    client.query('SELECT id FROM courses WHERE id=ANY($1::uuid[])', [scope.courseIds]),
-    client.query('SELECT id,course_id FROM modules WHERE id=ANY($1::uuid[])', [scope.moduleIds]),
-    client.query(`SELECT l.id,l.module_id,m.course_id FROM lessons l
-      JOIN modules m ON m.id=l.module_id WHERE l.id=ANY($1::uuid[])`, [scope.lessonIds]),
-  ]);
+  const courses = await client.query('SELECT id FROM courses WHERE id=ANY($1::uuid[])',
+    [scope.courseIds]);
+  const modules = await client.query('SELECT id,course_id FROM modules WHERE id=ANY($1::uuid[])',
+    [scope.moduleIds]);
+  const lessons = await client.query(`SELECT l.id,l.module_id,m.course_id FROM lessons l
+    JOIN modules m ON m.id=l.module_id WHERE l.id=ANY($1::uuid[])`, [scope.lessonIds]);
   for (const [expected, rows] of [[scope.courseIds, courses.rows],
     [scope.moduleIds, modules.rows], [scope.lessonIds, lessons.rows]]) {
     if (expected.length !== rows.length) fail('backfill_scope_id_missing');
@@ -150,10 +150,8 @@ async function inspectLesson(client, lesson, { resolveBoundary, validate, apply 
   if (!source.bunpou_flow_published) return [result(prefix, null, 'published_missing',
     { draftPresent })];
   const dbQuery = client.query.bind(client);
-  const [items, pool] = await Promise.all([
-    loadTaskConcepts(source.task_lesson_id, dbQuery),
-    loadModulePool(source.task_lesson_id, dbQuery),
-  ]);
+  const items = await loadTaskConcepts(source.task_lesson_id, dbQuery);
+  const pool = await loadModulePool(source.task_lesson_id, dbQuery);
   const published = source.bunpou_flow_published;
   const publishedFingerprint = contentRevisionId(items, pool);
   if (!companionIsCurrent(published, publishedFingerprint)) {
