@@ -40,7 +40,7 @@ test('408 original JLPT-style items retain curricular bounds, full banks, and pr
     const original=snapshot.questions[0].options[0].option_text;
     rows[0].options[0].option_text='Later owner change';
     assert.equal(snapshot.questions[0].options[0].option_text,original);
-    assert.equal(await readFile(new URL(`../../assets/assessments/b${bank.chapter}.svg`,import.meta.url),'utf8'),illustration(bank.chapter));
+    assert.equal((await readFile(new URL(`../../assets/assessments/b${bank.chapter}.svg`,import.meta.url),'utf8')).replaceAll('\r\n','\n'),illustration(bank.chapter));
   }
   assert.equal(ids.size,408);assert.equal(options,1598);assert.equal(stars,34);assert.equal(spoken,34);
   assert.ok(!JSON.stringify(banks[0]).includes('だれの'));
@@ -108,5 +108,42 @@ test('v3 rollout retains v2 history and owner voices; failure is atomic and reru
     await exec(sql);
     assert.equal((await db.query("SELECT content FROM lessons WHERE slug='assignment-bab-4-existing'")).rows[0].content,'Owner edited');
     assert.equal((await db.query('SELECT count(*)::int n FROM quiz_questions')).rows[0].n,834);
+    // Editorial v4 copies unchanged owner content, while fixing only audited IDs.
+    const {buildRollout:revisionRollout}=await import('../scripts/build-assessment-ambiguity-revision.mjs');
+    const {banks:revised,bankRows:revisedRows,revisions}=await import('../content/assessments/jlpt/revised.mjs');
+    await exec('ALTER TABLE quiz_questions ADD COLUMN grammar_id uuid, ADD COLUMN correct_answer text; ALTER TABLE quiz_options ADD COLUMN image_url text;');
+    await db.query("UPDATE quiz_questions SET question='Owner wording preserved' WHERE assessment_meta->>'key'='b04-a-jlpt-1'");
+    const beforeV4=(await db.query('SELECT * FROM quiz_questions ORDER BY id')).rows;
+    const beforeOptions=(await db.query('SELECT * FROM quiz_options ORDER BY id')).rows;
+    await db.query("UPDATE lessons SET assessment_policy=jsonb_set(assessment_policy,'{version}','\"unexpected\"') WHERE slug='assignment-bab-20-existing'");
+    await db.query('BEGIN');await assert.rejects(exec(revisionRollout()),/expected v3 Bab 20/);await db.query('ROLLBACK');
+    assert.deepEqual((await db.query('SELECT * FROM quiz_questions ORDER BY id')).rows,beforeV4);
+    await db.query("UPDATE lessons SET assessment_policy=jsonb_set(assessment_policy,'{version}','\"n5-assessment-v3\"') WHERE slug='assignment-bab-20-existing'");
+    await exec('BEGIN;'+revisionRollout()+'COMMIT;');
+    const v4=(await db.query("SELECT q.*, (SELECT jsonb_agg(to_jsonb(o) ORDER BY sort_order) FROM quiz_options o WHERE question_id=q.id) options FROM quiz_questions q WHERE assessment_meta->>'version'='n5-assessment-v4'")).rows;
+    assert.equal(v4.length,408);
+    for(const bank of revised){
+      const rows=v4.filter(q=>q.assessment_meta.key.startsWith(`b${String(bank.chapter).padStart(2,'0')}-`));
+      assertChapterForm(bank,rows);
+      for(const authored of revisedRows(bank)){
+        const row=rows.find(q=>q.id===authored.id);
+        const prior=beforeV4.find(q=>q.assessment_meta?.key===authored.assessment_meta.key.replace('-jlpt-r2-','-jlpt-'));
+        assert.deepEqual(row.audio_scene,prior.audio_scene);
+        if(revisions.has(`${bank.chapter}:${authored.sort_order}`)){
+          assert.equal(row.question,authored.question);assert.equal(row.audio_script,authored.audio_script);
+          assert.deepEqual(row.options.map(o=>[o.option_text,o.is_correct]),authored.options.map(o=>[o.option_text,o.is_correct]));
+        }else{
+          assert.equal(row.question,prior.question);assert.equal(row.audio_script,prior.audio_script);
+          assert.deepEqual(row.options.map(o=>[o.option_text,o.is_correct]),beforeOptions.filter(o=>o.question_id===prior.id).sort((a,b)=>a.sort_order-b.sort_order).map(o=>[o.option_text,o.is_correct]));
+        }
+      }
+    }
+    assert.deepEqual((await db.query("SELECT * FROM quiz_questions WHERE assessment_meta->>'version' IS DISTINCT FROM 'n5-assessment-v4' ORDER BY id")).rows,beforeV4);
+    assert.deepEqual((await db.query('SELECT * FROM quiz_attempts ORDER BY id')).rows,attempts);
+    assert.equal((await db.query("SELECT content FROM lessons WHERE slug='assignment-bab-4-existing'")).rows[0].content,'Owner edited');
+    await db.query("UPDATE quiz_questions SET question='Owner after v4' WHERE id=$1",[v4[0].id]);
+    await exec(revisionRollout());
+    assert.equal((await db.query('SELECT question FROM quiz_questions WHERE id=$1',[v4[0].id])).rows[0].question,'Owner after v4');
+    assert.equal((await db.query('SELECT count(*)::int n FROM quiz_questions')).rows[0].n,1242);
   }finally{await db.query(`DROP SCHEMA ${schema} CASCADE`);await(db.end?db.end():db.close());}
 });

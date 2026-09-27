@@ -2,6 +2,7 @@
 // grammar-mastery policy and does not claim open-ended speaking proficiency.
 export const CHAPTER_ASSESSMENT_VERSION = 'n5-assessment-v2';
 export const JLPT_ASSESSMENT_VERSION = 'n5-assessment-v3';
+export const REVISED_JLPT_ASSESSMENT_VERSION = 'n5-assessment-v4';
 export const CHAPTER_BLUEPRINT = Object.freeze({ vocabulary: 6, grammar: 10, reading: 4, listening: 4 });
 export const CHAPTER_LABELS = Object.freeze({
   vocabulary: 'Aksara dan kosakata',
@@ -12,7 +13,7 @@ export const CHAPTER_LABELS = Object.freeze({
 export const CHAPTER_POLICY = Object.freeze({ passingScorePct: 70, categoryMinimumPct: 50, minimumObjectiveCorrect: 1, questionsPerForm: 24 });
 
 export function isChapterAssessment(policy) {
-  return [CHAPTER_ASSESSMENT_VERSION, JLPT_ASSESSMENT_VERSION].includes(policy?.version);
+  return [CHAPTER_ASSESSMENT_VERSION, JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION].includes(policy?.version);
 }
 
 export function publicChapterRules(policy) {
@@ -29,7 +30,7 @@ export function assertChapterForm(policy, rows) {
   if (new Set(rows.map(q => q.id)).size !== rows.length) throw new Error('assessment_bank_invalid');
   for (const q of rows) {
     if (!objectives.has(q.assessment_meta?.objective) || q.assessment_meta?.version !== policy.version) throw new Error('assessment_bank_invalid');
-    const audioChoices = policy.version === JLPT_ASSESSMENT_VERSION && q.question_category === 'listening' &&
+    const audioChoices = [JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION].includes(policy.version) && q.question_category === 'listening' &&
       ['verbal_expression', 'quick_response'].includes(q.assessment_meta.itemType);
     if (q.question_type !== 'multiple_choice' || q.options?.length !== (audioChoices ? 3 : 4) || q.options.filter(o => o.is_correct === true).length !== 1) throw new Error('assessment_bank_invalid');
     if (audioChoices && q.options.some((o,i) => o.option_text !== `${i+1}ばん`)) throw new Error('assessment_bank_invalid');

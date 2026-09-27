@@ -5627,7 +5627,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
     const update = status.assessmentUpdate;
     container.innerHTML = `<div class="quiz-container"><div style="background:#fff;border:1px solid #d7dedb;border-radius:14px;padding:28px;max-width:680px;margin:auto">
       <h2>${escapeHtml(lessonTitle)}</h2><h3>Assessment versi terbaru tersedia</h3>
-      <p>Sesi lama Anda berisi <strong>${Number(status.questionsPerAttempt)} soal</strong>. Versi terbaru berisi <strong>${Number(update.questionsPerAttempt)} soal</strong> ${update.version === 'n5-assessment-v3' ? 'dengan format latihan JLPT N5, termasuk listening dan susunan ★' : 'sesuai materi bab ini'}.</p>
+      <p>Sesi lama Anda berisi <strong>${Number(status.questionsPerAttempt)} soal</strong>. Versi terbaru berisi <strong>${Number(update.questionsPerAttempt)} soal</strong> ${update.version === 'n5-assessment-v4' ? 'dengan perbaikan kejelasan soal dan pilihan jawaban. Jawaban sesi lama tetap tersimpan' : update.version === 'n5-assessment-v3' ? 'dengan format latihan JLPT N5, termasuk listening dan susunan ★' : 'sesuai materi bab ini'}.</p>
       <p>Mulai versi terbaru dari awal. Jawaban sesi lama tetap disimpan, tidak dihitung sebagai gagal, dan tidak menimbulkan cooldown. Anda juga bisa memilih melanjutkan sesi lama.</p>
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:22px">
         <button class="btn-primary" onclick="window.startQuizAttempt('${escapeAttr(key)}',{upgradeFrom:'${escapeAttr(status.inProgressAttemptToken)}',assessmentVersion:'${escapeAttr(update.version)}'})">Mulai versi terbaru →</button>
