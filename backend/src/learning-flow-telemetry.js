@@ -1,6 +1,7 @@
 // Passive, bounded learner-flow telemetry. Every emitted dimension is selected
 // from a fixed vocabulary; never log a URL, request body, response snapshot,
 // learner identifier, prompt, answer, or idempotency key.
+import { MAX_QUERY_COUNT, runWithRequestQueryCount } from './request-query-count.js';
 const ROUTES = [
   ['GET', /^\/lessons\/[^/]+\/dialogue-questions$/, 'inline_fetch'],
   ['POST', /^\/dialogue-questions\/[^/]+\/answer$/, 'dialogue_answer'],
@@ -27,6 +28,9 @@ const ERROR_CODES = new Set([
   'session_not_found', 'session_scope_changed', 'too_many_requests',
   'wrong_answer_shape',
 ]);
+const OPERATIONS = new Set(ROUTES.map(([, , operation]) => operation));
+export const isLearnerFlowOperation = value => OPERATIONS.has(value);
+export const isLearnerFlowErrorCode = value => ERROR_CODES.has(value);
 
 export function learnerFlowOperation(method, path) {
   const normalized = String(path || '').replace(/^\/api(?=\/)/, '');
@@ -48,7 +52,7 @@ function classify(status, operation, body, disposition) {
 }
 
 export function learnerFlowEvent({ operation, status, body, durationMs, timestamp,
-  disposition = null }) {
+  disposition = null, queryCount = null, queryCountCapped = false }) {
   const event = {
     event: 'learning_flow_request', schemaVersion: 1, timestamp,
     operation, status, outcome: classify(status, operation, body, disposition), durationMs,
@@ -69,6 +73,10 @@ export function learnerFlowEvent({ operation, status, body, durationMs, timestam
     event.grade = body.passed ? 'correct' : 'incorrect';
   }
   if (status >= 400 && ERROR_CODES.has(body?.error)) event.errorCode = body.error;
+  if (Number.isInteger(queryCount) && queryCount >= 0) {
+    event.queryCount = Math.min(MAX_QUERY_COUNT, queryCount);
+    if (queryCountCapped || queryCount > MAX_QUERY_COUNT) event.queryCountCapped = true;
+  }
   return event;
 }
 
@@ -78,21 +86,24 @@ export function createLearnerFlowTelemetry({
   return (req, res, next) => {
     const operation = learnerFlowOperation(req.method, req.path);
     if (!operation) return next();
-    const start = clock();
-    let body;
-    const sendJson = res.json;
-    res.json = function (value) {
-      body = value;
-      return sendJson.call(this, value);
-    };
-    res.once('finish', () => {
-      const end = clock();
-      const event = learnerFlowEvent({ operation, status: res.statusCode,
-        body, disposition: res.locals?.learningFlowDisposition,
-        timestamp: new Date(end).toISOString(),
-        durationMs: Math.max(0, Math.round(end - start)) });
-      try { logger(event); } catch { /* metrics must never change a learner response */ }
+    return runWithRequestQueryCount(state => {
+      const start = clock();
+      let body;
+      const sendJson = res.json;
+      res.json = function (value) {
+        body = value;
+        return sendJson.call(this, value);
+      };
+      res.once('finish', () => {
+        const end = clock();
+        const event = learnerFlowEvent({ operation, status: res.statusCode,
+          body, disposition: res.locals?.learningFlowDisposition,
+          queryCount: state.queryCount, queryCountCapped: state.queryCountCapped,
+          timestamp: new Date(end).toISOString(),
+          durationMs: Math.max(0, Math.round(end - start)) });
+        try { logger(event); } catch { /* metrics must never change a learner response */ }
+      });
+      next();
     });
-    next();
   };
 }
