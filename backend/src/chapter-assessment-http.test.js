@@ -196,4 +196,42 @@ test('versioned chapter assessment migration, grading and protected HTTP lifecyc
     assert.equal(result.body.review.filter(q=>q.audioScript).length,4);
     assert.match(result.body.review[23].audioScript,/いちばん。/);
   });
+  await t.test('explicit version switch preserves legacy/v2 drafts, rejects stale tabs, and resumes one replacement',async()=>{
+    const {banks:oldBanks}=await import('../content/assessments/source/index.mjs');
+    const {validateBank}=await import('../scripts/build-chapter-assessments.mjs');
+    const {createChapterSnapshot}=await import('./chapter-assessment.js');
+    const oldSnapshot=createChapterSnapshot(oldBanks[0],validateBank(oldBanks[0]));
+    for(const snapshot of [null,oldSnapshot]){
+      const oldToken=randomUUID();
+      const draft=[{questionId:legacyQuestion,optionId:legacyOption}];
+      await control.query(`INSERT INTO quiz_attempts(user_id,lesson_id,attempt_token,sampled_question_ids,assessment_snapshot,draft_answers,started_at)
+        VALUES($1,$2,$3,$4,$5,$6,now())`,[user,lessons[1],oldToken,JSON.stringify(snapshot?snapshot.questions.map(q=>q.id):[legacyQuestion]),snapshot,JSON.stringify(draft)]);
+      const status=await call(path(lessons[1],'quiz-status'),null,'GET');
+      assert.equal(status.body.assessmentUpdate.version,'n5-assessment-v3');
+      assert.equal(status.body.assessmentUpdate.questionsPerAttempt,24);
+      assert.equal(status.body.inProgressAttemptToken,oldToken);
+      const request={upgradeFrom:oldToken,assessmentVersion:'n5-assessment-v3'};
+      assert.equal((await call(path(lessons[1],'quiz/start'),request,'POST',otherToken)).status,409);
+      assert.equal((await call(path(lessons[1],'quiz/start'),{...request,assessmentVersion:'stale'})).status,409);
+      // Invalid replacement must not archive the old packet.
+      await control.query("UPDATE quiz_questions SET assessment_meta=jsonb_set(assessment_meta,'{version}','\"broken\"') WHERE id=(SELECT id FROM quiz_questions WHERE lesson_id=$1 AND assessment_meta->>'version'='n5-assessment-v3' LIMIT 1)",[lessons[1]]);
+      assert.equal((await call(path(lessons[1],'quiz/start'),request)).status,500);
+      assert.equal((await control.query('SELECT superseded_at FROM quiz_attempts WHERE attempt_token=$1',[oldToken])).rows[0].superseded_at,null);
+      await control.query("UPDATE quiz_questions SET assessment_meta=jsonb_set(assessment_meta,'{version}','\"n5-assessment-v3\"') WHERE lesson_id=$1 AND assessment_meta->>'version'='broken'",[lessons[1]]);
+      const switched=await Promise.all([call(path(lessons[1],'quiz/start'),request),call(path(lessons[1],'quiz/start'),request)]);
+      assert.ok(switched.every(r=>r.status===200));
+      assert.equal(switched[0].body.attemptToken,switched[1].body.attemptToken);
+      assert.equal(switched[0].body.questions.length,24);
+      const retained=(await control.query('SELECT superseded_at,draft_answers,assessment_snapshot,score,completed_at FROM quiz_attempts WHERE attempt_token=$1',[oldToken])).rows[0];
+      assert.ok(retained.superseded_at);assert.deepEqual(retained.draft_answers,draft);assert.deepEqual(retained.assessment_snapshot,snapshot);
+      assert.equal(retained.score,null);assert.equal(retained.completed_at,null);
+      assert.equal((await call(path(lessons[1],'quiz/draft'),{attemptToken:oldToken,answers:[],revision:0},'PUT')).body.error,'attempt_superseded');
+      assert.equal((await call(path(lessons[1],'quiz-attempt'),{attemptToken:oldToken,answers:[]})).body.error,'attempt_superseded');
+      assert.equal((await call(path(lessons[1],'quiz/start'),{resumeOnly:true,attemptToken:oldToken})).status,409);
+      const current=(await call(path(lessons[1],'quiz-status'),null,'GET')).body;
+      assert.equal(current.assessmentUpdate,null);assert.equal(current.inProgressAttemptToken,switched[0].body.attemptToken);
+      // Close the test replacement so the next fixture is the only pending attempt.
+      await control.query('UPDATE quiz_attempts SET superseded_at=now() WHERE attempt_token=$1',[current.inProgressAttemptToken]);
+    }
+  });
 });

@@ -65,7 +65,7 @@ test('all inline welcome scripts compile, including pendingAssignment boot scope
   assert.ok(scripts > 0);
 });
 
-for (const cached of [true,false]) test(`${cached?'cached':'fresh'} unfinished status resumes its token without a new-attempt request`, async () => {
+for (const cached of [true,false]) test(`${cached?'cached':'fresh'} unfinished status shows preview without opening questions`, async () => {
   const {ctx,effects,main} = setup();
   const status = {inProgress:true,inProgressAttemptToken:'existing-token'};
   let fetches=0;
@@ -73,18 +73,18 @@ for (const cached of [true,false]) test(`${cached?'cached':'fresh'} unfinished s
   if(cached) ctx._quizStatusCache.set('lesson-api',{ts:Date.now(),data:status});
   ctx.window.startQuizAttempt=async(...args)=>effects.starts.push(args);
   await ctx.renderQuizLesson(main,'n5','bab3','assignment');
-  assert.deepEqual(plain(effects.starts),[['n5:bab3:assignment',{resumeOnly:true,attemptToken:'existing-token'}]]);
+  assert.deepEqual(plain(effects.starts),[]);
   assert.equal(fetches,cached?0:1);
-  assert.equal(effects.landings.length,0);
+  assert.equal(effects.landings.length,1);
 });
 
-test('reopening the active assignment reuses its dirty in-memory answers',async()=>{
+test('reopening the active assignment shows preview and retains its dirty in-memory answers',async()=>{
   const {ctx,effects,main}=setup();
   const active=state({draftDirty:true});ctx.quizState=active;
   ctx.window.setRequiredAssignment(active.key,active.attemptToken);
-  ctx.fetchQuizStatus=async()=>{throw new Error('Must not replace active state');};
+  ctx.fetchQuizStatus=async()=>({inProgress:true,inProgressAttemptToken:'attempt-1'});
   await ctx.renderQuizLesson(main,'n5','bab3','assignment');
-  assert.equal(ctx.quizState,active);assert.equal(effects.renders,1);
+  assert.equal(ctx.quizState,active);assert.equal(effects.renders,0);assert.equal(effects.landings.length,1);
 });
 
 test('a completed-in-another-tab resume race returns to status without starting a replacement attempt',async()=>{

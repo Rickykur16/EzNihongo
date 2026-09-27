@@ -438,6 +438,7 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
   assessment_snapshot JSONB,
   draft_answers JSONB NOT NULL DEFAULT '[]'::jsonb,
   draft_revision INTEGER NOT NULL DEFAULT 0,
+  superseded_at TIMESTAMPTZ,
   started_at TIMESTAMPTZ,
   -- NULL = attempt sedang berjalan, belum disubmit. Penanda ini yang dipakai
   -- pengaman submit/replay di /quiz-attempt (transaction + quiz lock)
