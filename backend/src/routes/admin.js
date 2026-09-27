@@ -3579,6 +3579,9 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
     if (slugErr) return res.status(400).json({ error: slugErr });
   }
   const hasQPA = Object.prototype.hasOwnProperty.call(req.body || {}, 'questionsPerAttempt');
+  // `null` is intentional here: the editor sends it when an admin clears the
+  // lesson notes. Only an omitted property means "keep the saved content".
+  const hasContent = Object.prototype.hasOwnProperty.call(req.body || {}, 'content');
   const hasPopup = Object.prototype.hasOwnProperty.call(req.body || {}, 'popupAfterLessonId');
   const hasVideoSource = Object.prototype.hasOwnProperty.call(req.body || {}, 'videoSourceId');
   const hasVideoStart = Object.prototype.hasOwnProperty.call(req.body || {}, 'videoStartSeconds');
@@ -3642,7 +3645,7 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
           slug = COALESCE($2, slug),
           title = COALESCE($3, title),
           type = COALESCE($4, type),
-          content = COALESCE($5, content),
+          content = CASE WHEN $21::boolean THEN $5 ELSE content END,
           video_url = COALESCE($6, video_url),
           video_source_id = CASE WHEN $10::boolean THEN $7 ELSE video_source_id END,
           video_start_seconds = CASE WHEN $11::boolean THEN $8 ELSE video_start_seconds END,
@@ -3665,6 +3668,7 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
           cooldownHours != null && cooldownHours !== '' ? Number(cooldownHours) : null,
           hasPopup && popupAfterLessonId ? popupAfterLessonId : null,
           hasPopup,
+          hasContent,
         ]
       );
     if (result.rows.length === 0) return { notFound: true };
