@@ -121,7 +121,27 @@
       : `${percent}%${value.label ? ` · ${esc(value.label)}` : ''}`;
     return `<div class="mastery-row"><strong>${labels[key]}</strong><div class="bar" aria-label="${labels[key]} ${percent == null ? 'belum cukup latihan' : `${percent}%`}"><i style="width:${percent == null ? 0 : percent}%"></i></div><span class="state">${state}</span></div>`;
   }
+  // Bars fill from empty the first time they come into view in a browser session; after
+  // that, and under reduced motion, they simply show their value.
+  let barObserver = null;
+  function revealBars() {
+    barObserver?.disconnect();
+    const bars = [...app.querySelectorAll('.curriculum-bar i, .mastery-row .bar i')];
+    let seen = false;
+    try { seen = sessionStorage.getItem('ez_dash_bars_seen') === '1'; } catch {}
+    if (seen || !bars.length || !('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    bars.forEach((bar) => bar.classList.add('bar-wait'));
+    // Observe the track, not the bar: a bar clipped to zero width never counts as visible.
+    const observer = barObserver = new IntersectionObserver((entries) => entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      observer.unobserve(entry.target);
+      entry.target.querySelector('i')?.classList.replace('bar-wait', 'bar-fill');
+      try { sessionStorage.setItem('ez_dash_bars_seen', '1'); } catch {}
+    }), { threshold: 0.6 });
+    bars.forEach((bar) => observer.observe(bar.parentElement));
+  }
   function render(data) {
+    app.removeAttribute('aria-busy');
     if (!data.course) {
       app.innerHTML = `<section class="card state-card"><div class="eyebrow">DASHBOARD</div><h1>Belum ada kelas aktif</h1><p class="muted">Kelas aktif akan muncul setelah pendaftaran selesai.</p>${ezSignedInAsHtml(signedInUser)}<a class="primary" href="welcome.html">Buka Belajar</a></section>`;
       return;
@@ -149,6 +169,7 @@
       continueCard.style.setProperty('--continue-bg-position', continueBackdrop.position);
     }
     document.getElementById('course-select')?.addEventListener('change', (event) => load(event.target.value));
+    revealBars();
   }
   async function load(course = '') {
     try {
@@ -157,7 +178,7 @@
       window.Maneko?.setContinue(document.querySelector('.continue-card a')?.getAttribute('href') || 'welcome.html');
       renderPendingOrderBanner();
     }
-    catch (error) { app.innerHTML = errorMarkup(error); document.getElementById('retry-dashboard')?.addEventListener('click', () => load(course)); }
+    catch (error) { app.removeAttribute('aria-busy'); app.innerHTML = errorMarkup(error); document.getElementById('retry-dashboard')?.addEventListener('click', () => load(course)); }
   }
   document.getElementById('logout').addEventListener('click', () => ezLogout());
   (async () => {

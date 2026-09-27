@@ -108,6 +108,36 @@
   eznihongo.com) — kalau belum, mengaktifkan `gzip_types text/css
   application/javascript` jauh lebih berdampak daripada optimasi apa pun di atas.
 
+- **Dashboard siswa diberi motion — mengikuti DESIGN.md (beda dengan landing)**: user
+  tanya "apakah bakal makin berat?"; jawabannya motion-nya nyaris gratis (CSS +3 KB, JS
+  +1 KB), yang berat justru hal lain (lihat bawah). Karena dashboard dibuka tiap hari,
+  motion-nya fungsional, bukan pertunjukan: (1) **skeleton** di `dashboard.html` =
+  markup kartu ASLI dengan teks contoh transparan (`.is-skeleton`/`.sk-t`), jadi tiap
+  blok sudah berukuran final — diukur identik sampai piksel dengan konten asli di 1440
+  dan 390, CLS **0,842 → 0,001** (spinner lama membuat footer menempel di atas lalu
+  semua isi melompat); (2) blok di bawah baris "Lanjut Belajar" fade+naik 10px ≤320ms,
+  sedangkan hero + baris utama TIDAK dianimasikan (tombol utama tampil penuh di waktu
+  yang sama dengan main: 1412 vs 1420ms); (3) progress bar terisi sekali per sesi
+  (`sessionStorage ez_dash_bars_seen`) saat terlihat. Durasi pakai token
+  `--duration-*` yang otomatis 0ms di reduced motion.
+  **Hasil vs main (HP, CPU 4x, 1,6 Mbps, 150ms/API, foto latar dikunci)**: kerangka
+  pertama 1412→555ms (DOM), LCP 5620→5230ms (foto latar kartu lain kini diunduh saat
+  jaringan menganggur menunggu 3 request auth+data berurutan), frame saat data tiba
+  lebih ringan; **harga yang dibayar: FCP +~100ms** (432→536ms, penyajian identik) —
+  menggambar skeleton lengkap di frame pertama; skeleton "datar" tidak menolong,
+  diterima sadar demi CLS.
+  **Jebakan**: (a) `student-layout.css` memakai selektor anak langsung
+  (`.dashboard > .grid > .card`) → skeleton TIDAK boleh dibungkus div; (b) `.count span`/
+  `.metric span` (display:block, 12px) ikut mengenai placeholder di dalam angka; (c)
+  IntersectionObserver tidak pernah melaporkan elemen yang di-`clip-path` ke lebar nol —
+  amati TRACK-nya, bukan bar-nya; (d) **alat uji**: respons `page.route().fulfill()`
+  TIDAK kena throttling jaringan CDP, jadi A/B yang mencegat sebagian file saja
+  menyesatkan — cegat semua varian dengan cara yang sama.
+  **Berat dashboard yang sebenarnya (belum dikerjakan)**: gambar 904 KB (HP) – 1,33 MB
+  (desktop) — foto latar kartu utama acak 351–780 KB, `logo.png` 2000×1000 (102 KB)
+  tampil ~70px; CSS Google Fonts 590 KB / 153 KB gzip (663 @font-face, 4 keluarga
+  termasuk Noto Sans JP 3 bobot) dan itu render-blocking.
+
       **Dialog grammar: speaker asli dipilih dari SUARA ELEVENLABS ASLI —
       bukan kode A/B, dan bukan bucket perempuan/laki-laki — plus tes audio
       per giliran, independen** — user: "gunakan nama speaker aslinya yg bisa
