@@ -32,6 +32,7 @@ function fixture({ questionRow = question, published = true, grant = true,
     if (sql.includes('FROM lessons l JOIN modules m')) return { rows: [{ ...lesson, is_published: published }] };
     if (sql.includes('FROM user_enrollments')) return { rows: grant ? [{ '?column?': 1 }] : [] };
     if (sql.includes('FROM grammar_task_sessions')) return { rows: session ? [session] : [] };
+    if (sql.includes('FROM app_settings')) return { rows: [] };
     if (sql.includes('FROM grammar_dialog_questions q JOIN module_grammar g')) {
       return { rows: (batchRows || [questionRow]).map(row => ({ ...row, ...grammar, id: row.id,
         grammar_id: row.grammar_id, question_version: row.question_version,
@@ -102,18 +103,26 @@ test('transfer, stale dialogue and missing access cannot be answered', async () 
 
 test('new answer saves one immutable snapshot, exact replay succeeds, changed request conflicts', async () => {
   const f = fixture();
-  const args = { ...f, resolvePlacement: inline };
+  const dispositions = [];
+  const args = { ...f, resolvePlacement: inline,
+    transaction: async fn => { const result = await fn(f.client); dispositions.push('commit'); return result; },
+    onDisposition: value => dispositions.push(value) };
   const first = await answerDialogueQuestion(question.id, user, body, args);
   assert.equal(first.correct, true);
   assert.equal(first.correctIndex, 0);
   assert.equal(first.formativeOnly, true);
   assert.equal(f.attempts.length, 1);
   assert.equal(f.attempts[0].snapshot.correctIndex, 0);
-  const replay = await answerDialogueQuestion(question.id, user, body, { ...f });
+  const replay = await answerDialogueQuestion(question.id, user, body, args);
   assert.deepEqual(replay, first);
+  assert.deepEqual(dispositions, ['commit', 'new', 'commit', 'replay']);
+  assert.equal(Object.hasOwn(replay, 'disposition'), false);
+  assert.deepEqual(await answerDialogueQuestion(question.id, user, body,
+    { ...f, onDisposition: () => { throw new Error('logger unavailable'); } }), first);
   assert.equal(f.attempts.length, 1);
   await assert.rejects(answerDialogueQuestion(question.id, user,
     { ...body, optionIndex: 1 }, args), e => e.status === 409 && e.message === 'request_id_conflict');
+  assert.deepEqual(dispositions, ['commit', 'new', 'commit', 'replay']);
   assert.equal(f.calls.filter(call => call.sql === 'COURSE LOCK').length, 1);
 });
 
