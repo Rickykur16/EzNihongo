@@ -26,7 +26,8 @@
 //   node scripts/import-content.mjs
 
 import 'dotenv/config';
-import { db, query } from '../src/db.js';
+import { db, withTransaction } from '../src/db.js';
+import { lockCurriculumGraph } from '../src/curriculum-content-service.js';
 
 const LEGACY_N5_MODULE_SLUGS = [
   'hiragana-katakana',
@@ -42,47 +43,40 @@ async function main() {
     process.exit(1);
   }
 
-  const course = await query(`SELECT id FROM courses WHERE slug = 'n5'`);
-  if (course.rows.length === 0) {
+  const outcome = await withTransaction(async client => {
+    await lockCurriculumGraph(client, { exclusive: true });
+    const course = await client.query(`SELECT id,curriculum_boundary_mode FROM courses WHERE slug = 'n5' FOR UPDATE`);
+    if (!course.rows.length) return { kind: 'no_course' };
+    if (course.rows[0].curriculum_boundary_mode !== 'off') {
+      throw new Error('cleanup_n5_seed_modules_requires_off_mode');
+    }
+    const courseId = course.rows[0].id;
+    const existing = await client.query(
+      `SELECT id,slug FROM modules WHERE course_id=$1 AND slug=ANY($2::text[])`,
+      [courseId, LEGACY_N5_MODULE_SLUGS]);
+    if (!existing.rows.length) return { kind: 'no_modules' };
+    const modIds = existing.rows.map(row => row.id);
+    const prog = await client.query(
+      `SELECT COUNT(*)::int AS n FROM user_progress up JOIN lessons l ON l.id=up.lesson_id
+        WHERE l.module_id=ANY($1::uuid[])`, [modIds]);
+    if ((prog.rows[0]?.n || 0) > 0) {
+      throw new Error(`cleanup_n5_seed_modules_has_${prog.rows[0].n}_progress_rows`);
+    }
+    const del = await client.query('DELETE FROM modules WHERE id=ANY($1::uuid[]) RETURNING slug', [modIds]);
+    return { kind: 'deleted', slugs: del.rows.map(row => row.slug) };
+  });
+  if (outcome.kind === 'no_course') {
     console.log('No n5 course found — nothing to clean up.');
     await db.end();
     return;
   }
-  const courseId = course.rows[0].id;
-
-  const existing = await query(
-    `SELECT id, slug FROM modules WHERE course_id = $1 AND slug = ANY($2::text[])`,
-    [courseId, LEGACY_N5_MODULE_SLUGS]
-  );
-  if (existing.rows.length === 0) {
+  if (outcome.kind === 'no_modules') {
     console.log('No legacy seed modules found under n5 — already clean.');
     await db.end();
     return;
   }
-
-  const modIds = existing.rows.map((r) => r.id);
-
-  // Safety: bail if anyone has progress under these modules. If this ever
-  // fires, inspect manually before deleting — someone has been using these.
-  const prog = await query(
-    `SELECT COUNT(*)::int AS n
-     FROM user_progress up
-     JOIN lessons l ON l.id = up.lesson_id
-     WHERE l.module_id = ANY($1::uuid[])`,
-    [modIds]
-  );
-  if ((prog.rows[0]?.n || 0) > 0) {
-    console.error(`ABORT: ${prog.rows[0].n} progress rows exist under legacy modules.`);
-    console.error('Inspect manually. Legacy module IDs:', modIds);
-    process.exit(1);
-  }
-
-  const del = await query(
-    `DELETE FROM modules WHERE id = ANY($1::uuid[]) RETURNING slug`,
-    [modIds]
-  );
-  console.log(`✓ Deleted ${del.rows.length} legacy n5 modules:`);
-  for (const r of del.rows) console.log('  -', r.slug);
+  console.log(`✓ Deleted ${outcome.slugs.length} legacy n5 modules:`);
+  for (const slug of outcome.slugs) console.log('  -', slug);
   console.log('\nNext step: node scripts/import-content.mjs');
   await db.end();
 }

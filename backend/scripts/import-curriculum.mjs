@@ -21,6 +21,7 @@ import { resolve } from 'node:path';
 import { homedir } from 'node:os';
 import XLSX from 'xlsx';
 import { db } from '../src/db.js';
+import { lockCurriculumCourse, lockCurriculumGraph } from '../src/curriculum-content-service.js';
 
 const argv = process.argv.slice(2);
 const filesArg = argv.indexOf('--files');
@@ -486,6 +487,18 @@ async function main() {
       console.log(`→ Importing ${level.slug.toUpperCase()} from ${filePath} ...`);
       await client.query('BEGIN');
       try {
+        // This command cascades away every module and its learner content.
+        // Boundary-enabled courses require reviewed staging instead of a
+        // direct rebuild; check under the same lock and transaction as DELETE.
+        await lockCurriculumGraph(client, { exclusive: true });
+        const current = await client.query('SELECT id,curriculum_boundary_mode FROM courses WHERE slug=$1', [level.slug]);
+        if (current.rows.length) {
+          await lockCurriculumCourse(client, current.rows[0].id);
+          const mode = await client.query('SELECT curriculum_boundary_mode FROM courses WHERE id=$1', [current.rows[0].id]);
+          if (mode.rows[0]?.curriculum_boundary_mode !== 'off') {
+            throw new Error(`course ${level.slug}: direct rebuild requires boundary mode off; use reviewed staging`);
+          }
+        }
         const summary = await importLevel(client, level, filePath);
         await client.query('COMMIT');
         console.log(
