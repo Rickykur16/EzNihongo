@@ -62,6 +62,8 @@ import { validateAndWriteContent, boundaryWriteHttpError, lockCurriculumCourse,
 import { validateContentAgainstBoundary, CURRICULUM_VALIDATOR_VERSION } from '../curriculum-boundary-validator.js';
 import { generateGroundedContent } from '../grounded-generation.js';
 import { dialogueSourceFingerprint } from '../curriculum-boundary-context.js';
+import { DialogueQuestionError, loadDialogueQuestionContext, listDialogueQuestions,
+  saveDialogueQuestions } from '../dialogue-question-service.js';
 import { validateBunpouPublish } from '../curriculum-bunpou-validation.js';
 import { deckReadingSourceFingerprint, distractorSourceFingerprint,
   assertGenerationSourceUnchanged } from '../curriculum-generation-source.js';
@@ -184,6 +186,87 @@ async function safeLearningWarnings(loadWarnings) {
 
 // Every route in this file requires admin
 router.use(requireAuth, requireCompanyAdmin);
+
+function dialogueQuestionFailure(res, error) {
+  if (!(error instanceof DialogueQuestionError)) throw error;
+  return res.status(error.status).json({ error: error.code,
+    ...(error.report ? { validation: error.report } : {}) });
+}
+
+// Owner-only: these editor DTOs include answer keys and private transfer
+// questions. Their exact methods are also recorded in company-route-policy.
+router.get('/grammar/:id/dialogue-questions', asyncHandler(async (req, res) => {
+  try {
+    const result = await listDialogueQuestions(req.params.id,
+      { sourceLessonId: req.query.sourceLessonId || null });
+    res.set('Cache-Control', 'private, no-store');
+    res.json(result);
+  } catch (error) { dialogueQuestionFailure(res, error); }
+}));
+
+router.put('/grammar/:id/dialogue-questions', asyncHandler(async (req, res) => {
+  try {
+    const result = await saveDialogueQuestions(req.params.id, req.body || {});
+    res.set('Cache-Control', 'private, no-store');
+    res.json(result);
+  } catch (error) { dialogueQuestionFailure(res, error); }
+}));
+
+router.post('/grammar/:id/generate-dialog-questions', asyncHandler(async (req, res) => {
+  const body = req.body || {};
+  const kind = body.kind;
+  const count = body.count ?? 1;
+  if (!body.sourceLessonId || !body.expectedDialogueFingerprint ||
+      !['comprehension', 'transfer'].includes(kind) || !Number.isInteger(count) ||
+      count < (kind === 'comprehension' ? 1 : 0) || count > (kind === 'comprehension' ? 2 : 1)) {
+    return res.status(400).json({ error: 'dialogue_generation_context_required' });
+  }
+  let context;
+  try { context = await loadDialogueQuestionContext({ query }, req.params.id, body.sourceLessonId); }
+  catch (error) { return dialogueQuestionFailure(res, error); }
+  if (context.dialogueFingerprint !== body.expectedDialogueFingerprint) {
+    return res.status(409).json({ error: 'dialogue_changed_since_editor_open' });
+  }
+  if (!context.turns.some(turn => turn.text)) return res.status(422).json({ error: 'source_dialogue_missing' });
+  if (count === 0) return res.json({ status: 'ready', candidate: { questions: [] }, questions: [],
+    report: { status: 'not_run', valid: null, violations: [], warnings: [] },
+    attempts: [], dialogueFingerprint: context.dialogueFingerprint });
+  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled' });
+  const loadSource = async () => {
+    const current = await loadDialogueQuestionContext({ query }, req.params.id, body.sourceLessonId);
+    return { turns: current.turns, grammarId: current.grammar.id,
+      sourceLessonId: current.sourceLessonId, dialogueFingerprint: current.dialogueFingerprint,
+      goal: current.grammar.communication_goal || '',
+      translation: current.grammar.example_dialog_id || '' };
+  };
+  const sourceFingerprint = dialogueSourceFingerprint(await loadSource());
+  const result = await groundedDraft({ scope: { grammarId: req.params.id,
+    lessonId: context.sourceLessonId },
+    contentType: kind === 'comprehension' ? 'dialogue_comprehension' : 'dialogue_transfer',
+    loadSource, body: { ...body, sourceFingerprint },
+    communicationGoal: context.grammar.communication_goal || '',
+    maxTokens: 1300, model: ANTHROPIC_GEN_MODEL,
+    instruction: `Create exactly ${count} ${kind} multiple-choice question(s) for the persisted Japanese dialogue. Return JSON {"questions":[{"prompt":"...","options":["...","...","..."],"correctIndex":0,"explanation":"..."${kind === 'comprehension' ? ',"evidence":[{"turnIndex":0,"quote":"exact source quote"}]' : ''}}]}. Every option, explanation and evidence quote must be grounded in the source. ${kind === 'comprehension' ? 'Evidence must cite an exact Japanese dialogue turn quote.' : 'Test transfer to a new situation; do not claim source-turn evidence.'}`,
+    additionalSchemaIssues: candidate => {
+      const questions = candidate.questions;
+      if (!Array.isArray(questions) || questions.length !== count || candidate.question != null ||
+          candidate.evidence != null) return [{ code: 'dialogue_question_count_invalid' }];
+      return questions.flatMap((question, index) =>
+        kind === 'comprehension' ? (!Array.isArray(question?.evidence) || !question.evidence.length
+          ? [{ code: 'dialogue_question_evidence_required', questionIndex: index }] : []) :
+          question?.evidence != null ? [{ code: 'transfer_evidence_not_supported', questionIndex: index }] : []);
+    } });
+  const current = await loadDialogueQuestionContext({ query }, req.params.id, body.sourceLessonId);
+  if (current.dialogueFingerprint !== context.dialogueFingerprint) {
+    result.status = 'stale';
+    result.report = { ...result.report, status: 'version_conflict', valid: null,
+      warnings: [{ code: 'dialogue_changed_during_generation' }] };
+    result.decision = decideBoundaryAction({ mode: context.grammar.boundary_mode,
+      operation: 'generate', report: result.report });
+  }
+  return groundedResponse(res, result, { questions: result.status === 'ready' ? result.candidate.questions : [],
+    dialogueFingerprint: current.dialogueFingerprint });
+}));
 
 const boundaryField = (path, value) => ({ path, text: String(value ?? '') });
 function boundaryFieldsFrom(path, value) {

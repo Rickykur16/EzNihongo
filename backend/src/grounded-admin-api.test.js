@@ -10,6 +10,8 @@ process.env.COMPANY_STAFF_ENABLED = 'false';
 process.env.ANTHROPIC_API_KEY = 'test-not-a-real-key';
 const { db } = await import('./db.js');
 const { signAccessToken } = await import('./auth.js');
+const { dialogueFingerprint } = await import('./dialogue-question-service.js');
+const { questionsRevision } = await import('./dialogue-question-service.js');
 const { default: admin } = await import('./routes/admin.js');
 
 const id = name => `${name.padEnd(8, '0')}-1111-4111-8111-111111111111`;
@@ -34,6 +36,10 @@ let modelOutput = '{}', modelCalls = 0, writes = 0, mutateDuringModel = null,
 const fakeQuery = async (sql, params = []) => {
   if (/^\s*(INSERT|UPDATE|DELETE)\b/i.test(sql)) { writes++; throw Error('draft endpoint attempted a write'); }
   if (sql.includes('boundary:courses')) return { rows: [{ id: courseId, slug: 'n5', level: 'N5', curriculum_boundary_mode: 'enforce' }] };
+  if (sql.includes('SELECT g.*,m.course_id,c.curriculum_boundary_mode')) {
+    return { rows: params[0] === grammarId ? [{ ...grammar, course_id: courseId,
+      boundary_mode: 'enforce' }] : [] };
+  }
   if (sql.includes('boundary:edges')) return { rows: [] };
   if (sql.includes('boundary:scope-lesson')) return { rows: [lesson] };
   if (sql.includes('boundary:scope-grammar')) return { rows: [{ id: grammarId, module_id: moduleId, lesson_id: lessonId }] };
@@ -91,6 +97,11 @@ mock.method(db, 'connect', async () => {
     if (sql.includes('FROM modules m JOIN courses c ON c.id=m.course_id')) {
       return { rows: [{ id: courseId, mode: 'enforce', module_id: moduleId }] };
     }
+    if (sql.includes('SELECT m.course_id FROM module_grammar g')) {
+      return { rows: [{ course_id: courseId }] };
+    }
+    if (sql.includes('FROM grammar_dialog_questions')) return { rows: [] };
+    if (sql.includes('UPDATE grammar_dialog_questions SET state=')) return { rows: [] };
     if (sql.includes('INSERT INTO curriculum_boundary_reports')) return { rows: [] };
     if (sql.includes('SELECT e.*,v.module_id,v.lesson_id FROM vocabulary_examples e')) {
       return { rows: params[0] === deckExample.id ? [{ ...deckExample }] : [] };
@@ -137,6 +148,13 @@ async function post(route, body) {
       'X-Forwarded-For': `192.0.2.${requestCount++}` }, body: JSON.stringify(body) });
   return { status: response.status, body: await response.json() };
 }
+async function dialogueRequest(route, method, body = null) {
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/admin/${route}`, {
+    method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json',
+      'X-Forwarded-For': `192.0.2.${requestCount++}` },
+    ...(body ? { body: JSON.stringify(body) } : {}) });
+  return { status: response.status, body: await response.json() };
+}
 after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
   mock.restoreAll(); await db.end(); });
 
@@ -151,6 +169,86 @@ test('all grounded draft routes reject unscoped calls before provider and never 
   assert.equal((await post('generate-grammar-example', { pattern: '〜です' })).status, 410);
   assert.equal((await post(`lessons/${lessonId}/generate-quiz`, {})).status, 410);
   assert.equal(modelCalls, 0); assert.equal(writes, 0);
+});
+
+test('dialogue question generator requires verified source and returns review-only evidence', async () => {
+  modelCalls = 0; writes = 0;
+  let response = await post(`grammar/${grammarId}/generate-dialog-questions`,
+    { kind: 'comprehension', count: 1 });
+  assert.equal(response.status, 400);
+  response = await post(`grammar/${grammarId}/generate-dialog-questions`,
+    { sourceLessonId: id('other'), kind: 'comprehension', count: 1,
+      expectedDialogueFingerprint: dialogueFingerprint(grammar) });
+  assert.equal(response.status, 409);
+  assert.equal(modelCalls, 0);
+  modelOutput = JSON.stringify({ questions: [{ prompt: 'Apa yang disebutkan?',
+    options: ['Kucing', 'Anjing', 'Burung'], correctIndex: 0,
+    explanation: 'Pembicara menyebut kucing.', evidence: [{ turnIndex: 0, quote: 'ねこです' }] }] });
+  response = await post(`grammar/${grammarId}/generate-dialog-questions`,
+    { sourceLessonId: lessonId, kind: 'comprehension', count: 1,
+      expectedDialogueFingerprint: dialogueFingerprint(grammar) });
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  assert.equal(response.body.status, 'ready', JSON.stringify(response.body.report));
+  assert.equal(response.body.questions[0].evidence[0].quote, 'ねこです');
+  assert.equal(response.body.dialogueFingerprint, dialogueFingerprint(grammar));
+  assert.equal(modelCalls, 1); assert.equal(writes, 0);
+});
+
+test('dialogue question admin GET/PUT expose revision and reject stale set atomically', async () => {
+  writes = 0;
+  const route = `grammar/${grammarId}/dialogue-questions`;
+  const listed = await dialogueRequest(route, 'GET');
+  assert.equal(listed.status, 200, JSON.stringify(listed.body));
+  assert.deepEqual(listed.body.questions, []);
+  assert.equal(listed.body.dialogueFingerprint, dialogueFingerprint(grammar));
+  assert.equal(listed.body.questionsRevision, questionsRevision([]));
+  let response = await dialogueRequest(route, 'PUT', { sourceLessonId: lessonId,
+    expectedDialogueFingerprint: listed.body.dialogueFingerprint,
+    expectedQuestionsRevision: 'sha256:stale', questions: [] });
+  assert.equal(response.status, 409);
+  assert.equal(writes, 0);
+  response = await dialogueRequest(route, 'PUT', { sourceLessonId: lessonId,
+    expectedDialogueFingerprint: listed.body.dialogueFingerprint,
+    expectedQuestionsRevision: listed.body.questionsRevision, questions: [] });
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  assert.equal(response.body.questionsRevision, listed.body.questionsRevision);
+});
+
+test('dialogue question generation repairs fabricated evidence and nested future text without save', async () => {
+  modelCalls = 0; writes = 0;
+  modelOutput = JSON.stringify({ questions: [{ prompt: 'Apa yang disebutkan?',
+    options: ['Kucing', 'Anjing', 'Burung'], correctIndex: 0,
+    explanation: 'Pembicara menyebut kucing.', evidence: [{ turnIndex: 0, quote: 'みらい' }] }] });
+  const body = { sourceLessonId: lessonId, kind: 'comprehension', count: 1,
+    expectedDialogueFingerprint: dialogueFingerprint(grammar) };
+  let response = await post(`grammar/${grammarId}/generate-dialog-questions`, body);
+  assert.equal(response.body.status, 'rejected');
+  assert.equal(response.body.attempts.length, 3);
+  assert.equal(writes, 0);
+  modelCalls = 0;
+  modelOutput = JSON.stringify({ questions: [{ prompt: 'みらい は です。',
+    options: ['Kucing', 'Anjing', 'Burung'], correctIndex: 0,
+    explanation: 'Pembicara menyebut kucing.', evidence: [{ turnIndex: 0, quote: 'ねこです' }] }] });
+  response = await post(`grammar/${grammarId}/generate-dialog-questions`, body);
+  assert.equal(response.body.status, 'rejected');
+  assert.ok(response.body.report.violations.some(item => item.code === 'future_vocabulary'));
+  assert.equal(modelCalls, 3); assert.equal(writes, 0);
+});
+
+test('dialogue question generation detects source edits during the model call', async () => {
+  modelCalls = 0; writes = 0;
+  modelOutput = JSON.stringify({ questions: [{ prompt: 'Apa yang disebutkan?',
+    options: ['Kucing', 'Anjing', 'Burung'], correctIndex: 0,
+    explanation: 'Pembicara menyebut kucing.', evidence: [{ turnIndex: 0, quote: 'ねこです' }] }] });
+  const expectedDialogueFingerprint = dialogueFingerprint(grammar);
+  mutateDuringModel = () => { grammar.example_dialog_id = 'Terjemahan berubah'; };
+  const response = await post(`grammar/${grammarId}/generate-dialog-questions`,
+    { sourceLessonId: lessonId, kind: 'comprehension', count: 1,
+      expectedDialogueFingerprint });
+  delete grammar.example_dialog_id;
+  assert.equal(response.status, 409);
+  assert.equal(response.body.status, 'stale');
+  assert.equal(modelCalls, 1); assert.equal(writes, 0);
 });
 
 test('bulk distractor rejects malformed output per item without any write', async () => {

@@ -1,6 +1,9 @@
 // Reviewed legacy admin route inventory. New/unmatched routes are owner-only.
 // Limited roles require a GLOBAL grant for these legacy aggregate handlers.
 export const LEGACY_ROUTES = [
+  ["GET", "/grammar/:id/dialogue-questions", null],
+  ["PUT", "/grammar/:id/dialogue-questions", null],
+  ["POST", "/grammar/:id/generate-dialog-questions", null],
   ["GET", "/video-sources", "legacy.academic"],
   ["POST", "/video-sources", "legacy.academic"],
   ["POST", "/set-password", null],
