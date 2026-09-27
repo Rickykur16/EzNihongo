@@ -1,4 +1,5 @@
 import { getCurriculumBoundary } from './curriculum-boundary.js';
+import { performance } from 'node:perf_hooks';
 import { buildGroundedContext, dialogueSourceFingerprint, GroundedContextError } from './curriculum-boundary-context.js';
 import { validateContentAgainstBoundary, validateQuestionShape } from './curriculum-boundary-validator.js';
 import { decideBoundaryAction } from './curriculum-boundary-policy.js';
@@ -36,6 +37,23 @@ const SCHEMA_KEYS = {
   kanji_compound_assessed: ['japanese', 'compound'],
   kanji_compound_exploration: ['japanese', 'compound'],
 };
+const TELEMETRY_MODES = new Set(['off', 'audit', 'warn', 'enforce']);
+const TELEMETRY_OUTCOMES = new Set(['ready', 'rejected', 'stale', 'unavailable']);
+const boundedCount = value => Math.min(3, Math.max(0, Number.isInteger(value) ? value : 0));
+
+export function groundedGenerationEvent({ contentType, mode, result, providerCallCount,
+  sourceStale = false, durationMs }) {
+  return { event: 'grounded_generation', schemaVersion: 1,
+    contentType: Object.hasOwn(SCHEMA_KEYS, contentType) ? contentType : 'unknown',
+    operation: 'generate', mode: TELEMETRY_MODES.has(mode) ? mode : 'unknown',
+    outcome: TELEMETRY_OUTCOMES.has(result?.status) ? result.status : 'unavailable',
+    providerCallCount: boundedCount(providerCallCount),
+    attemptCount: boundedCount(result?.attempts?.length),
+    retried: providerCallCount > 1,
+    sourceStale: result?.status === 'stale' && sourceStale === true,
+    durationMs: Math.min(300000, Math.max(0,
+      Number.isFinite(durationMs) ? Math.round(durationMs) : 0)) };
+}
 const errorReport = (status, code, fingerprint = null) => ({ status,
   valid: status === 'schema_invalid' ? false : null, boundaryFingerprint: fingerprint,
   violations: status === 'schema_invalid' ? [{ code }] : [],
@@ -349,7 +367,27 @@ async function callProvider(provider, args, timeoutMs) {
 }
 
 /** Draft generation only. The caller must use the guarded write service later. */
-export async function generateGroundedContent({
+export async function generateGroundedContent(options = {}) {
+  const started = performance.now();
+  let providerCallCount = 0;
+  let mode = 'unknown';
+  let sourceStale = false;
+  const provider = typeof options.provider === 'function'
+    ? (...args) => { providerCallCount++; return options.provider(...args); }
+    : options.provider;
+  const result = await generateGroundedContentInternal({ ...options, provider,
+    onBoundaryMode: value => { mode = value; },
+    onSourceStale: () => { sourceStale = true; } });
+  // Telemetry sees only fixed labels and bounded counts, after a terminal
+  // result. It is never part of the candidate/response or save decision.
+  try { options.onTerminal?.(groundedGenerationEvent({ contentType: options.contentType,
+    mode, result, providerCallCount, sourceStale,
+    durationMs: performance.now() - started })); }
+  catch { /* logging must not change generation output */ }
+  return result;
+}
+
+async function generateGroundedContentInternal({
   scope, contentType, provider, resolveBoundary = getCurriculumBoundary,
   loadSource = null, expectedBoundaryFingerprint = null, expectedSourceFingerprint = null,
   communicationGoal = '', scenario = '', contextOptions = {}, maxRepairs = 2,
@@ -358,6 +396,7 @@ export async function generateGroundedContent({
   additionalSchemaIssues = null,
   parse = parseGroundedCandidate, validate = validateContentAgainstBoundary,
   decide = decideBoundaryAction,
+  onBoundaryMode = null, onSourceStale = null,
 } = {}) {
   if (typeof provider !== 'function' || typeof resolveBoundary !== 'function') {
     throw new TypeError('provider and resolveBoundary functions required');
@@ -371,6 +410,7 @@ export async function generateGroundedContent({
   try { boundary = await resolveBoundary(scope); }
   catch { return { status: 'unavailable', candidate: null, attempts,
     report: errorReport('unavailable', 'boundary_unavailable') }; }
+  onBoundaryMode?.(boundary?.course?.mode);
   const mode = boundary?.course?.mode || 'enforce';
   const decision = report => decide({ mode, operation: 'generate', report });
   if (boundary?.status !== 'resolved') {
@@ -400,6 +440,7 @@ export async function generateGroundedContent({
     return { status: 'rejected', candidate: null, report, decision: decision(report), attempts };
   }
   if (expectedSourceFingerprint && expectedSourceFingerprint !== built.sourceFingerprint) {
+    onSourceStale?.();
     const report = errorReport('version_conflict', 'source_changed_since_preview', boundary.boundaryFingerprint);
     return { status: 'stale', candidate: null, report, decision: decision(report), attempts };
   }
@@ -491,9 +532,11 @@ export async function generateGroundedContent({
     return { status: 'unavailable', candidate, report: unavailable,
       decision: decision(unavailable), attempts, context: built.context };
   }
+  const sourceChanged = !!loadSource &&
+    dialogueSourceFingerprint(currentSource) !== built.sourceFingerprint;
   if (currentBoundary?.status !== 'resolved' ||
-      currentBoundary?.boundaryFingerprint !== boundary.boundaryFingerprint ||
-      (loadSource && dialogueSourceFingerprint(currentSource) !== built.sourceFingerprint)) {
+      currentBoundary?.boundaryFingerprint !== boundary.boundaryFingerprint || sourceChanged) {
+    if (sourceChanged) onSourceStale?.();
     const stale = errorReport('version_conflict', 'generation_source_changed', currentBoundary?.boundaryFingerprint);
     return { status: 'stale', candidate, report: stale, decision: decision(stale),
       attempts, context: built.context };
