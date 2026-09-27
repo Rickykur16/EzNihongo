@@ -10630,7 +10630,7 @@ window.gtPopupDismiss = () => {
   const ctx = window.__gtPopupCtx;
   closeGrammarTaskPopup();
   window.__gtPopupCtx = null;
-  if (ctx && ctx.onDone) ctx.onDone();
+  if (ctx && ctx.onDone) ctx.onDone({ completed: false, wasAlreadyDone: false });
   try { if (window.AISenpai && AISenpai._started) AISenpai.refresh(); } catch {}
 };
 
@@ -10643,11 +10643,12 @@ window.gtPopupComplete = async () => {
     completeButton.setAttribute('aria-busy', 'true');
   }
   const ctx = window.__gtPopupCtx;
+  let wasDone = false;
   let serverCompletion = Promise.resolve(false);
   if (ctx) {
     const allProgress = getProgress();
     const cp = allProgress[currentState.course] || {};
-    const wasDone = !!cp[ctx.lessonKey];
+    wasDone = !!cp[ctx.lessonKey];
     cp[ctx.lessonKey] = true;
     allProgress[currentState.course] = cp;
     setProgress(allProgress);
@@ -10660,9 +10661,46 @@ window.gtPopupComplete = async () => {
   await serverCompletion;
   closeGrammarTaskPopup();
   window.__gtPopupCtx = null;
-  if (ctx && ctx.onDone) ctx.onDone();
+  if (ctx && ctx.onDone) ctx.onDone({ completed: true, wasAlreadyDone: wasDone });
   try { if (window.AISenpai && AISenpai._started) AISenpai.refresh(); } catch {}
 };
+
+function finishLearningMilestone(course, module, newlyCompleted, onContinue) {
+  if (!newlyCompleted) {
+    onContinue();
+    return;
+  }
+  const finalProgress = getProgress()[currentState.course] || {};
+  const moduleLessons = visibleLessons(module);
+  const moduleComplete = moduleLessons.length > 0 && moduleLessons
+    .every((lesson) => finalProgress[`${module.id}:${lesson.id}`]);
+  const courseLessons = course.modules.flatMap((item) => visibleLessons(item)
+    .map((lesson) => ({ module: item, lesson })));
+  const courseComplete = courseLessons.length > 0 && courseLessons
+    .every(({ module: item, lesson }) => finalProgress[`${item.id}:${lesson.id}`]);
+
+  if (courseComplete) {
+    showCompletion({
+      title: '🎌 Selamat! Kelas Selesai',
+      message: `Kamu telah menyelesaikan semua materi ${course.name}. 素晴らしい！`,
+      xp: 50,
+      continueLabel: 'Tutup',
+      onContinue,
+    });
+    addXP(50, 'kelas selesai');
+  } else if (moduleComplete) {
+    showCompletion({
+      title: 'Bab Selesai!',
+      message: `Kamu sudah tamatkan "${module.title}". Lanjut ke materi berikutnya?`,
+      xp: 15,
+      continueLabel: 'Lanjut →',
+      onContinue,
+    });
+    addXP(15, 'bab selesai');
+  } else {
+    onContinue();
+  }
+}
 
 // Buka popup untuk task tertentu dari tombol "Kerjakan Tugas" di pelajaran pemicu.
 window.gtOpenTaskPopup = (moduleId, lessonId) => {
@@ -10670,7 +10708,10 @@ window.gtOpenTaskPopup = (moduleId, lessonId) => {
   const m = course.modules.find((x) => x.id === moduleId);
   const l = m && m.lessons.find((x) => x.id === lessonId);
   if (!m || !l) return;
-  openGrammarTaskPopup(course, m, l, () => { renderLesson(); });
+  openGrammarTaskPopup(course, m, l, (result) => {
+    finishLearningMilestone(course, m,
+      !!result?.completed && !result?.wasAlreadyDone, () => { renderLesson(); });
+  });
 };
 
 function gtUpdateComplete() {
@@ -13136,13 +13177,14 @@ window.kanjiDrillAnswer = (oi) => {
   setTimeout(() => { if (window.__kanjiDrill === st) kanjiDrillRender(); }, correct ? 700 : 1700);
 };
 
-// Tugas grammar yang dikaitkan ke pelajaran pemicu (popupAfterLessonId) hanya
-// tampil sebagai popup → disembunyikan dari daftar, navigasi, & hitungan progres.
+// Tugas grammar yang dikaitkan ke pelajaran pemicu tetap dapat dibuka lewat
+// banner di lesson sumber. Tugasnya juga harus tetap terlihat di sidebar dan
+// urutan belajar supaya learner tidak kehilangan langkah Tugas Bunpou.
 function gtIsPopupTask(l) {
   return !!(l && l.type === 'grammar_task' && l.popupAfterLessonId);
 }
 function visibleLessons(m) {
-  return (m.lessons || []).filter((l) => !gtIsPopupTask(l));
+  return m.lessons || [];
 }
 // Cari lesson (lintas semua modul course ini) berdasarkan apiId. Dipakai
 // Bunpou Flow pilot untuk menemukan kembali source lesson dari
@@ -13927,22 +13969,13 @@ window.markCompleteAndNext = async (triggerButton) => {
   const lesson = findLesson(currentState.course, currentState.moduleId, currentState.lessonId);
   const serverCompletion = syncLessonCompletionToServer(lesson);
 
-  // Navigasi & hitungan progres pakai lesson terlihat saja (tugas-popup yang
-  // tersembunyi tidak ikut dihitung — ia overlay terikat pelajaran pemicunya).
+  // Navigasi dan hitungan progres memakai urutan lesson yang juga terlihat di
+  // sidebar, termasuk Tugas Bunpou yang dapat dibuka langsung atau via banner.
   const allLessons = course.modules.flatMap(m => visibleLessons(m).map(l => ({ m, l })));
   const idx = allLessons.findIndex(x => x.m.id === currentState.moduleId && x.l.id === currentState.lessonId);
   const next = allLessons[idx + 1];
 
-  // Check if this was the last lesson of the module
   const currentModule = course.modules.find(m => m.id === currentState.moduleId);
-  const curModVisible = visibleLessons(currentModule);
-  const moduleDoneLessons = curModVisible.filter(l => courseProgress[`${currentModule.id}:${l.id}`]).length;
-  const justFinishedModule = !wasAlreadyDone && moduleDoneLessons === curModVisible.length;
-
-  // Check if entire course completed
-  const totalLessons = course.modules.reduce((s, m) => s + visibleLessons(m).length, 0);
-  const totalDone = course.modules.reduce((s, m) => s + visibleLessons(m).filter(l => courseProgress[`${m.id}:${l.id}`]).length, 0);
-  const courseComplete = !wasAlreadyDone && totalDone === totalLessons;
 
   const advance = () => {
     if (next) {
@@ -13956,29 +13989,13 @@ window.markCompleteAndNext = async (triggerButton) => {
     try { if (window.AISenpai && AISenpai._started) AISenpai.refresh(); } catch {}
   };
 
-  const finalize = async () => {
+  const finalize = async (popupResult) => {
     await serverCompletion;
-    if (courseComplete) {
-      showCompletion({
-        title: '🎌 Selamat! Kelas Selesai',
-        message: `Kamu telah menyelesaikan semua materi ${course.name}. 素晴らしい！`,
-        xp: 50,
-        continueLabel: 'Tutup',
-        onContinue: advance,
-      });
-      addXP(50, 'kelas selesai');
-    } else if (justFinishedModule) {
-      showCompletion({
-        title: 'Bab Selesai!',
-        message: `Kamu sudah tamatkan "${currentModule.title}". Lanjut ke materi berikutnya?`,
-        xp: 15,
-        continueLabel: 'Lanjut →',
-        onContinue: advance,
-      });
-      addXP(15, 'bab selesai');
-    } else {
-      advance();
-    }
+    // A source lesson may already be complete when the learner returns to its
+    // pending task. Treat a newly completed popup task as the transition too.
+    const newlyCompleted = !wasAlreadyDone ||
+      (!!popupResult?.completed && !popupResult?.wasAlreadyDone);
+    finishLearningMilestone(course, currentModule, newlyCompleted, advance);
   };
 
   // Kalau pelajaran yang baru diselesaikan punya tugas grammar terkait (popup)
