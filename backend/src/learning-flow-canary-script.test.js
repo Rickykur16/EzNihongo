@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { applyCanaryTransaction, parseArgs,
-  runCanary } from '../scripts/learning-flow-canary.mjs';
+  refreshCanaryQuestionReviews, runCanary } from '../scripts/learning-flow-canary.mjs';
 import { db } from './db.js';
 
 const COURSE = 'a0000000-0000-4000-8000-000000000001';
@@ -104,6 +104,70 @@ test('a malformed stored config blocks preflight and apply before inspection or 
   assert.equal(f.calls.some(([name]) => name === 'inspect' || name === 'activate'), false);
 });
 
+test('canary review refresh accepts only exact existing rows and never permits inserts', async () => {
+  const client = {};
+  const calls = [];
+  const valid = await refreshCanaryQuestionReviews(client,
+    { courseId: COURSE, moduleId: MODULE }, {
+      runId: COURSE_A,
+      backfill: async (scope, options) => {
+        calls.push({ scope, options });
+        assert.equal(await options.transaction(async locked => locked), client);
+        assert.equal(options.validationRefreshOnly, true);
+        return { lessonCount: 1, rows: [
+          { status: 'already_present' }, { status: 'review_refreshed' },
+        ] };
+      },
+    });
+  assert.equal(valid.rows.length, 2);
+  assert.deepEqual(calls[0].scope, { courseIds: [COURSE], moduleIds: [MODULE],
+    lessonIds: [], runId: COURSE_A, apply: true });
+  await assert.rejects(refreshCanaryQuestionReviews(client,
+    { courseId: COURSE, moduleId: MODULE }, {
+      runId: COURSE_A,
+      backfill: async () => ({ lessonCount: 1, rows: [{ status: 'would_insert' }] }),
+    }), error => error.message === 'canary_question_review_invalid');
+});
+
+test('failed post-refresh readiness rolls back mode and metadata without emitting commit telemetry',
+  async () => {
+    const state = { mode: 'off', review: 'sha256:off', config: 'old' };
+    const events = [];
+    const client = { async query(sql) {
+      if (sql.includes('FOR UPDATE OF m')) return { rows: [{ id: MODULE, slug: 'n5-b3',
+        title: 'Bab 3', course_id: COURSE, course_slug: 'n5', course_title: 'N5' }] };
+      throw new Error(`unexpected SQL: ${sql}`);
+    } };
+    const transaction = async work => {
+      const before = structuredClone(state);
+      try { return await work(client); }
+      catch (error) { Object.assign(state, before); throw error; }
+    };
+    await assert.rejects(applyCanaryTransaction({ courseId: COURSE, moduleId: MODULE },
+      { modeRevision: 'mode-1', configRevision: 'config-1' }, {
+        transaction,
+        getMode: async () => ({ course: { mode: state.mode }, modeRevision: 'mode-1' }),
+        getSettings: async () => ({ config: { enabled: true, courseIds: [],
+          moduleIds: [MODULE], lessonIds: [] }, configRevision: 'config-1' }),
+        resolveCourseIds: async () => [COURSE], lockCourses: async () => {},
+        saveMode: async () => {
+          state.mode = 'audit';
+          return { course: { mode: 'audit' }, modeRevision: 'mode-2' };
+        },
+        refreshReviews: async () => {
+          state.review = 'sha256:audit';
+          return { lessonCount: 1, rows: [{ status: 'review_refreshed' }] };
+        },
+        saveSettings: async () => {
+          state.config = 'new';
+          throw new Error('flow_readiness_failed');
+        },
+        logger: event => events.push(event),
+      }), error => error.message === 'flow_readiness_failed');
+    assert.deepEqual(state, { mode: 'off', review: 'sha256:off', config: 'old' });
+    assert.deepEqual(events, []);
+  });
+
 test('two-course activation takes one sorted union lock before nested writers', async () => {
   const calls = [];
   const client = { async query(sql, params) {
@@ -142,6 +206,12 @@ test('two-course activation takes one sorted union lock before nested writers', 
         assert.deepEqual(courseIds, [COURSE_A, COURSE]);
         calls.push(['lockCourses', ...courseIds]);
       },
+      refreshReviews: async (lockedClient, options) => {
+        assert.equal(lockedClient, client);
+        assert.equal(options.moduleId, MODULE);
+        calls.push(['refreshReviews']);
+        return { counts: { review_refreshed: 2 }, rows: [{}, {}] };
+      },
       saveMode: async (_id, body, options) => options.transaction(async lockedClient => {
         assert.equal(lockedClient, client); assert.equal(body.mode, 'audit');
         calls.push(['saveMode']);
@@ -164,6 +234,8 @@ test('two-course activation takes one sorted union lock before nested writers', 
   assert.deepEqual(calls.filter(([name]) => name === 'resolveCourseIds').length, 2);
   assert.ok(calls.findIndex(([name]) => name === 'lockCourses') <
     calls.findIndex(([name]) => name === 'saveMode'));
+  assert.ok(calls.findIndex(([name]) => name === 'saveMode') <
+    calls.findIndex(([name]) => name === 'refreshReviews'));
   assert.equal(calls.filter(([name]) => name === 'lockCourses').length, 1);
   assert.ok(calls.some(([, sql]) => typeof sql === 'string' && sql.includes('FOR UPDATE OF m')));
   assert.ok(calls.some(([, sql]) => typeof sql === 'string' && sql.includes('SELECT m.id FROM modules')));

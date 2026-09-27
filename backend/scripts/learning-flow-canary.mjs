@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { db, withTransaction } from '../src/db.js';
 import { getCurriculumBoundaryMode,
@@ -6,6 +7,7 @@ import { getCurriculumBoundaryMode,
 import { lockCurriculumCourses } from '../src/curriculum-content-service.js';
 import { getLearningFlowSettings, learningFlowReadiness,
   saveLearningFlowSettings } from '../src/learning-flow-config.js';
+import { backfillDialogueQuestions } from '../src/dialogue-question-backfill.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 
@@ -82,12 +84,11 @@ export async function resolveCanaryCourseIds(client, config, targetCourseId, tar
   const courseIds = [...new Set([...config.courseIds, targetCourseId])].sort();
   const moduleIds = [...new Set([...config.moduleIds, targetModuleId])].sort();
   const lessonIds = [...config.lessonIds];
-  const [courses, modules, lessons] = await Promise.all([
-    client.query('SELECT id FROM courses WHERE id=ANY($1::uuid[])', [courseIds]),
-    client.query('SELECT id,course_id FROM modules WHERE id=ANY($1::uuid[])', [moduleIds]),
-    client.query(`SELECT l.id,m.course_id FROM lessons l JOIN modules m ON m.id=l.module_id
-      WHERE l.id=ANY($1::uuid[])`, [lessonIds]),
-  ]);
+  const courses = await client.query('SELECT id FROM courses WHERE id=ANY($1::uuid[])', [courseIds]);
+  const modules = await client.query('SELECT id,course_id FROM modules WHERE id=ANY($1::uuid[])',
+    [moduleIds]);
+  const lessons = await client.query(`SELECT l.id,m.course_id FROM lessons l
+    JOIN modules m ON m.id=l.module_id WHERE l.id=ANY($1::uuid[])`, [lessonIds]);
   for (const [kind, wanted, rows] of [
     ['course', courseIds, courses.rows], ['module', moduleIds, modules.rows],
     ['lesson', lessonIds, lessons.rows],
@@ -104,6 +105,21 @@ export async function resolveCanaryCourseIds(client, config, targetCourseId, tar
   ])].sort();
 }
 
+export async function refreshCanaryQuestionReviews(client, { courseId, moduleId }, {
+  backfill = backfillDialogueQuestions, runId = randomUUID(),
+} = {}) {
+  const report = await backfill({ courseIds: [courseId], moduleIds: [moduleId],
+    lessonIds: [], runId, apply: true }, {
+    transaction: fn => fn(client), lockCourse: async () => {}, validationRefreshOnly: true,
+  });
+  const accepted = new Set(['already_present', 'review_refreshed']);
+  if (!report.lessonCount || !report.rows.length ||
+      report.rows.some(row => !accepted.has(row.status))) {
+    fail('canary_question_review_invalid', report);
+  }
+  return report;
+}
+
 export async function applyCanaryTransaction(options, expected, dependencies = {}) {
   const transaction = dependencies.transaction || withTransaction;
   const getMode = dependencies.getMode || getCurriculumBoundaryMode;
@@ -113,7 +129,9 @@ export async function applyCanaryTransaction(options, expected, dependencies = {
   const checkReadiness = dependencies.checkReadiness || learningFlowReadiness;
   const resolveCourseIds = dependencies.resolveCourseIds || resolveCanaryCourseIds;
   const lockCourses = dependencies.lockCourses || lockCurriculumCourses;
-  return transaction(async client => {
+  const refreshReviews = dependencies.refreshReviews || refreshCanaryQuestionReviews;
+  const logger = dependencies.logger || (event => console.info(JSON.stringify(event)));
+  const activated = await transaction(async client => {
     const dbQuery = client.query.bind(client);
     const mode = await getMode(options.courseId, { dbQuery });
     validateMode(mode);
@@ -142,13 +160,14 @@ export async function applyCanaryTransaction(options, expected, dependencies = {
     const targetMode = mode.course.mode === 'off' ? 'audit' : mode.course.mode;
     const savedMode = await saveMode(options.courseId,
       { mode: targetMode, expectedRevision: mode.modeRevision },
-      { transaction: fn => fn(client), lockCourse: alreadyLocked });
+      { transaction: fn => fn(client), lockCourse: alreadyLocked, logger: () => {} });
     const module = (await client.query(`SELECT m.id,m.slug,m.title,m.course_id,
         c.slug AS course_slug,c.title AS course_title
       FROM modules m JOIN courses c ON c.id=m.course_id
       WHERE m.id=$1 AND c.id=$2 FOR UPDATE OF m`,
     [options.moduleId, options.courseId])).rows[0];
     if (!module) fail('canary_scope_owner_mismatch');
+    const questionReview = await refreshReviews(client, options);
     const guardedReadiness = async (readinessClient, candidate) => {
       if (readinessClient !== client) fail('canary_transaction_mismatch');
       const owner = (await client.query(`SELECT m.id FROM modules m
@@ -166,11 +185,18 @@ export async function applyCanaryTransaction(options, expected, dependencies = {
       lockCourses: alreadyLocked });
     if (!saved.config.enabled || !saved.config.moduleIds.includes(options.moduleId) ||
         !saved.readiness?.ready) fail('canary_postcondition_failed', saved.readiness);
-    return { mode: savedMode, settings: saved,
+    return { mode: savedMode, settings: saved, questionReview,
+      previousMode: mode.course.mode,
       scope: { courseId: options.courseId, courseSlug: module.course_slug,
         courseTitle: module.course_title, moduleId: options.moduleId,
         moduleSlug: module.slug, moduleTitle: module.title } };
   });
+  if (activated.previousMode !== activated.mode.course.mode) {
+    try { logger({ event: 'curriculum_boundary_mode_changed', schemaVersion: 1,
+      courseId: options.courseId, fromMode: activated.previousMode,
+      toMode: activated.mode.course.mode }); } catch { /* telemetry must not change activation */ }
+  }
+  return activated;
 }
 
 const defaults = {
@@ -201,7 +227,8 @@ export async function runCanary(options, dependencies = {}) {
   return { ...base, boundaryMode: activated.mode.course.mode,
     scope: activated.scope, config: activated.settings.config,
     configRevision: activated.settings.configRevision,
-    readiness: activated.settings.readiness };
+    readiness: activated.settings.readiness,
+    questionReview: activated.questionReview };
 }
 
 export async function main(argv = process.argv.slice(2), dependencies = {}) {
@@ -218,7 +245,8 @@ export async function main(argv = process.argv.slice(2), dependencies = {}) {
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   main().catch(error => {
     console.error(JSON.stringify({ type: 'error', code: error.message,
-      ...(error.details ? { readiness: error.details } : {}) }));
+      ...((error.details || error.readiness) ?
+        { readiness: error.details || error.readiness } : {}) }));
     process.exitCode = 1;
   }).finally(() => db.end().catch(() => {}));
 }
