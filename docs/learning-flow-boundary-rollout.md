@@ -38,11 +38,15 @@ active v2 yang sudah diterbitkan tetap dapat dilanjutkan setelah flag OFF.
    keamanan migration dari suite yang skip.
 3. Audit course terpilih, perbaiki mapping/owner/order secara editorial dengan
    diff terpisah, lalu ulangi audit. Audit N5 dan warn N4 hanya boleh diubah
-   oleh owner melalui prosedur change yang disetujui. Saat dokumen ini dibuat,
-   **tidak ada route khusus** `PUT /courses/:id/curriculum-boundary-mode`;
-   jangan mengarang perintah API atau melakukan SQL mode langsung dari runbook.
-   Promote N4 ke enforce tetap `BLOCKED` sampai kontrol owner dan semua gate
-   di bawah terbukti. N5 tidak otomatis ikut enforce.
+   oleh owner melalui `GET/PUT /api/admin/courses/:id/curriculum-boundary-mode`
+   dengan `expectedRevision` hasil GET terakhir. PUT hanya menerima mode
+   `off`, `audit`, `warn`, atau `enforce` dengan schema tepat; update memegang
+   lock kurikulum dan memakai CAS. Route saat ini **menolak semua promosi ke
+   enforce dengan 422 `enforce_readiness_evidence_unavailable`**, karena
+   registry manifest readiness yang terpercaya belum ada. Artifact dari
+   client tidak dapat meloloskan gate itu. Enforce N4 tetap `BLOCKED` walaupun
+   checklist manual telah lengkap; perlu perubahan server terpisah. N5 tidak
+   otomatis ikut enforce.
 4. Dry-run backfill untuk scope eksplisit. Apply pada staging hanya setelah
    review source dan konflik; rerun identik harus `already_present` tanpa
    perubahan pertanyaan. Backfill tidak mengarang evidence/explanation,
@@ -96,6 +100,31 @@ $settings | ConvertTo-Json -Depth 20
 
 GET bersifat read-only; tidak ada contoh PUT untuk mengaktifkan allowlist
 di runbook ini. Error 401/403 bukan bukti readiness.
+
+Untuk perubahan mode **staging yang disetujui owner** saja, baca token mode
+terkini lalu kirim mode `audit` atau `warn` sesuai course yang diverifikasi;
+contoh ini tidak mempromosikan enforce atau menyalakan flow komunikasi:
+
+```powershell
+$courseId = '<course-uuid-terverifikasi>'
+$modeEndpoint = "$apiBase/api/admin/courses/$courseId/curriculum-boundary-mode"
+$currentMode = Invoke-RestMethod -Uri $modeEndpoint `
+  -Headers @{ Authorization = "Bearer $ownerAccessToken" }
+$modeBody = @{
+  mode = 'audit'                    # ganti menjadi warn hanya setelah review
+  expectedRevision = $currentMode.modeRevision
+} | ConvertTo-Json
+Invoke-RestMethod -Method Put -Uri $modeEndpoint `
+  -Headers @{ Authorization = "Bearer $ownerAccessToken" } `
+  -ContentType 'application/json' -Body $modeBody
+```
+
+Verifikasi `course.id`, `slug`, `mode`, dan `modeRevision` dari respons; 409
+berarti revision berubah dan operator harus berhenti, membaca ulang serta
+meninjau diff. GET/PUT ini owner-only dan `private, no-store`. Untuk rollback
+authoring dari mode non-enforce, gunakan endpoint yang sama dengan revision
+terkini dan `mode='warn'`, `audit`, atau `off`; jangan mengubah kolom langsung
+via SQL. GET/downgrade tidak bergantung pada readiness flow komunikasi.
 
 `audit-curriculum-boundary.mjs` memakai transaksi repeatable-read **READ ONLY**
 untuk dry-run. `--course` menerima UUID atau slug yang resolve unik;
@@ -235,7 +264,7 @@ Jangan menafsirkan comprehension accuracy sebagai mastery baru.
 ## Menahan atau membatalkan rollout
 
 - Masalah authoring boundary: owner turunkan affected course dari enforce
-  ke warn/audit lewat prosedur perubahan mode yang disetujui, sambil
+  ke warn/audit lewat PUT mode owner-only dengan CAS revision terkini, sambil
   mempertahankan report. Auth, schema, dan relational integrity tetap aktif.
 - Masalah inline/session baru: owner set config komunikasi `enabled: false`
   menggunakan `PUT /api/admin/settings/learning-flow-communication` dan
