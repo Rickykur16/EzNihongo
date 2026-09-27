@@ -266,7 +266,7 @@ test('versioned chapter assessment migration, grading and protected HTTP lifecyc
     const audioResponse=await fetch(base+path(lessons[1],`quiz/audio/${audio.id}?attemptToken=${start.body.attemptToken}`),{headers:{Authorization:`Bearer ${token}`}});
     assert.equal(audioResponse.status,200);assert.deepEqual(Buffer.from(await audioResponse.arrayBuffer()),bytes);
     const answers=rows.map(q=>({questionId:q.id,optionId:q.options.find(o=>o.is_correct).id}));
-    const result=await call(path(lessons[1],'quiz-attempt'),{attemptToken:start.body.attemptToken,answers});
+    const result=await call(path(lessons[1],'quiz-attempt'),{attemptToken:start.body.attemptToken,answers,draftRevision:start.body.draftRevision});
     assert.equal(result.status,200);assert.equal(result.body.score,24);assert.equal(result.body.passed,true);
     assert.match(result.body.review[21].audioScript,/ただしい ものは どれですか/);
   });
