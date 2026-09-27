@@ -1,6 +1,6 @@
 import {writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
-import {banks,illustration} from './build-jlpt-assessments.mjs';
+import {banks,illustration} from './build-assessment-ambiguity-revision.mjs';
 
 const esc=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const rich=s=>esc(s).replaceAll('&lt;u&gt;','<u>').replaceAll('&lt;/u&gt;','</u>');
