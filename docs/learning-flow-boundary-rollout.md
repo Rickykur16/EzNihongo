@@ -289,7 +289,20 @@ publik tidak ditambahi field telemetry. `already_completed` tetap outcome
 tersendiri untuk request baru terhadap item yang sudah selesai; conflict
 request ID tetap `conflict`. Logger yang gagal tidak mengubah respons learner.
 
-Telemetry ini **belum** menyediakan agregat generation retry/source-stale atau
+Grounded draft melalui `groundedDraft` juga mencatat satu structured event
+`grounded_generation` setelah hasil terminal: allowlist `contentType`,
+`operation=generate`, mode, outcome `ready|rejected|stale|unavailable`, jumlah
+provider call/attempt (maksimal 3), `retried`, `sourceStale`, dan durasi
+terbatas. Tidak ada ID, prompt, teks kandidat, fingerprint, atau exception.
+`ready` satu attempt menunjukkan valid-first-pass; `rejected` setelah retry
+menunjukkan hasil tetap gagal. Logger yang gagal tidak mengubah hasil draft.
+Event ini mengukur **tahap generation** saja: bulk distractor/deck reading
+dapat menolak save kemudian dengan `source_changed_since_generation` setelah
+event `ready`. Penolakan transactional itu tetap aman, tetapi belum memiliki
+label telemetry terminal-save tersendiri. Jangan menghitung event `ready`
+sebagai jumlah row yang berhasil disimpan.
+
+Telemetry ini **belum** menyediakan ringkasan agregat generation atau
 readiness dashboard. Untuk gate observasi §15, lampirkan bukti tambahan
 yang benar-benar menangkap kasus itu; jika tidak ada, biarkan `BLOCKED`.
 Jangan menafsirkan comprehension accuracy sebagai mastery baru.

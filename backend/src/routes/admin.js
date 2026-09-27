@@ -100,6 +100,7 @@ async function groundedDraft({ scope, contentType, loadSource, instruction, maxT
   transformCandidate = x => x }) {
   return generateGroundedContent({ scope, contentType, loadSource, communicationGoal,
     scenario, trustedValidation, expectedExampleCount, additionalSchemaIssues,
+    onTerminal: event => console.info(JSON.stringify(event)),
     expectedBoundaryFingerprint: body.boundaryFingerprint || null,
     expectedSourceFingerprint: body.sourceFingerprint || null,
     provider: async ({ prompt, repairFeedback }) => {
