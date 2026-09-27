@@ -4,7 +4,9 @@ import { validateContentAgainstBoundary, validateQuestionShape } from './curricu
 import { decideBoundaryAction } from './curriculum-boundary-policy.js';
 
 const QUESTION_TYPES = new Set(['dialogue_comprehension', 'dialogue_transfer', 'dialogue_question',
-  'quiz_question', 'listening_question', 'reading_question', 'quiz', 'assessment']);
+  'quiz_question', 'listening_question', 'reading_question', 'quiz', 'assessment',
+  'listening_batch', 'jlpt_batch']);
+const BATCH_QUESTION_TYPES = new Set(['listening_batch', 'jlpt_batch']);
 const GRAMMAR_CONTENT_TYPES = new Set(['grammar_dialog', 'grammar_example']);
 const demonstratesTargetGrammar = (contentType, field) => contentType === 'grammar_example'
   ? /^(?:japanese|examples\[\d+\]\.japanese)$/u.test(field || '')
@@ -23,7 +25,9 @@ const SCHEMA_KEYS = {
   reading_question: ['question', 'questions'],
   quiz: ['question', 'questions'],
   assessment: ['question', 'questions'],
-  grammar_distractors: ['recognitionDistractors', 'controlledDistractors', 'distractors'],
+  listening_batch: ['questions'],
+  jlpt_batch: ['questions'],
+  grammar_distractors: ['recognitionDistractors', 'controlledDistractors', 'distractors', 'slot'],
   distractors: ['distractors', 'options'],
   quiz_options: ['options'],
   listening: ['text', 'passage', 'dialogue'],
@@ -55,6 +59,8 @@ const questionFields = (question, path) => !plain(question) ? [] : [
   ...textField(`${path}.prompt`, question.prompt),
   ...stringArrayFields(`${path}.options`, question.options),
   ...textField(`${path}.explanation`, question.explanation),
+  ...textField(`${path}.audioScript`, question.audioScript),
+  ...textField(`${path}.passage`, question.passage),
   ...(Array.isArray(question.evidence) ? question.evidence.flatMap((entry, index) =>
     textField(`${path}.evidence[${index}].quote`, entry?.quote)) : []),
 ];
@@ -106,6 +112,10 @@ export function groundedCandidateFields(candidate, contentType) {
   if (['grammar_distractors', 'distractors', 'quiz_options'].includes(contentType)) return [
     ...['recognitionDistractors', 'controlledDistractors', 'distractors', 'options']
       .flatMap(key => stringArrayFields(key, candidate[key])),
+    ...(contentType === 'grammar_distractors' ? [
+      ...textField('slot.sentence', candidate.slot?.sentence),
+      ...textField('slot.answer', candidate.slot?.answer),
+    ] : []),
   ];
   if (['kanji_compound_assessed', 'kanji_compound_exploration'].includes(contentType)) return [
     ...textField('japanese', candidate.japanese),
@@ -233,24 +243,32 @@ export function groundedCandidateSchemaIssues(candidate, contentType) {
         errors.push({ code: 'invalid_dialogue_schema', field: 'dialogFurigana' });
       }
     }
-  } else if (contentType.includes('question') || contentType === 'quiz' ||
+  } else if (contentType.includes('question') || BATCH_QUESTION_TYPES.has(contentType) || contentType === 'quiz' ||
       contentType === 'assessment' || contentType === 'dialogue_comprehension' ||
       contentType === 'dialogue_transfer') {
     meaningful = candidate.question != null || candidate.questions != null;
     if (candidate.question != null && candidate.questions != null) {
       errors.push({ code: 'invalid_question_schema', field: 'question' });
     }
+    const maxQuestions = BATCH_QUESTION_TYPES.has(contentType) ? 40 : 2;
     if (candidate.questions != null && (!Array.isArray(candidate.questions) ||
-        candidate.questions.length < 1 || candidate.questions.length > 2)) {
+        candidate.questions.length < 1 || candidate.questions.length > maxQuestions)) {
       errors.push({ code: 'invalid_question_schema', field: 'questions' });
     }
     for (const [index, question] of (Array.isArray(candidate.questions) ? candidate.questions :
       candidate.question != null ? [candidate.question] : []).entries()) {
       if (plain(question) && (Object.keys(question).some(key =>
-        !['prompt', 'options', 'correctIndex', 'explanation', 'evidence'].includes(key)) ||
+        !['prompt', 'options', 'correctIndex', 'explanation', 'evidence',
+          ...(BATCH_QUESTION_TYPES.has(contentType) ? ['audioScript', 'passage'] : [])].includes(key)) ||
         (question.explanation != null && (typeof question.explanation !== 'string' ||
           question.explanation.length > 2000)))) {
         errors.push({ code: 'invalid_question_schema', field: `questions[${index}]` });
+      }
+      if (BATCH_QUESTION_TYPES.has(contentType) &&
+          ((question?.audioScript != null && (typeof question.audioScript !== 'string' || question.audioScript.length > 1400)) ||
+           (question?.passage != null && (typeof question.passage !== 'string' || question.passage.length > 4000)) ||
+           (contentType === 'listening_batch' && (typeof question?.audioScript !== 'string' || !question.audioScript.trim())))) {
+        errors.push({ code: 'invalid_question_source_field', field: `questions[${index}]` });
       }
       evidenceShape(question?.evidence, `questions[${index}].evidence`);
     }
@@ -260,6 +278,12 @@ export function groundedCandidateSchemaIssues(candidate, contentType) {
     meaningful = keys.some(key => candidate[key] != null);
     for (const key of keys) if (allowed.includes(key)) stringList(key,
       key === 'options' ? 3 : 2, key === 'options' ? 4 : 6);
+    if (contentType === 'grammar_distractors' && candidate.slot != null &&
+        (!plain(candidate.slot) || Object.keys(candidate.slot).some(key => !['sentence', 'answer'].includes(key)) ||
+         typeof candidate.slot.sentence !== 'string' || !candidate.slot.sentence.trim() ||
+         typeof candidate.slot.answer !== 'string' || !candidate.slot.answer.trim())) {
+      errors.push({ code: 'invalid_distractor_slot' });
+    }
   } else if (contentType === 'kanji_compound_assessed' || contentType === 'kanji_compound_exploration') {
     meaningful = japanese(candidate.japanese) ||
       (candidate.compound != null && JAPANESE.test(JSON.stringify(candidate.compound)));
@@ -286,7 +310,9 @@ function questionErrors(candidate, contentType, sourceDialogue) {
   if (!QUESTION_TYPES.has(contentType)) return [];
   const questions = Array.isArray(candidate.questions) ? candidate.questions :
     candidate.question ? [candidate.question] : [];
-  if (!questions.length || questions.length > 2) return [{ code: 'invalid_question_schema' }];
+  if (!questions.length || questions.length > (BATCH_QUESTION_TYPES.has(contentType) ? 40 : 2)) {
+    return [{ code: 'invalid_question_schema' }];
+  }
   const errors = questions.flatMap(question => validateQuestionShape(question));
   if (contentType !== 'dialogue_comprehension') return errors;
   const turns = Array.isArray(sourceDialogue) ? sourceDialogue : sourceDialogue?.turns;
@@ -329,6 +355,7 @@ export async function generateGroundedContent({
   communicationGoal = '', scenario = '', contextOptions = {}, maxRepairs = 2,
   providerTimeoutMs = 30000,
   trustedValidation = {}, expectedExampleCount = null,
+  additionalSchemaIssues = null,
   parse = parseGroundedCandidate, validate = validateContentAgainstBoundary,
   decide = decideBoundaryAction,
 } = {}) {
@@ -404,6 +431,14 @@ export async function generateGroundedContent({
     const fields = groundedCandidateFields(candidate, contentType);
     const schemaIssues = [...groundedCandidateSchemaIssues(candidate, contentType),
       ...questionErrors(candidate, contentType, sourceDialogue)];
+    if (additionalSchemaIssues) {
+      try { schemaIssues.push(...additionalSchemaIssues(candidate)); }
+      catch {
+        const unavailable = errorReport('unavailable', 'generation_task_check_unavailable', boundary.boundaryFingerprint);
+        return { status: 'unavailable', candidate, report: unavailable,
+          decision: decision(unavailable), attempts, context: built.context };
+      }
+    }
     if (expectedExampleCount != null &&
         (!Array.isArray(candidate.examples) || candidate.examples.length !== expectedExampleCount)) {
       schemaIssues.push({ code: 'example_count_mismatch', expected: expectedExampleCount });

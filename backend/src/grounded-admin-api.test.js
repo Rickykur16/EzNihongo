@@ -40,10 +40,20 @@ const fakeQuery = async (sql, params = []) => {
   if (sql.includes('boundary:kanji') || sql.includes('boundary:decks')) return { rows: [] };
   if (sql.includes('curriculum_boundary_auxiliary_terms')) return { rows: [] };
   if (sql.includes('FROM admin_emails')) return { rows: [] };
+  if (sql.includes('FROM app_settings')) return { rows: [] };
+  if (sql.includes('FROM grammar_examples')) return { rows: [] };
+  if (sql.includes('FROM module_grammar') && sql.includes('pattern IS NOT NULL')) return { rows: [grammar] };
+  if (sql.includes('FROM module_grammar') && sql.includes('module_id =')) return { rows: [] };
+  if (sql.includes('FROM lessons l JOIN modules m ON m.id=l.module_id')) {
+    return { rows: params[0] === lessonId ? [{ ...lesson, level: 'N5' }] : [] };
+  }
+  if (sql.includes('FROM module_vocabulary') && sql.includes('module_id =')) return { rows: [vocab] };
+  if (sql.includes('FROM module_vocabulary v') && sql.includes('lesson_deck_items')) return { rows: [vocab] };
   if (sql.includes('FROM module_vocabulary WHERE id=')) return { rows: params[0] === vocabId ? [vocab] : [] };
-  if (sql.includes('FROM module_grammar WHERE id=')) return { rows: params[0] === grammarId ? [grammar] : [] };
+  if (/FROM module_grammar WHERE id\s*=/.test(sql)) return { rows: params[0] === grammarId ? [grammar] : [] };
   if (sql.includes('FROM lessons WHERE id=')) return { rows: params[0] === lessonId ? [lesson] : [] };
   if (sql.includes('FROM quiz_questions WHERE id=')) return { rows: [] };
+  if (sql.includes('FROM quiz_questions')) return { rows: [] };
   throw Error(`Unexpected SQL in draft generation: ${sql}`);
 };
 mock.method(db, 'query', fakeQuery);
@@ -93,8 +103,8 @@ test('vocabulary batch returns compatible examples and generation report without
     { japanese: 'ねこがいます。', highlight: 'ねこ', reading: 'ねこがいます。', indonesian: 'Ada kucing.' },
   ] });
   const response = await post('generate-vocab-examples', { vocabularyId: vocabId, count: 2 });
-  assert.equal(response.status, 200);
-  assert.equal(response.body.status, 'ready');
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  assert.equal(response.body.status, 'ready', JSON.stringify(response.body.report));
   assert.equal(response.body.examples.length, 2);
   assert.equal(response.body.generation.report.status, 'evaluated');
   assert.ok(response.body.boundaryFingerprint?.startsWith('sha256:'));
@@ -190,4 +200,118 @@ test('stale boundary fingerprint prevents generation before provider call', asyn
   assert.equal(response.body.status, 'stale');
   assert.equal(response.body.report.status, 'version_conflict');
   assert.equal(modelCalls, 0); assert.equal(writes, 0);
+});
+
+test('grammar distractor draft uses one scoped candidate and does not write', async () => {
+  modelCalls = 0; writes = 0;
+  modelOutput = JSON.stringify({ recognitionDistractors: [
+    'Menunjukkan waktu lampau.', 'Menunjukkan tempat tujuan.', 'Menunjukkan larangan.' ] });
+  let response = await post(`module-grammar/${grammarId}/generate-distractors`, {});
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  assert.equal(response.body.status, 'ready');
+  assert.equal(response.body.distractors.length, 3);
+  assert.deepEqual(response.body.controlled, []);
+  assert.equal(response.body.slot, null);
+  assert.ok(response.body.report);
+  assert.equal(modelCalls, 1); assert.equal(writes, 0);
+  modelCalls = 0;
+  response = await post(`module-grammar/${grammarId}/generate-distractors`, { lessonId: id('other') });
+  assert.equal(response.status, 409);
+  assert.equal(modelCalls, 0);
+});
+
+test('listening batch checks nested audio and caps repairs without saves', async () => {
+  modelCalls = 0; writes = 0;
+  const options = [
+    { text: 'ねこ', isCorrect: true }, { text: 'いぬ', isCorrect: false },
+    { text: 'とり', isCorrect: false }];
+  modelOutput = JSON.stringify({ questions: [{ question: '何といいますか。',
+    audioScript: 'A: みらい は です。', options, explanation: 'Kucing.' }] });
+  let response = await post(`lessons/${lessonId}/generate-listening`, { taskType: 'sokuji', count: 1, level: 'N5' });
+  assert.equal(response.body.status, 'rejected');
+  assert.ok(response.body.report.violations.some(item => item.code === 'future_vocabulary' &&
+    item.field === 'questions[0].audioScript'));
+  assert.equal(response.body.attempts.length, 3);
+  assert.equal(modelCalls, 3); assert.equal(writes, 0);
+  modelCalls = 0;
+  modelOutput = JSON.stringify({ questions: [{ question: '何といいますか。',
+    audioScript: 'A: ねこです。', options, explanation: 'Kucing.' }] });
+  response = await post(`lessons/${lessonId}/generate-listening`, { taskType: 'sokuji', count: 1 });
+  assert.equal(response.body.status, 'ready', JSON.stringify(response.body.report));
+  assert.equal(response.body.questions[0].audioScript, 'A: ねこです。');
+  assert.equal(response.body.questions[0].options.length, 3);
+  assert.equal(modelCalls, 1); assert.equal(writes, 0);
+});
+
+test('JLPT batch checks options, malformed shape, and stale fingerprint', async () => {
+  modelCalls = 0; writes = 0;
+  const question = 'ねこは（　）です。';
+  const options = [
+    { text: 'すき', isCorrect: true }, { text: 'きらい', isCorrect: false },
+    { text: 'ふつう', isCorrect: false }, { text: 'みらい は', isCorrect: false }];
+  modelOutput = JSON.stringify({ questions: [{ question, options, explanation: 'Pilihan pertama.' }] });
+  let response = await post(`lessons/${lessonId}/generate-jlpt`, { taskType: 'goi_bunmyaku', count: 1 });
+  assert.equal(response.body.status, 'rejected');
+  assert.ok(response.body.report.violations.some(item => item.code === 'future_vocabulary' &&
+    item.field === 'questions[0].options[3]'));
+  assert.equal(modelCalls, 3);
+  modelCalls = 0; modelOutput = JSON.stringify({ questions: [null] });
+  response = await post(`lessons/${lessonId}/generate-jlpt`, { taskType: 'goi_bunmyaku', count: 1 });
+  assert.equal(response.body.report.status, 'schema_invalid');
+  assert.equal(modelCalls, 3);
+  modelCalls = 0;
+  response = await post(`lessons/${lessonId}/generate-jlpt`, { taskType: 'goi_bunmyaku',
+    boundaryFingerprint: 'sha256:stale', count: 1 });
+  assert.equal(response.status, 409);
+  assert.equal(response.body.status, 'stale');
+  assert.equal(modelCalls, 0); assert.equal(writes, 0);
+});
+
+test('batch generators reject unknown lesson or mismatched course level before provider', async () => {
+  modelCalls = 0; writes = 0;
+  assert.equal((await post(`lessons/${id('other')}/generate-listening`,
+    { taskType: 'sokuji' })).status, 404);
+  assert.equal((await post(`lessons/${lessonId}/generate-jlpt`,
+    { taskType: 'goi_bunmyaku', level: 'N4' })).status, 409);
+  assert.equal(modelCalls, 0); assert.equal(writes, 0);
+});
+
+test('passage and recognition distractor text are included in boundary checks', async () => {
+  modelCalls = 0; writes = 0;
+  modelOutput = JSON.stringify({ passages: [{ passage: 'みらい は です。', questions: [{
+    question: 'ねこは何ですか。', options: [
+      { text: 'ねこ', isCorrect: true }, { text: 'いぬ', isCorrect: false },
+      { text: 'とり', isCorrect: false }, { text: 'さかな', isCorrect: false }],
+    explanation: 'Kucing.' }] }] });
+  let response = await post(`lessons/${lessonId}/generate-jlpt`, { taskType: 'dokkai_tanbun', count: 1 });
+  assert.equal(response.body.status, 'rejected');
+  assert.ok(response.body.report.violations.some(item => item.code === 'future_vocabulary' &&
+    item.field === 'questions[0].passage'));
+  assert.equal(modelCalls, 3);
+  modelCalls = 0;
+  modelOutput = JSON.stringify({ recognitionDistractors: [
+    'みらい は です。', 'Menunjukkan tempat tujuan.', 'Menunjukkan larangan.' ] });
+  response = await post(`module-grammar/${grammarId}/generate-distractors`, {});
+  assert.equal(response.body.status, 'rejected');
+  assert.ok(response.body.report.violations.some(item => item.code === 'future_vocabulary' &&
+    item.field === 'recognitionDistractors[0]'));
+  assert.equal(modelCalls, 3); assert.equal(writes, 0);
+});
+
+test('valid JLPT passage keeps legacy question aliases and generation report', async () => {
+  modelCalls = 0; writes = 0;
+  modelOutput = JSON.stringify({ passages: [{ passage: 'ねこです。', questions: [{
+    question: 'ねこは何ですか。', options: [
+      { text: 'ねこ', isCorrect: true }, { text: 'いぬ', isCorrect: false },
+      { text: 'とり', isCorrect: false }, { text: 'さかな', isCorrect: false }],
+    explanation: 'Kucing.' }] }] });
+  const response = await post(`lessons/${lessonId}/generate-jlpt`, { taskType: 'dokkai_tanbun', count: 1 });
+  assert.equal(response.status, 200, JSON.stringify(response.body.report));
+  assert.equal(response.body.status, 'ready');
+  assert.equal(response.body.questions.length, 1);
+  assert.equal(response.body.questions[0].passage, 'ねこです。');
+  assert.equal(response.body.questions[0].options.filter(option => option.isCorrect).length, 1);
+  assert.equal(response.body.category, 'reading');
+  assert.equal(response.body.generation.report.status, 'evaluated');
+  assert.equal(modelCalls, 1); assert.equal(writes, 0);
 });

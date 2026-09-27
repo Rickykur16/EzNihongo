@@ -226,3 +226,26 @@ test('quiz option UI adapts the canonical grounded question without trusting mod
   assert.match(html, /isCorrect:\s*index === question\.correctIndex/);
   assert.equal((html.match(/groundedQuestionOptions\(groundedGenerationCandidate\(d, 'Generate opsi'\)\)/g) || []).length, 2);
 });
+
+test('listening, JLPT, and single distractor runners send scope fingerprints and fail closed', () => {
+  const listening = html.slice(html.indexOf('window.listenGenRun ='), html.indexOf('// Render baris opsi'));
+  const jlpt = html.slice(html.indexOf('window.jlptGenRun ='), html.indexOf('function jlptGenRenderPreview'));
+  const distractors = html.slice(html.indexOf('window.grmrGenDistractors ='), html.indexOf('// Isi semua pola sekaligus'));
+  for (const [source, label, scope] of [
+    [listening, 'Generate listening', '_listenGenCtx.lessonId'],
+    [jlpt, 'Generate JLPT', '_jlptGenCtx.lessonId'],
+  ]) {
+    assert.ok(source.includes(`attachGenerationBoundary({ taskType, level, count, topic }, { lessonId: ${scope} })`));
+    assert.match(source, new RegExp(`groundedGenerationCandidate\\(d, '${label}'\\);\\s*if \\(!candidate\\) return;`));
+    assert.match(source, /const generated = groundedQuestionDrafts\(candidate\)/);
+    assert.match(source, /generated\.length === 0[\s\S]*?draft saat ini tetap dipertahankan/);
+    assert.match(source, /finally \{[\s\S]*?btn\.disabled = false/);
+  }
+  assert.match(distractors, /attachGenerationBoundary\(\{ grammarId: ctx\.grammarId \}, \{ grammarId: ctx\.grammarId \}\)/);
+  assert.match(distractors, /groundedGenerationCandidate\(d, 'Generate pengecoh'\);\s*if \(!candidate\)/);
+  assert.match(distractors, /candidate\.recognitionDistractors \|\| candidate\.distractors/);
+  assert.match(distractors, /candidate\.controlledDistractors \|\| candidate\.controlled/);
+  assert.ok(distractors.indexOf('if (!candidate)') < distractors.indexOf("document.getElementById('grmr-dist')"),
+    'rejected/stale results must not touch the existing distractor editors');
+  assert.match(distractors, /notifyGenerationError\('Generate pengecoh', err\)/);
+});

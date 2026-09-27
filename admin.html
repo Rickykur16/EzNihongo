@@ -728,6 +728,24 @@ function groundedQuestionOptions(candidate) {
   };
 }
 
+function groundedQuestionDrafts(candidate) {
+  const source = Array.isArray(candidate) ? candidate
+    : (Array.isArray(candidate?.questions) ? candidate.questions
+      : (candidate?.question ? [candidate.question] : []));
+  return source.map(question => {
+    const draft = { ...question, question: question.question || question.prompt || '' };
+    if (Array.isArray(question.options)) {
+      draft.options = question.options.map((option, index) => typeof option === 'string'
+        ? { text: option, isCorrect: index === question.correctIndex }
+        : { ...option, text: String(option?.text || ''), isCorrect: index === question.correctIndex || !!option?.isCorrect });
+    }
+    if (question.correctAnswer && !draft.options?.some(option => option.isCorrect)) {
+      draft.options = (draft.options || []).map(option => ({ ...option, isCorrect: option.text === question.correctAnswer }));
+    }
+    return draft;
+  });
+}
+
 async function attachGenerationBoundary(body, scope) {
   // Reuse the boundary lookup used for optimistic content saves. The generation
   // endpoint remains authoritative; the fingerprint lets it reject stale work.
@@ -3380,22 +3398,23 @@ window.listenGenRun = async () => {
   const btn = document.getElementById('lg-run');
   if (btn) { btn.disabled = true; btn.textContent = 'Generating… (±30s)'; }
   try {
+    const body = await attachGenerationBoundary({ taskType, level, count, topic }, { lessonId: _listenGenCtx.lessonId });
     const d = await api('/admin/lessons/' + _listenGenCtx.lessonId + '/generate-listening', {
       method: 'POST',
-      body: JSON.stringify({ taskType, level, count, topic }),
+      body: JSON.stringify(body),
     });
-    _listenGenDrafts = Array.isArray(d.questions) ? d.questions : [];
-    _listenGenSection = d.section || null;
+    const candidate = groundedGenerationCandidate(d, 'Generate listening');
+    if (!candidate) return;
+    const generated = groundedQuestionDrafts(candidate);
+    if (generated.length === 0) { notify('Hasil ready tidak berisi soal; draft saat ini tetap dipertahankan.', true); return; }
+    _listenGenDrafts = generated;
+    _listenGenSection = d.section || _listenGenSection;
     _listenGenTaskType = taskType;
     _listenGenLevel = level;
-    if (_listenGenDrafts.length === 0) {
-      notify('AI tidak menghasilkan soal. Coba lagi.', true);
-      if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
-      return;
-    }
     listenGenRenderPreview();
   } catch (err) {
-    notify('Gagal generate: ' + err.message, true);
+    notifyGenerationError('Generate listening', err);
+  } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
   }
 };
@@ -3751,23 +3770,24 @@ window.jlptGenRun = async () => {
   const btn = document.getElementById('jg-run');
   if (btn) { btn.disabled = true; btn.textContent = 'Generating… (±30s)'; }
   try {
+    const body = await attachGenerationBoundary({ taskType, level, count, topic }, { lessonId: _jlptGenCtx.lessonId });
     const d = await api('/admin/lessons/' + _jlptGenCtx.lessonId + '/generate-jlpt', {
       method: 'POST',
-      body: JSON.stringify({ taskType, level, count, topic }),
+      body: JSON.stringify(body),
     });
-    _jlptGenDrafts = Array.isArray(d.questions) ? d.questions : [];
-    _jlptGenSection = d.section || null;
-    _jlptGenCategory = d.category || 'vocabulary';
+    const candidate = groundedGenerationCandidate(d, 'Generate JLPT');
+    if (!candidate) return;
+    const generated = groundedQuestionDrafts(candidate);
+    if (generated.length === 0) { notify('Hasil ready tidak berisi soal; draft saat ini tetap dipertahankan.', true); return; }
+    _jlptGenDrafts = generated;
+    _jlptGenSection = d.section || _jlptGenSection;
+    _jlptGenCategory = d.category || _jlptGenCategory || 'vocabulary';
     _jlptGenTaskType = taskType;
     _jlptGenLevel = level;
-    if (_jlptGenDrafts.length === 0) {
-      notify('AI tidak menghasilkan soal. Coba lagi.', true);
-      if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
-      return;
-    }
     jlptGenRenderPreview();
   } catch (err) {
-    notify('Gagal generate: ' + err.message, true);
+    notifyGenerationError('Generate JLPT', err);
+  } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
   }
 };
@@ -5740,14 +5760,22 @@ window.grmrGenDistractors = async () => {
   if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
   if (status) status.textContent = '';
   try {
-    const d = await api('/admin/module-grammar/' + ctx.grammarId + '/generate-distractors', { method: 'POST' });
+    const body = await attachGenerationBoundary({ grammarId: ctx.grammarId }, { grammarId: ctx.grammarId });
+    const d = await api('/admin/module-grammar/' + ctx.grammarId + '/generate-distractors', { method: 'POST', body: JSON.stringify(body) });
+    const candidate = groundedGenerationCandidate(d, 'Generate pengecoh');
+    if (!candidate) { if (status) status.textContent = `Tidak diterapkan (${d?.status || 'unavailable'})`; return; }
+    const distractors = candidate.recognitionDistractors || candidate.distractors;
+    const controlled = candidate.controlledDistractors || candidate.controlled;
     const ta = document.getElementById('grmr-dist');
-    if (ta && Array.isArray(d.distractors) && d.distractors.length) ta.value = d.distractors.join('\n');
+    if (ta && Array.isArray(distractors) && distractors.length) ta.value = distractors.join('\n');
     const tc = document.getElementById('grmr-ctrl');
-    if (tc && Array.isArray(d.controlled) && d.controlled.length) tc.value = d.controlled.join('\n');
+    if (tc && Array.isArray(controlled) && controlled.length) tc.value = controlled.join('\n');
+    if ((!Array.isArray(distractors) || !distractors.length) && (!Array.isArray(controlled) || !controlled.length)) {
+      notify('Hasil ready tidak berisi pengecoh; isi editor tetap dipertahankan.', true); return;
+    }
     if (status) status.textContent = 'Draft AI — review dulu, lalu Simpan.';
   } catch (err) {
-    notify('Gagal generate pengecoh: ' + err.message, true);
+    notifyGenerationError('Generate pengecoh', err);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '✨ Generate keduanya (AI)'; }
   }

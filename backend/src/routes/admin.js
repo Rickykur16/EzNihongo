@@ -87,17 +87,20 @@ const generationExampleCount = value => Math.max(1, Math.min(5, Math.trunc(Numbe
 
 async function groundedDraft({ scope, contentType, loadSource, instruction, maxTokens,
   body, communicationGoal = '', scenario = '', trustedValidation = {},
-  expectedExampleCount = null, transformCandidate = x => x }) {
+  expectedExampleCount = null, additionalSchemaIssues = null,
+  model = null, system = 'Create one Japanese learning-content draft. Return only one valid JSON object using the requested keys.',
+  transformCandidate = x => x }) {
   return generateGroundedContent({ scope, contentType, loadSource, communicationGoal,
-    scenario, trustedValidation, expectedExampleCount,
+    scenario, trustedValidation, expectedExampleCount, additionalSchemaIssues,
     expectedBoundaryFingerprint: body.boundaryFingerprint || null,
     expectedSourceFingerprint: body.sourceFingerprint || null,
     provider: async ({ prompt, repairFeedback }) => {
       const raw = await callClaude({
-      system: 'Create one Japanese learning-content draft. Return only one valid JSON object using the requested keys.',
+      system,
       userContent: `${instruction}\n\nAuthoritative curriculum context (JSON):\n${prompt}\n\n${repairFeedback
         ? `Repair the previous output. Issues: ${JSON.stringify(repairFeedback)}\n` : ''}Return only JSON.`,
       maxTokens,
+      ...(model ? { model } : {}),
       });
       if (!raw) throw new Error('ai_upstream');
       return raw;
@@ -109,6 +112,40 @@ async function groundedDraft({ scope, contentType, loadSource, instruction, maxT
     },
   });
 }
+
+function legacyQuizQuestionToCanonical(raw, { passage = null, listening = false } = {}) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+  const keys = listening ? ['question', 'audioScript', 'options', 'explanation'] :
+    ['question', 'options', 'explanation'];
+  if (Object.keys(raw).some(key => !keys.includes(key))) return raw;
+  const options = Array.isArray(raw.options) ? raw.options.map(option => option?.text) : raw.options;
+  const correct = Array.isArray(raw.options) ? raw.options.flatMap((option, index) =>
+    option?.isCorrect === true ? [index] : []) : [];
+  const invalidOptionShape = Array.isArray(raw.options) && raw.options.some(option =>
+    !option || typeof option !== 'object' || Array.isArray(option) ||
+    Object.keys(option).some(key => !['text', 'isCorrect'].includes(key)) ||
+    typeof option.text !== 'string' || typeof option.isCorrect !== 'boolean');
+  return { prompt: raw.question, options, correctIndex: invalidOptionShape || correct.length !== 1 ? -1 : correct[0],
+    explanation: raw.explanation,
+    ...(listening ? { audioScript: raw.audioScript } : {}),
+    ...(passage != null ? { passage } : {}) };
+}
+
+function legacyQuizBatchToCanonical(parsed, { listening = false, needsPassage = false } = {}) {
+  if (needsPassage) {
+    if (!Array.isArray(parsed.passages) || Object.keys(parsed).some(key => key !== 'passages')) return parsed;
+    return { questions: parsed.passages.flatMap(group =>
+      group && typeof group === 'object' && !Array.isArray(group) &&
+      Array.isArray(group.questions) && Object.keys(group).every(key => ['passage', 'questions'].includes(key))
+        ? group.questions.map(question => legacyQuizQuestionToCanonical(question, { passage: group.passage }))
+        : [null]) };
+  }
+  if (!Array.isArray(parsed.questions) || Object.keys(parsed).some(key => key !== 'questions')) return parsed;
+  return { questions: parsed.questions.map(question => legacyQuizQuestionToCanonical(question, { listening })) };
+}
+
+const legacyQuizOptions = question => question.options.map((text, index) =>
+  ({ text, isCorrect: index === question.correctIndex }));
 
 function grammarGenerationSignature(row) {
   const literal = String(row.pattern || '').replace(/[〜～~（）()\[\]{}・….,/\s]/gu, '');
@@ -2039,7 +2076,8 @@ Aturan:
 // Muat satu pola LENGKAP dengan contohnya — dibutuhkan controlledSlot().
 async function loadGrammarWithExamples(id, dbQuery = query, locked = false) {
   const g = await dbQuery(
-    `SELECT id, module_id, pattern, meaning, recognition_distractors, controlled_distractors
+    `SELECT id, module_id, lesson_id, pattern, meaning, updated_at,
+       recognition_distractors, controlled_distractors
        FROM module_grammar WHERE id = $1 ${locked ? 'FOR UPDATE' : ''}`,
     [id]
   );
@@ -2056,23 +2094,62 @@ router.post('/module-grammar/:id/generate-distractors', asyncHandler(async (req,
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled' });
   const item = await loadGrammarWithExamples(req.params.id);
   if (!item) return res.status(404).json({ error: 'grammar not found' });
+  if ((req.body?.lessonId && String(req.body.lessonId) !== String(item.lesson_id)) ||
+      (req.body?.moduleId && String(req.body.moduleId) !== String(item.module_id))) {
+    return res.status(409).json({ error: 'grammar_source_mismatch' });
+  }
   if (!(item.meaning || '').trim()) {
     return res.status(400).json({ error: 'no_meaning', detail: 'Isi kolom Arti dulu — pengecoh dibuat berdasarkan fungsi yang benar.' });
   }
-  // Dua tahap sekaligus supaya admin cukup sekali klik per pola.
-  const [step1, step2] = await Promise.all([
-    generateDistractorsFor(item),
-    generateControlledFor(item),
-  ]);
-  if (!step1 && !step2) {
-    return res.status(502).json({ error: 'ai_unusable', detail: 'AI tidak menghasilkan pengecoh yang layak. Coba lagi.' });
+  const siblings = await loadDistractorSiblings(item);
+  const slot = controlledSlot(item);
+  if (slot) {
+    let boundary;
+    try { boundary = await getCurriculumBoundary({ grammarId: item.id }); }
+    catch { return res.status(503).json({ error: 'boundary_unavailable' }); }
+    const slotReport = validateContentAgainstBoundary({ boundary, contentType: 'grammar_distractors',
+      operation: 'generate', fields: [boundaryField('slot.sentence', slot.sentence),
+        boundaryField('slot.answer', slot.answer)] });
+    if (slotReport.status !== 'evaluated' || slotReport.valid !== true) {
+      return groundedResponse(res, { status: 'rejected', candidate: null, report: slotReport,
+        decision: decideBoundaryAction({ mode: boundary.course.mode, operation: 'generate', report: slotReport }),
+        attempts: [], boundaryFingerprint: boundary.boundaryFingerprint, sourceFingerprint: null },
+      { distractors: [], controlled: [], slot: null }, 422);
+    }
   }
-  // TIDAK disimpan di sini — admin review dulu lalu tekan Simpan.
-  res.json({
-    distractors: step1 || [],
-    controlled: step2 ? step2.distractors : [],
-    slot: step2 ? { sentence: step2.slot.sentence, answer: step2.slot.answer } : null,
-  });
+  const source = async () => {
+    const current = await loadGrammarWithExamples(item.id);
+    if (!current) throw new Error('grammar_changed');
+    return { grammar: current, siblings: await loadDistractorSiblings(current),
+      slot: controlledSlot(current) };
+  };
+  const result = await groundedDraft({ scope: { grammarId: item.id },
+    contentType: 'grammar_distractors', loadSource: source, body: req.body || {},
+    maxTokens: 950, model: ANTHROPIC_GEN_MODEL,
+    instruction: `Create exactly three Indonesian recognition distractors for persisted grammar ${JSON.stringify(item.pattern)}. Correct meaning: ${JSON.stringify(item.meaning)}. Avoid meanings of sibling grammar: ${JSON.stringify(siblings.map(row => ({ pattern: row.pattern, meaning: row.meaning })))}. ${slot ? `Also create exactly three Japanese controlled distractors for sentence ${JSON.stringify(slot.sentence)} and correct blank answer ${JSON.stringify(slot.answer)}.` : 'There is no controlled slot; omit controlledDistractors.'} Return only JSON {"recognitionDistractors":["...","...","..."]${slot ? ',"controlledDistractors":["...","...","..."]' : ''}}.`,
+    additionalSchemaIssues: candidate => {
+      const issues = [];
+      if (candidate.slot != null || candidate.recognitionDistractors?.length !== 3 ||
+          (slot ? candidate.controlledDistractors?.length !== 3 : candidate.controlledDistractors != null)) {
+        issues.push({ code: 'distractor_task_shape_invalid' });
+      }
+      const correct = item.meaning.trim().toLocaleLowerCase('id');
+      const siblingMeanings = new Set(siblings.map(row => String(row.meaning || '').trim().toLocaleLowerCase('id')));
+      if (Array.isArray(candidate.recognitionDistractors) && candidate.recognitionDistractors.some(value =>
+        typeof value === 'string' && (value.trim().toLocaleLowerCase('id') === correct ||
+          siblingMeanings.has(value.trim().toLocaleLowerCase('id')) || value.includes(item.pattern)))) {
+        issues.push({ code: 'recognition_distractor_conflict' });
+      }
+      if (slot && Array.isArray(candidate.controlledDistractors) && candidate.controlledDistractors.some(value =>
+        typeof value !== 'string' || value === slot.answer || !slotShaped(slot.answer, value))) {
+        issues.push({ code: 'controlled_distractor_shape_invalid' });
+      }
+      return issues;
+    } });
+  return groundedResponse(res, result, { distractors: result.status === 'ready'
+    ? result.candidate.recognitionDistractors : [],
+  controlled: result.status === 'ready' ? result.candidate.controlledDistractors || [] : [],
+  slot: result.status === 'ready' && slot ? { sentence: slot.sentence, answer: slot.answer } : null });
 }));
 
 // Generate + SIMPAN untuk semua pola satu kursus yang pengecohnya masih kosong.
@@ -3027,15 +3104,21 @@ router.post('/lessons/:lessonId/generate-listening', quizGenLimiter, asyncHandle
   const taskType = String(req.body?.taskType || '');
   const task = JLPT_LISTENING_TASKS[taskType];
   if (!task) return res.status(400).json({ error: 'bad_task', detail: 'taskType harus kadai/point/hatsuwa/sokuji.' });
-  const level = JLPT_LISTENING_LEVELS[req.body?.level] ? String(req.body.level) : 'N5';
-  const count = Math.min(8, Math.max(1, Number(req.body?.count) || 3));
+  const count = Math.min(8, Math.max(1, Math.trunc(Number(req.body?.count) || 3)));
   const topic = String(req.body?.topic || '').slice(0, 300).trim();
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
 
-  const lessonRes = await query(`SELECT id, module_id, type FROM lessons WHERE id = $1`, [lessonId]);
+  const lessonRes = await query(`SELECT l.id,l.module_id,l.type,c.level
+    FROM lessons l JOIN modules m ON m.id=l.module_id JOIN courses c ON c.id=m.course_id
+    WHERE l.id=$1`, [lessonId]);
   if (lessonRes.rows.length === 0) return res.status(404).json({ error: 'lesson not found' });
   const lesson = lessonRes.rows[0];
   if (lesson.type !== 'quiz') return res.status(400).json({ error: 'lesson_not_quiz', detail: 'Pelajaran ini bukan tipe quiz' });
+  const level = String(lesson.level || '').toUpperCase();
+  if (!JLPT_LISTENING_LEVELS[level]) return res.status(422).json({ error: 'unsupported_course_level' });
+  if (req.body?.level && String(req.body.level).toUpperCase() !== level) {
+    return res.status(409).json({ error: 'course_level_mismatch' });
+  }
 
   // Grounding vocab + grammar modul — query sama dgn generate-quiz.
   let vocabRes = await query(
@@ -3094,52 +3177,48 @@ router.post('/lessons/:lessonId/generate-listening', quizGenLimiter, asyncHandle
       : '',
   });
 
-  const text = await callClaude({ system: QUIZ_GEN_SYSTEM, userContent, maxTokens: 4096, model: ANTHROPIC_GEN_MODEL });
-  if (!text) return res.status(502).json({ error: 'ai_upstream' });
-  const parsed = _extractJsonObject(text);
-  if (!parsed || !Array.isArray(parsed.questions)) return res.status(502).json({ error: 'ai_parse' });
-
-  const clean = [];
-  for (const q of parsed.questions) {
-    if (!q || typeof q !== 'object') continue;
-    // "question" = teks yang TAMPIL — kalau model kebablasan naruh dialog
-    // multi-baris di sini, ambil baris pertama saja (jangan bocorin script)
-    // dan buang prefix speaker.
-    const question = String(q.question || '').split('\n')[0]
-      .replace(/^[A-Za-z]{1,3}:\s*/, '').trim().slice(0, 1000);
-    // Batas 1400 < MAX_TEXT_LEN tts publik (1500) supaya audio pasti bisa
-    // di-generate untuk siswa.
-    const audioScript = String(q.audioScript || '').trim().slice(0, 1400);
-    if (!question || !audioScript) continue;
-    // Script harus dialog valid yang dikenali parser TTS (prefix speaker).
-    const turns = parseDialog(audioScript);
-    if (!turns) continue;
-    // Struktur per tipe mondai: dialog 1/2 wajib multi-speaker (ada cewe A
-    // DAN cowo B — semua-narator = bug satu suara); mondai 3/4 wajib pendek
-    // (opsi tidak ikut dibacakan).
-    const speakers = turns.map((t) => String(t.speaker).toUpperCase());
-    if (taskType === 'kadai' || taskType === 'point') {
-      const hasFemale = speakers.some((s) => /^(A|W|F|女)/.test(s));
-      const hasMale = speakers.some((s) => /^(B|M|男)/.test(s));
-      if (turns.length < 3 || !hasFemale || !hasMale) continue;
-    } else if (turns.length > 2) {
-      continue;
-    }
-    let options = Array.isArray(q.options)
-      ? q.options.map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect })).filter((o) => o.text)
-      : [];
-    if (options.length < 2) continue;
-    options = options.slice(0, task.optionCount);
-    let firstCorrect = options.findIndex((o) => o.isCorrect);
-    if (firstCorrect === -1) firstCorrect = 0;
-    options = options.map((o, i) => ({ text: o.text, isCorrect: i === firstCorrect }));
-    const explanation = String(q.explanation || '').trim().slice(0, 1000);
-    clean.push({ question, audioScript, options, explanation });
-    if (clean.length >= count) break;
-  }
-  if (clean.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan soal valid. Coba lagi.' });
-
-  res.json({
+  const loadSource = async () => {
+    const currentLesson = await query(`SELECT l.id,l.module_id,l.type,c.level
+      FROM lessons l JOIN modules m ON m.id=l.module_id JOIN courses c ON c.id=m.course_id
+      WHERE l.id=$1`, [lessonId]);
+    if (!currentLesson.rows.length || currentLesson.rows[0].type !== 'quiz') throw new Error('lesson_changed');
+    const currentQuestions = await query(`SELECT audio_script,question FROM quiz_questions
+      WHERE lesson_id=$1 AND question_category='listening'
+      ORDER BY created_at DESC LIMIT 30`, [lessonId]);
+    return { lesson: currentLesson.rows[0], existingQuestions: currentQuestions.rows,
+      promptTemplate: await _loadListeningGenPrompt() };
+  };
+  const result = await groundedDraft({ scope: { lessonId }, body: req.body || {},
+    contentType: 'listening_batch', loadSource, instruction: userContent,
+    system: QUIZ_GEN_SYSTEM, model: ANTHROPIC_GEN_MODEL, maxTokens: 4096,
+    transformCandidate: parsed => legacyQuizBatchToCanonical(parsed, { listening: true }),
+    additionalSchemaIssues: candidate => {
+      const issues = [];
+      if (!Array.isArray(candidate.questions) || candidate.questions.length !== count) {
+        issues.push({ code: 'listening_question_count_mismatch', expected: count });
+      }
+      for (const [index, question] of (Array.isArray(candidate.questions) ? candidate.questions : []).entries()) {
+        if (!question || typeof question.prompt !== 'string' || question.prompt.includes('\n') ||
+            /^[A-Za-z]{1,3}:\s*/u.test(question.prompt) || question.prompt.length > 1000 ||
+            !Array.isArray(question.options) || question.options.length !== task.optionCount ||
+            question.options.some(option => typeof option !== 'string' || option.length > 300)) {
+          issues.push({ code: 'listening_question_format_invalid', questionIndex: index });
+        }
+        const turns = typeof question?.audioScript === 'string' ? parseDialog(question.audioScript) : null;
+        if (!turns || (taskType === 'kadai' || taskType === 'point'
+          ? turns.length < 3 || !turns.some(turn => /^(A|W|F|女)/iu.test(String(turn.speaker))) ||
+            !turns.some(turn => /^(B|M|男)/iu.test(String(turn.speaker)))
+          : turns.length > 2)) {
+          issues.push({ code: 'listening_audio_format_invalid', questionIndex: index });
+        }
+      }
+      return issues;
+    } });
+  const clean = result.status === 'ready' ? result.candidate.questions.map(question => ({
+    question: question.prompt, audioScript: question.audioScript,
+    options: legacyQuizOptions(question), explanation: question.explanation || '',
+  })) : [];
+  return groundedResponse(res, result, {
     questions: clean,
     section: { number: task.number, label: task.label, instruction: task.instruction },
     vocabPool: vocabRes.rows.length,
@@ -3428,17 +3507,24 @@ router.post('/lessons/:lessonId/generate-jlpt', quizGenLimiter, asyncHandler(asy
   const taskType = String(req.body?.taskType || '');
   const task = JLPT_GEN_TASKS[taskType];
   if (!task) return res.status(400).json({ error: 'bad_task', detail: 'taskType tidak dikenal.' });
-  const level = JLPT_GEN_LEVELS[req.body?.level] ? String(req.body.level) : 'N5';
   // count = jumlah soal (non-passage) atau jumlah bacaan (passage task);
   // bunpou_bunshou = 1 wacana dengan `count` blank.
-  const count = Math.min(8, Math.max(1, Number(req.body?.count) || 3));
+  const count = Math.min(taskType === 'bunpou_bunshou' ? 5 : 8,
+    Math.max(1, Math.trunc(Number(req.body?.count) || 3)));
   const topic = String(req.body?.topic || '').slice(0, 300).trim();
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
 
-  const lessonRes = await query(`SELECT id, module_id, type FROM lessons WHERE id = $1`, [lessonId]);
+  const lessonRes = await query(`SELECT l.id,l.module_id,l.type,c.level
+    FROM lessons l JOIN modules m ON m.id=l.module_id JOIN courses c ON c.id=m.course_id
+    WHERE l.id=$1`, [lessonId]);
   if (lessonRes.rows.length === 0) return res.status(404).json({ error: 'lesson not found' });
   const lesson = lessonRes.rows[0];
   if (lesson.type !== 'quiz') return res.status(400).json({ error: 'lesson_not_quiz', detail: 'Pelajaran ini bukan tipe quiz' });
+  const level = String(lesson.level || '').toUpperCase();
+  if (!JLPT_GEN_LEVELS[level]) return res.status(422).json({ error: 'unsupported_course_level' });
+  if (req.body?.level && String(req.body.level).toUpperCase() !== level) {
+    return res.status(409).json({ error: 'course_level_mismatch' });
+  }
 
   // Grounding vocab + grammar modul — query sama dgn generator lain.
   let vocabRes = await query(
@@ -3502,69 +3588,70 @@ router.post('/lessons/:lessonId/generate-jlpt', quizGenLimiter, asyncHandler(asy
       : '',
   });
 
-  const text = await callClaude({
-    system: QUIZ_GEN_SYSTEM,
-    userContent,
+  const loadSource = async () => {
+    const currentLesson = await query(`SELECT l.id,l.module_id,l.type,c.level
+      FROM lessons l JOIN modules m ON m.id=l.module_id JOIN courses c ON c.id=m.course_id
+      WHERE l.id=$1`, [lessonId]);
+    if (!currentLesson.rows.length || currentLesson.rows[0].type !== 'quiz') throw new Error('lesson_changed');
+    const currentQuestions = await query(`SELECT question,passage FROM quiz_questions
+      WHERE lesson_id=$1 AND question_category=$2
+      ORDER BY created_at DESC LIMIT 30`, [lessonId, task.category]);
+    return { lesson: currentLesson.rows[0], existingQuestions: currentQuestions.rows,
+      promptTemplate: await _loadJlptGenPrompt() };
+  };
+  const result = await groundedDraft({ scope: { lessonId }, body: req.body || {},
+    contentType: 'jlpt_batch', loadSource, instruction: userContent,
+    system: QUIZ_GEN_SYSTEM, model: ANTHROPIC_GEN_MODEL,
     maxTokens: task.needsPassage ? 6000 : 4096,
-    model: ANTHROPIC_GEN_MODEL,
-  });
-  if (!text) return res.status(502).json({ error: 'ai_upstream' });
-  const parsed = _extractJsonObject(text);
-  if (!parsed) return res.status(502).json({ error: 'ai_parse' });
-
-  const clean = [];
-  if (task.needsPassage) {
-    const passages = Array.isArray(parsed.passages) ? parsed.passages : [];
-    const [minQ, maxQ] = taskType === 'bunpou_bunshou' ? [1, Math.min(count, 5)] : task.qPerPassage;
-    const passageCount = taskType === 'bunpou_bunshou' ? 1 : count;
-    for (const p of passages) {
-      if (!p || typeof p !== 'object') continue;
-      const passage = String(p.passage || '').trim().slice(0, Math.min(4000, JLPT_PASSAGE_MAXLEN[taskType] || 4000));
-      if (!passage) continue;
-      if (taskType === 'bunpou_bunshou' && !passage.includes('①')) continue;
-      const group = [];
-      for (const q of (Array.isArray(p.questions) ? p.questions : [])) {
-        if (!q || typeof q !== 'object') continue;
-        const question = _validateJlptQuestion(taskType, q.question);
-        if (!question) continue;
-        const options = _normalizeJlptOptions(q.options, task.optionCount, taskType, question);
-        if (!options) continue;
-        group.push({
-          question, passage, options,
-          explanation: String(q.explanation || '').trim().slice(0, 1000),
-        });
-        if (group.length >= maxQ) break;
+    transformCandidate: parsed => legacyQuizBatchToCanonical(parsed, { needsPassage: task.needsPassage }),
+    additionalSchemaIssues: candidate => {
+      const issues = [];
+      const questions = Array.isArray(candidate.questions) ? candidate.questions : [];
+      if (!questions.length || questions.length > 40) issues.push({ code: 'jlpt_question_count_invalid' });
+      const groups = new Map();
+      for (const [index, question] of questions.entries()) {
+        const prompt = question?.prompt;
+        const options = Array.isArray(question?.options) ? legacyQuizOptions(question) : [];
+        if (typeof prompt !== 'string' || _validateJlptQuestion(taskType, prompt) !== prompt ||
+            !Array.isArray(question?.options) || question.options.length !== task.optionCount ||
+            question.options.some(option => typeof option !== 'string' || option.length > 300) ||
+            !_normalizeJlptOptions(options, task.optionCount, taskType, prompt)) {
+          issues.push({ code: 'jlpt_task_format_invalid', questionIndex: index });
+        }
+        if (taskType === 'bunpou_kumitate' &&
+            _validateKumitate(String(prompt || ''), options, String(question?.explanation || '')) == null) {
+          issues.push({ code: 'jlpt_kumitate_invalid', questionIndex: index });
+        }
+        if (task.needsPassage) {
+          const passage = question?.passage;
+          if (typeof passage !== 'string' || !passage.trim() ||
+              passage.length > (JLPT_PASSAGE_MAXLEN[taskType] || 4000) ||
+              (taskType === 'bunpou_bunshou' && !passage.includes('①'))) {
+            issues.push({ code: 'jlpt_passage_invalid', questionIndex: index });
+          } else groups.set(passage, (groups.get(passage) || 0) + 1);
+        } else if (question?.passage != null) {
+          issues.push({ code: 'unexpected_jlpt_passage', questionIndex: index });
+        }
       }
-      // Bacaan dgn soal kurang dari minimum = buang seluruh bacaan (mis.
-      // chuubun cuma 1 soal valid → bukan format mondai-nya).
-      if (group.length < minQ) continue;
-      clean.push(...group);
-      if (clean.filter((x, i, arr) => arr.findIndex((y) => y.passage === x.passage) === i).length >= passageCount) break;
+      if (task.needsPassage) {
+        const expectedGroups = taskType === 'bunpou_bunshou' ? 1 : count;
+        const [minQ, maxQ] = taskType === 'bunpou_bunshou' ? [count, count] : task.qPerPassage;
+        if (groups.size !== expectedGroups || [...groups.values()].some(n => n < minQ || n > maxQ)) {
+          issues.push({ code: 'jlpt_passage_question_count_mismatch' });
+        }
+      } else if (questions.length !== count) issues.push({ code: 'jlpt_question_count_mismatch', expected: count });
+      return issues;
+    } });
+  const clean = result.status === 'ready' ? result.candidate.questions.map(question => {
+    let options = legacyQuizOptions(question);
+    if (taskType === 'bunpou_kumitate') {
+      const star = _validateKumitate(question.prompt, options, question.explanation || '');
+      options = options.map((option, index) => ({ ...option, isCorrect: index === star }));
     }
-  } else {
-    for (const q of (Array.isArray(parsed.questions) ? parsed.questions : [])) {
-      if (!q || typeof q !== 'object') continue;
-      const question = _validateJlptQuestion(taskType, q.question);
-      if (!question) continue;
-      let options = _normalizeJlptOptions(q.options, task.optionCount, taskType, question);
-      if (!options) continue;
-      const explanation = String(q.explanation || '').trim().slice(0, 1000);
-      // Kumitate: verifikasi permutasi (lihat _validateKumitate) — menolak
-      // puzzle palsu (opsi kata-alternatif, opsi acakan chunk yang sama,
-      // potongan tanpa partikel penyambung) DAN meng-override kunci jawaban
-      // dengan potongan yang beneran jatuh di slot ★.
-      if (taskType === 'bunpou_kumitate') {
-        const starOptIdx = _validateKumitate(question, options, explanation);
-        if (starOptIdx == null) continue;
-        options = options.map((o, i) => ({ text: o.text, isCorrect: i === starOptIdx }));
-      }
-      clean.push({ question, passage: '', options, explanation });
-      if (clean.length >= count) break;
-    }
-  }
-  if (clean.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan soal valid. Coba lagi.' });
-
-  res.json({
+    return { question: question.prompt, passage: question.passage || '',
+      options, explanation: question.explanation || '' };
+  }) : [];
+  return groundedResponse(res, result, {
     questions: clean,
     section: { number: task.number, label: task.label, instruction: task.instruction },
     category: task.category,
