@@ -117,21 +117,31 @@ async function lessonReadiness(client, lesson, { resolveBoundary = getCurriculum
     WHERE s.id=$1 ORDER BY t.id`, [lesson.id])).rows;
   if (task.length !== 1 || !task[0].id || task[0].source_course_id !== lesson.course_id ||
       task[0].task_course_id !== lesson.course_id) return { lessonId: lesson.id,
-    ready: false, issues: [issue('flow_task_mapping_invalid')] };
+    ready: false, issues: [{ code: 'flow_task_mapping_invalid',
+      taskIds: task.map(row => row.id).filter(Boolean),
+      sourceCourseId: task[0]?.source_course_id || null,
+      taskCourseIds: [...new Set(task.map(row => row.task_course_id).filter(Boolean))].sort() }] };
   const dbQuery = client.query.bind(client);
   const [items, pool] = await Promise.all([
     loadTaskConcepts(task[0].id, dbQuery), loadModulePool(task[0].id, dbQuery),
   ]);
   if (!items.length) issues.push(issue('flow_task_empty'));
-  if (!companionIsCurrent(task[0].bunpou_flow_published, contentRevisionId(items, pool))) {
-    issues.push(issue('flow_companion_not_current'));
+  const currentFingerprint = contentRevisionId(items, pool);
+  if (!companionIsCurrent(task[0].bunpou_flow_published, currentFingerprint)) {
+    issues.push({ code: 'flow_companion_not_current',
+      publishedFingerprint: task[0].bunpou_flow_published?.sourceFingerprint || null,
+      currentFingerprint });
   }
   let boundary = null;
   try {
     boundary = await resolveBoundary({ lessonId: lesson.id }, { dbQuery });
     if (boundary.course?.id !== lesson.course_id ||
         boundary.currentModule?.id !== lesson.module_id ||
-        boundary.integrityIssues?.length) issues.push(issue('flow_boundary_invalid'));
+        boundary.integrityIssues?.length) issues.push({ code: 'flow_boundary_invalid',
+      boundaryStatus: boundary.status || null,
+      boundaryCourseId: boundary.course?.id || null,
+      boundaryModuleId: boundary.currentModule?.id || null,
+      integrityIssues: boundary.integrityIssues || [] });
   } catch { issues.push(issue('flow_boundary_unavailable')); }
   if (boundary && !boundary.integrityIssues?.length) {
     const coreItems = items.map(({ recognitionDistractors, controlledDistractors,
@@ -163,17 +173,18 @@ async function lessonReadiness(client, lesson, { resolveBoundary = getCurriculum
   const visible = (await client.query(`SELECT id FROM module_grammar WHERE lesson_id=$1
     AND (btrim(COALESCE(example_dialog,''))<>'' OR dialog_scene IS NOT NULL)`, [lesson.id])).rows;
   const visibleIds = visible.map(row => row.id);
-  for (const grammarId of visibleIds) if (!taskGrammarIds.includes(grammarId)) {
-    issues.push({ code: 'flow_task_dialogue_coverage_incomplete', grammarId });
-  }
   const grammarIds = [...new Set([...taskGrammarIds, ...visibleIds])];
-  const grammars = (await client.query(`SELECT id,module_id,lesson_id,example_dialog,
+  const grammars = (await client.query(`SELECT id,module_id,lesson_id,pattern,example_dialog,
       example_dialog_id,communication_goal,dialog_scene
     FROM module_grammar WHERE id=ANY($1::uuid[])`, [grammarIds])).rows;
   const questions = (await client.query(`SELECT * FROM grammar_dialog_questions
     WHERE grammar_id=ANY($1::uuid[]) AND state='active' ORDER BY grammar_id,kind,sort_order`,
   [grammarIds])).rows;
   const byGrammar = new Map(grammars.map(row => [row.id, row]));
+  for (const grammarId of visibleIds) if (!taskGrammarIds.includes(grammarId)) {
+    issues.push({ code: 'flow_task_dialogue_coverage_incomplete', grammarId,
+      pattern: byGrammar.get(grammarId)?.pattern || null });
+  }
   for (const grammarId of grammarIds) {
     const grammar = byGrammar.get(grammarId);
     if (!grammar || grammar.module_id !== lesson.module_id ||
@@ -185,7 +196,9 @@ async function lessonReadiness(client, lesson, { resolveBoundary = getCurriculum
     const comp = rows.filter(row => row.kind === 'comprehension');
     const transfer = rows.filter(row => row.kind === 'transfer');
     if (comp.length < 1 || comp.length > 2 || transfer.length !== 1) {
-      issues.push({ code: 'flow_question_count_invalid', grammarId }); continue;
+      issues.push({ code: 'flow_question_count_invalid', grammarId,
+        pattern: grammar?.pattern || null, comprehensionCount: comp.length,
+        transferCount: transfer.length }); continue;
     }
     const fingerprint = dialogueFingerprint(grammar);
     if (boundary && !boundary.integrityIssues?.length) {
