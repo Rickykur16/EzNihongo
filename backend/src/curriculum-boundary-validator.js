@@ -3,7 +3,7 @@ import { extractKanjiCharacters } from './kanji-compounds.js';
 export const CURRICULUM_VALIDATOR_VERSION = 'v1';
 const OPERATIONS = new Set(['audit', 'generate', 'live_write', 'publish']);
 const CONTENT_TYPES = new Set([
-  'grammar_dialog', 'grammar_example', 'vocabulary_example', 'dialogue_comprehension',
+  'grammar_dialog', 'grammar_example', 'vocabulary_example', 'dialogue_translation', 'dialogue_comprehension',
   'dialogue_transfer', 'dialogue_question', 'quiz_question', 'quiz', 'assessment',
   'listening', 'reading', 'listening_question', 'reading_question', 'shared_passage',
   'grammar_distractors', 'quiz_options', 'distractors',

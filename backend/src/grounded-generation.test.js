@@ -48,6 +48,26 @@ test('three invalid model outputs stop at two repairs and remain rejected', asyn
   assert.ok(future.report.violations.some(item => item.code === 'future_kanji'));
 });
 
+test('example batches validate every item and expose canonical indexed fields', async () => {
+  const candidate = { examples: [{ japanese: 'こんにちは。', indonesian: 'Halo.' },
+    { japanese: 'こんばんは。', indonesian: 'Selamat malam.' }] };
+  assert.deepEqual(groundedCandidateFields(candidate, 'grammar_example').map(field => field.path),
+    ['examples[0].japanese', 'examples[0].indonesian',
+      'examples[1].japanese', 'examples[1].indonesian']);
+  const ready = await generateGroundedContent({ scope: {}, contentType: 'grammar_example',
+    resolveBoundary: async () => boundary(), provider: async () => candidate });
+  assert.equal(ready.status, 'ready');
+  const malformed = await generateGroundedContent({ scope: {}, contentType: 'grammar_example',
+    resolveBoundary: async () => boundary(), provider: async () => ({ examples: [candidate.examples[0], null] }) });
+  assert.equal(malformed.status, 'rejected');
+  assert.equal(malformed.report.status, 'schema_invalid');
+  const extra = await generateGroundedContent({ scope: {}, contentType: 'grammar_example',
+    resolveBoundary: async () => boundary(), provider: async () =>
+      ({ examples: [{ japanese: 'こんにちは。', invented: '学校' }] }) });
+  assert.equal(extra.status, 'rejected');
+  assert.ok(extra.report.violations.some(item => item.code === 'invalid_example_schema'));
+});
+
 test('stale preview and changed boundary after model call never return ready', async () => {
   let called = 0;
   const initial = await generateGroundedContent({ scope: {}, contentType: 'vocabulary_example',
@@ -171,4 +191,10 @@ test('grammar generation requires observed server-owned target, not a linked or 
     provider: async () => ({ japanese: 'せんせいです。' }) });
   assert.equal(observed.status, 'ready');
   assert.ok(observed.report.usage.targetGrammar.some(item => item.key === 'g1' && item.field));
+  const highlightOnly = await generateGroundedContent({ scope: {}, contentType: 'grammar_example',
+    resolveBoundary: async () => targetBoundary,
+    trustedValidation: { grammarSignatures: [{ grammarId: 'g1', version: 'v1', regex: /です/u }] },
+    provider: async () => ({ japanese: 'こんにちは。', highlight: 'です' }) });
+  assert.equal(highlightOnly.status, 'rejected');
+  assert.ok(highlightOnly.report.violations.some(item => item.code === 'target_grammar_not_demonstrated'));
 });

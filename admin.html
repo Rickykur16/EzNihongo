@@ -698,6 +698,48 @@ function notifyBoundarySaveError(error) {
   notify(`${lead} ${report || error?.message || 'Coba lagi.'} Isi editor tetap tersedia; periksa field yang ditandai lalu simpan ulang.`, true);
 }
 
+function groundedGenerationCandidate(result, label) {
+  const status = String(result?.status || '').toLowerCase();
+  if (status !== 'ready') {
+    const report = boundaryReportMessage(result);
+    const reason = status || 'status tidak tersedia';
+    notify(`${label}: ${reason}; hasil tidak diterapkan.${report ? ` ${report}` : ''}`, true);
+    return null;
+  }
+  const report = boundaryReportMessage(result);
+  if (report) notifyLearningWarnings(result);
+  else notify(`${label}: ready — hasil siap ditinjau.`, false, true);
+  if (result.candidate == null) {
+    notify(`${label}: status ready tetapi kandidat tidak tersedia; editor tidak diubah.`, true);
+    return null;
+  }
+  return result.candidate;
+}
+
+function groundedQuestionOptions(candidate) {
+  if (!candidate?.question || !Array.isArray(candidate.question.options)) return candidate;
+  const question = candidate.question;
+  return {
+    options: question.options.map((text, index) => ({
+      text: String(text || ''),
+      isCorrect: index === question.correctIndex,
+    })),
+    explanation: question.explanation || '',
+  };
+}
+
+async function attachGenerationBoundary(body, scope) {
+  // Reuse the boundary lookup used for optimistic content saves. The generation
+  // endpoint remains authoritative; the fingerprint lets it reject stale work.
+  return attachBoundarySaveMetadata(body, scope);
+}
+
+function notifyGenerationError(label, error) {
+  const status = error?.status ? `HTTP ${error.status}: ` : '';
+  const report = boundaryReportMessage(error?.body);
+  notify(`${label} gagal. ${status}${error?.body?.detail || error?.body?.error || error?.message || 'Terjadi kesalahan.'}${report ? ` ${report}` : ''} Isi editor tetap tersedia.`, true);
+}
+
 function updateSavedRowRevision(row, savedRecord) {
   const revision = savedRecord?.updated_at || savedRecord?.revision;
   if (row?.dataset && revision != null && revision !== '') row.dataset.revision = String(revision);
@@ -3452,25 +3494,28 @@ async function genDraftOptions({ prefix, i, drafts, lessonId, category, passage,
   if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
   if (status) status.textContent = 'Generating… (~5s)';
   try {
+    const body = await attachGenerationBoundary({ lessonId, question, questionCategory: category, taskType: taskType || '', level: level || '', passage: passage || '', audioScript: audioScript || '' }, { lessonId });
     const d = await api('/admin/generate-question-options', {
       method: 'POST',
-      body: JSON.stringify({ lessonId, question, questionCategory: category, taskType: taskType || '', level: level || '', passage: passage || '', audioScript: audioScript || '' }),
+      body: JSON.stringify(body),
     });
-    const opts = Array.isArray(d.options) ? d.options : [];
+    const candidate = groundedQuestionOptions(groundedGenerationCandidate(d, 'Generate opsi'));
+    if (!candidate) { if (status) status.textContent = `Tidak diterapkan (${d?.status || 'unavailable'})`; return; }
+    const opts = Array.isArray(candidate.options) ? candidate.options : [];
     if (opts.length < 2) { notify('AI tidak menghasilkan opsi. Coba lagi.', true); if (status) status.textContent = ''; return; }
     drafts[i].options = opts.map((o) => ({ text: String(o.text || ''), isCorrect: !!o.isCorrect }));
     const cont = document.getElementById(`${prefix}_opts_${i}`);
     if (cont) cont.innerHTML = genOptionRows(prefix, i, drafts[i].options);
-    if (typeof d.explanation === 'string' && d.explanation.trim()) {
-      drafts[i].explanation = d.explanation;
+    if (typeof candidate.explanation === 'string' && candidate.explanation.trim()) {
+      drafts[i].explanation = candidate.explanation;
       const expEl = document.getElementById(`${prefix}_exp_${i}`);
-      if (expEl) expEl.value = d.explanation;
+      if (expEl) expEl.value = candidate.explanation;
     }
     if (status) status.textContent = `OK (${drafts[i].options.length} opsi)`;
     notify('Opsi + penjelasan dibuat AI — review & edit seperlunya');
   } catch (err) {
     if (status) status.textContent = `Error: ${err.message}`;
-    notify('Gagal generate opsi: ' + err.message, true);
+    notifyGenerationError('Generate opsi', err);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '✨ Generate opsi + penjelasan (AI)'; }
   }
@@ -4452,27 +4497,30 @@ window.quizGenOptions = async () => {
   const btn = document.getElementById('qgo-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
   try {
+    const body = await attachGenerationBoundary({
+      lessonId: ctx.lessonId,
+      question,
+      questionCategory: ctx.category,
+      passage: ctx.passage || '',
+      audioScript,
+    }, { lessonId: ctx.lessonId });
     const d = await api('/admin/generate-question-options', {
       method: 'POST',
-      body: JSON.stringify({
-        lessonId: ctx.lessonId,
-        question,
-        questionCategory: ctx.category,
-        passage: ctx.passage || '',
-        audioScript,
-      }),
+      body: JSON.stringify(body),
     });
-    const opts = Array.isArray(d.options) ? d.options : [];
+    const candidate = groundedQuestionOptions(groundedGenerationCandidate(d, 'Generate opsi'));
+    if (!candidate) return;
+    const opts = Array.isArray(candidate.options) ? candidate.options : [];
     if (opts.length < 2) { notify('AI tidak menghasilkan opsi. Coba lagi.', true); return; }
     const list = document.getElementById('options-list');
     list.innerHTML = '';
     opts.forEach((o, i) => list.appendChild(el(optionRowHtml({ option_text: o.text, is_correct: !!o.isCorrect }, i))));
-    if (d.explanation && form.explanation && !form.explanation.value.trim()) {
-      form.explanation.value = d.explanation;
+    if (candidate.explanation && form.explanation && !form.explanation.value.trim()) {
+      form.explanation.value = candidate.explanation;
     }
     notify('Opsi dibuat AI — review & edit seperlunya');
   } catch (err) {
-    notify('Gagal generate opsi: ' + err.message, true);
+    notifyGenerationError('Generate opsi', err);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '✨ Generate opsi (AI)'; }
   }
@@ -5048,15 +5096,22 @@ window.grmrManageDialog = async (btn) => {
 // ✨ Dialog yang sudah dihapus dari tabel.
 window.admDialogGenerate = async (btn) => {
   const tr = window.__dialogTr;
+  const grammarId = tr?.dataset?.id || tr?.getAttribute?.('data-id');
   const pattern = (tr?.querySelector('input[name="pattern"]')?.value || '').trim();
   const meaning = (tr?.querySelector('input[name="meaning"]')?.value || '').trim();
+  if (!grammarId) { notify('ID pola grammar tidak tersedia; dialog tidak dibuat.', true); return; }
   if (!pattern) { notify('Isi Pola dulu (kolom di baris tabel)', true); return; }
   if ((window.__dialogRows || []).some((r) => r.jp.trim()) &&
       !confirm('Ini akan MENIMPA semua giliran yang sudah ada di sini. Lanjut?')) return;
   const orig = btn.textContent; btn.disabled = true; btn.textContent = '…';
   try {
-    const d = await api('/admin/generate-grammar-dialog', { method: 'POST', body: JSON.stringify({ pattern, meaning }) });
-    const dlg = (d.dialog || '').trim();
+    const body = await attachGenerationBoundary({ grammarId, pattern, meaning }, { grammarId });
+    const d = await api('/admin/generate-grammar-dialog', { method: 'POST', body: JSON.stringify(body) });
+    const candidate = groundedGenerationCandidate(d, 'Generate dialog');
+    if (!candidate) return;
+    const dialog = candidate.dialogue ?? candidate.dialog ?? candidate.exampleDialog;
+    const dlg = (typeof dialog === 'string' ? dialog : Array.isArray(dialog?.turns)
+      ? dialog.turns.map(turn => `${turn.speaker || 'A'}: ${turn.text || ''}`).join('\n') : '').trim();
     if (!dlg) { notify('AI tidak menghasilkan dialog', true); return; }
     window.__dialogRows = admParseDialogPair(dlg, '');
     if (window.__dialogScene) {
@@ -5066,7 +5121,7 @@ window.admDialogGenerate = async (btn) => {
       });
     }
     notify('Draft dibuat AI — speaker masih kode lama (N/A/B), pilih nama+suara asli per giliran lalu Simpan');
-  } catch (err) { notify('Gagal: ' + err.message, true); }
+  } catch (err) { notifyGenerationError('Generate dialog', err); }
   finally { btn.disabled = false; btn.textContent = orig; admRenderDialogModal(); }
 };
 
@@ -5075,12 +5130,18 @@ window.admDialogGenerate = async (btn) => {
 // satu baris. Dicocokkan per POSISI (bukan per prefix), jadi tetap benar
 // walau prefix balasan AI tidak persis sama dengan yang dikirim.
 window.admDialogTranslate = async (btn) => {
+  const grammarId = window.__dialogTr?.dataset?.id || window.__dialogTr?.getAttribute?.('data-id');
+  if (!grammarId) { notify('ID pola grammar tidak tersedia; terjemahan tidak dibuat.', true); return; }
   const { jp } = admSerializeDialogPair(window.__dialogRows || []);
   if (!jp.trim()) { notify('Isi teks Jepang dulu (✨ Generate draft atau tulis manual per giliran)', true); return; }
   const orig = btn.textContent; btn.disabled = true; btn.textContent = '…';
   try {
-    const d = await api('/admin/generate-dialog-translation', { method: 'POST', body: JSON.stringify({ dialog: jp }) });
-    const idText = (d.dialog_id || '').trim();
+    const body = await attachGenerationBoundary({ grammarId, dialog: jp }, { grammarId });
+    const d = await api('/admin/generate-dialog-translation', { method: 'POST', body: JSON.stringify(body) });
+    const candidate = groundedGenerationCandidate(d, 'Terjemahkan dialog');
+    if (!candidate) return;
+    const translated = candidate.exampleDialogId ?? candidate.dialog_id ?? candidate.translation;
+    const idText = (typeof translated === 'string' ? translated : '').trim();
     if (!idText) { notify('AI tidak menghasilkan terjemahan', true); return; }
     const idLines = idText.split('\n').map((l) => l.trim()).filter(Boolean);
     const rowsWithText = (window.__dialogRows || []).filter((r) => r.jp.trim());
@@ -5090,7 +5151,7 @@ window.admDialogTranslate = async (btn) => {
       r.id = (m ? m[2] : line).trim();
     });
     notify('Terjemahan diisi — review lalu Simpan');
-  } catch (err) { notify('Gagal: ' + err.message, true); }
+  } catch (err) { notifyGenerationError('Terjemahkan dialog', err); }
   finally { btn.disabled = false; btn.textContent = orig; admRenderDialogModal(); }
 };
 
@@ -5832,7 +5893,7 @@ window.grmrDeleteExample = async (btn) => {
 
 window.grmrGenExamples = async () => {
   const ctx = window.__grmrExCtx;
-  if (!ctx) return;
+  if (!ctx?.grammarId) { notify('ID pola grammar tidak tersedia; contoh tidak dibuat.', true); return; }
   const tbForAvoid = document.getElementById('grmr-ex-body');
   const avoid = tbForAvoid
     ? Array.from(tbForAvoid.querySelectorAll('input[name="japanese"]'))
@@ -5841,11 +5902,15 @@ window.grmrGenExamples = async () => {
   const btn = document.getElementById('grmr-ex-gen');
   if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
   try {
+    const body = await attachGenerationBoundary({ grammarId: ctx.grammarId, pattern: ctx.pattern, meaning: ctx.meaning, count: 3, avoid }, { grammarId: ctx.grammarId });
     const d = await api('/admin/generate-grammar-examples', {
       method: 'POST',
-      body: JSON.stringify({ pattern: ctx.pattern, meaning: ctx.meaning, count: 3, avoid }),
+      body: JSON.stringify(body),
     });
-    const exs = Array.isArray(d.examples) ? d.examples : [];
+    const candidate = groundedGenerationCandidate(d, 'Generate contoh grammar');
+    if (!candidate) return;
+    const exs = Array.isArray(candidate.examples) ? candidate.examples
+      : (candidate.japanese ? [candidate] : []);
     if (exs.length === 0) { notify('AI tidak menghasilkan contoh. Coba lagi.', true); return; }
     const tb = document.getElementById('grmr-ex-body');
     let base = tb ? tb.querySelectorAll('tr').length : 0;
@@ -5856,7 +5921,7 @@ window.grmrGenExamples = async () => {
     });
     notify('Contoh dibuat AI — review lalu klik Simpan per baris');
   } catch (err) {
-    notify('Gagal generate: ' + err.message, true);
+    notifyGenerationError('Generate contoh grammar', err);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '✨ Generate contoh (AI)'; }
   }
@@ -7313,11 +7378,20 @@ window.deckGenExamples = async () => {
         .map((i) => (i.value || '').trim()).filter(Boolean)
     : [];
   try {
+    const body = await attachGenerationBoundary({
+      vocabularyId: vid,
+      lessonId: window.__deckCtx?.lessonId,
+      count: 3,
+      avoid,
+    }, { moduleId: window.__deckCtx?.moduleId, lessonId: window.__deckCtx?.lessonId });
     const d = await api('/admin/generate-vocab-examples', {
       method: 'POST',
-      body: JSON.stringify({ vocabularyId: vid, count: 3, avoid }),
+      body: JSON.stringify(body),
     });
-    const exs = Array.isArray(d.examples) ? d.examples : [];
+    const candidate = groundedGenerationCandidate(d, 'Generate contoh kosakata');
+    if (!candidate) return;
+    const exs = Array.isArray(candidate.examples) ? candidate.examples
+      : (candidate.japanese ? [candidate] : []);
     if (exs.length === 0) { notify('AI tidak menghasilkan contoh. Coba lagi.', true); return; }
     const tb = document.getElementById('deck-ex-body');
     let base = tb ? tb.querySelectorAll('tr').length : 0;
@@ -7328,7 +7402,7 @@ window.deckGenExamples = async () => {
     });
     notify('Contoh dibuat AI — review lalu klik Simpan di tiap baris');
   } catch (err) {
-    notify('Gagal generate: ' + err.message, true);
+    notifyGenerationError('Generate contoh kosakata', err);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '✨ Generate contoh (AI)'; }
   }

@@ -173,3 +173,56 @@ test('admin save handlers route rejected responses to the preserving error prese
   const quizSource = html.slice(quizStart, quizEnd);
   assert.match(quizSource, /existingQuestion\?\.revision/, 'quiz save must send the backend revision token');
 });
+
+test('grounded generation applies candidates only for ready results and reports rejected states', () => {
+  const start = html.indexOf('function groundedGenerationCandidate(result, label)');
+  const end = html.indexOf('async function attachGenerationBoundary', start);
+  assert.ok(start > 0 && end > start, 'grounded generation helper markers not found');
+  const notices = [];
+  const ctx = vm.createContext({
+    notify: (...args) => notices.push(args),
+    boundaryReportMessage: value => value?.report?.violations?.[0]?.message || '',
+    notifyLearningWarnings: result => notices.push([`ready warning ${result.status}`]),
+  });
+  vm.runInContext(html.slice(start, end), ctx);
+  const rejected = ctx.groundedGenerationCandidate({ status: 'rejected', candidate: { japanese: '学校' },
+    report: { violations: [{ field: 'japanese', message: 'Di luar cakupan' }] } }, 'Generate');
+  assert.equal(rejected, null);
+  assert.match(notices[0][0], /rejected; hasil tidak diterapkan/);
+  assert.match(notices[0][0], /Di luar cakupan/);
+  assert.deepEqual(ctx.groundedGenerationCandidate({ status: 'stale', candidate: { options: ['x'] } }, 'Generate'), null);
+  assert.deepEqual(ctx.groundedGenerationCandidate({ status: 'unavailable', candidate: { dialogue: 'x' } }, 'Generate'), null);
+  const ready = ctx.groundedGenerationCandidate({ status: 'ready', candidate: { japanese: 'こんにちは' } }, 'Generate');
+  assert.equal(ready.japanese, 'こんにちは');
+});
+
+test('generation callers send authoritative scope IDs and gate all editor mutations on ready candidates', () => {
+  const options = html.slice(html.indexOf('async function genDraftOptions('), html.indexOf('window.listenGenOptions ='));
+  const questionOptions = html.slice(html.indexOf('window.quizGenOptions ='), html.indexOf('// ─────────────────────────────────────────────────────────────\n// TTS'));
+  const dialog = html.slice(html.indexOf('window.admDialogGenerate ='), html.indexOf('function admSpeakerOptionsHtml'));
+  const examples = html.slice(html.indexOf('window.grmrGenExamples ='), html.indexOf('function renderItemTable'));
+  const vocabExamples = html.slice(html.indexOf('window.deckGenExamples ='), html.indexOf('window.deckSaveExample ='));
+  assert.match(options, /attachGenerationBoundary\([\s\S]*?\{ lessonId \}\)/);
+  assert.match(options, /const candidate = groundedQuestionOptions\(groundedGenerationCandidate\(d, 'Generate opsi'\)\);\s*if \(!candidate\)/);
+  assert.match(questionOptions, /lessonId: ctx\.lessonId/);
+  assert.match(questionOptions, /attachGenerationBoundary\([\s\S]*?\{ lessonId: ctx\.lessonId \}\)/);
+  assert.match(questionOptions, /if \(!candidate\) return;/);
+  assert.match(dialog, /grammarId = tr\?\.dataset\?\.id \|\| tr\?\.getAttribute\?\.\('data-id'\)/);
+  assert.match(dialog, /attachGenerationBoundary\(\{ grammarId, pattern, meaning \}, \{ grammarId \}\)/);
+  assert.match(dialog, /attachGenerationBoundary\(\{ grammarId, dialog: jp \}, \{ grammarId \}\)/);
+  assert.match(dialog, /if \(!candidate\) return;/);
+  assert.match(examples, /grammarId: ctx\.grammarId, pattern: ctx\.pattern/);
+  assert.match(examples, /attachGenerationBoundary\([\s\S]*?\{ grammarId: ctx\.grammarId \}\)/);
+  assert.match(examples, /if \(!candidate\) return;/);
+  assert.match(vocabExamples, /vocabularyId: vid/);
+  assert.match(vocabExamples, /lessonId: window\.__deckCtx\?\.lessonId/);
+  assert.match(vocabExamples, /attachGenerationBoundary\([\s\S]*?moduleId: window\.__deckCtx\?\.moduleId/);
+  assert.match(vocabExamples, /groundedGenerationCandidate\(d, 'Generate contoh kosakata'\)/);
+  assert.match(vocabExamples, /if \(!candidate\) return;/);
+});
+
+test('quiz option UI adapts the canonical grounded question without trusting model answer flags', () => {
+  assert.match(html, /function groundedQuestionOptions\(candidate\)/);
+  assert.match(html, /isCorrect:\s*index === question\.correctIndex/);
+  assert.equal((html.match(/groundedQuestionOptions\(groundedGenerationCandidate\(d, 'Generate opsi'\)\)/g) || []).length, 2);
+});

@@ -59,7 +59,8 @@ import { loadPilotLessonOptions } from '../bunpou-pilot-catalog.js';
 import { BoundaryContextError, getCurriculumBoundary } from '../curriculum-boundary.js';
 import { validateAndWriteContent, boundaryWriteHttpError, lockCurriculumCourse,
   lockCurriculumCourses, lockCurriculumGraph } from '../curriculum-content-service.js';
-import { validateContentAgainstBoundary } from '../curriculum-boundary-validator.js';
+import { validateContentAgainstBoundary, CURRICULUM_VALIDATOR_VERSION } from '../curriculum-boundary-validator.js';
+import { generateGroundedContent } from '../grounded-generation.js';
 import { validateBunpouPublish } from '../curriculum-bunpou-validation.js';
 import { deckReadingSourceFingerprint, distractorSourceFingerprint,
   assertGenerationSourceUnchanged } from '../curriculum-generation-source.js';
@@ -74,6 +75,62 @@ import {
 } from '../learning-scope-warnings.js';
 
 const router = Router();
+
+// Draft generation is deliberately separate from guarded writes. The row is
+// loaded again after Claude responds by generateGroundedContent, so a changed
+// source cannot be presented as a current draft.
+const groundedGenerationMetadata = result => ({ status: result.status,
+  report: result.report, decision: result.decision ?? null, attempts: result.attempts,
+  boundaryFingerprint: result.boundaryFingerprint ?? null,
+  sourceFingerprint: result.sourceFingerprint ?? null });
+const generationExampleCount = value => Math.max(1, Math.min(5, Math.trunc(Number(value) || 3)));
+
+async function groundedDraft({ scope, contentType, loadSource, instruction, maxTokens,
+  body, communicationGoal = '', scenario = '', trustedValidation = {},
+  expectedExampleCount = null, transformCandidate = x => x }) {
+  return generateGroundedContent({ scope, contentType, loadSource, communicationGoal,
+    scenario, trustedValidation, expectedExampleCount,
+    expectedBoundaryFingerprint: body.boundaryFingerprint || null,
+    expectedSourceFingerprint: body.sourceFingerprint || null,
+    provider: async ({ prompt, repairFeedback }) => {
+      const raw = await callClaude({
+      system: 'Create one Japanese learning-content draft. Return only one valid JSON object using the requested keys.',
+      userContent: `${instruction}\n\nAuthoritative curriculum context (JSON):\n${prompt}\n\n${repairFeedback
+        ? `Repair the previous output. Issues: ${JSON.stringify(repairFeedback)}\n` : ''}Return only JSON.`,
+      maxTokens,
+      });
+      if (!raw) throw new Error('ai_upstream');
+      return raw;
+    },
+    parse: raw => {
+      const parsed = typeof raw === 'string' ? _extractJsonObject(raw) : raw;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('model_output_invalid_json');
+      return transformCandidate(parsed);
+    },
+  });
+}
+
+function grammarGenerationSignature(row) {
+  const literal = String(row.pattern || '').replace(/[〜～~（）()\[\]{}・….,/\s]/gu, '');
+  if (!/[\p{Script=Hiragana}\p{Script=Katakana}\p{Unified_Ideograph}]{2,}/u.test(literal)) return [];
+  return [{ grammarId: String(row.id), version: CURRICULUM_VALIDATOR_VERSION,
+    regex: new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'u') }];
+}
+
+function groundedResponse(res, result, fields = {}, statusOverride = null) {
+  const status = statusOverride ?? (result.status === 'stale' ? 409 : result.status === 'unavailable' ? 503 : 200);
+  const generation = groundedGenerationMetadata(result);
+  return res.status(status).json({ ...fields, candidate: result.candidate,
+    ...generation, generation });
+}
+
+function rejectGroundedResult(result, violation) {
+  result.status = 'rejected';
+  result.report = { ...result.report, valid: false,
+    violations: [...(result.report?.violations || []), violation] };
+  result.decision = decideBoundaryAction({ mode: result.context?.course?.mode || 'enforce',
+    operation: 'generate', report: result.report });
+}
 
 async function safeLearningWarnings(loadWarnings) {
   try {
@@ -2760,100 +2817,74 @@ router.post('/generate-question-options', asyncHandler(async (req, res) => {
   const body = req.body || {};
   const question = String(body.question || '').trim().slice(0, 2000);
   const category = normalizeQuizCategory(body.questionCategory);
-  const passage = String(body.passage || '').trim().slice(0, 4000);
-  const audioScript = String(body.audioScript || '').trim().slice(0, 1000);
   const taskType = String(body.taskType || '').trim();
-  const level = String(body.level || '').trim();
   const task = _taskForType(taskType);
   const optionCount = task ? (task.optionCount || 4) : 4;
+  if (!body.lessonId) return res.status(400).json({ error: 'lessonId required' });
   if (!question) return res.status(400).json({ error: 'question required' });
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
-
-  const ctxBlocks = [];
-  if (category === 'reading' && passage) ctxBlocks.push(`Teks bacaan (dokkai):\n${passage}`);
-  if (category === 'listening' && audioScript) ctxBlocks.push(`Skrip audio (listening):\n${audioScript}`);
-
-  // Kalibrasi opsi ke tipe mondai spesifik: pinjam aturan "Opsi:" dari definisi
-  // tugas (rules), buang baris contoh "Balas:" (shape jawaban penuh) karena di
-  // sini kita cuma minta opsi untuk soal yang SUDAH ada.
-  let taskGuidance = '';
-  if (task) {
-    const taskRules = String(task.rules || '').split(/\nBalas\s*:/)[0].trim();
-    const lvl = JLPT_LISTENING_TASKS[taskType]
-      ? (JLPT_LISTENING_LEVELS[level] || '')
-      : (JLPT_GEN_LEVELS[level] || '');
-    taskGuidance = `Tipe soal: ${task.name} (${task.label}).
-PENTING: soal SUDAH ada (di bawah). JANGAN bikin soal baru atau ubah teksnya — buat OPSI jawabannya saja.
-Ikuti HANYA aturan "Opsi:" untuk tipe mondai ini; ABAIKAN bagian "Format soal"/"Struktur audioScript".
-${taskRules}${lvl ? `\n\nBatasan level:\n${lvl}` : ''}`;
-  }
-
-  const userContent = `Buat ${optionCount} opsi jawaban pilihan ganda untuk soal kuis bahasa Jepang (JLPT N5/N4).
-Kategori: ${category}.
-${taskGuidance ? '\n' + taskGuidance + '\n' : ''}${ctxBlocks.join('\n\n')}
-
-Soal: ${question}
-
-Aturan:
-- Tepat ${optionCount} opsi, TEPAT 1 yang benar.${category === 'reading' ? ' Jawaban benar HARUS sesuai isi teks bacaan di atas.' : ''}${category === 'listening' ? ' Jawaban benar HARUS sesuai isi skrip audio di atas.' : ''}
-- Distraktor (opsi salah) masuk akal & sepadan (panjang/jenis mirip), bukan asal-asalan.
-${task ? '' : '- Bahasa opsi mengikuti konteks soal (Indonesia atau Jepang).\n'}- "explanation": alasan singkat WAJIB dalam Bahasa Indonesia (JANGAN bahasa Jepang; istilah Jepang boleh dikutip seperlunya) kenapa jawaban benar.
-
-Balas HANYA JSON valid tanpa teks lain (buat TEPAT ${optionCount} objek opsi):
-{"options":[{"text":"...","isCorrect":true},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false},{"text":"...","isCorrect":false}],"explanation":"..."}`;
-
-  const text = await callClaude({ system: QUIZ_GEN_SYSTEM, userContent, maxTokens: 700 });
-  if (!text) return res.status(502).json({ error: 'ai_upstream' });
-  const parsed = _extractJsonObject(text);
-  if (!parsed || !Array.isArray(parsed.options)) return res.status(502).json({ error: 'ai_parse' });
-
-  // Jalur kalibrasi (taskType dikenal): enforce aturan opsi per tipe via
-  // _normalizeJlptOptions (mis. goi_kanji wajib hiragana). Kalau gagal, 1 retry
-  // diperketat lalu fallback generik supaya admin tak pernah terblokir.
-  if (task) {
-    let options = _normalizeJlptOptions(parsed.options, optionCount, taskType, question);
-    let explanation = String(parsed.explanation || '').trim().slice(0, 1000);
-    if (!options) {
-      const hardened = userContent + `\n\nKOREKSI: opsi sebelumnya melanggar aturan "Opsi:" di atas. ` +
-        (taskType === 'goi_kanji'
-          ? 'Setiap opsi WAJIB HIRAGANA murni (tanpa kanji/katakana/romaji).'
-          : 'Pastikan SEMUA opsi mengikuti aturan "Opsi:" tipe ini dengan ketat.');
-      const text2 = await callClaude({ system: QUIZ_GEN_SYSTEM, userContent: hardened, maxTokens: 700 });
-      const parsed2 = text2 ? _extractJsonObject(text2) : null;
-      if (parsed2 && Array.isArray(parsed2.options)) {
-        const opts2 = _normalizeJlptOptions(parsed2.options, optionCount, taskType, question);
-        if (opts2) {
-          options = opts2;
-          const exp2 = String(parsed2.explanation || '').trim().slice(0, 1000);
-          if (exp2) explanation = exp2;
-        }
-      }
+  const lesson = await query(`SELECT id,module_id,slug,type FROM lessons WHERE id=$1`, [body.lessonId]);
+  if (!lesson.rows.length) return res.status(404).json({ error: 'lesson not found' });
+  let persisted = null;
+  if (body.questionId) {
+    const stored = await query(`SELECT id,lesson_id,question,question_category,passage,audio_script,updated_at
+      FROM quiz_questions WHERE id=$1`, [body.questionId]);
+    if (!stored.rows.length) return res.status(404).json({ error: 'question not found' });
+    persisted = stored.rows[0];
+    if (String(persisted.lesson_id) !== String(body.lessonId) ||
+        question !== String(persisted.question).trim() ||
+        category !== normalizeQuizCategory(persisted.question_category)) {
+      return res.status(409).json({ error: 'question_source_mismatch' });
     }
-    if (!options) {
-      // Fallback: normalisasi generik (jangan blokir admin meski belum 100% pas tipe).
-      const generic = parsed.options
-        .map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect }))
-        .filter((o) => o.text)
-        .slice(0, optionCount);
-      if (generic.length < 2) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan opsi valid. Coba lagi.' });
-      let fc = generic.findIndex((o) => o.isCorrect);
-      if (fc === -1) fc = 0;
-      options = generic.map((o, i) => ({ text: o.text, isCorrect: i === fc }));
-    }
-    return res.json({ options, explanation });
   }
-
-  // Jalur generik (tanpa taskType) — perilaku lama, tidak berubah.
-  let options = parsed.options
-    .map((o) => ({ text: String(o?.text || '').trim().slice(0, 300), isCorrect: !!o?.isCorrect }))
-    .filter((o) => o.text)
-    .slice(0, 6);
-  if (options.length < 2) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan opsi valid. Coba lagi.' });
-  let firstCorrect = options.findIndex((o) => o.isCorrect);
-  if (firstCorrect === -1) firstCorrect = 0;
-  options = options.map((o, i) => ({ text: o.text, isCorrect: i === firstCorrect }));
-  const explanation = String(parsed.explanation || '').trim().slice(0, 1000);
-  res.json({ options, explanation });
+  const draftPassage = String(body.passage || '').trim().slice(0, 4000);
+  const draftAudioScript = String(body.audioScript || '').trim().slice(0, 4000);
+  let boundary;
+  try { boundary = await getCurriculumBoundary({ lessonId: body.lessonId }); }
+  catch { return res.status(503).json({ error: 'boundary_unavailable' }); }
+  const sourceReport = validateContentAgainstBoundary({ boundary, contentType: 'quiz_question',
+    operation: 'generate', fields: [boundaryField('question', question),
+      boundaryField('passage', persisted?.passage || draftPassage),
+      boundaryField('audioScript', persisted?.audio_script || draftAudioScript)] });
+  if (sourceReport.status !== 'evaluated' || sourceReport.valid !== true) {
+    return groundedResponse(res, { status: 'rejected', candidate: null,
+      report: sourceReport, decision: decideBoundaryAction({ mode: boundary.course.mode,
+        operation: 'generate', report: sourceReport }), attempts: [],
+      boundaryFingerprint: boundary.boundaryFingerprint, sourceFingerprint: null },
+    { options: [] }, 422);
+  }
+  const loadSource = async () => {
+    const currentLesson = await query(`SELECT id,module_id,slug,type FROM lessons WHERE id=$1`, [body.lessonId]);
+    if (!currentLesson.rows.length) throw new Error('lesson_changed');
+    if (!persisted) return { lesson: currentLesson.rows[0], draft: {
+      question, passage: draftPassage, audioScript: draftAudioScript } };
+    const currentQuestion = await query(`SELECT id,lesson_id,question,question_category,passage,audio_script,updated_at
+      FROM quiz_questions WHERE id=$1`, [body.questionId]);
+    if (!currentQuestion.rows.length) throw new Error('question_changed');
+    return { lesson: currentLesson.rows[0], question: currentQuestion.rows[0] };
+  };
+  const sourceText = persisted?.passage || persisted?.audio_script || draftPassage || draftAudioScript || '';
+  const result = await groundedDraft({ scope: { lessonId: body.lessonId },
+    contentType: 'quiz_question', loadSource, body, maxTokens: 800,
+    scenario: `Draft question: ${question}; source: ${sourceText}`,
+    instruction: `Create exactly ${optionCount} answer options for this Japanese learning question: ${JSON.stringify(question)}. Category: ${category}. ${task ? `Task: ${task.name}. ${String(task.rules || '').split(/\nBalas\s*:/)[0]}` : ''} ${sourceText ? `Persisted source: ${sourceText}` : ''} Return {"options":[{"text":"...","isCorrect":true},{"text":"...","isCorrect":false}],"explanation":"..."}. Exactly one isCorrect must be true.`,
+    transformCandidate: parsed => {
+      if (!Array.isArray(parsed.options) || parsed.options.some(option =>
+        !option || typeof option.text !== 'string' || typeof option.isCorrect !== 'boolean')) return parsed;
+      const correct = parsed.options.flatMap((option, index) => option.isCorrect ? [index] : []);
+      if (correct.length !== 1 || typeof parsed.explanation !== 'string') return parsed;
+      return { question: { prompt: question, options: parsed.options.map(option => option.text),
+        correctIndex: correct[0], explanation: parsed.explanation } };
+    } });
+  const candidateQuestion = result.candidate?.question;
+  const options = candidateQuestion?.options?.map((text, index) =>
+    ({ text, isCorrect: index === candidateQuestion.correctIndex })) || [];
+  if (result.status === 'ready' && (options.length !== optionCount ||
+      (task && !_normalizeJlptOptions(options, optionCount, taskType, question)))) {
+    rejectGroundedResult(result, { code: 'question_options_task_mismatch' });
+  }
+  return groundedResponse(res, result, { options: result.status === 'ready' ? options : [],
+    explanation: result.status === 'ready' ? candidateQuestion?.explanation || '' : '' });
 }));
 
 // ===== GENERATOR SOAL LISTENING GAYA JLPT (Claude) =====
@@ -3547,57 +3578,40 @@ router.post('/lessons/:lessonId/generate-jlpt', quizGenLimiter, asyncHandler(asy
 // module_vocabulary. Mengembalikan daftar { japanese, highlight, indonesian }
 // untuk di-review admin sebelum disimpan ke vocabulary_examples.
 router.post('/generate-vocab-examples', asyncHandler(async (req, res) => {
-  const { vocabularyId } = req.body || {};
-  const count = Math.max(1, Math.min(5, Number((req.body || {}).count) || 3));
-  const avoidRaw = Array.isArray((req.body || {}).avoid) ? (req.body || {}).avoid : [];
-  const avoid = avoidRaw
-    .map((s) => String(s || '').trim().slice(0, 300))
-    .filter(Boolean)
-    .slice(0, 20);
+  const body = req.body || {};
+  const { vocabularyId, lessonId } = body;
   if (!vocabularyId) return res.status(400).json({ error: 'vocabularyId required' });
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
-
-  const v = await query(`SELECT japanese, reading, indonesian FROM module_vocabulary WHERE id = $1`, [vocabularyId]);
+  const v = await query(`SELECT id,module_id,lesson_id,japanese,reading,indonesian,updated_at
+    FROM module_vocabulary WHERE id=$1`, [vocabularyId]);
   if (v.rows.length === 0) return res.status(404).json({ error: 'vocab not found' });
   const word = v.rows[0];
-
-  const avoidBlock = avoid.length > 0
-    ? `\nSudah ada contoh berikut — buat yang BERBEDA dan variasikan situasi/pelaku/waktu, jangan mirip:\n${avoid.map((s) => `- ${s}`).join('\n')}\n`
-    : '';
-
-  const userContent = `Buat ${count} contoh kalimat bahasa Jepang gaya JLPT N5/N4 yang memakai kata berikut.
-Kata: ${word.japanese}${word.reading ? ` (${word.reading})` : ''}${word.indonesian ? ` = ${word.indonesian}` : ''}
-${avoidBlock}
-Aturan:
-- Tiap kalimat pendek, natural, level pemula, dan BENAR-BENAR memakai kata "${word.japanese}".
-- "highlight" = potongan persis yang muncul di kalimat untuk kata itu (biasanya "${word.japanese}" atau bentuk yang dipakai di kalimat).
-- "reading" = cara baca SELURUH kalimat dalam hiragana/katakana penuh (semua kanji diganti kana, tanpa romaji).
-- "indonesian" = terjemahan kalimat ke Bahasa Indonesia.
-- Kalimat polos, tanpa tag HTML / tanpa furigana.
-
-Balas HANYA JSON valid tanpa teks lain:
-{"examples":[{"japanese":"…","reading":"…","highlight":"${word.japanese}","indonesian":"…"}]}`;
-
-  const text = await callClaude({
-    system: 'You write Japanese example sentences for Indonesian beginner learners. Reply with a single valid JSON object only.',
-    userContent,
-    maxTokens: 800,
-  });
-  if (!text) return res.status(502).json({ error: 'ai_upstream' });
-  const parsed = _extractJsonObject(text);
-  if (!parsed || !Array.isArray(parsed.examples)) return res.status(502).json({ error: 'ai_parse' });
-
-  const examples = parsed.examples
-    .map((e) => ({
-      japanese: String(e?.japanese || '').trim().slice(0, 300),
-      reading: (String(e?.reading || '').trim().slice(0, 300)) || null,
-      highlight: (String(e?.highlight || '').trim().slice(0, 100)) || null,
-      indonesian: (String(e?.indonesian || '').trim().slice(0, 300)) || null,
-    }))
-    .filter((e) => e.japanese)
-    .slice(0, count);
-  if (examples.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan contoh valid. Coba lagi.' });
-  res.json({ examples });
+  if (lessonId && String(lessonId) !== String(word.lesson_id)) {
+    const assignment = await query(`SELECT d.lesson_id FROM lesson_deck_items d
+      JOIN lessons l ON l.id=d.lesson_id
+      WHERE d.vocabulary_id=$1 AND d.lesson_id=$2 AND l.module_id=$3`,
+    [vocabularyId, lessonId, word.module_id]);
+    if (!assignment.rows.length) {
+      return res.status(409).json({ error: 'vocabulary_lesson_mismatch' });
+    }
+  }
+  const scope = { moduleId: word.module_id, ...(lessonId || word.lesson_id ? { lessonId: lessonId || word.lesson_id } : {}) };
+  const loadSource = async () => {
+    const current = await query(`SELECT id,module_id,lesson_id,japanese,reading,indonesian,updated_at
+      FROM module_vocabulary WHERE id=$1`, [vocabularyId]);
+    if (!current.rows.length || String(current.rows[0].module_id) !== String(word.module_id)) throw new Error('source_changed');
+    return current.rows[0];
+  };
+  const result = await groundedDraft({ scope, contentType: 'vocabulary_example', loadSource, body,
+    maxTokens: 1000, expectedExampleCount: generationExampleCount(body.count),
+    instruction: `Create exactly ${generationExampleCount(body.count)} short Japanese example sentences using the persisted word ${JSON.stringify(word.japanese)} (${word.reading || ''}; ${word.indonesian || ''}). Return {"examples":[{"japanese":"...","reading":"...","highlight":"...","indonesian":"..."}]}. Every highlight must occur verbatim in its sentence. Avoid: ${JSON.stringify(Array.isArray(body.avoid) ? body.avoid.slice(0, 20) : [])}` });
+  const examples = Array.isArray(result.candidate?.examples) ? result.candidate.examples :
+    result.candidate?.japanese ? [result.candidate] : [];
+  if (result.status === 'ready' && examples.some(example => !String(example?.japanese || '').includes(String(word.japanese)) ||
+      !String(example?.japanese || '').includes(String(example?.highlight || '')))) {
+    rejectGroundedResult(result, { code: 'source_vocabulary_not_demonstrated', vocabularyId });
+  }
+  return groundedResponse(res, result, { examples: result.status === 'ready' ? examples : [] });
 }));
 
 // Backfill kana (reading) untuk contoh kalimat di sebuah deck yang masih kosong
@@ -3806,49 +3820,31 @@ router.post('/generate-vocab-image', asyncHandler(async (req, res) => {
 // generate-vocab-examples (avoid list, count, dgn terjemahan).
 router.post('/generate-grammar-examples', asyncHandler(async (req, res) => {
   const body = req.body || {};
-  const pattern = String(body.pattern || '').trim().slice(0, 200);
-  const meaning = String(body.meaning || '').trim().slice(0, 500);
-  const count = Math.max(1, Math.min(5, Number(body.count) || 3));
-  const avoidRaw = Array.isArray(body.avoid) ? body.avoid : [];
-  const avoid = avoidRaw.map((s) => String(s || '').trim().slice(0, 300)).filter(Boolean).slice(0, 20);
-  if (!pattern) return res.status(400).json({ error: 'pattern required' });
+  if (!body.grammarId) return res.status(400).json({ error: 'grammarId required' });
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
-
-  const avoidBlock = avoid.length > 0
-    ? `\nSudah ada contoh berikut — buat yang BERBEDA dan variasikan situasi/pelaku/waktu, jangan mirip:\n${avoid.map((s) => `- ${s}`).join('\n')}\n`
-    : '';
-
-  const userContent = `Buat ${count} contoh kalimat bahasa Jepang gaya JLPT N5/N4 yang memakai pola grammar berikut.
-
-Pola: ${pattern}
-${meaning ? `Arti/fungsi: ${meaning}\n` : ''}${avoidBlock}
-Aturan:
-- Tiap kalimat pendek, natural, level pemula, dan BENAR-BENAR memakai pola "${pattern}".
-- "highlight" = potongan kalimat yang menunjukkan pemakaian pola (biasanya frasa pendek yg memuat pola).
-- "indonesian" = terjemahan kalimat ke Bahasa Indonesia.
-- Kalimat polos, tanpa tag HTML / tanpa furigana.
-
-Balas HANYA JSON valid tanpa teks lain:
-{"examples":[{"japanese":"…","highlight":"…","indonesian":"…"}]}`;
-
-  const text = await callClaude({
-    system: 'You write Japanese grammar example sentences for Indonesian beginner learners. Reply with a single valid JSON object only.',
-    userContent,
-    maxTokens: 900,
-  });
-  if (!text) return res.status(502).json({ error: 'ai_upstream' });
-  const parsed = _extractJsonObject(text);
-  if (!parsed || !Array.isArray(parsed.examples)) return res.status(502).json({ error: 'ai_parse' });
-  const examples = parsed.examples
-    .map((e) => ({
-      japanese: String(e?.japanese || '').trim().slice(0, 300),
-      highlight: (String(e?.highlight || '').trim().slice(0, 100)) || null,
-      indonesian: (String(e?.indonesian || '').trim().slice(0, 300)) || null,
-    }))
-    .filter((e) => e.japanese)
-    .slice(0, count);
-  if (examples.length === 0) return res.status(502).json({ error: 'ai_empty', detail: 'AI tidak menghasilkan contoh valid. Coba lagi.' });
-  res.json({ examples });
+  const found = await query(`SELECT id,module_id,lesson_id,pattern,meaning,communication_goal,updated_at
+    FROM module_grammar WHERE id=$1`, [body.grammarId]);
+  if (!found.rows.length) return res.status(404).json({ error: 'grammar not found' });
+  const grammar = found.rows[0];
+  if ((body.pattern && body.pattern !== grammar.pattern) ||
+      (body.meaning && body.meaning !== grammar.meaning) ||
+      (body.lessonId && String(body.lessonId) !== String(grammar.lesson_id))) {
+    return res.status(409).json({ error: 'grammar_source_mismatch' });
+  }
+  const scope = { grammarId: grammar.id };
+  const loadSource = async () => {
+    const current = await query(`SELECT id,module_id,lesson_id,pattern,meaning,communication_goal,updated_at
+      FROM module_grammar WHERE id=$1`, [grammar.id]);
+    if (!current.rows.length) throw new Error('source_changed');
+    return current.rows[0];
+  };
+  const result = await groundedDraft({ scope, contentType: 'grammar_example', loadSource, body,
+    maxTokens: 1000, expectedExampleCount: generationExampleCount(body.count),
+    trustedValidation: { grammarSignatures: grammarGenerationSignature(grammar) },
+    instruction: `Create exactly ${generationExampleCount(body.count)} short Japanese example sentences that demonstrably use persisted grammar ${JSON.stringify(grammar.pattern)} (${grammar.meaning || ''}). Return {"examples":[{"japanese":"...","highlight":"...","indonesian":"..."}]}. Avoid: ${JSON.stringify(Array.isArray(body.avoid) ? body.avoid.slice(0, 20) : [])}` });
+  const examples = Array.isArray(result.candidate?.examples) ? result.candidate.examples :
+    result.candidate?.japanese ? [result.candidate] : [];
+  return groundedResponse(res, result, { examples: result.status === 'ready' ? examples : [] });
 }));
 
 // Translate dialog 3-suara (AI) ke Bahasa Indonesia — output dgn struktur
@@ -3856,69 +3852,52 @@ Balas HANYA JSON valid tanpa teks lain:
 // terjemahan tiap turn dgn turn dialog Jepangnya.
 router.post('/generate-dialog-translation', asyncHandler(async (req, res) => {
   const body = req.body || {};
-  const dialog = String(body.dialog || '').trim().slice(0, 4000);
-  if (!dialog) return res.status(400).json({ error: 'dialog required' });
+  if (!body.grammarId) return res.status(400).json({ error: 'grammarId required' });
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
-
-  const userContent = `Terjemahkan dialog Jepang berikut ke Bahasa Indonesia yang natural.
-
-Dialog asli:
-${dialog}
-
-WAJIB: pertahankan struktur baris persis seperti aslinya — tiap baris diawali prefix yang sama (N:, A:, B:, dst). Jumlah baris harus sama dgn dialog asli. Terjemahkan tiap baris menjadi 1 baris Indonesia (tanpa pecah jadi 2 baris).
-
-Aturan terjemahan:
-- Pakai Bahasa Indonesia santai-natural sesuai konteks (bukan kaku formal kecuali konteksnya formal).
-- Pertahankan nama tokoh (mis. 田中さん → Pak Tanaka / Tanaka-san — konsisten saja).
-- Tidak ada tag HTML, tidak ada catatan tambahan.
-
-Balas HANYA JSON valid tanpa teks lain:
-{"dialog_id":"N: …\\nA: …\\nB: …\\nA: …"}`;
-
-  const text = await callClaude({
-    system: 'You translate Japanese dialog into natural Indonesian, preserving the speaker-prefix line structure exactly. Reply with a single valid JSON object only.',
-    userContent,
-    maxTokens: 800,
-  });
-  if (!text) return res.status(502).json({ error: 'ai_upstream' });
-  const parsed = _extractJsonObject(text);
-  const translation = String(parsed?.dialog_id || '').trim().slice(0, 4000);
-  if (!translation) return res.status(502).json({ error: 'ai_empty' });
-  res.json({ dialog_id: translation });
+  const found = await query(`SELECT id,module_id,lesson_id,example_dialog,example_dialog_id,updated_at
+    FROM module_grammar WHERE id=$1`, [body.grammarId]);
+  if (!found.rows.length) return res.status(404).json({ error: 'grammar not found' });
+  const grammar = found.rows[0];
+  const dialog = String(body.dialog || grammar.example_dialog || '').trim();
+  if (!dialog) return res.status(400).json({ error: 'dialog required' });
+  if (body.lessonId && String(body.lessonId) !== String(grammar.lesson_id)) {
+    return res.status(409).json({ error: 'dialog_source_mismatch' });
+  }
+  let boundary;
+  try { boundary = await getCurriculumBoundary({ grammarId: grammar.id }); }
+  catch { return res.status(503).json({ error: 'boundary_unavailable' }); }
+  const sourceReport = validateContentAgainstBoundary({ boundary, contentType: 'grammar_example',
+    operation: 'generate', fields: [boundaryField('dialog', dialog)] });
+  if (sourceReport.status !== 'evaluated' || sourceReport.valid !== true) {
+    return groundedResponse(res, { status: 'rejected', candidate: null,
+      report: sourceReport, decision: decideBoundaryAction({ mode: boundary.course.mode,
+        operation: 'generate', report: sourceReport }), attempts: [],
+      boundaryFingerprint: boundary.boundaryFingerprint, sourceFingerprint: null },
+    { dialog_id: '' }, 422);
+  }
+  const loadSource = async () => {
+    const current = await query(`SELECT id,module_id,lesson_id,example_dialog,example_dialog_id,updated_at
+      FROM module_grammar WHERE id=$1`, [grammar.id]);
+    if (!current.rows.length) throw new Error('source_changed');
+    return { grammar: current.rows[0], dialog };
+  };
+  const result = await groundedDraft({ scope: { grammarId: grammar.id },
+    contentType: 'dialogue_translation', loadSource, body, maxTokens: 750,
+    instruction: `Translate this persisted Japanese dialogue into natural Indonesian: ${JSON.stringify(dialog)}. Preserve line count and exact N:/A:/B: speaker prefixes. Return {"dialog_id":"..."}.` });
+  const originalPrefixes = dialog.split('\n').map(line => /^\s*([^:]+):/.exec(line)?.[1] || null);
+  const translationPrefixes = String(result.candidate?.dialog_id || '').split('\n')
+    .map(line => /^\s*([^:]+):/.exec(line)?.[1] || null);
+  if (result.status === 'ready' && JSON.stringify(originalPrefixes) !== JSON.stringify(translationPrefixes)) {
+    rejectGroundedResult(result, { code: 'translation_turn_alignment_invalid' });
+  }
+  return groundedResponse(res, result, { dialog_id: result.status === 'ready' ? result.candidate?.dialog_id || '' : '' });
 }));
 
 // Generate contoh kalimat (AI) untuk pola grammar — tombol "Contoh (AI)" di
 // editor grammar admin. Admin tulis pattern + meaning, AI bikin 1 kalimat
 // pendek yang memakai pola itu (level pemula).
 router.post('/generate-grammar-example', asyncHandler(async (req, res) => {
-  const body = req.body || {};
-  const pattern = String(body.pattern || '').trim().slice(0, 200);
-  const meaning = String(body.meaning || '').trim().slice(0, 500);
-  if (!pattern) return res.status(400).json({ error: 'pattern required' });
-  if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
-
-  const userContent = `Buat SATU contoh kalimat bahasa Jepang yang BENAR-BENAR memakai pola grammar berikut, untuk pembelajar JLPT N5/N4.
-
-Pola: ${pattern}
-${meaning ? `Arti/fungsi: ${meaning}\n` : ''}
-Aturan:
-- Kalimat pendek (5-15 kata), natural, level pemula.
-- Tulis polos tanpa tag HTML, tanpa furigana.
-- Kalimat harus jelas menggunakan pola di atas — bukan parafrase.
-
-Balas HANYA JSON valid:
-{"example":"…"}`;
-
-  const text = await callClaude({
-    system: 'You write Japanese example sentences for Indonesian beginner learners. Reply with a single valid JSON object only.',
-    userContent,
-    maxTokens: 200,
-  });
-  if (!text) return res.status(502).json({ error: 'ai_upstream' });
-  const parsed = _extractJsonObject(text);
-  const example = String(parsed?.example || '').trim().slice(0, 300);
-  if (!example) return res.status(502).json({ error: 'ai_empty' });
-  res.json({ example });
+  res.status(410).json({ error: 'use_generate_grammar_examples_with_grammarId' });
 }));
 
 // Generate dialog 3-suara (AI) untuk pola grammar — tombol "Dialog (AI)" di
@@ -3926,53 +3905,29 @@ Balas HANYA JSON valid:
 // (format JLPT: N/A/B per baris). N = narrator, A = cewe, B = cowo.
 router.post('/generate-grammar-dialog', asyncHandler(async (req, res) => {
   const body = req.body || {};
-  const pattern = String(body.pattern || '').trim().slice(0, 200);
-  const meaning = String(body.meaning || '').trim().slice(0, 500);
-  const example = String(body.example || '').trim().slice(0, 300);
-  if (!pattern) return res.status(400).json({ error: 'pattern required' });
+  if (!body.grammarId) return res.status(400).json({ error: 'grammarId required' });
   if (!anthropicEnabled()) return res.status(503).json({ error: 'ai_disabled', detail: 'ANTHROPIC_API_KEY belum diset.' });
-
-  const userContent = `Buat dialog pendek bahasa Jepang gaya JLPT (level N5/N4) yang menampilkan pemakaian pola grammar berikut secara natural.
-
-Pola: ${pattern}
-${meaning ? `Arti/fungsi: ${meaning}\n` : ''}${example ? `Contoh kalimat: ${example}\n` : ''}
-FORMAT WAJIB (tepat seperti ini, 1 baris per turn, prefix speaker + ":"):
-N: kalimat narator yang mengenalkan situasi (1 baris).
-A: ujaran perempuan…
-B: ujaran lelaki…
-A: …
-B: …
-
-Aturan:
-- Hanya 3 peran: N (narrator), A (perempuan), B (lelaki). DILARANG peran lain.
-- 4-6 turn dialog (di luar baris narator).
-- Pola "${pattern}" muncul minimal 1x di dialog (idealnya dipakai A atau B, bukan narator).
-- Tulis polos, tanpa tag HTML, tanpa furigana, tanpa romaji.
-
-NAMA TOKOH (wajib — biar UI siswa bisa render nama, bukan kode A/B):
-- Beri 2 tokoh nama keluarga Jepang umum berbeda (mis. 田中, 山田, 鈴木, 佐藤, 高橋, 中村, 小林, 加藤). Pakai KANJI, bukan hiragana.
-- Baris N (narrator) WAJIB menyebut KEDUA nama dgn suffix さん di baris pertama (urutan = urutan bicara: nama pertama yang disebut = A, kedua = B). Contoh: "田中さんと山田さんが話しています。"
-- Dialog A/B sendiri TIDAK harus saling menyebut nama — biarkan natural seperti percakapan Jepang biasa. Pemanggilan nama hanya kalau memang pas konteks (mis. pertama kali bicara, ingin menonjolkan lawan bicara), JANGAN dipaksakan tiap turn.
-
-ATURAN KANJI (penting untuk TTS):
-- **HINDARI kanji yang punya banyak cara baca / ambigu** — output ini akan dibacakan oleh TTS (ElevenLabs). Kalau ada keraguan, TULIS DALAM HIRAGANA, bukan kanji.
-- Daftar kanji yang HARUS ditulis hiragana karena ambigu/sering salah baca TTS: 一人 (ひとり), 二人 (ふたり), 今日 (きょう), 昨日 (きのう), 明日 (あした), 一日 (いちにち), 上手 (じょうず), 下手 (へた), 大人 (おとな), 子供 (こども), 何 (なに), 人 (ひと), 大きい (おおきい), 小さい (ちいさい), 行く (いく), 来る (くる), 入る (はいる), 出る (でる).
-- Kalau ragu apakah kanji punya bacaan tunggal yang jelas, **TULIS DI HIRAGANA**. Lebih aman daripada salah dibaca TTS.
-- Boleh tetap pakai kanji untuk kata yang bacanya tunggal & umum (mis. 私, 学生, 先生, 仕事, 学校, 本, 山, 川, 日本, 中国).
-
-Balas HANYA JSON valid:
-{"dialog":"N: …\\nA: …\\nB: …\\nA: …\\nB: …"}`;
-
-  const text = await callClaude({
-    system: 'You write short Japanese dialogues in JLPT 3-role format (N/A/B) for Indonesian beginner learners. Reply with a single valid JSON object only.',
-    userContent,
-    maxTokens: 600,
+  const found = await query(`SELECT id,module_id,lesson_id,pattern,meaning,example,
+    communication_goal,example_dialog,updated_at FROM module_grammar WHERE id=$1`, [body.grammarId]);
+  if (!found.rows.length) return res.status(404).json({ error: 'grammar not found' });
+  const grammar = found.rows[0];
+  if ((body.pattern && body.pattern !== grammar.pattern) ||
+      (body.meaning && body.meaning !== grammar.meaning) ||
+      (body.lessonId && String(body.lessonId) !== String(grammar.lesson_id))) {
+    return res.status(409).json({ error: 'grammar_source_mismatch' });
+  }
+  const loadSource = async () => {
+    const current = await query(`SELECT id,module_id,lesson_id,pattern,meaning,example,
+      communication_goal,example_dialog,updated_at FROM module_grammar WHERE id=$1`, [grammar.id]);
+    if (!current.rows.length) throw new Error('source_changed');
+    return current.rows[0];
+  };
+  const result = await groundedDraft({ scope: { grammarId: grammar.id }, contentType: 'grammar_dialog',
+    loadSource, body, maxTokens: 750, communicationGoal: grammar.communication_goal || '',
+    trustedValidation: { grammarSignatures: grammarGenerationSignature(grammar) },
+    instruction: `Create a 5-line Japanese dialogue using persisted pattern ${JSON.stringify(grammar.pattern)} (${grammar.meaning || ''}). Communication goal: ${grammar.communication_goal || '(missing)'}. Use speaker-prefix lines N:, A:, B:, A:, B:. A/B should demonstrate the pattern. Return {"dialogue":"N: ...\\nA: ...\\nB: ...\\nA: ...\\nB: ..."}.` });
+  return groundedResponse(res, result, { dialog: result.status === 'ready' ? result.candidate?.dialogue || '' : '',
   });
-  if (!text) return res.status(502).json({ error: 'ai_upstream' });
-  const parsed = _extractJsonObject(text);
-  const dialog = String(parsed?.dialog || '').trim().slice(0, 2000);
-  if (!dialog) return res.status(502).json({ error: 'ai_empty' });
-  res.json({ dialog });
 }));
 
 router.post('/module-grammar', asyncHandler(async (req, res) => {

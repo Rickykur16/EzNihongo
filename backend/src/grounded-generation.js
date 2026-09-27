@@ -6,11 +6,15 @@ import { decideBoundaryAction } from './curriculum-boundary-policy.js';
 const QUESTION_TYPES = new Set(['dialogue_comprehension', 'dialogue_transfer', 'dialogue_question',
   'quiz_question', 'listening_question', 'reading_question', 'quiz', 'assessment']);
 const GRAMMAR_CONTENT_TYPES = new Set(['grammar_dialog', 'grammar_example']);
+const demonstratesTargetGrammar = (contentType, field) => contentType === 'grammar_example'
+  ? /^(?:japanese|examples\[\d+\]\.japanese)$/u.test(field || '')
+  : /^(?:dialogue|exampleDialog|dialogScene\.turns\[\d+\]\.text)(?:$|\.)/u.test(field || '');
 const JAPANESE = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Unified_Ideograph}]/u;
 const SCHEMA_KEYS = {
-  vocabulary_example: ['japanese', 'reading', 'highlight', 'indonesian'],
-  grammar_example: ['japanese', 'highlight', 'indonesian'],
+  vocabulary_example: ['japanese', 'reading', 'highlight', 'indonesian', 'examples'],
+  grammar_example: ['japanese', 'highlight', 'indonesian', 'examples'],
   grammar_dialog: ['dialogue', 'exampleDialog', 'exampleDialogId', 'dialogScene', 'dialogFurigana', 'communicationGoal'],
+  dialogue_translation: ['dialog_id'],
   dialogue_comprehension: ['question', 'questions', 'evidence'],
   dialogue_transfer: ['question', 'questions'],
   dialogue_question: ['question', 'questions', 'evidence'],
@@ -74,10 +78,14 @@ export function groundedCandidateFields(candidate, contentType) {
     ...(Array.isArray(candidate.evidence) ? candidate.evidence.flatMap((entry, index) =>
       textField(`evidence[${index}].quote`, entry?.quote)) : []),
   ];
-  if (contentType === 'vocabulary_example') return ['japanese', 'reading', 'highlight', 'indonesian']
-    .flatMap(key => textField(key, candidate[key]));
-  if (contentType === 'grammar_example') return ['japanese', 'highlight', 'indonesian']
-    .flatMap(key => textField(key, candidate[key]));
+  if (contentType === 'vocabulary_example' || contentType === 'grammar_example') {
+    const keys = contentType === 'vocabulary_example'
+      ? ['japanese', 'reading', 'highlight', 'indonesian'] : ['japanese', 'highlight', 'indonesian'];
+    return Array.isArray(candidate.examples)
+      ? candidate.examples.flatMap((example, index) => keys.flatMap(key =>
+        textField(`examples[${index}].${key}`, example?.[key])))
+      : keys.flatMap(key => textField(key, candidate[key]));
+  }
   if (contentType === 'grammar_dialog') return [
     ...dialogueFields(candidate.dialogue, 'dialogue'),
     ...['exampleDialog', 'exampleDialogId', 'communicationGoal']
@@ -94,6 +102,7 @@ export function groundedCandidateFields(candidate, contentType) {
         textField(`dialogFurigana.lines[${index}].readings[${n}].reading`, reading?.reading)) : []),
     ]) : []),
   ];
+  if (contentType === 'dialogue_translation') return textField('dialog_id', candidate.dialog_id);
   if (['grammar_distractors', 'distractors', 'quiz_options'].includes(contentType)) return [
     ...['recognitionDistractors', 'controlledDistractors', 'distractors', 'options']
       .flatMap(key => stringArrayFields(key, candidate[key])),
@@ -161,12 +170,34 @@ export function groundedCandidateSchemaIssues(candidate, contentType) {
   };
   let meaningful = false;
   if (contentType === 'vocabulary_example' || contentType === 'grammar_example') {
-    meaningful = japanese(candidate.japanese);
-    if (typeof candidate.japanese !== 'string' || !candidate.japanese.trim() || candidate.japanese.length > 2000) {
-      errors.push({ code: 'invalid_candidate_field', field: 'japanese' });
+    const keys = contentType === 'vocabulary_example'
+      ? ['japanese', 'reading', 'highlight', 'indonesian'] : ['japanese', 'highlight', 'indonesian'];
+    const batch = candidate.examples != null;
+    if (batch && keys.some(key => key in candidate)) errors.push({ code: 'mixed_example_schema' });
+    if (batch && (!Array.isArray(candidate.examples) || candidate.examples.length < 1 ||
+        candidate.examples.length > 5)) errors.push({ code: 'invalid_example_batch' });
+    const examples = batch ? (Array.isArray(candidate.examples) ? candidate.examples : []) : [candidate];
+    meaningful = examples.length > 0 && examples.every(example => japanese(example?.japanese));
+    for (const [index, example] of examples.entries()) {
+      const prefix = batch ? `examples[${index}].` : '';
+      if (!plain(example) || Object.keys(example).some(key => !keys.includes(key))) {
+        errors.push({ code: 'invalid_example_schema', field: prefix || 'example' });
+        continue;
+      }
+      if (typeof example.japanese !== 'string' || !example.japanese.trim() || example.japanese.length > 2000) {
+        errors.push({ code: 'invalid_candidate_field', field: `${prefix}japanese` });
+      }
+      for (const key of keys.filter(key => key !== 'japanese')) {
+        if (example[key] != null && (typeof example[key] !== 'string' || example[key].length > 2000)) {
+          errors.push({ code: 'invalid_candidate_field', field: `${prefix}${key}` });
+        }
+      }
     }
-    for (const key of contentType === 'vocabulary_example'
-      ? ['reading', 'highlight', 'indonesian'] : ['highlight', 'indonesian']) optionalString(key);
+  } else if (contentType === 'dialogue_translation') {
+    meaningful = typeof candidate.dialog_id === 'string' && !!candidate.dialog_id.trim();
+    if (!meaningful || candidate.dialog_id.length > 8000) {
+      errors.push({ code: 'invalid_translation_schema', field: 'dialog_id' });
+    }
   } else if (contentType === 'grammar_dialog') {
     meaningful = ['dialogue', 'exampleDialog', 'dialogScene', 'dialogFurigana']
       .some(key => candidate[key] != null && JAPANESE.test(JSON.stringify(candidate[key])));
@@ -297,7 +328,7 @@ export async function generateGroundedContent({
   loadSource = null, expectedBoundaryFingerprint = null, expectedSourceFingerprint = null,
   communicationGoal = '', scenario = '', contextOptions = {}, maxRepairs = 2,
   providerTimeoutMs = 30000,
-  trustedValidation = {},
+  trustedValidation = {}, expectedExampleCount = null,
   parse = parseGroundedCandidate, validate = validateContentAgainstBoundary,
   decide = decideBoundaryAction,
 } = {}) {
@@ -373,6 +404,10 @@ export async function generateGroundedContent({
     const fields = groundedCandidateFields(candidate, contentType);
     const schemaIssues = [...groundedCandidateSchemaIssues(candidate, contentType),
       ...questionErrors(candidate, contentType, sourceDialogue)];
+    if (expectedExampleCount != null &&
+        (!Array.isArray(candidate.examples) || candidate.examples.length !== expectedExampleCount)) {
+      schemaIssues.push({ code: 'example_count_mismatch', expected: expectedExampleCount });
+    }
     try { report = validate({ boundary, contentType, operation: 'generate', fields,
         question: candidate.question, communicationGoal,
         // Model-supplied grammar IDs are never authority for the validator.
@@ -389,9 +424,20 @@ export async function generateGroundedContent({
     if (schemaIssues.length) report = { ...report, status: 'schema_invalid', valid: false,
       violations: [...(report.violations || []), ...schemaIssues] };
     if (report.status === 'evaluated' && focusGrammarIds.length &&
-        !report.usage?.targetGrammar?.some(item => focusGrammarIds.includes(String(item.key)) && item.field)) {
+        !report.usage?.targetGrammar?.some(item => focusGrammarIds.includes(String(item.key)) &&
+          demonstratesTargetGrammar(contentType, item.field))) {
       report = { ...report, valid: false, violations: [...(report.violations || []),
         { code: 'target_grammar_not_demonstrated', grammarIds: focusGrammarIds, confidence: 'unknown' }] };
+    }
+    if (report.status === 'evaluated' && contentType === 'grammar_example' &&
+        Array.isArray(candidate.examples) && focusGrammarIds.length) {
+      for (const [index] of candidate.examples.entries()) {
+        if (!report.usage?.targetGrammar?.some(item => focusGrammarIds.includes(String(item.key)) &&
+            item.field === `examples[${index}].japanese`)) {
+          report = { ...report, valid: false, violations: [...(report.violations || []),
+            { code: 'target_grammar_not_demonstrated', exampleIndex: index, grammarIds: focusGrammarIds }] };
+        }
+      }
     }
     attempts.push({ attempt, status: report.status, valid: report.valid,
       issues: (report.violations || []).map(item => item.code) });
