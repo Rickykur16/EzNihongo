@@ -16,7 +16,7 @@ const server = http.createServer((req, res) => {
 });
 (async () => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
-  const base = `http://127.0.0.1:${server.address().port}/index.html`;
+  const base = `http://127.0.0.1:${server.address().port}/${process.env.PAGE || 'index.html'}`;
   const browser = await chromium.launch({ args: ['--font-render-hinting=none', '--disable-lcd-text', '--force-color-profile=srgb'] });
   const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 });
   page.on('pageerror', e => console.log('PAGEERR', e.message));
@@ -30,7 +30,8 @@ const server = http.createServer((req, res) => {
   };
   if (mode === 'stills') {
     fs.mkdirSync(root + '/stills', { recursive: true });
-    for (const t of process.argv[3].split(',').map(Number)) await shot(t, `${root}/stills/t_${t.toFixed(3)}.png`);
+    const tag = (process.env.PAGE || 'index.html').replace('.html', '');
+    for (const t of process.argv[3].split(',').map(Number)) await shot(t, `${root}/stills/${tag}_t_${t.toFixed(3)}.png`);
   } else {
     const fps = Number(process.argv[3] || 30), sub = Number(process.argv[4] || 1), shutter = 0.5;
     const from = Number(process.argv[5] || 0), to = Number(process.argv[6] || fps * 15);

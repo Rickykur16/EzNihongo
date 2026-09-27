@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>EzNihongo Promo 15s — Jalur Mandiri SSW</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+  :root {
+    --red: #C8102E;
+    --navy-900: #19345F;
+    --navy-deep: #0A1730;
+    --blue-200: #DCE6F5;
+    --paper: #FAF7F2;
+    --ink-700: #4a453e;
+    --ink-500: #6f685d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #000; }
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: var(--navy-deep);
+           font-family: 'Inter', 'Noto Sans JP', sans-serif; color: #fff; -webkit-font-smoothing: antialiased; }
+  .layer { position: absolute; inset: 0; }
+  #bg { background: radial-gradient(1200px 1100px at 50% 42%, #22477F 0%, #183463 38%, #0E2143 70%, #081328 100%); }
+  #glow { background: radial-gradient(900px 900px at 50% 58%, rgba(120,160,230,0.55), rgba(120,160,230,0) 70%); opacity: 0; }
+  #grain { opacity: .07; mix-blend-mode: overlay; background-repeat: repeat; }
+  .wm { position: absolute; font-family: 'Shippori Mincho', serif; font-weight: 800; color: #fff; line-height: 1; white-space: nowrap; opacity: 0; }
+  .mask { position: absolute; overflow: hidden; padding-bottom: .14em; white-space: nowrap; }
+  .mask > span { display: inline-block; will-change: transform; }
+  .red { color: #FF3B55; }
+  .dotp { display: inline-block; width: .21em; height: .21em; border-radius: 50%; background: var(--red); margin-left: .05em; vertical-align: baseline; }
+
+  /* hook */
+  .hq { left: 96px; font-weight: 800; font-size: 108px; line-height: 1.02; letter-spacing: -.03em; }
+  #hq3 { font-weight: 900; font-size: 250px; line-height: .96; letter-spacing: -.04em; }
+  #sun { position: absolute; width: 900px; height: 900px; margin: -450px 0 0 -450px; border-radius: 50%;
+         background: radial-gradient(circle at 40% 36%, #D8263F 0%, #C8102E 55%, #A50D26 100%); box-shadow: 0 0 160px rgba(200,16,46,.35); }
+  #strike { position: absolute; overflow: hidden; height: 96px; }
+  #strike img { position: absolute; left: 0; top: 0; height: 96px; }
+  #nggak { left: 96px; font-weight: 900; font-size: 150px; line-height: 1; letter-spacing: -.04em; }
+  #ada { left: 100px; font-weight: 700; font-size: 66px; color: var(--blue-200); letter-spacing: -.01em; }
+
+  /* SSW over photo */
+  #photoWrap { overflow: hidden; }
+  #photo { position: absolute; left: 50%; top: 50%; width: 1282px; height: 1921px; margin: -960px 0 0 -641px; }
+  #photoShade { background: linear-gradient(180deg, rgba(10,23,48,.55) 0%, rgba(10,23,48,.12) 26%, rgba(10,23,48,.3) 45%, rgba(10,23,48,.9) 64%, rgba(10,23,48,1) 100%); }
+  .eyebrow { position: absolute; height: 44px; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 31px; letter-spacing: .16em;
+             color: var(--blue-200); white-space: nowrap; padding-left: 34px; line-height: 44px; }
+  .eyebrow i { position: absolute; left: 0; top: 13px; width: 18px; height: 18px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 5px rgba(200,16,46,.22); }
+  #ssw { left: 90px; font-weight: 900; font-size: 300px; line-height: .92; letter-spacing: -.05em; }
+  #ssw2 { left: 98px; font-weight: 700; font-size: 58px; letter-spacing: -.01em; }
+  #ssw2 .jp { font-family: 'Noto Sans JP', sans-serif; font-weight: 700; letter-spacing: .02em; }
+  #ssw3 { left: 100px; font-weight: 500; font-size: 40px; color: rgba(255,255,255,.88); }
+
+  /* requirements */
+  .hl { left: 96px; font-weight: 800; font-size: 96px; line-height: 1.04; letter-spacing: -.03em; }
+  .card { position: absolute; left: 96px; width: 888px; height: 196px; border-radius: 30px; background: rgba(255,255,255,.07);
+          border: 2px solid rgba(220,230,245,.2); box-shadow: 0 30px 60px rgba(2,8,22,.35); will-change: transform; }
+  .card .num { position: absolute; left: 34px; top: 52px; width: 92px; height: 92px; border-radius: 50%; background: var(--red); color: #fff;
+               font-weight: 800; font-size: 50px; line-height: 92px; text-align: center; box-shadow: 0 10px 24px rgba(200,16,46,.35); }
+  .card .t { position: absolute; left: 156px; top: 40px; font-weight: 800; font-size: 54px; letter-spacing: -.02em; white-space: nowrap; }
+  .card .s { position: absolute; left: 157px; top: 112px; font-weight: 500; font-size: 36px; color: var(--blue-200); white-space: nowrap; }
+  #pill { position: absolute; height: 76px; padding: 0 34px; border-radius: 999px; background: var(--red); color: #fff; font-weight: 800; font-size: 36px;
+          line-height: 76px; white-space: nowrap; box-shadow: 0 16px 34px rgba(200,16,46,.45); transform-origin: 20% 100%; }
+  #pill::after { content: ''; position: absolute; left: 44px; bottom: -14px; border: 14px solid transparent; border-bottom: 0; border-top-color: var(--red); }
+  .fine { position: absolute; left: 96px; width: 888px; font-weight: 500; font-size: 27px; line-height: 1.4; color: rgba(220,230,245,.66); }
+  #zoomCard { position: absolute; background: #132A52; border: 3px solid var(--red); opacity: 0; }
+
+  /* 日本語 scene */
+  #fujiWrap { position: absolute; left: 0; top: 0; width: 1080px; height: 960px; overflow: hidden; }
+  #fuji { position: absolute; left: -260px; top: 30px; width: 1600px; height: 900px; }
+  #fujiShade { position: absolute; left: 0; top: 0; width: 1080px; height: 960px;
+               background: linear-gradient(180deg, rgba(10,23,48,.45) 0%, rgba(10,23,48,0) 30%, rgba(10,23,48,.1) 60%, rgba(10,23,48,1) 97%); }
+  #nihongo { position: absolute; left: 0; width: 1080px; text-align: center; font-family: 'Shippori Mincho', serif; font-weight: 800; font-size: 250px; line-height: 1; white-space: nowrap; }
+  #nihongo span { display: inline-block; width: 250px; }
+  #nroma { position: absolute; left: 0; width: 1080px; text-align: center; font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: 36px; letter-spacing: .08em; color: rgba(255,255,255,.8); }
+  #nroma span { display: inline-block; width: 250px; }
+
+  /* bootcamp scene */
+  #studyWrap { position: absolute; left: 0; top: 0; width: 1080px; height: 900px; overflow: hidden; }
+  #study { position: absolute; left: -150px; top: 0; width: 1350px; height: 900px; }
+  #studyShade { position: absolute; left: 0; top: 0; width: 1080px; height: 900px; background: linear-gradient(180deg, rgba(10,23,48,.4) 0%, rgba(10,23,48,0) 25%, rgba(10,23,48,.15) 60%, rgba(10,23,48,1) 98%); }
+  .band { position: absolute; left: 0; top: 0; width: 1080px; height: 900px; overflow: hidden; opacity: 0; }
+  .band img { position: absolute; top: 0; width: 1620px; height: 900px; }
+  #sakura { left: -420px; } #torii { left: -280px; }
+  .bandShade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,23,48,.4) 0%, rgba(10,23,48,0) 25%, rgba(10,23,48,.15) 60%, rgba(10,23,48,1) 98%); }
+  .ilus { position: absolute; font-size: 23px; font-weight: 500; color: rgba(255,255,255,.72); letter-spacing: .02em; }
+  .chip { position: absolute; height: 78px; padding: 0 32px; border-radius: 999px; background: rgba(220,230,245,.12); border: 2px solid rgba(220,230,245,.28);
+          font-weight: 700; font-size: 36px; line-height: 74px; white-space: nowrap; transform-origin: 0 50%; }
+  .chip b { color: #FF5A70; }
+
+  /* end card */
+  .iris { position: absolute; border-radius: 50%; }
+  #irisRed { background: var(--red); }
+  #end { background: var(--paper); opacity: 0; overflow: hidden; }
+  #endTex { position: absolute; inset: -40px; background: url(/assets/dashboard/activity-paper-texture.webp) center/cover; opacity: .22; mix-blend-mode: multiply; }
+  #logo { position: absolute; left: 110px; top: 560px; width: 860px; height: 292.8px; transform-origin: 50% 50%; }
+  #logo img { position: absolute; left: 0; top: 0; width: 860px; height: 292.8px; }
+  .tag { position: absolute; left: 0; width: 1080px; text-align: center; font-weight: 800; font-size: 54px; color: var(--navy-900); letter-spacing: -.02em; }
+  #cta { position: absolute; left: 50%; top: 1112px; height: 112px; transform-origin: 50% 50%; }
+  #cta span { display: block; transform: translateX(-50%); height: 112px; line-height: 112px; padding: 0 64px; border-radius: 999px;
+              background: var(--red); color: #fff; font-weight: 700; font-size: 46px; white-space: nowrap; box-shadow: 0 18px 40px rgba(200,16,46,.28); }
+  #cta b { font-weight: 800; }
+  #endFine { position: absolute; left: 90px; width: 900px; top: 1300px; text-align: center; font-weight: 500; font-size: 27px; line-height: 1.4; color: var(--ink-500); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="layer" id="bg"></div>
+  <div class="layer" id="glow"></div>
+  <div class="wm" id="wm"></div>
+
+  <!-- 1-2: hook -->
+  <div class="layer" id="hook">
+    <div id="sun"></div>
+    <div class="mask hq" id="hq1"><span>Kerja di Jepang</span></div>
+    <div class="mask hq" id="hq2"><span><span id="harus">harus</span> lewat</span></div>
+    <div class="mask hq" id="hq3"><span>LPK<span class="red">?</span></span></div>
+    <div id="strike"><img src="swoosh-brush.png" alt=""></div>
+    <div class="mask" id="nggak"><span>Nggak harus<i class="dotp" id="dotp"></i></span></div>
+    <div class="mask" id="ada"><span>Ada jalur mandiri.</span></div>
+  </div>
+
+  <!-- 3: SSW over Tokyo -->
+  <div class="layer" id="sswScene">
+    <div class="layer" id="photoWrap"><img id="photo" src="/assets/landing/tokyo.jpg" alt=""></div>
+    <div class="layer" id="photoShade"></div>
+    <div class="layer" id="qRed" style="background:#C8102E"></div>
+    <div class="eyebrow" id="sswEb"><i></i>JALUR MANDIRI</div>
+    <div class="mask" id="ssw"><span>SSW</span></div>
+    <div class="mask" id="ssw2"><span>Tokutei Ginou · <span class="jp">特定技能</span></span></div>
+    <div class="mask" id="ssw3"><span>Status visa kerja resmi di Jepang</span></div>
+  </div>
+
+  <!-- 4: requirements -->
+  <div class="layer" id="reqScene">
+    <div class="eyebrow" id="reqEb" style="left:96px"><i></i>JALUR SSW · TOKUTEI GINOU</div>
+    <div class="mask hl" id="rq1"><span>Syarat utamanya:</span></div>
+    <div class="card" id="c1" style="top:720px"><div class="num">1</div><div class="t">Lulus tes bahasa Jepang</div><div class="s">JFT-Basic A2 atau JLPT N4</div></div>
+    <div class="card" id="c2" style="top:946px"><div class="num">2</div><div class="t">Lulus tes keterampilan</div><div class="s">Sesuai bidang kerja yang dituju</div></div>
+    <div id="pill">Mulai dari sini</div>
+    <div class="fine" id="reqFine" style="top:1186px">Gambaran umum jalur SSW (Tokutei Ginou). Pendaftaran tetap lewat prosedur resmi; syarat tiap bidang bisa berbeda.</div>
+  </div>
+  <div id="zoomCard"></div>
+
+  <!-- 6: 日本語 -->
+  <div class="layer" id="nhScene">
+    <div id="fujiWrap"><img id="fuji" src="/assets/dashboard/progress-fuji-dawn.webp" alt=""><div id="fujiShade"></div></div>
+    <div id="nihongo"><span>日</span><span>本</span><span>語</span></div>
+    <div id="nroma"><span>ni</span><span>hon</span><span>go</span></div>
+    <div class="eyebrow" id="nhEb" style="left:96px"><i></i>LANGKAH PERTAMA</div>
+    <div class="mask hl" id="nh1"><span>Siapkan dulu</span></div>
+    <div class="mask hl" id="nh2"><span>bahasa Jepangnya.</span></div>
+  </div>
+
+  <!-- 6-9: invitation to study at EzNihongo -->
+  <div class="layer" id="bcScene">
+    <div id="studyWrap"><img id="study" src="/assets/landing/bootcamp-study-zen-chung.jpg" alt=""><div id="studyShade"></div></div>
+    <div class="band" id="band2"><img id="sakura" src="/assets/dashboard/continue-sakura-train.webp" alt=""><div class="bandShade"></div></div>
+    <div class="band" id="band3"><img id="torii" src="/assets/dashboard/continue-hakone-torii.webp" alt=""><div class="bandShade"></div></div>
+    <div class="ilus" id="bcIlus">Foto ilustrasi</div>
+    <div class="eyebrow" id="ebI0" style="left:96px"><i></i>BOOTCAMP EZNIHONGO</div>
+    <div class="mask hl" id="i0a"><span>Yuk, belajar</span></div>
+    <div class="mask hl" id="i0b"><span>bahasa Jepang</span></div>
+    <div class="mask hl" id="i0c"><span>di EzNihongo<i class="dotp"></i></span></div>
+    <div class="eyebrow" id="ebI1" style="left:96px"><i></i>01 · KELAS ONLINE</div>
+    <div class="mask hl" id="i1a"><span>Belajar bareng</span></div>
+    <div class="mask hl" id="i1b"><span>sensei.</span></div>
+    <div class="chip" id="chip1"><b>2x</b> seminggu</div>
+    <div class="eyebrow" id="ebI2" style="left:96px"><i></i>02 · LATIHAN MANDIRI</div>
+    <div class="mask hl" id="i2a"><span>Ulangi materi</span></div>
+    <div class="mask hl" id="i2b"><span>kapan saja.</span></div>
+    <div class="chip" id="chip2">lewat dashboard belajar</div>
+    <div class="eyebrow" id="ebI3" style="left:96px"><i></i>03 · UNTUK PEMULA</div>
+    <div class="mask hl" id="i3a"><span>Mulai dari nol</span></div>
+    <div class="mask hl" id="i3b"><span>juga bisa.</span></div>
+  </div>
+
+  <!-- 8: end -->
+  <div class="iris" id="irisRed"></div>
+  <div class="layer" id="end">
+    <div id="endTex"></div>
+    <div id="logo">
+      <img id="lgSwoosh" src="logo-swoosh.png" alt="">
+      <img id="lgText" src="logo-text.png" alt="">
+      <img id="lgEz" src="logo-ez.png" alt="">
+      <img id="lgTorii" src="logo-torii.png" alt="">
+      <img id="lgDot" src="logo-dot.png" alt="">
+    </div>
+    <div class="tag" id="tag1" style="top:922px">Kerja ke Jepang jalur mandiri,</div>
+    <div class="tag" id="tag2" style="top:994px">mulai dari bahasanya.</div>
+    <div id="cta"><span>Mulai belajar di <b>eznihongo.com</b></span></div>
+    <div id="endFine">Penerimaan kerja mengikuti seleksi perusahaan dan prosedur resmi.</div>
+  </div>
+
+  <div class="layer" id="grain"></div>
+</div>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const BEAT = 60 / 132, BAR = 4 * BEAT;   // 11 bars = 20.000 s
+window.DURATION = 20;
+const bar = (n, b = 0) => (n - 1) * BAR + b * BEAT;
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const p = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, u) => a + (b - a) * u;
+const eOutCubic = (u) => 1 - Math.pow(1 - u, 3);
+const eInCubic = (u) => u * u * u;
+const eInOut = (u) => (u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
+const eOutExpo = (u) => (u >= 1 ? 1 : 1 - Math.pow(2, -10 * u));
+const eOutBack = (u, s = 1.70158) => 1 + (s + 1) * Math.pow(u - 1, 3) + s * Math.pow(u - 1, 2);
+function spring(tau, zeta = 0.55, w = 15) {
+  if (tau <= 0) return 0;
+  const wd = w * Math.sqrt(1 - zeta * zeta);
+  return 1 - Math.exp(-zeta * w * tau) * (Math.cos(wd * tau) + (zeta * w / wd) * Math.sin(wd * tau));
+}
+function set(el, props) { const s = (typeof el === 'string' ? $(el) : el).style; for (const k in props) s[k] = props[k]; }
+function show(el, o) { set(el, { opacity: String(o), visibility: o <= 0.001 ? 'hidden' : 'visible' }); }
+function hash(n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+// mask line reveal: slides up from below its clip, exits upwards
+function line(id, top, tIn, tOut = 99, dur = 0.5) {
+  set(id, { top: top + 'px' });
+  const ui = eOutExpo(p(tNow, tIn, tIn + dur)), uo = eInCubic(p(tNow, tOut, tOut + 0.22));
+  $(id).firstElementChild.style.transform = `translateY(${(1 - ui) * 118 - uo * 118}%)`;
+  show(id, tNow >= tIn - 0.01 && tNow < tOut + 0.25 ? 1 : 0);
+}
+function eyebrow(id, top, tIn, tOut = 99) {
+  const u = eOutExpo(p(tNow, tIn, tIn + 0.4));
+  set(id, { top: top + 'px', transform: `translateX(${(1 - u) * -30}px)` });
+  show(id, clamp(p(tNow, tIn, tIn + 0.2) - p(tNow, tOut, tOut + 0.15)));
+  const dot = $(id).querySelector('i');
+  const ph = ((tNow) / BEAT) % 1;
+  dot.style.transform = `scale(${1 + 0.35 * Math.exp(-ph * 6)})`;
+}
+let tNow = 0;
+let M = {};   // measured layout (boot)
+
+function render(t) {
+  tNow = t;
+  // groove glow (kicks from the soundtrack, bars 3..7)
+  let pulse = 0;
+  if (t >= bar(3) && t < bar(10)) for (const b of [3, 4, 6, 7, 8, 9]) for (const s16 of [0, 6, 8, 11]) {
+    const tk = bar(b) + s16 * BEAT / 4; if (t >= tk) pulse += Math.exp(-(t - tk) / 0.16);
+  }
+  const drop = t >= bar(3) ? Math.exp(-(t - bar(3)) / 0.5) : 0;
+  show('glow', clamp(0.10 + 0.10 * Math.min(pulse, 1.4) + 0.3 * drop) * (t < bar(10) - 0.2 ? 1 : 0));
+  // watermark kanji: 道 (jalur) · 技 (keterampilan) · 学 (belajar)
+  const wms = [[0, bar(3) - 0.1, '道', 330, 120], [bar(4), bar(5) - 0.3, '技', 380, 360]];
+  let on = false;
+  for (const [a, b, ch, x, y] of wms) if (t >= a && t < b) {
+    const u = p(t, a, b); const wm = $('wm'); if (wm.textContent !== ch) wm.textContent = ch;
+    set(wm, { fontSize: '1000px', left: x + 'px', top: y + 'px', transform: `translate(${-60 * u}px, ${40 * u}px)` });
+    show(wm, 0.05 * clamp(p(t, a, a + 0.3)) * (1 - p(t, b - 0.25, b))); on = true;
+  }
+  if (!on) show('wm', 0);
+  const fi = Math.floor(t * 30);
+  $('grain').style.backgroundPosition = `${Math.floor(hash(fi) * 512)}px ${Math.floor(hash(fi + 7) * 512)}px`;
+  $('grain').style.opacity = t > bar(10) ? '0.035' : '0.07';
+
+  renderHook(t); renderSSW(t); renderReq(t); renderNihongo(t); renderInvite(t); renderEnd(t);
+}
+
+// ------------------------------------------------------------ 1-2 hook
+function renderHook(t) {
+  if (t > bar(3) + 0.2) { show('hook', 0); return; }
+  show('hook', 1 - eOutCubic(p(t, bar(3) - 0.3, bar(3) - 0.08)));
+  // rising sun (brand red dot) balances the lower half; bumps with each hook word
+  let sp = 0;
+  for (const tb of [0, bar(1, 1), bar(1, 2), bar(2), bar(2, 1)]) if (t >= tb) sp += Math.exp(-(t - tb) / 0.14) * 0.025;
+  const su = eOutCubic(p(t, 0, 0.6));
+  set('sun', { left: '930px', top: (1900 - 110 * su) + 'px', transform: `scale(${0.85 + 0.15 * su + sp})` });
+  show('sun', 1 - eOutCubic(p(t, bar(3) - 0.45, bar(3) - 0.2)));
+  line('hq1', 540, 0.0);
+  line('hq2', 660, bar(1, 1));
+  // "LPK?" slams in on beat 3
+  set('hq3', { top: '776px' });
+  const u3 = p(t, bar(1, 2), bar(1, 2) + 0.34);
+  $('hq3').firstElementChild.style.transform = `translateY(${(1 - eOutExpo(u3)) * 60}%) scale(${1 + 0.3 * (1 - eOutExpo(u3))})`;
+  $('hq3').style.filter = `blur(${(1 - u3) * 10}px)`;
+  show('hq3', t >= bar(1, 2) - 0.01 ? 1 : 0);
+  // brush crosses out "harus" on the downbeat of bar 2
+  const sw = eOutCubic(p(t, bar(2) - 0.06, bar(2) + 0.14));
+  const r = M.harus;
+  set('strike', { left: (r.x - 26) + 'px', top: (r.y + r.h * 0.42 - 48) + 'px', width: ((r.w + 52) * sw) + 'px', transform: 'rotate(-4deg)', transformOrigin: '0 50%' });
+  $('strike').firstElementChild.style.width = (r.w + 52) + 'px';
+  show('strike', t >= bar(2) - 0.06 ? 1 : 0);
+  $('harus').style.opacity = String(1 - 0.55 * p(t, bar(2), bar(2) + 0.2));
+  // answer
+  line('nggak', 1080, bar(2, 1), 99, 0.45);
+  const du = spring(t - (bar(2, 1) + 0.12), 0.35, 18);
+  $('dotp').style.transform = `scale(${clamp(du, 0, 1.6)})`;
+  line('ada', 1250, bar(2, 2));
+}
+
+// ------------------------------------------------------------ 3 SSW (portal from the red dot)
+function renderSSW(t) {
+  const a = bar(3) - 0.32, z = bar(4) + 0.06;
+  if (t < a || t > z) { show('sswScene', 0); return; }
+  show('sswScene', 1);
+  const uo = p(t, a, bar(3) + 0.12);
+  const R = lerp(M.dot.r, 1600, eInCubic(uo));
+  $('sswScene').style.clipPath = uo >= 1 ? 'none' : `circle(${R}px at ${M.dot.x}px ${M.dot.y}px)`;
+  $('qRed').style.opacity = String(1 - eOutCubic(p(t, a + 0.04, a + 0.3)));
+  const out = eInCubic(p(t, bar(4) - 0.32, bar(4) + 0.02));
+  $('sswScene').style.transform = `translateY(${-1920 * out}px)`;
+  const ps = 1.32 - 0.18 * eOutCubic(p(t, a, a + 0.7)) - 0.04 * p(t, a + 0.7, bar(4));
+  set('photo', { transform: `scale(${ps})` });
+  eyebrow('sswEb', 1006, bar(3) + 0.02); set('sswEb', { left: '98px' });
+  set('ssw', { top: '1052px' });
+  const us = p(t, bar(3), bar(3) + 0.4);
+  $('ssw').firstElementChild.style.transform = `translateY(${(1 - eOutExpo(us)) * 70}%) scale(${1 + 0.25 * (1 - eOutExpo(us))})`;
+  $('ssw').style.filter = `blur(${(1 - us) * 8}px)`;
+  show('ssw', t >= bar(3) - 0.01 ? 1 : 0);
+  line('ssw2', 1336, bar(3, 1));
+  line('ssw3', 1422, bar(3, 2));
+}
+
+// ------------------------------------------------------------ 4 requirements
+function renderReq(t) {
+  const a = bar(4) - 0.35, z = bar(5) + 0.1;
+  if (t < a || t > z) { show('reqScene', 0); show('zoomCard', 0); return; }
+  show('reqScene', 1);
+  const exitA = bar(5) - 0.34;
+  const fade = 1 - eOutCubic(p(t, exitA, exitA + 0.16));
+  eyebrow('reqEb', 440, bar(4), exitA);
+  line('rq1', 496, bar(4) + 0.04, exitA);
+  const focus = eOutCubic(p(t, bar(4, 2), bar(4, 2) + 0.25));
+  [['c1', bar(4) + 0.08], ['c2', bar(4, 1) + 0.08]].forEach(([id, t0], k) => {
+    const u = spring(t - t0, 0.62, 14);
+    const dim = k === 0 ? 1 : 1 - 0.62 * focus;
+    const sc = k === 0 ? 1 + 0.035 * focus : 1 - 0.02 * focus;
+    set(id, { transform: `translateX(${(1 - u) * 160}px) scale(${sc})`,
+              borderColor: k === 0 ? `rgba(${lerp(220, 200, focus)},${lerp(230, 16, focus)},${lerp(245, 46, focus)},${lerp(0.2, 1, focus)})` : 'rgba(220,230,245,.2)',
+              background: k === 0 ? `rgba(255,255,255,${0.07 + 0.05 * focus})` : 'rgba(255,255,255,.07)' });
+    show(id, (t >= t0 ? clamp(p(t, t0, t0 + 0.12)) * dim : 0) * (k === 0 ? (t < exitA ? 1 : 0) : fade));
+    $(id).querySelector('.num').style.transform = `scale(${clamp(spring(t - t0 - 0.06, 0.4, 18), 0, 1.4)})`;
+  });
+  const pu = spring(t - (bar(4, 2) + 0.06), 0.42, 16);
+  set('pill', { left: '640px', top: '640px', transform: `scale(${clamp(pu, 0, 1.3)}) translateY(${Math.sin(Math.max(0, t - bar(4, 2)) * 9) * 3}px)` });
+  show('pill', t >= bar(4, 2) + 0.06 ? fade : 0);
+  set('reqFine', { transform: `translateY(${(1 - eOutExpo(p(t, bar(4) + 0.3, bar(4) + 0.8))) * 20}px)` });
+  show('reqFine', clamp(p(t, bar(4) + 0.3, bar(4) + 0.5)) * fade);
+  // zoom-through: requirement 1 grows into the 日本語 scene
+  const uz = eInOut(p(t, exitA, bar(5) + 0.04));
+  if (t >= exitA) {
+    const r0 = { x: 96 - 888 * 0.0175, y: 720 - 196 * 0.0175, w: 888 * 1.035, h: 196 * 1.035 };
+    set('zoomCard', { left: lerp(r0.x, -4, uz) + 'px', top: lerp(r0.y, -4, uz) + 'px', width: lerp(r0.w, 1088, uz) + 'px', height: lerp(r0.h, 1928, uz) + 'px',
+                      borderRadius: lerp(30, 0, uz) + 'px', borderWidth: lerp(3, 0, uz) + 'px' });
+    show('zoomCard', 1 - p(t, bar(5) + 0.04, bar(5) + 0.1));
+  } else show('zoomCard', 0);
+}
+
+// ------------------------------------------------------------ 6 日本語
+function renderNihongo(t) {
+  const a = bar(5) - 0.02, z = bar(6) + 0.06;
+  if (t < a || t > z) { show('nhScene', 0); return; }
+  show('nhScene', 1);
+  const out = eInCubic(p(t, bar(6) - 0.3, bar(6) + 0.02));
+  $('nhScene').style.transform = `translateX(${-1080 * out}px)`;
+  const fu = eOutCubic(p(t, a, a + 0.5));
+  set('fujiWrap', { opacity: String(fu) });
+  set('fuji', { transform: `scale(${1.12 - 0.08 * fu - 0.03 * p(t, a + 0.5, bar(6))})` });
+  set('nihongo', { top: '760px' }); set('nroma', { top: '1030px' });
+  $('nihongo').querySelectorAll('span').forEach((s, i) => {
+    const ti = bar(5) + i * BEAT / 2, u = p(t, ti, ti + 0.24);
+    s.style.opacity = String(eOutCubic(u));
+    s.style.transform = `translateY(${(1 - eOutCubic(u)) * 60}px) scale(${1.25 - 0.25 * eOutBack(u, 2.2)})`;
+    s.style.filter = `blur(${(1 - u) * 10}px)`;
+  });
+  $('nroma').querySelectorAll('span').forEach((s, i) => {
+    const ti = bar(5) + i * BEAT / 2 + 0.08, u = eOutCubic(p(t, ti, ti + 0.25));
+    s.style.opacity = String(u); s.style.transform = `translateY(${(1 - u) * 16}px)`;
+  });
+  eyebrow('nhEb', 1126, bar(5) + 0.2);
+  line('nh1', 1184, bar(5) + 0.3);
+  line('nh2', 1284, bar(5) + 0.38);
+}
+
+// ------------------------------------------------------------ 6-9 invitation
+function renderInvite(t) {
+  const a = bar(6) - 0.3, z = bar(10) + 0.2;
+  if (t < a || t > z) { show('bcScene', 0); return; }
+  show('bcScene', 1);
+  const inn = eOutCubic(p(t, a, bar(6) + 0.06));
+  $('bcScene').style.transform = `translateX(${1080 * (1 - inn)}px)`;
+  // punch-in reframes on every bar (same shot, tighter each time)
+  const steps = [[bar(6), 1.06, 30], [bar(7), 1.14, 36], [bar(8), 1.2, 44], [bar(9), 1.28, 30]];
+  let sc = 1.06, ox = 30;
+  for (const [tb, s_, o] of steps) if (t >= tb - 0.05) {
+    const u = eOutExpo(p(t, tb - 0.05, tb + 0.25));
+    sc = lerp(sc, s_, u); ox = lerp(ox, o, u);
+  }
+  set('study', { transform: `scale(${sc + 0.02 * p(t, a, bar(10))})`, transformOrigin: `${ox}% 42%` });
+  // hard cuts on the downbeat: 02 -> sakura & train (belajar di mana saja), 03 -> torii (titik awal)
+  [['band2', 'sakura', bar(8), bar(9)], ['band3', 'torii', bar(9), 99]].forEach(([band, im, t0, t1]) => {
+    show(band, t >= t0 && t < t1 ? 1 : 0);
+    const u = eOutExpo(p(t, t0, t0 + 0.45));
+    set(im, { transform: `scale(${1.16 - 0.1 * u + 0.03 * p(t, t0 + 0.45, t0 + BAR)})`, transformOrigin: '50% 45%' });
+  });
+  set('bcIlus', { right: '40px', left: 'auto', top: '850px' });
+  const X = bar(7) - 0.22, Y = bar(8) - 0.22, Z = bar(9) - 0.22;
+  eyebrow('ebI0', 930, bar(6) + 0.02, X);
+  line('i0a', 988, bar(6) + 0.08, X); line('i0b', 1088, bar(6) + 0.14, X + 0.03); line('i0c', 1188, bar(6) + 0.2, X + 0.06);
+  eyebrow('ebI1', 930, bar(7), Y);
+  line('i1a', 988, bar(7) + 0.06, Y); line('i1b', 1088, bar(7) + 0.12, Y + 0.03);
+  eyebrow('ebI2', 930, bar(8), Z);
+  line('i2a', 988, bar(8) + 0.06, Z); line('i2b', 1088, bar(8) + 0.12, Z + 0.03);
+  eyebrow('ebI3', 930, bar(9), bar(10) - 0.4);
+  line('i3a', 988, bar(9) + 0.06, bar(10) - 0.4); line('i3b', 1088, bar(9) + 0.12, bar(10) - 0.37);
+  [['chip1', bar(7, 2), Y], ['chip2', bar(8, 2), Z]].forEach(([id, t0, tOut]) => {
+    const u = spring(t - t0, 0.5, 16);
+    set(id, { left: '96px', top: '1226px', transform: `scale(${clamp(u, 0, 1.2)})` });
+    show(id, t >= t0 ? clamp(p(t, t0, t0 + 0.08)) * (1 - p(t, tOut, tOut + 0.15)) : 0);
+  });
+  // the red period on "di EzNihongo." pops like the hook's
+  const dp = $('i0c').querySelector('.dotp');
+  dp.style.transform = `scale(${clamp(spring(t - (bar(6) + 0.36), 0.35, 18), 0, 1.6)})`;
+}
+
+// ------------------------------------------------------------ 8 end card
+function renderEnd(t) {
+  const T = bar(10);
+  const ra = T - 0.36, pa = T - 0.08;
+  const ur = eInCubic(p(t, ra, T - 0.02)), up = eOutCubic(p(t, pa, T + 0.22));
+  const cx = 540, cy = 980, R = 1180;
+  set('irisRed', { left: (cx - R) + 'px', top: (cy - R) + 'px', width: 2 * R + 'px', height: 2 * R + 'px', transform: `scale(${Math.max(ur, 0.0001)})` });
+  show('irisRed', t >= ra && t < T + 0.3 ? 1 : 0);
+  show('end', t >= pa ? 1 : 0);
+  $('end').style.clipPath = up >= 1 ? 'none' : `circle(${R * up}px at ${cx}px ${cy}px)`;
+  if (t < pa) return;
+  const LS = 860 / 2000;
+  const sw = eOutCubic(p(t, T, T + 0.34));
+  set('lgSwoosh', { clipPath: `inset(0 ${100 - sw * 100}% 0 0)` });
+  const ue = eOutExpo(p(t, T + 0.04, T + 0.4));
+  set('lgEz', { opacity: String(p(t, T + 0.04, T + 0.16)), transform: `translateY(${(1 - ue) * 36}px)` });
+  const ut = eOutExpo(p(t, T + 0.1, T + 0.46));
+  set('lgText', { opacity: String(p(t, T + 0.1, T + 0.22)), transform: `translateY(${(1 - ut) * 36}px)` });
+  const uo = spring(t - (T + 0.16), 0.42, 14);
+  set('lgTorii', { opacity: String(p(t, T + 0.16, T + 0.24)), transform: `translateY(${(1 - uo) * -70}px)` });
+  const land = bar(10, 1), fall0 = T + 0.12;
+  const dotCx = 868.5 * LS, dotCy = 256.5 * LS;
+  let dy = 0, sx = 1, sy = 1;
+  if (t < land) { const u = p(t, fall0, land); dy = -560 * (1 - u * u); }
+  else { const tb = t - land; dy = -34 * Math.max(0, Math.sin(Math.PI * clamp(tb / 0.26))); const sq = Math.exp(-tb / 0.06) * 0.28; sx = 1 + sq; sy = 1 - sq; }
+  set('lgDot', { opacity: String(p(t, fall0, fall0 + 0.05)), transformOrigin: `${dotCx}px ${dotCy + 24}px`, transform: `translateY(${dy}px) scale(${sx}, ${sy})` });
+  set('logo', { transform: `scale(${1 + 0.03 * eOutCubic(p(t, T + 0.5, 20))})` });
+  [['tag1', land + 0.02], ['tag2', land + 0.1]].forEach(([id, t0]) => {
+    const u = eOutExpo(p(t, t0, t0 + 0.5));
+    set(id, { opacity: String(p(t, t0, t0 + 0.18)), transform: `translateY(${(1 - u) * 30}px)` });
+  });
+  const cu = spring(t - (land + 0.24), 0.5, 15);
+  set('cta', { opacity: String(p(t, land + 0.24, land + 0.32)), transform: `scale(${0.7 + 0.3 * cu})` });
+  set('endFine', { opacity: String(p(t, land + 0.4, land + 0.6)) });
+}
+
+async function boot() {
+  const c = document.createElement('canvas'); c.width = c.height = 512;
+  const g = c.getContext('2d'); const img = g.createImageData(512, 512);
+  let s = 1234567;
+  for (let i = 0; i < img.data.length; i += 4) { s = (s * 16807) % 2147483647; const v = (s / 2147483647) * 255; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+  g.putImageData(img, 0, 0);
+  $('grain').style.backgroundImage = `url(${c.toDataURL()})`;
+  await document.fonts.ready;
+  await Promise.all(['800 108px Inter', '900 250px Inter', '700 31px "JetBrains Mono"', '800 250px "Shippori Mincho"', '700 58px "Noto Sans JP"', '500 40px Inter']
+    .map((f) => document.fonts.load(f, '日本語道技学特定技能 ABCabc?,.')));
+  await Promise.all([...document.images].map((im) => im.decode().catch(() => {})));
+  // measure static layout: the struck word and the red period (portal origin)
+  M.harus = { x: 0, y: 0, w: 0, h: 0 }; M.dot = { x: 540, y: 1100, r: 16 };
+  render(bar(2, 3));
+  const hr = $('harus').getBoundingClientRect(), dr = $('dotp').getBoundingClientRect();
+  M.harus = { x: hr.x, y: hr.y, w: hr.width, h: hr.height };
+  M.dot = { x: dr.x + dr.width / 2, y: dr.y + dr.height / 2, r: dr.width / 2 };
+  window.__ready = true;
+  render(Number(new URLSearchParams(location.search).get('t') || 0));
+}
+window.render = render;
+boot();
+</script>
+</body>
+</html>

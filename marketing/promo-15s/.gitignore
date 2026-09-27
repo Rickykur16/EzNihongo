@@ -3,5 +3,8 @@ composition/seg/
 composition/stills/
 composition/frames/
 composition/music_raw.wav
-composition/timeline_audio.json
+composition/music_ssw.wav
+composition/music_*.json
+composition/seg_ssw/
 capture/netcache/
+composition/__pycache__/
