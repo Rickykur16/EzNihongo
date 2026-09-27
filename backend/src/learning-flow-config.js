@@ -3,7 +3,7 @@ import { withTransaction } from './db.js';
 import { loadTaskConcepts, loadModulePool } from './routes/grammar-task.js';
 import { companionIsCurrent, contentRevisionId } from './bunpou-flow-service.js';
 import { dialogueFingerprint, dialogueTurns, questionFingerprint } from './dialogue-question-service.js';
-import { getCurriculumBoundary } from './curriculum-boundary.js';
+import { getCurriculumBoundary, hasBlockingIntegrityIssues } from './curriculum-boundary.js';
 import { CURRICULUM_VALIDATOR_VERSION,
   validateContentAgainstBoundary } from './curriculum-boundary-validator.js';
 import { lockCurriculumCourses } from './curriculum-content-service.js';
@@ -133,17 +133,19 @@ async function lessonReadiness(client, lesson, { resolveBoundary = getCurriculum
       currentFingerprint });
   }
   let boundary = null;
+  let boundaryBlocked = true;
   try {
     boundary = await resolveBoundary({ lessonId: lesson.id }, { dbQuery });
+    boundaryBlocked = hasBlockingIntegrityIssues(boundary);
     if (boundary.course?.id !== lesson.course_id ||
         boundary.currentModule?.id !== lesson.module_id ||
-        boundary.integrityIssues?.length) issues.push({ code: 'flow_boundary_invalid',
+        boundaryBlocked) issues.push({ code: 'flow_boundary_invalid',
       boundaryStatus: boundary.status || null,
       boundaryCourseId: boundary.course?.id || null,
       boundaryModuleId: boundary.currentModule?.id || null,
       integrityIssues: boundary.integrityIssues || [] });
   } catch { issues.push(issue('flow_boundary_unavailable')); }
-  if (boundary && !boundary.integrityIssues?.length) {
+  if (boundary && !boundaryBlocked) {
     const coreItems = items.map(({ recognitionDistractors, controlledDistractors,
       recognition_distractors, controlled_distractors, ...item }) => item);
     const sourceReport = validateContentAgainstBoundary({ boundary,
@@ -201,7 +203,7 @@ async function lessonReadiness(client, lesson, { resolveBoundary = getCurriculum
         transferCount: transfer.length }); continue;
     }
     const fingerprint = dialogueFingerprint(grammar);
-    if (boundary && !boundary.integrityIssues?.length) {
+    if (boundary && !boundaryBlocked) {
       const sourceReport = validateContentAgainstBoundary({ boundary,
         contentType: 'grammar_dialog', operation: 'publish',
         communicationGoal: grammar.communication_goal,
@@ -230,7 +232,7 @@ async function lessonReadiness(client, lesson, { resolveBoundary = getCurriculum
             !dialogueTurns(grammar)[entry.turnIndex]?.text.includes(entry.quote)))) {
         issues.push({ code: 'flow_comprehension_evidence_invalid', grammarId, questionId: row.id });
       }
-      if (boundary && !boundary.integrityIssues?.length) {
+      if (boundary && !boundaryBlocked) {
         if (row.boundary_fingerprint !== boundary.boundaryFingerprint ||
             row.validator_version !== CURRICULUM_VALIDATOR_VERSION) {
           issues.push({ code: 'flow_question_review_stale', grammarId, questionId: row.id });

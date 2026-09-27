@@ -232,14 +232,25 @@ test('readiness pins every visible dialogue question to current source, review, 
   const sets = () => ({ vocabulary: [], kanji: [], grammar: [] });
   let boundaryFingerprint = 'sha256:boundary';
   let futureKanji = [];
+  let integrityIssues = [];
   const resolveBoundary = async () => ({ status: 'resolved', boundaryFingerprint,
     course: { id: scope.courseId, slug: 'n5' }, currentModule: { id: scope.moduleId },
     lesson: { id: scope.lessonId, slug: 'lesson' }, target: sets(), previous: sets(),
     prerequisite: sets(), future: { ...sets(), kanji: futureKanji },
     auxiliaryPolicy: { version: 0, terms: [] },
-    integrityIssues: [] });
+    integrityIssues });
   const ready = await learningFlowReadiness(client, configured, { resolveBoundary });
   assert.equal(ready.ready, true);
+
+  integrityIssues = [{ code: 'vocabulary_unplaced', severity: 'warning' }];
+  const warningOnly = await learningFlowReadiness(client, configured, { resolveBoundary });
+  assert.equal(warningOnly.ready, true);
+
+  integrityIssues = [{ code: 'grammar_lesson_owner_mismatch', severity: 'error' }];
+  const invalidGraph = await learningFlowReadiness(client, configured, { resolveBoundary });
+  assert.equal(invalidGraph.ready, false);
+  assert.ok(invalidGraph.lessons[0].issues.some(item => item.code === 'flow_boundary_invalid'));
+  integrityIssues = [];
 
   boundaryFingerprint = 'sha256:new-boundary';
   const staleReview = await learningFlowReadiness(client, configured, { resolveBoundary });

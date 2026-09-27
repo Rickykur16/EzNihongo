@@ -149,6 +149,22 @@ test('missing evidence, stale published companion, and manual conflict never ove
   assert.equal(conflict.rows.find(row => row.id === id(20)).source_kind, 'manual');
 });
 
+test('boundary warnings remain diagnostic while errors block the backfill', async () => {
+  const warning = await fixture();
+  warning.resolveBoundary = async () => ({ ...emptyBoundary,
+    integrityIssues: [{ code: 'vocabulary_unplaced', severity: 'warning' }] });
+  const allowed = await backfillDialogueQuestions(scope, warning);
+  assert.equal(allowed.counts.would_insert, 2);
+
+  const invalid = await fixture();
+  invalid.resolveBoundary = async () => ({ ...emptyBoundary,
+    status: 'context_invalid',
+    integrityIssues: [{ code: 'grammar_lesson_owner_mismatch', severity: 'error' }] });
+  const blocked = await backfillDialogueQuestions(scope, invalid);
+  assert.equal(blocked.counts.boundary_context_invalid, 1);
+  assert.equal(invalid.writes, 0);
+});
+
 test('all active slots constrain transfer and comprehension count, including nonzero manual slots', async () => {
   const f = await fixture();
   f.rows.push({ id: id(21), grammar_id: grammarId, kind: 'transfer',

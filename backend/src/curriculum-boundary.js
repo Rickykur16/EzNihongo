@@ -23,6 +23,15 @@ export class BoundaryUnavailableError extends Error {
   constructor(cause) { super('boundary_unavailable', { cause }); this.name = 'BoundaryUnavailableError'; this.code = 'boundary_unavailable'; }
 }
 
+// The boundary loader deliberately reports legacy cleanup work as warnings.
+// Rollout gates must keep those diagnostics visible without treating them as
+// a corrupt ownership graph. Unknown severities remain blocking so a malformed
+// integrity result cannot silently enable a learning flow.
+export function hasBlockingIntegrityIssues(boundary) {
+  return boundary?.status === 'context_invalid' ||
+    (boundary?.integrityIssues || []).some(item => item?.severity !== 'warning');
+}
+
 function parseAuxiliary(rows, issues) {
   const raw = rows[0]?.value;
   if (raw == null) return { version: 0, terms: [] };
