@@ -10,6 +10,11 @@ function source(from, to) {
   return html.slice(start, end);
 }
 const helpers = source('window.__requiredAssignment = null;', '// Async — fetch quiz-status');
+const learningSequenceStart = html.indexOf('function lessonHasConversation(');
+const learningSequenceEnd = html.indexOf('// ── End learning sequence', learningSequenceStart);
+assert.ok(learningSequenceStart > 0 && learningSequenceEnd > learningSequenceStart);
+const learningSequence = html.slice(learningSequenceStart, learningSequenceEnd);
+const learningNavigation = source('function selectLearningView(', 'const SIDEBAR_KEY');
 const renderer = source('async function renderQuizLesson(', 'function fmtCooldown(');
 const starter = source('window.startQuizAttempt =', 'function quizQuestionsByCategory(');
 const draftFlow = source('function setQuizAnswerPayload(', 'window.pickQuizAnswer = async');
@@ -188,11 +193,17 @@ test('a later edit during an in-flight save is stored and sent with the next rev
 test('lesson, module-intro and other-course navigation remain available while an assignment is pending',async()=>{
   const {ctx,effects}=setup();
   ctx.currentState={course:'n5',moduleId:'bab3',lessonId:'assignment'};
+  ctx.COURSE_CONTENT={
+    n5:{modules:[{id:'bab3',sectionName:'Bab 3',lessons:[
+      {id:'assignment',type:'quiz'},{id:'other',type:'text'},
+    ]}]},
+    n4:{modules:[{id:'bab1',sectionName:'Bab 1',lessons:[{id:'other',type:'text'}]}]},
+  };
   let navigationSideEffects=0;ctx.prepareMobileSidebarContentFocus=()=>{navigationSideEffects++;return ()=>{};};
-  vm.runInContext(source('window.selectLesson =','const SIDEBAR_KEY'),ctx);
+  vm.runInContext(learningSequence + learningNavigation,ctx);
   vm.runInContext(source('window.switchCourse =','// AI SENPAI (Maneki)'),ctx);
   ctx.window.setRequiredAssignment('n5:bab3:assignment','attempt-1');
-  ctx.window.selectLesson('bab4','other');ctx.window.selectModuleIntro('bab3');await ctx.window.switchCourse('n4');
+  ctx.window.selectLesson('bab3','other');ctx.window.selectModuleIntro('bab3');await ctx.window.switchCourse('n4');
   assert.equal(navigationSideEffects,3);assert.equal(effects.toasts.length,0);
   assert.equal(ctx.currentState.lessonId,null);
   assert.equal(ctx.window.blockAssignmentNavigation('n5:bab3:assignment'),false);

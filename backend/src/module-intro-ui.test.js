@@ -7,12 +7,16 @@ const html = await readFile(new URL('../../welcome.html', import.meta.url), 'utf
 const start = html.indexOf('function getModuleIntroPlan(');
 const end = html.indexOf('function renderModuleIntro(', start);
 assert.ok(start > 0 && end > start, 'module intro plan helper markers not found');
+const sequenceStart = html.indexOf('function lessonHasConversation(');
+const sequenceEnd = html.indexOf('// ── End learning sequence', sequenceStart);
+assert.ok(sequenceStart > 0 && sequenceEnd > sequenceStart, 'learning sequence helper markers not found');
+const learningSequence = html.slice(sequenceStart, sequenceEnd);
 
 function setup() {
   const context = vm.createContext({
     visibleLessons: (module) => (module.lessons || []).filter((lesson) => !lesson.hidden),
   });
-  vm.runInContext(html.slice(start, end), context);
+  vm.runInContext(learningSequence + html.slice(start, end), context);
   return context;
 }
 
@@ -28,7 +32,7 @@ function setupRenderer(progress = {}) {
     })[char]),
     formatDurationLong: (minutes) => `${minutes} menit`,
   });
-  vm.runInContext(html.slice(start, renderEnd), context);
+  vm.runInContext(learningSequence + html.slice(start, renderEnd), context);
   return context;
 }
 
