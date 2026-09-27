@@ -18,6 +18,7 @@ test('HTTP resumes frozen v2 while rollout is off and current-source SQL fails; 
     const { signAccessToken } = await import('./auth.js');
     const { createGrammarTaskSessionsRouter } = await import('./routes/grammar-task-sessions.js');
     let flowVersion = 2;
+    let hasExisting = true;
     let currentReadCount = 0;
     let inserted = 0;
     let rolledBackSavepoint = 0;
@@ -41,7 +42,7 @@ test('HTTP resumes frozen v2 while rollout is off and current-source SQL fails; 
       if (sql.includes('pg_advisory_xact_lock')) return { rows: [] };
       if (sql.includes('WITH RECURSIVE required')) return { rows: [{ id: courseId }] };
       if (sql.includes('FROM grammar_task_sessions') && sql.includes('WHERE user_id=')) {
-        return { rows: [session()] };
+        return { rows: hasExisting ? [session()] : [] };
       }
       if (sql.includes('FROM grammar_task_sessions') && sql.includes('WHERE id =')) {
         return { rows: [session()] };
@@ -113,4 +114,10 @@ test('HTTP resumes frozen v2 while rollout is off and current-source SQL fails; 
     const revoked = await api(`/${sessionId}`, 'GET');
     assert.equal(revoked.status, 403);
     assert.equal(revoked.data.error, 'pilot_not_enabled_for_lesson');
+    hasExisting = false;
+    const unpiloted = await api('', 'POST', { sourceLessonId: sourceId });
+    assert.equal(unpiloted.status, 403, JSON.stringify(unpiloted.data));
+    assert.equal(unpiloted.data.error, 'pilot_not_enabled_for_lesson');
+    assert.equal(currentReadCount, 2, 'ordinary task must decide before reading missing companion');
+    assert.equal(inserted, 0);
   });
