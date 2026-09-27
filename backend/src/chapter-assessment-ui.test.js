@@ -22,17 +22,31 @@ test('opening an assignment always shows its preview, including cached and old p
   }
 });
 
-test('old-version preview offers an explicit upgrade or resume with the expected token',()=>{
-  const ctx=vm.createContext({escapeHtml:x=>x,escapeAttr:x=>x});
+test('pending older bank shows normal preview and one start action using the active bank internally',()=>{
+  let started;
+  const ctx=vm.createContext({escapeHtml:x=>x,escapeAttr:x=>x,kanaPlacementMeta:()=>null,COURSE_CONTENT:{},
+    window:{startQuizAttempt:(...args)=>{started=args;}}});
   const start=html.indexOf('function renderQuizLandingCard(');
   vm.runInContext(html.slice(start,html.indexOf('function escapeAttr',start)),ctx);
   const container={innerHTML:''};
+  const status={questionsPerAttempt:50,poolSize:24,canAttempt:true,inProgress:true,resumingLegacy:true,
+    passingScorePct:75,cooldownHours:0,inProgressAttemptToken:'old-token',
+    assessmentUpdate:{version:'n5-assessment-v4',questionsPerAttempt:24,assessmentRules:{passingScorePct:70},objectives:[{canDo:'Tujuan aktif'}]}};
+  ctx.renderQuizLandingCard(container,'n5:b4:assignment','Assignment Bab 4',status);
+  const visible=container.innerHTML.replace(/<[^>]*>/g,'');
+  assert.doesNotMatch(visible,/versi|sesi lama|50 soal|75%/i);
+  assert.match(visible,/24 soal/);assert.match(visible,/70%/);assert.match(visible,/Tujuan aktif/);
+  assert.match(visible,/Mulai assessment/);assert.doesNotMatch(visible,/Lanjutkan jawaban/);
+  assert.equal((container.innerHTML.match(/onclick="window.startQuizAttempt/g)||[]).length,1);
+  assert.equal(started,undefined,'preview must not start or archive any attempt');
+  assert.equal(status.questionsPerAttempt,50,'cached status remains intact');
+  const handler=container.innerHTML.match(/onclick="(window.startQuizAttempt[^\"]+)"/)[1];
+  vm.runInContext(handler,ctx);
+  assert.equal(started[0],'n5:b4:assignment');assert.equal(started[1].upgradeFrom,'old-token');assert.equal(started[1].assessmentVersion,'n5-assessment-v4');
   ctx.renderQuizLandingCard(container,'n5:b4:assignment','Assignment Bab 4',{
-    questionsPerAttempt:50,inProgressAttemptToken:'old-token',
-    assessmentUpdate:{version:'n5-assessment-v3',questionsPerAttempt:24}});
-  assert.match(container.innerHTML,/50 soal/);assert.match(container.innerHTML,/24 soal/);
-  assert.match(container.innerHTML,/Mulai versi terbaru/);assert.match(container.innerHTML,/Lanjutkan sesi lama/);
-  assert.match(container.innerHTML,/upgradeFrom:'old-token'/);assert.match(container.innerHTML,/resumeOnly:true/);
+    ...status,assessmentUpdate:null,resumingLegacy:false,assessmentVersion:'n5-assessment-v4',questionsPerAttempt:24});
+  assert.match(container.innerHTML,/Lanjutkan jawaban/);assert.match(container.innerHTML,/resumeOnly:true/);
+  assert.doesNotMatch(container.innerHTML,/upgradeFrom/);
 });
 
 test('spoken-choice numbers retain audio order while ordinary options can shuffle',()=>{

@@ -506,6 +506,8 @@ router.get('/progress/lesson/:lessonId/quiz-status', requireLessonCourseAccess('
       status.inProgress.assessment_snapshot?.version !== lesson.assessment_policy.version ? {
         version: lesson.assessment_policy.version,
         questionsPerAttempt: publicChapterRules(lesson.assessment_policy).questionsPerForm,
+        assessmentRules: publicChapterRules(lesson.assessment_policy),
+        objectives: lesson.assessment_policy.objectives,
       } : null,
     resumingLegacy,
     ...(isChapterAssessment(displayPolicy) ? { assessmentVersion: displayPolicy.version,

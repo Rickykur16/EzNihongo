@@ -250,6 +250,8 @@ test('versioned chapter assessment migration, grading and protected HTTP lifecyc
     await control.query('UPDATE lessons SET assessment_policy=$1 WHERE id=$2',[policy,lessons[1]]);
     const status=(await call(path(lessons[1],'quiz-status'),null,'GET')).body;
     assert.equal(status.assessmentUpdate.version,'n5-assessment-v4');
+    assert.equal(status.assessmentUpdate.assessmentRules.passingScorePct,70);
+    assert.deepEqual(status.assessmentUpdate.objectives,policy.objectives);
     const resume=(await call(path(lessons[1],'quiz/start'),{resumeOnly:true,attemptToken:oldToken})).body;
     assert.deepEqual(resume.questions,old.body.questions);assert.deepEqual(resume.draftAnswers,draft);
     const start=await call(path(lessons[1],'quiz/start'),{upgradeFrom:oldToken,assessmentVersion:'n5-assessment-v4'});
