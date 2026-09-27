@@ -3713,7 +3713,7 @@ async function validateQuizAudioScene(scene, script, category) {
 
 router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
   const lessonRow = await query(
-    `SELECT id, passing_score_pct, questions_per_attempt, cooldown_hours
+    `SELECT id, passing_score_pct, questions_per_attempt, cooldown_hours, assessment_policy
        FROM lessons WHERE id = $1 LIMIT 1`,
     [req.params.lessonId]
   );
@@ -3721,6 +3721,7 @@ router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
   const questions = await query(
     `SELECT * FROM quiz_questions
      WHERE lesson_id = $1
+       AND ($2::text IS NULL OR assessment_meta->>'version' = $2)
      ORDER BY CASE question_category
                 WHEN 'vocabulary' THEN 1
                 WHEN 'grammar' THEN 2
@@ -3730,7 +3731,7 @@ router.get('/lessons/:lessonId/quiz', asyncHandler(async (req, res) => {
                 ELSE 9
               END,
               section_number ASC, sort_order ASC`,
-    [req.params.lessonId]
+    [req.params.lessonId, lessonMeta?.assessment_policy?.version || null]
   );
   const qIds = questions.rows.map((q) => q.id);
   let optsByQ = {};
@@ -3946,11 +3947,14 @@ router.put('/lessons/:lessonId/quiz/sections/:category/:number', asyncHandler(as
     ? ((passage && String(passage).trim()) || null)
     : null;
   const result = await query(
-    `UPDATE quiz_questions
+    `UPDATE quiz_questions q
         SET section_label = CASE WHEN $5::boolean THEN $3 ELSE section_label END,
             section_instruction = CASE WHEN $6::boolean THEN $4 ELSE section_instruction END,
             passage = CASE WHEN $8::boolean THEN $9 ELSE passage END
-      WHERE lesson_id = $1 AND question_category = $2 AND section_number = $7`,
+       FROM lessons l
+      WHERE q.lesson_id = $1 AND l.id = q.lesson_id AND question_category = $2 AND section_number = $7
+        AND (l.assessment_policy->>'version' IS NULL
+             OR q.assessment_meta->>'version' = l.assessment_policy->>'version')`,
     [lessonId, cat, labelNorm, instructionNorm, hasLabel, hasInstruction, sectionNo, hasPassage, passageNorm]
   );
   const warnings = hasPassage
@@ -3965,8 +3969,10 @@ router.delete('/lessons/:lessonId/quiz/sections/:category/:number', asyncHandler
   const cat = normalizeQuizCategory(category);
   const sectionNo = normalizeQuizSectionNumber(number);
   const result = await query(
-    `DELETE FROM quiz_questions
-      WHERE lesson_id = $1 AND question_category = $2 AND section_number = $3`,
+    `DELETE FROM quiz_questions q USING lessons l
+      WHERE q.lesson_id = $1 AND l.id = q.lesson_id AND question_category = $2 AND section_number = $3
+        AND (l.assessment_policy->>'version' IS NULL
+             OR q.assessment_meta->>'version' = l.assessment_policy->>'version')`,
     [lessonId, cat, sectionNo]
   );
   res.json({ ok: true, deleted: result.rowCount });

@@ -2697,7 +2697,7 @@ function lessonFormHtml(l) {
       <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${l.sort_order}" /></div>
       <div class="field" data-quiz-only style="display:${l.type === 'quiz' ? '' : 'none'};">
         <div style="font-size:12px;color:#525252;font-family:var(--font-body);background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:8px 12px;margin-bottom:10px;">
-          <strong>Kuis (assignment harian):</strong> siswa cuma boleh coba sekali per <em>cooldown</em>; gagal = tunggu sampai window berikutnya. Setiap attempt sample acak dari pool soal — admin disarankan isi minimal 3× <em>Soal per attempt</em> biar variasi terasa.
+          <strong>Kuis (assignment harian):</strong> jeda percobaan mengikuti <em>cooldown</em>. Assessment bab memakai bank aktif dan aturan penilaiannya sendiri; lihat detail di Kelola Kuis.
         </div>
         <div class="field-row">
           <div class="field">
@@ -3978,12 +3978,17 @@ function renderQuizModal(lessonId, lessonTitle, questions, lessonMeta, focusSect
 
   // Pool indicator: ratio actual pool size : target sample. Warn if <2×.
   const poolSize = questions.length;
-  const qpa = lessonMeta?.questions_per_attempt || poolSize;
-  const passing = lessonMeta?.passing_score_pct ?? 70;
+  const policy = lessonMeta?.assessment_policy;
+  const versioned = policy?.version === 'n5-assessment-v2';
+  const allQuestions = versioned && policy.selection === 'all';
+  const qpa = versioned ? (policy.questionsPerForm ?? 24) : (lessonMeta?.questions_per_attempt || poolSize);
+  const passing = versioned ? (policy.passingScorePct ?? 70) : (lessonMeta?.passing_score_pct ?? 70);
   const cooldown = lessonMeta?.cooldown_hours ?? 12;
   const ratio = qpa > 0 ? (poolSize / qpa) : 0;
   let ratioBadge = '';
-  if (qpa && qpa < poolSize) {
+  if (versioned) {
+    ratioBadge = `<span style="color:#737373;">${allQuestions ? 'Seluruh soal bank aktif tampil setiap pengerjaan.' : 'Paket assessment digunakan bergantian.'} Soal lama disimpan untuk riwayat dan tidak ditampilkan di sini.</span>`;
+  } else if (qpa && qpa < poolSize) {
     if (ratio >= 3) ratioBadge = `<span style="color:#15803d;">✅ ${ratio.toFixed(1)}× variasi sehat</span>`;
     else if (ratio >= 2) ratioBadge = `<span style="color:#a16207;">⚠️ ${ratio.toFixed(1)}× — soal bisa berulang antar attempt</span>`;
     else ratioBadge = `<span style="color:#b91c1c;">🔴 ${ratio.toFixed(1)}× — pool kekecilan, retry sering dapet soal sama</span>`;
@@ -3992,7 +3997,7 @@ function renderQuizModal(lessonId, lessonTitle, questions, lessonMeta, focusSect
   }
   const poolIndicator = lessonMeta ? `
     <div style="background:#f9fafb;border:1px solid var(--paper-300);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;line-height:1.6;">
-      <strong>Pool:</strong> ${poolSize} soal · <strong>Per attempt:</strong> ${qpa} acak · <strong>Lulus:</strong> ${passing}% · <strong>Cooldown:</strong> ${cooldown > 0 ? `${cooldown}h` : 'tanpa cooldown'}<br>
+      <strong>${versioned ? 'Bank aktif' : 'Pool'}:</strong> ${poolSize} soal · <strong>Per attempt:</strong> ${qpa} ${allQuestions ? '(seluruh soal)' : versioned ? 'per paket' : qpa < poolSize ? 'acak' : '(seluruh soal)'} · <strong>Lulus:</strong> ${passing}% · <strong>Cooldown:</strong> ${cooldown > 0 ? `${cooldown}h` : 'tanpa cooldown'}<br>
       ${ratioBadge}
     </div>` : '';
 
