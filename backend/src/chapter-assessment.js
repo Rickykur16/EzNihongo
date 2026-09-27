@@ -36,6 +36,13 @@ export function assertChapterForm(policy, rows) {
 }
 
 export function createChapterSnapshot(policy, rows, previousForm, random = Math.random) {
+  if (policy.selection === 'all') {
+    assertChapterForm(policy, rows);
+    if (rows.some(q => q.assessment_meta.form !== 'A')) throw new Error('assessment_bank_invalid');
+    return structuredClone({ version: policy.version, form: 'ALL',
+      policy: { ...policy, ...CHAPTER_POLICY },
+      questions: [...rows].sort((a, b) => a.section_number - b.section_number || a.sort_order - b.sort_order) });
+  }
   const form = previousForm === 'A' ? 'B' : previousForm === 'B' ? 'A' : random() < 0.5 ? 'A' : 'B';
   // Validate BOTH forms before allowing either one to start.
   for (const name of ['A', 'B']) assertChapterForm(policy, rows.filter(q => q.assessment_meta?.form === name));

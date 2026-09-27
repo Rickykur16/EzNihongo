@@ -1,5 +1,9 @@
 # Rebuild assessment N5 Bab 3 — rilis contoh
 
+Status lanjutan: [assessment Bab 4–20](assessment-review-b04-20.md) memakai
+bank baru berisi 24 soal yang seluruhnya tampil, sesuai persetujuan pemilik.
+Dokumen di bawah mencatat rancangan rilis awal Bab 3.
+
 ## Tujuan
 
 Rilis pertama hanya mengganti assessment Bab 3. Assessment menguji kemampuan menggunakan materi Bab 3 dalam konteks singkat dan memberi latihan yang relevan untuk JFT-Basic serta JLPT N5. Rilis ini bukan simulasi resmi dan tidak memakai skala nilai resmi kedua ujian.
