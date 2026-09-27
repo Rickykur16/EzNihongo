@@ -1285,26 +1285,23 @@ async function renderAiSettings() {
   } catch { /* tetap render editor; backend pakai default */ }
   window.__coachPromptDefault = def;
   pane.innerHTML = `
-    <div id="bf-pilot-panel" style="max-width:760px;border:1px solid #e5e5e5;border-radius:8px;padding:18px 20px;background:#fff;margin-bottom:18px;">
-      <h2 style="margin:0 0 4px;">Bunpou Flow — pilot satu pelajaran</h2>
+    <div id="bf-companion-panel" style="max-width:760px;border:1px solid #e5e5e5;border-radius:8px;padding:18px 20px;background:#fff;margin-bottom:18px;">
+      <h2 style="margin:0 0 4px;">Pendamping Bunpou — status tayang</h2>
       <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 14px;">
-        Mengaktifkan lapisan pendamping (tujuan, arahan menyimak, pembahasan Step 1/2, dan sesi
-        Tugas Bunpou yang bisa dilanjutkan setelah refresh) untuk <strong>satu</strong> pelajaran.
-        Pelajaran lain tidak terpengaruh sama sekali. Isi Pendamping Bunpou dan publikasikan dulu
-        lewat drawer pelajaran (tombol 🧭 Pendamping Bunpou) sebelum diaktifkan di sini.
+        Pendamping yang dipublikasikan (tombol 🧭 Pendamping Bunpou) <strong>langsung tampil ke siswa</strong>:
+        tujuan pelajaran, arahan menyimak, sesi Tugas Bunpou yang bisa dilanjutkan setelah refresh, dan
+        soal cek pemahaman. Syaratnya pelajaran lolos cek kesiapan. Kalau materinya diubah setelah
+        dipublikasikan, pendamping berhenti tampil sampai ditinjau dan dipublikasikan ulang.
       </p>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px;">
-        <input type="checkbox" id="bf-pilot-enabled" disabled onchange="bfPilotUpdateControls()" />
-        Aktifkan untuk pelajaran di bawah
-      </label>
-      <label for="bf-pilot-lesson-id" style="font-size:12px;color:#737373;">Pelajaran Bunpou</label>
-      <select id="bf-pilot-lesson-id" disabled aria-describedby="bf-pilot-status" onchange="bfPilotUpdateControls()"
+      <p id="bf-companion-live" style="font-size:13px;color:#404040;margin:0 0 10px;">Memuat status...</p>
+      <label for="bf-companion-lesson-id" style="font-size:12px;color:#737373;">Pelajaran Bunpou</label>
+      <select id="bf-companion-lesson-id" disabled aria-describedby="bf-companion-status" onchange="bfCompanionUpdateControls()"
         style="max-width:100%;font-size:13px;margin:2px 0 6px;"><option value="">Memuat pelajaran...</option></select>
-      <p id="bf-pilot-status" role="status" style="font-size:13px;color:#525252;margin:0 0 10px;">Memuat pengaturan...</p>
+      <p id="bf-companion-status" role="status" style="font-size:13px;color:#525252;margin:0 0 10px;">Memuat status...</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button id="bf-pilot-save" type="button" class="btn btn-primary" disabled onclick="bfPilotSaveSettings()">Simpan</button>
-        <button id="bf-pilot-edit" type="button" class="btn btn-ghost" disabled onclick="bfPilotEditCompanion('bf-pilot-lesson-id')">Edit Pendamping Bunpou</button>
-        <button id="bf-pilot-reload" type="button" class="btn btn-ghost" disabled onclick="bfPilotLoadOptions()">Muat ulang</button>
+        <button id="bf-companion-edit" type="button" class="btn btn-primary" disabled onclick="bfCompanionEdit('bf-companion-lesson-id')">Edit Pendamping Bunpou</button>
+        <button id="bf-companion-withdraw" type="button" class="btn btn-ghost" disabled onclick="bfCompanionWithdraw()">Tarik publikasi</button>
+        <button id="bf-companion-reload" type="button" class="btn btn-ghost" disabled onclick="bfCompanionLoadOptions()">Muat ulang</button>
       </div>
     </div>
     <div style="max-width:760px;border:1px solid #e5e5e5;border-radius:10px;padding:18px 20px;background:#fff;">
@@ -1335,114 +1332,140 @@ async function renderAiSettings() {
         keputusan Anda setelah melihat hasilnya.
       </p>
       <label for="ms-shadow-lesson" style="font-size:12px;color:#737373;">Pelajaran untuk perbandingan</label>
-      <select id="ms-shadow-lesson" disabled aria-describedby="ms-shadow-status" onchange="bfPilotUpdateControls()"
+      <select id="ms-shadow-lesson" disabled aria-describedby="ms-shadow-status" onchange="bfCompanionUpdateControls()"
         style="max-width:100%;font-size:13px;margin:2px 0 6px;"><option value="">Memuat pelajaran...</option></select>
       <p id="ms-shadow-status" role="status" style="font-size:13px;color:#525252;margin:0 0 10px;">Memuat pelajaran...</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button id="ms-shadow-run" type="button" class="btn btn-primary" disabled onclick="msShadowRun()">Hitung perbandingan</button>
-        <button id="ms-shadow-edit" type="button" class="btn btn-ghost" disabled onclick="bfPilotEditCompanion('ms-shadow-lesson')">Edit Pendamping Bunpou</button>
+        <button id="ms-shadow-edit" type="button" class="btn btn-ghost" disabled onclick="bfCompanionEdit('ms-shadow-lesson')">Edit Pendamping Bunpou</button>
       </div>
       <div id="ms-shadow-out" style="margin-top:14px;"></div>
     </div>`;
-  await bfPilotLoadOptions();
+  await bfCompanionLoadOptions();
 }
 
-function bfPilotReadiness(lesson) {
-  if (!lesson) return 'Pelajaran tersimpan tidak tersedia. Pilih pelajaran lain.';
-  return lesson.ready ? 'Siap diaktifkan' : 'Belum siap: ' + (lesson.reason || 'pendamping belum siap dipublikasikan');
+function bfCompanionStatus(lesson) {
+  if (!lesson) return 'Pelajaran tidak tersedia. Pilih pelajaran lain.';
+  if (lesson.live) return 'Tampil ke siswa';
+  return (lesson.published ? 'Dipublikasikan, belum tampil: ' : 'Belum tampil: ')
+    + (lesson.reason || 'pendamping belum siap');
 }
 
-function bfPilotLessonOptions(settings, selectedId, shadow = false) {
+function bfCompanionLessonOptions(lessons, selectedId, shadow = false) {
   const groups = new Map();
-  for (const lesson of settings.lessons) {
+  for (const lesson of lessons) {
     const group = (lesson.courseTitle || 'Tanpa kursus') + ' / ' + (lesson.moduleTitle || 'Tanpa bab');
     if (!groups.has(group)) groups.set(group, []);
     groups.get(group).push(lesson);
   }
-  let html = `<option value="" ${!selectedId ? 'selected' : ''}>${shadow ? 'Pilih pelajaran untuk perbandingan' : 'Pilih pelajaran pilot'}</option>`;
-  // Preserve an unavailable saved target instead of silently selecting another lesson.
-  if (selectedId && !settings.lessons.some(lesson => lesson.id === selectedId)) {
-    html += `<option value="${escapeHtml(selectedId)}" selected disabled>Pelajaran tersimpan tidak tersedia</option>`;
-  }
-  for (const [group, lessons] of groups) {
-    // Unready lessons must remain selectable so admins can open their editor.
-    html += `<optgroup label="${escapeHtml(group)}">` + lessons.map(lesson =>
-      `<option value="${escapeHtml(lesson.id)}" ${lesson.id === selectedId ? 'selected' : ''}>${escapeHtml(lesson.title)} - ${escapeHtml(bfPilotReadiness(lesson))}</option>`
+  let html = `<option value="" ${!selectedId ? 'selected' : ''}>${shadow ? 'Pilih pelajaran untuk perbandingan' : 'Pilih pelajaran'}</option>`;
+  for (const [group, items] of groups) {
+    // Pelajaran yang belum tampil tetap bisa dipilih supaya editornya bisa dibuka.
+    html += `<optgroup label="${escapeHtml(group)}">` + items.map(lesson =>
+      `<option value="${escapeHtml(lesson.id)}" ${lesson.id === selectedId ? 'selected' : ''}>${escapeHtml(lesson.title)} - ${escapeHtml(bfCompanionStatus(lesson))}</option>`
     ).join('') + '</optgroup>';
   }
   return html;
 }
 
-window.bfPilotLoadOptions = async () => {
-  const panel = document.getElementById('bf-pilot-panel');
+window.bfCompanionLoadOptions = async () => {
+  const panel = document.getElementById('bf-companion-panel');
   if (!panel || panel.__saving) return;
   const request = {};
   panel.__request = request;
   panel.__loaded = false;
-  bfPilotUpdateControls();
-  document.getElementById('bf-pilot-reload').disabled = true;
-  document.getElementById('bf-pilot-status').textContent = 'Memuat pengaturan...';
+  bfCompanionUpdateControls();
+  document.getElementById('bf-companion-reload').disabled = true;
+  document.getElementById('bf-companion-status').textContent = 'Memuat status...';
   document.getElementById('ms-shadow-status').textContent = 'Memuat pelajaran...';
   try {
-    const settings = await api('/admin/settings/bunpou-flow-pilot');
-    if (panel !== document.getElementById('bf-pilot-panel') || panel.__request !== request) return;
-    if (!settings || typeof settings.enabled !== 'boolean' ||
-        !(settings.lessonId === null || typeof settings.lessonId === 'string') ||
-        !Array.isArray(settings.lessons) || settings.lessons.some(lesson =>
+    const data = await api('/admin/bunpou-flow/lessons');
+    if (panel !== document.getElementById('bf-companion-panel') || panel.__request !== request) return;
+    if (!data || !Array.isArray(data.lessons) || data.lessons.some(lesson =>
           !lesson || typeof lesson.id !== 'string' || !lesson.id || typeof lesson.title !== 'string' ||
-          typeof lesson.ready !== 'boolean')) throw new Error('invalid_pilot_options');
+          typeof lesson.live !== 'boolean' || typeof lesson.published !== 'boolean')) throw new Error('invalid_companion_lessons');
+    const picker = document.getElementById('bf-companion-lesson-id');
     const shadow = document.getElementById('ms-shadow-lesson');
-    const shadowId = settings.lessons.some(lesson => lesson.id === shadow.value) ? shadow.value : settings.lessonId;
-    panel.__settings = settings;
+    const known = id => data.lessons.some(lesson => lesson.id === id);
+    const pickerId = known(picker.value) ? picker.value : '';
+    const shadowId = known(shadow.value) ? shadow.value : '';
+    panel.__lessons = data.lessons;
     panel.__loaded = true;
-    document.getElementById('bf-pilot-enabled').checked = settings.enabled;
-    document.getElementById('bf-pilot-lesson-id').innerHTML = bfPilotLessonOptions(settings, settings.lessonId);
-    shadow.innerHTML = bfPilotLessonOptions(settings, shadowId, true);
-    bfPilotUpdateControls();
+    picker.innerHTML = bfCompanionLessonOptions(data.lessons, pickerId);
+    shadow.innerHTML = bfCompanionLessonOptions(data.lessons, shadowId, true);
+    const live = data.lessons.filter(lesson => lesson.live);
+    document.getElementById('bf-companion-live').textContent = live.length
+      ? 'Tampil ke siswa sekarang: ' + live.map(lesson => (lesson.moduleTitle ? lesson.moduleTitle + ' — ' : '') + lesson.title).join('; ')
+      : 'Belum ada Pendamping Bunpou yang tampil ke siswa.';
+    bfCompanionUpdateControls();
   } catch {
-    if (panel !== document.getElementById('bf-pilot-panel') || panel.__request !== request) return;
-    document.getElementById('bf-pilot-status').textContent = 'Pengaturan gagal dimuat. Penyimpanan dinonaktifkan; pengaturan tersimpan tidak diubah. Coba muat ulang.';
+    if (panel !== document.getElementById('bf-companion-panel') || panel.__request !== request) return;
+    document.getElementById('bf-companion-live').textContent = '';
+    document.getElementById('bf-companion-status').textContent = 'Status gagal dimuat. Tombol dinonaktifkan; tidak ada yang diubah. Coba muat ulang.';
     document.getElementById('ms-shadow-status').textContent = 'Daftar pelajaran gagal dimuat. Coba muat ulang.';
   } finally {
-    if (panel === document.getElementById('bf-pilot-panel') && panel.__request === request) {
-      document.getElementById('bf-pilot-reload').disabled = false;
+    if (panel === document.getElementById('bf-companion-panel') && panel.__request === request) {
+      document.getElementById('bf-companion-reload').disabled = false;
     }
   }
 };
 
-window.bfPilotUpdateControls = () => {
-  const panel = document.getElementById('bf-pilot-panel');
+window.bfCompanionUpdateControls = () => {
+  const panel = document.getElementById('bf-companion-panel');
   if (!panel) return;
   const locked = !panel.__loaded || !!panel.__saving;
-  const settings = panel.__settings;
-  const picker = document.getElementById('bf-pilot-lesson-id');
-  const enabled = document.getElementById('bf-pilot-enabled');
-  const lesson = settings?.lessons.find(item => item.id === picker.value);
+  const lessons = panel.__lessons || [];
+  const picker = document.getElementById('bf-companion-lesson-id');
+  const lesson = lessons.find(item => item.id === picker.value);
   picker.disabled = locked;
-  enabled.disabled = locked || (!enabled.checked && !lesson?.ready);
-  document.getElementById('bf-pilot-save').disabled = locked || (enabled.checked && !lesson?.ready);
-  document.getElementById('bf-pilot-edit').disabled = locked || !lesson;
-  document.getElementById('bf-pilot-reload').disabled = locked;
+  document.getElementById('bf-companion-edit').disabled = locked || !lesson;
+  document.getElementById('bf-companion-withdraw').disabled = locked || !lesson?.published;
+  document.getElementById('bf-companion-reload').disabled = locked;
   const shadow = document.getElementById('ms-shadow-lesson');
-  const shadowLesson = settings?.lessons.find(item => item.id === shadow.value);
+  const shadowLesson = lessons.find(item => item.id === shadow.value);
   shadow.disabled = locked;
   document.getElementById('ms-shadow-run').disabled = locked || !shadowLesson;
   document.getElementById('ms-shadow-edit').disabled = locked || !shadowLesson;
   if (locked) return;
-  document.getElementById('bf-pilot-status').textContent = !settings.lessons.length
+  document.getElementById('bf-companion-status').textContent = !lessons.length
     ? 'Belum ada pelajaran Bunpou.' : picker.value
-      ? bfPilotReadiness(lesson) + (lesson && !lesson.ready ? '. Buka Edit Pendamping Bunpou untuk menyiapkannya.' : '')
-      : 'Pilih pelajaran untuk ditinjau. Pilot hanya dapat diaktifkan setelah pelajaran siap.';
+      ? bfCompanionStatus(lesson) + (lesson && !lesson.live ? '. Buka Edit Pendamping Bunpou untuk menyiapkannya.' : '')
+      : 'Pilih pelajaran untuk melihat statusnya.';
   document.getElementById('ms-shadow-status').textContent = shadow.value
-    ? bfPilotReadiness(shadowLesson) : 'Pilih pelajaran untuk perbandingan.';
+    ? bfCompanionStatus(shadowLesson) : 'Pilih pelajaran untuk perbandingan.';
 };
 
-window.bfPilotEditCompanion = (pickerId) => {
-  const panel = document.getElementById('bf-pilot-panel');
+window.bfCompanionEdit = (pickerId) => {
+  const panel = document.getElementById('bf-companion-panel');
   if (!panel?.__loaded || panel.__saving) return;
   const lessonId = document.getElementById(pickerId)?.value;
-  const lesson = panel.__settings.lessons.find(item => item.id === lessonId);
+  const lesson = (panel.__lessons || []).find(item => item.id === lessonId);
   if (lesson) return manageBunpouFlow(lesson.id, lesson.title);
+};
+
+// Tarik publikasi = berhenti tampil ke siswa saat itu juga. Draft tetap
+// tersimpan, jadi pendamping bisa dipublikasikan ulang lewat editornya.
+window.bfCompanionWithdraw = async () => {
+  const panel = document.getElementById('bf-companion-panel');
+  if (!panel?.__loaded || panel.__saving) return;
+  const lessonId = document.getElementById('bf-companion-lesson-id')?.value;
+  const lesson = (panel.__lessons || []).find(item => item.id === lessonId);
+  if (!lesson?.published) return;
+  if (!confirm('Tarik publikasi Pendamping Bunpou "' + lesson.title + '"?\n\n'
+    + 'Pendamping langsung berhenti tampil ke siswa. Draft tetap tersimpan dan bisa dipublikasikan ulang.')) return;
+  panel.__saving = true;
+  bfCompanionUpdateControls();
+  try {
+    await api('/admin/lessons/' + lesson.id + '/bunpou-flow/unpublish', {
+      method: 'POST', body: JSON.stringify({ confirm: true }),
+    });
+    notify('Publikasi ditarik. Pendamping tidak lagi tampil ke siswa.');
+  } catch { notify('Gagal menarik publikasi. Muat ulang untuk memeriksa statusnya.', true); }
+  finally {
+    panel.__saving = false;
+    if (panel === document.getElementById('bf-companion-panel')) bfCompanionUpdateControls();
+  }
+  if (panel === document.getElementById('bf-companion-panel')) await bfCompanionLoadOptions();
 };
 
 // Paket 3 — layar tinjauan shadow. Read-only: endpoint-nya tidak menulis apa
@@ -1507,30 +1530,6 @@ window.msShadowRun = async () => {
         <th style="font-size:11px;color:#737373;">Bukti</th>
       </tr></thead><tbody>${rows}</tbody></table>`
     : '<p style="font-size:13px;color:#737373;">Tidak ada konsep yang hasilnya berbeda.</p>'}`;
-};
-
-window.bfPilotSaveSettings = async () => {
-  const panel = document.getElementById('bf-pilot-panel');
-  if (!panel?.__loaded || panel.__saving) return;
-  const enabled = !!document.getElementById('bf-pilot-enabled')?.checked;
-  const lessonId = (document.getElementById('bf-pilot-lesson-id')?.value || '').trim();
-  const lesson = panel.__settings.lessons.find(item => item.id === lessonId);
-  if (enabled && !lesson?.ready) {
-    notify('Pilih pelajaran yang siap diaktifkan.', true);
-    return;
-  }
-  if (lessonId && !lesson && lessonId !== panel.__settings.lessonId) return;
-  panel.__saving = true;
-  bfPilotUpdateControls();
-  try {
-    await api('/admin/settings/bunpou-flow-pilot', { method: 'PUT', body: JSON.stringify({ enabled, lessonId: lessonId || null }) });
-    panel.__settings = { ...panel.__settings, enabled, lessonId: lessonId || null };
-    notify('Pengaturan Bunpou Flow tersimpan');
-  } catch { notify('Pengaturan gagal disimpan. Muat ulang untuk memeriksa kesiapan pelajaran.', true); }
-  finally {
-    panel.__saving = false;
-    if (panel === document.getElementById('bf-pilot-panel')) bfPilotUpdateControls();
-  }
 };
 
 window.coachPromptResetDefault = () => {
@@ -5490,7 +5489,7 @@ window.grammarManageExamples = async (grammarId) => {
   modalContent.style.maxWidth = '900px';
 };
 
-// ── Bunpou Flow pilot: Pendamping Bunpou (Paket 1) ────────────────────────
+// ── Pendamping Bunpou (Paket 1) ───────────────────────────────────────────
 // Draft/publish editor for the companion envelope (migration 147) on ONE
 // source lesson — tujuan pelajaran, arahan menyimak per pola, dan overlay
 // feedback Step 1/2 per pola. Never touches Pola/Arti/Contoh themselves;
@@ -5632,8 +5631,9 @@ window.manageBunpouFlow = async (lessonId, lessonTitle) => {
     <h3>🧭 Pendamping Bunpou — ${escapeHtml(lessonTitle || d.lessonTitle || '')}</h3>
     <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 10px;">
       Lapisan opsional: tujuan singkat pelajaran, arahan menyimak per pola, dan
-      pembahasan Step 1/2 Tugas Bunpou. Tidak mengubah materi asli. Belum tampil
-      ke siswa mana pun sampai dipublikasikan DAN diaktifkan lewat pengaturan flag.
+      pembahasan Step 1/2 Tugas Bunpou. Tidak mengubah materi asli. Begitu
+      dipublikasikan, langsung tampil ke siswa selama pelajaran ini lolos cek kesiapan;
+      publikasinya bisa ditarik lagi dari tab AI.
     </p>
     ${noTask ? `<div style="font-size:12px;color:#b91c1c;background:#fee2e2;border-radius:6px;padding:8px 10px;margin-bottom:10px;font-family:var(--font-body);">
       Pelajaran ini belum punya Tugas Bunpou pasangan (popup setelah pelajaran ini) — pembahasan
@@ -5743,15 +5743,19 @@ window.bfPublish = async () => {
     return;
   }
   if (!confirm('Publikasikan Pendamping Bunpou ini?\n\nIsi form saat ini akan disimpan sebagai draft lalu langsung '
-    + 'diterbitkan ke siswa (setelah flag pilot juga diaktifkan untuk pelajaran ini).')) return;
+    + 'tampil ke siswa (selama pelajaran ini lolos cek kesiapan).')) return;
   try {
     const saved = await bfPersistDraft(ctx);
-    await api('/admin/lessons/' + ctx.lessonId + '/bunpou-flow/publish', {
+    const result = await api('/admin/lessons/' + ctx.lessonId + '/bunpou-flow/publish', {
       method: 'POST', body: JSON.stringify({ confirm: true, draftRevision: saved.draftRevision }),
     });
-    notify('Pendamping Bunpou dipublikasikan');
+    // Publish = tayang, kecuali pelajarannya belum lolos cek kesiapan. Sebut
+    // alasannya supaya admin tidak mengira sudah tampil padahal belum.
+    if (result?.live) notify('Pendamping Bunpou dipublikasikan dan langsung tampil ke siswa.');
+    else notify('Pendamping Bunpou dipublikasikan, tapi BELUM tampil ke siswa: '
+      + (result?.liveReason || 'pelajaran belum lolos cek kesiapan') + '.', true);
     closeModal();
-    if (document.getElementById('bf-pilot-panel')) await bfPilotLoadOptions();
+    if (document.getElementById('bf-companion-panel')) await bfCompanionLoadOptions();
   } catch (err) {
     if (err?.status === 409) bfDraftSaveError(err);
     else notify('Gagal publikasi: ' + err.message, true);

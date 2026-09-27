@@ -1,6 +1,6 @@
 import { query } from './db.js';
 import { loadTaskConcepts, loadModulePool } from './routes/grammar-task.js';
-import { companionIsCurrent, contentRevisionId, publicCompanionView } from './bunpou-flow-service.js';
+import { companionIsCurrent, contentRevisionId } from './bunpou-flow-service.js';
 
 export async function loadCompanionContext(sourceLessonId, dbQuery = query) {
   const result = await dbQuery(
@@ -35,15 +35,4 @@ export async function loadCompanionContext(sourceLessonId, dbQuery = query) {
   return { taskLessonId: row.task_lesson_id, items, pool, fingerprint,
     published: row.bunpou_flow_published,
     current: companionIsCurrent(row.bunpou_flow_published, fingerprint) };
-}
-
-export async function pilotPublicCompanion(sourceLessonId) {
-  try {
-    const context = await loadCompanionContext(sourceLessonId);
-    if (!context?.current) return { objective: null, directions: {}, needsReview: true };
-    return publicCompanionView(context.published);
-  } catch {
-    // An optional companion failure must not take down the original lesson.
-    return { objective: null, directions: {}, unavailable: true };
-  }
 }

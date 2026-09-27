@@ -131,12 +131,12 @@ test('independent Bunpou backend safety review', { timeout: 90_000 }, async t =>
   const { default: sessions } = await import('./routes/grammar-task-sessions.js');
   const { default: admin } = await import('./routes/admin.js');
   const { loadCompanionContext } = await import('./bunpou-flow-content.js');
-  const { loadPilotLessonOptions } = await import('./bunpou-pilot-catalog.js');
+  const { loadCompanionLessonOptions } = await import('./bunpou-companion-status.js');
   const { eraseUserAccount } = await import('./user-erasure.js');
   const { deriveDrills } = await import('./grammar-drills.js');
 
   // Invoke actual wrapped route handlers. Authentication is already established;
-  // ownership, course, pilot, snapshot, ledger and SQL guards remain real.
+  // ownership, course, publication, snapshot, ledger and SQL guards remain real.
   const user = { id: id(1), email: 'review@example.invalid' };
   async function invoke(router, path, method, body = {}, params = {}) {
     const layer = router.stack.find(layer => layer.route?.path === path && layer.route.methods[method]);
@@ -170,7 +170,6 @@ test('independent Bunpou backend safety review', { timeout: 90_000 }, async t =>
     await query("INSERT INTO grammar_examples(grammar_id,japanese,highlight,indonesian) VALUES ($1,'one two three','three','translation')", [id(6)]);
     await query("INSERT INTO lesson_grammar_task_items(lesson_id,grammar_id,instruction) VALUES ($1,$2,'instruction')", [id(5), id(6)]);
     await query("INSERT INTO user_enrollments(user_id,course_id,status) VALUES ($1,$2,'active')", [user.id, id(2)]);
-    await query("INSERT INTO app_settings(key,value) VALUES ('bunpou_flow_pilot_enabled','true'),('bunpou_flow_pilot_lesson_id',$1)", [id(4)]);
     await publishSource();
   });
 
@@ -239,13 +238,13 @@ test('independent Bunpou backend safety review', { timeout: 90_000 }, async t =>
     }
   });
 
-  await t.test('recheck pilot after the answer waits for its advisory lock', async () => {
+  await t.test('recheck publication after the answer waits for its advisory lock', async () => {
     const session = (await create()).body;
     const item = session.items[0]; assert.ok(item);
-    afterAdvisory = () => query("UPDATE app_settings SET value = 'false' WHERE key = 'bunpou_flow_pilot_enabled'");
+    afterAdvisory = () => query('UPDATE lessons SET bunpou_flow_published = NULL WHERE id = $1', [id(4)]);
     const result = await invoke(sessions, '/grammar-task/sessions/:id/items/:itemId/answer', 'post',
       { optionIndex: 0, requestId: 'after-disable' }, { id: session.sessionId, itemId: item.itemId });
-    assert.equal(result.status, 403, 'answer currently commits after pilot has been disabled');
+    assert.equal(result.status, 403, 'answer currently commits after the companion has been withdrawn');
   });
 
   await t.test('recheck expiry after the hint waits for its advisory lock', async () => {
@@ -306,6 +305,44 @@ test('independent Bunpou backend safety review', { timeout: 90_000 }, async t =>
       { confirm: true, draftRevision: fresh.body.draftRevision }, params);
     assert.equal(published.status, 200);
     assert.equal(published.body.published.objective, 'Newly reviewed draft');
+    assert.deepEqual([published.body.live, published.body.liveReason], [true, null], 'publishing is going live');
+  });
+
+  await t.test('publish reports why a published companion is not showing yet', async () => {
+    const sourceFingerprint = await publishSource();
+    const params = { lessonId: id(4) };
+    await query("UPDATE lessons SET video_url = '' WHERE id = $1", [id(4)]);
+    const saved = await invoke(admin, '/lessons/:lessonId/bunpou-flow/draft', 'put',
+      { schemaVersion: 1, sourceFingerprint, objective: 'No video yet', draftRevision: null }, params);
+    const published = await invoke(admin, '/lessons/:lessonId/bunpou-flow/publish', 'post',
+      { confirm: true, draftRevision: saved.body.draftRevision }, params);
+    assert.equal(published.status, 200);
+    assert.deepEqual([published.body.live, published.body.liveReason], [false, 'Video belum terhubung']);
+    assert.equal((await create()).status, 403, 'a published but not-ready lesson does not start companion sessions');
+  });
+
+  await t.test('withdrawing a publication stops it for students and keeps the draft', async () => {
+    const sourceFingerprint = await publishSource();
+    const params = { lessonId: id(4) };
+    const saved = await invoke(admin, '/lessons/:lessonId/bunpou-flow/draft', 'put',
+      { schemaVersion: 1, sourceFingerprint, objective: 'Kept draft', draftRevision: null }, params);
+    assert.equal(saved.status, 200);
+    assert.equal((await create()).status, 200);
+    const unpublish = body => invoke(admin, '/lessons/:lessonId/bunpou-flow/unpublish', 'post', body, params);
+    assert.equal((await unpublish({})).status, 400, 'withdrawing needs an explicit confirmation');
+    assert.ok((await query('SELECT bunpou_flow_published FROM lessons WHERE id = $1', [id(4)])).rows[0].bunpou_flow_published);
+    assert.equal((await unpublish({ confirm: true })).status, 200);
+    const row = (await query('SELECT bunpou_flow_draft, bunpou_flow_published FROM lessons WHERE id = $1', [id(4)])).rows[0];
+    assert.equal(row.bunpou_flow_published, null);
+    assert.equal(row.bunpou_flow_draft.objective, 'Kept draft');
+    assert.deepEqual([(await unpublish({ confirm: true })).status], [409]);
+    const withdrawn = await create();
+    assert.deepEqual([withdrawn.status, withdrawn.body.error], [403, 'pilot_not_enabled_for_lesson']);
+    assert.equal((await invoke(admin, '/lessons/:lessonId/bunpou-flow/unpublish', 'post', { confirm: true },
+      { lessonId: 'not-a-uuid' })).status, 400);
+    const republished = await invoke(admin, '/lessons/:lessonId/bunpou-flow/publish', 'post',
+      { confirm: true, draftRevision: saved.body.draftRevision }, params);
+    assert.equal(republished.body.live, true);
   });
 
   await t.test('ready catalog entries have usable recognition and controlled drills', async () => {
@@ -315,13 +352,13 @@ test('independent Bunpou backend safety review', { timeout: 90_000 }, async t =>
     const context = await loadCompanionContext(id(4));
     const drills = deriveDrills(context.items, context.pool).get(id(6));
     assert.equal(drills.step1, null); assert.equal(drills.step2, null);
-    const option = (await loadPilotLessonOptions()).find(row => row.id === id(4));
-    assert.equal(option.ready, false);
+    const option = (await loadCompanionLessonOptions()).find(row => row.id === id(4));
+    assert.equal(option.live, false);
     assert.match(option.reason, /Soal pengenalan atau latihan bentuk/);
   });
 
   await t.test('catalog requires both drills for every selected item and keeps unready entries visible', async () => {
-    assert.equal((await loadPilotLessonOptions())[0].ready, true);
+    assert.equal((await loadCompanionLessonOptions())[0].live, true);
     await query(`INSERT INTO module_grammar(id,module_id,lesson_id,pattern,meaning,example,example_dialog,recognition_distractors,sort_order)
       SELECT $1,module_id,lesson_id,pattern,'',example,example_dialog,recognition_distractors,1
       FROM module_grammar WHERE id = $2`, [id(60), id(6)]);
@@ -338,9 +375,9 @@ test('independent Bunpou backend safety review', { timeout: 90_000 }, async t =>
       assert.ok(drills.get(id(6)).step1 && drills.get(id(6)).step2);
       assert.equal(drills.get(id(60))[`step${missingStep}`], null);
       assert.ok(drills.get(id(60))[`step${3 - missingStep}`]);
-      const options = await loadPilotLessonOptions();
+      const options = await loadCompanionLessonOptions();
       assert.equal(options.length, 1);
-      assert.equal(options[0].ready, false);
+      assert.equal(options[0].live, false);
       assert.match(options[0].reason, /semua pola/);
     }
   });

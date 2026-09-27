@@ -12,8 +12,8 @@ import {
   deriveKanjiUsages,
 } from '../kanji-compounds.js';
 import { userCanAccessCourse, requireLessonCourseAccess } from '../entitlements.js';
-import { loadPilotConfig } from '../bunpou-flow-config.js';
-import { pilotPublicCompanion } from '../bunpou-flow-content.js';
+import { liveCompanionContexts } from '../bunpou-companion-status.js';
+import { publicCompanionView } from '../bunpou-flow-service.js';
 
 const router = Router();
 
@@ -305,17 +305,20 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
     }
   }
 
-  // Bunpou Flow pilot: at most one lesson in the entire catalogue can carry
-  // this, and only when an admin has both flipped the flag and published a
-  // snapshot for it. Fetched as its own narrow query — never by widening the
-  // lessons SELECT above, which is spread wholesale (`...l`) into every
-  // lesson below; adding bunpou_flow_published there would leak the raw
-  // envelope onto lessons this pilot has nothing to do with, and
-  // bunpou_flow_draft (editor-only) must never reach this endpoint at all.
-  const pilotConfig = await loadPilotConfig();
-  let pilotCompanion = null;
-  if (pilotConfig.enabled && pilotConfig.lessonId) {
-    pilotCompanion = await pilotPublicCompanion(pilotConfig.lessonId);
+  // Pendamping Bunpou: dilampirkan pada setiap pelajaran yang pendampingnya
+  // sedang aktif (dipublikasikan + lolos cek kesiapan, lihat
+  // bunpou-companion-status.js). Diambil lewat query sendiri — BUKAN dengan
+  // melebarkan SELECT lessons di atas, yang disebar utuh (`...l`) ke setiap
+  // pelajaran; menambahkan bunpou_flow_published di sana akan membocorkan
+  // envelope mentahnya, dan bunpou_flow_draft (khusus editor) sama sekali
+  // tidak boleh sampai ke endpoint ini. Kegagalan pendamping (opsional) tidak
+  // boleh ikut menjatuhkan halaman kursus.
+  let companions = new Map();
+  try {
+    companions = await liveCompanionContexts(
+      Object.values(lessonsByModule).flat().map((l) => l.id));
+  } catch (err) {
+    console.error('bunpou companion load failed:', err?.message);
   }
 
   res.json({
@@ -337,7 +340,7 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
             kanji: kanjiByLesson[l.id] || [],
             kana: kanaByLesson[l.id] || [],
             grammarTask: grammarTaskByLesson[l.id] || [],
-            ...(pilotCompanion && l.id === pilotConfig.lessonId ? { bunpouFlow: pilotCompanion } : {}),
+            ...(companions.has(l.id) ? { bunpouFlow: publicCompanionView(companions.get(l.id).published) } : {}),
           })),
           vocabulary: vocabByModule[m.id] || [],
           grammar: grammarByModule[m.id] || [],
@@ -393,14 +396,15 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
     durationMinutes: row.duration_minutes,
   };
 
-  // See the matching comment in GET /courses/:slug — `row` here carries
-  // bunpou_flow_draft too (via `l.*` above), which must never reach a
-  // response; only bunpou_flow_published is read, and only for the one
-  // lesson the pilot is currently scoped to.
-  const pilotConfig = await loadPilotConfig();
-  if (pilotConfig.enabled && pilotConfig.lessonId === row.id) {
-    const companion = await pilotPublicCompanion(row.id);
-    if (companion) response.bunpouFlow = companion;
+  // Lihat komentar pasangannya di GET /courses/:slug — `row` di sini ikut
+  // membawa bunpou_flow_draft (lewat `l.*` di atas), yang tidak boleh sampai
+  // ke respons; hanya bunpou_flow_published yang dibaca, dan hanya kalau
+  // pendampingnya sedang aktif.
+  try {
+    const companion = (await liveCompanionContexts([row.id])).get(row.id);
+    if (companion) response.bunpouFlow = publicCompanionView(companion.published);
+  } catch (err) {
+    console.error('bunpou companion load failed:', err?.message);
   }
 
   if (row.type === 'quiz') {

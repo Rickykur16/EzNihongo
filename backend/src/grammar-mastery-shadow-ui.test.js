@@ -15,7 +15,7 @@ const slice = (start, end) => {
   assert.ok(from > 0 && to > from, `slice tidak ketemu: ${start}`);
   return html.slice(from, to);
 };
-const source = slice('const MS_FLAG_LABEL = {', 'window.bfPilotSaveSettings');
+const source = slice('const MS_FLAG_LABEL = {', 'window.coachPromptResetDefault');
 
 function run(payload) {
   const out = { innerHTML: '' };
@@ -102,7 +102,9 @@ test('kartu ini TIDAK punya cara mengaktifkan kebijakan usulan', async () => {
   // Tidak ada tombol/toggle apa pun di keluarannya yang menulis kebijakan.
   assert.doesNotMatch(out.innerHTML, /<button|<input|onclick=/i);
   // Dan di seluruh markup kartunya pun tidak ada endpoint tulis kebijakan.
-  const card = slice('Kebijakan penguasaan &mdash; mode shadow', 'window.bfPilotSaveSettings');
+  // Markup kartu + kode shadow-nya sendiri (bukan helper Pendamping Bunpou
+  // di antaranya, yang memang punya aksi tulis sendiri: tarik publikasi).
+  const card = slice('Kebijakan penguasaan &mdash; mode shadow', 'function bfCompanionStatus') + source;
   assert.doesNotMatch(card, /grammar_mastery_policy|method:\s*['"]PUT|method:\s*['"]POST/);
 });
 

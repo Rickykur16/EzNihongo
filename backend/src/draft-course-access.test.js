@@ -32,6 +32,8 @@ mock.method(db, 'query', async (sql, params = []) => {
     assert.match(sql, /WHERE is_published = TRUE/);
     return { rows: published ? [{ id: courseId }] : [] };
   }
+  // Pendamping Bunpou: tidak ada pelajaran yang dipublikasikan di fixture ini.
+  if (sql.includes('bunpou_flow_published IS NOT NULL AS published')) return { rows: [] };
   if (sql.includes('FROM modules') || sql.includes('FROM app_settings')) return { rows: [] };
   throw new Error('Unexpected query: ' + sql);
 });

@@ -508,6 +508,78 @@
       Playwright — audio ElevenLabs sungguhan tetap tidak bisa dites dari
       sini (diblokir egress) terlepas dari perubahan apa pun di atas.
 
+      **Saklar pilot satu-pelajaran DIHAPUS: publikasi Pendamping Bunpou =
+      langsung tampil ke siswa** (2026-09-27) — user: "saya sudah publikasikan
+      bunpou flow untuk bab3 tapi hasilnya ga keluar di dashboard murid", lalu
+      "yang di publikasikan itu otomatis mengganti, bisa gk?" dan memilih opsi
+      "semua langsung aktif" (bukan "hanya teks 🎯/🎧", bukan "publish memindah
+      pilot"). **Akar keluhannya bukan bug**: publish cuma menulis
+      `lessons.bunpou_flow_published`; siswa baru menerimanya kalau
+      `app_settings.bunpou_flow_pilot_enabled/_lesson_id` menunjuk pelajaran
+      yang SAMA — dan pilot hanya bisa SATU pelajaran se-katalog, padahal Bab 3
+      punya DUA pelajaran grammar (`bunpou-n5-b3`→`tesbunpou1-n5-b3`,
+      `bunpou2-n5-b3`→`tesbunpou2-n5-b3`, migrasi 173). Juga dicatat ke user:
+      pendamping tidak pernah tampil di `dashboard.html` — 🎯 di halaman
+      pelajaran grammar, 🎧 di halaman "Percakapan" (sejak PR #394).
+      **Satu aturan "aktif"** di `backend/src/bunpou-companion-status.js`
+      (menggantikan `bunpou-flow-config.js` + `bunpou-pilot-catalog.js`, keduanya
+      dihapus): dipublikasikan + lolos cek kesiapan yang SAMA dengan syarat
+      mengaktifkan pilot dulu (N5, kursus aktif, video terhubung, tepat satu
+      pasangan tugas, sidik jari sumber masih cocok, contoh+dialog lengkap, soal
+      Step 1/2 tersedia). Dicek ulang TIAP DIBACA, bukan dibekukan saat publish.
+      Dipakai bersama oleh `content.js` (kedua endpoint), sesi Tugas Bunpou,
+      Smart Review (pemeriksaan kini dari SEMUA pendamping aktif, `checksByTask`),
+      dan kartu admin. **Gerbang sesi** (`bunpou-session-access.js`
+      `pilotAccessError`): sesi v1 yang BERJALAN cukup "masih dipublikasikan"
+      (edit materi di tengah sesi tetap memakai snapshot, sama seperti dulu flag
+      tetap menyala); sesi v1 BARU butuh `requireLive` penuh. Kode error
+      `pilot_not_enabled_for_lesson` SENGAJA dipertahankan — `welcome.html`
+      memakainya untuk kembali ke drill lama; pasangan tugas tidak sah tetap 404
+      `no_task_for_lesson` (tes keamanan lama mematok itu). **Pendamping basi
+      kini jatuh mulus ke drill lama** untuk sesi baru (dulu pilot menyala +
+      materi berubah → 409 → layar error Tugas Bunpou).
+      **Admin**: kartu tab AI jadi "Pendamping Bunpou — status tayang" (daftar
+      per pelajaran: Tampil ke siswa / Dipublikasikan, belum tampil: alasan /
+      Belum tampil), tombol **Tarik publikasi** (`POST
+      /admin/lessons/:id/bunpou-flow/unpublish`, `{confirm:true}`, owner-only,
+      mengosongkan `bunpou_flow_published` tapi draft TETAP), `GET
+      /admin/bunpou-flow/lessons` menggantikan `GET/PUT
+      /settings/bunpou-flow-pilot` (dihapus; `company-route-policy.js` ikut).
+      Publish kini membalas `live`/`liveReason` dan admin diberi tahu kalau
+      belum tampil. Shadow endpoint tidak lagi default ke lesson pilot
+      (`lessonId` wajib; picker UI memang selalu mengirimnya).
+      **Temuan penting yang harus diingat (perilaku LAMA, bukan bug baru)**:
+      `contentRevisionId(items, pool)` meng-hash `loadModulePool` = SELURUH pola
+      satu bab (sumber pengecoh). Jadi mengedit pola/arti/contoh/pengecoh di
+      pelajaran mana pun di bab itu membuat pendamping SEMUA pelajaran di bab itu
+      basi → berhenti tampil sampai dipublikasikan ulang. Publish sendiri tidak
+      mengubah materi, jadi tidak pernah mematikan pelajaran lain. Ketahuan
+      karena tes "dua pelajaran aktif bersamaan" gagal saat pola kedua
+      ditambahkan — tesnya dijadikan dokumentasi perilaku ini, bukan dilonggarkan.
+      **Efek deploy**: setiap pelajaran yang SUDAH punya publikasi yang masih
+      cocok + lolos kesiapan langsung tampil begitu server baru jalan. Baris
+      `app_settings` pilot lama dibiarkan (tidak dibaca kode mana pun lagi).
+      **Divalidasi**: `npm test` penuh dengan `TEST_DATABASE_URL`; 8 tes
+      integrasi baru (dua pelajaran aktif bersamaan, tanpa setting pilot,
+      fallback saat tidak siap, tarik publikasi menghentikan sesi berjalan,
+      sesi berjalan aman saat materi diedit, publish melaporkan alasan belum
+      tampil, tarik publikasi menyimpan draft, publish ulang) + tes kartu admin
+      ditulis ulang (24); tiga mutasi (hapus cek publikasi / cek basi /
+      `requireLive`) masing-masing DIBUKTIKAN menggagalkan tes. E2E lewat server
+      ASLI + `schema.sql` + migrasi 000→176 (migrasi konten 166/171/172/175/176
+      yang butuh kurikulum produksi dilewati — di DB kosong memang gagal, bukan
+      karena perubahan ini) dengan fixture mirip Bab 3: 28/28 cek HTTP, dan
+      kartu admin di Chromium tersambung ke backend asli (publish dari modal →
+      tampil, tarik publikasi → hilang, 390px tanpa scroll horizontal).
+      **Jebakan alat uji**: `route.fetch` Playwright ikut meneruskan header
+      `Origin` untuk PUT/POST → server membalas 500 "Not allowed by CORS"
+      kalau origin halaman uji tidak ada di `ALLOWED_ORIGINS` (GET lolos karena
+      tanpa Origin) — terlihat seperti bug simpan draft, padahal konfigurasi
+      uji. **Belum diverifikasi**: tampilan sisi siswa di browser (kode render
+      `welcome.html` tidak berubah; payload-nya diverifikasi lewat HTTP), dan
+      data produksi Bab 3 (apakah video sudah terhubung — kalau belum, kartu
+      admin akan menyebut "Video belum terhubung").
+
       **Pendamping Bunpou Bab 3 DIISI (migrasi 149) — arahan ditulis untuk
       DIALOGNYA, bukan untuk nama polanya** — user: "Sekarang isikan
       pendamping bunpou agar sesuai dengan konteks dialog". Isi companion

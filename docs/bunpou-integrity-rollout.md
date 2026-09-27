@@ -1,24 +1,45 @@
-# Bunpou pilot: activation and session integrity
+# Pendamping Bunpou: publikasi dan integritas sesi
 
-This document's selector and checkbox describe the original **v1 pilot**.
-For the later v2 communication flow, see
-[learning-flow-boundary-rollout.md](learning-flow-boundary-rollout.md).
-The two flags are independent. Neither document records production activation.
+Dokumen ini dulu menjelaskan **pilot v1 satu pelajaran** (saklar + pemilih
+pelajaran di tab AI). Sejak 27 September 2026 saklar itu **dihapus**: pendamping
+yang dipublikasikan langsung tampil ke siswa. Untuk flow komunikasi v2, lihat
+[learning-flow-boundary-rollout.md](learning-flow-boundary-rollout.md). Keduanya
+tetap independen. Dokumen ini tidak mencatat aktivasi produksi apa pun.
 
-## V1 pilot activation without IDs
+## Publikasi = tayang
 
-1. Open the AI settings tab in the existing admin workspace.
-2. In Bunpou Flow, choose a lesson from the course/bab groups. The selector shows lesson names and readiness, not UUIDs.
-3. If the lesson needs review, use Edit Pendamping Bunpou. Inspect the actual dialogue and derived questions, review the objective, directions, hints and explanations, then save/publish explicitly.
-4. Refresh the lesson list, select the ready lesson, enable the checkbox, and save.
-5. Open the source lesson and its existing Tugas Bunpou as an enrolled test student. Check hint, explanation, two-error reveal, refresh, popup reopening, and production revision.
+1. Buka pelajaran grammar di admin lalu klik 🧭 Pendamping Bunpou (atau pilih
+   pelajarannya di kartu **Pendamping Bunpou — status tayang** di tab AI, lalu
+   Edit Pendamping Bunpou). Tinjau dialog dan soal turunannya, isi tujuan,
+   arahan, petunjuk, dan pembahasan, lalu publikasikan secara eksplisit.
+2. Publikasi langsung tampil ke siswa **selama pelajaran lolos cek kesiapan**
+   (`backend/src/bunpou-companion-status.js`, satu aturan yang dipakai bersama
+   oleh payload pelajaran, sesi Tugas Bunpou, Smart Review, dan kartu admin):
+   kursus N5 yang aktif, video terhubung, tepat satu pasangan Tugas Bunpou,
+   materi belum berubah sejak publikasi, contoh dan dialog lengkap, serta soal
+   Step 1/2 tersedia untuk semua pola. Respons publish menyebut `live` dan
+   `liveReason`, dan admin diberi tahu kalau publikasinya belum tampil.
+3. Tidak ada batas satu pelajaran: dua pelajaran grammar dalam satu bab (mis.
+   Bab 3) bisa tampil bersamaan.
+4. **Materi satu bab saling terkait.** Sidik jari sumber menghitung seluruh pola
+   grammar di bab itu, karena pola-pola itu menjadi sumber pengecoh soal. Mengedit
+   pola, arti, contoh, atau pengecoh di pelajaran MANA PUN dalam bab yang sama
+   membuat pendamping semua pelajaran di bab itu berhenti tampil sampai ditinjau
+   dan dipublikasikan ulang. Lakukan semua perubahan materi dulu, baru publikasikan.
+   Menerbitkan satu pelajaran tidak mengubah materi, jadi tidak pernah mematikan
+   pelajaran lain.
+5. Buka pelajaran sumber dan Tugas Bunpou-nya sebagai siswa uji yang terdaftar.
+   Periksa petunjuk, pembahasan, pembukaan jawaban setelah dua kali salah,
+   refresh, pembukaan ulang popup, dan revisi produksi.
 
-Shadow comparison has a separate named selector. It remains read-only and does not activate the proposed mastery policy.
+Shadow comparison tetap punya pemilihnya sendiri, tetap read-only, dan tidak
+mengaktifkan kebijakan penguasaan usulan.
 
 ## Deployment prerequisites
 
 - Apply additive migration 152 on isolated staging using the existing migration runner before deploying the new server. It adds a request ledger and production-slot snapshots, without rewriting attempts, curriculum, XP, completion, enrollment, or settings.
-- Existing publications without the expanded source fingerprint must be reviewed and republished. The admin selector explains this state. No migration fabricates editorial approval or enables the pilot.
+- Existing publications without the expanded source fingerprint must be reviewed and republished. The admin status card explains this state. No migration fabricates editorial approval.
+- **Deploy effect of removing the pilot switch:** every lesson that already has a published, still-current companion and passes readiness becomes visible to students as soon as the new server runs. Check the status card after deploy. The old `bunpou_flow_pilot_enabled`/`bunpou_flow_pilot_lesson_id` rows in `app_settings` are no longer read by any code and can be left alone.
 - Verify the chosen N5 lesson has linked video, examples, dialogue, and exactly one task mapping. The server checks readiness even if a client bypasses the selector.
 - No production deployment, production migration, or flag activation is part of this code change.
 
@@ -30,7 +51,7 @@ Shadow comparison has a separate named selector. It remains read-only and does n
 - A completed production slot never reports a different sentence as graded. Requests competing for the same slot wait/retry instead of overwriting newer work.
 - Published companion content is checked against the actual task sources, including dialogues, instructions, examples and distractors. Stale content is withheld from new sessions and Smart Review. Existing authorized snapshots remain unchanged.
 - Publishing requires the exact draft revision returned by the reviewed save. Replacing a draft during review or publication cannot silently publish another editor's changes.
-- Session reads and writes recheck account, enrollment, expiry and course scope after acquiring the user lock. V1 additionally rechecks its live pilot flag; an issued v2 session uses its persisted version and immutable snapshot, so disabling the v2 allowlist does not revoke it. Account erasure takes the same lock; production checks access before reservation and again after evaluation.
+- Session reads and writes recheck account, enrollment, expiry and course scope after acquiring the user lock. V1 additionally rechecks that its source lesson's companion is still published (a new v1 session also needs the lesson to pass readiness; a running one keeps its stored snapshot when the source changes); an issued v2 session uses its persisted version and immutable snapshot, so disabling the v2 allowlist does not revoke it. Account erasure takes the same lock; production checks access before reservation and again after evaluation.
 - Student UI restores completed/revealed states, wrong counts and production results. Hints and explanations are escaped before display. Revising a sentence preserves the original text in the input; earlier attempts stay in history.
 - The shadow policy tracks independent, assisted and limited production separately. Assisted or unknown production cannot satisfy the proposed independent-production requirement. Active mastery remains unchanged.
 - Account erasure deletes request records and sessions; session deletion cascades to production snapshots and item state.
@@ -45,6 +66,6 @@ Focused tests cover source invalidation, public/private state, request replays a
 
 ## Rollback
 
-For a **v1 pilot** issue, turn off the Bunpou Flow checkbox and save. Disabling remains possible even when the old selected lesson has been removed or is no longer ready. V1 sessions continue to observe that flag and may no longer resume.
+For a companion issue on one lesson, select it in the status card on the AI tab and click **Tarik publikasi** (`POST /api/admin/lessons/:lessonId/bunpou-flow/unpublish` with `{ "confirm": true }`). It stops showing to students immediately, running v1 sessions for that lesson stop, and the draft is kept for republishing.
 
-For a **v2 communication-flow** issue, the owner disables new v2 creation through `PUT /api/admin/settings/learning-flow-communication`, using the latest `expectedConfigRevision` and preserving the explicit ID lists. Already-active v2 sessions still resume and use their frozen internal step 5; account, enrollment, scope and expiry checks remain. Do not turn off the v1 pilot flag expecting it to stop or rewrite v2 sessions. Keep migrations and accumulated records; do not delete attempts, sessions or reverse additive schema merely to disable a flow.
+For a **v2 communication-flow** issue, the owner disables new v2 creation through `PUT /api/admin/settings/learning-flow-communication`, using the latest `expectedConfigRevision` and preserving the explicit ID lists. Already-active v2 sessions still resume and use their frozen internal step 5; account, enrollment, scope and expiry checks remain. Do not withdraw a companion expecting it to stop or rewrite v2 sessions. Keep migrations and accumulated records; do not delete attempts, sessions or reverse additive schema merely to disable a flow.
