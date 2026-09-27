@@ -16,6 +16,11 @@ export const VALIDATED_WRITERS = [
   ['POST', '/lessons/:lessonId/import-notion-deck'],
   ['POST', '/modules/:moduleId/import-notion-pelajaran'],
   ['POST', '/lessons/:lessonId/import-notion-kanji-bab'],
+  ['POST', '/lessons/:lessonId/deck-items'], ['PUT', '/lessons/:lessonId/deck-items'],
+  ['POST', '/lessons/:lessonId/kana-items'], ['PUT', '/lessons/:lessonId/kana-items'],
+  ['PUT', '/lessons/:lessonId/grammar-task-items'],
+  ['PUT', '/module-grammar/:id/distractors'],
+  ['POST', '/kanji/:id/move'],
 ];
 
 export const LOCKED_TOPOLOGY_WRITERS = [
@@ -25,27 +30,45 @@ export const LOCKED_TOPOLOGY_WRITERS = [
 
 export const OFF_ONLY_CLI_IMPORTERS = [
   'scripts/import-content.mjs', 'scripts/import-curriculum.mjs',
+  'scripts/cleanup-n5-seed-modules.mjs',
 ];
 
-// These existing writes still need service adapters or explicit enforce-mode
-// gates. Until then, no deployment should enable enforce for affected courses.
-export const PENDING_BOUNDARY_WRITERS = [
+// Destructive one-shot fixture, not an operational writer: it truncates a
+// disposable database after a test/tmp/local/dev DATABASE_URL guard.
+export const TEST_ONLY_DIAGNOSTIC_SCRIPTS = ['scripts/test-grammar-analysis.mjs'];
+
+// Removing material or changing associations needs a stable prerequisite
+// closure but has no new text to validate. Drafts are checked at publish.
+export const LOCKED_CONTEXT_WRITERS = [
   ['DELETE', '/module-vocabulary/:id'], ['DELETE', '/vocabulary-examples/:id'],
   ['DELETE', '/module-grammar/:id'], ['DELETE', '/grammar-examples/:id'],
   ['DELETE', '/lessons/:id'], ['DELETE', '/quiz-questions/:id'],
   ['DELETE', '/lessons/:lessonId/quiz/sections/:category/:number'],
-  ['POST', '/lessons/:lessonId/deck-items'], ['PUT', '/lessons/:lessonId/deck-items'],
   ['DELETE', '/lessons/:lessonId/deck-items/:vocabularyId'],
-  ['PUT', '/lessons/:lessonId/grammar-task-items'],
   ['DELETE', '/lessons/:lessonId/grammar-task-items/:grammarId'],
   ['PUT', '/lessons/:lessonId/bunpou-flow/draft'],
-  ['PUT', '/module-grammar/:id/distractors'],
-  ['POST', '/kanji'], ['PUT', '/kanji/:id'], ['DELETE', '/kanji/:id'],
-  ['POST', '/kanji/:id/move'],
-  ['POST', '/dialogue-speakers'], ['PUT', '/dialogue-speakers/:id'],
-  ['DELETE', '/dialogue-speakers/:id'],
-  ['POST', '/kana'], ['PUT', '/kana/:id'], ['DELETE', '/kana/:id'],
-  ['POST', '/kana-examples'], ['PUT', '/kana-examples/:id'], ['DELETE', '/kana-examples/:id'],
-  ['POST', '/lessons/:lessonId/kana-items'], ['PUT', '/lessons/:lessonId/kana-items'],
   ['DELETE', '/lessons/:lessonId/kana-items/:kanaId'],
 ];
+
+// Global kana reference rows and their dynamic examples can feed any lesson.
+// Until multi-consumer validation exists, exclusive graph lock + all-courses-
+// off check prevents edits during audit/warn/enforce.
+export const OFF_ONLY_GLOBAL_WRITERS = [
+  ['POST', '/kana'], ['PUT', '/kana/:id'], ['DELETE', '/kana/:id'],
+  ['POST', '/kana-examples'], ['PUT', '/kana-examples/:id'], ['DELETE', '/kana-examples/:id'],
+];
+
+// Scoped kanji text is validated; null/global scope uses the off-only gate.
+export const MIXED_SCOPE_KANJI_WRITERS = [
+  ['POST', '/kanji'], ['PUT', '/kanji/:id'], ['DELETE', '/kanji/:id'],
+];
+
+// Profile registry changes are presentation defaults. Saved dialogue scenes
+// freeze speaker/displayName/voice snapshots; profile changes do not rewrite
+// scenes or any input used by the curriculum boundary resolver.
+export const SNAPSHOT_METADATA_WRITERS = [
+  ['POST', '/dialogue-speakers'], ['PUT', '/dialogue-speakers/:id'],
+  ['DELETE', '/dialogue-speakers/:id'],
+];
+
+export const PENDING_BOUNDARY_WRITERS = [];

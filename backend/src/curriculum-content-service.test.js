@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoundaryUnavailableError } from './curriculum-boundary.js';
-import { validateAndWriteContent, BoundaryWriteError } from './curriculum-content-service.js';
+import { validateAndWriteContent, BoundaryWriteError, lockCurriculumCourses } from './curriculum-content-service.js';
 import { validateContentAgainstBoundary } from './curriculum-boundary-validator.js';
 
 const COURSE = '11111111-1111-4111-8111-111111111111';
@@ -102,4 +102,28 @@ test('mode is reread after the lock; warn to enforce rejects unavailable validat
   });
   await assert.rejects(validateAndWriteContent(h.options), error => error.statusCode === 503);
   assert.ok(!h.calls.includes('write'));
+});
+
+test('multi-course lock unions prerequisite closure and locks sorted once regardless of input order', async () => {
+  const first = '11111111-1111-4111-8111-111111111111';
+  const second = '22222222-2222-4222-8222-222222222222';
+  const prerequisite = '00000000-0000-4000-8000-000000000000';
+  const run = async ids => {
+    const calls = [];
+    const client = { query: async (sql, params) => {
+      if (sql.includes('WITH RECURSIVE required')) {
+        calls.push(['closure', params[0]]);
+        return { rows: [prerequisite, first, second].map(id => ({ id })) };
+      }
+      calls.push(['lock', params[0]]);
+      return { rows: [] };
+    } };
+    await lockCurriculumCourses(client, ids);
+    return calls;
+  };
+  const expected = await run([first, second]);
+  assert.deepEqual(await run([second, first, second]), expected);
+  assert.deepEqual(expected[1][1], [first, second]);
+  assert.deepEqual(expected.slice(2).map(call => call[1]), [prerequisite, first, second]
+    .map(id => `curriculum-boundary:${id}`));
 });
