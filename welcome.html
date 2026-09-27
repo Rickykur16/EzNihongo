@@ -2341,6 +2341,7 @@
   .badge-deck  { background: #fff1f2; color: #be123c; border-color: #fbd5da; }
   .badge-quiz  { background: var(--accent-indigo-soft, #eef2fb); color: #34507f; border-color: #d9e2f3; }
   .badge-grammar_task { background: var(--accent-plum-soft, #f1edf8); color: #4a3a70; border-color: #e3daf2; }
+  .badge-conversation { background: var(--accent-teal-soft, #e9f5f1); color: #176b52; border-color: #cfe9e0; }
   .badge-text  { background: var(--accent-sage-soft, #eef4ea); color: #3f6b30; border-color: #dce8d4; }
   .badge-kana  { background: var(--accent-teal-soft, #e9f5f1); color: #176b52; border-color: #cfe9e0; }
   .badge-kanji { background: var(--accent-gold-soft, #faf3df); color: #7a5d10; border-color: #ecdfb8; }
@@ -5680,14 +5681,15 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
   let navPrev = null, navNext = null;
   const navCourse = COURSE_CONTENT[navSlug];
   if (navCourse) {
-    const navAll = navCourse.modules.flatMap(m => visibleLessons(m).map(l => ({ m, l })));
-    const navI = navAll.findIndex(x => x.m.id === navMid && x.l.id === navLid);
+    const navAll = courseLearningSteps(navCourse);
+    const navI = navAll.findIndex(step => step.kind === 'lesson' &&
+      step.module.id === navMid && step.lesson.id === navLid);
     if (navI >= 0) { navPrev = navAll[navI - 1]; navNext = navAll[navI + 1]; }
   }
   const navFooter = (navPrev || (lastPassed && navNext && !completedPlacement)) ? `
     <div class="lesson-footer" style="max-width:680px;margin:14px auto 0;">
-      <button class="btn-secondary" ${!navPrev ? 'disabled' : ''} onclick="${navPrev ? `selectLesson('${navPrev.m.id}','${navPrev.l.id}')` : ''}">← Sebelumnya</button>
-      ${lastPassed && navNext && !completedPlacement ? `<button class="btn-primary" onclick="selectLesson('${navNext.m.id}','${navNext.l.id}')">Lanjut →</button>` : ''}
+      <button class="btn-secondary" ${!navPrev ? 'disabled' : ''} onclick="${learningStepAction(navPrev)}">← Sebelumnya</button>
+      ${lastPassed && navNext && !completedPlacement ? `<button class="btn-primary" onclick="${learningStepAction(navNext)}">Lanjut →</button>` : ''}
     </div>` : '';
 
   container.innerHTML = `
@@ -5731,7 +5733,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
         ${lastBlock}
         <div style="margin-top:24px;display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap;">
           ${completedPlacement
-            ? `${navNext ? `<button class="btn-primary" onclick="selectLesson('${navNext.m.id}','${navNext.l.id}')" style="padding:14px 28px;font-size:16px;">Lanjut belajar →</button>` : ''}
+            ? `${navNext ? `<button class="btn-primary" onclick="${learningStepAction(navNext)}" style="padding:14px 28px;font-size:16px;">Lanjut belajar →</button>` : ''}
                ${canAttempt ? `<button class="btn-secondary" onclick="window.startQuizAttempt('${escapeAttr(key)}')" style="padding:14px 20px;font-size:14px;">Ulangi tes</button>` : ''}`
             : placementResultPending
             ? `<button class="btn-secondary" onclick="window.location.reload()" style="padding:14px 20px;font-size:14px;">Perbarui status</button>`
@@ -6810,16 +6812,14 @@ window.retryQuiz = () => {
 window.continueAfterQuiz = () => {
   const [slug, mId, lId] = quizState.key.split(':');
   const course = COURSE_CONTENT[slug];
-  // Navigasi pakai lesson terlihat saja (sama seperti markCompleteAndNext &
-  // renderLesson). Dengan m.lessons mentah, "next" setelah kuis terakhir bisa
-  // nyangkut di tugas-popup grammar yang tersembunyi dalam bab yang sama —
-  // jadi tidak pernah lompat ke bab berikutnya.
-  const allLessons = course.modules.flatMap(m => visibleLessons(m).map(l => ({ m, l })));
-  const idx = allLessons.findIndex(x => x.m.id === mId && x.l.id === lId);
-  const next = allLessons[idx + 1];
+  const steps = courseLearningSteps(course);
+  const idx = steps.findIndex(step => step.kind === 'lesson' &&
+    step.module.id === mId && step.lesson.id === lId);
+  const next = steps[idx + 1];
   if (next) {
-    currentState.moduleId = next.m.id;
-    currentState.lessonId = next.l.id;
+    currentState.moduleId = next.module.id;
+    currentState.lessonId = next.lesson.id;
+    currentState.view = next.kind;
     renderSidebar();
     renderLesson();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -7015,13 +7015,15 @@ function greetingBannerHtml() {
     const lesson = mod && mod.lessons.find(l => l.id === currentState.lessonId);
     if (lesson) {
       const progress = getProgress()[currentState.course] || {};
-      const isDone = !!progress[`${mod.id}:${lesson.id}`];
+      const isConversation = currentState.view === 'conversation' && lessonHasConversation(lesson);
+      const isDone = !isConversation && !!progress[`${mod.id}:${lesson.id}`];
       const label = isDone ? 'Buka kembali' : 'Lanjut belajar';
+      const title = isConversation ? `Percakapan · ${lesson.title}` : lesson.title;
       resume = `<button class="greeting-resume" type="button"
-        onclick="selectLesson('${mod.id}','${lesson.id}')"
-        aria-label="${label}: ${escapeHtml(lesson.title)}">
+        onclick="${isConversation ? 'selectConversation' : 'selectLesson'}('${mod.id}','${lesson.id}')"
+        aria-label="${label}: ${escapeHtml(title)}">
         <span class="gr-label">${label}</span>
-        <span class="gr-title">${escapeHtml(lesson.title)}</span>
+        <span class="gr-title">${escapeHtml(title)}</span>
         <span aria-hidden="true">→</span>
       </button>`;
     }
@@ -7195,24 +7197,21 @@ function renderLearning(courseSlug) {
       currentState.lessonId = firstLesson?.id || null;
       currentState.view = 'intro';
     }
-    let found = false;
-    for (const m of hasStudied ? course.modules : []) {
-      for (const l of visibleLessons(m)) {
-        const key = `${m.id}:${l.id}`;
-        if (!progress[key]) {
-          currentState.moduleId = m.id;
-          currentState.lessonId = l.id;
-          currentState.view = 'lesson';
-          found = true;
-          break;
-        }
-      }
-      if (found) break;
-    }
-    if (hasStudied && !found) {
-      const first = course.modules.flatMap((m) => visibleLessons(m).map((l) => ({ m, l })))[0];
-      currentState.moduleId = first?.m.id || course.modules[0].id;
-      currentState.lessonId = first?.l.id || course.modules[0].lessons[0].id;
+    const steps = courseLearningSteps(course);
+    const nextIndex = hasStudied ? steps.findIndex(step => step.kind === 'lesson' &&
+      progress[`${step.module.id}:${step.lesson.id}`] !== true) : -1;
+    if (nextIndex >= 0) {
+      const due = steps[nextIndex];
+      const prior = steps[nextIndex - 1];
+      const resume = prior?.kind === 'conversation' && prior.module === due.module
+        ? prior : due;
+      currentState.moduleId = resume.module.id;
+      currentState.lessonId = resume.lesson.id;
+      currentState.view = resume.kind;
+    } else if (hasStudied) {
+      const first = steps.find(step => step.kind === 'lesson');
+      currentState.moduleId = first?.module.id || course.modules[0].id;
+      currentState.lessonId = first?.lesson.id || course.modules[0].lessons[0].id;
       currentState.view = 'lesson';
     }
   }
@@ -7288,7 +7287,7 @@ function renderSidebar() {
   const doneLessons = curriculumLessons.filter(({ module, lesson }) => progress[`${module.id}:${lesson.id}`] === true).length;
   const pct = totalLessons ? Math.round((doneLessons / totalLessons) * 100) : 0;
 
-  const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan', deck: 'Kosakata', kanji: 'Kanji', kana: 'Kana', grammar_task: 'Tata Bahasa' };
+  const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan', deck: 'Kosakata', kanji: 'Kanji', kana: 'Kana', grammar_task: 'Tata Bahasa', conversation: 'Percakapan' };
   // SVG icons compact-style ala Udemy (play / question / book / cards / kanji).
   const TYPE_ICON = {
     video: '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
@@ -7298,6 +7297,7 @@ function renderSidebar() {
     kanji: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
     kana: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h9M9 4v5M5 13c4 0 8 3 8 7M19 13c-3 0-4 2-4 4"/></svg>',
     grammar_task: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+    conversation: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4-.9L3 21l1.9-5.5A8.5 8.5 0 1 1 21 11.5z"/></svg>',
   };
   const CHECK_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
 
@@ -7321,9 +7321,9 @@ function renderSidebar() {
   {
     let n = 0;
     for (const m of course.modules) {
-      for (const l of visibleLessons(m)) {
+      for (const step of moduleLearningSteps(m)) {
         n += 1;
-        lessonNumber.set(`${m.id}:${l.id}`, n);
+        lessonNumber.set(`${m.id}:${step.kind}:${step.lesson.id}`, n);
       }
     }
   }
@@ -7351,25 +7351,28 @@ function renderSidebar() {
         </div>
       </li>`;
 
-    const lessonsHtml = introHtml + lessons.map(l => {
+    const lessonsHtml = introHtml + moduleLearningSteps(m).map(step => {
+      const l = step.lesson;
+      const isConversation = step.kind === 'conversation';
       const key = `${m.id}:${l.id}`;
-      const isDone = !!progress[key];
-      const isCurrent = currentState.view !== 'intro' && m.id === currentState.moduleId && l.id === currentState.lessonId;
-      const typeKey = (l.type || 'text').toLowerCase();
+      const isDone = !isConversation && !!progress[key];
+      const isCurrent = currentState.view === step.kind && m.id === currentState.moduleId && l.id === currentState.lessonId;
+      const typeKey = isConversation ? 'conversation' : (l.type || 'text').toLowerCase();
       const typeLabel = TYPE_LABEL[typeKey] || typeKey.toUpperCase();
       const typeIcon = TYPE_ICON[typeKey] || TYPE_ICON.text;
-      const num = lessonNumber.get(key);
-      const durTxt = formatDurationCompact(l.durationMinutes);
-      const aria = `${l.title}, ${typeLabel}${durTxt ? ', ' + durTxt : ''}${isDone ? ', selesai' : ''}${isCurrent ? ', sedang dibuka' : ''}`;
+      const num = lessonNumber.get(`${m.id}:${step.kind}:${l.id}`);
+      const durTxt = isConversation ? '' : formatDurationCompact(l.durationMinutes);
+      const title = isConversation ? `Percakapan · ${l.title}` : l.title;
+      const aria = `${title}, ${typeLabel}${durTxt ? ', ' + durTxt : ''}${isDone ? ', selesai' : ''}${isCurrent ? ', sedang dibuka' : ''}`;
       return `
         <li class="lesson-item ${isCurrent ? 'current' : ''} ${isDone ? 'done' : ''}"
             ${isDone ? 'data-completion-state="complete"' : ''} ${isCurrent ? 'data-selection-state="current"' : ''}
             role="button" tabindex="0" aria-label="${escapeHtml(aria)}" aria-current="${isCurrent ? 'page' : 'false'}"
-            onclick="selectLesson('${m.id}', '${l.id}')"
-            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectLesson('${m.id}','${l.id}')}">
+            onclick="${learningStepAction({ ...step, module: m })}"
+            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${learningStepAction({ ...step, module: m })}}">
           <span class="lesson-check" aria-hidden="true">${isDone ? CHECK_SVG : ''}</span>
           <div class="lesson-info">
-            <div class="lesson-title-text">${num}. ${escapeHtml(l.title)}</div>
+            <div class="lesson-title-text">${num}. ${escapeHtml(title)}</div>
             <div class="lesson-meta-row">
               <span class="lesson-type-badge badge-${typeKey}">${escapeHtml(typeLabel)}</span>
               ${durTxt ? `<span class="lesson-duration">${escapeHtml(durTxt)}</span>` : ''}
@@ -8368,14 +8371,21 @@ function formatDurationCompact(minutes) {
 
 function getModuleIntroPlan(module, progress = {}) {
   const lessons = visibleLessons(module);
+  const steps = moduleLearningSteps(module);
   const completed = lessons.filter((lesson) => progress[`${module.id}:${lesson.id}`] === true).length;
-  const nextLesson = lessons.find((lesson) => progress[`${module.id}:${lesson.id}`] !== true) || lessons[0] || null;
+  const orderedLessons = steps.filter(step => step.kind === 'lesson').map(step => step.lesson);
+  const nextLesson = orderedLessons.find((lesson) => progress[`${module.id}:${lesson.id}`] !== true) || orderedLessons[0] || null;
+  const nextIndex = steps.findIndex(step => step.kind === 'lesson' && step.lesson === nextLesson);
+  const nextStep = nextIndex > 0 && steps[nextIndex - 1].kind === 'conversation'
+    ? steps[nextIndex - 1] : steps[nextIndex];
   const totalMinutes = Number(module.totalMinutes)
     || lessons.reduce((total, lesson) => total + (Number(lesson.durationMinutes) || 0), 0);
   return {
     lessons,
+    steps,
     completed,
     nextLesson,
+    nextStep,
     totalMinutes,
     percent: lessons.length ? Math.round((completed / lessons.length) * 100) : 0,
     actionLabel: completed === lessons.length && lessons.length > 0
@@ -8415,21 +8425,25 @@ function renderModuleIntro(module) {
   if (module.cefrLevel) meta.push(`<span>Level CEFR ${escapeHtml(module.cefrLevel)}</span>`);
   if (plan.totalMinutes) meta.push(`<span>${escapeHtml(formatDurationLong(plan.totalMinutes))}</span>`);
   if (module.jfTopic) meta.push(`<span>Topik: ${escapeHtml(module.jfTopic)}</span>`);
-  const path = plan.lessons.map((lesson, index) => {
-    const done = progress[`${module.id}:${lesson.id}`] === true;
-    const isNext = lesson.id === plan.nextLesson?.id
+  const path = plan.steps.map((step, index) => {
+    const lesson = step.lesson;
+    const conversation = step.kind === 'conversation';
+    const done = !conversation && progress[`${module.id}:${lesson.id}`] === true;
+    const isNext = step === plan.nextStep
       && (!done || plan.completed === plan.lessons.length);
-    const duration = formatDurationLong(lesson.durationMinutes);
-    const type = typeLabels[String(lesson.type || 'text').toLowerCase()] || 'Materi';
+    const duration = conversation ? '' : formatDurationLong(lesson.durationMinutes);
+    const type = conversation ? 'Percakapan' :
+      (typeLabels[String(lesson.type || 'text').toLowerCase()] || 'Materi');
+    const title = conversation ? `Percakapan · ${lesson.title}` : lesson.title;
     const state = isNext
       ? (plan.completed === plan.lessons.length ? 'Tinjau ulang' : plan.completed ? 'Lanjut di sini' : 'Mulai di sini')
       : done ? 'Selesai' : '';
     return `
       <button class="module-path-item ${done ? 'done' : ''} ${isNext ? 'next' : ''}" type="button"
-          onclick="selectLesson('${module.id}','${lesson.id}')">
+          onclick="${learningStepAction({ ...step, module })}">
         <span class="module-path-number" aria-hidden="true">${done ? '✓' : index + 1}</span>
         <span>
-          <span class="module-path-title">${escapeHtml(lesson.title)}</span>
+          <span class="module-path-title">${escapeHtml(title)}</span>
           <span class="module-path-meta">${escapeHtml([type, duration].filter(Boolean).join(' · '))}</span>
         </span>
         <span class="module-path-state">${state}</span>
@@ -8464,9 +8478,9 @@ function renderModuleIntro(module) {
       <div class="module-intro-start">
         <div>
           <span class="module-intro-start-label">${startLabel}</span>
-          <strong class="module-intro-start-title">${plan.nextLesson ? escapeHtml(plan.nextLesson.title) : 'Belum ada materi'}</strong>
+          <strong class="module-intro-start-title">${plan.nextStep ? escapeHtml(plan.nextStep.kind === 'conversation' ? `Percakapan · ${plan.nextStep.lesson.title}` : plan.nextStep.lesson.title) : 'Belum ada materi'}</strong>
         </div>
-        <button class="btn-primary" type="button" ${plan.nextLesson ? `onclick="selectLesson('${module.id}','${plan.nextLesson.id}')"` : 'disabled'}>
+        <button class="btn-primary" type="button" ${plan.nextStep ? `onclick="${learningStepAction({ ...plan.nextStep, module })}"` : 'disabled'}>
           ${escapeHtml(plan.actionLabel)}
         </button>
       </div>
@@ -8539,10 +8553,8 @@ function renderLessonGrammar(lesson) {
     <div class="lesson-extra-card">
       <h3>📖 Grammar di pelajaran ini (${sorted.length})</h3>
       <div id="bunpou-analysis"></div>
-      <div class="dq-legacy-session-slot" hidden></div>
       <div class="grammar-list">
-        ${sorted.map((g, i) => {
-          const dialog = (g.example_dialog || '').trim();
+        ${sorted.map((g) => {
           // Prefer examples[] (multi); fallback ke g.example single (legacy).
           let examples = Array.isArray(g.examples) ? g.examples : [];
           if (examples.length === 0 && g.example && g.example.trim()) {
@@ -8567,24 +8579,49 @@ function renderLessonGrammar(lesson) {
               </button>
               <div class="grammar-block-content">${examplesHtml}</div>
             </div>` : ''}
-            ${dialog ? `<div class="grammar-block grammar-collapsible grammar-dialog-block" data-collapsed="1" data-dialog-id="${escapeHtml(g.example_dialog_id || '')}">
-              <button type="button" class="grammar-block-toggle" onclick="window.grammarBlockToggle(this)">
-                <span class="grammar-block-label">💬 Dialog contoh</span>
-                <span class="grammar-block-chevron" aria-hidden="true">▾</span>
-              </button>
-              <div class="grammar-block-content">
-                ${lesson.bunpouFlow?.directions?.[g.id] ? `<p class="grammar-listening-direction" style="margin:0 0 8px;font-size:13px;color:#525252;">🎧 ${escapeHtml(lesson.bunpouFlow.directions[g.id])}</p>` : ''}
-                <div class="dq-goal" data-dq-goal-for="${escapeHtml(g.id || '')}" hidden></div>
-                ${grammarKaraokeHtml(dialog, `g${i}`, g.example_dialog_id || '', g.dialog_scene, g.id, g.dialog_furigana)}
-                <div class="dq-questions" data-dq-questions-for="${escapeHtml(g.id || '')}" hidden></div>
-              </div>
-            </div>` : ''}
             ${g.notes ? `<div class="grammar-notes">${escapeHtml(g.notes)}</div>` : ''}
           </div>`;
         }).join('')}
       </div>
     </div>
   `;
+}
+
+function renderLessonConversation(course, module, lesson, nav) {
+  const dialogs = (lesson.grammar || []).filter(grammar =>
+    String(grammar.example_dialog || '').trim())
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  if (!dialogs.length) return;
+  const { prev, next } = nav;
+  const root = document.getElementById('main-content');
+  const linkedTask = next?.module === module &&
+    taskSourceLesson(module, next.lesson) === lesson ? next : null;
+  root.innerHTML = `
+    <p class="lesson-breadcrumb">${escapeHtml(course.name)} · Modul <span>${escapeHtml(module.num)}</span> · PERCAKAPAN</p>
+    <h1 class="lesson-title">Percakapan · ${escapeHtml(lesson.title)}</h1>
+    <p class="lesson-subtitle">${escapeHtml(module.title)} · Dengarkan, baca, lalu cek pemahamanmu.</p>
+    <div class="dq-legacy-session-slot" hidden></div>
+    <div class="grammar-list">
+      ${dialogs.map((grammar, index) => `
+        <section class="lesson-extra-card grammar-card" data-grammar-id="${escapeHtml(grammar.id || '')}">
+          <h2 class="grammar-pattern">${escapeHtml(grammar.pattern || `Percakapan ${index + 1}`)}</h2>
+          ${lesson.bunpouFlow?.directions?.[grammar.id] ? `<p class="grammar-listening-direction">🎧 ${escapeHtml(lesson.bunpouFlow.directions[grammar.id])}</p>` : ''}
+          <div class="dq-goal" data-dq-goal-for="${escapeHtml(grammar.id || '')}" hidden></div>
+          ${grammarKaraokeHtml(String(grammar.example_dialog).trim(), `g${index}`,
+            grammar.example_dialog_id || '', grammar.dialog_scene, grammar.id, grammar.dialog_furigana)}
+          <div class="dq-questions" data-dq-questions-for="${escapeHtml(grammar.id || '')}" hidden></div>
+        </section>`).join('')}
+    </div>
+    <div class="lesson-footer">
+      <button class="btn-secondary" type="button" ${!prev ? 'disabled' : ''}
+        onclick="${learningStepAction(prev)}">← Sebelumnya</button>
+      <button class="btn-primary" type="button" ${!next ? 'disabled' : ''}
+        onclick="${learningStepAction(next)}">${next?.lesson?.type === 'grammar_task' ? 'Lanjut ke Tugas Bunpou →' : 'Lanjut →'}</button>
+    </div>`;
+  // The backend owns placement and answer keys; even legacy placement keeps
+  // this source dialogue readable without rendering inline questions.
+  window.EzDialogueQuestions?.mount({ root, lesson,
+    openLegacyTask: linkedTask ? () => window.selectLesson(module.id, linkedTask.lesson.id) : null });
 }
 
 // ── Dialog player (chat bubbles) ───────────────────────────
@@ -9590,7 +9627,7 @@ function renderDeckLesson(course, module, lesson, nav) {
     </div>
     <div id="deck-progress-hint" class="lesson-progress-hint"></div>
     <div class="lesson-footer">
-      <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
+      <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${learningStepAction(prev)}">← Sebelumnya</button>
       <button class="btn-primary" id="deck-complete-btn" onclick="markCompleteAndNext(this)"></button>
     </div>
   `;
@@ -10557,7 +10594,7 @@ function renderGrammarTaskLesson(course, module, lesson, nav) {
     ${gtCardsHtml(items, sttOn, true)}
     <div id="gt-progress-hint"></div>
     <div class="lesson-footer">
-      <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
+      <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${learningStepAction(prev)}">← Sebelumnya</button>
       <button class="btn-primary" id="gt-complete-btn" onclick="markCompleteAndNext(this)"></button>
     </div>
   `;
@@ -11282,7 +11319,7 @@ function renderKanjiLesson(course, module, lesson, nav) {
     ${drillBlock}
     <div id="kanji-progress-hint" class="lesson-progress-hint"></div>
     <div class="lesson-footer">
-      <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
+      <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${learningStepAction(prev)}">← Sebelumnya</button>
       <button class="btn-primary" id="kanji-complete-btn" onclick="markCompleteAndNext(this)"></button>
     </div>
   `;
@@ -11420,7 +11457,7 @@ function renderKanaLesson(course, module, lesson, nav) {
     ${modalMarkup}
     <div id="kana-progress-hint" class="lesson-progress-hint"></div>
     <div class="lesson-footer">
-      <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">← Sebelumnya</button>
+      <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${learningStepAction(prev)}">← Sebelumnya</button>
       <button class="btn-primary" id="kana-complete-btn" onclick="markCompleteAndNext(this)"></button>
     </div>
   `;
@@ -13186,6 +13223,72 @@ function gtIsPopupTask(l) {
 function visibleLessons(m) {
   return m.lessons || [];
 }
+// ── Learning sequence ────────────────────────────────────────────────
+// A conversation is a view of its source lesson, not another CMS lesson.
+// The source UUID is reused for dialogue questions; no progress/XP key is made.
+function lessonHasConversation(lesson) {
+  return lesson && lesson.type !== 'grammar_task' && lesson.type !== 'quiz' &&
+    Array.isArray(lesson.grammar) && lesson.grammar.some(grammar =>
+    String(grammar?.example_dialog || '').trim());
+}
+function taskSourceLesson(module, task) {
+  if (task?.type !== 'grammar_task') return null;
+  const lessons = visibleLessons(module);
+  if (task.popupAfterLessonId) {
+    const matches = lessons.filter(lesson => lesson.apiId === task.popupAfterLessonId &&
+      lessonHasConversation(lesson));
+    return matches.length === 1 ? matches[0] : null;
+  }
+  const index = lessons.indexOf(task);
+  const previous = lessons[index - 1];
+  return index > 0 && lessonHasConversation(previous) ? previous : null;
+}
+function moduleLearningSteps(module) {
+  const lessons = visibleLessons(module);
+  const bySource = new Map();
+  for (const task of lessons) {
+    if (task.type !== 'grammar_task' || !task.popupAfterLessonId) continue;
+    const source = taskSourceLesson(module, task);
+    if (!source) continue; // Ambiguous or cross-module links keep CMS order.
+    bySource.set(source, [...(bySource.get(source) || []), task]);
+  }
+  const moved = new Set([...bySource.values()].filter(tasks => tasks.length === 1)
+    .map(tasks => tasks[0]));
+  const steps = [];
+  for (const lesson of lessons) {
+    if (moved.has(lesson)) continue;
+    steps.push({ kind: 'lesson', lesson });
+    if (lessonHasConversation(lesson)) steps.push({ kind: 'conversation', lesson });
+    const linked = bySource.get(lesson);
+    if (linked?.length === 1) steps.push({ kind: 'lesson', lesson: linked[0] });
+  }
+  return steps;
+}
+function courseLearningSteps(course) {
+  return (course?.modules || []).flatMap(module =>
+    moduleLearningSteps(module).map(step => ({ ...step, module })));
+}
+function learningStepAction(step) {
+  if (!step) return '';
+  const fn = step.kind === 'conversation' ? 'selectConversation' : 'selectLesson';
+  return `${fn}('${step.module.id}','${step.lesson.id}')`;
+}
+function selectLearningStep(step) {
+  if (!step) return;
+  if (step.kind === 'conversation') window.selectConversation(step.module.id, step.lesson.id);
+  else window.selectLesson(step.module.id, step.lesson.id);
+}
+function syncLearningUrl() {
+  if (!currentState.course || !window.history?.replaceState) return;
+  const query = new URLSearchParams();
+  query.set('course', currentState.course);
+  if (currentState.moduleId) query.set('module', currentState.moduleId);
+  if (currentState.view === 'intro') query.set('view', 'intro');
+  else if (currentState.lessonId) query.set('lesson', currentState.lessonId);
+  if (currentState.view === 'conversation') query.set('view', 'conversation');
+  window.history.replaceState({}, '', `welcome.html?${query}`);
+}
+// ── End learning sequence ────────────────────────────────────────────
 // Cari lesson (lintas semua modul course ini) berdasarkan apiId. Dipakai
 // Bunpou Flow pilot untuk menemukan kembali source lesson dari
 // taskLesson.popupAfterLessonId, supaya sesi latihan tahu lesson MANA yang
@@ -13380,13 +13483,6 @@ function renderVideoLessonPlayer(lesson) {
     </div>`;
 }
 
-function dqPlaceTaskBanner(root, placement) {
-  if (placement?.mode !== 'inline') return;
-  const banner = root?.querySelector('[data-dq-task-banner]');
-  const afterGrammar = root?.querySelector('[data-dq-task-after-grammar]');
-  if (banner && afterGrammar) afterGrammar.appendChild(banner);
-}
-
 function renderLesson() {
   window.EzDialogueQuestions?.unmount();
   window.__quizNavigationEpoch = (window.__quizNavigationEpoch || 0) + 1;
@@ -13396,6 +13492,7 @@ function renderLesson() {
   const module = course.modules.find(m => m.id === currentState.moduleId);
   if (!module) return;
   if (currentState.view === 'intro') {
+    syncLearningUrl();
     window.__tutorCompact = false;
     setTutorHidden(false);
     document.getElementById('main-content').innerHTML = renderModuleIntro(module);
@@ -13404,18 +13501,30 @@ function renderLesson() {
   const lesson = module.lessons.find(l => l.id === currentState.lessonId);
   if (!lesson) {
     currentState.view = 'intro';
+    syncLearningUrl();
     document.getElementById('main-content').innerHTML = renderModuleIntro(module);
     return;
   }
+  if (currentState.view === 'conversation' && !lessonHasConversation(lesson)) {
+    currentState.view = 'lesson';
+  }
+  syncLearningUrl();
   updateTutorVisibility();
   const progress = getProgress()[currentState.course] || {};
   const key = `${module.id}:${lesson.id}`;
   const isDone = !!progress[key];
 
-  const allLessons = course.modules.flatMap(m => visibleLessons(m).map(l => ({ m, l })));
-  const idx = allLessons.findIndex(x => x.m.id === module.id && x.l.id === lesson.id);
-  const prev = allLessons[idx - 1];
-  const next = allLessons[idx + 1];
+  const steps = courseLearningSteps(course);
+  const kind = currentState.view === 'conversation' ? 'conversation' : 'lesson';
+  const idx = steps.findIndex(step => step.module.id === module.id &&
+    step.lesson.id === lesson.id && step.kind === kind);
+  const prev = steps[idx - 1];
+  const next = steps[idx + 1];
+
+  if (kind === 'conversation') {
+    renderLessonConversation(course, module, lesson, { prev, next });
+    return;
+  }
 
   // Quiz lesson → langsung pakai renderQuizLesson (landing card + cooldown
   // gating + start attempt). Legacy "Siap untuk kuis" landing card di-replace
@@ -13463,34 +13572,17 @@ function renderLesson() {
     </div>
   `;
 
-  // Banner tugas grammar terkait (popup) — pelajaran ini jadi pemicunya.
-  const pend = gtPendingTaskFor(course, lesson);
-  const taskBanner = !pend ? '' : (pend.done
-    ? `<div style="margin:14px 0;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;font-size:13px;color:#166534;">
-         ✓ Tugas grammar untuk pelajaran ini sudah selesai.
-         <button type="button" class="btn-secondary" style="margin-left:8px;padding:4px 12px;font-size:12px;" onclick="gtOpenTaskPopup('${pend.taskMod.id}','${pend.taskLesson.id}')">Kerjakan ulang</button>
-       </div>`
-    : `<div style="margin:14px 0;padding:12px 16px;background:#ecfdf5;border:1px solid #6ee7b7;border-radius:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-         <div style="flex:1;min-width:180px;font-size:14px;color:#065f46;">📝 Ada <strong>tugas grammar</strong> untuk pelajaran ini — <strong>belum selesai</strong>.</div>
-         <button type="button" class="btn-primary" style="padding:8px 18px;" onclick="gtOpenTaskPopup('${pend.taskMod.id}','${pend.taskLesson.id}')">Kerjakan Tugas</button>
-       </div>`);
-
-  // Preserve the v1 companion's established after-grammar banner position.
-  // Ordinary lessons start before video; authoritative inline placement may
-  // move that same node after grammar when the batch arrives.
+  // The task is now its own visible step after the conversation. The source
+  // grammar page keeps its examples but no longer opens a task popup.
   const isPilotLesson = !!lesson.bunpouFlow;
   const objectiveBlock = (isPilotLesson && lesson.bunpouFlow.objective)
     ? `<p class="lesson-objective" style="margin:6px 0 0;font-size:14px;color:#404040;">🎯 ${escapeHtml(lesson.bunpouFlow.objective)}</p>`
     : '';
-  const taskBannerNode = taskBanner ? `<div data-dq-task-banner>${taskBanner}</div>` : '';
-
   document.getElementById('main-content').innerHTML = `
     <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · ${lesson.type.toUpperCase()}</p>
     <h1 class="lesson-title">${lesson.title}</h1>
     <p class="lesson-subtitle">${module.title} — ${lesson.duration}</p>
     ${objectiveBlock}
-
-    ${isPilotLesson ? '' : taskBannerNode}
 
     ${videoBlock}
 
@@ -13498,13 +13590,10 @@ function renderLesson() {
 
     ${renderLessonExtras(lesson)}
 
-    ${isPilotLesson ? taskBannerNode : ''}
-    <div data-dq-task-after-grammar></div>
-
     ${renderLessonMaterials(module, lesson)}
 
     <div class="lesson-footer">
-      <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${prev ? `selectLesson('${prev.m.id}','${prev.l.id}')` : ''}">
+      <button class="btn-secondary" ${!prev ? 'disabled' : ''} onclick="${learningStepAction(prev)}">
         ← Sebelumnya
       </button>
       <button class="btn-primary" onclick="markCompleteAndNext(this)">
@@ -13515,9 +13604,6 @@ function renderLesson() {
 
   // Analisis Bunpou dimuat setelah materi tampil — tidak boleh menunda render.
   loadBunpouAnalysis(lesson);
-  window.EzDialogueQuestions?.mount({ root: document.getElementById('main-content'), lesson,
-    openLegacyTask: pend ? () => window.gtOpenTaskPopup(pend.taskMod.id, pend.taskLesson.id) : null,
-    onPlacement: placement => dqPlaceTaskBanner(document.getElementById('main-content'), placement) });
 }
 
 function renderLessonMaterials(module, lesson) {
@@ -13564,7 +13650,11 @@ function _sectionOfModule(moduleId) {
   return (mod && mod.sectionName && mod.sectionName.trim()) || 'Lainnya';
 }
 
-window.selectLesson = (moduleId, lessonId) => {
+function selectLearningView(moduleId, lessonId, view) {
+  const course = COURSE_CONTENT[currentState.course];
+  const module = course?.modules?.find(item => item.id === moduleId);
+  const lesson = module?.lessons?.find(item => item.id === lessonId);
+  if (!lesson || (view === 'conversation' && !lessonHasConversation(lesson))) return;
   const completeMobileContentFocus = prepareMobileSidebarContentFocus();
   // Cleanup lesson-scoped state sebelum pindah — listening player + kanji
   // detail overlay + kanji stroke timer + kanji modal stale state.
@@ -13591,13 +13681,15 @@ window.selectLesson = (moduleId, lessonId) => {
   _expandedModules.add(moduleId);
   currentState.moduleId = moduleId;
   currentState.lessonId = lessonId;
-  currentState.view = 'lesson';
+  currentState.view = view;
   renderSidebar();
   renderLesson();
   closeSidebar();
   window.scrollTo({ top: 0, behavior: 'auto' });
   completeMobileContentFocus();
-};
+}
+window.selectLesson = (moduleId, lessonId) => selectLearningView(moduleId, lessonId, 'lesson');
+window.selectConversation = (moduleId, lessonId) => selectLearningView(moduleId, lessonId, 'conversation');
 
 window.selectModuleIntro = (moduleId) => {
   if (window.blockAssignmentNavigation?.(null)) return;
@@ -13948,40 +14040,50 @@ window.toggleSidebarSection = (name) => {
 };
 
 window.markCompleteAndNext = async (triggerButton) => {
+  if (currentState.view === 'conversation') return;
   if (triggerButton?.disabled) return;
   if (triggerButton) {
     triggerButton.disabled = true;
     triggerButton.setAttribute('aria-busy', 'true');
   }
-  const course = COURSE_CONTENT[currentState.course];
-  const key = `${currentState.moduleId}:${currentState.lessonId}`;
+  const courseSlug = currentState.course;
+  const moduleId = currentState.moduleId;
+  const lessonId = currentState.lessonId;
+  const navigationEpoch = window.__quizNavigationEpoch;
+  const course = COURSE_CONTENT[courseSlug];
+  const key = `${moduleId}:${lessonId}`;
   const allProgress = getProgress();
-  const courseProgress = allProgress[currentState.course] || {};
+  const courseProgress = allProgress[courseSlug] || {};
   const wasAlreadyDone = !!courseProgress[key];
   courseProgress[key] = true;
-  allProgress[currentState.course] = courseProgress;
+  allProgress[courseSlug] = courseProgress;
   setProgress(allProgress);
 
   if (!wasAlreadyDone) addXP(10, 'lesson selesai');
   // Always retry the idempotent canonical write, even if the local cache was
   // already TRUE. This repairs older sessions whose fire-and-forget request
   // was interrupted while moving to Dashboard.
-  const lesson = findLesson(currentState.course, currentState.moduleId, currentState.lessonId);
+  const lesson = findLesson(courseSlug, moduleId, lessonId);
   const serverCompletion = syncLessonCompletionToServer(lesson);
 
-  // Navigasi dan hitungan progres memakai urutan lesson yang juga terlihat di
-  // sidebar, termasuk Tugas Bunpou yang dapat dibuka langsung atau via banner.
-  const allLessons = course.modules.flatMap(m => visibleLessons(m).map(l => ({ m, l })));
-  const idx = allLessons.findIndex(x => x.m.id === currentState.moduleId && x.l.id === currentState.lessonId);
-  const next = allLessons[idx + 1];
+  // Navigation includes the virtual conversation view. Progress still counts
+  // only real lessons, and the conversation never calls this completion path.
+  const steps = courseLearningSteps(course);
+  const idx = steps.findIndex(step => step.kind === 'lesson' &&
+    step.module.id === moduleId && step.lesson.id === lessonId);
+  const next = steps[idx + 1];
 
-  const currentModule = course.modules.find(m => m.id === currentState.moduleId);
+  const currentModule = course.modules.find(m => m.id === moduleId);
+  const stillHere = () => currentState.course === courseSlug &&
+    currentState.moduleId === moduleId && currentState.lessonId === lessonId &&
+    currentState.view === 'lesson' && window.__quizNavigationEpoch === navigationEpoch;
 
   const advance = () => {
+    if (!stillHere()) return;
     if (next) {
-      currentState.moduleId = next.m.id;
-      currentState.lessonId = next.l.id;
-      currentState.view = 'lesson';
+      currentState.moduleId = next.module.id;
+      currentState.lessonId = next.lesson.id;
+      currentState.view = next.kind;
     }
     renderSidebar();
     renderLesson();
@@ -13989,24 +14091,8 @@ window.markCompleteAndNext = async (triggerButton) => {
     try { if (window.AISenpai && AISenpai._started) AISenpai.refresh(); } catch {}
   };
 
-  const finalize = async (popupResult) => {
-    await serverCompletion;
-    // A source lesson may already be complete when the learner returns to its
-    // pending task. Treat a newly completed popup task as the transition too.
-    const newlyCompleted = !wasAlreadyDone ||
-      (!!popupResult?.completed && !popupResult?.wasAlreadyDone);
-    finishLearningMilestone(course, currentModule, newlyCompleted, advance);
-  };
-
-  // Kalau pelajaran yang baru diselesaikan punya tugas grammar terkait (popup)
-  // yang belum selesai → munculkan popup dulu, lanjut setelah ditutup/selesai.
-  const curLesson = currentModule.lessons.find(l => l.id === currentState.lessonId);
-  const pend = curLesson ? gtPendingTaskFor(course, curLesson) : null;
-  if (pend && !pend.done) {
-    openGrammarTaskPopup(course, pend.taskMod, pend.taskLesson, finalize);
-  } else {
-    finalize();
-  }
+  await serverCompletion;
+  if (stillHere()) finishLearningMilestone(course, currentModule, !wasAlreadyDone, advance);
 };
 
 function renderCourseTabs(activeSlug) {
@@ -14172,32 +14258,37 @@ const S = (window.AISenpai = {
             if (prog[`${m.id}:${l.id}`]) continue;                 // sudah dikerjakan
             const trig = byApiId[l.popupAfterLessonId];
             if (!trig || !prog[`${trig.m.id}:${trig.l.id}`]) continue; // pemicu belum selesai → belum "muncul"
+            const conversation = trig.m === m && taskSourceLesson(m, l) === trig.l;
             out.push({ id:`grammar:${m.id}:${l.id}`, group:'grammar', icon:'文', urgency:'high',
               title:`Tugas grammar: ${l.title}`,
               sub:`Lanjutan dari "${trig.l.title}" · buat & ucapkan kalimat`,
-              action: () => { try { window.gtOpenTaskPopup(m.id, l.id); } catch {} } });
+              action: () => conversation
+                ? window.selectConversation(m.id, trig.l.id)
+                : window.selectLesson(m.id, l.id) });
           }
         }
 
         // Lanjut belajar — pelajaran (terlihat) belum selesai berikutnya.
-        let next = null;
-        for (const m of course.modules) {
-          for (const l of visibleLessons(m)) {
-            if (!prog[`${m.id}:${l.id}`]) { next = { m, l }; break; }
-          }
-          if (next) break;
-        }
+        const steps = courseLearningSteps(course);
+        const nextIndex = steps.findIndex(step => step.kind === 'lesson' &&
+          !prog[`${step.module.id}:${step.lesson.id}`]);
+        const due = steps[nextIndex];
+        const prior = steps[nextIndex - 1];
+        const next = prior?.kind === 'conversation' && due &&
+          prior.module === due.module
+          ? prior : due;
         if (next) {
           out.push({ id:'continue', group:'continue', icon:'▶', urgency:'high',
-            title:`Lanjutkan: ${next.l.title}`, sub:`${next.m.title} · ${slug.toUpperCase()}`,
-            action: () => window.selectLesson(next.m.id, next.l.id) });
+            title:`Lanjutkan: ${next.kind === 'conversation' ? 'Percakapan · ' : ''}${next.lesson.title}`,
+            sub:`${next.module.title} · ${slug.toUpperCase()}`,
+            action: () => selectLearningStep(next) });
           const total = course.modules.reduce((s, m) => s + visibleLessons(m).length, 0);
           const done = Object.values(prog).filter(Boolean).length;
           const remaining = total - done;
           if (remaining > 1) {
             out.push({ id:'unfinished', group:'unfinished', icon:'📚', urgency:'low',
               title:`${remaining} pelajaran belum selesai`, sub:`${slug.toUpperCase()} · ${Math.round((done / total) * 100)}% selesai`,
-              action: () => window.selectLesson(next.m.id, next.l.id) });
+              action: () => selectLearningStep(next) });
           }
         }
       }
@@ -14600,9 +14691,13 @@ const S = (window.AISenpai = {
     // renderer at the selected Section/Bab/Pelajaran — no parallel UI tree.
     const targetModule = params.get('module');
     const targetLesson = params.get('lesson');
+    const targetView = params.get('view');
     const selectedCourse = COURSE_CONTENT[selected];
-    if (targetModule && targetLesson && selectedCourse?.modules?.some((m) => m.id === targetModule && m.lessons.some((l) => l.id === targetLesson))) {
-      selectLesson(targetModule, targetLesson);
+    if (targetView === 'intro' && targetModule && selectedCourse?.modules?.some(m => m.id === targetModule)) {
+      selectModuleIntro(targetModule);
+    } else if (targetModule && targetLesson && selectedCourse?.modules?.some((m) => m.id === targetModule && m.lessons.some((l) => l.id === targetLesson))) {
+      if (targetView === 'conversation') selectConversation(targetModule, targetLesson);
+      else selectLesson(targetModule, targetLesson);
     }
     const focusLesson = params.get('focusLesson');
     if (focusLesson) {

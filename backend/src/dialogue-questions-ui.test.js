@@ -53,70 +53,64 @@ function form() {
     submitEvent: () => ({ target: { closest: () => node }, preventDefault() {} }) };
 }
 
-test('actual welcome grammar renderer supplies hidden slots around dialogue and escapes IDs', () => {
+test('actual conversation renderer supplies hidden slots around dialogue and escapes IDs', () => {
   const start = welcome.indexOf('function renderLessonGrammar(lesson) {');
   const end = welcome.indexOf('// ── Dialog player', start);
   assert.ok(start > 0 && end > start);
-  const context = vm.createContext({ escapeHtml, AUDIO_SVG: '', grammarKaraokeHtml: () => '<div class="karaoke">dialog</div>' });
+  const root = { innerHTML: '' };
+  let mounted;
+  const context = vm.createContext({ escapeHtml, AUDIO_SVG: '',
+    document: { getElementById: () => root },
+    window: { EzDialogueQuestions: { mount: value => { mounted = value; } } },
+    learningStepAction: () => '',
+    grammarKaraokeHtml: () => '<div class="karaoke">dialog</div>' });
   vm.runInContext(welcome.slice(start, end), context);
-  const html = context.renderLessonGrammar({ grammar: [{ id: 'g&1', pattern: 'X',
-    example_dialog: 'A: hi' }] });
+  const row = { apiId: 'source-id', title: 'Pola', grammar: [{ id: 'g&1', pattern: 'X',
+    example: 'がくせいです。', example_dialog: 'A: hi' }] };
+  const grammar = context.renderLessonGrammar(row);
+  assert.match(grammar, /がくせいです。/);
+  assert.doesNotMatch(grammar, /karaoke|data-dq-|A: hi/);
+  context.renderLessonConversation({ name: 'N5' }, { num: '03', title: 'Bab 3' }, row, {});
+  const html = root.innerHTML;
   assert.ok(html.indexOf('data-dq-goal-for="g&amp;1"') < html.indexOf('class="karaoke"'));
   assert.ok(html.indexOf('class="karaoke"') < html.indexOf('data-dq-questions-for="g&amp;1"'));
   assert.match(html, /class="dq-legacy-session-slot" hidden/);
+  assert.equal(mounted.lesson, row, 'question API keeps the original source lesson');
+  assert.doesNotMatch(html, /markCompleteAndNext/, 'conversation navigation never marks another lesson complete');
   assert.match(welcome, /EzDialogueQuestions\?\.unmount\(\)/);
-  assert.match(welcome, /EzDialogueQuestions\?\.mount\(\{ root:/);
+  assert.match(welcome, /EzDialogueQuestions\?\.mount\(\{ root, lesson/);
   assert.match(welcome, /src\/dialogue-questions\.js\?v=/);
   assert.match(contentRoute, /SELECT id, module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, communication_goal, dialog_scene/);
 });
 
-test('actual welcome placement hook moves the one task banner only for authoritative inline', () => {
-  const start = welcome.indexOf('function dqPlaceTaskBanner(root, placement) {');
-  const end = welcome.indexOf('function renderLesson() {', start);
-  assert.ok(start > 0 && end > start);
-  const context = vm.createContext({});
-  vm.runInContext(welcome.slice(start, end), context);
-  const banner = { name: 'existing-task-banner' };
-  const anchor = { children: [], appendChild(node) { this.children.push(node); } };
-  const root = { querySelector: selector => selector === '[data-dq-task-banner]'
-    ? banner : selector === '[data-dq-task-after-grammar]' ? anchor : null };
-  context.dqPlaceTaskBanner(root, { mode: 'legacy' });
-  context.dqPlaceTaskBanner(root, { mode: 'legacy_session' });
-  assert.equal(anchor.children.length, 0, 'flag-off and active-v1 retain legacy order');
-  context.dqPlaceTaskBanner(root, { mode: 'inline' });
-  assert.deepEqual(anchor.children, [banner]);
-  assert.match(welcome, /data-dq-task-banner>\$\{taskBanner\}/);
-  assert.match(welcome, /onPlacement: placement => dqPlaceTaskBanner/);
-});
-
-test('actual lesson render preserves v1 after-grammar banner and ordinary before-video banner', () => {
-  const start = welcome.indexOf('function dqPlaceTaskBanner(root, placement) {');
+test('grammar page keeps examples and sends next navigation to its conversation without a task shortcut', () => {
+  const start = welcome.indexOf('function renderLesson() {');
   const end = welcome.indexOf('function renderLessonMaterials', start);
   const main = { innerHTML: '' };
   const lessonRow = { id: 'l', apiId: 'source-1', type: 'video', title: 'Lesson',
     body: 'Body', duration: '5 min', jp: '', grammar: [] };
   const module = { id: 'm', num: '01', title: 'Module', lessons: [lessonRow] };
+  let mounts = 0;
   const context = vm.createContext({ window: { EzDialogueQuestions: {
-    unmount() {}, mount() {} } }, document: { getElementById: () => main },
+    unmount() {}, mount() { mounts++; } } }, document: { getElementById: () => main },
     currentState: { course: 'c', moduleId: 'm', lessonId: 'l', view: 'lesson' },
     COURSE_CONTENT: { c: { name: 'Course', modules: [module] } },
-    gkStopAll() {}, destroyYoutubeSegmentPlayer() {}, updateTutorVisibility() {},
+    gkStopAll() {}, destroyYoutubeSegmentPlayer() {}, updateTutorVisibility() {}, syncLearningUrl() {},
     getProgress: () => ({}), visibleLessons: value => value.lessons,
+    courseLearningSteps: () => [{ kind: 'lesson', module, lesson: lessonRow },
+      { kind: 'conversation', module, lesson: lessonRow }], learningStepAction: () => '',
     renderVideoLessonPlayer: () => '<div id="video">VIDEO</div>',
-    gtPendingTaskFor: () => ({ done: false, taskMod: { id: 'm' }, taskLesson: { id: 'task' } }),
     renderLessonExtras: () => '<div id="grammar">GRAMMAR</div>',
     renderLessonMaterials: () => '', loadBunpouAnalysis() {}, escapeHtml });
   vm.runInContext(welcome.slice(start, end), context);
-  context.renderLesson();
-  assert.equal((main.innerHTML.match(/data-dq-task-banner/g) || []).length, 1);
-  assert.ok(main.innerHTML.indexOf('data-dq-task-banner') < main.innerHTML.indexOf('id="video"'));
-  lessonRow.bunpouFlow = { objective: 'Goal' };
-  context.renderLesson();
-  assert.equal((main.innerHTML.match(/data-dq-task-banner/g) || []).length, 1);
-  assert.ok(main.innerHTML.indexOf('id="grammar"') < main.innerHTML.indexOf('data-dq-task-banner'));
-  assert.ok(main.innerHTML.indexOf('data-dq-task-banner') < main.innerHTML.indexOf('data-dq-task-after-grammar'));
+  for (const bunpouFlow of [undefined, { objective: 'Goal' }]) {
+    lessonRow.bunpouFlow = bunpouFlow;
+    context.renderLesson();
+    assert.match(main.innerHTML, /id="grammar"/);
+    assert.doesNotMatch(main.innerHTML, /data-dq-task-banner|gtOpenTaskPopup|data-dq-questions-for/);
+  }
+  assert.equal(mounts, 0, 'question controller only mounts in conversation');
 });
-
 test('inline batch renders escaped goal and questions without initial answer leak; legacy modes suppress them', async () => {
   const calls = [];
   const placements = [];
