@@ -239,6 +239,18 @@ export function validateCompanionEnvelope(envelope, grammarIds) {
   return { ok: errors.length === 0, errors };
 }
 
+function sanitizeCheckEvidence(raw) {
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > 6) return null;
+  const out = [];
+  for (const entry of raw) {
+    if (!isPlainObject(entry) || !Number.isInteger(entry.turnIndex) || entry.turnIndex < 0) return null;
+    const quote = typeof entry.quote === 'string' ? entry.quote.trim() : '';
+    if (!quote) return null;
+    out.push({ turnIndex: entry.turnIndex, quote });
+  }
+  return out;
+}
+
 // Normalizes a raw envelope into the stored shape, dropping anything not
 // recognised rather than persisting arbitrary admin-supplied keys.
 export function sanitizeCompanionEnvelope(raw) {
@@ -290,6 +302,12 @@ export function sanitizeCompanionEnvelope(raw) {
         const outQ = { prompt, options, correctIndex: idx };
         const ex = String(q.explanation ?? '').trim();
         if (ex) outQ.explanation = ex;
+        // Bukti kutipan dialog (migrasi 174) dulu dibuang di sini, sehingga
+        // menyimpan pendamping lewat editor diam-diam menghapusnya. Bukti itu
+        // dibutuhkan untuk memindahkan soal ke set pertanyaan 🎭 Dialog, jadi
+        // sekarang dipertahankan kalau bentuknya sah.
+        const evidence = sanitizeCheckEvidence(q.evidence);
+        if (evidence) outQ.evidence = evidence;
         cleaned[field] = outQ;
       }
       if (Object.keys(cleaned).length) checks[gid] = cleaned;
@@ -356,8 +374,8 @@ export function answerSentenceFor(drill, { isArrange, order, optionIndex }) {
 // the equally-unresearched two-mistake reveal threshold).
 export const SESSION_MINUTES = 120;
 
-// What the public content serializer (routes/content.js) attaches to the
-// one lesson the pilot is scoped to — objective + per-grammar listening
+// What the public content serializer (routes/content.js) attaches to every
+// lesson whose companion is live — objective + per-grammar listening
 // direction only. Overlay hints/explanations are deliberately NOT part of
 // this view: those are delivered through the session API's hint/reveal
 // endpoints instead, at the point disclosure is actually earned, never
@@ -375,15 +393,6 @@ export function overlayFor(published, grammarId, step) {
   const tier = published && published.overlays && published.overlays[grammarId];
   const t = tier && tier[`step${step}`];
   return t || null;
-}
-
-// Server-computed scope: is this lesson the one lesson the pilot is
-// currently switched on for? Both settings must agree — a stray/misspelled
-// bunpou_flow_pilot_lesson_id with the flag on must not silently light up
-// the wrong lesson, and the flag itself defaults OFF (see
-// routes/grammar-task-sessions.js#loadPilotConfig).
-export function isPilotLesson(config, lessonId) {
-  return !!(config && config.enabled && config.lessonId && lessonId && config.lessonId === lessonId);
 }
 
 // ── Paket 2: pemeriksaan mandiri (soal pemahaman dialog + pembanding) ──────

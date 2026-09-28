@@ -7,8 +7,7 @@ import { isAdminEmail } from '../auth.js';
 import { recordPracticeAttemptWithState } from '../practice-service.js';
 import { loadMastery } from '../grammar-mastery.js';
 import { deriveDrills, publicDrill, arrangeIsCorrect } from '../grammar-drills.js';
-import { loadPilotConfig } from '../bunpou-flow-config.js';
-import { loadCompanionContext } from '../bunpou-flow-content.js';
+import { liveCompanionContexts } from '../bunpou-companion-status.js';
 import {
   dialogCheckDrills, attemptSourceFor, primaryErrorFor,
   STEP_DIALOG_COMPREHENSION,
@@ -116,7 +115,7 @@ export async function buildReviewCandidates(user) {
     // ── Paket 2: pemeriksaan mandiri masuk lewat jalur kandidat yang SAMA ──
     // Bukan antrean baru dan bukan kandidat tambahan: satu pola tetap
     // menyumbang PALING BANYAK satu soal, persis seperti sebelumnya. Yang
-    // berubah hanya PILIHAN soalnya — kalau pelajaran pilot punya
+    // berubah hanya PILIHAN soalnya — kalau pelajaran yang pendampingnya aktif punya
     // pemeriksaan yang layak dan keluarganya belum pernah dikerjakan,
     // soal itu yang dipakai menggantikan drill Step 1/2 sisi yang sama.
     //
@@ -125,18 +124,25 @@ export async function buildReviewCandidates(user) {
     // SATU kandidat per pola per sesi. Mendorong kandidat ekstra di sini
     // hanya akan kalah tie-break dan tidak pernah muncul — fitur yang
     // kelihatan jadi padahal mati.
-    const pilot = await loadPilotConfig();
-    let pilotChecks = null;
-    let pilotTaskLessonId = null;
-    if (pilot.enabled && pilot.lessonId) {
-      const context = await loadCompanionContext(pilot.lessonId);
-      pilotTaskLessonId = context?.taskLessonId || null;
-      if (context?.current) pilotChecks = context.published.dialogChecks || null;
+    const links = await query(`SELECT DISTINCT gi.grammar_id, gi.lesson_id, m.course_id FROM lesson_grammar_task_items gi JOIN lessons l ON l.id = gi.lesson_id JOIN modules m ON m.id = l.module_id JOIN user_progress p ON p.lesson_id = l.id WHERE p.user_id = $1 AND p.completed = TRUE AND m.course_id = ANY($2::uuid[])`, [user.id, scope.courseIds]);
+    // Pemeriksaan per Tugas Bunpou (lesson_id di `links`), diambil dari
+    // pendamping pelajaran sumbernya yang SEDANG AKTIF saja — aturan yang sama
+    // dengan yang dipakai payload pelajaran siswa (bunpou-companion-status.js).
+    // Soalnya dari set pertanyaan 🎭 Dialog, atau soal lama untuk pola yang
+    // belum dipindah (bunpou-dialog-checks.js).
+    const checksByTask = new Map();
+    const taskIds = [...new Set(links.rows.map((row) => row.lesson_id))];
+    if (taskIds.length) {
+      const sources = await query(`SELECT DISTINCT popup_after_lesson_id AS id FROM lessons
+        WHERE id = ANY($1::uuid[]) AND type = 'grammar_task' AND popup_after_lesson_id IS NOT NULL`, [taskIds]);
+      for (const context of (await liveCompanionContexts(sources.rows.map((row) => row.id))).values()) {
+        if (Object.keys(context.dialogChecks || {}).length) checksByTask.set(context.taskLessonId, context.dialogChecks);
+      }
     }
     // Keluarga soal yang sudah benar-benar dikerjakan siswa ini belakangan —
     // dipakai supaya pemeriksaan tidak menyajikan ulang varian yang terlalu
     // dekat dengan yang baru saja dijawab (rencana Paket 2).
-    const recentFamilies = new Set(pilotChecks
+    const recentFamilies = new Set(checksByTask.size
       ? (await query(
           `SELECT DISTINCT check_family_id FROM grammar_attempts
             WHERE user_id = $1 AND check_family_id IS NOT NULL
@@ -144,7 +150,6 @@ export async function buildReviewCandidates(user) {
           [user.id]
         )).rows.map((r) => r.check_family_id)
       : []);
-    const links = await query(`SELECT DISTINCT gi.grammar_id, gi.lesson_id, m.course_id FROM lesson_grammar_task_items gi JOIN lessons l ON l.id = gi.lesson_id JOIN modules m ON m.id = l.module_id JOIN user_progress p ON p.lesson_id = l.id WHERE p.user_id = $1 AND p.completed = TRUE AND m.course_id = ANY($2::uuid[])`, [user.id, scope.courseIds]);
     const mastery = await loadMastery(user.id, links.rows.map((row) => row.grammar_id)); const cache = new Map();
     for (const link of links.rows) {
       if (!cache.has(link.lesson_id)) cache.set(link.lesson_id, await grammarTaskData(link.lesson_id)); const { items, pool } = cache.get(link.lesson_id); const item = items.find((row) => row.id === link.grammar_id); if (!item) continue;
@@ -154,9 +159,10 @@ export async function buildReviewCandidates(user) {
       // sebelum Paket 2.
       let raw = (m?.recognitionAttempts || 0) > (m?.productionAttempts || 0) ? (drills.step2 || drills.step1) : (drills.step1 || drills.step2);
       if (!raw) continue;
-      if (pilotChecks && link.lesson_id === pilotTaskLessonId) {
+      const taskChecks = checksByTask.get(link.lesson_id);
+      if (taskChecks) {
         const wantComprehension = raw.step === 1;
-        const check = dialogCheckDrills(pilotChecks[item.id])
+        const check = dialogCheckDrills(taskChecks[item.id])
           .find((form) => (form.step === STEP_DIALOG_COMPREHENSION) === wantComprehension);
         if (check && !recentFamilies.has(check.checkFamilyId)) raw = check;
       }

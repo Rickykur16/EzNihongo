@@ -50,7 +50,8 @@ import {
   sanitizeCompanionEnvelope,
 } from '../bunpou-flow-service.js';
 import { loadMasteryShadow, summarizeShadow } from '../grammar-mastery-shadow.js';
-import { loadPilotLessonOptions } from '../bunpou-pilot-catalog.js';
+import { loadCompanionLessonOptions, companionLiveReason } from '../bunpou-companion-status.js';
+import { loadQuestionSets, effectiveDialogChecks } from '../bunpou-dialog-checks.js';
 import { BoundaryContextError, getCurriculumBoundary } from '../curriculum-boundary.js';
 import { validateAndWriteContent, boundaryWriteHttpError, lockCurriculumCourse,
   lockCurriculumCourses, lockCurriculumGraph } from '../curriculum-content-service.js';
@@ -202,8 +203,15 @@ router.get('/grammar/:id/dialogue-questions', asyncHandler(async (req, res) => {
   try {
     const result = await listDialogueQuestions(req.params.id,
       { sourceLessonId: req.query.sourceLessonId || null });
+    // Soal lama pola ini di Pendamping Bunpou, untuk tombol "Salin dari soal
+    // lama" di editor. Yang terpublikasi didahulukan karena itulah yang
+    // dilihat siswa selama pola ini belum dipindah.
+    const source = await query(`SELECT bunpou_flow_published, bunpou_flow_draft FROM lessons WHERE id = $1`,
+      [result.sourceLessonId]);
+    const envelope = source.rows[0]?.bunpou_flow_published || source.rows[0]?.bunpou_flow_draft || null;
+    const legacyCheck = envelope?.dialogChecks?.[req.params.id] || null;
     res.set('Cache-Control', 'private, no-store');
-    res.json(result);
+    res.json({ ...result, legacyCheck });
   } catch (error) { dialogueQuestionFailure(res, error); }
 }));
 
@@ -2396,9 +2404,10 @@ router.put('/module-grammar/:id/distractors', asyncHandler(async (req, res) => {
 // Draft/publish workflow for the JSONB envelope on ONE source lesson's
 // bunpou_flow_draft/bunpou_flow_published (migration 147). Never touches
 // module_grammar, grammar_examples, or lessons.content — this is additive
-// companion content only, and the pilot flag/lesson id that decide whether
-// it is ever served to a student live in app_settings (see
-// bunpou-flow-config.js), not here.
+// companion content only. Publishing IS going live: a published companion is
+// served to students as soon as its lesson passes the readiness rules in
+// bunpou-companion-status.js (no separate pilot switch any more), and
+// withdrawing it (unpublish below) stops it again.
 
 // Scope = this lesson's own grammar cards UNION the grammar points actually
 // picked into its paired Tugas Bunpou (if one exists yet) — matches the
@@ -2434,26 +2443,34 @@ async function currentSourceFingerprint(taskLessonId, dbQuery = query) {
 
 router.get('/lessons/:lessonId/bunpou-flow', asyncHandler(async (req, res) => {
   const lesson = await query(
-    `SELECT id, title, bunpou_flow_draft, bunpou_flow_published FROM lessons WHERE id = $1`,
+    `SELECT id, title, module_id, bunpou_flow_draft, bunpou_flow_published FROM lessons WHERE id = $1`,
     [req.params.lessonId]
   );
   if (lesson.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   const { grammarIds, taskLessonId } = await bunpouFlowScope(req.params.lessonId);
+  // Soal pemeriksaan yang benar-benar dipakai siswa: set pertanyaan 🎭 Dialog,
+  // atau soal lama untuk pola yang belum dipindah (bunpou-dialog-checks.js).
+  const legacyChecks = (lesson.rows[0].bunpou_flow_published || lesson.rows[0].bunpou_flow_draft || {}).dialogChecks;
+  const effective = effectiveDialogChecks(grammarIds,
+    await loadQuestionSets(req.params.lessonId, grammarIds, query), legacyChecks);
   const patternRows = grammarIds.length
-    ? await query(`SELECT id, pattern FROM module_grammar WHERE id = ANY($1::uuid[])`, [grammarIds])
+    ? await query(`SELECT id, pattern, dialog_scene FROM module_grammar WHERE id = ANY($1::uuid[])`, [grammarIds])
     : { rows: [] };
+  const scenes = new Map(patternRows.rows.map((r) => [r.id, r.dialog_scene || null]));
   const reviewItems = taskLessonId ? await loadTaskConcepts(taskLessonId) : [];
   const reviewPool = taskLessonId ? await loadModulePool(taskLessonId) : [];
   const reviewDrills = deriveDrills(reviewItems, reviewPool);
   res.json({
     lessonId: req.params.lessonId,
     lessonTitle: lesson.rows[0].title,
+    moduleId: lesson.rows[0].module_id,
     taskLessonId,
     grammarIds,
     patterns: Object.fromEntries(patternRows.rows.map((r) => [r.id, r.pattern])),
     currentFingerprint: taskLessonId ? contentRevisionId(reviewItems, reviewPool) : null,
     reviewItems: reviewItems.map(item => ({ grammarId: item.id, pattern: item.pattern,
       meaning: item.meaning, dialog: item.example_dialog, dialogTranslation: item.example_dialog_id,
+      dialogScene: scenes.get(item.id) || null,
       instruction: item.instruction, ...reviewDrills.get(item.id) })),
     draft: lesson.rows[0].bunpou_flow_draft || null,
     draftRevision: companionDraftRevision(lesson.rows[0].bunpou_flow_draft),
@@ -2464,9 +2481,10 @@ router.get('/lessons/:lessonId/bunpou-flow', asyncHandler(async (req, res) => {
     // supaya "hijau di admin tapi tidak muncul ke siswa" tidak mungkin
     // terjadi karena dua salinan aturan yang berbeda.
     checkAvailability: Object.fromEntries(grammarIds.map((gid) => [
-      gid,
-      dialogCheckAvailability(((lesson.rows[0].bunpou_flow_draft || lesson.rows[0].bunpou_flow_published || {}).dialogChecks || {})[gid]),
+      gid, dialogCheckAvailability(effective.checks[gid]),
     ])),
+    checkSources: effective.sources,
+    checks: effective.checks,
   });
 }));
 
@@ -2540,14 +2558,37 @@ router.post('/lessons/:lessonId/bunpou-flow/publish', asyncHandler(async (req, r
     },
   });
   if (!outcome) return;
-  res.json({ ok: true, published: outcome.value.bunpou_flow_published, validation: outcome.report });
+  // Publish = tayang. Kalau pelajaran belum lolos cek kesiapan, isinya tetap
+  // tersimpan sebagai publikasi tapi belum tampil — alasannya dikembalikan
+  // supaya admin tidak mengira sudah tampil padahal belum.
+  const liveReason = await companionLiveReason(req.params.lessonId);
+  res.json({ ok: true, published: outcome.value.bunpou_flow_published, validation: outcome.report,
+    live: !liveReason, liveReason });
 }));
 
-// Flag + pilot lesson id — plain app_settings rows (same mechanism as
-// grammar_eval_prompt), read together by bunpou-flow-config.js. Enabling
-// requires the target to actually be a lesson with a companion already
-// published, so a typo'd or forgotten-to-publish lesson id can not be
-// switched live by accident.
+// Tarik publikasi: berhenti tampil ke siswa saat itu juga. Draft TIDAK
+// disentuh, jadi bisa dipublikasikan ulang kapan saja. Sesi Tugas Bunpou v1
+// yang sedang berjalan untuk pelajaran ini ikut berhenti (lihat
+// bunpou-session-access.js); sesi v2 yang sudah terbit tetap memakai
+// snapshot-nya sendiri.
+router.post('/lessons/:lessonId/bunpou-flow/unpublish', asyncHandler(async (req, res) => {
+  if (!isCanonicalUuid(req.params.lessonId)) return res.status(400).json({ error: 'invalid_lesson_id' });
+  if (req.body?.confirm !== true) return res.status(400).json({ error: 'confirm_required' });
+  const guarded = await adminLockedMutation(res, client => courseIdsForBunpouPair(client, req.params.lessonId),
+    async client => {
+      const lesson = await client.query(`SELECT bunpou_flow_published IS NOT NULL AS published
+        FROM lessons WHERE id=$1 FOR UPDATE`, [req.params.lessonId]);
+      if (!lesson.rows.length) throw fail(404, 'lesson_not_found');
+      if (!lesson.rows[0].published) throw fail(409, 'not_published');
+      await client.query(`UPDATE lessons SET bunpou_flow_published=NULL,updated_at=NOW() WHERE id=$1`,
+        [req.params.lessonId]);
+      return true;
+    });
+  if (!guarded) return;
+  if (guarded.missing) return res.status(404).json({ error: 'lesson_not_found' });
+  res.json({ ok: true });
+}));
+
 router.get('/settings/learning-flow-communication', asyncHandler(async (_req, res) => {
   res.set('Cache-Control', 'private, no-store');
   res.json(await getLearningFlowSettings());
@@ -2563,47 +2604,12 @@ router.put('/settings/learning-flow-communication', asyncHandler(async (req, res
   }
 }));
 
-router.get('/settings/bunpou-flow-pilot', asyncHandler(async (req, res) => {
-  const r = await query(
-    `SELECT key, value FROM app_settings WHERE key IN ('bunpou_flow_pilot_enabled','bunpou_flow_pilot_lesson_id')`
-  );
-  const byKey = Object.fromEntries(r.rows.map((row) => [row.key, row.value]));
-  res.json({
-    enabled: byKey.bunpou_flow_pilot_enabled === 'true',
-    lessonId: byKey.bunpou_flow_pilot_lesson_id || null,
-    lessons: await loadPilotLessonOptions(),
-  });
-}));
-
-router.put('/settings/bunpou-flow-pilot', asyncHandler(async (req, res) => {
-  const enabled = (req.body || {}).enabled === true;
-  const lessonId = String((req.body || {}).lessonId || '').trim() || null;
-  if (enabled && !lessonId) return res.status(400).json({ error: 'lesson_id_required_to_enable' });
-  if (lessonId && !isCanonicalUuid(lessonId)) return res.status(400).json({ error: 'Pilih pelajaran dari daftar.' });
-  if (enabled && lessonId) {
-    const lesson = await query(`SELECT bunpou_flow_published FROM lessons WHERE id = $1`, [lessonId]);
-    if (lesson.rows.length === 0) return res.status(404).json({ error: 'lesson_not_found' });
-    if (enabled && !lesson.rows[0].bunpou_flow_published) {
-      return res.status(400).json({ error: 'lesson_has_no_published_companion' });
-    }
-    if (enabled) {
-      const selected = (await loadPilotLessonOptions()).find(row => row.id === lessonId);
-      if (!selected?.ready) return res.status(409).json({ error: selected?.reason || 'Pelajaran belum siap untuk pilot.' });
-    }
-  }
-  await withTransaction(async (client) => {
-    await client.query(
-      `INSERT INTO app_settings (key, value, updated_at) VALUES ('bunpou_flow_pilot_enabled', $1, NOW())
-       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
-      [enabled ? 'true' : 'false']
-    );
-    await client.query(
-      `INSERT INTO app_settings (key, value, updated_at) VALUES ('bunpou_flow_pilot_lesson_id', $1, NOW())
-       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
-      [lessonId]
-    );
-  });
-  res.json({ ok: true, enabled, lessonId });
+// Daftar status Pendamping Bunpou per pelajaran untuk kartu admin: apakah
+// sudah dipublikasikan, sedang tampil ke siswa, atau alasan belum tampil.
+// Read-only; pengganti pasangan /settings/bunpou-flow-pilot yang lama.
+router.get('/bunpou-flow/lessons', asyncHandler(async (_req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  res.json({ lessons: await loadCompanionLessonOptions() });
 }));
 
 // ── Paket 3: tinjauan MODE SHADOW kebijakan penguasaan ────────────────────
@@ -2616,10 +2622,7 @@ router.put('/settings/bunpou-flow-pilot', asyncHandler(async (req, res) => {
 // gerbangnya pada pemilik produk ("Pemilik produk meninjau kebijakan dan
 // sampel perbedaan shadow ... Sebelum itu, flag penilaian baru tetap mati").
 router.get('/grammar-mastery/shadow', asyncHandler(async (req, res) => {
-  const pilot = await query(
-    `SELECT value FROM app_settings WHERE key = 'bunpou_flow_pilot_lesson_id'`
-  );
-  const lessonId = String(req.query.lessonId || pilot.rows[0]?.value || '').trim();
+  const lessonId = String(req.query.lessonId || '').trim();
   if (!lessonId) return res.status(400).json({ error: 'lesson_id_required' });
 
   const grammar = await query(

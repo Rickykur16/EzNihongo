@@ -68,18 +68,16 @@ export const LEGACY_ROUTES = [
   ["POST", "/module-grammar/generate-distractors-bulk", "legacy.academic"],
   ["GET", "/module-grammar/:id/distractors", "legacy.academic"],
   ["PUT", "/module-grammar/:id/distractors", "legacy.academic"],
-  // Bunpou Flow pilot (migration 147) — new, still-inactive content-authoring
-  // and a global pilot on/off switch. Deliberately owner-only for now rather
-  // than reusing legacy.academic: unlike the distractor/example editors
-  // above, the settings pair below controls a platform-wide flag, not one
-  // lesson's own content.
+  // Pendamping Bunpou (migration 147). Publish = tayang ke siswa (tidak ada
+  // lagi saklar pilot), jadi publish/tarik tetap owner-only, tidak memakai
+  // legacy.academic seperti editor pengecoh/contoh di atas.
   ["GET", "/lessons/:lessonId/bunpou-flow", null],
   ["PUT", "/lessons/:lessonId/bunpou-flow/draft", null],
   ["POST", "/lessons/:lessonId/bunpou-flow/publish", null],
+  ["POST", "/lessons/:lessonId/bunpou-flow/unpublish", null],
   ["GET", "/settings/learning-flow-communication", null],
   ["PUT", "/settings/learning-flow-communication", null],
-  ["GET", "/settings/bunpou-flow-pilot", null],
-  ["PUT", "/settings/bunpou-flow-pilot", null],
+  ["GET", "/bunpou-flow/lessons", null],
   // Paket 3: tinjauan shadow, read-only, owner-only (membaca riwayat
   // percobaan lintas siswa).
   ["GET", "/grammar-mastery/shadow", null],

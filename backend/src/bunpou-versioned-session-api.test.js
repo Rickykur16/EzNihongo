@@ -8,7 +8,7 @@ const userId = id(1), sourceId = id(2), taskId = id(3), courseId = id(4);
 const grammarId = id(5), sessionId = id(6), itemId = id(7);
 const email = 'v2-fixture@example.invalid';
 
-test('HTTP resumes frozen v2 while rollout is off and current-source SQL fails; v1 still observes pilot revoke',
+test('HTTP resumes frozen v2 while rollout is off and current-source SQL fails; v1 still observes a withdrawn companion',
   { concurrency: false }, async t => {
     const oldSecret = process.env.JWT_ACCESS_SECRET;
     process.env.JWT_ACCESS_SECRET = 'synthetic-v2-session-test-secret-long-enough';
@@ -64,10 +64,12 @@ test('HTTP resumes frozen v2 while rollout is off and current-source SQL fails; 
       if (sql.includes('unnest($1::text[])')) return { rows: [] };
       if (sql.includes('SELECT email FROM users')) return { rows: [{ email }] };
       if (sql.includes('FROM user_enrollments')) return { rows: [{ user_id: userId }] };
-      if (sql.includes('FROM app_settings')) return { rows: [
-        { key: 'bunpou_flow_pilot_enabled', value: 'false' },
-        { key: 'bunpou_flow_pilot_lesson_id', value: sourceId },
-      ] };
+      // No learning-flow rollout config is stored, so new sessions stay legacy.
+      if (sql.includes('FROM app_settings')) return { rows: [] };
+      // The source lesson's companion has been withdrawn (no publication).
+      if (sql.includes('bunpou_flow_published IS NOT NULL AS published') && !sql.includes('JOIN')) {
+        return { rows: [{ published: false }] };
+      }
       if (sql.includes('FROM lessons l') && sql.includes('JOIN modules m')) {
         return { rows: [{ module_id: id(9), course_id: courseId }] };
       }
@@ -109,7 +111,7 @@ test('HTTP resumes frozen v2 while rollout is off and current-source SQL fails; 
     const hinted = await api(`/${sessionId}/items/${itemId}/hint`, 'POST', {});
     assert.equal(hinted.status, 200, JSON.stringify(hinted.data));
     assert.equal(hinted.data.hint, '会話を確認');
-    assert.ok(item.hint_served_at, 'v2 mutation ran while pilot flag was off');
+    assert.ok(item.hint_served_at, 'v2 mutation ran while the companion was withdrawn');
     flowVersion = 1;
     const revoked = await api(`/${sessionId}`, 'GET');
     assert.equal(revoked.status, 403);

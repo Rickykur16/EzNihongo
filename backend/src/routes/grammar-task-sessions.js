@@ -7,11 +7,13 @@
 // land in grammar_attempts — the one table grammar-mastery.js already reads.
 //
 // Scope is deliberately narrow and gated hard, independent of whatever the
-// frontend does: v1 re-verifies the pilot flag; v2 freezes its placement at
+// frontend does: v1 re-verifies that the source lesson's companion is still
+// published (new v1 sessions also need it live — see
+// bunpou-session-access.js); v2 freezes its placement at
 // issue time and survives a later rollout toggle. Both versions re-verify
 // ownership, source scope, expiry, account state, and course access.
 // A misconfigured or manipulated sourceLessonId/lessonId can not reach
-// content from another course or a lesson the pilot isn't scoped to (T04).
+// content from another course or a lesson without a live companion (T04).
 //
 // Production reuses the legacy evaluator, with reservation and finalization
 // outside its AI call. New evidence stays in the same grammar_attempts table.
@@ -23,7 +25,6 @@ import { query, withTransaction } from '../db.js';
 import { asyncHandler, requireAuth } from '../middleware.js';
 import { userCanAccessCourse, courseIdForLessonId } from '../entitlements.js';
 import { deriveDrills, arrangeIsCorrect } from '../grammar-drills.js';
-import { loadPilotConfig } from '../bunpou-flow-config.js';
 import { loadCompanionContext } from '../bunpou-flow-content.js';
 import { submitProduction } from '../bunpou-production.js';
 import { pilotAccessError, v2SessionAccessError,
@@ -35,7 +36,7 @@ import { chooseSessionFlowVersion, currentSessionRevisionBestEffort,
   versionedSessionRevision, versionedItemFingerprint } from '../bunpou-versioned-session.js';
 import {
   questionFingerprint, deriveAssistanceState, independentEligible,
-  publicSessionItem, overlayFor, isPilotLesson, primaryErrorFor, answerSentenceFor,
+  publicSessionItem, overlayFor, primaryErrorFor, answerSentenceFor,
   SESSION_MINUTES, DRILL_MAX_WRONG, EVIDENCE_SCHEMA_VERSION,
   dialogCheckDrills, attemptSourceFor, sessionRevisionId,
 } from '../bunpou-flow-service.js';
@@ -106,12 +107,14 @@ async function loadOwnedActiveSession(req, res, sessionId) {
   if (![1, 2].includes(session.flow_version)) {
     res.status(409).json({ error: 'invalid_session_flow_version' }); return null;
   }
-  // Legacy v1 retains its original live pilot revocation rule. v2 uses its
-  // stored version and immutable snapshot after issue; account/entitlement
-  // and scope checks still happen below and inside the mutation transaction.
+  // Legacy v1 retains its live revocation rule: withdrawing the source
+  // lesson's published companion stops it. v2 uses its stored version and
+  // immutable snapshot after issue; account/entitlement and scope checks
+  // still happen below and inside the mutation transaction.
   if (session.flow_version === 1) {
-    const config = await loadPilotConfig();
-    if (!isPilotLesson(config, session.source_lesson_id)) {
+    const source = await query(`SELECT bunpou_flow_published IS NOT NULL AS published
+      FROM lessons WHERE id = $1`, [session.source_lesson_id]);
+    if (!source.rows[0]?.published) {
       res.status(403).json({ error: 'pilot_not_enabled_for_lesson' });
       return null;
     }
@@ -189,17 +192,17 @@ router.post('/grammar-task/sessions', requireAuth, sessionLimiter, asyncHandler(
       moduleId: source.module_id, runtimeAvailable, sharedConfig: true,
       ignoreActiveSession: true }) : null;
     if (!existing && placement.mode !== 'inline') {
-      const denied = await pilotAccessError(client, req.user, sourceLessonId);
+      const denied = await pilotAccessError(client, req.user, sourceLessonId, { requireLive: true });
       if (denied) return { denied };
     }
     const context = await loadCompanionContext(sourceLessonId, dbQuery);
     if (!context) return { denied: { status: 404, error: 'no_task_for_lesson' } };
     if (!context.current) return { denied: { status: 409, error: 'companion_needs_review' } };
-    const { taskLessonId, items, pool, published, fingerprint } = context;
+    const { taskLessonId, items, pool, published, v1Published, fingerprint } = context;
     const scopeError = await taskScopeError(client, sourceLessonId, taskLessonId,
       items.map(item => item.id));
     if (scopeError) return { denied: scopeError };
-    const oldRevision = sessionRevisionId(fingerprint, published);
+    const oldRevision = sessionRevisionId(fingerprint, v1Published);
     if (existing?.task_lesson_id === taskLessonId &&
         existing.content_revision_id === oldRevision) {
       return { ...existing, contentChanged: false, taskLessonId };
@@ -208,17 +211,17 @@ router.post('/grammar-task/sessions', requireAuth, sessionLimiter, asyncHandler(
     const flowVersion = chooseSessionFlowVersion({ existing, placement, runtimeAvailable });
     const denied = flowVersion === 2
       ? await v2SessionAccessError(client, req.user, sourceLessonId)
-      : await pilotAccessError(client, req.user, sourceLessonId);
+      : await pilotAccessError(client, req.user, sourceLessonId, { requireLive: true });
     if (denied) return { denied };
     const transfers = flowVersion === 2 ? await loadCurrentTransferRows(client,
       sourceLessonId, items.map(item => item.id)) : [];
     const revisionId = flowVersion === 2
       ? versionedSessionRevision(fingerprint, published, 2, transfers)
-      : sessionRevisionId(fingerprint, published);
+      : sessionRevisionId(fingerprint, v1Published);
     const drillsByGrammar = deriveDrills(items, pool);
     const planned = flowVersion === 2
       ? planV2SessionItems(items, drillsByGrammar, transfers)
-      : plannedItems(items, drillsByGrammar, published);
+      : plannedItems(items, drillsByGrammar, v1Published);
     const productionSnapshot = items.map(item => ({
       grammarId: item.id, pattern: item.pattern, meaning: item.meaning,
       example: item.example, instruction: item.instruction || '',

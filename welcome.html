@@ -4895,11 +4895,10 @@ function transformCourseFromApi(apiCourse) {
           kana: Array.isArray(l.kana) ? l.kana : [],
           grammarTask: Array.isArray(l.grammarTask) ? l.grammarTask : [],
           popupAfterLessonId: l.popup_after_lesson_id || null,
-          // Bunpou Flow pilot (Paket 1) — present on AT MOST one lesson in the
-          // whole catalogue, and only once an admin has both published a
-          // companion and flipped the pilot flag for it (see
-          // bunpou-flow-config.js). Absent on every other lesson, so every
-          // check below is a plain truthiness check, not a flag lookup.
+          // Pendamping Bunpou — hanya ada pada pelajaran yang pendampingnya
+          // sudah dipublikasikan dan lolos cek kesiapan (server yang memutuskan,
+          // lihat backend/src/bunpou-companion-status.js). Tidak ada pada
+          // pelajaran lain, jadi setiap pengecekan di bawah cukup truthiness.
           bunpouFlow: (l.bunpouFlow && typeof l.bunpouFlow === 'object') ? l.bunpouFlow : null,
         };
       }),

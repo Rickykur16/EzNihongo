@@ -105,8 +105,19 @@ const schema = `
   CREATE TABLE module_grammar (
     id UUID PRIMARY KEY, module_id UUID NOT NULL REFERENCES modules(id),
     lesson_id UUID REFERENCES lessons(id), pattern TEXT, meaning TEXT, example TEXT,
-    example_dialog TEXT, example_dialog_id TEXT, recognition_distractors TEXT,
-    controlled_distractors TEXT, sort_order INT DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW()
+    example_dialog TEXT, example_dialog_id TEXT, communication_goal TEXT, dialog_scene JSONB,
+    recognition_distractors TEXT, controlled_distractors TEXT, sort_order INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  );
+  -- Mirror of migration 165's grammar_dialog_questions (columns read by
+  -- bunpou-dialog-checks.js): the 🎭 Dialog question set is the source of
+  -- the dialog checks served by v1 sessions and Smart Review.
+  CREATE TABLE grammar_dialog_questions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), grammar_id UUID NOT NULL REFERENCES module_grammar(id),
+    source_lesson_id UUID NOT NULL REFERENCES lessons(id), kind TEXT NOT NULL CHECK (kind IN ('comprehension','transfer')),
+    prompt TEXT NOT NULL, options JSONB NOT NULL, correct_index INT NOT NULL, explanation TEXT NOT NULL,
+    evidence JSONB, sort_order INT NOT NULL DEFAULT 0, question_fingerprint TEXT NOT NULL,
+    dialogue_fingerprint TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'active'
   );
   CREATE TABLE grammar_examples (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), grammar_id UUID NOT NULL REFERENCES module_grammar(id),
@@ -197,7 +208,7 @@ test('Bunpou session API with real PostgreSQL SQL', { timeout: 90_000, concurren
   const { loadTaskConcepts, loadModulePool } = await import('./routes/grammar-task.js');
   const { contentRevisionId, sessionRevisionId } = await import('./bunpou-flow-service.js');
   const { ANTHROPIC_MODEL } = await import('./anthropic.js');
-  const { loadPilotLessonOptions } = await import('./bunpou-pilot-catalog.js');
+  const { loadCompanionLessonOptions, liveCompanionContexts } = await import('./bunpou-companion-status.js');
   const { assertUserTablesCovered } = await import('./user-erasure.js');
   const token = await signAccessToken(fixture.userId, fixture.email);
   const errors = [];
@@ -284,7 +295,6 @@ test('Bunpou session API with real PostgreSQL SQL', { timeout: 90_000, concurren
     await query('UPDATE module_grammar SET example_dialog = $1', [`A: ${sentence}\nB: ${sentence}`]);
     await query("INSERT INTO user_enrollments (user_id,course_id,status) VALUES ($1,$2,'active')", [fixture.userId, fixture.courseId]);
     await query("INSERT INTO user_progress (user_id,lesson_id,completed,note) VALUES ($1,$2,false,'Keep original lesson progress')", [fixture.userId, fixture.sourceId]);
-    await query("INSERT INTO app_settings (key,value) VALUES ('bunpou_flow_pilot_enabled','true'), ('bunpou_flow_pilot_lesson_id',$1)", [fixture.sourceId]);
     fingerprint = contentRevisionId(await loadTaskConcepts(fixture.taskId), await loadModulePool(fixture.taskId));
     published = {
       schemaVersion: 1, sourceFingerprint: fingerprint, objective: 'Memperkenalkan identitas.',
@@ -499,29 +509,145 @@ test('Bunpou session API with real PostgreSQL SQL', { timeout: 90_000, concurren
     assert.equal((await create()).sessionId, fresh.sessionId);
   });
 
-  await t.test('pilot catalog marks complete published N5 video lessons ready and explains unavailable or stale entries', async () => {
-    assert.deepEqual(await loadPilotLessonOptions(), [{
+  await t.test('companion status marks complete published N5 video lessons live and explains unavailable or stale entries', async () => {
+    assert.deepEqual(await loadCompanionLessonOptions(), [{
       id: fixture.sourceId, title: 'Synthetic lesson', moduleTitle: 'Synthetic module',
-      courseTitle: 'Synthetic N5', ready: true, reason: null,
+      courseTitle: 'Synthetic N5', published: true, live: true, reason: null,
     }]);
     await query("UPDATE courses SET level = 'N4' WHERE id = $1", [fixture.courseId]);
-    let option = (await loadPilotLessonOptions())[0];
-    assert.equal(option.ready, false);
+    let option = (await loadCompanionLessonOptions())[0];
+    assert.equal(option.live, false);
     assert.match(option.reason, /N5/);
     await query("UPDATE courses SET level = 'N5', is_available = false WHERE id = $1", [fixture.courseId]);
-    option = (await loadPilotLessonOptions())[0];
-    assert.equal(option.ready, false);
+    option = (await loadCompanionLessonOptions())[0];
+    assert.equal(option.live, false);
     assert.match(option.reason, /Course belum aktif/);
     await query('UPDATE courses SET is_available = true WHERE id = $1', [fixture.courseId]);
     await query("UPDATE lessons SET video_url = '' WHERE id = $1", [fixture.sourceId]);
-    option = (await loadPilotLessonOptions())[0];
-    assert.equal(option.ready, false);
+    option = (await loadCompanionLessonOptions())[0];
+    assert.equal(option.live, false);
     assert.match(option.reason, /Video/);
     await query("UPDATE lessons SET video_url = 'https://example.invalid/fixture.mp4' WHERE id = $1", [fixture.sourceId]);
     await query("UPDATE module_grammar SET example_dialog = 'Edited source dialogue' WHERE id = $1", [fixture.grammarId]);
-    option = (await loadPilotLessonOptions())[0];
-    assert.equal(option.ready, false);
+    option = (await loadCompanionLessonOptions())[0];
+    assert.equal(option.live, false);
+    assert.equal(option.published, true);
     assert.match(option.reason, /ditinjau/);
+    await query('UPDATE lessons SET bunpou_flow_published = NULL WHERE id = $1', [fixture.sourceId]);
+    option = (await loadCompanionLessonOptions())[0];
+    assert.deepEqual([option.published, option.live], [false, false]);
+    assert.match(option.reason, /belum dipublikasikan/);
+  });
+
+  await t.test('publishing is going live: no pilot setting exists or is needed', async () => {
+    assert.equal((await query('SELECT count(*)::int AS n FROM app_settings')).rows[0].n, 0);
+    const session = await create();
+    assert.equal(session.flowVersion, 1);
+    assert.ok(session.items.length > 0);
+  });
+
+  await t.test('two published lessons in one chapter are live at the same time', async () => {
+    const [secondSource, secondTask, secondGrammar] = [id(40), id(41), id(42)];
+    await query(`INSERT INTO lessons (id,module_id,type,title,video_url)
+      VALUES ($1,$2,'video','Second lesson','https://example.invalid/second.mp4')`, [secondSource, fixture.moduleId]);
+    await query("INSERT INTO lessons (id,module_id,type,popup_after_lesson_id) VALUES ($1,$2,'grammar_task',$3)",
+      [secondTask, fixture.moduleId, secondSource]);
+    await query(`INSERT INTO module_grammar
+      (id,module_id,lesson_id,pattern,meaning,example,example_dialog,recognition_distractors,sort_order)
+      SELECT $1,module_id,$2,pattern,meaning,example,example_dialog,recognition_distractors,5
+      FROM module_grammar WHERE id = $3`, [secondGrammar, secondSource, fixture.grammarId]);
+    await query(`INSERT INTO grammar_examples (grammar_id,japanese,highlight,indonesian)
+      SELECT $1,japanese,highlight,indonesian FROM grammar_examples WHERE grammar_id = $2`, [secondGrammar, fixture.grammarId]);
+    await query(`INSERT INTO lesson_grammar_task_items (lesson_id,grammar_id,instruction,required_count)
+      VALUES ($1,$2,'Buat kalimat.',1)`, [secondTask, secondGrammar]);
+    // The chapter's grammar is the distractor pool of every task in it, so
+    // adding (or editing) a pattern anywhere in the chapter makes the first
+    // lesson's reviewed questions stale too — it stops showing until it is
+    // reviewed and republished, instead of serving unreviewed questions.
+    assert.deepEqual([...(await liveCompanionContexts([fixture.sourceId, secondSource])).keys()], []);
+    assert.match((await loadCompanionLessonOptions()).find(row => row.id === fixture.sourceId).reason, /ditinjau/);
+    const republish = async (sourceId, taskId, objective) => query(
+      'UPDATE lessons SET bunpou_flow_published = $2 WHERE id = $1', [sourceId, JSON.stringify({
+        schemaVersion: 1, objective,
+        sourceFingerprint: contentRevisionId(await loadTaskConcepts(taskId), await loadModulePool(taskId)) })]);
+    await republish(fixture.sourceId, fixture.taskId, 'Tujuan pertama.');
+    assert.deepEqual([...(await liveCompanionContexts([fixture.sourceId, secondSource])).keys()],
+      [fixture.sourceId], 'an unpublished lesson is not live');
+    // Publishing one lesson does not touch grammar content, so it never makes
+    // the other lesson in the chapter stale.
+    await republish(secondSource, secondTask, 'Tujuan kedua.');
+    const both = await liveCompanionContexts([fixture.sourceId, secondSource]);
+    assert.deepEqual([...both.keys()].sort(), [fixture.sourceId, secondSource].sort());
+    assert.equal(both.get(secondSource).published.objective, 'Tujuan kedua.');
+    assert.equal(both.get(secondSource).taskLessonId, secondTask);
+    const options = await loadCompanionLessonOptions();
+    assert.deepEqual(options.map(row => [row.title, row.live]).sort(), [['Second lesson', true], ['Synthetic lesson', true]]);
+  });
+
+  await t.test('the 🎭 Dialog question set replaces the old companion questions, one pattern at a time', async () => {
+    const { dialogueFingerprint, questionFingerprint } = await import('./dialogue-question-service.js');
+    const grammar = (await query('SELECT * FROM module_grammar WHERE id = $1', [fixture.grammarId])).rows[0];
+    const insert = question => query(`INSERT INTO grammar_dialog_questions
+        (grammar_id, source_lesson_id, kind, prompt, options, correct_index, explanation, evidence,
+         sort_order, question_fingerprint, dialogue_fingerprint)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,$10)`, [fixture.grammarId, fixture.sourceId, question.kind,
+      question.prompt, JSON.stringify(question.options), question.correctIndex, question.explanation,
+      question.evidence ? JSON.stringify(question.evidence) : null, questionFingerprint(question),
+      dialogueFingerprint(grammar)]);
+    const checkPrompts = session => session.items.filter(item => item.step >= 4)
+      .map(item => [item.grammarId, item.step, item.prompt]);
+    // Before anything is moved, the old companion questions are served.
+    assert.deepEqual(checkPrompts(await create()), [
+      [fixture.grammarId, 4, 'Siapa pelajar?'], [fixture.grammarId, 5, 'Siapa guru?']]);
+    await query('DELETE FROM grammar_task_sessions');
+    // Half-moved: the old questions must not reappear next to a new set.
+    await insert({ kind: 'comprehension', prompt: 'Apa yang dikatakan penutur kedua?',
+      options: ['Memperkenalkan diri', 'Menolak ajakan', 'Menanyakan jalan'], correctIndex: 0,
+      explanation: 'Penutur kedua menyebut identitasnya.', evidence: [{ turnIndex: 1, quote: sentence }] });
+    assert.deepEqual(checkPrompts(await create()), []);
+    await insert({ kind: 'transfer', prompt: 'Pilih kalimat yang memakai pola yang sama.',
+      options: ['\u79c1\u306f\u533b\u8005\u3067\u3059\u3002', '\u533b\u8005\u3067\u3057\u305f\u3002', '\u533b\u8005\u306e\u672c\u3002'],
+      correctIndex: 0, explanation: 'Pola A は B です.' });
+    const session = await create();
+    assert.equal(session.contentChanged, true, 'a changed question set starts a fresh session');
+    assert.deepEqual(checkPrompts(session), [
+      [fixture.grammarId, 4, 'Apa yang dikatakan penutur kedua?'],
+      [fixture.grammarId, 5, 'Pilih kalimat yang memakai pola yang sama.']]);
+    const stored = (await query('SELECT content_revision_id FROM grammar_task_sessions WHERE id = $1', [session.sessionId])).rows[0];
+    assert.notEqual(stored.content_revision_id, sessionRevisionId(fingerprint, published));
+    assert.equal((await create()).sessionId, session.sessionId, 'an unchanged set resumes the same session');
+    const item = session.items.find(row => row.step === 4);
+    assertKeyHidden(item);
+    const answered = await answer(session, item, 0, randomUUID());
+    assert.equal(answered.passed, true, 'graded against the question set answer key');
+  });
+
+  await t.test('a published companion that stops being live falls back to legacy drills for new sessions', async () => {
+    await query("UPDATE lessons SET video_url = '' WHERE id = $1", [fixture.sourceId]);
+    assert.equal((await create(403)).error, 'pilot_not_enabled_for_lesson');
+    await query("UPDATE lessons SET video_url = 'https://example.invalid/fixture.mp4' WHERE id = $1", [fixture.sourceId]);
+    await query('UPDATE lessons SET bunpou_flow_published = NULL WHERE id = $1', [fixture.sourceId]);
+    assert.equal((await create(403)).error, 'pilot_not_enabled_for_lesson');
+    assert.equal((await query('SELECT count(*)::int AS n FROM grammar_task_sessions')).rows[0].n, 0);
+  });
+
+  await t.test('withdrawing the publication stops an already running v1 session', async () => {
+    const session = await create();
+    const item = firstItem(session);
+    await api(`/${session.sessionId}`);
+    await query('UPDATE lessons SET bunpou_flow_published = NULL WHERE id = $1', [fixture.sourceId]);
+    assert.equal((await api(`/${session.sessionId}`, undefined, 403)).error, 'pilot_not_enabled_for_lesson');
+    assert.equal((await api(itemPath(session, item, 'hint'), {}, 403)).error, 'pilot_not_enabled_for_lesson');
+    assert.equal((await answer(session, item, await correctIndex(item), randomUUID(), 403)).error,
+      'pilot_not_enabled_for_lesson');
+  });
+
+  await t.test('a source edit after publishing keeps a running v1 session on its stored snapshot', async () => {
+    const session = await create();
+    await query("UPDATE module_grammar SET example_dialog = 'Edited source dialogue' WHERE id = $1", [fixture.grammarId]);
+    const resumed = await api(`/${session.sessionId}`);
+    assert.equal(resumed.sessionId, session.sessionId);
+    assert.equal((await create(409)).error, 'companion_needs_review');
   });
 
   await t.test('the user-erasure coverage guard recognizes the real request-table foreign key', async () => {
