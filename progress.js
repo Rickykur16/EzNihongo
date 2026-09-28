@@ -3,6 +3,8 @@
   const release = '20260902-5';
   const labels = { kana: 'Kana', vocabulary: 'Kosakata', kanji: 'Kanji', grammar: 'Grammar' };
   let signedInUser = null;
+  // The skeleton in progress.html is the single source; "Coba lagi" shows it again.
+  const skeleton = app.querySelector('.is-skeleton') ? app.innerHTML : '';
   const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
   async function api(path) { const response = await ezApi(path); const body = await response.json().catch(() => ({})); if (!response.ok) throw Error(body.error || 'request_failed'); return body; }
   const url = (path, course) => `${path}?v=${release}&course=${encodeURIComponent(course)}`;
@@ -40,7 +42,10 @@
     app.removeAttribute('aria-busy');
     const expired = String(error?.message) === 'AUTH_EXPIRED';
     app.innerHTML = `<div class="page"><div class="empty"><strong>Progress belum bisa dimuat.</strong><br>${esc(ezStudentErrorMessage(error, 'Progress'))}<div class="chapter-meta">${expired ? '<a class="btn" href="login.html?next=progress.html">Masuk kembali</a>' : '<button class="btn" id="retry-progress" type="button">Coba lagi</button>'}</div></div></div>`;
-    document.getElementById('retry-progress')?.addEventListener('click', () => load(course));
+    document.getElementById('retry-progress')?.addEventListener('click', () => {
+      if (skeleton) { app.setAttribute('aria-busy', 'true'); app.innerHTML = skeleton; }
+      load(course);
+    });
   }
   async function load(course = '') { try { render(await api(`/progress/me${course ? `?course=${encodeURIComponent(course)}` : ''}`)); } catch (error) { renderError(error, course); } }
   document.getElementById('logout').onclick = () => ezLogout();

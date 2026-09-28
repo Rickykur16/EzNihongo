@@ -4786,7 +4786,12 @@ function getUserName(user = session) {
   const skeleton = document.querySelector('#app-root [data-boot-skeleton]');
   if (!skeleton) return;
   let user = null;
-  try { user = JSON.parse(localStorage.getItem('ez_user') || 'null'); } catch {}
+  try {
+    user = JSON.parse(localStorage.getItem('ez_user') || 'null');
+    // Sidebar yang ditutup di desktop (SIDEBAR_KEY + isDesktop() di skrip utama):
+    // kerangka ikut tanpa sidebar supaya isinya tidak melompat ke kiri nanti.
+    if (window.innerWidth >= 861 && localStorage.getItem('eznihongo:sidebarCollapsed') === '1') skeleton.classList.add('sidebar-collapsed');
+  } catch {}
   const g = getTimeGreeting();
   const now = new Date();
   const put = (selector, text) => { const el = skeleton.querySelector(selector); if (el) el.textContent = text; };

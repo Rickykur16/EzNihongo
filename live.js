@@ -4,6 +4,8 @@
   let data = null;
   let tab = 'upcoming';
   let signedInUser = null;
+  // The skeleton in live.html is the single source; "Coba lagi" shows it again.
+  const skeleton = app.querySelector('.is-skeleton') ? app.innerHTML : '';
   const tabs = ['upcoming', 'recordings'];
   const tabId = (value) => `live-tab-${value}`;
   const panelId = (value) => `live-panel-${value}`;
@@ -65,7 +67,10 @@
     app.removeAttribute('aria-busy');
     const expired = String(error?.message) === 'AUTH_EXPIRED';
     app.innerHTML = `<div class="page"><div class="empty"><strong>Live Class belum bisa dimuat.</strong><br>${esc(ezStudentErrorMessage(error, 'Live Class'))}<div class="actions">${expired ? '<a class="btn" href="login.html?next=live.html">Masuk kembali</a>' : '<button class="btn" id="retry-live" type="button">Coba lagi</button>'}</div></div></div>`;
-    document.getElementById('retry-live')?.addEventListener('click', load);
+    document.getElementById('retry-live')?.addEventListener('click', () => {
+      if (skeleton) { app.setAttribute('aria-busy', 'true'); app.innerHTML = skeleton; }
+      load();
+    });
   }
   async function load() {
     try {

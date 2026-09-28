@@ -114,6 +114,12 @@
   border-top: 1px solid #f5ebe6;
 }
 
+/* The loading skeleton (welcome.html) takes the saved collapsed state while the page
+   parses; without this the sidebar and content width would animate after the first
+   style pass. The skeleton has no interactive states, so no transition is lost. */
+[data-boot-skeleton],
+[data-boot-skeleton] * { transition: none !important; }
+
 @media (min-width: 861px) {
   .learning-layout.sidebar-collapsed .learning-overview,
   .learning-layout.sidebar-collapsed .main-content {

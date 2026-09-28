@@ -138,6 +138,58 @@
   tampil ~70px; CSS Google Fonts 590 KB / 153 KB gzip (663 @font-face, 4 keluarga
   termasuk Noto Sans JP 3 bobot) dan itu render-blocking.
 
+- **Skeleton loading di semua halaman siswa** — user: "Efek loading saat ini hanya ada
+  di Dashboard saja, yg lainya belom". Pola Dashboard dipakai ulang di Progres, Live
+  Class, Review (beranda + kartu soal), Fokus, dan Belajar: kerangka = markup halaman
+  ASLI dengan teks contoh transparan, ditulis STATIS di HTML (tampil sejak frame
+  pertama), lalu JS mengambil `innerHTML`-nya saat start dan memakainya ulang untuk
+  "Coba lagi" (satu sumber, tidak ada salinan di JS — kecuali kartu soal Review yang
+  memang dirender JS). Gaya bersama di `styles/skeleton.css` (`.is-skeleton`/`.sk-t`/
+  `.sk-btn`/`.sk-box`/`.sk-sr`/`.sk-enter`); Dashboard ikut pindah ke file itu.
+  `aria-busy` di root dilepas di SEMUA jalur (sukses, error, belum punya kelas).
+  **Belajar (`welcome.html`)**: spinner `renderBootSkeleton()` diganti kerangka tata
+  letak belajar (sidebar + sapaan + kepala pelajaran), tanpa id (supaya kode yang
+  mencari `#sidebar`/`#main-content` tidak menemukannya); penandanya
+  `[data-boot-skeleton]`. Sapaan tidak butuh request (jam + nama), jadi
+  `getTimeGreeting()`/`getUserName(user = session)` DIPINDAH ke skrip kecil tepat
+  setelah `#app-root` dan mengisi teks placeholder sapaan sebelum frame pertama —
+  tanpa itu nama panjang yang turun baris di HP menggeser isi di bawahnya. Skrip yang
+  sama memberi kerangka class `sidebar-collapsed` kalau di desktop sidebar pernah
+  ditutup (`eznihongo:sidebarCollapsed`) — tanpa itu isi melompat dari x=340 ke x=81.
+  **Hasil vs main (HP, CPU 4x, 1,6 Mbps, 150ms/API)**: CLS Progres 0,907→0,021, Live
+  0,490→0,026, Review 0,390→0,042, Review deep-link 0,490→0,017, Belajar 0,394→0,002,
+  Fokus 0→0; kerangka lengkap sudah ada di frame pertama (~300ms; Belajar ~600ms),
+  padahal dulu frame pertama cuma header + "Memuat…" sampai data tiba (700–940ms;
+  Belajar: spinner 740ms, isi 1.960ms). Waktu isi asli tampil tidak berubah.
+  **Harga**: frame pertama +50–70ms di 4 halaman dan ~+280ms di Belajar. Catatan alat
+  ukur: waktu "struktur" versi rAF (~100ms) lebih awal dari paint sungguhan — pakai
+  entri `first-paint`, bukan rAF. Ditelusuri lewat trace: 247 dari 260ms
+  layout pertama Belajar adalah `FontCache::GetFontPlatformData` →
+  `FontServiceThread::MatchFamilyName` (font service Linux/fontconfig, 682 panggilan)
+  — jalur yang tidak dipakai Android/iOS, jadi angka HP sungguhan kemungkinan jauh
+  lebih kecil, tapi BELUM diverifikasi di perangkat nyata. Bukan karena huruf Jepang,
+  form control, animasi pulse, atau request CSS terpisah (masing-masing diuji dan
+  dieliminasi).
+  **Jebakan**: (1) `styles/learning-placement.css` punya
+  `.learning-workspace .lesson-breadcrumb span` yang mengalahkan `.is-skeleton .sk-t` —
+  teks placeholder breadcrumb sempat TERLIHAT; breadcrumb kerangka memakai `.sk-box`
+  tanpa span; (2) `.learning-overview .greeting-resume` disembunyikan CSS, jadi tidak
+  perlu placeholder; (3) **alat uji**: `localStorage.ez_user` hasil
+  `mirrorUserToLocal` berbentuk `{id,email,name,...}`, BUKAN objek user API
+  (`fullName`) — fixture yang menyemai objek API membuat `getUserName()` jatuh ke
+  email dan terlihat seperti bug sapaan; (4) selektor "siap" di alat ukur harus
+  mengecualikan kerangka (`:not(.is-skeleton)`), karena kerangka memakai class yang
+  sama dengan konten asli; (5) class yang dipasang skrip kecil itu bisa datang SETELAH
+  pass style pertama (parser sempat yield), sehingga transisi lebar sidebar/konten
+  0,25s ikut berjalan — CLS sidebar-tertutup sempat 0,496; karena itu
+  `[data-boot-skeleton] *` tanpa transisi di `learning-placement.css` (hasil 0,002;
+  main 0,081); (6) `assignment-resume-ui.test.js` memotong sumber sampai
+  `const SIDEBAR_KEY`, jadi konstanta itu SENGAJA tidak dipindah ke skrip kecil
+  (kunci + breakpoint 861px ditulis ulang dengan komentar). Belajar saat API gagal
+  tetap menampilkan stub
+  "Pembayaran kamu tercatat" — perilaku lama, identik di main (lihat catatan
+  `renderCmsOnlyCourseStub`), tidak disentuh.
+
 - **Halaman Percakapan (panggung dialog) dibuat "hidup" — user: "Gaperlu mikirin
   design.md"**, jadi seperti landing, anggaran motion DESIGN.md sengaja TIDAK berlaku
   di sini (DESIGN.md tidak diubah). **Bug nyata yang ketemu duluan, dan kemungkinan
