@@ -13,14 +13,22 @@
   const labels = { kana: 'Kana', vocabulary: 'Kosakata', kanji: 'Kanji', grammar: 'Grammar' };
   const api = async (path, options) => { const response = await ezApi(path, options); const body = await response.json().catch(() => ({})); if (!response.ok) throw Object.assign(new Error(body.error || 'request_failed'), { status: response.status }); return body; };
   const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
+  // Loading skeletons: the home card comes from review.html itself (single source);
+  // the question card mirrors renderQuestion() with placeholder text.
+  const homeSkeleton = app.querySelector('.is-skeleton') ? app.innerHTML : '<p class="loading">Memuat Smart Review…</p>';
+  const sk = (text) => `<span class="sk-t">${text}</span>`;
+  const questionSkeleton = `<p class="sk-sr">Menyiapkan sesi review…</p><section class="question-card is-skeleton" aria-hidden="true"><div class="progress">${sk('SOAL 1 DARI 20')}</div><div class="review-progress-bar"></div><span class="tag">${sk('Kosakata')}</span><h1 class="prompt">${sk('Apa arti kata ini?')}</h1><div class="options">${[1, 2, 3, 4].map(() => `<button class="option" type="button" tabindex="-1">${sk('Pilihan jawaban')}</button>`).join('')}</div><p class="feedback"></p><div class="review-actions"></div><details class="maneko-help"><summary><img src="assets/maneko.svg" alt="">${sk('Bantuan Maneko-chan')}</summary></details><span class="maneko-status">${sk('Review mandiri · coba jawab tanpa petunjuk.')}</span></section>`;
+  const loading = (html) => { app.setAttribute('aria-busy', 'true'); app.innerHTML = html; };
+  const loaded = () => app.removeAttribute('aria-busy');
 
   function errorCard(error, retry) {
+    loaded();
     const expired = String(error?.message) === 'AUTH_EXPIRED';
     app.innerHTML = `<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Review belum bisa dimuat</h1><p class="error">${esc(ezStudentErrorMessage(error, 'Smart Review'))}</p><div class="review-actions">${expired ? '<a class="back-link" href="login.html?next=review.html">Masuk kembali</a>' : '<button class="primary" id="retry-review" type="button">Coba lagi</button>'}<a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a></div></section>`;
     document.getElementById('retry-review')?.addEventListener('click', retry);
   }
   async function loadHome() {
-    app.innerHTML = '<p class="loading">Memuat Smart Review…</p>';
+    loading(homeSkeleton);
     try { renderHome(await api('/review/summary')); }
     catch (error) { errorCard(error, loadHome); }
   }
@@ -30,12 +38,13 @@
   function renderHome(summary) {
     const total = Number(summary.total) || 0;
     const counts = Object.keys(labels).map((key) => categoryButton(key, Number(summary.byCategory?.[key]) || 0)).join('');
-    app.innerHTML = `<section class="summary-card"><div class="eyebrow">復習 · SMART REVIEW</div><h1 class="review-title">Ulangi yang sudah dipelajari.</h1><p class="total${total ? ' review-due' : ''}">${total ? `${total} item perlu direview` : 'Belum ada item review yang siap.'}</p><div class="counts" aria-label="Pilih kategori review">${counts}</div>${total ? '<button class="primary" id="start-mixed" type="button">Mulai Smart Review</button>' : '<p class="subtle">Review hari ini selesai. Lanjutkan belajar untuk membuka materi review berikutnya.</p>'}<div class="review-actions"><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
+    loaded();
+    app.innerHTML = `<section class="summary-card sk-enter"><div class="eyebrow">復習 · SMART REVIEW</div><h1 class="review-title">Ulangi yang sudah dipelajari.</h1><p class="total${total ? ' review-due' : ''}">${total ? `${total} item perlu direview` : 'Belum ada item review yang siap.'}</p><div class="counts" aria-label="Pilih kategori review">${counts}</div>${total ? '<button class="primary" id="start-mixed" type="button">Mulai Smart Review</button>' : '<p class="subtle">Review hari ini selesai. Lanjutkan belajar untuk membuka materi review berikutnya.</p>'}<div class="review-actions"><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
     app.querySelector('#start-mixed')?.addEventListener('click', () => { unlockAudio(); start('mixed'); });
     app.querySelectorAll('[data-category]').forEach((button) => button.addEventListener('click', () => { unlockAudio(); start(button.dataset.category); }));
   }
   async function start(category) {
-    app.innerHTML = '<p class="loading">Menyiapkan sesi review…</p>';
+    loading(questionSkeleton);
     try {
       session = await api('/review/sessions', { method: 'POST', body: JSON.stringify({ category, limit: 20 }) });
       index = 0; selectedOrder = []; correctAnswers = 0; independentAnswers = 0; assistedAnswers = 0; busy = false; results.clear(); helpLevels.clear();
@@ -210,6 +219,7 @@
       ? `<div class="arrange-answer" id="arrange-answer" aria-label="Kalimat yang kamu susun"></div><div class="arrange" id="arrange" aria-label="Kepingan kata"></div><div class="answer-row"><button class="primary" id="submit-arrange" type="button">Periksa jawaban</button><button class="token" id="reset-arrange" type="button">Ulangi</button></div>`
       : `<div class="options">${options.map((option, optionIndex) => `<button class="option" type="button" data-option="${optionIndex}">${esc(option)}${question.optionReadings?.[optionIndex] && question.optionReadings[optionIndex] !== option ? `<small>${esc(question.optionReadings[optionIndex])}</small>` : ''}</button>`).join('')}</div>`;
     const progressPercent = Math.round(((index + 1) / session.questions.length) * 100);
+    loaded();
     app.innerHTML = `<section class="question-card"><div class="progress">SOAL ${index + 1} DARI ${session.questions.length}</div><div class="review-progress-bar" role="progressbar" aria-label="Progres sesi review" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progressPercent}"><i style="width:${progressPercent}%"></i></div><span class="tag">${esc(tagLabel)}</span><h1 class="prompt" tabindex="-1">${esc(question.prompt)}</h1>${question.instruction ? `<p class="hint">${esc(question.instruction)}</p>` : ''}${question.audioText ? '<button class="audio-btn" id="play-audio" type="button">🔊 Putar suara</button>' : ''}${question.reading ? `<p class="hint">${esc(question.reading)}</p>` : ''}${question.meaning ? `<p class="hint">${esc(question.meaning)}</p>` : ''}${question.example?.japanese ? `<p class="hint">${esc(question.example.japanese)}</p>` : ''}${question.example?.indonesian ? `<p class="hint">${esc(question.example.indonesian)}</p>` : ''}${question.sentence ? `<p class="hint">${esc(question.sentence)}</p>` : ''}${question.indonesian ? `<p class="hint">${esc(question.indonesian)}</p>` : ''}${answerUi}<p class="feedback" id="feedback" aria-live="polite"></p><div class="review-actions" id="answer-actions"></div><details class="maneko-help"><summary><img src="assets/maneko.svg" alt="">Bantuan Maneko-chan</summary><p>Petunjuk membuat soal ini menjadi latihan terbantu. Jawaban mandiri yang sudah tersimpan tetap dipertahankan. Materi terkait dapat dinilai mandiri lagi setelah 24 jam.</p><button class="maneko-primary" id="maneko-hint" type="button">Minta petunjuk</button><div id="maneko-help-output" class="maneko-help-output" role="status"></div></details><span class="maneko-status" id="maneko-evidence-status">${item.assisted ? 'Latihan terbantu · materi ini baru mendapat bantuan.' : 'Review mandiri · coba jawab tanpa petunjuk.'}</span></section>`;
     app.querySelector('#maneko-hint')?.addEventListener('click', requestHelp);
     const audioBtn = app.querySelector('#play-audio');
@@ -288,5 +298,13 @@
     document.getElementById('back-home').addEventListener('click', loadHome);
   }
   document.getElementById('logout').addEventListener('click', () => ezLogout());
-  (async () => { const user = await ezRequireAuth('login.html'); const category = new URLSearchParams(location.search).get('category'); if (user) (category && Object.hasOwn(labels, category) ? start(category) : loadHome()); })();
+  (async () => {
+    const category = new URLSearchParams(location.search).get('category');
+    const direct = category && Object.hasOwn(labels, category);
+    // A deep link (Dashboard "Latihan Fokus") goes straight to a session: show that
+    // skeleton from the start instead of the home card's.
+    if (direct) loading(questionSkeleton);
+    const user = await ezRequireAuth('login.html');
+    if (user) (direct ? start(category) : loadHome());
+  })();
 })();

@@ -363,3 +363,7 @@ body {
 
   #progress-app .chapter-top > strong { flex-basis: auto; }
 }
+
+/* Loading skeleton (progress.html): the photo card needs light placeholders. */
+#progress-app .is-skeleton .progress-overview { --sk-color: rgba(255, 255, 255, .16); }
+#progress-app .is-skeleton .trend-card { --sk-color: var(--learning-blue-200, #dbe4f3); }

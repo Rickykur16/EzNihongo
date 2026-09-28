@@ -4709,12 +4709,13 @@
     #ai-senpai *, #ai-senpai *::before, #ai-senpai *::after { animation: none !important; }
   }
 </style>
-<link rel="stylesheet" href="styles/learning-placement.css?v=20260925-1"/>
+<link rel="stylesheet" href="styles/learning-placement.css?v=20260928-skeleton"/>
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
+<link rel="stylesheet" href="styles/skeleton.css?v=1">
 <link rel="stylesheet" href="styles/dialogue-scene.css?v=3">
 <link rel="stylesheet" href="styles/dialogue-questions.css?v=20260927-1">
 <link rel="stylesheet" href="maneko.css?v=20260926-1">
-<script src="maneko.js?v=20260926-1"></script>
+<script src="maneko.js?v=20260928-skeleton"></script>
 </head>
 <body>
 
@@ -4744,7 +4745,63 @@
   ✓ Pembayaran berhasil! Selamat datang di <strong id="new-course-name"></strong>. Mulai belajar di bawah.
 </div>
 
-<div id="app-root"></div>
+<div id="app-root"><!-- Loading skeleton: the learning layout (sidebar, greeting, lesson header) with placeholder text, shown from the first paint. It carries no ids on purpose: renderLearning() replaces it and code looking up #sidebar/#main-content must not find it. renderBootSkeleton() reuses it and fills in the real greeting, which needs no request. --><p class="sk-sr">Memuat materi…</p><div class="learning-layout" data-boot-skeleton aria-hidden="true"><aside class="sidebar is-skeleton"><div class="course-picker"><button class="course-picker-bar" type="button" tabindex="-1"><span class="course-picker-level sk-box">N5</span><span class="course-picker-name"><span class="sk-t">Bahasa Jepang N5</span></span><span class="course-picker-caret">▼</span></button></div><div class="sidebar-scroll"><div class="sidebar-header"><div class="sidebar-header-top"><span class="sidebar-course-badge sk-box">N5</span><h3><span class="sk-t">Progress Kelas</span></h3></div><div class="progress-card"><div class="progress-row"><span class="progress-pct"><span class="sk-t">00%</span></span><span class="progress-sub"><span class="sk-t">0 dari 00 materi</span></span></div><div class="progress-bar"></div></div></div><div class="module-filter"><input class="sk-box" type="search" tabindex="-1" disabled aria-hidden="true"></div><div class="modules-list"><div class="sidebar-section open current"><div class="sidebar-section-header"><div class="ss-info"><span class="ss-name"><span class="sk-t">Dasar bahasa Jepang</span></span><span class="ss-meta"><span class="sk-t">0 / 0</span></span></div></div><div class="sidebar-section-body"><div class="module open current"><div class="module-header"><div class="m-info"><span class="m-name"><span class="sk-t">Bab 1: Perkenalan</span></span><span class="m-meta"><span class="sk-t">0 / 0</span></span></div></div><div class="lessons"><ul class="lessons-inner"><li class="lesson-item"><span class="lesson-check" aria-hidden="true"></span><div class="lesson-info"><div class="lesson-title-text"><span class="sk-t">Ringkasan modul</span></div><div class="lesson-meta-row"><span class="lesson-type-badge"><span class="sk-t">Tujuan belajar</span></span></div></div></li><li class="lesson-item"><span class="lesson-check" aria-hidden="true"></span><div class="lesson-info"><div class="lesson-title-text"><span class="sk-t">1. Pengantar</span></div><div class="lesson-meta-row"><span class="lesson-type-badge"><span class="sk-t">Video</span></span></div></div></li><li class="lesson-item"><span class="lesson-check" aria-hidden="true"></span><div class="lesson-info"><div class="lesson-title-text"><span class="sk-t">2. Kosakata 語彙</span></div><div class="lesson-meta-row"><span class="lesson-type-badge"><span class="sk-t">Kosakata</span></span></div></div></li><li class="lesson-item"><span class="lesson-check" aria-hidden="true"></span><div class="lesson-info"><div class="lesson-title-text"><span class="sk-t">3. Kanji 漢字</span></div><div class="lesson-meta-row"><span class="lesson-type-badge"><span class="sk-t">Kanji</span></span></div></div></li></ul></div></div></div></div></div></div></aside><div class="learning-workspace"><div class="learning-overview is-skeleton"><div class="greeting-banner"><div><h1 class="greeting-jp"><span class="sk-t">こんにちは、Siswa</span><span class="san"><span class="sk-t">さん</span></span></h1><p class="greeting-id"><span class="sk-t">Selamat datang — Mari lanjutkan belajar bahasa Jepang.</span></p></div><div class="greeting-time"><div class="gt-kanji"><span class="sk-t">昼</span></div><div class="gt-label"><span class="sk-t">SIANG</span></div><div class="gt-clock"><span class="sk-t">00:00</span></div></div></div></div><main class="main-content is-skeleton"><p class="lesson-breadcrumb sk-box">Bahasa Jepang N5 · Modul 01 · MATERI</p><h1 class="lesson-title"><span class="sk-t">Judul pelajaran</span></h1><p class="lesson-subtitle"><span class="sk-t">Bab 1: Perkenalan — 10 min</span></p><div class="lesson-body"><h2><span class="sk-t">Catatan Pelajaran</span></h2><p><span class="sk-t">Materi pelajaran sedang dimuat. Isi lengkapnya akan muncul di sini sebentar lagi.</span></p><p><span class="sk-t">Video, kosakata, dan latihan tersedia saat belajar.</span></p></div></main></div></div></div>
+<script>
+// ═══════════════════════════════════════════════
+// TIME-BASED GREETING
+// ═══════════════════════════════════════════════
+// Didefinisikan di sini, sebelum skrip lain dimuat, supaya kerangka loading di
+// atas sudah memakai kalimat sapaan yang sama dengan greetingBannerHtml(): tinggi
+// sapaan (nama panjang turun baris di HP) dan lebar kartu jam sudah final sejak
+// frame pertama, jadi tidak ada yang bergeser saat sapaan asli dipasang.
+function getTimeGreeting() {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 11)  return { jp: 'おはようございます', id: 'Selamat pagi',  msg: 'Mari mulai hari dengan bahasa Jepang.',         kanji: '朝', period: 'PAGI'    };
+  if (h >= 11 && h < 15) return { jp: 'こんにちは',        id: 'Selamat siang', msg: 'Istirahat sejenak — luangkan waktu belajar.',    kanji: '昼', period: 'SIANG'   };
+  if (h >= 15 && h < 18) return { jp: 'こんにちは',        id: 'Selamat sore',  msg: 'Sore yang baik untuk review pelajaran.',         kanji: '夕', period: 'SORE'    };
+  if (h >= 18 && h < 22) return { jp: 'こんばんは',        id: 'Selamat malam', msg: 'Akhiri hari dengan progress baru.',              kanji: '夜', period: 'MALAM'   };
+  return                        { jp: 'お疲れ様です',      id: 'Sudah larut',    msg: 'Jaga kesehatan ya — belajar sebentar saja.',     kanji: '深', period: 'DINI HARI' };
+}
+
+// `session` dideklarasikan skrip utama di bawah; kerangka memanggil fungsi ini
+// sebelum itu, dengan user dari localStorage sebagai argumen.
+function getUserName(user = session) {
+  if (!user) return 'teman';
+  const email = user.email || '';
+  const emailLocal = email ? email.split('@')[0] : '';
+  // session.name di-mirror dari full_name (nama yang diketik user saat daftar)
+  // oleh mirrorUserToLocal() di api-client.js. Pakai itu sebagai sumber utama.
+  const name = (user.name || '').trim();
+  // Fallback ke email local-part yang dirapikan hanya untuk akun lama yang
+  // belum punya display name (di kasus itu session.name === email local-part).
+  if (name && name.toLowerCase() !== emailLocal.toLowerCase()) {
+    return name;
+  }
+  if (!emailLocal) return name || 'teman';
+  const clean = emailLocal.replace(/[._-]+/g, ' ').trim();
+  return clean.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+(() => {
+  const skeleton = document.querySelector('#app-root [data-boot-skeleton]');
+  if (!skeleton) return;
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem('ez_user') || 'null');
+    // Sidebar yang ditutup di desktop (SIDEBAR_KEY + isDesktop() di skrip utama):
+    // kerangka ikut tanpa sidebar supaya isinya tidak melompat ke kiri nanti.
+    if (window.innerWidth >= 861 && localStorage.getItem('eznihongo:sidebarCollapsed') === '1') skeleton.classList.add('sidebar-collapsed');
+  } catch {}
+  const g = getTimeGreeting();
+  const now = new Date();
+  const put = (selector, text) => { const el = skeleton.querySelector(selector); if (el) el.textContent = text; };
+  put('.greeting-jp > .sk-t', `${g.jp}、${getUserName(user)}`);
+  put('.greeting-id .sk-t', `${g.id} — ${g.msg}`);
+  put('.gt-kanji .sk-t', g.kanji);
+  put('.gt-label .sk-t', g.period);
+  put('.gt-clock .sk-t', `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+})();
+</script>
 
 <footer>
   © 2026 <strong>EzNihongo</strong> · <a href="privacy.html">Kebijakan Privasi</a> · <a href="terms.html">Syarat &amp; Ketentuan</a>
@@ -6970,35 +7027,8 @@ function logout() {
   window.location.href = 'index.html';
 }
 
-// ═══════════════════════════════════════════════
-// TIME-BASED GREETING
-// ═══════════════════════════════════════════════
-function getTimeGreeting() {
-  const h = new Date().getHours();
-  if (h >= 5 && h < 11)  return { jp: 'おはようございます', id: 'Selamat pagi',  msg: 'Mari mulai hari dengan bahasa Jepang.',         kanji: '朝', period: 'PAGI'    };
-  if (h >= 11 && h < 15) return { jp: 'こんにちは',        id: 'Selamat siang', msg: 'Istirahat sejenak — luangkan waktu belajar.',    kanji: '昼', period: 'SIANG'   };
-  if (h >= 15 && h < 18) return { jp: 'こんにちは',        id: 'Selamat sore',  msg: 'Sore yang baik untuk review pelajaran.',         kanji: '夕', period: 'SORE'    };
-  if (h >= 18 && h < 22) return { jp: 'こんばんは',        id: 'Selamat malam', msg: 'Akhiri hari dengan progress baru.',              kanji: '夜', period: 'MALAM'   };
-  return                        { jp: 'お疲れ様です',      id: 'Sudah larut',    msg: 'Jaga kesehatan ya — belajar sebentar saja.',     kanji: '深', period: 'DINI HARI' };
-}
-
-function getUserName() {
-  if (!session) return 'teman';
-  const email = session.email || '';
-  const emailLocal = email ? email.split('@')[0] : '';
-  // session.name di-mirror dari full_name (nama yang diketik user saat daftar)
-  // oleh mirrorUserToLocal() di api-client.js. Pakai itu sebagai sumber utama.
-  const name = (session.name || '').trim();
-  // Fallback ke email local-part yang dirapikan hanya untuk akun lama yang
-  // belum punya display name (di kasus itu session.name === email local-part).
-  if (name && name.toLowerCase() !== emailLocal.toLowerCase()) {
-    return name;
-  }
-  if (!emailLocal) return name || 'teman';
-  const clean = emailLocal.replace(/[._-]+/g, ' ').trim();
-  return clean.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-}
-
+// getTimeGreeting() dan getUserName() ada di skrip kecil tepat setelah
+// #app-root: kerangka loading memakainya sebelum skrip ini dimuat.
 function greetingBannerHtml() {
   const g = getTimeGreeting();
   const name = getUserName();
@@ -7127,16 +7157,23 @@ function renderPaywall() {
   }
 }
 
-// Spinner ringan selama fetch kritis (enrollments + konten course) — biar
-// dashboard tidak blank dan terasa "ngestuck" sebelum first paint.
+// Kerangka tata letak belajar selama fetch kritis (enrollments + konten course).
+// Sumbernya satu: skeleton statis di #app-root (tampil sejak frame pertama); di
+// sini cukup dipertahankan, atau dipasang ulang kalau #app-root sudah diganti.
+// Sapaannya tidak butuh request (jam + nama dari sesi), jadi kerangka langsung
+// memakai sapaan asli: ukurannya (termasuk nama panjang yang turun baris di HP)
+// sudah sama dengan hasil akhir, dan tidak ada yang bergeser saat materi tiba.
+const BOOT_SKELETON = document.getElementById('app-root')?.innerHTML || '';
 function renderBootSkeleton() {
-  document.getElementById('app-root').innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:18px;color:#8a7d66;">
-      <style>@keyframes ezBootSpin{to{transform:rotate(360deg)}}</style>
-      <div style="width:42px;height:42px;border:4px solid #ece5d8;border-top-color:var(--brand-red);border-radius:50%;animation:ezBootSpin .8s linear infinite;"></div>
-      <div style="font-size:14px;">Memuat materi…</div>
-    </div>
-  `;
+  const root = document.getElementById('app-root');
+  if (!root) return;
+  if (!root.querySelector('[data-boot-skeleton]')) {
+    root.innerHTML = BOOT_SKELETON || '<p style="padding:60px 20px;text-align:center;color:#8a7d66;">Memuat materi…</p>';
+  }
+  const greeting = root.querySelector('[data-boot-skeleton] .learning-overview');
+  if (!greeting) return;
+  greeting.innerHTML = greetingBannerHtml();
+  greeting.classList.remove('is-skeleton');
 }
 
 function renderBootError(err) {
@@ -14652,6 +14689,8 @@ const S = (window.AISenpai = {
   // sees a valid server-side session — or redirects cleanly to login. Without
   // this the paywall would flash whenever localStorage ez_user outlived its
   // refresh cookie (e.g. admin revoked access, or user cleared cookies only).
+  // Sapaan asli ke kerangka sebelum request pertama (nama dari sesi tersimpan).
+  renderBootSkeleton();
   let verifiedUser = null;
   try { verifiedUser = await window.ezGetMe(); } catch { verifiedUser = null; }
   if (!verifiedUser) {
@@ -14666,7 +14705,8 @@ const S = (window.AISenpai = {
   const userEmailEl = document.getElementById('user-email');
   if (userEmailEl) userEmailEl.textContent = session.email;
 
-  // Spinner langsung supaya layar tidak blank selama fetch kritis.
+  // Kerangka tetap tampil selama fetch kritis; sapaan diperbarui dengan nama
+  // dari sesi yang baru diverifikasi.
   renderBootSkeleton();
 
   // ── Critical path: data yang menentukan first paint ──
