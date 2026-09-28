@@ -869,8 +869,7 @@ body > .completion-overlay .completion-modal,
     .quiz-q-listen-btn.playing,
     .gt-mic__ring,
     .gt-mic__wave i,
-    .gt-mic__spinner,
-    [style*="animation:ezBootSpin"]
+    .gt-mic__spinner
   ),
   #ai-senpai *,
   #ai-senpai *::before,

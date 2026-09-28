@@ -428,29 +428,8 @@ body {
 /* ── Loading and entrance motion ────────────────────────────────────────────────
    Durations come from the shared tokens, which drop to 0ms under reduced motion, so
    nothing here needs its own reduced-motion branch except the looping pulse. */
-.dash-sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
-/* Skeleton: real card markup (see dashboard.html) with the placeholder text hidden
-   behind a soft bar, so each block already has its final size. */
-.is-skeleton { --sk-color: var(--paper-200, #f2ede3); pointer-events: none; user-select: none; animation: dash-sk-pulse 1.1s ease-in-out infinite alternate; }
-.is-skeleton .sk-t {
-  color: transparent;
-  text-shadow: none;
-  border-radius: 6px;
-  /* Only the middle of the glyph box: display type has a line-height below its glyph
-     height, and a full-height background would overlap the line above. */
-  background: linear-gradient(transparent 16%, var(--sk-color) 16% 84%, transparent 84%);
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-}
+/* Skeleton: real card markup (see dashboard.html); the shared rules live in
+   styles/skeleton.css, only the dashboard-specific colours and fixes are here. */
 .is-skeleton.hero::after { content: none; }
 /* .count span / .metric span style the labels; keep them off the placeholders nested inside. */
 .is-skeleton .count .sk-t,
@@ -458,20 +437,11 @@ body {
 .is-skeleton .continue-card { --sk-color: rgba(255, 255, 255, .14); }
 .is-skeleton .review-card,
 .is-skeleton .progress-card { --sk-color: var(--learning-blue-200); }
-.is-skeleton .sk-btn,
-.is-skeleton .sk-btn:hover {
-  border-color: transparent;
-  background: var(--sk-color);
-  box-shadow: none;
-  color: transparent;
-  transform: none;
-}
-@keyframes dash-sk-pulse { to { opacity: .62; } }
 
 /* Entrance: the greeting and the "Lanjut Belajar" row replace their skeleton in place and
    appear at once, so the main action is never held back by an animation. The blocks
    below rise 10px and fade in once when inserted, finishing within ~320ms. */
-.dashboard > :not(.is-skeleton):not(.dash-sr):not(.hero):not(.dashboard-primary) {
+.dashboard > :not(.is-skeleton):not(.sk-sr):not(.hero):not(.dashboard-primary) {
   animation: dash-in var(--duration-base) var(--ease-out) backwards;
 }
 .dashboard > .performance-card { animation-delay: calc(var(--duration-base) * .3); }
@@ -485,10 +455,6 @@ body {
 @keyframes dash-bar-fill {
   from { clip-path: inset(0 100% 0 0 round 999px); }
   to { clip-path: inset(0 0 0 0 round 999px); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .is-skeleton { animation: none; }
 }
 
 /* A bar still waiting to scroll into view must print with its value. */

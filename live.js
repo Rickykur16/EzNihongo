@@ -51,7 +51,8 @@
     return `<section class="live-tabpanel" id="${panelId(value)}" data-panel="${value}" role="tabpanel" aria-labelledby="${tabId(value)}" tabindex="0"${selected ? '' : ' hidden'}>${cards(items, recording)}</section>`;
   }
   function render() {
-    app.innerHTML = `<div class="page"><section class="hero"><div class="eyebrow">生配信 · LIVE CLASS</div><h1>${esc(data.course.title)}</h1><p>Kelas langsung dan rekaman yang terhubung ke Pelajaran yang sudah ada.</p></section><div class="tabs" role="tablist" aria-label="Jenis Live Class" aria-orientation="horizontal">${tabs.map((value) => {
+    app.removeAttribute('aria-busy');
+    app.innerHTML = `<div class="page sk-enter"><section class="hero"><div class="eyebrow">生配信 · LIVE CLASS</div><h1>${esc(data.course.title)}</h1><p>Kelas langsung dan rekaman yang terhubung ke Pelajaran yang sudah ada.</p></section><div class="tabs" role="tablist" aria-label="Jenis Live Class" aria-orientation="horizontal">${tabs.map((value) => {
       const selected = tab === value;
       return `<button class="${selected ? 'active' : ''}" id="${tabId(value)}" data-tab="${value}" type="button" role="tab" aria-controls="${panelId(value)}" aria-selected="${selected}" tabindex="${selected ? 0 : -1}">${value === 'upcoming' ? 'Mendatang' : 'Rekaman'}</button>`;
     }).join('')}</div>${tabs.map(tabPanel).join('')}</div>`;
@@ -61,6 +62,7 @@
     });
   }
   function renderError(error) {
+    app.removeAttribute('aria-busy');
     const expired = String(error?.message) === 'AUTH_EXPIRED';
     app.innerHTML = `<div class="page"><div class="empty"><strong>Live Class belum bisa dimuat.</strong><br>${esc(ezStudentErrorMessage(error, 'Live Class'))}<div class="actions">${expired ? '<a class="btn" href="login.html?next=live.html">Masuk kembali</a>' : '<button class="btn" id="retry-live" type="button">Coba lagi</button>'}</div></div></div>`;
     document.getElementById('retry-live')?.addEventListener('click', load);
@@ -69,7 +71,7 @@
     try {
       const requested = new URLSearchParams(location.search).get('course') || '';
       const dashboard = await api(`/dashboard/me${requested ? `?course=${encodeURIComponent(requested)}` : ''}`);
-      if (!dashboard.course) { app.innerHTML = `<div class="page"><div class="empty"><strong>Belum ada kelas aktif.</strong><br>Daftar atau aktifkan kelas untuk melihat Live Class.${ezSignedInAsHtml(signedInUser)}</div></div>`; return; }
+      if (!dashboard.course) { app.removeAttribute('aria-busy'); app.innerHTML = `<div class="page"><div class="empty"><strong>Belum ada kelas aktif.</strong><br>Daftar atau aktifkan kelas untuk melihat Live Class.${ezSignedInAsHtml(signedInUser)}</div></div>`; return; }
       document.getElementById('learn-nav').href = `welcome.html?course=${encodeURIComponent(dashboard.course.slug)}`;
       document.getElementById('progress-nav').href = `progress.html?v=${release}&course=${encodeURIComponent(dashboard.course.slug)}`;
       data = await api(`/live-classes?course=${encodeURIComponent(dashboard.course.slug)}`);

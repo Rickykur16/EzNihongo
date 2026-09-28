@@ -493,3 +493,7 @@ body {
   #review-app .primary:hover:not(:disabled),
   #review-app .primary:active:not(:disabled) { transform: none; }
 }
+
+/* Loading skeletons (review.html, review.js): .count span styles the label, keep it off
+   the placeholders nested inside the number and the label. */
+#review-app .is-skeleton .count .sk-t { display: inline; margin: 0; font-size: inherit; }

@@ -1,0 +1,46 @@
+/* Loading skeletons shared by the student pages (Dashboard, Belajar, Review,
+   Live Class, Progres, Fokus). A skeleton is the page's real markup with the
+   placeholder text (.sk-t) drawn as soft bars, so every block already has its
+   final size and nothing jumps when the data arrives. Each page's script
+   replaces the skeleton, and the screen-reader line (.sk-sr), when it renders. */
+.sk-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.is-skeleton { --sk-color: var(--paper-200, #f2ede3); pointer-events: none; user-select: none; animation: sk-pulse 1.1s ease-in-out infinite alternate; }
+.is-skeleton .sk-t {
+  color: transparent;
+  text-shadow: none;
+  border-radius: 6px;
+  /* Only the middle of the glyph box: display type has a line-height below its glyph
+     height, and a full-height background would overlap the line above. */
+  background: linear-gradient(transparent 16%, var(--sk-color) 16% 84%, transparent 84%);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.is-skeleton .sk-btn,
+.is-skeleton .sk-btn:hover {
+  border-color: transparent;
+  background: var(--sk-color);
+  box-shadow: none;
+  color: transparent;
+  transform: none;
+}
+/* Decorative kanji watermarks stay hidden until the real page renders. */
+.is-skeleton.hero::after, .is-skeleton .hero::after { visibility: hidden; }
+/* Solid placeholder for things that are not text (inputs, badges, avatars). */
+.is-skeleton .sk-box { background: var(--sk-color); border-color: transparent; color: transparent; box-shadow: none; }
+@keyframes sk-pulse { to { opacity: .62; } }
+
+/* Content that replaces a skeleton fades in once, without moving. */
+.sk-enter { animation: sk-in var(--duration-base, 200ms) var(--ease-out, ease-out) backwards; }
+@keyframes sk-in { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .is-skeleton, .sk-enter { animation: none; }
+}
