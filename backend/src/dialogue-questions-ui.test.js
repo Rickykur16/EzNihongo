@@ -83,6 +83,23 @@ test('actual conversation renderer supplies hidden slots around dialogue and esc
   assert.match(contentRoute, /SELECT id, module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, communication_goal, dialog_scene/);
 });
 
+test('conversation view mounts its dialogue scenes instead of leaving an empty stage', () => {
+  const start = welcome.indexOf('function renderLessonConversation(');
+  const end = welcome.indexOf('// ── Dialog player', start);
+  const root = { innerHTML: '' };
+  let enhanced = null;
+  const context = vm.createContext({ escapeHtml, document: { getElementById: () => root },
+    window: { EzDialogueQuestions: { mount() {} }, EzDialogue: { enhance: value => { enhanced = value; } } },
+    learningStepAction: () => '', taskSourceLesson: () => null,
+    grammarKaraokeHtml: () => '<div class="grammar-karaoke"></div>' });
+  vm.runInContext(welcome.slice(start, end), context);
+  context.renderLessonConversation({ name: 'N5' }, { num: '03', title: 'Bab 3' },
+    { grammar: [{ id: 'g1', example_dialog: 'A: hi' }] }, {});
+  // The old grammar page mounted scenes when its collapsible opened; this view
+  // has no such block, so without this call images never load before playback.
+  assert.equal(enhanced, root);
+});
+
 test('grammar page keeps examples and sends next navigation to its conversation without a task shortcut', () => {
   const start = welcome.indexOf('function renderLesson() {');
   const end = welcome.indexOf('function renderLessonMaterials', start);

@@ -4711,7 +4711,7 @@
 </style>
 <link rel="stylesheet" href="styles/learning-placement.css?v=20260925-1"/>
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
-<link rel="stylesheet" href="styles/dialogue-scene.css?v=2">
+<link rel="stylesheet" href="styles/dialogue-scene.css?v=3">
 <link rel="stylesheet" href="styles/dialogue-questions.css?v=20260927-1">
 <link rel="stylesheet" href="maneko.css?v=20260926-1">
 <script src="maneko.js?v=20260926-1"></script>
@@ -4753,7 +4753,7 @@
 <script src="api-client.js?v=20260926-assignment-v2"></script>
 <script src="assets/dialogue/catalog.js?v=1"></script>
 <script src="src/dialogue-furigana.js?v=1"></script>
-<script src="src/dialogue-scene.js?v=2"></script>
+<script src="src/dialogue-scene.js?v=3"></script>
 <script src="src/dialogue-questions.js?v=20260927-1"></script>
 <script src="learning-state.js?v=20260911-1"></script>
 <script>
@@ -8618,6 +8618,9 @@ function renderLessonConversation(course, module, lesson, nav) {
       <button class="btn-primary" type="button" ${!next ? 'disabled' : ''}
         onclick="${learningStepAction(next)}">${next?.lesson?.type === 'grammar_task' ? 'Lanjut ke Tugas Bunpou →' : 'Lanjut →'}</button>
     </div>`;
+  // Scenes used to mount only when a collapsible grammar block opened; the
+  // conversation view has no such block, so it mounts them itself.
+  window.EzDialogue?.enhance?.(root);
   // The backend owns placement and answer keys; even legacy placement keeps
   // this source dialogue readable without rendering inline questions.
   window.EzDialogueQuestions?.mount({ root, lesson,
@@ -8810,8 +8813,15 @@ function gkSpeakerStyles(rows, dialogScene) {
     map[c] = { side: i % 2 === 0 ? 'left' : 'right', pal: GK_PALETTES[i % GK_PALETTES.length] };
     const p = dialogScene?.participants?.find(p => p.speaker === c);
     if (p) map[c].side = p.position;
+    const look = p && window.EzDialogue?.speakerLook?.(dialogScene, c);
+    if (look && look.side !== 'narrator') map[c].pal = gkCharacterPalette(look.color);
   });
   return map;
+}
+// Same stage colour on the transcript bubble, avatar and play button.
+function gkCharacterPalette(color) {
+  return { color, deep: `color-mix(in srgb, ${color} 78%, #000)`,
+    soft: `color-mix(in srgb, ${color} 14%, #fff)`, bubble: `color-mix(in srgb, ${color} 5%, #fff)` };
 }
 function gkVars(pal) {
   return `--sp:${pal.color};--sp-deep:${pal.deep};--sp-soft:${pal.soft};--sp-bubble:${pal.bubble};`;
@@ -8863,7 +8873,7 @@ function gkBubbleHtml(r, key, styles) {
         <div class="gk-bubble">
           <div class="gk-bubble-main">
             <div class="gk-text">${r.inner}</div>
-            <button type="button" class="gk-line-play" title="Putar baris ini" onclick="window.grammarKaraokeJumpTo('${key}',${r.index})">${GK_PLAY_TRI}</button>
+            <button type="button" class="gk-line-play" title="Putar baris ini" onclick="window.grammarKaraokeJumpTo('${key}',${r.index})">${GK_PLAY_TRI}<span class="gk-eq" aria-hidden="true"><i></i><i></i><i></i></span></button>
           </div>
           ${arti}
         </div>
@@ -8960,9 +8970,16 @@ function grammarKaraokeHtml(dialogText, key, dialogIdText, dialogScene = null, g
 // Jump ke segment tertentu (klik per-baris). Kalau segments belum ke-load,
 // trigger initial load lewat grammarKaraokePlay dgn flag jumpTo. Setelah
 // segment selesai, TIDAK auto-advance (playOnce mode).
+// The conversation page lists several dialogues openly; starting one silences
+// the others, as the old collapsible grammar blocks did.
+function gkStopOthers(key) {
+  for (const k of Object.keys(window.__gk)) if (k !== key) gkStopOne(k);
+}
+
 window.grammarKaraokeJumpTo = async (key, li) => {
   const li2 = Number(li);
   if (!Number.isInteger(li2) || li2 < 0) return;
+  gkStopOthers(key);
   let st = window.__gk[key];
   if (st && st.segments) {
     if (li2 >= st.segments.length) return;
@@ -9003,6 +9020,7 @@ function gkPlaySegment(key, si) {
   try { audio.playbackRate = st.rate || 1; } catch (e) {}
   const current = () => window.__gk[key] === st && st.audio === audio;
   const sceneState = state => { if (current()) window.EzDialogue?.sync(document.getElementById('gk-' + key), si, state); };
+  window.EzDialogue?.voice?.(document.getElementById('gk-' + key), audio, seg, si);
   audio.addEventListener('playing', () => { if (!current() || st.stopped) return; gkSyncActiveLine(key, si); sceneState('speaking'); });
   audio.addEventListener('pause', () => sceneState('paused'));
   audio.addEventListener('waiting', () => sceneState('paused'));
@@ -9021,7 +9039,9 @@ function gkPlaySegment(key, si) {
   st.onPlayError = failed;
   audio.addEventListener('ended', () => {
     if (!current() || st.stopped) return;
-    window.EzDialogue?.sync(document.getElementById('gk-' + key), -1, 'idle');
+    // 'between' keeps the speaker lit through the 450 ms gap; the end of the
+    // dialogue (or a single replayed line) resets to idle below.
+    window.EzDialogue?.sync(document.getElementById('gk-' + key), si, 'between');
     // playOnce: dipanggil dari grammarKaraokeJumpTo — jangan auto-advance.
     if (st.playOnce) {
       st.playOnce = false; st.ended = true; st.audio = null;
@@ -9057,6 +9077,7 @@ window.grammarKaraokePlay = async (key) => {
   if (el.dataset.audioReady === 'false') return;
   let st = window.__gk[key];
   if (st?.loading) return;
+  if (!(st?.audio && !st.audio.paused)) gkStopOthers(key);
   window.EzDialogue?.mount(el);
   // Sudah ke-load: toggle play/pause/replay.
   if (st && st.segments) {
@@ -9090,6 +9111,7 @@ window.grammarKaraokePlay = async (key) => {
   if (playBtn) playBtn.disabled = true;
   const request = {loading:true, stopped:false, playBtn, controller:new AbortController()};
   window.__gk[key] = request;
+  window.EzDialogue?.sync(el, -1, 'loading');
   try {
     const r = await fetch('/api/tts/dialog?text=' + encodeURIComponent(dialog) + (el.dataset.grammarId ? '&grammarId=' + encodeURIComponent(el.dataset.grammarId) : ''), {signal:request.controller.signal});
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -9105,6 +9127,7 @@ window.grammarKaraokePlay = async (key) => {
     transcript.innerHTML = renderKaraokeStatic(dialog, key, el.dataset.dialogId || '', window.EzDialogue?.read(el), furigana);
     st = { segments: segs, curSeg: 0, audio: null, stopped: false, ended: false, playOnce: false, playBtn, rate: parseFloat(el.dataset.speed) || 1 };
     window.__gk[key] = st;
+    window.EzDialogue?.sync(el, -1, 'idle');
     if (statusEl) statusEl.textContent = '';
     if (playBtn) { playBtn.disabled = false; playBtn.textContent = '❚❚ Jeda'; }
     // Kalau klik per-baris yg trigger initial load, lompat ke segment target
@@ -9123,6 +9146,7 @@ window.grammarKaraokePlay = async (key) => {
   } catch (e) {
     if (window.__gk[key] !== request || request.stopped) return;
     delete window.__gk[key];
+    window.EzDialogue?.sync(el, -1, 'idle');
     if (statusEl) statusEl.textContent = 'Audio tidak tersedia';
     if (playBtn) playBtn.disabled = false;
   }

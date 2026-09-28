@@ -138,6 +138,48 @@
   tampil ~70px; CSS Google Fonts 590 KB / 153 KB gzip (663 @font-face, 4 keluarga
   termasuk Noto Sans JP 3 bobot) dan itu render-blocking.
 
+- **Halaman Percakapan (panggung dialog) dibuat "hidup" — user: "Gaperlu mikirin
+  design.md"**, jadi seperti landing, anggaran motion DESIGN.md sengaja TIDAK berlaku
+  di sini (DESIGN.md tidak diubah). **Bug nyata yang ketemu duluan, dan kemungkinan
+  besar alasan halaman terasa mati**: sejak #394 dialog hanya dirender di view
+  Percakapan (`renderLessonConversation`), tanpa blok lipat — padahal `EzDialogue.mount()`
+  dulu hanya dipanggil saat blok lipat grammar dibuka (atau saat Putar). Akibatnya di
+  produksi panggung = kotak abu-abu + ikon gambar rusak sampai siswa menekan Putar.
+  Sekarang `EzDialogue.enhance(root)` dipanggil di render view itu (tes regresi di
+  `dialogue-questions-ui.test.js`, dibuktikan menggigit). Lewat `window.EzDialogue?.enhance?.`
+  karena tes vm lama memberi `root` tiruan tanpa `querySelectorAll`. Bug kedua dari
+  #394: tanpa mutex blok lipat, dua dialog bisa berbunyi bersamaan (diukur: `main` 2
+  audio jalan, sekarang 1) — `gkStopOthers()`.
+  **Isi motion** (`src/dialogue-scene.js` + `styles/dialogue-scene.css`): gambar dimuat
+  saat ±600px dari layar, animasi masuk (latar zoom-out, karakter masuk dari sisinya,
+  balon muncul) baru jalan saat panggung ≥25% terlihat DAN semua gambar+mask selesai
+  (maks 3 detik); napas idle hanya saat terlihat; pembicara maju (`scale` 1.035) +
+  cahaya lantai warna karakter, pendengar redup+mundur; **gerak bicara mengikuti
+  kerasnya suara**: `EzDialogue.voice()` men-decode segmen base64 lewat
+  `OfflineAudioContext` (TERPISAH dari `<audio>` — jalur pemutaran tidak diubah, jadi
+  risiko iOS senyap tidak ada) jadi envelope RMS 20ms, lalu rAF menulis `--amp`/`--p`
+  hanya ke panggung + baris transkrip aktif selama audio jalan. Gagal decode → ritme
+  generik. Caption jadi balon bicara (ekor menunjuk pembicara, chip nama warna
+  karakter, gelombang, garis progres, titik "mengetik" saat TTS pertama kali dibuat —
+  state `loading`); state baru `between` menjaga sorotan selama jeda 450ms antar
+  giliran. Transkrip: warna gelembung kini dari warna karakter panggung
+  (`gkCharacterPalette`, dulu palet urutan yang cuma kebetulan cocok), equalizer di
+  tombol baris aktif, cincin avatar ikut suara, gelembung "datang" seperti chat saat
+  di-scroll. Admin preview TIDAK dapat animasi masuk/napas (`mount` tanpa
+  `{animate:true}`) karena di-render ulang tiap ketikan.
+  **Jebakan**: (1) transform bertumpuk dipecah ke properti individual — `scale`/`translate`
+  di `.ez-dialog-actor` (sorotan, transition), `scale` di `.ez-dialog-body` (napas),
+  `translate`/`rotate` di body (suara); (2) filter `drop-shadow` pada gambar ber-mask
+  ikut terpotong mask dan mahal per frame — dipakai `brightness/saturate` saja;
+  (3) `overflow:auto` di caption memotong ekor balon — scroll dipindah ke `span`;
+  (4) skrip QA `dialogue-scene-browser-qa.mjs` sempat RUSAK di `main` (fixture tidak
+  menyetel `__dialogMode`) — diperbaiki; (5) halaman memakai smooth scroll, jadi di
+  Playwright `scrollBy` setelah `scrollIntoView` membatalkan scroll — pakai
+  `behavior:'instant'`. Hasil: QA repo lulus penuh (termasuk piksel pakaian & reduced
+  motion), 480 frame/8 detik di CPU 4x dengan 1–2 frame 33–34ms. **Belum diverifikasi**:
+  suara ElevenLabs asli (MP3) dan Safari/iOS; lip-sync/ekspresi wajah butuh aset gambar
+  baru per karakter, di luar cakupan.
+
       **Dialog grammar: speaker asli dipilih dari SUARA ELEVENLABS ASLI —
       bukan kode A/B, dan bukan bucket perempuan/laki-laki — plus tes audio
       per giliran, independen** — user: "gunakan nama speaker aslinya yg bisa
