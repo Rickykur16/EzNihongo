@@ -17,6 +17,7 @@ import learningStateRouter from './routes/learning-state.js';
 import kanjiAuthRouter from './routes/kanji-auth.js';
 import ttsRouter from './routes/tts.js';
 import vocabImageRouter from './routes/vocab-image.js';
+import dialogueArtRouter from './routes/dialogue-art.js';
 import grammarTaskRouter from './routes/grammar-task.js';
 import grammarTaskSessionsRouter from './routes/grammar-task-sessions.js';
 import dialogueQuestionsRouter from './routes/dialogue-questions.js';
@@ -105,6 +106,7 @@ app.use('/api/live-classes', liveClassesRouter);
 app.use('/api/progress', progressDetailRouter);
 app.use('/api', ttsRouter);
 app.use('/api', vocabImageRouter);
+app.use('/api', dialogueArtRouter);
 app.use('/api', grammarTaskRouter);
 // Every route in here is requireAuth'd per-route (like grammarTaskRouter
 // above), never via a blanket router.use(requireAuth) — so unlike

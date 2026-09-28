@@ -4,6 +4,9 @@ import { dialogueCatalog, normalizeDialogScene, sceneTurnVoices, validateSceneVo
 import fs from 'fs';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
+import multer from 'multer';
+import { uploadLimits, uploadErrorHandler } from '../upload-safety.js';
+import { BASE_EXPRESSION, MAX_EXPRESSIONS_PER_CHARACTER, inspectArt, isCharacterKey, isExpressionKey } from '../dialogue-art.js';
 import bcrypt from 'bcryptjs';
 import { query, withTransaction } from '../db.js';
 import { landingCourseFields } from '../landing-course-fields.js';
@@ -5977,6 +5980,66 @@ router.delete('/dialogue-speakers/:id', asyncHandler(async (req, res) => {
   // delete, it just falls back to the pattern/alternation guess in
   // voiceForSpeaker() like an unknown name always has.
   await query('DELETE FROM dialogue_speakers WHERE id = $1', [req.params.id]);
+  res.json({ ok: true });
+}));
+
+// ── Character art (migration 177) ──────────────────────────────────────────
+// PUT uploads or replaces one image of a character: 'base' replaces the bundled
+// picture, any other key is an expression. mode=create refuses to overwrite an
+// existing expression (the admin typed a name that is already taken); a PUT
+// without a file only renames. The public manifest (/api/dialogue-art) is the
+// list; there is no separate admin GET.
+const artUpload = multer({ storage: multer.memoryStorage(), limits: uploadLimits(2 * 1024 * 1024, 2) });
+const parseArtUpload = (req, res, next) => artUpload.single('file')(req, res,
+  err => (err ? uploadErrorHandler(err, req, res, next) : next()));
+
+router.put('/dialogue-art/:characterKey/:expressionKey', parseArtUpload, asyncHandler(async (req, res) => {
+  const { characterKey, expressionKey } = req.params;
+  if (!isCharacterKey(characterKey)) return res.status(404).json({ error: 'Karakter tidak dikenal.' });
+  if (!isExpressionKey(expressionKey)) return res.status(400).json({ error: 'Nama ekspresi harus memakai huruf latin atau angka.' });
+  const isBase = expressionKey === BASE_EXPRESSION;
+  const label = isBase ? 'Dasar' : String(req.body?.label || '').trim();
+  if (!label || label.length > 40) return res.status(400).json({ error: 'Isi nama ekspresi (maksimal 40 huruf).' });
+  const create = req.body?.mode === 'create';
+  if (!req.file) {
+    if (isBase || create) return res.status(400).json({ error: 'Pilih berkas gambar.' });
+    const renamed = await query(`UPDATE dialogue_character_art SET label = $3, updated_at = NOW()
+      WHERE character_key = $1 AND expression_key = $2 RETURNING expression_key`, [characterKey, expressionKey, label]);
+    if (!renamed.rows.length) return res.status(404).json({ error: 'Ekspresi tidak ditemukan.' });
+    return res.json({ ok: true });
+  }
+  const art = inspectArt(req.file.buffer);
+  if (art.error) return res.status(400).json({ error: art.error });
+  const saved = await withTransaction(async (client) => {
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['dialogue-art:' + characterKey]);
+    const existing = await client.query(`SELECT expression_key FROM dialogue_character_art WHERE character_key = $1`, [characterKey]);
+    const exists = existing.rows.some(r => r.expression_key === expressionKey);
+    if (exists && create) return { status: 409, body: { error: 'Nama ekspresi sudah dipakai karakter ini.' } };
+    const expressions = existing.rows.filter(r => r.expression_key !== BASE_EXPRESSION).length;
+    if (!exists && !isBase && expressions >= MAX_EXPRESSIONS_PER_CHARACTER) {
+      return { status: 400, body: { error: `Maksimal ${MAX_EXPRESSIONS_PER_CHARACTER} ekspresi per karakter.` } };
+    }
+    const row = (await client.query(`INSERT INTO dialogue_character_art
+        (character_key, expression_key, label, image, mime, width, height)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (character_key, expression_key) DO UPDATE SET label = EXCLUDED.label,
+        image = EXCLUDED.image, mime = EXCLUDED.mime, width = EXCLUDED.width, height = EXCLUDED.height,
+        version = dialogue_character_art.version + 1, updated_at = NOW()
+      RETURNING expression_key, label, width, height, version`,
+      [characterKey, expressionKey, label, req.file.buffer, art.mime, art.width, art.height])).rows[0];
+    return { status: exists ? 200 : 201, body: { art: row } };
+  });
+  res.status(saved.status).json(saved.body);
+}));
+
+router.delete('/dialogue-art/:characterKey/:expressionKey', asyncHandler(async (req, res) => {
+  const { characterKey, expressionKey } = req.params;
+  if (!isCharacterKey(characterKey) || !isExpressionKey(expressionKey)) return res.status(404).json({ error: 'Gambar tidak ditemukan.' });
+  // Turns that picked this expression keep their saved key and simply show the
+  // base picture; uploading the same name again brings the expression back.
+  const r = await query(`DELETE FROM dialogue_character_art WHERE character_key = $1 AND expression_key = $2`,
+    [characterKey, expressionKey]);
+  if (!r.rowCount) return res.status(404).json({ error: 'Gambar tidak ditemukan.' });
   res.json({ ok: true });
 }));
 

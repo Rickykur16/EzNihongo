@@ -244,7 +244,7 @@
   tr.row-drop-before td { box-shadow: inset 0 2px 0 0 var(--brand-red); }
   tr.row-drop-after td { box-shadow: inset 0 -2px 0 0 var(--brand-red); }
 </style>
-<link rel="stylesheet" href="styles/dialogue-scene.css?v=3">
+<link rel="stylesheet" href="styles/dialogue-scene.css?v=4">
 </head>
 <body>
 
@@ -258,8 +258,8 @@
 <script src="assets/dialogue/catalog.js?v=1"></script>
 <script src="src/dialogue-furigana.js?v=1"></script>
 <script src="src/admin-dialogue-furigana.js?v=1"></script>
-<script src="src/dialogue-scene.js?v=3"></script>
-<script src="src/admin-dialogue-scene.js?v=3"></script>
+<script src="src/dialogue-scene.js?v=4"></script>
+<script src="src/admin-dialogue-scene.js?v=4"></script>
 <script src="src/admin-workspace.js?v=operations-20260912"></script>
 <script>
 // ─────────────────────────────────────────────────────────────
@@ -5111,6 +5111,8 @@ window.grmrManageDialog = async (btn) => {
   const idTa = tr.querySelector('textarea[name="example_dialog_id"]');
   if (!jpTa || !idTa) return;
   try { await admLoadDialogSpeakers(); } catch (err) { notify('Gagal memuat daftar speaker: ' + err.message, true); return; }
+  // Uploaded character art: the per-turn expression picker lists it.
+  await window.EzDialogue?.art?.(true);
   window.__dialogMode = 'grammar';
   window.__dialogRows = admParseDialogPair(jpTa.value, idTa.value);
   if (window.__dialogRows.length === 0) window.__dialogRows.push({ speaker: 'N', jp: '', id: '' });
@@ -5264,8 +5266,9 @@ function admDialogRowHtml(r, i) {
     !window.__dialogScene.participants.find(p => p.speaker === r.speaker)?.voiceId;
   return `
     <div class="dlg-row" style="border:1px solid #e5e5e5;border-radius:8px;padding:10px;margin-bottom:8px;">
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-        <select onchange="admDialogRowSpeakerChange(${i}, this)" style="min-width:170px;">${admSpeakerOptionsHtml(r.speaker)}</select>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px;">
+        <select onchange="admDialogRowSpeakerChange(${i}, this)" style="min-width:170px;max-width:100%;">${admSpeakerOptionsHtml(r.speaker)}</select>
+        ${window.EzDialogueAdmin?.expressionSelect?.(r, i) || ''}
         <span style="flex:1;"></span>
         <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogRowMove(${i},-1)" title="Naik">↑</button>
         <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogRowMove(${i},1)" title="Turun">↓</button>

@@ -5,6 +5,100 @@
   const asset = name => `/assets/dialogue/${name}`;
   const NARRATOR_COLOR = '#b89a55';
   const reduced = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const apiBase = () => (typeof EZ_API_BASE === 'string' ? EZ_API_BASE : '/api');
+  // Character art uploaded in the admin (base picture + expressions). Fetched
+  // once per page; a failure simply means "no uploads" and the bundled
+  // pictures are used.
+  let artRequest = null, artCache = null;
+  // Never waits more than 3 s: a hung request must not block the admin editor
+  // (which awaits this) or leave the stage without pictures; the last known
+  // list, or none, is used instead.
+  function art(fresh = false) {
+    if (fresh || !artRequest) {
+      const late = new Promise(resolve => setTimeout(resolve, 3000, null));
+      artRequest = Promise.race([fetch(apiBase() + '/dialogue-art', fresh ? {cache: 'no-store'} : {})
+        .then(r => (r.ok ? r.json() : null)), late]).catch(() => null)
+        .then(data => (artCache = data?.characters || artCache || {}));
+    }
+    return artRequest;
+  }
+  // Picture for a character: an uploaded expression, else the uploaded base,
+  // else the bundled image with its mask. Uploads are transparent, no mask.
+  function picture(characterKey, expression, manifest = artCache) {
+    const c = catalog.characters.find(c => c.key === characterKey);
+    if (!c) return null;
+    const own = manifest?.[characterKey];
+    const url = (key, v) => `${apiBase()}/dialogue-art/${encodeURIComponent(characterKey)}/${encodeURIComponent(key)}?v=${encodeURIComponent(v)}`;
+    const e = expression && own?.expressions?.find(e => e.key === expression);
+    if (e) return {key: expression, src: url(e.key, e.v), mask: null};
+    if (own?.base) return {key: '', src: url('base', own.base.v), mask: null};
+    return {key: '', src: asset(c.asset + '.webp'), mask: asset(c.asset + '-mask.png')};
+  }
+  const decoded = new Map();
+  function fetchImage(src) {
+    if (!decoded.has(src)) {
+      decoded.set(src, new Promise((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => (i.decode ? i.decode().catch(() => {}) : Promise.resolve()).then(resolve);
+        i.onerror = () => { decoded.delete(src); reject(new Error('image')); };
+        i.src = src;
+      }));
+    }
+    return decoded.get(src);
+  }
+  // Swap an actor's picture only once the new file (and mask) is decoded, so a
+  // slow or missing file never blanks the actor mid-dialogue. The last request
+  // wins; a failed upload falls back to the bundled picture, and only when
+  // nothing at all can be shown does the stage hide (as it always has).
+  function show(img, pic, fallback) {
+    const token = img.__ezArt = {};
+    return Promise.all([pic.src, pic.mask].filter(Boolean).map(fetchImage)).then(() => {
+      if (img.__ezArt !== token) return false;
+      const changed = img.dataset.expression !== undefined && img.getAttribute('src') !== pic.src;
+      img.style.maskImage = pic.mask ? `url("${pic.mask}")` : 'none';
+      img.src = pic.src;
+      img.dataset.expression = pic.key;
+      img.style.visibility = 'visible';
+      return changed;
+    }, () => {
+      if (img.__ezArt !== token) return false;
+      if (fallback && fallback.src !== pic.src) return show(img, fallback, null);
+      if (!img.getAttribute('src')) img.closest('.ez-dialog-stage')?.setAttribute('hidden', '');
+      return false;
+    });
+  }
+  // The expression chosen for a line applies only while the line still says
+  // what it said when it was chosen (same rule as dialog_furigana).
+  function expressionFor(scene, index, turn) {
+    const e = scene?.expressions?.[index];
+    return e && turn && e.speaker === turn.speaker && e.text === turn.text ? e.expression : null;
+  }
+  function setExpression(stage, participant, expression) {
+    const img = stage.querySelector(`.ez-dialog-actor[data-speaker="${CSS.escape(participant.speaker)}"] img`);
+    if (!img || !img.__ezReady) return;
+    img.__ezWant = expression;
+    const apply = () => {
+      if (img.__ezWant !== expression) return;
+      const pic = picture(participant.characterKey, expression);
+      if (!pic || (img.dataset.expression === pic.key && img.getAttribute('src') === pic.src)) return;
+      show(img, pic, picture(participant.characterKey, null)).then(changed => {
+        // `scale`, not `transform`: the right-hand actor is mirrored with
+        // transform: scaleX(-1), which a transform keyframe would undo mid-bump.
+        if (changed && !reduced() && img.animate) {
+          img.animate([{scale: '1.025'}, {scale: '1'}], {duration: 220, easing: 'cubic-bezier(.2,.9,.25,1)'});
+        }
+      });
+    };
+    img.__ezReady.then(apply);
+  }
+  // Decode every expression this dialogue uses, so each swap is instant.
+  function warm(scene) {
+    for (const e of scene?.expressions || []) {
+      const p = e && scene.participants?.find(p => p.speaker === e.speaker);
+      const pic = p && picture(p.characterKey, e.expression);
+      if (pic?.key) fetchImage(pic.src).catch(() => {});
+    }
+  }
   function read(root) {
     try { return JSON.parse(root?.dataset.dialogScene || 'null'); } catch { return null; }
   }
@@ -22,7 +116,7 @@
     const look = speakerLook(scene, first?.speaker);
     return `<section class="ez-dialog-stage" aria-label="Adegan percakapan" data-state="idle">
       ${bg?.asset ? `<picture><source media="(max-width: 600px)" data-srcset="${asset(bg.key+'-mobile.webp')}"><img class="ez-dialog-backdrop" data-src="${asset(bg.key+'.webp')}" alt=""></picture>` : ''}
-      <div class="ez-dialog-actors">${parts.map(p => `<div class="ez-dialog-actor" data-position="${esc(p.position)}" data-speaker="${esc(p.speaker)}" style="--character-color:${p.character.color}"><div class="ez-dialog-body"><img data-src="${asset(p.character.asset+'.webp')}" data-mask="${asset(p.character.asset+'-mask.png')}" alt="${esc(p.character.name)}" width="480" height="720"></div></div>`).join('')}</div>
+      <div class="ez-dialog-actors">${parts.map(p => `<div class="ez-dialog-actor" data-position="${esc(p.position)}" data-speaker="${esc(p.speaker)}" data-character="${esc(p.characterKey)}" style="--character-color:${p.character.color}"><div class="ez-dialog-body"><img data-src="${asset(p.character.asset+'.webp')}" data-mask="${asset(p.character.asset+'-mask.png')}" alt="${esc(p.character.name)}" width="480" height="720"></div></div>`).join('')}</div>
       <div class="ez-dialog-caption" data-side="${esc(look.side)}" style="--speaker-color:${look.color}"><strong>${esc(look.name)}</strong><i class="ez-dialog-wave" aria-hidden="true"><b></b><b></b><b></b><b></b><b></b></i><i class="ez-dialog-typing" aria-hidden="true"><b></b><b></b><b></b></i><span lang="ja">${window.EzFurigana ? EzFurigana.html(first?.text || '',EzFurigana.lineFor(furigana,rows.indexOf(first),first)) : esc(first?.text || '')}</span><i class="ez-dialog-progress" aria-hidden="true"></i></div>
     </section>`;
   }
@@ -37,18 +131,33 @@
     const loads = [];
     const settle = el => new Promise(resolve => { el.addEventListener('load', resolve, {once:true}); el.addEventListener('error', resolve, {once:true}); });
     stage.querySelectorAll('[data-srcset]').forEach(el => { el.srcset = el.dataset.srcset; });
-    stage.querySelectorAll('img[data-src]').forEach(img => {
+    stage.querySelectorAll('img.ez-dialog-backdrop[data-src]').forEach(img => {
       img.addEventListener('error', () => { stage.hidden = true; });
-      if (img.dataset.mask) {
-        const mask = new Image();
-        mask.onerror = () => { stage.hidden = true; };
-        mask.onload = () => { img.style.maskImage = `url("${img.dataset.mask}")`; img.style.visibility = 'visible'; };
-        loads.push(settle(mask));
-        mask.src = img.dataset.mask;
-      }
       loads.push(settle(img));
       img.src = img.dataset.src;
     });
+    // Actors wait briefly for the uploaded-art list, then show their base
+    // picture. If the list is late they start with the bundled picture and
+    // switch to an uploaded base once it arrives.
+    const listing = Promise.race([art(), new Promise(r => setTimeout(r, 1500))]);
+    stage.querySelectorAll('.ez-dialog-actor').forEach(actor => {
+      const img = actor.querySelector('img[data-src]');
+      if (!img) return;
+      const bundled = {key: '', src: img.dataset.src, mask: img.dataset.mask || null};
+      const base = () => picture(actor.dataset.character, null) || bundled;
+      // A picture that breaks after it was shown: an upload falls back to the
+      // bundled picture; a broken bundled picture hides the stage as before
+      // (the transcript below still carries the dialogue).
+      img.addEventListener('error', () => {
+        if (/\/dialogue-art\//.test(img.getAttribute('src') || '')) show(img, bundled, null);
+        else stage.hidden = true;
+      });
+      img.__ezReady = listing.then(() => show(img, base(), bundled)).then(() => art()).then(() => {
+        if (!img.dataset.expression && img.getAttribute('src') === bundled.src && base().src !== bundled.src) return show(img, base(), bundled);
+      });
+      loads.push(img.__ezReady);
+    });
+    Promise.all(loads).then(() => warm(read(root)));
     if (!motion) return;
     // Enter once everything is decoded (actors never pop in one by one) and
     // the stage is actually on screen, so the entrance is not spent off-screen.
@@ -101,6 +210,10 @@
     stage.querySelectorAll('.ez-dialog-actor').forEach(actor => {
       actor.classList.toggle('is-speaking', !!p && actor.dataset.speaker === p.speaker);
     });
+    // The speaker wears this line's expression; the listener keeps the last one
+    // it had, like a visual novel. Playing from the first line starts neutral.
+    if (p) setExpression(stage, p, expressionFor(scene, index, turn));
+    if (index === 0) scene?.participants.forEach(q => { if (q !== p) setExpression(stage, q, null); });
     if (state === 'idle') { stage.style.setProperty('--amp', '0'); stage.style.setProperty('--p', '0'); }
     if (turn) {
       const caption = stage.querySelector('.ez-dialog-caption');
@@ -174,5 +287,11 @@
     audio.addEventListener('pause', () => rest(false));
     audio.addEventListener('ended', () => rest(true));
   }
-  window.EzDialogue = {catalog, esc, html, read, mount, enhance, sync, voice, speakerLook};
+  const artFor = key => artCache?.[key] || {base: null, expressions: []};
+  // Admin preview: show one participant with an expression without playing.
+  function pose(root, participant, expression) {
+    const stage = root?.querySelector('.ez-dialog-stage');
+    if (stage && participant) setExpression(stage, participant, expression);
+  }
+  window.EzDialogue = {catalog, esc, html, read, mount, enhance, sync, voice, speakerLook, art, artFor, picture, expressionFor, pose};
 })();
