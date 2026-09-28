@@ -21,8 +21,13 @@ const LESSON_COLUMNS = `l.id, l.title, m.title AS "moduleTitle", c.title AS "cou
 // `code` membedakan pasangan Tugas Bunpou yang tidak sah (masalah integritas
 // data, dijawab 404 seperti sebelumnya) dari alasan "belum siap tampil"
 // lainnya (dijawab 403 supaya klien kembali ke drill lama dengan mulus).
+// Pendamping saat ini hanya bisa tampil di kursus N5. Diekspos juga sebagai
+// `eligible` di daftar admin, supaya pilihan pelajaran di kartu status tidak
+// dipenuhi pelajaran yang memang tidak mungkin tampil.
+const companionLevelAllowed = lesson => String(lesson.level).toUpperCase() === 'N5';
+
 async function readiness(lesson, dbQuery) {
-  if (String(lesson.level).toUpperCase() !== 'N5') return { reason: 'Pendamping saat ini hanya untuk N5' };
+  if (!companionLevelAllowed(lesson)) return { reason: 'Pendamping saat ini hanya untuk N5' };
   if (!lesson.is_published || !lesson.is_available) return { reason: 'Course belum aktif' };
   if (!lesson.video_source_id && !lesson.video_url?.trim()) return { reason: 'Video belum terhubung' };
   if (!lesson.published) return { reason: 'Pendamping belum dipublikasikan' };
@@ -51,7 +56,8 @@ export async function loadCompanionLessonOptions(dbQuery = query) {
   for (const lesson of result.rows) {
     const { reason } = await readiness(lesson, dbQuery);
     options.push({ id: lesson.id, title: lesson.title, moduleTitle: lesson.moduleTitle,
-      courseTitle: lesson.courseTitle, published: lesson.published, live: !reason, reason });
+      courseTitle: lesson.courseTitle, published: lesson.published, live: !reason, reason,
+      eligible: companionLevelAllowed(lesson) });
   }
   return options;
 }

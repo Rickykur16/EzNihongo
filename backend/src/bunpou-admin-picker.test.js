@@ -251,6 +251,64 @@ test('empty catalog does not auto-select a lesson or enable any action', async (
   assert.match(nodes['bf-companion-status'].textContent, /Belum ada/);
 });
 
+test('lessons that can never go live are hidden from the status picker but kept for shadow', async () => {
+  const { ctx, nodes, state } = setup();
+  const n4Draft = '44444444-4444-4444-8444-444444444444';
+  const n4Published = '55555555-5555-4555-8555-555555555555';
+  const reason = 'Pendamping saat ini hanya untuk N5';
+  state.data.lessons.forEach(lesson => { lesson.eligible = true; });
+  state.data.lessons.push(
+    { id: n4Draft, title: 'Pola hormat', courseTitle: 'N4', moduleTitle: 'Bab 40', published: false, live: false,
+      reason, eligible: false },
+    { id: n4Published, title: 'Kausatif', courseTitle: 'N4', moduleTitle: 'Bab 41', published: true, live: false,
+      reason, eligible: false });
+  await ctx.bfCompanionLoadOptions();
+  const picker = nodes['bf-companion-lesson-id'].innerHTML;
+  assert.doesNotMatch(picker, /Pola hormat/, 'an unpublished non-N5 lesson is only noise in the status picker');
+  assert.match(picker, /Kausatif - Dipublikasikan, belum tampil/, 'a published one stays so it can be withdrawn');
+  assert.match(picker, /Perkenalan - Tampil ke siswa/);
+  assert.match(nodes['ms-shadow-lesson'].innerHTML, /Pola hormat/, 'shadow comparison works for any lesson');
+  assert.match(nodes['bf-companion-status'].textContent, /1 pelajaran di luar N5 tidak ditampilkan/);
+  select(ctx, nodes, 'bf-companion-lesson-id', n4Published);
+  assert.equal(nodes['bf-companion-withdraw'].disabled, false);
+});
+
+test('a previously selected lesson that is now hidden is not kept selected after reload', async () => {
+  const { ctx, nodes, state } = setup();
+  await ctx.bfCompanionLoadOptions();
+  select(ctx, nodes, 'bf-companion-lesson-id', draftId);
+  Object.assign(state.data.lessons[2], { eligible: false });
+  await ctx.bfCompanionLoadOptions();
+  assert.equal(nodes['bf-companion-lesson-id'].value, '');
+  assert.equal(nodes['bf-companion-edit'].disabled, true);
+});
+
+test('a response without eligible (older backend during a rolling deploy) hides nothing', async () => {
+  const { ctx, nodes } = setup();
+  await ctx.bfCompanionLoadOptions();
+  const picker = nodes['bf-companion-lesson-id'].innerHTML;
+  for (const title of ['Perkenalan', 'Waktu', 'Hobi']) assert.match(picker, new RegExp(title));
+  assert.doesNotMatch(nodes['bf-companion-status'].textContent, /tidak ditampilkan/);
+});
+
+test('an all-hidden catalog says there is no N5 lesson instead of offering an empty picker silently', async () => {
+  const { ctx, nodes, state } = setup();
+  state.data = { lessons: [{ id: draftId, title: 'Pola hormat', courseTitle: 'N4', moduleTitle: 'Bab 40',
+    published: false, live: false, reason: 'Pendamping saat ini hanya untuk N5', eligible: false }] };
+  await ctx.bfCompanionLoadOptions();
+  assert.match(nodes['bf-companion-status'].textContent, /Belum ada pelajaran Bunpou N5/);
+  assert.equal(nodes['bf-companion-edit'].disabled, true);
+});
+
+test('disabled admin buttons look disabled and do not react to hover', () => {
+  const css = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
+  assert.match(css, /\.btn:disabled\s*\{[^}]*opacity:\s*0?\.5[^}]*cursor:\s*not-allowed/);
+  for (const variant of ['primary', 'ghost', 'danger', 'danger-soft']) {
+    assert.match(css, new RegExp(`\\.btn-${variant}:hover:not\\(:disabled\\)`), `${variant} hover must skip disabled`);
+    assert.doesNotMatch(css, new RegExp(`\\.btn-${variant}:hover\\s*\\{`), `${variant} hover still applies to disabled`);
+  }
+});
+
 test('both shortcuts open the selected companion with its title, including lessons that are not live', async () => {
   const { ctx, nodes, state } = setup();
   await ctx.bfCompanionLoadOptions();

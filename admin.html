@@ -32,13 +32,16 @@
   .btn { padding: 8px 14px; border-radius: var(--radius-md); border: 1px solid transparent; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); }
   .btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
   .btn-primary { background: var(--brand-red); color: #fff; box-shadow: var(--elev-1); }
-  .btn-primary:hover { background: var(--brand-red-hover); box-shadow: var(--elev-2); }
+  .btn-primary:hover:not(:disabled) { background: var(--brand-red-hover); box-shadow: var(--elev-2); }
   .btn-ghost { background: var(--surface-white); border-color: var(--paper-300); color: var(--ink-900); }
-  .btn-ghost:hover { background: var(--paper-100); border-color: var(--paper-400); }
+  .btn-ghost:hover:not(:disabled) { background: var(--paper-100); border-color: var(--paper-400); }
   .btn-danger { background: var(--danger); color: #fff; }
-  .btn-danger:hover { background: #7f1616; }
+  .btn-danger:hover:not(:disabled) { background: #7f1616; }
   .btn-danger-soft { background: var(--danger-soft); color: var(--danger); border-color: #fecaca; }
-  .btn-danger-soft:hover { background: #fee2e2; }
+  .btn-danger-soft:hover:not(:disabled) { background: #fee2e2; }
+  /* Sama dengan .ez-btn:disabled (styles/components.css): tombol nonaktif harus
+     terlihat nonaktif, bukan identik dengan tombol yang bisa diklik. */
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
   .btn.tts-preview.playing { background: var(--brand-red); color: #fff; border-color: var(--brand-red); }
   table { width: 100%; border-collapse: collapse; background: var(--surface-white); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--elev-1); }
   th, td { padding: 12px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid var(--paper-300); vertical-align: top; }
@@ -1351,9 +1354,19 @@ function bfCompanionStatus(lesson) {
     + (lesson.reason || 'pendamping belum siap');
 }
 
+// Kartu status hanya mendaftar pelajaran yang bisa tampil ke siswa (saat ini
+// N5), ditambah yang sudah dipublikasikan supaya publikasinya tetap bisa
+// ditarik. Kartu shadow tetap memakai daftar lengkap karena perbandingan
+// penguasaan berlaku untuk pelajaran mana pun. `eligible` yang tidak ada
+// (backend lama saat deploy bergiliran) dianggap boleh, jadi tidak ada
+// pelajaran yang hilang diam-diam.
+function bfCompanionPickable(lesson) {
+  return lesson.eligible !== false || lesson.published;
+}
+
 function bfCompanionLessonOptions(lessons, selectedId, shadow = false) {
   const groups = new Map();
-  for (const lesson of lessons) {
+  for (const lesson of shadow ? lessons : lessons.filter(bfCompanionPickable)) {
     const group = (lesson.courseTitle || 'Tanpa kursus') + ' / ' + (lesson.moduleTitle || 'Tanpa bab');
     if (!groups.has(group)) groups.set(group, []);
     groups.get(group).push(lesson);
@@ -1387,7 +1400,8 @@ window.bfCompanionLoadOptions = async () => {
     const picker = document.getElementById('bf-companion-lesson-id');
     const shadow = document.getElementById('ms-shadow-lesson');
     const known = id => data.lessons.some(lesson => lesson.id === id);
-    const pickerId = known(picker.value) ? picker.value : '';
+    const pickerId = data.lessons.some(lesson => lesson.id === picker.value && bfCompanionPickable(lesson))
+      ? picker.value : '';
     const shadowId = known(shadow.value) ? shadow.value : '';
     panel.__lessons = data.lessons;
     panel.__loaded = true;
@@ -1427,10 +1441,12 @@ window.bfCompanionUpdateControls = () => {
   document.getElementById('ms-shadow-run').disabled = locked || !shadowLesson;
   document.getElementById('ms-shadow-edit').disabled = locked || !shadowLesson;
   if (locked) return;
-  document.getElementById('bf-companion-status').textContent = !lessons.length
-    ? 'Belum ada pelajaran Bunpou.' : picker.value
+  const hidden = lessons.filter(item => !bfCompanionPickable(item)).length;
+  document.getElementById('bf-companion-status').textContent = lessons.length === hidden
+    ? 'Belum ada pelajaran Bunpou N5.' : picker.value
       ? bfCompanionStatus(lesson) + (lesson && !lesson.live ? '. Buka Edit Pendamping Bunpou untuk menyiapkannya.' : '')
-      : 'Pilih pelajaran untuk melihat statusnya.';
+      : 'Pilih pelajaran untuk melihat statusnya.'
+        + (hidden ? ' ' + hidden + ' pelajaran di luar N5 tidak ditampilkan karena pendamping saat ini hanya untuk N5.' : '');
   document.getElementById('ms-shadow-status').textContent = shadow.value
     ? bfCompanionStatus(shadowLesson) : 'Pilih pelajaran untuk perbandingan.';
 };

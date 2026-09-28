@@ -512,11 +512,12 @@ test('Bunpou session API with real PostgreSQL SQL', { timeout: 90_000, concurren
   await t.test('companion status marks complete published N5 video lessons live and explains unavailable or stale entries', async () => {
     assert.deepEqual(await loadCompanionLessonOptions(), [{
       id: fixture.sourceId, title: 'Synthetic lesson', moduleTitle: 'Synthetic module',
-      courseTitle: 'Synthetic N5', published: true, live: true, reason: null,
+      courseTitle: 'Synthetic N5', published: true, live: true, reason: null, eligible: true,
     }]);
     await query("UPDATE courses SET level = 'N4' WHERE id = $1", [fixture.courseId]);
     let option = (await loadCompanionLessonOptions())[0];
     assert.equal(option.live, false);
+    assert.equal(option.eligible, false, 'non-N5 lessons are marked so the admin picker can hide them');
     assert.match(option.reason, /N5/);
     await query("UPDATE courses SET level = 'N5', is_available = false WHERE id = $1", [fixture.courseId]);
     option = (await loadCompanionLessonOptions())[0];
