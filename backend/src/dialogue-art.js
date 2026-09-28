@@ -12,13 +12,6 @@ const characterKeys = new Set(dialogueCatalog.characters.map(c => c.key));
 export const isCharacterKey = key => characterKeys.has(key);
 export const isExpressionKey = key => typeof key === 'string' && EXPRESSION_KEY.test(key);
 
-// "Kaget!" -> "kaget", "Senyum lebar" -> "senyum-lebar". Empty when the label
-// has no Latin letters or digits (a key must be URL- and file-name safe).
-export function expressionKeyFromLabel(label) {
-  return String(label || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32).replace(/-+$/, '');
-}
-
 // Reads the header of an uploaded image. The stage draws uploads without a
 // mask, so only formats that can carry transparency are accepted, and only
 // when the file actually declares an alpha channel.

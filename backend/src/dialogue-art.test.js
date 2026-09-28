@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { expressionKeyFromLabel, inspectArt, isExpressionKey, loadArtManifest } from './dialogue-art.js';
+import { inspectArt, isExpressionKey, loadArtManifest } from './dialogue-art.js';
 import { normalizeDialogScene, publicDialogScene } from './dialogue-scene.js';
 
 const chunk = (type, data) => {
@@ -36,11 +36,7 @@ test('uploads must be PNG/WebP that declare transparency, with their real size',
   assert.match(inspectArt(Buffer.concat([png(6), Buffer.alloc(2 * 1024 * 1024)])).error, /2 MB/);
 });
 
-test('expression keys are URL-safe slugs derived from the label', () => {
-  assert.equal(expressionKeyFromLabel('Kaget!'), 'kaget');
-  assert.equal(expressionKeyFromLabel('  Senyum Lebar '), 'senyum-lebar');
-  assert.equal(expressionKeyFromLabel('Marah (sedikit)'), 'marah-sedikit');
-  assert.equal(expressionKeyFromLabel('驚き'), '');
+test('expression keys are URL- and file-name-safe slugs', () => {
   assert.ok(isExpressionKey('senyum-lebar'));
   for (const bad of ['', '-kaget', 'Kaget', 'a/b', 'x'.repeat(33), null]) assert.equal(isExpressionKey(bad), false);
 });

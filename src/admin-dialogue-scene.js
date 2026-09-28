@@ -98,7 +98,7 @@
   // expression each line uses (dialog_scene.expressions).
   const BASE_NAMES = new Set(['base','dasar','netral','neutral','default','bawaan']);
   const MAX_BYTES = 2 * 1024 * 1024;
-  const slug = label => String(label || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  const slug = label => String(label || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32).replace(/-+$/, '');
   const labelFromFile = name => { const t = String(name).replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim(); return t.charAt(0).toUpperCase() + t.slice(1); };
   const artFor = key => window.EzDialogue.artFor?.(key) || {base: null, expressions: []};
