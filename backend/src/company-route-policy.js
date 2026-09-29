@@ -78,6 +78,7 @@ export const LEGACY_ROUTES = [
   ["POST", "/lessons/:lessonId/bunpou-flow/publish", null],
   ["GET", "/settings/learning-flow-communication", null],
   ["PUT", "/settings/learning-flow-communication", null],
+  ["GET", "/settings/learning-flow-communication/readiness", null],
   ["GET", "/settings/bunpou-flow-pilot", null],
   ["PUT", "/settings/bunpou-flow-pilot", null],
   // Paket 3: tinjauan shadow, read-only, owner-only (membaca riwayat

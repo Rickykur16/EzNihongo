@@ -68,6 +68,9 @@ function setup() {
     openModal: content => { state.modal = content; },
     closeModal: () => { state.closed++; },
     modalContent: { style: {} }, confirm: () => true,
+    // The AI tab also loads the dialogue-question card (its own tests live in
+    // learning-flow-admin-ui.test.js).
+    flowOverviewLoad: () => { state.flowOverviewLoads = (state.flowOverviewLoads || 0) + 1; },
   });
   ctx.window = ctx;
   vm.runInContext(source, ctx);

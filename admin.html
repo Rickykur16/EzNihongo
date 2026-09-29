@@ -165,6 +165,11 @@
   .lesson-drawer { flex: 1; min-width: 0; border: 1px solid var(--paper-300); border-radius: 10px; background: var(--paper-50, #fafafa); padding: 16px; max-height: 80vh; overflow-y: auto; }
   .drawer-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
   .drawer-section { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--paper-300); }
+  .flow-reasons { margin: 6px 0 0; padding-left: 18px; font-size: 12px; color: #525252; line-height: 1.45; }
+  .flow-reasons li + li { margin-top: 3px; }
+  .flow-reasons-other { margin-top: 8px; font-size: 12px; font-weight: 600; color: #404040; }
+  .flow-save-error { margin-top: 10px; padding: 8px 10px; border: 1px solid #fecaca; background: #fef2f2; border-radius: 6px; font-size: 12px; color: #991b1b; }
+  .flow-save-error .flow-reasons, .flow-save-error .flow-reasons-other { color: #7f1d1d; }
   @media (max-width: 900px) { .lesson-split { flex-direction: column; } .lesson-list { flex-basis: auto; max-width: none; width: 100%; max-height: 40vh; } }
   .pill { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); background: var(--paper-200); color: var(--ink-700); font-size: 11px; font-family: var(--font-mono); }
   .lock-screen { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
@@ -1285,6 +1290,16 @@ async function renderAiSettings() {
   } catch { /* tetap render editor; backend pakai default */ }
   window.__coachPromptDefault = def;
   pane.innerHTML = `
+    <div id="flow-overview" style="max-width:760px;border:1px solid #e5e5e5;border-radius:8px;padding:18px 20px;background:#fff;margin-bottom:18px;">
+      <h2 style="margin:0 0 4px;">Soal dialog di Percakapan</h2>
+      <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 12px;">
+        Pertanyaan yang ditulis di 🎭 Dialog baru tampil ke siswa setelah pelajarannya dinyalakan.
+        Nyalakan per pelajaran dari <strong>Kelola Pelajaran → pelajaran Percakapan → "Soal dialog untuk siswa"</strong>;
+        di sana juga tertulis apa yang masih kurang. Di sini: daftar yang sedang aktif.
+      </p>
+      <div id="flow-overview-body" role="status" aria-live="polite" style="font-size:13px;font-family:var(--font-body);">Memuat…</div>
+      <div id="flow-overview-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"></div>
+    </div>
     <div id="bf-pilot-panel" style="max-width:760px;border:1px solid #e5e5e5;border-radius:8px;padding:18px 20px;background:#fff;margin-bottom:18px;">
       <h2 style="margin:0 0 4px;">Bunpou Flow — pilot satu pelajaran</h2>
       <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 14px;">
@@ -1344,6 +1359,7 @@ async function renderAiSettings() {
       </div>
       <div id="ms-shadow-out" style="margin-top:14px;"></div>
     </div>`;
+  flowOverviewLoad();
   await bfPilotLoadOptions();
 }
 
@@ -2701,8 +2717,283 @@ function conversationDrawerHtml(l) {
       <div id="items-wrap" style="overflow-x:auto;">${items.length ? renderItemTable('grammar', items, 'dialog')
         : '<div class="empty" style="padding:16px;">Pelajaran sumber belum punya pola grammar.</div>'}</div>
     </div>
-    ${items.length ? drawerContentBtn(`manageBunpouFlow('${source.id}', '${sourceTitle}', 'dialog')`, '🎧 Arahan menyimak', null) : ''}`;
+    ${items.length ? drawerContentBtn(`manageBunpouFlow('${source.id}', '${sourceTitle}', 'dialog')`, '🎧 Arahan menyimak', null) : ''}
+    ${items.length ? flowSwitchHtml(source) : ''}`;
 }
+
+// ── Soal dialog untuk siswa (alur komunikasi v2) ─────────────────────────
+// The questions written in 🎭 Dialog reach students only while the source
+// lesson is in `learning_flow_communication_v1` (owner-only setting). The
+// server re-checks readiness on every enable; this panel only shows the same
+// check up front (read-only preview) and says what is missing, in words.
+const FLOW_SETTINGS_PATH = '/admin/settings/learning-flow-communication';
+const FLOW_EMPTY_CONFIG = Object.freeze({ enabled: false, courseIds: [], moduleIds: [], lessonIds: [] });
+
+function flowPatternLabel(issue) {
+  if (issue && issue.pattern) return issue.pattern;
+  for (const m of STATE.modules || []) {
+    const g = (m.grammar || []).find((x) => x.id === issue?.grammarId);
+    if (g) return g.pattern || 'pola tanpa nama';
+  }
+  return 'sebuah pola';
+}
+
+function flowIssueText(issue) {
+  const pola = () => `Pola «${flowPatternLabel(issue)}»`;
+  switch (issue?.code) {
+    case 'flow_task_mapping_invalid': {
+      const n = (issue.taskIds || []).length;
+      if (!n) return 'Belum ada Tugas Bunpou yang dipasangkan: di form Tugas Bunpou, isi "Tampilkan otomatis setelah pelajaran" dengan pelajaran Tata Bahasa ini.';
+      if (n > 1) return `Ada ${n} Tugas Bunpou yang dipasangkan ke pelajaran ini — harus tepat satu.`;
+      return 'Tugas Bunpou pasangannya ada di kursus lain — harus di kursus yang sama.';
+    }
+    case 'flow_task_empty': return 'Tugas Bunpou pasangannya belum berisi pola (Kelola Tugas Grammar).';
+    case 'flow_companion_not_current': return issue.publishedFingerprint
+      ? 'Isi Tugas Bunpou berubah setelah Pendamping Bunpou dipublikasikan — buka 🎧 Arahan menyimak (atau 🧭 Pendamping Bunpou di Tata Bahasa), tinjau, lalu Publikasikan ulang.'
+      : 'Pendamping Bunpou belum dipublikasikan — buka 🎧 Arahan menyimak (atau 🧭 Pendamping Bunpou di Tata Bahasa), lalu Publikasikan.';
+    case 'flow_boundary_invalid':
+    case 'flow_boundary_unavailable': return 'Batas kurikulum bab ini belum bisa dipastikan (urutan atau isi kursus/bab bermasalah).';
+    case 'flow_task_source_boundary_invalid': return 'Contoh/soal Tugas Bunpou memakai kosakata atau kanji yang belum diajarkan sampai bab ini.';
+    case 'flow_task_distractor_boundary_invalid': return 'Pengecoh Tugas Bunpou memakai kosakata atau kanji yang belum diajarkan sampai bab ini.';
+    case 'flow_companion_boundary_invalid': return 'Isi Pendamping Bunpou (tujuan/arahan/petunjuk) memakai kosakata atau kanji yang belum diajarkan.';
+    case 'flow_task_dialogue_coverage_incomplete': return `${pola()} punya dialog tapi tidak ada di Tugas Bunpou pasangannya — tambahkan lewat Kelola Tugas Grammar.`;
+    case 'flow_dialogue_owner_or_source_invalid': return `${pola()} ada di Tugas Bunpou tapi belum punya dialog di pelajaran ini — tulis lewat 🎭 Dialog (atau pola itu milik pelajaran/bab lain).`;
+    case 'flow_question_count_invalid': return `${pola()}: perlu 1–2 pertanyaan comprehension dan tepat 1 pertanyaan transfer (sekarang ${issue.comprehensionCount ?? 0} comprehension, ${issue.transferCount ?? 0} transfer) — atur di 🎭 Dialog, lalu Simpan set pertanyaan.`;
+    case 'flow_question_stale': return `${pola()}: dialognya berubah setelah pertanyaannya dibuat — buka 🎭 Dialog, tinjau atau generate ulang pertanyaannya, lalu Simpan set pertanyaan.`;
+    case 'flow_question_review_stale': return `${pola()}: pertanyaan perlu ditinjau ulang terhadap kurikulum terbaru — buka 🎭 Dialog lalu Simpan set pertanyaan.`;
+    case 'flow_question_provenance_invalid': return `${pola()}: ada pertanyaan dengan asal yang tidak sah — buka 🎭 Dialog lalu Simpan set pertanyaan.`;
+    case 'flow_comprehension_evidence_invalid': return `${pola()}: kutipan bukti pertanyaan comprehension tidak ada di dialog — perbaiki di 🎭 Dialog.`;
+    case 'flow_question_boundary_invalid': return `${pola()}: pertanyaannya memakai kosakata atau kanji yang belum diajarkan.`;
+    case 'flow_dialogue_boundary_invalid': return `${pola()}: dialognya memakai kosakata atau kanji yang belum diajarkan.`;
+    case 'flow_scope_empty':
+    case 'flow_scope_has_no_lessons': return 'Pelajaran ini belum punya dialog maupun Tugas Bunpou pasangan.';
+    case 'flow_scope_id_missing': return 'Pelajaran/bab/kursus di pengaturan tidak ditemukan (mungkin sudah dihapus).';
+    case 'flow_scope_lesson_type_invalid': return 'Hanya pelajaran Tata Bahasa (teks/video) yang bisa dinyalakan.';
+    case 'flow_config_missing': return 'Belum pernah diatur.';
+    case 'flow_config_invalid': return 'Pengaturan tersimpan tidak valid — menyimpan dari sini akan menggantinya.';
+    default: return String(issue?.code || 'Syarat tidak terpenuhi.');
+  }
+}
+
+function flowLessonName(titles, lessonId) {
+  const t = titles?.lessons?.[lessonId];
+  if (!t) return 'Pelajaran lain';
+  return [t.moduleTitle, t.conversationTitle || t.title].filter(Boolean).join(' · ');
+}
+
+// Reasons grouped per lesson. The focus lesson (this drawer) is listed without
+// a heading; any other lesson is named, because a PUT fails when ANY lesson in
+// the scope is not ready.
+function flowReasonsHtml(readiness, titles, focusLessonId) {
+  const list = (issues) => {
+    const texts = [...new Set((issues || []).filter((i) => i && i.code !== 'flow_disabled').map(flowIssueText))];
+    return texts.length ? '<ul class="flow-reasons">' + texts.map((t) => `<li>${escapeHtml(t)}</li>`).join('') + '</ul>' : '';
+  };
+  let html = list(readiness?.issues);
+  for (const row of readiness?.lessons || []) {
+    if (!row || row.ready) continue;
+    const reasons = list(row.issues);
+    if (!reasons) continue;
+    html += row.lessonId === focusLessonId ? reasons
+      : `<div class="flow-reasons-other">${escapeHtml(flowLessonName(titles, row.lessonId))}:</div>${reasons}`;
+  }
+  return html;
+}
+
+function flowSwitchState(flow, ids) {
+  const config = flow?.settings?.config || FLOW_EMPTY_CONFIG;
+  const on = !!config.enabled;
+  const byLesson = on && (config.lessonIds || []).includes(ids.sourceId);
+  const byWider = on && ((config.moduleIds || []).includes(ids.moduleId) || (config.courseIds || []).includes(ids.courseId));
+  return { active: byLesson || byWider, byLesson, byWider, ready: !!flow?.preview?.readiness?.ready };
+}
+
+// Next config when this one lesson is switched. A disabled config starts from
+// empty, so lessons listed in an old disabled config do not come back silently.
+function flowNextConfig(config, sourceId, turnOn) {
+  const base = config && config.enabled ? config : FLOW_EMPTY_CONFIG;
+  const lessonIds = turnOn ? [...new Set([...(base.lessonIds || []), sourceId])].sort()
+    : (base.lessonIds || []).filter((id) => id !== sourceId);
+  const courseIds = [...(base.courseIds || [])], moduleIds = [...(base.moduleIds || [])];
+  const enabled = courseIds.length + moduleIds.length + lessonIds.length > 0;
+  return enabled ? { enabled, courseIds, moduleIds, lessonIds } : { ...FLOW_EMPTY_CONFIG };
+}
+
+function flowSwitchHtml(source) {
+  return `<div class="drawer-section" id="flow-switch" data-source-id="${escapeHtml(source.id)}">
+    <h4 style="margin:0 0 6px;font-size:13px;">Soal dialog untuk siswa</h4>
+    <div id="flow-switch-body" role="status" aria-live="polite" style="font-size:13px;font-family:var(--font-body);">Memeriksa…</div>
+    <div id="flow-switch-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"></div>
+    <div style="font-size:11px;color:#a3a3a3;margin-top:6px;font-family:var(--font-body);">Kalau aktif, pertanyaan comprehension tampil di bawah tiap dialog di Percakapan ini, dan Tugas Bunpou pasangannya mendapat langkah "Gunakan di situasi lain" (pertanyaan transfer). Server hanya menyalakannya kalau semua syarat terpenuhi.</div>
+  </div>`;
+}
+
+function flowSwitchIds(panel) {
+  const found = cbFindLesson(panel.dataset.sourceId);
+  const courseRow = STATE.courses.find((c) => c.slug === STATE.selectedCourse);
+  return { sourceId: panel.dataset.sourceId, moduleId: found?.module?.id || '', courseId: found?.module?.course_id || courseRow?.id || '' };
+}
+
+function flowSwitchRender(panel) {
+  const body = panel.querySelector('#flow-switch-body');
+  const actions = panel.querySelector('#flow-switch-actions');
+  const flow = panel.__flow || {};
+  if (flow.loading) { body.textContent = 'Memeriksa…'; actions.innerHTML = ''; return; }
+  if (flow.loadError) {
+    body.textContent = flow.loadError === 'owner'
+      ? 'Hanya pemilik (owner) yang bisa menyalakan atau mematikan soal dialog.'
+      : 'Status gagal dimuat: ' + flow.loadError;
+    actions.innerHTML = flow.loadError === 'owner' ? ''
+      : '<button type="button" class="btn btn-ghost btn-sm" onclick="flowSwitchLoad()">Muat ulang</button>';
+    return;
+  }
+  const ids = flowSwitchIds(panel);
+  const st = flowSwitchState(flow, ids);
+  const reasons = st.ready ? '' : flowReasonsHtml(flow.preview?.readiness, flow.preview?.titles, ids.sourceId);
+  const head = st.active && st.ready ? '<strong style="color:#15803d;">● Aktif</strong> — siswa menjawab soal dialog di Percakapan ini.'
+    : st.active ? '<strong style="color:#b45309;">● Aktif, tapi belum siap</strong> — sementara siswa hanya melihat dialog tanpa soal sampai ini dibereskan:'
+      : st.ready ? '<strong style="color:#525252;">○ Nonaktif</strong> — semua syarat terpenuhi, siap dinyalakan.'
+        : '<strong style="color:#525252;">○ Nonaktif</strong> — belum bisa dinyalakan:';
+  let saveError = '';
+  if (flow.saveError) {
+    const e = flow.saveError;
+    const detail = e.readiness ? flowReasonsHtml(e.readiness, e.titles, ids.sourceId) : '';
+    const others = (e.readiness?.lessons || []).some((row) => row && !row.ready && row.lessonId !== ids.sourceId);
+    saveError = `<div class="flow-save-error">${escapeHtml(e.turnOn ? 'Belum bisa dinyalakan' : 'Belum bisa dimatikan')}${detail ? ':' : ` (${escapeHtml(e.code)}).`}${detail}${others
+      ? '<div>Pelajaran lain yang sudah aktif juga harus siap supaya pengaturan bisa disimpan. Bereskan pelajaran itu, atau matikan semua dari tab AI.</div>' : ''}</div>`;
+  }
+  body.innerHTML = head + reasons + saveError;
+  const busy = flow.busy ? 'disabled' : '';
+  const button = st.byLesson
+    ? `<button type="button" class="btn btn-ghost" ${busy} onclick="flowSwitchSave(false)">Matikan soal dialog</button>`
+    : st.byWider ? '<span style="font-size:12px;color:#737373;">Aktif lewat pengaturan bab/kursus — matikan dari tab AI.</span>'
+      : `<button type="button" class="btn btn-primary" ${busy || (st.ready ? '' : 'disabled')} onclick="flowSwitchSave(true)">Nyalakan soal dialog</button>`;
+  actions.innerHTML = button + `<button type="button" class="btn btn-ghost" ${busy} onclick="flowSwitchLoad()">Periksa ulang</button>`;
+}
+
+window.flowSwitchLoad = async () => {
+  const panel = document.getElementById('flow-switch');
+  if (!panel) return;
+  const request = {};
+  panel.__request = request;
+  panel.__flow = { loading: true };
+  flowSwitchRender(panel);
+  const current = () => panel === document.getElementById('flow-switch') && panel.__request === request;
+  try {
+    const [settings, preview] = await Promise.all([
+      api(FLOW_SETTINGS_PATH),
+      api(`${FLOW_SETTINGS_PATH}/readiness?lessonId=${encodeURIComponent(panel.dataset.sourceId)}`),
+    ]);
+    if (!current()) return;
+    panel.__flow = { settings, preview };
+  } catch (err) {
+    if (!current()) return;
+    panel.__flow = { loadError: err?.status === 403 ? 'owner' : (err?.message || 'kesalahan tidak dikenal') };
+  }
+  flowSwitchRender(panel);
+};
+
+window.flowSwitchSave = async (turnOn) => {
+  const panel = document.getElementById('flow-switch');
+  const flow = panel?.__flow;
+  if (!flow?.settings || flow.busy) return;
+  const sourceId = panel.dataset.sourceId;
+  flow.busy = true;
+  flow.saveError = null;
+  flowSwitchRender(panel);
+  try {
+    await api(FLOW_SETTINGS_PATH, { method: 'PUT', body: JSON.stringify({
+      config: flowNextConfig(flow.settings.config, sourceId, turnOn),
+      expectedConfigRevision: flow.settings.configRevision,
+    }) });
+    notify(turnOn ? 'Soal dialog dinyalakan untuk pelajaran ini.' : 'Soal dialog dimatikan untuk pelajaran ini.');
+    await flowSwitchLoad();
+  } catch (err) {
+    if (panel !== document.getElementById('flow-switch') || panel.__flow !== flow) return;
+    if (err?.status === 409) {
+      notify('Pengaturan berubah di tempat lain — status dimuat ulang. Coba lagi.', true);
+      await flowSwitchLoad();
+      return;
+    }
+    flow.busy = false;
+    flow.saveError = { turnOn, code: err?.body?.error || err?.message || 'gagal',
+      readiness: err?.body?.readiness || null, titles: err?.body?.titles || {} };
+    flowSwitchRender(panel);
+  }
+};
+
+// AI tab: which lessons are on, and one always-allowed "Matikan semua".
+function flowOverviewRender(panel) {
+  const body = panel.querySelector('#flow-overview-body');
+  const actions = panel.querySelector('#flow-overview-actions');
+  const flow = panel.__flow || {};
+  const reload = `<button type="button" class="btn btn-ghost" ${flow.busy ? 'disabled' : ''} onclick="flowOverviewLoad()">Muat ulang</button>`;
+  if (flow.loading) { body.textContent = 'Memuat…'; actions.innerHTML = ''; return; }
+  if (flow.loadError) {
+    body.textContent = flow.loadError === 'owner' ? 'Hanya pemilik (owner) yang bisa melihat dan mengubah pengaturan ini.'
+      : 'Pengaturan gagal dimuat: ' + flow.loadError;
+    actions.innerHTML = flow.loadError === 'owner' ? '' : reload;
+    return;
+  }
+  const { config, readiness, titles, diagnostic } = flow.settings;
+  if (!config?.enabled) {
+    body.innerHTML = '<strong style="color:#525252;">○ Nonaktif untuk semua pelajaran.</strong>'
+      + (diagnostic === 'flow_config_invalid' ? `<div class="flow-save-error">${escapeHtml(flowIssueText({ code: diagnostic }))}</div>` : '');
+    actions.innerHTML = reload;
+    return;
+  }
+  const wider = [...(config.courseIds || []).map((id) => 'Seluruh kursus ' + (titles?.courses?.[id] || id)),
+    ...(config.moduleIds || []).map((id) => 'Seluruh ' + (titles?.modules?.[id]?.title || ('bab ' + id)))];
+  const rows = (readiness?.lessons || []).map((row) => {
+    const reasons = row.ready ? '' : flowReasonsHtml({ lessons: [row] }, titles, row.lessonId);
+    return `<li>${row.ready ? '<span style="color:#15803d;">✓</span>' : '<span style="color:#b45309;">⚠</span>'} ${escapeHtml(flowLessonName(titles, row.lessonId))}${row.ready ? ''
+      : ' — <em>belum siap, siswa sementara hanya melihat dialog</em>'}${reasons}</li>`;
+  }).join('');
+  body.innerHTML = `<strong style="color:#15803d;">● Aktif</strong> untuk ${(readiness?.lessons || []).length} pelajaran.`
+    + (wider.length ? `<div style="margin-top:4px;color:#525252;">Lewat: ${wider.map(escapeHtml).join(', ')}</div>` : '')
+    + (rows ? `<ul style="margin:8px 0 0;padding-left:18px;line-height:1.5;">${rows}</ul>` : '')
+    + flowReasonsHtml({ issues: readiness?.issues || [] }, titles, null);
+  actions.innerHTML = `<button type="button" class="btn btn-danger" ${flow.busy ? 'disabled' : ''} onclick="flowOverviewDisableAll()">Matikan semua</button>` + reload;
+}
+
+window.flowOverviewLoad = async () => {
+  const panel = document.getElementById('flow-overview');
+  if (!panel) return;
+  const request = {};
+  panel.__request = request;
+  panel.__flow = { loading: true };
+  flowOverviewRender(panel);
+  try {
+    const settings = await api(FLOW_SETTINGS_PATH);
+    if (panel !== document.getElementById('flow-overview') || panel.__request !== request) return;
+    panel.__flow = { settings };
+  } catch (err) {
+    if (panel !== document.getElementById('flow-overview') || panel.__request !== request) return;
+    panel.__flow = { loadError: err?.status === 403 ? 'owner' : (err?.message || 'kesalahan tidak dikenal') };
+  }
+  flowOverviewRender(panel);
+};
+
+// Always allowed: turning everything off needs no readiness. Active v2 Tugas
+// Bunpou sessions keep their frozen snapshot until they expire.
+window.flowOverviewDisableAll = async () => {
+  const panel = document.getElementById('flow-overview');
+  const flow = panel?.__flow;
+  if (!flow?.settings || flow.busy) return;
+  if (!confirm('Matikan soal dialog untuk SEMUA pelajaran?\n\nSiswa kembali hanya melihat dialog di Percakapan dan Tugas Bunpou alur lama. Sesi Tugas Bunpou yang sedang berjalan tetap selesai dengan isinya sendiri.')) return;
+  flow.busy = true;
+  flowOverviewRender(panel);
+  try {
+    await api(FLOW_SETTINGS_PATH, { method: 'PUT', body: JSON.stringify({
+      config: { ...FLOW_EMPTY_CONFIG }, expectedConfigRevision: flow.settings.configRevision,
+    }) });
+    notify('Soal dialog dimatikan untuk semua pelajaran.');
+  } catch (err) {
+    notify(err?.status === 409 ? 'Pengaturan berubah di tempat lain — dimuat ulang. Coba lagi.'
+      : 'Gagal mematikan: ' + (err?.message || 'kesalahan tidak dikenal'), true);
+  }
+  await flowOverviewLoad();
+};
 
 // "+ Buat pelajaran Percakapan" from a Tata Bahasa drawer: the new-lesson form,
 // prefilled so the admin only reviews and saves.
@@ -2796,6 +3087,7 @@ window.openLessonDrawer = (lessonId) => {
     // Rows in the Percakapan drawer belong to the source lesson.
     const source = conversationSourceFor(l);
     window.__itemCtx = source ? { kind: 'grammar', lessonId: source.id, lessonTitle: source.title, moduleId: mod.id } : null;
+    if (document.getElementById('flow-switch')) flowSwitchLoad();
   }
   renderLessonListPane();
 };
@@ -5845,6 +6137,7 @@ window.bfPublish = async () => {
     notify('Pendamping Bunpou dipublikasikan');
     closeModal();
     if (document.getElementById('bf-pilot-panel')) await bfPilotLoadOptions();
+    if (document.getElementById('flow-switch')) flowSwitchLoad();
   } catch (err) {
     if (err?.status === 409) bfDraftSaveError(err);
     else notify('Gagal publikasi: ' + err.message, true);
@@ -6063,6 +6356,7 @@ window.admDialogQuestionSave = async () => {
     state.dialogueFingerprint = saved.dialogueFingerprint || state.dialogueFingerprint;
     notify('Set pertanyaan dialog tersimpan.');
     if (Array.isArray(saved.validation)) saved.validation.forEach(item => notifyLearningWarnings(item));
+    if (document.getElementById('flow-switch')) flowSwitchLoad();
   } catch (err) { admDialogQuestionError('Simpan set pertanyaan', err); }
   finally { state.busy = false; admRenderDialogModal(); }
 };
@@ -6442,6 +6736,8 @@ window.saveItemRow = async (btn) => {
     if (tr.dataset.mode === 'dialog') {
       const status = tr.querySelector('.dialog-status');
       if (status) status.innerHTML = dialogStatusHtml({ example_dialog: tr.querySelector('textarea[name="example_dialog"]')?.value });
+      // A saved dialogue can make its questions stale; show that right away.
+      if (document.getElementById('flow-switch')) flowSwitchLoad();
     }
     notify('Tersimpan');
     notifyLearningWarnings(savedResult);

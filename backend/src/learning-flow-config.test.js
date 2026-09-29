@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseLearningFlowConfig, loadLearningFlowConfig, flowScopeAllows,
   resolveFlowEligibility, getLearningFlowSettings, saveLearningFlowSettings,
-  learningFlowReadiness, V2_RUNTIME_AVAILABLE } from './learning-flow-config.js';
+  learningFlowReadiness, previewLessonFlowReadiness,
+  V2_RUNTIME_AVAILABLE } from './learning-flow-config.js';
 import { permissionForLegacyRoute, LEGACY_ROUTES } from './company-route-policy.js';
 import { contentRevisionId } from './bunpou-flow-service.js';
 import { dialogueFingerprint, questionFingerprint } from './dialogue-question-service.js';
@@ -325,11 +326,32 @@ test('readiness pins every visible dialogue question to current source, review, 
     item.code === 'flow_dialogue_boundary_invalid'));
 });
 
+test('readiness preview checks exactly one source lesson and never writes', async () => {
+  const seen = [];
+  const transaction = fn => fn({ async query(sql) { throw Error(`unexpected SQL: ${sql}`); } });
+  const checkReadiness = async (_client, config) => { seen.push(config);
+    return { ready: false, issues: [], lessons: [] }; };
+  await assert.rejects(previewLessonFlowReadiness('not-a-uuid', { transaction, checkReadiness }),
+    error => error.status === 400 && error.message === 'invalid_lesson_id');
+  await assert.rejects(previewLessonFlowReadiness(undefined, { transaction, checkReadiness }),
+    error => error.status === 400);
+  assert.equal(seen.length, 0);
+  const result = await previewLessonFlowReadiness('ABCDEF00-0000-4000-8000-00000000000A',
+    { transaction, checkReadiness });
+  assert.deepEqual(result, { ready: false, issues: [], lessons: [] });
+  // Same shape the PUT would check, lower-cased like parseLearningFlowConfig demands.
+  assert.deepEqual(seen, [{ enabled: true, courseIds: [], moduleIds: [],
+    lessonIds: ['abcdef00-0000-4000-8000-00000000000a'] }]);
+});
+
 test('learning flow settings policy is exact and owner only', () => {
   assert.equal(LEGACY_ROUTES.filter(([method, path]) =>
     ['GET', 'PUT'].includes(method) && path === '/settings/learning-flow-communication').length, 2);
   assert.equal(permissionForLegacyRoute('GET', '/settings/learning-flow-communication'), null);
   assert.equal(permissionForLegacyRoute('PUT', '/settings/learning-flow-communication'), null);
+  assert.equal(LEGACY_ROUTES.filter(([method, path]) => method === 'GET' &&
+    path === '/settings/learning-flow-communication/readiness').length, 1);
+  assert.equal(permissionForLegacyRoute('GET', '/settings/learning-flow-communication/readiness'), null);
   // Exact route inventory still matters: a broad staff wildcard is forbidden.
   assert.equal(permissionForLegacyRoute('POST', '/settings/learning-flow-communication'), null);
   assert.equal(permissionForLegacyRoute('GET', '/settings/learning-flow-communication/other'), null);

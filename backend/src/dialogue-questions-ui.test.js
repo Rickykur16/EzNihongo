@@ -29,11 +29,11 @@ function rootFor(grammarId = 'grammar-1') {
     fire: (name, event) => listeners.get(name)?.(event),
   };
 }
-function controller(api, onReload = () => {}) {
+function controller(api, onReload = () => {}, crypto = null) {
   let sequence = 0;
-  const window = { ezApi: api, location: { reload: onReload }, crypto: { randomUUID: () =>
+  const window = { ezApi: api, location: { reload: onReload }, crypto: crypto || { randomUUID: () =>
     `00000000-0000-4000-8000-${String(++sequence).padStart(12, '0')}` } };
-  vm.runInNewContext(controllerSource, { window, AbortController });
+  vm.runInNewContext(controllerSource, { window, AbortController, Uint8Array });
   return window.EzDialogueQuestions;
 }
 const batch = (mode = 'inline') => ({ lessonId: 'lesson-1', placement: { mode },
@@ -213,6 +213,29 @@ test('double click makes one POST; network retry keeps ID, changed answer and la
   await flow.mount({ root: remounted, lesson: lesson() });
   assert.match(remounted.questions.innerHTML, /Jawaban dari server/);
   assert.doesNotMatch(remounted.questions.innerHTML, /correctIndex|evidence/);
+});
+
+test('without crypto.randomUUID (insecure context, Safari < 15.4) the request ID is still a server-valid UUID', async () => {
+  const writes = [];
+  const { getRandomValues } = await import('node:crypto');
+  const flow = controller(async (path, options) => {
+    if (!options?.method) return response(batch());
+    writes.push(JSON.parse(options.body));
+    return response({ questionId: 'question-1', questionVersion: 'version-1', correct: false });
+  }, () => {}, { getRandomValues: array => getRandomValues(array) });
+  const root = rootFor();
+  await flow.mount({ root, lesson: lesson() });
+  const ui = form();
+  root.fire('change', { target: ui.select(0) });
+  await root.fire('submit', ui.submitEvent());
+  root.fire('change', { target: ui.select(1) });
+  await root.fire('submit', ui.submitEvent());
+  assert.equal(writes.length, 2);
+  // Same pattern the answer endpoint enforces (dialogue-question-learner.js).
+  const serverUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+  for (const write of writes) assert.match(write.requestId, serverUuid);
+  assert.notEqual(writes[0].requestId, writes[1].requestId);
+  assert.doesNotMatch(ui.feedback.innerHTML, /belum terkirim/i);
 });
 
 test('stale 409 disables the old question, clears retry path, and offers page reload', async () => {

@@ -334,9 +334,8 @@
       (`dialogue-question-backfill.js`) membacanya. Satu-satunya set soal dialog = soal di
       🎭 Dialog (`grammar_dialog_questions`, 2 pemahaman + 1 transfer). **PENTING**: soal
       itu hanya tampil ke siswa kalau alur komunikasi v2 (`learning_flow_communication_v1`)
-      aktif untuk pelajaran sumbernya — dan TIDAK ADA tombol admin untuk menyalakannya
-      (hanya `PUT /admin/settings/learning-flow-communication`, dengan pemeriksaan
-      kesiapan kurikulum). Tanpa itu, halaman Percakapan menampilkan dialog tanpa soal.
+      aktif untuk pelajaran sumbernya — tombolnya ada di drawer Percakapan (lihat catatan
+      berikutnya). Tanpa itu, halaman Percakapan menampilkan dialog tanpa soal.
       **Jebakan saat menguji**: editor Pendamping butuh Tugas Bunpou pasangan (popup) —
       tanpa itu `currentFingerprint` null dan simpan draft ditolak 409
       `source_changed_since_review` (perilaku lama, bukan akibat perubahan ini).
@@ -348,6 +347,51 @@
       sumber ganda/kosong), siswa 14/14 (tautan lama, urutan sidebar, tombol selesai,
       progres server, "Lanjut Belajar" dashboard, HP tanpa overflow); QA repo
       dialogue-scene + learning-flow lulus.
+
+      **Tombol "Soal dialog untuk siswa" (menyalakan alur v2 per pelajaran)** — user:
+      "Nyalain tombolnya di admin untuk soal dialog". Sebelumnya satu-satunya jalan
+      hanyalah `PUT /admin/settings/learning-flow-communication` tanpa UI. **Letaknya di
+      drawer Percakapan** (tempat soalnya ditulis), bukan hanya di tab AI: panel
+      menampilkan status (Nonaktif / siap dinyalakan / ● Aktif / ● Aktif tapi belum siap)
+      dan DAFTAR KEKURANGAN dalam kalimat sebelum tombol diklik — dari endpoint baru
+      read-only `GET /admin/settings/learning-flow-communication/readiness?lessonId=`
+      (`previewLessonFlowReadiness`, menjalankan pemeriksaan yang SAMA PERSIS dengan
+      PUT untuk satu pelajaran sumber; owner-only `null` di `company-route-policy.js`).
+      Semua kode kesiapan server punya kalimat Indonesia (`flowIssueText`; ada tes yang
+      mengambil SEMUA kode `flow_*` dari `learning-flow-config.js` dan gagal kalau ada
+      yang belum diterjemahkan). GET/PUT/pratinjau kini ikut mengirim `titles` (judul
+      pelajaran/bab/kursus) supaya kegagalan yang menyebut pelajaran LAIN bisa dinamai.
+      **Semantik tombol**: menyalakan = menambah id pelajaran sumber ke `lessonIds`;
+      mematikan = menghapusnya (daftar kosong → `enabled:false`). Config yang sedang
+      nonaktif dianggap kosong saat menyalakan, supaya daftar lama tidak ikut hidup
+      diam-diam. Kalau pelajaran tercakup lewat bab/kursus, tombol per-pelajaran diganti
+      teks "matikan dari tab AI". **Jebakan server yang disengaja, bukan bug**: PUT
+      memeriksa kesiapan SELURUH cakupan, jadi menyalakan/mematikan satu pelajaran GAGAL
+      kalau pelajaran lain yang aktif sedang tidak siap — panel menamai pelajaran itu, dan
+      tab AI punya kartu "Soal dialog di Percakapan" (daftar yang aktif + "Matikan semua",
+      yang selalu boleh karena mematikan tidak butuh kesiapan). Runtime tetap aman: siswa
+      di pelajaran yang aktif tapi tidak siap otomatis jatuh ke alur lama (dialog tanpa
+      soal). **Yang ketahuan dari E2E**: mengedit dialog membuat soalnya basi DAN
+      Pendamping Bunpou tidak current lagi (isi tugas ikut berubah) — dua-duanya harus
+      dibereskan (Simpan set pertanyaan + Publikasikan ulang) sebelum aktif lagi; panel
+      menyegarkan diri sendiri setelah simpan dialog, simpan set pertanyaan, dan publikasi.
+      **Bug nyata ikut diperbaiki**: `src/dialogue-questions.js` memanggil
+      `crypto.randomUUID()` tanpa cadangan — tidak ada di Safari < 15.4 dan di konteks
+      non-HTTPS, jadi jawaban siswa gagal terkirim di sana; sekarang cadangan v4 dari
+      `getRandomValues` (lulus regex UUID server, tes dibuktikan menggigit).
+      **Divalidasi**: `npm test` dengan DB 861 tes, 860 hijau, 1 skip lama, 0 gagal; 7 tes
+      vm-slice UI baru (6 mutasi, semuanya tertangkap) + tes HTTP pratinjau + tes parser
+      (config keluaran UI divalidasi `parseLearningFlowConfig` asli); E2E Postgres+backend+
+      Chromium 19/19: belum siap → alasan tertulis + tombol terkunci, publikasi Pendamping
+      dari drawer menyegarkan panel, simpan soal → siap → Nyalakan → setting tersimpan
+      tepat satu pelajaran, siswa melihat 2 soal di Percakapan + menjawab benar, Tugas
+      Bunpou jadi sesi v2 dengan langkah transfer, edit dialog → "Aktif, tapi belum siap"
+      dan siswa jatuh ke dialog tanpa soal, tab AI menamai pelajarannya, "Matikan semua"
+      menyimpan config kosong, 390 px tanpa luber. **Belum dilakukan**: tidak ada yang
+      dinyalakan di produksi — admin menekan tombolnya sendiri, dan server hanya
+      menyalakan kalau semua syarat terpenuhi. Arahan 🎧 (`directions`) tetap hanya
+      tampil ke siswa lewat pilot v1 (`content.js` melampirkan `bunpouFlow` hanya untuk
+      pelajaran pilot) — perilaku lama, tidak diubah.
 
       **Dialog grammar: speaker asli dipilih dari SUARA ELEVENLABS ASLI —
       bukan kode A/B, dan bukan bucket perempuan/laki-laki — plus tes audio

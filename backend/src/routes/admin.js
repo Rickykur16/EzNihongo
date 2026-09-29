@@ -62,7 +62,8 @@ import { generateGroundedContent } from '../grounded-generation.js';
 import { dialogueSourceFingerprint } from '../curriculum-boundary-context.js';
 import { DialogueQuestionError, loadDialogueQuestionContext, listDialogueQuestions,
   saveDialogueQuestions, assertDialogueQuestionLessonMoveAllowed } from '../dialogue-question-service.js';
-import { getLearningFlowSettings, saveLearningFlowSettings } from '../learning-flow-config.js';
+import { getLearningFlowSettings, previewLessonFlowReadiness,
+  saveLearningFlowSettings } from '../learning-flow-config.js';
 import { CurriculumModeError, getCurriculumBoundaryMode,
   saveCurriculumBoundaryMode } from '../curriculum-boundary-mode.js';
 import { captureReadinessAttestation,
@@ -2551,18 +2552,68 @@ router.post('/lessons/:lessonId/bunpou-flow/publish', asyncHandler(async (req, r
 // requires the target to actually be a lesson with a companion already
 // published, so a typo'd or forgotten-to-publish lesson id can not be
 // switched live by accident.
+// Readiness and config name lessons/modules/courses by id only. The admin
+// switch (Percakapan drawer, AI tab) shows the reasons per lesson, and a
+// failure can name a lesson of another Bab, so the titles ride along.
+const FLOW_TITLE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+async function flowScopeTitles({ config, readiness } = {}) {
+  const want = { course: new Set(config?.courseIds || []), module: new Set(config?.moduleIds || []),
+    lesson: new Set(config?.lessonIds || []) };
+  for (const row of readiness?.lessons || []) if (row?.lessonId) want.lesson.add(row.lessonId);
+  for (const row of readiness?.issues || []) if (want[row?.kind] && row.id) want[row.kind].add(row.id);
+  const ids = key => [...want[key]].filter(id => typeof id === 'string' && FLOW_TITLE_ID.test(id));
+  const titles = { courses: {}, modules: {}, lessons: {} };
+  if (ids('course').length) {
+    for (const row of (await query('SELECT id, title FROM courses WHERE id = ANY($1::uuid[])',
+      [ids('course')])).rows) titles.courses[row.id] = row.title;
+  }
+  if (ids('module').length) {
+    for (const row of (await query(`SELECT m.id, m.title, c.title AS course_title
+      FROM modules m JOIN courses c ON c.id = m.course_id WHERE m.id = ANY($1::uuid[])`,
+    [ids('module')])).rows) titles.modules[row.id] = { title: row.title, courseTitle: row.course_title };
+  }
+  if (ids('lesson').length) {
+    for (const row of (await query(`SELECT l.id, l.title, m.title AS module_title,
+        c.title AS course_title, cv.title AS conversation_title
+      FROM lessons l JOIN modules m ON m.id = l.module_id JOIN courses c ON c.id = m.course_id
+      LEFT JOIN lessons cv ON cv.conversation_source_lesson_id = l.id
+      WHERE l.id = ANY($1::uuid[])`, [ids('lesson')])).rows) {
+      titles.lessons[row.id] = { title: row.title, moduleTitle: row.module_title,
+        courseTitle: row.course_title, conversationTitle: row.conversation_title || null };
+    }
+  }
+  return titles;
+}
+
 router.get('/settings/learning-flow-communication', asyncHandler(async (_req, res) => {
   res.set('Cache-Control', 'private, no-store');
-  res.json(await getLearningFlowSettings());
+  const settings = await getLearningFlowSettings();
+  res.json({ ...settings, titles: await flowScopeTitles(settings) });
 }));
 
 router.put('/settings/learning-flow-communication', asyncHandler(async (req, res) => {
   res.set('Cache-Control', 'private, no-store');
-  try { res.json(await saveLearningFlowSettings(req.body || {})); }
+  let saved;
+  try { saved = await saveLearningFlowSettings(req.body || {}); }
   catch (error) {
     if (!error.status) throw error;
-    res.status(error.status).json({ error: error.message,
-      ...(error.readiness ? { readiness: error.readiness } : {}) });
+    return res.status(error.status).json({ error: error.message,
+      ...(error.readiness ? { readiness: error.readiness,
+        titles: await flowScopeTitles({ readiness: error.readiness }) } : {}) });
+  }
+  res.json({ ...saved, titles: await flowScopeTitles(saved) });
+}));
+
+// Read-only preview for one source lesson (Tata Bahasa text/video): the same
+// check the PUT runs, so a green preview means that lesson alone may be enabled.
+router.get('/settings/learning-flow-communication/readiness', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try {
+    const readiness = await previewLessonFlowReadiness(String(req.query.lessonId || ''));
+    res.json({ readiness, titles: await flowScopeTitles({ readiness }) });
+  } catch (error) {
+    if (!error.status) throw error;
+    res.status(error.status).json({ error: error.message });
   }
 }));
 
