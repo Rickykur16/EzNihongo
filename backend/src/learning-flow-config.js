@@ -373,6 +373,16 @@ export async function getLearningFlowSettings({ transaction = withTransaction,
   });
 }
 
+// Read-only: the exact readiness check a PUT would run if this one source
+// lesson were the whole scope. Lets the admin see what is missing before
+// pressing "Nyalakan" (the PUT still re-checks everything it enables).
+export async function previewLessonFlowReadiness(lessonId, { transaction = withTransaction,
+  checkReadiness = learningFlowReadiness } = {}) {
+  if (typeof lessonId !== 'string' || !UUID.test(lessonId)) fail(400, 'invalid_lesson_id');
+  const config = { enabled: true, courseIds: [], moduleIds: [], lessonIds: [lessonId.toLowerCase()] };
+  return transaction(client => checkReadiness(client, config));
+}
+
 export async function saveLearningFlowSettings(body, { transaction = withTransaction,
   checkReadiness = learningFlowReadiness, lockCourses = lockCurriculumCourses,
   resolveScope = scopedLessons } = {}) {

@@ -303,8 +303,12 @@ test('Bunpou session API with real PostgreSQL SQL', { timeout: 90_000, concurren
     assert.equal(session.contentChanged, false);
     assert.deepEqual(session.productions, []);
     firstItem(session);
-    assert.ok(session.items.some(item => item.step === 4), 'migration 150 permits dialog comprehension');
-    assert.ok(session.items.some(item => item.step === 5), 'migration 150 permits dialog comparison');
+    // The published companion still carries dialogChecks, but questions about
+    // the dialogue belong to the Percakapan lesson now (migration 178): the
+    // task serves only its Step 1/2 drills.
+    assert.ok(session.items.length > 0);
+    assert.ok(session.items.every(item => item.step === 1 || item.step === 2),
+      'no dialogue checks at the end of the Tugas Bunpou');
     for (const item of session.items) assertKeyHidden(item);
     const saved = (await query('SELECT * FROM grammar_task_sessions WHERE id = $1', [session.sessionId])).rows[0];
     assert.equal(saved.content_revision_id, sessionRevisionId(fingerprint, published));

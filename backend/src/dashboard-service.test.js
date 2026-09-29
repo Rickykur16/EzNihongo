@@ -49,41 +49,36 @@ test('Dashboard curriculum count matches the visible lesson list', () => {
 
 function row(id, moduleId = 'bab3', extra = {}) {
   return { id, slug: id, title: id, type: 'video', module_id: moduleId,
-    module_slug: moduleId, module_title: moduleId, completed: false, has_dialog: false,
-    ...extra };
+    module_slug: moduleId, module_title: moduleId, completed: false,
+    popup_after_lesson_id: null, conversation_source_lesson_id: null, ...extra };
 }
 
-test('Dashboard projects each source conversation before its uniquely linked task without counting it', () => {
+test('Dashboard places each Percakapan lesson between its grammar source and its linked task', () => {
   const lessons = [
-    row('g1', 'bab3', { completed: true, has_dialog: true }),
-    row('g2', 'bab3', { has_dialog: true }),
+    row('g1', 'bab3', { completed: true }),
+    row('g2', 'bab3'),
     row('t1', 'bab3', { type: 'grammar_task', popup_after_lesson_id: 'g1' }),
+    row('c1', 'bab3', { type: 'conversation', conversation_source_lesson_id: 'g1' }),
     row('t2', 'bab3', { type: 'grammar_task', popup_after_lesson_id: 'g2' }),
+    row('c2', 'bab3', { type: 'conversation', conversation_source_lesson_id: 'g2' }),
     row('quiz', 'bab3', { type: 'quiz' }),
   ];
-  assert.deepEqual(projectDashboardLearningSteps(lessons).map(step =>
-    [step.view, step.row.id]), [
-    ['lesson', 'g1'], ['conversation', 'g1'], ['lesson', 't1'],
-    ['lesson', 'g2'], ['conversation', 'g2'], ['lesson', 't2'], ['lesson', 'quiz'],
+  assert.deepEqual(projectDashboardLearningSteps(lessons).map(step => [step.view, step.row.id]), [
+    ['lesson', 'g1'], ['lesson', 'g2'], ['lesson', 'c1'], ['lesson', 't1'],
+    ['lesson', 'c2'], ['lesson', 't2'], ['lesson', 'quiz'],
   ]);
   const structural = structuralProgressAndNext(lessons);
-  assert.equal(structural.totalLessons, 5);
+  assert.equal(structural.totalLessons, 7, 'a Percakapan is a real, counted lesson');
   assert.equal(structural.completedLessons, 1);
-  assert.equal(structural.next.id, 'g1');
-  assert.equal(structural.nextView, 'conversation');
-  const dto = continueLearningDto(structural);
-  assert.equal(dto.sourceLessonId, 'g1');
-  assert.equal(dto.lesson.slug, 'g1', 'conversation reuses its source lesson');
-  assert.equal(actualDashboardUrl({ course: { slug: 'n5' }, continueLearning: dto }),
-    'welcome.html?course=n5&module=bab3&lesson=g1&view=conversation');
-
-  lessons[2].completed = true;
-  assert.equal(structuralProgressAndNext(lessons).next.id, 'g2');
+  assert.equal(structural.next.id, 'g2');
   lessons[1].completed = true;
-  const second = continueLearningDto(structuralProgressAndNext(lessons));
-  assert.equal(second.sourceLessonId, 'g2');
-  assert.equal(actualDashboardUrl({ course: { slug: 'n5' }, continueLearning: second }),
-    'welcome.html?course=n5&module=bab3&lesson=g2&view=conversation');
+  const next = continueLearningDto(structuralProgressAndNext(lessons));
+  assert.equal(next.lesson.id, 'c1');
+  assert.equal(next.view, 'lesson');
+  assert.equal(actualDashboardUrl({ course: { slug: 'n5' }, continueLearning: next }),
+    'welcome.html?course=n5&module=bab3&lesson=c1');
+  lessons[3].completed = true;
+  assert.equal(structuralProgressAndNext(lessons).next.id, 't1', 'the task follows its Percakapan');
 });
 
 test('Dashboard projection matches the shipped learner sequence for linked tasks', () => {
@@ -93,39 +88,44 @@ test('Dashboard projection matches the shipped learner sequence for linked tasks
   const source = welcomeScript.slice(start, end);
   const module = { id: 'bab3', lessons: [
     { id: 'g1', apiId: 'g1', type: 'video', grammar: [{ example_dialog: 'A: はい' }] },
+    { id: 't1', apiId: 't1', type: 'grammar_task', popupAfterLessonId: 'g1' },
     { id: 'g2', apiId: 'g2', type: 'video', grammar: [{ example_dialog: 'A: いいえ' }] },
-    { id: 't1', type: 'grammar_task', popupAfterLessonId: 'g1' },
-    { id: 't2', type: 'grammar_task', popupAfterLessonId: 'g2' },
-    { id: 'quiz', type: 'quiz' },
+    { id: 'c2', apiId: 'c2', type: 'conversation', conversationSourceLessonId: 'g2' },
+    { id: 'c1', apiId: 'c1', type: 'conversation', conversationSourceLessonId: 'g1' },
+    { id: 't2', apiId: 't2', type: 'grammar_task', popupAfterLessonId: 'g2' },
+    { id: 'g3', apiId: 'g3', type: 'video', grammar: [{ example_dialog: 'A: ええ' }] },
+    { id: 't3', apiId: 't3', type: 'grammar_task', popupAfterLessonId: 'g3' },
+    { id: 'quiz', apiId: 'quiz', type: 'quiz' },
   ] };
-  const clientSteps = vm.runInNewContext(`${source}\nmoduleLearningSteps(module).map(step => [step.kind, step.lesson.id])`,
+  const clientSteps = vm.runInNewContext(`${source}\nmoduleLearningSteps(module).map(step => step.lesson.id)`,
     { module, visibleLessons: value => value.lessons, window: {} });
   const serverRows = module.lessons.map(lesson => row(lesson.id, module.id, {
     type: lesson.type, popup_after_lesson_id: lesson.popupAfterLessonId || null,
-    has_dialog: !!lesson.grammar?.some(grammar => grammar.example_dialog.trim()),
+    conversation_source_lesson_id: lesson.conversationSourceLessonId || null,
   }));
-  const serverSteps = projectDashboardLearningSteps(serverRows)
-    .map(step => [step.view, step.row.id]);
+  const serverSteps = projectDashboardLearningSteps(serverRows).map(step => step.row.id);
   assert.deepEqual(JSON.parse(JSON.stringify(clientSteps)), serverSteps);
+  assert.deepEqual(serverSteps, ['g1', 'g2', 'c2', 't2', 'c1', 't1', 'g3', 't3', 'quiz']);
 });
 
-test('Dashboard preserves CMS order for ambiguous, dangling, cross-module and dialog-free task links', () => {
+test('Dashboard preserves CMS order for ambiguous, dangling, cross-module and Percakapan-free task links', () => {
   const lessons = [
-    row('source', 'a', { has_dialog: true, completed: true }),
+    row('source', 'a', { completed: true }),
+    row('conv', 'a', { type: 'conversation', conversation_source_lesson_id: 'source' }),
     row('unrelated', 'a'),
     row('ambiguous1', 'a', { type: 'grammar_task', popup_after_lesson_id: 'source' }),
     row('ambiguous2', 'a', { type: 'grammar_task', popup_after_lesson_id: 'source' }),
     row('cross', 'b', { type: 'grammar_task', popup_after_lesson_id: 'source' }),
-    row('blank', 'b', { has_dialog: false }),
-    row('no-dialog-task', 'b', { type: 'grammar_task', popup_after_lesson_id: 'blank' }),
+    row('foreign-conv', 'b', { type: 'conversation', conversation_source_lesson_id: 'source' }),
+    row('blank', 'b'),
+    row('no-conversation-task', 'b', { type: 'grammar_task', popup_after_lesson_id: 'blank' }),
   ];
-  assert.deepEqual(projectDashboardLearningSteps(lessons).map(step =>
-    [step.view, step.row.id]), [
-    ['lesson', 'source'], ['conversation', 'source'], ['lesson', 'unrelated'],
-    ['lesson', 'ambiguous1'], ['lesson', 'ambiguous2'], ['lesson', 'cross'],
-    ['lesson', 'blank'], ['lesson', 'no-dialog-task'],
+  assert.deepEqual(projectDashboardLearningSteps(lessons).map(step => step.row.id), [
+    'source', 'conv', 'unrelated', 'ambiguous1', 'ambiguous2', 'cross', 'foreign-conv',
+    'blank', 'no-conversation-task',
   ]);
   lessons[1].completed = true;
+  lessons[2].completed = true;
   const structural = structuralProgressAndNext(lessons);
   assert.equal(structural.next.id, 'ambiguous1');
   assert.equal(structural.nextView, 'lesson');
@@ -134,13 +134,15 @@ test('Dashboard preserves CMS order for ambiguous, dangling, cross-module and di
   'welcome.html?course=n5&module=a&lesson=ambiguous1');
 });
 
-test('an adjacent unlinked task still follows its source conversation and completion stays real', () => {
-  const lessons = [row('grammar', 'm', { has_dialog: true, completed: true }),
+test('an unlinked task after a Percakapan keeps its place and completion stays real', () => {
+  const lessons = [row('grammar', 'm', { completed: true }),
+    row('conv', 'm', { type: 'conversation', conversation_source_lesson_id: 'grammar' }),
     row('task', 'm', { type: 'grammar_task' })];
   const result = structuralProgressAndNext(lessons);
-  assert.equal(result.totalLessons, 2);
-  assert.equal(result.next.id, 'grammar');
-  assert.equal(result.nextView, 'conversation');
+  assert.equal(result.totalLessons, 3);
+  assert.equal(result.next.id, 'conv');
+  assert.equal(result.nextView, 'lesson');
   lessons[1].completed = true;
+  lessons[2].completed = true;
   assert.equal(continueLearningDto(structuralProgressAndNext(lessons)), null);
 });

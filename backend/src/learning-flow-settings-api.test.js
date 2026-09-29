@@ -24,8 +24,16 @@ const client = { release() {}, async query(sql, params = []) {
   throw Error(`unexpected SQL ${sql}`);
 } };
 mock.method(db, 'connect', async () => client);
-mock.method(db, 'query', async sql => sql.includes('FROM admin_emails') ? { rows: [] } :
-  Promise.reject(Error(`unexpected global SQL ${sql}`)));
+const titleQueries = [];
+mock.method(db, 'query', async (sql, params = []) => {
+  if (sql.includes('FROM admin_emails')) return { rows: [] };
+  if (sql.includes('LEFT JOIN lessons cv')) {
+    titleQueries.push(params[0]);
+    return { rows: params[0].map(id => ({ id, title: 'Tata Bahasa: です', module_title: 'Bab 3',
+      course_title: 'N5', conversation_title: 'Percakapan: です' })) };
+  }
+  throw Error(`unexpected global SQL ${sql}`);
+});
 
 const app = express();
 app.use(express.json());
@@ -59,4 +67,27 @@ test('owner-only settings HTTP contract: GET revision, stale 409, invalid 400, d
   assert.equal(updated.status, 200);
   assert.notEqual((await updated.json()).configRevision, initial.configRevision);
   assert.equal(writes, 1);
+});
+
+test('readiness preview is owner-only, validates the id, reports the lesson, and never writes', async () => {
+  const path = `${base}/api/admin/settings/learning-flow-communication/readiness`;
+  const lessonId = '20000000-0000-4000-8000-000000000003';
+  const before = writes;
+  assert.equal((await fetch(`${path}?lessonId=${lessonId}`)).status, 401);
+  assert.equal((await fetch(`${path}?lessonId=${lessonId}`,
+    { headers: { Authorization: `Bearer ${student}` } })).status, 403);
+  const bad = await fetch(`${path}?lessonId=nope`, { headers: { Authorization: `Bearer ${owner}` } });
+  assert.equal(bad.status, 400);
+  assert.equal((await bad.json()).error, 'invalid_lesson_id');
+  const res = await fetch(`${path}?lessonId=${lessonId}`, { headers: { Authorization: `Bearer ${owner}` } });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('cache-control'), 'private, no-store');
+  const body = await res.json();
+  assert.equal(body.readiness.ready, false);
+  assert.ok(body.readiness.issues.some(entry => entry.code === 'flow_scope_id_missing' &&
+    entry.kind === 'lesson' && entry.id === lessonId));
+  assert.deepEqual(body.titles.lessons[lessonId], { title: 'Tata Bahasa: です', moduleTitle: 'Bab 3',
+    courseTitle: 'N5', conversationTitle: 'Percakapan: です' });
+  assert.deepEqual(titleQueries.at(-1), [lessonId]);
+  assert.equal(writes, before);
 });

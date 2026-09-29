@@ -37,7 +37,7 @@ import {
   questionFingerprint, deriveAssistanceState, independentEligible,
   publicSessionItem, overlayFor, isPilotLesson, primaryErrorFor, answerSentenceFor,
   SESSION_MINUTES, DRILL_MAX_WRONG, EVIDENCE_SCHEMA_VERSION,
-  dialogCheckDrills, attemptSourceFor, sessionRevisionId,
+  attemptSourceFor, sessionRevisionId,
 } from '../bunpou-flow-service.js';
 
 const CANONICAL_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -67,18 +67,11 @@ function plannedItems(items, drillsByGrammar, published) {
     if (d.step1) out.push({ grammarId: item.id, step: 1, drill: d.step1 });
     if (d.step2) out.push({ grammarId: item.id, step: 2, drill: d.step2 });
   }
-  // Paket 2: pemeriksaan mandiri ditempatkan di AKHIR tugas yang sudah ada,
-  // bukan sebagai halaman assessment kedua (rencana Paket 2). Karena
-  // seluruh blok ini di-push setelah loop Step 1/2 di atas, urutan item
-  // sesi menjadi: semua Step 1/2 dulu, baru pemeriksaan. Pola yang
-  // pemeriksaannya belum layak sekadar tidak menyumbang item — tidak
-  // memblokir pola lain, dan tidak pernah diganti soal karangan.
-  const checks = (published && published.dialogChecks) || {};
-  for (const item of items) {
-    for (const drill of dialogCheckDrills(checks[item.id])) {
-      out.push({ grammarId: item.id, step: drill.step, drill });
-    }
-  }
+  // The Paket 2 "pemeriksaan mandiri" (published.dialogChecks) is no longer
+  // served at the end of the Tugas Bunpou: questions about the dialogue
+  // belong to the Percakapan lesson (migration 178), where the dialogue
+  // question set is the single source. The stored checks are kept for the
+  // dialogue-question backfill.
   return out;
 }
 

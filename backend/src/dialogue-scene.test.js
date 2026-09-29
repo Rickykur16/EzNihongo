@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-import {dialogueCatalog, normalizeDialogScene, publicDialogScene, sceneTurnVoices, validateSceneVoices} from './dialogue-scene.js';
+import {dialogueCatalog, editorDialogScene, keepStoredVoices, normalizeDialogScene, publicDialogScene, sceneTurnVoices,
+  validateSceneVoices} from './dialogue-scene.js';
 
 const fixture = () => ({schemaVersion:1,enabled:true,backgroundKey:'classroom',participants:[
   {characterKey:'anna-wijaya',position:'left',speaker:'A',displayName:'Anna',voiceId:'voice-anna',voiceName:'Anna voice',profileVersion:1,custom:false},
@@ -32,6 +33,26 @@ test('public scene hides provider references and fails closed on invalid data',(
   assert.equal(publicDialogScene({enabled:true}),null);
   const draft=fixture();draft.participants[0].voiceId=null;
   assert.equal(publicDialogScene(draft).audioReady,false);
+});
+test('the editor copy keeps voices; a saved copy without voices keeps the stored ones',()=>{
+  const editor=editorDialogScene(fixture());
+  assert.equal(editor.participants[0].voiceId,'voice-anna');assert.equal(editor.audioReady,true);
+  // What an editor sent back when it only had the student snapshot.
+  const stripped=normalizeDialogScene({...publicDialogScene(fixture()),participants:publicDialogScene(fixture()).participants.map(p=>({...p}))});
+  assert.equal(stripped.participants[0].voiceId,null);
+  const kept=keepStoredVoices(stripped,fixture());
+  assert.deepEqual(kept.participants.map(p=>[p.voiceId,p.voiceName]),[['voice-anna','Anna voice'],['voice-hadi','Hadi voice']]);
+  // Matched by character: renaming the speaker code keeps the voice ...
+  const remapped=normalizeDialogScene({...stripped,participants:stripped.participants.map(p=>({...p,speaker:p.speaker+'2'}))});
+  assert.equal(keepStoredVoices(remapped,fixture()).participants[0].voiceId,'voice-anna');
+  // ... swapping in another character does not inherit the old voice.
+  const recast=normalizeDialogScene({...stripped,participants:[{...stripped.participants[0],characterKey:'aoi-takahashi'},stripped.participants[1]]});
+  assert.equal(keepStoredVoices(recast,fixture()).participants[0].voiceId,null);
+  // A newly chosen voice always wins; nothing stored or no scene sent leaves it alone.
+  const chosen=fixture();chosen.participants[0].voiceId='voice-new';
+  assert.equal(keepStoredVoices(normalizeDialogScene(chosen),fixture()).participants[0].voiceId,'voice-new');
+  assert.equal(keepStoredVoices(stripped,null),stripped);
+  assert.equal(keepStoredVoices(null,fixture()),null);
 });
 test('browser catalog matches the server allowlist',()=>{
   const ctx={window:{}};

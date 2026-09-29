@@ -1,7 +1,10 @@
-/* Dialogue stage. The speaker steps forward and moves with its own voice
-   (--amp, 0..1, from the audio loudness envelope; --p = line progress), the
-   listener steps back. Entrance and idle breathing only run in the student
-   view (.has-motion, added by EzDialogue.mount({animate:true})). */
+/* Dialogue stage. Characters stay put while talking, like game portraits:
+   the listener is dimmed, the speaker keeps full colour and a floor light,
+   and an expression change gives one short pop. The voice (--amp, 0..1, from
+   the audio loudness envelope; --p = line progress) only drives the caption's
+   wave and progress, not the characters — a still picture that bobs and tilts
+   with the voice read as shaking. Entrance and idle breathing only run in the
+   student view (.has-motion, added by EzDialogue.mount({animate:true})). */
 .ez-dialog-stage { --amp:0; --p:0; position:relative; isolation:isolate; width:100%; aspect-ratio:16/9; min-height:310px; overflow:hidden; background:#e8eceb; margin:12px 0; border-radius:6px; }
 .grammar-karaoke > .ez-dialog-stage { margin:0; border-radius:0; }
 .ez-dialog-stage[hidden] { display:none; }
@@ -9,7 +12,7 @@
 .ez-dialog-stage::after { content:''; position:absolute; inset:0; z-index:1; pointer-events:none; background:linear-gradient(180deg, rgba(12,16,24,0) 52%, rgba(12,16,24,.30)); }
 .ez-dialog-actors { position:absolute; inset:16px 2% 60px; display:flex; align-items:flex-end; justify-content:space-between; }
 .ez-dialog-actor { position:relative; z-index:1; width:40%; height:100%; opacity:1; mix-blend-mode:normal; transform-origin:center bottom;
-  transition:filter .45s ease, scale .5s cubic-bezier(.2,.8,.2,1), translate .5s cubic-bezier(.2,.8,.2,1); }
+  transition:filter .45s ease; }
 .ez-dialog-actor[data-position="left"] { order:0; --lean:1; }
 .ez-dialog-actor[data-position="right"] { order:1; --lean:-1; }
 .ez-dialog-body { width:100%; height:100%; transform-origin:center bottom; }
@@ -17,11 +20,10 @@
 .ez-dialog-actor[data-position="right"] img { transform:scaleX(-1); }
 /* Contact shadow anchors the cut-out; the speaker gets a glow in its own colour. */
 .ez-dialog-actor::before { content:''; position:absolute; z-index:-1; left:18%; right:18%; bottom:-1.5%; height:5%; border-radius:50%; background:radial-gradient(closest-side, rgba(10,14,20,.38), rgba(10,14,20,0)); }
-.ez-dialog-actor::after { content:''; position:absolute; z-index:-1; left:-8%; right:-8%; bottom:-7%; height:26%; background:radial-gradient(closest-side, color-mix(in srgb, var(--character-color) 60%, transparent), transparent); opacity:0; transition:opacity .45s ease; scale:calc(1 + var(--amp) * .18); }
-.ez-dialog-actor.is-speaking { z-index:2; scale:1.035; }
+.ez-dialog-actor::after { content:''; position:absolute; z-index:-1; left:-8%; right:-8%; bottom:-7%; height:26%; background:radial-gradient(closest-side, color-mix(in srgb, var(--character-color) 60%, transparent), transparent); opacity:0; transition:opacity .45s ease; }
+.ez-dialog-actor.is-speaking { z-index:2; }
 .ez-dialog-actor.is-speaking::after { opacity:.95; }
-.ez-dialog-stage:is([data-state="speaking"],[data-state="paused"],[data-state="between"]) .ez-dialog-actor:not(.is-speaking) { filter:brightness(.72) saturate(.7); scale:.955; translate:calc(var(--lean) * -2%) 0; }
-.ez-dialog-stage[data-state="speaking"] .ez-dialog-actor.is-speaking .ez-dialog-body { translate:0 calc(var(--amp) * -1.5%); rotate:calc(var(--amp) * var(--lean) * 1.1deg); }
+.ez-dialog-stage:is([data-state="speaking"],[data-state="paused"],[data-state="between"]) .ez-dialog-actor:not(.is-speaking) { filter:brightness(.72) saturate(.7); }
 /* Caption = speech bubble whose tail points at the speaker. */
 .ez-dialog-caption { --speaker-color:#b81e18; position:absolute; z-index:3; bottom:12px; left:12px; right:12px; display:grid; grid-template-columns:auto 1fr; align-items:center; column-gap:8px; row-gap:3px;
   background:#fff; color:#171717; padding:10px 14px 13px; border-radius:14px; box-shadow:0 12px 30px rgba(10,14,20,.24), 0 0 0 1px rgba(10,14,20,.06); font-size:16px; line-height:1.6; }

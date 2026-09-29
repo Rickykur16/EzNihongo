@@ -10,7 +10,7 @@ function slice(start, end) {
   return html.slice(from, to);
 }
 const source = slice('async function renderAiSettings()', 'window.coachPromptResetDefault');
-const companionSource = slice('function bfCheckBlock(', '// Soal Step 1 =');
+const companionSource = slice('function bfReviewDrill(', '// Soal Step 1 =');
 const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 })[char]);
@@ -68,6 +68,9 @@ function setup() {
     openModal: content => { state.modal = content; },
     closeModal: () => { state.closed++; },
     modalContent: { style: {} }, confirm: () => true,
+    // The AI tab also loads the dialogue-question card (its own tests live in
+    // learning-flow-admin-ui.test.js).
+    flowOverviewLoad: () => { state.flowOverviewLoads = (state.flowOverviewLoads || 0) + 1; },
   });
   ctx.window = ctx;
   vm.runInContext(source, ctx);
@@ -267,6 +270,41 @@ test('companion draft and publish saves send the fingerprint captured at preview
   assert.deepEqual(JSON.parse(writes(state).find(call => call.path.endsWith('/publish')).options.body),
     { confirm: true, draftRevision: 'newly-saved-draft' });
   assert.ok(state.calls.some(call => call.path === '/admin/settings/bunpou-flow-pilot'));
+});
+
+test('each drawer edits its own companion fields and saves the rest of the draft unchanged', async () => {
+  const { ctx, nodes, state } = setup();
+  vm.runInContext(companionSource, ctx);
+  const gid = '44444444-4444-4444-8444-444444444444';
+  const draft = { sourceFingerprint: 'source-at-preview', objective: 'Tujuan lama',
+    directions: { [gid]: 'Arahan lama' }, overlays: { [gid]: { step1: { hint: 'Petunjuk lama', explanation: 'Bahas lama' } } },
+    dialogChecks: { [gid]: { comprehension: { prompt: 'Siapa?', options: ['a', 'b', 'c'], correctIndex: 0 } } } };
+  state.detail = { ...state.detail, grammarIds: [gid], patterns: { [gid]: '〜は〜です' }, draft };
+  const field = value => ({ value });
+  const plain = value => JSON.parse(JSON.stringify(value)); // objects from the vm realm
+  // Percakapan drawer: only the listening direction is on screen.
+  await ctx.manageBunpouFlow(readyId, 'Perkenalan', 'dialog');
+  assert.match(state.modal, new RegExp(`bf-dir-${gid}`));
+  assert.doesNotMatch(state.modal, /bf-objective|bf-h1-|bf-cmp1|Pemeriksaan mandiri/);
+  const onScreen = { [`bf-dir-${gid}`]: field('Arahan baru'), 'bf-reviewed': nodes['bf-reviewed'] };
+  ctx.document.getElementById = id => onScreen[id] || null;
+  const fromDialog = ctx.bfCollectEnvelope();
+  assert.equal(fromDialog.directions[gid], 'Arahan baru');
+  assert.equal(fromDialog.objective, 'Tujuan lama');
+  assert.deepEqual(plain(fromDialog.overlays), draft.overlays);
+  assert.deepEqual(plain(fromDialog.dialogChecks), draft.dialogChecks, 'legacy checks are carried, never dropped');
+  // Tata Bahasa drawer: objective and Step 1/2 notes, no direction or check editor.
+  await ctx.manageBunpouFlow(readyId, 'Perkenalan', 'lesson');
+  assert.match(state.modal, /bf-objective/);
+  assert.match(state.modal, new RegExp(`bf-h1-${gid}`));
+  assert.doesNotMatch(state.modal, /bf-dir-|bf-cmp1|Pemeriksaan mandiri/);
+  const lessonScreen = { 'bf-objective': field('Tujuan baru'), [`bf-h1-${gid}`]: field('Petunjuk baru') };
+  ctx.document.getElementById = id => lessonScreen[id] || null;
+  const fromLesson = ctx.bfCollectEnvelope();
+  assert.equal(fromLesson.objective, 'Tujuan baru');
+  assert.deepEqual(plain(fromLesson.overlays[gid].step1), { hint: 'Petunjuk baru', explanation: 'Bahas lama' });
+  assert.equal(fromLesson.directions[gid], 'Arahan lama');
+  assert.deepEqual(plain(fromLesson.dialogChecks), draft.dialogChecks);
 });
 
 test('publishing uses its own save revision and preserves the editor when another editor replaces that draft', async () => {

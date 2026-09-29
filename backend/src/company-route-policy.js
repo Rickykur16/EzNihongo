@@ -78,6 +78,7 @@ export const LEGACY_ROUTES = [
   ["POST", "/lessons/:lessonId/bunpou-flow/publish", null],
   ["GET", "/settings/learning-flow-communication", null],
   ["PUT", "/settings/learning-flow-communication", null],
+  ["GET", "/settings/learning-flow-communication/readiness", null],
   ["GET", "/settings/bunpou-flow-pilot", null],
   ["PUT", "/settings/bunpou-flow-pilot", null],
   // Paket 3: tinjauan shadow, read-only, owner-only (membaca riwayat
@@ -146,6 +147,7 @@ export const LEGACY_ROUTES = [
   ["POST", "/kanji/:id/move", "legacy.academic"],
   ["POST", "/lessons/:lessonId/import-notion-kanji-bab", "legacy.academic"],
   ["POST", "/tts/preview", null],
+  ["POST", "/tts/dialog-turn", null],
   // ElevenLabs voice catalog (read-only, admin-only) — feeds the dialogue
   // editor's speaker picker with real ElevenLabs voices.
   ["GET", "/elevenlabs/voices", "legacy.academic"],

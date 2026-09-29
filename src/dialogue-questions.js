@@ -8,6 +8,16 @@
     'question_owner_changed', 'question_fingerprint_conflict', 'question_not_found',
     'flow_readiness_failed', 'flow_scope_not_allowed', 'flow_disabled']);
 
+  // randomUUID exists only in secure contexts and Safari 15.4+; the server
+  // requires a UUID, so older devices build a v4 one from getRandomValues.
+  function requestId() {
+    if (typeof window.crypto?.randomUUID === 'function') return window.crypto.randomUUID();
+    const bytes = window.crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
   function key(lessonId, grammarId, question) {
     return JSON.stringify([lessonId, grammarId, question.id, question.version]);
   }
@@ -101,7 +111,7 @@
       }
       const payload = state.pending?.optionIndex === optionIndex ? state.pending : {
         questionVersion: info.question.version, optionIndex,
-        requestId: window.crypto.randomUUID(),
+        requestId: requestId(),
       };
       state.pending = payload;
       state.inFlight = true;

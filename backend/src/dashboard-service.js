@@ -28,12 +28,10 @@ async function accessibleCourses(user) {
 
 async function structuralCourse(userId, course) {
   const lessons = await query(
-    `SELECT l.id, l.slug, l.title, l.type, l.popup_after_lesson_id, l.sort_order, m.id AS module_id, m.slug AS module_slug,
+    `SELECT l.id, l.slug, l.title, l.type, l.popup_after_lesson_id, l.conversation_source_lesson_id,
+            l.sort_order, m.id AS module_id, m.slug AS module_slug,
             m.title AS module_title, m.section_name, m.sort_order AS module_sort,
-            p.completed, p.completed_at,
-            EXISTS (SELECT 1 FROM module_grammar g
-                     WHERE g.lesson_id = l.id AND g.module_id = m.id
-                       AND g.example_dialog ~ '[^[:space:]]') AS has_dialog
+            p.completed, p.completed_at
        FROM lessons l JOIN modules m ON m.id = l.module_id
        LEFT JOIN user_progress p ON p.lesson_id = l.id AND p.user_id = $1
       WHERE m.course_id = $2
@@ -129,7 +127,7 @@ function pickFocus(mastery, grammar, review, continueLearning) {
   if (weakGeneric) return { category: weakGeneric.category, title: weakGeneric.category === 'vocabulary' ? 'Kosakata' : weakGeneric.category[0].toUpperCase() + weakGeneric.category.slice(1), detail: 'Latih kembali bagian ini agar semakin mantap.', action: 'review', reviewCategory: weakGeneric.category };
   if (review.total > 0) return { category: 'review', title: 'Smart Review', detail: 'Ada materi yang sudah dipelajari dan siap diulang.', action: 'review', reviewCategory: 'mixed' };
   if (continueLearning) return { category: 'continue',
-    title: `${continueLearning.view === 'conversation' ? 'Percakapan · ' : ''}${continueLearning.lesson.title}`,
+    title: continueLearning.lesson.title,
     detail: 'Lanjutkan langkah berikutnya dalam kurikulum.', action: 'continue' };
   return null;
 }
