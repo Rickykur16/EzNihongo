@@ -147,6 +147,7 @@ export const LEGACY_ROUTES = [
   ["POST", "/kanji/:id/move", "legacy.academic"],
   ["POST", "/lessons/:lessonId/import-notion-kanji-bab", "legacy.academic"],
   ["POST", "/tts/preview", null],
+  ["POST", "/tts/dialog-turn", null],
   // ElevenLabs voice catalog (read-only, admin-only) — feeds the dialogue
   // editor's speaker picker with real ElevenLabs voices.
   ["GET", "/elevenlabs/voices", "legacy.academic"],

@@ -370,6 +370,51 @@
       `voiceId`. **Kalau ada dialog produksi yang terlanjur kehilangan suara**, fix ini
       tidak memulihkannya — pilih ulang tokoh/suara di 🎭 Dialog.
 
+      **Suara "Tes giliran ini" di admin ≠ suara di dashboard siswa — sekarang SATU
+      take per giliran, bisa dibuat ulang** — user: "file yg di play di dasboard dengan
+      yg di admin saat uji giliran tidak sama, selain itu saya ingin agar suaranya bisa
+      di regenerate". **Akar masalah**: dua generate ElevenLabs terpisah — tes admin
+      (`/admin/tts/preview`, cache per teks satu baris) vs pemutar siswa
+      (`/api/tts/dialog`, cache SELURUH dialog `dialogsegs1`) — dan ElevenLabs tidak
+      pernah menghasilkan take yang sama dua kali, jadi yang didengar admin tidak pernah
+      sampai ke siswa. Model/voice/settings-nya sebenarnya SAMA; yang beda take-nya.
+      Efek samping lama yang ikut hilang: mengedit SATU baris dulu mengganti hash
+      seluruh dialog → SEMUA giliran di-generate ulang (bunyi berubah semua + biaya).
+      **Perbaikan** (`resolveDialogTurns` di `routes/tts.js`): tiap giliran di-cache
+      SENDIRI dengan kunci `ttsHashKey('dialogturn1\n'+role+'\n'+teks, [voiceId])` —
+      persis hal yang membentuk audionya, bukan seluruh dialog, bukan nama pembicara.
+      Siswa (`/api/tts/dialog`, format respons TIDAK berubah) dan admin
+      (`POST /admin/tts/dialog-turn`, owner-only `null` seperti `/tts/preview`) membaca
+      baris yang sama; `regenerate:true` = generate baru + `ON CONFLICT DO UPDATE`,
+      jadi siswa langsung dapat take baru (baris lain tidak tersentuh, tanpa undo).
+      Admin mengirim SELURUH dialog + `turnIndex` (hitung baris non-kosong, sama
+      dengan `admSerializeDialogPair`) supaya suara di-resolve persis seperti untuk
+      siswa; `speaker`+`turnText` harus cocok dengan giliran itu (409
+      `turn_mismatch` kalau teks memuat baris baru berlabel). Setelah generate selalu
+      dibaca ulang dari tabel, jadi dua pemutaran pertama bersamaan tetap satu take.
+      **Transisi tanpa biaya & tanpa suara berubah diam-diam**: giliran yang belum punya
+      baris per-giliran MENGADOPSI take lama sekali — take "Tes giliran" admin yang lama
+      (kunci `ttsHashKey('SPEAKER: teks',[voice])`) didahulukan karena itu yang pernah
+      didengar manusia, lalu segmen `dialogsegs1` siswa (hanya kalau jumlah & urutan
+      pembicara cocok). Baris `dialogsegs1` lama tidak dihapus (tidak dibaca lagi setelah
+      diadopsi; ikut terbuang saat `SETTINGS_VERSION` naik). **Listening kuis TIDAK
+      diubah**: siswa mendengarnya sebagai SATU klip gabungan ber-`<break>` lewat
+      `/api/tts`, jadi tombol tes di mode listening tetap `/admin/tts/preview` dan tidak
+      ada tombol "Buat ulang" di sana. `generateDialogSegments()` dihapus (digantikan).
+      **Divalidasi**: 9 tes HTTP (`dialogue-turn-audio.test.js`, ElevenLabs palsu yang
+      memberi take BERBEDA tiap panggilan, jadi "byte sama" = take tersimpan yang sama)
+      + 5 tes vm-slice UI; 8 mutasi, semuanya tertangkap (termasuk tes pemutaran
+      bersamaan — baru menggigit setelah generate palsu diberi jeda 15 ms, tanpa itu dua
+      request tidak pernah tumpang tindih); `npm test` dengan DB 876 tes, 875 hijau, 1 skip
+      lama. E2E Postgres+backend asli+ElevenLabs palsu (preload `fetch`): API 19/19
+      (adopsi take lama tanpa panggilan ElevenLabs, ketujuh giliran admin == siswa, buat
+      ulang = tepat 1 generate, edit 1 baris = tepat 1 generate) dan Chromium 18/18 (klik
+      tombol sungguhan, blob yang diputar `<audio>` editor == segmen siswa, 390 px tanpa
+      luber). **Jebakan alat uji**: `response.body()` Playwright KOSONG (0 byte) untuk
+      respons yang lewat `page.route`+`route.fulfill` — sempat terlihat seperti "admin ≠
+      siswa"; baca blob yang benar-benar diputar elemen `<audio>`. **Belum diverifikasi**:
+      audio ElevenLabs sungguhan (diblokir dari sandbox).
+
       **Tombol "Soal dialog untuk siswa" (menyalakan alur v2 per pelajaran)** — user:
       "Nyalain tombolnya di admin untuk soal dialog". Sebelumnya satu-satunya jalan
       hanyalah `PUT /admin/settings/learning-flow-communication` tanpa UI. **Letaknya di
