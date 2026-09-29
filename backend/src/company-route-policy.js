@@ -156,6 +156,10 @@ export const LEGACY_ROUTES = [
   ["POST", "/dialogue-speakers", "legacy.academic"],
   ["PUT", "/dialogue-speakers/:id", "legacy.academic"],
   ["DELETE", "/dialogue-speakers/:id", null],
+  // Character art uploads (migration 177) — replacing art and adding
+  // expressions is content management; deleting is owner-only.
+  ["PUT", "/dialogue-art/:characterKey/:expressionKey", "legacy.academic"],
+  ["DELETE", "/dialogue-art/:characterKey/:expressionKey", null],
   ["DELETE", "/tts/cache", null],
   ["GET", "/tts/cache/stats", "legacy.technology"],
   ["DELETE", "/tts/cache/all", null],

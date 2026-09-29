@@ -232,6 +232,58 @@
   suara ElevenLabs asli (MP3) dan Safari/iOS; lip-sync/ekspresi wajah butuh aset gambar
   baru per karakter, di luar cakupan.
 
+      **Gambar karakter & ekspresi diunggah dari admin (migrasi 177)** — user:
+      "karakter percakapan seperti di game naruto ps 2, dengan karakter berganti
+      ekspresi", lalu "Saya kasih asetnya", "gambar lamanya pun bisa di upload
+      manual", "per karakter ada paket ekspresinya", "Ekspresi bisa ditambah dan
+      dikurang". Pembagiannya: USER menyediakan gambar, kode menyediakan
+      infrastruktur. **Penyimpanan**: tabel `dialogue_character_art`
+      (`character_key`, `expression_key`, label, BYTEA, mime, ukuran, `version`) —
+      pola sama dengan `vocab_image_cache`/bukti transfer (ikut `pg_dump`), TANPA
+      kolom user (jadi tidak masuk sapuan `assertUserTablesCovered`). Kunci `base`
+      mengganti gambar bawaan `assets/dialogue/<asset>.webp`+masker; kunci lain =
+      ekspresi milik karakter itu (bebas ditambah/dikurangi, maks 24). **Publik**:
+      `GET /api/dialogue-art` (daftar, cache 60 dtk) + `GET /api/dialogue-art/:char/:key?v=N`
+      (byte, `immutable` hanya bila `v` = versi sekarang) — router dipasang di
+      sebelah `vocabImageRouter`, SEBELUM `grammarAnalysisRouter` (lihat insiden
+      checkout). **Admin**: `PUT /admin/dialogue-art/:char/:key` (multipart `file` +
+      `label`, `mode=create` menolak nama kembar 409; tanpa file = ganti nama) dan
+      `DELETE` (owner-only). UI: tombol "Gambar & ekspresi" di kartu tokoh editor
+      🎭 Dialog → modal kartu per gambar (Ganti/Hapus/ganti nama), "+ Tambah",
+      dan "Unggah paket" (nama file = nama ekspresi; `dasar.png`/`base.png`
+      mengganti gambar dasar). Browser mengecilkan ke ≤960×1440, MENOLAK gambar
+      tanpa piksel transparan (≥2% sampel), lalu encode WebP (PNG di Safari).
+      **Per giliran**: pilih "Ekspresi" di tiap baris dialog → `dialog_scene.expressions`
+      = array sejajar baris (setelah baris kosong dibuang), entri `{speaker,text,expression}`
+      — berlaku HANYA selama speaker+teks masih sama (aturan `dialog_furigana`), jadi
+      mengedit kalimat menjatuhkan ekspresinya, bukan memindahkannya. Tidak mengubah
+      `dialogueFingerprint` (soal pemahaman tidak jadi basi). **Panggung**: `sync()`
+      memasang ekspresi giliran ke pembicara; pendengar mempertahankan ekspresi
+      terakhirnya; memutar dari baris pertama mengembalikan semua ke netral. Gambar
+      dimuat+di-decode di luar layar dulu, baru ditukar (0 ms di uji); ekspresi yang
+      dipakai dialog di-decode setelah panggung masuk. **Jebakan yang ketahuan dari
+      pengujian**: (1) aktor kanan dicerminkan `transform:scaleX(-1)` — animasi
+      "denyut" berbasis `transform` membalikkannya ±220 ms; dipakai properti `scale`
+      (dicek per frame, dibuktikan menggigit); (2) dulu SATU gambar gagal menyembunyikan
+      seluruh panggung — sekarang unggahan yang gagal jatuh ke gambar bawaan, hanya
+      gambar bawaan yang gagal yang menyembunyikan panggung (kontrak QA "transkrip
+      tetap" dijaga); (3) `art()` WAJIB ber-timeout (3 dtk): QA repo mengganti
+      `window.fetch` dengan promise yang tak pernah selesai dan editor dialog (yang
+      menunggu daftar gambar) macet selamanya; panggung siswa hanya menunggu 1,5 dtk;
+      (4) baris atas editor dialog harus `flex-wrap` — select Ekspresi membuatnya luber
+      di 360 px; (5) server hanya membaca HEADER (PNG/WebP + kanal alpha); PNG RGBA yang
+      piksel-nya opak tetap lolos server — pemeriksaan transparansi sungguhan ada di
+      browser admin (decode WebP di server butuh pustaka). **Diuji** di Postgres+backend
+      asli + Chromium: API 29/29 (hak akses, tolak non-gambar/tanpa alpha, buat/409/
+      ganti versi/ganti nama/hapus, header cache, batas 24), admin 16/16 (tolak latar
+      putih, paket, ganti nama, tambah, hapus, pilihan per giliran, tersimpan sejajar,
+      muncul lagi saat dibuka), siswa 17/17 (urutan ekspresi per giliran, replay netral,
+      daftar gambar mati/menggantung/gambar rusak → gambar bawaan & panggung tetap,
+      ekspresi terhapus → dasar, kalimat diedit → netral, reduced motion, HP). Migrasi
+      166/171/172/175/176 gagal di database KOSONG (menuntut konten Bab 3/4) — itu
+      perilaku lama; untuk uji lokal tandai terlewati di `schema_migrations`.
+      **Belum diverifikasi**: Safari iOS dan aset asli dari user.
+
       **Dialog grammar: speaker asli dipilih dari SUARA ELEVENLABS ASLI —
       bukan kode A/B, dan bukan bucket perempuan/laki-laki — plus tes audio
       per giliran, independen** — user: "gunakan nama speaker aslinya yg bisa

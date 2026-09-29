@@ -29,7 +29,32 @@ export function normalizeDialogScene(value) {
       displayName: p.displayName.trim(), voiceId: p.voiceId || null, voiceName: p.voiceName || '',
       profileVersion: p.profileVersion, custom: p.custom === true };
   });
-  return {schemaVersion: 1, enabled: value.enabled, backgroundKey: value.backgroundKey, participants};
+  const expressions = normalizeExpressions(value.expressions);
+  return {schemaVersion: 1, enabled: value.enabled, backgroundKey: value.backgroundKey, participants,
+    ...(expressions ? {expressions} : {})};
+}
+
+// Expression per turn, aligned with the dialogue lines like dialog_furigana:
+// an entry applies only while its speaker and text still match the line, so
+// editing a line quietly drops its expression instead of moving it to another
+// sentence. Keys are not checked against uploaded art: a deleted expression
+// just shows the base picture until an image with that key is uploaded again.
+function normalizeExpressions(value) {
+  if (value == null) return null;
+  if (!Array.isArray(value) || value.length > 100) throw new Error('Ekspresi dialog tidak valid.');
+  let size = 0;
+  const lines = value.map(line => {
+    if (line == null) return null;
+    if (typeof line !== 'object' || typeof line.speaker !== 'string' || line.speaker.length > 30 ||
+        typeof line.text !== 'string' || line.text.length > 2000 ||
+        typeof line.expression !== 'string' || !/^[a-z0-9][a-z0-9-]{0,31}$/.test(line.expression)) {
+      throw new Error('Ekspresi dialog tidak valid.');
+    }
+    size += line.text.length;
+    if (size > 10000) throw new Error('Ekspresi dialog terlalu panjang.');
+    return {speaker: line.speaker, text: line.text, expression: line.expression};
+  });
+  return lines.some(Boolean) ? lines : null;
 }
 
 // Voice references stay server-side; the student only needs the visual snapshot.
