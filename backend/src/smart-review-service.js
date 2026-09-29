@@ -45,9 +45,20 @@ export function filterReviewScope(items, { completedLessonIds, accessibleCourseI
   return (items || []).filter((item) => lessons.has(item.lessonId) && courses.has(item.courseId));
 }
 
+// Yang dihitung adalah POKOK SOAL unik, bukan tiap arahnya: satu kata (atau satu
+// kanji) punya beberapa arah, tapi sesi hanya menanyakan satu arah per pokok soal
+// (lihat oneDirectionPerSubject). Menjumlahkan arah membuat dashboard menjanjikan
+// "46 perlu direview" padahal itu belasan kanji.
 export function summarizeCandidates(candidates) {
   const byCategory = Object.fromEntries(REVIEW_CATEGORIES.map((category) => [category, 0]));
-  for (const candidate of candidates || []) if (candidate.category in byCategory) byCategory[candidate.category] += 1;
+  const seen = new Set();
+  for (const candidate of candidates || []) {
+    if (!(candidate.category in byCategory)) continue;
+    const subject = reviewSubjectKey(candidate);
+    if (seen.has(subject)) continue;
+    seen.add(subject);
+    byCategory[candidate.category] += 1;
+  }
   return { total: Object.values(byCategory).reduce((sum, count) => sum + count, 0), byCategory };
 }
 

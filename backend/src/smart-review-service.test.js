@@ -321,3 +321,16 @@ test('kosakata dan kata majemuk kanji yang sama berbagi satu gerbang: hanya satu
   const practised = entries.map((e) => e.skill === 'jp2id' ? { ...e, attempts: 1, fsrsState: 'review' } : e);
   assert.equal(unlockedSkills(practised).size, 5);
 });
+
+test('ringkasan menghitung pokok soal unik, bukan tiap arahnya', () => {
+  const due = { attempts: 1, nextReviewAt: '2020-01-01' };
+  const kanjiItem = (id, skill, word) => ({ category: 'kanji', itemId: id, skill, state: due, item: { id }, ...(word ? { word: { japanese: word, reading: word } } : {}) });
+  const summary = summarizeCandidates([
+    kanjiItem('k1', 'char2meaning'), kanjiItem('k1', 'meaning2char'),                   // satu kanji, dua arah
+    kanjiItem('k1', 'word2meaning::学生', '学生'), kanjiItem('k1', 'reading2word::学生', '学生'), // satu kata, dua arah
+    { category: 'vocabulary', itemId: 'v1', skill: 'jp2id', state: due, item: { id: 'v1', japanese: '学生' } }, // kata yang sama lewat jalur kosakata
+  ]);
+  assert.equal(summary.byCategory.kanji, 2);       // 1 kanji + 1 kata
+  assert.equal(summary.byCategory.vocabulary, 0);  // 学生 sudah dihitung sebagai kata kanji
+  assert.equal(summary.total, 2);
+});
