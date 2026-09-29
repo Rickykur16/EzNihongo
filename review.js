@@ -264,16 +264,27 @@
       feedback.className = 'feedback';
       app.querySelectorAll('[data-option]').forEach(node => { if (Number(node.dataset.option) === result.correctIndex) node.classList.add('correct'); });
       if (button) button.classList.add(result.passed ? 'correct' : 'wrong');
+      // Benar: tidak ada yang perlu dipelajari, jadi lanjut sendiri. Salah:
+      // JANGAN pindah sendiri — tampilkan jawaban benarnya dan tunggu siswa
+      // menekan "Lanjut"; waktu mencerna kesalahan adalah milik siswa.
+      if (result.passed) {
+        feedback.textContent = 'Benar — review berikutnya akan dijadwalkan lebih jauh.';
+        const answeredIndex = index;
+        setTimeout(() => { if (index === answeredIndex) advance(); }, 900);
+        return;
+      }
       const answerText = correctAnswerText(session.questions[index].question, result);
-      feedback.innerHTML = (result.passed ? 'Benar.' : 'Belum tepat.') + ' Hasil sudah disimpan untuk review berikutnya.' + (!result.passed && answerText ? `<span class="answer-key">Jawaban benar: <b>${esc(answerText)}</b></span>` : '');
+      feedback.innerHTML = `Belum tepat. Soal ini akan diulang lebih cepat.${answerText ? `<span class="answer-key">Jawaban benar: <b>${esc(answerText)}</b></span>` : ''}`;
       const actions = document.getElementById('answer-actions');
       actions.innerHTML = '<button class="primary" id="review-next" type="button">Lanjut →</button>';
-      actions.querySelector('button').addEventListener('click', () => { if (!busy) advance(); });
+      const nextButton = actions.querySelector('button');
+      nextButton.addEventListener('click', () => { if (!busy) advance(); });
+      nextButton.focus();
     } catch (error) { feedback.textContent = ezStudentErrorMessage(error, 'Jawaban'); feedback.className = 'feedback error'; }
     finally { setBusy(false); }
   }
   function finish() {
-    app.innerHTML = `<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Sesi selesai.</h1><p>Kamu menjawab ${correctAnswers} dari ${independentAnswers} soal dengan benar.</p><p class="subtle">Hasilnya sudah memperbarui penguasaan dan jadwal review.</p><div class="review-actions"><button class="primary" id="back-home" type="button">Lihat jadwal review</button><a class="back-link" href="focus.html">Fokus belajar bersama Maneko</a><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
+    app.innerHTML = `<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Sesi selesai.</h1><p>Kamu menjawab ${correctAnswers} dari ${independentAnswers} soal dengan benar.</p><p class="subtle">Hasilnya sudah memperbarui penguasaan dan jadwal review.</p><div class="review-actions"><button class="primary" id="back-home" type="button">Lihat jadwal review</button><a class="back-link" href="focus.html">Fokus belajarmu</a><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
     document.getElementById('back-home').addEventListener('click', loadHome);
   }
   document.getElementById('logout').addEventListener('click', () => ezLogout());
