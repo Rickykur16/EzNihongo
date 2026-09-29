@@ -1,4 +1,4 @@
-import { assistanceFor, evidenceLock, recordExposure, reviewHelp } from '../maneko-assistance.js';
+import { assistanceFor, evidenceLock } from '../maneko-assistance.js';
 import { Router } from 'express';
 import { query, withAdvisoryLock } from '../db.js';
 import { requireAuth, asyncHandler } from '../middleware.js';
@@ -236,24 +236,6 @@ async function lockedSessionItem(client, user, sessionId, index, allowAnswered =
   if (!row.lesson_id || !(await userCanAccessCourse(user, row.course_id))) return { error: 'not_enrolled', status: 403 };
   const complete = await client.query(`SELECT 1 FROM user_progress WHERE user_id = $1 AND lesson_id = $2 AND completed = TRUE`, [user.id, row.lesson_id]); if (!complete.rows.length) return { error: 'lesson_not_completed', status: 403 }; return { row };
 }
-
-router.post('/sessions/:sessionId/help', asyncHandler(async (req, res) => {
-  const sessionId = req.params.sessionId;
-  const questionIndex = req.body?.questionIndex;
-  const level = req.body?.level;
-  if (!UUID.test(sessionId) || !Number.isInteger(questionIndex) || questionIndex < 0 || ![1, 2, 3].includes(level)) return res.status(400).json({ error: 'invalid_help' });
-  const result = await withAdvisoryLock(evidenceLock(req.user.id), async (client) => {
-    const access = await lockedSessionItem(client, req.user, sessionId, questionIndex, true);
-    if (access.error) return access;
-    const row = access.row;
-    // Commit exposure before returning any content; this also protects other tabs
-    // and other questions on the same lesson, across skill directions.
-    const exposure = await recordExposure(client, { userId: req.user.id, lessonId: row.lesson_id, itemType: row.item_type, itemId: row.item_id, sessionId, questionIndex, type: ['hint', 'explanation', 'answer'][level - 1] });
-    return { text: reviewHelp(row.payload, level), level, assisted: true, independentAfter: exposure.expires_at, firstResult: row.result || null };
-  });
-  if (result.error) return res.status(result.status).json({ error: result.error });
-  return res.json(result);
-}));
 
 router.post('/sessions/:sessionId/answers', asyncHandler(async (req, res) => {
   const sessionId = req.params.sessionId;

@@ -9,7 +9,6 @@
   let assistedAnswers = 0;
   let busy = false;
   const results = new Map();
-  const helpLevels = new Map();
   const labels = { kana: 'Kana', vocabulary: 'Kosakata', kanji: 'Kanji', grammar: 'Grammar' };
   const api = async (path, options) => { const response = await ezApi(path, options); const body = await response.json().catch(() => ({})); if (!response.ok) throw Object.assign(new Error(body.error || 'request_failed'), { status: response.status }); return body; };
   const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
@@ -17,7 +16,7 @@
   // the question card mirrors renderQuestion() with placeholder text.
   const homeSkeleton = app.querySelector('.is-skeleton') ? app.innerHTML : '<p class="loading">Memuat Smart Review…</p>';
   const sk = (text) => `<span class="sk-t">${text}</span>`;
-  const questionSkeleton = `<p class="sk-sr">Menyiapkan sesi review…</p><section class="question-card is-skeleton" aria-hidden="true"><div class="progress">${sk('SOAL 1 DARI 20')}</div><div class="review-progress-bar"></div><span class="tag">${sk('Kosakata')}</span><h1 class="prompt">${sk('Apa arti kata ini?')}</h1><div class="options">${[1, 2, 3, 4].map(() => `<button class="option" type="button" tabindex="-1">${sk('Pilihan jawaban')}</button>`).join('')}</div><p class="feedback"></p><div class="review-actions"></div><details class="maneko-help"><summary><img src="assets/maneko.svg" alt="">${sk('Bantuan Maneko-chan')}</summary></details><span class="maneko-status">${sk('Review mandiri · coba jawab tanpa petunjuk.')}</span></section>`;
+  const questionSkeleton = `<p class="sk-sr">Menyiapkan sesi review…</p><section class="question-card is-skeleton" aria-hidden="true"><div class="progress">${sk('SOAL 1 DARI 20')}</div><div class="review-progress-bar"></div><span class="tag">${sk('Kosakata')}</span><h1 class="prompt">${sk('Apa arti kata ini?')}</h1><div class="options">${[1, 2, 3, 4].map(() => `<button class="option" type="button" tabindex="-1">${sk('Pilihan jawaban')}</button>`).join('')}</div><p class="feedback"></p><div class="review-actions"></div></section>`;
   const loading = (html) => { app.setAttribute('aria-busy', 'true'); app.innerHTML = html; };
   const loaded = () => app.removeAttribute('aria-busy');
 
@@ -47,7 +46,7 @@
     loading(questionSkeleton);
     try {
       session = await api('/review/sessions', { method: 'POST', body: JSON.stringify({ category, limit: 20 }) });
-      index = 0; selectedOrder = []; correctAnswers = 0; independentAnswers = 0; assistedAnswers = 0; busy = false; results.clear(); helpLevels.clear();
+      index = 0; selectedOrder = []; correctAnswers = 0; independentAnswers = 0; assistedAnswers = 0; busy = false; results.clear();
       if (!session.questions?.length) return renderHome(session.summary || { total: 0, byCategory: {} });
       renderQuestion();
     } catch (error) { errorCard(error, () => start(category)); }
@@ -220,8 +219,7 @@
       : `<div class="options">${options.map((option, optionIndex) => `<button class="option" type="button" data-option="${optionIndex}">${esc(option)}${question.optionReadings?.[optionIndex] && question.optionReadings[optionIndex] !== option ? `<small>${esc(question.optionReadings[optionIndex])}</small>` : ''}</button>`).join('')}</div>`;
     const progressPercent = Math.round(((index + 1) / session.questions.length) * 100);
     loaded();
-    app.innerHTML = `<section class="question-card"><div class="progress">SOAL ${index + 1} DARI ${session.questions.length}</div><div class="review-progress-bar" role="progressbar" aria-label="Progres sesi review" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progressPercent}"><i style="width:${progressPercent}%"></i></div><span class="tag">${esc(tagLabel)}</span><h1 class="prompt" tabindex="-1">${esc(question.prompt)}</h1>${question.instruction ? `<p class="hint">${esc(question.instruction)}</p>` : ''}${question.audioText ? '<button class="audio-btn" id="play-audio" type="button">🔊 Putar suara</button>' : ''}${question.reading ? `<p class="hint">${esc(question.reading)}</p>` : ''}${question.meaning ? `<p class="hint">${esc(question.meaning)}</p>` : ''}${question.example?.japanese ? `<p class="hint">${esc(question.example.japanese)}</p>` : ''}${question.example?.indonesian ? `<p class="hint">${esc(question.example.indonesian)}</p>` : ''}${question.sentence ? `<p class="hint">${esc(question.sentence)}</p>` : ''}${question.indonesian ? `<p class="hint">${esc(question.indonesian)}</p>` : ''}${answerUi}<p class="feedback" id="feedback" aria-live="polite"></p><div class="review-actions" id="answer-actions"></div><details class="maneko-help"><summary><img src="assets/maneko.svg" alt="">Bantuan Maneko-chan</summary><p>Petunjuk membuat soal ini menjadi latihan terbantu. Jawaban mandiri yang sudah tersimpan tetap dipertahankan. Materi terkait dapat dinilai mandiri lagi setelah 24 jam.</p><button class="maneko-primary" id="maneko-hint" type="button">Minta petunjuk</button><div id="maneko-help-output" class="maneko-help-output" role="status"></div></details><span class="maneko-status" id="maneko-evidence-status">${item.assisted ? 'Latihan terbantu · materi ini baru mendapat bantuan.' : 'Review mandiri · coba jawab tanpa petunjuk.'}</span></section>`;
-    app.querySelector('#maneko-hint')?.addEventListener('click', requestHelp);
+    app.innerHTML = `<section class="question-card"><div class="progress">SOAL ${index + 1} DARI ${session.questions.length}</div><div class="review-progress-bar" role="progressbar" aria-label="Progres sesi review" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progressPercent}"><i style="width:${progressPercent}%"></i></div><span class="tag">${esc(tagLabel)}</span><h1 class="prompt" tabindex="-1">${esc(question.prompt)}</h1>${question.instruction ? `<p class="hint">${esc(question.instruction)}</p>` : ''}${question.audioText ? '<button class="audio-btn" id="play-audio" type="button">🔊 Putar suara</button>' : ''}${question.reading ? `<p class="hint">${esc(question.reading)}</p>` : ''}${question.meaning ? `<p class="hint">${esc(question.meaning)}</p>` : ''}${question.example?.japanese ? `<p class="hint">${esc(question.example.japanese)}</p>` : ''}${question.example?.indonesian ? `<p class="hint">${esc(question.example.indonesian)}</p>` : ''}${question.sentence ? `<p class="hint">${esc(question.sentence)}</p>` : ''}${question.indonesian ? `<p class="hint">${esc(question.indonesian)}</p>` : ''}${answerUi}<p class="feedback" id="feedback" aria-live="polite"></p><div class="review-actions" id="answer-actions"></div></section>`;
     const audioBtn = app.querySelector('#play-audio');
     if (audioBtn) {
       audioBtn.addEventListener('click', () => playAudio(question.audioText, audioBtn));
@@ -250,27 +248,11 @@
   }
   function setBusy(value) {
     busy = value;
-    app.querySelectorAll('[data-option], [data-token], #submit-arrange, #reset-arrange, #maneko-hint, #review-next').forEach(node => { node.disabled = value || (results.has(index) && !['maneko-hint', 'review-next'].includes(node.id)); });
+    app.querySelectorAll('[data-option], [data-token], #submit-arrange, #reset-arrange, #review-next').forEach(node => { node.disabled = value || (results.has(index) && node.id !== 'review-next'); });
     if (!value && !results.has(index) && session.questions[index].question.variant === 'arrange') {
       const submit = app.querySelector('#submit-arrange');
       if (submit) submit.disabled = selectedOrder.length !== session.questions[index].question.tokens.length;
     }
-  }
-  async function requestHelp() {
-    if (busy) return;
-    const level = Math.min(3, (helpLevels.get(index) || 0) + 1);
-    const output = app.querySelector('#maneko-help-output');
-    setBusy(true);
-    try {
-      const result = await api(`/review/sessions/${session.sessionId}/help`, { method: 'POST', body: JSON.stringify({ questionIndex: index, level }) });
-      helpLevels.set(index, level);
-      const item = session.questions[index];
-      session.questions.forEach(q => { if (q.lessonId === item.lessonId || q.itemType === item.itemType && q.itemId === item.itemId) q.assisted = true; });
-      output.textContent = result.text;
-      app.querySelector('#maneko-hint').textContent = level === 1 ? 'Jelaskan lebih lanjut' : level === 2 ? 'Lihat pembahasan jawaban' : 'Baca kembali pembahasan';
-      app.querySelector('#maneko-evidence-status').textContent = results.has(index) ? 'Hasil mandiri sebelumnya tetap tersimpan. Pembahasan ini adalah latihan.' : 'Dengan bantuan · jawaban ini tidak mengubah penguasaan atau jadwal review.';
-    } catch (error) { output.textContent = ezStudentErrorMessage(error, 'Bantuan Maneko'); }
-    finally { setBusy(false); }
   }
   async function answer(payload, button) {
     if (busy || results.has(index)) return;
@@ -286,7 +268,6 @@
       if (button) button.classList.add(result.passed ? 'correct' : 'wrong');
       const answerText = correctAnswerText(session.questions[index].question, result);
       feedback.innerHTML = (result.passed ? 'Benar.' : 'Belum tepat.') + (result.assisted ? ' Ini latihan terbantu; penguasaan dan jadwal review tetap.' : ' Hasil mandiri sudah disimpan untuk review berikutnya.') + (!result.passed && answerText ? `<span class="answer-key">Jawaban benar: <b>${esc(answerText)}</b></span>` : '');
-      if (result.assisted) app.querySelector('#maneko-evidence-status').textContent = 'Dengan bantuan · tidak dihitung dalam akurasi mandiri.';
       const actions = document.getElementById('answer-actions');
       actions.innerHTML = '<button class="primary" id="review-next" type="button">Lanjut →</button>';
       actions.querySelector('button').addEventListener('click', () => { if (!busy) advance(); });
