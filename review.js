@@ -273,7 +273,7 @@
     finally { setBusy(false); }
   }
   function finish() {
-    app.innerHTML = `<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Sesi selesai.</h1><p>Kamu menjawab ${correctAnswers} dari ${independentAnswers} soal dengan benar.</p><p class="subtle">Hasilnya sudah memperbarui penguasaan dan jadwal review.</p><div class="review-actions"><button class="primary" id="back-home" type="button">Lihat jadwal review</button><a class="back-link" href="focus.html">Fokus belajar bersama Maneko</a><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
+    app.innerHTML = `<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Sesi selesai.</h1><p>Kamu menjawab ${correctAnswers} dari ${independentAnswers} soal dengan benar.</p><p class="subtle">Hasilnya sudah memperbarui penguasaan dan jadwal review.</p><div class="review-actions"><button class="primary" id="back-home" type="button">Lihat jadwal review</button><a class="back-link" href="focus.html">Fokus belajarmu</a><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
     document.getElementById('back-home').addEventListener('click', loadHome);
   }
   document.getElementById('logout').addEventListener('click', () => ezLogout());
