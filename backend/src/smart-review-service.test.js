@@ -297,3 +297,12 @@ test('satu kanji tidak tampil lebih dari dua kali dalam sesi, termasuk lewat kat
   for (const s of shown) for (const ch of s) count[ch] = (count[ch] || 0) + 1;
   assert.ok(Math.max(...Object.values(count)) <= 2, `terlalu sering: ${JSON.stringify(count)}`);
 });
+
+test('kata yang sama dari jalur kosakata dan jalur kanji hanya satu soal per sesi', () => {
+  const due = { attempts: 1, nextReviewAt: '2020-01-01' };
+  const selected = selectReviewCandidates([
+    { category: 'vocabulary', itemId: 'v1', skill: 'jp2id', item: { id: 'v1', japanese: '学生', reading: 'がくせい', indonesian: 'pelajar' }, state: due },
+    { category: 'kanji', itemId: 'kb', skill: 'word2meaning::学生', word: { japanese: '学生', reading: null, indonesian: 'pelajar' }, item: { id: 'kb', character: '生' }, state: due },
+  ], { category: 'mixed' });
+  assert.equal(selected.length, 1);
+});

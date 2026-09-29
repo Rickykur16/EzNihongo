@@ -60,9 +60,15 @@ const MAX_PER_OWNER = 2;
 // Untuk kata majemuk, satuannya kata itu sendiri (kunci yang sama persis
 // dengan pickCompoundOwners: japanese::reading), BUKAN kanji pemiliknya —
 // satu kanji memiliki banyak kata dan tiap kata layak gilirannya sendiri.
+//
+// Kosakata pelajaran (学生, 先生) JUGA muncul sebagai kata majemuk kanji karena
+// kata majemuk diturunkan dari kosakata yang sama. Keduanya menanyakan hal yang
+// sama, jadi kunci mereka harus sama; kalau tidak, 学生 muncul dua kali sesi
+// (sekali dari jalur kosakata, sekali dari jalur kanji). Kuncinya cuma teks
+// Jepangnya — bacaan bisa null di satu jalur dan terisi di jalur lain.
 export function reviewSubjectKey(candidate) {
-  const word = candidate?.word;
-  if (word) return `word:${String(word.japanese || '').trim().toLowerCase()}::${String(word.reading || '').trim().toLowerCase()}`;
+  const text = candidate?.word?.japanese ?? (candidate?.category === 'vocabulary' ? candidate.item?.japanese : null);
+  if (text) return `word:${String(text).trim().toLowerCase()}`;
   return `${candidate?.category}:${candidate?.itemId}`;
 }
 
