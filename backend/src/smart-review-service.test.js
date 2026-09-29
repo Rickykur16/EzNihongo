@@ -270,9 +270,12 @@ test('kata yang sama tetap satu soal walau diklaim dua kanji berbeda', () => {
 
 test('soal dengan pemilik yang sama tidak pernah berdampingan', () => {
   const candidates = [];
+  // Tiap kata memakai kanji berbeda: kanji yang sama di tiga kata akan (benar)
+  // ditahan oleh batas "kanji tampil", dan bukan itu yang diuji di sini.
+  const shownKanji = { 'k-a': '山', 'k-b': '川', 'k-c': '空' };
   for (const owner of ['k-a', 'k-b', 'k-c']) {
     candidates.push(kanji(owner, 'char2meaning'));
-    candidates.push(word(owner, `word2meaning:${owner}`, `${owner}語`, `${owner}ご`));
+    candidates.push(word(owner, `word2meaning:${owner}`, `${shownKanji[owner]}ぜん`, `${owner}ご`));
   }
   const selected = selectReviewCandidates(candidates, { category: 'kanji', limit: 20 });
   assert.equal(selected.length, 6);
@@ -280,4 +283,54 @@ test('soal dengan pemilik yang sama tidak pernah berdampingan', () => {
     assert.notEqual(selected[i].itemId, selected[i - 1].itemId,
       `pemilik ${selected[i].itemId} berdampingan di posisi ${i - 1} dan ${i}`);
   }
+});
+
+test('satu kanji tidak tampil lebih dari dua kali dalam sesi, termasuk lewat kata milik kanji lain', () => {
+  const chars = { a: '学', b: '生', c: '校', d: '大' };
+  const due = { attempts: 1, nextReviewAt: '2020-01-01' };
+  const cands = Object.entries(chars).map(([id, character]) => ({ category: 'kanji', itemId: id, skill: 'char2meaning', item: { id, character }, state: due }));
+  for (const [w, owner] of [['学生', 'b'], ['学校', 'c'], ['大学', 'd']]) {
+    cands.push({ category: 'kanji', itemId: owner, skill: 'word2meaning', word: { japanese: w, reading: w }, item: { id: owner, character: chars[owner] }, state: due });
+  }
+  const shown = selectReviewCandidates(cands, { category: 'kanji' }).map((c) => c.word ? c.word.japanese : c.item.character);
+  const count = {};
+  for (const s of shown) for (const ch of s) count[ch] = (count[ch] || 0) + 1;
+  assert.ok(Math.max(...Object.values(count)) <= 2, `terlalu sering: ${JSON.stringify(count)}`);
+});
+
+test('kata yang sama dari jalur kosakata dan jalur kanji hanya satu soal per sesi', () => {
+  const due = { attempts: 1, nextReviewAt: '2020-01-01' };
+  const selected = selectReviewCandidates([
+    { category: 'vocabulary', itemId: 'v1', skill: 'jp2id', item: { id: 'v1', japanese: '学生', reading: 'がくせい', indonesian: 'pelajar' }, state: due },
+    { category: 'kanji', itemId: 'kb', skill: 'word2meaning::学生', word: { japanese: '学生', reading: null, indonesian: 'pelajar' }, item: { id: 'kb', character: '生' }, state: due },
+  ], { category: 'mixed' });
+  assert.equal(selected.length, 1);
+});
+
+test('kosakata dan kata majemuk kanji yang sama berbagi satu gerbang: hanya satu arah terbuka', () => {
+  const entry = (itemType, itemId, skill, extra = {}) => ({ key: `${itemType}:${itemId}:${skill}`, itemType, itemId, skill, attempts: 0, fsrsState: null, group: 'word:学生', ...extra });
+  const entries = [
+    entry('vocabulary', 'v1', 'jp2id'), entry('vocabulary', 'v1', 'id2jp'), entry('vocabulary', 'v1', 'audio2id'),
+    entry('kanji', 'kb', 'word2meaning::学生'), entry('kanji', 'kb', 'reading2word::学生'),
+  ];
+  // Tanpa group: dua item terpisah → dua arah terbuka (kata kembali dua kali).
+  assert.equal(unlockedSkills(entries.map(({ group, ...rest }) => rest)).size, 2);
+  // Dengan group: satu kata = satu kandidat.
+  assert.equal(unlockedSkills(entries).size, 1);
+  // Setelah satu arah mantap ('review'), seluruh arah kata itu terbuka.
+  const practised = entries.map((e) => e.skill === 'jp2id' ? { ...e, attempts: 1, fsrsState: 'review' } : e);
+  assert.equal(unlockedSkills(practised).size, 5);
+});
+
+test('ringkasan menghitung pokok soal unik, bukan tiap arahnya', () => {
+  const due = { attempts: 1, nextReviewAt: '2020-01-01' };
+  const kanjiItem = (id, skill, word) => ({ category: 'kanji', itemId: id, skill, state: due, item: { id }, ...(word ? { word: { japanese: word, reading: word } } : {}) });
+  const summary = summarizeCandidates([
+    kanjiItem('k1', 'char2meaning'), kanjiItem('k1', 'meaning2char'),                   // satu kanji, dua arah
+    kanjiItem('k1', 'word2meaning::学生', '学生'), kanjiItem('k1', 'reading2word::学生', '学生'), // satu kata, dua arah
+    { category: 'vocabulary', itemId: 'v1', skill: 'jp2id', state: due, item: { id: 'v1', japanese: '学生' } }, // kata yang sama lewat jalur kosakata
+  ]);
+  assert.equal(summary.byCategory.kanji, 2);       // 1 kanji + 1 kata
+  assert.equal(summary.byCategory.vocabulary, 0);  // 学生 sudah dihitung sebagai kata kanji
+  assert.equal(summary.total, 2);
 });

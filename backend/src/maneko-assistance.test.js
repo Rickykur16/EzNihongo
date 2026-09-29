@@ -3,12 +3,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import pgDriver from 'pg';
-import { assistanceFor, recordExposure, independentEvidenceSql, reviewHelp } from './maneko-assistance.js';
 import { recordPracticeAttemptWithState } from './practice-service.js';
 import { loadMastery } from './grammar-mastery.js';
 import { db } from './db.js';
 import reviewRouter from './routes/smart-review.js';
-import { weeklyActivity } from './dashboard-service.js';
 
 const id = n => `20000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 test('Maneko preserves independent evidence across help, retries and related sessions', { timeout: 90000 }, async t => {
@@ -71,89 +69,52 @@ test('Maneko preserves independent evidence across help, retries and related ses
     await handler({ user:{id:user,email:'test@example.test'}, params:{sessionId},body }, res, e => {throw e;});
     return res;
   }
-  await t.test('wrong first answer survives later help and corrected retry', async () => {
+  // Jawaban "berbantuan" dihapus dari Smart Review dan drill pelajaran: setiap
+  // jawaban selalu tercatat ke state FSRS, ada atau tidaknya paparan tutor.
+  // Dulu jawaban yang jatuh di dalam jendela paparan dibuang diam-diam, sehingga
+  // item yang dijawab benar tetap jatuh tempo dan kembali di sesi berikutnya.
+  await t.test('smart review answers always update state, even with a leftover exposure row', async () => {
+    // Baris paparan lama (dari sebelum konsep ini dihapus) tidak boleh lagi berpengaruh.
+    await pg.query("INSERT INTO maneko_exposures (user_id, assistance_type, expires_at) VALUES ($1,'tutor_chat',NOW()+INTERVAL '30 minutes')",[id(1)]);
     const session = await makeSession();
-    const first = await invoke('answers',session,{questionIndex:0,optionIndex:1});
-    assert.equal(first.body.passed,false); assert.equal(first.body.assisted,false);
-    const before = (await pg.query('SELECT * FROM user_practice_state')).rows;
-    const help = await invoke('help',session,{questionIndex:0,level:3});
-    assert.equal(help.body.firstResult.passed,false); assert.match(help.body.text,/a/);
-    const retry = await invoke('answers',session,{questionIndex:0,optionIndex:0});
-    assert.equal(retry.body.passed,false);
-    assert.deepEqual((await pg.query('SELECT * FROM user_practice_state')).rows,before);
+    const answered = await invoke('answers',session,{questionIndex:0,optionIndex:0});
+    assert.equal(answered.body.passed,true);
+    assert.equal(answered.body.assisted,undefined);
+    const state = (await pg.query('SELECT attempts, correct FROM user_practice_state WHERE item_id=$1',[id(10)])).rows;
+    assert.equal(state.length,1); assert.equal(state[0].attempts,1); assert.equal(state[0].correct,1);
     assert.equal((await pg.query('SELECT * FROM practice_attempts')).rows.length,1);
   });
-  await t.test('help before answer and another session on related lesson never update FSRS', async () => {
-    const session = await makeSession();
-    const help = await invoke('help',session,{questionIndex:0,level:1});
-    assert.equal(help.statusCode,200);
-    assert.ok(await assistanceFor(pg,{userId:id(1),lessonId:id(5),itemType:'kana',itemId:id(99)}));
-    const before = (await pg.query('SELECT * FROM user_practice_state')).rows;
-    const answered = await invoke('answers',session,{questionIndex:0,optionIndex:0,assisted:false});
-    assert.equal(answered.body.assisted,true);assert.equal(answered.body.evidenceEligible,false);
-    const otherSession = await makeSession();
-    assert.equal((await invoke('answers',otherSession,{questionIndex:0,optionIndex:0})).body.assisted,true);
-    assert.deepEqual((await pg.query('SELECT * FROM user_practice_state')).rows,before);
+  await t.test('wrong smart review answer is recorded too', async () => {
+    const session = await makeSession('kana',id(5),{prompt:'い',options:['a','i'],correctIndex:1});
+    const answered = await invoke('answers',session,{questionIndex:0,optionIndex:0});
+    assert.equal(answered.body.passed,false);
+    assert.equal((await pg.query('SELECT * FROM practice_attempts')).rows.length,2);
   });
-  await t.test('assisted lesson drill remains activity but cannot alter independent state or accuracy', async () => {
-    const before=(await pg.query('SELECT * FROM user_practice_state')).rows;
-    const result=await recordPracticeAttemptWithState(pg,{userId:id(1),courseId:id(3),lessonId:id(5),itemType:'kana',itemId:id(10),skill:'k2r',isCorrect:true,source:'lesson_drill'});
-    assert.equal(result.assisted,true);
-    assert.deepEqual((await pg.query('SELECT * FROM user_practice_state')).rows,before);
-    const eligible=await pg.query(`SELECT * FROM practice_attempts pa WHERE ${independentEvidenceSql({item:'pa.item_id',type:'pa.item_type'},'pa')}`);
-    assert.equal(eligible.rows.length,1);assert.equal(eligible.rows[0].is_correct,false);
+  await t.test('lesson drill attempt updates state despite an exposure', async () => {
+    const before=(await pg.query('SELECT attempts FROM user_practice_state WHERE item_id=$1 AND skill=$2',[id(11),'k2r'])).rows;
+    assert.equal(before.length,0);
+    const result=await recordPracticeAttemptWithState(pg,{userId:id(1),courseId:id(3),lessonId:id(5),itemType:'kana',itemId:id(11),skill:'k2r',isCorrect:true,source:'lesson_drill'});
+    assert.equal(result.attempts,1);
+    assert.equal((await pg.query('SELECT attempts FROM user_practice_state WHERE item_id=$1 AND skill=$2',[id(11),'k2r'])).rows[0].attempts,1);
   });
-  await t.test('unrelated content stays independent; free chat applies across all tabs', async () => {
-    assert.equal(await assistanceFor(pg,{userId:id(1),lessonId:id(6),itemType:'vocabulary',itemId:id(90)}),null);
-    await recordExposure(pg,{userId:id(1),type:'tutor_chat'});
-    assert.ok(await assistanceFor(pg,{userId:id(1),lessonId:id(6),itemType:'vocabulary',itemId:id(90)}));
-    assert.equal(await assistanceFor(pg,{userId:id(2),lessonId:id(6),itemType:'vocabulary',itemId:id(90)}),null);
-  });
-  await t.test('grammar answer with help cannot enter mastery; historical attempts are filtered', async () => {
+  await t.test('grammar smart review answer is stored as an attempt despite an exposure', async () => {
     const session=await makeSession('grammar',id(5),{step:1,options:['a','i'],correctIndex:0});
-    assert.equal((await invoke('answers',session,{questionIndex:0,optionIndex:0})).body.assisted,true);
-    assert.equal((await pg.query('SELECT * FROM grammar_attempts')).rows.length,0);
-    await pg.query("INSERT INTO grammar_attempts(user_id,grammar_id,lesson_id,source,passed) VALUES ($1,$2,$3,'recognition',TRUE)",[id(1),id(10),id(5)]);
-    await pg.query('INSERT INTO quiz_question_results(user_id,lesson_id,grammar_id,is_correct) VALUES ($1,$2,$3,TRUE)',[id(1),id(5),id(10)]);
-    assert.equal((await loadMastery(id(1),[id(10)])).get(id(10)).attempts,0);
+    assert.equal((await invoke('answers',session,{questionIndex:0,optionIndex:0})).body.passed,true);
+    assert.equal((await pg.query('SELECT * FROM grammar_attempts')).rows.length,1);
   });
-  await t.test('owner, expiry and malformed inputs are rejected without exposing answers', async () => {
+  await t.test('grammar mastery counts every stored attempt, even inside a leftover exposure window', async () => {
+    await pg.query('INSERT INTO quiz_question_results(user_id,lesson_id,grammar_id,is_correct) VALUES ($1,$2,$3,TRUE)',[id(1),id(5),id(10)]);
+    // 1 jawaban smart review grammar (subtes sebelumnya) + 1 hasil kuis
+    assert.equal((await loadMastery(id(1),[id(10)])).get(id(10)).attempts,2);
+  });
+  await t.test('owner, expiry and malformed inputs are rejected', async () => {
     const session=await makeSession();
-    assert.equal((await invoke('help',session,{questionIndex:0,level:3},id(2))).statusCode,404);
-    assert.equal((await invoke('help',session,{questionIndex:0,level:4})).statusCode,400);
+    assert.equal((await invoke('answers',session,{questionIndex:0,optionIndex:0},id(2))).statusCode,404);
     assert.equal((await invoke('answers',session,{questionIndex:0,optionIndex:null})).statusCode,400);
     await pg.query("UPDATE smart_review_sessions SET expires_at=NOW()-INTERVAL '1 minute' WHERE id=$1",[session]);
-    assert.equal((await invoke('help',session,{questionIndex:0,level:3})).statusCode,410);
+    assert.equal((await invoke('answers',session,{questionIndex:0,optionIndex:0})).statusCode,410);
   });
-  await t.test('dashboard retains assisted activity but excludes it from independent accuracy', async () => {
-    const activity = await weeklyActivity(id(1),id(3));
-    assert.equal(activity.activeDays,1);
-    assert.equal(activity.attempts,1);
-    assert.equal(activity.accuracy,0);
-    assert.equal(activity.reviewQuestions,1);
+  await t.test('smart review no longer exposes a help endpoint', () => {
+    assert.equal(reviewRouter.stack.some(l => l.route?.path === '/sessions/:sessionId/help'), false);
   });
-  await t.test('assistance failure rolls back and never reveals content', async () => {
-    const session=await makeSession();
-    const connect=db.connect;
-    db.connect=async()=>({release(){},query(sql,args){if(sql.startsWith('INSERT INTO maneko_exposures'))throw Error('storage unavailable');return pg.query(sql,args);}});
-    await assert.rejects(()=>invoke('help',session,{questionIndex:0,level:3}),/storage unavailable/);
-    db.connect=connect;
-    assert.equal((await pg.query('SELECT * FROM maneko_exposures WHERE session_id=$1',[session])).rows.length,0);
-  });
-  await t.test('expired exposure allows a later independent attempt without rewriting assisted history', async () => {
-    const oldSession=await makeSession();
-    await invoke('help',oldSession,{questionIndex:0,level:1});
-    await pg.query("UPDATE maneko_exposures SET expires_at=clock_timestamp()-INTERVAL '1 millisecond'");
-    assert.equal((await invoke('answers',oldSession,{questionIndex:0,optionIndex:0})).body.assisted,true);
-    const session=await makeSession('grammar',id(5),{step:1,options:['a','i'],correctIndex:0});
-    assert.equal((await invoke('answers',session,{questionIndex:0,optionIndex:0})).body.assisted,false);
-    assert.equal((await loadMastery(id(1),[id(10)])).get(id(10)).attempts,1);
-  });
-});
-
-test('progressive hints do not reveal the answer until the final step',()=>{
-  const question={options:['secret-answer','other'],correctIndex:0};
-  assert.ok(!reviewHelp(question,1).includes('secret-answer'));
-  assert.ok(!reviewHelp(question,2).includes('secret-answer'));
-  assert.match(reviewHelp(question,3),/secret-answer/);
 });

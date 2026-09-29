@@ -1,4 +1,4 @@
-import { assistanceFor, lockEvidence } from './maneko-assistance.js';
+import { lockEvidence } from './maneko-assistance.js';
 import { applyPracticeAttempt } from './learning-foundations.js';
 
 // Runs inside the route's per-(user,item,skill) advisory-lock transaction.
@@ -8,7 +8,6 @@ export async function recordPracticeAttemptWithState(client, {
   userId, courseId, lessonId, itemType, itemId, skill, isCorrect, source,
 }) {
   await lockEvidence(client, userId);
-  const exposure = await assistanceFor(client, { userId, lessonId, itemType, itemId });
   const currentResult = await client.query(
     `SELECT attempts, correct, streak, last_seen_at, last_reviewed_at, next_review_at, mastery_state,
             fsrs_stability, fsrs_difficulty, fsrs_state, fsrs_reps, fsrs_lapses
@@ -17,11 +16,6 @@ export async function recordPracticeAttemptWithState(client, {
       FOR UPDATE`,
     [userId, itemType, itemId, skill]
   );
-  if (exposure) {
-    // Preserve activity, but do not touch the independent FSRS aggregate.
-    await client.query('INSERT INTO practice_attempts (user_id, course_id, lesson_id, item_type, item_id, skill, is_correct, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)', [userId, courseId, lessonId || null, itemType, itemId, skill, isCorrect, source]);
-    return { item_type: itemType, item_id: itemId, skill, attempts: 0, correct: 0, streak: 0, ...currentResult.rows[0], assisted: true };
-  }
   const next = applyPracticeAttempt(currentResult.rows[0], { isCorrect });
   await client.query(
     `INSERT INTO practice_attempts

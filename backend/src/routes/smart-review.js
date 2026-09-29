@@ -1,4 +1,4 @@
-import { assistanceFor, evidenceLock, recordExposure, reviewHelp } from '../maneko-assistance.js';
+import { evidenceLock } from '../maneko-assistance.js';
 import { Router } from 'express';
 import { query, withAdvisoryLock } from '../db.js';
 import { requireAuth, asyncHandler } from '../middleware.js';
@@ -8,7 +8,7 @@ import { recordPracticeAttemptWithState } from '../practice-service.js';
 import { loadMastery } from '../grammar-mastery.js';
 import { deriveDrills, publicDrill, arrangeIsCorrect } from '../grammar-drills.js';
 import { attemptSourceFor, primaryErrorFor } from '../bunpou-flow-service.js';
-import { REVIEW_CATEGORIES, SMART_REVIEW_SOURCE, filterReviewScope, isReviewNeeded, makeReviewQuestion, pickCompoundOwners, unlockedSkills, publicQuestion, reviewPriority, selectReviewCandidates, summarizeCandidates } from '../smart-review-service.js';
+import { REVIEW_CATEGORIES, SMART_REVIEW_SOURCE, filterReviewScope, isReviewNeeded, makeReviewQuestion, pickCompoundOwners, reviewSubjectKey, unlockedSkills, publicQuestion, reviewPriority, selectReviewCandidates, summarizeCandidates } from '../smart-review-service.js';
 import { deriveCompounds, extractKanjiCharacters, loadKanjiCatalog } from '../kanji-compounds.js';
 import { excludePlacedKana, passedKanaKinds } from '../kana-placement.js';
 
@@ -157,6 +157,8 @@ export async function buildReviewCandidates(user) {
       skill: candidate.skill,
       attempts: Number(candidate.state?.attempts) || 0,
       fsrsState: candidate.state?.fsrsState || null,
+      // Kosakata dan kata majemuk kanji yang sama = satu kelompok gerbang.
+      group: candidate.word || candidate.category === 'vocabulary' ? reviewSubjectKey(candidate) : undefined,
     })));
   const gated = candidates.filter((candidate) => candidate.category === 'grammar'
     || unlocked.has(`${candidate.category}:${candidate.itemId}:${candidate.skill}`));
@@ -177,9 +179,8 @@ router.post('/sessions', asyncHandler(async (req, res) => {
       const payload = candidate.category === 'grammar' ? candidate.grammarDrill : makeReviewQuestion(candidate, pools);
       if (!payload || (payload.options && payload.options.length < 2)) continue;
       const index = questions.length;
-      const exposure = await assistanceFor(client, { userId: req.user.id, lessonId: candidate.lessonId, itemType: candidate.category, itemId: candidate.itemId });
-      await client.query(`INSERT INTO smart_review_session_items (session_id, question_index, item_type, item_id, skill, lesson_id, payload, assisted_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, [created.rows[0].id, index, candidate.category, candidate.itemId, candidate.skill, candidate.lessonId, JSON.stringify(payload), exposure ? new Date() : null]);
-      questions.push({ ...asPublic(candidate, candidate.category === 'grammar' ? publicDrill(payload) : publicQuestion(payload)), assisted: !!exposure });
+      await client.query(`INSERT INTO smart_review_session_items (session_id, question_index, item_type, item_id, skill, lesson_id, payload) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [created.rows[0].id, index, candidate.category, candidate.itemId, candidate.skill, candidate.lessonId, JSON.stringify(payload)]);
+      questions.push({ ...asPublic(candidate, candidate.category === 'grammar' ? publicDrill(payload) : publicQuestion(payload)) });
     }
     return { id: created.rows[0].id, expiresAt: created.rows[0].expires_at, questions };
   });
@@ -197,24 +198,6 @@ async function lockedSessionItem(client, user, sessionId, index, allowAnswered =
   if (!row.lesson_id || !(await userCanAccessCourse(user, row.course_id))) return { error: 'not_enrolled', status: 403 };
   const complete = await client.query(`SELECT 1 FROM user_progress WHERE user_id = $1 AND lesson_id = $2 AND completed = TRUE`, [user.id, row.lesson_id]); if (!complete.rows.length) return { error: 'lesson_not_completed', status: 403 }; return { row };
 }
-
-router.post('/sessions/:sessionId/help', asyncHandler(async (req, res) => {
-  const sessionId = req.params.sessionId;
-  const questionIndex = req.body?.questionIndex;
-  const level = req.body?.level;
-  if (!UUID.test(sessionId) || !Number.isInteger(questionIndex) || questionIndex < 0 || ![1, 2, 3].includes(level)) return res.status(400).json({ error: 'invalid_help' });
-  const result = await withAdvisoryLock(evidenceLock(req.user.id), async (client) => {
-    const access = await lockedSessionItem(client, req.user, sessionId, questionIndex, true);
-    if (access.error) return access;
-    const row = access.row;
-    // Commit exposure before returning any content; this also protects other tabs
-    // and other questions on the same lesson, across skill directions.
-    const exposure = await recordExposure(client, { userId: req.user.id, lessonId: row.lesson_id, itemType: row.item_type, itemId: row.item_id, sessionId, questionIndex, type: ['hint', 'explanation', 'answer'][level - 1] });
-    return { text: reviewHelp(row.payload, level), level, assisted: true, independentAfter: exposure.expires_at, firstResult: row.result || null };
-  });
-  if (result.error) return res.status(result.status).json({ error: result.error });
-  return res.json(result);
-}));
 
 router.post('/sessions/:sessionId/answers', asyncHandler(async (req, res) => {
   const sessionId = req.params.sessionId;
@@ -234,17 +217,13 @@ router.post('/sessions/:sessionId/answers', asyncHandler(async (req, res) => {
       if (!Array.isArray(order) || order.length !== payload.tokens.length || new Set(order).size !== order.length || order.some(i => !Number.isInteger(i) || i < 0 || i >= payload.tokens.length)) return { error: 'invalid_order', status: 400 };
     } else if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex >= (payload.options || []).length) return { error: 'invalid_option', status: 400 };
     const passed = arrange ? arrangeIsCorrect(payload, order) : optionIndex === payload.correctIndex;
-    const exposure = await assistanceFor(client, { userId: req.user.id, lessonId: row.lesson_id, itemType: row.item_type, itemId: row.item_id });
-    const assisted = !!(row.assisted_at || exposure);
-    const result = { passed, assisted, evidenceEligible: !assisted, independentAfter: exposure?.expires_at || null, correctIndex: payload.correctIndex, correctOrder: arrange ? payload.answer : undefined };
-    if (!assisted) {
-      if (row.item_type === 'grammar') {
-        const value = arrange ? order.map(i => payload.tokens[i]).join(' ') : payload.options[optionIndex];
-        const primary = passed ? null : primaryErrorFor(payload.step, payload.rule);
-        await client.query(`INSERT INTO grammar_attempts (user_id, grammar_id, lesson_id, source, input_mode, sentence, correct, uses_pattern, passed, primary_error, error_types, eval_source, check_family_id) VALUES ($1,$2,$3,$4,'text',$5,$6,$6,$6,$7,$8,$9,$10)`, [req.user.id, row.item_id, row.lesson_id, attemptSourceFor(payload.step), String(value).slice(0, 200), passed, primary, primary ? [primary] : [], SMART_REVIEW_SOURCE, payload.checkFamilyId || null]);
-      } else {
-        result.state = await recordPracticeAttemptWithState(client, { userId: req.user.id, courseId: row.course_id, lessonId: row.lesson_id, itemType: row.item_type, itemId: row.item_id, skill: row.skill, isCorrect: passed, source: SMART_REVIEW_SOURCE });
-      }
+    const result = { passed, correctIndex: payload.correctIndex, correctOrder: arrange ? payload.answer : undefined };
+    if (row.item_type === 'grammar') {
+      const value = arrange ? order.map(i => payload.tokens[i]).join(' ') : payload.options[optionIndex];
+      const primary = passed ? null : primaryErrorFor(payload.step, payload.rule);
+      await client.query(`INSERT INTO grammar_attempts (user_id, grammar_id, lesson_id, source, input_mode, sentence, correct, uses_pattern, passed, primary_error, error_types, eval_source, check_family_id) VALUES ($1,$2,$3,$4,'text',$5,$6,$6,$6,$7,$8,$9,$10)`, [req.user.id, row.item_id, row.lesson_id, attemptSourceFor(payload.step), String(value).slice(0, 200), passed, primary, primary ? [primary] : [], SMART_REVIEW_SOURCE, payload.checkFamilyId || null]);
+    } else {
+      result.state = await recordPracticeAttemptWithState(client, { userId: req.user.id, courseId: row.course_id, lessonId: row.lesson_id, itemType: row.item_type, itemId: row.item_id, skill: row.skill, isCorrect: passed, source: SMART_REVIEW_SOURCE });
     }
     await client.query('UPDATE smart_review_session_items SET answered_at = clock_timestamp(), result = $3 WHERE session_id = $1 AND question_index = $2', [sessionId, questionIndex, JSON.stringify(result)]);
     return result;

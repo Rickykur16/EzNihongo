@@ -45,9 +45,20 @@ export function filterReviewScope(items, { completedLessonIds, accessibleCourseI
   return (items || []).filter((item) => lessons.has(item.lessonId) && courses.has(item.courseId));
 }
 
+// Yang dihitung adalah POKOK SOAL unik, bukan tiap arahnya: satu kata (atau satu
+// kanji) punya beberapa arah, tapi sesi hanya menanyakan satu arah per pokok soal
+// (lihat oneDirectionPerSubject). Menjumlahkan arah membuat dashboard menjanjikan
+// "46 perlu direview" padahal itu belasan kanji.
 export function summarizeCandidates(candidates) {
   const byCategory = Object.fromEntries(REVIEW_CATEGORIES.map((category) => [category, 0]));
-  for (const candidate of candidates || []) if (candidate.category in byCategory) byCategory[candidate.category] += 1;
+  const seen = new Set();
+  for (const candidate of candidates || []) {
+    if (!(candidate.category in byCategory)) continue;
+    const subject = reviewSubjectKey(candidate);
+    if (seen.has(subject)) continue;
+    seen.add(subject);
+    byCategory[candidate.category] += 1;
+  }
   return { total: Object.values(byCategory).reduce((sum, count) => sum + count, 0), byCategory };
 }
 
@@ -60,9 +71,15 @@ const MAX_PER_OWNER = 2;
 // Untuk kata majemuk, satuannya kata itu sendiri (kunci yang sama persis
 // dengan pickCompoundOwners: japanese::reading), BUKAN kanji pemiliknya —
 // satu kanji memiliki banyak kata dan tiap kata layak gilirannya sendiri.
+//
+// Kosakata pelajaran (学生, 先生) JUGA muncul sebagai kata majemuk kanji karena
+// kata majemuk diturunkan dari kosakata yang sama. Keduanya menanyakan hal yang
+// sama, jadi kunci mereka harus sama; kalau tidak, 学生 muncul dua kali sesi
+// (sekali dari jalur kosakata, sekali dari jalur kanji). Kuncinya cuma teks
+// Jepangnya — bacaan bisa null di satu jalur dan terisi di jalur lain.
 export function reviewSubjectKey(candidate) {
-  const word = candidate?.word;
-  if (word) return `word:${String(word.japanese || '').trim().toLowerCase()}::${String(word.reading || '').trim().toLowerCase()}`;
+  const text = candidate?.word?.japanese ?? (candidate?.category === 'vocabulary' ? candidate.item?.japanese : null);
+  if (text) return `word:${String(text).trim().toLowerCase()}`;
   return `${candidate?.category}:${candidate?.itemId}`;
 }
 
@@ -86,9 +103,20 @@ export function reviewOwnerKey(candidate) {
 // berjarak yang benar. Pola ini menyamakan Smart Review dengan drill
 // pelajaran (`_kanjiBuildSessionQuestions` di welcome.html), yang sejak awal
 // memang cuma menanyakan satu arah per item per sesi.
+// Kanji yang TAMPIL di soal (bukan pemiliknya): soal karakter 学 menampilkan 学,
+// soal kata 学生/学校/大学 juga menampilkan 学 walau dimiliki kanji lain. Tanpa
+// menghitung ini, batas per pemilik lolos padahal siswa melihat 学 empat kali.
+const HAN = /\p{Script=Han}/gu;
+export function reviewShownKanji(candidate) {
+  if (candidate?.category !== 'kanji') return [];
+  const text = candidate.word ? candidate.word.japanese : candidate.item?.character;
+  return [...new Set(String(text || '').match(HAN) || [])];
+}
+
 function oneDirectionPerSubject(ranked) {
   const seen = new Set();
   const perOwner = new Map();
+  const perShown = new Map();
   const out = [];
   for (const candidate of ranked) {
     const subject = reviewSubjectKey(candidate);
@@ -96,8 +124,11 @@ function oneDirectionPerSubject(ranked) {
     const owner = reviewOwnerKey(candidate);
     const used = perOwner.get(owner) || 0;
     if (used >= MAX_PER_OWNER) continue;
+    const shown = reviewShownKanji(candidate);
+    if (shown.some((ch) => (perShown.get(ch) || 0) >= MAX_PER_OWNER)) continue;
     seen.add(subject);
     perOwner.set(owner, used + 1);
+    for (const ch of shown) perShown.set(ch, (perShown.get(ch) || 0) + 1);
     out.push(candidate);
   }
   return out;
@@ -218,7 +249,10 @@ export function pickCompoundOwners(entries) {
 export function unlockedSkills(entries) {
   const byItem = new Map();
   for (const entry of entries || []) {
-    const key = `${entry.itemType}:${entry.itemId}`;
+    // `group` memungkinkan beberapa item berbagi SATU kandidat: kosakata 学生 dan
+    // kata majemuk 学生 milik kanji 生 adalah kata yang sama. Digate terpisah,
+    // masing-masing membuka satu arahnya sendiri dan kata itu kembali dua kali.
+    const key = entry.group ?? `${entry.itemType}:${entry.itemId}`;
     if (!byItem.has(key)) byItem.set(key, []);
     byItem.get(key).push(entry);
   }

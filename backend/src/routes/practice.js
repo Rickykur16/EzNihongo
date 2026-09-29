@@ -392,10 +392,6 @@ router.post('/import-legacy', asyncHandler(async (req, res) => {
 
   const outcome = await withAdvisoryLock(`practice-import:${req.user.id}`, async (client) => {
     await lockEvidence(client, req.user.id);
-    // Old browser aggregates carry no assistance provenance. Once coaching has
-    // occurred, importing them could restore assisted successes into FSRS.
-    const coached = await client.query('SELECT 1 FROM maneko_exposures WHERE user_id = $1 LIMIT 1', [req.user.id]);
-    if (coached.rows.length) return { imported: 0, alreadyImported: 0, unresolved: entryCount, skippedReason: 'assistance_provenance_unknown' };
     const courseIds = await accessibleCourseIds(req.user, (text, params) => client.query(text, params));
     const result = { imported: 0, alreadyImported: 0, unresolved: 0 };
     for (const itemType of Object.keys(stores)) {

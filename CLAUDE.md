@@ -71,6 +71,30 @@
 
 ## Konvensi penting
 
+- **Konsep "jawaban berbantuan" (Maneko) DIHAPUS dari bukti belajar** — user: "nambah
+  ribet dan nambah bug". Dulu jawaban yang jatuh di jendela paparan tutor (24 jam untuk
+  petunjuk Smart Review, 30 menit untuk chat tutor) dibuang tanpa menulis state FSRS,
+  sehingga kanji yang dijawab benar tetap jatuh tempo dan kembali di sesi berikutnya.
+  Sekarang SETIAP jawaban tercatat: `practice-service.js` dan `POST /review/sessions/:id/answers`
+  selalu menulis; `loadMastery`, `grammar-mastery-shadow.js` (harus tetap cermin persis
+  `loadMastery`), `dashboard-service.js`, `routes/recommendations.js` tidak lagi menyaring
+  dengan `independentEvidenceSql` (fungsinya dihapus); impor progres lokal
+  (`routes/practice.js`) tidak lagi dilewati untuk siswa yang pernah memakai chat tutor;
+  `routes/tutor.js` tidak lagi menulis `maneko_exposures`. Panel "Bantuan Maneko-chan" dan
+  `POST /review/sessions/:id/help` di Smart Review dihapus. Tabel `maneko_exposures` dan
+  kolom `smart_review_session_items.assisted_at` SENGAJA dibiarkan (tanpa migrasi
+  destruktif) — tidak ada lagi yang membacanya. Yang TIDAK disentuh: `assistance_state`/
+  hint/reveal milik sesi Tugas Bunpou (mekanisme terpisah, dipakai kebijakan shadow).
+  **Satu kata = satu kandidat Smart Review**: kosakata 学生 dan kata majemuk 学生 (milik
+  kanji 生) dulu dua item terpisah dengan gerbang arah-baru sendiri-sendiri, jadi kata
+  itu kembali berkali-kali. `unlockedSkills` kini menerima `group` (kunci kata =
+  `reviewSubjectKey`), dan `selectReviewCandidates` membatasi satu kanji maksimal 2 kali
+  TAMPIL per sesi (`reviewShownKanji`), bukan cuma per pemilik. **Jebakan alat uji**:
+  `npm test` polos di sandbox gagal 66 karena `node_modules` (`npm ci`) dan Postgres belum
+  ada; tes DB mewajibkan `TEST_DATABASE_URL` berhost `127.0.0.1`/`localhost` TANPA
+  parameter `host=`, dan `git stash` hanya membuang perubahan yang BELUM di-commit —
+  "baseline" setelah stash tetap memuat commit sebelumnya.
+
 - **Landing page (`index.html`) diberi motion "website mahal" — keputusan user
   MENGABAIKAN DESIGN.md** (user: "lupakan design.md", lalu "buat sekreatif mu").
   Anggaran motion DESIGN.md (reveal 180–240ms, tanpa parallax, tanpa motif Jepang
