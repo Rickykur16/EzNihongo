@@ -39,13 +39,17 @@ async function readiness(lesson, dbQuery) {
   return { reason: null, context };
 }
 
-// Daftar admin: semua pelajaran Bunpou beserta status tampilnya. Pelajaran
-// yang sudah dipublikasikan selalu ikut terdaftar walau pola grammarnya kini
-// milik pelajaran lain, supaya publikasinya tetap bisa ditarik dari sini.
+// Daftar admin: pelajaran Bunpou yang bisa punya pendamping beserta status
+// tampilnya. Pendamping hanya untuk N5 (lihat `readiness`), jadi pelajaran
+// kursus lain tidak ikut didaftarkan — puluhan baris N4 yang selalu "hanya
+// untuk N5" cuma menenggelamkan pelajaran yang relevan. Pelajaran yang sudah
+// dipublikasikan selalu ikut terdaftar, apa pun kursusnya dan walau pola
+// grammarnya kini milik pelajaran lain, supaya publikasinya tetap bisa ditarik.
 export async function loadCompanionLessonOptions(dbQuery = query) {
   const result = await dbQuery(`SELECT ${LESSON_COLUMNS}
       AND (l.bunpou_flow_published IS NOT NULL
-        OR EXISTS (SELECT 1 FROM module_grammar g WHERE g.lesson_id = l.id))
+        OR (UPPER(c.level) = 'N5'
+          AND EXISTS (SELECT 1 FROM module_grammar g WHERE g.lesson_id = l.id)))
     ORDER BY c.sort_order, c.id, m.sort_order, m.id, l.sort_order, l.id`);
   const options = [];
   for (const lesson of result.rows) {
@@ -70,6 +74,35 @@ export async function liveCompanionContexts(lessonIds, dbQuery = query) {
     if (!reason) live.set(lesson.id, context);
   }));
   return live;
+}
+
+// Setelah admin menyimpan materi (pola/arti/contoh/pengecoh/dialog), sidik
+// jari sumber SATU BAB berubah dan pendamping yang sudah dipublikasikan di bab
+// itu berhenti tampil sampai dipublikasikan ulang (lihat `readiness`). Route
+// simpan admin memanggil ini supaya admin diberi tahu saat itu juga, bukan
+// baru tahu dari kartu status atau laporan siswa. Best-effort: tidak pernah
+// menggagalkan simpan.
+export async function staleCompanionWarnings({ moduleId = null, grammarId = null } = {}, dbQuery = query) {
+  try {
+    let module = moduleId;
+    if (!module && grammarId) {
+      module = (await dbQuery('SELECT module_id FROM module_grammar WHERE id = $1', [grammarId])).rows[0]?.module_id || null;
+    }
+    if (!module) return [];
+    const lessons = await dbQuery(`SELECT id, title FROM lessons
+      WHERE module_id = $1 AND bunpou_flow_published IS NOT NULL ORDER BY sort_order, id`, [module]);
+    const warnings = [];
+    for (const lesson of lessons.rows) {
+      const context = await loadCompanionContext(lesson.id, dbQuery);
+      if (!context || context.current) continue;
+      warnings.push({ code: 'companion_stale', lessonId: lesson.id,
+        message: `Pendamping Bunpou "${lesson.title}" berhenti tampil ke siswa karena materi bab ini berubah — buka 🧭 Pendamping Bunpou pelajaran itu, tinjau, lalu publikasikan ulang.` });
+    }
+    return warnings;
+  } catch (err) {
+    console.error('Companion staleness check failed:', err.message);
+    return [];
+  }
 }
 
 export async function companionLiveCheck(lessonId, dbQuery = query) {

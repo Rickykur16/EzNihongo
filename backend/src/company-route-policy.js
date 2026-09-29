@@ -144,6 +144,10 @@ export const LEGACY_ROUTES = [
   ["POST", "/kanji/:id/move", "legacy.academic"],
   ["POST", "/lessons/:lessonId/import-notion-kanji-bab", "legacy.academic"],
   ["POST", "/tts/preview", null],
+  // Tes & ganti rekaman satu giliran dialog (cache per giliran yang sama
+  // dengan pemutar siswa). Owner-only seperti /tts/preview: memakai kuota
+  // ElevenLabs dan langsung mengubah audio yang didengar siswa.
+  ["POST", "/tts/dialog-turn", null],
   // ElevenLabs voice catalog (read-only, admin-only) — feeds the dialogue
   // editor's speaker picker with real ElevenLabs voices.
   ["GET", "/elevenlabs/voices", "legacy.academic"],

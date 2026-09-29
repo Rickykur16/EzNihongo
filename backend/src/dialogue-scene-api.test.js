@@ -45,9 +45,12 @@ const fakeQuery=async(sql,p=[])=>{
   if(sql.startsWith('SELECT 1 WHERE EXISTS'))return{rows:known?[{}]:[]};
   if(sql.includes('SELECT dialog_scene FROM module_grammar'))return{rows:grammarMatches?[{dialog_scene:structuredClone(saved)}]:[]};
   if(sql.startsWith('SELECT name, voice_id FROM dialogue_speakers'))return{rows:profiles};
-  if(sql.includes('SELECT alignment FROM tts_cache'))return{rows:cache.has(p[0])?[{alignment:cache.get(p[0])}]:[]};
+  if(sql.includes('SELECT alignment FROM tts_cache'))return{rows:cache.get(p[0])?.alignment?[{alignment:cache.get(p[0]).alignment}]:[]};
+  if(sql.includes('SELECT text_hash, audio FROM tts_cache'))return{rows:p[0].filter(k=>cache.get(k)?.audio).map(k=>({text_hash:k,audio:cache.get(k).audio}))};
+  if(sql.includes('SELECT text_hash FROM tts_cache'))return{rows:p[0].filter(k=>cache.has(k)).map(k=>({text_hash:k}))};
+  if(sql.includes('SELECT audio FROM tts_cache'))return{rows:cache.get(p[0])?.audio?[{audio:cache.get(p[0]).audio}]:[]};
   if(sql.includes('UPDATE tts_cache'))return{rows:[]};
-  if(sql.includes('INSERT INTO tts_cache')){writes.push(p);if(p[7])cache.set(p[0],JSON.parse(p[7]));return{rows:[]};}
+  if(sql.includes('INSERT INTO tts_cache')){writes.push(p);cache.set(p[0],p[7]?{alignment:JSON.parse(p[7])}:{audio:p[4]});return{rows:[{audio:p[4]}]};}
   if(sql.includes('SELECT audio, content_type FROM tts_cache'))return{rows:[]};
   if(sql.includes('SELECT * FROM dialogue_speakers'))return{rows:profiles};
   if(sql.includes('SELECT character_key FROM dialogue_speakers'))return{rows:[{character_key:'anna-wijaya'}]};
@@ -107,9 +110,13 @@ test('student generation uses snapshot voice, cache changes when voice changes, 
   saved=fixture();cache.clear();upstream=[];writes=[];
   let r=await dialog();assert.equal(r.status,200);assert.equal(r.body.segments.length,2);
   assert.ok(upstream.some(u=>u.includes('/text-to-speech/anna-voice')));
-  const firstKey=writes.at(-1)[0],before=upstream.length;
-  assert.equal((await dialog()).status,200);assert.equal(upstream.length,before);
-  saved.participants[0].voiceId='hadi-voice';r=await dialog();assert.equal(r.status,200);assert.notEqual(writes.at(-1)[0],firstKey);
+  // One cached recording per turn; a repeat request generates nothing.
+  const tts=()=>upstream.filter(u=>u.includes('/text-to-speech/')).length;
+  const firstKeys=writes.map(w=>w[0]),before=tts();assert.equal(firstKeys.length,2);
+  assert.equal((await dialog()).status,200);assert.equal(tts(),before);
+  // Changing one participant's voice re-voices only that participant's turn.
+  saved.participants[0].voiceId='hadi-voice';r=await dialog();assert.equal(r.status,200);
+  assert.equal(tts(),before+1);assert.ok(!firstKeys.includes(writes.at(-1)[0]));
   saved.participants[0].voiceId='removed-voice';r=await dialog();assert.equal(r.status,502);
   saved.participants[0].voiceId=null;r=await dialog();assert.equal(r.status,422);
   saved=fixture();

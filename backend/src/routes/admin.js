@@ -35,6 +35,9 @@ import {
   elevenLabsEnabled,
   TTS_SETTINGS_VERSION,
   renderTtsAudio,
+  resolveDialogTurnVoices,
+  dialogTurnAudio,
+  seedDialogTurnsFromLegacy,
 } from './tts.js';
 import {
   loadCourseVocab,
@@ -50,7 +53,7 @@ import {
   sanitizeCompanionEnvelope,
 } from '../bunpou-flow-service.js';
 import { loadMasteryShadow, summarizeShadow } from '../grammar-mastery-shadow.js';
-import { loadCompanionLessonOptions, companionLiveReason } from '../bunpou-companion-status.js';
+import { loadCompanionLessonOptions, companionLiveReason, staleCompanionWarnings } from '../bunpou-companion-status.js';
 import { loadQuestionSets, effectiveDialogChecks } from '../bunpou-dialog-checks.js';
 import { BoundaryContextError, getCurriculumBoundary } from '../curriculum-boundary.js';
 import { validateAndWriteContent, boundaryWriteHttpError, lockCurriculumCourse,
@@ -204,11 +207,12 @@ router.get('/grammar/:id/dialogue-questions', asyncHandler(async (req, res) => {
     const result = await listDialogueQuestions(req.params.id,
       { sourceLessonId: req.query.sourceLessonId || null });
     // Soal lama pola ini di Pendamping Bunpou, untuk tombol "Salin dari soal
-    // lama" di editor. Yang terpublikasi didahulukan karena itulah yang
-    // dilihat siswa selama pola ini belum dipindah.
+    // lama" di editor. Draft didahulukan — sama seperti editor 🧭 dan
+    // ringkasannya — supaya yang disalin adalah versi terakhir yang ditulis
+    // admin, bukan versi yang lebih lama (kalau draft dan publikasi berbeda).
     const source = await query(`SELECT bunpou_flow_published, bunpou_flow_draft FROM lessons WHERE id = $1`,
       [result.sourceLessonId]);
-    const envelope = source.rows[0]?.bunpou_flow_published || source.rows[0]?.bunpou_flow_draft || null;
+    const envelope = source.rows[0]?.bunpou_flow_draft || source.rows[0]?.bunpou_flow_published || null;
     const legacyCheck = envelope?.dialogChecks?.[req.params.id] || null;
     res.set('Cache-Control', 'private, no-store');
     res.json({ ...result, legacyCheck });
@@ -2397,7 +2401,8 @@ router.put('/module-grammar/:id/distractors', asyncHandler(async (req, res) => {
     )).rows[0],
   });
   if (!guarded) return;
-  res.json({ ok: true, distractors: s1, controlled: s2, validation: guarded.report });
+  res.json({ ok: true, distractors: s1, controlled: s2, validation: guarded.report,
+    warnings: await staleCompanionWarnings({ grammarId: req.params.id }) });
 }));
 
 // ── Bunpou Flow pilot: Pendamping Bunpou companion editor (Paket 1) ────────
@@ -2412,18 +2417,21 @@ router.put('/module-grammar/:id/distractors', asyncHandler(async (req, res) => {
 // Scope = this lesson's own grammar cards UNION the grammar points actually
 // picked into its paired Tugas Bunpou (if one exists yet) — matches the
 // implementation plan's "semua grammarId milik lesson/tugas terkait".
+// Urutan pola = urutan Tugas Bunpou (yang dilihat siswa), lalu pola milik
+// pelajaran yang tidak ada di tugas. Tanpa ORDER BY urutannya mengikuti letak
+// fisik baris, dan modal 🧭 menampilkan pola dengan urutan berbeda dari tugasnya.
 async function bunpouFlowScope(lessonId, dbQuery = query) {
   const [own, task] = await Promise.all([
-    dbQuery(`SELECT id FROM module_grammar WHERE lesson_id = $1`, [lessonId]),
+    dbQuery(`SELECT id FROM module_grammar WHERE lesson_id = $1 ORDER BY sort_order, id`, [lessonId]),
     dbQuery(`SELECT id FROM lessons WHERE type = 'grammar_task' AND popup_after_lesson_id = $1 LIMIT 1`, [lessonId]),
   ]);
   const taskLessonId = task.rows[0]?.id || null;
   const taskItems = taskLessonId
-    ? await dbQuery(`SELECT grammar_id FROM lesson_grammar_task_items WHERE lesson_id = $1`, [taskLessonId])
+    ? await dbQuery(`SELECT grammar_id FROM lesson_grammar_task_items WHERE lesson_id = $1 ORDER BY sort_order, grammar_id`, [taskLessonId])
     : { rows: [] };
   const grammarIds = [...new Set([
-    ...own.rows.map((r) => r.id),
     ...taskItems.rows.map((r) => r.grammar_id),
+    ...own.rows.map((r) => r.id),
   ])];
   return { grammarIds, taskLessonId };
 }
@@ -2448,9 +2456,11 @@ router.get('/lessons/:lessonId/bunpou-flow', asyncHandler(async (req, res) => {
   );
   if (lesson.rows.length === 0) return res.status(404).json({ error: 'Not found' });
   const { grammarIds, taskLessonId } = await bunpouFlowScope(req.params.lessonId);
-  // Soal pemeriksaan yang benar-benar dipakai siswa: set pertanyaan 🎭 Dialog,
-  // atau soal lama untuk pola yang belum dipindah (bunpou-dialog-checks.js).
-  const legacyChecks = (lesson.rows[0].bunpou_flow_published || lesson.rows[0].bunpou_flow_draft || {}).dialogChecks;
+  // Soal pemeriksaan per pola: set pertanyaan 🎭 Dialog, atau soal lama untuk
+  // pola yang belum dipindah (bunpou-dialog-checks.js). Soal lama dibaca dari
+  // draft dulu, seperti semua field lain di modal 🧭 (draft = yang sedang
+  // diedit dan yang akan dipublikasikan); jalur siswa membaca publikasinya.
+  const legacyChecks = (lesson.rows[0].bunpou_flow_draft || lesson.rows[0].bunpou_flow_published || {}).dialogChecks;
   const effective = effectiveDialogChecks(grammarIds,
     await loadQuestionSets(req.params.lessonId, grammarIds, query), legacyChecks);
   const patternRows = grammarIds.length
@@ -4002,7 +4012,8 @@ router.post('/module-grammar', asyncHandler(async (req, res) => {
         communicationGoal || null])).rows[0],
   });
   if (!outcome) return;
-  const warnings = await safeLearningWarnings(() => grammarLearningScopeWarnings(outcome.value.id));
+  const warnings = [...await safeLearningWarnings(() => grammarLearningScopeWarnings(outcome.value.id)),
+    ...await staleCompanionWarnings({ moduleId: outcome.value.module_id })];
   res.status(201).json({ grammar: outcome.value, warnings, validation: outcome.report });
 }));
 
@@ -4088,7 +4099,9 @@ router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
     )).rows[0],
   });
   if (!outcome) return;
-  const warnings = await safeLearningWarnings(() => grammarLearningScopeWarnings(outcome.value.id));
+  // Ikut memberi tahu kalau simpanan ini membuat pendamping bab berhenti tampil.
+  const warnings = [...await safeLearningWarnings(() => grammarLearningScopeWarnings(outcome.value.id)),
+    ...await staleCompanionWarnings({ moduleId: outcome.value.module_id })];
   res.json({ grammar: outcome.value, warnings, validation: outcome.report });
 }));
 
@@ -4122,7 +4135,8 @@ router.post('/grammar-examples', asyncHandler(async (req, res) => {
       [grammarId, japanese, highlight || null, indonesian || null, sortOrder || 0])).rows[0],
   });
   if (!outcome) return;
-  const warnings = await safeLearningWarnings(() => grammarExampleLearningScopeWarnings(outcome.value.id));
+  const warnings = [...await safeLearningWarnings(() => grammarExampleLearningScopeWarnings(outcome.value.id)),
+    ...await staleCompanionWarnings({ grammarId: outcome.value.grammar_id })];
   res.status(201).json({ example: outcome.value, warnings, validation: outcome.report });
 }));
 
@@ -4156,25 +4170,31 @@ router.put('/grammar-examples/:id', asyncHandler(async (req, res) => {
     )).rows[0],
   });
   if (!outcome) return;
-  const warnings = await safeLearningWarnings(() => grammarExampleLearningScopeWarnings(outcome.value.id));
+  const warnings = [...await safeLearningWarnings(() => grammarExampleLearningScopeWarnings(outcome.value.id)),
+    ...await staleCompanionWarnings({ grammarId: outcome.value.grammar_id })];
   res.json({ example: outcome.value, warnings, validation: outcome.report });
 }));
 
 router.delete('/grammar-examples/:id', asyncHandler(async (req, res) => {
+  let grammarId = null;
   const result = await adminLockedMutation(res, async client => {
     const example = await client.query('SELECT grammar_id FROM grammar_examples WHERE id=$1', [req.params.id]);
-    return example.rows.length ? courseIdsForGrammarAndConsumers(client, example.rows[0].grammar_id) : [];
+    grammarId = example.rows[0]?.grammar_id || null;
+    return example.rows.length ? courseIdsForGrammarAndConsumers(client, grammarId) : [];
   },
   client => client.query('DELETE FROM grammar_examples WHERE id=$1', [req.params.id]));
   if (!result) return;
-  res.json({ ok: true });
+  res.json({ ok: true, warnings: await staleCompanionWarnings({ grammarId }) });
 }));
 
 router.delete('/module-grammar/:id', asyncHandler(async (req, res) => {
+  // Bab pola ini dibaca SEBELUM dihapus: setelah DELETE barisnya sudah tidak
+  // ada untuk ditanyai, padahal pool pengecoh bab itu ikut berubah.
+  const owner = await query('SELECT module_id FROM module_grammar WHERE id = $1', [req.params.id]);
   const result = await adminLockedMutation(res, client => courseIdsForGrammarAndConsumers(client, req.params.id),
     client => client.query('DELETE FROM module_grammar WHERE id=$1', [req.params.id]));
   if (!result) return;
-  res.json({ ok: true });
+  res.json({ ok: true, warnings: await staleCompanionWarnings({ moduleId: owner.rows[0]?.module_id || null }) });
 }));
 
 router.post('/module-grammar/bulk', asyncHandler(async (req, res) => {
@@ -5881,6 +5901,65 @@ router.post('/tts/preview', asyncHandler(async (req, res) => {
   } catch (err) { return res.status(400).json({error: err.message}); }
   // Preview and student playback share voices, pauses, validation and cache.
   return renderTtsAudio(text, res, { privateResponse: true, dialogScene: scene });
+}));
+
+// POST /api/admin/tts/dialog-turn — body { text, dialogScene, turnIndex,
+// expect: { speaker, text }, regenerate, grammarId? } → MP3 satu giliran.
+// Memakai cache per giliran yang SAMA dengan pemutar siswa (/api/tts/dialog),
+// jadi yang didengar admin adalah rekaman yang didengar siswa, dan
+// `regenerate: true` mengganti rekaman giliran itu saja — giliran lain tidak
+// tersentuh. `text` adalah dialog utuh dari editor (boleh belum disimpan):
+// suara tiap giliran ditentukan dari dialog utuh persis seperti jalur siswa.
+router.post('/tts/dialog-turn', asyncHandler(async (req, res) => {
+  const body = req.body || {};
+  const text = String(body.text || '').trim();
+  if (!text) return res.status(400).json({ error: 'text required' });
+  if (text.length > 2000) return res.status(400).json({ error: 'text too long (max 2000 char)' });
+  const turns = parseDialog(text);
+  if (!turns) return res.status(400).json({ error: 'not_a_dialog', detail: 'Setiap giliran butuh nama pembicara.' });
+  const index = Number(body.turnIndex);
+  if (!Number.isInteger(index) || index < 0 || index >= turns.length) {
+    return res.status(400).json({ error: 'invalid_turn_index' });
+  }
+  // Pagar urutan: editor menghitung nomor giliran sendiri. Kalau hasilnya
+  // tidak menunjuk giliran yang sama, jangan pernah mengganti rekaman giliran
+  // lain — tolak saja.
+  const squash = value => String(value ?? '').replace(/\s+/g, ' ').trim();
+  const expect = body.expect || {};
+  if (squash(expect.speaker) !== turns[index].speaker || squash(expect.text) !== squash(turns[index].text)) {
+    return res.status(409).json({ error: 'turn_mismatch', detail: 'Giliran berubah. Tutup lalu buka lagi editornya.' });
+  }
+  let scene, turnVoices;
+  try {
+    scene = normalizeDialogScene(body.dialogScene);
+    turnVoices = await resolveDialogTurnVoices(turns, scene);
+  } catch (err) { return res.status(422).json({ error: 'dialog_voice_missing', detail: err.message }); }
+  // Dialog yang sudah tersimpan mungkin sudah punya rekaman yang didengar
+  // siswa (payload lama). Isi cache per gilirannya dulu dari situ, supaya giliran
+  // yang teksnya tidak diubah admin langsung memakai rekaman itu, bukan
+  // generate baru. Best-effort: gagal di sini tidak menghalangi tes.
+  if (body.grammarId && isCanonicalUuid(body.grammarId)) {
+    try {
+      const saved = (await query('SELECT example_dialog, dialog_scene FROM module_grammar WHERE id = $1',
+        [body.grammarId])).rows[0];
+      const savedTurns = saved?.example_dialog ? parseDialog(saved.example_dialog) : null;
+      if (savedTurns) {
+        await seedDialogTurnsFromLegacy({ text: String(saved.example_dialog).trim(), turns: savedTurns,
+          turnVoices: await resolveDialogTurnVoices(savedTurns, normalizeDialogScene(saved.dialog_scene)) });
+      }
+    } catch (err) { console.error('Dialog turn seed failed:', err.message); }
+  }
+  let audio;
+  try {
+    audio = (await dialogTurnAudio({ text, turns, turnVoices, indices: [index], regenerate: body.regenerate === true, scene })).get(index);
+  } catch (err) {
+    if (err.code === 'tts_disabled') return res.status(503).json({ error: 'tts_disabled', detail: 'ElevenLabs belum diatur atau suara pemeran kosong.' });
+    console.error('TTS dialog turn upstream:', err.message);
+    return res.status(502).json({ error: 'tts_upstream', detail: 'ElevenLabs gagal membuat suara. Coba lagi.' });
+  }
+  res.set('Content-Type', 'audio/mpeg');
+  res.set('Cache-Control', 'private, no-store');
+  res.send(Buffer.from(audio));
 }));
 
 // ── ElevenLabs voice catalog (admin-only) ───────────────────────────────────

@@ -326,6 +326,23 @@ test('independent Bunpou backend safety review', { timeout: 90_000 }, async t =>
     assert.equal((await create()).status, 403, 'a published but not-ready lesson does not start companion sessions');
   });
 
+  await t.test('admin is told when a content save stops a published companion from showing', async () => {
+    const { staleCompanionWarnings } = await import('./bunpou-companion-status.js');
+    assert.deepEqual(await staleCompanionWarnings({ moduleId: id(3) }), [], 'an unchanged chapter warns nothing');
+    await query("UPDATE module_grammar SET meaning = 'changed meaning' WHERE id = $1", [id(6)]);
+    const byModule = await staleCompanionWarnings({ moduleId: id(3) });
+    assert.equal(byModule.length, 1);
+    assert.deepEqual([byModule[0].code, byModule[0].lessonId], ['companion_stale', id(4)]);
+    assert.match(byModule[0].message, /Source.*publikasikan ulang/);
+    assert.deepEqual(await staleCompanionWarnings({ grammarId: id(6) }), byModule, 'a pattern id resolves to its chapter');
+    assert.deepEqual(await staleCompanionWarnings({ moduleId: id(30) }), [], 'other chapters are not reported');
+    await query('UPDATE lessons SET bunpou_flow_published = NULL WHERE id = $1', [id(4)]);
+    assert.deepEqual(await staleCompanionWarnings({ moduleId: id(3) }), [], 'an unpublished companion has nothing to stop');
+    assert.deepEqual(await staleCompanionWarnings({}), []);
+    assert.deepEqual(await staleCompanionWarnings({ moduleId: id(3) }, async () => { throw new Error('down'); }), [],
+      'the check never fails the save it follows');
+  });
+
   await t.test('withdrawing a publication stops it for students and keeps the draft', async () => {
     const sourceFingerprint = await publishSource();
     const params = { lessonId: id(4) };

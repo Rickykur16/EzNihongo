@@ -233,30 +233,116 @@ export async function fetchElevenVoices() {
   }));
 }
 
-// Generates one independently-playable audio segment per dialogue turn,
-// for the dialogue player (chat bubbles, per-line play button, per-line
-// highlight while that turn is playing — see /tts/dialog below and
-// grammarKaraokePlay in welcome.html). Same generation path as /tts and
-// /admin/tts/preview (fetchElevenAudio, no special-casing) — there is
-// deliberately only one way a "dialogue"-role turn ever gets generated
-// now, so a turn tested in the admin preview always sounds identical to
-// what students hear. No SSML <break> tag between turns (unlike /tts's
-// single-concatenated-blob output) — the player already inserts its own
-// ~450ms gap client-side between segments.
-export async function generateDialogSegments(turns, turnVoices) {
-  const buffers = [];
-  const segments = [];
+// ── Audio dialog per giliran ────────────────────────────────────────────────
+// Satu rekaman per giliran, disimpan di tts_cache dengan kunci (suara, peran,
+// teks giliran) — dan kunci yang SAMA dipakai pemutar siswa (/tts/dialog) dan
+// tombol tes/regenerate admin (/admin/tts/dialog-turn). Dulu keduanya
+// generate SENDIRI-SENDIRI ke cache terpisah; ElevenLabs tidak deterministik,
+// jadi yang didengar admin saat tes bukan rekaman yang didengar siswa, dan
+// "generate ulang" di admin tidak pernah sampai ke siswa. Sekarang giliran
+// yang diganti admin langsung menjadi giliran yang diputar siswa, dan giliran
+// lain tidak ikut berubah.
+//
+// Tanpa SSML <break> di antara giliran (beda dengan /tts yang satu blob):
+// pemutar di welcome.html sudah memberi jeda ~450ms antar-segmen.
+export function dialogTurnCacheKey(turn, voice) {
+  return hashKey(`dialogturn1\n${voice.role}\n${turn.text}`, [voice.voiceId]);
+}
+
+// Kunci payload lama /tts/dialog (satu baris berisi semua segmen). Tidak lagi
+// ditulis — hanya dibaca untuk mengisi cache per giliran, supaya siswa tetap
+// mendengar rekaman yang sama seperti sebelum perubahan ini dan admin
+// langsung mendengar rekaman itu juga, tanpa biaya generate ulang.
+function legacyDialogSegmentsKey(text, turnVoices) {
+  return hashKey('dialogsegs1\n' + text, turnVoices.map((v) => v.voiceId));
+}
+
+function dialogTtsError(code, message) {
+  return Object.assign(new Error(message || code), { code });
+}
+
+async function storeDialogTurn(key, turn, voice, audio, { replace = false, dbQuery = query } = {}) {
+  const inserted = await dbQuery(
+    `INSERT INTO tts_cache (text_hash, text, provider, voice, model, audio, content_type, byte_size, settings_version)
+     VALUES ($1,$2,'elevenlabs',$3,$4,$5,'audio/mpeg',$6,$7)
+     ON CONFLICT (text_hash) DO ${replace
+      ? 'UPDATE SET audio = EXCLUDED.audio, byte_size = EXCLUDED.byte_size, created_at = NOW(), last_used_at = NOW()'
+      : 'NOTHING'}
+     RETURNING audio`,
+    [key, turn.text, voice.voiceId, voice.role === 'narrator' ? NARRATOR_MODEL_OVERRIDE : ELEVEN_MODEL,
+      audio, audio.length, SETTINGS_VERSION]
+  );
+  if (inserted.rows.length) return inserted.rows[0].audio;
+  // Kalah balapan dengan permintaan lain: pakai rekaman yang tersimpan supaya
+  // semua orang mendengar rekaman yang sama.
+  const stored = await dbQuery('SELECT audio FROM tts_cache WHERE text_hash = $1', [key]);
+  return stored.rows[0]?.audio || audio;
+}
+
+// Isi giliran yang belum punya cache dari payload lama dialog yang sama.
+// Hanya dipakai kalau jumlah dan pembicara segmennya persis cocok.
+export async function seedDialogTurnsFromLegacy({ text, turns, turnVoices, dbQuery = query }) {
+  const keys = turns.map((turn, i) => dialogTurnCacheKey(turn, turnVoices[i]));
+  const have = new Set((await dbQuery('SELECT text_hash FROM tts_cache WHERE text_hash = ANY($1::text[])',
+    [keys])).rows.map((row) => row.text_hash));
+  if (keys.every((key) => have.has(key))) return 0;
+  const legacy = (await dbQuery('SELECT alignment FROM tts_cache WHERE text_hash = $1',
+    [legacyDialogSegmentsKey(text, turnVoices)])).rows[0]?.alignment;
+  const segments = Array.isArray(legacy?.segments) ? legacy.segments : null;
+  if (!segments || segments.length !== turns.length ||
+      segments.some((seg, i) => seg?.speaker !== turns[i].speaker || typeof seg?.audio_base64 !== 'string')) return 0;
+  let seeded = 0;
   for (let i = 0; i < turns.length; i++) {
-    const buf = await fetchElevenAudio(turnVoices[i].voiceId, turns[i].text, turnVoices[i].role);
-    buffers.push(buf);
-    segments.push({
-      speaker: turns[i].speaker,
-      role: turnVoices[i].role,
-      audio_base64: buf.toString('base64'),
-      content_type: 'audio/mpeg',
-    });
+    if (have.has(keys[i])) continue;
+    await storeDialogTurn(keys[i], turns[i], turnVoices[i], Buffer.from(segments[i].audio_base64, 'base64'), { dbQuery });
+    seeded++;
   }
-  return { segments, combined: Buffer.concat(buffers) };
+  return seeded;
+}
+
+// Map<indeks giliran, Buffer> untuk `indices` (bawaan: semua giliran).
+// `regenerate: true` selalu membuat rekaman baru untuk indeks itu dan
+// MENGGANTI yang tersimpan — dipakai admin saat sebuah giliran salah ucap.
+export async function dialogTurnAudio({ text, turns, turnVoices, indices = null, regenerate = false,
+  scene = null, dbQuery = query } = {}) {
+  const wanted = indices ?? turns.map((_turn, i) => i);
+  const keys = turns.map((turn, i) => dialogTurnCacheKey(turn, turnVoices[i]));
+  const found = new Map();
+  const lookup = async () => {
+    const rows = (await dbQuery('SELECT text_hash, audio FROM tts_cache WHERE text_hash = ANY($1::text[])',
+      [wanted.map((i) => keys[i])])).rows;
+    const byKey = new Map(rows.map((row) => [row.text_hash, row.audio]));
+    for (const i of wanted) if (byKey.has(keys[i])) found.set(i, byKey.get(keys[i]));
+  };
+  if (!regenerate) {
+    await lookup();
+    if (found.size < wanted.length && await seedDialogTurnsFromLegacy({ text, turns, turnVoices, dbQuery })) await lookup();
+  }
+  const missing = wanted.filter((i) => !found.has(i));
+  if (missing.length) {
+    if (!ELEVEN_API_KEY || missing.some((i) => !turnVoices[i].voiceId)) throw dialogTtsError('tts_disabled');
+    try {
+      await validateSceneVoices(scene, fetchElevenVoices);
+      // Serial, bukan paralel: batas konkurensi ElevenLabs (lihat renderTtsAudio).
+      for (const i of missing) {
+        const audio = await fetchElevenAudio(turnVoices[i].voiceId, turns[i].text, turnVoices[i].role);
+        found.set(i, await storeDialogTurn(keys[i], turns[i], turnVoices[i], audio, { replace: regenerate, dbQuery }));
+      }
+    } catch (err) {
+      if (err.code) throw err;
+      throw Object.assign(dialogTtsError('tts_upstream', err.message), { cause: err });
+    }
+  }
+  dbQuery('UPDATE tts_cache SET last_used_at = NOW() WHERE text_hash = ANY($1::text[])',
+    [wanted.map((i) => keys[i])]).catch(() => {});
+  return found;
+}
+
+// Suara tiap giliran, persis seperti yang dipakai pemutar siswa: pemeran dari
+// pengaturan karakter dialog, narator/kode lama lewat voiceForSpeaker.
+export async function resolveDialogTurnVoices(turns, scene) {
+  const registry = await loadSpeakerRegistry();
+  return sceneTurnVoices(turns, scene, (t, i) => voiceForSpeaker(t.speaker, i, registry));
 }
 
 // GET /api/tts?text=<plain japanese OR dialog "A: ... B: ...">
@@ -367,10 +453,9 @@ export async function renderTtsAudio(text, res, { privateResponse = false, dialo
 // A plain concatenated blob (like /api/tts returns) can't support either
 // of those — hence a separate endpoint with its own cache entries.
 // Formerly returned per-character timestamps for word-by-word karaoke
-// highlighting (endpoint was /tts/aligned) — that feature was removed, so
-// this no longer calls ElevenLabs' /with-timestamps variant or computes
-// any alignment; it just generates each turn's audio once, the same way
-// /api/tts and /admin/tts/preview do.
+// highlighting (endpoint was /tts/aligned) — that feature was removed.
+// Each turn's clip comes from the shared per-turn cache (dialogTurnAudio),
+// the same recording the admin 🎭 editor tests and can regenerate.
 router.get('/tts/dialog', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
   const text = String(req.query.text || '').trim();
   if (!text) return res.status(400).json({ error: 'text required' });
@@ -398,50 +483,27 @@ router.get('/tts/dialog', optionalAuth, ttsLimiter, asyncHandler(async (req, res
     if (!grammar.rows.length) return res.status(409).json({error: 'dialog_changed'});
     scene = grammar.rows[0].dialog_scene;
   }
-  const registry = await loadSpeakerRegistry();
   let turnVoices;
-  try { turnVoices = sceneTurnVoices(turns, scene, (t, i) => voiceForSpeaker(t.speaker, i, registry)); }
+  try { turnVoices = await resolveDialogTurnVoices(turns, scene); }
   catch (err) { return res.status(422).json({error: 'dialog_voice_missing', detail: err.message}); }
-  const voices = turnVoices.map((v) => v.voiceId);
 
-  // Own cache-key prefix ("dialogsegs1") — distinct from /api/tts's plain
-  // hash and from the old "aligned4" prefix, so this never collides with
-  // (or accidentally reads back) a cache row shaped for either of those.
-  const key = hashKey('dialogsegs1\n' + text, voices);
-  const cached = await query(
-    `SELECT alignment FROM tts_cache WHERE text_hash = $1`,
-    [key]
-  );
-  if (cached.rows.length > 0 && cached.rows[0].alignment) {
-    query(`UPDATE tts_cache SET last_used_at = NOW() WHERE text_hash = $1`, [key]).catch(() => {});
-    return res.json(cached.rows[0].alignment);
-  }
-
-  if (!ELEVEN_API_KEY || voices.some(v => !v)) {
-    return res.status(503).json({ error: 'tts_disabled' });
-  }
-
-  let segments;
-  let combined;
-  try {
-    await validateSceneVoices(scene, fetchElevenVoices);
-    const result = await generateDialogSegments(turns, turnVoices);
-    segments = result.segments;
-    combined = result.combined;
-  } catch (err) {
+  // Dirakit dari cache per giliran setiap kali diminta (lihat dialogTurnAudio),
+  // bukan disimpan sebagai satu payload: begitu admin mengganti rekaman satu
+  // giliran, permintaan berikutnya langsung memakai rekaman baru itu.
+  let audio;
+  try { audio = await dialogTurnAudio({ text, turns, turnVoices, scene }); }
+  catch (err) {
+    if (err.code === 'tts_disabled') return res.status(503).json({ error: 'tts_disabled' });
     console.error('TTS dialog upstream:', err.message);
     return res.status(502).json({ error: 'tts_upstream' });
   }
-
-  const payload = { segments, format: 'dialog-segments-v1' };
-  await query(
-    `INSERT INTO tts_cache (text_hash, text, provider, voice, model, audio, content_type, byte_size, settings_version, alignment)
-     VALUES ($1,$2,'elevenlabs',$3,$4,$5,'audio/mpeg',$6,$7,$8)
-     ON CONFLICT (text_hash) DO UPDATE SET
-       audio = EXCLUDED.audio, byte_size = EXCLUDED.byte_size, alignment = EXCLUDED.alignment`,
-    [key, text, voices.join(','), ELEVEN_MODEL, combined, combined.length, SETTINGS_VERSION, JSON.stringify(payload)]
-  );
-  return res.json(payload);
+  const segments = turns.map((turn, i) => ({
+    speaker: turn.speaker,
+    role: turnVoices[i].role,
+    audio_base64: Buffer.from(audio.get(i)).toString('base64'),
+    content_type: 'audio/mpeg',
+  }));
+  return res.json({ segments, format: 'dialog-segments-v1' });
 }));
 
 // GET /api/tts/version — public, untuk frontend append `?v=` ke URL TTS

@@ -5264,8 +5264,8 @@ function admDialogRowHtml(r, i) {
     !window.__dialogScene.participants.find(p => p.speaker === r.speaker)?.voiceId;
   return `
     <div class="dlg-row" style="border:1px solid #e5e5e5;border-radius:8px;padding:10px;margin-bottom:8px;">
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-        <select onchange="admDialogRowSpeakerChange(${i}, this)" style="min-width:170px;">${admSpeakerOptionsHtml(r.speaker)}</select>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px;">
+        <select onchange="admDialogRowSpeakerChange(${i}, this)" style="min-width:170px;max-width:100%;">${admSpeakerOptionsHtml(r.speaker)}</select>
         <span style="flex:1;"></span>
         <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogRowMove(${i},-1)" title="Naik">↑</button>
         <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogRowMove(${i},1)" title="Turun">↓</button>
@@ -5274,9 +5274,10 @@ function admDialogRowHtml(r, i) {
       <textarea rows="2" placeholder="Teks Jepang…" style="width:100%;font-family:var(--font-mono);font-size:12px;margin-bottom:4px;box-sizing:border-box;" oninput="admDialogRowEdit(${i},'jp',this.value)">${escapeHtml(r.jp)}</textarea>
       ${window.__dialogMode === 'listening' ? '' : `<div id="dlg-furigana-${i}">${window.EzDialogueFuriganaAdmin?.fields(r,i) || ''}</div>
       <textarea rows="2" placeholder="Terjemahan…" style="width:100%;font-size:12px;margin-bottom:6px;box-sizing:border-box;" oninput="admDialogRowEdit(${i},'id',this.value)">${escapeHtml(r.id)}</textarea>`}
-      <div style="display:flex;gap:8px;align-items:center;">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
         <button type="button" class="btn btn-ghost btn-sm" ${missingVoice ? 'disabled title="Suara pemeran belum diatur"' : ''} onclick="admDialogRowTest(${i}, this)">🔊 ${missingVoice ? 'Suara belum diatur' : 'Tes giliran ini'}</button>
-        <audio id="dlg-audio-${i}" controls style="height:28px;flex:1;display:none;"></audio>
+        ${window.__dialogMode === 'listening' ? '' : `<button type="button" class="btn btn-ghost btn-sm" id="dlg-regen-${i}" style="display:none;" title="Buat rekaman baru untuk giliran ini saja" onclick="admDialogRowRegen(${i}, this)">🔁 Suara baru</button>`}
+        <audio id="dlg-audio-${i}" controls style="height:28px;flex:1;min-width:0;display:none;"></audio>
       </div>
     </div>`;
 }
@@ -5428,22 +5429,48 @@ window.admNewSpeakerSave = async () => {
   } catch (err) { notify('Gagal menambah speaker: ' + err.message, true); }
   admRenderDialogModal();
 };
-window.admDialogRowTest = async (i, btn) => {
+// Nomor giliran di dialog yang tersusun. Baris tanpa teks Jepang tidak ikut
+// disimpan (admSerializeDialogPair), jadi tidak ikut dihitung.
+function admDialogTurnIndex(i) {
+  const rows = window.__dialogRows || [];
+  if (!(rows[i]?.jp || '').trim()) return -1;
+  return rows.slice(0, i).filter((r) => (r.jp || '').trim()).length;
+}
+
+// Dialog grammar: tes & ganti rekaman lewat cache per giliran yang SAMA dengan
+// pemutar siswa (POST /admin/tts/dialog-turn) — yang terdengar di sini adalah
+// yang didengar siswa, dan "Suara baru" mengganti giliran ini saja. Dialog
+// listening kuis tetap lewat /admin/tts/preview: siswa mendengarnya sebagai
+// satu rekaman utuh dari /api/tts, bukan per giliran.
+async function admDialogTurnAudio(i, btn, regenerate) {
   const r = window.__dialogRows[i];
   if (!r || !r.jp.trim()) { notify('Isi teks Jepang dulu', true); return; }
   const audio = document.getElementById(`dlg-audio-${i}`);
-  const orig = btn.textContent; btn.disabled = true; btn.textContent = '…';
+  const orig = btn.textContent; btn.disabled = true; btn.textContent = regenerate ? 'Membuat suara baru…' : '…';
   try {
-    const text = `${r.speaker}: ${r.jp.trim()}`;
-    const resp = await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({ text, dialogScene: window.__dialogScene || null }) });
+    const resp = window.__dialogMode === 'listening'
+      ? await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({
+        text: `${r.speaker}: ${r.jp.trim()}`, dialogScene: window.__dialogScene || null }) })
+      : await ezApi('/admin/tts/dialog-turn', { method: 'POST', body: JSON.stringify({
+        text: admSerializeDialogPair(window.__dialogRows).jp, dialogScene: window.__dialogScene || null,
+        turnIndex: admDialogTurnIndex(i), expect: { speaker: r.speaker, text: r.jp.trim() },
+        regenerate: !!regenerate, grammarId: window.__dialogTr?.dataset?.id || null }) });
     if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || e.error || ('HTTP ' + resp.status)); }
     const blob = await resp.blob();
     if (audio && document.getElementById(`dlg-audio-${i}`) === audio) {
       if (audio.src.startsWith('blob:')) URL.revokeObjectURL(audio.src);
       audio.src = URL.createObjectURL(blob); audio.style.display = ''; audio.play().catch(() => {});
     }
-  } catch (err) { notify('Gagal generate audio: ' + err.message, true); }
+    const regen = document.getElementById(`dlg-regen-${i}`);
+    if (regen) regen.style.display = '';
+    if (regenerate) notify('Suara baru untuk giliran ini sudah dibuat. Dengarkan; kalau masih salah, buat ulang lagi.');
+  } catch (err) { notify((regenerate ? 'Gagal membuat suara baru: ' : 'Gagal generate audio: ') + err.message, true); }
   finally { btn.disabled = false; btn.textContent = orig; }
+}
+window.admDialogRowTest = (i, btn) => admDialogTurnAudio(i, btn, false);
+window.admDialogRowRegen = (i, btn) => {
+  if (!confirm('Buat ulang suara giliran ini saja?\n\nRekaman lama diganti dan tidak bisa dikembalikan. Kalau dialog ini sudah tersimpan, siswa langsung mendengar rekaman baru. Giliran lain tidak berubah.\n\nCatatan: kalau kanji yang sama selalu salah dibaca, suara baru biasanya tetap salah — tulis kata itu dengan kana.')) return;
+  return admDialogTurnAudio(i, btn, true);
 };
 window.admDialogSave = () => {
   const listening = window.__dialogMode === 'listening';
@@ -5834,7 +5861,9 @@ function admDialogQuestionSetHtml() {
     <section id="dlg-question-set" style="border-top:1px solid #ddd;margin-top:18px;padding-top:14px;">
       <h4 style="margin:0 0 6px;">Pertanyaan dialog Bunpou</h4>
       <p style="font-size:12px;color:#737373;margin:0 0 8px;">Set aktif: ${comprehension}/2 comprehension · ${transfer}/1 transfer. Comprehension pertama tampil ke siswa sebagai soal pemahaman dan transfer sebagai soal pembanding di akhir Tugas Bunpou (juga di Smart Review); butuh minimal 1 dari masing-masing. Pertanyaan terikat ke dialog tersimpan; tombol simpan langsung memperbarui soal yang dilihat siswa.</p>
-      ${state.legacyCheck ? `<p style="font-size:12px;color:#92400e;background:#fef3c7;border-radius:6px;padding:6px 8px;margin:0 0 8px;">Pola ini masih punya soal lama dari Pendamping Bunpou${questions.length ? '' : ' yang masih dipakai siswa'}. Begitu set ini disimpan, soal lama tidak dipakai lagi.</p>` : ''}
+      ${state.legacyCheck ? (questions.some(question => question.id)
+        ? `<p style="font-size:12px;color:#525252;background:#f5f5f5;border-radius:6px;padding:6px 8px;margin:0 0 8px;">Soal lama dari Pendamping Bunpou tidak dipakai lagi untuk pola ini. Siswa mendapat set di bawah selama lengkap dan sesuai dialog tersimpan; kalau belum, pola ini tidak punya soal pemeriksaan.</p>`
+        : `<p style="font-size:12px;color:#92400e;background:#fef3c7;border-radius:6px;padding:6px 8px;margin:0 0 8px;">Pola ini masih punya soal lama dari Pendamping Bunpou — selama set ini kosong, itulah yang dipakai siswa. Begitu set ini disimpan, soal lama tidak dipakai lagi.</p>`) : ''}
       ${state.loadError ? `<div role="alert" style="color:#991b1b;margin:6px 0;">Gagal memuat set pertanyaan: ${escapeHtml(state.loadError)}</div>` : ''}
       ${!state.loadError && (questions.some(question => question.current === false) || !admDialogQuestionSourceIsCurrent()) ? `<div role="alert" style="color:#92400e;margin:6px 0;">Dialog sumber berubah atau belum tersimpan. Simpan dialog lalu buka kembali editor pertanyaan sebelum generate/menyimpan.</div>` : ''}
       <fieldset ${state.busy ? 'disabled' : ''} style="border:0;padding:0;margin:0;min-width:0;">
@@ -6051,7 +6080,16 @@ window.admDialogQuestionSave = async () => {
     state.questionsRevision = saved.questionsRevision || state.questionsRevision;
     state.dialogueFingerprint = saved.dialogueFingerprint || state.dialogueFingerprint;
     notify('Set pertanyaan dialog tersimpan.');
-    if (Array.isArray(saved.validation)) saved.validation.forEach(item => notifyLearningWarnings(item));
+    // Satu laporan per soal; yang isinya sama cukup ditampilkan sekali.
+    if (Array.isArray(saved.validation)) {
+      const seen = new Set();
+      for (const item of saved.validation) {
+        const key = boundaryReportMessage(item) + '|' + (item?.warnings || []).map(warning => warning?.message).join('|');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        notifyLearningWarnings(item);
+      }
+    }
   } catch (err) { admDialogQuestionError('Simpan set pertanyaan', err); }
   finally { state.busy = false; admRenderDialogModal(); }
 };
@@ -6227,10 +6265,11 @@ window.grmrSaveDistractors = async () => {
   if (!ctx || !ta) return;
   try {
     const tc = document.getElementById('grmr-ctrl');
-    await api('/admin/module-grammar/' + ctx.grammarId + '/distractors', {
+    const result = await api('/admin/module-grammar/' + ctx.grammarId + '/distractors', {
       method: 'PUT', body: JSON.stringify({ value: ta.value, controlled: tc ? tc.value : '' }),
     });
     notify('Pengecoh tersimpan');
+    notifyLearningWarnings(result);
     closeModal();
   } catch (err) { notify('Gagal simpan: ' + err.message, true); }
 };
@@ -6290,8 +6329,11 @@ window.grmrDeleteExample = async (btn) => {
   const id = tr.dataset.exId;
   if (!id) { tr.remove(); return; }
   if (!confirm('Hapus contoh kalimat ini?')) return;
-  try { await api('/admin/grammar-examples/' + id, { method: 'DELETE' }); tr.remove(); notify('Dihapus'); }
-  catch (err) { notify('Gagal hapus: ' + err.message, true); }
+  try {
+    const result = await api('/admin/grammar-examples/' + id, { method: 'DELETE' });
+    tr.remove(); notify('Dihapus');
+    notifyLearningWarnings(result);
+  } catch (err) { notify('Gagal hapus: ' + err.message, true); }
 };
 
 window.grmrGenExamples = async () => {
@@ -6444,9 +6486,10 @@ window.deleteItemRow = async (btn) => {
   if (!confirm('Hapus item ini?')) return;
   const endpoint = kind === 'vocab' ? '/admin/module-vocabulary' : '/admin/module-grammar';
   try {
-    await api(endpoint + '/' + id, { method: 'DELETE' });
+    const result = await api(endpoint + '/' + id, { method: 'DELETE' });
     tr.remove();
     notify('Dihapus');
+    notifyLearningWarnings(result);
     if (STATE.selectedCourse) loadModulesForCourse(STATE.selectedCourse).then(() => {
       if (STATE.tab === 'modules') renderModules();
       else if (STATE.tab === 'lessons') refreshLessonsView();

@@ -637,7 +637,90 @@
       dengan objek yang dikirim — bandingkan per field, bukan string JSON;
       fixture SQL dengan `'\n'` literal (bukan `E'\n'`) membuat dialog satu
       giliran. **Belum diverifikasi**: tampilan siswa langkah 4/5 di browser
-      (payload lewat HTTP saja).
+      (payload lewat HTTP saja). **Menyusul (audit UI/UX sebelum PR, dicek di
+      Chromium asli sisi admin DAN siswa)**: siswa tidak bisa membedakan soal
+      lama vs soal 🎭 (tampilan identik) — alurnya nyambung; yang diperbaiki:
+      peringatan kuning di 🎭 kini berbeda sebelum/sesudah set tersimpan, toast
+      "Keputusan validasi" tidak lagi dobel per soal, baris giliran 🎭 tidak
+      melebar 18px di HP, urutan pola di 🧭 = urutan Tugas Bunpou
+      (`bunpouFlowScope` dulu tanpa ORDER BY → urutan fisik baris), kartu status
+      tab AI hanya N5 + yang sudah terpublikasi (dulu 48 baris N4 "hanya untuk
+      N5"), dan soal lama di 🧭/🎭 dibaca draft dulu seperti field modal lain.
+      **Sengaja dibiarkan (keputusan user)**: soal pemahaman dialog di Smart
+      Review tampil tanpa dialog & tanpa pembahasan — perilaku lama, dicatat.
+
+      **Admin diberi tahu saat simpan materi mematikan pendamping satu bab**
+      (2026-09-29) — dari audit di atas, disetujui user. Sidik jari sumber
+      pendamping menghitung seluruh pola SATU BAB (lihat entri saklar pilot),
+      jadi simpan arti/contoh/pengecoh/dialog — termasuk "Isi ke baris" dari
+      🎭 — bisa diam-diam membuat pendamping bab itu berhenti tampil, padahal
+      respons simpan membalas `warnings: []`. `staleCompanionWarnings()`
+      (`bunpou-companion-status.js`, best-effort, tidak pernah menggagalkan
+      simpan) kini ikut di respons PUT/POST `module-grammar`, DELETE
+      `module-grammar/:id` (bab dibaca SEBELUM baris dihapus), PUT
+      `module-grammar/:id/distractors`, dan POST/PUT/DELETE `grammar-examples`;
+      admin.html menampilkannya lewat `notifyLearningWarnings` yang sudah ada
+      (ditambahkan di simpan pengecoh, hapus contoh, hapus pola — tiga jalur
+      yang dulu tidak menampilkan peringatan apa pun). Bulk/generate massal
+      TIDAK dicakup.
+
+      **Suara dialog per giliran: yang dites admin = yang didengar siswa, dan
+      bisa "🔁 Suara baru" per giliran** (2026-09-29) — user: "Saya ingin
+      bagian dialognya bisa regenerate suara jika ada mis pronounce".
+      **Temuan yang menentukan desain**: komentar lama di `tts.js` mengklaim
+      giliran yang dites admin "selalu terdengar identik dengan yang didengar
+      siswa" — SALAH. Parameternya sama, tapi `/admin/tts/preview` dan
+      `/api/tts/dialog` generate SENDIRI-SENDIRI ke cache terpisah (hash
+      per-giliran vs payload `dialogsegs1` satu dialog), dan ElevenLabs tidak
+      deterministik. Jadi tombol regenerate naif (hapus cache preview) cuma
+      mengganti suara di layar admin; siswa tetap mendengar rekaman lama — fitur
+      yang kelihatan jalan padahal tidak. **Sekarang satu cache per giliran**
+      (`dialogTurnCacheKey` = voiceId + role + teks giliran, TANPA label
+      pembicara karena audionya tidak bergantung label) dipakai BERSAMA:
+      `/api/tts/dialog` merakit segmen dari cache itu setiap permintaan (payload
+      gabungan TIDAK lagi ditulis, jadi rekaman yang diganti langsung sampai ke
+      siswa), dan endpoint baru `POST /admin/tts/dialog-turn` (owner-only
+      seperti `/tts/preview`) mengirim dialog UTUH + `turnIndex` + `expect`
+      {speaker,text} — suara tiap giliran ditentukan dari dialog utuh persis
+      seperti jalur siswa, dan kalau `expect` tidak cocok dengan giliran di
+      indeks itu → 409 `turn_mismatch`, tidak ada rekaman yang diganti.
+      `regenerate:true` = generate ulang giliran itu saja lalu UPSERT. **Tanpa
+      biaya saat deploy dan tanpa mengubah suara yang sudah didengar siswa**:
+      `seedDialogTurnsFromLegacy` mengisi cache per giliran dari payload
+      `dialogsegs1` lama (hanya kalau jumlah + pembicara segmennya persis
+      cocok); admin endpoint juga menyemai dari dialog TERSIMPAN
+      (`grammarId`), jadi tes admin memutar rekaman siswa, bukan generate baru.
+      Tanpa migrasi — tabel `tts_cache` apa adanya; baris per giliran memakai
+      `settings_version` sekarang sehingga tidak ikut terhapus "bersihkan
+      orphan". **Admin**: di mode grammar, "🔊 Tes giliran ini" lewat endpoint
+      baru; "🔁 Suara baru" baru muncul setelah giliran itu diputar, dengan
+      konfirmasi (rekaman lama tidak bisa dikembalikan; kalau dialog sudah
+      tersimpan siswa langsung mendengar yang baru). Suntingan yang belum
+      disimpan menghasilkan kunci baru, jadi tidak mengubah suara siswa.
+      **Dialog listening kuis TIDAK diubah** — siswa mendengarnya sebagai satu
+      blob `/api/tts` ber-`<break>`, jadi tes per baris di mode itu masih
+      preview terpisah (batasan lama, dicatat). **Batasan penting untuk user**:
+      salah baca kanji yang KONSISTEN (bukan acak) biasanya tetap salah setelah
+      regenerate; `dialog_furigana` (bacaan per kanji yang sudah diisi admin
+      untuk tampilan) belum dipakai sebagai teks TTS — kandidat perbaikan
+      berikutnya, belum diputuskan. **Divalidasi**: 5 tes unit baru
+      (`dialog-turn-audio.test.js`, cache in-memory + fetch tiruan; berkas
+      terpisah karena kunci ElevenLabs dibaca saat modul dimuat) + tes rute
+      pagar (`grounded-admin-api.test.js`) + tes lama `dialogue-scene-api`
+      diperketat (ganti suara satu pemeran = tepat satu generate baru); tiga
+      mutasi (regenerate tidak mengganti, tanpa penyemaian, pagar
+      `turn_mismatch` dimatikan) masing-masing DIBUKTIKAN menggagalkan tes. E2E
+      server asli dengan pengganti ElevenLabs lewat `node --import` (MP3 senyap
+      valid bertanda ID3 "take-N" — satu-satunya cara membuktikan rekaman MANA
+      yang diputar, karena egress ke ElevenLabs diblokir): 17/17 — siswa tetap
+      mendengar rekaman lama, tes admin = rekaman siswa tanpa generate,
+      regenerate = tepat 1 panggilan dan siswa langsung dapat `old-0,take-1`,
+      suntingan belum disimpan tidak mengubah siswa, 409/401/403 pagar, dan
+      peringatan pendamping muncul saat simpan arti. Chromium: tes giliran →
+      tombol muncul → konfirmasi → take baru → halaman Percakapan siswa
+      memutar `old-0,take-5`, 390px tanpa scroll horizontal. `npm test` 871
+      tes, 870 hijau, 1 skip lama. **Belum diverifikasi**: suara ElevenLabs
+      sungguhan (egress diblokir).
 
       **Pendamping Bunpou Bab 3 DIISI (migrasi 149) — arahan ditulis untuk
       DIALOGNYA, bukan untuk nama polanya** — user: "Sekarang isikan

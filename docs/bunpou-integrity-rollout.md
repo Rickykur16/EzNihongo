@@ -27,7 +27,9 @@ tetap independen. Dokumen ini tidak mencatat aktivasi produksi apa pun.
    membuat pendamping semua pelajaran di bab itu berhenti tampil sampai ditinjau
    dan dipublikasikan ulang. Lakukan semua perubahan materi dulu, baru publikasikan.
    Menerbitkan satu pelajaran tidak mengubah materi, jadi tidak pernah mematikan
-   pelajaran lain.
+   pelajaran lain. Admin kini diberi tahu saat itu juga: menyimpan atau
+   menghapus pola, contoh, pengecoh, atau dialog membalas peringatan yang
+   menyebut pendamping mana yang berhenti tampil.
 5. Buka pelajaran sumber dan Tugas Bunpou-nya sebagai siswa uji yang terdaftar.
    Periksa petunjuk, pembahasan, pembukaan jawaban setelah dua kali salah,
    refresh, pembukaan ulang popup, dan revisi produksi.

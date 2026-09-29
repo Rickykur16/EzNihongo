@@ -676,3 +676,16 @@ test('valid JLPT passage keeps legacy question aliases and generation report', a
   assert.equal(response.body.generation.report.status, 'evaluated');
   assert.equal(modelCalls, 1); assert.equal(writes, 0);
 });
+
+test('dialog turn audio never touches a turn the editor did not point at', async () => {
+  modelCalls = 0; writes = 0;
+  const dialog = 'A: はじめまして。\nB: ハディです。';
+  for (const [body, status] of [
+    [{ text: '' }, 400],
+    [{ text: 'ただのぶんです。', turnIndex: 0 }, 400],
+    [{ text: dialog, turnIndex: 5, expect: { speaker: 'A', text: 'はじめまして。' } }, 400],
+    [{ text: dialog, turnIndex: 1, expect: { speaker: 'A', text: 'はじめまして。' } }, 409],
+    [{ text: dialog, turnIndex: 0, expect: { speaker: 'A', text: 'ちがいます。' }, regenerate: true }, 409],
+  ]) assert.equal((await post('tts/dialog-turn', body)).status, status, JSON.stringify(body));
+  assert.equal(modelCalls, 0); assert.equal(writes, 0);
+});
