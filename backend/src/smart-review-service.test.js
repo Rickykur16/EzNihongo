@@ -270,9 +270,12 @@ test('kata yang sama tetap satu soal walau diklaim dua kanji berbeda', () => {
 
 test('soal dengan pemilik yang sama tidak pernah berdampingan', () => {
   const candidates = [];
+  // Tiap kata memakai kanji berbeda: kanji yang sama di tiga kata akan (benar)
+  // ditahan oleh batas "kanji tampil", dan bukan itu yang diuji di sini.
+  const shownKanji = { 'k-a': '山', 'k-b': '川', 'k-c': '空' };
   for (const owner of ['k-a', 'k-b', 'k-c']) {
     candidates.push(kanji(owner, 'char2meaning'));
-    candidates.push(word(owner, `word2meaning:${owner}`, `${owner}語`, `${owner}ご`));
+    candidates.push(word(owner, `word2meaning:${owner}`, `${shownKanji[owner]}ぜん`, `${owner}ご`));
   }
   const selected = selectReviewCandidates(candidates, { category: 'kanji', limit: 20 });
   assert.equal(selected.length, 6);
@@ -280,4 +283,17 @@ test('soal dengan pemilik yang sama tidak pernah berdampingan', () => {
     assert.notEqual(selected[i].itemId, selected[i - 1].itemId,
       `pemilik ${selected[i].itemId} berdampingan di posisi ${i - 1} dan ${i}`);
   }
+});
+
+test('satu kanji tidak tampil lebih dari dua kali dalam sesi, termasuk lewat kata milik kanji lain', () => {
+  const chars = { a: '学', b: '生', c: '校', d: '大' };
+  const due = { attempts: 1, nextReviewAt: '2020-01-01' };
+  const cands = Object.entries(chars).map(([id, character]) => ({ category: 'kanji', itemId: id, skill: 'char2meaning', item: { id, character }, state: due }));
+  for (const [w, owner] of [['学生', 'b'], ['学校', 'c'], ['大学', 'd']]) {
+    cands.push({ category: 'kanji', itemId: owner, skill: 'word2meaning', word: { japanese: w, reading: w }, item: { id: owner, character: chars[owner] }, state: due });
+  }
+  const shown = selectReviewCandidates(cands, { category: 'kanji' }).map((c) => c.word ? c.word.japanese : c.item.character);
+  const count = {};
+  for (const s of shown) for (const ch of s) count[ch] = (count[ch] || 0) + 1;
+  assert.ok(Math.max(...Object.values(count)) <= 2, `terlalu sering: ${JSON.stringify(count)}`);
 });
