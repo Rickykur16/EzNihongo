@@ -238,7 +238,10 @@ export function pickCompoundOwners(entries) {
 export function unlockedSkills(entries) {
   const byItem = new Map();
   for (const entry of entries || []) {
-    const key = `${entry.itemType}:${entry.itemId}`;
+    // `group` memungkinkan beberapa item berbagi SATU kandidat: kosakata 学生 dan
+    // kata majemuk 学生 milik kanji 生 adalah kata yang sama. Digate terpisah,
+    // masing-masing membuka satu arahnya sendiri dan kata itu kembali dua kali.
+    const key = entry.group ?? `${entry.itemType}:${entry.itemId}`;
     if (!byItem.has(key)) byItem.set(key, []);
     byItem.get(key).push(entry);
   }

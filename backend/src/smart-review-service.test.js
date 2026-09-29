@@ -306,3 +306,18 @@ test('kata yang sama dari jalur kosakata dan jalur kanji hanya satu soal per ses
   ], { category: 'mixed' });
   assert.equal(selected.length, 1);
 });
+
+test('kosakata dan kata majemuk kanji yang sama berbagi satu gerbang: hanya satu arah terbuka', () => {
+  const entry = (itemType, itemId, skill, extra = {}) => ({ key: `${itemType}:${itemId}:${skill}`, itemType, itemId, skill, attempts: 0, fsrsState: null, group: 'word:学生', ...extra });
+  const entries = [
+    entry('vocabulary', 'v1', 'jp2id'), entry('vocabulary', 'v1', 'id2jp'), entry('vocabulary', 'v1', 'audio2id'),
+    entry('kanji', 'kb', 'word2meaning::学生'), entry('kanji', 'kb', 'reading2word::学生'),
+  ];
+  // Tanpa group: dua item terpisah → dua arah terbuka (kata kembali dua kali).
+  assert.equal(unlockedSkills(entries.map(({ group, ...rest }) => rest)).size, 2);
+  // Dengan group: satu kata = satu kandidat.
+  assert.equal(unlockedSkills(entries).size, 1);
+  // Setelah satu arah mantap ('review'), seluruh arah kata itu terbuka.
+  const practised = entries.map((e) => e.skill === 'jp2id' ? { ...e, attempts: 1, fsrsState: 'review' } : e);
+  assert.equal(unlockedSkills(practised).size, 5);
+});

@@ -1,5 +1,3 @@
-import { withAdvisoryLock } from '../db.js';
-import { evidenceLock, recordExposure } from '../maneko-assistance.js';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { asyncHandler, requireAuth } from '../middleware.js';
@@ -77,10 +75,6 @@ router.post('/tutor/chat', requireAuth, tutorLimiter, asyncHandler(async (req, r
   const system = TUTOR_SYSTEM + (lesson
     ? `\n\nKonteks: murid sedang membuka pelajaran ${level ? level + ' — ' : ''}"${lesson}". Kaitkan jawaban dengan konteks ini bila relevan.`
     : '');
-
-  // Open-ended answers may cover any concept. Persist a broad exposure BEFORE
-  // starting the provider, so streaming, reloads and another tab cannot bypass it.
-  await withAdvisoryLock(evidenceLock(req.user.id), client => recordExposure(client, { userId: req.user.id, type: 'tutor_chat' }));
 
   // Streaming (body.stream === true): balasan dikirim sebagai chunked text
   // begitu tiba dari Claude, biar di frontend muncul mengalir seperti orang

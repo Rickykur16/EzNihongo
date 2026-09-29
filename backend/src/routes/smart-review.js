@@ -13,7 +13,7 @@ import {
   dialogCheckDrills, attemptSourceFor, primaryErrorFor,
   STEP_DIALOG_COMPREHENSION,
 } from '../bunpou-flow-service.js';
-import { REVIEW_CATEGORIES, SMART_REVIEW_SOURCE, filterReviewScope, isReviewNeeded, makeReviewQuestion, pickCompoundOwners, unlockedSkills, publicQuestion, reviewPriority, selectReviewCandidates, summarizeCandidates } from '../smart-review-service.js';
+import { REVIEW_CATEGORIES, SMART_REVIEW_SOURCE, filterReviewScope, isReviewNeeded, makeReviewQuestion, pickCompoundOwners, reviewSubjectKey, unlockedSkills, publicQuestion, reviewPriority, selectReviewCandidates, summarizeCandidates } from '../smart-review-service.js';
 import { deriveCompounds, extractKanjiCharacters, loadKanjiCatalog } from '../kanji-compounds.js';
 import { excludePlacedKana, passedKanaKinds } from '../kana-placement.js';
 
@@ -196,6 +196,8 @@ export async function buildReviewCandidates(user) {
       skill: candidate.skill,
       attempts: Number(candidate.state?.attempts) || 0,
       fsrsState: candidate.state?.fsrsState || null,
+      // Kosakata dan kata majemuk kanji yang sama = satu kelompok gerbang.
+      group: candidate.word || candidate.category === 'vocabulary' ? reviewSubjectKey(candidate) : undefined,
     })));
   const gated = candidates.filter((candidate) => candidate.category === 'grammar'
     || unlocked.has(`${candidate.category}:${candidate.itemId}:${candidate.skill}`));

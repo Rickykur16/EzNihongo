@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import pgDriver from 'pg';
-import { assistanceFor, recordExposure } from './maneko-assistance.js';
 import { recordPracticeAttemptWithState } from './practice-service.js';
+import { loadMastery } from './grammar-mastery.js';
 import { db } from './db.js';
 import reviewRouter from './routes/smart-review.js';
 
@@ -73,9 +73,9 @@ test('Maneko preserves independent evidence across help, retries and related ses
   // jawaban selalu tercatat ke state FSRS, ada atau tidaknya paparan tutor.
   // Dulu jawaban yang jatuh di dalam jendela paparan dibuang diam-diam, sehingga
   // item yang dijawab benar tetap jatuh tempo dan kembali di sesi berikutnya.
-  await t.test('smart review answers always update state, even inside a tutor-chat window', async () => {
-    await recordExposure(pg,{userId:id(1),type:'tutor_chat'});
-    assert.ok(await assistanceFor(pg,{userId:id(1),lessonId:id(5),itemType:'kana',itemId:id(10)}), 'paparan tutor tetap tercatat');
+  await t.test('smart review answers always update state, even with a leftover exposure row', async () => {
+    // Baris paparan lama (dari sebelum konsep ini dihapus) tidak boleh lagi berpengaruh.
+    await pg.query("INSERT INTO maneko_exposures (user_id, assistance_type, expires_at) VALUES ($1,'tutor_chat',NOW()+INTERVAL '30 minutes')",[id(1)]);
     const session = await makeSession();
     const answered = await invoke('answers',session,{questionIndex:0,optionIndex:0});
     assert.equal(answered.body.passed,true);
@@ -102,12 +102,10 @@ test('Maneko preserves independent evidence across help, retries and related ses
     assert.equal((await invoke('answers',session,{questionIndex:0,optionIndex:0})).body.passed,true);
     assert.equal((await pg.query('SELECT * FROM grammar_attempts')).rows.length,1);
   });
-  await t.test('unrelated content stays independent; free chat applies across all tabs', async () => {
-    await pg.query('DELETE FROM maneko_exposures');
-    assert.equal(await assistanceFor(pg,{userId:id(1),lessonId:id(6),itemType:'vocabulary',itemId:id(90)}),null);
-    await recordExposure(pg,{userId:id(1),type:'tutor_chat'});
-    assert.ok(await assistanceFor(pg,{userId:id(1),lessonId:id(6),itemType:'vocabulary',itemId:id(90)}));
-    assert.equal(await assistanceFor(pg,{userId:id(2),lessonId:id(6),itemType:'vocabulary',itemId:id(90)}),null);
+  await t.test('grammar mastery counts every stored attempt, even inside a leftover exposure window', async () => {
+    await pg.query('INSERT INTO quiz_question_results(user_id,lesson_id,grammar_id,is_correct) VALUES ($1,$2,$3,TRUE)',[id(1),id(5),id(10)]);
+    // 1 jawaban smart review grammar (subtes sebelumnya) + 1 hasil kuis
+    assert.equal((await loadMastery(id(1),[id(10)])).get(id(10)).attempts,2);
   });
   await t.test('owner, expiry and malformed inputs are rejected', async () => {
     const session=await makeSession();
