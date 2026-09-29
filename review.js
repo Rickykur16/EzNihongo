@@ -6,7 +6,6 @@
   let selectedOrder = [];
   let correctAnswers = 0;
   let independentAnswers = 0;
-  let assistedAnswers = 0;
   let busy = false;
   const results = new Map();
   const labels = { kana: 'Kana', vocabulary: 'Kosakata', kanji: 'Kanji', grammar: 'Grammar' };
@@ -46,7 +45,7 @@
     loading(questionSkeleton);
     try {
       session = await api('/review/sessions', { method: 'POST', body: JSON.stringify({ category, limit: 20 }) });
-      index = 0; selectedOrder = []; correctAnswers = 0; independentAnswers = 0; assistedAnswers = 0; busy = false; results.clear();
+      index = 0; selectedOrder = []; correctAnswers = 0; independentAnswers = 0; busy = false; results.clear();
       if (!session.questions?.length) return renderHome(session.summary || { total: 0, byCategory: {} });
       renderQuestion();
     } catch (error) { errorCard(error, () => start(category)); }
@@ -261,13 +260,12 @@
     try {
       const result = await api(`/review/sessions/${session.sessionId}/answers`, { method: 'POST', body: JSON.stringify({ questionIndex: index, ...payload }) });
       results.set(index, result);
-      if (result.assisted) assistedAnswers += 1;
-      else { independentAnswers += 1; if (result.passed) correctAnswers += 1; }
+      independentAnswers += 1; if (result.passed) correctAnswers += 1;
       feedback.className = 'feedback';
       app.querySelectorAll('[data-option]').forEach(node => { if (Number(node.dataset.option) === result.correctIndex) node.classList.add('correct'); });
       if (button) button.classList.add(result.passed ? 'correct' : 'wrong');
       const answerText = correctAnswerText(session.questions[index].question, result);
-      feedback.innerHTML = (result.passed ? 'Benar.' : 'Belum tepat.') + (result.assisted ? ' Ini latihan terbantu; penguasaan dan jadwal review tetap.' : ' Hasil mandiri sudah disimpan untuk review berikutnya.') + (!result.passed && answerText ? `<span class="answer-key">Jawaban benar: <b>${esc(answerText)}</b></span>` : '');
+      feedback.innerHTML = (result.passed ? 'Benar.' : 'Belum tepat.') + ' Hasil sudah disimpan untuk review berikutnya.' + (!result.passed && answerText ? `<span class="answer-key">Jawaban benar: <b>${esc(answerText)}</b></span>` : '');
       const actions = document.getElementById('answer-actions');
       actions.innerHTML = '<button class="primary" id="review-next" type="button">Lanjut →</button>';
       actions.querySelector('button').addEventListener('click', () => { if (!busy) advance(); });
@@ -275,7 +273,7 @@
     finally { setBusy(false); }
   }
   function finish() {
-    app.innerHTML = `<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Sesi selesai.</h1><p>${independentAnswers ? `Kamu menjawab ${correctAnswers} dari ${independentAnswers} soal mandiri dengan benar.` : 'Sesi ini sepenuhnya latihan terbantu.'}</p><p class="subtle">${assistedAnswers} soal dikerjakan dengan bantuan. Hanya hasil mandiri yang memperbarui penguasaan dan jadwal review.</p><div class="review-actions"><button class="primary" id="back-home" type="button">Lihat jadwal review</button><a class="back-link" href="focus.html">Fokus belajar bersama Maneko</a><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
+    app.innerHTML = `<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Sesi selesai.</h1><p>Kamu menjawab ${correctAnswers} dari ${independentAnswers} soal dengan benar.</p><p class="subtle">Hasilnya sudah memperbarui penguasaan dan jadwal review.</p><div class="review-actions"><button class="primary" id="back-home" type="button">Lihat jadwal review</button><a class="back-link" href="focus.html">Fokus belajar bersama Maneko</a><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
     document.getElementById('back-home').addEventListener('click', loadHome);
   }
   document.getElementById('logout').addEventListener('click', () => ezLogout());

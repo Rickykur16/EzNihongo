@@ -50,13 +50,3 @@ export function independentEvidenceSql({ user = 'user_id', time = 'created_at', 
         OR me.lesson_id = ${alias}.${lesson}
         OR me.item_type = ${type} AND me.item_id = ${item}))`;
 }
-
-export function reviewHelp(payload, level) {
-  if (level === 1) return payload.variant === 'arrange'
-    ? 'Tentukan topik dan predikatnya dulu, lalu perhatikan posisi partikel. Susun semua kepingan menjadi satu kalimat.'
-    : 'Baca instruksi sekali lagi. Tentukan apakah yang diminta adalah arti, bacaan, atau bentuk kalimat; lalu bandingkan pilihan satu per satu.';
-  if (level === 2) return [payload.meaning, payload.example?.indonesian, payload.indonesian, payload.instruction]
-    .filter(Boolean).join('\n') || 'Coba jelaskan dengan kata-katamu sendiri apa yang ditanyakan. Jika masih sulit, buka pembahasan jawaban lalu pelajari materi terkait.';
-  const answer = payload.variant === 'arrange' ? (payload.answer || []).join(' ') : payload.options?.[payload.correctIndex];
-  return `Jawaban pada materi ini: ${answer || 'Buka kembali materi pelajaran.'}${payload.example?.japanese ? `\nContoh: ${payload.example.japanese}` : ''}`;
-}

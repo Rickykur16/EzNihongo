@@ -1,4 +1,4 @@
-import { assistanceFor, evidenceLock } from '../maneko-assistance.js';
+import { evidenceLock } from '../maneko-assistance.js';
 import { Router } from 'express';
 import { query, withAdvisoryLock } from '../db.js';
 import { requireAuth, asyncHandler } from '../middleware.js';
@@ -216,9 +216,8 @@ router.post('/sessions', asyncHandler(async (req, res) => {
       const payload = candidate.category === 'grammar' ? candidate.grammarDrill : makeReviewQuestion(candidate, pools);
       if (!payload || (payload.options && payload.options.length < 2)) continue;
       const index = questions.length;
-      const exposure = await assistanceFor(client, { userId: req.user.id, lessonId: candidate.lessonId, itemType: candidate.category, itemId: candidate.itemId });
-      await client.query(`INSERT INTO smart_review_session_items (session_id, question_index, item_type, item_id, skill, lesson_id, payload, assisted_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, [created.rows[0].id, index, candidate.category, candidate.itemId, candidate.skill, candidate.lessonId, JSON.stringify(payload), exposure ? new Date() : null]);
-      questions.push({ ...asPublic(candidate, candidate.category === 'grammar' ? publicDrill(payload) : publicQuestion(payload)), assisted: !!exposure });
+      await client.query(`INSERT INTO smart_review_session_items (session_id, question_index, item_type, item_id, skill, lesson_id, payload) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [created.rows[0].id, index, candidate.category, candidate.itemId, candidate.skill, candidate.lessonId, JSON.stringify(payload)]);
+      questions.push({ ...asPublic(candidate, candidate.category === 'grammar' ? publicDrill(payload) : publicQuestion(payload)) });
     }
     return { id: created.rows[0].id, expiresAt: created.rows[0].expires_at, questions };
   });
@@ -255,17 +254,13 @@ router.post('/sessions/:sessionId/answers', asyncHandler(async (req, res) => {
       if (!Array.isArray(order) || order.length !== payload.tokens.length || new Set(order).size !== order.length || order.some(i => !Number.isInteger(i) || i < 0 || i >= payload.tokens.length)) return { error: 'invalid_order', status: 400 };
     } else if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex >= (payload.options || []).length) return { error: 'invalid_option', status: 400 };
     const passed = arrange ? arrangeIsCorrect(payload, order) : optionIndex === payload.correctIndex;
-    const exposure = await assistanceFor(client, { userId: req.user.id, lessonId: row.lesson_id, itemType: row.item_type, itemId: row.item_id });
-    const assisted = !!(row.assisted_at || exposure);
-    const result = { passed, assisted, evidenceEligible: !assisted, independentAfter: exposure?.expires_at || null, correctIndex: payload.correctIndex, correctOrder: arrange ? payload.answer : undefined };
-    if (!assisted) {
-      if (row.item_type === 'grammar') {
-        const value = arrange ? order.map(i => payload.tokens[i]).join(' ') : payload.options[optionIndex];
-        const primary = passed ? null : primaryErrorFor(payload.step, payload.rule);
-        await client.query(`INSERT INTO grammar_attempts (user_id, grammar_id, lesson_id, source, input_mode, sentence, correct, uses_pattern, passed, primary_error, error_types, eval_source, check_family_id) VALUES ($1,$2,$3,$4,'text',$5,$6,$6,$6,$7,$8,$9,$10)`, [req.user.id, row.item_id, row.lesson_id, attemptSourceFor(payload.step), String(value).slice(0, 200), passed, primary, primary ? [primary] : [], SMART_REVIEW_SOURCE, payload.checkFamilyId || null]);
-      } else {
-        result.state = await recordPracticeAttemptWithState(client, { userId: req.user.id, courseId: row.course_id, lessonId: row.lesson_id, itemType: row.item_type, itemId: row.item_id, skill: row.skill, isCorrect: passed, source: SMART_REVIEW_SOURCE });
-      }
+    const result = { passed, correctIndex: payload.correctIndex, correctOrder: arrange ? payload.answer : undefined };
+    if (row.item_type === 'grammar') {
+      const value = arrange ? order.map(i => payload.tokens[i]).join(' ') : payload.options[optionIndex];
+      const primary = passed ? null : primaryErrorFor(payload.step, payload.rule);
+      await client.query(`INSERT INTO grammar_attempts (user_id, grammar_id, lesson_id, source, input_mode, sentence, correct, uses_pattern, passed, primary_error, error_types, eval_source, check_family_id) VALUES ($1,$2,$3,$4,'text',$5,$6,$6,$6,$7,$8,$9,$10)`, [req.user.id, row.item_id, row.lesson_id, attemptSourceFor(payload.step), String(value).slice(0, 200), passed, primary, primary ? [primary] : [], SMART_REVIEW_SOURCE, payload.checkFamilyId || null]);
+    } else {
+      result.state = await recordPracticeAttemptWithState(client, { userId: req.user.id, courseId: row.course_id, lessonId: row.lesson_id, itemType: row.item_type, itemId: row.item_id, skill: row.skill, isCorrect: passed, source: SMART_REVIEW_SOURCE });
     }
     await client.query('UPDATE smart_review_session_items SET answered_at = clock_timestamp(), result = $3 WHERE session_id = $1 AND question_index = $2', [sessionId, questionIndex, JSON.stringify(result)]);
     return result;
