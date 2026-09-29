@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import dialogueFurigana from '../../../src/dialogue-furigana.js';
-import { dialogueCatalog, normalizeDialogScene, sceneTurnVoices, validateSceneVoices } from '../dialogue-scene.js';
+import { dialogueCatalog, keepStoredVoices, normalizeDialogScene, sceneTurnVoices,
+  validateSceneVoices } from '../dialogue-scene.js';
 import fs from 'fs';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
@@ -4086,6 +4087,7 @@ router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
       const row = old.rows[0];
       const effectiveLessonId = hasLesson ? lessonId : row.lesson_id;
       const changed = (enabled, next, previous) => enabled && JSON.stringify(next ?? null) !== JSON.stringify(previous ?? null);
+      scene = keepStoredVoices(scene, row.dialog_scene);
       const mergedScene = has('dialogScene') ? scene : row.dialog_scene;
       const mergedFurigana = has('dialogFurigana') ? furigana : row.dialog_furigana;
       const goalChanged = changed(has('communicationGoal'), communicationGoal, row.communication_goal);

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import dialogueFurigana from '../../../src/dialogue-furigana.js';
-import { publicDialogScene } from '../dialogue-scene.js';
+import { editorDialogScene, publicDialogScene } from '../dialogue-scene.js';
 import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
 import { isAdminEmail } from '../auth.js';
@@ -142,7 +142,8 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
       }
     }
     for (const g of grammar.rows) {
-      g.dialog_scene = publicDialogScene(g.dialog_scene);
+      // Admins edit this payload in the curriculum editor and save it back.
+      g.dialog_scene = canPreviewDraft ? editorDialogScene(g.dialog_scene) : publicDialogScene(g.dialog_scene);
       try { g.dialog_furigana = dialogueFurigana.normalize(g.dialog_furigana); }
       catch { g.dialog_furigana = null; }
       g.examples = grammarExamplesByGrammar[g.id] || [];

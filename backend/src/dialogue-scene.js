@@ -57,6 +57,33 @@ function normalizeExpressions(value) {
   return lines.some(Boolean) ? lines : null;
 }
 
+// The curriculum editor edits this copy and saves it back whole, so it must
+// keep the voices; only students get the stripped snapshot below.
+export function editorDialogScene(value) {
+  try {
+    const scene = normalizeDialogScene(value);
+    return scene && {...scene, audioReady: scene.participants.every(p => !!p.voiceId)};
+  } catch { return null; }
+}
+
+// A participant that arrives without a voice keeps the one stored for the
+// same character. Editors used to receive the stripped student snapshot and
+// save it back, which silently disabled the audio for students; an admin tab
+// opened before this fix still does. Picking another character still takes
+// that character's profile voice, because the stored voice is matched by
+// character, not by position or speaker code.
+export function keepStoredVoices(next, stored) {
+  if (!next) return next;
+  let previous;
+  try { previous = normalizeDialogScene(stored); } catch { previous = null; }
+  if (!previous) return next;
+  return {...next, participants: next.participants.map(p => {
+    if (p.voiceId) return p;
+    const old = previous.participants.find(o => o.characterKey === p.characterKey && o.voiceId);
+    return old ? {...p, voiceId: old.voiceId, voiceName: old.voiceName} : p;
+  })};
+}
+
 // Voice references stay server-side; the student only needs the visual snapshot.
 export function publicDialogScene(value) {
   try {

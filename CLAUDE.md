@@ -205,13 +205,17 @@
   **Isi motion** (`src/dialogue-scene.js` + `styles/dialogue-scene.css`): gambar dimuat
   saat ±600px dari layar, animasi masuk (latar zoom-out, karakter masuk dari sisinya,
   balon muncul) baru jalan saat panggung ≥25% terlihat DAN semua gambar+mask selesai
-  (maks 3 detik); napas idle hanya saat terlihat; pembicara maju (`scale` 1.035) +
-  cahaya lantai warna karakter, pendengar redup+mundur; **gerak bicara mengikuti
-  kerasnya suara**: `EzDialogue.voice()` men-decode segmen base64 lewat
-  `OfflineAudioContext` (TERPISAH dari `<audio>` — jalur pemutaran tidak diubah, jadi
-  risiko iOS senyap tidak ada) jadi envelope RMS 20ms, lalu rAF menulis `--amp`/`--p`
-  hanya ke panggung + baris transkrip aktif selama audio jalan. Gagal decode → ritme
-  generik. Caption jadi balon bicara (ekor menunjuk pembicara, chip nama warna
+  (maks 3 detik); napas idle hanya saat terlihat; pembicara diberi cahaya lantai warna
+  karakter, pendengar diredupkan. **Karakter TIDAK bergerak ikut suara lagi** — user:
+  "karakternya gerak2 gitu saat bicara malah agak aneh" (setelah gambar setengah badan
+  asli dipasang). Dulu pembicara naik-turun + miring mengikuti kerasnya suara dan tiap
+  giliran kedua karakter membesar/mengecil + bergeser (diukur ±25–37 px per karakter,
+  miring sampai 0,7°); gambar diam yang bergoyang terbaca seperti gemetar. Sekarang
+  seperti potret game: posisi & ukuran tetap (sisa ≤9 px dari napas + satu "pop" 220 ms
+  saat ekspresi berganti), yang berubah hanya redup/terang. `EzDialogue.voice()` tetap
+  men-decode segmen base64 lewat `OfflineAudioContext` (TERPISAH dari `<audio>`) jadi
+  envelope RMS 20ms dan menulis `--amp`/`--p`, tapi sekarang hanya dipakai gelombang +
+  garis progres balon dan cincin/equalizer transkrip. Gagal decode → ritme generik. Caption jadi balon bicara (ekor menunjuk pembicara, chip nama warna
   karakter, gelombang, garis progres, titik "mengetik" saat TTS pertama kali dibuat —
   state `loading`); state baru `between` menjaga sorotan selama jeda 450ms antar
   giliran. Transkrip: warna gelembung kini dari warna karakter panggung
@@ -347,6 +351,24 @@
       sumber ganda/kosong), siswa 14/14 (tautan lama, urutan sidebar, tombol selesai,
       progres server, "Lanjut Belajar" dashboard, HP tanpa overflow); QA repo
       dialogue-scene + learning-flow lulus.
+
+      **Bug: menyimpan baris pola dari admin MENGHAPUS suara dialog** (ada sejak fitur
+      scene `8de8d54`, ketahuan saat merekam video perbandingan gerak): admin memuat pola
+      lewat `GET /api/courses/:slug`, yang memakai `publicDialogScene` (membuang `voiceId`
+      untuk siswa). Baris admin jadi memegang scene tanpa suara, dan SETIAP simpan baris
+      (edit arti di Tata Bahasa, atau "Simpan dialog") menulis balik scene itu →
+      `audioReady:false` → siswa melihat "Audio belum tersedia" dan tombol putar terkunci.
+      Diperbaiki dua lapis: (1) admin (`canPreviewDraft`) menerima `editorDialogScene`
+      (lengkap dengan suara), siswa tetap `publicDialogScene`; (2) `PUT
+      /admin/module-grammar/:id` menjalankan `keepStoredVoices`: peserta yang datang tanpa
+      suara memakai suara tersimpan untuk KARAKTER yang sama (bukan posisi/kode speaker —
+      mengganti karakter tetap mengambil suara profil karakter baru). Lapis (2) perlu
+      karena tab admin yang terbuka sebelum deploy tetap mengirim scene tanpa suara, dan
+      tidak ada cara sah di UI untuk sengaja mengosongkan suara. Divalidasi: tes unit
+      (dibuktikan menggigit), E2E modal (suara tampil di modal dan bertahan setelah
+      simpan), PUT scene tanpa suara → suara di DB tetap, payload siswa tetap tanpa
+      `voiceId`. **Kalau ada dialog produksi yang terlanjur kehilangan suara**, fix ini
+      tidak memulihkannya — pilih ulang tokoh/suara di 🎭 Dialog.
 
       **Tombol "Soal dialog untuk siswa" (menyalakan alur v2 per pelajaran)** — user:
       "Nyalain tombolnya di admin untuk soal dialog". Sebelumnya satu-satunya jalan
