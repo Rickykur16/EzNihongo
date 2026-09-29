@@ -264,11 +264,22 @@
       feedback.className = 'feedback';
       app.querySelectorAll('[data-option]').forEach(node => { if (Number(node.dataset.option) === result.correctIndex) node.classList.add('correct'); });
       if (button) button.classList.add(result.passed ? 'correct' : 'wrong');
+      // Benar: tidak ada yang perlu dipelajari, jadi lanjut sendiri. Salah:
+      // JANGAN pindah sendiri — tampilkan jawaban benarnya dan tunggu siswa
+      // menekan "Lanjut"; waktu mencerna kesalahan adalah milik siswa.
+      if (result.passed) {
+        feedback.textContent = 'Benar — review berikutnya akan dijadwalkan lebih jauh.';
+        const answeredIndex = index;
+        setTimeout(() => { if (index === answeredIndex) advance(); }, 900);
+        return;
+      }
       const answerText = correctAnswerText(session.questions[index].question, result);
-      feedback.innerHTML = (result.passed ? 'Benar.' : 'Belum tepat.') + ' Hasil sudah disimpan untuk review berikutnya.' + (!result.passed && answerText ? `<span class="answer-key">Jawaban benar: <b>${esc(answerText)}</b></span>` : '');
+      feedback.innerHTML = `Belum tepat. Soal ini akan diulang lebih cepat.${answerText ? `<span class="answer-key">Jawaban benar: <b>${esc(answerText)}</b></span>` : ''}`;
       const actions = document.getElementById('answer-actions');
       actions.innerHTML = '<button class="primary" id="review-next" type="button">Lanjut →</button>';
-      actions.querySelector('button').addEventListener('click', () => { if (!busy) advance(); });
+      const nextButton = actions.querySelector('button');
+      nextButton.addEventListener('click', () => { if (!busy) advance(); });
+      nextButton.focus();
     } catch (error) { feedback.textContent = ezStudentErrorMessage(error, 'Jawaban'); feedback.className = 'feedback error'; }
     finally { setBusy(false); }
   }
