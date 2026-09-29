@@ -205,13 +205,17 @@
   **Isi motion** (`src/dialogue-scene.js` + `styles/dialogue-scene.css`): gambar dimuat
   saat ±600px dari layar, animasi masuk (latar zoom-out, karakter masuk dari sisinya,
   balon muncul) baru jalan saat panggung ≥25% terlihat DAN semua gambar+mask selesai
-  (maks 3 detik); napas idle hanya saat terlihat; pembicara maju (`scale` 1.035) +
-  cahaya lantai warna karakter, pendengar redup+mundur; **gerak bicara mengikuti
-  kerasnya suara**: `EzDialogue.voice()` men-decode segmen base64 lewat
-  `OfflineAudioContext` (TERPISAH dari `<audio>` — jalur pemutaran tidak diubah, jadi
-  risiko iOS senyap tidak ada) jadi envelope RMS 20ms, lalu rAF menulis `--amp`/`--p`
-  hanya ke panggung + baris transkrip aktif selama audio jalan. Gagal decode → ritme
-  generik. Caption jadi balon bicara (ekor menunjuk pembicara, chip nama warna
+  (maks 3 detik); napas idle hanya saat terlihat; pembicara diberi cahaya lantai warna
+  karakter, pendengar diredupkan. **Karakter TIDAK bergerak ikut suara lagi** — user:
+  "karakternya gerak2 gitu saat bicara malah agak aneh" (setelah gambar setengah badan
+  asli dipasang). Dulu pembicara naik-turun + miring mengikuti kerasnya suara dan tiap
+  giliran kedua karakter membesar/mengecil + bergeser (diukur ±25–37 px per karakter,
+  miring sampai 0,7°); gambar diam yang bergoyang terbaca seperti gemetar. Sekarang
+  seperti potret game: posisi & ukuran tetap (sisa ≤9 px dari napas + satu "pop" 220 ms
+  saat ekspresi berganti), yang berubah hanya redup/terang. `EzDialogue.voice()` tetap
+  men-decode segmen base64 lewat `OfflineAudioContext` (TERPISAH dari `<audio>`) jadi
+  envelope RMS 20ms dan menulis `--amp`/`--p`, tapi sekarang hanya dipakai gelombang +
+  garis progres balon dan cincin/equalizer transkrip. Gagal decode → ritme generik. Caption jadi balon bicara (ekor menunjuk pembicara, chip nama warna
   karakter, gelombang, garis progres, titik "mengetik" saat TTS pertama kali dibuat —
   state `loading`); state baru `between` menjaga sorotan selama jeda 450ms antar
   giliran. Transkrip: warna gelembung kini dari warna karakter panggung
@@ -283,6 +287,133 @@
       166/171/172/175/176 gagal di database KOSONG (menuntut konten Bab 3/4) — itu
       perilaku lama; untuk uji lokal tandai terlewati di `schema_migrations`.
       **Belum diverifikasi**: Safari iOS dan aset asli dari user.
+      **Aset asli dari user (6 karakter × 5 ekspresi) TIDAK siap pakai apa adanya** —
+      gambarnya seluruh badan, sehingga di panggung karakter tampil kecil (wajah ±25 px
+      di desktop). Semuanya dirapikan di luar repo menjadi 666×900 setengah badan:
+      kepala disejajarkan, ukuran kepala disamakan per paket (median dari lebar rambut,
+      tinggi kepala–leher, dan tinggi badan; salah satu ukuran bisa meleset karena tangan
+      di dagu atau rambut bergelombang), dengan satu geser horizontal per paket supaya
+      gestur terlebar muat tanpa kepala melompat. Kanvas 666 (bukan 600) karena
+      gestur Daniel/Aoi lebih lebar dari 2:3: di desktop ukurannya tidak berubah, di HP
+      semua karakter ±10% lebih kecil tapi tetap seragam. Daniel & Ren menghadap kiri →
+      dibalik (panggung mengharapkan gambar menghadap kanan, aktor kanan dicerminkan
+      CSS). Aoi dikirim RGB dengan latar gelap → latar dihapus pakai rembg
+      (isnet-general-use) + `estimate_foreground_ml` (pymatting) untuk membersihkan
+      tepi gelap rambut. Kalau user menambah ekspresi baru, gambarnya perlu dirapikan
+      dengan cara yang sama (belum ada fitur otomatis di admin).
+
+      **Percakapan jadi pelajaran sendiri (migrasi 178)** — user: "Saya ingin bagian
+      dialog itu dirubah ke bentuk pelajaran sendiri, di admin juga begitu agar mudah.
+      Dan flow bunpounya yg berhubungan dengan dialog juga pisahkan kesitu". Keputusan
+      user lewat pertanyaan: dialog **tetap per pola** (disimpan di `module_grammar`
+      pelajaran sumber, bukan tabel baru — fitur "Bacaan & audio" dengan 4 tabel pernah
+      di-revert), soal dialog **digabung jadi satu**, dan tidak perlu penyesuaian
+      progres karena belum ada siswa. **Model**: `lessons.type = 'conversation'` +
+      `conversation_source_lesson_id` → pelajaran teks/video di bab yang sama (CHECK +
+      trigger `lessons_conversation_source_guard`, unik per sumber, ON DELETE CASCADE,
+      sumber tidak bisa diganti jenis selama punya Percakapan). Migrasi membuat satu
+      Percakapan untuk setiap teks/video yang punya dialog, tepat setelahnya (judul
+      "Tata Bahasa…: X" → "Percakapan: X", slug `<sumber>-percakapan`), idempoten.
+      **Siswa**: langkah virtual `view=conversation` dihapus; Percakapan adalah pelajaran
+      biasa di sidebar (label PERCAKAPAN), bisa ditandai selesai, ikut dihitung progres.
+      Tugas Bunpou yang di-popup setelah sumbernya ditempatkan tepat SETELAH Percakapan
+      sumber itu (`moduleLearningSteps` di welcome.html dan `projectDashboardLearningSteps`
+      di dashboard-rules.js harus tetap identik — ada tes paritasnya). Tautan lama
+      `?lesson=<sumber>&view=conversation` dan `selectConversation()` membuka
+      Percakapan-nya. Soal dialog, arahan 🎧, scene, furigana tetap dibaca dari pelajaran
+      SUMBER (`EzDialogueQuestions.mount({ lesson: source })`), jadi backend soal/placement
+      /fingerprint tidak berubah. **Admin**: jenis "Percakapan (dialog)" + pilihan sumber
+      di form; drawer Percakapan = tabel pola dalam mode `dialog` (semua field tetap
+      input tersembunyi supaya `saveItemRow` mengirim body yang sama) + 🎭 Dialog yang
+      langsung menyimpan baris ("Simpan dialog") + tombol "🎧 Arahan menyimak". Tombol 🎭
+      Dialog DIHAPUS dari baris grammar Tata Bahasa; drawer Tata Bahasa menampilkan
+      "Buka Percakapan" / "+ Buat pelajaran Percakapan" (form baru terisi otomatis).
+      **Pendamping Bunpou dipecah per drawer**: dari Tata Bahasa hanya tujuan + petunjuk
+      Step 1/2, dari Percakapan hanya arahan menyimak; `bfCollectEnvelope` mengambil nilai
+      draft untuk field yang tidak tampil (kalau tidak, menyimpan dari satu drawer akan
+      menghapus isi drawer lain — ada tes yang dibuktikan menggigit). **"Pemeriksaan
+      mandiri" (dialogChecks Paket 2) dipensiunkan dari penyajian**: tidak lagi di akhir
+      Tugas Bunpou sesi v1 dan tidak lagi dipakai Smart Review; editornya dihapus. Datanya
+      TETAP disimpan (dibawa apa adanya saat draft disimpan) karena backfill soal dialog v2
+      (`dialogue-question-backfill.js`) membacanya. Satu-satunya set soal dialog = soal di
+      🎭 Dialog (`grammar_dialog_questions`, 2 pemahaman + 1 transfer). **PENTING**: soal
+      itu hanya tampil ke siswa kalau alur komunikasi v2 (`learning_flow_communication_v1`)
+      aktif untuk pelajaran sumbernya — tombolnya ada di drawer Percakapan (lihat catatan
+      berikutnya). Tanpa itu, halaman Percakapan menampilkan dialog tanpa soal.
+      **Jebakan saat menguji**: editor Pendamping butuh Tugas Bunpou pasangan (popup) —
+      tanpa itu `currentFingerprint` null dan simpan draft ditolak 409
+      `source_changed_since_review` (perilaku lama, bukan akibat perubahan ini).
+      **Divalidasi**: `npm test` dengan DB 851 tes, 850 hijau, 1 skip lama, 0 gagal; empat
+      tes baru/diubah dibuktikan menggigit lewat mutasi; migrasi diuji idempoten + tiap
+      pagar (bab lain, tanpa sumber, sumber ganda, ganti jenis sumber) menolak; E2E
+      Postgres+backend+Chromium: admin 14/14 (daftar, tautan, drawer, simpan dialog
+      langsung, arahan tanpa menghapus tujuan/petunjuk, hapus & buat ulang, tolak
+      sumber ganda/kosong), siswa 14/14 (tautan lama, urutan sidebar, tombol selesai,
+      progres server, "Lanjut Belajar" dashboard, HP tanpa overflow); QA repo
+      dialogue-scene + learning-flow lulus.
+
+      **Bug: menyimpan baris pola dari admin MENGHAPUS suara dialog** (ada sejak fitur
+      scene `8de8d54`, ketahuan saat merekam video perbandingan gerak): admin memuat pola
+      lewat `GET /api/courses/:slug`, yang memakai `publicDialogScene` (membuang `voiceId`
+      untuk siswa). Baris admin jadi memegang scene tanpa suara, dan SETIAP simpan baris
+      (edit arti di Tata Bahasa, atau "Simpan dialog") menulis balik scene itu →
+      `audioReady:false` → siswa melihat "Audio belum tersedia" dan tombol putar terkunci.
+      Diperbaiki dua lapis: (1) admin (`canPreviewDraft`) menerima `editorDialogScene`
+      (lengkap dengan suara), siswa tetap `publicDialogScene`; (2) `PUT
+      /admin/module-grammar/:id` menjalankan `keepStoredVoices`: peserta yang datang tanpa
+      suara memakai suara tersimpan untuk KARAKTER yang sama (bukan posisi/kode speaker —
+      mengganti karakter tetap mengambil suara profil karakter baru). Lapis (2) perlu
+      karena tab admin yang terbuka sebelum deploy tetap mengirim scene tanpa suara, dan
+      tidak ada cara sah di UI untuk sengaja mengosongkan suara. Divalidasi: tes unit
+      (dibuktikan menggigit), E2E modal (suara tampil di modal dan bertahan setelah
+      simpan), PUT scene tanpa suara → suara di DB tetap, payload siswa tetap tanpa
+      `voiceId`. **Kalau ada dialog produksi yang terlanjur kehilangan suara**, fix ini
+      tidak memulihkannya — pilih ulang tokoh/suara di 🎭 Dialog.
+
+      **Tombol "Soal dialog untuk siswa" (menyalakan alur v2 per pelajaran)** — user:
+      "Nyalain tombolnya di admin untuk soal dialog". Sebelumnya satu-satunya jalan
+      hanyalah `PUT /admin/settings/learning-flow-communication` tanpa UI. **Letaknya di
+      drawer Percakapan** (tempat soalnya ditulis), bukan hanya di tab AI: panel
+      menampilkan status (Nonaktif / siap dinyalakan / ● Aktif / ● Aktif tapi belum siap)
+      dan DAFTAR KEKURANGAN dalam kalimat sebelum tombol diklik — dari endpoint baru
+      read-only `GET /admin/settings/learning-flow-communication/readiness?lessonId=`
+      (`previewLessonFlowReadiness`, menjalankan pemeriksaan yang SAMA PERSIS dengan
+      PUT untuk satu pelajaran sumber; owner-only `null` di `company-route-policy.js`).
+      Semua kode kesiapan server punya kalimat Indonesia (`flowIssueText`; ada tes yang
+      mengambil SEMUA kode `flow_*` dari `learning-flow-config.js` dan gagal kalau ada
+      yang belum diterjemahkan). GET/PUT/pratinjau kini ikut mengirim `titles` (judul
+      pelajaran/bab/kursus) supaya kegagalan yang menyebut pelajaran LAIN bisa dinamai.
+      **Semantik tombol**: menyalakan = menambah id pelajaran sumber ke `lessonIds`;
+      mematikan = menghapusnya (daftar kosong → `enabled:false`). Config yang sedang
+      nonaktif dianggap kosong saat menyalakan, supaya daftar lama tidak ikut hidup
+      diam-diam. Kalau pelajaran tercakup lewat bab/kursus, tombol per-pelajaran diganti
+      teks "matikan dari tab AI". **Jebakan server yang disengaja, bukan bug**: PUT
+      memeriksa kesiapan SELURUH cakupan, jadi menyalakan/mematikan satu pelajaran GAGAL
+      kalau pelajaran lain yang aktif sedang tidak siap — panel menamai pelajaran itu, dan
+      tab AI punya kartu "Soal dialog di Percakapan" (daftar yang aktif + "Matikan semua",
+      yang selalu boleh karena mematikan tidak butuh kesiapan). Runtime tetap aman: siswa
+      di pelajaran yang aktif tapi tidak siap otomatis jatuh ke alur lama (dialog tanpa
+      soal). **Yang ketahuan dari E2E**: mengedit dialog membuat soalnya basi DAN
+      Pendamping Bunpou tidak current lagi (isi tugas ikut berubah) — dua-duanya harus
+      dibereskan (Simpan set pertanyaan + Publikasikan ulang) sebelum aktif lagi; panel
+      menyegarkan diri sendiri setelah simpan dialog, simpan set pertanyaan, dan publikasi.
+      **Bug nyata ikut diperbaiki**: `src/dialogue-questions.js` memanggil
+      `crypto.randomUUID()` tanpa cadangan — tidak ada di Safari < 15.4 dan di konteks
+      non-HTTPS, jadi jawaban siswa gagal terkirim di sana; sekarang cadangan v4 dari
+      `getRandomValues` (lulus regex UUID server, tes dibuktikan menggigit).
+      **Divalidasi**: `npm test` dengan DB 861 tes, 860 hijau, 1 skip lama, 0 gagal; 7 tes
+      vm-slice UI baru (6 mutasi, semuanya tertangkap) + tes HTTP pratinjau + tes parser
+      (config keluaran UI divalidasi `parseLearningFlowConfig` asli); E2E Postgres+backend+
+      Chromium 19/19: belum siap → alasan tertulis + tombol terkunci, publikasi Pendamping
+      dari drawer menyegarkan panel, simpan soal → siap → Nyalakan → setting tersimpan
+      tepat satu pelajaran, siswa melihat 2 soal di Percakapan + menjawab benar, Tugas
+      Bunpou jadi sesi v2 dengan langkah transfer, edit dialog → "Aktif, tapi belum siap"
+      dan siswa jatuh ke dialog tanpa soal, tab AI menamai pelajarannya, "Matikan semua"
+      menyimpan config kosong, 390 px tanpa luber. **Belum dilakukan**: tidak ada yang
+      dinyalakan di produksi — admin menekan tombolnya sendiri, dan server hanya
+      menyalakan kalau semua syarat terpenuhi. Arahan 🎧 (`directions`) tetap hanya
+      tampil ke siswa lewat pilot v1 (`content.js` melampirkan `bunpouFlow` hanya untuk
+      pelajaran pilot) — perilaku lama, tidak diubah.
 
       **Dialog grammar: speaker asli dipilih dari SUARA ELEVENLABS ASLI —
       bukan kode A/B, dan bukan bucket perempuan/laki-laki — plus tes audio

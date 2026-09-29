@@ -19,10 +19,15 @@ function fixture() {
   const grammar = (id) => lesson(id, 'video', { grammar: [{ id: `${id}-grammar`,
     pattern: 'です', example: 'がくせいです。', example_dialog: 'A: はじめまして。',
     example_dialog_id: 'A: Salam kenal.', communication_goal: `Tujuan ${id}` }] });
+  // Percakapan is a real lesson (migration 178) pointing at its grammar source.
+  const conversation = (id, sourceId) => lesson(id, 'conversation',
+    { title: `Percakapan ${sourceId}`, conversationSourceLessonId: `${sourceId}-api` });
   const module = { id: 'bab3', num: '03', title: 'Perkenalan Diri', lessons: [
     lesson('intro'), lesson('vocab', 'deck'), lesson('kanji', 'kanji'),
-    grammar('grammar1'), lesson('task1', 'grammar_task', { popupAfterLessonId: 'grammar1-api' }),
-    grammar('grammar2'), lesson('task2', 'grammar_task', { popupAfterLessonId: 'grammar2-api' }),
+    grammar('grammar1'), conversation('conv1', 'grammar1'),
+    lesson('task1', 'grammar_task', { popupAfterLessonId: 'grammar1-api' }),
+    grammar('grammar2'), conversation('conv2', 'grammar2'),
+    lesson('task2', 'grammar_task', { popupAfterLessonId: 'grammar2-api' }),
     lesson('quiz', 'quiz'),
   ] };
   return { module, course: { name: 'N5', modules: [module] } };
@@ -33,101 +38,125 @@ function helpers(overrides = {}) {
   vm.runInContext(source('// ── Learning sequence', '// ── End learning sequence'), ctx);
   return ctx;
 }
+const ids = steps => plain(steps.map(step => step.lesson.id));
 
-test('two grammar lessons each have their own conversation before their own Bunpou task', () => {
+test('two grammar lessons each have their own Percakapan lesson before their own Bunpou task', () => {
   const { module } = fixture();
   const before = JSON.stringify(module);
   const ctx = helpers();
   const steps = ctx.moduleLearningSteps(module);
-  assert.deepEqual(plain(steps.map(step => [step.kind, step.lesson.id])), [
-    ['lesson', 'intro'], ['lesson', 'vocab'], ['lesson', 'kanji'],
-    ['lesson', 'grammar1'], ['conversation', 'grammar1'], ['lesson', 'task1'],
-    ['lesson', 'grammar2'], ['conversation', 'grammar2'], ['lesson', 'task2'],
-    ['lesson', 'quiz'],
-  ]);
+  assert.deepEqual(ids(steps), ['intro', 'vocab', 'kanji', 'grammar1', 'conv1', 'task1',
+    'grammar2', 'conv2', 'task2', 'quiz']);
+  assert.ok(steps.every(step => step.kind === 'lesson'), 'no virtual steps: every step is a real lesson');
   assert.equal(JSON.stringify(module), before, 'display steps must not mutate stored lessons');
-  assert.equal(module.lessons.length, 8, 'conversations must not become completion-bearing lessons');
-  assert.equal(steps[4].lesson, module.lessons[3], 'same source and question ownership');
+  assert.equal(ctx.conversationSource(module, module.lessons[4]), module.lessons[3],
+    'the Percakapan plays the dialogues (and question ownership) of its source');
+  assert.equal(ctx.conversationLessonFor(module, module.lessons[6]), module.lessons[7]);
 });
 
-test('lessons without an authored dialogue have no empty conversation stage', () => {
+test('grammar with a dialogue but no Percakapan lesson gets no invented step', () => {
   const ctx = helpers();
   const module = { id: 'kana', lessons: [
-    { id: 'kana1', type: 'kana' },
-    { id: 'empty', type: 'video', grammar: [{ example_dialog: '  ' }] },
-    { id: 'task', type: 'grammar_task', grammar: [{ example_dialog: 'A: hi' }] },
-    { id: 'quiz', type: 'quiz' },
+    { id: 'kana1', apiId: 'k', type: 'kana' },
+    { id: 'dialog', apiId: 'd', type: 'video', grammar: [{ example_dialog: 'A: hi' }] },
+    { id: 'task', apiId: 't', type: 'grammar_task', popupAfterLessonId: 'd' },
+    { id: 'quiz', apiId: 'q', type: 'quiz' },
   ] };
-  assert.deepEqual(plain(ctx.moduleLearningSteps(module).map(step => step.kind)),
-    ['lesson', 'lesson', 'lesson', 'lesson']);
+  assert.deepEqual(ids(ctx.moduleLearningSteps(module)), ['kana1', 'dialog', 'task', 'quiz']);
 });
 
-test('conversation source is preserved when flattening multiple modules', () => {
+test('Percakapan source is preserved when flattening multiple modules', () => {
   const { course } = fixture();
   course.modules.push({ id: 'bab4', lessons: [{ id: 'intro4', apiId: 'intro4-api', type: 'video' }] });
   const ctx = helpers();
   const steps = ctx.courseLearningSteps(course);
-  assert.equal(steps.filter(step => step.kind === 'conversation').length, 2);
+  assert.equal(steps.filter(step => step.lesson.type === 'conversation').length, 2);
   assert.equal(steps.at(-1).lesson.id, 'intro4');
 });
 
-test('unique linked tasks follow their source, while ambiguous and foreign links keep configured order', () => {
+test('a unique linked task follows its Percakapan, while ambiguous and foreign links keep configured order', () => {
   const { module } = fixture();
-  const [intro, vocab, kanji, g1, t1, g2, t2, quiz] = module.lessons;
-  module.lessons = [intro, vocab, kanji, g1, g2, quiz, t2, t1];
+  const [intro, vocab, kanji, g1, c1, t1, g2, c2, t2, quiz] = module.lessons;
+  module.lessons = [intro, vocab, kanji, g1, t1, c1, g2, quiz, t2, c2];
   const ctx = helpers();
-  assert.deepEqual(plain(ctx.moduleLearningSteps(module).map(step => `${step.kind}:${step.lesson.id}`)), [
-    'lesson:intro', 'lesson:vocab', 'lesson:kanji', 'lesson:grammar1', 'conversation:grammar1',
-    'lesson:task1', 'lesson:grammar2', 'conversation:grammar2', 'lesson:task2', 'lesson:quiz',
-  ]);
+  assert.deepEqual(ids(ctx.moduleLearningSteps(module)), ['intro', 'vocab', 'kanji', 'grammar1', 'conv1',
+    'task1', 'grammar2', 'quiz', 'conv2', 'task2']);
   t2.popupAfterLessonId = t1.popupAfterLessonId;
-  assert.deepEqual(plain(ctx.moduleLearningSteps(module).filter(step => step.kind === 'lesson').map(step => step.lesson.id)),
-    module.lessons.map(lesson => lesson.id));
+  assert.deepEqual(ids(ctx.moduleLearningSteps(module)), module.lessons.map(lesson => lesson.id));
   t1.popupAfterLessonId = 'other-module-api';
   t2.popupAfterLessonId = 'missing-api';
-  assert.deepEqual(plain(ctx.moduleLearningSteps(module).filter(step => step.kind === 'lesson').map(step => step.lesson.id)),
-    module.lessons.map(lesson => lesson.id));
+  assert.deepEqual(ids(ctx.moduleLearningSteps(module)), module.lessons.map(lesson => lesson.id));
 });
 
-test('conversation footer navigates to its own Bunpou and back to grammar without a completion write', () => {
+test('Percakapan footer completes the lesson, leads to its own Bunpou, and mounts questions of its source', () => {
   const { module, course } = fixture();
   const root = { innerHTML: '' };
-  const mounts = [], selected = [];
+  const mounts = [], selected = [], enhanced = [];
   const ctx = helpers({ document: { getElementById: () => root },
     window: { EzDialogueQuestions: { mount: value => mounts.push(value) },
+      EzDialogue: { enhance: value => enhanced.push(value) },
       selectLesson: (...args) => selected.push(args) },
     grammarKaraokeHtml: dialog => `<div class="karaoke">${esc(dialog)}</div>` });
-  vm.runInContext(source('function renderLessonConversation(', '// ── Dialog player'), ctx);
+  vm.runInContext(source('function renderConversationLesson(', '// ── Dialog player'), ctx);
   const steps = ctx.courseLearningSteps(course);
   for (const index of [4, 7]) {
-    ctx.renderLessonConversation(course, module, steps[index].lesson,
-      { prev: steps[index - 1], next: steps[index + 1] });
+    const lesson = steps[index].lesson;
+    ctx.renderConversationLesson(course, module, lesson,
+      { prev: steps[index - 1], next: steps[index + 1], isDone: false });
     assert.match(root.innerHTML, new RegExp(`selectLesson\\('bab3','${steps[index - 1].lesson.id}'\\)`));
-    assert.match(root.innerHTML, new RegExp(`selectLesson\\('bab3','${steps[index + 1].lesson.id}'\\)`));
-    assert.match(root.innerHTML, /Lanjut ke Tugas Bunpou/);
-    assert.doesNotMatch(root.innerHTML, /markCompleteAndNext|gtOpenTaskPopup/);
-    assert.equal(mounts.at(-1).lesson, steps[index].lesson);
+    assert.match(root.innerHTML, /markCompleteAndNext\(this\)/, 'a Percakapan is completed like any lesson');
+    assert.match(root.innerHTML, /Tandai Selesai &amp; Lanjut ke Tugas Bunpou|Tandai Selesai & Lanjut ke Tugas Bunpou/);
+    assert.match(root.innerHTML, new RegExp(esc(lesson.title)));
+    assert.match(root.innerHTML, /karaoke/);
+    const sourceLesson = ctx.conversationSource(module, lesson);
+    assert.equal(mounts.at(-1).lesson, sourceLesson, 'questions stay keyed to the grammar source');
     mounts.at(-1).openLegacyTask();
     assert.deepEqual(selected.at(-1), ['bab3', steps[index + 1].lesson.id]);
   }
+  assert.equal(enhanced.length, 2);
+  ctx.renderConversationLesson(course, module, steps[4].lesson,
+    { prev: steps[3], next: steps[5], isDone: true });
+  assert.match(root.innerHTML, /Lanjut ke Tugas Bunpou →/);
+  assert.doesNotMatch(root.innerHTML, /Tandai Selesai/);
 });
 
-test('conversation deep link uses source IDs and ordinary lesson navigation clears its view', () => {
+test('a Percakapan whose source has no dialogue says so instead of an empty stage', () => {
+  const { module, course } = fixture();
+  module.lessons[3].grammar = [];
+  const root = { innerHTML: '' };
+  const mounts = [];
+  const ctx = helpers({ document: { getElementById: () => root },
+    window: { EzDialogueQuestions: { mount: value => mounts.push(value) } },
+    grammarKaraokeHtml: () => { throw new Error('no dialogue to render'); } });
+  vm.runInContext(source('function renderConversationLesson(', '// ── Dialog player'), ctx);
+  ctx.renderConversationLesson(course, module, module.lessons[4], { prev: null, next: null, isDone: false });
+  assert.match(root.innerHTML, /belum tersedia/);
+  assert.match(root.innerHTML, /markCompleteAndNext/);
+  assert.equal(mounts.length, 0);
+});
+
+test('old conversation links open the Percakapan lesson and URLs no longer carry a view', () => {
   const urls = [];
   const history = { replaceState: (_state, _title, url) => urls.push(url) };
-  const state = { course: 'n5', moduleId: 'bab3', lessonId: 'grammar1', view: 'conversation' };
-  const ctx = helpers({ currentState: state, URLSearchParams, history, window: { history } });
+  const state = { course: 'n5', moduleId: 'bab3', lessonId: 'conv1', view: 'lesson' };
+  const { course } = fixture();
+  const opened = [];
+  const ctx = helpers({ currentState: state, URLSearchParams, history, window: { history },
+    COURSE_CONTENT: { n5: course }, selectLearningView: (...args) => opened.push(args) });
+  vm.runInContext(source('// Old callers pass the grammar lesson; its Percakapan lesson opens instead.',
+    'window.selectModuleIntro ='), ctx);
   ctx.syncLearningUrl();
-  assert.equal(urls.at(-1), 'welcome.html?course=n5&module=bab3&lesson=grammar1&view=conversation');
-  state.lessonId = 'task1'; state.view = 'lesson';
-  ctx.syncLearningUrl();
-  assert.equal(urls.at(-1), 'welcome.html?course=n5&module=bab3&lesson=task1');
+  assert.equal(urls.at(-1), 'welcome.html?course=n5&module=bab3&lesson=conv1');
   state.view = 'intro';
   ctx.syncLearningUrl();
   assert.equal(urls.at(-1), 'welcome.html?course=n5&module=bab3&view=intro');
+  ctx.window.selectConversation('bab3', 'grammar2');
+  assert.deepEqual(plain(opened.at(-1)), ['bab3', 'conv2', 'lesson']);
+  ctx.window.selectConversation('bab3', 'intro');
+  assert.deepEqual(plain(opened.at(-1)), ['bab3', 'intro', 'lesson'], 'no Percakapan: the lesson itself');
 });
 
-test('late completion cannot advance a reopened source view or write completion from conversation', async () => {
+test('late completion cannot advance a reopened view, and a Percakapan writes its own completion', async () => {
   const { module, course } = fixture();
   const progress = { n5: {} };
   let finishWrite, writes = 0, renders = 0;
@@ -135,21 +164,23 @@ test('late completion cannot advance a reopened source view or write completion 
   const ctx = helpers({ currentState: state, COURSE_CONTENT: { n5: course },
     window: { __quizNavigationEpoch: 1, scrollTo() {} },
     getProgress: () => progress, setProgress() {}, addXP() {},
-    findLesson: () => module.lessons[3],
+    findLesson: () => module.lessons.find(lesson => lesson.id === state.lessonId),
     syncLessonCompletionToServer: () => { writes++; return new Promise(resolve => { finishWrite = resolve; }); },
     finishLearningMilestone: (_course, _module, _completed, advance) => advance(),
     renderSidebar() {}, renderLesson: () => renders++ });
   vm.runInContext(source('window.markCompleteAndNext = async (triggerButton) => {',
     'function renderCourseTabs(activeSlug) {'), ctx);
   const pending = ctx.window.markCompleteAndNext();
-  // Conversation and grammar share source IDs. Navigate away and back while saving.
+  // Navigate away and back while saving.
   ctx.window.__quizNavigationEpoch += 2;
   finishWrite(true);
   await pending;
-  assert.equal(state.view, 'lesson');
+  assert.equal(state.lessonId, 'grammar1');
   assert.equal(renders, 0);
   assert.equal(writes, 1);
-  state.view = 'conversation';
-  await ctx.window.markCompleteAndNext();
-  assert.equal(writes, 1, 'conversation never writes another completion');
+  state.lessonId = 'conv1';
+  const conversationWrite = ctx.window.markCompleteAndNext();
+  finishWrite(true);
+  await conversationWrite;
+  assert.equal(writes, 2, 'the Percakapan lesson is completed on the server like any lesson');
 });

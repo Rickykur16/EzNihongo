@@ -16,7 +16,7 @@ assert.ok(landingStart > 0 && landingEnd > landingStart);
 const localDraftStart = html.indexOf('function quizLocalDraftKey(');
 const localDraftEnd = html.indexOf('function getQuizKey(', localDraftStart);
 assert.ok(localDraftStart > 0 && localDraftEnd > localDraftStart);
-const sequenceStart = html.indexOf('function lessonHasConversation(');
+const sequenceStart = html.indexOf('function lessonDialogues(');
 const sequenceEnd = html.indexOf('// ── End learning sequence', sequenceStart);
 assert.ok(sequenceStart > 0 && sequenceEnd > sequenceStart);
 const learningSequence = html.slice(sequenceStart, sequenceEnd);

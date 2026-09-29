@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import dialogueFurigana from '../../../src/dialogue-furigana.js';
-import { dialogueCatalog, normalizeDialogScene, sceneTurnVoices, validateSceneVoices } from '../dialogue-scene.js';
+import { dialogueCatalog, keepStoredVoices, normalizeDialogScene, sceneTurnVoices,
+  validateSceneVoices } from '../dialogue-scene.js';
 import fs from 'fs';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
@@ -62,7 +63,8 @@ import { generateGroundedContent } from '../grounded-generation.js';
 import { dialogueSourceFingerprint } from '../curriculum-boundary-context.js';
 import { DialogueQuestionError, loadDialogueQuestionContext, listDialogueQuestions,
   saveDialogueQuestions, assertDialogueQuestionLessonMoveAllowed } from '../dialogue-question-service.js';
-import { getLearningFlowSettings, saveLearningFlowSettings } from '../learning-flow-config.js';
+import { getLearningFlowSettings, previewLessonFlowReadiness,
+  saveLearningFlowSettings } from '../learning-flow-config.js';
 import { CurriculumModeError, getCurriculumBoundaryMode,
   saveCurriculumBoundaryMode } from '../curriculum-boundary-mode.js';
 import { captureReadinessAttestation,
@@ -2551,18 +2553,68 @@ router.post('/lessons/:lessonId/bunpou-flow/publish', asyncHandler(async (req, r
 // requires the target to actually be a lesson with a companion already
 // published, so a typo'd or forgotten-to-publish lesson id can not be
 // switched live by accident.
+// Readiness and config name lessons/modules/courses by id only. The admin
+// switch (Percakapan drawer, AI tab) shows the reasons per lesson, and a
+// failure can name a lesson of another Bab, so the titles ride along.
+const FLOW_TITLE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+async function flowScopeTitles({ config, readiness } = {}) {
+  const want = { course: new Set(config?.courseIds || []), module: new Set(config?.moduleIds || []),
+    lesson: new Set(config?.lessonIds || []) };
+  for (const row of readiness?.lessons || []) if (row?.lessonId) want.lesson.add(row.lessonId);
+  for (const row of readiness?.issues || []) if (want[row?.kind] && row.id) want[row.kind].add(row.id);
+  const ids = key => [...want[key]].filter(id => typeof id === 'string' && FLOW_TITLE_ID.test(id));
+  const titles = { courses: {}, modules: {}, lessons: {} };
+  if (ids('course').length) {
+    for (const row of (await query('SELECT id, title FROM courses WHERE id = ANY($1::uuid[])',
+      [ids('course')])).rows) titles.courses[row.id] = row.title;
+  }
+  if (ids('module').length) {
+    for (const row of (await query(`SELECT m.id, m.title, c.title AS course_title
+      FROM modules m JOIN courses c ON c.id = m.course_id WHERE m.id = ANY($1::uuid[])`,
+    [ids('module')])).rows) titles.modules[row.id] = { title: row.title, courseTitle: row.course_title };
+  }
+  if (ids('lesson').length) {
+    for (const row of (await query(`SELECT l.id, l.title, m.title AS module_title,
+        c.title AS course_title, cv.title AS conversation_title
+      FROM lessons l JOIN modules m ON m.id = l.module_id JOIN courses c ON c.id = m.course_id
+      LEFT JOIN lessons cv ON cv.conversation_source_lesson_id = l.id
+      WHERE l.id = ANY($1::uuid[])`, [ids('lesson')])).rows) {
+      titles.lessons[row.id] = { title: row.title, moduleTitle: row.module_title,
+        courseTitle: row.course_title, conversationTitle: row.conversation_title || null };
+    }
+  }
+  return titles;
+}
+
 router.get('/settings/learning-flow-communication', asyncHandler(async (_req, res) => {
   res.set('Cache-Control', 'private, no-store');
-  res.json(await getLearningFlowSettings());
+  const settings = await getLearningFlowSettings();
+  res.json({ ...settings, titles: await flowScopeTitles(settings) });
 }));
 
 router.put('/settings/learning-flow-communication', asyncHandler(async (req, res) => {
   res.set('Cache-Control', 'private, no-store');
-  try { res.json(await saveLearningFlowSettings(req.body || {})); }
+  let saved;
+  try { saved = await saveLearningFlowSettings(req.body || {}); }
   catch (error) {
     if (!error.status) throw error;
-    res.status(error.status).json({ error: error.message,
-      ...(error.readiness ? { readiness: error.readiness } : {}) });
+    return res.status(error.status).json({ error: error.message,
+      ...(error.readiness ? { readiness: error.readiness,
+        titles: await flowScopeTitles({ readiness: error.readiness }) } : {}) });
+  }
+  res.json({ ...saved, titles: await flowScopeTitles(saved) });
+}));
+
+// Read-only preview for one source lesson (Tata Bahasa text/video): the same
+// check the PUT runs, so a green preview means that lesson alone may be enabled.
+router.get('/settings/learning-flow-communication/readiness', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try {
+    const readiness = await previewLessonFlowReadiness(String(req.query.lessonId || ''));
+    res.json({ readiness, titles: await flowScopeTitles({ readiness }) });
+  } catch (error) {
+    if (!error.status) throw error;
+    res.status(error.status).json({ error: error.message });
   }
 }));
 
@@ -4035,6 +4087,7 @@ router.put('/module-grammar/:id', asyncHandler(async (req, res) => {
       const row = old.rows[0];
       const effectiveLessonId = hasLesson ? lessonId : row.lesson_id;
       const changed = (enabled, next, previous) => enabled && JSON.stringify(next ?? null) !== JSON.stringify(previous ?? null);
+      scene = keepStoredVoices(scene, row.dialog_scene);
       const mergedScene = has('dialogScene') ? scene : row.dialog_scene;
       const mergedFurigana = has('dialogFurigana') ? furigana : row.dialog_furigana;
       const goalChanged = changed(has('communicationGoal'), communicationGoal, row.communication_goal);
@@ -4214,11 +4267,30 @@ router.post('/module-grammar/bulk', asyncHandler(async (req, res) => {
 
 // ===== LESSONS =====
 
+// A Percakapan lesson shows the dialogues of one text/video lesson in the same
+// chapter (migration 178). The DB trigger enforces the same rules; checking
+// here first turns a violation into a readable 400 instead of a 500.
+async function conversationSourceError(client, { moduleId, sourceId, lessonId = null }) {
+  if (!sourceId) return 'Pilih pelajaran Tata Bahasa sumber dialognya.';
+  if (!/^[0-9a-f-]{36}$/i.test(String(sourceId))) return 'Pelajaran sumber tidak valid.';
+  const src = (await client.query(
+    `SELECT module_id, type FROM lessons WHERE id = $1`, [sourceId])).rows[0];
+  if (!src || src.module_id !== moduleId || !['text', 'video'].includes(src.type)) {
+    return 'Sumber Percakapan harus pelajaran teks/video di bab yang sama.';
+  }
+  const taken = (await client.query(
+    `SELECT title FROM lessons WHERE conversation_source_lesson_id = $1 AND id IS DISTINCT FROM $2`,
+    [sourceId, lessonId])).rows[0];
+  if (taken) return `Pelajaran itu sudah punya Percakapan: "${taken.title}".`;
+  return null;
+}
+
 router.post('/lessons', asyncHandler(async (req, res) => {
   const {
     moduleId, slug, title, type, content, videoUrl, videoSourceId,
     videoStartSeconds, videoEndSeconds, durationMinutes, sortOrder,
     passingScorePct, questionsPerAttempt, cooldownHours, popupAfterLessonId,
+    conversationSourceLessonId,
   } = req.body || {};
   if (!moduleId || !slug || !title) {
     return res.status(400).json({ error: 'moduleId, slug, title required' });
@@ -4238,14 +4310,20 @@ router.post('/lessons', asyncHandler(async (req, res) => {
     prepare: async () => ({ scope: { moduleId }, contentType: 'reading', operation: 'live_write',
       fields: [boundaryField('title', title), boundaryField('content', content)],
       expectedBoundaryFingerprint: req.body?.boundaryFingerprint }),
-    write: async client => (await client.query(
+    write: async client => {
+    const conversationSource = type === 'conversation' ? conversationSourceLessonId : null;
+    if (type === 'conversation') {
+      const error = await conversationSourceError(client, { moduleId, sourceId: conversationSource });
+      if (error) return { error };
+    }
+    return { lesson: (await client.query(
     `INSERT INTO lessons (
        module_id, slug, title, type, content, video_url,
        video_source_id, video_start_seconds, video_end_seconds,
        duration_minutes, sort_order, passing_score_pct, questions_per_attempt,
-       cooldown_hours, popup_after_lesson_id
+       cooldown_hours, popup_after_lesson_id, conversation_source_lesson_id
       )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
     [
       moduleId, slug, title, type || 'text',
       content || null, videoUrl || null,
@@ -4255,12 +4333,15 @@ router.post('/lessons', asyncHandler(async (req, res) => {
       questionsPerAttempt != null && questionsPerAttempt !== '' ? Number(questionsPerAttempt) : null,
       cooldownHours != null && cooldownHours !== '' ? Number(cooldownHours) : 12,
       popupAfterLessonId || null,
+      conversationSource || null,
     ]
-    )).rows[0],
+    )).rows[0] };
+    },
   });
   if (!outcome) return;
+  if (outcome.value.error) return res.status(400).json({ error: outcome.value.error });
   invalidateKanjiCatalogCache();
-  res.status(201).json({ lesson: outcome.value, validation: outcome.report });
+  res.status(201).json({ lesson: outcome.value.lesson, validation: outcome.report });
 }));
 
 router.put('/lessons/:id', asyncHandler(async (req, res) => {
@@ -4268,6 +4349,7 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
     slug, title, type, content, videoUrl, videoSourceId, videoStartSeconds,
     videoEndSeconds, durationMinutes, sortOrder,
     passingScorePct, questionsPerAttempt, cooldownHours, popupAfterLessonId,
+    conversationSourceLessonId,
   } = req.body || {};
   if (slug !== undefined && slug !== null) {
     const slugErr = badSlug(slug);
@@ -4312,6 +4394,24 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
     write: async (client, candidate) => {
     const current = candidate.existing;
     const oldType = current.type;
+    // Percakapan link: required while the lesson is a Percakapan, cleared the
+    // moment it becomes anything else (the CHECK in migration 178).
+    const effectiveType = type || oldType;
+    const hasConversationSource = Object.prototype.hasOwnProperty.call(req.body || {}, 'conversationSourceLessonId');
+    let conversationSource = current.conversation_source_lesson_id;
+    if (effectiveType !== 'conversation') conversationSource = null;
+    else if (hasConversationSource || oldType !== 'conversation') conversationSource = conversationSourceLessonId || null;
+    if (effectiveType === 'conversation' &&
+        conversationSource !== current.conversation_source_lesson_id) {
+      const error = await conversationSourceError(client, { moduleId: current.module_id,
+        sourceId: conversationSource, lessonId: current.id });
+      if (error) return { error };
+    }
+    if (type && oldType !== type && !['text', 'video'].includes(type)) {
+      const linked = (await client.query(`SELECT title FROM lessons
+        WHERE conversation_source_lesson_id = $1`, [current.id])).rows[0];
+      if (linked) return { error: `Pelajaran ini sumber dialog "${linked.title}". Hapus pelajaran Percakapan itu dulu sebelum mengganti jenisnya.` };
+    }
     if (type && oldType !== type) {
       if (req.companyAccess && !req.companyAccess.isAdmin) throw fail(403, 'owner_required_for_type_change');
       if (oldType === 'quiz') {
@@ -4331,7 +4431,6 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
       // PUT also supports partial callers. Only fields actually supplied in
       // the payload replace a saved segment; the admin editor sends all three
       // so it can deliberately clear the source when lesson type changes.
-      const effectiveType = type || oldType;
       const acceptsVideoSegment = supportsVideoSegment(effectiveType);
       const segment = normalizeSegment(
         acceptsVideoSegment
@@ -4361,7 +4460,8 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
           passing_score_pct = COALESCE($15, passing_score_pct),
           questions_per_attempt = CASE WHEN $17::boolean THEN $16 ELSE questions_per_attempt END,
           cooldown_hours = COALESCE($18, cooldown_hours),
-          popup_after_lesson_id = CASE WHEN $20::boolean THEN $19 ELSE popup_after_lesson_id END
+          popup_after_lesson_id = CASE WHEN $20::boolean THEN $19 ELSE popup_after_lesson_id END,
+          conversation_source_lesson_id = $22
         WHERE id = $1 RETURNING *`,
         [
           req.params.id, slug, title, type, content, videoUrl,
@@ -4375,6 +4475,7 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
           hasPopup && popupAfterLessonId ? popupAfterLessonId : null,
           hasPopup,
           hasContent,
+          conversationSource,
         ]
       );
     if (result.rows.length === 0) return { notFound: true };

@@ -311,6 +311,7 @@ test('dialogue question PUT sends only editable DTO fields and advances question
   const end = html.indexOf('// ── Pengecoh Step 1', start);
   assert.ok(start > 0 && end > start, 'dialogue-question save handler markers not found');
   const requests = [];
+  let flowRechecks = 0;
   const q = { id: 'q-1', kind: 'comprehension', prompt: 'prompt', options: ['one','two','three'],
     correctIndex: 1, explanation: 'explanation', evidence: [{ turnIndex: 0, quote: 'quote' }],
     sortOrder: 0, questionVersion: 'secret-v', dialogueFingerprint: 'old-fp', current: true };
@@ -320,6 +321,9 @@ test('dialogue question PUT sends only editable DTO fields and advances question
     admRenderDialogModal: () => {},
     notify: () => {}, notifyLearningWarnings: () => {},
     admDialogQuestionError: (_label, error) => { throw error; },
+    // A saved set can make the lesson ready: the Percakapan switch re-checks.
+    document: { getElementById: id => (id === 'flow-switch' ? {} : null) },
+    flowSwitchLoad: () => { flowRechecks++; },
     api: async (_path, options) => { requests.push(JSON.parse(options.body)); return {
       dialogueFingerprint: 'dialog-fp', questionsRevision: 'rev-2', questions: [{ ...q, questionVersion: 'secret-v2' }],
     }; },
@@ -332,4 +336,5 @@ test('dialogue question PUT sends only editable DTO fields and advances question
   assert.deepEqual(Object.keys(body.questions[0]).sort(), ['correctIndex','evidence','explanation','id','kind','options','prompt','sortOrder'].sort());
   assert.equal(ctx.window.__dialogQuestionState.questionsRevision, 'rev-2');
   assert.equal(ctx.window.__dialogQuestionState.questions[0].questionVersion, 'secret-v2');
+  assert.equal(flowRechecks, 1);
 });

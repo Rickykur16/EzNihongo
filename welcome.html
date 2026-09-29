@@ -4712,7 +4712,7 @@
 <link rel="stylesheet" href="styles/learning-placement.css?v=20260928-skeleton"/>
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
 <link rel="stylesheet" href="styles/skeleton.css?v=1">
-<link rel="stylesheet" href="styles/dialogue-scene.css?v=4">
+<link rel="stylesheet" href="styles/dialogue-scene.css?v=5">
 <link rel="stylesheet" href="styles/dialogue-questions.css?v=20260927-1">
 <link rel="stylesheet" href="maneko.css?v=20260926-1">
 <script src="maneko.js?v=20260928-skeleton"></script>
@@ -4811,7 +4811,7 @@ function getUserName(user = session) {
 <script src="assets/dialogue/catalog.js?v=1"></script>
 <script src="src/dialogue-furigana.js?v=1"></script>
 <script src="src/dialogue-scene.js?v=4"></script>
-<script src="src/dialogue-questions.js?v=20260927-1"></script>
+<script src="src/dialogue-questions.js?v=20260929-1"></script>
 <script src="learning-state.js?v=20260911-1"></script>
 <script>
 // ═══════════════════════════════════════════════
@@ -4895,6 +4895,9 @@ function transformCourseFromApi(apiCourse) {
           kana: Array.isArray(l.kana) ? l.kana : [],
           grammarTask: Array.isArray(l.grammarTask) ? l.grammarTask : [],
           popupAfterLessonId: l.popup_after_lesson_id || null,
+          // Percakapan lessons (migration 178) show the dialogues of this
+          // grammar lesson from the same module.
+          conversationSourceLessonId: l.conversation_source_lesson_id || null,
           // Bunpou Flow pilot (Paket 1) — present on AT MOST one lesson in the
           // whole catalogue, and only once an admin has both published a
           // companion and flipped the pilot flag for it (see
@@ -7045,12 +7048,11 @@ function greetingBannerHtml() {
     const lesson = mod && mod.lessons.find(l => l.id === currentState.lessonId);
     if (lesson) {
       const progress = getProgress()[currentState.course] || {};
-      const isConversation = currentState.view === 'conversation' && lessonHasConversation(lesson);
-      const isDone = !isConversation && !!progress[`${mod.id}:${lesson.id}`];
+      const isDone = !!progress[`${mod.id}:${lesson.id}`];
       const label = isDone ? 'Buka kembali' : 'Lanjut belajar';
-      const title = isConversation ? `Percakapan · ${lesson.title}` : lesson.title;
+      const title = lesson.title;
       resume = `<button class="greeting-resume" type="button"
-        onclick="${isConversation ? 'selectConversation' : 'selectLesson'}('${mod.id}','${lesson.id}')"
+        onclick="selectLesson('${mod.id}','${lesson.id}')"
         aria-label="${label}: ${escapeHtml(title)}">
         <span class="gr-label">${label}</span>
         <span class="gr-title">${escapeHtml(title)}</span>
@@ -7235,16 +7237,13 @@ function renderLearning(courseSlug) {
       currentState.view = 'intro';
     }
     const steps = courseLearningSteps(course);
-    const nextIndex = hasStudied ? steps.findIndex(step => step.kind === 'lesson' &&
+    const nextIndex = hasStudied ? steps.findIndex(step =>
       progress[`${step.module.id}:${step.lesson.id}`] !== true) : -1;
     if (nextIndex >= 0) {
-      const due = steps[nextIndex];
-      const prior = steps[nextIndex - 1];
-      const resume = prior?.kind === 'conversation' && prior.module === due.module
-        ? prior : due;
+      const resume = steps[nextIndex];
       currentState.moduleId = resume.module.id;
       currentState.lessonId = resume.lesson.id;
-      currentState.view = resume.kind;
+      currentState.view = 'lesson';
     } else if (hasStudied) {
       const first = steps.find(step => step.kind === 'lesson');
       currentState.moduleId = first?.module.id || course.modules[0].id;
@@ -7390,16 +7389,15 @@ function renderSidebar() {
 
     const lessonsHtml = introHtml + moduleLearningSteps(m).map(step => {
       const l = step.lesson;
-      const isConversation = step.kind === 'conversation';
       const key = `${m.id}:${l.id}`;
-      const isDone = !isConversation && !!progress[key];
+      const isDone = !!progress[key];
       const isCurrent = currentState.view === step.kind && m.id === currentState.moduleId && l.id === currentState.lessonId;
-      const typeKey = isConversation ? 'conversation' : (l.type || 'text').toLowerCase();
+      const typeKey = (l.type || 'text').toLowerCase();
       const typeLabel = TYPE_LABEL[typeKey] || typeKey.toUpperCase();
       const typeIcon = TYPE_ICON[typeKey] || TYPE_ICON.text;
       const num = lessonNumber.get(`${m.id}:${step.kind}:${l.id}`);
-      const durTxt = isConversation ? '' : formatDurationCompact(l.durationMinutes);
-      const title = isConversation ? `Percakapan · ${l.title}` : l.title;
+      const durTxt = formatDurationCompact(l.durationMinutes);
+      const title = l.title;
       const aria = `${title}, ${typeLabel}${durTxt ? ', ' + durTxt : ''}${isDone ? ', selesai' : ''}${isCurrent ? ', sedang dibuka' : ''}`;
       return `
         <li class="lesson-item ${isCurrent ? 'current' : ''} ${isDone ? 'done' : ''}"
@@ -8410,11 +8408,9 @@ function getModuleIntroPlan(module, progress = {}) {
   const lessons = visibleLessons(module);
   const steps = moduleLearningSteps(module);
   const completed = lessons.filter((lesson) => progress[`${module.id}:${lesson.id}`] === true).length;
-  const orderedLessons = steps.filter(step => step.kind === 'lesson').map(step => step.lesson);
+  const orderedLessons = steps.map(step => step.lesson);
   const nextLesson = orderedLessons.find((lesson) => progress[`${module.id}:${lesson.id}`] !== true) || orderedLessons[0] || null;
-  const nextIndex = steps.findIndex(step => step.kind === 'lesson' && step.lesson === nextLesson);
-  const nextStep = nextIndex > 0 && steps[nextIndex - 1].kind === 'conversation'
-    ? steps[nextIndex - 1] : steps[nextIndex];
+  const nextStep = steps.find(step => step.lesson === nextLesson);
   const totalMinutes = Number(module.totalMinutes)
     || lessons.reduce((total, lesson) => total + (Number(lesson.durationMinutes) || 0), 0);
   return {
@@ -8456,7 +8452,7 @@ function renderModuleIntro(module) {
     || `Pelajari ${plan.lessons.length} materi dalam urutan yang sudah disiapkan.`;
   const typeLabels = {
     video: 'Video', quiz: 'Kuis', text: 'Bacaan', deck: 'Kosakata',
-    kanji: 'Kanji', kana: 'Kana', grammar_task: 'Latihan tata bahasa',
+    kanji: 'Kanji', kana: 'Kana', grammar_task: 'Latihan tata bahasa', conversation: 'Percakapan',
   };
   const meta = [];
   if (module.cefrLevel) meta.push(`<span>Level CEFR ${escapeHtml(module.cefrLevel)}</span>`);
@@ -8464,14 +8460,12 @@ function renderModuleIntro(module) {
   if (module.jfTopic) meta.push(`<span>Topik: ${escapeHtml(module.jfTopic)}</span>`);
   const path = plan.steps.map((step, index) => {
     const lesson = step.lesson;
-    const conversation = step.kind === 'conversation';
-    const done = !conversation && progress[`${module.id}:${lesson.id}`] === true;
+    const done = progress[`${module.id}:${lesson.id}`] === true;
     const isNext = step === plan.nextStep
       && (!done || plan.completed === plan.lessons.length);
-    const duration = conversation ? '' : formatDurationLong(lesson.durationMinutes);
-    const type = conversation ? 'Percakapan' :
-      (typeLabels[String(lesson.type || 'text').toLowerCase()] || 'Materi');
-    const title = conversation ? `Percakapan · ${lesson.title}` : lesson.title;
+    const duration = formatDurationLong(lesson.durationMinutes);
+    const type = typeLabels[String(lesson.type || 'text').toLowerCase()] || 'Materi';
+    const title = lesson.title;
     const state = isNext
       ? (plan.completed === plan.lessons.length ? 'Tinjau ulang' : plan.completed ? 'Lanjut di sini' : 'Mulai di sini')
       : done ? 'Selesai' : '';
@@ -8515,7 +8509,7 @@ function renderModuleIntro(module) {
       <div class="module-intro-start">
         <div>
           <span class="module-intro-start-label">${startLabel}</span>
-          <strong class="module-intro-start-title">${plan.nextStep ? escapeHtml(plan.nextStep.kind === 'conversation' ? `Percakapan · ${plan.nextStep.lesson.title}` : plan.nextStep.lesson.title) : 'Belum ada materi'}</strong>
+          <strong class="module-intro-start-title">${plan.nextStep ? escapeHtml(plan.nextStep.lesson.title) : 'Belum ada materi'}</strong>
         </div>
         <button class="btn-primary" type="button" ${plan.nextStep ? `onclick="${learningStepAction({ ...plan.nextStep, module })}"` : 'disabled'}>
           ${escapeHtml(plan.actionLabel)}
@@ -8624,43 +8618,50 @@ function renderLessonGrammar(lesson) {
   `;
 }
 
-function renderLessonConversation(course, module, lesson, nav) {
-  const dialogs = (lesson.grammar || []).filter(grammar =>
-    String(grammar.example_dialog || '').trim())
-    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-  if (!dialogs.length) return;
-  const { prev, next } = nav;
+// A Percakapan lesson (type 'conversation', migration 178) plays the dialogues
+// stored on the grammar rows of its source lesson. Dialogue questions and the
+// companion's listening directions stay keyed to that source lesson, so the
+// backend (answer keys, placement, fingerprints) is unchanged.
+function renderConversationLesson(course, module, lesson, nav) {
+  const source = conversationSource(module, lesson);
+  const dialogs = lessonDialogues(source);
+  const { prev, next, isDone } = nav;
   const root = document.getElementById('main-content');
-  const linkedTask = next?.module === module &&
-    taskSourceLesson(module, next.lesson) === lesson ? next : null;
+  const linkedTask = source && next?.module === module &&
+    taskSourceLesson(module, next.lesson) === source ? next : null;
+  const nextLabel = next?.lesson?.type === 'grammar_task' ? 'Tugas Bunpou' : '';
   root.innerHTML = `
     <p class="lesson-breadcrumb">${escapeHtml(course.name)} · Modul <span>${escapeHtml(module.num)}</span> · PERCAKAPAN</p>
-    <h1 class="lesson-title">Percakapan · ${escapeHtml(lesson.title)}</h1>
+    <h1 class="lesson-title">${escapeHtml(lesson.title)}</h1>
     <p class="lesson-subtitle">${escapeHtml(module.title)} · Dengarkan, baca, lalu cek pemahamanmu.</p>
+    ${lesson.body ? `<div class="lesson-body"><p>${lesson.body}</p></div>` : ''}
     <div class="dq-legacy-session-slot" hidden></div>
-    <div class="grammar-list">
+    ${dialogs.length ? `<div class="grammar-list">
       ${dialogs.map((grammar, index) => `
         <section class="lesson-extra-card grammar-card" data-grammar-id="${escapeHtml(grammar.id || '')}">
           <h2 class="grammar-pattern">${escapeHtml(grammar.pattern || `Percakapan ${index + 1}`)}</h2>
-          ${lesson.bunpouFlow?.directions?.[grammar.id] ? `<p class="grammar-listening-direction">🎧 ${escapeHtml(lesson.bunpouFlow.directions[grammar.id])}</p>` : ''}
+          ${source.bunpouFlow?.directions?.[grammar.id] ? `<p class="grammar-listening-direction">🎧 ${escapeHtml(source.bunpouFlow.directions[grammar.id])}</p>` : ''}
           <div class="dq-goal" data-dq-goal-for="${escapeHtml(grammar.id || '')}" hidden></div>
           ${grammarKaraokeHtml(String(grammar.example_dialog).trim(), `g${index}`,
             grammar.example_dialog_id || '', grammar.dialog_scene, grammar.id, grammar.dialog_furigana)}
           <div class="dq-questions" data-dq-questions-for="${escapeHtml(grammar.id || '')}" hidden></div>
         </section>`).join('')}
-    </div>
+    </div>` : '<p class="lesson-empty" style="color:#737373;">Dialog untuk pelajaran ini belum tersedia.</p>'}
     <div class="lesson-footer">
       <button class="btn-secondary" type="button" ${!prev ? 'disabled' : ''}
         onclick="${learningStepAction(prev)}">← Sebelumnya</button>
-      <button class="btn-primary" type="button" ${!next ? 'disabled' : ''}
-        onclick="${learningStepAction(next)}">${next?.lesson?.type === 'grammar_task' ? 'Lanjut ke Tugas Bunpou →' : 'Lanjut →'}</button>
+      <button class="btn-primary" type="button" onclick="markCompleteAndNext(this)">
+        ${isDone ? (next ? `Lanjut${nextLabel ? ' ke ' + nextLabel : ''} →` : 'Selesai ✓')
+          : (next ? `Tandai Selesai & Lanjut${nextLabel ? ' ke ' + nextLabel : ''} →` : 'Tandai Selesai ✓')}
+      </button>
     </div>`;
-  // Scenes used to mount only when a collapsible grammar block opened; the
-  // conversation view has no such block, so it mounts them itself.
+  if (!dialogs.length) return;
+  // Scenes used to mount only when a collapsible grammar block opened; this
+  // page has no such block, so it mounts them itself.
   window.EzDialogue?.enhance?.(root);
   // The backend owns placement and answer keys; even legacy placement keeps
   // this source dialogue readable without rendering inline questions.
-  window.EzDialogueQuestions?.mount({ root, lesson,
+  window.EzDialogueQuestions?.mount({ root, lesson: source,
     openLegacyTask: linkedTask ? () => window.selectLesson(module.id, linkedTask.lesson.id) : null });
 }
 
@@ -13285,42 +13286,51 @@ function visibleLessons(m) {
   return m.lessons || [];
 }
 // ── Learning sequence ────────────────────────────────────────────────
-// A conversation is a view of its source lesson, not another CMS lesson.
-// The source UUID is reused for dialogue questions; no progress/XP key is made.
-function lessonHasConversation(lesson) {
-  return lesson && lesson.type !== 'grammar_task' && lesson.type !== 'quiz' &&
-    Array.isArray(lesson.grammar) && lesson.grammar.some(grammar =>
-    String(grammar?.example_dialog || '').trim());
+// Percakapan is a real lesson (type 'conversation', migration 178) that plays
+// the dialogues of a grammar lesson in the same module — its source.
+function lessonDialogues(lesson) {
+  return (lesson?.grammar || []).filter(grammar => String(grammar?.example_dialog || '').trim())
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 }
+function conversationSource(module, lesson) {
+  if (lesson?.type !== 'conversation' || !lesson.conversationSourceLessonId) return null;
+  return visibleLessons(module).find(l => l.apiId === lesson.conversationSourceLessonId) || null;
+}
+function conversationLessonFor(module, source) {
+  if (!source?.apiId) return null;
+  return visibleLessons(module).find(l => l.type === 'conversation' &&
+    l.conversationSourceLessonId === source.apiId) || null;
+}
+// The grammar lesson a Tugas Bunpou practises, when that lesson has a
+// Percakapan: the task then follows the Percakapan in the learning path.
 function taskSourceLesson(module, task) {
   if (task?.type !== 'grammar_task') return null;
   const lessons = visibleLessons(module);
   if (task.popupAfterLessonId) {
     const matches = lessons.filter(lesson => lesson.apiId === task.popupAfterLessonId &&
-      lessonHasConversation(lesson));
+      conversationLessonFor(module, lesson));
     return matches.length === 1 ? matches[0] : null;
   }
-  const index = lessons.indexOf(task);
-  const previous = lessons[index - 1];
-  return index > 0 && lessonHasConversation(previous) ? previous : null;
+  const previous = lessons[lessons.indexOf(task) - 1];
+  return previous?.type === 'conversation' ? conversationSource(module, previous) : null;
 }
 function moduleLearningSteps(module) {
   const lessons = visibleLessons(module);
-  const bySource = new Map();
+  const byAnchor = new Map();
   for (const task of lessons) {
     if (task.type !== 'grammar_task' || !task.popupAfterLessonId) continue;
     const source = taskSourceLesson(module, task);
     if (!source) continue; // Ambiguous or cross-module links keep CMS order.
-    bySource.set(source, [...(bySource.get(source) || []), task]);
+    const anchor = conversationLessonFor(module, source);
+    byAnchor.set(anchor, [...(byAnchor.get(anchor) || []), task]);
   }
-  const moved = new Set([...bySource.values()].filter(tasks => tasks.length === 1)
+  const moved = new Set([...byAnchor.values()].filter(tasks => tasks.length === 1)
     .map(tasks => tasks[0]));
   const steps = [];
   for (const lesson of lessons) {
     if (moved.has(lesson)) continue;
     steps.push({ kind: 'lesson', lesson });
-    if (lessonHasConversation(lesson)) steps.push({ kind: 'conversation', lesson });
-    const linked = bySource.get(lesson);
+    const linked = byAnchor.get(lesson);
     if (linked?.length === 1) steps.push({ kind: 'lesson', lesson: linked[0] });
   }
   return steps;
@@ -13331,13 +13341,10 @@ function courseLearningSteps(course) {
 }
 function learningStepAction(step) {
   if (!step) return '';
-  const fn = step.kind === 'conversation' ? 'selectConversation' : 'selectLesson';
-  return `${fn}('${step.module.id}','${step.lesson.id}')`;
+  return `selectLesson('${step.module.id}','${step.lesson.id}')`;
 }
 function selectLearningStep(step) {
-  if (!step) return;
-  if (step.kind === 'conversation') window.selectConversation(step.module.id, step.lesson.id);
-  else window.selectLesson(step.module.id, step.lesson.id);
+  if (step) window.selectLesson(step.module.id, step.lesson.id);
 }
 function syncLearningUrl() {
   if (!currentState.course || !window.history?.replaceState) return;
@@ -13346,7 +13353,6 @@ function syncLearningUrl() {
   if (currentState.moduleId) query.set('module', currentState.moduleId);
   if (currentState.view === 'intro') query.set('view', 'intro');
   else if (currentState.lessonId) query.set('lesson', currentState.lessonId);
-  if (currentState.view === 'conversation') query.set('view', 'conversation');
   window.history.replaceState({}, '', `welcome.html?${query}`);
 }
 // ── End learning sequence ────────────────────────────────────────────
@@ -13559,14 +13565,17 @@ function renderLesson() {
     document.getElementById('main-content').innerHTML = renderModuleIntro(module);
     return;
   }
-  const lesson = module.lessons.find(l => l.id === currentState.lessonId);
+  let lesson = module.lessons.find(l => l.id === currentState.lessonId);
   if (!lesson) {
     currentState.view = 'intro';
     syncLearningUrl();
     document.getElementById('main-content').innerHTML = renderModuleIntro(module);
     return;
   }
-  if (currentState.view === 'conversation' && !lessonHasConversation(lesson)) {
+  // Old links (?lesson=<grammar>&view=conversation) open its Percakapan lesson.
+  if (currentState.view === 'conversation') {
+    lesson = conversationLessonFor(module, lesson) || lesson;
+    currentState.lessonId = lesson.id;
     currentState.view = 'lesson';
   }
   syncLearningUrl();
@@ -13576,14 +13585,13 @@ function renderLesson() {
   const isDone = !!progress[key];
 
   const steps = courseLearningSteps(course);
-  const kind = currentState.view === 'conversation' ? 'conversation' : 'lesson';
   const idx = steps.findIndex(step => step.module.id === module.id &&
-    step.lesson.id === lesson.id && step.kind === kind);
+    step.lesson.id === lesson.id);
   const prev = steps[idx - 1];
   const next = steps[idx + 1];
 
-  if (kind === 'conversation') {
-    renderLessonConversation(course, module, lesson, { prev, next });
+  if (lesson.type === 'conversation') {
+    renderConversationLesson(course, module, lesson, { prev, next, isDone });
     return;
   }
 
@@ -13715,7 +13723,7 @@ function selectLearningView(moduleId, lessonId, view) {
   const course = COURSE_CONTENT[currentState.course];
   const module = course?.modules?.find(item => item.id === moduleId);
   const lesson = module?.lessons?.find(item => item.id === lessonId);
-  if (!lesson || (view === 'conversation' && !lessonHasConversation(lesson))) return;
+  if (!lesson) return;
   const completeMobileContentFocus = prepareMobileSidebarContentFocus();
   // Cleanup lesson-scoped state sebelum pindah — listening player + kanji
   // detail overlay + kanji stroke timer + kanji modal stale state.
@@ -13750,7 +13758,13 @@ function selectLearningView(moduleId, lessonId, view) {
   completeMobileContentFocus();
 }
 window.selectLesson = (moduleId, lessonId) => selectLearningView(moduleId, lessonId, 'lesson');
-window.selectConversation = (moduleId, lessonId) => selectLearningView(moduleId, lessonId, 'conversation');
+// Old callers pass the grammar lesson; its Percakapan lesson opens instead.
+window.selectConversation = (moduleId, lessonId) => {
+  const module = COURSE_CONTENT[currentState.course]?.modules?.find(item => item.id === moduleId);
+  const source = module?.lessons?.find(item => item.id === lessonId);
+  const conversation = module && source ? conversationLessonFor(module, source) : null;
+  selectLearningView(moduleId, conversation ? conversation.id : lessonId, 'lesson');
+};
 
 window.selectModuleIntro = (moduleId) => {
   if (window.blockAssignmentNavigation?.(null)) return;
@@ -14101,7 +14115,6 @@ window.toggleSidebarSection = (name) => {
 };
 
 window.markCompleteAndNext = async (triggerButton) => {
-  if (currentState.view === 'conversation') return;
   if (triggerButton?.disabled) return;
   if (triggerButton) {
     triggerButton.disabled = true;
@@ -14319,28 +14332,23 @@ const S = (window.AISenpai = {
             if (prog[`${m.id}:${l.id}`]) continue;                 // sudah dikerjakan
             const trig = byApiId[l.popupAfterLessonId];
             if (!trig || !prog[`${trig.m.id}:${trig.l.id}`]) continue; // pemicu belum selesai → belum "muncul"
-            const conversation = trig.m === m && taskSourceLesson(m, l) === trig.l;
+            // The Percakapan comes before its task: open it first while unfinished.
+            const conversation = trig.m === m && taskSourceLesson(m, l) === trig.l
+              ? conversationLessonFor(m, trig.l) : null;
+            const openFirst = conversation && !prog[`${m.id}:${conversation.id}`] ? conversation : l;
             out.push({ id:`grammar:${m.id}:${l.id}`, group:'grammar', icon:'文', urgency:'high',
               title:`Tugas grammar: ${l.title}`,
               sub:`Lanjutan dari "${trig.l.title}" · buat & ucapkan kalimat`,
-              action: () => conversation
-                ? window.selectConversation(m.id, trig.l.id)
-                : window.selectLesson(m.id, l.id) });
+              action: () => window.selectLesson(m.id, openFirst.id) });
           }
         }
 
         // Lanjut belajar — pelajaran (terlihat) belum selesai berikutnya.
         const steps = courseLearningSteps(course);
-        const nextIndex = steps.findIndex(step => step.kind === 'lesson' &&
-          !prog[`${step.module.id}:${step.lesson.id}`]);
-        const due = steps[nextIndex];
-        const prior = steps[nextIndex - 1];
-        const next = prior?.kind === 'conversation' && due &&
-          prior.module === due.module
-          ? prior : due;
+        const next = steps.find(step => !prog[`${step.module.id}:${step.lesson.id}`]);
         if (next) {
           out.push({ id:'continue', group:'continue', icon:'▶', urgency:'high',
-            title:`Lanjutkan: ${next.kind === 'conversation' ? 'Percakapan · ' : ''}${next.lesson.title}`,
+            title:`Lanjutkan: ${next.lesson.title}`,
             sub:`${next.module.title} · ${slug.toUpperCase()}`,
             action: () => selectLearningStep(next) });
           const total = course.modules.reduce((s, m) => s + visibleLessons(m).length, 0);

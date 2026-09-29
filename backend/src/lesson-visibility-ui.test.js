@@ -25,7 +25,7 @@ test('linked Tugas Bunpou stays in the learner sidebar and navigation', () => {
   );
 });
 
-test('finishing grammar opens its conversation before the pending task and never auto-opens a popup', async () => {
+test('finishing grammar opens its Percakapan lesson before the pending task and never auto-opens a popup', async () => {
   const start = welcome.indexOf('window.markCompleteAndNext = async (triggerButton) => {');
   const end = welcome.indexOf('function renderCourseTabs(activeSlug) {', start);
   const sequence = welcome.indexOf('// ── Learning sequence');
@@ -34,7 +34,9 @@ test('finishing grammar opens its conversation before the pending task and never
   const source = { id: 'source', apiId: 'source-api', type: 'video',
     grammar: [{ example_dialog: 'A: こんにちは。' }] };
   const task = { id: 'task', apiId: 'task-api', type: 'grammar_task', popupAfterLessonId: 'source-api' };
-  const module = { id: 'bab3', title: 'Bab 3', lessons: [source, task] };
+  const conversation = { id: 'conv', apiId: 'conv-api', type: 'conversation',
+    conversationSourceLessonId: 'source-api' };
+  const module = { id: 'bab3', title: 'Bab 3', lessons: [source, task, conversation] };
   const course = { name: 'N5', modules: [module] };
   let completions = 0, writes = 0, xp = 0;
   const context = vm.createContext({
@@ -57,8 +59,8 @@ test('finishing grammar opens its conversation before the pending task and never
   assert.equal(writes, 1); assert.equal(xp, 1);
   assert.equal(progress.n5['bab3:source'], true);
   assert.equal(progress.n5['bab3:task'], undefined);
-  assert.equal(context.currentState.lessonId, 'source');
-  assert.equal(context.currentState.view, 'conversation');
+  assert.equal(context.currentState.lessonId, 'conv', 'the Percakapan comes right after its source');
+  assert.equal(context.currentState.view, 'lesson');
 });
 test('finishing a previously postponed popup from its banner completes the module', () => {
   const start = welcome.indexOf('function finishLearningMilestone(course, module, newlyCompleted, onContinue) {');
