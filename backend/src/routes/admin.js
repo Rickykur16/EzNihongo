@@ -39,6 +39,9 @@ import {
   elevenLabsEnabled,
   TTS_SETTINGS_VERSION,
   renderTtsAudio,
+  loadSpeakerRegistry,
+  voiceForSpeaker,
+  resolveDialogTurns,
 } from './tts.js';
 import {
   loadCourseVocab,
@@ -5982,6 +5985,54 @@ router.post('/tts/preview', asyncHandler(async (req, res) => {
   } catch (err) { return res.status(400).json({error: err.message}); }
   // Preview and student playback share voices, pauses, validation and cache.
   return renderTtsAudio(text, res, { privateResponse: true, dialogScene: scene });
+}));
+
+// POST /api/admin/tts/dialog-turn — body { dialog, turnIndex, speaker,
+// turnText, dialogScene?, regenerate? } → MP3 of ONE turn.
+// The 🎭 Dialog editor's "🔊 Tes giliran ini" and "↻ Buat ulang": plays (or
+// re-voices) the turn's take from the same per-turn cache students read
+// (resolveDialogTurns in tts.js), so the take heard here IS the take students
+// hear once this dialogue is saved. The whole dialogue comes along so the
+// voice resolves exactly as it will for students and an older whole-dialogue
+// take can be adopted instead of generating a new one. speaker+turnText must
+// equal that turn: an editor row whose text holds a labelled line break
+// would otherwise shift every index after it.
+router.post('/tts/dialog-turn', asyncHandler(async (req, res) => {
+  const body = req.body || {};
+  const dialog = String(body.dialog || '').trim();
+  if (!dialog) return res.status(400).json({ error: 'dialog required' });
+  if (dialog.length > 1500) {
+    return res.status(400).json({ error: 'dialog_too_long', detail: 'Dialog maksimal 1500 karakter — lebih panjang dari itu siswa tidak bisa memutarnya.' });
+  }
+  const turns = parseDialog(dialog);
+  if (!turns) return res.status(400).json({ error: 'not_a_dialog', detail: 'Setiap baris harus diawali label pemeran.' });
+  const index = Number(body.turnIndex);
+  if (!Number.isInteger(index) || index < 0 || index >= turns.length) return res.status(400).json({ error: 'invalid_turn_index' });
+  const own = parseDialog(`${String(body.speaker || '')}: ${String(body.turnText || '').trim()}`);
+  if (!own || own.length !== 1 || own[0].speaker !== turns[index].speaker || own[0].text !== turns[index].text) {
+    return res.status(409).json({ error: 'turn_mismatch', detail: 'Teks giliran ini memuat baris baru berlabel pemeran — jadikan giliran sendiri, lalu tes lagi.' });
+  }
+  let scene;
+  try { scene = normalizeDialogScene(body.dialogScene); } catch (err) { return res.status(400).json({ error: err.message }); }
+  const registry = await loadSpeakerRegistry();
+  let turnVoices;
+  try { turnVoices = sceneTurnVoices(turns, scene, (t, i) => voiceForSpeaker(t.speaker, i, registry)); }
+  catch (err) { return res.status(422).json({ error: 'dialog_voice_missing', detail: err.message }); }
+  let audio;
+  try {
+    [audio] = await resolveDialogTurns({
+      turns, turnVoices, dialogText: dialog, indices: [index], scene, regenerate: body.regenerate === true,
+    });
+  } catch (err) {
+    if (err.code === 'tts_disabled') {
+      return res.status(503).json({ error: 'tts_disabled', detail: 'ElevenLabs belum aktif atau suara pemeran belum diatur.' });
+    }
+    console.error('TTS dialog turn upstream:', err.message);
+    return res.status(502).json({ error: 'tts_upstream', detail: err.message });
+  }
+  res.set('Content-Type', 'audio/mpeg');
+  res.set('Cache-Control', 'private, no-store');
+  res.send(audio);
 }));
 
 // ── ElevenLabs voice catalog (admin-only) ───────────────────────────────────

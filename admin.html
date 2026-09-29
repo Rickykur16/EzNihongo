@@ -5491,9 +5491,10 @@ function itemRowHtml(item, fields, kind, mode) {
 // Tiap karakter divoice oleh SUARA ELEVENLABS ASLI (bukan bucket perempuan/
 // laki-laki generik — nama+voice_id dipilih langsung dari katalog akun
 // ElevenLabs lewat GET /admin/elevenlabs/voices, dengan tombol dengar contoh
-// sebelum menetapkan), dan tes audio SATU giliran lewat /admin/tts/preview
-// yang sudah lama ada — endpoint itu men-cache per teks PERSIS yang dikirim,
-// jadi mengganti satu baris tidak menyentuh cache baris lain sama sekali.
+// sebelum menetapkan), dan tes audio SATU giliran lewat /admin/tts/dialog-turn
+// — cache per giliran yang SAMA dengan yang dibaca pemutar siswa, jadi yang
+// dites admin = yang didengar siswa, dan mengganti/membuat ulang satu baris
+// tidak menyentuh giliran lain (lihat admDialogRowTest).
 // Sengaja BUKAN pengulangan fitur "Bacaan & audio" yang di-revert (lihat
 // migration 148 & 146): tidak ada draft/version/publish, tidak ada endpoint
 // publik baru, tidak ada modul ES module baru — murni UI admin di atas
@@ -5708,9 +5709,10 @@ function admDialogRowHtml(r, i) {
       <textarea rows="2" placeholder="Teks Jepang…" style="width:100%;font-family:var(--font-mono);font-size:12px;margin-bottom:4px;box-sizing:border-box;" oninput="admDialogRowEdit(${i},'jp',this.value)">${escapeHtml(r.jp)}</textarea>
       ${window.__dialogMode === 'listening' ? '' : `<div id="dlg-furigana-${i}">${window.EzDialogueFuriganaAdmin?.fields(r,i) || ''}</div>
       <textarea rows="2" placeholder="Terjemahan…" style="width:100%;font-size:12px;margin-bottom:6px;box-sizing:border-box;" oninput="admDialogRowEdit(${i},'id',this.value)">${escapeHtml(r.id)}</textarea>`}
-      <div style="display:flex;gap:8px;align-items:center;">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
         <button type="button" class="btn btn-ghost btn-sm" ${missingVoice ? 'disabled title="Suara pemeran belum diatur"' : ''} onclick="admDialogRowTest(${i}, this)">🔊 ${missingVoice ? 'Suara belum diatur' : 'Tes giliran ini'}</button>
-        <audio id="dlg-audio-${i}" controls style="height:28px;flex:1;display:none;"></audio>
+        ${window.__dialogMode === 'listening' || missingVoice ? '' : `<button type="button" class="btn btn-ghost btn-sm" data-dlg-regen="${i}" title="Buat suara baru untuk giliran ini — siswa ikut mendengar versi baru" onclick="admDialogRowTest(${i}, this, true)">↻ Buat ulang suara</button>`}
+        <audio id="dlg-audio-${i}" controls style="height:28px;flex:1;min-width:180px;display:none;"></audio>
       </div>
     </div>`;
 }
@@ -5726,6 +5728,7 @@ function admDialogModalHtml() {
     <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 10px;">
       Pilih Narator atau nama speaker asli per giliran (bukan kode A/B) — suaranya
       mengikuti pengaturan karakter. Pilih “Kustom ${listening ? 'soal' : 'dialog'} ini” untuk mengganti nama atau suaranya, lalu tes setiap giliran.
+      ${listening ? '' : 'Tes giliran memutar suara yang sama persis dengan yang didengar siswa. Kalau satu giliran kurang pas, tekan “↻ Buat ulang suara” di giliran itu saja.'}
     </p>
     ${listening ? '' : `<div style="display:flex;gap:8px;margin-bottom:10px;">
       <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogGenerate(this)" title="Karang dialog baru (AI) dari Pola + Arti baris ini — menimpa giliran yang ada">✨ Generate draft (AI)</button>
@@ -5862,20 +5865,37 @@ window.admNewSpeakerSave = async () => {
   } catch (err) { notify('Gagal menambah speaker: ' + err.message, true); }
   admRenderDialogModal();
 };
-window.admDialogRowTest = async (i, btn) => {
-  const r = window.__dialogRows[i];
+// Grammar dialogues: the take played here comes from the SAME per-turn cache
+// students read (POST /admin/tts/dialog-turn → resolveDialogTurns in tts.js),
+// so "Tes giliran ini" plays exactly what students hear once the dialogue is
+// saved, and "↻ Buat ulang suara" (regenerate) replaces that one take for
+// everyone. The whole dialogue is sent so the server resolves the voice the
+// way it will for students; turnIndex counts only non-empty rows, which is
+// what admSerializeDialogPair keeps. Listening scripts are voiced as one
+// concatenated clip for students (/api/tts), so they keep the plain preview.
+window.admDialogRowTest = async (i, btn, regenerate = false) => {
+  const rows = window.__dialogRows || [];
+  const r = rows[i];
   if (!r || !r.jp.trim()) { notify('Isi teks Jepang dulu', true); return; }
   const audio = document.getElementById(`dlg-audio-${i}`);
-  const orig = btn.textContent; btn.disabled = true; btn.textContent = '…';
+  const orig = btn.textContent; btn.disabled = true; btn.textContent = regenerate ? 'Membuat suara baru…' : '…';
   try {
-    const text = `${r.speaker}: ${r.jp.trim()}`;
-    const resp = await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({ text, dialogScene: window.__dialogScene || null }) });
+    const listening = window.__dialogMode === 'listening';
+    const resp = listening
+      ? await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({ text: `${r.speaker}: ${r.jp.trim()}`, dialogScene: window.__dialogScene || null }) })
+      : await ezApi('/admin/tts/dialog-turn', { method: 'POST', body: JSON.stringify({
+        dialog: admSerializeDialogPair(rows).jp,
+        turnIndex: rows.slice(0, i).filter((row) => (row.jp || '').trim()).length,
+        speaker: r.speaker, turnText: r.jp.trim(),
+        dialogScene: window.__dialogScene || null, regenerate,
+      }) });
     if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || e.error || ('HTTP ' + resp.status)); }
     const blob = await resp.blob();
     if (audio && document.getElementById(`dlg-audio-${i}`) === audio) {
       if (audio.src.startsWith('blob:')) URL.revokeObjectURL(audio.src);
       audio.src = URL.createObjectURL(blob); audio.style.display = ''; audio.play().catch(() => {});
     }
+    if (regenerate) notify('Suara baru untuk giliran ini tersimpan — siswa mendengar versi ini begitu dialog tersimpan.');
   } catch (err) { notify('Gagal generate audio: ' + err.message, true); }
   finally { btn.disabled = false; btn.textContent = orig; }
 };

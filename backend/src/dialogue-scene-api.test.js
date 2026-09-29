@@ -45,9 +45,10 @@ const fakeQuery=async(sql,p=[])=>{
   if(sql.startsWith('SELECT 1 WHERE EXISTS'))return{rows:known?[{}]:[]};
   if(sql.includes('SELECT dialog_scene FROM module_grammar'))return{rows:grammarMatches?[{dialog_scene:structuredClone(saved)}]:[]};
   if(sql.startsWith('SELECT name, voice_id FROM dialogue_speakers'))return{rows:profiles};
-  if(sql.includes('SELECT alignment FROM tts_cache'))return{rows:cache.has(p[0])?[{alignment:cache.get(p[0])}]:[]};
+  if(sql.includes('SELECT text_hash, audio FROM tts_cache'))return{rows:p[0].filter(k=>cache.has(k)).map(k=>({text_hash:k,audio:cache.get(k)}))};
+  if(sql.includes('SELECT alignment FROM tts_cache'))return{rows:[]};
   if(sql.includes('UPDATE tts_cache'))return{rows:[]};
-  if(sql.includes('INSERT INTO tts_cache')){writes.push(p);if(p[7])cache.set(p[0],JSON.parse(p[7]));return{rows:[]};}
+  if(sql.includes('INSERT INTO tts_cache')){writes.push(p);if(!cache.has(p[0])||sql.includes('DO UPDATE'))cache.set(p[0],p[4]);return{rows:[]};}
   if(sql.includes('SELECT audio, content_type FROM tts_cache'))return{rows:[]};
   if(sql.includes('SELECT * FROM dialogue_speakers'))return{rows:profiles};
   if(sql.includes('SELECT character_key FROM dialogue_speakers'))return{rows:[{character_key:'anna-wijaya'}]};
