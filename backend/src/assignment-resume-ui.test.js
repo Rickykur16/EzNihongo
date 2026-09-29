@@ -10,7 +10,7 @@ function source(from, to) {
   return html.slice(start, end);
 }
 const helpers = source('window.__requiredAssignment = null;', '// Async — fetch quiz-status');
-const learningSequenceStart = html.indexOf('function lessonHasConversation(');
+const learningSequenceStart = html.indexOf('function lessonDialogues(');
 const learningSequenceEnd = html.indexOf('// ── End learning sequence', learningSequenceStart);
 assert.ok(learningSequenceStart > 0 && learningSequenceEnd > learningSequenceStart);
 const learningSequence = html.slice(learningSequenceStart, learningSequenceEnd);

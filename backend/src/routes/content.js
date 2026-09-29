@@ -93,7 +93,7 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
         `SELECT l.id, l.module_id, l.slug, l.title, l.type, l.content,
                 l.video_url, l.video_source_id, l.video_start_seconds,
                 l.video_end_seconds, l.duration_minutes, l.sort_order,
-                l.popup_after_lesson_id,
+                l.popup_after_lesson_id, l.conversation_source_lesson_id,
                 vs.provider AS video_provider,
                 vs.external_id AS video_external_id,
                 vs.title AS video_source_title,
@@ -391,6 +391,7 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
     videoStartSeconds: row.video_start_seconds,
     videoEndSeconds: row.video_end_seconds,
     durationMinutes: row.duration_minutes,
+    conversationSourceLessonId: row.conversation_source_lesson_id || null,
   };
 
   // See the matching comment in GET /courses/:slug — `row` here carries

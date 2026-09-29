@@ -4214,11 +4214,30 @@ router.post('/module-grammar/bulk', asyncHandler(async (req, res) => {
 
 // ===== LESSONS =====
 
+// A Percakapan lesson shows the dialogues of one text/video lesson in the same
+// chapter (migration 178). The DB trigger enforces the same rules; checking
+// here first turns a violation into a readable 400 instead of a 500.
+async function conversationSourceError(client, { moduleId, sourceId, lessonId = null }) {
+  if (!sourceId) return 'Pilih pelajaran Tata Bahasa sumber dialognya.';
+  if (!/^[0-9a-f-]{36}$/i.test(String(sourceId))) return 'Pelajaran sumber tidak valid.';
+  const src = (await client.query(
+    `SELECT module_id, type FROM lessons WHERE id = $1`, [sourceId])).rows[0];
+  if (!src || src.module_id !== moduleId || !['text', 'video'].includes(src.type)) {
+    return 'Sumber Percakapan harus pelajaran teks/video di bab yang sama.';
+  }
+  const taken = (await client.query(
+    `SELECT title FROM lessons WHERE conversation_source_lesson_id = $1 AND id IS DISTINCT FROM $2`,
+    [sourceId, lessonId])).rows[0];
+  if (taken) return `Pelajaran itu sudah punya Percakapan: "${taken.title}".`;
+  return null;
+}
+
 router.post('/lessons', asyncHandler(async (req, res) => {
   const {
     moduleId, slug, title, type, content, videoUrl, videoSourceId,
     videoStartSeconds, videoEndSeconds, durationMinutes, sortOrder,
     passingScorePct, questionsPerAttempt, cooldownHours, popupAfterLessonId,
+    conversationSourceLessonId,
   } = req.body || {};
   if (!moduleId || !slug || !title) {
     return res.status(400).json({ error: 'moduleId, slug, title required' });
@@ -4238,14 +4257,20 @@ router.post('/lessons', asyncHandler(async (req, res) => {
     prepare: async () => ({ scope: { moduleId }, contentType: 'reading', operation: 'live_write',
       fields: [boundaryField('title', title), boundaryField('content', content)],
       expectedBoundaryFingerprint: req.body?.boundaryFingerprint }),
-    write: async client => (await client.query(
+    write: async client => {
+    const conversationSource = type === 'conversation' ? conversationSourceLessonId : null;
+    if (type === 'conversation') {
+      const error = await conversationSourceError(client, { moduleId, sourceId: conversationSource });
+      if (error) return { error };
+    }
+    return { lesson: (await client.query(
     `INSERT INTO lessons (
        module_id, slug, title, type, content, video_url,
        video_source_id, video_start_seconds, video_end_seconds,
        duration_minutes, sort_order, passing_score_pct, questions_per_attempt,
-       cooldown_hours, popup_after_lesson_id
+       cooldown_hours, popup_after_lesson_id, conversation_source_lesson_id
       )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
     [
       moduleId, slug, title, type || 'text',
       content || null, videoUrl || null,
@@ -4255,12 +4280,15 @@ router.post('/lessons', asyncHandler(async (req, res) => {
       questionsPerAttempt != null && questionsPerAttempt !== '' ? Number(questionsPerAttempt) : null,
       cooldownHours != null && cooldownHours !== '' ? Number(cooldownHours) : 12,
       popupAfterLessonId || null,
+      conversationSource || null,
     ]
-    )).rows[0],
+    )).rows[0] };
+    },
   });
   if (!outcome) return;
+  if (outcome.value.error) return res.status(400).json({ error: outcome.value.error });
   invalidateKanjiCatalogCache();
-  res.status(201).json({ lesson: outcome.value, validation: outcome.report });
+  res.status(201).json({ lesson: outcome.value.lesson, validation: outcome.report });
 }));
 
 router.put('/lessons/:id', asyncHandler(async (req, res) => {
@@ -4268,6 +4296,7 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
     slug, title, type, content, videoUrl, videoSourceId, videoStartSeconds,
     videoEndSeconds, durationMinutes, sortOrder,
     passingScorePct, questionsPerAttempt, cooldownHours, popupAfterLessonId,
+    conversationSourceLessonId,
   } = req.body || {};
   if (slug !== undefined && slug !== null) {
     const slugErr = badSlug(slug);
@@ -4312,6 +4341,24 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
     write: async (client, candidate) => {
     const current = candidate.existing;
     const oldType = current.type;
+    // Percakapan link: required while the lesson is a Percakapan, cleared the
+    // moment it becomes anything else (the CHECK in migration 178).
+    const effectiveType = type || oldType;
+    const hasConversationSource = Object.prototype.hasOwnProperty.call(req.body || {}, 'conversationSourceLessonId');
+    let conversationSource = current.conversation_source_lesson_id;
+    if (effectiveType !== 'conversation') conversationSource = null;
+    else if (hasConversationSource || oldType !== 'conversation') conversationSource = conversationSourceLessonId || null;
+    if (effectiveType === 'conversation' &&
+        conversationSource !== current.conversation_source_lesson_id) {
+      const error = await conversationSourceError(client, { moduleId: current.module_id,
+        sourceId: conversationSource, lessonId: current.id });
+      if (error) return { error };
+    }
+    if (type && oldType !== type && !['text', 'video'].includes(type)) {
+      const linked = (await client.query(`SELECT title FROM lessons
+        WHERE conversation_source_lesson_id = $1`, [current.id])).rows[0];
+      if (linked) return { error: `Pelajaran ini sumber dialog "${linked.title}". Hapus pelajaran Percakapan itu dulu sebelum mengganti jenisnya.` };
+    }
     if (type && oldType !== type) {
       if (req.companyAccess && !req.companyAccess.isAdmin) throw fail(403, 'owner_required_for_type_change');
       if (oldType === 'quiz') {
@@ -4331,7 +4378,6 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
       // PUT also supports partial callers. Only fields actually supplied in
       // the payload replace a saved segment; the admin editor sends all three
       // so it can deliberately clear the source when lesson type changes.
-      const effectiveType = type || oldType;
       const acceptsVideoSegment = supportsVideoSegment(effectiveType);
       const segment = normalizeSegment(
         acceptsVideoSegment
@@ -4361,7 +4407,8 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
           passing_score_pct = COALESCE($15, passing_score_pct),
           questions_per_attempt = CASE WHEN $17::boolean THEN $16 ELSE questions_per_attempt END,
           cooldown_hours = COALESCE($18, cooldown_hours),
-          popup_after_lesson_id = CASE WHEN $20::boolean THEN $19 ELSE popup_after_lesson_id END
+          popup_after_lesson_id = CASE WHEN $20::boolean THEN $19 ELSE popup_after_lesson_id END,
+          conversation_source_lesson_id = $22
         WHERE id = $1 RETURNING *`,
         [
           req.params.id, slug, title, type, content, videoUrl,
@@ -4375,6 +4422,7 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
           hasPopup && popupAfterLessonId ? popupAfterLessonId : null,
           hasPopup,
           hasContent,
+          conversationSource,
         ]
       );
     if (result.rows.length === 0) return { notFound: true };

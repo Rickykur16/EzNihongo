@@ -6,6 +6,8 @@ import vm from 'node:vm';
 const controllerSource = await readFile(new URL('../../src/dialogue-questions.js', import.meta.url), 'utf8');
 const welcome = await readFile(new URL('../../welcome.html', import.meta.url), 'utf8');
 const contentRoute = await readFile(new URL('./routes/content.js', import.meta.url), 'utf8');
+const learningSequence = welcome.slice(welcome.indexOf('// ── Learning sequence'),
+  welcome.indexOf('// ── End learning sequence'));
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
 
@@ -59,42 +61,49 @@ test('actual conversation renderer supplies hidden slots around dialogue and esc
   assert.ok(start > 0 && end > start);
   const root = { innerHTML: '' };
   let mounted;
-  const context = vm.createContext({ escapeHtml, AUDIO_SVG: '',
+  const context = vm.createContext({ escapeHtml, AUDIO_SVG: '', visibleLessons: value => value.lessons,
     document: { getElementById: () => root },
     window: { EzDialogueQuestions: { mount: value => { mounted = value; } } },
     learningStepAction: () => '',
     grammarKaraokeHtml: () => '<div class="karaoke">dialog</div>' });
   vm.runInContext(welcome.slice(start, end), context);
-  const row = { apiId: 'source-id', title: 'Pola', grammar: [{ id: 'g&1', pattern: 'X',
+  vm.runInContext(learningSequence, context);
+  const row = { apiId: 'source-id', type: 'video', title: 'Pola', grammar: [{ id: 'g&1', pattern: 'X',
     example: 'がくせいです。', example_dialog: 'A: hi' }] };
+  const conversation = { id: 'conv', apiId: 'conv-id', type: 'conversation', title: 'Percakapan: Pola',
+    conversationSourceLessonId: 'source-id' };
+  const module = { num: '03', title: 'Bab 3', lessons: [row, conversation] };
   const grammar = context.renderLessonGrammar(row);
   assert.match(grammar, /がくせいです。/);
   assert.doesNotMatch(grammar, /karaoke|data-dq-|A: hi/);
-  context.renderLessonConversation({ name: 'N5' }, { num: '03', title: 'Bab 3' }, row, {});
+  context.renderConversationLesson({ name: 'N5' }, module, conversation, {});
   const html = root.innerHTML;
   assert.ok(html.indexOf('data-dq-goal-for="g&amp;1"') < html.indexOf('class="karaoke"'));
   assert.ok(html.indexOf('class="karaoke"') < html.indexOf('data-dq-questions-for="g&amp;1"'));
   assert.match(html, /class="dq-legacy-session-slot" hidden/);
   assert.equal(mounted.lesson, row, 'question API keeps the original source lesson');
-  assert.doesNotMatch(html, /markCompleteAndNext/, 'conversation navigation never marks another lesson complete');
+  assert.match(html, /markCompleteAndNext/, 'the Percakapan lesson completes itself, never its source');
   assert.match(welcome, /EzDialogueQuestions\?\.unmount\(\)/);
   assert.match(welcome, /EzDialogueQuestions\?\.mount\(\{ root, lesson/);
   assert.match(welcome, /src\/dialogue-questions\.js\?v=/);
   assert.match(contentRoute, /SELECT id, module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, communication_goal, dialog_scene/);
 });
 
-test('conversation view mounts its dialogue scenes instead of leaving an empty stage', () => {
-  const start = welcome.indexOf('function renderLessonConversation(');
+test('Percakapan lesson mounts its dialogue scenes instead of leaving an empty stage', () => {
+  const start = welcome.indexOf('function renderConversationLesson(');
   const end = welcome.indexOf('// ── Dialog player', start);
   const root = { innerHTML: '' };
   let enhanced = null;
   const context = vm.createContext({ escapeHtml, document: { getElementById: () => root },
     window: { EzDialogueQuestions: { mount() {} }, EzDialogue: { enhance: value => { enhanced = value; } } },
-    learningStepAction: () => '', taskSourceLesson: () => null,
+    learningStepAction: () => '', visibleLessons: value => value.lessons,
     grammarKaraokeHtml: () => '<div class="grammar-karaoke"></div>' });
   vm.runInContext(welcome.slice(start, end), context);
-  context.renderLessonConversation({ name: 'N5' }, { num: '03', title: 'Bab 3' },
-    { grammar: [{ id: 'g1', example_dialog: 'A: hi' }] }, {});
+  vm.runInContext(learningSequence, context);
+  const source = { apiId: 's', type: 'video', grammar: [{ id: 'g1', example_dialog: 'A: hi' }] };
+  const conversation = { id: 'c', apiId: 'c', type: 'conversation', title: 'Percakapan', conversationSourceLessonId: 's' };
+  context.renderConversationLesson({ name: 'N5' }, { num: '03', title: 'Bab 3', lessons: [source, conversation] },
+    conversation, {});
   // The old grammar page mounted scenes when its collapsible opened; this view
   // has no such block, so without this call images never load before playback.
   assert.equal(enhanced, root);

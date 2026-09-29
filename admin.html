@@ -2532,6 +2532,7 @@ const LESSON_FACETS = [
   { key: 'kana', label: 'Kana', match: (l) => l.type === 'kana' },
   { key: 'quiz', label: 'Kuis', match: (l) => l.type === 'quiz' },
   { key: 'grammar_task', label: 'Tugas', match: (l) => l.type === 'grammar_task' },
+  { key: 'conversation', label: 'Percakapan', match: (l) => l.type === 'conversation' },
 ];
 
 function lessonContentMeta(l, grammarN) {
@@ -2540,7 +2541,26 @@ function lessonContentMeta(l, grammarN) {
   if (l.type === 'kanji') return 'Kanji ' + ((l.kanji || []).length);
   if (l.type === 'kana') return 'Kana ' + ((l.kana || []).length);
   if (l.type === 'grammar_task') return 'Tugas ' + ((l.grammarTask || []).length);
+  if (l.type === 'conversation') return 'Dialog ' + conversationDialogues(l).length;
   return '';
+}
+
+// Percakapan helpers (migration 178): the grammar rows of the source lesson
+// hold the dialogues; the Percakapan lesson only points at that lesson.
+function conversationSourceFor(l) {
+  const found = l && l.conversation_source_lesson_id ? cbFindLesson(l.conversation_source_lesson_id) : null;
+  return found ? found.lesson : null;
+}
+function conversationPatterns(l) {
+  const found = l && l.conversation_source_lesson_id ? cbFindLesson(l.conversation_source_lesson_id) : null;
+  if (!found) return [];
+  return (found.module.grammar || []).filter((g) => g.lesson_id === found.lesson.id);
+}
+function conversationDialogues(l) {
+  return conversationPatterns(l).filter((g) => String(g.example_dialog || '').trim());
+}
+function conversationLessonOf(source, mod) {
+  return ((mod && mod.lessons) || []).find((x) => x.type === 'conversation' && x.conversation_source_lesson_id === source.id) || null;
 }
 
 // Hitungan pola grammar per pelajaran (untuk badge 文法 N di pelajaran text/video).
@@ -2652,6 +2672,62 @@ function drawerContentBtn(onclickExpr, label, count) {
   </div>`;
 }
 
+// Tata Bahasa drawer: its dialogues live in the Percakapan lesson.
+function conversationLinkHtml(l, mod) {
+  const conversation = conversationLessonOf(l, mod);
+  return `<div class="drawer-section">
+    <h4 style="margin:0 0 6px;font-size:13px;">Percakapan (会話)</h4>
+    ${conversation
+      ? `<button type="button" class="btn btn-ghost" onclick="openLessonDrawer('${conversation.id}')">🎭 Buka ${escapeHtml(conversation.title)} →</button>`
+      : `<button type="button" class="btn btn-ghost" onclick="newConversationLesson('${l.id}')">+ Buat pelajaran Percakapan</button>`}
+    <div style="font-size:11px;color:#a3a3a3;margin-top:6px;font-family:var(--font-body);">Dialog, suara, ekspresi, soal pemahaman, dan arahan menyimak pola-pola ini dikelola di pelajaran Percakapan.</div>
+  </div>`;
+}
+
+function conversationDrawerHtml(l) {
+  const source = conversationSourceFor(l);
+  if (!source) {
+    return '<div class="drawer-section"><div class="empty" style="padding:16px;">Pilih pelajaran Tata Bahasa sumber dialog di form di atas, lalu simpan.</div></div>';
+  }
+  const items = conversationPatterns(l);
+  const sourceTitle = escapeHtml(source.title || '').replace(/'/g, "\\'");
+  return `
+    <div class="drawer-section">
+      <h4 style="margin:0 0 4px;font-size:13px;">Dialog (会話)</h4>
+      <div style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 8px;">
+        Dari pelajaran <strong>${escapeHtml(source.title || '')}</strong> — satu dialog per pola. 🎭 Dialog: tulis giliran,
+        pilih suara &amp; ekspresi karakter, tes audio, dan kelola soal pemahaman. Tersimpan langsung.
+      </div>
+      <div id="items-wrap" style="overflow-x:auto;">${items.length ? renderItemTable('grammar', items, 'dialog')
+        : '<div class="empty" style="padding:16px;">Pelajaran sumber belum punya pola grammar.</div>'}</div>
+    </div>
+    ${items.length ? drawerContentBtn(`manageBunpouFlow('${source.id}', '${sourceTitle}', 'dialog')`, '🎧 Arahan menyimak', null) : ''}`;
+}
+
+// "+ Buat pelajaran Percakapan" from a Tata Bahasa drawer: the new-lesson form,
+// prefilled so the admin only reviews and saves.
+window.newConversationLesson = (sourceId) => {
+  const found = cbFindLesson(sourceId);
+  if (!found) return;
+  const source = found.lesson;
+  newLesson(found.module.id);
+  const form = document.getElementById('lesson-form');
+  if (!form) return;
+  const typeSel = form.querySelector('select[name="type"]');
+  typeSel.value = 'conversation';
+  typeSel.dispatchEvent(new Event('change'));
+  const sourceSel = form.querySelector('select[name="conversationSourceLessonId"]');
+  if (sourceSel) sourceSel.value = source.id;
+  const title = form.querySelector('input[name="title"]');
+  title.value = /^\s*tata\s+bahasa[^:]*:\s*\S/i.test(source.title || '')
+    ? source.title.replace(/^\s*tata\s+bahasa[^:]*:\s*/i, 'Percakapan: ') : 'Percakapan: ' + (source.title || '');
+  title.dispatchEvent(new Event('input'));
+  const slug = form.querySelector('input[name="slug"]');
+  slug.value = (source.slug || 'percakapan') + '-percakapan';
+  slug.dispatchEvent(new Event('input'));
+  form.querySelector('input[name="sortOrder"]').value = (Number(source.sort_order) || 0) + 1;
+};
+
 function drawerHtml(l, mod, courseId) {
   const titleEsc = escapeHtml(l.title || '').replace(/'/g, "\\'");
   let content = '';
@@ -2668,7 +2744,10 @@ function drawerHtml(l, mod, courseId) {
         ${grammarFastAddBarHtml()}
         <div id="items-wrap" style="overflow-x:auto;">${renderItemTable('grammar', items)}</div>
       </div>
-      ${items.length ? drawerContentBtn(`manageBunpouFlow('${l.id}', '${titleEsc}')`, '🧭 Pendamping Bunpou', null) : ''}`;
+      ${items.length ? drawerContentBtn(`manageBunpouFlow('${l.id}', '${titleEsc}', 'lesson')`, '🧭 Pendamping Bunpou', null) : ''}
+      ${items.length ? conversationLinkHtml(l, mod) : ''}`;
+  } else if (l.type === 'conversation') {
+    content = conversationDrawerHtml(l);
   } else if (l.type === 'deck') {
     content = drawerContentBtn(`manageDeck('${l.id}', '${titleEsc}', '${mod.id}', '${courseId}')`, 'Kelola Deck', (l.deck || []).length);
   } else if (l.type === 'kanji') {
@@ -2713,6 +2792,10 @@ window.openLessonDrawer = (lessonId) => {
   // Set konteks item-manager supaya grmrFastAdd/saveItemRow/addItemRow inline jalan.
   if (l.type === 'text' || l.type === 'video') {
     window.__itemCtx = { kind: 'grammar', lessonId: l.id, lessonTitle: l.title, moduleId: mod.id };
+  } else if (l.type === 'conversation') {
+    // Rows in the Percakapan drawer belong to the source lesson.
+    const source = conversationSourceFor(l);
+    window.__itemCtx = source ? { kind: 'grammar', lessonId: source.id, lessonTitle: source.title, moduleId: mod.id } : null;
   }
   renderLessonListPane();
 };
@@ -2772,7 +2855,21 @@ function youtubeSegmentFieldsHtml(l) {
     </div>`;
 }
 
-function lessonFormHtml(l) {
+// Percakapan (migration 178): the text/video lessons of the same Bab whose
+// dialogues it can play. A source can have only one Percakapan.
+function conversationSourceOptions(l, moduleId) {
+  const mid = moduleId || (l && l.id && cbFindLesson(l.id)?.module?.id) || STATE.selectedModule;
+  const mod = (STATE.modules || []).find((m) => m.id === mid);
+  const lessons = (mod && mod.lessons) || [];
+  const taken = new Map(lessons.filter((x) => x.type === 'conversation' && x.id !== l?.id && x.conversation_source_lesson_id)
+    .map((x) => [x.conversation_source_lesson_id, x.title]));
+  return lessons.filter((x) => x.type === 'text' || x.type === 'video').map((x) => {
+    const used = taken.get(x.id);
+    return `<option value="${x.id}" ${l?.conversation_source_lesson_id === x.id ? 'selected' : ''} ${used ? 'disabled' : ''}>${escapeHtml(x.title)}${used ? ' — sudah punya Percakapan' : ''}</option>`;
+  }).join('');
+}
+
+function lessonFormHtml(l, moduleId) {
   l = l || {
     slug: '', title: '', type: 'text', content: '', video_url: '',
     video_source_id: '', video_start_seconds: null, video_end_seconds: null,
@@ -2798,6 +2895,7 @@ function lessonFormHtml(l) {
             <option value="kanji" ${l.type === 'kanji' ? 'selected' : ''}>Kanji</option>
             <option value="kana" ${l.type === 'kana' ? 'selected' : ''}>Hiragana/Katakana</option>
             <option value="grammar_task" ${l.type === 'grammar_task' ? 'selected' : ''}>Tugas Grammar</option>
+            <option value="conversation" ${l.type === 'conversation' ? 'selected' : ''}>Percakapan (dialog)</option>
           </select>
         </div>
       </div>
@@ -2815,6 +2913,18 @@ function lessonFormHtml(l) {
         <div style="font-size:12px;color:#525252;font-family:var(--font-body);background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;padding:8px 12px;">
           <strong>Hiragana/Katakana:</strong> setelah simpan, klik tombol <strong>Kelola Kana</strong> di daftar pelajaran untuk memilih karakter dari bank + contoh kata. Pilih <strong>Sumber YouTube</strong> dan atur timeline untuk menampilkan potongan video di atas chart; URL embed lain tetap tersedia sebagai opsi legacy. Field "Konten" opsional sebagai pengantar.
         </div>
+      </div>
+      <div class="field" data-conversation-only style="display:${l.type === 'conversation' ? '' : 'none'};">
+        <div style="font-size:12px;color:#525252;font-family:var(--font-body);background:#e9f5f1;border:1px solid #9fd8c4;border-radius:6px;padding:8px 12px;">
+          <strong>Percakapan:</strong> memutar dialog pola-pola dari pelajaran Tata Bahasa yang dipilih. Setelah simpan, semua urusan dialog
+          (teks per giliran, suara, gambar &amp; ekspresi karakter, soal pemahaman, arahan menyimak) dikelola dari pelajaran ini.
+          Field "Konten" opsional sebagai pengantar.
+        </div>
+        <label style="margin-top:10px;">Dialog dari pelajaran</label>
+        <select name="conversationSourceLessonId">
+          <option value="">— pilih pelajaran Tata Bahasa —</option>
+          ${conversationSourceOptions(l, moduleId)}
+        </select>
       </div>
       <div class="field" data-grammar-task-only style="display:${l.type === 'grammar_task' ? '' : 'none'};">
         <div style="font-size:12px;color:#525252;font-family:var(--font-body);background:#ecfdf5;border:1px solid #6ee7b7;border-radius:6px;padding:8px 12px;">
@@ -2883,6 +2993,7 @@ function wireLessonTypeVisibility(form) {
   const kanjiHint = form.querySelector('[data-kanji-only]');
   const kanaHint = form.querySelector('[data-kana-only]');
   const grammarTaskHint = form.querySelector('[data-grammar-task-only]');
+  const conversationField = form.querySelector('[data-conversation-only]');
   const quizFields = form.querySelector('[data-quiz-only]');
   if (!typeSel) return;
   const apply = () => {
@@ -2894,6 +3005,7 @@ function wireLessonTypeVisibility(form) {
     if (kanjiHint) kanjiHint.style.display = typeSel.value === 'kanji' ? '' : 'none';
     if (kanaHint) kanaHint.style.display = typeSel.value === 'kana' ? '' : 'none';
     if (grammarTaskHint) grammarTaskHint.style.display = typeSel.value === 'grammar_task' ? '' : 'none';
+    if (conversationField) conversationField.style.display = typeSel.value === 'conversation' ? '' : 'none';
     if (quizFields) quizFields.style.display = typeSel.value === 'quiz' ? '' : 'none';
   };
   apply();
@@ -3093,7 +3205,7 @@ window.newLessonProceed = () => {
 };
 
 window.newLesson = (moduleId) => {
-  openModal(lessonFormHtml(null));
+  openModal(lessonFormHtml(null, moduleId));
   const form = document.getElementById('lesson-form');
   wireSlugAuto(form);
   wireLessonTypeVisibility(form);
@@ -3194,7 +3306,13 @@ async function submitLesson(e, id, moduleId) {
     // Hanya grammar_task yang punya pelajaran pemicu; tipe lain selalu null
     // (juga meng-clear kalau lesson diubah dari grammar_task ke tipe lain).
     popupAfterLessonId: type === 'grammar_task' ? ((fd.get('popupAfterLessonId') || '').trim() || null) : null,
+    // Percakapan plays the dialogues of one grammar lesson; other types have none.
+    conversationSourceLessonId: type === 'conversation' ? ((fd.get('conversationSourceLessonId') || '').trim() || null) : null,
   };
+  if (type === 'conversation' && !body.conversationSourceLessonId) {
+    notify('Pilih pelajaran Tata Bahasa yang dialognya diputar di Percakapan ini.', true);
+    return;
+  }
   const existingLesson = id && (STATE.lessons || []).find((x) => x.id === id);
   await attachBoundarySaveMetadata(body, { moduleId: moduleId || existingLesson?.module_id || STATE.selectedModule, lessonId: id }, existingLesson?.updated_at);
   if (type === 'quiz') {
@@ -5018,19 +5136,40 @@ const GRAMMAR_FIELDS = [
   { name: 'dialog_furigana', bodyKey: 'dialogFurigana', type: 'textarea', hidden: true },
 ];
 
-function itemRowHtml(item, fields, kind) {
+// mode 'dialog' (Percakapan drawer, migration 178): every field stays in the
+// row as a hidden input so saveItemRow sends the same body, but the admin only
+// sees the pattern, the dialogue status and the 🎭 Dialog editor.
+function dialogStatusHtml(item) {
+  const turns = String(item.example_dialog || '').split('\n').filter((line) => line.trim()).length;
+  return turns ? `${turns} giliran` : '<span style="color:#b45309;">Belum ada dialog</span>';
+}
+function itemRowHtml(item, fields, kind, mode) {
+  const dialogMode = kind === 'grammar' && mode === 'dialog';
   const cells = fields.map((f) => {
     if (f.type === 'textarea') {
-      const td = f.hidden ? '<td style="display:none;">' : '<td>';
+      const td = f.hidden || dialogMode ? '<td style="display:none;">' : '<td>';
       const value = ['dialog_scene','dialog_furigana'].includes(f.name) && item[f.name] ? JSON.stringify(item[f.name]) : (item[f.name] || '');
       return `${td}<textarea name="${f.name}" rows="3" placeholder="${escapeHtml(f.placeholder || '')}" style="${f.style || ''}font-family:var(--font-mono);font-size:11px;">${escapeHtml(value)}</textarea></td>`;
     }
-    return `<td><input name="${f.name}" value="${escapeHtml(item[f.name] || '')}" style="${f.style}" /></td>`;
+    return `<td${dialogMode ? ' style="display:none;"' : ''}><input name="${f.name}" value="${escapeHtml(item[f.name] || '')}" style="${f.style}" /></td>`;
   }).join('');
+  if (dialogMode) {
+    return `
+    <tr data-id="${item.id || ''}" data-kind="${kind}" data-mode="dialog" data-revision="${escapeHtml(item.updated_at || '')}">
+      <td><strong lang="ja">${escapeHtml(item.pattern || '')}</strong><div style="font-size:11px;color:#737373;">${escapeHtml(item.meaning || '')}</div></td>
+      <td class="dialog-status" style="white-space:nowrap;">${dialogStatusHtml(item)}</td>
+      ${cells}
+      <td style="display:none;"><input type="number" name="sortOrder" value="${item.sort_order || 0}" /></td>
+      <td class="actions">
+        <button type="button" class="btn btn-primary btn-sm" title="Tulis dialog per giliran, pilih suara & ekspresi, tes audio, dan kelola soal pemahaman" onclick="grmrManageDialog(this)">🎭 Dialog</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-save-row onclick="saveItemRow(this)">Simpan</button>
+      </td>
+    </tr>`;
+  }
+  // Dialogues are edited from the Percakapan lesson (dialog mode above).
   const aiButtons = kind === 'grammar' ? `
     ${item.id ? `<button type="button" class="btn btn-ghost btn-sm" title="Kelola contoh kalimat (multi)" onclick="grammarManageExamples('${item.id}', this)">📝 Contoh</button>` : ''}
     ${item.id ? `<button type="button" class="btn btn-ghost btn-sm" title="Pengecoh soal Step 1 Tugas Bunpou" onclick="grammarManageDistractors('${item.id}')">🎯 Pengecoh</button>` : ''}
-    <button type="button" class="btn btn-ghost btn-sm" title="Buat/edit dialog per giliran: generate AI, pilih nama speaker asli + suara ElevenLabs, tes audio per baris" onclick="grmrManageDialog(this)">🎭 Dialog</button>
   ` : '';
   return `
     <tr data-id="${item.id || ''}" data-kind="${kind}" data-revision="${escapeHtml(item.updated_at || '')}">
@@ -5308,7 +5447,7 @@ function admDialogModalHtml() {
     ${__dialogMode === 'grammar' ? admDialogQuestionSetHtml() : ''}
     <div class="modal-actions">
       <button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button>
-      <button type="button" class="btn btn-primary" onclick="admDialogSave()">${listening ? 'Gunakan untuk soal' : 'Isi ke baris (lalu klik Simpan)'}</button>
+      <button type="button" class="btn btn-primary" onclick="admDialogSave()">${listening ? 'Gunakan untuk soal' : window.__dialogTr?.dataset?.mode === 'dialog' ? 'Simpan dialog' : 'Isi ke baris (lalu klik Simpan)'}</button>
     </div>
   `;
 }
@@ -5459,6 +5598,10 @@ window.admDialogSave = () => {
   const target = window.__dialogTargetTa;
   if (target) { target.jp.value = jp; if (target.id) target.id.value = id; }
   closeModal();
+  // Percakapan drawer: the row is only a carrier for the dialogue, so save it now.
+  const saveButton = !listening && window.__dialogTr?.dataset?.mode === 'dialog'
+    ? window.__dialogTr.querySelector('[data-save-row]') : null;
+  if (saveButton) { window.saveItemRow(saveButton); return; }
   notify(listening ? 'Dialog dan suara terisi — tes audio lengkap, lalu Simpan soal.' : 'Dialog terisi — review lalu klik Simpan pada baris ini');
 };
 
@@ -5498,48 +5641,6 @@ window.grammarManageExamples = async (grammarId) => {
 // source lesson — tujuan pelajaran, arahan menyimak per pola, dan overlay
 // feedback Step 1/2 per pola. Never touches Pola/Arti/Contoh themselves;
 // those stay editable only via the existing Bunpou (文法) item table above.
-// Paket 2 — satu soal pemeriksaan. Opsi ditulis satu per baris supaya
-// jumlahnya bebas 3-4 tanpa DOM berlapis; nomor jawaban DIISI MANUAL dan
-// dicocokkan server, bukan ditebak dari urutan. Baris kosong di TENGAH
-// sengaja tidak dibuang saat dikumpulkan: membuangnya akan menggeser nomor
-// jawaban diam-diam, jadi lebih baik server menolaknya dengan pesan jelas.
-function bfCheckBlock(gid, field, label, q) {
-  gid = escapeHtml(gid);
-  const opts = Array.isArray(q.options) ? q.options.join('\n') : '';
-  const idx = Number.isInteger(q.correctIndex) ? q.correctIndex + 1 : 1;
-  return `
-    <div style="border:1px dashed var(--paper-300,#e5e5e5);border-radius:6px;padding:8px 10px;margin-top:6px;">
-      <div style="font-size:11px;font-weight:600;color:#404040;margin-bottom:4px;">${escapeHtml(label)}</div>
-      <label style="font-size:11px;color:#737373;">Pertanyaan</label>
-      <textarea id="bf-${field}-q-${gid}" rows="2" style="width:100%;font-size:12px;margin:2px 0 6px;">${escapeHtml(q.prompt || '')}</textarea>
-      <label style="font-size:11px;color:#737373;">Opsi — satu per baris (3-4 baris)</label>
-      <textarea id="bf-${field}-o-${gid}" rows="4" style="width:100%;font-size:12px;margin:2px 0 6px;">${escapeHtml(opts)}</textarea>
-      <label style="font-size:11px;color:#737373;">Nomor baris jawaban benar</label>
-      <input type="number" min="1" max="4" id="bf-${field}-c-${gid}" value="${idx}" style="width:70px;font-size:12px;margin:2px 0 6px;display:block;" />
-      <label style="font-size:11px;color:#737373;">Pembahasan (tampil setelah dijawab)</label>
-      <textarea id="bf-${field}-e-${gid}" rows="2" style="width:100%;font-size:12px;">${escapeHtml(q.explanation || '')}</textarea>
-    </div>`;
-}
-
-// Status kelayakan DIHITUNG SERVER (GET .../bunpou-flow -> checkAvailability)
-// dengan fungsi yang sama persis yang dipakai session API. Editor tidak
-// menghitung ulang, supaya tidak mungkin "hijau di admin tapi tidak muncul
-// ke siswa".
-function bfAvailBadge(avail) {
-  const a = avail || {};
-  if (a.available) {
-    return '<span style="font-size:11px;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:99px;padding:1px 8px;">&#10003; pemeriksaan aktif</span>';
-  }
-  const why = {
-    belum_ada_soal: 'belum diisi',
-    pemahaman_tidak_sah: 'soal pemahaman belum lengkap',
-    pembanding_tidak_sah: 'soal pembanding belum lengkap',
-    pembanding_terlalu_dekat: 'pembanding terlalu mirip soal pemahaman',
-  }[a.reason] || 'belum tersedia';
-  const detail = (a.errors || []).join('; ');
-  return `<span title="${escapeHtml(detail)}" style="font-size:11px;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:99px;padding:1px 8px;">belum tersedia &mdash; ${escapeHtml(why)}</span>`;
-}
-
 function bfReviewDrill(label, drill) {
   if (!drill) return `<p><strong>${escapeHtml(label)}</strong>: Soal belum tersedia.</p>`;
   const fields = [
@@ -5577,18 +5678,20 @@ function bfSourcePreview(item) {
   </details>`;
 }
 
-function bfFieldBlock(gid, pattern, env, avail, reviewItem) {
+// section 'lesson' (Tata Bahasa drawer): objective + Step 1/2 hints.
+// section 'dialog' (Percakapan drawer, migration 178): listening directions.
+// The legacy "Pemeriksaan mandiri" is no longer edited here — dialogue
+// questions live in the 🎭 Dialog editor of the Percakapan lesson. Anything a
+// section does not show is carried over unchanged by bfCollectEnvelope.
+function bfFieldBlock(gid, pattern, env, avail, reviewItem, section = 'all') {
   const fieldId = escapeHtml(gid);
   const dir = (env.directions || {})[gid] || '';
-  const check = ((env.dialogChecks || {})[gid]) || {};
   const ov = ((env.overlays || {})[gid]) || {};
   const s1 = ov.step1 || {}, s2 = ov.step2 || {};
-  return `
-    <div style="border:1px solid var(--paper-300,#e5e5e5);border-radius:8px;padding:10px 12px;margin-bottom:10px;">
-      <div style="font-weight:600;font-size:13px;margin-bottom:6px;" lang="ja">${escapeHtml(pattern || gid)}</div>
-      ${bfSourcePreview(reviewItem)}
-      <label style="font-size:11px;color:#737373;">Arahan menyimak (opsional — tampil di kartu dialog)</label>
-      <textarea id="bf-dir-${fieldId}" rows="2" style="width:100%;font-size:13px;margin:2px 0 8px;">${escapeHtml(dir)}</textarea>
+  const directions = section === 'lesson' ? '' : `
+      <label style="font-size:11px;color:#737373;">Arahan menyimak (opsional — tampil di atas dialog)</label>
+      <textarea id="bf-dir-${fieldId}" rows="2" style="width:100%;font-size:13px;margin:2px 0 8px;">${escapeHtml(dir)}</textarea>`;
+  const hints = section === 'dialog' ? '' : `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <div>
           <label style="font-size:11px;color:#737373;">Step 1 — petunjuk</label>
@@ -5602,40 +5705,37 @@ function bfFieldBlock(gid, pattern, env, avail, reviewItem) {
           <label style="font-size:11px;color:#737373;">Step 2 — pembahasan</label>
           <textarea id="bf-e2-${fieldId}" rows="2" style="width:100%;font-size:12px;">${escapeHtml(s2.explanation || '')}</textarea>
         </div>
-      </div>
-      <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--paper-300,#e5e5e5);">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <span style="font-size:11px;font-weight:600;color:#404040;">Pemeriksaan mandiri (akhir tugas)</span>
-          ${bfAvailBadge(avail)}
-        </div>
-        <p style="font-size:11px;color:#737373;font-family:var(--font-body);margin:4px 0 0;">
-          Soal pemahaman diambil dari <strong>naskah dialog</strong> pelajaran ini. Soal pembanding menguji
-          pola yang sama di <strong>kalimat/situasi lain</strong> &mdash; bukan soal yang sama dengan opsi diacak.
-          Keduanya harus terisi dan berbeda; kalau tidak, pemeriksaan tidak disajikan ke siswa.
-        </p>
-        ${bfCheckBlock(gid, 'cmp1', 'Soal pemahaman dialog', check.comprehension || {})}
-        ${bfCheckBlock(gid, 'cmp2', 'Soal pembanding', check.comparison || {})}
-      </div>
+      </div>`;
+  return `
+    <div style="border:1px solid var(--paper-300,#e5e5e5);border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+      <div style="font-weight:600;font-size:13px;margin-bottom:6px;" lang="ja">${escapeHtml(pattern || gid)}</div>
+      ${bfSourcePreview(reviewItem)}
+      ${directions}
+      ${hints}
     </div>`;
 }
 
-window.manageBunpouFlow = async (lessonId, lessonTitle) => {
+window.manageBunpouFlow = async (lessonId, lessonTitle, section = 'all') => {
   let d;
   try {
     d = await api('/admin/lessons/' + lessonId + '/bunpou-flow');
   } catch (err) { notify('Gagal load Pendamping Bunpou: ' + err.message, true); return; }
-  window.__bfCtx = { lessonId, draftRevision: d.draftRevision || null, grammarIds: d.grammarIds || [], patterns: d.patterns || {}, currentFingerprint: d.currentFingerprint, reviewItems: d.reviewItems || [] };
-
   const env = d.draft || d.published || {};
+  window.__bfCtx = { lessonId, section, env, draftRevision: d.draftRevision || null, grammarIds: d.grammarIds || [], patterns: d.patterns || {}, currentFingerprint: d.currentFingerprint, reviewItems: d.reviewItems || [] };
+
   const staleDraft = d.draft && d.draft.sourceFingerprint && d.draft.sourceFingerprint !== d.currentFingerprint;
   const stalePublished = !d.draft && d.published && d.published.sourceFingerprint && d.published.sourceFingerprint !== d.currentFingerprint;
-  const noTask = !d.taskLessonId;
+  const noTask = !d.taskLessonId && section !== 'dialog';
+  const intro = section === 'dialog'
+    ? 'Arahan menyimak per pola, tampil di atas dialog pelajaran Percakapan.'
+    : section === 'lesson'
+      ? 'Lapisan opsional: tujuan singkat pelajaran dan pembahasan Step 1/2 Tugas Bunpou. Arahan menyimak dan soal dialog dikelola di pelajaran Percakapan.'
+      : 'Lapisan opsional: tujuan singkat pelajaran, arahan menyimak per pola, dan pembahasan Step 1/2 Tugas Bunpou.';
 
   openModal(`
-    <h3>🧭 Pendamping Bunpou — ${escapeHtml(lessonTitle || d.lessonTitle || '')}</h3>
+    <h3>${section === 'dialog' ? '🎧 Arahan menyimak' : '🧭 Pendamping Bunpou'} — ${escapeHtml(lessonTitle || d.lessonTitle || '')}</h3>
     <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 10px;">
-      Lapisan opsional: tujuan singkat pelajaran, arahan menyimak per pola, dan
-      pembahasan Step 1/2 Tugas Bunpou. Tidak mengubah materi asli. Belum tampil
+      ${intro} Tidak mengubah materi asli. Belum tampil
       ke siswa mana pun sampai dipublikasikan DAN diaktifkan lewat pengaturan flag.
     </p>
     ${noTask ? `<div style="font-size:12px;color:#b91c1c;background:#fee2e2;border-radius:6px;padding:8px 10px;margin-bottom:10px;font-family:var(--font-body);">
@@ -5648,10 +5748,10 @@ window.manageBunpouFlow = async (lessonId, lessonTitle) => {
     ${stalePublished ? `<div style="font-size:12px;color:#92400e;background:#fef3c7;border-radius:6px;padding:8px 10px;margin-bottom:10px;font-family:var(--font-body);">
       ⚠ Materi berubah sejak versi terpublikasi ini disimpan.
     </div>` : ''}
-    <label style="font-size:12px;color:#404040;">Tujuan pelajaran (satu kalimat, opsional)</label>
+    ${section === 'dialog' ? '' : `<label style="font-size:12px;color:#404040;">Tujuan pelajaran (satu kalimat, opsional)</label>
     <textarea id="bf-objective" rows="2" style="width:100%;font-size:13px;margin:2px 0 12px;"
-      placeholder="Siswa dapat mengenali dan menggunakan pola ...">${escapeHtml(env.objective || '')}</textarea>
-    <div id="bf-fields">${window.__bfCtx.grammarIds.map((gid) => bfFieldBlock(gid, window.__bfCtx.patterns[gid], env, (d.checkAvailability || {})[gid], window.__bfCtx.reviewItems.find(item => item.grammarId === gid))).join('') || '<p style="font-size:12px;color:#737373;">Pelajaran ini belum punya pola grammar.</p>'}</div>
+      placeholder="Siswa dapat mengenali dan menggunakan pola ...">${escapeHtml(env.objective || '')}</textarea>`}
+    <div id="bf-fields">${window.__bfCtx.grammarIds.map((gid) => bfFieldBlock(gid, window.__bfCtx.patterns[gid], env, (d.checkAvailability || {})[gid], window.__bfCtx.reviewItems.find(item => item.grammarId === gid), section)).join('') || '<p style="font-size:12px;color:#737373;">Pelajaran ini belum punya pola grammar.</p>'}</div>
     <div style="font-size:11px;color:#a3a3a3;font-family:var(--font-body);margin:4px 0;">
       ${d.published ? `Terpublikasi oleh ${escapeHtml(d.published.publishedBy?.email || '?')} · ${d.published.publishedBy?.at ? new Date(d.published.publishedBy.at).toLocaleString('id-ID') : ''}` : 'Belum pernah dipublikasikan.'}
     </div>
@@ -5667,17 +5767,26 @@ window.manageBunpouFlow = async (lessonId, lessonTitle) => {
   modalContent.style.maxWidth = '720px';
 };
 
+// Fields a section did not render keep the loaded draft's value, so saving
+// from the Percakapan drawer never erases the Tata Bahasa objective or hints
+// (and the other way round). Legacy dialogChecks are carried over untouched.
 function bfCollectEnvelope() {
   const ctx = window.__bfCtx;
-  const objective = (document.getElementById('bf-objective')?.value || '').trim();
+  const env = ctx.env || {};
+  const text = (id, fallback) => {
+    const input = document.getElementById(id);
+    return input ? input.value.trim() : String(fallback || '').trim();
+  };
+  const objective = text('bf-objective', env.objective);
   const directions = {}, overlays = {};
   for (const gid of ctx.grammarIds) {
-    const dir = (document.getElementById('bf-dir-' + gid)?.value || '').trim();
+    const dir = text('bf-dir-' + gid, (env.directions || {})[gid]);
     if (dir) directions[gid] = dir;
-    const h1 = (document.getElementById('bf-h1-' + gid)?.value || '').trim();
-    const e1 = (document.getElementById('bf-e1-' + gid)?.value || '').trim();
-    const h2 = (document.getElementById('bf-h2-' + gid)?.value || '').trim();
-    const e2 = (document.getElementById('bf-e2-' + gid)?.value || '').trim();
+    const old = (env.overlays || {})[gid] || {};
+    const h1 = text('bf-h1-' + gid, old.step1?.hint);
+    const e1 = text('bf-e1-' + gid, old.step1?.explanation);
+    const h2 = text('bf-h2-' + gid, old.step2?.hint);
+    const e2 = text('bf-e2-' + gid, old.step2?.explanation);
     const tiers = {};
     if (h1 || e1) tiers.step1 = { ...(h1 && { hint: h1 }), ...(e1 && { explanation: e1 }) };
     if (h2 || e2) tiers.step2 = { ...(h2 && { hint: h2 }), ...(e2 && { explanation: e2 }) };
@@ -5685,26 +5794,7 @@ function bfCollectEnvelope() {
   }
   const dialogChecks = {};
   for (const gid of ctx.grammarIds) {
-    const q = (field) => {
-      const prompt = (document.getElementById(`bf-${field}-q-${gid}`)?.value || '').trim();
-      const rawOpts = document.getElementById(`bf-${field}-o-${gid}`)?.value || '';
-      const correct = Number(document.getElementById(`bf-${field}-c-${gid}`)?.value || 0);
-      const explanation = (document.getElementById(`bf-${field}-e-${gid}`)?.value || '').trim();
-      // Hanya baris kosong DI UJUNG yang dibuang. Baris kosong di tengah
-      // sengaja dipertahankan supaya nomor jawaban tidak bergeser diam-diam —
-      // server yang menolaknya dengan pesan "ada opsi kosong".
-      const options = rawOpts.replace(/\s+$/, '').split('\n').map((o) => o.trim());
-      if (!prompt && options.every((o) => !o)) return null;
-      const out = { prompt, options, correctIndex: correct - 1 };
-      if (explanation) out.explanation = explanation;
-      return out;
-    };
-    const comprehension = q('cmp1');
-    const comparison = q('cmp2');
-    const pair = {};
-    if (comprehension) pair.comprehension = comprehension;
-    if (comparison) pair.comparison = comparison;
-    if (Object.keys(pair).length) dialogChecks[gid] = pair;
+    if ((env.dialogChecks || {})[gid]) dialogChecks[gid] = env.dialogChecks[gid];
   }
   return { sourceFingerprint: ctx.currentFingerprint, objective: objective || undefined, directions, overlays, dialogChecks };
 }
@@ -6251,13 +6341,15 @@ window.grmrGenExamples = async () => {
   }
 };
 
-function renderItemTable(kind, items) {
+function renderItemTable(kind, items, mode) {
   const fields = kind === 'vocab' ? VOCAB_FIELDS : GRAMMAR_FIELDS;
-  const heads = fields.filter((f) => !f.hidden).map((f) => `<th>${f.label}</th>`).join('');
-  const rows = items.map((it) => itemRowHtml(it, fields, kind)).join('');
+  const dialogMode = kind === 'grammar' && mode === 'dialog';
+  const heads = dialogMode ? '<th>Pola</th><th>Dialog</th>'
+    : fields.filter((f) => !f.hidden).map((f) => `<th>${f.label}</th>`).join('') + '<th>#</th>';
+  const rows = items.map((it) => itemRowHtml(it, fields, kind, mode)).join('');
   return `
     <table style="font-size:12px;">
-      <thead><tr>${heads}<th>#</th><th></th></tr></thead>
+      <thead><tr>${heads}<th></th></tr></thead>
       <tbody id="items-body">${rows || ''}</tbody>
     </table>
     ${items.length === 0 ? '<div class="empty" style="padding:20px;">Belum ada item.</div>' : ''}
@@ -6347,6 +6439,10 @@ window.saveItemRow = async (btn) => {
     }
     updateSavedRowRevision(tr, savedResult.vocabulary || savedResult.grammar);
     markSavedRowValues(tr);
+    if (tr.dataset.mode === 'dialog') {
+      const status = tr.querySelector('.dialog-status');
+      if (status) status.innerHTML = dialogStatusHtml({ example_dialog: tr.querySelector('textarea[name="example_dialog"]')?.value });
+    }
     notify('Tersimpan');
     notifyLearningWarnings(savedResult);
     // Refresh hitungan di background (modul) / daftar pelajaran (drawer tetap utuh).

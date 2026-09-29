@@ -25,13 +25,13 @@ export function weeklyInsight({ reviewDue = 0, activeDays = 0, attempts = 0, acc
   return { kind: 'neutral', message: 'Lanjutkan belajar secara konsisten. Rekomendasi berikutnya akan muncul setelah kamu menyelesaikan lebih banyak latihan.', action: 'continue' };
 }
 
-function hasConversation(row) {
-  return row.type !== 'grammar_task' && row.type !== 'quiz' &&
-    (row.has_dialog === true || row.hasDialog === true);
-}
+const sourceOf = row => row.conversation_source_lesson_id ?? row.conversationSourceLessonId ?? null;
+const popupOf = row => row.popup_after_lesson_id ?? row.popupAfterLessonId ?? null;
 
 // Rows arrive in the same module/lesson order as the public course DTO. A
-// conversation is a view of its source row; it never enters the denominator.
+// Percakapan is a real lesson (migration 178) pointing at its grammar source;
+// a Tugas Bunpou popped up after that source is placed right after the
+// source's Percakapan, so the path reads grammar → conversation → task.
 export function projectDashboardLearningSteps(rows) {
   const modules = new Map();
   for (const row of Array.isArray(rows) ? rows : []) {
@@ -41,21 +41,25 @@ export function projectDashboardLearningSteps(rows) {
   }
   const result = [];
   for (const lessons of modules.values()) {
-    const bySource = new Map();
-    for (const task of lessons) {
-      const sourceId = task.popup_after_lesson_id ?? task.popupAfterLessonId;
-      if (task.type !== 'grammar_task' || !sourceId) continue;
-      const matches = lessons.filter(source => source.id === sourceId && hasConversation(source));
-      if (matches.length !== 1) continue;
-      bySource.set(matches[0], [...(bySource.get(matches[0]) || []), task]);
+    const conversationBySource = new Map();
+    for (const row of lessons) {
+      if (row.type !== 'conversation' || !sourceOf(row)) continue;
+      if (!lessons.some(source => source.id === sourceOf(row))) continue;
+      conversationBySource.set(sourceOf(row), row);
     }
-    const moved = new Set([...bySource.values()].filter(tasks => tasks.length === 1)
+    const byAnchor = new Map();
+    for (const task of lessons) {
+      if (task.type !== 'grammar_task' || !popupOf(task)) continue;
+      const anchor = conversationBySource.get(popupOf(task));
+      if (!anchor) continue; // No Percakapan for that source: keep CMS order.
+      byAnchor.set(anchor, [...(byAnchor.get(anchor) || []), task]);
+    }
+    const moved = new Set([...byAnchor.values()].filter(tasks => tasks.length === 1)
       .map(tasks => tasks[0]));
     for (const lesson of lessons) {
       if (moved.has(lesson)) continue;
       result.push({ view: 'lesson', row: lesson });
-      if (hasConversation(lesson)) result.push({ view: 'conversation', row: lesson });
-      const linked = bySource.get(lesson);
+      const linked = byAnchor.get(lesson);
       if (linked?.length === 1) result.push({ view: 'lesson', row: linked[0] });
     }
   }
@@ -66,12 +70,7 @@ export function structuralProgressAndNext(rows) {
   const lessons = Array.isArray(rows) ? rows : [];
   const completedLessons = lessons.filter((row) => row.completed).length;
   const steps = projectDashboardLearningSteps(lessons);
-  const dueIndex = steps.findIndex(step => step.view === 'lesson' && !step.row.completed);
-  const due = steps[dueIndex];
-  const before = steps[dueIndex - 1];
-  const destination = before?.view === 'conversation' && due &&
-    (before.row.module_id ?? before.row.moduleId) === (due.row.module_id ?? due.row.moduleId)
-    ? before : due;
+  const destination = steps.find(step => !step.row.completed);
   return {
     completedLessons,
     totalLessons: lessons.length,
@@ -86,14 +85,13 @@ export function continueLearningDto(structural) {
   if (!next) return null;
   return { section: next.section_name || null,
     view: structural.nextView,
-    sourceLessonId: structural.nextView === 'conversation' ? next.id : null,
     chapter: { id: next.module_id, slug: next.module_slug, title: next.module_title },
     lesson: { id: next.id, slug: next.slug, title: next.title, type: next.type } };
 }
 
 export function isVisibleCurriculumLesson() {
   // Every persisted lesson participates in the learner sequence. A task's
-  // popup source is a relationship, not a reason to omit its completion.
-  // Conversation views reuse a source lesson and create no persisted row.
+  // popup source and a Percakapan's grammar source are relationships, not
+  // reasons to omit a lesson's completion.
   return true;
 }

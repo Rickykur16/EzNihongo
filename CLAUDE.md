@@ -283,6 +283,71 @@
       166/171/172/175/176 gagal di database KOSONG (menuntut konten Bab 3/4) — itu
       perilaku lama; untuk uji lokal tandai terlewati di `schema_migrations`.
       **Belum diverifikasi**: Safari iOS dan aset asli dari user.
+      **Aset asli dari user (6 karakter × 5 ekspresi) TIDAK siap pakai apa adanya** —
+      gambarnya seluruh badan, sehingga di panggung karakter tampil kecil (wajah ±25 px
+      di desktop). Semuanya dirapikan di luar repo menjadi 666×900 setengah badan:
+      kepala disejajarkan, ukuran kepala disamakan per paket (median dari lebar rambut,
+      tinggi kepala–leher, dan tinggi badan; salah satu ukuran bisa meleset karena tangan
+      di dagu atau rambut bergelombang), dengan satu geser horizontal per paket supaya
+      gestur terlebar muat tanpa kepala melompat. Kanvas 666 (bukan 600) karena
+      gestur Daniel/Aoi lebih lebar dari 2:3: di desktop ukurannya tidak berubah, di HP
+      semua karakter ±10% lebih kecil tapi tetap seragam. Daniel & Ren menghadap kiri →
+      dibalik (panggung mengharapkan gambar menghadap kanan, aktor kanan dicerminkan
+      CSS). Aoi dikirim RGB dengan latar gelap → latar dihapus pakai rembg
+      (isnet-general-use) + `estimate_foreground_ml` (pymatting) untuk membersihkan
+      tepi gelap rambut. Kalau user menambah ekspresi baru, gambarnya perlu dirapikan
+      dengan cara yang sama (belum ada fitur otomatis di admin).
+
+      **Percakapan jadi pelajaran sendiri (migrasi 178)** — user: "Saya ingin bagian
+      dialog itu dirubah ke bentuk pelajaran sendiri, di admin juga begitu agar mudah.
+      Dan flow bunpounya yg berhubungan dengan dialog juga pisahkan kesitu". Keputusan
+      user lewat pertanyaan: dialog **tetap per pola** (disimpan di `module_grammar`
+      pelajaran sumber, bukan tabel baru — fitur "Bacaan & audio" dengan 4 tabel pernah
+      di-revert), soal dialog **digabung jadi satu**, dan tidak perlu penyesuaian
+      progres karena belum ada siswa. **Model**: `lessons.type = 'conversation'` +
+      `conversation_source_lesson_id` → pelajaran teks/video di bab yang sama (CHECK +
+      trigger `lessons_conversation_source_guard`, unik per sumber, ON DELETE CASCADE,
+      sumber tidak bisa diganti jenis selama punya Percakapan). Migrasi membuat satu
+      Percakapan untuk setiap teks/video yang punya dialog, tepat setelahnya (judul
+      "Tata Bahasa…: X" → "Percakapan: X", slug `<sumber>-percakapan`), idempoten.
+      **Siswa**: langkah virtual `view=conversation` dihapus; Percakapan adalah pelajaran
+      biasa di sidebar (label PERCAKAPAN), bisa ditandai selesai, ikut dihitung progres.
+      Tugas Bunpou yang di-popup setelah sumbernya ditempatkan tepat SETELAH Percakapan
+      sumber itu (`moduleLearningSteps` di welcome.html dan `projectDashboardLearningSteps`
+      di dashboard-rules.js harus tetap identik — ada tes paritasnya). Tautan lama
+      `?lesson=<sumber>&view=conversation` dan `selectConversation()` membuka
+      Percakapan-nya. Soal dialog, arahan 🎧, scene, furigana tetap dibaca dari pelajaran
+      SUMBER (`EzDialogueQuestions.mount({ lesson: source })`), jadi backend soal/placement
+      /fingerprint tidak berubah. **Admin**: jenis "Percakapan (dialog)" + pilihan sumber
+      di form; drawer Percakapan = tabel pola dalam mode `dialog` (semua field tetap
+      input tersembunyi supaya `saveItemRow` mengirim body yang sama) + 🎭 Dialog yang
+      langsung menyimpan baris ("Simpan dialog") + tombol "🎧 Arahan menyimak". Tombol 🎭
+      Dialog DIHAPUS dari baris grammar Tata Bahasa; drawer Tata Bahasa menampilkan
+      "Buka Percakapan" / "+ Buat pelajaran Percakapan" (form baru terisi otomatis).
+      **Pendamping Bunpou dipecah per drawer**: dari Tata Bahasa hanya tujuan + petunjuk
+      Step 1/2, dari Percakapan hanya arahan menyimak; `bfCollectEnvelope` mengambil nilai
+      draft untuk field yang tidak tampil (kalau tidak, menyimpan dari satu drawer akan
+      menghapus isi drawer lain — ada tes yang dibuktikan menggigit). **"Pemeriksaan
+      mandiri" (dialogChecks Paket 2) dipensiunkan dari penyajian**: tidak lagi di akhir
+      Tugas Bunpou sesi v1 dan tidak lagi dipakai Smart Review; editornya dihapus. Datanya
+      TETAP disimpan (dibawa apa adanya saat draft disimpan) karena backfill soal dialog v2
+      (`dialogue-question-backfill.js`) membacanya. Satu-satunya set soal dialog = soal di
+      🎭 Dialog (`grammar_dialog_questions`, 2 pemahaman + 1 transfer). **PENTING**: soal
+      itu hanya tampil ke siswa kalau alur komunikasi v2 (`learning_flow_communication_v1`)
+      aktif untuk pelajaran sumbernya — dan TIDAK ADA tombol admin untuk menyalakannya
+      (hanya `PUT /admin/settings/learning-flow-communication`, dengan pemeriksaan
+      kesiapan kurikulum). Tanpa itu, halaman Percakapan menampilkan dialog tanpa soal.
+      **Jebakan saat menguji**: editor Pendamping butuh Tugas Bunpou pasangan (popup) —
+      tanpa itu `currentFingerprint` null dan simpan draft ditolak 409
+      `source_changed_since_review` (perilaku lama, bukan akibat perubahan ini).
+      **Divalidasi**: `npm test` dengan DB 851 tes, 850 hijau, 1 skip lama, 0 gagal; empat
+      tes baru/diubah dibuktikan menggigit lewat mutasi; migrasi diuji idempoten + tiap
+      pagar (bab lain, tanpa sumber, sumber ganda, ganti jenis sumber) menolak; E2E
+      Postgres+backend+Chromium: admin 14/14 (daftar, tautan, drawer, simpan dialog
+      langsung, arahan tanpa menghapus tujuan/petunjuk, hapus & buat ulang, tolak
+      sumber ganda/kosong), siswa 14/14 (tautan lama, urutan sidebar, tombol selesai,
+      progres server, "Lanjut Belajar" dashboard, HP tanpa overflow); QA repo
+      dialogue-scene + learning-flow lulus.
 
       **Dialog grammar: speaker asli dipilih dari SUARA ELEVENLABS ASLI —
       bukan kode A/B, dan bukan bucket perempuan/laki-laki — plus tes audio

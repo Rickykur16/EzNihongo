@@ -7,12 +7,7 @@ import { isAdminEmail } from '../auth.js';
 import { recordPracticeAttemptWithState } from '../practice-service.js';
 import { loadMastery } from '../grammar-mastery.js';
 import { deriveDrills, publicDrill, arrangeIsCorrect } from '../grammar-drills.js';
-import { loadPilotConfig } from '../bunpou-flow-config.js';
-import { loadCompanionContext } from '../bunpou-flow-content.js';
-import {
-  dialogCheckDrills, attemptSourceFor, primaryErrorFor,
-  STEP_DIALOG_COMPREHENSION,
-} from '../bunpou-flow-service.js';
+import { attemptSourceFor, primaryErrorFor } from '../bunpou-flow-service.js';
 import { REVIEW_CATEGORIES, SMART_REVIEW_SOURCE, filterReviewScope, isReviewNeeded, makeReviewQuestion, pickCompoundOwners, unlockedSkills, publicQuestion, reviewPriority, selectReviewCandidates, summarizeCandidates } from '../smart-review-service.js';
 import { deriveCompounds, extractKanjiCharacters, loadKanjiCatalog } from '../kanji-compounds.js';
 import { excludePlacedKana, passedKanaKinds } from '../kana-placement.js';
@@ -113,37 +108,9 @@ export async function buildReviewCandidates(user) {
   }
   for (const { base, word } of pickCompoundOwners(wordEntries).values()) for (const direction of WORD_DIRECTIONS) add(base, wordSkill(direction, word), { word });
   if (scope.courseIds.length) {
-    // ── Paket 2: pemeriksaan mandiri masuk lewat jalur kandidat yang SAMA ──
-    // Bukan antrean baru dan bukan kandidat tambahan: satu pola tetap
-    // menyumbang PALING BANYAK satu soal, persis seperti sebelumnya. Yang
-    // berubah hanya PILIHAN soalnya — kalau pelajaran pilot punya
-    // pemeriksaan yang layak dan keluarganya belum pernah dikerjakan,
-    // soal itu yang dipakai menggantikan drill Step 1/2 sisi yang sama.
-    //
-    // Kenapa harus begitu: reviewSubjectKey() untuk grammar adalah
-    // `grammar:<itemId>`, jadi oneDirectionPerSubject() hanya meloloskan
-    // SATU kandidat per pola per sesi. Mendorong kandidat ekstra di sini
-    // hanya akan kalah tie-break dan tidak pernah muncul — fitur yang
-    // kelihatan jadi padahal mati.
-    const pilot = await loadPilotConfig();
-    let pilotChecks = null;
-    let pilotTaskLessonId = null;
-    if (pilot.enabled && pilot.lessonId) {
-      const context = await loadCompanionContext(pilot.lessonId);
-      pilotTaskLessonId = context?.taskLessonId || null;
-      if (context?.current) pilotChecks = context.published.dialogChecks || null;
-    }
-    // Keluarga soal yang sudah benar-benar dikerjakan siswa ini belakangan —
-    // dipakai supaya pemeriksaan tidak menyajikan ulang varian yang terlalu
-    // dekat dengan yang baru saja dijawab (rencana Paket 2).
-    const recentFamilies = new Set(pilotChecks
-      ? (await query(
-          `SELECT DISTINCT check_family_id FROM grammar_attempts
-            WHERE user_id = $1 AND check_family_id IS NOT NULL
-              AND created_at > NOW() - INTERVAL '21 days'`,
-          [user.id]
-        )).rows.map((r) => r.check_family_id)
-      : []);
+    // Grammar review draws only on Step 1/2 drills. The Paket 2 dialogue
+    // checks used to replace them for the pilot lesson; questions about a
+    // dialogue now belong to its Percakapan lesson (migration 178).
     const links = await query(`SELECT DISTINCT gi.grammar_id, gi.lesson_id, m.course_id FROM lesson_grammar_task_items gi JOIN lessons l ON l.id = gi.lesson_id JOIN modules m ON m.id = l.module_id JOIN user_progress p ON p.lesson_id = l.id WHERE p.user_id = $1 AND p.completed = TRUE AND m.course_id = ANY($2::uuid[])`, [user.id, scope.courseIds]);
     const mastery = await loadMastery(user.id, links.rows.map((row) => row.grammar_id)); const cache = new Map();
     for (const link of links.rows) {
@@ -152,14 +119,8 @@ export async function buildReviewCandidates(user) {
       // Kebijakan pemilihan sisi (recognition vs controlled) TIDAK diubah:
       // sisi dengan bukti lebih tipis yang dilatih, sama persis seperti
       // sebelum Paket 2.
-      let raw = (m?.recognitionAttempts || 0) > (m?.productionAttempts || 0) ? (drills.step2 || drills.step1) : (drills.step1 || drills.step2);
+      const raw = (m?.recognitionAttempts || 0) > (m?.productionAttempts || 0) ? (drills.step2 || drills.step1) : (drills.step1 || drills.step2);
       if (!raw) continue;
-      if (pilotChecks && link.lesson_id === pilotTaskLessonId) {
-        const wantComprehension = raw.step === 1;
-        const check = dialogCheckDrills(pilotChecks[item.id])
-          .find((form) => (form.step === STEP_DIALOG_COMPREHENSION) === wantComprehension);
-        if (check && !recentFamilies.has(check.checkFamilyId)) raw = check;
-      }
       const nextReviewAt = !m || m.state === 'UNSEEN' || m.state === 'LEARNING' || m.state === 'NEEDS_PRACTICE' || m.dueReview
         ? new Date(0).toISOString()
         : new Date(new Date(m.lastAttemptAt).getTime() + (21 * 86400000)).toISOString();
