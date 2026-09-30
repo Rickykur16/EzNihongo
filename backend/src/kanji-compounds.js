@@ -7,6 +7,7 @@
 //      lesson Kanji duplikat di setiap level.
 
 import { bab3KanjiSupport } from './bab3-kanji-support.js';
+import { n5ChapterKanjiSupport } from '../content/n5-support/kanji-support.mjs';
 
 export const KANJI_LEVEL_RANK = Object.freeze({ N5: 1, N4: 2, N3: 3, N2: 4, N1: 5 });
 
@@ -317,6 +318,14 @@ export function deriveCompounds(character, manualCompounds, vocab, context = {})
       ...(out.find(existing => compoundKey(existing) === compoundKey(row)) || {}),
       ...row, kind: row.japanese === '何ですか' ? 'expression' : kanjiUsageKind(row.japanese, target),
       source: 'manual', scope: 'manual', usageLevel: 'N5', moduleTitle: 'Pilihan Bab 3',
+    }));
+  }
+  if (currentLevel === 'N5' && Number(context.moduleSort) >= 4 && Number(context.moduleSort) <= 20) {
+    const curated = n5ChapterKanjiSupport(target, Number(context.moduleSort));
+    if (curated.length) return curated.map(row => ({
+      ...(out.find(existing => compoundKey(existing) === compoundKey(row)) || {}),
+      ...row, kind: kanjiUsageKind(row.japanese, target),
+      source: 'manual', scope: 'manual', usageLevel: 'N5', moduleTitle: `Pilihan Bab ${Number(context.moduleSort)}`,
     }));
   }
   return out;

@@ -6849,8 +6849,8 @@ function renderChapterReview(data, includeSections = false) {
       ${transfer.title ? `<h3>${escapeHtml(transfer.title)}</h3>` : ''}<p>${escapeHtml(transfer.prompt)}</p>
       ${transfer.steps?.length ? `<ol>${transfer.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>` : ''}
       ${transfer.roleCards?.length ? `<h4>Kartu peran</h4><ul>${transfer.roleCards.map(c => `<li><strong>${escapeHtml(c.role)} — ${escapeHtml(c.name)}</strong>: ${escapeHtml(c.facts)}</li>`).join('')}</ul>` : ''}
-      ${transfer.exampleIntroduction || transfer.exampleDialogue?.length ? `<details><summary>Lihat contoh setelah mencoba</summary>
-        ${transfer.exampleIntroduction ? `<h4>Contoh perkenalan</h4><p lang="ja">${escapeHtml(transfer.exampleIntroduction)}</p>` : ''}
+      ${transfer.exampleText || transfer.exampleIntroduction || transfer.exampleDialogue?.length ? `<details><summary>Lihat contoh setelah mencoba</summary>
+        ${transfer.exampleText || transfer.exampleIntroduction ? `<h4>${transfer.exampleText ? 'Contoh tulisan' : 'Contoh perkenalan'}</h4><p lang="ja">${escapeHtml(transfer.exampleText || transfer.exampleIntroduction)}</p>` : ''}
         ${transfer.exampleDialogue?.length ? `<h4>Contoh percakapan</h4><div lang="ja">${transfer.exampleDialogue.map(line => `<p>${escapeHtml(line)}</p>`).join('')}</div>` : ''}
       </details>` : ''}
       <h4>Tinjau hasilmu</h4><p>Gunakan rubrik ini untuk meninjau jawabanmu atau membahasnya bersama pengajar. Latihan ini tidak dinilai otomatis.</p>

@@ -33,7 +33,12 @@
     document.getElementById('show').addEventListener('click', event => {
       const report = document.getElementById('report');
       report.hidden = !report.hidden;
-      report.textContent = report.hidden ? '' : serialized;
+      // Keep the browser responsive for a complete course; the download retains
+      // the full report. A multi-megabyte text node can stall accessibility tools.
+      const preview = serialized.length > 60000
+        ? `${serialized.slice(0, 60000)}\n\nPratinjau dibatasi. Gunakan Unduh salinan JSON untuk data lengkap.`
+        : serialized;
+      report.textContent = report.hidden ? '' : preview;
       event.currentTarget.setAttribute('aria-expanded', String(!report.hidden));
       event.currentTarget.textContent = report.hidden ? 'Tampilkan data materi' : 'Sembunyikan data materi';
     });
