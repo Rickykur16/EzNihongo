@@ -11340,7 +11340,7 @@ function renderKanjiLesson(course, module, lesson, nav) {
     if (k.id) _kanjiByIdCache.set(k.id, { ...k, compounds: k.compounds || [] });
   }
   const intro = (lesson.body && lesson.body.trim())
-    ? lesson.body
+    ? lesson.body.replace(/<\/?p>/gi, ' ').replace(/\s+/g, ' ').trim()
     : 'Klik karakter untuk melihat goresan, cara mengingat, dan kata nyata yang memakai Kanji ini.';
 
   const kanjiToolbar = items.length > 0 ? `
