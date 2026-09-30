@@ -19,10 +19,11 @@ test('N4 existing grammar lesson displays its scene and optional checks without 
 
 test('worksheet opens all current chapter tasks, escapes content and returns through the normal lesson renderer',()=>{
  const start=html.indexOf('window.openChapterWorksheet ='),end=html.indexOf('function renderLessonMaterials(',start);
- const root={innerHTML:''};let renders=0;
+ const root={innerHTML:''};let renders=0,stopped=0;
  const module={id:'m',title:'Bab <1>',lessons:[{type:'video',grammar:[{id:'g',pattern:'P',notes:'N',examples:[{japanese:'はい。',indonesian:'Ya.'}]}]},{type:'grammar_task',grammarTask:[{id:'g',instruction:'Untuk jawaban di situs, pilih satu konteks.\n\nTugas <contoh>'}]}]};
- const ctx=vm.createContext({window:{scrollTo(){}},document:{getElementById:()=>root},currentState:{course:'n4',moduleId:'m',view:'intro'},COURSE_CONTENT:{n4:{modules:[module]}},prepareMobileSidebarContentFocus:()=>()=>{},closeSidebar(){},escapeHtml,renderLesson:()=>{renders++;root.innerHTML='intro';}});
+ const ctx=vm.createContext({window:{scrollTo(){}},document:{getElementById:()=>root},currentState:{course:'n4',moduleId:'m',view:'intro'},COURSE_CONTENT:{n4:{modules:[module]}},prepareMobileSidebarContentFocus:()=>()=>{},closeSidebar(){},escapeHtml,gkStopAll(){stopped++;},_stopAllTts(){stopped++;},destroyYoutubeSegmentPlayer(){stopped++;},renderLesson:()=>{renders++;root.innerHTML='intro';}});
  vm.runInContext(html.slice(start,end),ctx);ctx.window.openChapterWorksheet();
  assert.match(root.innerHTML,/Tugas &lt;contoh&gt;/);assert.doesNotMatch(root.innerHTML,/Untuk jawaban di situs/);assert.match(root.innerHTML,/window.print/);
+ assert.equal(stopped,3);assert.equal(ctx.window.__quizNavigationEpoch,1);
  ctx.window.closeChapterWorksheet();assert.equal(renders,1);assert.equal(root.innerHTML,'intro');
 });

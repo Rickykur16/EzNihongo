@@ -13719,6 +13719,11 @@ window.openChapterWorksheet = () => {
   const module = course?.modules?.find(m => m.id === currentState.moduleId);
   const root = document.getElementById('main-content');
   if (currentState.course !== 'n4' || !module || !root) return;
+  window.__quizNavigationEpoch = (window.__quizNavigationEpoch || 0) + 1;
+  window.EzDialogueQuestions?.unmount();
+  gkStopAll();
+  _stopAllTts();
+  destroyYoutubeSegmentPlayer();
   const focus = prepareMobileSidebarContentFocus();
   closeSidebar();
   const tasks = module.lessons.filter(l => l.type === 'grammar_task').flatMap(l => l.grammarTask || []);
