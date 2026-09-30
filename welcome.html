@@ -9590,7 +9590,7 @@ function renderDeckLesson(course, module, lesson, nav) {
   }
 
   const intro = (lesson.body && lesson.body.trim())
-    ? lesson.body
+    ? lesson.body.replace(/<\/?p>/gi, ' ').replace(/\s+/g, ' ').trim()
     : 'Klik kartu untuk melihat contoh kalimat, atau klik tombol speaker untuk mendengar pengucapan.';
   const exampleCount = items.reduce((n, it) => n + (Array.isArray(it.examples) ? it.examples.length : 0), 0);
   const heroBlock = items.length > 0 ? `
