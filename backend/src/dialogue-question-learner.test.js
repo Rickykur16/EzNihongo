@@ -22,12 +22,13 @@ question.question_fingerprint = questionFingerprint({ kind: question.kind, promp
 const inline = async () => ({ mode: 'inline', flowVersion: 2, reason: 'eligible', activeSessionId: null });
 const body = { questionVersion: question.question_version, optionIndex: 0, requestId: id(8) };
 
-function fixture({ questionRow = question, published = true, grant = true,
+function fixture({ questionRow = question, published = true, grant = true, conversation = false,
   accountEmail = user.email,
   session = null, batchRows = null } = {}) {
   const calls = [], attempts = [];
   const client = { async query(sql, params = []) {
     calls.push({ sql, params });
+    if (sql.includes('SELECT c.id FROM lessons c')) return { rows: conversation ? [{ id: id(90) }] : [] };
     if (sql.includes('SELECT email FROM users')) return { rows: accountEmail == null ? [] : [{ email: accountEmail }] };
     if (sql.includes('FROM lessons l JOIN modules m')) return { rows: [{ ...lesson, is_published: published }] };
     if (sql.includes('FROM user_enrollments')) return { rows: grant ? [{ '?column?': 1 }] : [] };
@@ -81,6 +82,31 @@ test('public batch returns only current comprehension with a strict answer-free 
     'dialogueFingerprint', 'boundaryFingerprint']) assert.equal(serialized.includes(secret), false);
   assert.deepEqual((await listLearnerDialogueQuestions(lesson.id, user, f)).grammars, []);
   assert.equal(f.calls.some(call => call.sql.includes('q.source_lesson_id=$1')), true);
+});
+
+test('dedicated conversation checks work without enabling or changing the Bunpou flow', async () => {
+  for (const mode of ['legacy', 'legacy_session']) {
+    const f = fixture({ conversation: true });
+    const placement = { mode, activeSessionId: mode === 'legacy_session' ? id(80) : null };
+    const options = { ...f, resolvePlacement: async () => placement };
+    const result = await listLearnerDialogueQuestions(lesson.id, user, options);
+    assert.equal(result.placement.mode, mode);
+    assert.equal(result.placement.activeSessionId, placement.activeSessionId);
+    assert.equal(result.standalone, true);
+    assert.equal(result.grammars.length, 1);
+    assert.doesNotMatch(JSON.stringify(result), /correctIndex|explanation|evidence/);
+    assert.equal((await answerDialogueQuestion(question.id, user, body, options)).correct, true);
+    assert.equal(f.attempts.length, 1);
+    assert.equal(f.calls.some(({ sql }) => /(?:INSERT INTO|UPDATE) (?:grammar_task_sessions|app_settings)/.test(sql)), false);
+  }
+  for (const change of [{ grant: false }, { published: false },
+    { questionRow: { ...question, dialogue_fingerprint: 'stale' } }]) {
+    const f = fixture({ conversation: true, ...change });
+    await assert.rejects(answerDialogueQuestion(question.id, user, body, {
+      ...f, resolvePlacement: async () => ({ mode: 'legacy' }),
+    }));
+    assert.equal(f.attempts.length, 0);
+  }
 });
 
 test('transfer, stale dialogue and missing access cannot be answered', async () => {

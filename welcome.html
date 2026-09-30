@@ -4811,7 +4811,7 @@ function getUserName(user = session) {
 <script src="assets/dialogue/catalog.js?v=1"></script>
 <script src="src/dialogue-furigana.js?v=1"></script>
 <script src="src/dialogue-scene.js?v=4"></script>
-<script src="src/dialogue-questions.js?v=20260929-1"></script>
+<script src="src/dialogue-questions.js?v=20261001-1"></script>
 <script src="learning-state.js?v=20260911-1"></script>
 <script>
 // ═══════════════════════════════════════════════
@@ -8672,8 +8672,8 @@ function renderConversationLesson(course, module, lesson, nav) {
   // Scenes used to mount only when a collapsible grammar block opened; this
   // page has no such block, so it mounts them itself.
   window.EzDialogue?.enhance?.(root);
-  // The backend owns placement and answer keys; even legacy placement keeps
-  // this source dialogue readable without rendering inline questions.
+  // The backend owns answer keys. Dedicated conversation checks are available
+  // independently of the linked Bunpou task's placement/session version.
   window.EzDialogueQuestions?.mount({ root, lesson: source,
     openLegacyTask: linkedTask ? () => window.selectLesson(module.id, linkedTask.lesson.id) : null });
 }

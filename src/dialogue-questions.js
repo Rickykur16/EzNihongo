@@ -72,6 +72,17 @@
     unmount();
     if (!root || !lesson?.apiId || !Array.isArray(lesson.grammar) ||
         !lesson.grammar.some(grammar => String(grammar.example_dialog || '').trim())) return;
+    // Goals belong to the dialogue, even when questions are unavailable or
+    // the separate Bunpou task still uses a legacy session.
+    for (const grammar of lesson.grammar) {
+      if (!String(grammar.example_dialog || '').trim()) continue;
+      const goal = slot(root, 'data-dq-goal-for', grammar.id);
+      const text = String(grammar.communication_goal || '').trim();
+      if (goal && text) {
+        goal.innerHTML = `<strong>Tujuan komunikasi</strong><p>${esc(text)}</p>`;
+        goal.hidden = false;
+      }
+    }
     const context = { root, lessonId: lesson.apiId, controller: new AbortController(),
       questions: new Map(), openLegacyTask };
     mounted = context;
@@ -162,9 +173,9 @@
           notice.innerHTML = '<p>Sesi tugas Bunpou yang sedang berjalan tetap tersedia.</p><button type="button" data-dq-open-task>Buka tugas Bunpou</button>';
           notice.hidden = false;
         }
-        return;
+        if (batch.standalone !== true) return;
       }
-      if (batch.placement?.mode !== 'inline') return;
+      if (batch.placement?.mode !== 'inline' && batch.standalone !== true) return;
       const byGrammar = new Map((batch.grammars || []).map(group => [group.grammarId, group.questions]));
       for (const grammar of lesson.grammar) {
         if (!String(grammar.example_dialog || '').trim()) continue;

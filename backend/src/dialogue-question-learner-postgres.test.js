@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import pg from 'pg';
-import { answerDialogueQuestion, latestDialogueQuestionAttempt } from './dialogue-question-learner.js';
+import { answerDialogueQuestion, latestDialogueQuestionAttempt, listLearnerDialogueQuestions } from './dialogue-question-learner.js';
 import { dialogueFingerprint, questionFingerprint } from './dialogue-question-service.js';
 
 const migration = await readFile(new URL('../migrations/165_learning_flow_boundary_foundation.sql',
@@ -117,4 +117,48 @@ test('dialogue answers are concurrent-idempotent and retain access/stale guarant
     { ...body, requestId: randomUUID() }, dependencies), error => error.status === 409 &&
     error.message === 'question_version_conflict');
   assert.equal((await setup.query('SELECT count(*)::int AS n FROM dialogue_question_attempts')).rows[0].n, 1);
+});
+
+test('standalone comprehension requires a same-module conversation and retains access checks', {
+  skip: !process.env.TEST_DATABASE_URL && 'Set TEST_DATABASE_URL to an isolated local test database',
+}, async t => {
+  const url = new URL(process.env.TEST_DATABASE_URL);
+  assert.ok(['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname));
+  assert.equal(url.searchParams.has('host'), false);
+  assert.equal(url.searchParams.has('hostaddr'), false);
+  assert.match(url.pathname, /test/i);
+  const schema = 'dialogue_standalone_test_' + randomUUID().replaceAll('-', '');
+  const pool = new pg.Pool({ connectionString: url.href, max: 1 });
+  t.after(async () => { try { await pool.query(`DROP SCHEMA "${schema}" CASCADE`); } finally { await pool.end(); } });
+  await pool.query(`CREATE SCHEMA "${schema}"; SET search_path TO "${schema}";
+    CREATE TABLE users(id UUID PRIMARY KEY,email TEXT);
+    CREATE TABLE courses(id UUID PRIMARY KEY,is_published BOOLEAN);
+    CREATE TABLE modules(id UUID PRIMARY KEY,course_id UUID);
+    CREATE TABLE lessons(id UUID PRIMARY KEY,module_id UUID,type TEXT,conversation_source_lesson_id UUID);
+    CREATE TABLE user_enrollments(user_id UUID,course_id UUID,status TEXT,expires_at TIMESTAMPTZ);
+    CREATE TABLE module_grammar(id UUID PRIMARY KEY,module_id UUID,lesson_id UUID,example_dialog TEXT,
+      example_dialog_id TEXT,communication_goal TEXT,dialog_scene JSONB);
+    CREATE TABLE grammar_dialog_questions(id UUID,grammar_id UUID,source_lesson_id UUID,question_version UUID,
+      prompt TEXT,options JSONB,sort_order INT,dialogue_fingerprint TEXT,state TEXT,kind TEXT);`);
+  const [userId, courseId, moduleId, sourceId, conversationId, grammarId] = Array.from({length:6}, () => randomUUID());
+  await pool.query("INSERT INTO users VALUES ($1,'test@example.test')", [userId]);
+  await pool.query('INSERT INTO courses VALUES ($1,true)', [courseId]);
+  await pool.query('INSERT INTO modules VALUES ($1,$2)', [moduleId, courseId]);
+  await pool.query("INSERT INTO lessons VALUES ($1,$2,'video',NULL),($3,$4,'conversation',$1)", [sourceId,moduleId,conversationId,randomUUID()]);
+  await pool.query("INSERT INTO user_enrollments VALUES ($1,$2,'active',NULL)", [userId,courseId]);
+  const grammar = { example_dialog:'A: ねこです。',example_dialog_id:'A: Kucing.',communication_goal:'Nama hewan',dialog_scene:null };
+  await pool.query('INSERT INTO module_grammar VALUES ($1,$2,$3,$4,$5,$6,NULL)', [grammarId,moduleId,sourceId,grammar.example_dialog,grammar.example_dialog_id,grammar.communication_goal]);
+  await pool.query("INSERT INTO grammar_dialog_questions VALUES ($1,$2,$3,$4,'Apa?',$5,0,$6,'active','comprehension')", [randomUUID(),grammarId,sourceId,randomUUID(),JSON.stringify(['Kucing','Anjing','Burung']),dialogueFingerprint(grammar)]);
+  const options = { transaction: fn => fn(pool),adminCheck:async()=>false,resolvePlacement:async()=>({mode:'legacy'}) };
+  const user = {id:userId,email:'test@example.test'};
+  assert.equal((await listLearnerDialogueQuestions(sourceId,user,options)).grammars.length,0);
+  await pool.query('UPDATE lessons SET module_id=$1 WHERE id=$2', [moduleId,conversationId]);
+  const result = await listLearnerDialogueQuestions(sourceId,user,options);
+  assert.equal(result.standalone,true);
+  assert.equal(result.placement.mode,'legacy');
+  assert.equal(result.grammars.length,1);
+  await pool.query("UPDATE module_grammar SET example_dialog='A: いぬです。'");
+  assert.equal((await listLearnerDialogueQuestions(sourceId,user,options)).grammars.length,0);
+  await pool.query("UPDATE user_enrollments SET status='revoked'");
+  await assert.rejects(listLearnerDialogueQuestions(sourceId,user,options), e=>e.status===403);
 });

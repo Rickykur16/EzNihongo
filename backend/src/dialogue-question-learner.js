@@ -26,6 +26,16 @@ const publicQuestion = row => ({ id: row.id, version: row.question_version,
 
 export const defaultDialoguePlacement = resolveFlowEligibility;
 
+// A dedicated Percakapan lesson owns formative comprehension independently
+// of the Bunpou v2 rollout. Keep its placement/session metadata unchanged.
+async function hasConversationLesson(client, lessonId) {
+  const result = await client.query(`SELECT c.id FROM lessons c
+    JOIN lessons s ON s.id=c.conversation_source_lesson_id
+    WHERE s.id=$1 AND c.type='conversation' AND s.type IN ('video','text')
+      AND c.module_id=s.module_id LIMIT 1`, [lessonId]);
+  return result.rows.length > 0;
+}
+
 async function lessonScope(client, lessonId, user, adminCheck) {
   if (!UUID.test(String(lessonId || ''))) fail(400, 'invalid_lesson_id');
   const account = (await client.query('SELECT email FROM users WHERE id=$1 FOR SHARE',
@@ -64,7 +74,8 @@ export async function listLearnerDialogueQuestions(lessonId, user, {
     const lesson = await lessonScope(client, lessonId, user, adminCheck);
     const placement = placementDto(await resolvePlacement({ client, user, lessonId,
       courseId: lesson.course_id, moduleId: lesson.module_id }));
-    if (placement.mode !== 'inline') return { lessonId, placement, grammars: [] };
+    const standalone = placement.mode !== 'inline' && await hasConversationLesson(client, lessonId);
+    if (placement.mode !== 'inline' && !standalone) return { lessonId, placement, grammars: [] };
     const rows = (await client.query(`SELECT q.id,q.grammar_id,q.question_version,q.prompt,
         q.options,q.sort_order,q.dialogue_fingerprint,g.example_dialog,g.example_dialog_id,
         g.communication_goal,g.dialog_scene,g.module_id,g.lesson_id
@@ -78,7 +89,7 @@ export async function listLearnerDialogueQuestions(lessonId, user, {
       if (!groups.has(row.grammar_id)) groups.set(row.grammar_id, []);
       groups.get(row.grammar_id).push(publicQuestion(row));
     }
-    return { lessonId, placement, grammars: [...groups]
+    return { lessonId, placement, ...(standalone ? { standalone: true } : {}), grammars: [...groups]
       .filter(([, questions]) => questions.length >= 1 && questions.length <= 2)
       .map(([grammarId, questions]) => ({ grammarId, questions })) };
   });
@@ -120,7 +131,9 @@ export async function answerDialogueQuestion(questionId, user, body, {
     const placement = placementDto(await resolvePlacement({ client, user,
       lessonId: source.source_lesson_id, courseId: lesson.course_id,
       moduleId: lesson.module_id, sharedConfig: true }));
-    if (placement.mode !== 'inline') fail(409, 'inline_placement_unavailable');
+    if (placement.mode !== 'inline' && !await hasConversationLesson(client, source.source_lesson_id)) {
+      fail(409, 'inline_placement_unavailable');
+    }
     // Authoring locks grammar before question; use the same order here.
     const grammar = (await client.query(`SELECT * FROM module_grammar WHERE id=$1 FOR SHARE`,
       [source.grammar_id])).rows[0];

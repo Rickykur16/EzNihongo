@@ -174,6 +174,31 @@ test('inline batch renders escaped goal and questions without initial answer lea
   assert.equal(opened, 1);
 });
 
+test('standalone conversation shows goal and check while preserving a legacy task session', async () => {
+  for (const mode of ['legacy', 'legacy_session']) {
+    const flow = controller(async () => response({ ...batch(mode), standalone: true }));
+    const root = rootFor();
+    await flow.mount({ root, lesson: lesson('lesson-1', 'Mengenali barang.'), openLegacyTask() {} });
+    assert.equal(root.goal.hidden, false);
+    assert.match(root.goal.innerHTML, /Mengenali barang/);
+    assert.equal(root.questions.hidden, false);
+    assert.match(root.questions.innerHTML, /Periksa jawaban/);
+    assert.equal(root.notice.hidden, mode !== 'legacy_session');
+  }
+});
+
+test('authored goals remain visible without question availability', async () => {
+  for (const api of [async () => ({ ok: false }), async () => { throw Error('offline'); },
+    async () => response(batch('legacy'))]) {
+    const flow = controller(api);
+    const root = rootFor();
+    await flow.mount({ root, lesson: lesson('lesson-1', '<b>Tujuan</b>') });
+    assert.equal(root.goal.hidden, false);
+    assert.match(root.goal.innerHTML, /&lt;b&gt;Tujuan&lt;\/b&gt;/);
+    assert.equal(root.questions.hidden, true);
+  }
+});
+
 test('double click makes one POST; network retry keeps ID, changed answer and later attempt get new IDs', async () => {
   const first = deferred();
   const writes = [];
