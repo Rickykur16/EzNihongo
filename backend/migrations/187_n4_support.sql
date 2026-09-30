@@ -6,13 +6,13 @@ DECLARE p jsonb := $content${
   "schemaVersion": 1,
   "version": "n4-support-v1",
   "courseId": "e22d819f-8526-4af6-a8c5-02258c12e6f0",
-  "capturedAt": "2026-09-30T21:08:46.506Z",
+  "capturedAt": "2026-09-30T22:26:12.341Z",
   "chapters": [
     {
       "id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
       "slug": "n4-b01-menjelaskan-benda-kegiatan",
       "sort_order": 1,
-      "title": "N4-B01 | Menjelaskan Benda & Kegiatan",
+      "title": "BAB 1 : Menjelaskan Benda & Kegiatan",
       "lessons": [
         {
           "id": "f8f00b44-6151-4845-84c7-0c9719ba9845",
@@ -118,7 +118,7 @@ DECLARE p jsonb := $content${
       "id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
       "slug": "n4-b02-penjelasan-pendapat-kutipan",
       "sort_order": 2,
-      "title": "N4-B02 | Penjelasan, Pendapat & Kutipan",
+      "title": "BAB 2 : Penjelasan, Pendapat & Kutipan",
       "lessons": [
         {
           "id": "18c1c131-3767-4b83-8aa8-c72a7d14ec7f",
@@ -224,7 +224,7 @@ DECLARE p jsonb := $content${
       "id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
       "slug": "n4-b03-waktu-urutan-kegiatan-beriringan",
       "sort_order": 3,
-      "title": "N4-B03 | Waktu, Urutan & Kegiatan Beriringan",
+      "title": "BAB 3 : Waktu, Urutan & Kegiatan Beriringan",
       "lessons": [
         {
           "id": "09f7b343-ce05-4b2c-908c-65bf24eebb3a",
@@ -330,7 +330,7 @@ DECLARE p jsonb := $content${
       "id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
       "slug": "n4-b04-kemampuan-persepsi",
       "sort_order": 4,
-      "title": "N4-B04 | Kemampuan & Persepsi",
+      "title": "BAB 4 : Kemampuan & Persepsi",
       "lessons": [
         {
           "id": "a5bd094b-6373-448d-88ee-70ddebf45c97",
@@ -436,7 +436,7 @@ DECLARE p jsonb := $content${
       "id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
       "slug": "n4-b05-niat-keputusan-kebiasaan",
       "sort_order": 5,
-      "title": "N4-B05 | Niat, Keputusan & Kebiasaan",
+      "title": "BAB 5 : Niat, Keputusan & Kebiasaan",
       "lessons": [
         {
           "id": "270b20fc-55b6-4c2a-975d-6433703ddd92",
@@ -542,7 +542,7 @@ DECLARE p jsonb := $content${
       "id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
       "slug": "n4-b06-mencoba-menyelesaikan-menanggapi-hasil",
       "sort_order": 6,
-      "title": "N4-B06 | Mencoba, Menyelesaikan & Menanggapi Hasil",
+      "title": "BAB 6 : Mencoba, Menyelesaikan & Menanggapi Hasil",
       "lessons": [
         {
           "id": "f1f98a11-3189-40ee-9283-332913161573",
@@ -648,7 +648,7 @@ DECLARE p jsonb := $content${
       "id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
       "slug": "n4-b07-verba-berpasangan-keadaan-persiapan",
       "sort_order": 7,
-      "title": "N4-B07 | Verba Berpasangan, Keadaan & Persiapan",
+      "title": "BAB 7 : Verba Berpasangan, Keadaan & Persiapan",
       "lessons": [
         {
           "id": "1441845c-06a8-4d7b-9c39-0c408768e364",
@@ -754,7 +754,7 @@ DECLARE p jsonb := $content${
       "id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
       "slug": "n4-b08-arah-perkembangan-tahap-aktivitas",
       "sort_order": 8,
-      "title": "N4-B08 | Arah, Perkembangan & Tahap Aktivitas",
+      "title": "BAB 8 : Arah, Perkembangan & Tahap Aktivitas",
       "lessons": [
         {
           "id": "02abb0a5-0ac2-48ea-8678-827768212b07",
@@ -860,7 +860,7 @@ DECLARE p jsonb := $content${
       "id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
       "slug": "n4-b09-cara-kemudahan-perubahan-sifat",
       "sort_order": 9,
-      "title": "N4-B09 | Cara, Kemudahan & Perubahan Sifat",
+      "title": "BAB 9 : Cara, Kemudahan & Perubahan Sifat",
       "lessons": [
         {
           "id": "313a1ca6-5694-43ca-b439-3d16c368fd0f",
@@ -966,7 +966,7 @@ DECLARE p jsonb := $content${
       "id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
       "slug": "n4-b10-alasan-kontras-konsesi",
       "sort_order": 10,
-      "title": "N4-B10 | Alasan, Kontras & Konsesi",
+      "title": "BAB 10 : Alasan, Kontras & Konsesi",
       "lessons": [
         {
           "id": "6ccaecf0-f1b5-42f5-9f3d-f8ff6e6ba1ee",
@@ -1072,7 +1072,7 @@ DECLARE p jsonb := $content${
       "id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
       "slug": "n4-b11-dugaan-informasi-orang-lain",
       "sort_order": 11,
-      "title": "N4-B11 | Dugaan & Informasi dari Orang Lain",
+      "title": "BAB 11 : Dugaan & Informasi dari Orang Lain",
       "lessons": [
         {
           "id": "d430200b-f1e8-4620-a9a1-2046ddb53c13",
@@ -1178,7 +1178,7 @@ DECLARE p jsonb := $content${
       "id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
       "slug": "n4-b12-kemiripan-perasaan-keinginan",
       "sort_order": 12,
-      "title": "N4-B12 | Kemiripan, Perasaan & Keinginan",
+      "title": "BAB 12 : Kemiripan, Perasaan & Keinginan",
       "lessons": [
         {
           "id": "ff2d532c-3855-4c76-be88-ba32675ed179",
@@ -1284,7 +1284,7 @@ DECLARE p jsonb := $content${
       "id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
       "slug": "n4-b13-pengandaian-to-tara",
       "sort_order": 13,
-      "title": "N4-B13 | Pengandaian と & たら",
+      "title": "BAB 13 : Pengandaian と & たら",
       "lessons": [
         {
           "id": "9df39a33-4b2e-4310-8706-698b1c6593be",
@@ -1390,7 +1390,7 @@ DECLARE p jsonb := $content${
       "id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
       "slug": "n4-b14-pengandaian-ba-nara",
       "sort_order": 14,
-      "title": "N4-B14 | Pengandaian ば & なら",
+      "title": "BAB 14 : Pengandaian ば & なら",
       "lessons": [
         {
           "id": "5b452a60-6fd9-42f8-a552-b7b2181e1cb4",
@@ -1496,7 +1496,7 @@ DECLARE p jsonb := $content${
       "id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
       "slug": "n4-b15-tujuan-kegunaan-instruksi-tidak-langsung",
       "sort_order": 15,
-      "title": "N4-B15 | Tujuan, Kegunaan & Instruksi Tidak Langsung",
+      "title": "BAB 15 : Tujuan, Kegunaan & Instruksi Tidak Langsung",
       "lessons": [
         {
           "id": "d85f87ab-33b9-4b96-86a6-eb895ec318cc",
@@ -1602,7 +1602,7 @@ DECLARE p jsonb := $content${
       "id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
       "slug": "n4-b16-saran-kewajiban-instruksi-tegas",
       "sort_order": 16,
-      "title": "N4-B16 | Saran, Kewajiban & Instruksi Tegas",
+      "title": "BAB 16 : Saran, Kewajiban & Instruksi Tegas",
       "lessons": [
         {
           "id": "78252fc9-41bc-4844-b698-5780c219365b",
@@ -1708,7 +1708,7 @@ DECLARE p jsonb := $content${
       "id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
       "slug": "n4-b17-memberi-menerima-benda",
       "sort_order": 17,
-      "title": "N4-B17 | Memberi & Menerima Benda",
+      "title": "BAB 17 : Memberi & Menerima Benda",
       "lessons": [
         {
           "id": "65de8bac-3121-4909-bbe6-83ef7bba70a1",
@@ -1795,7 +1795,7 @@ DECLARE p jsonb := $content${
       "id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
       "slug": "n4-b18-bantuan-permintaan-harapan",
       "sort_order": 18,
-      "title": "N4-B18 | Bantuan, Permintaan & Harapan",
+      "title": "BAB 18 : Bantuan, Permintaan & Harapan",
       "lessons": [
         {
           "id": "7ba0c2e7-d425-44c3-8772-dc1f94aecb7d",
@@ -1901,7 +1901,7 @@ DECLARE p jsonb := $content${
       "id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
       "slug": "n4-b19-pertanyaan-tertanam-pembatasan-jumlah",
       "sort_order": 19,
-      "title": "N4-B19 | Pertanyaan Tertanam & Pembatasan Jumlah",
+      "title": "BAB 19 : Pertanyaan Tertanam & Pembatasan Jumlah",
       "lessons": [
         {
           "id": "f02ca97c-b47c-43ca-a2ff-b04ef4084436",
@@ -2007,7 +2007,7 @@ DECLARE p jsonb := $content${
       "id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
       "slug": "n4-b20-perbandingan-batas-kondisi",
       "sort_order": 20,
-      "title": "N4-B20 | Perbandingan, Batas & Kondisi",
+      "title": "BAB 20 : Perbandingan, Batas & Kondisi",
       "lessons": [
         {
           "id": "1477d7cc-78d1-4023-b265-faf9f064ae3b",
@@ -2113,7 +2113,7 @@ DECLARE p jsonb := $content${
       "id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
       "slug": "n4-b21-kalimat-pasif",
       "sort_order": 21,
-      "title": "N4-B21 | Kalimat Pasif",
+      "title": "BAB 21 : Kalimat Pasif",
       "lessons": [
         {
           "id": "c3ffc052-8478-46e7-82d3-732691da62eb",
@@ -2219,7 +2219,7 @@ DECLARE p jsonb := $content${
       "id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
       "slug": "n4-b22-kausatif-kausatif-pasif",
       "sort_order": 22,
-      "title": "N4-B22 | Kausatif & Kausatif-Pasif",
+      "title": "BAB 22 : Kausatif & Kausatif-Pasif",
       "lessons": [
         {
           "id": "6a4a7ddc-c0aa-4560-b550-0bc0e398267b",
@@ -2325,7 +2325,7 @@ DECLARE p jsonb := $content${
       "id": "75f7e5ca-c982-4011-9803-7910b6b91002",
       "slug": "n4-b23-bahasa-hormat-sonkeigo",
       "sort_order": 23,
-      "title": "N4-B23 | Bahasa Hormat: Sonkeigo",
+      "title": "BAB 23 : Bahasa Hormat: Sonkeigo",
       "lessons": [
         {
           "id": "5102acc9-b902-4f23-b2b4-6c4e7a06edcd",
@@ -2427,7 +2427,7 @@ DECLARE p jsonb := $content${
       "id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
       "slug": "n4-b24-bahasa-merendah-permintaan-formal",
       "sort_order": 24,
-      "title": "N4-B24 | Bahasa Merendah & Permintaan Formal",
+      "title": "BAB 24 : Bahasa Merendah & Permintaan Formal",
       "lessons": [
         {
           "id": "c758e00d-af02-4f7c-948e-1970430700a3",

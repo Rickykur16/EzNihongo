@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "version": "n4-assessment-v1",
   "courseId": "e22d819f-8526-4af6-a8c5-02258c12e6f0",
-  "capturedAt": "2026-09-30T21:08:46.506Z",
+  "capturedAt": "2026-09-30T22:26:12.341Z",
   "banks": [
     {
       "chapter": 1,
@@ -36,7 +36,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 1,
-        "title": "N4-B01 | Menjelaskan Benda & Kegiatan",
+        "title": "BAB 1 : Menjelaskan Benda & Kegiatan",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -1077,7 +1077,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 2,
-        "title": "N4-B02 | Penjelasan, Pendapat & Kutipan",
+        "title": "BAB 2 : Penjelasan, Pendapat & Kutipan",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -2119,7 +2119,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 3,
-        "title": "N4-B03 | Waktu, Urutan & Kegiatan Beriringan",
+        "title": "BAB 3 : Waktu, Urutan & Kegiatan Beriringan",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -3162,7 +3162,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 4,
-        "title": "N4-B04 | Kemampuan & Persepsi",
+        "title": "BAB 4 : Kemampuan & Persepsi",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -4202,7 +4202,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 5,
-        "title": "N4-B05 | Niat, Keputusan & Kebiasaan",
+        "title": "BAB 5 : Niat, Keputusan & Kebiasaan",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -5243,7 +5243,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 6,
-        "title": "N4-B06 | Mencoba, Menyelesaikan & Menanggapi Hasil",
+        "title": "BAB 6 : Mencoba, Menyelesaikan & Menanggapi Hasil",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -6283,7 +6283,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 7,
-        "title": "N4-B07 | Verba Berpasangan, Keadaan & Persiapan",
+        "title": "BAB 7 : Verba Berpasangan, Keadaan & Persiapan",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -7323,7 +7323,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 8,
-        "title": "N4-B08 | Arah, Perkembangan & Tahap Aktivitas",
+        "title": "BAB 8 : Arah, Perkembangan & Tahap Aktivitas",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -8365,7 +8365,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 9,
-        "title": "N4-B09 | Cara, Kemudahan & Perubahan Sifat",
+        "title": "BAB 9 : Cara, Kemudahan & Perubahan Sifat",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -9407,7 +9407,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 10,
-        "title": "N4-B10 | Alasan, Kontras & Konsesi",
+        "title": "BAB 10 : Alasan, Kontras & Konsesi",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -10449,7 +10449,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 11,
-        "title": "N4-B11 | Dugaan & Informasi dari Orang Lain",
+        "title": "BAB 11 : Dugaan & Informasi dari Orang Lain",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -11491,7 +11491,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 12,
-        "title": "N4-B12 | Kemiripan, Perasaan & Keinginan",
+        "title": "BAB 12 : Kemiripan, Perasaan & Keinginan",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -12532,7 +12532,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 13,
-        "title": "N4-B13 | Pengandaian と & たら",
+        "title": "BAB 13 : Pengandaian と & たら",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -13572,7 +13572,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 14,
-        "title": "N4-B14 | Pengandaian ば & なら",
+        "title": "BAB 14 : Pengandaian ば & なら",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -14611,7 +14611,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 15,
-        "title": "N4-B15 | Tujuan, Kegunaan & Instruksi Tidak Langsung",
+        "title": "BAB 15 : Tujuan, Kegunaan & Instruksi Tidak Langsung",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -15652,7 +15652,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 16,
-        "title": "N4-B16 | Saran, Kewajiban & Instruksi Tegas",
+        "title": "BAB 16 : Saran, Kewajiban & Instruksi Tegas",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -16693,7 +16693,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 17,
-        "title": "N4-B17 | Memberi & Menerima Benda",
+        "title": "BAB 17 : Memberi & Menerima Benda",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -17732,7 +17732,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 18,
-        "title": "N4-B18 | Bantuan, Permintaan & Harapan",
+        "title": "BAB 18 : Bantuan, Permintaan & Harapan",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -18774,7 +18774,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 19,
-        "title": "N4-B19 | Pertanyaan Tertanam & Pembatasan Jumlah",
+        "title": "BAB 19 : Pertanyaan Tertanam & Pembatasan Jumlah",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -19816,7 +19816,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 20,
-        "title": "N4-B20 | Perbandingan, Batas & Kondisi",
+        "title": "BAB 20 : Perbandingan, Batas & Kondisi",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -20859,7 +20859,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 21,
-        "title": "N4-B21 | Kalimat Pasif",
+        "title": "BAB 21 : Kalimat Pasif",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -21900,7 +21900,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 22,
-        "title": "N4-B22 | Kausatif & Kausatif-Pasif",
+        "title": "BAB 22 : Kausatif & Kausatif-Pasif",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -22921,7 +22921,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 23,
-        "title": "N4-B23 | Bahasa Hormat: Sonkeigo",
+        "title": "BAB 23 : Bahasa Hormat: Sonkeigo",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,
@@ -23941,7 +23941,7 @@
       "policy": {
         "version": "n4-assessment-v1",
         "chapter": 24,
-        "title": "N4-B24 | Bahasa Merendah & Permintaan Formal",
+        "title": "BAB 24 : Bahasa Merendah & Permintaan Formal",
         "selection": "all",
         "passingScorePct": 70,
         "categoryMinimumPct": 50,

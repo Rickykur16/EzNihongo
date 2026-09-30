@@ -4,7 +4,7 @@ DO $support$
 DECLARE p jsonb := $content${
   "schemaVersion": 1,
   "courseId": "e22d819f-8526-4af6-a8c5-02258c12e6f0",
-  "capturedAt": "2026-09-30T21:08:46.506Z",
+  "capturedAt": "2026-09-30T22:26:12.341Z",
   "items": [
     {
       "grammarId": "3b41a238-b4f1-4327-a8e9-de69cdfbc804",
