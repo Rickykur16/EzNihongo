@@ -246,6 +246,7 @@ export function pickCompoundOwners(entries) {
 // actually took hold, not merely one lucky answer. An item with no history at
 // all still offers exactly one direction, otherwise material practised before
 // this rule existed would become permanently invisible.
+const UNLOCK_MIN_REPS = 2;
 export function unlockedSkills(entries) {
   const byItem = new Map();
   for (const entry of entries || []) {
@@ -267,7 +268,14 @@ export function unlockedSkills(entries) {
       if (first) out.add(first.key);
       continue;
     }
-    if (practised.some((entry) => entry.fsrsState === 'review')) {
+    // Satu jawaban benar pada kartu BARU langsung berstatus 'review' (FSRS:
+    // Good dari 'new' melompati fase learning), jadi `fsrsState === 'review'`
+    // saja membuka arah lain SEKETIKA — kanji yang baru dijawab benar muncul
+    // lagi di arah sebaliknya, dan hitungan "perlu direview" tidak pernah turun
+    // (4 kanji → sesi → tetap 4). Butuh setidaknya dua keberhasilan (reps ≥ 2)
+    // supaya benar-benar "memori sudah menetap". Baris warisan migrasi 137
+    // di-seed reps = attempts, jadi riwayat lama tidak terkunci selamanya.
+    if (practised.some((entry) => entry.fsrsState === 'review' && (Number(entry.fsrsReps) || 0) >= UNLOCK_MIN_REPS)) {
       for (const entry of group) out.add(entry.key);
     }
   }
