@@ -262,6 +262,10 @@ function autoCompoundOrder(a, b, context) {
     || a.japanese.localeCompare(b.japanese, 'ja');
 }
 
+// Bab 3 memperkenalkan kanji dasar. Kata ini tetap tersedia di Deck asalnya,
+// tetapi tidak menjadi contoh atau soal latihan inti kanji pada bab awal.
+const N5_BAB3_NON_CORE_USAGES = new Set(['外来語', '入学', '〜名', '一人前', '人気']);
+
 // Manual menjadi kata utama, lalu bank kosakata dari level JLPT yang sama
 // melengkapinya lintas Bab. Tidak ada target jumlah: semua kata relevan pada
 // level aktif ditampilkan apa adanya, tanpa mengambil kosakata level berikutnya.
@@ -305,6 +309,9 @@ export function deriveCompounds(character, manualCompounds, vocab, context = {})
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(row);
+  }
+  if (currentLevel === 'N5' && Number(context.moduleSort) === 3) {
+    return out.filter((row) => !N5_BAB3_NON_CORE_USAGES.has(row.japanese));
   }
   return out;
 }

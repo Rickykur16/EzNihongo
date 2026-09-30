@@ -111,10 +111,44 @@ test('rejects words containing a higher-level or unregistered Kanji even inside 
 
   const result = deriveCompounds('語', [
     { japanese: '謙譲語', reading: 'けんじょうご', indonesian: 'bahasa merendah' },
-  ], vocab, { moduleId: 'm3', moduleSort: 3, courseLevel: 'N5', kanjiCatalog });
+  ], vocab, { moduleId: 'm3', moduleSort: 4, courseLevel: 'N5', kanjiCatalog });
 
   assert.deepEqual(result.map((item) => item.japanese), ['外来語']);
   assert.equal(result[0].usageLevel, 'N5');
+});
+
+test('early N5 kanji practice omits five non-core usages without removing later deck words', () => {
+  const words = ['外来語', '入学', '〜名', '一人前', '人気'];
+  const kanjiCatalog = buildKanjiCatalog(
+    [...new Set(words.join('').match(/\p{Script=Han}/gu))]
+      .map((character) => ({ character, introduced_level: 'N5' }))
+  );
+  const vocab = words.map((japanese, index) => ({
+    vocabulary_id: `v${index}`,
+    module_id: index === 4 ? 'm18' : 'm3',
+    course_level: 'N5',
+    module_sort: index === 4 ? 18 : 3,
+    japanese,
+    reading: 'かな',
+    indonesian: 'contoh',
+  }));
+  vocab.push({ vocabulary_id: 'core', module_id: 'm3', course_level: 'N5', module_sort: 3,
+    japanese: '名前', reading: 'なまえ', indonesian: 'nama' });
+
+  for (const [character, excluded] of [['語', '外来語'], ['学', '入学'], ['名', '〜名'], ['人', '一人前']]) {
+    assert.ok(!deriveCompounds(character, [], vocab, {
+      moduleId: 'm3', moduleSort: 3, courseLevel: 'N5', kanjiCatalog,
+    }).some((word) => word.japanese === excluded));
+  }
+  assert.deepEqual(deriveCompounds('名', [], vocab, {
+    moduleId: 'm3', moduleSort: 3, courseLevel: 'N5', kanjiCatalog,
+  }).map((word) => word.japanese), ['名前']);
+  assert.ok(!deriveCompounds('人', [], vocab, {
+    moduleId: 'm3', moduleSort: 3, courseLevel: 'N5', kanjiCatalog,
+  }).some((word) => word.japanese === '人気'));
+  assert.ok(deriveCompounds('人', [], vocab, {
+    moduleId: 'm18', moduleSort: 18, courseLevel: 'N5', kanjiCatalog,
+  }).some((word) => word.japanese === '人気'));
 });
 
 test('catalog keeps earliest introduction and classifies later-level usage as known', () => {
