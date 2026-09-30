@@ -8,6 +8,7 @@
 
 import { bab3KanjiSupport } from './bab3-kanji-support.js';
 import { n5ChapterKanjiSupport } from '../content/n5-support/kanji-support.mjs';
+import { n4ChapterKanjiSupport } from '../content/n4-support/kanji-support.mjs';
 
 export const KANJI_LEVEL_RANK = Object.freeze({ N5: 1, N4: 2, N3: 3, N2: 4, N1: 5 });
 
@@ -326,6 +327,14 @@ export function deriveCompounds(character, manualCompounds, vocab, context = {})
       ...(out.find(existing => compoundKey(existing) === compoundKey(row)) || {}),
       ...row, kind: kanjiUsageKind(row.japanese, target),
       source: 'manual', scope: 'manual', usageLevel: 'N5', moduleTitle: `Pilihan Bab ${Number(context.moduleSort)}`,
+    }));
+  }
+  if (currentLevel === 'N4' && Number(context.moduleSort) >= 1 && Number(context.moduleSort) <= 24) {
+    const curated = n4ChapterKanjiSupport(target, Number(context.moduleSort));
+    if (curated.length) return curated.map(row => ({
+      ...row, kind: kanjiUsageKind(row.japanese, target),
+      source: 'manual', scope: 'manual', usageLevel: 'N4',
+      moduleTitle: `Latihan Bab ${Number(context.moduleSort)}`,
     }));
   }
   return out;

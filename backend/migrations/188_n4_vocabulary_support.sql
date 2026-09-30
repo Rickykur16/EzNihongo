@@ -1,0 +1,23011 @@
+-- N4 vocabulary supporting examples. No words, readings, meanings, ordering or deck membership changes.
+CREATE TABLE IF NOT EXISTS n4_vocabulary_backup_188(id uuid PRIMARY KEY,owner jsonb NOT NULL,examples jsonb NOT NULL,memberships jsonb NOT NULL,created_at timestamptz DEFAULT now());
+DO $support$
+DECLARE p jsonb := $content${
+  "schemaVersion": 1,
+  "courseId": "e22d819f-8526-4af6-a8c5-02258c12e6f0",
+  "capturedAt": "2026-09-30T21:08:46.506Z",
+  "decks": [
+    {
+      "chapter": 1,
+      "moduleId": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+      "id": "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "01211580-5fd9-43be-898e-25a34ddce4e6",
+        "08f11477-c7ba-4bf2-aee0-0f7ff4445bff",
+        "0e640a4e-e16a-4d83-ad42-3aa3f645b1a7",
+        "1ce8d49f-41a9-4622-9038-b5c9055f5a74",
+        "224ed9d1-fac1-4f6c-ab60-aadac351a27d",
+        "32cfd791-347c-4626-905e-de32e1d76175",
+        "3fb2c149-4f99-4406-b6ee-0eced05cce1c",
+        "401926a6-0cc7-445b-bc70-354c16258cc3",
+        "4a5d9fa7-ef47-43eb-8837-f1217746c02f",
+        "516772b8-3259-40fa-bf3a-77758b03ccd0",
+        "71fe343c-8d7d-4f2a-9323-64934ca2f323",
+        "7470e120-2f2d-4c8a-abbf-6b05da2784cc",
+        "76e79c4e-c744-4e09-84d7-924d37de4b14",
+        "81c0860b-d3b5-4599-9dfa-914ab3a8c283",
+        "87f588c7-49d1-4f55-b824-b07c7a69e701",
+        "a11af5dd-7232-4b9a-aebd-740ec1068087",
+        "a7817a74-c47a-44d4-bb54-1e18cbb70a55",
+        "a8dad0cf-b3b2-46c8-aadd-abc1d91e51e8",
+        "b0c1a79b-c1d9-4e45-bf84-fa1672ace265",
+        "b10373ab-88bf-4f75-b4ea-0bbdc14c65d0",
+        "bd68f0cb-6e3e-4f32-8b7c-e2b1ee81beec",
+        "be0bce6a-c0b9-4921-bf7c-db7ee157032d",
+        "c7c03254-bc2e-4683-b8ac-5e699fe5def9",
+        "c9857202-b860-4ce6-bc92-951e0bee1bd5",
+        "cf28ba96-4598-4e13-a9bd-d7b941fc66c6",
+        "e09f5a33-0bc0-4d1d-81ad-e7a3520ec2e2",
+        "e24a2ee4-8999-434a-8462-975def186ddf",
+        "e8aa52d4-6b8d-4ff7-a36b-66a237b679af",
+        "ecbf6063-8271-435a-b24c-7cf64aacac48",
+        "f0d4b721-cb94-4548-a524-59d797ef226a"
+      ]
+    },
+    {
+      "chapter": 2,
+      "moduleId": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+      "id": "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "078f6eed-3704-4f86-869e-ca00f1dae9cb",
+        "0ad011c5-a375-4524-9f74-eab48735698b",
+        "1206d19e-0624-439e-adbf-7b7bb9c5b591",
+        "132dad2f-c432-4e25-9d1c-7572d5e2c873",
+        "2224897e-6a53-470d-b526-4ab38f722e4a",
+        "24716496-6aaa-4f04-af98-c891e6aab638",
+        "24c7de13-0ea1-4081-af61-761676e4e088",
+        "2771833f-d388-40d9-a415-5c1f6be82517",
+        "292c0eee-fa80-4140-98bd-f5eec4d7f994",
+        "3834191c-5906-46e0-9b48-c28ea62cc141",
+        "3c95d406-e172-4d5b-b47e-45241c99c9d1",
+        "3e908c80-8c39-473b-836f-b961dffd569a",
+        "490ea69c-9de7-4974-a58d-327a015ac6e0",
+        "54084db9-ce26-4db6-992c-fadd4ae26b45",
+        "60320171-2d98-4dce-b71f-09fc4e8dfb7f",
+        "631cea02-5495-4b0a-b65c-bd3dd7d3001c",
+        "6bc3bdfb-da16-4b8b-b90e-17cb2328b650",
+        "7dd1f9df-e7cf-44ef-8220-dffe53b3d7a4",
+        "7de3ffb2-8768-4771-9592-e1876951d46a",
+        "93d479ca-a06e-41f4-9491-360b4a70db65",
+        "96e49aae-5921-4625-b7c1-fb70d25630e6",
+        "a09e7ecd-4d74-4050-a387-444c63aa7b9d",
+        "aace4cda-1b03-4a5d-be95-9ce1504178ad",
+        "aef40503-4ff4-4e9d-bc22-a35122eb2fc9",
+        "bb05c483-a006-40e0-a7f9-40710262998a",
+        "be1c248f-251e-4d14-9a32-9dcae52fda51",
+        "ca485b28-6abd-4de8-b320-7a7eb4f4bc38",
+        "d3634fdf-2f12-45b1-abbf-5734599dd032",
+        "d36aa477-b355-45d2-b4a5-a29673c908dc",
+        "d539b257-0468-4719-b842-d012f834213d",
+        "dfb5555b-7bd3-4818-a216-9634c5d00951",
+        "ed33ce7d-99f2-48f2-afb3-a0e3477e6bef",
+        "f37a5678-e97a-4bfd-9d26-f5a682630b41",
+        "fe57b87a-a25a-4579-9e31-4996263e54be"
+      ]
+    },
+    {
+      "chapter": 3,
+      "moduleId": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+      "id": "d92e0ea1-8489-445c-8634-17e995ddd372",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "04a01379-9146-47a8-86dc-7d56bdd8f3d7",
+        "2263bb40-eafa-4955-86f3-dfea0f5eddc2",
+        "2d1e8cd4-a1b3-4184-81b8-2a46e7777866",
+        "2f5a7ade-aea8-4d5b-bb66-5d6d838e9f50",
+        "4aa936b7-cad2-41a5-8146-f3929c5f4278",
+        "559e7d03-e12f-49d1-8886-59431a61b3ac",
+        "5f95a361-df13-49d9-88b4-2b996ba2555d",
+        "6217d956-3981-4856-8a2b-01197a3c31aa",
+        "671caeac-eca8-49bd-9617-2889611c30f7",
+        "6ad4b986-0d20-458f-be9a-77a0fbd40c41",
+        "7589df53-0200-4c11-9212-0a081e8f2b28",
+        "7f6b75fe-a221-4f5f-8d7d-7a87b96f6ed3",
+        "876bafbb-7a31-4974-82bc-1841ec17c118",
+        "8940a4ae-653b-4876-9039-ef3dcf14c432",
+        "8f34a5b4-9693-48be-8714-e3758a07db22",
+        "98c7f366-9d26-4ea2-8075-6bb76db2fc9a",
+        "ae5c504e-5f34-4194-a76a-074ffe8ae9fc",
+        "b4fef509-9135-4909-bef4-7d9a7193ad3f",
+        "b9e944ab-0512-4249-a3a5-7178562c793e",
+        "c11522ce-00d3-4c1f-9852-1f4ceb152511",
+        "c6000719-6810-44ca-80df-f841c1b6507c",
+        "c641d26f-8e8b-4abc-8d55-3f8d039d8d59",
+        "cd98aae7-2a6b-4136-90b5-63bf82789fb8",
+        "cd9c58f8-3cde-49d8-92a0-a0d8109f5dd2",
+        "cfa50bd2-3a70-4f48-9c74-3c3a513d5d35",
+        "e2784b65-c285-4201-ad9b-e6adfdf7d644",
+        "e2956446-b04c-4333-8421-a4a6e040079b",
+        "ec90612c-c661-467c-ada7-5691d8aa8d70"
+      ]
+    },
+    {
+      "chapter": 4,
+      "moduleId": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+      "id": "d07c7199-9003-46bc-8719-bee4d50bc6b4",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "0c130161-d36a-4edf-84fd-5d589a8cf190",
+        "14e9db4c-bfe6-4909-b40c-b7f122a155f4",
+        "1a10d307-a51a-4582-8f5e-eb661b6ef621",
+        "1ca6710b-cd7f-47b1-b139-17fde3774c1e",
+        "231e3918-0955-4f7a-bc9d-3df37d2a8b5f",
+        "25f92cd9-acef-42bc-b62d-2a2ec2c3a609",
+        "2620f442-3cc4-4ab0-83e9-936ca0a38962",
+        "28a3d094-a539-4485-a14f-af8b5e1705dc",
+        "3b62ca2a-4371-45b7-ad49-a3508b6f48ce",
+        "3c758fbc-f0f2-4ade-a56b-4a886986ce99",
+        "3fba75a8-2c91-4744-9c6a-5d3b9ed08159",
+        "5a041720-7c27-4686-9ac3-41fbe4bfdd98",
+        "618dedb9-b1ff-458b-8d35-98ad5e260390",
+        "7d319d62-5897-46af-bcd3-7829ce2dc3d8",
+        "84b36772-b676-4f47-b9d4-eb55baa59519",
+        "91c0752f-ddbb-403a-b03f-c1891af00ba8",
+        "9849bb1e-587b-484a-8c16-726cf7e56f2e",
+        "99e47837-fac2-4c81-be8c-8817d4b89f68",
+        "9b985c4d-5dcd-4101-a037-083808fc8488",
+        "a2f337e1-d7ec-4af3-a5d1-cc3aba6282fd",
+        "a88f7e47-3d3c-41f8-a6c8-08a891407c1a",
+        "aa11773d-eba7-4a76-895d-c9db5dcfc8cf",
+        "aab46dac-419a-4f9c-b644-98663079c972",
+        "ab498ea6-477c-49fc-8db0-da13eb3e0626",
+        "ab7568bb-817e-43aa-9dca-e0d6a627f00a",
+        "ae4d072b-13f9-4ac5-b857-c7e9d0d35e26",
+        "d88df23d-95cc-4043-878e-3b52bd4d0c60",
+        "dbaa4b60-598a-4596-9a4e-66592c99e16d",
+        "dc9dfd40-b240-4d2c-8cce-60aebe2bb9b7",
+        "e31bf5cf-dbfc-4f2e-a2df-dec8c8c5f9fa",
+        "f1d1919f-d737-4c21-a0ef-32509c46c86e",
+        "f6bb14bd-fde8-47cd-abe6-bdab313b1593",
+        "faec35e7-2554-4e14-b9a0-a0a822829bdf"
+      ]
+    },
+    {
+      "chapter": 5,
+      "moduleId": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+      "id": "a399c4d1-5539-4a8b-abe4-9c3f56496ef1",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "14cacb24-321d-4097-9000-08aff55fdce8",
+        "1522cc5a-38de-493f-a102-272cc883a8ed",
+        "19f21146-373d-4ded-b53d-8c7343224f19",
+        "1ce41579-8baf-48a9-a7ad-0d2d753100d2",
+        "27840851-32ef-40d3-ba43-a0f1ae2be2bc",
+        "29b9c7a1-47b7-487d-b640-03bb2cccad4b",
+        "328f05a2-36c3-46e4-ade1-5c480c978ac6",
+        "3f742c2f-75b6-4f10-9d61-bf104ffeb2f3",
+        "6260ccee-ad28-4305-a8f7-2a8b20a34606",
+        "666ae970-d886-4ce7-8530-23415dcd7bbf",
+        "6f45e767-2a66-4a70-827a-0ccf5ed5d98b",
+        "70c49fa7-778d-4e97-be08-b6e5f234c427",
+        "92dd093d-6c8e-4ed7-bf64-22f909917993",
+        "9874ae79-45ef-4e67-8faa-b98a6a3c4997",
+        "b0ac5c49-682d-43f1-97e7-dd636157a082",
+        "b835a628-b1df-4662-af57-936960e42818",
+        "ba537f3c-e51e-42dc-a158-842007e31b9f",
+        "c22d9335-744f-47ae-9d6a-e23cd6f63af2",
+        "cca4d7ee-4f25-4437-9da7-282c3df4a461",
+        "cd3ab389-9fc4-4090-b13b-983366191887",
+        "d1d17dd2-7537-4362-ba14-20a5b0289e99",
+        "dea33672-6bbc-410f-8ffc-7789ce3d895d",
+        "e5c55bd2-d656-469c-9222-fe42877286cf",
+        "e9cb0b92-3fb4-408f-9ddc-15a80a563650",
+        "f1006c46-8ea6-4d0c-bd63-95fa1a153039",
+        "f5be1946-0e83-4fa3-98da-dc962dd053e6",
+        "f80642d4-e7d2-4694-9ba8-79d5781b1c0e",
+        "f9fe08c5-38ec-4ae1-a4f6-fae8a28a4424",
+        "fd6b39e6-b853-4a38-90bb-3908a19f8257"
+      ]
+    },
+    {
+      "chapter": 6,
+      "moduleId": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+      "id": "b16492a2-b7ef-4cf5-a5e2-450535e2781d",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "11648d67-c02c-4b95-97fd-164a7aefce18",
+        "12751a09-26e0-4a04-90a3-2b518d5610e0",
+        "1444f8e3-fcc6-486e-af91-329ac8507ba9",
+        "14a1a239-3f36-4368-8c25-b1c0f885b6e8",
+        "30dca678-8d33-483e-9eef-1254f892dd7f",
+        "319b025c-7aef-41b7-97d3-3d763bc759ab",
+        "504df6fa-18de-4fc3-9200-0e9251e5f1f3",
+        "57382ee5-0e84-4381-a67d-4833ea4ee358",
+        "66807d4a-9dc4-4d8e-a632-551bfbe68bf1",
+        "677e86b5-e0ea-495d-b869-9420e01f17e1",
+        "680b8fe6-738b-47a7-91df-58de7816f675",
+        "7311c52c-f982-48f9-9deb-1264409ab094",
+        "73c52b3d-7d87-42ea-9b29-f062df46d378",
+        "79549630-af99-4aba-87c6-894d6aa5da37",
+        "84b7b17b-d9cc-4408-bce4-feb3f4629b16",
+        "89b1e416-80a8-427b-b4a1-bbd3a1d79b7d",
+        "aae23e5e-e91c-4703-86f4-78889d94ece1",
+        "b1e724fa-f7bb-4f89-b9ed-dc67dc165f6a",
+        "b775c193-4240-46ab-bf9b-440a02499163",
+        "bbbbfc86-0395-4f8c-976c-0ea3d9a7aa7a",
+        "c17029c6-618a-4d64-8e25-be807437b51d",
+        "d158d0ed-3111-460d-9407-b31fef609302",
+        "d29406a3-d997-403f-b92f-54760f1dd799",
+        "d377d84d-8d0d-4cd0-83ef-5901af6f83c1",
+        "d421fb75-752d-4990-a5d6-e9187ecf9f87",
+        "df872b61-416f-44af-b4d1-68015a30cec4",
+        "e27a28c2-d02e-4c93-a96e-c037b07d1750",
+        "e478fe1d-92bd-4c68-83b9-009ad8f63e65",
+        "e4babfd0-8bd7-4a66-b80c-bbb0dd82050f",
+        "f1917565-9711-48fc-9f6c-7dbbb360bc82",
+        "f4d1650b-e2c7-4e47-abe8-c2fc9d40c12c",
+        "f905cb97-f249-4441-8bfb-37f0af609bd3",
+        "f954d205-85c7-45c1-bcb8-807df7037035"
+      ]
+    },
+    {
+      "chapter": 7,
+      "moduleId": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+      "id": "243ec77f-3e6d-423b-b939-2b3291a21fad",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "1467a5c5-d2dc-4967-9b74-8c70c8f5a780",
+        "273411fe-331a-46bd-80b0-c35a9b2ace2d",
+        "281c804a-f8b4-4168-95a8-791bfb4fdf76",
+        "2909b77a-8d14-4373-a081-5cc752f4f4e2",
+        "43c9fcb8-1f3b-4a1b-9e69-87368e44371b",
+        "4bc4efff-fd5d-4576-b041-068590bb013d",
+        "53620c45-bb42-471f-81f1-592a55398b7c",
+        "7eef7e48-248d-40be-ad22-9982d20b3b77",
+        "7f6457c1-7294-44ce-9c39-9c6004ee259f",
+        "81f6fb49-e9d0-4eef-96df-f3475413fb41",
+        "953b3bdd-cb5c-4241-b4a4-8d6290841658",
+        "9c7c0f0d-f628-441f-b5d0-e96349a2a985",
+        "aa7c08d8-7ceb-48b3-934d-ab904f9a180e",
+        "ad55fa7a-c139-46ae-8666-5cc4c53cd371",
+        "b1034765-de77-4008-927e-4cfad5d21a53",
+        "b9384962-ca98-4b57-9911-e3b669bb7c2c",
+        "bd461817-3b9e-42c7-8a40-4fa12dd7e505",
+        "c03235e4-831f-455d-aadf-2ee56e190778",
+        "c0626b01-26f1-4c65-8ffb-2288c01bfe2b",
+        "c36bd31b-2cf4-4d38-ba28-513e471ec9e9",
+        "c9af32be-e45f-4135-aa31-fcbb8c821796",
+        "ce182536-f5cd-4d71-8078-f69b18d82eff",
+        "d2793425-416e-4268-b0a3-68dfa5dea236",
+        "da808f5b-d2de-4629-9649-db945f6878c6",
+        "e9e43d4d-ff21-464f-8b4f-d38b1d92e314",
+        "eac6ebc8-c1c6-46d0-a043-cecdc86d98d9",
+        "eb78059d-a1d4-4088-86ea-8a37d310a16f",
+        "f874b7dc-7229-4baf-b7a7-a078f1ccf23f",
+        "fb008b3c-793a-45a8-aad6-2c74d9a360e6",
+        "ffa360f0-bc4f-4ce2-80fd-95b418d7659c"
+      ]
+    },
+    {
+      "chapter": 8,
+      "moduleId": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+      "id": "49134f17-28bc-4af5-ac45-4d149f0c9341",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "032e8888-203e-43f4-a82d-b5905098b39f",
+        "036925ef-ae0a-43af-a726-f5a76c640b85",
+        "093d5bb8-b2b7-45f1-bf93-29b84dcebf77",
+        "19451128-cc69-4b50-a40f-0329841473e3",
+        "1b6a45e8-f74a-4106-bb94-038a46df1767",
+        "2014b556-c19d-4433-9785-49a064ca2c11",
+        "264703a3-44bf-4bb8-8194-70bc771cd2ed",
+        "2f23dde1-bc52-4a62-a36d-d8266b16f389",
+        "2fc60df2-5972-4b28-a3e4-c697ceb45687",
+        "35feb56c-6fc0-420a-af10-d9378806ab7c",
+        "496928e4-1727-4522-ad76-d50a69d9825d",
+        "4ac01ddc-1308-4fab-9462-0f239b743c7a",
+        "4e056c72-9ff7-4fa7-a390-34dc77cd6a36",
+        "4f3c8443-2cad-4ff2-a459-e15f8fa788e0",
+        "59d3302d-b734-47ea-a8ac-3d23d50b56bd",
+        "626ba9eb-a286-4556-b570-7f47499bb16e",
+        "707381c7-2aa0-457c-91bb-0fa785e99e9a",
+        "81ef4e8d-ee3c-47b9-a316-a48da0e8e81e",
+        "83c30cf1-b579-4f43-b322-de93dd0441c1",
+        "83e56d55-9969-4317-b945-f09d45f418e5",
+        "89ed0d5f-45f3-4989-b3c7-b1dfae5601b0",
+        "8df23a0f-020c-406f-975b-97e9bfd664fa",
+        "91171558-be04-4b6d-a2f4-ba458d27b657",
+        "9251d35d-3604-4402-b282-25d6c99fee59",
+        "92e75aab-7c52-42b1-908d-cfc1fa2cb8bf",
+        "9804d225-0bac-402a-b5e6-adb8fe2bf724",
+        "a95a43bf-c74e-4528-bd72-066f71ea6997",
+        "bdebc562-6fb0-4fc2-bc30-253be555534a",
+        "d1b8efe6-779c-4a20-b4e4-34a74e3f3bcb",
+        "e7181246-1b32-49e2-8424-7fe0edaca8df",
+        "ed0163ce-a74b-4d05-9083-c6111e728eb2",
+        "edc409cf-119d-4079-92c0-80d4f61bf5cd",
+        "fca03d0d-c56c-4936-8f90-ab0ce511be2b"
+      ]
+    },
+    {
+      "chapter": 9,
+      "moduleId": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+      "id": "3eca63e4-9448-44d9-ac64-e5c674315d05",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "06d92b60-ce7d-45a5-aae7-7db67873a17d",
+        "149d0abd-de74-4b7d-b07d-794029a54796",
+        "1f5fbc84-a14e-4959-abc7-d80a18d5c725",
+        "237bfa58-5aea-459a-8a52-49f803d43041",
+        "28e1ea2f-80fd-4125-8bf3-249ac84fd4fb",
+        "2b09f750-00b2-45e5-9a6d-5e0c1c80e0b3",
+        "358b2033-3ef7-4fad-a6ed-c10020b27a73",
+        "3630ab84-f4de-40bd-8726-0c0b3ecaccd4",
+        "41477bbd-8476-4ec3-893d-9087096bb890",
+        "46f88382-12f8-4f6e-b392-bf8b4008b4f9",
+        "494cf914-7d02-4a0e-82c2-6229c843d19a",
+        "4c3e911e-c8e4-4fc3-91f2-7b0369e8e57d",
+        "5d14d35e-0693-42c4-8d1d-5121d170ee4f",
+        "609eb117-d375-475d-86aa-1351474a1f86",
+        "61811782-7315-4415-a32b-23f47a852c68",
+        "67423930-0d08-4fa5-8012-8b88b232cf57",
+        "72c76358-4080-402b-a158-6a73f8c80506",
+        "814b7ae8-a880-42a8-afb3-9a05b214de0a",
+        "89c8b4e8-2ad8-48fe-8a49-a1c8479da640",
+        "8a1472eb-355b-485b-a9e3-40b46f8eb84e",
+        "8c1c3d6c-d1a4-4de1-acd8-fe93cdb09f16",
+        "9017dee4-a7e3-4b80-b4c6-25f8f23b6ba4",
+        "92b26f71-ae58-402f-b303-e0b6fad2ab1e",
+        "99fcf39c-fdcd-491d-b896-6329709cfceb",
+        "9aa74734-3d11-440f-8765-39961e6cf274",
+        "9b56a604-cbcd-4495-8f3f-3ac1f599a073",
+        "aa55aa95-5a1b-4a3a-94a7-f4eda4b76f21",
+        "ac1c7384-3c0e-4c39-b0f5-66ef7cd878d2",
+        "c52779db-dcaa-4f6b-811d-346d64ccb731",
+        "cd5c9f72-282a-4db6-9d30-1176327cc814",
+        "cf51326b-51fe-4d72-96ed-c37aaeb4d185",
+        "db1060aa-e8ad-4484-b635-d016bd364af6",
+        "dd922dd2-b74f-418f-8956-67a6d466cd8e",
+        "e476bc19-ccc0-456e-ad05-0f4f13e561c0",
+        "e5693cac-15bb-4fc2-ad55-6141617c470e",
+        "ffec7c9a-647c-4ea0-9e03-0510a49b1950"
+      ]
+    },
+    {
+      "chapter": 10,
+      "moduleId": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+      "id": "3b8c6307-8303-409b-a16e-6f354818b4eb",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "00626075-73fb-4ca3-9326-48128f52b33c",
+        "04856853-6d9c-4bd6-90b1-1f153061a248",
+        "138f2ada-eac5-4fbf-b014-ad1fc27c746c",
+        "142743a3-dce1-4a19-ab80-bf8b50976bcf",
+        "15221d3b-03ba-4aff-831a-d23d6a4101d5",
+        "31e03012-6b77-4eda-8703-8f8542a523fa",
+        "32ec5d53-7b5e-4e3a-b673-e5615cd9317a",
+        "52d51f99-ae76-47a1-b38c-3431f3474031",
+        "5f4448dc-5d6e-4c4b-a0da-7298ffe0291f",
+        "6714c41b-87f7-48f0-9748-25b4c02243ec",
+        "67e38b40-e11a-47ec-880b-f855e14c99ff",
+        "6b42e1e1-ccc7-4916-8e4d-3a0e3232fe1d",
+        "742b3f79-7235-4fef-920d-ed07e3d66883",
+        "75c01e3e-5006-4f02-b966-6bbdaa02527c",
+        "7f61c27f-0da2-4215-8c29-830448e7cc32",
+        "89b0bee9-e476-4214-8832-d4a82e8d1e8f",
+        "90549128-be07-40bb-9ec4-75a13d22d5c4",
+        "909f903e-edbb-4803-9efb-e12be8ad6695",
+        "9f6be296-fc2f-476f-8895-f0b0fec09400",
+        "a5c46bc5-8b37-4129-a1de-936f1659fa74",
+        "a7d2e46a-8f94-43bc-a095-5811a7fa6bc1",
+        "b6068db6-31e5-4c18-9a41-996309bcad6a",
+        "b685cdd4-5d34-4ead-8ccb-12d0c3a92591",
+        "bfd0aa28-6a4b-4630-a6ce-5b7bc05260d4",
+        "c0f75494-58e2-4f60-9662-624efab0e7ba",
+        "d66e2958-a49d-49db-a145-12240fd34467",
+        "e8193ec3-9181-4b2f-9f82-4c7052fd2980",
+        "ea83326e-822a-4f67-a7f0-76cc0ac9258d",
+        "ed4ac57f-8506-4427-9463-3bb4e8d6360d"
+      ]
+    },
+    {
+      "chapter": 11,
+      "moduleId": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+      "id": "fbde2314-230b-4506-8eec-0613ed24246c",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "066f75b0-06c0-4183-933b-94a64bda81c3",
+        "12c53bbb-03f9-48e7-8749-5120954a319d",
+        "13132067-1a3f-4cf6-a85d-a02cba9935f4",
+        "17093fcb-4f23-46af-86c1-4651f82986eb",
+        "19f851e9-3745-496c-b426-3dfb74dff294",
+        "1d5d8d73-df3a-4f5e-82ed-99700be173f4",
+        "21a0aba0-aa0e-4186-8158-d76d795d955a",
+        "43c05aa2-d637-42b6-b5c8-a13d606c75d1",
+        "488c3cb6-ab41-40ec-9a7f-f9ce32652964",
+        "4c14c9d0-12ae-4d9a-801d-3285408aea1e",
+        "57798a67-e42a-4443-ace5-b54bee962bee",
+        "5ca7d82d-68d6-4fa7-9908-b9ec5e6713ef",
+        "5fdc38a7-6a6b-4506-bcc6-e2107c7f5718",
+        "6276d208-cab3-407e-800b-b2cbef1454e3",
+        "6e5a5934-5346-4e98-a070-7138bbe83776",
+        "738a794c-0603-4744-a859-23c1871efe0a",
+        "750d3c78-c2d4-4fe9-ba01-20c534fc4a82",
+        "76e2fa7b-f29e-4cf0-8ce0-fb2f6563bdd2",
+        "78600a8c-62e6-4efb-a093-8d0c7aa0446c",
+        "7c4e823d-389d-4c68-a802-e1482ac31b4d",
+        "7e9eb9ac-18eb-4f60-bc02-719f94f6a6ce",
+        "8db52221-787c-4fef-b27b-2c56c481c621",
+        "907149db-3a17-44ec-92b8-8cc5a19d65a7",
+        "9ecc75aa-f43a-4068-8341-b8e1201c2763",
+        "a475b8be-82ec-43b7-a09d-9a00b87b1160",
+        "a4d71410-aa63-40c0-9656-0d8c22a6fbfa",
+        "abaf5bbb-53da-4686-8f5c-abc433f52611",
+        "b2a6fafd-1ca4-4218-a289-000f312452b7",
+        "b95aaee3-b1a9-46c0-b63a-c5f2a54cd436",
+        "c527969c-dd2a-4ff3-9298-0bdaf9aa0d80",
+        "c5a75cbe-b623-446c-af83-2efaaa59c9f1",
+        "d09fb7b2-d740-4cce-bce2-91256dfb687d",
+        "d3cfa28b-5394-46de-bc3d-35868866d718",
+        "d5d6f2f3-6b41-40c5-b8c4-94139232a402",
+        "d7553eda-b152-439f-ba09-7b054bd848fd",
+        "ea4f4998-af76-4ba3-9bcc-a42417a0c69f",
+        "f8a51b5a-1cae-4f03-a741-fde4682bd2bf",
+        "f925c0ec-7326-4ebe-b7d8-618924256997"
+      ]
+    },
+    {
+      "chapter": 12,
+      "moduleId": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+      "id": "e46e1326-47fa-45a8-8a8e-cd2a3c519352",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "05c656ad-c296-4fa2-90c6-f80cfc001964",
+        "0daf898f-fe99-4c9a-946e-ea1ad2cdeb46",
+        "0ed1eeee-a720-4bd5-b2ec-ed76925c1a9d",
+        "169b3b8b-537f-47a7-85a5-4b435d93e56b",
+        "1b8d7deb-ed70-475f-aac6-3e2129787f8a",
+        "236c105d-3606-4d73-8e5b-d29ebc31ec42",
+        "2b52a9f3-335a-461e-ba06-45253244877c",
+        "403fb5d7-2615-47d0-afbd-deeb9e0aa83c",
+        "4aacef1e-7ddc-46d3-9034-8d55fdccd5dc",
+        "4db45a8b-a549-485b-936d-694273d08ec4",
+        "55163b81-6283-4fde-aaaf-ec24ce94dcd9",
+        "60e3a64d-797e-4c43-8962-20e43a849c6e",
+        "62cc4aae-0415-403e-a8de-923e13093f6a",
+        "671ca46a-083e-447c-a903-7551d1b6d165",
+        "693a5a96-b686-4ac6-8050-3ac3da234844",
+        "75a09f9f-984a-42e2-b504-ddbfdacea0d0",
+        "77643d18-ed04-42ba-98a8-fad9884c4c68",
+        "802cae38-d807-4307-9904-cdb2dd5d8c98",
+        "844c151c-79a6-4fc7-a3eb-4cf22d20358a",
+        "97b37e2c-7be4-43d6-81e6-5fd40d54d707",
+        "a24c20e1-85e5-4d90-834d-1ce1f1bc18db",
+        "af9f3c01-85c3-43ff-ab38-96d346f4a54b",
+        "b19efcec-2671-4500-848f-f48d23c81757",
+        "bbf86442-67a9-41b9-949a-e0a36da1ac29",
+        "c097b1e4-b1d5-44c9-9435-52f043c5f87c",
+        "cb931d0f-dcd0-4180-acca-b8357a881fd0",
+        "d2c6a40d-42e8-496d-abac-8cdec14476da",
+        "dd2057c6-ea97-4b30-93e1-d38d0868d64f",
+        "ddfbdc7f-5c7e-44e4-bd36-2a6bac4fb8df",
+        "ed4fe630-1dfd-4aa6-97d9-ad982a3cf481",
+        "f28c4aef-3686-42f2-9013-6243a08703b8",
+        "f79e3b93-e90c-4c5b-a66b-97c672be2281",
+        "fce86ca9-0307-44a2-884a-94d87ac613ef"
+      ]
+    },
+    {
+      "chapter": 13,
+      "moduleId": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+      "id": "65499256-a3ce-4085-8275-4957636e4a09",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "03aa26c6-c469-4839-a09f-da4d25b7899f",
+        "0d90cf55-20aa-46dd-ae27-2867a6051c94",
+        "0ee9c1aa-7ec4-4064-b54c-0e02fd61c691",
+        "100a6f95-50e0-4a0c-bfc0-cd7ac1beba88",
+        "1d885658-14a9-429d-8a21-addf91b2e4ab",
+        "28c84a33-7a2b-43a9-8759-a1dc44e1e848",
+        "2e6d6334-d16e-497e-af65-247048a1f136",
+        "528ec617-616a-40b3-9c28-d28c70292a9b",
+        "545a82f4-de55-4249-bfd3-6ffc3e3965ad",
+        "5a4f8f44-a847-4e98-a6d0-780eea45e15d",
+        "5e45c926-70b6-40d4-ac78-7c2843faca7b",
+        "5e69e31f-5edc-4694-8f4d-7a7255c86e1f",
+        "6983d3f4-f2c5-485e-a487-c4307934497d",
+        "78947c6d-4fe9-4b0d-a295-9184df62f9b7",
+        "7a90e6b4-5c83-4921-8b86-971c7e2270e3",
+        "7f8ebc29-e510-421a-b129-d2003ee4424e",
+        "81d35e52-0b07-4f56-9378-3b6122d940c6",
+        "947e0ad9-9a17-4f14-9add-913d32aaa9a5",
+        "94cc3d7c-7282-4449-a7b7-36ad4fdbf679",
+        "abc0c811-1f6e-46a7-9c18-3260b22dcda9",
+        "b5198a55-ae77-4789-bb30-9c5738ba2b29",
+        "bac08a29-d6d1-46e8-b1ce-c151f4b551a4",
+        "bb07fe97-344d-4f32-af4a-9bee2dcbae2e",
+        "c65b4de4-9430-4cb7-a71f-fdceb75600c3",
+        "d72a4034-decf-44ef-99e8-0c240609e13e",
+        "dd253dd6-aeb2-4ff9-98db-b6b733c9ddd9",
+        "dd92d1d0-0d77-4f19-9bd4-19796e2607a7",
+        "ddeef66a-5306-4441-8b99-94c15a9e42f0",
+        "fda15159-463a-415d-881c-2ce8b6be1db5"
+      ]
+    },
+    {
+      "chapter": 14,
+      "moduleId": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+      "id": "12f1bd90-1f5a-46bb-8a09-5dc8740391f4",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "06fbf4e2-9bda-425c-9219-6916ce763448",
+        "207e6b86-8a5c-4e49-b936-fb7bd64bb69d",
+        "26c44001-bd55-488f-ba3b-6959d81d4716",
+        "367616bb-e726-4d2f-b501-f74b33f2cd6a",
+        "43056bd4-c977-4ae4-aa2c-fe60bf29d093",
+        "4385383c-701d-410e-b861-e6b8df862e4d",
+        "5109067f-2ebb-429e-bd0c-aa40185d2707",
+        "5c761ca0-d180-4732-b89e-a010c55a3729",
+        "5e139743-4c46-4383-b95c-8376f6fed252",
+        "62f8a734-4a5b-41d7-9ad8-b16581c775f0",
+        "67945322-f4c8-4cfe-a19c-33fe124eecbc",
+        "6ab028d4-0920-476b-b566-b444e839c778",
+        "6d9e8e90-0301-44f4-bb87-e360a7b6e49b",
+        "70689205-85f3-4419-9d48-85703938c968",
+        "89cbd7b3-370f-40df-9869-c9f45226ab36",
+        "9121fce6-345d-4dfd-b2cf-47af0313df98",
+        "920e180b-7ec4-4ccb-8152-36a188232cb9",
+        "9427564c-f16e-4cb4-a6ee-18f3acf6c5b0",
+        "946a116b-e207-4899-84e6-90852f97fa9b",
+        "96a601de-9566-4ac0-a10a-8a053964adbb",
+        "a5a61234-e1ff-42a1-8097-486111c9f1d3",
+        "b0d3f24d-631c-4dcb-9b6c-6804de09abb3",
+        "b6b34ce7-e275-4035-9679-2724f974606f",
+        "b6d5243b-c621-4b88-864a-dec0c7908805",
+        "b7d297d8-f65c-409f-b172-7e49226ab46d",
+        "ba9fb62b-b127-4d68-911e-4f8ea89b6ce7",
+        "bc48e3fc-8d25-438f-9482-e8c559f02f65",
+        "c16ed739-8f6f-4ecb-9db6-7547cfde3f61",
+        "c42ba00d-05ab-4183-bb06-5e1fb4251b9f",
+        "d15ed451-e05e-4d01-b0e6-5d67392b49df",
+        "d449d06f-e5f1-4331-83c9-412d93454fd4",
+        "e19210c4-9269-4e89-a762-759d927c4b8f",
+        "e22781db-d4e0-4472-b4d5-6b13bb97567c",
+        "e752458e-a05e-4b86-9060-ca6bd8c0434f",
+        "e8af81f8-dd13-437b-b085-0b4f07f0c034",
+        "feda742a-3503-41d9-aacb-90f062460c3f"
+      ]
+    },
+    {
+      "chapter": 15,
+      "moduleId": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+      "id": "5f9a0827-edcc-4fbe-a077-aad02f160df6",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "24dcc7e2-3081-4ff7-a665-482830200e05",
+        "2f17993d-2e86-404c-825d-f9666eea8a2e",
+        "309b3fbd-05ac-4ab8-9eb1-317b66208cba",
+        "37c47b48-5c57-4b7f-b8d9-abf5764915cb",
+        "41542263-7cf5-49c2-8b43-a4fd800a8c8b",
+        "445dbba4-a787-4c75-85e1-520721d8a829",
+        "4562954f-0572-49a1-8fcf-c0509019a8ae",
+        "50ed15e3-d8ce-4cdf-a25d-8d4e68fbb0a5",
+        "56083fab-f9f1-4edc-818d-80e7495cb836",
+        "5931de4e-afdb-41ec-a574-b787104cdc19",
+        "5c3a9da9-38de-41b4-bcc0-e99472d4a665",
+        "5e020563-c209-46b6-b92b-79d27ebc9c2e",
+        "61158664-a2fb-4fe2-8005-75acc5491e1a",
+        "6a26cdda-118e-47bd-aff9-d107181818da",
+        "6c7fde07-97ef-4f82-b3b6-57f35e420943",
+        "74df2843-6282-4f3b-88c4-088d49ed0d4f",
+        "9be29853-ea35-420a-8113-a65db924a73c",
+        "9c43dcaf-c577-43fb-984d-9cfd17d8e1be",
+        "9ca5e1fe-440b-456f-95e6-264529093e2e",
+        "9dc65700-d969-4633-bd6a-001edbfdd690",
+        "b7831d1a-c51f-45fd-8354-eed0a886ba41",
+        "c5c8f3e0-bef6-49e2-a0a1-c45f11b0d782",
+        "c6860ad4-7474-4a7d-a69c-7a48c38e7abb",
+        "c93d64fe-08e4-40aa-8f5a-fa9d56c5bcc6",
+        "cd49c286-c98c-4470-950c-fd67ecf11c95",
+        "cf108e2e-2694-4290-84ae-4d5844b15f64",
+        "cf9b1684-c819-48cb-879a-fa64147ef048",
+        "dd564d64-ee77-4e17-976d-99df48c681b8",
+        "de682098-e980-4332-a4a8-8dc78ce24bc1",
+        "e36cdefa-821f-4864-9283-a254687cc005",
+        "e9373f5a-05d4-4372-b98f-d125d61f8fb4",
+        "ea57efe9-cf25-4098-8bf0-2273d7dc1e0f",
+        "f36413cd-6d03-4f98-bf0c-512a25c81041",
+        "f422778a-e22d-4e25-a634-910d96c2bdf8"
+      ]
+    },
+    {
+      "chapter": 16,
+      "moduleId": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+      "id": "fc6979c8-182b-418f-9ff6-5ea7f8a62a64",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "05d4a3b2-eea9-4b86-a565-9cd79b51e4d2",
+        "0a477bdb-dcb6-4288-b996-86543d13d2cd",
+        "0f8b03c4-48e7-4168-855e-9d4c85466e42",
+        "0fecd76a-ceb7-4bfa-85ec-9b1993e1da23",
+        "205227f5-23a2-40a4-aa63-e81afb47b807",
+        "22bdfbba-554d-4281-9034-808eb96c1cea",
+        "377eef49-5676-4712-8805-a791fd0285f2",
+        "4c5299ea-8750-478f-8740-2544b74aeb24",
+        "507d6eb6-75b8-4283-b4a4-b56003878091",
+        "5c330030-47ee-4906-93da-859627aca405",
+        "5fe30860-73d3-456b-be58-40de3ea2bbbf",
+        "638f9c83-3fc1-4675-9d1f-c75da69ee609",
+        "6956a110-e1e1-4791-b410-43898c2c9195",
+        "6c648d94-c560-464d-ac60-6181b6fcb87c",
+        "775f7fbd-9e94-4a00-8a4c-e850b2123393",
+        "790997bf-972b-4e0d-b443-5b32f9f9ee35",
+        "8213bff3-f4d6-4d64-aa79-d8e690d31dd1",
+        "8384093e-e2ba-4321-a391-9c346ac0e4d0",
+        "8e2afaf1-0215-458a-8952-d706d0314744",
+        "93588fc5-2042-4b37-b891-0b28482289c0",
+        "956c4022-a19e-4fd3-9bcc-daf1464d6bbf",
+        "9cf814c0-404f-43e0-ba6f-01142c735fe5",
+        "a033aab8-63e9-4727-b2c1-ffa2962dee90",
+        "a61d015e-572d-4de7-96ab-4b44c378db34",
+        "aeb7cd69-89d0-47c0-942d-be74b4b6dcae",
+        "b07fedeb-f7b0-4e0a-9758-037c999678a9",
+        "b8fba9ba-0252-4139-88bf-f8e762b3c206",
+        "bdbda578-c44b-4f80-974d-986cb3806154",
+        "c11d1111-9dc0-452f-81cc-b65395e4a3a2",
+        "d31cf356-9826-4fba-999c-7645b49a0404",
+        "d8594360-0865-46a2-92ea-02f79e86a92b",
+        "f117d445-0d7e-4044-a05c-99b297f952c6"
+      ]
+    },
+    {
+      "chapter": 17,
+      "moduleId": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+      "id": "1a192f78-8650-48db-bcd6-0d71f91318d1",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "061d9ad4-8df1-4277-8f54-cc8758a92094",
+        "0631850b-68b9-4a78-b85f-ed8b95032f42",
+        "0d99722a-856f-42bf-bc08-28266ce864e5",
+        "1dabc426-27fd-4358-b94a-b4affdafaae6",
+        "269245d8-c290-40aa-a532-6e99b5bdf4d5",
+        "2e624973-eae1-4544-a5d7-46bcb04bb708",
+        "438986ad-4e76-4b6c-913b-09e48fe90cb9",
+        "4518399d-d713-4ab8-8f87-f819a327afe9",
+        "462bc863-0279-4aeb-9428-e08b55118c06",
+        "497a9f9a-8320-4b7e-bd6d-617f6a4dcfd2",
+        "4de0a449-9ed9-4e6f-9fd6-cf297b347858",
+        "52b46fe9-27f9-4b35-9a0b-2ecfcae75301",
+        "5a2823a8-3b19-4084-b7aa-4a614860fd76",
+        "73cba3ab-6f95-4dcf-b2ae-579cd9df3ad5",
+        "7dc910ab-ea2f-4a45-9648-0216ce0ab23d",
+        "87011f2b-b2ea-4cf3-91ad-7e7b18641812",
+        "93eb9fa7-b045-4c61-a057-353d0d83de6e",
+        "9fd0183a-a16b-47d7-af21-ee1ad4edee60",
+        "aa65d67d-348f-4daf-b31f-9721ac431c61",
+        "aaf86460-2012-48e7-98cb-e74cc8e12897",
+        "ab63f954-4922-4dda-a761-0ceaffb259b4",
+        "b2d5d5b9-7160-461e-9b4d-c547559aba74",
+        "b3f9a93e-b12f-428d-86d1-146234f04c09",
+        "bc4d019b-d9f3-4f14-98ac-f1a48efa8814",
+        "bd15cca9-ae30-4fc1-986e-1c8e6d0f3c78",
+        "bd17b29b-4959-4289-bb2a-a5b525fd17ba",
+        "ccac31af-0d62-4f3b-9f75-c520b58e1743",
+        "e4679e37-feff-4053-961b-37f1e64ebd73",
+        "fb70c991-814f-49fc-ba74-312ef5d3e2ec",
+        "fb84a5fb-c495-4b09-8012-e4e0cca712fe",
+        "fb8f903f-b4dc-41d4-8f31-8b221e5505a3"
+      ]
+    },
+    {
+      "chapter": 18,
+      "moduleId": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+      "id": "0c0c466a-3b79-44ad-8a5d-ef843dd5af17",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "0df20ce1-9f45-43ff-bd13-c3ba674dc588",
+        "0e94ce9f-836c-4ff2-b172-5bd8a67ec6dd",
+        "157588b6-ba21-48c2-ad2f-c03160f44ad4",
+        "1c631c1b-db44-4cb3-b8e2-88f7aa5599c7",
+        "23b6c710-9245-4614-b37f-dca94678fb0c",
+        "264f34d4-e234-4ba1-991b-e470e584ebdc",
+        "2df267e3-351d-4150-866f-4e777b664442",
+        "2ffe41be-720c-495b-b9c0-b2dd3eb7d219",
+        "361ad7a2-5786-4d4e-8876-989cfe3486d5",
+        "369a0288-509d-45df-bc0e-b78322e4e6bc",
+        "5d342e87-edd7-4ee0-ac03-020adf7a6921",
+        "7f696430-2cd7-4af9-ae6c-40bdbff7ce3e",
+        "86d33810-b963-4c15-98cf-4223898b3fd5",
+        "889d7497-6e9b-410c-9802-b8355e91dfc9",
+        "8ebd3e77-6aa8-4e2f-b3f4-d23890248187",
+        "97601504-a649-4b4a-914a-72a454efb3dd",
+        "987a5982-22b3-443e-b7b9-6ee70231a906",
+        "9cb5c151-39c4-4c1e-8743-9ca8517bc6e5",
+        "b329c91c-87f0-49b3-8744-8cd57f2b78d6",
+        "b7d367df-78fa-4def-bcdc-50f7f7f89931",
+        "bf25f49c-51f2-4f76-85c5-fee32c954109",
+        "c4c0b5f5-202f-4265-a07a-7b8b905b4423",
+        "c80c1125-47da-47c0-9dc0-539db2884baf",
+        "d0c6b3f5-437d-4d5e-a0eb-84fadb4bf9c3",
+        "d99ca519-a15f-4d52-b0a5-b42f242d8fda",
+        "d9e15bd7-a084-4ecf-8997-536d4d436a7b",
+        "e8a8dd43-cc35-4074-94ad-0d34bc0491a7",
+        "eb29c760-d997-42fd-9108-f422b6f520b9",
+        "eeb62427-0a93-48ec-8d01-679ad9aa1964",
+        "f2dd2287-bb84-4683-a874-f8227b590b5d",
+        "f338d42f-afcf-4019-bd6e-45e11b4e438c",
+        "fbe754b0-cf93-4016-b618-2d7d093d7b04",
+        "ff07400e-e558-46d2-9941-66744b68a6d7"
+      ]
+    },
+    {
+      "chapter": 19,
+      "moduleId": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+      "id": "00d5b71a-5b81-4f3c-8db7-ab0f96b66360",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "005ed0ff-642b-4f73-904e-7820e22e07b1",
+        "0bf58397-6a54-4a72-baae-b14674fb57c5",
+        "1ec75cdb-5de4-469a-813a-4f254c336e78",
+        "2da529af-a18b-453c-a205-7fee11cf0ee1",
+        "34a10c9a-6688-414d-b053-f37dfa04cdd0",
+        "3ecd99f6-a008-4ae4-af9a-bb9c16fa28d9",
+        "4f9512d5-d255-4cfe-8c75-76e61bbbc6cf",
+        "67699e90-1fb4-4375-9825-c8175eaec165",
+        "6fc264fe-9484-4c38-a8c3-3493c0d6eee2",
+        "7f44dfe2-b3ee-4f27-882f-46f200894ad2",
+        "842d99b3-d0dc-436a-857c-4a7c6367bf4b",
+        "8aa8a3ca-60a9-417f-9fc0-0626d3d80645",
+        "8c1d96b3-52a1-4687-ba98-8270736f63bf",
+        "8c3ed641-6b44-4f6f-876e-510ae5a36fc7",
+        "94501c3a-d266-4d5e-9861-a89aa87782e8",
+        "9519c00e-045d-4f92-99ca-7a4f40e5820e",
+        "9f08b980-f413-4c44-9dfe-c0f00f089868",
+        "ac41eb03-6bc9-4110-a22a-373601bf06f9",
+        "af5bfe2b-b5a2-4e08-b3d4-2791e1d9a65f",
+        "b3dee23e-b81a-477c-bfd8-e11a398a9c06",
+        "b5453f46-dafd-44fb-9562-9ced52dc82df",
+        "b7a68fa9-aba2-4b38-9ce4-994096c4ac19",
+        "b92faabd-16a1-438b-9175-efbf4cf8807c",
+        "c3406a1c-d9f9-4a88-bdc1-5b3b626f5571",
+        "c7fc0413-38ef-41b7-9ac3-17a0c7d59a40",
+        "d4e1ee2d-3161-4bf5-91ee-f104f6f9da30",
+        "d677e9f3-a23d-4b4e-8def-38384869ee35",
+        "e3d8443b-5142-4a19-bd54-e66651523ce2",
+        "e65a8f2d-2fca-4d55-a92c-bc706c01cd5b",
+        "f7cd5ca2-3785-4daa-bdbf-9c7205c120af"
+      ]
+    },
+    {
+      "chapter": 20,
+      "moduleId": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+      "id": "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "02493f80-148a-4553-829f-c2575461aa77",
+        "03867cab-4f53-43f2-9069-352510c17fec",
+        "09be260b-6488-433f-82f2-cb360c766d39",
+        "0e37d553-a02a-440b-9b6b-6fbaffd13817",
+        "0ec8eebd-025f-4735-a836-9acf0c375f83",
+        "0ee643ed-7e7f-4175-8abe-5c4d816abc01",
+        "1d51ad22-e4c5-4c7d-bb77-0f040d2bedf1",
+        "2ab8c415-d214-40ac-ad00-6258066a58a5",
+        "353dd7e3-77cb-4763-a66a-e6b6a7486237",
+        "3c83e62b-ae8e-49f9-91a2-5356359f7ff8",
+        "5d1f2877-107a-4a7b-8463-75e1c6892257",
+        "60aab413-f5e0-4c56-a80d-e80e648351ec",
+        "6681e9f7-f139-4299-b021-fc1488d14f7d",
+        "7819d3f1-162b-464c-b26c-3ab8bace6bc0",
+        "822d1113-9516-4a23-b893-275c03eec37d",
+        "889cb468-40a4-4b6f-880d-80062edfc597",
+        "9516a451-cfbb-4a34-895d-cf824d509118",
+        "95d1b117-97bc-48df-9416-457c2c555b56",
+        "a1ebad69-4018-4362-a52c-7648237330dc",
+        "a4ec02c0-12cc-4b37-90d3-3e0701453418",
+        "be79b612-be3a-4c7b-bb52-5b4b6b11a551",
+        "c5104410-30a4-46aa-83c3-dabd9bc10ca8",
+        "ca7f2c08-56b1-40fa-85ff-80babd9a1228",
+        "cba748c4-d04a-4014-a47c-ddda90c73483",
+        "d77362d2-40e9-4687-9cd3-fa61e1a7988a",
+        "dc1653a0-e1f4-4c98-ae60-0e98874cb479",
+        "e5eb8a1d-d0bc-4713-a4d4-33608b50437a",
+        "ec405050-19d4-4fc0-b983-aa22b29b7ad5",
+        "eebb17af-4528-4270-889b-77dbd4fc232e",
+        "fb20caff-29e8-4c68-88fe-715fecb8b60f"
+      ]
+    },
+    {
+      "chapter": 21,
+      "moduleId": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+      "id": "85f29153-059a-450d-83d2-4a2326f1780d",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "0ce98381-e3b8-4e2e-a57a-36d64ee6ff17",
+        "1b84a652-96b2-40b7-9c28-bce573c89de7",
+        "22dd09bf-e7cb-4100-b897-8615db118334",
+        "23d16c29-ef9d-4c29-83da-54730c6e3925",
+        "24703690-5cd0-4d8e-aab0-eef900141fa0",
+        "2565fccf-b040-481d-8dca-02cbdfdb2c5f",
+        "277dc113-8940-4519-b78e-d048e9c864e3",
+        "2e18ffcb-8146-45cb-a844-b9e1a2fe57f3",
+        "3204b407-2336-49c3-a61a-4a8a9ed90fda",
+        "32cae29c-0ee4-4195-9565-3b39c7e63985",
+        "3305501a-5cdd-4950-8624-c13afd1c88e8",
+        "41406fa0-64fe-4c3c-b09f-5328300ecdb5",
+        "4618a9e5-e055-4b13-bdf4-cacd142ef343",
+        "520865ba-297b-4102-9420-57e9fcfdf73a",
+        "5df163e5-eeff-42b6-bb41-58a3093a4013",
+        "635b5984-daa2-45ef-931f-f7953ac4cd2e",
+        "6b5b420b-56cc-4a2c-ad5e-e6105252b4b2",
+        "6e378676-b47a-46a3-a3e9-d269379a0e10",
+        "7243df50-6d61-4eda-8e2c-87354e7dbfd8",
+        "77cae61d-25fa-451c-814f-e1a0ee54a2c2",
+        "83d4b8e7-050f-479e-bc9f-3aa024e399d0",
+        "89be43af-5724-460e-a875-58286cbe4534",
+        "8a23de42-4019-4ee7-931d-3c360ac26732",
+        "8b8959a9-ed61-4f6b-a4a9-023a41317ea9",
+        "8bd5d1a5-9452-472e-8e1f-58fffc0ad181",
+        "8d9ceddc-d5be-4833-bff3-587498902553",
+        "99a571a0-a590-41fd-ad50-22917b80f05d",
+        "a019e05b-7456-4548-a6c2-45c415bc78bc",
+        "a25c3504-a0b5-46b1-b83b-98926e855a41",
+        "a92d5c43-824e-463b-b96b-80f17ea7aa66",
+        "c7dad4bc-41f9-480f-89aa-14d4d0aa7d5c",
+        "d5504b8a-0104-432e-8c48-39ede7a325bb",
+        "d7c772ff-7343-40c6-b7d0-d20be1f8a5f1",
+        "f5850f2f-588c-43ae-9f19-e343378c324a"
+      ]
+    },
+    {
+      "chapter": 22,
+      "moduleId": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+      "id": "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "03a5dea9-b731-4827-a477-75d2cb0199e4",
+        "18ebd42f-fffe-48de-bc0f-409c700f97c6",
+        "192fbc15-ae16-4adf-aef4-e06f371101f7",
+        "1e7bf84c-59b8-4808-9fa8-2fba8c5926d0",
+        "22e2ecb8-004a-4f65-acb0-578f16cd7355",
+        "23eb875f-ab5b-4725-b4ef-7c29d8f2aca8",
+        "2bd565b0-7097-412e-8529-aa8cdc833c8e",
+        "41b60ca2-77c4-49b5-8ed4-164a3b1b1832",
+        "4322cdc7-674b-4527-9193-39807c796478",
+        "57da080c-e999-45d9-9ac2-5322250d17c0",
+        "5a265484-ae0b-4138-95be-fb07e9a2c8a5",
+        "5fc2d780-4350-4470-a774-569101ddf04d",
+        "681992ed-c20a-47f1-8145-b3daea6ccf2b",
+        "6996c933-a7e4-4484-addb-97e637a772b4",
+        "77299b90-1266-4020-b7d5-402b35a48f7c",
+        "7a4b1793-0b1a-4afa-bf63-04c1fa74924e",
+        "8cf59732-7e3a-49b5-8526-84482c87607b",
+        "8e089f99-c6e8-4ba1-a206-81bbd17f02b6",
+        "92cd9593-bbe9-4121-88e4-3a42de0e1a4c",
+        "96f696fd-5bf5-45b0-8f28-095a16c81008",
+        "a644c29a-60ee-4be6-902e-21603cf342d8",
+        "b42ba8be-af84-42bc-af6f-ccf7eb35f502",
+        "b483b1dc-1ed8-4f53-b7af-528972c572a1",
+        "c017bf15-bea1-4a6d-a20c-df9a199204dc",
+        "c6a8f0b3-1e72-47c7-8f76-8184d5c45108",
+        "cc2378e6-37d6-4a71-b340-f969053e6a8b",
+        "dd6cb53d-93e8-4216-885e-11cc1ec12e68",
+        "e1f02b1f-7ee8-448e-a2a7-fd45188ab6f1",
+        "e32b8607-ec17-42f4-94e2-f28bf1e1d47f",
+        "e7abb4cc-358a-42f8-a3c7-05e5e7c1bea0"
+      ]
+    },
+    {
+      "chapter": 23,
+      "moduleId": "75f7e5ca-c982-4011-9803-7910b6b91002",
+      "id": "1a3fc002-820d-4d92-acdd-eead3caff322",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "0f7ecc83-7c7a-4288-ba6e-0922344d53f9",
+        "1c2a4dc0-5d09-4d9c-9bc2-1bd6d4e2922a",
+        "205f089f-414c-4e71-9d5c-1f02a4177b17",
+        "21f35e44-8155-44de-b400-b40123475069",
+        "2e570246-ae01-4b91-85ae-eaf125e7f9a2",
+        "42cda3c5-4f73-41bc-ad9b-76cf0668a607",
+        "4b72e7bd-d81d-4924-aac9-ffea05ae29ca",
+        "5201af8e-f464-4e8d-a959-e6f5caa22511",
+        "5c52c133-9c00-427a-b426-4736fc99f40d",
+        "6b6dd871-963d-486b-8a49-b3975b86c4a6",
+        "78a20d32-21ad-4193-afe2-7de84e500368",
+        "7b097c00-7583-433f-9a40-b158a1eda862",
+        "8311aacd-87d9-42a2-aed4-5c90b2cc9765",
+        "881e9896-8153-46ea-bfcf-dd8676369cb8",
+        "9398a187-429b-4c6c-a250-4f8aa8f55ac0",
+        "9d086531-22bd-421f-93ee-9f1ffa6e934b",
+        "a05b7a91-bb61-456c-9629-15c5f3b4e8b9",
+        "a1a11960-488a-4d6f-8b53-6be03b783e22",
+        "a43992c8-467a-43ff-a659-97031fa6e8e3",
+        "addea2d9-3eac-4158-b5cd-b1e4b2738b14",
+        "b084c90f-6cc4-4c80-8b53-f3787ca1edc9",
+        "c5e989f0-e335-44b7-b361-bc23ca44eda8",
+        "c60cb6b9-b067-4a90-9da8-c1b966f0793f",
+        "d507c296-ac3b-4492-a431-f99207e0677e",
+        "d82159d4-8e2f-413b-8126-20b74f95b9cd",
+        "d87f8d5d-003a-4d77-8513-5a79a892b10f",
+        "df44fec3-b8f6-4ac7-835b-f4f9f46315da",
+        "e21b1dce-6479-492a-84bf-9561642cd87f",
+        "f130ab7d-5b4a-4249-b86d-97f791c346cc"
+      ]
+    },
+    {
+      "chapter": 24,
+      "moduleId": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+      "id": "14d28b00-daa7-4a39-807f-2b16910d50b3",
+      "slug": "pelajaran-2-kosakata",
+      "ids": [
+        "0da97488-7b03-40bb-99f2-2940e12a5f86",
+        "11e9babb-6ae5-4d87-8214-cc6880eddbdd",
+        "13370bd7-c0f4-4838-b966-45eb9df7a6c2",
+        "15c67f09-f9f1-4776-941f-77b396721634",
+        "19078932-fd70-4b63-8751-62469e64d565",
+        "192564b8-949c-4187-a7a4-54a1ce281bdd",
+        "1fe84047-dea4-445d-92d3-6b68cfc25ed9",
+        "263d9de0-5737-4d0b-9562-974ee434b49f",
+        "26d44ea2-1e4b-46d0-92a5-1a5c0a9b958d",
+        "28422c70-58cb-473b-b7e9-cc611abc68fb",
+        "315d2367-592f-4c99-8dac-434ec4a881c8",
+        "3a851dd2-796d-4f14-99e7-3e8088cb575e",
+        "3c90ed4a-5cd7-4815-8433-ed7b323147e5",
+        "5fc102c7-09bc-4ccb-b017-529251df6264",
+        "64b3d0ed-a219-44fa-a89a-6551c79015d5",
+        "673f3726-4291-40e9-9c51-4f6207f62221",
+        "6888bd30-108c-4068-ab67-5c4760760edf",
+        "737c90e3-f399-4c68-893f-d50893efb6c8",
+        "785fe724-f3aa-4e8a-a90e-a7878a8abb74",
+        "8907499c-c0cc-4433-bd66-8a7cd91eadc6",
+        "8f4314b2-6d36-4b67-b1a6-288543f2071e",
+        "917978a1-00a5-49c0-ac97-c34a9061337c",
+        "924ea27c-d5d4-4f7c-9b66-4df6598d7f70",
+        "ae63d819-7e7b-4425-a8f3-cff6d91270dd",
+        "b1c16cd5-69b4-4f69-810e-a7fac78049e7",
+        "c16f8283-0dfc-4fd9-b440-caca6c3ee614",
+        "c1a68c86-a96e-4568-ae5b-53b3f3a53036",
+        "c52fde9a-02f8-4527-a17f-ab39bb39e0ee",
+        "d1d58ccb-13f0-4c15-8ae8-7f249378e84d",
+        "d6391dfd-f59a-46d8-9fa9-20fb0a8ff82d",
+        "d775820e-2a07-491d-823a-0f5bd622d45d",
+        "d858c44c-f805-4ced-a9d5-a366fe0d0a2d",
+        "dda2f676-6d42-42eb-98e9-3770cb3f7409",
+        "e3f272c5-b0ec-47e9-8ba8-8cbb05ceaf8c",
+        "e95472fa-b0bd-4087-986a-bf0c9b7f90a8",
+        "f7b97d97-fbf5-4d09-8389-3da89c727b6f",
+        "fec8e2a5-a0e3-4fda-97d6-cffed463b25b"
+      ]
+    }
+  ],
+  "items": [
+    {
+      "id": "b0c1a79b-c1d9-4e45-bf84-fa1672ace265",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "b0c1a79b-c1d9-4e45-bf84-fa1672ace265",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "道具",
+        "reading": "どうぐ",
+        "romaji": null,
+        "indonesian": "alat; perkakas",
+        "category": "名詞",
+        "sort_order": 5
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "これは、りょうりにつかう道具です。",
+          "reading": "これは、りょうりにつかうどうぐです。",
+          "indonesian": "Ini alat yang digunakan untuk memasak.",
+          "highlight": "道具"
+        }
+      ]
+    },
+    {
+      "id": "c7c03254-bc2e-4683-b8ac-5e699fe5def9",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "c7c03254-bc2e-4683-b8ac-5e699fe5def9",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "作品",
+        "reading": "さくひん",
+        "romaji": null,
+        "indonesian": "karya",
+        "category": "名詞",
+        "sort_order": 6
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "これは、あねがつくった作品です。",
+          "reading": "これは、あねがつくったさくひんです。",
+          "indonesian": "Ini karya yang dibuat kakak perempuan saya.",
+          "highlight": "作品"
+        }
+      ]
+    },
+    {
+      "id": "4a5d9fa7-ef47-43eb-8837-f1217746c02f",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "4a5d9fa7-ef47-43eb-8837-f1217746c02f",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "題名",
+        "reading": "だいめい",
+        "romaji": null,
+        "indonesian": "judul karya",
+        "category": "名詞",
+        "sort_order": 7
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "このしょうせつの題名をおしえてください。",
+          "reading": "このしょうせつのだいめいをおしえてください。",
+          "indonesian": "Tolong beri tahu saya judul novel ini.",
+          "highlight": "題名"
+        }
+      ]
+    },
+    {
+      "id": "cf28ba96-4598-4e13-a9bd-d7b941fc66c6",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "cf28ba96-4598-4e13-a9bd-d7b941fc66c6",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "文字",
+        "reading": "もじ",
+        "romaji": null,
+        "indonesian": "huruf; karakter tulisan",
+        "category": "名詞",
+        "sort_order": 8
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "このほんは文字がおおきいです。",
+          "reading": "このほんはもじがおおきいです。",
+          "indonesian": "Huruf dalam buku ini besar.",
+          "highlight": "文字"
+        }
+      ]
+    },
+    {
+      "id": "71fe343c-8d7d-4f2a-9323-64934ca2f323",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "71fe343c-8d7d-4f2a-9323-64934ca2f323",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "美術館",
+        "reading": "びじゅつかん",
+        "romaji": null,
+        "indonesian": "museum seni",
+        "category": "名詞",
+        "sort_order": 9
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "きのう美術館でえをみました。",
+          "reading": "きのうびじゅつかんでえをみました。",
+          "indonesian": "Kemarin saya melihat lukisan di museum seni.",
+          "highlight": "美術館"
+        }
+      ]
+    },
+    {
+      "id": "76e79c4e-c744-4e09-84d7-924d37de4b14",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "76e79c4e-c744-4e09-84d7-924d37de4b14",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "小説",
+        "reading": "しょうせつ",
+        "romaji": null,
+        "indonesian": "novel",
+        "category": "名詞",
+        "sort_order": 10
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "まいばん小説をよみます。",
+          "reading": "まいばんしょうせつをよみます。",
+          "indonesian": "Saya membaca novel setiap malam.",
+          "highlight": "小説"
+        }
+      ]
+    },
+    {
+      "id": "08f11477-c7ba-4bf2-aee0-0f7ff4445bff",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "08f11477-c7ba-4bf2-aee0-0f7ff4445bff",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "文学",
+        "reading": "ぶんがく",
+        "romaji": null,
+        "indonesian": "sastra",
+        "category": "名詞",
+        "sort_order": 11
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "だいがくでにほんの文学をべんきょうしています。",
+          "reading": "だいがくでにほんのぶんがくをべんきょうしています。",
+          "indonesian": "Saya mempelajari sastra Jepang di universitas.",
+          "highlight": "文学"
+        }
+      ]
+    },
+    {
+      "id": "bd68f0cb-6e3e-4f32-8b7c-e2b1ee81beec",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "bd68f0cb-6e3e-4f32-8b7c-e2b1ee81beec",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "選ぶ",
+        "reading": "えらぶ",
+        "romaji": null,
+        "indonesian": "memilih",
+        "category": "動詞",
+        "sort_order": 11
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "このあかいのを選びます。",
+          "reading": "このあかいのをえらびます。",
+          "indonesian": "Saya memilih yang merah ini.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "c9857202-b860-4ce6-bc92-951e0bee1bd5",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "c9857202-b860-4ce6-bc92-951e0bee1bd5",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "文化",
+        "reading": "ぶんか",
+        "romaji": null,
+        "indonesian": "budaya",
+        "category": "名詞",
+        "sort_order": 12
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしはにほんの文化にきょうみがあります。",
+          "reading": "わたしはにほんのぶんかにきょうみがあります。",
+          "indonesian": "Saya tertarik pada budaya Jepang.",
+          "highlight": "文化"
+        }
+      ]
+    },
+    {
+      "id": "516772b8-3259-40fa-bf3a-77758b03ccd0",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "516772b8-3259-40fa-bf3a-77758b03ccd0",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "技術",
+        "reading": "ぎじゅつ",
+        "romaji": null,
+        "indonesian": "teknik; teknologi; keterampilan",
+        "category": "名詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "あにはだいがくでくるまの技術をべんきょうしています。",
+          "reading": "あにはだいがくでくるまのぎじゅつをべんきょうしています。",
+          "indonesian": "Kakak laki-laki saya mempelajari teknologi mobil di universitas.",
+          "highlight": "技術"
+        }
+      ]
+    },
+    {
+      "id": "32cfd791-347c-4626-905e-de32e1d76175",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "32cfd791-347c-4626-905e-de32e1d76175",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "展覧会",
+        "reading": "てんらんかい",
+        "romaji": null,
+        "indonesian": "pameran",
+        "category": "名詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "この展覧会には、がくせいがかいたえがあります。",
+          "reading": "このてんらんかいには、がくせいがかいたえがあります。",
+          "indonesian": "Di pameran ini ada lukisan yang dibuat para siswa.",
+          "highlight": "展覧会"
+        }
+      ]
+    },
+    {
+      "id": "3fb2c149-4f99-4406-b6ee-0eced05cce1c",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "3fb2c149-4f99-4406-b6ee-0eced05cce1c",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "集める",
+        "reading": "あつめる",
+        "romaji": null,
+        "indonesian": "mengumpulkan",
+        "category": "動詞",
+        "sort_order": 14
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.",
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしのしゅみはきってを集めることです。",
+          "reading": "わたしのしゅみはきってをあつめることです。",
+          "indonesian": "Hobi saya mengumpulkan perangko.",
+          "highlight": "集める"
+        }
+      ]
+    },
+    {
+      "id": "e09f5a33-0bc0-4d1d-81ad-e7a3520ec2e2",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "e09f5a33-0bc0-4d1d-81ad-e7a3520ec2e2",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "楽しむ",
+        "reading": "たのしむ",
+        "romaji": null,
+        "indonesian": "menikmati",
+        "category": "動詞",
+        "sort_order": 15
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "にちようびはうみでおよぐのを楽しみます。",
+          "reading": "にちようびはうみでおよぐのをたのしみます。",
+          "indonesian": "Pada hari Minggu, saya menikmati berenang di laut.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "be0bce6a-c0b9-4921-bf7c-db7ee157032d",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "be0bce6a-c0b9-4921-bf7c-db7ee157032d",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "見物",
+        "reading": "けんぶつ",
+        "romaji": null,
+        "indonesian": "melihat-lihat; wisata tontonan",
+        "category": "名詞・動詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "きのうきょうとのおてらを見物しました。",
+          "reading": "きのうきょうとのおてらをけんぶつしました。",
+          "indonesian": "Kemarin saya melihat-lihat kuil di Kyoto.",
+          "highlight": "見物"
+        }
+      ]
+    },
+    {
+      "id": "ecbf6063-8271-435a-b24c-7cf64aacac48",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "ecbf6063-8271-435a-b24c-7cf64aacac48",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "興味",
+        "reading": "きょうみ",
+        "romaji": null,
+        "indonesian": "minat; ketertarikan",
+        "category": "名詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしはにほんのおまつりに興味があります。",
+          "reading": "わたしはにほんのおまつりにきょうみがあります。",
+          "indonesian": "Saya tertarik pada festival Jepang.",
+          "highlight": "興味"
+        }
+      ]
+    },
+    {
+      "id": "e24a2ee4-8999-434a-8462-975def186ddf",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "e24a2ee4-8999-434a-8462-975def186ddf",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "楽しみ",
+        "reading": "たのしみ",
+        "romaji": null,
+        "indonesian": "hal yang dinantikan; kesenangan",
+        "category": "名詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "らいしゅうのコンサートが楽しみです。",
+          "reading": "らいしゅうのコンサートがたのしみです。",
+          "indonesian": "Saya menantikan konser minggu depan.",
+          "highlight": "楽しみ"
+        }
+      ]
+    },
+    {
+      "id": "401926a6-0cc7-445b-bc70-354c16258cc3",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "401926a6-0cc7-445b-bc70-354c16258cc3",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "写す",
+        "reading": "うつす",
+        "romaji": null,
+        "indonesian": "menyalin; memotret",
+        "category": "動詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "こくばんのもじをノートに写します。",
+          "reading": "こくばんのもじをノートにうつします。",
+          "indonesian": "Saya menyalin tulisan di papan tulis ke buku catatan.",
+          "highlight": null
+        },
+        {
+          "japanese": "このカメラでやまを写しました。",
+          "reading": "このカメラでやまをうつしました。",
+          "indonesian": "Saya memotret gunung dengan kamera ini.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "224ed9d1-fac1-4f6c-ab60-aadac351a27d",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "224ed9d1-fac1-4f6c-ab60-aadac351a27d",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "細かい",
+        "reading": "こまかい",
+        "romaji": null,
+        "indonesian": "kecil dan terperinci; halus",
+        "category": "い形容詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "細かいもじをよむのはたいへんです。",
+          "reading": "こまかいもじをよむのはたいへんです。",
+          "indonesian": "Membaca tulisan yang kecil-kecil itu sulit.",
+          "highlight": "細かい"
+        }
+      ]
+    },
+    {
+      "id": "01211580-5fd9-43be-898e-25a34ddce4e6",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "01211580-5fd9-43be-898e-25a34ddce4e6",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "飾る",
+        "reading": "かざる",
+        "romaji": null,
+        "indonesian": "menghias",
+        "category": "動詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "へやにはなを飾りました。",
+          "reading": "へやにはなをかざりました。",
+          "indonesian": "Saya menghias kamar dengan bunga.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "0e640a4e-e16a-4d83-ad42-3aa3f645b1a7",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "0e640a4e-e16a-4d83-ad42-3aa3f645b1a7",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "人形",
+        "reading": "にんぎょう",
+        "romaji": null,
+        "indonesian": "boneka; figur",
+        "category": "名詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "これは、ははがつくった人形です。",
+          "reading": "これは、ははがつくったにんぎょうです。",
+          "indonesian": "Ini boneka yang dibuat ibu saya.",
+          "highlight": "人形"
+        }
+      ]
+    },
+    {
+      "id": "7470e120-2f2d-4c8a-abbf-6b05da2784cc",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "7470e120-2f2d-4c8a-abbf-6b05da2784cc",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "着物",
+        "reading": "きもの",
+        "romaji": null,
+        "indonesian": "kimono",
+        "category": "名詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "あねはおまつりで着物をきました。",
+          "reading": "あねはおまつりできものをきました。",
+          "indonesian": "Kakak perempuan saya memakai kimono di festival.",
+          "highlight": "着物"
+        }
+      ]
+    },
+    {
+      "id": "a11af5dd-7232-4b9a-aebd-740ec1068087",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "a11af5dd-7232-4b9a-aebd-740ec1068087",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "絹",
+        "reading": "きぬ",
+        "romaji": null,
+        "indonesian": "sutra",
+        "category": "名詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "このきものは絹でつくりました。",
+          "reading": "このきものはきぬでつくりました。",
+          "indonesian": "Kimono ini dibuat dari sutra.",
+          "highlight": "絹"
+        }
+      ]
+    },
+    {
+      "id": "a7817a74-c47a-44d4-bb54-1e18cbb70a55",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "a7817a74-c47a-44d4-bb54-1e18cbb70a55",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "木綿",
+        "reading": "もめん",
+        "romaji": null,
+        "indonesian": "katun",
+        "category": "名詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしは木綿のシャツをよくきます。",
+          "reading": "わたしはもめんのシャツをよくきます。",
+          "indonesian": "Saya sering memakai kemeja katun.",
+          "highlight": "木綿"
+        }
+      ]
+    },
+    {
+      "id": "1ce8d49f-41a9-4622-9038-b5c9055f5a74",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "1ce8d49f-41a9-4622-9038-b5c9055f5a74",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "花見",
+        "reading": "はなみ",
+        "romaji": null,
+        "indonesian": "melihat bunga sakura",
+        "category": "名詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "こうえんでともだちと花見をしました。",
+          "reading": "こうえんでともだちとはなみをしました。",
+          "indonesian": "Saya menikmati bunga sakura bersama teman di taman.",
+          "highlight": "花見"
+        }
+      ]
+    },
+    {
+      "id": "e8aa52d4-6b8d-4ff7-a36b-66a237b679af",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "e8aa52d4-6b8d-4ff7-a36b-66a237b679af",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "お祭り",
+        "reading": "おまつり",
+        "romaji": null,
+        "indonesian": "festival",
+        "category": "名詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "このまちのお祭りははちがつです。",
+          "reading": "このまちのおまつりははちがつです。",
+          "indonesian": "Festival kota ini diadakan pada bulan Agustus.",
+          "highlight": "お祭り"
+        }
+      ]
+    },
+    {
+      "id": "b10373ab-88bf-4f75-b4ea-0bbdc14c65d0",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "b10373ab-88bf-4f75-b4ea-0bbdc14c65d0",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "コンサート",
+        "reading": "コンサート",
+        "romaji": null,
+        "indonesian": "konser",
+        "category": "名詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "きのうのコンサートはとてもたのしかったです。",
+          "reading": "きのうのコンサートはとてもたのしかったです。",
+          "indonesian": "Konser kemarin sangat menyenangkan.",
+          "highlight": "コンサート"
+        }
+      ]
+    },
+    {
+      "id": "81c0860b-d3b5-4599-9dfa-914ab3a8c283",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "81c0860b-d3b5-4599-9dfa-914ab3a8c283",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "ステレオ",
+        "reading": "ステレオ",
+        "romaji": null,
+        "indonesian": "perangkat stereo",
+        "category": "名詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "へやのステレオでおんがくをききます。",
+          "reading": "へやのステレオでおんがくをききます。",
+          "indonesian": "Saya mendengarkan musik dengan perangkat stereo di kamar.",
+          "highlight": "ステレオ"
+        }
+      ]
+    },
+    {
+      "id": "87f588c7-49d1-4f55-b824-b07c7a69e701",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "87f588c7-49d1-4f55-b824-b07c7a69e701",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "踊り",
+        "reading": "おどり",
+        "romaji": null,
+        "indonesian": "tarian",
+        "category": "名詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "おまつりでにほんの踊りをみました。",
+          "reading": "おまつりでにほんのおどりをみました。",
+          "indonesian": "Saya melihat tarian Jepang di festival.",
+          "highlight": "踊り"
+        }
+      ]
+    },
+    {
+      "id": "f0d4b721-cb94-4548-a524-59d797ef226a",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "f0d4b721-cb94-4548-a524-59d797ef226a",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "遊び",
+        "reading": "あそび",
+        "romaji": null,
+        "indonesian": "permainan; kegiatan bersantai",
+        "category": "名詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "こどもたちはどんな遊びがすきですか。",
+          "reading": "こどもたちはどんなあそびがすきですか。",
+          "indonesian": "Anak-anak menyukai permainan seperti apa?",
+          "highlight": "遊び"
+        }
+      ]
+    },
+    {
+      "id": "a8dad0cf-b3b2-46c8-aadd-abc1d91e51e8",
+      "chapter": 1,
+      "expectedCore": {
+        "id": "a8dad0cf-b3b2-46c8-aadd-abc1d91e51e8",
+        "module_id": "61d8ce65-5b6c-4dad-b75d-a3be800cb6c8",
+        "lesson_id": null,
+        "japanese": "スクリーン",
+        "reading": "スクリーン",
+        "romaji": null,
+        "indonesian": "layar",
+        "category": "名詞",
+        "sort_order": 30
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0dd1b119-a9f9-4aa0-ab1f-03c9576aa42c"
+      ],
+      "examples": [
+        {
+          "japanese": "このえいがかんのスクリーンはおおきいです。",
+          "reading": "このえいがかんのスクリーンはおおきいです。",
+          "indonesian": "Layar bioskop ini besar.",
+          "highlight": "スクリーン"
+        }
+      ]
+    },
+    {
+      "id": "93d479ca-a06e-41f4-9491-360b4a70db65",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "93d479ca-a06e-41f4-9491-360b4a70db65",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "理由",
+        "reading": "りゆう",
+        "romaji": null,
+        "indonesian": "alasan",
+        "category": "名詞",
+        "sort_order": 1
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "きのうがっこうをやすんだ理由をはなしてください。",
+          "reading": "きのうがっこうをやすんだりゆうをはなしてください。",
+          "indonesian": "Tolong ceritakan alasan Anda tidak masuk sekolah kemarin.",
+          "highlight": "理由"
+        }
+      ]
+    },
+    {
+      "id": "132dad2f-c432-4e25-9d1c-7572d5e2c873",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "132dad2f-c432-4e25-9d1c-7572d5e2c873",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "事情",
+        "reading": "じじょう",
+        "romaji": null,
+        "indonesian": "keadaan; situasi yang melatarbelakangi",
+        "category": "名詞",
+        "sort_order": 2
+      },
+      "expectedNote": null,
+      "note": "くわしい = terperinci; selengkapnya.",
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "くわしい事情はまだわかりません。",
+          "reading": "くわしいじじょうはまだわかりません。",
+          "indonesian": "Saya belum mengetahui keadaan selengkapnya.",
+          "highlight": "事情"
+        }
+      ]
+    },
+    {
+      "id": "1206d19e-0624-439e-adbf-7b7bb9c5b591",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "1206d19e-0624-439e-adbf-7b7bb9c5b591",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "意見",
+        "reading": "いけん",
+        "romaji": null,
+        "indonesian": "pendapat",
+        "category": "名詞",
+        "sort_order": 3
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいは、みなさんの意見をききたいといいました。",
+          "reading": "せんせいは、みなさんのいけんをききたいといいました。",
+          "indonesian": "Guru mengatakan bahwa beliau ingin mendengar pendapat semua orang.",
+          "highlight": "意見"
+        }
+      ]
+    },
+    {
+      "id": "2224897e-6a53-470d-b526-4ab38f722e4a",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "2224897e-6a53-470d-b526-4ab38f722e4a",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "意味",
+        "reading": "いみ",
+        "romaji": null,
+        "indonesian": "arti; makna",
+        "category": "名詞",
+        "sort_order": 4
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "このことばの意味がわからないんです。",
+          "reading": "このことばのいみがわからないんです。",
+          "indonesian": "Saya tidak mengerti arti kata ini.",
+          "highlight": "意味"
+        }
+      ]
+    },
+    {
+      "id": "3e908c80-8c39-473b-836f-b961dffd569a",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "3e908c80-8c39-473b-836f-b961dffd569a",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "説明",
+        "reading": "せつめい",
+        "romaji": null,
+        "indonesian": "penjelasan",
+        "category": "名詞",
+        "sort_order": 7
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいの説明をきいて、いみがわかりました。",
+          "reading": "せんせいのせつめいをきいて、いみがわかりました。",
+          "indonesian": "Setelah mendengarkan penjelasan guru, saya memahami artinya.",
+          "highlight": "説明"
+        }
+      ]
+    },
+    {
+      "id": "aef40503-4ff4-4e9d-bc22-a35122eb2fc9",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "aef40503-4ff4-4e9d-bc22-a35122eb2fc9",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "考え",
+        "reading": "かんがえ",
+        "romaji": null,
+        "indonesian": "pemikiran; gagasan",
+        "category": "名詞",
+        "sort_order": 8
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "それはおもしろい考えだとおもいます。",
+          "reading": "それはおもしろいかんがえだとおもいます。",
+          "indonesian": "Menurut saya, itu gagasan yang menarik.",
+          "highlight": "考え"
+        }
+      ]
+    },
+    {
+      "id": "f37a5678-e97a-4bfd-9d26-f5a682630b41",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "f37a5678-e97a-4bfd-9d26-f5a682630b41",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "思う",
+        "reading": "おもう",
+        "romaji": null,
+        "indonesian": "berpikir; merasa; berpendapat",
+        "category": "動詞",
+        "sort_order": 9
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたはあめだと思います。",
+          "reading": "あしたはあめだとおもいます。",
+          "indonesian": "Saya rasa besok hujan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "54084db9-ce26-4db6-992c-fadd4ae26b45",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "54084db9-ce26-4db6-992c-fadd4ae26b45",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "考える",
+        "reading": "かんがえる",
+        "romaji": null,
+        "indonesian": "memikirkan; mempertimbangkan",
+        "category": "動詞",
+        "sort_order": 10
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.",
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "にほんでのせいかつを考えています。",
+          "reading": "にほんでのせいかつをかんがえています。",
+          "indonesian": "Saya sedang memikirkan kehidupan di Jepang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "dfb5555b-7bd3-4818-a216-9634c5d00951",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "dfb5555b-7bd3-4818-a216-9634c5d00951",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "伝える",
+        "reading": "つたえる",
+        "romaji": null,
+        "indonesian": "menyampaikan",
+        "category": "動詞",
+        "sort_order": 11
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.",
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "かいぎのじかんをみなさんに伝えてください。",
+          "reading": "かいぎのじかんをみなさんにつたえてください。",
+          "indonesian": "Tolong sampaikan waktu rapat kepada semua orang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "6bc3bdfb-da16-4b8b-b90e-17cb2328b650",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "6bc3bdfb-da16-4b8b-b90e-17cb2328b650",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "説明する",
+        "reading": "せつめいする",
+        "romaji": null,
+        "indonesian": "menjelaskan",
+        "category": "動詞",
+        "sort_order": 13
+      },
+      "expectedNote": "Kelompok 3.",
+      "note": "Kelompok 3.",
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "このことばのいみを説明してください。",
+          "reading": "このことばのいみをせつめいしてください。",
+          "indonesian": "Tolong jelaskan arti kata ini.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "7de3ffb2-8768-4771-9592-e1876951d46a",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "7de3ffb2-8768-4771-9592-e1876951d46a",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "相談する",
+        "reading": "そうだんする",
+        "romaji": null,
+        "indonesian": "berkonsultasi; membicarakan masalah",
+        "category": "動詞",
+        "sort_order": 14
+      },
+      "expectedNote": "Kelompok 3.",
+      "note": "Kelompok 3.",
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "しごとのことでせんせいに相談しました。",
+          "reading": "しごとのことでせんせいにそうだんしました。",
+          "indonesian": "Saya berkonsultasi dengan guru mengenai pekerjaan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "292c0eee-fa80-4140-98bd-f5eec4d7f994",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "292c0eee-fa80-4140-98bd-f5eec4d7f994",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "会話",
+        "reading": "かいわ",
+        "romaji": null,
+        "indonesian": "percakapan",
+        "category": "名詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "にほんごでの会話をまいにちれんしゅうしています。",
+          "reading": "にほんごでのかいわをまいにちれんしゅうしています。",
+          "indonesian": "Saya berlatih percakapan bahasa Jepang setiap hari.",
+          "highlight": "会話"
+        }
+      ]
+    },
+    {
+      "id": "24c7de13-0ea1-4081-af61-761676e4e088",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "24c7de13-0ea1-4081-af61-761676e4e088",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "確かめる",
+        "reading": "たしかめる",
+        "romaji": null,
+        "indonesian": "memastikan; memeriksa kebenaran",
+        "category": "動詞",
+        "sort_order": 15
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.",
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "でんしゃのじかんをもういちど確かめます。",
+          "reading": "でんしゃのじかんをもういちどたしかめます。",
+          "indonesian": "Saya memeriksa lagi waktu keberangkatan kereta.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "96e49aae-5921-4625-b7c1-fb70d25630e6",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "96e49aae-5921-4625-b7c1-fb70d25630e6",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "嘘",
+        "reading": "うそ",
+        "romaji": null,
+        "indonesian": "kebohongan",
+        "category": "名詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "それは嘘ではありません。ほんとうなんです。",
+          "reading": "それはうそではありません。ほんとうなんです。",
+          "indonesian": "Itu bukan kebohongan. Itu benar.",
+          "highlight": "嘘"
+        }
+      ]
+    },
+    {
+      "id": "631cea02-5495-4b0a-b65c-bd3dd7d3001c",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "631cea02-5495-4b0a-b65c-bd3dd7d3001c",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "本当",
+        "reading": "ほんとう",
+        "romaji": null,
+        "indonesian": "benar; sungguh",
+        "category": "名詞・な形容詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "そのはなしは本当ですか。",
+          "reading": "そのはなしはほんとうですか。",
+          "indonesian": "Apakah cerita itu benar?",
+          "highlight": "本当"
+        }
+      ]
+    },
+    {
+      "id": "60320171-2d98-4dce-b71f-09fc4e8dfb7f",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "60320171-2d98-4dce-b71f-09fc4e8dfb7f",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "実は",
+        "reading": "じつは",
+        "romaji": null,
+        "indonesian": "sebenarnya",
+        "category": "副詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": "たんじょうび = ulang tahun.",
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "実は、きょうはわたしのたんじょうびなんです。",
+          "reading": "じつは、きょうはわたしのたんじょうびなんです。",
+          "indonesian": "Sebenarnya, hari ini ulang tahun saya.",
+          "highlight": "実は"
+        }
+      ]
+    },
+    {
+      "id": "fe57b87a-a25a-4579-9e31-4996263e54be",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "fe57b87a-a25a-4579-9e31-4996263e54be",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "訳",
+        "reading": "わけ",
+        "romaji": null,
+        "indonesian": "alasan; arti; keadaan di balik sesuatu",
+        "category": "名詞",
+        "sort_order": 17
+      },
+      "expectedNote": "Makna dipilih menurut konteks.",
+      "note": "Makna dipilih menurut konteks.",
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "がっこうをやすんだ訳をはなしてください。",
+          "reading": "がっこうをやすんだわけをはなしてください。",
+          "indonesian": "Tolong ceritakan alasan Anda tidak masuk sekolah.",
+          "highlight": "訳"
+        }
+      ]
+    },
+    {
+      "id": "d36aa477-b355-45d2-b4a5-a29673c908dc",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "d36aa477-b355-45d2-b4a5-a29673c908dc",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "返事",
+        "reading": "へんじ",
+        "romaji": null,
+        "indonesian": "jawaban; balasan",
+        "category": "名詞・動詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちからメールの返事がきました。",
+          "reading": "ともだちからメールのへんじがきました。",
+          "indonesian": "Balasan surel dari teman saya sudah datang.",
+          "highlight": "返事"
+        }
+      ]
+    },
+    {
+      "id": "bb05c483-a006-40e0-a7f9-40710262998a",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "bb05c483-a006-40e0-a7f9-40710262998a",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "はっきり",
+        "reading": "はっきり",
+        "romaji": null,
+        "indonesian": "dengan jelas",
+        "category": "副詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "もうすこしはっきりはなしてください。",
+          "reading": "もうすこしはっきりはなしてください。",
+          "indonesian": "Tolong berbicara sedikit lebih jelas.",
+          "highlight": "はっきり"
+        }
+      ]
+    },
+    {
+      "id": "078f6eed-3704-4f86-869e-ca00f1dae9cb",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "078f6eed-3704-4f86-869e-ca00f1dae9cb",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "なるほど",
+        "reading": "なるほど",
+        "romaji": null,
+        "indonesian": "oh, begitu; masuk akal",
+        "category": "副詞・感動詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": "それで = jadi/karena itu.",
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "なるほど、それでがっこうをやすんだんですね。",
+          "reading": "なるほど、それでがっこうをやすんだんですね。",
+          "indonesian": "Oh, begitu. Jadi itu sebabnya Anda tidak masuk sekolah.",
+          "highlight": "なるほど"
+        }
+      ]
+    },
+    {
+      "id": "24716496-6aaa-4f04-af98-c891e6aab638",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "24716496-6aaa-4f04-af98-c891e6aab638",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "もちろん",
+        "reading": "もちろん",
+        "romaji": null,
+        "indonesian": "tentu saja",
+        "category": "副詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "にほんごのほんをよみます。もちろん、じしょもつかいます。",
+          "reading": "にほんごのほんをよみます。もちろん、じしょもつかいます。",
+          "indonesian": "Saya membaca buku bahasa Jepang. Tentu saja, saya juga menggunakan kamus.",
+          "highlight": "もちろん"
+        }
+      ]
+    },
+    {
+      "id": "2771833f-d388-40d9-a415-5c1f6be82517",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "2771833f-d388-40d9-a415-5c1f6be82517",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "やはり",
+        "reading": "やはり",
+        "romaji": null,
+        "indonesian": "seperti dugaan; tetap saja",
+        "category": "副詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "きょうもあめです。やはり、かさがひつようですね。",
+          "reading": "きょうもあめです。やはり、かさがひつようですね。",
+          "indonesian": "Hari ini juga hujan. Memang payung diperlukan, ya.",
+          "highlight": "やはり"
+        }
+      ]
+    },
+    {
+      "id": "a09e7ecd-4d74-4050-a387-444c63aa7b9d",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "a09e7ecd-4d74-4050-a387-444c63aa7b9d",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "レポート",
+        "reading": "レポート",
+        "romaji": null,
+        "indonesian": "laporan",
+        "category": "名詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいは、レポートはきんようびまでだといいました。",
+          "reading": "せんせいは、レポートはきんようびまでだといいました。",
+          "indonesian": "Guru mengatakan batas pengumpulan laporan adalah hari Jumat.",
+          "highlight": "レポート"
+        }
+      ]
+    },
+    {
+      "id": "aace4cda-1b03-4a5d-be95-9ce1504178ad",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "aace4cda-1b03-4a5d-be95-9ce1504178ad",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "翻訳",
+        "reading": "ほんやく",
+        "romaji": null,
+        "indonesian": "penerjemahan tertulis",
+        "category": "名詞・動詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "このほんの翻訳をよんでいます。",
+          "reading": "このほんのほんやくをよんでいます。",
+          "indonesian": "Saya sedang membaca terjemahan buku ini.",
+          "highlight": "翻訳"
+        }
+      ]
+    },
+    {
+      "id": "d3634fdf-2f12-45b1-abbf-5734599dd032",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "d3634fdf-2f12-45b1-abbf-5734599dd032",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "発音",
+        "reading": "はつおん",
+        "romaji": null,
+        "indonesian": "pelafalan",
+        "category": "名詞・動詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "このことばの発音をおしえてください。",
+          "reading": "このことばのはつおんをおしえてください。",
+          "indonesian": "Tolong ajarkan pelafalan kata ini.",
+          "highlight": "発音"
+        }
+      ]
+    },
+    {
+      "id": "3c95d406-e172-4d5b-b47e-45241c99c9d1",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "3c95d406-e172-4d5b-b47e-45241c99c9d1",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "文法",
+        "reading": "ぶんぽう",
+        "romaji": null,
+        "indonesian": "tata bahasa",
+        "category": "名詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "にほんごの文法をべんきょうしています。",
+          "reading": "にほんごのぶんぽうをべんきょうしています。",
+          "indonesian": "Saya sedang mempelajari tata bahasa Jepang.",
+          "highlight": "文法"
+        }
+      ]
+    },
+    {
+      "id": "7dd1f9df-e7cf-44ef-8220-dffe53b3d7a4",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "7dd1f9df-e7cf-44ef-8220-dffe53b3d7a4",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "辞典",
+        "reading": "じてん",
+        "romaji": null,
+        "indonesian": "kamus",
+        "category": "名詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "この辞典でことばのいみをしらべます。",
+          "reading": "このじてんでことばのいみをしらべます。",
+          "indonesian": "Saya mencari arti kata dengan kamus ini.",
+          "highlight": "辞典"
+        }
+      ]
+    },
+    {
+      "id": "ca485b28-6abd-4de8-b320-7a7eb4f4bc38",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "ca485b28-6abd-4de8-b320-7a7eb4f4bc38",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "紹介",
+        "reading": "しょうかい",
+        "romaji": null,
+        "indonesian": "perkenalan; pengenalan",
+        "category": "名詞・動詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "つぎに、あたらしいせんせいの紹介です。",
+          "reading": "つぎに、あたらしいせんせいのしょうかいです。",
+          "indonesian": "Berikutnya adalah perkenalan guru baru.",
+          "highlight": "紹介"
+        }
+      ]
+    },
+    {
+      "id": "0ad011c5-a375-4524-9f74-eab48735698b",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "0ad011c5-a375-4524-9f74-eab48735698b",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "社会",
+        "reading": "しゃかい",
+        "romaji": null,
+        "indonesian": "masyarakat",
+        "category": "名詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしはにほんの社会にきょうみがあります。",
+          "reading": "わたしはにほんのしゃかいにきょうみがあります。",
+          "indonesian": "Saya tertarik pada masyarakat Jepang.",
+          "highlight": "社会"
+        }
+      ]
+    },
+    {
+      "id": "be1c248f-251e-4d14-9a32-9dcae52fda51",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "be1c248f-251e-4d14-9a32-9dcae52fda51",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "政治",
+        "reading": "せいじ",
+        "romaji": null,
+        "indonesian": "politik; pemerintahan",
+        "category": "名詞",
+        "sort_order": 30
+      },
+      "expectedNote": null,
+      "note": "ニュース = berita.",
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "ちちは政治のニュースをよくみます。",
+          "reading": "ちちはせいじのニュースをよくみます。",
+          "indonesian": "Ayah saya sering menonton berita politik.",
+          "highlight": "政治"
+        }
+      ]
+    },
+    {
+      "id": "490ea69c-9de7-4974-a58d-327a015ac6e0",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "490ea69c-9de7-4974-a58d-327a015ac6e0",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "経済",
+        "reading": "けいざい",
+        "romaji": null,
+        "indonesian": "ekonomi",
+        "category": "名詞",
+        "sort_order": 31
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "あねはだいがくで経済をべんきょうしています。",
+          "reading": "あねはだいがくでけいざいをべんきょうしています。",
+          "indonesian": "Kakak perempuan saya belajar ekonomi di universitas.",
+          "highlight": "経済"
+        }
+      ]
+    },
+    {
+      "id": "d539b257-0468-4719-b842-d012f834213d",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "d539b257-0468-4719-b842-d012f834213d",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "国際",
+        "reading": "こくさい",
+        "romaji": null,
+        "indonesian": "internasional",
+        "category": "名詞",
+        "sort_order": 32
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたの国際かいぎには、いろいろなくにのひとがきます。",
+          "reading": "あしたのこくさいかいぎには、いろいろなくにのひとがきます。",
+          "indonesian": "Orang-orang dari berbagai negara akan datang ke konferensi internasional besok.",
+          "highlight": "国際"
+        }
+      ]
+    },
+    {
+      "id": "ed33ce7d-99f2-48f2-afb3-a0e3477e6bef",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "ed33ce7d-99f2-48f2-afb3-a0e3477e6bef",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "キーワード",
+        "reading": "キーワード",
+        "romaji": null,
+        "indonesian": "kata kunci",
+        "category": "名詞",
+        "sort_order": 33
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "このレポートのキーワードは「ぶんか」です。",
+          "reading": "このレポートのキーワードは「ぶんか」です。",
+          "indonesian": "Kata kunci laporan ini adalah “budaya”.",
+          "highlight": "キーワード"
+        }
+      ]
+    },
+    {
+      "id": "3834191c-5906-46e0-9b48-c28ea62cc141",
+      "chapter": 2,
+      "expectedCore": {
+        "id": "3834191c-5906-46e0-9b48-c28ea62cc141",
+        "module_id": "d29f8cdb-e5e7-47f1-8f84-e0b840a17b70",
+        "lesson_id": null,
+        "japanese": "講義",
+        "reading": "こうぎ",
+        "romaji": null,
+        "indonesian": "kuliah; ceramah",
+        "category": "名詞",
+        "sort_order": 34
+      },
+      "expectedNote": null,
+      "note": "かわる = berubah.",
+      "deckIds": [
+        "e4739a4f-67c2-4a10-bf41-8d5e86c2dfd9"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいの講義をきいて、かんがえがかわりました。",
+          "reading": "せんせいのこうぎをきいて、かんがえがかわりました。",
+          "indonesian": "Setelah mendengarkan kuliah dosen, pemikiran saya berubah.",
+          "highlight": "講義"
+        }
+      ]
+    },
+    {
+      "id": "559e7d03-e12f-49d1-8886-59431a61b3ac",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "559e7d03-e12f-49d1-8886-59431a61b3ac",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "今夜",
+        "reading": "こんや",
+        "romaji": null,
+        "indonesian": "malam ini",
+        "category": "名詞",
+        "sort_order": 6
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "今夜はほんをよんでからねます。",
+          "reading": "こんやはほんをよんでからねます。",
+          "indonesian": "Malam ini saya akan membaca buku sebelum tidur.",
+          "highlight": "今夜"
+        }
+      ]
+    },
+    {
+      "id": "8f34a5b4-9693-48be-8714-e3758a07db22",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "8f34a5b4-9693-48be-8714-e3758a07db22",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "最近",
+        "reading": "さいきん",
+        "romaji": null,
+        "indonesian": "akhir-akhir ini",
+        "category": "名詞・副詞",
+        "sort_order": 7
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "最近、あさはやくおきています。",
+          "reading": "さいきん、あさはやくおきています。",
+          "indonesian": "Akhir-akhir ini saya bangun pagi.",
+          "highlight": "最近"
+        }
+      ]
+    },
+    {
+      "id": "2d1e8cd4-a1b3-4184-81b8-2a46e7777866",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "2d1e8cd4-a1b3-4184-81b8-2a46e7777866",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "先に",
+        "reading": "さきに",
+        "romaji": null,
+        "indonesian": "lebih dahulu",
+        "category": "副詞",
+        "sort_order": 8
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしは先にかえります。",
+          "reading": "わたしはさきにかえります。",
+          "indonesian": "Saya pulang lebih dahulu.",
+          "highlight": "先に"
+        }
+      ]
+    },
+    {
+      "id": "7589df53-0200-4c11-9212-0a081e8f2b28",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "7589df53-0200-4c11-9212-0a081e8f2b28",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "この間",
+        "reading": "このあいだ",
+        "romaji": null,
+        "indonesian": "beberapa waktu lalu",
+        "category": "名詞・副詞",
+        "sort_order": 10
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "この間、えきでせんせいにあいました。",
+          "reading": "このあいだ、えきでせんせいにあいました。",
+          "indonesian": "Beberapa waktu lalu, saya bertemu guru di stasiun.",
+          "highlight": "この間"
+        }
+      ]
+    },
+    {
+      "id": "cfa50bd2-3a70-4f48-9c74-3c3a513d5d35",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "cfa50bd2-3a70-4f48-9c74-3c3a513d5d35",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "途中",
+        "reading": "とちゅう",
+        "romaji": null,
+        "indonesian": "di tengah perjalanan atau kegiatan",
+        "category": "名詞",
+        "sort_order": 10
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "がっこうへいく途中に、こうえんがあります。",
+          "reading": "がっこうへいくとちゅうに、こうえんがあります。",
+          "indonesian": "Ada taman di perjalanan menuju sekolah.",
+          "highlight": "途中"
+        }
+      ]
+    },
+    {
+      "id": "4aa936b7-cad2-41a5-8146-f3929c5f4278",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "4aa936b7-cad2-41a5-8146-f3929c5f4278",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "この頃",
+        "reading": "このごろ",
+        "romaji": null,
+        "indonesian": "akhir-akhir ini",
+        "category": "名詞・副詞",
+        "sort_order": 11
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "この頃、あめのひがおおいですね。",
+          "reading": "このごろ、あめのひがおおいですね。",
+          "indonesian": "Akhir-akhir ini banyak hari hujan, ya.",
+          "highlight": "この頃"
+        }
+      ]
+    },
+    {
+      "id": "8940a4ae-653b-4876-9039-ef3dcf14c432",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "8940a4ae-653b-4876-9039-ef3dcf14c432",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "しばらく",
+        "reading": "しばらく",
+        "romaji": null,
+        "indonesian": "sebentar; selama beberapa waktu",
+        "category": "副詞",
+        "sort_order": 12
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "ここでしばらくまってください。",
+          "reading": "ここでしばらくまってください。",
+          "indonesian": "Tolong tunggu sebentar di sini.",
+          "highlight": "しばらく"
+        }
+      ]
+    },
+    {
+      "id": "b9e944ab-0512-4249-a3a5-7178562c793e",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "b9e944ab-0512-4249-a3a5-7178562c793e",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "出発する",
+        "reading": "しゅっぱつする",
+        "romaji": null,
+        "indonesian": "berangkat",
+        "category": "動詞",
+        "sort_order": 12
+      },
+      "expectedNote": "Kelompok 3.",
+      "note": "Kelompok 3.",
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたはあさろくじに出発します。",
+          "reading": "あしたはあさろくじにしゅっぱつします。",
+          "indonesian": "Besok saya berangkat pukul enam pagi.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "cd98aae7-2a6b-4136-90b5-63bf82789fb8",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "cd98aae7-2a6b-4136-90b5-63bf82789fb8",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "そろそろ",
+        "reading": "そろそろ",
+        "romaji": null,
+        "indonesian": "sebentar lagi; sudah waktunya",
+        "category": "副詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "もうじゅうじです。そろそろねましょう。",
+          "reading": "もうじゅうじです。そろそろねましょう。",
+          "indonesian": "Sudah pukul sepuluh. Sudah waktunya kita tidur.",
+          "highlight": "そろそろ"
+        }
+      ]
+    },
+    {
+      "id": "5f95a361-df13-49d9-88b4-2b996ba2555d",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "5f95a361-df13-49d9-88b4-2b996ba2555d",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "もうすぐ",
+        "reading": "もうすぐ",
+        "romaji": null,
+        "indonesian": "sebentar lagi",
+        "category": "副詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "もうすぐでんしゃがきます。",
+          "reading": "もうすぐでんしゃがきます。",
+          "indonesian": "Kereta sebentar lagi datang.",
+          "highlight": "もうすぐ"
+        }
+      ]
+    },
+    {
+      "id": "6217d956-3981-4856-8a2b-01197a3c31aa",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "6217d956-3981-4856-8a2b-01197a3c31aa",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "とうとう",
+        "reading": "とうとう",
+        "romaji": null,
+        "indonesian": "akhirnya, setelah proses panjang",
+        "category": "副詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "ながいしょうせつをまいにちよんで、とうとうぜんぶよみました。",
+          "reading": "ながいしょうせつをまいにちよんで、とうとうぜんぶよみました。",
+          "indonesian": "Saya membaca novel panjang itu setiap hari dan akhirnya selesai membacanya seluruhnya.",
+          "highlight": "とうとう"
+        }
+      ]
+    },
+    {
+      "id": "c6000719-6810-44ca-80df-f841c1b6507c",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "c6000719-6810-44ca-80df-f841c1b6507c",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "間に合う",
+        "reading": "まにあう",
+        "romaji": null,
+        "indonesian": "sempat; tiba tepat waktu",
+        "category": "動詞",
+        "sort_order": 15
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "いそいで、はちじのでんしゃに間に合いました。",
+          "reading": "いそいで、はちじのでんしゃにまにあいました。",
+          "indonesian": "Saya bergegas dan berhasil mengejar kereta pukul delapan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "c11522ce-00d3-4c1f-9852-1f4ceb152511",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "c11522ce-00d3-4c1f-9852-1f4ceb152511",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "最後",
+        "reading": "さいご",
+        "romaji": null,
+        "indonesian": "akhir; terakhir",
+        "category": "名詞・副詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": "なく = menangis.",
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "このほんの最後をよんで、なきました。",
+          "reading": "このほんのさいごをよんで、なきました。",
+          "indonesian": "Saya menangis setelah membaca bagian akhir buku ini.",
+          "highlight": "最後"
+        }
+      ]
+    },
+    {
+      "id": "2263bb40-eafa-4955-86f3-dfea0f5eddc2",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "2263bb40-eafa-4955-86f3-dfea0f5eddc2",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "遅れる",
+        "reading": "おくれる",
+        "romaji": null,
+        "indonesian": "terlambat",
+        "category": "動詞",
+        "sort_order": 16
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.\nつく = tiba.",
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "バスが遅れて、がっこうにおそくつきました。",
+          "reading": "バスがおくれて、がっこうにおそくつきました。",
+          "indonesian": "Bus terlambat sehingga saya tiba terlambat di sekolah.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "04a01379-9146-47a8-86dc-7d56bdd8f3d7",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "04a01379-9146-47a8-86dc-7d56bdd8f3d7",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "昼間",
+        "reading": "ひるま",
+        "romaji": null,
+        "indonesian": "siang hari",
+        "category": "名詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "昼間ははたらいて、よるべんきょうしています。",
+          "reading": "ひるまははたらいて、よるべんきょうしています。",
+          "indonesian": "Saya bekerja pada siang hari dan belajar pada malam hari.",
+          "highlight": "昼間"
+        }
+      ]
+    },
+    {
+      "id": "ae5c504e-5f34-4194-a76a-074ffe8ae9fc",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "ae5c504e-5f34-4194-a76a-074ffe8ae9fc",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "続ける",
+        "reading": "つづける",
+        "romaji": null,
+        "indonesian": "melanjutkan",
+        "category": "動詞",
+        "sort_order": 17
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.",
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "ごはんをたべたあとで、べんきょうを続けます。",
+          "reading": "ごはんをたべたあとで、べんきょうをつづけます。",
+          "indonesian": "Saya melanjutkan belajar setelah makan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "876bafbb-7a31-4974-82bc-1841ec17c118",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "876bafbb-7a31-4974-82bc-1841ec17c118",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "同時に",
+        "reading": "どうじに",
+        "romaji": null,
+        "indonesian": "pada saat yang sama",
+        "category": "副詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "ふたりは同時にはなしました。",
+          "reading": "ふたりはどうじにはなしました。",
+          "indonesian": "Kedua orang itu berbicara pada saat yang sama.",
+          "highlight": "同時に"
+        }
+      ]
+    },
+    {
+      "id": "e2956446-b04c-4333-8421-a4a6e040079b",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "e2956446-b04c-4333-8421-a4a6e040079b",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "昼休み",
+        "reading": "ひるやすみ",
+        "romaji": null,
+        "indonesian": "istirahat siang",
+        "category": "名詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "昼休みにともだちとごはんをたべます。",
+          "reading": "ひるやすみにともだちとごはんをたべます。",
+          "indonesian": "Saya makan bersama teman saat istirahat siang.",
+          "highlight": "昼休み"
+        }
+      ]
+    },
+    {
+      "id": "ec90612c-c661-467c-ada7-5691d8aa8d70",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "ec90612c-c661-467c-ada7-5691d8aa8d70",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "今度",
+        "reading": "こんど",
+        "romaji": null,
+        "indonesian": "kali ini; lain kali",
+        "category": "名詞・副詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "今度のにちようびに、うちへきませんか。",
+          "reading": "こんどのにちようびに、うちへきませんか。",
+          "indonesian": "Maukah Anda datang ke rumah saya hari Minggu ini?",
+          "highlight": "今度"
+        }
+      ]
+    },
+    {
+      "id": "e2784b65-c285-4201-ad9b-e6adfdf7d644",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "e2784b65-c285-4201-ad9b-e6adfdf7d644",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "久しぶり",
+        "reading": "ひさしぶり",
+        "romaji": null,
+        "indonesian": "setelah lama tidak bertemu atau melakukan",
+        "category": "名詞・な形容詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "久しぶりにくにのともだちにあいました。",
+          "reading": "ひさしぶりにくにのともだちにあいました。",
+          "indonesian": "Saya bertemu teman dari negara asal setelah lama tidak bertemu.",
+          "highlight": "久しぶり"
+        }
+      ]
+    },
+    {
+      "id": "671caeac-eca8-49bd-9617-2889611c30f7",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "671caeac-eca8-49bd-9617-2889611c30f7",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "再来週",
+        "reading": "さらいしゅう",
+        "romaji": null,
+        "indonesian": "dua minggu lagi",
+        "category": "名詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "再来週、くにへかえります。",
+          "reading": "さらいしゅう、くにへかえります。",
+          "indonesian": "Saya akan pulang ke negara asal dua minggu lagi.",
+          "highlight": "再来週"
+        }
+      ]
+    },
+    {
+      "id": "cd9c58f8-3cde-49d8-92a0-a0d8109f5dd2",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "cd9c58f8-3cde-49d8-92a0-a0d8109f5dd2",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "再来月",
+        "reading": "さらいげつ",
+        "romaji": null,
+        "indonesian": "dua bulan lagi",
+        "category": "名詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "再来月からあたらしいしごとをします。",
+          "reading": "さらいげつからあたらしいしごとをします。",
+          "indonesian": "Mulai dua bulan lagi, saya akan bekerja di pekerjaan baru.",
+          "highlight": "再来月"
+        }
+      ]
+    },
+    {
+      "id": "b4fef509-9135-4909-bef4-7d9a7193ad3f",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "b4fef509-9135-4909-bef4-7d9a7193ad3f",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "日記",
+        "reading": "にっき",
+        "romaji": null,
+        "indonesian": "buku harian",
+        "category": "名詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "ねるまえに、日記をかきます。",
+          "reading": "ねるまえに、にっきをかきます。",
+          "indonesian": "Saya menulis buku harian sebelum tidur.",
+          "highlight": "日記"
+        }
+      ]
+    },
+    {
+      "id": "2f5a7ade-aea8-4d5b-bb66-5d6d838e9f50",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "2f5a7ade-aea8-4d5b-bb66-5d6d838e9f50",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "時代",
+        "reading": "じだい",
+        "romaji": null,
+        "indonesian": "zaman; era",
+        "category": "名詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": "そふ = kakek sendiri.",
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "そふはわかい時代のはなしをよくします。",
+          "reading": "そふはわかいじだいのはなしをよくします。",
+          "indonesian": "Kakek saya sering bercerita tentang masa mudanya.",
+          "highlight": "時代"
+        }
+      ]
+    },
+    {
+      "id": "6ad4b986-0d20-458f-be9a-77a0fbd40c41",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "6ad4b986-0d20-458f-be9a-77a0fbd40c41",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "昔",
+        "reading": "むかし",
+        "romaji": null,
+        "indonesian": "dahulu",
+        "category": "名詞・副詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "昔、このまちにはでんしゃがありませんでした。",
+          "reading": "むかし、このまちにはでんしゃがありませんでした。",
+          "indonesian": "Dahulu, kota ini tidak memiliki kereta.",
+          "highlight": "昔"
+        }
+      ]
+    },
+    {
+      "id": "7f6b75fe-a221-4f5f-8d7d-7a87b96f6ed3",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "7f6b75fe-a221-4f5f-8d7d-7a87b96f6ed3",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "帰り",
+        "reading": "かえり",
+        "romaji": null,
+        "indonesian": "kepulangan; perjalanan pulang",
+        "category": "名詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "しごとの帰りに、パンをかいました。",
+          "reading": "しごとのかえりに、パンをかいました。",
+          "indonesian": "Saya membeli roti dalam perjalanan pulang kerja.",
+          "highlight": "帰り"
+        }
+      ]
+    },
+    {
+      "id": "98c7f366-9d26-4ea2-8075-6bb76db2fc9a",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "98c7f366-9d26-4ea2-8075-6bb76db2fc9a",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "終わり",
+        "reading": "おわり",
+        "romaji": null,
+        "indonesian": "akhir",
+        "category": "名詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "じゅぎょうの終わりに、しつもんをしました。",
+          "reading": "じゅぎょうのおわりに、しつもんをしました。",
+          "indonesian": "Saya mengajukan pertanyaan pada akhir pelajaran.",
+          "highlight": "終わり"
+        }
+      ]
+    },
+    {
+      "id": "c641d26f-8e8b-4abc-8d55-3f8d039d8d59",
+      "chapter": 3,
+      "expectedCore": {
+        "id": "c641d26f-8e8b-4abc-8d55-3f8d039d8d59",
+        "module_id": "377eb9d6-2986-4893-980b-1fe92a871b9e",
+        "lesson_id": null,
+        "japanese": "途中で",
+        "reading": "とちゅうで",
+        "romaji": null,
+        "indonesian": "di tengah perjalanan atau proses",
+        "category": "表現",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d92e0ea1-8489-445c-8634-17e995ddd372"
+      ],
+      "examples": [
+        {
+          "japanese": "えきへいく途中で、ともだちにあいました。",
+          "reading": "えきへいくとちゅうで、ともだちにあいました。",
+          "indonesian": "Saya bertemu teman di tengah perjalanan menuju stasiun.",
+          "highlight": "途中で"
+        }
+      ]
+    },
+    {
+      "id": "f6bb14bd-fde8-47cd-abe6-bdab313b1593",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "f6bb14bd-fde8-47cd-abe6-bdab313b1593",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "力",
+        "reading": "ちから",
+        "romaji": null,
+        "indonesian": "kekuatan; tenaga",
+        "category": "名詞",
+        "sort_order": 1
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "このはこはおもいです。もっと力がいります。",
+          "reading": "このはこはおもいです。もっとちからがいります。",
+          "indonesian": "Kotak ini berat. Perlu tenaga lebih besar.",
+          "highlight": "力"
+        }
+      ]
+    },
+    {
+      "id": "25f92cd9-acef-42bc-b62d-2a2ec2c3a609",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "25f92cd9-acef-42bc-b62d-2a2ec2c3a609",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "体",
+        "reading": "からだ",
+        "romaji": null,
+        "indonesian": "tubuh",
+        "category": "名詞",
+        "sort_order": 2
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "まいにちうんどうして、体がつよくなりました。",
+          "reading": "まいにちうんどうして、からだがつよくなりました。",
+          "indonesian": "Saya berolahraga setiap hari dan tubuh saya menjadi kuat.",
+          "highlight": "体"
+        }
+      ]
+    },
+    {
+      "id": "3c758fbc-f0f2-4ade-a56b-4a886986ce99",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "3c758fbc-f0f2-4ade-a56b-4a886986ce99",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "音",
+        "reading": "おと",
+        "romaji": null,
+        "indonesian": "bunyi",
+        "category": "名詞",
+        "sort_order": 3
+      },
+      "expectedNote": "Bunyi secara umum; bandingkan 声 untuk suara manusia atau hewan.",
+      "note": "Bunyi secara umum; bandingkan 声 untuk suara manusia atau hewan.",
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "となりのへやからピアノの音がきこえます。",
+          "reading": "となりのへやからピアノのおとがきこえます。",
+          "indonesian": "Bunyi piano terdengar dari kamar sebelah.",
+          "highlight": "音"
+        }
+      ]
+    },
+    {
+      "id": "1a10d307-a51a-4582-8f5e-eb661b6ef621",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "1a10d307-a51a-4582-8f5e-eb661b6ef621",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "声",
+        "reading": "こえ",
+        "romaji": null,
+        "indonesian": "suara manusia atau hewan",
+        "category": "名詞",
+        "sort_order": 4
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "にわからこどもの声がきこえます。",
+          "reading": "にわからこどものこえがきこえます。",
+          "indonesian": "Suara anak-anak terdengar dari halaman.",
+          "highlight": "声"
+        }
+      ]
+    },
+    {
+      "id": "d88df23d-95cc-4043-878e-3b52bd4d0c60",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "d88df23d-95cc-4043-878e-3b52bd4d0c60",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "におい",
+        "reading": "におい",
+        "romaji": null,
+        "indonesian": "bau; aroma",
+        "category": "名詞",
+        "sort_order": 5
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "パンのいいにおいがします。",
+          "reading": "パンのいいにおいがします。",
+          "indonesian": "Tercium aroma roti yang harum.",
+          "highlight": "におい"
+        }
+      ]
+    },
+    {
+      "id": "a2f337e1-d7ec-4af3-a5d1-cc3aba6282fd",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "a2f337e1-d7ec-4af3-a5d1-cc3aba6282fd",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "味",
+        "reading": "あじ",
+        "romaji": null,
+        "indonesian": "rasa makanan atau minuman",
+        "category": "名詞",
+        "sort_order": 6
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "このスープはどんな味がしますか。",
+          "reading": "このスープはどんなあじがしますか。",
+          "indonesian": "Seperti apa rasa sup ini?",
+          "highlight": "味"
+        }
+      ]
+    },
+    {
+      "id": "e31bf5cf-dbfc-4f2e-a2df-dec8c8c5f9fa",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "e31bf5cf-dbfc-4f2e-a2df-dec8c8c5f9fa",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "景色",
+        "reading": "けしき",
+        "romaji": null,
+        "indonesian": "pemandangan",
+        "category": "名詞",
+        "sort_order": 7
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "このへやからうみの景色がみえます。",
+          "reading": "このへやからうみのけしきがみえます。",
+          "indonesian": "Pemandangan laut terlihat dari kamar ini.",
+          "highlight": "景色"
+        }
+      ]
+    },
+    {
+      "id": "faec35e7-2554-4e14-b9a0-a0a822829bdf",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "faec35e7-2554-4e14-b9a0-a0a822829bdf",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "遠く",
+        "reading": "とおく",
+        "romaji": null,
+        "indonesian": "tempat yang jauh; kejauhan",
+        "category": "名詞・副詞",
+        "sort_order": 8
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "遠くにやまがみえます。",
+          "reading": "とおくにやまがみえます。",
+          "indonesian": "Gunung terlihat di kejauhan.",
+          "highlight": "遠く"
+        }
+      ]
+    },
+    {
+      "id": "aa11773d-eba7-4a76-895d-c9db5dcfc8cf",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "aa11773d-eba7-4a76-895d-c9db5dcfc8cf",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "見える",
+        "reading": "みえる",
+        "romaji": null,
+        "indonesian": "terlihat",
+        "category": "動詞",
+        "sort_order": 9
+      },
+      "expectedNote": "Kelompok 2. Menyatakan sesuatu tertangkap penglihatan; bandingkan 見られる.",
+      "note": "Kelompok 2. Menyatakan sesuatu tertangkap penglihatan; bandingkan 見られる.",
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "まどからふじさんが見えます。",
+          "reading": "まどからふじさんがみえます。",
+          "indonesian": "Gunung Fuji terlihat dari jendela.",
+          "highlight": null
+        },
+        {
+          "japanese": "ここからはスクリーンがよく見えません。",
+          "reading": "ここからはスクリーンがよくみえません。",
+          "indonesian": "Dari sini layar tidak terlihat dengan jelas.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "99e47837-fac2-4c81-be8c-8817d4b89f68",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "99e47837-fac2-4c81-be8c-8817d4b89f68",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "聞こえる",
+        "reading": "きこえる",
+        "romaji": null,
+        "indonesian": "terdengar",
+        "category": "動詞",
+        "sort_order": 10
+      },
+      "expectedNote": "Kelompok 2. Menyatakan bunyi tertangkap pendengaran; bandingkan 聞ける.",
+      "note": "Kelompok 2. Menyatakan bunyi tertangkap pendengaran; bandingkan 聞ける.",
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "そとからとりのこえが聞こえます。",
+          "reading": "そとからとりのこえがきこえます。",
+          "indonesian": "Suara burung terdengar dari luar.",
+          "highlight": null
+        },
+        {
+          "japanese": "でんわのこえがあまり聞こえません。",
+          "reading": "でんわのこえがあまりきこえません。",
+          "indonesian": "Suara di telepon kurang terdengar.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "dc9dfd40-b240-4d2c-8cce-60aebe2bb9b7",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "dc9dfd40-b240-4d2c-8cce-60aebe2bb9b7",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "できる",
+        "reading": "できる",
+        "romaji": null,
+        "indonesian": "bisa; mampu",
+        "category": "動詞",
+        "sort_order": 11
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.",
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしはにほんごでてがみをかくことができます。",
+          "reading": "わたしはにほんごでてがみをかくことができます。",
+          "indonesian": "Saya bisa menulis surat dalam bahasa Jepang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "7d319d62-5897-46af-bcd3-7829ce2dc3d8",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "7d319d62-5897-46af-bcd3-7829ce2dc3d8",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "運転する",
+        "reading": "うんてんする",
+        "romaji": null,
+        "indonesian": "mengemudi",
+        "category": "動詞",
+        "sort_order": 12
+      },
+      "expectedNote": "Kelompok 3.",
+      "note": "Kelompok 3.",
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "あにはくるまを運転できます。",
+          "reading": "あにはくるまをうんてんできます。",
+          "indonesian": "Kakak laki-laki saya bisa mengemudi mobil.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "dbaa4b60-598a-4596-9a4e-66592c99e16d",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "dbaa4b60-598a-4596-9a4e-66592c99e16d",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "吹く",
+        "reading": "ふく",
+        "romaji": null,
+        "indonesian": "meniup; bertiup",
+        "category": "動詞",
+        "sort_order": 14
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.\nフルート = seruling/flute; alat tiup memakai 吹く.",
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "きょうはつよいかぜが吹いています。",
+          "reading": "きょうはつよいかぜがふいています。",
+          "indonesian": "Hari ini angin bertiup kencang.",
+          "highlight": null
+        },
+        {
+          "japanese": "あねはフルートを吹くことができます。",
+          "reading": "あねはフルートをふくことができます。",
+          "indonesian": "Kakak perempuan saya bisa memainkan seruling.",
+          "highlight": "吹く"
+        }
+      ]
+    },
+    {
+      "id": "1ca6710b-cd7f-47b1-b139-17fde3774c1e",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "1ca6710b-cd7f-47b1-b139-17fde3774c1e",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "強い",
+        "reading": "つよい",
+        "romaji": null,
+        "indonesian": "kuat",
+        "category": "い形容詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "あにはわたしより強いです。",
+          "reading": "あにはわたしよりつよいです。",
+          "indonesian": "Kakak laki-laki saya lebih kuat daripada saya.",
+          "highlight": "強い"
+        }
+      ]
+    },
+    {
+      "id": "a88f7e47-3d3c-41f8-a6c8-08a891407c1a",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "a88f7e47-3d3c-41f8-a6c8-08a891407c1a",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "弱い",
+        "reading": "よわい",
+        "romaji": null,
+        "indonesian": "lemah",
+        "category": "い形容詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "きょうはかぜが弱いです。",
+          "reading": "きょうはかぜがよわいです。",
+          "indonesian": "Hari ini anginnya lemah.",
+          "highlight": "弱い"
+        }
+      ]
+    },
+    {
+      "id": "231e3918-0955-4f7a-bc9d-3df37d2a8b5f",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "231e3918-0955-4f7a-bc9d-3df37d2a8b5f",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "柔道",
+        "reading": "じゅうどう",
+        "romaji": null,
+        "indonesian": "judo",
+        "category": "名詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "にちようびに柔道をれんしゅうしています。",
+          "reading": "にちようびにじゅうどうをれんしゅうしています。",
+          "indonesian": "Saya berlatih judo pada hari Minggu.",
+          "highlight": "柔道"
+        }
+      ]
+    },
+    {
+      "id": "28a3d094-a539-4485-a14f-af8b5e1705dc",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "28a3d094-a539-4485-a14f-af8b5e1705dc",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "競争",
+        "reading": "きょうそう",
+        "romaji": null,
+        "indonesian": "persaingan; perlombaan",
+        "category": "名詞・動詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "こどもたちはこうえんではしって競争しました。",
+          "reading": "こどもたちはこうえんではしってきょうそうしました。",
+          "indonesian": "Anak-anak berlomba lari di taman.",
+          "highlight": "競争"
+        }
+      ]
+    },
+    {
+      "id": "5a041720-7c27-4686-9ac3-41fbe4bfdd98",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "5a041720-7c27-4686-9ac3-41fbe4bfdd98",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "負ける",
+        "reading": "まける",
+        "romaji": null,
+        "indonesian": "kalah",
+        "category": "動詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": "しあい = pertandingan.",
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "きのうのしあいで負けました。",
+          "reading": "きのうのしあいでまけました。",
+          "indonesian": "Saya kalah dalam pertandingan kemarin.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "14e9db4c-bfe6-4909-b40c-b7f122a155f4",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "14e9db4c-bfe6-4909-b40c-b7f122a155f4",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "上手い",
+        "reading": "うまい",
+        "romaji": null,
+        "indonesian": "pandai; enak",
+        "category": "い形容詞",
+        "sort_order": 19
+      },
+      "expectedNote": "Makna bergantung konteks kemampuan atau rasa.",
+      "note": "Makna bergantung konteks kemampuan atau rasa.\nUntuk makna rasa, うまい atau 旨い lebih lazim ditulis; 上手い terutama menonjolkan kemahiran. Bentuk うまい terasa lebih santai daripada おいしい.",
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "あにはりょうりが上手いです。",
+          "reading": "あにはりょうりがうまいです。",
+          "indonesian": "Kakak laki-laki saya pandai memasak.",
+          "highlight": "上手い"
+        },
+        {
+          "japanese": "このラーメンはうまいですね。",
+          "reading": "このラーメンはうまいですね。",
+          "indonesian": "Ramen ini enak, ya.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "84b36772-b676-4f47-b9d4-eb55baa59519",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "84b36772-b676-4f47-b9d4-eb55baa59519",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "美しい",
+        "reading": "うつくしい",
+        "romaji": null,
+        "indonesian": "indah",
+        "category": "い形容詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "やまのうえから美しいうみがみえます。",
+          "reading": "やまのうえからうつくしいうみがみえます。",
+          "indonesian": "Laut yang indah terlihat dari atas gunung.",
+          "highlight": "美しい"
+        }
+      ]
+    },
+    {
+      "id": "3b62ca2a-4371-45b7-ad49-a3508b6f48ce",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "3b62ca2a-4371-45b7-ad49-a3508b6f48ce",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "珍しい",
+        "reading": "めずらしい",
+        "romaji": null,
+        "indonesian": "langka; tidak biasa",
+        "category": "い形容詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "どうぶつえんで珍しいとりをみました。",
+          "reading": "どうぶつえんでめずらしいとりをみました。",
+          "indonesian": "Saya melihat burung langka di kebun binatang.",
+          "highlight": "珍しい"
+        }
+      ]
+    },
+    {
+      "id": "f1d1919f-d737-4c21-a0ef-32509c46c86e",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "f1d1919f-d737-4c21-a0ef-32509c46c86e",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "素晴らしい",
+        "reading": "すばらしい",
+        "romaji": null,
+        "indonesian": "luar biasa",
+        "category": "い形容詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "きのうのコンサートは素晴らしかったです。",
+          "reading": "きのうのコンサートはすばらしかったです。",
+          "indonesian": "Konser kemarin luar biasa.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "3fba75a8-2c91-4744-9c6a-5d3b9ed08159",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "3fba75a8-2c91-4744-9c6a-5d3b9ed08159",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "光",
+        "reading": "ひかり",
+        "romaji": null,
+        "indonesian": "cahaya",
+        "category": "名詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "まどからあさの光がはいります。",
+          "reading": "まどからあさのひかりがはいります。",
+          "indonesian": "Cahaya pagi masuk melalui jendela.",
+          "highlight": "光"
+        }
+      ]
+    },
+    {
+      "id": "ae4d072b-13f9-4ac5-b857-c7e9d0d35e26",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "ae4d072b-13f9-4ac5-b857-c7e9d0d35e26",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "光る",
+        "reading": "ひかる",
+        "romaji": null,
+        "indonesian": "bersinar",
+        "category": "動詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "よる、ほしが光っています。",
+          "reading": "よる、ほしがひかっています。",
+          "indonesian": "Bintang-bintang bersinar pada malam hari.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "2620f442-3cc4-4ab0-83e9-936ca0a38962",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "2620f442-3cc4-4ab0-83e9-936ca0a38962",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "形",
+        "reading": "かたち",
+        "romaji": null,
+        "indonesian": "bentuk",
+        "category": "名詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "このパンはほしの形です。",
+          "reading": "このパンはほしのかたちです。",
+          "indonesian": "Roti ini berbentuk bintang.",
+          "highlight": "形"
+        }
+      ]
+    },
+    {
+      "id": "618dedb9-b1ff-458b-8d35-98ad5e260390",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "618dedb9-b1ff-458b-8d35-98ad5e260390",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "鳴る",
+        "reading": "なる",
+        "romaji": null,
+        "indonesian": "berbunyi",
+        "category": "動詞",
+        "sort_order": 26
+      },
+      "expectedNote": "Dipakai saat benda atau alat menghasilkan bunyi.",
+      "note": "Dipakai saat benda atau alat menghasilkan bunyi.",
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "いま、でんわが鳴っています。",
+          "reading": "いま、でんわがなっています。",
+          "indonesian": "Telepon sedang berbunyi sekarang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "ab498ea6-477c-49fc-8db0-da13eb3e0626",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "ab498ea6-477c-49fc-8db0-da13eb3e0626",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "見つかる",
+        "reading": "みつかる",
+        "romaji": null,
+        "indonesian": "ditemukan",
+        "category": "動詞",
+        "sort_order": 27
+      },
+      "expectedNote": "自動詞. Pasangan: 見つける.",
+      "note": "自動詞. Pasangan: 見つける.",
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "さがしていたかぎが見つかりました。",
+          "reading": "さがしていたかぎがみつかりました。",
+          "indonesian": "Kunci yang saya cari sudah ditemukan.",
+          "highlight": null
+        },
+        {
+          "japanese": "かばんのなかをみましたが、さいふは見つかりませんでした。",
+          "reading": "かばんのなかをみましたが、さいふはみつかりませんでした。",
+          "indonesian": "Saya melihat ke dalam tas, tetapi dompetnya tidak ditemukan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "aab46dac-419a-4f9c-b644-98663079c972",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "aab46dac-419a-4f9c-b644-98663079c972",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "見つける",
+        "reading": "みつける",
+        "romaji": null,
+        "indonesian": "menemukan",
+        "category": "動詞",
+        "sort_order": 28
+      },
+      "expectedNote": "他動詞. Pasangan: 見つかる.",
+      "note": "他動詞. Pasangan: 見つかる.",
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしはつくえのしたでかぎを見つけました。",
+          "reading": "わたしはつくえのしたでかぎをみつけました。",
+          "indonesian": "Saya menemukan kunci di bawah meja.",
+          "highlight": null
+        },
+        {
+          "japanese": "ともだちはやすいホテルを見つけました。",
+          "reading": "ともだちはやすいホテルをみつけました。",
+          "indonesian": "Teman saya menemukan hotel yang murah.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "0c130161-d36a-4edf-84fd-5d589a8cf190",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "0c130161-d36a-4edf-84fd-5d589a8cf190",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "噛む",
+        "reading": "かむ",
+        "romaji": null,
+        "indonesian": "menggigit; mengunyah",
+        "category": "動詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "ごはんはよく噛んでたべてください。",
+          "reading": "ごはんはよくかんでたべてください。",
+          "indonesian": "Tolong kunyah makanan dengan baik saat makan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "ab7568bb-817e-43aa-9dca-e0d6a627f00a",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "ab7568bb-817e-43aa-9dca-e0d6a627f00a",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "滑る",
+        "reading": "すべる",
+        "romaji": null,
+        "indonesian": "tergelincir; meluncur",
+        "category": "動詞",
+        "sort_order": 30
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "あめのひに、みちで滑りました。",
+          "reading": "あめのひに、みちですべりました。",
+          "indonesian": "Saya tergelincir di jalan pada hari hujan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "9b985c4d-5dcd-4101-a037-083808fc8488",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "9b985c4d-5dcd-4101-a037-083808fc8488",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "釣る",
+        "reading": "つる",
+        "romaji": null,
+        "indonesian": "memancing",
+        "category": "動詞",
+        "sort_order": 31
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "ちちはかわでさかなを釣っています。",
+          "reading": "ちちはかわでさかなをつっています。",
+          "indonesian": "Ayah saya sedang memancing ikan di sungai.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "91c0752f-ddbb-403a-b03f-c1891af00ba8",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "91c0752f-ddbb-403a-b03f-c1891af00ba8",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "踊る",
+        "reading": "おどる",
+        "romaji": null,
+        "indonesian": "menari",
+        "category": "動詞",
+        "sort_order": 32
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "おまつりでみんなと踊りました。",
+          "reading": "おまつりでみんなとおどりました。",
+          "indonesian": "Saya menari bersama semua orang di festival.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "9849bb1e-587b-484a-8c16-726cf7e56f2e",
+      "chapter": 4,
+      "expectedCore": {
+        "id": "9849bb1e-587b-484a-8c16-726cf7e56f2e",
+        "module_id": "c8c66af8-2437-4b15-bfeb-0879118ef48d",
+        "lesson_id": null,
+        "japanese": "運動",
+        "reading": "うんどう",
+        "romaji": null,
+        "indonesian": "olahraga; gerak badan",
+        "category": "名詞・動詞",
+        "sort_order": 33
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "d07c7199-9003-46bc-8719-bee4d50bc6b4"
+      ],
+      "examples": [
+        {
+          "japanese": "まいにちさんじゅっぷん運動します。",
+          "reading": "まいにちさんじゅっぷんうんどうします。",
+          "indonesian": "Saya berolahraga selama tiga puluh menit setiap hari.",
+          "highlight": "運動"
+        }
+      ]
+    },
+    {
+      "id": "6260ccee-ad28-4305-a8f7-2a8b20a34606",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "6260ccee-ad28-4305-a8f7-2a8b20a34606",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "計画",
+        "reading": "けいかく",
+        "romaji": null,
+        "indonesian": "rencana yang disusun",
+        "category": "名詞",
+        "sort_order": 2
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "なつやすみの計画をともだちとはなしました。",
+          "reading": "なつやすみのけいかくをともだちとはなしました。",
+          "indonesian": "Saya membicarakan rencana liburan musim panas bersama teman.",
+          "highlight": "計画"
+        }
+      ]
+    },
+    {
+      "id": "d1d17dd2-7537-4362-ba14-20a5b0289e99",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "d1d17dd2-7537-4362-ba14-20a5b0289e99",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "習慣",
+        "reading": "しゅうかん",
+        "romaji": null,
+        "indonesian": "kebiasaan",
+        "category": "名詞",
+        "sort_order": 3
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "あさはしるのがわたしの習慣です。",
+          "reading": "あさはしるのがわたしのしゅうかんです。",
+          "indonesian": "Berlari pagi adalah kebiasaan saya.",
+          "highlight": "習慣"
+        }
+      ]
+    },
+    {
+      "id": "b0ac5c49-682d-43f1-97e7-dd636157a082",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "b0ac5c49-682d-43f1-97e7-dd636157a082",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "目標",
+        "reading": "もくひょう",
+        "romaji": null,
+        "indonesian": "sasaran; tujuan yang ingin dicapai",
+        "category": "名詞",
+        "sort_order": 4
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "ことしの目標は、にほんごのしょうせつをよむことです。",
+          "reading": "ことしのもくひょうは、にほんごのしょうせつをよむことです。",
+          "indonesian": "Target saya tahun ini adalah membaca novel bahasa Jepang.",
+          "highlight": "目標"
+        }
+      ]
+    },
+    {
+      "id": "1522cc5a-38de-493f-a102-272cc883a8ed",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "1522cc5a-38de-493f-a102-272cc883a8ed",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "自分",
+        "reading": "じぶん",
+        "romaji": null,
+        "indonesian": "diri sendiri",
+        "category": "名詞",
+        "sort_order": 6
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "自分のへやは、じぶんでそうじすることにしています。",
+          "reading": "じぶんのへやは、じぶんでそうじすることにしています。",
+          "indonesian": "Saya membiasakan diri membersihkan kamar sendiri.",
+          "highlight": "自分"
+        }
+      ]
+    },
+    {
+      "id": "1ce41579-8baf-48a9-a7ad-0d2d753100d2",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "1ce41579-8baf-48a9-a7ad-0d2d753100d2",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "決める",
+        "reading": "きめる",
+        "romaji": null,
+        "indonesian": "memutuskan; menetapkan",
+        "category": "動詞",
+        "sort_order": 8
+      },
+      "expectedNote": "Kelompok 2. Rencana atau pilihanを決める; bandingkan 決まる.",
+      "note": "Kelompok 2. Rencana atau pilihanを決める; bandingkan 決まる.",
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしはりょこうのひを決めました。",
+          "reading": "わたしはりょこうのひをきめました。",
+          "indonesian": "Saya sudah menetapkan tanggal perjalanan.",
+          "highlight": null
+        },
+        {
+          "japanese": "だいがくをそつぎょうしてから、しごとを決めます。",
+          "reading": "だいがくをそつぎょうしてから、しごとをきめます。",
+          "indonesian": "Saya akan menentukan pekerjaan setelah lulus universitas.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "cca4d7ee-4f25-4437-9da7-282c3df4a461",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "cca4d7ee-4f25-4437-9da7-282c3df4a461",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "決まる",
+        "reading": "きまる",
+        "romaji": null,
+        "indonesian": "diputuskan; menjadi pasti",
+        "category": "動詞",
+        "sort_order": 9
+      },
+      "expectedNote": "Kelompok 1. Rencana atau pilihanが決まる.",
+      "note": "Kelompok 1. Rencana atau pilihanが決まる.",
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "りょこうのひが決まりました。",
+          "reading": "りょこうのひがきまりました。",
+          "indonesian": "Tanggal perjalanan sudah ditetapkan.",
+          "highlight": null
+        },
+        {
+          "japanese": "あたらしいしごとが決まりました。とてもうれしいです。",
+          "reading": "あたらしいしごとがきまりました。とてもうれしいです。",
+          "indonesian": "Pekerjaan baru saya sudah pasti. Saya sangat senang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "fd6b39e6-b853-4a38-90bb-3908a19f8257",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "fd6b39e6-b853-4a38-90bb-3908a19f8257",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "通う",
+        "reading": "かよう",
+        "romaji": null,
+        "indonesian": "pergi secara rutin; bersekolah",
+        "category": "動詞",
+        "sort_order": 11
+      },
+      "expectedNote": "Kelompok 1. 学校に通う.",
+      "note": "Kelompok 1. 学校に通う.",
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "まいにちじてんしゃでがっこうに通っています。",
+          "reading": "まいにちじてんしゃでがっこうにかよっています。",
+          "indonesian": "Saya setiap hari pergi ke sekolah dengan sepeda.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "6f45e767-2a66-4a70-827a-0ccf5ed5d98b",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "6f45e767-2a66-4a70-827a-0ccf5ed5d98b",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "つもり",
+        "reading": "つもり",
+        "romaji": null,
+        "indonesian": "niat; rencana",
+        "category": "名詞",
+        "sort_order": 12
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "らいねん、にほんではたらくつもりです。",
+          "reading": "らいねん、にほんではたらくつもりです。",
+          "indonesian": "Saya berniat bekerja di Jepang tahun depan.",
+          "highlight": "つもり"
+        }
+      ]
+    },
+    {
+      "id": "e5c55bd2-d656-469c-9222-fe42877286cf",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "e5c55bd2-d656-469c-9222-fe42877286cf",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "一生懸命",
+        "reading": "いっしょうけんめい",
+        "romaji": null,
+        "indonesian": "dengan sekuat tenaga",
+        "category": "な形容詞・副詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "しけんのまえに、一生懸命べんきょうしました。",
+          "reading": "しけんのまえに、いっしょうけんめいべんきょうしました。",
+          "indonesian": "Saya belajar dengan sungguh-sungguh sebelum ujian.",
+          "highlight": "一生懸命"
+        }
+      ]
+    },
+    {
+      "id": "c22d9335-744f-47ae-9d6a-e23cd6f63af2",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "c22d9335-744f-47ae-9d6a-e23cd6f63af2",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "頑張る",
+        "reading": "がんばる",
+        "romaji": null,
+        "indonesian": "berusaha dengan sungguh-sungguh",
+        "category": "動詞",
+        "sort_order": 13
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたのしけんは頑張ります。",
+          "reading": "あしたのしけんはがんばります。",
+          "indonesian": "Saya akan berusaha sebaik mungkin dalam ujian besok.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "70c49fa7-778d-4e97-be08-b6e5f234c427",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "70c49fa7-778d-4e97-be08-b6e5f234c427",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "できるだけ",
+        "reading": "できるだけ",
+        "romaji": null,
+        "indonesian": "sebisa mungkin",
+        "category": "副詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "できるだけにほんごではなすようにしています。",
+          "reading": "できるだけにほんごではなすようにしています。",
+          "indonesian": "Saya berusaha berbicara dalam bahasa Jepang sebisa mungkin.",
+          "highlight": "できるだけ"
+        }
+      ]
+    },
+    {
+      "id": "f80642d4-e7d2-4694-9ba8-79d5781b1c0e",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "f80642d4-e7d2-4694-9ba8-79d5781b1c0e",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "ぜひ",
+        "reading": "ぜひ",
+        "romaji": null,
+        "indonesian": "pasti; sangat diharapkan",
+        "category": "副詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "にほんにきたときは、ぜひうちへきてください。",
+          "reading": "にほんにきたときは、ぜひうちへきてください。",
+          "indonesian": "Saat datang ke Jepang, silakan berkunjung ke rumah saya; saya sangat berharap Anda datang.",
+          "highlight": "ぜひ"
+        }
+      ]
+    },
+    {
+      "id": "f1006c46-8ea6-4d0c-bd63-95fa1a153039",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "f1006c46-8ea6-4d0c-bd63-95fa1a153039",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "なるべく",
+        "reading": "なるべく",
+        "romaji": null,
+        "indonesian": "sebisa mungkin",
+        "category": "副詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "なるべくはやくねるようにしています。",
+          "reading": "なるべくはやくねるようにしています。",
+          "indonesian": "Saya berusaha tidur lebih awal sebisa mungkin.",
+          "highlight": "なるべく"
+        }
+      ]
+    },
+    {
+      "id": "e9cb0b92-3fb4-408f-9ddc-15a80a563650",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "e9cb0b92-3fb4-408f-9ddc-15a80a563650",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "これから",
+        "reading": "これから",
+        "romaji": null,
+        "indonesian": "mulai sekarang; setelah ini",
+        "category": "副詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "これからまいにちにっきをかくことにしました。",
+          "reading": "これからまいにちにっきをかくことにしました。",
+          "indonesian": "Saya memutuskan untuk menulis buku harian setiap hari mulai sekarang.",
+          "highlight": "これから"
+        }
+      ]
+    },
+    {
+      "id": "27840851-32ef-40d3-ba43-a0f1ae2be2bc",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "27840851-32ef-40d3-ba43-a0f1ae2be2bc",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "支度",
+        "reading": "したく",
+        "romaji": null,
+        "indonesian": "persiapan",
+        "category": "名詞・動詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "でかけるまえに、あさごはんの支度をします。",
+          "reading": "でかけるまえに、あさごはんのしたくをします。",
+          "indonesian": "Saya menyiapkan sarapan sebelum keluar rumah.",
+          "highlight": "支度"
+        }
+      ]
+    },
+    {
+      "id": "29b9c7a1-47b7-487d-b640-03bb2cccad4b",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "29b9c7a1-47b7-487d-b640-03bb2cccad4b",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "必ず",
+        "reading": "かならず",
+        "romaji": null,
+        "indonesian": "pasti; tanpa terlewat",
+        "category": "副詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "ねるまえに、必ずはをみがきます。",
+          "reading": "ねるまえに、かならずはをみがきます。",
+          "indonesian": "Saya selalu menyikat gigi sebelum tidur.",
+          "highlight": "必ず"
+        }
+      ]
+    },
+    {
+      "id": "3f742c2f-75b6-4f10-9d61-bf104ffeb2f3",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "3f742c2f-75b6-4f10-9d61-bf104ffeb2f3",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "用意",
+        "reading": "ようい",
+        "romaji": null,
+        "indonesian": "persiapan; kesiapan",
+        "category": "名詞・動詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "りょこうの用意はもうおわりました。",
+          "reading": "りょこうのよういはもうおわりました。",
+          "indonesian": "Persiapan perjalanan sudah selesai.",
+          "highlight": "用意"
+        }
+      ]
+    },
+    {
+      "id": "14cacb24-321d-4097-9000-08aff55fdce8",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "14cacb24-321d-4097-9000-08aff55fdce8",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "研究",
+        "reading": "けんきゅう",
+        "romaji": null,
+        "indonesian": "penelitian",
+        "category": "名詞・動詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "だいがくでにほんのぶんかを研究しています。",
+          "reading": "だいがくでにほんのぶんかをけんきゅうしています。",
+          "indonesian": "Saya meneliti budaya Jepang di universitas.",
+          "highlight": "研究"
+        }
+      ]
+    },
+    {
+      "id": "cd3ab389-9fc4-4090-b13b-983366191887",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "cd3ab389-9fc4-4090-b13b-983366191887",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "教育",
+        "reading": "きょういく",
+        "romaji": null,
+        "indonesian": "pendidikan",
+        "category": "名詞・動詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "こどもの教育にきょうみがあります。",
+          "reading": "こどものきょういくにきょうみがあります。",
+          "indonesian": "Saya tertarik pada pendidikan anak.",
+          "highlight": "教育"
+        }
+      ]
+    },
+    {
+      "id": "666ae970-d886-4ce7-8530-23415dcd7bbf",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "666ae970-d886-4ce7-8530-23415dcd7bbf",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "卒業",
+        "reading": "そつぎょう",
+        "romaji": null,
+        "indonesian": "kelulusan",
+        "category": "名詞・動詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "だいがくを卒業したあとで、にほんではたらくことにしました。",
+          "reading": "だいがくをそつぎょうしたあとで、にほんではたらくことにしました。",
+          "indonesian": "Saya memutuskan bekerja di Jepang setelah lulus universitas.",
+          "highlight": "卒業"
+        }
+      ]
+    },
+    {
+      "id": "92dd093d-6c8e-4ed7-bf64-22f909917993",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "92dd093d-6c8e-4ed7-bf64-22f909917993",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "入学",
+        "reading": "にゅうがく",
+        "romaji": null,
+        "indonesian": "masuk sekolah atau universitas",
+        "category": "名詞・動詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "いもうとはらいねんだいがくに入学します。",
+          "reading": "いもうとはらいねんだいがくににゅうがくします。",
+          "indonesian": "Adik perempuan saya akan masuk universitas tahun depan.",
+          "highlight": "入学"
+        }
+      ]
+    },
+    {
+      "id": "19f21146-373d-4ded-b53d-8c7343224f19",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "19f21146-373d-4ded-b53d-8c7343224f19",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "アルバイト",
+        "reading": "アルバイト",
+        "romaji": null,
+        "indonesian": "pekerjaan paruh waktu",
+        "category": "名詞・動詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "なつやすみにレストランでアルバイトをするつもりです。",
+          "reading": "なつやすみにレストランでアルバイトをするつもりです。",
+          "indonesian": "Saya berniat bekerja paruh waktu di restoran saat liburan musim panas.",
+          "highlight": "アルバイト"
+        }
+      ]
+    },
+    {
+      "id": "b835a628-b1df-4662-af57-936960e42818",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "b835a628-b1df-4662-af57-936960e42818",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "パート",
+        "reading": "パート",
+        "romaji": null,
+        "indonesian": "pekerjaan paruh waktu",
+        "category": "名詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "はははちかくのスーパーでパートをしています。",
+          "reading": "はははちかくのスーパーでパートをしています。",
+          "indonesian": "Ibu saya bekerja paruh waktu di supermarket dekat rumah.",
+          "highlight": "パート"
+        }
+      ]
+    },
+    {
+      "id": "f5be1946-0e83-4fa3-98da-dc962dd053e6",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "f5be1946-0e83-4fa3-98da-dc962dd053e6",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "生産",
+        "reading": "せいさん",
+        "romaji": null,
+        "indonesian": "produksi",
+        "category": "名詞・動詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": "こうじょう = pabrik.",
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "このこうじょうではくるまを生産しています。",
+          "reading": "このこうじょうではくるまをせいさんしています。",
+          "indonesian": "Pabrik ini memproduksi mobil.",
+          "highlight": "生産"
+        }
+      ]
+    },
+    {
+      "id": "f9fe08c5-38ec-4ae1-a4f6-fae8a28a4424",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "f9fe08c5-38ec-4ae1-a4f6-fae8a28a4424",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "産業",
+        "reading": "さんぎょう",
+        "romaji": null,
+        "indonesian": "industri",
+        "category": "名詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "このまちはくるまの産業でゆうめいです。",
+          "reading": "このまちはくるまのさんぎょうでゆうめいです。",
+          "indonesian": "Kota ini terkenal karena industri mobilnya.",
+          "highlight": "産業"
+        }
+      ]
+    },
+    {
+      "id": "dea33672-6bbc-410f-8ffc-7789ce3d895d",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "dea33672-6bbc-410f-8ffc-7789ce3d895d",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "公務員",
+        "reading": "こうむいん",
+        "romaji": null,
+        "indonesian": "pegawai negeri",
+        "category": "名詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "あにはだいがくをそつぎょうして、公務員になりました。",
+          "reading": "あにはだいがくをそつぎょうして、こうむいんになりました。",
+          "indonesian": "Kakak laki-laki saya menjadi pegawai negeri setelah lulus universitas.",
+          "highlight": "公務員"
+        }
+      ]
+    },
+    {
+      "id": "ba537f3c-e51e-42dc-a158-842007e31b9f",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "ba537f3c-e51e-42dc-a158-842007e31b9f",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "運転",
+        "reading": "うんてん",
+        "romaji": null,
+        "indonesian": "mengemudi; pengoperasian",
+        "category": "名詞・動詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "ちちはまいにちバスの運転をしています。",
+          "reading": "ちちはまいにちバスのうんてんをしています。",
+          "indonesian": "Ayah saya mengemudikan bus setiap hari.",
+          "highlight": "運転"
+        }
+      ]
+    },
+    {
+      "id": "328f05a2-36c3-46e4-ade1-5c480c978ac6",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "328f05a2-36c3-46e4-ade1-5c480c978ac6",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "引っ越す",
+        "reading": "ひっこす",
+        "romaji": null,
+        "indonesian": "pindah rumah",
+        "category": "動詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "らいげつ、えきのちかくに引っ越すことにしました。",
+          "reading": "らいげつ、えきのちかくにひっこすことにしました。",
+          "indonesian": "Saya memutuskan pindah rumah ke dekat stasiun bulan depan.",
+          "highlight": "引っ越す"
+        }
+      ]
+    },
+    {
+      "id": "9874ae79-45ef-4e67-8faa-b98a6a3c4997",
+      "chapter": 5,
+      "expectedCore": {
+        "id": "9874ae79-45ef-4e67-8faa-b98a6a3c4997",
+        "module_id": "bc1ef866-bb68-4404-8f08-f8cc3e621255",
+        "lesson_id": null,
+        "japanese": "下宿",
+        "reading": "げしゅく",
+        "romaji": null,
+        "indonesian": "indekos; tempat kos",
+        "category": "名詞・動詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "a399c4d1-5539-4a8b-abe4-9c3f56496ef1"
+      ],
+      "examples": [
+        {
+          "japanese": "だいがくのちかくで下宿することにしました。",
+          "reading": "だいがくのちかくでげしゅくすることにしました。",
+          "indonesian": "Saya memutuskan indekos dekat universitas.",
+          "highlight": "下宿"
+        }
+      ]
+    },
+    {
+      "id": "e27a28c2-d02e-4c93-a96e-c037b07d1750",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "e27a28c2-d02e-4c93-a96e-c037b07d1750",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "結果",
+        "reading": "けっか",
+        "romaji": null,
+        "indonesian": "hasil",
+        "category": "名詞",
+        "sort_order": 2
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "しけんの結果をみて、あんしんしました。",
+          "reading": "しけんのけっかをみて、あんしんしました。",
+          "indonesian": "Saya merasa lega setelah melihat hasil ujian.",
+          "highlight": "結果"
+        }
+      ]
+    },
+    {
+      "id": "d158d0ed-3111-460d-9407-b31fef609302",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "d158d0ed-3111-460d-9407-b31fef609302",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "失敗",
+        "reading": "しっぱい",
+        "romaji": null,
+        "indonesian": "kegagalan; kesalahan dalam tindakan",
+        "category": "名詞",
+        "sort_order": 3
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "りょうりで失敗しましたが、もういちどつくってみます。",
+          "reading": "りょうりでしっぱいしましたが、もういちどつくってみます。",
+          "indonesian": "Saya gagal memasak, tetapi akan mencoba membuatnya lagi.",
+          "highlight": "失敗"
+        }
+      ]
+    },
+    {
+      "id": "bbbbfc86-0395-4f8c-976c-0ea3d9a7aa7a",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "bbbbfc86-0395-4f8c-976c-0ea3d9a7aa7a",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "成功",
+        "reading": "せいこう",
+        "romaji": null,
+        "indonesian": "keberhasilan",
+        "category": "名詞",
+        "sort_order": 4
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "はじめてパンをつくって、成功しました。",
+          "reading": "はじめてパンをつくって、せいこうしました。",
+          "indonesian": "Saya berhasil membuat roti untuk pertama kalinya.",
+          "highlight": "成功"
+        }
+      ]
+    },
+    {
+      "id": "30dca678-8d33-483e-9eef-1254f892dd7f",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "30dca678-8d33-483e-9eef-1254f892dd7f",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "経験",
+        "reading": "けいけん",
+        "romaji": null,
+        "indonesian": "pengalaman",
+        "category": "名詞",
+        "sort_order": 5
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "にほんでのせいかつは、いい経験になりました。",
+          "reading": "にほんでのせいかつは、いいけいけんになりました。",
+          "indonesian": "Kehidupan di Jepang menjadi pengalaman yang baik.",
+          "highlight": "経験"
+        }
+      ]
+    },
+    {
+      "id": "c17029c6-618a-4d64-8e25-be807437b51d",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "c17029c6-618a-4d64-8e25-be807437b51d",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "試す",
+        "reading": "ためす",
+        "romaji": null,
+        "indonesian": "mencoba",
+        "category": "verb",
+        "sort_order": 6
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "このあたらしいどうぐを試してみたいです。",
+          "reading": "このあたらしいどうぐをためしてみたいです。",
+          "indonesian": "Saya ingin mencoba alat baru ini.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "f905cb97-f249-4441-8bfb-37f0af609bd3",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "f905cb97-f249-4441-8bfb-37f0af609bd3",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "なくす",
+        "reading": "なくす",
+        "romaji": null,
+        "indonesian": "kehilangan; menghilangkan",
+        "category": "動詞",
+        "sort_order": 9
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "たいせつなかぎをなくしてしまいました。",
+          "reading": "たいせつなかぎをなくしてしまいました。",
+          "indonesian": "Saya kehilangan kunci penting saya.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "57382ee5-0e84-4381-a67d-4833ea4ee358",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "57382ee5-0e84-4381-a67d-4833ea4ee358",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "間違える",
+        "reading": "まちがえる",
+        "romaji": null,
+        "indonesian": "salah",
+        "category": "verb",
+        "sort_order": 9
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.",
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "でんしゃを間違えてしまいました。",
+          "reading": "でんしゃをまちがえてしまいました。",
+          "indonesian": "Saya keliru naik kereta.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "b1e724fa-f7bb-4f89-b9ed-dc67dc165f6a",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "b1e724fa-f7bb-4f89-b9ed-dc67dc165f6a",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "謝る",
+        "reading": "あやまる",
+        "romaji": null,
+        "indonesian": "meminta maaf",
+        "category": "動詞",
+        "sort_order": 11
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちにひどいことをいったから、謝りました。",
+          "reading": "ともだちにひどいことをいったから、あやまりました。",
+          "indonesian": "Saya meminta maaf karena mengatakan hal yang kejam kepada teman.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "89b1e416-80a8-427b-b4a1-bbd3a1d79b7d",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "89b1e416-80a8-427b-b4a1-bbd3a1d79b7d",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "安心する",
+        "reading": "あんしんする",
+        "romaji": null,
+        "indonesian": "merasa lega; merasa tenang",
+        "category": "動詞",
+        "sort_order": 12
+      },
+      "expectedNote": "Kelompok 3.",
+      "note": "Kelompok 3.",
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "かぞくのこえをきいて、安心しました。",
+          "reading": "かぞくのこえをきいて、あんしんしました。",
+          "indonesian": "Saya merasa lega setelah mendengar suara keluarga.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "f954d205-85c7-45c1-bcb8-807df7037035",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "f954d205-85c7-45c1-bcb8-807df7037035",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "故障",
+        "reading": "こしょう",
+        "romaji": null,
+        "indonesian": "kerusakan mesin",
+        "category": "名詞・動詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "くるまが故障してしまいました。",
+          "reading": "くるまがこしょうしてしまいました。",
+          "indonesian": "Mobil saya mengalami kerusakan.",
+          "highlight": "故障"
+        }
+      ]
+    },
+    {
+      "id": "d421fb75-752d-4990-a5d6-e9187ecf9f87",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "d421fb75-752d-4990-a5d6-e9187ecf9f87",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "残念",
+        "reading": "ざんねん",
+        "romaji": null,
+        "indonesian": "disayangkan; mengecewakan",
+        "category": "な形容詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "コンサートにいけなくて、残念でした。",
+          "reading": "コンサートにいけなくて、ざんねんでした。",
+          "indonesian": "Saya kecewa karena tidak bisa pergi ke konser.",
+          "highlight": "残念"
+        }
+      ]
+    },
+    {
+      "id": "d29406a3-d997-403f-b92f-54760f1dd799",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "d29406a3-d997-403f-b92f-54760f1dd799",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "うっかり",
+        "reading": "うっかり",
+        "romaji": null,
+        "indonesian": "tanpa sengaja karena kurang perhatian",
+        "category": "副詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "うっかりでんしゃにかばんをわすれてしまいました。",
+          "reading": "うっかりでんしゃにかばんをわすれてしまいました。",
+          "indonesian": "Karena kurang hati-hati, saya tidak sengaja meninggalkan tas di kereta.",
+          "highlight": "うっかり"
+        }
+      ]
+    },
+    {
+      "id": "73c52b3d-7d87-42ea-9b29-f062df46d378",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "73c52b3d-7d87-42ea-9b29-f062df46d378",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "治る",
+        "reading": "なおる",
+        "romaji": null,
+        "indonesian": "sembuh",
+        "category": "動詞",
+        "sort_order": 14
+      },
+      "expectedNote": "Untuk penyakit atau luka.",
+      "note": "Untuk penyakit atau luka.",
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "かぜが治って、がっこうへいけるようになりました。",
+          "reading": "かぜがなおって、がっこうへいけるようになりました。",
+          "indonesian": "Pilek saya sembuh dan saya bisa kembali pergi ke sekolah.",
+          "highlight": null
+        },
+        {
+          "japanese": "けががまだ治りません。",
+          "reading": "けががまだなおりません。",
+          "indonesian": "Cedera saya belum sembuh.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "f4d1650b-e2c7-4e47-abe8-c2fc9d40c12c",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "f4d1650b-e2c7-4e47-abe8-c2fc9d40c12c",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "やっと",
+        "reading": "やっと",
+        "romaji": null,
+        "indonesian": "akhirnya setelah usaha atau penantian",
+        "category": "副詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "なんかいもれんしゅうして、やっとおよげるようになりました。",
+          "reading": "なんかいもれんしゅうして、やっとおよげるようになりました。",
+          "indonesian": "Setelah berkali-kali berlatih, akhirnya saya bisa berenang.",
+          "highlight": "やっと"
+        }
+      ]
+    },
+    {
+      "id": "66807d4a-9dc4-4d8e-a632-551bfbe68bf1",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "66807d4a-9dc4-4d8e-a632-551bfbe68bf1",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "直る",
+        "reading": "なおる",
+        "romaji": null,
+        "indonesian": "menjadi baik; selesai diperbaiki",
+        "category": "動詞",
+        "sort_order": 15
+      },
+      "expectedNote": "Untuk benda atau kesalahan.",
+      "note": "Untuk benda atau kesalahan.",
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "こわれたとけいが直りました。",
+          "reading": "こわれたとけいがなおりました。",
+          "indonesian": "Jam yang rusak sudah diperbaiki.",
+          "highlight": null
+        },
+        {
+          "japanese": "パソコンが直って、またつかえるようになりました。",
+          "reading": "パソコンがなおって、またつかえるようになりました。",
+          "indonesian": "Komputer sudah diperbaiki dan bisa dipakai lagi.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "504df6fa-18de-4fc3-9200-0e9251e5f1f3",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "504df6fa-18de-4fc3-9200-0e9251e5f1f3",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "済む",
+        "reading": "すむ",
+        "romaji": null,
+        "indonesian": "selesai; terselesaikan",
+        "category": "動詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": "ほっとする = merasa lega.",
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "しごとが済んで、ほっとしました。",
+          "reading": "しごとがすんで、ほっとしました。",
+          "indonesian": "Saya merasa lega setelah pekerjaan selesai.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "f1917565-9711-48fc-9f6c-7dbbb360bc82",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "f1917565-9711-48fc-9f6c-7dbbb360bc82",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "びっくりする",
+        "reading": "びっくりする",
+        "romaji": null,
+        "indonesian": "terkejut",
+        "category": "動詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "おおきなおとがして、びっくりしました。",
+          "reading": "おおきなおとがして、びっくりしました。",
+          "indonesian": "Saya terkejut saat terdengar bunyi keras.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "12751a09-26e0-4a04-90a3-2b518d5610e0",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "12751a09-26e0-4a04-90a3-2b518d5610e0",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "驚く",
+        "reading": "おどろく",
+        "romaji": null,
+        "indonesian": "terkejut; merasa heran",
+        "category": "動詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちのはなしをきいて、驚きました。",
+          "reading": "ともだちのはなしをきいて、おどろきました。",
+          "indonesian": "Saya terkejut mendengar cerita teman.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "aae23e5e-e91c-4703-86f4-78889d94ece1",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "aae23e5e-e91c-4703-86f4-78889d94ece1",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "大事",
+        "reading": "だいじ",
+        "romaji": null,
+        "indonesian": "penting; berharga",
+        "category": "名詞・な形容詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "これはははからの大事なてがみです。",
+          "reading": "これはははからのだいじなてがみです。",
+          "indonesian": "Ini surat berharga dari ibu saya.",
+          "highlight": "大事"
+        }
+      ]
+    },
+    {
+      "id": "84b7b17b-d9cc-4408-bce4-feb3f4629b16",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "84b7b17b-d9cc-4408-bce4-feb3f4629b16",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "酷い",
+        "reading": "ひどい",
+        "romaji": null,
+        "indonesian": "parah; kejam",
+        "category": "い形容詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "きのうは酷いあめでした。",
+          "reading": "きのうはひどいあめでした。",
+          "indonesian": "Kemarin hujannya sangat lebat.",
+          "highlight": "酷い"
+        }
+      ]
+    },
+    {
+      "id": "11648d67-c02c-4b95-97fd-164a7aefce18",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "11648d67-c02c-4b95-97fd-164a7aefce18",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "しっかり",
+        "reading": "しっかり",
+        "romaji": null,
+        "indonesian": "dengan mantap; dengan baik",
+        "category": "副詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": "ひも = tali.",
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "このひもをしっかりもってください。",
+          "reading": "このひもをしっかりもってください。",
+          "indonesian": "Tolong pegang tali ini dengan kuat.",
+          "highlight": "しっかり"
+        }
+      ]
+    },
+    {
+      "id": "d377d84d-8d0d-4cd0-83ef-5901af6f83c1",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "d377d84d-8d0d-4cd0-83ef-5901af6f83c1",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "すっかり",
+        "reading": "すっかり",
+        "romaji": null,
+        "indonesian": "sepenuhnya",
+        "category": "副詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "あのひとのなまえをすっかりわすれてしまいました。",
+          "reading": "あのひとのなまえをすっかりわすれてしまいました。",
+          "indonesian": "Saya benar-benar lupa nama orang itu.",
+          "highlight": "すっかり"
+        }
+      ]
+    },
+    {
+      "id": "79549630-af99-4aba-87c6-894d6aa5da37",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "79549630-af99-4aba-87c6-894d6aa5da37",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "退院",
+        "reading": "たいいん",
+        "romaji": null,
+        "indonesian": "keluar dari rumah sakit",
+        "category": "名詞・動詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "ちちはきのう退院しました。",
+          "reading": "ちちはきのうたいいんしました。",
+          "indonesian": "Ayah saya keluar dari rumah sakit kemarin.",
+          "highlight": "退院"
+        }
+      ]
+    },
+    {
+      "id": "680b8fe6-738b-47a7-91df-58de7816f675",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "680b8fe6-738b-47a7-91df-58de7816f675",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "入院",
+        "reading": "にゅういん",
+        "romaji": null,
+        "indonesian": "masuk rumah sakit",
+        "category": "名詞・動詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "あねはけがで入院しています。",
+          "reading": "あねはけがでにゅういんしています。",
+          "indonesian": "Kakak perempuan saya dirawat di rumah sakit karena cedera.",
+          "highlight": "入院"
+        }
+      ]
+    },
+    {
+      "id": "df872b61-416f-44af-b4d1-68015a30cec4",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "df872b61-416f-44af-b4d1-68015a30cec4",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "怪我",
+        "reading": "けが",
+        "romaji": null,
+        "indonesian": "cedera",
+        "category": "名詞・動詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": "ころぶ = jatuh/terjatuh.",
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "じてんしゃでころんで、あしに怪我をしました。",
+          "reading": "じてんしゃでころんで、あしにけがをしました。",
+          "indonesian": "Saya jatuh dari sepeda dan kaki saya cedera.",
+          "highlight": "怪我"
+        }
+      ]
+    },
+    {
+      "id": "e478fe1d-92bd-4c68-83b9-009ad8f63e65",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "e478fe1d-92bd-4c68-83b9-009ad8f63e65",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "間違い",
+        "reading": "まちがい",
+        "romaji": null,
+        "indonesian": "kesalahan",
+        "category": "名詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": "きがつく = menyadari.",
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "レポートの間違いにきがつきました。",
+          "reading": "レポートのまちがいにきがつきました。",
+          "indonesian": "Saya menyadari kesalahan dalam laporan.",
+          "highlight": "間違い"
+        }
+      ]
+    },
+    {
+      "id": "7311c52c-f982-48f9-9deb-1264409ab094",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "7311c52c-f982-48f9-9deb-1264409ab094",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "取り替える",
+        "reading": "とりかえる",
+        "romaji": null,
+        "indonesian": "mengganti; menukar",
+        "category": "動詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "このシャツを、ちいさいのと取り替えました。",
+          "reading": "このシャツを、ちいさいのととりかえました。",
+          "indonesian": "Saya menukar kemeja ini dengan yang kecil.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "14a1a239-3f36-4368-8c25-b1c0f885b6e8",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "14a1a239-3f36-4368-8c25-b1c0f885b6e8",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "無くなる",
+        "reading": "なくなる",
+        "romaji": null,
+        "indonesian": "hilang; habis",
+        "category": "動詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "かばんからさいふが無くなりました。",
+          "reading": "かばんからさいふがなくなりました。",
+          "indonesian": "Dompet saya hilang dari tas.",
+          "highlight": null
+        },
+        {
+          "japanese": "れいぞうこをみました。ぎゅうにゅうが無くなっていました。",
+          "reading": "れいぞうこをみました。ぎゅうにゅうがなくなっていました。",
+          "indonesian": "Saya melihat ke dalam kulkas. Susunya sudah habis.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "e4babfd0-8bd7-4a66-b80c-bbb0dd82050f",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "e4babfd0-8bd7-4a66-b80c-bbb0dd82050f",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "拾う",
+        "reading": "ひろう",
+        "romaji": null,
+        "indonesian": "memungut; menemukan barang",
+        "category": "動詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "みちでさいふを拾いました。",
+          "reading": "みちでさいふをひろいました。",
+          "indonesian": "Saya menemukan dan memungut dompet di jalan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "b775c193-4240-46ab-bf9b-440a02499163",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "b775c193-4240-46ab-bf9b-440a02499163",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "捨てる",
+        "reading": "すてる",
+        "romaji": null,
+        "indonesian": "membuang",
+        "category": "動詞",
+        "sort_order": 30
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "たいせつなかみを捨ててしまいました。",
+          "reading": "たいせつなかみをすててしまいました。",
+          "indonesian": "Saya terlanjur membuang kertas penting.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "1444f8e3-fcc6-486e-af91-329ac8507ba9",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "1444f8e3-fcc6-486e-af91-329ac8507ba9",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "捕まえる",
+        "reading": "つかまえる",
+        "romaji": null,
+        "indonesian": "menangkap",
+        "category": "動詞",
+        "sort_order": 31
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "にげたねこを捕まえました。",
+          "reading": "にげたねこをつかまえました。",
+          "indonesian": "Saya menangkap kucing yang kabur.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "319b025c-7aef-41b7-97d3-3d763bc759ab",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "319b025c-7aef-41b7-97d3-3d763bc759ab",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "逃げる",
+        "reading": "にげる",
+        "romaji": null,
+        "indonesian": "melarikan diri",
+        "category": "動詞",
+        "sort_order": 32
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "ねこがまどから逃げてしまいました。",
+          "reading": "ねこがまどからにげてしまいました。",
+          "indonesian": "Kucingnya kabur melalui jendela.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "677e86b5-e0ea-495d-b869-9420e01f17e1",
+      "chapter": 6,
+      "expectedCore": {
+        "id": "677e86b5-e0ea-495d-b869-9420e01f17e1",
+        "module_id": "d9db5f79-38e6-4dcf-ba46-9f29be362877",
+        "lesson_id": null,
+        "japanese": "残る",
+        "reading": "のこる",
+        "romaji": null,
+        "indonesian": "tersisa; tertinggal",
+        "category": "動詞",
+        "sort_order": 33
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "b16492a2-b7ef-4cf5-a5e2-450535e2781d"
+      ],
+      "examples": [
+        {
+          "japanese": "おさらにパンがひとつ残っています。",
+          "reading": "おさらにパンがひとつのこっています。",
+          "indonesian": "Masih ada satu roti tersisa di piring.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "ffa360f0-bc4f-4ce2-80fd-95b418d7659c",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "ffa360f0-bc4f-4ce2-80fd-95b418d7659c",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "つく",
+        "reading": "つく",
+        "romaji": null,
+        "indonesian": "menyala",
+        "category": "動詞",
+        "sort_order": 6
+      },
+      "expectedNote": "Kelompok 1. 自動詞: 電気がつく.",
+      "note": "Kelompok 1. 自動詞: 電気がつく.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "へやのでんきがついています。",
+          "reading": "へやのでんきがついています。",
+          "indonesian": "Lampu kamar sedang menyala.",
+          "highlight": null
+        },
+        {
+          "japanese": "でんきをつけましたが、つきませんでした。",
+          "reading": "でんきをつけましたが、つきませんでした。",
+          "indonesian": "Saya mencoba menyalakan lampu, tetapi lampunya tidak menyala.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "1467a5c5-d2dc-4967-9b74-8c70c8f5a780",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "1467a5c5-d2dc-4967-9b74-8c70c8f5a780",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "消える",
+        "reading": "きえる",
+        "romaji": null,
+        "indonesian": "padam; hilang",
+        "category": "動詞",
+        "sort_order": 8
+      },
+      "expectedNote": "Kelompok 2. 自動詞: 電気が消える.",
+      "note": "Kelompok 2. 自動詞: 電気が消える.\nきゅうに = tiba-tiba.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "きゅうにへやのでんきが消えました。",
+          "reading": "きゅうにへやのでんきがきえました。",
+          "indonesian": "Tiba-tiba lampu kamar padam.",
+          "highlight": null
+        },
+        {
+          "japanese": "かみのもじが消えています。",
+          "reading": "かみのもじがきえています。",
+          "indonesian": "Tulisan pada kertas sudah hilang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "43c9fcb8-1f3b-4a1b-9e69-87368e44371b",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "43c9fcb8-1f3b-4a1b-9e69-87368e44371b",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "壊す",
+        "reading": "こわす",
+        "romaji": null,
+        "indonesian": "merusakkan",
+        "category": "動詞",
+        "sort_order": 9
+      },
+      "expectedNote": "Kelompok 1. 他動詞: 機械を壊す. Pasangan: 壊れる.",
+      "note": "Kelompok 1. 他動詞: 機械を壊す. Pasangan: 壊れる.\nおもちゃ = mainan.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしはおとうとのおもちゃを壊してしまいました。",
+          "reading": "わたしはおとうとのおもちゃをこわしてしまいました。",
+          "indonesian": "Saya tidak sengaja merusakkan mainan adik laki-laki saya.",
+          "highlight": null
+        },
+        {
+          "japanese": "このとけいを壊したのはだれですか。",
+          "reading": "このとけいをこわしたのはだれですか。",
+          "indonesian": "Siapa yang merusakkan jam ini?",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "7eef7e48-248d-40be-ad22-9982d20b3b77",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "7eef7e48-248d-40be-ad22-9982d20b3b77",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "割れる",
+        "reading": "われる",
+        "romaji": null,
+        "indonesian": "pecah; retak",
+        "category": "動詞",
+        "sort_order": 10
+      },
+      "expectedNote": "自動詞. Pasangan: 割る.",
+      "note": "自動詞. Pasangan: 割る.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "コップがおちて、割れました。",
+          "reading": "コップがおちて、われました。",
+          "indonesian": "Gelas itu jatuh lalu pecah.",
+          "highlight": null
+        },
+        {
+          "japanese": "まどのガラスが割れています。",
+          "reading": "まどのガラスがわれています。",
+          "indonesian": "Kaca jendela dalam keadaan pecah.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "c03235e4-831f-455d-aadf-2ee56e190778",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "c03235e4-831f-455d-aadf-2ee56e190778",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "壊れる",
+        "reading": "こわれる",
+        "romaji": null,
+        "indonesian": "rusak",
+        "category": "動詞",
+        "sort_order": 10
+      },
+      "expectedNote": "Kelompok 2. 自動詞: 機械が壊れる.",
+      "note": "Kelompok 2. 自動詞: 機械が壊れる.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "このいすは壊れています。",
+          "reading": "このいすはこわれています。",
+          "indonesian": "Kursi ini rusak.",
+          "highlight": null
+        },
+        {
+          "japanese": "きのうパソコンが壊れてしまいました。",
+          "reading": "きのうパソコンがこわれてしまいました。",
+          "indonesian": "Komputer saya rusak kemarin.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "eac6ebc8-c1c6-46d0-a043-cecdc86d98d9",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "eac6ebc8-c1c6-46d0-a043-cecdc86d98d9",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "焼く",
+        "reading": "やく",
+        "romaji": null,
+        "indonesian": "membakar; memanggang",
+        "category": "動詞",
+        "sort_order": 11
+      },
+      "expectedNote": "他動詞. Pasangan: 焼ける.",
+      "note": "他動詞. Pasangan: 焼ける.\nオーブン = oven.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "ばんごはんにさかなを焼きます。",
+          "reading": "ばんごはんにさかなをやきます。",
+          "indonesian": "Saya memanggang ikan untuk makan malam.",
+          "highlight": null
+        },
+        {
+          "japanese": "はははオーブンでパンを焼いています。",
+          "reading": "はははオーブンでパンをやいています。",
+          "indonesian": "Ibu saya sedang memanggang roti di oven.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "f874b7dc-7229-4baf-b7a7-a078f1ccf23f",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "f874b7dc-7229-4baf-b7a7-a078f1ccf23f",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "焼ける",
+        "reading": "やける",
+        "romaji": null,
+        "indonesian": "terbakar; matang karena dipanggang",
+        "category": "動詞",
+        "sort_order": 12
+      },
+      "expectedNote": "自動詞. Pasangan: 焼く.",
+      "note": "自動詞. Pasangan: 焼く.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "パンが焼けました。さあ、たべましょう。",
+          "reading": "パンがやけました。さあ、たべましょう。",
+          "indonesian": "Rotinya sudah matang. Ayo kita makan.",
+          "highlight": null
+        },
+        {
+          "japanese": "さかなはまだ焼けていません。",
+          "reading": "さかなはまだやけていません。",
+          "indonesian": "Ikannya belum matang dipanggang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "aa7c08d8-7ceb-48b3-934d-ab904f9a180e",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "aa7c08d8-7ceb-48b3-934d-ab904f9a180e",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "落ちる",
+        "reading": "おちる",
+        "romaji": null,
+        "indonesian": "jatuh",
+        "category": "動詞",
+        "sort_order": 12
+      },
+      "expectedNote": "Kelompok 2. 自動詞.",
+      "note": "Kelompok 2. 自動詞.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "つくえからペンが落ちました。",
+          "reading": "つくえからペンがおちました。",
+          "indonesian": "Pena jatuh dari meja.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "273411fe-331a-46bd-80b0-c35a9b2ace2d",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "273411fe-331a-46bd-80b0-c35a9b2ace2d",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "乾く",
+        "reading": "かわく",
+        "romaji": null,
+        "indonesian": "menjadi kering",
+        "category": "動詞",
+        "sort_order": 13
+      },
+      "expectedNote": "自動詞. Pasangan: 乾かす.",
+      "note": "自動詞. Pasangan: 乾かす.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "せんたくしたシャツが乾きました。",
+          "reading": "せんたくしたシャツがかわきました。",
+          "indonesian": "Kemeja yang dicuci sudah kering.",
+          "highlight": null
+        },
+        {
+          "japanese": "タオルはまだ乾いていません。",
+          "reading": "タオルはまだかわいていません。",
+          "indonesian": "Handuknya belum kering.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "c9af32be-e45f-4135-aa31-fcbb8c821796",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "c9af32be-e45f-4135-aa31-fcbb8c821796",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "汚れる",
+        "reading": "よごれる",
+        "romaji": null,
+        "indonesian": "menjadi kotor",
+        "category": "動詞",
+        "sort_order": 14
+      },
+      "expectedNote": "自動詞. Pasangan: 汚す.",
+      "note": "自動詞. Pasangan: 汚す.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "あめのひに、くつが汚れました。",
+          "reading": "あめのひに、くつがよごれました。",
+          "indonesian": "Sepatu saya menjadi kotor pada hari hujan.",
+          "highlight": null
+        },
+        {
+          "japanese": "このシャツは汚れています。",
+          "reading": "このシャツはよごれています。",
+          "indonesian": "Kemeja ini kotor.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "c36bd31b-2cf4-4d38-ba28-513e471ec9e9",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "c36bd31b-2cf4-4d38-ba28-513e471ec9e9",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "並べる",
+        "reading": "ならべる",
+        "romaji": null,
+        "indonesian": "menyusun berjajar",
+        "category": "動詞",
+        "sort_order": 15
+      },
+      "expectedNote": "Kelompok 2. 他動詞. Pasangan: 並ぶ.",
+      "note": "Kelompok 2. 他動詞. Pasangan: 並ぶ.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "テーブルにおさらを並べておきます。",
+          "reading": "テーブルにおさらをならべておきます。",
+          "indonesian": "Saya akan menata piring di meja sebagai persiapan.",
+          "highlight": null
+        },
+        {
+          "japanese": "ほんだなにほんを並べました。",
+          "reading": "ほんだなにほんをならべました。",
+          "indonesian": "Saya menyusun buku-buku di rak.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "c0626b01-26f1-4c65-8ffb-2288c01bfe2b",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "c0626b01-26f1-4c65-8ffb-2288c01bfe2b",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "折る",
+        "reading": "おる",
+        "romaji": null,
+        "indonesian": "mematahkan; melipat",
+        "category": "動詞",
+        "sort_order": 15
+      },
+      "expectedNote": "他動詞. Pasangan: 折れる.",
+      "note": "他動詞. Pasangan: 折れる.\nえだ = dahan.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "かみをはんぶんに折ってください。",
+          "reading": "かみをはんぶんにおってください。",
+          "indonesian": "Tolong lipat kertas menjadi dua.",
+          "highlight": null
+        },
+        {
+          "japanese": "きのえだを折らないでください。",
+          "reading": "きのえだをおらないでください。",
+          "indonesian": "Tolong jangan patahkan dahan pohon.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "53620c45-bb42-471f-81f1-592a55398b7c",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "53620c45-bb42-471f-81f1-592a55398b7c",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "並ぶ",
+        "reading": "ならぶ",
+        "romaji": null,
+        "indonesian": "berjajar; mengantre",
+        "category": "動詞",
+        "sort_order": 16
+      },
+      "expectedNote": "Kelompok 1. 自動詞.",
+      "note": "Kelompok 1. 自動詞.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "ほんだなにほんが並んでいます。",
+          "reading": "ほんだなにほんがならんでいます。",
+          "indonesian": "Buku-buku berjajar di rak.",
+          "highlight": null
+        },
+        {
+          "japanese": "みせのまえにおおぜいのひとが並んでいます。",
+          "reading": "みせのまえにおおぜいのひとがならんでいます。",
+          "indonesian": "Banyak orang sedang mengantre di depan toko.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "e9e43d4d-ff21-464f-8b4f-d38b1d92e314",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "e9e43d4d-ff21-464f-8b4f-d38b1d92e314",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "折れる",
+        "reading": "おれる",
+        "romaji": null,
+        "indonesian": "patah; terlipat",
+        "category": "動詞",
+        "sort_order": 16
+      },
+      "expectedNote": "自動詞. Pasangan: 折る.",
+      "note": "自動詞. Pasangan: 折る.\nえだ = dahan.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "つよいかぜできのえだが折れました。",
+          "reading": "つよいかぜできのえだがおれました。",
+          "indonesian": "Dahan pohon patah karena angin kencang.",
+          "highlight": null
+        },
+        {
+          "japanese": "このえんぴつは折れています。",
+          "reading": "このえんぴつはおれています。",
+          "indonesian": "Pensil ini patah.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "81f6fb49-e9d0-4eef-96df-f3475413fb41",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "81f6fb49-e9d0-4eef-96df-f3475413fb41",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "沸かす",
+        "reading": "わかす",
+        "romaji": null,
+        "indonesian": "merebus; memanaskan air",
+        "category": "動詞",
+        "sort_order": 17
+      },
+      "expectedNote": "他動詞. Pasangan: 沸く.",
+      "note": "他動詞. Pasangan: 沸く.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "おちゃをいれるまえに、みずを沸かします。",
+          "reading": "おちゃをいれるまえに、みずをわかします。",
+          "indonesian": "Saya merebus air sebelum menyeduh teh.",
+          "highlight": null
+        },
+        {
+          "japanese": "おきゃくさんがくるまえに、おゆを沸かしておきます。",
+          "reading": "おきゃくさんがくるまえに、おゆをわかしておきます。",
+          "indonesian": "Saya akan menyiapkan air panas sebelum tamu datang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "b9384962-ca98-4b57-9911-e3b669bb7c2c",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "b9384962-ca98-4b57-9911-e3b669bb7c2c",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "準備する",
+        "reading": "じゅんびする",
+        "romaji": null,
+        "indonesian": "mempersiapkan",
+        "category": "動詞",
+        "sort_order": 17
+      },
+      "expectedNote": "Kelompok 3.",
+      "note": "Kelompok 3.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたのじゅぎょうでつかうものを準備しておきます。",
+          "reading": "あしたのじゅぎょうでつかうものをじゅんびしておきます。",
+          "indonesian": "Saya menyiapkan barang yang akan digunakan dalam pelajaran besok.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "fb008b3c-793a-45a8-aad6-2c74d9a360e6",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "fb008b3c-793a-45a8-aad6-2c74d9a360e6",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "沸く",
+        "reading": "わく",
+        "romaji": null,
+        "indonesian": "mendidih",
+        "category": "動詞",
+        "sort_order": 18
+      },
+      "expectedNote": "自動詞. Pasangan: 沸かす.",
+      "note": "自動詞. Pasangan: 沸かす.\nなべ = panci.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "おゆが沸きました。おちゃをいれましょう。",
+          "reading": "おゆがわきました。おちゃをいれましょう。",
+          "indonesian": "Airnya sudah mendidih. Mari menyeduh teh.",
+          "highlight": null
+        },
+        {
+          "japanese": "なべのみずが沸いています。",
+          "reading": "なべのみずがわいています。",
+          "indonesian": "Air di dalam panci sedang mendidih.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "da808f5b-d2de-4629-9649-db945f6878c6",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "da808f5b-d2de-4629-9649-db945f6878c6",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "片付ける",
+        "reading": "かたづける",
+        "romaji": null,
+        "indonesian": "merapikan",
+        "category": "verb",
+        "sort_order": 8
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "ごはんのあとで、おさらを片付けます。",
+          "reading": "ごはんのあとで、おさらをかたづけます。",
+          "indonesian": "Saya membereskan piring setelah makan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "ce182536-f5cd-4d71-8078-f69b18d82eff",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "ce182536-f5cd-4d71-8078-f69b18d82eff",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "冷える",
+        "reading": "ひえる",
+        "romaji": null,
+        "indonesian": "menjadi dingin",
+        "category": "動詞",
+        "sort_order": 19
+      },
+      "expectedNote": "自動詞. Pasangan: 冷やす.",
+      "note": "自動詞. Pasangan: 冷やす.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "れいぞうこでジュースがよく冷えています。",
+          "reading": "れいぞうこでジュースがよくひえています。",
+          "indonesian": "Jus di dalam kulkas sudah dingin.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "ad55fa7a-c139-46ae-8666-5cc4c53cd371",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "ad55fa7a-c139-46ae-8666-5cc4c53cd371",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "付く",
+        "reading": "つく",
+        "romaji": null,
+        "indonesian": "menempel; terpasang",
+        "category": "動詞",
+        "sort_order": 20
+      },
+      "expectedNote": "自動詞. Pasangan: 付ける.",
+      "note": "自動詞. Pasangan: 付ける.\nどろ = lumpur.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "シャツにボタンがみっつ付いています。",
+          "reading": "シャツにボタンがみっつついています。",
+          "indonesian": "Ada tiga kancing terpasang pada kemeja.",
+          "highlight": null
+        },
+        {
+          "japanese": "くつにどろが付いています。",
+          "reading": "くつにどろがついています。",
+          "indonesian": "Ada lumpur menempel pada sepatu.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "7f6457c1-7294-44ce-9c39-9c6004ee259f",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "7f6457c1-7294-44ce-9c39-9c6004ee259f",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "掛ける",
+        "reading": "かける",
+        "romaji": null,
+        "indonesian": "menggantungkan; memasang",
+        "category": "動詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "かべにとけいを掛けました。",
+          "reading": "かべにとけいをかけました。",
+          "indonesian": "Saya menggantungkan jam di dinding.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "2909b77a-8d14-4373-a081-5cc752f4f4e2",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "2909b77a-8d14-4373-a081-5cc752f4f4e2",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "下げる",
+        "reading": "さげる",
+        "romaji": null,
+        "indonesian": "menurunkan; menggantungkan",
+        "category": "動詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "かばんをいすのうしろに下げました。",
+          "reading": "かばんをいすのうしろにさげました。",
+          "indonesian": "Saya menggantungkan tas di belakang kursi.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "b1034765-de77-4008-927e-4cfad5d21a53",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "b1034765-de77-4008-927e-4cfad5d21a53",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "立てる",
+        "reading": "たてる",
+        "romaji": null,
+        "indonesian": "mendirikan; menegakkan",
+        "category": "動詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "かさをかべに立てました。",
+          "reading": "かさをかべにたてました。",
+          "indonesian": "Saya menyandarkan payung dalam posisi berdiri di dinding.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "4bc4efff-fd5d-4576-b041-068590bb013d",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "4bc4efff-fd5d-4576-b041-068590bb013d",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "植える",
+        "reading": "うえる",
+        "romaji": null,
+        "indonesian": "menanam",
+        "category": "動詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "にわにはなを植えました。",
+          "reading": "にわにはなをうえました。",
+          "indonesian": "Saya menanam bunga di halaman.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "9c7c0f0d-f628-441f-b5d0-e96349a2a985",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "9c7c0f0d-f628-441f-b5d0-e96349a2a985",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "塗る",
+        "reading": "ぬる",
+        "romaji": null,
+        "indonesian": "mengecat; mengoleskan",
+        "category": "動詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": "ペンキ = cat. くすり = obat.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "このいすにしろいペンキを塗ります。",
+          "reading": "このいすにしろいペンキをぬります。",
+          "indonesian": "Saya mengecat kursi ini dengan cat putih.",
+          "highlight": null
+        },
+        {
+          "japanese": "てにくすりを塗ってください。",
+          "reading": "てにくすりをぬってください。",
+          "indonesian": "Tolong oleskan obat pada tangan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "953b3bdd-cb5c-4241-b4a4-8d6290841658",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "953b3bdd-cb5c-4241-b4a4-8d6290841658",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "包む",
+        "reading": "つつむ",
+        "romaji": null,
+        "indonesian": "membungkus",
+        "category": "動詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "プレゼントをきれいなかみで包みました。",
+          "reading": "プレゼントをきれいなかみでつつみました。",
+          "indonesian": "Saya membungkus hadiah dengan kertas yang bagus.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "d2793425-416e-4268-b0a3-68dfa5dea236",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "d2793425-416e-4268-b0a3-68dfa5dea236",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "取り替える",
+        "reading": "とりかえる",
+        "romaji": null,
+        "indonesian": "mengganti; menukar",
+        "category": "動詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": "でんち = baterai.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "ふるいでんちをあたらしいのと取り替えておきます。",
+          "reading": "ふるいでんちをあたらしいのととりかえておきます。",
+          "indonesian": "Saya akan mengganti baterai lama dengan yang baru sebagai persiapan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "281c804a-f8b4-4168-95a8-791bfb4fdf76",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "281c804a-f8b4-4168-95a8-791bfb4fdf76",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "割る",
+        "reading": "わる",
+        "romaji": null,
+        "indonesian": "memecahkan; membagi",
+        "category": "動詞",
+        "sort_order": 28
+      },
+      "expectedNote": "他動詞. Pasangan: 割れる.",
+      "note": "他動詞. Pasangan: 割れる.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしはコップを割ってしまいました。",
+          "reading": "わたしはコップをわってしまいました。",
+          "indonesian": "Saya tidak sengaja memecahkan gelas.",
+          "highlight": null
+        },
+        {
+          "japanese": "チョコレートをふたつに割りました。",
+          "reading": "チョコレートをふたつにわりました。",
+          "indonesian": "Saya membagi cokelat menjadi dua potong.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "eb78059d-a1d4-4088-86ea-8a37d310a16f",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "eb78059d-a1d4-4088-86ea-8a37d310a16f",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "乾かす",
+        "reading": "かわかす",
+        "romaji": null,
+        "indonesian": "mengeringkan",
+        "category": "動詞",
+        "sort_order": 29
+      },
+      "expectedNote": "他動詞. Pasangan: 乾く.",
+      "note": "他動詞. Pasangan: 乾く.\nぬれる = menjadi basah; かみ pada contoh ini berarti rambut.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "ぬれたかみを乾かします。",
+          "reading": "ぬれたかみをかわかします。",
+          "indonesian": "Saya mengeringkan rambut yang basah.",
+          "highlight": null
+        },
+        {
+          "japanese": "せんたくしたシャツをそとで乾かしています。",
+          "reading": "せんたくしたシャツをそとでかわかしています。",
+          "indonesian": "Saya mengeringkan kemeja yang dicuci di luar.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "bd461817-3b9e-42c7-8a40-4fa12dd7e505",
+      "chapter": 7,
+      "expectedCore": {
+        "id": "bd461817-3b9e-42c7-8a40-4fa12dd7e505",
+        "module_id": "dd5c6d36-8dfb-4c1f-bf61-62a574229b1f",
+        "lesson_id": null,
+        "japanese": "汚す",
+        "reading": "よごす",
+        "romaji": null,
+        "indonesian": "mengotori",
+        "category": "動詞",
+        "sort_order": 30
+      },
+      "expectedNote": "他動詞. Pasangan: 汚れる.",
+      "note": "他動詞. Pasangan: 汚れる.",
+      "deckIds": [
+        "243ec77f-3e6d-423b-b939-2b3291a21fad"
+      ],
+      "examples": [
+        {
+          "japanese": "こどもがテーブルを汚しました。",
+          "reading": "こどもがテーブルをよごしました。",
+          "indonesian": "Anak itu mengotori meja.",
+          "highlight": null
+        },
+        {
+          "japanese": "あたらしいシャツを汚してしまいました。",
+          "reading": "あたらしいシャツをよごしてしまいました。",
+          "indonesian": "Saya tidak sengaja mengotori kemeja baru.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "91171558-be04-4b6d-a2f4-ba458d27b657",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "91171558-be04-4b6d-a2f4-ba458d27b657",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "進む",
+        "reading": "すすむ",
+        "romaji": null,
+        "indonesian": "maju; berkembang",
+        "category": "動詞",
+        "sort_order": 4
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "しごとがだんだん進んでいます。",
+          "reading": "しごとがだんだんすすんでいます。",
+          "indonesian": "Pekerjaan berangsur-angsur mengalami kemajuan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "fca03d0d-c56c-4936-8f90-ab0ce511be2b",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "fca03d0d-c56c-4936-8f90-ab0ce511be2b",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "増える",
+        "reading": "ふえる",
+        "romaji": null,
+        "indonesian": "bertambah",
+        "category": "動詞",
+        "sort_order": 5
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.",
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "このまちはひとが増えてきました。",
+          "reading": "このまちはひとがふえてきました。",
+          "indonesian": "Jumlah penduduk kota ini mulai bertambah.",
+          "highlight": null
+        },
+        {
+          "japanese": "まいにちよんで、しっていることばが増えました。",
+          "reading": "まいにちよんで、しっていることばがふえました。",
+          "indonesian": "Dengan membaca setiap hari, kosakata yang saya ketahui bertambah.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "4e056c72-9ff7-4fa7-a390-34dc77cd6a36",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "4e056c72-9ff7-4fa7-a390-34dc77cd6a36",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "減る",
+        "reading": "へる",
+        "romaji": null,
+        "indonesian": "berkurang",
+        "category": "動詞",
+        "sort_order": 6
+      },
+      "expectedNote": "Kelompok 1. Berakhiran る tetapi grup 1.",
+      "note": "Kelompok 1. Berakhiran る tetapi grup 1.",
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "さいきん、バスにのるひとが減っています。",
+          "reading": "さいきん、バスにのるひとがへっています。",
+          "indonesian": "Akhir-akhir ini jumlah orang yang naik bus berkurang.",
+          "highlight": null
+        },
+        {
+          "japanese": "かぜがよわくなって、あめも減りました。",
+          "reading": "かぜがよわくなって、あめもへりました。",
+          "indonesian": "Angin melemah dan hujan juga berkurang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "81ef4e8d-ee3c-47b9-a316-a48da0e8e81e",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "81ef4e8d-ee3c-47b9-a316-a48da0e8e81e",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "変わる",
+        "reading": "かわる",
+        "romaji": null,
+        "indonesian": "berubah",
+        "category": "動詞",
+        "sort_order": 7
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "にほんにきてから、せいかつが変わりました。",
+          "reading": "にほんにきてから、せいかつがかわりました。",
+          "indonesian": "Kehidupan saya berubah sejak datang ke Jepang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "2fc60df2-5972-4b28-a3e4-c697ceb45687",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "2fc60df2-5972-4b28-a3e4-c697ceb45687",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "戻る",
+        "reading": "もどる",
+        "romaji": null,
+        "indonesian": "kembali",
+        "category": "動詞",
+        "sort_order": 8
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.\nわすれもの = barang yang tertinggal.",
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "わすれものをしたから、いえに戻りました。",
+          "reading": "わすれものをしたから、いえにもどりました。",
+          "indonesian": "Saya kembali ke rumah karena ada barang yang tertinggal.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "264703a3-44bf-4bb8-8194-70bc771cd2ed",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "264703a3-44bf-4bb8-8194-70bc771cd2ed",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "運ぶ",
+        "reading": "はこぶ",
+        "romaji": null,
+        "indonesian": "membawa; mengangkut",
+        "category": "動詞",
+        "sort_order": 9
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "このはこをとなりのへやへ運んでください。",
+          "reading": "このはこをとなりのへやへはこんでください。",
+          "indonesian": "Tolong bawa kotak ini ke kamar sebelah.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "83e56d55-9969-4317-b945-f09d45f418e5",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "83e56d55-9969-4317-b945-f09d45f418e5",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "届く",
+        "reading": "とどく",
+        "romaji": null,
+        "indonesian": "sampai; terkirim ke tujuan",
+        "category": "動詞",
+        "sort_order": 10
+      },
+      "expectedNote": "Kelompok 1. 荷物が届く.",
+      "note": "Kelompok 1. 荷物が届く.",
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "さっき、ともだちからてがみが届きました。",
+          "reading": "さっき、ともだちからてがみがとどきました。",
+          "indonesian": "Barusan surat dari teman saya tiba.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "496928e4-1727-4522-ad76-d50a69d9825d",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "496928e4-1727-4522-ad76-d50a69d9825d",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "出発",
+        "reading": "しゅっぱつ",
+        "romaji": null,
+        "indonesian": "keberangkatan",
+        "category": "名詞",
+        "sort_order": 11
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "ひこうきの出発はくじです。",
+          "reading": "ひこうきのしゅっぱつはくじです。",
+          "indonesian": "Keberangkatan pesawat pukul sembilan.",
+          "highlight": "出発"
+        }
+      ]
+    },
+    {
+      "id": "edc409cf-119d-4079-92c0-80d4f61bf5cd",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "edc409cf-119d-4079-92c0-80d4f61bf5cd",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "到着",
+        "reading": "とうちゃく",
+        "romaji": null,
+        "indonesian": "kedatangan",
+        "category": "名詞",
+        "sort_order": 12
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "でんしゃの到着をえきでまっています。",
+          "reading": "でんしゃのとうちゃくをえきでまっています。",
+          "indonesian": "Saya menunggu kedatangan kereta di stasiun.",
+          "highlight": "到着"
+        }
+      ]
+    },
+    {
+      "id": "35feb56c-6fc0-420a-af10-d9378806ab7c",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "35feb56c-6fc0-420a-af10-d9378806ab7c",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "今から",
+        "reading": "いまから",
+        "romaji": null,
+        "indonesian": "mulai sekarang; segera setelah ini",
+        "category": "副詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "今からばんごはんをつくるところです。",
+          "reading": "いまからばんごはんをつくるところです。",
+          "indonesian": "Saya baru akan mulai membuat makan malam sekarang.",
+          "highlight": "今から"
+        }
+      ]
+    },
+    {
+      "id": "707381c7-2aa0-457c-91bb-0fa785e99e9a",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "707381c7-2aa0-457c-91bb-0fa785e99e9a",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "移る",
+        "reading": "うつる",
+        "romaji": null,
+        "indonesian": "berpindah; menular",
+        "category": "動詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "らいげつ、あたらしいアパートに移ります。",
+          "reading": "らいげつ、あたらしいアパートにうつります。",
+          "indonesian": "Bulan depan saya akan pindah ke apartemen baru.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "036925ef-ae0a-43af-a726-f5a76c640b85",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "036925ef-ae0a-43af-a726-f5a76c640b85",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "さっき",
+        "reading": "さっき",
+        "romaji": null,
+        "indonesian": "barusan; tadi",
+        "category": "副詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "さっきごはんをたべたばかりです。",
+          "reading": "さっきごはんをたべたばかりです。",
+          "indonesian": "Saya baru saja makan tadi.",
+          "highlight": "さっき"
+        }
+      ]
+    },
+    {
+      "id": "1b6a45e8-f74a-4106-bb94-038a46df1767",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "1b6a45e8-f74a-4106-bb94-038a46df1767",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "過ぎる",
+        "reading": "すぎる",
+        "romaji": null,
+        "indonesian": "melewati; berlalu; terlalu",
+        "category": "動詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "もうはちじを過ぎました。",
+          "reading": "もうはちじをすぎました。",
+          "indonesian": "Sudah lewat pukul delapan.",
+          "highlight": null
+        },
+        {
+          "japanese": "たのしいじかんははやく過ぎます。",
+          "reading": "たのしいじかんははやくすぎます。",
+          "indonesian": "Waktu yang menyenangkan berlalu dengan cepat.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "ed0163ce-a74b-4d05-9083-c6111e728eb2",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "ed0163ce-a74b-4d05-9083-c6111e728eb2",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "回る",
+        "reading": "まわる",
+        "romaji": null,
+        "indonesian": "berputar; berkeliling",
+        "category": "動詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "きのうともだちとまちを回りました。",
+          "reading": "きのうともだちとまちをまわりました。",
+          "indonesian": "Kemarin saya berkeliling kota bersama teman.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "83c30cf1-b579-4f43-b322-de93dd0441c1",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "83c30cf1-b579-4f43-b322-de93dd0441c1",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "向かう",
+        "reading": "むかう",
+        "romaji": null,
+        "indonesian": "menuju; menghadap",
+        "category": "動詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "いま、えきに向かっています。",
+          "reading": "いま、えきにむかっています。",
+          "indonesian": "Sekarang saya sedang menuju stasiun.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "4ac01ddc-1308-4fab-9462-0f239b743c7a",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "4ac01ddc-1308-4fab-9462-0f239b743c7a",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "だんだん",
+        "reading": "だんだん",
+        "romaji": null,
+        "indonesian": "sedikit demi sedikit; berangsur-angsur",
+        "category": "副詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "まいにちれんしゅうして、だんだんはなせるようになりました。",
+          "reading": "まいにちれんしゅうして、だんだんはなせるようになりました。",
+          "indonesian": "Dengan berlatih setiap hari, sedikit demi sedikit saya mulai bisa berbicara.",
+          "highlight": "だんだん"
+        }
+      ]
+    },
+    {
+      "id": "8df23a0f-020c-406f-975b-97e9bfd664fa",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "8df23a0f-020c-406f-975b-97e9bfd664fa",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "下がる",
+        "reading": "さがる",
+        "romaji": null,
+        "indonesian": "turun; mundur",
+        "category": "動詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": "きおん = suhu udara.",
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "よるになって、きおんが下がってきました。",
+          "reading": "よるになって、きおんがさがってきました。",
+          "indonesian": "Saat malam tiba, suhu mulai turun.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "626ba9eb-a286-4556-b570-7f47499bb16e",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "626ba9eb-a286-4556-b570-7f47499bb16e",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "上がる",
+        "reading": "あがる",
+        "romaji": null,
+        "indonesian": "naik",
+        "category": "動詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "このみせのパンのねだんが上がりました。",
+          "reading": "このみせのパンのねだんがあがりました。",
+          "indonesian": "Harga roti di toko ini naik.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "59d3302d-b734-47ea-a8ac-3d23d50b56bd",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "59d3302d-b734-47ea-a8ac-3d23d50b56bd",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "続く",
+        "reading": "つづく",
+        "romaji": null,
+        "indonesian": "berlanjut",
+        "category": "動詞",
+        "sort_order": 19
+      },
+      "expectedNote": "自動詞. Pasangan: 続ける.",
+      "note": "自動詞. Pasangan: 続ける.",
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "きのうからあめが続いています。",
+          "reading": "きのうからあめがつづいています。",
+          "indonesian": "Hujan terus turun sejak kemarin.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "2f23dde1-bc52-4a62-a36d-d8266b16f389",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "2f23dde1-bc52-4a62-a36d-d8266b16f389",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "育てる",
+        "reading": "そだてる",
+        "romaji": null,
+        "indonesian": "membesarkan; memelihara",
+        "category": "動詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": "ベランダ = balkon/beranda.",
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "ベランダではなを育てています。",
+          "reading": "ベランダではなをそだてています。",
+          "indonesian": "Saya memelihara bunga di balkon.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "093d5bb8-b2b7-45f1-bf93-29b84dcebf77",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "093d5bb8-b2b7-45f1-bf93-29b84dcebf77",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "生きる",
+        "reading": "いきる",
+        "romaji": null,
+        "indonesian": "hidup",
+        "category": "動詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "このさかなは、きれいなみずのなかで生きています。",
+          "reading": "このさかなは、きれいなみずのなかでいきています。",
+          "indonesian": "Ikan ini hidup di air yang bersih.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "19451128-cc69-4b50-a40f-0329841473e3",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "19451128-cc69-4b50-a40f-0329841473e3",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "変える",
+        "reading": "かえる",
+        "romaji": null,
+        "indonesian": "mengubah",
+        "category": "動詞",
+        "sort_order": 22
+      },
+      "expectedNote": "他動詞. Pasangan: 変わる.",
+      "note": "他動詞. Pasangan: 変わる.",
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "りょこうのけいかくを変えました。",
+          "reading": "りょこうのけいかくをかえました。",
+          "indonesian": "Saya mengubah rencana perjalanan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "89ed0d5f-45f3-4989-b3c7-b1dfae5601b0",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "89ed0d5f-45f3-4989-b3c7-b1dfae5601b0",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "暮れる",
+        "reading": "くれる",
+        "romaji": null,
+        "indonesian": "menjadi gelap; berakhir",
+        "category": "動詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "ひが暮れて、まちがくらくなりました。",
+          "reading": "ひがくれて、まちがくらくなりました。",
+          "indonesian": "Matahari terbenam dan kota menjadi gelap.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "92e75aab-7c52-42b1-908d-cfc1fa2cb8bf",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "92e75aab-7c52-42b1-908d-cfc1fa2cb8bf",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "通る",
+        "reading": "とおる",
+        "romaji": null,
+        "indonesian": "melewati; melalui",
+        "category": "動詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "このバスはだいがくのまえを通ります。",
+          "reading": "このバスはだいがくのまえをとおります。",
+          "indonesian": "Bus ini melewati depan universitas.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "032e8888-203e-43f4-a82d-b5905098b39f",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "032e8888-203e-43f4-a82d-b5905098b39f",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "倒れる",
+        "reading": "たおれる",
+        "romaji": null,
+        "indonesian": "jatuh; roboh",
+        "category": "動詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "つよいかぜで、にわのきが倒れました。",
+          "reading": "つよいかぜで、にわのきがたおれました。",
+          "indonesian": "Pohon di halaman roboh karena angin kencang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "a95a43bf-c74e-4528-bd72-066f71ea6997",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "a95a43bf-c74e-4528-bd72-066f71ea6997",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "引っ越す",
+        "reading": "ひっこす",
+        "romaji": null,
+        "indonesian": "pindah rumah",
+        "category": "動詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "このまちに引っ越してきたばかりです。",
+          "reading": "このまちにひっこしてきたばかりです。",
+          "indonesian": "Saya baru saja pindah ke kota ini.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "4f3c8443-2cad-4ff2-a459-e15f8fa788e0",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "4f3c8443-2cad-4ff2-a459-e15f8fa788e0",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "増やす",
+        "reading": "ふやす",
+        "romaji": null,
+        "indonesian": "menambah; meningkatkan",
+        "category": "動詞",
+        "sort_order": 27
+      },
+      "expectedNote": "他動詞. Pasangan: 増える.",
+      "note": "他動詞. Pasangan: 増える.",
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "にほんごをべんきょうするじかんを増やしました。",
+          "reading": "にほんごをべんきょうするじかんをふやしました。",
+          "indonesian": "Saya menambah waktu belajar bahasa Jepang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "bdebc562-6fb0-4fc2-bc30-253be555534a",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "bdebc562-6fb0-4fc2-bc30-253be555534a",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "減らす",
+        "reading": "へらす",
+        "romaji": null,
+        "indonesian": "mengurangi",
+        "category": "動詞",
+        "sort_order": 28
+      },
+      "expectedNote": "他動詞. Pasangan: 減る.",
+      "note": "他動詞. Pasangan: 減る.",
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "コーヒーにいれるさとうを減らしています。",
+          "reading": "コーヒーにいれるさとうをへらしています。",
+          "indonesian": "Saya sedang mengurangi gula yang dimasukkan ke kopi.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "e7181246-1b32-49e2-8424-7fe0edaca8df",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "e7181246-1b32-49e2-8424-7fe0edaca8df",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "上げる",
+        "reading": "あげる",
+        "romaji": null,
+        "indonesian": "menaikkan",
+        "category": "動詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "ラジオのおとをすこし上げてください。",
+          "reading": "ラジオのおとをすこしあげてください。",
+          "indonesian": "Tolong besarkan sedikit volume radio.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "d1b8efe6-779c-4a20-b4e4-34a74e3f3bcb",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "d1b8efe6-779c-4a20-b4e4-34a74e3f3bcb",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "下げる",
+        "reading": "さげる",
+        "romaji": null,
+        "indonesian": "menurunkan",
+        "category": "動詞",
+        "sort_order": 30
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "テレビのおとを下げました。",
+          "reading": "テレビのおとをさげました。",
+          "indonesian": "Saya mengecilkan volume televisi.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "2014b556-c19d-4433-9785-49a064ca2c11",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "2014b556-c19d-4433-9785-49a064ca2c11",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "通り過ぎる",
+        "reading": "とおりすぎる",
+        "romaji": null,
+        "indonesian": "melewati",
+        "category": "動詞",
+        "sort_order": 31
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "ほんをよんでいて、おりるえきを通り過ぎてしまいました。",
+          "reading": "ほんをよんでいて、おりるえきをとおりすぎてしまいました。",
+          "indonesian": "Saat sedang membaca buku, saya terlewat dari stasiun tempat seharusnya turun.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "9804d225-0bac-402a-b5e6-adb8fe2bf724",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "9804d225-0bac-402a-b5e6-adb8fe2bf724",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "冷える",
+        "reading": "ひえる",
+        "romaji": null,
+        "indonesian": "menjadi dingin",
+        "category": "動詞",
+        "sort_order": 32
+      },
+      "expectedNote": null,
+      "note": "くうき = udara.",
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "ゆうがたから、くうきが冷えてきました。",
+          "reading": "ゆうがたから、くうきがひえてきました。",
+          "indonesian": "Udara mulai mendingin sejak sore.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "9251d35d-3604-4402-b282-25d6c99fee59",
+      "chapter": 8,
+      "expectedCore": {
+        "id": "9251d35d-3604-4402-b282-25d6c99fee59",
+        "module_id": "52fa650c-2d46-4c5b-ad90-59f521b6d5e8",
+        "lesson_id": null,
+        "japanese": "育つ",
+        "reading": "そだつ",
+        "romaji": null,
+        "indonesian": "tumbuh; dibesarkan",
+        "category": "動詞",
+        "sort_order": 33
+      },
+      "expectedNote": "自動詞. Pasangan: 育てる.",
+      "note": "自動詞. Pasangan: 育てる.",
+      "deckIds": [
+        "49134f17-28bc-4af5-ac45-4d149f0c9341"
+      ],
+      "examples": [
+        {
+          "japanese": "にわのきがおおきく育ってきました。",
+          "reading": "にわのきがおおきくそだってきました。",
+          "indonesian": "Pohon di halaman berangsur-angsur tumbuh besar.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "cf51326b-51fe-4d72-96ed-c37aaeb4d185",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "cf51326b-51fe-4d72-96ed-c37aaeb4d185",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "方法",
+        "reading": "ほうほう",
+        "romaji": null,
+        "indonesian": "cara; metode",
+        "category": "名詞",
+        "sort_order": 1
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "にほんごをおぼえる方法をおしえてください。",
+          "reading": "にほんごをおぼえるほうほうをおしえてください。",
+          "indonesian": "Tolong beri tahu saya cara mengingat bahasa Jepang.",
+          "highlight": "方法"
+        }
+      ]
+    },
+    {
+      "id": "99fcf39c-fdcd-491d-b896-6329709cfceb",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "99fcf39c-fdcd-491d-b896-6329709cfceb",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "使い方",
+        "reading": "つかいかた",
+        "romaji": null,
+        "indonesian": "cara menggunakan",
+        "category": "名詞",
+        "sort_order": 2
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このカメラの使い方はかんたんです。",
+          "reading": "このカメラのつかいかたはかんたんです。",
+          "indonesian": "Cara menggunakan kamera ini mudah.",
+          "highlight": "使い方"
+        }
+      ]
+    },
+    {
+      "id": "609eb117-d375-475d-86aa-1351474a1f86",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "609eb117-d375-475d-86aa-1351474a1f86",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "読み方",
+        "reading": "よみかた",
+        "romaji": null,
+        "indonesian": "cara membaca",
+        "category": "名詞",
+        "sort_order": 3
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このかんじの読み方がわかりません。",
+          "reading": "このかんじのよみかたがわかりません。",
+          "indonesian": "Saya tidak tahu cara membaca kanji ini.",
+          "highlight": "読み方"
+        }
+      ]
+    },
+    {
+      "id": "9017dee4-a7e3-4b80-b4c6-25f8f23b6ba4",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "9017dee4-a7e3-4b80-b4c6-25f8f23b6ba4",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "高さ",
+        "reading": "たかさ",
+        "romaji": null,
+        "indonesian": "ketinggian",
+        "category": "名詞",
+        "sort_order": 4
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このテーブルの高さはちょうどいいです。",
+          "reading": "このテーブルのたかさはちょうどいいです。",
+          "indonesian": "Tinggi meja ini pas.",
+          "highlight": "高さ"
+        }
+      ]
+    },
+    {
+      "id": "89c8b4e8-2ad8-48fe-8a49-a1c8479da640",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "89c8b4e8-2ad8-48fe-8a49-a1c8479da640",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "重さ",
+        "reading": "おもさ",
+        "romaji": null,
+        "indonesian": "berat suatu benda",
+        "category": "名詞",
+        "sort_order": 5
+      },
+      "expectedNote": null,
+      "note": "はかる = mengukur/menimbang.",
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このはこの重さをはかります。",
+          "reading": "このはこのおもさをはかります。",
+          "indonesian": "Saya mengukur berat kotak ini.",
+          "highlight": "重さ"
+        }
+      ]
+    },
+    {
+      "id": "92b26f71-ae58-402f-b303-e0b6fad2ab1e",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "92b26f71-ae58-402f-b303-e0b6fad2ab1e",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "軽い",
+        "reading": "かるい",
+        "romaji": null,
+        "indonesian": "ringan",
+        "category": "い形容詞",
+        "sort_order": 6
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このかばんは軽くて、もちやすいです。",
+          "reading": "このかばんはかるくて、もちやすいです。",
+          "indonesian": "Tas ini ringan dan mudah dibawa.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "e476bc19-ccc0-456e-ad05-0f4f13e561c0",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "e476bc19-ccc0-456e-ad05-0f4f13e561c0",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "重い",
+        "reading": "おもい",
+        "romaji": null,
+        "indonesian": "berat",
+        "category": "い形容詞",
+        "sort_order": 7
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このはこは重すぎて、もてません。",
+          "reading": "このはこはおもすぎて、もてません。",
+          "indonesian": "Kotak ini terlalu berat sehingga tidak bisa saya angkat.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "67423930-0d08-4fa5-8012-8b88b232cf57",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "67423930-0d08-4fa5-8012-8b88b232cf57",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "柔らかい",
+        "reading": "やわらかい",
+        "romaji": null,
+        "indonesian": "lunak; lembut",
+        "category": "い形容詞",
+        "sort_order": 8
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このパンは柔らかくて、たべやすいです。",
+          "reading": "このパンはやわらかくて、たべやすいです。",
+          "indonesian": "Roti ini lembut dan mudah dimakan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "149d0abd-de74-4b7d-b07d-794029a54796",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "149d0abd-de74-4b7d-b07d-794029a54796",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "硬い",
+        "reading": "かたい",
+        "romaji": null,
+        "indonesian": "keras",
+        "category": "い形容詞",
+        "sort_order": 9
+      },
+      "expectedNote": "Keras saat disentuh; bandingkan 柔らかい.",
+      "note": "Keras saat disentuh; bandingkan 柔らかい.",
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このパンは硬くて、かみにくいです。",
+          "reading": "このパンはかたくて、かみにくいです。",
+          "indonesian": "Roti ini keras dan sulit dikunyah.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "358b2033-3ef7-4fad-a6ed-c10020b27a73",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "358b2033-3ef7-4fad-a6ed-c10020b27a73",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "細い",
+        "reading": "ほそい",
+        "romaji": null,
+        "indonesian": "tipis; ramping untuk benda memanjang",
+        "category": "い形容詞",
+        "sort_order": 10
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "この細いみちをとおって、えきへいきます。",
+          "reading": "このほそいみちをとおって、えきへいきます。",
+          "indonesian": "Saya melewati jalan sempit ini untuk menuju stasiun.",
+          "highlight": "細い"
+        }
+      ]
+    },
+    {
+      "id": "8a1472eb-355b-485b-a9e3-40b46f8eb84e",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "8a1472eb-355b-485b-a9e3-40b46f8eb84e",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "太い",
+        "reading": "ふとい",
+        "romaji": null,
+        "indonesian": "tebal; besar untuk benda memanjang",
+        "category": "い形容詞",
+        "sort_order": 11
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "この太いペンはもちやすいです。",
+          "reading": "このふといペンはもちやすいです。",
+          "indonesian": "Pena yang tebal ini mudah dipegang.",
+          "highlight": "太い"
+        }
+      ]
+    },
+    {
+      "id": "aa55aa95-5a1b-4a3a-94a7-f4eda4b76f21",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "aa55aa95-5a1b-4a3a-94a7-f4eda4b76f21",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "簡単",
+        "reading": "かんたん",
+        "romaji": null,
+        "indonesian": "mudah; sederhana",
+        "category": "な形容詞",
+        "sort_order": 12
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "もっと簡単なことばでせつめいしてください。",
+          "reading": "もっとかんたんなことばでせつめいしてください。",
+          "indonesian": "Tolong jelaskan dengan kata-kata yang lebih sederhana.",
+          "highlight": "簡単"
+        }
+      ]
+    },
+    {
+      "id": "1f5fbc84-a14e-4959-abc7-d80a18d5c725",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "1f5fbc84-a14e-4959-abc7-d80a18d5c725",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "複雑",
+        "reading": "ふくざつ",
+        "romaji": null,
+        "indonesian": "rumit",
+        "category": "な形容詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このどうぐはつかいかたが複雑です。",
+          "reading": "このどうぐはつかいかたがふくざつです。",
+          "indonesian": "Cara menggunakan alat ini rumit.",
+          "highlight": "複雑"
+        }
+      ]
+    },
+    {
+      "id": "9b56a604-cbcd-4495-8f3f-3ac1f599a073",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "9b56a604-cbcd-4495-8f3f-3ac1f599a073",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "ゆっくり",
+        "reading": "ゆっくり",
+        "romaji": null,
+        "indonesian": "pelan-pelan; dengan santai",
+        "category": "副詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "もうすこしゆっくりはなしてください。",
+          "reading": "もうすこしゆっくりはなしてください。",
+          "indonesian": "Tolong berbicara sedikit lebih pelan.",
+          "highlight": "ゆっくり"
+        }
+      ]
+    },
+    {
+      "id": "2b09f750-00b2-45e5-9a6d-5e0c1c80e0b3",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "2b09f750-00b2-45e5-9a6d-5e0c1c80e0b3",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "仕方",
+        "reading": "しかた",
+        "romaji": null,
+        "indonesian": "cara; metode",
+        "category": "名詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このシャツのせんたくの仕方をおしえてください。",
+          "reading": "このシャツのせんたくのしかたをおしえてください。",
+          "indonesian": "Tolong beri tahu saya cara mencuci kemeja ini.",
+          "highlight": "仕方"
+        }
+      ]
+    },
+    {
+      "id": "db1060aa-e8ad-4484-b635-d016bd364af6",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "db1060aa-e8ad-4484-b635-d016bd364af6",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "丁寧",
+        "reading": "ていねい",
+        "romaji": null,
+        "indonesian": "sopan; teliti",
+        "category": "な形容詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "なまえを丁寧にかいてください。",
+          "reading": "なまえをていねいにかいてください。",
+          "indonesian": "Tolong tulis nama dengan teliti.",
+          "highlight": "丁寧"
+        }
+      ]
+    },
+    {
+      "id": "ffec7c9a-647c-4ea0-9e03-0510a49b1950",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "ffec7c9a-647c-4ea0-9e03-0510a49b1950",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "適当",
+        "reading": "てきとう",
+        "romaji": null,
+        "indonesian": "sesuai; secukupnya; sembarangan",
+        "category": "名詞・な形容詞",
+        "sort_order": 17
+      },
+      "expectedNote": "Makna berubah menurut konteks.",
+      "note": "Makna berubah menurut konteks.",
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このしごとに適当などうぐをえらびます。",
+          "reading": "このしごとにてきとうなどうぐをえらびます。",
+          "indonesian": "Saya memilih alat yang sesuai untuk pekerjaan ini.",
+          "highlight": "適当"
+        },
+        {
+          "japanese": "適当にこたえないで、よくかんがえてください。",
+          "reading": "てきとうにこたえないで、よくかんがえてください。",
+          "indonesian": "Tolong jangan menjawab sembarangan; pikirkan baik-baik.",
+          "highlight": "適当"
+        }
+      ]
+    },
+    {
+      "id": "814b7ae8-a880-42a8-afb3-9a05b214de0a",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "814b7ae8-a880-42a8-afb3-9a05b214de0a",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "正しい",
+        "reading": "ただしい",
+        "romaji": null,
+        "indonesian": "benar; tepat",
+        "category": "い形容詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "じてんで正しいはつおんをたしかめます。",
+          "reading": "じてんでただしいはつおんをたしかめます。",
+          "indonesian": "Saya memeriksa pelafalan yang benar di kamus.",
+          "highlight": "正しい"
+        }
+      ]
+    },
+    {
+      "id": "cd5c9f72-282a-4db6-9d30-1176327cc814",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "cd5c9f72-282a-4db6-9d30-1176327cc814",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "厳しい",
+        "reading": "きびしい",
+        "romaji": null,
+        "indonesian": "ketat; keras",
+        "category": "い形容詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": "きそく = peraturan.",
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このがっこうのきそくは厳しいです。",
+          "reading": "このがっこうのきそくはきびしいです。",
+          "indonesian": "Peraturan sekolah ini ketat.",
+          "highlight": "厳しい"
+        }
+      ]
+    },
+    {
+      "id": "41477bbd-8476-4ec3-893d-9087096bb890",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "41477bbd-8476-4ec3-893d-9087096bb890",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "深い",
+        "reading": "ふかい",
+        "romaji": null,
+        "indonesian": "dalam",
+        "category": "い形容詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このかわは深すぎて、こどもにはあぶないです。",
+          "reading": "このかわはふかすぎて、こどもにはあぶないです。",
+          "indonesian": "Sungai ini terlalu dalam dan berbahaya bagi anak-anak.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "8c1c3d6c-d1a4-4de1-acd8-fe93cdb09f16",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "8c1c3d6c-d1a4-4de1-acd8-fe93cdb09f16",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "浅い",
+        "reading": "あさい",
+        "romaji": null,
+        "indonesian": "dangkal",
+        "category": "い形容詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このかわの浅いところであそびました。",
+          "reading": "このかわのあさいところであそびました。",
+          "indonesian": "Saya bermain di bagian sungai yang dangkal.",
+          "highlight": "浅い"
+        }
+      ]
+    },
+    {
+      "id": "28e1ea2f-80fd-4125-8bf3-249ac84fd4fb",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "28e1ea2f-80fd-4125-8bf3-249ac84fd4fb",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "固い",
+        "reading": "かたい",
+        "romaji": null,
+        "indonesian": "keras; kaku",
+        "category": "い形容詞",
+        "sort_order": 22
+      },
+      "expectedNote": "Kanji dapat berbeda menurut nuansa.",
+      "note": "Kanji dapat berbeda menurut nuansa.",
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "パンが固くなってしまいました。",
+          "reading": "パンがかたくなってしまいました。",
+          "indonesian": "Rotinya terlanjur menjadi keras.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "46f88382-12f8-4f6e-b392-bf8b4008b4f9",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "46f88382-12f8-4f6e-b392-bf8b4008b4f9",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "美しい",
+        "reading": "うつくしい",
+        "romaji": null,
+        "indonesian": "indah",
+        "category": "い形容詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このきもののいろは美しいですね。",
+          "reading": "このきもののいろはうつくしいですね。",
+          "indonesian": "Warna kimono ini indah, ya.",
+          "highlight": "美しい"
+        }
+      ]
+    },
+    {
+      "id": "5d14d35e-0693-42c4-8d1d-5121d170ee4f",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "5d14d35e-0693-42c4-8d1d-5121d170ee4f",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "珍しい",
+        "reading": "めずらしい",
+        "romaji": null,
+        "indonesian": "langka; tidak biasa",
+        "category": "い形容詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このみせでは珍しいくだものをうっています。",
+          "reading": "このみせではめずらしいくだものをうっています。",
+          "indonesian": "Toko ini menjual buah yang jarang ditemukan.",
+          "highlight": "珍しい"
+        }
+      ]
+    },
+    {
+      "id": "494cf914-7d02-4a0e-82c2-6229c843d19a",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "494cf914-7d02-4a0e-82c2-6229c843d19a",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "普通",
+        "reading": "ふつう",
+        "romaji": null,
+        "indonesian": "biasa; umum",
+        "category": "名詞・な形容詞・副詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このかばんは普通のよりかるいです。",
+          "reading": "このかばんはふつうのよりかるいです。",
+          "indonesian": "Tas ini lebih ringan daripada yang biasa.",
+          "highlight": "普通"
+        }
+      ]
+    },
+    {
+      "id": "06d92b60-ce7d-45a5-aae7-7db67873a17d",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "06d92b60-ce7d-45a5-aae7-7db67873a17d",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "特別",
+        "reading": "とくべつ",
+        "romaji": null,
+        "indonesian": "khusus; istimewa",
+        "category": "名詞・な形容詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "きょうはははのたんじょうびです。特別なりょうりをつくります。",
+          "reading": "きょうはははのたんじょうびです。とくべつなりょうりをつくります。",
+          "indonesian": "Hari ini ulang tahun ibu. Saya akan membuat hidangan istimewa.",
+          "highlight": "特別"
+        }
+      ]
+    },
+    {
+      "id": "3630ab84-f4de-40bd-8726-0c0b3ecaccd4",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "3630ab84-f4de-40bd-8726-0c0b3ecaccd4",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "割合",
+        "reading": "わりあい",
+        "romaji": null,
+        "indonesian": "perbandingan; persentase; relatif",
+        "category": "名詞・副詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このクラスはがいこくじんの割合がたかいです。",
+          "reading": "このクラスはがいこくじんのわりあいがたかいです。",
+          "indonesian": "Proporsi orang asing di kelas ini tinggi.",
+          "highlight": "割合"
+        },
+        {
+          "japanese": "このしごとは割合かんたんでした。",
+          "reading": "このしごとはわりあいかんたんでした。",
+          "indonesian": "Pekerjaan ini relatif mudah.",
+          "highlight": "割合"
+        }
+      ]
+    },
+    {
+      "id": "ac1c7384-3c0e-4c39-b0f5-66ef7cd878d2",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "ac1c7384-3c0e-4c39-b0f5-66ef7cd878d2",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "合う",
+        "reading": "あう",
+        "romaji": null,
+        "indonesian": "cocok; sesuai",
+        "category": "動詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このシャツはわたしによく合います。",
+          "reading": "このシャツはわたしによくあいます。",
+          "indonesian": "Kemeja ini cocok untuk saya.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "9aa74734-3d11-440f-8765-39961e6cf274",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "9aa74734-3d11-440f-8765-39961e6cf274",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "盛ん",
+        "reading": "さかん",
+        "romaji": null,
+        "indonesian": "aktif; berkembang pesat",
+        "category": "名詞・な形容詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このまちではやきゅうが盛んです。",
+          "reading": "このまちではやきゅうがさかんです。",
+          "indonesian": "Bisbol sangat aktif dimainkan di kota ini.",
+          "highlight": "盛ん"
+        }
+      ]
+    },
+    {
+      "id": "4c3e911e-c8e4-4fc3-91f2-7b0369e8e57d",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "4c3e911e-c8e4-4fc3-91f2-7b0369e8e57d",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "急",
+        "reading": "きゅう",
+        "romaji": null,
+        "indonesian": "mendadak; curam; darurat",
+        "category": "名詞・な形容詞",
+        "sort_order": 30
+      },
+      "expectedNote": null,
+      "note": "さか = tanjakan/lereng.",
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このさかは急で、のぼりにくいです。",
+          "reading": "このさかはきゅうで、のぼりにくいです。",
+          "indonesian": "Tanjakan ini curam dan sulit didaki.",
+          "highlight": "急"
+        },
+        {
+          "japanese": "急なしごとで、きょうはかえりがおそくなります。",
+          "reading": "きゅうなしごとで、きょうはかえりがおそくなります。",
+          "indonesian": "Karena ada pekerjaan mendadak, hari ini saya akan pulang terlambat.",
+          "highlight": "急"
+        }
+      ]
+    },
+    {
+      "id": "237bfa58-5aea-459a-8a52-49f803d43041",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "237bfa58-5aea-459a-8a52-49f803d43041",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "変",
+        "reading": "へん",
+        "romaji": null,
+        "indonesian": "aneh",
+        "category": "名詞・な形容詞",
+        "sort_order": 31
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "パソコンから変なおとがします。",
+          "reading": "パソコンからへんなおとがします。",
+          "indonesian": "Terdengar bunyi aneh dari komputer.",
+          "highlight": "変"
+        }
+      ]
+    },
+    {
+      "id": "e5693cac-15bb-4fc2-ad55-6141617c470e",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "e5693cac-15bb-4fc2-ad55-6141617c470e",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "裏",
+        "reading": "うら",
+        "romaji": null,
+        "indonesian": "sisi belakang; bagian dalam",
+        "category": "名詞",
+        "sort_order": 32
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "かみの裏にもなまえをかいてください。",
+          "reading": "かみのうらにもなまえをかいてください。",
+          "indonesian": "Tolong tulis nama juga di sisi belakang kertas.",
+          "highlight": "裏"
+        }
+      ]
+    },
+    {
+      "id": "61811782-7315-4415-a32b-23f47a852c68",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "61811782-7315-4415-a32b-23f47a852c68",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "表",
+        "reading": "おもて",
+        "romaji": null,
+        "indonesian": "sisi depan; permukaan",
+        "category": "名詞",
+        "sort_order": 33
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "かみの表にはしゃしんがあります。",
+          "reading": "かみのおもてにはしゃしんがあります。",
+          "indonesian": "Ada foto pada sisi depan kertas.",
+          "highlight": "表"
+        }
+      ]
+    },
+    {
+      "id": "c52779db-dcaa-4f6b-811d-346d64ccb731",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "c52779db-dcaa-4f6b-811d-346d64ccb731",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "真ん中",
+        "reading": "まんなか",
+        "romaji": null,
+        "indonesian": "tengah",
+        "category": "名詞",
+        "sort_order": 34
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "テーブルの真ん中にはなをかざりました。",
+          "reading": "テーブルのまんなかにはなをかざりました。",
+          "indonesian": "Saya menaruh bunga sebagai hiasan di tengah meja.",
+          "highlight": "真ん中"
+        }
+      ]
+    },
+    {
+      "id": "72c76358-4080-402b-a158-6a73f8c80506",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "72c76358-4080-402b-a158-6a73f8c80506",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "隅",
+        "reading": "すみ",
+        "romaji": null,
+        "indonesian": "sudut",
+        "category": "名詞",
+        "sort_order": 35
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "へやの隅につくえをおきました。",
+          "reading": "へやのすみにつくえをおきました。",
+          "indonesian": "Saya menaruh meja di sudut kamar.",
+          "highlight": "隅"
+        }
+      ]
+    },
+    {
+      "id": "dd922dd2-b74f-418f-8956-67a6d466cd8e",
+      "chapter": 9,
+      "expectedCore": {
+        "id": "dd922dd2-b74f-418f-8956-67a6d466cd8e",
+        "module_id": "034b3cc0-7f52-4cbe-83f3-3554b21092b4",
+        "lesson_id": null,
+        "japanese": "細かさ",
+        "reading": "こまかさ",
+        "romaji": null,
+        "indonesian": "tingkat kerincian atau kehalusan",
+        "category": "名詞",
+        "sort_order": 36
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3eca63e4-9448-44d9-ac64-e5c674315d05"
+      ],
+      "examples": [
+        {
+          "japanese": "このえの細かさにおどろきました。",
+          "reading": "このえのこまかさにおどろきました。",
+          "indonesian": "Saya kagum pada kerincian lukisan ini.",
+          "highlight": "細かさ"
+        }
+      ]
+    },
+    {
+      "id": "742b3f79-7235-4fef-920d-ed07e3d66883",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "742b3f79-7235-4fef-920d-ed07e3d66883",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "原因",
+        "reading": "げんいん",
+        "romaji": null,
+        "indonesian": "penyebab",
+        "category": "名詞",
+        "sort_order": 1
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "でんしゃがとまった原因は、まだわかりません。",
+          "reading": "でんしゃがとまったげんいんは、まだわかりません。",
+          "indonesian": "Penyebab kereta berhenti belum diketahui.",
+          "highlight": "原因"
+        }
+      ]
+    },
+    {
+      "id": "909f903e-edbb-4803-9efb-e12be8ad6695",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "909f903e-edbb-4803-9efb-e12be8ad6695",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "都合",
+        "reading": "つごう",
+        "romaji": null,
+        "indonesian": "keadaan; kecocokan waktu atau jadwal",
+        "category": "名詞",
+        "sort_order": 2
+      },
+      "expectedNote": "都合がいい / 都合が悪い.",
+      "note": "都合がいい / 都合が悪い.",
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたは都合がわるいので、きんようびにあいませんか。",
+          "reading": "あしたはつごうがわるいので、きんようびにあいませんか。",
+          "indonesian": "Karena besok saya tidak bisa, bagaimana jika kita bertemu hari Jumat?",
+          "highlight": "都合"
+        }
+      ]
+    },
+    {
+      "id": "89b0bee9-e476-4214-8832-d4a82e8d1e8f",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "89b0bee9-e476-4214-8832-d4a82e8d1e8f",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "問題",
+        "reading": "もんだい",
+        "romaji": null,
+        "indonesian": "masalah; soal",
+        "category": "名詞",
+        "sort_order": 4
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "この問題はむずかしいですが、じぶんでかんがえてみます。",
+          "reading": "このもんだいはむずかしいですが、じぶんでかんがえてみます。",
+          "indonesian": "Soal ini sulit, tetapi saya akan mencoba memikirkannya sendiri.",
+          "highlight": "問題"
+        }
+      ]
+    },
+    {
+      "id": "138f2ada-eac5-4fbf-b014-ad1fc27c746c",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "138f2ada-eac5-4fbf-b014-ad1fc27c746c",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "用事",
+        "reading": "ようじ",
+        "romaji": null,
+        "indonesian": "urusan; keperluan",
+        "category": "名詞",
+        "sort_order": 5
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "きょうは用事があるので、さきにかえります。",
+          "reading": "きょうはようじがあるので、さきにかえります。",
+          "indonesian": "Hari ini saya ada urusan, jadi saya pulang lebih dahulu.",
+          "highlight": "用事"
+        }
+      ]
+    },
+    {
+      "id": "ed4ac57f-8506-4427-9463-3bb4e8d6360d",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "ed4ac57f-8506-4427-9463-3bb4e8d6360d",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "おかげ",
+        "reading": "おかげ",
+        "romaji": null,
+        "indonesian": "berkat; akibat baik dari sesuatu",
+        "category": "名詞",
+        "sort_order": 9
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいのおかげで、にほんごがはなせるようになりました。",
+          "reading": "せんせいのおかげで、にほんごがはなせるようになりました。",
+          "indonesian": "Berkat guru, saya mulai bisa berbicara bahasa Jepang.",
+          "highlight": "おかげ"
+        }
+      ]
+    },
+    {
+      "id": "5f4448dc-5d6e-4c4b-a0da-7298ffe0291f",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "5f4448dc-5d6e-4c4b-a0da-7298ffe0291f",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "困る",
+        "reading": "こまる",
+        "romaji": null,
+        "indonesian": "kesulitan; kebingungan menghadapi masalah",
+        "category": "動詞",
+        "sort_order": 9
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "さいふをなくして、困っています。",
+          "reading": "さいふをなくして、こまっています。",
+          "indonesian": "Saya sedang kesulitan karena kehilangan dompet.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "75c01e3e-5006-4f02-b966-6bbdaa02527c",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "75c01e3e-5006-4f02-b966-6bbdaa02527c",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "それに",
+        "reading": "それに",
+        "romaji": null,
+        "indonesian": "selain itu",
+        "category": "接続詞",
+        "sort_order": 10
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "このへやはひろいです。それに、えきにもちかいです。",
+          "reading": "このへやはひろいです。それに、えきにもちかいです。",
+          "indonesian": "Kamar ini luas. Selain itu, letaknya dekat stasiun.",
+          "highlight": "それに"
+        }
+      ]
+    },
+    {
+      "id": "142743a3-dce1-4a19-ab80-bf8b50976bcf",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "142743a3-dce1-4a19-ab80-bf8b50976bcf",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "それほど",
+        "reading": "それほど",
+        "romaji": null,
+        "indonesian": "sampai tingkat itu",
+        "category": "副詞",
+        "sort_order": 11
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "きのうはあつかったですが、きょうはそれほどあつくないです。",
+          "reading": "きのうはあつかったですが、きょうはそれほどあつくないです。",
+          "indonesian": "Kemarin panas, tetapi hari ini tidak sepanas itu.",
+          "highlight": "それほど"
+        }
+      ]
+    },
+    {
+      "id": "d66e2958-a49d-49db-a145-12240fd34467",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "d66e2958-a49d-49db-a145-12240fd34467",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "遅刻する",
+        "reading": "ちこくする",
+        "romaji": null,
+        "indonesian": "datang terlambat",
+        "category": "動詞",
+        "sort_order": 11
+      },
+      "expectedNote": "Kelompok 3.",
+      "note": "Kelompok 3.",
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "バスがおくれたので、かいしゃに遅刻しました。",
+          "reading": "バスがおくれたので、かいしゃにちこくしました。",
+          "indonesian": "Saya terlambat masuk kerja karena bus terlambat.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "b685cdd4-5d34-4ead-8ccb-12d0c3a92591",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "b685cdd4-5d34-4ead-8ccb-12d0c3a92591",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "そんなに",
+        "reading": "そんなに",
+        "romaji": null,
+        "indonesian": "sebanyak atau separah itu",
+        "category": "副詞",
+        "sort_order": 12
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "そんなにいそがなくてもいいですよ。まだじかんがあります。",
+          "reading": "そんなにいそがなくてもいいですよ。まだじかんがあります。",
+          "indonesian": "Tidak perlu terburu-buru seperti itu. Masih ada waktu.",
+          "highlight": "そんなに"
+        }
+      ]
+    },
+    {
+      "id": "9f6be296-fc2f-476f-8895-f0b0fec09400",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "9f6be296-fc2f-476f-8895-f0b0fec09400",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "または",
+        "reading": "または",
+        "romaji": null,
+        "indonesian": "atau",
+        "category": "接続詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "えんぴつ、またはペンでかいてください。",
+          "reading": "えんぴつ、またはペンでかいてください。",
+          "indonesian": "Tolong tulis dengan pensil atau pena.",
+          "highlight": "または"
+        }
+      ]
+    },
+    {
+      "id": "c0f75494-58e2-4f60-9662-624efab0e7ba",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "c0f75494-58e2-4f60-9662-624efab0e7ba",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "それなのに",
+        "reading": "それなのに",
+        "romaji": null,
+        "indonesian": "meskipun demikian; padahal begitu",
+        "category": "接続詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "よくねました。それなのに、まだねむいです。",
+          "reading": "よくねました。それなのに、まだねむいです。",
+          "indonesian": "Saya sudah tidur cukup. Meskipun begitu, saya masih mengantuk.",
+          "highlight": "それなのに"
+        }
+      ]
+    },
+    {
+      "id": "e8193ec3-9181-4b2f-9f82-4c7052fd2980",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "e8193ec3-9181-4b2f-9f82-4c7052fd2980",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "反対",
+        "reading": "はんたい",
+        "romaji": null,
+        "indonesian": "lawan; pertentangan",
+        "category": "名詞・な形容詞・動詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "ちちはわたしのけいかくに反対しています。",
+          "reading": "ちちはわたしのけいかくにはんたいしています。",
+          "indonesian": "Ayah saya menentang rencana saya.",
+          "highlight": "反対"
+        },
+        {
+          "japanese": "えきは、がっこうと反対のほうにあります。",
+          "reading": "えきは、がっこうとはんたいのほうにあります。",
+          "indonesian": "Stasiun berada di arah yang berlawanan dengan sekolah.",
+          "highlight": "反対"
+        }
+      ]
+    },
+    {
+      "id": "ea83326e-822a-4f67-a7f0-76cc0ac9258d",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "ea83326e-822a-4f67-a7f0-76cc0ac9258d",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "代わり",
+        "reading": "かわり",
+        "romaji": null,
+        "indonesian": "pengganti; sebagai ganti",
+        "category": "名詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "きょうはコーヒーの代わりにおちゃをのみます。",
+          "reading": "きょうはコーヒーのかわりにおちゃをのみます。",
+          "indonesian": "Hari ini saya minum teh sebagai pengganti kopi.",
+          "highlight": "代わり"
+        }
+      ]
+    },
+    {
+      "id": "15221d3b-03ba-4aff-831a-d23d6a4101d5",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "15221d3b-03ba-4aff-831a-d23d6a4101d5",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "しかも",
+        "reading": "しかも",
+        "romaji": null,
+        "indonesian": "apalagi; terlebih lagi",
+        "category": "接続詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "このかばんはかるいです。しかも、ねだんもやすいです。",
+          "reading": "このかばんはかるいです。しかも、ねだんもやすいです。",
+          "indonesian": "Tas ini ringan. Terlebih lagi, harganya juga murah.",
+          "highlight": "しかも"
+        }
+      ]
+    },
+    {
+      "id": "90549128-be07-40bb-9ec4-75a13d22d5c4",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "90549128-be07-40bb-9ec4-75a13d22d5c4",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "関係",
+        "reading": "かんけい",
+        "romaji": null,
+        "indonesian": "hubungan",
+        "category": "名詞・動詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "そのはなしは、いまのもんだいと関係があります。",
+          "reading": "そのはなしは、いまのもんだいとかんけいがあります。",
+          "indonesian": "Cerita itu berhubungan dengan masalah saat ini.",
+          "highlight": "関係"
+        }
+      ]
+    },
+    {
+      "id": "52d51f99-ae76-47a1-b38c-3431f3474031",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "52d51f99-ae76-47a1-b38c-3431f3474031",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "別",
+        "reading": "べつ",
+        "romaji": null,
+        "indonesian": "lain; terpisah",
+        "category": "名詞・な形容詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "きょうは別のみちをとおってかえります。",
+          "reading": "きょうはべつのみちをとおってかえります。",
+          "indonesian": "Hari ini saya pulang lewat jalan lain.",
+          "highlight": "別"
+        }
+      ]
+    },
+    {
+      "id": "b6068db6-31e5-4c18-9a41-996309bcad6a",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "b6068db6-31e5-4c18-9a41-996309bcad6a",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "特に",
+        "reading": "とくに",
+        "romaji": null,
+        "indonesian": "terutama",
+        "category": "副詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "くだものはどれもすきですが、特にりんごがすきです。",
+          "reading": "くだものはどれもすきですが、とくにりんごがすきです。",
+          "indonesian": "Saya menyukai semua buah, terutama apel.",
+          "highlight": "特に"
+        }
+      ]
+    },
+    {
+      "id": "04856853-6d9c-4bd6-90b1-1f153061a248",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "04856853-6d9c-4bd6-90b1-1f153061a248",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "ちっとも",
+        "reading": "ちっとも",
+        "romaji": null,
+        "indonesian": "sama sekali tidak",
+        "category": "副詞",
+        "sort_order": 19
+      },
+      "expectedNote": "Umumnya dipakai dengan bentuk negatif.",
+      "note": "Umumnya dipakai dengan bentuk negatif.",
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "なんかいもよみましたが、ちっともわかりません。",
+          "reading": "なんかいもよみましたが、ちっともわかりません。",
+          "indonesian": "Saya sudah membacanya berkali-kali, tetapi sama sekali tidak mengerti.",
+          "highlight": "ちっとも"
+        }
+      ]
+    },
+    {
+      "id": "31e03012-6b77-4eda-8703-8f8542a523fa",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "31e03012-6b77-4eda-8703-8f8542a523fa",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "やっぱり",
+        "reading": "やっぱり",
+        "romaji": null,
+        "indonesian": "seperti dugaan; tetap saja",
+        "category": "副詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "いろいろなみせでたべましたが、やっぱりははのりょうりがいちばんすきです。",
+          "reading": "いろいろなみせでたべましたが、やっぱりははのりょうりがいちばんすきです。",
+          "indonesian": "Saya sudah makan di berbagai tempat, tetapi tetap paling suka masakan ibu.",
+          "highlight": "やっぱり"
+        }
+      ]
+    },
+    {
+      "id": "7f61c27f-0da2-4215-8c29-830448e7cc32",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "7f61c27f-0da2-4215-8c29-830448e7cc32",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "決して",
+        "reading": "けっして",
+        "romaji": null,
+        "indonesian": "sama sekali tidak; tidak pernah",
+        "category": "副詞",
+        "sort_order": 21
+      },
+      "expectedNote": "Umumnya dipakai dengan bentuk negatif.",
+      "note": "Umumnya dipakai dengan bentuk negatif.",
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "このやくそくは決してわすれません。",
+          "reading": "このやくそくはけっしてわすれません。",
+          "indonesian": "Saya tidak akan pernah melupakan janji ini.",
+          "highlight": "決して"
+        }
+      ]
+    },
+    {
+      "id": "bfd0aa28-6a4b-4630-a6ce-5b7bc05260d4",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "bfd0aa28-6a4b-4630-a6ce-5b7bc05260d4",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "別れる",
+        "reading": "わかれる",
+        "romaji": null,
+        "indonesian": "berpisah",
+        "category": "動詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "えきでともだちと別れて、いえにかえりました。",
+          "reading": "えきでともだちとわかれて、いえにかえりました。",
+          "indonesian": "Saya berpisah dengan teman di stasiun lalu pulang ke rumah.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "00626075-73fb-4ca3-9326-48128f52b33c",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "00626075-73fb-4ca3-9326-48128f52b33c",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "すると",
+        "reading": "すると",
+        "romaji": null,
+        "indonesian": "kemudian; kalau begitu",
+        "category": "接続詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "ドアをあけました。すると、ねこがはいってきました。",
+          "reading": "ドアをあけました。すると、ねこがはいってきました。",
+          "indonesian": "Saya membuka pintu. Lalu, seekor kucing masuk.",
+          "highlight": "すると"
+        }
+      ]
+    },
+    {
+      "id": "32ec5d53-7b5e-4e3a-b673-e5615cd9317a",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "32ec5d53-7b5e-4e3a-b673-e5615cd9317a",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "そのため",
+        "reading": "そのため",
+        "romaji": null,
+        "indonesian": "oleh sebab itu",
+        "category": "接続詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": "たいふう = topan.",
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "おおきなたいふうがきました。そのため、でんしゃがとまっています。",
+          "reading": "おおきなたいふうがきました。そのため、でんしゃがとまっています。",
+          "indonesian": "Topan besar datang. Oleh sebab itu, kereta sedang tidak beroperasi.",
+          "highlight": "そのため"
+        }
+      ]
+    },
+    {
+      "id": "a7d2e46a-8f94-43bc-a095-5811a7fa6bc1",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "a7d2e46a-8f94-43bc-a095-5811a7fa6bc1",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "その上",
+        "reading": "そのうえ",
+        "romaji": null,
+        "indonesian": "selain itu; terlebih lagi",
+        "category": "接続詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "このホテルはやすいです。その上、へやもきれいです。",
+          "reading": "このホテルはやすいです。そのうえ、へやもきれいです。",
+          "indonesian": "Hotel ini murah. Selain itu, kamarnya juga bersih.",
+          "highlight": "その上"
+        }
+      ]
+    },
+    {
+      "id": "6714c41b-87f7-48f0-9748-25b4c02243ec",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "6714c41b-87f7-48f0-9748-25b4c02243ec",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "ところで",
+        "reading": "ところで",
+        "romaji": null,
+        "indonesian": "ngomong-ngomong",
+        "category": "接続詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたのかいぎはくじです。ところで、たなかさんはきますか。",
+          "reading": "あしたのかいぎはくじです。ところで、たなかさんはきますか。",
+          "indonesian": "Rapat besok pukul sembilan. Ngomong-ngomong, apakah Tanaka akan datang?",
+          "highlight": "ところで"
+        }
+      ]
+    },
+    {
+      "id": "a5c46bc5-8b37-4129-a1de-936f1659fa74",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "a5c46bc5-8b37-4129-a1de-936f1659fa74",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "なぜなら",
+        "reading": "なぜなら",
+        "romaji": null,
+        "indonesian": "karena; alasannya adalah",
+        "category": "接続詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "きょうはでかけません。なぜなら、かぜをひいているからです。",
+          "reading": "きょうはでかけません。なぜなら、かぜをひいているからです。",
+          "indonesian": "Hari ini saya tidak keluar rumah. Alasannya, saya sedang pilek.",
+          "highlight": "なぜなら"
+        }
+      ]
+    },
+    {
+      "id": "67e38b40-e11a-47ec-880b-f855e14c99ff",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "67e38b40-e11a-47ec-880b-f855e14c99ff",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "訳",
+        "reading": "わけ",
+        "romaji": null,
+        "indonesian": "alasan; arti; keadaan di balik sesuatu",
+        "category": "名詞",
+        "sort_order": 28
+      },
+      "expectedNote": "Makna dipilih menurut konteks.",
+      "note": "Makna dipilih menurut konteks.\nおこる = marah.",
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "かれがおこっている訳がわかりました。",
+          "reading": "かれがおこっているわけがわかりました。",
+          "indonesian": "Saya memahami alasan dia marah.",
+          "highlight": "訳"
+        }
+      ]
+    },
+    {
+      "id": "6b42e1e1-ccc7-4916-8e4d-3a0e3232fe1d",
+      "chapter": 10,
+      "expectedCore": {
+        "id": "6b42e1e1-ccc7-4916-8e4d-3a0e3232fe1d",
+        "module_id": "a43ebaa8-5865-4a51-953d-640167e2ad13",
+        "lesson_id": null,
+        "japanese": "うまくいく",
+        "reading": "うまくいく",
+        "romaji": null,
+        "indonesian": "berjalan dengan baik",
+        "category": "表現",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b8c6307-8303-409b-a16e-6f354818b4eb"
+      ],
+      "examples": [
+        {
+          "japanese": "はじめはむずかしかったですが、いまはしごとがうまくいっています。",
+          "reading": "はじめはむずかしかったですが、いまはしごとがうまくいっています。",
+          "indonesian": "Awalnya sulit, tetapi sekarang pekerjaan berjalan dengan baik.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "57798a67-e42a-4443-ace5-b54bee962bee",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "57798a67-e42a-4443-ace5-b54bee962bee",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "天気予報",
+        "reading": "てんきよほう",
+        "romaji": null,
+        "indonesian": "prakiraan cuaca",
+        "category": "名詞",
+        "sort_order": 1
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "天気予報では、あしたはあめだそうです。",
+          "reading": "てんきよほうでは、あしたはあめだそうです。",
+          "indonesian": "Menurut prakiraan cuaca, besok akan hujan.",
+          "highlight": "天気予報"
+        }
+      ]
+    },
+    {
+      "id": "6276d208-cab3-407e-800b-b2cbef1454e3",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "6276d208-cab3-407e-800b-b2cbef1454e3",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "ニュース",
+        "reading": "ニュース",
+        "romaji": null,
+        "indonesian": "berita",
+        "category": "名詞",
+        "sort_order": 2
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "ニュースで、あたらしいえきができたとききました。",
+          "reading": "ニュースで、あたらしいえきができたとききました。",
+          "indonesian": "Saya mendengar dari berita bahwa stasiun baru sudah dibangun.",
+          "highlight": "ニュース"
+        }
+      ]
+    },
+    {
+      "id": "066f75b0-06c0-4183-933b-94a64bda81c3",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "066f75b0-06c0-4183-933b-94a64bda81c3",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "連絡",
+        "reading": "れんらく",
+        "romaji": null,
+        "indonesian": "kabar; komunikasi",
+        "category": "名詞",
+        "sort_order": 3
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちからまだ連絡がありません。",
+          "reading": "ともだちからまだれんらくがありません。",
+          "indonesian": "Belum ada kabar dari teman saya.",
+          "highlight": "連絡"
+        }
+      ]
+    },
+    {
+      "id": "78600a8c-62e6-4efb-a093-8d0c7aa0446c",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "78600a8c-62e6-4efb-a093-8d0c7aa0446c",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "情報",
+        "reading": "じょうほう",
+        "romaji": null,
+        "indonesian": "informasi",
+        "category": "名詞",
+        "sort_order": 4
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "りょこうのまえに、ホテルの情報をあつめます。",
+          "reading": "りょこうのまえに、ホテルのじょうほうをあつめます。",
+          "indonesian": "Saya mengumpulkan informasi hotel sebelum bepergian.",
+          "highlight": "情報"
+        }
+      ]
+    },
+    {
+      "id": "c5a75cbe-b623-446c-af83-2efaaa59c9f1",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "c5a75cbe-b623-446c-af83-2efaaa59c9f1",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "うわさ",
+        "reading": "うわさ",
+        "romaji": null,
+        "indonesian": "kabar angin; desas-desus",
+        "category": "名詞",
+        "sort_order": 5
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "それはうわさです。わたしはまだたしかめていません。",
+          "reading": "それはうわさです。わたしはまだたしかめていません。",
+          "indonesian": "Itu kabar angin. Saya belum memeriksanya.",
+          "highlight": "うわさ"
+        }
+      ]
+    },
+    {
+      "id": "abaf5bbb-53da-4686-8f5c-abc433f52611",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "abaf5bbb-53da-4686-8f5c-abc433f52611",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "様子",
+        "reading": "ようす",
+        "romaji": null,
+        "indonesian": "keadaan yang tampak; gelagat",
+        "category": "名詞",
+        "sort_order": 6
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "そとがしずかです。へやからそとの様子をみました。",
+          "reading": "そとがしずかです。へやからそとのようすをみました。",
+          "indonesian": "Di luar sepi. Saya melihat keadaan di luar dari kamar.",
+          "highlight": "様子"
+        }
+      ]
+    },
+    {
+      "id": "5fdc38a7-6a6b-4506-bcc6-e2107c7f5718",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "5fdc38a7-6a6b-4506-bcc6-e2107c7f5718",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "空",
+        "reading": "そら",
+        "romaji": null,
+        "indonesian": "langit",
+        "category": "名詞",
+        "sort_order": 7
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "空がくらくなりました。あめがふりそうです。",
+          "reading": "そらがくらくなりました。あめがふりそうです。",
+          "indonesian": "Langit menjadi gelap. Sepertinya akan hujan.",
+          "highlight": "空"
+        }
+      ]
+    },
+    {
+      "id": "21a0aba0-aa0e-4186-8158-d76d795d955a",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "21a0aba0-aa0e-4186-8158-d76d795d955a",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "雲",
+        "reading": "くも",
+        "romaji": null,
+        "indonesian": "awan",
+        "category": "名詞",
+        "sort_order": 8
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "くろい雲がでてきました。",
+          "reading": "くろいくもがでてきました。",
+          "indonesian": "Awan hitam mulai muncul.",
+          "highlight": "雲"
+        }
+      ]
+    },
+    {
+      "id": "1d5d8d73-df3a-4f5e-82ed-99700be173f4",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "1d5d8d73-df3a-4f5e-82ed-99700be173f4",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "風",
+        "reading": "かぜ",
+        "romaji": null,
+        "indonesian": "angin",
+        "category": "名詞",
+        "sort_order": 9
+      },
+      "expectedNote": "Bedakan 風邪: pilek/selesma, dengan bacaan yang sama.",
+      "note": "Bedakan 風邪: pilek/selesma, dengan bacaan yang sama.\nきをつける = berhati-hati; terjemahan menjelaskan konteks topi.",
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "きょうは風がつよいので、ぼうしにきをつけてください。",
+          "reading": "きょうはかぜがつよいので、ぼうしにきをつけてください。",
+          "indonesian": "Hari ini anginnya kencang, jadi hati-hati agar topi Anda tidak terbawa.",
+          "highlight": "風"
+        }
+      ]
+    },
+    {
+      "id": "d7553eda-b152-439f-ba09-7b054bd848fd",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "d7553eda-b152-439f-ba09-7b054bd848fd",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "降る",
+        "reading": "ふる",
+        "romaji": null,
+        "indonesian": "turun untuk hujan atau salju",
+        "category": "動詞",
+        "sort_order": 10
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたはゆきが降るかもしれません。",
+          "reading": "あしたはゆきがふるかもしれません。",
+          "indonesian": "Besok mungkin turun salju.",
+          "highlight": "降る"
+        }
+      ]
+    },
+    {
+      "id": "a4d71410-aa63-40c0-9656-0d8c22a6fbfa",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "a4d71410-aa63-40c0-9656-0d8c22a6fbfa",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "晴れる",
+        "reading": "はれる",
+        "romaji": null,
+        "indonesian": "menjadi cerah",
+        "category": "動詞",
+        "sort_order": 11
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.",
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "ごごから晴れるそうです。",
+          "reading": "ごごからはれるそうです。",
+          "indonesian": "Katanya mulai siang cuaca akan cerah.",
+          "highlight": "晴れる"
+        }
+      ]
+    },
+    {
+      "id": "b95aaee3-b1a9-46c0-b63a-c5f2a54cd436",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "b95aaee3-b1a9-46c0-b63a-c5f2a54cd436",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "曇る",
+        "reading": "くもる",
+        "romaji": null,
+        "indonesian": "berawan; mendung",
+        "category": "動詞",
+        "sort_order": 12
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "そらが曇ってきました。",
+          "reading": "そらがくもってきました。",
+          "indonesian": "Langit mulai mendung.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "750d3c78-c2d4-4fe9-ba01-20c534fc4a82",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "750d3c78-c2d4-4fe9-ba01-20c534fc4a82",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "知らせる",
+        "reading": "しらせる",
+        "romaji": null,
+        "indonesian": "memberi tahu",
+        "category": "動詞",
+        "sort_order": 13
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.",
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "りょこうのひがきまったので、みんなに知らせました。",
+          "reading": "りょこうのひがきまったので、みんなにしらせました。",
+          "indonesian": "Tanggal perjalanan sudah ditetapkan, jadi saya memberi tahu semua orang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "488c3cb6-ab41-40ec-9a7f-f9ce32652964",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "488c3cb6-ab41-40ec-9a7f-f9ce32652964",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "きっと",
+        "reading": "きっと",
+        "romaji": null,
+        "indonesian": "pasti menurut perkiraan pembicara",
+        "category": "副詞",
+        "sort_order": 14
+      },
+      "expectedNote": "Bukan jaminan atau persentase kepastian tetap.",
+      "note": "Bukan jaminan atau persentase kepastian tetap.",
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "まいにちれんしゅうしていますから、きっとじょうずになるでしょう。",
+          "reading": "まいにちれんしゅうしていますから、きっとじょうずになるでしょう。",
+          "indonesian": "Karena Anda berlatih setiap hari, saya yakin Anda akan menjadi mahir.",
+          "highlight": "きっと"
+        }
+      ]
+    },
+    {
+      "id": "d5d6f2f3-6b41-40c5-b8c4-94139232a402",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "d5d6f2f3-6b41-40c5-b8c4-94139232a402",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "もしかすると",
+        "reading": "もしかすると",
+        "romaji": null,
+        "indonesian": "barangkali; mungkin saja",
+        "category": "副詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "もしかすると、かれはかいぎのじかんをわすれたのかもしれません。",
+          "reading": "もしかすると、かれはかいぎのじかんをわすれたのかもしれません。",
+          "indonesian": "Barangkali dia lupa waktu rapat.",
+          "highlight": "もしかすると"
+        }
+      ]
+    },
+    {
+      "id": "738a794c-0603-4744-a859-23c1871efe0a",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "738a794c-0603-4744-a859-23c1871efe0a",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "確か",
+        "reading": "たしか",
+        "romaji": null,
+        "indonesian": "kalau tidak salah; pasti menurut konteks",
+        "category": "副詞・な形容詞",
+        "sort_order": 16
+      },
+      "expectedNote": "たしか来週です: kalau tidak salah minggu depan.",
+      "note": "たしか来週です: kalau tidak salah minggu depan.",
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "かいぎは、確かきんようびだったとおもいます。",
+          "reading": "かいぎは、たしかきんようびだったとおもいます。",
+          "indonesian": "Kalau tidak salah, rapatnya hari Jumat.",
+          "highlight": "確か"
+        }
+      ]
+    },
+    {
+      "id": "17093fcb-4f23-46af-86c1-4651f82986eb",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "17093fcb-4f23-46af-86c1-4651f82986eb",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "台風",
+        "reading": "たいふう",
+        "romaji": null,
+        "indonesian": "topan",
+        "category": "名詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "あした台風がくるそうです。",
+          "reading": "あしたたいふうがくるそうです。",
+          "indonesian": "Katanya besok topan akan datang.",
+          "highlight": "台風"
+        }
+      ]
+    },
+    {
+      "id": "c527969c-dd2a-4ff3-9298-0bdaf9aa0d80",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "c527969c-dd2a-4ff3-9298-0bdaf9aa0d80",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "地震",
+        "reading": "じしん",
+        "romaji": null,
+        "indonesian": "gempa bumi",
+        "category": "名詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "きのうのよる、おおきな地震がありました。",
+          "reading": "きのうのよる、おおきなじしんがありました。",
+          "indonesian": "Tadi malam terjadi gempa besar.",
+          "highlight": "地震"
+        }
+      ]
+    },
+    {
+      "id": "ea4f4998-af76-4ba3-9bcc-a42417a0c69f",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "ea4f4998-af76-4ba3-9bcc-a42417a0c69f",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "降り出す",
+        "reading": "ふりだす",
+        "romaji": null,
+        "indonesian": "mulai turun, tentang hujan atau salju",
+        "category": "動詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "いえをでたとき、あめが降り出しました。",
+          "reading": "いえをでたとき、あめがふりだしました。",
+          "indonesian": "Saat saya keluar rumah, hujan mulai turun.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "7c4e823d-389d-4c68-a802-e1482ac31b4d",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "7c4e823d-389d-4c68-a802-e1482ac31b4d",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "止む",
+        "reading": "やむ",
+        "romaji": null,
+        "indonesian": "berhenti, tentang hujan atau angin",
+        "category": "動詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "あめが止みました。そとであそべますね。",
+          "reading": "あめがやみました。そとであそべますね。",
+          "indonesian": "Hujannya sudah berhenti. Kita bisa bermain di luar, ya.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "6e5a5934-5346-4e98-a070-7138bbe83776",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "6e5a5934-5346-4e98-a070-7138bbe83776",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "空気",
+        "reading": "くうき",
+        "romaji": null,
+        "indonesian": "udara; suasana",
+        "category": "名詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "やまの空気はきれいです。",
+          "reading": "やまのくうきはきれいです。",
+          "indonesian": "Udara pegunungan bersih.",
+          "highlight": "空気"
+        },
+        {
+          "japanese": "みんながわらって、へやの空気があかるくなりました。",
+          "reading": "みんながわらって、へやのくうきがあかるくなりました。",
+          "indonesian": "Semua orang tertawa dan suasana ruangan menjadi ceria.",
+          "highlight": "空気"
+        }
+      ]
+    },
+    {
+      "id": "13132067-1a3f-4cf6-a85d-a02cba9935f4",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "13132067-1a3f-4cf6-a85d-a02cba9935f4",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "番組",
+        "reading": "ばんぐみ",
+        "romaji": null,
+        "indonesian": "program televisi atau radio",
+        "category": "名詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "この番組では、いろいろなくにのりょうりをしょうかいしています。",
+          "reading": "このばんぐみでは、いろいろなくにのりょうりをしょうかいしています。",
+          "indonesian": "Acara ini memperkenalkan masakan dari berbagai negara.",
+          "highlight": "番組"
+        }
+      ]
+    },
+    {
+      "id": "9ecc75aa-f43a-4068-8341-b8e1201c2763",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "9ecc75aa-f43a-4068-8341-b8e1201c2763",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "放送",
+        "reading": "ほうそう",
+        "romaji": null,
+        "indonesian": "siaran",
+        "category": "名詞・動詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "えきの放送がよくきこえません。",
+          "reading": "えきのほうそうがよくきこえません。",
+          "indonesian": "Pengumuman melalui pengeras suara di stasiun kurang terdengar.",
+          "highlight": "放送"
+        }
+      ]
+    },
+    {
+      "id": "43c05aa2-d637-42b6-b5c8-a13d606c75d1",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "43c05aa2-d637-42b6-b5c8-a13d606c75d1",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "新聞社",
+        "reading": "しんぶんしゃ",
+        "romaji": null,
+        "indonesian": "perusahaan surat kabar",
+        "category": "名詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "あには新聞社ではたらいています。",
+          "reading": "あにはしんぶんしゃではたらいています。",
+          "indonesian": "Kakak laki-laki saya bekerja di perusahaan surat kabar.",
+          "highlight": "新聞社"
+        }
+      ]
+    },
+    {
+      "id": "8db52221-787c-4fef-b27b-2c56c481c621",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "8db52221-787c-4fef-b27b-2c56c481c621",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "テレビ局",
+        "reading": "テレビきょく",
+        "romaji": null,
+        "indonesian": "stasiun televisi",
+        "category": "名詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "あした、がっこうのみんなとテレビ局をけんぶつします。",
+          "reading": "あした、がっこうのみんなとテレビきょくをけんぶつします。",
+          "indonesian": "Besok saya akan melihat-lihat stasiun televisi bersama teman-teman sekolah.",
+          "highlight": "テレビ局"
+        }
+      ]
+    },
+    {
+      "id": "b2a6fafd-1ca4-4218-a289-000f312452b7",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "b2a6fafd-1ca4-4218-a289-000f312452b7",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "ニュース番組",
+        "reading": "ニュースばんぐみ",
+        "romaji": null,
+        "indonesian": "program berita",
+        "category": "名詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "まいあさ、ニュース番組をみてからでかけます。",
+          "reading": "まいあさ、ニュースばんぐみをみてからでかけます。",
+          "indonesian": "Setiap pagi saya menonton program berita sebelum keluar rumah.",
+          "highlight": "ニュース番組"
+        }
+      ]
+    },
+    {
+      "id": "12c53bbb-03f9-48e7-8749-5120954a319d",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "12c53bbb-03f9-48e7-8749-5120954a319d",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "確かに",
+        "reading": "たしかに",
+        "romaji": null,
+        "indonesian": "memang; dengan pasti",
+        "category": "副詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "確かにこのかばんはやすいですが、すこしおもいですね。",
+          "reading": "たしかにこのかばんはやすいですが、すこしおもいですね。",
+          "indonesian": "Memang tas ini murah, tetapi agak berat, ya.",
+          "highlight": "確かに"
+        }
+      ]
+    },
+    {
+      "id": "d3cfa28b-5394-46de-bc3d-35868866d718",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "d3cfa28b-5394-46de-bc3d-35868866d718",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "かなり",
+        "reading": "かなり",
+        "romaji": null,
+        "indonesian": "cukup; lumayan; sangat",
+        "category": "副詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "そとはかなりさむいです。あたたかいコートをきてください。",
+          "reading": "そとはかなりさむいです。あたたかいコートをきてください。",
+          "indonesian": "Di luar cukup dingin. Tolong kenakan mantel hangat.",
+          "highlight": "かなり"
+        }
+      ]
+    },
+    {
+      "id": "4c14c9d0-12ae-4d9a-801d-3285408aea1e",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "4c14c9d0-12ae-4d9a-801d-3285408aea1e",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "非常に",
+        "reading": "ひじょうに",
+        "romaji": null,
+        "indonesian": "sangat",
+        "category": "副詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "このみちは非常にあぶないので、とおらないでください。",
+          "reading": "このみちはひじょうにあぶないので、とおらないでください。",
+          "indonesian": "Jalan ini sangat berbahaya, jadi jangan melewatinya.",
+          "highlight": "非常に"
+        }
+      ]
+    },
+    {
+      "id": "7e9eb9ac-18eb-4f60-bc02-719f94f6a6ce",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "7e9eb9ac-18eb-4f60-bc02-719f94f6a6ce",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "様子を見る",
+        "reading": "ようすをみる",
+        "romaji": null,
+        "indonesian": "mengamati keadaan",
+        "category": "表現",
+        "sort_order": 30
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "こどもがしずかになったので、へやでこどもの様子を見ました。",
+          "reading": "こどもがしずかになったので、へやでこどものようすをみました。",
+          "indonesian": "Anak itu menjadi diam, jadi saya melihat keadaannya di kamar.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "5ca7d82d-68d6-4fa7-9908-b9ec5e6713ef",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "5ca7d82d-68d6-4fa7-9908-b9ec5e6713ef",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "曇り",
+        "reading": "くもり",
+        "romaji": null,
+        "indonesian": "cuaca berawan",
+        "category": "名詞",
+        "sort_order": 31
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたのてんきは曇りだそうです。",
+          "reading": "あしたのてんきはくもりだそうです。",
+          "indonesian": "Katanya cuaca besok berawan.",
+          "highlight": "曇り"
+        }
+      ]
+    },
+    {
+      "id": "a475b8be-82ec-43b7-a09d-9a00b87b1160",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "a475b8be-82ec-43b7-a09d-9a00b87b1160",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "星",
+        "reading": "ほし",
+        "romaji": null,
+        "indonesian": "bintang",
+        "category": "名詞",
+        "sort_order": 32
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "きょうのよるは星がよくみえます。",
+          "reading": "きょうのよるはほしがよくみえます。",
+          "indonesian": "Malam ini bintang-bintang terlihat jelas.",
+          "highlight": "星"
+        }
+      ]
+    },
+    {
+      "id": "76e2fa7b-f29e-4cf0-8ce0-fb2f6563bdd2",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "76e2fa7b-f29e-4cf0-8ce0-fb2f6563bdd2",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "月",
+        "reading": "つき",
+        "romaji": null,
+        "indonesian": "bulan di langit",
+        "category": "名詞",
+        "sort_order": 33
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "くものあいだから月がみえます。",
+          "reading": "くものあいだからつきがみえます。",
+          "indonesian": "Bulan terlihat dari sela-sela awan.",
+          "highlight": "月"
+        }
+      ]
+    },
+    {
+      "id": "907149db-3a17-44ec-92b8-8cc5a19d65a7",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "907149db-3a17-44ec-92b8-8cc5a19d65a7",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "電灯",
+        "reading": "でんとう",
+        "romaji": null,
+        "indonesian": "lampu listrik",
+        "category": "名詞",
+        "sort_order": 34
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "ろうかの電灯がついています。",
+          "reading": "ろうかのでんとうがついています。",
+          "indonesian": "Lampu listrik di lorong menyala.",
+          "highlight": "電灯"
+        }
+      ]
+    },
+    {
+      "id": "f8a51b5a-1cae-4f03-a741-fde4682bd2bf",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "f8a51b5a-1cae-4f03-a741-fde4682bd2bf",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "火",
+        "reading": "ひ",
+        "romaji": null,
+        "indonesian": "api",
+        "category": "名詞",
+        "sort_order": 35
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "りょうりがおわったので、火をけしました。",
+          "reading": "りょうりがおわったので、ひをけしました。",
+          "indonesian": "Saya mematikan api karena sudah selesai memasak.",
+          "highlight": "火"
+        }
+      ]
+    },
+    {
+      "id": "f925c0ec-7326-4ebe-b7d8-618924256997",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "f925c0ec-7326-4ebe-b7d8-618924256997",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "海岸",
+        "reading": "かいがん",
+        "romaji": null,
+        "indonesian": "pantai; pesisir",
+        "category": "名詞",
+        "sort_order": 36
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたは海岸をさんぽするつもりです。",
+          "reading": "あしたはかいがんをさんぽするつもりです。",
+          "indonesian": "Besok saya berencana berjalan-jalan di pantai.",
+          "highlight": "海岸"
+        }
+      ]
+    },
+    {
+      "id": "d09fb7b2-d740-4cce-bce2-91256dfb687d",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "d09fb7b2-d740-4cce-bce2-91256dfb687d",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "雷",
+        "reading": "かみなり",
+        "romaji": null,
+        "indonesian": "petir; guntur",
+        "category": "名詞",
+        "sort_order": 37
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "おおきな雷のおとにびっくりしました。",
+          "reading": "おおきなかみなりのおとにびっくりしました。",
+          "indonesian": "Saya terkejut oleh suara guntur yang keras.",
+          "highlight": "雷"
+        }
+      ]
+    },
+    {
+      "id": "19f851e9-3745-496c-b426-3dfb74dff294",
+      "chapter": 11,
+      "expectedCore": {
+        "id": "19f851e9-3745-496c-b426-3dfb74dff294",
+        "module_id": "87c74265-8edd-4c2f-abe8-033204f66bbc",
+        "lesson_id": null,
+        "japanese": "気温",
+        "reading": "きおん",
+        "romaji": null,
+        "indonesian": "suhu udara",
+        "category": "名詞",
+        "sort_order": 38
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fbde2314-230b-4506-8eec-0613ed24246c"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたは気温がさがるでしょう。",
+          "reading": "あしたはきおんがさがるでしょう。",
+          "indonesian": "Besok suhu udara mungkin akan turun.",
+          "highlight": "気温"
+        }
+      ]
+    },
+    {
+      "id": "236c105d-3606-4d73-8e5b-d29ebc31ec42",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "236c105d-3606-4d73-8e5b-d29ebc31ec42",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "気持ち",
+        "reading": "きもち",
+        "romaji": null,
+        "indonesian": "perasaan",
+        "category": "名詞",
+        "sort_order": 1
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "てがみにじぶんの気持ちをかきました。",
+          "reading": "てがみにじぶんのきもちをかきました。",
+          "indonesian": "Saya menuliskan perasaan saya dalam surat.",
+          "highlight": "気持ち"
+        }
+      ]
+    },
+    {
+      "id": "ddfbdc7f-5c7e-44e4-bd36-2a6bac4fb8df",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "ddfbdc7f-5c7e-44e4-bd36-2a6bac4fb8df",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "気分",
+        "reading": "きぶん",
+        "romaji": null,
+        "indonesian": "suasana hati; kondisi perasaan tubuh",
+        "category": "名詞",
+        "sort_order": 2
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "きょうは気分がいいので、さんぽにいきたいです。",
+          "reading": "きょうはきぶんがいいので、さんぽにいきたいです。",
+          "indonesian": "Hari ini suasana hati saya baik, jadi saya ingin berjalan-jalan.",
+          "highlight": "気分"
+        },
+        {
+          "japanese": "バスにのってから、気分がわるくなりました。",
+          "reading": "バスにのってから、きぶんがわるくなりました。",
+          "indonesian": "Saya merasa tidak enak badan setelah naik bus.",
+          "highlight": "気分"
+        }
+      ]
+    },
+    {
+      "id": "802cae38-d807-4307-9904-cdb2dd5d8c98",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "802cae38-d807-4307-9904-cdb2dd5d8c98",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "顔",
+        "reading": "かお",
+        "romaji": null,
+        "indonesian": "wajah",
+        "category": "名詞",
+        "sort_order": 3
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "こどもはうれしそうな顔ではなしています。",
+          "reading": "こどもはうれしそうなかおではなしています。",
+          "indonesian": "Anak itu berbicara dengan wajah yang tampak gembira.",
+          "highlight": "顔"
+        }
+      ]
+    },
+    {
+      "id": "fce86ca9-0307-44a2-884a-94d87ac613ef",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "fce86ca9-0307-44a2-884a-94d87ac613ef",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "嬉しい",
+        "reading": "うれしい",
+        "romaji": null,
+        "indonesian": "senang; gembira",
+        "category": "い形容詞",
+        "sort_order": 5
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちにあえて、とても嬉しいです。",
+          "reading": "ともだちにあえて、とてもうれしいです。",
+          "indonesian": "Saya sangat senang bisa bertemu teman.",
+          "highlight": "嬉しい"
+        }
+      ]
+    },
+    {
+      "id": "403fb5d7-2615-47d0-afbd-deeb9e0aa83c",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "403fb5d7-2615-47d0-afbd-deeb9e0aa83c",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "悲しい",
+        "reading": "かなしい",
+        "romaji": null,
+        "indonesian": "sedih",
+        "category": "い形容詞",
+        "sort_order": 6
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "このえいがは悲しいはなしです。",
+          "reading": "このえいがはかなしいはなしです。",
+          "indonesian": "Film ini merupakan cerita yang menyedihkan.",
+          "highlight": "悲しい"
+        }
+      ]
+    },
+    {
+      "id": "4db45a8b-a549-485b-936d-694273d08ec4",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "4db45a8b-a549-485b-936d-694273d08ec4",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "寂しい",
+        "reading": "さびしい",
+        "romaji": null,
+        "indonesian": "kesepian; merasa sepi",
+        "category": "い形容詞",
+        "sort_order": 7
+      },
+      "expectedNote": null,
+      "note": "はなれる = terpisah; くらす = menjalani kehidupan/tinggal.",
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "かぞくとはなれてくらしているので、ときどき寂しいです。",
+          "reading": "かぞくとはなれてくらしているので、ときどきさびしいです。",
+          "indonesian": "Karena tinggal terpisah dari keluarga, kadang-kadang saya merasa kesepian.",
+          "highlight": "寂しい"
+        }
+      ]
+    },
+    {
+      "id": "55163b81-6283-4fde-aaaf-ec24ce94dcd9",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "55163b81-6283-4fde-aaaf-ec24ce94dcd9",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "怖い",
+        "reading": "こわい",
+        "romaji": null,
+        "indonesian": "menakutkan; merasa takut",
+        "category": "い形容詞",
+        "sort_order": 8
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "こどものとき、いぬが怖かったです。",
+          "reading": "こどものとき、いぬがこわかったです。",
+          "indonesian": "Waktu kecil saya takut pada anjing.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "671ca46a-083e-447c-a903-7551d1b6d165",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "671ca46a-083e-447c-a903-7551d1b6d165",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "恥ずかしい",
+        "reading": "はずかしい",
+        "romaji": null,
+        "indonesian": "malu",
+        "category": "い形容詞",
+        "sort_order": 9
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "みんなのまえでまちがえて、恥ずかしかったです。",
+          "reading": "みんなのまえでまちがえて、はずかしかったです。",
+          "indonesian": "Saya malu karena melakukan kesalahan di depan semua orang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "97b37e2c-7be4-43d6-81e6-5fd40d54d707",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "97b37e2c-7be4-43d6-81e6-5fd40d54d707",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "嫌",
+        "reading": "いや",
+        "romaji": null,
+        "indonesian": "tidak suka; enggan",
+        "category": "な形容詞",
+        "sort_order": 10
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "おとうとはそうじが嫌なようです。",
+          "reading": "おとうとはそうじがいやなようです。",
+          "indonesian": "Adik laki-laki saya tampaknya enggan membersihkan rumah.",
+          "highlight": "嫌"
+        }
+      ]
+    },
+    {
+      "id": "f28c4aef-3686-42f2-9013-6243a08703b8",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "f28c4aef-3686-42f2-9013-6243a08703b8",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "似る",
+        "reading": "にる",
+        "romaji": null,
+        "indonesian": "mirip",
+        "category": "動詞",
+        "sort_order": 11
+      },
+      "expectedNote": "Kelompok 2. Umumnya dipakai sebagai 似ている: mirip dengan.",
+      "note": "Kelompok 2. Umumnya dipakai sebagai 似ている: mirip dengan.",
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "あねとわたしはこえが似ています。",
+          "reading": "あねとわたしはこえがにています。",
+          "indonesian": "Suara kakak perempuan saya mirip dengan suara saya.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "dd2057c6-ea97-4b30-93e1-d38d0868d64f",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "dd2057c6-ea97-4b30-93e1-d38d0868d64f",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "喜ぶ",
+        "reading": "よろこぶ",
+        "romaji": null,
+        "indonesian": "merasa senang; bergembira",
+        "category": "動詞",
+        "sort_order": 14
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "こどもはプレゼントをみて、喜んでいます。",
+          "reading": "こどもはプレゼントをみて、よろこんでいます。",
+          "indonesian": "Anak itu gembira melihat hadiah.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "f79e3b93-e90c-4c5b-a66b-97c672be2281",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "f79e3b93-e90c-4c5b-a66b-97c672be2281",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "心",
+        "reading": "こころ",
+        "romaji": null,
+        "indonesian": "hati; batin",
+        "category": "名詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "あたたかいてがみをよんで、心があかるくなりました。",
+          "reading": "あたたかいてがみをよんで、こころがあかるくなりました。",
+          "indonesian": "Hati saya menjadi cerah setelah membaca surat yang hangat.",
+          "highlight": "心"
+        }
+      ]
+    },
+    {
+      "id": "62cc4aae-0415-403e-a8de-923e13093f6a",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "62cc4aae-0415-403e-a8de-923e13093f6a",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "怖がる",
+        "reading": "こわがる",
+        "romaji": null,
+        "indonesian": "menunjukkan rasa takut",
+        "category": "動詞",
+        "sort_order": 15
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "こどもがおおきないぬを怖がっています。",
+          "reading": "こどもがおおきないぬをこわがっています。",
+          "indonesian": "Anak itu menunjukkan rasa takut pada anjing besar.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "c097b1e4-b1d5-44c9-9435-52f043c5f87c",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "c097b1e4-b1d5-44c9-9435-52f043c5f87c",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "驚く",
+        "reading": "おどろく",
+        "romaji": null,
+        "indonesian": "terkejut; merasa heran",
+        "category": "動詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちはわたしのけいかくをきいて、驚いたようです。",
+          "reading": "ともだちはわたしのけいかくをきいて、おどろいたようです。",
+          "indonesian": "Teman saya tampaknya terkejut mendengar rencana saya.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "05c656ad-c296-4fa2-90c6-f80cfc001964",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "05c656ad-c296-4fa2-90c6-f80cfc001964",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "怒る",
+        "reading": "おこる",
+        "romaji": null,
+        "indonesian": "marah",
+        "category": "動詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "かれはおおきなこえではなしています。怒っているようです。",
+          "reading": "かれはおおきなこえではなしています。おこっているようです。",
+          "indonesian": "Dia berbicara dengan suara keras. Sepertinya dia sedang marah.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "693a5a96-b686-4ac6-8050-3ac3da234844",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "693a5a96-b686-4ac6-8050-3ac3da234844",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "欲しがる",
+        "reading": "ほしがる",
+        "romaji": null,
+        "indonesian": "menunjukkan keinginan memiliki",
+        "category": "動詞",
+        "sort_order": 16
+      },
+      "expectedNote": "Kelompok 1. Bendaを欲しがる; lazim dipakai untuk orang lain.",
+      "note": "Kelompok 1. Bendaを欲しがる; lazim dipakai untuk orang lain.",
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "いもうとはあたらしいじてんしゃを欲しがっています。",
+          "reading": "いもうとはあたらしいじてんしゃをほしがっています。",
+          "indonesian": "Adik perempuan saya menunjukkan keinginan memiliki sepeda baru.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "77643d18-ed04-42ba-98a8-fad9884c4c68",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "77643d18-ed04-42ba-98a8-fad9884c4c68",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "優しい",
+        "reading": "やさしい",
+        "romaji": null,
+        "indonesian": "baik hati; lembut",
+        "category": "い形容詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいは優しいこえでこどもにはなしました。",
+          "reading": "せんせいはやさしいこえでこどもにはなしました。",
+          "indonesian": "Guru berbicara kepada anak itu dengan suara lembut.",
+          "highlight": "優しい"
+        }
+      ]
+    },
+    {
+      "id": "1b8d7deb-ed70-475f-aac6-3e2129787f8a",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "1b8d7deb-ed70-475f-aac6-3e2129787f8a",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "酷い",
+        "reading": "ひどい",
+        "romaji": null,
+        "indonesian": "parah; kejam",
+        "category": "い形容詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちに酷いことをいってしまいました。",
+          "reading": "ともだちにひどいことをいってしまいました。",
+          "indonesian": "Saya terlanjur mengatakan sesuatu yang kejam kepada teman.",
+          "highlight": "酷い"
+        }
+      ]
+    },
+    {
+      "id": "af9f3c01-85c3-43ff-ab38-96d346f4a54b",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "af9f3c01-85c3-43ff-ab38-96d346f4a54b",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "素晴らしい",
+        "reading": "すばらしい",
+        "romaji": null,
+        "indonesian": "luar biasa",
+        "category": "い形容詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "あのひとのピアノは素晴らしいですね。",
+          "reading": "あのひとのピアノはすばらしいですね。",
+          "indonesian": "Permainan piano orang itu luar biasa, ya.",
+          "highlight": "素晴らしい"
+        }
+      ]
+    },
+    {
+      "id": "d2c6a40d-42e8-496d-abac-8cdec14476da",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "d2c6a40d-42e8-496d-abac-8cdec14476da",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "大事",
+        "reading": "だいじ",
+        "romaji": null,
+        "indonesian": "penting; berharga",
+        "category": "名詞・な形容詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": "すごす = menghabiskan waktu.",
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "かぞくとすごすじかんを大事にしています。",
+          "reading": "かぞくとすごすじかんをだいじにしています。",
+          "indonesian": "Saya menghargai waktu yang dihabiskan bersama keluarga.",
+          "highlight": "大事"
+        }
+      ]
+    },
+    {
+      "id": "cb931d0f-dcd0-4180-acca-b8357a881fd0",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "cb931d0f-dcd0-4180-acca-b8357a881fd0",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "熱心",
+        "reading": "ねっしん",
+        "romaji": null,
+        "indonesian": "tekun; antusias",
+        "category": "名詞・な形容詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "かれは熱心ににほんごをべんきょうしています。",
+          "reading": "かれはねっしんににほんごをべんきょうしています。",
+          "indonesian": "Dia belajar bahasa Jepang dengan tekun.",
+          "highlight": "熱心"
+        }
+      ]
+    },
+    {
+      "id": "169b3b8b-537f-47a7-85a5-4b435d93e56b",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "169b3b8b-537f-47a7-85a5-4b435d93e56b",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "可笑しい",
+        "reading": "おかしい",
+        "romaji": null,
+        "indonesian": "aneh; lucu",
+        "category": "い形容詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "あのはなしは可笑しくて、みんなわらいました。",
+          "reading": "あのはなしはおかしくて、みんなわらいました。",
+          "indonesian": "Cerita itu lucu sehingga semua orang tertawa.",
+          "highlight": null
+        },
+        {
+          "japanese": "このとけいは可笑しいです。まだろくじなのに、はちじになっています。",
+          "reading": "このとけいはおかしいです。まだろくじなのに、はちじになっています。",
+          "indonesian": "Jam ini aneh. Padahal baru pukul enam, jamnya menunjukkan pukul delapan.",
+          "highlight": "可笑しい"
+        }
+      ]
+    },
+    {
+      "id": "0ed1eeee-a720-4bd5-b2ec-ed76925c1a9d",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "0ed1eeee-a720-4bd5-b2ec-ed76925c1a9d",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "凄い",
+        "reading": "すごい",
+        "romaji": null,
+        "indonesian": "hebat; luar biasa",
+        "category": "い形容詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": "ごかこくご = lima bahasa.",
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "あのひとはごかこくごをはなせます。凄いですね。",
+          "reading": "あのひとはごかこくごをはなせます。すごいですね。",
+          "indonesian": "Orang itu bisa berbicara dalam lima bahasa. Hebat, ya.",
+          "highlight": "凄い"
+        }
+      ]
+    },
+    {
+      "id": "ed4fe630-1dfd-4aa6-97d9-ad982a3cf481",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "ed4fe630-1dfd-4aa6-97d9-ad982a3cf481",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "楽しみ",
+        "reading": "たのしみ",
+        "romaji": null,
+        "indonesian": "hal yang dinantikan; kesenangan",
+        "category": "名詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "ひさしぶりにともだちにあうのが楽しみです。",
+          "reading": "ひさしぶりにともだちにあうのがたのしみです。",
+          "indonesian": "Saya menantikan pertemuan dengan teman setelah sekian lama.",
+          "highlight": "楽しみ"
+        }
+      ]
+    },
+    {
+      "id": "b19efcec-2671-4500-848f-f48d23c81757",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "b19efcec-2671-4500-848f-f48d23c81757",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "恥ずかしがる",
+        "reading": "はずかしがる",
+        "romaji": null,
+        "indonesian": "menunjukkan rasa malu",
+        "category": "動詞",
+        "sort_order": 25
+      },
+      "expectedNote": "Biasanya untuk perasaan orang lain.",
+      "note": "Biasanya untuk perasaan orang lain.",
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "いもうとはみんなのまえでうたうのを恥ずかしがっています。",
+          "reading": "いもうとはみんなのまえでうたうのをはずかしがっています。",
+          "indonesian": "Adik perempuan saya tampak malu untuk bernyanyi di depan semua orang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "60e3a64d-797e-4c43-8962-20e43a849c6e",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "60e3a64d-797e-4c43-8962-20e43a849c6e",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "慣れる",
+        "reading": "なれる",
+        "romaji": null,
+        "indonesian": "menjadi terbiasa",
+        "category": "動詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "あたらしいがっこうにだんだん慣れてきました。",
+          "reading": "あたらしいがっこうにだんだんなれてきました。",
+          "indonesian": "Saya mulai terbiasa dengan sekolah baru sedikit demi sedikit.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "0daf898f-fe99-4c9a-946e-ea1ad2cdeb46",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "0daf898f-fe99-4c9a-946e-ea1ad2cdeb46",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "痩せる",
+        "reading": "やせる",
+        "romaji": null,
+        "indonesian": "menjadi kurus; menurunkan berat badan",
+        "category": "動詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "さいきん、すこし痩せたようですね。",
+          "reading": "さいきん、すこしやせたようですね。",
+          "indonesian": "Akhir-akhir ini Anda tampaknya sedikit lebih kurus, ya.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "844c151c-79a6-4fc7-a3eb-4cf22d20358a",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "844c151c-79a6-4fc7-a3eb-4cf22d20358a",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "太る",
+        "reading": "ふとる",
+        "romaji": null,
+        "indonesian": "menjadi gemuk; bertambah berat badan",
+        "category": "動詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "きょねんより太ったので、ふるいズボンがはけません。",
+          "reading": "きょねんよりふとったので、ふるいズボンがはけません。",
+          "indonesian": "Karena berat badan saya bertambah sejak tahun lalu, celana lama tidak muat lagi.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "bbf86442-67a9-41b9-949a-e0a36da1ac29",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "bbf86442-67a9-41b9-949a-e0a36da1ac29",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "眠る",
+        "reading": "ねむる",
+        "romaji": null,
+        "indonesian": "tidur",
+        "category": "動詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "あかちゃんがしずかに眠っています。",
+          "reading": "あかちゃんがしずかにねむっています。",
+          "indonesian": "Bayi sedang tidur dengan tenang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "4aacef1e-7ddc-46d3-9034-8d55fdccd5dc",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "4aacef1e-7ddc-46d3-9034-8d55fdccd5dc",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "具合",
+        "reading": "ぐあい",
+        "romaji": null,
+        "indonesian": "kondisi; keadaan kesehatan",
+        "category": "名詞",
+        "sort_order": 30
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "からだの具合がわるいので、きょうはやすみます。",
+          "reading": "からだのぐあいがわるいので、きょうはやすみます。",
+          "indonesian": "Saya beristirahat hari ini karena kondisi badan kurang sehat.",
+          "highlight": "具合"
+        }
+      ]
+    },
+    {
+      "id": "2b52a9f3-335a-461e-ba06-45253244877c",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "2b52a9f3-335a-461e-ba06-45253244877c",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "気",
+        "reading": "き",
+        "romaji": null,
+        "indonesian": "perasaan; semangat; niat",
+        "category": "名詞",
+        "sort_order": 31
+      },
+      "expectedNote": null,
+      "note": "気になる berarti terus menjadi perhatian/pikiran; makna 気 berubah sesuai gabungannya.",
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "さいきん、そのニュースが気になっています。",
+          "reading": "さいきん、そのニュースがきになっています。",
+          "indonesian": "Akhir-akhir ini saya terus memikirkan berita itu.",
+          "highlight": "気"
+        }
+      ]
+    },
+    {
+      "id": "75a09f9f-984a-42e2-b504-ddbfdacea0d0",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "75a09f9f-984a-42e2-b504-ddbfdacea0d0",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "安心",
+        "reading": "あんしん",
+        "romaji": null,
+        "indonesian": "rasa lega; tenang",
+        "category": "名詞・な形容詞・動詞",
+        "sort_order": 32
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちのこえをきいて、安心しました。",
+          "reading": "ともだちのこえをきいて、あんしんしました。",
+          "indonesian": "Saya merasa lega setelah mendengar suara teman.",
+          "highlight": "安心"
+        }
+      ]
+    },
+    {
+      "id": "a24c20e1-85e5-4d90-834d-1ce1f1bc18db",
+      "chapter": 12,
+      "expectedCore": {
+        "id": "a24c20e1-85e5-4d90-834d-1ce1f1bc18db",
+        "module_id": "64a54a15-677d-4384-95c4-c2b22d8e717f",
+        "lesson_id": null,
+        "japanese": "残念がる",
+        "reading": "ざんねんがる",
+        "romaji": null,
+        "indonesian": "menunjukkan rasa kecewa",
+        "category": "動詞",
+        "sort_order": 33
+      },
+      "expectedNote": "Biasanya untuk perasaan orang lain.",
+      "note": "Biasanya untuk perasaan orang lain.",
+      "deckIds": [
+        "e46e1326-47fa-45a8-8a8e-cd2a3c519352"
+      ],
+      "examples": [
+        {
+          "japanese": "あねはコンサートにいけなくて、残念がっています。",
+          "reading": "あねはコンサートにいけなくて、ざんねんがっています。",
+          "indonesian": "Kakak perempuan saya menunjukkan rasa kecewa karena tidak bisa pergi ke konser.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "100a6f95-50e0-4a0c-bfc0-cd7ac1beba88",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "100a6f95-50e0-4a0c-bfc0-cd7ac1beba88",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "橋",
+        "reading": "はし",
+        "romaji": null,
+        "indonesian": "jembatan",
+        "category": "名詞",
+        "sort_order": 4
+      },
+      "expectedNote": null,
+      "note": "わたる = menyeberang.",
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "この橋をわたると、えきがあります。",
+          "reading": "このはしをわたると、えきがあります。",
+          "indonesian": "Jika menyeberangi jembatan ini, Anda akan menemukan stasiun di seberang.",
+          "highlight": "橋"
+        }
+      ]
+    },
+    {
+      "id": "947e0ad9-9a17-4f14-9add-913d32aaa9a5",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "947e0ad9-9a17-4f14-9add-913d32aaa9a5",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "坂",
+        "reading": "さか",
+        "romaji": null,
+        "indonesian": "tanjakan; lereng",
+        "category": "名詞",
+        "sort_order": 6
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "この坂をのぼったら、すこしやすみましょう。",
+          "reading": "このさかをのぼったら、すこしやすみましょう。",
+          "indonesian": "Setelah mendaki tanjakan ini, mari beristirahat sebentar.",
+          "highlight": "坂"
+        }
+      ]
+    },
+    {
+      "id": "528ec617-616a-40b3-9c28-d28c70292a9b",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "528ec617-616a-40b3-9c28-d28c70292a9b",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "向かう",
+        "reading": "むかう",
+        "romaji": null,
+        "indonesian": "menuju; menghadap",
+        "category": "動詞",
+        "sort_order": 7
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "ホテルをでたら、すぐえきに向かいます。",
+          "reading": "ホテルをでたら、すぐえきにむかいます。",
+          "indonesian": "Setelah keluar dari hotel, saya langsung menuju stasiun.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "03aa26c6-c469-4839-a09f-da4d25b7899f",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "03aa26c6-c469-4839-a09f-da4d25b7899f",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "地図",
+        "reading": "ちず",
+        "romaji": null,
+        "indonesian": "peta",
+        "category": "名詞",
+        "sort_order": 7
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "みちがわからなかったら、この地図をみてください。",
+          "reading": "みちがわからなかったら、このちずをみてください。",
+          "indonesian": "Jika Anda tidak tahu jalannya, lihatlah peta ini.",
+          "highlight": "地図"
+        }
+      ]
+    },
+    {
+      "id": "7a90e6b4-5c83-4921-8b86-971c7e2270e3",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "7a90e6b4-5c83-4921-8b86-971c7e2270e3",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "通る",
+        "reading": "とおる",
+        "romaji": null,
+        "indonesian": "melewati; melalui",
+        "category": "動詞",
+        "sort_order": 8
+      },
+      "expectedNote": null,
+      "note": "つく = tiba.",
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "このみちを通ると、はやくえきにつきます。",
+          "reading": "このみちをとおると、はやくえきにつきます。",
+          "indonesian": "Jika melewati jalan ini, Anda akan cepat sampai di stasiun.",
+          "highlight": "通る"
+        }
+      ]
+    },
+    {
+      "id": "5e69e31f-5edc-4694-8f4d-7a7255c86e1f",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "5e69e31f-5edc-4694-8f4d-7a7255c86e1f",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "寄る",
+        "reading": "よる",
+        "romaji": null,
+        "indonesian": "mampir; mendekat",
+        "category": "動詞",
+        "sort_order": 9
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "しごとのかえりに、スーパーに寄ります。",
+          "reading": "しごとのかえりに、スーパーによります。",
+          "indonesian": "Saya mampir ke supermarket dalam perjalanan pulang kerja.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "5e45c926-70b6-40d4-ac78-7c2843faca7b",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "5e45c926-70b6-40d4-ac78-7c2843faca7b",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "回る",
+        "reading": "まわる",
+        "romaji": null,
+        "indonesian": "berputar; berkeliling",
+        "category": "動詞",
+        "sort_order": 10
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "このしまをじてんしゃで回ったら、さんじかんかかりました。",
+          "reading": "このしまをじてんしゃでまわったら、さんじかんかかりました。",
+          "indonesian": "Ketika saya berkeliling pulau ini dengan sepeda, ternyata memerlukan tiga jam.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "bac08a29-d6d1-46e8-b1ce-c151f4b551a4",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "bac08a29-d6d1-46e8-b1ce-c151f4b551a4",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "下りる",
+        "reading": "おりる",
+        "romaji": null,
+        "indonesian": "turun; keluar dari kendaraan",
+        "category": "動詞",
+        "sort_order": 11
+      },
+      "expectedNote": null,
+      "note": "下りる digunakan untuk turun dari tangga/tempat tinggi. Untuk keluar dari kendaraan, ejaan standar adalah 降りる（おりる）; kata inti dan glos aslinya dipertahankan.",
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "このかいだんを下りると、でぐちがあります。",
+          "reading": "このかいだんをおりると、でぐちがあります。",
+          "indonesian": "Jika menuruni tangga ini, Anda akan menemukan pintu keluar.",
+          "highlight": "下りる"
+        },
+        {
+          "japanese": "やまを下りたら、あたたかいおちゃをのみましょう。",
+          "reading": "やまをおりたら、あたたかいおちゃをのみましょう。",
+          "indonesian": "Setelah turun gunung, mari minum teh hangat.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "c65b4de4-9430-4cb7-a71f-fdceb75600c3",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "c65b4de4-9430-4cb7-a71f-fdceb75600c3",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "乗り換える",
+        "reading": "のりかえる",
+        "romaji": null,
+        "indonesian": "berganti kendaraan",
+        "category": "動詞",
+        "sort_order": 12
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "つぎのえきででんしゃを乗り換えてください。",
+          "reading": "つぎのえきででんしゃをのりかえてください。",
+          "indonesian": "Tolong berganti kereta di stasiun berikutnya.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "81d35e52-0b07-4f56-9378-3b6122d940c6",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "81d35e52-0b07-4f56-9378-3b6122d940c6",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "交通",
+        "reading": "こうつう",
+        "romaji": null,
+        "indonesian": "lalu lintas; transportasi",
+        "category": "名詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "このまちは交通がべんりなので、すみやすいです。",
+          "reading": "このまちはこうつうがべんりなので、すみやすいです。",
+          "indonesian": "Transportasi di kota ini praktis sehingga nyaman untuk ditinggali.",
+          "highlight": "交通"
+        }
+      ]
+    },
+    {
+      "id": "2e6d6334-d16e-497e-af65-247048a1f136",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "2e6d6334-d16e-497e-af65-247048a1f136",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "もし",
+        "reading": "もし",
+        "romaji": null,
+        "indonesian": "jika; seandainya",
+        "category": "副詞",
+        "sort_order": 14
+      },
+      "expectedNote": "Mendampingi bentuk pengandaian, bukan pengganti bentuknya.",
+      "note": "Mendampingi bentuk pengandaian, bukan pengganti bentuknya.",
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "もしあしたあめだったら、りょこうはやめましょう。",
+          "reading": "もしあしたあめだったら、りょこうはやめましょう。",
+          "indonesian": "Jika besok hujan, mari batalkan perjalanan.",
+          "highlight": "もし"
+        }
+      ]
+    },
+    {
+      "id": "6983d3f4-f2c5-485e-a487-c4307934497d",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "6983d3f4-f2c5-485e-a487-c4307934497d",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "急行",
+        "reading": "きゅうこう",
+        "romaji": null,
+        "indonesian": "kereta ekspres",
+        "category": "名詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": "つく = tiba.",
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "急行にのると、さんじゅっぷんでつきます。",
+          "reading": "きゅうこうにのると、さんじゅっぷんでつきます。",
+          "indonesian": "Jika naik kereta ekspres, Anda akan tiba dalam tiga puluh menit.",
+          "highlight": "急行"
+        }
+      ]
+    },
+    {
+      "id": "d72a4034-decf-44ef-99e8-0c240609e13e",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "d72a4034-decf-44ef-99e8-0c240609e13e",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "まっすぐ",
+        "reading": "まっすぐ",
+        "romaji": null,
+        "indonesian": "lurus; langsung",
+        "category": "副詞・な形容詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "このみちをまっすぐいくと、こうえんがあります。",
+          "reading": "このみちをまっすぐいくと、こうえんがあります。",
+          "indonesian": "Jika terus lurus di jalan ini, Anda akan menemukan taman.",
+          "highlight": "まっすぐ"
+        }
+      ]
+    },
+    {
+      "id": "5a4f8f44-a847-4e98-a6d0-780eea45e15d",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "5a4f8f44-a847-4e98-a6d0-780eea45e15d",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "特急",
+        "reading": "とっきゅう",
+        "romaji": null,
+        "indonesian": "kereta ekspres terbatas",
+        "category": "名詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "この特急はちいさいえきにはとまりません。",
+          "reading": "このとっきゅうはちいさいえきにはとまりません。",
+          "indonesian": "Kereta ekspres terbatas ini tidak berhenti di stasiun kecil.",
+          "highlight": "特急"
+        }
+      ]
+    },
+    {
+      "id": "0ee9c1aa-7ec4-4064-b54c-0e02fd61c691",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "0ee9c1aa-7ec4-4064-b54c-0e02fd61c691",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "すると",
+        "reading": "すると",
+        "romaji": null,
+        "indonesian": "lalu; setelah itu ternyata",
+        "category": "接続詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "まどをあけました。すると、うみがみえました。",
+          "reading": "まどをあけました。すると、うみがみえました。",
+          "indonesian": "Saya membuka jendela. Lalu, terlihatlah laut.",
+          "highlight": "すると"
+        }
+      ]
+    },
+    {
+      "id": "bb07fe97-344d-4f32-af4a-9bee2dcbae2e",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "bb07fe97-344d-4f32-af4a-9bee2dcbae2e",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "港",
+        "reading": "みなと",
+        "romaji": null,
+        "indonesian": "pelabuhan",
+        "category": "名詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": "つく = tiba.",
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "港についたら、でんわしてください。",
+          "reading": "みなとについたら、でんわしてください。",
+          "indonesian": "Tolong telepon setelah tiba di pelabuhan.",
+          "highlight": "港"
+        }
+      ]
+    },
+    {
+      "id": "dd253dd6-aeb2-4ff9-98db-b6b733c9ddd9",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "dd253dd6-aeb2-4ff9-98db-b6b733c9ddd9",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "海岸",
+        "reading": "かいがん",
+        "romaji": null,
+        "indonesian": "pantai; pesisir",
+        "category": "名詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "てんきがよかったら、海岸をあるきませんか。",
+          "reading": "てんきがよかったら、かいがんをあるきませんか。",
+          "indonesian": "Jika cuacanya baik, maukah Anda berjalan di pantai?",
+          "highlight": "海岸"
+        }
+      ]
+    },
+    {
+      "id": "abc0c811-1f6e-46a7-9c18-3260b22dcda9",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "abc0c811-1f6e-46a7-9c18-3260b22dcda9",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "郊外",
+        "reading": "こうがい",
+        "romaji": null,
+        "indonesian": "pinggiran kota",
+        "category": "名詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "このまちの郊外には、ひろいこうえんがあります。",
+          "reading": "このまちのこうがいには、ひろいこうえんがあります。",
+          "indonesian": "Di pinggiran kota ini ada taman luas.",
+          "highlight": "郊外"
+        }
+      ]
+    },
+    {
+      "id": "fda15159-463a-415d-881c-2ce8b6be1db5",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "fda15159-463a-415d-881c-2ce8b6be1db5",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "乗り物",
+        "reading": "のりもの",
+        "romaji": null,
+        "indonesian": "kendaraan",
+        "category": "名詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "こどもはいろいろな乗り物をみたがっています。",
+          "reading": "こどもはいろいろなのりものをみたがっています。",
+          "indonesian": "Anak itu ingin melihat berbagai kendaraan.",
+          "highlight": "乗り物"
+        }
+      ]
+    },
+    {
+      "id": "7f8ebc29-e510-421a-b129-d2003ee4424e",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "7f8ebc29-e510-421a-b129-d2003ee4424e",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "旅館",
+        "reading": "りょかん",
+        "romaji": null,
+        "indonesian": "penginapan gaya Jepang",
+        "category": "名詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "この旅館にとまったら、にほんのあさごはんをたべられます。",
+          "reading": "このりょかんにとまったら、にほんのあさごはんをたべられます。",
+          "indonesian": "Jika menginap di penginapan gaya Jepang ini, Anda bisa menyantap sarapan Jepang.",
+          "highlight": "旅館"
+        }
+      ]
+    },
+    {
+      "id": "dd92d1d0-0d77-4f19-9bd4-19796e2607a7",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "dd92d1d0-0d77-4f19-9bd4-19796e2607a7",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "田舎",
+        "reading": "いなか",
+        "romaji": null,
+        "indonesian": "daerah pedesaan; kampung halaman",
+        "category": "名詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": "そふ = kakek sendiri.",
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "なつやすみに田舎にかえったら、そふにあえます。",
+          "reading": "なつやすみにいなかにかえったら、そふにあえます。",
+          "indonesian": "Jika pulang ke kampung saat liburan musim panas, saya bisa bertemu kakek.",
+          "highlight": "田舎"
+        }
+      ]
+    },
+    {
+      "id": "b5198a55-ae77-4789-bb30-9c5738ba2b29",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "b5198a55-ae77-4789-bb30-9c5738ba2b29",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "島",
+        "reading": "しま",
+        "romaji": null,
+        "indonesian": "pulau",
+        "category": "名詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "この島には、ふねでいきます。",
+          "reading": "このしまには、ふねでいきます。",
+          "indonesian": "Kita pergi ke pulau ini dengan kapal.",
+          "highlight": "島"
+        }
+      ]
+    },
+    {
+      "id": "78947c6d-4fe9-4b0d-a295-9184df62f9b7",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "78947c6d-4fe9-4b0d-a295-9184df62f9b7",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "湖",
+        "reading": "みずうみ",
+        "romaji": null,
+        "indonesian": "danau",
+        "category": "名詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "やまをのぼると、おおきな湖がみえます。",
+          "reading": "やまをのぼると、おおきなみずうみがみえます。",
+          "indonesian": "Ketika mendaki gunung, sebuah danau besar terlihat.",
+          "highlight": "湖"
+        }
+      ]
+    },
+    {
+      "id": "1d885658-14a9-429d-8a21-addf91b2e4ab",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "1d885658-14a9-429d-8a21-addf91b2e4ab",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "屋上",
+        "reading": "おくじょう",
+        "romaji": null,
+        "indonesian": "atap gedung; rooftop",
+        "category": "名詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "このビルの屋上からまちがよくみえます。",
+          "reading": "このビルのおくじょうからまちがよくみえます。",
+          "indonesian": "Kota terlihat jelas dari atap gedung ini.",
+          "highlight": "屋上"
+        }
+      ]
+    },
+    {
+      "id": "94cc3d7c-7282-4449-a7b7-36ad4fdbf679",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "94cc3d7c-7282-4449-a7b7-36ad4fdbf679",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "汽車",
+        "reading": "きしゃ",
+        "romaji": null,
+        "indonesian": "kereta api bertenaga uap; kereta",
+        "category": "名詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "むかし、このまちでは汽車がはしっていました。",
+          "reading": "むかし、このまちではきしゃがはしっていました。",
+          "indonesian": "Dahulu, kereta uap beroperasi di kota ini.",
+          "highlight": "汽車"
+        }
+      ]
+    },
+    {
+      "id": "0d90cf55-20aa-46dd-ae27-2867a6051c94",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "0d90cf55-20aa-46dd-ae27-2867a6051c94",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "飛行場",
+        "reading": "ひこうじょう",
+        "romaji": null,
+        "indonesian": "lapangan terbang; bandara",
+        "category": "名詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": "つく = tiba.",
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "飛行場についたら、バスにのってください。",
+          "reading": "ひこうじょうについたら、バスにのってください。",
+          "indonesian": "Setelah tiba di bandara, silakan naik bus.",
+          "highlight": "飛行場"
+        }
+      ]
+    },
+    {
+      "id": "ddeef66a-5306-4441-8b99-94c15a9e42f0",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "ddeef66a-5306-4441-8b99-94c15a9e42f0",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "二階建て",
+        "reading": "にかいだて",
+        "romaji": null,
+        "indonesian": "bangunan dua lantai",
+        "category": "名詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしのいえは二階建てです。にかいにねこがいます。",
+          "reading": "わたしのいえはにかいだてです。にかいにねこがいます。",
+          "indonesian": "Rumah saya berlantai dua. Ada kucing di lantai dua.",
+          "highlight": "二階建て"
+        }
+      ]
+    },
+    {
+      "id": "28c84a33-7a2b-43a9-8759-a1dc44e1e848",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "28c84a33-7a2b-43a9-8759-a1dc44e1e848",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "見物",
+        "reading": "けんぶつ",
+        "romaji": null,
+        "indonesian": "melihat-lihat; wisata tontonan",
+        "category": "名詞・動詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "きょうとにいったら、おてらを見物したいです。",
+          "reading": "きょうとにいったら、おてらをけんぶつしたいです。",
+          "indonesian": "Jika pergi ke Kyoto, saya ingin melihat-lihat kuil.",
+          "highlight": "見物"
+        }
+      ]
+    },
+    {
+      "id": "545a82f4-de55-4249-bfd3-6ffc3e3965ad",
+      "chapter": 13,
+      "expectedCore": {
+        "id": "545a82f4-de55-4249-bfd3-6ffc3e3965ad",
+        "module_id": "d0d67a65-b304-4b3d-b6e6-3e1239473a67",
+        "lesson_id": null,
+        "japanese": "帰り",
+        "reading": "かえり",
+        "romaji": null,
+        "indonesian": "kepulangan; perjalanan pulang",
+        "category": "名詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "65499256-a3ce-4085-8275-4957636e4a09"
+      ],
+      "examples": [
+        {
+          "japanese": "帰りにあめがふったら、タクシーをつかいます。",
+          "reading": "かえりにあめがふったら、タクシーをつかいます。",
+          "indonesian": "Jika hujan saat perjalanan pulang, saya akan naik taksi.",
+          "highlight": "帰り"
+        }
+      ]
+    },
+    {
+      "id": "9121fce6-345d-4dfd-b2cf-47af0313df98",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "9121fce6-345d-4dfd-b2cf-47af0313df98",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "条件",
+        "reading": "じょうけん",
+        "romaji": null,
+        "indonesian": "syarat; kondisi",
+        "category": "名詞",
+        "sort_order": 1
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "この条件でよければ、らいげつからはたらけます。",
+          "reading": "このじょうけんでよければ、らいげつからはたらけます。",
+          "indonesian": "Jika persyaratan ini sesuai, Anda bisa mulai bekerja bulan depan.",
+          "highlight": "条件"
+        }
+      ]
+    },
+    {
+      "id": "367616bb-e726-4d2f-b501-f74b33f2cd6a",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "367616bb-e726-4d2f-b501-f74b33f2cd6a",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "場合",
+        "reading": "ばあい",
+        "romaji": null,
+        "indonesian": "keadaan; situasi; hal",
+        "category": "名詞",
+        "sort_order": 2
+      },
+      "expectedNote": "Pola 場合は dibahas lebih lanjut pada Bab 20.",
+      "note": "Pola 場合は dibahas lebih lanjut pada Bab 20.",
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "そんな場合は、せんせいにそうだんしてください。",
+          "reading": "そんなばあいは、せんせいにそうだんしてください。",
+          "indonesian": "Dalam keadaan seperti itu, silakan berkonsultasi dengan guru.",
+          "highlight": "場合"
+        }
+      ]
+    },
+    {
+      "id": "89cbd7b3-370f-40df-9869-c9f45226ab36",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "89cbd7b3-370f-40df-9869-c9f45226ab36",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "機会",
+        "reading": "きかい",
+        "romaji": null,
+        "indonesian": "kesempatan",
+        "category": "名詞",
+        "sort_order": 3
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "機会があれば、にほんではたらいてみたいです。",
+          "reading": "きかいがあれば、にほんではたらいてみたいです。",
+          "indonesian": "Jika ada kesempatan, saya ingin mencoba bekerja di Jepang.",
+          "highlight": "機会"
+        }
+      ]
+    },
+    {
+      "id": "b6b34ce7-e275-4035-9679-2724f974606f",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "b6b34ce7-e275-4035-9679-2724f974606f",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "都合",
+        "reading": "つごう",
+        "romaji": null,
+        "indonesian": "kecocokan jadwal; keadaan",
+        "category": "名詞",
+        "sort_order": 4
+      },
+      "expectedNote": "Pengulangan terarah untuk menyatakan syarat.",
+      "note": "Pengulangan terarah untuk menyatakan syarat.",
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "都合がよければ、きんようびにあいませんか。",
+          "reading": "つごうがよければ、きんようびにあいませんか。",
+          "indonesian": "Jika waktunya cocok, maukah Anda bertemu hari Jumat?",
+          "highlight": "都合"
+        }
+      ]
+    },
+    {
+      "id": "e22781db-d4e0-4472-b4d5-6b13bb97567c",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "e22781db-d4e0-4472-b4d5-6b13bb97567c",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "お勧め",
+        "reading": "おすすめ",
+        "romaji": null,
+        "indonesian": "rekomendasi; hal yang disarankan",
+        "category": "名詞",
+        "sort_order": 5
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "このみせのお勧めは、どのりょうりですか。",
+          "reading": "このみせのおすすめは、どのりょうりですか。",
+          "indonesian": "Hidangan apa yang direkomendasikan di restoran ini?",
+          "highlight": "お勧め"
+        }
+      ]
+    },
+    {
+      "id": "5e139743-4c46-4383-b95c-8376f6fed252",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "5e139743-4c46-4383-b95c-8376f6fed252",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "参加する",
+        "reading": "さんかする",
+        "romaji": null,
+        "indonesian": "ikut serta",
+        "category": "動詞",
+        "sort_order": 7
+      },
+      "expectedNote": "Kelompok 3.",
+      "note": "Kelompok 3.",
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "じかんがあれば、あしたのかいぎに参加します。",
+          "reading": "じかんがあれば、あしたのかいぎにさんかします。",
+          "indonesian": "Jika ada waktu, saya akan ikut rapat besok.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "a5a61234-e1ff-42a1-8097-486111c9f1d3",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "a5a61234-e1ff-42a1-8097-486111c9f1d3",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "調べる",
+        "reading": "しらべる",
+        "romaji": null,
+        "indonesian": "memeriksa; mencari informasi",
+        "category": "動詞",
+        "sort_order": 8
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.",
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "ことばのいみがわからなければ、じてんで調べてください。",
+          "reading": "ことばのいみがわからなければ、じてんでしらべてください。",
+          "indonesian": "Jika tidak tahu arti sebuah kata, silakan cari di kamus.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "e19210c4-9269-4e89-a762-759d927c4b8f",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "e19210c4-9269-4e89-a762-759d927c4b8f",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "選ぶ",
+        "reading": "えらぶ",
+        "romaji": null,
+        "indonesian": "memilih",
+        "category": "動詞",
+        "sort_order": 10
+      },
+      "expectedNote": "Kelompok 1. Pengulangan terarah dalam kalimat bersyarat.",
+      "note": "Kelompok 1. Pengulangan terarah dalam kalimat bersyarat.",
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "かるいかばんがほしければ、こちらを選ぶといいですよ。",
+          "reading": "かるいかばんがほしければ、こちらをえらぶといいですよ。",
+          "indonesian": "Jika menginginkan tas ringan, sebaiknya Anda memilih yang ini.",
+          "highlight": "選ぶ"
+        }
+      ]
+    },
+    {
+      "id": "06fbf4e2-9bda-425c-9219-6916ce763448",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "06fbf4e2-9bda-425c-9219-6916ce763448",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "間に合う",
+        "reading": "まにあう",
+        "romaji": null,
+        "indonesian": "sempat; tepat waktu",
+        "category": "動詞",
+        "sort_order": 11
+      },
+      "expectedNote": "Kelompok 1. Dipakai untuk syarat dan penyesalan.",
+      "note": "Kelompok 1. Dipakai untuk syarat dan penyesalan.",
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "いまでれば、くじのでんしゃに間に合います。",
+          "reading": "いまでれば、くじのでんしゃにまにあいます。",
+          "indonesian": "Jika berangkat sekarang, Anda masih sempat naik kereta pukul sembilan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "5109067f-2ebb-429e-bd0c-aa40185d2707",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "5109067f-2ebb-429e-bd0c-aa40185d2707",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "必要",
+        "reading": "ひつよう",
+        "romaji": null,
+        "indonesian": "perlu; diperlukan",
+        "category": "な形容詞",
+        "sort_order": 12
+      },
+      "expectedNote": null,
+      "note": "てつだい = bantuan.",
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "ひとりでできれば、てつだいは必要ありません。",
+          "reading": "ひとりでできれば、てつだいはひつようありません。",
+          "indonesian": "Jika bisa melakukannya sendiri, bantuan tidak diperlukan.",
+          "highlight": "必要"
+        }
+      ]
+    },
+    {
+      "id": "70689205-85f3-4419-9d48-85703938c968",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "70689205-85f3-4419-9d48-85703938c968",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "十分",
+        "reading": "じゅうぶん",
+        "romaji": null,
+        "indonesian": "cukup; memadai",
+        "category": "な形容詞・副詞",
+        "sort_order": 13
+      },
+      "expectedNote": "Bacaan じゅうぶん, bukan じゅっぷん yang berarti sepuluh menit.",
+      "note": "Bacaan じゅうぶん, bukan じゅっぷん yang berarti sepuluh menit.",
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "いちじかんあれば、じかんは十分です。",
+          "reading": "いちじかんあれば、じかんはじゅうぶんです。",
+          "indonesian": "Jika ada satu jam, waktunya cukup.",
+          "highlight": "十分"
+        }
+      ]
+    },
+    {
+      "id": "946a116b-e207-4899-84e6-90852f97fa9b",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "946a116b-e207-4899-84e6-90852f97fa9b",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "適当",
+        "reading": "てきとう",
+        "romaji": null,
+        "indonesian": "sesuai; secukupnya; sembarangan",
+        "category": "名詞・な形容詞",
+        "sort_order": 13
+      },
+      "expectedNote": "Makna berubah menurut konteks.",
+      "note": "Makna berubah menurut konteks.",
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "りょこうに適当なくつをえらぶといいですよ。",
+          "reading": "りょこうにてきとうなくつをえらぶといいですよ。",
+          "indonesian": "Sebaiknya pilih sepatu yang sesuai untuk bepergian.",
+          "highlight": "適当"
+        },
+        {
+          "japanese": "適当なこたえでは、みんながこまります。",
+          "reading": "てきとうなこたえでは、みんながこまります。",
+          "indonesian": "Jawaban yang asal-asalan akan menyulitkan semua orang.",
+          "highlight": "適当"
+        }
+      ]
+    },
+    {
+      "id": "67945322-f4c8-4cfe-a19c-33fe124eecbc",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "67945322-f4c8-4cfe-a19c-33fe124eecbc",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "できれば",
+        "reading": "できれば",
+        "romaji": null,
+        "indonesian": "kalau memungkinkan",
+        "category": "副詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "できれば、あしたまでにへんじをください。",
+          "reading": "できれば、あしたまでにへんじをください。",
+          "indonesian": "Kalau memungkinkan, tolong berikan jawaban paling lambat besok.",
+          "highlight": "できれば"
+        }
+      ]
+    },
+    {
+      "id": "96a601de-9566-4ac0-a10a-8a053964adbb",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "96a601de-9566-4ac0-a10a-8a053964adbb",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "駄目",
+        "reading": "だめ",
+        "romaji": null,
+        "indonesian": "tidak boleh; tidak berguna",
+        "category": "名詞・な形容詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "ここでしゃしんをとっては駄目です。",
+          "reading": "ここでしゃしんをとってはだめです。",
+          "indonesian": "Tidak boleh memotret di sini.",
+          "highlight": "駄目"
+        }
+      ]
+    },
+    {
+      "id": "e752458e-a05e-4b86-9060-ca6bd8c0434f",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "e752458e-a05e-4b86-9060-ca6bd8c0434f",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "よろしい",
+        "reading": "よろしい",
+        "romaji": null,
+        "indonesian": "baik; boleh, bentuk sopan",
+        "category": "い形容詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "このじかんでよろしいですか。",
+          "reading": "このじかんでよろしいですか。",
+          "indonesian": "Apakah waktu ini sesuai untuk Anda?",
+          "highlight": "よろしい"
+        }
+      ]
+    },
+    {
+      "id": "c42ba00d-05ab-4183-bb06-5e1fb4251b9f",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "c42ba00d-05ab-4183-bb06-5e1fb4251b9f",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "ぜひ",
+        "reading": "ぜひ",
+        "romaji": null,
+        "indonesian": "pasti; sangat diharapkan",
+        "category": "副詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "きょうとへいくなら、ぜひこのてらをみてください。",
+          "reading": "きょうとへいくなら、ぜひこのてらをみてください。",
+          "indonesian": "Jika pergi ke Kyoto, saya sangat menyarankan Anda melihat kuil ini.",
+          "highlight": "ぜひ"
+        }
+      ]
+    },
+    {
+      "id": "d15ed451-e05e-4d01-b0e6-5d67392b49df",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "d15ed451-e05e-4d01-b0e6-5d67392b49df",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "できるだけ",
+        "reading": "できるだけ",
+        "romaji": null,
+        "indonesian": "sebisa mungkin",
+        "category": "副詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "できるだけかるいにもつできてください。",
+          "reading": "できるだけかるいにもつできてください。",
+          "indonesian": "Tolong datang dengan barang bawaan seringan mungkin.",
+          "highlight": "できるだけ"
+        }
+      ]
+    },
+    {
+      "id": "4385383c-701d-410e-b861-e6b8df862e4d",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "4385383c-701d-410e-b861-e6b8df862e4d",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "大事",
+        "reading": "だいじ",
+        "romaji": null,
+        "indonesian": "penting; berharga",
+        "category": "名詞・な形容詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "むずかしいもんだいなら、まずよくかんがえることが大事です。",
+          "reading": "むずかしいもんだいなら、まずよくかんがえることがだいじです。",
+          "indonesian": "Jika soalnya sulit, yang penting adalah memikirkannya baik-baik terlebih dahulu.",
+          "highlight": "大事"
+        }
+      ]
+    },
+    {
+      "id": "feda742a-3503-41d9-aacb-90f062460c3f",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "feda742a-3503-41d9-aacb-90f062460c3f",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "用",
+        "reading": "よう",
+        "romaji": null,
+        "indonesian": "urusan; kegunaan",
+        "category": "名詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたは用があるので、さんかできません。",
+          "reading": "あしたはようがあるので、さんかできません。",
+          "indonesian": "Besok saya ada urusan, jadi tidak bisa ikut.",
+          "highlight": "用"
+        }
+      ]
+    },
+    {
+      "id": "9427564c-f16e-4cb4-a6ee-18f3acf6c5b0",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "9427564c-f16e-4cb4-a6ee-18f3acf6c5b0",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "利用",
+        "reading": "りよう",
+        "romaji": null,
+        "indonesian": "pemanfaatan; penggunaan",
+        "category": "名詞・動詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "このとしょかんは、だれでも利用できます。",
+          "reading": "このとしょかんは、だれでもりようできます。",
+          "indonesian": "Perpustakaan ini bisa digunakan oleh siapa saja.",
+          "highlight": "利用"
+        }
+      ]
+    },
+    {
+      "id": "ba9fb62b-b127-4d68-911e-4f8ea89b6ce7",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "ba9fb62b-b127-4d68-911e-4f8ea89b6ce7",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "仕方",
+        "reading": "しかた",
+        "romaji": null,
+        "indonesian": "cara; metode",
+        "category": "名詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "そうじの仕方がわからなければ、きいてください。",
+          "reading": "そうじのしかたがわからなければ、きいてください。",
+          "indonesian": "Jika tidak tahu cara membersihkannya, silakan bertanya.",
+          "highlight": "仕方"
+        }
+      ]
+    },
+    {
+      "id": "207e6b86-8a5c-4e49-b936-fb7bd64bb69d",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "207e6b86-8a5c-4e49-b936-fb7bd64bb69d",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "特別",
+        "reading": "とくべつ",
+        "romaji": null,
+        "indonesian": "khusus; istimewa",
+        "category": "名詞・な形容詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたはわたしのたんじょうびです。特別なひです。",
+          "reading": "あしたはわたしのたんじょうびです。とくべつなひです。",
+          "indonesian": "Besok ulang tahun saya. Itu hari yang istimewa.",
+          "highlight": "特別"
+        }
+      ]
+    },
+    {
+      "id": "920e180b-7ec4-4ccb-8152-36a188232cb9",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "920e180b-7ec4-4ccb-8152-36a188232cb9",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "決して",
+        "reading": "けっして",
+        "romaji": null,
+        "indonesian": "sama sekali tidak; tidak pernah",
+        "category": "副詞",
+        "sort_order": 23
+      },
+      "expectedNote": "Umumnya dipakai dengan bentuk negatif.",
+      "note": "Umumnya dipakai dengan bentuk negatif.",
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "あぶないですから、決してここでおよがないでください。",
+          "reading": "あぶないですから、けっしてここでおよがないでください。",
+          "indonesian": "Ini berbahaya, jadi jangan sekali-kali berenang di sini.",
+          "highlight": "決して"
+        }
+      ]
+    },
+    {
+      "id": "e8af81f8-dd13-437b-b085-0b4f07f0c034",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "e8af81f8-dd13-437b-b085-0b4f07f0c034",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "なるほど",
+        "reading": "なるほど",
+        "romaji": null,
+        "indonesian": "oh, begitu; masuk akal",
+        "category": "副詞・感動詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": "おす = menekan.",
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "なるほど、このボタンをおせばいいんですね。",
+          "reading": "なるほど、このボタンをおせばいいんですね。",
+          "indonesian": "Oh, begitu. Jadi saya cukup menekan tombol ini, ya.",
+          "highlight": "なるほど"
+        }
+      ]
+    },
+    {
+      "id": "b7d297d8-f65c-409f-b172-7e49226ab46d",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "b7d297d8-f65c-409f-b172-7e49226ab46d",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "それなら",
+        "reading": "それなら",
+        "romaji": null,
+        "indonesian": "kalau begitu",
+        "category": "接続詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたはむずかしいんですね。それなら、きんようびはどうですか。",
+          "reading": "あしたはむずかしいんですね。それなら、きんようびはどうですか。",
+          "indonesian": "Besok sulit untuk Anda, ya. Kalau begitu, bagaimana dengan hari Jumat?",
+          "highlight": "それなら"
+        }
+      ]
+    },
+    {
+      "id": "6d9e8e90-0301-44f4-bb87-e360a7b6e49b",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "6d9e8e90-0301-44f4-bb87-e360a7b6e49b",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "いつでも",
+        "reading": "いつでも",
+        "romaji": null,
+        "indonesian": "kapan saja",
+        "category": "副詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "しつもんがあれば、いつでもきいてください。",
+          "reading": "しつもんがあれば、いつでもきいてください。",
+          "indonesian": "Jika ada pertanyaan, silakan bertanya kapan saja.",
+          "highlight": "いつでも"
+        }
+      ]
+    },
+    {
+      "id": "b0d3f24d-631c-4dcb-9b6c-6804de09abb3",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "b0d3f24d-631c-4dcb-9b6c-6804de09abb3",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "詳しい",
+        "reading": "くわしい",
+        "romaji": null,
+        "indonesian": "terperinci; memahami dengan baik",
+        "category": "い形容詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "たなかさんはこのまちに詳しいです。",
+          "reading": "たなかさんはこのまちにくわしいです。",
+          "indonesian": "Tanaka mengenal kota ini dengan baik.",
+          "highlight": "詳しい"
+        },
+        {
+          "japanese": "もっと詳しいせつめいがあれば、わかるとおもいます。",
+          "reading": "もっとくわしいせつめいがあれば、わかるとおもいます。",
+          "indonesian": "Saya rasa saya akan mengerti jika ada penjelasan yang lebih terperinci.",
+          "highlight": "詳しい"
+        }
+      ]
+    },
+    {
+      "id": "c16ed739-8f6f-4ecb-9db6-7547cfde3f61",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "c16ed739-8f6f-4ecb-9db6-7547cfde3f61",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "やり方",
+        "reading": "やりかた",
+        "romaji": null,
+        "indonesian": "cara melakukan sesuatu",
+        "category": "名詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "このしごとのやり方がわからなければ、きいてください。",
+          "reading": "このしごとのやりかたがわからなければ、きいてください。",
+          "indonesian": "Jika tidak memahami cara melakukan pekerjaan ini, silakan bertanya.",
+          "highlight": "やり方"
+        }
+      ]
+    },
+    {
+      "id": "26c44001-bd55-488f-ba3b-6959d81d4716",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "26c44001-bd55-488f-ba3b-6959d81d4716",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "遠慮",
+        "reading": "えんりょ",
+        "romaji": null,
+        "indonesian": "menahan diri; sungkan",
+        "category": "名詞・動詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "遠慮しないで、たくさんたべてください。",
+          "reading": "えんりょしないで、たくさんたべてください。",
+          "indonesian": "Jangan sungkan, silakan makan yang banyak.",
+          "highlight": "遠慮"
+        }
+      ]
+    },
+    {
+      "id": "d449d06f-e5f1-4331-83c9-412d93454fd4",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "d449d06f-e5f1-4331-83c9-412d93454fd4",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "相談",
+        "reading": "そうだん",
+        "romaji": null,
+        "indonesian": "konsultasi; berdiskusi",
+        "category": "名詞・動詞",
+        "sort_order": 30
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "じぶんできめるまえに、せんせいに相談するといいですよ。",
+          "reading": "じぶんできめるまえに、せんせいにそうだんするといいですよ。",
+          "indonesian": "Sebaiknya berkonsultasi dengan guru sebelum memutuskan sendiri.",
+          "highlight": "相談"
+        }
+      ]
+    },
+    {
+      "id": "bc48e3fc-8d25-438f-9482-e8c559f02f65",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "bc48e3fc-8d25-438f-9482-e8c559f02f65",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "承知",
+        "reading": "しょうち",
+        "romaji": null,
+        "indonesian": "pemahaman; persetujuan formal",
+        "category": "名詞・動詞",
+        "sort_order": 31
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "じかんがかわったことは承知しています。",
+          "reading": "じかんがかわったことはしょうちしています。",
+          "indonesian": "Saya sudah memahami bahwa waktunya berubah.",
+          "highlight": "承知"
+        }
+      ]
+    },
+    {
+      "id": "b6d5243b-c621-4b88-864a-dec0c7908805",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "b6d5243b-c621-4b88-864a-dec0c7908805",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "安心",
+        "reading": "あんしん",
+        "romaji": null,
+        "indonesian": "rasa lega; tenang",
+        "category": "名詞・な形容詞・動詞",
+        "sort_order": 32
+      },
+      "expectedNote": null,
+      "note": "れんらくがとれる = berhasil berkomunikasi/menghubungi.",
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "かぞくとれんらくがとれれば、安心できます。",
+          "reading": "かぞくとれんらくがとれれば、あんしんできます。",
+          "indonesian": "Jika bisa menghubungi keluarga, saya bisa merasa tenang.",
+          "highlight": "安心"
+        }
+      ]
+    },
+    {
+      "id": "6ab028d4-0920-476b-b566-b444e839c778",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "6ab028d4-0920-476b-b566-b444e839c778",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "急",
+        "reading": "きゅう",
+        "romaji": null,
+        "indonesian": "mendadak; curam; darurat",
+        "category": "名詞・な形容詞",
+        "sort_order": 33
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "急なようじがなければ、あしたもきます。",
+          "reading": "きゅうなようじがなければ、あしたもきます。",
+          "indonesian": "Jika tidak ada urusan mendadak, saya akan datang lagi besok.",
+          "highlight": "急"
+        }
+      ]
+    },
+    {
+      "id": "5c761ca0-d180-4732-b89e-a010c55a3729",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "5c761ca0-d180-4732-b89e-a010c55a3729",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "都合がいい",
+        "reading": "つごうがいい",
+        "romaji": null,
+        "indonesian": "waktunya cocok; keadaannya menguntungkan",
+        "category": "表現",
+        "sort_order": 34
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "きんようびなら都合がいいです。",
+          "reading": "きんようびならつごうがいいです。",
+          "indonesian": "Kalau hari Jumat, waktunya cocok bagi saya.",
+          "highlight": "都合がいい"
+        }
+      ]
+    },
+    {
+      "id": "43056bd4-c977-4ae4-aa2c-fe60bf29d093",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "43056bd4-c977-4ae4-aa2c-fe60bf29d093",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "都合が悪い",
+        "reading": "つごうがわるい",
+        "romaji": null,
+        "indonesian": "waktunya tidak cocok; keadaannya buruk",
+        "category": "表現",
+        "sort_order": 35
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたは都合が悪いので、べつのひにしてください。",
+          "reading": "あしたはつごうがわるいので、べつのひにしてください。",
+          "indonesian": "Besok waktunya tidak cocok bagi saya, jadi tolong pilih hari lain.",
+          "highlight": "都合が悪い"
+        }
+      ]
+    },
+    {
+      "id": "62f8a734-4a5b-41d7-9ad8-b16581c775f0",
+      "chapter": 14,
+      "expectedCore": {
+        "id": "62f8a734-4a5b-41d7-9ad8-b16581c775f0",
+        "module_id": "e6820110-bef2-47f0-b0c4-4a808d3bf51b",
+        "lesson_id": null,
+        "japanese": "ちょうどいい",
+        "reading": "ちょうどいい",
+        "romaji": null,
+        "indonesian": "pas; tepat",
+        "category": "表現",
+        "sort_order": 36
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "12f1bd90-1f5a-46bb-8a09-5dc8740391f4"
+      ],
+      "examples": [
+        {
+          "japanese": "このくつはおおきさがちょうどいいです。",
+          "reading": "このくつはおおきさがちょうどいいです。",
+          "indonesian": "Ukuran sepatu ini pas.",
+          "highlight": "ちょうどいい"
+        }
+      ]
+    },
+    {
+      "id": "9be29853-ea35-420a-8113-a65db924a73c",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "9be29853-ea35-420a-8113-a65db924a73c",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "目的",
+        "reading": "もくてき",
+        "romaji": null,
+        "indonesian": "tujuan",
+        "category": "名詞",
+        "sort_order": 1
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "このりょこうの目的は、にほんのぶんかをしることです。",
+          "reading": "このりょこうのもくてきは、にほんのぶんかをしることです。",
+          "indonesian": "Tujuan perjalanan ini adalah mengenal budaya Jepang.",
+          "highlight": "目的"
+        }
+      ]
+    },
+    {
+      "id": "f36413cd-6d03-4f98-bf0c-512a25c81041",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "f36413cd-6d03-4f98-bf0c-512a25c81041",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "ため",
+        "reading": "ため",
+        "romaji": null,
+        "indonesian": "kepentingan; tujuan",
+        "category": "名詞",
+        "sort_order": 2
+      },
+      "expectedNote": "Dalam bab ini dipakai untuk tujuan/manfaat, bukan sebab.",
+      "note": "Dalam bab ini dipakai untuk tujuan/manfaat, bukan sebab.",
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "にほんではたらくために、にほんごをべんきょうしています。",
+          "reading": "にほんではたらくために、にほんごをべんきょうしています。",
+          "indonesian": "Saya belajar bahasa Jepang untuk bekerja di Jepang.",
+          "highlight": "ため"
+        }
+      ]
+    },
+    {
+      "id": "61158664-a2fb-4fe2-8005-75acc5491e1a",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "61158664-a2fb-4fe2-8005-75acc5491e1a",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "道具",
+        "reading": "どうぐ",
+        "romaji": null,
+        "indonesian": "alat; perkakas",
+        "category": "名詞",
+        "sort_order": 3
+      },
+      "expectedNote": "Pengulangan terarah untuk menjelaskan kegunaan.",
+      "note": "Pengulangan terarah untuk menjelaskan kegunaan.",
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "この道具は、かみをきるのにつかいます。",
+          "reading": "このどうぐは、かみをきるのにつかいます。",
+          "indonesian": "Alat ini digunakan untuk memotong kertas.",
+          "highlight": "道具"
+        }
+      ]
+    },
+    {
+      "id": "37c47b48-5c57-4b7f-b8d9-abf5764915cb",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "37c47b48-5c57-4b7f-b8d9-abf5764915cb",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "材料",
+        "reading": "ざいりょう",
+        "romaji": null,
+        "indonesian": "bahan",
+        "category": "名詞",
+        "sort_order": 4
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "ケーキをつくるために、材料をかいにいきます。",
+          "reading": "ケーキをつくるために、ざいりょうをかいにいきます。",
+          "indonesian": "Saya pergi membeli bahan untuk membuat kue.",
+          "highlight": "材料"
+        }
+      ]
+    },
+    {
+      "id": "9ca5e1fe-440b-456f-95e6-264529093e2e",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "9ca5e1fe-440b-456f-95e6-264529093e2e",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "資料",
+        "reading": "しりょう",
+        "romaji": null,
+        "indonesian": "bahan informasi; dokumen rujukan",
+        "category": "名詞",
+        "sort_order": 5
+      },
+      "expectedNote": "Bedakan 資料 dari 材料: bahan pembuat sesuatu.",
+      "note": "Bedakan 資料 dari 材料: bahan pembuat sesuatu.",
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "かいぎでつかう資料をじゅんびしました。",
+          "reading": "かいぎでつかうしりょうをじゅんびしました。",
+          "indonesian": "Saya menyiapkan dokumen yang akan digunakan dalam rapat.",
+          "highlight": "資料"
+        }
+      ]
+    },
+    {
+      "id": "5931de4e-afdb-41ec-a574-b787104cdc19",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "5931de4e-afdb-41ec-a574-b787104cdc19",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "説明書",
+        "reading": "せつめいしょ",
+        "romaji": null,
+        "indonesian": "buku petunjuk",
+        "category": "名詞",
+        "sort_order": 6
+      },
+      "expectedNote": null,
+      "note": "きかい = mesin.",
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "きかいをつかうまえに、説明書をよんでください。",
+          "reading": "きかいをつかうまえに、せつめいしょをよんでください。",
+          "indonesian": "Tolong baca buku petunjuk sebelum menggunakan mesin.",
+          "highlight": "説明書"
+        }
+      ]
+    },
+    {
+      "id": "cd49c286-c98c-4470-950c-fd67ecf11c95",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "cd49c286-c98c-4470-950c-fd67ecf11c95",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "会場",
+        "reading": "かいじょう",
+        "romaji": null,
+        "indonesian": "tempat berlangsungnya acara",
+        "category": "名詞",
+        "sort_order": 9
+      },
+      "expectedNote": null,
+      "note": "まよう = tersesat/bingung menentukan arah.",
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "まよわないように、会場のちずをもっていきます。",
+          "reading": "まよわないように、かいじょうのちずをもっていきます。",
+          "indonesian": "Saya akan membawa peta tempat acara agar tidak tersesat.",
+          "highlight": "会場"
+        }
+      ]
+    },
+    {
+      "id": "74df2843-6282-4f3b-88c4-088d49ed0d4f",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "74df2843-6282-4f3b-88c4-088d49ed0d4f",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "申し込む",
+        "reading": "もうしこむ",
+        "romaji": null,
+        "indonesian": "mendaftar; mengajukan permohonan",
+        "category": "動詞",
+        "sort_order": 10
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "にほんごのしけんに申し込みました。",
+          "reading": "にほんごのしけんにもうしこみました。",
+          "indonesian": "Saya sudah mendaftar ujian bahasa Jepang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "e9373f5a-05d4-4372-b98f-d125d61f8fb4",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "e9373f5a-05d4-4372-b98f-d125d61f8fb4",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "準備する",
+        "reading": "じゅんびする",
+        "romaji": null,
+        "indonesian": "mempersiapkan",
+        "category": "動詞",
+        "sort_order": 11
+      },
+      "expectedNote": "Kelompok 3. Pengulangan terarah untuk menyatakan tujuan.",
+      "note": "Kelompok 3. Pengulangan terarah untuk menyatakan tujuan.",
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたすぐでかけられるように、にもつを準備しておきます。",
+          "reading": "あしたすぐでかけられるように、にもつをじゅんびしておきます。",
+          "indonesian": "Saya menyiapkan barang bawaan agar bisa langsung berangkat besok.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "dd564d64-ee77-4e17-976d-99df48c681b8",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "dd564d64-ee77-4e17-976d-99df48c681b8",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "役に立つ",
+        "reading": "やくにたつ",
+        "romaji": null,
+        "indonesian": "berguna; bermanfaat",
+        "category": "動詞",
+        "sort_order": 12
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "このじてんは、にほんごのべんきょうに役に立ちます。",
+          "reading": "このじてんは、にほんごのべんきょうにやくにたちます。",
+          "indonesian": "Kamus ini berguna untuk belajar bahasa Jepang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "50ed15e3-d8ce-4cdf-a25d-8d4e68fbb0a5",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "50ed15e3-d8ce-4cdf-a25d-8d4e68fbb0a5",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "かかる",
+        "reading": "かかる",
+        "romaji": null,
+        "indonesian": "memerlukan waktu atau biaya",
+        "category": "動詞",
+        "sort_order": 13
+      },
+      "expectedNote": "Kelompok 1. 時間がかかる / お金がかかる.",
+      "note": "Kelompok 1. 時間がかかる / お金がかかる.",
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "このレポートをかくのに、にじかんかかりました。",
+          "reading": "このレポートをかくのに、にじかんかかりました。",
+          "indonesian": "Saya memerlukan dua jam untuk menulis laporan ini.",
+          "highlight": null
+        },
+        {
+          "japanese": "このりょこうには、ごまんえんかかります。",
+          "reading": "このりょこうには、ごまんえんかかります。",
+          "indonesian": "Perjalanan ini memerlukan biaya lima puluh ribu yen.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "4562954f-0572-49a1-8fcf-c0509019a8ae",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "4562954f-0572-49a1-8fcf-c0509019a8ae",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "伝える",
+        "reading": "つたえる",
+        "romaji": null,
+        "indonesian": "menyampaikan",
+        "category": "動詞",
+        "sort_order": 14
+      },
+      "expectedNote": "Kelompok 2. Dipakai untuk instruksi tidak langsung.",
+      "note": "Kelompok 2. Dipakai untuk instruksi tidak langsung.",
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたはやくくるように、みんなに伝えてください。",
+          "reading": "あしたはやくくるように、みんなにつたえてください。",
+          "indonesian": "Tolong sampaikan kepada semua orang agar datang lebih awal besok.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "5c3a9da9-38de-41b4-bcc0-e99472d4a665",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "5c3a9da9-38de-41b4-bcc0-e99472d4a665",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "用",
+        "reading": "よう",
+        "romaji": null,
+        "indonesian": "urusan; kegunaan",
+        "category": "名詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "このつくえはしごとの用につかいます。",
+          "reading": "このつくえはしごとのようにつかいます。",
+          "indonesian": "Meja ini digunakan untuk keperluan pekerjaan.",
+          "highlight": "用"
+        }
+      ]
+    },
+    {
+      "id": "b7831d1a-c51f-45fd-8354-eed0a886ba41",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "b7831d1a-c51f-45fd-8354-eed0a886ba41",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "利用",
+        "reading": "りよう",
+        "romaji": null,
+        "indonesian": "pemanfaatan; penggunaan",
+        "category": "名詞・動詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "じかんをうまく利用して、まいにちべんきょうしています。",
+          "reading": "じかんをうまくりようして、まいにちべんきょうしています。",
+          "indonesian": "Saya memanfaatkan waktu dengan baik dan belajar setiap hari.",
+          "highlight": "利用"
+        }
+      ]
+    },
+    {
+      "id": "e36cdefa-821f-4864-9283-a254687cc005",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "e36cdefa-821f-4864-9283-a254687cc005",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "忘れ物",
+        "reading": "わすれもの",
+        "romaji": null,
+        "indonesian": "barang yang tertinggal atau terlupa dibawa",
+        "category": "名詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "忘れ物をしないように、かばんのなかをたしかめました。",
+          "reading": "わすれものをしないように、かばんのなかをたしかめました。",
+          "indonesian": "Saya memeriksa isi tas agar tidak ada barang yang lupa dibawa.",
+          "highlight": "忘れ物"
+        }
+      ]
+    },
+    {
+      "id": "ea57efe9-cf25-4098-8bf0-2273d7dc1e0f",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "ea57efe9-cf25-4098-8bf0-2273d7dc1e0f",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "用意",
+        "reading": "ようい",
+        "romaji": null,
+        "indonesian": "persiapan; kesiapan",
+        "category": "名詞・動詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "おきゃくさんのために、おちゃの用意をしています。",
+          "reading": "おきゃくさんのために、おちゃのよういをしています。",
+          "indonesian": "Saya sedang menyiapkan teh untuk tamu.",
+          "highlight": "用意"
+        }
+      ]
+    },
+    {
+      "id": "c5c8f3e0-bef6-49e2-a0a1-c45f11b0d782",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "c5c8f3e0-bef6-49e2-a0a1-c45f11b0d782",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "支度",
+        "reading": "したく",
+        "romaji": null,
+        "indonesian": "persiapan",
+        "category": "名詞・動詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "でかける支度をしてから、あさごはんをたべます。",
+          "reading": "でかけるしたくをしてから、あさごはんをたべます。",
+          "indonesian": "Saya sarapan setelah bersiap-siap untuk keluar rumah.",
+          "highlight": "支度"
+        }
+      ]
+    },
+    {
+      "id": "309b3fbd-05ac-4ab8-9eb1-317b66208cba",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "309b3fbd-05ac-4ab8-9eb1-317b66208cba",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "研究",
+        "reading": "けんきゅう",
+        "romaji": null,
+        "indonesian": "penelitian",
+        "category": "名詞・動詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": "れきし = sejarah.",
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "にほんのれきしをしるために、このだいがくで研究しています。",
+          "reading": "にほんのれきしをしるために、このだいがくでけんきゅうしています。",
+          "indonesian": "Saya melakukan penelitian di universitas ini untuk memahami sejarah Jepang.",
+          "highlight": "研究"
+        }
+      ]
+    },
+    {
+      "id": "6a26cdda-118e-47bd-aff9-d107181818da",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "6a26cdda-118e-47bd-aff9-d107181818da",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "講義",
+        "reading": "こうぎ",
+        "romaji": null,
+        "indonesian": "kuliah; ceramah",
+        "category": "名詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいの講義をききに、だいがくへいきました。",
+          "reading": "せんせいのこうぎをききに、だいがくへいきました。",
+          "indonesian": "Saya pergi ke universitas untuk mendengarkan kuliah dosen.",
+          "highlight": "講義"
+        }
+      ]
+    },
+    {
+      "id": "5e020563-c209-46b6-b92b-79d27ebc9c2e",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "5e020563-c209-46b6-b92b-79d27ebc9c2e",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "講堂",
+        "reading": "こうどう",
+        "romaji": null,
+        "indonesian": "aula",
+        "category": "名詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": "あつまる = berkumpul.",
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "がくせいはこうぎをきくために、講堂にあつまりました。",
+          "reading": "がくせいはこうぎをきくために、こうどうにあつまりました。",
+          "indonesian": "Para mahasiswa berkumpul di aula untuk mendengarkan kuliah.",
+          "highlight": "講堂"
+        }
+      ]
+    },
+    {
+      "id": "9c43dcaf-c577-43fb-984d-9cfd17d8e1be",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "9c43dcaf-c577-43fb-984d-9cfd17d8e1be",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "会議室",
+        "reading": "かいぎしつ",
+        "romaji": null,
+        "indonesian": "ruang rapat",
+        "category": "名詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "かいぎをするために、会議室をよやくしました。",
+          "reading": "かいぎをするために、かいぎしつをよやくしました。",
+          "indonesian": "Saya memesan ruang rapat untuk mengadakan rapat.",
+          "highlight": "会議室"
+        }
+      ]
+    },
+    {
+      "id": "c93d64fe-08e4-40aa-8f5a-fa9d56c5bcc6",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "c93d64fe-08e4-40aa-8f5a-fa9d56c5bcc6",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "事務所",
+        "reading": "じむしょ",
+        "romaji": null,
+        "indonesian": "kantor",
+        "category": "名詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "しりょうをとりに、事務所へもどります。",
+          "reading": "しりょうをとりに、じむしょへもどります。",
+          "indonesian": "Saya kembali ke kantor untuk mengambil dokumen.",
+          "highlight": "事務所"
+        }
+      ]
+    },
+    {
+      "id": "f422778a-e22d-4e25-a634-910d96c2bdf8",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "f422778a-e22d-4e25-a634-910d96c2bdf8",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "工業",
+        "reading": "こうぎょう",
+        "romaji": null,
+        "indonesian": "industri manufaktur",
+        "category": "名詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": "こうじょう = pabrik.",
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "このまちは工業がさかんで、こうじょうがたくさんあります。",
+          "reading": "このまちはこうぎょうがさかんで、こうじょうがたくさんあります。",
+          "indonesian": "Industri manufaktur di kota ini berkembang pesat dan terdapat banyak pabrik.",
+          "highlight": "工業"
+        }
+      ]
+    },
+    {
+      "id": "56083fab-f9f1-4edc-818d-80e7495cb836",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "56083fab-f9f1-4edc-818d-80e7495cb836",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "技術",
+        "reading": "ぎじゅつ",
+        "romaji": null,
+        "indonesian": "teknik; teknologi; keterampilan",
+        "category": "名詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": "まなぶ = belajar/mempelajari.",
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "あたらしい技術をまなぶために、にほんへいきます。",
+          "reading": "あたらしいぎじゅつをまなぶために、にほんへいきます。",
+          "indonesian": "Saya akan pergi ke Jepang untuk mempelajari teknologi baru.",
+          "highlight": "技術"
+        }
+      ]
+    },
+    {
+      "id": "41542263-7cf5-49c2-8b43-a4fd800a8c8b",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "41542263-7cf5-49c2-8b43-a4fd800a8c8b",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "テキスト",
+        "reading": "テキスト",
+        "romaji": null,
+        "indonesian": "buku teks; teks",
+        "category": "名詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "このテキストは、はつおんをれんしゅうするのにべんりです。",
+          "reading": "このテキストは、はつおんをれんしゅうするのにべんりです。",
+          "indonesian": "Buku teks ini praktis untuk berlatih pelafalan.",
+          "highlight": "テキスト"
+        }
+      ]
+    },
+    {
+      "id": "de682098-e980-4332-a4a8-8dc78ce24bc1",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "de682098-e980-4332-a4a8-8dc78ce24bc1",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "スクリーン",
+        "reading": "スクリーン",
+        "romaji": null,
+        "indonesian": "layar",
+        "category": "名詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "みんなにみえるように、おおきなスクリーンをつかいます。",
+          "reading": "みんなにみえるように、おおきなスクリーンをつかいます。",
+          "indonesian": "Kami menggunakan layar besar agar semua orang bisa melihatnya.",
+          "highlight": "スクリーン"
+        }
+      ]
+    },
+    {
+      "id": "2f17993d-2e86-404c-825d-f9666eea8a2e",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "2f17993d-2e86-404c-825d-f9666eea8a2e",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "辞典",
+        "reading": "じてん",
+        "romaji": null,
+        "indonesian": "kamus",
+        "category": "名詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "ことばのいみをしらべるために、辞典をつかいます。",
+          "reading": "ことばのいみをしらべるために、じてんをつかいます。",
+          "indonesian": "Saya menggunakan kamus untuk mencari arti kata.",
+          "highlight": "辞典"
+        }
+      ]
+    },
+    {
+      "id": "6c7fde07-97ef-4f82-b3b6-57f35e420943",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "6c7fde07-97ef-4f82-b3b6-57f35e420943",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "教会",
+        "reading": "きょうかい",
+        "romaji": null,
+        "indonesian": "gereja",
+        "category": "名詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "にちようびにかぞくと教会へいきます。",
+          "reading": "にちようびにかぞくときょうかいへいきます。",
+          "indonesian": "Saya pergi ke gereja bersama keluarga pada hari Minggu.",
+          "highlight": "教会"
+        }
+      ]
+    },
+    {
+      "id": "cf108e2e-2694-4290-84ae-4d5844b15f64",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "cf108e2e-2694-4290-84ae-4d5844b15f64",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "神社",
+        "reading": "じんじゃ",
+        "romaji": null,
+        "indonesian": "kuil Shinto",
+        "category": "名詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "にほんのぶんかをしるために、神社をけんぶつしました。",
+          "reading": "にほんのぶんかをしるために、じんじゃをけんぶつしました。",
+          "indonesian": "Saya mengunjungi kuil Shinto untuk mengenal budaya Jepang.",
+          "highlight": "神社"
+        }
+      ]
+    },
+    {
+      "id": "cf9b1684-c819-48cb-879a-fa64147ef048",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "cf9b1684-c819-48cb-879a-fa64147ef048",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "寺",
+        "reading": "てら",
+        "romaji": null,
+        "indonesian": "kuil Buddha",
+        "category": "名詞",
+        "sort_order": 30
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "この寺はふるくて、にわがうつくしいです。",
+          "reading": "このてらはふるくて、にわがうつくしいです。",
+          "indonesian": "Kuil Buddha ini tua dan tamannya indah.",
+          "highlight": "寺"
+        }
+      ]
+    },
+    {
+      "id": "24dcc7e2-3081-4ff7-a665-482830200e05",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "24dcc7e2-3081-4ff7-a665-482830200e05",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "水道",
+        "reading": "すいどう",
+        "romaji": null,
+        "indonesian": "saluran air; air ledeng",
+        "category": "名詞",
+        "sort_order": 31
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "ここの水道は、きのうからつかえません。",
+          "reading": "ここのすいどうは、きのうからつかえません。",
+          "indonesian": "Air ledeng di sini tidak bisa digunakan sejak kemarin.",
+          "highlight": "水道"
+        }
+      ]
+    },
+    {
+      "id": "9dc65700-d969-4633-bd6a-001edbfdd690",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "9dc65700-d969-4633-bd6a-001edbfdd690",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "電灯",
+        "reading": "でんとう",
+        "romaji": null,
+        "indonesian": "lampu listrik",
+        "category": "名詞",
+        "sort_order": 32
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "ほんをよむために、つくえの電灯をつけました。",
+          "reading": "ほんをよむために、つくえのでんとうをつけました。",
+          "indonesian": "Saya menyalakan lampu meja untuk membaca buku.",
+          "highlight": "電灯"
+        }
+      ]
+    },
+    {
+      "id": "c6860ad4-7474-4a7d-a69c-7a48c38e7abb",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "c6860ad4-7474-4a7d-a69c-7a48c38e7abb",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "暖房",
+        "reading": "だんぼう",
+        "romaji": null,
+        "indonesian": "pemanas ruangan",
+        "category": "名詞",
+        "sort_order": 33
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "へやをあたたかくするために、暖房をつけます。",
+          "reading": "へやをあたたかくするために、だんぼうをつけます。",
+          "indonesian": "Saya menyalakan pemanas untuk menghangatkan ruangan.",
+          "highlight": "暖房"
+        }
+      ]
+    },
+    {
+      "id": "445dbba4-a787-4c75-85e1-520721d8a829",
+      "chapter": 15,
+      "expectedCore": {
+        "id": "445dbba4-a787-4c75-85e1-520721d8a829",
+        "module_id": "15931cf4-a16b-471c-8b49-8230fddb4b43",
+        "lesson_id": null,
+        "japanese": "冷房",
+        "reading": "れいぼう",
+        "romaji": null,
+        "indonesian": "pendingin ruangan",
+        "category": "名詞",
+        "sort_order": 34
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "5f9a0827-edcc-4fbe-a077-aad02f160df6"
+      ],
+      "examples": [
+        {
+          "japanese": "へやがあついので、冷房をつけてください。",
+          "reading": "へやがあついので、れいぼうをつけてください。",
+          "indonesian": "Karena ruangan panas, tolong nyalakan pendingin ruangan.",
+          "highlight": "冷房"
+        }
+      ]
+    },
+    {
+      "id": "0a477bdb-dcb6-4288-b996-86543d13d2cd",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "0a477bdb-dcb6-4288-b996-86543d13d2cd",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "規則",
+        "reading": "きそく",
+        "romaji": null,
+        "indonesian": "peraturan",
+        "category": "名詞",
+        "sort_order": 1
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "がっこうの規則をまもらなくてはいけません。",
+          "reading": "がっこうのきそくをまもらなくてはいけません。",
+          "indonesian": "Kita harus menaati peraturan sekolah.",
+          "highlight": "規則"
+        }
+      ]
+    },
+    {
+      "id": "a033aab8-63e9-4727-b2c1-ffa2962dee90",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "a033aab8-63e9-4727-b2c1-ffa2962dee90",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "注意",
+        "reading": "ちゅうい",
+        "romaji": null,
+        "indonesian": "perhatian; peringatan",
+        "category": "名詞",
+        "sort_order": 2
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいの注意をよくきいてください。",
+          "reading": "せんせいのちゅういをよくきいてください。",
+          "indonesian": "Tolong dengarkan peringatan guru dengan baik.",
+          "highlight": "注意"
+        }
+      ]
+    },
+    {
+      "id": "790997bf-972b-4e0d-b443-5b32f9f9ee35",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "790997bf-972b-4e0d-b443-5b32f9f9ee35",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "健康",
+        "reading": "けんこう",
+        "romaji": null,
+        "indonesian": "kesehatan; sehat",
+        "category": "名詞・な形容詞",
+        "sort_order": 3
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "健康のために、まいにちあるくようにしています。",
+          "reading": "けんこうのために、まいにちあるくようにしています。",
+          "indonesian": "Saya berusaha berjalan setiap hari demi kesehatan.",
+          "highlight": "健康"
+        }
+      ]
+    },
+    {
+      "id": "b8fba9ba-0252-4139-88bf-f8e762b3c206",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "b8fba9ba-0252-4139-88bf-f8e762b3c206",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "病気",
+        "reading": "びょうき",
+        "romaji": null,
+        "indonesian": "sakit; penyakit",
+        "category": "名詞",
+        "sort_order": 4
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "病気のときは、むりをしないほうがいいです。",
+          "reading": "びょうきのときは、むりをしないほうがいいです。",
+          "indonesian": "Saat sakit, sebaiknya jangan memaksakan diri.",
+          "highlight": "病気"
+        }
+      ]
+    },
+    {
+      "id": "6c648d94-c560-464d-ac60-6181b6fcb87c",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "6c648d94-c560-464d-ac60-6181b6fcb87c",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "薬",
+        "reading": "くすり",
+        "romaji": null,
+        "indonesian": "obat",
+        "category": "名詞",
+        "sort_order": 5
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "この薬ののみかたを、いしゃにたしかめてください。",
+          "reading": "このくすりののみかたを、いしゃにたしかめてください。",
+          "indonesian": "Tolong pastikan kepada dokter cara minum obat ini.",
+          "highlight": "薬"
+        }
+      ]
+    },
+    {
+      "id": "d8594360-0865-46a2-92ea-02f79e86a92b",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "d8594360-0865-46a2-92ea-02f79e86a92b",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "無理",
+        "reading": "むり",
+        "romaji": null,
+        "indonesian": "tidak masuk akal; memaksakan diri",
+        "category": "名詞・な形容詞",
+        "sort_order": 7
+      },
+      "expectedNote": "無理をする: memaksakan diri.",
+      "note": "無理をする: memaksakan diri.",
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "つかれているときは、無理をしないでください。",
+          "reading": "つかれているときは、むりをしないでください。",
+          "indonesian": "Tolong jangan memaksakan diri saat lelah.",
+          "highlight": "無理"
+        }
+      ]
+    },
+    {
+      "id": "8213bff3-f4d6-4d64-aa79-d8e690d31dd1",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "8213bff3-f4d6-4d64-aa79-d8e690d31dd1",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "守る",
+        "reading": "まもる",
+        "romaji": null,
+        "indonesian": "menaati; melindungi",
+        "category": "動詞",
+        "sort_order": 10
+      },
+      "expectedNote": "Kelompok 1. 規則を守る: menaati aturan.",
+      "note": "Kelompok 1. 規則を守る: menaati aturan.\nいのち = nyawa/kehidupan.",
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "くるまをうんてんするときは、きそくを守ってください。",
+          "reading": "くるまをうんてんするときは、きそくをまもってください。",
+          "indonesian": "Tolong taati peraturan saat mengemudi.",
+          "highlight": null
+        },
+        {
+          "japanese": "こどものいのちを守ることはたいせつです。",
+          "reading": "こどものいのちをまもることはたいせつです。",
+          "indonesian": "Melindungi nyawa anak-anak itu penting.",
+          "highlight": "守る"
+        }
+      ]
+    },
+    {
+      "id": "5c330030-47ee-4906-93da-859627aca405",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "5c330030-47ee-4906-93da-859627aca405",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "気をつける",
+        "reading": "きをつける",
+        "romaji": null,
+        "indonesian": "berhati-hati",
+        "category": "動詞",
+        "sort_order": 11
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.\nぬれる = menjadi basah.",
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "みちがぬれているので、気をつけてあるいてください。",
+          "reading": "みちがぬれているので、きをつけてあるいてください。",
+          "indonesian": "Karena jalan basah, tolong berjalan dengan hati-hati.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "bdbda578-c44b-4f80-974d-986cb3806154",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "bdbda578-c44b-4f80-974d-986cb3806154",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "休憩する",
+        "reading": "きゅうけいする",
+        "romaji": null,
+        "indonesian": "beristirahat sejenak",
+        "category": "動詞",
+        "sort_order": 12
+      },
+      "expectedNote": "Kelompok 3.",
+      "note": "Kelompok 3.",
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "つかれたら、すこし休憩したほうがいいですよ。",
+          "reading": "つかれたら、すこしきゅうけいしたほうがいいですよ。",
+          "indonesian": "Jika lelah, sebaiknya beristirahat sebentar.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "c11d1111-9dc0-452f-81cc-b65395e4a3a2",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "c11d1111-9dc0-452f-81cc-b65395e4a3a2",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "具合",
+        "reading": "ぐあい",
+        "romaji": null,
+        "indonesian": "kondisi; keadaan kesehatan",
+        "category": "名詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "具合がわるければ、むりをしないでやすんでください。",
+          "reading": "ぐあいがわるければ、むりをしないでやすんでください。",
+          "indonesian": "Jika kondisi badan kurang baik, jangan memaksakan diri dan beristirahatlah.",
+          "highlight": "具合"
+        }
+      ]
+    },
+    {
+      "id": "507d6eb6-75b8-4283-b4a4-b56003878091",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "507d6eb6-75b8-4283-b4a4-b56003878091",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "禁止する",
+        "reading": "きんしする",
+        "romaji": null,
+        "indonesian": "melarang",
+        "category": "動詞",
+        "sort_order": 13
+      },
+      "expectedNote": "Kelompok 3.",
+      "note": "Kelompok 3.\nじゅぎょうちゅう = selama pelajaran berlangsung.",
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "このがっこうは、じゅぎょうちゅうのでんわを禁止しています。",
+          "reading": "このがっこうは、じゅぎょうちゅうのでんわをきんししています。",
+          "indonesian": "Sekolah ini melarang penggunaan telepon saat pelajaran.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "5fe30860-73d3-456b-be58-40de3ea2bbbf",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "5fe30860-73d3-456b-be58-40de3ea2bbbf",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "怪我",
+        "reading": "けが",
+        "romaji": null,
+        "indonesian": "cedera",
+        "category": "名詞・動詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "怪我をしないように、ここでははしらないでください。",
+          "reading": "けがをしないように、ここでははしらないでください。",
+          "indonesian": "Tolong jangan berlari di sini agar tidak cedera.",
+          "highlight": "怪我"
+        }
+      ]
+    },
+    {
+      "id": "4c5299ea-8750-478f-8740-2544b74aeb24",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "4c5299ea-8750-478f-8740-2544b74aeb24",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "入院",
+        "reading": "にゅういん",
+        "romaji": null,
+        "indonesian": "masuk rumah sakit",
+        "category": "名詞・動詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": "そふ = kakek sendiri.",
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "そふはびょうきで入院しています。",
+          "reading": "そふはびょうきでにゅういんしています。",
+          "indonesian": "Kakek saya dirawat di rumah sakit karena sakit.",
+          "highlight": "入院"
+        }
+      ]
+    },
+    {
+      "id": "aeb7cd69-89d0-47c0-942d-be74b4b6dcae",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "aeb7cd69-89d0-47c0-942d-be74b4b6dcae",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "片付ける",
+        "reading": "かたづける",
+        "romaji": null,
+        "indonesian": "membereskan",
+        "category": "動詞",
+        "sort_order": 15
+      },
+      "expectedNote": "Kelompok 2. Pengulangan terarah untuk instruksi.",
+      "note": "Kelompok 2. Pengulangan terarah untuk instruksi.",
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "あそんだあとで、おもちゃを片付けなさい。",
+          "reading": "あそんだあとで、おもちゃをかたづけなさい。",
+          "indonesian": "Bereskan mainan setelah bermain.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "0fecd76a-ceb7-4bfa-85ec-9b1993e1da23",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "0fecd76a-ceb7-4bfa-85ec-9b1993e1da23",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "すぐ",
+        "reading": "すぐ",
+        "romaji": null,
+        "indonesian": "segera; langsung",
+        "category": "副詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "ようじがおわったら、すぐかえってきてください。",
+          "reading": "ようじがおわったら、すぐかえってきてください。",
+          "indonesian": "Setelah urusan Anda selesai, tolong segera kembali.",
+          "highlight": "すぐ"
+        }
+      ]
+    },
+    {
+      "id": "6956a110-e1e1-4791-b410-43898c2c9195",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "6956a110-e1e1-4791-b410-43898c2c9195",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "退院",
+        "reading": "たいいん",
+        "romaji": null,
+        "indonesian": "keluar dari rumah sakit",
+        "category": "名詞・動詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "ちちはあした退院するよていです。",
+          "reading": "ちちはあしたたいいんするよていです。",
+          "indonesian": "Ayah saya dijadwalkan keluar dari rumah sakit besok.",
+          "highlight": "退院"
+        }
+      ]
+    },
+    {
+      "id": "22bdfbba-554d-4281-9034-808eb96c1cea",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "22bdfbba-554d-4281-9034-808eb96c1cea",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "注射",
+        "reading": "ちゅうしゃ",
+        "romaji": null,
+        "indonesian": "suntikan",
+        "category": "名詞・動詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": "うける = menerima/menjalani.",
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "びょういんで注射をうけました。",
+          "reading": "びょういんでちゅうしゃをうけました。",
+          "indonesian": "Saya mendapat suntikan di rumah sakit.",
+          "highlight": "注射"
+        }
+      ]
+    },
+    {
+      "id": "05d4a3b2-eea9-4b86-a565-9cd79b51e4d2",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "05d4a3b2-eea9-4b86-a565-9cd79b51e4d2",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "歯医者",
+        "reading": "はいしゃ",
+        "romaji": null,
+        "indonesian": "dokter gigi",
+        "category": "名詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "はがいたければ、歯医者にいったほうがいいですよ。",
+          "reading": "はがいたければ、はいしゃにいったほうがいいですよ。",
+          "indonesian": "Jika gigi sakit, sebaiknya pergi ke dokter gigi.",
+          "highlight": "歯医者"
+        }
+      ]
+    },
+    {
+      "id": "b07fedeb-f7b0-4e0a-9758-037c999678a9",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "b07fedeb-f7b0-4e0a-9758-037c999678a9",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "治る",
+        "reading": "なおる",
+        "romaji": null,
+        "indonesian": "sembuh",
+        "category": "動詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "けがが治るまで、うんどうはしないでください。",
+          "reading": "けががなおるまで、うんどうはしないでください。",
+          "indonesian": "Tolong jangan berolahraga sampai cederanya sembuh.",
+          "highlight": "治る"
+        }
+      ]
+    },
+    {
+      "id": "d31cf356-9826-4fba-999c-7645b49a0404",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "d31cf356-9826-4fba-999c-7645b49a0404",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "直る",
+        "reading": "なおる",
+        "romaji": null,
+        "indonesian": "menjadi baik; selesai diperbaiki",
+        "category": "動詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "このとけいは、まだ直っていません。",
+          "reading": "このとけいは、まだなおっていません。",
+          "indonesian": "Jam ini belum selesai diperbaiki.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "9cf814c0-404f-43e0-ba6f-01142c735fe5",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "9cf814c0-404f-43e0-ba6f-01142c735fe5",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "警察",
+        "reading": "けいさつ",
+        "romaji": null,
+        "indonesian": "polisi; kepolisian",
+        "category": "名詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "さいふをなくしたので、警察にそうだんしました。",
+          "reading": "さいふをなくしたので、けいさつにそうだんしました。",
+          "indonesian": "Saya berkonsultasi dengan polisi karena kehilangan dompet.",
+          "highlight": "警察"
+        }
+      ]
+    },
+    {
+      "id": "f117d445-0d7e-4044-a05c-99b297f952c6",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "f117d445-0d7e-4044-a05c-99b297f952c6",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "法律",
+        "reading": "ほうりつ",
+        "romaji": null,
+        "indonesian": "hukum",
+        "category": "名詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "このくにの法律をまもらなくてはいけません。",
+          "reading": "このくにのほうりつをまもらなくてはいけません。",
+          "indonesian": "Kita harus menaati hukum negara ini.",
+          "highlight": "法律"
+        }
+      ]
+    },
+    {
+      "id": "638f9c83-3fc1-4675-9d1f-c75da69ee609",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "638f9c83-3fc1-4675-9d1f-c75da69ee609",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "火事",
+        "reading": "かじ",
+        "romaji": null,
+        "indonesian": "kebakaran",
+        "category": "名詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "このビルで火事がありました。",
+          "reading": "このビルでかじがありました。",
+          "indonesian": "Terjadi kebakaran di gedung ini.",
+          "highlight": "火事"
+        }
+      ]
+    },
+    {
+      "id": "a61d015e-572d-4de7-96ab-4b44c378db34",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "a61d015e-572d-4de7-96ab-4b44c378db34",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "地震",
+        "reading": "じしん",
+        "romaji": null,
+        "indonesian": "gempa bumi",
+        "category": "名詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": "おきる = terjadi; まわり = sekitar.",
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "地震がおきたときは、まわりにきをつけてください。",
+          "reading": "じしんがおきたときは、まわりにきをつけてください。",
+          "indonesian": "Saat terjadi gempa, perhatikan keadaan sekitar.",
+          "highlight": "地震"
+        }
+      ]
+    },
+    {
+      "id": "377eef49-5676-4712-8805-a791fd0285f2",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "377eef49-5676-4712-8805-a791fd0285f2",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "非常口",
+        "reading": "ひじょうぐち",
+        "romaji": null,
+        "indonesian": "pintu darurat",
+        "category": "名詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "へやにはいったら、非常口をたしかめてください。",
+          "reading": "へやにはいったら、ひじょうぐちをたしかめてください。",
+          "indonesian": "Setelah masuk ruangan, periksa letak pintu darurat.",
+          "highlight": "非常口"
+        }
+      ]
+    },
+    {
+      "id": "956c4022-a19e-4fd3-9bcc-daf1464d6bbf",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "956c4022-a19e-4fd3-9bcc-daf1464d6bbf",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "非常",
+        "reading": "ひじょう",
+        "romaji": null,
+        "indonesian": "darurat; luar biasa",
+        "category": "名詞・な形容詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "非常のときにつかうでんわは、ここにあります。",
+          "reading": "ひじょうのときにつかうでんわは、ここにあります。",
+          "indonesian": "Telepon untuk keadaan darurat ada di sini.",
+          "highlight": "非常"
+        }
+      ]
+    },
+    {
+      "id": "93588fc5-2042-4b37-b891-0b28482289c0",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "93588fc5-2042-4b37-b891-0b28482289c0",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "事故",
+        "reading": "じこ",
+        "romaji": null,
+        "indonesian": "kecelakaan",
+        "category": "名詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "きのう、このみちでくるまの事故がありました。",
+          "reading": "きのう、このみちでくるまのじこがありました。",
+          "indonesian": "Kemarin terjadi kecelakaan mobil di jalan ini.",
+          "highlight": "事故"
+        }
+      ]
+    },
+    {
+      "id": "8384093e-e2ba-4321-a391-9c346ac0e4d0",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "8384093e-e2ba-4321-a391-9c346ac0e4d0",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "倒れる",
+        "reading": "たおれる",
+        "romaji": null,
+        "indonesian": "jatuh; roboh",
+        "category": "動詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "かぜで倒れたきをかたづけるひつようがあります。",
+          "reading": "かぜでたおれたきをかたづけるひつようがあります。",
+          "indonesian": "Pohon yang roboh karena angin perlu disingkirkan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "775f7fbd-9e94-4a00-8a4c-e850b2123393",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "775f7fbd-9e94-4a00-8a4c-e850b2123393",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "亡くなる",
+        "reading": "なくなる",
+        "romaji": null,
+        "indonesian": "meninggal dunia",
+        "category": "動詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": "そふ = kakek sendiri. 亡くなる berbeda dari 無くなる, yang berarti hilang atau habis.",
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "そふはきょねん亡くなりました。",
+          "reading": "そふはきょねんなくなりました。",
+          "indonesian": "Kakek saya meninggal tahun lalu.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "0f8b03c4-48e7-4168-855e-9d4c85466e42",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "0f8b03c4-48e7-4168-855e-9d4c85466e42",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "騒ぐ",
+        "reading": "さわぐ",
+        "romaji": null,
+        "indonesian": "membuat keributan",
+        "category": "動詞",
+        "sort_order": 30
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "びょういんでは騒がないでください。",
+          "reading": "びょういんではさわがないでください。",
+          "indonesian": "Tolong jangan membuat keributan di rumah sakit.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "8e2afaf1-0215-458a-8952-d706d0314744",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "8e2afaf1-0215-458a-8952-d706d0314744",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "火傷",
+        "reading": "やけど",
+        "romaji": null,
+        "indonesian": "luka bakar",
+        "category": "名詞・動詞",
+        "sort_order": 31
+      },
+      "expectedNote": null,
+      "note": "なべ = panci.",
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "あついなべでてに火傷をしました。",
+          "reading": "あついなべでてにやけどをしました。",
+          "indonesian": "Tangan saya mengalami luka bakar karena panci panas.",
+          "highlight": "火傷"
+        }
+      ]
+    },
+    {
+      "id": "205227f5-23a2-40a4-aa63-e81afb47b807",
+      "chapter": 16,
+      "expectedCore": {
+        "id": "205227f5-23a2-40a4-aa63-e81afb47b807",
+        "module_id": "2f6d7bc0-0668-4c19-b52c-0ce627aee300",
+        "lesson_id": null,
+        "japanese": "救急車",
+        "reading": "きゅうきゅうしゃ",
+        "romaji": null,
+        "indonesian": "ambulans",
+        "category": "名詞",
+        "sort_order": 32
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "fc6979c8-182b-418f-9ff6-5ea7f8a62a64"
+      ],
+      "examples": [
+        {
+          "japanese": "救急車がきたので、みちをあけました。",
+          "reading": "きゅうきゅうしゃがきたので、みちをあけました。",
+          "indonesian": "Saya memberi jalan karena ambulans datang.",
+          "highlight": "救急車"
+        }
+      ]
+    },
+    {
+      "id": "462bc863-0279-4aeb-9428-e08b55118c06",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "462bc863-0279-4aeb-9428-e08b55118c06",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "あげる",
+        "reading": "あげる",
+        "romaji": null,
+        "indonesian": "memberi kepada orang lain",
+        "category": "動詞",
+        "sort_order": 1
+      },
+      "expectedNote": "Kelompok 2. Pemberiは penerimaに bendaをあげる.",
+      "note": "Kelompok 2. Pemberiは penerimaに bendaをあげる.",
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしはおとうとにほんをあげました。",
+          "reading": "わたしはおとうとにほんをあげました。",
+          "indonesian": "Saya memberi buku kepada adik laki-laki saya.",
+          "highlight": null
+        },
+        {
+          "japanese": "たなかさんはさとうさんにはなをあげました。",
+          "reading": "たなかさんはさとうさんにはなをあげました。",
+          "indonesian": "Tanaka memberi bunga kepada Sato.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "1dabc426-27fd-4358-b94a-b4affdafaae6",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "1dabc426-27fd-4358-b94a-b4affdafaae6",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "もらう",
+        "reading": "もらう",
+        "romaji": null,
+        "indonesian": "menerima",
+        "category": "動詞",
+        "sort_order": 2
+      },
+      "expectedNote": "Kelompok 1. Penerimaは pemberiに／から bendaをもらう.",
+      "note": "Kelompok 1. Penerimaは pemberiに／から bendaをもらう.",
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしはともだちからてがみをもらいました。",
+          "reading": "わたしはともだちからてがみをもらいました。",
+          "indonesian": "Saya menerima surat dari teman.",
+          "highlight": null
+        },
+        {
+          "japanese": "あねはかいしゃのひとにおみやげをもらいました。",
+          "reading": "あねはかいしゃのひとにおみやげをもらいました。",
+          "indonesian": "Kakak perempuan saya menerima oleh-oleh dari rekan kerjanya.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "aaf86460-2012-48e7-98cb-e74cc8e12897",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "aaf86460-2012-48e7-98cb-e74cc8e12897",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "くれる",
+        "reading": "くれる",
+        "romaji": null,
+        "indonesian": "memberi kepada saya atau pihak saya",
+        "category": "動詞",
+        "sort_order": 3
+      },
+      "expectedNote": "Kelompok 2. Pelaku adalah pemberi; arah manfaat menuju pihak pembicara.",
+      "note": "Kelompok 2. Pelaku adalah pemberi; arah manfaat menuju pihak pembicara.\nえほん = buku bergambar.",
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちがわたしにはなをくれました。",
+          "reading": "ともだちがわたしにはなをくれました。",
+          "indonesian": "Teman memberi saya bunga.",
+          "highlight": null
+        },
+        {
+          "japanese": "たなかさんがわたしのむすめにえほんをくれました。",
+          "reading": "たなかさんがわたしのむすめにえほんをくれました。",
+          "indonesian": "Tanaka memberi buku bergambar kepada putri saya.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "7dc910ab-ea2f-4a45-9648-0216ce0ab23d",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "7dc910ab-ea2f-4a45-9648-0216ce0ab23d",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "贈る",
+        "reading": "おくる",
+        "romaji": null,
+        "indonesian": "menghadiahkan",
+        "category": "動詞",
+        "sort_order": 4
+      },
+      "expectedNote": "Kelompok 1. Bedakan 贈る dengan 送る: mengirim.",
+      "note": "Kelompok 1. Bedakan 贈る dengan 送る: mengirim.\n贈る menonjolkan hadiah/persembahan; 送る menonjolkan pengiriman atau pengantaran.",
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "ははのたんじょうびに、はなを贈りました。",
+          "reading": "ははのたんじょうびに、はなをおくりました。",
+          "indonesian": "Saya menghadiahkan bunga pada ulang tahun ibu.",
+          "highlight": null
+        },
+        {
+          "japanese": "そつぎょうしたいもうとに、ペンを贈りました。",
+          "reading": "そつぎょうしたいもうとに、ペンをおくりました。",
+          "indonesian": "Saya menghadiahkan pena kepada adik perempuan yang sudah lulus.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "0d99722a-856f-42bf-bc08-28266ce864e5",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "0d99722a-856f-42bf-bc08-28266ce864e5",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "送る",
+        "reading": "おくる",
+        "romaji": null,
+        "indonesian": "mengirim",
+        "category": "動詞",
+        "sort_order": 5
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.\n送る menonjolkan pengiriman/pengantaran; 贈る menonjolkan pemberian hadiah.",
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "くにのかぞくに、にほんのしゃしんを送りました。",
+          "reading": "くにのかぞくに、にほんのしゃしんをおくりました。",
+          "indonesian": "Saya mengirim foto Jepang kepada keluarga di negara asal.",
+          "highlight": null
+        },
+        {
+          "japanese": "せんせいにレポートをメールで送りました。",
+          "reading": "せんせいにレポートをメールでおくりました。",
+          "indonesian": "Saya mengirim laporan kepada guru melalui surel.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "fb8f903f-b4dc-41d4-8f31-8b221e5505a3",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "fb8f903f-b4dc-41d4-8f31-8b221e5505a3",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "受け取る",
+        "reading": "うけとる",
+        "romaji": null,
+        "indonesian": "menerima sesuatu yang diserahkan",
+        "category": "動詞",
+        "sort_order": 6
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちからにもつを受け取りました。",
+          "reading": "ともだちからにもつをうけとりました。",
+          "indonesian": "Saya menerima paket yang diserahkan teman.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "aa65d67d-348f-4daf-b31f-9721ac431c61",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "aa65d67d-348f-4daf-b31f-9721ac431c61",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "贈り物",
+        "reading": "おくりもの",
+        "romaji": null,
+        "indonesian": "hadiah",
+        "category": "名詞",
+        "sort_order": 12
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "そつぎょうの贈り物に、このペンをもらいました。",
+          "reading": "そつぎょうのおくりものに、このペンをもらいました。",
+          "indonesian": "Saya menerima pena ini sebagai hadiah kelulusan.",
+          "highlight": "贈り物"
+        }
+      ]
+    },
+    {
+      "id": "b2d5d5b9-7160-461e-9b4d-c547559aba74",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "b2d5d5b9-7160-461e-9b4d-c547559aba74",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "お祝い",
+        "reading": "おいわい",
+        "romaji": null,
+        "indonesian": "ucapan atau hadiah perayaan",
+        "category": "名詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "にゅうがくのお祝いに、そふがかばんをくれました。",
+          "reading": "にゅうがくのおいわいに、そふがかばんをくれました。",
+          "indonesian": "Kakek memberi saya tas sebagai hadiah perayaan masuk sekolah.",
+          "highlight": "お祝い"
+        }
+      ]
+    },
+    {
+      "id": "ccac31af-0d62-4f3b-9f75-c520b58e1743",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "ccac31af-0d62-4f3b-9f75-c520b58e1743",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "アクセサリー",
+        "reading": "アクセサリー",
+        "romaji": null,
+        "indonesian": "aksesori",
+        "category": "名詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": "てづくり = buatan tangan.",
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "あねはてづくりのアクセサリーをくれました。",
+          "reading": "あねはてづくりのアクセサリーをくれました。",
+          "indonesian": "Kakak perempuan saya memberi aksesori buatan tangan.",
+          "highlight": "アクセサリー"
+        }
+      ]
+    },
+    {
+      "id": "87011f2b-b2ea-4cf3-91ad-7e7b18641812",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "87011f2b-b2ea-4cf3-91ad-7e7b18641812",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "おもちゃ",
+        "reading": "おもちゃ",
+        "romaji": null,
+        "indonesian": "mainan",
+        "category": "名詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしはむすこにおもちゃをあげました。",
+          "reading": "わたしはむすこにおもちゃをあげました。",
+          "indonesian": "Saya memberi mainan kepada putra saya.",
+          "highlight": "おもちゃ"
+        }
+      ]
+    },
+    {
+      "id": "93eb9fa7-b045-4c61-a057-353d0d83de6e",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "93eb9fa7-b045-4c61-a057-353d0d83de6e",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "お礼",
+        "reading": "おれい",
+        "romaji": null,
+        "indonesian": "ucapan atau tanda terima kasih",
+        "category": "名詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいにお礼のてがみをかきました。",
+          "reading": "せんせいにおれいのてがみをかきました。",
+          "indonesian": "Saya menulis surat terima kasih kepada guru.",
+          "highlight": "お礼"
+        }
+      ]
+    },
+    {
+      "id": "269245d8-c290-40aa-a532-6e99b5bdf4d5",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "269245d8-c290-40aa-a532-6e99b5bdf4d5",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "指輪",
+        "reading": "ゆびわ",
+        "romaji": null,
+        "indonesian": "cincin",
+        "category": "名詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "つまのたんじょうびに、指輪をおくりました。",
+          "reading": "つまのたんじょうびに、ゆびわをおくりました。",
+          "indonesian": "Saya menghadiahkan cincin pada ulang tahun istri saya.",
+          "highlight": "指輪"
+        }
+      ]
+    },
+    {
+      "id": "061d9ad4-8df1-4277-8f54-cc8758a92094",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "061d9ad4-8df1-4277-8f54-cc8758a92094",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "誕生日",
+        "reading": "たんじょうび",
+        "romaji": null,
+        "indonesian": "ulang tahun",
+        "category": "名詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "誕生日に、ともだちがケーキをくれました。",
+          "reading": "たんじょうびに、ともだちがケーキをくれました。",
+          "indonesian": "Teman memberi saya kue pada hari ulang tahun saya.",
+          "highlight": "誕生日"
+        }
+      ]
+    },
+    {
+      "id": "4de0a449-9ed9-4e6f-9fd6-cf297b347858",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "4de0a449-9ed9-4e6f-9fd6-cf297b347858",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "品物",
+        "reading": "しなもの",
+        "romaji": null,
+        "indonesian": "barang; produk",
+        "category": "名詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "みせで品物をえらんでから、おかねをはらいます。",
+          "reading": "みせでしなものをえらんでから、おかねをはらいます。",
+          "indonesian": "Saya memilih barang di toko, lalu membayarnya.",
+          "highlight": "品物"
+        }
+      ]
+    },
+    {
+      "id": "bc4d019b-d9f3-4f14-98ac-f1a48efa8814",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "bc4d019b-d9f3-4f14-98ac-f1a48efa8814",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "ハンドバッグ",
+        "reading": "ハンドバッグ",
+        "romaji": null,
+        "indonesian": "tas tangan",
+        "category": "名詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "はははあねからハンドバッグをもらいました。",
+          "reading": "はははあねからハンドバッグをもらいました。",
+          "indonesian": "Ibu menerima tas tangan dari kakak perempuan saya.",
+          "highlight": "ハンドバッグ"
+        }
+      ]
+    },
+    {
+      "id": "9fd0183a-a16b-47d7-af21-ee1ad4edee60",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "9fd0183a-a16b-47d7-af21-ee1ad4edee60",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "親戚",
+        "reading": "しんせき",
+        "romaji": null,
+        "indonesian": "kerabat",
+        "category": "名詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "にちようびに、親戚がうちにあつまります。",
+          "reading": "にちようびに、しんせきがうちにあつまります。",
+          "indonesian": "Kerabat akan berkumpul di rumah saya pada hari Minggu.",
+          "highlight": "親戚"
+        }
+      ]
+    },
+    {
+      "id": "438986ad-4e76-4b6c-913b-09e48fe90cb9",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "438986ad-4e76-4b6c-913b-09e48fe90cb9",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "お見舞い",
+        "reading": "おみまい",
+        "romaji": null,
+        "indonesian": "kunjungan atau hadiah untuk orang sakit",
+        "category": "名詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "にゅういんしているともだちのお見舞いにいきました。",
+          "reading": "にゅういんしているともだちのおみまいにいきました。",
+          "indonesian": "Saya menjenguk teman yang dirawat di rumah sakit.",
+          "highlight": "お見舞い"
+        }
+      ]
+    },
+    {
+      "id": "fb84a5fb-c495-4b09-8012-e4e0cca712fe",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "fb84a5fb-c495-4b09-8012-e4e0cca712fe",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "先輩",
+        "reading": "せんぱい",
+        "romaji": null,
+        "indonesian": "senior dalam sekolah atau tempat kerja",
+        "category": "名詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "かいしゃの先輩からにほんごのほんをもらいました。",
+          "reading": "かいしゃのせんぱいからにほんごのほんをもらいました。",
+          "indonesian": "Saya menerima buku bahasa Jepang dari senior di tempat kerja.",
+          "highlight": "先輩"
+        }
+      ]
+    },
+    {
+      "id": "b3f9a93e-b12f-428d-86d1-146234f04c09",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "b3f9a93e-b12f-428d-86d1-146234f04c09",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "お嬢さん",
+        "reading": "おじょうさん",
+        "romaji": null,
+        "indonesian": "putri orang lain; nona muda",
+        "category": "名詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "たなかさんのお嬢さんは、ことしだいがくににゅうがくします。",
+          "reading": "たなかさんのおじょうさんは、ことしだいがくににゅうがくします。",
+          "indonesian": "Putri Tanaka akan masuk universitas tahun ini.",
+          "highlight": "お嬢さん"
+        }
+      ]
+    },
+    {
+      "id": "73cba3ab-6f95-4dcf-b2ae-579cd9df3ad5",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "73cba3ab-6f95-4dcf-b2ae-579cd9df3ad5",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "ご主人",
+        "reading": "ごしゅじん",
+        "romaji": null,
+        "indonesian": "suami orang lain",
+        "category": "名詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "ご主人は、おんがくがすきですか。",
+          "reading": "ごしゅじんは、おんがくがすきですか。",
+          "indonesian": "Apakah suami Anda menyukai musik?",
+          "highlight": "ご主人"
+        }
+      ]
+    },
+    {
+      "id": "5a2823a8-3b19-4084-b7aa-4a614860fd76",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "5a2823a8-3b19-4084-b7aa-4a614860fd76",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "妻",
+        "reading": "つま",
+        "romaji": null,
+        "indonesian": "istri sendiri",
+        "category": "名詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしの妻は、ほんをよむのがすきです。",
+          "reading": "わたしのつまは、ほんをよむのがすきです。",
+          "indonesian": "Istri saya suka membaca buku.",
+          "highlight": "妻"
+        }
+      ]
+    },
+    {
+      "id": "bd17b29b-4959-4289-bb2a-a5b525fd17ba",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "bd17b29b-4959-4289-bb2a-a5b525fd17ba",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "夫",
+        "reading": "おっと",
+        "romaji": null,
+        "indonesian": "suami sendiri",
+        "category": "名詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "夫にたんじょうびのプレゼントをあげました。",
+          "reading": "おっとにたんじょうびのプレゼントをあげました。",
+          "indonesian": "Saya memberi suami saya hadiah ulang tahun.",
+          "highlight": "夫"
+        }
+      ]
+    },
+    {
+      "id": "bd15cca9-ae30-4fc1-986e-1c8e6d0f3c78",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "bd15cca9-ae30-4fc1-986e-1c8e6d0f3c78",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "息子",
+        "reading": "むすこ",
+        "romaji": null,
+        "indonesian": "putra sendiri",
+        "category": "名詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "息子は、そぼからほんをもらいました。",
+          "reading": "むすこは、そぼからほんをもらいました。",
+          "indonesian": "Putra saya menerima buku dari neneknya.",
+          "highlight": "息子"
+        }
+      ]
+    },
+    {
+      "id": "2e624973-eae1-4544-a5d7-46bcb04bb708",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "2e624973-eae1-4544-a5d7-46bcb04bb708",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "娘",
+        "reading": "むすめ",
+        "romaji": null,
+        "indonesian": "putri sendiri",
+        "category": "名詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "娘がわたしにえをくれました。",
+          "reading": "むすめがわたしにえをくれました。",
+          "indonesian": "Putri saya memberi saya lukisan.",
+          "highlight": "娘"
+        }
+      ]
+    },
+    {
+      "id": "e4679e37-feff-4053-961b-37f1e64ebd73",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "e4679e37-feff-4053-961b-37f1e64ebd73",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "祖父",
+        "reading": "そふ",
+        "romaji": null,
+        "indonesian": "kakek sendiri",
+        "category": "名詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "祖父からむかしのしゃしんをもらいました。",
+          "reading": "そふからむかしのしゃしんをもらいました。",
+          "indonesian": "Saya menerima foto lama dari kakek saya.",
+          "highlight": "祖父"
+        }
+      ]
+    },
+    {
+      "id": "fb70c991-814f-49fc-ba74-312ef5d3e2ec",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "fb70c991-814f-49fc-ba74-312ef5d3e2ec",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "祖母",
+        "reading": "そぼ",
+        "romaji": null,
+        "indonesian": "nenek sendiri",
+        "category": "名詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "祖母は、わたしのたんじょうびをいつもおぼえています。",
+          "reading": "そぼは、わたしのたんじょうびをいつもおぼえています。",
+          "indonesian": "Nenek saya selalu mengingat ulang tahun saya.",
+          "highlight": "祖母"
+        }
+      ]
+    },
+    {
+      "id": "52b46fe9-27f9-4b35-9a0b-2ecfcae75301",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "52b46fe9-27f9-4b35-9a0b-2ecfcae75301",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "赤ん坊",
+        "reading": "あかんぼう",
+        "romaji": null,
+        "indonesian": "bayi",
+        "category": "名詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "あねの赤ん坊に、ちいさいふくをあげました。",
+          "reading": "あねのあかんぼうに、ちいさいふくをあげました。",
+          "indonesian": "Saya memberi baju kecil kepada bayi kakak perempuan saya.",
+          "highlight": "赤ん坊"
+        }
+      ]
+    },
+    {
+      "id": "4518399d-d713-4ab8-8f87-f819a327afe9",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "4518399d-d713-4ab8-8f87-f819a327afe9",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "お金持ち",
+        "reading": "おかねもち",
+        "romaji": null,
+        "indonesian": "orang kaya",
+        "category": "名詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "あのひとはお金持ちですが、ふるいくるまをつかっています。",
+          "reading": "あのひとはおかねもちですが、ふるいくるまをつかっています。",
+          "indonesian": "Orang itu kaya, tetapi menggunakan mobil lama.",
+          "highlight": "お金持ち"
+        }
+      ]
+    },
+    {
+      "id": "497a9f9a-8320-4b7e-bd6d-617f6a4dcfd2",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "497a9f9a-8320-4b7e-bd6d-617f6a4dcfd2",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "家内",
+        "reading": "かない",
+        "romaji": null,
+        "indonesian": "istri sendiri",
+        "category": "名詞",
+        "sort_order": 29
+      },
+      "expectedNote": "Istilah tradisional; 妻 lebih netral.",
+      "note": "Istilah tradisional; 妻 lebih netral.\n家内 adalah istilah tradisional untuk istri sendiri; 妻 lebih netral.",
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "家内は、としょかんではたらいています。",
+          "reading": "かないは、としょかんではたらいています。",
+          "indonesian": "Istri saya bekerja di perpustakaan.",
+          "highlight": "家内"
+        }
+      ]
+    },
+    {
+      "id": "0631850b-68b9-4a78-b85f-ed8b95032f42",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "0631850b-68b9-4a78-b85f-ed8b95032f42",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "贈り物をする",
+        "reading": "おくりものをする",
+        "romaji": null,
+        "indonesian": "memberikan hadiah",
+        "category": "表現",
+        "sort_order": 30
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "そつぎょうしたともだちに贈り物をしました。",
+          "reading": "そつぎょうしたともだちにおくりものをしました。",
+          "indonesian": "Saya memberikan hadiah kepada teman yang sudah lulus.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "ab63f954-4922-4dda-a761-0ceaffb259b4",
+      "chapter": 17,
+      "expectedCore": {
+        "id": "ab63f954-4922-4dda-a761-0ceaffb259b4",
+        "module_id": "4a76eb18-bf1f-4d2b-86bd-fd3a98d3c4a2",
+        "lesson_id": null,
+        "japanese": "お礼を言う",
+        "reading": "おれいをいう",
+        "romaji": null,
+        "indonesian": "mengucapkan terima kasih",
+        "category": "表現",
+        "sort_order": 31
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a192f78-8650-48db-bcd6-0d71f91318d1"
+      ],
+      "examples": [
+        {
+          "japanese": "プレゼントをもらったので、ともだちにお礼を言いました。",
+          "reading": "プレゼントをもらったので、ともだちにおれいをいいました。",
+          "indonesian": "Saya mengucapkan terima kasih kepada teman karena menerima hadiah.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "0e94ce9f-836c-4ff2-b172-5bd8a67ec6dd",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "0e94ce9f-836c-4ff2-b172-5bd8a67ec6dd",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "手伝う",
+        "reading": "てつだう",
+        "romaji": null,
+        "indonesian": "membantu pekerjaan seseorang",
+        "category": "動詞",
+        "sort_order": 1
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちがひっこしを手伝ってくれました。",
+          "reading": "ともだちがひっこしをてつだってくれました。",
+          "indonesian": "Teman membantu saya pindah rumah.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "23b6c710-9245-4614-b37f-dca94678fb0c",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "23b6c710-9245-4614-b37f-dca94678fb0c",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "助ける",
+        "reading": "たすける",
+        "romaji": null,
+        "indonesian": "menolong; menyelamatkan",
+        "category": "動詞",
+        "sort_order": 2
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.",
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "こまっているとき、となりのひとが助けてくれました。",
+          "reading": "こまっているとき、となりのひとがたすけてくれました。",
+          "indonesian": "Tetangga menolong saya saat saya sedang kesulitan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "b7d367df-78fa-4def-bcdc-50f7f7f89931",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "b7d367df-78fa-4def-bcdc-50f7f7f89931",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "頼む",
+        "reading": "たのむ",
+        "romaji": null,
+        "indonesian": "meminta; mengandalkan",
+        "category": "動詞",
+        "sort_order": 3
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちににもつをはこぶのを頼みました。",
+          "reading": "ともだちににもつをはこぶのをたのみました。",
+          "indonesian": "Saya meminta teman membantu mengangkut barang bawaan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "9cb5c151-39c4-4c1e-8743-9ca8517bc6e5",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "9cb5c151-39c4-4c1e-8743-9ca8517bc6e5",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "お願いする",
+        "reading": "おねがいする",
+        "romaji": null,
+        "indonesian": "meminta; memohon",
+        "category": "動詞",
+        "sort_order": 4
+      },
+      "expectedNote": "Kelompok 3.",
+      "note": "Kelompok 3.\nチェック = pemeriksaan.",
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいにレポートのチェックをお願いしました。",
+          "reading": "せんせいにレポートのチェックをおねがいしました。",
+          "indonesian": "Saya meminta guru memeriksa laporan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "0df20ce1-9f45-43ff-bd13-c3ba674dc588",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "0df20ce1-9f45-43ff-bd13-c3ba674dc588",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "迎える",
+        "reading": "むかえる",
+        "romaji": null,
+        "indonesian": "menjemput; menyambut",
+        "category": "動詞",
+        "sort_order": 5
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.",
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "えきでともだちを迎えました。",
+          "reading": "えきでともだちをむかえました。",
+          "indonesian": "Saya menjemput teman di stasiun.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "fbe754b0-cf93-4016-b618-2d7d093d7b04",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "fbe754b0-cf93-4016-b618-2d7d093d7b04",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "直す",
+        "reading": "なおす",
+        "romaji": null,
+        "indonesian": "memperbaiki",
+        "category": "動詞",
+        "sort_order": 7
+      },
+      "expectedNote": "Kelompok 1. Dipakai sebagai kata kerja mandiri; gabungan Vます-stem＋直す merupakan pengayaan.",
+      "note": "Kelompok 1. Dipakai sebagai kata kerja mandiri; gabungan Vます-stem＋直す merupakan pengayaan.",
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "あにがわたしのじてんしゃを直してくれました。",
+          "reading": "あにがわたしのじてんしゃをなおしてくれました。",
+          "indonesian": "Kakak laki-laki saya memperbaiki sepeda saya.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "eb29c760-d997-42fd-9108-f422b6f520b9",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "eb29c760-d997-42fd-9108-f422b6f520b9",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "引っ越し",
+        "reading": "ひっこし",
+        "romaji": null,
+        "indonesian": "pindah tempat tinggal",
+        "category": "名詞",
+        "sort_order": 10
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "引っ越しをてつだってくれて、ありがとう。",
+          "reading": "ひっこしをてつだってくれて、ありがとう。",
+          "indonesian": "Terima kasih sudah membantu saya pindah rumah.",
+          "highlight": "引っ越し"
+        }
+      ]
+    },
+    {
+      "id": "f2dd2287-bb84-4683-a874-f8227b590b5d",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "f2dd2287-bb84-4683-a874-f8227b590b5d",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "世話",
+        "reading": "せわ",
+        "romaji": null,
+        "indonesian": "bantuan; perawatan",
+        "category": "名詞・動詞",
+        "sort_order": 12
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちにねこの世話をしてもらいました。",
+          "reading": "ともだちにねこのせわをしてもらいました。",
+          "indonesian": "Saya mendapat bantuan teman untuk merawat kucing.",
+          "highlight": "世話"
+        }
+      ]
+    },
+    {
+      "id": "264f34d4-e234-4ba1-991b-e470e584ebdc",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "264f34d4-e234-4ba1-991b-e470e584ebdc",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "連絡する",
+        "reading": "れんらくする",
+        "romaji": null,
+        "indonesian": "menghubungi; memberi kabar",
+        "category": "動詞",
+        "sort_order": 12
+      },
+      "expectedNote": "Kelompok 3.",
+      "note": "Kelompok 3.\nつく = tiba.",
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "ついたら、わたしに連絡してくれませんか。",
+          "reading": "ついたら、わたしにれんらくしてくれませんか。",
+          "indonesian": "Bisakah Anda menghubungi saya setelah tiba?",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "369a0288-509d-45df-bc0e-b78322e4e6bc",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "369a0288-509d-45df-bc0e-b78322e4e6bc",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "招待",
+        "reading": "しょうたい",
+        "romaji": null,
+        "indonesian": "undangan",
+        "category": "名詞・動詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちがパーティーに招待してくれました。",
+          "reading": "ともだちがパーティーにしょうたいしてくれました。",
+          "indonesian": "Teman mengundang saya ke pesta.",
+          "highlight": "招待"
+        }
+      ]
+    },
+    {
+      "id": "2df267e3-351d-4150-866f-4e777b664442",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "2df267e3-351d-4150-866f-4e777b664442",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "迷惑",
+        "reading": "めいわく",
+        "romaji": null,
+        "indonesian": "gangguan; kerepotan bagi orang lain",
+        "category": "名詞・な形容詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "よるおそくでんわして、迷惑をかけてしまいました。",
+          "reading": "よるおそくでんわして、めいわくをかけてしまいました。",
+          "indonesian": "Saya merepotkan orang lain karena menelepon larut malam.",
+          "highlight": "迷惑"
+        }
+      ]
+    },
+    {
+      "id": "8ebd3e77-6aa8-4e2f-b3f4-d23890248187",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "8ebd3e77-6aa8-4e2f-b3f4-d23890248187",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "遠慮",
+        "reading": "えんりょ",
+        "romaji": null,
+        "indonesian": "menahan diri; sungkan",
+        "category": "名詞・動詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "遠慮しないで、わたしにたのんでください。",
+          "reading": "えんりょしないで、わたしにたのんでください。",
+          "indonesian": "Jangan sungkan meminta bantuan kepada saya.",
+          "highlight": "遠慮"
+        }
+      ]
+    },
+    {
+      "id": "ff07400e-e558-46d2-9941-66744b68a6d7",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "ff07400e-e558-46d2-9941-66744b68a6d7",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "感謝する",
+        "reading": "かんしゃする",
+        "romaji": null,
+        "indonesian": "berterima kasih; bersyukur",
+        "category": "動詞",
+        "sort_order": 15
+      },
+      "expectedNote": "Kelompok 3.",
+      "note": "Kelompok 3.",
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "てつだってくれたみなさんに感謝しています。",
+          "reading": "てつだってくれたみなさんにかんしゃしています。",
+          "indonesian": "Saya berterima kasih kepada semua orang yang sudah membantu.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "97601504-a649-4b4a-914a-72a454efb3dd",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "97601504-a649-4b4a-914a-72a454efb3dd",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "邪魔",
+        "reading": "じゃま",
+        "romaji": null,
+        "indonesian": "gangguan; menghalangi",
+        "category": "名詞・な形容詞・動詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "ここににもつをおくと、みんなの邪魔になります。",
+          "reading": "ここににもつをおくと、みんなのじゃまになります。",
+          "indonesian": "Jika barang bawaan diletakkan di sini, orang-orang akan terhalang.",
+          "highlight": "邪魔"
+        }
+      ]
+    },
+    {
+      "id": "c80c1125-47da-47c0-9dc0-539db2884baf",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "c80c1125-47da-47c0-9dc0-539db2884baf",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "後輩",
+        "reading": "こうはい",
+        "romaji": null,
+        "indonesian": "junior dalam sekolah atau tempat kerja",
+        "category": "名詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "かいしゃの後輩に、このしごとのやりかたをおしえてあげました。",
+          "reading": "かいしゃのこうはいに、このしごとのやりかたをおしえてあげました。",
+          "indonesian": "Saya mengajarkan cara melakukan pekerjaan ini kepada junior di tempat kerja.",
+          "highlight": "後輩"
+        }
+      ]
+    },
+    {
+      "id": "7f696430-2cd7-4af9-ae6c-40bdbff7ce3e",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "7f696430-2cd7-4af9-ae6c-40bdbff7ce3e",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "構う",
+        "reading": "かまう",
+        "romaji": null,
+        "indonesian": "mempedulikan; mempermasalahkan",
+        "category": "動詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしはここでまっても構いません。",
+          "reading": "わたしはここでまってもかまいません。",
+          "indonesian": "Saya tidak keberatan menunggu di sini.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "1c631c1b-db44-4cb3-b8e2-88f7aa5599c7",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "1c631c1b-db44-4cb3-b8e2-88f7aa5599c7",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "届ける",
+        "reading": "とどける",
+        "romaji": null,
+        "indonesian": "mengantarkan; melaporkan",
+        "category": "動詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちがわすれものをいえまで届けてくれました。",
+          "reading": "ともだちがわすれものをいえまでとどけてくれました。",
+          "indonesian": "Teman mengantarkan barang saya yang tertinggal sampai ke rumah.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "f338d42f-afcf-4019-bd6e-45e11b4e438c",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "f338d42f-afcf-4019-bd6e-45e11b4e438c",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "連れる",
+        "reading": "つれる",
+        "romaji": null,
+        "indonesian": "mengajak atau membawa seseorang",
+        "category": "動詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "あにはわたしをコンサートに連れていってくれました。",
+          "reading": "あにはわたしをコンサートにつれていってくれました。",
+          "indonesian": "Kakak laki-laki saya mengajak saya ke konser.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "86d33810-b963-4c15-98cf-4223898b3fd5",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "86d33810-b963-4c15-98cf-4223898b3fd5",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "訪ねる",
+        "reading": "たずねる",
+        "romaji": null,
+        "indonesian": "mengunjungi",
+        "category": "動詞",
+        "sort_order": 19
+      },
+      "expectedNote": "Bedakan dari 尋ねる: bertanya.",
+      "note": "Bedakan dari 尋ねる: bertanya.",
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "にちようびに、ともだちのいえを訪ねました。",
+          "reading": "にちようびに、ともだちのいえをたずねました。",
+          "indonesian": "Saya mengunjungi rumah teman pada hari Minggu.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "eeb62427-0a93-48ec-8d01-679ad9aa1964",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "eeb62427-0a93-48ec-8d01-679ad9aa1964",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "相談",
+        "reading": "そうだん",
+        "romaji": null,
+        "indonesian": "konsultasi; berdiskusi",
+        "category": "名詞・動詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "こまったことがあれば、わたしに相談してください。",
+          "reading": "こまったことがあれば、わたしにそうだんしてください。",
+          "indonesian": "Jika ada hal yang menyulitkan, silakan berdiskusi dengan saya.",
+          "highlight": "相談"
+        }
+      ]
+    },
+    {
+      "id": "361ad7a2-5786-4d4e-8876-989cfe3486d5",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "361ad7a2-5786-4d4e-8876-989cfe3486d5",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "返事",
+        "reading": "へんじ",
+        "romaji": null,
+        "indonesian": "jawaban; balasan",
+        "category": "名詞・動詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "メールの返事をかくのをてつだってもらいました。",
+          "reading": "メールのへんじをかくのをてつだってもらいました。",
+          "indonesian": "Saya mendapat bantuan untuk menulis balasan surel.",
+          "highlight": "返事"
+        }
+      ]
+    },
+    {
+      "id": "e8a8dd43-cc35-4074-94ad-0d34bc0491a7",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "e8a8dd43-cc35-4074-94ad-0d34bc0491a7",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "留守",
+        "reading": "るす",
+        "romaji": null,
+        "indonesian": "ketidakhadiran; rumah kosong",
+        "category": "名詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちのいえをたずねましたが、留守でした。",
+          "reading": "ともだちのいえをたずねましたが、るすでした。",
+          "indonesian": "Saya mengunjungi rumah teman, tetapi dia sedang tidak di rumah.",
+          "highlight": "留守"
+        }
+      ]
+    },
+    {
+      "id": "157588b6-ba21-48c2-ad2f-c03160f44ad4",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "157588b6-ba21-48c2-ad2f-c03160f44ad4",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "お宅",
+        "reading": "おたく",
+        "romaji": null,
+        "indonesian": "rumah Anda, bentuk sopan",
+        "category": "名詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "あした、お宅にいってもいいですか。",
+          "reading": "あした、おたくにいってもいいですか。",
+          "indonesian": "Bolehkah saya datang ke rumah Anda besok?",
+          "highlight": "お宅"
+        }
+      ]
+    },
+    {
+      "id": "5d342e87-edd7-4ee0-ac03-020adf7a6921",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "5d342e87-edd7-4ee0-ac03-020adf7a6921",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "ご馳走",
+        "reading": "ごちそう",
+        "romaji": null,
+        "indonesian": "hidangan istimewa; jamuan",
+        "category": "名詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちがおいしいりょうりをご馳走してくれました。",
+          "reading": "ともだちがおいしいりょうりをごちそうしてくれました。",
+          "indonesian": "Teman menjamu saya dengan masakan lezat.",
+          "highlight": "ご馳走"
+        }
+      ]
+    },
+    {
+      "id": "2ffe41be-720c-495b-b9c0-b2dd3eb7d219",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "2ffe41be-720c-495b-b9c0-b2dd3eb7d219",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "挨拶",
+        "reading": "あいさつ",
+        "romaji": null,
+        "indonesian": "salam; sapaan",
+        "category": "名詞・動詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "あたらしいせんせいに挨拶をしました。",
+          "reading": "あたらしいせんせいにあいさつをしました。",
+          "indonesian": "Saya menyapa guru baru.",
+          "highlight": "挨拶"
+        }
+      ]
+    },
+    {
+      "id": "987a5982-22b3-443e-b7b9-6ee70231a906",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "987a5982-22b3-443e-b7b9-6ee70231a906",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "訪問",
+        "reading": "ほうもん",
+        "romaji": null,
+        "indonesian": "kunjungan",
+        "category": "名詞・動詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたの訪問をたのしみにしています。",
+          "reading": "あしたのほうもんをたのしみにしています。",
+          "indonesian": "Saya menantikan kunjungan besok.",
+          "highlight": "訪問"
+        }
+      ]
+    },
+    {
+      "id": "d0c6b3f5-437d-4d5e-a0eb-84fadb4bf9c3",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "d0c6b3f5-437d-4d5e-a0eb-84fadb4bf9c3",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "世話になる",
+        "reading": "せわになる",
+        "romaji": null,
+        "indonesian": "menerima bantuan atau perhatian",
+        "category": "表現",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "にほんでは、ともだちのかぞくに世話になりました。",
+          "reading": "にほんでは、ともだちのかぞくにせわになりました。",
+          "indonesian": "Selama di Jepang, saya menerima banyak bantuan dari keluarga teman.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "c4c0b5f5-202f-4265-a07a-7b8b905b4423",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "c4c0b5f5-202f-4265-a07a-7b8b905b4423",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "遠慮なく",
+        "reading": "えんりょなく",
+        "romaji": null,
+        "indonesian": "tanpa sungkan",
+        "category": "副詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "わからないことは、遠慮なくきいてください。",
+          "reading": "わからないことは、えんりょなくきいてください。",
+          "indonesian": "Silakan tanyakan hal yang tidak dimengerti tanpa sungkan.",
+          "highlight": "遠慮なく"
+        }
+      ]
+    },
+    {
+      "id": "bf25f49c-51f2-4f76-85c5-fee32c954109",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "bf25f49c-51f2-4f76-85c5-fee32c954109",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "お邪魔する",
+        "reading": "おじゃまする",
+        "romaji": null,
+        "indonesian": "berkunjung; permisi mengganggu",
+        "category": "表現",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "あした、せんせいのおたくにお邪魔します。",
+          "reading": "あした、せんせいのおたくにおじゃまします。",
+          "indonesian": "Besok saya akan berkunjung ke rumah guru.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "b329c91c-87f0-49b3-8744-8cd57f2b78d6",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "b329c91c-87f0-49b3-8744-8cd57f2b78d6",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "留守番",
+        "reading": "るすばん",
+        "romaji": null,
+        "indonesian": "menjaga rumah saat penghuni pergi",
+        "category": "名詞・動詞",
+        "sort_order": 30
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "でかけているあいだ、留守番をしてもらえませんか。",
+          "reading": "でかけているあいだ、るすばんをしてもらえませんか。",
+          "indonesian": "Bisakah Anda menjaga rumah selama saya keluar?",
+          "highlight": "留守番"
+        }
+      ]
+    },
+    {
+      "id": "d9e15bd7-a084-4ecf-8997-536d4d436a7b",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "d9e15bd7-a084-4ecf-8997-536d4d436a7b",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "迎え",
+        "reading": "むかえ",
+        "romaji": null,
+        "indonesian": "jemputan",
+        "category": "名詞",
+        "sort_order": 31
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "えきまで迎えにきてくれて、ありがとう。",
+          "reading": "えきまでむかえにきてくれて、ありがとう。",
+          "indonesian": "Terima kasih sudah datang menjemput saya di stasiun.",
+          "highlight": "迎え"
+        }
+      ]
+    },
+    {
+      "id": "d99ca519-a15f-4d52-b0a5-b42f242d8fda",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "d99ca519-a15f-4d52-b0a5-b42f242d8fda",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "見送る",
+        "reading": "みおくる",
+        "romaji": null,
+        "indonesian": "mengantar kepergian; melepas",
+        "category": "動詞",
+        "sort_order": 32
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちはえきでわたしを見送ってくれました。",
+          "reading": "ともだちはえきでわたしをみおくってくれました。",
+          "indonesian": "Teman mengantar kepergian saya di stasiun.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "889d7497-6e9b-410c-9802-b8355e91dfc9",
+      "chapter": 18,
+      "expectedCore": {
+        "id": "889d7497-6e9b-410c-9802-b8355e91dfc9",
+        "module_id": "778fbd4d-82b0-41b8-bd36-e9f995df9fc3",
+        "lesson_id": null,
+        "japanese": "頼み",
+        "reading": "たのみ",
+        "romaji": null,
+        "indonesian": "permintaan; andalan",
+        "category": "名詞",
+        "sort_order": 33
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "0c0c466a-3b79-44ad-8a5d-ef843dd5af17"
+      ],
+      "examples": [
+        {
+          "japanese": "ひとつ頼みがあります。このはこをはこんでもらえませんか。",
+          "reading": "ひとつたのみがあります。このはこをはこんでもらえませんか。",
+          "indonesian": "Saya punya satu permintaan. Bisakah Anda mengangkut kotak ini?",
+          "highlight": "頼み"
+        }
+      ]
+    },
+    {
+      "id": "9f08b980-f413-4c44-9dfe-c0f00f089868",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "9f08b980-f413-4c44-9dfe-c0f00f089868",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "人数",
+        "reading": "にんずう",
+        "romaji": null,
+        "indonesian": "jumlah orang",
+        "category": "名詞",
+        "sort_order": 1
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "パーティーにくる人数をたしかめます。",
+          "reading": "パーティーにくるにんずうをたしかめます。",
+          "indonesian": "Saya memastikan jumlah orang yang akan datang ke pesta.",
+          "highlight": "人数"
+        }
+      ]
+    },
+    {
+      "id": "9519c00e-045d-4f92-99ca-7a4f40e5820e",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "9519c00e-045d-4f92-99ca-7a4f40e5820e",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "出席",
+        "reading": "しゅっせき",
+        "romaji": null,
+        "indonesian": "kehadiran",
+        "category": "名詞",
+        "sort_order": 5
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたのかいぎに出席するかどうか、おしえてください。",
+          "reading": "あしたのかいぎにしゅっせきするかどうか、おしえてください。",
+          "indonesian": "Tolong beri tahu apakah Anda akan hadir dalam rapat besok.",
+          "highlight": "出席"
+        }
+      ]
+    },
+    {
+      "id": "3ecd99f6-a008-4ae4-af9a-bb9c16fa28d9",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "3ecd99f6-a008-4ae4-af9a-bb9c16fa28d9",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "欠席",
+        "reading": "けっせき",
+        "romaji": null,
+        "indonesian": "ketidakhadiran",
+        "category": "名詞",
+        "sort_order": 6
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "じゅぎょうを欠席するときは、せんせいにれんらくしてください。",
+          "reading": "じゅぎょうをけっせきするときは、せんせいにれんらくしてください。",
+          "indonesian": "Saat tidak masuk pelajaran, tolong hubungi guru.",
+          "highlight": "欠席"
+        }
+      ]
+    },
+    {
+      "id": "d677e9f3-a23d-4b4e-8def-38384869ee35",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "d677e9f3-a23d-4b4e-8def-38384869ee35",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "残り",
+        "reading": "のこり",
+        "romaji": null,
+        "indonesian": "sisa",
+        "category": "名詞",
+        "sort_order": 7
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "このケーキの残りは、あしたたべます。",
+          "reading": "このケーキののこりは、あしたたべます。",
+          "indonesian": "Saya akan memakan sisa kue ini besok.",
+          "highlight": "残り"
+        }
+      ]
+    },
+    {
+      "id": "af5bfe2b-b5a2-4e08-b3d4-2791e1d9a65f",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "af5bfe2b-b5a2-4e08-b3d4-2791e1d9a65f",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "足りる",
+        "reading": "たりる",
+        "romaji": null,
+        "indonesian": "cukup; mencukupi",
+        "category": "動詞",
+        "sort_order": 10
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.",
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "このおかねで足りるかどうか、たしかめます。",
+          "reading": "このおかねでたりるかどうか、たしかめます。",
+          "indonesian": "Saya memastikan apakah uang ini cukup.",
+          "highlight": "足りる"
+        },
+        {
+          "japanese": "いすが足りないので、となりのへやからもってきてください。",
+          "reading": "いすがたりないので、となりのへやからもってきてください。",
+          "indonesian": "Kursinya tidak cukup, jadi tolong bawa dari kamar sebelah.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "e65a8f2d-2fca-4d55-a92c-bc706c01cd5b",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "e65a8f2d-2fca-4d55-a92c-bc706c01cd5b",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "残る",
+        "reading": "のこる",
+        "romaji": null,
+        "indonesian": "tersisa; tinggal",
+        "category": "動詞",
+        "sort_order": 11
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "おかねがどのくらい残っているか、しらべます。",
+          "reading": "おかねがどのくらいのこっているか、しらべます。",
+          "indonesian": "Saya memeriksa berapa banyak uang yang tersisa.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "2da529af-a18b-453c-a205-7fee11cf0ee1",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "2da529af-a18b-453c-a205-7fee11cf0ee1",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "割合",
+        "reading": "わりあい",
+        "romaji": null,
+        "indonesian": "perbandingan; persentase",
+        "category": "名詞",
+        "sort_order": 12
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "クラスのなかで、じてんしゃでくるひとの割合はどのくらいですか。",
+          "reading": "クラスのなかで、じてんしゃでくるひとのわりあいはどのくらいですか。",
+          "indonesian": "Berapa proporsi orang di kelas yang datang dengan sepeda?",
+          "highlight": "割合"
+        }
+      ]
+    },
+    {
+      "id": "4f9512d5-d255-4cfe-8c75-76e61bbbc6cf",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "4f9512d5-d255-4cfe-8c75-76e61bbbc6cf",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "確認する",
+        "reading": "かくにんする",
+        "romaji": null,
+        "indonesian": "memeriksa untuk memastikan",
+        "category": "動詞",
+        "sort_order": 12
+      },
+      "expectedNote": "Kelompok 3.",
+      "note": "Kelompok 3.",
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "かいぎがなんじにはじまるか、確認します。",
+          "reading": "かいぎがなんじにはじまるか、かくにんします。",
+          "indonesian": "Saya memastikan pukul berapa rapat dimulai.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "e3d8443b-5142-4a19-bd54-e66651523ce2",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "e3d8443b-5142-4a19-bd54-e66651523ce2",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "倍",
+        "reading": "ばい",
+        "romaji": null,
+        "indonesian": "kali lipat",
+        "category": "名詞・接尾詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "このかばんは、あのかばんのに倍のねだんです。",
+          "reading": "このかばんは、あのかばんのにばいのねだんです。",
+          "indonesian": "Harga tas ini dua kali harga tas itu.",
+          "highlight": "倍"
+        }
+      ]
+    },
+    {
+      "id": "7f44dfe2-b3ee-4f27-882f-46f200894ad2",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "7f44dfe2-b3ee-4f27-882f-46f200894ad2",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "尋ねる",
+        "reading": "たずねる",
+        "romaji": null,
+        "indonesian": "bertanya; menanyakan",
+        "category": "動詞",
+        "sort_order": 13
+      },
+      "expectedNote": "Kelompok 2. Bedakan 尋ねる dari 訪ねる: mengunjungi.",
+      "note": "Kelompok 2. Bedakan 尋ねる dari 訪ねる: mengunjungi.",
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "えきがどこにあるか、ちかくのひとに尋ねました。",
+          "reading": "えきがどこにあるか、ちかくのひとにたずねました。",
+          "indonesian": "Saya bertanya kepada orang di dekat saya di mana letak stasiun.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "0bf58397-6a54-4a72-baae-b14674fb57c5",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "0bf58397-6a54-4a72-baae-b14674fb57c5",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "億",
+        "reading": "おく",
+        "romaji": null,
+        "indonesian": "seratus juta",
+        "category": "名詞・数詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "このあたらしいビルは、さん億えんかかったそうです。",
+          "reading": "このあたらしいビルは、さんおくえんかかったそうです。",
+          "indonesian": "Katanya gedung baru ini menghabiskan biaya tiga ratus juta yen.",
+          "highlight": "億"
+        }
+      ]
+    },
+    {
+      "id": "94501c3a-d266-4d5e-9861-a89aa87782e8",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "94501c3a-d266-4d5e-9861-a89aa87782e8",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "調べる",
+        "reading": "しらべる",
+        "romaji": null,
+        "indonesian": "memeriksa; mencari informasi",
+        "category": "動詞",
+        "sort_order": 14
+      },
+      "expectedNote": "Kelompok 2. Pengulangan terarah untuk hal yang belum diketahui.",
+      "note": "Kelompok 2. Pengulangan terarah untuk hal yang belum diketahui.",
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "このまちになんにんすんでいるか、調べています。",
+          "reading": "このまちになんにんすんでいるか、しらべています。",
+          "indonesian": "Saya sedang mencari tahu berapa orang yang tinggal di kota ini.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "842d99b3-d0dc-436a-857c-4a7c6367bf4b",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "842d99b3-d0dc-436a-857c-4a7c6367bf4b",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "ほとんど",
+        "reading": "ほとんど",
+        "romaji": null,
+        "indonesian": "hampir seluruhnya; hampir tidak",
+        "category": "副詞",
+        "sort_order": 15
+      },
+      "expectedNote": "Dengan predikat negatif berarti hampir tidak.",
+      "note": "Dengan predikat negatif berarti hampir tidak.",
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "しゅくだいはほとんどおわりました。",
+          "reading": "しゅくだいはほとんどおわりました。",
+          "indonesian": "Pekerjaan rumah saya hampir seluruhnya selesai.",
+          "highlight": "ほとんど"
+        },
+        {
+          "japanese": "きのうはいそがしくて、ほとんどやすめませんでした。",
+          "reading": "きのうはいそがしくて、ほとんどやすめませんでした。",
+          "indonesian": "Kemarin saya sibuk sehingga hampir tidak bisa beristirahat.",
+          "highlight": "ほとんど"
+        }
+      ]
+    },
+    {
+      "id": "6fc264fe-9484-4c38-a8c3-3493c0d6eee2",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "6fc264fe-9484-4c38-a8c3-3493c0d6eee2",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "人口",
+        "reading": "じんこう",
+        "romaji": null,
+        "indonesian": "jumlah penduduk",
+        "category": "名詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "このまちの人口がどのくらいか、しらべてください。",
+          "reading": "このまちのじんこうがどのくらいか、しらべてください。",
+          "indonesian": "Tolong cari tahu berapa jumlah penduduk kota ini.",
+          "highlight": "人口"
+        }
+      ]
+    },
+    {
+      "id": "ac41eb03-6bc9-4110-a22a-373601bf06f9",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "ac41eb03-6bc9-4110-a22a-373601bf06f9",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "たった",
+        "reading": "たった",
+        "romaji": null,
+        "indonesian": "hanya; cuma",
+        "category": "副詞",
+        "sort_order": 16
+      },
+      "expectedNote": "Menekankan kecilnya jumlah.",
+      "note": "Menekankan kecilnya jumlah.",
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "パーティーにきたのは、たったさんにんでした。",
+          "reading": "パーティーにきたのは、たったさんにんでした。",
+          "indonesian": "Yang datang ke pesta hanya tiga orang.",
+          "highlight": "たった"
+        }
+      ]
+    },
+    {
+      "id": "f7cd5ca2-3785-4daa-bdbf-9c7205c120af",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "f7cd5ca2-3785-4daa-bdbf-9c7205c120af",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "市民",
+        "reading": "しみん",
+        "romaji": null,
+        "indonesian": "warga kota",
+        "category": "名詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "おおぜいの市民がおまつりにさんかしました。",
+          "reading": "おおぜいのしみんがおまつりにさんかしました。",
+          "indonesian": "Banyak warga kota ikut dalam festival.",
+          "highlight": "市民"
+        }
+      ]
+    },
+    {
+      "id": "1ec75cdb-5de4-469a-813a-4f254c336e78",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "1ec75cdb-5de4-469a-813a-4f254c336e78",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "両方",
+        "reading": "りょうほう",
+        "romaji": null,
+        "indonesian": "kedua pihak; keduanya",
+        "category": "名詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "どちらがすきかききましたが、両方すきだそうです。",
+          "reading": "どちらがすきかききましたが、りょうほうすきだそうです。",
+          "indonesian": "Saya menanyakan mana yang disukai, tetapi katanya dia menyukai keduanya.",
+          "highlight": "両方"
+        }
+      ]
+    },
+    {
+      "id": "c7fc0413-38ef-41b7-9ac3-17a0c7d59a40",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "c7fc0413-38ef-41b7-9ac3-17a0c7d59a40",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "皆",
+        "reading": "みな",
+        "romaji": null,
+        "indonesian": "semua orang",
+        "category": "代名詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "クラスの皆がしけんをうけました。",
+          "reading": "クラスのみながしけんをうけました。",
+          "indonesian": "Semua orang di kelas mengikuti ujian.",
+          "highlight": "皆"
+        }
+      ]
+    },
+    {
+      "id": "b5453f46-dafd-44fb-9562-9ced52dc82df",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "b5453f46-dafd-44fb-9562-9ced52dc82df",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "点",
+        "reading": "てん",
+        "romaji": null,
+        "indonesian": "titik; nilai",
+        "category": "名詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "しけんでなん点とったか、おぼえていますか。",
+          "reading": "しけんでなんてんとったか、おぼえていますか。",
+          "indonesian": "Apakah Anda ingat berapa nilai yang Anda peroleh dalam ujian?",
+          "highlight": "点"
+        }
+      ]
+    },
+    {
+      "id": "8c1d96b3-52a1-4687-ba98-8270736f63bf",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "8c1d96b3-52a1-4687-ba98-8270736f63bf",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "足す",
+        "reading": "たす",
+        "romaji": null,
+        "indonesian": "menambahkan",
+        "category": "動詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "にとさんを足すと、ごになります。",
+          "reading": "にとさんをたすと、ごになります。",
+          "indonesian": "Dua ditambah tiga menjadi lima.",
+          "highlight": "足す"
+        }
+      ]
+    },
+    {
+      "id": "b7a68fa9-aba2-4b38-9ce4-994096c4ac19",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "b7a68fa9-aba2-4b38-9ce4-994096c4ac19",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "字",
+        "reading": "じ",
+        "romaji": null,
+        "indonesian": "huruf; karakter",
+        "category": "名詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "このかんじがどんな字か、かいてみてください。",
+          "reading": "このかんじがどんなじか、かいてみてください。",
+          "indonesian": "Tolong coba tuliskan bentuk kanji ini.",
+          "highlight": "字"
+        }
+      ]
+    },
+    {
+      "id": "67699e90-1fb4-4375-9825-c8175eaec165",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "67699e90-1fb4-4375-9825-c8175eaec165",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "二階建て",
+        "reading": "にかいだて",
+        "romaji": null,
+        "indonesian": "bangunan dua lantai",
+        "category": "名詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "あの二階建てのいえにだれがすんでいるか、しっていますか。",
+          "reading": "あのにかいだてのいえにだれがすんでいるか、しっていますか。",
+          "indonesian": "Apakah Anda tahu siapa yang tinggal di rumah dua lantai itu?",
+          "highlight": "二階建て"
+        }
+      ]
+    },
+    {
+      "id": "d4e1ee2d-3161-4bf5-91ee-f104f6f9da30",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "d4e1ee2d-3161-4bf5-91ee-f104f6f9da30",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "データ",
+        "reading": "データ",
+        "romaji": null,
+        "indonesian": "data",
+        "category": "名詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "このデータがただしいかどうか、かくにんします。",
+          "reading": "このデータがただしいかどうか、かくにんします。",
+          "indonesian": "Saya memastikan apakah data ini benar.",
+          "highlight": "データ"
+        }
+      ]
+    },
+    {
+      "id": "c3406a1c-d9f9-4a88-bdc1-5b3b626f5571",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "c3406a1c-d9f9-4a88-bdc1-5b3b626f5571",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "キロ",
+        "reading": "キロ",
+        "romaji": null,
+        "indonesian": "kilo; kilometer atau kilogram",
+        "category": "名詞・助数詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "えきまでさんキロあります。",
+          "reading": "えきまでさんキロあります。",
+          "indonesian": "Jarak ke stasiun tiga kilometer.",
+          "highlight": "キロ"
+        },
+        {
+          "japanese": "このはこは、ごキロもあります。",
+          "reading": "このはこは、ごキロもあります。",
+          "indonesian": "Kotak ini beratnya sampai lima kilogram.",
+          "highlight": "キロ"
+        }
+      ]
+    },
+    {
+      "id": "005ed0ff-642b-4f73-904e-7820e22e07b1",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "005ed0ff-642b-4f73-904e-7820e22e07b1",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "かなり",
+        "reading": "かなり",
+        "romaji": null,
+        "indonesian": "cukup; lumayan; sangat",
+        "category": "副詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "ひとがかなりあつまりましたが、まだいすはたりています。",
+          "reading": "ひとがかなりあつまりましたが、まだいすはたりています。",
+          "indonesian": "Cukup banyak orang sudah berkumpul, tetapi kursinya masih cukup.",
+          "highlight": "かなり"
+        }
+      ]
+    },
+    {
+      "id": "34a10c9a-6688-414d-b053-f37dfa04cdd0",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "34a10c9a-6688-414d-b053-f37dfa04cdd0",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "何人か",
+        "reading": "なんにんか",
+        "romaji": null,
+        "indonesian": "beberapa orang",
+        "category": "表現",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "クラスの何人かは、もうかえりました。",
+          "reading": "クラスのなんにんかは、もうかえりました。",
+          "indonesian": "Beberapa orang di kelas sudah pulang.",
+          "highlight": "何人か"
+        }
+      ]
+    },
+    {
+      "id": "8c3ed641-6b44-4f6f-876e-510ae5a36fc7",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "8c3ed641-6b44-4f6f-876e-510ae5a36fc7",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "チェック",
+        "reading": "チェック",
+        "romaji": null,
+        "indonesian": "pemeriksaan; pengecekan",
+        "category": "名詞・動詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "なまえをかいたかどうか、もういちどチェックしてください。",
+          "reading": "なまえをかいたかどうか、もういちどチェックしてください。",
+          "indonesian": "Tolong periksa sekali lagi apakah nama sudah ditulis.",
+          "highlight": "チェック"
+        }
+      ]
+    },
+    {
+      "id": "b3dee23e-b81a-477c-bfd8-e11a398a9c06",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "b3dee23e-b81a-477c-bfd8-e11a398a9c06",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "関係",
+        "reading": "かんけい",
+        "romaji": null,
+        "indonesian": "hubungan",
+        "category": "名詞・動詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "ふたりがどんな関係か、わかりません。",
+          "reading": "ふたりがどんなかんけいか、わかりません。",
+          "indonesian": "Saya tidak tahu hubungan kedua orang itu.",
+          "highlight": "関係"
+        }
+      ]
+    },
+    {
+      "id": "b92faabd-16a1-438b-9175-efbf4cf8807c",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "b92faabd-16a1-438b-9175-efbf4cf8807c",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "社会",
+        "reading": "しゃかい",
+        "romaji": null,
+        "indonesian": "masyarakat",
+        "category": "名詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "このほんで、にほんの社会がどうかわったかわかります。",
+          "reading": "このほんで、にほんのしゃかいがどうかわったかわかります。",
+          "indonesian": "Melalui buku ini, kita dapat memahami bagaimana masyarakat Jepang berubah.",
+          "highlight": "社会"
+        }
+      ]
+    },
+    {
+      "id": "8aa8a3ca-60a9-417f-9fc0-0626d3d80645",
+      "chapter": 19,
+      "expectedCore": {
+        "id": "8aa8a3ca-60a9-417f-9fc0-0626d3d80645",
+        "module_id": "df881aee-7127-4ccf-b8b8-14a14bb2f798",
+        "lesson_id": null,
+        "japanese": "経済",
+        "reading": "けいざい",
+        "romaji": null,
+        "indonesian": "ekonomi",
+        "category": "名詞",
+        "sort_order": 30
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "00d5b71a-5b81-4f3c-8db7-ab0f96b66360"
+      ],
+      "examples": [
+        {
+          "japanese": "なぜ経済がよくなったか、せんせいにききました。",
+          "reading": "なぜけいざいがよくなったか、せんせいにききました。",
+          "indonesian": "Saya bertanya kepada guru mengapa ekonomi membaik.",
+          "highlight": "経済"
+        }
+      ]
+    },
+    {
+      "id": "a1ebad69-4018-4362-a52c-7648237330dc",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "a1ebad69-4018-4362-a52c-7648237330dc",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "以上",
+        "reading": "いじょう",
+        "romaji": null,
+        "indonesian": "sekurang-kurangnya; atau lebih",
+        "category": "名詞",
+        "sort_order": 1
+      },
+      "expectedNote": "Dengan angka, batas termasuk: 18歳以上 mencakup 18 tahun.",
+      "note": "Dengan angka, batas termasuk: 18歳以上 mencakup 18 tahun.",
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "このクラスはじゅうはっさい以上のひとがはいれます。",
+          "reading": "このクラスはじゅうはっさいいじょうのひとがはいれます。",
+          "indonesian": "Orang berusia delapan belas tahun atau lebih dapat mengikuti kelas ini.",
+          "highlight": "以上"
+        },
+        {
+          "japanese": "ひとりさんこ以上かってください。",
+          "reading": "ひとりさんこいじょうかってください。",
+          "indonesian": "Tolong beli setidaknya tiga buah per orang.",
+          "highlight": "以上"
+        }
+      ]
+    },
+    {
+      "id": "cba748c4-d04a-4014-a47c-ddda90c73483",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "cba748c4-d04a-4014-a47c-ddda90c73483",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "以下",
+        "reading": "いか",
+        "romaji": null,
+        "indonesian": "paling banyak; atau kurang",
+        "category": "名詞",
+        "sort_order": 2
+      },
+      "expectedNote": "Dengan angka, batas termasuk: 10人以下 mencakup 10 orang.",
+      "note": "Dengan angka, batas termasuk: 10人以下 mencakup 10 orang.",
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "このへやはじゅうにん以下でつかってください。",
+          "reading": "このへやはじゅうにんいかでつかってください。",
+          "indonesian": "Tolong gunakan ruangan ini untuk paling banyak sepuluh orang.",
+          "highlight": "以下"
+        },
+        {
+          "japanese": "ごひゃくえん以下のパンをえらびました。",
+          "reading": "ごひゃくえんいかのパンをえらびました。",
+          "indonesian": "Saya memilih roti seharga paling banyak lima ratus yen.",
+          "highlight": "以下"
+        }
+      ]
+    },
+    {
+      "id": "a4ec02c0-12cc-4b37-90d3-3e0701453418",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "a4ec02c0-12cc-4b37-90d3-3e0701453418",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "未満",
+        "reading": "みまん",
+        "romaji": null,
+        "indonesian": "kurang dari",
+        "category": "名詞",
+        "sort_order": 3
+      },
+      "expectedNote": "Batas tidak termasuk: 18歳未満 tidak mencakup 18 tahun.",
+      "note": "Batas tidak termasuk: 18歳未満 tidak mencakup 18 tahun.",
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "じゅうはっさい未満のひとは、ここにはいれません。",
+          "reading": "じゅうはっさいみまんのひとは、ここにはいれません。",
+          "indonesian": "Orang yang belum berusia delapan belas tahun tidak boleh masuk ke sini.",
+          "highlight": "未満"
+        },
+        {
+          "japanese": "さんじゅっぷん未満でしごとがおわりました。",
+          "reading": "さんじゅっぷんみまんでしごとがおわりました。",
+          "indonesian": "Pekerjaan selesai dalam waktu kurang dari tiga puluh menit.",
+          "highlight": "未満"
+        }
+      ]
+    },
+    {
+      "id": "c5104410-30a4-46aa-83c3-dabd9bc10ca8",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "c5104410-30a4-46aa-83c3-dabd9bc10ca8",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "以外",
+        "reading": "いがい",
+        "romaji": null,
+        "indonesian": "selain; di luar",
+        "category": "名詞",
+        "sort_order": 4
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "にちようび以外は、まいにちはたらいています。",
+          "reading": "にちようびいがいは、まいにちはたらいています。",
+          "indonesian": "Saya bekerja setiap hari selain hari Minggu.",
+          "highlight": "以外"
+        }
+      ]
+    },
+    {
+      "id": "0ec8eebd-025f-4735-a836-9acf0c375f83",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "0ec8eebd-025f-4735-a836-9acf0c375f83",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "以内",
+        "reading": "いない",
+        "romaji": null,
+        "indonesian": "dalam batas",
+        "category": "名詞",
+        "sort_order": 5
+      },
+      "expectedNote": "Waktu atau jarak: 一時間以内.",
+      "note": "Waktu atau jarak: 一時間以内.",
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "えきからあるいてじゅっぷん以内のいえをさがしています。",
+          "reading": "えきからあるいてじゅっぷんいないのいえをさがしています。",
+          "indonesian": "Saya mencari rumah yang dapat dicapai dengan berjalan kaki paling lama sepuluh menit dari stasiun.",
+          "highlight": "以内"
+        }
+      ]
+    },
+    {
+      "id": "e5eb8a1d-d0bc-4713-a4d4-33608b50437a",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "e5eb8a1d-d0bc-4713-a4d4-33608b50437a",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "回数",
+        "reading": "かいすう",
+        "romaji": null,
+        "indonesian": "jumlah kali",
+        "category": "名詞",
+        "sort_order": 6
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "いっしゅうかんにうんどうする回数をふやしました。",
+          "reading": "いっしゅうかんにうんどうするかいすうをふやしました。",
+          "indonesian": "Saya menambah jumlah sesi olahraga dalam seminggu.",
+          "highlight": "回数"
+        }
+      ]
+    },
+    {
+      "id": "ca7f2c08-56b1-40fa-85ff-80babd9a1228",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "ca7f2c08-56b1-40fa-85ff-80babd9a1228",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "温度",
+        "reading": "おんど",
+        "romaji": null,
+        "indonesian": "suhu",
+        "category": "名詞",
+        "sort_order": 8
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "れいぞうこの温度をさげてください。",
+          "reading": "れいぞうこのおんどをさげてください。",
+          "indonesian": "Tolong turunkan suhu kulkas.",
+          "highlight": "温度"
+        }
+      ]
+    },
+    {
+      "id": "eebb17af-4528-4270-889b-77dbd4fc232e",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "eebb17af-4528-4270-889b-77dbd4fc232e",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "場合",
+        "reading": "ばあい",
+        "romaji": null,
+        "indonesian": "situasi; keadaan tertentu",
+        "category": "名詞",
+        "sort_order": 9
+      },
+      "expectedNote": "Pengulangan terarah untuk petunjuk bersyarat.",
+      "note": "Pengulangan terarah untuk petunjuk bersyarat.\nたいいくかん = gedung olahraga.",
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "あめの場合は、たいいくかんでうんどうします。",
+          "reading": "あめのばあいは、たいいくかんでうんどうします。",
+          "indonesian": "Jika hujan, kami berolahraga di gedung olahraga.",
+          "highlight": "場合"
+        }
+      ]
+    },
+    {
+      "id": "353dd7e3-77cb-4763-a66a-e6b6a7486237",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "353dd7e3-77cb-4763-a66a-e6b6a7486237",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "状態",
+        "reading": "じょうたい",
+        "romaji": null,
+        "indonesian": "keadaan; kondisi",
+        "category": "名詞",
+        "sort_order": 10
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "このくるまはふるいですが、状態はいいです。",
+          "reading": "このくるまはふるいですが、じょうたいはいいです。",
+          "indonesian": "Mobil ini tua, tetapi kondisinya baik.",
+          "highlight": "状態"
+        }
+      ]
+    },
+    {
+      "id": "9516a451-cfbb-4a34-895d-cf824d509118",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "9516a451-cfbb-4a34-895d-cf824d509118",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "順番",
+        "reading": "じゅんばん",
+        "romaji": null,
+        "indonesian": "urutan; giliran",
+        "category": "名詞",
+        "sort_order": 11
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "きた順番にならんでください。",
+          "reading": "きたじゅんばんにならんでください。",
+          "indonesian": "Tolong mengantre sesuai urutan kedatangan.",
+          "highlight": "順番"
+        }
+      ]
+    },
+    {
+      "id": "ec405050-19d4-4fc0-b983-aa22b29b7ad5",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "ec405050-19d4-4fc0-b983-aa22b29b7ad5",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "説明",
+        "reading": "せつめい",
+        "romaji": null,
+        "indonesian": "penjelasan",
+        "category": "名詞",
+        "sort_order": 12
+      },
+      "expectedNote": "Pengulangan terarah: 説明したとおりに.",
+      "note": "Pengulangan terarah: 説明したとおりに.",
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいの説明のとおりに、かみをおってください。",
+          "reading": "せんせいのせつめいのとおりに、かみをおってください。",
+          "indonesian": "Tolong lipat kertas sesuai penjelasan guru.",
+          "highlight": "説明"
+        }
+      ]
+    },
+    {
+      "id": "02493f80-148a-4553-829f-c2575461aa77",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "02493f80-148a-4553-829f-c2575461aa77",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "割合",
+        "reading": "わりあい",
+        "romaji": null,
+        "indonesian": "perbandingan; persentase; relatif",
+        "category": "名詞・副詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "このがっこうでは、でんしゃでくるひとの割合がいちばんたかいです。",
+          "reading": "このがっこうでは、でんしゃでくるひとのわりあいがいちばんたかいです。",
+          "indonesian": "Di sekolah ini, proporsi orang yang datang dengan kereta paling tinggi.",
+          "highlight": "割合"
+        }
+      ]
+    },
+    {
+      "id": "03867cab-4f53-43f2-9069-352510c17fec",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "03867cab-4f53-43f2-9069-352510c17fec",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "そのまま",
+        "reading": "そのまま",
+        "romaji": null,
+        "indonesian": "tetap begitu; tanpa mengubahnya",
+        "category": "副詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "まどはあけたままです。いまはそのままにしてください。",
+          "reading": "まどはあけたままです。いまはそのままにしてください。",
+          "indonesian": "Jendelanya masih terbuka. Untuk sekarang, biarkan tetap begitu.",
+          "highlight": "そのまま"
+        }
+      ]
+    },
+    {
+      "id": "5d1f2877-107a-4a7b-8463-75e1c6892257",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "5d1f2877-107a-4a7b-8463-75e1c6892257",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "倍",
+        "reading": "ばい",
+        "romaji": null,
+        "indonesian": "kali lipat",
+        "category": "名詞・接尾詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "このへやは、あのへやのに倍ぐらいのひろさです。",
+          "reading": "このへやは、あのへやのにばいぐらいのひろさです。",
+          "indonesian": "Luas ruangan ini sekitar dua kali luas ruangan itu.",
+          "highlight": "倍"
+        }
+      ]
+    },
+    {
+      "id": "3c83e62b-ae8e-49f9-91a2-5356359f7ff8",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "3c83e62b-ae8e-49f9-91a2-5356359f7ff8",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "両方",
+        "reading": "りょうほう",
+        "romaji": null,
+        "indonesian": "kedua pihak; keduanya",
+        "category": "名詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "こちらとあちらの両方をくらべてください。",
+          "reading": "こちらとあちらのりょうほうをくらべてください。",
+          "indonesian": "Tolong bandingkan kedua pilihan, yang ini dan yang itu.",
+          "highlight": "両方"
+        }
+      ]
+    },
+    {
+      "id": "0e37d553-a02a-440b-9b6b-6fbaffd13817",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "0e37d553-a02a-440b-9b6b-6fbaffd13817",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "例えば",
+        "reading": "たとえば",
+        "romaji": null,
+        "indonesian": "misalnya",
+        "category": "副詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "くだものをもってきてください。例えば、りんごやバナナがいいです。",
+          "reading": "くだものをもってきてください。たとえば、りんごやバナナがいいです。",
+          "indonesian": "Tolong bawa buah. Misalnya, apel atau pisang cocok.",
+          "highlight": "例えば"
+        }
+      ]
+    },
+    {
+      "id": "6681e9f7-f139-4299-b021-fc1488d14f7d",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "6681e9f7-f139-4299-b021-fc1488d14f7d",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "一回",
+        "reading": "いっかい",
+        "romaji": null,
+        "indonesian": "satu kali",
+        "category": "名詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "いっしゅうかんに一回、としょかんへいきます。",
+          "reading": "いっしゅうかんにいっかい、としょかんへいきます。",
+          "indonesian": "Saya pergi ke perpustakaan sekali seminggu.",
+          "highlight": "一回"
+        }
+      ]
+    },
+    {
+      "id": "1d51ad22-e4c5-4c7d-bb77-0f040d2bedf1",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "1d51ad22-e4c5-4c7d-bb77-0f040d2bedf1",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "別",
+        "reading": "べつ",
+        "romaji": null,
+        "indonesian": "lain; terpisah",
+        "category": "名詞・な形容詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "このもんだいは、別のほうほうでもできます。",
+          "reading": "このもんだいは、べつのほうほうでもできます。",
+          "indonesian": "Soal ini juga dapat dikerjakan dengan cara lain.",
+          "highlight": "別"
+        }
+      ]
+    },
+    {
+      "id": "09be260b-6488-433f-82f2-cb360c766d39",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "09be260b-6488-433f-82f2-cb360c766d39",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "反対",
+        "reading": "はんたい",
+        "romaji": null,
+        "indonesian": "lawan; pertentangan",
+        "category": "名詞・な形容詞・動詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": "ほうこう = arah.",
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "きのうと反対のほうこうにあるいてしまいました。",
+          "reading": "きのうとはんたいのほうこうにあるいてしまいました。",
+          "indonesian": "Saya terlanjur berjalan ke arah yang berlawanan dengan kemarin.",
+          "highlight": "反対"
+        }
+      ]
+    },
+    {
+      "id": "dc1653a0-e1f4-4c98-ae60-0e98874cb479",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "dc1653a0-e1f4-4c98-ae60-0e98874cb479",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "普通",
+        "reading": "ふつう",
+        "romaji": null,
+        "indonesian": "biasa; umum",
+        "category": "名詞・な形容詞・副詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "このでんしゃは、普通のでんしゃよりはやいです。",
+          "reading": "このでんしゃは、ふつうのでんしゃよりはやいです。",
+          "indonesian": "Kereta ini lebih cepat daripada kereta biasa.",
+          "highlight": "普通"
+        }
+      ]
+    },
+    {
+      "id": "fb20caff-29e8-4c68-88fe-715fecb8b60f",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "fb20caff-29e8-4c68-88fe-715fecb8b60f",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "特別",
+        "reading": "とくべつ",
+        "romaji": null,
+        "indonesian": "khusus; istimewa",
+        "category": "名詞・な形容詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "きょうは特別に、くじまでみせをあけています。",
+          "reading": "きょうはとくべつに、くじまでみせをあけています。",
+          "indonesian": "Khusus hari ini, toko tetap buka sampai pukul sembilan.",
+          "highlight": "特別"
+        }
+      ]
+    },
+    {
+      "id": "95d1b117-97bc-48df-9416-457c2c555b56",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "95d1b117-97bc-48df-9416-457c2c555b56",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "非常に",
+        "reading": "ひじょうに",
+        "romaji": null,
+        "indonesian": "sangat",
+        "category": "副詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "このしごとは非常にたいせつなので、ていねいにやってください。",
+          "reading": "このしごとはひじょうにたいせつなので、ていねいにやってください。",
+          "indonesian": "Pekerjaan ini sangat penting, jadi kerjakan dengan teliti.",
+          "highlight": "非常に"
+        }
+      ]
+    },
+    {
+      "id": "0ee643ed-7e7f-4175-8abe-5c4d816abc01",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "0ee643ed-7e7f-4175-8abe-5c4d816abc01",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "大分",
+        "reading": "だいぶ",
+        "romaji": null,
+        "indonesian": "cukup banyak; sangat",
+        "category": "副詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "きょねんより、にほんごが大分わかるようになりました。",
+          "reading": "きょねんより、にほんごがだいぶわかるようになりました。",
+          "indonesian": "Saya sekarang jauh lebih memahami bahasa Jepang dibandingkan tahun lalu.",
+          "highlight": "大分"
+        }
+      ]
+    },
+    {
+      "id": "822d1113-9516-4a23-b893-275c03eec37d",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "822d1113-9516-4a23-b893-275c03eec37d",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "ずいぶん",
+        "reading": "ずいぶん",
+        "romaji": null,
+        "indonesian": "sangat; cukup jauh",
+        "category": "副詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "まえにきたときより、まちがずいぶんかわりました。",
+          "reading": "まえにきたときより、まちがずいぶんかわりました。",
+          "indonesian": "Kota ini sudah banyak berubah dibandingkan saat saya datang sebelumnya.",
+          "highlight": "ずいぶん"
+        }
+      ]
+    },
+    {
+      "id": "889cb468-40a4-4b6f-880d-80062edfc597",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "889cb468-40a4-4b6f-880d-80062edfc597",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "それほど",
+        "reading": "それほど",
+        "romaji": null,
+        "indonesian": "sampai tingkat itu",
+        "category": "副詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "このもんだいは、みんながいうほどむずかしくありません。わたしはそれほどこまりませんでした。",
+          "reading": "このもんだいは、みんながいうほどむずかしくありません。わたしはそれほどこまりませんでした。",
+          "indonesian": "Soal ini tidak sesulit yang dikatakan semua orang. Saya tidak terlalu kesulitan.",
+          "highlight": "それほど"
+        }
+      ]
+    },
+    {
+      "id": "7819d3f1-162b-464c-b26c-3ab8bace6bc0",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "7819d3f1-162b-464c-b26c-3ab8bace6bc0",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "最も",
+        "reading": "もっとも",
+        "romaji": null,
+        "indonesian": "paling",
+        "category": "副詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "このさんにんのなかでは、たなかさんが最もはやくはしれます。",
+          "reading": "このさんにんのなかでは、たなかさんがもっともはやくはしれます。",
+          "indonesian": "Di antara ketiga orang ini, Tanaka dapat berlari paling cepat.",
+          "highlight": "最も"
+        }
+      ]
+    },
+    {
+      "id": "d77362d2-40e9-4687-9cd3-fa61e1a7988a",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "d77362d2-40e9-4687-9cd3-fa61e1a7988a",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "以内に",
+        "reading": "いないに",
+        "romaji": null,
+        "indonesian": "dalam batas waktu atau jarak",
+        "category": "表現",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": "おえる = menyelesaikan.",
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "このしごとは、いちじかん以内におえてください。",
+          "reading": "このしごとは、いちじかんいないにおえてください。",
+          "indonesian": "Tolong selesaikan pekerjaan ini dalam waktu paling lama satu jam.",
+          "highlight": "以内に"
+        }
+      ]
+    },
+    {
+      "id": "be79b612-be3a-4c7b-bb52-5b4b6b11a551",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "be79b612-be3a-4c7b-bb52-5b4b6b11a551",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "以外に",
+        "reading": "いがいに",
+        "romaji": null,
+        "indonesian": "selain; di luar",
+        "category": "表現",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "にほんご以外に、どんなことばをはなせますか。",
+          "reading": "にほんごいがいに、どんなことばをはなせますか。",
+          "indonesian": "Selain bahasa Jepang, bahasa apa yang dapat Anda gunakan?",
+          "highlight": "以外に"
+        }
+      ]
+    },
+    {
+      "id": "2ab8c415-d214-40ac-ad00-6258066a58a5",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "2ab8c415-d214-40ac-ad00-6258066a58a5",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "別々",
+        "reading": "べつべつ",
+        "romaji": null,
+        "indonesian": "terpisah satu sama lain",
+        "category": "名詞・な形容詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "おかねは別々にはらいます。",
+          "reading": "おかねはべつべつにはらいます。",
+          "indonesian": "Kami akan membayar sendiri-sendiri.",
+          "highlight": "別々"
+        }
+      ]
+    },
+    {
+      "id": "60aab413-f5e0-4c56-a80d-e80e648351ec",
+      "chapter": 20,
+      "expectedCore": {
+        "id": "60aab413-f5e0-4c56-a80d-e80e648351ec",
+        "module_id": "3dd4992b-a41c-4588-92ac-b6373b73d03b",
+        "lesson_id": null,
+        "japanese": "かなり",
+        "reading": "かなり",
+        "romaji": null,
+        "indonesian": "cukup; lumayan; sangat",
+        "category": "副詞",
+        "sort_order": 32
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "c54ac0a4-8aa8-48e7-bc57-5b80b24f006d"
+      ],
+      "examples": [
+        {
+          "japanese": "このへやは、まえのへやよりかなりひろいです。",
+          "reading": "このへやは、まえのへやよりかなりひろいです。",
+          "indonesian": "Kamar ini jauh lebih luas daripada kamar sebelumnya.",
+          "highlight": "かなり"
+        }
+      ]
+    },
+    {
+      "id": "99a571a0-a590-41fd-ad50-22917b80f05d",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "99a571a0-a590-41fd-ad50-22917b80f05d",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "褒める",
+        "reading": "ほめる",
+        "romaji": null,
+        "indonesian": "memuji",
+        "category": "動詞",
+        "sort_order": 1
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.\nさくぶん = karangan.",
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしはせんせいに、さくぶんを褒められました。",
+          "reading": "わたしはせんせいに、さくぶんをほめられました。",
+          "indonesian": "Karangan saya dipuji oleh guru.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "8a23de42-4019-4ee7-931d-3c360ac26732",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "8a23de42-4019-4ee7-931d-3c360ac26732",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "叱る",
+        "reading": "しかる",
+        "romaji": null,
+        "indonesian": "memarahi; menegur",
+        "category": "動詞",
+        "sort_order": 2
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "こどものとき、よくははに叱られました。",
+          "reading": "こどものとき、よくははにしかられました。",
+          "indonesian": "Waktu kecil, saya sering dimarahi ibu.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "8d9ceddc-d5be-4833-bff3-587498902553",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "8d9ceddc-d5be-4833-bff3-587498902553",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "注意する",
+        "reading": "ちゅういする",
+        "romaji": null,
+        "indonesian": "memperingatkan; berhati-hati",
+        "category": "動詞",
+        "sort_order": 3
+      },
+      "expectedNote": "Kelompok 3. 人に注意する: menegur seseorang; 物事に注意する: memperhatikan sesuatu.",
+      "note": "Kelompok 3. 人に注意する: menegur seseorang; 物事に注意する: memperhatikan sesuatu.",
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "ろうかをはしって、せんせいに注意されました。",
+          "reading": "ろうかをはしって、せんせいにちゅういされました。",
+          "indonesian": "Saya ditegur guru karena berlari di lorong.",
+          "highlight": null
+        },
+        {
+          "japanese": "あめのひは、くるまに注意してあるいてください。",
+          "reading": "あめのひは、くるまにちゅういしてあるいてください。",
+          "indonesian": "Saat hujan, tolong berjalan sambil memperhatikan mobil yang lewat.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "6e378676-b47a-46a3-a3e9-d269379a0e10",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "6e378676-b47a-46a3-a3e9-d269379a0e10",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "誘う",
+        "reading": "さそう",
+        "romaji": null,
+        "indonesian": "mengajak; mengundang",
+        "category": "動詞",
+        "sort_order": 4
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちにコンサートへ誘われました。",
+          "reading": "ともだちにコンサートへさそわれました。",
+          "indonesian": "Saya diajak teman ke konser.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "1b84a652-96b2-40b7-9c28-bce573c89de7",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "1b84a652-96b2-40b7-9c28-bce573c89de7",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "盗む",
+        "reading": "ぬすむ",
+        "romaji": null,
+        "indonesian": "mencuri",
+        "category": "動詞",
+        "sort_order": 6
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしはでんしゃでさいふを盗まれました。",
+          "reading": "わたしはでんしゃでさいふをぬすまれました。",
+          "indonesian": "Dompet saya dicuri di kereta.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "2565fccf-b040-481d-8dca-02cbdfdb2c5f",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "2565fccf-b040-481d-8dca-02cbdfdb2c5f",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "踏む",
+        "reading": "ふむ",
+        "romaji": null,
+        "indonesian": "menginjak",
+        "category": "動詞",
+        "sort_order": 7
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "バスのなかで、ひとにあしを踏まれました。",
+          "reading": "バスのなかで、ひとにあしをふまれました。",
+          "indonesian": "Kaki saya terinjak oleh seseorang di dalam bus.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "77cae61d-25fa-451c-814f-e1a0ee54a2c2",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "77cae61d-25fa-451c-814f-e1a0ee54a2c2",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "壊す",
+        "reading": "こわす",
+        "romaji": null,
+        "indonesian": "merusakkan",
+        "category": "動詞",
+        "sort_order": 8
+      },
+      "expectedNote": "Kelompok 1. Pengulangan terarah untuk pihak yang terdampak.",
+      "note": "Kelompok 1. Pengulangan terarah untuk pihak yang terdampak.",
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしはおとうとにカメラを壊されました。",
+          "reading": "わたしはおとうとにカメラをこわされました。",
+          "indonesian": "Kamera saya dirusakkan oleh adik laki-laki saya.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "23d16c29-ef9d-4c29-83da-54730c6e3925",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "23d16c29-ef9d-4c29-83da-54730c6e3925",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "建てる",
+        "reading": "たてる",
+        "romaji": null,
+        "indonesian": "membangun bangunan",
+        "category": "動詞",
+        "sort_order": 9
+      },
+      "expectedNote": "Kelompok 2.",
+      "note": "Kelompok 2.",
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "このいえは、さんじゅうねんまえに建てられました。",
+          "reading": "このいえは、さんじゅうねんまえにたてられました。",
+          "indonesian": "Rumah ini dibangun tiga puluh tahun lalu.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "6b5b420b-56cc-4a2c-ad5e-e6105252b4b2",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "6b5b420b-56cc-4a2c-ad5e-e6105252b4b2",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "発明する",
+        "reading": "はつめいする",
+        "romaji": null,
+        "indonesian": "menemukan atau menciptakan teknologi baru",
+        "category": "動詞",
+        "sort_order": 10
+      },
+      "expectedNote": "Kelompok 3.",
+      "note": "Kelompok 3.",
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "このあたらしいどうぐは、にほんで発明されました。",
+          "reading": "このあたらしいどうぐは、にほんではつめいされました。",
+          "indonesian": "Alat baru ini diciptakan di Jepang.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "32cae29c-0ee4-4195-9565-3b39c7e63985",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "32cae29c-0ee4-4195-9565-3b39c7e63985",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "発見する",
+        "reading": "はっけんする",
+        "romaji": null,
+        "indonesian": "menemukan sesuatu yang sudah ada",
+        "category": "動詞",
+        "sort_order": 11
+      },
+      "expectedNote": "Kelompok 3. Bedakan 発見する dengan 発明する.",
+      "note": "Kelompok 3. Bedakan 発見する dengan 発明する.",
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "このしまは、むかしふねできたひとに発見されました。",
+          "reading": "このしまは、むかしふねできたひとにはっけんされました。",
+          "indonesian": "Pulau ini dahulu ditemukan oleh orang yang datang dengan kapal.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "d7c772ff-7343-40c6-b7d0-d20be1f8a5f1",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "d7c772ff-7343-40c6-b7d0-d20be1f8a5f1",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "被害",
+        "reading": "ひがい",
+        "romaji": null,
+        "indonesian": "kerugian; dampak buruk yang diderita",
+        "category": "名詞",
+        "sort_order": 12
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "たいふうで、おおくのいえに被害がでました。",
+          "reading": "たいふうで、おおくのいえにひがいがでました。",
+          "indonesian": "Banyak rumah mengalami kerusakan akibat topan.",
+          "highlight": "被害"
+        }
+      ]
+    },
+    {
+      "id": "f5850f2f-588c-43ae-9f19-e343378c324a",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "f5850f2f-588c-43ae-9f19-e343378c324a",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "事故",
+        "reading": "じこ",
+        "romaji": null,
+        "indonesian": "kecelakaan",
+        "category": "名詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "このみちでは事故がおおいので、きをつけてください。",
+          "reading": "このみちではじこがおおいので、きをつけてください。",
+          "indonesian": "Di jalan ini sering terjadi kecelakaan, jadi berhati-hatilah.",
+          "highlight": "事故"
+        }
+      ]
+    },
+    {
+      "id": "83d4b8e7-050f-479e-bc9f-3aa024e399d0",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "83d4b8e7-050f-479e-bc9f-3aa024e399d0",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "泥棒",
+        "reading": "どろぼう",
+        "romaji": null,
+        "indonesian": "pencuri",
+        "category": "名詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "泥棒にかばんをぬすまれました。",
+          "reading": "どろぼうにかばんをぬすまれました。",
+          "indonesian": "Tas saya dicuri oleh pencuri.",
+          "highlight": "泥棒"
+        }
+      ]
+    },
+    {
+      "id": "8b8959a9-ed61-4f6b-a4a9-023a41317ea9",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "8b8959a9-ed61-4f6b-a4a9-023a41317ea9",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "足",
+        "reading": "あし",
+        "romaji": null,
+        "indonesian": "kaki",
+        "category": "名詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "でんしゃのなかで、足をふまれました。",
+          "reading": "でんしゃのなかで、あしをふまれました。",
+          "indonesian": "Kaki saya terinjak di dalam kereta.",
+          "highlight": "足"
+        }
+      ]
+    },
+    {
+      "id": "3204b407-2336-49c3-a61a-4a8a9ed90fda",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "3204b407-2336-49c3-a61a-4a8a9ed90fda",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "すり",
+        "reading": "すり",
+        "romaji": null,
+        "indonesian": "pencopet",
+        "category": "名詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "ひとがおおいばしょでは、すりにきをつけてください。",
+          "reading": "ひとがおおいばしょでは、すりにきをつけてください。",
+          "indonesian": "Di tempat ramai, waspadalah terhadap pencopet.",
+          "highlight": "すり"
+        }
+      ]
+    },
+    {
+      "id": "c7dad4bc-41f9-480f-89aa-14d4d0aa7d5c",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "c7dad4bc-41f9-480f-89aa-14d4d0aa7d5c",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "世界",
+        "reading": "せかい",
+        "romaji": null,
+        "indonesian": "dunia",
+        "category": "名詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "このしょうせつは、世界のいろいろなくにでよまれています。",
+          "reading": "このしょうせつは、せかいのいろいろなくにでよまれています。",
+          "indonesian": "Novel ini dibaca di berbagai negara di dunia.",
+          "highlight": "世界"
+        }
+      ]
+    },
+    {
+      "id": "7243df50-6d61-4eda-8e2c-87354e7dbfd8",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "7243df50-6d61-4eda-8e2c-87354e7dbfd8",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "警察",
+        "reading": "けいさつ",
+        "romaji": null,
+        "indonesian": "polisi; kepolisian",
+        "category": "名詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "ぬすまれたじてんしゃを、警察がみつけてくれました。",
+          "reading": "ぬすまれたじてんしゃを、けいさつがみつけてくれました。",
+          "indonesian": "Polisi menemukan sepeda saya yang dicuri.",
+          "highlight": "警察"
+        }
+      ]
+    },
+    {
+      "id": "24703690-5cd0-4d8e-aab0-eef900141fa0",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "24703690-5cd0-4d8e-aab0-eef900141fa0",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "捕まえる",
+        "reading": "つかまえる",
+        "romaji": null,
+        "indonesian": "menangkap",
+        "category": "動詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "どろぼうは、えきのちかくで捕まえられました。",
+          "reading": "どろぼうは、えきのちかくでつかまえられました。",
+          "indonesian": "Pencuri itu ditangkap di dekat stasiun.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "a019e05b-7456-4548-a6c2-45c415bc78bc",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "a019e05b-7456-4548-a6c2-45c415bc78bc",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "逃げる",
+        "reading": "にげる",
+        "romaji": null,
+        "indonesian": "melarikan diri",
+        "category": "動詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": "かう = memelihara. Bentuk 逃げられる di sini adalah pasif yang menyatakan dampak pada pemilik.",
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしは、かっているねこに逃げられました。",
+          "reading": "わたしは、かっているねこににげられました。",
+          "indonesian": "Kucing peliharaan saya kabur, sehingga saya kerepotan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "5df163e5-eeff-42b6-bb41-58a3093a4013",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "5df163e5-eeff-42b6-bb41-58a3093a4013",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "割れる",
+        "reading": "われる",
+        "romaji": null,
+        "indonesian": "pecah; retak",
+        "category": "動詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "じしんで、まどのガラスが割れました。",
+          "reading": "じしんで、まどのガラスがわれました。",
+          "indonesian": "Kaca jendela pecah akibat gempa.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "8bd5d1a5-9452-472e-8e1f-58fffc0ad181",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "8bd5d1a5-9452-472e-8e1f-58fffc0ad181",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "折れる",
+        "reading": "おれる",
+        "romaji": null,
+        "indonesian": "patah; terlipat",
+        "category": "動詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": "えだ = dahan.",
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "かぜでえだが折れて、みちにおちました。",
+          "reading": "かぜでえだがおれて、みちにおちました。",
+          "indonesian": "Dahan patah karena angin lalu jatuh ke jalan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "2e18ffcb-8146-45cb-a844-b9e1a2fe57f3",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "2e18ffcb-8146-45cb-a844-b9e1a2fe57f3",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "倒れる",
+        "reading": "たおれる",
+        "romaji": null,
+        "indonesian": "jatuh; roboh",
+        "category": "動詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "じしんでほんだなが倒れました。",
+          "reading": "じしんでほんだながたおれました。",
+          "indonesian": "Rak buku roboh akibat gempa.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "d5504b8a-0104-432e-8c48-39ede7a325bb",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "d5504b8a-0104-432e-8c48-39ede7a325bb",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "亡くなる",
+        "reading": "なくなる",
+        "romaji": null,
+        "indonesian": "meninggal dunia",
+        "category": "動詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "ともだちのそふが亡くなったとききました。",
+          "reading": "ともだちのそふがなくなったとききました。",
+          "indonesian": "Saya mendengar bahwa kakek teman saya meninggal.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "a92d5c43-824e-463b-b96b-80f17ea7aa66",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "a92d5c43-824e-463b-b96b-80f17ea7aa66",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "騒ぐ",
+        "reading": "さわぐ",
+        "romaji": null,
+        "indonesian": "membuat keributan",
+        "category": "動詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": "よなか = tengah malam.",
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "よなかにとなりのひとに騒がれて、ねむれませんでした。",
+          "reading": "よなかにとなりのひとにさわがれて、ねむれませんでした。",
+          "indonesian": "Saya tidak bisa tidur karena tetangga membuat keributan tengah malam.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "0ce98381-e3b8-4e2e-a57a-36d64ee6ff17",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "0ce98381-e3b8-4e2e-a57a-36d64ee6ff17",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "火事",
+        "reading": "かじ",
+        "romaji": null,
+        "indonesian": "kebakaran",
+        "category": "名詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "火事で、たいせつなしゃしんがやけてしまいました。",
+          "reading": "かじで、たいせつなしゃしんがやけてしまいました。",
+          "indonesian": "Foto berharga saya habis terbakar dalam kebakaran.",
+          "highlight": "火事"
+        }
+      ]
+    },
+    {
+      "id": "635b5984-daa2-45ef-931f-f7953ac4cd2e",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "635b5984-daa2-45ef-931f-f7953ac4cd2e",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "地震",
+        "reading": "じしん",
+        "romaji": null,
+        "indonesian": "gempa bumi",
+        "category": "名詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "にほんは地震がおおいくにだといわれています。",
+          "reading": "にほんはじしんがおおいくにだといわれています。",
+          "indonesian": "Jepang dikenal sebagai negara yang sering mengalami gempa.",
+          "highlight": "地震"
+        }
+      ]
+    },
+    {
+      "id": "22dd09bf-e7cb-4100-b897-8615db118334",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "22dd09bf-e7cb-4100-b897-8615db118334",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "戦争",
+        "reading": "せんそう",
+        "romaji": null,
+        "indonesian": "perang",
+        "category": "名詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "このほんは、戦争のあとにかかれました。",
+          "reading": "このほんは、せんそうのあとにかかれました。",
+          "indonesian": "Buku ini ditulis setelah perang.",
+          "highlight": "戦争"
+        }
+      ]
+    },
+    {
+      "id": "520865ba-297b-4102-9420-57e9fcfdf73a",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "520865ba-297b-4102-9420-57e9fcfdf73a",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "ぶつかる",
+        "reading": "ぶつかる",
+        "romaji": null,
+        "indonesian": "bertabrakan; membentur",
+        "category": "動詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "じてんしゃがかべにぶつかりました。",
+          "reading": "じてんしゃがかべにぶつかりました。",
+          "indonesian": "Sepeda itu menabrak dinding.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "89be43af-5724-460e-a875-58286cbe4534",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "89be43af-5724-460e-a875-58286cbe4534",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "パトカー",
+        "reading": "パトカー",
+        "romaji": null,
+        "indonesian": "mobil polisi",
+        "category": "名詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "パトカーがじこのばしょにきました。",
+          "reading": "パトカーがじこのばしょにきました。",
+          "indonesian": "Mobil polisi datang ke lokasi kecelakaan.",
+          "highlight": "パトカー"
+        }
+      ]
+    },
+    {
+      "id": "277dc113-8940-4519-b78e-d048e9c864e3",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "277dc113-8940-4519-b78e-d048e9c864e3",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "110番",
+        "reading": "ひゃくとうばん",
+        "romaji": null,
+        "indonesian": "nomor darurat polisi 110",
+        "category": "名詞",
+        "sort_order": 30
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "じこをみたひとが、110番にでんわしました。",
+          "reading": "じこをみたひとが、ひゃくとうばんにでんわしました。",
+          "indonesian": "Orang yang melihat kecelakaan itu menelepon nomor polisi 110.",
+          "highlight": "110番"
+        }
+      ]
+    },
+    {
+      "id": "3305501a-5cdd-4950-8624-c13afd1c88e8",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "3305501a-5cdd-4950-8624-c13afd1c88e8",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "生産",
+        "reading": "せいさん",
+        "romaji": null,
+        "indonesian": "produksi",
+        "category": "名詞・動詞",
+        "sort_order": 31
+      },
+      "expectedNote": null,
+      "note": "こうじょう = pabrik.",
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "このくるまは、にほんのこうじょうで生産されています。",
+          "reading": "このくるまは、にほんのこうじょうでせいさんされています。",
+          "indonesian": "Mobil ini diproduksi di pabrik Jepang.",
+          "highlight": "生産"
+        }
+      ]
+    },
+    {
+      "id": "4618a9e5-e055-4b13-bdf4-cacd142ef343",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "4618a9e5-e055-4b13-bdf4-cacd142ef343",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "社会",
+        "reading": "しゃかい",
+        "romaji": null,
+        "indonesian": "masyarakat",
+        "category": "名詞",
+        "sort_order": 32
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしはだいがくでにほんの社会をべんきょうしています。",
+          "reading": "わたしはだいがくでにほんのしゃかいをべんきょうしています。",
+          "indonesian": "Saya mempelajari masyarakat Jepang di universitas.",
+          "highlight": "社会"
+        }
+      ]
+    },
+    {
+      "id": "41406fa0-64fe-4c3c-b09f-5328300ecdb5",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "41406fa0-64fe-4c3c-b09f-5328300ecdb5",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "発見",
+        "reading": "はっけん",
+        "romaji": null,
+        "indonesian": "penemuan",
+        "category": "名詞・動詞",
+        "sort_order": 33
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "あたらしいほしの発見が、ニュースでほうそうされました。",
+          "reading": "あたらしいほしのはっけんが、ニュースでほうそうされました。",
+          "indonesian": "Penemuan bintang baru disiarkan dalam berita.",
+          "highlight": "発見"
+        }
+      ]
+    },
+    {
+      "id": "a25c3504-a0b5-46b1-b83b-98926e855a41",
+      "chapter": 21,
+      "expectedCore": {
+        "id": "a25c3504-a0b5-46b1-b83b-98926e855a41",
+        "module_id": "bc0d9617-17b7-4293-8250-542ac9dfdf45",
+        "lesson_id": null,
+        "japanese": "発明",
+        "reading": "はつめい",
+        "romaji": null,
+        "indonesian": "penemuan atau ciptaan baru",
+        "category": "名詞・動詞",
+        "sort_order": 34
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "85f29153-059a-450d-83d2-4a2326f1780d"
+      ],
+      "examples": [
+        {
+          "japanese": "この発明で、せいかつがべんりになりました。",
+          "reading": "このはつめいで、せいかつがべんりになりました。",
+          "indonesian": "Penemuan baru ini membuat kehidupan menjadi lebih praktis.",
+          "highlight": "発明"
+        }
+      ]
+    },
+    {
+      "id": "e32b8607-ec17-42f4-94e2-f28bf1e1d47f",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "e32b8607-ec17-42f4-94e2-f28bf1e1d47f",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "親",
+        "reading": "おや",
+        "romaji": null,
+        "indonesian": "orang tua",
+        "category": "名詞",
+        "sort_order": 1
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "親は、こどもにじぶんでかんがえさせました。",
+          "reading": "おやは、こどもにじぶんでかんがえさせました。",
+          "indonesian": "Orang tua membiarkan anak berpikir sendiri.",
+          "highlight": "親"
+        }
+      ]
+    },
+    {
+      "id": "41b60ca2-77c4-49b5-8ed4-164a3b1b1832",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "41b60ca2-77c4-49b5-8ed4-164a3b1b1832",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "上司",
+        "reading": "じょうし",
+        "romaji": null,
+        "indonesian": "atasan",
+        "category": "名詞",
+        "sort_order": 3
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "上司は、わたしにレポートをかかせました。",
+          "reading": "じょうしは、わたしにレポートをかかせました。",
+          "indonesian": "Atasan menyuruh saya menulis laporan.",
+          "highlight": "上司"
+        }
+      ]
+    },
+    {
+      "id": "8cf59732-7e3a-49b5-8526-84482c87607b",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "8cf59732-7e3a-49b5-8526-84482c87607b",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "部下",
+        "reading": "ぶか",
+        "romaji": null,
+        "indonesian": "bawahan",
+        "category": "名詞",
+        "sort_order": 4
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "ぶちょうは、部下にかいぎのしりょうをじゅんびさせました。",
+          "reading": "ぶちょうは、ぶかにかいぎのしりょうをじゅんびさせました。",
+          "indonesian": "Kepala departemen menyuruh bawahannya menyiapkan dokumen rapat.",
+          "highlight": "部下"
+        }
+      ]
+    },
+    {
+      "id": "18ebd42f-fffe-48de-bc0f-409c700f97c6",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "18ebd42f-fffe-48de-bc0f-409c700f97c6",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "部長",
+        "reading": "ぶちょう",
+        "romaji": null,
+        "indonesian": "kepala bagian atau departemen",
+        "category": "名詞",
+        "sort_order": 5
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "部長は、わたしをはやくかえらせてくれました。",
+          "reading": "ぶちょうは、わたしをはやくかえらせてくれました。",
+          "indonesian": "Kepala departemen mengizinkan saya pulang lebih awal.",
+          "highlight": "部長"
+        }
+      ]
+    },
+    {
+      "id": "cc2378e6-37d6-4a71-b340-f969053e6a8b",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "cc2378e6-37d6-4a71-b340-f969053e6a8b",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "残業",
+        "reading": "ざんぎょう",
+        "romaji": null,
+        "indonesian": "lembur",
+        "category": "名詞",
+        "sort_order": 6
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "きのうはじょうしに残業させられました。",
+          "reading": "きのうはじょうしにざんぎょうさせられました。",
+          "indonesian": "Kemarin saya disuruh lembur oleh atasan.",
+          "highlight": "残業"
+        }
+      ]
+    },
+    {
+      "id": "57da080c-e999-45d9-9ac2-5322250d17c0",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "57da080c-e999-45d9-9ac2-5322250d17c0",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "作文",
+        "reading": "さくぶん",
+        "romaji": null,
+        "indonesian": "karangan; kegiatan mengarang",
+        "category": "名詞",
+        "sort_order": 7
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいは、がくせいに作文をかかせました。",
+          "reading": "せんせいは、がくせいにさくぶんをかかせました。",
+          "indonesian": "Guru menyuruh para siswa menulis karangan.",
+          "highlight": "作文"
+        }
+      ]
+    },
+    {
+      "id": "96f696fd-5bf5-45b0-8f28-095a16c81008",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "96f696fd-5bf5-45b0-8f28-095a16c81008",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "許可",
+        "reading": "きょか",
+        "romaji": null,
+        "indonesian": "izin",
+        "category": "名詞",
+        "sort_order": 9
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいの許可をもらって、はやくかえりました。",
+          "reading": "せんせいのきょかをもらって、はやくかえりました。",
+          "indonesian": "Saya pulang lebih awal setelah mendapat izin guru.",
+          "highlight": "許可"
+        }
+      ]
+    },
+    {
+      "id": "23eb875f-ab5b-4725-b4ef-7c29d8f2aca8",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "23eb875f-ab5b-4725-b4ef-7c29d8f2aca8",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "自由",
+        "reading": "じゆう",
+        "romaji": null,
+        "indonesian": "kebebasan; bebas",
+        "category": "名詞・な形容詞",
+        "sort_order": 10
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "こどもには、自由にえをかかせています。",
+          "reading": "こどもには、じゆうにえをかかせています。",
+          "indonesian": "Saya membiarkan anak-anak menggambar dengan bebas.",
+          "highlight": "自由"
+        }
+      ]
+    },
+    {
+      "id": "192fbc15-ae16-4adf-aef4-e06f371101f7",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "192fbc15-ae16-4adf-aef4-e06f371101f7",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "育てる",
+        "reading": "そだてる",
+        "romaji": null,
+        "indonesian": "membesarkan; memelihara",
+        "category": "動詞",
+        "sort_order": 12
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "ちちはわたしに、はなを育てさせてくれました。",
+          "reading": "ちちはわたしに、はなをそだてさせてくれました。",
+          "indonesian": "Ayah mengizinkan saya memelihara bunga.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "1e7bf84c-59b8-4808-9fa8-2fba8c5926d0",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "1e7bf84c-59b8-4808-9fa8-2fba8c5926d0",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "校長",
+        "reading": "こうちょう",
+        "romaji": null,
+        "indonesian": "kepala sekolah",
+        "category": "名詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "校長は、がくせいにじぶんのいけんをはなさせました。",
+          "reading": "こうちょうは、がくせいにじぶんのいけんをはなさせました。",
+          "indonesian": "Kepala sekolah memberi kesempatan kepada siswa untuk menyampaikan pendapat sendiri.",
+          "highlight": "校長"
+        }
+      ]
+    },
+    {
+      "id": "03a5dea9-b731-4827-a477-75d2cb0199e4",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "03a5dea9-b731-4827-a477-75d2cb0199e4",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "課長",
+        "reading": "かちょう",
+        "romaji": null,
+        "indonesian": "kepala bagian",
+        "category": "名詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "課長に、このしごとをやらせてほしいとたのみました。",
+          "reading": "かちょうに、このしごとをやらせてほしいとたのみました。",
+          "indonesian": "Saya meminta kepala bagian agar mengizinkan saya melakukan pekerjaan ini.",
+          "highlight": "課長"
+        }
+      ]
+    },
+    {
+      "id": "5fc2d780-4350-4470-a774-569101ddf04d",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "5fc2d780-4350-4470-a774-569101ddf04d",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "公務員",
+        "reading": "こうむいん",
+        "romaji": null,
+        "indonesian": "pegawai negeri",
+        "category": "名詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "あには公務員になるために、まいにちべんきょうしています。",
+          "reading": "あにはこうむいんになるために、まいにちべんきょうしています。",
+          "indonesian": "Kakak laki-laki saya belajar setiap hari untuk menjadi pegawai negeri.",
+          "highlight": "公務員"
+        }
+      ]
+    },
+    {
+      "id": "6996c933-a7e4-4484-addb-97e637a772b4",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "6996c933-a7e4-4484-addb-97e637a772b4",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "運ぶ",
+        "reading": "はこぶ",
+        "romaji": null,
+        "indonesian": "mengangkut; membawa",
+        "category": "動詞",
+        "sort_order": 15
+      },
+      "expectedNote": "Kelompok 1. Pengulangan terarah untuk peran pelaku.",
+      "note": "Kelompok 1. Pengulangan terarah untuk peran pelaku.",
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "じょうしに、おもいはこを運ばされました。",
+          "reading": "じょうしに、おもいはこをはこばされました。",
+          "indonesian": "Saya disuruh atasan mengangkut kotak berat.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "dd6cb53d-93e8-4216-885e-11cc1ec12e68",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "dd6cb53d-93e8-4216-885e-11cc1ec12e68",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "運転手",
+        "reading": "うんてんしゅ",
+        "romaji": null,
+        "indonesian": "pengemudi",
+        "category": "名詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": "きがつく = menyadari.",
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "バスの運転手は、わすれものにきがつきました。",
+          "reading": "バスのうんてんしゅは、わすれものにきがつきました。",
+          "indonesian": "Pengemudi bus menyadari ada barang tertinggal.",
+          "highlight": "運転手"
+        }
+      ]
+    },
+    {
+      "id": "2bd565b0-7097-412e-8529-aa8cdc833c8e",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "2bd565b0-7097-412e-8529-aa8cdc833c8e",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "許す",
+        "reading": "ゆるす",
+        "romaji": null,
+        "indonesian": "mengizinkan; memaafkan",
+        "category": "動詞",
+        "sort_order": 17
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "ははは、こどもがひとりでりょこうするのを許しました。",
+          "reading": "ははは、こどもがひとりでりょこうするのをゆるしました。",
+          "indonesian": "Ibu mengizinkan anaknya bepergian sendiri.",
+          "highlight": null
+        },
+        {
+          "japanese": "ともだちはわたしのまちがいを許してくれました。",
+          "reading": "ともだちはわたしのまちがいをゆるしてくれました。",
+          "indonesian": "Teman memaafkan kesalahan saya.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "77299b90-1266-4020-b7d5-402b35a48f7c",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "77299b90-1266-4020-b7d5-402b35a48f7c",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "高校生",
+        "reading": "こうこうせい",
+        "romaji": null,
+        "indonesian": "siswa SMA",
+        "category": "名詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "このクラスの高校生は、みんなじぶんでりょうりができます。",
+          "reading": "このクラスのこうこうせいは、みんなじぶんでりょうりができます。",
+          "indonesian": "Semua siswa SMA di kelas ini bisa memasak sendiri.",
+          "highlight": "高校生"
+        }
+      ]
+    },
+    {
+      "id": "e1f02b1f-7ee8-448e-a2a7-fd45188ab6f1",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "e1f02b1f-7ee8-448e-a2a7-fd45188ab6f1",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "教育",
+        "reading": "きょういく",
+        "romaji": null,
+        "indonesian": "pendidikan",
+        "category": "名詞・動詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "こどもの教育では、じぶんでかんがえさせることがたいせつです。",
+          "reading": "こどものきょういくでは、じぶんでかんがえさせることがたいせつです。",
+          "indonesian": "Dalam pendidikan anak, memberi kesempatan berpikir sendiri itu penting.",
+          "highlight": "教育"
+        }
+      ]
+    },
+    {
+      "id": "c017bf15-bea1-4a6d-a20c-df9a199204dc",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "c017bf15-bea1-4a6d-a20c-df9a199204dc",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "無理に",
+        "reading": "むりに",
+        "romaji": null,
+        "indonesian": "dengan paksa; memaksakan",
+        "category": "副詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "こどもを無理にはしらせないでください。",
+          "reading": "こどもをむりにはしらせないでください。",
+          "indonesian": "Tolong jangan memaksa anak berlari.",
+          "highlight": "無理に"
+        }
+      ]
+    },
+    {
+      "id": "c6a8f0b3-1e72-47c7-8f76-8184d5c45108",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "c6a8f0b3-1e72-47c7-8f76-8184d5c45108",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "妻",
+        "reading": "つま",
+        "romaji": null,
+        "indonesian": "istri sendiri",
+        "category": "名詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "妻とそうだんしてから、りょこうのひをきめます。",
+          "reading": "つまとそうだんしてから、りょこうのひをきめます。",
+          "indonesian": "Saya akan menentukan tanggal perjalanan setelah berdiskusi dengan istri.",
+          "highlight": "妻"
+        }
+      ]
+    },
+    {
+      "id": "4322cdc7-674b-4527-9193-39807c796478",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "4322cdc7-674b-4527-9193-39807c796478",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "夫",
+        "reading": "おっと",
+        "romaji": null,
+        "indonesian": "suami sendiri",
+        "category": "名詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "夫は、こどもにすきなほんをえらばせています。",
+          "reading": "おっとは、こどもにすきなほんをえらばせています。",
+          "indonesian": "Suami saya membiarkan anak memilih buku yang disukai.",
+          "highlight": "夫"
+        }
+      ]
+    },
+    {
+      "id": "b42ba8be-af84-42bc-af6f-ccf7eb35f502",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "b42ba8be-af84-42bc-af6f-ccf7eb35f502",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "息子",
+        "reading": "むすこ",
+        "romaji": null,
+        "indonesian": "putra sendiri",
+        "category": "名詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "息子に、じぶんのへやをそうじさせました。",
+          "reading": "むすこに、じぶんのへやをそうじさせました。",
+          "indonesian": "Saya menyuruh putra saya membersihkan kamarnya sendiri.",
+          "highlight": "息子"
+        }
+      ]
+    },
+    {
+      "id": "681992ed-c20a-47f1-8145-b3daea6ccf2b",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "681992ed-c20a-47f1-8145-b3daea6ccf2b",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "娘",
+        "reading": "むすめ",
+        "romaji": null,
+        "indonesian": "putri sendiri",
+        "category": "名詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "娘を、ともだちのいえにとまらせました。",
+          "reading": "むすめを、ともだちのいえにとまらせました。",
+          "indonesian": "Saya mengizinkan putri saya menginap di rumah teman.",
+          "highlight": "娘"
+        }
+      ]
+    },
+    {
+      "id": "5a265484-ae0b-4138-95be-fb07e9a2c8a5",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "5a265484-ae0b-4138-95be-fb07e9a2c8a5",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "祖父",
+        "reading": "そふ",
+        "romaji": null,
+        "indonesian": "kakek sendiri",
+        "category": "名詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "祖父は、わたしにむかしのどうぐをつかわせてくれました。",
+          "reading": "そふは、わたしにむかしのどうぐをつかわせてくれました。",
+          "indonesian": "Kakek mengizinkan saya menggunakan alat zaman dahulu.",
+          "highlight": "祖父"
+        }
+      ]
+    },
+    {
+      "id": "22e2ecb8-004a-4f65-acb0-578f16cd7355",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "22e2ecb8-004a-4f65-acb0-578f16cd7355",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "祖母",
+        "reading": "そぼ",
+        "romaji": null,
+        "indonesian": "nenek sendiri",
+        "category": "名詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "祖母は、わたしにりょうりをてつだわせてくれました。",
+          "reading": "そぼは、わたしにりょうりをてつだわせてくれました。",
+          "indonesian": "Nenek mengizinkan saya membantu memasak.",
+          "highlight": "祖母"
+        }
+      ]
+    },
+    {
+      "id": "b483b1dc-1ed8-4f53-b7af-528972c572a1",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "b483b1dc-1ed8-4f53-b7af-528972c572a1",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "赤ん坊",
+        "reading": "あかんぼう",
+        "romaji": null,
+        "indonesian": "bayi",
+        "category": "名詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "おおきなおとで、赤ん坊をなかせてしまいました。",
+          "reading": "おおきなおとで、あかんぼうをなかせてしまいました。",
+          "indonesian": "Saya tidak sengaja membuat bayi menangis karena bunyi yang keras.",
+          "highlight": "赤ん坊"
+        }
+      ]
+    },
+    {
+      "id": "e7abb4cc-358a-42f8-a3c7-05e5e7c1bea0",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "e7abb4cc-358a-42f8-a3c7-05e5e7c1bea0",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "研究",
+        "reading": "けんきゅう",
+        "romaji": null,
+        "indonesian": "penelitian",
+        "category": "名詞・動詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいは、がくせいにすきな研究をさせています。",
+          "reading": "せんせいは、がくせいにすきなけんきゅうをさせています。",
+          "indonesian": "Dosen membiarkan mahasiswa melakukan penelitian yang disukai.",
+          "highlight": "研究"
+        }
+      ]
+    },
+    {
+      "id": "92cd9593-bbe9-4121-88e4-3a42de0e1a4c",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "92cd9593-bbe9-4121-88e4-3a42de0e1a4c",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "女性",
+        "reading": "じょせい",
+        "romaji": null,
+        "indonesian": "perempuan; wanita",
+        "category": "名詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "あの女性は、あたらしいけんきゅうをはじめたそうです。",
+          "reading": "あのじょせいは、あたらしいけんきゅうをはじめたそうです。",
+          "indonesian": "Katanya perempuan itu sudah memulai penelitian baru.",
+          "highlight": "女性"
+        }
+      ]
+    },
+    {
+      "id": "7a4b1793-0b1a-4afa-bf63-04c1fa74924e",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "7a4b1793-0b1a-4afa-bf63-04c1fa74924e",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "男性",
+        "reading": "だんせい",
+        "romaji": null,
+        "indonesian": "laki-laki; pria",
+        "category": "名詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "あの男性に、えきまでのみちをおしえてもらいました。",
+          "reading": "あのだんせいに、えきまでのみちをおしえてもらいました。",
+          "indonesian": "Laki-laki itu memberi tahu saya jalan menuju stasiun.",
+          "highlight": "男性"
+        }
+      ]
+    },
+    {
+      "id": "a644c29a-60ee-4be6-902e-21603cf342d8",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "a644c29a-60ee-4be6-902e-21603cf342d8",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "家内",
+        "reading": "かない",
+        "romaji": null,
+        "indonesian": "istri sendiri",
+        "category": "名詞",
+        "sort_order": 29
+      },
+      "expectedNote": "Istilah tradisional; 妻 lebih netral.",
+      "note": "Istilah tradisional; 妻 lebih netral.\n家内 adalah istilah tradisional untuk istri sendiri; 妻 lebih netral.",
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "家内とわたしは、らいねんひっこすことにしました。",
+          "reading": "かないとわたしは、らいねんひっこすことにしました。",
+          "indonesian": "Istri saya dan saya memutuskan pindah rumah tahun depan.",
+          "highlight": "家内"
+        }
+      ]
+    },
+    {
+      "id": "8e089f99-c6e8-4ba1-a206-81bbd17f02b6",
+      "chapter": 22,
+      "expectedCore": {
+        "id": "8e089f99-c6e8-4ba1-a206-81bbd17f02b6",
+        "module_id": "dec559f0-9e4f-44e2-b89d-e66df1a5525d",
+        "lesson_id": null,
+        "japanese": "お嬢さん",
+        "reading": "おじょうさん",
+        "romaji": null,
+        "indonesian": "putri orang lain; nona muda",
+        "category": "名詞",
+        "sort_order": 30
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "3b31b93e-2e1e-4beb-8f7e-7b999a7d30a3"
+      ],
+      "examples": [
+        {
+          "japanese": "お嬢さんは、もうひとりでがっこうにかよっていますか。",
+          "reading": "おじょうさんは、もうひとりでがっこうにかよっていますか。",
+          "indonesian": "Apakah putri Anda sudah pergi ke sekolah sendiri?",
+          "highlight": "お嬢さん"
+        }
+      ]
+    },
+    {
+      "id": "a1a11960-488a-4d6f-8b53-6be03b783e22",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "a1a11960-488a-4d6f-8b53-6be03b783e22",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "いらっしゃる",
+        "reading": "いらっしゃる",
+        "romaji": null,
+        "indonesian": "pergi; datang; berada, dalam bahasa hormat",
+        "category": "動詞",
+        "sort_order": 1
+      },
+      "expectedNote": "Kelompok 1. Sonkeigo untuk 行く・来る・いる. Bentuk sopan: いらっしゃいます.",
+      "note": "Kelompok 1. Sonkeigo untuk 行く・来る・いる. Bentuk sopan: いらっしゃいます.",
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいは、いまとしょかんにいらっしゃいます。",
+          "reading": "せんせいは、いまとしょかんにいらっしゃいます。",
+          "indonesian": "Guru saat ini berada di perpustakaan.",
+          "highlight": null
+        },
+        {
+          "japanese": "しゃちょうは、あしたこちらにいらっしゃいます。",
+          "reading": "しゃちょうは、あしたこちらにいらっしゃいます。",
+          "indonesian": "Direktur akan datang ke sini besok.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "e21b1dce-6479-492a-84bf-9561642cd87f",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "e21b1dce-6479-492a-84bf-9561642cd87f",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "召し上がる",
+        "reading": "めしあがる",
+        "romaji": null,
+        "indonesian": "makan; minum, dalam bahasa hormat",
+        "category": "動詞",
+        "sort_order": 2
+      },
+      "expectedNote": "Kelompok 1. Sonkeigo untuk 食べる・飲む; bukan untuk meninggikan tindakan diri sendiri.",
+      "note": "Kelompok 1. Sonkeigo untuk 食べる・飲む; bukan untuk meninggikan tindakan diri sendiri.",
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいは、もうひるごはんを召し上がりましたか。",
+          "reading": "せんせいは、もうひるごはんをめしあがりましたか。",
+          "indonesian": "Apakah guru sudah makan siang?",
+          "highlight": null
+        },
+        {
+          "japanese": "おきゃくさまは、コーヒーを召し上がっています。",
+          "reading": "おきゃくさまは、コーヒーをめしあがっています。",
+          "indonesian": "Tamu sedang minum kopi.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "c5e989f0-e335-44b7-b361-bc23ca44eda8",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "c5e989f0-e335-44b7-b361-bc23ca44eda8",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "ご覧になる",
+        "reading": "ごらんになる",
+        "romaji": null,
+        "indonesian": "melihat, dalam bahasa hormat",
+        "category": "動詞",
+        "sort_order": 3
+      },
+      "expectedNote": "Kelompok 1. Sonkeigo untuk 見る.",
+      "note": "Kelompok 1. Sonkeigo untuk 見る.",
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいは、わたしのレポートをご覧になりました。",
+          "reading": "せんせいは、わたしのレポートをごらんになりました。",
+          "indonesian": "Guru sudah melihat laporan saya.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "d507c296-ac3b-4492-a431-f99207e0677e",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "d507c296-ac3b-4492-a431-f99207e0677e",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "なさる",
+        "reading": "なさる",
+        "romaji": null,
+        "indonesian": "melakukan, dalam bahasa hormat",
+        "category": "動詞",
+        "sort_order": 4
+      },
+      "expectedNote": "Kelompok 1. Sonkeigo untuk する. Bentuk sopan: なさいます.",
+      "note": "Kelompok 1. Sonkeigo untuk する. Bentuk sopan: なさいます.",
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "おやすみのひは、なにをなさいますか。",
+          "reading": "おやすみのひは、なにをなさいますか。",
+          "indonesian": "Apa yang Anda lakukan pada hari libur?",
+          "highlight": null
+        },
+        {
+          "japanese": "しゃちょうは、あしたかいぎをなさいます。",
+          "reading": "しゃちょうは、あしたかいぎをなさいます。",
+          "indonesian": "Direktur akan mengadakan rapat besok.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "5c52c133-9c00-427a-b426-4736fc99f40d",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "5c52c133-9c00-427a-b426-4736fc99f40d",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "おっしゃる",
+        "reading": "おっしゃる",
+        "romaji": null,
+        "indonesian": "mengatakan, dalam bahasa hormat",
+        "category": "動詞",
+        "sort_order": 5
+      },
+      "expectedNote": "Kelompok 1. Sonkeigo untuk 言う. Bentuk sopan: おっしゃいます.",
+      "note": "Kelompok 1. Sonkeigo untuk 言う. Bentuk sopan: おっしゃいます.",
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいは、あしたはしけんだとおっしゃいました。",
+          "reading": "せんせいは、あしたはしけんだとおっしゃいました。",
+          "indonesian": "Guru mengatakan bahwa besok ada ujian.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "7b097c00-7583-433f-9a40-b158a1eda862",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "7b097c00-7583-433f-9a40-b158a1eda862",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "ご存じ",
+        "reading": "ごぞんじ",
+        "romaji": null,
+        "indonesian": "tahu; mengenal, dalam bahasa hormat",
+        "category": "名詞",
+        "sort_order": 6
+      },
+      "expectedNote": "ご存じです adalah ungkapan hormat untuk 知っている.",
+      "note": "ご存じです adalah ungkapan hormat untuk 知っている.",
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "このみせをご存じですか。",
+          "reading": "このみせをごぞんじですか。",
+          "indonesian": "Apakah Anda mengenal toko ini?",
+          "highlight": "ご存じ"
+        },
+        {
+          "japanese": "せんせいは、そのニュースをまだご存じないようです。",
+          "reading": "せんせいは、そのニュースをまだごぞんじないようです。",
+          "indonesian": "Guru tampaknya belum mengetahui berita itu.",
+          "highlight": "ご存じ"
+        }
+      ]
+    },
+    {
+      "id": "78a20d32-21ad-4193-afe2-7de84e500368",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "78a20d32-21ad-4193-afe2-7de84e500368",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "社長",
+        "reading": "しゃちょう",
+        "romaji": null,
+        "indonesian": "direktur atau pimpinan perusahaan",
+        "category": "名詞",
+        "sort_order": 9
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "社長は、いまかいぎしつにいらっしゃいます。",
+          "reading": "しゃちょうは、いまかいぎしつにいらっしゃいます。",
+          "indonesian": "Direktur sekarang berada di ruang rapat.",
+          "highlight": "社長"
+        }
+      ]
+    },
+    {
+      "id": "42cda3c5-4f73-41bc-ad9b-76cf0668a607",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "42cda3c5-4f73-41bc-ad9b-76cf0668a607",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "おいでになる",
+        "reading": "おいでになる",
+        "romaji": null,
+        "indonesian": "datang; pergi; berada, bahasa hormat",
+        "category": "動詞",
+        "sort_order": 12
+      },
+      "expectedNote": null,
+      "note": "かい = pertemuan/acara.",
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいは、らいしゅうのかいにおいでになりますか。",
+          "reading": "せんせいは、らいしゅうのかいにおいでになりますか。",
+          "indonesian": "Apakah guru akan datang ke pertemuan minggu depan?",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "b084c90f-6cc4-4c80-8b53-f3787ca1edc9",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "b084c90f-6cc4-4c80-8b53-f3787ca1edc9",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "ご主人",
+        "reading": "ごしゅじん",
+        "romaji": null,
+        "indonesian": "suami orang lain",
+        "category": "名詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "ご主人は、どちらでおはたらきになっていますか。",
+          "reading": "ごしゅじんは、どちらでおはたらきになっていますか。",
+          "indonesian": "Di mana suami Anda bekerja?",
+          "highlight": "ご主人"
+        }
+      ]
+    },
+    {
+      "id": "8311aacd-87d9-42a2-aed4-5c90b2cc9765",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "8311aacd-87d9-42a2-aed4-5c90b2cc9765",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "お仕事",
+        "reading": "おしごと",
+        "romaji": null,
+        "indonesian": "pekerjaan, dengan bentuk hormat",
+        "category": "名詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "お仕事は、なんじにおわりますか。",
+          "reading": "おしごとは、なんじにおわりますか。",
+          "indonesian": "Pukul berapa pekerjaan Anda selesai?",
+          "highlight": "お仕事"
+        }
+      ]
+    },
+    {
+      "id": "21f35e44-8155-44de-b400-b40123475069",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "21f35e44-8155-44de-b400-b40123475069",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "お嬢さん",
+        "reading": "おじょうさん",
+        "romaji": null,
+        "indonesian": "putri orang lain; nona muda",
+        "category": "名詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "お嬢さんは、ピアノをならっていらっしゃいますか。",
+          "reading": "おじょうさんは、ピアノをならっていらっしゃいますか。",
+          "indonesian": "Apakah putri Anda sedang belajar piano?",
+          "highlight": "お嬢さん"
+        }
+      ]
+    },
+    {
+      "id": "f130ab7d-5b4a-4249-b86d-97f791c346cc",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "f130ab7d-5b4a-4249-b86d-97f791c346cc",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "お宅",
+        "reading": "おたく",
+        "romaji": null,
+        "indonesian": "rumah atau keluarga Anda, bentuk sopan",
+        "category": "名詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいのお宅は、えきからちかいですか。",
+          "reading": "せんせいのおたくは、えきからちかいですか。",
+          "indonesian": "Apakah rumah guru dekat stasiun?",
+          "highlight": "お宅"
+        }
+      ]
+    },
+    {
+      "id": "2e570246-ae01-4b91-85ae-eaf125e7f9a2",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "2e570246-ae01-4b91-85ae-eaf125e7f9a2",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "ご家族",
+        "reading": "ごかぞく",
+        "romaji": null,
+        "indonesian": "keluarga pihak yang dihormati",
+        "category": "名詞",
+        "sort_order": 15
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "ご家族は、みなさんおげんきですか。",
+          "reading": "ごかぞくは、みなさんおげんきですか。",
+          "indonesian": "Apakah seluruh keluarga Anda sehat?",
+          "highlight": "ご家族"
+        }
+      ]
+    },
+    {
+      "id": "881e9896-8153-46ea-bfcf-dd8676369cb8",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "881e9896-8153-46ea-bfcf-dd8676369cb8",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "ご都合",
+        "reading": "ごつごう",
+        "romaji": null,
+        "indonesian": "ketersediaan atau kecocokan jadwal pihak lain",
+        "category": "名詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "らいしゅうのきんようびは、ご都合がよろしいですか。",
+          "reading": "らいしゅうのきんようびは、ごつごうがよろしいですか。",
+          "indonesian": "Apakah waktu Anda cocok pada hari Jumat minggu depan?",
+          "highlight": "ご都合"
+        }
+      ]
+    },
+    {
+      "id": "5201af8e-f464-4e8d-a959-e6f5caa22511",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "5201af8e-f464-4e8d-a959-e6f5caa22511",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "客",
+        "reading": "きゃく",
+        "romaji": null,
+        "indonesian": "tamu; pelanggan",
+        "category": "名詞",
+        "sort_order": 16
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "このホテルには、がいこくからの客がおおいです。",
+          "reading": "このホテルには、がいこくからのきゃくがおおいです。",
+          "indonesian": "Hotel ini memiliki banyak tamu dari luar negeri.",
+          "highlight": "客"
+        }
+      ]
+    },
+    {
+      "id": "0f7ecc83-7c7a-4288-ba6e-0922344d53f9",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "0f7ecc83-7c7a-4288-ba6e-0922344d53f9",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "失礼",
+        "reading": "しつれい",
+        "romaji": null,
+        "indonesian": "tidak sopan; permisi dalam ungkapan tertentu",
+        "category": "名詞・な形容詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "おはなしのとちゅうですが、失礼します。",
+          "reading": "おはなしのとちゅうですが、しつれいします。",
+          "indonesian": "Maaf, saya permisi di tengah pembicaraan Anda.",
+          "highlight": "失礼"
+        }
+      ]
+    },
+    {
+      "id": "a05b7a91-bb61-456c-9629-15c5f3b4e8b9",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "a05b7a91-bb61-456c-9629-15c5f3b4e8b9",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "校長",
+        "reading": "こうちょう",
+        "romaji": null,
+        "indonesian": "kepala sekolah",
+        "category": "名詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "校長は、こうどうでおはなしになっています。",
+          "reading": "こうちょうは、こうどうでおはなしになっています。",
+          "indonesian": "Kepala sekolah sedang berbicara di aula.",
+          "highlight": "校長"
+        }
+      ]
+    },
+    {
+      "id": "a43992c8-467a-43ff-a659-97031fa6e8e3",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "a43992c8-467a-43ff-a659-97031fa6e8e3",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "課長",
+        "reading": "かちょう",
+        "romaji": null,
+        "indonesian": "kepala bagian",
+        "category": "名詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": "さきほど = tadi/barusan, lebih formal daripada さっき.",
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "課長は、さきほどおかえりになりました。",
+          "reading": "かちょうは、さきほどおかえりになりました。",
+          "indonesian": "Kepala bagian baru saja pulang.",
+          "highlight": "課長"
+        }
+      ]
+    },
+    {
+      "id": "9d086531-22bd-421f-93ee-9f1ffa6e934b",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "9d086531-22bd-421f-93ee-9f1ffa6e934b",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "女性",
+        "reading": "じょせい",
+        "romaji": null,
+        "indonesian": "perempuan; wanita",
+        "category": "名詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "あちらの女性は、わたしたちのせんせいです。",
+          "reading": "あちらのじょせいは、わたしたちのせんせいです。",
+          "indonesian": "Perempuan di sebelah sana adalah guru kami.",
+          "highlight": "女性"
+        }
+      ]
+    },
+    {
+      "id": "d87f8d5d-003a-4d77-8513-5a79a892b10f",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "d87f8d5d-003a-4d77-8513-5a79a892b10f",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "男性",
+        "reading": "だんせい",
+        "romaji": null,
+        "indonesian": "laki-laki; pria",
+        "category": "名詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "あの男性が、さっきこちらでおまちになっていました。",
+          "reading": "あのだんせいが、さっきこちらでおまちになっていました。",
+          "indonesian": "Laki-laki itu tadi menunggu di sini.",
+          "highlight": "男性"
+        }
+      ]
+    },
+    {
+      "id": "9398a187-429b-4c6c-a250-4f8aa8f55ac0",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "9398a187-429b-4c6c-a250-4f8aa8f55ac0",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "皆様",
+        "reading": "みなさま",
+        "romaji": null,
+        "indonesian": "Anda semua; hadirin, bentuk hormat",
+        "category": "代名詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "皆様、こちらをごらんください。",
+          "reading": "みなさま、こちらをごらんください。",
+          "indonesian": "Hadirin sekalian, silakan lihat ke sini.",
+          "highlight": "皆様"
+        }
+      ]
+    },
+    {
+      "id": "205f089f-414c-4e71-9d5c-1f02a4177b17",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "205f089f-414c-4e71-9d5c-1f02a4177b17",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "よろしい",
+        "reading": "よろしい",
+        "romaji": null,
+        "indonesian": "baik; boleh, bentuk sopan",
+        "category": "い形容詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "こちらのせきでよろしいですか。",
+          "reading": "こちらのせきでよろしいですか。",
+          "indonesian": "Apakah tempat duduk ini sesuai untuk Anda?",
+          "highlight": "よろしい"
+        }
+      ]
+    },
+    {
+      "id": "4b72e7bd-d81d-4924-aac9-ffea05ae29ca",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "4b72e7bd-d81d-4924-aac9-ffea05ae29ca",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "お待ちになる",
+        "reading": "おまちになる",
+        "romaji": null,
+        "indonesian": "menunggu, bahasa hormat",
+        "category": "動詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいは、うけつけでお待ちになっています。",
+          "reading": "せんせいは、うけつけでおまちになっています。",
+          "indonesian": "Guru sedang menunggu di resepsionis.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "d82159d4-8e2f-413b-8126-20b74f95b9cd",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "d82159d4-8e2f-413b-8126-20b74f95b9cd",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "お年寄り",
+        "reading": "おとしより",
+        "romaji": null,
+        "indonesian": "orang lanjut usia, bentuk sopan",
+        "category": "名詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": "せきをゆずる = mempersilakan orang lain memakai tempat duduk.",
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "バスでお年寄りにせきをゆずりました。",
+          "reading": "バスでおとしよりにせきをゆずりました。",
+          "indonesian": "Saya memberikan tempat duduk kepada orang lanjut usia di bus.",
+          "highlight": "お年寄り"
+        }
+      ]
+    },
+    {
+      "id": "c60cb6b9-b067-4a90-9da8-c1b966f0793f",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "c60cb6b9-b067-4a90-9da8-c1b966f0793f",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "奥様",
+        "reading": "おくさま",
+        "romaji": null,
+        "indonesian": "istri orang lain, bentuk hormat",
+        "category": "名詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "奥様も、あしたのコンサートにいらっしゃいますか。",
+          "reading": "おくさまも、あしたのコンサートにいらっしゃいますか。",
+          "indonesian": "Apakah istri Anda juga akan datang ke konser besok?",
+          "highlight": "奥様"
+        }
+      ]
+    },
+    {
+      "id": "6b6dd871-963d-486b-8a49-b3975b86c4a6",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "6b6dd871-963d-486b-8a49-b3975b86c4a6",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "ご意見",
+        "reading": "ごいけん",
+        "romaji": null,
+        "indonesian": "pendapat pihak lain, bentuk hormat",
+        "category": "名詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいのご意見をききたいです。",
+          "reading": "せんせいのごいけんをききたいです。",
+          "indonesian": "Saya ingin mendengar pendapat guru.",
+          "highlight": "ご意見"
+        }
+      ]
+    },
+    {
+      "id": "1c2a4dc0-5d09-4d9c-9bc2-1bd6d4e2922a",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "1c2a4dc0-5d09-4d9c-9bc2-1bd6d4e2922a",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "ご利用",
+        "reading": "ごりよう",
+        "romaji": null,
+        "indonesian": "penggunaan oleh pelanggan, bentuk hormat",
+        "category": "名詞・動詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "このへやは、ごごさんじまでご利用になれます。",
+          "reading": "このへやは、ごごさんじまでごりようになれます。",
+          "indonesian": "Anda dapat menggunakan ruangan ini sampai pukul tiga sore.",
+          "highlight": "ご利用"
+        }
+      ]
+    },
+    {
+      "id": "addea2d9-3eac-4158-b5cd-b1e4b2738b14",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "addea2d9-3eac-4158-b5cd-b1e4b2738b14",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "お帰りになる",
+        "reading": "おかえりになる",
+        "romaji": null,
+        "indonesian": "pulang, bahasa hormat",
+        "category": "動詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "しゃちょうは、なんじにお帰りになりますか。",
+          "reading": "しゃちょうは、なんじにおかえりになりますか。",
+          "indonesian": "Pukul berapa direktur akan pulang?",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "df44fec3-b8f6-4ac7-835b-f4f9f46315da",
+      "chapter": 23,
+      "expectedCore": {
+        "id": "df44fec3-b8f6-4ac7-835b-f4f9f46315da",
+        "module_id": "75f7e5ca-c982-4011-9803-7910b6b91002",
+        "lesson_id": null,
+        "japanese": "お休みになる",
+        "reading": "おやすみになる",
+        "romaji": null,
+        "indonesian": "tidur atau beristirahat, bahasa hormat",
+        "category": "動詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "1a3fc002-820d-4d92-acdd-eead3caff322"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいは、いまおへやでお休みになっています。",
+          "reading": "せんせいは、いまおへやでおやすみになっています。",
+          "indonesian": "Guru sekarang sedang beristirahat di kamar.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "b1c16cd5-69b4-4f69-810e-a7fac78049e7",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "b1c16cd5-69b4-4f69-810e-a7fac78049e7",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "参る",
+        "reading": "まいる",
+        "romaji": null,
+        "indonesian": "pergi; datang, dalam bahasa sangat sopan",
+        "category": "動詞",
+        "sort_order": 1
+      },
+      "expectedNote": "Kelompok 1. Bentuk kenjougo II untuk tindakan pihak sendiri; berbeda dari 伺う yang diarahkan ke pihak yang dihormati.",
+      "note": "Kelompok 1. Bentuk kenjougo II untuk tindakan pihak sendiri; berbeda dari 伺う yang diarahkan ke pihak yang dihormati.",
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしは、あしたそちらへ参ります。",
+          "reading": "わたしは、あしたそちらへまいります。",
+          "indonesian": "Saya akan datang ke tempat Anda besok.",
+          "highlight": null
+        },
+        {
+          "japanese": "らいしゅう、おおさかへ参ります。",
+          "reading": "らいしゅう、おおさかへまいります。",
+          "indonesian": "Saya akan pergi ke Osaka minggu depan.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "26d44ea2-1e4b-46d0-92a5-1a5c0a9b958d",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "26d44ea2-1e4b-46d0-92a5-1a5c0a9b958d",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "申す",
+        "reading": "もうす",
+        "romaji": null,
+        "indonesian": "mengatakan; bernama, dalam bahasa sangat sopan",
+        "category": "動詞",
+        "sort_order": 2
+      },
+      "expectedNote": "Kelompok 1. Contoh perkenalan: リナと申します.",
+      "note": "Kelompok 1. Contoh perkenalan: リナと申します.",
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "はじめまして。わたしはリナと申します。",
+          "reading": "はじめまして。わたしはリナともうします。",
+          "indonesian": "Salam kenal. Nama saya Rina.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "6888bd30-108c-4068-ab67-5c4760760edf",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "6888bd30-108c-4068-ab67-5c4760760edf",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "いたす",
+        "reading": "いたす",
+        "romaji": null,
+        "indonesian": "melakukan, dalam bahasa merendah atau sangat sopan",
+        "category": "動詞",
+        "sort_order": 3
+      },
+      "expectedNote": "Kelompok 1. Bentuk sopan: いたします.",
+      "note": "Kelompok 1. Bentuk sopan: いたします.",
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "このしごとは、わたしがいたします。",
+          "reading": "このしごとは、わたしがいたします。",
+          "indonesian": "Saya yang akan mengerjakan pekerjaan ini.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "e3f272c5-b0ec-47e9-8ba8-8cbb05ceaf8c",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "e3f272c5-b0ec-47e9-8ba8-8cbb05ceaf8c",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "おる",
+        "reading": "おる",
+        "romaji": null,
+        "indonesian": "berada, dalam bahasa sangat sopan",
+        "category": "動詞",
+        "sort_order": 4
+      },
+      "expectedNote": "Kelompok 1. Untuk pihak sendiri dalam penggunaan formal bab ini; bentuk sopan: おります.",
+      "note": "Kelompok 1. Untuk pihak sendiri dalam penggunaan formal bab ini; bentuk sopan: おります.",
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしは、ゆうがたまでじむしょにおります。",
+          "reading": "わたしは、ゆうがたまでじむしょにおります。",
+          "indonesian": "Saya berada di kantor sampai sore.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "19078932-fd70-4b63-8751-62469e64d565",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "19078932-fd70-4b63-8751-62469e64d565",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "伺う",
+        "reading": "うかがう",
+        "romaji": null,
+        "indonesian": "bertanya; mendengar; berkunjung, secara merendah",
+        "category": "動詞",
+        "sort_order": 5
+      },
+      "expectedNote": "Kelompok 1. Pilih makna sesuai konteks dan pihak yang dihormati.",
+      "note": "Kelompok 1. Pilih makna sesuai konteks dan pihak yang dihormati.",
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたごごさんじに、せんせいのおたくへ伺います。",
+          "reading": "あしたごごさんじに、せんせいのおたくへうかがいます。",
+          "indonesian": "Besok pukul tiga sore, saya akan mengunjungi rumah guru.",
+          "highlight": null
+        },
+        {
+          "japanese": "おなまえを伺ってもよろしいですか。",
+          "reading": "おなまえをうかがってもよろしいですか。",
+          "indonesian": "Bolehkah saya menanyakan nama Anda?",
+          "highlight": null
+        },
+        {
+          "japanese": "そのおはなしは、せんせいから伺いました。",
+          "reading": "そのおはなしは、せんせいからうかがいました。",
+          "indonesian": "Saya mendengar cerita itu dari guru.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "fec8e2a5-a0e3-4fda-97d6-cffed463b25b",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "fec8e2a5-a0e3-4fda-97d6-cffed463b25b",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "拝見する",
+        "reading": "はいけんする",
+        "romaji": null,
+        "indonesian": "melihat, dalam bahasa merendah",
+        "category": "動詞",
+        "sort_order": 6
+      },
+      "expectedNote": "Kelompok 3. Untuk tindakan pihak sendiri terhadap sesuatu yang terkait pihak yang dihormati.",
+      "note": "Kelompok 3. Untuk tindakan pihak sendiri terhadap sesuatu yang terkait pihak yang dihormati.",
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいのレポートを拝見しました。",
+          "reading": "せんせいのレポートをはいけんしました。",
+          "indonesian": "Saya sudah membaca laporan guru.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "28422c70-58cb-473b-b7e9-cc611abc68fb",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "28422c70-58cb-473b-b7e9-cc611abc68fb",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "お目にかかる",
+        "reading": "おめにかかる",
+        "romaji": null,
+        "indonesian": "bertemu, dalam bahasa merendah",
+        "category": "動詞",
+        "sort_order": 7
+      },
+      "expectedNote": "Kelompok 1.",
+      "note": "Kelompok 1.",
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "またせんせいにお目にかかるのを、たのしみにしております。",
+          "reading": "またせんせいにおめにかかるのを、たのしみにしております。",
+          "indonesian": "Saya menantikan kesempatan bertemu guru lagi.",
+          "highlight": "お目にかかる"
+        }
+      ]
+    },
+    {
+      "id": "e95472fa-b0bd-4087-986a-bf0c9b7f90a8",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "e95472fa-b0bd-4087-986a-bf0c9b7f90a8",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "存じる",
+        "reading": "ぞんじる",
+        "romaji": null,
+        "indonesian": "mengetahui; berpikir, dalam bahasa merendah",
+        "category": "動詞",
+        "sort_order": 8
+      },
+      "expectedNote": "Kelompok 2. 存じております: mengetahui. Tentang orang dapat memakai 存じ上げる.",
+      "note": "Kelompok 2. 存じております: mengetahui. Tentang orang dapat memakai 存じ上げる.",
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "かいぎのじかんは存じております。",
+          "reading": "かいぎのじかんはぞんじております。",
+          "indonesian": "Saya mengetahui waktu rapat.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "3a851dd2-796d-4f14-99e7-3e8088cb575e",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "3a851dd2-796d-4f14-99e7-3e8088cb575e",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "差し上げる",
+        "reading": "さしあげる",
+        "romaji": null,
+        "indonesian": "memberi, dalam bahasa merendah",
+        "category": "動詞",
+        "sort_order": 9
+      },
+      "expectedNote": "Kelompok 2. Pihak sendiri memberi kepada pihak yang dihormati.",
+      "note": "Kelompok 2. Pihak sendiri memberi kepada pihak yang dihormati.",
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいに、このしゃしんを差し上げます。",
+          "reading": "せんせいに、このしゃしんをさしあげます。",
+          "indonesian": "Saya memberikan foto ini kepada guru.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "15c67f09-f9f1-4776-941f-77b396721634",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "15c67f09-f9f1-4776-941f-77b396721634",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "いただく",
+        "reading": "いただく",
+        "romaji": null,
+        "indonesian": "menerima; makan; minum, dalam bahasa merendah",
+        "category": "動詞",
+        "sort_order": 10
+      },
+      "expectedNote": "Kelompok 1. Pada memberi-menerima, pembicara atau pihaknya menjadi penerima.",
+      "note": "Kelompok 1. Pada memberi-menerima, pembicara atau pihaknya menjadi penerima.",
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいからほんをいただきました。",
+          "reading": "せんせいからほんをいただきました。",
+          "indonesian": "Saya menerima buku dari guru.",
+          "highlight": null
+        },
+        {
+          "japanese": "では、おちゃをいただきます。",
+          "reading": "では、おちゃをいただきます。",
+          "indonesian": "Kalau begitu, saya akan menikmati tehnya.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "5fc102c7-09bc-4ccb-b017-529251df6264",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "5fc102c7-09bc-4ccb-b017-529251df6264",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "くださる",
+        "reading": "くださる",
+        "romaji": null,
+        "indonesian": "memberi kepada pihak saya, dalam bahasa hormat",
+        "category": "動詞",
+        "sort_order": 11
+      },
+      "expectedNote": "Kelompok 1. Sonkeigo untuk くれる. Bentuk sopan: くださいます.",
+      "note": "Kelompok 1. Sonkeigo untuk くれる. Bentuk sopan: くださいます.",
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいが、わたしにほんをくださいました。",
+          "reading": "せんせいが、わたしにほんをくださいました。",
+          "indonesian": "Guru memberi saya buku.",
+          "highlight": null
+        },
+        {
+          "japanese": "おきゃくさまが、むすめにはなをくださいました。",
+          "reading": "おきゃくさまが、むすめにはなをくださいました。",
+          "indonesian": "Tamu memberi bunga kepada putri saya.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "d6391dfd-f59a-46d8-9fa9-20fb0a8ff82d",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "d6391dfd-f59a-46d8-9fa9-20fb0a8ff82d",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "ございます",
+        "reading": "ございます",
+        "romaji": null,
+        "indonesian": "ada; tersedia, dalam bahasa sopan",
+        "category": "表現",
+        "sort_order": 12
+      },
+      "expectedNote": "Bentuk sopan dari ある; bukan otomatis kenjougo.",
+      "note": "Bentuk sopan dari ある; bukan otomatis kenjougo.",
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "おてあらいは、あちらにございます。",
+          "reading": "おてあらいは、あちらにございます。",
+          "indonesian": "Toilet berada di sebelah sana.",
+          "highlight": "ございます"
+        },
+        {
+          "japanese": "おじかんはございますか。",
+          "reading": "おじかんはございますか。",
+          "indonesian": "Apakah Anda memiliki waktu?",
+          "highlight": "ございます"
+        }
+      ]
+    },
+    {
+      "id": "d775820e-2a07-491d-823a-0f5bd622d45d",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "d775820e-2a07-491d-823a-0f5bd622d45d",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "こちら",
+        "reading": "こちら",
+        "romaji": null,
+        "indonesian": "sebelah sini; orang atau pihak ini, secara sopan",
+        "category": "代名詞",
+        "sort_order": 13
+      },
+      "expectedNote": null,
+      "note": "ごあんないする = mengantar/memberi panduan secara sopan.",
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "こちらへどうぞ。おせきまでごあんないいたします。",
+          "reading": "こちらへどうぞ。おせきまでごあんないいたします。",
+          "indonesian": "Silakan ke sini. Saya akan mengantar Anda ke tempat duduk.",
+          "highlight": "こちら"
+        }
+      ]
+    },
+    {
+      "id": "192564b8-949c-4187-a7a4-54a1ce281bdd",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "192564b8-949c-4187-a7a4-54a1ce281bdd",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "そちら",
+        "reading": "そちら",
+        "romaji": null,
+        "indonesian": "sebelah situ; orang atau pihak Anda, secara sopan",
+        "category": "代名詞",
+        "sort_order": 14
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "あした、そちらへうかがってもよろしいですか。",
+          "reading": "あした、そちらへうかがってもよろしいですか。",
+          "indonesian": "Bolehkah saya datang ke tempat Anda besok?",
+          "highlight": "そちら"
+        }
+      ]
+    },
+    {
+      "id": "f7b97d97-fbf5-4d09-8389-3da89c727b6f",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "f7b97d97-fbf5-4d09-8389-3da89c727b6f",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "承知する",
+        "reading": "しょうちする",
+        "romaji": null,
+        "indonesian": "memahami; menyetujui permintaan",
+        "category": "動詞",
+        "sort_order": 15
+      },
+      "expectedNote": "Kelompok 3. 承知しました: saya mengerti/baik, dalam konteks formal.",
+      "note": "Kelompok 3. 承知しました: saya mengerti/baik, dalam konteks formal.",
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "ごよていがかわったことは、承知しました。",
+          "reading": "ごよていがかわったことは、しょうちしました。",
+          "indonesian": "Saya sudah memahami bahwa rencana Anda berubah.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "3c90ed4a-5cd7-4815-8433-ed7b323147e5",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "3c90ed4a-5cd7-4815-8433-ed7b323147e5",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "お手数",
+        "reading": "おてすう",
+        "romaji": null,
+        "indonesian": "kerepotan; usaha yang diminta dari pihak lain",
+        "category": "名詞",
+        "sort_order": 17
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "お手数ですが、ここにおなまえをかいていただけませんか。",
+          "reading": "おてすうですが、ここにおなまえをかいていただけませんか。",
+          "indonesian": "Maaf merepotkan, bisakah Anda menuliskan nama di sini?",
+          "highlight": "お手数"
+        }
+      ]
+    },
+    {
+      "id": "737c90e3-f399-4c68-893f-d50893efb6c8",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "737c90e3-f399-4c68-893f-d50893efb6c8",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "ご連絡",
+        "reading": "ごれんらく",
+        "romaji": null,
+        "indonesian": "kabar atau komunikasi, dengan bentuk sopan",
+        "category": "名詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "ご連絡いただき、ありがとうございます。",
+          "reading": "ごれんらくいただき、ありがとうございます。",
+          "indonesian": "Terima kasih telah menghubungi saya.",
+          "highlight": "ご連絡"
+        }
+      ]
+    },
+    {
+      "id": "1fe84047-dea4-445d-92d3-6b68cfc25ed9",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "1fe84047-dea4-445d-92d3-6b68cfc25ed9",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "申し上げる",
+        "reading": "もうしあげる",
+        "romaji": null,
+        "indonesian": "mengatakan; menyampaikan, bahasa merendah",
+        "category": "動詞",
+        "sort_order": 18
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "みなさまに、おれいを申し上げます。",
+          "reading": "みなさまに、おれいをもうしあげます。",
+          "indonesian": "Saya menyampaikan terima kasih kepada Anda semua.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "c52fde9a-02f8-4527-a17f-ab39bb39e0ee",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "c52fde9a-02f8-4527-a17f-ab39bb39e0ee",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "遠慮",
+        "reading": "えんりょ",
+        "romaji": null,
+        "indonesian": "menahan diri; sungkan",
+        "category": "名詞・動詞",
+        "sort_order": 19
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "きょうはつごうがわるいので、さんかを遠慮いたします。",
+          "reading": "きょうはつごうがわるいので、さんかをえんりょいたします。",
+          "indonesian": "Karena hari ini waktunya tidak cocok, saya mohon izin tidak ikut.",
+          "highlight": "遠慮"
+        }
+      ]
+    },
+    {
+      "id": "c1a68c86-a96e-4568-ae5b-53b3f3a53036",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "c1a68c86-a96e-4568-ae5b-53b3f3a53036",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "承知",
+        "reading": "しょうち",
+        "romaji": null,
+        "indonesian": "pemahaman; persetujuan formal",
+        "category": "名詞・動詞",
+        "sort_order": 20
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたのかいぎのじかんは、承知しております。",
+          "reading": "あしたのかいぎのじかんは、しょうちしております。",
+          "indonesian": "Saya sudah mengetahui waktu rapat besok.",
+          "highlight": "承知"
+        }
+      ]
+    },
+    {
+      "id": "8907499c-c0cc-4433-bd66-8a7cd91eadc6",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "8907499c-c0cc-4433-bd66-8a7cd91eadc6",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "返事",
+        "reading": "へんじ",
+        "romaji": null,
+        "indonesian": "jawaban; balasan",
+        "category": "名詞・動詞",
+        "sort_order": 21
+      },
+      "expectedNote": null,
+      "note": "もうしわけありません = saya mohon maaf.",
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "お返事がおそくなって、もうしわけありません。",
+          "reading": "おへんじがおそくなって、もうしわけありません。",
+          "indonesian": "Saya mohon maaf karena terlambat membalas.",
+          "highlight": "返事"
+        }
+      ]
+    },
+    {
+      "id": "263d9de0-5737-4d0b-9562-974ee434b49f",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "263d9de0-5737-4d0b-9562-974ee434b49f",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "会議室",
+        "reading": "かいぎしつ",
+        "romaji": null,
+        "indonesian": "ruang rapat",
+        "category": "名詞",
+        "sort_order": 22
+      },
+      "expectedNote": null,
+      "note": "ごあんないする = mengantar/memberi panduan secara sopan.",
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしが会議室までごあんないいたします。",
+          "reading": "わたしがかいぎしつまでごあんないいたします。",
+          "indonesian": "Saya akan mengantar Anda ke ruang rapat.",
+          "highlight": "会議室"
+        }
+      ]
+    },
+    {
+      "id": "c16f8283-0dfc-4fd9-b440-caca6c3ee614",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "c16f8283-0dfc-4fd9-b440-caca6c3ee614",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "事務所",
+        "reading": "じむしょ",
+        "romaji": null,
+        "indonesian": "kantor",
+        "category": "名詞",
+        "sort_order": 23
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたのごご、事務所へうかがいます。",
+          "reading": "あしたのごご、じむしょへうかがいます。",
+          "indonesian": "Saya akan mengunjungi kantor Anda besok siang.",
+          "highlight": "事務所"
+        }
+      ]
+    },
+    {
+      "id": "8f4314b2-6d36-4b67-b1a6-288543f2071e",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "8f4314b2-6d36-4b67-b1a6-288543f2071e",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "国際",
+        "reading": "こくさい",
+        "romaji": null,
+        "indonesian": "internasional",
+        "category": "名詞",
+        "sort_order": 24
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "あしたの国際かいぎで、わたしがごせつめいいたします。",
+          "reading": "あしたのこくさいかいぎで、わたしがごせつめいいたします。",
+          "indonesian": "Saya akan memberikan penjelasan dalam konferensi internasional besok.",
+          "highlight": "国際"
+        }
+      ]
+    },
+    {
+      "id": "64b3d0ed-a219-44fa-a89a-6551c79015d5",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "64b3d0ed-a219-44fa-a89a-6551c79015d5",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "貿易",
+        "reading": "ぼうえき",
+        "romaji": null,
+        "indonesian": "perdagangan internasional",
+        "category": "名詞",
+        "sort_order": 25
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "わたしは、貿易のかいしゃではたらいております。",
+          "reading": "わたしは、ぼうえきのかいしゃではたらいております。",
+          "indonesian": "Saya bekerja di perusahaan perdagangan internasional.",
+          "highlight": "貿易"
+        }
+      ]
+    },
+    {
+      "id": "13370bd7-c0f4-4838-b966-45eb9df7a6c2",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "13370bd7-c0f4-4838-b966-45eb9df7a6c2",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "輸出",
+        "reading": "ゆしゅつ",
+        "romaji": null,
+        "indonesian": "ekspor",
+        "category": "名詞・動詞",
+        "sort_order": 26
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "このかいしゃは、くるまをがいこくに輸出しております。",
+          "reading": "このかいしゃは、くるまをがいこくにゆしゅつしております。",
+          "indonesian": "Perusahaan ini mengekspor mobil ke luar negeri.",
+          "highlight": "輸出"
+        }
+      ]
+    },
+    {
+      "id": "11e9babb-6ae5-4d87-8214-cc6880eddbdd",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "11e9babb-6ae5-4d87-8214-cc6880eddbdd",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "輸入",
+        "reading": "ゆにゅう",
+        "romaji": null,
+        "indonesian": "impor",
+        "category": "名詞・動詞",
+        "sort_order": 27
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "このみせでは、がいこくから輸入したおちゃをうっております。",
+          "reading": "このみせでは、がいこくからゆにゅうしたおちゃをうっております。",
+          "indonesian": "Toko ini menjual teh yang diimpor dari luar negeri.",
+          "highlight": "輸入"
+        }
+      ]
+    },
+    {
+      "id": "785fe724-f3aa-4e8a-a90e-a7878a8abb74",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "785fe724-f3aa-4e8a-a90e-a7878a8abb74",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "翻訳",
+        "reading": "ほんやく",
+        "romaji": null,
+        "indonesian": "penerjemahan tertulis",
+        "category": "名詞・動詞",
+        "sort_order": 28
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "せんせいに、このほんの翻訳をみていただきました。",
+          "reading": "せんせいに、このほんのほんやくをみていただきました。",
+          "indonesian": "Saya mendapat bantuan guru untuk memeriksa terjemahan buku ini.",
+          "highlight": "翻訳"
+        }
+      ]
+    },
+    {
+      "id": "673f3726-4291-40e9-9c51-4f6207f62221",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "673f3726-4291-40e9-9c51-4f6207f62221",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "研究室",
+        "reading": "けんきゅうしつ",
+        "romaji": null,
+        "indonesian": "ruang penelitian; laboratorium",
+        "category": "名詞",
+        "sort_order": 29
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "あした、せんせいの研究室にうかがいます。",
+          "reading": "あした、せんせいのけんきゅうしつにうかがいます。",
+          "indonesian": "Besok saya akan mengunjungi ruang penelitian dosen.",
+          "highlight": "研究室"
+        }
+      ]
+    },
+    {
+      "id": "315d2367-592f-4c99-8dac-434ec4a881c8",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "315d2367-592f-4c99-8dac-434ec4a881c8",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "ご挨拶",
+        "reading": "ごあいさつ",
+        "romaji": null,
+        "indonesian": "salam atau sapaan formal",
+        "category": "名詞・動詞",
+        "sort_order": 30
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "あした、あたらしいせんせいにご挨拶いたします。",
+          "reading": "あした、あたらしいせんせいにごあいさついたします。",
+          "indonesian": "Besok saya akan menyapa dan memperkenalkan diri kepada guru baru.",
+          "highlight": "ご挨拶"
+        }
+      ]
+    },
+    {
+      "id": "dda2f676-6d42-42eb-98e9-3770cb3f7409",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "dda2f676-6d42-42eb-98e9-3770cb3f7409",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "ご説明",
+        "reading": "ごせつめい",
+        "romaji": null,
+        "indonesian": "penjelasan formal kepada pihak lain",
+        "category": "名詞・動詞",
+        "sort_order": 31
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "このどうぐのつかいかたをご説明いたします。",
+          "reading": "このどうぐのつかいかたをごせつめいいたします。",
+          "indonesian": "Saya akan menjelaskan cara menggunakan alat ini.",
+          "highlight": "ご説明"
+        }
+      ]
+    },
+    {
+      "id": "ae63d819-7e7b-4425-a8f3-cff6d91270dd",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "ae63d819-7e7b-4425-a8f3-cff6d91270dd",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "ご報告",
+        "reading": "ごほうこく",
+        "romaji": null,
+        "indonesian": "laporan formal",
+        "category": "名詞・動詞",
+        "sort_order": 32
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "けんきゅうのけっかを、せんせいにご報告いたします。",
+          "reading": "けんきゅうのけっかを、せんせいにごほうこくいたします。",
+          "indonesian": "Saya akan melaporkan hasil penelitian kepada dosen.",
+          "highlight": "ご報告"
+        }
+      ]
+    },
+    {
+      "id": "d858c44c-f805-4ced-a9d5-a366fe0d0a2d",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "d858c44c-f805-4ced-a9d5-a366fe0d0a2d",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "ご相談",
+        "reading": "ごそうだん",
+        "romaji": null,
+        "indonesian": "konsultasi formal",
+        "category": "名詞・動詞",
+        "sort_order": 33
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "しごとのことで、ご相談したいことがございます。",
+          "reading": "しごとのことで、ごそうだんしたいことがございます。",
+          "indonesian": "Ada hal mengenai pekerjaan yang ingin saya konsultasikan dengan Anda.",
+          "highlight": "ご相談"
+        }
+      ]
+    },
+    {
+      "id": "0da97488-7b03-40bb-99f2-2940e12a5f86",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "0da97488-7b03-40bb-99f2-2940e12a5f86",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "お知らせ",
+        "reading": "おしらせ",
+        "romaji": null,
+        "indonesian": "pemberitahuan",
+        "category": "名詞",
+        "sort_order": 34
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "かいぎのじかんがかわりましたので、お知らせいたします。",
+          "reading": "かいぎのじかんがかわりましたので、おしらせいたします。",
+          "indonesian": "Saya menyampaikan pemberitahuan karena waktu rapat telah berubah.",
+          "highlight": "お知らせ"
+        }
+      ]
+    },
+    {
+      "id": "d1d58ccb-13f0-4c15-8ae8-7f249378e84d",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "d1d58ccb-13f0-4c15-8ae8-7f249378e84d",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "お届けする",
+        "reading": "おとどけする",
+        "romaji": null,
+        "indonesian": "mengantarkan, bahasa merendah",
+        "category": "動詞",
+        "sort_order": 35
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "あした、おたくまでにもつをお届けします。",
+          "reading": "あした、おたくまでにもつをおとどけします。",
+          "indonesian": "Besok saya akan mengantarkan paket sampai ke rumah Anda.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "917978a1-00a5-49c0-ac97-c34a9061337c",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "917978a1-00a5-49c0-ac97-c34a9061337c",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "お持ちする",
+        "reading": "おもちする",
+        "romaji": null,
+        "indonesian": "membawakan, bahasa merendah",
+        "category": "動詞",
+        "sort_order": 36
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "おちゃをお持ちしますので、すこしおまちください。",
+          "reading": "おちゃをおもちしますので、すこしおまちください。",
+          "indonesian": "Saya akan membawakan teh, jadi silakan menunggu sebentar.",
+          "highlight": null
+        }
+      ]
+    },
+    {
+      "id": "924ea27c-d5d4-4f7c-9b66-4df6598d7f70",
+      "chapter": 24,
+      "expectedCore": {
+        "id": "924ea27c-d5d4-4f7c-9b66-4df6598d7f70",
+        "module_id": "6bce9509-443d-4932-85c4-b500d6ab2d5a",
+        "lesson_id": null,
+        "japanese": "お待ちする",
+        "reading": "おまちする",
+        "romaji": null,
+        "indonesian": "menunggu, bahasa merendah",
+        "category": "動詞",
+        "sort_order": 37
+      },
+      "expectedNote": null,
+      "note": null,
+      "deckIds": [
+        "14d28b00-daa7-4a39-807f-2b16910d50b3"
+      ],
+      "examples": [
+        {
+          "japanese": "あした、えきのいりぐちでお待ちしております。",
+          "reading": "あした、えきのいりぐちでおまちしております。",
+          "indonesian": "Besok saya akan menunggu Anda di pintu masuk stasiun.",
+          "highlight": null
+        }
+      ]
+    }
+  ]
+}$content$::jsonb; d jsonb; x jsonb; actual jsonb; n int;
+BEGIN
+ PERFORM pg_advisory_xact_lock(hashtext('curriculum-boundary:graph'));
+ PERFORM pg_advisory_xact_lock(hashtext('curriculum-boundary:'||(p->>'courseId')));
+ SELECT count(*) INTO n FROM n4_vocabulary_backup_188;
+ IF n=771 AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(p->'items') i WHERE NOT EXISTS(SELECT 1 FROM n4_vocabulary_backup_188 WHERE id=(i->>'id')::uuid)) THEN RETURN; END IF;
+ IF n<>0 THEN RAISE EXCEPTION '188 incomplete backup; inspect before retry'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM courses WHERE id=(p->>'courseId')::uuid AND slug='n4') THEN RAISE EXCEPTION '188 course changed'; END IF;
+ LOCK TABLE module_vocabulary,vocabulary_examples,lesson_deck_items IN SHARE ROW EXCLUSIVE MODE;
+ FOR d IN SELECT value FROM jsonb_array_elements(p->'decks') LOOP
+  IF NOT EXISTS(SELECT 1 FROM lessons l JOIN modules m ON m.id=l.module_id WHERE l.id=(d->>'id')::uuid AND l.module_id=(d->>'moduleId')::uuid AND m.course_id=(p->>'courseId')::uuid AND l.slug=d->>'slug' AND l.type='deck') THEN RAISE EXCEPTION '188 deck changed'; END IF;
+  SELECT coalesce(jsonb_agg(vocabulary_id::text ORDER BY vocabulary_id::text),'[]') INTO actual FROM lesson_deck_items WHERE lesson_id=(d->>'id')::uuid;
+  IF actual IS DISTINCT FROM d->'ids' THEN RAISE EXCEPTION '188 deck membership changed: %',d->>'chapter'; END IF;
+ END LOOP;
+ FOR x IN SELECT value FROM jsonb_array_elements(p->'items') LOOP
+  IF NOT EXISTS(SELECT 1 FROM module_vocabulary WHERE id=(x->>'id')::uuid AND to_jsonb(module_vocabulary) @> (x->'expectedCore') AND note IS NOT DISTINCT FROM x->>'expectedNote') THEN RAISE EXCEPTION '188 core/note changed: %',x->>'id'; END IF;
+  SELECT coalesce(jsonb_agg(lesson_id::text ORDER BY lesson_id::text),'[]') INTO actual FROM lesson_deck_items WHERE vocabulary_id=(x->>'id')::uuid;
+  IF actual IS DISTINCT FROM x->'deckIds' THEN RAISE EXCEPTION '188 unexpected cross-course consumer: %',x->>'id'; END IF;
+  IF EXISTS(SELECT 1 FROM vocabulary_examples WHERE vocabulary_id=(x->>'id')::uuid) THEN RAISE EXCEPTION '188 examples added since audit: %',x->>'id'; END IF;
+ END LOOP;
+ INSERT INTO n4_vocabulary_backup_188(id,owner,examples,memberships)
+ SELECT v.id,to_jsonb(v),'[]'::jsonb,(SELECT jsonb_agg(to_jsonb(membership) ORDER BY membership.lesson_id) FROM lesson_deck_items membership WHERE membership.vocabulary_id=v.id)
+ FROM module_vocabulary v WHERE v.id IN(SELECT (value->>'id')::uuid FROM jsonb_array_elements(p->'items'));
+ FOR x IN SELECT value FROM jsonb_array_elements(p->'items') LOOP
+  UPDATE module_vocabulary SET note=x->>'note',updated_at=now() WHERE id=(x->>'id')::uuid;
+  INSERT INTO vocabulary_examples(vocabulary_id,japanese,reading,highlight,indonesian,sort_order)
+   SELECT (x->>'id')::uuid,value->>'japanese',value->>'reading',value->>'highlight',value->>'indonesian',ordinality-1 FROM jsonb_array_elements(x->'examples') WITH ORDINALITY;
+ END LOOP;
+END $support$;

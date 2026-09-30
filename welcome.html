@@ -2985,6 +2985,7 @@
     margin-top: 8px;
     line-height: 1.5;
     font-style: italic;
+    white-space: pre-line;
   }
 
   /* ── DECK (kosakata cards) ─────────────────────────────────────── */
@@ -7405,7 +7406,7 @@ function renderSidebar() {
       const isDone = !!progress[key];
       const isCurrent = currentState.view === step.kind && m.id === currentState.moduleId && l.id === currentState.lessonId;
       const typeKey = (l.type || 'text').toLowerCase();
-      const typeLabel = TYPE_LABEL[typeKey] || typeKey.toUpperCase();
+      const typeLabel = currentState.course === 'n4' && typeKey === 'video' && !l.videoUrl && !l.videoSource?.externalId ? 'Materi' : (TYPE_LABEL[typeKey] || typeKey.toUpperCase());
       const typeIcon = TYPE_ICON[typeKey] || TYPE_ICON.text;
       const num = lessonNumber.get(`${m.id}:${step.kind}:${l.id}`);
       const durTxt = formatDurationCompact(l.durationMinutes);
@@ -7635,6 +7636,7 @@ window.filterModules = (value) => {
 };
 
 window.openMateri = () => {
+  if (currentState.course === 'n4') { window.openChapterWorksheet(); return; }
   showToast('Materi & Referensi segera hadir 📚', 2800);
 };
 
@@ -7663,7 +7665,19 @@ window.openVocabList = async () => {
   let renderable = [];
   let sourceLabel = '';
   let lastSyncedAt = null;
-  try {
+  // N4 follows the same published deck memberships as the lessons. The old
+  // external reference has 22 chapters and must not shadow the 24-chapter course.
+  if (slug === 'n4') {
+    renderable = (course?.modules || []).map(m => {
+      const seen = new Set();
+      const items = (m.lessons || []).filter(l => l.type === 'deck').flatMap(l => l.deck || [])
+        .filter(v => v?.id && !seen.has(v.id) && seen.add(v.id))
+        .map((v, i) => ({...v, sort:i}));
+      return {key:'deck-module:' + m.id, title:m.title, items};
+    }).filter(g => g.items.length);
+    sourceLabel = renderable.length ? 'Materi pelajaran' : '';
+  }
+  if (slug !== 'n4') try {
     const res = await fetch(`/api/notion-vocab?slug=${encodeURIComponent(slug)}`);
     if (res.ok) {
       const data = await res.json();
@@ -7702,7 +7716,7 @@ window.openVocabList = async () => {
   } catch { /* network/parse — fall through to DB fallback */ }
 
   // 2) Fallback: vocab grouped by deck-lesson from CMS DB.
-  if (!sectionsView && renderable.length === 0 && course && Array.isArray(course.modules)) {
+  if (slug !== 'n4' && !sectionsView && renderable.length === 0 && course && Array.isArray(course.modules)) {
     const vocabToBab = new Map();
     const babOrder = [];
     const seenBab = new Set();
@@ -7751,7 +7765,7 @@ window.openVocabList = async () => {
   }
 
   // Flashcard fallback when CMS has zero vocab at all
-  if (!sectionsView && renderable.length === 0) {
+  if (slug !== 'n4' && !sectionsView && renderable.length === 0) {
     if (!FLASHCARD_DATA || Object.keys(FLASHCARD_DATA).length === 0) {
       try { await loadFlashcardData(); } catch {}
     }
@@ -8198,6 +8212,7 @@ function kanjiCompoundRowHtml(c, k, index) {
         ${moduleLabel ? `<span class="kc-badge">${escapeHtml(moduleLabel)}</span>` : ''}
       </div>
       ${example}
+      ${c.studyNote ? `<div class="kc-example">${escapeHtml(c.studyNote)}</div>` : ''}
     </div>
     <div class="kc-actions">
       <button type="button" class="kc-action" aria-label="Dengar ${escapeHtml(c.japanese || '')}" onclick="playKanjiUsageAudio('${escapeHtml(k.id)}',${index},this)">${AUDIO_SVG}</button>
@@ -8248,6 +8263,7 @@ window.openKanjiDetail = (id) => {
         </div>
       </div>
       <div class="kanji-detail-body">
+        ${String(k.jlpt_level).toUpperCase() === 'N4' ? `<div class="kanji-detail-section"><div class="kanji-detail-section-head">Cara membaca kartu</div><p style="font-size:13px;line-height:1.7">Daftar 音／訓 merupakan ringkasan bacaan. Tanda “-” setelah kana menunjukkan bagian awal kata; baca kata lengkap dan kana pada contoh di bawah. “-” saja berarti bacaan belum dicantumkan pada kartu. Fokuskan latihan pada kata yang dicontohkan, termasuk pengulangan dari N5.</p></div>` : ''}
         ${k.mnemonic ? `
           <div class="kanji-detail-section">
             <div class="kanji-detail-section-head">💡 Mnemonic / cara ingat</div>
@@ -8477,7 +8493,7 @@ function renderModuleIntro(module) {
     const isNext = step === plan.nextStep
       && (!done || plan.completed === plan.lessons.length);
     const duration = formatDurationLong(lesson.durationMinutes);
-    const type = typeLabels[String(lesson.type || 'text').toLowerCase()] || 'Materi';
+    const type = currentState.course === 'n4' && lesson.type === 'video' && !lesson.videoUrl && !lesson.videoSource?.externalId ? 'Materi' : (typeLabels[String(lesson.type || 'text').toLowerCase()] || 'Materi');
     const title = lesson.title;
     const state = isNext
       ? (plan.completed === plan.lessons.length ? 'Tinjau ulang' : plan.completed ? 'Lanjut di sini' : 'Mulai di sini')
@@ -8624,6 +8640,12 @@ function renderLessonGrammar(lesson) {
               <div class="grammar-block-content">${examplesHtml}</div>
             </div>` : ''}
             ${g.notes ? `<div class="grammar-notes">${escapeHtml(g.notes)}</div>` : ''}
+            ${Array.isArray(g.dialogueSelfChecks) && g.example_dialog ? `<section class="grammar-block" style="margin-top:20px">
+              <h3>💬 Percakapan</h3>
+              ${g.communication_goal ? `<p>${escapeHtml(g.communication_goal)}</p>` : ''}
+              ${grammarKaraokeHtml(String(g.example_dialog).trim(), `n4-${g.id}`, g.example_dialog_id || '', g.dialog_scene, g.id, g.dialog_furigana)}
+              ${(g.dialogueSelfChecks || []).map(q => `<div style="margin-top:14px"><p><strong>${escapeHtml(q.prompt)}</strong></p><details><summary style="cursor:pointer">Lihat jawaban dan alasan</summary><p>${escapeHtml(q.answer)}</p><p>${escapeHtml(q.explanation)}</p></details></div>`).join('')}
+            </section>` : ''}
           </div>`;
         }).join('')}
       </div>
@@ -12199,6 +12221,7 @@ window.openDeckModal = (idx) => {
           <button class="de-play" type="button" aria-label="Dengar kalimat" onclick="playDeckExample(${idx}, ${i}, this)">${AUDIO_SVG}</button>
         </div>`;
       }).join('');
+  if (it.note) list.insertAdjacentHTML('afterbegin', `<div class="deck-ex"><div class="de-text"><div class="de-id">${escapeHtml(it.note)}</div></div></div>`);
   const prevBtn = document.getElementById('deck-modal-prev');
   const nextBtn = document.getElementById('deck-modal-next');
   const counter = document.getElementById('deck-modal-counter');
@@ -13643,14 +13666,16 @@ function renderLesson() {
 
   // Regular lesson (video/text) — YouTube segments take precedence, then
   // legacy direct/Bunny embeds, then the existing coming-soon placeholder.
-  const videoBlock = lesson.type === 'video' ? renderVideoLessonPlayer(lesson) : '';
+  const hasVideo = !!(lesson.videoUrl || lesson.videoSource?.externalId);
+  const n4WrittenLesson = currentState.course === 'n4' && !hasVideo;
+  const videoBlock = lesson.type === 'video' && !n4WrittenLesson ? renderVideoLessonPlayer(lesson) : '';
 
   const bodyBlock = `
     <div class="lesson-body">
       <h2>Catatan Pelajaran ${lesson.jp ? `<button class="pronounce-btn" style="vertical-align:middle;font-size:11px;" onclick="window.speakLessonJP(this)">🔊 Putar Jepang</button>` : ''}</h2>
       <p>${lesson.body}</p>
       ${lesson.jp ? `<div class="jp" id="lesson-jp">${lesson.jp}</div>` : ''}
-      <p style="color:#999;font-size:13px;margin-top:18px;">Materi lengkap: video tutorial, contoh audio, dan worksheet PDF tersedia saat belajar.</p>
+      ${n4WrittenLesson ? '<p style="color:#777;font-size:13px;margin-top:18px;">Baca penjelasan dan contoh, dengarkan pelafalannya, lalu kerjakan tugas serta latihan tertulis bab ini.</p>' : '<p style="color:#999;font-size:13px;margin-top:18px;">Materi lengkap: video tutorial, contoh audio, dan worksheet PDF tersedia saat belajar.</p>'}
     </div>
   `;
 
@@ -13661,7 +13686,7 @@ function renderLesson() {
     ? `<p class="lesson-objective" style="margin:6px 0 0;font-size:14px;color:#404040;">🎯 ${escapeHtml(lesson.bunpouFlow.objective)}</p>`
     : '';
   document.getElementById('main-content').innerHTML = `
-    <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · ${lesson.type.toUpperCase()}</p>
+    <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · ${n4WrittenLesson ? 'MATERI' : lesson.type.toUpperCase()}</p>
     <h1 class="lesson-title">${lesson.title}</h1>
     <p class="lesson-subtitle">${module.title} — ${lesson.duration}</p>
     ${objectiveBlock}
@@ -13685,10 +13710,37 @@ function renderLesson() {
   `;
 
   // Analisis Bunpou dimuat setelah materi tampil — tidak boleh menunda render.
+  if (currentState.course === 'n4') window.EzDialogue?.enhance?.(document.getElementById('main-content'));
   loadBunpouAnalysis(lesson);
 }
 
+window.openChapterWorksheet = () => {
+  const course = COURSE_CONTENT[currentState.course];
+  const module = course?.modules?.find(m => m.id === currentState.moduleId);
+  const root = document.getElementById('main-content');
+  if (currentState.course !== 'n4' || !module || !root) return;
+  const focus = prepareMobileSidebarContentFocus();
+  closeSidebar();
+  const tasks = module.lessons.filter(l => l.type === 'grammar_task').flatMap(l => l.grammarTask || []);
+  const points = module.lessons.filter(l => l.type === 'video' || l.type === 'text').flatMap(l => l.grammar || []);
+  const byId = new Map(points.map(g => [g.id, g]));
+  root.innerHTML = `<section id="n4-worksheet">
+    <style>@media print {body:has(#n4-worksheet) .sidebar,body:has(#n4-worksheet) .learning-overview,body:has(#n4-worksheet) header,body:has(#n4-worksheet) .worksheet-actions{display:none!important}body:has(#n4-worksheet) .learning-layout,body:has(#n4-worksheet) .learning-workspace{display:block!important}body:has(#n4-worksheet) .main-content{margin:0!important;padding:0!important;max-width:none!important}#n4-worksheet article{break-inside:avoid}#n4-worksheet details:not([open]){display:none}}</style>
+    <p class="lesson-breadcrumb">N4 · LATIHAN TERTULIS</p><h1 class="lesson-title">${escapeHtml(module.title)}</h1>
+    <p>Tulis jawaban di buku catatan atau cetak halaman ini. Gunakan materi bab ini dan bab sebelumnya. Contoh jawaban di bagian bawah merupakan model; jawaban lain yang benar dan sesuai konteks dapat diterima.</p>
+    <div class="worksheet-actions" style="display:flex;gap:12px;margin:18px 0"><button type="button" class="btn-secondary" onclick="closeChapterWorksheet()">← Kembali ke pelajaran</button><button type="button" class="btn-primary" onclick="window.print()">Cetak / Simpan PDF</button></div>
+    ${tasks.map((t,i) => `<article class="lesson-extra-card"><h3>${i+1}. ${escapeHtml(byId.get(t.id)?.pattern || t.pattern || '')}</h3><p>${escapeHtml(String(t.instruction || '').replace(/^Untuk jawaban di situs,[\s\S]*?\n\n/, ''))}</p><p style="height:64px;border-bottom:1px solid #bbb" aria-label="Ruang untuk jawaban"></p></article>`).join('')}
+    <details class="lesson-extra-card"><summary style="cursor:pointer;font-weight:700">Catatan dan contoh untuk memeriksa jawaban</summary>${points.map(g => `<article><h3>${escapeHtml(g.pattern || '')}</h3>${g.notes ? `<p style="white-space:pre-line">${escapeHtml(g.notes)}</p>` : ''}${(g.examples || []).map(e => `<p lang="ja">${escapeHtml(e.japanese)}<br><small lang="id">${escapeHtml(e.indonesian || '')}</small></p>`).join('')}</article>`).join('')}</details>
+  </section>`;
+  window.scrollTo({top:0,behavior:'smooth'});
+  focus();
+};
+window.closeChapterWorksheet = () => {
+  renderLesson();
+};
+
 function renderLessonMaterials(module, lesson) {
+  if (currentState.course === 'n4') return `<div class="lesson-tabs"><div class="tabs-body"><h3 style="margin:0 0 12px;font-size:14px;">📎 Materi Pendukung</h3><div class="resource-list"><button type="button" class="resource-card" onclick="openChapterWorksheet()"><span class="res-ico">📄</span><span class="res-info"><span class="res-title">Latihan tertulis Bab ${escapeHtml(module.num)}</span><span class="res-sub">Tugas, contoh jawaban, dan catatan — dapat dicetak</span></span><span class="res-arr">→</span></button></div></div></div>`;
   return `
     <div class="lesson-tabs" id="lesson-tabs">
       <div class="tabs-body">

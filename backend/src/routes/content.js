@@ -14,6 +14,7 @@ import {
 import { userCanAccessCourse, requireLessonCourseAccess } from '../entitlements.js';
 import { loadPilotConfig } from '../bunpou-flow-config.js';
 import { pilotPublicCompanion } from '../bunpou-flow-content.js';
+import { n4DialogueSelfChecks } from '../n4-dialogue-support.js';
 
 const router = Router();
 
@@ -147,6 +148,7 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
       try { g.dialog_furigana = dialogueFurigana.normalize(g.dialog_furigana); }
       catch { g.dialog_furigana = null; }
       g.examples = grammarExamplesByGrammar[g.id] || [];
+      if (course.rows[0].slug === 'n4') g.dialogueSelfChecks = n4DialogueSelfChecks(g);
       (grammarByModule[g.module_id] ||= []).push(g);
       if (g.lesson_id) (grammarByLesson[g.lesson_id] ||= []).push(g);
     }
@@ -157,7 +159,7 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
     if (deckLessonIds.length > 0) {
       const deckRows = await query(
         `SELECT di.lesson_id, di.sort_order, di.accent_color,
-                v.id, v.module_id, v.japanese, v.reading, v.romaji, v.indonesian, v.category
+                v.id, v.module_id, v.japanese, v.reading, v.romaji, v.indonesian, v.category, v.note
          FROM lesson_deck_items di
          JOIN module_vocabulary v ON v.id = di.vocabulary_id
          WHERE di.lesson_id = ANY($1::uuid[])
@@ -188,6 +190,7 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
           romaji: r.romaji,
           indonesian: r.indonesian,
           category: r.category,
+          note: String(r.note || '').replace(/\[subcat:[^\]]*\]/g, '').trim(),
           accentColor: r.accent_color,
           examples: examplesByVocab[r.id] || [],
           kanjiUsages: deriveKanjiUsages(r.japanese, kanjiCatalog, {
@@ -427,7 +430,7 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
   if (row.type === 'deck') {
     const deckRows = await query(
       `SELECT di.sort_order, di.accent_color,
-              v.id, v.module_id, v.japanese, v.reading, v.romaji, v.indonesian, v.category
+              v.id, v.module_id, v.japanese, v.reading, v.romaji, v.indonesian, v.category, v.note
        FROM lesson_deck_items di
        JOIN module_vocabulary v ON v.id = di.vocabulary_id
        WHERE di.lesson_id = $1
@@ -457,6 +460,7 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
       romaji: r.romaji,
       indonesian: r.indonesian,
       category: r.category,
+      note: String(r.note || '').replace(/\[subcat:[^\]]*\]/g, '').trim(),
       accentColor: r.accent_color,
       examples: examplesByVocab[r.id] || [],
       kanjiUsages: deriveKanjiUsages(r.japanese, kanjiCatalog, {

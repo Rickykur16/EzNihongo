@@ -3,6 +3,7 @@
 export const CHAPTER_ASSESSMENT_VERSION = 'n5-assessment-v2';
 export const JLPT_ASSESSMENT_VERSION = 'n5-assessment-v3';
 export const REVISED_JLPT_ASSESSMENT_VERSION = 'n5-assessment-v4';
+export const N4_ASSESSMENT_VERSION = 'n4-assessment-v1';
 export const CHAPTER_BLUEPRINT = Object.freeze({ vocabulary: 6, grammar: 10, reading: 4, listening: 4 });
 export const CHAPTER_LABELS = Object.freeze({
   vocabulary: 'Aksara dan kosakata',
@@ -13,7 +14,7 @@ export const CHAPTER_LABELS = Object.freeze({
 export const CHAPTER_POLICY = Object.freeze({ passingScorePct: 70, categoryMinimumPct: 50, minimumObjectiveCorrect: 1, questionsPerForm: 24 });
 
 export function isChapterAssessment(policy) {
-  return [CHAPTER_ASSESSMENT_VERSION, JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION].includes(policy?.version);
+  return [CHAPTER_ASSESSMENT_VERSION, JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION, N4_ASSESSMENT_VERSION].includes(policy?.version);
 }
 
 export function publicChapterRules(policy) {
@@ -32,7 +33,8 @@ export function assertChapterForm(policy, rows) {
     if (!objectives.has(q.assessment_meta?.objective) || q.assessment_meta?.version !== policy.version) throw new Error('assessment_bank_invalid');
     const audioChoices = [JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION].includes(policy.version) && q.question_category === 'listening' &&
       ['verbal_expression', 'quick_response'].includes(q.assessment_meta.itemType);
-    if (q.question_type !== 'multiple_choice' || q.options?.length !== (audioChoices ? 3 : 4) || q.options.filter(o => o.is_correct === true).length !== 1) throw new Error('assessment_bank_invalid');
+    const validOptionCount = policy.version === N4_ASSESSMENT_VERSION ? [3,4].includes(q.options?.length) : q.options?.length === (audioChoices ? 3 : 4);
+    if (q.question_type !== 'multiple_choice' || !validOptionCount || q.options.filter(o => o.is_correct === true).length !== 1) throw new Error('assessment_bank_invalid');
     if (audioChoices && q.options.some((o,i) => o.option_text !== `${i+1}ばん`)) throw new Error('assessment_bank_invalid');
     if (q.question_category === 'reading' && !q.passage?.trim()) throw new Error('assessment_bank_invalid');
     if (q.question_category === 'listening' && !q.audio_script?.trim()) throw new Error('assessment_bank_invalid');
