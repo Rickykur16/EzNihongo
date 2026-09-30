@@ -1819,6 +1819,7 @@ function renderModules() {
       <div class="toolbar">
         <button class="btn btn-primary" onclick="newModule('${courseId}')">+ Modul baru</button>
         <button class="btn btn-ghost" onclick="openSectionArranger()" title="Drag-drop modul antar Section di sidebar">⇅ Atur Section</button>
+        <a class="btn btn-ghost" href="curriculum-review.html?course=${encodeURIComponent(STATE.selectedCourse)}" target="_blank" rel="noopener">Laporan materi</a>
       </div>
       ${body}
     `;

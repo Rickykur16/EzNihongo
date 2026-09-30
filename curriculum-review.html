@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Laporan materi · EzNihongo</title>
+  <link rel="stylesheet" href="styles/tokens.css">
+  <style>
+    body{font-family:system-ui,sans-serif;max-width:1100px;margin:32px auto;padding:0 20px;color:#25364a;background:#fafaf7}
+    h1{font-size:1.5rem} table{border-collapse:collapse;width:100%;background:white}td,th{padding:10px;text-align:left;border-bottom:1px solid #ddd}
+    button,a{font:inherit}button{padding:9px 14px;cursor:pointer}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:white;padding:16px;border:1px solid #ddd;font-size:12px}
+    .actions{display:flex;gap:12px;margin:20px 0;align-items:center;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+  <a href="admin.html">← Ruang kerja</a>
+  <h1>Laporan materi kursus</h1>
+  <p>Salinan materi yang sedang tersedia di website untuk meninjau kelengkapan dan urutan belajar.</p>
+  <p id="status" role="status">Memuat sesi…</p>
+  <div id="summary"></div>
+  <div class="actions" id="actions" hidden>
+    <button id="download" type="button">Unduh salinan JSON</button>
+    <button id="show" type="button" aria-expanded="false" aria-controls="report">Tampilkan data materi</button>
+  </div>
+  <pre id="report" hidden></pre>
+  <script src="api-client.js?v=20260926-assignment"></script>
+  <script src="src/curriculum-review.js?v=20261001-1"></script>
+</body>
+</html>
