@@ -4,15 +4,20 @@ import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import pg from 'pg';
+import { historicalBab3Bank } from '../scripts/build-chapter-assessments.mjs';
 
 const bank = JSON.parse(await readFile(new URL('../content/assessments/n5-b03.json', import.meta.url), 'utf8'));
-const migration = await readFile(new URL('../migrations/168_correct_bab3_listening_speakers.sql', import.meta.url), 'utf8');
+const migration = (await readFile(new URL('../migrations/168_correct_bab3_listening_speakers.sql', import.meta.url), 'utf8'))
+  .replaceAll('\r\n', '\n');
 const items = Object.values(bank.forms).flat();
 const corrections = [...migration.matchAll(/\('(b03-[ab]-l\d{2})', \$old\$([\s\S]*?)\$old\$, \$new\$([\s\S]*?)\$new\$\)/g)]
   .map(([, id, oldScript, newScript]) => ({ id, oldScript, newScript }));
 
-test('Bab 3 voice correction preserves every question, answer, explanation and curriculum field', () => {
-  const contentOnly = structuredClone(bank);
+test('historical Bab 3 voice correction preserves every question, answer, explanation and curriculum field', () => {
+  // Migration 181 intentionally repairs two stems and the transfer activity.
+  // Reconstruct the reviewed historical source instead of weakening the old
+  // digest or claiming that later, authorized teaching revisions are drift.
+  const contentOnly = historicalBab3Bank(bank);
   Object.values(contentOnly.forms).flat().forEach(q => { delete q.audioScript; });
   // Reviewed bank before this bounded audio-role-only correction.
   const digest = createHash('sha256').update(JSON.stringify(contentOnly)).digest('hex');
@@ -20,8 +25,13 @@ test('Bab 3 voice correction preserves every question, answer, explanation and c
   assert.deepEqual(corrections.map(c => c.id), ['b03-a-l01','b03-a-l02','b03-a-l03','b03-b-l02','b03-b-l04']);
   const spokenText = script => script.split('\n').map(line => line.replace(/^[A-Z]: /, ''));
   for (const correction of corrections) {
-    assert.equal(items.find(q => q.id === correction.id).audioScript, correction.newScript);
     assert.deepEqual(spokenText(correction.newScript), spokenText(correction.oldScript), correction.id);
+  }
+});
+
+test('current Bab 3 support revision retains all five canonical listening voice corrections', () => {
+  for (const correction of corrections) {
+    assert.equal(items.find(q => q.id === correction.id).audioScript, correction.newScript, correction.id);
   }
 });
 

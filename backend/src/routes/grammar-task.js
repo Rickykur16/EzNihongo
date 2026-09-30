@@ -383,6 +383,7 @@ export async function loadTaskConcepts(lessonId, dbQuery = query) {
   const rows = await dbQuery(
     `SELECT g.id, g.pattern, g.meaning, g.example, g.example_dialog, g.example_dialog_id,
             g.recognition_distractors, g.controlled_distractors, gi.sort_order,
+            to_jsonb(g)->'practice_config' AS practice_config,
             gi.instruction, gi.required_count AS "requiredCount"
        FROM lesson_grammar_task_items gi
        JOIN module_grammar g ON g.id = gi.grammar_id
@@ -407,6 +408,7 @@ export async function loadTaskConcepts(lessonId, dbQuery = query) {
     ...r,
     recognitionDistractors: parseDistractors(r.recognition_distractors),
     controlledDistractors: parseDistractors(r.controlled_distractors),
+    ...(r.practice_config ? { practiceConfig: r.practice_config } : {}),
     examples: byGrammar.get(r.id) || [],
   }));
 }
@@ -416,7 +418,8 @@ export async function loadTaskConcepts(lessonId, dbQuery = query) {
 // pola, yang berarti hanya 1 pengecoh dan Step 1 hilang. Lihat deriveDrills().
 export async function loadModulePool(lessonId, dbQuery = query) {
   const rows = await dbQuery(
-    `SELECT g.id, g.pattern, g.meaning, g.recognition_distractors, g.controlled_distractors
+    `SELECT g.id, g.pattern, g.meaning, g.recognition_distractors, g.controlled_distractors,
+            to_jsonb(g)->'practice_config' AS practice_config
        FROM module_grammar g
        JOIN lessons l ON l.module_id = g.module_id
       WHERE l.id = $1
@@ -439,6 +442,7 @@ export async function loadModulePool(lessonId, dbQuery = query) {
     ...r,
     recognitionDistractors: parseDistractors(r.recognition_distractors),
     controlledDistractors: parseDistractors(r.controlled_distractors),
+    ...(r.practice_config ? { practiceConfig: r.practice_config } : {}),
     examples: byGrammar.get(r.id) || [],
   }));
 }

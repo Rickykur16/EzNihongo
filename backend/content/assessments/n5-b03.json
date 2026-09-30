@@ -40,12 +40,38 @@
     "notes": "Kana pada kalimat; target baca hanya kanji Bab3. Tidak memakai kata tunjuk Bab4, adjektiva, verba bebas, atau rantai の. Instruksi konteks berbahasa Indonesia."
   },
   "transferTask": {
-    "prompt": "Latihan lisan opsional, di luar skor assessment: di pertemuan kelas pertama, gunakan kartu ini: Anda Rina, orang Indonesia, pelajar; Dodi juga pelajar; profesi Yuki belum diketahui. Perkenalkan diri, sampaikan persamaan dengan Dodi, lalu tanyakan profesi Yuki dengan beberapa kalimat pendek bahasa Jepang.",
+    "title": "Perkenalan dan percakapan pertama",
+    "prompt": "Tulis lalu ucapkan perkenalan 4–5 kalimat. Setelah itu, buat percakapan 4–6 giliran bersama teman atau mainkan kedua peran sendiri. Gunakan kartu Rina dan Dodi di bawah atau data diri dengan kosakata Bab 3. Tinjau hasilnya memakai empat kriteria; latihan ini tidak menambah atau mengurangi nilai kuis.",
+    "steps": [
+      "Perkenalan: sampaikan nama, negara, status atau pekerjaan, lalu 1–2 informasi keluarga. Gunakan 4–5 kalimat pendek; salam pembuka dan penutup boleh ditambahkan.",
+      "Percakapan: saling berkenalan, temukan satu kesamaan dengan も, tanyakan status atau pekerjaan dengan ですか, lalu jawab sesuai kartu. Salah satu pertanyaan menebak pekerjaan yang keliru agar jawabannya memakai じゃありません atau ではありません dan menyebut pekerjaan yang benar.",
+      "Ulangi dengan data berbeda dari kosakata Bab 3. Gunakan ね untuk memastikan informasi yang sudah didengar atau よ untuk memberi informasi baru bila situasinya sesuai. Keduanya tidak harus muncul dalam setiap perkenalan."
+    ],
+    "roleCards": [
+      { "role": "A", "name": "Rina", "facts": "Indonesia; pelajar; ayah guru; ibu perawat." },
+      { "role": "B", "name": "Dodi", "facts": "Indonesia; insinyur; bukan pelajar." }
+    ],
+    "exampleIntroduction": "わたしは リナです。インドネシアじんです。がくせいです。ちちは せんせいです。ははは かんごしです。",
+    "exampleDialogue": [
+      "A: はじめまして。リナです。インドネシアじんです。",
+      "B: はじめまして。ドディです。わたしも インドネシアじんです。",
+      "A: ドディさんは がくせいですか。",
+      "B: いいえ、がくせいじゃありません。エンジニアです。リナさんは がくせいですか。",
+      "A: はい、がくせいです。",
+      "B: どうぞよろしくおねがいします。"
+    ],
     "rubric": [
-      "Nama, kewarganegaraan, dan profesi yang disampaikan sesuai kartu.",
-      "Pola は…です, も, dan pertanyaan …ですか digunakan dengan tepat; formulasi sah yang setara diterima.",
-      "Pertanyaan meminta informasi yang belum diketahui; pernyataan も benar-benar menyatakan kesamaan."
-    ]
+      "Informasi: nama, negara, pekerjaan atau status, dan keluarga sesuai kartu atau data yang dipilih.",
+      "Tata bahasa: gunakan は…です, ですか, dan bentuk negatif sesuai maksud; も menyatakan kesamaan yang sudah memiliki acuan. Jika memakai の, ね, atau よ, hubungan dan konteksnya tepat.",
+      "Respons: jawaban menjawab pertanyaan yang diajukan; dugaan yang keliru dikoreksi dengan informasi yang benar.",
+      "Keterpahaman: tulisan dapat dibaca dan ujaran dapat dipahami. Jeda atau kesalahan kecil yang tidak mengubah maksud masih dapat diterima."
+    ],
+    "rubricScale": [
+      "2 — Terpenuhi secara mandiri dan maknanya jelas.",
+      "1 — Sebagian terpenuhi; masih perlu petunjuk atau satu perbaikan.",
+      "0 — Belum terlihat atau maknanya berbeda dari yang diminta."
+    ],
+    "acceptedVariations": "じゃありません dan ではありません sama-sama diterima. Topik yang sudah jelas boleh tidak diulang. Nama sendiri tidak memakai さん. Jawaban tidak harus sama persis dengan contoh; nilai informasi dan maksudnya."
   },
   "forms": {
     "A": [
@@ -116,7 +142,7 @@
         "category": "vocabulary",
         "mode": "choice",
         "objective": "identity",
-        "prompt": "Lengkapi perkenalan profesi Deni: デニさんは（　）です。",
+        "prompt": "Kartu Deni: pekerjaan = perawat. Lengkapi perkenalan profesinya: デニさんは（　）です。",
         "options": [
           "いしゃ",
           "かいしゃいん",
@@ -634,7 +660,7 @@
         "category": "vocabulary",
         "mode": "choice",
         "objective": "identity",
-        "prompt": "Lengkapi kewarganegaraan Mina: ミナさんは（　）です。",
+        "prompt": "Kartu Mina: kewarganegaraan = Jepang. Lengkapi perkenalannya: ミナさんは（　）です。",
         "options": [
           "にほんじん",
           "ちゅうごくじん",

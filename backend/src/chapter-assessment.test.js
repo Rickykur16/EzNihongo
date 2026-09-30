@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { bankRows, readBanks, validateBank, buildMigration } from '../scripts/build-chapter-assessments.mjs';
+import { bankRows, readBanks, validateBank, buildMigration, buildSupportMigration, historicalBab3Bank } from '../scripts/build-chapter-assessments.mjs';
 import { createChapterSnapshot, publicChapterQuestions, gradeChapterAssessment, validateChapterDraft } from './chapter-assessment.js';
 
 const banks = await readBanks();
@@ -9,13 +9,27 @@ const first = banks.find(b => b.chapter === 3);
 const snapshot = () => createChapterSnapshot(first, bankRows(first), 'B');
 const answers = (s, match = () => true) => new Map(s.questions.map(q => [q.id, { correct: match(q) }]));
 
-test('the Bab 3 bank meets the blueprint and the checked-in migration matches the source', async () => {
+test('the Bab 3 bank meets the blueprint and historical plus additive migrations match the source', async () => {
   assert.equal(banks.length, 1);
   assert.equal(banks[0].chapter, 3);
   for (const bank of banks) assert.equal(validateBank(bank).length, 48, `chapter ${bank.chapter}`);
-  const generated = buildMigration(banks);
+  const generated = buildMigration(banks.map(historicalBab3Bank));
   const committed = await readFile(new URL('../migrations/166_rebuild_n5_chapter_assessments.sql', import.meta.url), 'utf8');
-  assert.ok(committed.replaceAll('\r\n','\n') === generated, 'Regenerate migration 166 after editing the reviewed JSON banks');
+  assert.equal(committed.replaceAll('\r\n','\n'), generated, 'Historical migration 166 must remain unchanged');
+  const support = await readFile(new URL('../migrations/181_bab3_assessment_support.sql', import.meta.url), 'utf8');
+  assert.equal(support.replaceAll('\r\n','\n'), buildSupportMigration(first), 'Regenerate additive migration 181 after editing the reviewed support');
+});
+
+test('the two identity questions provide the missing evidence without changing IDs, choices or answer keys', () => {
+  const historicalRows = bankRows(historicalBab3Bank(first));
+  const revisedRows = bankRows(first);
+  const changed = revisedRows.filter((q, i) => q.question !== historicalRows[i].question);
+  assert.deepEqual(changed.map(q => q.assessment_meta.key), ['b03-a-v04', 'b03-b-v04']);
+  assert.match(changed[0].question, /Deni: pekerjaan = perawat/);
+  assert.equal(changed[0].options.find(o => o.is_correct).option_text, 'かんごし');
+  assert.match(changed[1].question, /Mina: kewarganegaraan = Jepang/);
+  assert.equal(changed[1].options.find(o => o.is_correct).option_text, 'にほんじん');
+  assert.deepEqual(revisedRows.map(({ question, ...q }) => q), historicalRows.map(({ question, ...q }) => q));
 });
 
 test('forms alternate, snapshot is isolated, and public questions reveal no answers or scripts', () => {

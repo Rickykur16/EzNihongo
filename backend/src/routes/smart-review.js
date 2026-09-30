@@ -76,13 +76,13 @@ async function genericRows(scope) {
 
 async function grammarTaskData(lessonId) {
   const [task, module] = await Promise.all([
-    query(`SELECT g.id, g.pattern, g.meaning, g.recognition_distractors, g.controlled_distractors, gi.sort_order FROM lesson_grammar_task_items gi JOIN module_grammar g ON g.id = gi.grammar_id WHERE gi.lesson_id = $1 ORDER BY gi.sort_order, g.sort_order`, [lessonId]),
-    query(`SELECT g.id, g.pattern, g.meaning, g.recognition_distractors, g.controlled_distractors FROM module_grammar g JOIN lessons l ON l.module_id = g.module_id WHERE l.id = $1 ORDER BY g.sort_order, g.created_at`, [lessonId]),
+    query(`SELECT g.id, g.pattern, g.meaning, g.recognition_distractors, g.controlled_distractors, to_jsonb(g)->'practice_config' AS practice_config, gi.sort_order FROM lesson_grammar_task_items gi JOIN module_grammar g ON g.id = gi.grammar_id WHERE gi.lesson_id = $1 ORDER BY gi.sort_order, g.sort_order`, [lessonId]),
+    query(`SELECT g.id, g.pattern, g.meaning, g.recognition_distractors, g.controlled_distractors, to_jsonb(g)->'practice_config' AS practice_config FROM module_grammar g JOIN lessons l ON l.module_id = g.module_id WHERE l.id = $1 ORDER BY g.sort_order, g.created_at`, [lessonId]),
   ]);
   const ids = [...new Set([...task.rows, ...module.rows].map((row) => row.id))]; if (!ids.length) return { items: [], pool: [] };
   const examples = await query(`SELECT grammar_id, japanese, highlight, indonesian FROM grammar_examples WHERE grammar_id = ANY($1::uuid[]) ORDER BY grammar_id, sort_order, created_at`, [ids]);
   const byId = new Map(); for (const row of examples.rows) { if (!byId.has(row.grammar_id)) byId.set(row.grammar_id, []); byId.get(row.grammar_id).push(row); }
-  const enrich = (row) => ({ ...row, recognitionDistractors: parseDistractors(row.recognition_distractors), controlledDistractors: parseDistractors(row.controlled_distractors), examples: byId.get(row.id) || [] });
+  const enrich = (row) => ({ ...row, recognitionDistractors: parseDistractors(row.recognition_distractors), controlledDistractors: parseDistractors(row.controlled_distractors), ...(row.practice_config ? { practiceConfig: row.practice_config } : {}), examples: byId.get(row.id) || [] });
   return { items: task.rows.map(enrich), pool: module.rows.map(enrich) };
 }
 

@@ -142,7 +142,7 @@ test('early N5 kanji practice omits five non-core usages without removing later 
   }
   assert.deepEqual(deriveCompounds('名', [], vocab, {
     moduleId: 'm3', moduleSort: 3, courseLevel: 'N5', kanjiCatalog,
-  }).map((word) => word.japanese), ['名前']);
+  }).map((word) => word.japanese), ['名前', 'お名前']);
   assert.ok(!deriveCompounds('人', [], vocab, {
     moduleId: 'm3', moduleSort: 3, courseLevel: 'N5', kanjiCatalog,
   }).some((word) => word.japanese === '人気'));

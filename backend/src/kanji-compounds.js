@@ -6,6 +6,8 @@
 //   2. deck Kosakata mendapat metadata kanji lama/baru tanpa perlu membuat
 //      lesson Kanji duplikat di setiap level.
 
+import { bab3KanjiSupport } from './bab3-kanji-support.js';
+
 export const KANJI_LEVEL_RANK = Object.freeze({ N5: 1, N4: 2, N3: 3, N2: 4, N1: 5 });
 
 const VOCAB_TTL = 5 * 60 * 1000;
@@ -262,10 +264,6 @@ function autoCompoundOrder(a, b, context) {
     || a.japanese.localeCompare(b.japanese, 'ja');
 }
 
-// Bab 3 memperkenalkan kanji dasar. Kata ini tetap tersedia di Deck asalnya,
-// tetapi tidak menjadi contoh atau soal latihan inti kanji pada bab awal.
-const N5_BAB3_NON_CORE_USAGES = new Set(['外来語', '入学', '〜名', '一人前', '人気']);
-
 // Manual menjadi kata utama, lalu bank kosakata dari level JLPT yang sama
 // melengkapinya lintas Bab. Tidak ada target jumlah: semua kata relevan pada
 // level aktif ditampilkan apa adanya, tanpa mengambil kosakata level berikutnya.
@@ -311,7 +309,15 @@ export function deriveCompounds(character, manualCompounds, vocab, context = {})
     out.push(row);
   }
   if (currentLevel === 'N5' && Number(context.moduleSort) === 3) {
-    return out.filter((row) => !N5_BAB3_NON_CORE_USAGES.has(row.japanese));
+    // Keep the initial chapter about identity, family, and occupations. The
+    // full course bank remains available to later chapters. Dedicated examples
+    // also prevent an advanced sentence from another deck entering this lesson.
+    const curated = bab3KanjiSupport(target);
+    if (curated.length) return curated.map(row => ({
+      ...(out.find(existing => compoundKey(existing) === compoundKey(row)) || {}),
+      ...row, kind: row.japanese === '何ですか' ? 'expression' : kanjiUsageKind(row.japanese, target),
+      source: 'manual', scope: 'manual', usageLevel: 'N5', moduleTitle: 'Pilihan Bab 3',
+    }));
   }
   return out;
 }

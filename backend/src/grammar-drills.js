@@ -510,17 +510,41 @@ export function buildControlledDrill(item, siblings) {
 // — di bawah ambang minimum — sehingga Step 1 hilang diam-diam di separuh tugas.
 // Pool se-bab juga lebih tepat secara pedagogis: yang perlu dibedakan siswa
 // adalah pola-pola yang baru dipelajari di bab itu.
+// Context-authored questions take priority when automatic blanking would test
+// the wrong particle. Validate the complete question before replacing fallback.
+function contextualDrill(item, step) {
+  const config = item.practiceConfig?.[step === 1 ? 'recognition' : 'controlled'];
+  if (!config || typeof config.prompt !== 'string' || !config.prompt.trim()
+      || !Array.isArray(config.options) || config.options.length < 3 || config.options.length > 4
+      || config.options.some(option => typeof option !== 'string' || !option.trim())
+      || new Set(config.options.map(option => option.trim())).size !== config.options.length
+      || !config.options.includes(config.answer)) return null;
+  if (step === 1 && (typeof config.example?.japanese !== 'string'
+      || typeof config.example?.indonesian !== 'string')) return null;
+  if (step === 2 && (typeof config.sentence !== 'string' || !config.sentence.includes('＿＿＿')
+      || typeof config.indonesian !== 'string' || !config.indonesian.trim())) return null;
+  const { options, correctIndex } = buildOptions(config.answer,
+    config.options.filter(option => option !== config.answer), `${item.id}|context|${step}`);
+  return {
+    step, grammarId: item.id, prompt: config.prompt, options, correctIndex,
+    rule: 'curated-context',
+    ...(step === 1
+      ? { example: { japanese: config.example.japanese, indonesian: config.example.indonesian } }
+      : { sentence: config.sentence, indonesian: config.indonesian, variant: 'choice' }),
+  };
+}
+
 export function deriveDrills(items, pool) {
   const siblings = (Array.isArray(pool) && pool.length) ? pool : items;
   const out = new Map();
   for (const item of items) {
     out.set(item.id, {
-      step1: buildRecognitionDrill(item, siblings),
+      step1: contextualDrill(item, 1) || buildRecognitionDrill(item, siblings),
       // Susun-kalimat lebih diutamakan: tidak butuh pengecoh sama sekali.
       // Pilihan ganda tetap dipakai untuk contoh yang tidak bisa dipotong
       // (kalimat tanpa spasi, atau terlalu pendek) — di situlah pengecoh
       // kurasi admin bekerja.
-      step2: buildArrangeDrill(item) || buildControlledDrill(item, siblings),
+      step2: contextualDrill(item, 2) || buildArrangeDrill(item) || buildControlledDrill(item, siblings),
     });
   }
   return out;

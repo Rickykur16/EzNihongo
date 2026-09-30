@@ -6845,7 +6845,19 @@ function renderChapterReview(data, includeSections = false) {
   return `<section style="margin:20px 0;text-align:left">${sections}<h3>Tujuan dan tindak lanjut</h3><p>Tanda ✓ berarti ada bukti jawaban benar untuk tujuan tersebut; lihat juga jumlah benarnya.</p><ul>${goals}</ul>
     <p>Latih kembali kategori dan tujuan yang masih lemah melalui materi dan latihan Bunpou bab ini. Hasil ini menunjukkan kemampuan pada tugas yang diuji.</p>
     <details><summary>Pembahasan ${data.review?.length || 0} soal</summary>${review}</details>
-    ${transfer ? `<details style="margin-top:16px"><summary>Latihan penerapan setelah assessment</summary><p>${escapeHtml(transfer.prompt)}</p><p>Gunakan rubrik ini untuk meninjau jawabanmu atau membahasnya bersama pengajar. Latihan ini tidak dinilai otomatis.</p><ul>${(transfer.rubric || []).map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul></details>` : ''}
+    ${transfer ? `<details style="margin-top:16px"><summary>Latihan penerapan setelah assessment</summary>
+      ${transfer.title ? `<h3>${escapeHtml(transfer.title)}</h3>` : ''}<p>${escapeHtml(transfer.prompt)}</p>
+      ${transfer.steps?.length ? `<ol>${transfer.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>` : ''}
+      ${transfer.roleCards?.length ? `<h4>Kartu peran</h4><ul>${transfer.roleCards.map(c => `<li><strong>${escapeHtml(c.role)} — ${escapeHtml(c.name)}</strong>: ${escapeHtml(c.facts)}</li>`).join('')}</ul>` : ''}
+      ${transfer.exampleIntroduction || transfer.exampleDialogue?.length ? `<details><summary>Lihat contoh setelah mencoba</summary>
+        ${transfer.exampleIntroduction ? `<h4>Contoh perkenalan</h4><p lang="ja">${escapeHtml(transfer.exampleIntroduction)}</p>` : ''}
+        ${transfer.exampleDialogue?.length ? `<h4>Contoh percakapan</h4><div lang="ja">${transfer.exampleDialogue.map(line => `<p>${escapeHtml(line)}</p>`).join('')}</div>` : ''}
+      </details>` : ''}
+      <h4>Tinjau hasilmu</h4><p>Gunakan rubrik ini untuk meninjau jawabanmu atau membahasnya bersama pengajar. Latihan ini tidak dinilai otomatis.</p>
+      <ul>${(transfer.rubric || []).map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul>
+      ${transfer.rubricScale?.length ? `<p>Beri skor 0–2 untuk setiap kriteria:</p><ul>${transfer.rubricScale.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>` : ''}
+      ${transfer.acceptedVariations ? `<p>${escapeHtml(transfer.acceptedVariations)}</p>` : ''}
+    </details>` : ''}
   </section>`;
 }
 
@@ -8152,6 +8164,7 @@ window.filterKanjiList = (q) => {
 let _kanjiStrokeTimer = null;
 
 function kanjiUsageKindLabel(kind) {
+  if (kind === 'expression') return 'Ungkapan';
   if (kind === 'single') return 'Kata tunggal';
   if (kind === 'kanji_kana') return 'Kanji + kana';
   if (kind === 'compound') return 'Gabungan kanji';

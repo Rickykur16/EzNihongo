@@ -62,6 +62,7 @@ export function contentRevisionId(items, pool) {
     requiredCount: r.requiredCount,
     recognitionDistractors: r.recognitionDistractors || [],
     controlledDistractors: r.controlledDistractors || [],
+    ...(r.practiceConfig ? { practiceConfig: r.practiceConfig } : {}),
     examples: (r.examples || []).map((e) => ({
       japanese: e.japanese, highlight: e.highlight, indonesian: e.indonesian,
     })),

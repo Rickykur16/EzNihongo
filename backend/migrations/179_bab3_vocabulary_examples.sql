@@ -1,0 +1,144 @@
+-- Replace only teaching examples for the reviewed 46-word Bab 3 deck.
+-- Core vocabulary rows, their IDs, order and deck membership are preserved.
+-- The complete old owner rows and ALL old examples are retained for recovery.
+-- Source: backend/content/bab3/vocabulary-examples.json (checked by a test).
+CREATE TABLE IF NOT EXISTS bab3_vocabulary_backup_179 (
+  vocabulary_id UUID PRIMARY KEY,
+  lesson_id UUID NOT NULL,
+  before_vocabulary JSONB NOT NULL,
+  before_examples JSONB NOT NULL,
+  before_deck_items JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+DO $migration$
+DECLARE
+  plan JSONB := $content$[{"word":"どうぞ","examples":[{"japanese":"はじめまして。ミナです。どうぞよろしくお願いします。","reading":"はじめまして。ミナです。どうぞよろしくおねがいします。","highlight":"どうぞ","indonesian":"Salam kenal. Saya Mina. Senang berkenalan dengan Anda."},{"japanese":"私の名前はリナです。どうぞよろしくお願いします。","reading":"わたしのなまえはリナです。どうぞよろしくおねがいします。","highlight":"どうぞ","indonesian":"Nama saya Rina. Senang berkenalan dengan Anda."},{"japanese":"さくら大学の学生です。どうぞよろしくお願いします。","reading":"さくらだいがくのがくせいです。どうぞよろしくおねがいします。","highlight":"どうぞ","indonesian":"Saya mahasiswa Universitas Sakura. Senang berkenalan dengan Anda."}]},{"word":"家族","examples":[{"japanese":"私の家族です。父は医者です。","reading":"わたしのかぞくです。ちちはいしゃです。","highlight":"家族","indonesian":"(Memperkenalkan keluarga) Ini keluarga saya. Ayah saya dokter."},{"japanese":"私の家族です。母は先生です。","reading":"わたしのかぞくです。はははせんせいです。","highlight":"家族","indonesian":"(Memperkenalkan keluarga) Ini keluarga saya. Ibu saya guru."},{"japanese":"私の家族です。兄は大学生です。","reading":"わたしのかぞくです。あにはだいがくせいです。","highlight":"家族","indonesian":"(Memperkenalkan keluarga) Ini keluarga saya. Kakak laki-laki saya mahasiswa."}]},{"word":"ベトナム","examples":[{"japanese":"私の出身はベトナムです。","reading":"わたしのしゅっしんはベトナムです。","highlight":"ベトナム","indonesian":"Saya berasal dari Vietnam."},{"japanese":"ミンさんの出身はベトナムですか。","reading":"ミンさんのしゅっしんはベトナムですか。","highlight":"ベトナム","indonesian":"Apakah Min berasal dari Vietnam?"},{"japanese":"母の出身はベトナムです。","reading":"ははのしゅっしんはベトナムです。","highlight":"ベトナム","indonesian":"Ibu saya berasal dari Vietnam."}]},{"word":"大学","examples":[{"japanese":"私はさくら大学の学生です。","reading":"わたしはさくらだいがくのがくせいです。","highlight":"大学","indonesian":"Saya mahasiswa Universitas Sakura."},{"japanese":"父はさくら大学の先生です。","reading":"ちちはさくらだいがくのせんせいです。","highlight":"大学","indonesian":"Ayah saya dosen di Universitas Sakura."},{"japanese":"ミナさんはさくら大学の学生ですか。","reading":"ミナさんはさくらだいがくのがくせいですか。","highlight":"大学","indonesian":"Apakah Mina mahasiswa Universitas Sakura?"}]},{"word":"よろしくお願いします","examples":[{"japanese":"はじめまして。リナです。よろしくお願いします。","reading":"はじめまして。リナです。よろしくおねがいします。","highlight":"よろしくお願いします","indonesian":"Salam kenal. Saya Rina. Senang berkenalan dengan Anda."},{"japanese":"私は学生のミナです。よろしくお願いします。","reading":"わたしはがくせいのミナです。よろしくおねがいします。","highlight":"よろしくお願いします","indonesian":"Saya Mina, seorang pelajar. Senang berkenalan dengan Anda."},{"japanese":"「よろしくお願いします。」「こちらこそ、よろしくお願いします。」","reading":"「よろしくおねがいします。」「こちらこそ、よろしくおねがいします。」","highlight":"よろしくお願いします","indonesian":"“Senang berkenalan dengan Anda.” “Saya juga senang berkenalan dengan Anda.”"}]},{"word":"貴方","examples":[{"japanese":"あなたは学生ですか。","reading":"あなたはがくせいですか。","highlight":"あなた","indonesian":"(Latihan peran dengan orang yang namanya belum diketahui) Apakah Anda pelajar?"},{"japanese":"あなたはミナさんですか。","reading":"あなたはミナさんですか。","highlight":"あなた","indonesian":"(Memastikan nama) Apakah nama Anda Mina?"},{"japanese":"私は学生です。あなたも学生ですか。","reading":"わたしはがくせいです。あなたもがくせいですか。","highlight":"あなた","indonesian":"Saya pelajar. Apakah Anda juga pelajar?"}]},{"word":"インド","examples":[{"japanese":"私の出身はインドです。","reading":"わたしのしゅっしんはインドです。","highlight":"インド","indonesian":"Saya berasal dari India."},{"japanese":"父の出身はインドです。","reading":"ちちのしゅっしんはインドです。","highlight":"インド","indonesian":"Ayah saya berasal dari India."},{"japanese":"ラビさんの出身はインドですか。","reading":"ラビさんのしゅっしんはインドですか。","highlight":"インド","indonesian":"Apakah Ravi berasal dari India?"}]},{"word":"会社員","examples":[{"japanese":"私は会社員です。","reading":"わたしはかいしゃいんです。","highlight":"会社員","indonesian":"Saya karyawan perusahaan."},{"japanese":"父は会社員です。母も会社員です。","reading":"ちちはかいしゃいんです。ははもかいしゃいんです。","highlight":"会社員","indonesian":"Ayah saya karyawan perusahaan. Ibu saya juga karyawan perusahaan."},{"japanese":"兄は会社員じゃありません。大学生です。","reading":"あにはかいしゃいんじゃありません。だいがくせいです。","highlight":"会社員","indonesian":"Kakak laki-laki saya bukan karyawan perusahaan. Ia mahasiswa."}]},{"word":"留学生","examples":[{"japanese":"私は留学生です。","reading":"わたしはりゅうがくせいです。","highlight":"留学生","indonesian":"Saya pelajar asing."},{"japanese":"ミンさんは留学生です。出身はベトナムです。","reading":"ミンさんはりゅうがくせいです。しゅっしんはベトナムです。","highlight":"留学生","indonesian":"Min adalah pelajar asing. Ia berasal dari Vietnam."},{"japanese":"「留学生ですか。」「はい、留学生です。」","reading":"「りゅうがくせいですか。」「はい、りゅうがくせいです。」","highlight":"留学生","indonesian":"“Apakah Anda pelajar asing?” “Ya, saya pelajar asing.”"}]},{"word":"仕事","examples":[{"japanese":"私の仕事はエンジニアです。","reading":"わたしのしごとはエンジニアです。","highlight":"仕事","indonesian":"Pekerjaan saya adalah insinyur."},{"japanese":"姉の仕事は看護師です。","reading":"あねのしごとはかんごしです。","highlight":"仕事","indonesian":"Pekerjaan kakak perempuan saya adalah perawat."},{"japanese":"兄の仕事は銀行員です。","reading":"あにのしごとはぎんこういんです。","highlight":"仕事","indonesian":"Pekerjaan kakak laki-laki saya adalah pegawai bank."}]},{"word":"会社","examples":[{"japanese":"私の会社はさくらです。","reading":"わたしのかいしゃはさくらです。","highlight":"会社","indonesian":"Perusahaan tempat saya bekerja adalah Sakura."},{"japanese":"父の会社はさくらです。","reading":"ちちのかいしゃはさくらです。","highlight":"会社","indonesian":"Perusahaan tempat ayah saya bekerja adalah Sakura."},{"japanese":"「会社はさくらですか。」「はい、そうです。」","reading":"「かいしゃはさくらですか。」「はい、そうです。」","highlight":"会社","indonesian":"“Apakah perusahaan tempat Anda bekerja adalah Sakura?” “Ya, benar.”"}]},{"word":"中国","examples":[{"japanese":"私の出身は中国です。","reading":"わたしのしゅっしんはちゅうごくです。","highlight":"中国","indonesian":"Saya berasal dari Tiongkok."},{"japanese":"リンさんの国は中国です。","reading":"リンさんのくにはちゅうごくです。","highlight":"中国","indonesian":"Negara asal Lin adalah Tiongkok."},{"japanese":"「出身は中国ですか。」「いいえ、日本です。」","reading":"「しゅっしんはちゅうごくですか。」「いいえ、にほんです。」","highlight":"中国","indonesian":"“Apakah Anda berasal dari Tiongkok?” “Tidak, saya berasal dari Jepang.”"}]},{"word":"先生","examples":[{"japanese":"やまださんは先生です。","reading":"やまださんはせんせいです。","highlight":"先生","indonesian":"Yamada adalah seorang guru."},{"japanese":"母は高校の先生です。","reading":"はははこうこうのせんせいです。","highlight":"先生","indonesian":"Ibu saya guru SMA."},{"japanese":"「先生ですか。」「いいえ、学生です。」","reading":"「せんせいですか。」「いいえ、がくせいです。」","highlight":"先生","indonesian":"“Apakah Anda guru?” “Tidak, saya pelajar.”"}]},{"word":"ありがとうございます","examples":[{"japanese":"ありがとうございます。","reading":"ありがとうございます。","highlight":"ありがとうございます","indonesian":"(Setelah menerima bantuan) Terima kasih."},{"japanese":"「お名前はミナさんですか。」「はい、そうです。」「ありがとうございます。」","reading":"「おなまえはミナさんですか。」「はい、そうです。」「ありがとうございます。」","highlight":"ありがとうございます","indonesian":"“Apakah nama Anda Mina?” “Ya, benar.” “Terima kasih.”"},{"japanese":"「出身は日本ですか。」「はい、日本です。」「ありがとうございます。」","reading":"「しゅっしんはにほんですか。」「はい、にほんです。」「ありがとうございます。」","highlight":"ありがとうございます","indonesian":"“Apakah Anda berasal dari Jepang?” “Ya, saya berasal dari Jepang.” “Terima kasih.”"}]},{"word":"タイ","examples":[{"japanese":"私の出身はタイです。","reading":"わたしのしゅっしんはタイです。","highlight":"タイ","indonesian":"Saya berasal dari Thailand."},{"japanese":"マリさんの国はタイです。","reading":"マリさんのくにはタイです。","highlight":"タイ","indonesian":"Negara asal Mari adalah Thailand."},{"japanese":"「出身はタイですか。」「はい、タイです。」","reading":"「しゅっしんはタイですか。」「はい、タイです。」","highlight":"タイ","indonesian":"“Apakah Anda berasal dari Thailand?” “Ya, saya berasal dari Thailand.”"}]},{"word":"私","examples":[{"japanese":"私はミナです。","reading":"わたしはミナです。","highlight":"私","indonesian":"Saya Mina."},{"japanese":"私は学生です。","reading":"わたしはがくせいです。","highlight":"私","indonesian":"Saya pelajar."},{"japanese":"ミナさんは学生です。私も学生です。","reading":"ミナさんはがくせいです。わたしもがくせいです。","highlight":"私","indonesian":"Mina adalah pelajar. Saya juga pelajar."}]},{"word":"高校","examples":[{"japanese":"私はさくら高校の学生です。","reading":"わたしはさくらこうこうのがくせいです。","highlight":"高校","indonesian":"Saya siswa SMA Sakura."},{"japanese":"母は高校の先生です。","reading":"はははこうこうのせんせいです。","highlight":"高校","indonesian":"Ibu saya guru SMA."},{"japanese":"ケン君はさくら高校の学生ですか。","reading":"ケンくんはさくらこうこうのがくせいですか。","highlight":"高校","indonesian":"Apakah Ken siswa SMA Sakura?"}]},{"word":"すみません","examples":[{"japanese":"すみません。お名前はミナさんですか。","reading":"すみません。おなまえはミナさんですか。","highlight":"すみません","indonesian":"Permisi. Apakah nama Anda Mina?"},{"japanese":"すみません。先生ですか。","reading":"すみません。せんせいですか。","highlight":"すみません","indonesian":"Permisi. Apakah Anda guru?"},{"japanese":"「やまださんですか。」「いいえ、たなかです。」「すみません。」","reading":"「やまださんですか。」「いいえ、たなかです。」「すみません。」","highlight":"すみません","indonesian":"“Apakah Anda Yamada?” “Tidak, saya Tanaka.” “Maaf.”"}]},{"word":"〜さん","examples":[{"japanese":"ミナさんは学生です。","reading":"ミナさんはがくせいです。","highlight":"さん","indonesian":"Mina adalah pelajar."},{"japanese":"やまださんは先生ですか。","reading":"やまださんはせんせいですか。","highlight":"さん","indonesian":"Apakah Yamada seorang guru?"},{"japanese":"ミナさんは学生です。リナさんも学生です。","reading":"ミナさんはがくせいです。リナさんもがくせいです。","highlight":"さん","indonesian":"Mina adalah pelajar. Rina juga pelajar."}]},{"word":"韓国人","examples":[{"japanese":"スジンさんは韓国人です。","reading":"スジンさんはかんこくじんです。","highlight":"韓国人","indonesian":"Sujin adalah orang Korea Selatan."},{"japanese":"私は韓国人です。母も韓国人です。","reading":"わたしはかんこくじんです。ははもかんこくじんです。","highlight":"韓国人","indonesian":"Saya orang Korea Selatan. Ibu saya juga orang Korea Selatan."},{"japanese":"「韓国人ですか。」「はい、韓国人です。」","reading":"「かんこくじんですか。」「はい、かんこくじんです。」","highlight":"韓国人","indonesian":"“Apakah Anda orang Korea Selatan?” “Ya, saya orang Korea Selatan.”"}]},{"word":"看護師","examples":[{"japanese":"姉は看護師です。","reading":"あねはかんごしです。","highlight":"看護師","indonesian":"Kakak perempuan saya perawat."},{"japanese":"母は看護師です。父も看護師です。","reading":"はははかんごしです。ちちもかんごしです。","highlight":"看護師","indonesian":"Ibu saya perawat. Ayah saya juga perawat."},{"japanese":"「医者ですか。」「いいえ、看護師です。」","reading":"「いしゃですか。」「いいえ、かんごしです。」","highlight":"看護師","indonesian":"“Apakah Anda dokter?” “Tidak, saya perawat.”"}]},{"word":"姉","examples":[{"japanese":"姉は大学生です。","reading":"あねはだいがくせいです。","highlight":"姉","indonesian":"Kakak perempuan saya mahasiswa."},{"japanese":"姉の名前はリナです。","reading":"あねのなまえはリナです。","highlight":"姉","indonesian":"Nama kakak perempuan saya Rina."},{"japanese":"母は先生です。姉も先生です。","reading":"はははせんせいです。あねもせんせいです。","highlight":"姉","indonesian":"Ibu saya guru. Kakak perempuan saya juga guru."}]},{"word":"こちらこそ","examples":[{"japanese":"「よろしくお願いします。」「こちらこそ、よろしくお願いします。」","reading":"「よろしくおねがいします。」「こちらこそ、よろしくおねがいします。」","highlight":"こちらこそ","indonesian":"“Senang berkenalan dengan Anda.” “Saya juga senang berkenalan dengan Anda.”"},{"japanese":"「ありがとうございます。」「こちらこそ、ありがとうございます。」","reading":"「ありがとうございます。」「こちらこそ、ありがとうございます。」","highlight":"こちらこそ","indonesian":"“Terima kasih.” “Saya juga berterima kasih.”"},{"japanese":"「はじめまして。ミナです。」「リナです。よろしくお願いします。」「こちらこそ、よろしくお願いします。」","reading":"「はじめまして。ミナです。」「リナです。よろしくおねがいします。」「こちらこそ、よろしくおねがいします。」","highlight":"こちらこそ","indonesian":"“Salam kenal. Saya Mina.” “Saya Rina. Senang berkenalan dengan Anda.” “Saya juga senang berkenalan dengan Anda.”"}]},{"word":"名前","examples":[{"japanese":"私の名前はミナです。","reading":"わたしのなまえはミナです。","highlight":"名前","indonesian":"Nama saya Mina."},{"japanese":"兄の名前はケンです。","reading":"あにのなまえはケンです。","highlight":"名前","indonesian":"Nama kakak laki-laki saya Ken."},{"japanese":"姉の名前はリナです。","reading":"あねのなまえはリナです。","highlight":"名前","indonesian":"Nama kakak perempuan saya Rina."}]},{"word":"銀行員","examples":[{"japanese":"私は銀行員です。","reading":"わたしはぎんこういんです。","highlight":"銀行員","indonesian":"Saya pegawai bank."},{"japanese":"兄は銀行員です。姉も銀行員です。","reading":"あにはぎんこういんです。あねもぎんこういんです。","highlight":"銀行員","indonesian":"Kakak laki-laki saya pegawai bank. Kakak perempuan saya juga pegawai bank."},{"japanese":"「先生ですか。」「いいえ、銀行員です。」","reading":"「せんせいですか。」「いいえ、ぎんこういんです。」","highlight":"銀行員","indonesian":"“Apakah Anda guru?” “Tidak, saya pegawai bank.”"}]},{"word":"国","examples":[{"japanese":"私の国は日本です。","reading":"わたしのくにはにほんです。","highlight":"国","indonesian":"Negara asal saya Jepang."},{"japanese":"ミンさんの国はベトナムです。","reading":"ミンさんのくにはベトナムです。","highlight":"国","indonesian":"Negara asal Min adalah Vietnam."},{"japanese":"「国はタイですか。」「はい、タイです。」","reading":"「くにはタイですか。」「はい、タイです。」","highlight":"国","indonesian":"“Apakah negara asal Anda Thailand?” “Ya, Thailand.”"}]},{"word":"父","examples":[{"japanese":"父は会社員です。","reading":"ちちはかいしゃいんです。","highlight":"父","indonesian":"Ayah saya karyawan perusahaan."},{"japanese":"父の名前はケンです。","reading":"ちちのなまえはケンです。","highlight":"父","indonesian":"Nama ayah saya Ken."},{"japanese":"父は医者です。母も医者です。","reading":"ちちはいしゃです。ははもいしゃです。","highlight":"父","indonesian":"Ayah saya dokter. Ibu saya juga dokter."}]},{"word":"大学生","examples":[{"japanese":"私は大学生です。","reading":"わたしはだいがくせいです。","highlight":"大学生","indonesian":"Saya mahasiswa."},{"japanese":"兄は大学生です。姉も大学生です。","reading":"あにはだいがくせいです。あねもだいがくせいです。","highlight":"大学生","indonesian":"Kakak laki-laki saya mahasiswa. Kakak perempuan saya juga mahasiswa."},{"japanese":"「大学生ですか。」「いいえ、会社員です。」","reading":"「だいがくせいですか。」「いいえ、かいしゃいんです。」","highlight":"大学生","indonesian":"“Apakah Anda mahasiswa?” “Tidak, saya karyawan perusahaan.”"}]},{"word":"母","examples":[{"japanese":"母は看護師です。","reading":"はははかんごしです。","highlight":"母","indonesian":"Ibu saya perawat."},{"japanese":"母の名前はミナです。","reading":"ははのなまえはミナです。","highlight":"母","indonesian":"Nama ibu saya Mina."},{"japanese":"父は先生です。母も先生です。","reading":"ちちはせんせいです。ははもせんせいです。","highlight":"母","indonesian":"Ayah saya guru. Ibu saya juga guru."}]},{"word":"〜ちゃん","examples":[{"japanese":"ミナちゃんは学生です。","reading":"ミナちゃんはがくせいです。","highlight":"ちゃん","indonesian":"(Sebutan akrab) Mina adalah pelajar."},{"japanese":"ミナちゃんの先生はやまださんです。","reading":"ミナちゃんのせんせいはやまださんです。","highlight":"ちゃん","indonesian":"(Sebutan akrab) Guru Mina adalah Yamada."},{"japanese":"ミナちゃんは学生です。リナちゃんも学生です。","reading":"ミナちゃんはがくせいです。リナちゃんもがくせいです。","highlight":"ちゃん","indonesian":"(Sebutan akrab) Mina adalah pelajar. Rina juga pelajar."}]},{"word":"中国人","examples":[{"japanese":"リンさんは中国人です。","reading":"リンさんはちゅうごくじんです。","highlight":"中国人","indonesian":"Lin adalah orang Tiongkok."},{"japanese":"私は中国人です。父も中国人です。","reading":"わたしはちゅうごくじんです。ちちもちゅうごくじんです。","highlight":"中国人","indonesian":"Saya orang Tiongkok. Ayah saya juga orang Tiongkok."},{"japanese":"「中国人ですか。」「いいえ、日本人です。」","reading":"「ちゅうごくじんですか。」「いいえ、にほんじんです。」","highlight":"中国人","indonesian":"“Apakah Anda orang Tiongkok?” “Tidak, saya orang Jepang.”"}]},{"word":"苗字","examples":[{"japanese":"私の苗字はたなかです。","reading":"わたしのみょうじはたなかです。","highlight":"苗字","indonesian":"Nama keluarga saya Tanaka."},{"japanese":"苗字はやまだです。名前はケンです。","reading":"みょうじはやまだです。なまえはケンです。","highlight":"苗字","indonesian":"Nama keluarga saya Yamada. Nama depan saya Ken."},{"japanese":"「苗字はやまだですか。」「いいえ、たなかです。」","reading":"「みょうじはやまだですか。」「いいえ、たなかです。」","highlight":"苗字","indonesian":"“Apakah nama keluarga Anda Yamada?” “Tidak, Tanaka.”"}]},{"word":"日本","examples":[{"japanese":"私の出身は日本です。","reading":"わたしのしゅっしんはにほんです。","highlight":"日本","indonesian":"Saya berasal dari Jepang."},{"japanese":"たなかさんの出身は日本です。","reading":"たなかさんのしゅっしんはにほんです。","highlight":"日本","indonesian":"Tanaka berasal dari Jepang."},{"japanese":"「出身は日本ですか。」「はい、日本です。」","reading":"「しゅっしんはにほんですか。」「はい、にほんです。」","highlight":"日本","indonesian":"“Apakah Anda berasal dari Jepang?” “Ya, saya berasal dari Jepang.”"}]},{"word":"〜君","examples":[{"japanese":"ケン君は学生です。","reading":"ケンくんはがくせいです。","highlight":"君","indonesian":"(Sebutan akrab untuk laki-laki) Ken adalah pelajar."},{"japanese":"ケン君はさくら高校の学生です。","reading":"ケンくんはさくらこうこうのがくせいです。","highlight":"君","indonesian":"(Sebutan akrab untuk laki-laki) Ken adalah siswa SMA Sakura."},{"japanese":"ケン君は学生です。ハディ君も学生です。","reading":"ケンくんはがくせいです。ハディくんもがくせいです。","highlight":"君","indonesian":"(Sebutan akrab untuk laki-laki) Ken adalah pelajar. Hadi juga pelajar."}]},{"word":"はじめまして","examples":[{"japanese":"はじめまして。ミナです。","reading":"はじめまして。ミナです。","highlight":"はじめまして","indonesian":"Salam kenal. Saya Mina."},{"japanese":"はじめまして。さくら大学の学生です。","reading":"はじめまして。さくらだいがくのがくせいです。","highlight":"はじめまして","indonesian":"Salam kenal. Saya mahasiswa Universitas Sakura."},{"japanese":"はじめまして。ケンです。よろしくお願いします。","reading":"はじめまして。ケンです。よろしくおねがいします。","highlight":"はじめまして","indonesian":"Salam kenal. Saya Ken. Senang berkenalan dengan Anda."}]},{"word":"お名前","examples":[{"japanese":"お名前はミナさんですか。","reading":"おなまえはミナさんですか。","highlight":"お名前","indonesian":"Apakah nama Anda Mina?"},{"japanese":"「お名前はリナさんですか。」「はい、リナです。」","reading":"「おなまえはリナさんですか。」「はい、リナです。」","highlight":"お名前","indonesian":"“Apakah nama Anda Rina?” “Ya, saya Rina.”"},{"japanese":"「お名前はやまださんですか。」「いいえ、たなかです。」","reading":"「おなまえはやまださんですか。」「いいえ、たなかです。」","highlight":"お名前","indonesian":"“Apakah nama Anda Yamada?” “Tidak, saya Tanaka.”"}]},{"word":"兄","examples":[{"japanese":"兄は大学生です。","reading":"あにはだいがくせいです。","highlight":"兄","indonesian":"Kakak laki-laki saya mahasiswa."},{"japanese":"兄の名前はケンです。","reading":"あにのなまえはケンです。","highlight":"兄","indonesian":"Nama kakak laki-laki saya Ken."},{"japanese":"姉は会社員です。兄も会社員です。","reading":"あねはかいしゃいんです。あにもかいしゃいんです。","highlight":"兄","indonesian":"Kakak perempuan saya karyawan perusahaan. Kakak laki-laki saya juga karyawan perusahaan."}]},{"word":"韓国","examples":[{"japanese":"私の出身は韓国です。","reading":"わたしのしゅっしんはかんこくです。","highlight":"韓国","indonesian":"Saya berasal dari Korea Selatan."},{"japanese":"スジンさんの国は韓国です。","reading":"スジンさんのくにはかんこくです。","highlight":"韓国","indonesian":"Negara asal Sujin adalah Korea Selatan."},{"japanese":"「出身は韓国ですか。」「はい、韓国です。」","reading":"「しゅっしんはかんこくですか。」「はい、かんこくです。」","highlight":"韓国","indonesian":"“Apakah Anda berasal dari Korea Selatan?” “Ya, saya berasal dari Korea Selatan.”"}]},{"word":"弟","examples":[{"japanese":"弟は学生です。","reading":"おとうとはがくせいです。","highlight":"弟","indonesian":"Adik laki-laki saya pelajar."},{"japanese":"弟の名前はケンです。","reading":"おとうとのなまえはケンです。","highlight":"弟","indonesian":"Nama adik laki-laki saya Ken."},{"japanese":"私は大学生です。弟も大学生です。","reading":"わたしはだいがくせいです。おとうともだいがくせいです。","highlight":"弟","indonesian":"Saya mahasiswa. Adik laki-laki saya juga mahasiswa."}]},{"word":"〜人","examples":[{"japanese":"ラビさんはインド人です。","reading":"ラビさんはインドじんです。","highlight":"人","indonesian":"Ravi adalah orang India."},{"japanese":"ミンさんはベトナム人です。","reading":"ミンさんはベトナムじんです。","highlight":"人","indonesian":"Min adalah orang Vietnam."},{"japanese":"「タイ人ですか。」「はい、タイ人です。」","reading":"「タイじんですか。」「はい、タイじんです。」","highlight":"人","indonesian":"“Apakah Anda orang Thailand?” “Ya, saya orang Thailand.”"}]},{"word":"学生","examples":[{"japanese":"私は学生です。","reading":"わたしはがくせいです。","highlight":"学生","indonesian":"Saya pelajar."},{"japanese":"ミナさんは学生です。リナさんも学生です。","reading":"ミナさんはがくせいです。リナさんもがくせいです。","highlight":"学生","indonesian":"Mina adalah pelajar. Rina juga pelajar."},{"japanese":"「学生ですか。」「いいえ、先生です。」","reading":"「がくせいですか。」「いいえ、せんせいです。」","highlight":"学生","indonesian":"“Apakah Anda pelajar?” “Tidak, saya guru.”"}]},{"word":"エンジニア","examples":[{"japanese":"私はエンジニアです。","reading":"わたしはエンジニアです。","highlight":"エンジニア","indonesian":"Saya insinyur."},{"japanese":"父はエンジニアです。母もエンジニアです。","reading":"ちちはエンジニアです。ははもエンジニアです。","highlight":"エンジニア","indonesian":"Ayah saya insinyur. Ibu saya juga insinyur."},{"japanese":"「医者ですか。」「いいえ、エンジニアです。」","reading":"「いしゃですか。」「いいえ、エンジニアです。」","highlight":"エンジニア","indonesian":"“Apakah Anda dokter?” “Tidak, saya insinyur.”"}]},{"word":"僕","examples":[{"japanese":"僕はケンです。","reading":"ぼくはケンです。","highlight":"僕","indonesian":"(Penutur laki-laki) Saya Ken."},{"japanese":"僕は大学生です。","reading":"ぼくはだいがくせいです。","highlight":"僕","indonesian":"(Penutur laki-laki) Saya mahasiswa."},{"japanese":"ケン君は学生です。僕も学生です。","reading":"ケンくんはがくせいです。ぼくもがくせいです。","highlight":"僕","indonesian":"(Penutur laki-laki) Ken adalah pelajar. Saya juga pelajar."}]},{"word":"日本人","examples":[{"japanese":"私は日本人です。","reading":"わたしはにほんじんです。","highlight":"日本人","indonesian":"Saya orang Jepang."},{"japanese":"父は日本人です。母も日本人です。","reading":"ちちはにほんじんです。ははもにほんじんです。","highlight":"日本人","indonesian":"Ayah saya orang Jepang. Ibu saya juga orang Jepang."},{"japanese":"「日本人ですか。」「はい、日本人です。」","reading":"「にほんじんですか。」「はい、にほんじんです。」","highlight":"日本人","indonesian":"“Apakah Anda orang Jepang?” “Ya, saya orang Jepang.”"}]},{"word":"出身","examples":[{"japanese":"私の出身は日本です。","reading":"わたしのしゅっしんはにほんです。","highlight":"出身","indonesian":"Saya berasal dari Jepang."},{"japanese":"ミンさんはベトナム出身です。","reading":"ミンさんはベトナムしゅっしんです。","highlight":"出身","indonesian":"Min berasal dari Vietnam."},{"japanese":"「出身はタイですか。」「いいえ、インドです。」","reading":"「しゅっしんはタイですか。」「いいえ、インドです。」","highlight":"出身","indonesian":"“Apakah Anda berasal dari Thailand?” “Tidak, saya berasal dari India.”"}]},{"word":"医者","examples":[{"japanese":"私は医者です。","reading":"わたしはいしゃです。","highlight":"医者","indonesian":"Saya dokter."},{"japanese":"父は医者です。母も医者です。","reading":"ちちはいしゃです。ははもいしゃです。","highlight":"医者","indonesian":"Ayah saya dokter. Ibu saya juga dokter."},{"japanese":"「看護師ですか。」「いいえ、医者です。」","reading":"「かんごしですか。」「いいえ、いしゃです。」","highlight":"医者","indonesian":"“Apakah Anda perawat?” “Tidak, saya dokter.”"}]}]$content$::jsonb;
+  v_course_id UUID;
+  v_module_id UUID;
+  v_deck_id UUID;
+  matches INT;
+  backup_count INT;
+  item JSONB;
+  example JSONB;
+  v_owner_id UUID;
+  legacy_column TEXT;
+  legacy_value TEXT;
+  sequence_number INT;
+BEGIN
+  -- Coordinate with curriculum graph and content writers before checking scope.
+  PERFORM pg_advisory_xact_lock(hashtext('curriculum-boundary:graph'));
+  SELECT count(*), (array_agg(c.id))[1] INTO matches, v_course_id
+    FROM courses c WHERE c.slug='n5';
+  IF matches<>1 THEN
+    RAISE EXCEPTION '179: expected exactly one N5 course; found %', matches;
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtext('curriculum-boundary:' || v_course_id::text));
+  SELECT count(*), (array_agg(m.id))[1] INTO matches, v_module_id
+    FROM modules m WHERE m.course_id=v_course_id AND m.slug='n5-b3';
+  IF matches<>1 THEN
+    RAISE EXCEPTION '179: expected exactly one n5-b3 module; found %', matches;
+  END IF;
+  SELECT count(*), (array_agg(l.id))[1] INTO matches, v_deck_id
+    FROM lessons l WHERE l.module_id=v_module_id AND l.slug='kosakata-n5-b3' AND l.type='deck';
+  IF matches<>1 THEN
+    RAISE EXCEPTION '179: expected exactly one kosakata-n5-b3 deck; found %', matches;
+  END IF;
+
+  -- Row locks complement the advisory lock for ordinary owner/example editors.
+  PERFORM 1 FROM lessons l WHERE l.id=v_deck_id FOR UPDATE;
+  PERFORM 1 FROM lesson_deck_items d WHERE d.lesson_id=v_deck_id
+    ORDER BY d.vocabulary_id FOR UPDATE;
+  PERFORM 1 FROM module_vocabulary v JOIN lesson_deck_items d ON d.vocabulary_id=v.id
+    WHERE d.lesson_id=v_deck_id ORDER BY v.id FOR UPDATE OF v;
+  PERFORM 1 FROM vocabulary_examples e JOIN lesson_deck_items d ON d.vocabulary_id=e.vocabulary_id
+    WHERE d.lesson_id=v_deck_id ORDER BY e.id FOR UPDATE OF e;
+
+  IF jsonb_array_length(plan)<>46
+    OR (SELECT count(DISTINCT p->>'word') FROM jsonb_array_elements(plan) p)<>46 THEN
+    RAISE EXCEPTION '179: invalid reviewed vocabulary plan';
+  END IF;
+  SELECT count(*) INTO matches FROM lesson_deck_items d WHERE d.lesson_id=v_deck_id;
+  IF matches<>46 THEN
+    RAISE EXCEPTION '179: expected exactly 46 deck memberships; found %', matches;
+  END IF;
+  FOR item IN SELECT value FROM jsonb_array_elements(plan) LOOP
+    SELECT count(*), (array_agg(v.id))[1] INTO matches, v_owner_id
+      FROM lesson_deck_items d JOIN module_vocabulary v ON v.id=d.vocabulary_id
+      WHERE d.lesson_id=v_deck_id AND v.japanese=item->>'word';
+    IF matches<>1 THEN
+      RAISE EXCEPTION '179: missing or duplicate reviewed word % (found %)', item->>'word', matches;
+    END IF;
+    IF EXISTS(SELECT 1 FROM module_vocabulary v WHERE v.id=v_owner_id
+      AND (v.module_id<>v_module_id OR (v.lesson_id IS NOT NULL AND v.lesson_id<>v_deck_id))) THEN
+      RAISE EXCEPTION '179: word % is owned outside the target deck; review its consumers first', item->>'word';
+    END IF;
+    IF EXISTS(SELECT 1 FROM lesson_deck_items d WHERE d.vocabulary_id=v_owner_id AND d.lesson_id<>v_deck_id) THEN
+      RAISE EXCEPTION '179: word % is shared with another deck; review its consumers first', item->>'word';
+    END IF;
+    IF jsonb_array_length(item->'examples')<>3 THEN
+      RAISE EXCEPTION '179: expected three reviewed examples for %', item->>'word';
+    END IF;
+    FOR example IN SELECT value FROM jsonb_array_elements(item->'examples') LOOP
+      IF coalesce(example->>'japanese','')='' OR coalesce(example->>'reading','')=''
+        OR coalesce(example->>'indonesian','')='' OR coalesce(example->>'highlight','')=''
+        OR position(example->>'highlight' IN example->>'japanese')=0 THEN
+        RAISE EXCEPTION '179: incomplete example for %', item->>'word';
+      END IF;
+    END LOOP;
+  END LOOP;
+
+  SELECT count(*) INTO backup_count FROM bab3_vocabulary_backup_179 b WHERE b.lesson_id=v_deck_id;
+  -- A deliberate re-run must not overwrite later teacher edits.
+  IF backup_count=46 THEN
+    IF EXISTS(SELECT 1 FROM lesson_deck_items d WHERE d.lesson_id=v_deck_id AND NOT EXISTS(
+      SELECT 1 FROM bab3_vocabulary_backup_179 b WHERE b.lesson_id=v_deck_id AND b.vocabulary_id=d.vocabulary_id)) THEN
+      RAISE EXCEPTION '179: deck membership changed after the reviewed replacement';
+    END IF;
+    RETURN;
+  ELSIF backup_count<>0 THEN
+    RAISE EXCEPTION '179: partial backup found; refuse a partial content replacement';
+  END IF;
+
+  -- Capture every original example, including duplicates and surplus examples.
+  INSERT INTO bab3_vocabulary_backup_179
+    (vocabulary_id,lesson_id,before_vocabulary,before_examples,before_deck_items)
+  SELECT v.id,v_deck_id,to_jsonb(v),
+    coalesce((SELECT jsonb_agg(to_jsonb(e) ORDER BY e.sort_order,e.id)
+      FROM vocabulary_examples e WHERE e.vocabulary_id=v.id),'[]'::jsonb),
+    coalesce((SELECT jsonb_agg(to_jsonb(d2) ORDER BY d2.lesson_id)
+      FROM lesson_deck_items d2 WHERE d2.vocabulary_id=v.id),'[]'::jsonb)
+  FROM module_vocabulary v JOIN lesson_deck_items d ON d.vocabulary_id=v.id WHERE d.lesson_id=v_deck_id;
+  GET DIAGNOSTICS matches = ROW_COUNT;
+  IF matches<>46 THEN RAISE EXCEPTION '179: incomplete pre-change backup'; END IF;
+
+  FOR item IN SELECT value FROM jsonb_array_elements(plan) LOOP
+    SELECT v.id INTO STRICT v_owner_id FROM module_vocabulary v
+      JOIN lesson_deck_items d ON d.vocabulary_id=v.id
+      WHERE d.lesson_id=v_deck_id AND v.japanese=item->>'word';
+    DELETE FROM vocabulary_examples e WHERE e.vocabulary_id=v_owner_id;
+    sequence_number:=0;
+    FOR example IN SELECT value FROM jsonb_array_elements(item->'examples') LOOP
+      INSERT INTO vocabulary_examples(vocabulary_id,japanese,reading,highlight,indonesian,sort_order)
+        VALUES(v_owner_id,example->>'japanese',example->>'reading',example->>'highlight',
+          example->>'indonesian',sequence_number);
+      sequence_number:=sequence_number+1;
+    END LOOP;
+
+    -- Current schema uses only vocabulary_examples. If an older deployment has
+    -- legacy single-example columns, keep those fallbacks aligned as well. Their
+    -- previous values are already captured in before_vocabulary.
+    FOREACH legacy_column IN ARRAY ARRAY['example_japanese','example_reading','example_indonesian'] LOOP
+      IF EXISTS(SELECT 1 FROM pg_attribute a WHERE a.attrelid='module_vocabulary'::regclass
+        AND a.attname=legacy_column AND a.attnum>0 AND NOT a.attisdropped) THEN
+        legacy_value:=(item->'examples'->0)->>replace(legacy_column,'example_','');
+        EXECUTE format('UPDATE module_vocabulary SET %I=$1 WHERE id=$2',legacy_column)
+          USING legacy_value,v_owner_id;
+      END IF;
+    END LOOP;
+  END LOOP;
+  SELECT count(*) INTO matches FROM vocabulary_examples e
+    JOIN lesson_deck_items d ON d.vocabulary_id=e.vocabulary_id WHERE d.lesson_id=v_deck_id;
+  IF matches<>138 THEN RAISE EXCEPTION '179: expected 138 replacement examples; found %', matches; END IF;
+END
+$migration$;
