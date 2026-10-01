@@ -414,6 +414,33 @@
       dengar ElevenLabs sungguhan (diblokir dari sandbox) — termasuk apakah kana
       tanpa spasi tetap dibaca dengan pemenggalan yang benar.
 
+      **Dialog N4 memakai kanji yang sudah diajarkan + furigana (migrasi 192)** — user:
+      "pakai kombinasi kanji yg sudah di ajarkan juga gapapa untuk di taro di percakapan
+      jika di bab tersebut atau sudah di pelajari sampai titik itu"; dipilih user: N4 dulu
+      (N5 menyusul), PAKAI furigana. Dialog 190 hampir semuanya kana. Sumber konten:
+      `content/n4-support/dialogue-kanji.mjs` (markup `{漢字~よみ}`, `{漢字~よみ|asli}`
+      untuk ejaan campuran 190 seperti 日よう日) → `scripts/build-n4-dialogue-kanji.mjs`
+      → `dialogue-kanji-plan.json` + `192_n4_dialogue_kanji.sql` (`--check` + tes
+      memastikan keduanya hasil generate). **Kanji yang boleh** = 105 kanji N5 (whitelist
+      089) + kanji N4 bab 1..N persis dari migrasi 155 (BUKAN `kanji-support.mjs`, yang
+      beda di bab 5/6/14, mis. 強). Builder menolak: baris yang tidak terbaca balik ke teks
+      190, kanji tanpa furigana, kanji sebelum babnya, furigana yang tidak menutup satu
+      deret kanji utuh (aturan `dialogue-furigana.js`) — keempatnya dibuktikan menggigit.
+      Sengaja tetap kana: kata gramatikal (こと, という, かもしれません), kata dengan kanji
+      belum diajarkan, dan はやく "cepat" (速, bukan 早). 192 hanya mengubah baris yang
+      MASIH berisi teks 190 (diedit admin / punya soal dialog → NOTICE + dilewati), ekspresi
+      per giliran ikut pindah ke teks barunya, suara tidak disentuh, idempoten, backup di
+      `n4_dialogue_kanji_backup_192`. Soal cek baca N4 tetap tampil
+      (`n4DialogueSelfChecks` menerima teks 190 maupun 192); kutipan Jepang di
+      penjelasannya sengaja tetap kana. **Audio**: `spokenTurnText()` (`routes/tts.js`)
+      mengucapkan kanji ber-furigana sebagai bacaannya — siswa (`/api/tts/dialog`
+      membaca `dialog_furigana` lewat `grammarId`) dan "Tes giliran" admin (mengirim
+      `dialogFurigana` editor) sama; ElevenLabs tidak pernah menebak bacaan kanji, dan
+      baris yang dulunya kana penuh memakai take yang sama (tidak generate ulang).
+      Tanpa `grammarId` (klien lama) kanji dikirim apa adanya. **Belum dilakukan**: N5
+      (soal pemahamannya mengutip kalimat dialog → perlu skrip finalisasi seperti 186) dan
+      tampilan furigana di browser sungguhan.
+
       **Bug: menyimpan baris pola dari admin MENGHAPUS suara dialog** (ada sejak fitur
       scene `8de8d54`, ketahuan saat merekam video perbandingan gerak): admin memuat pola
       lewat `GET /api/courses/:slug`, yang memakai `publicDialogScene` (membuang `voiceId`
