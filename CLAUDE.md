@@ -376,6 +376,27 @@
       progres server, "Lanjut Belajar" dashboard, HP tanpa overflow); QA repo
       dialogue-scene + learning-flow lulus.
 
+      **N4 ikut dipisah (migrasi 191)** — user: "Pisahkan pelajaran percakapan dan tata
+      bahasa di n4 seperti di n5". 178 hanya membuat Percakapan untuk pelajaran yang
+      SUDAH punya dialog saat itu; 47 dialog N4 baru datang di 190 dan sengaja
+      ditampilkan INLINE di pelajaran Tata Bahasa (blok "💬 Percakapan" +
+      pemeriksaan baca `dialogueSelfChecks`). 191 = logika 178, dipersempit ke course
+      `n4` (dialog yang admin tambahkan di course lain tidak diam-diam dijadikan
+      pelajaran): Percakapan tepat setelah sumbernya, jadi tiap bab N4 sekarang
+      Tata Bahasa → Percakapan → Tugas Bunpou, persis N5. Judul "Tata Bahasa: X" →
+      "Percakapan: X", slug `<sumber>-percakapan`, slug lama tidak disentuh.
+      Frontend: `transformCourseFromApi` menandai `hasConversation` pada sumber; blok
+      inline hanya tampil kalau sumber TIDAK punya Percakapan, dan pemeriksaan baca
+      N4 pindah ke halaman Percakapan di bawah dialognya (`dialogueSelfChecksHtml`,
+      ditaruh SETELAH `renderConversationLesson` supaya semua tes vm-slice yang ada
+      ikut memuatnya). Divalidasi di Postgres dengan struktur N4 hasil migrasi repo
+      (24 bab, 47 sumber video): 47 dibuat, idempoten, id/slug lama identik, tanpa
+      sort_order kembar, course lain tidak tersentuh; 3 mutasi frontend tertangkap
+      tes; `npm test` dengan DB 945 tes, 944 hijau, 1 skip lama. **Belum diverifikasi**:
+      tampilan di browser sungguhan. Menambah 47 pelajaran mengubah persentase
+      progres N4 (siswa N4 yang sudah menyelesaikan bab akan melihat Percakapan
+      sebagai belum selesai).
+
       **Bug: menyimpan baris pola dari admin MENGHAPUS suara dialog** (ada sejak fitur
       scene `8de8d54`, ketahuan saat merekam video perbandingan gerak): admin memuat pola
       lewat `GET /api/courses/:slug`, yang memakai `publicDialogScene` (membuang `voiceId`

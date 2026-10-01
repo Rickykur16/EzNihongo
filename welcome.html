@@ -4899,6 +4899,10 @@ function transformCourseFromApi(apiCourse) {
           // Percakapan lessons (migration 178) show the dialogues of this
           // grammar lesson from the same module.
           conversationSourceLessonId: l.conversation_source_lesson_id || null,
+          // A grammar lesson whose dialogues have their own Percakapan lesson
+          // does not repeat them inline (N4 used to, before migration 191).
+          hasConversation: (m.lessons || []).some((c) => c.type === 'conversation' &&
+            c.conversation_source_lesson_id === l.id),
           // Bunpou Flow pilot (Paket 1) — present on AT MOST one lesson in the
           // whole catalogue, and only once an admin has both published a
           // companion and flipped the pilot flag for it (see
@@ -8640,11 +8644,11 @@ function renderLessonGrammar(lesson) {
               <div class="grammar-block-content">${examplesHtml}</div>
             </div>` : ''}
             ${g.notes ? `<div class="grammar-notes">${escapeHtml(g.notes)}</div>` : ''}
-            ${Array.isArray(g.dialogueSelfChecks) && g.example_dialog ? `<section class="grammar-block" style="margin-top:20px">
+            ${!lesson.hasConversation && Array.isArray(g.dialogueSelfChecks) && g.example_dialog ? `<section class="grammar-block" style="margin-top:20px">
               <h3>💬 Percakapan</h3>
               ${g.communication_goal ? `<p>${escapeHtml(g.communication_goal)}</p>` : ''}
               ${grammarKaraokeHtml(String(g.example_dialog).trim(), `n4-${g.id}`, g.example_dialog_id || '', g.dialog_scene, g.id, g.dialog_furigana)}
-              ${(g.dialogueSelfChecks || []).map(q => `<div style="margin-top:14px"><p><strong>${escapeHtml(q.prompt)}</strong></p><details><summary style="cursor:pointer">Lihat jawaban dan alasan</summary><p>${escapeHtml(q.answer)}</p><p>${escapeHtml(q.explanation)}</p></details></div>`).join('')}
+              ${dialogueSelfChecksHtml(g)}
             </section>` : ''}
           </div>`;
         }).join('')}
@@ -8679,6 +8683,7 @@ function renderConversationLesson(course, module, lesson, nav) {
           <div class="dq-goal" data-dq-goal-for="${escapeHtml(grammar.id || '')}" hidden></div>
           ${grammarKaraokeHtml(String(grammar.example_dialog).trim(), `g${index}`,
             grammar.example_dialog_id || '', grammar.dialog_scene, grammar.id, grammar.dialog_furigana)}
+          ${dialogueSelfChecksHtml(grammar)}
           <div class="dq-questions" data-dq-questions-for="${escapeHtml(grammar.id || '')}" hidden></div>
         </section>`).join('')}
     </div>` : '<p class="lesson-empty" style="color:#737373;">Dialog untuk pelajaran ini belum tersedia.</p>'}
@@ -8698,6 +8703,12 @@ function renderConversationLesson(course, module, lesson, nav) {
   // independently of the linked Bunpou task's placement/session version.
   window.EzDialogueQuestions?.mount({ root, lesson: source,
     openLegacyTask: linkedTask ? () => window.selectLesson(module.id, linkedTask.lesson.id) : null });
+}
+
+// N4 reading checks (voluntary, answers revealed on demand; see
+// n4-dialogue-support.js). Shown under the dialogue they belong to.
+function dialogueSelfChecksHtml(grammar) {
+  return (Array.isArray(grammar?.dialogueSelfChecks) ? grammar.dialogueSelfChecks : []).map(q => `<div style="margin-top:14px"><p><strong>${escapeHtml(q.prompt)}</strong></p><details><summary style="cursor:pointer">Lihat jawaban dan alasan</summary><p>${escapeHtml(q.answer)}</p><p>${escapeHtml(q.explanation)}</p></details></div>`).join('');
 }
 
 // ── Dialog player (chat bubbles) ───────────────────────────
