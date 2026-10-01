@@ -8,7 +8,8 @@ import json, sys, wave
 import numpy as np
 
 SR = 48000
-DUR = 30.0
+import os
+DUR = float(os.environ.get('DUR', 30.0))  # video VO lebih panjang dari 30 detik
 N = int(SR * DUR)
 rng = np.random.default_rng(7)
 L = np.zeros(N); R = np.zeros(N)
@@ -274,13 +275,22 @@ for dt, f in ((B1, 146.83), (B1, 293.66), (B1 + .15, 440.0), (B1 + .3, 587.33), 
 for dt, f in ((B0, 146.83), (B0, 293.66), (B0 + .15, 440.0), (B0 + .3, 587.33)):
     add(dt, pluck(f, 2.0, .998), .12, pan=rng.uniform(-.3, .3))
 
-L += sfxL; R += sfxR
 fade = np.clip((DUR - t) / .8, 0, 1)
-L *= fade; R *= fade
-peak = max(np.max(np.abs(L)), np.max(np.abs(R)))
-L *= .89 / peak; R *= .89 / peak
+musL, musR = L * fade, R * fade
+sfxL, sfxR = sfxL * fade, sfxR * fade
+peak = max(np.max(np.abs(musL + sfxL)), np.max(np.abs(musR + sfxR)))
+k = .89 / peak
+
+
+def write(path, a, b):
+    with wave.open(path, 'wb') as w:
+        w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
+        w.writeframes((np.clip(np.stack([a, b], 1) * k, -1, 1) * 32767).astype('<i2').tobytes())
+
+
 out = sys.argv[2] if len(sys.argv) > 2 else 'sfx.wav'
-with wave.open(out, 'wb') as w:
-    w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
-    w.writeframes((np.stack([L, R], 1) * 32767).astype('<i2').tobytes())
+if len(sys.argv) > 3:  # musik terpisah (untuk di-duck oleh voice-over)
+    write(out, sfxL, sfxR); write(sys.argv[3], musL, musR)
+else:
+    write(out, musL + sfxL, musR + sfxR)
 print('ok', out, f'peak-normalized from {peak:.2f}')
