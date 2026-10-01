@@ -43,7 +43,7 @@ const fakeQuery=async(sql,p=[])=>{
   if(sql.includes('SELECT g.example, g.example_dialog, g.module_id'))return{rows:[]};
   if(sql.includes('FROM admin_emails'))return{rows:[]};
   if(sql.startsWith('SELECT 1 WHERE EXISTS'))return{rows:known?[{}]:[]};
-  if(sql.includes('SELECT dialog_scene FROM module_grammar'))return{rows:grammarMatches?[{dialog_scene:structuredClone(saved)}]:[]};
+  if(sql.includes('SELECT dialog_scene, dialog_furigana FROM module_grammar'))return{rows:grammarMatches?[{dialog_scene:structuredClone(saved),dialog_furigana:null}]:[]};
   if(sql.startsWith('SELECT name, voice_id FROM dialogue_speakers'))return{rows:profiles};
   if(sql.includes('SELECT text_hash, audio FROM tts_cache'))return{rows:p[0].filter(k=>cache.has(k)).map(k=>({text_hash:k,audio:cache.get(k)}))};
   if(sql.includes('SELECT alignment FROM tts_cache'))return{rows:[]};

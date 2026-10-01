@@ -5889,6 +5889,7 @@ window.admDialogRowTest = async (i, btn, regenerate = false) => {
         turnIndex: rows.slice(0, i).filter((row) => (row.jp || '').trim()).length,
         speaker: r.speaker, turnText: r.jp.trim(),
         dialogScene: window.__dialogScene || null, regenerate,
+        dialogFurigana: window.EzDialogueFuriganaAdmin?.data?.() || null,
       }) });
     if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || e.error || ('HTTP ' + resp.status)); }
     const blob = await resp.blob();

@@ -1,0 +1,5876 @@
+{
+  "schemaVersion": 1,
+  "courseId": "e22d819f-8526-4af6-a8c5-02258c12e6f0",
+  "items": [
+    {
+      "grammarId": "3b41a238-b4f1-4327-a8e9-de69cdfbc804",
+      "chapter": 1,
+      "expected": {
+        "example_dialog": "A: その かばんは、きのう かった かばんですか。\nB: はい。あねが かった かばんです。\nA: あおいのも、あねのですか。\nB: いいえ、あおいのは わたしのです。毎日 つかう かばんです。",
+        "example_dialog_id": "A: Apakah tas itu tas yang dibeli kemarin?\nB: Ya. Ini tas yang dibeli kakak perempuan saya.\nA: Apakah yang biru juga milik kakak Anda?\nB: Bukan, yang biru milik saya. Ini tas yang saya pakai setiap hari."
+      },
+      "replacement": {
+        "example_dialog": "A: その かばんは、きのう 買った かばんですか。\nB: はい。あねが 買った かばんです。\nA: あおいのも、あねのですか。\nB: いいえ、あおいのは わたしのです。毎日 つかう かばんです。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "その かばんは、きのう 買った かばんですか。",
+              "readings": [
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。あねが 買った かばんです。",
+              "readings": [
+                {
+                  "start": 7,
+                  "end": 8,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "あおいのも、あねのですか。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "いいえ、あおいのは わたしのです。毎日 つかう かばんです。",
+              "readings": [
+                {
+                  "start": 17,
+                  "end": 19,
+                  "reading": "まいにち"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "その かばんは、きのう かった かばんですか。",
+          "to": "その かばんは、きのう 買った かばんですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。あねが かった かばんです。",
+          "to": "はい。あねが 買った かばんです。"
+        },
+        {
+          "speaker": "A",
+          "from": "あおいのも、あねのですか。",
+          "to": "あおいのも、あねのですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "いいえ、あおいのは わたしのです。毎日 つかう かばんです。",
+          "to": "いいえ、あおいのは わたしのです。毎日 つかう かばんです。"
+        }
+      ]
+    },
+    {
+      "grammarId": "eded72e5-8a76-4a04-8264-436f976f1a2d",
+      "chapter": 1,
+      "expected": {
+        "example_dialog": "A: しゅみは 何ですか。\nB: しゃしんを とることです。花の しゃしんを とるのが すきです。\nA: いいですね。わたしは しょうせつを よむのが すきです。\nB: どんな しょうせつを よみますか。\nA: 日本の しょうせつです。こうえんで よむのは たのしいです。\nB: ここは しずかですから、いいですね。",
+        "example_dialog_id": "A: Apa hobi Anda?\nB: Memotret. Saya suka memotret bunga.\nA: Bagus, ya. Saya suka membaca novel.\nB: Novel seperti apa yang Anda baca?\nA: Novel Jepang. Membaca di taman itu menyenangkan.\nB: Tempat ini tenang, jadi cocok, ya."
+      },
+      "replacement": {
+        "example_dialog": "A: しゅみは 何ですか。\nB: しゃしんを とることです。花の しゃしんを とるのが すきです。\nA: いいですね。わたしは しょうせつを 読むのが すきです。\nB: どんな しょうせつを 読みますか。\nA: 日本の しょうせつです。こうえんで 読むのは たのしいです。\nB: ここは しずかですから、いいですね。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "しゅみは 何ですか。",
+              "readings": [
+                {
+                  "start": 5,
+                  "end": 6,
+                  "reading": "なん"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "しゃしんを とることです。花の しゃしんを とるのが すきです。",
+              "readings": [
+                {
+                  "start": 13,
+                  "end": 14,
+                  "reading": "はな"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "いいですね。わたしは しょうせつを 読むのが すきです。",
+              "readings": [
+                {
+                  "start": 18,
+                  "end": 19,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "どんな しょうせつを 読みますか。",
+              "readings": [
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "日本の しょうせつです。こうえんで 読むのは たのしいです。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "にほん"
+                },
+                {
+                  "start": 18,
+                  "end": 19,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "ここは しずかですから、いいですね。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "しゅみは 何ですか。",
+          "to": "しゅみは 何ですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "しゃしんを とることです。花の しゃしんを とるのが すきです。",
+          "to": "しゃしんを とることです。花の しゃしんを とるのが すきです。"
+        },
+        {
+          "speaker": "A",
+          "from": "いいですね。わたしは しょうせつを よむのが すきです。",
+          "to": "いいですね。わたしは しょうせつを 読むのが すきです。"
+        },
+        {
+          "speaker": "B",
+          "from": "どんな しょうせつを よみますか。",
+          "to": "どんな しょうせつを 読みますか。"
+        },
+        {
+          "speaker": "A",
+          "from": "日本の しょうせつです。こうえんで よむのは たのしいです。",
+          "to": "日本の しょうせつです。こうえんで 読むのは たのしいです。"
+        },
+        {
+          "speaker": "B",
+          "from": "ここは しずかですから、いいですね。",
+          "to": "ここは しずかですから、いいですね。"
+        }
+      ]
+    },
+    {
+      "grammarId": "fedee2bc-5852-4576-a9e5-a764b6a38859",
+      "chapter": 2,
+      "expected": {
+        "example_dialog": "A: もう かえりますか。\nB: はい。あした しけんが あるんです。\nA: そうですか。いえで べんきょうしますか。\nB: はい。でも、この ことばが わからないんですが、せつめいしてください。\nA: はい。この ことばの いみは「休み」です。\nB: わかりました。ありがとうございます。",
+        "example_dialog_id": "A: Sudah mau pulang?\nB: Ya. Soalnya besok ada ujian.\nA: Oh, begitu. Akan belajar di rumah?\nB: Ya. Tapi saya tidak mengerti kata ini; tolong jelaskan.\nA: Bisa. Arti kata ini adalah “libur”.\nB: Saya mengerti sekarang. Terima kasih."
+      },
+      "replacement": {
+        "example_dialog": "A: もう かえりますか。\nB: はい。あした しけんが あるんです。\nA: そうですか。いえで べんきょうしますか。\nB: はい。でも、この ことばが わからないんですが、せつめいしてください。\nA: はい。この ことばの いみは「休み」です。\nB: わかりました。ありがとうございます。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "もう かえりますか。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "はい。あした しけんが あるんです。",
+              "readings": []
+            },
+            {
+              "speaker": "A",
+              "text": "そうですか。いえで べんきょうしますか。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "はい。でも、この ことばが わからないんですが、せつめいしてください。",
+              "readings": []
+            },
+            {
+              "speaker": "A",
+              "text": "はい。この ことばの いみは「休み」です。",
+              "readings": [
+                {
+                  "start": 15,
+                  "end": 16,
+                  "reading": "やす"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "わかりました。ありがとうございます。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "もう かえりますか。",
+          "to": "もう かえりますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。あした しけんが あるんです。",
+          "to": "はい。あした しけんが あるんです。"
+        },
+        {
+          "speaker": "A",
+          "from": "そうですか。いえで べんきょうしますか。",
+          "to": "そうですか。いえで べんきょうしますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。でも、この ことばが わからないんですが、せつめいしてください。",
+          "to": "はい。でも、この ことばが わからないんですが、せつめいしてください。"
+        },
+        {
+          "speaker": "A",
+          "from": "はい。この ことばの いみは「休み」です。",
+          "to": "はい。この ことばの いみは「休み」です。"
+        },
+        {
+          "speaker": "B",
+          "from": "わかりました。ありがとうございます。",
+          "to": "わかりました。ありがとうございます。"
+        }
+      ]
+    },
+    {
+      "grammarId": "a60c9112-86e9-4e45-bbc1-bcbe9ebf7873",
+      "chapter": 2,
+      "expected": {
+        "example_dialog": "A: 『はる』という 本を よみましたか。\nB: はい。とても おもしろいと おもいます。\nA: わたしも そう おもいます。友だちも「おもしろかった」と いっていました。\nB: その 友だちも 日本の 本が すきですか。\nA: はい。毎週 本を かうと いっていました。\nB: たくさん よんでいますね。",
+        "example_dialog_id": "A: Sudah membaca buku berjudul Haru?\nB: Sudah. Menurut saya sangat menarik.\nA: Saya juga berpikir begitu. Teman saya juga bilang, “Menarik.”\nB: Apakah teman itu juga suka buku Jepang?\nA: Ya. Ia bilang membeli buku setiap minggu.\nB: Banyak membaca, ya."
+      },
+      "replacement": {
+        "example_dialog": "A: 『はる』という 本を 読みましたか。\nB: はい。とても おもしろいと 思います。\nA: わたしも そう 思います。友だちも「おもしろかった」と 言っていました。\nB: その 友だちも 日本の 本が すきですか。\nA: はい。毎週 本を 買うと 言っていました。\nB: たくさん 読んでいますね。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "『はる』という 本を 読みましたか。",
+              "readings": [
+                {
+                  "start": 8,
+                  "end": 9,
+                  "reading": "ほん"
+                },
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。とても おもしろいと 思います。",
+              "readings": [
+                {
+                  "start": 14,
+                  "end": 15,
+                  "reading": "おも"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "わたしも そう 思います。友だちも「おもしろかった」と 言っていました。",
+              "readings": [
+                {
+                  "start": 8,
+                  "end": 9,
+                  "reading": "おも"
+                },
+                {
+                  "start": 13,
+                  "end": 14,
+                  "reading": "とも"
+                },
+                {
+                  "start": 28,
+                  "end": 29,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "その 友だちも 日本の 本が すきですか。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "とも"
+                },
+                {
+                  "start": 8,
+                  "end": 10,
+                  "reading": "にほん"
+                },
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "ほん"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "はい。毎週 本を 買うと 言っていました。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 5,
+                  "reading": "まいしゅう"
+                },
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "ほん"
+                },
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "か"
+                },
+                {
+                  "start": 13,
+                  "end": 14,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "たくさん 読んでいますね。",
+              "readings": [
+                {
+                  "start": 5,
+                  "end": 6,
+                  "reading": "よ"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "『はる』という 本を よみましたか。",
+          "to": "『はる』という 本を 読みましたか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。とても おもしろいと おもいます。",
+          "to": "はい。とても おもしろいと 思います。"
+        },
+        {
+          "speaker": "A",
+          "from": "わたしも そう おもいます。友だちも「おもしろかった」と いっていました。",
+          "to": "わたしも そう 思います。友だちも「おもしろかった」と 言っていました。"
+        },
+        {
+          "speaker": "B",
+          "from": "その 友だちも 日本の 本が すきですか。",
+          "to": "その 友だちも 日本の 本が すきですか。"
+        },
+        {
+          "speaker": "A",
+          "from": "はい。毎週 本を かうと いっていました。",
+          "to": "はい。毎週 本を 買うと 言っていました。"
+        },
+        {
+          "speaker": "B",
+          "from": "たくさん よんでいますね。",
+          "to": "たくさん 読んでいますね。"
+        }
+      ]
+    },
+    {
+      "grammarId": "95cd10ea-b201-4c44-83de-1b7aeff42c07",
+      "chapter": 3,
+      "expected": {
+        "example_dialog": "A: 電車は 何時ですか。\nB: 十時です。九時半までに ここへ 来てください。\nA: そのまえに、あさごはんを たべても いいですか。\nB: はい。たべたあとで、ここで まちましょう。\nA: 九時半までに ここへ 来ます。\nB: はい。わたしも ここで まちます。",
+        "example_dialog_id": "A: Keretanya pukul berapa?\nB: Pukul sepuluh. Silakan kembali ke sini paling lambat setengah sepuluh.\nA: Bolehkah sarapan sebelumnya?\nB: Boleh. Setelah makan, mari menunggu di sini.\nA: Saya akan datang ke sini paling lambat setengah sepuluh.\nB: Baik. Saya juga akan menunggu di sini."
+      },
+      "replacement": {
+        "example_dialog": "A: 電車は 何時ですか。\nB: 十時です。九時半までに ここへ 来てください。\nA: その前に、朝ごはんを 食べても いいですか。\nB: はい。食べた後で、ここで まちましょう。\nA: 九時半までに ここへ 来ます。\nB: はい。わたしも ここで まちます。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "電車は 何時ですか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "でんしゃ"
+                },
+                {
+                  "start": 4,
+                  "end": 6,
+                  "reading": "なんじ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "十時です。九時半までに ここへ 来てください。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "じゅうじ"
+                },
+                {
+                  "start": 5,
+                  "end": 8,
+                  "reading": "くじはん"
+                },
+                {
+                  "start": 16,
+                  "end": 17,
+                  "reading": "き"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "その前に、朝ごはんを 食べても いいですか。",
+              "readings": [
+                {
+                  "start": 2,
+                  "end": 3,
+                  "reading": "まえ"
+                },
+                {
+                  "start": 5,
+                  "end": 6,
+                  "reading": "あさ"
+                },
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "た"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。食べた後で、ここで まちましょう。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "た"
+                },
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "あと"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "九時半までに ここへ 来ます。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 3,
+                  "reading": "くじはん"
+                },
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "き"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。わたしも ここで まちます。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "電車は 何時ですか。",
+          "to": "電車は 何時ですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "十時です。九時半までに ここへ 来てください。",
+          "to": "十時です。九時半までに ここへ 来てください。"
+        },
+        {
+          "speaker": "A",
+          "from": "そのまえに、あさごはんを たべても いいですか。",
+          "to": "その前に、朝ごはんを 食べても いいですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。たべたあとで、ここで まちましょう。",
+          "to": "はい。食べた後で、ここで まちましょう。"
+        },
+        {
+          "speaker": "A",
+          "from": "九時半までに ここへ 来ます。",
+          "to": "九時半までに ここへ 来ます。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。わたしも ここで まちます。",
+          "to": "はい。わたしも ここで まちます。"
+        }
+      ]
+    },
+    {
+      "grammarId": "773ded4a-7972-4a97-a07c-0b940908c219",
+      "chapter": 3,
+      "expected": {
+        "example_dialog": "A: 日よう日は 何を しましたか。\nB: 本を よんだり、りょうりを つくったりしました。\nA: おんがくも ききましたか。\nB: はい。おんがくを ききながら、りょうりを つくりました。\nA: わたしは テレビを みないで、早く ねました。\nB: ゆっくり 休みましたね。",
+        "example_dialog_id": "A: Apa yang Anda lakukan hari Minggu?\nB: Saya antara lain membaca buku dan memasak.\nA: Apakah juga mendengarkan musik?\nB: Ya. Saya memasak sambil mendengarkan musik.\nA: Saya tidur lebih awal tanpa menonton televisi.\nB: Anda beristirahat dengan santai, ya."
+      },
+      "replacement": {
+        "example_dialog": "A: 日曜日は 何を しましたか。\nB: 本を 読んだり、りょうりを 作ったりしました。\nA: おんがくも 聞きましたか。\nB: はい。おんがくを 聞きながら、りょうりを 作りました。\nA: わたしは テレビを 見ないで、早く ねました。\nB: ゆっくり 休みましたね。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "日曜日は 何を しましたか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 3,
+                  "reading": "にちようび"
+                },
+                {
+                  "start": 5,
+                  "end": 6,
+                  "reading": "なに"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "本を 読んだり、りょうりを 作ったりしました。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "ほん"
+                },
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "よ"
+                },
+                {
+                  "start": 14,
+                  "end": 15,
+                  "reading": "つく"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "おんがくも 聞きましたか。",
+              "readings": [
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "き"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。おんがくを 聞きながら、りょうりを 作りました。",
+              "readings": [
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "き"
+                },
+                {
+                  "start": 21,
+                  "end": 22,
+                  "reading": "つく"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "わたしは テレビを 見ないで、早く ねました。",
+              "readings": [
+                {
+                  "start": 10,
+                  "end": 11,
+                  "reading": "み"
+                },
+                {
+                  "start": 15,
+                  "end": 16,
+                  "reading": "はや"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "ゆっくり 休みましたね。",
+              "readings": [
+                {
+                  "start": 5,
+                  "end": 6,
+                  "reading": "やす"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "日よう日は 何を しましたか。",
+          "to": "日曜日は 何を しましたか。"
+        },
+        {
+          "speaker": "B",
+          "from": "本を よんだり、りょうりを つくったりしました。",
+          "to": "本を 読んだり、りょうりを 作ったりしました。"
+        },
+        {
+          "speaker": "A",
+          "from": "おんがくも ききましたか。",
+          "to": "おんがくも 聞きましたか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。おんがくを ききながら、りょうりを つくりました。",
+          "to": "はい。おんがくを 聞きながら、りょうりを 作りました。"
+        },
+        {
+          "speaker": "A",
+          "from": "わたしは テレビを みないで、早く ねました。",
+          "to": "わたしは テレビを 見ないで、早く ねました。"
+        },
+        {
+          "speaker": "B",
+          "from": "ゆっくり 休みましたね。",
+          "to": "ゆっくり 休みましたね。"
+        }
+      ]
+    },
+    {
+      "grammarId": "820d48d1-48a8-47c9-b259-800de763b9c7",
+      "chapter": 4,
+      "expected": {
+        "example_dialog": "A: ここで パソコンを つかうことができますか。\nB: はい、つかえます。あの パソコンは いま つかっていません。\nA: 日本語も かけますか。\nB: はい、日本語で レポートを かくことができます。\nA: じゃあ、つかいます。ありがとうございます。\nB: どうぞ。",
+        "example_dialog_id": "A: Bisa memakai komputer di sini?\nB: Ya, bisa. Komputer yang di sana sekarang tidak sedang dipakai.\nA: Bisa menulis bahasa Jepang juga?\nB: Ya, bisa menulis laporan dalam bahasa Jepang.\nA: Kalau begitu saya akan memakainya. Terima kasih.\nB: Silakan."
+      },
+      "replacement": {
+        "example_dialog": "A: ここで パソコンを つかうことができますか。\nB: はい、つかえます。あの パソコンは 今 つかっていません。\nA: 日本語も 書けますか。\nB: はい、日本語で レポートを 書くことができます。\nA: じゃあ、つかいます。ありがとうございます。\nB: どうぞ。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "ここで パソコンを つかうことができますか。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "はい、つかえます。あの パソコンは 今 つかっていません。",
+              "readings": [
+                {
+                  "start": 18,
+                  "end": 19,
+                  "reading": "いま"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "日本語も 書けますか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 3,
+                  "reading": "にほんご"
+                },
+                {
+                  "start": 5,
+                  "end": 6,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい、日本語で レポートを 書くことができます。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 6,
+                  "reading": "にほんご"
+                },
+                {
+                  "start": 14,
+                  "end": 15,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "じゃあ、つかいます。ありがとうございます。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "どうぞ。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "ここで パソコンを つかうことができますか。",
+          "to": "ここで パソコンを つかうことができますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい、つかえます。あの パソコンは いま つかっていません。",
+          "to": "はい、つかえます。あの パソコンは 今 つかっていません。"
+        },
+        {
+          "speaker": "A",
+          "from": "日本語も かけますか。",
+          "to": "日本語も 書けますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい、日本語で レポートを かくことができます。",
+          "to": "はい、日本語で レポートを 書くことができます。"
+        },
+        {
+          "speaker": "A",
+          "from": "じゃあ、つかいます。ありがとうございます。",
+          "to": "じゃあ、つかいます。ありがとうございます。"
+        },
+        {
+          "speaker": "B",
+          "from": "どうぞ。",
+          "to": "どうぞ。"
+        }
+      ]
+    },
+    {
+      "grammarId": "a71867c0-a1f5-45ec-bd43-9594fa317e20",
+      "chapter": 4,
+      "expected": {
+        "example_dialog": "A: この まどから 山が みえますね。\nB: はい。きょうは てんきが いいです。\nA: コーヒーの いい においも します。\nB: そうですね。コーヒーを のみませんか。\nA: いいですね。わたしは あたたかい コーヒーに します。\nB: わたしも そうします。",
+        "example_dialog_id": "A: Gunung terlihat dari jendela ini, ya.\nB: Ya. Cuaca hari ini bagus.\nA: Aroma kopi yang harum juga tercium.\nB: Benar. Mau minum kopi?\nA: Boleh. Saya pilih kopi hangat.\nB: Saya juga pilih itu."
+      },
+      "replacement": {
+        "example_dialog": "A: この まどから 山が 見えますね。\nB: はい。今日は 天気が いいです。\nA: コーヒーの いい においも します。\nB: そうですね。コーヒーを 飲みませんか。\nA: いいですね。わたしは あたたかい コーヒーに します。\nB: わたしも そうします。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "この まどから 山が 見えますね。",
+              "readings": [
+                {
+                  "start": 8,
+                  "end": 9,
+                  "reading": "やま"
+                },
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "み"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。今日は 天気が いいです。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 5,
+                  "reading": "きょう"
+                },
+                {
+                  "start": 7,
+                  "end": 9,
+                  "reading": "てんき"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "コーヒーの いい においも します。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "そうですね。コーヒーを 飲みませんか。",
+              "readings": [
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "の"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "いいですね。わたしは あたたかい コーヒーに します。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "わたしも そうします。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "この まどから 山が みえますね。",
+          "to": "この まどから 山が 見えますね。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。きょうは てんきが いいです。",
+          "to": "はい。今日は 天気が いいです。"
+        },
+        {
+          "speaker": "A",
+          "from": "コーヒーの いい においも します。",
+          "to": "コーヒーの いい においも します。"
+        },
+        {
+          "speaker": "B",
+          "from": "そうですね。コーヒーを のみませんか。",
+          "to": "そうですね。コーヒーを 飲みませんか。"
+        },
+        {
+          "speaker": "A",
+          "from": "いいですね。わたしは あたたかい コーヒーに します。",
+          "to": "いいですね。わたしは あたたかい コーヒーに します。"
+        },
+        {
+          "speaker": "B",
+          "from": "わたしも そうします。",
+          "to": "わたしも そうします。"
+        }
+      ]
+    },
+    {
+      "grammarId": "6a20afd1-7455-47fe-9518-ed99e6b659cd",
+      "chapter": 5,
+      "expected": {
+        "example_dialog": "A: 来月も この クラスに 来ますか。\nB: はい。もっと べんきょうしようと おもっています。\nA: 毎日 来ますか。\nB: 月よう日と 水よう日と 金よう日に 来ることにしました。\nA: じゅぎょうは 何時からですか。\nB: 来月から 九時に はじまることになりました。",
+        "example_dialog_id": "A: Bulan depan juga akan datang ke kelas ini?\nB: Ya. Saya berniat belajar lebih banyak.\nA: Akan datang setiap hari?\nB: Saya memutuskan datang pada hari Senin, Rabu, dan Jumat.\nA: Pelajarannya mulai pukul berapa?\nB: Mulai bulan depan, sudah ditetapkan pelajaran mulai pukul sembilan."
+      },
+      "replacement": {
+        "example_dialog": "A: 来月も この クラスに 来ますか。\nB: はい。もっと 勉強しようと 思っています。\nA: 毎日 来ますか。\nB: 月曜日と 水曜日と 金曜日に 来ることにしました。\nA: じゅぎょうは 何時からですか。\nB: 来月から 九時に はじまることになりました。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "来月も この クラスに 来ますか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "らいげつ"
+                },
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "き"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。もっと 勉強しようと 思っています。",
+              "readings": [
+                {
+                  "start": 7,
+                  "end": 9,
+                  "reading": "べんきょう"
+                },
+                {
+                  "start": 14,
+                  "end": 15,
+                  "reading": "おも"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "毎日 来ますか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "まいにち"
+                },
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "き"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "月曜日と 水曜日と 金曜日に 来ることにしました。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 3,
+                  "reading": "げつようび"
+                },
+                {
+                  "start": 5,
+                  "end": 8,
+                  "reading": "すいようび"
+                },
+                {
+                  "start": 10,
+                  "end": 13,
+                  "reading": "きんようび"
+                },
+                {
+                  "start": 15,
+                  "end": 16,
+                  "reading": "く"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "じゅぎょうは 何時からですか。",
+              "readings": [
+                {
+                  "start": 7,
+                  "end": 9,
+                  "reading": "なんじ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "来月から 九時に はじまることになりました。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "らいげつ"
+                },
+                {
+                  "start": 5,
+                  "end": 7,
+                  "reading": "くじ"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "来月も この クラスに 来ますか。",
+          "to": "来月も この クラスに 来ますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。もっと べんきょうしようと おもっています。",
+          "to": "はい。もっと 勉強しようと 思っています。"
+        },
+        {
+          "speaker": "A",
+          "from": "毎日 来ますか。",
+          "to": "毎日 来ますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "月よう日と 水よう日と 金よう日に 来ることにしました。",
+          "to": "月曜日と 水曜日と 金曜日に 来ることにしました。"
+        },
+        {
+          "speaker": "A",
+          "from": "じゅぎょうは 何時からですか。",
+          "to": "じゅぎょうは 何時からですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "来月から 九時に はじまることになりました。",
+          "to": "来月から 九時に はじまることになりました。"
+        }
+      ]
+    },
+    {
+      "grammarId": "0fe354f8-3553-4fdc-963d-48697dacd11e",
+      "chapter": 5,
+      "expected": {
+        "example_dialog": "A: さいきん、日本語の 本を よんでいますね。\nB: はい。毎朝 十分 よむことにしています。\nA: 前より よめるようになりましたか。\nB: はい。かんたんな 本が よめるようになりました。\nA: わたしも 毎日 よむようにします。\nB: いいですね。いっしょに がんばりましょう。",
+        "example_dialog_id": "A: Akhir-akhir ini Anda membaca buku bahasa Jepang, ya.\nB: Ya. Saya menetapkan kebiasaan membaca sepuluh menit setiap pagi.\nA: Apakah sekarang menjadi lebih bisa membaca daripada sebelumnya?\nB: Ya. Sekarang saya bisa membaca buku sederhana.\nA: Saya juga akan berusaha membaca setiap hari.\nB: Bagus. Mari berusaha bersama."
+      },
+      "replacement": {
+        "example_dialog": "A: さいきん、日本語の 本を 読んでいますね。\nB: はい。毎朝 十分 読むことにしています。\nA: 前より 読めるようになりましたか。\nB: はい。かんたんな 本が 読めるようになりました。\nA: わたしも 毎日 読むようにします。\nB: いいですね。いっしょに がんばりましょう。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "さいきん、日本語の 本を 読んでいますね。",
+              "readings": [
+                {
+                  "start": 5,
+                  "end": 8,
+                  "reading": "にほんご"
+                },
+                {
+                  "start": 10,
+                  "end": 11,
+                  "reading": "ほん"
+                },
+                {
+                  "start": 13,
+                  "end": 14,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。毎朝 十分 読むことにしています。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 5,
+                  "reading": "まいあさ"
+                },
+                {
+                  "start": 6,
+                  "end": 8,
+                  "reading": "じゅっぷん"
+                },
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "前より 読めるようになりましたか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "まえ"
+                },
+                {
+                  "start": 4,
+                  "end": 5,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。かんたんな 本が 読めるようになりました。",
+              "readings": [
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "ほん"
+                },
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "わたしも 毎日 読むようにします。",
+              "readings": [
+                {
+                  "start": 5,
+                  "end": 7,
+                  "reading": "まいにち"
+                },
+                {
+                  "start": 8,
+                  "end": 9,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "いいですね。いっしょに がんばりましょう。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "さいきん、日本語の 本を よんでいますね。",
+          "to": "さいきん、日本語の 本を 読んでいますね。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。毎朝 十分 よむことにしています。",
+          "to": "はい。毎朝 十分 読むことにしています。"
+        },
+        {
+          "speaker": "A",
+          "from": "前より よめるようになりましたか。",
+          "to": "前より 読めるようになりましたか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。かんたんな 本が よめるようになりました。",
+          "to": "はい。かんたんな 本が 読めるようになりました。"
+        },
+        {
+          "speaker": "A",
+          "from": "わたしも 毎日 よむようにします。",
+          "to": "わたしも 毎日 読むようにします。"
+        },
+        {
+          "speaker": "B",
+          "from": "いいですね。いっしょに がんばりましょう。",
+          "to": "いいですね。いっしょに がんばりましょう。"
+        }
+      ]
+    },
+    {
+      "grammarId": "6060cab0-e192-40cb-9e7f-71ca0973f18d",
+      "chapter": 6,
+      "expected": {
+        "example_dialog": "A: きのう、ケーキを つくってみました。\nB: どうでしたか。\nA: おいしかったです。かぞくと ぜんぶ たべてしまいました。\nB: えっ、ぜんぶですか。\nA: はい。また つくろうと おもっています。\nB: いいですね。わたしも つくってみたいです。",
+        "example_dialog_id": "A: Kemarin saya mencoba membuat kue.\nB: Bagaimana hasilnya?\nA: Enak. Sudah saya habiskan bersama keluarga.\nB: Wah, semuanya?\nA: Ya. Saya berniat membuatnya lagi.\nB: Bagus. Saya juga ingin mencoba membuatnya."
+      },
+      "replacement": {
+        "example_dialog": "A: きのう、ケーキを 作ってみました。\nB: どうでしたか。\nA: おいしかったです。かぞくと ぜんぶ 食べてしまいました。\nB: えっ、ぜんぶですか。\nA: はい。また 作ろうと 思っています。\nB: いいですね。わたしも 作ってみたいです。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "きのう、ケーキを 作ってみました。",
+              "readings": [
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "つく"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "どうでしたか。",
+              "readings": []
+            },
+            {
+              "speaker": "A",
+              "text": "おいしかったです。かぞくと ぜんぶ 食べてしまいました。",
+              "readings": [
+                {
+                  "start": 18,
+                  "end": 19,
+                  "reading": "た"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "えっ、ぜんぶですか。",
+              "readings": []
+            },
+            {
+              "speaker": "A",
+              "text": "はい。また 作ろうと 思っています。",
+              "readings": [
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "つく"
+                },
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "おも"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "いいですね。わたしも 作ってみたいです。",
+              "readings": [
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "つく"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "きのう、ケーキを つくってみました。",
+          "to": "きのう、ケーキを 作ってみました。"
+        },
+        {
+          "speaker": "B",
+          "from": "どうでしたか。",
+          "to": "どうでしたか。"
+        },
+        {
+          "speaker": "A",
+          "from": "おいしかったです。かぞくと ぜんぶ たべてしまいました。",
+          "to": "おいしかったです。かぞくと ぜんぶ 食べてしまいました。"
+        },
+        {
+          "speaker": "B",
+          "from": "えっ、ぜんぶですか。",
+          "to": "えっ、ぜんぶですか。"
+        },
+        {
+          "speaker": "A",
+          "from": "はい。また つくろうと おもっています。",
+          "to": "はい。また 作ろうと 思っています。"
+        },
+        {
+          "speaker": "B",
+          "from": "いいですね。わたしも つくってみたいです。",
+          "to": "いいですね。わたしも 作ってみたいです。"
+        }
+      ]
+    },
+    {
+      "grammarId": "64e59ad7-df3a-436e-b766-ddf5b8d8492e",
+      "chapter": 6,
+      "expected": {
+        "example_dialog": "A: おくれて すみません。\nB: だいじょうぶです。電車は あと 五分です。\nA: よかった。電車に まにあって よかったです。\nB: はい。きっぷは ありますか。\nA: はい、あります。きのう かいました。\nB: じゃあ、いきましょう。",
+        "example_dialog_id": "A: Maaf saya terlambat.\nB: Tidak apa-apa. Keretanya masih lima menit lagi.\nA: Syukurlah. Lega bisa sempat naik kereta.\nB: Ya. Apakah tiketnya ada?\nA: Ya, ada. Saya membelinya kemarin.\nB: Kalau begitu, mari berangkat."
+      },
+      "replacement": {
+        "example_dialog": "A: おくれて すみません。\nB: だいじょうぶです。電車は あと 五分です。\nA: よかった。電車に まにあって よかったです。\nB: はい。きっぷは ありますか。\nA: はい、あります。きのう 買いました。\nB: じゃあ、行きましょう。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "おくれて すみません。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "だいじょうぶです。電車は あと 五分です。",
+              "readings": [
+                {
+                  "start": 9,
+                  "end": 11,
+                  "reading": "でんしゃ"
+                },
+                {
+                  "start": 16,
+                  "end": 18,
+                  "reading": "ごふん"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "よかった。電車に まにあって よかったです。",
+              "readings": [
+                {
+                  "start": 5,
+                  "end": 7,
+                  "reading": "でんしゃ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。きっぷは ありますか。",
+              "readings": []
+            },
+            {
+              "speaker": "A",
+              "text": "はい、あります。きのう 買いました。",
+              "readings": [
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "じゃあ、行きましょう。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 5,
+                  "reading": "い"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "おくれて すみません。",
+          "to": "おくれて すみません。"
+        },
+        {
+          "speaker": "B",
+          "from": "だいじょうぶです。電車は あと 五分です。",
+          "to": "だいじょうぶです。電車は あと 五分です。"
+        },
+        {
+          "speaker": "A",
+          "from": "よかった。電車に まにあって よかったです。",
+          "to": "よかった。電車に まにあって よかったです。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。きっぷは ありますか。",
+          "to": "はい。きっぷは ありますか。"
+        },
+        {
+          "speaker": "A",
+          "from": "はい、あります。きのう かいました。",
+          "to": "はい、あります。きのう 買いました。"
+        },
+        {
+          "speaker": "B",
+          "from": "じゃあ、いきましょう。",
+          "to": "じゃあ、行きましょう。"
+        }
+      ]
+    },
+    {
+      "grammarId": "e57880e8-761f-449c-8ea6-da9f802ace6e",
+      "chapter": 7,
+      "expected": {
+        "example_dialog": "A: 電気が ついていますね。\nB: はい。わたしが けします。\nA: まども あいています。\nB: じゃあ、まども しめます。\nA: ありがとうございます。わたしは ドアを しめます。\nB: はい。いっしょに かえりましょう。",
+        "example_dialog_id": "A: Lampunya menyala, ya.\nB: Ya. Saya akan mematikannya.\nA: Jendelanya juga terbuka.\nB: Kalau begitu saya tutup jendelanya juga.\nA: Terima kasih. Saya akan menutup pintu.\nB: Baik. Mari pulang bersama."
+      },
+      "replacement": {
+        "example_dialog": "A: 電気が ついていますね。\nB: はい。わたしが けします。\nA: まども 開いています。\nB: じゃあ、まども しめます。\nA: ありがとうございます。わたしは ドアを しめます。\nB: はい。いっしょに 帰りましょう。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "電気が ついていますね。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "でんき"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。わたしが けします。",
+              "readings": []
+            },
+            {
+              "speaker": "A",
+              "text": "まども 開いています。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 5,
+                  "reading": "あ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "じゃあ、まども しめます。",
+              "readings": []
+            },
+            {
+              "speaker": "A",
+              "text": "ありがとうございます。わたしは ドアを しめます。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "はい。いっしょに 帰りましょう。",
+              "readings": [
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "かえ"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "電気が ついていますね。",
+          "to": "電気が ついていますね。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。わたしが けします。",
+          "to": "はい。わたしが けします。"
+        },
+        {
+          "speaker": "A",
+          "from": "まども あいています。",
+          "to": "まども 開いています。"
+        },
+        {
+          "speaker": "B",
+          "from": "じゃあ、まども しめます。",
+          "to": "じゃあ、まども しめます。"
+        },
+        {
+          "speaker": "A",
+          "from": "ありがとうございます。わたしは ドアを しめます。",
+          "to": "ありがとうございます。わたしは ドアを しめます。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。いっしょに かえりましょう。",
+          "to": "はい。いっしょに 帰りましょう。"
+        }
+      ]
+    },
+    {
+      "grammarId": "927f5138-3988-45d7-ab3a-d4eebfd9ae13",
+      "chapter": 7,
+      "expected": {
+        "example_dialog": "A: いすが ならべてありますね。\nB: はい。あしたの じゅぎょうで つかいます。\nA: 本も じゅんびしてありますか。\nB: いいえ。いまから じゅんびしておきます。\nA: では、わたしが 本を おきます。ここで いいですか。\nB: はい。その テーブルに おいてください。",
+        "example_dialog_id": "A: Kursinya sudah disusun, ya.\nB: Ya. Akan dipakai dalam pelajaran besok.\nA: Apakah bukunya juga sudah disiapkan?\nB: Belum. Saya akan menyiapkannya sekarang untuk besok.\nA: Kalau begitu, saya yang meletakkan buku-bukunya. Boleh di sini?\nB: Ya. Letakkan di meja itu."
+      },
+      "replacement": {
+        "example_dialog": "A: いすが ならべてありますね。\nB: はい。あしたの じゅぎょうで つかいます。\nA: 本も じゅんびしてありますか。\nB: いいえ。今から じゅんびしておきます。\nA: では、わたしが 本を おきます。ここで いいですか。\nB: はい。その テーブルに おいてください。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "いすが ならべてありますね。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "はい。あしたの じゅぎょうで つかいます。",
+              "readings": []
+            },
+            {
+              "speaker": "A",
+              "text": "本も じゅんびしてありますか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "ほん"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "いいえ。今から じゅんびしておきます。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 5,
+                  "reading": "いま"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "では、わたしが 本を おきます。ここで いいですか。",
+              "readings": [
+                {
+                  "start": 8,
+                  "end": 9,
+                  "reading": "ほん"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。その テーブルに おいてください。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "いすが ならべてありますね。",
+          "to": "いすが ならべてありますね。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。あしたの じゅぎょうで つかいます。",
+          "to": "はい。あしたの じゅぎょうで つかいます。"
+        },
+        {
+          "speaker": "A",
+          "from": "本も じゅんびしてありますか。",
+          "to": "本も じゅんびしてありますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "いいえ。いまから じゅんびしておきます。",
+          "to": "いいえ。今から じゅんびしておきます。"
+        },
+        {
+          "speaker": "A",
+          "from": "では、わたしが 本を おきます。ここで いいですか。",
+          "to": "では、わたしが 本を おきます。ここで いいですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。その テーブルに おいてください。",
+          "to": "はい。その テーブルに おいてください。"
+        }
+      ]
+    },
+    {
+      "grammarId": "cdc54833-4399-44a8-a1c4-4802c5fda033",
+      "chapter": 8,
+      "expected": {
+        "example_dialog": "A: 空が くらくなってきましたね。\nB: そうですね。あ、雨が ふりだしました。\nA: かさは ありますか。\nB: はい。でも、雨が つよくなってきました。\nA: じゃあ、早く かえりましょう。\nB: はい。あの みちを いきましょう。",
+        "example_dialog_id": "A: Langit mulai menjadi gelap, ya.\nB: Benar. Ah, hujan mulai turun.\nA: Apakah membawa payung?\nB: Ya. Tapi hujannya mulai bertambah deras.\nA: Kalau begitu mari cepat pulang.\nB: Ya. Mari lewat jalan itu."
+      },
+      "replacement": {
+        "example_dialog": "A: 空が くらくなってきましたね。\nB: そうですね。あ、雨が ふりだしました。\nA: かさは ありますか。\nB: はい。でも、雨が 強くなってきました。\nA: じゃあ、早く 帰りましょう。\nB: はい。あの 道を 行きましょう。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "空が くらくなってきましたね。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "そら"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "そうですね。あ、雨が ふりだしました。",
+              "readings": [
+                {
+                  "start": 8,
+                  "end": 9,
+                  "reading": "あめ"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "かさは ありますか。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "はい。でも、雨が 強くなってきました。",
+              "readings": [
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "あめ"
+                },
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "つよ"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "じゃあ、早く 帰りましょう。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 5,
+                  "reading": "はや"
+                },
+                {
+                  "start": 7,
+                  "end": 8,
+                  "reading": "かえ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。あの 道を 行きましょう。",
+              "readings": [
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "みち"
+                },
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "い"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "空が くらくなってきましたね。",
+          "to": "空が くらくなってきましたね。"
+        },
+        {
+          "speaker": "B",
+          "from": "そうですね。あ、雨が ふりだしました。",
+          "to": "そうですね。あ、雨が ふりだしました。"
+        },
+        {
+          "speaker": "A",
+          "from": "かさは ありますか。",
+          "to": "かさは ありますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。でも、雨が つよくなってきました。",
+          "to": "はい。でも、雨が 強くなってきました。"
+        },
+        {
+          "speaker": "A",
+          "from": "じゃあ、早く かえりましょう。",
+          "to": "じゃあ、早く 帰りましょう。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。あの みちを いきましょう。",
+          "to": "はい。あの 道を 行きましょう。"
+        }
+      ]
+    },
+    {
+      "grammarId": "daa05f6e-93ab-4f75-8c00-8ff7830e8e93",
+      "chapter": 8,
+      "expected": {
+        "example_dialog": "A: ごはんを たべませんか。\nB: いま、レポートを かいているところです。まだ おわっていません。\nA: わたしは いま かきおわったところです。\nB: あと 十分 まってください。\nA: はい。ここで まっています。\nB: ありがとうございます。もうすこしです。",
+        "example_dialog_id": "A: Mau makan?\nB: Saya sedang menulis laporan. Belum selesai.\nA: Saya baru saja selesai menulisnya.\nB: Tolong tunggu sepuluh menit lagi.\nA: Bisa. Saya menunggu di sini.\nB: Terima kasih. Tinggal sedikit lagi."
+      },
+      "replacement": {
+        "example_dialog": "A: ごはんを 食べませんか。\nB: 今、レポートを 書いているところです。まだ おわっていません。\nA: わたしは 今 書きおわったところです。\nB: あと 十分 まってください。\nA: はい。ここで まっています。\nB: ありがとうございます。もう少しです。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "ごはんを 食べませんか。",
+              "readings": [
+                {
+                  "start": 5,
+                  "end": 6,
+                  "reading": "た"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "今、レポートを 書いているところです。まだ おわっていません。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "いま"
+                },
+                {
+                  "start": 8,
+                  "end": 9,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "わたしは 今 書きおわったところです。",
+              "readings": [
+                {
+                  "start": 5,
+                  "end": 6,
+                  "reading": "いま"
+                },
+                {
+                  "start": 7,
+                  "end": 8,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "あと 十分 まってください。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 5,
+                  "reading": "じゅっぷん"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "はい。ここで まっています。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "ありがとうございます。もう少しです。",
+              "readings": [
+                {
+                  "start": 13,
+                  "end": 14,
+                  "reading": "すこ"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "ごはんを たべませんか。",
+          "to": "ごはんを 食べませんか。"
+        },
+        {
+          "speaker": "B",
+          "from": "いま、レポートを かいているところです。まだ おわっていません。",
+          "to": "今、レポートを 書いているところです。まだ おわっていません。"
+        },
+        {
+          "speaker": "A",
+          "from": "わたしは いま かきおわったところです。",
+          "to": "わたしは 今 書きおわったところです。"
+        },
+        {
+          "speaker": "B",
+          "from": "あと 十分 まってください。",
+          "to": "あと 十分 まってください。"
+        },
+        {
+          "speaker": "A",
+          "from": "はい。ここで まっています。",
+          "to": "はい。ここで まっています。"
+        },
+        {
+          "speaker": "B",
+          "from": "ありがとうございます。もうすこしです。",
+          "to": "ありがとうございます。もう少しです。"
+        }
+      ]
+    },
+    {
+      "grammarId": "9310a766-a8a7-4520-904d-e9adfa304a44",
+      "chapter": 9,
+      "expected": {
+        "example_dialog": "A: この カメラの つかいかたが わかりません。\nB: この ボタンを おしてください。\nA: あ、しゃしんが とれました。でも、すこし おもすぎますね。\nB: そうですね。こちらの 小さいのは つかいやすいです。\nA: じゃあ、小さいのを つかってみます。\nB: どうぞ。",
+        "example_dialog_id": "A: Saya tidak mengerti cara memakai kamera ini.\nB: Tekan tombol ini.\nA: Ah, berhasil mengambil foto. Tapi kameranya agak terlalu berat, ya.\nB: Benar. Yang kecil di sini mudah dipakai.\nA: Kalau begitu saya coba yang kecil.\nB: Silakan."
+      },
+      "replacement": {
+        "example_dialog": "A: この カメラの つかい方が わかりません。\nB: この ボタンを おしてください。\nA: あ、しゃしんが とれました。でも、少し 重すぎますね。\nB: そうですね。こちらの 小さいのは つかいやすいです。\nA: じゃあ、小さいのを つかってみます。\nB: どうぞ。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "この カメラの つかい方が わかりません。",
+              "readings": [
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "かた"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "この ボタンを おしてください。",
+              "readings": []
+            },
+            {
+              "speaker": "A",
+              "text": "あ、しゃしんが とれました。でも、少し 重すぎますね。",
+              "readings": [
+                {
+                  "start": 17,
+                  "end": 18,
+                  "reading": "すこ"
+                },
+                {
+                  "start": 20,
+                  "end": 21,
+                  "reading": "おも"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "そうですね。こちらの 小さいのは つかいやすいです。",
+              "readings": [
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "ちい"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "じゃあ、小さいのを つかってみます。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 5,
+                  "reading": "ちい"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "どうぞ。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "この カメラの つかいかたが わかりません。",
+          "to": "この カメラの つかい方が わかりません。"
+        },
+        {
+          "speaker": "B",
+          "from": "この ボタンを おしてください。",
+          "to": "この ボタンを おしてください。"
+        },
+        {
+          "speaker": "A",
+          "from": "あ、しゃしんが とれました。でも、すこし おもすぎますね。",
+          "to": "あ、しゃしんが とれました。でも、少し 重すぎますね。"
+        },
+        {
+          "speaker": "B",
+          "from": "そうですね。こちらの 小さいのは つかいやすいです。",
+          "to": "そうですね。こちらの 小さいのは つかいやすいです。"
+        },
+        {
+          "speaker": "A",
+          "from": "じゃあ、小さいのを つかってみます。",
+          "to": "じゃあ、小さいのを つかってみます。"
+        },
+        {
+          "speaker": "B",
+          "from": "どうぞ。",
+          "to": "どうぞ。"
+        }
+      ]
+    },
+    {
+      "grammarId": "e5bad6e3-2a14-4549-a837-db3a4f3ff8c9",
+      "chapter": 9,
+      "expected": {
+        "example_dialog": "A: この 字の 大きさは どうですか。\nB: すこし 小さいですね。もっと 大きく かいてください。\nA: はい。ていねいに かきます。\nB: ありがとうございます。こちらの 名前も 大きくしてください。\nA: はい。これで いいですか。\nB: はい、よく なりました。",
+        "example_dialog_id": "A: Bagaimana ukuran huruf ini?\nB: Agak kecil. Tolong tulis lebih besar.\nA: Baik. Saya tulis dengan teliti.\nB: Terima kasih. Nama di sebelah sini juga dibuat lebih besar.\nA: Baik. Begini sudah sesuai?\nB: Ya, sudah lebih baik."
+      },
+      "replacement": {
+        "example_dialog": "A: この 字の 大きさは どうですか。\nB: 少し 小さいですね。もっと 大きく 書いてください。\nA: はい。ていねいに 書きます。\nB: ありがとうございます。こちらの 名前も 大きくしてください。\nA: はい。これで いいですか。\nB: はい、よく なりました。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "この 字の 大きさは どうですか。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "じ"
+                },
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "おお"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "少し 小さいですね。もっと 大きく 書いてください。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "すこ"
+                },
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "ちい"
+                },
+                {
+                  "start": 14,
+                  "end": 15,
+                  "reading": "おお"
+                },
+                {
+                  "start": 18,
+                  "end": 19,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "はい。ていねいに 書きます。",
+              "readings": [
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "ありがとうございます。こちらの 名前も 大きくしてください。",
+              "readings": [
+                {
+                  "start": 16,
+                  "end": 18,
+                  "reading": "なまえ"
+                },
+                {
+                  "start": 20,
+                  "end": 21,
+                  "reading": "おお"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "はい。これで いいですか。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "はい、よく なりました。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "この 字の 大きさは どうですか。",
+          "to": "この 字の 大きさは どうですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "すこし 小さいですね。もっと 大きく かいてください。",
+          "to": "少し 小さいですね。もっと 大きく 書いてください。"
+        },
+        {
+          "speaker": "A",
+          "from": "はい。ていねいに かきます。",
+          "to": "はい。ていねいに 書きます。"
+        },
+        {
+          "speaker": "B",
+          "from": "ありがとうございます。こちらの 名前も 大きくしてください。",
+          "to": "ありがとうございます。こちらの 名前も 大きくしてください。"
+        },
+        {
+          "speaker": "A",
+          "from": "はい。これで いいですか。",
+          "to": "はい。これで いいですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい、よく なりました。",
+          "to": "はい、よく なりました。"
+        }
+      ]
+    },
+    {
+      "grammarId": "c61fa4fc-7998-4ad0-af86-1ce0da781ac9",
+      "chapter": 10,
+      "expected": {
+        "example_dialog": "A: ここで べんきょうしますか。\nB: きょうは 人が 多いので、としょかんへ いきたいです。\nA: としょかんは ここから ちかいですか。\nB: はい。ちかいし、しずかだし、べんきょうしやすいです。\nA: じゃあ、ごはんを たべたあとで いきましょう。\nB: はい。そうしましょう。",
+        "example_dialog_id": "A: Apakah kita belajar di sini?\nB: Hari ini banyak orang, jadi saya ingin pergi ke perpustakaan.\nA: Apakah perpustakaan dekat dari sini?\nB: Ya. Dekat dan tenang, jadi mudah belajar di sana.\nA: Kalau begitu, mari pergi setelah makan.\nB: Ya, mari begitu."
+      },
+      "replacement": {
+        "example_dialog": "A: ここで 勉強しますか。\nB: 今日は 人が 多いので、としょかんへ 行きたいです。\nA: としょかんは ここから ちかいですか。\nB: はい。ちかいし、しずかだし、勉強しやすいです。\nA: じゃあ、ごはんを 食べた後で 行きましょう。\nB: はい。そうしましょう。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "ここで 勉強しますか。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 6,
+                  "reading": "べんきょう"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "今日は 人が 多いので、としょかんへ 行きたいです。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "きょう"
+                },
+                {
+                  "start": 4,
+                  "end": 5,
+                  "reading": "ひと"
+                },
+                {
+                  "start": 7,
+                  "end": 8,
+                  "reading": "おお"
+                },
+                {
+                  "start": 19,
+                  "end": 20,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "としょかんは ここから ちかいですか。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "はい。ちかいし、しずかだし、勉強しやすいです。",
+              "readings": [
+                {
+                  "start": 14,
+                  "end": 16,
+                  "reading": "べんきょう"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "じゃあ、ごはんを 食べた後で 行きましょう。",
+              "readings": [
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "た"
+                },
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "あと"
+                },
+                {
+                  "start": 15,
+                  "end": 16,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。そうしましょう。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "ここで べんきょうしますか。",
+          "to": "ここで 勉強しますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "きょうは 人が 多いので、としょかんへ いきたいです。",
+          "to": "今日は 人が 多いので、としょかんへ 行きたいです。"
+        },
+        {
+          "speaker": "A",
+          "from": "としょかんは ここから ちかいですか。",
+          "to": "としょかんは ここから ちかいですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。ちかいし、しずかだし、べんきょうしやすいです。",
+          "to": "はい。ちかいし、しずかだし、勉強しやすいです。"
+        },
+        {
+          "speaker": "A",
+          "from": "じゃあ、ごはんを たべたあとで いきましょう。",
+          "to": "じゃあ、ごはんを 食べた後で 行きましょう。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。そうしましょう。",
+          "to": "はい。そうしましょう。"
+        }
+      ]
+    },
+    {
+      "grammarId": "8aea44c1-727a-4bd6-83dc-4b5fca2371f3",
+      "chapter": 10,
+      "expected": {
+        "example_dialog": "A: きょうは いい てんきだと おもったのに、雨ですね。\nB: そうですね。でも、雨が ふっても、びじゅつかんへ いきます。\nA: 駅から とおいですか。\nB: すこし とおいけど、バスで いけます。\nA: じゃあ、いっしょに バスで いきましょう。\nB: はい。あちらで まちましょう。",
+        "example_dialog_id": "A: Padahal saya kira hari ini cuacanya akan bagus, ternyata hujan, ya.\nB: Benar. Tetapi meskipun hujan, saya tetap pergi ke museum seni.\nA: Apakah jauh dari stasiun?\nB: Agak jauh, tetapi bisa naik bus.\nA: Kalau begitu mari naik bus bersama.\nB: Ya. Mari menunggu di sana."
+      },
+      "replacement": {
+        "example_dialog": "A: 今日は いい 天気だと 思ったのに、雨ですね。\nB: そうですね。でも、雨が ふっても、びじゅつかんへ 行きます。\nA: 駅から とおいですか。\nB: 少し とおいけど、バスで 行けます。\nA: じゃあ、いっしょに バスで 行きましょう。\nB: はい。あちらで まちましょう。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "今日は いい 天気だと 思ったのに、雨ですね。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "きょう"
+                },
+                {
+                  "start": 7,
+                  "end": 9,
+                  "reading": "てんき"
+                },
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "おも"
+                },
+                {
+                  "start": 18,
+                  "end": 19,
+                  "reading": "あめ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "そうですね。でも、雨が ふっても、びじゅつかんへ 行きます。",
+              "readings": [
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "あめ"
+                },
+                {
+                  "start": 25,
+                  "end": 26,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "駅から とおいですか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "えき"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "少し とおいけど、バスで 行けます。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "すこ"
+                },
+                {
+                  "start": 13,
+                  "end": 14,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "じゃあ、いっしょに バスで 行きましょう。",
+              "readings": [
+                {
+                  "start": 14,
+                  "end": 15,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。あちらで まちましょう。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "きょうは いい てんきだと おもったのに、雨ですね。",
+          "to": "今日は いい 天気だと 思ったのに、雨ですね。"
+        },
+        {
+          "speaker": "B",
+          "from": "そうですね。でも、雨が ふっても、びじゅつかんへ いきます。",
+          "to": "そうですね。でも、雨が ふっても、びじゅつかんへ 行きます。"
+        },
+        {
+          "speaker": "A",
+          "from": "駅から とおいですか。",
+          "to": "駅から とおいですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "すこし とおいけど、バスで いけます。",
+          "to": "少し とおいけど、バスで 行けます。"
+        },
+        {
+          "speaker": "A",
+          "from": "じゃあ、いっしょに バスで いきましょう。",
+          "to": "じゃあ、いっしょに バスで 行きましょう。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。あちらで まちましょう。",
+          "to": "はい。あちらで まちましょう。"
+        }
+      ]
+    },
+    {
+      "grammarId": "4d3efc88-0326-40da-9745-e84d5e385949",
+      "chapter": 11,
+      "expected": {
+        "example_dialog": "A: 空に くろい くもが ありますね。\nB: はい。雨が ふりそうです。\nA: あしたも 雨ですか。\nB: てんきよほうでは、あしたは はれるそうです。\nA: じゃあ、あした また 来ましょう。\nB: いいですね。きょうは 早く かえりましょう。",
+        "example_dialog_id": "A: Ada awan hitam di langit, ya.\nB: Ya. Kelihatannya akan hujan.\nA: Apakah besok juga hujan?\nB: Menurut prakiraan cuaca, katanya besok cerah.\nA: Kalau begitu, mari datang lagi besok.\nB: Boleh. Hari ini mari cepat pulang."
+      },
+      "replacement": {
+        "example_dialog": "A: 空に 黒い くもが ありますね。\nB: はい。雨が ふりそうです。\nA: 明日も 雨ですか。\nB: 天気よほうでは、明日は はれるそうです。\nA: じゃあ、明日 また 来ましょう。\nB: いいですね。今日は 早く 帰りましょう。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "空に 黒い くもが ありますね。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "そら"
+                },
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "くろ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。雨が ふりそうです。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "あめ"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "明日も 雨ですか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "あした"
+                },
+                {
+                  "start": 4,
+                  "end": 5,
+                  "reading": "あめ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "天気よほうでは、明日は はれるそうです。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "てんき"
+                },
+                {
+                  "start": 8,
+                  "end": 10,
+                  "reading": "あした"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "じゃあ、明日 また 来ましょう。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 6,
+                  "reading": "あした"
+                },
+                {
+                  "start": 10,
+                  "end": 11,
+                  "reading": "き"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "いいですね。今日は 早く 帰りましょう。",
+              "readings": [
+                {
+                  "start": 6,
+                  "end": 8,
+                  "reading": "きょう"
+                },
+                {
+                  "start": 10,
+                  "end": 11,
+                  "reading": "はや"
+                },
+                {
+                  "start": 13,
+                  "end": 14,
+                  "reading": "かえ"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "空に くろい くもが ありますね。",
+          "to": "空に 黒い くもが ありますね。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。雨が ふりそうです。",
+          "to": "はい。雨が ふりそうです。"
+        },
+        {
+          "speaker": "A",
+          "from": "あしたも 雨ですか。",
+          "to": "明日も 雨ですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "てんきよほうでは、あしたは はれるそうです。",
+          "to": "天気よほうでは、明日は はれるそうです。"
+        },
+        {
+          "speaker": "A",
+          "from": "じゃあ、あした また 来ましょう。",
+          "to": "じゃあ、明日 また 来ましょう。"
+        },
+        {
+          "speaker": "B",
+          "from": "いいですね。きょうは 早く かえりましょう。",
+          "to": "いいですね。今日は 早く 帰りましょう。"
+        }
+      ]
+    },
+    {
+      "grammarId": "481653aa-ad49-4988-92d0-3dc088229c7f",
+      "chapter": 11,
+      "expected": {
+        "example_dialog": "A: わたしの 本が ありません。いえに わすれたかもしれません。\nB: きのう、この テーブルで よんでいましたよ。\nA: そうでしたね。まだ ここに あるでしょうか。\nB: テーブルの 下に あるはずです。きのう、わたしが そこに おきました。\nA: あ、ありました。ありがとうございます。\nB: よかったですね。",
+        "example_dialog_id": "A: Buku saya tidak ada. Mungkin tertinggal di rumah.\nB: Kemarin Anda membacanya di meja ini, lho.\nA: Benar juga. Kira-kira masih ada di sini?\nB: Seharusnya ada di bawah meja. Kemarin saya meletakkannya di sana.\nA: Ah, ada. Terima kasih.\nB: Syukurlah ketemu."
+      },
+      "replacement": {
+        "example_dialog": "A: わたしの 本が ありません。いえに わすれたかもしれません。\nB: きのう、この テーブルで 読んでいましたよ。\nA: そうでしたね。まだ ここに あるでしょうか。\nB: テーブルの 下に あるはずです。きのう、わたしが そこに おきました。\nA: あ、ありました。ありがとうございます。\nB: よかったですね。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "わたしの 本が ありません。いえに わすれたかもしれません。",
+              "readings": [
+                {
+                  "start": 5,
+                  "end": 6,
+                  "reading": "ほん"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "きのう、この テーブルで 読んでいましたよ。",
+              "readings": [
+                {
+                  "start": 13,
+                  "end": 14,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "そうでしたね。まだ ここに あるでしょうか。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "テーブルの 下に あるはずです。きのう、わたしが そこに おきました。",
+              "readings": [
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "した"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "あ、ありました。ありがとうございます。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "よかったですね。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "わたしの 本が ありません。いえに わすれたかもしれません。",
+          "to": "わたしの 本が ありません。いえに わすれたかもしれません。"
+        },
+        {
+          "speaker": "B",
+          "from": "きのう、この テーブルで よんでいましたよ。",
+          "to": "きのう、この テーブルで 読んでいましたよ。"
+        },
+        {
+          "speaker": "A",
+          "from": "そうでしたね。まだ ここに あるでしょうか。",
+          "to": "そうでしたね。まだ ここに あるでしょうか。"
+        },
+        {
+          "speaker": "B",
+          "from": "テーブルの 下に あるはずです。きのう、わたしが そこに おきました。",
+          "to": "テーブルの 下に あるはずです。きのう、わたしが そこに おきました。"
+        },
+        {
+          "speaker": "A",
+          "from": "あ、ありました。ありがとうございます。",
+          "to": "あ、ありました。ありがとうございます。"
+        },
+        {
+          "speaker": "B",
+          "from": "よかったですね。",
+          "to": "よかったですね。"
+        }
+      ]
+    },
+    {
+      "grammarId": "b3b6d347-3555-432f-86a1-3979148bc6a3",
+      "chapter": 12,
+      "expected": {
+        "example_dialog": "A: あの 花は ゆきのように 白いですね。\nB: はい。ゆきみたいです。でも、花なんですね。\nA: あちらの 子どもたちも 花を みています。\nB: たのしそうに はなしていますね。\nA: わたしたちも しゃしんを とりませんか。\nB: いいですね。白い 花を とりましょう。",
+        "example_dialog_id": "A: Bunga itu putih seperti salju, ya.\nB: Ya, seperti salju. Tapi ternyata bunga, ya.\nA: Anak-anak di sana juga sedang melihat bunga.\nB: Mereka tampak senang saat berbincang, ya.\nA: Bagaimana kalau kita juga mengambil foto?\nB: Boleh. Mari memotret bunga putih itu."
+      },
+      "replacement": {
+        "example_dialog": "A: あの 花は ゆきのように 白いですね。\nB: はい。ゆきみたいです。でも、花なんですね。\nA: あちらの 子どもたちも 花を 見ています。\nB: たのしそうに 話していますね。\nA: わたしたちも 写真を とりませんか。\nB: いいですね。白い 花を とりましょう。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "あの 花は ゆきのように 白いですね。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "はな"
+                },
+                {
+                  "start": 13,
+                  "end": 14,
+                  "reading": "しろ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。ゆきみたいです。でも、花なんですね。",
+              "readings": [
+                {
+                  "start": 14,
+                  "end": 15,
+                  "reading": "はな"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "あちらの 子どもたちも 花を 見ています。",
+              "readings": [
+                {
+                  "start": 5,
+                  "end": 6,
+                  "reading": "こ"
+                },
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "はな"
+                },
+                {
+                  "start": 15,
+                  "end": 16,
+                  "reading": "み"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "たのしそうに 話していますね。",
+              "readings": [
+                {
+                  "start": 7,
+                  "end": 8,
+                  "reading": "はな"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "わたしたちも 写真を とりませんか。",
+              "readings": [
+                {
+                  "start": 7,
+                  "end": 9,
+                  "reading": "しゃしん"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "いいですね。白い 花を とりましょう。",
+              "readings": [
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "しろ"
+                },
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "はな"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "あの 花は ゆきのように 白いですね。",
+          "to": "あの 花は ゆきのように 白いですね。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。ゆきみたいです。でも、花なんですね。",
+          "to": "はい。ゆきみたいです。でも、花なんですね。"
+        },
+        {
+          "speaker": "A",
+          "from": "あちらの 子どもたちも 花を みています。",
+          "to": "あちらの 子どもたちも 花を 見ています。"
+        },
+        {
+          "speaker": "B",
+          "from": "たのしそうに はなしていますね。",
+          "to": "たのしそうに 話していますね。"
+        },
+        {
+          "speaker": "A",
+          "from": "わたしたちも しゃしんを とりませんか。",
+          "to": "わたしたちも 写真を とりませんか。"
+        },
+        {
+          "speaker": "B",
+          "from": "いいですね。白い 花を とりましょう。",
+          "to": "いいですね。白い 花を とりましょう。"
+        }
+      ]
+    },
+    {
+      "grammarId": "06e1aa0a-6abf-4e7c-8b8d-e4bdb6cb9dbb",
+      "chapter": 12,
+      "expected": {
+        "example_dialog": "A: おとうとさんは どうしていますか。\nB: げんきです。「うみへ いきたい」と なんども いっています。\nA: うみへ いきたがっているんですね。\nB: はい。でも、大きい いぬを こわがっています。うみの ちかくに いぬが いるんです。\nA: そうですか。おとうとさんと いっしょに いきますか。\nB: はい。来週、いっしょに いこうと おもっています。",
+        "example_dialog_id": "A: Bagaimana kabar adik laki-laki Anda?\nB: Sehat. Ia berkali-kali berkata ingin pergi ke laut.\nA: Jadi ia sedang ingin pergi ke laut, ya.\nB: Ya. Tetapi ia takut kepada anjing besar. Ada anjing di dekat laut.\nA: Oh, begitu. Apakah Anda akan pergi bersama adik?\nB: Ya. Saya berniat pergi bersamanya minggu depan."
+      },
+      "replacement": {
+        "example_dialog": "A: おとうとさんは どうしていますか。\nB: げんきです。「うみへ 行きたい」と 何ども 言っています。\nA: うみへ 行きたがっているんですね。\nB: はい。でも、大きい いぬを こわがっています。うみの 近くに いぬが いるんです。\nA: そうですか。おとうとさんと いっしょに 行きますか。\nB: はい。来週、いっしょに 行こうと 思っています。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "おとうとさんは どうしていますか。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "げんきです。「うみへ 行きたい」と 何ども 言っています。",
+              "readings": [
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "い"
+                },
+                {
+                  "start": 18,
+                  "end": 19,
+                  "reading": "なん"
+                },
+                {
+                  "start": 22,
+                  "end": 23,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "うみへ 行きたがっているんですね。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 5,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。でも、大きい いぬを こわがっています。うみの 近くに いぬが いるんです。",
+              "readings": [
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "おお"
+                },
+                {
+                  "start": 27,
+                  "end": 28,
+                  "reading": "ちか"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "そうですか。おとうとさんと いっしょに 行きますか。",
+              "readings": [
+                {
+                  "start": 20,
+                  "end": 21,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。来週、いっしょに 行こうと 思っています。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 5,
+                  "reading": "らいしゅう"
+                },
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "い"
+                },
+                {
+                  "start": 17,
+                  "end": 18,
+                  "reading": "おも"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "おとうとさんは どうしていますか。",
+          "to": "おとうとさんは どうしていますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "げんきです。「うみへ いきたい」と なんども いっています。",
+          "to": "げんきです。「うみへ 行きたい」と 何ども 言っています。"
+        },
+        {
+          "speaker": "A",
+          "from": "うみへ いきたがっているんですね。",
+          "to": "うみへ 行きたがっているんですね。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。でも、大きい いぬを こわがっています。うみの ちかくに いぬが いるんです。",
+          "to": "はい。でも、大きい いぬを こわがっています。うみの 近くに いぬが いるんです。"
+        },
+        {
+          "speaker": "A",
+          "from": "そうですか。おとうとさんと いっしょに いきますか。",
+          "to": "そうですか。おとうとさんと いっしょに 行きますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。来週、いっしょに いこうと おもっています。",
+          "to": "はい。来週、いっしょに 行こうと 思っています。"
+        }
+      ]
+    },
+    {
+      "grammarId": "84c2f6be-45ed-48e4-8f27-b84bcbaa2da9",
+      "chapter": 13,
+      "expected": {
+        "example_dialog": "A: としょかんへ いきたいんですが、みちが わかりません。\nB: このみちを まっすぐ いくと、はしが あります。\nA: はしを わたるんですか。\nB: はい。わたって、みぎに まがると、としょかんが あります。\nA: わかりました。ありがとうございます。\nB: ついたら、でんわして ください。",
+        "example_dialog_id": "A: Saya ingin ke perpustakaan, tetapi tidak tahu jalannya.\nB: Jika berjalan lurus di jalan ini, ada jembatan.\nA: Apakah saya menyeberangi jembatan itu?\nB: Ya. Setelah menyeberang lalu berbelok ke kanan, ada perpustakaan.\nA: Saya mengerti. Terima kasih.\nB: Setelah tiba, tolong telepon saya."
+      },
+      "replacement": {
+        "example_dialog": "A: としょかんへ 行きたいんですが、道が わかりません。\nB: この道を まっすぐ 行くと、はしが あります。\nA: はしを わたるんですか。\nB: はい。わたって、右に まがると、としょかんが あります。\nA: わかりました。ありがとうございます。\nB: 着いたら、電話して ください。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "としょかんへ 行きたいんですが、道が わかりません。",
+              "readings": [
+                {
+                  "start": 7,
+                  "end": 8,
+                  "reading": "い"
+                },
+                {
+                  "start": 16,
+                  "end": 17,
+                  "reading": "みち"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "この道を まっすぐ 行くと、はしが あります。",
+              "readings": [
+                {
+                  "start": 2,
+                  "end": 3,
+                  "reading": "みち"
+                },
+                {
+                  "start": 10,
+                  "end": 11,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "はしを わたるんですか。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "はい。わたって、右に まがると、としょかんが あります。",
+              "readings": [
+                {
+                  "start": 8,
+                  "end": 9,
+                  "reading": "みぎ"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "わかりました。ありがとうございます。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "着いたら、電話して ください。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "つ"
+                },
+                {
+                  "start": 5,
+                  "end": 7,
+                  "reading": "でんわ"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "としょかんへ いきたいんですが、みちが わかりません。",
+          "to": "としょかんへ 行きたいんですが、道が わかりません。"
+        },
+        {
+          "speaker": "B",
+          "from": "このみちを まっすぐ いくと、はしが あります。",
+          "to": "この道を まっすぐ 行くと、はしが あります。"
+        },
+        {
+          "speaker": "A",
+          "from": "はしを わたるんですか。",
+          "to": "はしを わたるんですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。わたって、みぎに まがると、としょかんが あります。",
+          "to": "はい。わたって、右に まがると、としょかんが あります。"
+        },
+        {
+          "speaker": "A",
+          "from": "わかりました。ありがとうございます。",
+          "to": "わかりました。ありがとうございます。"
+        },
+        {
+          "speaker": "B",
+          "from": "ついたら、でんわして ください。",
+          "to": "着いたら、電話して ください。"
+        }
+      ]
+    },
+    {
+      "grammarId": "165c4efd-8898-48aa-992b-81bc882dc771",
+      "chapter": 13,
+      "expected": {
+        "example_dialog": "A: あした しけんなんですが、きのう あまり ねませんでした。\nB: じゃ、きょうは はやく ねたら どうですか。\nA: そうですね。でも、まだ よんでいない ページが あります。\nB: まず、このページを よんだら どうですか。\nA: はい。そうします。\nB: あした、じょうずに こたえられると いいですね。",
+        "example_dialog_id": "A: Besok saya ujian, tetapi kemarin saya kurang tidur.\nB: Kalau begitu, bagaimana kalau tidur lebih awal hari ini?\nA: Benar juga. Tetapi masih ada halaman yang belum saya baca.\nB: Bagaimana kalau membaca halaman ini terlebih dahulu?\nA: Ya. Saya akan begitu.\nB: Semoga besok Anda bisa menjawab dengan baik."
+      },
+      "replacement": {
+        "example_dialog": "A: 明日 試験なんですが、きのう あまり ねませんでした。\nB: じゃ、今日は 早く ねたら どうですか。\nA: そうですね。でも、まだ 読んでいない ページが あります。\nB: まず、このページを 読んだら どうですか。\nA: はい。そうします。\nB: 明日、上手に 答えられると いいですね。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "明日 試験なんですが、きのう あまり ねませんでした。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "あした"
+                },
+                {
+                  "start": 3,
+                  "end": 5,
+                  "reading": "しけん"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "じゃ、今日は 早く ねたら どうですか。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 5,
+                  "reading": "きょう"
+                },
+                {
+                  "start": 7,
+                  "end": 8,
+                  "reading": "はや"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "そうですね。でも、まだ 読んでいない ページが あります。",
+              "readings": [
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "まず、このページを 読んだら どうですか。",
+              "readings": [
+                {
+                  "start": 10,
+                  "end": 11,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "はい。そうします。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "明日、上手に 答えられると いいですね。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "あした"
+                },
+                {
+                  "start": 3,
+                  "end": 5,
+                  "reading": "じょうず"
+                },
+                {
+                  "start": 7,
+                  "end": 8,
+                  "reading": "こた"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "あした しけんなんですが、きのう あまり ねませんでした。",
+          "to": "明日 試験なんですが、きのう あまり ねませんでした。"
+        },
+        {
+          "speaker": "B",
+          "from": "じゃ、きょうは はやく ねたら どうですか。",
+          "to": "じゃ、今日は 早く ねたら どうですか。"
+        },
+        {
+          "speaker": "A",
+          "from": "そうですね。でも、まだ よんでいない ページが あります。",
+          "to": "そうですね。でも、まだ 読んでいない ページが あります。"
+        },
+        {
+          "speaker": "B",
+          "from": "まず、このページを よんだら どうですか。",
+          "to": "まず、このページを 読んだら どうですか。"
+        },
+        {
+          "speaker": "A",
+          "from": "はい。そうします。",
+          "to": "はい。そうします。"
+        },
+        {
+          "speaker": "B",
+          "from": "あした、じょうずに こたえられると いいですね。",
+          "to": "明日、上手に 答えられると いいですね。"
+        }
+      ]
+    },
+    {
+      "grammarId": "fb8eb9ab-caaf-4d5c-b8f1-8fa10cac8c6d",
+      "chapter": 14,
+      "expected": {
+        "example_dialog": "A: にちようび、じかんが あれば、うみへ いきませんか。\nB: いいですね。うみへ いくなら、あさ はやく でましょう。\nA: バスと でんしゃでは、どちらが いいですか。\nB: でんしゃなら、いちじかんで つきます。バスは にじかん かかります。\nA: じゃ、でんしゃで いきましょう。\nB: はい。はちじの でんしゃは どうですか。",
+        "example_dialog_id": "A: Jika ada waktu hari Minggu, mau pergi ke laut?\nB: Boleh. Kalau pergi ke laut, mari berangkat pagi-pagi.\nA: Mana yang lebih baik, bus atau kereta?\nB: Kalau kereta, kita sampai dalam satu jam. Bus memerlukan dua jam.\nA: Kalau begitu, mari naik kereta.\nB: Ya. Bagaimana kalau kereta pukul delapan?"
+      },
+      "replacement": {
+        "example_dialog": "A: 日曜日、時間が あれば、うみへ 行きませんか。\nB: いいですね。うみへ 行くなら、朝 早く 出ましょう。\nA: バスと 電車では、どちらが いいですか。\nB: 電車なら、一時間で 着きます。バスは 二時間 かかります。\nA: じゃ、電車で 行きましょう。\nB: はい。八時の 電車は どうですか。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "日曜日、時間が あれば、うみへ 行きませんか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 3,
+                  "reading": "にちようび"
+                },
+                {
+                  "start": 4,
+                  "end": 6,
+                  "reading": "じかん"
+                },
+                {
+                  "start": 16,
+                  "end": 17,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "いいですね。うみへ 行くなら、朝 早く 出ましょう。",
+              "readings": [
+                {
+                  "start": 10,
+                  "end": 11,
+                  "reading": "い"
+                },
+                {
+                  "start": 15,
+                  "end": 16,
+                  "reading": "あさ"
+                },
+                {
+                  "start": 17,
+                  "end": 18,
+                  "reading": "はや"
+                },
+                {
+                  "start": 20,
+                  "end": 21,
+                  "reading": "で"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "バスと 電車では、どちらが いいですか。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 6,
+                  "reading": "でんしゃ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "電車なら、一時間で 着きます。バスは 二時間 かかります。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "でんしゃ"
+                },
+                {
+                  "start": 5,
+                  "end": 8,
+                  "reading": "いちじかん"
+                },
+                {
+                  "start": 10,
+                  "end": 11,
+                  "reading": "つ"
+                },
+                {
+                  "start": 19,
+                  "end": 22,
+                  "reading": "にじかん"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "じゃ、電車で 行きましょう。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 5,
+                  "reading": "でんしゃ"
+                },
+                {
+                  "start": 7,
+                  "end": 8,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。八時の 電車は どうですか。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 5,
+                  "reading": "はちじ"
+                },
+                {
+                  "start": 7,
+                  "end": 9,
+                  "reading": "でんしゃ"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "にちようび、じかんが あれば、うみへ いきませんか。",
+          "to": "日曜日、時間が あれば、うみへ 行きませんか。"
+        },
+        {
+          "speaker": "B",
+          "from": "いいですね。うみへ いくなら、あさ はやく でましょう。",
+          "to": "いいですね。うみへ 行くなら、朝 早く 出ましょう。"
+        },
+        {
+          "speaker": "A",
+          "from": "バスと でんしゃでは、どちらが いいですか。",
+          "to": "バスと 電車では、どちらが いいですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "でんしゃなら、いちじかんで つきます。バスは にじかん かかります。",
+          "to": "電車なら、一時間で 着きます。バスは 二時間 かかります。"
+        },
+        {
+          "speaker": "A",
+          "from": "じゃ、でんしゃで いきましょう。",
+          "to": "じゃ、電車で 行きましょう。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。はちじの でんしゃは どうですか。",
+          "to": "はい。八時の 電車は どうですか。"
+        }
+      ]
+    },
+    {
+      "grammarId": "c9eb422c-64ee-469a-a942-156365943c33",
+      "chapter": 14,
+      "expected": {
+        "example_dialog": "A: でんしゃは もう いって しまったんですか。\nB: はい。ごふんまえに でました。\nA: もっと はやく うちを でれば よかったです。\nB: とちゅうで どこかに よったんですか。\nA: はい。みせに よらなければ よかったです。\nB: つぎの でんしゃは じゅっぷんごです。ここで まちましょう。",
+        "example_dialog_id": "A: Apakah keretanya sudah berangkat?\nB: Ya. Berangkat lima menit lalu.\nA: Seandainya saya berangkat dari rumah lebih awal.\nB: Apakah Anda mampir ke suatu tempat di perjalanan?\nA: Ya. Seandainya saya tidak mampir ke toko.\nB: Kereta berikutnya sepuluh menit lagi. Mari menunggu di sini."
+      },
+      "replacement": {
+        "example_dialog": "A: 電車は もう 行って しまったんですか。\nB: はい。五分前に 出ました。\nA: もっと 早く うちを 出れば よかったです。\nB: とちゅうで どこかに よったんですか。\nA: はい。店に よらなければ よかったです。\nB: つぎの 電車は 十分後です。ここで まちましょう。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "電車は もう 行って しまったんですか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "でんしゃ"
+                },
+                {
+                  "start": 7,
+                  "end": 8,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。五分前に 出ました。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 6,
+                  "reading": "ごふんまえ"
+                },
+                {
+                  "start": 8,
+                  "end": 9,
+                  "reading": "で"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "もっと 早く うちを 出れば よかったです。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 5,
+                  "reading": "はや"
+                },
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "で"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "とちゅうで どこかに よったんですか。",
+              "readings": []
+            },
+            {
+              "speaker": "A",
+              "text": "はい。店に よらなければ よかったです。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "みせ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "つぎの 電車は 十分後です。ここで まちましょう。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 6,
+                  "reading": "でんしゃ"
+                },
+                {
+                  "start": 8,
+                  "end": 11,
+                  "reading": "じゅっぷんご"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "でんしゃは もう いって しまったんですか。",
+          "to": "電車は もう 行って しまったんですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。ごふんまえに でました。",
+          "to": "はい。五分前に 出ました。"
+        },
+        {
+          "speaker": "A",
+          "from": "もっと はやく うちを でれば よかったです。",
+          "to": "もっと 早く うちを 出れば よかったです。"
+        },
+        {
+          "speaker": "B",
+          "from": "とちゅうで どこかに よったんですか。",
+          "to": "とちゅうで どこかに よったんですか。"
+        },
+        {
+          "speaker": "A",
+          "from": "はい。みせに よらなければ よかったです。",
+          "to": "はい。店に よらなければ よかったです。"
+        },
+        {
+          "speaker": "B",
+          "from": "つぎの でんしゃは じゅっぷんごです。ここで まちましょう。",
+          "to": "つぎの 電車は 十分後です。ここで まちましょう。"
+        }
+      ]
+    },
+    {
+      "grammarId": "bcefdff6-4e96-47e3-9de8-06fcb5214a16",
+      "chapter": 15,
+      "expected": {
+        "example_dialog": "A: これから、ほんを かりに としょかんへ いきます。\nB: どんな ほんを かりるんですか。\nA: えいごの ほんです。りょこうのために、えいごを べんきょうしています。\nB: ほんは よめますか。\nA: まだ むずかしいです。よめるように、まいにち れんしゅうしています。\nB: いいですね。がんばって ください。",
+        "example_dialog_id": "A: Setelah ini saya akan pergi ke perpustakaan untuk meminjam buku.\nB: Buku seperti apa yang akan Anda pinjam?\nA: Buku bahasa Inggris. Saya belajar bahasa Inggris untuk bepergian.\nB: Apakah Anda bisa membaca bukunya?\nA: Masih sulit. Saya berlatih setiap hari agar bisa membacanya.\nB: Bagus. Semangat, ya."
+      },
+      "replacement": {
+        "example_dialog": "A: これから、本を かりに 図書館へ 行きます。\nB: どんな 本を かりるんですか。\nA: えいごの 本です。りょこうのために、えいごを 勉強しています。\nB: 本は 読めますか。\nA: まだ むずかしいです。読めるように、毎日 れんしゅうしています。\nB: いいですね。がんばって ください。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "これから、本を かりに 図書館へ 行きます。",
+              "readings": [
+                {
+                  "start": 5,
+                  "end": 6,
+                  "reading": "ほん"
+                },
+                {
+                  "start": 12,
+                  "end": 15,
+                  "reading": "としょかん"
+                },
+                {
+                  "start": 17,
+                  "end": 18,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "どんな 本を かりるんですか。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 5,
+                  "reading": "ほん"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "えいごの 本です。りょこうのために、えいごを 勉強しています。",
+              "readings": [
+                {
+                  "start": 5,
+                  "end": 6,
+                  "reading": "ほん"
+                },
+                {
+                  "start": 23,
+                  "end": 25,
+                  "reading": "べんきょう"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "本は 読めますか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "ほん"
+                },
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "まだ むずかしいです。読めるように、毎日 れんしゅうしています。",
+              "readings": [
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "よ"
+                },
+                {
+                  "start": 18,
+                  "end": 20,
+                  "reading": "まいにち"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "いいですね。がんばって ください。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "これから、ほんを かりに としょかんへ いきます。",
+          "to": "これから、本を かりに 図書館へ 行きます。"
+        },
+        {
+          "speaker": "B",
+          "from": "どんな ほんを かりるんですか。",
+          "to": "どんな 本を かりるんですか。"
+        },
+        {
+          "speaker": "A",
+          "from": "えいごの ほんです。りょこうのために、えいごを べんきょうしています。",
+          "to": "えいごの 本です。りょこうのために、えいごを 勉強しています。"
+        },
+        {
+          "speaker": "B",
+          "from": "ほんは よめますか。",
+          "to": "本は 読めますか。"
+        },
+        {
+          "speaker": "A",
+          "from": "まだ むずかしいです。よめるように、まいにち れんしゅうしています。",
+          "to": "まだ むずかしいです。読めるように、毎日 れんしゅうしています。"
+        },
+        {
+          "speaker": "B",
+          "from": "いいですね。がんばって ください。",
+          "to": "いいですね。がんばって ください。"
+        }
+      ]
+    },
+    {
+      "grammarId": "384aada6-16f6-49c9-914d-0861febfb53e",
+      "chapter": 15,
+      "expected": {
+        "example_dialog": "A: あしたの クラスでは、なにを つくりますか。\nB: かみで はなを つくります。せんせいは、はさみを もって くるように いいました。\nA: はさみは、かみを きるのに つかうんですね。\nB: はい。のりも ひつようです。\nA: はなを つくるのに、どのくらい かかりますか。\nB: さんじゅっぷんぐらいです。",
+        "example_dialog_id": "A: Apa yang akan dibuat dalam kelas besok?\nB: Kita membuat bunga dari kertas. Guru meminta kita membawa gunting.\nA: Gunting digunakan untuk memotong kertas, ya.\nB: Ya. Lem juga diperlukan.\nA: Berapa lama diperlukan untuk membuat bunganya?\nB: Sekitar tiga puluh menit."
+      },
+      "replacement": {
+        "example_dialog": "A: 明日の クラスでは、何を 作りますか。\nB: かみで 花を 作ります。先生は、はさみを 持って 来るように 言いました。\nA: はさみは、かみを きるのに つかうんですね。\nB: はい。のりも ひつようです。\nA: 花を 作るのに、どのくらい かかりますか。\nB: 三十分ぐらいです。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "明日の クラスでは、何を 作りますか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "あした"
+                },
+                {
+                  "start": 10,
+                  "end": 11,
+                  "reading": "なに"
+                },
+                {
+                  "start": 13,
+                  "end": 14,
+                  "reading": "つく"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "かみで 花を 作ります。先生は、はさみを 持って 来るように 言いました。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 5,
+                  "reading": "はな"
+                },
+                {
+                  "start": 7,
+                  "end": 8,
+                  "reading": "つく"
+                },
+                {
+                  "start": 12,
+                  "end": 14,
+                  "reading": "せんせい"
+                },
+                {
+                  "start": 21,
+                  "end": 22,
+                  "reading": "も"
+                },
+                {
+                  "start": 25,
+                  "end": 26,
+                  "reading": "く"
+                },
+                {
+                  "start": 31,
+                  "end": 32,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "はさみは、かみを きるのに つかうんですね。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "はい。のりも ひつようです。",
+              "readings": []
+            },
+            {
+              "speaker": "A",
+              "text": "花を 作るのに、どのくらい かかりますか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "はな"
+                },
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "つく"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "三十分ぐらいです。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 3,
+                  "reading": "さんじゅっぷん"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "あしたの クラスでは、なにを つくりますか。",
+          "to": "明日の クラスでは、何を 作りますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "かみで はなを つくります。せんせいは、はさみを もって くるように いいました。",
+          "to": "かみで 花を 作ります。先生は、はさみを 持って 来るように 言いました。"
+        },
+        {
+          "speaker": "A",
+          "from": "はさみは、かみを きるのに つかうんですね。",
+          "to": "はさみは、かみを きるのに つかうんですね。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。のりも ひつようです。",
+          "to": "はい。のりも ひつようです。"
+        },
+        {
+          "speaker": "A",
+          "from": "はなを つくるのに、どのくらい かかりますか。",
+          "to": "花を 作るのに、どのくらい かかりますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "さんじゅっぷんぐらいです。",
+          "to": "三十分ぐらいです。"
+        }
+      ]
+    },
+    {
+      "grammarId": "7e65dba0-89b1-43a4-99ef-17b99c2eb1f0",
+      "chapter": 16,
+      "expected": {
+        "example_dialog": "A: あしたの しけんには、なにが ひつようですか。\nB: えんぴつを もって こないと いけません。にほん あったほうが いいですよ。\nA: じしょも もって いきますか。\nB: いいえ。じしょを もって いく ひつようは ありません。\nA: わかりました。きょうは はやく ねたほうが いいですね。\nB: そうですね。あした、がんばりましょう。",
+        "example_dialog_id": "A: Apa yang diperlukan untuk ujian besok?\nB: Kita harus membawa pensil. Sebaiknya ada dua batang.\nA: Apakah kita membawa kamus juga?\nB: Tidak. Tidak perlu membawa kamus.\nA: Saya mengerti. Sebaiknya tidur lebih awal hari ini, ya.\nB: Benar. Mari berusaha sebaik mungkin besok."
+      },
+      "replacement": {
+        "example_dialog": "A: 明日の 試験には、何が ひつようですか。\nB: えんぴつを 持って 来ないと いけません。二本 あった方が いいですよ。\nA: じしょも 持って 行きますか。\nB: いいえ。じしょを 持って 行く ひつようは ありません。\nA: わかりました。今日は 早く ねた方が いいですね。\nB: そうですね。明日、がんばりましょう。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "明日の 試験には、何が ひつようですか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "あした"
+                },
+                {
+                  "start": 4,
+                  "end": 6,
+                  "reading": "しけん"
+                },
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "なに"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "えんぴつを 持って 来ないと いけません。二本 あった方が いいですよ。",
+              "readings": [
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "も"
+                },
+                {
+                  "start": 10,
+                  "end": 11,
+                  "reading": "こ"
+                },
+                {
+                  "start": 21,
+                  "end": 23,
+                  "reading": "にほん"
+                },
+                {
+                  "start": 27,
+                  "end": 28,
+                  "reading": "ほう"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "じしょも 持って 行きますか。",
+              "readings": [
+                {
+                  "start": 5,
+                  "end": 6,
+                  "reading": "も"
+                },
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "いいえ。じしょを 持って 行く ひつようは ありません。",
+              "readings": [
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "も"
+                },
+                {
+                  "start": 13,
+                  "end": 14,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "わかりました。今日は 早く ねた方が いいですね。",
+              "readings": [
+                {
+                  "start": 7,
+                  "end": 9,
+                  "reading": "きょう"
+                },
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "はや"
+                },
+                {
+                  "start": 16,
+                  "end": 17,
+                  "reading": "ほう"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "そうですね。明日、がんばりましょう。",
+              "readings": [
+                {
+                  "start": 6,
+                  "end": 8,
+                  "reading": "あした"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "あしたの しけんには、なにが ひつようですか。",
+          "to": "明日の 試験には、何が ひつようですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "えんぴつを もって こないと いけません。にほん あったほうが いいですよ。",
+          "to": "えんぴつを 持って 来ないと いけません。二本 あった方が いいですよ。"
+        },
+        {
+          "speaker": "A",
+          "from": "じしょも もって いきますか。",
+          "to": "じしょも 持って 行きますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "いいえ。じしょを もって いく ひつようは ありません。",
+          "to": "いいえ。じしょを 持って 行く ひつようは ありません。"
+        },
+        {
+          "speaker": "A",
+          "from": "わかりました。きょうは はやく ねたほうが いいですね。",
+          "to": "わかりました。今日は 早く ねた方が いいですね。"
+        },
+        {
+          "speaker": "B",
+          "from": "そうですね。あした、がんばりましょう。",
+          "to": "そうですね。明日、がんばりましょう。"
+        }
+      ]
+    },
+    {
+      "grammarId": "441eb770-2e1e-4752-b7db-74c7764cdf8c",
+      "chapter": 16,
+      "expected": {
+        "example_dialog": "A: ハディさん、とまれ！ くるまが きます！\nB: あっ、あぶなかったです。ありがとうございます。\nA: ここには「わたるな」と かいて あります。あのはしを わたりましょう。\nB: はい。これからは、よく みます。",
+        "example_dialog_id": "A: Hadi, berhenti! Ada mobil datang!\nB: Ah, tadi berbahaya. Terima kasih.\nA: Di sini tertulis “Jangan menyeberang”. Mari menyeberangi jembatan itu.\nB: Baik. Mulai sekarang saya akan lebih memperhatikan."
+      },
+      "replacement": {
+        "example_dialog": "A: ハディさん、止まれ！ 車が 来ます！\nB: あっ、あぶなかったです。ありがとうございます。\nA: ここには「わたるな」と 書いて あります。あのはしを わたりましょう。\nB: はい。これからは、よく 見ます。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "ハディさん、止まれ！ 車が 来ます！",
+              "readings": [
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "と"
+                },
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "くるま"
+                },
+                {
+                  "start": 14,
+                  "end": 15,
+                  "reading": "き"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "あっ、あぶなかったです。ありがとうございます。",
+              "readings": []
+            },
+            {
+              "speaker": "A",
+              "text": "ここには「わたるな」と 書いて あります。あのはしを わたりましょう。",
+              "readings": [
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。これからは、よく 見ます。",
+              "readings": [
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "み"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "ハディさん、とまれ！ くるまが きます！",
+          "to": "ハディさん、止まれ！ 車が 来ます！"
+        },
+        {
+          "speaker": "B",
+          "from": "あっ、あぶなかったです。ありがとうございます。",
+          "to": "あっ、あぶなかったです。ありがとうございます。"
+        },
+        {
+          "speaker": "A",
+          "from": "ここには「わたるな」と かいて あります。あのはしを わたりましょう。",
+          "to": "ここには「わたるな」と 書いて あります。あのはしを わたりましょう。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。これからは、よく みます。",
+          "to": "はい。これからは、よく 見ます。"
+        }
+      ]
+    },
+    {
+      "grammarId": "fdeb6c11-f394-4655-909e-6e3f814c1b21",
+      "chapter": 17,
+      "expected": {
+        "example_dialog": "A: そのかばん、あたらしいですね。\nB: はい。たんじょうびに、あねから もらいました。\nA: すてきですね。そのペンも、おねえさんからですか。\nB: いいえ。ペンは ともだちが くれました。\nA: こんどは、おねえさんに なにか あげますか。\nB: はい。あねの たんじょうびに、はなを あげる つもりです。",
+        "example_dialog_id": "A: Tas itu baru, ya.\nB: Ya. Saya menerimanya dari kakak perempuan pada ulang tahun saya.\nA: Bagus, ya. Apakah pena itu juga dari kakak perempuan Anda?\nB: Bukan. Pena ini diberikan teman kepada saya.\nA: Lain kali, apakah Anda akan memberikan sesuatu kepada kakak perempuan Anda?\nB: Ya. Saya berniat memberikan bunga pada ulang tahunnya."
+      },
+      "replacement": {
+        "example_dialog": "A: そのかばん、新しいですね。\nB: はい。たんじょうびに、姉から もらいました。\nA: すてきですね。そのペンも、お姉さんからですか。\nB: いいえ。ペンは 友だちが くれました。\nA: こんどは、お姉さんに 何か あげますか。\nB: はい。姉の たんじょうびに、花を あげる つもりです。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "そのかばん、新しいですね。",
+              "readings": [
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "あたら"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。たんじょうびに、姉から もらいました。",
+              "readings": [
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "あね"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "すてきですね。そのペンも、お姉さんからですか。",
+              "readings": [
+                {
+                  "start": 14,
+                  "end": 15,
+                  "reading": "ねえ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "いいえ。ペンは 友だちが くれました。",
+              "readings": [
+                {
+                  "start": 8,
+                  "end": 9,
+                  "reading": "とも"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "こんどは、お姉さんに 何か あげますか。",
+              "readings": [
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "ねえ"
+                },
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "なに"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。姉の たんじょうびに、花を あげる つもりです。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "あね"
+                },
+                {
+                  "start": 14,
+                  "end": 15,
+                  "reading": "はな"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "そのかばん、あたらしいですね。",
+          "to": "そのかばん、新しいですね。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。たんじょうびに、あねから もらいました。",
+          "to": "はい。たんじょうびに、姉から もらいました。"
+        },
+        {
+          "speaker": "A",
+          "from": "すてきですね。そのペンも、おねえさんからですか。",
+          "to": "すてきですね。そのペンも、お姉さんからですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "いいえ。ペンは ともだちが くれました。",
+          "to": "いいえ。ペンは 友だちが くれました。"
+        },
+        {
+          "speaker": "A",
+          "from": "こんどは、おねえさんに なにか あげますか。",
+          "to": "こんどは、お姉さんに 何か あげますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。あねの たんじょうびに、はなを あげる つもりです。",
+          "to": "はい。姉の たんじょうびに、花を あげる つもりです。"
+        }
+      ]
+    },
+    {
+      "grammarId": "cb1e0ca9-29d0-4f54-8432-a8cc0e34e9bd",
+      "chapter": 18,
+      "expected": {
+        "example_dialog": "A: ひっこしは、もう おわりましたか。\nB: はい。ともだちが にもつを もって くれました。\nA: えきから あたらしい うちまでは、どうやって いきましたか。\nB: あにに くるまで おくって もらいました。\nA: たすかりましたね。\nB: はい。こんどは、わたしが ともだちの ひっこしを てつだって あげたいです。",
+        "example_dialog_id": "A: Apakah pindah rumahnya sudah selesai?\nB: Ya. Teman membantu saya membawakan barang.\nA: Dari stasiun ke rumah baru, bagaimana Anda pergi?\nB: Saya mendapat bantuan kakak laki-laki mengantar dengan mobil.\nA: Bantuan itu sangat menolong, ya.\nB: Ya. Lain kali saya ingin membantu teman saya pindah rumah."
+      },
+      "replacement": {
+        "example_dialog": "A: 引っこしは、もう おわりましたか。\nB: はい。友だちが にもつを 持って くれました。\nA: 駅から 新しい うちまでは、どうやって 行きましたか。\nB: 兄に 車で 送って もらいました。\nA: たすかりましたね。\nB: はい。こんどは、私が 友だちの 引っこしを 手つだって あげたいです。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "引っこしは、もう おわりましたか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "ひ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。友だちが にもつを 持って くれました。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "とも"
+                },
+                {
+                  "start": 13,
+                  "end": 14,
+                  "reading": "も"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "駅から 新しい うちまでは、どうやって 行きましたか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "えき"
+                },
+                {
+                  "start": 4,
+                  "end": 5,
+                  "reading": "あたら"
+                },
+                {
+                  "start": 20,
+                  "end": 21,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "兄に 車で 送って もらいました。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "あに"
+                },
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "くるま"
+                },
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "おく"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "たすかりましたね。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "はい。こんどは、私が 友だちの 引っこしを 手つだって あげたいです。",
+              "readings": [
+                {
+                  "start": 8,
+                  "end": 9,
+                  "reading": "わたし"
+                },
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "とも"
+                },
+                {
+                  "start": 16,
+                  "end": 17,
+                  "reading": "ひ"
+                },
+                {
+                  "start": 22,
+                  "end": 23,
+                  "reading": "て"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "ひっこしは、もう おわりましたか。",
+          "to": "引っこしは、もう おわりましたか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。ともだちが にもつを もって くれました。",
+          "to": "はい。友だちが にもつを 持って くれました。"
+        },
+        {
+          "speaker": "A",
+          "from": "えきから あたらしい うちまでは、どうやって いきましたか。",
+          "to": "駅から 新しい うちまでは、どうやって 行きましたか。"
+        },
+        {
+          "speaker": "B",
+          "from": "あにに くるまで おくって もらいました。",
+          "to": "兄に 車で 送って もらいました。"
+        },
+        {
+          "speaker": "A",
+          "from": "たすかりましたね。",
+          "to": "たすかりましたね。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。こんどは、わたしが ともだちの ひっこしを てつだって あげたいです。",
+          "to": "はい。こんどは、私が 友だちの 引っこしを 手つだって あげたいです。"
+        }
+      ]
+    },
+    {
+      "grammarId": "a45f36e6-96a1-49ba-8c0e-3e96352e7e7a",
+      "chapter": 18,
+      "expected": {
+        "example_dialog": "A: すみません。このことばを よんで もらえませんか。\nB: はい。「としょかん」です。\nA: もういちど、ゆっくり よんで ほしいです。\nB: はい。「と・しょ・か・ん」です。\nA: わかりました。おしえて くれて、ありがとう。\nB: どういたしまして。",
+        "example_dialog_id": "A: Permisi, bisakah Anda membantu membacakan kata ini?\nB: Ya. Bacaannya “toshokan”.\nA: Saya ingin Anda membacanya perlahan sekali lagi.\nB: Baik. “To-sho-ka-n.”\nA: Saya mengerti. Terima kasih sudah menjelaskannya.\nB: Sama-sama."
+      },
+      "replacement": {
+        "example_dialog": "A: すみません。このことばを 読んで もらえませんか。\nB: はい。「図書館」です。\nA: もういちど、ゆっくり 読んで ほしいです。\nB: はい。「と・しょ・か・ん」です。\nA: わかりました。教えて くれて、ありがとう。\nB: どういたしまして。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "すみません。このことばを 読んで もらえませんか。",
+              "readings": [
+                {
+                  "start": 13,
+                  "end": 14,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。「図書館」です。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 7,
+                  "reading": "としょかん"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "もういちど、ゆっくり 読んで ほしいです。",
+              "readings": [
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。「と・しょ・か・ん」です。",
+              "readings": []
+            },
+            {
+              "speaker": "A",
+              "text": "わかりました。教えて くれて、ありがとう。",
+              "readings": [
+                {
+                  "start": 7,
+                  "end": 8,
+                  "reading": "おし"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "どういたしまして。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "すみません。このことばを よんで もらえませんか。",
+          "to": "すみません。このことばを 読んで もらえませんか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。「としょかん」です。",
+          "to": "はい。「図書館」です。"
+        },
+        {
+          "speaker": "A",
+          "from": "もういちど、ゆっくり よんで ほしいです。",
+          "to": "もういちど、ゆっくり 読んで ほしいです。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。「と・しょ・か・ん」です。",
+          "to": "はい。「と・しょ・か・ん」です。"
+        },
+        {
+          "speaker": "A",
+          "from": "わかりました。おしえて くれて、ありがとう。",
+          "to": "わかりました。教えて くれて、ありがとう。"
+        },
+        {
+          "speaker": "B",
+          "from": "どういたしまして。",
+          "to": "どういたしまして。"
+        }
+      ]
+    },
+    {
+      "grammarId": "f0c421b9-ac27-4129-997e-d424784032a6",
+      "chapter": 19,
+      "expected": {
+        "example_dialog": "A: あした、なんにん くるか、わかりますか。\nB: いま、くると いった ひとは さんにんだけです。\nA: レンさんも きますか。\nB: レンさんが こられるかどうかは、まだ わかりません。\nA: さんにんしか いないんですね。\nB: はい。レンさんに、もういちど きいて みます。",
+        "example_dialog_id": "A: Apakah Anda tahu berapa orang yang akan datang besok?\nB: Saat ini baru tiga orang yang mengatakan akan datang.\nA: Apakah Ren juga datang?\nB: Saya belum tahu apakah Ren bisa datang atau tidak.\nA: Jadi yang sudah pasti hanya tiga orang, ya.\nB: Ya. Saya akan mencoba menanyakan sekali lagi kepada Ren."
+      },
+      "replacement": {
+        "example_dialog": "A: 明日、何人 来るか、わかりますか。\nB: 今、来ると 言った 人は 三人だけです。\nA: レンさんも 来ますか。\nB: レンさんが 来られるかどうかは、まだ わかりません。\nA: 三人しか いないんですね。\nB: はい。レンさんに、もういちど 聞いて みます。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "明日、何人 来るか、わかりますか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "あした"
+                },
+                {
+                  "start": 3,
+                  "end": 5,
+                  "reading": "なんにん"
+                },
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "く"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "今、来ると 言った 人は 三人だけです。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "いま"
+                },
+                {
+                  "start": 2,
+                  "end": 3,
+                  "reading": "く"
+                },
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "い"
+                },
+                {
+                  "start": 10,
+                  "end": 11,
+                  "reading": "ひと"
+                },
+                {
+                  "start": 13,
+                  "end": 15,
+                  "reading": "さんにん"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "レンさんも 来ますか。",
+              "readings": [
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "き"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "レンさんが 来られるかどうかは、まだ わかりません。",
+              "readings": [
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "こ"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "三人しか いないんですね。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "さんにん"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。レンさんに、もういちど 聞いて みます。",
+              "readings": [
+                {
+                  "start": 15,
+                  "end": 16,
+                  "reading": "き"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "あした、なんにん くるか、わかりますか。",
+          "to": "明日、何人 来るか、わかりますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "いま、くると いった ひとは さんにんだけです。",
+          "to": "今、来ると 言った 人は 三人だけです。"
+        },
+        {
+          "speaker": "A",
+          "from": "レンさんも きますか。",
+          "to": "レンさんも 来ますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "レンさんが こられるかどうかは、まだ わかりません。",
+          "to": "レンさんが 来られるかどうかは、まだ わかりません。"
+        },
+        {
+          "speaker": "A",
+          "from": "さんにんしか いないんですね。",
+          "to": "三人しか いないんですね。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。レンさんに、もういちど きいて みます。",
+          "to": "はい。レンさんに、もういちど 聞いて みます。"
+        }
+      ]
+    },
+    {
+      "grammarId": "525f3286-15cd-49fa-898e-1b35a7240b62",
+      "chapter": 19,
+      "expected": {
+        "example_dialog": "A: このとしょかんは、がくせいだけが つかえるんですか。\nB: いいえ。がくせいだけでなく、まちの ひとも つかえます。\nA: どうすれば、ほんが かりられますか。\nB: このカードに なまえを かくだけで、かりられます。\nA: べんりですね。たくさんの ひとが きますか。\nB: はい。きのうは ごひゃくにんも きました。",
+        "example_dialog_id": "A: Apakah perpustakaan ini hanya boleh digunakan siswa?\nB: Tidak. Bukan hanya siswa, warga kota juga boleh memakainya.\nA: Apa yang harus saya lakukan agar bisa meminjam buku?\nB: Cukup menulis nama pada kartu ini, Anda dapat meminjam.\nA: Praktis, ya. Apakah banyak orang datang?\nB: Ya. Kemarin sampai lima ratus orang datang."
+      },
+      "replacement": {
+        "example_dialog": "A: この図書館は、学生だけが つかえるんですか。\nB: いいえ。学生だけでなく、町の 人も つかえます。\nA: どうすれば、本が 借りられますか。\nB: このカードに 名前を 書くだけで、借りられます。\nA: べんりですね。たくさんの 人が 来ますか。\nB: はい。きのうは 五百人も 来ました。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "この図書館は、学生だけが つかえるんですか。",
+              "readings": [
+                {
+                  "start": 2,
+                  "end": 5,
+                  "reading": "としょかん"
+                },
+                {
+                  "start": 7,
+                  "end": 9,
+                  "reading": "がくせい"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "いいえ。学生だけでなく、町の 人も つかえます。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 6,
+                  "reading": "がくせい"
+                },
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "まち"
+                },
+                {
+                  "start": 15,
+                  "end": 16,
+                  "reading": "ひと"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "どうすれば、本が 借りられますか。",
+              "readings": [
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "ほん"
+                },
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "このカードに 名前を 書くだけで、借りられます。",
+              "readings": [
+                {
+                  "start": 7,
+                  "end": 9,
+                  "reading": "なまえ"
+                },
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "か"
+                },
+                {
+                  "start": 17,
+                  "end": 18,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "べんりですね。たくさんの 人が 来ますか。",
+              "readings": [
+                {
+                  "start": 13,
+                  "end": 14,
+                  "reading": "ひと"
+                },
+                {
+                  "start": 16,
+                  "end": 17,
+                  "reading": "き"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。きのうは 五百人も 来ました。",
+              "readings": [
+                {
+                  "start": 8,
+                  "end": 11,
+                  "reading": "ごひゃくにん"
+                },
+                {
+                  "start": 13,
+                  "end": 14,
+                  "reading": "き"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "このとしょかんは、がくせいだけが つかえるんですか。",
+          "to": "この図書館は、学生だけが つかえるんですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "いいえ。がくせいだけでなく、まちの ひとも つかえます。",
+          "to": "いいえ。学生だけでなく、町の 人も つかえます。"
+        },
+        {
+          "speaker": "A",
+          "from": "どうすれば、ほんが かりられますか。",
+          "to": "どうすれば、本が 借りられますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "このカードに なまえを かくだけで、かりられます。",
+          "to": "このカードに 名前を 書くだけで、借りられます。"
+        },
+        {
+          "speaker": "A",
+          "from": "べんりですね。たくさんの ひとが きますか。",
+          "to": "べんりですね。たくさんの 人が 来ますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。きのうは ごひゃくにんも きました。",
+          "to": "はい。きのうは 五百人も 来ました。"
+        }
+      ]
+    },
+    {
+      "grammarId": "b391824a-4944-467a-ada3-935d375e7ab5",
+      "chapter": 20,
+      "expected": {
+        "example_dialog": "A: こうえんまで、あるくと どのくらい かかりますか。\nB: にじゅっぷんぐらいです。バスほど はやく ありません。\nA: バスは なんぷんごとに きますか。\nB: じゅっぷんごとです。バスなら、ごふんで つきます。\nA: じゃ、きょうは バスで いきます。\nB: はい。つぎの バスは、さんじごろ きますよ。",
+        "example_dialog_id": "A: Berapa lama jika berjalan ke taman?\nB: Sekitar dua puluh menit. Tidak secepat bus.\nA: Bus datang setiap berapa menit?\nB: Setiap sepuluh menit. Kalau naik bus, sampai dalam lima menit.\nA: Kalau begitu, hari ini saya naik bus.\nB: Baik. Bus berikutnya datang sekitar pukul tiga."
+      },
+      "replacement": {
+        "example_dialog": "A: こうえんまで、歩くと どのくらい かかりますか。\nB: 二十分ぐらいです。バスほど はやく ありません。\nA: バスは 何分ごとに 来ますか。\nB: 十分ごとです。バスなら、五分で 着きます。\nA: じゃ、今日は バスで 行きます。\nB: はい。つぎの バスは、三時ごろ 来ますよ。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "こうえんまで、歩くと どのくらい かかりますか。",
+              "readings": [
+                {
+                  "start": 7,
+                  "end": 8,
+                  "reading": "ある"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "二十分ぐらいです。バスほど はやく ありません。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 3,
+                  "reading": "にじゅっぷん"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "バスは 何分ごとに 来ますか。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 6,
+                  "reading": "なんぷん"
+                },
+                {
+                  "start": 10,
+                  "end": 11,
+                  "reading": "き"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "十分ごとです。バスなら、五分で 着きます。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "じゅっぷん"
+                },
+                {
+                  "start": 12,
+                  "end": 14,
+                  "reading": "ごふん"
+                },
+                {
+                  "start": 16,
+                  "end": 17,
+                  "reading": "つ"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "じゃ、今日は バスで 行きます。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 5,
+                  "reading": "きょう"
+                },
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。つぎの バスは、三時ごろ 来ますよ。",
+              "readings": [
+                {
+                  "start": 11,
+                  "end": 13,
+                  "reading": "さんじ"
+                },
+                {
+                  "start": 16,
+                  "end": 17,
+                  "reading": "き"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "こうえんまで、あるくと どのくらい かかりますか。",
+          "to": "こうえんまで、歩くと どのくらい かかりますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "にじゅっぷんぐらいです。バスほど はやく ありません。",
+          "to": "二十分ぐらいです。バスほど はやく ありません。"
+        },
+        {
+          "speaker": "A",
+          "from": "バスは なんぷんごとに きますか。",
+          "to": "バスは 何分ごとに 来ますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "じゅっぷんごとです。バスなら、ごふんで つきます。",
+          "to": "十分ごとです。バスなら、五分で 着きます。"
+        },
+        {
+          "speaker": "A",
+          "from": "じゃ、きょうは バスで いきます。",
+          "to": "じゃ、今日は バスで 行きます。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。つぎの バスは、さんじごろ きますよ。",
+          "to": "はい。つぎの バスは、三時ごろ 来ますよ。"
+        }
+      ]
+    },
+    {
+      "grammarId": "b9365e25-6149-4998-9481-8bcaf30c3809",
+      "chapter": 20,
+      "expected": {
+        "example_dialog": "A: あした、あめの ばあいは、どこで れんしゅうしますか。\nB: このきょうしつです。せんせいが いったとおりに、つくえを うごかしましょう。\nA: はい。あっ、となりの へやは でんきが ついたままですね。\nB: だれも いませんね。けして きます。\nA: ありがとうございます。わたしたちも、かえる ときに かくにんしましょう。\nB: はい。わすれないように しましょう。",
+        "example_dialog_id": "A: Jika besok hujan, di mana kita berlatih?\nB: Di kelas ini. Mari memindahkan meja sesuai yang dikatakan guru.\nA: Baik. Oh, lampu ruangan sebelah masih menyala, ya.\nB: Tidak ada orang, ya. Saya akan mematikannya lalu kembali.\nA: Terima kasih. Kita juga perlu memeriksanya ketika pulang.\nB: Ya. Mari berusaha agar tidak lupa."
+      },
+      "replacement": {
+        "example_dialog": "A: 明日、雨の 場合は、どこで れんしゅうしますか。\nB: この教室です。先生が 言った通りに、つくえを 動かしましょう。\nA: はい。あっ、となりの へやは 電気が ついたままですね。\nB: だれも いませんね。けして 来ます。\nA: ありがとうございます。私たちも、帰る 時に かくにんしましょう。\nB: はい。わすれないように しましょう。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "明日、雨の 場合は、どこで れんしゅうしますか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "あした"
+                },
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "あめ"
+                },
+                {
+                  "start": 6,
+                  "end": 8,
+                  "reading": "ばあい"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "この教室です。先生が 言った通りに、つくえを 動かしましょう。",
+              "readings": [
+                {
+                  "start": 2,
+                  "end": 4,
+                  "reading": "きょうしつ"
+                },
+                {
+                  "start": 7,
+                  "end": 9,
+                  "reading": "せんせい"
+                },
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "い"
+                },
+                {
+                  "start": 14,
+                  "end": 15,
+                  "reading": "とお"
+                },
+                {
+                  "start": 23,
+                  "end": 24,
+                  "reading": "うご"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "はい。あっ、となりの へやは 電気が ついたままですね。",
+              "readings": [
+                {
+                  "start": 15,
+                  "end": 17,
+                  "reading": "でんき"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "だれも いませんね。けして 来ます。",
+              "readings": [
+                {
+                  "start": 14,
+                  "end": 15,
+                  "reading": "き"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "ありがとうございます。私たちも、帰る 時に かくにんしましょう。",
+              "readings": [
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "わたし"
+                },
+                {
+                  "start": 16,
+                  "end": 17,
+                  "reading": "かえ"
+                },
+                {
+                  "start": 19,
+                  "end": 20,
+                  "reading": "とき"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。わすれないように しましょう。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "あした、あめの ばあいは、どこで れんしゅうしますか。",
+          "to": "明日、雨の 場合は、どこで れんしゅうしますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "このきょうしつです。せんせいが いったとおりに、つくえを うごかしましょう。",
+          "to": "この教室です。先生が 言った通りに、つくえを 動かしましょう。"
+        },
+        {
+          "speaker": "A",
+          "from": "はい。あっ、となりの へやは でんきが ついたままですね。",
+          "to": "はい。あっ、となりの へやは 電気が ついたままですね。"
+        },
+        {
+          "speaker": "B",
+          "from": "だれも いませんね。けして きます。",
+          "to": "だれも いませんね。けして 来ます。"
+        },
+        {
+          "speaker": "A",
+          "from": "ありがとうございます。わたしたちも、かえる ときに かくにんしましょう。",
+          "to": "ありがとうございます。私たちも、帰る 時に かくにんしましょう。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。わすれないように しましょう。",
+          "to": "はい。わすれないように しましょう。"
+        }
+      ]
+    },
+    {
+      "grammarId": "6fc52ebb-2d7c-4da6-8263-3cc27d7c2b6d",
+      "chapter": 21,
+      "expected": {
+        "example_dialog": "A: ダニエルさん、うれしそうですね。\nB: はい。せんせいに さくぶんを ほめられました。\nA: どんな さくぶんを かいたんですか。\nB: かぞくの ことを かきました。「わかりやすい」と いわれました。\nA: よかったですね。わたしも よんでも いいですか。\nB: はい。どうぞ。",
+        "example_dialog_id": "A: Daniel, Anda terlihat senang.\nB: Ya. Karangan saya dipuji oleh guru.\nA: Karangan tentang apa yang Anda tulis?\nB: Saya menulis tentang keluarga. Saya diberi komentar, “Mudah dipahami.”\nA: Bagus. Bolehkah saya membacanya juga?\nB: Ya. Silakan."
+      },
+      "replacement": {
+        "example_dialog": "A: ダニエルさん、うれしそうですね。\nB: はい。先生に 作文を ほめられました。\nA: どんな 作文を 書いたんですか。\nB: 家族の ことを 書きました。「わかりやすい」と 言われました。\nA: よかったですね。私も 読んでも いいですか。\nB: はい。どうぞ。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "ダニエルさん、うれしそうですね。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "はい。先生に 作文を ほめられました。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 5,
+                  "reading": "せんせい"
+                },
+                {
+                  "start": 7,
+                  "end": 9,
+                  "reading": "さくぶん"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "どんな 作文を 書いたんですか。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 6,
+                  "reading": "さくぶん"
+                },
+                {
+                  "start": 8,
+                  "end": 9,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "家族の ことを 書きました。「わかりやすい」と 言われました。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "かぞく"
+                },
+                {
+                  "start": 8,
+                  "end": 9,
+                  "reading": "か"
+                },
+                {
+                  "start": 24,
+                  "end": 25,
+                  "reading": "い"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "よかったですね。私も 読んでも いいですか。",
+              "readings": [
+                {
+                  "start": 8,
+                  "end": 9,
+                  "reading": "わたし"
+                },
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。どうぞ。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "ダニエルさん、うれしそうですね。",
+          "to": "ダニエルさん、うれしそうですね。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。せんせいに さくぶんを ほめられました。",
+          "to": "はい。先生に 作文を ほめられました。"
+        },
+        {
+          "speaker": "A",
+          "from": "どんな さくぶんを かいたんですか。",
+          "to": "どんな 作文を 書いたんですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "かぞくの ことを かきました。「わかりやすい」と いわれました。",
+          "to": "家族の ことを 書きました。「わかりやすい」と 言われました。"
+        },
+        {
+          "speaker": "A",
+          "from": "よかったですね。わたしも よんでも いいですか。",
+          "to": "よかったですね。私も 読んでも いいですか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。どうぞ。",
+          "to": "はい。どうぞ。"
+        }
+      ]
+    },
+    {
+      "grammarId": "b0f52855-f571-478f-a932-33b52781c2ab",
+      "chapter": 21,
+      "expected": {
+        "example_dialog": "A: きのうは たいへんな いちにちでした。\nB: どうしたんですか。\nA: でんしゃで となりの ひとに あしを ふまれました。\nB: えっ、いたかったでしょう。いまは だいじょうぶですか。\nA: はい。もう だいじょうぶです。それから、かえりに あめに ふられて、ふくも ぬれました。\nB: それは たいへんでしたね。",
+        "example_dialog_id": "A: Kemarin hari yang berat.\nB: Ada apa?\nA: Di kereta, kaki saya diinjak orang di sebelah.\nB: Wah, pasti sakit. Sekarang sudah tidak apa-apa?\nA: Ya, sekarang sudah tidak apa-apa. Lalu saat pulang saya kehujanan, dan pakaian saya juga basah.\nB: Wah, itu pasti menyusahkan."
+      },
+      "replacement": {
+        "example_dialog": "A: きのうは たいへんな 一日でした。\nB: どうしたんですか。\nA: 電車で となりの 人に 足を ふまれました。\nB: えっ、いたかったでしょう。今は だいじょうぶですか。\nA: はい。もう だいじょうぶです。それから、帰りに 雨に ふられて、服も ぬれました。\nB: それは たいへんでしたね。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "きのうは たいへんな 一日でした。",
+              "readings": [
+                {
+                  "start": 11,
+                  "end": 13,
+                  "reading": "いちにち"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "どうしたんですか。",
+              "readings": []
+            },
+            {
+              "speaker": "A",
+              "text": "電車で となりの 人に 足を ふまれました。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "でんしゃ"
+                },
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "ひと"
+                },
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "あし"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "えっ、いたかったでしょう。今は だいじょうぶですか。",
+              "readings": [
+                {
+                  "start": 13,
+                  "end": 14,
+                  "reading": "いま"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "はい。もう だいじょうぶです。それから、帰りに 雨に ふられて、服も ぬれました。",
+              "readings": [
+                {
+                  "start": 20,
+                  "end": 21,
+                  "reading": "かえ"
+                },
+                {
+                  "start": 24,
+                  "end": 25,
+                  "reading": "あめ"
+                },
+                {
+                  "start": 32,
+                  "end": 33,
+                  "reading": "ふく"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "それは たいへんでしたね。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "きのうは たいへんな いちにちでした。",
+          "to": "きのうは たいへんな 一日でした。"
+        },
+        {
+          "speaker": "B",
+          "from": "どうしたんですか。",
+          "to": "どうしたんですか。"
+        },
+        {
+          "speaker": "A",
+          "from": "でんしゃで となりの ひとに あしを ふまれました。",
+          "to": "電車で となりの 人に 足を ふまれました。"
+        },
+        {
+          "speaker": "B",
+          "from": "えっ、いたかったでしょう。いまは だいじょうぶですか。",
+          "to": "えっ、いたかったでしょう。今は だいじょうぶですか。"
+        },
+        {
+          "speaker": "A",
+          "from": "はい。もう だいじょうぶです。それから、かえりに あめに ふられて、ふくも ぬれました。",
+          "to": "はい。もう だいじょうぶです。それから、帰りに 雨に ふられて、服も ぬれました。"
+        },
+        {
+          "speaker": "B",
+          "from": "それは たいへんでしたね。",
+          "to": "それは たいへんでしたね。"
+        }
+      ]
+    },
+    {
+      "grammarId": "048f2898-cc0e-4cf4-be16-d18a94db71c7",
+      "chapter": 22,
+      "expected": {
+        "example_dialog": "A: きょうの クラスでは、なにを しましたか。\nB: せんせいが、がくせいに にほんごで はなさせました。\nA: アンナさんも はなしたんですね。どうでしたか。\nB: すこし むずかしかったので、「もういちど はなさせて ください」と おねがいしました。\nA: もういちど できましたか。\nB: はい。せんせいが もういちど はなさせて くれました。",
+        "example_dialog_id": "A: Apa yang dilakukan dalam kelas hari ini?\nB: Guru menyuruh siswa berbicara bahasa Jepang.\nA: Anna juga berbicara, ya. Bagaimana hasilnya?\nB: Karena agak sulit, saya meminta, “Izinkan saya berbicara sekali lagi.”\nA: Apakah Anda bisa mencobanya lagi?\nB: Ya. Guru memberi saya kesempatan berbicara sekali lagi."
+      },
+      "replacement": {
+        "example_dialog": "A: 今日の クラスでは、何を しましたか。\nB: 先生が、学生に 日本語で 話させました。\nA: アンナさんも 話したんですね。どうでしたか。\nB: 少し むずかしかったので、「もう一度 話させて ください」と おねがいしました。\nA: もう一度 できましたか。\nB: はい。先生が もう一度 話させて くれました。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "今日の クラスでは、何を しましたか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "きょう"
+                },
+                {
+                  "start": 10,
+                  "end": 11,
+                  "reading": "なに"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "先生が、学生に 日本語で 話させました。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "せんせい"
+                },
+                {
+                  "start": 4,
+                  "end": 6,
+                  "reading": "がくせい"
+                },
+                {
+                  "start": 8,
+                  "end": 11,
+                  "reading": "にほんご"
+                },
+                {
+                  "start": 13,
+                  "end": 14,
+                  "reading": "はな"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "アンナさんも 話したんですね。どうでしたか。",
+              "readings": [
+                {
+                  "start": 7,
+                  "end": 8,
+                  "reading": "はな"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "少し むずかしかったので、「もう一度 話させて ください」と おねがいしました。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "すこ"
+                },
+                {
+                  "start": 16,
+                  "end": 18,
+                  "reading": "いちど"
+                },
+                {
+                  "start": 19,
+                  "end": 20,
+                  "reading": "はな"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "もう一度 できましたか。",
+              "readings": [
+                {
+                  "start": 2,
+                  "end": 4,
+                  "reading": "いちど"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "はい。先生が もう一度 話させて くれました。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 5,
+                  "reading": "せんせい"
+                },
+                {
+                  "start": 9,
+                  "end": 11,
+                  "reading": "いちど"
+                },
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "はな"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "きょうの クラスでは、なにを しましたか。",
+          "to": "今日の クラスでは、何を しましたか。"
+        },
+        {
+          "speaker": "B",
+          "from": "せんせいが、がくせいに にほんごで はなさせました。",
+          "to": "先生が、学生に 日本語で 話させました。"
+        },
+        {
+          "speaker": "A",
+          "from": "アンナさんも はなしたんですね。どうでしたか。",
+          "to": "アンナさんも 話したんですね。どうでしたか。"
+        },
+        {
+          "speaker": "B",
+          "from": "すこし むずかしかったので、「もういちど はなさせて ください」と おねがいしました。",
+          "to": "少し むずかしかったので、「もう一度 話させて ください」と おねがいしました。"
+        },
+        {
+          "speaker": "A",
+          "from": "もういちど できましたか。",
+          "to": "もう一度 できましたか。"
+        },
+        {
+          "speaker": "B",
+          "from": "はい。せんせいが もういちど はなさせて くれました。",
+          "to": "はい。先生が もう一度 話させて くれました。"
+        }
+      ]
+    },
+    {
+      "grammarId": "1bd12c89-d0c9-48c8-8f9b-50c0499f68af",
+      "chapter": 22,
+      "expected": {
+        "example_dialog": "A: きのう、せんせいに さくぶんを なんども かかせられました。\nB: なんかい かいたんですか。\nA: さんかいも かかされました。つかれました。\nB: さんかいもですか。どこが むずかしかったんですか。\nA: ながいぶんが うまく かけませんでした。でも、さいごは よく なりました。\nB: そうですか。がんばりましたね。",
+        "example_dialog_id": "A: Kemarin saya disuruh guru menulis karangan berkali-kali meskipun enggan.\nB: Berapa kali Anda menulisnya?\nA: Saya disuruh menulis sampai tiga kali. Saya lelah.\nB: Sampai tiga kali? Bagian mana yang sulit?\nA: Saya tidak bisa menulis kalimat panjang dengan baik. Tetapi akhirnya menjadi lebih baik.\nB: Begitu, ya. Anda sudah berusaha keras."
+      },
+      "replacement": {
+        "example_dialog": "A: きのう、先生に 作文を 何度も 書かせられました。\nB: 何回 書いたんですか。\nA: 三回も 書かされました。つかれました。\nB: 三回もですか。どこが むずかしかったんですか。\nA: 長い文が うまく 書けませんでした。でも、さいごは よく なりました。\nB: そうですか。がんばりましたね。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "きのう、先生に 作文を 何度も 書かせられました。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 6,
+                  "reading": "せんせい"
+                },
+                {
+                  "start": 8,
+                  "end": 10,
+                  "reading": "さくぶん"
+                },
+                {
+                  "start": 12,
+                  "end": 14,
+                  "reading": "なんど"
+                },
+                {
+                  "start": 16,
+                  "end": 17,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "何回 書いたんですか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "なんかい"
+                },
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "三回も 書かされました。つかれました。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "さんかい"
+                },
+                {
+                  "start": 4,
+                  "end": 5,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "三回もですか。どこが むずかしかったんですか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "さんかい"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "長い文が うまく 書けませんでした。でも、さいごは よく なりました。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "reading": "なが"
+                },
+                {
+                  "start": 2,
+                  "end": 3,
+                  "reading": "ぶん"
+                },
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "そうですか。がんばりましたね。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "きのう、せんせいに さくぶんを なんども かかせられました。",
+          "to": "きのう、先生に 作文を 何度も 書かせられました。"
+        },
+        {
+          "speaker": "B",
+          "from": "なんかい かいたんですか。",
+          "to": "何回 書いたんですか。"
+        },
+        {
+          "speaker": "A",
+          "from": "さんかいも かかされました。つかれました。",
+          "to": "三回も 書かされました。つかれました。"
+        },
+        {
+          "speaker": "B",
+          "from": "さんかいもですか。どこが むずかしかったんですか。",
+          "to": "三回もですか。どこが むずかしかったんですか。"
+        },
+        {
+          "speaker": "A",
+          "from": "ながいぶんが うまく かけませんでした。でも、さいごは よく なりました。",
+          "to": "長い文が うまく 書けませんでした。でも、さいごは よく なりました。"
+        },
+        {
+          "speaker": "B",
+          "from": "そうですか。がんばりましたね。",
+          "to": "そうですか。がんばりましたね。"
+        }
+      ]
+    },
+    {
+      "grammarId": "4d327a80-19df-4383-9ecf-c2819ee2b9a1",
+      "chapter": 23,
+      "expected": {
+        "example_dialog": "A: せんせいは、もう おかえりに なりましたか。\nB: いいえ。いま、となりの へやで はなされています。\nA: なんじに おかえりに なりますか。\nB: ろくじの よていです。ここで おまちに なりますか。\nA: はい。すこし まちます。\nB: わかりました。こちらに どうぞ。",
+        "example_dialog_id": "A: Apakah Guru sudah pulang?\nB: Belum. Sekarang beliau sedang berbicara di ruangan sebelah.\nA: Pukul berapa beliau akan pulang?\nB: Rencananya pukul enam. Apakah Anda ingin menunggu di sini?\nA: Ya. Saya akan menunggu sebentar.\nB: Baik. Silakan di sini."
+      },
+      "replacement": {
+        "example_dialog": "A: 先生は、もう お帰りに なりましたか。\nB: いいえ。今、となりの へやで 話されています。\nA: 何時に お帰りに なりますか。\nB: 六時の よていです。ここで お待ちに なりますか。\nA: はい。少し 待ちます。\nB: わかりました。こちらに どうぞ。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "先生は、もう お帰りに なりましたか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "せんせい"
+                },
+                {
+                  "start": 8,
+                  "end": 9,
+                  "reading": "かえ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "いいえ。今、となりの へやで 話されています。",
+              "readings": [
+                {
+                  "start": 4,
+                  "end": 5,
+                  "reading": "いま"
+                },
+                {
+                  "start": 15,
+                  "end": 16,
+                  "reading": "はな"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "何時に お帰りに なりますか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "なんじ"
+                },
+                {
+                  "start": 5,
+                  "end": 6,
+                  "reading": "かえ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "六時の よていです。ここで お待ちに なりますか。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "ろくじ"
+                },
+                {
+                  "start": 15,
+                  "end": 16,
+                  "reading": "ま"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "はい。少し 待ちます。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "すこ"
+                },
+                {
+                  "start": 6,
+                  "end": 7,
+                  "reading": "ま"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "わかりました。こちらに どうぞ。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "せんせいは、もう おかえりに なりましたか。",
+          "to": "先生は、もう お帰りに なりましたか。"
+        },
+        {
+          "speaker": "B",
+          "from": "いいえ。いま、となりの へやで はなされています。",
+          "to": "いいえ。今、となりの へやで 話されています。"
+        },
+        {
+          "speaker": "A",
+          "from": "なんじに おかえりに なりますか。",
+          "to": "何時に お帰りに なりますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "ろくじの よていです。ここで おまちに なりますか。",
+          "to": "六時の よていです。ここで お待ちに なりますか。"
+        },
+        {
+          "speaker": "A",
+          "from": "はい。すこし まちます。",
+          "to": "はい。少し 待ちます。"
+        },
+        {
+          "speaker": "B",
+          "from": "わかりました。こちらに どうぞ。",
+          "to": "わかりました。こちらに どうぞ。"
+        }
+      ]
+    },
+    {
+      "grammarId": "4ff7d528-056e-456a-b117-02174d3000ce",
+      "chapter": 23,
+      "expected": {
+        "example_dialog": "A: こちらの メニューを ごらんください。\nB: ありがとうございます。おすすめは なんですか。\nA: このケーキです。なにを めしあがりますか。\nB: では、ケーキと おちゃを おねがいします。\nA: はい。すこし おまちください。",
+        "example_dialog_id": "A: Silakan melihat menu ini.\nB: Terima kasih. Apa yang direkomendasikan?\nA: Kue ini. Anda ingin menyantap apa?\nB: Kalau begitu, saya pesan kue dan teh.\nA: Baik. Mohon menunggu sebentar."
+      },
+      "replacement": {
+        "example_dialog": "A: こちらの メニューを ごらんください。\nB: ありがとうございます。おすすめは 何ですか。\nA: このケーキです。何を めしあがりますか。\nB: では、ケーキと お茶を おねがいします。\nA: はい。少し お待ちください。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "こちらの メニューを ごらんください。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "ありがとうございます。おすすめは 何ですか。",
+              "readings": [
+                {
+                  "start": 17,
+                  "end": 18,
+                  "reading": "なん"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "このケーキです。何を めしあがりますか。",
+              "readings": [
+                {
+                  "start": 8,
+                  "end": 9,
+                  "reading": "なに"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "では、ケーキと お茶を おねがいします。",
+              "readings": [
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "ちゃ"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "はい。少し お待ちください。",
+              "readings": [
+                {
+                  "start": 3,
+                  "end": 4,
+                  "reading": "すこ"
+                },
+                {
+                  "start": 7,
+                  "end": 8,
+                  "reading": "ま"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "こちらの メニューを ごらんください。",
+          "to": "こちらの メニューを ごらんください。"
+        },
+        {
+          "speaker": "B",
+          "from": "ありがとうございます。おすすめは なんですか。",
+          "to": "ありがとうございます。おすすめは 何ですか。"
+        },
+        {
+          "speaker": "A",
+          "from": "このケーキです。なにを めしあがりますか。",
+          "to": "このケーキです。何を めしあがりますか。"
+        },
+        {
+          "speaker": "B",
+          "from": "では、ケーキと おちゃを おねがいします。",
+          "to": "では、ケーキと お茶を おねがいします。"
+        },
+        {
+          "speaker": "A",
+          "from": "はい。すこし おまちください。",
+          "to": "はい。少し お待ちください。"
+        }
+      ]
+    },
+    {
+      "grammarId": "f0bb035c-2a94-4e0b-b943-e97fb4057610",
+      "chapter": 24,
+      "expected": {
+        "example_dialog": "A: こちらが うけつけで ございます。\nB: ありがとうございます。かいぎしつは どこですか。\nA: にかいに ございます。わたしが ごあんないいたします。\nB: おねがいします。このにもつは、ここに おいても いいですか。\nA: はい。にもつは、わたしが おもちします。\nB: では、おねがいします。",
+        "example_dialog_id": "A: Di sinilah bagian penerimaan.\nB: Terima kasih. Di mana ruang rapatnya?\nA: Di lantai dua. Saya akan mengantar Anda.\nB: Mohon bantuannya. Bolehkah barang bawaan ini saya taruh di sini?\nA: Boleh. Saya yang akan membawakan barangnya.\nB: Kalau begitu, mohon bantuannya."
+      },
+      "replacement": {
+        "example_dialog": "A: こちらが うけつけで ございます。\nB: ありがとうございます。かいぎしつは どこですか。\nA: にかいに ございます。私が ごあんないいたします。\nB: おねがいします。このにもつは、ここに おいても いいですか。\nA: はい。にもつは、私が お持ちします。\nB: では、おねがいします。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "こちらが うけつけで ございます。",
+              "readings": []
+            },
+            {
+              "speaker": "B",
+              "text": "ありがとうございます。かいぎしつは どこですか。",
+              "readings": []
+            },
+            {
+              "speaker": "A",
+              "text": "にかいに ございます。私が ごあんないいたします。",
+              "readings": [
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "わたし"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "おねがいします。このにもつは、ここに おいても いいですか。",
+              "readings": []
+            },
+            {
+              "speaker": "A",
+              "text": "はい。にもつは、私が お持ちします。",
+              "readings": [
+                {
+                  "start": 8,
+                  "end": 9,
+                  "reading": "わたし"
+                },
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "も"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "では、おねがいします。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "こちらが うけつけで ございます。",
+          "to": "こちらが うけつけで ございます。"
+        },
+        {
+          "speaker": "B",
+          "from": "ありがとうございます。かいぎしつは どこですか。",
+          "to": "ありがとうございます。かいぎしつは どこですか。"
+        },
+        {
+          "speaker": "A",
+          "from": "にかいに ございます。わたしが ごあんないいたします。",
+          "to": "にかいに ございます。私が ごあんないいたします。"
+        },
+        {
+          "speaker": "B",
+          "from": "おねがいします。このにもつは、ここに おいても いいですか。",
+          "to": "おねがいします。このにもつは、ここに おいても いいですか。"
+        },
+        {
+          "speaker": "A",
+          "from": "はい。にもつは、わたしが おもちします。",
+          "to": "はい。にもつは、私が お持ちします。"
+        },
+        {
+          "speaker": "B",
+          "from": "では、おねがいします。",
+          "to": "では、おねがいします。"
+        }
+      ]
+    },
+    {
+      "grammarId": "7464741d-e555-41d3-9740-20a42e367d4f",
+      "chapter": 24,
+      "expected": {
+        "example_dialog": "A: せんせい、いただいた ほんを よみました。ありがとうございました。\nB: どうでしたか。\nA: おもしろかったです。でも、このぶんが わかりません。よんで いただけませんか。\nB: ええ。ここは「なまえを かいて ください」です。\nA: わかりました。おしえて くださって、ありがとうございます。\nB: どういたしまして。",
+        "example_dialog_id": "A: Pak Guru, saya sudah membaca buku yang saya terima dari Anda. Terima kasih.\nB: Bagaimana bukunya?\nA: Menarik. Tetapi saya tidak memahami kalimat ini. Dapatkah Anda membacakannya?\nB: Tentu. Bagian ini berbunyi, “Tolong tulis nama.”\nA: Saya mengerti. Terima kasih sudah menjelaskannya.\nB: Sama-sama."
+      },
+      "replacement": {
+        "example_dialog": "A: 先生、いただいた 本を 読みました。ありがとうございました。\nB: どうでしたか。\nA: おもしろかったです。でも、この文が わかりません。読んで いただけませんか。\nB: ええ。ここは「名前を 書いて ください」です。\nA: わかりました。教えて くださって、ありがとうございます。\nB: どういたしまして。",
+        "dialog_furigana": {
+          "schemaVersion": 1,
+          "lines": [
+            {
+              "speaker": "A",
+              "text": "先生、いただいた 本を 読みました。ありがとうございました。",
+              "readings": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "reading": "せんせい"
+                },
+                {
+                  "start": 9,
+                  "end": 10,
+                  "reading": "ほん"
+                },
+                {
+                  "start": 12,
+                  "end": 13,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "どうでしたか。",
+              "readings": []
+            },
+            {
+              "speaker": "A",
+              "text": "おもしろかったです。でも、この文が わかりません。読んで いただけませんか。",
+              "readings": [
+                {
+                  "start": 15,
+                  "end": 16,
+                  "reading": "ぶん"
+                },
+                {
+                  "start": 25,
+                  "end": 26,
+                  "reading": "よ"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "ええ。ここは「名前を 書いて ください」です。",
+              "readings": [
+                {
+                  "start": 7,
+                  "end": 9,
+                  "reading": "なまえ"
+                },
+                {
+                  "start": 11,
+                  "end": 12,
+                  "reading": "か"
+                }
+              ]
+            },
+            {
+              "speaker": "A",
+              "text": "わかりました。教えて くださって、ありがとうございます。",
+              "readings": [
+                {
+                  "start": 7,
+                  "end": 8,
+                  "reading": "おし"
+                }
+              ]
+            },
+            {
+              "speaker": "B",
+              "text": "どういたしまして。",
+              "readings": []
+            }
+          ]
+        }
+      },
+      "textChanges": [
+        {
+          "speaker": "A",
+          "from": "せんせい、いただいた ほんを よみました。ありがとうございました。",
+          "to": "先生、いただいた 本を 読みました。ありがとうございました。"
+        },
+        {
+          "speaker": "B",
+          "from": "どうでしたか。",
+          "to": "どうでしたか。"
+        },
+        {
+          "speaker": "A",
+          "from": "おもしろかったです。でも、このぶんが わかりません。よんで いただけませんか。",
+          "to": "おもしろかったです。でも、この文が わかりません。読んで いただけませんか。"
+        },
+        {
+          "speaker": "B",
+          "from": "ええ。ここは「なまえを かいて ください」です。",
+          "to": "ええ。ここは「名前を 書いて ください」です。"
+        },
+        {
+          "speaker": "A",
+          "from": "わかりました。おしえて くださって、ありがとうございます。",
+          "to": "わかりました。教えて くださって、ありがとうございます。"
+        },
+        {
+          "speaker": "B",
+          "from": "どういたしまして。",
+          "to": "どういたしまして。"
+        }
+      ]
+    }
+  ]
+}

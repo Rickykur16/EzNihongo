@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import dialogueFurigana from '../../../src/dialogue-furigana.js';
 import { normalizeDialogScene, sceneTurnVoices, validateSceneVoices } from '../dialogue-scene.js';
 import { isCanonicalUuid } from '../live-class-admin-rules.js';
 import crypto from 'crypto';
@@ -166,15 +167,43 @@ const NARRATOR_MODEL_OVERRIDE = 'eleven_multilingual_v2';
 
 const modelForRole = (role) => (role === 'narrator' ? NARRATOR_MODEL_OVERRIDE : ELEVEN_MODEL);
 
+// Materials are typed with a space between words (たなかさんは がくせいです) so
+// beginners can read them and the arrange drill can cut them. ElevenLabs
+// reads those spaces as pauses, so speech came out halting. Spaces between
+// two Japanese characters are dropped from what is SPOKEN only; the stored
+// and displayed text keeps them. Spaces next to Latin text, [emotion] tags
+// or SSML stay.
+const JP_CHAR = '[\\u3001-\\u30ff\\u3400-\\u9fff\\uf900-\\ufaff\\uff01-\\uffef]';
+const JP_GAP = new RegExp(`(${JP_CHAR})[ \\u3000]+(?=${JP_CHAR})`, 'gu');
+export function speechText(text) {
+  return String(text).replace(JP_GAP, '$1');
+}
+
+// What a dialogue turn SAYS: kanji the editor gave a furigana reading are
+// spoken as that reading, so ElevenLabs can never pick another reading for a
+// kanji the student is learning (and a dialogue rewritten from kana to the
+// kanji already taught keeps the same audio). `furigana` is the row's
+// dialog_furigana; a line only applies while speaker+text still match it.
+export function spokenTurnText(turn, index, furigana) {
+  let line = null;
+  try { line = furigana ? dialogueFurigana.lineFor(dialogueFurigana.normalize(furigana), index, turn) : null; }
+  catch { line = null; }
+  let text = turn.text;
+  for (const r of [...(line?.readings || [])].sort((a, b) => b.start - a.start)) {
+    text = text.slice(0, r.start) + r.reading + text.slice(r.end);
+  }
+  return speechText(text);
+}
+
 export async function fetchElevenAudio(voiceId, text, role = 'single', retry = 0) {
   const settings = VOICE_SETTINGS[role] || VOICE_SETTINGS.single;
   const modelId = modelForRole(role);
   // Narrator dipaksa v2 → tag emotion [calm]/[questioning]/dll bakal dibaca
   // literal. Strip tag dari text supaya gak keluar sebagai kata "calm" /
   // "questioning" di audio.
-  const cleanText = role === 'narrator'
+  const cleanText = speechText(role === 'narrator'
     ? text.replace(/\[[a-z_]{1,24}\]\s*/gi, '').trim()
-    : text;
+    : text);
   const upstream = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
     {
@@ -247,8 +276,11 @@ export async function fetchElevenVoices() {
 // everyone. Same generation call as /api/tts (fetchElevenAudio, no SSML
 // <break>: the player inserts its own gap between clips).
 const DIALOG_TURN_PREFIX = 'dialogturn1';
-export function dialogTurnKey(turn, voice) {
-  return ttsHashKey(`${DIALOG_TURN_PREFIX}\n${voice.role}\n${turn.text}`, [voice.voiceId]);
+// Keyed by what is spoken (spokenTurnText): a turn typed without spaces keeps
+// its stored take, a spaced one gets a new key and is re-voiced once without
+// the pauses, and kanji with furigana share the take of their kana spelling.
+export function dialogTurnKey(spoken, voice) {
+  return ttsHashKey(`${DIALOG_TURN_PREFIX}\n${voice.role}\n${spoken}`, [voice.voiceId]);
 }
 
 async function selectTurnAudio(keys) {
@@ -273,7 +305,11 @@ async function storeTurnAudio(key, turn, voice, audio, replace) {
 // admin's own earlier "Tes giliran" take (the old /admin/tts/preview row for
 // that single "SPEAKER: text" line) wins over the student's whole-dialogue
 // take (old "dialogsegs1" row): it is the one a person actually listened to.
-async function adoptLegacyTakes(missing, turns, turnVoices, keys, dialogText) {
+async function adoptLegacyTakes(missingTurns, turns, turnVoices, keys, dialogText, spoken) {
+  // Legacy takes were voiced from the stored text as typed: spaces became
+  // pauses and kanji were read however ElevenLabs guessed.
+  const missing = missingTurns.filter((i) => spoken[i] === turns[i].text);
+  if (!missing.length) return;
   const testedKeys = missing.map((i) => ttsHashKey(`${turns[i].speaker}: ${turns[i].text}`, [turnVoices[i].voiceId]));
   const tested = await selectTurnAudio(testedKeys);
   let segments = null;
@@ -304,14 +340,15 @@ function ttsError(code, message) {
 // generate the same missing turn at once still settle on one take.
 // Throws code 'tts_disabled' (no key / a turn without a voice) or any
 // upstream/voice-catalog error.
-export async function resolveDialogTurns({ turns, turnVoices, dialogText = '', indices = null, scene = null, regenerate = false }) {
+export async function resolveDialogTurns({ turns, turnVoices, dialogText = '', indices = null, scene = null, furigana = null, regenerate = false }) {
   const want = indices || turns.map((_, i) => i);
-  const keys = turns.map((turn, i) => dialogTurnKey(turn, turnVoices[i]));
+  const spoken = turns.map((turn, i) => spokenTurnText(turn, i, furigana));
+  const keys = spoken.map((text, i) => dialogTurnKey(text, turnVoices[i]));
   const wantKeys = [...new Set(want.map((i) => keys[i]))];
   let found = regenerate ? new Map() : await selectTurnAudio(wantKeys);
   let missing = want.filter((i) => !found.has(keys[i]));
   if (!regenerate && missing.length) {
-    await adoptLegacyTakes(missing, turns, turnVoices, keys, dialogText);
+    await adoptLegacyTakes(missing, turns, turnVoices, keys, dialogText, spoken);
     found = await selectTurnAudio(wantKeys);
     missing = want.filter((i) => !found.has(keys[i]));
   }
@@ -324,7 +361,7 @@ export async function resolveDialogTurns({ turns, turnVoices, dialogText = '', i
     for (const i of missing) {
       if (done.has(keys[i])) continue;
       done.add(keys[i]);
-      const audio = await fetchElevenAudio(turnVoices[i].voiceId, turns[i].text, turnVoices[i].role);
+      const audio = await fetchElevenAudio(turnVoices[i].voiceId, spoken[i], turnVoices[i].role);
       await storeTurnAudio(keys[i], turns[i], turnVoices[i], audio, regenerate);
     }
     found = await selectTurnAudio(wantKeys);
@@ -463,12 +500,13 @@ router.get('/tts/dialog', optionalAuth, ttsLimiter, asyncHandler(async (req, res
 
   const turns = parseDialog(text);
   if (!turns) return res.status(400).json({ error: 'not_a_dialog' });
-  let scene = null;
+  let scene = null, furigana = null;
   if (req.query.grammarId) {
     if (!isCanonicalUuid(req.query.grammarId)) return res.status(400).json({error: 'invalid grammarId'});
-    const grammar = await query('SELECT dialog_scene FROM module_grammar WHERE id = $1 AND example_dialog = $2', [req.query.grammarId, text]);
+    const grammar = await query('SELECT dialog_scene, dialog_furigana FROM module_grammar WHERE id = $1 AND example_dialog = $2', [req.query.grammarId, text]);
     if (!grammar.rows.length) return res.status(409).json({error: 'dialog_changed'});
     scene = grammar.rows[0].dialog_scene;
+    furigana = grammar.rows[0].dialog_furigana || null;
   }
   const registry = await loadSpeakerRegistry();
   let turnVoices;
@@ -477,7 +515,7 @@ router.get('/tts/dialog', optionalAuth, ttsLimiter, asyncHandler(async (req, res
 
   let audio;
   try {
-    audio = await resolveDialogTurns({ turns, turnVoices, dialogText: text, scene });
+    audio = await resolveDialogTurns({ turns, turnVoices, dialogText: text, scene, furigana });
   } catch (err) {
     if (err.code === 'tts_disabled') return res.status(503).json({ error: 'tts_disabled' });
     console.error('TTS dialog upstream:', err.message);

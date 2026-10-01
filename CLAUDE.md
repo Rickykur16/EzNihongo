@@ -376,6 +376,71 @@
       progres server, "Lanjut Belajar" dashboard, HP tanpa overflow); QA repo
       dialogue-scene + learning-flow lulus.
 
+      **N4 ikut dipisah (migrasi 191)** — user: "Pisahkan pelajaran percakapan dan tata
+      bahasa di n4 seperti di n5". 178 hanya membuat Percakapan untuk pelajaran yang
+      SUDAH punya dialog saat itu; 47 dialog N4 baru datang di 190 dan sengaja
+      ditampilkan INLINE di pelajaran Tata Bahasa (blok "💬 Percakapan" +
+      pemeriksaan baca `dialogueSelfChecks`). 191 = logika 178, dipersempit ke course
+      `n4` (dialog yang admin tambahkan di course lain tidak diam-diam dijadikan
+      pelajaran): Percakapan tepat setelah sumbernya, jadi tiap bab N4 sekarang
+      Tata Bahasa → Percakapan → Tugas Bunpou, persis N5. Judul "Tata Bahasa: X" →
+      "Percakapan: X", slug `<sumber>-percakapan`, slug lama tidak disentuh.
+      Frontend: `transformCourseFromApi` menandai `hasConversation` pada sumber; blok
+      inline hanya tampil kalau sumber TIDAK punya Percakapan, dan pemeriksaan baca
+      N4 pindah ke halaman Percakapan di bawah dialognya (`dialogueSelfChecksHtml`,
+      ditaruh SETELAH `renderConversationLesson` supaya semua tes vm-slice yang ada
+      ikut memuatnya). Divalidasi di Postgres dengan struktur N4 hasil migrasi repo
+      (24 bab, 47 sumber video): 47 dibuat, idempoten, id/slug lama identik, tanpa
+      sort_order kembar, course lain tidak tersentuh; 3 mutasi frontend tertangkap
+      tes; `npm test` dengan DB 945 tes, 944 hijau, 1 skip lama. **Belum diverifikasi**:
+      tampilan di browser sungguhan. Menambah 47 pelajaran mengubah persentase
+      progres N4 — SENGAJA tanpa penyesuaian progres karena N4 belum punya siswa
+      (dikonfirmasi user, sama seperti keputusan di 178).
+
+      **Suara dialog tersendat di tiap spasi** — user: "percakapannya setiap kata ada
+      spasinya jadi patah2 gitu" (dikonfirmasi: SUARANYA, N4 dan N5). Materi ditulis
+      berspasi antar-kata (konvensi pemula + bahan susun-kalimat; dialog N5 90/97,
+      N4 47/47) dan ElevenLabs membaca spasi itu sebagai jeda. `speechText()`
+      (`routes/tts.js`) membuang spasi di antara DUA karakter Jepang hanya dari teks
+      yang DIUCAPKAN (`fetchElevenAudio`, semua jalur); teks tersimpan/tampil tetap
+      berspasi. Spasi di sebelah huruf Latin, tag [emosi], dan SSML tidak disentuh.
+      `dialogTurnKey` kini memakai teks ucapan: giliran tanpa spasi kuncinya SAMA
+      (take lama tetap), giliran berspasi dapat kunci baru → disuarakan ulang SEKALI
+      saat pertama diputar; take lama berspasi (termasuk "Buat ulang" admin dan
+      adopsi legacy) sengaja tidak dipakai lagi karena justru itu yang tersendat.
+      **Tidak ikut diganti**: cache `/api/tts` (kosakata/kalimat/listening kuis)
+      yang sudah tersimpan — kuncinya tetap teks asli, jadi audio lama tetap
+      dipakai; hanya generate baru yang tanpa jeda. **Belum diverifikasi**: hasil
+      dengar ElevenLabs sungguhan (diblokir dari sandbox) — termasuk apakah kana
+      tanpa spasi tetap dibaca dengan pemenggalan yang benar.
+
+      **Dialog N4 memakai kanji yang sudah diajarkan + furigana (migrasi 192)** — user:
+      "pakai kombinasi kanji yg sudah di ajarkan juga gapapa untuk di taro di percakapan
+      jika di bab tersebut atau sudah di pelajari sampai titik itu"; dipilih user: N4 dulu
+      (N5 menyusul), PAKAI furigana. Dialog 190 hampir semuanya kana. Sumber konten:
+      `content/n4-support/dialogue-kanji.mjs` (markup `{漢字~よみ}`, `{漢字~よみ|asli}`
+      untuk ejaan campuran 190 seperti 日よう日) → `scripts/build-n4-dialogue-kanji.mjs`
+      → `dialogue-kanji-plan.json` + `192_n4_dialogue_kanji.sql` (`--check` + tes
+      memastikan keduanya hasil generate). **Kanji yang boleh** = 105 kanji N5 (whitelist
+      089) + kanji N4 bab 1..N persis dari migrasi 155 (BUKAN `kanji-support.mjs`, yang
+      beda di bab 5/6/14, mis. 強). Builder menolak: baris yang tidak terbaca balik ke teks
+      190, kanji tanpa furigana, kanji sebelum babnya, furigana yang tidak menutup satu
+      deret kanji utuh (aturan `dialogue-furigana.js`) — keempatnya dibuktikan menggigit.
+      Sengaja tetap kana: kata gramatikal (こと, という, かもしれません), kata dengan kanji
+      belum diajarkan, dan はやく "cepat" (速, bukan 早). 192 hanya mengubah baris yang
+      MASIH berisi teks 190 (diedit admin / punya soal dialog → NOTICE + dilewati), ekspresi
+      per giliran ikut pindah ke teks barunya, suara tidak disentuh, idempoten, backup di
+      `n4_dialogue_kanji_backup_192`. Soal cek baca N4 tetap tampil
+      (`n4DialogueSelfChecks` menerima teks 190 maupun 192); kutipan Jepang di
+      penjelasannya sengaja tetap kana. **Audio**: `spokenTurnText()` (`routes/tts.js`)
+      mengucapkan kanji ber-furigana sebagai bacaannya — siswa (`/api/tts/dialog`
+      membaca `dialog_furigana` lewat `grammarId`) dan "Tes giliran" admin (mengirim
+      `dialogFurigana` editor) sama; ElevenLabs tidak pernah menebak bacaan kanji, dan
+      baris yang dulunya kana penuh memakai take yang sama (tidak generate ulang).
+      Tanpa `grammarId` (klien lama) kanji dikirim apa adanya. **Belum dilakukan**: N5
+      (soal pemahamannya mengutip kalimat dialog → perlu skrip finalisasi seperti 186) dan
+      tampilan furigana di browser sungguhan.
+
       **Bug: menyimpan baris pola dari admin MENGHAPUS suara dialog** (ada sejak fitur
       scene `8de8d54`, ketahuan saat merekam video perbandingan gerak): admin memuat pola
       lewat `GET /api/courses/:slug`, yang memakai `publicDialogScene` (membuang `voiceId`

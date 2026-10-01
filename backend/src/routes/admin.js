@@ -5988,7 +5988,7 @@ router.post('/tts/preview', asyncHandler(async (req, res) => {
 }));
 
 // POST /api/admin/tts/dialog-turn — body { dialog, turnIndex, speaker,
-// turnText, dialogScene?, regenerate? } → MP3 of ONE turn.
+// turnText, dialogScene?, dialogFurigana?, regenerate? } → MP3 of ONE turn.
 // The 🎭 Dialog editor's "🔊 Tes giliran ini" and "↻ Buat ulang": plays (or
 // re-voices) the turn's take from the same per-turn cache students read
 // (resolveDialogTurns in tts.js), so the take heard here IS the take students
@@ -6022,6 +6022,9 @@ router.post('/tts/dialog-turn', asyncHandler(async (req, res) => {
   try {
     [audio] = await resolveDialogTurns({
       turns, turnVoices, dialogText: dialog, indices: [index], scene, regenerate: body.regenerate === true,
+      // The editor's current furigana: kanji are voiced by their reading,
+      // exactly as students hear them once the dialogue is saved.
+      furigana: body.dialogFurigana || null,
     });
   } catch (err) {
     if (err.code === 'tts_disabled') {
