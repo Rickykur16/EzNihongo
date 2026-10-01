@@ -3089,6 +3089,11 @@ window.openLessonDrawer = (lessonId) => {
     const source = conversationSourceFor(l);
     window.__itemCtx = source ? { kind: 'grammar', lessonId: source.id, lessonTitle: source.title, moduleId: mod.id } : null;
     if (document.getElementById('flow-switch')) flowSwitchLoad();
+    // Show the stored dialogues, not the copy loaded when the admin opened.
+    admReloadCourseState().then((ok) => {
+      if (!ok || STATE.activeLessonId !== lessonId) return;
+      drawer.querySelectorAll('#items-wrap tr[data-mode="dialog"][data-id]').forEach(admApplyFreshGrammarRow);
+    });
   }
   renderLessonListPane();
 };
@@ -5436,12 +5441,15 @@ function dialogStatusHtml(item) {
   const turns = String(item.example_dialog || '').split('\n').filter((line) => line.trim()).length;
   return turns ? `${turns} giliran` : '<span style="color:#b45309;">Belum ada dialog</span>';
 }
+function itemFieldValue(f, item) {
+  return ['dialog_scene','dialog_furigana'].includes(f.name) && item[f.name] ? JSON.stringify(item[f.name]) : (item[f.name] || '');
+}
 function itemRowHtml(item, fields, kind, mode) {
   const dialogMode = kind === 'grammar' && mode === 'dialog';
   const cells = fields.map((f) => {
     if (f.type === 'textarea') {
       const td = f.hidden || dialogMode ? '<td style="display:none;">' : '<td>';
-      const value = ['dialog_scene','dialog_furigana'].includes(f.name) && item[f.name] ? JSON.stringify(item[f.name]) : (item[f.name] || '');
+      const value = itemFieldValue(f, item);
       return `${td}<textarea name="${f.name}" rows="3" placeholder="${escapeHtml(f.placeholder || '')}" style="${f.style || ''}font-family:var(--font-mono);font-size:11px;">${escapeHtml(value)}</textarea></td>`;
     }
     return `<td${dialogMode ? ' style="display:none;"' : ''}><input name="${f.name}" value="${escapeHtml(item[f.name] || '')}" style="${f.style}" /></td>`;
@@ -5538,8 +5546,47 @@ async function admLoadDialogSpeakers(force) {
   return window.__dialogSpeakers;
 }
 
+// The admin loads the curriculum once (STATE.modules), but a deploy migration
+// or another tab can rewrite a dialogue afterwards — Bab 19's 〜たいです kept
+// showing the pre-migration-186 cast (アンナ/ハディ) while students saw 葵/アンナ.
+// Dialogue rows are therefore reloaded before they are shown or edited.
+async function admReloadCourseState() {
+  if (!STATE.selectedCourse) return false;
+  try {
+    const d = await api('/courses/' + encodeURIComponent(STATE.selectedCourse));
+    if (!Array.isArray(d.course?.modules)) return false;
+    STATE.modules = d.course.modules;
+    return true;
+  } catch { return false; }
+}
+// Writes the stored row into its table row in place, so an editor holding the
+// <tr> keeps working. A row with unsaved edits is left alone ('dirty'); its
+// save is then refused by the server's revision check instead of overwriting.
+function admApplyFreshGrammarRow(tr) {
+  const fresh = (STATE.modules || []).flatMap((m) => m.grammar || []).find((g) => g.id === tr.dataset.id);
+  if (!fresh) return 'missing';
+  const same = fresh.updated_at && tr.dataset.revision &&
+    new Date(fresh.updated_at).getTime() === new Date(tr.dataset.revision).getTime();
+  if (same) return 'current';
+  const inputs = [...tr.querySelectorAll('input, textarea, select')];
+  if (inputs.some((input) => 'defaultValue' in input && input.value !== input.defaultValue)) return 'dirty';
+  for (const f of GRAMMAR_FIELDS) {
+    const input = tr.querySelector(`[name="${f.name}"]`);
+    if (input) input.defaultValue = input.value = itemFieldValue(f, fresh);
+  }
+  const sort = tr.querySelector('input[name="sortOrder"]');
+  if (sort) sort.defaultValue = sort.value = String(fresh.sort_order || 0);
+  updateSavedRowRevision(tr, fresh);
+  const status = tr.querySelector('.dialog-status');
+  if (status) status.innerHTML = dialogStatusHtml(fresh);
+  return 'refreshed';
+}
+
 window.grmrManageDialog = async (btn) => {
   const tr = btn.closest('tr'); if (!tr) return;
+  if (tr.dataset.id && await admReloadCourseState() && admApplyFreshGrammarRow(tr) === 'dirty') {
+    notify('Baris ini punya perubahan yang belum disimpan, sementara dialog di server sudah berubah. Muat ulang halaman untuk melihat versi terbaru.', true);
+  }
   const jpTa = tr.querySelector('textarea[name="example_dialog"]');
   const idTa = tr.querySelector('textarea[name="example_dialog_id"]');
   if (!jpTa || !idTa) return;

@@ -64,7 +64,7 @@ function setup({ script = 'A: はじめまして。\nF: どうぞよろしく。
   const voices = profiles.map(p => ({ voiceId: p.voice_id, name: p.voice_name }));
   voices.push({ voiceId: 'voice-custom', name: 'Custom voice' });
   const ctx = vm.createContext({
-    window: null, document, modal, modalContent,
+    window: null, document, modal, modalContent, STATE: {},
     confirm: () => true,
     escapeHtml: value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;'),
     notify: (message, isError) => notifications.push({ message, isError: !!isError }),
