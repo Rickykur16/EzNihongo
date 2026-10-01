@@ -5,16 +5,21 @@ import vm from 'node:vm';
 const html=fs.readFileSync(new URL('../../welcome.html',import.meta.url),'utf8');
 const escapeHtml=v=>String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 
-test('N4 existing grammar lesson displays its scene and optional checks without moving the lesson',()=>{
+test('N4 grammar card no longer embeds the dialogue; the Percakapan lesson shows goal, scene and optional checks',()=>{
  const start=html.indexOf('function renderLessonGrammar(lesson) {'),end=html.indexOf('// A Percakapan lesson',start);
- const calls=[];const ctx=vm.createContext({escapeHtml,AUDIO_SVG:'',grammarKaraokeHtml:(...args)=>{calls.push(args);return '<div class="scene-player"></div>';}});
+ const ctx=vm.createContext({escapeHtml,AUDIO_SVG:'',grammarKaraokeHtml:()=>{throw Error('grammar card must not render a dialogue');}});
  vm.runInContext(html.slice(start,end),ctx);
  const grammar={id:'existing',pattern:'fixed pattern',notes:'Usage',example_dialog:'A: はい。',example_dialog_id:'A: Ya.',communication_goal:'A & B <context>',dialogueSelfChecks:[{prompt:'Siapa?',answer:'A < B',explanation:'Evidence'}]};
- const out=ctx.renderLessonGrammar({grammar:[grammar]});
- assert.equal(calls.length,1);assert.equal(calls[0][4],'existing');assert.match(out,/fixed pattern/);
- assert.match(out,/scene-player/);assert.match(out,/A &amp; B &lt;context&gt;/);assert.match(out,/<details><summary[^>]*>Lihat jawaban/);
- assert.match(out,/A &lt; B/);assert.doesNotMatch(out,/markComplete|selectLesson/);
- const legacy=ctx.renderLessonGrammar({grammar:[{...grammar,dialogueSelfChecks:undefined}]});assert.doesNotMatch(legacy,/scene-player/);
+ const card=ctx.renderLessonGrammar({grammar:[grammar]});
+ assert.match(card,/fixed pattern/);assert.doesNotMatch(card,/Percakapan|Lihat jawaban/);
+ const conv=html.slice(html.indexOf('function renderConversationLesson('),html.indexOf('// ── Dialog player'));
+ assert.match(conv,/communication_goal/);assert.match(conv,/conversationSelfChecksHtml\(grammar\)/);assert.match(conv,/<details><summary[^>]*>Lihat jawaban/);assert.match(conv,/escapeHtml\(q\.explanation\)/);
+});
+
+test('N4 video-type grammar lessons are presented like N5: no written-lesson relabel',()=>{
+ assert.doesNotMatch(html,/n4WrittenLesson/);
+ assert.doesNotMatch(html,/currentState\.course === 'n4' && (typeKey|lesson\.type) === 'video'/);
+ assert.match(html,/const videoBlock = lesson\.type === 'video' \? renderVideoLessonPlayer\(lesson\) : '';/);
 });
 
 test('worksheet opens all current chapter tasks, escapes content and returns through the normal lesson renderer',()=>{

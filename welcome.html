@@ -7406,7 +7406,7 @@ function renderSidebar() {
       const isDone = !!progress[key];
       const isCurrent = currentState.view === step.kind && m.id === currentState.moduleId && l.id === currentState.lessonId;
       const typeKey = (l.type || 'text').toLowerCase();
-      const typeLabel = currentState.course === 'n4' && typeKey === 'video' && !l.videoUrl && !l.videoSource?.externalId ? 'Materi' : (TYPE_LABEL[typeKey] || typeKey.toUpperCase());
+      const typeLabel = TYPE_LABEL[typeKey] || typeKey.toUpperCase();
       const typeIcon = TYPE_ICON[typeKey] || TYPE_ICON.text;
       const num = lessonNumber.get(`${m.id}:${step.kind}:${l.id}`);
       const durTxt = formatDurationCompact(l.durationMinutes);
@@ -8493,7 +8493,7 @@ function renderModuleIntro(module) {
     const isNext = step === plan.nextStep
       && (!done || plan.completed === plan.lessons.length);
     const duration = formatDurationLong(lesson.durationMinutes);
-    const type = currentState.course === 'n4' && lesson.type === 'video' && !lesson.videoUrl && !lesson.videoSource?.externalId ? 'Materi' : (typeLabels[String(lesson.type || 'text').toLowerCase()] || 'Materi');
+    const type = typeLabels[String(lesson.type || 'text').toLowerCase()] || 'Materi';
     const title = lesson.title;
     const state = isNext
       ? (plan.completed === plan.lessons.length ? 'Tinjau ulang' : plan.completed ? 'Lanjut di sini' : 'Mulai di sini')
@@ -8640,12 +8640,6 @@ function renderLessonGrammar(lesson) {
               <div class="grammar-block-content">${examplesHtml}</div>
             </div>` : ''}
             ${g.notes ? `<div class="grammar-notes">${escapeHtml(g.notes)}</div>` : ''}
-            ${Array.isArray(g.dialogueSelfChecks) && g.example_dialog ? `<section class="grammar-block" style="margin-top:20px">
-              <h3>💬 Percakapan</h3>
-              ${g.communication_goal ? `<p>${escapeHtml(g.communication_goal)}</p>` : ''}
-              ${grammarKaraokeHtml(String(g.example_dialog).trim(), `n4-${g.id}`, g.example_dialog_id || '', g.dialog_scene, g.id, g.dialog_furigana)}
-              ${(g.dialogueSelfChecks || []).map(q => `<div style="margin-top:14px"><p><strong>${escapeHtml(q.prompt)}</strong></p><details><summary style="cursor:pointer">Lihat jawaban dan alasan</summary><p>${escapeHtml(q.answer)}</p><p>${escapeHtml(q.explanation)}</p></details></div>`).join('')}
-            </section>` : ''}
           </div>`;
         }).join('')}
       </div>
@@ -8658,6 +8652,10 @@ function renderLessonGrammar(lesson) {
 // companion's listening directions stay keyed to that source lesson, so the
 // backend (answer keys, placement, fingerprints) is unchanged.
 function renderConversationLesson(course, module, lesson, nav) {
+  // N4 dialogues carry two voluntary reading checks (never graded), shown under
+  // the dialogue they belong to with the answer behind a <details>.
+  const conversationSelfChecksHtml = (grammar) => (Array.isArray(grammar?.dialogueSelfChecks) ? grammar.dialogueSelfChecks : [])
+    .map(q => `<div style="margin-top:14px"><p><strong>${escapeHtml(q.prompt)}</strong></p><details><summary style="cursor:pointer">Lihat jawaban dan alasan</summary><p>${escapeHtml(q.answer)}</p><p>${escapeHtml(q.explanation)}</p></details></div>`).join('');
   const source = conversationSource(module, lesson);
   const dialogs = lessonDialogues(source);
   const { prev, next, isDone } = nav;
@@ -8677,9 +8675,11 @@ function renderConversationLesson(course, module, lesson, nav) {
           <h2 class="grammar-pattern">${escapeHtml(grammar.pattern || `Percakapan ${index + 1}`)}</h2>
           ${source.bunpouFlow?.directions?.[grammar.id] ? `<p class="grammar-listening-direction">🎧 ${escapeHtml(source.bunpouFlow.directions[grammar.id])}</p>` : ''}
           <div class="dq-goal" data-dq-goal-for="${escapeHtml(grammar.id || '')}" hidden></div>
+          ${Array.isArray(grammar.dialogueSelfChecks) && grammar.communication_goal ? `<p>${escapeHtml(grammar.communication_goal)}</p>` : ''}
           ${grammarKaraokeHtml(String(grammar.example_dialog).trim(), `g${index}`,
             grammar.example_dialog_id || '', grammar.dialog_scene, grammar.id, grammar.dialog_furigana)}
           <div class="dq-questions" data-dq-questions-for="${escapeHtml(grammar.id || '')}" hidden></div>
+          ${conversationSelfChecksHtml(grammar)}
         </section>`).join('')}
     </div>` : '<p class="lesson-empty" style="color:#737373;">Dialog untuk pelajaran ini belum tersedia.</p>'}
     <div class="lesson-footer">
@@ -13666,16 +13666,14 @@ function renderLesson() {
 
   // Regular lesson (video/text) — YouTube segments take precedence, then
   // legacy direct/Bunny embeds, then the existing coming-soon placeholder.
-  const hasVideo = !!(lesson.videoUrl || lesson.videoSource?.externalId);
-  const n4WrittenLesson = currentState.course === 'n4' && !hasVideo;
-  const videoBlock = lesson.type === 'video' && !n4WrittenLesson ? renderVideoLessonPlayer(lesson) : '';
+  const videoBlock = lesson.type === 'video' ? renderVideoLessonPlayer(lesson) : '';
 
   const bodyBlock = `
     <div class="lesson-body">
       <h2>Catatan Pelajaran ${lesson.jp ? `<button class="pronounce-btn" style="vertical-align:middle;font-size:11px;" onclick="window.speakLessonJP(this)">🔊 Putar Jepang</button>` : ''}</h2>
       <p>${lesson.body}</p>
       ${lesson.jp ? `<div class="jp" id="lesson-jp">${lesson.jp}</div>` : ''}
-      ${n4WrittenLesson ? '<p style="color:#777;font-size:13px;margin-top:18px;">Baca penjelasan dan contoh, dengarkan pelafalannya, lalu kerjakan tugas serta latihan tertulis bab ini.</p>' : '<p style="color:#999;font-size:13px;margin-top:18px;">Materi lengkap: video tutorial, contoh audio, dan worksheet PDF tersedia saat belajar.</p>'}
+      ${'<p style="color:#999;font-size:13px;margin-top:18px;">Materi lengkap: video tutorial, contoh audio, dan worksheet PDF tersedia saat belajar.</p>'}
     </div>
   `;
 
@@ -13686,7 +13684,7 @@ function renderLesson() {
     ? `<p class="lesson-objective" style="margin:6px 0 0;font-size:14px;color:#404040;">🎯 ${escapeHtml(lesson.bunpouFlow.objective)}</p>`
     : '';
   document.getElementById('main-content').innerHTML = `
-    <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · ${n4WrittenLesson ? 'MATERI' : lesson.type.toUpperCase()}</p>
+    <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · ${lesson.type.toUpperCase()}</p>
     <h1 class="lesson-title">${lesson.title}</h1>
     <p class="lesson-subtitle">${module.title} — ${lesson.duration}</p>
     ${objectiveBlock}
@@ -13710,7 +13708,6 @@ function renderLesson() {
   `;
 
   // Analisis Bunpou dimuat setelah materi tampil — tidak boleh menunda render.
-  if (currentState.course === 'n4') window.EzDialogue?.enhance?.(document.getElementById('main-content'));
   loadBunpouAnalysis(lesson);
 }
 
