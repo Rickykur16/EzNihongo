@@ -1,145 +1,214 @@
 <!doctype html>
 <html lang="id"><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Montserrat:wght@600;700;800;900&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,500;1,600&family=Shippori+Mincho:wght@700;800&family=Noto+Sans+JP:wght@700&display=block" rel="stylesheet">
-<!-- Carousel "Kerja ke Jepang jalur mandiri" — 7 slide 1080×1350 (IG/TikTok foto). render: node render.mjs -->
+<!-- Carousel "Kerja ke Jepang jalur mandiri" — 7 slide 1080×1350. Gaya editorial washi: kertas, garis tinta,
+     merah vermilion, serif. Tanpa foto. Render: node render.mjs -->
 <style>
-:root{--red:#C8102E;--ink:#1a1815;--mute:#5d564e;--paper:#fbf8f2;--line:#e6ded0;--yel:#FFE11A}
+:root{--red:#C8102E;--ink:#1d1a16;--mute:#6b6258;--paper:#f3ece0;--rule:#cfc3ae;--gold:#b08a4a;--indigo:#26334f}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#333;font-family:Inter,sans-serif;color:var(--ink)}
-.s{position:relative;width:1080px;height:1350px;overflow:hidden;margin:0 0 20px;
-  background:radial-gradient(ellipse 90% 70% at 50% 35%,#fdfbf6 0%,#f1eadf 75%,#e6dccb 100%);padding:90px 90px 0}
-.s .kj{position:absolute;right:-40px;top:40px;font-family:'Shippori Mincho';font-weight:800;font-size:420px;line-height:1;color:rgba(200,16,46,.05);writing-mode:vertical-rl}
-.s .sun{position:absolute;right:-120px;bottom:-120px;width:420px;height:420px;border-radius:50%;background:var(--red);opacity:.08}
-.foot{position:absolute;left:90px;right:90px;bottom:60px;display:flex;justify-content:space-between;align-items:center;font-family:Montserrat;font-weight:700;font-size:26px;color:var(--mute)}
-.foot img{height:60px}
-.pg{font-family:Montserrat;font-weight:800;font-size:26px;letter-spacing:.08em;color:var(--red)}
-.chip{display:inline-block;background:var(--red);color:#fff;font-family:Montserrat;font-weight:800;font-size:34px;letter-spacing:.02em;padding:10px 24px 12px;box-shadow:0 14px 30px -14px rgba(120,0,20,.55)}
-.jp{font-family:'Shippori Mincho';font-weight:800;color:var(--red);font-size:40px;letter-spacing:.08em;margin-top:18px}
-h1{font-family:Montserrat;font-weight:900;font-size:92px;line-height:.98;letter-spacing:-.035em;margin-top:34px}
-h2{font-family:Montserrat;font-weight:900;font-size:72px;line-height:1.02;letter-spacing:-.03em;margin-top:30px}
-.r{color:var(--red)}
-.it{font-family:'Playfair Display';font-style:italic;font-weight:500}
-p.lead{font-size:38px;line-height:1.4;color:#3b3631;margin-top:34px;font-weight:600}
-.card{background:#fff;border-radius:28px;box-shadow:0 30px 60px -30px rgba(26,24,21,.35),0 0 0 1px rgba(26,24,21,.06);padding:30px 40px}
-.list{margin-top:40px;display:flex;flex-direction:column;gap:18px}
-.row{display:flex;gap:28px;align-items:center}
-.num{flex:none;width:84px;height:84px;border-radius:50%;background:var(--red);color:#fff;display:grid;place-items:center;font-family:Montserrat;font-weight:900;font-size:40px}
-.row>div>b{display:block;font-family:Montserrat;font-weight:800;font-size:40px;line-height:1.1}
-.row>div>span{display:block;font-size:28px;color:var(--mute);margin-top:6px;line-height:1.35}
-.next{position:absolute;right:90px;bottom:150px;font-family:Montserrat;font-weight:800;font-size:30px;color:var(--red)}
-.tags{display:flex;flex-wrap:wrap;gap:18px;margin-top:44px}
-.tag{background:#fff;border:3px solid var(--ink);border-radius:999px;padding:16px 28px;font-family:Montserrat;font-weight:800;font-size:34px;display:flex;gap:12px;align-items:center}
-.tag i{font-style:normal;font-family:'Noto Sans JP';font-weight:700;color:var(--red);font-size:28px}
-.note{font-size:26px;color:var(--mute);margin-top:30px;line-height:1.45}
-.vs{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:44px}
-.vs .card h3{font-family:Montserrat;font-weight:900;font-size:40px;margin-bottom:16px}
-.vs .card li{font-size:29px;line-height:1.4;margin:0 0 10px 30px}
-.hl{border:4px solid var(--red)}
-.cta{display:inline-flex;background:var(--red);color:#fff;font-family:Montserrat;font-weight:800;font-size:46px;padding:28px 56px;border-radius:20px;box-shadow:0 26px 60px -20px rgba(200,16,46,.65)}
-.cover{padding:0}
-.cover img.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 40%}
-.cover .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,10,18,.25) 0%,rgba(8,10,18,.1) 30%,rgba(8,10,18,.82) 70%,rgba(8,10,18,.92) 100%)}
-.cover .in{position:absolute;left:80px;right:80px;bottom:150px;color:#fff}
-.cover h1{font-size:104px;color:#fff;text-shadow:0 8px 30px rgba(0,0,0,.4)}
-.cover h1 .y{color:var(--yel)}
-.cover p.lead{color:#f2ede4;font-size:40px}
-.cover .foot{color:#e9e2d6}
-.swipe{font-family:Montserrat;font-weight:800;font-size:30px;color:#fff;opacity:.9}
+body{background:#222;font-family:Inter,sans-serif;color:var(--ink)}
+.s{position:relative;width:1080px;height:1350px;overflow:hidden;margin:0 0 20px;background:var(--paper);padding:0 96px}
+.grain{position:absolute;inset:0;pointer-events:none;opacity:.55;mix-blend-mode:multiply}
+.top{position:absolute;left:96px;right:96px;top:72px;display:flex;justify-content:space-between;align-items:center}
+.lbl{font-family:Montserrat;font-weight:700;font-size:22px;letter-spacing:.32em;color:var(--mute)}
+.lbl b{color:var(--red)}
+.hanko{width:92px;height:92px;border:4px solid var(--red);border-radius:12px;color:var(--red);display:grid;place-items:center;font-family:'Shippori Mincho';font-weight:800;font-size:34px;line-height:1;writing-mode:vertical-rl;transform:rotate(-4deg);background:rgba(200,16,46,.04)}
+.foot{position:absolute;left:96px;right:96px;bottom:64px;padding-top:22px;border-top:2px solid var(--rule);display:flex;justify-content:space-between;align-items:center;font-family:Montserrat;font-weight:700;font-size:22px;letter-spacing:.2em;color:var(--mute)}
+.foot img{height:46px}
+.vert{position:absolute;right:58px;top:230px;writing-mode:vertical-rl;font-family:'Shippori Mincho';font-weight:700;font-size:30px;letter-spacing:.5em;color:rgba(29,26,22,.32)}
+.kicker{font-family:'Shippori Mincho';font-weight:800;font-size:34px;color:var(--red);letter-spacing:.1em}
+h1,h2{font-family:'Playfair Display';font-weight:700;letter-spacing:-.02em;line-height:1.02}
+h1{font-size:112px}
+h2{font-size:82px;margin-top:14px}
+em{font-style:italic;font-weight:500;color:var(--red)}
+.body{font-size:34px;line-height:1.5;color:#3d3730}
+.body b{color:var(--ink)}
+.small{font-size:26px;line-height:1.5;color:var(--mute)}
+/* list bernomor ala editorial */
+.ol{margin-top:56px;border-top:2px solid var(--ink)}
+.li{display:flex;gap:34px;padding:30px 0;border-bottom:1px solid var(--rule);align-items:flex-start}
+.li .n{flex:none;width:96px;font-family:'Playfair Display';font-style:italic;font-weight:500;font-size:70px;line-height:.9;color:var(--red)}
+.li h3{font-family:Montserrat;font-weight:800;font-size:38px;letter-spacing:-.01em;line-height:1.15}
+.li p{font-size:27px;line-height:1.45;color:var(--mute);margin-top:8px}
+.li.hl{background:linear-gradient(90deg,rgba(200,16,46,.07),rgba(200,16,46,0));margin:0 -24px;padding:30px 24px}
+.pill{display:inline-flex;align-items:baseline;gap:10px;border:2px solid var(--ink);border-radius:999px;padding:12px 26px;font-family:Montserrat;font-weight:800;font-size:34px;background:rgba(255,255,255,.5)}
+.pill i{font-style:normal;color:var(--red)}
+/* grid bidang */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);margin-top:54px;border-top:2px solid var(--ink);border-left:1px solid var(--rule)}
+.cell{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);height:196px;padding:26px 24px;display:flex;flex-direction:column;justify-content:space-between}
+.cell .k{font-family:'Shippori Mincho';font-weight:800;font-size:54px;line-height:1.05;color:var(--ink)}
+.cell .k.sm{font-size:40px}
+.cell .t{font-family:Montserrat;font-weight:700;font-size:23px;letter-spacing:.02em;color:var(--mute)}
+.cell.on{background:var(--red)}.cell.on .k,.cell.on .t{color:#fff}
+/* perbandingan */
+.cmp{display:grid;grid-template-columns:1fr 1px 1fr;gap:44px;margin-top:60px}
+.cmp .bar{background:var(--rule)}
+.cmp h3{font-family:'Playfair Display';font-weight:700;font-size:54px;margin:14px 0 22px}
+.cmp .tag{font-family:Montserrat;font-weight:700;font-size:20px;letter-spacing:.3em;color:var(--mute)}
+.cmp ul{list-style:none}
+.cmp li{font-size:30px;line-height:1.4;padding:14px 0;border-top:1px solid var(--rule)}
+.cmp li::before{content:'— ';color:var(--mute)}
+.cmp .win li::before{content:'✓ ';color:var(--red);font-weight:800}
+/* timeline */
+.tl{position:relative;margin-top:56px;padding-left:90px}
+.tl::before{content:'';position:absolute;left:28px;top:20px;bottom:40px;border-left:3px dashed var(--rule)}
+.st{position:relative;padding-bottom:42px}
+.st .dot{position:absolute;left:-90px;top:0;width:58px;height:58px;border-radius:50%;background:var(--paper);border:3px solid var(--red);display:grid;place-items:center;font-family:'Shippori Mincho';font-weight:800;font-size:28px;color:var(--red)}
+.st h3{font-family:Montserrat;font-weight:800;font-size:40px;line-height:1.15}
+.st p{font-size:28px;line-height:1.45;color:var(--mute);margin-top:8px}
+.st p b{color:var(--ink)}
+.warn{margin-top:6px;border:2px solid var(--ink);padding:22px 28px;font-size:26px;line-height:1.45;background:rgba(255,255,255,.45)}
+.warn b{font-family:Montserrat;font-weight:800;color:var(--red);letter-spacing:.12em;font-size:22px;display:block;margin-bottom:6px}
+.cta{display:inline-flex;align-items:center;gap:18px;background:var(--red);color:#fff;font-family:Montserrat;font-weight:800;font-size:44px;padding:28px 54px;border-radius:999px}
 </style></head><body>
 
-<!-- 1. HOOK -->
-<section class="s cover" id="s1">
-  <img class="bg" src="../../assets/landing/tokyo.jpg">
-  <div class="shade"></div>
-  <div style="position:absolute;left:80px;top:90px"><span class="chip">BANYAK YANG BELUM TAU‼</span></div>
-  <div class="in">
-    <h1>Kerja ke Jepang <span class="y">ga harus</span> lewat agen.</h1>
-    <p class="lead">Ada jalur <b>mandiri</b> lewat visa SSW (Tokutei Ginou). Biayanya jauh lebih kecil, asal syaratnya kamu kejar sendiri.</p>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <filter id="paper"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="3" seed="4"/><feColorMatrix values="0 0 0 0 .45  0 0 0 0 .38  0 0 0 0 .28  0 0 0 .16 0"/></filter>
+    <filter id="fiber"><feTurbulence type="fractalNoise" baseFrequency=".012 .22" numOctaves="2" seed="9"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .42  0 0 0 0 .3  0 0 0 .1 0"/></filter>
+    <pattern id="seigaiha" width="120" height="60" patternUnits="userSpaceOnUse">
+      <g fill="none" stroke="rgba(38,51,79,.16)" stroke-width="2.2">
+        <g id="sg"><circle cx="60" cy="60" r="56"/><circle cx="60" cy="60" r="44"/><circle cx="60" cy="60" r="32"/><circle cx="60" cy="60" r="20"/><circle cx="60" cy="60" r="8"/></g>
+        <use href="#sg" x="-60" y="-30"/><use href="#sg" x="60" y="-30"/><use href="#sg" x="-60" y="30"/><use href="#sg" x="60" y="30"/>
+      </g>
+    </pattern>
+    <symbol id="fuji" viewBox="0 0 900 300"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M0 290 C120 270 230 200 340 66 L395 60 L420 76 L450 58 L480 74 L505 60 L560 66 C670 200 780 270 900 290"/>
+    </g></symbol>
+    <symbol id="torii" viewBox="0 0 300 260"><g fill="currentColor">
+      <path d="M0 20 Q150 -6 300 20 L294 46 Q150 24 6 46Z"/><rect x="26" y="70" width="248" height="20"/>
+      <rect x="54" y="40" width="26" height="220"/><rect x="220" y="40" width="26" height="220"/><rect x="138" y="44" width="24" height="30"/></g></symbol>
+    <symbol id="plane" viewBox="0 0 64 64"><path fill="currentColor" d="M60 30 L36 26 L22 4 h-6 l8 22 H10 L4 18 H0 l4 14 -4 14 h4 l6 -8 h14 l-8 22 h6 l14 -22 24 -4 c3 0 3 -4 0 -4z"/></symbol>
+  </defs>
+</svg>
+
+<!-- 1 COVER -->
+<section class="s" id="s1">
+  <div style="position:absolute;left:50%;top:190px;width:520px;height:520px;margin-left:-260px;border-radius:50%;background:var(--red)"></div>
+  <svg style="position:absolute;left:-40px;top:460px;width:1160px;height:387px;color:var(--ink)"><use href="#fuji"/></svg>
+  <svg style="position:absolute;left:0;right:0;bottom:0;width:1080px;height:120px"><rect width="1080" height="120" fill="url(#seigaiha)"/></svg>
+  <div class="top"><span class="lbl">EZNIHONGO · <b>CATATAN KERJA</b></span><div class="hanko">必読</div></div>
+  <div style="position:absolute;left:96px;right:96px;top:790px">
+    <div class="kicker" style="margin-bottom:14px">Banyak yang belum tau —</div>
+    <h1 style="font-size:100px">Kerja ke Jepang, <em>tanpa</em> lewat agen.</h1>
+    <p class="body" style="margin-top:22px;font-size:32px;padding-right:40px">Jalur <b>mandiri</b> visa SSW (Tokutei Ginou) — biaya jauh lebih kecil, asal syaratnya kamu kejar sendiri.</p>
   </div>
-  <div class="foot"><img src="logo-a.png" style="height:80px;filter:brightness(0) invert(1)"><span class="swipe">geser →</span></div>
+  <div style="position:absolute;right:96px;bottom:136px;font-family:Montserrat;font-weight:800;font-size:24px;letter-spacing:.3em;color:var(--red)">GESER →</div>
 </section>
 
-<!-- 2. SYARAT -->
-<section class="s" id="s2"><div class="kj">条件</div><div class="sun"></div>
-  <span class="chip">SYARAT DASAR</span><div class="jp">応募条件</div>
-  <h2>Yang perlu kamu <span class="r">siapkan</span></h2>
-  <div class="list">
-    <div class="row card"><div class="num">1</div><div><b>Usia 18 tahun ke atas</b><span>Banyak perusahaan mencari usia ±18–35, tapi tidak ada batas atas resmi.</span></div></div>
-    <div class="row card"><div class="num">2</div><div><b>Pendidikan min. SMA/sederajat</b><span>Umumnya diminta perusahaan &amp; proses di Indonesia.</span></div></div>
-    <div class="row card"><div class="num">3</div><div><b>Sehat jasmani &amp; rohani</b><span>Ada pemeriksaan kesehatan sebelum berangkat.</span></div></div>
-    <div class="row card hl"><div class="num">4</div><div><b>Punya <span class="r">2 sertifikat</span></b><span>Bahasa Jepang + keterampilan bidang kerja. Lihat slide berikut.</span></div></div>
+<!-- 2 SYARAT -->
+<section class="s" id="s2">
+  <div class="top"><span class="lbl">EZNIHONGO · <b>CATATAN KERJA</b></span><div class="hanko">条件</div></div>
+  <div class="vert">応募条件・特定技能</div>
+  <div style="padding-top:230px;padding-right:60px">
+    <div class="kicker">一　Syarat dasar</div>
+    <h2>Yang perlu kamu <em>siapkan.</em></h2>
+    <div class="ol">
+      <div class="li"><div class="n">01</div><div><h3>Usia 18 tahun ke atas</h3><p>Banyak perusahaan mencari ±18–35, tapi tidak ada batas atas resmi.</p></div></div>
+      <div class="li"><div class="n">02</div><div><h3>Minimal SMA / sederajat</h3><p>Umumnya diminta perusahaan &amp; proses di Indonesia.</p></div></div>
+      <div class="li"><div class="n">03</div><div><h3>Sehat jasmani &amp; rohani</h3><p>Ada pemeriksaan kesehatan sebelum berangkat.</p></div></div>
+      <div class="li hl"><div class="n">04</div><div><h3>Punya <span style="color:var(--red)">2 sertifikat</span></h3><p>Bahasa Jepang + keterampilan bidang kerja →</p></div></div>
+    </div>
   </div>
-  <div class="foot"><img src="logo-a.png"><span class="pg">02 / 07</span></div>
+  <div class="foot"><img src="logo-a.png"><span>02 — 07</span></div>
 </section>
 
-<!-- 3. DUA SERTIFIKAT -->
-<section class="s" id="s3"><div class="kj">資格</div><div class="sun"></div>
-  <span class="chip">2 SERTIFIKAT WAJIB</span><div class="jp">二つの試験</div>
-  <h2>Dua tes yang <span class="r">harus lulus</span></h2>
-  <div class="list">
-    <div class="card"><div class="row"><div class="num">A</div><div><b>Tes Bahasa Jepang</b><span>Salah satu:</span></div></div>
-      <div style="display:flex;gap:18px;margin-top:24px">
-        <div class="tag" style="font-size:40px">JFT-Basic <i>A2</i></div><div class="tag" style="font-size:40px">JLPT <i>N4</i></div>
-      </div>
-      <div class="note">Bidang kaigo (perawat lansia) ditambah tes bahasa khusus kaigo.</div></div>
-    <div class="card"><div class="row"><div class="num">B</div><div><b>Tes Keterampilan SSW</b><span>Sesuai bidang yang kamu pilih, misalnya restoran, makanan &amp; minuman, pertanian, kaigo, otomotif.</span></div></div></div>
+<!-- 3 SERTIFIKAT -->
+<section class="s" id="s3">
+  <div class="top"><span class="lbl">EZNIHONGO · <b>CATATAN KERJA</b></span><div class="hanko">資格</div></div>
+  <div class="vert">二つの試験</div>
+  <div style="padding-top:230px;padding-right:60px">
+    <div class="kicker">二　Dua sertifikat</div>
+    <h2>Dua tes yang <em>wajib lulus.</em></h2>
+    <div class="ol">
+      <div class="li" style="padding:40px 0"><div class="n">A</div><div style="flex:1"><h3>Tes Bahasa Jepang</h3><p>Cukup salah satu:</p>
+        <div style="display:flex;gap:16px;margin-top:20px"><span class="pill">JFT-Basic <i>A2</i></span><span class="pill">JLPT <i>N4</i></span></div>
+        <p style="margin-top:18px;font-size:24px">Bidang kaigo ditambah tes bahasa khusus kaigo.</p></div></div>
+      <div class="li" style="padding:40px 0"><div class="n">B</div><div><h3>Tes Keterampilan SSW</h3><p>Sesuai bidang yang kamu pilih — restoran, makanan &amp; minuman, pertanian, kaigo, otomotif, dll.</p></div></div>
+    </div>
+    <p class="body" style="margin-top:44px;font-size:30px">Dua-duanya <b>tes resmi</b> dan bisa diikuti di Indonesia.</p>
   </div>
-  <div class="note" style="font-size:30px;color:var(--ink);margin-top:40px">Dua-duanya tes resmi, bisa diikuti di Indonesia.</div>
-  <div class="foot"><img src="logo-a.png"><span class="pg">03 / 07</span></div>
+  <div class="foot"><img src="logo-a.png"><span>03 — 07</span></div>
 </section>
 
-<!-- 4. BIDANG -->
-<section class="s" id="s4"><div class="kj">分野</div><div class="sun"></div>
-  <span class="chip">PILIH BIDANGMU</span><div class="jp">特定技能の分野</div>
-  <h2>Jalur mandiri = kamu <span class="r">pilih sendiri</span> bidangnya</h2>
-  <div class="tags">
-    <div class="tag">Perawat lansia <i>介護</i></div>
-    <div class="tag">Pengolahan makanan <i>飲食料品製造</i></div>
-    <div class="tag">Restoran <i>外食</i></div>
-    <div class="tag">Manufaktur <i>工業製品製造</i></div>
-    <div class="tag">Pertanian <i>農業</i></div>
-    <div class="tag">Konstruksi <i>建設</i></div>
-    <div class="tag">Perhotelan <i>宿泊</i></div>
-    <div class="tag">Otomotif <i>自動車整備</i></div>
-    <div class="tag">Kebersihan gedung <i>ビルクリーニング</i></div>
+<!-- 4 BIDANG -->
+<section class="s" id="s4">
+  <div class="top"><span class="lbl">EZNIHONGO · <b>CATATAN KERJA</b></span><div class="hanko">分野</div></div>
+  <div style="padding-top:230px">
+    <div class="kicker">三　Pilih bidangmu</div>
+    <h2>Jalur mandiri, <em>bidangnya kamu yang pilih.</em></h2>
+    <div class="grid">
+      <div class="cell on"><div class="k">介護</div><div class="t">Perawat lansia</div></div>
+      <div class="cell"><div class="k">外食</div><div class="t">Restoran</div></div>
+      <div class="cell"><div class="k sm">飲食料品<br>製造</div><div class="t">Pengolahan makanan</div></div>
+      <div class="cell"><div class="k">農業</div><div class="t">Pertanian</div></div>
+      <div class="cell"><div class="k">建設</div><div class="t">Konstruksi</div></div>
+      <div class="cell"><div class="k">宿泊</div><div class="t">Perhotelan</div></div>
+      <div class="cell"><div class="k sm">工業製品<br>製造</div><div class="t">Manufaktur</div></div>
+      <div class="cell"><div class="k sm">自動車<br>整備</div><div class="t">Otomotif</div></div>
+      <div class="cell"><div class="k sm">ビル<br>清掃</div><div class="t">Kebersihan gedung</div></div>
+    </div>
+    <p class="small" style="margin-top:26px">…dan bidang SSW lainnya. Pilih sesuai minat &amp; pengalaman, lalu ikut tes keterampilannya.</p>
   </div>
-  <div class="note" style="font-size:30px">…dan bidang SSW lainnya. Pilih yang sesuai minat &amp; pengalamanmu, lalu ikut tes keterampilan bidang itu.</div>
-  <div class="foot"><img src="logo-a.png"><span class="pg">04 / 07</span></div>
+  <div class="foot"><img src="logo-a.png"><span>04 — 07</span></div>
 </section>
 
-<!-- 5. CARA DAPAT SERTIFIKAT -->
-<section class="s" id="s5"><div class="kj">勉強</div><div class="sun"></div>
-  <span class="chip">CARA LULUS TESNYA</span><div class="jp">どうやって合格する？</div>
-  <h2>Belajar sendiri, atau <span class="r">dibimbing?</span></h2>
-  <div class="vs">
-    <div class="card"><h3>Otodidak</h3><ul><li>Gratis / murah</li><li>Butuh disiplin tinggi</li><li>Gampang bingung harus mulai dari mana</li></ul></div>
-    <div class="card hl"><h3 class="r">Kelas bimbingan</h3><ul><li>Ada sensei &amp; jadwal tetap</li><li>Teman seperjuangan</li><li>Lebih cepat siap tes</li></ul></div>
+<!-- 5 CARA -->
+<section class="s" id="s5">
+  <div class="top"><span class="lbl">EZNIHONGO · <b>CATATAN KERJA</b></span><div class="hanko">勉強</div></div>
+  <div class="vert">合格への道</div>
+  <div style="padding-top:230px;padding-right:60px">
+    <div class="kicker">四　Cara lulus tesnya</div>
+    <h2>Belajar sendiri, atau <em>dibimbing?</em></h2>
+    <div class="cmp">
+      <div><div class="tag">PILIHAN 1</div><h3>Otodidak</h3><ul><li>Gratis atau murah</li><li>Butuh disiplin tinggi</li><li>Sering bingung mulai dari mana</li></ul></div>
+      <div class="bar"></div>
+      <div class="win"><div class="tag" style="color:var(--red)">PILIHAN 2</div><h3>Dibimbing</h3><ul><li>Ada sensei &amp; jadwal tetap</li><li>Teman seperjuangan</li><li>Lebih cepat siap tes</li></ul></div>
+    </div>
+    <div style="margin-top:64px;padding:34px 0;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)">
+      <p style="font-family:'Playfair Display';font-size:46px;line-height:1.25">Bagian paling lama? <em>Bahasanya.</em></p>
+      <p class="small" style="margin-top:10px">Tes keterampilan biasanya lebih cepat dikejar.</p>
+    </div>
   </div>
-  <p class="lead" style="font-size:36px">Bagian yang paling lama? <b>Bahasanya.</b> <span class="it" style="font-size:40px">Tes keterampilan biasanya lebih cepat dikejar.</span></p>
-  <div class="foot"><img src="logo-a.png"><span class="pg">05 / 07</span></div>
+  <div class="foot"><img src="logo-a.png"><span>05 — 07</span></div>
 </section>
 
-<!-- 6. ALUR SETELAH LULUS -->
-<section class="s" id="s6"><div class="kj">出発</div><div class="sun"></div>
-  <span class="chip">SETELAH LULUS</span><div class="jp">出発までの流れ</div>
-  <h2>Alurnya sampai <span class="r">berangkat</span></h2>
-  <div class="list" style="gap:16px">
-    <div class="row card"><div class="num">1</div><div><b>Lamar kerja &amp; wawancara</b><span>Wawancara dengan perusahaan Jepang <b>tidak dipungut biaya</b>.</span></div></div>
-    <div class="row card"><div class="num">2</div><div><b>Siapkan dokumen &amp; visa</b><span>Kontrak kerja, COE, visa SSW. Berangkat resmi &amp; legal.</span></div></div>
-    <div class="row card"><div class="num">3</div><div><b>Tiket pesawat</b><span>Kadang ditanggung perusahaan, kadang beli sendiri (ekonomi ±Rp4–5 juta sekali jalan).</span></div></div>
+<!-- 6 ALUR -->
+<section class="s" id="s6">
+  <div class="top"><span class="lbl">EZNIHONGO · <b>CATATAN KERJA</b></span><div class="hanko">出発</div></div>
+  <svg style="position:absolute;right:110px;top:250px;width:120px;height:120px;color:var(--red);transform:rotate(-20deg)"><use href="#plane"/></svg>
+  <div style="padding-top:230px;padding-right:60px">
+    <div class="kicker">五　Setelah lulus</div>
+    <h2>Alurnya sampai <em>berangkat.</em></h2>
+    <div class="tl">
+      <div class="st"><div class="dot">一</div><h3>Lamar kerja &amp; wawancara</h3><p>Wawancara dengan perusahaan Jepang <b>tidak dipungut biaya.</b></p></div>
+      <div class="st"><div class="dot">二</div><h3>Dokumen &amp; visa</h3><p>Kontrak kerja, COE, lalu visa SSW. Berangkat <b>resmi &amp; legal.</b></p></div>
+      <div class="st"><div class="dot">三</div><h3>Tiket pesawat</h3><p>Kadang ditanggung perusahaan, kadang beli sendiri — kelas ekonomi <b>±Rp4–5 juta</b> sekali jalan.</p></div>
+    </div>
+    <div class="warn"><b>HATI-HATI</b>Jangan percaya pihak yang minta bayaran besar untuk "menjamin" lolos wawancara.</div>
   </div>
-  <div class="note">⚠ Waspada pihak yang minta bayaran besar untuk "menjamin" lolos wawancara.</div>
-  <div class="foot"><img src="logo-a.png"><span class="pg">06 / 07</span></div>
+  <div class="foot"><img src="logo-a.png"><span>06 — 07</span></div>
 </section>
 
-<!-- 7. CTA -->
-<section class="s" id="s7" style="text-align:center"><div class="sun" style="right:auto;left:50%;margin-left:-170px;width:340px;height:340px;bottom:auto;top:80px;opacity:1"></div>
-  <div style="height:230px"></div>
-  <img src="logo-a.png" style="width:760px;position:relative">
-  <div class="jp" style="font-size:48px">学ぶ・備える・未来へ</div>
-  <h2 style="font-size:78px;margin-top:40px">Kerja ke Jepang?<br><span class="r">Mulai dari bahasanya.</span></h2>
-  <p class="lead" style="font-size:34px">Bootcamp live bareng sensei 2× seminggu, ada rekamannya, plus latihan harian di HP.</p>
-  <div style="margin-top:40px"><span class="cta">eznihongo.com ↗</span></div>
-  <div class="note" style="font-size:28px;margin-top:26px">Tanya-tanya dulu? WA admin: 0812-9489-4557</div>
+<!-- 7 CTA -->
+<section class="s" id="s7" style="text-align:center">
+  <div class="top"><span class="lbl">EZNIHONGO · <b>CATATAN KERJA</b></span><div class="hanko">始</div></div>
+  <div style="position:absolute;left:50%;top:170px;width:360px;height:360px;margin-left:-180px;border-radius:50%;background:var(--red)"></div>
+  <svg style="position:absolute;left:50%;top:300px;width:330px;height:286px;margin-left:-165px;color:var(--ink)"><use href="#torii"/></svg>
+  <svg style="position:absolute;left:0;right:0;bottom:0;width:1080px;height:90px"><rect width="1080" height="90" fill="url(#seigaiha)"/></svg>
+  <div style="padding-top:640px">
+    <div class="kicker" style="font-size:40px;letter-spacing:.3em">学ぶ・備える・未来へ</div>
+    <h2 style="font-size:84px;margin-top:18px">Kerja ke Jepang?<br><em>Mulai dari bahasanya.</em></h2>
+    <p class="body" style="font-size:30px;margin-top:22px">Bootcamp live bareng sensei 2× seminggu, ada rekamannya,<br>plus latihan harian di HP.</p>
+    <div style="margin-top:36px"><span class="cta">eznihongo.com <span style="font-size:36px">↗</span></span></div>
+    <p class="small" style="margin-top:20px">Tanya dulu? WA admin 0812-9489-4557</p>
+  </div>
 </section>
+
+<script>
+// lapisan kertas (grain + serat) di setiap slide
+document.querySelectorAll('.s').forEach(s=>{
+  s.insertAdjacentHTML('afterbegin','<svg class="grain" width="1080" height="1350"><rect width="1080" height="1350" filter="url(#paper)"/><rect width="1080" height="1350" filter="url(#fiber)"/></svg>');
+});
+</script>
 </body></html>
