@@ -164,7 +164,28 @@ def sparkle(t0):
     add(t0 + .25, bell(2349.3, 1.0, 4), .08, pan=.4)
 
 
+def impact(t0, idx=0):
+    """Hentakan hook: sub-bass + snap; makin keras tiap kata."""
+    g = [.55, .8, .75][int(idx)]
+    t = tt(1.0)
+    f = 45 + 110 * np.exp(-t * 18)
+    sub = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 4.5)
+    snap = lp_var(rng.standard_normal(len(t)), 5000.0) * np.exp(-t * 45)
+    body = lp_var(rng.standard_normal(len(t)), 600.0) * np.exp(-t * 9)
+    add(t0, sub, g); add(t0, snap, g * .35); add(t0, body, g * .5)
+    if idx == 2:  # layar merah: tambah gema lonceng rendah
+        add(t0, bell(293.66, 1.5, 2.0), .18); add(t0, bell(440.0, 1.5, 2.4), .1)
+
+
+def riser(t0):
+    d = .95; t = tt(d); x = t / d
+    n = bp_sweep(d, 200, 600 + 6000 * x ** 2) * x ** 2.5
+    add(t0, n / (np.max(np.abs(n)) + 1e-9), .22)
+
+
 KIND = {
+    'impact': lambda t, a: impact(t, a or 0), 'riser': lambda t, a: riser(t),
+    'whoosh_morph': lambda t, a: whoosh(t, -1, d=.7, f0=250, f1=3200, gain=.55),
     'whoosh': lambda t, a: whoosh(t, a or 1), 'whoosh_soft': lambda t, a: whoosh(t, a or 1, d=.5, f0=300, f1=2400, gain=.45),
     'whoosh_up': lambda t, a: whoosh_up(t), 'zoom': lambda t, a: zoom(t), 'swell': lambda t, a: swell(t),
     'boom': lambda t, a: boom(t), 'type': lambda t, a: typing(t, a or .6), 'pop': lambda t, a: pop(t, a or 0),
@@ -181,7 +202,7 @@ for c in cues:
 sfxL, sfxR = L.copy(), R.copy()
 L[:] = 0; R[:] = 0
 t = np.arange(N) / SR
-env = np.clip(t / 2.0, 0, 1) * np.clip((DUR - t) / 1.5, 0, 1)
+env = np.clip((t - 2.2) / 1.5, 0, 1) * np.clip((DUR - t) / 1.5, 0, 1)
 pad = np.zeros(N)
 for f, a in ((73.42, .5), (146.83, .45), (220.0, .35), (329.63, .22), (369.99, .14)):
     for det in (-.6, .6):
@@ -193,17 +214,17 @@ L += pad * .05; R += pad * .05
 beat = 60 / 100  # 100 BPM
 pattern = [293.66, 440.0, 493.88, 440.0, 392.0, 293.66, 329.63, 293.66]
 k = 0
-tb = 3.25
-while tb < 24.9:
+tb = 4.85
+while tb < 26.5:
     if k % 8 not in (3, 7):
         f = pattern[k % 8] * (2 if (k // 16) % 2 else 1)
         add(tb, pluck(f, 1.2, .995), .085, pan=-.35 if k % 2 else .35)
     tb += beat / 2 if k % 4 == 1 else beat
     k += 1
 # frasa penutup (logo akhir)
-for dt, f in ((25.9, 146.83), (25.9, 293.66), (26.05, 440.0), (26.2, 587.33), (26.45, 659.25), (26.7, 587.33)):
+for dt, f in ((27.2, 146.83), (27.2, 293.66), (27.35, 440.0), (27.5, 587.33), (27.75, 659.25), (28.0, 587.33)):
     add(dt, pluck(f, 2.5, .998), .13, pan=rng.uniform(-.3, .3))
-for dt, f in ((0.85, 146.83), (0.85, 293.66), (1.0, 440.0), (1.15, 587.33)):
+for dt, f in ((2.45, 146.83), (2.45, 293.66), (2.6, 440.0), (2.75, 587.33)):
     add(dt, pluck(f, 2.0, .998), .12, pan=rng.uniform(-.3, .3))
 
 L += sfxL; R += sfxR

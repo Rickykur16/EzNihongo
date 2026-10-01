@@ -27,7 +27,7 @@ di `video.html` — ubah animasi, ubah cue-nya di tempat yang sama.
 
 1. `node cues.mjs` → `cues.json`
 2. `python3 sfx.py cues.json sfx.wav`
-3. Normalisasi loudnorm dua tahap ke -16 LUFS / TP -1.5, lalu gabungkan:
+3. Normalisasi loudnorm dua tahap ke -16 LUFS / TP -1.5, turunkan 1,5 dB + `alimiter=limit=0.79` (peak AAC tetap < -1 dBFS), lalu gabungkan:
    `ffmpeg -framerate 30 -i <dir>/f%04d.jpg -i sfx-norm.wav -c:v libx264 -crf 18 -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -movflags +faststart ../eznihongo-brand-30s.mp4`
 
 Tangkapan Belajar/Review/Progres memakai `assets/landing/*.png` yang sudah ada.

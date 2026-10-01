@@ -41,6 +41,22 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:var(--paper);fon
 </style></head>
 <body><div id="stage">
 
+<!-- H hook: "Mau kerja di Jepang?" → "Bahasanya dulu." → merah menyusut jadi matahari -->
+<div class="scene" id="hk" style="background:#0b1120;z-index:20">
+  <img id="hkimg" src="../../assets/landing/tokyo-night.jpg" class="abs" style="left:0;top:0;width:1920px;height:1080px;object-fit:cover;transform-origin:50% 45%">
+  <div class="abs" style="inset:0;background:radial-gradient(ellipse at center,rgba(8,12,24,.35),rgba(8,12,24,.85))"></div>
+  <div class="abs" id="hktxt" style="left:0;right:0;top:300px;text-align:center;font-family:'Shippori Mincho',serif;font-weight:800;color:#fff;line-height:1.05">
+    <div id="hkw1" style="font-size:150px;display:inline-block">Mau kerja di</div><br>
+    <div id="hkw2" style="font-size:190px;display:inline-block;color:#ff3b55">Jepang?</div>
+  </div>
+</div>
+<div class="abs" id="hkred" style="z-index:21;background:var(--red);left:0;top:0;width:1920px;height:1080px;opacity:0;overflow:hidden">
+  <div id="hkred_t" style="position:absolute;left:0;top:0;width:1920px;height:1080px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff">
+    <div id="hkw3" style="font-family:'Shippori Mincho',serif;font-weight:800;font-size:170px;line-height:1">Bahasanya dulu.</div>
+    <div id="hkw4" style="font-family:'Noto Sans JP';font-weight:700;font-size:44px;margin-top:34px;letter-spacing:.2em;opacity:.85">まずは、日本語から。</div>
+  </div>
+</div>
+
 <!-- S1 pembuka -->
 <div class="scene" id="s1">
   <div class="wm" id="s1wm" style="font-size:460px;top:290px;left:0">未来へ・学ぶ</div>
@@ -48,7 +64,7 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:var(--paper);fon
   <img class="abs" id="s1logo" src="logo-a.png" style="width:860px;left:150px;top:200px">
   <div class="abs" style="left:200px;top:650px">
     <div class="chip" id="s1chip" data-text="Belajar. Bersiap. Berkarier."></div>
-    <div class="h kin" id="s1tag" style="font-size:56px;margin-top:20px">Belajar bahasa Jepang,<br><em>tanpa bingung mulai dari mana.</em></div>
+    <div class="h kin" id="s1tag" style="font-size:72px;margin-top:20px">Mulai dari sini.</div>
   </div>
 </div>
 
@@ -77,8 +93,8 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:var(--paper);fon
   <div class="wm" id="s3wm" style="font-size:560px;top:420px;left:-60px">語</div>
   <div class="abs" style="left:110px;top:300px;width:600px">
     <div class="chip" id="s3chip" data-text="02 · Belajar"></div>
-    <div class="h kin" id="s3cap" style="margin-top:20px;font-size:58px">Tiap bab lengkap, <em>sampai ke suaranya.</em></div>
-    <div class="sub kin" id="s3sub">Lihat kanjinya, cara bacanya, artinya, dengarkan pengucapannya — lalu langsung latihan.</div>
+    <div class="h kin" id="s3cap" style="margin-top:20px;font-size:58px">Lihat kanjinya, <em>dengar cara bacanya.</em></div>
+    <div class="sub kin" id="s3sub">Setiap kata lengkap dengan arti dan suaranya — habis itu langsung latihan.</div>
   </div>
   <div class="win" id="s3win" style="left:740px;top:120px;width:1100px">
     <div class="bar"><i></i><i></i><i></i><div class="url">eznihongo.com/<b>belajar</b></div></div>
@@ -195,8 +211,9 @@ const eback=x=>{const c=1.6;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
 const lerp=(a,b,x)=>a+(b-a)*x;
 
 // ---- efek suara (detik, jenis, parameter) -------------------------------
-window.CUES=[
-  [0.10,'swell'],[0.85,'boom'],[1.30,'type',0.6],
+const HOOK_SHIFT=1.6;
+const OLD_CUES=[
+  [0.85,'boom'],[1.30,'type',0.6],
   [2.92,'whoosh',1],[3.30,'whoosh_soft',-1],[4.90,'pop',0],[5.70,'pop',3],
   [7.30,'click'],[7.45,'zoom'],
   [9.70,'click'],[9.78,'blip'],[10.30,'pop',2],[11.40,'pop',5],
@@ -205,8 +222,9 @@ window.CUES=[
   [17.02,'whoosh',1],
   [18.20,'tick',0],[18.35,'tick',1],[18.50,'tick',2],[18.65,'tick',3],[18.80,'tick',4],
   [21.15,'whoosh_up'],[22.95,'tap'],
-  [24.92,'whoosh',1],[25.40,'swell'],[25.90,'boom'],[26.40,'shimmer'],[27.25,'pop',6],[28.0,'sparkle'],
+  [24.92,'whoosh',1],[25.30,'swell'],[25.60,'boom'],[25.90,'shimmer'],[26.60,'pop',6],[27.30,'sparkle'],
 ];
+window.CUES=[[0.0,'riser'],[0.05,'impact',0],[0.38,'impact',1],[0.95,'impact',2],[1.62,'whoosh_morph']].concat(OLD_CUES.map(([o,k,a])=>a===undefined?[o+HOOK_SHIFT,k]:[o+HOOK_SHIFT,k,a]));
 
 // ---- teks kinetik: pecah per kata sekali di awal ------------------------
 function splitWords(el){
@@ -253,7 +271,7 @@ const CONF=[]; { let seed=7; const r=()=>(seed=(seed*16807)%2147483647)/21474836
   for(let i=0;i<26;i++){ const d=document.createElement('div'); d.className='conf'; d.style.background=cols[i%5]; host.appendChild(d);
     CONF.push({el:d,vx:(r()-.5)*720,vy:-260-r()*420,rot:(r()-.5)*900,x:415+(r()-.5)*120,y:405}); } }
 
-function render(t){
+function renderOld(t){
   // wipes
   let w=100; for(const a of [2.92,17.02,24.92]){ const v=wipe(null,t,a); if(v!==100){w=v;} }
   $('wipe').style.transform=`translateX(${w}%)`;
@@ -262,8 +280,7 @@ function render(t){
 
   // ===== S1 0–3.23
   if(vis('s1',t,0,3.23,0,0)){
-    const sp=eo(seg(t,.1,1.3));
-    $('s1sun').style.transform=`translateY(${(1-sp)*300}px) scale(${lerp(.35,1,sp)})`; $('s1sun').style.opacity=sp;
+    $('s1sun').style.transform=`scale(${1+.03*Math.sin(t*2)})`;
     const lp=eo5(seg(t,.55,1.45));
     $('s1logo').style.clipPath=`inset(0 ${(1-lp)*100}% 0 0)`;
     $('s1logo').style.transform=`scale(${lerp(1.08,1,eo(seg(t,.55,2.2)))})`;
@@ -354,18 +371,48 @@ function render(t){
 
   // ===== S7 penutup 25.23–30
   if(vis('s7',t,25.23,30.01,0,0)){
-    const sp=eo(seg(t,25.4,26.5));
+    const sp=eo(seg(t,25.3,26.2));
     $('s7sun').style.transform=`translateY(${(1-sp)*220}px) scale(${lerp(.35,1,sp)})`; $('s7sun').style.opacity=sp;
-    const lp=eo5(seg(t,25.6,26.5));
+    const lp=eo5(seg(t,25.4,26.2));
     $('s7logo').style.clipPath=`inset(0 ${(1-lp)*100}% 0 0)`;
-    $('s7logo').style.transform=`scale(${lerp(1.06,1,eo(seg(t,25.6,27.5)))})`;
+    $('s7logo').style.transform=`scale(${lerp(1.06,1,eo(seg(t,25.4,27.4)))})`;
     const jp='学ぶ ・ 備える ・ 未来へ';
-    $('s7jp').innerHTML=[...jp].map((ch,i)=>{const p=seg(t,26.4+i*.05,26.4+i*.05+.45);return `<span style="display:inline-block;opacity:${cl(p*2)};transform:translateY(${(1-eo5(p))*40}px)">${ch===' '?'&nbsp;':ch}</span>`}).join('');
-    kin('s7en',t,26.9,.08,.5,24);
-    const c=seg(t,27.25,27.75); $('s7cta').style.opacity=cl(c*1.8); $('s7cta').style.transform=`translateY(${(1-eback(c))*40}px) scale(${lerp(.85,1,eback(c))})`;
-    $('s7shine').style.transform=`translateX(${eio(seg(t,28.0,28.8))*620}px) skewX(-20deg)`;
+    $('s7jp').innerHTML=[...jp].map((ch,i)=>{const p=seg(t,25.9+i*.05,25.9+i*.05+.45);return `<span style="display:inline-block;opacity:${cl(p*2)};transform:translateY(${(1-eo5(p))*40}px)">${ch===' '?'&nbsp;':ch}</span>`}).join('');
+    kin('s7en',t,26.35,.08,.5,24);
+    const c=seg(t,26.6,27.1); $('s7cta').style.opacity=cl(c*1.8); $('s7cta').style.transform=`translateY(${(1-eback(c))*40}px) scale(${lerp(.85,1,eback(c))})`;
+    $('s7shine').style.transform=`translateX(${eio(seg(t,27.3,28.1))*620}px) skewX(-20deg)`;
     $('s7wm').style.transform=`translateX(${-(t-25)*30}px)`;
   }
+}
+function shake(t,a,amp){ const x=t-a; if(x<0||x>.35) return 0; return Math.sin(x*90)*amp*Math.exp(-x*12); }
+function render(T){
+  renderOld(Math.max(0,T-HOOK_SHIFT));
+  // ---- hook 0–2.25 (waktu nyata)
+  const hk=$('hk'), red=$('hkred');
+  hk.style.opacity = T<1.0 ? 1 : 0;
+  if(T<1.0){
+    $('hkimg').style.transform=`scale(${lerp(1.08,1.22,T/1.0)})`;
+    const a=seg(T,.05,.3), b=seg(T,.38,.62);
+    $('hkw1').style.opacity=cl(a*3); $('hkw1').style.transform=`scale(${lerp(1.9,1,eo5(a))})`;
+    $('hkw2').style.opacity=cl(b*3); $('hkw2').style.transform=`scale(${lerp(2.2,1,eo5(b))})`;
+    const sx=shake(T,.05,10)+shake(T,.38,18), sy=shake(T+.01,.05,7)+shake(T+.01,.38,12);
+    $('hktxt').style.transform=`translate(${sx}px,${sy}px)`;
+  }
+  if(T>=0.95 && T<2.3){
+    red.style.opacity=1;
+    const c=seg(T,.95,1.2);
+    $('hkw3').style.transform=`scale(${lerp(1.7,1,eo5(c))}) translate(${shake(T,.95,14)}px,${shake(T+.01,.95,9)}px)`;
+    $('hkw3').style.opacity=cl(c*3);
+    $('hkw4').style.opacity=.85*seg(T,1.15,1.4); $('hkw4').style.transform=`translateY(${(1-eo(seg(T,1.15,1.45)))*20}px)`;
+    // morph: layar merah menyusut jadi matahari S1 (560px di 1200,240)
+    const m=eio(seg(T,1.62,2.25));
+    const w=lerp(1920,560,m), h=lerp(1080,560,m);
+    red.style.left=lerp(0,1200,m)+'px'; red.style.top=lerp(0,240,m)+'px';
+    red.style.width=w+'px'; red.style.height=h+'px';
+    red.style.borderRadius=lerp(0,280,m)+'px';
+    $('hkred_t').style.opacity=1-seg(T,1.6,1.85);
+    $('hkred_t').style.transform=`scale(${lerp(1,.6,m)})`; $('hkred_t').style.transformOrigin='0 0';
+  } else red.style.opacity=0;
 }
 window.render=render;
 render(0);
