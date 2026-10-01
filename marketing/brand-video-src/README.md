@@ -1,5 +1,19 @@
 # Video brand awareness EzNihongo (30 detik)
 
+Dua versi:
+- **`../eznihongo-brand-30s-9x16.mp4`** (utama, TikTok/Reels/Shorts) — `video-9x16.html`,
+  1080×1920. Gaya caption mengikuti referensi konten edukasi: tumpukan kata kecil /
+  kata kunci besar (Montserrat 900) / sambungan serif miring (Playfair Display Italic),
+  muncul per kata blur→tajam, kotak judul merah, flash putih antar-adegan, slide
+  tipografi merah & belah abu/merah. Render: `VIDEO=video-9x16.html W=1080 H=1920
+  node render.mjs <dir> full`; cue: `VIDEO=video-9x16.html OUT=cues-9x16.json node cues.mjs`.
+- `../eznihongo-brand-30s.mp4` (16:9, versi sebelumnya) — `video.html`.
+
+B-roll hook memakai foto berlisensi Pexels/Unsplash yang sudah ada di repo
+(`assets/landing/*`, `assets/dashboard/*`). Situs stok video (Pexels video, Pixabay,
+Mixkit, dll.) diblokir jaringan sandbox saat video ini dibuat.
+
+
 Hasil: `../eznihongo-brand-30s.mp4` — 1920×1080, 30 fps, H.264 + AAC stereo (-16 LUFS).
 
 Isi (UI aplikasi siswa saja, tanpa landing page): pembuka logo → Dashboard →

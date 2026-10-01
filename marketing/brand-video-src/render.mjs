@@ -1,9 +1,14 @@
+// node render.mjs <dir-keluaran> <full|t1,t2,...>
+// Env: VIDEO=video.html (atau video-9x16.html), W/H = ukuran viewport (default 1920×1080).
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { fontRoutes } from './fontroute.mjs';
 const [out, mode] = [process.argv[2], process.argv[3]];
+const VIDEO = process.env.VIDEO || 'video.html';
+const W = +(process.env.W || 1920), H = +(process.env.H || 1080);
 const b = await chromium.launch();
-const p = await b.newPage({ viewport:{width:1920,height:1080} }); await fontRoutes(p);
-await p.goto('http://127.0.0.1:8099/marketing/brand-video-src/video.html', {waitUntil:'networkidle'});
+const p = await b.newPage({ viewport:{width:W,height:H} }); await fontRoutes(p);
+p.on('pageerror', e => console.log('ERR', e.message));
+await p.goto(`http://127.0.0.1:8099/marketing/brand-video-src/${VIDEO}`, {waitUntil:'networkidle'});
 await p.evaluate(()=>document.fonts.ready);
 await p.evaluate(()=>Promise.all([...document.images].map(i=>i.decode())));
 const times = mode==='full' ? Array.from({length:900},(_,i)=>i/30) : mode.split(',').map(Number);
