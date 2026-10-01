@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseDialog, voiceForSpeaker, fetchElevenAudio, ttsHashKey, TTS_ELEVEN_MODEL, TTS_SETTINGS_VERSION } from './routes/tts.js';
+import { parseDialog, voiceForSpeaker, fetchElevenAudio, speechText, ttsHashKey, TTS_ELEVEN_MODEL, TTS_SETTINGS_VERSION } from './routes/tts.js';
 import { createHash } from 'node:crypto';
 
 test('TTS cache distinguishes a voice swap and preserves unambiguous legacy hashes', () => {
@@ -118,4 +118,18 @@ test('fetchElevenAudio: the one generation call every dialogue turn goes through
   assert.equal(calls[1].body.model_id, TTS_ELEVEN_MODEL);
   assert.match(calls[1].body.text, /\[excited\]/);
   for (const call of calls) assert.doesNotMatch(call.body.text, /<break/);
+});
+
+test('speechText: word spaces between Japanese are not spoken; Latin, tags and SSML keep theirs', async (t) => {
+  assert.equal(speechText('たなかさんは にほんの せんせいです。'), 'たなかさんはにほんのせんせいです。');
+  assert.equal(speechText('日よう日は　何を しましたか。'), '日よう日は何をしましたか。');
+  assert.equal(speechText('わたしは テレビを みないで、 早く ねました。'), 'わたしはテレビをみないで、早くねました。');
+  assert.equal(speechText('[excited] こんにちは。'), '[excited] こんにちは。');
+  assert.equal(speechText('Tanaka さん です'), 'Tanaka さんです');
+  assert.equal(speechText('はい。 <break time="700ms" />'), 'はい。 <break time="700ms" />');
+  const calls = mockElevenFetch(t);
+  await fetchElevenAudio('voice_anna', 'こんにちは [excited] お元気 ですか。', 'dialogue');
+  await fetchElevenAudio('voice_narrator', '[calm] ふたりが はなしています。', 'narrator');
+  assert.equal(calls[0].body.text, 'こんにちは [excited] お元気ですか。');
+  assert.equal(calls[1].body.text, 'ふたりがはなしています。');
 });

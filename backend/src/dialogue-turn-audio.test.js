@@ -140,13 +140,15 @@ test('editing one line re-voices only that line', async () => {
   const after = await student();
   assert.equal(after.status, 200);
   assert.equal(upstream.length, 4);
-  assert.equal(upstream.at(-1).text, 'よろしく おねがいします。');
+  assert.equal(upstream.at(-1).text, 'よろしくおねがいします。', 'word spaces are not spoken');
   assert.equal(after.clips[0], before[0]);
   assert.equal(after.clips[1], before[1]);
   assert.notEqual(after.clips[2], before[2]);
 });
 
 test('takes from before per-turn caching are adopted without calling ElevenLabs — the admin-tested take first', async () => {
+  savedText = 'N: ふたりがはなしています。\nA: こんにちは。\nB: はじめまして。';
+  const ORIGINAL = savedText;
   const voices = ['narrator-voice', 'anna-voice', 'hadi-voice'];
   const legacy = {format: 'dialog-segments-v1', segments: ['N', 'A', 'B'].map((speaker, i) => ({
     speaker, role: i ? 'dialogue' : 'narrator', content_type: 'audio/mpeg', audio_base64: Buffer.from(`legacy-${i}`).toString('base64'),
@@ -159,6 +161,28 @@ test('takes from before per-turn caching are adopted without calling ElevenLabs 
   assert.equal(upstream.length, 0);
   assert.equal((await turn(2)).text, 'legacy-2');
   assert.equal(upstream.length, 0);
+});
+
+// Spaced material was voiced with a pause at every space; those takes are
+// not reused, and the new take is generated from the text without them.
+test('a spaced turn is re-voiced once without its word spaces, unspaced turns keep their take', async () => {
+  const voices = ['narrator-voice', 'anna-voice', 'hadi-voice'];
+  const legacy = {format: 'dialog-segments-v1', segments: ['N', 'A', 'B'].map((speaker, i) => ({
+    speaker, role: i ? 'dialogue' : 'narrator', content_type: 'audio/mpeg', audio_base64: Buffer.from(`legacy-${i}`).toString('base64'),
+  }))};
+  cache.set(ttsHashKey('dialogsegs1\n' + ORIGINAL, voices), {audio: Buffer.from('whole-dialog'), alignment: legacy});
+  cache.set(ttsHashKey('N: ふたりが はなしています。', ['narrator-voice']), {audio: Buffer.from('admin-tested-spaced'), alignment: null});
+  // A per-turn take stored before this change, keyed by the spaced text.
+  cache.set(ttsHashKey('dialogturn1\nnarrator\nふたりが はなしています。', ['narrator-voice']), {audio: Buffer.from('old-choppy'), alignment: null});
+  const first = await student();
+  assert.equal(first.status, 200);
+  assert.deepEqual(upstream.map(u => u.text), ['ふたりがはなしています。']);
+  assert.ok(first.clips[0].startsWith('take-'));
+  assert.deepEqual(first.clips.slice(1), ['legacy-1', 'legacy-2']);
+  const again = await student();
+  assert.deepEqual(again.clips, first.clips, 'the re-voiced take is stored and reused');
+  assert.equal(upstream.length, 1);
+  assert.equal((await turn(0)).text, first.clips[0], 'admin hears the same take');
 });
 
 test('a legacy whole-dialogue take that no longer lines up with the turns is not adopted', async () => {

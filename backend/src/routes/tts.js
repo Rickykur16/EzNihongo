@@ -166,15 +166,27 @@ const NARRATOR_MODEL_OVERRIDE = 'eleven_multilingual_v2';
 
 const modelForRole = (role) => (role === 'narrator' ? NARRATOR_MODEL_OVERRIDE : ELEVEN_MODEL);
 
+// Materials are typed with a space between words (たなかさんは がくせいです) so
+// beginners can read them and the arrange drill can cut them. ElevenLabs
+// reads those spaces as pauses, so speech came out halting. Spaces between
+// two Japanese characters are dropped from what is SPOKEN only; the stored
+// and displayed text keeps them. Spaces next to Latin text, [emotion] tags
+// or SSML stay.
+const JP_CHAR = '[\\u3001-\\u30ff\\u3400-\\u9fff\\uf900-\\ufaff\\uff01-\\uffef]';
+const JP_GAP = new RegExp(`(${JP_CHAR})[ \\u3000]+(?=${JP_CHAR})`, 'gu');
+export function speechText(text) {
+  return String(text).replace(JP_GAP, '$1');
+}
+
 export async function fetchElevenAudio(voiceId, text, role = 'single', retry = 0) {
   const settings = VOICE_SETTINGS[role] || VOICE_SETTINGS.single;
   const modelId = modelForRole(role);
   // Narrator dipaksa v2 → tag emotion [calm]/[questioning]/dll bakal dibaca
   // literal. Strip tag dari text supaya gak keluar sebagai kata "calm" /
   // "questioning" di audio.
-  const cleanText = role === 'narrator'
+  const cleanText = speechText(role === 'narrator'
     ? text.replace(/\[[a-z_]{1,24}\]\s*/gi, '').trim()
-    : text;
+    : text);
   const upstream = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
     {
@@ -247,8 +259,10 @@ export async function fetchElevenVoices() {
 // everyone. Same generation call as /api/tts (fetchElevenAudio, no SSML
 // <break>: the player inserts its own gap between clips).
 const DIALOG_TURN_PREFIX = 'dialogturn1';
+// Keyed by what is spoken: a turn typed without spaces keeps its stored take,
+// a spaced one gets a new key and is re-voiced once without the pauses.
 export function dialogTurnKey(turn, voice) {
-  return ttsHashKey(`${DIALOG_TURN_PREFIX}\n${voice.role}\n${turn.text}`, [voice.voiceId]);
+  return ttsHashKey(`${DIALOG_TURN_PREFIX}\n${voice.role}\n${speechText(turn.text)}`, [voice.voiceId]);
 }
 
 async function selectTurnAudio(keys) {
@@ -273,7 +287,10 @@ async function storeTurnAudio(key, turn, voice, audio, replace) {
 // admin's own earlier "Tes giliran" take (the old /admin/tts/preview row for
 // that single "SPEAKER: text" line) wins over the student's whole-dialogue
 // take (old "dialogsegs1" row): it is the one a person actually listened to.
-async function adoptLegacyTakes(missing, turns, turnVoices, keys, dialogText) {
+async function adoptLegacyTakes(missingTurns, turns, turnVoices, keys, dialogText) {
+  // Legacy takes were voiced from the spaced text, pauses included.
+  const missing = missingTurns.filter((i) => speechText(turns[i].text) === turns[i].text);
+  if (!missing.length) return;
   const testedKeys = missing.map((i) => ttsHashKey(`${turns[i].speaker}: ${turns[i].text}`, [turnVoices[i].voiceId]));
   const tested = await selectTurnAudio(testedKeys);
   let segments = null;

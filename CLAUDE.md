@@ -397,6 +397,23 @@
       progres N4 — SENGAJA tanpa penyesuaian progres karena N4 belum punya siswa
       (dikonfirmasi user, sama seperti keputusan di 178).
 
+      **Suara dialog tersendat di tiap spasi** — user: "percakapannya setiap kata ada
+      spasinya jadi patah2 gitu" (dikonfirmasi: SUARANYA, N4 dan N5). Materi ditulis
+      berspasi antar-kata (konvensi pemula + bahan susun-kalimat; dialog N5 90/97,
+      N4 47/47) dan ElevenLabs membaca spasi itu sebagai jeda. `speechText()`
+      (`routes/tts.js`) membuang spasi di antara DUA karakter Jepang hanya dari teks
+      yang DIUCAPKAN (`fetchElevenAudio`, semua jalur); teks tersimpan/tampil tetap
+      berspasi. Spasi di sebelah huruf Latin, tag [emosi], dan SSML tidak disentuh.
+      `dialogTurnKey` kini memakai teks ucapan: giliran tanpa spasi kuncinya SAMA
+      (take lama tetap), giliran berspasi dapat kunci baru → disuarakan ulang SEKALI
+      saat pertama diputar; take lama berspasi (termasuk "Buat ulang" admin dan
+      adopsi legacy) sengaja tidak dipakai lagi karena justru itu yang tersendat.
+      **Tidak ikut diganti**: cache `/api/tts` (kosakata/kalimat/listening kuis)
+      yang sudah tersimpan — kuncinya tetap teks asli, jadi audio lama tetap
+      dipakai; hanya generate baru yang tanpa jeda. **Belum diverifikasi**: hasil
+      dengar ElevenLabs sungguhan (diblokir dari sandbox) — termasuk apakah kana
+      tanpa spasi tetap dibaca dengan pemenggalan yang benar.
+
       **Bug: menyimpan baris pola dari admin MENGHAPUS suara dialog** (ada sejak fitur
       scene `8de8d54`, ketahuan saat merekam video perbandingan gerak): admin memuat pola
       lewat `GET /api/courses/:slug`, yang memakai `publicDialogScene` (membuang `voiceId`
