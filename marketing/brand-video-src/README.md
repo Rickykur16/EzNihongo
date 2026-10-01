@@ -7,6 +7,10 @@ Dua versi:
   muncul per kata blur→tajam, kotak judul merah, flash putih antar-adegan, slide
   tipografi merah & belah abu/merah. Render: `VIDEO=video-9x16.html W=1080 H=1920
   node render.mjs <dir> full`; cue: `VIDEO=video-9x16.html OUT=cues-9x16.json node cues.mjs`.
+  Adegan Bootcamp (6,3–10,3 dtk) memakai halaman Live Class asli dengan data contoh
+  (`node shoot-live.mjs .` → `live-upcoming.png`, `live-recordings.png`). Klaim "2×
+  seminggu" dan rekaman sesuai landing & halaman Live Class; "3 bulan" dari pemilik
+  produk — BELUM tercantum di website.
 - `../eznihongo-brand-30s.mp4` (16:9, versi sebelumnya) — `video.html`.
 
 B-roll hook memakai foto berlisensi Pexels/Unsplash yang sudah ada di repo

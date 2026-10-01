@@ -79,6 +79,19 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:#111;font-family
   <div class="abs" id="jp1" style="left:0;right:0;top:1230px;text-align:center;font-family:'Shippori Mincho';font-weight:800;font-size:64px;color:var(--red);letter-spacing:.08em"></div>
 </div>
 
+<!-- ===== BOOTCAMP (waktu nyata 6,3–10,3) ===== -->
+<div class="scene bg-paper app" id="sboot">
+  <div class="card" id="cboot"><div class="bar"><i></i><i></i><i></i><div class="url">eznihongo.com/<b>live-class</b></div></div>
+    <div class="view"><div class="layer" id="lboot"><img src="live-upcoming.png" style="width:1800px">
+      <img id="lrec" src="live-recordings.png" style="position:absolute;left:0;top:0;width:1800px;opacity:0">
+      <div class="ring" id="rb1" style="left:398px;top:524px"></div><div class="ring" id="rb2" style="left:1576px;top:769px"></div>
+      <svg class="cursor" id="kboot" width="90" height="110" viewBox="0 0 22 27"><path d="M2 2 L2 22 L7.5 17 L11 25 L14.5 23.5 L11 15.8 L18.5 15.8 Z" fill="#1a1815" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="abs stk" id="stk1" style="right:36px;top:250px;width:220px;height:220px;border-radius:50%;background:var(--red);color:#fff;display:grid;place-items:center;text-align:center;font-family:Montserrat;font-weight:900;line-height:.9;box-shadow:0 20px 40px -14px rgba(120,0,20,.6);opacity:0"><div><div style="font-size:92px">2×</div><div style="font-size:30px;font-weight:800">SEMINGGU</div></div></div>
+    <div class="abs stk" id="stk2" style="right:200px;top:470px;background:var(--yellow);color:#111;font-family:Montserrat;font-weight:900;font-size:50px;padding:10px 24px;border-radius:14px;box-shadow:0 16px 30px -12px rgba(0,0,0,.4);opacity:0">3 BULAN</div>
+    </div></div>
+</div>
+
 <!-- ===== ADEGAN APLIKASI ===== -->
 <div class="scene bg-paper app" id="sdash">
   <div class="card" id="cdash"><div class="bar"><i></i><i></i><i></i><div class="url">eznihongo.com/<b>dashboard</b></div></div>
@@ -183,12 +196,29 @@ const CAPS=[
   [12.4,14.45,1300,'light',[['s','terus'],['b r','dengar'],['i','cara bacanya.']]],
   [14.7,16.6,1300,'light',[['s','yang udah hafal'],['b','jarang muncul.']]],
   [16.6,18.95,1270,'light',[['s','yang sering salah'],['b r','muncul lagi'],['i','sebelum kamu lupa.']]],
-  [19.2,21.0,1300,'light',[['s','lihat'],['b','sejauh mana'],['i','kamu udah melangkah.']]],
-  [21.0,22.55,1300,'light',[['s','dan mana yang'],['b r','perlu dikejar.']]],
+  [19.15,21.0,1300,'light',[['s','lihat'],['b','sejauh mana'],['i','kamu udah melangkah.']]],
   [22.8,24.5,1430,'light',[['s','di HP pun'],['b','tetap enak'],['i','dipakai.']]],
   [24.5,26.2,1430,'light',[['s','belajar sambil'],['b r','nunggu kereta.']]],
   [26.9,30.01,1080,'light',[['s','kerja ke Jepang,'],['b r','mulai dari'],['b r','bahasanya.']]],
 ];
+// Bootcamp disisipkan di waktu NYATA 6,3–10,3; adegan aplikasi lama (waktu "lama") dipadatkan.
+const BOOT=[6.3,10.3];
+const BOOT_CHIPS=[['BOOTCAMP · LIVE CLASS',6.4,10.3]];
+const BOOT_CAPS=[
+  [6.5,8.35,1270,'light',[['s','bootcamp live bareng sensei'],['b r','2× seminggu'],['i','selama 3 bulan.']]],
+  [8.35,10.3,1300,'light',[['s','kelewat kelas?'],['b r','ada rekamannya.']]],
+];
+// peta waktu nyata → waktu lama (setelah bootcamp). Frasa Progres kedua (lama 21,0–22,55) dilewati.
+const KNOTS=[[10.3,6.3],[13.7,10.35],[17.1,14.45],[20.8,18.95],[22.8,21.0]];
+function toOld(T){ if(T<BOOT[0]) return T; if(T>=26.2) return T;
+  if(T>=22.8) return 22.55+(T-22.8)*(26.2-22.55)/(26.2-22.8);
+  for(let i=0;i<KNOTS.length-1;i++){ const [a,oa]=KNOTS[i],[b,ob]=KNOTS[i+1]; if(T>=a&&T<b) return oa+(T-a)*(ob-oa)/(b-a); }
+  return 6.3; }
+function toReal(o){ if(o<6.3||o>=26.2) return o; if(o>=21.0&&o<22.55) return null;
+  if(o>=22.55) return 22.8+(o-22.55)*(26.2-22.8)/(26.2-22.55);
+  for(let i=0;i<KNOTS.length-1;i++){ const [a,oa]=KNOTS[i],[b,ob]=KNOTS[i+1]; if(o>=oa&&o<ob) return a+(o-oa)*(b-a)/(ob-oa); }
+  return null; }
+
 window.CUES=[[0,'riser'],[0.45,'cutfx'],[0.9,'cutfx'],[1.3,'cutfx'],[1.75,'cutfx'],[2.1,'cutfx'],
   [0.4,'impact',0],[1.47,'impact',1],[2.4,'whoosh',1],[2.62,'impact',2],[3.18,'strike'],[3.75,'whoosh_soft',-1],[4.0,'pop',5],
   [4.95,'whoosh',1],[5.05,'boom'],[5.5,'shimmer'],[6.3,'whoosh_soft',1],[6.42,'pop',0],[7.2,'lift'],[7.95,'lift'],
@@ -196,15 +226,21 @@ window.CUES=[[0,'riser'],[0.45,'cutfx'],[0.9,'cutfx'],[1.3,'cutfx'],[1.75,'cutfx
   [14.45,'whoosh_soft',-1],[14.57,'pop',2],[15.85,'punch'],[15.92,'click'],[16.0,'correct'],[16.8,'pop',4],
   [18.95,'whoosh_soft',1],[19.07,'pop',3],[19.5,'count'],[19.65,'tick',0],[19.8,'tick',1],[19.95,'tick',2],[20.1,'tick',3],[20.25,'tick',4],
   [22.55,'whoosh_up'],[22.67,'pop',6],[23.2,'pop',1],[23.9,'tap'],[24.0,'pop',4],[24.65,'pop',2],
-  [26.2,'whoosh',1],[26.25,'swell'],[26.45,'boom'],[26.9,'shimmer'],[28.3,'pop',6],[28.9,'sparkle']].sort((a,b)=>a[0]-b[0]);
+  [26.2,'whoosh',1],[26.25,'swell'],[26.45,'boom'],[26.9,'shimmer'],[28.3,'pop',6],[28.9,'sparkle']]
+  .map(c=>{ const r=toReal(c[0]); return r===null?null:[+r.toFixed(3),...c.slice(1)]; }).filter(Boolean)
+  .concat([[6.3,'whoosh_soft',1],[6.42,'pop',3],[7.0,'pop',1],[7.6,'pop',5],[8.45,'click'],[8.52,'whoosh_soft',-1],[9.55,'click'],[9.62,'blip']])
+  .sort((a,b)=>a[0]-b[0]);
 
 // ===================== BANGUN DOM =====================
+const mkChip=([txt,a,b])=>{ const d=document.createElement('div'); d.className='tchip'; d.innerHTML=`<span>${txt}</span>`; $('chips').appendChild(d); return {el:d,a,b}; };
 const CHIP_EL=CHIPS.map(([txt,a,b])=>{ const d=document.createElement('div'); d.className='tchip'; d.innerHTML=`<span>${txt}</span>`; $('chips').appendChild(d); return {el:d,a,b}; });
-const CAP_EL=CAPS.map(([a,b,top,theme,lines])=>{ const d=document.createElement('div'); d.className='cap '+theme; d.style.top=top+'px';
+const mkCap=([a,b,top,theme,lines])=>{ const d=document.createElement('div'); d.className='cap '+theme; d.style.top=top+'px';
   lines.forEach(([cls,txt])=>{ const ln=document.createElement('div'); ln.className='ln '+cls;
     txt.split(' ').forEach((w,i)=>{ if(i) ln.appendChild(document.createTextNode(' ')); const s=document.createElement('span'); s.className='w'; s.textContent=w; ln.appendChild(s); });
     d.appendChild(ln); });
-  $('caps').appendChild(d); return {el:d,a,b,words:[...d.querySelectorAll('.w')],lines:[...d.querySelectorAll('.ln')],fitted:false}; });
+  $('caps').appendChild(d); return {el:d,a,b,words:[...d.querySelectorAll('.w')],lines:[...d.querySelectorAll('.ln')],fitted:false}; };
+const CAP_EL=CAPS.map(mkCap);
+const BOOT_CHIP_EL=BOOT_CHIPS.map(mkChip), BOOT_CAP_EL=BOOT_CAPS.map(mkCap);
 function fit(c){ if(c.fitted) return; c.el.style.display='block';
   c.lines.forEach(l=>{ const w=l.scrollWidth; if(w>1000){ const k=1000/w; const fs=parseFloat(getComputedStyle(l).fontSize); l.style.fontSize=(fs*k)+'px'; } });
   c.fitted=true; }
@@ -243,18 +279,55 @@ function cardIn(id,t,a){ const p=eo5(seg(t,a,a+.55)); $(id).style.filter=`blur($
 function pop(el,p){ el.style.opacity=cl(p*1.8); el.style.transform=`scale(${lerp(.5,1,eback(p))})`; }
 
 // ===================== RENDER =====================
-function render(t){
+function drawChips(list,t){ list.forEach(c=>{ const on=t>=c.a&&t<c.b; c.el.style.display=on?'block':'none'; if(!on) return;
+  const p=eo5(seg(t,c.a,c.a+.3)); c.el.style.filter=`blur(${(1-p)*14}px)`; c.el.style.opacity=p;
+  c.el.style.transform=`scale(${lerp(1.25,1,p)}) rotate(${Math.sin((t-c.a)*1.3)*.6}deg)`; }); }
+function drawCaps(list,t){ list.forEach(c=>{ const on=t>=c.a&&t<c.b; if(!on){ c.el.style.display='none'; return; } fit(c); c.el.style.display='block';
+  const out=seg(t,c.b-.12,c.b);
+  c.words.forEach((w,i)=>{ const st=c.a+i*.085, p=seg(t,st,st+.3), e=eo5(p);
+    w.style.opacity=cl(p*2.5)*(1-out); w.style.filter=`blur(${(1-e)*16+out*10}px)`;
+    w.style.transform=`translateY(${(1-e)*16}px) scale(${lerp(1.06,1,e)})`; });
+  c.el.style.transform=`scale(${lerp(1,1.03,seg(t,c.a,c.b))})`; }); }
+function renderBoot(T){
+  document.querySelectorAll('.scene').forEach(sc=>sc.style.display=sc.id==='sboot'?'block':'none');
+  drawChips(CHIP_EL,-1); drawCaps(CAP_EL,-1); drawChips(BOOT_CHIP_EL,T); drawCaps(BOOT_CAP_EL,T);
+  let f=0; [[6.3,1],[10.3,0]].forEach(([a])=>{ const x=T-a; if(x>-.07&&x<.3) f=Math.max(f, x<0?(x+.07)/.07:1-eo(x/.3)); });
+  $('flash').style.opacity=f*.95;
+  PARTS.forEach(k=>{ const y=((k.y-T*k.v)%2080+2080)%2080-160;
+    k.el.style.transform=`translate(${k.x+Math.sin(T*.8+k.ph)*30}px,${y}px) rotate(${k.rot+Math.sin(T*.5+k.ph)*8}deg)`; });
+  cardIn('cboot',T,6.32);
+  // kamera: seluruh jadwal → zoom ke tab → zoom ke "Tonton Rekaman"
+  const A=[900,640,.533], B=[560,620,.75], C=[900,780,.58];
+  const p1=eio(seg(T,7.9,8.35)), p2=eio(seg(T,8.7,9.3));
+  const c=p2>0?[lerp(B[0],C[0],p2),lerp(B[1],C[1],p2),lerp(B[2],C[2],p2)]:[lerp(A[0],B[0],p1),lerp(A[1],B[1],p1),lerp(A[2],B[2],p1)];
+  cam('lboot',c[0],c[1],c[2]*lerp(1,1.03,seg(T,6.3,7.9)));
+  const sw=eo(seg(T,8.47,8.62)); $('lrec').style.opacity=sw;
+  const k=$('kboot');
+  if(T<9.0) cursor(k,T,7.95,8.4,1200,1100,398,524,8.45); else cursor(k,T,9.0,9.5,398,524,1576,769,9.55);
+  ring($('rb1'),seg(T,8.45,9.0),260); ring($('rb2'),seg(T,9.55,10.2),300);
+  [['stk1',7.0,-8],['stk2',7.6,6]].forEach(([id,a,rot])=>{ const p=seg(T,a,a+.35), o=seg(T,8.2,8.4);
+    $(id).style.opacity=cl(p*3)*(1-o); $(id).style.filter=`blur(${(1-eo5(p))*10}px)`;
+    $(id).style.transform=`scale(${lerp(.3,1,eback(p))*lerp(1,.7,o)}) rotate(${rot+(1-eo(p))*-20+Math.sin((T-a)*2.2)*2}deg)`; });
+}
+function render(T){
+  if(T>=BOOT[0]&&T<BOOT[1]){ renderBoot(T); return; }
+  $('sboot').style.display='none'; drawChips(BOOT_CHIP_EL,-1); drawCaps(BOOT_CAP_EL,-1);
+  renderOld(toOld(T));
+  // pre-flash sebelum bootcamp sudah tercakup FLASHES lama (6,3); setelahnya flash lama 6,3 = nyata 10,3
+}
+function renderOld(t){
   // adegan aktif (potong keras di bawah flash)
   SCENES.forEach(([id,a,b])=>{ $(id).style.display=(t>=a&&t<b)?'block':'none'; });
   // flash: naik cepat, turun pelan
   let f=0; FLASHES.forEach(a=>{ const x=t-a; if(x>-.07&&x<.3) f=Math.max(f, x<0? (x+.07)/.07 : 1-eo(x/.3)); });
   $('flash').style.opacity=f*.95;
   // kotak judul: muncul blur, bergoyang kecil
-  CHIP_EL.forEach(c=>{ const on=t>=c.a&&t<c.b; c.el.style.display=on?'block':'none'; if(!on) return;
+  drawChips(CHIP_EL,t); drawCaps(CAP_EL,t);
+  if(0) CHIP_EL.forEach(c=>{ const on=t>=c.a&&t<c.b; c.el.style.display=on?'block':'none'; if(!on) return;
     const p=eo5(seg(t,c.a,c.a+.3)); c.el.style.filter=`blur(${(1-p)*14}px)`; c.el.style.opacity=p;
     c.el.style.transform=`scale(${lerp(1.25,1,p)}) rotate(${Math.sin((t-c.a)*1.3)*.6}deg)`; });
   // caption: per kata blur→tajam, potong keras di akhir frasa
-  CAP_EL.forEach(c=>{ const on=t>=c.a&&t<c.b; if(!on){ c.el.style.display='none'; return; } fit(c); c.el.style.display='block';
+  if(0) CAP_EL.forEach(c=>{ const on=t>=c.a&&t<c.b; if(!on){ c.el.style.display='none'; return; } fit(c); c.el.style.display='block';
     const out=seg(t,c.b-.12,c.b);
     c.words.forEach((w,i)=>{ const st=c.a+i*.085, p=seg(t,st,st+.3), e=eo5(p);
       w.style.opacity=cl(p*2.5)*(1-out); w.style.filter=`blur(${(1-e)*16+out*10}px)`;
