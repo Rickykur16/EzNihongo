@@ -5171,8 +5171,137 @@ async function renderTtsCachePane() {
       </p>
       </details>
     </div>
+    <div style="max-width:880px;margin-top:28px;border-top:1px solid var(--paper-300);padding-top:20px;" id="voiceoverCard">
+      <h2 style="margin-top:0;">🎙 Voice-over</h2>
+      <p style="font-size:13px;color:var(--ink-500);margin:4px 0 14px;">Buat suara narasi untuk video/iklan dengan suara ElevenLabs akun EzNihongo. Satu baris = satu klip. Tiap klip memakai kredit ElevenLabs dan tidak disimpan di server — unduh hasilnya.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <label style="font-size:13px;">Suara
+          <select id="voVoice" style="min-width:280px;"><option value="">Memuat katalog suara…</option></select></label>
+        <button type="button" class="btn btn-ghost" id="voVoicePreview" disabled>▶ Contoh suara</button>
+        <label style="font-size:13px;">Model
+          <select id="voModel">
+            <option value="eleven_multilingual_v2">Multilingual v2 (stabil)</option>
+            <option value="eleven_v3">v3 (lebih ekspresif)</option>
+          </select></label>
+      </div>
+      <label style="display:block;font-size:13px;margin-top:12px;">Naskah (satu baris = satu klip)
+        <textarea id="voScript" rows="10" style="width:100%;margin-top:4px;font-size:14px;line-height:1.5;"></textarea></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;">
+        <button type="button" class="btn" id="voGenAll">🎙 Buat semua klip</button>
+        <button type="button" class="btn btn-ghost" id="voJson" disabled>⬇ Unduh timestamp (JSON)</button>
+        <span id="voStatus" role="status" style="font-size:13px;color:var(--ink-500);"></span>
+      </div>
+      <div id="voRows" style="margin-top:14px;display:grid;gap:8px;"></div>
+    </div>
   `;
   loadTtsCacheStats();
+  initVoiceover();
+}
+
+// ── 🎙 Voice-over (POST /admin/voiceover) ──────────────────────────────────
+// Naskah bawaan = voice-over video brand (marketing/brand-video-src/voiceover-naskah.md).
+// "EzNihongo" ditulis sesuai cara baca ("Izi Nihongo") supaya ElevenLabs tidak salah ucap.
+const VO_DEFAULT_SCRIPT = [
+  'Ga ada yang bakal ngasih tau kalian hal ini…',
+  'Kerja ke Jepang… ga perlu menghabiskan puluhan juta.',
+  'Yang paling nentuin itu bahasanya. Dan itu bisa dikejar.',
+  'Bootcamp live bareng sensei, dua kali seminggu, selama tiga bulan.',
+  'Kelewat kelas? Tenang, ada rekamannya.',
+  'Buka dashboard, langsung tau hari ini belajar apa.',
+  'Lihat kanjinya, terus dengar cara bacanya.',
+  'Yang udah hafal jarang muncul. Yang sering salah, muncul lagi sebelum kamu lupa.',
+  'Progresnya kelihatan, di laptop maupun HP.',
+  'Kerja ke Jepang? Mulai dari bahasanya. Izi Nihongo.',
+].join('\n');
+const VO = { voices: [], clips: [], busy: false };
+const voLines = () => document.getElementById('voScript').value.split('\n').map((l) => l.trim()).filter(Boolean);
+const voName = (i) => `vo-${String(i + 1).padStart(2, '0')}`;
+
+async function initVoiceover() {
+  const sel = document.getElementById('voVoice');
+  if (!sel) return;
+  const script = document.getElementById('voScript');
+  try { script.value = localStorage.getItem('ez_vo_script') || VO_DEFAULT_SCRIPT; } catch { script.value = VO_DEFAULT_SCRIPT; }
+  script.oninput = () => { try { localStorage.setItem('ez_vo_script', script.value); } catch {} };
+  document.getElementById('voGenAll').onclick = () => voGenerate();
+  document.getElementById('voJson').onclick = voDownloadJson;
+  const prev = document.getElementById('voVoicePreview');
+  prev.onclick = () => { const v = VO.voices.find((x) => x.voiceId === sel.value); if (v?.previewUrl) new Audio(v.previewUrl).play(); };
+  sel.onchange = () => { prev.disabled = !VO.voices.find((x) => x.voiceId === sel.value)?.previewUrl; try { localStorage.setItem('ez_vo_voice', sel.value); } catch {} };
+  try {
+    const r = await ezApi('/admin/elevenlabs/voices');
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.detail || data.error || ('HTTP ' + r.status));
+    VO.voices = data.voices || [];
+    const label = (v) => [v.labels?.gender, v.labels?.accent, v.labels?.age, v.labels?.use_case || v.labels?.['use case']].filter(Boolean).join(', ');
+    sel.innerHTML = '<option value="">— pilih suara —</option>' + VO.voices.map((v) =>
+      `<option value="${escapeHtml(v.voiceId)}">${escapeHtml(v.name)}${label(v) ? ' — ' + escapeHtml(label(v)) : ''}</option>`).join('');
+    let saved = ''; try { saved = localStorage.getItem('ez_vo_voice') || ''; } catch {}
+    if (VO.voices.some((v) => v.voiceId === saved)) sel.value = saved;
+    sel.onchange();
+  } catch (err) {
+    sel.innerHTML = '<option value="">Katalog suara tidak tersedia</option>';
+    document.getElementById('voStatus').textContent = 'Gagal memuat suara ElevenLabs: ' + err.message;
+  }
+  voRenderRows();
+}
+
+function voRenderRows() {
+  const box = document.getElementById('voRows');
+  if (!box) return;
+  box.innerHTML = VO.clips.map((c, i) => c ? `
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid var(--paper-300);border-radius:8px;padding:8px 10px;">
+      <strong style="font-family:monospace;font-size:12px;">${voName(i)}</strong>
+      <span style="flex:1;min-width:220px;font-size:13px;">${escapeHtml(c.text)}</span>
+      ${c.url ? `<audio controls src="${c.url}" style="height:32px;"></audio>
+        <a class="btn btn-ghost" href="${c.url}" download="${voName(i)}.mp3">⬇ MP3</a>` : `<span style="font-size:12px;color:${c.error ? '#b91c1c' : 'var(--ink-500)'};">${escapeHtml(c.error || 'Membuat…')}</span>`}
+      <button type="button" class="btn btn-ghost" data-vo-regen="${i}" ${VO.busy ? 'disabled' : ''}>↻ Buat ulang</button>
+    </div>` : '').join('');
+  box.querySelectorAll('[data-vo-regen]').forEach((b) => { b.onclick = () => voGenerate([Number(b.dataset.voRegen)]); });
+  document.getElementById('voJson').disabled = !VO.clips.some((c) => c?.alignment);
+}
+
+async function voGenerate(indices) {
+  if (VO.busy) return;
+  const voiceId = document.getElementById('voVoice').value;
+  const status = document.getElementById('voStatus');
+  const lines = voLines();
+  if (!voiceId) { status.textContent = 'Pilih suara dulu.'; return; }
+  if (!lines.length) { status.textContent = 'Naskah masih kosong.'; return; }
+  const todo = indices || lines.map((_, i) => i);
+  const chars = todo.reduce((n, i) => n + (lines[i] || '').length, 0);
+  if (!indices && !confirm(`Buat ${todo.length} klip (${chars} karakter kredit ElevenLabs)?`)) return;
+  if (!indices) { VO.clips.forEach((c) => c?.url && URL.revokeObjectURL(c.url)); VO.clips = []; }
+  VO.busy = true;
+  const modelId = document.getElementById('voModel').value;
+  for (const [n, i] of todo.entries()) {
+    status.textContent = `Membuat klip ${n + 1}/${todo.length}…`;
+    if (VO.clips[i]?.url) URL.revokeObjectURL(VO.clips[i].url);
+    VO.clips[i] = { text: lines[i] };
+    voRenderRows();
+    try {
+      const r = await ezApi('/admin/voiceover', { method: 'POST', body: JSON.stringify({
+        voiceId, modelId, text: lines[i], previousText: lines[i - 1] || '', nextText: lines[i + 1] || '' }) });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.detail || data.error || ('HTTP ' + r.status));
+      const bytes = Uint8Array.from(atob(data.audioBase64), (ch) => ch.charCodeAt(0));
+      VO.clips[i] = { text: lines[i], url: URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' })), alignment: data.alignment, voiceId, modelId };
+    } catch (err) {
+      VO.clips[i] = { text: lines[i], error: 'Gagal: ' + err.message };
+    }
+    voRenderRows();
+  }
+  VO.busy = false;
+  voRenderRows();
+  const failed = todo.filter((i) => VO.clips[i]?.error).length;
+  status.textContent = failed ? `${failed} klip gagal — coba "Buat ulang" pada baris itu.` : `Selesai: ${todo.length} klip.`;
+}
+
+function voDownloadJson() {
+  const clips = VO.clips.map((c, i) => c?.alignment ? { file: voName(i) + '.mp3', text: c.text, voiceId: c.voiceId, modelId: c.modelId, alignment: c.alignment } : null).filter(Boolean);
+  const url = URL.createObjectURL(new Blob([JSON.stringify({ clips }, null, 1)], { type: 'application/json' }));
+  const a = document.createElement('a'); a.href = url; a.download = 'voiceover-timestamps.json'; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 window.loadTtsCacheStats = async () => {

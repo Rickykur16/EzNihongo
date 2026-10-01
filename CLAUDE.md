@@ -71,6 +71,14 @@
 
 ## Konvensi penting
 
+- **Voice-over marketing ada di Ruang Kerja** (Produk & Teknologi → TTS Cache → "🎙 Voice-over"),
+  `POST /admin/voiceover` (owner-only, memakai kredit, TANPA cache, terpisah dari audio siswa) →
+  ElevenLabs `/with-timestamps` dengan suara pilihan dari `GET /admin/elevenlabs/voices`; hasil MP3
+  + JSON timestamp per karakter diunduh admin (untuk sinkronisasi caption video di
+  `marketing/brand-video-src/`). Menggantikan workflow GitHub "Marketing voice-over" (SSH ke VPS
+  sebagai root) dari PR #406 yang sudah dihapus — user: "Fitur itu tambahin di ruang kerja aja".
+  Naskah bawaan menulis "EzNihongo" sebagai "Izi Nihongo" (cara baca yang dipilih user).
+
 - **Konsep "jawaban berbantuan" (Maneko) DIHAPUS dari bukti belajar** — user: "nambah
   ribet dan nambah bug". Dulu jawaban yang jatuh di jendela paparan tutor (24 jam untuk
   petunjuk Smart Review, 30 menit untuk chat tutor) dibuang tanpa menulis state FSRS,
