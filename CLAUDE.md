@@ -394,8 +394,8 @@
       sort_order kembar, course lain tidak tersentuh; 3 mutasi frontend tertangkap
       tes; `npm test` dengan DB 945 tes, 944 hijau, 1 skip lama. **Belum diverifikasi**:
       tampilan di browser sungguhan. Menambah 47 pelajaran mengubah persentase
-      progres N4 (siswa N4 yang sudah menyelesaikan bab akan melihat Percakapan
-      sebagai belum selesai).
+      progres N4 — SENGAJA tanpa penyesuaian progres karena N4 belum punya siswa
+      (dikonfirmasi user, sama seperti keputusan di 178).
 
       **Bug: menyimpan baris pola dari admin MENGHAPUS suara dialog** (ada sejak fitur
       scene `8de8d54`, ketahuan saat merekam video perbandingan gerak): admin memuat pola
