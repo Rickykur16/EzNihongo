@@ -183,7 +183,14 @@ def riser(t0):
     add(t0, n / (np.max(np.abs(n)) + 1e-9), .22)
 
 
+def cutfx(t0):
+    d = .14; t = tt(d)
+    n = bp_sweep(d, 1500, 7000) * np.exp(-t / .03)
+    add(t0, n / (np.max(np.abs(n)) + 1e-9), .18, pan=rng.uniform(-.5, .5))
+
+
 KIND = {
+    'cutfx': lambda t, a: cutfx(t),
     'impact': lambda t, a: impact(t, a or 0), 'riser': lambda t, a: riser(t),
     'whoosh_morph': lambda t, a: whoosh(t, -1, d=.7, f0=250, f1=3200, gain=.55),
     'whoosh': lambda t, a: whoosh(t, a or 1), 'whoosh_soft': lambda t, a: whoosh(t, a or 1, d=.5, f0=300, f1=2400, gain=.45),

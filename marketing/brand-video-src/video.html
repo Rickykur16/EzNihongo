@@ -43,9 +43,12 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:var(--paper);fon
 
 <!-- H hook: "Mau kerja di Jepang?" → "Bahasanya dulu." → merah menyusut jadi matahari -->
 <div class="scene" id="hk" style="background:#0b1120;z-index:20">
-  <img id="hkimg" src="../../assets/landing/tokyo-night.jpg" class="abs" style="left:0;top:0;width:1920px;height:1080px;object-fit:cover;transform-origin:50% 45%">
+  <img class="abs hkimg" src="../../assets/landing/interview.jpg" style="left:0;top:0;width:1920px;height:1080px;object-fit:cover;object-position:60% 35%">
+  <img class="abs hkimg" src="../../assets/landing/tokyo-night.jpg" style="left:0;top:0;width:1920px;height:1080px;object-fit:cover">
+  <img class="abs hkimg" src="../../assets/dashboard/continue-sakura-train.webp" style="left:0;top:0;width:1920px;height:1080px;object-fit:cover">
+  <img class="abs hkimg" src="../../assets/dashboard/progress-fuji-dawn.webp" style="left:0;top:0;width:1920px;height:1080px;object-fit:cover">
   <div class="abs" style="inset:0;background:radial-gradient(ellipse at center,rgba(8,12,24,.35),rgba(8,12,24,.85))"></div>
-  <div class="abs" id="hktxt" style="left:0;right:0;top:300px;text-align:center;font-family:'Shippori Mincho',serif;font-weight:800;color:#fff;line-height:1.05">
+  <div class="abs" id="hktxt" style="left:0;right:0;top:520px;text-align:center;font-family:'Shippori Mincho',serif;font-weight:800;color:#fff;line-height:1.05">
     <div id="hkw1" style="font-size:150px;display:inline-block">Mau kerja di</div><br>
     <div id="hkw2" style="font-size:190px;display:inline-block;color:#ff3b55">Jepang?</div>
   </div>
@@ -224,7 +227,7 @@ const OLD_CUES=[
   [21.15,'whoosh_up'],[22.95,'tap'],
   [24.92,'whoosh',1],[25.30,'swell'],[25.60,'boom'],[25.90,'shimmer'],[26.60,'pop',6],[27.30,'sparkle'],
 ];
-window.CUES=[[0.0,'riser'],[0.05,'impact',0],[0.38,'impact',1],[0.95,'impact',2],[1.62,'whoosh_morph']].concat(OLD_CUES.map(([o,k,a])=>a===undefined?[o+HOOK_SHIFT,k]:[o+HOOK_SHIFT,k,a]));
+window.CUES=[[0.0,'riser'],[0.24,'cutfx'],[0.48,'cutfx'],[0.72,'cutfx'],[0.05,'impact',0],[0.38,'impact',1],[0.95,'impact',2],[1.62,'whoosh_morph']].concat(OLD_CUES.map(([o,k,a])=>a===undefined?[o+HOOK_SHIFT,k]:[o+HOOK_SHIFT,k,a]));
 
 // ---- teks kinetik: pecah per kata sekali di awal ------------------------
 function splitWords(el){
@@ -391,7 +394,10 @@ function render(T){
   const hk=$('hk'), red=$('hkred');
   hk.style.opacity = T<1.0 ? 1 : 0;
   if(T<1.0){
-    $('hkimg').style.transform=`scale(${lerp(1.08,1.22,T/1.0)})`;
+    // montase: ganti foto tiap 0,24 dtk, tiap potongan zoom-in cepat
+    const cut=Math.min(3,Math.floor(T/.24));
+    document.querySelectorAll('.hkimg').forEach((im,i)=>{ im.style.opacity=i===cut?1:0;
+      const lt=T-i*.24; im.style.transform=`scale(${lerp(1.18,1.05,eo(cl(lt/.3)))})`; });
     const a=seg(T,.05,.3), b=seg(T,.38,.62);
     $('hkw1').style.opacity=cl(a*3); $('hkw1').style.transform=`scale(${lerp(1.9,1,eo5(a))})`;
     $('hkw2').style.opacity=cl(b*3); $('hkw2').style.transform=`scale(${lerp(2.2,1,eo5(b))})`;
