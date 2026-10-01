@@ -189,7 +189,43 @@ def cutfx(t0):
     add(t0, n / (np.max(np.abs(n)) + 1e-9), .18, pan=rng.uniform(-.5, .5))
 
 
+def strike(t0):
+    """Coretan spidol: gesekan pendek + hentakan kecil."""
+    d = .22; t = tt(d)
+    n = bp_sweep(d, 900, 3500) * np.sin(np.pi * np.clip(t / d, 0, 1)) ** .7
+    add(t0, n / (np.max(np.abs(n)) + 1e-9), .3, pan=-.3)
+    impact(t0 + .18, 0)
+
+
+def lift(t0):
+    whoosh(t0, 1, d=.35, f0=500, f1=2600, gain=.22)
+    add(t0 + .2, bell(660, .4, 10, ((1, 1), (2, .2))), .08)
+
+
+def card_wave(t0):
+    for k in range(6):
+        add(t0 + k * .07, bell(880 * 2 ** ([0, 2, 4, 7, 9, 12][k] / 12), .5, 7), .09, pan=-.6 + k * .24)
+
+
+def flip(t0):
+    whoosh(t0, -1, d=.4, f0=700, f1=4200, gain=.25)
+
+
+def punch(t0):
+    t = tt(.3); f = 90 + 80 * np.exp(-t * 25)
+    add(t0, np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 12), .45)
+    whoosh(t0 - .05, 1, d=.25, f0=600, f1=5000, gain=.25)
+
+
+def count(t0):
+    for k in range(14):
+        add(t0 + k * .065 * (1 + k * .04), bell(1200 + k * 40, .12, 30, ((1, 1),)), .08)
+
+
 KIND = {
+    'lift': lambda t, a: lift(t), 'wave': lambda t, a: card_wave(t), 'flip': lambda t, a: flip(t),
+    'punch': lambda t, a: punch(t), 'count': lambda t, a: count(t),
+    'strike': lambda t, a: strike(t),
     'cutfx': lambda t, a: cutfx(t),
     'impact': lambda t, a: impact(t, a or 0), 'riser': lambda t, a: riser(t),
     'whoosh_morph': lambda t, a: whoosh(t, -1, d=.7, f0=250, f1=3200, gain=.55),
@@ -205,11 +241,15 @@ cues = json.load(open(sys.argv[1] if len(sys.argv) > 1 else 'cues.json'))
 for c in cues:
     KIND[c[1]](c[0], c[2] if len(c) > 2 else None)
 
+# Jangkar musik = dentum logo pembuka & penutup (dari cue), jadi ikut timeline.
+booms = sorted(c[0] for c in cues if c[1] == 'boom')
+B0, B1 = booms[0], booms[-1]
+
 # ---- musik latar tipis: pad + petikan ala koto (tangga nada yo: D E G A B) ----
 sfxL, sfxR = L.copy(), R.copy()
 L[:] = 0; R[:] = 0
 t = np.arange(N) / SR
-env = np.clip((t - 2.2) / 1.5, 0, 1) * np.clip((DUR - t) / 1.5, 0, 1)
+env = np.clip((t - (B0 - .3)) / 1.5, 0, 1) * np.clip((DUR - t) / 1.5, 0, 1)
 pad = np.zeros(N)
 for f, a in ((73.42, .5), (146.83, .45), (220.0, .35), (329.63, .22), (369.99, .14)):
     for det in (-.6, .6):
@@ -221,17 +261,17 @@ L += pad * .05; R += pad * .05
 beat = 60 / 100  # 100 BPM
 pattern = [293.66, 440.0, 493.88, 440.0, 392.0, 293.66, 329.63, 293.66]
 k = 0
-tb = 4.85
-while tb < 26.5:
+tb = B0 + 2.4
+while tb < B1 - .7:
     if k % 8 not in (3, 7):
         f = pattern[k % 8] * (2 if (k // 16) % 2 else 1)
         add(tb, pluck(f, 1.2, .995), .085, pan=-.35 if k % 2 else .35)
     tb += beat / 2 if k % 4 == 1 else beat
     k += 1
 # frasa penutup (logo akhir)
-for dt, f in ((27.2, 146.83), (27.2, 293.66), (27.35, 440.0), (27.5, 587.33), (27.75, 659.25), (28.0, 587.33)):
+for dt, f in ((B1, 146.83), (B1, 293.66), (B1 + .15, 440.0), (B1 + .3, 587.33), (B1 + .55, 659.25), (B1 + .8, 587.33)):
     add(dt, pluck(f, 2.5, .998), .13, pan=rng.uniform(-.3, .3))
-for dt, f in ((2.45, 146.83), (2.45, 293.66), (2.6, 440.0), (2.75, 587.33)):
+for dt, f in ((B0, 146.83), (B0, 293.66), (B0 + .15, 440.0), (B0 + .3, 587.33)):
     add(dt, pluck(f, 2.0, .998), .12, pan=rng.uniform(-.3, .3))
 
 L += sfxL; R += sfxR

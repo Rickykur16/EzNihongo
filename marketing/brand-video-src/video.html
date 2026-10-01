@@ -19,6 +19,16 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:var(--paper);fon
 .h{font-family:'Shippori Mincho',serif;font-weight:700;font-size:62px;line-height:1.14;letter-spacing:-.01em}
 .h em{font-style:normal;color:var(--red)}
 .sub{font-size:26px;line-height:1.5;color:#4a4540;margin-top:22px}
+.chunk{position:absolute;left:0;right:0;text-align:center;font-family:Inter,sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:-.01em;color:#fff;line-height:1.02;opacity:0;text-shadow:0 8px 0 rgba(0,0,0,.28),0 18px 40px rgba(0,0,0,.35)}
+.chunk .hl{display:inline-block;background:#FFD400;color:#111;padding:.02em .2em .06em;border-radius:.1em;text-shadow:none;box-shadow:0 10px 0 rgba(0,0,0,.25)}
+.chunk .hlr{background:#fff;color:var(--red)}
+.chunk .sub{display:block;color:#fff;font-size:52px;font-weight:700;text-transform:none;margin-top:30px;text-shadow:none;opacity:.95}
+.chunk .sub b{background:#fff;color:var(--red);padding:2px 16px;border-radius:999px;font-weight:800}
+.h em{background:linear-gradient(var(--red),var(--red)) no-repeat 0 60%/0% 92%;padding:0 .1em;margin:0 -.05em;border-radius:.08em;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.crop{position:absolute;opacity:0;background-repeat:no-repeat;will-change:transform}
+.kana{position:absolute;font-family:'Shippori Mincho',serif;font-weight:700;pointer-events:none}
+.notif{position:absolute;background:#fff;border-radius:18px;padding:16px 22px;font-size:26px;font-weight:700;box-shadow:0 24px 50px -18px rgba(26,24,21,.35),0 0 0 1px rgba(26,24,21,.06);white-space:nowrap;opacity:0;display:flex;align-items:center;gap:12px}
+.notif i{font-style:normal;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:22px}
 .w{display:inline-block;will-change:transform,opacity}
 .win{position:absolute;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 50px 100px -30px rgba(26,24,21,.38),0 0 0 1px rgba(26,24,21,.08);transform-style:preserve-3d}
 .bar{height:44px;background:#f1ece3;display:flex;align-items:center;gap:9px;padding:0 18px;border-bottom:1px solid #e4ddd0}
@@ -48,15 +58,11 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:var(--paper);fon
   <img class="abs hkimg" src="../../assets/dashboard/continue-sakura-train.webp" style="left:0;top:0;width:1920px;height:1080px;object-fit:cover">
   <img class="abs hkimg" src="../../assets/dashboard/progress-fuji-dawn.webp" style="left:0;top:0;width:1920px;height:1080px;object-fit:cover">
   <div class="abs" style="inset:0;background:radial-gradient(ellipse at center,rgba(8,12,24,.35),rgba(8,12,24,.85))"></div>
-  <div class="abs" id="hktxt" style="left:0;right:0;top:520px;text-align:center;font-family:'Shippori Mincho',serif;font-weight:800;color:#fff;line-height:1.05">
-    <div id="hkw1" style="font-size:150px;display:inline-block">Mau kerja di</div><br>
-    <div id="hkw2" style="font-size:190px;display:inline-block;color:#ff3b55">Jepang?</div>
-  </div>
+  <div class="abs" id="hktxt" style="left:0;right:0;top:0;bottom:0"></div>
 </div>
 <div class="abs" id="hkred" style="z-index:21;background:var(--red);left:0;top:0;width:1920px;height:1080px;opacity:0;overflow:hidden">
-  <div id="hkred_t" style="position:absolute;left:0;top:0;width:1920px;height:1080px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff">
-    <div id="hkw3" style="font-family:'Shippori Mincho',serif;font-weight:800;font-size:170px;line-height:1">Bahasanya dulu.</div>
-    <div id="hkw4" style="font-family:'Noto Sans JP';font-weight:700;font-size:44px;margin-top:34px;letter-spacing:.2em;opacity:.85">まずは、日本語から。</div>
+  <div id="hkred_t" style="position:absolute;left:0;top:0;width:1920px;height:1080px">
+    <div id="hkredc" style="position:absolute;inset:0"></div>
   </div>
 </div>
 
@@ -148,6 +154,7 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:var(--paper);fon
     <div class="view" style="width:1150px;height:820px">
       <div class="layer" id="s5layer" style="transform:scale(.9583)"><img src="../../assets/landing/progress.png" style="width:1200px">
         <div class="abs" style="left:60px;top:389px;width:612px;height:14px;background:#19345f"></div>
+        <div class="abs" id="s5pct" style="left:58px;top:316px;width:150px;height:62px;background:#19345f;color:#fff;font-family:'Shippori Mincho',serif;font-weight:800;font-size:52px;line-height:62px;padding-left:5px">35%</div>
         <div class="abs" style="left:63px;top:392px;width:605px;height:8px;border-radius:5px;border:1px solid #dce6f5;overflow:hidden"><div class="fill" data-w="212" style="height:100%;width:0;background:#eef3fa"></div></div>
         <div class="abs" style="left:176px;top:603px;width:326px;height:14px;background:#fff"></div>
         <div class="abs" style="left:176px;top:648px;width:326px;height:14px;background:#fff"></div>
@@ -170,6 +177,9 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:var(--paper);fon
     <div class="h kin" id="s6cap" style="margin-top:20px">Di HP pun <em>tetap enak dipakai.</em></div>
     <div class="sub kin" id="s6sub">Belajar sambil menunggu kereta atau sebelum tidur — semua menu ada di ujung jempol.</div>
   </div>
+  <div class="notif" id="n1" style="left:860px;top:200px"><i style="background:#eef3fa">🔔</i>12 soal siap diulang</div>
+  <div class="notif" id="n2" style="left:1590px;top:470px"><i style="background:#eaf7ef;color:#1f8a4c">✓</i>Jawaban benar!</div>
+  <div class="notif" id="n3" style="left:880px;top:780px"><i style="background:#fff0f2">📈</i>4 hari aktif minggu ini</div>
   <div class="abs" id="s6phone" style="left:1200px;top:90px;width:440px;height:900px;border-radius:64px;background:#1a1815;padding:16px;box-shadow:0 50px 90px -30px rgba(26,24,21,.5)">
     <div style="width:408px;height:868px;border-radius:50px;overflow:hidden;background:var(--paper);position:relative">
       <div style="height:46px;background:#fff;position:relative;z-index:2"></div>
@@ -214,7 +224,11 @@ const eback=x=>{const c=1.6;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
 const lerp=(a,b,x)=>a+(b-a)*x;
 
 // ---- efek suara (detik, jenis, parameter) -------------------------------
-const HOOK_SHIFT=1.6;
+// Waktu nyata T → waktu animasi lama o. Hook 0–H_END; isi diperas sedikit supaya
+// kartu penutup tetap muat di 30 detik.
+const H_END=4.2, O_START=.6, R2=27.3, O2=25.23;
+const toOld=T=>T<H_END?Math.max(0,T-(H_END-O_START)):T<R2?O_START+(T-H_END)*(O2-O_START)/(R2-H_END):O2+(T-R2);
+const toReal=o=>o<O_START?o+(H_END-O_START):o<O2?H_END+(o-O_START)*(R2-H_END)/(O2-O_START):R2+(o-O2);
 const OLD_CUES=[
   [0.85,'boom'],[1.30,'type',0.6],
   [2.92,'whoosh',1],[3.30,'whoosh_soft',-1],[4.90,'pop',0],[5.70,'pop',3],
@@ -225,9 +239,12 @@ const OLD_CUES=[
   [17.02,'whoosh',1],
   [18.20,'tick',0],[18.35,'tick',1],[18.50,'tick',2],[18.65,'tick',3],[18.80,'tick',4],
   [21.15,'whoosh_up'],[22.95,'tap'],
-  [24.92,'whoosh',1],[25.30,'swell'],[25.60,'boom'],[25.90,'shimmer'],[26.60,'pop',6],[27.30,'sparkle'],
+  [4.70,'lift'],[5.50,'lift'],[9.00,'wave'],[9.72,'flip'],[14.62,'punch'],[18.10,'count'],[22.40,'pop',1],[23.15,'pop',4],[23.80,'pop',2],
+  [24.92,'whoosh',1],[25.25,'swell'],[25.45,'boom'],[25.55,'shimmer'],[26.10,'pop',6],[26.80,'sparkle'],
 ];
-window.CUES=[[0.0,'riser'],[0.24,'cutfx'],[0.48,'cutfx'],[0.72,'cutfx'],[0.05,'impact',0],[0.38,'impact',1],[0.95,'impact',2],[1.62,'whoosh_morph']].concat(OLD_CUES.map(([o,k,a])=>a===undefined?[o+HOOK_SHIFT,k]:[o+HOOK_SHIFT,k,a]));
+window.CUES=[[0.0,'riser'],[0.0,'pop',0],[0.33,'pop',1],[0.66,'pop',2],[0.86,'impact',0],[1.45,'pop',3],[1.72,'impact',1],
+  [2.2,'impact',2],[2.45,'pop',4],[2.72,'pop',5],[3.0,'strike'],[3.15,'pop',6],[3.6,'whoosh_morph']]
+  .concat(OLD_CUES.map(([o,k,a])=>a===undefined?[+toReal(o).toFixed(3),k]:[+toReal(o).toFixed(3),k,a])).sort((a,b)=>a[0]-b[0]);
 
 // ---- teks kinetik: pecah per kata sekali di awal ------------------------
 function splitWords(el){
@@ -274,6 +291,42 @@ const CONF=[]; { let seed=7; const r=()=>(seed=(seed*16807)%2147483647)/21474836
   for(let i=0;i<26;i++){ const d=document.createElement('div'); d.className='conf'; d.style.background=cols[i%5]; host.appendChild(d);
     CONF.push({el:d,vx:(r()-.5)*720,vy:-260-r()*420,rot:(r()-.5)*900,x:415+(r()-.5)*120,y:405}); } }
 
+// ---- hook gaya caption kinetik: 1–3 kata per ketukan
+const CHUNKS=[
+  ['hktxt',0.00,0.33,'GA ADA YANG',150,440],
+  ['hktxt',0.33,0.66,'BAKAL NGASIH TAU',150,440],
+  ['hktxt',0.66,0.86,'KALIAN',190,420],
+  ['hktxt',0.86,1.45,'<span class="hl">HAL INI…</span>',200,410],
+  ['hktxt',1.45,1.72,'KERJA KE',190,420],
+  ['hktxt',1.72,2.20,'<span class="hl hlr">JEPANG</span>',230,390],
+  ['hkredc',2.20,2.45,'GA PERLU',190,420],
+  ['hkredc',2.45,2.72,'MENGHABISKAN',170,430],
+  ['hkredc',2.72,3.70,'<span class="hl" style="position:relative">PULUHAN JUTA<span id="hkstrike" style="position:absolute;left:-2%;right:-2%;top:50%;height:18px;margin-top:-9px;background:var(--red);border-radius:9px;transform-origin:left;transform:scaleX(0) rotate(-4deg)"></span></span><span class="sub" id="hksub">Yang paling menentukan: <b>bahasanya.</b></span>',170,330],
+].map(([host,a,b,html,fs,top],i)=>{ const d=document.createElement('div'); d.className='chunk'; d.style.fontSize=fs+'px'; d.style.top=top+'px'; d.innerHTML=html; $(host).appendChild(d);
+  return {el:d,a,b,rot:[-2,1.5,-1,2,-1.5,1,-2,1.5,-1][i]}; });
+
+// ---- potongan kartu UI yang bisa "terangkat" keluar layar
+function crop(layer,src,x,y,w,h,r){ const d=document.createElement('div'); d.className='crop';
+  Object.assign(d.style,{left:x+'px',top:y+'px',width:w+'px',height:h+'px',borderRadius:r+'px',backgroundImage:`url("${src}")`,backgroundPosition:`${-x}px ${-y}px`});
+  layer.querySelector('img').insertAdjacentElement('afterend',d); return d; }
+const LIFT_CONT=crop($('s2layer'),'dash.png',201,348,907,426,26);
+const LIFT_REV=crop($('s2layer'),'dash.png',1132,348,467,426,26);
+const KCARDS=[[445,423],[625,423],[806,423],[986,423],[1166,423],[445,582]].map(([x,y])=>crop($('s3layer'),'../../assets/landing/lesson.png',x,y,169,148,8));
+function lift(el,L,deg=6,dy=30){ el.style.opacity=cl(L*5);
+  el.style.transform=`perspective(1400px) translateY(${-L*dy}px) scale(${1+L*.05}) rotateX(${L*deg}deg)`;
+  el.style.boxShadow=`0 ${L*40}px ${L*70}px -24px rgba(0,0,0,${L*.5})`; }
+const env=(t,a,b,c,d)=>eo5(seg(t,a,b))*(1-eio(seg(t,c,d)));
+
+// ---- partikel kana melayang di latar tiap adegan
+const KANA='あいうえおかきくけこさしすせそ日本語学未来';
+const PARTS=[]; { let seed=11; const r=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  ['s2','s3','s4','s5','s6'].forEach(id=>{ const sc=$(id); for(let i=0;i<14;i++){ const k=document.createElement('div'); k.className='kana';
+    k.textContent=KANA[Math.floor(r()*KANA.length)]; const sz=36+r()*110; k.style.fontSize=sz+'px';
+    k.style.color=r()<.6?`rgba(200,16,46,${.05+r()*.07})`:`rgba(25,52,95,${.05+r()*.06})`;
+    sc.insertBefore(k,sc.firstChild); PARTS.push({el:k,sc:id,x:r()*1920,y:r()*1080,v:20+sz*.5,rot:(r()-.5)*40,ph:r()*6}); } }); }
+function hlbox(id,t,a){ const p=eo5(seg(t,a,a+.32));
+  $(id).querySelectorAll('em').forEach(em=>{ em.style.backgroundSize=`${p*100}% 92%`; em.style.color=p>.45?'#fff':'var(--red)'; }); }
+
 function renderOld(t){
   // wipes
   let w=100; for(const a of [2.92,17.02,24.92]){ const v=wipe(null,t,a); if(v!==100){w=v;} }
@@ -298,7 +351,9 @@ function renderOld(t){
     const z=eio(seg(t,7.5,8.3));
     $('s2win').style.transformOrigin='243px 417px';
     $('s2win').style.transform=`translateY(${(1-p)*160}px) rotateX(${(1-p)*22}deg) rotateY(${(1-p)*-14}deg) scale(${lerp(.86,1,p)*lerp(1,3.2,z)})`;
-    type('s2chip',t,3.45); kin('s2cap',t,3.6);
+    type('s2chip',t,3.45); kin('s2cap',t,3.6,.05,.32,60); hlbox('s2cap',t,4.25);
+    $('s2win').style.filter=`blur(${(1-p)*10}px)`;
+    lift(LIFT_CONT,env(t,4.7,5.0,5.4,5.7)); lift(LIFT_REV,env(t,5.5,5.8,6.2,6.5));
     const pan=eio(seg(t,4.4,7.0));
     $('s2layer').style.transform=`translate(${-pan*60}px,${-pan*230}px) scale(${lerp(.8,.86,pan)})`;
     pop($('s2p1'),seg(t,4.9,5.4)); pop($('s2p2'),seg(t,5.7,6.2));
@@ -313,7 +368,9 @@ function renderOld(t){
     const out=eio(seg(t,12.45,12.9));
     $('s3win').style.transform=`scale(${lerp(1.25,1,p)}) translateX(${-out*900}px) rotateY(${out*18}deg)`;
     $('s3win').style.opacity=cl(p*1.5);
-    type('s3chip',t,8.0); kin('s3cap',t,8.15); kin('s3sub',t,8.7,.03,.45,24);
+    type('s3chip',t,8.0); kin('s3cap',t,8.15,.05,.32,60); hlbox('s3cap',t,8.8); kin('s3sub',t,8.7,.03,.45,24);
+    KCARDS.forEach((c,i)=>{ const L= i===0? env(t,9.0,9.25,10.3,10.55) : env(t,9.0+i*.07,9.25+i*.07,9.5+i*.07,9.8+i*.07);
+      lift(c,L,10,24); if(i===0) c.style.transform+=` rotateY(${eio(seg(t,9.72,10.12))*360}deg)`; });
     const pan=eio(seg(t,8.8,12.5));
     $('s3layer').style.transform=`translate(${lerp(0,-420,pan)}px,${lerp(0,-385,pan)}px) scale(${lerp(.7639,1.08,pan)})`;
     cursor($('s3cur'),t,8.9,9.6,900,820,590,445,9.7);
@@ -328,7 +385,8 @@ function renderOld(t){
   if(vis('s4',t,12.45,17.33,.35,0)){
     const p=eo5(seg(t,12.5,13.5));
     $('s4win').style.transform=`translateX(${(1-p)*900}px) rotateY(${(1-p)*-28}deg)`;
-    type('s4chip',t,12.75); kin('s4cap',t,12.9); kin('s4sub',t,13.4,.03,.45,24);
+    type('s4chip',t,12.75); kin('s4cap',t,12.9,.05,.32,60); hlbox('s4cap',t,13.5); kin('s4sub',t,13.4,.03,.45,24);
+    $('s4win').style.filter=`blur(${(1-p)*10}px)`;
     cursor($('s4cur'),t,13.55,14.55,1000,800,420,405,14.65);
     const ok=eo(seg(t,14.75,15.0));
     $('s4ok').style.opacity=ok; $('s4ok').style.transform=`scale(${lerp(.9,1,eback(seg(t,14.75,15.05)))})`;
@@ -339,7 +397,11 @@ function renderOld(t){
       c.el.style.opacity=1-Math.pow(cp,3); c.el.style.transform=`translate(${x}px,${y}px) rotate(${c.rot*cp}deg)`; });
     pop($('s4toast'),seg(t,15.6,16.1));
     const zz=eio(seg(t,15.9,17.0));
-    $('s4layer').style.transform=`scale(${lerp(.9167,.98,zz)}) translate(${-zz*20}px,${-zz*20}px)`;
+    // punch-in cepat ke jawaban, lalu mundur pelan
+    const pin=eo5(seg(t,14.62,14.85))*(1-eio(seg(t,15.55,16.2)));
+    $('s4layer').style.transformOrigin='420px 405px';
+    $('s4layer').style.transform=`scale(${.9167*(1+pin*.32)*lerp(1,1.04,zz)})`;
+    $('s4ok').style.boxShadow=`0 ${pin*24}px ${pin*40}px -12px rgba(31,138,76,${pin*.55})`;
     $('s4wm').style.transform=`translate(${t*15}px,${t*-8}px)`;
   }
 
@@ -349,7 +411,9 @@ function renderOld(t){
     const up=eio(seg(t,21.1,21.6));
     $('s5win').style.transformOrigin='50% 100%';
     $('s5win').style.transform=`translateY(${(1-p)*300 - up*1100}px) rotateX(${(1-p)*-30}deg)`;
-    type('s5chip',t,17.5); kin('s5cap',t,17.65);
+    type('s5chip',t,17.5); kin('s5cap',t,17.65,.05,.32,60); hlbox('s5cap',t,18.4);
+    $('s5win').style.filter=`blur(${(1-p)*10+up*14}px)`;
+    $('s5pct').textContent=Math.round(35*eo(seg(t,18.1,19.0)))+'%';
     document.querySelectorAll('#s5 .fill').forEach((el,i)=>{ const f=eo5(seg(t,18.2+i*.15,19.2+i*.15)); el.style.width=(+el.dataset.w*f)+'px'; });
     const zz=eio(seg(t,19.4,21.2));
     $('s5layer').style.transform=`translate(${-zz*30}px,${-zz*300}px) scale(${lerp(.9583,1.2,zz)})`;
@@ -361,7 +425,9 @@ function renderOld(t){
     const q=eo5(seg(t,21.2,22.3));
     const sway=Math.sin((t-21.2)*1.4)*3;
     $('s6phone').style.transform=`translateY(${(1-q)*900}px) rotate(${(1-q)*10}deg) rotateY(${lerp(-35,-10,q)+sway}deg) rotateX(${4}deg)`;
-    type('s6chip',t,21.45); kin('s6cap',t,21.6); kin('s6sub',t,22.1,.03,.45,24);
+    type('s6chip',t,21.45); kin('s6cap',t,21.6,.05,.32,60); hlbox('s6cap',t,22.25); kin('s6sub',t,22.1,.03,.45,24);
+    [['n1',22.4,-1],['n2',23.15,1],['n3',23.8,-1]].forEach(([id,a,dir])=>{ const p=seg(t,a,a+.35);
+      $(id).style.opacity=cl(p*3); $(id).style.transform=`translate(${(1-eback(p))*dir*120}px,${Math.sin((t-a)*2.4)*8}px) scale(${lerp(.6,1,eback(p))})`; });
     const s1=eio(seg(t,22.35,22.85)), s2=eio(seg(t,23.45,25.0));
     $('s6scroll').style.transform=`translateY(${-(s1*250+s2*1000)}px)`;
     // ketuk "Mulai Review": tombol di (204,791) dalam layar → setelah scroll 250 di y 541+46
@@ -374,50 +440,48 @@ function renderOld(t){
 
   // ===== S7 penutup 25.23–30
   if(vis('s7',t,25.23,30.01,0,0)){
-    const sp=eo(seg(t,25.3,26.2));
+    const sp=eo(seg(t,25.25,25.9));
     $('s7sun').style.transform=`translateY(${(1-sp)*220}px) scale(${lerp(.35,1,sp)})`; $('s7sun').style.opacity=sp;
-    const lp=eo5(seg(t,25.4,26.2));
+    const lp=eo5(seg(t,25.3,25.95));
     $('s7logo').style.clipPath=`inset(0 ${(1-lp)*100}% 0 0)`;
-    $('s7logo').style.transform=`scale(${lerp(1.06,1,eo(seg(t,25.4,27.4)))})`;
+    $('s7logo').style.transform=`scale(${lerp(1.06,1,eo(seg(t,25.3,27.3)))})`;
     const jp='学ぶ ・ 備える ・ 未来へ';
-    $('s7jp').innerHTML=[...jp].map((ch,i)=>{const p=seg(t,25.9+i*.05,25.9+i*.05+.45);return `<span style="display:inline-block;opacity:${cl(p*2)};transform:translateY(${(1-eo5(p))*40}px)">${ch===' '?'&nbsp;':ch}</span>`}).join('');
-    kin('s7en',t,26.35,.08,.5,24);
-    const c=seg(t,26.6,27.1); $('s7cta').style.opacity=cl(c*1.8); $('s7cta').style.transform=`translateY(${(1-eback(c))*40}px) scale(${lerp(.85,1,eback(c))})`;
-    $('s7shine').style.transform=`translateX(${eio(seg(t,27.3,28.1))*620}px) skewX(-20deg)`;
+    $('s7jp').innerHTML=[...jp].map((ch,i)=>{const p=seg(t,25.55+i*.04,25.55+i*.04+.4);return `<span style="display:inline-block;opacity:${cl(p*2)};transform:translateY(${(1-eo5(p))*40}px)">${ch===' '?'&nbsp;':ch}</span>`}).join('');
+    kin('s7en',t,25.9,.07,.45,24);
+    const c=seg(t,26.1,26.5); $('s7cta').style.opacity=cl(c*1.8); $('s7cta').style.transform=`translateY(${(1-eback(c))*40}px) scale(${lerp(.85,1,eback(c))})`;
+    $('s7shine').style.transform=`translateX(${eio(seg(t,26.8,27.5))*620}px) skewX(-20deg)`;
     $('s7wm').style.transform=`translateX(${-(t-25)*30}px)`;
   }
 }
 function shake(t,a,amp){ const x=t-a; if(x<0||x>.35) return 0; return Math.sin(x*90)*amp*Math.exp(-x*12); }
 function render(T){
-  renderOld(Math.max(0,T-HOOK_SHIFT));
-  // ---- hook 0–2.25 (waktu nyata)
+  const o=toOld(T); renderOld(o);
+  // partikel kana: melayang naik pelan + berayun
+  PARTS.forEach(k=>{ const y=((k.y - T*k.v)%1240+1240)%1240-160;
+    k.el.style.transform=`translate(${k.x+Math.sin(T*.8+k.ph)*30}px,${y}px) rotate(${k.rot+Math.sin(T*.5+k.ph)*8}deg)`; });
   const hk=$('hk'), red=$('hkred');
-  hk.style.opacity = T<1.0 ? 1 : 0;
-  if(T<1.0){
-    // montase: ganti foto tiap 0,24 dtk, tiap potongan zoom-in cepat
-    const cut=Math.min(3,Math.floor(T/.24));
+  hk.style.opacity = T<2.25 ? 1 : 0;
+  // chunk caption: pop + overshoot, potong keras ke chunk berikutnya
+  CHUNKS.forEach((c,i)=>{ const on=T>=c.a&&T<c.b; if(!on){c.el.style.opacity=0;return;}
+    const p=seg(T,c.a,c.a+.16), life=seg(T,c.a,c.b);
+    const big=c.el.querySelector('.hl')?1.6:1.35;
+    c.el.style.opacity=cl(p*5);
+    c.el.style.transform=`translate(${shake(T,c.a,c.el.querySelector('.hl')?16:6)}px,${shake(T+.01,c.a,c.el.querySelector('.hl')?10:4)}px) scale(${lerp(big,1,eback(p))*lerp(1,1.05,life)}) rotate(${c.rot}deg)`; });
+  if(T<2.25){
+    const cuts=[0.33,0.66,0.86,1.45,1.72]; const cut=cuts.filter(x=>T>=x).length%4;
     document.querySelectorAll('.hkimg').forEach((im,i)=>{ im.style.opacity=i===cut?1:0;
-      const lt=T-i*.24; im.style.transform=`scale(${lerp(1.18,1.05,eo(cl(lt/.3)))})`; });
-    const a=seg(T,.05,.3), b=seg(T,.38,.62);
-    $('hkw1').style.opacity=cl(a*3); $('hkw1').style.transform=`scale(${lerp(1.9,1,eo5(a))})`;
-    $('hkw2').style.opacity=cl(b*3); $('hkw2').style.transform=`scale(${lerp(2.2,1,eo5(b))})`;
-    const sx=shake(T,.05,10)+shake(T,.38,18), sy=shake(T+.01,.05,7)+shake(T+.01,.38,12);
-    $('hktxt').style.transform=`translate(${sx}px,${sy}px)`;
+      const last=[0,...cuts].filter(x=>T>=x).pop(); im.style.transform=`scale(${lerp(1.16,1.05,eo(cl((T-last)/.35)))})`; });
   }
-  if(T>=0.95 && T<2.3){
+  if(T>=2.2 && T<4.25){
     red.style.opacity=1;
-    const c=seg(T,.95,1.2);
-    $('hkw3').style.transform=`scale(${lerp(1.7,1,eo5(c))}) translate(${shake(T,.95,14)}px,${shake(T+.01,.95,9)}px)`;
-    $('hkw3').style.opacity=cl(c*3);
-    $('hkw4').style.opacity=.85*seg(T,1.15,1.4); $('hkw4').style.transform=`translateY(${(1-eo(seg(T,1.15,1.45)))*20}px)`;
-    // morph: layar merah menyusut jadi matahari S1 (560px di 1200,240)
-    const m=eio(seg(T,1.62,2.25));
-    const w=lerp(1920,560,m), h=lerp(1080,560,m);
+    const st=$('hkstrike'); if(st) st.style.transform=`scaleX(${eo5(seg(T,3.0,3.2))}) rotate(-4deg)`;
+    const sb=$('hksub'); if(sb){ const q=seg(T,3.15,3.35); sb.style.opacity=cl(q*3); sb.style.transform=`translateY(${(1-eback(q))*30}px)`; }
+    const m=eio(seg(T,3.65,4.2));
     red.style.left=lerp(0,1200,m)+'px'; red.style.top=lerp(0,240,m)+'px';
-    red.style.width=w+'px'; red.style.height=h+'px';
+    red.style.width=lerp(1920,560,m)+'px'; red.style.height=lerp(1080,560,m)+'px';
     red.style.borderRadius=lerp(0,280,m)+'px';
-    $('hkred_t').style.opacity=1-seg(T,1.6,1.85);
-    $('hkred_t').style.transform=`scale(${lerp(1,.6,m)})`; $('hkred_t').style.transformOrigin='0 0';
+    $('hkred_t').style.opacity=1-seg(T,3.62,3.8);
+    $('hkred_t').style.transformOrigin='0 0'; $('hkred_t').style.transform=`scale(${lerp(1,.6,m)})`;
   } else red.style.opacity=0;
 }
 window.render=render;
