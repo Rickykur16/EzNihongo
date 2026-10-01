@@ -1,0 +1,90 @@
+name: Marketing voice-over (ElevenLabs)
+
+# Membuat voice-over video brand (marketing/brand-video-src) memakai key ElevenLabs
+# yang SUDAH ada di backend/.env server. Key tidak pernah keluar dari VPS: skrip
+# backend/scripts/generate-voiceover.mjs berjalan di sana, workflow hanya mengambil
+# file MP3/JSON hasilnya lalu meng-commit ke branch video.
+#   list     → cetak daftar suara di log (tanpa biaya)
+#   sample   → baris 1 & 4 untuk beberapa suara (untuk dipilih)
+#   generate → 10 klip naskah dengan satu suara
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: list | sample | generate
+        required: true
+        default: list
+        type: choice
+        options: [list, sample, generate]
+      voices:
+        description: Voice ID ElevenLabs, pisahkan koma (sample) atau satu (generate)
+        required: false
+        default: ''
+        type: string
+      target_branch:
+        description: Branch tujuan commit hasil (harus claude/...)
+        required: false
+        default: claude/eznihongo-brand-video-5pdvrg
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  voiceover:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      MODE: ${{ inputs.mode }}
+      VOICES: ${{ inputs.voices }}
+      TARGET: ${{ inputs.target_branch }}
+      OUT: /tmp/ezvo-${{ github.run_id }}
+    steps:
+      - name: Validate inputs
+        run: |
+          set -euo pipefail
+          [[ "$MODE" =~ ^(list|sample|generate)$ ]] || { echo "FATAL: mode"; exit 1; }
+          [[ "$VOICES" =~ ^[A-Za-z0-9,]*$ ]] || { echo "FATAL: voices hanya alfanumerik + koma"; exit 1; }
+          [[ "$TARGET" =~ ^claude/[A-Za-z0-9._/-]+$ ]] || { echo "FATAL: target_branch harus claude/..."; exit 1; }
+          if [ "$MODE" != list ] && [ -z "$VOICES" ]; then echo "FATAL: voices wajib"; exit 1; fi
+
+      - name: Prepare SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_vps && chmod 600 ~/.ssh/id_vps
+          ssh-keyscan -H 168.144.107.34 >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Run generator on VPS
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_vps root@168.144.107.34 \
+            "cd /var/www/eznihongo/backend && test -f scripts/generate-voiceover.mjs && node scripts/generate-voiceover.mjs --mode '$MODE' --voices '$VOICES' --out '$OUT'"
+
+      - name: Fetch results from VPS
+        if: inputs.mode != 'list'
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_vps -r "root@168.144.107.34:$OUT" ./vo-out
+          ssh -i ~/.ssh/id_vps root@168.144.107.34 "rm -rf '$OUT'"
+          ls -la vo-out
+
+      - name: Commit results to target branch
+        if: inputs.mode != 'list'
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "$TARGET" "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" target
+          dest=target/marketing/brand-video-src/vo$([ "$MODE" = sample ] && echo /samples || true)
+          mkdir -p "$dest" && cp vo-out/* "$dest/"
+          cd target
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add marketing/brand-video-src/vo
+          git commit -m "Voice-over ElevenLabs ($MODE, run ${{ github.run_id }})"
+          git push origin "HEAD:$TARGET"
