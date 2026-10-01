@@ -376,6 +376,26 @@
       progres server, "Lanjut Belajar" dashboard, HP tanpa overflow); QA repo
       dialogue-scene + learning-flow lulus.
 
+      **Bug: admin menampilkan dialog BASI setelah migrasi menulis ulang, dan simpannya
+      MENIMPA versi baru** — user: "di pola たいです dashboard 葵 dan アンナ, tapi di admin
+      アンナ dan ハディ" (Bab 19, setelah migrasi 186). Data siswa & admin SAMA (`GET
+      /api/courses/:slug` → `module_grammar`); admin memuat kurikulum SEKALI saat halaman
+      dibuka (`STATE.modules`), jadi tab yang dibuka sebelum deploy tetap memegang pemeran
+      lama (アンナ/ハディ = isi sebelum 186, tercatat di `expectedSource` rencana 186).
+      Lebih parah: pengaman versi server (`expectedRevision` vs `updated_at` → 409
+      `version_conflict`) sudah ada, tapi `/api/courses` tidak meng-SELECT `updated_at`,
+      jadi `data-revision` baris selalu kosong dan simpan dari tab basi DITERIMA (200) —
+      dibuktikan E2E: pemeran kembali ke アンナ/ハディ tanpa peringatan. Diperbaiki:
+      (1) `content.js` mengirim `updated_at` khusus admin (dihapus dari payload siswa);
+      (2) admin memuat ulang kurikulum saat drawer Percakapan dibuka dan sebelum 🎭 Dialog
+      dibuka (`admReloadCourseState` + `admApplyFreshGrammarRow`), menulis baris di
+      TEMPAT (referensi `<tr>` editor tetap sah) dan TIDAK menimpa baris yang punya
+      editan belum disimpan — simpan baris itu lalu ditolak 409. Baris pola yang baru
+      ditambah/dihapus di server tidak ikut muncul/hilang di drawer yang sudah terbuka
+      (cuma isi baris yang ada yang disegarkan). Divalidasi: 4 tes vm-slice (satu
+      dibuktikan menggigit), `npm test` dengan DB 946/947 (1 skip lama), E2E Postgres+
+      backend asli 10/10. Belum: klik sungguhan di browser.
+
       **Bug: menyimpan baris pola dari admin MENGHAPUS suara dialog** (ada sejak fitur
       scene `8de8d54`, ketahuan saat merekam video perbandingan gerak): admin memuat pola
       lewat `GET /api/courses/:slug`, yang memakai `publicDialogScene` (membuang `voiceId`

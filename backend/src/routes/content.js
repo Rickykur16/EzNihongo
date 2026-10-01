@@ -112,7 +112,7 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
         [moduleIds]
       ),
       query(
-        `SELECT id, module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, communication_goal, dialog_scene, dialog_furigana, sort_order
+        `SELECT id, module_id, lesson_id, pattern, meaning, example, notes, example_dialog, example_dialog_id, communication_goal, dialog_scene, dialog_furigana, sort_order, updated_at
          FROM module_grammar WHERE module_id = ANY($1::uuid[])
          ORDER BY sort_order ASC, created_at ASC`,
         [moduleIds]
@@ -144,6 +144,10 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
     }
     for (const g of grammar.rows) {
       // Admins edit this payload in the curriculum editor and save it back.
+      // updated_at is the row revision the admin sends back as expectedRevision,
+      // so a save from a tab opened before a later change is refused (409)
+      // instead of overwriting it; students do not need it.
+      if (!canPreviewDraft) delete g.updated_at;
       g.dialog_scene = canPreviewDraft ? editorDialogScene(g.dialog_scene) : publicDialogScene(g.dialog_scene);
       try { g.dialog_furigana = dialogueFurigana.normalize(g.dialog_furigana); }
       catch { g.dialog_furigana = null; }
