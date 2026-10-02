@@ -8,7 +8,7 @@
   let independentAnswers = 0;
   let busy = false;
   const results = new Map();
-  const labels = { kana: 'Kana', vocabulary: 'Kosakata', kanji: 'Kanji', grammar: 'Grammar' };
+  const labels = { kana: 'Kana', vocabulary: 'Kosakata', kanji: 'Kanji', grammar: 'Tata Bahasa' };
   const api = async (path, options) => { const response = await ezApi(path, options); const body = await response.json().catch(() => ({})); if (!response.ok) throw Object.assign(new Error(body.error || 'request_failed'), { status: response.status }); return body; };
   const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
   // Loading skeletons: the home card comes from review.html itself (single source);
@@ -215,10 +215,21 @@
     const arrange = question.variant === 'arrange';
     const answerUi = arrange
       ? `<div class="arrange-answer" id="arrange-answer" aria-label="Kalimat yang kamu susun"></div><div class="arrange" id="arrange" aria-label="Kepingan kata"></div><div class="answer-row"><button class="primary" id="submit-arrange" type="button">Periksa jawaban</button><button class="token" id="reset-arrange" type="button">Ulangi</button></div>`
-      : `<div class="options">${options.map((option, optionIndex) => `<button class="option" type="button" data-option="${optionIndex}">${esc(option)}${question.optionReadings?.[optionIndex] && question.optionReadings[optionIndex] !== option ? `<small>${esc(question.optionReadings[optionIndex])}</small>` : ''}</button>`).join('')}</div>`;
+      : `<div class="${item.category === 'grammar' ? 'options options--stack' : 'options'}">${options.map((option, optionIndex) => `<button class="option" type="button" data-option="${optionIndex}">${esc(option)}${question.optionReadings?.[optionIndex] && question.optionReadings[optionIndex] !== option ? `<small>${esc(question.optionReadings[optionIndex])}</small>` : ''}</button>`).join('')}</div>`;
     const progressPercent = Math.round(((index + 1) / session.questions.length) * 100);
+    // Soal kana/kosakata/kanji: prompt-nya SENDIRI stimulusnya (satu karakter
+    // atau kata), jadi ditampilkan besar. Soal tata bahasa justru kebalikannya:
+    // prompt-nya kalimat tanya berbahasa Indonesia, stimulusnya kalimat Jepang.
+    // Yang besar harus kalimat Jepangnya, bukan pertanyaannya.
+    const grammar = item.category === 'grammar';
+    const japanese = question.example?.japanese || question.sentence || '';
+    const translation = question.example ? question.example.indonesian : question.indonesian;
+    const japaneseHtml = esc(japanese).replace(/＿＿＿/g, '<span class="stimulus-blank" aria-label="bagian kosong">＿＿＿</span>');
+    const stimulus = grammar && (japanese || translation)
+      ? `<div class="stimulus">${japanese ? `<p class="stimulus-ja" lang="ja">${japaneseHtml}</p>` : ''}<p class="stimulus-id" id="stimulus-id"${translation ? '' : ' hidden'}>${esc(translation || '')}</p></div>`
+      : `${question.example?.japanese ? `<p class="hint">${esc(question.example.japanese)}</p>` : ''}${question.example?.indonesian ? `<p class="hint">${esc(question.example.indonesian)}</p>` : ''}${question.sentence ? `<p class="hint">${esc(question.sentence)}</p>` : ''}${question.indonesian ? `<p class="hint">${esc(question.indonesian)}</p>` : ''}`;
     loaded();
-    app.innerHTML = `<section class="question-card"><div class="progress">SOAL ${index + 1} DARI ${session.questions.length}</div><div class="review-progress-bar" role="progressbar" aria-label="Progres sesi review" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progressPercent}"><i style="width:${progressPercent}%"></i></div><span class="tag">${esc(tagLabel)}</span><h1 class="prompt" tabindex="-1">${esc(question.prompt)}</h1>${question.instruction ? `<p class="hint">${esc(question.instruction)}</p>` : ''}${question.audioText ? '<button class="audio-btn" id="play-audio" type="button">🔊 Putar suara</button>' : ''}${question.reading ? `<p class="hint">${esc(question.reading)}</p>` : ''}${question.meaning ? `<p class="hint">${esc(question.meaning)}</p>` : ''}${question.example?.japanese ? `<p class="hint">${esc(question.example.japanese)}</p>` : ''}${question.example?.indonesian ? `<p class="hint">${esc(question.example.indonesian)}</p>` : ''}${question.sentence ? `<p class="hint">${esc(question.sentence)}</p>` : ''}${question.indonesian ? `<p class="hint">${esc(question.indonesian)}</p>` : ''}${answerUi}<p class="feedback" id="feedback" aria-live="polite"></p><div class="review-actions" id="answer-actions"></div></section>`;
+    app.innerHTML = `<section class="question-card"><div class="progress">SOAL ${index + 1} DARI ${session.questions.length}</div><div class="review-progress-bar" role="progressbar" aria-label="Progres sesi review" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progressPercent}"><i style="width:${progressPercent}%"></i></div><span class="tag">${esc(tagLabel)}</span><h1 class="prompt${grammar ? ' prompt--text' : ''}" tabindex="-1">${esc(question.prompt)}</h1>${question.instruction ? `<p class="hint">${esc(question.instruction)}</p>` : ''}${question.audioText ? '<button class="audio-btn" id="play-audio" type="button">🔊 Putar suara</button>' : ''}${question.reading ? `<p class="hint">${esc(question.reading)}</p>` : ''}${question.meaning ? `<p class="hint">${esc(question.meaning)}</p>` : ''}${stimulus}${answerUi}<p class="feedback" id="feedback" aria-live="polite"></p><div class="review-actions" id="answer-actions"></div></section>`;
     const audioBtn = app.querySelector('#play-audio');
     if (audioBtn) {
       audioBtn.addEventListener('click', () => playAudio(question.audioText, audioBtn));
@@ -264,13 +275,17 @@
       feedback.className = 'feedback';
       app.querySelectorAll('[data-option]').forEach(node => { if (Number(node.dataset.option) === result.correctIndex) node.classList.add('correct'); });
       if (button) button.classList.add(result.passed ? 'correct' : 'wrong');
+      // Terjemahan ditahan server sampai dijawab (lihat reviewGrammarQuestion).
+      const translationNode = document.getElementById('stimulus-id');
+      if (result.translation && translationNode) { translationNode.textContent = result.translation; translationNode.hidden = false; }
       // Benar: tidak ada yang perlu dipelajari, jadi lanjut sendiri. Salah:
       // JANGAN pindah sendiri — tampilkan jawaban benarnya dan tunggu siswa
       // menekan "Lanjut"; waktu mencerna kesalahan adalah milik siswa.
       if (result.passed) {
         feedback.textContent = 'Benar — review berikutnya akan dijadwalkan lebih jauh.';
         const answeredIndex = index;
-        setTimeout(() => { if (index === answeredIndex) advance(); }, 900);
+        // Beri waktu membaca terjemahan yang baru terbuka.
+        setTimeout(() => { if (index === answeredIndex) advance(); }, result.translation ? 1800 : 900);
         return;
       }
       const answerText = correctAnswerText(session.questions[index].question, result);

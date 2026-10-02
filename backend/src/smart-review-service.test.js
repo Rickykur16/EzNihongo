@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { applyPracticeAttempt } from './learning-foundations.js';
 import { deriveDrills, publicDrill } from './grammar-drills.js';
+import { reviewGrammarQuestion } from './routes/smart-review.js';
 import { SMART_REVIEW_SOURCE, filterReviewScope, isReviewNeeded, makeReviewQuestion, pickCompoundOwners, unlockedSkills, reviewPriority, selectReviewCandidates, summarizeCandidates } from './smart-review-service.js';
 
 const now = new Date('2026-09-01T00:00:00.000Z');
@@ -115,6 +116,23 @@ test('grammar review uses the existing derived drill and keeps answer data out o
   const raw = deriveDrills([grammar], [grammar]).get('g1').step1;
   assert.ok(raw);
   assert.equal(Object.hasOwn(publicDrill(raw), 'correctIndex'), false);
+});
+
+// Step 1 asks what a Japanese sentence conveys; its translation ("Saya Anna.")
+// is the answer reworded ("Menyebutkan namanya."), so it must not reach the
+// browser before grading. Step 2 needs its translation to disambiguate the blank.
+test('Smart Review withholds the step 1 translation but keeps the step 2 one', () => {
+  const grammar = { id: 'g1', pattern: '〜は〜です', meaning: 'adalah', examples: [], practiceConfig: {
+    recognition: { prompt: 'Apa yang disampaikan Anna melalui kalimat ini?', example: { japanese: 'わたしは アンナです。', indonesian: 'Saya Anna.' }, options: ['Menyebutkan namanya.', 'Menanyakan nama lawan bicara.', 'Menyangkal nama yang disebutkan.'], answer: 'Menyebutkan namanya.' },
+    controlled: { prompt: 'Lengkapi.', sentence: 'わたしは がくせい＿＿＿。', indonesian: 'Saya pelajar.', options: ['です', 'じゃありません', 'ですか'], answer: 'です' },
+  } };
+  const drills = deriveDrills([grammar], [grammar]).get('g1');
+  const step1 = reviewGrammarQuestion(drills.step1);
+  assert.deepEqual(step1.example, { japanese: 'わたしは アンナです。' });
+  assert.equal(JSON.stringify(step1).includes('Saya Anna.'), false);
+  assert.equal(Object.hasOwn(step1, 'correctIndex'), false);
+  assert.equal(drills.step1.example.indonesian, 'Saya Anna.', 'stored payload keeps it for the answer result');
+  assert.equal(reviewGrammarQuestion(drills.step2).indonesian, 'Saya pelajar.');
 });
 
 // 学生 contains both 学 and 生, so deriveCompounds() yields it twice — once per

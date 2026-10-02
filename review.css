@@ -215,6 +215,63 @@ body {
   overflow-wrap: anywhere;
 }
 
+/* Soal tata bahasa: pertanyaannya kalimat Indonesia biasa, jadi ukurannya
+   ukuran judul soal, bukan ukuran karakter yang ditanyakan. Yang ditonjolkan
+   adalah kalimat Jepang di panel .stimulus. */
+#review-app .prompt--text {
+  margin: 18px 0 14px;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: clamp(20px, 3.4vw, 25px);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.stimulus {
+  margin: 0 0 6px;
+  padding: 18px 20px;
+  border: 1px solid var(--learning-blue-200);
+  border-left: 4px solid var(--learning-blue-600);
+  border-radius: 14px;
+  background: var(--learning-blue-100);
+}
+
+.stimulus-ja {
+  margin: 0;
+  color: var(--ink-900, #1a1815);
+  font: 500 clamp(22px, 4.4vw, 30px)/1.5 "Noto Sans JP", sans-serif;
+  overflow-wrap: anywhere;
+}
+
+.stimulus-blank {
+  display: inline-block;
+  min-width: 3.2em;
+  margin: 0 .15em;
+  border-bottom: 3px solid var(--learning-blue-600);
+  color: transparent;
+  line-height: 1.1;
+}
+
+.stimulus-id {
+  margin: 8px 0 0;
+  color: var(--ink-700, #4a453e);
+  font-size: 15px;
+}
+
+.stimulus-ja + .stimulus-id {
+  padding-top: 8px;
+  border-top: 1px dashed var(--learning-blue-200);
+}
+
+/* Opsi berupa kalimat: satu kolom supaya terbaca berurutan dan tiga pilihan
+   tidak menyisakan sel kosong di grid dua kolom. */
+.options.options--stack { grid-template-columns: 1fr; }
+#review-app .options--stack .option { min-height: 54px; }
+
+/* Watermark 復 menempati pojok kanan atas; jangan biarkan progress bar
+   menembusnya. */
+.question-card .progress,
+.question-card .review-progress-bar { margin-right: 76px; }
+
 .options {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -404,6 +461,9 @@ body {
   #review-app .review-title { font-size: 34px; }
   .counts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .options { grid-template-columns: 1fr; }
+  .question-card .progress,
+  .question-card .review-progress-bar { margin-right: 58px; }
+  .stimulus { padding: 14px 15px; }
   #review-app .option { min-height: 58px; }
   .answer-row { align-items: stretch; flex-direction: column; }
   .answer-row .primary { width: 100%; }
