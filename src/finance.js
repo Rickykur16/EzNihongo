@@ -114,6 +114,10 @@ export function mountFinance(host,{api,access}){
   const table=(headers,body)=>`<div class="fin-table-scroll"><table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${body||`<tr><td colspan="${headers.length}" class="fin-empty">Belum ada transaksi pada periode ini.</td></tr>`}</tbody></table></div>`;
   const badge=status=>`<span class="fin-badge fin-${esc(status)}">${esc(labels[status]||status)}</span>`;
   const bankOptions=()=>accounts.filter(a=>a.is_bank).map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('');
+  // Without any bank account the <select> rendered with zero options and looked unclickable. Say why, and offer the fix.
+  const bankSelect=(label,name)=>accounts.some(a=>a.is_bank)?select(label,name,bankOptions()):
+    select(label,name,'<option value="" disabled selected>Belum ada rekening bank</option>')+
+    `<div class="fin-hint" role="note">Belum ada kas / rekening bank. ${manage?'Tambahkan dulu, lalu ulangi pencatatan ini.</div>'+button('account','Tambah rekening sekarang'):'Minta owner menambahkan rekening terlebih dahulu.</div>'}`;
   const options=(items)=>items.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('');
   const field=(label,name,type='text',value='',extra='')=>`<label>${esc(label)}<input name="${name}" type="${type}" value="${esc(value)}" required ${extra}></label>`;
   const amountField=(value='')=>`<section class="fin-calculator"><label>Cara mengisi nominal<select data-amount-mode aria-label="Cara mengisi nominal"><option value="manual">Masukkan total langsung</option><option value="calculate">Hitung jumlah × tarif</option></select></label><div data-calculation hidden>`+
@@ -212,6 +216,7 @@ export function mountFinance(host,{api,access}){
     const cancel=()=>{if(!dirty||confirm('Buang isian yang belum disimpan?')){dirty=false;d.close();}};
     d.querySelectorAll('[data-cancel]').forEach(b=>b.onclick=cancel);d.oncancel=e=>{e.preventDefault();cancel();};
     d.querySelector('form').oninput=()=>{dirty=true;};
+    d.querySelectorAll('.fin-form-body [data-action]').forEach(b=>b.onclick=()=>{if(dirty&&!confirm('Buang isian yang belum disimpan?'))return;dirty=false;d.close();act(b.dataset.action,b.dataset.id).catch(e=>{message=e.message;render();});});
     const calculator=d.querySelector('.fin-calculator');
     const updateAmount=()=>{
       if(!calculator)return true;
@@ -259,12 +264,12 @@ export function mountFinance(host,{api,access}){
     if(action==='approve'){if(!confirm('Setujui dan bukukan tagihan ini?'))return;await call('/bills/'+id+'/approve',{});message='Tagihan disetujui dan dibukukan.';return refresh();}
     if(action==='receive'||action==='recognize'){
       const o=data.courses.find(o=>o.id===id),receive=action==='receive';
-      return modal(receive?'Alokasikan penerimaan ke rekening':'Akui pendapatan kursus',hint(o.number+' · '+o.title)+(receive?select('Rekening penerima','bankId',bankOptions()):hint('Isi bagian pendapatan untuk layanan yang sudah diberikan, sesuai kebijakan pembukuan.'))+amountField(o.amount-(receive?o.allocated:o.recognized))+dateField()+field(receive?'Keterangan':'Dasar pengakuan / periode layanan','description','text',receive?'Penerimaan '+o.number:'','maxlength="240"'),(f,key)=>call(receive?'/receipts':'/recognitions',{...f,orderId:id,requestKey:key}));
+      return modal(receive?'Alokasikan penerimaan ke rekening':'Akui pendapatan kursus',hint(o.number+' · '+o.title)+(receive?bankSelect('Rekening penerima','bankId'):hint('Isi bagian pendapatan untuk layanan yang sudah diberikan, sesuai kebijakan pembukuan.'))+amountField(o.amount-(receive?o.allocated:o.recognized))+dateField()+field(receive?'Keterangan':'Dasar pengakuan / periode layanan','description','text',receive?'Penerimaan '+o.number:'','maxlength="240"'),(f,key)=>call(receive?'/receipts':'/recognitions',{...f,orderId:id,requestKey:key}));
     }
     if(action==='pay'){
-      const b=data.bills.find(b=>b.id===id);return modal('Catat pembayaran tagihan',hint(b.vendor+' · '+b.description)+select('Rekening sumber','bankId',bankOptions())+amountField(b.amount-b.paid)+dateField()+field('Referensi / keterangan','description','text','','maxlength="240"')+hint('Catat setelah pembayaran benar-benar dilakukan. Tombol ini tidak mengirim uang dari bank.'),(f,key)=>call('/bills/'+id+'/pay',{...f,requestKey:key}));
+      const b=data.bills.find(b=>b.id===id);return modal('Catat pembayaran tagihan',hint(b.vendor+' · '+b.description)+bankSelect('Rekening sumber','bankId')+amountField(b.amount-b.paid)+dateField()+field('Referensi / keterangan','description','text','','maxlength="240"')+hint('Catat setelah pembayaran benar-benar dilakukan. Tombol ini tidak mengirim uang dari bank.'),(f,key)=>call('/bills/'+id+'/pay',{...f,requestKey:key}));
     }
-    if(action==='transfer')return modal('Catat transfer antar-rekening',select('Dari rekening','fromBankId',bankOptions())+select('Ke rekening','toBankId',bankOptions())+amountField()+dateField()+field('Referensi / keperluan','description','text','','maxlength="240"'),(f,key)=>call('/transfers',{...f,requestKey:key}));
+    if(action==='transfer')return modal('Catat transfer antar-rekening',bankSelect('Dari rekening','fromBankId')+bankSelect('Ke rekening','toBankId')+amountField()+dateField()+field('Referensi / keperluan','description','text','','maxlength="240"'),(f,key)=>call('/transfers',{...f,requestKey:key}));
     if(action==='reverse'||action==='void')return modal(action==='reverse'?'Koreksi transaksi':'Batalkan tagihan',dateField()+field('Alasan koreksi','reason','text','','maxlength="240"')+hint('Transaksi yang sudah dibukukan dikoreksi dengan catatan pembalik, sehingga riwayat tetap dapat ditelusuri.'),f=>call(action==='reverse'?'/entries/'+id+'/reverse':'/bills/'+id+'/void',f));
     if(action==='import')return importDialog();
     if(action==='match'){
@@ -298,7 +303,7 @@ export function mountFinance(host,{api,access}){
   }
   function importDialog(){
     let parsed=null,normalized=null;
-    const d=modal('Impor mutasi bank',select('Rekening','bankId',bankOptions())+`<label>File CSV<input name="csv" type="file" accept=".csv,text/csv" required></label><div data-mapping></div><div data-preview></div>`+hint('Gunakan ekspor CSV bank. Pratinjau dan periksa kolom sebelum mengimpor. Maksimal 500 baris / 1 MB.'),async f=>{if(!normalized)throw new Error('Buat pratinjau terlebih dahulu.');const r=await call('/bank-imports',{bankId:f.bankId,rows:normalized});return r.duplicate?'File yang sama sudah diimpor. Tidak ada transaksi tambahan.':`${r.imported} mutasi diimpor.`;});
+    const d=modal('Impor mutasi bank',bankSelect('Rekening','bankId')+`<label>File CSV<input name="csv" type="file" accept=".csv,text/csv" required></label><div data-mapping></div><div data-preview></div>`+hint('Gunakan ekspor CSV bank. Pratinjau dan periksa kolom sebelum mengimpor. Maksimal 500 baris / 1 MB.'),async f=>{if(!normalized)throw new Error('Buat pratinjau terlebih dahulu.');const r=await call('/bank-imports',{bankId:f.bankId,rows:normalized});return r.duplicate?'File yang sama sudah diimpor. Tidak ada transaksi tambahan.':`${r.imported} mutasi diimpor.`;});
     d.querySelector('[type=submit]').disabled=true;
     d.querySelector('[name=csv]').onchange=async event=>{
       normalized=null;d.querySelector('[type=submit]').disabled=true;

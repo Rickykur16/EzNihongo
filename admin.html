@@ -1105,7 +1105,7 @@ async function openWorkspace(key) {
   root.querySelectorAll('section.pane').forEach(p=>p.classList.remove('active'));
   if(key==='finance'){
     const host=root.querySelector('#finance-workspace');host.hidden=false;host.innerHTML='<p role="status">Memuat Finance…</p>';
-    try{const module=await import('./src/finance.js?v=finance-company-report-20260912');if(request!==adminTabRequest)return;
+    try{const module=await import('./src/finance.js?v=finance-bank-empty-20261002');if(request!==adminTabRequest)return;
       financeMount=module.mountFinance(host,{api:ezApi,onOrder:id=>openOrderDetail(id),access:STAFF_ACCESS.finance});
     }catch{if(request===adminTabRequest)host.innerHTML='<p role="alert">Finance gagal dimuat. Buka menu kembali untuk mencoba lagi.</p>';}
     return;
