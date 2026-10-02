@@ -4,6 +4,24 @@ import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 const html=await readFile(new URL('../../welcome.html',import.meta.url),'utf8');
 
+test('level final exams show their own label, count, raw-score rules and delivery mode',()=>{
+  const ctx=vm.createContext({escapeHtml:x=>x,escapeAttr:x=>x,kanaPlacementMeta:()=>null,COURSE_CONTENT:{}});
+  const start=html.indexOf('function renderQuizLandingCard(');
+  vm.runInContext(html.slice(start,html.indexOf('function escapeAttr',start)),ctx);
+  for(const [level,count] of [['n5',80],['n4',90]]){
+    const container={innerHTML:''};
+    ctx.renderQuizLandingCard(container,`${level}:final:exam`,`Final Exam ${level.toUpperCase()}`,{
+      assessmentVersion:`jlpt-final-${level}-v1`,questionsPerAttempt:count,poolSize:count,
+      passingScorePct:70,cooldownHours:12,canAttempt:true,objectives:[],
+    });
+    const visible=container.innerHTML.replace(/<[^>]*>/g,'');
+    assert.match(visible,/Ujian akhir level/);assert.match(visible,/Mulai final exam/);
+    assert.match(visible,new RegExp(`${count} soal orisinal`));assert.match(visible,/tiap kategori minimal 50%/);
+    assert.match(visible,/tanpa batas waktu otomatis/);assert.match(visible,/audio boleh diulang/);
+    assert.doesNotMatch(visible,/Assessment bab|soal acak dari pool/);
+  }
+});
+
 test('opening an assignment always shows its preview, including cached and old pending sessions',async()=>{
   for(const cached of [true,false])for(const update of [null,{version:'n5-assessment-v3',questionsPerAttempt:24}]){
     const status={inProgress:true,inProgressAttemptToken:'saved-token',assessmentUpdate:update};

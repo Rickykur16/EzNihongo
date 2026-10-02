@@ -1,5 +1,6 @@
 // Versioned, bounded evidence for chapter assessments. This is not the
 // grammar-mastery policy and does not claim open-ended speaking proficiency.
+import {FINAL_EXAMS,isFinalExam,finalExamRules} from './final-exam-policy.js';
 export const CHAPTER_ASSESSMENT_VERSION = 'n5-assessment-v2';
 export const JLPT_ASSESSMENT_VERSION = 'n5-assessment-v3';
 export const REVISED_JLPT_ASSESSMENT_VERSION = 'n5-assessment-v4';
@@ -14,27 +15,32 @@ export const CHAPTER_LABELS = Object.freeze({
 export const CHAPTER_POLICY = Object.freeze({ passingScorePct: 70, categoryMinimumPct: 50, minimumObjectiveCorrect: 1, questionsPerForm: 24 });
 
 export function isChapterAssessment(policy) {
-  return [CHAPTER_ASSESSMENT_VERSION, JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION, N4_ASSESSMENT_VERSION].includes(policy?.version);
+  return isFinalExam(policy) || [CHAPTER_ASSESSMENT_VERSION, JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION, N4_ASSESSMENT_VERSION].includes(policy?.version);
 }
 
 export function publicChapterRules(policy) {
+  if (isFinalExam(policy)) return finalExamRules(policy);
   return Object.fromEntries(Object.entries(CHAPTER_POLICY).map(([key, value]) => [key, policy?.[key] ?? value]));
 }
 
 export function assertChapterForm(policy, rows) {
-  if (!isChapterAssessment(policy) || !Array.isArray(rows) || rows.length !== CHAPTER_POLICY.questionsPerForm) throw new Error('assessment_bank_invalid');
+  const final = isFinalExam(policy);
+  const rules = final ? finalExamRules(policy) : CHAPTER_POLICY;
+  const blueprint = final ? FINAL_EXAMS[policy.version].blueprint : CHAPTER_BLUEPRINT;
+  if (!isChapterAssessment(policy) || !Array.isArray(rows) || rows.length !== rules.questionsPerForm || (final && policy.selection !== 'all')) throw new Error('assessment_bank_invalid');
   const objectives = new Set((policy.objectives || []).map(o => o.id));
   if (!objectives.size || objectives.size !== policy.objectives.length) throw new Error('assessment_bank_invalid');
-  for (const [category, count] of Object.entries(CHAPTER_BLUEPRINT)) {
+  for (const [category, count] of Object.entries(blueprint)) {
     if (rows.filter(q => q.question_category === category).length !== count) throw new Error('assessment_bank_invalid');
   }
   if (new Set(rows.map(q => q.id)).size !== rows.length) throw new Error('assessment_bank_invalid');
   for (const q of rows) {
     if (!objectives.has(q.assessment_meta?.objective) || q.assessment_meta?.version !== policy.version) throw new Error('assessment_bank_invalid');
-    const audioChoices = [JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION].includes(policy.version) && q.question_category === 'listening' &&
+    const audioChoices = (final || [JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION].includes(policy.version)) && q.question_category === 'listening' &&
       ['verbal_expression', 'quick_response'].includes(q.assessment_meta.itemType);
     const validOptionCount = policy.version === N4_ASSESSMENT_VERSION ? [3,4].includes(q.options?.length) : q.options?.length === (audioChoices ? 3 : 4);
     if (q.question_type !== 'multiple_choice' || !validOptionCount || q.options.filter(o => o.is_correct === true).length !== 1) throw new Error('assessment_bank_invalid');
+    if (final && (new Set(q.options.map(o => o.id)).size !== q.options.length || new Set(q.options.map(o => o.option_text)).size !== q.options.length)) throw new Error('assessment_bank_invalid');
     if (audioChoices && q.options.some((o,i) => o.option_text !== `${i+1}ばん`)) throw new Error('assessment_bank_invalid');
     if (q.question_category === 'reading' && !q.passage?.trim()) throw new Error('assessment_bank_invalid');
     if (q.question_category === 'listening' && !q.audio_script?.trim()) throw new Error('assessment_bank_invalid');
@@ -47,7 +53,7 @@ export function createChapterSnapshot(policy, rows, previousForm, random = Math.
     assertChapterForm(policy, rows);
     if (rows.some(q => q.assessment_meta.form !== 'A')) throw new Error('assessment_bank_invalid');
     return structuredClone({ version: policy.version, form: 'ALL',
-      policy: { ...policy, ...CHAPTER_POLICY },
+      policy: { ...policy, ...(isFinalExam(policy) ? finalExamRules(policy) : CHAPTER_POLICY) },
       questions: [...rows].sort((a, b) => a.section_number - b.section_number || a.sort_order - b.sort_order) });
   }
   const form = previousForm === 'A' ? 'B' : previousForm === 'B' ? 'A' : random() < 0.5 ? 'A' : 'B';

@@ -4549,7 +4549,7 @@ function renderQuizModal(lessonId, lessonTitle, questions, lessonMeta, focusSect
   // Pool indicator: ratio actual pool size : target sample. Warn if <2×.
   const poolSize = questions.length;
   const policy = lessonMeta?.assessment_policy;
-  const versioned = ['n5-assessment-v2', 'n5-assessment-v3', 'n5-assessment-v4'].includes(policy?.version);
+  const versioned = ['n5-assessment-v2', 'n5-assessment-v3', 'n5-assessment-v4', 'n4-assessment-v1', 'jlpt-final-n5-v1', 'jlpt-final-n4-v1'].includes(policy?.version);
   const allQuestions = versioned && policy.selection === 'all';
   const qpa = versioned ? (policy.questionsPerForm ?? 24) : (lessonMeta?.questions_per_attempt || poolSize);
   const passing = versioned ? (policy.passingScorePct ?? 70) : (lessonMeta?.passing_score_pct ?? 70);

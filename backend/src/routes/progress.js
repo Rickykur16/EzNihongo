@@ -366,7 +366,7 @@ router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('
     passingScorePct: result.snapshot?.policy.passingScorePct ?? passingScorePct,
     totalQuestions: questions.length,
     questionsPerAttempt: questions.length,
-    poolSize: result.snapshot ? 48 : allIds.length,
+    poolSize: result.snapshot?.policy.selection === 'all' ? result.snapshot.questions.length : result.snapshot ? 48 : allIds.length,
     expiresAt: null,
     draftEnabled: true, draftAnswers: [], draftRevision: 0,
     ...(result.snapshot ? { assessmentVersion: result.snapshot.version, assessmentForm: result.snapshot.form,
