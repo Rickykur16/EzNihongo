@@ -200,9 +200,17 @@
             pending: null, result: null, inFlight: false, error: false, stale: false });
           context.questions.set(question.id, { question, state: memory.get(stateKey) });
         }
-        questionsSlot.innerHTML = `<section class="dq-panel" aria-label="Pemahaman percakapan"><h4>Cek pemahaman percakapan</h4>${safeQuestions.map((question, index) =>
+        const selfChecks = slot(root, 'data-dq-self-checks-for', grammar.id);
+        questionsSlot.innerHTML = `<section class="dq-panel" aria-label="Pemahaman percakapan"><h4>${selfChecks ? 'Tes pemahaman percakapan' : 'Cek pemahaman percakapan'}</h4>${safeQuestions.map((question, index) =>
           questionHtml(question, context.questions.get(question.id).state, index)).join('')}</section>`;
         questionsSlot.hidden = false;
+        if (selfChecks) {
+          const remaining = [...selfChecks.querySelectorAll('.dq-self-check')]
+            .filter((check, index) => { check.hidden = index < safeQuestions.length; return !check.hidden; });
+          selfChecks.hidden = remaining.length === 0;
+          const heading = selfChecks.querySelector('h3');
+          if (heading && remaining.length) heading.textContent = 'Latihan tambahan';
+        }
       }
     } catch { /* Static lesson and completion remain usable. */ }
   }

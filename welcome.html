@@ -4714,7 +4714,7 @@
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
 <link rel="stylesheet" href="styles/skeleton.css?v=1">
 <link rel="stylesheet" href="styles/dialogue-scene.css?v=5">
-<link rel="stylesheet" href="styles/dialogue-questions.css?v=20260927-1">
+<link rel="stylesheet" href="styles/dialogue-questions.css?v=20261003-1">
 <link rel="stylesheet" href="maneko.css?v=20260926-1">
 <script src="maneko.js?v=20260929-fokus"></script>
 </head>
@@ -4812,7 +4812,7 @@ function getUserName(user = session) {
 <script src="assets/dialogue/catalog.js?v=1"></script>
 <script src="src/dialogue-furigana.js?v=1"></script>
 <script src="src/dialogue-scene.js?v=4"></script>
-<script src="src/dialogue-questions.js?v=20261001-1"></script>
+<script src="src/dialogue-questions.js?v=20261003-1"></script>
 <script src="learning-state.js?v=20260911-1"></script>
 <script>
 // ═══════════════════════════════════════════════
@@ -8680,11 +8680,11 @@ function renderConversationLesson(course, module, lesson, nav) {
         <section class="lesson-extra-card grammar-card" data-grammar-id="${escapeHtml(grammar.id || '')}">
           <h2 class="grammar-pattern">${escapeHtml(grammar.pattern || `Percakapan ${index + 1}`)}</h2>
           ${source.bunpouFlow?.directions?.[grammar.id] ? `<p class="grammar-listening-direction">🎧 ${escapeHtml(source.bunpouFlow.directions[grammar.id])}</p>` : ''}
-          <div class="dq-goal" data-dq-goal-for="${escapeHtml(grammar.id || '')}" hidden></div>
+          <div class="dq-goal" data-dq-goal-for="${escapeHtml(grammar.id || '')}" ${grammar.communication_goal ? '' : 'hidden'}>${grammar.communication_goal ? `<strong>Tujuan komunikasi</strong><p>${escapeHtml(grammar.communication_goal)}</p>` : ''}</div>
           ${grammarKaraokeHtml(String(grammar.example_dialog).trim(), `g${index}`,
             grammar.example_dialog_id || '', grammar.dialog_scene, grammar.id, grammar.dialog_furigana)}
-          ${dialogueSelfChecksHtml(grammar)}
           <div class="dq-questions" data-dq-questions-for="${escapeHtml(grammar.id || '')}" hidden></div>
+          ${dialogueSelfChecksHtml(grammar)}
         </section>`).join('')}
     </div>` : '<p class="lesson-empty" style="color:#737373;">Dialog untuk pelajaran ini belum tersedia.</p>'}
     <div class="lesson-footer">
@@ -8705,10 +8705,15 @@ function renderConversationLesson(course, module, lesson, nav) {
     openLegacyTask: linkedTask ? () => window.selectLesson(module.id, linkedTask.lesson.id) : null });
 }
 
-// N4 reading checks (voluntary, answers revealed on demand; see
-// n4-dialogue-support.js). Shown under the dialogue they belong to.
+// N4 reading checks remain available if the interactive question cannot load.
+// After it loads, only the questions not covered by the quiz stay visible.
 function dialogueSelfChecksHtml(grammar) {
-  return (Array.isArray(grammar?.dialogueSelfChecks) ? grammar.dialogueSelfChecks : []).map(q => `<div style="margin-top:14px"><p><strong>${escapeHtml(q.prompt)}</strong></p><details><summary style="cursor:pointer">Lihat jawaban dan alasan</summary><p>${escapeHtml(q.answer)}</p><p>${escapeHtml(q.explanation)}</p></details></div>`).join('');
+  const checks = Array.isArray(grammar?.dialogueSelfChecks) ? grammar.dialogueSelfChecks : [];
+  if (!checks.length) return '';
+  return `<section class="dq-self-checks" data-dq-self-checks-for="${escapeHtml(grammar.id || '')}" aria-label="Tes pemahaman percakapan">
+    <h3>Tes pemahaman percakapan</h3>
+    ${checks.map(q => `<div class="dq-self-check"><p><strong>${escapeHtml(q.prompt)}</strong></p><details><summary style="cursor:pointer">Lihat jawaban dan alasan</summary><p>${escapeHtml(q.answer)}</p><p>${escapeHtml(q.explanation)}</p></details></div>`).join('')}
+  </section>`;
 }
 
 // ── Dialog player (chat bubbles) ───────────────────────────
