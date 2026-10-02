@@ -49,3 +49,23 @@ di `video.html` — ubah animasi, ubah cue-nya di tempat yang sama.
    `ffmpeg -framerate 30 -i <dir>/f%04d.jpg -i sfx-norm.wav -c:v libx264 -crf 18 -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -movflags +faststart ../eznihongo-brand-30s.mp4`
 
 Tangkapan Belajar/Review/Progres memakai `assets/landing/*.png` yang sudah ada.
+
+---
+
+# Konten edukasi: 「すみません」 1 kata, 3 arti (30 detik, 9:16)
+
+Hasil: **`../eznihongo-edu-sumimasen-30s-9x16.mp4`** — 1080×1920, 30 fps, H.264 + AAC
+(±-16 LUFS), tanpa voice-over (teks di layar + efek suara/musik sintesis `sfx.py`).
+Sumber: `edu-sumimasen-9x16.html` (gaya caption sama dengan video brand).
+
+Isi: hook → 1/3 → arti 1 permisi (すみません、えきは どこですか。) → arti 2 maaf
+(nyenggol orang di kereta) → arti 3 terima kasih ("maaf jadi ngerepotin") → bonus
+tingkat sopan (ごめんなさい / すみません / 申し訳ありません) → penutup eznihongo.com.
+Foto: `assets/dashboard/*` (Unsplash License).
+
+Render ulang (font di `fonts/`, lihat langkah 2 di atas; `render.mjs` sekarang menunggu
+`window.READY` dan menerima env `DUR`):
+
+    VIDEO=edu-sumimasen-9x16.html W=1080 H=1920 node render.mjs <dir> full
+    VIDEO=edu-sumimasen-9x16.html OUT=cues-sumimasen.json node cues.mjs
+    python3 sfx.py cues-sumimasen.json sfx.wav   # lalu loudnorm + mux seperti di atas
