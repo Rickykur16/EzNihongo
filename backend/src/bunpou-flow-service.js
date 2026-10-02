@@ -148,7 +148,11 @@ export function publicSessionItem(row) {
     step: row.step,
     variant: snap.variant || null,
     prompt: snap.prompt || null,
-    example: snap.example || null,
+    // Terjemahan Step 1 = jawabannya dengan kata lain; baru dibuka bersama
+    // kunci jawaban (lulus atau di-reveal). Lihat grammar-drills.js#publicDrill.
+    example: snap.example
+      ? (revealed ? snap.example : { japanese: snap.example.japanese ?? null })
+      : null,
     sentence: snap.sentence || null,
     indonesian: snap.indonesian || null,
     options: isArrange ? null : (snap.options || null),

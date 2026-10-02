@@ -426,7 +426,7 @@ test('gtSubmitAnswer (session mode) posts to the session item endpoint and norma
     return { ok: true, status: 200, json: async () => ({ passed: false, wrongCount: 1, revealEligible: false }) };
   });
   const d = await ctx.gtSubmitAnswer({ id: 'g1' }, 1, { optionIndex: 2 });
-  assert.deepEqual(plain(d), { passed: false, correctIndex: null, correctOrder: null, japanese: null });
+  assert.deepEqual(plain(d), { passed: false, correctIndex: null, correctOrder: null, japanese: null, translation: null });
 });
 
 test('gtSubmitAnswer (session mode) surfaces an expired session distinctly from other failures', async () => {
@@ -458,7 +458,21 @@ test('gtSubmitAnswer (legacy mode, no session) posts to the old endpoint unchang
     return { ok: true, json: async () => ({ passed: true, correctIndex: 3 }) };
   });
   const d = await ctx.gtSubmitAnswer({ id: 'g1' }, 2, { order: [1, 0] });
-  assert.deepEqual(plain(d), { passed: true, correctIndex: 3, correctOrder: null, japanese: null });
+  assert.deepEqual(plain(d), { passed: true, correctIndex: 3, correctOrder: null, japanese: null, translation: null });
+});
+
+// Step 1 translations are withheld until the step is finished; both answer
+// paths must pass the one the server returns through to the caller.
+test('gtSubmitAnswer forwards the step 1 translation from both the session and legacy paths', async () => {
+  const { ctx, setEzApi } = setup();
+  ctx.window.__gtSessionId = 'sess-1';
+  ctx.window.__gtItemIds = { 'g1-1': 'item-1' };
+  setEzApi(async () => ({ ok: true, status: 200, json: async () => ({ passed: true, example: { japanese: 'わたしは アンナです。', indonesian: 'Saya Anna.' } }) }));
+  assert.equal((await ctx.gtSubmitAnswer({ id: 'g1' }, 1, { optionIndex: 0 })).translation, 'Saya Anna.');
+  ctx.window.__gtSessionId = null;
+  ctx.window.__gtLessonId = 'task-1';
+  setEzApi(async () => ({ ok: true, json: async () => ({ passed: false, correctIndex: 2, translation: 'Saya Anna.' }) }));
+  assert.equal((await ctx.gtSubmitAnswer({ id: 'g1' }, 1, { optionIndex: 0 })).translation, 'Saya Anna.');
 });
 
 // ── gtRevealAnswer ────────────────────────────────────────────────────────
@@ -471,7 +485,7 @@ test('gtRevealAnswer posts to the reveal endpoint and returns the disclosed fiel
     assert.equal(opts.method, 'POST');
     return { ok: true, json: async () => ({ correctOrder: ['a', 'b'], japanese: 'ab', explanation: 'why' }) };
   });
-  assert.deepEqual(plain(await ctx.gtRevealAnswer({ id: 'g1' }, 2)), { correctIndex: null, correctOrder: ['a', 'b'], japanese: 'ab' });
+  assert.deepEqual(plain(await ctx.gtRevealAnswer({ id: 'g1' }, 2)), { correctIndex: null, correctOrder: ['a', 'b'], japanese: 'ab', translation: null });
 });
 
 test('gtRevealAnswer returns null when the server refuses (not yet eligible) rather than throwing', async () => {

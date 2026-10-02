@@ -559,7 +559,15 @@ router.post('/grammar-task/drill-answer', requireAuth, drillLimiter, asyncHandle
     console.error('grammar_attempts (drill) insert failed:', err.message);
   }
 
-  if (!isArrange) return res.json({ passed, correctIndex: drill.correctIndex });
+  // Terjemahan Step 1 ditahan publicDrill; dikirim di sini supaya bisa
+  // ditampilkan begitu soal selesai (benar, atau jatah salah habis). Jalur
+  // lama ini memang sudah mengirim correctIndex di setiap jawaban, jadi
+  // terjemahan tidak menambah bocoran apa pun; browser baru menampilkannya
+  // setelah soal selesai.
+  if (!isArrange) {
+    return res.json({ passed, correctIndex: drill.correctIndex,
+      ...(drill.example?.indonesian ? { translation: drill.example.indonesian } : {}) });
+  }
 
   // Susunan yang benar TIDAK boleh ikut di respons jawaban yang salah —
   // kalau ikut, siswa cukup mengirim satu urutan asal lalu membacanya dari

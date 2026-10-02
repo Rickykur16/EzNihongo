@@ -169,17 +169,6 @@ function asPublic(candidate, question) { return { category: candidate.category, 
 
 router.get('/summary', asyncHandler(async (req, res) => { const { candidates } = await buildReviewCandidates(req.user); res.json({ ...summarizeCandidates(candidates), categories: REVIEW_CATEGORIES }); }));
 
-// Step 1 grammar recognition asks what a Japanese sentence conveys. Its
-// Indonesian translation is the answer in other words ("Saya Anna." →
-// "Menyebutkan namanya."), so it is withheld until the answer is graded and
-// returned as `translation` in the result. Step 2 keeps its translation: there
-// it is what makes the blank unambiguous.
-export function reviewGrammarQuestion(payload) {
-  const drill = publicDrill(payload);
-  if (!drill?.example?.indonesian) return drill;
-  return { ...drill, example: { japanese: drill.example.japanese } };
-}
-
 router.post('/sessions', asyncHandler(async (req, res) => {
   const category = String(req.body?.category || 'mixed').toLowerCase(); if (category !== 'mixed' && !REVIEW_CATEGORIES.includes(category)) return res.status(400).json({ error: 'invalid_category' });
   const { candidates, pools } = await buildReviewCandidates(req.user); const selected = selectReviewCandidates(candidates, { category, limit: req.body?.limit });
@@ -191,7 +180,7 @@ router.post('/sessions', asyncHandler(async (req, res) => {
       if (!payload || (payload.options && payload.options.length < 2)) continue;
       const index = questions.length;
       await client.query(`INSERT INTO smart_review_session_items (session_id, question_index, item_type, item_id, skill, lesson_id, payload) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [created.rows[0].id, index, candidate.category, candidate.itemId, candidate.skill, candidate.lessonId, JSON.stringify(payload)]);
-      questions.push({ ...asPublic(candidate, candidate.category === 'grammar' ? reviewGrammarQuestion(payload) : publicQuestion(payload)) });
+      questions.push({ ...asPublic(candidate, candidate.category === 'grammar' ? publicDrill(payload) : publicQuestion(payload)) });
     }
     return { id: created.rows[0].id, expiresAt: created.rows[0].expires_at, questions };
   });
@@ -228,7 +217,7 @@ router.post('/sessions/:sessionId/answers', asyncHandler(async (req, res) => {
       if (!Array.isArray(order) || order.length !== payload.tokens.length || new Set(order).size !== order.length || order.some(i => !Number.isInteger(i) || i < 0 || i >= payload.tokens.length)) return { error: 'invalid_order', status: 400 };
     } else if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex >= (payload.options || []).length) return { error: 'invalid_option', status: 400 };
     const passed = arrange ? arrangeIsCorrect(payload, order) : optionIndex === payload.correctIndex;
-    const result = { passed, correctIndex: payload.correctIndex, correctOrder: arrange ? payload.answer : undefined, translation: payload.example?.indonesian || undefined };
+    const result = { passed, correctIndex: payload.correctIndex, correctOrder: arrange ? payload.answer : undefined, translation: payload.example?.indonesian || undefined }; // ditahan publicDrill sampai dinilai
     if (row.item_type === 'grammar') {
       const value = arrange ? order.map(i => payload.tokens[i]).join(' ') : payload.options[optionIndex];
       const primary = passed ? null : primaryErrorFor(payload.step, payload.rule);

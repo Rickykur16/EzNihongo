@@ -275,7 +275,7 @@
       feedback.className = 'feedback';
       app.querySelectorAll('[data-option]').forEach(node => { if (Number(node.dataset.option) === result.correctIndex) node.classList.add('correct'); });
       if (button) button.classList.add(result.passed ? 'correct' : 'wrong');
-      // Terjemahan ditahan server sampai dijawab (lihat reviewGrammarQuestion).
+      // Terjemahan ditahan server sampai dijawab (lihat publicDrill di grammar-drills.js).
       const translationNode = document.getElementById('stimulus-id');
       if (result.translation && translationNode) { translationNode.textContent = result.translation; translationNode.hidden = false; }
       // Benar: tidak ada yang perlu dipelajari, jadi lanjut sendiri. Salah:
