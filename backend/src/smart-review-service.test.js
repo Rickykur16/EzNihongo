@@ -117,6 +117,23 @@ test('grammar review uses the existing derived drill and keeps answer data out o
   assert.equal(Object.hasOwn(publicDrill(raw), 'correctIndex'), false);
 });
 
+// Step 1 asks what a Japanese sentence conveys; its translation ("Saya Anna.")
+// is the answer reworded ("Menyebutkan namanya."), so it must not reach the
+// browser before grading. Step 2 needs its translation to disambiguate the blank.
+test('public drills withhold the step 1 translation but keep the step 2 one', () => {
+  const grammar = { id: 'g1', pattern: '〜は〜です', meaning: 'adalah', examples: [], practiceConfig: {
+    recognition: { prompt: 'Apa yang disampaikan Anna melalui kalimat ini?', example: { japanese: 'わたしは アンナです。', indonesian: 'Saya Anna.' }, options: ['Menyebutkan namanya.', 'Menanyakan nama lawan bicara.', 'Menyangkal nama yang disebutkan.'], answer: 'Menyebutkan namanya.' },
+    controlled: { prompt: 'Lengkapi.', sentence: 'わたしは がくせい＿＿＿。', indonesian: 'Saya pelajar.', options: ['です', 'じゃありません', 'ですか'], answer: 'です' },
+  } };
+  const drills = deriveDrills([grammar], [grammar]).get('g1');
+  const step1 = publicDrill(drills.step1);
+  assert.deepEqual(step1.example, { japanese: 'わたしは アンナです。' });
+  assert.equal(JSON.stringify(step1).includes('Saya Anna.'), false);
+  assert.equal(Object.hasOwn(step1, 'correctIndex'), false);
+  assert.equal(drills.step1.example.indonesian, 'Saya Anna.', 'stored payload keeps it for the answer result');
+  assert.equal(publicDrill(drills.step2).indonesian, 'Saya pelajar.');
+});
+
 // 学生 contains both 学 and 生, so deriveCompounds() yields it twice — once per
 // kanji. Both copies share a skill and differ only in itemId, so before this
 // each word was two review items: the identical question showed up twice in a

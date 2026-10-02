@@ -217,7 +217,7 @@ router.post('/sessions/:sessionId/answers', asyncHandler(async (req, res) => {
       if (!Array.isArray(order) || order.length !== payload.tokens.length || new Set(order).size !== order.length || order.some(i => !Number.isInteger(i) || i < 0 || i >= payload.tokens.length)) return { error: 'invalid_order', status: 400 };
     } else if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex >= (payload.options || []).length) return { error: 'invalid_option', status: 400 };
     const passed = arrange ? arrangeIsCorrect(payload, order) : optionIndex === payload.correctIndex;
-    const result = { passed, correctIndex: payload.correctIndex, correctOrder: arrange ? payload.answer : undefined };
+    const result = { passed, correctIndex: payload.correctIndex, correctOrder: arrange ? payload.answer : undefined, translation: payload.example?.indonesian || undefined }; // ditahan publicDrill sampai dinilai
     if (row.item_type === 'grammar') {
       const value = arrange ? order.map(i => payload.tokens[i]).join(' ') : payload.options[optionIndex];
       const primary = passed ? null : primaryErrorFor(payload.step, payload.rule);

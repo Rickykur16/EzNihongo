@@ -164,3 +164,14 @@ test('frozen-session revision diagnostic rolls back failing current reads and re
   assert.equal(current, versionedSessionRevision('source-1', {}, 2, [transfer()]));
   assert.equal(sql[1], 'RELEASE SAVEPOINT bunpou_current_revision');
 });
+
+// Step 1's translation restates the right option, so a session item only
+// carries it once the server has disclosed the key (passed or revealed).
+test('session items withhold the step 1 translation until the item is passed or revealed', () => {
+  const row = (extra) => ({ item_id: 'i1', grammar_id: 'g1', step: 1, wrong_count: 0,
+    snapshot: { prompt: 'Apa yang disampaikan?', example: { japanese: 'わたしは アンナです。', indonesian: 'Saya Anna.' },
+      options: ['a', 'b', 'c'], correctIndex: 0 }, ...extra });
+  assert.deepEqual(publicSessionItem(row({ passed: false })).example, { japanese: 'わたしは アンナです。' });
+  assert.equal(publicSessionItem(row({ passed: true })).example.indonesian, 'Saya Anna.');
+  assert.equal(publicSessionItem(row({ passed: false, revealed_at: new Date() })).example.indonesian, 'Saya Anna.');
+});

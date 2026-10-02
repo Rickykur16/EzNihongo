@@ -558,5 +558,11 @@ export function publicDrill(drill) {
   // `answer` = urutan benar susun-kalimat, `japanese` = kalimat utuhnya.
   // Keduanya kunci jawaban, jadi ikut ditahan sampai jawabannya dinilai.
   const { correctIndex, answer, japanese, ...rest } = drill;
+  // Step 1 bertanya apa yang disampaikan kalimat Jepangnya; terjemahannya
+  // adalah jawaban itu sendiri dengan kata lain ("Saya Anna." → "Menyebutkan
+  // namanya."), jadi ikut ditahan dan baru dikirim bersama hasil penilaian.
+  // Terjemahan Step 2 tetap dikirim: di sana justru itu yang membuat isian
+  // ＿＿＿ tidak ambigu.
+  if (rest.example?.indonesian) rest.example = { japanese: rest.example.japanese };
   return rest;
 }

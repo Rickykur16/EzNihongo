@@ -10082,6 +10082,7 @@ function gtRestoreDoneItem(pi, step, drill) {
   window.__gtDone[`${pi}-${step}`] = true;
   if (Number.isInteger(drill.wrongCount)) (window.__gtWrong = window.__gtWrong || {})[`${pi}-${step}`] = drill.wrongCount;
   gtOpenStep(pi, step);
+  gtShowTranslation(pi, step, drill.example?.indonesian);
   scope.querySelectorAll(`[id^="gt-opt-${step}-${pi}-"]`).forEach((b, oi) => {
     b.disabled = true;
     if (oi === drill.correctIndex) b.classList.add('gt-opt--correct');
@@ -10293,7 +10294,7 @@ function gtRenderStep(pi, step, drill) {
     ? `<div class="gt-step__q">${escapeHtml(drill.prompt || '')}</div>`
     : step === 1
     ? `${drill.example ? `<div class="gt-step__sentence" lang="ja">${escapeHtml(drill.example.japanese || '')}</div>
-        ${drill.example.indonesian ? `<div class="gt-step__id">${escapeHtml(drill.example.indonesian)}</div>` : ''}` : ''}
+        <div class="gt-step__id" id="gt-trans-${pi}"${drill.example.indonesian ? '' : ' hidden'}>${escapeHtml(drill.example.indonesian || '')}</div>` : ''}
        <div class="gt-step__q">${escapeHtml(drill.prompt || '')}</div>`
     : `<div class="gt-step__q">${escapeHtml(drill.prompt || '')}</div>
        <div class="gt-step__sentence" lang="ja">${escapeHtml(drill.sentence || '')}</div>
@@ -10395,6 +10396,7 @@ async function gtSubmitAnswer(it, step, payload) {
       if (status !== 200 || typeof d?.passed !== 'boolean') return null;
       gtSessionItem(it, step, d);
       return { passed: d.passed, correctIndex: d.correctIndex ?? null, correctOrder: d.correctOrder ?? null, japanese: d.japanese ?? null,
+        translation: d.example?.indonesian ?? null,
         ...(d.alreadyCompleted === true ? { alreadyCompleted: true } : {}) };
     } catch { return null; }
   }
@@ -10405,7 +10407,8 @@ async function gtSubmitAnswer(it, step, payload) {
     });
     if (!r.ok) return null;
     const d = await r.json();
-    return { passed: d.passed, correctIndex: d.correctIndex ?? null, correctOrder: d.correctOrder ?? null, japanese: d.japanese ?? null };
+    return { passed: d.passed, correctIndex: d.correctIndex ?? null, correctOrder: d.correctOrder ?? null, japanese: d.japanese ?? null,
+      translation: d.translation ?? null };
   } catch { return null; }
 }
 
@@ -10452,7 +10455,8 @@ async function gtRevealAnswer(it, step) {
     const d = await r.json();
     if (window.__gtSessionId !== sessionId) return null;
     gtSessionItem(it, step, { ...d, revealed: true, completed: true });
-    return { correctIndex: d.correctIndex ?? null, correctOrder: d.correctOrder ?? null, japanese: d.japanese ?? null };
+    return { correctIndex: d.correctIndex ?? null, correctOrder: d.correctOrder ?? null, japanese: d.japanese ?? null,
+      translation: d.example?.indonesian ?? null };
   } catch { return null; }
 }
 
@@ -10570,6 +10574,14 @@ function gtOpenStep(pi, step) {
   if (msg) msg.remove();
 }
 
+// Terjemahan contoh Step 1 ditahan server sampai soalnya selesai (lulus atau
+// kunci dibuka) — terjemahannya adalah jawaban soal itu dengan kata lain.
+function gtShowTranslation(pi, step, text) {
+  if (step !== 1 || !text) return;
+  const el = _gtScope().querySelector(`#gt-trans-${pi}`);
+  if (el) { el.textContent = text; el.hidden = false; }
+}
+
 function gtMarkStepPassed(pi, step) {
   const el = _gtScope().querySelector(`#gt-step${step}-${pi}`);
   if (el) el.classList.add('gt-step--passed');
@@ -10615,6 +10627,7 @@ window.gtAnswerDrill = async (pi, step, optionIndex) => {
     if (verdict) verdict.innerHTML = '<span class="gt-step__verdict--ok">✓ Benar</span>' + gtExplanationHtml(it, step);
     if (window.__gtSessionId) (window.__gtDone = window.__gtDone || {})[`${pi}-${step}`] = true;
     gtMarkStepPassed(pi, step);
+    gtShowTranslation(pi, step, d.translation);
     if (step === 1) gtSetMeaningHidden(pi, false); // arti boleh dibaca lagi
     gtAdvance(pi, step);
   } else {
@@ -10635,6 +10648,7 @@ window.gtAnswerDrill = async (pi, step, optionIndex) => {
       }
       const right = (reveal && reveal.correctIndex != null) ? buttons[reveal.correctIndex] : null;
       if (right) right.classList.add('gt-opt--correct');
+      gtShowTranslation(pi, step, reveal?.translation);
       if (verdict) {
         verdict.innerHTML = right
           ? '<span class="gt-step__verdict--no">Belum tepat. Jawaban yang benar ditandai hijau — pelajari lalu lanjut.</span>'
