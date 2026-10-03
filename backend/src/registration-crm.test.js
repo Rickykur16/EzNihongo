@@ -8,7 +8,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 const answers = {
   birthDate: '2000-02-29', province: 'Papua', city: 'Jayapura', phone: '+819012345678',
   learningGoal: 'kerja_jepang', referralSource: 'teman_keluarga', referrerName: 'Alumni contoh',
-  background: 'ex_intern_hospitality', japanGoal: 'return', categoryInterest: 'Perhotelan',
+  background: 'ex_intern_hospitality', japanGoal: 'return', japaneseLevel: 'n5', categoryInterest: 'Perhotelan',
   primaryProblem: 'cost', targetTimeline: 'within_6_months', sourceDetail: 'Komunitas alumni', consent: true,
 };
 
@@ -41,7 +41,7 @@ test('registration CRM and checkout transactions on isolated PostgreSQL', { skip
     CREATE TABLE app_settings(key TEXT PRIMARY KEY,value TEXT);
     CREATE FUNCTION set_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at=NOW(); RETURN NEW; END $$;`);
   const migrate = async (directory, file) => control.query(await readFile(new URL(`../${directory}/${file}`, import.meta.url), 'utf8'));
-  for (const file of ['120_course_entitlements.sql', '121_course_orders.sql', '138_user_marketing_profile.sql', '200_registration_strategy.sql', '202_registration_other_details.sql']) await migrate('migrations', file);
+  for (const file of ['120_course_entitlements.sql', '121_course_orders.sql', '138_user_marketing_profile.sql', '200_registration_strategy.sql', '202_registration_other_details.sql', '203_registration_japanese_level.sql']) await migrate('migrations', file);
   // Normal migrations must also work before optional CRM has been installed.
   await migrate('migrations', '201_registration_crm_sources.sql');
   for (const file of ['001_marketing_crm.sql', '002_marketing_strategy.sql']) await migrate('crm-migrations', file);
@@ -176,7 +176,10 @@ test('registration CRM and checkout transactions on isolated PostgreSQL', { skip
     assert.equal((await save(person, courses.paid, { background: 'other', backgroundOther: 'Pemilik usaha keluarga' })).status, 200);
     assert.ok((await latestNote()).includes('Latar belakang lainnya: Pemilik usaha keluarga')); assert.equal(await eventCount(lead.id), 4);
     assert.equal((await save(person, courses.paid, { background: 'worker' })).status, 200);
-    assert.ok((await latestNote()).includes('Tidak ada jawaban tambahan.')); assert.equal(await eventCount(lead.id), 5);
+    const clearedNote = await latestNote();
+    assert.ok(clearedNote.includes('Kemampuan bahasa Jepang (perkiraan): Kira-kira setara N5'));
+    assert.ok(!clearedNote.includes('Latar belakang lainnya:')); assert.ok(!clearedNote.includes('Bidang magang di Jepang:'));
+    assert.equal(await eventCount(lead.id), 5);
     assert.equal((await save(person, courses.paid, { background: 'worker' })).status, 200); assert.equal(await eventCount(lead.id), 5);
   });
 
@@ -193,6 +196,28 @@ test('registration CRM and checkout transactions on isolated PostgreSQL', { skip
     const legacyGet = await request(unchanged, '/profile/marketing', undefined, 'GET');
     assert.equal(legacyGet.data.needsUpdate, false); assert.equal(legacyGet.data.internshipField, 'hospitality');
     assert.equal((await order(unchanged, courses.paid2)).status, 201);
+  });
+
+  await t.test('Japanese level stays a stated estimate in profile and CRM history with idempotent retries', async () => {
+    const person = await user('japanese-level');
+    assert.equal((await save(person, courses.paid, { japaneseLevel: undefined })).status, 400);
+    assert.equal((await save(person, courses.paid, { japaneseLevel: 'n4' })).status, 200);
+    const [lead] = await leads(person);
+    const latestNote = async () => (await control.query('SELECT note FROM marketing_lead_events WHERE lead_id=$1 ORDER BY lead_version DESC LIMIT 1', [lead.id])).rows[0].note;
+    assert.ok((await latestNote()).includes('Kemampuan bahasa Jepang (perkiraan): Kira-kira setara N4'));
+    assert.equal(lead.stage, 'new'); assert.equal(lead.qualification_note, '');
+    assert.equal((await save(person, courses.paid, { japaneseLevel: 'n4' })).status, 200); assert.equal(await eventCount(lead.id), 1);
+    await control.query("UPDATE user_marketing_profile SET japanese_level='' WHERE user_id=$1", [person.id]);
+    const prefilled = (await request(person, '/profile/marketing', undefined, 'GET')).data;
+    assert.equal(prefilled.needsUpdate, true); assert.equal(prefilled.japaneseLevel, '');
+    assert.equal(prefilled.city, answers.city); assert.equal(prefilled.categoryInterest, answers.categoryInterest);
+    assert.equal((await order(person, courses.paid2)).status, 428); assert.equal((await enroll(person)).status, 428);
+    assert.equal((await save(person, courses.paid, { japaneseLevel: 'unsure' })).status, 200);
+    assert.ok((await latestNote()).includes('Kemampuan bahasa Jepang (perkiraan): Sudah pernah belajar, tetapi belum tahu levelnya'));
+    assert.equal(await eventCount(lead.id), 2);
+    assert.equal((await save(person, courses.paid, { japaneseLevel: 'unsure' })).status, 200); assert.equal(await eventCount(lead.id), 2);
+    assert.equal((await request(person, '/profile/marketing', undefined, 'GET')).data.needsUpdate, false);
+    assert.equal((await order(person, courses.paid2)).status, 201); assert.equal((await enroll(person)).status, 200);
   });
 
   await t.test('shared phone numbers never merge people with different verified account emails', async () => {

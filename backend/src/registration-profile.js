@@ -16,10 +16,13 @@ export const REFERRAL_SOURCES = ['instagram', 'tiktok', 'youtube', 'google', 'te
 export const BACKGROUNDS = ['ex_intern', 'ex_intern_hospitality', 'ex_intern_other', 'fresh_graduate', 'worker', 'other'];
 export const INTERNSHIP_FIELDS = ['hospitality', 'manufacturing', 'construction', 'agriculture', 'caregiving', 'fisheries', 'other'];
 export const JAPAN_GOALS = ['first_time', 'return', 'study', 'undecided'];
+export const JAPANESE_LEVELS = ['new_to_japanese', 'basics', 'n5', 'n4', 'n3_plus', 'unsure'];
 export const PRIMARY_PROBLEMS = ['cost', 'language', 'jobs', 'time', 'trust', 'other', 'undecided'];
 export const TARGET_TIMELINES = ['within_3_months', 'within_6_months', 'within_12_months', 'over_12_months', 'undecided'];
 
 export const registrationError = (status, message) => Object.assign(new Error(message), { status });
+
+export const isCurrentJapaneseLevel = value => typeof value === 'string' && JAPANESE_LEVELS.includes(value);
 
 function text(value, max, error, required = true) {
   if ((value === undefined || value === null) && !required) return '';
@@ -87,6 +90,7 @@ export function parseRegistrationProfile(body, now = new Date()) {
     referralSource,
     ...conditionalAnswers(body, { background, learningGoal, primaryProblem, referralSource }),
     japanGoal: choice(body.japanGoal, JAPAN_GOALS, 'invalid_japan_goal'),
+    japaneseLevel: choice(body.japaneseLevel, JAPANESE_LEVELS, 'invalid_japanese_level'),
     categoryInterest: text(body.categoryInterest, 160, 'invalid_category_interest'),
     primaryProblem,
     targetTimeline: choice(body.targetTimeline, TARGET_TIMELINES, 'invalid_target_timeline'),
@@ -97,6 +101,7 @@ export function parseRegistrationProfile(body, now = new Date()) {
 
 export function isRegistrationProfileComplete(row) {
   if (!row || Number(row.strategy_version || 0) < REGISTRATION_STRATEGY_VERSION) return false;
+  if (!isCurrentJapaneseLevel(row.japanese_level)) return false;
   try {
     conditionalAnswers({
       internshipField: row.internship_field, internshipFieldOther: row.internship_field_other,
@@ -133,6 +138,7 @@ export function serializeRegistrationProfile(row) {
     primaryProblemOther: row.primary_problem_other || '',
     referralSourceOther: row.referral_source_other || '',
     japanGoal: row.japan_goal || '',
+    japaneseLevel: row.japanese_level || '',
     categoryInterest: row.category_interest || '',
     primaryProblem: row.primary_problem || '',
     targetTimeline: row.target_timeline || '',

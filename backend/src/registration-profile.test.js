@@ -5,14 +5,14 @@ import { once } from 'node:events';
 import { readFile } from 'node:fs/promises';
 import {
   parseRegistrationProfile, normalizeRegistrationPhone, validateBirthDate,
-  serializeRegistrationProfile, loadRegistrationProfile, isRegistrationProfileComplete,
+  serializeRegistrationProfile, loadRegistrationProfile, isRegistrationProfileComplete, isCurrentJapaneseLevel,
 } from './registration-profile.js';
 
 const now = new Date('2026-10-03T00:00:00.000Z');
 const valid = {
   courseSlug: 'n5-fixture', birthDate: '2000-02-29', province: 'Papua', city: 'Jayapura',
   phone: '0812 3456 7890', learningGoal: 'kerja_jepang', referralSource: 'teman_keluarga',
-  background: 'ex_intern_hospitality', japanGoal: 'return', categoryInterest: 'Perhotelan',
+  background: 'ex_intern_hospitality', japanGoal: 'return', japaneseLevel: 'basics', categoryInterest: 'Perhotelan',
   primaryProblem: 'cost', targetTimeline: 'within_6_months', referrerName: 'Teman contoh',
   sourceDetail: 'Komunitas alumni', consent: true,
 };
@@ -40,7 +40,7 @@ test('registration validates all required strategy fields, consent, plain text a
   assert.equal(result.city, 'Jayapura');
   assert.equal(result.categoryInterest, 'Perhotelan');
   assert.equal(result.phone, '+6281234567890');
-  for (const key of ['courseSlug', 'birthDate', 'province', 'city', 'phone', 'learningGoal', 'referralSource', 'background', 'japanGoal', 'categoryInterest', 'primaryProblem', 'targetTimeline', 'referrerName']) {
+  for (const key of ['courseSlug', 'birthDate', 'province', 'city', 'phone', 'learningGoal', 'referralSource', 'background', 'japanGoal', 'japaneseLevel', 'categoryInterest', 'primaryProblem', 'targetTimeline', 'referrerName']) {
     assert.throws(() => parseRegistrationProfile({ ...valid, [key]: '' }, now), { status: 400 }, key);
   }
   for (const consent of [false, 'true', 1, undefined]) assert.throws(() => parseRegistrationProfile({ ...valid, consent }, now), { message: 'consent_required' });
@@ -84,8 +84,8 @@ test('each active other choice requires bounded plain text and inactive details 
   for (const field of ['internshipField', 'internshipFieldOther', 'backgroundOther', 'learningGoalOther', 'primaryProblemOther', 'referralSourceOther']) assert.equal(inactive[field], '');
 });
 
-test('only existing profiles with missing conditional answers need updating', async () => {
-  const unchanged = { strategy_version: 2, background: 'worker', learning_goal: 'jlpt', primary_problem: 'cost', referral_source: 'instagram' };
+test('profiles with a current language self-assessment only need updating for missing conditional answers', async () => {
+  const unchanged = { strategy_version: 2, background: 'worker', learning_goal: 'jlpt', japanese_level: 'basics', primary_problem: 'cost', referral_source: 'instagram' };
   assert.equal(isRegistrationProfileComplete(unchanged), true);
   assert.equal(isRegistrationProfileComplete({ ...unchanged, background: 'ex_intern_hospitality' }), true);
   const oldIntern = { ...unchanged, background: 'ex_intern_other' };
@@ -97,6 +97,25 @@ test('only existing profiles with missing conditional answers need updating', as
     assert.equal(isRegistrationProfileComplete({ ...unchanged, ...parent }), false);
     assert.equal(isRegistrationProfileComplete({ ...unchanged, ...parent, [field]: 'Penjelasan tersimpan' }), true);
   }
+});
+
+test('Japanese self-assessment is explicitly required and cannot be inferred from other answers', async () => {
+  for (const japaneseLevel of ['new_to_japanese', 'basics', 'n5', 'n4', 'n3_plus', 'unsure']) {
+    assert.equal(parseRegistrationProfile({ ...valid, japaneseLevel }, now).japaneseLevel, japaneseLevel);
+    assert.equal(isCurrentJapaneseLevel(japaneseLevel), true);
+  }
+  const existing = { strategy_version: 2, background: 'ex_intern_hospitality', learning_goal: 'jlpt', city: 'Jayapura' };
+  for (const japaneseLevel of [undefined, '', ' ', null, 4, {}, 'N4', 'certified_n4']) {
+    assert.throws(() => parseRegistrationProfile({ ...valid, japaneseLevel }, now), { status: 400, message: 'invalid_japanese_level' });
+    const row = { ...existing, japanese_level: japaneseLevel };
+    assert.equal(isCurrentJapaneseLevel(japaneseLevel), false);
+    assert.equal(serializeRegistrationProfile(row).needsUpdate, true);
+    await assert.rejects(loadRegistrationProfile({ query: async () => ({ rows: [row] }) }, 'fixture'), { status: 428 });
+  }
+  assert.equal(serializeRegistrationProfile(existing).city, 'Jayapura');
+  const completed = { ...existing, japanese_level: 'unsure' };
+  assert.equal(serializeRegistrationProfile(completed).needsUpdate, false);
+  assert.equal(await loadRegistrationProfile({ query: async () => ({ rows: [completed] }) }, 'fixture'), completed);
 });
 
 test('registration names are optional for older clients but supplied names must be valid plain text', () => {
@@ -114,14 +133,15 @@ test('legacy profiles are returned for prefilling while marked as needing an upd
   const legacy = serializeRegistrationProfile(row);
   assert.equal(legacy.birthDate, '2000-02-29'); assert.equal(legacy.city, 'Jayapura');
   assert.equal(legacy.hasProfile, true); assert.equal(legacy.needsUpdate, true); assert.equal(legacy.background, '');
-  assert.equal(serializeRegistrationProfile({ ...row, strategy_version: 2 }).needsUpdate, false);
+  assert.equal(serializeRegistrationProfile({ ...row, strategy_version: 2 }).needsUpdate, true);
+  assert.equal(serializeRegistrationProfile({ ...row, strategy_version: 2, japanese_level: 'basics' }).needsUpdate, false);
 });
 
 test('checkout gate refuses missing or legacy profiles and returns the persisted v2 row', async () => {
   for (const rows of [[], [{ strategy_version: 0 }], [{ strategy_version: 1 }]]) {
     await assert.rejects(loadRegistrationProfile({ query: async () => ({ rows }) }, 'fixture-user'), { status: 428, message: 'registration_profile_required' });
   }
-  const row = { strategy_version: 2, background: 'worker' };
+  const row = { strategy_version: 2, background: 'worker', japanese_level: 'basics' };
   assert.equal(await loadRegistrationProfile({ query: async () => ({ rows: [row] }) }, 'fixture-user'), row);
 });
 
@@ -159,6 +179,8 @@ test('registration migration and HTTP flow persist strategy data without losing 
   await control.query(migration); await control.query(migration);
   const detailMigration = await readFile(new URL('../migrations/202_registration_other_details.sql', import.meta.url), 'utf8');
   await control.query(detailMigration); await control.query(detailMigration);
+  const levelMigration = await readFile(new URL('../migrations/203_registration_japanese_level.sql', import.meta.url), 'utf8');
+  await control.query(levelMigration); await control.query(levelMigration);
   assert.equal((await control.query('SELECT strategy_version FROM user_marketing_profile WHERE user_id=$1', [userId])).rows[0].strategy_version, 0);
   const { db } = await import('./db.js'); pool = db;
   const { signAccessToken } = await import('./auth.js');
@@ -178,6 +200,7 @@ test('registration migration and HTTP flow persist strategy data without losing 
   const legacy = await request();
   assert.equal(legacy.data.birthDate, '2000-02-29'); assert.equal(legacy.data.needsUpdate, true);
   assert.equal(legacy.data.fullName, 'Siswa contoh'); assert.equal(legacy.data.email, 'student@example.invalid');
+  assert.equal(legacy.data.japaneseLevel, '');
   await assert.rejects(loadRegistrationProfile(control, userId), { status: 428 });
   assert.equal((await request({ ...valid, courseSlug: 'absent', fullName: 'Must not save' })).status, 404);
   assert.equal((await request()).data.fullName, 'Siswa contoh');
@@ -187,6 +210,8 @@ test('registration migration and HTTP flow persist strategy data without losing 
   await control.query('UPDATE courses SET is_available=true WHERE id=$1', [courseId]);
   assert.equal((await request({ ...valid, birthDate: '2001-02-29' })).status, 400);
   assert.equal((await request({ ...valid, consent: false })).status, 400);
+  assert.equal((await request({ ...valid, japaneseLevel: undefined })).data.error, 'invalid_japanese_level');
+  assert.equal((await request({ ...valid, japaneseLevel: 'certified_n4' })).data.error, 'invalid_japanese_level');
   assert.equal((await request({ ...valid, fullName: ' ' })).data.error, 'invalid_full_name');
   assert.equal((await request(valid)).status, 200);
   assert.equal((await request(valid)).status, 200);
@@ -195,6 +220,7 @@ test('registration migration and HTTP flow persist strategy data without losing 
   assert.deepEqual((await control.query('SELECT full_name,email FROM users WHERE id=$1', [userId])).rows[0], { full_name: 'Nama Lengkap Diperbaiki', email: 'student@example.invalid' });
   const saved = await loadRegistrationProfile(control, userId);
   assert.equal(saved.phone, '+6281234567890'); assert.equal(saved.japan_goal, 'return');
+  assert.equal(saved.japanese_level, 'basics');
   assert.equal(saved.background, 'ex_intern_hospitality'); assert.equal(saved.category_interest, 'Perhotelan');
   assert.equal(saved.referrer_name, 'Teman contoh'); assert.equal(saved.source_detail, 'Komunitas alumni');
   assert.equal((await control.query('SELECT count(*)::int AS n FROM user_marketing_profile')).rows[0].n, 1);
@@ -202,6 +228,14 @@ test('registration migration and HTTP flow persist strategy data without losing 
   assert.equal(refreshed.data.needsUpdate, false); assert.equal(refreshed.data.birthDate, valid.birthDate);
   assert.equal(refreshed.data.fullName, 'Nama Lengkap Diperbaiki'); assert.equal(refreshed.data.email, 'student@example.invalid');
   assert.equal(refreshed.data.primaryProblem, 'cost'); assert.equal(refreshed.data.targetTimeline, 'within_6_months');
+  assert.equal(refreshed.data.japaneseLevel, 'basics');
+  await control.query("UPDATE user_marketing_profile SET japanese_level='' WHERE user_id=$1", [userId]);
+  const incompleteLevel = (await request()).data;
+  assert.equal(incompleteLevel.needsUpdate, true); assert.equal(incompleteLevel.city, 'Jayapura'); assert.equal(incompleteLevel.referrerName, valid.referrerName);
+  await assert.rejects(loadRegistrationProfile(control, userId), { status: 428 });
+  assert.equal((await request({ ...valid, japaneseLevel: 'n4' })).status, 200);
+  assert.equal((await request()).data.needsUpdate, false); assert.equal((await loadRegistrationProfile(control, userId)).japanese_level, 'n4');
+  await assert.rejects(control.query("UPDATE user_marketing_profile SET japanese_level='certified_n4' WHERE user_id=$1", [userId]), { code: '23514' });
   const detailed = { ...valid, background: 'ex_intern', internshipField: 'other', internshipFieldOther: 'Tekstil', learningGoal: 'lainnya', learningGoalOther: 'Mendampingi keluarga', primaryProblem: 'other', primaryProblemOther: 'Dokumen', referralSource: 'lainnya', referralSourceOther: 'Komunitas kota' };
   assert.equal((await request({ ...detailed, internshipFieldOther: '' })).status, 400);
   assert.equal((await request(detailed)).status, 200);
