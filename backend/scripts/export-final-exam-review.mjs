@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {scoredBanks as banks} from '../content/final-exams/scoring.mjs';
-import {validateRotationBank as validateFinalBank} from '../content/final-exams/rotation.mjs';
+import {namedBanks as banks} from '../content/final-exams/names.mjs';
+import {validateNamedBank as validateFinalBank} from '../content/final-exams/names.mjs';
 const dest=path.resolve(process.argv[2]||'final-exam-review');fs.mkdirSync(dest,{recursive:true});
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const assets=path.join(dest,'assets');fs.mkdirSync(assets,{recursive:true});
@@ -14,7 +14,7 @@ const cards=banks.map(b=>b.rows.map(q=>{
  return `<article data-level="${b.level}" data-form="${a.form}" data-category="${q.question_category}"><header><span>${b.level.toUpperCase()} · Paket ${a.form} · ${q.sort_order.toString().padStart(2,'0')}</span><small>${esc(q.section_label)} · Bab ${a.curriculumChapters.join(', ')}</small></header>
  <p class="instruction" lang="ja">${esc(q.section_instruction)}</p>
  ${q.passage?`<div class="passage" lang="ja">${esc(q.passage)}</div>`:''}
- ${q.image_url?`<img src="assets/${path.basename(q.image_url)}" alt="Situasi percakapan: tokoh A berbicara" width="640" height="340">`:''}
+ ${q.image_url?`<img src="assets/${path.basename(q.image_url)}" alt="Situasi percakapan: Aya berbicara" width="640" height="340">`:''}
  <h2 lang="ja">${esc(q.question)}</h2><ol lang="ja">${q.options.map(o=>`<li>${esc(o.option_text)}</li>`).join('')}</ol>
  <details><summary>Kunci dan pembahasan</summary><p><b>Jawaban ${key+1}: ${esc(q.options[key].option_text)}</b></p><p>${esc(q.explanation)}</p>${a.ordered?`<p lang="ja">Urutan: ${esc(a.ordered.join(' → '))}</p>`:''}${q.audio_script?`<h3>Transkrip listening</h3><pre lang="ja">${esc(q.audio_script)}</pre>`:''}</details></article>`;
 }).join('')).join('');
