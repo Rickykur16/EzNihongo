@@ -106,6 +106,17 @@ test('registration CRM and checkout transactions on isolated PostgreSQL', { skip
     assert.equal((await leads(person)).length, 0);
   });
 
+  await t.test('corrected name reaches the account and a new lead while caller email never changes verified identity', async () => {
+    const person = await user('identity');
+    const before = await request(person, '/profile/marketing', undefined, 'GET');
+    assert.equal(before.data.hasProfile, false); assert.equal(before.data.fullName, 'Siswa identity'); assert.equal(before.data.email, person.email);
+    assert.equal((await save(person, courses.paid, { fullName: 'Nama Lengkap Pendaftar', email: 'spoof@example.invalid' })).status, 200);
+    const [lead] = await leads(person);
+    assert.equal(lead.full_name, 'Nama Lengkap Pendaftar'); assert.equal(lead.email, person.email);
+    assert.deepEqual((await control.query('SELECT full_name,email FROM users WHERE id=$1', [person.id])).rows[0], { full_name: 'Nama Lengkap Pendaftar', email: person.email });
+    assert.equal((await control.query("SELECT count(*)::int AS n FROM marketing_leads WHERE email='spoof@example.invalid'")).rows[0].n, 0);
+  });
+
   await t.test('concurrent form retries save one profile, lead and history event; next-course checkouts reuse v2 answers', async () => {
     const person = await user('concurrent');
     const results = await Promise.all(Array.from({ length: 6 }, () => save(person)));
@@ -128,10 +139,11 @@ test('registration CRM and checkout transactions on isolated PostgreSQL', { skip
     const lead = (await control.query(`INSERT INTO marketing_leads(course_id,full_name,phone,email,source,source_detail,goal,stage,offered_price,created_by,assigned_to,referrer_name)
       VALUES($1,'Nama dari staf',$2,$3,'instagram','Iklan sebelumnya','Tujuan hasil wawancara','offered',123000,$4,$4,'Referrer lama') RETURNING *`, [courses.paid.id, person.phone, person.email, staff.id])).rows[0];
     await control.query("INSERT INTO marketing_lead_events(lead_id,actor_user_id,event_key,stage,note,lead_version) VALUES($1,$2,'created','offered','Catatan staf tetap',1)", [lead.id, staff.id]);
-    assert.equal((await save(person)).status, 200);
+    assert.equal((await save(person, courses.paid, { fullName: 'Nama akun diperbaiki' })).status, 200);
     const [updated] = await leads(person);
     for (const field of ['source', 'source_detail', 'stage', 'offered_price', 'created_by', 'assigned_to', 'goal', 'referrer_name', 'full_name']) assert.equal(updated[field], lead[field], field);
     assert.equal(updated.category_interest, answers.categoryInterest); assert.equal(updated.background, answers.background);
+    assert.equal((await control.query('SELECT full_name FROM users WHERE id=$1', [person.id])).rows[0].full_name, 'Nama akun diperbaiki');
     assert.equal((await control.query('SELECT note FROM marketing_lead_events WHERE lead_id=$1 AND lead_version=1', [lead.id])).rows[0].note, 'Catatan staf tetap');
     assert.equal(await eventCount(lead.id), 2); assert.equal((await save(person)).status, 200); assert.equal(await eventCount(lead.id), 2);
   });
@@ -169,9 +181,10 @@ test('registration CRM and checkout transactions on isolated PostgreSQL', { skip
   await t.test('failed audit/order/enrollment writes roll back profile and lead changes atomically', async () => {
     const person = await user('rollback');
     await control.query("INSERT INTO test_failures VALUES('marketing_lead_events')");
-    try { assert.equal((await save(person)).status, 500); }
+    try { assert.equal((await save(person, courses.paid, { fullName: 'Nama yang batal disimpan' })).status, 500); }
     finally { await control.query('DELETE FROM test_failures'); }
     assert.equal((await leads(person)).length, 0);
+    assert.equal((await control.query('SELECT full_name FROM users WHERE id=$1', [person.id])).rows[0].full_name, 'Siswa rollback');
     assert.equal((await control.query('SELECT count(*)::int AS n FROM user_marketing_profile WHERE user_id=$1', [person.id])).rows[0].n, 0);
     assert.equal((await save(person, courses.free)).status, 200);
     await control.query("INSERT INTO test_failures VALUES('marketing_lead_events')");

@@ -58,6 +58,7 @@ export function parseRegistrationProfile(body, now = new Date()) {
   if (body.consent !== true) throw registrationError(400, 'consent_required');
   const referralSource = choice(body.referralSource, REFERRAL_SOURCES, 'invalid_referral_source');
   return {
+    fullName: body.fullName === undefined ? undefined : text(body.fullName, 100, 'invalid_full_name'),
     courseSlug: text(body.courseSlug, 160, 'invalid_course_slug'),
     birthDate: validateBirthDate(body.birthDate, now),
     province: choice(body.province, PROVINCES, 'invalid_province'),

@@ -54,6 +54,15 @@ test('registration validates all required strategy fields, consent, plain text a
   }
 });
 
+test('registration names are optional for older clients but supplied names must be valid plain text', () => {
+  assert.equal(parseRegistrationProfile(valid, now).fullName, undefined);
+  assert.equal(parseRegistrationProfile({ ...valid, fullName: '  Ayu Wulandari  ' }, now).fullName, 'Ayu Wulandari');
+  for (const fullName of ['', '   ', null, 42, '<script>', 'Nama\nBaru', 'x'.repeat(101)]) {
+    assert.throws(() => parseRegistrationProfile({ ...valid, fullName }, now), { status: 400, message: 'invalid_full_name' });
+  }
+  assert.equal(Object.hasOwn(parseRegistrationProfile({ ...valid, email: 'spoof@example.invalid' }, now), 'email'), false);
+});
+
 test('legacy profiles are returned for prefilling while marked as needing an update', () => {
   assert.deepEqual(serializeRegistrationProfile(null), { hasProfile: false, needsUpdate: true });
   const row = { birth_date: new Date(2000, 1, 29), city: 'Jayapura', phone: '081234567890', strategy_version: 0 };
@@ -112,22 +121,31 @@ test('registration migration and HTTP flow persist strategy data without losing 
   app.use((err, req, res, next) => res.status(err.status || 500).json({ error: err.message }));
   server = app.listen(0, '127.0.0.1'); await once(server, 'listening');
   const endpoint = `http://127.0.0.1:${server.address().port}/api/profile/marketing`;
-  const request = async body => {
-    const response = await fetch(endpoint, { method: body ? 'PUT' : 'GET', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  const request = async (body, accessToken = token) => {
+    const response = await fetch(endpoint, { method: body ? 'PUT' : 'GET', headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) });
     return { status: response.status, data: await response.json() };
   };
+  const unregistered = await request(undefined, await signAccessToken(otherId, 'stale-token-email@example.invalid'));
+  assert.equal(unregistered.status, 200);
+  assert.deepEqual(unregistered.data, { hasProfile: false, needsUpdate: true, fullName: 'Siswa lain', email: 'other@example.invalid' });
   const legacy = await request();
   assert.equal(legacy.data.birthDate, '2000-02-29'); assert.equal(legacy.data.needsUpdate, true);
+  assert.equal(legacy.data.fullName, 'Siswa contoh'); assert.equal(legacy.data.email, 'student@example.invalid');
   await assert.rejects(loadRegistrationProfile(control, userId), { status: 428 });
-  assert.equal((await request({ ...valid, courseSlug: 'absent' })).status, 404);
+  assert.equal((await request({ ...valid, courseSlug: 'absent', fullName: 'Must not save' })).status, 404);
+  assert.equal((await request()).data.fullName, 'Siswa contoh');
   await control.query('UPDATE courses SET is_available=false WHERE id=$1', [courseId]);
   assert.equal((await request(valid)).status, 403);
   assert.equal((await control.query('SELECT strategy_version FROM user_marketing_profile')).rows[0].strategy_version, 0);
   await control.query('UPDATE courses SET is_available=true WHERE id=$1', [courseId]);
   assert.equal((await request({ ...valid, birthDate: '2001-02-29' })).status, 400);
   assert.equal((await request({ ...valid, consent: false })).status, 400);
+  assert.equal((await request({ ...valid, fullName: ' ' })).data.error, 'invalid_full_name');
   assert.equal((await request(valid)).status, 200);
   assert.equal((await request(valid)).status, 200);
+  assert.equal((await request()).data.fullName, 'Siswa contoh');
+  assert.equal((await request({ ...valid, fullName: '  Nama Lengkap Diperbaiki  ', email: 'spoof@example.invalid' })).status, 200);
+  assert.deepEqual((await control.query('SELECT full_name,email FROM users WHERE id=$1', [userId])).rows[0], { full_name: 'Nama Lengkap Diperbaiki', email: 'student@example.invalid' });
   const saved = await loadRegistrationProfile(control, userId);
   assert.equal(saved.phone, '+6281234567890'); assert.equal(saved.japan_goal, 'return');
   assert.equal(saved.background, 'ex_intern_hospitality'); assert.equal(saved.category_interest, 'Perhotelan');
@@ -135,9 +153,11 @@ test('registration migration and HTTP flow persist strategy data without losing 
   assert.equal((await control.query('SELECT count(*)::int AS n FROM user_marketing_profile')).rows[0].n, 1);
   const refreshed = await request();
   assert.equal(refreshed.data.needsUpdate, false); assert.equal(refreshed.data.birthDate, valid.birthDate);
+  assert.equal(refreshed.data.fullName, 'Nama Lengkap Diperbaiki'); assert.equal(refreshed.data.email, 'student@example.invalid');
   assert.equal(refreshed.data.primaryProblem, 'cost'); assert.equal(refreshed.data.targetTimeline, 'within_6_months');
   await assert.rejects(control.query("INSERT INTO user_marketing_profile(user_id,birth_date,province,city,phone,learning_goal,referral_source,consented_at,strategy_version) VALUES($1,'2000-01-01','Papua','Jayapura','081234567890','jlpt','instagram',NOW(),2)", [otherId]), { code: '23514' });
   await control.query("UPDATE users SET email='erased@dihapus.invalid' WHERE id=$1", [userId]);
+  assert.equal((await request()).status, 401);
   assert.equal((await request({ ...valid, city: 'Bandung' })).status, 401);
   assert.equal((await control.query('SELECT city FROM user_marketing_profile WHERE user_id=$1', [userId])).rows[0].city, 'Jayapura');
 });
