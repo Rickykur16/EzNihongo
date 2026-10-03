@@ -12,7 +12,7 @@ function modelConfig() {
 }
 
 // Satu panggilan streaming; mengulang otomatis bila server tool berhenti di pause_turn.
-async function ask(client, params) {
+export async function ask(client, params) {
   const { model, fallbacks } = modelConfig();
   const messages = [...params.messages];
   for (let round = 0; round < 6; round++) {
@@ -40,7 +40,7 @@ async function ask(client, params) {
   throw new Error('Riset tidak selesai setelah beberapa kali lanjut (pause_turn).');
 }
 
-const textOf = (msg) => msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+export const textOf = (msg) => msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
 
 const RESEARCH_SYSTEM = `Kamu peneliti konten untuk EzNihongo, platform belajar bahasa Jepang untuk orang Indonesia (kelas N5 dan N4).
 Audiens: orang Indonesia yang ingin kerja di Jepang (SSW/Tokutei Ginou, Ikusei Shūrō, magang).
@@ -73,13 +73,13 @@ Teknis:
 - Tipe adegan: hook (kicker + highlight + photo + stamp), statement (kicker/headline/highlight, tanpa foto), photo (headline/highlight + foto + badge), compare (foto + 2 items: lama→baru), list (headline + 2-3 items dengan photo_query), timeline (foto + 2 items: awal→tujuan), level (kicker + highlight + badge level + items[0].sub), cta (headline + highlight + badge berisi ajakan komentar).
 - photo_query dalam bahasa Inggris, spesifik dan mudah ditemukan di Pexels.`;
 
-export async function plan(topic, { outRoot = 'out' } = {}) {
+export async function plan(topic, { outRoot = 'out', idea = null } = {}) {
   const client = new Anthropic();
   console.log('▶ Riset…');
   const research = await ask(client, {
     system: RESEARCH_SYSTEM,
     tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 8 }],
-    messages: [{ role: 'user', content: `Topik video: ${topic}\nTanggal hari ini: ${new Date().toISOString().slice(0, 10)}` }],
+    messages: [{ role: 'user', content: `Topik video: ${topic}\nTanggal hari ini: ${new Date().toISOString().slice(0, 10)}${idea ? `\n\nIde yang sudah disetujui (verifikasi ulang faktanya, jangan percaya begitu saja):\n${JSON.stringify(idea, null, 2)}` : ''}` }],
   });
   const notes = textOf(research);
 
@@ -87,7 +87,7 @@ export async function plan(topic, { outRoot = 'out' } = {}) {
   const scriptMsg = await ask(client, {
     system: SCRIPT_SYSTEM,
     output_config: { effort: 'high', format: { type: 'json_schema', schema: SCRIPT_SCHEMA } },
-    messages: [{ role: 'user', content: `Topik: ${topic}\n\nCatatan riset:\n${notes}` }],
+    messages: [{ role: 'user', content: `Topik: ${topic}${idea ? `\nHook yang disetujui: ${idea.hook}\nSudut pandang: ${idea.angle}` : ''}\n\nCatatan riset:\n${notes}` }],
   });
   let script;
   try {
@@ -103,6 +103,7 @@ export async function plan(topic, { outRoot = 'out' } = {}) {
   await fs.writeFile(path.join(dir, 'research.md'), notes + '\n');
   await fs.writeFile(path.join(dir, 'script.json'), JSON.stringify(script, null, 2) + '\n');
   await fs.writeFile(path.join(dir, 'review.md'), reviewMarkdown(script, problems, dir));
+  await fs.writeFile(path.join(outRoot, 'latest-plan.txt'), dir + '\n');
   console.log(`✔ Draf siap: ${dir}/review.md`);
   if (problems.length) console.log(`⚠ ${problems.length} hal perlu diperbaiki sebelum build (lihat review.md).`);
   return dir;

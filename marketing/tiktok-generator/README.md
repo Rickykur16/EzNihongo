@@ -1,13 +1,18 @@
 # Generator TikTok EzNihongo
 
-Membuat **draf** video TikTok vertikal (1080×1920) dari sebuah topik atau berita.
-Tetap ada **review manusia** di tengah alur: generator tidak pernah memposting sendiri.
+Claude **meriset sendiri** ide konten, kamu **memilih**, baru dia mengerjakan.
+Ada dua gerbang persetujuan manusia; generator tidak pernah memposting sendiri.
 
 ```
-npm run plan  -- "topik"        →  riset (web search) + naskah  →  out/<tanggal-slug>/review.md
-        ✋ kamu cek naskah & fakta, edit script.json bila perlu
-npm run build -- out/<folder>   →  suara (ElevenLabs) + foto (Pexels) + render  →  video.mp4
+npm run ideas                 Claude riset berita → usulkan 5 ide (hook, alasan, sumber)
+        ✋ kamu pilih satu
+npm run plan -- --idea 2      riset ulang ide no. 2 → naskah + review.md (fakta & sumber)
+        ✋ kamu cek naskah (edit script.json bila perlu)
+npm run build                 suara (ElevenLabs) + foto (Pexels) + render → video.mp4
 ```
+
+Lewat Telegram (`npm run bot`) alurnya sama: `/ide` → `/buat 2` → `/render`,
+dan ide bisa dikirim otomatis tiap minggu (lihat **Otomatis mingguan**).
 
 ## Pemasangan
 
@@ -22,6 +27,24 @@ cp .env.example .env              # isi API key + CONTENT_MODEL
 
 Jaringan yang harus bisa diakses: `api.anthropic.com`, `api.elevenlabs.io`,
 `api.pexels.com`, `images.pexels.com`, `fonts.googleapis.com`, `fonts.gstatic.com`.
+
+## Otomatis mingguan (Telegram)
+
+1. Isi `TELEGRAM_BOT_TOKEN` dan `TELEGRAM_ADMIN_CHAT_ID` di `.env`. Bot yang sama dengan notifikasi
+   admin backend boleh dipakai, asal bot itu tidak memakai webhook (getUpdates akan bentrok).
+   Hanya chat admin itu yang dilayani bot; pesan dari orang lain diabaikan.
+2. Jalankan bot terus-menerus, misalnya dengan systemd atau `pm2`:
+   ```bash
+   npm run bot
+   ```
+3. Kirim ide tiap Senin pagi (crontab, waktu server):
+   ```
+   0 8 * * 1  cd /path/ke/marketing/tiktok-generator && npm run ideas -- --notify >> out/cron.log 2>&1
+   ```
+4. Di Telegram: balas `/buat <nomor>` → bot mengirim ringkasan naskah + `review.md`.
+   Kalau oke, balas `/render` → bot mengirim video + cover. Cek dulu, baru posting.
+
+Ide yang sudah dibuat dicatat di `out/history.json` supaya riset berikutnya tidak mengulang.
 
 ## Isi folder hasil (`out/<tanggal-slug>/`)
 
