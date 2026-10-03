@@ -76,6 +76,12 @@ const COMMANDS = {
 };
 COMMANDS.start = COMMANDS.bantuan = COMMANDS.help = COMMANDS.status;
 
+// Cek format argumen SEBELUM bot ditandai sibuk, supaya salah ketik tidak mengunci bot.
+const USAGE = {
+  buat: (a) => (/^\d+$/.test(a) && Number(a) >= 1 ? null : 'Pakai: /buat <nomor ide>, mis. /buat 2'),
+  topik: (a) => (a.length >= 5 ? null : 'Pakai: /topik <topik bebas>, mis. /topik jadwal JLPT Desember 2026 di Indonesia'),
+};
+
 async function savePhoto(msg) {
   const dir = await latest('latest-plan.txt').catch(() => null);
   if (!dir) return sendText('Belum ada naskah. Mulai dengan /ide lalu /buat <n>.');
@@ -101,7 +107,10 @@ export async function handle(msg) {
   }
   const m = /^\/(\w+)(?:@\w+)?\s*(.*)$/s.exec(msg.text || '');
   if (!m || !COMMANDS[m[1]]) return sendText('Perintah: /ide, /buat <n>, /topik <teks>, /foto, /render, /status — atau kirim foto untuk naskah terakhir');
-  const [, cmd, arg] = m;
+  const [, cmd, rawArg] = m;
+  const arg = rawArg.trim();
+  const wrong = USAGE[cmd]?.(arg);
+  if (wrong) return sendText(wrong);
   if (!['status', 'start', 'foto'].includes(cmd) && busy) return sendText(`⏳ Masih mengerjakan: ${busy}. Tunggu dulu ya.`);
   if (['status', 'start', 'bantuan', 'help', 'foto'].includes(cmd)) return COMMANDS[cmd](arg).catch((e) => sendText(`✖ ${e.message}`));
   busy = `/${cmd} ${arg}`.trim();
