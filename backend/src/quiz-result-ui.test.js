@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import EzFinalExam from '../../final-exam.js';
+import {scoredBanks} from '../content/final-exams/scoring.mjs';
+import {createChapterSnapshot,gradeChapterAssessment} from './chapter-assessment.js';
 
 const html = await readFile(new URL('../../welcome.html', import.meta.url), 'utf8');
 const start = html.indexOf('async function finishQuiz() {');
@@ -67,6 +70,27 @@ for (const failure of ['http500','network','invalid-json','missing-api','invalid
     assert.equal(ctx.window.__requiredAssignment.attemptToken,state.attemptToken);
   });
 }
+test('final result renders server-confirmed simulation points and does not impose the old percentage cutoff',async()=>{
+ for(const listeningPass of [true,false]) {
+  const {ctx,main,result,state,effects}=setup(),bank=scoredBanks[0],snapshot=createChapterSnapshot(bank.policy,bank.rows,'B');
+  const quota={language:23,listening:9};
+  const answers=new Map(snapshot.questions.map(q=>{
+   const category=q.question_category==='listening'?'listening':'language';
+   return [q.id,{correct:listeningPass?quota[category]-->0:category==='language'}];
+  }));
+  const grade=gradeChapterAssessment(snapshot,answers);
+  Object.assign(state,{assessmentVersion:bank.version,questions:snapshot.questions.map(q=>({questionId:q.id,category:q.question_category})),
+   answeredByIndex:Object.fromEntries(snapshot.questions.map((q,i)=>[i,true]))});
+  Object.assign(result,grade,{passingScorePct:bank.policy.passingScorePct,completionSaved:grade.passed,assessmentVersion:bank.version});
+  ctx.window.EzFinalExam=EzFinalExam;
+  await ctx.finishQuiz();
+  assert.match(main.innerHTML,/Skor simulasi JLPT/);assert.match(main.innerHTML,/<small> \/ 180<\/small>/);
+  assert.match(main.innerHTML,/minimum 38/);assert.match(main.innerHTML,/minimum 19/);
+  assert.doesNotMatch(main.innerHTML,/Min total 70%|50%|NaN|Tujuan dan tindak lanjut/);
+  assert.equal(effects.progress,listeningPass?1:0);
+  if(listeningPass)assert.match(main.innerHTML,/✓ Lulus simulasi/);else assert.match(main.innerHTML,/Belum lulus/);
+ }
+});
 test('retry keeps the token/answers and only applies the server-confirmed result once',async()=>{
   const {ctx,main,effects,state}=setup();
   const success=ctx.window.ezApi;
