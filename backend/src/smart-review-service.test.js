@@ -178,8 +178,8 @@ test('ownership is stable when no copy has state, regardless of arrival order', 
 // The learner answers correctly, then Smart Review asks the same word again in
 // a direction they were never taught — "itu saya tidak salah tapi muncul
 // berkali kali".
-const dir = (skill, attempts, fsrsState = null) => ({
-  key: `vocabulary:w1:${skill}`, itemType: 'vocabulary', itemId: 'w1', skill, attempts, fsrsState,
+const dir = (skill, attempts, fsrsState = null, fsrsReps = 0) => ({
+  key: `vocabulary:w1:${skill}`, itemType: 'vocabulary', itemId: 'w1', skill, attempts, fsrsState, fsrsReps,
 });
 
 test('an unpractised direction stays locked while its practised sibling is still shaky', () => {
@@ -193,11 +193,22 @@ test('an unpractised direction stays locked while its practised sibling is still
 
 test('once a practised direction reaches FSRS review, the siblings open up', () => {
   const unlocked = unlockedSkills([
-    dir('jp2id', 3, 'review'),
+    dir('jp2id', 3, 'review', 3),
     dir('id2jp', 0),
     dir('audio2id', 0),
   ]);
   assert.equal(unlocked.size, 3);
+});
+
+// Regresi "4 kanji perlu direview → sesi → tetap 4": satu jawaban benar pada
+// kartu baru langsung 'review' (reps 1). Itu TIDAK boleh membuka arah lain.
+test('satu jawaban benar pertama (review, reps 1) belum membuka arah lain', () => {
+  const unlocked = unlockedSkills([
+    dir('jp2id', 1, 'review', 1),
+    dir('id2jp', 0),
+    dir('audio2id', 0),
+  ]);
+  assert.deepEqual([...unlocked], ['vocabulary:w1:jp2id']);
 });
 
 test('an item with no history still offers exactly one direction, deterministically', () => {
@@ -215,7 +226,7 @@ test('directions are gated per item, not across the whole deck', () => {
     key: `vocabulary:w2:${skill}`, itemType: 'vocabulary', itemId: 'w2', skill, attempts, fsrsState,
   });
   const unlocked = unlockedSkills([
-    dir('jp2id', 5, 'review'), dir('id2jp', 0),
+    dir('jp2id', 5, 'review', 5), dir('id2jp', 0),
     other('jp2id', 1, 'learning'), other('id2jp', 0),
   ]);
   assert.ok(unlocked.has('vocabulary:w1:id2jp'));
@@ -335,7 +346,7 @@ test('kosakata dan kata majemuk kanji yang sama berbagi satu gerbang: hanya satu
   // Dengan group: satu kata = satu kandidat.
   assert.equal(unlockedSkills(entries).size, 1);
   // Setelah satu arah mantap ('review'), seluruh arah kata itu terbuka.
-  const practised = entries.map((e) => e.skill === 'jp2id' ? { ...e, attempts: 1, fsrsState: 'review' } : e);
+  const practised = entries.map((e) => e.skill === 'jp2id' ? { ...e, attempts: 2, fsrsState: 'review', fsrsReps: 2 } : e);
   assert.equal(unlockedSkills(practised).size, 5);
 });
 
