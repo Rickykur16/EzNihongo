@@ -98,3 +98,12 @@ test('foto: Pixabay dipakai lebih dulu, unduh largeImageURL, dan pesan jelas tan
     global.fetch = prev; delete process.env.PIXABAY_API_KEY; delete process.env.PEXELS_API_KEY;
   }
 });
+
+test('/topik tanpa isi dijawab petunjuk dan tidak menjalankan riset', async () => {
+  sent.length = 0;
+  await handle(msg('/topik'));
+  await handle(msg('/topik ab'));
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(sent.length, 2);
+  for (const s of sent) assert.match(s.text, /\/topik <topik bebas>/);
+});

@@ -45,6 +45,16 @@ const COMMANDS = {
     await sendFile(path.join(dir, 'review.md'), { caption: 'Review lengkap (fakta + sumber)' });
     await sendText(photoStatus(photoSlots(script), dir));
   },
+  async topik(arg) {
+    const topic = String(arg || '').trim();
+    if (topic.length < 5) return sendText('Pakai: /topik <topik bebas>, mis. /topik jadwal JLPT Desember 2026 di Indonesia');
+    await sendText(`🔎 Riset + tulis naskah untuk: "${topic.slice(0, 200)}" (beberapa menit)…`);
+    const dir = await plan(topic, { outRoot: OUT });
+    const script = JSON.parse(await fs.readFile(path.join(dir, 'script.json'), 'utf8'));
+    await sendText(reviewMessage(script, validateScript(script)));
+    await sendFile(path.join(dir, 'review.md'), { caption: 'Review lengkap (fakta + sumber)' });
+    await sendText(photoStatus(photoSlots(script), dir));
+  },
   async foto() {
     const dir = await latest('latest-plan.txt');
     const script = JSON.parse(await fs.readFile(path.join(dir, 'script.json'), 'utf8'));
@@ -61,7 +71,7 @@ const COMMANDS = {
     await remember(OUT, script.title);
   },
   async status() {
-    return sendText(busy ? `⏳ Sedang: ${busy}` : '✅ Siap. Perintah: /ide, /buat <n>, /foto, /render — kirim foto ke sini untuk naskah terakhir');
+    return sendText(busy ? `⏳ Sedang: ${busy}` : '✅ Siap. Perintah: /ide, /buat <n>, /topik <teks>, /foto, /render — kirim foto ke sini untuk naskah terakhir');
   },
 };
 COMMANDS.start = COMMANDS.bantuan = COMMANDS.help = COMMANDS.status;
@@ -90,7 +100,7 @@ export async function handle(msg) {
     return savePhoto(msg).catch((e) => sendText(`✖ Gagal menyimpan foto: ${e.message}`));
   }
   const m = /^\/(\w+)(?:@\w+)?\s*(.*)$/s.exec(msg.text || '');
-  if (!m || !COMMANDS[m[1]]) return sendText('Perintah: /ide, /buat <n>, /foto, /render, /status — atau kirim foto untuk naskah terakhir');
+  if (!m || !COMMANDS[m[1]]) return sendText('Perintah: /ide, /buat <n>, /topik <teks>, /foto, /render, /status — atau kirim foto untuk naskah terakhir');
   const [, cmd, arg] = m;
   if (!['status', 'start', 'foto'].includes(cmd) && busy) return sendText(`⏳ Masih mengerjakan: ${busy}. Tunggu dulu ya.`);
   if (['status', 'start', 'bantuan', 'help', 'foto'].includes(cmd)) return COMMANDS[cmd](arg).catch((e) => sendText(`✖ ${e.message}`));

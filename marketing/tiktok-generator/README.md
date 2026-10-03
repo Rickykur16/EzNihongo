@@ -11,7 +11,7 @@ npm run plan -- --idea 2      riset ulang ide no. 2 → naskah + review.md (fakt
 npm run build                 suara (ElevenLabs) + foto (Pixabay/Pexels) + render → video.mp4
 ```
 
-Lewat Telegram (`npm run bot`) alurnya sama: `/ide` → `/buat 2` → (kirim foto, opsional) → `/render`,
+Lewat Telegram (`npm run bot`) alurnya sama: `/ide` → `/buat 2` (atau `/topik <topik sendiri>`) → (kirim foto, opsional) → `/render`,
 dan ide bisa dikirim otomatis tiap minggu (lihat **Otomatis mingguan**).
 
 ## Pemasangan
