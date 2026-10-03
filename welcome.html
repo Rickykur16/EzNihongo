@@ -4711,7 +4711,7 @@
   }
 </style>
 <link rel="stylesheet" href="styles/learning-placement.css?v=20260928-skeleton"/>
-<link rel="stylesheet" href="final-exam.css?v=20261003-3"/>
+<link rel="stylesheet" href="final-exam.css?v=20261003-4"/>
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
 <link rel="stylesheet" href="styles/skeleton.css?v=1">
 <link rel="stylesheet" href="styles/dialogue-scene.css?v=5">
@@ -4815,7 +4815,7 @@ function getUserName(user = session) {
 <script src="src/dialogue-scene.js?v=4"></script>
 <script src="src/dialogue-questions.js?v=20261001-1"></script>
 <script src="learning-state.js?v=20260911-1"></script>
-<script src="final-exam.js?v=20261003-3"></script>
+<script src="final-exam.js?v=20261003-4"></script>
 <script>
 // ═══════════════════════════════════════════════
 // AUTH GUARD — self-hosted API session
@@ -5708,6 +5708,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
   const chapter = !!status.assessmentVersion && !status.resumingLegacy;
   const finalExam = chapter && globalThis.EzFinalExam?.isFinal(status.assessmentVersion);
   const rotatingFinal = finalExam && status.assessmentVersion.endsWith('-v2');
+  const simulatedFinal = finalExam && globalThis.EzFinalExam.isSimulation(status.assessmentRules);
   const last = status.lastAttempt;
   const lastPct = last ? Math.round((last.score / Math.max(1, last.totalQuestions)) * 100) : null;
   const placementResultPending = !!placement && !!last && typeof last.passed !== 'boolean';
@@ -5725,8 +5726,8 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
       <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;margin-top:18px;">
         <div style="font-size:11px;color:#737373;letter-spacing:.04em;text-transform:uppercase;font-weight:700;margin-bottom:6px;">${placement ? 'Hasil tes terakhir' : 'Hasil assessment terakhir'}</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <strong style="font-size:18px;">${last.score} / ${last.totalQuestions}</strong>
-          <span style="color:#525252;">(${lastPct}%)</span>
+          <strong style="font-size:18px;">${last.scoreReport ? `${Number(last.scoreReport.score)} / 180` : `${last.score} / ${last.totalQuestions}`}</strong>
+          <span style="color:#525252;">${last.scoreReport ? 'Skor simulasi JLPT' : `(${lastPct}%)`}</span>
           ${badge}
         </div>
         ${last.assessmentVersion ? `<button class="btn-secondary" style="margin-top:12px" onclick="window.openChapterReview('${escapeAttr(key)}','${escapeAttr(last.attemptToken)}')">Lihat pembahasan</button><div id="chapter-review"></div>` : ''}
@@ -5777,7 +5778,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
           </div>
           <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
             <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">Lulus min</div>
-            <div style="font-size:18px;font-weight:800;margin-top:2px;">${status.passingScorePct}%</div>
+            <div style="font-size:18px;font-weight:800;margin-top:2px;">${simulatedFinal ? `${Number(status.assessmentRules.passingScore)}/180` : `${status.passingScorePct}%`}</div>
           </div>
           <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
             <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">Cooldown</div>
@@ -5792,7 +5793,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
             : status.resumingLegacy
             ? `Ada jawaban yang belum selesai. Kamu bisa melanjutkannya dari tombol di bawah.`
             : finalExam
-            ? `${status.questionsPerAttempt} soal orisinal untuk menguji materi satu level: aksara/kosakata, tata bahasa, membaca, dan menyimak. ${rotatingFinal ? 'Komposisi mengikuti patokan jumlah soal JLPT; jumlah resmi dapat sedikit berbeda tiap pelaksanaan. Dua paket A/B bergantian saat memulai ujian baru. Sebagian soal dasar dapat sama. Melanjutkan draft tetap memakai paket yang sama. ' : ''}Lulus dengan total minimal 70% dan tiap kategori minimal 50%. Nilai berupa persentase EzNihongo, bukan skala resmi JLPT. Ujian tanpa batas waktu otomatis dan audio boleh diulang. Pembahasan serta transkrip tersedia setelah submit. Siapkan audio.`
+            ? `${status.questionsPerAttempt} soal orisinal untuk menguji materi satu level: aksara/kosakata, tata bahasa, membaca, dan menyimak. ${rotatingFinal ? 'Komposisi mengikuti patokan jumlah soal JLPT; jumlah resmi dapat sedikit berbeda tiap pelaksanaan. Dua paket A/B bergantian saat memulai ujian baru. Sebagian soal dasar dapat sama. Melanjutkan draft tetap memakai paket yang sama. ' : ''}${simulatedFinal ? globalThis.EzFinalExam.scoringDescription(status.assessmentRules) : 'Lulus dengan total minimal 70% dan tiap kategori minimal 50%. Nilai berupa persentase EzNihongo, bukan skala resmi JLPT.'} Ujian tanpa batas waktu otomatis dan audio boleh diulang. Pembahasan serta transkrip tersedia setelah submit. Siapkan audio.`
             : chapter
             ? `${status.questionsPerAttempt} soal pilihan ganda: ${status.questionsPerAttempt === 24 ? '6 aksara dan kosakata, 10 tata bahasa dan ungkapan, 4 membaca, serta 4 menyimak. ' : ''}Lulus dengan total minimal 70%, tiap kategori minimal 50%, serta minimal satu jawaban benar untuk setiap tujuan. Pembahasan dan transkrip audio muncul setelah semua jawaban dikirim. Siapkan audio.`
             : `Tiap attempt, sistem ambil <strong>${status.questionsPerAttempt}</strong> soal acak dari pool <strong>${status.poolSize}</strong> — jadi soal bisa beda tiap retry.`}
@@ -5877,6 +5878,7 @@ window.startQuizAttempt = async (key, resume = null) => {
       draftEnabled: !!data.draftEnabled || !!data.assessmentVersion,
       assessmentVersion: data.assessmentVersion || null,
       assessmentForm: data.assessmentForm || null,
+      assessmentRules: data.assessmentRules || null,
       draftRevision: data.draftRevision || 0,
       lessonApiId: lesson.apiId,
       viewEpoch,
@@ -6774,6 +6776,7 @@ async function finishQuiz() {
   window.ezClearUnfinishedAssignmentCache?.();
   const { score, total, passed, nextAttemptAt, cooldownHours } = data;
   const passing = data.passingScorePct;
+  const scoreReport = data.scoreReport;
   const pct = Math.round((score / total) * 100);
   const bonusXP = passed ? 20 : 10;
   state.correctByIndex = Object.fromEntries(questions.map((q, i) => [i, data.correctByQuestion[q.questionId]]));
@@ -6828,7 +6831,7 @@ async function finishQuiz() {
     <div class="quiz-result-row${section.passed ? '' : ' is-focus'}">
       <span class="quiz-result-row-label">${escapeHtml(section.sectionLabel || `Bagian ${section.sectionNumber}`)}</span>
       <span class="quiz-result-row-meter" style="--section-progress:${Math.round(Math.min(1, Math.max(0, Number(section.score) / Math.max(1, Number(section.total)))) * 100)}%" aria-hidden="true"><span></span></span>
-      <strong class="quiz-result-row-score">${Number(section.score)} / ${Number(section.total)}${data.assessmentVersion ? `<small> · min ${Number(section.minimumCorrect)}</small>` : ''}</strong>
+      <strong class="quiz-result-row-score">${Number(section.score)} / ${Number(section.total)}${data.assessmentVersion ? `<small> · min ${Number(section.minimumScore ?? section.minimumCorrect)}</small>` : ''}</strong>
     </div>`).join('');
   const focusCount = sectionResults.filter((section) => !section.passed).length;
 
@@ -6849,21 +6852,22 @@ async function finishQuiz() {
       <div class="quiz-results${passed ? ' is-passed' : ''}">
         <div class="quiz-results-head">
           <div>
-            <p class="quiz-results-kicker">${placementKind ? `Hasil tes membaca ${placementKind}` : 'Hasil kuis'}</p>
+            <p class="quiz-results-kicker">${placementKind ? `Hasil tes membaca ${placementKind}` : scoreReport ? 'Hasil final exam' : 'Hasil kuis'}</p>
             <h2>${passed ? 'Siap lanjut belajar' : 'Perlu latihan lagi'}</h2>
             <p class="subtitle">${passed
               ? 'Tes selesai. Hasil ini sudah tersimpan di progres belajarmu.'
+              : scoreReport ? 'Total atau minimum salah satu dari dua bagian belum terpenuhi. Periksa rincian nilai dan jawaban di bawah.'
               : data.assessmentVersion ? 'Syarat total atau salah satu bagian belum terpenuhi. Periksa hasil dan tujuan yang perlu dilatih di bawah.'
               : `Skor belum mencapai batas lulus ${passing}%. Periksa bagian yang masih sulit, lalu coba lagi.`}</p>
           </div>
-          <span class="quiz-results-status">${passed ? '✓ Lulus' : 'Belum lulus'}</span>
+          <span class="quiz-results-status">${passed ? (scoreReport ? '✓ Lulus simulasi' : '✓ Lulus') : 'Belum lulus'}</span>
         </div>
-        <div class="quiz-results-score">
+        ${scoreReport ? window.EzFinalExam.renderScoreReport(scoreReport) : `<div class="quiz-results-score">
           <strong class="quiz-results-score-number">${pct}%</strong>
           <div class="quiz-results-score-detail"><strong>${score} dari ${total} benar</strong><span>${data.assessmentVersion ? `Min total ${passing}% dan syarat per bagian` : `Batas lulus ${passing}%`}</span></div>
           <div class="quiz-results-meter" style="--result-progress:${pct}%" aria-hidden="true"><span></span></div>
-        </div>
-        ${sectionBlock || catBlock ? `<section class="quiz-results-breakdown" aria-labelledby="quiz-breakdown-title">
+        </div>`}
+        ${!scoreReport && (sectionBlock || catBlock) ? `<section class="quiz-results-breakdown" aria-labelledby="quiz-breakdown-title">
           <div class="quiz-results-breakdown-head"><h3 id="quiz-breakdown-title">${sectionBlock ? 'Hasil per bagian' : 'Hasil per kategori'}</h3>
             ${focusCount ? `<span class="quiz-results-breakdown-note">${focusCount} bagian untuk dilatih lagi</span>` : ''}</div>
           <div class="quiz-results-breakdown-list">${sectionBlock || catBlock}</div>
@@ -6883,7 +6887,7 @@ async function finishQuiz() {
 }
 
 function renderChapterReview(data, includeSections = false) {
-  const sections = includeSections ? `<h3>Hasil per bagian</h3><ul>${(data.sectionResults || []).map(s => `<li>${s.passed ? '✓' : 'Perlu latihan:'} ${escapeHtml(s.sectionLabel)}: ${s.score}/${s.total} (minimal ${s.minimumCorrect})</li>`).join('')}</ul>` : '';
+  const sections = includeSections && data.scoreReport ? window.EzFinalExam.renderScoreReport(data.scoreReport) : includeSections ? `<h3>Hasil per bagian</h3><ul>${(data.sectionResults || []).map(s => `<li>${s.passed ? '✓' : 'Perlu latihan:'} ${escapeHtml(s.sectionLabel)}: ${s.score}/${s.total} (minimal ${s.minimumScore ?? s.minimumCorrect})</li>`).join('')}</ul>` : '';
   const goals = (data.objectiveResults || []).map(o => `<li>${o.passed ? '✓' : 'Perlu latihan:'} ${escapeHtml(o.sectionLabel)} (${o.score}/${o.total})</li>`).join('');
   const review = (data.review || []).map((q, i) => `<details style="padding:12px 0;border-bottom:1px solid #e5e7eb">
     <summary>${i + 1}. ${q.correct ? 'Benar' : 'Perlu diperbaiki'} — ${escapeHtml(q.category)}</summary>
@@ -6895,8 +6899,8 @@ function renderChapterReview(data, includeSections = false) {
     <p>${escapeHtml(q.explanation || '')}</p>${q.choiceReason ? `<p>${escapeHtml(q.choiceReason)}</p>` : ''}
   </details>`).join('');
   const transfer = data.transferTask;
-  return `<section style="margin:20px 0;text-align:left">${sections}<h3>Tujuan dan tindak lanjut</h3><p>Tanda ✓ berarti ada bukti jawaban benar untuk tujuan tersebut; lihat juga jumlah benarnya.</p><ul>${goals}</ul>
-    <p>Latih kembali kategori dan tujuan yang masih lemah melalui materi dan latihan Bunpou bab ini. Hasil ini menunjukkan kemampuan pada tugas yang diuji.</p>
+  return `<section style="margin:20px 0;text-align:left">${sections}${data.scoreReport ? `<p>Gunakan rincian jawaban untuk menentukan materi yang perlu dilatih.</p>` : `<h3>Tujuan dan tindak lanjut</h3><p>Tanda ✓ berarti ada bukti jawaban benar untuk tujuan tersebut; lihat juga jumlah benarnya.</p><ul>${goals}</ul>
+    <p>Latih kembali kategori dan tujuan yang masih lemah melalui materi dan latihan Bunpou bab ini. Hasil ini menunjukkan kemampuan pada tugas yang diuji.</p>`}
     <details><summary>Pembahasan ${data.review?.length || 0} soal</summary>${review}</details>
     ${transfer ? `<details style="margin-top:16px"><summary>Latihan penerapan setelah assessment</summary>
       ${transfer.title ? `<h3>${escapeHtml(transfer.title)}</h3>` : ''}<p>${escapeHtml(transfer.prompt)}</p>

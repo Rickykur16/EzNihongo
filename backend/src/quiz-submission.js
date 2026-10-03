@@ -124,6 +124,7 @@ export async function submitQuizAttempt(client, { userId, lessonId, attemptToken
     })
     : [];
   const result = { score, total, correctByQuestion, passingScorePct, passed,
+    ...(grade.scoreReport ? {scoreReport:grade.scoreReport} : {}),
     cooldownHours, nextAttemptAt, completionSaved: passed, proficiencyCompletions,
     ...(kanaKind ? { kanaKind, sectionResults } : {}),
     ...(chapterSnapshot ? {

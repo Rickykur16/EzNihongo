@@ -8,6 +8,25 @@
   const categories = { vocabulary: 'Kosakata', grammar: 'Tata bahasa', reading: 'Membaca', listening: 'Menyimak' };
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const isFinal = version => versions.includes(version);
+  const isSimulation = rules => rules?.scoringVersion === 'jlpt-linear-v1';
+  function scoringDescription(rules) {
+    return `Lulus simulasi jika total minimal ${Number(rules.passingScore)}/180, gabungan kosakata, tata bahasa dan membaca minimal 38/120, serta menyimak minimal 19/60. Semua batas wajib terpenuhi. Skor simulasi dihitung dari proporsi jawaban benar per bagian; bukan skor resmi JLPT berbasis IRT.`;
+  }
+  function renderScoreReport(report) {
+    return `<section class="exam-score-report" aria-label="Skor simulasi JLPT">
+      <p class="quiz-results-kicker">Skor simulasi JLPT</p>
+      <div class="quiz-results-score"><strong class="quiz-results-score-number">${Number(report.score)}<small> / 180</small></strong>
+        <div class="quiz-results-score-detail"><strong>Minimum total ${Number(report.passingScore)} / 180</strong><span>Minimum kedua bagian juga wajib terpenuhi</span></div>
+        <div class="quiz-results-meter" style="--result-progress:${Math.round(Number(report.score)/180*100)}%" aria-hidden="true"><span></span></div></div>
+      <div class="quiz-results-breakdown"><h3>Nilai dua bagian</h3>${report.sections.map(s=>`
+        <div class="quiz-result-row${s.passed?'':' is-focus'}"><span class="quiz-result-row-label">${escape(s.sectionLabel)}<small> · ${Number(s.rawScore)}/${Number(s.rawTotal)} jawaban benar</small></span>
+          <strong class="quiz-result-row-score">${Number(s.score)} / ${Number(s.total)}<small> · minimum ${Number(s.minimumScore)} · ${s.passed?'Terpenuhi':'Belum terpenuhi'}</small></strong></div>`).join('')}</div>
+      <details><summary>Cara menghitung skor simulasi</summary><p>Jumlah benar dibagi jumlah soal pada setiap bagian, lalu dikalikan 120 untuk bagian gabungan atau 60 untuk menyimak. Nilai tiap bagian dibulatkan ke bilangan bulat terdekat (0,5 ke atas), kemudian dijumlahkan. Ini konversi nilai latihan, bukan skor resmi atau prediksi JLPT yang sudah terkalibrasi.</p>
+        <p><a href="https://www.jlpt.jp/e/guideline/results.html" target="_blank" rel="noopener">Batas kelulusan JLPT</a> · <a href="https://www.jlpt.jp/e/about/pdf/scaledscore_e.pdf" target="_blank" rel="noopener">Cara penilaian resmi dengan IRT</a></p></details>
+      ${report.referenceResults?.length?`<details><summary>Rincian kemampuan A/B/C</summary><ul>${report.referenceResults.map(r=>`<li>${escape(categories[r.category]||r.category)}: <strong>${escape(r.band)}</strong> · ${Number(r.correct)}/${Number(r.total)} benar</li>`).join('')}</ul><p>A: ≥67% benar; B: ≥34% dan &lt;67%; C: &lt;34%. Informasi ini membantu memilih materi latihan dan tidak menentukan kelulusan.</p></details>`:''}
+      <p class="exam-private-note">Skor simulasi EzNihongo. JLPT resmi menggunakan IRT berdasarkan pola jawaban.</p>
+    </section>`;
+  }
   const isFinalModule = m => isFinal((m.quiz_spec || m.quizSpec)?.version) || /^(n5|n4)-final-exam$/.test(m.slug || m.id || '');
   // Stable partition: preserve every ordinary section's editorial order.
   const orderModules = modules => [...modules.filter(m => !isFinalModule(m)), ...modules.filter(isFinalModule)];
@@ -161,6 +180,7 @@
     const compact = typeof matchMedia === 'function' && matchMedia('(max-width: 800px)').matches;
     container.innerHTML = `<div class="final-exam">
       <header class="exam-header"><div><p class="exam-eyebrow">EZNIHONGO · UJIAN AKHIR LEVEL${packageLabel}</p><h1>Final Exam ${level}</h1><p class="exam-subtitle">Kerjakan dengan tenang. Jawaban bisa diubah sebelum dikirim.</p></div><span class="exam-mode">Tanpa batas waktu</span></header>
+      ${isSimulation(state.assessmentRules)?`<p class="exam-private-note">Skor simulasi JLPT · minimum ${Number(state.assessmentRules.passingScore)}/180; bagian gabungan 38/120 dan menyimak 19/60.</p>`:''}
       <div class="exam-progress-line"><span id="quiz-paper-progress">${s.answered} / ${s.total} terjawab</span><span>${s.total} soal · 4 bagian</span></div><progress id="exam-progress" max="${s.total}" value="${s.answered}" aria-label="${s.answered} dari ${s.total} soal terjawab"></progress>
       <nav class="exam-categories" aria-label="Bagian ujian">${s.categories.map(c => `<button type="button" class="exam-category" data-exam-action="category" data-category="${c.id}" ${q.category === c.id && !state.finalReview ? 'aria-current="true"' : ''}><span>${c.label}</span><small data-exam-count="${c.id}">${c.answered}/${c.items.length}</small></button>`).join('')}</nav>
       <div class="exam-layout"><section class="exam-workspace" aria-label="${state.finalReview ? 'Pemeriksaan akhir' : 'Soal ujian'}">
@@ -174,5 +194,5 @@
     container.querySelector('.exam-save-retry').onclick = () => { if (!bridge.isCurrent || bridge.isCurrent()) bridge.save(); };
     update(container, state); bridge.initAudio();
   }
-  return {isFinal, isFinalModule, orderModules, summary, questionGroups, render, update, clear};
+  return {isFinal, isFinalModule, isSimulation, scoringDescription, renderScoreReport, orderModules, summary, questionGroups, render, update, clear};
 }));
