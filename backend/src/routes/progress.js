@@ -155,6 +155,7 @@ async function lessonAttemptStatus(userId, lessonId, cooldownHours, runQuery = q
       completedAt: a.completed_at,
       attemptToken: a.attempt_token,
       assessmentVersion: a.assessment_snapshot?.version || null,
+      ...(a.grading_result?.scoreReport ? {scoreReport:a.grading_result.scoreReport} : {}),
       sectionResults: a.grading_result?.sectionResults || [],
       objectiveResults: a.grading_result?.objectiveResults || [],
       passed: typeof a.grading_result?.passed === 'boolean' ? a.grading_result.passed : null,

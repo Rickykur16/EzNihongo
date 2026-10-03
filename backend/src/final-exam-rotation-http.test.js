@@ -89,4 +89,50 @@ test('final rotation: transactional upgrade, historical snapshots, concurrent st
    const review=await call(bank,`quiz/review?attemptToken=${a.attemptToken}`,null,'GET');assert.deepEqual(review.review,result.review);
   });
  }
+ await t.test('scoring upgrade is atomic, keeps historical snapshots and preserves teacher edits on replay',async()=>{
+  const before=(await control.query('SELECT * FROM quiz_attempts ORDER BY id')).rows;
+  const questions=(await control.query('SELECT * FROM quiz_questions ORDER BY id')).rows;
+  const gradingSql=sql('migrations/196_final_exam_jlpt_scoring.sql');
+  await control.query('UPDATE lessons SET assessment_policy=$2 WHERE id=$1',[banks[1].lessonId,{}]);
+  await assert.rejects(control.query(gradingSql),/missing\/conflicting/);
+  assert.equal((await control.query('SELECT assessment_policy FROM lessons WHERE id=$1',[banks[0].lessonId])).rows[0].assessment_policy.scoringVersion,undefined);
+  await control.query('UPDATE lessons SET assessment_policy=$2 WHERE id=$1',[banks[1].lessonId,rotationBanks[1].policy]);
+  await control.query(gradingSql);
+  assert.deepEqual((await control.query('SELECT * FROM quiz_attempts ORDER BY id')).rows,before);
+  assert.deepEqual((await control.query('SELECT * FROM quiz_questions ORDER BY id')).rows,questions);
+  await control.query('UPDATE lessons SET content=$2 WHERE id=$1',[banks[0].lessonId,'Teacher explanation']);
+  await control.query(gradingSql);
+  assert.equal((await control.query('SELECT content FROM lessons WHERE id=$1',[banks[0].lessonId])).rows[0].content,'Teacher explanation');
+ });
+ for(const bank of rotationBanks) {
+  await t.test(`${bank.level}: new grading survives draft resume, submission replay and historical review`,async()=>{
+   const old=await call(bank,'quiz/start');assert.equal(old.assessmentRules.scoringVersion,undefined);
+   const oldResult=await finish(bank,old);assert.equal(oldResult.scoreReport,undefined);
+   const current=await call(bank,'quiz/start');assert.notEqual(current.assessmentForm,old.assessmentForm);
+   assert.equal(current.assessmentRules.scoringVersion,'jlpt-linear-v1');
+   assert.equal(current.assessmentRules.passingScore,bank.level==='n5'?80:90);
+   assert.equal(current.assessmentRules.categoryMinimumPct,null);
+   const s=await snapshot(current),quota={language:bank.level==='n5'?23:30,listening:bank.level==='n5'?9:13};
+   const answers=s.questions.map(q=>{
+    const key=q.question_category==='listening'?'listening':'language',correct=quota[key]-->0;
+    return {questionId:q.id,optionId:q.options.find(o=>o.is_correct===correct).id};
+   });
+   await call(bank,'quiz/draft',{attemptToken:current.attemptToken,answers:answers.slice(0,5),revision:0},'PUT');
+   const resume=await call(bank,'quiz/start');assert.equal(resume.attemptToken,current.attemptToken);assert.deepEqual(resume.assessmentRules,current.assessmentRules);
+   const submission={attemptToken:current.attemptToken,answers,draftRevision:1};
+   const result=await call(bank,'quiz-attempt',submission);assert.equal(result.passed,true);assert.ok(result.score/result.total<.7);
+   assert.equal(result.scoreReport.score,bank.level==='n5'?87:91);assert.equal(result.scoreReport.total,180);
+   assert.equal(result.scoreReport.sections.length,2);assert.equal(result.objectiveResults.length,0);
+   assert.equal(result.scoreReport.referenceResults.find(r=>r.category==='reading').band,'C');
+   assert.deepEqual(await call(bank,'quiz-attempt',submission),result);
+   const status=await call(bank,'quiz-status',null,'GET');assert.deepEqual(status.lastAttempt.scoreReport,result.scoreReport);
+   assert.equal(status.assessmentRules.scoringVersion,'jlpt-linear-v1');
+   const review=await call(bank,`quiz/review?attemptToken=${current.attemptToken}`,null,'GET');assert.deepEqual(review.scoreReport,result.scoreReport);
+   const oldReview=await call(bank,`quiz/review?attemptToken=${old.attemptToken}`,null,'GET');assert.equal(oldReview.scoreReport,undefined);
+   const next=await call(bank,'quiz/start'),nextSnapshot=await snapshot(next);
+   const badAnswers=nextSnapshot.questions.map(q=>({questionId:q.id,optionId:q.options.find(o=>o.is_correct===(q.question_category!=='listening')).id}));
+   const bad=await call(bank,'quiz-attempt',{attemptToken:next.attemptToken,answers:badAnswers,draftRevision:0});
+   assert.equal(bad.scoreReport.score,120);assert.equal(bad.passed,false);assert.equal(bad.completionSaved,false);
+  });
+ }
 });

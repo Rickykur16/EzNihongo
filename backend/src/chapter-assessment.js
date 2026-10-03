@@ -1,6 +1,6 @@
 // Versioned, bounded evidence for chapter assessments. This is not the
 // grammar-mastery policy and does not claim open-ended speaking proficiency.
-import {FINAL_EXAMS,isFinalExam,finalExamRules} from './final-exam-policy.js';
+import {FINAL_EXAMS,isFinalExam,finalExamRules,isJlptEstimate,gradeJlptEstimate} from './final-exam-policy.js';
 export const CHAPTER_ASSESSMENT_VERSION = 'n5-assessment-v2';
 export const JLPT_ASSESSMENT_VERSION = 'n5-assessment-v3';
 export const REVISED_JLPT_ASSESSMENT_VERSION = 'n5-assessment-v4';
@@ -86,6 +86,11 @@ export function gradeChapterAssessment(snapshot, answersByQuestion) {
   assertChapterForm(snapshot.policy, snapshot.questions);
   const correctByQuestion = Object.fromEntries(snapshot.questions.map(q => [q.id, answersByQuestion.get(q.id)?.correct === true]));
   const policy = snapshot.policy;
+  if(isJlptEstimate(policy)) {
+    const scoreReport=gradeJlptEstimate(policy,snapshot.questions,correctByQuestion);
+    return {score:Object.values(correctByQuestion).filter(Boolean).length,total:snapshot.questions.length,correctByQuestion,
+      scoreReport,sectionResults:scoreReport.sections,objectiveResults:[],passed:scoreReport.passed};
+  }
   const resultFor = (rows, label, minimumCorrect, key) => ({
     key, sectionLabel: label, score: rows.filter(q => correctByQuestion[q.id]).length,
     total: rows.length, minimumCorrect,
