@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {namedBanks as banks} from '../content/final-exams/names.mjs';
-import {validateNamedBank as validateFinalBank} from '../content/final-exams/names.mjs';
+import {curriculumBanks as banks} from '../content/final-exams/curriculum.mjs';
+import {validateCurriculumBank as validateFinalBank} from '../content/final-exams/curriculum.mjs';
 const dest=path.resolve(process.argv[2]||'final-exam-review');fs.mkdirSync(dest,{recursive:true});
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const assets=path.join(dest,'assets');fs.mkdirSync(assets,{recursive:true});
