@@ -16,7 +16,7 @@ Menu **Ruang Kerja → Marketing → Calon Siswa** mencatat prospek sebelum menj
 Implementasi ini tidak otomatis menjalankan perubahan pada produksi. Ikuti proses rilis proyek:
 
 1. Rilis kode backend/frontend termasuk kompatibilitas penghapusan akun. Biarkan `MARKETING_CRM_ENABLED=false` sampai penyimpanan siap.
-2. Database harus sudah memiliki tabel inti dan Company Workspace. Buat backup dan verifikasi target migrasi.
+2. Jalankan workflow manual `Marketing CRM production preflight` setelah rilis kode untuk membaca SHA yang terpasang, status flag, tabel, ukuran database, dan arsip backup tanpa mengubah server. Database harus sudah memiliki tabel inti dan Company Workspace. Buat backup dan verifikasi target migrasi sebelum menerapkan perubahan.
 3. Dari `backend`, set `CRM_DATABASE_URL` ke database target yang dipilih, lalu jalankan `node crm-migrations/run.js --apply`. Runner menerapkan `001_marketing_crm.sql` dan `002_marketing_strategy.sql` sesuai urutan. Runner tidak membaca `.env` dan tidak memakai fallback `DATABASE_URL`. Migrasi transaksional, memiliki advisory lock, checksum, dan dapat diulang tanpa menggandakan tabel.
 4. Set `COMPANY_WORKSPACE_ENABLED=true` dan `MARKETING_CRM_ENABLED=true` pada backend, lalu restart. Untuk staf terbatas gunakan `COMPANY_STAFF_ENABLED=true` dan membership Marketing existing. Tidak ada pemberian izin otomatis.
 5. Muat ulang Ruang Kerja. Uji tambah → refresh → ubah tahap → tambah catatan dengan data uji yang sah, lalu hapus data uji melalui owner.
