@@ -123,6 +123,14 @@ const INTERNSHIP_FIELDS = [
   ['fisheries', 'Perikanan'],
   ['other', 'Lainnya'],
 ];
+const JAPANESE_LEVELS = [
+  ['new_to_japanese', 'Belum pernah belajar'],
+  ['basics', 'Baru belajar hiragana, katakana, atau dasar bahasa Jepang'],
+  ['n5', 'Kira-kira setara N5'],
+  ['n4', 'Kira-kira setara N4'],
+  ['n3_plus', 'N3 atau lebih tinggi'],
+  ['unsure', 'Sudah pernah belajar, tetapi belum tahu levelnya'],
+];
 const JAPAN_GOALS = [
   ['first_time', 'Pertama kali bekerja di Jepang'],
   ['return', 'Kembali bekerja di Jepang'],
@@ -149,6 +157,7 @@ const PROFILE_FIELDS = {
   fullName: 'c-full-name',
   birthDate: 'c-birth-date', province: 'c-province', city: 'c-city', phone: 'c-phone',
   learningGoal: 'c-learning-goal', background: 'c-background', japanGoal: 'c-japan-goal',
+  japaneseLevel: 'c-japanese-level',
   internshipField: 'c-internship-field', internshipFieldOther: 'c-internship-field-other',
   backgroundOther: 'c-background-other', learningGoalOther: 'c-learning-goal-other',
   categoryInterest: 'c-category-interest', primaryProblem: 'c-primary-problem',
@@ -165,6 +174,7 @@ const PROFILE_ERRORS = {
   invalid_city: ['c-city', 'Isi kota atau kabupaten, maksimal 100 karakter.'],
   invalid_phone: ['c-phone', 'Masukkan nomor WhatsApp yang valid, misalnya 081234567890, +6281234567890, atau +819012345678.'],
   invalid_learning_goal: ['c-learning-goal', 'Pilih tujuan belajarmu.'],
+  invalid_japanese_level: ['c-japanese-level', 'Pilih perkiraan kemampuan bahasa Jepangmu saat ini. Jika belum yakin, pilih “Sudah pernah belajar, tetapi belum tahu levelnya”.'],
   invalid_learning_goal_other: ['c-learning-goal-other', 'Ceritakan tujuan belajarmu, maksimal 160 karakter.'],
   invalid_background: ['c-background', 'Pilih latar belakang yang paling sesuai.'],
   invalid_background_other: ['c-background-other', 'Tuliskan latar belakangmu, maksimal 160 karakter.'],
@@ -192,8 +202,8 @@ function profileDateBounds() {
   return { min: min.toISOString().slice(0, 10), max: max.toISOString().slice(0, 10) };
 }
 
-function profileSelect(id, label, options, placeholder, conditional = false) {
-  return `<div class="field"${conditional ? ` id="${id}-group" hidden` : ''}><label for="${id}">${label}</label><select id="${id}" ${conditional ? 'disabled' : 'required'} aria-describedby="${id}-error"><option value="" disabled selected>${placeholder}</option>${options.map(([v, text]) => `<option value="${v}">${text}</option>`).join('')}</select><p class="c-field-error" id="${id}-error" hidden></p></div>`;
+function profileSelect(id, label, options, placeholder, conditional = false, hint = '') {
+  return `<div class="field"${conditional ? ` id="${id}-group" hidden` : ''}><label for="${id}">${label}</label><select id="${id}" ${conditional ? 'disabled' : 'required'} aria-describedby="${hint ? `${id}-hint ` : ''}${id}-error"><option value="" disabled selected>${placeholder}</option>${options.map(([v, text]) => `<option value="${v}">${text}</option>`).join('')}</select>${hint ? `<p class="c-field-hint" id="${id}-hint">${hint}</p>` : ''}<p class="c-field-error" id="${id}-error" hidden></p></div>`;
 }
 
 function profileOtherField(id, label, placeholder) {
@@ -224,6 +234,7 @@ function profileFieldsHtml() {
         ${profileOtherField('c-background-other', 'Ceritakan latar belakangmu', 'Contoh: masih kuliah atau sedang mencari kerja')}
         ${profileSelect('c-internship-field', 'Bidang magang di Jepang', INTERNSHIP_FIELDS, 'Pilih bidang magang', true)}
         ${profileOtherField('c-internship-field-other', 'Sebutkan bidang magangmu di Jepang', 'Contoh: perbaikan kendaraan')}
+        ${profileSelect('c-japanese-level', 'Bagaimana kemampuan bahasa Jepangmu saat ini?', JAPANESE_LEVELS, 'Pilih perkiraan kemampuan', false, 'Pilih perkiraan kemampuanmu. Tidak harus memiliki sertifikat JLPT.')}
         <div class="field-row">
           ${profileSelect('c-learning-goal', 'Tujuan utama belajar', LEARNING_GOALS, 'Pilih tujuan belajar')}
           ${profileSelect('c-japan-goal', 'Rencanamu ke Jepang', JAPAN_GOALS, 'Pilih rencana')}

@@ -5,10 +5,12 @@ const GOALS = { jlpt: 'Lulus JLPT', kerja_jepang: 'Kerja di Jepang', hobi: 'Hobi
 const JAPAN_GOALS = { first_time: 'Pertama kali bekerja di Jepang', return: 'Kembali bekerja di Jepang', study: 'Melanjutkan studi di Jepang', undecided: 'Rencana Jepang belum ditentukan' };
 const TIMELINES = { within_3_months: 'Dalam 3 bulan', within_6_months: 'Dalam 4–6 bulan', within_12_months: 'Dalam 7–12 bulan', over_12_months: 'Lebih dari 12 bulan', undecided: 'Belum menentukan' };
 const INTERNSHIP_FIELDS = { hospitality: 'Hotel / restoran', manufacturing: 'Manufaktur', construction: 'Konstruksi', agriculture: 'Pertanian', caregiving: 'Kaigo / perawatan lansia', fisheries: 'Perikanan', other: 'Lainnya' };
+const JAPANESE_LEVELS = { new_to_japanese: 'Belum pernah belajar', basics: 'Baru belajar hiragana, katakana, atau dasar bahasa Jepang', n5: 'Kira-kira setara N5', n4: 'Kira-kira setara N4', n3_plus: 'N3 atau lebih tinggi', unsure: 'Sudah pernah belajar, tetapi belum tahu levelnya' };
 const ANSWERS_HEADING = 'Rincian jawaban formulir pendaftaran:';
 
 function registrationDetails(profile) {
   const answers = [
+    ['Kemampuan bahasa Jepang (perkiraan)', JAPANESE_LEVELS[profile.japanese_level]],
     ['Bidang magang di Jepang', profile.internship_field === 'other' ? profile.internship_field_other : INTERNSHIP_FIELDS[profile.internship_field]],
     ['Latar belakang lainnya', profile.background_other],
     ['Tujuan belajar lainnya', profile.learning_goal_other],

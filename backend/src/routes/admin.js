@@ -5026,14 +5026,14 @@ router.get('/users/marketing-export', asyncHandler(async (req, res) => {
             mp.category_interest, mp.primary_problem, mp.target_timeline,
             mp.referrer_name, mp.source_detail, mp.strategy_version, u.created_at,
             mp.internship_field, mp.internship_field_other, mp.background_other,
-            mp.learning_goal_other, mp.primary_problem_other, mp.referral_source_other
+            mp.learning_goal_other, mp.primary_problem_other, mp.referral_source_other, mp.japanese_level
      FROM users u
      LEFT JOIN user_marketing_profile mp ON mp.user_id = u.id
      ${where}
      ORDER BY u.created_at DESC`,
     params
   );
-  const header = ['Nama', 'Email', 'Tanggal Lahir', 'Provinsi', 'Kota', 'WhatsApp', 'Tujuan Belajar', 'Sumber Referral', 'Latar Belakang', 'Rencana Jepang', 'Bidang Minat', 'Kendala Utama', 'Target Waktu', 'Nama Pemberi Rekomendasi', 'Detail Sumber', 'Versi Form', 'Bergabung', 'Bidang Magang', 'Bidang Magang Lainnya', 'Latar Belakang Lainnya', 'Tujuan Belajar Lainnya', 'Kendala Utama Lainnya', 'Sumber Kenal Lainnya'];
+  const header = ['Nama', 'Email', 'Tanggal Lahir', 'Provinsi', 'Kota', 'WhatsApp', 'Tujuan Belajar', 'Sumber Referral', 'Latar Belakang', 'Rencana Jepang', 'Bidang Minat', 'Kendala Utama', 'Target Waktu', 'Nama Pemberi Rekomendasi', 'Detail Sumber', 'Versi Form', 'Bergabung', 'Bidang Magang', 'Bidang Magang Lainnya', 'Latar Belakang Lainnya', 'Tujuan Belajar Lainnya', 'Kendala Utama Lainnya', 'Sumber Kenal Lainnya', 'Kemampuan Bahasa Jepang (Perkiraan)'];
   const csvEscape = (v) => {
     const raw = v == null ? '' : String(v);
     const s = /^[\s]*[=+@-]/.test(raw) ? "'" + raw : raw;
@@ -5050,6 +5050,7 @@ router.get('/users/marketing-export', asyncHandler(async (req, res) => {
     r.referrer_name || '', r.source_detail || '', r.strategy_version ?? '', asDate(r.created_at),
     r.internship_field || '', r.internship_field_other || '', r.background_other || '',
     r.learning_goal_other || '', r.primary_problem_other || '', r.referral_source_other || '',
+    r.japanese_level || '',
   ].map(csvEscape).join(','));
   const csv = [header.join(','), ...rows].join('\n');
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
