@@ -5,7 +5,7 @@ import pg from 'pg';
 import {inspectStaffErasureTables} from '../src/staff-erasure.js';
 
 export async function applyCrmMigrations(client){
-  const migrations=[['001_marketing_crm',new URL('./001_marketing_crm.sql',import.meta.url)],['002_marketing_strategy',new URL('./002_marketing_strategy.sql',import.meta.url)]];
+  const migrations=[['001_marketing_crm',new URL('./001_marketing_crm.sql',import.meta.url)],['002_marketing_strategy',new URL('./002_marketing_strategy.sql',import.meta.url)],['003_registration_sources',new URL('./003_registration_sources.sql',import.meta.url)]];
   await client.query('BEGIN');
   try{
     await client.query("SET LOCAL lock_timeout='5s'; SET LOCAL statement_timeout='60s'");

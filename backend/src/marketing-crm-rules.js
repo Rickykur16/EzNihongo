@@ -2,7 +2,7 @@ import {isCanonicalUuid} from './live-class-admin-rules.js';
 const fail=(status,message)=>Object.assign(new Error(message),{status});
 
 export const STAGES = ['new','contacted','qualified','consulting','offered','won','lost'];
-export const SOURCES = ['referral','instagram','tiktok','whatsapp','website','event','other'];
+export const SOURCES = ['referral','instagram','tiktok','facebook','youtube','google','whatsapp','website','event','other'];
 export const BACKGROUNDS=['','ex_intern_hospitality','ex_intern_other','fresh_graduate','worker','other'];
 export const PROBLEMS=['','cost','language','jobs','time','trust','other'];
 export const ANGLES=['','cost','career','convenience','other'];

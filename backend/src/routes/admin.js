@@ -5021,17 +5021,20 @@ router.get('/users', asyncHandler(async (req, res) => {
 router.get('/users/marketing-export', asyncHandler(async (req, res) => {
   const { where, params } = buildUserFilters(req);
   const result = await query(
-    `SELECT u.full_name, u.email, mp.birth_date, mp.province, mp.city, mp.phone,
-            mp.learning_goal, mp.referral_source, u.created_at
+    `SELECT u.full_name, u.email, mp.birth_date::text AS birth_date, mp.province, mp.city, mp.phone,
+            mp.learning_goal, mp.referral_source, mp.background, mp.japan_goal,
+            mp.category_interest, mp.primary_problem, mp.target_timeline,
+            mp.referrer_name, mp.source_detail, mp.strategy_version, u.created_at
      FROM users u
      LEFT JOIN user_marketing_profile mp ON mp.user_id = u.id
      ${where}
      ORDER BY u.created_at DESC`,
     params
   );
-  const header = ['Nama', 'Email', 'Tanggal Lahir', 'Provinsi', 'Kota', 'WhatsApp', 'Tujuan Belajar', 'Sumber Referral', 'Bergabung'];
+  const header = ['Nama', 'Email', 'Tanggal Lahir', 'Provinsi', 'Kota', 'WhatsApp', 'Tujuan Belajar', 'Sumber Referral', 'Latar Belakang', 'Rencana Jepang', 'Bidang Minat', 'Kendala Utama', 'Target Waktu', 'Nama Pemberi Rekomendasi', 'Detail Sumber', 'Versi Form', 'Bergabung'];
   const csvEscape = (v) => {
-    const s = v == null ? '' : String(v);
+    const raw = v == null ? '' : String(v);
+    const s = /^[\s]*[=+@-]/.test(raw) ? "'" + raw : raw;
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   };
   // pg returns DATE/TIMESTAMPTZ columns as JS Date objects — String(date)
@@ -5040,7 +5043,9 @@ router.get('/users/marketing-export', asyncHandler(async (req, res) => {
   const asDate = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
   const rows = result.rows.map((r) => [
     r.full_name, r.email, asDate(r.birth_date), r.province || '', r.city || '', r.phone || '',
-    r.learning_goal || '', r.referral_source || '', asDate(r.created_at),
+    r.learning_goal || '', r.referral_source || '', r.background || '', r.japan_goal || '',
+    r.category_interest || '', r.primary_problem || '', r.target_timeline || '',
+    r.referrer_name || '', r.source_detail || '', r.strategy_version ?? '', asDate(r.created_at),
   ].map(csvEscape).join(','));
   const csv = [header.join(','), ...rows].join('\n');
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');

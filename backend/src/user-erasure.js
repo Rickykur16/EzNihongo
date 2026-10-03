@@ -1,5 +1,6 @@
 import { inspectStaffErasureTables, eraseStaffUserData } from './staff-erasure.js';
 import { createHash } from 'node:crypto';
+import { deleteRegistrationLeads } from './registration-crm.js';
 
 // Menjalankan hak "hapus data" yang dijanjikan privacy.html bagian 9.
 //
@@ -114,6 +115,8 @@ function quoteIdentifier(identifier) {
 // lagi saat enroll kursus berikutnya — itu memang perilaku yang diinginkan:
 // persetujuan ditarik, jadi harus diminta ulang, bukan diasumsikan.
 export async function deleteMarketingProfile(client, userId) {
+  await client.query('SELECT id FROM users WHERE id=$1 FOR UPDATE', [userId]);
+  await deleteRegistrationLeads(client, userId);
   const res = await client.query(
     `DELETE FROM user_marketing_profile WHERE user_id = $1`,
     [userId]

@@ -43,7 +43,7 @@ test('CRM persists in PostgreSQL with permission, concurrency, history and brows
     CREATE TABLE orders(id UUID PRIMARY KEY,user_id UUID REFERENCES users(id),course_id UUID REFERENCES courses(id),status TEXT,amount_idr INTEGER,created_at TIMESTAMPTZ DEFAULT NOW(),approved_at TIMESTAMPTZ);
     CREATE TABLE order_payments(id UUID PRIMARY KEY,order_id UUID REFERENCES orders(id),status TEXT);
     CREATE TABLE discussions(id UUID PRIMARY KEY,user_id UUID REFERENCES users(id));`);
-  await applyCompanyMigrations(control);assert.deepEqual(await applyCrmMigrations(control),['001_marketing_crm','002_marketing_strategy']);assert.deepEqual(await applyCrmMigrations(control),[]);
+  await applyCompanyMigrations(control);assert.deepEqual(await applyCrmMigrations(control),['001_marketing_crm','002_marketing_strategy','003_registration_sources']);assert.deepEqual(await applyCrmMigrations(control),[]);
   const ids=Object.fromEntries(['owner','marketing','scoped','finance','student','buyer'].map(k=>[k,randomUUID()])),c1=randomUUID(),c2=randomUUID();
   for(const [who,id]of Object.entries(ids))await control.query('INSERT INTO users VALUES($1,$2,$3)',[id,who+'@example.invalid',who]);
   await control.query("UPDATE users SET email='ayu@example.invalid' WHERE id=$1",[ids.buyer]);

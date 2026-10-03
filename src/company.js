@@ -2,8 +2,8 @@ import { createInsightsView } from './company-insights.js?v=productivity-2026091
 import { createDeskView } from './company-desk.js?v=unified-admin-20260912';
 import { templatesFor, canCreateFollowUp, historyLabel } from './company-productivity.js?v=productivity-20260912';
 import { createStudentOperations } from './student-operations.js?v=operations-20260912';
-import { createMarketingCrm } from './marketing-crm.js?v=20261003';
-import { createMarketingGrowth } from './marketing-growth.js?v=20261003';
+import { createMarketingCrm } from './marketing-crm.js?v=registration-20261003';
+import { createMarketingGrowth } from './marketing-growth.js?v=registration-20261003';
 
 export async function mountCompanyWorkspace(host,{user,companyAccess,onRoute,canOpenTool=()=>false,onSourceOrder}) {
   const response=await fetch(new URL('./company-workspace.html',import.meta.url),{cache:'no-store'});

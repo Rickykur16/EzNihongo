@@ -1082,7 +1082,7 @@ async function ensureCompanyWorkspace() {
   if(companyMount)return companyMount;
   if(!companyMountPromise){
     const boot=adminBootRequest,host=root.querySelector('#company-workspace'),user=CURRENT_USER,companyAccess=COMPANY_ACCESS;
-    const pending=import('./src/company.js?v=growth-20261003').then(module=>module.mountCompanyWorkspace(host,{user,companyAccess,onRoute:markWorkspaceRoute,canOpenTool:canOpenAdminTab,onSourceOrder:async id=>{
+    const pending=import('./src/company.js?v=registration-20261003').then(module=>module.mountCompanyWorkspace(host,{user,companyAccess,onRoute:markWorkspaceRoute,canOpenTool:canOpenAdminTab,onSourceOrder:async id=>{
       if(!canOpenAdminTab('orders')||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))return;
       const request=adminTabRequest+1;
       await switchTab('orders');
@@ -8732,7 +8732,7 @@ let _usersReqSeq = 0;
 // REFERRAL_SOURCES) and courses/course.js (same option lists, for the
 // checkout form) — see profile.js's comment for why this isn't a shared file.
 const LEARNING_GOAL_LABELS = { jlpt: 'Lulus JLPT', kerja_jepang: 'Kerja di Jepang', hobi: 'Hobi', kuliah: 'Kuliah/beasiswa', lainnya: 'Lainnya' };
-const REFERRAL_SOURCE_LABELS = { instagram: 'Instagram', tiktok: 'TikTok', youtube: 'YouTube', google: 'Google', teman_keluarga: 'Teman/keluarga', lainnya: 'Lainnya' };
+const REFERRAL_SOURCE_LABELS = { instagram: 'Instagram', tiktok: 'TikTok', youtube: 'YouTube', facebook: 'Facebook', whatsapp: 'WhatsApp', google: 'Google', website: 'Website', event: 'Acara / webinar', teman_keluarga: 'Teman/keluarga', lainnya: 'Lainnya' };
 const MARKETING_PROVINCES = [
   'Aceh', 'Sumatera Utara', 'Sumatera Barat', 'Riau', 'Kepulauan Riau', 'Jambi',
   'Sumatera Selatan', 'Kepulauan Bangka Belitung', 'Bengkulu', 'Lampung',
