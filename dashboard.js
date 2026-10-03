@@ -92,7 +92,7 @@
   // penyaring, jadi akses siswa bisa hilang tanpa pernah ada peringatan sama
   // sekali. Ambang 14 hari dipilih supaya masih ada waktu menghubungi admin
   // sebelum benar-benar terkunci, bukan pemberitahuan di hari terakhir.
-  const RENEW_WA = 'https://wa.me/6281294894557';
+  const RENEW_WA = 'https://wa.me/817084655520';
   const EXPIRY_WARNING_DAYS = 14;
 
   function accessNotice(course) {
