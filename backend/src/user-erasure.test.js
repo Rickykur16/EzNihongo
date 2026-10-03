@@ -8,6 +8,7 @@ import { actorDigest } from './curriculum-readiness-attestations.js';
 
 const contract = await readFile(new URL('../contracts/staff-schema-v1.sql', import.meta.url), 'utf8');
 const readinessMigration = await readFile(new URL('../migrations/166_curriculum_readiness_attestations.sql', import.meta.url), 'utf8');
+const manekoMigration = await readFile(new URL('../migrations/164_maneko_learning_assistance.sql', import.meta.url), 'utf8');
 const wipeTables = ['sessions', 'user_marketing_profile', 'user_enrollments', 'user_progress', 'user_learning_state',
   'user_stats', 'user_practice_state', 'user_practice_legacy_imports', 'practice_attempts', 'quiz_question_results',
   'quiz_attempts', 'grammar_attempts', 'smart_review_sessions', 'grammar_task_requests', 'grammar_task_sessions'];
@@ -28,7 +29,7 @@ test('account erasure compatibility on PostgreSQL', {
   const url = new URL(process.env.TEST_DATABASE_URL);
   assert.ok(['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname));
   assert.match(url.pathname, /test/i, 'Use an explicitly named disposable test database');
-  async function fixture(t, { staff = true, learningFlow = true, readiness = false } = {}) {
+  async function fixture(t, { staff = true, learningFlow = true, readiness = false, maneko = true } = {}) {
     const schema = 'erasure_test_' + randomUUID().replaceAll('-', '');
     const client = new pg.Client({ connectionString: url.href, statement_timeout: 10000 });
     await client.connect();
@@ -58,6 +59,14 @@ test('account erasure compatibility on PostgreSQL', {
     for (const table of wipeTables) {
       await client.query(`CREATE TABLE ${table} (id uuid PRIMARY KEY, user_id uuid REFERENCES users(id) ON DELETE CASCADE, payload text)`);
     }
+    if (maneko) {
+      await client.query(`CREATE TABLE lessons (id uuid PRIMARY KEY);
+        CREATE TABLE smart_review_session_items (session_id uuid REFERENCES smart_review_sessions(id) ON DELETE CASCADE);
+        ALTER TABLE grammar_attempts ADD COLUMN created_at timestamptz;
+        ALTER TABLE practice_attempts ADD COLUMN created_at timestamptz;
+        ALTER TABLE quiz_question_results ADD COLUMN created_at timestamptz`);
+      await client.query(manekoMigration);
+    }
     if (learningFlow) await client.query(`CREATE TABLE ${optionalWipeTable}
       (id uuid PRIMARY KEY, user_id uuid REFERENCES users(id) ON DELETE RESTRICT,
        question_snapshot jsonb NOT NULL, response_snapshot jsonb NOT NULL)`);
@@ -77,7 +86,13 @@ test('account erasure compatibility on PostgreSQL', {
       await attestation(other, randomUUID());
     }
     for (const table of wipeTables) {
-      await client.query(`INSERT INTO ${table} VALUES ($1,$2,'owned'),($3,$4,'keep-other')`, [randomUUID(), erased, randomUUID(), other]);
+      await client.query(`INSERT INTO ${table}(id,user_id,payload) VALUES ($1,$2,'owned'),($3,$4,'keep-other')`, [randomUUID(), erased, randomUUID(), other]);
+    }
+    if (maneko) {
+      await client.query(`INSERT INTO maneko_exposures(user_id,session_id,assistance_type,expires_at)
+        SELECT user_id,id,'hint',NOW()+INTERVAL '1 hour' FROM smart_review_sessions`);
+      await client.query(`INSERT INTO maneko_exposures(user_id,assistance_type,expires_at)
+        VALUES ($1,'tutor_chat',NOW()-INTERVAL '1 hour')`, [erased]);
     }
     if (learningFlow) await client.query(`INSERT INTO ${optionalWipeTable} VALUES
       ($1,$2,'{"privateKey":0}','{"correct":true}'),
@@ -113,13 +128,14 @@ test('account erasure compatibility on PostgreSQL', {
       const names = ['users', 'courses', 'orders', 'order_payments', 'discussions', ...wipeTables,
         ...(learningFlow ? [optionalWipeTable] : []),
         ...(readiness ? ['curriculum_readiness_attestations'] : []),
+        ...(maneko ? ['maneko_exposures'] : []),
         ...(staff ? ['staff_roles', 'staff_permissions', 'staff_role_permissions', 'staff_memberships', 'staff_membership_scopes', 'staff_audit_events'] : [])];
       const result = {};
       for (const table of names) result[table] = await rows(table);
       return result;
     };
     return { client, schema, extraSchemas, erased, other, third, targetMembership, otherMembership, revokedMembership,
-      learningFlow, readiness,
+      learningFlow, readiness, maneko,
       paid, proof, otherProof, parent, reply, rows, snapshot, tx,
       erase: () => tx(() => eraseUserAccount(client, erased)) };
   }
@@ -132,6 +148,7 @@ test('account erasure compatibility on PostgreSQL', {
     assert.equal(after.users.find(row => row.id === f.erased).email, `dihapus-${f.erased}@dihapus.invalid`);
     for (const table of wipeTables) assert.deepEqual(after[table], before[table].filter(row => row.user_id !== f.erased));
     if (f.learningFlow) assert.deepEqual(after[optionalWipeTable], before[optionalWipeTable].filter(row => row.user_id !== f.erased));
+    if (f.maneko) assert.deepEqual(after.maneko_exposures, before.maneko_exposures.filter(row => row.user_id !== f.erased));
     assert.deepEqual(after.order_payments.find(row => row.id === f.otherProof), before.order_payments.find(row => row.id === f.otherProof));
     assert.equal(after.order_payments.find(row => row.id === f.proof).proof_image, null);
     assert.equal(after.order_payments.length, before.order_payments.length);
@@ -140,12 +157,46 @@ test('account erasure compatibility on PostgreSQL', {
   }
 
   await t.test('old schema needs no staff tables and retains the old summary shape', async t => {
-    const f = await fixture(t, { staff: false, learningFlow: false }); const before = await f.snapshot();
+    const f = await fixture(t, { staff: false, learningFlow: false, maneko: false }); const before = await f.snapshot();
     const summary = await f.erase();
     assert.ok(Object.keys(summary).every(key => !key.startsWith('staff_')));
     assert.ok(!Object.hasOwn(summary, optionalWipeTable));
+    assert.ok(!Object.hasOwn(summary, 'maneko_exposures'));
     await assertLegacyPreserved(f, before);
     assert.ok(Object.values(await f.erase()).every(count => count === 0));
+  });
+
+  await t.test('migration 164 history is erased per owner with distinct optional-table counts', async t => {
+    const f = await fixture(t); const before = await f.snapshot();
+    const summary = await f.erase();
+    assert.equal(summary.maneko_exposures, 2);
+    assert.equal(summary.dialogue_question_attempts, 1);
+    await assertLegacyPreserved(f, before);
+    const after = await f.snapshot();
+    assert.equal((await f.erase()).maneko_exposures, 0);
+    assert.deepEqual(await f.snapshot(), after);
+  });
+
+  await t.test('an empty migrated Maneko table does not block account erasure', async t => {
+    const f = await fixture(t, { learningFlow: false });
+    await f.client.query('DELETE FROM maneko_exposures');
+    const before = await f.snapshot();
+    const summary = await f.erase();
+    assert.equal(summary.maneko_exposures, 0);
+    assert.ok(!Object.hasOwn(summary, optionalWipeTable));
+    await assertLegacyPreserved(f, before);
+  });
+
+  await t.test('a shadow Maneko table cannot redirect erasure away from the users schema', async t => {
+    const f = await fixture(t); const decoy = f.schema + '_decoy'; f.extraSchemas.push(decoy);
+    await f.client.query(`CREATE SCHEMA ${quote(decoy)};
+      CREATE TABLE ${quote(decoy)}.maneko_exposures (user_id uuid, payload text);
+      SET search_path TO ${quote(decoy)}, ${quote(f.schema)}`);
+    await f.client.query(`INSERT INTO ${quote(decoy)}.maneko_exposures VALUES ($1,'keep decoy')`, [f.erased]);
+    const before = await f.snapshot();
+    assert.equal((await f.erase()).maneko_exposures, 2);
+    await assertLegacyPreserved(f, before);
+    assert.equal((await f.client.query(`SELECT payload FROM ${quote(decoy)}.maneko_exposures`)).rows[0].payload, 'keep decoy');
   });
 
   await t.test('creating the isolated contract neither backfills staff nor changes existing rows', async t => {
