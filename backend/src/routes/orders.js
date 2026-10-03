@@ -9,6 +9,8 @@ import { canReadCompanyProof } from '../company-policy.js';
 import { hasCourseAccess } from '../entitlements.js';
 import { notifyAdmin } from '../telegram.js';
 import { uploadLimits, uploadErrorHandler } from '../upload-safety.js';
+import { loadRegistrationProfile } from '../registration-profile.js';
+import { syncRegistrationLead } from '../registration-crm.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -160,6 +162,10 @@ router.post('/orders', asyncHandler(async (req, res) => {
     if (existing.rows.length > 0) {
       return { order: existing.rows[0], alreadyOpen: true };
     }
+
+    const user = (await client.query('SELECT id,email,full_name FROM users WHERE id=$1 FOR UPDATE', [req.user.id])).rows[0];
+    const profile = await loadRegistrationProfile(client, req.user.id);
+    await syncRegistrationLead(client, user, profile, course.id);
 
     for (let attempt = 0; attempt < 3; attempt++) {
       try {

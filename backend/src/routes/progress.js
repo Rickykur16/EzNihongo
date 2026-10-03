@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { submitQuizAttempt } from '../quiz-submission.js';
-import { query, withAdvisoryLock } from '../db.js';
+import { query, withAdvisoryLock, withTransaction } from '../db.js';
+import { loadRegistrationProfile } from '../registration-profile.js';
+import { syncRegistrationLead } from '../registration-crm.js';
 import { requireAuth, asyncHandler } from '../middleware.js';
 import { isAdminEmail } from '../auth.js';
 import { requireLessonCourseAccess } from '../entitlements.js';
@@ -617,22 +619,26 @@ router.post('/enrollments', asyncHandler(async (req, res) => {
   // An existing row that's been admin-revoked must NOT be silently
   // reactivated by self-enroll — that would defeat the revoke. Report it
   // distinctly instead of the generic "already enrolled".
-  const existing = await query(
-    `SELECT id, status FROM user_enrollments WHERE user_id = $1 AND course_id = $2 LIMIT 1`,
-    [req.user.id, course.id]
-  );
-  if (existing.rows.length > 0 && existing.rows[0].status === 'revoked') {
-    return res.status(403).json({ error: 'access_revoked' });
-  }
-
-  const ins = await query(
-    `INSERT INTO user_enrollments (user_id, course_id, status, source)
-     VALUES ($1, $2, 'active', 'self_enroll')
-     ON CONFLICT (user_id, course_id) DO NOTHING
-     RETURNING id`,
-    [req.user.id, course.id]
-  );
-  res.json({ ok: true, alreadyEnrolled: ins.rows.length === 0, courseId: course.id });
+  const alreadyEnrolled = await withTransaction(async client => {
+    const user = (await client.query('SELECT id,email,full_name FROM users WHERE id=$1 FOR UPDATE', [req.user.id])).rows[0];
+    const existing = await client.query(
+      `SELECT id, status FROM user_enrollments WHERE user_id = $1 AND course_id = $2 LIMIT 1`,
+      [req.user.id, course.id]
+    );
+    if (existing.rows[0]?.status === 'revoked') {
+      throw Object.assign(new Error('access_revoked'), { status: 403 });
+    }
+    if (existing.rows.length) return true;
+    const profile = await loadRegistrationProfile(client, req.user.id);
+    await syncRegistrationLead(client, user, profile, course.id);
+    await client.query(
+      `INSERT INTO user_enrollments (user_id, course_id, status, source)
+       VALUES ($1, $2, 'active', 'self_enroll') ON CONFLICT (user_id, course_id) DO NOTHING`,
+      [req.user.id, course.id]
+    );
+    return false;
+  });
+  res.json({ ok: true, alreadyEnrolled, courseId: course.id });
 }));
 
 // GET /api/enrollments/me

@@ -1,5 +1,5 @@
 const stages={new:'Baru',contacted:'Dihubungi',qualified:'Terkualifikasi',consulting:'Konsultasi',offered:'Ditawari program',won:'Deal dicatat',lost:'Batal'};
-const sources={referral:'Referral',instagram:'Instagram',tiktok:'TikTok',whatsapp:'WhatsApp',website:'Website',event:'Acara',other:'Lainnya'};
+const sources={referral:'Referral',instagram:'Instagram',tiktok:'TikTok',facebook:'Facebook',youtube:'YouTube',google:'Google',whatsapp:'WhatsApp',website:'Website',event:'Acara',other:'Lainnya'};
 const backgrounds={'':'Belum dicatat',ex_intern_hospitality:'Eks-intern/kerja Jepang · hospitality',ex_intern_other:'Eks-intern/kerja Jepang · lainnya',fresh_graduate:'Lulusan baru',worker:'Sedang bekerja',other:'Lainnya'};
 const problems={'':'Belum dicatat',cost:'Biaya',language:'Bahasa',jobs:'Akses kerja',time:'Waktu/fleksibilitas',trust:'Kepercayaan',other:'Lainnya'};
 const angles={'':'Belum diuji',cost:'Cost · biaya',career:'Career · jalur kerja',convenience:'Convenience · fleksibilitas',other:'Lainnya'};
