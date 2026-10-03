@@ -13,7 +13,8 @@ export const PROVINCES = [
 ];
 export const LEARNING_GOALS = ['jlpt', 'kerja_jepang', 'hobi', 'kuliah', 'lainnya'];
 export const REFERRAL_SOURCES = ['instagram', 'tiktok', 'youtube', 'google', 'teman_keluarga', 'lainnya', 'facebook', 'whatsapp', 'website', 'event'];
-export const BACKGROUNDS = ['ex_intern_hospitality', 'ex_intern_other', 'fresh_graduate', 'worker', 'other'];
+export const BACKGROUNDS = ['ex_intern', 'ex_intern_hospitality', 'ex_intern_other', 'fresh_graduate', 'worker', 'other'];
+export const INTERNSHIP_FIELDS = ['hospitality', 'manufacturing', 'construction', 'agriculture', 'caregiving', 'fisheries', 'other'];
 export const JAPAN_GOALS = ['first_time', 'return', 'study', 'undecided'];
 export const PRIMARY_PROBLEMS = ['cost', 'language', 'jobs', 'time', 'trust', 'other', 'undecided'];
 export const TARGET_TIMELINES = ['within_3_months', 'within_6_months', 'within_12_months', 'over_12_months', 'undecided'];
@@ -31,6 +32,21 @@ function text(value, max, error, required = true) {
 function choice(value, values, error) {
   if (typeof value !== 'string' || !values.includes(value.trim())) throw registrationError(400, error);
   return value.trim();
+}
+
+function conditionalAnswers(body, { background, learningGoal, primaryProblem, referralSource }) {
+  const isIntern = ['ex_intern', 'ex_intern_hospitality', 'ex_intern_other'].includes(background);
+  const legacyHospitality = background === 'ex_intern_hospitality' && (body.internshipField === undefined || body.internshipField === null || body.internshipField === '');
+  const internshipField = isIntern ? choice(legacyHospitality ? 'hospitality' : body.internshipField, INTERNSHIP_FIELDS, 'invalid_internship_field') : '';
+  return {
+    background: isIntern ? (internshipField === 'hospitality' ? 'ex_intern_hospitality' : 'ex_intern_other') : background,
+    internshipField,
+    internshipFieldOther: internshipField === 'other' ? text(body.internshipFieldOther, 160, 'invalid_internship_field_other') : '',
+    backgroundOther: background === 'other' ? text(body.backgroundOther, 160, 'invalid_background_other') : '',
+    learningGoalOther: learningGoal === 'lainnya' ? text(body.learningGoalOther, 160, 'invalid_learning_goal_other') : '',
+    primaryProblemOther: primaryProblem === 'other' ? text(body.primaryProblemOther, 160, 'invalid_primary_problem_other') : '',
+    referralSourceOther: referralSource === 'lainnya' ? text(body.referralSourceOther, 160, 'invalid_referral_source_other') : '',
+  };
 }
 
 export function normalizeRegistrationPhone(value) {
@@ -57,6 +73,9 @@ export function parseRegistrationProfile(body, now = new Date()) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw registrationError(400, 'invalid_registration_fields');
   if (body.consent !== true) throw registrationError(400, 'consent_required');
   const referralSource = choice(body.referralSource, REFERRAL_SOURCES, 'invalid_referral_source');
+  const learningGoal = choice(body.learningGoal, LEARNING_GOALS, 'invalid_learning_goal');
+  const primaryProblem = choice(body.primaryProblem, PRIMARY_PROBLEMS, 'invalid_primary_problem');
+  const background = choice(body.background, BACKGROUNDS, 'invalid_background');
   return {
     fullName: body.fullName === undefined ? undefined : text(body.fullName, 100, 'invalid_full_name'),
     courseSlug: text(body.courseSlug, 160, 'invalid_course_slug'),
@@ -64,16 +83,28 @@ export function parseRegistrationProfile(body, now = new Date()) {
     province: choice(body.province, PROVINCES, 'invalid_province'),
     city: text(body.city, 100, 'invalid_city'),
     phone: normalizeRegistrationPhone(body.phone),
-    learningGoal: choice(body.learningGoal, LEARNING_GOALS, 'invalid_learning_goal'),
+    learningGoal,
     referralSource,
-    background: choice(body.background, BACKGROUNDS, 'invalid_background'),
+    ...conditionalAnswers(body, { background, learningGoal, primaryProblem, referralSource }),
     japanGoal: choice(body.japanGoal, JAPAN_GOALS, 'invalid_japan_goal'),
     categoryInterest: text(body.categoryInterest, 160, 'invalid_category_interest'),
-    primaryProblem: choice(body.primaryProblem, PRIMARY_PROBLEMS, 'invalid_primary_problem'),
+    primaryProblem,
     targetTimeline: choice(body.targetTimeline, TARGET_TIMELINES, 'invalid_target_timeline'),
     referrerName: referralSource === 'teman_keluarga' ? text(body.referrerName, 160, 'invalid_referrer_name') : '',
     sourceDetail: text(body.sourceDetail, 160, 'invalid_source_detail', false),
   };
+}
+
+export function isRegistrationProfileComplete(row) {
+  if (!row || Number(row.strategy_version || 0) < REGISTRATION_STRATEGY_VERSION) return false;
+  try {
+    conditionalAnswers({
+      internshipField: row.internship_field, internshipFieldOther: row.internship_field_other,
+      backgroundOther: row.background_other, learningGoalOther: row.learning_goal_other,
+      primaryProblemOther: row.primary_problem_other, referralSourceOther: row.referral_source_other,
+    }, { background: row.background, learningGoal: row.learning_goal, primaryProblem: row.primary_problem, referralSource: row.referral_source });
+    return true;
+  } catch { return false; }
 }
 
 function dateOnly(value) {
@@ -86,7 +117,7 @@ export function serializeRegistrationProfile(row) {
   if (!row) return { hasProfile: false, needsUpdate: true };
   return {
     hasProfile: true,
-    needsUpdate: Number(row.strategy_version || 0) < REGISTRATION_STRATEGY_VERSION,
+    needsUpdate: !isRegistrationProfileComplete(row),
     strategyVersion: Number(row.strategy_version || 0),
     birthDate: dateOnly(row.birth_date),
     province: row.province,
@@ -95,6 +126,12 @@ export function serializeRegistrationProfile(row) {
     learningGoal: row.learning_goal,
     referralSource: row.referral_source,
     background: row.background || '',
+    internshipField: row.internship_field || (row.background === 'ex_intern_hospitality' ? 'hospitality' : ''),
+    internshipFieldOther: row.internship_field_other || '',
+    backgroundOther: row.background_other || '',
+    learningGoalOther: row.learning_goal_other || '',
+    primaryProblemOther: row.primary_problem_other || '',
+    referralSourceOther: row.referral_source_other || '',
     japanGoal: row.japan_goal || '',
     categoryInterest: row.category_interest || '',
     primaryProblem: row.primary_problem || '',
@@ -107,6 +144,6 @@ export function serializeRegistrationProfile(row) {
 export async function loadRegistrationProfile(client, userId) {
   const { rows } = await client.query('SELECT * FROM user_marketing_profile WHERE user_id = $1', [userId]);
   const row = rows[0];
-  if (!row || Number(row.strategy_version || 0) < REGISTRATION_STRATEGY_VERSION) throw registrationError(428, 'registration_profile_required');
+  if (!isRegistrationProfileComplete(row)) throw registrationError(428, 'registration_profile_required');
   return row;
 }

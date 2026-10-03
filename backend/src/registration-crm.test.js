@@ -41,7 +41,7 @@ test('registration CRM and checkout transactions on isolated PostgreSQL', { skip
     CREATE TABLE app_settings(key TEXT PRIMARY KEY,value TEXT);
     CREATE FUNCTION set_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at=NOW(); RETURN NEW; END $$;`);
   const migrate = async (directory, file) => control.query(await readFile(new URL(`../${directory}/${file}`, import.meta.url), 'utf8'));
-  for (const file of ['120_course_entitlements.sql', '121_course_orders.sql', '138_user_marketing_profile.sql', '200_registration_strategy.sql']) await migrate('migrations', file);
+  for (const file of ['120_course_entitlements.sql', '121_course_orders.sql', '138_user_marketing_profile.sql', '200_registration_strategy.sql', '202_registration_other_details.sql']) await migrate('migrations', file);
   // Normal migrations must also work before optional CRM has been installed.
   await migrate('migrations', '201_registration_crm_sources.sql');
   for (const file of ['001_marketing_crm.sql', '002_marketing_strategy.sql']) await migrate('crm-migrations', file);
@@ -146,6 +146,53 @@ test('registration CRM and checkout transactions on isolated PostgreSQL', { skip
     assert.equal((await control.query('SELECT full_name FROM users WHERE id=$1', [person.id])).rows[0].full_name, 'Nama akun diperbaiki');
     assert.equal((await control.query('SELECT note FROM marketing_lead_events WHERE lead_id=$1 AND lead_version=1', [lead.id])).rows[0].note, 'Catatan staf tetap');
     assert.equal(await eventCount(lead.id), 2); assert.equal((await save(person)).status, 200); assert.equal(await eventCount(lead.id), 2);
+  });
+
+  await t.test('exact conditional answers survive in CRM history and edits or clears append only one snapshot', async () => {
+    const person = await user('other-details'), staff = await user('detail-staff');
+    const detail = {
+      background: 'ex_intern', internshipField: 'other', internshipFieldOther: 'Pengolahan kayu',
+      learningGoal: 'lainnya', learningGoalOther: 'Menerjemahkan dokumen keluarga',
+      primaryProblem: 'other', primaryProblemOther: 'Mengurus dokumen visa',
+      referralSource: 'lainnya', referralSourceOther: 'Komunitas ' + 'A'.repeat(150), sourceDetail: 'B'.repeat(160),
+    };
+    assert.equal((await save(person, courses.paid, detail)).status, 200);
+    const [lead] = await leads(person);
+    const latestNote = async () => (await control.query('SELECT note FROM marketing_lead_events WHERE lead_id=$1 ORDER BY lead_version DESC LIMIT 1', [lead.id])).rows[0].note;
+    assert.equal(lead.background, 'ex_intern_other'); assert.equal(lead.source, 'other');
+    assert.equal(lead.source_detail.length, 240); assert.ok(lead.goal.includes(detail.learningGoalOther));
+    const firstNote = await latestNote();
+    assert.ok(firstNote.includes('Rincian jawaban formulir pendaftaran:'));
+    for (const field of ['internshipFieldOther', 'learningGoalOther', 'primaryProblemOther', 'referralSourceOther']) assert.ok(firstNote.includes(detail[field]), field);
+    assert.equal((await save(person, courses.paid, detail)).status, 200); assert.equal(await eventCount(lead.id), 1);
+    await control.query("UPDATE marketing_leads SET source='event',source_detail='Sumber dari staf',goal='Tujuan wawancara staf',version=2 WHERE id=$1", [lead.id]);
+    await control.query("INSERT INTO marketing_lead_events(lead_id,actor_user_id,event_key,stage,note,lead_version) VALUES($1,$2,'updated','new','Wawancara staf dipertahankan',2)", [lead.id, staff.id]);
+    const edited = { ...detail, internshipFieldOther: 'Perawatan kapal', primaryProblemOther: 'Waktu mengurus visa' };
+    assert.equal((await save(person, courses.paid, edited)).status, 200);
+    assert.equal(await eventCount(lead.id), 3); assert.ok((await latestNote()).includes(edited.internshipFieldOther)); assert.ok((await latestNote()).includes(edited.primaryProblemOther));
+    const [updated] = await leads(person);
+    assert.equal(updated.source, 'event'); assert.equal(updated.source_detail, 'Sumber dari staf'); assert.equal(updated.goal, 'Tujuan wawancara staf');
+    assert.equal((await save(person, courses.paid, edited)).status, 200); assert.equal(await eventCount(lead.id), 3);
+    assert.equal((await save(person, courses.paid, { background: 'other', backgroundOther: 'Pemilik usaha keluarga' })).status, 200);
+    assert.ok((await latestNote()).includes('Latar belakang lainnya: Pemilik usaha keluarga')); assert.equal(await eventCount(lead.id), 4);
+    assert.equal((await save(person, courses.paid, { background: 'worker' })).status, 200);
+    assert.ok((await latestNote()).includes('Tidak ada jawaban tambahan.')); assert.equal(await eventCount(lead.id), 5);
+    assert.equal((await save(person, courses.paid, { background: 'worker' })).status, 200); assert.equal(await eventCount(lead.id), 5);
+  });
+
+  await t.test('a v2 legacy profile needs new answers only when its selected condition is incomplete', async () => {
+    const person = await user('conditional-gate'); assert.equal((await save(person)).status, 200);
+    await control.query("UPDATE user_marketing_profile SET background='ex_intern_other',internship_field='' WHERE user_id=$1", [person.id]);
+    assert.equal((await request(person, '/profile/marketing', undefined, 'GET')).data.needsUpdate, true);
+    assert.equal((await order(person, courses.paid2)).status, 428); assert.equal((await enroll(person)).status, 428);
+    assert.equal((await save(person, courses.paid, { background: 'ex_intern', internshipField: 'manufacturing' })).status, 200);
+    assert.equal((await request(person, '/profile/marketing', undefined, 'GET')).data.needsUpdate, false);
+    assert.equal((await order(person, courses.paid2)).status, 201);
+    const unchanged = await user('legacy-hospitality'); assert.equal((await save(unchanged)).status, 200);
+    await control.query("UPDATE user_marketing_profile SET internship_field='' WHERE user_id=$1", [unchanged.id]);
+    const legacyGet = await request(unchanged, '/profile/marketing', undefined, 'GET');
+    assert.equal(legacyGet.data.needsUpdate, false); assert.equal(legacyGet.data.internshipField, 'hospitality');
+    assert.equal((await order(unchanged, courses.paid2)).status, 201);
   });
 
   await t.test('shared phone numbers never merge people with different verified account emails', async () => {

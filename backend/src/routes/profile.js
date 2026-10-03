@@ -40,8 +40,10 @@ router.put('/profile/marketing', asyncHandler(async (req, res) => {
       `INSERT INTO user_marketing_profile
          (user_id, birth_date, province, city, phone, learning_goal, referral_source,
           background, japan_goal, category_interest, primary_problem, target_timeline,
-          referrer_name, source_detail, strategy_version, consented_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
+          referrer_name, source_detail, internship_field, internship_field_other,
+          background_other, learning_goal_other, primary_problem_other, referral_source_other,
+          strategy_version, consented_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, NOW())
        ON CONFLICT (user_id) DO UPDATE SET
          birth_date = EXCLUDED.birth_date, province = EXCLUDED.province,
          city = EXCLUDED.city, phone = EXCLUDED.phone, learning_goal = EXCLUDED.learning_goal,
@@ -49,11 +51,16 @@ router.put('/profile/marketing', asyncHandler(async (req, res) => {
          japan_goal = EXCLUDED.japan_goal, category_interest = EXCLUDED.category_interest,
          primary_problem = EXCLUDED.primary_problem, target_timeline = EXCLUDED.target_timeline,
          referrer_name = EXCLUDED.referrer_name, source_detail = EXCLUDED.source_detail,
+         internship_field = EXCLUDED.internship_field, internship_field_other = EXCLUDED.internship_field_other,
+         background_other = EXCLUDED.background_other, learning_goal_other = EXCLUDED.learning_goal_other,
+         primary_problem_other = EXCLUDED.primary_problem_other, referral_source_other = EXCLUDED.referral_source_other,
          strategy_version = EXCLUDED.strategy_version, consented_at = NOW()
        RETURNING *`,
       [person.id, data.birthDate, data.province, data.city, data.phone, data.learningGoal,
         data.referralSource, data.background, data.japanGoal, data.categoryInterest,
         data.primaryProblem, data.targetTimeline, data.referrerName, data.sourceDetail,
+        data.internshipField, data.internshipFieldOther, data.backgroundOther,
+        data.learningGoalOther, data.primaryProblemOther, data.referralSourceOther,
         REGISTRATION_STRATEGY_VERSION]
     )).rows[0];
     await syncRegistrationLead(client, person, profile, course.id);
