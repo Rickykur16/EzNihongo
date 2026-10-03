@@ -31,10 +31,12 @@ async function ensureAuth(slug) {
   // If api-client is loaded, use cookie-based auth. Otherwise fall back to localStorage mirror.
   if (typeof window.ezGetMe === "function") {
     const user = await window.ezGetMe();
-    if (user) return true;
+    if (user) return user;
   } else {
     const mirrored = localStorage.getItem("ez_user");
-    if (mirrored) return true;
+    if (mirrored) {
+      try { return JSON.parse(mirrored); } catch { /* fall through to login */ }
+    }
   }
   const here = `courses/detail.html?slug=${encodeURIComponent(slug)}`;
   window.location.replace(`../login.html?next=${encodeURIComponent(here)}`);
@@ -136,6 +138,7 @@ const TARGET_TIMELINES = [
   ['undecided', 'Belum menentukan'],
 ];
 const PROFILE_FIELDS = {
+  fullName: 'c-full-name',
   birthDate: 'c-birth-date', province: 'c-province', city: 'c-city', phone: 'c-phone',
   learningGoal: 'c-learning-goal', background: 'c-background', japanGoal: 'c-japan-goal',
   categoryInterest: 'c-category-interest', primaryProblem: 'c-primary-problem',
@@ -143,6 +146,7 @@ const PROFILE_FIELDS = {
   referrerName: 'c-referrer-name', sourceDetail: 'c-source-detail', consent: 'c-consent',
 };
 const PROFILE_ERRORS = {
+  invalid_full_name: ['c-full-name', 'Isi nama lengkapmu, maksimal 100 karakter.'],
   invalid_birth_date: ['c-birth-date', 'Masukkan tanggal lahir yang benar.'],
   implausible_birth_date: ['c-birth-date', 'Periksa tanggal lahirmu. Usia yang dapat didaftarkan adalah 5–100 tahun.'],
   invalid_province: ['c-province', 'Pilih provinsi domisilimu.'],
@@ -182,10 +186,12 @@ function profileFieldsHtml() {
     <div id="c-profile-fields">
       <div class="c-profile-intro"><h2>Kenali kebutuhan belajarmu</h2><p>Bantu kami memahami tujuan dan kendalamu agar informasi kelas dan pendampingan lebih sesuai. Cukup lengkapi saat pendaftaran pertamamu.</p><p class="c-field-hint">Semua pertanyaan wajib diisi, kecuali yang bertanda opsional. Belum punya rencana? Pilih “Belum menentukan”.</p></div>
       <fieldset class="c-profile-section"><legend>1. Data diri &amp; kontak</legend>
+        <div class="field"><label for="c-full-name">Nama lengkap</label><input type="text" id="c-full-name" autocomplete="name" maxlength="100" required placeholder="Nama lengkap kamu" aria-describedby="c-full-name-hint c-full-name-error" /><p class="c-field-hint" id="c-full-name-hint">Diambil dari akunmu. Kamu bisa memperbaikinya di sini.</p><p class="c-field-error" id="c-full-name-error" hidden></p></div>
         <div class="field-row">
-          <div class="field"><label for="c-birth-date">Tanggal lahir</label><input type="date" id="c-birth-date" min="${bounds.min}" max="${bounds.max}" autocomplete="bday" required aria-describedby="c-birth-date-error" /><p class="c-field-error" id="c-birth-date-error" hidden></p></div>
           <div class="field"><label for="c-phone">Nomor WhatsApp aktif</label><input type="tel" id="c-phone" placeholder="081234567890" autocomplete="tel" maxlength="40" pattern="[+]?[0-9][0-9\\s\\(\\).\\-]{7,39}" required aria-describedby="c-phone-hint c-phone-error" /><p class="c-field-hint" id="c-phone-hint">Bisa pakai 08…, +62…, atau kode negara lain seperti +81….</p><p class="c-field-error" id="c-phone-error" hidden></p></div>
+          <div class="field"><label for="c-email">Email akun</label><input type="email" id="c-email" autocomplete="email" readonly aria-describedby="c-email-hint" /><p class="c-field-hint" id="c-email-hint">Menggunakan email Google yang kamu pakai untuk masuk.</p></div>
         </div>
+        <div class="field"><label for="c-birth-date">Tanggal lahir</label><input type="date" id="c-birth-date" min="${bounds.min}" max="${bounds.max}" autocomplete="bday" required aria-describedby="c-birth-date-error" /><p class="c-field-error" id="c-birth-date-error" hidden></p></div>
         <div class="field-row">
           ${profileSelect('c-province', 'Provinsi domisili di Indonesia', PROVINCES.map(p => [p, p]), 'Pilih provinsi')}
           <div class="field"><label for="c-city">Kota / kabupaten</label><input type="text" id="c-city" maxlength="100" autocomplete="address-level2" placeholder="Contoh: Kabupaten Bekasi" required aria-describedby="c-city-error" /><p class="c-field-error" id="c-city-error" hidden></p></div>
@@ -221,6 +227,7 @@ function setProfileFieldError(id, message = '') {
 }
 
 function setupProfileFields(profile = {}) {
+  document.getElementById('c-email').value = profile.email || '';
   for (const [key, id] of Object.entries(PROFILE_FIELDS)) {
     const input = document.getElementById(id);
     if (key !== 'consent' && profile[key] != null) input.value = key === 'birthDate' ? String(profile[key]).slice(0, 10) : profile[key];
@@ -412,7 +419,8 @@ async function init() {
     return;
   }
 
-  if (!(await ensureAuth(slug))) return;
+  const account = await ensureAuth(slug);
+  if (!account) return;
 
   // Already enrolled? Check server (source of truth) before sending them to
   // dashboard — localStorage can lie, especially right after login on a new
@@ -452,11 +460,11 @@ async function init() {
   // Complete profiles skip the questions on later signups. Older profiles
   // are prefilled and prompted for the missing strategy questions.
   let needsProfile = true;
-  let profile = {};
+  let profile = { fullName: account.fullName || account.full_name || '', email: account.email || '' };
   try {
     const res = await window.ezApi("/profile/marketing");
     if (res.ok) {
-      profile = await res.json();
+      profile = { ...profile, ...await res.json() };
       needsProfile = !profile.hasProfile || profile.needsUpdate === true;
     }
   } catch { /* keep needsProfile = true — see comment above */ }

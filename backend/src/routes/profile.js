@@ -9,8 +9,15 @@ const router = Router();
 router.use(requireAuth);
 
 router.get('/profile/marketing', asyncHandler(async (req, res) => {
-  const r = await query('SELECT * FROM user_marketing_profile WHERE user_id = $1', [req.user.id]);
-  res.set('Cache-Control', 'private, no-store').json(serializeRegistrationProfile(r.rows[0]));
+  const r = await query(`SELECT u.email, u.full_name, p.* FROM users u
+    LEFT JOIN user_marketing_profile p ON p.user_id = u.id WHERE u.id = $1`, [req.user.id]);
+  const row = r.rows[0];
+  if (!row || row.email.endsWith('@dihapus.invalid')) throw registrationError(401, 'registration_account_unavailable');
+  res.set('Cache-Control', 'private, no-store').json({
+    ...serializeRegistrationProfile(row.user_id ? row : null),
+    fullName: row.full_name,
+    email: row.email,
+  });
 }));
 
 router.put('/profile/marketing', asyncHandler(async (req, res) => {
@@ -22,6 +29,12 @@ router.put('/profile/marketing', asyncHandler(async (req, res) => {
     const course = (await client.query('SELECT id, is_published, is_available FROM courses WHERE slug = $1 FOR SHARE', [data.courseSlug])).rows[0];
     if (!course || !course.is_published) throw registrationError(404, 'course_not_found');
     if (course.is_available === false) throw registrationError(403, 'course_not_available');
+
+    // The account's verified email is authoritative; only the name is editable.
+    if (data.fullName !== undefined && data.fullName !== person.full_name) {
+      await client.query('UPDATE users SET full_name = $2 WHERE id = $1', [person.id, data.fullName]);
+      person.full_name = data.fullName;
+    }
 
     const profile = (await client.query(
       `INSERT INTO user_marketing_profile
