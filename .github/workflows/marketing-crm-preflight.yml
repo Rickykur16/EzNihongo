@@ -53,7 +53,7 @@ jobs:
               if [ -n "$latest" ]; then
                 stat -c 'Latest backup: %n (%s bytes, modified %y)' "$latest"
                 tar -tzf "$latest" > /dev/null
-                tar -tzf "$latest" | sed -n '1,8p'
+                echo 'Latest backup archive: readable'
               else
                 echo 'Latest backup: none found'
               fi
