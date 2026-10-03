@@ -4711,6 +4711,7 @@
   }
 </style>
 <link rel="stylesheet" href="styles/learning-placement.css?v=20260928-skeleton"/>
+<link rel="stylesheet" href="final-exam.css?v=20261003-2"/>
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
 <link rel="stylesheet" href="styles/skeleton.css?v=1">
 <link rel="stylesheet" href="styles/dialogue-scene.css?v=5">
@@ -4814,6 +4815,7 @@ function getUserName(user = session) {
 <script src="src/dialogue-scene.js?v=4"></script>
 <script src="src/dialogue-questions.js?v=20261001-1"></script>
 <script src="learning-state.js?v=20260911-1"></script>
+<script src="final-exam.js?v=20261003-2"></script>
 <script>
 // ═══════════════════════════════════════════════
 // AUTH GUARD — self-hosted API session
@@ -4852,7 +4854,7 @@ function transformCourseFromApi(apiCourse) {
     level: (apiCourse.level || apiCourse.slug || '').toUpperCase(),
     tagline: apiCourse.description || '',
     price: '',
-    modules: (apiCourse.modules || []).map((m, mi) => ({
+    modules: (globalThis.EzFinalExam?.orderModules(apiCourse.modules || []) || apiCourse.modules || []).map((m, mi) => ({
       id: m.slug,
       num: String(mi + 1).padStart(2, '0'),
       title: m.title,
@@ -4860,7 +4862,7 @@ function transformCourseFromApi(apiCourse) {
       titleEn: m.title_en || '',
       jfTopic: m.jf_topic || '',
       cefrLevel: m.cefr_level || '',
-      sectionName: (m.section_name && m.section_name.trim()) || '',
+      sectionName: globalThis.EzFinalExam?.isFinalModule(m) ? 'Final Exam' : (m.section_name && m.section_name.trim()) || '',
       totalMinutes: m.total_minutes || null,
       scenario: m.scenario || '',
       candoStatements: Array.isArray(m.cando_statements) ? m.cando_statements : [],
@@ -6049,6 +6051,7 @@ function renderQuizPassage(passage) {
 // dengan src swap. Track-list bisa di-klik buat lompat; play/pause + skip
 // ±10s + progress bar bekerja di track yang lagi aktif.
 function renderListeningPlayer(sectionItems, sectionNumber) {
+  const finalExam = window.EzFinalExam?.isFinal(quizState?.assessmentVersion);
   const tracks = sectionItems
     .map((item, idx) => ({
       qi: item.index,
@@ -6067,7 +6070,7 @@ function renderListeningPlayer(sectionItems, sectionNumber) {
     <div class="quiz-listening-player" id="qlp-${sectionKey}" data-section-key="${sectionKey}" data-tracks="${tracksJs}">
       <div class="qlp-head">
         <span class="qlp-title">🎧 Audio listening</span>
-        <span class="qlp-track-label">Dialog <strong class="qlp-current-num">1</strong> / ${tracks.length}</span>
+        <span class="qlp-track-label">${finalExam ? 'Audio' : 'Dialog'} <strong class="qlp-current-num">1</strong> / ${tracks.length}</span>
       </div>
       <div class="qlp-controls">
         <button type="button" class="qlp-btn qlp-step qlp-prev" aria-label="Dialog sebelumnya" onclick="window.listeningJump('${sectionKey}', -1, true)">⏮</button>
@@ -6086,7 +6089,7 @@ function renderListeningPlayer(sectionItems, sectionNumber) {
         ${tracks.map((t, i) => `
           <button type="button" class="qlp-track ${i === 0 ? 'active' : ''}" data-track-index="${i}"
             onclick="window.listeningJump('${sectionKey}', ${i}, false)"
-            title="Dialog ${sectionNumber}.${t.orderInSection}">${sectionNumber}.${t.orderInSection}</button>
+            title="${finalExam ? `Soal ${t.qi + 1}` : `Dialog ${sectionNumber}.${t.orderInSection}`}">${finalExam ? t.qi + 1 : `${sectionNumber}.${t.orderInSection}`}</button>
         `).join('')}
       </div>
     </div>
@@ -6134,6 +6137,9 @@ function initListeningPlayers() {
     audio.addEventListener('timeupdate', () => updateListeningUI(key));
     audio.addEventListener('loadedmetadata', () => updateListeningUI(key));
     audio.addEventListener('ended', () => {
+      if (window.EzFinalExam?.isFinal(quizState?.assessmentVersion)) {
+        state.isPlaying = false; updateListeningUI(key); return;
+      }
       if (state.currentIdx < state.tracks.length - 1) {
         // Jeda 5 detik antar dialog ala JLPT real test — kasih siswa
         // waktu baca opsi sebelum dialog berikutnya jalan. Track count
@@ -6172,6 +6178,7 @@ async function loadListeningTrack(key, idx, autoplay) {
   const s = window.__listeningPlayers[key];
   if (!s) return;
   if (idx < 0 || idx >= s.tracks.length) return;
+  if (autoplay) stopOtherFinalListeningPlayers(key);
   s.currentIdx = idx;
   const t = s.tracks[idx];
   if (t.questionId) {
@@ -6250,10 +6257,25 @@ function updateListeningUI(key) {
   }
 }
 
+function stopOtherFinalListeningPlayers(key) {
+  if (!window.EzFinalExam?.isFinal(quizState?.assessmentVersion)) return;
+  for (const [otherKey, player] of Object.entries(window.__listeningPlayers)) {
+    if (otherKey === key) continue;
+    player.request = (player.request || 0) + 1;
+    player.loading = false; player.isPlaying = false;
+    player.audio.pause();
+    if (player._jedaTimer) { clearTimeout(player._jedaTimer); player._jedaTimer = null; }
+    const message = player.el.querySelector('.qlp-jeda');
+    if (message) message.textContent = '';
+    updateListeningUI(otherKey);
+  }
+}
+
 window.listeningTogglePlay = (key) => {
   const s = window.__listeningPlayers[key];
   if (!s || s.loading) return;
   if (s.audio.paused) {
+    stopOtherFinalListeningPlayers(key);
     if (s.tracks[s.currentIdx]?.questionId && !s.audio.getAttribute('src')) {
       loadListeningTrack(key, s.currentIdx, true);
       return;
@@ -6314,7 +6336,7 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
   // Non-listening: tetap inline JP + tombol Dengar.
   // Element selalu dibuat (display:none kalau belum dijawab) supaya
   // pickQuizAnswer bisa toggle tanpa re-render full article.
-  const transcriptBlock = hasAudioScript ? `
+  const transcriptBlock = hasAudioScript && !deferred ? `
     <details class="quiz-listen-transcript" id="quiz-transcript-${qi}" ${answered ? 'open' : ''} ${answered ? '' : 'style="display:none"'}>
       <summary>Transkrip percakapan</summary>
       <pre lang="ja">${escapeHtml(q.audioScript)}</pre>
@@ -6433,6 +6455,16 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
 }
 
 function renderQuizQuestion(container) {
+  if (window.EzFinalExam?.isFinal(quizState?.assessmentVersion)) {
+    const state = quizState;
+    window.EzFinalExam.render(container, state, {
+      question: renderQuizPaperItem, passage: renderQuizPassage, audio: renderListeningPlayer,
+      stopAudio: destroyAllListeningPlayers, initAudio: initListeningPlayers,
+      save: () => { if (!state.draftConflict) { state.draftDirty = true; return saveChapterDraft(state); } },
+      submit: () => finishQuiz(), isCurrent: () => quizState === state && window.__quizNavigationEpoch === state.viewEpoch,
+    });
+    return;
+  }
   const { questions } = quizState;
   const total = questions.length;
   const activeItems = quizQuestionsByCategory(questions, quizState.activeCategory);
@@ -6526,12 +6558,13 @@ async function saveChapterDraft(state) {
       const el = document.getElementById('quiz-draft-status');
       if (el) {
         el.textContent = state.draftStatus;
-        if (state.draftDirty && !state.draftConflict) {
+        if (state.draftDirty && !state.draftConflict && !window.EzFinalExam?.isFinal(state.assessmentVersion)) {
           const button = document.createElement('button');
           button.textContent = 'Coba simpan lagi'; button.className = 'btn-secondary';
           button.onclick = () => saveChapterDraft(state); el.appendChild(button);
         }
       }
+      if (window.EzFinalExam?.isFinal(state.assessmentVersion)) window.EzFinalExam.update(document.getElementById('main-content'), state);
     }
   }
 }
@@ -6645,6 +6678,10 @@ window.pickQuizAnswer = async (questionIndex, optionIndex) => {
 
 function updateQuizPaperProgress() {
   if (!quizState) return;
+  if (window.EzFinalExam?.isFinal(quizState.assessmentVersion)) {
+    window.EzFinalExam.update(document.getElementById('main-content'), quizState);
+    return;
+  }
   const answered = Object.keys(quizState.answeredByIndex || {}).length;
   const total = quizState.questions.length;
   const progress = document.getElementById('quiz-paper-progress');
@@ -6668,6 +6705,11 @@ window.nextQuizQuestion = () => {
 async function finishQuiz() {
   const state = quizState;
   if (!state || state.submitting || state.submitted) return;
+  if (window.EzFinalExam?.isFinal(state.assessmentVersion) && window.EzFinalExam.summary(state).missing.length) {
+    state.finalReview = true;
+    renderQuizQuestion(document.getElementById('main-content'));
+    return;
+  }
   const viewEpoch = window.__quizNavigationEpoch;
   if (state.draftConflict) {
     const el = document.getElementById('quiz-draft-status');
@@ -6724,6 +6766,7 @@ async function finishQuiz() {
   }
   if (quizState !== state || viewEpoch !== window.__quizNavigationEpoch) return;
   state.submitted = true;
+  window.EzFinalExam?.clear(state);
   clearQuizLocalDraft(state);
   window.__requiredAssignment = null;
   window.ezClearUnfinishedAssignmentCache?.();

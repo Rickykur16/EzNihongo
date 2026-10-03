@@ -68,7 +68,9 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
             cando_statements, skill_distribution, quiz_spec
      FROM modules
      WHERE course_id = $1
-     ORDER BY sort_order ASC, created_at ASC`,
+     ORDER BY CASE WHEN quiz_spec->>'version' IN ('jlpt-final-n5-v1','jlpt-final-n4-v1')
+                        OR slug IN ('n5-final-exam','n4-final-exam') THEN 1 ELSE 0 END,
+              sort_order ASC, created_at ASC`,
     [course.rows[0].id]
   );
 

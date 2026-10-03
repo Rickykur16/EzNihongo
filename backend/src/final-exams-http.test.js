@@ -51,6 +51,15 @@ test('final exams: atomic migration, real HTTP lifecycle, grading, privacy and s
   assert.equal((await control.query('SELECT explanation FROM quiz_questions WHERE id=$1',[banks[0].rows[0].id])).rows[0].explanation,'Teacher editorial update');
   assert.deepEqual(await capture(),before);
  });
+ await t.test('course delivery keeps the final exam after a later-added section',async()=>{
+  const later=randomUUID();
+  await control.query(`INSERT INTO modules(id,course_id,slug,title,sort_order,section_name) VALUES($1,$2,'later-chapter','Later material',999,'New section')`,[later,n5]);
+  const source=fs.readFileSync(new URL('./routes/content.js',import.meta.url),'utf8');
+  const moduleQuery=source.match(/`(SELECT id, slug, title, description, sort_order,[\s\S]*?FROM modules[\s\S]*?)`/)[1];
+  const ordered=(await control.query(moduleQuery,[n5])).rows;
+  assert.deepEqual(ordered.map(m=>m.id),[legacyModule,later,banks[0].moduleId]);
+  assert.equal(ordered.at(-1).section_name,'Final Exam');
+ });
  await control.query(`INSERT INTO user_enrollments(user_id,course_id,status) VALUES($1,$3,'active'),($1,$4,'active'),($2,$3,'active')`,[user,other,n5,n4]);
  const {signAccessToken}=await import('./auth.js');
  const {default:progress}=await import('./routes/progress.js');const {default:content}=await import('./routes/content.js');const {default:tts}=await import('./routes/tts.js');
