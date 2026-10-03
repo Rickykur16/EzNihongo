@@ -109,10 +109,18 @@ const REFERRAL_SOURCES = [
   ['lainnya', 'Lainnya'],
 ];
 const BACKGROUNDS = [
-  ['ex_intern_hospitality', 'Eks magang Jepang — hotel / restoran'],
-  ['ex_intern_other', 'Eks magang Jepang — bidang lain'],
+  ['ex_intern', 'Eks-magang Jepang'],
   ['fresh_graduate', 'Baru lulus sekolah / kuliah'],
   ['worker', 'Sedang bekerja'],
+  ['other', 'Lainnya'],
+];
+const INTERNSHIP_FIELDS = [
+  ['hospitality', 'Hotel / restoran'],
+  ['manufacturing', 'Manufaktur'],
+  ['construction', 'Konstruksi'],
+  ['agriculture', 'Pertanian'],
+  ['caregiving', 'Kaigo / perawatan lansia'],
+  ['fisheries', 'Perikanan'],
   ['other', 'Lainnya'],
 ];
 const JAPAN_GOALS = [
@@ -141,8 +149,12 @@ const PROFILE_FIELDS = {
   fullName: 'c-full-name',
   birthDate: 'c-birth-date', province: 'c-province', city: 'c-city', phone: 'c-phone',
   learningGoal: 'c-learning-goal', background: 'c-background', japanGoal: 'c-japan-goal',
+  internshipField: 'c-internship-field', internshipFieldOther: 'c-internship-field-other',
+  backgroundOther: 'c-background-other', learningGoalOther: 'c-learning-goal-other',
   categoryInterest: 'c-category-interest', primaryProblem: 'c-primary-problem',
+  primaryProblemOther: 'c-primary-problem-other',
   targetTimeline: 'c-target-timeline', referralSource: 'c-referral-source',
+  referralSourceOther: 'c-referral-source-other',
   referrerName: 'c-referrer-name', sourceDetail: 'c-source-detail', consent: 'c-consent',
 };
 const PROFILE_ERRORS = {
@@ -153,12 +165,18 @@ const PROFILE_ERRORS = {
   invalid_city: ['c-city', 'Isi kota atau kabupaten, maksimal 100 karakter.'],
   invalid_phone: ['c-phone', 'Masukkan nomor WhatsApp yang valid, misalnya 081234567890, +6281234567890, atau +819012345678.'],
   invalid_learning_goal: ['c-learning-goal', 'Pilih tujuan belajarmu.'],
+  invalid_learning_goal_other: ['c-learning-goal-other', 'Ceritakan tujuan belajarmu, maksimal 160 karakter.'],
   invalid_background: ['c-background', 'Pilih latar belakang yang paling sesuai.'],
+  invalid_background_other: ['c-background-other', 'Tuliskan latar belakangmu, maksimal 160 karakter.'],
+  invalid_internship_field: ['c-internship-field', 'Pilih bidang magangmu di Jepang.'],
+  invalid_internship_field_other: ['c-internship-field-other', 'Tuliskan bidang magangmu di Jepang, maksimal 160 karakter.'],
   invalid_japan_goal: ['c-japan-goal', 'Pilih rencanamu ke Jepang, atau pilih “Belum menentukan”.'],
   invalid_category_interest: ['c-category-interest', 'Isi bidang yang kamu minati, maksimal 160 karakter. Jika belum tahu, tulis “Belum menentukan”.'],
   invalid_primary_problem: ['c-primary-problem', 'Pilih kendala utamamu, atau pilih “Belum tahu / belum ada kendala”.'],
+  invalid_primary_problem_other: ['c-primary-problem-other', 'Ceritakan kendala utamamu, maksimal 160 karakter.'],
   invalid_target_timeline: ['c-target-timeline', 'Pilih perkiraan waktumu, atau pilih “Belum menentukan”.'],
   invalid_referral_source: ['c-referral-source', 'Pilih dari mana kamu mengenal EzNihongo.'],
+  invalid_referral_source_other: ['c-referral-source-other', 'Tuliskan dari mana kamu mengenal EzNihongo, maksimal 160 karakter.'],
   invalid_referrer_name: ['c-referrer-name', 'Isi nama atau panggilan teman yang merekomendasikan, maksimal 160 karakter.'],
   invalid_source_detail: ['c-source-detail', 'Ringkas keterangan sumber menjadi maksimal 160 karakter.'],
   consent_required: ['c-consent', 'Baca Kebijakan Privasi, lalu centang persetujuan penggunaan data untuk melanjutkan.'],
@@ -174,8 +192,12 @@ function profileDateBounds() {
   return { min: min.toISOString().slice(0, 10), max: max.toISOString().slice(0, 10) };
 }
 
-function profileSelect(id, label, options, placeholder) {
-  return `<div class="field"><label for="${id}">${label}</label><select id="${id}" required aria-describedby="${id}-error"><option value="" disabled selected>${placeholder}</option>${options.map(([v, text]) => `<option value="${v}">${text}</option>`).join('')}</select><p class="c-field-error" id="${id}-error" hidden></p></div>`;
+function profileSelect(id, label, options, placeholder, conditional = false) {
+  return `<div class="field"${conditional ? ` id="${id}-group" hidden` : ''}><label for="${id}">${label}</label><select id="${id}" ${conditional ? 'disabled' : 'required'} aria-describedby="${id}-error"><option value="" disabled selected>${placeholder}</option>${options.map(([v, text]) => `<option value="${v}">${text}</option>`).join('')}</select><p class="c-field-error" id="${id}-error" hidden></p></div>`;
+}
+
+function profileOtherField(id, label, placeholder) {
+  return `<div class="field" id="${id}-group" hidden><label for="${id}">${label}</label><input type="text" id="${id}" maxlength="160" placeholder="${placeholder}" disabled aria-describedby="${id}-error" /><p class="c-field-error" id="${id}-error" hidden></p></div>`;
 }
 
 // Requested at the first course signup, or once more when an older profile
@@ -199,16 +221,22 @@ function profileFieldsHtml() {
       </fieldset>
       <fieldset class="c-profile-section"><legend>2. Tujuan &amp; kebutuhanmu</legend>
         ${profileSelect('c-background', 'Latar belakang yang paling sesuai', BACKGROUNDS, 'Pilih latar belakang')}
+        ${profileOtherField('c-background-other', 'Ceritakan latar belakangmu', 'Contoh: masih kuliah atau sedang mencari kerja')}
+        ${profileSelect('c-internship-field', 'Bidang magang di Jepang', INTERNSHIP_FIELDS, 'Pilih bidang magang', true)}
+        ${profileOtherField('c-internship-field-other', 'Sebutkan bidang magangmu di Jepang', 'Contoh: perbaikan kendaraan')}
         <div class="field-row">
           ${profileSelect('c-learning-goal', 'Tujuan utama belajar', LEARNING_GOALS, 'Pilih tujuan belajar')}
           ${profileSelect('c-japan-goal', 'Rencanamu ke Jepang', JAPAN_GOALS, 'Pilih rencana')}
         </div>
+        ${profileOtherField('c-learning-goal-other', 'Ceritakan tujuan belajarmu', 'Contoh: berkomunikasi dengan keluarga di Jepang')}
         <div class="field"><label for="c-category-interest">Bidang kerja / studi yang diminati</label><input type="text" id="c-category-interest" list="c-category-options" maxlength="160" placeholder="Pilih saran atau tulis bidangmu" required aria-describedby="c-category-hint c-category-interest-error" /><datalist id="c-category-options"><option value="Hotel / perhotelan"></option><option value="Restoran / layanan makanan"></option><option value="Pengolahan makanan"></option><option value="Pertanian"></option><option value="Perawatan lansia / kaigo"></option><option value="Manufaktur"></option><option value="Konstruksi"></option><option value="Studi / pendidikan"></option><option value="Belum menentukan"></option></datalist><p class="c-field-hint" id="c-category-hint">Boleh isi “Belum menentukan” jika masih mencari pilihan.</p><p class="c-field-error" id="c-category-interest-error" hidden></p></div>
         ${profileSelect('c-primary-problem', 'Kendala utama untuk mencapai tujuanmu', PRIMARY_PROBLEMS, 'Pilih kendala utama')}
+        ${profileOtherField('c-primary-problem-other', 'Ceritakan kendala utamamu', 'Contoh: belum tahu dokumen yang harus disiapkan')}
         ${profileSelect('c-target-timeline', 'Kapan ingin berangkat / mencapai tujuanmu?', TARGET_TIMELINES, 'Pilih perkiraan waktu')}
       </fieldset>
       <fieldset class="c-profile-section"><legend>3. Mengenal EzNihongo</legend>
         ${profileSelect('c-referral-source', 'Pertama tahu EzNihongo dari mana?', REFERRAL_SOURCES, 'Pilih sumber')}
+        ${profileOtherField('c-referral-source-other', 'Dari mana kamu mengenal EzNihongo?', 'Contoh: rekomendasi guru di sekolah')}
         <div class="field" id="c-referrer-field" hidden><label for="c-referrer-name">Nama teman / keluarga yang merekomendasikan</label><input type="text" id="c-referrer-name" maxlength="160" disabled aria-describedby="c-referrer-hint c-referrer-name-error" /><p class="c-field-hint" id="c-referrer-hint">Cukup nama atau panggilannya, tanpa nomor kontak.</p><p class="c-field-error" id="c-referrer-name-error" hidden></p></div>
         <div class="field"><label for="c-source-detail">Nama akun, grup, atau acara <span class="c-optional">(opsional)</span></label><input type="text" id="c-source-detail" maxlength="160" placeholder="Contoh: akun Instagram atau nama webinar" aria-describedby="c-source-detail-error" /><p class="c-field-error" id="c-source-detail-error" hidden></p></div>
       </fieldset>
@@ -227,6 +255,13 @@ function setProfileFieldError(id, message = '') {
 }
 
 function setupProfileFields(profile = {}) {
+  profile = { ...profile };
+  if (profile.background === 'ex_intern_hospitality') {
+    profile.background = 'ex_intern';
+    profile.internshipField ||= 'hospitality';
+  } else if (profile.background === 'ex_intern_other') {
+    profile.background = 'ex_intern';
+  }
   document.getElementById('c-email').value = profile.email || '';
   for (const [key, id] of Object.entries(PROFILE_FIELDS)) {
     const input = document.getElementById(id);
@@ -234,18 +269,29 @@ function setupProfileFields(profile = {}) {
     input.addEventListener('input', () => setProfileFieldError(id));
     input.addEventListener('change', () => setProfileFieldError(id));
   }
-  const source = document.getElementById('c-referral-source');
-  const updateReferrer = () => {
-    const required = source.value === 'teman_keluarga';
-    const referrer = document.getElementById('c-referrer-name');
-    document.getElementById('c-referrer-field').hidden = !required;
-    referrer.required = required;
-    referrer.disabled = !required;
-    if (!required) referrer.value = '';
-    setProfileFieldError('c-referrer-name');
+  const toggleField = (id, active, groupId = `${id}-group`) => {
+    const input = document.getElementById(id);
+    document.getElementById(groupId).hidden = !active;
+    input.required = active;
+    input.disabled = !active;
+    if (!active) input.value = '';
+    setProfileFieldError(id);
   };
-  source.addEventListener('change', updateReferrer);
-  updateReferrer();
+  const updateConditionalFields = () => {
+    const background = document.getElementById('c-background').value;
+    const source = document.getElementById('c-referral-source').value;
+    toggleField('c-background-other', background === 'other');
+    toggleField('c-internship-field', background === 'ex_intern');
+    toggleField('c-internship-field-other', background === 'ex_intern' && document.getElementById('c-internship-field').value === 'other');
+    toggleField('c-learning-goal-other', document.getElementById('c-learning-goal').value === 'lainnya');
+    toggleField('c-primary-problem-other', document.getElementById('c-primary-problem').value === 'other');
+    toggleField('c-referral-source-other', source === 'lainnya');
+    toggleField('c-referrer-name', source === 'teman_keluarga', 'c-referrer-field');
+  };
+  for (const id of ['c-background', 'c-internship-field', 'c-learning-goal', 'c-primary-problem', 'c-referral-source']) {
+    document.getElementById(id).addEventListener('change', updateConditionalFields);
+  }
+  updateConditionalFields();
   document.getElementById('c-checkout-form').noValidate = true;
 }
 

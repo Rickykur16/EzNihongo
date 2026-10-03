@@ -5,7 +5,7 @@ import { once } from 'node:events';
 import { readFile } from 'node:fs/promises';
 import {
   parseRegistrationProfile, normalizeRegistrationPhone, validateBirthDate,
-  serializeRegistrationProfile, loadRegistrationProfile,
+  serializeRegistrationProfile, loadRegistrationProfile, isRegistrationProfileComplete,
 } from './registration-profile.js';
 
 const now = new Date('2026-10-03T00:00:00.000Z');
@@ -45,12 +45,57 @@ test('registration validates all required strategy fields, consent, plain text a
   }
   for (const consent of [false, 'true', 1, undefined]) assert.throws(() => parseRegistrationProfile({ ...valid, consent }, now), { message: 'consent_required' });
   for (const source of ['facebook', 'whatsapp', 'website', 'event', 'instagram', 'google', 'youtube', 'tiktok', 'lainnya']) {
-    const profile = parseRegistrationProfile({ ...valid, referralSource: source, referrerName: undefined, sourceDetail: undefined }, now);
+    const profile = parseRegistrationProfile({ ...valid, referralSource: source, referralSourceOther: 'Komunitas lokal', referrerName: undefined, sourceDetail: undefined }, now);
     assert.equal(profile.referrerName, ''); assert.equal(profile.sourceDetail, '');
-    assert.equal(parseRegistrationProfile({ ...valid, referralSource: source }, now).referrerName, '');
+    assert.equal(parseRegistrationProfile({ ...valid, referralSource: source, referralSourceOther: 'Komunitas lokal' }, now).referrerName, '');
   }
   for (const [field, value] of [['categoryInterest', 'x'.repeat(161)], ['city', 'x'.repeat(101)], ['referrerName', '<script>'], ['sourceDetail', 'line\nbreak'], ['background', 'unknown'], ['japanGoal', []], ['primaryProblem', {}], ['targetTimeline', 'tomorrow']]) {
     assert.throws(() => parseRegistrationProfile({ ...valid, [field]: value }, now), { status: 400 });
+  }
+});
+
+test('one internship choice records the selected field while preserving stored CRM background codes', () => {
+  for (const internshipField of ['hospitality', 'manufacturing', 'construction', 'agriculture', 'caregiving', 'fisheries', 'other']) {
+    const parsed = parseRegistrationProfile({ ...valid, background: 'ex_intern', internshipField, internshipFieldOther: 'Tekstil' }, now);
+    assert.equal(parsed.background, internshipField === 'hospitality' ? 'ex_intern_hospitality' : 'ex_intern_other');
+    assert.equal(parsed.internshipField, internshipField);
+    assert.equal(parsed.internshipFieldOther, internshipField === 'other' ? 'Tekstil' : '');
+  }
+  assert.equal(parseRegistrationProfile(valid, now).internshipField, 'hospitality');
+  for (const background of ['ex_intern', 'ex_intern_other']) assert.throws(() => parseRegistrationProfile({ ...valid, background }, now), { message: 'invalid_internship_field' });
+  assert.throws(() => parseRegistrationProfile({ ...valid, background: 'ex_intern', internshipField: 'unknown' }, now), { message: 'invalid_internship_field' });
+});
+
+test('each active other choice requires bounded plain text and inactive details are cleared', () => {
+  const cases = [
+    [{ background: 'ex_intern', internshipField: 'other' }, 'internshipFieldOther', 'invalid_internship_field_other'],
+    [{ background: 'other' }, 'backgroundOther', 'invalid_background_other'],
+    [{ learningGoal: 'lainnya' }, 'learningGoalOther', 'invalid_learning_goal_other'],
+    [{ primaryProblem: 'other' }, 'primaryProblemOther', 'invalid_primary_problem_other'],
+    [{ referralSource: 'lainnya' }, 'referralSourceOther', 'invalid_referral_source_other'],
+  ];
+  for (const [parent, field, error] of cases) {
+    for (const value of [undefined, '', ' ', null, 123, 'x'.repeat(161), '<tag>', 'two\nlines']) {
+      assert.throws(() => parseRegistrationProfile({ ...valid, ...parent, [field]: value }, now), { status: 400, message: error });
+    }
+    assert.equal(parseRegistrationProfile({ ...valid, ...parent, [field]: '  Penjelasan khusus  ' }, now)[field], 'Penjelasan khusus');
+  }
+  const inactive = parseRegistrationProfile({ ...valid, background: 'worker', internshipField: 'other', internshipFieldOther: 'old', backgroundOther: 'old', learningGoalOther: 'old', primaryProblemOther: 'old', referralSourceOther: 'old' }, now);
+  for (const field of ['internshipField', 'internshipFieldOther', 'backgroundOther', 'learningGoalOther', 'primaryProblemOther', 'referralSourceOther']) assert.equal(inactive[field], '');
+});
+
+test('only existing profiles with missing conditional answers need updating', async () => {
+  const unchanged = { strategy_version: 2, background: 'worker', learning_goal: 'jlpt', primary_problem: 'cost', referral_source: 'instagram' };
+  assert.equal(isRegistrationProfileComplete(unchanged), true);
+  assert.equal(isRegistrationProfileComplete({ ...unchanged, background: 'ex_intern_hospitality' }), true);
+  const oldIntern = { ...unchanged, background: 'ex_intern_other' };
+  assert.equal(serializeRegistrationProfile(oldIntern).needsUpdate, true);
+  assert.equal(serializeRegistrationProfile({ ...unchanged, background: 'ex_intern_hospitality' }).internshipField, 'hospitality');
+  await assert.rejects(loadRegistrationProfile({ query: async () => ({ rows: [oldIntern] }) }, 'fixture'), { status: 428 });
+  assert.equal(isRegistrationProfileComplete({ ...oldIntern, internship_field: 'manufacturing' }), true);
+  for (const [parent, field] of [[{ background: 'other' }, 'background_other'], [{ learning_goal: 'lainnya' }, 'learning_goal_other'], [{ primary_problem: 'other' }, 'primary_problem_other'], [{ referral_source: 'lainnya' }, 'referral_source_other'], [{ background: 'ex_intern_other', internship_field: 'other' }, 'internship_field_other']]) {
+    assert.equal(isRegistrationProfileComplete({ ...unchanged, ...parent }), false);
+    assert.equal(isRegistrationProfileComplete({ ...unchanged, ...parent, [field]: 'Penjelasan tersimpan' }), true);
   }
 });
 
@@ -112,6 +157,8 @@ test('registration migration and HTTP flow persist strategy data without losing 
   await control.query("INSERT INTO user_marketing_profile(user_id,birth_date,province,city,phone,learning_goal,referral_source,consented_at) VALUES($1,'2000-02-29','Papua','Jayapura','081234567890','jlpt','instagram',NOW())", [userId]);
   const migration = await readFile(new URL('../migrations/200_registration_strategy.sql', import.meta.url), 'utf8');
   await control.query(migration); await control.query(migration);
+  const detailMigration = await readFile(new URL('../migrations/202_registration_other_details.sql', import.meta.url), 'utf8');
+  await control.query(detailMigration); await control.query(detailMigration);
   assert.equal((await control.query('SELECT strategy_version FROM user_marketing_profile WHERE user_id=$1', [userId])).rows[0].strategy_version, 0);
   const { db } = await import('./db.js'); pool = db;
   const { signAccessToken } = await import('./auth.js');
@@ -155,6 +202,21 @@ test('registration migration and HTTP flow persist strategy data without losing 
   assert.equal(refreshed.data.needsUpdate, false); assert.equal(refreshed.data.birthDate, valid.birthDate);
   assert.equal(refreshed.data.fullName, 'Nama Lengkap Diperbaiki'); assert.equal(refreshed.data.email, 'student@example.invalid');
   assert.equal(refreshed.data.primaryProblem, 'cost'); assert.equal(refreshed.data.targetTimeline, 'within_6_months');
+  const detailed = { ...valid, background: 'ex_intern', internshipField: 'other', internshipFieldOther: 'Tekstil', learningGoal: 'lainnya', learningGoalOther: 'Mendampingi keluarga', primaryProblem: 'other', primaryProblemOther: 'Dokumen', referralSource: 'lainnya', referralSourceOther: 'Komunitas kota' };
+  assert.equal((await request({ ...detailed, internshipFieldOther: '' })).status, 400);
+  assert.equal((await request(detailed)).status, 200);
+  const detailedRow = await loadRegistrationProfile(control, userId);
+  assert.equal(detailedRow.background, 'ex_intern_other'); assert.equal(detailedRow.internship_field, 'other');
+  assert.equal(detailedRow.internship_field_other, 'Tekstil'); assert.equal(detailedRow.learning_goal_other, 'Mendampingi keluarga');
+  assert.equal(detailedRow.primary_problem_other, 'Dokumen'); assert.equal(detailedRow.referral_source_other, 'Komunitas kota');
+  const detailedGet = (await request()).data;
+  for (const key of ['internshipField', 'internshipFieldOther', 'learningGoalOther', 'primaryProblemOther', 'referralSourceOther']) assert.equal(detailedGet[key], detailed[key]);
+  assert.equal(detailedGet.needsUpdate, false);
+  assert.equal((await request({ ...valid, background: 'other', backgroundOther: 'Wiraswasta', internshipField: 'other', internshipFieldOther: 'Stale', learningGoalOther: 'Stale', primaryProblemOther: 'Stale', referralSourceOther: 'Stale' })).status, 200);
+  const changedGet = (await request()).data;
+  assert.equal(changedGet.backgroundOther, 'Wiraswasta');
+  for (const key of ['internshipField', 'internshipFieldOther', 'learningGoalOther', 'primaryProblemOther', 'referralSourceOther']) assert.equal(changedGet[key], '');
+  await assert.rejects(control.query('UPDATE user_marketing_profile SET background_other=$2 WHERE user_id=$1', [userId, 'x'.repeat(161)]), { code: '23514' });
   await assert.rejects(control.query("INSERT INTO user_marketing_profile(user_id,birth_date,province,city,phone,learning_goal,referral_source,consented_at,strategy_version) VALUES($1,'2000-01-01','Papua','Jayapura','081234567890','jlpt','instagram',NOW(),2)", [otherId]), { code: '23514' });
   await control.query("UPDATE users SET email='erased@dihapus.invalid' WHERE id=$1", [userId]);
   assert.equal((await request()).status, 401);
