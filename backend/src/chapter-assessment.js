@@ -27,13 +27,18 @@ export function assertChapterForm(policy, rows) {
   const final = isFinalExam(policy);
   const rules = final ? finalExamRules(policy) : CHAPTER_POLICY;
   const blueprint = final ? FINAL_EXAMS[policy.version].blueprint : CHAPTER_BLUEPRINT;
-  if (!isChapterAssessment(policy) || !Array.isArray(rows) || rows.length !== rules.questionsPerForm || (final && policy.selection !== 'all')) throw new Error('assessment_bank_invalid');
+  if (!isChapterAssessment(policy) || !Array.isArray(rows) || rows.length !== rules.questionsPerForm || (final && policy.selection !== (FINAL_EXAMS[policy.version].selection || 'all'))) throw new Error('assessment_bank_invalid');
   const objectives = new Set((policy.objectives || []).map(o => o.id));
   if (!objectives.size || objectives.size !== policy.objectives.length) throw new Error('assessment_bank_invalid');
   for (const [category, count] of Object.entries(blueprint)) {
     if (rows.filter(q => q.question_category === category).length !== count) throw new Error('assessment_bank_invalid');
   }
   if (new Set(rows.map(q => q.id)).size !== rows.length) throw new Error('assessment_bank_invalid');
+  if (final && FINAL_EXAMS[policy.version].items) {
+    for (const [type, count] of Object.entries(FINAL_EXAMS[policy.version].items)) {
+      if (rows.filter(q => q.assessment_meta?.itemType === type).length !== count) throw new Error('assessment_bank_invalid');
+    }
+  }
   for (const q of rows) {
     if (!objectives.has(q.assessment_meta?.objective) || q.assessment_meta?.version !== policy.version) throw new Error('assessment_bank_invalid');
     const audioChoices = (final || [JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION].includes(policy.version)) && q.question_category === 'listening' &&
@@ -57,10 +62,11 @@ export function createChapterSnapshot(policy, rows, previousForm, random = Math.
       questions: [...rows].sort((a, b) => a.section_number - b.section_number || a.sort_order - b.sort_order) });
   }
   const form = previousForm === 'A' ? 'B' : previousForm === 'B' ? 'A' : random() < 0.5 ? 'A' : 'B';
+  if (isFinalExam(policy) && (rows.length !== finalExamRules(policy).questionsPerForm * 2 || rows.some(q => !['A','B'].includes(q.assessment_meta?.form)))) throw new Error('assessment_bank_invalid');
   // Validate BOTH forms before allowing either one to start.
   for (const name of ['A', 'B']) assertChapterForm(policy, rows.filter(q => q.assessment_meta?.form === name));
   const questions = rows.filter(q => q.assessment_meta.form === form).sort((a, b) => a.sort_order - b.sort_order);
-  return structuredClone({ version: policy.version, form, policy: { ...policy, ...CHAPTER_POLICY }, questions });
+  return structuredClone({ version: policy.version, form, policy: { ...policy, ...(isFinalExam(policy) ? finalExamRules(policy) : CHAPTER_POLICY) }, questions });
 }
 
 export function publicChapterQuestions(snapshot) {

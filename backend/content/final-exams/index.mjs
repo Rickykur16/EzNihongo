@@ -22,10 +22,10 @@ export const types={
 };
 export const uid=key=>{const b=createHash('sha256').update('eznihongo-final:'+key).digest().subarray(0,16);b[6]=(b[6]&15)|80;b[8]=(b[8]&63)|128;const x=b.toString('hex');return `${x.slice(0,8)}-${x.slice(8,12)}-${x.slice(12,16)}-${x.slice(16,20)}-${x.slice(20)}`;};
 const categoryNames={vocabulary:'Aksara dan kosakata',grammar:'Tata bahasa',reading:'Membaca',listening:'Menyimak'};
-function make(level,author){
- const version=`jlpt-final-${level}-v1`, rows=[];
+export function make(level,author,{version=`jlpt-final-${level}-v1`,form='A',keyPrefix=level}={}){
+ const rows=[];
  const add=(itemType,prompt,options,explanation,chapters,extra={})=>{
-  const number=rows.length+1,key=`${level}-${String(number).padStart(3,'0')}`;
+  const number=rows.length+1,key=`${keyPrefix}-${String(number).padStart(3,'0')}`;
   const original=Array.isArray(options)?options:options.split('|');
   const offset=createHash('sha256').update(version+':position:'+key).digest().readUInt32BE(0)%original.length;
   const choices=original.slice(offset).concat(original.slice(0,offset));
@@ -37,7 +37,7 @@ function make(level,author){
   const row={id:uid(version+':'+key),question:prompt,question_type:'multiple_choice',question_category:category,
    section_number:Object.keys(types).indexOf(itemType)+1,section_label:label,section_instruction:instruction,
    passage:extra.passage||null,audio_script:script,image_url:extra.scene?`/assets/final-exams/${extra.scene}.svg`:null,
-   explanation:spoken?`${explanation} Jawaban audio: “${original[0]}”.`:explanation,sort_order:number,assessment_meta:{version,form:'A',key,objective:category,itemType,
+   explanation:spoken?`${explanation} Jawaban audio: “${original[0]}”.`:explanation,sort_order:number,assessment_meta:{version,form,key,objective:category,itemType,
     source:'eznihongo-original',curriculumChapters:chapters,
     ...(extra.ordered?{ordered:extra.ordered,starPosition:extra.starPosition}:{}),
     ...(spoken?{spokenChoices:choices}:{}),

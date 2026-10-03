@@ -2,16 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
+import EzFinalExam from '../../final-exam.js';
 const html=await readFile(new URL('../../welcome.html',import.meta.url),'utf8');
 
 test('level final exams show their own label, count, raw-score rules and delivery mode',()=>{
-  const ctx=vm.createContext({escapeHtml:x=>x,escapeAttr:x=>x,kanaPlacementMeta:()=>null,COURSE_CONTENT:{}});
+  const ctx=vm.createContext({EzFinalExam,escapeHtml:x=>x,escapeAttr:x=>x,kanaPlacementMeta:()=>null,COURSE_CONTENT:{}});
   const start=html.indexOf('function renderQuizLandingCard(');
   vm.runInContext(html.slice(start,html.indexOf('function escapeAttr',start)),ctx);
-  for(const [level,count] of [['n5',80],['n4',90]]){
+  for(const [level,count,version] of [['n5',80,'v1'],['n4',90,'v1'],['n5',67,'v2'],['n4',85,'v2']]){
     const container={innerHTML:''};
     ctx.renderQuizLandingCard(container,`${level}:final:exam`,`Final Exam ${level.toUpperCase()}`,{
-      assessmentVersion:`jlpt-final-${level}-v1`,questionsPerAttempt:count,poolSize:count,
+      assessmentVersion:`jlpt-final-${level}-${version}`,questionsPerAttempt:count,poolSize:version==='v2'?count*2:count,
       passingScorePct:70,cooldownHours:12,canAttempt:true,objectives:[],
     });
     const visible=container.innerHTML.replace(/<[^>]*>/g,'');
@@ -19,6 +20,7 @@ test('level final exams show their own label, count, raw-score rules and deliver
     assert.match(visible,new RegExp(`${count} soal orisinal`));assert.match(visible,/tiap kategori minimal 50%/);
     assert.match(visible,/tanpa batas waktu otomatis/);assert.match(visible,/audio boleh diulang/);
     assert.doesNotMatch(visible,/Assessment bab|soal acak dari pool/);
+    if(version==='v2')assert.match(visible,/Dua paket A\/B bergantian/);
   }
 });
 

@@ -4711,7 +4711,7 @@
   }
 </style>
 <link rel="stylesheet" href="styles/learning-placement.css?v=20260928-skeleton"/>
-<link rel="stylesheet" href="final-exam.css?v=20261003-2"/>
+<link rel="stylesheet" href="final-exam.css?v=20261003-3"/>
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
 <link rel="stylesheet" href="styles/skeleton.css?v=1">
 <link rel="stylesheet" href="styles/dialogue-scene.css?v=5">
@@ -4815,7 +4815,7 @@ function getUserName(user = session) {
 <script src="src/dialogue-scene.js?v=4"></script>
 <script src="src/dialogue-questions.js?v=20261001-1"></script>
 <script src="learning-state.js?v=20260911-1"></script>
-<script src="final-exam.js?v=20261003-2"></script>
+<script src="final-exam.js?v=20261003-3"></script>
 <script>
 // ═══════════════════════════════════════════════
 // AUTH GUARD — self-hosted API session
@@ -5706,7 +5706,8 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
   const [navSlug, navMid, navLid] = String(key).split(':');
   const placement = kanaPlacementMeta({ id: navLid });
   const chapter = !!status.assessmentVersion && !status.resumingLegacy;
-  const finalExam = chapter && ['jlpt-final-n5-v1', 'jlpt-final-n4-v1'].includes(status.assessmentVersion);
+  const finalExam = chapter && globalThis.EzFinalExam?.isFinal(status.assessmentVersion);
+  const rotatingFinal = finalExam && status.assessmentVersion.endsWith('-v2');
   const last = status.lastAttempt;
   const lastPct = last ? Math.round((last.score / Math.max(1, last.totalQuestions)) * 100) : null;
   const placementResultPending = !!placement && !!last && typeof last.passed !== 'boolean';
@@ -5791,7 +5792,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
             : status.resumingLegacy
             ? `Ada jawaban yang belum selesai. Kamu bisa melanjutkannya dari tombol di bawah.`
             : finalExam
-            ? `${status.questionsPerAttempt} soal orisinal untuk menguji materi satu level: aksara/kosakata, tata bahasa, membaca, dan menyimak. Lulus dengan total minimal 70% dan tiap kategori minimal 50%. Nilai berupa persentase, bukan skala resmi JLPT. Ujian tanpa batas waktu otomatis dan audio boleh diulang. Pembahasan serta transkrip tersedia setelah submit. Siapkan audio.`
+            ? `${status.questionsPerAttempt} soal orisinal untuk menguji materi satu level: aksara/kosakata, tata bahasa, membaca, dan menyimak. ${rotatingFinal ? 'Komposisi mengikuti patokan jumlah soal JLPT; jumlah resmi dapat sedikit berbeda tiap pelaksanaan. Dua paket A/B bergantian saat memulai ujian baru. Sebagian soal dasar dapat sama. Melanjutkan draft tetap memakai paket yang sama. ' : ''}Lulus dengan total minimal 70% dan tiap kategori minimal 50%. Nilai berupa persentase EzNihongo, bukan skala resmi JLPT. Ujian tanpa batas waktu otomatis dan audio boleh diulang. Pembahasan serta transkrip tersedia setelah submit. Siapkan audio.`
             : chapter
             ? `${status.questionsPerAttempt} soal pilihan ganda: ${status.questionsPerAttempt === 24 ? '6 aksara dan kosakata, 10 tata bahasa dan ungkapan, 4 membaca, serta 4 menyimak. ' : ''}Lulus dengan total minimal 70%, tiap kategori minimal 50%, serta minimal satu jawaban benar untuk setiap tujuan. Pembahasan dan transkrip audio muncul setelah semua jawaban dikirim. Siapkan audio.`
             : `Tiap attempt, sistem ambil <strong>${status.questionsPerAttempt}</strong> soal acak dari pool <strong>${status.poolSize}</strong> — jadi soal bisa beda tiap retry.`}
@@ -5875,6 +5876,7 @@ window.startQuizAttempt = async (key, resume = null) => {
       deferFeedback: !!data.draftEnabled || !!data.assessmentVersion || !!kanaPlacementMeta({ id: lId }),
       draftEnabled: !!data.draftEnabled || !!data.assessmentVersion,
       assessmentVersion: data.assessmentVersion || null,
+      assessmentForm: data.assessmentForm || null,
       draftRevision: data.draftRevision || 0,
       lessonApiId: lesson.apiId,
       viewEpoch,
