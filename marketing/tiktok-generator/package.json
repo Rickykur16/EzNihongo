@@ -1,0 +1,20 @@
+{
+  "name": "eznihongo-tiktok-generator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Generator draf video TikTok EzNihongo: riset + naskah (Claude), suara (ElevenLabs), foto (Pexels), render (Playwright + ffmpeg). Selalu lewat review manusia.",
+  "type": "module",
+  "scripts": {
+    "plan": "node src/cli.mjs plan",
+    "build": "node src/cli.mjs build",
+    "test": "node --test src/*.test.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
+    "dotenv": "^16.4.5",
+    "playwright": "1.56.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
