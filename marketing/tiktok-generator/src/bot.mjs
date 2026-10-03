@@ -8,7 +8,8 @@ import path from 'node:path';
 import { ideas, ideasMessage, loadIdea, remember } from './ideas.mjs';
 import { plan, validateScript } from './plan.mjs';
 import { build } from './build.mjs';
-import { adminChat, getUpdates, sendFile, sendText, telegramEnabled } from './telegram.mjs';
+import { adminChat, downloadFile, getUpdates, sendFile, sendText, telegramEnabled } from './telegram.mjs';
+import { photoSlots, photoStatus, pickSlot } from './photoslots.mjs';
 
 const OUT = 'out';
 let busy = null;
@@ -42,6 +43,12 @@ const COMMANDS = {
     const script = JSON.parse(await fs.readFile(path.join(dir, 'script.json'), 'utf8'));
     await sendText(reviewMessage(script, validateScript(script)));
     await sendFile(path.join(dir, 'review.md'), { caption: 'Review lengkap (fakta + sumber)' });
+    await sendText(photoStatus(photoSlots(script), dir));
+  },
+  async foto() {
+    const dir = await latest('latest-plan.txt');
+    const script = JSON.parse(await fs.readFile(path.join(dir, 'script.json'), 'utf8'));
+    return sendText(photoStatus(photoSlots(script), dir));
   },
   async render() {
     const dir = await latest('latest-plan.txt');
@@ -54,18 +61,39 @@ const COMMANDS = {
     await remember(OUT, script.title);
   },
   async status() {
-    return sendText(busy ? `⏳ Sedang: ${busy}` : '✅ Siap. Perintah: /ide, /buat <n>, /render');
+    return sendText(busy ? `⏳ Sedang: ${busy}` : '✅ Siap. Perintah: /ide, /buat <n>, /foto, /render — kirim foto ke sini untuk naskah terakhir');
   },
 };
 COMMANDS.start = COMMANDS.bantuan = COMMANDS.help = COMMANDS.status;
 
+async function savePhoto(msg) {
+  const dir = await latest('latest-plan.txt').catch(() => null);
+  if (!dir) return sendText('Belum ada naskah. Mulai dengan /ide lalu /buat <n>.');
+  const script = JSON.parse(await fs.readFile(path.join(dir, 'script.json'), 'utf8'));
+  const slots = photoSlots(script);
+  const fileId = msg.photo ? msg.photo[msg.photo.length - 1].file_id : msg.document.file_id;
+  let slot;
+  try { slot = pickSlot(msg.caption, slots, dir); } catch (e) { return sendText(`⚠ ${e.message}`); }
+  const { data, ext } = await downloadFile(fileId);
+  const safeExt = ['jpg', 'jpeg', 'png', 'webp'].includes(ext) ? ext : 'jpg';
+  await fs.mkdir(path.join(dir, 'photos'), { recursive: true });
+  for (const e of ['jpg', 'jpeg', 'png', 'webp']) await fs.rm(path.join(dir, 'photos', `${slot.slot}.${e}`), { force: true });
+  await fs.writeFile(path.join(dir, 'photos', `${slot.slot}.${safeExt}`), data);
+  return sendText(`✅ Foto slot ${slot.slot} tersimpan (${slot.query}).\n\n${photoStatus(slots, dir)}`);
+}
+
 export async function handle(msg) {
   if (String(msg.chat?.id) !== adminChat()) return; // abaikan orang lain
+  const isImage = msg.photo?.length || /^image\//.test(msg.document?.mime_type || '');
+  if (isImage) {
+    if (busy) return sendText(`⏳ Masih mengerjakan: ${busy}. Kirim fotonya setelah selesai ya.`);
+    return savePhoto(msg).catch((e) => sendText(`✖ Gagal menyimpan foto: ${e.message}`));
+  }
   const m = /^\/(\w+)(?:@\w+)?\s*(.*)$/s.exec(msg.text || '');
-  if (!m || !COMMANDS[m[1]]) return sendText('Perintah: /ide, /buat <n>, /render, /status');
+  if (!m || !COMMANDS[m[1]]) return sendText('Perintah: /ide, /buat <n>, /foto, /render, /status — atau kirim foto untuk naskah terakhir');
   const [, cmd, arg] = m;
-  if (cmd !== 'status' && cmd !== 'start' && busy) return sendText(`⏳ Masih mengerjakan: ${busy}. Tunggu dulu ya.`);
-  if (cmd === 'status' || cmd === 'start' || cmd === 'bantuan' || cmd === 'help') return COMMANDS[cmd](arg);
+  if (!['status', 'start', 'foto'].includes(cmd) && busy) return sendText(`⏳ Masih mengerjakan: ${busy}. Tunggu dulu ya.`);
+  if (['status', 'start', 'bantuan', 'help', 'foto'].includes(cmd)) return COMMANDS[cmd](arg).catch((e) => sendText(`✖ ${e.message}`));
   busy = `/${cmd} ${arg}`.trim();
   // Dijalankan di latar supaya bot tetap menjawab /status.
   COMMANDS[cmd](arg.trim())

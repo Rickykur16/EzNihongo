@@ -11,7 +11,7 @@ npm run plan -- --idea 2      riset ulang ide no. 2 → naskah + review.md (fakt
 npm run build                 suara (ElevenLabs) + foto (Pixabay/Pexels) + render → video.mp4
 ```
 
-Lewat Telegram (`npm run bot`) alurnya sama: `/ide` → `/buat 2` → `/render`,
+Lewat Telegram (`npm run bot`) alurnya sama: `/ide` → `/buat 2` → (kirim foto, opsional) → `/render`,
 dan ide bisa dikirim otomatis tiap minggu (lihat **Otomatis mingguan**).
 
 ## Pemasangan
@@ -52,7 +52,7 @@ Ide yang sudah dibuat dicatat di `out/history.json` supaya riset berikutnya tida
 | `review.md` | Naskah per adegan, tabel fakta + sumber, caption, komentar sematan, daftar masalah |
 | `research.md` | Catatan riset mentah dari web search |
 | `script.json` | Data naskah yang dipakai `build` — boleh diedit |
-| `photos/` | Taruh `1.jpg`, `2.jpg`, … untuk mengganti foto stok adegan itu (`6-2.jpg` = thumbnail item ke-2 adegan 6) |
+| `photos/` | Foto sendiri: kirim lewat Telegram (caption = nomor slot, lihat `/foto`) atau taruh `1.jpg`, `2.jpg`, … untuk mengganti foto stok adegan itu (`6-2.jpg` = thumbnail item ke-2 adegan 6) |
 | `video.mp4`, `cover.png` | Video final + frame pertama (pakai sebagai cover TikTok) |
 | `caption.txt`, `credits.md` | Caption + komentar sematan, daftar fotografer foto stok |
 
