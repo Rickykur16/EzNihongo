@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>EzNihongo TikTok</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+  :root{--red:#C8102E;--red-soft:#fff0f2;--ink:#1a1815;--ink7:#4a453e;--ink5:#8a8378;--paper:#faf7f2}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:1080px;height:1920px;overflow:hidden;background:var(--paper)}
+  body{font-family:'Noto Sans JP','Noto Sans',sans-serif;color:var(--ink)}
+  #stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:var(--paper)}
+  .grid{position:absolute;inset:-200px;background-image:linear-gradient(rgba(26,24,21,.05) 2px,transparent 2px),linear-gradient(90deg,rgba(26,24,21,.05) 2px,transparent 2px);background-size:90px 90px}
+  #sun{position:absolute;width:760px;height:760px;border-radius:50%;background:var(--red);opacity:.10;left:0;top:0}
+  #wm{position:absolute;font-weight:900;font-size:480px;line-height:1;color:var(--ink);white-space:nowrap;left:0;top:0}
+  #logo{position:absolute;left:70px;top:96px;width:300px}
+  #bar{position:absolute;left:0;top:0;height:10px;background:var(--red);width:0}
+  .scene{position:absolute;inset:0;opacity:0}
+  /* Area konten aman TikTok: kiri 80, kanan 160, atas 270, bawah ~1500 */
+  .col{position:absolute;left:80px;top:270px;width:840px;height:1240px;display:flex;flex-direction:column;gap:30px}
+  .t-kicker{font-weight:800;font-size:60px;line-height:1.2;color:var(--ink7)}
+  .t-head{font-weight:900;font-size:96px;line-height:1.08;letter-spacing:-1px}
+  .t-hi{font-weight:900;font-size:128px;line-height:1.04;letter-spacing:-2px;color:var(--red)}
+  .card{background:#fff;border-radius:36px;box-shadow:0 24px 60px rgba(26,24,21,.12),0 2px 0 rgba(26,24,21,.06)}
+  .ph{position:relative;overflow:hidden;border-radius:36px;box-shadow:0 24px 60px rgba(26,24,21,.18);flex:1 1 auto;min-height:380px;background:#ddd}
+  .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .chip{align-self:flex-start;background:var(--red);color:#fff;font-weight:900;font-size:46px;padding:14px 34px;border-radius:999px}
+  .row{display:flex;align-items:center;gap:34px;padding:24px 34px;flex:none}
+  .row .mk{width:110px;height:110px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none}
+  .row .th{width:180px;height:180px;border-radius:26px;overflow:hidden;flex:none;position:relative;background:#eee}
+  .row .th img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .row .l{font-weight:900;font-size:54px;line-height:1.1}
+  .row .s{font-weight:600;font-size:36px;color:var(--ink5);margin-top:6px}
+  .stamp{position:absolute;right:40px;bottom:44px;border:8px solid #fff;color:#fff;font-weight:900;font-size:64px;padding:6px 26px;border-radius:14px;transform:rotate(-8deg)}
+  .strike{position:absolute;left:-24px;right:-24px;top:calc(50% - 6px);height:12px;background:var(--red);border-radius:6px;transform-origin:0 50%}
+  .bubble{align-self:flex-start;white-space:nowrap;background:var(--red);color:#fff;border-radius:60px 60px 14px 60px;padding:34px 56px;font-weight:900;font-size:96px;line-height:1.1}
+  .lv{display:flex;align-items:center;gap:40px;padding:40px 50px;flex:none}
+  .lv .big{font-weight:900;font-size:170px;line-height:1;color:var(--red);flex:none}
+  .pola{background:#fff;padding:12px 12px 12px;border-radius:10px;box-shadow:0 18px 40px rgba(26,24,21,.22);width:220px;height:260px;flex:none;position:relative;margin-left:auto}
+  .pola div{position:relative;width:100%;height:100%;overflow:hidden;border-radius:4px}
+  .pola img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .grow{flex:1 1 auto}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="grid" id="grid"></div>
+  <div id="sun"></div>
+  <div id="wm"></div>
+  <div id="bar"></div>
+  <img id="logo" src="logo_t.png" alt="">
+</div>
+<script>
+const SPEC = window.__SPEC;
+const $ = (q, r = document) => r.querySelector(q);
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const P = (t, a, b) => clamp((t - a) / (b - a));
+const eOut = x => 1 - Math.pow(1 - x, 3);
+const eInOut = x => x < .5 ? 4*x*x*x : 1 - Math.pow(-2*x + 2, 3) / 2;
+const eBack = x => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3*Math.pow(x-1,3) + c1*Math.pow(x-1,2); };
+const lerp = (a, b, k) => a + (b - a) * k;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function S(el, { op = 1, x = 0, y = 0, s = 1, r = 0 } = {}) {
+  if (!el) return;
+  el.style.opacity = op;
+  el.style.transform = `translate(${x}px,${y}px) scale(${s}) rotate(${r}deg)`;
+}
+const pop = (el, t, at, dist = 60, dur = .5) => { const k = P(t, at, at + dur); S(el, { op: eOut(k), y: (1 - eOut(k)) * dist, s: lerp(.92, 1, eBack(k)) }); };
+const slam = (el, t, at) => { const k = P(t, at, at + .38); S(el, { op: clamp(k * 3), s: lerp(1.5, 1, eBack(k)) }); };
+const slide = (el, t, at, dx) => { const k = eOut(P(t, at, at + .5)); S(el, { op: k, x: (1 - k) * dx }); };
+const kb = (img, t, a, b, s0 = 1.15, s1 = 1.02) => { if (img) img.style.transform = `scale(${lerp(s0, s1, P(t, a, b))})`; };
+const shake = (t, at) => t > at ? Math.sin(t * 50) * 8 * Math.exp(-(t - at) * 4) : 0;
+const photo = (src, cls = 'ph') => src ? `<div class="${cls}"><img src="${esc(src)}"></div>` : '';
+const CHECK = '<svg width="64" height="64" viewBox="0 0 64 64"><path d="M12 34 L26 48 L52 16" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const CROSS = '<svg width="60" height="60" viewBox="0 0 60 60"><path d="M12 12 L48 48 M48 12 L12 48" stroke="#8a8378" stroke-width="9" stroke-linecap="round"/></svg>';
+
+// Perkecil font sampai muat (lebar 840, maks N baris).
+function fit(el, maxLines, maxWidth = 840) {
+  if (!el) return;
+  let size = parseFloat(getComputedStyle(el).fontSize);
+  const over = () => {
+    const cs = getComputedStyle(el);
+    const lh = parseFloat(cs.lineHeight) || size * 1.1;
+    const contentH = el.offsetHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - parseFloat(cs.borderTopWidth) - parseFloat(cs.borderBottomWidth);
+    return el.scrollWidth > el.clientWidth + 2 || el.offsetWidth > maxWidth + 2 || contentH > lh * maxLines + 4;
+  };
+  while (size > 40 && over()) { size -= 4; el.style.fontSize = size + 'px'; }
+}
+
+// ---- builder per tipe adegan: mengembalikan fungsi update(t, d, cue) ----
+const BUILD = {
+  hook(sc, root) {
+    root.innerHTML = `<div class="col">
+      ${sc.kicker ? `<div class="t-head" data-k="kicker">${esc(sc.kicker)}</div>` : ''}
+      <div class="t-hi" data-k="hi" style="font-size:168px">${esc(sc.highlight)}</div>
+      <div class="ph" data-k="photo">${sc.photo ? `<img src="${esc(sc.photo)}">` : ''}
+        <div style="position:absolute;inset:0;background:linear-gradient(0deg,rgba(26,24,21,.55),rgba(26,24,21,0) 45%)"></div>
+        ${sc.stamp ? `<div class="stamp">${esc(sc.stamp)}<div class="strike" data-k="strike"></div></div>` : ''}
+      </div></div>`;
+    fit($('[data-k=kicker]', root), 2); fit($('[data-k=hi]', root), 2);
+    const strike = $('[data-k=strike]', root); // garis coret di dalam cap (ikut miring bersama cap)
+    return (t, d, cue) => { // frame pertama sudah penuh: tanpa animasi masuk
+      S($('[data-k=hi]', root), { x: t < .9 ? Math.sin(t * 50) * 8 * (1 - t / .9) : 0 });
+      kb($('[data-k=photo] img', root), t, 0, d, 1.12, 1.0);
+      if (strike) { const k = eInOut(P(t, cue('badge', .8), cue('badge', .8) + .35)); strike.style.opacity = k > 0 ? 1 : 0; strike.style.transform = `scaleX(${k})`; }
+    };
+  },
+  statement(sc, root) {
+    root.innerHTML = `<div class="col" style="justify-content:center;padding-bottom:160px">
+      ${sc.kicker ? `<div class="t-kicker" data-k="kicker">${esc(sc.kicker)}</div>` : ''}
+      ${sc.headline ? `<div class="t-hi" style="color:var(--ink)" data-k="head">${esc(sc.headline)}</div>` : ''}
+      ${sc.highlight ? `<div class="t-hi" data-k="hi">${esc(sc.highlight)}</div>` : ''}</div>`;
+    fit($('[data-k=head]', root), 3); fit($('[data-k=hi]', root), 3);
+    return (t, d, cue) => {
+      pop($('[data-k=kicker]', root), t, cue('kicker', 0));
+      slam($('[data-k=head]', root), t, cue('headline', .7));
+      const h = cue('highlight', cue('headline', .7) + .4);
+      const el = $('[data-k=hi]', root); slam(el, t, h); if (el && t > h + .38) el.style.transform += ` translateX(${shake(t, h + .38)}px)`;
+    };
+  },
+  photo(sc, root) {
+    root.innerHTML = `<div class="col">
+      ${sc.kicker ? `<div class="t-kicker" data-k="kicker">${esc(sc.kicker)}</div>` : ''}
+      ${sc.headline ? `<div class="t-head" data-k="head">${esc(sc.headline)}</div>` : ''}
+      ${sc.highlight ? `<div class="t-head" style="color:var(--red)" data-k="hi">${esc(sc.highlight)}</div>` : ''}
+      ${sc.badge ? `<div class="chip" data-k="badge">${esc(sc.badge)}</div>` : ''}
+      ${photo(sc.photo)}</div>`;
+    fit($('[data-k=head]', root), 2); fit($('[data-k=hi]', root), 2);
+    return (t, d, cue) => {
+      pop($('[data-k=kicker]', root), t, cue('kicker', 0));
+      pop($('[data-k=head]', root), t, cue('headline', .15));
+      const h = $('[data-k=hi]', root); const k = P(t, cue('highlight', .5), cue('highlight', .5) + .45);
+      if (h) S(h, { op: eOut(k), s: lerp(.6, 1, eBack(k)) });
+      pop($('[data-k=badge]', root), t, cue('badge', 1.0), 30);
+      const ph = $('.ph', root); const p = eOut(P(t, cue('photo', .8), cue('photo', .8) + .6));
+      S(ph, { op: p, y: (1 - p) * 120 }); kb($('.ph img', root), t, cue('photo', .8), d);
+    };
+  },
+  compare(sc, root) {
+    const [a, b] = sc.items;
+    root.innerHTML = `<div class="col">${photo(sc.photo)}
+      ${sc.headline ? `<div class="t-head" style="font-size:72px" data-k="head">${esc(sc.headline)}</div>` : ''}
+      <div class="card row" data-k="i0"><div class="mk" style="background:#eee">${CROSS}</div><div><div class="l" style="color:var(--ink5)">${esc(a?.label)}</div><div class="s">${esc(a?.sub)}</div></div></div>
+      <div class="card row" data-k="i1" style="border:5px solid var(--red)"><div class="mk" style="background:var(--red)">${CHECK}</div><div><div class="l">${esc(b?.label)}</div><div class="s">${esc(b?.sub)}</div></div></div></div>`;
+    return (t, d, cue) => {
+      const p = eOut(P(t, 0, .6)); S($('.ph', root), { op: p, y: (1 - p) * -80 }); kb($('.ph img', root), t, 0, d, 1.2);
+      pop($('[data-k=head]', root), t, cue('headline', .1));
+      slide($('[data-k=i0]', root), t, cue('item0', .3), -600);
+      slide($('[data-k=i1]', root), t, cue('item1', Math.min(3, d * .5)), 600);
+    };
+  },
+  list(sc, root) {
+    root.innerHTML = `<div class="col">
+      ${sc.headline ? `<div class="t-head" data-k="head">${sc.highlight ? `<span style="color:var(--red)">${esc(sc.highlight)}</span> ` : ''}${esc(sc.headline)}</div>` : ''}
+      ${sc.items.map((it, i) => `<div class="card row" data-k="i${i}">${it.photo ? `<div class="th"><img src="${esc(it.photo)}"></div>` : `<div class="mk" style="background:var(--red-soft);color:var(--red);font-weight:900;font-size:56px">${i + 1}</div>`}
+        <div><div class="l">${esc(it.label)}</div><div class="s">${esc(it.sub)}</div></div></div>`).join('')}
+      <div class="grow"></div></div>`;
+    fit($('[data-k=head]', root), 2);
+    return (t, d, cue) => {
+      pop($('[data-k=head]', root), t, cue('headline', 0));
+      sc.items.forEach((_, i) => {
+        const at = cue('item' + i, 1 + i * 1.3);
+        slide($(`[data-k=i${i}]`, root), t, at, 700);
+        kb($(`[data-k=i${i}] img`, root), t, at, d, 1.2);
+      });
+    };
+  },
+  timeline(sc, root) {
+    const [a, b] = sc.items;
+    root.innerHTML = `<div class="col">${photo(sc.photo)}
+      ${sc.headline ? `<div class="t-head" style="font-size:72px" data-k="head">${esc(sc.headline)}</div>` : ''}
+      <svg viewBox="0 0 840 400" width="840" height="400" style="flex:none">
+        <path data-k="line" d="M110 140 H730" stroke="#1a1815" stroke-width="10" stroke-linecap="round" fill="none"/>
+        <g data-k="i0"><circle cx="110" cy="140" r="80" fill="#fff" stroke="#1a1815" stroke-width="8"/>
+          <text x="110" y="160" text-anchor="middle" font-family="Noto Sans JP" font-weight="900" font-size="54" fill="#1a1815">${esc(a?.label)}</text>
+          <text x="110" y="290" text-anchor="middle" font-family="Noto Sans JP" font-weight="700" font-size="38" fill="#4a453e">${esc(a?.sub)}</text></g>
+        <g data-k="i1" style="transform-origin:730px 140px"><circle cx="730" cy="140" r="90" fill="#C8102E"/>
+          <text x="730" y="160" text-anchor="middle" font-family="Noto Sans JP" font-weight="900" font-size="54" fill="#fff">${esc(b?.label)}</text>
+          <text x="730" y="290" text-anchor="middle" font-family="Noto Sans JP" font-weight="800" font-size="38" fill="#C8102E">${esc(b?.sub)}</text></g>
+      </svg></div>`;
+    return (t, d, cue) => {
+      const p = eOut(P(t, 0, .6)); S($('.ph', root), { op: p }); kb($('.ph img', root), t, 0, d, 1.2);
+      pop($('[data-k=head]', root), t, cue('headline', .1));
+      pop($('[data-k=i0]', root), t, cue('item0', .3), 40);
+      const at = cue('item1', Math.min(2, d * .5));
+      $('[data-k=line]', root).setAttribute('stroke-dasharray', `${620 * eInOut(P(t, cue('item0', .3) + .3, at))} 2000`);
+      const k = P(t, at, at + .5); S($('[data-k=i1]', root), { op: eOut(k), s: lerp(.4, 1, eBack(k)) });
+    };
+  },
+  level(sc, root) {
+    const it = sc.items[0] || {};
+    root.innerHTML = `<div class="col">
+      ${sc.kicker ? `<div class="t-kicker" data-k="kicker">${esc(sc.kicker)}</div>` : ''}
+      <div class="t-hi" data-k="hi">${esc(sc.highlight)}</div>
+      <div class="card lv" data-k="badge"><div class="big">${esc(sc.badge)}</div>
+        <div><div style="font-weight:900;font-size:52px;line-height:1.15">${esc(it.label)}</div><div style="font-weight:700;font-size:38px;color:var(--ink7)">${esc(it.sub)}</div></div>
+        ${sc.photo ? `<div class="pola" data-k="pola"><div><img src="${esc(sc.photo)}"></div></div>` : ''}</div>
+      <div class="grow"></div></div>`;
+    fit($('[data-k=kicker]', root), 2); fit($('[data-k=hi]', root), 2);
+    return (t, d, cue) => {
+      pop($('[data-k=kicker]', root), t, cue('kicker', 0));
+      const h = cue('highlight', 1.2); const el = $('[data-k=hi]', root); const k = P(t, h, h + .45);
+      S(el, { op: clamp(k * 3), s: lerp(1.7, 1, eBack(k)), x: shake(t, h + .45) });
+      const b = cue('badge', h + 1.2); pop($('[data-k=badge]', root), t, b, 80);
+      const pz = P(t, b + .3, b + .8); S($('[data-k=pola]', root), { op: eOut(pz), r: lerp(-14, 5, eOut(pz)), s: lerp(.6, 1, eBack(pz)) });
+      kb($('[data-k=pola] img', root), t, b, d, 1.25, 1.08);
+    };
+  },
+  cta(sc, root) {
+    root.innerHTML = `<div class="col">
+      ${sc.headline ? `<div class="t-head" data-k="head">${esc(sc.headline)}</div>` : ''}
+      ${sc.highlight ? `<div class="t-head" style="color:var(--red);font-size:84px" data-k="hi">${esc(sc.highlight)}</div>` : ''}
+      ${sc.badge ? `<div class="bubble" data-k="badge">${esc(sc.badge)}</div>` : ''}
+      ${sc.kicker ? `<div style="font-weight:700;font-size:44px;color:var(--ink7)" data-k="kicker">${esc(sc.kicker)}</div>` : ''}
+      <div class="grow"></div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;flex:none"><img data-k="logo" src="logo_t.png" style="width:560px"><img data-k="cat" src="maneko.svg" style="width:220px;height:220px"></div></div>`;
+    fit($('[data-k=head]', root), 2); fit($('[data-k=hi]', root), 2); fit($('[data-k=badge]', root), 1);
+    return (t, d, cue) => {
+      pop($('[data-k=head]', root), t, cue('headline', 0));
+      pop($('[data-k=hi]', root), t, cue('highlight', .9));
+      const b = cue('badge', Math.min(2.4, d * .45)); const k = P(t, b, b + .45);
+      S($('[data-k=badge]', root), { op: eOut(k), s: lerp(.3, 1, eBack(k)) * (t > b + .6 ? 1 + Math.sin((t - b) * 4) * .025 : 1) });
+      pop($('[data-k=kicker]', root), t, b + .7, 20);
+      pop($('[data-k=logo]', root), t, b + 1.2, 40, .7);
+      const c = P(t, b + 1.0, b + 1.6); S($('[data-k=cat]', root), { op: c, y: (1 - eOut(c)) * 160 - Math.abs(Math.sin(t * 3)) * 16 * c, r: Math.sin(t * 3) * 4 * c });
+    };
+  },
+};
+
+const scenes = SPEC.scenes;
+const START = []; let acc = 0; for (const s of scenes) { START.push(acc); acc += s.dur; }
+const TOTAL = acc; window.TOTAL = TOTAL;
+const SUN = [[520, 1150], [-200, 300], [560, 300], [-150, 1250], [600, 1250], [-120, 820], [300, 1250], [560, 700]];
+const WM = ['日本', '仕事', '未来', '挑戦', '日本語', '学ぼう', '夢', '一歩'];
+const updates = [];
+const roots = [];
+window.layout = () => {
+  const stage = $('#stage');
+  scenes.forEach((sc, i) => {
+    const root = document.createElement('section');
+    root.className = 'scene'; stage.appendChild(root); roots.push(root);
+    const build = BUILD[sc.type] || BUILD.statement;
+    updates.push(build(sc, root));
+  });
+};
+window.render = (T) => {
+  let i = START.findIndex((s, k) => T >= s && T < s + scenes[k].dur);
+  if (i < 0) i = scenes.length - 1;
+  const lt = T - START[i], d = scenes[i].dur;
+  const cues = scenes[i].cues || {};
+  const cue = (name, def) => Math.min(name in cues ? cues[name] : def, Math.max(0, d - .45));
+  roots.forEach((el, k) => {
+    if (k !== i) { el.style.opacity = 0; return; }
+    const inn = i === 0 ? 1 : eOut(P(lt, 0, .25));
+    const out = i === scenes.length - 1 ? 1 : 1 - eInOut(P(lt, d - .3, d));
+    el.style.opacity = Math.min(inn, out);
+    el.style.transform = `translateY(${(1 - out) * -80}px)`;
+  });
+  // elemen yang belum punya animasi tetap terlihat
+  updates[i](lt, d, cue);
+  const sun = SUN[i % SUN.length], nx = SUN[(i + 1) % SUN.length];
+  const m = i === scenes.length - 1 ? 0 : eInOut(P(lt, d - .6, d));
+  $('#sun').style.transform = `translate(${lerp(sun[0], nx[0], m)}px,${lerp(sun[1], nx[1], m) + Math.sin(T * .8) * 20}px)`;
+  $('#grid').style.transform = `translate(${(T * 18) % 90}px,${(T * 10) % 90}px)`;
+  const wm = $('#wm'); const w = scenes[i].stamp || WM[i % WM.length];
+  if (wm.textContent !== w) wm.textContent = w;
+  wm.style.transform = `translate(${lerp(500, -900, lt / d)}px, 1420px)`;
+  wm.style.opacity = .045 * (i === 0 ? 1 : P(lt, 0, .3)) * (1 - P(lt, d - .3, d));
+  $('#bar').style.width = (T / TOTAL * 100) + '%';
+};
+</script>
+</body>
+</html>
