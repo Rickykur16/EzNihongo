@@ -1,0 +1,63 @@
+name: Marketing CRM production preflight
+
+on:
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect deployed code, database, flags and backup metadata
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+        with:
+          host: 168.144.107.34
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: DEPLOY_SHA
+          script: |
+            set -euo pipefail
+            cd /var/www/eznihongo
+            actual_sha=$(git rev-parse HEAD)
+            echo "Deployed SHA: $actual_sha"
+            echo "Workflow SHA: $DEPLOY_SHA"
+            if [ "$actual_sha" != "$DEPLOY_SHA" ]; then
+              echo 'FATAL: VPS has not finished deploying this commit'
+              exit 1
+            fi
+            if ! git diff --quiet || ! git diff --cached --quiet; then
+              echo 'FATAL: tracked files on VPS have local changes'
+              exit 1
+            fi
+            systemctl is-active eznihongo-api
+            test -f backend/.env
+            set -a
+            . backend/.env
+            set +a
+            test -n "${DATABASE_URL:-}"
+            printf 'Flags: COMPANY_WORKSPACE_ENABLED=%s COMPANY_STAFF_ENABLED=%s MARKETING_CRM_ENABLED=%s\n' \
+              "${COMPANY_WORKSPACE_ENABLED:-unset}" "${COMPANY_STAFF_ENABLED:-unset}" "${MARKETING_CRM_ENABLED:-unset}"
+            psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -At <<'SQL'
+            SELECT 'postgres_version=' || current_setting('server_version');
+            SELECT 'database_size_bytes=' || pg_database_size(current_database());
+            SELECT 'staff_tables=' || (to_regclass('public.staff_memberships') IS NOT NULL);
+            SELECT 'company_tables=' || (to_regclass('public.company_work_items') IS NOT NULL);
+            SELECT 'company_ledger=' || (to_regclass('public.company_schema_migrations') IS NOT NULL);
+            SELECT 'crm_leads=' || (to_regclass('public.marketing_leads') IS NOT NULL);
+            SELECT 'crm_reviews=' || (to_regclass('public.marketing_growth_reviews') IS NOT NULL);
+            SQL
+            if [ -d /var/backups/eznihongo ]; then
+              latest=$(find /var/backups/eznihongo -maxdepth 1 -type f -name 'eznihongo-*.tar.gz' -printf '%T@ %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)
+              if [ -n "$latest" ]; then
+                stat -c 'Latest backup: %n (%s bytes, modified %y)' "$latest"
+                tar -tzf "$latest" > /dev/null
+                echo 'Latest backup archive: readable'
+              else
+                echo 'Latest backup: none found'
+              fi
+            else
+              echo 'Backup directory: missing'
+            fi
+            df -h /var/www/eznihongo /var/backups 2>/dev/null || true

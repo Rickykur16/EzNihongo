@@ -2,6 +2,8 @@ import { createInsightsView } from './company-insights.js?v=productivity-2026091
 import { createDeskView } from './company-desk.js?v=unified-admin-20260912';
 import { templatesFor, canCreateFollowUp, historyLabel } from './company-productivity.js?v=productivity-20260912';
 import { createStudentOperations } from './student-operations.js?v=operations-20260912';
+import { createMarketingCrm } from './marketing-crm.js?v=20261003';
+import { createMarketingGrowth } from './marketing-growth.js?v=20261003';
 
 export async function mountCompanyWorkspace(host,{user,companyAccess,onRoute,canOpenTool=()=>false,onSourceOrder}) {
   const response=await fetch(new URL('./company-workspace.html',import.meta.url),{cache:'no-store'});
@@ -12,10 +14,12 @@ const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;
 const labels={task:'Pekerjaan',case:'Kasus',campaign:'Kampanye',content:'Konten',release:'Rilis'};
 const statuses={draft:'Draf',ready:'Siap dikerjakan',doing:'Dikerjakan',blocked:'Terhambat',review:'Perlu review',done:'Selesai',archived:'Arsip',new:'Baru',triaged:'Ditinjau',waiting:'Menunggu',resolved:'Ditangani',approved:'Disetujui',active:'Aktif',paused:'Dijeda',completed:'Selesai',scheduled:'Terjadwal',published:'Terbit',measured:'Dievaluasi',testing:'Diuji',merged:'Merged',deployed:'Terpasang',verified:'Terverifikasi'};
 const descriptions={technology:'Backlog dan rilis. Pisahkan status merged, terpasang, dan terverifikasi.',academic:'Pekerjaan materi dan pemeriksaan akademik. Editor materi existing tetap tersedia.',marketing:'Kampanye, review konten, kalender publikasi, dan tautan UTM.',operations:'Tindak lanjut siswa dan kasus diskusi. Data belajar tetap di sistem existing.',finance:'Kasus review bukti pembayaran. Status pembayaran berasal dari transaksi existing.'};
-let access=companyAccess,division,items=[],courses=[],current=null,generation=0,insightsView,deskView,operationsView,boardCursor='',boardNext=null,boardHistory=[];
+let access=companyAccess,division,items=[],courses=[],current=null,generation=0,insightsView,deskView,operationsView,crmView,growthView,boardCursor='',boardNext=null,boardHistory=[];
 let boardFilters={},editorGeneration=0,assigneeGeneration=0,historyGeneration=0,linkGeneration=0,dirty=false,editorBusy=false,assigneesReady=false;
 function editorError(error){return error.message==='work_version_conflict'?'Pekerjaan berubah oleh anggota lain. Catatan Anda tetap di formulir; salin perubahan lalu buka ulang pekerjaan untuk mengambil versi terbaru.':error.message;}
 function canLeave(){
+ if(crmView&&!crmView.canLeave())return false;
+ if(growthView&&!growthView.canLeave())return false;
  if(operationsView&&!operationsView.canLeave())return false;
  if(!$('editor').open||division==='academic')return true;
  if(editorBusy){$('editor-notice').textContent='Tunggu sampai penyimpanan selesai.';return false;}
@@ -143,7 +147,25 @@ deskView=createDeskView({root:host,api,access,courses,statuses,labels,onOpen:sho
 }});
 return {
   open(key) {
+    if(key!=='crm')crmView?.close();
+    if(key!=='growth')growthView?.close();
     operationsView?.close();$('title').hidden=$('subtitle').hidden=$('context').hidden=false;
+    if(key==='crm'){
+      if(!access.marketingCrm?.enabled||(!access.isAdmin&&!access.scopes?.marketing))throw new Error('crm_scope_required');
+      if(!crmView)crmView=createMarketingCrm({root:host,api,access,courses,onOpen:()=>{
+        insightsView?.close();deskView?.close();generation++;
+        for(const id of ['toolbar','board-filters','content','pagination','create-button','title','subtitle','context'])$(id).hidden=true;notice('');
+      }});
+      crmView.open();return;
+    }
+    if(key==='growth'){
+      if(!access.marketingCrm?.enabled||(!access.isAdmin&&!access.scopes?.marketing))throw new Error('crm_scope_required');
+      if(!growthView)growthView=createMarketingGrowth({root:host,api,access,courses,onOpen:()=>{
+        insightsView?.close();deskView?.close();generation++;
+        for(const id of ['toolbar','board-filters','content','pagination','create-button','title','subtitle','context'])$(id).hidden=true;notice('');
+      }});
+      growthView.open();return;
+    }
     if(key==='operations'){
       if(!access.studentOperations?.enabled||(!access.isAdmin&&!access.scopes?.operations))throw new Error('operations_scope_required');
       if(!operationsView)operationsView=createStudentOperations({root:host,api,access,courses,onOpen:()=>{
@@ -165,7 +187,7 @@ return {
     if(key==='jobs')for(const id of ['toolbar','board-filters','pagination','create-button'])$(id).hidden=true;
   },
   canLeave,
-  close(){generation++;closeEditor();operationsView?.close();insightsView?.close();deskView?.close();host.querySelectorAll('dialog[open]').forEach(d=>d.close());},
+  close(){generation++;closeEditor();crmView?.close();growthView?.close();operationsView?.close();insightsView?.close();deskView?.close();host.querySelectorAll('dialog[open]').forEach(d=>d.close());},
 };
 
 }
