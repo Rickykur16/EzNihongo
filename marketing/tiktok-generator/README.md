@@ -8,10 +8,10 @@ npm run ideas                 Claude riset berita → usulkan 5 ide (hook, alasa
         ✋ kamu pilih satu
 npm run plan -- --idea 2      riset ulang ide no. 2 → naskah + review.md (fakta & sumber)
         ✋ kamu cek naskah (edit script.json bila perlu)
-npm run build                 suara (ElevenLabs) + foto (Pexels) + render → video.mp4
+npm run build                 suara (ElevenLabs) + foto (Pixabay/Pexels) + render → video.mp4
 ```
 
-Lewat Telegram (`npm run bot`) alurnya sama: `/ide` → `/buat 2` → `/render`,
+Lewat Telegram (`npm run bot`) alurnya sama: `/ide` → `/buat 2` (atau `/topik <topik sendiri>`) → (kirim foto, opsional) → `/render`,
 dan ide bisa dikirim otomatis tiap minggu (lihat **Otomatis mingguan**).
 
 ## Pemasangan
@@ -26,7 +26,7 @@ cp .env.example .env              # isi API key + CONTENT_MODEL
 ```
 
 Jaringan yang harus bisa diakses: `api.anthropic.com`, `api.elevenlabs.io`,
-`api.pexels.com`, `images.pexels.com`, `fonts.googleapis.com`, `fonts.gstatic.com`.
+`pixabay.com` (atau `api.pexels.com` + `images.pexels.com`), `fonts.googleapis.com`, `fonts.gstatic.com`.
 
 ## Otomatis mingguan (Telegram)
 
@@ -52,9 +52,9 @@ Ide yang sudah dibuat dicatat di `out/history.json` supaya riset berikutnya tida
 | `review.md` | Naskah per adegan, tabel fakta + sumber, caption, komentar sematan, daftar masalah |
 | `research.md` | Catatan riset mentah dari web search |
 | `script.json` | Data naskah yang dipakai `build` — boleh diedit |
-| `photos/` | Taruh `1.jpg`, `2.jpg`, … untuk mengganti foto Pexels adegan itu (`6-2.jpg` = thumbnail item ke-2 adegan 6) |
+| `photos/` | Foto sendiri: kirim lewat Telegram (caption = nomor slot, lihat `/foto`) atau taruh `1.jpg`, `2.jpg`, … untuk mengganti foto stok adegan itu (`6-2.jpg` = thumbnail item ke-2 adegan 6) |
 | `video.mp4`, `cover.png` | Video final + frame pertama (pakai sebagai cover TikTok) |
-| `caption.txt`, `credits.md` | Caption + komentar sematan, daftar fotografer Pexels |
+| `caption.txt`, `credits.md` | Caption + komentar sematan, daftar fotografer foto stok |
 
 ## Aturan konten yang ditanam di prompt
 

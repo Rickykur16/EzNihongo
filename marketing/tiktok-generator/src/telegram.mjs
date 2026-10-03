@@ -27,3 +27,11 @@ export async function sendFile(file, { chatId = adminChat(), kind = 'document', 
 }
 
 export const getUpdates = (offset) => api('getUpdates', { offset, timeout: 50, allowed_updates: ['message'] });
+
+// Unduh file yang dikirim ke bot (foto/dokumen). Batas Bot API: 20 MB.
+export async function downloadFile(fileId) {
+  const { file_path } = await api('getFile', { file_id: fileId });
+  const res = await fetch(`https://api.telegram.org/file/bot${token()}/${file_path}`);
+  if (!res.ok) throw new Error(`Gagal mengunduh file Telegram (${res.status})`);
+  return { data: Buffer.from(await res.arrayBuffer()), ext: path.extname(file_path).slice(1).toLowerCase() || 'jpg' };
+}

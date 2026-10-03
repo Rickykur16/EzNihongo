@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { resolveModel, resolveVoice, ttsWithTimestamps, tts } from './elevenlabs.mjs';
-import { findPhoto } from './pexels.mjs';
+import { findPhoto } from './photos.mjs';
 import { joinVo, sceneTimings, timingsFromDurations } from './timing.mjs';
 import { validateScript } from './plan.mjs';
 import { renderVideo } from './render.mjs';
@@ -17,8 +17,8 @@ async function photoFor(dir, name, query, credits) {
     if (existsSync(own)) return path.resolve(own);
   }
   if (!query) return '';
-  const { data, credit } = await findPhoto(query);
-  const file = path.join(dir, 'photos', `${name}.pexels.jpg`);
+  const { data, credit, provider } = await findPhoto(query);
+  const file = path.join(dir, 'photos', `${name}.${provider}.jpg`);
   await fs.writeFile(file, data);
   credits.push(`- Adegan ${name}: ${credit}`);
   return path.resolve(file);
@@ -78,7 +78,7 @@ export async function build(dir, { force = false } = {}) {
     }
     scenes.push({ ...sc, photo, items, dur: timings[i].dur, cues: timings[i].cues });
   }
-  if (credits.length) await fs.writeFile(path.join(dir, 'credits.md'), `# Foto (Pexels)\n\n${credits.join('\n')}\n`);
+  if (credits.length) await fs.writeFile(path.join(dir, 'credits.md'), `# Foto stok\n\n${credits.join('\n')}\n`);
 
   console.log('▶ Render…');
   const outPath = path.join(dir, 'video.mp4');

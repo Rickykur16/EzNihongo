@@ -14,7 +14,7 @@ const item = {
     label: str('Teks utama item (pendek, maks ~22 karakter).'),
     sub: str('Teks kecil di bawah label, boleh kosong.'),
     good: { type: 'boolean', description: 'compare: true = sisi positif (centang merah), false = sisi lama (silang abu).' },
-    photo_query: str('list: kata kunci foto Pexels (bahasa Inggris) untuk thumbnail item; kosongkan untuk tipe lain.'),
+    photo_query: str('list: kata kunci foto stok (bahasa Inggris) untuk thumbnail item; kosongkan untuk tipe lain.'),
   },
 };
 
@@ -31,7 +31,7 @@ const scene = {
     badge: str('Chip/label/bubble: tanggal, level (mis. "N5"), atau teks CTA (mis. Komen "N5" 👇).'),
     stamp: str('hook: teks Jepang pendek untuk cap di foto (mis. 技能実習). Boleh kosong.'),
     items: { type: 'array', items: item, description: 'compare: tepat 2 (lama lalu baru). list: 2-3. timeline: tepat 2 (awal lalu tujuan). Tipe lain: kosong.' },
-    photo_query: str('Kata kunci foto Pexels (bahasa Inggris, spesifik, mis. "japan factory worker"). Kosongkan untuk statement/cta.'),
+    photo_query: str('Kata kunci foto stok (bahasa Inggris, spesifik, mis. "japan factory worker"). Kosongkan untuk statement/cta.'),
     cues: {
       type: 'array',
       description: 'Kapan elemen muncul: frasa PERSIS (substring) dari vo adegan ini saat elemen target harus tampil.',
