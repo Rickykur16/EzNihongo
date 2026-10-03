@@ -33,14 +33,13 @@ Jaringan yang harus bisa diakses: `api.anthropic.com`, `api.elevenlabs.io`,
 1. Isi `TELEGRAM_BOT_TOKEN` dan `TELEGRAM_ADMIN_CHAT_ID` di `.env`. Bot yang sama dengan notifikasi
    admin backend boleh dipakai, asal bot itu tidak memakai webhook (getUpdates akan bentrok).
    Hanya chat admin itu yang dilayani bot; pesan dari orang lain diabaikan.
-2. Jalankan bot terus-menerus, misalnya dengan systemd atau `pm2`:
-   ```bash
-   npm run bot
-   ```
-3. Kirim ide tiap Senin pagi (crontab, waktu server):
-   ```
-   0 8 * * 1  cd /path/ke/marketing/tiktok-generator && npm run ideas -- --notify >> out/cron.log 2>&1
-   ```
+2. Jalankan bot terus-menerus: `deploy/tiktok-bot.service` (systemd; petunjuk di dalam file).
+3. Pasang jadwal dari `deploy/crontab.txt`:
+   - **Ide konten Senin & Kamis 08:00.** Dua kali 5 ide cukup untuk ±3–4 video/minggu tanpa
+     membuat review jadi asal setuju.
+   - **Pemindaian berita harian 07:30 yang diam.** Telegram hanya menerima pesan bila ada berita
+     besar (aturan visa/SSW/Ikusei Shūrō baru, tur rekrutmen untuk pekerja Indonesia, jadwal ujian,
+     kesepakatan pemerintah). Berita yang sudah dilaporkan tidak dikirim ulang (`out/scan-seen.json`).
 4. Di Telegram: balas `/buat <nomor>` → bot mengirim ringkasan naskah + `review.md`.
    Kalau oke, balas `/render` → bot mengirim video + cover. Cek dulu, baru posting.
 

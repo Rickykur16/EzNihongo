@@ -9,7 +9,8 @@
     "plan": "node src/cli.mjs plan",
     "build": "node src/cli.mjs build",
     "bot": "node src/cli.mjs bot",
-    "test": "node --test src/*.test.mjs"
+    "test": "node --test src/*.test.mjs",
+    "scan": "node src/cli.mjs scan"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

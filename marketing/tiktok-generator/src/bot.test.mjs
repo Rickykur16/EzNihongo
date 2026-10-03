@@ -61,3 +61,16 @@ test('loadIdea menolak nomor di luar daftar', async () => {
   assert.equal((await loadIdea(root, 2)).title, 'B');
   await assert.rejects(loadIdea(root, 3), /tidak ada \(tersedia 1-2\)/);
 });
+
+test('filterNew membuang berita yang URL atau judulnya sudah pernah dilaporkan', async () => {
+  const { filterNew } = await import('./scan.mjs');
+  const seen = [{ headline: 'Jepang ubah syarat SSW!', url: 'https://a/1' }];
+  const items = [
+    { headline: 'Berita baru', url: 'https://a/1' },          // URL sama
+    { headline: 'jepang UBAH syarat ssw', url: 'https://b/2' }, // judul sama (beda huruf/tanda baca)
+    { headline: 'Tur rekrutmen baru', url: 'https://c/3' },
+    { headline: 'Tanpa URL', url: '' },
+  ];
+  assert.deepEqual(filterNew(items, seen).map((i) => i.url), ['https://c/3']);
+  assert.deepEqual(filterNew(undefined, seen), []);
+});

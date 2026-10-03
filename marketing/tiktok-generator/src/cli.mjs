@@ -6,6 +6,7 @@ import { plan } from './plan.mjs';
 import { build } from './build.mjs';
 import { ideas, ideasMessage, loadIdea, remember } from './ideas.mjs';
 import { runBot } from './bot.mjs';
+import { scan, scanMessage } from './scan.mjs';
 import { sendFile, sendText, telegramEnabled } from './telegram.mjs';
 
 const OUT = 'out';
@@ -19,6 +20,7 @@ const USAGE = `Pemakaian:
   npm run plan -- --idea <nomor>         kerjakan ide terpilih → naskah + review.md
   npm run plan -- "topik bebas"          naskah dari topik sendiri
   npm run build -- [folder]              suara + foto + render (default: naskah terakhir)
+  npm run scan -- --notify               cek berita 48 jam terakhir; kirim ke Telegram HANYA bila ada berita besar
   npm run bot                            bot Telegram: /ide, /buat <n>, /render`;
 
 try {
@@ -28,6 +30,16 @@ try {
       if (!telegramEnabled()) throw new Error('--notify butuh TELEGRAM_BOT_TOKEN dan TELEGRAM_ADMIN_CHAT_ID.');
       await sendText(ideasMessage(list));
       await sendFile(path.join(dir, 'ideas.md'), { caption: 'Detail ide + sumber' });
+    }
+  } else if (cmd === 'scan') {
+    const items = await scan({ outRoot: OUT });
+    if (!items.length) console.log('Tidak ada berita besar hari ini.');
+    else {
+      console.log(scanMessage(items));
+      if (flags.has('--notify')) {
+        if (!telegramEnabled()) throw new Error('--notify butuh TELEGRAM_BOT_TOKEN dan TELEGRAM_ADMIN_CHAT_ID.');
+        await sendText(scanMessage(items));
+      }
     }
   } else if (cmd === 'plan' && flags.has('--idea') && args[0]) {
     const idea = await loadIdea(OUT, Number(args[0]));
