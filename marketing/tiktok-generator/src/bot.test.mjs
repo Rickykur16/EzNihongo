@@ -74,3 +74,27 @@ test('filterNew membuang berita yang URL atau judulnya sudah pernah dilaporkan',
   assert.deepEqual(filterNew(items, seen).map((i) => i.url), ['https://c/3']);
   assert.deepEqual(filterNew(undefined, seen), []);
 });
+
+test('foto: Pixabay dipakai lebih dulu, unduh largeImageURL, dan pesan jelas tanpa key', async () => {
+  const { findPhoto, photoProvider } = await import('./photos.mjs');
+  delete process.env.PIXABAY_API_KEY; delete process.env.PEXELS_API_KEY;
+  assert.equal(photoProvider(), null);
+  await assert.rejects(findPhoto('x'), /PIXABAY_API_KEY/);
+  process.env.PEXELS_API_KEY = 'p'; process.env.PIXABAY_API_KEY = 'k';
+  const calls = [];
+  const prev = global.fetch;
+  global.fetch = async (url) => {
+    calls.push(String(url));
+    if (String(url).startsWith('https://pixabay.com/api/')) return { ok: true, json: async () => ({ hits: [{ id: 1, user: 'u', pageURL: 'https://pixabay.com/p/1', largeImageURL: 'https://cdn.pixabay.com/1.jpg' }] }) };
+    return { ok: true, arrayBuffer: async () => new ArrayBuffer(3) };
+  };
+  try {
+    const r = await findPhoto('japan factory worker');
+    assert.equal(r.provider, 'pixabay');
+    assert.equal(r.data.length, 3);
+    assert.match(calls[0], /key=k&q=japan%20factory%20worker/);
+    assert.equal(calls[1], 'https://cdn.pixabay.com/1.jpg');
+  } finally {
+    global.fetch = prev; delete process.env.PIXABAY_API_KEY; delete process.env.PEXELS_API_KEY;
+  }
+});

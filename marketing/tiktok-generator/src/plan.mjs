@@ -71,7 +71,7 @@ Teknis:
 - Teks layar pendek: headline ≤ 28 karakter per baris, highlight ≤ 16 karakter.
 - "cues": frasa yang PERSIS ada di vo adegan itu, untuk memunculkan elemen tepat saat kata itu diucapkan.
 - Tipe adegan: hook (kicker + highlight + photo + stamp), statement (kicker/headline/highlight, tanpa foto), photo (headline/highlight + foto + badge), compare (foto + 2 items: lama→baru), list (headline + 2-3 items dengan photo_query), timeline (foto + 2 items: awal→tujuan), level (kicker + highlight + badge level + items[0].sub), cta (headline + highlight + badge berisi ajakan komentar).
-- photo_query dalam bahasa Inggris, spesifik dan mudah ditemukan di Pexels.`;
+- photo_query dalam bahasa Inggris, spesifik dan mudah ditemukan di situs foto stok (Pixabay/Pexels).`;
 
 export async function plan(topic, { outRoot = 'out', idea = null } = {}) {
   const client = new Anthropic();
@@ -139,6 +139,6 @@ function reviewMarkdown(s, problems, dir) {
   L.push('', '## Fakta & sumber', '', '| Klaim | Status | Sumber |', '|---|---|---|');
   for (const f of s.facts) L.push(`| ${f.claim} | ${f.confidence === 'terkonfirmasi' ? '✅' : '⚠ perlu dicek'} | ${f.source_url} |`);
   L.push('', '## Caption', '', s.caption, '', '## Komentar sematan', '', s.pinned_comment, '');
-  L.push('## Foto sendiri (opsional)', '', 'Taruh file `photos/<nomor-adegan>.jpg` (mis. `photos/1.jpg`) untuk mengganti foto Pexels adegan itu. Untuk thumbnail list: `photos/<adegan>-<item>.jpg`.', '');
+  L.push('## Foto sendiri (opsional)', '', 'Taruh file `photos/<nomor-adegan>.jpg` (mis. `photos/1.jpg`) untuk mengganti foto stok adegan itu. Untuk thumbnail list: `photos/<adegan>-<item>.jpg`.', '');
   return L.join('\n');
 }
