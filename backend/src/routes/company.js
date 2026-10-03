@@ -7,6 +7,7 @@ import { readInsights } from '../company-insights.js';
 import { readCompanyWork } from '../company-read-work.js';
 import rateLimit from 'express-rate-limit';
 import studentOperationsRouter, {operationsEnabled} from './student-operations.js';
+import marketingCrmRouter, {crmEnabled} from './marketing-crm.js';
 
 const router = Router();
 router.use((req,res,next) => {
@@ -57,6 +58,7 @@ async function validateAssignee(client,access, data) {
 router.get('/access',asyncHandler(async(req,res)=> {
   res.json({version:1,isAdmin:req.access.isAdmin,staffEnabled:staffEnabled(),divisions:req.access.divisions.map(id=>({id,name:DIVISIONS[id]})),
     studentOperations:{enabled:operationsEnabled()},
+    marketingCrm:{enabled:crmEnabled()},
     insights: { enabled: insightsEnabled(), scopes: !insightsEnabled() ? {} : Object.fromEntries(Object.keys(DIVISIONS).flatMap(d => {
       const permission = 'insights.' + d;
       if (allowed(req.access, permission)) return [[d, 'global']];
@@ -225,5 +227,6 @@ router.get('/jobs',asyncHandler(async(req,res)=> {
   owner(req.access);const r=await query('SELECT id,item_id,event_key,state,attempts,available_at,last_error FROM company_outbox ORDER BY created_at DESC LIMIT 100');res.json({jobs:r.rows});
 }));
 router.use('/operations',studentOperationsRouter);
+router.use('/crm',marketingCrmRouter);
 router.use(companyError);
 export default router;

@@ -4,7 +4,7 @@
   const divisions = [
     {id:'technology',name:'Product & Technology',description:'Pengembangan produk, rilis dan tooling.',tabs:['tts','ai']},
     {id:'academic',name:'Academic & Learning',description:'Kurikulum, materi, kuis dan kelas.',tabs:['courses','modules','lessons','live']},
-    {id:'marketing',name:'Growth & Marketing',description:'Kampanye, konten, sensei dan testimoni.',tabs:['sensei','testimonials']},
+    {id:'marketing',name:'Growth & Marketing',description:'Calon siswa, kampanye, konten, sensei dan testimoni.',tabs:['sensei','testimonials']},
     {id:'operations',name:'Operasional Siswa',description:'Onboarding, progres, keluhan dan pendampingan belajar.',tabs:['users','discussions','access']},
     {id:'finance',name:'Finance',description:'Pesanan, pembayaran dan administrasi.',tabs:['orders']},
   ];
@@ -17,6 +17,8 @@
     if(divisions.some(d=>hasWork(company,d.id)))result.push({key:'desk',label:'Pusat Kerja Harian',group:'general'});
     if(company?.insights?.enabled&&Object.keys(company.insights.scopes||{}).length)result.push({key:'insights',label:'Data & Insights',group:'general'});
     for(const d of divisions){
+      if(d.id==='marketing'&&company?.marketingCrm?.enabled&&hasWork(company,d.id))result.push({key:'crm',label:'Calon Siswa',group:'marketing'});
+      if(d.id==='marketing'&&company?.marketingCrm?.enabled&&hasWork(company,d.id))result.push({key:'growth',label:'Growth Review',group:'marketing'});
       if(d.id==='finance'&&staff.finance?.enabled)result.push({key:'finance',label:'Pusat Finance',group:'finance'});
       if(d.id==='operations'&&company?.studentOperations?.enabled&&hasWork(company,d.id))result.push({key:'operations',label:'Pusat Operasional Siswa',group:'operations'});
       if(hasWork(company,d.id))result.push({key:'work:'+d.id,label:d.id==='technology'?'Pekerjaan & Rilis':d.id==='marketing'?'Pekerjaan & Kampanye':'Pekerjaan Tim',group:d.id});
@@ -42,6 +44,8 @@
     }).join('')}</div>`;
   }
   const menuFlows={
+    crm:['Catat calon siswa','Tindak lanjuti percakapan','Perbarui hasil penjualan'],
+    growth:['Pilih minggu dan kursus','Baca data funnel','Catat satu eksperimen'],
     operations:['Pilih siswa atau antrean','Catat kebutuhan & PIC','Tindak lanjuti sampai selesai'],
     courses:['Kursus','Modul','Materi & Kuis'],modules:['Kursus','Modul','Materi & Kuis'],lessons:['Kursus','Modul','Materi & Kuis'],
     live:['Pilih kursus & jadwal','Hubungkan materi','Simpan kelas'],
@@ -82,6 +86,7 @@
     return data;
   }
   function search(items,query){
+    if(/^(crm|prospek|lead|calon siswa)$/i.test(String(query).trim()))return items.filter(i=>i.key==='crm');
     const aliases={courses:'kelas kurikulum',modules:'bab',lessons:'materi soal quiz kuis',orders:'pembayaran transfer verifikasi',access:'enrollment masa aktif',users:'siswa murid',tts:'audio suara cache',ai:'prompt coaching',live:'jadwal kelas pertemuan',sensei:'guru pengajar',testimonials:'ulasan',desk:'tugas harian antrean',insights:'data analisis laporan',calendar:'jadwal konten',members:'karyawan staf izin',jobs:'notifikasi pengingat'};
     const words=String(query||'').trim().toLocaleLowerCase('id-ID').split(/\s+/).filter(Boolean);
     return items.filter(item=>{
