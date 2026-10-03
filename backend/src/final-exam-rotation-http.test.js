@@ -135,4 +135,34 @@ test('final rotation: transactional upgrade, historical snapshots, concurrent st
    assert.equal(bad.scoreReport.score,120);assert.equal(bad.passed,false);assert.equal(bad.completionSaved,false);
   });
  }
+
+ await t.test('natural names update the current bank atomically while preserving old drafts and answers',async()=>{
+  const {namedBanks}=await import('../content/final-exams/names.mjs');
+  const pending=await Promise.all(rotationBanks.map(b=>call(b,'quiz/start')));
+  const before=(await control.query('SELECT * FROM quiz_attempts ORDER BY id')).rows;
+  const namesSql=sql('migrations/197_final_exam_natural_names.sql');
+  const target=rotationBanks[1].rows.find(q=>q.question_category==='listening');
+  await control.query('UPDATE quiz_questions SET explanation=$2 WHERE id=$1',[target.id,'Teacher conflict']);
+  await assert.rejects(control.query(namesSql),/197 question edited/);
+  assert.equal((await control.query("SELECT count(*)::int n FROM quiz_questions WHERE assessment_meta->>'wordingVersion'='natural-names-v1'")).rows[0].n,0);
+  await control.query('UPDATE quiz_questions SET explanation=$2 WHERE id=$1',[target.id,target.explanation]);
+  await control.query(namesSql);
+  assert.deepEqual((await control.query('SELECT * FROM quiz_attempts ORDER BY id')).rows,before);
+  for(const bank of namedBanks)for(const q of bank.rows.filter(q=>q.audio_script)){
+   const actual=(await control.query('SELECT question,audio_script,image_url,explanation,assessment_meta FROM quiz_questions WHERE id=$1',[q.id])).rows[0];
+   for(const field of Object.keys(actual))assert.deepEqual(actual[field],q[field]);
+   assert.deepEqual((await control.query('SELECT id,option_text,is_correct,sort_order FROM quiz_options WHERE question_id=$1 ORDER BY sort_order',[q.id])).rows,q.options);
+  }
+  await control.query('UPDATE quiz_questions SET explanation=$2 WHERE id=$1',[target.id,'Teacher edit after naming']);
+  await control.query(namesSql);
+  assert.equal((await control.query('SELECT explanation FROM quiz_questions WHERE id=$1',[target.id])).rows[0].explanation,'Teacher edit after naming');
+  for(const [i,bank] of namedBanks.entries()){
+   const resumed=await call(bank,'quiz/start');assert.equal(resumed.attemptToken,pending[i].attemptToken);assert.deepEqual(resumed.questions,pending[i].questions);
+   await finish(bank,resumed);
+   const next=await call(bank,'quiz/start'),snap=await snapshot(next);
+   assert.doesNotMatch(JSON.stringify(snap),/[AB]さん/);
+   assert.ok(snap.questions.filter(q=>q.audio_script).every(q=>q.assessment_meta.wordingVersion==='natural-names-v1'));
+   const done=await finish(bank,next);assert.equal(done.scoreReport.score,180);
+  }
+ });
 });
