@@ -1,6 +1,20 @@
 # Video brand awareness EzNihongo (30 detik)
 
-Dua versi:
+Tiga versi:
+- **`../eznihongo-brand-vo-9x16.mp4`** (terbaru, ±40 dtk, dengan voice-over) — `video-vo.html`.
+  VO dibuat di Ruang Kerja admin (🎙 Voice-over, ElevenLabs) dari naskah `voiceover-naskah.md`,
+  disimpan sebagai `vo/vo-raw.mp3`. Alur:
+  1. `ffmpeg -i vo/vo-raw.mp3 -ac 1 -ar 48000 vo/vo.wav && python3 vo-align.py vo/vo.wav vo`
+     → `vo/vo-tight.wav` (jeda dirapatkan, tempo suara tidak diubah) + `vo/vo-timeline.js`
+     (waktu tiap potongan & kata; waktu kata = perkiraan proporsional suku kata).
+  2. `video-vo.html` memetakan adegan video 30 dtk ke waktu VO (`VKNOTS`) dan menulis
+     caption persis seperti yang diucapkan. Render: `FRAMES=1200 VIDEO=video-vo.html W=1080 H=1920 node render.mjs <dir> full`.
+  3. Audio: `VIDEO=video-vo.html OUT=cues-vo.json node cues.mjs`, lalu
+     `DUR=40 python3 sfx.py cues-vo.json sfx.wav musik.wav` (SFX dan musik terpisah);
+     campur di ffmpeg: VO (kompresor ringan) + SFX ×0,42 + musik ×1,3 yang di-*duck*
+     `sidechaincompress` oleh VO, lalu loudnorm dua tahap seperti di bawah.
+  Kalau VO dibuat ulang dengan jumlah potongan berbeda, `CHUNKS` di `vo-align.py` dan
+  `VCAPS`/`VKNOTS` di `video-vo.html` harus disesuaikan.
 - **`../eznihongo-brand-30s-9x16.mp4`** (utama, TikTok/Reels/Shorts) — `video-9x16.html`,
   1080×1920. Gaya caption mengikuti referensi konten edukasi: tumpukan kata kecil /
   kata kunci besar (Montserrat 900) / sambungan serif miring (Playfair Display Italic),

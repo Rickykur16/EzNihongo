@@ -235,6 +235,43 @@ export async function fetchElevenAudio(voiceId, text, role = 'single', retry = 0
   return Buffer.from(await upstream.arrayBuffer());
 }
 
+// ── Voice-over marketing (Ruang Kerja → TTS → 🎙 Voice-over) ───────────────
+// Satu klip naskah iklan/video dengan suara pilihan admin dari katalog akun,
+// lewat endpoint /with-timestamps supaya caption video bisa disinkronkan per
+// kata. SENGAJA tanpa cache dan terpisah dari audio siswa: ini pekerjaan
+// produksi sekali jalan, bukan materi yang diputar berulang.
+export const VOICEOVER_MODELS = new Set(['eleven_multilingual_v2', 'eleven_v3', 'eleven_turbo_v2_5', 'eleven_flash_v2_5']);
+export async function fetchElevenVoiceover({ voiceId, text, previousText, nextText, modelId, retry = 0 }) {
+  const upstream = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}/with-timestamps?output_format=mp3_44100_128`,
+    {
+      method: 'POST',
+      headers: { 'xi-api-key': ELEVEN_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        model_id: modelId,
+        // Konteks kalimat sebelum/sesudah menjaga intonasi antar-klip tetap nyambung.
+        ...(previousText ? { previous_text: previousText } : {}),
+        ...(nextText ? { next_text: nextText } : {}),
+        voice_settings: { stability: 0.4, similarity_boost: 0.8, style: 0.35, use_speaker_boost: true },
+      }),
+    },
+  );
+  if (!upstream.ok) {
+    const detail = await upstream.text().catch(() => '');
+    if (retry < 2 && (upstream.status === 429 || upstream.status >= 500)) {
+      await new Promise((r) => setTimeout(r, 600 * (retry + 1)));
+      return fetchElevenVoiceover({ voiceId, text, previousText, nextText, modelId, retry: retry + 1 });
+    }
+    const err = new Error(`ElevenLabs ${upstream.status}: ${detail.slice(0, 200)}`);
+    err.upstreamStatus = upstream.status;
+    throw err;
+  }
+  const data = await upstream.json();
+  if (!data || typeof data.audio_base64 !== 'string') throw new Error('ElevenLabs: respons tanpa audio');
+  return { audio: Buffer.from(data.audio_base64, 'base64'), alignment: data.alignment || null };
+}
+
 export function elevenLabsEnabled() {
   return !!ELEVEN_API_KEY;
 }
