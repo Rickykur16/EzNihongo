@@ -1,0 +1,45 @@
+CURRICULUM REVIEW — FINAL EXAMS N5/N4
+Revision: curriculum-scope-v1 (3 October 2026)
+
+Scope: 304 entries across N5 A/B and N4 A/B; 1,168 answer choices,
+including numbered choices spoken in listening audio. 105 entries changed
+(61 N5, 44 N4). N4 assumes completion of N5 material.
+
+Sources used for the pedagogical review:
+- Assigned lesson decks and attached grammar/kanji in course snapshots
+  captured 2026-09-30 (N5 21:01 UTC; N4 22:32 UTC).
+- backend/scripts/n5-bunpou-canva-plan.json
+- backend/content/n5-support/grammar-support.json
+- backend/content/n5-support/vocabulary-examples.json
+- backend/content/n4-support/support-plan.json
+- backend/content/n4-support/vocabulary-plan.json
+- backend/content/n4-support/vocabulary-examples.json
+
+The global module vocabulary list is not proof that a word was taught.
+Review used words attached to lesson decks and the lesson support examples.
+Inflected forms, taught counters/numbers, personal names and kana reading
+errors are not treated as separate new vocabulary. Grammar distractors may
+be incorrect applications of forms being tested; they need not be valid
+sentences, but must use familiar components.
+
+Examples of decisions:
+- N5 comparison: replace N4 ほど with N5 Bab 18 より.
+- N5 sequence: use Bab 12 てから instead of N4 Bab 3 たあとで.
+- N5 plans/desire: replace N4 ことができる with Bab 19 つもり / たい.
+- N5 requests: use Bab 13 permission/request forms, not untaught greetings.
+- Replace obscure cleaning vocabulary and computer terminology with
+  classroom/household words present in teaching material.
+- N4: replace ず with taught ないで and fabricated connective/spelling
+  distractors with familiar alternatives.
+
+Implementation keeps shared passages, spoken choices, explanations and
+answer IDs synchronized. Migration 199 preflights all edited bank rows,
+refuses conflicts, and supersedes affected unfinished attempts. It does not
+delete completed attempts or recompute their historical grades. Replaying
+migration 199 does not supersede newly started corrected exams.
+
+Validation: structural checks plus PostgreSQL HTTP regression tests cover
+counts, A/B composition, unique choices, one key, synchronized audio,
+scoring, atomic failure, stale draft rejection, fresh starts and historical
+results. These checks prevent specified regressions; they are not an
+independent linguistic certification of every possible interpretation.

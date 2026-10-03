@@ -2,7 +2,7 @@
 // persistence is simulated in this browser, with no requests to the live platform.
 import fs from 'node:fs';
 import path from 'node:path';
-import {namedBanks as banks} from '../content/final-exams/names.mjs';
+import {curriculumBanks as banks} from '../content/final-exams/curriculum.mjs';
 import {createChapterSnapshot,publicChapterQuestions,gradeChapterAssessment} from '../src/chapter-assessment.js';
 const dest=path.resolve(process.argv[2]||'final-exam-student-preview');
 fs.mkdirSync(dest,{recursive:true});
