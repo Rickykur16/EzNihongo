@@ -14,7 +14,14 @@
       canOpenDetails: Boolean(price && course.is_available !== false && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(course.slug || '')),
     };
   }
-  if (typeof module !== 'undefined' && module.exports) module.exports = { courseView };
+  function coursePriceSummary(items) {
+    return ordered(items).map(course => {
+      const view = courseView(course);
+      const label = String(course.title || 'Kelas bootcamp');
+      return label + ': ' + (view.price ? [view.price, view.period].filter(Boolean).join(' ') : 'harga belum diumumkan');
+    }).join('. ') || 'Rincian harga kelas belum diumumkan.';
+  }
+  if (typeof module !== 'undefined' && module.exports) module.exports = { courseView, coursePriceSummary };
   if (typeof document === 'undefined') return;
   const el = (tag, className, text) => { const node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = String(text); return node; };
   function plain(value) {
@@ -67,7 +74,7 @@
     });
     status.textContent = courses.length ? 'Pilih kelas sesuai titik awal dan tujuan belajarmu.' : 'Informasi kelas sedang disiapkan. Hubungi tim untuk membahas rencanamu.';
     document.querySelector('#price-summary').textContent = hasPublishedPrice ? 'Lihat rincian harga pada kelas yang tersedia.' : 'Harga bootcamp belum ditentukan.';
-    document.querySelector('#price-faq').textContent = hasPublishedPrice ? 'Harga mengikuti kelas yang dipilih.' : 'Harga bootcamp belum ditentukan.';
+    document.querySelector('#price-faq').textContent = coursePriceSummary(courses) + (courses.length ? '.' : '');
   }
   function renderPeople(items, kind) {
     const isSensei = kind === 'sensei', section = document.querySelector(isSensei ? '#sensei' : '#testimoni'), list = document.querySelector(isSensei ? '#sensei-list' : '#testimonial-list');
@@ -85,7 +92,10 @@
   }
   async function load(path, key, render) {
     try { const response = await fetch(path, { cache: 'no-store', signal: AbortSignal.timeout(8000) }); if (!response.ok) throw Error('unavailable'); const data = await response.json(); if (!Array.isArray(data[key])) throw Error('invalid'); render(data[key]); }
-    catch { if (key === 'courses') document.querySelector('#course-status').textContent = 'Informasi kelas belum dapat dimuat. Silakan muat ulang atau hubungi tim EzNihongo.'; }
+    catch { if (key === 'courses') {
+      document.querySelector('#course-status').textContent = 'Informasi kelas belum dapat dimuat. Silakan muat ulang atau hubungi tim EzNihongo.';
+      document.querySelector('#price-faq').textContent = 'Rincian harga belum berhasil dimuat. Muat ulang halaman atau hubungi tim untuk memastikan harga kelas.';
+    } }
   }
   Promise.allSettled([
     load('/api/courses', 'courses', renderCourses),
