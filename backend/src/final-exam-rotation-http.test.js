@@ -165,4 +165,45 @@ test('final rotation: transactional upgrade, historical snapshots, concurrent st
    const done=await finish(bank,next);assert.equal(done.scoreReport.score,180);
   }
  });
+
+ await t.test('draft correction fixes old listening without changing saved answers, scoring, or completed history',async()=>{
+  const {createChapterSnapshot}=await import('./chapter-assessment.js');
+  const {scoredBanks}=await import('../content/final-exams/scoring.mjs');
+  const {nameFinalQuestion}=await import('../content/final-exams/names.mjs');
+  const completed=(await control.query('SELECT * FROM quiz_attempts WHERE completed_at IS NOT NULL ORDER BY id')).rows;
+  const states=[];
+  for(const bank of [...banks,...scoredBanks]){
+   const s=createChapterSnapshot(bank.policy,bank.rows,'B');
+   for(const q of s.questions)for(const o of q.options)o.question_id=q.id;
+   const answerQ=s.questions.find(q=>q.audio_script),answers=[{questionId:answerQ.id,optionId:answerQ.options[0].id}];
+   const attemptToken=randomUUID();
+   await control.query('INSERT INTO quiz_attempts(user_id,lesson_id,attempt_token,sampled_question_ids,assessment_snapshot,draft_answers,draft_revision,started_at) VALUES($1,$2,$3,$4,$5,$6,7,clock_timestamp())',[user,bank.lessonId,attemptToken,JSON.stringify(s.questions.map(q=>q.id)),s,JSON.stringify(answers)]);
+   states.push({bank,attemptToken,s,answers});
+  }
+  const before=(await control.query('SELECT * FROM quiz_attempts WHERE completed_at IS NULL ORDER BY id')).rows;
+  const draftSql=sql('migrations/198_final_exam_draft_names.sql');
+  const conflict=states.at(-1),edited=structuredClone(conflict.s),listening=edited.questions.find(q=>q.audio_script);listening.question='Teacher custom question';
+  await control.query('UPDATE quiz_attempts SET assessment_snapshot=$2 WHERE attempt_token=$1',[conflict.attemptToken,edited]);
+  await assert.rejects(control.query(draftSql),/198 unknown.edited/);
+  await control.query('UPDATE quiz_attempts SET assessment_snapshot=$2 WHERE attempt_token=$1',[conflict.attemptToken,conflict.s]);
+  assert.deepEqual((await control.query('SELECT * FROM quiz_attempts WHERE completed_at IS NULL ORDER BY id')).rows,before);
+  await control.query(draftSql);
+  for(const saved of before){
+   const actual=(await control.query('SELECT * FROM quiz_attempts WHERE id=$1',[saved.id])).rows[0];
+   const expected=structuredClone(saved);expected.assessment_snapshot.questions=expected.assessment_snapshot.questions.map(nameFinalQuestion);
+   assert.deepEqual(actual,expected);
+   assert.doesNotMatch(JSON.stringify(actual.assessment_snapshot),/[AB]さん/);
+  }
+  assert.deepEqual((await control.query('SELECT * FROM quiz_attempts WHERE completed_at IS NOT NULL ORDER BY id')).rows,completed);
+  const onceApplied=(await control.query('SELECT * FROM quiz_attempts ORDER BY id')).rows;
+  await control.query(draftSql);assert.deepEqual((await control.query('SELECT * FROM quiz_attempts ORDER BY id')).rows,onceApplied);
+  for(const state of states.slice(-2)){
+   const resume=await call(state.bank,'quiz/start');assert.equal(resume.attemptToken,state.attemptToken);
+   assert.deepEqual(resume.draftAnswers,state.answers);assert.equal(resume.draftRevision,7);
+   assert.doesNotMatch(JSON.stringify(resume.questions),/[AB]さん/);
+   const actualSnapshot=await snapshot(resume);assert.deepEqual(actualSnapshot.policy,state.s.policy);
+   const result=await finish(state.bank,resume,7);assert.equal(result.scoreReport.score,180);
+   assert.doesNotMatch(JSON.stringify(result.review),/[AB]さん/);
+  }
+ });
 });
