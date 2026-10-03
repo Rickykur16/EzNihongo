@@ -51,9 +51,9 @@ const WIPE_TABLES = [
   'grammar_task_sessions',
 ];
 
-// During deploy the new backend may start before migration 165. Keep the new
-// table optional until present, while still rejecting every unknown user FK.
-const OPTIONAL_WIPE_TABLES = ['dialogue_question_attempts'];
+// During deploy the backend may start before these additive migrations. Wipe
+// both learning-history tables when present, without weakening unknown-FK checks.
+const OPTIONAL_WIPE_TABLES = ['dialogue_question_attempts', 'maneko_exposures'];
 
 // Tabel ber-FK ke users yang SENGAJA tidak masuk WIPE_TABLES, masing-masing
 // dengan alasannya. Dipakai assertUserTablesCovered() supaya tabel baru yang
@@ -100,7 +100,7 @@ export async function assertUserTablesCovered(client) {
   }
   const optionalWipeTables = OPTIONAL_WIPE_TABLES.flatMap(table =>
     rows.filter(r => r.relation_name === table && r.same_schema)
-      .map(r => `${quoteIdentifier(r.schema_name)}.${quoteIdentifier(table)}`));
+      .map(r => ({ name: table, qualifiedName: `${quoteIdentifier(r.schema_name)}.${quoteIdentifier(table)}` })));
   return { staffTables, optionalWipeTables };
 }
 
@@ -134,11 +134,13 @@ export async function eraseUserAccount(client, userId) {
   const { staffTables, optionalWipeTables } = await assertUserTablesCovered(client);
 
   const wiped = await eraseStaffUserData(client, userId, staffTables);
-  for (const table of [...WIPE_TABLES, ...optionalWipeTables]) {
+  for (const { name, qualifiedName } of [
+    ...WIPE_TABLES.map(name => ({ name, qualifiedName: name })), ...optionalWipeTables,
+  ]) {
     // Nama tabel berasal dari konstanta di file ini; schema untuk tabel baru
     // diambil dari katalog FK dan di-quote, bukan dari input request.
-    const res = await client.query(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
-    wiped[table.includes('.') ? 'dialogue_question_attempts' : table] = res.rowCount;
+    const res = await client.query(`DELETE FROM ${qualifiedName} WHERE user_id = $1`, [userId]);
+    wiped[name] = res.rowCount;
   }
 
   // PR9d has no users FK, so the old FK inventory cannot discover it. Its
