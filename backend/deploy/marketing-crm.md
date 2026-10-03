@@ -21,6 +21,8 @@ Implementasi ini tidak otomatis menjalankan perubahan pada produksi. Ikuti prose
 4. Set `COMPANY_WORKSPACE_ENABLED=true` dan `MARKETING_CRM_ENABLED=true` pada backend, lalu restart. Untuk staf terbatas gunakan `COMPANY_STAFF_ENABLED=true` dan membership Marketing existing. Tidak ada pemberian izin otomatis.
 5. Muat ulang Ruang Kerja. Uji tambah → refresh → ubah tahap → tambah catatan dengan data uji yang sah, lalu hapus data uji melalui owner.
 
+Pada VPS resmi, workflow manual **Activate Marketing CRM on VPS** menjalankan langkah 2–4 berurutan setelah kode rilis sehat: memeriksa SHA, membuat dump PostgreSQL baru, memulihkannya ke database sementara, menerapkan migrasi Company dan CRM, menyalakan `COMPANY_WORKSPACE_ENABLED` serta `MARKETING_CRM_ENABLED`, dan memeriksa health API. Workflow memakai grup concurrency yang sama dengan deployment sehingga tidak beradu restart. `COMPANY_STAFF_ENABLED` tidak diubah. Dump dan salinan `.env` sebelum aktivasi disimpan di `/var/backups/eznihongo` untuk pemulihan; data sementara dihapus. Jika health gagal setelah restart, flag lama dipulihkan. Jika migrasi gagal, flag tidak disentuh dan ledger perlu diperiksa sebelum mencoba lagi.
+
 Rollback UI: matikan `MARKETING_CRM_ENABLED`; data tetap tersimpan. Pertahankan kode penghapusan akun yang mengenali tabel CRM. Jangan menurunkan versi cleanup ketika tabel baru masih ada.
 
 ## Penyimpanan dan batas
