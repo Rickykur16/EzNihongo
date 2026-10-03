@@ -289,7 +289,7 @@ router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('
       }
       if (!allIds.length) return { kind: 'empty' };
 
-      let snapshot = null;
+      let snapshot = null, activePoolSize = allIds.length;
       if (chapterPolicy) {
         const previous = await client.query(`SELECT assessment_snapshot->>'form' AS form FROM quiz_attempts
           WHERE user_id=$1 AND lesson_id=$2 AND assessment_snapshot->>'version'=$3
@@ -298,6 +298,7 @@ router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('
           FROM quiz_options o WHERE o.question_id=q.id), '[]'::jsonb) AS options
           FROM quiz_questions q WHERE q.lesson_id=$1 AND q.assessment_meta->>'version'=$2`, [lessonId, chapterPolicy.version]);
         snapshot = createChapterSnapshot(chapterPolicy, bank.rows, previous.rows[0]?.form);
+        activePoolSize = bank.rows.length;
       }
       const sampledIds = snapshot ? snapshot.questions.map(q => q.id) : kanaAssessmentKind(lesson.slug)
         ? sampleKanaPlacementQuestions(poolRows, lesson.questions_per_attempt).map((row) => row.id)
@@ -315,6 +316,7 @@ router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('
         attemptToken: insertRes.rows[0].attempt_token,
         startedAt: insertRes.rows[0].started_at,
         snapshot,
+        activePoolSize,
       };
     });
   } catch (err) {
@@ -366,7 +368,7 @@ router.post('/progress/lesson/:lessonId/quiz/start', requireLessonCourseAccess('
     passingScorePct: result.snapshot?.policy.passingScorePct ?? passingScorePct,
     totalQuestions: questions.length,
     questionsPerAttempt: questions.length,
-    poolSize: result.snapshot?.policy.selection === 'all' ? result.snapshot.questions.length : result.snapshot ? 48 : allIds.length,
+    poolSize: result.activePoolSize,
     expiresAt: null,
     draftEnabled: true, draftAnswers: [], draftRevision: 0,
     ...(result.snapshot ? { assessmentVersion: result.snapshot.version, assessmentForm: result.snapshot.form,

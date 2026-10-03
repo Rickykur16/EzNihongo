@@ -4,7 +4,7 @@
   if (root) root.EzFinalExam = api;
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
-  const versions = ['jlpt-final-n5-v1', 'jlpt-final-n4-v1'];
+  const versions = ['jlpt-final-n5-v1', 'jlpt-final-n4-v1', 'jlpt-final-n5-v2', 'jlpt-final-n4-v2'];
   const categories = { vocabulary: 'Kosakata', grammar: 'Tata bahasa', reading: 'Membaca', listening: 'Menyimak' };
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const isFinal = version => versions.includes(version);
@@ -156,10 +156,11 @@
     const q = state.questions[state.idx], s = summary(state);
     state.activeCategory = q.category;
     const ci = s.categories.findIndex(c => c.id === q.category), category = s.categories[ci];
-    const level = state.assessmentVersion === versions[0] ? 'N5' : 'N4';
+    const level = state.assessmentVersion.includes('-n5-') ? 'N5' : 'N4';
+    const packageLabel = ['A','B'].includes(state.assessmentForm) ? ` · Paket ${state.assessmentForm}` : '';
     const compact = typeof matchMedia === 'function' && matchMedia('(max-width: 800px)').matches;
     container.innerHTML = `<div class="final-exam">
-      <header class="exam-header"><div><p class="exam-eyebrow">EZNIHONGO · UJIAN AKHIR LEVEL</p><h1>Final Exam ${level}</h1><p class="exam-subtitle">Kerjakan dengan tenang. Jawaban bisa diubah sebelum dikirim.</p></div><span class="exam-mode">Tanpa batas waktu</span></header>
+      <header class="exam-header"><div><p class="exam-eyebrow">EZNIHONGO · UJIAN AKHIR LEVEL${packageLabel}</p><h1>Final Exam ${level}</h1><p class="exam-subtitle">Kerjakan dengan tenang. Jawaban bisa diubah sebelum dikirim.</p></div><span class="exam-mode">Tanpa batas waktu</span></header>
       <div class="exam-progress-line"><span id="quiz-paper-progress">${s.answered} / ${s.total} terjawab</span><span>${s.total} soal · 4 bagian</span></div><progress id="exam-progress" max="${s.total}" value="${s.answered}" aria-label="${s.answered} dari ${s.total} soal terjawab"></progress>
       <nav class="exam-categories" aria-label="Bagian ujian">${s.categories.map(c => `<button type="button" class="exam-category" data-exam-action="category" data-category="${c.id}" ${q.category === c.id && !state.finalReview ? 'aria-current="true"' : ''}><span>${c.label}</span><small data-exam-count="${c.id}">${c.answered}/${c.items.length}</small></button>`).join('')}</nav>
       <div class="exam-layout"><section class="exam-workspace" aria-label="${state.finalReview ? 'Pemeriksaan akhir' : 'Soal ujian'}">
