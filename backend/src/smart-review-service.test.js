@@ -90,6 +90,30 @@ test('kanji contextual review question retains word directional skills', () => {
   assert.ok(q.options.includes('にほん'));
 });
 
+// Use the actual persisted format from the session route and lesson drills:
+// word:<direction>:<base64url word key>. A bare direction misses this bug.
+for (const [direction, prompt, correctAnswer, answerPool] of [
+  ['word2reading', '日本', 'にほん', ['にほん', 'がっこう']],
+  ['word2meaning', '日本', 'Jepang', ['Jepang', 'sekolah']],
+  ['meaning2word', 'Jepang', '日本', ['日本', '学校']],
+  ['reading2word', 'にほん', '日本', ['日本', '学校']],
+]) {
+  test(`persisted kanji word skill ${direction} generates its own question`, () => {
+    const word = { japanese: '日本', reading: 'にほん', indonesian: 'Jepang' };
+    const encoded = Buffer.from('日本::にほん', 'utf8').toString('base64url');
+    const q = makeReviewQuestion({
+      category: 'kanji', itemId: 'k', skill: `word:${direction}:${encoded}`,
+      item: { character: '日' }, word,
+    }, {
+      words: ['日本', '学校'], wordReadings: ['にほん', 'がっこう'],
+      wordMeanings: ['Jepang', 'sekolah'],
+    });
+    assert.equal(q.prompt, prompt);
+    assert.equal(q.options[q.correctIndex], correctAnswer);
+    assert.deepEqual(new Set(q.options), new Set(answerPool));
+  });
+}
+
 test('vocabulary reverse-direction review preserves reading labels', () => {
   const q = makeReviewQuestion({ category: 'vocabulary', itemId: 'v', skill: 'id2jp', item: { japanese: '日本', reading: 'にほん', indonesian: 'Jepang' } }, { vocabJapanese: ['日本', '学校'], vocabReadingByJapanese: { 日本: 'にほん', 学校: 'がっこう' }, vocabIndonesian: [] });
   assert.equal(q.optionReadings[q.options.indexOf('日本')], 'にほん');
