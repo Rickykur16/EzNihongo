@@ -24,7 +24,7 @@ const parseDistractors = (raw) => String(raw || '').split(/\r?\n/).map((value) =
 
 function stateMap(rows) {
   const out = new Map();
-  for (const row of rows) out.set(`${row.item_type}:${row.item_id}:${row.skill}`, { attempts: Number(row.attempts) || 0, correct: Number(row.correct) || 0, streak: Number(row.streak) || 0, lastSeenAt: row.last_seen_at, nextReviewAt: row.next_review_at, fsrsState: row.fsrs_state });
+  for (const row of rows) out.set(`${row.item_type}:${row.item_id}:${row.skill}`, { attempts: Number(row.attempts) || 0, correct: Number(row.correct) || 0, streak: Number(row.streak) || 0, lastSeenAt: row.last_seen_at, nextReviewAt: row.next_review_at, fsrsState: row.fsrs_state, fsrsReps: Number(row.fsrs_reps) || 0 });
   return out;
 }
 
@@ -157,6 +157,7 @@ export async function buildReviewCandidates(user) {
       skill: candidate.skill,
       attempts: Number(candidate.state?.attempts) || 0,
       fsrsState: candidate.state?.fsrsState || null,
+      fsrsReps: Number(candidate.state?.fsrsReps) || 0,
       // Kosakata dan kata majemuk kanji yang sama = satu kelompok gerbang.
       group: candidate.word || candidate.category === 'vocabulary' ? reviewSubjectKey(candidate) : undefined,
     })));
