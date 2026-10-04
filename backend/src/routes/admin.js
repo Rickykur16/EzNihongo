@@ -42,6 +42,8 @@ import {
   loadSpeakerRegistry,
   voiceForSpeaker,
   resolveDialogTurns,
+  fetchElevenVoiceover,
+  VOICEOVER_MODELS,
 } from './tts.js';
 import {
   loadCourseVocab,
@@ -6063,6 +6065,37 @@ router.get('/elevenlabs/voices', asyncHandler(async (req, res) => {
     res.json({ voices });
   } catch (err) {
     console.error('ElevenLabs voices:', err.message);
+    res.status(502).json({ error: 'elevenlabs_upstream', detail: err.message });
+  }
+}));
+
+// POST /api/admin/voiceover — body { voiceId, text, previousText?, nextText?,
+// modelId? } → { audioBase64, alignment, characters }.
+// Ruang Kerja → TTS → 🎙 Voice-over: satu klip naskah marketing dengan suara
+// pilihan dari katalog akun (GET /elevenlabs/voices di atas), plus timestamp
+// per karakter dari ElevenLabs untuk sinkronisasi caption video. Owner-only
+// (seperti /tts/preview) karena tiap panggilan memakai kredit; tidak di-cache.
+router.post('/voiceover', asyncHandler(async (req, res) => {
+  if (!elevenLabsEnabled()) {
+    return res.status(503).json({ error: 'elevenlabs_disabled', detail: 'ELEVENLABS_API_KEY belum diset.' });
+  }
+  const body = req.body || {};
+  const voiceId = String(body.voiceId || '').trim();
+  const text = String(body.text || '').trim();
+  const context = (v) => String(v || '').trim().slice(0, 1000);
+  const modelId = String(body.modelId || 'eleven_multilingual_v2');
+  if (!/^[A-Za-z0-9]{10,40}$/.test(voiceId)) return res.status(400).json({ error: 'invalid_voice_id' });
+  if (!text) return res.status(400).json({ error: 'text_required' });
+  if (text.length > 1000) return res.status(400).json({ error: 'text_too_long', detail: 'Satu klip maksimal 1000 karakter.' });
+  if (!VOICEOVER_MODELS.has(modelId)) return res.status(400).json({ error: 'invalid_model' });
+  try {
+    const { audio, alignment } = await fetchElevenVoiceover({
+      voiceId, text, modelId, previousText: context(body.previousText), nextText: context(body.nextText),
+    });
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ audioBase64: audio.toString('base64'), alignment, characters: text.length, modelId });
+  } catch (err) {
+    console.error('Voice-over upstream:', err.message);
     res.status(502).json({ error: 'elevenlabs_upstream', detail: err.message });
   }
 }));

@@ -2,14 +2,14 @@
 // Env: VIDEO=video.html (atau video-9x16.html / video-vo.html), W/H = ukuran viewport (default 1920×1080),
 // FRAMES = jumlah frame mode full (default 900 = 30 dtk @30fps).
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
-import { fontRoutes } from './fontroute.mjs';
+import { fontRoutes } from '/home/user/EzNihongo/marketing/brand-video-src/fontroute.mjs';
 const [out, mode] = [process.argv[2], process.argv[3]];
 const VIDEO = process.env.VIDEO || 'video.html';
 const W = +(process.env.W || 1920), H = +(process.env.H || 1080);
 const b = await chromium.launch();
 const p = await b.newPage({ viewport:{width:W,height:H} }); await fontRoutes(p);
 p.on('pageerror', e => console.log('ERR', e.message));
-await p.goto(`http://127.0.0.1:8099/marketing/brand-video-src/${VIDEO}`, {waitUntil:'networkidle'});
+await p.goto(`http://127.0.0.1:8099/marketing/${VIDEO}`, {waitUntil:'networkidle'});
 await p.evaluate(()=>document.fonts.ready);
 await p.evaluate(()=>Promise.all([...document.images].map(i=>i.decode())));
 const NF = +(process.env.FRAMES || 900);

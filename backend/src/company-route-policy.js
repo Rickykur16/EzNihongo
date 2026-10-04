@@ -151,6 +151,9 @@ export const LEGACY_ROUTES = [
   // ElevenLabs voice catalog (read-only, admin-only) — feeds the dialogue
   // editor's speaker picker with real ElevenLabs voices.
   ["GET", "/elevenlabs/voices", "legacy.academic"],
+  // Voice-over marketing (Ruang Kerja → TTS): memakai kredit ElevenLabs, jadi
+  // owner-only seperti /tts/preview.
+  ["POST", "/voiceover", null],
   // Dialogue speaker registry (migration 148) — same permission split as
   // grammar-examples above: read/write is content management, delete is
   // owner-only.
