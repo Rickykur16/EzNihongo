@@ -2,6 +2,7 @@
 import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { resolveModel, resolveVoice, ttsWithTimestamps, tts } from './elevenlabs.mjs';
 import { findPhoto } from './photos.mjs';
@@ -24,16 +25,36 @@ async function photoFor(dir, name, query, credits) {
   return path.resolve(file);
 }
 
-async function voice(dir, scenes) {
+export async function voice(dir, scenes) {
   const modelId = await resolveModel();
   const voiceId = await resolveVoice();
   console.log(`  suara: model ${modelId}, voice ${voiceId}`);
   const audioPath = path.join(dir, 'vo.mp3');
+  const { text } = joinVo(scenes);
+  // /render ulang (mis. setelah gagal render) tidak perlu bayar suara lagi
+  // selama teks suara, model, dan voice-nya sama.
+  const key = createHash('sha256').update(JSON.stringify([text, modelId, voiceId])).digest('hex');
+  const cached = path.join(dir, 'voice-cache.json');
   try {
-    const { text } = joinVo(scenes);
+    const c = JSON.parse(await fs.readFile(cached, 'utf8'));
+    if (c.key === key && existsSync(audioPath)) {
+      console.log('  suara: memakai hasil sebelumnya (teks tidak berubah)');
+      return { audioPath, timings: c.alignment ? sceneTimings(scenes, c.alignment) : timingsFromDurations(scenes, c.durations) };
+    }
+  } catch {
+    // Hasil dari versi lama (tanpa voice-cache.json): alignment menyimpan teks yang dikirim.
+    const old = JSON.parse(await fs.readFile(path.join(dir, 'alignment.json'), 'utf8').catch(() => 'null'));
+    if (old?.characters?.join('') === text && existsSync(audioPath)) {
+      console.log('  suara: memakai hasil sebelumnya (teks tidak berubah)');
+      await fs.writeFile(cached, JSON.stringify({ key, alignment: old }));
+      return { audioPath, timings: sceneTimings(scenes, old) };
+    }
+  }
+  try {
     const { audio, alignment } = await ttsWithTimestamps(text, { voiceId, modelId });
     await fs.writeFile(audioPath, audio);
     await fs.writeFile(path.join(dir, 'alignment.json'), JSON.stringify(alignment));
+    await fs.writeFile(cached, JSON.stringify({ key, alignment }));
     return { audioPath, timings: sceneTimings(scenes, alignment) };
   } catch (e) {
     if (!e.status || e.status >= 500) throw e;
@@ -51,6 +72,7 @@ async function voice(dir, scenes) {
     execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=mono', '-t', '0.15', '-q:a', '9', gap]);
     await fs.writeFile(list, parts.map((p, i) => `file '${path.resolve(p)}'` + (i < parts.length - 1 ? `\nfile '${path.resolve(gap)}'` : '')).join('\n'));
     execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', list, '-c:a', 'libmp3lame', '-b:a', '128k', audioPath]);
+    await fs.writeFile(cached, JSON.stringify({ key, durations }));
     return { audioPath, timings: timingsFromDurations(scenes, durations) };
   }
 }
