@@ -3,5 +3,6 @@
 #
 # Ide konten: Senin & Kamis jam 08:00
 0 8 * * 1,4  cd /var/www/eznihongo/marketing/tiktok-generator && /usr/bin/env node src/cli.mjs ideas --notify >> out/cron.log 2>&1
-# Pemindaian berita harian jam 07:30 — diam kecuali ada berita besar
-30 7 * * *   cd /var/www/eznihongo/marketing/tiktok-generator && /usr/bin/env node src/cli.mjs scan --notify >> out/cron.log 2>&1
+#
+# Pemindaian berita SENGAJA tidak dijadwalkan (keputusan pemilik: hanya bila disuruh).
+# Jalankan manual lewat Telegram: /berita

@@ -37,9 +37,10 @@ Jaringan yang harus bisa diakses: `api.anthropic.com`, `api.elevenlabs.io`,
 3. Pasang jadwal dari `deploy/crontab.txt`:
    - **Ide konten Senin & Kamis 08:00.** Dua kali 5 ide cukup untuk ±3–4 video/minggu tanpa
      membuat review jadi asal setuju.
-   - **Pemindaian berita harian 07:30 yang diam.** Telegram hanya menerima pesan bila ada berita
-     besar (aturan visa/SSW/Ikusei Shūrō baru, tur rekrutmen untuk pekerja Indonesia, jadwal ujian,
-     kesepakatan pemerintah). Berita yang sudah dilaporkan tidak dikirim ulang (`out/scan-seen.json`).
+   - **Pemindaian berita tidak dijadwalkan** (hemat biaya API). Jalankan bila perlu dengan `/berita`
+     di Telegram: hanya melaporkan berita besar (aturan visa/SSW/Ikusei Shūrō baru, tur rekrutmen untuk
+     pekerja Indonesia, jadwal ujian, kesepakatan pemerintah). Berita yang sudah dilaporkan tidak
+     dikirim ulang (`out/scan-seen.json`).
 4. Di Telegram: balas `/buat <nomor>` → bot mengirim ringkasan naskah + `review.md`.
    Kalau oke, balas `/render` → bot mengirim video + cover. Cek dulu, baru posting.
 
