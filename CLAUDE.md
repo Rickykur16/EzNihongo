@@ -94,8 +94,14 @@
   mengunci "beranda tidak mengambil data `/api/admin/*`" — dilonggarkan HANYA untuk
   `/api/admin/orders/summary`; (3) `admin-boot.test.js` memotong sumber, jadi
   start/stop/renderOrderAlert di-stub di sana, logikanya diuji `admin-order-alerts.test.js`.
+  **Telegram ikut mengabari pesanan BARU** (dulu cuma bukti transfer):
+  `notifyAdminNewOrder` di `routes/orders.js`, hanya saat INSERT (bukan saat pesanan
+  lama dibuka ulang `alreadyOpen`), tanpa nama/email siswa (sama dengan pesan bukti),
+  tautan `admin.html#view=tab:orders`. SENGAJA tidak di-`await` — `notifyAdmin` tidak
+  punya timeout; diuji dengan Telegram palsu yang lambat 3 dtk: checkout tetap ~117 ms.
   **Belum diverifikasi**: notifikasi desktop sungguhan (headless menolak izin) dan
-  Safari. Notifikasi hanya jalan selama Ruang Kerja terbuka — tidak ada push server.
+  Safari. Notifikasi di Ruang Kerja hanya jalan selama halamannya terbuka — tidak ada
+  push server (yang sampai ke HP saat Ruang Kerja tertutup hanya Telegram).
 
 - **Konsep "jawaban berbantuan" (Maneko) DIHAPUS dari bukti belajar** — user: "nambah
   ribet dan nambah bug". Dulu jawaban yang jatuh di jendela paparan tutor (24 jam untuk

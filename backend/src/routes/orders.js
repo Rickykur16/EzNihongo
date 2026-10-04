@@ -64,6 +64,21 @@ async function notifyAdminNewProof(order) {
   ].join('\n'));
 }
 
+// Pesanan baru juga dikabarkan, bukan cuma bukti transfer: tanpa ini admin
+// tidak tahu ada siswa yang sedang menunggu instruksi/konfirmasi sampai bukti
+// diunggah. Sengaja tanpa nama/email siswa — sama seperti pesan bukti, detail
+// orangnya dibuka di Ruang Kerja, bukan disebar ke chat.
+function notifyAdminNewOrder(order) {
+  const amount = Number(order.amount_idr) || 0;
+  return notifyAdmin([
+    '🛒 Pesanan baru (menunggu transfer)',
+    `Pesanan: ${order.order_number}`,
+    `Kursus: ${order.course_title_snapshot}`,
+    `Nominal: Rp ${amount.toLocaleString('id-ID')}`,
+    'https://eznihongo.com/admin.html#view=tab:orders',
+  ].join('\n'));
+}
+
 function serializeOrder(order) {
   return {
     id: order.id,
@@ -185,6 +200,9 @@ router.post('/orders', asyncHandler(async (req, res) => {
     throw new Error('order_number_generation_failed');
   });
 
+  // Tidak di-await: checkout siswa tidak boleh menunggu Telegram (notifyAdmin
+  // tidak punya timeout dan tidak pernah melempar error).
+  if (!alreadyOpen) void notifyAdminNewOrder(order);
   const bankAccounts = await getBankAccounts();
   res.status(alreadyOpen ? 200 : 201).json({
     order: serializeOrder({ ...order, course_slug: course.slug }),
