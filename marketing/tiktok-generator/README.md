@@ -12,7 +12,7 @@ npm run build                 suara (ElevenLabs) + foto (Pixabay/Pexels) + rende
 ```
 
 Lewat Telegram (`npm run bot`) alurnya sama: `/ide` → `/buat 2` (atau `/topik <topik sendiri>`) → (kirim foto, opsional) → `/render`,
-dan ide bisa dikirim otomatis tiap minggu (lihat **Otomatis mingguan**).
+semua berjalan hanya bila disuruh (lihat **Bot Telegram**).
 
 ## Pemasangan
 
@@ -28,20 +28,21 @@ cp .env.example .env              # isi API key + CONTENT_MODEL
 Jaringan yang harus bisa diakses: `api.anthropic.com`, `api.elevenlabs.io`,
 `pixabay.com` (atau `api.pexels.com` + `images.pexels.com`), `fonts.googleapis.com`, `fonts.gstatic.com`.
 
-## Otomatis mingguan (Telegram)
+## Bot Telegram (semua manual)
 
-1. Isi `TELEGRAM_BOT_TOKEN` dan `TELEGRAM_ADMIN_CHAT_ID` di `.env`. Bot yang sama dengan notifikasi
-   admin backend boleh dipakai, asal bot itu tidak memakai webhook (getUpdates akan bentrok).
-   Hanya chat admin itu yang dilayani bot; pesan dari orang lain diabaikan.
+Tidak ada jadwal otomatis: riset hanya berjalan bila disuruh, jadi biaya API hanya keluar saat dipakai.
+`deploy/crontab.txt` sengaja kosong (berisi contoh kalau suatu saat ingin otomatis lagi).
+
+1. Isi `TELEGRAM_BOT_TOKEN` dan `TELEGRAM_ADMIN_CHAT_ID` di `.env`. Hanya chat admin itu yang dilayani bot;
+   pesan dari orang lain diabaikan.
 2. Jalankan bot terus-menerus: `deploy/tiktok-bot.service` (systemd; petunjuk di dalam file).
-3. Pasang jadwal dari `deploy/crontab.txt`:
-   - **Ide konten Senin & Kamis 08:00.** Dua kali 5 ide cukup untuk ±3–4 video/minggu tanpa
-     membuat review jadi asal setuju.
-   - **Pemindaian berita harian 07:30 yang diam.** Telegram hanya menerima pesan bila ada berita
-     besar (aturan visa/SSW/Ikusei Shūrō baru, tur rekrutmen untuk pekerja Indonesia, jadwal ujian,
-     kesepakatan pemerintah). Berita yang sudah dilaporkan tidak dikirim ulang (`out/scan-seen.json`).
-4. Di Telegram: balas `/buat <nomor>` → bot mengirim ringkasan naskah + `review.md`.
-   Kalau oke, balas `/render` → bot mengirim video + cover. Cek dulu, baru posting.
+3. Perintah:
+   - `/ide`: Claude riset berita & usulkan 5 ide konten.
+   - `/berita`: cek berita besar 48 jam terakhir (aturan visa/SSW/Ikusei Shūrō, rekrutmen untuk pekerja
+     Indonesia, jadwal ujian, kesepakatan pemerintah). Yang sudah dilaporkan tidak diulang.
+   - `/buat <nomor>` atau `/topik <teks>`: riset + naskah → ringkasan, `review.md`, daftar slot foto.
+   - Kirim foto (caption = nomor slot) · `/foto` untuk status slot.
+   - `/render`: suara + foto + video → dikirim ke Telegram. Cek dulu, baru posting.
 
 Ide yang sudah dibuat dicatat di `out/history.json` supaya riset berikutnya tidak mengulang.
 

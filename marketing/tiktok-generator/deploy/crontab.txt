@@ -1,7 +1,8 @@
-# Jadwal generator TikTok (waktu server; cek `timedatectl` — contoh ini untuk WIB/Asia/Jakarta).
-# Pasang dengan: crontab -e  lalu tempel baris di bawah (sesuaikan path).
+# Jadwal generator TikTok
 #
-# Ide konten: Senin & Kamis jam 08:00
-0 8 * * 1,4  cd /var/www/eznihongo/marketing/tiktok-generator && /usr/bin/env node src/cli.mjs ideas --notify >> out/cron.log 2>&1
-# Pemindaian berita harian jam 07:30 — diam kecuali ada berita besar
-30 7 * * *   cd /var/www/eznihongo/marketing/tiktok-generator && /usr/bin/env node src/cli.mjs scan --notify >> out/cron.log 2>&1
+# SENGAJA KOSONG: keputusan pemilik, semua riset hanya berjalan bila disuruh lewat Telegram
+# (/ide, /berita, /buat, /topik), supaya biaya API hanya keluar saat dipakai.
+#
+# Kalau suatu saat ingin otomatis lagi, contoh (waktu server, cek `timedatectl`):
+# 0 8 * * 1,4  cd /var/www/eznihongo/marketing/tiktok-generator && /usr/bin/env node src/cli.mjs ideas --notify >> out/cron.log 2>&1
+# 30 7 * * *   cd /var/www/eznihongo/marketing/tiktok-generator && /usr/bin/env node src/cli.mjs scan --notify >> out/cron.log 2>&1

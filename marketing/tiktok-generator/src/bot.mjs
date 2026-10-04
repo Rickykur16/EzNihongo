@@ -7,6 +7,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { ideas, ideasMessage, loadIdea, remember } from './ideas.mjs';
 import { plan, validateScript } from './plan.mjs';
+import { scan, scanMessage } from './scan.mjs';
 import { build } from './build.mjs';
 import { adminChat, downloadFile, getUpdates, sendFile, sendText, telegramEnabled } from './telegram.mjs';
 import { photoSlots, photoStatus, pickSlot } from './photoslots.mjs';
@@ -71,8 +72,13 @@ const COMMANDS = {
     await sendText(`📌 Komentar sematan:\n${script.pinned_comment}\n\nCek video sebelum posting, terutama fakta bertanda ⚠.`);
     await remember(OUT, script.title);
   },
+  async berita() {
+    await sendText('🔎 Cek berita besar 48 jam terakhir (1–3 menit)…');
+    const items = await scan({ outRoot: OUT });
+    await sendText(items.length ? scanMessage(items) : '✅ Tidak ada berita besar baru dalam 48 jam terakhir.');
+  },
   async status() {
-    return sendText(busy ? `⏳ Sedang: ${busy}` : '✅ Siap. Perintah: /ide, /buat <n>, /topik <teks>, /foto, /render — kirim foto ke sini untuk naskah terakhir');
+    return sendText(busy ? `⏳ Sedang: ${busy}` : '✅ Siap. Perintah: /ide, /berita, /buat <n>, /topik <teks>, /foto, /render — kirim foto ke sini untuk naskah terakhir');
   },
 };
 COMMANDS.start = COMMANDS.bantuan = COMMANDS.help = COMMANDS.status;
@@ -107,7 +113,7 @@ export async function handle(msg) {
     return savePhoto(msg).catch((e) => sendText(`✖ Gagal menyimpan foto: ${e.message}`));
   }
   const m = /^\/(\w+)(?:@\w+)?\s*(.*)$/s.exec(msg.text || '');
-  if (!m || !COMMANDS[m[1]]) return sendText('Perintah: /ide, /buat <n>, /topik <teks>, /foto, /render, /status — atau kirim foto untuk naskah terakhir');
+  if (!m || !COMMANDS[m[1]]) return sendText('Perintah: /ide, /berita, /buat <n>, /topik <teks>, /foto, /render, /status — atau kirim foto untuk naskah terakhir');
   const [, cmd, rawArg] = m;
   const arg = rawArg.trim();
   const wrong = USAGE[cmd]?.(arg);
