@@ -30,6 +30,7 @@ async function latest(name) {
 
 const COMMANDS = {
   async ide() {
+    await sendText('🔎 Riset berita & ide konten (2–5 menit). Kirim /status untuk cek.');
     const { dir, list } = await ideas({ outRoot: OUT });
     await sendText(ideasMessage(list));
     await sendFile(path.join(dir, 'ideas.md'), { caption: 'Detail ide + sumber' });
