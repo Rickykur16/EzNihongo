@@ -1,0 +1,95 @@
+/* ── Formulir bersama: unggah bukti (courses/order.html) + data pendaftaran
+   (src/registration-form.js profileFieldsHtml — checkout DAN dashboard) ──
+   Dipindah apa adanya dari courses/course.css.
+   Highest-friction steps in the checkout flow, previously rendered with
+   bare browser defaults — .field/.field-row had no rules anywhere. */
+.field { margin-bottom: 14px; }
+.field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-700);
+  margin-bottom: 6px;
+}
+.field input:not([type="checkbox"]),
+.field select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--paper-300);
+  border-radius: var(--radius-sm);
+  background: var(--surface-white);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink-900);
+  box-sizing: border-box;
+  min-height: 44px;
+}
+.field input:not([type="checkbox"]):focus-visible,
+.field select:focus-visible {
+  border-color: var(--learning-blue-700);
+  outline: 3px solid var(--learning-blue-700);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px var(--surface-white);
+}
+.field input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--learning-blue-700); }
+.field input[type="file"] { padding: 7px 10px; }
+.field input::placeholder { color: var(--ink-700); opacity: 1; }
+.field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+/* Questions stay grouped and roomy within the existing checkout surface. */
+#c-profile-fields { margin: 24px 0 20px; border-top: 1px solid var(--paper-300); padding-top: 24px; }
+.c-profile-intro h2 { margin: 0 0 8px; font-size: 20px; }
+.c-profile-intro p { margin: 0 0 10px; color: var(--ink-700); font-size: 14px; line-height: 1.65; }
+.c-profile-intro .c-field-hint { font-size: 12px; }
+.c-profile-section { border: 0; padding: 0; margin: 24px 0 0; min-width: 0; }
+.c-profile-section legend { width: 100%; padding: 0 0 10px; margin-bottom: 14px; border-bottom: 1px solid var(--paper-300); font-size: 14px; line-height: 1.5; font-weight: 700; color: var(--learning-blue-900); }
+#c-profile-fields .field label { font-size: 14px; line-height: 1.45; }
+#c-profile-fields input:not([type="checkbox"]), #c-profile-fields select { font-size: 16px; min-width: 0; }
+#c-profile-fields .field[hidden], .c-field-error[hidden] { display: none; }
+.c-field-hint { margin: 6px 0 0; color: var(--ink-700); font-size: 12px; line-height: 1.5; }
+.c-field-error { margin: 6px 0 0; color: var(--danger); font-size: 13px; line-height: 1.5; }
+#c-profile-fields [aria-invalid="true"] { border-color: var(--danger); }
+.c-optional { font-weight: 400; }
+.c-consent-field { margin-top: 20px; }
+.c-consent-row { display: flex; align-items: flex-start; gap: 10px; }
+.c-consent-row input { margin: 2px 0 0; }
+#c-profile-fields .c-consent-row label { margin: 0; font-size: 13px; line-height: 1.65; font-weight: 400; }
+.c-consent-row a { color: var(--learning-blue-700); }
+@media (max-width: 480px) {
+  .field-row { grid-template-columns: 1fr; }
+}
+
+/* ── Dashboard: formulir pendaftaran di layar "Belum ada kelas aktif" ── */
+.state-card.register-card { max-width: 760px; }
+.register-form { margin-top: 20px; text-align: left; }
+.register-form .reg-course { margin-top: 0; }
+.reg-course-option {
+  display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 12px 14px; margin-bottom: 10px;
+  border: 1px solid var(--paper-300); border-radius: var(--radius-sm); background: var(--surface-white); cursor: pointer;
+}
+.reg-course-option:has(input:checked) { border-color: var(--learning-blue-700); box-shadow: inset 0 0 0 1px var(--learning-blue-700); }
+.reg-course-option input { width: 20px; height: 20px; margin: 0; flex-shrink: 0; accent-color: var(--learning-blue-700); }
+.reg-course-option span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.reg-course-option strong { font-size: 15px; color: var(--ink-900); }
+.reg-course-option small { font-size: 13px; color: var(--ink-700); }
+.register-form #c-profile-fields { margin-top: 20px; }
+.register-form .primary { width: 100%; margin-top: 8px; }
+.register-form .reg-status:empty { display: none; }
+.wa-chat {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 14px; padding: 10px 16px;
+  border-radius: var(--radius-sm); background: #15803d; color: #fff; font-weight: 700; font-size: 14px; text-decoration: none;
+}
+.wa-chat:hover { background: #166534; }
+.wa-chat:focus-visible { outline: 3px solid var(--learning-blue-700); outline-offset: 3px; }
+
+/* Siswa tanpa kelas aktif: menu kelas disembunyikan (dashboard.js memasang
+   class ini), termasuk bilah bawah di HP beserta ruang kosong yang disiapkan
+   untuknya. Logo dan tombol Keluar tetap. */
+.no-active-course .student-nav nav { display: none; }
+@media (max-width: 760px) {
+  body.no-active-course { padding-bottom: 0; }
+}

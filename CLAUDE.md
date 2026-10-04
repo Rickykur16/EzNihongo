@@ -71,6 +71,71 @@
 
 ## Konvensi penting
 
+- **Formulir pendaftaran di layar "Belum ada kelas aktif" (dashboard)** — user: "saat
+  customer login dengan akun google, jika belom di acc kan ada notif tidak ada kelas aktif
+  kan?, sekarang buat agar ada form untuk pendaftarannya muncul disitu". Keputusan user
+  lewat pertanyaan: kirim = pilih kelas → alur checkout biasa (berbayar → pesanan +
+  instruksi transfer, gratis → langsung aktif), dan form DISEMBUNYIKAN kalau siswa sudah
+  punya pesanan berjalan (`pending_payment`/`awaiting_review`/`rejected`, status efektif
+  dari `/orders/me`, jadi pesanan kedaluwarsa tidak menyembunyikannya) — yang tampil
+  hanya kalimat status + banner "Pesanan Saya". **Formulirnya TIDAK disalin**: seluruh
+  pertanyaan, validasi, pesan galat, dan urutan simpan→pesanan dipindah apa adanya dari
+  `courses/course.js` ke `src/registration-form.js` (skrip biasa, deklarasi global,
+  id tetap `c-…`; `profileFieldsHtml({privacyHref})`, `setupProfileFields(profile, formId)`,
+  `submitCourseRegistration(course, {needsProfile,onStep})` → `{kind:'order'|'enrolled'}`,
+  `registrationErrorMessage(code)`); checkout dan dashboard sama-sama memakainya. Gaya
+  `.field`/`.c-profile-*`/`.c-field-*` dipindah dari `courses/course.css` ke
+  `styles/registration-form.css` (dimuat detail.html, order.html — form unggah bukti
+  memakai `.field` — dan dashboard.html); `.c-wrap--profile` tetap di course.css. Daftar
+  kelas = `/courses` yang `is_available !== false` dan (`is_free === true` ATAU
+  `is_free === false` ber-harga) — cermin syarat `/enrollments` dan `/orders`; `is_free`
+  NULL (belum diklasifikasi) tidak ditawarkan. **Jebakan tes**: `const` tingkat atas skrip
+  tidak menjadi properti konteks `vm` — baca lewat `vm.runInContext('NAMA', ctx)`.
+  **Divalidasi**: E2E Chromium+backend+Postgres (siswa baru → form + data → pesanan →
+  `order.html`; kembali ke dashboard → form hilang, banner tampil; profil lengkap → hanya
+  pilih kelas; kelas gratis → dashboard kelas aktif; HP 390 px tanpa luber) + regresi
+  checkout lama (validasi, pesanan, tautan privasi `../`, gaya form unggah bukti);
+  `registration-form.test.js` (kode asli, mutasi tertangkap); `npm test` hijau.
+  **Susulan (user: "Yaa, lalu ada tombol wa untuk chat")**: selama siswa belum punya
+  kelas, `dashboard.js` memasang `body.no-active-course` → menu Belajar/Review/Live/Progres
+  disembunyikan (di HP itu bilah bawah fixed, ruang `padding-bottom`-nya ikut dilepas);
+  logo + Keluar tetap. Tombol "Chat admin via WhatsApp" (nomor yang sama dengan 6 tempat
+  lain) tampil di layar itu baik saat form maupun saat pesanan berjalan, pesan pembuka
+  berisi email akun yang login. Hijau `#15803d`, BUKAN `#25D366` — teks putih di atas
+  hijau WhatsApp asli kontrasnya ~2:1.
+
+- **Notifikasi pesanan di Ruang Kerja (`admin.html`)** — user: "Buatkan notif untuk
+  ruang kerja juga agar tau", setelah menyangka pesanan tidak masuk admin. Pesanannya
+  SEBENARNYA masuk (diuji end-to-end); yang menyesatkan: filter bawaan tab Pesanan =
+  "Menunggu Verifikasi", sedangkan pesanan baru berstatus "Menunggu Transfer" sampai
+  bukti diunggah (dan Telegram juga baru dikirim saat bukti diunggah). Filter bawaan
+  SENGAJA tidak diubah. Yang ditambahkan: `GET /admin/orders/summary` (read-only,
+  `legacy.finance` sama dengan daftar pesanan, didaftarkan SEBELUM `/orders/:id`;
+  hitungan `pending_payment`/`awaiting_review` yang belum lewat `expires_at` + 20
+  aktivitas terbaru, `activityAt` = waktu bukti terakhir untuk yang menunggu
+  verifikasi). Ruang Kerja mem-poll tiap 60 dtk (+ saat tab kembali terlihat): badge di
+  menu Pesanan, grup Finance, dan tombol "Menu divisi" HP (merah kalau ada yang menunggu
+  verifikasi), kartu di Ringkasan dengan tombol yang langsung memasang filter, toast
+  per aktivitas baru (klik = buka detail pesanan), judul tab `(n)`, dan notifikasi
+  desktop opsional (tombol 🔔, hanya saat tab tidak terlihat). "Sudah dilihat" =
+  localStorage per akun (`ez_admin_orders_seen_at:<userId>`), ditandai di
+  `loadOrders()`; kunjungan pertama di browser menandai semua yang ada sebagai
+  diketahui (tanpa banjir toast). **Jebakan**: (1) `bootAdmin()` dipanggil sebelum
+  skrip selesai dibaca — `let`/`const` state notifikasi WAJIB dideklarasikan di blok
+  global atas (dekat `adminBootRequest`), kalau tidak TDZ membuat seluruh Ruang Kerja
+  kosong (ketahuan lewat Chromium, bukan tes vm); (2) `admin-workspace.test.js`
+  mengunci "beranda tidak mengambil data `/api/admin/*`" — dilonggarkan HANYA untuk
+  `/api/admin/orders/summary`; (3) `admin-boot.test.js` memotong sumber, jadi
+  start/stop/renderOrderAlert di-stub di sana, logikanya diuji `admin-order-alerts.test.js`.
+  **Telegram ikut mengabari pesanan BARU** (dulu cuma bukti transfer):
+  `notifyAdminNewOrder` di `routes/orders.js`, hanya saat INSERT (bukan saat pesanan
+  lama dibuka ulang `alreadyOpen`), tanpa nama/email siswa (sama dengan pesan bukti),
+  tautan `admin.html#view=tab:orders`. SENGAJA tidak di-`await` — `notifyAdmin` tidak
+  punya timeout; diuji dengan Telegram palsu yang lambat 3 dtk: checkout tetap ~117 ms.
+  **Belum diverifikasi**: notifikasi desktop sungguhan (headless menolak izin) dan
+  Safari. Notifikasi di Ruang Kerja hanya jalan selama halamannya terbuka — tidak ada
+  push server (yang sampai ke HP saat Ruang Kerja tertutup hanya Telegram).
+
 - **Konsep "jawaban berbantuan" (Maneko) DIHAPUS dari bukti belajar** — user: "nambah
   ribet dan nambah bug". Dulu jawaban yang jatuh di jendela paparan tutor (24 jam untuk
   petunjuk Smart Review, 30 menit untuk chat tutor) dibuang tanpa menulis state FSRS,

@@ -88,6 +88,138 @@
     </a>`).join('');
     app.insertAdjacentHTML('afterbegin', `<section class="card pending-order-banner"><div class="eyebrow">PESANAN SAYA</div>${html}</section>`);
   }
+  // Siswa yang masuk lewat Google tapi belum punya kelas aktif dulu cuma
+  // melihat "Belum ada kelas aktif" lalu buntu. Sekarang formulir pendaftaran
+  // muncul di sini: pilih kelas + data pendaftaran (formulir & alur kirim yang
+  // SAMA dengan checkout, src/registration-form.js) → kelas berbayar jadi
+  // pesanan transfer, kelas gratis langsung aktif. Kalau sudah ada pesanan
+  // yang masih berjalan, form TIDAK ditampilkan (status ada di banner "Pesanan
+  // Saya") supaya tidak terbentuk pesanan dobel.
+  const formatRupiah = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
+  function registrationPriceLabel(course) {
+    if (course.is_free === true) return 'Gratis';
+    const price = course.price_label || (course.price_idr ? formatRupiah(course.price_idr) : '');
+    return [price, course.period_label].filter(Boolean).join(' ');
+  }
+  // Cermin syarat server: POST /enrollments hanya untuk is_free=TRUE, POST
+  // /orders hanya untuk is_free=FALSE ber-harga; is_free NULL belum diklasifikasi.
+  const registrableCourse = (course) => course && course.is_available !== false
+    && (course.is_free === true || (course.is_free === false && Number(course.price_idr) > 0));
+
+  // Tombol chat admin di layar pendaftaran. Pesan pembuka menyertakan email akun
+  // yang sedang login supaya admin langsung tahu akun mana yang dimaksud — kasus
+  // "sudah diberi akses tapi tidak bisa masuk" hampir selalu soal akun yang beda.
+  function whatsappChatHtml() {
+    const email = signedInUser?.email ? ` Email akun saya: ${signedInUser.email}` : '';
+    const text = `Halo admin EzNihongo, saya ingin bertanya tentang pendaftaran kelas.${email}`;
+    return `<a class="wa-chat" href="${RENEW_WA}?text=${encodeURIComponent(text)}" target="_blank" rel="noopener"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4a.5.5 0 0 0 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 2.9 2.9 0 0 0-.9 2.2 5 5 0 0 0 1 2.7 11.5 11.5 0 0 0 4.4 3.9c1.6.7 2.3.8 3.1.6a2.6 2.6 0 0 0 1.7-1.2 2.1 2.1 0 0 0 .2-1.2c-.1-.1-.3-.2-.5-.3Z"/></svg>Chat admin via WhatsApp</a>`;
+  }
+
+  async function renderRegistration() {
+    const slot = document.getElementById('register-slot');
+    const lead = document.getElementById('register-lead');
+    if (!slot) return;
+    if (typeof submitCourseRegistration !== 'function') { slot.innerHTML = '<a class="primary" href="welcome.html">Buka Belajar</a>'; return; }
+    let orders, courses, profile;
+    try {
+      [orders, courses, profile] = await Promise.all([
+        get('/orders/me').then((body) => body.orders || []),
+        get('/courses').then((body) => (body.courses || []).filter(registrableCourse)),
+        // Gagal dibaca = tetap tanyakan datanya (fail-closed, sama dengan checkout).
+        get('/profile/marketing').catch(() => ({})),
+      ]);
+    } catch {
+      if (!slot.isConnected) return;
+      slot.innerHTML = '<p class="muted">Formulir pendaftaran belum dapat dimuat.</p><button class="secondary" type="button" id="register-retry">Coba lagi</button>';
+      slot.querySelector('#register-retry').addEventListener('click', () => { slot.innerHTML = '<p class="muted">Memuat formulir pendaftaran…</p>'; renderRegistration(); });
+      return;
+    }
+    if (!slot.isConnected) return;
+    if (orders.some((order) => ACTIONABLE_ORDER_STATUSES[order.status])) {
+      lead.textContent = 'Pesananmu sedang diproses. Kelas akan aktif setelah pembayaran diverifikasi admin — lihat statusnya di "Pesanan Saya" di atas.';
+      slot.innerHTML = '';
+      return;
+    }
+    if (!courses.length) {
+      lead.textContent = 'Belum ada kelas yang dibuka untuk pendaftaran saat ini.';
+      slot.innerHTML = '';
+      return;
+    }
+    profile = { fullName: signedInUser?.fullName || signedInUser?.full_name || '', email: signedInUser?.email || '', ...profile };
+    let needsProfile = !profile.hasProfile || profile.needsUpdate === true;
+    lead.textContent = 'Daftar kelas lewat formulir di bawah ini. Kelas berbayar akan dibuatkan pesanan dan instruksi transfer; kelasmu aktif setelah pembayaran diverifikasi.';
+    const single = courses.length === 1;
+    slot.innerHTML = `<form id="reg-form" class="register-form">
+      <fieldset class="c-profile-section reg-course"><legend>Pilih kelas</legend>
+        ${courses.map((course) => `<label class="reg-course-option"><input type="radio" name="reg-course" value="${esc(course.slug)}"${single ? ' checked' : ''}><span><strong>${esc(course.title || course.slug)}</strong><small>${esc(registrationPriceLabel(course))}</small></span></label>`).join('')}
+        <p class="c-field-error" id="reg-course-error" hidden></p>
+      </fieldset>
+      <div id="reg-profile-slot"></div>
+      <button class="primary" id="reg-submit" type="submit">Buat Pesanan →</button>
+      <p class="muted reg-status" id="reg-status" role="status"></p>
+      <p class="c-field-error" id="reg-error" role="alert" hidden></p>
+    </form>`;
+    const form = slot.querySelector('#reg-form');
+    const btn = form.querySelector('#reg-submit');
+    const status = form.querySelector('#reg-status');
+    const error = form.querySelector('#reg-error');
+    const courseError = form.querySelector('#reg-course-error');
+    const selected = () => courses.find((course) => course.slug === form.querySelector('input[name="reg-course"]:checked')?.value);
+    const submitLabel = () => (selected()?.is_free === true ? 'Daftar Kelas Gratis →' : 'Buat Pesanan →');
+    btn.textContent = submitLabel();
+    form.querySelectorAll('input[name="reg-course"]').forEach((radio) => radio.addEventListener('change', () => {
+      courseError.hidden = true; courseError.textContent = '';
+      btn.textContent = submitLabel();
+    }));
+    const showProfileFields = () => {
+      if (document.getElementById('c-profile-fields')) return;
+      form.querySelector('#reg-profile-slot').innerHTML = profileFieldsHtml({ privacyHref: 'privacy.html' });
+      setupProfileFields(profile, 'reg-form');
+      if (profile.hasProfile) document.querySelector('.c-profile-intro p').textContent = 'Data yang pernah kamu isi sudah terisi kembali. Lengkapi pertanyaan tambahan agar informasi kelas dan pendampingan lebih sesuai dengan kebutuhanmu.';
+    };
+    if (needsProfile) showProfileFields();
+    form.noValidate = true;
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      status.textContent = ''; error.textContent = ''; error.hidden = true;
+      const course = selected();
+      const profileOk = !needsProfile || validateProfileFields();
+      if (!course) {
+        courseError.textContent = 'Pilih kelas yang ingin kamu ikuti.';
+        courseError.hidden = false;
+        form.querySelector('input[name="reg-course"]').focus();
+      }
+      if (!course || !profileOk) {
+        error.textContent = 'Periksa isian yang ditandai sebelum melanjutkan.';
+        error.hidden = false;
+        return;
+      }
+      btn.disabled = true;
+      const steps = { profile: 'Menyimpan data...', enroll: 'Memproses pendaftaran kelas...', order: 'Membuat pesanan...' };
+      try {
+        const result = await submitCourseRegistration(course, { needsProfile, onStep: (step) => { btn.textContent = steps[step]; status.textContent = steps[step]; } });
+        window.location.href = result.kind === 'enrolled'
+          ? `dashboard.html?v=${release}&course=${encodeURIComponent(course.slug)}&new=1`
+          : `courses/order.html?id=${encodeURIComponent(result.orderId)}`;
+      } catch (err) {
+        btn.disabled = false; btn.textContent = submitLabel(); status.textContent = '';
+        const fieldError = PROFILE_ERRORS[err.message];
+        if (fieldError) {
+          setProfileFieldError(...fieldError);
+          document.getElementById(fieldError[0])?.focus();
+          error.textContent = 'Periksa isian yang ditandai sebelum melanjutkan.';
+        } else if (err.message === 'registration_profile_required') {
+          needsProfile = true;
+          showProfileFields();
+          document.getElementById('c-birth-date')?.focus();
+          error.textContent = 'Lengkapi data pendaftaran di bawah ini agar kami bisa melanjutkan pendaftaran kelasmu.';
+        } else {
+          error.textContent = registrationErrorMessage(err.message);
+        }
+        error.hidden = false;
+      }
+    });
+  }
   // Sisa masa aktif kelas. Sebelumnya expires_at cuma dipakai server sebagai
   // penyaring, jadi akses siswa bisa hilang tanpa pernah ada peringatan sama
   // sekali. Ambang 14 hari dipilih supaya masih ada waktu menghubungi admin
@@ -141,8 +273,12 @@
   }
   function render(data) {
     app.removeAttribute('aria-busy');
+    // Menu Belajar/Review/Live/Progres hanya berisi "Belum ada kelas aktif" untuk
+    // siswa tanpa kelas — disembunyikan sampai kelasnya aktif (Keluar tetap ada).
+    document.body.classList.toggle('no-active-course', !data.course);
     if (!data.course) {
-      app.innerHTML = `<section class="card state-card"><div class="eyebrow">DASHBOARD</div><h1>Belum ada kelas aktif</h1><p class="muted">Kelas aktif akan muncul setelah pendaftaran selesai.</p>${ezSignedInAsHtml(signedInUser)}<a class="primary" href="welcome.html">Buka Belajar</a></section>`;
+      app.innerHTML = `<section class="card state-card register-card"><div class="eyebrow">DASHBOARD</div><h1>Belum ada kelas aktif</h1><p class="muted" id="register-lead">Kelas aktif akan muncul setelah pendaftaran selesai.</p>${ezSignedInAsHtml(signedInUser)}${whatsappChatHtml()}<div id="register-slot"><p class="muted">Memuat formulir pendaftaran…</p></div></section>`;
+      renderRegistration();
       return;
     }
     const course = data.course; const next = data.continueLearning; const review = data.review || { total: 0, byCategory: {} };

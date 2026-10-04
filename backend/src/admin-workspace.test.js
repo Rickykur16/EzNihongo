@@ -5,6 +5,9 @@ import {pathToFileURL} from 'node:url';
 import {describeLegacyStaffAccess} from './staff-capabilities.js';
 
 // All network requests are intercepted; this never opens a production session.
+// Satu-satunya data bisnis yang boleh diambil shell sebelum menu dibuka:
+// ringkasan notifikasi pesanan (hitungan + aktivitas terbaru, read-only).
+const ORDER_SUMMARY='/api/admin/orders/summary';
 if(process.env.COMPANY_BROWSER_QA==='true')test('unified admin browser regression: login, disabled Company, original editors and data preservation', {timeout:90000}, async t=>{
   const {chromium}=await import(pathToFileURL(process.env.COMPANY_PLAYWRIGHT_MODULE).href);
   const browser=await chromium.launch({executablePath:process.env.COMPANY_BROWSER_EXECUTABLE,headless:true});
@@ -45,6 +48,7 @@ if(process.env.COMPANY_BROWSER_QA==='true')test('unified admin browser regressio
         else if(path==='/api/admin/video-sources')body={sources:[]};
         else if(path===`/api/admin/lessons/${quiz.id}/quiz`)body={questions:[]};
         else if(path==='/api/admin/orders')body={orders:[],total:0};
+        else if(path===ORDER_SUMMARY)body={awaitingReview:0,pendingPayment:0,recent:[]};
         else if(path==='/api/admin/settings/bank-accounts')body={accounts:[]};
         else if(path==='/api/admin/sensei')body={sensei:[]};
         else if(path==='/api/admin/testimonials')body={testimonials:[]};
@@ -107,7 +111,7 @@ if(process.env.COMPANY_BROWSER_QA==='true')test('unified admin browser regressio
     assert.equal(await page.locator('#workspace-nav details[open]').count(),0);
     assert.equal(await page.locator('#workspace-nav summary:visible').count(),5);
     assert.equal(await page.locator('#workspace-nav [data-workspace]:visible').count(),1);
-    assert.equal(await page.getByRole('link',{name:'Panel existing',exact:true}).count(),0);assert.ok(!calls.some(p=>p.startsWith('/api/admin/')));
+    assert.equal(await page.getByRole('link',{name:'Panel existing',exact:true}).count(),0);assert.ok(!calls.some(p=>p.startsWith('/api/admin/')&&p!==ORDER_SUMMARY));
     if(process.env.COMPANY_QA_OUTPUT_DIR)await page.screenshot({path:process.env.COMPANY_QA_OUTPUT_DIR+'/eznihongo-unified-admin-desktop.png',fullPage:true});
   }));
   await t.test('division accordion opens only one group and supports keyboard without fetching business data',()=>scenario({},async({page,calls})=>{
@@ -120,7 +124,7 @@ if(process.env.COMPANY_BROWSER_QA==='true')test('unified admin browser regressio
     assert.equal(await page.locator('#workspace-nav details[open]').count(),1);
     await finance.locator('summary').focus();await page.keyboard.press('Space');
     await page.waitForFunction(()=>!document.querySelector('#workspace-nav details[open]'));
-    assert.ok(!calls.some(path=>path.startsWith('/api/admin/')));
+    assert.ok(!calls.some(path=>path.startsWith('/api/admin/')&&path!==ORDER_SUMMARY));
   }));
   await t.test('deep links and overview shortcuts reveal only the active division, including mobile',()=>scenario({entry:'/admin.html#view=tab%3Aorders'},async({page})=>{
     await page.getByText('Tidak ada pesanan untuk filter ini.',{exact:true}).waitFor();

@@ -63,6 +63,8 @@ function setup({ user = { isAdmin: true, fullName: 'Local admin' }, status = 200
     loadTestimonials: async () => {}, renderTestimonials: () => rendered.push('testimonials'),
     loadUsers: async () => {}, renderUsers: () => rendered.push('users'),
     renderAccess: () => rendered.push('access'), renderOrders: () => rendered.push('orders'),
+    // Notifikasi pesanan diuji terpisah (admin-order-alerts.test.js).
+    startOrderWatch: () => {}, stopOrderWatch: () => {}, renderOrderAlert: () => {},
     loadDiscussions: async () => {}, renderDiscussions: () => rendered.push('discussions'),
     renderTtsCachePane: () => rendered.push('tts'),
     loadLiveClasses: async () => {}, renderLiveClasses: () => rendered.push('live'),

@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="styles/tokens.css"/>
 <link rel="stylesheet" href="styles/components.css"/>
-<link rel="stylesheet" href="styles/admin-workspace.css?v=productivity-20260912"/>
+<link rel="stylesheet" href="styles/admin-workspace.css?v=order-notif-20261004"/>
 <link rel="stylesheet" href="styles/student-operations.css?v=operations-20260912"/>
 <link rel="stylesheet" href="styles/company.css?v=productivity-20260912"/>
 <style>
@@ -296,6 +296,12 @@ const ADMIN_TAB_CAPABILITIES = Object.freeze({
 let adminDataLoads = new Map();
 let adminTabRequest = 0;
 let adminBootRequest = 0;
+// Notifikasi pesanan (lihat "NOTIFIKASI PESANAN"). Dideklarasikan di sini,
+// bukan di dekat fungsinya: bootAdmin() berjalan sebelum skrip selesai dibaca,
+// jadi let/const di bawah masih di TDZ saat itu dan halaman kosong.
+const ORDER_WATCH_INTERVAL_MS = 60000;
+const WORKSPACE_TITLE = document.title;
+let orderWatch = null;
 let STATE = {
   tab: 'courses',
   courses: [],
@@ -490,6 +496,7 @@ async function bootAdmin() {
   COMPANY_ACCESS = null;
   companyMount?.close();companyMount = null;companyMountPromise = null;
   financeMount?.close();financeMount = null;
+  stopOrderWatch();
   workspaceRoutes = [];
   adminDataLoads = new Map();
   adminTabRequest++;
@@ -509,6 +516,7 @@ async function bootAdmin() {
     workspaceRoutes = EzAdminWorkspace.routes(access, COMPANY_ACCESS, canOpenAdminTab);
     if (workspaceRoutes.length === 1) { showLock('Belum ada menu yang diizinkan untuk akun ini. Hubungi pengelola untuk memeriksa akses staf.'); return; }
     renderApp();
+    startOrderWatch();
     const requested = new URLSearchParams(location.hash.slice(1)).get('view');
     await openWorkspace(workspaceRoutes.some(r=>r.key===requested)?requested:'home');
   } catch {
@@ -636,6 +644,7 @@ function notify(msg, isErr, isWarn) {
   t.addEventListener('click', remove);
   stack.appendChild(t);
   setTimeout(remove, isErr ? 7000 : (isWarn ? 12000 : 2600));
+  return t;
 }
 
 function notifyLearningWarnings(result) {
@@ -1118,7 +1127,8 @@ async function openWorkspace(key) {
   }
   if(key==='home'){
     const home=root.querySelector('#workspace-home');home.hidden=false;
-    home.innerHTML=EzAdminWorkspace.overview(workspaceRoutes);
+    home.innerHTML='<div id="order-alert-slot"></div>'+EzAdminWorkspace.overview(workspaceRoutes);
+    renderOrderAlert();
     bindWorkspaceNavigation();return;
   }
   const host=root.querySelector('#company-workspace');host.hidden=false;
@@ -9387,6 +9397,7 @@ async function loadOrders(opts = {}) {
   try {
     const d = await api(`/admin/orders?status=${encodeURIComponent(status)}&q=${encodeURIComponent(q)}&limit=100`);
     STATE.orders = d.orders || [];
+    markOrdersSeen();
   } catch (e) { notify('Gagal load pesanan: ' + e.message, true); }
 }
 
@@ -9401,6 +9412,173 @@ function renderOrders() {
   const pane = document.querySelector('[data-pane="orders"]');
   pane.innerHTML = `<h2>Pesanan</h2><div class="empty">Memuat…</div>`;
   Promise.all([loadBankAccounts(), loadOrders()]).then(renderOrdersResult);
+}
+
+// ─────────────────────────────────────────────────────────────
+// NOTIFIKASI PESANAN — supaya tim tahu ada pesanan / bukti transfer baru
+// tanpa harus membuka menu Pesanan. Polling ringan GET /admin/orders/summary
+// (read-only, izin sama dengan daftar pesanan). "Sudah dilihat" disimpan per
+// akun per browser di localStorage — itu cuma kenyamanan; sumber kebenaran
+// tetap daftar pesanan di server. Gagal fetch = diam (tidak ada toast tiap
+// menit saat jaringan putus); badge cukup tidak berubah.
+// ─────────────────────────────────────────────────────────────
+const orderTime = (value) => { const t = Date.parse(value || ''); return Number.isFinite(t) ? t : 0; };
+function orderSeenKey() { return 'ez_admin_orders_seen_at:' + (CURRENT_USER?.id || CURRENT_USER?.email || ''); }
+function readOrderSeen() { try { return localStorage.getItem(orderSeenKey()) || ''; } catch { return ''; } }
+function writeOrderSeen(iso) { try { localStorage.setItem(orderSeenKey(), iso); } catch {} }
+function newestOrderActivity(recent) {
+  return (recent || []).reduce((best, o) => (orderTime(o.activityAt) > orderTime(best) ? o.activityAt : best), '');
+}
+function unseenOrders() {
+  const seen = orderTime(readOrderSeen());
+  return (orderWatch?.summary?.recent || []).filter((o) => orderTime(o.activityAt) > seen);
+}
+
+function stopOrderWatch() {
+  if (!orderWatch) return;
+  clearInterval(orderWatch.timer);
+  document.removeEventListener('visibilitychange', orderWatch.onVisible);
+  orderWatch = null;
+  document.title = WORKSPACE_TITLE;
+}
+function startOrderWatch() {
+  stopOrderWatch();
+  if (!canOpenAdminTab('orders')) return;
+  const watch = { boot: adminBootRequest, summary: null, announced: new Set(), first: true, inFlight: null };
+  watch.onVisible = () => { if (!document.hidden) refreshOrderSummary(); };
+  watch.timer = setInterval(refreshOrderSummary, ORDER_WATCH_INTERVAL_MS);
+  document.addEventListener('visibilitychange', watch.onVisible);
+  orderWatch = watch;
+  refreshOrderSummary();
+}
+function refreshOrderSummary() {
+  const watch = orderWatch;
+  if (!watch) return Promise.resolve();
+  if (watch.inFlight) return watch.inFlight;
+  watch.inFlight = (async () => {
+    let summary;
+    try { summary = await api('/admin/orders/summary'); } catch { return; }
+    if (orderWatch !== watch || watch.boot !== adminBootRequest) return;
+    watch.summary = summary;
+    const recent = Array.isArray(summary.recent) ? summary.recent : [];
+    // Pertama kali di browser ini: anggap pesanan yang sudah ada sudah
+    // diketahui (badge tetap menghitungnya), supaya tidak banjir toast.
+    if (!readOrderSeen()) writeOrderSeen(newestOrderActivity(recent) || new Date().toISOString());
+    // Sedang membuka menu Pesanan saat halaman dimuat = sudah melihatnya.
+    if (watch.first && STATE.tab === 'orders') markOrdersSeen();
+    const fresh = unseenOrders().filter((o) => !watch.announced.has(o.id + '@' + o.activityAt));
+    fresh.forEach((o) => watch.announced.add(o.id + '@' + o.activityAt));
+    announceOrders(fresh, watch.first);
+    watch.first = false;
+    updateOrderBadges();
+    renderOrderAlert();
+  })().finally(() => { watch.inFlight = null; });
+  return watch.inFlight;
+}
+function markOrdersSeen() {
+  const newest = newestOrderActivity(orderWatch?.summary?.recent);
+  if (newest && orderTime(newest) > orderTime(readOrderSeen())) writeOrderSeen(newest);
+  updateOrderBadges();
+  renderOrderAlert();
+}
+
+function orderNoticeText(o) {
+  const who = o.user?.fullName || o.user?.email || 'Siswa';
+  return o.status === 'awaiting_review'
+    ? `Bukti transfer masuk — ${o.orderNumber} · ${who} · ${o.courseTitle}. Perlu diverifikasi.`
+    : `Pesanan baru — ${o.orderNumber} · ${who} · ${o.courseTitle} (${formatIdr(o.amountIdr)}). Menunggu siswa mentransfer.`;
+}
+function announceOrders(items, first) {
+  if (!items.length) return;
+  const one = (text, order) => {
+    const toast = notify(text + ' Klik untuk membuka.', false, true);
+    if (toast) { toast.title = 'Klik untuk membuka pesanan'; toast.addEventListener('click', () => openOrdersFromNotice(order)); }
+    desktopOrderNotify(text, order);
+  };
+  if (first || items.length > 3) {
+    one(`Ada ${items.length} aktivitas pesanan baru sejak terakhir kamu membuka Pesanan.`, null);
+    return;
+  }
+  items.forEach((o) => one(orderNoticeText(o), o));
+}
+async function openOrdersFromNotice(order) {
+  if (!canOpenAdminTab('orders')) return;
+  // Jangan menimpa jendela yang sedang dikerjakan (draft bisa hilang).
+  if (modal?.classList.contains('show')) { notify('Tutup jendela yang sedang terbuka dulu, lalu buka menu Pesanan.', false, true); return; }
+  STATE.ordersStatus = order ? order.status
+    : (orderWatch?.summary?.awaitingReview ? 'awaiting_review' : (orderWatch?.summary?.pendingPayment ? 'pending_payment' : ''));
+  const request = adminTabRequest + 1;
+  await switchTab('orders');
+  if (order && request === adminTabRequest && STATE.tab === 'orders') await openOrderDetail(order.id);
+}
+
+function desktopNotifyButtonHtml() {
+  if (!('Notification' in window) || Notification.permission !== 'default') return '';
+  return '<button type="button" class="btn btn-ghost" onclick="enableDesktopOrderNotify(this)">🔔 Aktifkan notifikasi desktop</button>';
+}
+window.enableDesktopOrderNotify = async (button) => {
+  let result = 'default';
+  try { result = await Notification.requestPermission(); } catch {}
+  if (result !== 'default') root.querySelectorAll('[onclick^="enableDesktopOrderNotify"]').forEach((b) => b.remove());
+  else button?.focus();
+  notify(result === 'granted'
+    ? 'Notifikasi desktop aktif. Pesanan baru tetap muncul walau tab ini tidak sedang dilihat, selama Ruang Kerja masih terbuka.'
+    : 'Notifikasi desktop belum diizinkan browser. Notifikasi di dalam Ruang Kerja tetap berjalan.', false, result !== 'granted');
+};
+function desktopOrderNotify(text, order) {
+  if (!document.hidden || !('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    const n = new Notification('EzNihongo · Pesanan', { body: text, tag: 'ez-order-' + (order?.id || 'summary') });
+    n.onclick = () => { window.focus(); n.close(); openOrdersFromNotice(order); };
+  } catch {} // Chrome Android butuh service worker — cukup notifikasi di dalam halaman.
+}
+
+function updateOrderBadges() {
+  const s = orderWatch?.summary;
+  const total = s ? (s.awaitingReview || 0) + (s.pendingPayment || 0) : 0;
+  const label = s ? `${s.awaitingReview || 0} menunggu verifikasi, ${s.pendingPayment || 0} menunggu transfer` : '';
+  const targets = [
+    root.querySelector('#workspace-nav [data-tab="orders"]'),
+    root.querySelector('#workspace-nav details[data-group="finance"] > summary'),
+    root.querySelector('#workspace-menu-toggle'),
+  ];
+  for (const target of targets) {
+    if (!target) continue;
+    target.querySelector(':scope > .ws-badge')?.remove();
+    if (!total) continue;
+    const badge = document.createElement('span');
+    badge.className = 'ws-badge' + (s.awaitingReview ? ' is-urgent' : '');
+    badge.textContent = total > 99 ? '99+' : String(total);
+    badge.title = label;
+    if (target.tagName === 'SUMMARY') target.insertBefore(badge, target.lastElementChild);
+    else target.appendChild(badge);
+  }
+  const unseen = unseenOrders().length;
+  document.title = unseen ? `(${unseen}) ${WORKSPACE_TITLE}` : WORKSPACE_TITLE;
+}
+function renderOrderAlert() {
+  const slot = root.querySelector('#order-alert-slot');
+  if (!slot) return;
+  const s = orderWatch?.summary;
+  const awaiting = s?.awaitingReview || 0, pending = s?.pendingPayment || 0;
+  if (!awaiting && !pending) { slot.innerHTML = ''; return; }
+  const unseen = unseenOrders().length;
+  const title = awaiting ? `${awaiting} bukti transfer menunggu verifikasi` : `${pending} pesanan menunggu transfer`;
+  const detail = awaiting
+    ? (pending ? `Juga ada ${pending} pesanan yang siswanya belum mengunggah bukti transfer.` : 'Periksa bukti lalu setujui atau tolak agar siswa mendapat akses.')
+    : 'Siswa sudah membuat pesanan tetapi belum mengunggah bukti transfer. Belum ada yang perlu disetujui.';
+  slot.innerHTML = `<section class="order-alert${awaiting ? '' : ' is-calm'}" aria-live="polite">
+    <h2>${escapeHtml(title)}</h2>
+    <p>${escapeHtml(detail)}${unseen ? ` <strong>${unseen} baru sejak terakhir dibuka.</strong>` : ''}</p>
+    <div class="order-alert-actions">
+      ${awaiting ? `<button type="button" class="btn btn-primary" data-order-filter="awaiting_review">Periksa bukti (${awaiting})</button>` : ''}
+      ${pending ? `<button type="button" class="btn btn-ghost" data-order-filter="pending_payment">Lihat menunggu transfer (${pending})</button>` : ''}
+      ${desktopNotifyButtonHtml()}
+    </div>
+  </section>`;
+  slot.querySelectorAll('[data-order-filter]').forEach((button) => {
+    button.onclick = () => { STATE.ordersStatus = button.dataset.orderFilter; switchTab('orders'); };
+  });
 }
 
 function bankAccountsCardHtml() {
@@ -9469,6 +9647,7 @@ function renderOrdersResult() {
         style="min-width:220px;" onkeydown="if(event.key==='Enter'){loadOrders({q:this.value}).then(renderOrdersResult)}">
       <button class="btn btn-ghost" onclick="loadOrders({q:document.getElementById('ord-q').value}).then(renderOrdersResult)">Cari</button>
       <button class="btn btn-ghost" onclick="loadOrders().then(renderOrdersResult)">↻ Refresh</button>
+      ${desktopNotifyButtonHtml()}
     </div>
     ${(STATE.orders || []).length === 0
       ? '<div class="empty">Tidak ada pesanan untuk filter ini.</div>'
@@ -9560,7 +9739,7 @@ window.approveOrder = async (orderId, paymentId) => {
     await api('/admin/orders/' + orderId + '/approve', { method: 'POST', body: JSON.stringify({ paymentId }) });
     notify('Pesanan disetujui — akses diberikan');
     closeModal();
-    await loadOrders(); renderOrdersResult();
+    await loadOrders(); renderOrdersResult(); refreshOrderSummary();
   } catch (err) { notifyOrderReviewError('menyetujui', err); }
 };
 window.rejectOrder = async (orderId, paymentId) => {
@@ -9570,7 +9749,7 @@ window.rejectOrder = async (orderId, paymentId) => {
     await api('/admin/orders/' + orderId + '/reject', { method: 'POST', body: JSON.stringify({ paymentId, reason }) });
     notify('Pesanan ditolak');
     closeModal();
-    await loadOrders(); renderOrdersResult();
+    await loadOrders(); renderOrdersResult(); refreshOrderSummary();
   } catch (err) { notifyOrderReviewError('menolak', err); }
 };
 
