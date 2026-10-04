@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { computeConceptMastery } from './grammar-mastery.js';
+import { deriveGrammarReviewAt } from './smart-review-grammar-schedule.js';
 import { summarizeShadow } from './grammar-mastery-shadow.js';
 import {
   computeConceptMasteryV2, compareMastery, summarizeEvidence, classifyAttempt,
@@ -18,6 +19,26 @@ const independent = (i, over = {}) => ({
   question_fingerprint: 'q' + i, ...over,
 });
 const legacy = (i, over = {}) => ({ passed: true, created_at: at(i), source: 'recognition', ...over });
+
+test('review scheduling receives the latest usable attempt result without changing mastery', () => {
+  const empty = computeConceptMastery([], NOW);
+  assert.equal(empty.lastAttemptPassed, null);
+  const firstPass = computeConceptMastery([legacy(0)], NOW);
+  assert.equal(firstPass.lastAttemptPassed, true);
+  assert.equal(firstPass.state, 'LEARNING');
+  assert.equal(firstPass.score, null);
+  assert.equal(firstPass.attempts, 1);
+  assert.equal(deriveGrammarReviewAt(firstPass), new Date(NOW + 86400000).toISOString());
+  const newestFailure = computeConceptMastery([legacy(0, { passed: false }), legacy(1)], NOW);
+  assert.equal(newestFailure.lastAttemptPassed, false);
+  assert.equal(deriveGrammarReviewAt(newestFailure), new Date(NOW + 60000).toISOString());
+  const excludedFailure = computeConceptMastery([
+    legacy(0, { passed: false, primary_error: 'transcription_issue' }), legacy(1),
+  ], NOW);
+  assert.equal(excludedFailure.lastAttemptPassed, true);
+  assert.equal(excludedFailure.lastAttemptAt, at(1));
+  assert.equal(excludedFailure.attempts, 1);
+});
 
 // ── Gerbang kebijakan ─────────────────────────────────────────────────────
 
