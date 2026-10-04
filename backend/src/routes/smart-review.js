@@ -8,7 +8,8 @@ import { recordPracticeAttemptWithState } from '../practice-service.js';
 import { loadMastery } from '../grammar-mastery.js';
 import { deriveDrills, publicDrill, arrangeIsCorrect } from '../grammar-drills.js';
 import { attemptSourceFor, primaryErrorFor } from '../bunpou-flow-service.js';
-import { REVIEW_CATEGORIES, SMART_REVIEW_SOURCE, filterReviewScope, isReviewNeeded, makeReviewQuestion, pickCompoundOwners, reviewSubjectKey, unlockedSkills, publicQuestion, reviewPriority, selectReviewCandidates, summarizeCandidates } from '../smart-review-service.js';
+import { REVIEW_CATEGORIES, SMART_REVIEW_SOURCE, availableReviewCandidates, filterReviewScope, makeReviewQuestion, pickCompoundOwners, publicQuestion, reviewPriority, selectReviewCandidates, summarizeCandidates } from '../smart-review-service.js';
+import { deriveGrammarReviewAt } from '../smart-review-grammar-schedule.js';
 import { deriveCompounds, extractKanjiCharacters, loadKanjiCatalog } from '../kanji-compounds.js';
 import { excludePlacedKana, passedKanaKinds } from '../kana-placement.js';
 
@@ -106,7 +107,20 @@ export async function buildReviewCandidates(user) {
     const words = deriveCompounds(base.item.character, base.item.compounds, rows.vocabulary.map((v) => ({ vocabulary_id: v.id, module_id: null, course_level: base.item.course_level, japanese: v.japanese, reading: v.reading, indonesian: v.indonesian, module_sort: 0, vocab_sort: 0 })), { courseLevel: base.item.course_level, moduleId: base.item.module_id, moduleSort: base.item.module_sort, kanjiCatalog: catalog }).filter((word) => extractKanjiCharacters(word.japanese).every((char) => learnedChars.has(char)));
     for (const word of words) wordEntries.push({ key: `${word.japanese}::${word.reading}`, baseId: base.item.id, hasState: WORD_DIRECTIONS.some((direction) => states.has(`kanji:${base.item.id}:${wordSkill(direction, word)}`)), base, word });
   }
-  for (const { base, word } of pickCompoundOwners(wordEntries).values()) for (const direction of WORD_DIRECTIONS) add(base, wordSkill(direction, word), { word });
+  const compoundOwners = pickCompoundOwners(wordEntries);
+  for (const { base, word } of compoundOwners.values()) for (const direction of WORD_DIRECTIONS) add(base, wordSkill(direction, word), { word });
+  // Legacy/lesson attempts may belong to another kanji containing the word.
+  // Keep the stable question owner, but do not discard the other owner's newer
+  // schedule when deciding whether this word is due again.
+  const scheduleEvidence = [];
+  for (const entry of wordEntries) {
+    if (compoundOwners.get(entry.key) === entry) continue;
+    for (const direction of WORD_DIRECTIONS) {
+      const skill = wordSkill(direction, entry.word);
+      const state = states.get(`kanji:${entry.baseId}:${skill}`);
+      if (state) scheduleEvidence.push({ ...entry.base, itemId: entry.baseId, skill, word: entry.word, state });
+    }
+  }
   if (scope.courseIds.length) {
     // Grammar review draws only on Step 1/2 drills. The Paket 2 dialogue
     // checks used to replace them for the pilot lesson; questions about a
@@ -121,9 +135,7 @@ export async function buildReviewCandidates(user) {
       // sebelum Paket 2.
       const raw = (m?.recognitionAttempts || 0) > (m?.productionAttempts || 0) ? (drills.step2 || drills.step1) : (drills.step1 || drills.step2);
       if (!raw) continue;
-      const nextReviewAt = !m || m.state === 'UNSEEN' || m.state === 'LEARNING' || m.state === 'NEEDS_PRACTICE' || m.dueReview
-        ? new Date(0).toISOString()
-        : new Date(new Date(m.lastAttemptAt).getTime() + (21 * 86400000)).toISOString();
+      const nextReviewAt = deriveGrammarReviewAt(m);
       candidates.push({ category: 'grammar', itemId: item.id, lessonId: link.lesson_id, courseId: link.course_id, skill: attemptSourceFor(raw.step), item, grammarDrill: raw, state: { attempts: m?.attempts || 0, correct: m?.passedCount || 0, streak: 0, lastSeenAt: m?.lastAttemptAt || null, nextReviewAt }, mistakes: Math.max(0, (m?.attempts || 0) - (m?.passedCount || 0)) });
     }
   }
@@ -145,24 +157,7 @@ export async function buildReviewCandidates(user) {
     wordReadings: candidates.filter((row) => row.word).map((row) => row.word.reading),
     wordMeanings: candidates.filter((row) => row.word).map((row) => row.word.indonesian),
   };
-  // Gate arah-baru: arah yang belum pernah dilatih menunggu sampai arah lain
-  // pada item yang sama benar-benar mantap (FSRS 'review').  Grammar punya
-  // model mastery sendiri dan tidak lewat user_practice_state, jadi dilewati.
-  const unlocked = unlockedSkills(candidates
-    .filter((candidate) => candidate.category !== 'grammar')
-    .map((candidate) => ({
-      key: `${candidate.category}:${candidate.itemId}:${candidate.skill}`,
-      itemType: candidate.category,
-      itemId: candidate.itemId,
-      skill: candidate.skill,
-      attempts: Number(candidate.state?.attempts) || 0,
-      fsrsState: candidate.state?.fsrsState || null,
-      // Kosakata dan kata majemuk kanji yang sama = satu kelompok gerbang.
-      group: candidate.word || candidate.category === 'vocabulary' ? reviewSubjectKey(candidate) : undefined,
-    })));
-  const gated = candidates.filter((candidate) => candidate.category === 'grammar'
-    || unlocked.has(`${candidate.category}:${candidate.itemId}:${candidate.skill}`));
-  return { candidates: gated.filter((candidate) => isReviewNeeded(candidate)), pools };
+  return { candidates: availableReviewCandidates(candidates, { scheduleEvidence }), pools };
 }
 
 function asPublic(candidate, question) { return { category: candidate.category, itemType: candidate.category, itemId: candidate.itemId, skill: candidate.skill, lessonId: candidate.lessonId, priority: reviewPriority(candidate), question }; }
