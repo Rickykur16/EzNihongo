@@ -70,7 +70,7 @@ export function computeConceptMastery(rows, now = Date.now()) {
     return {
       state: 'UNSEEN', score: null, attempts: 0, passedCount: 0,
       productionAttempts: 0, recognitionAttempts: 0,
-      lastAttemptAt: null, dueReview: false, weightedAccuracy: null, effectiveN: 0,
+      lastAttemptAt: null, lastAttemptPassed: null, dueReview: false, weightedAccuracy: null, effectiveN: 0,
     };
   }
 
@@ -131,7 +131,7 @@ export function computeConceptMastery(rows, now = Date.now()) {
   return {
     state, score, attempts, passedCount,
     productionAttempts, recognitionAttempts,
-    lastAttemptAt, dueReview,
+    lastAttemptAt, lastAttemptPassed: lastPassed, dueReview,
     weightedAccuracy: Math.round(weightedAccuracy * 1000) / 1000,
     effectiveN: Math.round(effectiveN * 100) / 100,
   };

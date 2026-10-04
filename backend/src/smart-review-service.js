@@ -1,5 +1,6 @@
 // Deterministic, content-backed Smart Review rules.  The browser only receives
 // public choices; the authoritative correct choice remains in the session row.
+import { filterScheduledReviewSubjects, reviewScheduleSubjectKeys } from './smart-review-schedule.js';
 
 const DAY = 86_400_000;
 export const REVIEW_CATEGORIES = Object.freeze(['kana', 'vocabulary', 'kanji', 'grammar']);
@@ -272,6 +273,28 @@ export function unlockedSkills(entries) {
     }
   }
   return out;
+}
+
+// Both the summary and session builder must use the same eligible subjects.
+// Read schedules before dropping future directions: their latest answer is
+// precisely what keeps an unseen or overdue sibling out of the immediate queue.
+export function availableReviewCandidates(candidates, { now = new Date(), scheduleEvidence = [] } = {}) {
+  const all = [...candidates, ...scheduleEvidence];
+  const subjectKeys = reviewScheduleSubjectKeys(all);
+  const subjectByCandidate = new Map(all.map((candidate, index) => [candidate, subjectKeys[index]]));
+  const available = new Set(filterScheduledReviewSubjects(all, { now }));
+  const scheduled = candidates.filter((candidate) => available.has(candidate));
+  const key = (candidate) => `${candidate.category}:${candidate.itemId}:${candidate.skill}`;
+  const unlocked = unlockedSkills(scheduled
+    .filter((candidate) => candidate.category !== 'grammar')
+    .map((candidate) => ({
+      key: key(candidate), itemType: candidate.category, itemId: candidate.itemId,
+      skill: candidate.skill, attempts: Number(candidate.state?.attempts) || 0,
+      fsrsState: candidate.state?.fsrsState || null,
+      group: subjectByCandidate.get(candidate),
+    })));
+  return scheduled.filter((candidate) => (candidate.category === 'grammar' || unlocked.has(key(candidate)))
+    && isReviewNeeded(candidate, now));
 }
 
 function hash(value) {
