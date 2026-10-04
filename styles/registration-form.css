@@ -79,3 +79,17 @@
 .register-form #c-profile-fields { margin-top: 20px; }
 .register-form .primary { width: 100%; margin-top: 8px; }
 .register-form .reg-status:empty { display: none; }
+.wa-chat {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 14px; padding: 10px 16px;
+  border-radius: var(--radius-sm); background: #15803d; color: #fff; font-weight: 700; font-size: 14px; text-decoration: none;
+}
+.wa-chat:hover { background: #166534; }
+.wa-chat:focus-visible { outline: 3px solid var(--learning-blue-700); outline-offset: 3px; }
+
+/* Siswa tanpa kelas aktif: menu kelas disembunyikan (dashboard.js memasang
+   class ini), termasuk bilah bawah di HP beserta ruang kosong yang disiapkan
+   untuknya. Logo dan tombol Keluar tetap. */
+.no-active-course .student-nav nav { display: none; }
+@media (max-width: 760px) {
+  body.no-active-course { padding-bottom: 0; }
+}

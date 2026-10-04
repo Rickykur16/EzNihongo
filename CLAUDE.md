@@ -96,6 +96,13 @@
   pilih kelas; kelas gratis → dashboard kelas aktif; HP 390 px tanpa luber) + regresi
   checkout lama (validasi, pesanan, tautan privasi `../`, gaya form unggah bukti);
   `registration-form.test.js` (kode asli, mutasi tertangkap); `npm test` hijau.
+  **Susulan (user: "Yaa, lalu ada tombol wa untuk chat")**: selama siswa belum punya
+  kelas, `dashboard.js` memasang `body.no-active-course` → menu Belajar/Review/Live/Progres
+  disembunyikan (di HP itu bilah bawah fixed, ruang `padding-bottom`-nya ikut dilepas);
+  logo + Keluar tetap. Tombol "Chat admin via WhatsApp" (nomor yang sama dengan 6 tempat
+  lain) tampil di layar itu baik saat form maupun saat pesanan berjalan, pesan pembuka
+  berisi email akun yang login. Hijau `#15803d`, BUKAN `#25D366` — teks putih di atas
+  hijau WhatsApp asli kontrasnya ~2:1.
 
 - **Notifikasi pesanan di Ruang Kerja (`admin.html`)** — user: "Buatkan notif untuk
   ruang kerja juga agar tau", setelah menyangka pesanan tidak masuk admin. Pesanannya
