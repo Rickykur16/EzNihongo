@@ -71,6 +71,32 @@
 
 ## Konvensi penting
 
+- **Formulir pendaftaran di layar "Belum ada kelas aktif" (dashboard)** — user: "saat
+  customer login dengan akun google, jika belom di acc kan ada notif tidak ada kelas aktif
+  kan?, sekarang buat agar ada form untuk pendaftarannya muncul disitu". Keputusan user
+  lewat pertanyaan: kirim = pilih kelas → alur checkout biasa (berbayar → pesanan +
+  instruksi transfer, gratis → langsung aktif), dan form DISEMBUNYIKAN kalau siswa sudah
+  punya pesanan berjalan (`pending_payment`/`awaiting_review`/`rejected`, status efektif
+  dari `/orders/me`, jadi pesanan kedaluwarsa tidak menyembunyikannya) — yang tampil
+  hanya kalimat status + banner "Pesanan Saya". **Formulirnya TIDAK disalin**: seluruh
+  pertanyaan, validasi, pesan galat, dan urutan simpan→pesanan dipindah apa adanya dari
+  `courses/course.js` ke `src/registration-form.js` (skrip biasa, deklarasi global,
+  id tetap `c-…`; `profileFieldsHtml({privacyHref})`, `setupProfileFields(profile, formId)`,
+  `submitCourseRegistration(course, {needsProfile,onStep})` → `{kind:'order'|'enrolled'}`,
+  `registrationErrorMessage(code)`); checkout dan dashboard sama-sama memakainya. Gaya
+  `.field`/`.c-profile-*`/`.c-field-*` dipindah dari `courses/course.css` ke
+  `styles/registration-form.css` (dimuat detail.html, order.html — form unggah bukti
+  memakai `.field` — dan dashboard.html); `.c-wrap--profile` tetap di course.css. Daftar
+  kelas = `/courses` yang `is_available !== false` dan (`is_free === true` ATAU
+  `is_free === false` ber-harga) — cermin syarat `/enrollments` dan `/orders`; `is_free`
+  NULL (belum diklasifikasi) tidak ditawarkan. **Jebakan tes**: `const` tingkat atas skrip
+  tidak menjadi properti konteks `vm` — baca lewat `vm.runInContext('NAMA', ctx)`.
+  **Divalidasi**: E2E Chromium+backend+Postgres (siswa baru → form + data → pesanan →
+  `order.html`; kembali ke dashboard → form hilang, banner tampil; profil lengkap → hanya
+  pilih kelas; kelas gratis → dashboard kelas aktif; HP 390 px tanpa luber) + regresi
+  checkout lama (validasi, pesanan, tautan privasi `../`, gaya form unggah bukti);
+  `registration-form.test.js` (kode asli, mutasi tertangkap); `npm test` hijau.
+
 - **Notifikasi pesanan di Ruang Kerja (`admin.html`)** — user: "Buatkan notif untuk
   ruang kerja juga agar tau", setelah menyangka pesanan tidak masuk admin. Pesanannya
   SEBENARNYA masuk (diuji end-to-end); yang menyesatkan: filter bawaan tab Pesanan =
