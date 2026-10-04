@@ -4,8 +4,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { SCRIPT_SCHEMA } from './schema.mjs';
 
-function modelConfig() {
-  const model = process.env.CONTENT_MODEL;
+// role 'script' = menulis naskah (CONTENT_MODEL). role 'research' = riset ide/berita
+// (RESEARCH_MODEL, jatuh ke CONTENT_MODEL bila kosong) supaya riset bisa memakai model lebih murah.
+export function modelConfig(role = 'script') {
+  const model = (role === 'research' && process.env.RESEARCH_MODEL) || process.env.CONTENT_MODEL;
   if (!model) throw new Error('CONTENT_MODEL belum diisi di .env (lihat README).');
   const fallbacks = (process.env.CONTENT_FALLBACKS || 'default') !== 'off';
   return { model, fallbacks };
@@ -13,7 +15,7 @@ function modelConfig() {
 
 // Satu panggilan streaming; mengulang otomatis bila server tool berhenti di pause_turn.
 export async function ask(client, params) {
-  const { model, fallbacks } = modelConfig();
+  const { model, fallbacks } = modelConfig(params.role);
   const messages = [...params.messages];
   for (let round = 0; round < 6; round++) {
     const req = {
@@ -77,6 +79,7 @@ export async function plan(topic, { outRoot = 'out', idea = null } = {}) {
   const client = new Anthropic();
   console.log('▶ Riset…');
   const research = await ask(client, {
+    role: 'research',
     system: RESEARCH_SYSTEM,
     tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 8 }],
     messages: [{ role: 'user', content: `Topik video: ${topic}\nTanggal hari ini: ${new Date().toISOString().slice(0, 10)}${idea ? `\n\nIde yang sudah disetujui (verifikasi ulang faktanya, jangan percaya begitu saja):\n${JSON.stringify(idea, null, 2)}` : ''}` }],

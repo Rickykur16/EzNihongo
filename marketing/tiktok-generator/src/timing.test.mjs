@@ -65,3 +65,19 @@ test('validateScript menangkap hook hilang, cue salah, dan singkatan di vo', () 
   assert.match(p, /compare\) harus punya 2/);
   assert.match(p, /perlu_dicek/);
 });
+
+test('modelConfig: riset memakai RESEARCH_MODEL bila ada, naskah selalu CONTENT_MODEL', async () => {
+  const { modelConfig } = await import('./plan.mjs');
+  process.env.CONTENT_MODEL = 'model-naskah';
+  delete process.env.RESEARCH_MODEL;
+  assert.equal(modelConfig('research').model, 'model-naskah');
+  process.env.RESEARCH_MODEL = 'model-riset';
+  assert.equal(modelConfig('research').model, 'model-riset');
+  assert.equal(modelConfig('script').model, 'model-naskah');
+  assert.equal(modelConfig().model, 'model-naskah');
+  delete process.env.CONTENT_MODEL;
+  assert.equal(modelConfig('research').model, 'model-riset'); // riset cukup RESEARCH_MODEL
+  assert.throws(() => modelConfig('script'), /CONTENT_MODEL/);  // naskah wajib CONTENT_MODEL
+  delete process.env.RESEARCH_MODEL;
+  assert.throws(() => modelConfig('research'), /CONTENT_MODEL/);
+});

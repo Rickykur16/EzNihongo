@@ -44,12 +44,14 @@ export async function scan({ outRoot = 'out' } = {}) {
   const today = new Date().toISOString().slice(0, 10);
 
   const research = await ask(client, {
+    role: 'research',
     system: SCAN_SYSTEM,
     output_config: { effort: 'medium' },
     tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 6 }],
     messages: [{ role: 'user', content: `Tanggal hari ini: ${today}\nSudah dilaporkan:\n${seen.map((s) => `- ${s.headline} (${s.url})`).join('\n') || '- (belum ada)'}` }],
   });
   const out = await ask(client, {
+    role: 'research',
     system: SCAN_SYSTEM,
     output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCAN_SCHEMA } },
     messages: [{ role: 'user', content: `Tanggal hari ini: ${today}\n\nHasil pemantauan:\n${textOf(research)}\n\nKembalikan hanya berita yang lolos kriteria "besar".` }],

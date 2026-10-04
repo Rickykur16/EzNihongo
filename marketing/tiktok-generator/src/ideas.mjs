@@ -57,6 +57,7 @@ export async function ideas({ outRoot = 'out' } = {}) {
 
   console.log('▶ Riset ide…');
   const research = await ask(client, {
+    role: 'research',
     system: IDEAS_SYSTEM,
     tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 12 }],
     messages: [{ role: 'user', content: `Tanggal hari ini: ${today}\nSudah pernah dibuat:\n${history.map((h) => `- ${h.title}`).join('\n') || '- (belum ada)'}\n\nRiset dulu, lalu tulis catatan singkat kandidat ide beserta sumbernya.` }],
@@ -64,6 +65,7 @@ export async function ideas({ outRoot = 'out' } = {}) {
   const notes = textOf(research);
 
   const out = await ask(client, {
+    role: 'research',
     system: IDEAS_SYSTEM,
     output_config: { effort: 'high', format: { type: 'json_schema', schema: IDEAS_SCHEMA } },
     messages: [{ role: 'user', content: `Tanggal hari ini: ${today}\n\nCatatan riset:\n${notes}\n\nPilih 5 ide terbaik.` }],
