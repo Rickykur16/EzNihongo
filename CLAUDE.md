@@ -71,6 +71,32 @@
 
 ## Konvensi penting
 
+- **Notifikasi pesanan di Ruang Kerja (`admin.html`)** — user: "Buatkan notif untuk
+  ruang kerja juga agar tau", setelah menyangka pesanan tidak masuk admin. Pesanannya
+  SEBENARNYA masuk (diuji end-to-end); yang menyesatkan: filter bawaan tab Pesanan =
+  "Menunggu Verifikasi", sedangkan pesanan baru berstatus "Menunggu Transfer" sampai
+  bukti diunggah (dan Telegram juga baru dikirim saat bukti diunggah). Filter bawaan
+  SENGAJA tidak diubah. Yang ditambahkan: `GET /admin/orders/summary` (read-only,
+  `legacy.finance` sama dengan daftar pesanan, didaftarkan SEBELUM `/orders/:id`;
+  hitungan `pending_payment`/`awaiting_review` yang belum lewat `expires_at` + 20
+  aktivitas terbaru, `activityAt` = waktu bukti terakhir untuk yang menunggu
+  verifikasi). Ruang Kerja mem-poll tiap 60 dtk (+ saat tab kembali terlihat): badge di
+  menu Pesanan, grup Finance, dan tombol "Menu divisi" HP (merah kalau ada yang menunggu
+  verifikasi), kartu di Ringkasan dengan tombol yang langsung memasang filter, toast
+  per aktivitas baru (klik = buka detail pesanan), judul tab `(n)`, dan notifikasi
+  desktop opsional (tombol 🔔, hanya saat tab tidak terlihat). "Sudah dilihat" =
+  localStorage per akun (`ez_admin_orders_seen_at:<userId>`), ditandai di
+  `loadOrders()`; kunjungan pertama di browser menandai semua yang ada sebagai
+  diketahui (tanpa banjir toast). **Jebakan**: (1) `bootAdmin()` dipanggil sebelum
+  skrip selesai dibaca — `let`/`const` state notifikasi WAJIB dideklarasikan di blok
+  global atas (dekat `adminBootRequest`), kalau tidak TDZ membuat seluruh Ruang Kerja
+  kosong (ketahuan lewat Chromium, bukan tes vm); (2) `admin-workspace.test.js`
+  mengunci "beranda tidak mengambil data `/api/admin/*`" — dilonggarkan HANYA untuk
+  `/api/admin/orders/summary`; (3) `admin-boot.test.js` memotong sumber, jadi
+  start/stop/renderOrderAlert di-stub di sana, logikanya diuji `admin-order-alerts.test.js`.
+  **Belum diverifikasi**: notifikasi desktop sungguhan (headless menolak izin) dan
+  Safari. Notifikasi hanya jalan selama Ruang Kerja terbuka — tidak ada push server.
+
 - **Konsep "jawaban berbantuan" (Maneko) DIHAPUS dari bukti belajar** — user: "nambah
   ribet dan nambah bug". Dulu jawaban yang jatuh di jendela paparan tutor (24 jam untuk
   petunjuk Smart Review, 30 menit untuk chat tutor) dibuang tanpa menulis state FSRS,

@@ -54,3 +54,12 @@
 .workspace-main>section.pane{overflow-x:auto}
 #workspace-menu-toggle{display:none}
 @media(max-width:800px){.workspace-layout{grid-template-columns:minmax(0,1fr)}.workspace-sidebar{border:0;border-bottom:1px solid var(--paper-300)}#workspace-menu-toggle{display:inline-block}.workspace-sidebar:not(.is-open){display:none}.workspace-main{padding:22px 16px}.workspace-header .meta{gap:10px}#root>.workspace-header{padding:16px}.workspace-intro h1{font-size:25px}}
+/* Notifikasi pesanan: badge di menu Pesanan, grup Finance, tombol menu HP. */
+.ws-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;margin-left:8px;padding:0 6px;border-radius:999px;background:#4338ca;color:#fff;font:700 11px/1 var(--font-body);vertical-align:middle}
+.ws-badge.is-urgent{background:#b91c1c}
+.workspace-nav-group summary .ws-badge{margin-left:auto}
+.order-alert{margin:0 0 18px;padding:14px 16px;border:1px solid #fde68a;border-radius:10px;background:#fffbeb;color:var(--ink-900)}
+.order-alert.is-calm{border-color:#c7d2fe;background:#eef2ff}
+.order-alert h2{margin:0 0 4px;font-size:15px;line-height:1.5}
+.order-alert p{margin:0;font-size:13px;line-height:1.5;color:var(--ink-700,#404040)}
+.order-alert-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}

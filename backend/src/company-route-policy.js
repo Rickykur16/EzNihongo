@@ -133,6 +133,7 @@ export const LEGACY_ROUTES = [
   ["DELETE", "/users/:email/marketing-profile", null],
   ["POST", "/users/:email/erase", null],
   ["GET", "/orders", "legacy.finance"],
+  ["GET", "/orders/summary", "legacy.finance"],
   ["GET", "/orders/:id", "legacy.finance"],
   ["POST", "/orders/:id/approve", "legacy.finance"],
   ["POST", "/orders/:id/reject", "legacy.finance"],

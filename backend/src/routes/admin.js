@@ -5318,6 +5318,43 @@ router.get('/orders', asyncHandler(async (req, res) => {
   });
 }));
 
+// GET /api/admin/orders/summary — ringan, dipanggil berkala oleh Ruang Kerja
+// untuk notifikasi pesanan. Read-only; status efektif sama dengan daftar di
+// atas (pesanan lewat expires_at tidak dihitung). activityAt = waktu bukti
+// transfer terakhir untuk pesanan yang menunggu verifikasi, selain itu waktu
+// pesanan dibuat — jadi unggahan bukti juga terbaca sebagai aktivitas baru.
+// Harus didaftarkan SEBELUM /orders/:id supaya "summary" tidak dianggap id.
+router.get('/orders/summary', asyncHandler(async (req, res) => {
+  const counts = await query(
+    `SELECT ${ORDER_EFFECTIVE_STATUS_SQL} AS status, COUNT(*)::int AS n
+       FROM orders o
+      WHERE o.status IN ('pending_payment', 'awaiting_review') AND o.expires_at >= NOW()
+      GROUP BY 1`
+  );
+  const recent = await query(
+    `SELECT o.id, o.order_number, o.course_title_snapshot, o.amount_idr, o.status, o.created_at,
+            u.email AS user_email, u.full_name AS user_full_name,
+            CASE WHEN o.status = 'awaiting_review'
+                 THEN COALESCE((SELECT MAX(p.submitted_at) FROM order_payments p WHERE p.order_id = o.id), o.updated_at)
+                 ELSE o.created_at END AS activity_at
+       FROM orders o JOIN users u ON u.id = o.user_id
+      WHERE o.status IN ('pending_payment', 'awaiting_review') AND o.expires_at >= NOW()
+      ORDER BY activity_at DESC
+      LIMIT 20`
+  );
+  const byStatus = Object.fromEntries(counts.rows.map((r) => [r.status, r.n]));
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    awaitingReview: byStatus.awaiting_review || 0,
+    pendingPayment: byStatus.pending_payment || 0,
+    recent: recent.rows.map((o) => ({
+      id: o.id, orderNumber: o.order_number, courseTitle: o.course_title_snapshot,
+      amountIdr: o.amount_idr, status: o.status, createdAt: o.created_at, activityAt: o.activity_at,
+      user: { email: o.user_email, fullName: o.user_full_name },
+    })),
+  });
+}));
+
 // GET /api/admin/orders/:id — full detail incl. every payment attempt.
 router.get('/orders/:id', asyncHandler(async (req, res) => {
   const orderRes = await query(
