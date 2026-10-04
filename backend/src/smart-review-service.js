@@ -323,9 +323,13 @@ export function makeReviewQuestion(candidate, pools) {
       if (candidate.skill === 'char2meaning') { prompt = item.character; answer = item.meaning_id; return { kind: 'choice', prompt, ...choices(answer, pools.kanjiMeanings, seed) }; }
       prompt = item.meaning_id; answer = item.character; return { kind: 'choice', prompt, ...choices(answer, pools.kanjiCharacters, seed) };
     }
-    if (candidate.skill.startsWith('word2reading')) { prompt = word.japanese; answer = word.reading; return { kind: 'choice', prompt, meaning: word.indonesian, ...choices(answer, pools.wordReadings, seed) }; }
-    if (candidate.skill.startsWith('word2meaning')) { prompt = word.japanese; answer = word.indonesian; return { kind: 'choice', prompt, ...choices(answer, pools.wordMeanings, seed) }; }
-    if (candidate.skill.startsWith('meaning2word')) { prompt = word.indonesian; answer = word.japanese; return { kind: 'choice', prompt, reading: word.reading, ...choices(answer, pools.words, seed) }; }
+    // Stored skills are word:<direction>:<encoded word>, matching the lesson
+    // drill state. Without removing that namespace, every direction falls
+    // through to reading2word and repeats the same visible question.
+    const direction = candidate.skill.replace(/^word:/, '').split(':')[0];
+    if (direction === 'word2reading') { prompt = word.japanese; answer = word.reading; return { kind: 'choice', prompt, meaning: word.indonesian, ...choices(answer, pools.wordReadings, seed) }; }
+    if (direction === 'word2meaning') { prompt = word.japanese; answer = word.indonesian; return { kind: 'choice', prompt, ...choices(answer, pools.wordMeanings, seed) }; }
+    if (direction === 'meaning2word') { prompt = word.indonesian; answer = word.japanese; return { kind: 'choice', prompt, reading: word.reading, ...choices(answer, pools.words, seed) }; }
     prompt = word.reading; answer = word.japanese; return { kind: 'choice', prompt, meaning: word.indonesian, ...choices(answer, pools.words, seed) };
   }
   return null;
