@@ -105,3 +105,23 @@ tunggu どうぞおかけください — hataractive.jp/useful/1068, gakumado.m
 Render: `DUR=27 VIDEO=edu-mensetsu-9x16.html W=1080 H=1920 node render.mjs <dir> full`,
 `VIDEO=edu-mensetsu-9x16.html OUT=cues-mensetsu.json node cues.mjs`,
 `DUR=27 python3 sfx.py cues-mensetsu.json sfx.wav`, lalu loudnorm + mux seperti di atas.
+
+---
+
+# Konten: Smart Review — "aplikasi ini tahu kapan kamu mau lupa" (25 detik, 9:16)
+
+Sumber `edu-smartreview-9x16.html`, cue `cues-smartreview.json`. MP4 tidak di-commit.
+
+Isi: kosakata yang menghilang (hook) → kurva lupa (ilustrasi, tanpa angka) → "ulang tepat
+sebelum lupa" → **UI Smart Review asli** (beranda, jawaban benar, jawaban salah + kunci
+jawaban) → jarak ulangan → penutup + "komen N5".
+
+Angka jarak ulangan diambil dari `backend/src/fsrs.js` (dijalankan langsung, 5 Okt 2026):
+benar berturut-turut 3 → 11 → 35 → 101 → 269 hari; salah → diulang segera lalu jarak mulai
+pendek lagi (5 → 14 → 36 hari). Kalau parameter FSRS berubah, angka di video ikut basi.
+
+Tangkapan UI: `node shoot-review.mjs .` (http-server di :8099, API dicegat dengan data contoh,
+viewport HP 390×844 @3x) → `rv-*.png` (tidak di-commit; dibuat ulang dengan perintah itu).
+Render: `DUR=25 VIDEO=edu-smartreview-9x16.html W=1080 H=1920 node render.mjs <dir> full`,
+`VIDEO=edu-smartreview-9x16.html OUT=cues-smartreview.json node cues.mjs`,
+`DUR=25 python3 sfx.py cues-smartreview.json sfx.wav`, lalu loudnorm + mux.

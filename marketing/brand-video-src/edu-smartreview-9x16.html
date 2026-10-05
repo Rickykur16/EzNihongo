@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Montserrat:wght@600;700;800;900&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,500;1,600&family=Shippori+Mincho:wght@700;800&family=Noto+Sans+JP:wght@500;700;900&display=block" rel="stylesheet">
+<!--
+  Konten EzNihongo 9:16 (1080×1920), 25 detik: "aplikasi ini tahu kapan kamu mau lupa" (Smart Review).
+  Hook kosakata yang menghilang → kurva lupa → ulang tepat sebelum lupa → UI Smart Review ASLI
+  (tangkapan shoot-review.mjs, data contoh) → jarak ulangan dari backend/src/fsrs.js:
+  benar berturut-turut 3 → 11 → 35 → 101 hari; salah → diulang lagi lebih cepat.
+  Animasi = render(t); window.CUES = sfx.py.
+-->
+<style>
+:root{--red:#C8102E;--ink:#1a1815;--paper:#fdfcf9;--blue:#4165a8;--green:#1f8a4c;--yellow:#FFE11A}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#111;font-family:Inter,sans-serif}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden}
+.scene{position:absolute;inset:0;display:none;overflow:hidden}
+.abs{position:absolute}
+.bg-paper{background:radial-gradient(ellipse 90% 70% at 50% 40%,#fbf8f2 0%,#efe8dc 70%,#e4dccd 100%)}
+.bg-red{background:radial-gradient(ellipse 80% 60% at 50% 45%,#d81a35 0%,#b10f28 55%,#7d0a1b 100%)}
+.cap{position:absolute;left:40px;right:40px;text-align:center;display:none;z-index:20}
+.cap .ln{display:block;white-space:nowrap}
+.cap .s{font-family:Montserrat,'Noto Sans JP';font-weight:700;font-size:58px;line-height:1.08}
+.cap .b{font-family:Montserrat,'Noto Sans JP';font-weight:900;font-size:124px;line-height:.98;letter-spacing:-.035em}
+.cap .i{font-family:'Playfair Display';font-style:italic;font-weight:500;font-size:62px;line-height:1.1}
+.cap .w{display:inline-block}
+.light .s,.light .i{color:#3b3631}.light .b{color:var(--ink)}
+.onred .s,.onred .b,.onred .i{color:#fff;text-shadow:0 8px 30px rgba(80,0,10,.35)}
+.r{color:var(--red)!important}.y{color:var(--yellow)!important}.g{color:var(--green)!important}
+.tchip{position:absolute;left:0;right:0;top:130px;text-align:center;display:none;z-index:21}
+.tchip span{display:inline-block;background:var(--red);color:#fff;font-family:Montserrat;font-weight:800;font-size:48px;padding:10px 26px 12px;box-shadow:0 14px 30px -12px rgba(0,0,0,.4)}
+.word{position:absolute;width:300px;height:220px;border-radius:28px;background:#fff;box-shadow:0 24px 50px -22px rgba(26,24,21,.45),0 0 0 1px rgba(26,24,21,.06);text-align:center;padding-top:30px}
+.word b{display:block;font-family:'Noto Sans JP';font-weight:900;font-size:96px;line-height:1.1;color:var(--ink)}
+.word span{font-family:'Noto Sans JP';font-weight:700;font-size:34px;color:#7a7268}
+.actor{position:absolute;bottom:-40px;width:840px;height:1260px;transform-origin:50% 100%}
+.actor img{width:100%;height:100%;display:block;mask-size:100% 100%;-webkit-mask-size:100% 100%}
+.th{position:absolute;background:#fff;border-radius:60px;padding:22px 34px 24px;text-align:center;box-shadow:0 26px 50px -20px rgba(0,0,0,.4);opacity:0;z-index:15;font-family:'Noto Sans JP';font-weight:900;font-size:76px;color:var(--ink)}
+.th i{position:absolute;border-radius:50%;background:#fff;box-shadow:0 10px 20px -10px rgba(0,0,0,.3)}
+/* ponsel */
+#phone{position:absolute;left:162px;top:450px;width:756px;height:1024px;border-radius:44px;background:#1a1815;padding:12px;box-shadow:0 60px 100px -30px rgba(26,24,21,.55);transform-origin:0 0;z-index:5}
+#screen{position:relative;width:732px;height:1000px;border-radius:34px;overflow:hidden;background:#fbf8f2}
+#pan{position:absolute;left:0;top:0;width:732px}
+#pan img{position:absolute;left:-24px;top:0;width:780px;opacity:0}
+.tap{position:absolute;width:90px;height:90px;margin:-45px 0 0 -45px;border-radius:50%;background:rgba(26,24,21,.25);border:4px solid rgba(255,255,255,.95);opacity:0;z-index:4}
+.ring{position:absolute;border-radius:50%;border:5px solid var(--red);opacity:0;z-index:4}
+/* jadwal */
+.sched{position:absolute;right:40px;width:390px;height:118px;border-radius:24px;background:#fff;box-shadow:0 24px 46px -20px rgba(26,24,21,.5);display:flex;flex-direction:column;justify-content:center;padding-left:28px;opacity:0;z-index:7}
+.sched small{font-family:Montserrat;font-weight:800;font-size:23px;letter-spacing:.02em;white-space:nowrap;color:#8a8278}
+.sched b{font-family:Montserrat;font-weight:900;font-size:54px;color:var(--blue);line-height:1}
+.sched.bad b{color:var(--red)}
+.arrow{position:absolute;right:232px;width:6px;height:44px;background:#c7beb1;border-radius:3px;opacity:0;z-index:6}
+#strike{position:absolute;height:10px;border-radius:5px;background:var(--red);transform-origin:left center;transform:scaleX(0);z-index:8}
+.kana{position:absolute;font-family:'Shippori Mincho',serif;font-weight:800}
+#flash{position:absolute;inset:0;z-index:60;opacity:0;background:radial-gradient(ellipse at 50% 45%,#fffdf6 0%,#ffe9c9 60%,#ffb98a 100%)}
+</style></head>
+<body><div id="stage">
+
+<!-- ===== HOOK: kosakata menghilang ===== -->
+<div class="scene bg-paper" id="s0">
+  <div class="word" id="w0" style="left:70px;top:560px"><b>学生</b><span>がくせい</span></div>
+  <div class="word" id="w1" style="left:390px;top:540px"><b>先生</b><span>せんせい</span></div>
+  <div class="word" id="w2" style="left:710px;top:570px"><b>電車</b><span>でんしゃ</span></div>
+  <div class="word" id="w3" style="left:90px;top:810px"><b>学校</b><span>がっこう</span></div>
+  <div class="word" id="w4" style="left:410px;top:800px"><b>友だち</b><span>ともだち</span></div>
+  <div class="word" id="w5" style="left:720px;top:820px"><b>日本語</b><span>にほんご</span></div>
+  <div class="actor" id="anna" style="left:-160px;bottom:-560px"><img src="../../assets/dialogue/anna.webp" style="mask-image:url(../../assets/dialogue/anna-mask.png);-webkit-mask-image:url(../../assets/dialogue/anna-mask.png)"></div>
+  <div class="th" id="th0" style="right:90px;top:1180px">あれ…？<i style="width:50px;height:50px;left:40px;bottom:-50px"></i><i style="width:26px;height:26px;left:10px;bottom:-90px"></i></div>
+</div>
+<!-- ===== KURVA LUPA ===== -->
+<div class="scene bg-paper" id="s1">
+  <svg class="abs" width="960" height="640" viewBox="0 0 960 640" style="left:60px;top:560px">
+    <line x1="80" y1="40" x2="80" y2="560" stroke="#3b3631" stroke-width="5"/><line x1="80" y1="560" x2="920" y2="560" stroke="#3b3631" stroke-width="5"/>
+    <text x="44" y="300" transform="rotate(-90 44 300)" text-anchor="middle" font-family="Montserrat" font-weight="800" font-size="30" fill="#3b3631">INGATAN</text>
+    <text x="920" y="610" text-anchor="end" font-family="Montserrat" font-weight="800" font-size="30" fill="#3b3631">WAKTU →</text>
+    <path id="c1" d="M80 80 C 150 360, 260 470, 520 515 S 820 535, 920 538" fill="none" stroke="#C8102E" stroke-width="12" stroke-linecap="round"/>
+    <path id="c2" d="M80 80 C 120 230, 170 290, 220 300 L 220 80 C 290 200, 360 240, 430 250 L 430 80 C 530 160, 620 185, 700 192 L 700 80 C 790 120, 860 132, 920 136" fill="none" stroke="#4165a8" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <g id="dots" font-family="Montserrat" font-weight="800" font-size="26" fill="#4165a8">
+      <circle cx="220" cy="80" r="16" fill="#4165a8"/><text x="220" y="56" text-anchor="middle">ulang</text>
+      <circle cx="430" cy="80" r="16" fill="#4165a8"/><text x="430" y="56" text-anchor="middle">ulang</text>
+      <circle cx="700" cy="80" r="16" fill="#4165a8"/><text x="700" y="56" text-anchor="middle">ulang</text>
+    </g>
+  </svg>
+  <div class="abs" id="ebb" style="left:0;right:0;top:1230px;text-align:center;font-family:Montserrat;font-weight:700;font-size:30px;color:#8a8278;letter-spacing:.06em">ILUSTRASI · KURVA LUPA (EBBINGHAUS)</div>
+</div>
+<!-- ===== SMART REVIEW ASLI ===== -->
+<div class="scene bg-paper" id="s2">
+  <div id="phone"><div id="screen"><div id="pan">
+    <img id="i-home" src="rv-home.png"><img id="i-q1" src="rv-q1.png"><img id="i-q1ok" src="rv-q1-ok.png"><img id="i-q2" src="rv-q2.png"><img id="i-q2ng" src="rv-q2-ng.png">
+    <div class="tap" id="tap"></div><div class="ring" id="ring"></div>
+  </div></div></div>
+  <div class="sched" id="d1" style="top:520px"><small>BENAR ✓ → MUNCUL LAGI</small><b>3 hari</b></div>
+  <div class="arrow" id="a1" style="top:648px"></div>
+  <div class="sched" id="d2" style="top:702px"><small>BENAR ✓ → MUNCUL LAGI</small><b>11 hari</b></div>
+  <div class="arrow" id="a2" style="top:830px"></div>
+  <div class="sched" id="d3" style="top:884px"><small>BENAR ✓ → MUNCUL LAGI</small><b>35 hari</b></div>
+  <div class="arrow" id="a3" style="top:1012px"></div>
+  <div class="sched" id="d4" style="top:1066px"><small>BENAR ✓ → MUNCUL LAGI</small><b>101 hari</b></div>
+  <div id="strike"></div>
+  <div class="sched bad" id="d5" style="top:1250px"><small>SALAH ✗ → MUNCUL LAGI</small><b>lebih cepat</b></div>
+</div>
+<!-- ===== PENUTUP ===== -->
+<div class="scene bg-paper" id="s3">
+  <div class="abs" id="esun" style="width:300px;height:300px;border-radius:50%;background:var(--red);left:700px;top:230px"></div>
+  <img class="abs" id="elogo" src="logo-a.png" style="width:900px;left:90px;top:330px">
+  <div class="abs" id="ejp" style="left:0;right:0;top:830px;text-align:center;font-family:'Shippori Mincho';font-weight:800;font-size:60px;color:var(--red);letter-spacing:.08em"></div>
+  <div class="abs" id="ecta" style="left:0;right:0;top:1440px;text-align:center;opacity:0">
+    <div style="display:inline-block;background:var(--yellow);color:var(--ink);font-family:Montserrat;font-weight:900;font-size:48px;padding:14px 30px;border-radius:16px;transform:rotate(-2deg);box-shadow:0 20px 40px -16px rgba(0,0,0,.35)">komen “N5” kalau mau mulai 💬</div>
+    <div style="margin-top:28px;font-family:Montserrat;font-weight:800;font-size:44px;color:var(--red)">eznihongo.com</div>
+  </div>
+</div>
+
+<div id="chips"></div>
+<div id="caps"></div>
+<div id="flash"></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const seg=(t,a,b)=>cl((t-a)/(b-a));
+const eo=x=>1-Math.pow(1-x,3), eo5=x=>1-Math.pow(1-x,5);
+const eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const eback=x=>{const c=1.6;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
+const lerp=(a,b,x)=>a+(b-a)*x;
+const shake=(t,a,amp)=>{const x=t-a; return x<0||x>.35?0:Math.sin(x*90)*amp*Math.exp(-x*12)};
+
+// ===================== JADWAL =====================
+const DUR=25.0;
+const SCENES=[['s0',0,3.4],['s1',3.4,7.6],['s2',7.6,21.4],['s3',21.4,25.01]];
+const FLASHES=[3.4,7.6,21.4];
+const CHIPS=[['SMART REVIEW · EZNIHONGO',7.7,21.4]];
+const ZOOM=2.0, SHOT_Y={'i-home':80,'i-q1':90,'i-q1ok':140,'i-q2':90,'i-q2ng':210};
+const CAPS=[
+  [-1,3.4,170,'light',[['s','hafal kosakata semalam,'],['b','minggu depan'],['b r','lupa lagi?']]],
+  [3.45,5.5,190,'light',[['s','bukan salah kamu.'],['b','otak membuang'],['i','yang nggak diulang.']]],
+  [5.5,7.6,190,'light',[['s','triknya:'],['b','ulang tepat'],['b r','sebelum lupa.']]],
+  [8.0,10.4,215,'light',[['s','Smart Review ngitung'],['b r','kapan kamu lupa.']]],
+  [11.0,15.4,215,'light',[['s','jawab benar?'],['b','makin jarang ditanya.']]],
+  [15.9,18.3,215,'light',[['s','jawab salah?'],['b r','diulang lebih cepat.']]],
+  [18.3,21.4,215,'light',[['s','yang hafal nggak buang waktu,'],['b r','yang lemah dikejar.']]],
+  [21.95,25.01,1060,'light',[['s','belajar sekali,'],['b r','ingat lama.']]],
+];
+window.CUES=[[0,'whoosh_soft',1],[0.25,'pop',0],[0.35,'pop',2],[0.45,'pop',4],[1.0,'whoosh_soft',-1],[1.15,'cutfx'],[1.4,'cutfx'],[1.65,'cutfx'],[1.9,'cutfx'],[2.15,'cutfx'],[2.4,'cutfx'],[2.6,'pop',3],
+  [3.4,'boom'],[3.6,'whoosh_soft',1],[5.5,'whoosh_up'],[5.8,'pop',1],[6.25,'pop',3],[6.7,'pop',5],
+  [7.6,'whoosh',1],[7.75,'pop',0],[8.9,'tap'],[9.6,'correct'],[10.4,'whoosh_soft',-1],
+  [11.2,'pop',1],[11.2,'tick',0],[12.0,'pop',3],[12.0,'tick',1],[12.8,'pop',5],[12.8,'tick',2],[13.6,'pop',6],[13.6,'tick',3],
+  [15.4,'whoosh_soft',1],[16.2,'tap'],[16.3,'buzz'],[17.0,'strike'],[17.35,'pop',2],
+  [18.3,'lift'],[21.4,'whoosh',1],[21.45,'swell'],[21.65,'boom'],[22.1,'shimmer'],[23.3,'pop',4],[23.9,'sparkle']]
+  .sort((a,b)=>a[0]-b[0]);
+
+// ===================== DOM =====================
+const CHIP_EL=CHIPS.map(([txt,a,b])=>{ const d=document.createElement('div'); d.className='tchip'; d.innerHTML=`<span>${txt}</span>`; $('chips').appendChild(d); return {el:d,a,b}; });
+const CAP_EL=CAPS.map(([a,b,top,theme,lines])=>{ const d=document.createElement('div'); d.className='cap '+theme; d.style.top=top+'px';
+  lines.forEach(([cls,txt])=>{ const ln=document.createElement('div'); ln.className='ln '+cls;
+    txt.split(' ').forEach((w,i)=>{ if(i) ln.appendChild(document.createTextNode(' ')); const s=document.createElement('span'); s.className='w'; s.textContent=w; ln.appendChild(s); });
+    d.appendChild(ln); });
+  $('caps').appendChild(d); return {el:d,a,b,words:[...d.querySelectorAll('.w')],lines:[...d.querySelectorAll('.ln')],fitted:false}; });
+function fit(c){ if(c.fitted) return; c.el.style.display='block';
+  c.lines.forEach(l=>{ const w=l.scrollWidth; if(w>1000){ const fs=parseFloat(getComputedStyle(l).fontSize); l.style.fontSize=(fs*1000/w)+'px'; } });
+  c.fitted=true; }
+window.READY=Promise.all(['900 100px "Noto Sans JP"','700 20px "Noto Sans JP"','900 50px Montserrat','800 50px Montserrat','700 50px Montserrat',
+  'italic 500 50px "Playfair Display"','600 20px Inter','800 50px "Shippori Mincho"'].map(f=>document.fonts.load(f,'学生先生電車学校友だち日本語あれ学ぶ備える未来へAa')));
+const PARTS=[]; { let seed=11; const r=()=>(seed=(seed*16807)%2147483647)/2147483647; const K='学生先生電車復習日本語未来';
+  document.querySelectorAll('#s1,#s2,#s3').forEach(sc=>{ for(let i=0;i<10;i++){ const k=document.createElement('div'); k.className='kana';
+    k.textContent=K[Math.floor(r()*K.length)]; const sz=50+r()*140; k.style.fontSize=sz+'px';
+    k.style.color=r()<.6?`rgba(200,16,46,${.04+r()*.05})`:`rgba(25,52,95,${.04+r()*.05})`;
+    sc.insertBefore(k,sc.firstChild); PARTS.push({el:k,x:r()*1080,y:r()*1920,v:22+sz*.45,rot:(r()-.5)*40,ph:r()*6}); } }); }
+
+function drawChips(t){ CHIP_EL.forEach(c=>{ const on=t>=c.a&&t<c.b; c.el.style.display=on?'block':'none'; if(!on) return;
+  const p=eo5(seg(t,c.a,c.a+.3)); c.el.style.filter=`blur(${(1-p)*14}px)`; c.el.style.opacity=p;
+  c.el.style.transform=`scale(${lerp(1.25,1,p)}) rotate(${Math.sin((t-c.a)*1.3)*.6}deg)`; }); }
+function drawCaps(t){ CAP_EL.forEach(c=>{ const on=t>=c.a&&t<c.b; if(!on){ c.el.style.display='none'; return; } fit(c); c.el.style.display='block';
+  const out=seg(t,c.b-.12,c.b);
+  c.words.forEach((w,i)=>{ const st=c.a+i*.07, p=seg(t,st,st+.28), e=eo5(p);
+    w.style.opacity=cl(p*2.5)*(1-out); w.style.filter=`blur(${(1-e)*16+out*10}px)`;
+    w.style.transform=`translateY(${(1-e)*16}px) scale(${lerp(1.06,1,e)})`; }); }); }
+function pop(el,p,from=.6){ el.style.opacity=cl(p*3); el.style.transform=`scale(${lerp(from,1,eback(p))})`; }
+function ring(el,p,size=200){ if(p<=0||p>=1){el.style.opacity=0;return;}
+  const s=lerp(10,size,eo(p)); el.style.width=el.style.height=s+'px'; el.style.marginLeft=el.style.marginTop=(-s/2)+'px';
+  el.style.opacity=(1-p)*.9; el.style.borderWidth=lerp(7,1,p)+'px'; }
+// layar ponsel: [id, mulai, selesai]
+const SHOTS=[['i-home',7.6,8.55],['i-q1',8.55,9.55],['i-q1ok',9.55,15.4],['i-q2',15.4,16.25],['i-q2ng',16.25,21.4]];
+// posisi ketukan di layar ponsel (px layar 552 lebar; skala 552/1170 dari tangkapan 3x)
+const TAPS=[[8.9,(180-12)*ZOOM,341*ZOOM],[16.2,(180-12)*ZOOM,341*ZOOM]];
+
+function render(t){
+  SCENES.forEach(([id,a,b])=>{ $(id).style.display=(t>=a&&t<b)?'block':'none'; });
+  let f=0; FLASHES.forEach(a=>{ const x=t-a; if(x>-.07&&x<.3) f=Math.max(f, x<0?(x+.07)/.07:1-eo(x/.3)); });
+  $('flash').style.opacity=f*.95;
+  drawChips(t); drawCaps(t);
+  PARTS.forEach(k=>{ const y=((k.y-t*k.v)%2080+2080)%2080-160;
+    k.el.style.transform=`translate(${k.x+Math.sin(t*.8+k.ph)*30}px,${y}px) rotate(${k.rot+Math.sin(t*.5+k.ph)*8}deg)`; });
+
+  // ---------- HOOK ----------
+  if(t<3.4){ [0,1,2,3,4,5].forEach(i=>{ const el=$('w'+i), a=.0, g=1.1+[3,0,5,1,4,2][i]*.25;
+      const pin=t<.05?1:seg(t,.2+i*.06,.5+i*.06); const gone=seg(t,g,g+.45);
+      el.style.opacity=(t<.05?1:cl(pin*3))*(1-gone);
+      el.style.filter=`blur(${gone*22}px)`;
+      el.style.transform=`translateY(${Math.sin(t*1.6+i)*6-gone*80}px) rotate(${[-4,3,-2,4,-3,2][i]+gone*[-20,15,-10,18,-14,9][i]}deg) scale(${lerp(1,.7,gone)})`; });
+    $('anna').style.transform=`translateY(${Math.sin(t*2)*4}px)`;
+    const p=seg(t,2.6,2.9); $('th0').style.opacity=cl(p*3); $('th0').style.transform=`scale(${lerp(.4,1,eback(p))}) rotate(3deg)`; }
+  // ---------- KURVA ----------
+  if(t>=3.4&&t<7.6){ const L1=$('c1').getTotalLength(), L2=$('c2').getTotalLength();
+    const d1=eio(seg(t,3.7,5.0)); $('c1').style.strokeDasharray=L1; $('c1').style.strokeDashoffset=L1*(1-d1);
+    $('c1').style.opacity=1-seg(t,5.5,5.8)*.75;
+    const d2=seg(t,5.8,7.2); $('c2').style.strokeDasharray=L2; $('c2').style.strokeDashoffset=L2*(1-d2);
+    $('dots').style.opacity=seg(t,5.8,6.0); [...$('dots').children].forEach((n,i)=>{ const k=Math.floor(i/2); n.style.opacity=seg(t,6.25+k*.45,6.4+k*.45); });
+    $('ebb').style.opacity=seg(t,4.0,4.4); }
+  // ---------- SMART REVIEW ----------
+  if(t>=7.6&&t<21.4){ const ph=$('phone');
+    const pin=eo5(seg(t,7.62,8.2));
+    // ponsel bergeser ke kiri & mengecil saat kartu jadwal tampil
+    const side=eio(seg(t,10.6,11.1));
+    ph.style.transform=`translate(${lerp(0,-122,side)}px,${(1-pin)*700+lerp(0,40,side)}px) scale(${lerp(1,.78,side)}) rotate(${(1-pin)*6}deg)`;
+    ph.style.opacity=cl(pin*2);
+    let cur='i-home'; SHOTS.forEach(([id,a,b])=>{ const on=t>=a&&t<b; $(id).style.opacity=on?1:0; if(on) cur=id; });
+    // kamera menggeser layar ke bagian yang penting (umpan balik & kunci jawaban)
+    const prev=SHOTS[Math.max(0,SHOTS.findIndex(([id])=>id===cur)-1)][0], st=SHOTS.find(([id])=>id===cur)[1];
+    const py=lerp(SHOT_Y[prev],SHOT_Y[cur],eio(seg(t,st+.15,st+.65)));
+    $('pan').style.transform=`translateY(${-py*ZOOM}px)`;
+    const tp=TAPS.find(([a])=>t>=a-.35&&t<a+.35); const tap=$('tap');
+    if(tp){ const [a,x,y]=tp; const p=seg(t,a-.35,a), q=seg(t,a,a+.3); tap.style.left=x+'px'; tap.style.top=(y+(1-eo(p))*120)+'px';
+      tap.style.opacity=cl(p*3)*(1-q); tap.style.transform=`scale(${1-.2*seg(t,a-.05,a+.05)})`; } else tap.style.opacity=0;
+    const rg=TAPS.find(([a])=>t>=a&&t<a+.6); if(rg){ $('ring').style.left=rg[1]+'px'; $('ring').style.top=rg[2]+'px'; ring($('ring'),seg(t,rg[0],rg[0]+.6),220); } else ring($('ring'),0);
+    [['d1',11.2],['d2',12.0],['d3',12.8],['d4',13.6]].forEach(([id,a],i)=>{ const p=seg(t,a,a+.35); const el=$(id);
+      el.style.opacity=cl(p*3); el.style.transform=`translateX(${(1-eback(p))*220}px) scale(${1+.05*Math.sin(seg(t,a,a+.5)*Math.PI)})`;
+      if(i<3){ const ar=$('a'+(i+1)); ar.style.opacity=seg(t,a+.35,a+.6); ar.style.transform=`scaleY(${eo(seg(t,a+.35,a+.6))})`; ar.style.transformOrigin='top'; } });
+    // salah: 101 hari dicoret, diganti "lebih cepat"
+    const d4=$('d4').getBoundingClientRect();
+    Object.assign($('strike').style,{left:(d4.left+16)+'px',width:(d4.width-32)+'px',top:(d4.top+d4.height/2+18)+'px'});
+    $('strike').style.transform=`scaleX(${eo5(seg(t,17.0,17.25))}) rotate(-4deg)`;
+    $('d4').style.filter=`grayscale(${seg(t,17.0,17.3)}) opacity(${1-seg(t,17.0,17.3)*.35})`;
+    const b5=seg(t,17.35,17.7); $('d5').style.opacity=cl(b5*3); $('d5').style.transform=`scale(${lerp(.5,1,eback(b5))}) translateX(${shake(t,17.4,12)}px)`;
+    $('s2').style.transform=`scale(${1+shake(t,16.3,.006)})`; }
+  // ---------- PENUTUP ----------
+  if(t>=21.4){ const sp=eo5(seg(t,21.45,22.0));
+    $('esun').style.transform=`translateY(${(1-sp)*300}px) scale(${lerp(.35,1,sp)})`; $('esun').style.opacity=sp;
+    const lp=eo5(seg(t,21.6,22.1)); $('elogo').style.clipPath=`inset(0 ${(1-lp)*100}% 0 0)`;
+    $('elogo').style.transform=`scale(${lerp(1.06,1,eo(seg(t,21.6,23.6)))})`;
+    const jp='学ぶ・備える・未来へ'; $('ejp').innerHTML=[...jp].map((ch,i)=>{const p=seg(t,21.8+i*.04,21.8+i*.04+.3);return `<span style="display:inline-block;opacity:${cl(p*2)};filter:blur(${(1-eo5(p))*10}px);transform:translateY(${(1-eo5(p))*30}px)">${ch}</span>`}).join('');
+    const c=seg(t,23.3,23.7); $('ecta').style.opacity=cl(c*1.8); $('ecta').style.transform=`translateY(${(1-eback(c))*40}px) scale(${lerp(.85,1,eback(c))})`; }
+}
+window.render=render;
+</script>
+</body></html>
