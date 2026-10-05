@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Montserrat:wght@600;700;800;900&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,500;1,600&family=Shippori+Mincho:wght@700;800&family=Noto+Sans+JP:wght@500;700;900&display=block" rel="stylesheet">
+<!--
+  Konten edukasi EzNihongo 9:16 (1080×1920), 27 detik: tata cara interview kerja di Jepang (面接).
+  Konsep "nilai kesan tersembunyi": meteran Kesan Pewawancara turun di tiap versi NG dan pulih
+  di versi OK. 4 checkpoint: ketuk 3x, 失礼します, tunggu disuruh duduk, 御社 vs 貴社.
+  Tokoh & latar: aset fitur Percakapan (assets/dialogue). Animasi = render(t); window.CUES = sfx.py.
+  Sumber fakta: lihat README.md.
+-->
+<style>
+:root{--red:#C8102E;--ink:#1a1815;--paper:#fdfcf9;--blue:#4165a8;--green:#1f8a4c;--yellow:#FFE11A}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#111;font-family:Inter,sans-serif}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden}
+.scene{position:absolute;inset:0;display:none;overflow:hidden}
+.abs{position:absolute}
+.bg-red{background:radial-gradient(ellipse 80% 60% at 50% 45%,#d81a35 0%,#b10f28 55%,#7d0a1b 100%)}
+.cap{position:absolute;left:40px;right:40px;text-align:center;display:none;z-index:20}
+.cap .ln{display:block;white-space:nowrap}
+.cap .s{font-family:Montserrat,'Noto Sans JP';font-weight:700;font-size:58px;line-height:1.08}
+.cap .b{font-family:Montserrat,'Noto Sans JP';font-weight:900;font-size:120px;line-height:.98;letter-spacing:-.035em}
+.cap .i{font-family:'Playfair Display';font-style:italic;font-weight:500;font-size:62px;line-height:1.1}
+.cap .w{display:inline-block}
+.wh .s,.wh .b,.wh .i{color:#fff;text-shadow:0 6px 26px rgba(0,0,0,.55)}
+.r{color:var(--red)!important}.y{color:var(--yellow)!important}
+.tchip{position:absolute;left:0;right:0;top:120px;text-align:center;display:none;z-index:21}
+.tchip span{display:inline-block;background:var(--red);color:#fff;font-family:Montserrat;font-weight:800;font-size:48px;padding:10px 26px 12px;box-shadow:0 14px 30px -12px rgba(0,0,0,.4)}
+/* meteran kesan */
+#meter{position:absolute;left:90px;right:90px;top:220px;z-index:22;background:rgba(255,255,255,.94);border-radius:24px;padding:16px 26px 20px;box-shadow:0 20px 40px -18px rgba(0,0,0,.5);opacity:0}
+#meter .lb{display:flex;justify-content:space-between;align-items:baseline;font-family:Montserrat;font-weight:800;font-size:30px;color:#3b3631;letter-spacing:.04em}
+#meter .lb b{font-size:54px;font-weight:900;letter-spacing:-.02em}
+#meter .tr{height:22px;border-radius:11px;background:#e8e1d5;margin-top:8px;overflow:hidden}
+#meter .tr div{height:100%;border-radius:11px}
+#delta{position:absolute;right:110px;top:350px;z-index:23;font-family:Montserrat;font-weight:900;font-size:76px;opacity:0;-webkit-text-stroke:5px #fff;paint-order:stroke}
+/* tokoh */
+.actor{position:absolute;bottom:-40px;width:840px;height:1260px;transform-origin:50% 100%}
+.actor img{width:100%;height:100%;display:block;mask-size:100% 100%;-webkit-mask-size:100% 100%}
+.actor.flip img{transform:scaleX(-1)}
+/* gelembung */
+.sp{position:absolute;background:#fff;border:6px solid var(--ink);border-radius:40px;padding:20px 26px 16px;text-align:center;box-shadow:12px 14px 0 var(--ink);opacity:0;z-index:15}
+.sp .jp{font-family:'Noto Sans JP';font-weight:900;font-size:84px;line-height:1.15;color:var(--ink);white-space:nowrap}
+.sp .rom{font-weight:600;font-size:36px;color:#7a7268}
+.sp .id{font-family:Montserrat;font-weight:800;font-size:38px;color:var(--ink);margin-top:10px;display:inline-block;background:linear-gradient(var(--yellow),var(--yellow)) no-repeat 0 100%/100% 100%;padding:2px 14px 4px}
+.sp .tl{position:absolute;bottom:-30px;width:52px;height:52px;background:#fff;border-right:6px solid var(--ink);border-bottom:6px solid var(--ink);transform:rotate(45deg)}
+.th{position:absolute;background:#fff;border-radius:60px;padding:24px 34px 26px;text-align:center;box-shadow:0 26px 50px -20px rgba(0,0,0,.55);opacity:0;z-index:15}
+.th .jp{font-family:'Noto Sans JP';font-weight:900;font-size:72px;line-height:1.15;color:var(--ink);white-space:nowrap}
+.th .id{font-family:Montserrat;font-weight:700;font-size:36px;color:#6b645b}
+.th i{position:absolute;border-radius:50%;background:#fff}
+.th i:nth-of-type(1){width:56px;height:56px;bottom:-56px}.th i:nth-of-type(2){width:30px;height:30px;bottom:-104px}
+.stamp{position:absolute;left:0;right:0;top:1010px;margin:auto;width:max-content;font-family:Montserrat;font-weight:900;font-size:110px;color:#fff;padding:6px 40px 14px;border:8px solid #fff;box-shadow:0 30px 60px -16px rgba(0,0,0,.6);opacity:0;z-index:18}
+.ng{background:var(--red)}.ok{background:var(--green)}
+.tok{position:absolute;font-family:Montserrat;font-weight:900;font-size:120px;color:#fff;-webkit-text-stroke:8px var(--ink);paint-order:stroke;opacity:0;z-index:12}
+.note{position:absolute;left:110px;right:110px;top:1270px;display:flex;gap:24px;opacity:0;z-index:16}
+.note div{flex:1;background:#fff;border-radius:26px;padding:22px 20px;text-align:center;box-shadow:0 24px 50px -20px rgba(0,0,0,.55)}
+.note .k{font-family:'Noto Sans JP';font-weight:900;font-size:80px;line-height:1.1}
+.note .rr{font-weight:700;font-size:32px;color:#7a7268}
+.note .d{font-family:Montserrat;font-weight:800;font-size:36px;margin-top:8px;line-height:1.15}
+.rec{position:absolute;left:110px;right:110px;font-family:Montserrat,'Noto Sans JP';font-weight:800;font-size:50px;color:#fff;opacity:0;white-space:nowrap}
+.rec b{display:inline-grid;place-items:center;width:62px;height:62px;border-radius:50%;background:#fff;color:var(--green);font-size:40px;margin-right:22px;vertical-align:-8px}
+#flash{position:absolute;inset:0;z-index:60;opacity:0;background:radial-gradient(ellipse at 50% 45%,#fffdf6 0%,#ffe9c9 60%,#ffb98a 100%)}
+#redfl{position:absolute;inset:0;z-index:59;opacity:0;box-shadow:inset 0 0 220px 60px rgba(200,16,46,.9)}
+</style></head>
+<body><div id="stage">
+
+<!-- ===== A: depan pintu ===== -->
+<div class="scene" id="sA" style="background:linear-gradient(180deg,#f1e8d8 0%,#e9dcc6 70%,#cdb99a 70.2%,#b9a283 100%)">
+  <div class="abs" style="left:0;right:0;top:1330px;height:16px;background:#a68b66"></div>
+  <svg class="abs" id="door" width="460" height="1130" viewBox="0 0 460 1130" style="left:560px;top:220px">
+    <rect x="0" y="0" width="460" height="1130" fill="#7a5532"/>
+    <rect x="22" y="22" width="416" height="1108" fill="#a8774a"/>
+    <rect x="60" y="70" width="340" height="430" rx="8" fill="none" stroke="#8d6239" stroke-width="10"/>
+    <rect x="60" y="560" width="340" height="500" rx="8" fill="none" stroke="#8d6239" stroke-width="10"/>
+    <rect x="22" y="22" width="40" height="1108" fill="rgba(255,255,255,.08)"/>
+    <rect x="370" y="560" width="22" height="90" rx="11" fill="#d8b25a"/><circle cx="381" cy="570" r="22" fill="#e6c26a"/>
+    <rect x="110" y="330" width="240" height="110" rx="10" fill="#fdfcf9" stroke="#5a3f24" stroke-width="5"/>
+    <text x="230" y="407" text-anchor="middle" font-family="Noto Sans JP" font-weight="900" font-size="64" fill="#1a1815">面接室</text>
+  </svg>
+  <div class="abs" style="left:560px;top:1350px;width:460px;height:40px;background:radial-gradient(ellipse at 50% 0,rgba(0,0,0,.25),transparent 70%)"></div>
+  <div class="actor" id="annaA" style="left:-150px"><img src="../../assets/dialogue/anna.webp" style="mask-image:url(../../assets/dialogue/anna-mask.png);-webkit-mask-image:url(../../assets/dialogue/anna-mask.png)"></div>
+  <div class="abs" style="left:0;right:0;bottom:0;height:560px;background:linear-gradient(180deg,rgba(10,12,20,0),rgba(10,12,20,.6))"></div>
+  <div class="tok" id="k1">TOK</div><div class="tok" id="k2">TOK</div><div class="tok" id="k3">TOK</div><div class="tok" id="k4">TOK</div><div class="tok" id="k5">TOK</div>
+  <div class="th" id="thA1" style="right:40px;top:480px"><div class="jp">…トイレ？</div><div class="id">(…toilet?)</div><i style="left:140px"></i><i style="left:120px"></i></div>
+  <div class="sp" id="spA2" style="right:60px;top:480px"><div class="jp">どうぞ。</div><div class="rom">Douzo.</div><div class="id">“Silakan masuk.”</div><div class="tl" style="left:120px"></div></div>
+</div>
+
+<!-- ===== B: ruang interview ===== -->
+<div class="scene" id="sB" style="background:#e9e2d2">
+  <img class="abs" src="../../assets/dialogue/classroom.webp" style="height:1920px;width:3413px;left:-80px;top:0;filter:blur(7px) saturate(.9) brightness(1.04)">
+  <div class="abs" style="inset:0;background:linear-gradient(180deg,rgba(250,244,232,.25),rgba(250,244,232,.05) 50%,rgba(10,12,20,.15))"></div>
+  <div class="actor flip" id="ren" style="right:-150px"><img src="../../assets/dialogue/ren.webp" style="mask-image:url(../../assets/dialogue/ren-mask.png);-webkit-mask-image:url(../../assets/dialogue/ren-mask.png)"></div>
+  <svg class="abs" width="620" height="420" viewBox="0 0 620 420" style="right:-20px;top:1470px;z-index:3">
+    <rect x="0" y="0" width="620" height="40" rx="8" fill="#6e4b2c"/><rect x="20" y="40" width="580" height="380" fill="#8a603a"/>
+    <rect x="160" y="-34" width="200" height="40" rx="4" fill="#fff" transform="rotate(-3 260 -14)"/></svg>
+  <div class="actor" id="annaB" style="left:-150px;z-index:4"><img src="../../assets/dialogue/anna.webp" style="mask-image:url(../../assets/dialogue/anna-mask.png);-webkit-mask-image:url(../../assets/dialogue/anna-mask.png)"></div>
+  <div class="abs" style="left:0;right:0;bottom:0;height:520px;background:linear-gradient(180deg,rgba(10,12,20,0),rgba(10,12,20,.6));z-index:5"></div>
+  <div class="th" id="thB1" style="right:40px;top:460px"><div class="jp">…あいさつは？</div><div class="id">(…salamnya mana?)</div><i style="right:200px"></i><i style="right:180px"></i></div>
+  <div class="sp" id="spB1" style="left:50px;top:470px"><div class="jp">失礼します。</div><div class="rom">Shitsurei shimasu.</div><div class="id">“Permisi.”</div><div class="tl" style="left:150px"></div></div>
+  <div class="th" id="thB2" style="right:40px;top:460px"><div class="jp">まだ 何も…</div><div class="id">(belum disuruh duduk…)</div><i style="right:200px"></i><i style="right:180px"></i></div>
+  <div class="sp" id="spB2" style="right:50px;top:470px"><div class="jp">どうぞ おかけください。</div><div class="rom">Douzo okake kudasai.</div><div class="id">“Silakan duduk.”</div><div class="tl" style="right:170px"></div></div>
+  <div class="sp" id="spB3" style="left:50px;top:470px"><div class="jp">失礼します。</div><div class="rom">Shitsurei shimasu.</div><div class="id">lalu duduk</div><div class="tl" style="left:150px"></div></div>
+  <div class="sp" id="spB4" style="left:50px;top:470px"><div class="jp"><span style="color:var(--red)">貴社</span>で 働きたいです。</div><div class="rom">Kisha de hatarakitai desu.</div><div class="tl" style="left:150px"></div></div>
+  <div class="th" id="thB3" style="right:40px;top:800px"><div class="jp">きしゃ…？</div><div class="id">(itu bahasa tulisan…)</div><i style="right:200px"></i><i style="right:180px"></i></div>
+  <div class="sp" id="spB5" style="left:50px;top:470px"><div class="jp"><span style="color:var(--green)">御社</span>で 働きたいです。</div><div class="rom">Onsha de hatarakitai desu.</div><div class="id">“Saya ingin bekerja di perusahaan Anda.”</div><div class="tl" style="left:150px"></div></div>
+  <div class="note" id="note"><div><div class="k" style="color:var(--green)">御社</div><div class="rr">onsha</div><div class="d">🗣 diucapkan<br>(interview)</div></div><div><div class="k" style="color:#7a7268">貴社</div><div class="rr">kisha</div><div class="d">✍️ ditulis<br>(CV, email)</div></div></div>
+</div>
+
+<!-- ===== penutup ===== -->
+<div class="scene bg-red" id="sE">
+  <div class="rec" id="r1" style="top:760px"><b>✓</b>ketuk 3x, tunggu どうぞ</div>
+  <div class="rec" id="r2" style="top:860px"><b>✓</b>失礼します + membungkuk</div>
+  <div class="rec" id="r3" style="top:960px"><b>✓</b>duduk setelah dipersilakan</div>
+  <div class="rec" id="r4" style="top:1060px"><b>✓</b>御社, bukan 貴社</div>
+  <div class="abs" id="part2" style="left:0;right:0;top:1230px;text-align:center;opacity:0">
+    <div style="display:inline-block;background:var(--yellow);color:var(--ink);font-family:Montserrat;font-weight:900;font-size:50px;padding:14px 30px;border-radius:16px;transform:rotate(-2deg);box-shadow:0 20px 40px -16px rgba(0,0,0,.5)">PART 2: pertanyaan yang PASTI ditanya 🎯</div>
+    <div style="margin-top:26px;font-family:Montserrat;font-weight:800;font-size:40px;color:#fff">follow · <span style="font-weight:900">eznihongo.com</span></div>
+  </div>
+</div>
+
+<div id="chips"></div>
+<div id="caps"></div>
+<div id="meter"><div class="lb"><span>KESAN PEWAWANCARA</span><b id="mv">100</b></div><div class="tr"><div id="mb"></div></div></div>
+<div id="delta"></div>
+<div class="stamp ng" id="sNG">❌ NG</div>
+<div class="stamp ok" id="sOK">✅ OK</div>
+<div id="redfl"></div>
+<div id="flash"></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const seg=(t,a,b)=>cl((t-a)/(b-a));
+const eo=x=>1-Math.pow(1-x,3), eo5=x=>1-Math.pow(1-x,5);
+const eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const eback=x=>{const c=1.6;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
+const lerp=(a,b,x)=>a+(b-a)*x;
+const shake=(t,a,amp)=>{const x=t-a; return x<0||x>.35?0:Math.sin(x*90)*amp*Math.exp(-x*12)};
+
+// ===================== JADWAL =====================
+const DUR=27.0;
+const SCENES=[['sA',0,6.4],['sB',6.4,23.0],['sE',23.0,27.01]];
+const FLASHES=[3.4,6.4,23.0];
+const CHIPS=[['01 · KETUK PINTU',3.45,6.4],['02 · MASUK',6.45,11.4],['03 · DUDUK',11.45,17.2],['04 · SEBUT PERUSAHAAN',17.25,23.0]];
+const CAPS=[
+  [-1,1.55,1250,'wh',[['s','kamu bisa gagal interview Jepang'],['b y','sebelum'],['i','ngomong satu kata pun.']]],
+  [2.1,3.4,1300,'wh',[['s','ketuk 2x ='],['b','ketukan toilet 🚽']]],
+  [4.75,6.4,1300,'wh',[['s','ketuk 3x,'],['b','tunggu「どうぞ」']]],
+  [7.0,8.35,1300,'wh',[['s','langsung masuk'],['b','tanpa salam']]],
+  [9.9,11.4,1300,'wh',[['s','salam dulu,'],['b','baru jalan']]],
+  [11.9,13.4,1300,'wh',[['s','langsung'],['b','duduk']]],
+  [16.5,17.2,1300,'wh',[['b','tunggu disuruh']]],
+  [18.4,19.2,1300,'wh',[['s','貴社 itu bahasa'],['b','tulisan']]],
+];
+// meteran: [waktu, nilai]
+const METER=[[0,100],[1.75,80],[4.65,100],[7.6,85],[9.9,100],[12.5,85],[16.4,100],[18.5,90],[20.1,100]];
+const DELTA=[[1.75,'-20','ng'],[4.65,'+20','ok'],[7.6,'-15','ng'],[9.9,'+15','ok'],[12.5,'-15','ng'],[16.4,'+15','ok'],[18.5,'-10','ng'],[20.1,'+10','ok']];
+const NGS=[1.7,7.55,12.45,18.45], OKS=[4.6,9.85,16.35,20.05];
+window.CUES=[[0,'whoosh_soft',1],[0.65,'knock'],[0.95,'knock'],[1.45,'pop',2],[1.7,'buzz'],[2.1,'pop',4],
+  [3.4,'boom'],[3.6,'knock'],[3.85,'knock'],[4.1,'knock'],[4.35,'pop',1],[4.6,'correct'],[4.75,'pop',3],
+  [6.4,'whoosh',1],[6.5,'whoosh_soft',1],[7.1,'pop',2],[7.55,'buzz'],[8.4,'whoosh_soft',-1],[8.8,'pop',0],[9.0,'lift'],[9.85,'correct'],
+  [11.4,'whoosh',-1],[11.65,'punch'],[12.0,'pop',2],[12.45,'buzz'],[13.5,'whoosh_soft',1],[13.95,'pop',3],[15.15,'pop',1],[15.85,'tap'],[16.35,'correct'],
+  [17.2,'whoosh',1],[17.4,'pop',2],[18.0,'pop',4],[18.45,'buzz'],[19.25,'whoosh_soft',-1],[19.4,'pop',0],[20.05,'correct'],[20.6,'lift'],[20.75,'pop',5],
+  [23.0,'whoosh_up'],[23.1,'boom'],[23.35,'tick',0],[23.6,'tick',1],[23.85,'tick',2],[24.1,'tick',3],[24.6,'pop',6],[25.2,'shimmer'],[25.8,'sparkle']]
+  .sort((a,b)=>a[0]-b[0]);
+
+// ===================== DOM =====================
+const CHIP_EL=CHIPS.map(([txt,a,b])=>{ const d=document.createElement('div'); d.className='tchip'; d.innerHTML=`<span>${txt}</span>`; $('chips').appendChild(d); return {el:d,a,b}; });
+const CAP_EL=CAPS.map(([a,b,top,theme,lines])=>{ const d=document.createElement('div'); d.className='cap '+theme; d.style.top=top+'px';
+  lines.forEach(([cls,txt])=>{ const ln=document.createElement('div'); ln.className='ln '+cls;
+    txt.split(' ').forEach((w,i)=>{ if(i) ln.appendChild(document.createTextNode(' ')); const s=document.createElement('span'); s.className='w'; s.textContent=w; ln.appendChild(s); });
+    d.appendChild(ln); });
+  $('caps').appendChild(d); return {el:d,a,b,words:[...d.querySelectorAll('.w')],lines:[...d.querySelectorAll('.ln')],fitted:false}; });
+function fit(c){ if(c.fitted) return; c.el.style.display='block';
+  c.lines.forEach(l=>{ const w=l.scrollWidth; if(w>1000){ const fs=parseFloat(getComputedStyle(l).fontSize); l.style.fontSize=(fs*1000/w)+'px'; } });
+  c.fitted=true; }
+function fitAll(){ document.querySelectorAll('.scene').forEach(s=>s.style.display='block');
+  document.querySelectorAll('.sp,.th').forEach(b=>{ b.querySelectorAll('.jp,.id').forEach(r=>{ const max=900; const w=r.scrollWidth; if(w>max){ const fs=parseFloat(getComputedStyle(r).fontSize); r.style.fontSize=(fs*max/w)+'px'; } }); });
+  document.querySelectorAll('.rec').forEach(r=>{ const w=r.scrollWidth; if(w>860){ const fs=parseFloat(getComputedStyle(r).fontSize); r.style.fontSize=(fs*860/w)+'px'; } });
+  document.querySelectorAll('.scene').forEach(s=>s.style.display='none'); }
+window.READY=Promise.all(['900 100px "Noto Sans JP"','700 20px "Noto Sans JP"','900 50px Montserrat','800 50px Montserrat','700 50px Montserrat',
+  'italic 500 50px "Playfair Display"','600 20px Inter','700 20px Inter'].map(f=>document.fonts.load(f,'面接室失礼します御社貴社働何トイレあいさつどうぞおかけくださいAa'))).then(fitAll);
+
+function drawChips(t){ CHIP_EL.forEach(c=>{ const on=t>=c.a&&t<c.b; c.el.style.display=on?'block':'none'; if(!on) return;
+  const p=eo5(seg(t,c.a,c.a+.3)); c.el.style.filter=`blur(${(1-p)*14}px)`; c.el.style.opacity=p;
+  c.el.style.transform=`scale(${lerp(1.25,1,p)}) rotate(${Math.sin((t-c.a)*1.3)*.6}deg)`; }); }
+function drawCaps(t){ CAP_EL.forEach(c=>{ const on=t>=c.a&&t<c.b; if(!on){ c.el.style.display='none'; return; } fit(c); c.el.style.display='block';
+  const out=seg(t,c.b-.12,c.b);
+  c.words.forEach((w,i)=>{ const st=c.a+i*.07, p=seg(t,st,st+.28), e=eo5(p);
+    w.style.opacity=cl(p*2.5)*(1-out); w.style.filter=`blur(${(1-e)*16+out*10}px)`;
+    w.style.transform=`translateY(${(1-e)*16}px) scale(${lerp(1.06,1,e)})`; }); }); }
+// gelembung: muncul a, hilang b
+function bub(id,t,a,b,tilt=-1.5){ const el=$(id), p=seg(t,a,a+.3), o=seg(t,b-.15,b);
+  el.style.opacity=t>=a&&t<b?cl(p*3)*(1-o):0; el.style.transform=`scale(${lerp(.5,1,eback(p))*lerp(1,.9,o)}) rotate(${tilt+Math.sin((t-a)*2)*.6}deg) translateX(${shake(t,a+.05,10)}px)`; }
+function meterAt(t){ let v=100; for(let i=1;i<METER.length;i++){ const [a,val]=METER[i], prev=METER[i-1][1]; if(t>=a) v=lerp(prev,val,eo(seg(t,a,a+.35))); } return v; }
+function stampAt(el,t,list){ let best=null; list.forEach(a=>{ if(t>=a&&t<a+.75) best=a; });
+  if(best===null){ el.style.opacity=0; return; } const p=seg(t,best,best+.14), o=seg(t,best+.6,best+.75);
+  el.style.opacity=cl(p*3)*(1-o); el.style.transform=`rotate(-7deg) scale(${lerp(2.2,1,eo5(p))})`; return best; }
+function tok(id,t,a,x,y,rot){ const p=seg(t,a,a+.25), o=seg(t,a+.5,a+.75); const el=$(id);
+  el.style.opacity=t<a?0:cl(p*4)*(1-o); el.style.transform=`translate(${x}px,${y-p*30}px) rotate(${rot}deg) scale(${lerp(1.6,1,eo5(p))})`; }
+function bow(t,a,dur=.9){ const p=seg(t,a,a+.25), q=seg(t,a+dur-.25,a+dur); return eio(p)*(1-eio(q)); }
+
+function render(t){
+  SCENES.forEach(([id,a,b])=>{ $(id).style.display=(t>=a&&t<b)?'block':'none'; });
+  let f=0; FLASHES.forEach(a=>{ const x=t-a; if(x>-.07&&x<.3) f=Math.max(f, x<0?(x+.07)/.07:1-eo(x/.3)); });
+  $('flash').style.opacity=f*.95;
+  drawChips(t); drawCaps(t);
+  // meteran (muncul 1,6 dtk, hilang di penutup lalu kembali besar)
+  const mv=meterAt(t), mOn=t<23?seg(t,1.55,1.75):0; $('meter').style.opacity=mOn;
+  $('mv').textContent=Math.round(mv); const col=mv>=95?'#1f8a4c':mv>=85?'#d38a12':'#C8102E';
+  $('mv').style.color=col; $('mb').style.width=mv+'%'; $('mb').style.background=col;
+  let ng=false; NGS.forEach(a=>{ if(t>=a&&t<a+.6) ng=true; });
+  $('meter').style.transform=`translateX(${NGS.reduce((s,a)=>s+shake(t,a,14),0)}px)`;
+  const dl=DELTA.filter(([a])=>t>=a&&t<a+.9).pop(); const D=$('delta');
+  if(dl&&t<23){ const p=seg(t,dl[0],dl[0]+.9); D.textContent=dl[1]; D.style.color=dl[2]==='ng'?'#C8102E':'#1f8a4c'; D.style.opacity=cl((1-p)*3); D.style.transform=`translateY(${-p*50}px) scale(${lerp(1.4,1,eo5(seg(p,0,.25)))})`; } else D.style.opacity=0;
+  stampAt($('sNG'),t,NGS); stampAt($('sOK'),t,OKS);
+  let rf=0; NGS.forEach(a=>{ const x=t-a; if(x>=0&&x<.5) rf=Math.max(rf,1-x/.5); }); $('redfl').style.opacity=rf*.8;
+
+  // ---------- A: pintu ----------
+  if(t<6.4){ const z=lerp(1,1.04,t/6.4); $('sA').style.transform=`scale(${z})`;
+    $('annaA').style.transform=`translateY(${Math.sin(t*2)*4}px)`;
+    $('door').style.transform=`translateX(${shake(t,.65,6)+shake(t,.95,6)+shake(t,3.6,5)+shake(t,3.85,5)+shake(t,4.1,5)}px)`;
+    tok('k1',t,.65,600,720,-12); tok('k2',t,.95,770,620,10);
+    tok('k3',t,3.6,580,760,-10); tok('k4',t,3.85,740,650,8); tok('k5',t,4.1,640,560,-4);
+    bub('thA1',t,1.4,3.4,2); bub('spA2',t,4.3,6.4,2);
+    $('annaA').style.filter=`brightness(${t>1.4&&t<3.4?.8:1})`; }
+  // ---------- B: ruangan ----------
+  if(t>=6.4&&t<23){ const A=$('annaB'), R=$('ren');
+    // Anna masuk (NG), mundur, masuk lagi + bungkuk (OK)
+    let x=-150, y=0, rot=0;
+    if(t<8.4){ x=lerp(-1000,-150,eo(seg(t,6.5,7.1))); }
+    else if(t<9.9){ x=-150; rot=bow(t,9.0,1.0)*9; y=bow(t,9.0,1.0)*40; }
+    // duduk langsung (NG) → berdiri lagi → duduk setelah dipersilakan (OK)
+    const sitNG=eo(seg(t,11.6,11.85))*(1-eio(seg(t,13.5,13.85)));
+    const sitOK=eo(seg(t,15.85,16.15));
+    if(t>=11.4){ y=Math.max(sitNG,sitOK)*230; rot=bow(t,15.45,.5)*6; }
+    A.style.transform=`translate(${x}px,${y+Math.sin(t*2)*4}px) rotate(${rot}deg)`;
+    R.style.transform=`translateY(${Math.sin(t*1.8+1)*4}px)`;
+    const renSpeaks=(t>=13.9&&t<15.2), renThinks=[[7.55,9.0],[12.4,13.5],[18.3,19.3]].some(([a,b])=>t>=a&&t<b);
+    const annaSpeaks=[[8.75,9.9],[15.1,16.4],[17.35,18.4],[19.35,23]].some(([a,b])=>t>=a&&t<b);
+    R.style.filter=`brightness(${renSpeaks||renThinks?1:.72})`; A.style.filter=`brightness(${annaSpeaks||!(renSpeaks||renThinks)?1:.72})`;
+    bub('thB1',t,7.5,9.0,1); bub('spB1',t,8.75,9.9,-1.5);
+    bub('thB2',t,12.4,13.5,1); bub('spB2',t,13.9,15.2,1.5); bub('spB3',t,15.1,16.4,-1.5);
+    bub('spB4',t,17.35,19.2,-1.5); bub('thB3',t,18.3,19.3,1); bub('spB5',t,19.35,23,-1.5);
+    const n=seg(t,20.6,20.95), no=seg(t,22.85,23); $('note').style.opacity=cl(n*3)*(1-no); $('note').style.transform=`translateY(${(1-eback(n))*80}px)`;
+    $('sB').style.transform=`scale(${lerp(1,1.03,seg(t,6.4,23))})`; }
+  // ---------- penutup ----------
+  if(t>=23){ const m=seg(t,23.05,23.4); const M=$('meter'); M.style.opacity=cl(m*3); M.style.transform=`translateY(${lerp(40,260,1)}px) scale(${lerp(.7,1.12,eback(m))})`;
+    [['r1',23.35],['r2',23.6],['r3',23.85],['r4',24.1]].forEach(([id,a],i)=>{ const p=seg(t,a,a+.3); $(id).style.opacity=cl(p*3); $(id).style.transform=`translateX(${(1-eback(p))*(i%2?1:-1)*200}px)`; });
+    const p=seg(t,24.6,25.0); $('part2').style.opacity=cl(p*3); $('part2').style.transform=`scale(${lerp(.6,1,eback(p))})`;
+    $('sE').style.transform=`scale(${1+shake(t,23.1,.008)})`; }
+}
+window.render=render;
+</script>
+</body></html>

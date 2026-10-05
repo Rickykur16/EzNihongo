@@ -8,7 +8,7 @@ import json, sys, wave
 import numpy as np
 
 SR = 48000
-DUR = 30.0
+DUR = float(__import__("os").environ.get("DUR", "30"))
 N = int(SR * DUR)
 rng = np.random.default_rng(7)
 L = np.zeros(N); R = np.zeros(N)
@@ -222,7 +222,25 @@ def count(t0):
         add(t0 + k * .065 * (1 + k * .04), bell(1200 + k * 40, .12, 30, ((1, 1),)), .08)
 
 
+def knock(t0):
+    """Ketukan pintu kayu: dentum rendah + klik permukaan."""
+    t = tt(.25)
+    body = np.sin(2 * np.pi * 180 * t) * np.exp(-t * 38) + .6 * np.sin(2 * np.pi * 410 * t) * np.exp(-t * 55)
+    hit = lp_var(rng.standard_normal(len(t)), 2500.0) * np.exp(-t * 90)
+    add(t0, body, .55, pan=.25); add(t0, hit, .35, pan=.25)
+
+
+def buzz(t0):
+    """Bunyi salah: dua nada rendah kasar."""
+    for k, f in ((0, 196.0), (.16, 164.8)):
+        t = tt(.2)
+        s = np.sign(np.sin(2 * np.pi * f * t)) * .5 + np.sin(2 * np.pi * f * 2 * t) * .3
+        s = lp_var(s * np.minimum(1, t / .005) * np.exp(-t * 6), 1800.0)
+        add(t0 + k, s, .32)
+
+
 KIND = {
+    'knock': lambda t, a: knock(t), 'buzz': lambda t, a: buzz(t),
     'lift': lambda t, a: lift(t), 'wave': lambda t, a: card_wave(t), 'flip': lambda t, a: flip(t),
     'punch': lambda t, a: punch(t), 'count': lambda t, a: count(t),
     'strike': lambda t, a: strike(t),

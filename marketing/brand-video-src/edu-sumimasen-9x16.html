@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Montserrat:wght@600;700;800;900&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,500;1,600&family=Shippori+Mincho:wght@700;800&family=Noto+Sans+JP:wght@500;700;900&display=block" rel="stylesheet">
+<!--
+  Konten edukasi EzNihongo 9:16 (1080×1920), 30 detik: 「すみません」 = 1 kata, 3 arti
+  (permisi / maaf / terima kasih) + bonus tingkat kesopanan di tempat kerja.
+  Gaya caption sama dengan video brand (video-9x16.html). Semua animasi = render(t);
+  window.CUES = efek suara pada detik yang sama (sfx.py).
+  Foto: assets/dashboard/* (Unsplash License, lihat assets/dashboard/README.md).
+-->
+<style>
+:root{--red:#C8102E;--ink:#1a1815;--paper:#fdfcf9;--navy:#19345f;--blue:#4165a8;--blue2:#dce6f5;--yellow:#FFE11A}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#111;font-family:Inter,sans-serif}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden}
+.scene{position:absolute;inset:0;display:none;overflow:hidden}
+.abs{position:absolute}
+.bg-paper{background:radial-gradient(ellipse 90% 70% at 50% 40%,#fbf8f2 0%,#efe8dc 70%,#e4dccd 100%)}
+.bg-red{background:radial-gradient(ellipse 80% 60% at 50% 45%,#d81a35 0%,#b10f28 55%,#7d0a1b 100%)}
+.jp{font-family:'Noto Sans JP',sans-serif}
+/* caption tumpuk (sama dengan video brand) */
+.cap{position:absolute;left:40px;right:40px;text-align:center;display:none}
+.cap .ln{display:block;white-space:nowrap}
+.cap .s{font-family:Montserrat,'Noto Sans JP';font-weight:700;font-size:58px;line-height:1.08;letter-spacing:-.01em}
+.cap .b{font-family:Montserrat,'Noto Sans JP';font-weight:900;font-size:124px;line-height:.98;letter-spacing:-.035em}
+.cap .i{font-family:'Playfair Display';font-style:italic;font-weight:500;font-size:64px;line-height:1.08}
+.cap .w{display:inline-block}
+.light .s,.light .i{color:#3b3631}.light .b{color:var(--ink)}
+.onred .s,.onred .b,.onred .i{color:#fff;text-shadow:0 8px 30px rgba(80,0,10,.35)}
+.r{color:var(--red)!important}.y{color:var(--yellow)!important}
+.tchip{position:absolute;left:0;right:0;top:150px;text-align:center;display:none;z-index:8}
+.tchip span{display:inline-block;background:var(--red);color:#fff;font-family:Montserrat;font-weight:800;font-size:50px;letter-spacing:.01em;padding:10px 26px 12px;box-shadow:0 14px 30px -12px rgba(0,0,0,.4)}
+/* foto situasi */
+.photo{position:absolute;left:0;top:0;width:1080px;height:700px;object-fit:cover}
+.fade{position:absolute;left:0;right:0;top:0;height:702px;background:linear-gradient(180deg,rgba(10,12,20,.45) 0%,rgba(10,12,20,0) 30%,rgba(239,232,220,0) 62%,#efe8dc 100%)}
+.sit{position:absolute;left:60px;right:60px;top:450px;display:flex;align-items:center;gap:22px;background:#fff;border-radius:26px;padding:22px 28px;box-shadow:0 30px 60px -24px rgba(26,24,21,.5);font-size:40px;font-weight:700;color:var(--ink);line-height:1.2;opacity:0}
+.sit i{font-style:normal;flex:none;width:86px;height:86px;border-radius:22px;background:#fff0f2;display:grid;place-items:center;font-size:50px}
+.sit small{display:block;font-size:26px;font-weight:700;letter-spacing:.12em;color:var(--red);margin-bottom:4px}
+/* gelembung ucapan */
+.bub{position:absolute;left:90px;right:90px;top:690px;background:#fff;border:6px solid var(--ink);border-radius:46px;padding:30px 20px 26px;text-align:center;opacity:0;box-shadow:14px 16px 0 var(--ink)}
+.bub .tail{position:absolute;left:110px;bottom:-31px;width:54px;height:54px;background:#fff;border-right:6px solid var(--ink);border-bottom:6px solid var(--ink);transform:rotate(45deg)}
+.bub .jpl{font-family:'Noto Sans JP';font-weight:900;font-size:104px;line-height:1.18;color:var(--ink)}
+.bub .jpl .row{display:block;white-space:nowrap}
+.bub .rom{font-weight:600;font-size:40px;color:#7a7268;margin-top:6px}
+.tr{position:absolute;left:30px;right:30px;top:1120px;text-align:center;opacity:0}
+.tr span{display:inline-block;font-family:Montserrat;font-weight:900;font-size:66px;color:var(--ink);padding:4px 24px 8px;white-space:nowrap;background:linear-gradient(var(--yellow),var(--yellow)) no-repeat 0 100%/0% 100%;transform:rotate(-1.5deg)}
+.tr em{display:block;font-family:'Playfair Display';font-style:italic;font-weight:500;font-size:52px;color:#3b3631;margin-top:12px}
+/* tangga kesopanan */
+.lad{position:absolute;left:60px;right:60px;height:250px;background:#fff;border-radius:28px;box-shadow:0 30px 60px -26px rgba(26,24,21,.45),0 0 0 1px rgba(26,24,21,.06);padding:28px 34px;opacity:0}
+.lad .jw{font-family:'Noto Sans JP';font-weight:900;font-size:72px;line-height:1.1;color:var(--ink)}
+.lad .jw.sm{font-size:64px}
+.lad ruby rt{font-size:22px;font-weight:700;color:#7a7268;letter-spacing:.02em}
+.lad .who{position:absolute;right:34px;top:40px;font-family:Montserrat;font-weight:800;font-size:36px;color:var(--red);text-align:right;line-height:1.15}
+.lad .who b{display:block;font-family:Inter;font-weight:600;font-size:28px;color:#6b645b}
+.lad .meter{position:absolute;left:34px;right:34px;bottom:30px;height:16px;border-radius:8px;background:var(--blue2);overflow:hidden}
+.lad .meter div{height:100%;width:0;background:var(--blue);border-radius:8px}
+.opt{position:absolute;left:90px;right:90px;height:124px;border-radius:26px;background:rgba(255,255,255,.96);display:flex;align-items:center;gap:26px;padding:0 30px;font-family:Montserrat;font-weight:800;font-size:56px;color:var(--ink);opacity:0;box-shadow:0 24px 50px -20px rgba(0,0,0,.6)}
+.opt b{width:76px;height:76px;border-radius:50%;background:var(--red);color:#fff;display:grid;place-items:center;font-size:44px}
+.ans{position:absolute;left:0;right:0;text-align:center;font-family:Montserrat;font-weight:900;font-size:86px;color:#fff;opacity:0;text-shadow:0 8px 30px rgba(80,0,10,.35)}
+.actor{position:absolute;bottom:-40px;width:840px;height:1260px}
+.actor img{width:100%;height:100%;display:block;mask-size:100% 100%;-webkit-mask-size:100% 100%}
+.actor.flip img{transform:scaleX(-1)}
+.ticket{position:absolute;left:-40px;top:-30px;width:300px;height:160px;border-radius:14px;background:#ffe3b0;border:6px solid #b0702a;outline:6px solid #fff;font-family:'Noto Sans JP';color:#5a3510;text-align:center;padding-top:8px;box-shadow:0 14px 26px -10px rgba(0,0,0,.5);opacity:0;z-index:4}
+.ticket b{display:block;font-size:62px;font-weight:900;line-height:1.1}.ticket span{font-size:32px;font-weight:700}
+.qm{position:absolute;font-family:Montserrat;font-weight:900;font-size:120px;color:#fff;-webkit-text-stroke:6px var(--ink);paint-order:stroke;opacity:0;z-index:5}
+.sp{position:absolute;left:40px;top:470px;width:800px;background:#fff;border:6px solid var(--ink);border-radius:40px;padding:22px 20px 18px;text-align:center;box-shadow:12px 14px 0 var(--ink);opacity:0;z-index:6}
+.sp .jpl{font-family:'Noto Sans JP';font-weight:900;font-size:88px;line-height:1.15;color:var(--ink)}
+.sp .jpl .row{display:block;white-space:nowrap}
+.sp .rom{font-weight:600;font-size:38px;color:#7a7268}
+.sptail{position:absolute;left:150px;bottom:-30px;width:52px;height:52px;background:#fff;border-right:6px solid var(--ink);border-bottom:6px solid var(--ink);transform:rotate(45deg)}
+.th{position:absolute;right:50px;top:440px;width:640px;background:#fff;border-radius:60px;padding:30px 30px 34px;text-align:center;font-family:Montserrat;font-weight:700;font-size:54px;line-height:1.1;color:#3b3631;box-shadow:0 26px 50px -20px rgba(0,0,0,.55);opacity:0;z-index:6}
+.th b{display:block;font-weight:900;font-size:92px;color:var(--red);letter-spacing:-.03em}
+.th i{position:absolute;border-radius:50%;background:#fff}
+.th i:nth-of-type(1){width:60px;height:60px;right:170px;bottom:-60px}.th i:nth-of-type(2){width:32px;height:32px;right:150px;bottom:-110px}
+.stamp{position:absolute;left:0;right:0;top:1250px;margin:auto;width:max-content;font-family:Montserrat;font-weight:900;font-size:96px;color:#fff;background:var(--red);padding:10px 34px 16px;border:8px solid #fff;transform:rotate(-7deg);box-shadow:0 30px 60px -16px rgba(0,0,0,.6);opacity:0;z-index:7}
+.kana{position:absolute;font-family:'Shippori Mincho',serif;font-weight:800}
+#flash{position:absolute;inset:0;z-index:60;opacity:0;background:radial-gradient(ellipse at 50% 45%,#fffdf6 0%,#ffe9c9 60%,#ffb98a 100%)}
+</style></head>
+<body><div id="stage">
+
+<!-- ===== HOOK: adegan tokoh (aset Percakapan, assets/dialogue) ===== -->
+<div class="scene" id="s0" style="background:#9cc7e8">
+  <div class="abs" id="cam" style="inset:0;transform-origin:72% 55%">
+    <img class="abs" id="hbg" src="../../assets/dialogue/station.webp" style="height:1920px;width:3413px;left:-1500px;top:0;filter:blur(3px) saturate(1.05)">
+    <div class="actor" id="aoi" style="left:-120px"><img src="../../assets/dialogue/aoi.webp" style="mask-image:url(../../assets/dialogue/aoi-mask.png);-webkit-mask-image:url(../../assets/dialogue/aoi-mask.png)"></div>
+    <div class="actor flip" id="hadi" style="right:-130px"><img src="../../assets/dialogue/hadi.webp" style="mask-image:url(../../assets/dialogue/hadi-mask.png);-webkit-mask-image:url(../../assets/dialogue/hadi-mask.png)"></div>
+    <div class="abs" style="left:0;right:0;bottom:0;height:520px;background:linear-gradient(180deg,rgba(10,12,20,0),rgba(10,12,20,.55))"></div>
+    <div class="ticket" id="tkt"><b>きっぷ</b><span>東京 → 大阪</span></div>
+    <div class="qm" id="q1">?</div><div class="qm" id="q2" style="font-size:150px">?</div><div class="qm" id="q3">!</div>
+  </div>
+  <div class="sp" id="spA"><div class="jpl" data-jp="あ、すみません！"></div><div class="rom">A, sumimasen!</div><div class="sptail"></div></div>
+  <div class="th" id="thH">lho… kok dia<br><b>minta maaf?</b><i></i><i></i></div>
+  <div class="stamp" id="stamp">SALAH PAHAM?</div>
+</div>
+<!-- ===== JAWABAN ===== -->
+<div class="scene bg-red" id="s1">
+  <div class="abs" id="mini" style="left:240px;top:1180px;width:600px;height:340px;border-radius:30px;overflow:hidden;border:8px solid #fff;box-shadow:0 30px 60px -20px rgba(60,0,10,.6);opacity:0">
+    <img src="../../assets/dialogue/station.webp" style="position:absolute;height:100%;left:-60px;filter:blur(2px)">
+    <img src="../../assets/dialogue/aoi.webp" style="position:absolute;height:520px;left:-10px;top:20px;mask-image:url(../../assets/dialogue/aoi-mask.png);-webkit-mask-image:url(../../assets/dialogue/aoi-mask.png);mask-size:100% 100%;-webkit-mask-size:100% 100%">
+    <img src="../../assets/dialogue/hadi.webp" style="position:absolute;height:520px;right:-10px;top:20px;transform:scaleX(-1);mask-image:url(../../assets/dialogue/hadi-mask.png);-webkit-mask-image:url(../../assets/dialogue/hadi-mask.png);mask-size:100% 100%;-webkit-mask-size:100% 100%">
+  </div>
+</div>
+<!-- ===== ARTI 1: PERMISI ===== -->
+<div class="scene bg-paper" id="s2">
+  <img class="photo" src="../../assets/dashboard/continue-kyoto-night.webp" style="object-position:50% 45%">
+  <div class="fade"></div>
+  <div class="sit" id="sit2"><i>📍</i><div><small>SITUASI</small>Mau nanya jalan ke orang asing</div></div>
+  <div class="bub" id="bub2"><div class="jpl" data-jp="すみません、|えきは どこですか。"></div><div class="tail"></div><div class="rom">Sumimasen, eki wa doko desu ka.</div></div>
+  <div class="tr" id="tr2"><span>“Permisi, stasiunnya di mana?”</span><em>juga buat manggil pelayan</em></div>
+</div>
+<!-- ===== ARTI 2: MAAF ===== -->
+<div class="scene bg-paper" id="s3">
+  <img class="photo" src="../../assets/dashboard/continue-sakura-train.webp" style="object-position:50% 50%">
+  <div class="fade"></div>
+  <div class="sit" id="sit3"><i>🚃</i><div><small>SITUASI</small>Nggak sengaja nyenggol orang di kereta</div></div>
+  <div class="bub" id="bub3"><div class="jpl" data-jp="あっ、すみません！"></div><div class="tail"></div><div class="rom">A, sumimasen!</div></div>
+  <div class="tr" id="tr3"><span>“Aduh, maaf!”</span><em>maaf ringan, sehari-hari</em></div>
+</div>
+<!-- ===== ARTI 3: TERIMA KASIH ===== -->
+<div class="scene bg-paper" id="s4">
+  <img class="photo" src="../../assets/dashboard/live-japanese-room.webp" style="object-position:50% 55%">
+  <div class="fade"></div>
+  <div class="sit" id="sit4"><i>🧤</i><div><small>SITUASI</small>Barangmu jatuh, diambilin orang</div></div>
+  <div class="bub" id="bub4"><div class="jpl" data-jp="あ、すみません。"></div><div class="tail"></div><div class="rom">A, sumimasen.</div></div>
+  <div class="tr" id="tr4"><span>“Makasih ya!”</span><em>rasanya: “maaf jadi ngerepotin”</em></div>
+</div>
+<!-- ===== BONUS: TEMPAT KERJA ===== -->
+<div class="scene bg-paper" id="s5">
+  <div class="lad" id="l1" style="top:330px"><div class="jw">ごめんなさい</div><div class="who">TEMAN<b>keluarga</b></div><div class="meter"><div data-w="33"></div></div></div>
+  <div class="lad" id="l2" style="top:610px"><div class="jw">すみません</div><div class="who">UMUM<b>sehari-hari</b></div><div class="meter"><div data-w="66"></div></div></div>
+  <div class="lad" id="l3" style="top:890px;border:5px solid var(--red)"><div class="jw sm"><ruby>申<rt>もう</rt></ruby>し<ruby>訳<rt>わけ</rt></ruby>ありません</div><div class="who">ATASAN<b>pelanggan</b></div><div class="meter"><div data-w="100"></div></div></div>
+  <div class="abs" id="arrow" style="left:0;right:0;top:1160px;text-align:center;font-family:Montserrat;font-weight:800;font-size:40px;color:var(--blue);letter-spacing:.06em;opacity:0">↓ MAKIN SOPAN ↓</div>
+</div>
+<!-- ===== PENUTUP ===== -->
+<div class="scene bg-paper" id="s6">
+  <div class="abs" id="esun" style="width:300px;height:300px;border-radius:50%;background:var(--red);left:700px;top:230px"></div>
+  <img class="abs" id="elogo" src="logo-a.png" style="width:900px;left:90px;top:330px">
+  <div class="abs" id="ejp" style="left:0;right:0;top:830px;text-align:center;font-family:'Shippori Mincho';font-weight:800;font-size:60px;color:var(--red);letter-spacing:.08em"></div>
+  <div class="abs" id="esave" style="left:0;right:0;top:1400px;text-align:center;font-family:Montserrat;font-weight:800;font-size:44px;color:var(--ink);opacity:0">📌 simpan biar nggak lupa</div>
+  <div class="abs" id="ecta" style="left:0;right:0;top:1500px;display:flex;justify-content:center;opacity:0">
+    <div style="position:relative;overflow:hidden;background:var(--red);color:#fff;font-family:Montserrat;font-size:48px;font-weight:800;padding:28px 60px;border-radius:18px;box-shadow:0 26px 60px -20px rgba(200,16,46,.65)">eznihongo.com ↗
+      <div id="eshine" style="position:absolute;top:-20px;bottom:-20px;width:110px;left:-160px;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.6),rgba(255,255,255,0));transform:skewX(-20deg)"></div></div>
+  </div>
+</div>
+
+<div id="chips"></div>
+<div id="caps"></div>
+<div id="flash"></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const seg=(t,a,b)=>cl((t-a)/(b-a));
+const eo=x=>1-Math.pow(1-x,3), eo5=x=>1-Math.pow(1-x,5);
+const eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const eback=x=>{const c=1.6;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
+const lerp=(a,b,x)=>a+(b-a)*x;
+const shake=(t,a,amp)=>{const x=t-a; return x<0||x>.35?0:Math.sin(x*90)*amp*Math.exp(-x*12)};
+
+// ===================== JADWAL =====================
+const SCENES=[['s0',0,3.6],['s1',3.6,6.2],['s2',6.2,11.2],['s3',11.2,16.2],['s5',16.2,21.0],['s6',21.0,24.61]];
+const DUR=24.6;
+const FLASHES=[3.6,6.2,11.2,16.2,21.0];
+const CHIPS=[['ARTI 2 · PERMISI',6.3,11.2],['ARTI 3 · MAAF',11.3,16.2],['BONUS · DI TEMPAT KERJA',16.3,21.0]];
+// caption: [mulai, selesai, top, tema, [[gaya, teks],...]]
+const CAPS=[
+  [-1,1.95,170,'onred',[['s','POV: kamu nolongin'],['b','orang Jepang']]],
+  [3.65,6.2,300,'onred',[['s','di sini すみません'],['b','bukan “maaf”.']]],
+  [4.45,6.2,650,'onred',[['s','artinya:'],['b y','terima kasih'],['i','“maaf jadi ngerepotin”']]],
+  [9.2,11.2,1340,'light',[['s','arti kedua:'],['b r','permisi.']]],
+  [14.2,16.2,1340,'light',[['s','arti ketiga:'],['b r','maaf.']]],
+  [16.3,18.3,1300,'light',[['s','minta maaf di'],['b','kantor?']]],
+  [18.3,21.0,1270,'light',[['s','salah serius ke atasan/pelanggan?'],['b r','yang paling'],['b r','sopan.']]],
+  [21.55,24.61,1080,'light',[['s','belajar bahasa Jepang'],['b r','dari nol,'],['i','buat kerja di Jepang.']]],
+];
+window.CUES=[[0,'whoosh_soft',1],[0.3,'whoosh_soft',-1],[0.72,'tap'],[0.95,'whoosh_soft',1],[1.25,'pop',2],
+  [1.4,'impact',1],[1.45,'pop',5],[2.2,'zoom'],[2.35,'blip'],[2.5,'pop',3],[2.62,'pop',6],[3.05,'strike'],
+  [3.6,'boom'],[3.65,'impact',2],[4.45,'pop',1],[4.6,'correct'],[5.3,'pop',4],
+  [6.2,'whoosh',1],[6.32,'pop',0],[6.75,'whoosh_soft',-1],[7.45,'pop',3],[7.65,'type',.7],[8.6,'pop',5],[9.2,'pop',2],
+  [11.2,'whoosh',-1],[11.32,'pop',1],[11.75,'whoosh_soft',1],[12.5,'punch'],[13.3,'pop',4],[14.2,'pop',2],
+  [16.2,'whoosh_up'],[16.32,'pop',6],[16.95,'lift'],[17.05,'tick',0],[17.55,'lift'],[17.65,'tick',2],[18.15,'lift'],[18.25,'tick',4],[18.3,'punch'],[18.9,'pop',1],
+  [21.0,'whoosh',1],[21.05,'swell'],[21.25,'boom'],[21.7,'shimmer'],[22.8,'pop',4],[23.2,'pop',6],[23.6,'sparkle']]
+  .sort((a,b)=>a[0]-b[0]);
+
+// ===================== BANGUN DOM =====================
+const CHIP_EL=CHIPS.map(([txt,a,b])=>{ const d=document.createElement('div'); d.className='tchip'; d.innerHTML=`<span>${txt}</span>`; $('chips').appendChild(d); return {el:d,a,b}; });
+const CAP_EL=CAPS.map(([a,b,top,theme,lines])=>{ const d=document.createElement('div'); d.className='cap '+theme; d.style.top=top+'px';
+  lines.forEach(([cls,txt])=>{ const ln=document.createElement('div'); ln.className='ln '+cls;
+    txt.split(' ').forEach((w,i)=>{ if(i) ln.appendChild(document.createTextNode(' ')); const s=document.createElement('span'); s.className='w'; s.textContent=w; ln.appendChild(s); });
+    d.appendChild(ln); });
+  $('caps').appendChild(d); return {el:d,a,b,words:[...d.querySelectorAll('.w')],lines:[...d.querySelectorAll('.ln')],fitted:false}; });
+function fit(c){ if(c.fitted) return; c.el.style.display='block';
+  c.lines.forEach(l=>{ const w=l.scrollWidth; if(w>1000){ const fs=parseFloat(getComputedStyle(l).fontSize); l.style.fontSize=(fs*1000/w)+'px'; } });
+  c.fitted=true; }
+// teks Jepang di gelembung: satu span per karakter
+document.querySelectorAll('.jpl').forEach(el=>{ el.innerHTML=el.dataset.jp.split('|').map(row=>`<span class="row">${[...row].map(ch=>`<span class="ch" style="display:inline-block">${ch===' '?'&nbsp;':ch}</span>`).join('')}</span>`).join(''); });
+function fitBubbles(){ document.querySelectorAll('.scene').forEach(s=>s.style.display='block');
+  document.querySelectorAll('.jpl .row,.tr span').forEach(r=>{ const w=r.scrollWidth, max=r.closest('.tr')?990:860; if(w>max){ const fs=parseFloat(getComputedStyle(r).fontSize); r.style.fontSize=(fs*max/w)+'px'; } });
+  document.querySelectorAll('.scene').forEach(s=>s.style.display='none'); }
+// muat semua font yang dipakai dulu (elemen tersembunyi tidak memicu unduhan font), baru ukur
+window.READY=Promise.all(['900 100px "Noto Sans JP"','700 20px "Noto Sans JP"','900 50px Montserrat','800 50px Montserrat','700 50px Montserrat',
+  'italic 500 50px "Playfair Display"','600 20px Inter','700 20px Inter','800 50px "Shippori Mincho"'].map(f=>document.fonts.load(f,'すみません申訳Aa'))).then(fitBubbles);
+const PARTS=[]; { let seed=11; const r=()=>(seed=(seed*16807)%2147483647)/2147483647; const K='すみませんあいうえお日本語学未来';
+  document.querySelectorAll('#s5,#s6').forEach(sc=>{ for(let i=0;i<12;i++){ const k=document.createElement('div'); k.className='kana';
+    k.textContent=K[Math.floor(r()*K.length)]; const sz=50+r()*140; k.style.fontSize=sz+'px';
+    k.style.color=r()<.6?`rgba(200,16,46,${.05+r()*.06})`:`rgba(25,52,95,${.05+r()*.05})`;
+    sc.insertBefore(k,sc.firstChild); PARTS.push({el:k,x:r()*1080,y:r()*1920,v:22+sz*.45,rot:(r()-.5)*40,ph:r()*6}); } }); }
+
+function drawChips(t){ CHIP_EL.forEach(c=>{ const on=t>=c.a&&t<c.b; c.el.style.display=on?'block':'none'; if(!on) return;
+  const p=eo5(seg(t,c.a,c.a+.3)); c.el.style.filter=`blur(${(1-p)*14}px)`; c.el.style.opacity=p;
+  c.el.style.transform=`scale(${lerp(1.25,1,p)}) rotate(${Math.sin((t-c.a)*1.3)*.6}deg)`; }); }
+function drawCaps(t){ CAP_EL.forEach(c=>{ const on=t>=c.a&&t<c.b; if(!on){ c.el.style.display='none'; return; } fit(c); c.el.style.display='block';
+  const out=seg(t,c.b-.12,c.b);
+  c.words.forEach((w,i)=>{ const st=c.a+i*.085, p=seg(t,st,st+.3), e=eo5(p);
+    w.style.opacity=cl(p*2.5)*(1-out); w.style.filter=`blur(${(1-e)*16+out*10}px)`;
+    w.style.transform=`translateY(${(1-e)*16}px) scale(${lerp(1.06,1,e)})`; });
+  c.el.style.transform=`scale(${lerp(1,1.03,seg(t,c.a,c.b))})`; }); }
+function popIn(el,t,a,dur=.4){ const p=seg(t,a,a+dur); el.style.opacity=cl(p*3); el.style.filter=`blur(${(1-eo5(p))*10}px)`;
+  el.style.transform=`scale(${lerp(.6,1,eback(p))})`; return p; }
+// adegan arti: situasi masuk → gelembung → huruf diketik → terjemahan distabilo
+function meaning(n,t,a){ const ph=$('s'+n).querySelector('.photo');
+  ph.style.transform=`scale(${lerp(1.15,1.03,eo(seg(t,a,a+5)))})`;
+  const s=seg(t,a+.55,a+.95); $('sit'+n).style.opacity=cl(s*3);
+  $('sit'+n).style.transform=`translateY(${(1-eback(s))*60}px)`;
+  const bub=$('bub'+n); popIn(bub,t,a+1.25,.45); bub.style.transform+=` rotate(${Math.sin((t-a)*1.6)*.5}deg)`;
+  const chs=[...bub.querySelectorAll('.jpl .ch')], ty=a+1.45, step=.055;
+  chs.forEach((c,i)=>{ const p=seg(t,ty+i*step,ty+i*step+.18); c.style.opacity=cl(p*2); c.style.transform=`translateY(${(1-eback(p))*24}px)`; });
+  const rom=bub.querySelector('.rom'); rom.style.opacity=seg(t,ty+chs.length*step,ty+chs.length*step+.3);
+  const tr=$('tr'+n), ta=ty+chs.length*step+.45; tr.style.opacity=cl(seg(t,ta,ta+.2)*2);
+  tr.querySelector('span').style.backgroundSize=`${eo(seg(t,ta+.15,ta+.6))*100}% 100%`;
+  const em=tr.querySelector('em'), ea=ta+.6; em.style.opacity=seg(t,ea,ea+.3); em.style.transform=`translateY(${(1-eo(seg(t,ea,ea+.3)))*14}px)`; }
+
+function render(t){
+  SCENES.forEach(([id,a,b])=>{ $(id).style.display=(t>=a&&t<b)?'block':'none'; });
+  let f=0; FLASHES.forEach(a=>{ const x=t-a; if(x>-.07&&x<.3) f=Math.max(f, x<0?(x+.07)/.07:1-eo(x/.3)); });
+  $('flash').style.opacity=f*.95;
+  drawChips(t); drawCaps(t);
+  PARTS.forEach(k=>{ const y=((k.y-t*k.v)%2080+2080)%2080-160;
+    k.el.style.transform=`translate(${k.x+Math.sin(t*.8+k.ph)*30}px,${y}px) rotate(${k.rot+Math.sin(t*.5+k.ph)*8}deg)`; });
+
+  // ---------- HOOK: adegan ----------
+  if(t<3.6){
+    $('hbg').style.transform=`translateX(${lerp(0,-60,t/3.6)}px)`;
+    // kamera: diam → dorong ke Hadi saat bingung → hentak saat stempel
+    const z=eio(seg(t,2.1,2.6)); $('cam').style.transform=`scale(${lerp(1,1.22,z)+shake(t,3.05,.02)}) translateX(${shake(t,2.2,10)}px)`;
+    const speakA=seg(t,1.3,1.4)*(1-seg(t,2.05,2.2)), speakH=seg(t,2.05,2.2);
+    $('aoi').style.filter=`brightness(${lerp(.62,1,t<1.3?.7:speakA)})`; $('hadi').style.filter=`brightness(${lerp(.62,1,t<1.3?.7:speakH)})`;
+    $('aoi').style.transform=`translateY(${Math.sin(t*2.2)*4-eback(seg(t,1.3,1.5))*0+(seg(t,1.3,1.45)-seg(t,1.45,1.65))*-24}px)`;
+    $('hadi').style.transform=`translate(${-Math.sin(seg(t,.75,1.25)*Math.PI)*70}px,${Math.sin(t*2+1)*4+(seg(t,2.15,2.3)-seg(t,2.3,2.5))*-30}px)`;
+    // tiket: jatuh dari tangan Aoi → memantul → diambilkan Hadi → kembali ke Aoi
+    const k=$('tkt'); let x,y,r,o=1;
+    if(t<0.75){ const p=seg(t,.15,.72); x=lerp(300,470,p); y=lerp(1080,1660,p*p); r=p*200; o=seg(t,.12,.2); }
+    else if(t<0.95){ const p=seg(t,.72,.95); x=lerp(470,500,p); y=1660-Math.sin(p*Math.PI)*60; r=200+p*25; }
+    else { const p=eio(seg(t,.95,1.3)); x=lerp(500,330,p); y=lerp(1660,1180,p)-Math.sin(p*Math.PI)*160; r=lerp(225,350,p); o=1-seg(t,1.3,1.45); }
+    k.style.opacity=o; k.style.transform=`translate(${x}px,${y}px) rotate(${r}deg)`;
+    // ucapan Aoi
+    const sp=$('spA'); const b=seg(t,1.35,1.6); sp.style.opacity=cl(b*3)*(1-seg(t,2.05,2.2));
+    sp.style.transform=`scale(${lerp(.5,1,eback(b))}) translateX(${shake(t,1.4,14)}px) rotate(-2deg)`;
+    sp.querySelectorAll('.ch').forEach((c,i)=>{ const p=seg(t,1.4+i*.035,1.4+i*.035+.15); c.style.opacity=cl(p*2); c.style.transform=`translateY(${(1-eback(p))*20}px)`; });
+    sp.querySelector('.rom').style.opacity=seg(t,1.75,1.95);
+    // Hadi bingung
+    const th=$('thH'), tb=seg(t,2.25,2.55); th.style.opacity=cl(tb*3); th.style.transform=`scale(${lerp(.4,1,eback(tb))}) rotate(${2+Math.sin(t*3)*1}deg)`;
+    [['q1',2.35,750,780,-14],['q2',2.5,850,690,10],['q3',2.62,960,800,18]].forEach(([id,a0,qx,qy,rot])=>{ const p=seg(t,a0,a0+.3);
+      $(id).style.opacity=cl(p*3); $(id).style.transform=`translate(${qx}px,${qy-(1-eback(p))*-60+Math.sin((t-a0)*7)*10}px) rotate(${rot+Math.sin((t-a0)*6)*8}deg) scale(${lerp(.3,1,eback(p))})`; });
+    // stempel + desaturasi
+    const st=seg(t,3.05,3.2); $('stamp').style.opacity=cl(st*3); $('stamp').style.transform=`rotate(-7deg) scale(${lerp(2.2,1,eo5(st))})`;
+    $('cam').style.filter=`grayscale(${seg(t,3.05,3.2)*.85})`; }
+  // ---------- JAWABAN ----------
+  if(t>=3.6&&t<6.2){ $('s1').style.transform=`scale(${1+shake(t,3.65,.01)})`;
+    const m=seg(t,4.6,5.0); $('mini').style.opacity=cl(m*3); $('mini').style.transform=`rotate(${lerp(-12,-3,eback(m))}deg) scale(${lerp(.6,1,eback(m))})`; }
+  // ---------- ARTI ----------
+  if(t>=6.2&&t<11.2) meaning(2,t,6.2);
+  if(t>=11.2&&t<16.2){ meaning(3,t,11.2); $('bub3').style.transform+=` translateX(${shake(t,12.5,14)}px)`; }
+  if(t>=16.2) late(t+5.4);
+}
+// bonus + penutup ditulis dengan waktu versi 30 detik; video ini memajukannya 5,4 detik
+function late(t){
+  // ---------- BONUS ----------
+  if(t>=21.6&&t<26.4){ [['l1',22.35],['l2',22.95],['l3',23.55]].forEach(([id,a],i)=>{ const p=seg(t,a,a+.4);
+      $(id).style.opacity=cl(p*3); $(id).style.filter=`blur(${(1-eo5(p))*10}px)`;
+      $(id).style.transform=`translateX(${(1-eback(p))*(i%2?1:-1)*220}px) scale(${i===2?1+.04*Math.sin(seg(t,23.75,24.2)*Math.PI):1})`;
+      const m=$(id).querySelector('.meter div'); m.style.width=eo5(seg(t,a+.25,a+.85))*(+m.dataset.w)+'%'; });
+    const ar=seg(t,24.2,24.5); $('arrow').style.opacity=ar; $('arrow').style.transform=`translateY(${Math.sin((t-24.2)*4)*8}px)`; }
+  // ---------- PENUTUP ----------
+  if(t>=26.4){ const sp=eo5(seg(t,26.45,27.0));
+    $('esun').style.transform=`translateY(${(1-sp)*300}px) scale(${lerp(.35,1,sp)})`; $('esun').style.opacity=sp;
+    const lp=eo5(seg(t,26.6,27.1)); $('elogo').style.clipPath=`inset(0 ${(1-lp)*100}% 0 0)`;
+    $('elogo').style.transform=`scale(${lerp(1.06,1,eo(seg(t,26.6,28.6)))})`;
+    const jp='学ぶ・備える・未来へ'; $('ejp').innerHTML=[...jp].map((ch,i)=>{const p=seg(t,26.8+i*.04,26.8+i*.04+.3);return `<span style="display:inline-block;opacity:${cl(p*2)};filter:blur(${(1-eo5(p))*10}px);transform:translateY(${(1-eo5(p))*30}px)">${ch}</span>`}).join('');
+    popIn($('esave'),t,28.2,.4);
+    const c=seg(t,28.6,29.05); $('ecta').style.opacity=cl(c*1.8); $('ecta').style.transform=`translateY(${(1-eback(c))*40}px) scale(${lerp(.85,1,eback(c))})`;
+    $('eshine').style.transform=`translateX(${eio(seg(t,29.1,29.9))*820}px) skewX(-20deg)`; }
+}
+window.render=render;
+</script>
+</body></html>

@@ -49,3 +49,59 @@ di `video.html` — ubah animasi, ubah cue-nya di tempat yang sama.
    `ffmpeg -framerate 30 -i <dir>/f%04d.jpg -i sfx-norm.wav -c:v libx264 -crf 18 -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -movflags +faststart ../eznihongo-brand-30s.mp4`
 
 Tangkapan Belajar/Review/Progres memakai `assets/landing/*.png` yang sudah ada.
+
+---
+
+> **MP4 konten edukasi TIDAK di-commit** (`marketing/.gitignore`): deploy menjalankan
+> `git fetch` + `git reset` di VPS, jadi semua file di repo ikut tersimpan di server. Render
+> ulang dari sumber HTML dengan perintah di bawah; simpan hasilnya di luar repo.
+
+# Konten edukasi: 「すみません」 1 kata, 3 arti (±25 detik, 9:16)
+
+Hasil: **`../eznihongo-edu-sumimasen-9x16.mp4`** — 1080×1920, 30 fps, 24,6 detik, H.264 + AAC
+(±-16 LUFS), tanpa voice-over (teks di layar + efek suara/musik sintesis `sfx.py`).
+Sumber: `edu-sumimasen-9x16.html`.
+
+Isi: **hook adegan tokoh** (aset fitur Percakapan, `assets/dialogue/*`: Aoi menjatuhkan
+tiket di stasiun, Hadi mengambilkan, Aoi bilang 「あ、すみません！」, Hadi bingung "kok minta
+maaf?", stempel SALAH PAHAM?) → "di sini すみません bukan 'maaf', artinya terima kasih" →
+arti 2 permisi → arti 3 maaf → bonus tingkat sopan (ごめんなさい / すみません /
+申し訳ありません) → penutup eznihongo.com.
+
+Riwayat hook: v1 kartu teks merah, v2 kuis A/B/C di atas foto — keduanya dinilai pemilik
+produk tidak menghentikan scroll (kartu teks di atas foto stok terlihat seperti template).
+
+Render ulang (font di `fonts/`, lihat langkah 2 di atas; `render.mjs` & `sfx.py` menerima
+env `DUR`):
+
+    DUR=24.6 VIDEO=edu-sumimasen-9x16.html W=1080 H=1920 node render.mjs <dir> full
+    VIDEO=edu-sumimasen-9x16.html OUT=cues-sumimasen.json node cues.mjs
+    DUR=24.6 python3 sfx.py cues-sumimasen.json sfx.wav   # lalu loudnorm + mux seperti di atas
+
+---
+
+# Konten edukasi: tata cara interview kerja di Jepang (面接, 27 detik, 9:16)
+
+Hasil: **`../eznihongo-edu-mensetsu-9x16.mp4`** — sumber `edu-mensetsu-9x16.html`, cue
+`cues-mensetsu.json` (efek baru di `sfx.py`: `knock`, `buzz`).
+
+Konsep "nilai kesan tersembunyi": meteran *Kesan Pewawancara* (alat cerita, BUKAN skor
+resmi) turun di tiap versi ❌ NG dan pulih di versi ✅ OK. Tokoh: Anna (pelamar) & Ren
+(pewawancara) dari `assets/dialogue`; pintu & meja digambar SVG di halaman.
+
+| Detik | Isi |
+| --- | --- |
+| 0–3,4 | Hook: "kamu bisa gagal interview Jepang sebelum ngomong satu kata pun" → ketuk 2x → 「…トイレ？」 → NG |
+| 3,4–6,4 | 01 ketuk 3x, tunggu 「どうぞ」 → OK |
+| 6,4–11,4 | 02 masuk tanpa salam (NG) → 「失礼します」 + membungkuk (OK) |
+| 11,4–17,2 | 03 langsung duduk (NG) → tunggu 「どうぞおかけください」 → 「失礼します」 → duduk (OK) |
+| 17,2–23 | 04 「貴社で働きたいです」 (NG) → 「御社で…」 (OK) + kartu 御社 diucapkan / 貴社 ditulis |
+| 23–27 | Recap 4 poin + teaser PART 2 (pertanyaan yang pasti ditanya) |
+
+Sumber fakta (dicek 5 Okt 2026): ketuk 3x / 2x = トイレノック, tunggu どうぞ, 失礼します,
+tunggu どうぞおかけください — hataractive.jp/useful/1068, gakumado.mynavi.jp/gmd/articles/74728;
+御社 lisan / 貴社 tulisan — job.rikunabi.com/contents/howto/word/6586.
+
+Render: `DUR=27 VIDEO=edu-mensetsu-9x16.html W=1080 H=1920 node render.mjs <dir> full`,
+`VIDEO=edu-mensetsu-9x16.html OUT=cues-mensetsu.json node cues.mjs`,
+`DUR=27 python3 sfx.py cues-mensetsu.json sfx.wav`, lalu loudnorm + mux seperti di atas.

@@ -9,9 +9,11 @@ const b = await chromium.launch();
 const p = await b.newPage({ viewport:{width:W,height:H} }); await fontRoutes(p);
 p.on('pageerror', e => console.log('ERR', e.message));
 await p.goto(`http://127.0.0.1:8099/marketing/brand-video-src/${VIDEO}`, {waitUntil:'networkidle'});
+await p.evaluate(()=>window.READY);
 await p.evaluate(()=>document.fonts.ready);
 await p.evaluate(()=>Promise.all([...document.images].map(i=>i.decode())));
-const times = mode==='full' ? Array.from({length:900},(_,i)=>i/30) : mode.split(',').map(Number);
+const FRAMES = Math.round(+(process.env.DUR || 30) * 30);
+const times = mode==='full' ? Array.from({length:FRAMES},(_,i)=>i/30) : mode.split(',').map(Number);
 let n=0;
 for (const t of times){ await p.evaluate(t=>render(t), t); const f = mode==='full'?`${out}/f${String(n).padStart(4,'0')}.jpg`:`${out}/p_${t}.jpg`; await p.screenshot({path:f,type:'jpeg',quality:93}); n++; }
 await b.close();
