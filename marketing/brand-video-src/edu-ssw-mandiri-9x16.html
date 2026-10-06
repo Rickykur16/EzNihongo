@@ -54,8 +54,14 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:#111;font-family
 <!-- 1 · HOOK -->
 <div class="scene bg-red" id="p1">
   <div class="t onred" style="top:400px"><div class="s in" data-t="0">Jangan masuk</div><div class="b in" data-t="0" style="font-size:230px">LPK</div><div class="s in" data-t="0">kalau belum tahu ini 👇</div></div>
-  <div class="actor in" data-t="0" style="left:-120px;bottom:-560px"><img src="../../assets/dialogue/hadi.webp" style="mask-image:url(../../assets/dialogue/hadi-mask.png);-webkit-mask-image:url(../../assets/dialogue/hadi-mask.png)"></div>
-  <div class="th in" data-t=".9" data-fx="pop" style="right:70px;top:1110px">LPK…<br><span style="font-family:Montserrat;font-size:56px">wajib, ya?</span><i style="width:50px;height:50px;left:40px;bottom:-50px"></i><i style="width:26px;height:26px;left:12px;bottom:-90px"></i></div>
+  <div class="card in" data-t="0" style="top:960px;left:140px;right:140px;transform:rotate(-3deg);padding:34px 40px">
+    <div style="font-family:Montserrat;font-weight:800;font-size:28px;letter-spacing:.12em;color:#8a8278">FORMULIR PENDAFTARAN</div>
+    <div class="ct" style="font-size:50px;margin-top:10px">Program kerja ke Jepang</div>
+    <div class="rl" style="margin-top:16px;border-bottom:0"><span>Biaya</span><b class="r">puluhan juta</b></div>
+    <div style="height:3px;background:#e2d9ca;margin:6px 0 18px"></div>
+    <div style="font-family:Inter;font-weight:600;font-size:30px;color:#8a8278">Tanda tangan: ________________</div>
+  </div>
+  <div class="stamp in" data-t=".9" data-fx="stamp" style="left:330px;top:1300px;font-size:96px;transform:rotate(-8deg)">✋ TUNGGU</div>
 </div>
 <!-- 2 · TIDAK WAJIB -->
 <div class="scene bg-paper" id="p2">
@@ -94,10 +100,8 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:#111;font-family
 </div>
 <!-- 6 · BAGIAN TERSULIT -->
 <div class="scene" id="p6" style="background:#e9e2d2">
-  <img class="abs" src="../../assets/dialogue/classroom.webp" style="height:1920px;width:3413px;left:-80px;top:0;filter:blur(7px) saturate(.9) brightness(1.03)">
-  <div class="abs" style="inset:0;background:linear-gradient(180deg,rgba(250,244,232,.85) 0%,rgba(250,244,232,.6) 35%,rgba(250,244,232,0) 60%)"></div>
-  <div class="actor flip in" data-t="20.8" style="right:-170px;bottom:-560px"><img src="../../assets/dialogue/ren.webp" style="mask-image:url(../../assets/dialogue/ren-mask.png);-webkit-mask-image:url(../../assets/dialogue/ren-mask.png)"></div>
-  <div class="actor in" data-t="20.8" style="left:-170px;bottom:-560px"><img src="../../assets/dialogue/hadi.webp" style="mask-image:url(../../assets/dialogue/hadi-mask.png);-webkit-mask-image:url(../../assets/dialogue/hadi-mask.png)"></div>
+  <img class="abs" src="../../assets/landing/interview.jpg" style="width:1080px;height:1920px;object-fit:cover;object-position:62% 50%;filter:saturate(.95)">
+  <div class="abs" style="inset:0;background:linear-gradient(180deg,rgba(250,244,232,.94) 0%,rgba(250,244,232,.82) 40%,rgba(250,244,232,0) 62%)"></div>
   <div class="t" style="top:390px"><div class="s in" data-t="20.8">bagian tersulit:</div><div class="b in" data-t="20.95" style="font-size:92px">cari perusahaan</div><div class="b r in" data-t="21.1" style="font-size:92px">&amp; lolos interview.</div></div>
   <div class="card in" data-t="22.4" data-fx="rise" style="top:730px;text-align:center"><div class="cs" style="margin:0 0 6px">Butuh pendamping?</div><div class="ct" style="font-size:52px">Pilih yang biayanya <span class="r">transparan.</span></div></div>
 </div>
@@ -135,7 +139,7 @@ const INS=[...document.querySelectorAll('.in')].map(el=>({el,t:+el.dataset.t,fx:
 const C=[[0.3,'boom'],[0.35,'impact',1],[0.9,'pop',3],[3.3,'whoosh',1]];
 SLIDES.slice(2).forEach(([,a],i)=>C.push([a,i%2?'whoosh_soft':'whoosh',i%2?-1:1]));
 INS.forEach(({t,fx},i)=>{ if(t>0.5) C.push([t, fx==='stamp'?'strike':fx==='pop'?'pop':'pop', fx==='stamp'?undefined:i%7]); });
-C.push([14.5,'strike'],[13.6,'correct'],[25.1,'boom'],[25.05,'swell'],[27.3,'sparkle']);
+C.push([0.95,'strike'],[14.5,'strike'],[13.6,'correct'],[25.1,'boom'],[25.05,'swell'],[27.3,'sparkle']);
 window.CUES=C.map(c=>c.filter(x=>x!==undefined)).sort((a,b)=>a[0]-b[0]);
 
 window.READY=Promise.all(['900 100px "Noto Sans JP"','900 50px Montserrat','800 50px Montserrat','700 50px Montserrat',
