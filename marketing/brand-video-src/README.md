@@ -125,3 +125,26 @@ viewport HP 390×844 @3x) → `rv-*.png` (tidak di-commit; dibuat ulang dengan p
 Render: `DUR=25 VIDEO=edu-smartreview-9x16.html W=1080 H=1920 node render.mjs <dir> full`,
 `VIDEO=edu-smartreview-9x16.html OUT=cues-smartreview.json node cues.mjs`,
 `DUR=25 python3 sfx.py cues-smartreview.json sfx.wav`, lalu loudnorm + mux.
+
+---
+
+# Konten: "Jangan masuk LPK kalau belum tahu ini" (SSW mandiri) — video 29,5 dtk + carousel 7 slide
+
+Sumber `edu-ssw-mandiri-9x16.html` (satu file untuk video DAN carousel; frame carousel =
+`window.SLIDE_TIMES`), cue `cues-ssw.json`. Naskah dari pemilik produk, dua koreksi akurasi:
+"syaratnya cuma 2" → **"syarat ujiannya cuma 2"** + catatan kaki (bidang kaigo + ujian bahasa
+kaigo; tetap perlu kontrak kerja), dan sumber Kedubes ditulis sebagai rangkuman, bukan kutipan.
+Isi penting sengaja di pita y 285–1635 supaya versi Instagram 4:5 (crop 1080×1350 dari y 285)
+tetap utuh.
+
+Fakta (dicek 6 Okt 2026):
+- SSW boleh daftar sendiri tanpa LPK: Q&A Tokutei Ginou, id.emb-japan.go.jp/QnA_tokuteiginou.html
+  (situs diblokir dari sandbox; isi dibaca lewat ringkasan hasil pencarian — cek ulang manual).
+- JFT-Basic Rp550.000 per Agustus 2026 (Prometric; dikutip ulang treeglobalpartners.com).
+- **Ujian skill Rp110–780rb BELUM terverifikasi**; contoh yang ditemukan: restoran Rp450.000
+  (itc-indonesia.com). Cek di prometric-jp.com sebelum posting.
+
+Hasil (tidak di-commit): `../eznihongo-edu-ssw-mandiri-9x16.mp4`,
+`../eznihongo-edu-ssw-mandiri-carousel/slide-N.png` (9:16) dan `ig-4x5-slide-N.png` (4:5).
+Render: `DUR=29.5 VIDEO=edu-ssw-mandiri-9x16.html W=1080 H=1920 node render.mjs <dir> full`;
+slide: `node render.mjs <dir> 3.05,7.25,11.45,16.45,20.45,24.75,29.26`.
