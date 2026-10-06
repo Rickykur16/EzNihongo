@@ -128,13 +128,16 @@ Render: `DUR=25 VIDEO=edu-smartreview-9x16.html W=1080 H=1920 node render.mjs <d
 
 ---
 
-# Konten: "Jangan masuk LPK kalau belum tahu ini" (SSW mandiri) — video 29,5 dtk + carousel 7 slide
+# Konten: "Jangan masuk LPK kalau belum tahu ini" (SSW mandiri) — video 34 dtk (tanpa suara) + carousel 8 slide
 
 Sumber `edu-ssw-mandiri-9x16.html` (satu file untuk video DAN carousel; frame carousel =
 `window.SLIDE_TIMES`), cue `cues-ssw.json`. Naskah dari pemilik produk, dua koreksi akurasi:
 "syaratnya cuma 2" → **"syarat ujiannya cuma 2"** + catatan kaki (bidang kaigo + ujian bahasa
 kaigo; tetap perlu kontrak kerja), dan sumber Kedubes ditulis sebagai rangkuman, bukan kutipan.
-Isi penting sengaja di pita y 285–1635 supaya versi Instagram 4:5 (crop 1080×1350 dari y 285)
+Revisi "missing link": + slide peta jalan 3 langkah (ujian → perusahaan → visa), jembatan
+"buku nggak bisa ngoreksi ngomongmu" di slide gratis, "interview-nya pakai bahasa Jepang" di
+slide perusahaan, dan catatan "kelas bahasa Jepang, bukan agen penyalur kerja" di CTA. Tanpa tokoh
+dan tanpa audio (VO + sound TikTok ditambahkan saat posting). Isi penting sengaja di pita y 285–1635 supaya versi Instagram 4:5 (crop 1080×1350 dari y 285)
 tetap utuh.
 
 Fakta (dicek 6 Okt 2026):
@@ -146,5 +149,5 @@ Fakta (dicek 6 Okt 2026):
 
 Hasil (tidak di-commit): `../eznihongo-edu-ssw-mandiri-9x16.mp4`,
 `../eznihongo-edu-ssw-mandiri-carousel/slide-N.png` (9:16) dan `ig-4x5-slide-N.png` (4:5).
-Render: `DUR=29.5 VIDEO=edu-ssw-mandiri-9x16.html W=1080 H=1920 node render.mjs <dir> full`;
-slide: `node render.mjs <dir> 3.05,7.25,11.45,16.45,20.45,24.75,29.26`.
+Render: `DUR=34 VIDEO=edu-ssw-mandiri-9x16.html W=1080 H=1920 node render.mjs <dir> full` lalu
+ffmpeg TANPA audio (`-an`); slide: `node render.mjs <dir> 3.05,7.05,11.55,15.55,20.35,24.65,29.25,33.75`.
