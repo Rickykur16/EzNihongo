@@ -604,8 +604,6 @@
       font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
       background:var(--red);color:#fff;white-space:nowrap;letter-spacing:.01em;
     }
-    /* Locked state for premium levels — icon injected by applyLockedUi() into .kh-level-name */
-    .kh-level.locked{opacity:.78;}
     /* Legacy list-item rules kept for other views (.kh-item outside home) */
     .kh-item{
       display:flex;align-items:center;gap:14px;
@@ -1178,9 +1176,9 @@
 <div id="auth-gate">
   <div class="ag-spinner" id="ag-spinner"></div>
   <div class="ag-locked" id="ag-locked" style="display:none">
-    <div class="ag-icon">🔒</div>
-    <div class="ag-title">Akses Terkunci</div>
-    <div class="ag-desc" id="ag-desc">Buat akun gratis untuk menggunakan aplikasi Kanji EzNihongo.</div>
+    <div class="ag-icon">漢</div>
+    <div class="ag-title">Masuk untuk mulai belajar</div>
+    <div class="ag-desc" id="ag-desc">Aplikasi Kanji EzNihongo gratis untuk semua level (Kana, N5–N1). Cukup masuk dengan akun Google — progress kamu tersimpan otomatis.</div>
     <div class="ag-actions" id="ag-actions">
       <a class="ag-btn-primary" href="login.html?redirect=kanji.html">Masuk / Daftar</a>
     </div>
@@ -1439,10 +1437,9 @@
     </div>
 
     <div class="stg-pane active" id="stg-pane-akun" role="tabpanel" aria-labelledby="stg-tab-akun">
-      <div id="stg-premium-card" style="background:linear-gradient(135deg,#FFF7E6,#FFE8B3);border:1px solid #FFD966;border-radius:14px;padding:14px 16px;margin-bottom:16px;">
-        <div id="stg-premium-status" style="font-weight:700;font-size:14px;margin-bottom:4px;color:#7A5000;"><span aria-hidden="true">⭐</span> Status: Free</div>
-        <div id="stg-premium-desc" style="font-size:12px;color:#8a6a20;margin-bottom:10px;">Upgrade Premium Rp 99.000/tahun untuk buka N4–N1 + Semua Level.</div>
-        <button id="stg-upgrade-btn" style="background:#C41B1B;color:#fff;border:0;border-radius:10px;padding:10px 14px;font-weight:700;font-size:13px;cursor:pointer;width:100%;">Lihat Detail Premium</button>
+      <div id="stg-account-card" style="background:linear-gradient(135deg,#FFF7E6,#FFE8B3);border:1px solid #FFD966;border-radius:14px;padding:14px 16px;margin-bottom:16px;">
+        <div style="font-weight:700;font-size:14px;margin-bottom:4px;color:#7A5000;">Semua level gratis</div>
+        <div id="stg-account-desc" style="font-size:12px;color:#8a6a20;">Kana dan N5–N1 terbuka untuk semua orang.</div>
       </div>
     </div>
 
@@ -9162,7 +9159,6 @@ function navToKanji(k) {
   const idx = KD.findIndex(d => d.k === k);
   if (idx < 0) return;
   const target = KD[idx];
-  if (target && !isFree(target.lv) && !requirePremium('Level ' + target.lv)) return;
   _detailNavStack.push({ deck: deck, idx: detailIdx, fromView: fromView });
   deck = KD;
   detailIdx = idx;
@@ -9266,10 +9262,7 @@ function renderDetail(){
       const kd = KD.find(x => x.k === k);
       if (kd) {
         const col = lvColor(kd.lv);
-        const locked = !isFree(kd.lv) && !isPremium();
-        const lockedCls = locked ? ' chip-locked' : '';
-        const lockIcon = locked ? ' 🔒' : '';
-        return `<div class="kd-vi-chip${lockedCls}" data-k="${k}"><div class="kd-vi-chip-k">${k}</div><div class="kd-vi-chip-m">${kd.m}</div><span class="kd-vi-chip-lv lv-${kd.lv}" style="background:${col.bg};color:${col.c}">${kd.lv}${lockIcon}</span></div>`;
+        return `<div class="kd-vi-chip" data-k="${k}"><div class="kd-vi-chip-k">${k}</div><div class="kd-vi-chip-m">${kd.m}</div><span class="kd-vi-chip-lv lv-${kd.lv}" style="background:${col.bg};color:${col.c}">${kd.lv}</span></div>`;
       }
       return `<div class="kd-vi-chip chip-unknown"><div class="kd-vi-chip-k">${k}</div><div class="kd-vi-chip-m">—</div></div>`;
     }).join('');
@@ -9586,7 +9579,6 @@ document.getElementById('fcm-back').addEventListener('click', () => showOnly('vi
 
 // Flashcard menu: semua level
 document.getElementById('fcm-all').addEventListener('click', () => {
-  if (!requirePremium('Flashcard Semua Level')) return;
   activeLevel = 'all';
   buildDeck();
   fcIdx = deck.findIndex(d => !known.has(d.k));
@@ -9599,7 +9591,6 @@ document.getElementById('fcm-grid').addEventListener('click', e => {
   const card = e.target.closest('.fcm-card');
   if(!card) return;
   const lv = card.dataset.lv;
-  if (!isFree(lv) && !requirePremium('Flashcard ' + lv)) return;
   activeLevel = lv;
   buildDeck();
   fcIdx = deck.findIndex(d => !known.has(d.k));
@@ -9731,8 +9722,6 @@ function renderSearchResults(q){
     }).join('');
     body.querySelectorAll('.sr-item').forEach(el => {
       el.addEventListener('click', () => {
-        const target = KD.find(d => d.k === el.dataset.k);
-        if (target && !isFree(target.lv) && !requirePremium('Level ' + target.lv)) return;
         addHistory(q);
         fromView = 'search';
         deck = KD.filter(d => matchKanji(d, q));
@@ -9772,8 +9761,6 @@ function renderSearchResults(q){
     }).join('');
     body.querySelectorAll('.sv-item').forEach(el => {
       el.addEventListener('click', () => {
-        const target = KD.find(d => d.k === el.dataset.k);
-        if (target && !isFree(target.lv) && !requirePremium('Level ' + target.lv)) return;
         addHistory(q);
         fromView = 'search';
         deck = KD.filter(d => matchKanji(d, q));
@@ -9827,10 +9814,10 @@ document.querySelectorAll('.ks-tab').forEach(tab => {
 // ─── HOME EVENTS ──────────────────────────────────────────────────────────────
 document.getElementById('kh-search').addEventListener('click', showSearch);
 document.getElementById('kh-n5').addEventListener('click', () => { window.track?.('level_click',{level:'N5'}); showSets('N5'); });
-document.getElementById('kh-n4').addEventListener('click', () => { window.track?.('level_click',{level:'N4'}); if (requirePremium('Level N4')) showSets('N4'); });
-document.getElementById('kh-n3').addEventListener('click', () => { window.track?.('level_click',{level:'N3'}); if (requirePremium('Level N3')) showSets('N3'); });
-document.getElementById('kh-n2').addEventListener('click', () => { window.track?.('level_click',{level:'N2'}); if (requirePremium('Level N2')) showSets('N2'); });
-document.getElementById('kh-n1').addEventListener('click', () => { window.track?.('level_click',{level:'N1'}); if (requirePremium('Level N1')) showSets('N1'); });
+document.getElementById('kh-n4').addEventListener('click', () => { window.track?.('level_click',{level:'N4'}); showSets('N4'); });
+document.getElementById('kh-n3').addEventListener('click', () => { window.track?.('level_click',{level:'N3'}); showSets('N3'); });
+document.getElementById('kh-n2').addEventListener('click', () => { window.track?.('level_click',{level:'N2'}); showSets('N2'); });
+document.getElementById('kh-n1').addEventListener('click', () => { window.track?.('level_click',{level:'N1'}); showSets('N1'); });
 document.getElementById('kh-kana').addEventListener('click', showKana);
 
 // ─── BOTTOM NAV EVENTS ───────────────────────────────────────────────────────
@@ -10074,22 +10061,11 @@ function showSettings(){
     else
       nb.textContent = '🔔 Aktifkan pengingat harian';
   }
-  // Premium status
-  const ps = document.getElementById('stg-premium-status');
-  const pd = document.getElementById('stg-premium-desc');
-  const pb = document.getElementById('stg-upgrade-btn');
-  if (ps && pd && pb) {
-    if (window._isPremium) {
-      ps.textContent = '⭐ Status: Premium Aktif';
-      pd.textContent = 'Terima kasih! Semua level & fitur terbuka.';
-      pb.style.display = 'none';
-    } else {
-      ps.textContent = '⭐ Status: Free';
-      pd.textContent = 'Upgrade Premium Rp 99.000/tahun untuk buka N4–N1 + Semua Level.';
-      pb.style.display = 'block';
-      pb.textContent = window._isLoggedIn ? 'Upgrade ke Premium — Rp 99k/tahun' : 'Login & Upgrade';
-      pb.onclick = () => { window.track?.('upgrade_from_settings'); openUpgradeModal('Upgrade dari Pengaturan'); };
-    }
+  // Akun
+  const ad = document.getElementById('stg-account-desc');
+  if (ad) {
+    const email = window._authUser?.email;
+    ad.textContent = 'Kana dan N5–N1 terbuka gratis. Progress tersinkron ke cloud' + (email ? ' (' + email + ').' : '.');
   }
   showOnly('view-settings');
 }
@@ -10260,179 +10236,11 @@ window.addEventListener('beforeunload', () => {
   if (window._isLoggedIn) syncProgressToCloud();
 });
 
-// ─── FREE-TRIAL AUTH MODEL ───────────────────────────────────────────────────
-// App usable tanpa login. Free: N5 + Kana. Login untuk N4-N1 + Semua Level + cloud sync.
-// Premium status authoritative dari /api/subscription/status — tidak ada
-// klien-side flag yang bisa membuka kunci.
+// ─── AUTH MODEL ──────────────────────────────────────────────────────────────
+// Semua level (Kana + N5-N1) gratis dan bisa dipakai tanpa login. Login
+// opsional, hanya untuk cloud sync progress antar device.
 window._isLoggedIn = false;
-window._isPremium = false;
 try { localStorage.removeItem('ez_dev_premium'); } catch(e) {}
-const FREE_LEVELS = new Set(['N5', 'kana']);
-const PREMIUM_PRICE_IDR = 99000;
-const PREMIUM_PRICE_LABEL = 'Rp 99.000/tahun';
-
-function isFree(level) { return FREE_LEVELS.has(level); }
-function isPremium() { return !!window._isPremium; }
-
-function requirePremium(feature) {
-  if (isPremium()) return true;
-  openUpgradeModal(feature);
-  return false;
-}
-
-function openUpgradeModal(feature) {
-  window.track?.('upgrade_modal_shown', { feature });
-  const existing = document.getElementById('upgrade-modal');
-  if (existing) existing.remove();
-  const prevFocus = document.activeElement;
-  const modal = document.createElement('div');
-  modal.id = 'upgrade-modal';
-  modal.setAttribute('role', 'dialog');
-  modal.setAttribute('aria-modal', 'true');
-  modal.setAttribute('aria-labelledby', 'um-title');
-  const loggedIn = window._isLoggedIn;
-  modal.innerHTML = `
-    <style>
-      #upgrade-modal {
-        position: fixed; inset: 0;
-        background: rgba(0,0,0,0.55);
-        backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-        display: flex; align-items: flex-end; justify-content: center;
-        z-index: 9999; animation: um-fade 0.25s ease;
-      }
-      @keyframes um-fade { from { opacity: 0; } to { opacity: 1; } }
-      @keyframes um-slide { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-      .um-sheet {
-        background: #fff; color: #1a1a1a;
-        border-radius: 24px 24px 0 0;
-        width: 100%; max-width: 480px;
-        padding: 28px 22px 22px;
-        box-shadow: 0 -12px 40px rgba(0,0,0,0.18);
-        animation: um-slide 0.3s cubic-bezier(0.2,0.8,0.2,1);
-        max-height: 92vh; overflow-y: auto;
-      }
-      [data-theme="dark"] .um-sheet { background: #1E1C19; color: #EDEAE4; }
-      @media (min-width: 640px) { #upgrade-modal { align-items: center; } .um-sheet { border-radius: 20px; } }
-      .um-badge { display:inline-block; padding:4px 10px; border-radius:999px; background:linear-gradient(90deg,#FFD700,#FFA500); color:#4a2c00; font-size:11px; font-weight:800; letter-spacing:0.04em; }
-      .um-title { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin: 10px 0 6px; }
-      .um-feature { font-size: 13px; color: #6b6b6b; margin: 0 0 18px; }
-      [data-theme="dark"] .um-feature { color: #9b9b9b; }
-      .um-price { display:flex; align-items:baseline; gap:8px; margin: 0 0 14px; }
-      .um-price .amt { font-size: 30px; font-weight: 900; color:#C41B1B; letter-spacing:-0.02em; }
-      .um-price .per { font-size: 13px; color:#6b6b6b; }
-      .um-compare { font-size: 12px; color: #888; margin: 0 0 18px; }
-      .um-benefits { list-style: none; padding: 0; margin: 0 0 20px; display:grid; gap:10px; }
-      .um-benefits li { display:flex; gap:10px; font-size:14px; align-items:flex-start; }
-      .um-benefits li::before { content:"✓"; color:#22A55B; font-weight:800; flex-shrink:0; }
-      .um-cta { width:100%; padding:14px; border-radius:12px; border:0; background:#C41B1B; color:#fff; font-size:15px; font-weight:700; cursor:pointer; }
-      .um-cta:hover { background:#A01616; }
-      .um-cta:disabled { opacity: 0.6; cursor: wait; }
-      .um-sub { width:100%; margin-top:10px; padding:10px; background:transparent; border:0; color:#6b6b6b; font-size:12px; cursor:pointer; }
-      .um-close { position:absolute; top:14px; right:14px; background:transparent; border:0; font-size:24px; color:#999; cursor:pointer; width:32px; height:32px; }
-    </style>
-    <div class="um-sheet" style="position:relative;">
-      <button class="um-close" id="um-close" aria-label="Tutup">&times;</button>
-      <span class="um-badge">⭐ EzNihongo Premium</span>
-      <h2 class="um-title" id="um-title">Buka semua level JLPT</h2>
-      <p class="um-feature">${feature ? 'Fitur: ' + feature : 'Akses N4, N3, N2, N1 + semua kanji sekaligus.'}</p>
-      <div class="um-price">
-        <span class="amt">Rp 99.000</span>
-        <span class="per">/tahun</span>
-      </div>
-      <p class="um-compare">≈ Rp 8.250/bulan · 14× lebih murah dari WaniKani ($89/tahun)</p>
-      <ul class="um-benefits">
-        <li>Akses N4, N3, N2, N1 (2.126 kanji total)</li>
-        <li>Mode "Semua Level" tanpa batas</li>
-        <li>Cloud sync & backup progress antar device</li>
-        <li>Update konten tiap minggu (contoh kalimat baru)</li>
-        <li>Support pengembang Indonesia 🇮🇩</li>
-      </ul>
-      <button class="um-cta" id="um-pay">${loggedIn ? 'Upgrade Sekarang — Rp 99.000/tahun' : 'Login & Upgrade'}</button>
-      <button class="um-sub" id="um-later">Nanti saja</button>
-    </div>`;
-  document.body.appendChild(modal);
-
-  // Focus trap + Esc to close. Restore previous focus on close.
-  function closeModal(reason) {
-    modal.remove();
-    document.removeEventListener('keydown', onKey);
-    window.track?.('upgrade_modal_' + (reason || 'closed'), { feature });
-    if (prevFocus && typeof prevFocus.focus === 'function') { try { prevFocus.focus(); } catch {} }
-  }
-  function onKey(e) {
-    if (e.key === 'Escape') { e.preventDefault(); closeModal('closed'); return; }
-    if (e.key !== 'Tab') return;
-    const focusables = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-    if (!focusables.length) return;
-    const first = focusables[0], last = focusables[focusables.length - 1];
-    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-  }
-  document.addEventListener('keydown', onKey);
-  setTimeout(() => { document.getElementById('um-pay')?.focus(); }, 50);
-
-  document.getElementById('um-close').onclick = () => closeModal('closed');
-  document.getElementById('um-later').onclick = () => closeModal('dismissed');
-  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal('closed'); });
-
-  document.getElementById('um-pay').onclick = async () => {
-    window.track?.('upgrade_cta_click', { feature, logged_in: loggedIn });
-    if (!loggedIn) {
-      const redirect = encodeURIComponent('kanji.html?upgrade=1');
-      location.href = 'login.html?redirect=' + redirect;
-      return;
-    }
-    const btn = document.getElementById('um-pay');
-    btn.disabled = true; btn.textContent = 'Menghubungi Midtrans...';
-    try { await startMidtransCheckout(); }
-    catch (e) { btn.disabled = false; btn.textContent = 'Coba lagi'; alert('Gagal membuka pembayaran: ' + (e?.message || e)); }
-  };
-}
-
-// Midtrans config — set via build or replace before deploy
-const MIDTRANS_CLIENT_KEY = window.MIDTRANS_CLIENT_KEY || 'Mid-client-PjMNfh3qFZqeFzt4';
-const MIDTRANS_SNAP_URL = window.MIDTRANS_SNAP_URL || 'https://app.sandbox.midtrans.com/snap/snap.js';
-
-function loadSnapJs() {
-  return new Promise((resolve, reject) => {
-    if (window.snap) return resolve();
-    const s = document.createElement('script');
-    s.src = MIDTRANS_SNAP_URL;
-    s.setAttribute('data-client-key', MIDTRANS_CLIENT_KEY);
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error('Snap.js load failed'));
-    document.head.appendChild(s);
-  });
-}
-
-async function startMidtransCheckout() {
-  if (typeof window.ezApi !== 'function') throw new Error('API belum siap');
-  if (!window._isLoggedIn) throw new Error('Belum login');
-  await loadSnapJs();
-  const res = await window.ezApi('/subscription/create-tx', {
-    method: 'POST',
-    body: JSON.stringify({ plan: 'yearly' }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'gagal');
-  if (!window.snap) throw new Error('Snap.js belum termuat');
-  window.track?.('payment_modal_opened');
-  window.snap.pay(data.snap_token, {
-    onSuccess: () => { window.track?.('payment_success'); setTimeout(() => location.reload(), 800); },
-    onPending: () => { window.track?.('payment_pending'); alert('Pembayaran menunggu konfirmasi. Kamu akan upgrade otomatis setelah konfirmasi.'); },
-    onError:   (err) => { window.track?.('payment_error', { err: String(err) }); alert('Pembayaran gagal. Coba lagi ya.'); },
-    // Async methods (GoPay/QRIS/VA) often see webhook fire before the user
-    // dismisses the popup, so onSuccess never runs. Re-check status here.
-    onClose: async () => {
-      window.track?.('payment_modal_closed');
-      try {
-        const r = await window.ezApi('/subscription/status');
-        const d = await r.json().catch(() => ({}));
-        if (d.isPremium) location.reload();
-      } catch {}
-    },
-  });
-}
 
 function openLoginModal(feature) {
   window.track?.('login_modal_shown', { feature });
@@ -10531,94 +10339,11 @@ function requireLogin(feature) {
   return false;
 }
 
-function applyLockedUi() {
-  const style = document.createElement('style');
-  style.id = 'locked-ui-style';
-  style.textContent = `
-    .kh-level.locked .kh-level-badge { filter: grayscale(0.25); opacity: 0.85; }
-    .kh-level.locked .kh-level-name::after {
-      content: ' 🔒';
-      font-size: 0.85em;
-      opacity: 0.85;
-      margin-left: 2px;
-    }
-    .fcm-card.locked .fcm-name::after,
-    .fcm-all-card.locked .fcm-all-name::after {
-      content: ' 🔒';
-      font-size: 0.85em;
-      opacity: 0.85;
-    }
-  `;
-  if (!document.getElementById('locked-ui-style')) document.head.appendChild(style);
-
-  ['kh-n4','kh-n3','kh-n2','kh-n1'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.classList.add('locked');
-    el.setAttribute('aria-label', `Level ${id.slice(3).toUpperCase()} — butuh Premium untuk dibuka`);
-  });
-  const fcmAll = document.getElementById('fcm-all');
-  if (fcmAll) fcmAll.classList.add('locked');
-
-  document.querySelectorAll('#fcm-grid .fcm-card').forEach(card => {
-    const lv = card.dataset.lv;
-    if (lv && !isFree(lv)) card.classList.add('locked');
-  });
-}
-
-function removeLockedUi() {
-  document.querySelectorAll('.locked').forEach(el => el.classList.remove('locked'));
-  document.getElementById('locked-ui-style')?.remove();
-}
-
-function showLoginCta() {
-  applyLockedUi();
-  if (document.getElementById('login-cta')) return;
-  const cta = document.createElement('div');
-  cta.id = 'login-cta';
-  cta.innerHTML = `
-    <style>
-      #login-cta {
-        background: linear-gradient(90deg, #C41B1B, #E85858);
-        color: #fff; padding: 10px 14px;
-        display: flex; align-items: center; gap: 10px;
-        font-size: 13px; font-weight: 500;
-        position: sticky; top: 0; z-index: 100;
-      }
-      #login-cta .lc-text { flex: 1; min-width: 0; }
-      #login-cta a {
-        background: #fff; color: #C41B1B;
-        padding: 6px 12px; border-radius: 999px;
-        font-size: 12px; font-weight: 700;
-        text-decoration: none; white-space: nowrap;
-      }
-      #login-cta .lc-close {
-        background: transparent; color: #fff;
-        border: none; font-size: 18px; cursor: pointer;
-        padding: 0 4px; opacity: 0.8;
-      }
-    </style>
-    <span class="lc-text">💾 Login untuk sync progress antar device</span>
-    <a href="login.html?redirect=kanji.html">Login</a>
-    <button class="lc-close" aria-label="Tutup">&times;</button>
-  `;
-  const home = document.getElementById('view-home') || document.body;
-  home.insertBefore(cta, home.firstChild);
-  cta.querySelector('.lc-close').onclick = () => {
-    cta.remove();
-    sessionStorage.setItem('login_cta_dismissed', '1');
-  };
-  if (sessionStorage.getItem('login_cta_dismissed')) cta.remove();
-}
-
 async function checkAuth() {
-  document.getElementById('auth-gate').remove();
-  showHome();
-
   if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    document.getElementById('auth-gate').remove();
+    showHome();
     window._isLoggedIn = true;
-    window._isPremium = false;
-    applyLockedUi();
     return;
   }
 
@@ -10628,30 +10353,35 @@ async function checkAuth() {
     poll();
   });
 
-  const user = await window.ezGetMe();
-  if (user) {
-    window._isLoggedIn = true;
-    window._authUser = user;
-    window.identifyUser?.(user.id, { email: user.email });
-    await loadPremiumStatus();
-    window.track?.('session_active', { logged_in: true, premium: window._isPremium });
-    await loadProgressFromCloud(user.id);
-    showWelcomeIfJustLoggedIn(user);
+  // ezGetMe() menghapus mirror lokal juga saat jaringan putus — simpan dulu
+  // supaya pengguna yang sudah pernah login tetap bisa belajar offline (PWA).
+  let cachedUser = null;
+  try { cachedUser = JSON.parse(localStorage.getItem('ez_kanji_user') || 'null'); } catch {}
 
-    // Auto-open upgrade modal if user came back from login expecting to upgrade
-    if (new URLSearchParams(location.search).get('upgrade') === '1' && !window._isPremium) {
-      setTimeout(() => openUpgradeModal('Upgrade ke Premium'), 600);
-    }
-    // Auto-refresh premium status after payment return
-    if (new URLSearchParams(location.search).get('paid') === '1') {
-      setTimeout(loadPremiumStatus, 2500);
-    }
-  } else {
-    window._isLoggedIn = false;
-    window._isPremium = false;
-    window.track?.('session_active', { logged_in: false });
-    showLoginCta();
+  let user = await window.ezGetMe();
+  if (!user && cachedUser && navigator.onLine === false) {
+    try { localStorage.setItem('ez_kanji_user', JSON.stringify(cachedUser)); } catch {}
+    user = { id: cachedUser.id, email: cachedUser.email, fullName: cachedUser.name, offline: true };
   }
+
+  if (!user) {
+    // Semua level gratis, tapi wajib login dengan akun.
+    window._isLoggedIn = false;
+    window.track?.('session_active', { logged_in: false });
+    document.getElementById('ag-spinner')?.remove();
+    const locked = document.getElementById('ag-locked');
+    if (locked) locked.style.display = '';
+    return;
+  }
+
+  document.getElementById('auth-gate').remove();
+  showHome();
+  window._isLoggedIn = true;
+  window._authUser = user;
+  window.identifyUser?.(user.id, { email: user.email });
+  window.track?.('session_active', { logged_in: true });
+  if (!user.offline) await loadProgressFromCloud(user.id);
+  showWelcomeIfJustLoggedIn(user);
 }
 
 function showWelcomeIfJustLoggedIn(user) {
@@ -10665,21 +10395,6 @@ function showWelcomeIfJustLoggedIn(user) {
     const greet = first ? `Hai, ${first}! 👋` : 'Hai! 👋';
     setTimeout(() => showToast(greet, 3200), 350);
   } catch(e) {}
-}
-
-async function loadPremiumStatus() {
-  try {
-    if (typeof window.ezApi !== 'function') { window._isPremium = false; applyLockedUi(); return; }
-    const res = await window.ezApi('/subscription/status');
-    if (!res.ok) { window._isPremium = false; applyLockedUi(); return; }
-    const data = await res.json();
-    window._isPremium = !!data?.isPremium;
-    if (window._isPremium) removeLockedUi();
-    else applyLockedUi();
-  } catch (e) {
-    window._isPremium = false;
-    applyLockedUi();
-  }
 }
 
 // ─── REVIEW MODE ─────────────────────────────────────────────────────────────
@@ -10967,7 +10682,8 @@ if ('serviceWorker' in navigator) {
   // Wait for home to be visible before showing wizard
   const waitHome = setInterval(() => {
     const home = document.getElementById('view-home');
-    if (home && home.style.display !== 'none') {
+    // Tunggu sampai gerbang login hilang — wizard baru muncul setelah login.
+    if (home && home.style.display !== 'none' && !document.getElementById('auth-gate')) {
       clearInterval(waitHome);
       setTimeout(showWizard, 400);
     }
