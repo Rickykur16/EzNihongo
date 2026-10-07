@@ -199,6 +199,50 @@ test('authored goals remain visible without question availability', async () => 
   }
 });
 
+test('N4 shows its goal before the dialogue and keeps ungraded checks after the quiz', async () => {
+  const start = welcome.indexOf('function renderLessonGrammar(lesson) {');
+  const end = welcome.indexOf('// ── Dialog player', start);
+  const main = { innerHTML: '' };
+  const context = vm.createContext({ escapeHtml, AUDIO_SVG: '',
+    document: { getElementById: () => main }, visibleLessons: value => value.lessons,
+    window: { EzDialogueQuestions: { mount() {} } }, learningStepAction: () => '',
+    grammarKaraokeHtml: () => '<div class="karaoke">dialog</div>' });
+  vm.runInContext(welcome.slice(start, end), context);
+  vm.runInContext(learningSequence, context);
+  const source = { apiId: 'source-id', type: 'video', title: 'Grammar', hasConversation: true, grammar: [{
+    id: 'g1', pattern: 'Pola', example_dialog: 'A: hi', communication_goal: 'Saling menyapa',
+    dialogueSelfChecks: [
+      { prompt: 'Siapa?', answer: 'Anna', explanation: 'Anna menyapa.' },
+      { prompt: 'Kapan?', answer: 'Pagi', explanation: 'Pagi hari.' },
+    ],
+  }] };
+  const conversation = { id: 'c', type: 'conversation', title: 'Percakapan',
+    conversationSourceLessonId: 'source-id' };
+  assert.doesNotMatch(context.renderLessonGrammar(source), /karaoke|Siapa\?/);
+  context.renderConversationLesson({ name: 'N4' }, { num: '01', title: 'Bab 1',
+    lessons: [source, conversation] }, conversation, {});
+  const html = main.innerHTML;
+  assert.ok(html.indexOf('Tujuan komunikasi') < html.indexOf('class="karaoke"'));
+  assert.ok(html.indexOf('class="karaoke"') < html.indexOf('data-dq-questions-for="g1"'));
+  assert.ok(html.indexOf('data-dq-questions-for="g1"') < html.indexOf('Tes pemahaman percakapan'));
+
+  const root = rootFor();
+  const heading = { textContent: 'Tes pemahaman percakapan' };
+  const checks = [{ hidden: false }, { hidden: false }];
+  const self = { hidden: false, getAttribute: () => 'grammar-1',
+    querySelectorAll: selector => selector === '.dq-self-check' ? checks : [],
+    querySelector: selector => selector === 'h3' ? heading : null };
+  const original = root.querySelectorAll;
+  root.querySelectorAll = selector => selector === '[data-dq-self-checks-for]' ? [self] : original(selector);
+  const flow = controller(async () => response({ ...batch('legacy'), standalone: true }));
+  await flow.mount({ root, lesson: lesson('lesson-1', 'Tujuan N4') });
+  assert.equal(root.questions.hidden, false);
+  assert.match(root.questions.innerHTML, /Tes pemahaman percakapan/);
+  assert.equal(checks[0].hidden, true);
+  assert.equal(checks[1].hidden, false);
+  assert.equal(heading.textContent, 'Latihan tambahan');
+});
+
 test('double click makes one POST; network retry keeps ID, changed answer and later attempt get new IDs', async () => {
   const first = deferred();
   const writes = [];
