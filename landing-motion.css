@@ -7,9 +7,6 @@
 @keyframes rv-fade{from{opacity:0}}
 @keyframes rv-wipe{from{clip-path:inset(100% 0 0 0)}to{clip-path:inset(0 0 0 0)}}
 @keyframes rv-dialog{from{opacity:0;transform:translateY(14px) scale(.985)}}
-@keyframes rv-line-back{from{transform:translateY(-115%)}}
-@keyframes rv-mask-back{from,to{clip-path:inset(-.05em -.3em -.5em)}}
-@keyframes rv-down{from{opacity:0;transform:translateY(-22px)}}
 @keyframes story-drift{from{scale:1.18;translate:0 -2%}to{scale:1.06;translate:0 2%}}
 @keyframes kin-left{from{transform:translateX(0)}to{transform:translateX(-22%)}}
 @keyframes kin-right{from{transform:translateX(-22%)}to{transform:translateX(0)}}
@@ -34,29 +31,7 @@
 .has-motion [data-reveal=draw]:not(.is-in):before{transform:scaleX(0)}
 .has-motion [data-reveal=draw].is-in:before{animation:rv-draw 1.3s var(--ease-editorial) var(--rd,0ms) backwards}
 .has-motion [data-reveal=draw].is-in>*{animation:rv-up .95s var(--ease-editorial) calc(var(--rd,0ms) + .18s) backwards}
-/* Story scenes: the outgoing scene only fades; the incoming lines do the moving, and they
-   drop in from above instead when the reader scrolls back. */
-.has-motion .story-stage.changing{transform:none}
-.has-motion .story-stage.is-back #scene-title .ln{animation-name:rv-mask-back}
-.has-motion .story-stage.is-back #scene-title .ln>span{animation-name:rv-line-back}
-.has-motion .story-stage.is-back #scene-copy.is-in{animation-name:rv-down}
 }
-
-/* Pinned story. Scroll picks the scene (landing.js sets --p, 0→1, and --hh, the header
-   height); the photo slowly settles and a hairline shows how far through the story you
-   are. The content block is centred in the frame; a fixed stage height keeps it from
-   shifting when consecutive scenes have a different number of lines. */
-.story.is-pinned{height:calc(100svh - var(--hh,86px) + 270svh)}
-.story.is-pinned .story-frame{position:sticky;top:var(--hh,86px);height:calc(100svh - var(--hh,86px));display:flex;padding:36px 0 28px}
-.story.is-pinned .story-inner{width:100%}
-.story.is-pinned .story-stage{min-height:clamp(230px,44svh,360px);padding:12px 0}
-.story.is-pinned .story-progress{display:block;height:2px;margin-top:16px;border-radius:2px;background:rgba(255,255,255,.16);overflow:hidden}
-.story-progress i{display:block;height:100%;background:#ff94a3;transform:scaleX(var(--p,0));transform-origin:left}
-.story.is-pinned .story-background{animation:none;scale:calc(1.16 - var(--p,0) * .12);translate:0 calc(var(--p,0) * -2%)}
-.story.is-pinned .story-bridge{margin-top:12px}
-@media(max-width:800px){.story.is-pinned .story-frame{padding:26px 0 20px}}
-@media print{.story.is-pinned{height:auto}.story.is-pinned .story-frame{position:relative;height:auto}}
-@media(max-width:380px){.story.is-pinned .story-stage h2{font-size:29px}.story.is-pinned .story-stage p{font-size:15px;line-height:1.65;margin-top:16px}.story.is-pinned .story-bridge{font-size:13px;gap:8px}}
 
 /* State and hover. */
 .header{transition:box-shadow .5s var(--ease-editorial),border-color .5s}
@@ -64,13 +39,11 @@
 .desktop-links a{position:relative}
 .desktop-links a:after{content:'';position:absolute;left:0;right:0;bottom:6px;height:2px;background:currentColor;transform:scaleX(0);transform-origin:right;transition:transform .45s var(--ease-editorial)}
 .desktop-links a:hover:after{transform:scaleX(1);transform-origin:left}
-.button>span[aria-hidden],.text-link>span[aria-hidden],.story-bridge a>span[aria-hidden],.career-options button>span:last-child,.start-grid i{display:inline-block;transition:transform .35s var(--ease-editorial)}
-.button:hover>span[aria-hidden],.text-link:hover>span[aria-hidden],.story-bridge a:hover>span[aria-hidden],.career-options button:hover>span:last-child,.start-grid a:hover i{transform:translate(3px,-3px)}
+.button>span[aria-hidden],.text-link>span[aria-hidden],.story-bridge a>span[aria-hidden],.start-grid i{display:inline-block;transition:transform .35s var(--ease-editorial)}
+.button:hover>span[aria-hidden],.text-link:hover>span[aria-hidden],.story-bridge a:hover>span[aria-hidden],.start-grid a:hover i{transform:translate(3px,-3px)}
 .button:active{transform:translateY(0) scale(.985)}
 .text-link{transition:color .2s,text-underline-offset .35s var(--ease-editorial)}
 .text-link:hover{text-underline-offset:8px}
-.career-options button strong{transition:color .2s}
-.career-options button:hover strong{color:var(--brand-red)}
 .screen-image{overflow:hidden}
 .screen-image img{transition:transform .9s var(--ease-editorial)}
 .screen-image:hover img{transform:scale(1.015)}
@@ -90,7 +63,7 @@ dialog[open]::backdrop{animation:rv-fade .4s ease}
 .editorial-photo:hover .photo-mask img{transform:scale(1.03)}
 }
 
-/* Scroll-linked motion: the story backdrop (when not pinned), the kinetic rows sliding in
+/* Scroll-linked motion: the savings backdrop, the kinetic rows sliding in
    opposite directions, and the closing watermark. Compositor-driven, no scroll listeners;
    unsupported browsers keep everything still. */
 @media (prefers-reduced-motion:no-preference){@supports (animation-timeline:scroll()){

@@ -44,7 +44,7 @@
     return items.filter(item => item && typeof item === 'object' && item.is_published !== false).sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0));
   }
   function consultButton(label) {
-    const button = el('button', 'button small', label || 'Tanya tentang kelas'); button.type = 'button';
+    const button = el('button', 'button small', label || 'Tanya tentang kelas'); button.type = 'button'; button.dataset.path = 'bahasa';
     button.addEventListener('click', () => document.dispatchEvent(new CustomEvent('landing:consult', { detail: { opener: button } })));
     return button;
   }
@@ -88,7 +88,11 @@
       else content.append(el('p', 'cms-role', [item.occupation, item.location].filter(Boolean).join(' · ')));
       card.append(content); list.append(card);
     });
-    section.hidden = entries.length === 0;
+    // Sensei: CMS entries replace the static teacher text inside "Tentang"; with none published
+    // the static text stays, so the section never shows an empty card. Testimonials only appear
+    // when the CMS has real, published entries — nothing is invented for this page.
+    if (isSensei) { list.hidden = entries.length === 0; const fallback = document.querySelector('#sensei-fallback'); if (fallback) fallback.hidden = entries.length > 0; }
+    else section.hidden = entries.length === 0;
   }
   async function load(path, key, render) {
     try { const response = await fetch(path, { cache: 'no-store', signal: AbortSignal.timeout(8000) }); if (!response.ok) throw Error('unavailable'); const data = await response.json(); if (!Array.isArray(data[key])) throw Error('invalid'); render(data[key]); }

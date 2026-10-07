@@ -71,6 +71,29 @@
 
 ## Konvensi penting
 
+- **Landing page diposisikan ulang: "jalur persiapan kerja ke Jepang dengan biaya
+  terjangkau", bahasa = bagian dari proses** (brief pemilik, 2026-10-07). Urutan:
+  hero → `#hemat` (3 alasan lebih hemat; frame foto malam yang dulu pinned scroll-story
+  6 adegan, sekarang statis — kode pin/adegan di `landing.js`/`landing-motion.css`
+  DIHAPUS) → `#jalur` (accordion `<details>` SSW / Gijinkoku / Ginou / Ryugaku, terbaca
+  tanpa JS & tanpa login; tautan `#jalur-…` membuka accordion-nya) → `#biaya` (alur +
+  komponen biaya) → `#program` bootcamp + preview dashboard → `#tentang` (pendiri +
+  pengajar) → FAQ → CTA WhatsApp. **Ginou = 技能 Skilled Labor, BUKAN Ginou Jisshu**
+  (dikonfirmasi pemilik). Matching gratis lewat mitra TSK HANYA untuk SSW; jalur lain
+  ditulis jujur "mitra belum tersedia". Larangan brief: jangan sebut biaya penempatan,
+  jangan angka total keberangkatan / perbandingan harga LPK, jangan janji
+  kerja/ujian/visa/tanggal, jangan testimoni/alumni/logo mitra karangan. Harga & jadwal
+  tetap dari CMS (`/api/courses`); fakta format kelas (24 pertemuan, 2x/minggu, ~1 jam,
+  maks 20) statis. Pengajar dari CMS `/api/sensei` menggantikan teks cadangan
+  `#sensei-fallback` (Fani) — tidak pernah tampil ganda. **Modal konsultasi**: semua CTA
+  `[data-consult]` adalah `<a href="wa.me/…">` asli (jalan tanpa JS); dengan JS membuka
+  modal 2 pilihan (jalur `data-path`, kondisi `data-stage`), respons per jalur, dan pesan
+  WA terisi berisi kedua pilihan. Hanya kondisi "pemula" yang diarahkan ke kelas N5.
+  Nomor WA satu konstanta `WA_NUMBER` di `landing.js` + href statis di index.html (sama
+  dengan 6 tempat lain). Persyaratan visa diringkas dari sumber resmi ISA/MOFA (domain
+  .go.jp diblokir egress sandbox — diverifikasi lewat pencarian berfilter domain resmi).
+  CSS lama story/career/pathways di `landing.css` tidak lagi dipakai (dibiarkan).
+
 - **Formulir pendaftaran di layar "Belum ada kelas aktif" (dashboard)** — user: "saat
   customer login dengan akun google, jika belom di acc kan ada notif tidak ada kelas aktif
   kan?, sekarang buat agar ada form untuk pendaftarannya muncul disitu". Keputusan user
