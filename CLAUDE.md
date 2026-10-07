@@ -71,6 +71,18 @@
 
 ## Konvensi penting
 
+- **PWA Kanji (`app/`) GRATIS untuk semua level, tapi WAJIB login** — user: "aku pengen
+  itu bisa diakses gratis", "Buat gratis semua", "Tapi tetap login email". Gerbang premium
+  (`FREE_LEVELS`/`requirePremium`/modal upgrade + Midtrans Snap/kartu status Premium)
+  DIHAPUS dari `app/kanji.html`; landing `app/index.html` jadi satu paket "Gratis". Login
+  (Google, realm `kanji_users`) sekarang syarat masuk: `checkAuth()` menahan `#auth-gate`
+  ("Masuk untuk mulai belajar") sampai `ezGetMe()` mengembalikan user. **Offline PWA**:
+  `ezGetMe()` menghapus mirror `ez_kanji_user` juga saat jaringan putus, jadi `checkAuth`
+  menyimpan mirror itu dulu dan mengizinkan masuk kalau `navigator.onLine === false`.
+  Wizard onboarding baru tampil setelah gerbang hilang. **Backend `/api/subscription` +
+  tabel `subscriptions` SENGAJA dibiarkan** (data pembayar lama tetap ada; belum ada
+  pemanggil dari frontend). Cache SW di-bump ke `eznihongo-app-v12`.
+
 - **Formulir pendaftaran di layar "Belum ada kelas aktif" (dashboard)** — user: "saat
   customer login dengan akun google, jika belom di acc kan ada notif tidak ada kelas aktif
   kan?, sekarang buat agar ada form untuk pendaftarannya muncul disitu". Keputusan user
