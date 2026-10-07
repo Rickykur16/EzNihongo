@@ -198,3 +198,4 @@
 .ssw-fields .fine{margin-top:12px}
 .ssw-fields .fine a{text-decoration:underline;text-underline-offset:3px}
 @media(max-width:480px){.ssw-field-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.ssw-field-list li{padding:9px 10px}.field-name{font-size:13px}.field-badge{font-size:10px;padding:2px 7px}}
+.cost-section li .cost-figure{display:block;margin-top:6px;color:white;font-weight:600}.cost-section li .cost-figure:first-of-type{margin-top:8px}.cost-sources{margin-top:12px;color:var(--learning-blue-200)}.cost-sources a{text-decoration:underline;text-underline-offset:3px}

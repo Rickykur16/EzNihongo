@@ -100,6 +100,12 @@
   リネンサプライ/物流倉庫/資源循環 `is-new` "Bidang baru" (kabinet 23 Jan 2026, penerimaan
   ~2027). **Status ini HARDCODED — wajib diperbarui manual** kalau imigrasi membuka lagi
   外食業 atau menutup bidang lain; belum ada pengaturan dari admin/CMS.
+  **Rincian biaya (`.cost-section`)** (user: "Biayanya yang asli juga atau perkiraan di cantumin dong"): tarif
+  resmi per komponen, HARDCODED per Oktober 2026, sumber di `.cost-sources`: JLPT N5/N4 Rp250.000 (JF Jakarta, mulai
+  Juli 2026), JFT-Basic Rp550.000 dan ujian SSW Rp220.000–Rp740.000 (Prometric), paspor Rp650.000/Rp950.000 (PP 45/2024),
+  visa sekali masuk Rp1.650.000 (Kedubes Jepang, sejak 1 Juli 2026), Ryugaku sekolah bahasa 1 tahun ~¥600.000–¥1.000.000
+  (Study in Japan) + hidup ~¥105.000/bulan (JASSO). Kesehatan/dokumen/tiket SENGAJA tanpa angka (tidak ada tarif resmi).
+  Tetap TANPA total keberangkatan (larangan brief). Perbarui manual kalau tarif berubah.
   **Aturan teks landing (user: "Jangan sampai ada em dash", maksudnya teks yang terasa
   hasil AI)**: index.html, landing.js, landing-cms.js, landing*.css TANPA em dash (U+2014).
   En dash untuk rentang BOLEH (N5–N4, 30–60 menit; dikonfirmasi user). Hindari juga ciri
