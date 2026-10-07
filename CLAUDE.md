@@ -93,6 +93,13 @@
   dengan 6 tempat lain). Persyaratan visa diringkas dari sumber resmi ISA/MOFA (domain
   .go.jp diblokir egress sandbox — diverifikasi lewat pencarian berfilter domain resmi).
   CSS lama story/career/pathways di `landing.css` tidak lagi dipakai (dibiarkan).
+  **Daftar 19 bidang SSW di accordion Tokutei Ginou** (user: "klo yang kuotanya penuh
+  dikasih tulisan ditutup sementara"): statis di index.html (`.ssw-field-list`), status
+  dari sumber resmi per Oktober 2026 — HANYA 外食業 (restoran) `is-closed` "Ditutup
+  sementara" (CoE baru tidak diterbitkan sejak 13 Apr 2026, moj.go.jp/isa/03_00176.html);
+  リネンサプライ/物流倉庫/資源循環 `is-new` "Bidang baru" (kabinet 23 Jan 2026, penerimaan
+  ~2027). **Status ini HARDCODED — wajib diperbarui manual** kalau imigrasi membuka lagi
+  外食業 atau menutup bidang lain; belum ada pengaturan dari admin/CMS.
 
 - **Formulir pendaftaran di layar "Belum ada kelas aktif" (dashboard)** — user: "saat
   customer login dengan akun google, jika belom di acc kan ada notif tidak ada kelas aktif
