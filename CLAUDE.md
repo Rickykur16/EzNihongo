@@ -71,6 +71,48 @@
 
 ## Konvensi penting
 
+- **Landing page diposisikan ulang: "jalur persiapan kerja ke Jepang dengan biaya
+  terjangkau", bahasa = bagian dari proses** (brief pemilik, 2026-10-07). Urutan:
+  hero → `#hemat` (3 alasan lebih hemat; frame foto malam yang dulu pinned scroll-story
+  6 adegan, sekarang statis — kode pin/adegan di `landing.js`/`landing-motion.css`
+  DIHAPUS) → `#jalur` (accordion `<details>` SSW / Gijinkoku / Ginou / Ryugaku, terbaca
+  tanpa JS & tanpa login; tautan `#jalur-…` membuka accordion-nya) → `#biaya` (alur +
+  komponen biaya) → `#program` bootcamp + preview dashboard → `#tentang` (pendiri +
+  pengajar) → FAQ → CTA WhatsApp. **Ginou = 技能 Skilled Labor, BUKAN Ginou Jisshu**
+  (dikonfirmasi pemilik). Matching gratis lewat mitra TSK HANYA untuk SSW; jalur lain
+  ditulis jujur "mitra belum tersedia". Larangan brief: jangan sebut biaya penempatan,
+  jangan angka total keberangkatan / perbandingan harga LPK, jangan janji
+  kerja/ujian/visa/tanggal, jangan testimoni/alumni/logo mitra karangan. Harga & jadwal
+  tetap dari CMS (`/api/courses`); fakta format kelas (24 pertemuan, 2x/minggu, ~1 jam,
+  maks 20) statis. Pengajar dari CMS `/api/sensei` menggantikan teks cadangan
+  `#sensei-fallback` (Fani) — tidak pernah tampil ganda. **Modal konsultasi**: semua CTA
+  `[data-consult]` adalah `<a href="wa.me/…">` asli (jalan tanpa JS); dengan JS membuka
+  modal 2 pilihan (jalur `data-path`, kondisi `data-stage`), respons per jalur, dan pesan
+  WA terisi berisi kedua pilihan. Hanya kondisi "pemula" yang diarahkan ke kelas N5.
+  Nomor WA satu konstanta `WA_NUMBER` di `landing.js` + href statis di index.html (sama
+  dengan 6 tempat lain). Persyaratan visa diringkas dari sumber resmi ISA/MOFA (domain
+  .go.jp diblokir egress sandbox — diverifikasi lewat pencarian berfilter domain resmi).
+  CSS lama story/career/pathways di `landing.css` tidak lagi dipakai (dibiarkan).
+  **Daftar 19 bidang SSW di accordion Tokutei Ginou** (user: "klo yang kuotanya penuh
+  dikasih tulisan ditutup sementara"): statis di index.html (`.ssw-field-list`), status
+  dari sumber resmi per Oktober 2026 — HANYA 外食業 (restoran) `is-closed` "Ditutup
+  sementara" (CoE baru tidak diterbitkan sejak 13 Apr 2026, moj.go.jp/isa/03_00176.html);
+  リネンサプライ/物流倉庫/資源循環 `is-new` "Bidang baru" (kabinet 23 Jan 2026, penerimaan
+  ~2027). **Status ini HARDCODED — wajib diperbarui manual** kalau imigrasi membuka lagi
+  外食業 atau menutup bidang lain; belum ada pengaturan dari admin/CMS.
+  **Rincian biaya (`.cost-section`)** (user: "Biayanya yang asli juga atau perkiraan di cantumin dong"): tarif
+  resmi per komponen, HARDCODED per Oktober 2026, sumber di `.cost-sources`: JLPT N5/N4 Rp250.000 (JF Jakarta, mulai
+  Juli 2026), JFT-Basic Rp550.000 dan ujian SSW Rp220.000–Rp740.000 (Prometric), paspor Rp650.000/Rp950.000 (PP 45/2024),
+  visa sekali masuk Rp1.650.000 (Kedubes Jepang, sejak 1 Juli 2026), Ryugaku sekolah bahasa 1 tahun ~¥600.000–¥1.000.000
+  (Study in Japan) + hidup ~¥105.000/bulan (JASSO). Kesehatan/dokumen/tiket SENGAJA tanpa angka (tidak ada tarif resmi).
+  Tetap TANPA total keberangkatan (larangan brief). Perbarui manual kalau tarif berubah.
+  **Aturan teks landing (user: "Jangan sampai ada em dash", maksudnya teks yang terasa
+  hasil AI)**: index.html, landing.js, landing-cms.js, landing*.css TANPA em dash (U+2014).
+  En dash untuk rentang BOLEH (N5–N4, 30–60 menit; dikonfirmasi user). Hindari juga ciri
+  tulisan AI lain: titik koma di teks pemasaran, judul slogan berirama simetris ("Biaya yang
+  jelas. Keputusan lebih tenang."), "Tiga hal yang perlu kamu ketahui", "bukan sekadar".
+  Cek em dash pakai python (hitung '\u2014'); `grep "[—–]"` membaca per byte dan hasilnya palsu.
+
 - **PWA Kanji (`app/`) GRATIS untuk semua level, tapi WAJIB login** — user: "aku pengen
   itu bisa diakses gratis", "Buat gratis semua", "Tapi tetap login email". Gerbang premium
   (`FREE_LEVELS`/`requirePremium`/modal upgrade + Midtrans Snap/kartu status Premium)
