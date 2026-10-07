@@ -90,7 +90,7 @@
     });
     // Sensei: CMS entries replace the static teacher text inside "Tentang"; with none published
     // the static text stays, so the section never shows an empty card. Testimonials only appear
-    // when the CMS has real, published entries — nothing is invented for this page.
+    // when the CMS has real, published entries; nothing is invented for this page.
     if (isSensei) { list.hidden = entries.length === 0; const fallback = document.querySelector('#sensei-fallback'); if (fallback) fallback.hidden = entries.length > 0; }
     else section.hidden = entries.length === 0;
   }

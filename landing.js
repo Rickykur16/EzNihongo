@@ -30,8 +30,8 @@
   };
   const stages={
     pemula:{label:'Belum pernah belajar bahasa Jepang',note:'Bahasamu bisa dimulai dari kelas N5 sambil memastikan jalurnya cocok.'},
-    dasar:{label:'Sudah belajar dasar (setara N5–N4)',note:'Kemampuanmu dicek dulu agar tidak mengulang materi yang sudah dikuasai.'},
-    berpengalaman:{label:'Punya sertifikat JLPT/JFT atau pernah bekerja/magang di Jepang',note:'Kamu tidak harus mulai dari N5 — diskusinya berfokus pada kesiapanmu untuk jalur yang dituju.'},
+    dasar:{label:'Sudah belajar dasar (setara N5 sampai N4)',note:'Kemampuanmu dicek dulu agar tidak mengulang materi yang sudah dikuasai.'},
+    berpengalaman:{label:'Punya sertifikat JLPT/JFT atau pernah bekerja/magang di Jepang',note:'Kamu tidak harus mulai dari N5; diskusinya berfokus pada kesiapanmu untuk jalur yang dituju.'},
     sibuk:{label:'Sedang bekerja atau kuliah',note:'Jadwal persiapan dicocokkan dengan pekerjaan atau kuliahmu.'}
   };
   const dialog=document.querySelector('#program-dialog'),pathSelect=document.querySelector('#consult-path'),stage=document.querySelector('#stage'),waButton=document.querySelector('#consult-whatsapp'),pathLink=document.querySelector('#consult-path-link');

@@ -1,4 +1,4 @@
-/* EzNihongo landing — motion after load. Loaded without blocking render (see index.html);
+/* EzNihongo landing; motion after load. Loaded without blocking render (see index.html);
    relies on the keyframes, easing variables, and reduced-motion reset in landing.css.
    Scroll reveals hide nothing until landing.js adds html.has-motion, which it does only
    after registering an observer that will reveal them again; nothing here loops. */
