@@ -23,15 +23,15 @@
   const paths={
     'belum-tahu':{label:'Belum tahu, ingin dibantu memilih',title:'Mulai dari memetakan jalur',copy:'Kita cocokkan usia, pendidikan, pengalaman kerja, dan kemampuan bahasamu dengan jalur SSW, Gijinkoku, Ginou, atau Ryugaku sebelum menentukan langkah berikutnya.',link:'#jalur',linkText:'Bandingkan semua jalur'},
     ssw:{label:'Tokutei Ginou / SSW',title:'Jalur Tokutei Ginou (SSW)',copy:'Bahas bidang kerja yang diminati, ujian keterampilan dan bahasa (JFT-Basic atau JLPT N4 ke atas) yang perlu ditempuh, serta peluang matching melalui mitra TSK untuk lowongan yang tersedia.',link:'#jalur-ssw',linkText:'Baca rincian jalur SSW'},
-    gijinkoku:{label:'Gijinkoku (kerja profesional)',title:'Jalur Gijinkoku',copy:'Bahas kaitan jurusan atau pengalaman kerjamu dengan posisi yang dituju; siapkan informasi pendidikan dan riwayat kerja. EzNihongo belum memiliki mitra matching untuk jalur ini, tetapi bisa membantu melihat kesiapanmu.',link:'#jalur-gijinkoku',linkText:'Baca rincian jalur Gijinkoku'},
+    gijinkoku:{label:'Gijinkoku (kerja profesional)',title:'Jalur Gijinkoku',copy:'Bahas kaitan jurusan atau pengalaman kerjamu dengan posisi yang dituju. Siapkan informasi pendidikan dan riwayat kerja. EzNihongo belum memiliki mitra matching untuk jalur ini, tetapi bisa membantu melihat kesiapanmu.',link:'#jalur-gijinkoku',linkText:'Baca rincian jalur Gijinkoku'},
     ginou:{label:'Ginou / Skilled Labor',title:'Jalur Ginou (Skilled Labor)',copy:'Bahas keahlian dan lama pengalaman kerjamu, beserta dokumen yang dapat membuktikannya. Jalur ini berbeda dari program magang Ginou Jisshu. EzNihongo belum memiliki mitra matching untuk jalur ini.',link:'#jalur-ginou',linkText:'Baca rincian jalur Ginou'},
     ryugaku:{label:'Ryugaku (studi)',title:'Studi di Jepang (Ryugaku)',copy:'Bahas jenis sekolah yang kamu tuju, rencana biaya studi dan hidup, serta bekal bahasa yang dibutuhkan. EzNihongo belum menyediakan layanan pendaftaran sekolah.',link:'#jalur-ryugaku',linkText:'Baca rincian Ryugaku'},
     bahasa:{label:'Kelas bahasa Jepang',title:'Kelas bahasa Jepang',copy:'Bahas level yang sesuai, jadwal kelas, dan target bahasamu untuk jalur yang kamu tuju.',link:'#kelas',linkText:'Lihat kelas dan harga'}
   };
   const stages={
     pemula:{label:'Belum pernah belajar bahasa Jepang',note:'Bahasamu bisa dimulai dari kelas N5 sambil memastikan jalurnya cocok.'},
-    dasar:{label:'Sudah belajar dasar (setara N5 sampai N4)',note:'Kemampuanmu dicek dulu agar tidak mengulang materi yang sudah dikuasai.'},
-    berpengalaman:{label:'Punya sertifikat JLPT/JFT atau pernah bekerja/magang di Jepang',note:'Kamu tidak harus mulai dari N5; diskusinya berfokus pada kesiapanmu untuk jalur yang dituju.'},
+    dasar:{label:'Sudah belajar dasar (setara N5–N4)',note:'Kemampuanmu dicek dulu agar tidak mengulang materi yang sudah dikuasai.'},
+    berpengalaman:{label:'Punya sertifikat JLPT/JFT atau pernah bekerja/magang di Jepang',note:'Kamu tidak harus mulai dari N5. Diskusinya akan fokus pada kesiapanmu untuk jalur yang dituju.'},
     sibuk:{label:'Sedang bekerja atau kuliah',note:'Jadwal persiapan dicocokkan dengan pekerjaan atau kuliahmu.'}
   };
   const dialog=document.querySelector('#program-dialog'),pathSelect=document.querySelector('#consult-path'),stage=document.querySelector('#stage'),waButton=document.querySelector('#consult-whatsapp'),pathLink=document.querySelector('#consult-path-link');

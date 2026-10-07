@@ -100,10 +100,12 @@
   リネンサプライ/物流倉庫/資源循環 `is-new` "Bidang baru" (kabinet 23 Jan 2026, penerimaan
   ~2027). **Status ini HARDCODED — wajib diperbarui manual** kalau imigrasi membuka lagi
   外食業 atau menutup bidang lain; belum ada pengaturan dari admin/CMS.
-  **Aturan teks landing (user: "Jangan sampai ada em dash")**: index.html, landing.js,
-  landing-cms.js, landing*.css TANPA em dash (U+2014) maupun en dash (U+2013); rentang
-  ditulis "sampai" (30 sampai 60 menit). Cek: `python3 -c` hitung '\u2014'/'\u2013';
-  JANGAN pakai `grep "[—–]"` (kelas karakter dibaca per byte, hasilnya palsu).
+  **Aturan teks landing (user: "Jangan sampai ada em dash", maksudnya teks yang terasa
+  hasil AI)**: index.html, landing.js, landing-cms.js, landing*.css TANPA em dash (U+2014).
+  En dash untuk rentang BOLEH (N5–N4, 30–60 menit; dikonfirmasi user). Hindari juga ciri
+  tulisan AI lain: titik koma di teks pemasaran, judul slogan berirama simetris ("Biaya yang
+  jelas. Keputusan lebih tenang."), "Tiga hal yang perlu kamu ketahui", "bukan sekadar".
+  Cek em dash pakai python (hitung '\u2014'); `grep "[—–]"` membaca per byte dan hasilnya palsu.
 
 - **Formulir pendaftaran di layar "Belum ada kelas aktif" (dashboard)** — user: "saat
   customer login dengan akun google, jika belom di acc kan ada notif tidak ada kelas aktif
