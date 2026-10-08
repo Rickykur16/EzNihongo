@@ -70,6 +70,13 @@
   .field-error { color: var(--danger); font-size: 12px; margin-top: 4px; font-weight: 500; }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
   .user-action-dialog { box-sizing: border-box; width: min(540px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; border: 1px solid var(--line,#ddd); border-radius: 12px; padding: 24px; color: var(--ink-900,#171717); background: var(--surface-white,#fff); box-shadow: var(--elev-3); }
+  /* Aksi per kursus di Profil Akses: baris sendiri di bawah kursusnya, supaya
+     tombol Cabut tidak terdorong keluar modal (dulu kolom ke-6 tanpa judul). */
+  .ua-enr-table tr.ua-enr-actions td { padding-top: 0; }
+  .ua-enr-actions-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ua-enr-actions-row label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #525252; }
+  .ua-enr-actions-row select { font-size: 12px; padding: 3px 6px; }
+  .ua-enr-actions-row .ua-revoke { margin-left: auto; }
   .user-action-dialog::backdrop { background: rgba(0,0,0,.45); }
   .user-action-dialog h2 { margin: 0 0 12px; font-size: 20px; }
   .user-action-dialog p { line-height: 1.6; overflow-wrap: anywhere; }
@@ -8980,11 +8987,18 @@ function userAccessPanelHtml(d, opts) {
       <td>${escapeHtml(ENROLLMENT_SOURCE_LABEL[e.source] || e.source || '-')}</td>
       <td>${enrollmentStatusBadge(e)}</td>
       <td style="font-size:12px;">${new Date(e.enrolled_at).toLocaleDateString('id-ID')}${e.expires_at ? '<br>sampai ' + new Date(e.expires_at).toLocaleDateString('id-ID') : '<br><span style="color:#737373;">selamanya</span>'}</td>
-      <td class="actions">${e.status === 'active' ? `
-        <select id="${courseSelectId}-ext-${e.course_id}" style="font-size:12px;padding:3px 6px;">${durationOptionsHtml()}</select>
-        <button class="btn btn-ghost" data-email="${escapeHtml(d.user.email)}" onclick="${extendFn}(this.dataset.email,'${escapeHtml(e.slug)}','${e.course_id}','${e.expires_at || ''}')">Terapkan</button>
-        <button class="btn btn-danger" data-email="${escapeHtml(d.user.email)}" onclick="${revokeFn}(this.dataset.email,'${e.course_id}')">Cabut</button>` : ''}</td>
-    </tr>`).join('');
+    </tr>${e.status === 'active' ? `
+    <tr class="ua-enr-actions">
+      <td colspan="4">
+        <div class="ua-enr-actions-row">
+          <label>Ubah masa aktif
+            <select id="${courseSelectId}-ext-${e.course_id}">${durationOptionsHtml()}</select>
+          </label>
+          <button class="btn btn-ghost" data-email="${escapeHtml(d.user.email)}" onclick="${extendFn}(this.dataset.email,'${escapeHtml(e.slug)}','${e.course_id}','${e.expires_at || ''}')">Terapkan</button>
+          <button class="btn btn-danger ua-revoke" data-email="${escapeHtml(d.user.email)}" onclick="${revokeFn}(this.dataset.email,'${e.course_id}')">Cabut akses</button>
+        </div>
+      </td>
+    </tr>` : ''}`).join('');
   const grantable = (d.courses || []).filter((c) => !enrolledIds.has(c.id));
   const courseOpts = grantable.map((c) =>
     `<option value="${escapeHtml(c.slug)}">${escapeHtml(c.title)} (${escapeHtml(c.level || '-')}) — ${courseAccessLabelText(c)}</option>`
@@ -9017,7 +9031,7 @@ function userAccessPanelHtml(d, opts) {
 
     <h3 style="margin:18px 0 6px;font-size:14px;">Kursus yang sudah diakses</h3>
     ${enrRows
-      ? `<table><thead><tr><th>Kursus</th><th>Asal</th><th>Status</th><th>Sejak</th><th>Masa aktif</th></tr></thead><tbody>${enrRows}</tbody></table>
+      ? `<table class="ua-enr-table"><thead><tr><th>Kursus</th><th>Asal</th><th>Status</th><th>Sejak / masa aktif</th></tr></thead><tbody>${enrRows}</tbody></table>
          <p style="margin:6px 0 0;font-size:12px;color:#737373;">
            Perpanjangan ditambahkan dari tanggal berakhir yang sekarang, jadi sisa hari
            langganan yang masih berjalan tidak hangus. Pilih "Selamanya" untuk akses tanpa batas waktu.
