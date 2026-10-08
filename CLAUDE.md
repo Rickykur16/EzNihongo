@@ -151,6 +151,20 @@
   Wizard onboarding baru tampil setelah gerbang hilang. **Backend `/api/subscription` +
   tabel `subscriptions` SENGAJA dibiarkan** (data pembayar lama tetap ada; belum ada
   pemanggil dari frontend). Cache SW di-bump ke `eznihongo-app-v12`.
+  **Susulan: login jadi OPSIONAL (mode tamu)** — user: "app.EzNihongo.com gratis untuk
+  menaikan brand awareness", lalu "progress di simpan di local". Tanpa sesi, `checkAuth()`
+  langsung membuka beranda (semua level, Kana–N1); progres hanya di localStorage
+  (`ez-kanji-known`, `eznihongo_fsrs_v1`, kunci yang memang sudah dipakai sejak awal) dan
+  banner `#kh-guest` di beranda mengajak "Simpan ke akun". Saat login, progres lokal
+  digabung dengan cloud (union `known`, FSRS per kartu yang `last_review` terbaru) lalu
+  LANGSUNG di-PUT ke `/kanji-progress` — dulu `loadProgressFromCloud` hanya menulis lokal,
+  jadi progres tamu baru terunggah setelah jawaban berikutnya. Gerbang `#auth-gate`
+  tinggal spinner selama cek sesi. Keputusan sadar: TIDAK ada gerbang login per level
+  (N4+), karena level bisa dicapai dari banyak jalur (kartu level, flashcard, pencarian,
+  pemilih set) dan gerbang yang bocor lebih buruk daripada tidak ada. Teks
+  `app/index.html` ("tanpa daftar") ikut diubah. SW `eznihongo-app-v13`. Divalidasi
+  Chromium 390 px dengan API dicegat: tamu → beranda + banner, N4 terbuka, progres
+  bertahan setelah reload, 0 PUT; login → banner hilang, PUT berisi gabungan lokal+cloud.
 
 - **Formulir pendaftaran di layar "Belum ada kelas aktif" (dashboard)** — user: "saat
   customer login dengan akun google, jika belom di acc kan ada notif tidak ada kelas aktif

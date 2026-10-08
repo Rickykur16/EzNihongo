@@ -1089,6 +1089,22 @@
     .ag-btn-secondary:hover{border-color:var(--red);color:var(--red);}
     [data-theme="dark"] .ag-locked{background:#1E1C19;border-color:var(--gray-border);}
     [data-theme="dark"] #auth-gate{background:#121210;}
+    .kh-guest{
+      display:flex;align-items:center;gap:12px;
+      margin:0 0 14px;padding:12px 14px;border-radius:12px;
+      background:var(--white);border:1px dashed var(--gray-border);
+    }
+    .kh-guest[hidden]{display:none;}
+    .kh-guest-text{flex:1;min-width:0;}
+    .kh-guest-title{font-size:13px;font-weight:700;color:var(--text-primary);}
+    .kh-guest-sub{font-size:12px;color:var(--text-muted);line-height:1.45;margin-top:2px;}
+    .kh-guest-btn{
+      flex-shrink:0;padding:9px 12px;border-radius:8px;
+      background:var(--red);color:#fff;font-size:13px;font-weight:600;
+      text-decoration:none;white-space:nowrap;
+    }
+    .kh-guest-btn:hover{background:#a81616;}
+    [data-theme="dark"] .kh-guest{background:#1E1C19;}
 
     /* ── Aksesibilitas: hormati preferensi reduce-motion OS ── */
     @media (prefers-reduced-motion: reduce) {
@@ -1175,14 +1191,6 @@
 <!-- ── AUTH GATE ── -->
 <div id="auth-gate">
   <div class="ag-spinner" id="ag-spinner"></div>
-  <div class="ag-locked" id="ag-locked" style="display:none">
-    <div class="ag-icon">漢</div>
-    <div class="ag-title">Masuk untuk mulai belajar</div>
-    <div class="ag-desc" id="ag-desc">Aplikasi Kanji EzNihongo gratis untuk semua level (Kana, N5–N1). Cukup masuk dengan akun Google — progress kamu tersimpan otomatis.</div>
-    <div class="ag-actions" id="ag-actions">
-      <a class="ag-btn-primary" href="login.html?redirect=kanji.html">Masuk / Daftar</a>
-    </div>
-  </div>
 </div>
 
 <!-- ── HOME VIEW ── -->
@@ -1200,6 +1208,15 @@
       <div class="kh-streak" id="kh-streak" style="display:none" role="status" aria-label="Streak harian"><span aria-hidden="true">🔥</span><span id="kh-streak-n">1</span></div>
       <button class="kh-gear" id="kh-gear" title="Pengaturan" aria-label="Buka pengaturan"><span aria-hidden="true">⚙</span></button>
     </div>
+  </div>
+
+  <!-- Banner tamu: progres hanya di perangkat ini -->
+  <div class="kh-guest" id="kh-guest" hidden>
+    <div class="kh-guest-text">
+      <div class="kh-guest-title">Progresmu tersimpan di perangkat ini</div>
+      <div class="kh-guest-sub">Masuk dengan Google supaya tidak hilang saat ganti HP atau hapus data browser.</div>
+    </div>
+    <a class="kh-guest-btn" href="login.html?redirect=kanji.html">Simpan ke akun</a>
   </div>
 
   <!-- Progress ring card -->
@@ -10065,7 +10082,9 @@ function showSettings(){
   const ad = document.getElementById('stg-account-desc');
   if (ad) {
     const email = window._authUser?.email;
-    ad.textContent = 'Kana dan N5–N1 terbuka gratis. Progress tersinkron ke cloud' + (email ? ' (' + email + ').' : '.');
+    ad.textContent = window._isLoggedIn
+      ? 'Kana dan N5–N1 terbuka gratis. Progres tersinkron ke cloud' + (email ? ' (' + email + ').' : '.')
+      : 'Kana dan N5–N1 terbuka gratis tanpa daftar. Progres saat ini hanya tersimpan di perangkat ini; masuk dengan Google untuk menyimpannya ke akun.';
   }
   showOnly('view-settings');
 }
@@ -10299,12 +10318,11 @@ function openLoginModal(feature) {
     </style>
     <div class="lm-card">
       <div class="lm-icon">🔓</div>
-      <h3 class="lm-title" id="lm-title">${feature || 'Fitur ini'} butuh akun</h3>
-      <p class="lm-desc">Login gratis — akun dibuat otomatis dengan Google.</p>
+      <h3 class="lm-title" id="lm-title">${feature || 'Simpan progres ke akun'}</h3>
+      <p class="lm-desc">Gratis, cukup masuk dengan Google. Progres yang sudah ada di perangkat ini ikut tersimpan.</p>
       <ul class="lm-bullets">
-        <li>Akses semua level N5 sampai N1 (2229 kanji)</li>
-        <li>Progress tersimpan di cloud, sync antar device</li>
-        <li>Backup otomatis — data tidak hilang</li>
+        <li>Progres tersimpan di cloud, sync antar perangkat</li>
+        <li>Tidak hilang saat ganti HP atau hapus data browser</li>
       </ul>
       <a class="lm-btn lm-primary" href="login.html?redirect=kanji.html">Masuk / Daftar dengan Google</a>
       <button class="lm-btn lm-secondary" id="lm-close">Nanti saja</button>
@@ -10365,12 +10383,14 @@ async function checkAuth() {
   }
 
   if (!user) {
-    // Semua level gratis, tapi wajib login dengan akun.
+    // Mode tamu: semua level bisa dipakai tanpa login, progres hanya di
+    // localStorage perangkat ini. Login opsional untuk cadangan cloud.
     window._isLoggedIn = false;
+    document.getElementById('auth-gate').remove();
+    showHome();
+    const guest = document.getElementById('kh-guest');
+    if (guest) guest.hidden = false;
     window.track?.('session_active', { logged_in: false });
-    document.getElementById('ag-spinner')?.remove();
-    const locked = document.getElementById('ag-locked');
-    if (locked) locked.style.display = '';
     return;
   }
 
@@ -10380,7 +10400,13 @@ async function checkAuth() {
   window._authUser = user;
   window.identifyUser?.(user.id, { email: user.email });
   window.track?.('session_active', { logged_in: true });
-  if (!user.offline) await loadProgressFromCloud(user.id);
+  if (!user.offline) {
+    await loadProgressFromCloud(user.id);
+    // Unggah hasil gabungan supaya progres yang dikumpulkan saat masih tamu
+    // ikut tersimpan di akun (loadProgressFromCloud hanya menulis lokal).
+    await syncProgressToCloud();
+    updateHomeStats();
+  }
   showWelcomeIfJustLoggedIn(user);
 }
 
@@ -10682,7 +10708,7 @@ if ('serviceWorker' in navigator) {
   // Wait for home to be visible before showing wizard
   const waitHome = setInterval(() => {
     const home = document.getElementById('view-home');
-    // Tunggu sampai gerbang login hilang — wizard baru muncul setelah login.
+    // Tunggu sampai gerbang pemeriksaan sesi hilang (tamu maupun login).
     if (home && home.style.display !== 'none' && !document.getElementById('auth-gate')) {
       clearInterval(waitHome);
       setTimeout(showWizard, 400);
