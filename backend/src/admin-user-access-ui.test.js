@@ -227,3 +227,33 @@ test('affected action markup treats apostrophes in email as data rather than Jav
   assert.match(markup, /data-email="test\.o&#39;brien@example\.invalid"/);
   assert.match(html, /onclick="openUserAccess\(this\.dataset\.email\)"/);
 });
+
+test('Profil Akses keeps Terapkan/Cabut inside the table columns instead of an unheaded overflow column', () => {
+  // Dulu tombol aksi ada di <td> ke-6 tanpa <th>, tabel melebar melewati
+  // modal dan tombol Cabut terpotong tak terlihat (user: "Tombol Cabut tidak ada").
+  const panelSource = [
+    slice('const ENROLLMENT_SOURCE_LABEL =', 'async function refreshUserAccessModal'),
+    'function escapeHtml(s){return String(s??"").replace(/[&<>"\']/g,c=>"&#"+c.charCodeAt(0)+";");}',
+    'function formatIdr(n){return String(n);} function orderStatusBadge(s){return s;}',
+  ].join('\n');
+  const ctx = vm.createContext({ Date, Number, Set, String });
+  vm.runInContext(panelSource, ctx);
+  const html = vm.runInContext('userAccessPanelHtml', ctx)({
+    user: { email: 'a@b.c', full_name: 'A' },
+    enrollments: [
+      { course_id: 'c1', slug: 'n5', title: 'N5', level: 'N5', status: 'active', source: 'admin_grant', enrolled_at: '2026-10-01', expires_at: null },
+      { course_id: 'c2', slug: 'n4', title: 'N4', level: 'N4', status: 'revoked', source: 'admin_grant', enrolled_at: '2026-10-01', expires_at: null },
+    ],
+    courses: [], orders: [],
+  }, { courseSelectId: 'ua-course', revokeFn: 'uaRevoke', grantFn: 'uaGrant', extendFn: 'uaExtend' });
+
+  const table = html.slice(html.indexOf('<table class="ua-enr-table">'), html.indexOf('</table>'));
+  const headers = (table.match(/<th>/g) || []).length;
+  for (const row of table.split('<tr').slice(2)) {
+    const cells = (row.match(/<td/g) || []).length;
+    const span = Number((row.match(/colspan="(\d+)"/) || [])[1] || 0);
+    assert.equal(span ? span : cells, headers, 'every row must fit the header columns');
+  }
+  assert.equal((table.match(/onclick="uaRevoke\(/g) || []).length, 1, 'Cabut only for the active enrollment');
+  assert.match(table, /id="ua-course-ext-c1"/);
+});
