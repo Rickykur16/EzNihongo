@@ -151,6 +151,17 @@
   Wizard onboarding baru tampil setelah gerbang hilang. **Backend `/api/subscription` +
   tabel `subscriptions` SENGAJA dibiarkan** (data pembayar lama tetap ada; belum ada
   pemanggil dari frontend). Cache SW di-bump ke `eznihongo-app-v12`.
+  **Perbaikan UI (user: "perbaiki ui kanji app nya")**, ditemukan lewat screenshot
+  Chromium 390/1280, SW `eznihongo-app-v13`: (1) tombol "Reset" di daftar Set DULU
+  menghapus hafalan SELURUH 2229 kanji; sekarang hanya kanji yang tampil
+  (`_shownList`/`shownList()`), reset total tetap di Pengaturan; (2) statistik Set
+  memakai jumlah set (50), bukan seluruh level (103); (3) `#navbar` dibuat sticky
+  (dulu `.nav` sticky di dalam pembungkus setinggi dirinya = tidak pernah aktif,
+  header tiap layar `top:57px` menyisakan celah); header memakai `--nav-h` yang
+  diukur `syncNavHeight()` (61 HP / 66 desktop); `.kd-header`/`.rv-header` ikut;
+  (4) bilah bawah desktop selebar kolom app 480 px; (5) subjudul kartu level tidak
+  terpotong; (6) cincin "0%" saat sudah hafal → "<1%"; (7) avatar navbar menaut ke
+  `kanji.html` (dulu `dashboard.html` yang tidak ada di `app/`) dan nama di-escape.
 
 - **Formulir pendaftaran di layar "Belum ada kelas aktif" (dashboard)** — user: "saat
   customer login dengan akun google, jika belom di acc kan ada notif tidak ada kelas aktif

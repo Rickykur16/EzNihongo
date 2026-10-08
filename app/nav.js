@@ -118,11 +118,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function buildAuthHTML(u, isMobile) {
     if (u) {
-      const name    = u.fullName || (u.email ? u.email.split('@')[0] : 'User');
-      const initial = name.charAt(0).toUpperCase();
+      const esc = (v) => String(v).replace(/[&<>"']/g, (c) => '&#' + c.charCodeAt(0) + ';');
+      const rawName = u.fullName || (u.email ? u.email.split('@')[0] : 'User');
+      const name    = esc(rawName);
+      const initial = esc(rawName.charAt(0).toUpperCase());
       return `
         <div style="display:flex;align-items:center;gap:10px;${isMobile ? 'padding:4px 0;' : ''}">
-          <a href="dashboard.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;">
+          <a href="kanji.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;">
             <div style="width:32px;height:32px;border-radius:50%;background:var(--red);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;">${initial}</div>
             <span style="font-size:14px;font-weight:500;color:var(--text-primary);">${name}</span>
           </a>
