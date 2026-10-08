@@ -84,11 +84,14 @@ test('a refused turn shows the server reason instead of playing', async () => {
   assert.deepEqual(JSON.parse(JSON.stringify(ctx.notes)), [{ message: 'Gagal generate audio: Teks giliran ini memuat baris baru.', error: true }]);
 });
 
-test('listening scripts keep the plain preview (students hear them as one clip)', async () => {
+test('listening turn preview selects the assessment model and student default tempo', async () => {
   const ctx = setup({ mode: 'listening' });
   await ctx.window.admDialogRowTest(2, button());
   assert.equal(ctx.calls[0].path, '/admin/tts/preview');
   assert.equal(ctx.calls[0].body.text, 'B: はじめまして。');
+  assert.equal(ctx.calls[0].body.listening, true);
+  assert.equal(ctx.audio.playbackRate, 0.9);
+  assert.equal(ctx.audio.preservesPitch, true);
 });
 
 test('the regenerate button appears only for grammar dialogues whose turn has a voice', () => {

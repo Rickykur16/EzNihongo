@@ -197,7 +197,7 @@ async function loadQuestionsByIds(ids, lessonId) {
       `SELECT id, question, question_type, question_category, section_number,
               section_label, section_instruction,
               CASE WHEN audio_scene IS NULL THEN audio_script ELSE NULL END AS audio_script,
-              (question_category = 'listening' AND audio_scene IS NOT NULL) AS has_audio,
+              (question_category = 'listening' AND NULLIF(BTRIM(audio_script), '') IS NOT NULL) AS has_audio,
               passage, image_url,
               sort_order
          FROM quiz_questions
@@ -445,7 +445,7 @@ router.get('/progress/lesson/:lessonId/quiz/audio/:questionId', assessmentAudioL
     question = saved.rows[0];
   }
   if (!question?.audio_script?.trim()) return res.status(404).json({ error: 'audio_not_available' });
-  return renderTtsAudio(question.audio_script, res, { privateResponse: true, dialogScene: question.audio_scene });
+  return renderTtsAudio(question.audio_script, res, { privateResponse: true, dialogScene: question.audio_scene, listening: true });
 }));
 
 // POST /api/progress/lesson/:lessonId/quiz-attempt

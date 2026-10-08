@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
 import { asyncHandler, optionalAuth } from '../middleware.js';
+import { assembleListeningWav, listeningTurnGaps, stripListeningMarkup, validateListeningPcm, MAX_LISTENING_PCM_BYTES } from '../listening-audio.js';
 
 const router = Router();
 
@@ -24,6 +25,13 @@ const ELEVEN_VOICE_NARRATOR = process.env.ELEVENLABS_VOICE_NARRATOR || ELEVEN_VO
 const ELEVEN_VOICE_FEMALE = process.env.ELEVENLABS_VOICE_FEMALE || ELEVEN_VOICE_ID;
 const ELEVEN_VOICE_MALE = process.env.ELEVENLABS_VOICE_MALE || ELEVEN_VOICE_ID;
 const ELEVEN_MODEL = process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2';
+export const TTS_LISTENING_MODEL = process.env.ELEVENLABS_LISTENING_MODEL || 'eleven_v4';
+export const TTS_LISTENING_SETTINGS_VERSION = 'listening-v4-pcm-v1';
+const LISTENING_OUTPUT = 'pcm_24000';
+// V4 supports stability and similarity; speed/style/speaker boost and SSML
+// breaks belong to other models. Playback speed is a separate player control.
+const LISTENING_SETTINGS = Object.freeze({ stability: 0.6, similarity_boost: 0.8 });
+const listeningInFlight = new Map();
 // Multi-turn dialog JLPT bisa 200-500 char. Naikin ke 1500 — whitelist DB
 // udah ngamanin set of generatable strings.
 const MAX_TEXT_LEN = 1500;
@@ -58,6 +66,16 @@ export function ttsHashKey(text, voices) {
 }
 // Backward alias buat code dalam file ini.
 const hashKey = ttsHashKey;
+
+export function listeningHashKey(text, turnVoices) {
+  const turns = parseDialog(text) || [{ speaker: '', text }];
+  return crypto.createHash('sha256').update(JSON.stringify({
+    profile: TTS_LISTENING_SETTINGS_VERSION, model: TTS_LISTENING_MODEL,
+    output: LISTENING_OUTPUT, container: 'wav', settings: LISTENING_SETTINGS,
+    turns: turns.map((turn, i) => ({ speaker: turn.speaker, voiceId: turnVoices[i].voiceId, role: turnVoices[i].role })),
+    gaps: listeningTurnGaps(turns, turnVoices), text,
+  })).digest('hex');
+}
 
 // Re-export helpers buat admin endpoints (test/cache management).
 export {
@@ -239,6 +257,81 @@ export function elevenLabsEnabled() {
   return !!ELEVEN_API_KEY;
 }
 
+export async function fetchElevenListeningPcm(voiceId, text, retry = 0) {
+  const spoken = speechText(stripListeningMarkup(text));
+  if (!spoken) throw new Error('listening_text_empty');
+  const upstream = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=${LISTENING_OUTPUT}`,
+    { method: 'POST', headers: { 'xi-api-key': ELEVEN_API_KEY, 'Content-Type': 'application/json', 'Accept': 'audio/pcm' },
+      body: JSON.stringify({ text: spoken, model_id: TTS_LISTENING_MODEL, voice_settings: LISTENING_SETTINGS }),
+      signal: AbortSignal.timeout(60000),
+    }
+  );
+  if (!upstream.ok) {
+    if (retry < 3 && (upstream.status === 409 || upstream.status === 429 || upstream.status >= 500)) {
+      await upstream.body?.cancel();
+      await new Promise(resolve => setTimeout(resolve, 500 * (retry + 1)));
+      return fetchElevenListeningPcm(voiceId, text, retry + 1);
+    }
+    await upstream.body?.cancel();
+    throw new Error(`listening_tts_upstream_${upstream.status}`);
+  }
+  const chunks = []; let size = 0;
+  const reader = upstream.body.getReader();
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > MAX_LISTENING_PCM_BYTES) throw new Error('listening_pcm_too_long');
+      chunks.push(Buffer.from(value));
+    }
+  } catch (error) { await reader.cancel().catch(() => {}); throw error; }
+  finally { reader.releaseLock(); }
+  return validateListeningPcm(Buffer.concat(chunks, size), upstream.headers.get('content-type') || '');
+}
+
+async function renderListeningAudio(text, turns, turnVoices, scene, res, privateResponse) {
+  const key = listeningHashKey(text, turnVoices);
+  if (!listeningInFlight.has(key)) {
+    const pending = (async () => {
+      const cached = await query('SELECT audio, content_type FROM tts_cache WHERE text_hash = $1', [key]);
+      if (cached.rows[0]) {
+        query('UPDATE tts_cache SET last_used_at = NOW() WHERE text_hash = $1', [key]).catch(() => {});
+        return cached.rows[0];
+      }
+      if (!ELEVEN_API_KEY || turnVoices.some(voice => !voice.voiceId)) throw ttsError('tts_disabled');
+      await validateSceneVoices(scene, fetchElevenVoices);
+      const clips = [], gaps = listeningTurnGaps(turns, turnVoices);
+      let size = gaps.reduce((total, milliseconds) => total + milliseconds * 48, 0);
+      for (let i = 0; i < turns.length; i++) {
+        const clip = await fetchElevenListeningPcm(turnVoices[i].voiceId, turns[i].text);
+        size += clip.length;
+        if (size > MAX_LISTENING_PCM_BYTES) throw new Error('listening_audio_too_long');
+        clips.push(clip);
+      }
+      const audio = assembleListeningWav(clips, gaps);
+      const saved = await query(`INSERT INTO tts_cache (text_hash, text, provider, voice, model, audio, content_type, byte_size, settings_version)
+        VALUES ($1,$2,'elevenlabs',$3,$4,$5,'audio/wav',$6,$7)
+        ON CONFLICT (text_hash) DO NOTHING RETURNING audio, content_type`,
+      [key, text, turnVoices.map(voice => voice.voiceId).join(','), TTS_LISTENING_MODEL, audio, audio.length, TTS_LISTENING_SETTINGS_VERSION]);
+      // Across backend processes, the first committed take wins. Both admin
+      // preview and the student hear that take, even on simultaneous cache misses.
+      return saved.rows[0] || (await query('SELECT audio, content_type FROM tts_cache WHERE text_hash = $1', [key])).rows[0];
+    })();
+    listeningInFlight.set(key, pending);
+    pending.finally(() => { if (listeningInFlight.get(key) === pending) listeningInFlight.delete(key); }).catch(() => {});
+  }
+  try {
+    const saved = await listeningInFlight.get(key);
+    return sendAudio(res, saved.audio, saved.content_type, privateResponse);
+  } catch (error) {
+    if (error.code === 'tts_disabled') return res.status(503).json({ error: 'tts_disabled' });
+    console.error('Listening TTS:', error.message);
+    return res.status(502).json({ error: 'tts_upstream' });
+  }
+}
+
 // GET https://api.elevenlabs.io/v1/voices — powers the admin dialogue
 // editor's speaker picker, so an admin assigns a genuine ElevenLabs voice
 // (real name + voice_id) per character instead of a binary female/male
@@ -398,7 +491,7 @@ router.get('/tts', optionalAuth, ttsLimiter, asyncHandler(async (req, res) => {
 
 // Callers must authorize the source text first. Assessment callers use their
 // immutable, owned attempt and never send the script to the student client.
-export async function renderTtsAudio(text, res, { privateResponse = false, dialogScene = null } = {}) {
+export async function renderTtsAudio(text, res, { privateResponse = false, dialogScene = null, listening = false } = {}) {
 
   // Detect dialog vs single-voice. Single-voice fallback kalau parse gagal.
   const turns = parseDialog(text);
@@ -412,6 +505,7 @@ export async function renderTtsAudio(text, res, { privateResponse = false, dialo
       ? sceneTurnVoices(turns, scene, (t, i) => voiceForSpeaker(t.speaker, i, registry))
       : [{ voiceId: ELEVEN_VOICE_ID, role: 'single' }];
   } catch (err) { return res.status(422).json({ error: 'dialog_voice_missing', detail: err.message }); }
+  if (listening) return renderListeningAudio(text, turns || [{ speaker: '', text }], turnVoices, scene, res, privateResponse);
   const voices = turnVoices.map((v) => v.voiceId);
 
   // Cache key includes voice list — single-voice vs dialog versions stored
