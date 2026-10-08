@@ -331,6 +331,11 @@ router.post('/attempts', asyncHandler(async (req, res) => {
   const { itemType, itemId, skill, lessonId, courseId } = req.body || {};
   const isCorrect = req.body?.isCorrect;
   const source = req.body?.source || 'lesson_drill';
+  const eventId = req.body?.eventId;
+  if (eventId !== undefined && !validUuid(eventId)) return res.status(400).json({ error: 'invalid_event_id' });
+  if (req.body?.expectedUserId !== undefined && req.body.expectedUserId !== req.user.id) {
+    return res.status(409).json({ error: 'practice_account_changed' });
+  }
   if (!PRACTICE_ITEM_TYPES.has(itemType)) return res.status(400).json({ error: 'invalid_item_type' });
   if (!validUuid(itemId)) return res.status(400).json({ error: 'invalid_item_id' });
   if (!isSafePracticeSkill(skill)) return res.status(400).json({ error: 'invalid_skill' });
@@ -356,7 +361,8 @@ router.post('/attempts', asyncHandler(async (req, res) => {
     access = { scope: { course_id: courseId } };
   }
 
-  const state = await withAdvisoryLock(
+  let state;
+  try { state = await withAdvisoryLock(
     `practice-attempt:${req.user.id}:${itemType}:${itemId}:${skill}`,
     (client) => recordPracticeAttemptWithState(client, {
       userId: req.user.id,
@@ -367,8 +373,12 @@ router.post('/attempts', asyncHandler(async (req, res) => {
       skill,
       isCorrect,
       source,
+      eventId,
     })
-  );
+  ); } catch (error) {
+    if (error.code === 'PRACTICE_EVENT_CONFLICT') return res.status(409).json({ error: 'practice_event_conflict' });
+    throw error;
+  }
   res.status(201).json({ ok: true, state: stateJson(state) });
 }));
 

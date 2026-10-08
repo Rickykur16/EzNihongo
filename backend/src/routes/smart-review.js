@@ -90,7 +90,7 @@ async function grammarTaskData(lessonId) {
 // Shared by the Dashboard aggregator.  Keeping this as the one source means
 // the home-card counts and a started Review session always have identical
 // learned-scope and due-item rules.
-export async function buildReviewCandidates(user) {
+export async function buildReviewCandidates(user, courseId = null) {
   const scope = await accessScope(user); const rows = await genericRows(scope);
   const baseRows = filterReviewScope([...rows.kana.map((item) => ({ lessonId: item.lesson_id, courseId: item.course_id, category: 'kana', item })), ...rows.vocabulary.map((item) => ({ lessonId: item.lesson_id, courseId: item.course_id, category: 'vocabulary', item })), ...rows.kanji.map((item) => ({ lessonId: item.lesson_id, courseId: item.course_id, category: 'kanji', item }))], { completedLessonIds: scope.completedLessonIds, accessibleCourseIds: scope.courseIds });
   const states = stateMap((await query(`SELECT * FROM user_practice_state WHERE user_id = $1`, [user.id])).rows); const candidates = [];
@@ -107,7 +107,9 @@ export async function buildReviewCandidates(user) {
     const words = deriveCompounds(base.item.character, base.item.compounds, rows.vocabulary.map((v) => ({ vocabulary_id: v.id, module_id: null, course_level: base.item.course_level, japanese: v.japanese, reading: v.reading, indonesian: v.indonesian, module_sort: 0, vocab_sort: 0 })), { courseLevel: base.item.course_level, moduleId: base.item.module_id, moduleSort: base.item.module_sort, kanjiCatalog: catalog }).filter((word) => extractKanjiCharacters(word.japanese).every((char) => learnedChars.has(char)));
     for (const word of words) wordEntries.push({ key: `${word.japanese}::${word.reading}`, baseId: base.item.id, hasState: WORD_DIRECTIONS.some((direction) => states.has(`kanji:${base.item.id}:${wordSkill(direction, word)}`)), base, word });
   }
-  const compoundOwners = pickCompoundOwners(wordEntries);
+  // A selected course needs an owner in that course even when the same word
+  // also exists in another enrollment. Other owners still contribute schedules.
+  const compoundOwners = pickCompoundOwners(courseId ? wordEntries.filter((entry) => entry.base.courseId === courseId) : wordEntries);
   for (const { base, word } of compoundOwners.values()) for (const direction of WORD_DIRECTIONS) add(base, wordSkill(direction, word), { word });
   // Legacy/lesson attempts may belong to another kanji containing the word.
   // Keep the stable question owner, but do not discard the other owner's newer
@@ -139,34 +141,60 @@ export async function buildReviewCandidates(user) {
       candidates.push({ category: 'grammar', itemId: item.id, lessonId: link.lesson_id, courseId: link.course_id, skill: attemptSourceFor(raw.step), item, grammarDrill: raw, state: { attempts: m?.attempts || 0, correct: m?.passedCount || 0, streak: 0, lastSeenAt: m?.lastAttemptAt || null, nextReviewAt }, mistakes: Math.max(0, (m?.attempts || 0) - (m?.passedCount || 0)) });
     }
   }
+  const poolRows = Object.fromEntries(Object.entries(rows).map(([category, items]) => [category,
+    courseId ? items.filter((item) => item.course_id === courseId) : items]));
+  const poolWords = candidates.filter((row) => row.word && (!courseId || row.courseId === courseId));
   const pools = {
     kanaCharactersByKind: {
-      hiragana: rows.kana.filter((row) => row.kind === 'hiragana').map((row) => row.character),
-      katakana: rows.kana.filter((row) => row.kind === 'katakana').map((row) => row.character),
+      hiragana: poolRows.kana.filter((row) => row.kind === 'hiragana').map((row) => row.character),
+      katakana: poolRows.kana.filter((row) => row.kind === 'katakana').map((row) => row.character),
     },
     kanaRomajiByKind: {
-      hiragana: rows.kana.filter((row) => row.kind === 'hiragana').map((row) => row.romaji),
-      katakana: rows.kana.filter((row) => row.kind === 'katakana').map((row) => row.romaji),
+      hiragana: poolRows.kana.filter((row) => row.kind === 'hiragana').map((row) => row.romaji),
+      katakana: poolRows.kana.filter((row) => row.kind === 'katakana').map((row) => row.romaji),
     },
-    vocabJapanese: rows.vocabulary.map((row) => row.japanese),
-    vocabIndonesian: rows.vocabulary.map((row) => row.indonesian),
-    vocabReadingByJapanese: Object.fromEntries(rows.vocabulary.map((row) => [row.japanese, row.reading || null])),
-    kanjiCharacters: rows.kanji.map((row) => row.character),
-    kanjiMeanings: rows.kanji.map((row) => row.meaning_id),
-    words: candidates.filter((row) => row.word).map((row) => row.word.japanese),
-    wordReadings: candidates.filter((row) => row.word).map((row) => row.word.reading),
-    wordMeanings: candidates.filter((row) => row.word).map((row) => row.word.indonesian),
+    kanaReadingsByKind: Object.fromEntries(['hiragana', 'katakana'].map((kind) => [kind,
+      Object.fromEntries(poolRows.kana.filter((row) => row.kind === kind).map((row) => [row.character, row.romaji]))])),
+    vocabJapanese: poolRows.vocabulary.map((row) => row.japanese),
+    vocabIndonesian: poolRows.vocabulary.map((row) => row.indonesian),
+    vocabReadingByJapanese: Object.fromEntries(poolRows.vocabulary.map((row) => [row.japanese, row.reading || null])),
+    kanjiCharacters: poolRows.kanji.map((row) => row.character),
+    kanjiMeanings: poolRows.kanji.map((row) => row.meaning_id),
+    words: poolWords.map((row) => row.word.japanese),
+    wordReadings: poolWords.map((row) => row.word.reading),
+    wordMeanings: poolWords.map((row) => row.word.indonesian),
   };
-  return { candidates: availableReviewCandidates(candidates, { scheduleEvidence }), pools };
+  // Unlock directions within the requested course; an unseen duplicate in
+  // another course must not consume its only eligible direction. Keep that
+  // other course's evidence available to the shared-subject scheduler.
+  const scoped = courseId ? candidates.filter((row) => row.courseId === courseId) : candidates;
+  const otherCourseEvidence = courseId ? candidates.filter((row) => row.courseId !== courseId) : [];
+  return { candidates: availableReviewCandidates(scoped, { scheduleEvidence: [...scheduleEvidence, ...otherCourseEvidence] }), pools };
 }
 
 function asPublic(candidate, question) { return { category: candidate.category, itemType: candidate.category, itemId: candidate.itemId, skill: candidate.skill, lessonId: candidate.lessonId, priority: reviewPriority(candidate), question }; }
 
-router.get('/summary', asyncHandler(async (req, res) => { const { candidates } = await buildReviewCandidates(req.user); res.json({ ...summarizeCandidates(candidates), categories: REVIEW_CATEGORIES }); }));
+async function requestedCourse(user, value) {
+  if (value === undefined || value === '') return { id: null };
+  if (typeof value !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value.trim().toLowerCase()) || value.length > 100) return { error: 'invalid_course', status: 400 };
+  const course = (await query('SELECT id FROM courses WHERE slug = $1', [value.trim().toLowerCase()])).rows[0];
+  if (!course) return { error: 'course_not_found', status: 404 };
+  if (!(await userCanAccessCourse(user, course.id))) return { error: 'not_enrolled', status: 403 };
+  return course;
+}
+
+router.get('/summary', asyncHandler(async (req, res) => {
+  const course = await requestedCourse(req.user, req.query.course);
+  if (course.error) return res.status(course.status).json({ error: course.error });
+  const { candidates } = await buildReviewCandidates(req.user, course.id);
+  res.json({ ...summarizeCandidates(candidates), categories: REVIEW_CATEGORIES });
+}));
 
 router.post('/sessions', asyncHandler(async (req, res) => {
   const category = String(req.body?.category || 'mixed').toLowerCase(); if (category !== 'mixed' && !REVIEW_CATEGORIES.includes(category)) return res.status(400).json({ error: 'invalid_category' });
-  const { candidates, pools } = await buildReviewCandidates(req.user); const selected = selectReviewCandidates(candidates, { category, limit: req.body?.limit });
+  const course = await requestedCourse(req.user, req.body?.course);
+  if (course.error) return res.status(course.status).json({ error: course.error });
+  const { candidates, pools } = await buildReviewCandidates(req.user, course.id); const selected = selectReviewCandidates(candidates, { category, limit: req.body?.limit });
   if (!selected.length) return res.json({ category, sessionId: null, questions: [], summary: summarizeCandidates(candidates) });
   const session = await withAdvisoryLock(evidenceLock(req.user.id), async (client) => {
     const created = await client.query(`INSERT INTO smart_review_sessions (user_id, category, expires_at) VALUES ($1,$2,NOW() + ($3 || ' minutes')::interval) RETURNING id, expires_at`, [req.user.id, category, String(SESSION_MINUTES)]); const questions = [];

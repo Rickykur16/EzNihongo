@@ -179,6 +179,8 @@ async function init() {
 
   const account = await ensureAuth(slug);
   if (!account) return;
+  const owner = window.ezCaptureAuth();
+  if (!owner.userId || owner.userId !== account.id) return;
 
   // Already enrolled? Check server (source of truth) before sending them to
   // dashboard — localStorage can lie, especially right after login on a new
@@ -186,15 +188,19 @@ async function init() {
   let enrolled = [];
   if (typeof window.ezApi === "function") {
     try {
-      const res = await window.ezApi("/enrollments/me");
+      const res = await window.ezApi("/enrollments/me", { expectedUserId: owner.userId });
       if (res.ok) {
         const data = await res.json();
+        if (!window.ezIsAuthCurrent(owner)) return;
         enrolled = (data.enrollments || []).map(e => e.slug).filter(Boolean);
-        localStorage.setItem("ez_courses", JSON.stringify(enrolled));
+        window.ezLearningStorage.setItem("ez_courses", JSON.stringify(enrolled));
       }
-    } catch { enrolled = JSON.parse(localStorage.getItem("ez_courses") || "[]"); }
+    } catch {
+      if (!window.ezIsAuthCurrent(owner)) return;
+      enrolled = JSON.parse(window.ezLearningStorage.getItem("ez_courses") || "[]");
+    }
   } else {
-    enrolled = JSON.parse(localStorage.getItem("ez_courses") || "[]");
+    enrolled = JSON.parse(window.ezLearningStorage.getItem("ez_courses") || "[]");
   }
   if (enrolled.includes(slug)) {
     window.location.replace(`../dashboard.html?v=20260902-1&course=${encodeURIComponent(slug)}`);
@@ -202,6 +208,7 @@ async function init() {
   }
 
   const course = await fetchCourseBySlug(slug);
+  if (!window.ezIsAuthCurrent(owner)) return;
   if (!course) {
     renderError(
       "Kelas tidak ditemukan",
@@ -220,13 +227,14 @@ async function init() {
   let needsProfile = true;
   let profile = { fullName: account.fullName || account.full_name || '', email: account.email || '' };
   try {
-    const res = await window.ezApi("/profile/marketing");
+    const res = await window.ezApi("/profile/marketing", { expectedUserId: owner.userId });
     if (res.ok) {
       profile = { ...profile, ...await res.json() };
       needsProfile = !profile.hasProfile || profile.needsUpdate === true;
     }
   } catch { /* keep needsProfile = true — see comment above */ }
 
+  if (!window.ezIsAuthCurrent(owner)) return;
   renderCourseUI(course, needsProfile, profile);
 }
 

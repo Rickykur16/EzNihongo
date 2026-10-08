@@ -1,6 +1,7 @@
 // Deterministic, content-backed Smart Review rules.  The browser only receives
 // public choices; the authoritative correct choice remains in the session row.
 import { filterScheduledReviewSubjects, reviewScheduleSubjectKeys } from './smart-review-schedule.js';
+import { normalizeKanaReading } from './kana-placement.js';
 
 const DAY = 86_400_000;
 export const REVIEW_CATEGORIES = Object.freeze(['kana', 'vocabulary', 'kanji', 'grammar']);
@@ -326,14 +327,20 @@ export function makeReviewQuestion(candidate, pools) {
     const script = kanaKind === 'katakana' ? 'Katakana' : 'Hiragana';
     const characterPool = pools.kanaCharactersByKind?.[kanaKind] || [];
     const romajiPool = pools.kanaRomajiByKind?.[kanaKind] || [];
+    const readings = pools.kanaReadingsByKind?.[kanaKind]
+      || Object.fromEntries(characterPool.map((character, index) => [character, romajiPool[index]]));
+    const equivalent = (reading) => normalizeKanaReading(reading) === normalizeKanaReading(romaji);
     if (candidate.skill === 'k2r') {
       prompt = item.character;
       answer = romaji;
-      return { kind: 'choice', prompt, script, instruction: `Pilih bunyi ${script} yang tepat.`, ...choices(answer, romajiPool, seed) };
+      return { kind: 'choice', prompt, script, instruction: `Pilih bunyi ${script} yang tepat.`, ...choices(answer, romajiPool.filter((reading) => !equivalent(reading)), seed) };
     }
     prompt = romaji;
     answer = item.character;
-    return { kind: 'choice', prompt, script, instruction: `Pilih karakter ${script} yang tepat.`, ...choices(answer, characterPool, seed) };
+    // じ/ぢ and ず/づ share their prompt. Never treat an equivalent reading
+    // as a wrong choice; a pool with no safe alternative is skipped by the route.
+    const distractors = characterPool.filter((character) => readings[character] && !equivalent(readings[character]));
+    return { kind: 'choice', prompt, script, instruction: `Pilih karakter ${script} yang tepat.`, ...choices(answer, distractors, seed) };
   }
   if (candidate.category === 'vocabulary') {
     if (candidate.skill === 'jp2id') { prompt = item.japanese; answer = item.indonesian; return { kind: 'choice', prompt, reading: item.reading || null, ...choices(answer, pools.vocabIndonesian, seed) }; }

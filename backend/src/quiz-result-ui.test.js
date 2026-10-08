@@ -33,6 +33,7 @@ function setup() {
     correctByQuestion:{q1:true,q2:true},cooldownHours:0,nextAttemptAt:null };
   const ctx = vm.createContext({ quizState:state, session:{id:'learner-a'}, document:{getElementById:()=>main},
     window:{__requiredAssignment:{key:state.key,attemptToken:state.attemptToken},
+      ezCaptureAuth:()=>({userId:'learner-a',generation:0}), ezIsAuthCurrent:()=>true,
       ezClearUnfinishedAssignmentCache:()=>effects.unfinishedCleared++,
       ezApi:async (...args)=>{effects.calls.push(args);return {ok:true,json:async()=>result};}},
     destroyAllListeningPlayers:()=>{},findLesson:()=>({apiId:'lesson'}),invalidateQuizStatus:()=>{},
@@ -151,6 +152,25 @@ test('late grading response leaves the newly opened lesson untouched',async()=>{
   ctx.window.__quizNavigationEpoch=1;
   main.innerHTML='New lesson';release();await pending;
   assert.equal(main.innerHTML,'New lesson');assert.equal(effects.progress+effects.xp,0);
+});
+
+test('quiz submission cannot use or update a replacement account after awaiting draft or result',async()=>{
+  for (const boundary of ['draft', 'result']) {
+    const {ctx,main,effects,result,state}=setup();
+    let current=true,release;
+    ctx.window.ezIsAuthCurrent=()=>current;
+    const waiting=new Promise(resolve=>{release=resolve;});
+    if(boundary==='draft')state.draftPromise=waiting;
+    else ctx.window.ezApi=async(...args)=>{effects.calls.push(args);return {ok:true,json:()=>waiting};};
+    const pending=ctx.finishQuiz();
+    await new Promise(resolve=>setImmediate(resolve));
+    current=false;main.innerHTML='Replacement account';release(result);await pending;
+    assert.equal(main.innerHTML,'Replacement account');
+    assert.equal(effects.progress+effects.xp+effects.cache+effects.unfinishedCleared,0);
+    assert.equal(state.submitted,undefined);
+    if(boundary==='draft')assert.equal(effects.calls.length,0);
+    else assert.equal(effects.calls[0][1].expectedUserId,'learner-a');
+  }
 });
 
 test('chapter result explains a rejected high total without claiming the score is below 70 percent',async()=>{

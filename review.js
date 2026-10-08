@@ -1,6 +1,19 @@
 (() => {
   const app = document.getElementById('review-app');
-  const dashboardUrl = 'dashboard.html?v=20260902-4';
+  const params = new URLSearchParams(location.search);
+  const course = (params.get('course') || '').trim().toLowerCase();
+  const scopedUrl = (path) => {
+    const [page, query = ''] = path.split('?');
+    const search = new URLSearchParams(query);
+    if (course) search.set('course', course);
+    return page + (search.size ? `?${search}` : '');
+  };
+  const dashboardUrl = scopedUrl('dashboard.html?v=20260902-4');
+  const learnUrl = scopedUrl('welcome.html');
+  const loginUrl = 'login.html?next=' + encodeURIComponent('review.html' + location.search);
+  document.querySelectorAll('.student-nav a[href]').forEach((link) => {
+    link.setAttribute('href', scopedUrl(link.getAttribute('href')));
+  });
   let session = null;
   let index = 0;
   let selectedOrder = [];
@@ -22,12 +35,12 @@
   function errorCard(error, retry) {
     loaded();
     const expired = String(error?.message) === 'AUTH_EXPIRED';
-    app.innerHTML = `<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Review belum bisa dimuat</h1><p class="error">${esc(ezStudentErrorMessage(error, 'Smart Review'))}</p><div class="review-actions">${expired ? '<a class="back-link" href="login.html?next=review.html">Masuk kembali</a>' : '<button class="primary" id="retry-review" type="button">Coba lagi</button>'}<a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a></div></section>`;
+    app.innerHTML = `<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Review belum bisa dimuat</h1><p class="error">${esc(ezStudentErrorMessage(error, 'Smart Review'))}</p><div class="review-actions">${expired ? `<a class="back-link" href="${esc(loginUrl)}">Masuk kembali</a>` : '<button class="primary" id="retry-review" type="button">Coba lagi</button>'}<a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a></div></section>`;
     document.getElementById('retry-review')?.addEventListener('click', retry);
   }
   async function loadHome() {
     loading(homeSkeleton);
-    try { renderHome(await api('/review/summary')); }
+    try { renderHome(await api(`/review/summary${course ? `?course=${encodeURIComponent(course)}` : ''}`)); }
     catch (error) { errorCard(error, loadHome); }
   }
   function categoryButton(key, count) {
@@ -37,14 +50,14 @@
     const total = Number(summary.total) || 0;
     const counts = Object.keys(labels).map((key) => categoryButton(key, Number(summary.byCategory?.[key]) || 0)).join('');
     loaded();
-    app.innerHTML = `<section class="summary-card sk-enter"><div class="eyebrow">復習 · SMART REVIEW</div><h1 class="review-title">Ulangi yang sudah dipelajari.</h1><p class="total${total ? ' review-due' : ''}">${total ? `${total} item perlu direview` : 'Belum ada item review yang siap.'}</p><div class="counts" aria-label="Pilih kategori review">${counts}</div>${total ? '<button class="primary" id="start-mixed" type="button">Mulai Smart Review</button>' : '<p class="subtle">Review hari ini selesai. Lanjutkan belajar untuk membuka materi review berikutnya.</p>'}<div class="review-actions"><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
+    app.innerHTML = `<section class="summary-card sk-enter"><div class="eyebrow">復習 · SMART REVIEW</div><h1 class="review-title">Ulangi yang sudah dipelajari.</h1><p class="total${total ? ' review-due' : ''}">${total ? `${total} item perlu direview` : 'Belum ada item review yang siap.'}</p><div class="counts" aria-label="Pilih kategori review">${counts}</div>${total ? '<button class="primary" id="start-mixed" type="button">Mulai Smart Review</button>' : '<p class="subtle">Review hari ini selesai. Lanjutkan belajar untuk membuka materi review berikutnya.</p>'}<div class="review-actions"><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="${learnUrl}">Lanjut Belajar</a></div></section>`;
     app.querySelector('#start-mixed')?.addEventListener('click', () => { unlockAudio(); start('mixed'); });
     app.querySelectorAll('[data-category]').forEach((button) => button.addEventListener('click', () => { unlockAudio(); start(button.dataset.category); }));
   }
   async function start(category) {
     loading(questionSkeleton);
     try {
-      session = await api('/review/sessions', { method: 'POST', body: JSON.stringify({ category, limit: 20 }) });
+      session = await api('/review/sessions', { method: 'POST', body: JSON.stringify({ category, limit: 20, ...(course ? { course } : {}) }) });
       index = 0; selectedOrder = []; correctAnswers = 0; independentAnswers = 0; busy = false; results.clear();
       if (!session.questions?.length) return renderHome(session.summary || { total: 0, byCategory: {} });
       renderQuestion();
@@ -299,12 +312,12 @@
     finally { setBusy(false); }
   }
   function finish() {
-    app.innerHTML = `<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Sesi selesai.</h1><p>Kamu menjawab ${correctAnswers} dari ${independentAnswers} soal dengan benar.</p><p class="subtle">Hasilnya sudah memperbarui penguasaan dan jadwal review.</p><div class="review-actions"><button class="primary" id="back-home" type="button">Lihat jadwal review</button><a class="back-link" href="focus.html">Fokus belajarmu</a><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="welcome.html">Lanjut Belajar</a></div></section>`;
+    app.innerHTML = `<section class="empty-card"><div class="eyebrow">SMART REVIEW</div><h1 class="review-title">Sesi selesai.</h1><p>Kamu menjawab ${correctAnswers} dari ${independentAnswers} soal dengan benar.</p><p class="subtle">Hasilnya sudah memperbarui penguasaan dan jadwal review.</p><div class="review-actions"><button class="primary" id="back-home" type="button">Lihat jadwal review</button><a class="back-link" href="${scopedUrl('focus.html')}">Fokus belajarmu</a><a class="back-link" href="${dashboardUrl}">Kembali ke Dashboard</a><a class="back-link" href="${learnUrl}">Lanjut Belajar</a></div></section>`;
     document.getElementById('back-home').addEventListener('click', loadHome);
   }
   document.getElementById('logout').addEventListener('click', () => ezLogout());
   (async () => {
-    const category = new URLSearchParams(location.search).get('category');
+    const category = params.get('category');
     const direct = category && Object.hasOwn(labels, category);
     // A deep link (Dashboard "Latihan Fokus") goes straight to a session: show that
     // skeleton from the start instead of the home card's.

@@ -88,14 +88,18 @@ async function grammarMastery(userId, courseId) {
   return { display, weak, mastery };
 }
 
-export async function weeklyActivity(userId, courseId) {
-  const result = await query(
+export async function weeklyActivity(userId, courseId, runQuery = query) {
+  const result = await runQuery(
     `WITH activity AS (
        SELECT created_at FROM practice_attempts WHERE user_id = $1 AND course_id = $2 AND created_at >= NOW() - INTERVAL '7 days'
        UNION ALL
        SELECT ga.created_at FROM grammar_attempts ga JOIN module_grammar g ON g.id = ga.grammar_id JOIN modules m ON m.id = g.module_id WHERE ga.user_id = $1 AND m.course_id = $2 AND ga.created_at >= NOW() - INTERVAL '7 days'
        UNION ALL
        SELECT si.answered_at FROM smart_review_session_items si JOIN smart_review_sessions s ON s.id = si.session_id JOIN lessons l ON l.id = si.lesson_id JOIN modules m ON m.id = l.module_id WHERE s.user_id = $1 AND m.course_id = $2 AND si.answered_at >= NOW() - INTERVAL '7 days'
+       UNION ALL
+       SELECT p.completed_at FROM user_progress p JOIN lessons l ON l.id = p.lesson_id JOIN modules m ON m.id = l.module_id WHERE p.user_id = $1 AND m.course_id = $2 AND p.completed = TRUE AND p.completed_at >= NOW() - INTERVAL '7 days'
+       UNION ALL
+       SELECT qa.completed_at FROM quiz_attempts qa JOIN lessons l ON l.id = qa.lesson_id JOIN modules m ON m.id = l.module_id WHERE qa.user_id = $1 AND m.course_id = $2 AND qa.completed_at >= NOW() - INTERVAL '7 days'
      ), evidence AS (
        SELECT created_at, is_correct AS correct FROM practice_attempts pa WHERE user_id = $1 AND course_id = $2 AND created_at >= NOW() - INTERVAL '7 days'
        UNION ALL
@@ -137,9 +141,9 @@ export async function loadDashboard(user, courseSlug) {
   if (!selected) return { courses: [], course: null, continueLearning: null, review: { total: 0, byCategory: {} }, mastery: null, focus: null, weeklyActivity: null, weeklyInsight: null, liveClass: null };
   const course = await structuralCourse(user.id, selected);
   const [reviewData, generic, grammar, activity, profile, liveClass] = await Promise.all([
-    buildReviewCandidates(user), genericMastery(user.id, selected.id), grammarMastery(user.id, selected.id), weeklyActivity(user.id, selected.id), query(`SELECT full_name FROM users WHERE id = $1`, [user.id]), loadLiveClassSummary(user, selected.slug),
+    buildReviewCandidates(user, selected.id), genericMastery(user.id, selected.id), grammarMastery(user.id, selected.id), weeklyActivity(user.id, selected.id), query(`SELECT full_name FROM users WHERE id = $1`, [user.id]), loadLiveClassSummary(user, selected.slug),
   ]);
-  const review = summarizeCandidates(reviewData.candidates.filter((candidate) => candidate.courseId === selected.id));
+  const review = summarizeCandidates(reviewData.candidates);
   const mastery = { ...generic, grammar: grammar.display };
   const focus = pickFocus(mastery, grammar, review, course.continueLearning);
   return { greetingName: String(profile.rows[0]?.full_name || '').trim().split(/\s+/)[0] || null, courses: courses.map(({ id, slug, title, level, expires_at }) => ({ id, slug, title, level, expiresAt: expires_at || null })), course: { id: course.id, slug: course.slug, title: course.title, level: course.level, progress: course.progress, expiresAt: course.expires_at || null }, continueLearning: course.continueLearning, review, mastery, focus, weeklyActivity: activity, weeklyInsight: weeklyInsight({ reviewDue: review.total, ...activity, focus }), liveClass };

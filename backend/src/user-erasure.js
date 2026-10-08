@@ -52,8 +52,10 @@ const WIPE_TABLES = [
 ];
 
 // During deploy the backend may start before these additive migrations. Wipe
-// both learning-history tables when present, without weakening unknown-FK checks.
-const OPTIONAL_WIPE_TABLES = ['dialogue_question_attempts', 'maneko_exposures'];
+// learning-history tables when present, without weakening unknown-FK checks.
+// Retry receipts also contain learning evidence. Account erasure anonymizes
+// the users row, so their ON DELETE CASCADE does not perform this cleanup.
+const OPTIONAL_WIPE_TABLES = ['dialogue_question_attempts', 'maneko_exposures', 'practice_attempt_events'];
 
 // Tabel ber-FK ke users yang SENGAJA tidak masuk WIPE_TABLES, masing-masing
 // dengan alasannya. Dipakai assertUserTablesCovered() supaya tabel baru yang
