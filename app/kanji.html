@@ -678,29 +678,29 @@
     /* Card area */
     .rv-card-area{
       flex:1;display:flex;align-items:center;justify-content:center;
-      padding:24px 16px 16px;perspective:1000px;
+      padding:20px 16px 16px;perspective:1000px;
     }
     .rv-card{
       width:100%;max-width:420px;
       cursor:pointer;
       transform-style:preserve-3d;
       transition:transform .45s cubic-bezier(.4,0,.2,1);
-      position:relative;min-height:260px;
+      position:relative;min-height:340px;
     }
     .rv-card.flipped{transform:rotateY(180deg);}
     .rv-face{
       position:absolute;inset:0;
       backface-visibility:hidden;-webkit-backface-visibility:hidden;
       background:var(--white);border:1px solid var(--gray-border);
-      border-radius:20px;box-shadow:0 4px 20px rgba(0,0,0,.07);
+      border-radius:24px;box-shadow:0 18px 40px -22px rgba(0,0,0,.28),0 2px 6px rgba(0,0,0,.04);
       display:flex;flex-direction:column;align-items:center;justify-content:center;
       padding:28px 24px;
     }
     .rv-face-back{transform:rotateY(180deg);justify-content:center;overflow-y:auto;}
     /* Front */
     .rv-kanji-big{
-      font-family:'Noto Sans JP',sans-serif;font-size:96px;font-weight:700;
-      color:var(--red);line-height:1;margin-bottom:16px;
+      font-family:'Noto Sans JP',sans-serif;font-size:128px;font-weight:700;
+      color:var(--red);line-height:1;margin-bottom:22px;
     }
     #fc-kanji, #rv-kanji-front{font-family:'Yuji Syuku',serif;font-weight:400;}
     /* Level colors — warna per JLPT sebagai cue memori kategoris */
@@ -714,14 +714,15 @@
     [data-theme="dark"] .kanji-lv-N3{color:#5B9FEC;}
     [data-theme="dark"] .kanji-lv-N2{color:#C678E8;}
     [data-theme="dark"] .kanji-lv-N1{color:#E85858;}
-    .rv-tap-hint{font-size:12px;color:var(--text-muted);}
+    .rv-tap-hint{font-size:12px;color:var(--text-muted);background:var(--gray-bg);padding:6px 12px;border-radius:99px;}
     /* Back */
     .rv-back-kanji{
-      font-family:'Noto Sans JP',sans-serif;font-size:40px;font-weight:700;
-      color:var(--red);margin-bottom:8px;align-self:center;text-align:center;
+      font-family:'Noto Sans JP',sans-serif;font-size:56px;font-weight:700;
+      color:var(--red);margin-bottom:6px;align-self:center;text-align:center;line-height:1.1;
     }
-    .rv-meaning{font-size:22px;font-weight:500;color:var(--text-primary);margin-bottom:14px;align-self:center;text-align:center;}
-    .rv-readings{display:flex;gap:12px;margin-bottom:14px;align-self:flex-start;flex-wrap:wrap;}
+    .rv-meaning{font-size:22px;font-weight:700;color:var(--text-primary);margin-bottom:12px;align-self:center;text-align:center;}
+    .rv-readings{display:flex;gap:8px;margin-bottom:14px;align-self:center;justify-content:center;flex-wrap:wrap;}
+    .rv-readings:empty{display:none;}
     .rv-reading-pill{
       font-family:'Noto Sans JP',sans-serif;font-size:13px;
       padding:3px 10px;border-radius:20px;
@@ -736,13 +737,17 @@
     .rv-vocab-read{font-family:'Noto Sans JP',sans-serif;font-size:12px;color:var(--text-muted);}
     .rv-vocab-mean{font-size:12px;color:var(--text-secondary);}
     /* Rating buttons */
+    /* Tombol rating menempel di bawah layar supaya selalu terlihat dan terjangkau jempol */
     .rv-ratings{
       display:grid;grid-template-columns:repeat(4,1fr);
-      gap:8px;padding:12px 16px 24px;
+      gap:8px;padding:12px 16px calc(14px + env(safe-area-inset-bottom));
+      position:sticky;bottom:0;z-index:5;background:var(--gray-bg);
+      border-top:1px solid var(--gray-border);
     }
+    .rv-rate-q{grid-column:1/-1;text-align:center;font-size:12px;color:var(--text-muted);margin-bottom:2px;}
     .rv-btn{
       display:flex;flex-direction:column;align-items:center;gap:3px;
-      padding:12px 6px;border-radius:12px;border:none;cursor:pointer;
+      padding:12px 6px;min-height:56px;border-radius:14px;border:none;cursor:pointer;
       font-family:inherit;transition:transform .1s,box-shadow .1s;
     }
     .rv-btn:active{transform:scale(.96);}
@@ -760,7 +765,7 @@
     .rv-done{
       flex:1;display:flex;flex-direction:column;
       align-items:center;justify-content:center;
-      padding:40px 24px;text-align:center;
+      padding:40px 24px 140px;text-align:center;
     }
     .rv-done-emoji{font-size:64px;margin-bottom:16px;}
     .rv-done-title{font-size:24px;font-weight:600;color:var(--text-primary);margin-bottom:8px;}
@@ -782,6 +787,9 @@
     }
     .rv-done-btn:hover{background:#a81616;}
     [data-theme="dark"] .rv-face{background:#252522;border-color:var(--gray-border);}
+    [data-theme="dark"] .rv-header{background:#181816;}
+    [data-theme="dark"] .rv-reading-on{background:rgba(224,144,48,.16);color:#F0B060;}
+    [data-theme="dark"] .rv-reading-kun{background:rgba(91,159,236,.16);color:#8FBFF5;}
     [data-theme="dark"] .rv-done-stat{background:#252522;}
     [data-theme="dark"] .rv-btn-1{background:#450a0a;color:#fca5a5;}
     [data-theme="dark"] .rv-btn-2{background:#451a03;color:#fcd34d;}
@@ -874,6 +882,9 @@
     /* ══ UNDO BAR ══ */
     .undo-bar{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--white);border:1.5px solid var(--gray-border);border-radius:24px;padding:9px 16px;display:flex;align-items:center;gap:12px;z-index:9000;box-shadow:0 4px 18px rgba(0,0,0,.13);opacity:0;pointer-events:none;transition:opacity .2s;white-space:nowrap;}
     .undo-bar.show{opacity:1;pointer-events:auto;}
+    /* Selama sesi kartu tidak ada bilah navigasi; bilah urungkan berada di atas tombol rating */
+    body.in-card-session .undo-bar{bottom:calc(128px + env(safe-area-inset-bottom));}
+    body.in-card-session.card-done .undo-bar{bottom:calc(20px + env(safe-area-inset-bottom));}
     .undo-bar-msg{font-size:13px;color:var(--text-secondary);}
     .undo-bar-btn{font-size:13px;font-weight:700;color:var(--red);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 0;}
     .undo-countdown{font-size:12px;color:var(--text-muted);min-width:14px;text-align:center;}
@@ -1548,12 +1559,13 @@
       <!-- Depan -->
       <div class="rv-face">
         <div class="rv-kanji-big" id="rv-kanji-front">日</div>
-        <div class="rv-tap-hint">Ketuk untuk lihat jawaban</div>
+        <div class="rv-tap-hint">Ketuk kartu untuk lihat arti</div>
       </div>
       <!-- Belakang -->
       <div class="rv-face rv-face-back">
         <div class="rv-back-kanji" id="rv-kanji-back">日</div>
         <div class="rv-meaning" id="rv-meaning">Matahari</div>
+        <div class="rv-readings" id="rv-readings"></div>
         <div class="rv-divider"></div>
         <div class="rv-vocab-list" id="rv-vocab"></div>
       </div>
@@ -1562,6 +1574,7 @@
 
   <!-- Tombol rating (muncul setelah kartu dibalik) -->
   <div class="rv-ratings" id="rv-ratings" style="visibility:hidden" role="group" aria-label="Rating jawaban">
+    <div class="rv-rate-q">Seberapa ingat kamu?</div>
     <button class="rv-btn rv-btn-1" id="rv-btn-1" aria-label="Rating: Lupa (tombol 1)" aria-keyshortcuts="1">
       <span class="rv-btn-label">Lupa</span>
       <span class="rv-btn-interval" id="rv-int-1">—</span>
@@ -1742,12 +1755,13 @@
       <!-- Depan -->
       <div class="rv-face">
         <div class="rv-kanji-big" id="fc-kanji">日</div>
-        <div class="rv-tap-hint">Ketuk untuk lihat jawaban</div>
+        <div class="rv-tap-hint">Ketuk kartu untuk lihat arti</div>
       </div>
       <!-- Belakang -->
       <div class="rv-face rv-face-back">
         <div class="rv-back-kanji" id="fc-kanji-back">日</div>
         <div class="rv-meaning" id="fc-meaning">—</div>
+        <div class="rv-readings" id="fc-readings"></div>
         <div class="rv-divider"></div>
         <div class="rv-vocab-list" id="fc-vocab"></div>
       </div>
@@ -1756,6 +1770,7 @@
 
   <!-- Tombol rating (muncul setelah kartu dibalik) -->
   <div class="rv-ratings" id="fc-ratings" style="display:none" role="group" aria-label="Rating jawaban">
+    <div class="rv-rate-q">Seberapa ingat kamu?</div>
     <button class="rv-btn rv-btn-1" id="fc-btn-1" aria-label="Rating: Lupa (tombol 1)" aria-keyshortcuts="1">
       <span class="rv-btn-label">Lupa</span>
       <span class="rv-btn-interval" id="fc-int-1">—</span>
@@ -8864,6 +8879,7 @@ function showOnly(id){
   if(fc) fc.style.display = 'none';
   document.getElementById('kd-bottom-bar').classList.toggle('on', id === 'view-detail');
 
+  document.body.classList.remove('in-card-session', 'card-done');
   // Sync bottom-nav: tampilkan hanya di main views, highlight tab aktif
   const botnav = document.getElementById('kapp-botnav');
   if (botnav) {
@@ -9509,6 +9525,21 @@ function showFcMenu(){
   showOnly('view-fc-menu');
 }
 
+// Sesi kartu (flashcard & ulasan) tidak lewat showOnly(), jadi bilah navigasi
+// bawah harus disembunyikan sendiri; dulu ia tetap tampil dan menutupi tombol
+// Lupa/Susah/Bisa/Mudah.
+function enterCardSession(){
+  const botnav = document.getElementById('kapp-botnav');
+  if(botnav) botnav.hidden = true;
+  document.body.classList.remove('has-botnav');
+  document.body.classList.add('in-card-session');
+}
+function readingsHtml(d){
+  const pill = (cls, lbl, val) => val
+    ? `<span class="rv-reading-pill ${cls}"><span class="rv-reading-lbl">${lbl}</span>${val}</span>` : '';
+  return pill('rv-reading-on', 'On', d.on) + pill('rv-reading-kun', 'Kun', d.kun);
+}
+
 // ─── FLASHCARD VIEW ──────────────────────────────────────────────────────────
 // Queue-based flashcard — tidak menulis ke FSRS (hanya update known)
 let fcQueue    = [];
@@ -9535,6 +9566,7 @@ function showFlashcard(){
   const fcArea = document.getElementById('view-flashcard').querySelector('.rv-card-area');
   if(fcArea) fcArea.style.display = '';
   document.getElementById('view-flashcard').style.display = '';
+  enterCardSession();
   window.scrollTo(0,0);
   renderFlashcard();
 }
@@ -9556,6 +9588,7 @@ function fcFlip(){
 function renderFlashcard(){
   const d = fcQueue[0];
   if(!d) return;
+  document.body.classList.remove('card-done');
   // Reset flip state & hide buttons
   document.getElementById('fc-card').classList.remove('flipped');
   document.getElementById('fc-ratings').style.display = 'none';
@@ -9574,6 +9607,7 @@ function renderFlashcard(){
   // Belakang
   document.getElementById('fc-kanji-back').textContent = d.k;
   document.getElementById('fc-meaning').textContent    = d.m;
+  document.getElementById('fc-readings').innerHTML     = readingsHtml(d);
   document.getElementById('fc-vocab').innerHTML = (d.v||[]).slice(0,3).map(v => `
     <div class="rv-vocab-item">
       <span class="rv-vocab-word">${v.w}</span>
@@ -9590,6 +9624,9 @@ function fcShowDone(){
   if(fcArea) fcArea.style.display = 'none';
   document.getElementById('fc-ratings').style.display = 'none';
   document.getElementById('fc-done').style.display    = 'flex';
+  document.body.classList.add('card-done');
+  document.getElementById('fc-counter').textContent = `${fcTotal}/${fcTotal}`;
+  document.getElementById('fc-pbar-fill').style.width = '100%';
   const hafal = fcRating[2] + fcRating[3] + fcRating[4];
   document.getElementById('fc-done-sub').textContent =
     `${fcTotal} kartu · ${hafal} hafal · ${fcRating[1]} perlu diulang`;
@@ -9619,6 +9656,7 @@ document.getElementById('fc-done-back').addEventListener('click', () => {
     const d = fcQueue[0];
     if(!d) return;
     saveUndoSnapshot();
+    _undoSnapshot.fc = { queue:[...fcQueue], done:fcDone, lupa:[...fcLupaSet], rating:{...fcRating} };
     fcRating[r]++;
     if(r >= 2) {
       known.add(d.k); saveKnown();
@@ -9635,6 +9673,30 @@ document.getElementById('fc-done-back').addEventListener('click', () => {
     if(fcQueue.length === 0) { fcShowDone(); return; }
     renderFlashcard();
   });
+});
+
+// Keyboard: Spasi/Enter membalik kartu, 1-4 memberi rating (tombolnya sudah
+// mengiklankan aria-keyshortcuts, tapi dulu tidak ada yang mendengarkan).
+document.addEventListener('keydown', e => {
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  if(e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  const sessions = [['view-flashcard','fc'],['view-review','rv']];
+  for(const [viewId, pre] of sessions){
+    const view = document.getElementById(viewId);
+    if(!view || view.style.display === 'none') continue;
+    const card = document.getElementById(pre + '-card');
+    const area = view.querySelector('.rv-card-area');
+    if(!card || (area && area.style.display === 'none')) return;
+    if(e.key === ' ' || e.key === 'Enter'){
+      if(!card.classList.contains('flipped')){ e.preventDefault(); card.click(); }
+      return;
+    }
+    if(/^[1-4]$/.test(e.key) && card.classList.contains('flipped')){
+      e.preventDefault();
+      document.getElementById(pre + '-btn-' + e.key)?.click();
+    }
+    return;
+  }
 });
 
 // ─── HOME FLASHCARD ───────────────────────────────────────────────────────────
@@ -10102,15 +10164,29 @@ function applyUndo(){
   EzFSRS.importProgress(_undoSnapshot.fsrs);
   localStorage.setItem('eznihongo_fsrs_v1', _undoSnapshot.fsrs);
   scheduleSyncProgress();
-  _undoSnapshot = null;
   // Kembalikan kartu terakhir ke antrian
   const fcView = document.getElementById('view-flashcard');
   const rvView = document.getElementById('view-review');
+  const fcSnap = _undoSnapshot && _undoSnapshot.fc;
+  const rvSnap = _undoSnapshot && _undoSnapshot.rv;
+  _undoSnapshot = null;
   if(fcView && fcView.style.display !== 'none'){
-    if(fcDone > 0){ fcDone--; }
+    if(fcSnap){
+      fcQueue = fcSnap.queue; fcDone = fcSnap.done;
+      fcLupaSet = new Set(fcSnap.lupa); fcRating = fcSnap.rating;
+    }
+    document.getElementById('fc-done').style.display = 'none';
+    fcView.querySelector('.rv-card-area').style.display = '';
     renderFlashcard();
   } else if(rvView && rvView.style.display !== 'none'){
-    if(rvIdx > 0){ rvIdx--; setTimeout(rvRenderCard, 50); }
+    if(rvIdx > 0){
+      rvIdx--;
+      if(rvSnap && rvRating[rvSnap.rating] > 0) rvRating[rvSnap.rating]--;
+      document.getElementById('rv-done').style.display = 'none';
+      rvView.querySelector('.rv-card-area').style.display = '';
+      document.getElementById('rv-ratings').style.display = '';
+      setTimeout(rvRenderCard, 50);
+    }
   }
   showToast('Rating dibatalkan ↩');
 }
@@ -10528,12 +10604,14 @@ function showReviewMode(deck) {
   if(rvArea) rvArea.style.display = '';
   document.getElementById('rv-ratings').style.visibility = 'hidden';
   document.getElementById('view-review').style.display = 'flex';
+  enterCardSession();
   window.scrollTo(0, 0);
   rvRenderCard();
 }
 
 function rvRenderCard() {
   if (rvIdx >= rvDeck.length) { rvShowDone(); return; }
+  document.body.classList.remove('card-done');
   const d = rvDeck[rvIdx];
 
   // Reset flip
@@ -10555,6 +10633,7 @@ function rvRenderCard() {
   // Back
   document.getElementById('rv-kanji-back').textContent = d.k;
   document.getElementById('rv-meaning').textContent     = d.m;
+  document.getElementById('rv-readings').innerHTML      = readingsHtml(d);
   document.getElementById('rv-vocab').innerHTML = (d.v || []).slice(0, 3).map(v =>
     `<div class="rv-vocab-item">
       <span class="rv-vocab-word">${v.w}</span>
@@ -10583,6 +10662,7 @@ function rvRate(rating) {
   const d = rvDeck[rvIdx];
   if (!d) return;
   saveUndoSnapshot();
+  _undoSnapshot.rv = { rating };
   EzFSRS.reviewCard(d.k, rating);
   if (rating >= 2) { known.add(d.k); saveKnown(); }
   else { known.delete(d.k); saveKnown(); }
@@ -10596,6 +10676,9 @@ function rvShowDone() {
   document.getElementById('view-review').querySelector('.rv-card-area').style.display  = 'none';
   document.getElementById('rv-ratings').style.display   = 'none';
   document.getElementById('rv-done').style.display       = 'flex';
+  document.body.classList.add('card-done');
+  document.getElementById('rv-counter').textContent = `${rvDeck.length} / ${rvDeck.length}`;
+  document.getElementById('rv-pbar-fill').style.width = '100%';
 
   const total = rvDeck.length;
   document.getElementById('rv-done-sub').textContent =
