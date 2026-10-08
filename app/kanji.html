@@ -9,6 +9,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Noto+Serif+JP:wght@500;700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
+    /* Navbar situs dirender nav.js di dalam #navbar; .nav sendiri sticky, tapi
+       pembungkusnya setinggi nav sehingga sticky-nya tidak pernah aktif dan
+       header tiap layar (top: --nav-h) menyisakan celah tempat isi terlihat
+       saat di-scroll. Pembungkusnya yang dibuat sticky. */
+    #navbar{position:sticky;top:0;z-index:100;}
     .kapp{max-width:480px;margin:0 auto;min-height:100vh;}
     @media(min-width:640px){.kapp{border-left:1px solid var(--gray-border);border-right:1px solid var(--gray-border);}}
 
@@ -21,7 +26,7 @@
 
     /* ══ LIST VIEW ══ */
     .kapp-toolbar{
-      position:sticky;top:57px;z-index:50;
+      position:sticky;top:var(--nav-h,57px);z-index:50;
       background:var(--white);border-bottom:1px solid var(--gray-border);
       padding:10px 16px 8px;
     }
@@ -79,7 +84,7 @@
     #view-detail{background:#ffffff;}
     [data-theme="dark"] #view-detail{background:#121210;}
     .kd-header{
-      position:sticky;top:0;z-index:50;
+      position:sticky;top:var(--nav-h,0px);z-index:50;
       background-color:#ffffff;
       border-bottom:1px solid var(--gray-border);
       padding:10px 14px;
@@ -586,7 +591,7 @@
     }
     .kh-level-desc{
       font-size:11px;color:var(--text-muted);margin-top:2px;font-weight:500;
-      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+      line-height:1.35;
     }
     .kh-level-foot{z-index:1;}
     .kh-level-stats{
@@ -635,7 +640,7 @@
       display:flex;align-items:center;gap:12px;
       padding:12px 16px;background:var(--white);
       border-bottom:1px solid var(--gray-border);
-      position:sticky;top:0;z-index:10;
+      position:sticky;top:var(--nav-h,0px);z-index:10;
     }
     .rv-back-btn{
       background:none;border:none;font-size:22px;cursor:pointer;
@@ -762,7 +767,7 @@
 
     /* ══ FLASHCARD MENU ══ */
     .fcm-header{
-      position:sticky;top:57px;z-index:50;
+      position:sticky;top:var(--nav-h,57px);z-index:50;
       display:flex;align-items:center;gap:8px;
       padding:10px 16px;
       background:var(--white);border-bottom:1px solid var(--gray-border);
@@ -816,7 +821,7 @@
     .kh-gear:hover{background:var(--gray-bg);}
 
     /* ══ SETTINGS VIEW ══ */
-    .stg-header{position:sticky;top:57px;z-index:50;background:var(--white);border-bottom:1px solid var(--gray-border);padding:10px 14px;display:flex;align-items:center;gap:10px;}
+    .stg-header{position:sticky;top:var(--nav-h,57px);z-index:50;background:var(--white);border-bottom:1px solid var(--gray-border);padding:10px 14px;display:flex;align-items:center;gap:10px;}
     .stg-body{padding:16px 16px 80px;}
     .stg-section-title{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;}
     .stg-row{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
@@ -848,7 +853,7 @@
 
     /* ══ SET VIEW ══ */
     .sv-header{
-      position:sticky;top:57px;z-index:50;
+      position:sticky;top:var(--nav-h,57px);z-index:50;
       background:var(--white);border-bottom:1px solid var(--gray-border);
       padding:10px 16px 0;
     }
@@ -935,7 +940,7 @@
 
     /* ══ KANA VIEW ══ */
     .kana-header{
-      position:sticky;top:57px;z-index:50;
+      position:sticky;top:var(--nav-h,57px);z-index:50;
       background:var(--white);border-bottom:1px solid var(--gray-border);
       padding:10px 14px;display:flex;align-items:center;gap:10px;
     }
@@ -959,7 +964,7 @@
 
     /* ══ SEARCH VIEW ══ */
     .ks-header{
-      position:sticky;top:57px;z-index:50;
+      position:sticky;top:var(--nav-h,57px);z-index:50;
       background:var(--white);border-bottom:1px solid var(--gray-border);
       padding:10px 14px;display:flex;align-items:center;gap:10px;
     }
@@ -1119,6 +1124,10 @@
       display:flex;z-index:90;
       padding:6px 0 calc(6px + env(safe-area-inset-bottom));
       box-shadow:0 -4px 18px rgba(0,0,0,0.06);
+    }
+    @media(min-width:640px){
+      .kapp-botnav{left:50%;right:auto;width:480px;transform:translateX(-50%);
+        border-left:1px solid var(--gray-border);border-right:1px solid var(--gray-border);}
     }
     @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
       .kapp-botnav{background:#ffffff;}
@@ -8919,7 +8928,7 @@ function updateHomeStats(){
   const elTPbar= document.getElementById('kh-total-pbar');
   if(elTKn)  elTKn.textContent  = totalKn;
   if(elTAll) elTAll.textContent = totalAll;
-  if(elTPct) elTPct.textContent = totalPct + '%';
+  if(elTPct) elTPct.textContent = (totalKn > 0 && totalPct === 0) ? '<1%' : totalPct + '%';
   if(elTPbar)elTPbar.style.width = totalPct + '%';
   const elTRing = document.getElementById('kh-ring-circle');
   if(elTRing) elTRing.style.strokeDasharray = totalPct + ' 100';
@@ -8974,8 +8983,15 @@ function updateHomeStats(){
 }
 
 // ─── LIST VIEW ────────────────────────────────────────────────────────────────
+// Daftar yang sedang tampil di view-list: satu set kalau dibuka dari halaman
+// Set, atau seluruh level/semua kanji. Statistik dan tombol Reset mengikuti ini.
+let _shownList = null;
+function shownList(){
+  return _shownList || (activeLevel === 'all' ? KD : KD.filter(d => d.lv === activeLevel));
+}
+
 function updateStats(){
-  const list = activeLevel === 'all' ? KD : KD.filter(d => d.lv === activeLevel);
+  const list = shownList();
   const total = list.length;
   const kn = list.filter(d => known.has(d.k)).length;
   const pct = total > 0 ? Math.round(kn / total * 100) : 0;
@@ -8986,7 +9002,8 @@ function updateStats(){
 }
 
 function renderGrid(list){
-  const items = list || (activeLevel === 'all' ? KD : KD.filter(d => d.lv === activeLevel));
+  _shownList = list || null;
+  const items = shownList();
   const grid = document.getElementById('kapp-grid');
   if(items.length === 0){
     grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px 16px;color:var(--text-muted);font-size:14px;">Tidak ada kanji yang ditemukan.</div>';
@@ -9599,10 +9616,17 @@ document.getElementById('fcm-grid').addEventListener('click', e => {
 });
 
 // ─── LIST CONTROLS ────────────────────────────────────────────────────────────
+// Dulu tombol ini menghapus hafalan SELURUH 2229 kanji walau dibuka dari satu
+// set. Sekarang hanya kanji yang sedang tampil; reset total ada di Pengaturan.
 document.getElementById('btn-reset').addEventListener('click', () => {
-  if(confirm('Reset semua progress hafalan? Data tidak bisa dikembalikan.')) {
-    known.clear(); saveKnown(); renderGrid(null);
-  }
+  const list = shownList();
+  const scope = document.getElementById('list-title').textContent || 'daftar ini';
+  const kn = list.filter(d => known.has(d.k));
+  if(kn.length === 0){ showToast('Belum ada kanji yang ditandai hafal di sini.'); return; }
+  if(!confirm(`Hapus tanda hafal ${kn.length} kanji di ${scope}? Kanji di set dan level lain tidak berubah.`)) return;
+  kn.forEach(d => known.delete(d.k));
+  saveKnown();
+  renderGrid(_shownList);
 });
 
 document.getElementById('list-back').addEventListener('click', () => {
@@ -9810,6 +9834,20 @@ document.querySelectorAll('.ks-tab').forEach(tab => {
     renderSearchBody(document.getElementById('ks-input').value);
   });
 });
+
+// Tinggi navbar berbeda di HP dan desktop (dan setelah nav.js selesai
+// merender), jadi header sticky tiap layar memakai ukuran sebenarnya.
+(function syncNavHeight(){
+  const nav = document.getElementById('navbar');
+  if (!nav) return;
+  const apply = () => {
+    const h = Math.round(nav.getBoundingClientRect().height);
+    if (h > 0) document.documentElement.style.setProperty('--nav-h', h + 'px');
+  };
+  apply();
+  if ('ResizeObserver' in window) new ResizeObserver(apply).observe(nav);
+  else window.addEventListener('resize', apply);
+})();
 
 // ─── HOME EVENTS ──────────────────────────────────────────────────────────────
 document.getElementById('kh-search').addEventListener('click', showSearch);
