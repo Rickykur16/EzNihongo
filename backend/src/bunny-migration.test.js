@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import pg from 'pg';
 
-test('Bunny migration replaces only N5 Bab 1 video/kana while preserving ranges and progress',
+for (const chapterSlug of ['hiragana-katakana', 'n5-b1']) {
+test(`Bunny migration replaces only N5 Bab 1 (${chapterSlug}) video/kana while preserving ranges and progress`,
   { skip: !process.env.TEST_DATABASE_URL && !process.env.TEST_PGLITE_URL }, async () => {
     let db;
     const schema = `bunny_test_${Date.now()}`;
@@ -28,7 +29,7 @@ test('Bunny migration replaces only N5 Bab 1 video/kana while preserving ranges 
       ]) await db.query(sql);
       const course = (await db.query("INSERT INTO courses(slug) VALUES('n5'),('n4') RETURNING *")).rows;
       const module = [];
-      for (const [courseId, slug] of [[course[0].id, 'hiragana-katakana'], [course[0].id, 'bab-2'], [course[1].id, 'hiragana-katakana']]) {
+      for (const [courseId, slug] of [[course[0].id, chapterSlug], [course[0].id, 'n5-b2'], [course[1].id, chapterSlug]]) {
         module.push((await db.query('INSERT INTO modules(course_id,slug) VALUES($1,$2) RETURNING *', [courseId, slug])).rows[0]);
       }
       const old = (await db.query("INSERT INTO video_sources(provider,external_id,source_url) VALUES('youtube','old-video','old-url') RETURNING id")).rows[0].id;
@@ -41,7 +42,7 @@ test('Bunny migration replaces only N5 Bab 1 video/kana while preserving ranges 
       }
       const progress = (await db.query('SELECT * FROM progress ORDER BY lesson_id')).rows;
       const migrate = async () => {
-        for (const name of ['205_bunny_video_sources.sql', '206_n5_bab1_bunny_video.sql']) {
+        for (const name of ['205_bunny_video_sources.sql', '206_n5_bab1_bunny_video.sql', '207_n5_bab1_bunny_current_slug.sql']) {
           const sql = await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8');
           if (db.exec) await db.exec(sql); else await db.query(sql);
         }
@@ -68,3 +69,4 @@ test('Bunny migration replaces only N5 Bab 1 video/kana while preserving ranges 
       if (db.close) await db.close(); else await db.end();
     }
   });
+}

@@ -9,7 +9,8 @@ Video kosakata (Deck) memakai kolom URL video langsung. URL Play otomatis
 diubah menjadi URL Embed, dengan autoplay dimatikan.
 
 Migrasi 205 menambah provider Bunny. Migrasi 206 memasang video yang diberikan
-pemilik untuk Bab 1 N5, modul `hiragana-katakana`, pada pelajaran Video/Kana.
+pemilik untuk Bab 1 N5 dengan slug lama `hiragana-katakana`. Migrasi 207
+menghubungkan pelajaran Video/Kana pada slug saat ini, `n5-b1`.
 ID pelajaran, progres, kuis, dan rentang waktu yang tersimpan tetap dipakai.
 Sumber YouTube lama tidak diubah, sehingga bab lain tetap bisa menggunakannya.
 Pilihan sumber/URL semula disimpan di `bunny_bab1_video_backup_206` untuk pemulihan.
