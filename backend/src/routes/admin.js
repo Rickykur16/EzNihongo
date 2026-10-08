@@ -12,6 +12,7 @@ import bcrypt from 'bcryptjs';
 import { query, withTransaction } from '../db.js';
 import { landingCourseFields } from '../landing-course-fields.js';
 import { isCanonicalUuid, validateLiveClassFields } from '../live-class-admin-rules.js';
+import { REPORT_DAYS, siteReport } from './site-events.js';
 import { requireAuth, requireAdmin, asyncHandler } from '../middleware.js';
 import { requireCompanyAdmin, fail } from '../company-policy.js';
 import {
@@ -6420,6 +6421,15 @@ router.delete('/live-classes/:id', asyncHandler(async (req, res) => {
   const removed = await query(`DELETE FROM live_classes WHERE id = $1 RETURNING id`, [req.params.id]);
   if (!removed.rows.length) return res.status(404).json({ error: 'not_found' });
   res.json({ ok: true });
+}));
+
+// GET /api/admin/site-analytics?days=7|30|90 — read-only visit report for the
+// public pages (migration 204). Counts only; no visitor-level rows leave here.
+router.get('/site-analytics', asyncHandler(async (req, res) => {
+  const days = Number(req.query.days || 30);
+  if (!REPORT_DAYS.includes(days)) return res.status(400).json({ error: 'invalid_days' });
+  res.set('Cache-Control', 'no-store');
+  res.json(await siteReport(days));
 }));
 
 export default router;

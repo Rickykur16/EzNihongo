@@ -176,6 +176,8 @@ export const LEGACY_ROUTES = [
   ["POST", "/live-classes", "legacy.academic"],
   ["PUT", "/live-classes/:id", "legacy.academic"],
   ["DELETE", "/live-classes/:id", null],
+  // Website visit report (migration 204): aggregate counts only, for Marketing.
+  ["GET", "/site-analytics", "legacy.marketing"],
 ];
 const rules = LEGACY_ROUTES.map(([method, path, permission]) => ({ method, permission,
   pattern: new RegExp('^' + path.split('/').map(part => part.startsWith(':') ? '[^/]+' : part).join('/') + '/?$') }));

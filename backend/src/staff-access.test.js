@@ -55,10 +55,10 @@ const request = (token, route = '/api/staff/capabilities', method = 'GET') => fe
 });
 const token = await signAccessToken(adminId, users.get(adminId));
 
-test('capability catalogue preserves all twelve existing tabs and five divisions', () => {
+test('capability catalogue preserves all thirteen existing tabs and five divisions', () => {
   const access = describeLegacyStaffAccess(true);
   assert.equal(access.authorizationMode, 'legacy-admin-only');
-  assert.equal(access.tabs.length, 12);
+  assert.equal(access.tabs.length, 13);
   assert.equal(access.divisions.length, 5);
   assert.deepEqual(access.tabs, Object.keys(STAFF_TAB_CAPABILITIES));
   assert.ok(access.capabilities.includes('admins.manage'));
