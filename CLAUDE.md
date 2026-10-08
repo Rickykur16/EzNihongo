@@ -162,6 +162,18 @@
   (4) bilah bawah desktop selebar kolom app 480 px; (5) subjudul kartu level tidak
   terpotong; (6) cincin "0%" saat sudah hafal → "<1%"; (7) avatar navbar menaut ke
   `kanji.html` (dulu `dashboard.html` yang tidak ada di `app/`) dan nama di-escape.
+  **Desain ulang tampilan (user: "Tampilan kurang menarik dan tidak nyaman")**, SW
+  `eznihongo-app-v14`: ikon emoji (🏠🔍⚡⚙🔔🗂️) diganti ikon garis SVG inline (`.ico`);
+  kartu progres jadi satu kartu aksen merah + kalimat arahan dinamis (`#kh-progress-hint`:
+  mulai / n siap diulang / sisa N5 / lanjut level); watermark 漢 yang terpotong di hero
+  dihapus; kartu level jadi satu baris per level (role=button + Enter/Spasi, hitungan
+  `x/total` selalu tampil, chevron); kartu Set memakai "x/50 hafal" + tombol "Buka" (dulu
+  dua ★ yang membingungkan + "BELAJAR" padahal cuma membuka daftar); ubin grid 3 kolom di
+  HP, arti 11px (dulu 9px), lencana level hanya kalau isinya campuran level; halaman Set
+  sekarang menyalakan tab Beranda (dulu Latihan); label tab "Latihan" → "Flashcard"
+  (sama dengan judul layarnya); desktop: latar abu di luar kolom 480px. Dark mode: tint
+  kartu level diredam (`opacity:.07`). Diuji Chromium 390/1280 + dark, 0 overflow/pageerror.
+  **Belum diverifikasi**: Safari/iOS.
 
 - **Formulir pendaftaran di layar "Belum ada kelas aktif" (dashboard)** — user: "saat
   customer login dengan akun google, jika belom di acc kan ada notif tidak ada kelas aktif
