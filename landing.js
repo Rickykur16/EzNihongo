@@ -40,7 +40,7 @@
     const p=paths[pathSelect.value]||paths['belum-tahu'],s=stages[stage.value]||stages.pemula;
     document.querySelector('#result-title').textContent=p.title;
     document.querySelector('#result-copy').textContent=p.copy+' '+s.note;
-    waButton.href=waLink(consultMessage());
+    waButton.href=waLink(consultMessage());waButton.dataset.path=pathSelect.value;
     pathLink.href=p.link;pathLink.textContent=p.linkText;
   }
   let opener;
@@ -49,7 +49,8 @@
     opener=button;closeMenu();
     pathSelect.value=paths[button.dataset.path]?button.dataset.path:'belum-tahu';
     stage.value=stages[button.dataset.stage]?button.dataset.stage:'pemula';
-    updateRecommendation();dialog.showModal();return true;
+    updateRecommendation();dialog.showModal();
+    document.dispatchEvent(new CustomEvent('landing:consult-opened',{detail:{path:pathSelect.value}}));return true;
   }
   document.querySelectorAll('[data-consult]').forEach(b=>b.addEventListener('click',e=>{if(openDialog(b))e.preventDefault()}));
   document.addEventListener('landing:consult',event=>{if(event.detail?.opener instanceof HTMLElement)openDialog(event.detail.opener)});

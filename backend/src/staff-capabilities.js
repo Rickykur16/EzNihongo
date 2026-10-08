@@ -6,6 +6,7 @@ export const STAFF_TAB_CAPABILITIES = Object.freeze({
   lessons: 'curriculum.manage',
   sensei: 'marketing.content.manage',
   testimonials: 'marketing.content.manage',
+  visits: 'marketing.analytics.read',
   users: 'students.manage',
   access: 'enrollments.manage',
   orders: 'orders.review',

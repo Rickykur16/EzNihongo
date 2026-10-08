@@ -36,6 +36,7 @@ import profileRouter from './routes/profile.js';
 import staffRouter from './routes/staff.js';
 import companyRouter from './routes/company.js';
 import financeRouter from './routes/finance.js';
+import siteEventsRouter from './routes/site-events.js';
 
 // Fail fast on missing env vars. Every deploy needs these; without them the
 // app silently degrades (bad auth, no DB, open CORS). Crashing at startup
@@ -88,6 +89,7 @@ app.get('/api/health', async (req, res) => {
 // Specific path-prefix routes first; the bare `/api` mounts below act as
 // catch-alls and `progressRouter` has a `router.use(requireAuth)` that would
 // otherwise hijack /api/subscription/webhook (no token → 401).
+app.use('/api/site-events', siteEventsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/kanji-auth', kanjiAuthRouter);
 app.use('/api/discussions', discussionsRouter);

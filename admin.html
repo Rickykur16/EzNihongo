@@ -271,7 +271,8 @@
 <script src="src/admin-dialogue-furigana.js?v=1"></script>
 <script src="src/dialogue-scene.js?v=4"></script>
 <script src="src/admin-dialogue-scene.js?v=4"></script>
-<script src="src/admin-workspace.js?v=growth-20261003"></script>
+<script src="src/admin-workspace.js?v=visits-20261008"></script>
+<script src="src/admin-site-visits.js?v=2"></script>
 <script>
 // ─────────────────────────────────────────────────────────────
 // Bootstrapping & auth
@@ -290,6 +291,7 @@ let financeMount = null;
 const ADMIN_TAB_CAPABILITIES = Object.freeze({
   courses: 'curriculum.manage', modules: 'curriculum.manage', lessons: 'curriculum.manage',
   sensei: 'marketing.content.manage', testimonials: 'marketing.content.manage',
+  visits: 'marketing.analytics.read',
   users: 'students.manage', access: 'enrollments.manage', orders: 'orders.review',
   discussions: 'discussions.moderate', tts: 'tts.manage', live: 'live_classes.manage', ai: 'ai_settings.manage',
 });
@@ -515,6 +517,8 @@ async function bootAdmin() {
     access.finance = finance;
     workspaceRoutes = EzAdminWorkspace.routes(access, COMPANY_ACCESS, canOpenAdminTab);
     if (workspaceRoutes.length === 1) { showLock('Belum ada menu yang diizinkan untuk akun ini. Hubungi pengelola untuk memeriksa akses staf.'); return; }
+    // Kunjungan staf sendiri ke landing tidak ikut dihitung (site-analytics.js).
+    try { localStorage.setItem('ez_analytics_ignore', '1'); } catch {}
     renderApp();
     startOrderWatch();
     const requested = new URLSearchParams(location.hash.slice(1)).get('view');
@@ -1207,6 +1211,7 @@ function renderTab() {
   else if (STATE.tab === 'lessons') renderLessons();
   else if (STATE.tab === 'sensei') { loadSensei().then(renderSenseiList); }
   else if (STATE.tab === 'testimonials') { loadTestimonials().then(renderTestimonials); }
+  else if (STATE.tab === 'visits') { EzSiteVisits.mount(document.querySelector('[data-pane="visits"]'), api); }
   else if (STATE.tab === 'users') { loadUsers().then(renderUsers); }
   else if (STATE.tab === 'access') { renderAccess(); }
   else if (STATE.tab === 'orders') { renderOrders(); }

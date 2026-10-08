@@ -41,7 +41,7 @@ router.get('/capabilities', asyncHandler(async (req, res) => {
   if (access.isAdmin) return res.json(describeLegacyStaffAccess(true));
   const tabs = [];
   if (allowed(access,'legacy.academic')) tabs.push('courses','modules','lessons','live');
-  if (allowed(access,'legacy.marketing')) tabs.push('sensei','testimonials');
+  if (allowed(access,'legacy.marketing')) tabs.push('sensei','testimonials','visits');
   if (allowed(access,'legacy.operations')) tabs.push('users');
   if (allowed(access,'legacy.discussions')) tabs.push('discussions');
   if (allowed(access,'legacy.finance')) tabs.push('orders');

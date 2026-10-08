@@ -203,7 +203,7 @@ test('default entry is one division overview and works with Company disabled',as
   assert.deepEqual(f.rendered,[]);assert.equal(f.extras['workspace-home'].hidden,false);
   assert.match(f.extras['workspace-home'].innerHTML,/<h1>Ringkasan<\/h1>/);
   assert.doesNotMatch(f.extras['workspace-home'].innerHTML,/workspace-module-status|belum diaktifkan|Periksa ulang modul/);
-  assert.equal(vm.runInContext('workspaceRoutes.filter(r=>r.tab).length',f.ctx),12);
+  assert.equal(vm.runInContext('workspaceRoutes.filter(r=>r.tab).length',f.ctx),13);
   assert.equal(vm.runInContext('workspaceRoutes.some(r=>r.key==="desk")',f.ctx),false);
 });
 
@@ -251,7 +251,7 @@ test('every permitted menu has an explicit workflow without granting linked edit
     const items=EzAdminWorkspace.routes(staff,company,()=>true);
     return items.filter(i=>i.key!=='home').map(i=>({key:i.key,html:EzAdminWorkspace.workflow(i.key,items)}));
   })()`,f.ctx);
-  assert.equal(catalogue.length,22);
+  assert.equal(catalogue.length,23);
   assert.ok(catalogue.every(item=>item.html.includes('workspace-steps')));
   const limited=vm.runInContext(`EzAdminWorkspace.workflow('tab:modules',[{key:'home',group:'general',label:'Ringkasan'},{key:'tab:modules',tab:'modules',group:'academic',label:'Modul'}])`,f.ctx);
   assert.match(limited,/data-workspace="tab:modules"/);

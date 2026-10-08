@@ -113,6 +113,33 @@
   jelas. Keputusan lebih tenang."), "Tiga hal yang perlu kamu ketahui", "bukan sekadar".
   Cek em dash pakai python (hitung '\u2014'); `grep "[—–]"` membaca per byte dan hasilnya palsu.
 
+- **Statistik kunjungan website buatan sendiri (migrasi 204)** — user: "Apakah kunjungan
+  website bisa di tracking?" lalu "Oke buatin". Tanpa cookie & tanpa pihak ketiga (sejalan
+  dengan penolakan Midtrans/Moota). `site-analytics.js` (root, `defer`) dimuat di index.html,
+  courses/detail.html, login.html, privacy.html, terms.html — BUKAN di halaman siswa. Mengirim
+  `POST /api/site-events` (publik, 60/menit/IP): `pageview` (path dari daftar tetap → kunci
+  halaman `home/course/login/privacy/terms`, slug kelas untuk detail, HOST perujuk saja, UTM),
+  `consult_open` (event `landing:consult-opened` yang dikirim `openDialog()` di landing.js) dan
+  `wa_click` (klik tautan wa.me; `[data-consult]` yang membuka dialog TIDAK dihitung sebagai klik
+  WA; tombol dialog membawa `data-path` jalur yang dipilih). Tidak menyimpan IP/URL/query/user id:
+  `visitor` = sha256(salt acak di MEMORI + IP + UA), salt ganti tiap hari WIB → unik per hari saja
+  (restart server di tengah hari bisa menghitung orang yang sama dua kali; diterima). Tidak
+  dicatat: bot/headless UA, GPC/DNT, `navigator.webdriver`, dan browser yang pernah membuka
+  Ruang Kerja (`admin.html` menyetel `localStorage.ez_analytics_ignore=1`). Baris >400 hari
+  dihapus dari handler POST (maks sekali/jam). **Laporan**: `GET /admin/site-analytics?days=7|30|90`
+  (`legacy.marketing`, read-only), tab baru Marketing → "Kunjungan Website" (`visits`, kapabilitas
+  `marketing.analytics.read`, ikut di `STAFF_TAB_CAPABILITIES`/`staff.js`; tes yang mengunci
+  jumlah tab dinaikkan 12→13 dan 22→23). "Akun baru"/"Pesanan lunas" di laporan hanya jumlah
+  periode yang sama, TIDAK tertaut ke pengunjung. privacy.html bagian 2 dan 6 diperbarui.
+  **Jebakan uji**: Playwright perlu UA non-headless + `navigator.webdriver=false`, kalau tidak
+  semuanya (sengaja) tidak tercatat; tombol SSW ada di accordion tertutup — buka lewat klik
+  `summary`, set `details.open` via JS membuat klik tidak membuka dialog (artefak tes, bukan
+  bug; baseline sama); detail.html mengalihkan tamu ke login.html sehingga tercatat dua
+  tampilan. **Divalidasi**: 6 tes unit + 3 tes HTTP Postgres (2 mutasi tertangkap); E2E
+  Chromium 15/15 (UTM, dialog, jalur di klik WA, slug, staf & otomasi tidak dihitung, panel
+  admin 1280/390 tanpa luber, tooltip, ganti rentang); `npm test` dengan DB 1115 tes, 1113 hijau,
+  2 skip, 0 gagal. **Belum diverifikasi**: produksi (perlu data nyata) dan Safari/iOS sendBeacon.
+
 - **PWA Kanji (`app/`) GRATIS untuk semua level, tapi WAJIB login** — user: "aku pengen
   itu bisa diakses gratis", "Buat gratis semua", "Tapi tetap login email". Gerbang premium
   (`FREE_LEVELS`/`requirePremium`/modal upgrade + Midtrans Snap/kartu status Premium)

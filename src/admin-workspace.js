@@ -4,11 +4,11 @@
   const divisions = [
     {id:'technology',name:'Product & Technology',description:'Pengembangan produk, rilis dan tooling.',tabs:['tts','ai']},
     {id:'academic',name:'Academic & Learning',description:'Kurikulum, materi, kuis dan kelas.',tabs:['courses','modules','lessons','live']},
-    {id:'marketing',name:'Growth & Marketing',description:'Calon siswa, kampanye, konten, sensei dan testimoni.',tabs:['sensei','testimonials']},
+    {id:'marketing',name:'Growth & Marketing',description:'Calon siswa, kampanye, kunjungan website, konten, sensei dan testimoni.',tabs:['visits','sensei','testimonials']},
     {id:'operations',name:'Operasional Siswa',description:'Onboarding, progres, keluhan dan pendampingan belajar.',tabs:['users','discussions','access']},
     {id:'finance',name:'Finance',description:'Pesanan, pembayaran dan administrasi.',tabs:['orders']},
   ];
-  const labels={courses:'Kursus',modules:'Modul',lessons:'Pelajaran & Kuis',live:'Live Class',sensei:'Sensei',testimonials:'Testimoni',users:'Pengguna',discussions:'Diskusi',access:'Beri Akses',orders:'Pesanan',tts:'TTS Cache',ai:'AI'};
+  const labels={courses:'Kursus',modules:'Modul',lessons:'Pelajaran & Kuis',live:'Live Class',visits:'Kunjungan Website',sensei:'Sensei',testimonials:'Testimoni',users:'Pengguna',discussions:'Diskusi',access:'Beri Akses',orders:'Pesanan',tts:'TTS Cache',ai:'AI'};
   const shortNames={technology:'Produk & Teknologi',academic:'Akademik',marketing:'Marketing',operations:'Operasional Siswa',finance:'Finance'};
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function hasWork(company,id){return !!company?.divisions?.some(d=>d.id===id)&&(company.isAdmin===true||company.scopes?.[id]==='global'||(Array.isArray(company.scopes?.[id])&&company.scopes[id].length>0));}
@@ -49,6 +49,7 @@
     operations:['Pilih siswa atau antrean','Catat kebutuhan & PIC','Tindak lanjuti sampai selesai'],
     courses:['Kursus','Modul','Materi & Kuis'],modules:['Kursus','Modul','Materi & Kuis'],lessons:['Kursus','Modul','Materi & Kuis'],
     live:['Pilih kursus & jadwal','Hubungkan materi','Simpan kelas'],
+    visits:['Pilih rentang hari','Baca sumber & halaman','Bandingkan klik WhatsApp'],
     sensei:['Isi profil & foto','Atur status tampil','Simpan profil'],
     testimonials:['Isi cerita siswa','Pilih kelas & status','Simpan testimoni'],
     users:['Cari siswa','Buka Kelola Akses','Periksa akses & riwayat'],
@@ -87,7 +88,7 @@
   }
   function search(items,query){
     if(/^(crm|prospek|lead|calon siswa)$/i.test(String(query).trim()))return items.filter(i=>i.key==='crm');
-    const aliases={courses:'kelas kurikulum',modules:'bab',lessons:'materi soal quiz kuis',orders:'pembayaran transfer verifikasi',access:'enrollment masa aktif',users:'siswa murid',tts:'audio suara cache',ai:'prompt coaching',live:'jadwal kelas pertemuan',sensei:'guru pengajar',testimonials:'ulasan',desk:'tugas harian antrean',insights:'data analisis laporan',calendar:'jadwal konten',members:'karyawan staf izin',jobs:'notifikasi pengingat'};
+    const aliases={courses:'kelas kurikulum',modules:'bab',lessons:'materi soal quiz kuis',orders:'pembayaran transfer verifikasi',access:'enrollment masa aktif',users:'siswa murid',tts:'audio suara cache',ai:'prompt coaching',live:'jadwal kelas pertemuan',visits:'pengunjung traffic trafik analytics statistik website',sensei:'guru pengajar',testimonials:'ulasan',desk:'tugas harian antrean',insights:'data analisis laporan',calendar:'jadwal konten',members:'karyawan staf izin',jobs:'notifikasi pengingat'};
     const words=String(query||'').trim().toLocaleLowerCase('id-ID').split(/\s+/).filter(Boolean);
     return items.filter(item=>{
       const text=[item.label,item.group,shortNames[item.group],item.group==='finance'?'keuangan business administration':'',aliases[item.tab||item.key],item.key.startsWith('work:')?'tugas pekerjaan proyek':''].join(' ').toLocaleLowerCase('id-ID');
