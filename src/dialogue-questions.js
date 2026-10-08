@@ -23,6 +23,7 @@
   }
   function feedback(state) {
     if (state.stale) return '<span class="dq-error">Soal atau penempatannya sudah berubah.</span> <button type="button" class="dq-reload" data-dq-reload>Muat ulang soal</button>';
+    if (state.missingSelection) return '<span class="dq-error">Pilih satu jawaban dulu.</span>';
     if (state.error) return '<span class="dq-error">Jawaban belum terkirim. Coba lagi.</span>';
     if (!state.result) return '';
     if (!state.result.correct) return '<span class="dq-try-again">Belum tepat. Coba lagi.</span>';
@@ -103,6 +104,7 @@
       info.state.selection = selected;
       if (info.state.pending?.optionIndex !== selected) info.state.pending = null;
       if (!info.state.result?.correct) info.state.result = null;
+      info.state.missingSelection = false;
       info.state.error = false;
       syncForm(form, info.state);
     };
@@ -118,7 +120,10 @@
       const optionIndex = checked ? Number(checked.value) : null;
       if (!Number.isInteger(optionIndex) || optionIndex < 0 ||
           optionIndex >= info.question.options.length) {
-        state.error = true; syncForm(form, state, true); return;
+        state.missingSelection = true;
+        state.error = false;
+        syncForm(form, state, true);
+        return;
       }
       const payload = state.pending?.optionIndex === optionIndex ? state.pending : {
         questionVersion: info.question.version, optionIndex,
@@ -126,6 +131,7 @@
       };
       state.pending = payload;
       state.inFlight = true;
+      state.missingSelection = false;
       state.error = false;
       syncForm(form, state);
       try {
@@ -197,7 +203,8 @@
         for (const question of safeQuestions) {
           const stateKey = key(lesson.apiId, grammar.id, question);
           if (!memory.has(stateKey)) memory.set(stateKey, { selection: null,
-            pending: null, result: null, inFlight: false, error: false, stale: false });
+            pending: null, result: null, inFlight: false, missingSelection: false,
+            error: false, stale: false });
           context.questions.set(question.id, { question, state: memory.get(stateKey) });
         }
         questionsSlot.innerHTML = `<section class="dq-panel" aria-label="Pemahaman percakapan"><h4>Cek pemahaman percakapan</h4>${safeQuestions.map((question, index) =>

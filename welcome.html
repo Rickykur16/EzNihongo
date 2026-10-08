@@ -702,6 +702,9 @@
   }
   @media (max-width: 860px) { .main-content { padding: 24px 24px 250px; } }
   @media (max-width: 600px) { .main-content { padding: 18px 16px 250px; } }
+  /* Let conversation controls stick to the page while their transcript scrolls. */
+  .main-content:has(.grammar-karaoke),
+  .learning-workspace .lesson-extra-card.grammar-card:has(.grammar-karaoke) { overflow: visible; }
 
   .lesson-title { font-size: clamp(22px, 5vw, 32px); }
   @media (max-width: 600px) {
@@ -3580,20 +3583,29 @@
      blok (.gk-line-active) — bukan per-kata, fitur karaoke word-timing
      sudah dihapus bersama timestamp ElevenLabs. */
   .grammar-karaoke {
+    position: relative;
+    isolation: isolate;
     margin: 12px 0 0;
     background: #fff;
     border: 1px solid #f0e5de;
     border-radius: 16px;
-    overflow: hidden;
+    overflow: visible;
     box-shadow: 0 1px 0 rgba(27,20,16,0.04), 0 12px 32px rgba(27,20,16,0.05);
   }
   /* toolbar */
   .gk-toolbar {
+    position: sticky;
+    top: calc(var(--student-header-height, 68px) + 8px);
+    z-index: 3;
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     padding: 12px 14px;
     background: #fffbf7;
     border-bottom: 1px solid #f4ece6;
+    border-radius: 15px 15px 0 0;
+    box-shadow: 0 3px 6px rgba(27,20,16,0.05);
   }
+  .grammar-karaoke .gk-toolbar button { min-width: 44px; min-height: 44px; }
+  .grammar-karaoke button:focus-visible { outline: 3px solid var(--learning-blue-700, #2358a5); outline-offset: 2px; }
   .gk-play {
     display: inline-flex; align-items: center; gap: 6px;
     background: var(--brand-red); color: #fff; border: none;
@@ -3621,9 +3633,15 @@
     transition: all .12s;
   }
   .grammar-karaoke[data-arti="off"] .gk-arti-toggle { background: #f4ece6; color: #9a8a82; }
-  .gk-status { font-size: 11.5px; color: #9a8a82; margin-left: auto; }
+  .gk-status { flex: 1 0 100%; font-size: 11.5px; color: #9a8a82; overflow-wrap: anywhere; }
+  .gk-status:empty { display: none; }
+  @media (max-width: 600px) {
+    .gk-toolbar { gap: 6px; padding: 10px 8px; }
+    .gk-play { padding-inline: 12px; }
+    .gk-tool-div { display: none; }
+  }
   /* scene setter (narator → "Situasi") */
-  .gk-transcript { padding: 12px 14px 4px; }
+  .gk-transcript { padding: 12px 14px 4px; border-radius: 0 0 15px 15px; }
   .gk-scene {
     text-align: center; max-width: 540px; margin: 0 auto 12px;
     padding-bottom: 10px; border-bottom: 1px dashed #ece0d8;
@@ -3634,7 +3652,12 @@
     text-transform: uppercase; margin-bottom: 6px;
     font-family: 'Noto Sans JP', sans-serif;
   }
-  .gk-scene-line { cursor: pointer; border-radius: 8px; padding: 3px 8px; transition: background .15s ease; }
+  .gk-scene-line {
+    display: block; width: 100%; min-height: 44px; border: 0;
+    background: transparent; font: inherit; text-align: center;
+    cursor: pointer; border-radius: 8px; padding: 6px 8px; transition: background .15s ease;
+  }
+  .gk-scene-line > span { display: block; }
   .gk-scene-line:hover { background: rgba(178,0,36,0.04); }
   .gk-scene-line.gk-line-active { background: rgba(178,0,36,0.07); }
   .gk-scene-line .gk-text { font-size: 15px; color: #5a4a42; line-height: 1.45; }
@@ -3653,10 +3676,11 @@
     transition: box-shadow .2s ease;
   }
   .gk-line.gk-line-active .gk-avatar { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--sp, var(--brand-red)); }
-  .gk-bubble-col { max-width: 80%; display: flex; flex-direction: column; }
+  .gk-bubble-col { max-width: 80%; min-width: 0; display: flex; flex-direction: column; }
   .gk-side-right .gk-bubble-col { align-items: flex-end; }
   .gk-name { font-size: 10px; font-weight: 800; color: var(--sp-deep, var(--brand-red)); margin-bottom: 1px; padding: 0 4px; letter-spacing: 0.02em; }
   .gk-bubble {
+    max-width: 100%;
     background: var(--sp-bubble, #fff);
     border: 1.5px solid #f0e5de;
     border-radius: 13px 13px 13px 4px;
@@ -3670,9 +3694,9 @@
     transform: translateY(-1px);
   }
   .gk-bubble-main { display: flex; align-items: flex-start; gap: 7px; }
-  .gk-bubble-main .gk-text { flex: 1; min-width: 0; font-size: 15.5px; line-height: 1.5; color: #1b1410; }
+  .gk-bubble-main .gk-text { flex: 1; min-width: 0; font-size: 15.5px; line-height: 1.5; color: #1b1410; overflow-wrap: anywhere; }
   .gk-line-play {
-    flex: 0 0 25px; width: 25px; height: 25px; border-radius: 7px; border: 0; cursor: pointer;
+    flex: 0 0 44px; width: 44px; height: 44px; border-radius: 9px; border: 0; cursor: pointer;
     background: var(--sp-soft, #ffe7e5); color: var(--sp, var(--brand-red));
     display: flex; align-items: center; justify-content: center;
     transition: filter .15s ease, background .15s ease, color .15s ease; margin-top: 1px;
@@ -3683,7 +3707,8 @@
   .gk-arti { margin-top: 4px; }
   .gk-reveal {
     display: inline-flex; align-items: center; gap: 5px;
-    border: 0; background: transparent; cursor: pointer; padding: 0;
+    min-width: 44px; min-height: 44px;
+    border: 0; background: transparent; cursor: pointer; padding: 6px 2px;
     color: var(--sp, var(--brand-red)); font-weight: 800; font-size: 11.5px;
     font-family: inherit; letter-spacing: 0.01em;
   }
@@ -4582,6 +4607,7 @@
   #ai-senpai .senpai-orb-btn { position:relative; border:0; padding:0; cursor:pointer; background:transparent; outline:none; animation: senpaiAppear 480ms cubic-bezier(.34,1.56,.64,1); transition: transform .18s cubic-bezier(.2,.7,.3,1); }
   #ai-senpai .senpai-orb-btn:hover { transform: scale(1.06) translateY(-3px); }
   #ai-senpai .senpai-orb-btn:active { transform: scale(.94) translateY(2px); }
+  #ai-senpai .senpai-orb-btn img { width: 100%; height: 100%; object-fit: contain; }
   #ai-senpai .senpai-icon-btn {
     flex-basis: 44px !important;
     width: 44px !important;
@@ -4653,6 +4679,8 @@
     justify-content: center;
     gap: 6px;
   }
+  .lesson-student-nav .lesson-focus { display: none; }
+  .lesson-student-nav .lesson-focus[hidden] { display: none !important; }
   body.lesson-drawer-open #ai-senpai {
     visibility: hidden;
     pointer-events: none;
@@ -4666,6 +4694,18 @@
   }
 
   @media (max-width: 860px) {
+    .lesson-student-nav .lesson-focus {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 44px;
+      min-height: 44px;
+      padding: 10px 8px;
+    }
+    .lesson-focus .maneko-dot { top: 2px; right: 2px; }
+    #ai-senpai .senpai-orb-wrap { display: none; }
+    #ai-senpai:is([data-mode="idle"], [data-mode="peek"], [data-mode="toast"]) { display: none; }
     .lesson-student-nav {
       position: sticky;
       min-height: 64px;
@@ -4726,7 +4766,7 @@
 <link rel="stylesheet" href="styles/dialogue-scene.css?v=5">
 <link rel="stylesheet" href="styles/dialogue-questions.css?v=20260927-1">
 <link rel="stylesheet" href="maneko.css?v=20260926-1">
-<script src="maneko.js?v=20260929-fokus"></script>
+<script src="maneko.js?v=20261009-header-focus"></script>
 </head>
 <body>
 
@@ -4745,6 +4785,10 @@
     <a href="live.html?v=20260902-4">Live Class</a>
     <a href="progress.html?v=20260902-5">Progres</a>
   </nav>
+  <button id="lesson-focus" class="lesson-focus" type="button" data-maneko-trigger hidden disabled
+    aria-label="Buka fokus belajarmu" aria-expanded="false" aria-controls="maneko-focus-panel" onclick="AISenpai.clickOrb()">
+    Fokus<span data-maneko-dot class="maneko-dot" hidden></span>
+  </button>
   <button class="lesson-logout" type="button" onclick="logout()" aria-label="Keluar dari akun">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
     <span class="lesson-logout-label">Keluar</span>
@@ -4822,7 +4866,7 @@ function getUserName(user = session) {
 <script src="assets/dialogue/catalog.js?v=1"></script>
 <script src="src/dialogue-furigana.js?v=1"></script>
 <script src="src/dialogue-scene.js?v=4"></script>
-<script src="src/dialogue-questions.js?v=20261001-1"></script>
+<script src="src/dialogue-questions.js?v=20261009-selection"></script>
 <script src="learning-state.js?v=20260911-1"></script>
 <script src="src/bunny-video.js?v=20261008-1"></script>
 <script src="src/bunny-player.js?v=20261008-1"></script>
@@ -7706,16 +7750,6 @@ function renderSidebar() {
           <span class="ql-arr">→</span>
         </button>
       </div>
-      <div class="discord-card">
-        <div class="discord-top">
-          <svg class="discord-logo" viewBox="0 0 24 24" fill="white" width="18" height="18">
-            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
-          </svg>
-          <span class="discord-title">Discord Premium</span>
-        </div>
-        <p class="discord-desc">Komunitas eksklusif siswa aktif. Diskusi, tanya jawab, dan live session bareng sensei.</p>
-        <a href="https://discord.gg/GANTI_LINK_INI" target="_blank" rel="noopener" class="discord-btn">Bergabung →</a>
-      </div>
     </div>
 
     <div class="sidebar-footer">
@@ -9042,17 +9076,17 @@ function gkGetSpeed() {
   return 1;
 }
 function gkArtiLabel(mode) {
-  return mode === 'always' ? 'Arti: selalu' : mode === 'off' ? 'Arti: off' : 'Arti: tap';
+  return mode === 'always' ? 'Arti: ditampilkan' : mode === 'off' ? 'Arti: disembunyikan' : 'Arti: per baris';
 }
 
 // Narator (speaker 'N') → kartu "Situasi" di atas. Tetap clickable (punya
 // segment audio sendiri) + terjemahan selalu tampil (tidak kena mode tap).
 function gkSceneHtml(rows, key) {
   const body = rows.map((r) => `
-    <div class="gk-scene-line" data-line-index="${r.index}" onclick="window.grammarKaraokeJumpTo('${key}',${r.index})" title="Putar baris ini">
-      <div class="gk-text">${r.inner}</div>
-      ${r.idText ? `<div class="gk-line-id">${escapeHtml(r.idText)}</div>` : ''}
-    </div>`).join('');
+    <button type="button" class="gk-scene-line" data-line-index="${r.index}" onclick="window.grammarKaraokeJumpTo('${key}',${r.index})" title="Putar ucapan narator">
+      <span class="gk-text">${r.inner}</span>
+      ${r.idText ? `<span class="gk-line-id">${escapeHtml(r.idText)}</span>` : ''}
+    </button>`).join('');
   return `<div class="gk-scene"><div class="gk-scene-tag">場面 · Situasi</div>${body}</div>`;
 }
 // Satu baris percakapan → chat bubble (avatar + nama + bubble berwarna di
@@ -9072,7 +9106,7 @@ function gkBubbleHtml(r, key, styles) {
         <div class="gk-bubble">
           <div class="gk-bubble-main">
             <div class="gk-text">${r.inner}</div>
-            <button type="button" class="gk-line-play" title="Putar baris ini" onclick="window.grammarKaraokeJumpTo('${key}',${r.index})">${GK_PLAY_TRI}<span class="gk-eq" aria-hidden="true"><i></i><i></i><i></i></span></button>
+            <button type="button" class="gk-line-play" aria-label="Putar ucapan ${name}" title="Putar baris ini" onclick="window.grammarKaraokeJumpTo('${key}',${r.index})">${GK_PLAY_TRI}<span class="gk-eq" aria-hidden="true"><i></i><i></i><i></i></span></button>
           </div>
           ${arti}
         </div>
@@ -9102,7 +9136,11 @@ window.gkSetSpeed = (key, rate, btn) => {
   try { localStorage.setItem('ez_dialog_speed', String(r)); } catch (e) {}
   document.querySelectorAll('.grammar-karaoke').forEach((el) => {
     el.setAttribute('data-speed', String(r));
-    el.querySelectorAll('.gk-speed .gk-seg-btn').forEach((b) => b.classList.toggle('is-on', parseFloat(b.dataset.v) === r));
+    el.querySelectorAll('.gk-speed .gk-seg-btn').forEach((b) => {
+      const selected = parseFloat(b.dataset.v) === r;
+      b.classList.toggle('is-on', selected);
+      b.setAttribute('aria-pressed', String(selected));
+    });
   });
   for (const k of Object.keys(window.__gk)) {
     const st = window.__gk[k];
@@ -9113,6 +9151,23 @@ window.gkSetSpeed = (key, rate, btn) => {
 window.gkRevealArti = (btn) => {
   const line = btn && btn.closest('.gk-line');
   if (line) line.classList.add('gk-revealed');
+};
+
+// Native focus scrolling does not account for the sticky dialogue toolbar.
+// Measure after it settles, and move only keyboard focus hidden by this player.
+window.gkKeepFocusVisible = (event) => {
+  const target = event.target;
+  const player = event.currentTarget;
+  const toolbar = player.querySelector('.gk-toolbar');
+  if (!toolbar || toolbar.contains(target)) return;
+  requestAnimationFrame(() => {
+    if (!target.isConnected || document.activeElement !== target || !target.matches(':focus-visible')) return;
+    const control = target.getBoundingClientRect();
+    const bar = toolbar.getBoundingClientRect();
+    if (control.height > 0 && bar.bottom > 0 && control.top < bar.bottom + 8) {
+      window.scrollBy({ top: control.top - bar.bottom - 8, behavior: 'instant' });
+    }
+  });
 };
 
 // Map line index → terjemahan Indonesia (kalau dialogIdText ada). Parsing
@@ -9149,11 +9204,11 @@ function grammarKaraokeHtml(dialogText, key, dialogIdText, dialogScene = null, g
   const speed = gkGetSpeed();
   const speeds = [0.75, 1, 1.25];
   return `
-    <div class="grammar-karaoke" id="gk-${key}" data-dialog="${escapeHtml(dialogText)}" data-dialog-id="${escapeHtml(dialogIdText || '')}" data-dialog-scene="${escapeHtml(JSON.stringify(dialogScene))}" data-dialog-furigana="${escapeHtml(JSON.stringify(furigana))}" data-furigana="${window.EzFurigana?.preference() === false ? 'off' : 'on'}" data-audio-ready="${dialogScene?.audioReady !== false}" data-grammar-id="${escapeHtml(grammarId)}" data-arti="${arti}" data-speed="${speed}">
+    <div class="grammar-karaoke" id="gk-${key}" onfocusin="window.gkKeepFocusVisible(event)" data-dialog="${escapeHtml(dialogText)}" data-dialog-id="${escapeHtml(dialogIdText || '')}" data-dialog-scene="${escapeHtml(JSON.stringify(dialogScene))}" data-dialog-furigana="${escapeHtml(JSON.stringify(furigana))}" data-furigana="${window.EzFurigana?.preference() === false ? 'off' : 'on'}" data-audio-ready="${dialogScene?.audioReady !== false}" data-grammar-id="${escapeHtml(grammarId)}" data-arti="${arti}" data-speed="${speed}">
       <div class="gk-toolbar">
         <button type="button" class="gk-play" ${dialogScene?.audioReady === false ? 'disabled' : ''} onclick="window.grammarKaraokePlay('${key}')">▶ Putar dialog</button>
-        <div class="gk-seg gk-speed">
-          ${speeds.map((v) => `<button type="button" class="gk-seg-btn${v === speed ? ' is-on' : ''}" data-v="${v}" onclick="window.gkSetSpeed('${key}',${v},this)">${v}×</button>`).join('')}
+        <div class="gk-seg gk-speed" role="group" aria-label="Kecepatan audio">
+          ${speeds.map((v) => `<button type="button" class="gk-seg-btn${v === speed ? ' is-on' : ''}" data-v="${v}" aria-pressed="${v === speed}" onclick="window.gkSetSpeed('${key}',${v},this)">${v}×</button>`).join('')}
         </div>
         <span class="gk-tool-div"></span>
         <button type="button" class="gk-arti-toggle" onclick="window.gkCycleArti('${key}',this)">${gkArtiLabel(arti)}</button>
@@ -9748,7 +9803,10 @@ function renderDeckLesson(course, module, lesson, nav) {
         const jp = escapeHtml(it.japanese || '');
         const arti = escapeHtml(it.indonesian || '');
         const label = `${jp}${arti ? ' — ' + arti : ''}. Tekan Enter untuk lihat contoh kalimat.`;
-        const kanjiTags = (it.kanjiUsages || []).map((usage) => `<span class="dc-kanji-tag" title="${escapeHtml(kanjiUsageStatusLabel(usage))}">${escapeHtml(usage.character)} · ${escapeHtml(usage.introducedLevel || '?')}</span>`).join('');
+        const kanjiTags = (it.kanjiUsages || []).map((usage) => {
+          const level = String(usage.introducedLevel || '').trim();
+          return `<span class="dc-kanji-tag" title="${escapeHtml(level ? kanjiUsageStatusLabel(usage) : 'Kanji dalam kata ini')}">${escapeHtml(usage.character)}${level ? ` · ${escapeHtml(level)}` : ''}</span>`;
+        }).join('');
         const audioBtn = `<button class="dc-audio" type="button" aria-label="Dengar pengucapan ${jp}" onclick="event.stopPropagation();playDeckAudio(${idx}, this)">${AUDIO_SVG}</button>`;
         if (deckView === 'list') {
           return `<div class="deck-list-item" role="button" tabindex="0" aria-label="${label}" data-deck-search="${escapeHtml(search)}" onclick="openDeckModal(${idx})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDeckModal(${idx})}">
@@ -13571,6 +13629,8 @@ function setTutorHidden(hidden) {
   if (hidden) window.Maneko?.close();
   const el = document.getElementById('ai-senpai');
   if (el) el.style.display = hidden ? 'none' : '';
+  const trigger = document.getElementById('lesson-focus');
+  if (trigger) { trigger.hidden = !!hidden; trigger.disabled = !!hidden; }
 }
 function updateTutorVisibility() {
   // Popup tugas grammar lagi kebuka → tetap sembunyi apa pun lesson aktifnya.
@@ -14902,6 +14962,7 @@ const S = (window.AISenpai = {
     // (lesson quiz/grammar_task = Maneko-chan disembunyikan).
     if (window.__tutorHidden) el.style.display = 'none';
     window.Maneko?.mount({ externalOrb: true });
+    setTutorHidden(window.__tutorHidden);
     // Pakai cache hanya kalau versinya cocok — bump versi (mis. ganti nama
     // maskot / sapaan) bikin chat lama dibuang & di-seed ulang dgn teks baru.
     try { const saved = JSON.parse(sessionStorage.getItem('ez_tutor_chat') || 'null'); if (saved && saved.v === 2 && Array.isArray(saved.chat)) S.chat = saved.chat; } catch {}
