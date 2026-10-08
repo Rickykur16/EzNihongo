@@ -5159,12 +5159,12 @@ window.clearTtsCacheCurrent = async () => {
   if (!ta || !status) return;
   const text = ta.value.trim();
   if (!text) { notify('Audio script kosong', true); return; }
-  if (!confirm('Hapus cache audio untuk script ini? Next test akan regenerate dari ElevenLabs (kena cost).')) return;
+  if (!confirm('Hapus cache semua giliran untuk naskah dan suara ini? Giliran dengan teks dan suara identik di soal lain juga memakai rekaman yang sama. Tes berikutnya membuat audio baru dari ElevenLabs dan memakai kuota.')) return;
   status.textContent = 'Hapus cache...';
   try {
     const r = await ezApi('/admin/tts/cache', {
       method: 'DELETE',
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, dialogScene: JSON.parse(document.getElementById('questionAudioScene')?.value || 'null'), listening: true }),
     });
     const data = await r.json().catch(() => ({}));
     if (r.ok) {
@@ -5256,6 +5256,7 @@ window.loadTtsCacheStats = async () => {
       </div>
       <div style="font-size:11px;color:var(--ink-500);margin-top:10px;">
         ${s.listening_model ? `Model listening: ${escapeHtml(s.listening_model)}<br>` : ''}
+        ${s.dialogue_model ? `Model Percakapan: ${escapeHtml(s.dialogue_model)}<br>` : ''}
         Oldest: ${s.oldest ? new Date(s.oldest).toLocaleString('id-ID') : '-'} ·
         Newest: ${s.newest ? new Date(s.newest).toLocaleString('id-ID') : '-'}
       </div>
@@ -5761,7 +5762,7 @@ function admDialogRowHtml(r, i) {
       <textarea rows="2" placeholder="Terjemahan…" style="width:100%;font-size:12px;margin-bottom:6px;box-sizing:border-box;" oninput="admDialogRowEdit(${i},'id',this.value)">${escapeHtml(r.id)}</textarea>`}
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
         <button type="button" class="btn btn-ghost btn-sm" ${missingVoice ? 'disabled title="Suara pemeran belum diatur"' : ''} onclick="admDialogRowTest(${i}, this)">🔊 ${missingVoice ? 'Suara belum diatur' : 'Tes giliran ini'}</button>
-        ${window.__dialogMode === 'listening' || missingVoice ? '' : `<button type="button" class="btn btn-ghost btn-sm" data-dlg-regen="${i}" title="Buat suara baru untuk giliran ini — siswa ikut mendengar versi baru" onclick="admDialogRowTest(${i}, this, true)">↻ Buat ulang suara</button>`}
+        ${missingVoice ? '' : `<button type="button" class="btn btn-ghost btn-sm" data-dlg-regen="${i}" title="Buat suara baru untuk giliran ini. Siswa ikut mendengar versi baru." onclick="admDialogRowTest(${i}, this, true)">↻ Buat ulang suara</button>`}
         <audio id="dlg-audio-${i}" controls style="height:28px;flex:1;min-width:180px;display:none;"></audio>
       </div>
     </div>`;
@@ -5778,7 +5779,9 @@ function admDialogModalHtml() {
     <p style="font-size:12px;color:#737373;font-family:var(--font-body);margin:0 0 10px;">
       Pilih Narator atau nama speaker asli per giliran (bukan kode A/B) — suaranya
       mengikuti pengaturan karakter. Pilih “Kustom ${listening ? 'soal' : 'dialog'} ini” untuk mengganti nama atau suaranya, lalu tes setiap giliran.
-      ${listening ? '' : 'Tes giliran memutar suara yang sama persis dengan yang didengar siswa. Kalau satu giliran kurang pas, tekan “↻ Buat ulang suara” di giliran itu saja.'}
+      Tes giliran memutar suara yang sama dengan yang didengar siswa untuk naskah dan pemeran yang sama.
+      Kalau satu giliran kurang pas, tekan “↻ Buat ulang suara” di giliran itu saja.
+      ${listening ? 'Siswa tetap mendengar satu audio utuh. Gunakan Tes audio pada soal untuk mendengar gabungan giliran dan jeda antar pembicara.' : ''}
     </p>
     ${listening ? '' : `<div style="display:flex;gap:8px;margin-bottom:10px;">
       <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogGenerate(this)" title="Karang dialog baru (AI) dari Pola + Arti baris ini — menimpa giliran yang ada">✨ Generate draft (AI)</button>
@@ -5915,15 +5918,10 @@ window.admNewSpeakerSave = async () => {
   } catch (err) { notify('Gagal menambah speaker: ' + err.message, true); }
   admRenderDialogModal();
 };
-// Grammar dialogues: the take played here comes from the SAME per-turn cache
-// students read (POST /admin/tts/dialog-turn → resolveDialogTurns in tts.js),
-// so "Tes giliran ini" plays exactly what students hear once the dialogue is
-// saved, and "↻ Buat ulang suara" (regenerate) replaces that one take for
-// everyone. The whole dialogue is sent so the server resolves the voice the
-// way it will for students; turnIndex counts only non-empty rows, which is
-// what admSerializeDialogPair keeps. Listening scripts are voiced as one
-// WAV clip through the protected quiz audio route. Their preview uses that
-// same listening profile; test the complete script to hear speaker gaps.
+// Dialogue turn previews read the same cached take used by the student.
+// Listening composes these takes into one WAV; grammar plays separate clips.
+// Send the whole dialogue so voice assignment matches student playback.
+// turnIndex counts only non-empty rows, as admSerializeDialogPair does.
 window.admDialogRowTest = async (i, btn, regenerate = false) => {
   const rows = window.__dialogRows || [];
   const r = rows[i];
@@ -5932,14 +5930,12 @@ window.admDialogRowTest = async (i, btn, regenerate = false) => {
   const orig = btn.textContent; btn.disabled = true; btn.textContent = regenerate ? 'Membuat suara baru…' : '…';
   try {
     const listening = window.__dialogMode === 'listening';
-    const resp = listening
-      ? await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({ text: `${r.speaker}: ${r.jp.trim()}`, dialogScene: window.__dialogScene || null, listening: true }) })
-      : await ezApi('/admin/tts/dialog-turn', { method: 'POST', body: JSON.stringify({
+    const resp = await ezApi('/admin/tts/dialog-turn', { method: 'POST', body: JSON.stringify({
         dialog: admSerializeDialogPair(rows).jp,
         turnIndex: rows.slice(0, i).filter((row) => (row.jp || '').trim()).length,
         speaker: r.speaker, turnText: r.jp.trim(),
-        dialogScene: window.__dialogScene || null, regenerate,
-        dialogFurigana: window.EzDialogueFuriganaAdmin?.data?.() || null,
+        dialogScene: window.__dialogScene || null, regenerate, listening,
+        dialogFurigana: listening ? null : (window.EzDialogueFuriganaAdmin?.data?.() || null),
       }) });
     if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || e.error || ('HTTP ' + resp.status)); }
     const blob = await resp.blob();
@@ -5950,7 +5946,9 @@ window.admDialogRowTest = async (i, btn, regenerate = false) => {
       audio.preservesPitch = true;
       audio.play().catch(() => {});
     }
-    if (regenerate) notify('Suara baru untuk giliran ini tersimpan — siswa mendengar versi ini begitu dialog tersimpan.');
+    if (regenerate) notify(listening
+      ? 'Suara giliran diperbarui. Audio listening utuh siswa memakai versi ini untuk naskah dan pemeran yang sama.'
+      : 'Suara giliran diperbarui. Siswa memakai versi ini untuk naskah dan pemeran yang sama.');
   } catch (err) { notify('Gagal generate audio: ' + err.message, true); }
   finally { btn.disabled = false; btn.textContent = orig; }
 };

@@ -16,7 +16,7 @@ function slice(from, to) {
 }
 const editorSource = slice('const DIALOG_SPK_RE =', '// === Multi contoh grammar');
 const modalSource = slice('let _modalDirty = false;', '// Toasts stack vertically');
-const previewSource = slice('window.testTtsAudio =', 'window.clearTtsCacheCurrent =');
+const previewSource = slice('window.testTtsAudio =', 'window.backToManageQuiz =');
 const generatedPreviewSource = slice('function listenGenRenderPreview()', '// Regenerate opsi + penjelasan');
 const generatedSaveSource = slice('window.listenGenSave =', '// ─── Generate Soal JLPT');
 
@@ -75,7 +75,7 @@ function setup({ script = 'A: はじめまして。\nF: どうぞよろしく。
     },
     ezApi: async (path, options) => {
       requests.push({ path, ...options, parsedBody: JSON.parse(options.body) });
-      return { ok: true, blob: async () => ({ size: 1024 }) };
+      return { ok: true, blob: async () => ({ size: 1024 }), json: async () => ({ deleted: 2 }) };
     },
     URL: { createObjectURL: () => 'blob:fixture', revokeObjectURL() {} },
   });
@@ -123,6 +123,8 @@ test('listening initializes A and F as distinct female profiles without touching
   assert.equal(h.ctx.__dialogScene.backgroundKey, 'none');
   assert.deepEqual(formState(h), before);
   assert.match(h.modalContent.innerHTML, /Gunakan untuk soal/);
+  assert.match(h.modalContent.innerHTML, /Siswa tetap mendengar satu audio utuh/);
+  assert.match(h.modalContent.innerHTML, /Buat ulang suara/);
   assert.doesNotMatch(h.modalContent.innerHTML, /Translate semua|Tampilkan panggung dialog|ez-scene-backgrounds/);
   assert.deepEqual(h.furiganaCalls, []);
 });
@@ -222,8 +224,11 @@ test('per-turn and whole-script previews send the matching explicit scene', asyn
   const expected = plain(h.ctx.__dialogScene);
   const button = { textContent: 'Tes giliran ini', disabled: false };
   await h.ctx.admDialogRowTest(0, button);
-  assert.equal(h.requests[0].path, '/admin/tts/preview');
-  assert.deepEqual(h.requests[0].parsedBody, { text: 'A: はじめまして。', dialogScene: expected, listening: true });
+  assert.equal(h.requests[0].path, '/admin/tts/dialog-turn');
+  assert.deepEqual(h.requests[0].parsedBody, { dialog: h.scriptField.value,
+    turnIndex: 0, speaker: 'A', turnText: 'はじめまして。', dialogScene: expected,
+    regenerate: false, listening: true, dialogFurigana: null });
+  assert.equal(h.elements.get('dlg-audio-0').playbackRate, 0.9);
   assert.equal(button.disabled, false);
   assert.equal(button.textContent, 'Tes giliran ini');
   h.ctx.admDialogSave();
@@ -232,6 +237,40 @@ test('per-turn and whole-script previews send the matching explicit scene', asyn
   assert.equal(h.elements.get('ttsTestAudio').playbackRate, 0.9);
   assert.equal(h.elements.get('ttsTestAudio').preservesPitch, true);
   assert.match(h.elements.get('ttsTestStatus').textContent, /^OK/);
+});
+
+test('clearing a complete listening script sends its exact voice scene and listening scope', async () => {
+  const h = setup();
+  await h.ctx.quizManageListeningDialog();
+  h.ctx.EzDialogueAdmin.voice(0, 'voice-custom');
+  h.ctx.admDialogSave();
+  const expectedScene = JSON.parse(h.sceneField.value), confirmations = [];
+  h.ctx.confirm = message => { confirmations.push(message); return true; };
+  await h.ctx.clearTtsCacheCurrent();
+  assert.equal(h.requests.length, 1);
+  assert.equal(h.requests[0].path, '/admin/tts/cache');
+  assert.equal(h.requests[0].method, 'DELETE');
+  assert.deepEqual(h.requests[0].parsedBody, { text: h.scriptField.value, dialogScene: expectedScene, listening: true });
+  assert.match(confirmations[0], /teks dan suara identik di soal lain/);
+  assert.match(h.elements.get('ttsTestStatus').textContent, /Cache dihapus: 2 entry/);
+  h.ctx.confirm = () => false;
+  await h.ctx.clearTtsCacheCurrent();
+  assert.equal(h.requests.length, 1, 'cancelling must not clear shared takes');
+});
+
+test('cache stats display both voice profiles and all active versions, with escaped model labels', async () => {
+  const box = { innerHTML: '' }, button = { disabled: false };
+  const ctx = vm.createContext({ window: {}, document: { getElementById: id => id === 'ttsCacheStatsBox' ? box : button },
+    escapeHtml: value => String(value).replaceAll('<', '&lt;').replaceAll('>', '&gt;'), ttsBytesFmt: value => String(value),
+    ezApi: async () => ({ ok: true, json: async () => ({ count: 3, bytes: 300, orphan_count: 0,
+      current_versions: ['v6', 'listening-turn-v4', 'dialogue-turn-v4'], current_count: 3,
+      listening_model: 'eleven_v4', dialogue_model: '<eleven_v4>' }) }) });
+  vm.runInContext(slice('window.loadTtsCacheStats =', 'window.cleanupTtsOrphans ='), ctx);
+  await ctx.window.loadTtsCacheStats();
+  assert.match(box.innerHTML, /Model listening: eleven_v4/);
+  assert.match(box.innerHTML, /Model Percakapan: &lt;eleven_v4&gt;/);
+  assert.match(box.innerHTML, /v6, listening-turn-v4, dialogue-turn-v4/);
+  assert.equal(button.disabled, true);
 });
 
 test('an async profile load cannot reopen an obsolete question form', async () => {
