@@ -13,7 +13,7 @@ if(process.env.COMPANY_BROWSER_QA==='true')test('unified admin browser regressio
   const browser=await chromium.launch({executablePath:process.env.COMPANY_BROWSER_EXECUTABLE,headless:true});
   t.after(()=>browser.close());
   const origin='http://eznihongo.test';
-  const files=['admin.html','company.html','api-client.js','src/admin-workspace.js','src/company.js','src/company-productivity.js','src/company-workspace.html','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/tokens.css','styles/components.css','styles/admin-workspace.css','styles/company.css'];
+  const files=['admin.html','company.html','api-client.js','src/bunny-video.js','src/admin-workspace.js','src/company.js','src/company-productivity.js','src/company-workspace.html','src/company-desk.js','src/company-insights.js','src/company-insights-guide.js','styles/tokens.css','styles/components.css','styles/admin-workspace.css','styles/company.css'];
   const course={id:'11111111-1111-4111-8111-111111111111',slug:'n5',title:'Kursus Uji N5',level:'N5',sort_order:1,is_published:true,is_available:true,is_free:false};
   const lesson={id:'33333333-3333-4333-8333-333333333333',slug:'materi-1',title:'Materi asli siswa',type:'text',content:'Materi asli — jangan diubah',sort_order:1};
   const quiz={id:'44444444-4444-4444-8444-444444444444',slug:'kuis-1',title:'Kuis asli siswa',type:'quiz',sort_order:2,questions_per_attempt:10,cooldown_hours:0};

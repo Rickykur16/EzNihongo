@@ -25,6 +25,7 @@ const lesson = {
   title: 'Materi',
   type: 'text',
   content: '<p>先</p>',
+  video_url: 'https://old.invalid/embed',
   video_source_id: null,
   video_start_seconds: null,
   video_end_seconds: null,
@@ -76,6 +77,7 @@ mock.method(db, 'connect', async () => ({
       if (params[2] != null) lesson.title = params[2];
       if (params[3] != null) lesson.type = params[3];
       if (params[20]) lesson.content = params[4];
+      if (params[22]) lesson.video_url = params[5];
       return { rows: [{ ...lesson }] };
     }
     throw new Error('Unexpected transaction query: ' + sql);
@@ -122,4 +124,13 @@ test('admin can clear lesson notes while omitted content remains unchanged', asy
   assert.equal(partial.body.lesson.title, 'Materi diperbarui');
   assert.equal(partial.body.lesson.content, '<p>Catatan baru</p>');
   assert.equal(updates[1].params[20], false);
+
+  const clearedVideo = await update({ videoUrl: null });
+  assert.equal(clearedVideo.status, 200);
+  assert.equal(clearedVideo.body.lesson.video_url, null);
+  assert.match(updates[2].sql, /video_url = CASE WHEN \$23::boolean THEN \$6 ELSE video_url END/);
+  assert.equal(updates[2].params[22], true);
+  lesson.video_url = 'https://retained.invalid/embed';
+  assert.equal((await update({ title: 'Keep video' })).body.lesson.video_url, 'https://retained.invalid/embed');
+  assert.equal(updates[3].params[22], false);
 });

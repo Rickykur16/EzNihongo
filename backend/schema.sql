@@ -81,11 +81,11 @@ CREATE TABLE IF NOT EXISTS modules (
 CREATE INDEX IF NOT EXISTS idx_modules_course ON modules(course_id, sort_order);
 
 -- Satu sumber video dapat dipakai oleh beberapa pelajaran. Saat ini provider
--- yang didukung adalah YouTube; external_id menyimpan YouTube video ID, bukan
--- URL embed, supaya URL yang dipaste admin bisa dinormalisasi di API.
+-- yang didukung adalah Bunny Stream dan YouTube. external_id menyimpan
+-- library ID/video UUID untuk Bunny, atau video ID untuk YouTube.
 CREATE TABLE IF NOT EXISTS video_sources (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  provider TEXT NOT NULL DEFAULT 'youtube' CHECK (provider IN ('youtube')),
+  provider TEXT NOT NULL DEFAULT 'bunny' CHECK (provider IN ('youtube', 'bunny')),
   external_id TEXT NOT NULL,
   source_url TEXT NOT NULL,
   title TEXT,
@@ -105,8 +105,8 @@ CREATE TABLE IF NOT EXISTS lessons (
   title TEXT NOT NULL,
   type TEXT NOT NULL DEFAULT 'text' CHECK (type IN ('video','quiz','text','deck','kanji','grammar_task','kana')),
   content TEXT,
-  -- Legacy direct/Bunny iframe URL. New YouTube video lessons should use the
-  -- reusable video_source_id plus the segment timestamps below.
+  -- Direct iframe URL for existing content. Reusable Bunny/YouTube sources
+  -- use video_source_id and optional segment timestamps below.
   video_url TEXT,
   -- A source with lesson segments cannot be deleted accidentally; otherwise
   -- SET NULL would leave orphaned start/end timestamps behind.

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import bunnyVideo from '../../../src/bunny-video.js';
 import dialogueFurigana from '../../../src/dialogue-furigana.js';
 import { dialogueCatalog, keepStoredVoices, normalizeDialogScene, sceneTurnVoices,
   validateSceneVoices } from '../dialogue-scene.js';
@@ -577,7 +578,7 @@ function normalizeSegment(sourceIdValue, startValue, endValue) {
   const hasStart = startValue !== undefined && startValue !== null && startValue !== '';
   const hasEnd = endValue !== undefined && endValue !== null && endValue !== '';
   if (!sourceId) {
-    if (hasStart || hasEnd) return { error: 'Pilih sumber YouTube untuk memakai rentang waktu video.' };
+    if (hasStart || hasEnd) return { error: 'Pilih sumber video untuk memakai rentang waktu video.' };
     return { videoSourceId: null, videoStartSeconds: null, videoEndSeconds: null };
   }
 
@@ -586,7 +587,7 @@ function normalizeSegment(sourceIdValue, startValue, endValue) {
   if (!Number.isInteger(start) || start < 0) {
     return { error: 'Waktu mulai video harus berupa detik bulat positif atau nol.' };
   }
-  if (!Number.isInteger(end) || end <= start) {
+  if (hasEnd && (!Number.isInteger(end) || end <= start)) {
     return { error: 'Waktu selesai video harus lebih besar dari waktu mulai.' };
   }
   return { videoSourceId: sourceId, videoStartSeconds: start, videoEndSeconds: end };
@@ -596,7 +597,7 @@ function supportsVideoSegment(type) {
   return type === 'video' || type === 'kana';
 }
 
-// GET /api/admin/video-sources — source picker for reusable YouTube videos.
+// GET /api/admin/video-sources — source picker for reusable Bunny and YouTube videos.
 router.get('/video-sources', asyncHandler(async (_req, res) => {
   const sources = await query(
     `SELECT vs.id, vs.provider, vs.external_id, vs.source_url, vs.title,
@@ -610,23 +611,26 @@ router.get('/video-sources', asyncHandler(async (_req, res) => {
   res.json({ sources: sources.rows });
 }));
 
-// POST /api/admin/video-sources — creates (or reuses) a canonical YouTube
-// source. No YouTube Data API key is needed just to embed a known video.
+// POST /api/admin/video-sources — stores a reusable video identity.
+// Embedding a public Bunny/YouTube source does not require an API key.
 router.post('/video-sources', asyncHandler(async (req, res) => {
-  const parsed = parseYouTubeSource(req.body?.youtubeUrl);
+  const sourceUrl = req.body?.sourceUrl || req.body?.youtubeUrl;
+  const provider = req.body?.provider || (bunnyVideo.parse(sourceUrl) ? 'bunny' : 'youtube');
+  const parsed = provider === 'bunny' ? bunnyVideo.parse(sourceUrl)
+    : provider === 'youtube' ? parseYouTubeSource(sourceUrl) : null;
   if (!parsed) {
-    return res.status(400).json({ error: 'URL YouTube tidak valid. Tempel URL watch, share, embed, shorts, atau ID video.' });
+    return res.status(400).json({ error: 'URL video tidak valid. Untuk Bunny Stream, gunakan URL Embed/Play tanpa token sementara. Untuk YouTube, gunakan URL atau ID video.' });
   }
   const title = String(req.body?.title || '').trim().slice(0, 240) || null;
   const created = await query(
     `INSERT INTO video_sources (provider, external_id, source_url, title)
-     VALUES ('youtube', $1, $2, $3)
+     VALUES ($1, $2, $3, $4)
      ON CONFLICT (provider, external_id) DO UPDATE
        SET source_url = EXCLUDED.source_url,
            title = COALESCE(EXCLUDED.title, video_sources.title),
            updated_at = NOW()
      RETURNING *`,
-    [parsed.externalId, parsed.sourceUrl, title]
+    [provider, parsed.externalId, parsed.sourceUrl, title]
   );
   res.status(201).json({ source: created.rows[0], reused: created.rows[0].created_at !== created.rows[0].updated_at });
 }));
@@ -4301,8 +4305,8 @@ router.post('/lessons', asyncHandler(async (req, res) => {
   }
   const slugErr = badSlug(slug);
   if (slugErr) return res.status(400).json({ error: slugErr });
-  // Video and kana lessons can share one YouTube source while using different
-  // timeline ranges. Legacy video_url remains independent for Bunny content.
+  // Video and kana lessons share a Bunny/YouTube source with optional ranges.
+  // Direct video_url embeds remain supported for existing content.
   const acceptsVideoSegment = supportsVideoSegment(type);
   const segment = normalizeSegment(
     acceptsVideoSegment ? videoSourceId : null,
@@ -4364,6 +4368,7 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
   // lesson notes. Only an omitted property means "keep the saved content".
   const hasContent = Object.prototype.hasOwnProperty.call(req.body || {}, 'content');
   const hasPopup = Object.prototype.hasOwnProperty.call(req.body || {}, 'popupAfterLessonId');
+  const hasVideoUrl = Object.prototype.hasOwnProperty.call(req.body || {}, 'videoUrl');
   const hasVideoSource = Object.prototype.hasOwnProperty.call(req.body || {}, 'videoSourceId');
   const hasVideoStart = Object.prototype.hasOwnProperty.call(req.body || {}, 'videoStartSeconds');
   const hasVideoEnd = Object.prototype.hasOwnProperty.call(req.body || {}, 'videoEndSeconds');
@@ -4455,7 +4460,7 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
           title = COALESCE($3, title),
           type = COALESCE($4, type),
           content = CASE WHEN $21::boolean THEN $5 ELSE content END,
-          video_url = COALESCE($6, video_url),
+          video_url = CASE WHEN $23::boolean THEN $6 ELSE video_url END,
           video_source_id = CASE WHEN $10::boolean THEN $7 ELSE video_source_id END,
           video_start_seconds = CASE WHEN $11::boolean THEN $8 ELSE video_start_seconds END,
           video_end_seconds = CASE WHEN $12::boolean THEN $9 ELSE video_end_seconds END,
@@ -4480,6 +4485,7 @@ router.put('/lessons/:id', asyncHandler(async (req, res) => {
           hasPopup,
           hasContent,
           conversationSource,
+          hasVideoUrl,
         ]
       );
     if (result.rows.length === 0) return { notFound: true };

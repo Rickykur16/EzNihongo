@@ -273,6 +273,7 @@
 </div>
 
 <script src="api-client.js?v=20260926-assignment"></script>
+<script src="src/bunny-video.js?v=20261008-1"></script>
 <script src="assets/dialogue/catalog.js?v=1"></script>
 <script src="src/dialogue-furigana.js?v=1"></script>
 <script src="src/admin-dialogue-furigana.js?v=1"></script>
@@ -345,6 +346,7 @@ function formatDurationShort(minutes) {
 }
 
 function formatVideoTimestamp(seconds) {
+  if (seconds === null || seconds === undefined || seconds === '') return '';
   const n = Number(seconds);
   if (!Number.isFinite(n) || n < 0) return '';
   const total = Math.floor(n);
@@ -3132,7 +3134,7 @@ function supportsVideoSegment(type) {
   return type === 'video' || type === 'kana';
 }
 
-function youtubeSegmentFieldsHtml(l) {
+function videoSegmentFieldsHtml(l) {
   const selected = l.video_source_id || '';
   const selectedValue = selected || (l.id ? '' : '__new__');
   const sources = STATE.videoSources || [];
@@ -3140,25 +3142,28 @@ function youtubeSegmentFieldsHtml(l) {
   const sourceOptions = (savedSourceMissingFromPicker
     ? [{ id: selected, title: 'Sumber tersimpan (daftar belum termuat)', external_id: '' }]
     : []).concat(sources).map((source) => {
-    const label = source.title || `YouTube · ${source.external_id}`;
+    const providerLabel = source.provider === 'bunny' ? 'Bunny Stream' : source.provider === 'youtube' ? 'YouTube' : 'Video';
+    const label = `${providerLabel} · ${source.title || source.external_id}`;
     const used = Number(source.lesson_count) || 0;
     return `<option value="${source.id}" ${selectedValue === source.id ? 'selected' : ''}>${escapeHtml(label)}${used ? ` · ${used} pelajaran` : ''}</option>`;
   }).join('');
   const adding = selectedValue === '__new__';
   const hasSource = !!selectedValue;
   return `
-    <div class="field" data-youtube-segment-only style="display:${supportsVideoSegment(l.type) ? '' : 'none'};margin-top:12px;padding:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;">
-      <label>Sumber YouTube</label>
+    <div class="field" data-video-segment-only style="display:${supportsVideoSegment(l.type) ? '' : 'none'};margin-top:12px;padding:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;">
+      <label>Sumber video</label>
       <select name="videoSourceId" data-video-source-select>
-        <option value="" ${!selectedValue ? 'selected' : ''}>— gunakan embed legacy di bawah —</option>
+        <option value="" ${!selectedValue ? 'selected' : ''}>Gunakan URL video langsung di bawah</option>
         ${sourceOptions}
-        <option value="__new__" ${adding ? 'selected' : ''}>+ Tambah video YouTube baru</option>
+        <option value="__new__" ${adding ? 'selected' : ''}>+ Tambah video Bunny Stream</option>
       </select>
-      <div data-new-youtube-source style="display:${adding ? '' : 'none'};margin-top:10px;">
-        <label style="font-size:12px;">URL YouTube</label>
-        <input name="youtubeSourceUrl" value="" placeholder="https://youtu.be/... atau https://youtube.com/watch?v=..." autocomplete="off" />
+      <div data-new-video-source style="display:${adding ? '' : 'none'};margin-top:10px;">
+        <label style="font-size:12px;">Platform</label>
+        <select name="videoSourceProvider"><option value="bunny">Bunny Stream</option><option value="youtube">YouTube</option></select>
+        <label style="font-size:12px;margin-top:8px;">URL video</label>
+        <input name="videoSourceUrl" value="" placeholder="https://player.mediadelivery.net/embed/LIBRARY_ID/VIDEO_ID" autocomplete="off" />
         <label style="font-size:12px;margin-top:8px;">Nama sumber <span style="font-weight:400;color:#737373;">(opsional, agar mudah dipilih lagi)</span></label>
-        <input name="youtubeSourceTitle" value="" placeholder="Contoh: Bab 1 — video lengkap" maxlength="240" />
+        <input name="videoSourceTitle" value="" placeholder="Contoh: Bab 1 — video lengkap" maxlength="240" />
       </div>
       <div data-video-segment-range style="display:${hasSource ? '' : 'none'};margin-top:10px;">
         <div class="field-row">
@@ -3168,10 +3173,10 @@ function youtubeSegmentFieldsHtml(l) {
           </div>
           <div class="field">
             <label>Selesai</label>
-            <input name="videoEnd" value="${escapeHtml(formatVideoTimestamp(l.video_end_seconds))}" placeholder="contoh 04:30" inputmode="numeric" />
+            <input name="videoEnd" value="${escapeHtml(formatVideoTimestamp(l.video_end_seconds))}" placeholder="kosong = sampai akhir video" inputmode="numeric" />
           </div>
         </div>
-        <div style="font-size:11px;color:#9a3412;margin-top:4px;">Format <code>mm:ss</code> atau <code>hh:mm:ss</code>. Setiap pelajaran memakai rentang berbeda dari video sumber yang sama.</div>
+        <div style="font-size:11px;color:#9a3412;margin-top:4px;">Format <code>mm:ss</code> atau <code>hh:mm:ss</code>. Kosongkan Selesai untuk memutar sampai akhir. Sumber yang sama bisa dipakai pada beberapa pelajaran.</div>
       </div>
     </div>`;
 }
@@ -3270,9 +3275,9 @@ function lessonFormHtml(l, moduleId) {
         </div>
         <div data-preview-panel class="lesson-preview" style="display:none;"></div>
       </div>
-      ${youtubeSegmentFieldsHtml(l)}
+      ${videoSegmentFieldsHtml(l)}
       <div class="field-row">
-        <div class="field field-video" data-video-only style="display:${l.type === 'video' || l.type === 'kana' || l.type === 'deck' ? '' : 'none'};"><label>URL embed lain / Bunny Stream <span style="font-weight:400;color:#737373;">(opsional)</span></label><input name="videoUrl" value="${escapeHtml(l.video_url || '')}" placeholder="Dipakai untuk video lama yang bukan YouTube" /></div>
+        <div class="field field-video" data-video-only style="display:${l.type === 'video' || l.type === 'kana' || l.type === 'deck' ? '' : 'none'};"><label>URL video langsung <span style="font-weight:400;color:#737373;">(opsional)</span></label><input name="videoUrl" value="${escapeHtml(l.video_url || '')}" placeholder="URL Embed/Play Bunny Stream" /></div>
         <div class="field"><label>Durasi (menit)</label><input type="number" name="durationMinutes" value="${l.duration_minutes || ''}" /></div>
       </div>
       <div class="field"><label>Urutan</label><input type="number" name="sortOrder" value="${l.sort_order}" /></div>
@@ -3309,7 +3314,7 @@ function lessonFormHtml(l, moduleId) {
 function wireLessonTypeVisibility(form) {
   const typeSel = form.querySelector('select[name="type"]');
   const videoField = form.querySelector('.field-video');
-  const youtubeSegmentField = form.querySelector('[data-youtube-segment-only]');
+  const videoSegmentField = form.querySelector('[data-video-segment-only]');
   const deckHint = form.querySelector('.field-deck-hint');
   const kanjiHint = form.querySelector('[data-kanji-only]');
   const kanaHint = form.querySelector('[data-kana-only]');
@@ -3321,7 +3326,7 @@ function wireLessonTypeVisibility(form) {
     // Video URL relevan untuk tipe video, kana (video di atas chart kana),
     // dan deck (video opsional di atas grid kosakata).
     if (videoField) videoField.style.display = (typeSel.value === 'video' || typeSel.value === 'kana' || typeSel.value === 'deck') ? '' : 'none';
-    if (youtubeSegmentField) youtubeSegmentField.style.display = supportsVideoSegment(typeSel.value) ? '' : 'none';
+    if (videoSegmentField) videoSegmentField.style.display = supportsVideoSegment(typeSel.value) ? '' : 'none';
     if (deckHint) deckHint.style.display = typeSel.value === 'deck' ? '' : 'none';
     if (kanjiHint) kanjiHint.style.display = typeSel.value === 'kanji' ? '' : 'none';
     if (kanaHint) kanaHint.style.display = typeSel.value === 'kana' ? '' : 'none';
@@ -3331,21 +3336,32 @@ function wireLessonTypeVisibility(form) {
   };
   apply();
   typeSel.addEventListener('change', apply);
-  wireYouTubeSegmentEditor(form);
+  wireVideoSegmentEditor(form);
 }
 
-function wireYouTubeSegmentEditor(form) {
+function wireVideoSegmentEditor(form) {
   const sourceSelect = form.querySelector('[data-video-source-select]');
   if (!sourceSelect) return;
-  const newSource = form.querySelector('[data-new-youtube-source]');
+  const newSource = form.querySelector('[data-new-video-source]');
   const range = form.querySelector('[data-video-segment-range]');
+  const directField = form.querySelector('[data-video-only]');
+  const provider = form.querySelector('[name="videoSourceProvider"]');
+  const sourceUrl = form.querySelector('[name="videoSourceUrl"]');
   const apply = () => {
-    const value = sourceSelect.value;
+    const type = form.querySelector('[name="type"]')?.value;
+    const value = supportsVideoSegment(type) ? sourceSelect.value : '';
     if (newSource) newSource.style.display = value === '__new__' ? '' : 'none';
     if (range) range.style.display = value ? '' : 'none';
+    if (directField) directField.style.display = !value && ['video', 'kana', 'deck'].includes(type) ? '' : 'none';
+    if (sourceUrl) sourceUrl.placeholder = provider?.value === 'youtube' ? 'https://youtu.be/...' : 'https://player.mediadelivery.net/embed/LIBRARY_ID/VIDEO_ID';
   };
   apply();
   sourceSelect.addEventListener('change', apply);
+  if (provider) provider.addEventListener('change', apply);
+  const typeSelect = form.querySelector('[name="type"]');
+  if (typeSelect) typeSelect.addEventListener('change', () => {
+    apply();
+  });
 }
 // WYSIWYG rich-text editor. Replaces a textarea with a contenteditable div
 // + hidden input (so FormData still carries the HTML value under the same name).
@@ -3593,22 +3609,22 @@ async function submitLesson(e, id, moduleId) {
   let videoEndSeconds = null;
   if (selectedVideoSource) {
     videoStartSeconds = parseVideoTimestamp(fd.get('videoStart'));
-    videoEndSeconds = parseVideoTimestamp(fd.get('videoEnd'));
+    videoEndSeconds = String(fd.get('videoEnd') || '').trim() ? parseVideoTimestamp(fd.get('videoEnd')) : null;
     if (!Number.isInteger(videoStartSeconds) || videoStartSeconds < 0) {
       notify('Waktu mulai video tidak valid. Gunakan format mm:ss atau hh:mm:ss.', true);
       return;
     }
-    if (!Number.isInteger(videoEndSeconds) || videoEndSeconds <= videoStartSeconds) {
+    if (String(fd.get('videoEnd') || '').trim() && (!Number.isInteger(videoEndSeconds) || videoEndSeconds <= videoStartSeconds)) {
       notify('Waktu selesai harus lebih besar dari waktu mulai.', true);
       return;
     }
-    if (wantsNewVideoSource && !(fd.get('youtubeSourceUrl') || '').trim()) {
-      notify('Tempel URL YouTube untuk sumber video baru.', true);
+    if (wantsNewVideoSource && !(fd.get('videoSourceUrl') || '').trim()) {
+      notify('Tempel URL video untuk sumber baru.', true);
       return;
     }
   }
   const manualDuration = Number(fd.get('durationMinutes')) || null;
-  const segmentDuration = selectedVideoSource
+  const segmentDuration = selectedVideoSource && videoEndSeconds != null
     ? Math.max(1, Math.ceil((videoEndSeconds - videoStartSeconds) / 60))
     : null;
   const body = {
@@ -3616,9 +3632,8 @@ async function submitLesson(e, id, moduleId) {
     title: fd.get('title').trim(),
     type,
     content: fd.get('content').trim() || null,
-    // Legacy/direct embeds are kept for Bunny and existing non-YouTube
-    // lessons; new YouTube playback uses videoSourceId below.
-    videoUrl: (type === 'video' || type === 'kana' || type === 'deck') ? ((fd.get('videoUrl') || '').trim() || null) : null,
+    // Direct URLs are normalized; reusable sources take precedence.
+    videoUrl: !selectedVideoSource && (type === 'video' || type === 'kana' || type === 'deck') ? (EzBunnyVideo.normalizeUrl(fd.get('videoUrl')) || null) : null,
     videoSourceId: selectedVideoSource && !wantsNewVideoSource ? selectedVideoSource : null,
     videoStartSeconds,
     videoEndSeconds,
@@ -3653,11 +3668,12 @@ async function submitLesson(e, id, moduleId) {
       const d = await api('/admin/video-sources', {
         method: 'POST',
         body: JSON.stringify({
-          youtubeUrl: (fd.get('youtubeSourceUrl') || '').trim(),
-          title: (fd.get('youtubeSourceTitle') || '').trim() || null,
+          provider: fd.get('videoSourceProvider') || 'bunny',
+          sourceUrl: (fd.get('videoSourceUrl') || '').trim(),
+          title: (fd.get('videoSourceTitle') || '').trim() || null,
         }),
       });
-      if (!d.source?.id) throw new Error('Sumber YouTube tidak dapat dibuat');
+      if (!d.source?.id) throw new Error('Sumber video tidak dapat dibuat');
       body.videoSourceId = d.source.id;
       const at = (STATE.videoSources || []).findIndex((s) => s.id === d.source.id);
       if (at >= 0) STATE.videoSources[at] = { ...STATE.videoSources[at], ...d.source };

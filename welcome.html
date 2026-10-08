@@ -4815,6 +4815,8 @@ function getUserName(user = session) {
 <script src="src/dialogue-scene.js?v=4"></script>
 <script src="src/dialogue-questions.js?v=20261001-1"></script>
 <script src="learning-state.js?v=20260911-1"></script>
+<script src="src/bunny-video.js?v=20261008-1"></script>
+<script src="src/bunny-player.js?v=20261008-1"></script>
 <script src="final-exam.js?v=20261003-4"></script>
 <script>
 // ═══════════════════════════════════════════════
@@ -9735,10 +9737,10 @@ function renderDeckLesson(course, module, lesson, nav) {
 
   // Video opsional di atas grid (pola sama dgn kana, welcome.html ~8394).
   // Deck tanpa video_url TIDAK menampilkan apa-apa (tanpa placeholder).
-  const deckVideoUrl = (lesson.videoUrl || '').trim();
+  const deckVideoUrl = window.EzBunnyVideo.normalizeUrl(lesson.videoUrl);
   const deckVideoBlock = deckVideoUrl
     ? `<div class="deck-video" style="margin:16px 0;"><iframe src="${escapeHtml(deckVideoUrl)}" loading="lazy" title="Video pelajaran"
-         allow="accelerometer;gyroscope;autoplay;encrypted-media;picture-in-picture" allowfullscreen
+         referrerpolicy="strict-origin-when-cross-origin" allow="autoplay;encrypted-media;picture-in-picture;fullscreen" allowfullscreen
          style="border:0;width:100%;aspect-ratio:16/9;border-radius:14px;background:#000;"></iframe></div>`
     : '';
 
@@ -13565,6 +13567,7 @@ function formatSegmentTimestamp(seconds) {
 
 function mountYoutubeSegmentPlayer({ elementId, videoId, startSeconds, endSeconds }) {
   destroyYoutubeSegmentPlayer();
+  window.EzBunnyPlayer?.destroy();
   const mount = document.getElementById(elementId);
   if (!mount) return;
 
@@ -13597,7 +13600,7 @@ function mountYoutubeSegmentPlayer({ elementId, videoId, startSeconds, endSecond
       playsinline: 1,
       rel: 0,
       start: startSeconds,
-      end: endSeconds,
+      ...(endSeconds === null ? {} : { end: endSeconds }),
     };
     // The IFrame API recommends origin as an extra control-channel check.
     if (location.origin && location.origin !== 'null') playerVars.origin = location.origin;
@@ -13608,7 +13611,7 @@ function mountYoutubeSegmentPlayer({ elementId, videoId, startSeconds, endSecond
       events: {
         onReady: (event) => {
           // Cue instead of autoplay: browser autoplay policies stay respected.
-          event.target.cueVideoById({ videoId, startSeconds, endSeconds });
+          event.target.cueVideoById({ videoId, startSeconds, ...(endSeconds === null ? {} : { endSeconds }) });
         },
         onStateChange: (event) => {
           if (event.data === 1) startEndGuard(); // YT.PlayerState.PLAYING
@@ -13632,8 +13635,18 @@ function renderVideoLessonPlayer(lesson) {
   const source = lesson.videoSource;
   const videoId = source?.provider === 'youtube' ? String(source.externalId || '') : '';
   const startSeconds = Number(lesson.videoStartSeconds);
-  const endSeconds = Number(lesson.videoEndSeconds);
-  if (/^[A-Za-z0-9_-]{6,64}$/.test(videoId) && Number.isInteger(startSeconds) && Number.isInteger(endSeconds) && endSeconds > startSeconds) {
+  const endSeconds = lesson.videoEndSeconds == null ? null : Number(lesson.videoEndSeconds);
+  if (source?.provider === 'bunny' && window.EzBunnyVideo.embedUrl(source.externalId) &&
+      Number.isInteger(startSeconds) && startSeconds >= 0 &&
+      (endSeconds === null || (Number.isInteger(endSeconds) && endSeconds > startSeconds))) {
+    const elementId = `bunny-segment-${String(lesson.apiId || lesson.id).replace(/[^A-Za-z0-9_-]/g, '')}`;
+    setTimeout(() => window.EzBunnyPlayer.mount({ elementId, externalId: source.externalId, startSeconds, endSeconds }), 0);
+    return `<div class="youtube-segment-player"><div class="youtube-segment-mount" id="${escapeHtml(elementId)}"></div></div>
+      <div class="youtube-segment-caption"><span class="youtube-segment-range">${formatSegmentTimestamp(startSeconds)} – ${endSeconds === null ? 'Akhir video' : formatSegmentTimestamp(endSeconds)}</span>
+      <span class="youtube-segment-source">${escapeHtml(source.title || 'Video pelajaran')}</span>
+      <span class="youtube-segment-status" id="${escapeHtml(elementId)}-status" aria-live="polite">Memuat video…</span></div>`;
+  }
+  if (/^[A-Za-z0-9_-]{6,64}$/.test(videoId) && Number.isInteger(startSeconds) && (endSeconds === null || (Number.isInteger(endSeconds) && endSeconds > startSeconds))) {
     const elementId = `youtube-segment-${String(lesson.apiId || lesson.id).replace(/[^A-Za-z0-9_-]/g, '')}`;
     const sourceTitle = source.title || 'Video YouTube';
     setTimeout(() => mountYoutubeSegmentPlayer({ elementId, videoId, startSeconds, endSeconds }), 0);
@@ -13642,16 +13655,16 @@ function renderVideoLessonPlayer(lesson) {
         <div class="youtube-segment-mount" id="${escapeHtml(elementId)}"></div>
       </div>
       <div class="youtube-segment-caption">
-        <span class="youtube-segment-range">${formatSegmentTimestamp(startSeconds)} – ${formatSegmentTimestamp(endSeconds)}</span>
+        <span class="youtube-segment-range">${formatSegmentTimestamp(startSeconds)} – ${endSeconds === null ? 'Akhir video' : formatSegmentTimestamp(endSeconds)}</span>
         <span class="youtube-segment-source">${escapeHtml(sourceTitle)}</span>
         <span class="youtube-segment-status" id="${escapeHtml(elementId)}-status" aria-live="polite"></span>
       </div>`;
   }
 
   // Legacy direct/Bunny embeds remain available while old courses migrate.
-  const legacyVideoUrl = String(lesson.videoUrl || '').trim();
+  const legacyVideoUrl = window.EzBunnyVideo.normalizeUrl(lesson.videoUrl);
   if (legacyVideoUrl) {
-    return `<div class="youtube-segment-player"><iframe src="${escapeHtml(legacyVideoUrl)}" loading="lazy" title="Video pelajaran" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
+    return `<div class="youtube-segment-player"><iframe src="${escapeHtml(legacyVideoUrl)}" loading="lazy" title="Video pelajaran" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
   }
   const placeholderLabel = lesson.type === 'kana' ? 'KANA' : 'VIDEO';
   const durationLabel = lesson.duration ? ` · ${escapeHtml(String(lesson.duration).toUpperCase())}` : '';
@@ -13668,6 +13681,7 @@ function renderLesson() {
   window.__quizNavigationEpoch = (window.__quizNavigationEpoch || 0) + 1;
   gkStopAll(); // stop karaoke dialog dari lesson sebelumnya
   destroyYoutubeSegmentPlayer();
+  window.EzBunnyPlayer?.destroy();
   const course = COURSE_CONTENT[currentState.course];
   const module = course.modules.find(m => m.id === currentState.moduleId);
   if (!module) return;
@@ -13801,6 +13815,7 @@ window.openChapterWorksheet = () => {
   gkStopAll();
   _stopAllTts();
   destroyYoutubeSegmentPlayer();
+  window.EzBunnyPlayer?.destroy();
   const focus = prepareMobileSidebarContentFocus();
   closeSidebar();
   const tasks = module.lessons.filter(l => l.type === 'grammar_task').flatMap(l => l.grammarTask || []);
