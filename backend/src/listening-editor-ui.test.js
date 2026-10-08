@@ -223,12 +223,14 @@ test('per-turn and whole-script previews send the matching explicit scene', asyn
   const button = { textContent: 'Tes giliran ini', disabled: false };
   await h.ctx.admDialogRowTest(0, button);
   assert.equal(h.requests[0].path, '/admin/tts/preview');
-  assert.deepEqual(h.requests[0].parsedBody, { text: 'A: はじめまして。', dialogScene: expected });
+  assert.deepEqual(h.requests[0].parsedBody, { text: 'A: はじめまして。', dialogScene: expected, listening: true });
   assert.equal(button.disabled, false);
   assert.equal(button.textContent, 'Tes giliran ini');
   h.ctx.admDialogSave();
   await h.ctx.testTtsAudio();
-  assert.deepEqual(h.requests[1].parsedBody, { text: h.scriptField.value, dialogScene: expected });
+  assert.deepEqual(h.requests[1].parsedBody, { text: h.scriptField.value, dialogScene: expected, listening: true });
+  assert.equal(h.elements.get('ttsTestAudio').playbackRate, 0.9);
+  assert.equal(h.elements.get('ttsTestAudio').preservesPitch, true);
   assert.match(h.elements.get('ttsTestStatus').textContent, /^OK/);
 });
 
@@ -318,7 +320,9 @@ test('generated draft cancel preserves the card; apply/reopen and audio preview 
   assert.deepEqual(plain(h.ctx.__dialogScene), expectedScene);
   h.ctx.closeModal();
   await h.ctx.listenGenTestAudio(0);
-  assert.deepEqual(h.requests[0].parsedBody, { text: card.script.value, dialogScene: expectedScene });
+  assert.deepEqual(h.requests[0].parsedBody, { text: card.script.value, dialogScene: expectedScene, listening: true });
+  assert.equal(h.elements.get('lg_player_0').playbackRate, 0.9);
+  assert.equal(h.elements.get('lg_player_0').preservesPitch, true);
 });
 
 test('generated save blocks unconfigured selected cards then sends the edited script and exact audioScene', async () => {

@@ -3742,6 +3742,15 @@
     border-color: transparent;
     box-shadow: 0 6px 14px rgba(200, 16, 46, .35);
   }
+  .qlp-speed {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-bottom: 12px; color: #4b5563; font-size: 12px;
+  }
+  .qlp-speed-select {
+    min-height: 36px; padding: 6px 10px; border: 1px solid #d1d5db;
+    border-radius: 8px; background: #fff; color: #1a1a1a; font: inherit;
+  }
+  .qlp-speed-select:focus-visible { outline: 2px solid var(--brand-red); outline-offset: 2px; }
   .qlp-bar-wrap {
     display: flex; align-items: center; gap: 12px;
     margin-bottom: 8px;
@@ -6085,6 +6094,12 @@ function renderListeningPlayer(sectionItems, sectionNumber) {
         <button type="button" class="qlp-btn qlp-skip" aria-label="Maju 10 detik" onclick="window.listeningSkip('${sectionKey}', 10)">+10s</button>
         <button type="button" class="qlp-btn qlp-step qlp-next" aria-label="Dialog berikutnya" onclick="window.listeningJump('${sectionKey}', 1, true)">⏭</button>
       </div>
+      <div class="qlp-speed">
+        <label for="qlp-speed-${sectionKey}">Kecepatan audio</label>
+        <select id="qlp-speed-${sectionKey}" class="qlp-speed-select" onchange="window.listeningSetSpeed(this.value)">
+          ${[0.75, 0.9, 1].map(rate => `<option value="${rate}"${rate === getListeningSpeed() ? ' selected' : ''}>${String(rate).replace('.', ',')}×</option>`).join('')}
+        </select>
+      </div>
       <div class="qlp-bar-wrap">
         <input type="range" class="qlp-bar" min="0" max="100" value="0" step="0.1" aria-label="Posisi audio"
           oninput="window.listeningSeek('${sectionKey}', this.value)" />
@@ -6138,6 +6153,7 @@ function initListeningPlayers() {
     if (!tracks.length) return;
     const audio = new Audio();
     audio.preload = 'none';
+    applyListeningSpeed(audio, getListeningSpeed());
     const state = { el, audio, tracks, currentIdx: 0, isPlaying: false };
     window.__listeningPlayers[key] = state;
     audio.addEventListener('timeupdate', () => updateListeningUI(key));
@@ -6180,6 +6196,43 @@ function initListeningPlayers() {
   });
 }
 
+// Listening pace is separate from the grammar dialogue preference. Keep an
+// in-memory copy too, so choosing a speed works when storage is unavailable.
+function getListeningSpeed() {
+  if ([0.75, 0.9, 1].includes(window.__listeningSpeed)) return window.__listeningSpeed;
+  let saved;
+  try { saved = Number(localStorage.getItem('ez_listening_speed')); } catch {}
+  window.__listeningSpeed = [0.75, 0.9, 1].includes(saved) ? saved : 0.9;
+  return window.__listeningSpeed;
+}
+
+function applyListeningSpeed(audio, rate) {
+  audio.defaultPlaybackRate = rate;
+  audio.playbackRate = rate;
+  audio.preservesPitch = true;
+  if ('webkitPreservesPitch' in audio) audio.webkitPreservesPitch = true;
+  if ('mozPreservesPitch' in audio) audio.mozPreservesPitch = true;
+}
+
+window.listeningSetSpeed = (value) => {
+  const rate = Number(value);
+  if (![0.75, 0.9, 1].includes(rate)) return;
+  window.__listeningSpeed = rate;
+  try { localStorage.setItem('ez_listening_speed', String(rate)); } catch {}
+  for (const [key, player] of Object.entries(window.__listeningPlayers)) {
+    applyListeningSpeed(player.audio, rate);
+    updateListeningUI(key);
+  }
+};
+
+function clearListeningCountdown(player) {
+  if (player._jedaTimer == null) return;
+  clearTimeout(player._jedaTimer);
+  player._jedaTimer = null;
+  const message = player.el.querySelector('.qlp-jeda');
+  if (message) message.textContent = '';
+}
+
 async function loadListeningTrack(key, idx, autoplay) {
   const s = window.__listeningPlayers[key];
   if (!s) return;
@@ -6208,6 +6261,7 @@ async function loadListeningTrack(key, idx, autoplay) {
       if (s.destroyed || request !== s.request) return;
       s.objectUrl = URL.createObjectURL(blob);
       s.audio.src = s.objectUrl;
+      applyListeningSpeed(s.audio, getListeningSpeed());
       if (message) message.textContent = '';
       await s.audio.play();
     } catch {
@@ -6221,6 +6275,7 @@ async function loadListeningTrack(key, idx, autoplay) {
     return;
   }
   s.audio.src = ttsUrl(t.script);
+  applyListeningSpeed(s.audio, getListeningSpeed());
   updateListeningUI(key);
   if (autoplay) {
     const p = s.audio.play();
@@ -6234,6 +6289,8 @@ function updateListeningUI(key) {
   const { el, audio, tracks, currentIdx, isPlaying } = s;
   const playBtn = el.querySelector('.qlp-play');
   if (playBtn) { playBtn.textContent = isPlaying ? '❚❚' : '▶'; playBtn.disabled = !!s.loading; }
+  const speedSelect = el.querySelector('.qlp-speed-select');
+  if (speedSelect) speedSelect.value = String(getListeningSpeed());
   const curNum = el.querySelector('.qlp-current-num');
   if (curNum) curNum.textContent = currentIdx + 1;
   const cur = el.querySelector('.qlp-cur-time');
@@ -6280,6 +6337,8 @@ function stopOtherFinalListeningPlayers(key) {
 window.listeningTogglePlay = (key) => {
   const s = window.__listeningPlayers[key];
   if (!s || s.loading) return;
+  // Replaying or pausing must cancel the previous track's auto-advance.
+  clearListeningCountdown(s);
   if (s.audio.paused) {
     stopOtherFinalListeningPlayers(key);
     if (s.tracks[s.currentIdx]?.questionId && !s.audio.getAttribute('src')) {
@@ -6296,6 +6355,7 @@ window.listeningTogglePlay = (key) => {
 window.listeningSkip = (key, delta) => {
   const s = window.__listeningPlayers[key];
   if (!s) return;
+  clearListeningCountdown(s);
   const dur = s.audio.duration || 0;
   if (!dur) return;
   s.audio.currentTime = Math.max(0, Math.min(dur, s.audio.currentTime + delta));
@@ -6304,6 +6364,7 @@ window.listeningSkip = (key, delta) => {
 window.listeningSeek = (key, pct) => {
   const s = window.__listeningPlayers[key];
   if (!s) return;
+  clearListeningCountdown(s);
   const dur = s.audio.duration || 0;
   if (!dur) return;
   s.audio.currentTime = (Number(pct) / 100) * dur;
@@ -6314,7 +6375,7 @@ window.listeningJump = (key, idx, relative) => {
   const s = window.__listeningPlayers[key];
   if (!s) return;
   // Skip jeda countdown kalau user navigasi manual / auto-advance trigger.
-  if (s._jedaTimer) { clearTimeout(s._jedaTimer); s._jedaTimer = null; }
+  clearListeningCountdown(s);
   const jedaEl = s.el.querySelector('.qlp-jeda');
   if (jedaEl) jedaEl.textContent = '';
   const target = relative ? s.currentIdx + idx : Number(idx);

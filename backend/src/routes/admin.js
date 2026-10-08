@@ -40,6 +40,8 @@ import {
   fetchElevenVoices,
   elevenLabsEnabled,
   TTS_SETTINGS_VERSION,
+  TTS_LISTENING_SETTINGS_VERSION,
+  TTS_LISTENING_MODEL,
   renderTtsAudio,
   loadSpeakerRegistry,
   voiceForSpeaker,
@@ -6022,11 +6024,15 @@ router.post('/lessons/:lessonId/import-notion-kanji-bab', notionImportLimiter, a
 // Skip whitelist check (admin bisa test text apapun, bukan cuma yang
 // udah saved di DB).
 
-// POST /api/admin/tts/preview — body { text }, return MP3 stream.
+// POST /api/admin/tts/preview — body { text, listening?, dialogScene? }.
+// Assessment previews use the same WAV, voices and gaps as student playback.
 router.post('/tts/preview', asyncHandler(async (req, res) => {
   const text = String((req.body || {}).text || '').trim();
   if (!text) return res.status(400).json({ error: 'text required' });
   if (text.length > 2000) return res.status(400).json({ error: 'text too long (max 2000 char)' });
+  if (req.body.listening !== undefined && typeof req.body.listening !== 'boolean') {
+    return res.status(400).json({ error: 'listening must be a boolean' });
+  }
 
   let scene;
   try {
@@ -6038,7 +6044,7 @@ router.post('/tts/preview', asyncHandler(async (req, res) => {
     }
   } catch (err) { return res.status(400).json({error: err.message}); }
   // Preview and student playback share voices, pauses, validation and cache.
-  return renderTtsAudio(text, res, { privateResponse: true, dialogScene: scene });
+  return renderTtsAudio(text, res, { privateResponse: true, dialogScene: scene, listening: req.body.listening === true });
 }));
 
 // POST /api/admin/tts/dialog-turn — body { dialog, turnIndex, speaker,
@@ -6264,21 +6270,23 @@ router.delete('/tts/cache', asyncHandler(async (req, res) => {
 }));
 
 // GET /api/admin/tts/cache/stats — count + total size + breakdown
-// current version vs orphan (version mismatch / NULL).
+// Both generic and listening profiles are active; neither is an orphan.
+const activeTtsVersions = [TTS_SETTINGS_VERSION, TTS_LISTENING_SETTINGS_VERSION];
 router.get('/tts/cache/stats', asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT COUNT(*)::int AS count,
             COALESCE(SUM(byte_size), 0)::bigint AS bytes,
             MAX(created_at) AS newest,
             MIN(created_at) AS oldest,
-            COUNT(*) FILTER (WHERE settings_version = $1)::int AS current_count,
-            COALESCE(SUM(byte_size) FILTER (WHERE settings_version = $1), 0)::bigint AS current_bytes,
-            COUNT(*) FILTER (WHERE settings_version IS DISTINCT FROM $1)::int AS orphan_count,
-            COALESCE(SUM(byte_size) FILTER (WHERE settings_version IS DISTINCT FROM $1), 0)::bigint AS orphan_bytes
+            COUNT(*) FILTER (WHERE settings_version = ANY($1::text[]))::int AS current_count,
+            COALESCE(SUM(byte_size) FILTER (WHERE settings_version = ANY($1::text[])), 0)::bigint AS current_bytes,
+            COUNT(*) FILTER (WHERE NOT COALESCE(settings_version = ANY($1::text[]), false))::int AS orphan_count,
+            COALESCE(SUM(byte_size) FILTER (WHERE NOT COALESCE(settings_version = ANY($1::text[]), false)), 0)::bigint AS orphan_bytes
        FROM tts_cache`,
-    [TTS_SETTINGS_VERSION]
+    [activeTtsVersions]
   );
-  res.json({ ...r.rows[0], current_version: TTS_SETTINGS_VERSION });
+  res.json({ ...r.rows[0], current_version: TTS_SETTINGS_VERSION, current_versions: activeTtsVersions,
+    listening_model: TTS_LISTENING_MODEL });
 }));
 
 // DELETE /api/admin/tts/cache/all — nuke all cache. Cost regenerate.
@@ -6295,10 +6303,10 @@ router.get('/tts/cache/orphans', asyncHandler(async (req, res) => {
     `SELECT COUNT(*)::int AS count,
             COALESCE(SUM(byte_size), 0)::bigint AS bytes
        FROM tts_cache
-      WHERE settings_version IS DISTINCT FROM $1`,
-    [TTS_SETTINGS_VERSION]
+      WHERE NOT COALESCE(settings_version = ANY($1::text[]), false)`,
+    [activeTtsVersions]
   );
-  res.json({ ...r.rows[0], current_version: TTS_SETTINGS_VERSION });
+  res.json({ ...r.rows[0], current_version: TTS_SETTINGS_VERSION, current_versions: activeTtsVersions });
 }));
 
 // DELETE /api/admin/tts/cache/orphans — execute cleanup. Current version
@@ -6307,10 +6315,10 @@ router.get('/tts/cache/orphans', asyncHandler(async (req, res) => {
 router.delete('/tts/cache/orphans', asyncHandler(async (req, res) => {
   const r = await query(
     `DELETE FROM tts_cache
-      WHERE settings_version IS DISTINCT FROM $1`,
-    [TTS_SETTINGS_VERSION]
+      WHERE NOT COALESCE(settings_version = ANY($1::text[]), false)`,
+    [activeTtsVersions]
   );
-  res.json({ ok: true, deleted: r.rowCount, current_version: TTS_SETTINGS_VERSION });
+  res.json({ ok: true, deleted: r.rowCount, current_version: TTS_SETTINGS_VERSION, current_versions: activeTtsVersions });
 }));
 
 // ===== TTS TAG LIBRARY (shared antar admin device) =====

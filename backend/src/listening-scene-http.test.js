@@ -5,6 +5,10 @@ import { readFile } from 'node:fs/promises';
 import { once } from 'node:events';
 import express from 'express';
 import pg from 'pg';
+import { assembleListeningWav } from './listening-audio.js';
+
+const pcm = voice => Buffer.alloc(32, voice === 'dewi-voice' ? 11 : 22);
+const expectedWav = voices => assembleListeningWav(voices.map(pcm), voices.map((_, i) => i === voices.length - 1 ? 0 : 1200));
 
 const sceneFixture = () => ({ schemaVersion: 1, enabled: false, backgroundKey: 'classroom', participants: [
   { characterKey: 'anna-wijaya', position: 'left', speaker: 'A', displayName: 'Dewi', voiceId: 'dewi-voice', voiceName: 'Dewi', profileVersion: 1, custom: true },
@@ -59,6 +63,7 @@ test('listening scenes: admin round trip, private snapshots, legacy authorizatio
     if (!u.startsWith('https://api.elevenlabs.io/')) return realFetch(resource, options);
     upstream.push({ url: u, body: options?.body && JSON.parse(options.body) });
     if (u.endsWith('/voices')) return new Response(JSON.stringify({ voices: available.map(voice_id => ({ voice_id, name: voice_id })) }));
+    if (u.includes('output_format=pcm_24000')) return new Response(pcm(u.split('/text-to-speech/')[1].split('?')[0]), { headers: { 'Content-Type': 'audio/pcm' } });
     return new Response(Buffer.from('audio:' + u.split('/text-to-speech/')[1].split('?')[0]), { headers: { 'Content-Type': 'audio/mpeg' } });
   });
   const app = express(); app.set('trust proxy', 1); app.use(express.json()); app.use('/api/admin', admin); app.use('/api', tts, progress);
@@ -71,7 +76,8 @@ test('listening scenes: admin round trip, private snapshots, legacy authorizatio
   let requestCount = 1;
   async function request(path, body, method = 'POST', token = userToken) {
     const res = await fetch(base + path, { method, headers: { ...(token && { Authorization: `Bearer ${token}` }), 'Content-Type': 'application/json', 'X-Forwarded-For': `192.0.2.${requestCount++}` }, ...(method !== 'GET' && { body: JSON.stringify(body || {}) }) });
-    return { status: res.status, cacheControl: res.headers.get('Cache-Control'), body: res.headers.get('Content-Type')?.includes('application/json') ? await res.json() : await res.text() };
+    return { status: res.status, cacheControl: res.headers.get('Cache-Control'), body: res.headers.get('Content-Type')?.includes('application/json') ? await res.json()
+      : res.headers.get('Content-Type')?.includes('audio/wav') ? Buffer.from(await res.arrayBuffer()) : await res.text() };
   }
   const script = 'A: わたしはデウィです。\nB: わたしはサリです。';
   const input = () => ({ lessonId: lesson, question: 'Siapa yang menjawab?', questionCategory: 'listening', audioScript: script, audioScene: sceneFixture(), options: [{ text: 'Sari', isCorrect: true }, { text: 'Dewi' }] });
@@ -108,7 +114,7 @@ test('listening scenes: admin round trip, private snapshots, legacy authorizatio
     upstream = [];
     const played = await request(audioPath(), null, 'GET');
     assert.equal(played.status, 200); assert.equal(played.cacheControl, 'private, no-store');
-    assert.equal(played.body, 'audio:dewi-voiceaudio:sari-voice');
+    assert.deepEqual(played.body, expectedWav(['dewi-voice', 'sari-voice']));
     assert.equal(upstream.filter(u => u.url.includes('/text-to-speech/')).length, 2);
     const count = upstream.length; assert.equal((await request(audioPath(), null, 'GET')).status, 200); assert.equal(upstream.length, count);
     await control.query(`UPDATE user_enrollments SET status='revoked' WHERE user_id=$1`, [user]);
@@ -123,13 +129,30 @@ test('listening scenes: admin round trip, private snapshots, legacy authorizatio
     const swapped = sceneFixture(); swapped.participants[0].voiceId = 'sari-voice'; swapped.participants[1].voiceId = 'dewi-voice';
     await control.query('UPDATE quiz_questions SET audio_scene=$2 WHERE id=$1', [questionId, JSON.stringify(swapped)]);
     await control.query(`INSERT INTO dialogue_speakers(name,voice_id,voice_name) VALUES ('B','wrong-registry-voice','Wrong')`);
-    assert.equal((await request(audioPath(token), null, 'GET')).body, 'audio:dewi-voiceaudio:sari-voice');
-    assert.equal((await request(audioPath(), null, 'GET')).body, 'audio:sari-voiceaudio:dewi-voice');
+    assert.deepEqual((await request(audioPath(token), null, 'GET')).body, expectedWav(['dewi-voice', 'sari-voice']));
+    assert.deepEqual((await request(audioPath(), null, 'GET')).body, expectedWav(['sari-voice', 'dewi-voice']));
     const { publicChapterQuestions } = await import('./chapter-assessment.js');
     assert.doesNotMatch(JSON.stringify(publicChapterQuestions(snapshot)), /audio_scene|audio_script|voiceId|voiceName/);
     const preview = await request('/api/admin/tts/preview', { text: script, dialogScene: swapped }, 'POST', adminToken);
     assert.equal(preview.body, 'audio:sari-voiceaudio:dewi-voice');
+    const beforeListeningPreview = upstream.length;
+    const listeningPreview = await request('/api/admin/tts/preview', { text: script, dialogScene: swapped, listening: true }, 'POST', adminToken);
+    assert.deepEqual(listeningPreview.body, expectedWav(['sari-voice', 'dewi-voice']));
+    assert.equal(upstream.length, beforeListeningPreview, 'admin listening preview reuses the exact student WAV without synthesis');
     assert.notEqual(ttsHashKey(script, ['dewi-voice', 'sari-voice']), ttsHashKey(script, ['sari-voice', 'dewi-voice']));
+  });
+  await t.test('unscened legacy listening uses the protected v4 pointer instead of generic TTS', async () => {
+    await control.query("INSERT INTO dialogue_speakers(name,voice_id,voice_name) VALUES ('デウィ','dewi-voice','Dewi'),('サリ','sari-voice','Sari')");
+    const created = await request('/api/admin/quiz-questions', { ...input(), lessonId: otherLesson,
+      audioScene: null, audioScript: 'デウィ: おはよう。\nサリ: おはようございます。' }, 'POST', adminToken);
+    assert.equal(created.status, 201);
+    const started = await request(`/api/progress/lesson/${otherLesson}/quiz/start`);
+    const question = started.body.questions[0];
+    assert.equal(question.has_audio, true);
+    assert.equal(question.audio_script, 'デウィ: おはよう。\nサリ: おはようございます。', 'legacy spoken-question display metadata remains compatible');
+    const played = await request(audioPath(started.body.attemptToken, question.id, otherLesson), null, 'GET');
+    assert.equal(played.status, 200);
+    assert.deepEqual(played.body, expectedWav(['dewi-voice', 'sari-voice']));
   });
   await t.test('missing mappings and unavailable provider voices fail without guessed generation', async () => {
     const broken = sceneFixture(); broken.participants[1].voiceId = null;

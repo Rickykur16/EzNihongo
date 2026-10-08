@@ -3949,7 +3949,7 @@ window.listenGenTestAudio = async (i) => {
   audio.style.display = 'none';
   try {
     const dialogScene = JSON.parse(document.getElementById('lg_scene_' + i)?.value || 'null');
-    const r = await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({ text, dialogScene }) });
+    const r = await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({ text, dialogScene, listening: true }) });
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
       status.textContent = `Error: ${err.detail || err.error || r.status}`;
@@ -3958,8 +3958,10 @@ window.listenGenTestAudio = async (i) => {
     const blob = await r.blob();
     audio.src = URL.createObjectURL(blob);
     audio.style.display = 'block';
+    audio.defaultPlaybackRate = audio.playbackRate = 0.9;
+    audio.preservesPitch = true;
     audio.play();
-    status.textContent = `OK (${(blob.size / 1024).toFixed(1)}KB)`;
+    status.textContent = `OK (${(blob.size / 1024).toFixed(1)}KB) · Tempo 0,9× seperti pemutar siswa`;
   } catch (err) {
     status.textContent = `Network error: ${err.message}`;
   }
@@ -5130,7 +5132,7 @@ window.testTtsAudio = async () => {
   try {
     const r = await ezApi('/admin/tts/preview', {
       method: 'POST',
-      body: JSON.stringify({ text, dialogScene: JSON.parse(document.getElementById('questionAudioScene')?.value || 'null') }),
+      body: JSON.stringify({ text, dialogScene: JSON.parse(document.getElementById('questionAudioScene')?.value || 'null'), listening: true }),
     });
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
@@ -5142,8 +5144,10 @@ window.testTtsAudio = async () => {
     if (audio.src.startsWith('blob:')) URL.revokeObjectURL(audio.src);
     audio.src = URL.createObjectURL(blob);
     audio.style.display = 'block';
+    audio.defaultPlaybackRate = audio.playbackRate = 0.9;
+    audio.preservesPitch = true;
     audio.play();
-    status.textContent = `OK (${(blob.size / 1024).toFixed(1)}KB)`;
+    status.textContent = `OK (${(blob.size / 1024).toFixed(1)}KB) · Tempo 0,9× seperti pemutar siswa`;
   } catch (err) {
     status.textContent = `Network error: ${err.message}`;
   }
@@ -5240,7 +5244,7 @@ window.loadTtsCacheStats = async () => {
           <div style="font-size:11px;color:var(--ink-500);">${ttsBytesFmt(totalBytes)}</div>
         </div>
         <div>
-          <div style="font-size:11px;color:#16a34a;text-transform:uppercase;font-weight:700;">Current (${escapeHtml(s.current_version || '?')})</div>
+          <div style="font-size:11px;color:#16a34a;text-transform:uppercase;font-weight:700;">Current (${escapeHtml((s.current_versions || [s.current_version || '?']).join(', '))})</div>
           <div style="font-size:22px;font-weight:700;color:#16a34a;">${s.current_count || 0}</div>
           <div style="font-size:11px;color:var(--ink-500);">${ttsBytesFmt(s.current_bytes || 0)}</div>
         </div>
@@ -5251,6 +5255,7 @@ window.loadTtsCacheStats = async () => {
         </div>
       </div>
       <div style="font-size:11px;color:var(--ink-500);margin-top:10px;">
+        ${s.listening_model ? `Model listening: ${escapeHtml(s.listening_model)}<br>` : ''}
         Oldest: ${s.oldest ? new Date(s.oldest).toLocaleString('id-ID') : '-'} ·
         Newest: ${s.newest ? new Date(s.newest).toLocaleString('id-ID') : '-'}
       </div>
@@ -5917,7 +5922,8 @@ window.admNewSpeakerSave = async () => {
 // everyone. The whole dialogue is sent so the server resolves the voice the
 // way it will for students; turnIndex counts only non-empty rows, which is
 // what admSerializeDialogPair keeps. Listening scripts are voiced as one
-// concatenated clip for students (/api/tts), so they keep the plain preview.
+// WAV clip through the protected quiz audio route. Their preview uses that
+// same listening profile; test the complete script to hear speaker gaps.
 window.admDialogRowTest = async (i, btn, regenerate = false) => {
   const rows = window.__dialogRows || [];
   const r = rows[i];
@@ -5927,7 +5933,7 @@ window.admDialogRowTest = async (i, btn, regenerate = false) => {
   try {
     const listening = window.__dialogMode === 'listening';
     const resp = listening
-      ? await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({ text: `${r.speaker}: ${r.jp.trim()}`, dialogScene: window.__dialogScene || null }) })
+      ? await ezApi('/admin/tts/preview', { method: 'POST', body: JSON.stringify({ text: `${r.speaker}: ${r.jp.trim()}`, dialogScene: window.__dialogScene || null, listening: true }) })
       : await ezApi('/admin/tts/dialog-turn', { method: 'POST', body: JSON.stringify({
         dialog: admSerializeDialogPair(rows).jp,
         turnIndex: rows.slice(0, i).filter((row) => (row.jp || '').trim()).length,
@@ -5939,7 +5945,10 @@ window.admDialogRowTest = async (i, btn, regenerate = false) => {
     const blob = await resp.blob();
     if (audio && document.getElementById(`dlg-audio-${i}`) === audio) {
       if (audio.src.startsWith('blob:')) URL.revokeObjectURL(audio.src);
-      audio.src = URL.createObjectURL(blob); audio.style.display = ''; audio.play().catch(() => {});
+      audio.src = URL.createObjectURL(blob); audio.style.display = '';
+      audio.defaultPlaybackRate = audio.playbackRate = listening ? 0.9 : 1;
+      audio.preservesPitch = true;
+      audio.play().catch(() => {});
     }
     if (regenerate) notify('Suara baru untuk giliran ini tersimpan — siswa mendengar versi ini begitu dialog tersimpan.');
   } catch (err) { notify('Gagal generate audio: ' + err.message, true); }
