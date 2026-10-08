@@ -43,7 +43,8 @@ const response = data => ({ ok: true, json: async () => data });
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => {
   resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 function form() {
-  const feedback = { innerHTML: '' }, button = { disabled: false, textContent: '' };
+  const feedback = { innerHTML: '', focusCalls: 0, focus() { this.focusCalls++; } };
+  const button = { disabled: false, textContent: '' };
   const fieldset = { disabled: false };
   let selected = null;
   const node = { dataset: { dqQuestionId: 'question-1' },
@@ -197,6 +198,44 @@ test('authored goals remain visible without question availability', async () => 
     assert.match(root.goal.innerHTML, /&lt;b&gt;Tujuan&lt;\/b&gt;/);
     assert.equal(root.questions.hidden, true);
   }
+});
+
+test('empty answer asks for a selection without an API call; choosing clears validation without moving focus', async () => {
+  const calls = [];
+  const flow = controller(async (path, options) => {
+    calls.push({ path, options });
+    if (!options?.method) return response(batch());
+    throw new Error('network');
+  });
+  const root = rootFor();
+  await flow.mount({ root, lesson: lesson() });
+  const ui = form();
+  await root.fire('submit', ui.submitEvent());
+  await root.fire('submit', ui.submitEvent());
+  assert.equal(calls.length, 1, 'only the initial question batch is fetched');
+  assert.equal(ui.feedback.innerHTML, '<span class="dq-error">Pilih satu jawaban dulu.</span>');
+  assert.equal(ui.feedback.focusCalls, 2, 'keyboard users reach the validation feedback');
+  assert.equal(ui.button.disabled, false);
+  assert.equal(ui.fieldset.disabled, false);
+
+  root.fire('change', { target: ui.select(1) });
+  assert.equal(ui.feedback.innerHTML, '');
+  assert.equal(ui.feedback.focusCalls, 2, 'choosing an option keeps focus on the option');
+  await root.fire('submit', ui.submitEvent());
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].path, '/dialogue-questions/question-1/answer');
+  assert.equal(calls[1].options.method, 'POST');
+  const payload = JSON.parse(calls[1].options.body);
+  assert.equal(payload.questionVersion, 'version-1');
+  assert.equal(payload.optionIndex, 1);
+  assert.equal(payload.requestId, '00000000-0000-4000-8000-000000000001',
+    'empty submissions do not allocate request IDs');
+  assert.equal(ui.feedback.innerHTML, '<span class="dq-error">Jawaban belum terkirim. Coba lagi.</span>');
+  assert.equal(ui.feedback.focusCalls, 3);
+
+  await root.fire('submit', ui.submitEvent());
+  assert.equal(calls.length, 3);
+  assert.deepEqual(JSON.parse(calls[2].options.body), payload, 'network retry keeps the same payload');
 });
 
 test('double click makes one POST; network retry keeps ID, changed answer and later attempt get new IDs', async () => {

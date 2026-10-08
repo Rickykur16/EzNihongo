@@ -2,6 +2,11 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const get = async path => { const response = await ezApi(path); if (!response.ok) throw Error('load_failed'); return response.json(); };
   let root, lastFocus, loading, summary, recommendations, seenSignature = '', courseUrl = 'welcome.html';
+  const triggerSelector = '[data-maneko-trigger], .senpai-orb-btn, .maneko-orb';
+  const visibleFocusTarget = node => node?.isConnected && !node.disabled && !node.closest('[hidden], [inert]')
+    && node.getClientRects().length > 0 && getComputedStyle(node).visibility !== 'hidden';
+  const visibleTrigger = () => [...document.querySelectorAll(triggerSelector)].find(visibleFocusTarget);
+  const expandTriggers = expanded => document.querySelectorAll(triggerSelector).forEach(node => node.setAttribute('aria-expanded', String(expanded)));
   const signature = () => JSON.stringify([summary?.total || 0, (recommendations?.weakGrammar || []).map(g => g.grammarId)]);
   function markSeen() { seenSignature = signature(); try { sessionStorage.setItem('ez_maneko_seen', seenSignature); } catch {} }
   function content() {
@@ -33,17 +38,16 @@
   function close() {
     if (!root) return;
     root.querySelector('.maneko-panel').hidden = true;
-    root.querySelector('.maneko-orb')?.setAttribute('aria-expanded', 'false');
-    document.querySelector('.senpai-orb-btn')?.setAttribute('aria-expanded', 'false');
-    if (lastFocus?.isConnected) lastFocus.focus();
+    expandTriggers(false);
+    if (visibleFocusTarget(lastFocus)) lastFocus.focus();
+    else visibleTrigger()?.focus();
   }
   function open() {
     if (window.innerHeight < 540 && window.innerWidth < 600) { location.href = 'focus.html'; return; }
     if (!root) mount({ externalOrb: !!window.AISenpai });
-    lastFocus = document.activeElement === document.body ? document.querySelector('.senpai-orb-btn, .maneko-orb') : document.activeElement;
+    lastFocus = document.activeElement === document.body ? visibleTrigger() : document.activeElement;
     root.querySelector('.maneko-panel').hidden = false;
-    root.querySelector('.maneko-orb')?.setAttribute('aria-expanded', 'true');
-    document.querySelector('.senpai-orb-btn')?.setAttribute('aria-expanded', 'true');
+    expandTriggers(true);
     markSeen(); renderContent(); root.querySelector('.maneko-close').focus();
   }
   function mount({ externalOrb = false } = {}) {
@@ -56,7 +60,7 @@
     root.querySelector('.maneko-orb')?.addEventListener('click', () => root.querySelector('.maneko-panel').hidden ? open() : close());
     root.querySelector('[data-maneko-chat]')?.addEventListener('click', () => { close(); window.AISenpai?.openExpanded(); });
     root.addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); close(); } });
-    document.addEventListener('click', event => { if (!root.querySelector('.maneko-panel').hidden && !event.composedPath().some(node => node === root || node.matches?.('.senpai-orb-btn'))) close(); });
+    document.addEventListener('click', event => { if (!root.querySelector('.maneko-panel').hidden && !event.composedPath().some(node => node === root || node.matches?.(triggerSelector))) close(); });
     refresh();
   }
   async function renderDetails() {
