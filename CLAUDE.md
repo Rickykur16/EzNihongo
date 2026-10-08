@@ -162,6 +162,32 @@
   (4) bilah bawah desktop selebar kolom app 480 px; (5) subjudul kartu level tidak
   terpotong; (6) cincin "0%" saat sudah hafal → "<1%"; (7) avatar navbar menaut ke
   `kanji.html` (dulu `dashboard.html` yang tidak ada di `app/`) dan nama di-escape.
+  **Desain ulang tampilan (user: "Tampilan kurang menarik dan tidak nyaman")**, SW
+  `eznihongo-app-v14`: ikon emoji (🏠🔍⚡⚙🔔🗂️) diganti ikon garis SVG inline (`.ico`);
+  kartu progres jadi satu kartu aksen merah + kalimat arahan dinamis (`#kh-progress-hint`:
+  mulai / n siap diulang / sisa N5 / lanjut level); watermark 漢 yang terpotong di hero
+  dihapus; kartu level jadi satu baris per level (role=button + Enter/Spasi, hitungan
+  `x/total` selalu tampil, chevron); kartu Set memakai "x/50 hafal" + tombol "Buka" (dulu
+  dua ★ yang membingungkan + "BELAJAR" padahal cuma membuka daftar); ubin grid 3 kolom di
+  HP, arti 11px (dulu 9px), lencana level hanya kalau isinya campuran level; halaman Set
+  sekarang menyalakan tab Beranda (dulu Latihan); label tab "Latihan" → "Flashcard"
+  (sama dengan judul layarnya); desktop: latar abu di luar kolom 480px. Dark mode: tint
+  kartu level diredam (`opacity:.07`). Diuji Chromium 390/1280 + dark, 0 overflow/pageerror.
+  **Belum diverifikasi**: Safari/iOS.
+  **Flashcard & Ulasan (user: "untuk tombol hafalannya agak tertutup")**, SW `eznihongo-app-v15`:
+  BUG: sesi flashcard (`showFlashcard`) dan ulasan (`showReviewMode`) menyembunyikan view sendiri
+  TANPA lewat `showOnly()`, jadi bilah navigasi bawah (fixed, z-index 90) tetap tampil dan
+  menutupi tombol Lupa/Susah/Bisa/Mudah. Sekarang keduanya memanggil `enterCardSession()`
+  (sembunyikan botnav + `body.in-card-session`, dilepas `showOnly`), dan `.rv-ratings` menempel
+  di bawah layar (sticky + safe-area). Bug ikutan: (1) "Urungkan" di flashcard memulihkan status
+  hafal tapi kartunya tidak kembali ke antrean (yang tampil kartu berikutnya) — snapshot antrean
+  sekarang ikut `_undoSnapshot.fc`; urungkan dari layar selesai membuka kartunya lagi; ulasan
+  juga mengurangi hitungan rating; (2) `aria-keyshortcuts` 1-4 tanpa handler — sekarang Spasi/
+  Enter membalik, 1-4 memberi rating; (3) penghitung berhenti di 19/20 di layar selesai; (4) bilah
+  urungkan menutupi tombol Kembali (`body.card-done`). Tampilan: kartu lebih besar (kanji 128px),
+  bacaan On/Kun tampil di sisi belakang (dulu tidak ada), pertanyaan "Seberapa ingat kamu?", header
+  sesi gelap di dark mode. Diuji Chromium 390/1280 + dark (tombol rating & urungkan benar-benar
+  di lapisan teratas via `elementFromPoint`).
 
 - **Formulir pendaftaran di layar "Belum ada kelas aktif" (dashboard)** — user: "saat
   customer login dengan akun google, jika belom di acc kan ada notif tidak ada kelas aktif

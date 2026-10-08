@@ -15,7 +15,7 @@
        saat di-scroll. Pembungkusnya yang dibuat sticky. */
     #navbar{position:sticky;top:0;z-index:100;}
     .kapp{max-width:480px;margin:0 auto;min-height:100vh;}
-    @media(min-width:640px){.kapp{border-left:1px solid var(--gray-border);border-right:1px solid var(--gray-border);}}
+    @media(min-width:640px){body{background:var(--gray-bg);} .kapp{background:var(--white);border-left:1px solid var(--gray-border);border-right:1px solid var(--gray-border);}}
 
     /* ── LEVEL BADGE COLORS ── */
     .lv-N5{background:#EAF3DE;color:#3B6D11;}
@@ -62,23 +62,24 @@
     }
     .kapp-reset-btn:hover{color:var(--red);}
     .kapp-grid{
-      display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));
-      gap:8px;padding:10px 16px 100px;
+      display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));
+      gap:10px;padding:12px 16px 100px;
     }
     .kapp-tile{
       background:var(--white);border:1.5px solid var(--gray-border);
-      border-radius:12px;padding:10px 6px;text-align:center;cursor:pointer;
+      border-radius:14px;padding:14px 6px 12px;text-align:center;cursor:pointer;
       position:relative;transition:border-color .15s,transform .15s,box-shadow .15s;
     }
     .kapp-tile:hover{border-color:var(--red);transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.09);}
     .kapp-tile.known{background:#F4FBE8;border-color:#c5e898;}
     .kapp-tile.known::after{
-      content:'✓';position:absolute;top:4px;right:7px;
-      font-size:9px;color:#3B6D11;font-weight:700;
+      content:'✓';position:absolute;top:6px;right:6px;
+      width:16px;height:16px;border-radius:50%;background:#3B6D11;color:#fff;
+      font-size:10px;line-height:16px;font-weight:700;
     }
-    .kapp-tile-k{font-family:'Noto Sans JP',sans-serif;font-size:32px;font-weight:700;line-height:1;color:var(--text-primary);}
-    .kapp-tile-m{font-size:9px;color:var(--text-muted);margin-top:4px;line-height:1.3;}
-    .kapp-tile-lv{display:inline-block;font-size:8px;font-weight:700;margin-top:3px;padding:1px 5px;border-radius:10px;}
+    .kapp-tile-k{font-family:'Noto Sans JP',sans-serif;font-size:34px;font-weight:700;line-height:1;color:var(--text-primary);}
+    .kapp-tile-m{font-size:11px;color:var(--text-secondary);margin-top:6px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+    .kapp-tile-lv{display:inline-block;font-size:10px;font-weight:700;margin-top:5px;padding:1px 6px;border-radius:10px;}
 
     /* ══ DETAIL VIEW ══ */
     #view-detail{background:#ffffff;}
@@ -419,23 +420,20 @@
     /* ══ HOME VIEW — redesign 2026-04 ══ */
     /* Hero header */
     .kh-hero{
-      position:relative;padding:28px 20px 18px;
-      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+      position:relative;padding:22px 20px 14px;
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
       overflow:hidden;
-    }
-    .kh-hero::before{
-      content:"漢";position:absolute;right:-28px;top:-22px;
-      font-family:'Noto Serif JP','Yuji Syuku',serif;font-weight:900;font-size:180px;
-      color:var(--red);opacity:.06;line-height:1;pointer-events:none;letter-spacing:-.04em;
     }
     .kh-hero-title-wrap{display:flex;align-items:center;gap:14px;z-index:1;}
     .kh-hero-kanji{
-      font-family:'Noto Serif JP',serif;font-weight:900;font-size:44px;line-height:1;
-      color:var(--red);letter-spacing:-.04em;
+      font-family:'Noto Serif JP',serif;font-weight:900;font-size:26px;line-height:1;
+      color:#fff;background:var(--red);width:48px;height:48px;border-radius:14px;
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;
+      box-shadow:0 6px 16px -6px rgba(196,27,27,.55);
     }
     .kh-hero-title{
       font-family: var(--font-body);
-      font-size:26px;font-weight:800;color:var(--text-primary);
+      font-size:22px;font-weight:800;color:var(--text-primary);
       letter-spacing:-.028em;line-height:1.1;
     }
     .kh-hero-sub{
@@ -445,14 +443,33 @@
     .kh-hero-right{display:flex;align-items:center;gap:8px;z-index:1;}
     /* Progress ring card */
     .kh-progress{
-      margin:4px 16px 14px;padding:18px 18px 18px 14px;
-      background:linear-gradient(135deg,#ffffff 0%,#fbfaf7 100%);
-      border:1px solid var(--gray-border);border-radius:18px;
-      display:flex;align-items:center;gap:16px;
-      box-shadow:0 1px 2px rgba(0,0,0,.02),0 8px 24px -12px rgba(196,27,27,.08);
+      position:relative;overflow:hidden;
+      margin:4px 16px 14px;padding:20px 20px 20px 18px;
+      background:linear-gradient(135deg,#C41B1B 0%,#9E1414 100%);color:#fff;
+      border-radius:20px;
+      display:flex;align-items:center;gap:18px;
+      box-shadow:0 14px 30px -16px rgba(158,20,20,.7);
     }
-    [data-theme="dark"] .kh-progress{background:linear-gradient(135deg,#252522 0%,#1e1d1a 100%);}
-    .kh-ring-wrap{position:relative;width:88px;height:88px;flex-shrink:0;}
+    .kh-progress::after{
+      content:"漢";position:absolute;right:-6px;bottom:-34px;
+      font-family:'Noto Serif JP',serif;font-weight:900;font-size:130px;line-height:1;
+      color:#fff;opacity:.08;pointer-events:none;
+    }
+    [data-theme="dark"] .kh-progress{background:linear-gradient(135deg,#8E1616 0%,#5E0F0F 100%);}
+    .kh-progress .kh-ring-track{stroke:rgba(255,255,255,.22);}
+    .kh-progress .kh-ring-fill{stroke:#fff;}
+    .kh-progress .kh-ring-pct{color:#fff;}
+    .kh-progress .kh-ring-lbl{color:rgba(255,255,255,.75);}
+    .kh-progress .kh-progress-heading{color:rgba(255,255,255,.78);}
+    .kh-progress .kh-progress-count,
+    .kh-progress .kh-progress-count strong,
+    .kh-progress .kh-progress-count span:not(.kh-progress-slash){color:#fff;}
+    .kh-progress .kh-progress-slash,.kh-progress .kh-progress-unit{color:rgba(255,255,255,.7);}
+    .kh-progress .kh-total-pbar-wrap{background:rgba(255,255,255,.22);}
+    .kh-progress .kh-total-pbar{background:#fff;}
+    .kh-progress-hint{font-size:12px;color:rgba(255,255,255,.82);margin-top:8px;line-height:1.4;}
+    .kh-ring-wrap{position:relative;width:84px;height:84px;flex-shrink:0;z-index:1;}
+    .kh-progress-text{z-index:1;}
     .kh-ring{width:100%;height:100%;transform:rotate(-90deg);}
     .kh-ring-track{fill:none;stroke:var(--gray-border);stroke-width:8;}
     .kh-ring-fill{
@@ -498,7 +515,7 @@
     [data-theme="dark"] .kh-review-pill{background:linear-gradient(135deg,rgba(196,27,27,.12) 0%,rgba(196,27,27,.06) 100%);}
     .kh-review-icon{
       width:40px;height:40px;border-radius:50%;
-      background:var(--red);color:#fff;font-size:18px;
+      background:var(--red);color:#fff;font-size:18px;line-height:0;
       display:flex;align-items:center;justify-content:center;flex-shrink:0;
       box-shadow:0 4px 12px -2px rgba(196,27,27,.4);
     }
@@ -529,13 +546,14 @@
     .kh-q-ico{
       width:42px;height:42px;border-radius:12px;
       display:flex;align-items:center;justify-content:center;
-      font-size:20px;background:var(--gray-bg);
+      font-size:20px;background:var(--gray-bg);line-height:0;
     }
+    .kh-q-ico .ico{width:20px;height:20px;}
     .kh-q-ja{
       font-family:'Noto Serif JP',serif;font-weight:700;font-size:20px;
       background:#EAF1FA;color:#1B4FA8;
     }
-    .kh-q-lbl{font-size:12px;font-weight:600;color:var(--text-primary);letter-spacing:-.01em;}
+    .kh-q-lbl{font-size:12px;font-weight:600;color:var(--text-primary);letter-spacing:-.01em;line-height:1.25;text-align:center;}
     /* Section header */
     .kh-section{
       padding:0 20px;margin-bottom:12px;
@@ -553,13 +571,13 @@
     }
     /* Level grid */
     .kh-levels{
-      display:grid;grid-template-columns:repeat(2,1fr);gap:10px;
+      display:flex;flex-direction:column;gap:10px;
       padding:0 16px 100px;
     }
     .kh-level{
       position:relative;background:var(--white);
       border:1px solid var(--gray-border);border-radius:16px;
-      padding:14px 14px 12px;cursor:pointer;
+      padding:14px 14px 14px;cursor:pointer;
       display:flex;flex-direction:column;gap:12px;
       transition:transform .18s,box-shadow .18s,border-color .18s;
       overflow:hidden;
@@ -572,6 +590,7 @@
     .kh-level:hover{transform:translateY(-2px);box-shadow:0 10px 24px -10px rgba(0,0,0,.12);border-color:var(--kh-level-border,var(--red));}
     .kh-level:active{transform:translateY(0);}
     [data-theme="dark"] .kh-level{background:#252522;}
+    [data-theme="dark"] .kh-level::before{opacity:.07;}
     .kh-level[data-lv="N5"]{--kh-level-tint:#EAF3DE;--kh-level-border:#84b845;}
     .kh-level[data-lv="N4"]{--kh-level-tint:#FAEEDA;--kh-level-border:#c88a34;}
     .kh-level[data-lv="N3"]{--kh-level-tint:#EAF1FA;--kh-level-border:#3a6fbe;}
@@ -586,14 +605,18 @@
     }
     .kh-level-meta{flex:1;min-width:0;}
     .kh-level-name{
-      font-family:'Inter',sans-serif;font-size:15px;font-weight:700;
+      font-family:'Inter',sans-serif;font-size:16px;font-weight:700;
       color:var(--text-primary);letter-spacing:-.02em;line-height:1.1;
     }
     .kh-level-desc{
-      font-size:11px;color:var(--text-muted);margin-top:2px;font-weight:500;
+      font-size:12px;color:var(--text-muted);margin-top:3px;font-weight:500;
       line-height:1.35;
     }
     .kh-level-foot{z-index:1;}
+    .kh-level-right{display:flex;align-items:center;gap:8px;flex-shrink:0;z-index:1;}
+    .kh-level-chev{color:var(--text-muted);line-height:0;}
+    .kh-level-chev .ico{width:18px;height:18px;}
+    .kh-level:focus-visible{outline:2px solid var(--red);outline-offset:2px;}
     .kh-level-stats{
       display:flex;align-items:center;justify-content:space-between;gap:6px;
       margin-top:6px;
@@ -604,7 +627,7 @@
       background:linear-gradient(90deg,var(--kh-level-border,var(--red)),color-mix(in srgb,var(--kh-level-border,var(--red)) 65%,#fff));
       transition:width .8s cubic-bezier(.22,1,.36,1);
     }
-    .kh-count{font-size:12px;font-weight:700;color:var(--text-secondary);letter-spacing:-.01em;}
+    .kh-count{font-size:13px;font-weight:700;color:var(--text-secondary);letter-spacing:-.01em;font-variant-numeric:tabular-nums;}
     .kh-due-badge{
       font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
       background:var(--red);color:#fff;white-space:nowrap;letter-spacing:.01em;
@@ -655,29 +678,29 @@
     /* Card area */
     .rv-card-area{
       flex:1;display:flex;align-items:center;justify-content:center;
-      padding:24px 16px 16px;perspective:1000px;
+      padding:20px 16px 16px;perspective:1000px;
     }
     .rv-card{
       width:100%;max-width:420px;
       cursor:pointer;
       transform-style:preserve-3d;
       transition:transform .45s cubic-bezier(.4,0,.2,1);
-      position:relative;min-height:260px;
+      position:relative;min-height:340px;
     }
     .rv-card.flipped{transform:rotateY(180deg);}
     .rv-face{
       position:absolute;inset:0;
       backface-visibility:hidden;-webkit-backface-visibility:hidden;
       background:var(--white);border:1px solid var(--gray-border);
-      border-radius:20px;box-shadow:0 4px 20px rgba(0,0,0,.07);
+      border-radius:24px;box-shadow:0 18px 40px -22px rgba(0,0,0,.28),0 2px 6px rgba(0,0,0,.04);
       display:flex;flex-direction:column;align-items:center;justify-content:center;
       padding:28px 24px;
     }
     .rv-face-back{transform:rotateY(180deg);justify-content:center;overflow-y:auto;}
     /* Front */
     .rv-kanji-big{
-      font-family:'Noto Sans JP',sans-serif;font-size:96px;font-weight:700;
-      color:var(--red);line-height:1;margin-bottom:16px;
+      font-family:'Noto Sans JP',sans-serif;font-size:128px;font-weight:700;
+      color:var(--red);line-height:1;margin-bottom:22px;
     }
     #fc-kanji, #rv-kanji-front{font-family:'Yuji Syuku',serif;font-weight:400;}
     /* Level colors — warna per JLPT sebagai cue memori kategoris */
@@ -691,14 +714,15 @@
     [data-theme="dark"] .kanji-lv-N3{color:#5B9FEC;}
     [data-theme="dark"] .kanji-lv-N2{color:#C678E8;}
     [data-theme="dark"] .kanji-lv-N1{color:#E85858;}
-    .rv-tap-hint{font-size:12px;color:var(--text-muted);}
+    .rv-tap-hint{font-size:12px;color:var(--text-muted);background:var(--gray-bg);padding:6px 12px;border-radius:99px;}
     /* Back */
     .rv-back-kanji{
-      font-family:'Noto Sans JP',sans-serif;font-size:40px;font-weight:700;
-      color:var(--red);margin-bottom:8px;align-self:center;text-align:center;
+      font-family:'Noto Sans JP',sans-serif;font-size:56px;font-weight:700;
+      color:var(--red);margin-bottom:6px;align-self:center;text-align:center;line-height:1.1;
     }
-    .rv-meaning{font-size:22px;font-weight:500;color:var(--text-primary);margin-bottom:14px;align-self:center;text-align:center;}
-    .rv-readings{display:flex;gap:12px;margin-bottom:14px;align-self:flex-start;flex-wrap:wrap;}
+    .rv-meaning{font-size:22px;font-weight:700;color:var(--text-primary);margin-bottom:12px;align-self:center;text-align:center;}
+    .rv-readings{display:flex;gap:8px;margin-bottom:14px;align-self:center;justify-content:center;flex-wrap:wrap;}
+    .rv-readings:empty{display:none;}
     .rv-reading-pill{
       font-family:'Noto Sans JP',sans-serif;font-size:13px;
       padding:3px 10px;border-radius:20px;
@@ -713,13 +737,17 @@
     .rv-vocab-read{font-family:'Noto Sans JP',sans-serif;font-size:12px;color:var(--text-muted);}
     .rv-vocab-mean{font-size:12px;color:var(--text-secondary);}
     /* Rating buttons */
+    /* Tombol rating menempel di bawah layar supaya selalu terlihat dan terjangkau jempol */
     .rv-ratings{
       display:grid;grid-template-columns:repeat(4,1fr);
-      gap:8px;padding:12px 16px 24px;
+      gap:8px;padding:12px 16px calc(14px + env(safe-area-inset-bottom));
+      position:sticky;bottom:0;z-index:5;background:var(--gray-bg);
+      border-top:1px solid var(--gray-border);
     }
+    .rv-rate-q{grid-column:1/-1;text-align:center;font-size:12px;color:var(--text-muted);margin-bottom:2px;}
     .rv-btn{
       display:flex;flex-direction:column;align-items:center;gap:3px;
-      padding:12px 6px;border-radius:12px;border:none;cursor:pointer;
+      padding:12px 6px;min-height:56px;border-radius:14px;border:none;cursor:pointer;
       font-family:inherit;transition:transform .1s,box-shadow .1s;
     }
     .rv-btn:active{transform:scale(.96);}
@@ -737,7 +765,7 @@
     .rv-done{
       flex:1;display:flex;flex-direction:column;
       align-items:center;justify-content:center;
-      padding:40px 24px;text-align:center;
+      padding:40px 24px 140px;text-align:center;
     }
     .rv-done-emoji{font-size:64px;margin-bottom:16px;}
     .rv-done-title{font-size:24px;font-weight:600;color:var(--text-primary);margin-bottom:8px;}
@@ -759,6 +787,9 @@
     }
     .rv-done-btn:hover{background:#a81616;}
     [data-theme="dark"] .rv-face{background:#252522;border-color:var(--gray-border);}
+    [data-theme="dark"] .rv-header{background:#181816;}
+    [data-theme="dark"] .rv-reading-on{background:rgba(224,144,48,.16);color:#F0B060;}
+    [data-theme="dark"] .rv-reading-kun{background:rgba(91,159,236,.16);color:#8FBFF5;}
     [data-theme="dark"] .rv-done-stat{background:#252522;}
     [data-theme="dark"] .rv-btn-1{background:#450a0a;color:#fca5a5;}
     [data-theme="dark"] .rv-btn-2{background:#451a03;color:#fcd34d;}
@@ -780,7 +811,8 @@
       transition:transform .15s,box-shadow .15s;box-shadow:0 4px 16px rgba(192,57,43,.25);
     }
     .fcm-all-card:active{transform:scale(.98);}
-    .fcm-all-icon{font-size:36px;line-height:1;}
+    .fcm-all-icon{line-height:0;width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .fcm-all-icon .ico{width:28px;height:28px;}
     .fcm-all-info{flex:1;}
     .fcm-all-name{font-size:18px;font-weight:700;}
     .fcm-all-sub{font-size:13px;opacity:.85;margin-top:2px;}
@@ -817,8 +849,11 @@
     /* ══ STREAK ══ */
     .kh-streak{display:flex;align-items:center;gap:3px;background:#FFF3E0;border:1.5px solid #FED7AA;border-radius:20px;padding:4px 10px;font-size:13px;font-weight:700;color:#C05621;}
     .kh-header-right{display:flex;align-items:center;gap:8px;margin-left:auto;}
-    .kh-gear{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--gray-border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--text-secondary);transition:all .15s;}
+    .kh-gear{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--gray-border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--text-secondary);transition:all .15s;}
     .kh-gear:hover{background:var(--gray-bg);}
+    .ico{width:1em;height:1em;flex-shrink:0;}
+    .kh-gear .ico{width:20px;height:20px;}
+    .kh-review-icon .ico{width:20px;height:20px;}
 
     /* ══ SETTINGS VIEW ══ */
     .stg-header{position:sticky;top:var(--nav-h,57px);z-index:50;background:var(--white);border-bottom:1px solid var(--gray-border);padding:10px 14px;display:flex;align-items:center;gap:10px;}
@@ -847,6 +882,9 @@
     /* ══ UNDO BAR ══ */
     .undo-bar{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--white);border:1.5px solid var(--gray-border);border-radius:24px;padding:9px 16px;display:flex;align-items:center;gap:12px;z-index:9000;box-shadow:0 4px 18px rgba(0,0,0,.13);opacity:0;pointer-events:none;transition:opacity .2s;white-space:nowrap;}
     .undo-bar.show{opacity:1;pointer-events:auto;}
+    /* Selama sesi kartu tidak ada bilah navigasi; bilah urungkan berada di atas tombol rating */
+    body.in-card-session .undo-bar{bottom:calc(128px + env(safe-area-inset-bottom));}
+    body.in-card-session.card-done .undo-bar{bottom:calc(20px + env(safe-area-inset-bottom));}
     .undo-bar-msg{font-size:13px;color:var(--text-secondary);}
     .undo-bar-btn{font-size:13px;font-weight:700;color:var(--red);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 0;}
     .undo-countdown{font-size:12px;color:var(--text-muted);min-width:14px;text-align:center;}
@@ -892,25 +930,28 @@
       background:var(--gray-bg);
     }
     .sv-card-body{flex:1;padding:12px 12px 12px 14px;min-width:0;}
-    .sv-card-title{font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px;}
+    .sv-card-title{font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:2px;}
     .sv-card-preview{
-      font-size:11px;color:var(--text-muted);
+      font-size:13px;color:var(--text-muted);
       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-      margin-bottom:7px;font-family:'Noto Sans JP',sans-serif;
+      margin-bottom:9px;font-family:'Noto Sans JP',sans-serif;
       letter-spacing:.5px;
     }
-    .sv-card-bar-wrap{height:3px;background:var(--gray-bg);border-radius:2px;overflow:hidden;}
-    .sv-card-bar-fill{height:100%;background:var(--red);border-radius:2px;transition:width .3s;}
+    .sv-card-bar-wrap{height:5px;background:var(--gray-bg);border-radius:2px;overflow:hidden;}
+    .sv-card-bar-fill{height:100%;background:var(--red);border-radius:3px;transition:width .3s;}
     .sv-card-right{
       display:flex;flex-direction:column;align-items:center;gap:4px;
       padding:12px 12px 12px 8px;flex-shrink:0;
     }
+    .sv-count{font-size:14px;font-weight:700;color:var(--text-secondary);font-variant-numeric:tabular-nums;white-space:nowrap;}
+    .sv-count strong{color:var(--text-primary);}
+    .sv-count-lbl{font-size:11px;color:var(--text-muted);margin-top:-3px;}
     .sv-star{font-size:11px;font-weight:700;white-space:nowrap;}
     .sv-star-gold{color:#d4891a;}
     .sv-star-gray{color:var(--text-muted);}
     .sv-btn{
-      margin-top:4px;padding:6px 13px;
-      border-radius:20px;font-size:11px;font-weight:700;
+      margin-top:4px;padding:7px 16px;
+      border-radius:20px;font-size:12px;font-weight:700;
       border:1.5px solid var(--red);background:var(--red);color:#fff;
       cursor:pointer;font-family:inherit;letter-spacing:.4px;
       transition:all .15s;white-space:nowrap;
@@ -1139,8 +1180,11 @@
       font-family:inherit;color:var(--text-muted);
       transition:color .15s;
     }
-    .kapp-botnav-item .bn-ico{font-size:20px;line-height:1;}
-    .kapp-botnav-item .bn-lbl{font-size:10px;font-weight:600;letter-spacing:0.02em;}
+    .kapp-botnav-item .bn-ico{line-height:0;display:flex;align-items:center;justify-content:center;width:44px;height:28px;border-radius:14px;transition:background .15s;}
+    .kapp-botnav-item .bn-ico .ico{width:22px;height:22px;}
+    .kapp-botnav-item.active .bn-ico{background:rgba(196,27,27,.1);}
+    .kapp-botnav-item.active .bn-ico .ico{stroke-width:2.3;}
+    .kapp-botnav-item .bn-lbl{font-size:11px;font-weight:600;letter-spacing:0.01em;}
     .kapp-botnav-item.active{color:var(--red);}
     .kapp-botnav-item:hover{color:var(--red);}
     .kapp-botnav[hidden]{display:none;}
@@ -1202,12 +1246,12 @@
       <div class="kh-hero-kanji">漢</div>
       <div>
         <div class="kh-hero-title">Kanji JLPT</div>
-        <div class="kh-hero-sub">EzNihongo · N5 — N1 · 2229 kanji</div>
+        <div class="kh-hero-sub">N5 sampai N1 · gratis</div>
       </div>
     </div>
     <div class="kh-hero-right">
       <div class="kh-streak" id="kh-streak" style="display:none" role="status" aria-label="Streak harian"><span aria-hidden="true">🔥</span><span id="kh-streak-n">1</span></div>
-      <button class="kh-gear" id="kh-gear" title="Pengaturan" aria-label="Buka pengaturan"><span aria-hidden="true">⚙</span></button>
+      <button class="kh-gear" id="kh-gear" title="Pengaturan" aria-label="Buka pengaturan"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     </div>
   </div>
 
@@ -1236,12 +1280,13 @@
         <strong id="kh-total-known">0</strong><span class="kh-progress-slash">/</span><span id="kh-total-all">0</span><span class="kh-progress-unit">kanji</span>
       </div>
       <div class="kh-total-pbar-wrap"><div class="kh-total-pbar" id="kh-total-pbar"></div></div>
+      <div class="kh-progress-hint" id="kh-progress-hint">Mulai dari N5, sedikit tiap hari.</div>
     </div>
   </div>
 
   <!-- Due review pill (conditional) -->
   <div class="kh-review-pill" id="kh-review-card" style="display:none">
-    <div class="kh-review-icon">🔔</div>
+    <div class="kh-review-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></div>
     <div class="kh-review-text">
       <div class="kh-review-title-new" id="kh-review-title">0 kanji perlu diulang</div>
       <div class="kh-review-sub-new">Perkuat hafalan sekarang</div>
@@ -1252,105 +1297,110 @@
   <!-- Quick actions -->
   <div class="kh-quick" role="group" aria-label="Aksi cepat">
     <button class="kh-q" id="kh-search" aria-label="Cari kanji">
-      <div class="kh-q-ico" style="background:#FEF3E8;" aria-hidden="true">🔍</div>
-      <div class="kh-q-lbl">Cari</div>
+      <div class="kh-q-ico" style="background:#FEF3E8;color:#B4540A;" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div>
+      <div class="kh-q-lbl">Cari kanji</div>
     </button>
     <button class="kh-q" id="kh-kana" aria-label="Belajar hiragana dan katakana">
       <div class="kh-q-ico kh-q-ja" aria-hidden="true">ア</div>
-      <div class="kh-q-lbl">Kana</div>
+      <div class="kh-q-lbl">Hiragana &amp; Katakana</div>
     </button>
     <button class="kh-q" id="kh-flashcard" aria-label="Latihan flashcard">
-      <div class="kh-q-ico" style="background:#FFF3E0;" aria-hidden="true">⚡</div>
-      <div class="kh-q-lbl">Latihan</div>
+      <div class="kh-q-ico" style="background:#FDECEC;color:var(--red);" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="14" rx="2.5"/><path d="M7 3h11.5A2.5 2.5 0 0 1 21 5.5V17"/></svg></div>
+      <div class="kh-q-lbl">Flashcard</div>
     </button>
   </div>
 
   <!-- Level section header -->
   <div class="kh-section">
     <div class="kh-section-title">Level JLPT</div>
-    <div class="kh-section-hint">Tap untuk mulai</div>
+    <div class="kh-section-hint">Pilih level untuk mulai</div>
   </div>
 
   <!-- Level grid -->
   <div class="kh-levels">
-    <div class="kh-level" id="kh-n5" data-lv="N5">
+    <div class="kh-level" id="kh-n5" data-lv="N5" role="button" tabindex="0">
       <div class="kh-level-head">
         <div class="kh-level-badge lv-N5">N5</div>
         <div class="kh-level-meta">
           <div class="kh-level-name">Pemula</div>
           <div class="kh-level-desc" id="kh-n5-sub">103 kanji</div>
         </div>
+        <div class="kh-level-right">
+          <span class="kh-due-badge" id="kh-n5-due" style="display:none"></span>
+          <span class="kh-count" id="kh-n5-known"></span>
+          <span class="kh-level-chev"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>
+        </div>
       </div>
       <div class="kh-level-foot">
         <div class="kh-pbar-wrap"><div class="kh-pbar" id="kh-n5-pbar"></div></div>
-        <div class="kh-level-stats">
-          <span class="kh-count" id="kh-n5-known"></span>
-          <span class="kh-due-badge" id="kh-n5-due" style="display:none"></span>
-        </div>
       </div>
     </div>
-    <div class="kh-level" id="kh-n4" data-lv="N4">
+    <div class="kh-level" id="kh-n4" data-lv="N4" role="button" tabindex="0">
       <div class="kh-level-head">
         <div class="kh-level-badge lv-N4">N4</div>
         <div class="kh-level-meta">
           <div class="kh-level-name">Dasar</div>
           <div class="kh-level-desc" id="kh-n4-sub">180 kanji</div>
         </div>
+        <div class="kh-level-right">
+          <span class="kh-due-badge" id="kh-n4-due" style="display:none"></span>
+          <span class="kh-count" id="kh-n4-known"></span>
+          <span class="kh-level-chev"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>
+        </div>
       </div>
       <div class="kh-level-foot">
         <div class="kh-pbar-wrap"><div class="kh-pbar" id="kh-n4-pbar"></div></div>
-        <div class="kh-level-stats">
-          <span class="kh-count" id="kh-n4-known"></span>
-          <span class="kh-due-badge" id="kh-n4-due" style="display:none"></span>
-        </div>
       </div>
     </div>
-    <div class="kh-level" id="kh-n3" data-lv="N3">
+    <div class="kh-level" id="kh-n3" data-lv="N3" role="button" tabindex="0">
       <div class="kh-level-head">
         <div class="kh-level-badge lv-N3">N3</div>
         <div class="kh-level-meta">
           <div class="kh-level-name">Menengah</div>
           <div class="kh-level-desc" id="kh-n3-sub">345 kanji</div>
         </div>
+        <div class="kh-level-right">
+          <span class="kh-due-badge" id="kh-n3-due" style="display:none"></span>
+          <span class="kh-count" id="kh-n3-known"></span>
+          <span class="kh-level-chev"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>
+        </div>
       </div>
       <div class="kh-level-foot">
         <div class="kh-pbar-wrap"><div class="kh-pbar" id="kh-n3-pbar"></div></div>
-        <div class="kh-level-stats">
-          <span class="kh-count" id="kh-n3-known"></span>
-          <span class="kh-due-badge" id="kh-n3-due" style="display:none"></span>
-        </div>
       </div>
     </div>
-    <div class="kh-level" id="kh-n2" data-lv="N2">
+    <div class="kh-level" id="kh-n2" data-lv="N2" role="button" tabindex="0">
       <div class="kh-level-head">
         <div class="kh-level-badge lv-N2">N2</div>
         <div class="kh-level-meta">
           <div class="kh-level-name">Lanjutan</div>
           <div class="kh-level-desc" id="kh-n2-sub">359 kanji</div>
         </div>
+        <div class="kh-level-right">
+          <span class="kh-due-badge" id="kh-n2-due" style="display:none"></span>
+          <span class="kh-count" id="kh-n2-known"></span>
+          <span class="kh-level-chev"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>
+        </div>
       </div>
       <div class="kh-level-foot">
         <div class="kh-pbar-wrap"><div class="kh-pbar" id="kh-n2-pbar"></div></div>
-        <div class="kh-level-stats">
-          <span class="kh-count" id="kh-n2-known"></span>
-          <span class="kh-due-badge" id="kh-n2-due" style="display:none"></span>
-        </div>
       </div>
     </div>
-    <div class="kh-level" id="kh-n1" data-lv="N1">
+    <div class="kh-level" id="kh-n1" data-lv="N1" role="button" tabindex="0">
       <div class="kh-level-head">
         <div class="kh-level-badge lv-N1">N1</div>
         <div class="kh-level-meta">
           <div class="kh-level-name">Mahir</div>
           <div class="kh-level-desc" id="kh-n1-sub">1235 kanji</div>
         </div>
+        <div class="kh-level-right">
+          <span class="kh-due-badge" id="kh-n1-due" style="display:none"></span>
+          <span class="kh-count" id="kh-n1-known"></span>
+          <span class="kh-level-chev"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>
+        </div>
       </div>
       <div class="kh-level-foot">
         <div class="kh-pbar-wrap"><div class="kh-pbar" id="kh-n1-pbar"></div></div>
-        <div class="kh-level-stats">
-          <span class="kh-count" id="kh-n1-known"></span>
-          <span class="kh-due-badge" id="kh-n1-due" style="display:none"></span>
-        </div>
       </div>
     </div>
   </div>
@@ -1364,7 +1414,7 @@
   </div>
   <!-- Semua level -->
   <div class="fcm-all-card" id="fcm-all">
-    <div class="fcm-all-icon">🗂️</div>
+    <div class="fcm-all-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="14" rx="2.5"/><path d="M7 3h11.5A2.5 2.5 0 0 1 21 5.5V17"/></svg></div>
     <div class="fcm-all-info">
       <div class="fcm-all-name">Semua Level</div>
       <div class="fcm-all-sub" id="fcm-all-sub">N5 – N1 · 2229 kanji</div>
@@ -1509,12 +1559,13 @@
       <!-- Depan -->
       <div class="rv-face">
         <div class="rv-kanji-big" id="rv-kanji-front">日</div>
-        <div class="rv-tap-hint">Ketuk untuk lihat jawaban</div>
+        <div class="rv-tap-hint">Ketuk kartu untuk lihat arti</div>
       </div>
       <!-- Belakang -->
       <div class="rv-face rv-face-back">
         <div class="rv-back-kanji" id="rv-kanji-back">日</div>
         <div class="rv-meaning" id="rv-meaning">Matahari</div>
+        <div class="rv-readings" id="rv-readings"></div>
         <div class="rv-divider"></div>
         <div class="rv-vocab-list" id="rv-vocab"></div>
       </div>
@@ -1523,6 +1574,7 @@
 
   <!-- Tombol rating (muncul setelah kartu dibalik) -->
   <div class="rv-ratings" id="rv-ratings" style="visibility:hidden" role="group" aria-label="Rating jawaban">
+    <div class="rv-rate-q">Seberapa ingat kamu?</div>
     <button class="rv-btn rv-btn-1" id="rv-btn-1" aria-label="Rating: Lupa (tombol 1)" aria-keyshortcuts="1">
       <span class="rv-btn-label">Lupa</span>
       <span class="rv-btn-interval" id="rv-int-1">—</span>
@@ -1703,12 +1755,13 @@
       <!-- Depan -->
       <div class="rv-face">
         <div class="rv-kanji-big" id="fc-kanji">日</div>
-        <div class="rv-tap-hint">Ketuk untuk lihat jawaban</div>
+        <div class="rv-tap-hint">Ketuk kartu untuk lihat arti</div>
       </div>
       <!-- Belakang -->
       <div class="rv-face rv-face-back">
         <div class="rv-back-kanji" id="fc-kanji-back">日</div>
         <div class="rv-meaning" id="fc-meaning">—</div>
+        <div class="rv-readings" id="fc-readings"></div>
         <div class="rv-divider"></div>
         <div class="rv-vocab-list" id="fc-vocab"></div>
       </div>
@@ -1717,6 +1770,7 @@
 
   <!-- Tombol rating (muncul setelah kartu dibalik) -->
   <div class="rv-ratings" id="fc-ratings" style="display:none" role="group" aria-label="Rating jawaban">
+    <div class="rv-rate-q">Seberapa ingat kamu?</div>
     <button class="rv-btn rv-btn-1" id="fc-btn-1" aria-label="Rating: Lupa (tombol 1)" aria-keyshortcuts="1">
       <span class="rv-btn-label">Lupa</span>
       <span class="rv-btn-interval" id="fc-int-1">—</span>
@@ -1764,16 +1818,16 @@
 <!-- ── BOTTOM NAV (main views only; disembunyikan saat detail/review/flashcard) ── -->
 <nav class="kapp-botnav" id="kapp-botnav" aria-label="Navigasi utama">
   <button class="kapp-botnav-item" data-nav="home" aria-label="Beranda">
-    <span class="bn-ico" aria-hidden="true">🏠</span><span class="bn-lbl">Beranda</span>
+    <span class="bn-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg></span><span class="bn-lbl">Beranda</span>
   </button>
   <button class="kapp-botnav-item" data-nav="search" aria-label="Cari kanji">
-    <span class="bn-ico" aria-hidden="true">🔍</span><span class="bn-lbl">Cari</span>
+    <span class="bn-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span class="bn-lbl">Cari</span>
   </button>
   <button class="kapp-botnav-item" data-nav="flashcard" aria-label="Latihan flashcard">
-    <span class="bn-ico" aria-hidden="true">⚡</span><span class="bn-lbl">Latihan</span>
+    <span class="bn-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="14" rx="2.5"/><path d="M7 3h11.5A2.5 2.5 0 0 1 21 5.5V17"/></svg></span><span class="bn-lbl">Flashcard</span>
   </button>
   <button class="kapp-botnav-item" data-nav="settings" aria-label="Pengaturan">
-    <span class="bn-ico" aria-hidden="true">⚙</span><span class="bn-lbl">Pengaturan</span>
+    <span class="bn-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span><span class="bn-lbl">Pengaturan</span>
   </button>
 </nav>
 
@@ -8814,7 +8868,7 @@ function buildDeck(list){
 const ALL_VIEWS = ['view-home','view-set','view-list','view-detail','view-kana','view-search','view-review','view-fc-menu','view-settings'];
 // Views yang menampilkan bottom-nav (main navigation) vs yang tidak (detail/review/flashcard)
 const BOTNAV_VIEWS = new Set(['view-home','view-search','view-fc-menu','view-settings','view-set','view-kana']);
-const BOTNAV_MAP = { 'view-home':'home', 'view-search':'search', 'view-fc-menu':'flashcard', 'view-settings':'settings', 'view-set':'flashcard', 'view-kana':'home' };
+const BOTNAV_MAP = { 'view-home':'home', 'view-search':'search', 'view-fc-menu':'flashcard', 'view-settings':'settings', 'view-set':'home', 'view-kana':'home' };
 function showOnly(id){
   ALL_VIEWS.forEach(v => {
     const el = document.getElementById(v);
@@ -8825,6 +8879,7 @@ function showOnly(id){
   if(fc) fc.style.display = 'none';
   document.getElementById('kd-bottom-bar').classList.toggle('on', id === 'view-detail');
 
+  document.body.classList.remove('in-card-session', 'card-done');
   // Sync bottom-nav: tampilkan hanya di main views, highlight tab aktif
   const botnav = document.getElementById('kapp-botnav');
   if (botnav) {
@@ -8867,8 +8922,7 @@ function renderSetList(){
   const container = document.getElementById('set-list');
   container.innerHTML = slices.map((set, idx) => {
     const kn  = set.filter(d => known.has(d.k)).length;
-    const rem = set.length - kn;
-    const pct = Math.round(kn / set.length * 100);
+        const pct = Math.round(kn / set.length * 100);
     const preview = set.slice(0, 10).map(d => d.k).join('、') + (set.length > 10 ? '…' : '');
     return `
     <div class="sv-card" data-idx="${idx}">
@@ -8879,9 +8933,9 @@ function renderSetList(){
         <div class="sv-card-bar-wrap"><div class="sv-card-bar-fill" style="width:${pct}%"></div></div>
       </div>
       <div class="sv-card-right">
-        <div class="sv-star sv-star-gold">★ ${kn}</div>
-        <div class="sv-star sv-star-gray">★ ${rem}</div>
-        <button class="sv-btn" data-idx="${idx}">BELAJAR</button>
+        <div class="sv-count"><strong>${kn}</strong>/${set.length}</div>
+        <div class="sv-count-lbl">hafal</div>
+        <button class="sv-btn" data-idx="${idx}" aria-label="Buka Set ${idx + 1}">Buka</button>
       </div>
     </div>`;
   }).join('');
@@ -8938,7 +8992,6 @@ function updateHomeStats(){
     elProgBar.setAttribute('aria-valuetext', `${totalKn} dari ${totalAll} kanji dikuasai (${totalPct}%)`);
   }
 
-  const labels = {N5:'pemula',N4:'dasar',N3:'menengah',N2:'lanjutan',N1:'mahir'};
   let totalDue = 0;
   ['N5','N4','N3','N2','N1'].forEach(lv => {
     const id = lv.toLowerCase();
@@ -8950,10 +9003,10 @@ function updateHomeStats(){
     totalDue += due;
 
     const elKnown = document.getElementById('kh-'+id+'-known');
-    if(elKnown) elKnown.textContent = kn > 0 ? `${kn}/${list.length}` : '';
+    if(elKnown) elKnown.textContent = `${kn}/${list.length}`;
 
     const elSub = document.getElementById('kh-'+id+'-sub');
-    if(elSub) elSub.textContent = `${list.length} kanji · ${pct > 0 ? pct+'% hafal' : 'Level '+labels[lv]}`;
+    if(elSub) elSub.textContent = pct > 0 ? `${list.length} kanji · ${pct}% hafal` : `${list.length} kanji`;
 
     const elPbar = document.getElementById('kh-'+id+'-pbar');
     if(elPbar) elPbar.style.width = pct + '%';
@@ -8968,6 +9021,16 @@ function updateHomeStats(){
   });
 
   displayStreak();
+
+  const elHint = document.getElementById('kh-progress-hint');
+  if(elHint){
+    const n5 = KD.filter(d => d.lv === 'N5');
+    const n5Left = n5.filter(d => !known.has(d.k)).length;
+    elHint.textContent = totalKn === 0 ? 'Mulai dari N5, sedikit tiap hari.'
+      : totalDue > 0 ? `${totalDue} kanji siap diulang hari ini.`
+      : n5Left > 0 ? `Tinggal ${n5Left} kanji lagi untuk menuntaskan N5.`
+      : 'Hafalan kamu aman. Lanjutkan ke level berikutnya.';
+  }
 
   // Kartu ulasan hari ini
   const card = document.getElementById('kh-review-card');
@@ -9010,11 +9073,13 @@ function renderGrid(list){
     updateStats();
     return;
   }
+  // Lencana level hanya berguna kalau isinya campuran (semua level / pencarian).
+  const mixedLv = items.some(d => d.lv !== items[0].lv);
   grid.innerHTML = items.map(d => `
     <div class="kapp-tile${known.has(d.k)?' known':''}" data-k="${d.k}">
       <div class="kapp-tile-k">${d.k}</div>
       <div class="kapp-tile-m">${d.m}</div>
-      <div class="kapp-tile-lv lv-${d.lv}">${d.lv}</div>
+      ${mixedLv ? `<div class="kapp-tile-lv lv-${d.lv}">${d.lv}</div>` : ''}
     </div>`).join('');
   grid.querySelectorAll('.kapp-tile').forEach(el => {
     el.addEventListener('click', () => {
@@ -9460,6 +9525,21 @@ function showFcMenu(){
   showOnly('view-fc-menu');
 }
 
+// Sesi kartu (flashcard & ulasan) tidak lewat showOnly(), jadi bilah navigasi
+// bawah harus disembunyikan sendiri; dulu ia tetap tampil dan menutupi tombol
+// Lupa/Susah/Bisa/Mudah.
+function enterCardSession(){
+  const botnav = document.getElementById('kapp-botnav');
+  if(botnav) botnav.hidden = true;
+  document.body.classList.remove('has-botnav');
+  document.body.classList.add('in-card-session');
+}
+function readingsHtml(d){
+  const pill = (cls, lbl, val) => val
+    ? `<span class="rv-reading-pill ${cls}"><span class="rv-reading-lbl">${lbl}</span>${val}</span>` : '';
+  return pill('rv-reading-on', 'On', d.on) + pill('rv-reading-kun', 'Kun', d.kun);
+}
+
 // ─── FLASHCARD VIEW ──────────────────────────────────────────────────────────
 // Queue-based flashcard — tidak menulis ke FSRS (hanya update known)
 let fcQueue    = [];
@@ -9486,6 +9566,7 @@ function showFlashcard(){
   const fcArea = document.getElementById('view-flashcard').querySelector('.rv-card-area');
   if(fcArea) fcArea.style.display = '';
   document.getElementById('view-flashcard').style.display = '';
+  enterCardSession();
   window.scrollTo(0,0);
   renderFlashcard();
 }
@@ -9507,6 +9588,7 @@ function fcFlip(){
 function renderFlashcard(){
   const d = fcQueue[0];
   if(!d) return;
+  document.body.classList.remove('card-done');
   // Reset flip state & hide buttons
   document.getElementById('fc-card').classList.remove('flipped');
   document.getElementById('fc-ratings').style.display = 'none';
@@ -9525,6 +9607,7 @@ function renderFlashcard(){
   // Belakang
   document.getElementById('fc-kanji-back').textContent = d.k;
   document.getElementById('fc-meaning').textContent    = d.m;
+  document.getElementById('fc-readings').innerHTML     = readingsHtml(d);
   document.getElementById('fc-vocab').innerHTML = (d.v||[]).slice(0,3).map(v => `
     <div class="rv-vocab-item">
       <span class="rv-vocab-word">${v.w}</span>
@@ -9541,6 +9624,9 @@ function fcShowDone(){
   if(fcArea) fcArea.style.display = 'none';
   document.getElementById('fc-ratings').style.display = 'none';
   document.getElementById('fc-done').style.display    = 'flex';
+  document.body.classList.add('card-done');
+  document.getElementById('fc-counter').textContent = `${fcTotal}/${fcTotal}`;
+  document.getElementById('fc-pbar-fill').style.width = '100%';
   const hafal = fcRating[2] + fcRating[3] + fcRating[4];
   document.getElementById('fc-done-sub').textContent =
     `${fcTotal} kartu · ${hafal} hafal · ${fcRating[1]} perlu diulang`;
@@ -9570,6 +9656,7 @@ document.getElementById('fc-done-back').addEventListener('click', () => {
     const d = fcQueue[0];
     if(!d) return;
     saveUndoSnapshot();
+    _undoSnapshot.fc = { queue:[...fcQueue], done:fcDone, lupa:[...fcLupaSet], rating:{...fcRating} };
     fcRating[r]++;
     if(r >= 2) {
       known.add(d.k); saveKnown();
@@ -9586,6 +9673,30 @@ document.getElementById('fc-done-back').addEventListener('click', () => {
     if(fcQueue.length === 0) { fcShowDone(); return; }
     renderFlashcard();
   });
+});
+
+// Keyboard: Spasi/Enter membalik kartu, 1-4 memberi rating (tombolnya sudah
+// mengiklankan aria-keyshortcuts, tapi dulu tidak ada yang mendengarkan).
+document.addEventListener('keydown', e => {
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  if(e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  const sessions = [['view-flashcard','fc'],['view-review','rv']];
+  for(const [viewId, pre] of sessions){
+    const view = document.getElementById(viewId);
+    if(!view || view.style.display === 'none') continue;
+    const card = document.getElementById(pre + '-card');
+    const area = view.querySelector('.rv-card-area');
+    if(!card || (area && area.style.display === 'none')) return;
+    if(e.key === ' ' || e.key === 'Enter'){
+      if(!card.classList.contains('flipped')){ e.preventDefault(); card.click(); }
+      return;
+    }
+    if(/^[1-4]$/.test(e.key) && card.classList.contains('flipped')){
+      e.preventDefault();
+      document.getElementById(pre + '-btn-' + e.key)?.click();
+    }
+    return;
+  }
 });
 
 // ─── HOME FLASHCARD ───────────────────────────────────────────────────────────
@@ -9856,6 +9967,12 @@ document.getElementById('kh-n4').addEventListener('click', () => { window.track?
 document.getElementById('kh-n3').addEventListener('click', () => { window.track?.('level_click',{level:'N3'}); showSets('N3'); });
 document.getElementById('kh-n2').addEventListener('click', () => { window.track?.('level_click',{level:'N2'}); showSets('N2'); });
 document.getElementById('kh-n1').addEventListener('click', () => { window.track?.('level_click',{level:'N1'}); showSets('N1'); });
+// Kartu level adalah div ber-role=button: Enter/Spasi harus membukanya juga.
+document.querySelectorAll('.kh-level[role="button"]').forEach(el => {
+  el.addEventListener('keydown', e => {
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); el.click(); }
+  });
+});
 document.getElementById('kh-kana').addEventListener('click', showKana);
 
 // ─── BOTTOM NAV EVENTS ───────────────────────────────────────────────────────
@@ -10047,15 +10164,29 @@ function applyUndo(){
   EzFSRS.importProgress(_undoSnapshot.fsrs);
   localStorage.setItem('eznihongo_fsrs_v1', _undoSnapshot.fsrs);
   scheduleSyncProgress();
-  _undoSnapshot = null;
   // Kembalikan kartu terakhir ke antrian
   const fcView = document.getElementById('view-flashcard');
   const rvView = document.getElementById('view-review');
+  const fcSnap = _undoSnapshot && _undoSnapshot.fc;
+  const rvSnap = _undoSnapshot && _undoSnapshot.rv;
+  _undoSnapshot = null;
   if(fcView && fcView.style.display !== 'none'){
-    if(fcDone > 0){ fcDone--; }
+    if(fcSnap){
+      fcQueue = fcSnap.queue; fcDone = fcSnap.done;
+      fcLupaSet = new Set(fcSnap.lupa); fcRating = fcSnap.rating;
+    }
+    document.getElementById('fc-done').style.display = 'none';
+    fcView.querySelector('.rv-card-area').style.display = '';
     renderFlashcard();
   } else if(rvView && rvView.style.display !== 'none'){
-    if(rvIdx > 0){ rvIdx--; setTimeout(rvRenderCard, 50); }
+    if(rvIdx > 0){
+      rvIdx--;
+      if(rvSnap && rvRating[rvSnap.rating] > 0) rvRating[rvSnap.rating]--;
+      document.getElementById('rv-done').style.display = 'none';
+      rvView.querySelector('.rv-card-area').style.display = '';
+      document.getElementById('rv-ratings').style.display = '';
+      setTimeout(rvRenderCard, 50);
+    }
   }
   showToast('Rating dibatalkan ↩');
 }
@@ -10473,12 +10604,14 @@ function showReviewMode(deck) {
   if(rvArea) rvArea.style.display = '';
   document.getElementById('rv-ratings').style.visibility = 'hidden';
   document.getElementById('view-review').style.display = 'flex';
+  enterCardSession();
   window.scrollTo(0, 0);
   rvRenderCard();
 }
 
 function rvRenderCard() {
   if (rvIdx >= rvDeck.length) { rvShowDone(); return; }
+  document.body.classList.remove('card-done');
   const d = rvDeck[rvIdx];
 
   // Reset flip
@@ -10500,6 +10633,7 @@ function rvRenderCard() {
   // Back
   document.getElementById('rv-kanji-back').textContent = d.k;
   document.getElementById('rv-meaning').textContent     = d.m;
+  document.getElementById('rv-readings').innerHTML      = readingsHtml(d);
   document.getElementById('rv-vocab').innerHTML = (d.v || []).slice(0, 3).map(v =>
     `<div class="rv-vocab-item">
       <span class="rv-vocab-word">${v.w}</span>
@@ -10528,6 +10662,7 @@ function rvRate(rating) {
   const d = rvDeck[rvIdx];
   if (!d) return;
   saveUndoSnapshot();
+  _undoSnapshot.rv = { rating };
   EzFSRS.reviewCard(d.k, rating);
   if (rating >= 2) { known.add(d.k); saveKnown(); }
   else { known.delete(d.k); saveKnown(); }
@@ -10541,6 +10676,9 @@ function rvShowDone() {
   document.getElementById('view-review').querySelector('.rv-card-area').style.display  = 'none';
   document.getElementById('rv-ratings').style.display   = 'none';
   document.getElementById('rv-done').style.display       = 'flex';
+  document.body.classList.add('card-done');
+  document.getElementById('rv-counter').textContent = `${rvDeck.length} / ${rvDeck.length}`;
+  document.getElementById('rv-pbar-fill').style.width = '100%';
 
   const total = rvDeck.length;
   document.getElementById('rv-done-sub').textContent =
