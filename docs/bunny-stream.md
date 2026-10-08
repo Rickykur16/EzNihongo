@@ -11,13 +11,16 @@ diubah menjadi URL Embed, dengan autoplay dimatikan.
 Migrasi 205 menambah provider Bunny. Migrasi 206 memasang video yang diberikan
 pemilik untuk Bab 1 N5 dengan slug lama `hiragana-katakana`. Migrasi 207
 menghubungkan pelajaran Video/Kana pada slug saat ini, `n5-b1`.
+Migrasi 208 memasang video Katakana untuk Bab 2 N5, modul `n5-b2`.
 ID pelajaran, progres, kuis, dan rentang waktu yang tersimpan tetap dipakai.
 Sumber YouTube lama tidak diubah, sehingga bab lain tetap bisa menggunakannya.
-Pilihan sumber/URL semula disimpan di `bunny_bab1_video_backup_206` untuk pemulihan.
+Pilihan sumber/URL semula disimpan di `bunny_bab1_video_backup_206` dan
+`bunny_bab2_video_backup_208` untuk pemulihan.
 Rentang lama perlu cocok dengan timeline file yang diunggah ke Bunny; sesuaikan
 Mulai/Selesai di editor jika videonya sudah dipotong atau diedit.
 
 Library: `770041`. Video Bab 1: `0495cf1c-2e6b-4306-b94e-fa08ce239e2a`.
+Video Bab 2: `69a9a519-d9c2-4430-a9b8-f887cbb4bd88`.
 
 Izinkan domain website di pengaturan keamanan library Bunny. Pemutar mengirim
 origin melalui `strict-origin-when-cross-origin`. Jika server memakai CSP,

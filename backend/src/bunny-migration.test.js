@@ -3,8 +3,15 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import pg from 'pg';
 
-for (const chapterSlug of ['hiragana-katakana', 'n5-b1']) {
-test(`Bunny migration replaces only N5 Bab 1 (${chapterSlug}) video/kana while preserving ranges and progress`,
+const bab1Migrations = ['205_bunny_video_sources.sql', '206_n5_bab1_bunny_video.sql', '207_n5_bab1_bunny_current_slug.sql'];
+for (const { chapterSlug, migrations, externalId, backupName } of [
+  ...['hiragana-katakana', 'n5-b1'].map(chapterSlug => ({ chapterSlug,
+    migrations: bab1Migrations, externalId: '770041/0495cf1c-2e6b-4306-b94e-fa08ce239e2a',
+    backupName: 'bunny_bab1_video_backup_206' })),
+  { chapterSlug: 'n5-b2', migrations: ['205_bunny_video_sources.sql', '208_n5_bab2_bunny_video.sql'],
+    externalId: '770041/69a9a519-d9c2-4430-a9b8-f887cbb4bd88', backupName: 'bunny_bab2_video_backup_208' },
+]) {
+test(`Bunny migration replaces only N5 ${chapterSlug} video/kana while preserving ranges and progress`,
   { skip: !process.env.TEST_DATABASE_URL && !process.env.TEST_PGLITE_URL }, async () => {
     let db;
     const schema = `bunny_test_${Date.now()}`;
@@ -29,7 +36,8 @@ test(`Bunny migration replaces only N5 Bab 1 (${chapterSlug}) video/kana while p
       ]) await db.query(sql);
       const course = (await db.query("INSERT INTO courses(slug) VALUES('n5'),('n4') RETURNING *")).rows;
       const module = [];
-      for (const [courseId, slug] of [[course[0].id, chapterSlug], [course[0].id, 'n5-b2'], [course[1].id, chapterSlug]]) {
+      const otherChapterSlug = chapterSlug === 'n5-b2' ? 'n5-b1' : 'n5-b2';
+      for (const [courseId, slug] of [[course[0].id, chapterSlug], [course[0].id, otherChapterSlug], [course[1].id, chapterSlug]]) {
         module.push((await db.query('INSERT INTO modules(course_id,slug) VALUES($1,$2) RETURNING *', [courseId, slug])).rows[0]);
       }
       const old = (await db.query("INSERT INTO video_sources(provider,external_id,source_url) VALUES('youtube','old-video','old-url') RETURNING id")).rows[0].id;
@@ -42,14 +50,15 @@ test(`Bunny migration replaces only N5 Bab 1 (${chapterSlug}) video/kana while p
       }
       const progress = (await db.query('SELECT * FROM progress ORDER BY lesson_id')).rows;
       const migrate = async () => {
-        for (const name of ['205_bunny_video_sources.sql', '206_n5_bab1_bunny_video.sql', '207_n5_bab1_bunny_current_slug.sql']) {
+        for (const name of migrations) {
           const sql = await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8');
           if (db.exec) await db.exec(sql); else await db.query(sql);
         }
       };
       await migrate();
       const source = (await db.query("SELECT * FROM video_sources WHERE provider='bunny'")).rows[0];
-      assert.equal(source.external_id, '770041/0495cf1c-2e6b-4306-b94e-fa08ce239e2a');
+      assert.equal(source.external_id, externalId);
+      assert.equal(source.source_url, `https://player.mediadelivery.net/embed/${externalId}`);
       for (const [index, before] of lessons.entries()) {
         const after = (await db.query('SELECT * FROM lessons WHERE id=$1', [before.id])).rows[0];
         assert.equal(after.video_start_seconds, 30);
@@ -61,7 +70,7 @@ test(`Bunny migration replaces only N5 Bab 1 (${chapterSlug}) video/kana while p
       assert.equal((await db.query('SELECT source_url FROM video_sources WHERE id=$1', [old])).rows[0].source_url, 'old-url');
       await migrate();
       assert.equal((await db.query("SELECT count(*)::int AS n FROM video_sources WHERE provider='bunny'")).rows[0].n, 1);
-      const backup = (await db.query('SELECT * FROM bunny_bab1_video_backup_206')).rows;
+      const backup = (await db.query(`SELECT * FROM ${backupName}`)).rows;
       assert.equal(backup.length, 2);
       assert.ok(backup.every(row => row.video_source_id === old && row.video_url === 'old-url'));
     } finally {
