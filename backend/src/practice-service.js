@@ -5,9 +5,26 @@ import { applyPracticeAttempt } from './learning-foundations.js';
 // Keeping the immutable attempt and aggregate state in the same transaction
 // prevents an attempt log without its scheduling state (or vice versa).
 export async function recordPracticeAttemptWithState(client, {
-  userId, courseId, lessonId, itemType, itemId, skill, isCorrect, source,
+  userId, courseId, lessonId, itemType, itemId, skill, isCorrect, source, eventId,
 }) {
   await lockEvidence(client, userId);
+  // The evidence lock serializes even a reused event ID with a different item.
+  // Receipt, immutable attempt and scheduler state commit (or roll back) together.
+  const request = { courseId: courseId?.toLowerCase() || null, lessonId: lessonId?.toLowerCase() || null,
+    itemType, itemId: itemId.toLowerCase(), skill, isCorrect, source };
+  if (eventId) {
+    const receipt = await client.query(`SELECT state, request = $3::jsonb AS matches
+      FROM practice_attempt_events WHERE user_id=$1 AND event_id=$2`,
+    [userId, eventId, JSON.stringify(request)]);
+    if (receipt.rows[0]) {
+      if (!receipt.rows[0].matches) {
+        const error = new Error('practice_event_conflict');
+        error.code = 'PRACTICE_EVENT_CONFLICT';
+        throw error;
+      }
+      return receipt.rows[0].state;
+    }
+  }
   const currentResult = await client.query(
     `SELECT attempts, correct, streak, last_seen_at, last_reviewed_at, next_review_at, mastery_state,
             fsrs_stability, fsrs_difficulty, fsrs_state, fsrs_reps, fsrs_lapses
@@ -54,5 +71,7 @@ export async function recordPracticeAttemptWithState(client, {
       next.fsrs.reps, next.fsrs.lapses,
     ]
   );
+  if (eventId) await client.query(`INSERT INTO practice_attempt_events(user_id,event_id,request,state)
+    VALUES($1,$2,$3::jsonb,$4::jsonb)`, [userId, eventId, JSON.stringify(request), JSON.stringify(saved.rows[0])]);
   return saved.rows[0];
 }

@@ -833,6 +833,17 @@ CREATE INDEX IF NOT EXISTS idx_practice_attempts_user_created ON practice_attemp
 CREATE INDEX IF NOT EXISTS idx_practice_attempts_user_item ON practice_attempts (user_id, item_type, item_id, skill, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_practice_attempts_lesson ON practice_attempts (lesson_id, created_at DESC) WHERE lesson_id IS NOT NULL;
 
+-- Durable idempotency receipts live until account erasure so a delayed retry
+-- cannot apply the same immutable attempt or scheduler transition twice.
+CREATE TABLE IF NOT EXISTS practice_attempt_events (
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  event_id UUID NOT NULL,
+  request JSONB NOT NULL,
+  state JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, event_id)
+);
+
 CREATE TABLE IF NOT EXISTS user_practice_legacy_imports (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   source TEXT NOT NULL CHECK (source = 'welcome_local_mastery_v1'),

@@ -41,7 +41,7 @@ export async function loadProgressDetail(user, courseSlug) {
     const current = grammarByModule.get(row.module_id) || { scores: [], attempts: 0 };
     if (m.score != null) current.scores.push(m.score); current.attempts += m.attempts; grammarByModule.set(row.module_id, current);
   }
-  const reviews = (await buildReviewCandidates(user)).candidates.filter((candidate) => candidate.courseId === courseId);
+  const reviews = (await buildReviewCandidates(user, courseId)).candidates;
   const lessonIds = [...new Set(reviews.map((row) => row.lessonId).filter(Boolean))];
   const lessonModules = lessonIds.length ? await query(`SELECT id, module_id FROM lessons WHERE id = ANY($1::uuid[])`, [lessonIds]) : { rows: [] };
   const moduleForLesson = new Map(lessonModules.rows.map((row) => [row.id, row.module_id])); const reviewsByModule = new Map();

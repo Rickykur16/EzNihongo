@@ -27,25 +27,29 @@
     return body;
   }
   async function reconcileCachedProgress() {
+    const owner = window.ezCaptureAuth();
+    if (!owner.userId) return false;
+    const learningStorage = window.ezLearningStorage;
     let progress = {};
     let quizScores = {};
     try {
-      progress = JSON.parse(localStorage.getItem('ez_progress') || '{}');
-      quizScores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
+      progress = JSON.parse(learningStorage.getItem('ez_progress') || '{}');
+      quizScores = JSON.parse(learningStorage.getItem('ez_quiz_scores') || '{}');
     } catch {}
     const hasProgress = progress && typeof progress === 'object' && !Array.isArray(progress)
       && Object.values(progress).some((course) => course && typeof course === 'object' && Object.values(course).some((done) => done === true));
-    const needsRepair = localStorage.getItem('ez_progress_pending_sync') === '1'
-      || (hasProgress && localStorage.getItem(progressReconcileVersion) !== '1');
+    const needsRepair = learningStorage.getItem('ez_progress_pending_sync') === '1'
+      || (hasProgress && learningStorage.getItem(progressReconcileVersion) !== '1');
     if (!needsRepair) return true;
     try {
       const saved = await ezApi('/learning-state', {
+        expectedUserId: owner.userId,
         method: 'PUT',
         body: JSON.stringify({ progress, quizScores }),
       });
-      if (!saved.ok) return false;
-      localStorage.removeItem('ez_progress_pending_sync');
-      localStorage.setItem(progressReconcileVersion, '1');
+      if (!saved.ok || !window.ezIsAuthCurrent(owner)) return false;
+      learningStorage.removeItem('ez_progress_pending_sync');
+      learningStorage.setItem(progressReconcileVersion, '1');
       return true;
     } catch { return false; }
   }
@@ -59,7 +63,12 @@
     }
     return `welcome.html?${params}`;
   }
-  const reviewUrl = (category = 'mixed') => category === 'mixed' ? `review.html?v=${release}` : `review.html?v=${release}&category=${encodeURIComponent(category)}`;
+  const reviewUrl = (category = 'mixed', course = '') => {
+    const params = new URLSearchParams({ v: release });
+    if (course) params.set('course', course);
+    if (category !== 'mixed') params.set('category', category);
+    return `review.html?${params}`;
+  };
   const courseUrl = (path, course) => `${path}?v=${release}&course=${encodeURIComponent(course)}`;
   const formatDate = (value) => value ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '';
   function errorMarkup(error) {
@@ -284,9 +293,10 @@
     const course = data.course; const next = data.continueLearning; const review = data.review || { total: 0, byCategory: {} };
     const mastery = data.mastery || {}; const activity = data.weeklyActivity || {}; const focus = data.focus; const live = data.liveClass || {};
     const focusMarkup = focus
-      ? `<h3>${esc(focus.title)}</h3><p class="muted">${esc(focus.detail)}</p><a class="secondary" href="${focus.action === 'continue' ? learnUrl(data) : reviewUrl(focus.reviewCategory || 'mixed')}">${focus.action === 'continue' ? 'Lanjut Belajar' : 'Latihan Fokus'}</a>`
+      ? `<h3>${esc(focus.title)}</h3><p class="muted">${esc(focus.detail)}</p><a class="secondary" href="${focus.action === 'continue' ? learnUrl(data) : reviewUrl(focus.reviewCategory || 'mixed', course.slug)}">${focus.action === 'continue' ? 'Lanjut Belajar' : 'Latihan Fokus'}</a>`
       : '<p class="muted">Belum ada rekomendasi khusus. Lanjutkan latihan agar kami dapat menentukan fokus berikutnya.</p>';
     document.getElementById('learn-nav').href = learnUrl(data);
+    document.querySelectorAll('.student-nav a[href^="review.html"]').forEach((link) => { link.href = reviewUrl('mixed', course.slug); });
     document.getElementById('live-nav').href = courseUrl('live.html', course.slug);
     document.getElementById('progress-nav').href = courseUrl('progress.html', course.slug);
     const liveMarkup = live.next
@@ -294,7 +304,7 @@
       : '<h2>Belum ada kelas terjadwal</h2><p class="muted">Kelas dan rekaman akan muncul di sini saat tersedia.</p>';
     const recordings = (live.recentRecordings || []).map((item) => `<li>${esc(item.title)} <a target="_blank" rel="noopener" href="${esc(item.recordingUrl)}">Tonton</a></li>`).join('');
     app.innerHTML = `<section class="hero"><div><div class="eyebrow">学習ダッシュボード · DASHBOARD</div><h1>${data.greetingName ? `Halo, ${esc(data.greetingName)}.` : 'Halo.'}</h1><p class="muted">${esc(course.level || course.slug.toUpperCase())} · ${course.progress.percentage}% kurikulum selesai</p>${accessNotice(course)}</div>${data.courses?.length > 1 ? `<label class="course-switch"><span>Kelas aktif</span><select class="course-select" id="course-select" aria-label="Pilih kelas">${data.courses.map((item) => `<option value="${esc(item.slug)}" ${item.id === course.id ? 'selected' : ''}>${esc(item.title)}</option>`).join('')}</select></label>` : ''}</section>
-    <section class="grid dashboard-primary"><article class="card continue-card"><div class="eyebrow">LANJUT BELAJAR</div>${next ? `<div class="continue-label">${esc(next.section || 'Kurikulum')} · ${esc(next.chapter.title)}</div><div class="continue-title">${esc(next.lesson.title)}</div><a class="primary" href="${learnUrl(data)}">Lanjut Belajar</a>` : '<div class="continue-title">Kurikulum selesai</div><p class="muted">Semua pelajaran pada kelas ini sudah selesai.</p>'}</article><article class="card review-card"><div class="eyebrow">SMART REVIEW</div><div class="review-count">${review.total} item perlu direview</div><div class="counts">${Object.entries(labels).map(([key, label]) => `<div class="count"><strong>${Number(review.byCategory?.[key]) || 0}</strong><span>${label}</span></div>`).join('')}</div>${review.total ? `<a class="primary" href="${reviewUrl()}">Mulai Review</a>` : '<p class="muted">Review hari ini selesai. Lanjutkan belajar untuk membuka materi review berikutnya.</p>'}</article></section>
+    <section class="grid dashboard-primary"><article class="card continue-card"><div class="eyebrow">LANJUT BELAJAR</div>${next ? `<div class="continue-label">${esc(next.section || 'Kurikulum')} · ${esc(next.chapter.title)}</div><div class="continue-title">${esc(next.lesson.title)}</div><a class="primary" href="${learnUrl(data)}">Lanjut Belajar</a>` : '<div class="continue-title">Kurikulum selesai</div><p class="muted">Semua pelajaran pada kelas ini sudah selesai.</p>'}</article><article class="card review-card"><div class="eyebrow">SMART REVIEW</div><div class="review-count">${review.total} item perlu direview</div><div class="counts">${Object.entries(labels).map(([key, label]) => `<div class="count"><strong>${Number(review.byCategory?.[key]) || 0}</strong><span>${label}</span></div>`).join('')}</div>${review.total ? `<a class="primary" href="${reviewUrl('mixed', course.slug)}">Mulai Review</a>` : '<p class="muted">Review hari ini selesai. Lanjutkan belajar untuk membuka materi review berikutnya.</p>'}</article></section>
     <section class="grid dashboard-secondary"><article class="card progress-card"><div class="eyebrow">PROGRES KELAS</div><div class="course-progress">${course.progress.percentage}% selesai</div><div class="curriculum-bar" role="progressbar" aria-label="Progres kurikulum" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${course.progress.percentage}"><i style="width:${course.progress.percentage}%"></i></div><p class="muted">${course.progress.completedLessons} dari ${course.progress.totalLessons} pelajaran telah diselesaikan.</p><a class="secondary compact-action" href="${courseUrl('progress.html', course.slug)}">Lihat Progres</a></article><article class="card live"><div class="eyebrow">LIVE CLASS · NEXT CLASS</div>${liveMarkup}${recordings ? `<div class="eyebrow recordings-label">RECENT RECORDINGS</div><ul class="live-recordings">${recordings}</ul>` : ''}<a class="secondary live-all" href="${courseUrl('live.html', course.slug)}">Lihat Semua</a></article></section>
     <section class="card performance-card"><div class="performance"><div><div class="eyebrow">PERKEMBANGAN KEMAMPUAN</div><h2>Kemampuanmu saat ini</h2>${Object.entries(labels).map(([key]) => masteryRow(key, mastery[key])).join('')}</div></div></section>
     <section class="card activity-card"><div class="eyebrow">AKTIVITAS MINGGU INI</div><h2>Ringkasan belajarmu minggu ini</h2><div class="activity"><div class="metric"><strong>${activity.activeDays || 0}</strong><span>hari aktif</span></div><div class="metric"><strong>${activity.lessonsCompleted || 0}</strong><span>pelajaran selesai</span></div><div class="metric"><strong>${activity.reviewQuestions || 0}</strong><span>review selesai</span></div><div class="metric"><strong>${activity.accuracy == null ? '—' : `${activity.accuracy}%`}</strong><span>akurasi mandiri</span></div></div><div class="insight">${esc(data.weeklyInsight?.message || 'Belum cukup aktivitas untuk menampilkan rangkuman minggu ini.')}</div></section>`;

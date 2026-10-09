@@ -4862,7 +4862,8 @@ function getUserName(user = session) {
   © 2026 <strong>EzNihongo</strong> · <a href="privacy.html">Kebijakan Privasi</a> · <a href="terms.html">Syarat &amp; Ketentuan</a>
 </footer>
 
-<script src="api-client.js?v=20260926-assignment-v2"></script>
+<script src="api-client.js?v=20261008-learning"></script>
+<script src="practice-queue.js?v=20261008-learning"></script>
 <script src="assets/dialogue/catalog.js?v=1"></script>
 <script src="src/dialogue-furigana.js?v=1"></script>
 <script src="src/dialogue-scene.js?v=4"></script>
@@ -4876,6 +4877,18 @@ function getUserName(user = session) {
 // AUTH GUARD — self-hosted API session
 // ═══════════════════════════════════════════════
 let session = JSON.parse(localStorage.getItem('ez_user') || 'null');
+let learningPageOwner = null;
+window.addEventListener('ez:auth-changed', (event) => {
+  // Initial boot may replace a stale profile mirror. Once lessons belong to
+  // a verified account, retire their in-memory state on every account change.
+  if (learningPageOwner && event.detail.userId !== learningPageOwner) {
+    clearTimeout(_cloudPushTimer);
+    document.getElementById('app-root')?.setAttribute('inert', '');
+    if (event.detail.userId) window.location.reload();
+  } else if (learningPageOwner) {
+    document.getElementById('app-root')?.removeAttribute('inert');
+  }
+});
 if (!session) {
   window.location.replace('login.html?next=welcome.html');
 }
@@ -5127,19 +5140,23 @@ function findLesson(courseSlug, moduleId, lessonId) {
 // called on page load (and again after a new enrollment) to keep the cache
 // fresh — never trust localStorage alone for access decisions.
 function getEnrolledCourses() {
-  try { return JSON.parse(localStorage.getItem('ez_courses') || '[]'); }
+  try { return JSON.parse(window.ezLearningStorage.getItem('ez_courses') || '[]'); }
   catch { return []; }
 }
 async function syncEnrollmentsFromServer() {
   if (typeof window.ezApi !== 'function') return getEnrolledCourses();
+  const owner = window.ezCaptureAuth();
+  if (!owner.userId) return [];
   try {
-    const res = await window.ezApi('/enrollments/me');
+    const res = await window.ezApi('/enrollments/me', { expectedUserId: owner.userId });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
+    if (!window.ezIsAuthCurrent(owner)) return [];
     const slugs = (data.enrollments || []).map(e => e.slug).filter(Boolean);
-    localStorage.setItem('ez_courses', JSON.stringify(slugs));
+    window.ezLearningStorage.setItem('ez_courses', JSON.stringify(slugs));
     return slugs;
   } catch (err) {
+    if (!window.ezIsAuthCurrent(owner)) return [];
     // Let the caller decide what to do about expired sessions — otherwise we
     // silently fall back to (possibly empty) localStorage and render the
     // paywall even though the real problem is "please log in again."
@@ -5150,12 +5167,12 @@ async function syncEnrollmentsFromServer() {
   }
 }
 function getProgress() {
-  try { return JSON.parse(localStorage.getItem('ez_progress') || '{}'); }
+  try { return JSON.parse(window.ezLearningStorage.getItem('ez_progress') || '{}'); }
   catch { return {}; }
 }
 function setProgress(obj) {
-  localStorage.setItem('ez_progress', JSON.stringify(obj));
-  localStorage.setItem('ez_progress_pending_sync', '1');
+  window.ezLearningStorage.setItem('ez_progress', JSON.stringify(obj));
+  window.ezLearningStorage.setItem('ez_progress_pending_sync', '1');
   _scheduleCloudPush();
 }
 
@@ -5166,22 +5183,30 @@ function setProgress(obj) {
 let _cloudPushTimer = null;
 function _scheduleCloudPush() {
   if (typeof window.ezApi !== 'function') return;
+  const owner = window.ezCaptureAuth();
+  if (!owner.userId) return;
   clearTimeout(_cloudPushTimer);
-  _cloudPushTimer = setTimeout(pushLearningStateToCloud, 1200);
+  _cloudPushTimer = setTimeout(() => {
+    if (window.ezIsAuthCurrent(owner)) pushLearningStateToCloud();
+  }, 1200);
 }
 function markProgressCacheSynced() {
-  localStorage.removeItem('ez_progress_pending_sync');
-  localStorage.setItem('ez_progress_reconcile_v2', '1');
+  window.ezLearningStorage.removeItem('ez_progress_pending_sync');
+  window.ezLearningStorage.setItem('ez_progress_reconcile_v2', '1');
 }
 async function pushLearningStateToCloud() {
   if (typeof window.ezApi !== 'function') return false;
+  const owner = window.ezCaptureAuth();
+  if (!owner.userId) return false;
   try {
     const progress = getProgress();
-    const quizScores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
+    const quizScores = JSON.parse(window.ezLearningStorage.getItem('ez_quiz_scores') || '{}');
     const response = await window.ezApi('/learning-state', {
+      expectedUserId: owner.userId,
       method: 'PUT',
       body: JSON.stringify({ progress, quizScores }),
     });
+    if (!window.ezIsAuthCurrent(owner)) return false;
     if (response.ok) markProgressCacheSynced();
     return response.ok;
   } catch { return false; }
@@ -5220,7 +5245,7 @@ function _pruneProgressToHydratedCourses() {
   }
   const before = JSON.stringify(current);
   const after = JSON.stringify(next);
-  if (before !== after) localStorage.setItem('ez_progress', after);
+  if (before !== after) window.ezLearningStorage.setItem('ez_progress', after);
   return before !== after;
 }
 // Tarik blob server saat boot, union-merge dengan localStorage (completion
@@ -5229,16 +5254,19 @@ function _pruneProgressToHydratedCourses() {
 // Return true bila localStorage berubah (caller bisa re-render tanda ✓).
 async function syncLearningStateFromServer({ reconcile = false } = {}) {
   if (typeof window.ezApi !== 'function') return false;
+  const owner = window.ezCaptureAuth();
+  if (!owner.userId) return false;
   try {
-    const res = await window.ezApi('/learning-state');
+    const res = await window.ezApi('/learning-state', { expectedUserId: owner.userId });
     if (!res.ok) return false;
     const cloud = await res.json();
-    const beforeP = localStorage.getItem('ez_progress') || '{}';
+    if (!window.ezIsAuthCurrent(owner)) return false;
+    const beforeP = window.ezLearningStorage.getItem('ez_progress') || '{}';
     const afterP = JSON.stringify(_mergeProgress(cloud.progress || {}, getProgress()));
-    localStorage.setItem('ez_progress', afterP);
-    const beforeQ = localStorage.getItem('ez_quiz_scores') || '{}';
+    window.ezLearningStorage.setItem('ez_progress', afterP);
+    const beforeQ = window.ezLearningStorage.getItem('ez_quiz_scores') || '{}';
     const afterQ = JSON.stringify(_mergeQuizScores(cloud.quizScores || {}, JSON.parse(beforeQ)));
-    localStorage.setItem('ez_quiz_scores', afterQ);
+    window.ezLearningStorage.setItem('ez_quiz_scores', afterQ);
     if (reconcile) {
       if (!(await pushLearningStateToCloud())) _scheduleCloudPush();
     } else {
@@ -5272,21 +5300,26 @@ function _currentPracticeLesson() {
 
 function _recordPracticeAttempt(itemType, item, skill, isCorrect) {
   const lesson = _currentPracticeLesson();
-  if (!item?.id || !lesson?.apiId || typeof window.ezApi !== 'function') return;
-  // Local state has already changed before this request is started, preserving
-  // the current drill's offline-first responsiveness.
-  window.ezApi('/practice/attempts', {
-    method: 'POST',
-    body: JSON.stringify({
-      itemType,
-      itemId: item.id,
-      skill,
-      isCorrect: !!isCorrect,
-      source: 'lesson_drill',
-      lessonId: lesson.apiId,
-    }),
-  }).catch(() => {});
+  if (!item?.id || !lesson?.apiId) return;
+  window.EzPracticeQueue.enqueue({ itemType, itemId: item.id, skill,
+    isCorrect: !!isCorrect, source: 'lesson_drill', lessonId: lesson.apiId });
 }
+
+window.addEventListener('ez:practice-sync', ({ detail }) => {
+  let notice = document.getElementById('practice-sync-status');
+  if (!notice) {
+    notice = document.createElement('div');
+    notice.id = 'practice-sync-status'; notice.setAttribute('role', 'status');
+    notice.style.cssText = 'position:fixed;bottom:16px;left:16px;max-width:340px;padding:12px 16px;background:#fff8e8;border:1px solid #e4cf95;border-radius:8px;z-index:1000;font-size:13px';
+    document.body.appendChild(notice);
+  }
+  notice.hidden = !detail.pending || (!detail.error && detail.durable && !detail.blocked);
+  notice.textContent = !detail.durable
+    ? 'Jawaban latihan belum tersimpan di perangkat. Jangan tutup halaman sampai koneksi pulih.'
+    : detail.blocked
+    ? 'Sebagian jawaban latihan belum dapat dikirim. Jawaban tetap tersimpan di perangkat.'
+    : 'Jawaban latihan tersimpan di perangkat dan akan dikirim ulang saat koneksi pulih.';
+});
 
 // Gate "Tandai Selesai" behind having attempted every item in the lesson at
 // least once — mirrors gtUpdateComplete()'s pattern for grammar_task.
@@ -5423,7 +5456,7 @@ function _mergePracticeStateFromServer(itemType, pool, states) {
       store.items[_kanaKey(item)] = stat;
       changed = true;
     }
-    if (changed) try { localStorage.setItem(KANA_MASTERY_KEY, JSON.stringify(store)); } catch {}
+    if (changed) try { window.ezLearningStorage.setItem(KANA_MASTERY_KEY, JSON.stringify(store)); } catch {}
   } else if (itemType === 'vocabulary') {
     const store = _deckReadMastery();
     for (const remote of states) {
@@ -5434,7 +5467,7 @@ function _mergePracticeStateFromServer(itemType, pool, states) {
       store.items[_deckKey(item)] = stat;
       changed = true;
     }
-    if (changed) try { localStorage.setItem(DECK_MASTERY_KEY, JSON.stringify(store)); } catch {}
+    if (changed) try { window.ezLearningStorage.setItem(DECK_MASTERY_KEY, JSON.stringify(store)); } catch {}
   } else if (itemType === 'kanji') {
     const store = _kanjiReadMastery();
     for (const remote of states) {
@@ -5455,68 +5488,21 @@ function _mergePracticeStateFromServer(itemType, pool, states) {
         changed = true;
       }
     }
-    if (changed) try { localStorage.setItem(KANJI_MASTERY_KEY, JSON.stringify(store)); } catch {}
+    if (changed) try { window.ezLearningStorage.setItem(KANJI_MASTERY_KEY, JSON.stringify(store)); } catch {}
   }
   return changed;
 }
 
 async function syncPracticeStateForLesson(itemType, lessonApiId, pool, onMerged) {
   if (!lessonApiId || typeof window.ezApi !== 'function') return;
+  const owner = window.ezCaptureAuth();
+  if (!owner.userId) return;
   try {
-    const res = await window.ezApi(`/practice/state?lessonId=${encodeURIComponent(lessonApiId)}&itemType=${encodeURIComponent(itemType)}`);
+    const res = await window.ezApi(`/practice/state?lessonId=${encodeURIComponent(lessonApiId)}&itemType=${encodeURIComponent(itemType)}`, { expectedUserId: owner.userId });
     if (!res.ok) return;
     const data = await res.json();
+    if (!window.ezIsAuthCurrent(owner)) return;
     if (_mergePracticeStateFromServer(itemType, pool, data.states || [])) onMerged?.();
-  } catch {}
-}
-
-function _legacyKanjiWordOwners(legacyWordKeys) {
-  const owners = {};
-  const wanted = new Set(Array.isArray(legacyWordKeys) ? legacyWordKeys : []);
-  if (!wanted.size) return owners;
-  for (const course of Object.values(COURSE_CONTENT || {})) {
-    for (const module of (course.modules || [])) {
-      for (const lesson of (module.lessons || [])) {
-        for (const item of (lesson.kanji || [])) {
-          if (!item?.id) continue;
-          for (const word of (item.compounds || [])) {
-            const key = _kanjiWordKey(word);
-            if (!key || key === '::' || !wanted.has(key)) continue;
-            (owners[key] ||= []).push(item.id);
-          }
-        }
-      }
-    }
-  }
-  for (const key of Object.keys(owners)) owners[key] = [...new Set(owners[key])];
-  return owners;
-}
-
-async function importLegacyMasteryToServer() {
-  if (localStorage.getItem('ez_practice_legacy_import_v1') === '1' || typeof window.ezApi !== 'function') return;
-  const parse = (key, fallback) => {
-    try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); } catch { return fallback; }
-  };
-  const kana = parse(KANA_MASTERY_KEY, { version: 1, items: {} });
-  const vocabulary = parse(DECK_MASTERY_KEY, { version: 1, items: {} });
-  const kanji = parse(KANJI_MASTERY_KEY, { version: 2, items: {}, words: {} });
-  const mastery = {
-    kana,
-    vocabulary,
-    kanji,
-    kanjiWordOwners: _legacyKanjiWordOwners(Object.keys(kanji?.words || {})),
-  };
-  try {
-    const res = await window.ezApi('/practice/import-legacy', {
-      method: 'POST', body: JSON.stringify({ mastery }),
-    });
-    if (!res.ok) return;
-    const outcome = await res.json().catch(() => ({}));
-    // Keep every source localStorage key as a cache/fallback.  This marker
-    // merely avoids re-uploading the same snapshot on this browser.  Leave it
-    // unset when identities are currently inaccessible/ambiguous so a later
-    // entitled session can safely retry; the server ledger prevents doubles.
-    if (!Number(outcome.unresolved)) localStorage.setItem('ez_practice_legacy_import_v1', '1');
   } catch {}
 }
 
@@ -5536,11 +5522,11 @@ function yesterdayStr() {
 
 function getStats() {
   try {
-    const s = JSON.parse(localStorage.getItem('ez_stats') || '{}');
+    const s = JSON.parse(window.ezLearningStorage.getItem('ez_stats') || '{}');
     return { xp: s.xp || 0, streak: s.streak || 0, lastActive: s.lastActive || null, dailyXP: s.dailyXP || 0, dailyDate: s.dailyDate || null };
   } catch { return { xp: 0, streak: 0, lastActive: null, dailyXP: 0, dailyDate: null }; }
 }
-function saveStats(s) { localStorage.setItem('ez_stats', JSON.stringify(s)); }
+function saveStats(s) { window.ezLearningStorage.setItem('ez_stats', JSON.stringify(s)); }
 
 function tickActivityAndStreak() {
   const s = getStats();
@@ -6778,6 +6764,8 @@ async function finishQuiz() {
     renderQuizQuestion(document.getElementById('main-content'));
     return;
   }
+  const owner = window.ezCaptureAuth();
+  if (!owner.userId) return;
   const viewEpoch = window.__quizNavigationEpoch;
   if (state.draftConflict) {
     const el = document.getElementById('quiz-draft-status');
@@ -6786,7 +6774,7 @@ async function finishQuiz() {
   }
   state.submitting = true;
   if (state.draftPromise) await state.draftPromise;
-  if (state.draftConflict || quizState !== state || viewEpoch !== window.__quizNavigationEpoch) { state.submitting = false; return; }
+  if (!window.ezIsAuthCurrent(owner) || state.draftConflict || quizState !== state || viewEpoch !== window.__quizNavigationEpoch) { state.submitting = false; return; }
   destroyAllListeningPlayers();
   const { questions, key, answers, attemptToken } = state;
   const main = document.getElementById('main-content');
@@ -6802,9 +6790,11 @@ async function finishQuiz() {
       throw new Error('quiz_connection_unavailable');
     }
     const res = await window.ezApi(`/progress/lesson/${encodeURIComponent(lessonApiId)}/quiz-attempt`, {
+      expectedUserId: owner.userId,
       method: 'POST', body: JSON.stringify({ attemptToken, answers, ...(state.draftEnabled || state.assessmentVersion ? { draftRevision: state.draftRevision } : {}) }),
     });
     data = await res.json();
+    if (!window.ezIsAuthCurrent(owner)) return;
     if (!res.ok) throw new Error(data.error || 'quiz_submit_failed');
     if (!Number.isInteger(data.score) || !Number.isInteger(data.total)
         || data.total <= 0 || data.total !== questions.length || data.score < 0 || data.score > data.total
@@ -6815,7 +6805,7 @@ async function finishQuiz() {
     }
     invalidateQuizStatus(lessonApiId);
   } catch (err) {
-    if (quizState !== state || viewEpoch !== window.__quizNavigationEpoch) return;
+    if (!window.ezIsAuthCurrent(owner) || quizState !== state || viewEpoch !== window.__quizNavigationEpoch) return;
     const changed = ['quiz_questions_changed', 'already_submitted', 'attempt_not_found', 'lesson_not_quiz', 'draft_conflict'].includes(err.message);
     const incomplete = err.message === 'answers_incomplete_or_duplicate';
     const message = changed
@@ -6832,7 +6822,7 @@ async function finishQuiz() {
   } finally {
     state.submitting = false;
   }
-  if (quizState !== state || viewEpoch !== window.__quizNavigationEpoch) return;
+  if (!window.ezIsAuthCurrent(owner) || quizState !== state || viewEpoch !== window.__quizNavigationEpoch) return;
   state.submitted = true;
   window.EzFinalExam?.clear(state);
   clearQuizLocalDraft(state);
@@ -6847,9 +6837,9 @@ async function finishQuiz() {
 
   // Local caches are updated only after the server confirms its transaction.
   try {
-    const scores = JSON.parse(localStorage.getItem('ez_quiz_scores') || '{}');
+    const scores = JSON.parse(window.ezLearningStorage.getItem('ez_quiz_scores') || '{}');
     scores[key] = Math.max(scores[key] || 0, pct);
-    localStorage.setItem('ez_quiz_scores', JSON.stringify(scores));
+    window.ezLearningStorage.setItem('ez_quiz_scores', JSON.stringify(scores));
     _scheduleCloudPush();
   } catch (err) { console.warn('Quiz score cache unavailable:', err?.message); }
   if (passed) {
@@ -7159,7 +7149,7 @@ async function handleNewEnrollment() {
 function logout() {
   if (typeof ezLogout === 'function') { ezLogout(); return; }
   localStorage.removeItem('ez_user');
-  localStorage.removeItem('ez_courses');
+  window.ezLearningStorage.removeItem('ez_courses');
   window.location.href = 'index.html';
 }
 
@@ -11928,7 +11918,7 @@ function _kanaEmptyDir() {
 
 function _kanaReadMastery() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(KANA_MASTERY_KEY) || '{}');
+    const parsed = JSON.parse(window.ezLearningStorage.getItem(KANA_MASTERY_KEY) || '{}');
     return parsed && typeof parsed === 'object' && parsed.items && typeof parsed.items === 'object'
       ? parsed
       : { version: 1, items: {} };
@@ -12002,7 +11992,7 @@ function _kanaRecordAnswer(item, dir, correct) {
   target.streak = correct ? target.streak + 1 : 0;
   target.lastSeen = Date.now();
   store.items[key] = stat;
-  try { localStorage.setItem(KANA_MASTERY_KEY, JSON.stringify(store)); } catch (e) { /* storage can be unavailable */ }
+  try { window.ezLearningStorage.setItem(KANA_MASTERY_KEY, JSON.stringify(store)); } catch (e) { /* storage can be unavailable */ }
   _recordPracticeAttempt('kana', item, dir, correct);
   kanaUpdateComplete();
 }
@@ -12440,7 +12430,7 @@ function _deckEmptyDir() {
 
 function _deckReadMastery() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(DECK_MASTERY_KEY) || '{}');
+    const parsed = JSON.parse(window.ezLearningStorage.getItem(DECK_MASTERY_KEY) || '{}');
     return parsed && typeof parsed === 'object' && parsed.items && typeof parsed.items === 'object'
       ? parsed
       : { version: 1, items: {} };
@@ -12522,7 +12512,7 @@ function _deckRecordAnswer(item, dir, correct) {
   target.streak = correct ? target.streak + 1 : 0;
   target.lastSeen = Date.now();
   store.items[key] = stat;
-  try { localStorage.setItem(DECK_MASTERY_KEY, JSON.stringify(store)); } catch (e) { /* storage can be unavailable */ }
+  try { window.ezLearningStorage.setItem(DECK_MASTERY_KEY, JSON.stringify(store)); } catch (e) { /* storage can be unavailable */ }
   _recordPracticeAttempt('vocabulary', item, dir, correct);
   deckUpdateComplete();
 }
@@ -12894,7 +12884,7 @@ function _kanjiWordAvailableDirections(word, usagePool) {
 
 function _kanjiReadMastery() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(KANJI_MASTERY_KEY) || '{}');
+    const parsed = JSON.parse(window.ezLearningStorage.getItem(KANJI_MASTERY_KEY) || '{}');
     if (parsed && typeof parsed === 'object' && parsed.items && typeof parsed.items === 'object') {
       return {
         ...parsed,
@@ -13047,7 +13037,7 @@ function _kanjiRecordAnswer(item, direction, correct, usage = null) {
   target.lastSeen = Date.now();
   if (isWordQuestion) store.words[_kanjiWordKey(usage)] = stat;
   else store.items[item.character] = stat;
-  try { localStorage.setItem(KANJI_MASTERY_KEY, JSON.stringify(store)); } catch (e) { /* storage can be unavailable */ }
+  try { window.ezLearningStorage.setItem(KANJI_MASTERY_KEY, JSON.stringify(store)); } catch (e) { /* storage can be unavailable */ }
   _recordPracticeAttempt('kanji', item, isWordQuestion ? _kanjiWordPracticeSkill(direction, usage) : direction, correct);
   kanjiUpdateComplete();
 }
@@ -14638,7 +14628,7 @@ const S = (window.AISenpai = {
     }
   },
 
-  persist() { try { sessionStorage.setItem('ez_tutor_chat', JSON.stringify({ v: 2, chat: S.chat })); } catch {} },
+  persist() { try { window.ezLearningSessionStorage.setItem('ez_tutor_chat', JSON.stringify({ v: 2, chat: S.chat })); } catch {} },
 
   send(text) {
     text = String(text || '').trim();
@@ -14922,7 +14912,7 @@ const S = (window.AISenpai = {
     setTutorHidden(window.__tutorHidden);
     // Pakai cache hanya kalau versinya cocok — bump versi (mis. ganti nama
     // maskot / sapaan) bikin chat lama dibuang & di-seed ulang dgn teks baru.
-    try { const saved = JSON.parse(sessionStorage.getItem('ez_tutor_chat') || 'null'); if (saved && saved.v === 2 && Array.isArray(saved.chat)) S.chat = saved.chat; } catch {}
+    try { const saved = JSON.parse(window.ezLearningSessionStorage.getItem('ez_tutor_chat') || 'null'); if (saved && saved.v === 2 && Array.isArray(saved.chat)) S.chat = saved.chat; } catch {}
     S.render();
     S.refresh();
   },
@@ -14950,6 +14940,7 @@ const S = (window.AISenpai = {
   // logged-in account (not whoever was cached before).
   const mirrored = JSON.parse(localStorage.getItem('ez_user') || 'null');
   if (mirrored) session = mirrored;
+  learningPageOwner = verifiedUser.id;
 
   const userEmailEl = document.getElementById('user-email');
   if (userEmailEl) userEmailEl.textContent = session.email;
@@ -15033,10 +15024,9 @@ const S = (window.AISenpai = {
     fetchCmsCourses().then(() => renderCourseTabs(selected)).catch(() => {});
   }
 
-  // Import the existing device-local drill aggregates once, after the
-  // entitlement-gated course payload is available to resolve canonical IDs.
-  // It is intentionally background-only and never removes the local cache.
-  importLegacyMasteryToServer();
+  // Account-scoped mastery caches contain server state and queued attempts.
+  // Re-importing them as legacy aggregates would count pending answers twice.
+  // Unowned historical browser blobs stay preserved for explicit recovery.
 
 })();
 </script>

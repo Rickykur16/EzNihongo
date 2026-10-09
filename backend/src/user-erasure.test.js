@@ -9,6 +9,7 @@ import { actorDigest } from './curriculum-readiness-attestations.js';
 const contract = await readFile(new URL('../contracts/staff-schema-v1.sql', import.meta.url), 'utf8');
 const readinessMigration = await readFile(new URL('../migrations/166_curriculum_readiness_attestations.sql', import.meta.url), 'utf8');
 const manekoMigration = await readFile(new URL('../migrations/164_maneko_learning_assistance.sql', import.meta.url), 'utf8');
+const practiceEventsMigration = await readFile(new URL('../migrations/210_practice_attempt_events.sql', import.meta.url), 'utf8');
 const wipeTables = ['sessions', 'user_marketing_profile', 'user_enrollments', 'user_progress', 'user_learning_state',
   'user_stats', 'user_practice_state', 'user_practice_legacy_imports', 'practice_attempts', 'quiz_question_results',
   'quiz_attempts', 'grammar_attempts', 'smart_review_sessions', 'grammar_task_requests', 'grammar_task_sessions'];
@@ -29,7 +30,7 @@ test('account erasure compatibility on PostgreSQL', {
   const url = new URL(process.env.TEST_DATABASE_URL);
   assert.ok(['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname));
   assert.match(url.pathname, /test/i, 'Use an explicitly named disposable test database');
-  async function fixture(t, { staff = true, learningFlow = true, readiness = false, maneko = true } = {}) {
+  async function fixture(t, { staff = true, learningFlow = true, readiness = false, maneko = true, practiceEvents = false } = {}) {
     const schema = 'erasure_test_' + randomUUID().replaceAll('-', '');
     const client = new pg.Client({ connectionString: url.href, statement_timeout: 10000 });
     await client.connect();
@@ -71,11 +72,19 @@ test('account erasure compatibility on PostgreSQL', {
       (id uuid PRIMARY KEY, user_id uuid REFERENCES users(id) ON DELETE RESTRICT,
        question_snapshot jsonb NOT NULL, response_snapshot jsonb NOT NULL)`);
     if (readiness) await client.query(readinessMigration);
+    if (practiceEvents) await client.query(practiceEventsMigration);
     const erased = randomUUID(), other = randomUUID(), third = randomUUID(), course = randomUUID();
     for (const [id, name] of [[erased, 'erased'], [other, 'other'], [third, 'third']]) {
       await client.query('INSERT INTO users (id,email,google_id,full_name,google_name,avatar_url) VALUES ($1,$2,$3,$3,$3,$3)', [id, `${name}@example.invalid`, name]);
     }
     await client.query('INSERT INTO courses VALUES ($1)', [course]);
+    if (practiceEvents) {
+      for (const owner of [erased, other]) {
+        await client.query(`INSERT INTO practice_attempt_events(user_id,event_id,request,state)
+          VALUES($1,$2,'{"itemType":"kana","skill":"k2r","isCorrect":true}',
+            '{"attempts":3,"correct":2,"fsrs_stability":2.5}')`, [owner, randomUUID()]);
+      }
+    }
     if (readiness) {
       const attestation = (userId, id) => client.query(`INSERT INTO curriculum_readiness_attestations
         (id,course_id,module_id,actor_digest,claim,claim_digest,observed_mode,
@@ -129,13 +138,14 @@ test('account erasure compatibility on PostgreSQL', {
         ...(learningFlow ? [optionalWipeTable] : []),
         ...(readiness ? ['curriculum_readiness_attestations'] : []),
         ...(maneko ? ['maneko_exposures'] : []),
+        ...(practiceEvents ? ['practice_attempt_events'] : []),
         ...(staff ? ['staff_roles', 'staff_permissions', 'staff_role_permissions', 'staff_memberships', 'staff_membership_scopes', 'staff_audit_events'] : [])];
       const result = {};
       for (const table of names) result[table] = await rows(table);
       return result;
     };
     return { client, schema, extraSchemas, erased, other, third, targetMembership, otherMembership, revokedMembership,
-      learningFlow, readiness, maneko,
+      learningFlow, readiness, maneko, practiceEvents,
       paid, proof, otherProof, parent, reply, rows, snapshot, tx,
       erase: () => tx(() => eraseUserAccount(client, erased)) };
   }
@@ -149,6 +159,7 @@ test('account erasure compatibility on PostgreSQL', {
     for (const table of wipeTables) assert.deepEqual(after[table], before[table].filter(row => row.user_id !== f.erased));
     if (f.learningFlow) assert.deepEqual(after[optionalWipeTable], before[optionalWipeTable].filter(row => row.user_id !== f.erased));
     if (f.maneko) assert.deepEqual(after.maneko_exposures, before.maneko_exposures.filter(row => row.user_id !== f.erased));
+    if (f.practiceEvents) assert.deepEqual(after.practice_attempt_events, before.practice_attempt_events.filter(row => row.user_id !== f.erased));
     assert.deepEqual(after.order_payments.find(row => row.id === f.otherProof), before.order_payments.find(row => row.id === f.otherProof));
     assert.equal(after.order_payments.find(row => row.id === f.proof).proof_image, null);
     assert.equal(after.order_payments.length, before.order_payments.length);
@@ -162,6 +173,7 @@ test('account erasure compatibility on PostgreSQL', {
     assert.ok(Object.keys(summary).every(key => !key.startsWith('staff_')));
     assert.ok(!Object.hasOwn(summary, optionalWipeTable));
     assert.ok(!Object.hasOwn(summary, 'maneko_exposures'));
+    assert.ok(!Object.hasOwn(summary, 'practice_attempt_events'));
     await assertLegacyPreserved(f, before);
     assert.ok(Object.values(await f.erase()).every(count => count === 0));
   });
@@ -174,6 +186,18 @@ test('account erasure compatibility on PostgreSQL', {
     await assertLegacyPreserved(f, before);
     const after = await f.snapshot();
     assert.equal((await f.erase()).maneko_exposures, 0);
+    assert.deepEqual(await f.snapshot(), after);
+  });
+
+  await t.test('migration 210 retry receipts are erased by the actual anonymization flow, preserving other learners', async t => {
+    const f = await fixture(t, { practiceEvents: true }); const before = await f.snapshot();
+    const summary = await f.erase();
+    assert.equal(summary.practice_attempt_events, 1);
+    await assertLegacyPreserved(f, before);
+    assert.equal((await f.rows('users')).length, before.users.length, 'Anonymization does not trigger a users DELETE cascade');
+    assert.deepEqual(await f.rows('practice_attempt_events'), before.practice_attempt_events.filter(row => row.user_id === f.other));
+    const after = await f.snapshot();
+    assert.equal((await f.erase()).practice_attempt_events, 0);
     assert.deepEqual(await f.snapshot(), after);
   });
 
@@ -263,7 +287,7 @@ test('account erasure compatibility on PostgreSQL', {
   });
 
   await t.test('failure after staff cleanup rolls the entire erase transaction back', async t => {
-    const f = await fixture(t); const before = await f.snapshot();
+    const f = await fixture(t, { practiceEvents: true }); const before = await f.snapshot();
     await f.client.query(`CREATE FUNCTION fail_anonymize() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN RAISE EXCEPTION 'forced failure at final anonymization'; END $$;
       CREATE TRIGGER fail_anonymize BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION fail_anonymize()`);
