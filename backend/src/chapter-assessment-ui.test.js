@@ -81,21 +81,70 @@ test('spoken-choice numbers retain audio order while ordinary options can shuffl
   assert.notDeepEqual(Array.from(ctx.transformQuestionFromApi({options}).optionIds),['1','2','3']);
 });
 
-test('the listening player advances through all four dialogues without skipping the third',()=>{
-  const events={}, jumps=[];
-  const el={dataset:{sectionKey:'s4',tracks:JSON.stringify([{qi:0},{qi:1},{qi:2},{qi:3}])},querySelector:()=>({textContent:''})};
-  class Audio { addEventListener(name,fn){events[name]=fn;} }
-  const ctx=vm.createContext({window:{__listeningPlayers:{}},document:{querySelectorAll:()=>[el]},Audio,
-    destroyAllListeningPlayers:()=>{},updateListeningUI:()=>{},loadListeningTrack:()=>{},
-    clearTimeout:()=>{},setTimeout:fn=>{fn();return 1;}});
-  ctx.window.listeningJump=(key,index,relative)=>{
-    const s=ctx.window.__listeningPlayers[key];s.currentIdx=relative?s.currentIdx+index:index;jumps.push(s.currentIdx);
+test('chapter listening keeps each completed audio selected until replay or manual navigation',async()=>{
+  const requests=[], timers=new Map(), controls=new Map();
+  let now=0, timerId=0, blobId=0;
+  for(const selector of ['.qlp-play','.qlp-current-num','.qlp-prev','.qlp-next','.qlp-jeda']){
+    controls.set(selector,{textContent:'',disabled:false});
+  }
+  const tracks=[0,1,2,3].map(qi=>({qi,questionId:`question-${qi}`}));
+  const el={dataset:{sectionKey:'s4',tracks:JSON.stringify(tracks)},
+    querySelector:selector=>controls.get(selector)||null,querySelectorAll:()=>[]};
+  class Audio {
+    constructor(){this.events={};this.paused=true;this.currentTime=0;this.duration=10;this.plays=[];}
+    set src(value){this._src=value;this.currentTime=0;}
+    get src(){return this._src;}
+    getAttribute(name){return name==='src'?this._src:null;}
+    removeAttribute(name){if(name==='src')this._src='';}
+    addEventListener(name,fn){this.events[name]=fn;}
+    play(){this.paused=false;this.plays.push(this.src);this.events.play?.();return Promise.resolve();}
+    pause(){this.paused=true;this.events.pause?.();}
+    end(){this.currentTime=this.duration;this.paused=true;this.events.ended?.();}
+  }
+  const ctx=vm.createContext({window:{EzFinalExam,ezApi:async path=>{
+    requests.push(path);return {ok:true,blob:async()=>({})};
+  }},quizState:{assessmentVersion:'n4-assessment-v1',lessonApiId:'chapter',attemptToken:'attempt'},Audio,
+    document:{querySelectorAll:selector=>selector==='.quiz-listening-player'?[el]:[],querySelector:()=>null},
+    URL:{createObjectURL:()=>`blob:audio-${++blobId}`,revokeObjectURL:()=>{}},
+    localStorage:{getItem:()=>null},
+    setTimeout:(fn,delay)=>{timers.set(++timerId,{fn,due:now+delay});return timerId;},
+    clearTimeout:id=>timers.delete(id)});
+  const start=html.indexOf('function renderListeningPlayer(');
+  vm.runInContext(html.slice(start,html.indexOf('function renderQuizPaperItem(',start)),ctx);
+  const settle=()=>new Promise(resolve=>setImmediate(resolve));
+  const advance=ms=>{
+    const target=now+ms;
+    for(;;){
+      const next=[...timers.entries()].filter(([,timer])=>timer.due<=target).sort((a,b)=>a[1].due-b[1].due)[0];
+      if(!next)break;
+      timers.delete(next[0]);now=next[1].due;next[1].fn();
+    }
+    now=target;
   };
-  const start=html.indexOf('function initListeningPlayers()');
-  vm.runInContext(html.slice(start,html.indexOf('async function loadListeningTrack',start)),ctx);
   ctx.initListeningPlayers();
-  events.ended();events.ended();events.ended();events.ended();
-  assert.deepEqual(jumps,[1,2,3]);
+  const player=ctx.window.__listeningPlayers.s4, audio=player.audio;
+  assert.equal(requests.length,0,'opening the assignment must not request audio');
+  ctx.window.listeningTogglePlay('s4');await settle();
+  for(let index=0;index<tracks.length;index++){
+    assert.equal(player.currentIdx,index);
+    assert.match(requests[index],new RegExp(`/quiz/audio/question-${index}\\?attemptToken=attempt$`));
+    const source=audio.src, plays=audio.plays.length;
+    audio.end();advance(10000);await settle();
+    assert.equal(player.currentIdx,index,'finishing audio must keep the same question selected');
+    assert.equal(audio.src,source);assert.equal(audio.paused,true);
+    assert.equal(audio.plays.length,plays,'time passing must not start another audio');
+    assert.equal(requests.length,index+1,'time passing must not fetch the next question');
+    assert.equal(controls.get('.qlp-play').textContent,'▶');
+    assert.equal(controls.get('.qlp-current-num').textContent,index+1);
+    assert.equal(controls.get('.qlp-jeda').textContent,'');
+    if(index===0){
+      ctx.window.listeningTogglePlay('s4');await settle();
+      assert.equal(audio.plays.at(-1),source,'replay must use the same selected audio');
+      assert.equal(requests.length,1);audio.end();
+    }
+    if(index<tracks.length-1){ctx.window.listeningJump('s4',1,true);await settle();}
+  }
+  assert.equal(controls.get('.qlp-next').disabled,true,'the final track has no next track');
 });
 
 test('a stale start response cannot replace a lesson opened while it was loading',async()=>{

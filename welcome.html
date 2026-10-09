@@ -3806,7 +3806,7 @@
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
-  /* Jeda antar dialog — countdown text. */
+  /* Status pemuatan audio listening. */
   .qlp-jeda {
     min-height: 18px;
     text-align: center;
@@ -6106,8 +6106,8 @@ function renderQuizPassage(passage) {
 }
 
 // Centralized JLPT-style listening player. Satu player per section: muter
-// semua dialog (audio_script) section secara berurutan via single <audio>
-// dengan src swap. Track-list bisa di-klik buat lompat; play/pause + skip
+// dialog (audio_script) pilihan siswa via single <audio> dengan src swap.
+// Track-list bisa di-klik buat lompat; play/pause + skip
 // ±10s + progress bar bekerja di track yang lagi aktif.
 function renderListeningPlayer(sectionItems, sectionNumber) {
   const finalExam = window.EzFinalExam?.isFinal(quizState?.assessmentVersion);
@@ -6172,7 +6172,6 @@ function destroyAllListeningPlayers() {
       try { p.audio.pause(); } catch {}
       p.audio.src = '';
     }
-    if (p?._jedaTimer) { clearTimeout(p._jedaTimer); p._jedaTimer = null; }
     if (p?.objectUrl) URL.revokeObjectURL(p.objectUrl);
     if (p) p.destroyed = true;
     delete window.__listeningPlayers[key];
@@ -6203,36 +6202,9 @@ function initListeningPlayers() {
     audio.addEventListener('timeupdate', () => updateListeningUI(key));
     audio.addEventListener('loadedmetadata', () => updateListeningUI(key));
     audio.addEventListener('ended', () => {
-      if (window.EzFinalExam?.isFinal(quizState?.assessmentVersion)) {
-        state.isPlaying = false; updateListeningUI(key); return;
-      }
-      if (state.currentIdx < state.tracks.length - 1) {
-        // Jeda 5 detik antar dialog ala JLPT real test — kasih siswa
-        // waktu baca opsi sebelum dialog berikutnya jalan. Track count
-        // tetap progress (1.1 done) tapi audio belum mulai.
-        state.isPlaying = false;
-        updateListeningUI(key);
-        // Show countdown di UI selama jeda.
-        const countdownEl = el.querySelector('.qlp-jeda');
-        let secsLeft = 5;
-        const tick = () => {
-          if (!window.__listeningPlayers[key] || window.__listeningPlayers[key] !== state) return; // di-destroy
-          if (countdownEl) countdownEl.textContent = `Lanjut dialog ${state.currentIdx + 2} dalam ${secsLeft}s…`;
-          secsLeft--;
-          if (secsLeft < 0) {
-            if (countdownEl) countdownEl.textContent = '';
-            window.listeningJump(key, 1, true);
-            return;
-          }
-          state._jedaTimer = setTimeout(tick, 1000);
-        };
-        // Clear timer lama (kalau user manual skip in the middle of jeda)
-        if (state._jedaTimer) clearTimeout(state._jedaTimer);
-        tick();
-      } else {
-        state.isPlaying = false;
-        updateListeningUI(key);
-      }
+      // Semua assignment menunggu siswa memilih audio berikutnya.
+      state.isPlaying = false;
+      updateListeningUI(key);
     });
     audio.addEventListener('play', () => { state.isPlaying = true; updateListeningUI(key); });
     audio.addEventListener('pause', () => { state.isPlaying = false; updateListeningUI(key); });
@@ -6268,14 +6240,6 @@ window.listeningSetSpeed = (value) => {
     updateListeningUI(key);
   }
 };
-
-function clearListeningCountdown(player) {
-  if (player._jedaTimer == null) return;
-  clearTimeout(player._jedaTimer);
-  player._jedaTimer = null;
-  const message = player.el.querySelector('.qlp-jeda');
-  if (message) message.textContent = '';
-}
 
 async function loadListeningTrack(key, idx, autoplay) {
   const s = window.__listeningPlayers[key];
@@ -6371,7 +6335,6 @@ function stopOtherFinalListeningPlayers(key) {
     player.request = (player.request || 0) + 1;
     player.loading = false; player.isPlaying = false;
     player.audio.pause();
-    if (player._jedaTimer) { clearTimeout(player._jedaTimer); player._jedaTimer = null; }
     const message = player.el.querySelector('.qlp-jeda');
     if (message) message.textContent = '';
     updateListeningUI(otherKey);
@@ -6381,8 +6344,6 @@ function stopOtherFinalListeningPlayers(key) {
 window.listeningTogglePlay = (key) => {
   const s = window.__listeningPlayers[key];
   if (!s || s.loading) return;
-  // Replaying or pausing must cancel the previous track's auto-advance.
-  clearListeningCountdown(s);
   if (s.audio.paused) {
     stopOtherFinalListeningPlayers(key);
     if (s.tracks[s.currentIdx]?.questionId && !s.audio.getAttribute('src')) {
@@ -6399,7 +6360,6 @@ window.listeningTogglePlay = (key) => {
 window.listeningSkip = (key, delta) => {
   const s = window.__listeningPlayers[key];
   if (!s) return;
-  clearListeningCountdown(s);
   const dur = s.audio.duration || 0;
   if (!dur) return;
   s.audio.currentTime = Math.max(0, Math.min(dur, s.audio.currentTime + delta));
@@ -6408,7 +6368,6 @@ window.listeningSkip = (key, delta) => {
 window.listeningSeek = (key, pct) => {
   const s = window.__listeningPlayers[key];
   if (!s) return;
-  clearListeningCountdown(s);
   const dur = s.audio.duration || 0;
   if (!dur) return;
   s.audio.currentTime = (Number(pct) / 100) * dur;
@@ -6418,8 +6377,6 @@ window.listeningSeek = (key, pct) => {
 window.listeningJump = (key, idx, relative) => {
   const s = window.__listeningPlayers[key];
   if (!s) return;
-  // Skip jeda countdown kalau user navigasi manual / auto-advance trigger.
-  clearListeningCountdown(s);
   const jedaEl = s.el.querySelector('.qlp-jeda');
   if (jedaEl) jedaEl.textContent = '';
   const target = relative ? s.currentIdx + idx : Number(idx);
@@ -6459,7 +6416,7 @@ function renderQuizPaperItem(q, qi, sectionNumber = 1, questionNumber = qi + 1) 
 
   // Tombol per-soal di-hapus per user request: konfllict sama
   // centralized player utama di top section (kepencet barengan = audio
-  // bentrok). Cukup 1 player utama yang auto-advance dialog. User
+  // bentrok). Cukup 1 player utama dengan pilihan dialog manual. User
   // boleh klik tracklist (1.1, 1.2, dst) buat lompat ke dialog
   // tertentu.
   const perQuestionAudio = '';

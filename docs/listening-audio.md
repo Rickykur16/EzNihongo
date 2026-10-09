@@ -17,9 +17,9 @@ Tidak ada perubahan pada aplikasi `app/`.
   keheningan tambahan menjadi sekitar 1,33 dan 2 detik.
 - Pemutar siswa mulai pada 0,9×, dengan pilihan 0,75× dan 1×. Pitch dipertahankan.
   Ini mengatur kecepatan pemutaran, bukan parameter `speed` ElevenLabs.
-- Final assignment tetap berhenti setelah satu soal. Kuis bab mempertahankan
-  jeda antarsoalnya; memutar ulang, menjeda, atau mencari posisi audio membatalkan
-  perpindahan otomatis yang masih tertunda.
+- Kuis bab dan final assignment berhenti setelah setiap audio selesai. Siswa
+  dapat memutar ulang atau memilih audio berikutnya melalui tombol navigasi;
+  tidak ada hitung mundur atau perpindahan otomatis antarsoal.
 
 V4 tidak mendukung SSML break. Profil listening tidak mengirim tag `<break>`
 atau parameter `style`/`speed` model lama. Gunakan tanda baca dan teks ucapan
