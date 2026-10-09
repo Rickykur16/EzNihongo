@@ -77,22 +77,20 @@
     document.querySelector('#price-faq').textContent = coursePriceSummary(courses) + (courses.length ? '.' : '');
   }
   function renderPeople(items, kind) {
-    const isSensei = kind === 'sensei', section = document.querySelector(isSensei ? '#sensei' : '#testimoni'), list = document.querySelector(isSensei ? '#sensei-list' : '#testimonial-list');
-    const entries = ordered(items).filter(item => item.name && (isSensei || item.quote)); list.replaceChildren();
+    const isSensei = kind === 'sensei';
+    const entries = ordered(items).filter(item => item.name && (isSensei || item.quote));
+    // Teachers and founder live on tentang.html ("Tentang kami"), not on the landing page. Here the
+    // CMS only decides whether the "Tentang kami" links show: none published (or API down) = hidden.
+    if (isSensei) { document.querySelectorAll('[data-about-link]').forEach(node => { node.hidden = entries.length === 0; }); return; }
+    const section = document.querySelector('#testimoni'), list = document.querySelector('#testimonial-list'); list.replaceChildren();
     entries.forEach(item => {
       const card = el('article', 'cms-card'), image = photo(item.photo_url, String(item.name), item.photo_position); if (image) card.append(image);
       const content = el('div', 'cms-card-content');
-      if (!isSensei) content.append(el('blockquote', '', plain(item.quote)));
-      content.append(el('h3', '', item.name));
-      if (isSensei) { if (item.title) content.append(el('p', 'cms-role', item.title)); if (item.bio) content.append(el('p', '', plain(item.bio))); if (Array.isArray(item.tags)) { const tags = el('div', 'cms-badges'); item.tags.forEach(t => tags.append(el('span', 'tag', t))); content.append(tags); } }
-      else content.append(el('p', 'cms-role', [item.occupation, item.location].filter(Boolean).join(' · ')));
+      content.append(el('blockquote', '', plain(item.quote)), el('h3', '', item.name));
+      content.append(el('p', 'cms-role', [item.occupation, item.location].filter(Boolean).join(' · ')));
       card.append(content); list.append(card);
     });
-    // Sensei: CMS entries replace the static teacher text inside "Tentang"; with none published
-    // the static text stays, so the section never shows an empty card. Testimonials only appear
-    // when the CMS has real, published entries; nothing is invented for this page.
-    if (isSensei) { list.hidden = entries.length === 0; const fallback = document.querySelector('#sensei-fallback'); if (fallback) fallback.hidden = entries.length > 0; }
-    else section.hidden = entries.length === 0;
+    section.hidden = entries.length === 0;
   }
   async function load(path, key, render) {
     try { const response = await fetch(path, { cache: 'no-store', signal: AbortSignal.timeout(8000) }); if (!response.ok) throw Error('unavailable'); const data = await response.json(); if (!Array.isArray(data[key])) throw Error('invalid'); render(data[key]); }

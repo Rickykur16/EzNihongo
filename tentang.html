@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tentang Kami - EzNihongo</title>
+<meta name="description" content="Orang-orang di balik EzNihongo, persiapan kerja ke Jepang dengan kelas bahasa online."/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Shippori+Mincho:wght@400;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles/tokens.css?v=20260911-1"/>
+<link rel="stylesheet" href="styles/components.css"/>
+<style>
+  html { color-scheme: light; }
+  body { margin: 0; background: var(--paper-100); color: var(--ink-900); }
+  .ab-nav { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 24px; background: var(--paper-50); border-bottom: 1px solid var(--paper-300); }
+  .ab-nav a { display: inline-flex; min-height: 44px; align-items: center; }
+  .ab-nav img { height: 32px; }
+  .ab-nav a.ab-back { color: var(--learning-blue-700); font-family: var(--font-body); font-size: 14px; font-weight: 600; text-decoration: none; }
+  .ab-main { max-width: 1040px; margin: 0 auto; padding: 40px 24px 80px; font-family: var(--font-body); color: var(--ink-700); line-height: 1.75; overflow-wrap: anywhere; }
+  .ab-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .1em; color: var(--brand-red, #b91c1c); margin: 0; }
+  .ab-main h1 { font-family: var(--font-display); color: var(--ink-900); font-size: clamp(30px, 6vw, 44px); line-height: 1.2; margin: 10px 0 28px; }
+  .ab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 24px; }
+  .ab-card { min-width: 0; display: flex; flex-direction: column; background: white; border: 1px solid var(--paper-300); border-radius: 10px; overflow: hidden; }
+  .ab-card img { width: 100%; height: 240px; object-fit: cover; }
+  .ab-card-body { display: flex; flex-direction: column; gap: 10px; padding: 26px; }
+  .ab-card h2 { margin: 0; font-family: var(--font-display); color: var(--ink-900); font-size: 24px; line-height: 1.3; }
+  .ab-role { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--learning-blue-700); }
+  .ab-card p { margin: 0; font-size: 15px; }
+  .ab-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ab-tag { font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: var(--learning-blue-100); color: var(--learning-blue-900); }
+  .ab-status { font-size: 16px; }
+  .ab-footer { border-top: 1px solid var(--paper-300); text-align: center; padding: 24px; font-family: var(--font-body); font-size: 13px; color: var(--ink-700); }
+  .ab-footer a { display: inline-flex; min-height: 44px; align-items: center; color: var(--learning-blue-700); }
+  .ab-nav a:focus-visible, .ab-footer a:focus-visible { border-radius: var(--radius-sm); outline: 3px solid var(--learning-blue-700); outline-offset: 3px; }
+  @media (max-width: 480px) { .ab-nav { padding: 10px 16px; } .ab-main { padding: 28px 16px 64px; } .ab-card-body { padding: 22px; } }
+</style>
+</head>
+<body>
+
+<nav class="ab-nav">
+  <a href="index.html"><img src="logo.png" alt="EzNihongo"/></a>
+  <a href="index.html" class="ab-back">← Kembali ke beranda</a>
+</nav>
+
+<main class="ab-main" aria-busy="true">
+  <p class="ab-eyebrow">TENTANG KAMI</p>
+  <h1>Orang di balik EzNihongo</h1>
+  <p class="ab-status" id="about-status">Memuat profil…</p>
+  <div class="ab-grid" id="about-list"></div>
+</main>
+
+<footer class="ab-footer">
+  <a href="privacy.html">Kebijakan Privasi</a> · <a href="terms.html">Syarat &amp; Ketentuan</a>
+</footer>
+
+<script>
+// Isi halaman ini sepenuhnya dari Ruang Kerja > Sensei (GET /api/sensei, hanya yang diterbitkan).
+// Tidak ada nama atau bio yang ditulis di sini.
+(() => {
+  'use strict';
+  const list = document.getElementById('about-list'), status = document.getElementById('about-status'), main = document.querySelector('.ab-main');
+  const el = (tag, className, text) => { const node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = String(text); return node; };
+  const plain = value => { const doc = new DOMParser().parseFromString(String(value || ''), 'text/html'); doc.querySelectorAll('script,style,iframe,object').forEach(n => n.remove()); return doc.body.textContent || ''; };
+  const safeUrl = value => { if (!value || typeof value !== 'string') return ''; try { const url = new URL(value, location.origin); return ['http:', 'https:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } };
+  function render(items) {
+    const people = items.filter(p => p && p.name && p.is_published !== false).sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0));
+    list.replaceChildren();
+    people.forEach(p => {
+      const card = el('article', 'ab-card'), src = safeUrl(p.photo_url);
+      if (src) {
+        const img = el('img'); img.src = src; img.alt = String(p.name); img.loading = 'lazy'; img.width = 480; img.height = 360;
+        if (/^\d+(?:\.\d+)?% \d+(?:\.\d+)?%$/.test(p.photo_position || '')) img.style.objectPosition = p.photo_position;
+        img.addEventListener('error', () => img.remove(), { once: true });
+        card.append(img);
+      }
+      const body = el('div', 'ab-card-body');
+      if (p.title) body.append(el('p', 'ab-role', p.title));
+      body.append(el('h2', '', p.name));
+      if (p.bio) body.append(el('p', '', plain(p.bio)));
+      if (Array.isArray(p.tags) && p.tags.length) { const tags = el('div', 'ab-tags'); p.tags.forEach(t => tags.append(el('span', 'ab-tag', t))); body.append(tags); }
+      card.append(body); list.append(card);
+    });
+    status.hidden = people.length > 0;
+    status.textContent = 'Profil tim EzNihongo sedang disiapkan.';
+  }
+  fetch('/api/sensei', { cache: 'no-store', signal: AbortSignal.timeout(8000) })
+    .then(r => { if (!r.ok) throw Error('unavailable'); return r.json(); })
+    .then(data => { if (!Array.isArray(data.sensei)) throw Error('invalid'); render(data.sensei); })
+    .catch(() => { status.textContent = 'Profil belum dapat dimuat. Silakan muat ulang halaman.'; })
+    .finally(() => main.removeAttribute('aria-busy'));
+})();
+</script>
+</body>
+</html>

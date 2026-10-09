@@ -77,15 +77,20 @@
   6 adegan, sekarang statis — kode pin/adegan di `landing.js`/`landing-motion.css`
   DIHAPUS) → `#jalur` (accordion `<details>` SSW / Gijinkoku / Ginou / Ryugaku, terbaca
   tanpa JS & tanpa login; tautan `#jalur-…` membuka accordion-nya) → `#biaya` (alur +
-  komponen biaya) → `#program` bootcamp + preview dashboard → `#tentang` (pendiri +
-  pengajar) → FAQ → CTA WhatsApp. **Ginou = 技能 Skilled Labor, BUKAN Ginou Jisshu**
+  komponen biaya) → `#program` bootcamp + preview dashboard → FAQ → CTA WhatsApp. **Ginou = 技能 Skilled Labor, BUKAN Ginou Jisshu**
   (dikonfirmasi pemilik). Matching gratis lewat mitra TSK HANYA untuk SSW; jalur lain
   ditulis jujur "mitra belum tersedia". Larangan brief: jangan sebut biaya penempatan,
   jangan angka total keberangkatan / perbandingan harga LPK, jangan janji
   kerja/ujian/visa/tanggal, jangan testimoni/alumni/logo mitra karangan. Harga & jadwal
   tetap dari CMS (`/api/courses`); fakta format kelas (24 pertemuan, 2x/minggu, ~1 jam,
-  maks 20) statis. Pengajar dari CMS `/api/sensei` menggantikan teks cadangan
-  `#sensei-fallback` (Fani) — tidak pernah tampil ganda. **Modal konsultasi**: semua CTA
+  maks 20) statis. **Tentang kami = halaman sendiri `tentang.html`, BUKAN bagian landing** (user,
+  2026-10-09: "Tentang kami aja bagian itu jangan di landing page"). Isinya 100% dari CMS
+  `/api/sensei` (Ruang Kerja > Sensei; pendiri juga dimasukkan di sana, jabatan "Pendiri") —
+  teks pendiri (Ricky) & cadangan pengajar (Fani) yang dulu hardcoded DIHAPUS ("belom pengen
+  nampilin dulu"). Tautan "Tentang kami" di nav desktop/HP + footer landing
+  (`[data-about-link]`) tersembunyi sampai ada sensei terbit (`landing-cms.js`); halamannya
+  sendiri saat kosong menulis "Profil tim EzNihongo sedang disiapkan." `tentang.html` TIDAK
+  memuat `site-analytics.js` (CHECK `page` di migrasi 204 belum kenal halaman ini). **Modal konsultasi**: semua CTA
   `[data-consult]` adalah `<a href="wa.me/…">` asli (jalan tanpa JS); dengan JS membuka
   modal 2 pilihan (jalur `data-path`, kondisi `data-stage`), respons per jalur, dan pesan
   WA terisi berisi kedua pilihan. Hanya kondisi "pemula" yang diarahkan ke kelas N5.
