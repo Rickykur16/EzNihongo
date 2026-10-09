@@ -164,8 +164,7 @@
 .bootcamp-experienced strong{color:var(--ink-900)}
 .bootcamp-experienced .text-link{font-size:14px}
 
-/* About (#tentang): people come only from the CMS (Ruang Kerja > Sensei); hidden until one is published. */
-.about-people{grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))}
+/* "Tentang kami" links (tentang.html) stay hidden until the CMS has a published sensei. */
 #mobile-menu a[hidden]{display:none}
 
 /* Consult dialog: two selects, WhatsApp as the primary action. */
