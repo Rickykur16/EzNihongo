@@ -77,7 +77,7 @@
     document.querySelector('#price-faq').textContent = coursePriceSummary(courses) + (courses.length ? '.' : '');
   }
   function renderPeople(items, kind) {
-    const isSensei = kind === 'sensei', section = document.querySelector(isSensei ? '#sensei' : '#testimoni'), list = document.querySelector(isSensei ? '#sensei-list' : '#testimonial-list');
+    const isSensei = kind === 'sensei', section = isSensei ? null : document.querySelector('#testimoni'), list = document.querySelector(isSensei ? '#sensei-list' : '#testimonial-list');
     const entries = ordered(items).filter(item => item.name && (isSensei || item.quote)); list.replaceChildren();
     entries.forEach(item => {
       const card = el('article', 'cms-card'), image = photo(item.photo_url, String(item.name), item.photo_position); if (image) card.append(image);
@@ -88,10 +88,9 @@
       else content.append(el('p', 'cms-role', [item.occupation, item.location].filter(Boolean).join(' · ')));
       card.append(content); list.append(card);
     });
-    // Sensei: CMS entries replace the static teacher text inside "Tentang"; with none published
-    // the static text stays, so the section never shows an empty card. Testimonials only appear
-    // when the CMS has real, published entries; nothing is invented for this page.
-    if (isSensei) { list.hidden = entries.length === 0; const fallback = document.querySelector('#sensei-fallback'); if (fallback) fallback.hidden = entries.length > 0; }
+    // "Tentang" comes only from Ruang Kerja > Sensei: with nothing published (or the API down)
+    // the section and its nav links stay hidden. Testimonials follow the same rule.
+    if (isSensei) document.querySelectorAll('#tentang, [data-about-link]').forEach(node => { node.hidden = entries.length === 0; });
     else section.hidden = entries.length === 0;
   }
   async function load(path, key, render) {

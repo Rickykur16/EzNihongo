@@ -164,22 +164,17 @@
 .bootcamp-experienced strong{color:var(--ink-900)}
 .bootcamp-experienced .text-link{font-size:14px}
 
-/* About (#tentang). */
-.about-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px}
-.about-card{background:white;border:1px solid var(--paper-400);border-radius:10px;padding:32px}
-.about-role{font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--learning-blue-700)}
-.about-card h3{font:700 26px/1.3 var(--font-display);margin:10px 0 12px}
-.about-card>p,#sensei-fallback p{font-size:15px;line-height:1.85;color:var(--ink-700)}
-.about-card .fine{margin-top:16px;padding-top:14px;border-top:1px solid var(--paper-300)}
-.about-people{grid-template-columns:1fr;margin-top:14px}
+/* About (#tentang): people come only from the CMS (Ruang Kerja > Sensei); hidden until one is published. */
+.about-people{grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))}
+#mobile-menu a[hidden]{display:none}
 
 /* Consult dialog: two selects, WhatsApp as the primary action. */
 #consult-whatsapp{width:100%}
 .faq-link{border:0;background:none;padding:0;font:inherit;color:inherit;text-decoration:underline;text-underline-offset:3px;font-weight:600}
 
-@media(max-width:900px){.savings-grid{grid-template-columns:1fr;gap:20px;margin-top:28px}.path-body dl{grid-template-columns:1fr}.about-grid{grid-template-columns:1fr}}
+@media(max-width:900px){.savings-grid{grid-template-columns:1fr;gap:20px;margin-top:28px}.path-body dl{grid-template-columns:1fr}}
 @media(max-width:800px){.path{scroll-margin-top:90px}.savings .story-frame{padding:44px 0 34px}}
-@media(max-width:480px){.path summary{padding:18px;column-gap:14px}.path-body{padding:0 18px 20px}.bootcamp-facts{grid-template-columns:1fr}.about-card{padding:24px}.savings h2{font-size:30px}}
+@media(max-width:480px){.path summary{padding:18px;column-gap:14px}.path-body{padding:0 18px 20px}.bootcamp-facts{grid-template-columns:1fr}.savings h2{font-size:30px}}
 
 /* SSW field list inside the Tokutei Ginou accordion. Closed fields (quota reached) stay
    listed but muted with a "Ditutup sementara" badge, so visitors see why they are absent. */

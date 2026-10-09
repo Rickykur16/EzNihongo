@@ -84,8 +84,10 @@
   jangan angka total keberangkatan / perbandingan harga LPK, jangan janji
   kerja/ujian/visa/tanggal, jangan testimoni/alumni/logo mitra karangan. Harga & jadwal
   tetap dari CMS (`/api/courses`); fakta format kelas (24 pertemuan, 2x/minggu, ~1 jam,
-  maks 20) statis. Pengajar dari CMS `/api/sensei` menggantikan teks cadangan
-  `#sensei-fallback` (Fani) — tidak pernah tampil ganda. **Modal konsultasi**: semua CTA
+  maks 20) statis. `#tentang` 100% dari CMS `/api/sensei` (Ruang Kerja > Sensei; pendiri juga
+  dimasukkan di sana, jabatan "Pendiri") — teks pendiri (Ricky) & cadangan pengajar (Fani)
+  yang dulu hardcoded DIHAPUS (user, 2026-10-09: "belom pengen nampilin dulu"). Tanpa entri
+  terbit / API gagal → section `#tentang` + tautan nav `[data-about-link]` tersembunyi. **Modal konsultasi**: semua CTA
   `[data-consult]` adalah `<a href="wa.me/…">` asli (jalan tanpa JS); dengan JS membuka
   modal 2 pilihan (jalur `data-path`, kondisi `data-stage`), respons per jalur, dan pesan
   WA terisi berisi kedua pilihan. Hanya kondisi "pemula" yang diarahkan ke kelas N5.

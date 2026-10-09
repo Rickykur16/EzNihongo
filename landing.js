@@ -89,7 +89,7 @@
       el.dataset.reveal=type;pending.add(el);io.observe(el);
     }
     [['main section:not(.hero):not(.start-strip) h2','lines'],
-     ['main section:not(.hero):not(.start-strip) .eyebrow,.savings-grid li,.story-bridge,.section-head>p,.path,.path-divider,.path-sources,.bootcamp-offer,.program-note,.cms-courses>h3,#course-status,.learning-tab,.learning-screens,.about-card,.cost-grid>div>p,.cost-section li,.faq-grid .text-link,.faq-items details,.closing p:not(.eyebrow),.closing-actions,.closing-login','up'],
+     ['main section:not(.hero):not(.start-strip) .eyebrow,.savings-grid li,.story-bridge,.section-head>p,.path,.path-divider,.path-sources,.bootcamp-offer,.program-note,.cms-courses>h3,#course-status,.learning-tab,.learning-screens,.cost-grid>div>p,.cost-section li,.faq-grid .text-link,.faq-items details,.closing p:not(.eyebrow),.closing-actions,.closing-login','up'],
      ['.journey-grid li','draw']
     ].forEach(([selector,type])=>document.querySelectorAll(selector).forEach(el=>register(el,type)));
     rootEl.classList.add('has-motion');
