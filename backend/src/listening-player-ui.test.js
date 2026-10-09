@@ -7,14 +7,14 @@ import EzFinalExam from '../../final-exam.js';
 const html = fs.readFileSync(new URL('../../welcome.html', import.meta.url), 'utf8');
 const source = html.slice(html.indexOf('function renderListeningPlayer('), html.indexOf('function renderQuizPaperItem('));
 
-function setup({ version = 'n5-assessment-v4', saved, blockedStorage = false, privateAudio = false, sections = 1, fetchAudio } = {}) {
+function setup({ version = 'n5-assessment-v4', saved, blockedStorage = false, privateAudio = false, sections = 1, trackCount = 2, fetchAudio } = {}) {
   let now = 0, timerId = 0, objectId = 0;
   const timers = new Map(), audios = [], requests = [], storage = new Map();
   if (saved !== undefined) storage.set('ez_listening_speed', String(saved));
   const players = Array.from({ length: sections }, (_, section) => {
     const controls = new Map(['.qlp-play', '.qlp-speed-select', '.qlp-current-num', '.qlp-cur-time', '.qlp-total-time', '.qlp-bar', '.qlp-prev', '.qlp-next', '.qlp-jeda']
       .map(selector => [selector, { textContent: '', value: '', disabled: false }]));
-    const tracks = [0, 1].map(qi => ({ qi, script: privateAudio ? '' : `audio-${section}-${qi}`, questionId: privateAudio ? `q-${section}-${qi}` : null }));
+    const tracks = Array.from({ length: trackCount }, (_, qi) => ({ qi, script: privateAudio ? '' : `audio-${section}-${qi}`, questionId: privateAudio ? `q-${section}-${qi}` : null }));
     return { dataset: { sectionKey: `s${section + 1}`, tracks: JSON.stringify(tracks) },
       querySelector: selector => controls.get(selector) || null, querySelectorAll: () => [] };
   });
@@ -121,24 +121,44 @@ test('protected assessment audio uses the latest speed when a delayed response b
   assert.match(h.requests[0], /quiz\/audio\/q-0-0\?attemptToken=attempt$/);
 });
 
-test('replaying during a chapter countdown cancels its advance until the replay itself ends', () => {
+test('chapter and final listening wait for the learner after audio ends without loading the next question', async () => {
+  const versions = [null, 'n5-assessment-v4', 'n4-assessment-v1',
+    'jlpt-final-n5-v1', 'jlpt-final-n5-v2', 'jlpt-final-n4-v1', 'jlpt-final-n4-v2'];
+  for (const version of versions) for (const privateAudio of [false, true]) {
+    const h = setup({ version, privateAudio, trackCount: 4 }), audio = h.state().audio;
+    await h.ctx.loadListeningTrack('s1', 0, true);
+    const requestCount = h.requests.length;
+    audio.end();
+    h.advance(60000);
+    assert.equal(h.state().currentIdx, 0);
+    assert.equal(h.state().isPlaying, false);
+    assert.equal(audio.paused, true);
+    assert.equal(audio.plays.length, 1);
+    assert.equal(h.timers.size, 0);
+    assert.equal(h.requests.length, requestCount, 'ending audio must not request the next question');
+    assert.equal(h.players[0].querySelector('.qlp-play').textContent, '▶');
+    assert.equal(h.players[0].querySelector('.qlp-next').disabled, false);
+    assert.equal(h.players[0].querySelector('.qlp-jeda').textContent, '');
+  }
+});
+
+test('replaying a completed chapter track never advances after the replay ends', () => {
   const h = setup(), audio = h.state().audio;
   audio.end(); h.advance(1000);
-  assert.equal(h.timers.size, 1);
   h.ctx.window.listeningTogglePlay('s1');
   assert.equal(h.timers.size, 0);
   assert.equal(h.players[0].querySelector('.qlp-jeda').textContent, '');
   h.advance(6000);
-  assert.equal(h.state().currentIdx, 0, 'the replay must not be cut by the original countdown');
-  assert.equal(audio.paused, false);
-  audio.end(); h.advance(4999);
   assert.equal(h.state().currentIdx, 0);
-  h.advance(1);
-  assert.equal(h.state().currentIdx, 1, 'uninterrupted chapter playback still advances after five seconds');
+  assert.equal(audio.paused, false);
+  audio.end(); h.advance(60000);
+  assert.equal(h.state().currentIdx, 0);
+  assert.equal(audio.paused, true);
+  assert.equal(h.timers.size, 0);
   assert.equal(audio.plays.at(-1).rate, 0.9);
 });
 
-test('pausing a replay is respected after the previous countdown deadline', () => {
+test('pausing a replay leaves the learner on the same chapter track', () => {
   const h = setup(), audio = h.state().audio;
   audio.end(); h.advance(1000);
   h.ctx.window.listeningTogglePlay('s1');
@@ -149,7 +169,7 @@ test('pausing a replay is respected after the previous countdown deadline', () =
   assert.equal(h.timers.size, 0);
 });
 
-test('seeking or skipping back during a countdown leaves the learner on the chosen track', () => {
+test('seeking or skipping back after audio ends leaves the learner on the chosen track', () => {
   for (const action of ['listeningSeek', 'listeningSkip']) {
     const h = setup(), audio = h.state().audio;
     audio.end(); h.advance(1000);
@@ -160,6 +180,64 @@ test('seeking or skipping back during a countdown leaves the learner on the chos
     assert.equal(audio.paused, true);
     assert.equal(h.timers.size, 0);
   }
+});
+
+test('manual next, previous and numbered tracks keep their playback behavior and last-track boundary', async () => {
+  for (const privateAudio of [false, true]) {
+    const h = setup({ privateAudio, trackCount: 4 }), audio = h.state().audio;
+    h.ctx.window.listeningSetSpeed('0.75');
+    assert.equal(h.players[0].querySelector('.qlp-prev').disabled, true);
+    for (let idx = 1; idx < 4; idx++) {
+      h.ctx.window.listeningJump('s1', 1, true);
+      await new Promise(setImmediate);
+      assert.equal(h.state().currentIdx, idx);
+      assert.equal(audio.paused, false);
+      assert.equal(audio.plays.at(-1).rate, 0.75);
+      audio.end(); h.advance(10000);
+      assert.equal(h.state().currentIdx, idx);
+      assert.equal(audio.paused, true);
+    }
+    assert.equal(h.players[0].querySelector('.qlp-next').disabled, true);
+    const plays = audio.plays.length, requests = h.requests.length;
+    h.ctx.window.listeningJump('s1', 1, true);
+    await new Promise(setImmediate);
+    assert.equal(h.state().currentIdx, 3);
+    assert.equal(audio.plays.length, plays);
+    assert.equal(h.requests.length, requests);
+    h.ctx.window.listeningJump('s1', -1, true);
+    await new Promise(setImmediate);
+    assert.equal(h.state().currentIdx, 2);
+    assert.equal(audio.paused, false);
+    h.ctx.window.listeningJump('s1', 0, false);
+    await new Promise(setImmediate);
+    assert.equal(h.state().currentIdx, 0);
+    assert.equal(audio.paused, false, 'numbered tracks keep playback when already playing');
+    audio.end();
+    h.ctx.window.listeningJump('s1', 1, false);
+    await new Promise(setImmediate);
+    assert.equal(h.state().currentIdx, 1);
+    assert.equal(audio.paused, true, 'numbered tracks only select when paused');
+    h.ctx.window.listeningTogglePlay('s1');
+    await new Promise(setImmediate);
+    assert.equal(audio.paused, false);
+    assert.equal(audio.plays.at(-1).rate, 0.75);
+  }
+});
+
+test('a single-track section stops and re-rendering keeps protected audio idle until play', async () => {
+  const h = setup({ privateAudio: true, trackCount: 1 });
+  await h.ctx.loadListeningTrack('s1', 0, true);
+  h.state().audio.end(); h.advance(10000);
+  assert.equal(h.state().currentIdx, 0);
+  assert.equal(h.players[0].querySelector('.qlp-next').disabled, true);
+  assert.equal(h.players[0].querySelector('.qlp-prev').disabled, true);
+  h.ctx.initListeningPlayers();
+  h.advance(60000);
+  assert.equal(h.requests.length, 1, 'reopening the section must not fetch or play audio');
+  assert.equal(h.state().audio.plays.length, 0);
+  assert.equal(h.state().audio.paused, true);
+  assert.equal(h.state().currentIdx, 0);
+  assert.equal(h.timers.size, 0);
 });
 
 test('all supported final exams stop after each audio and retain speed when the learner explicitly advances', () => {
