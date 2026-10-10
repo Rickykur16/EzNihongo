@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&family=Playfair+Display:ital,wght@1,500;1,600&family=Inter:wght@500;600;700;800&display=block" rel="stylesheet">
+<!--
+  Video "Biaya Tokutei Ginou mandiri" 9:16 (1080×1920), ±95 detik.
+  Semua animasi = render(t), deterministik per waktu (dirender per frame oleh render.mjs).
+  window.CUES = efek suara pada detik yang sama (sfx.py). Angka = tarif resmi per Oktober 2026
+  (lihat README.md untuk sumbernya). Teks TANPA em dash (aturan teks landing).
+-->
+<style>
+:root{--red:#C8102E;--ink:#1a1815;--paper:#fdfcf9;--navy:#19345f;--yellow:#FFE11A;--green:#1f8a4c}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#111;font-family:Inter,sans-serif}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden}
+.scene{position:absolute;inset:0;display:none;overflow:hidden}
+.abs{position:absolute}
+.bg-paper{background:radial-gradient(ellipse 90% 70% at 50% 35%,#fbf8f2 0%,#efe8dc 70%,#e4dccd 100%)}
+.bg-red{background:radial-gradient(ellipse 80% 60% at 50% 45%,#d81a35 0%,#b10f28 55%,#7d0a1b 100%)}
+.bg-navy{background:radial-gradient(ellipse 80% 60% at 50% 40%,#244a85 0%,#19345f 60%,#0f2142 100%)}
+/* caption tumpuk (gaya video brand) */
+.cap{position:absolute;left:40px;right:40px;text-align:center;display:none}
+.cap .ln{display:block;white-space:nowrap}
+.cap .s{font-family:Montserrat;font-weight:700;font-size:58px;line-height:1.08;letter-spacing:-.01em}
+.cap .b{font-family:Montserrat;font-weight:900;font-size:128px;line-height:1;letter-spacing:-.035em}
+.cap .m{font-family:Montserrat;font-weight:900;font-size:92px;line-height:1.02;letter-spacing:-.03em}
+.cap .i{font-family:'Playfair Display';font-style:italic;font-weight:500;font-size:64px;line-height:1.1}
+.cap .w{display:inline-block}
+.dark .s,.dark .b,.dark .m,.dark .i{color:#fff;text-shadow:0 6px 28px rgba(0,0,0,.45)}
+.dark .y{color:var(--yellow)}
+.light .s,.light .i{color:#3b3631}.light .b,.light .m{color:var(--ink)}
+.light .r{color:var(--red)}
+.onred .s,.onred .b,.onred .m,.onred .i{color:#fff;text-shadow:0 8px 30px rgba(80,0,10,.35)}
+.onred .y,.onnavy .y{color:var(--yellow)}
+.onnavy .s,.onnavy .b,.onnavy .m,.onnavy .i{color:#fff;text-shadow:0 8px 30px rgba(0,0,20,.35)}
+/* kotak judul merah */
+.tchip{position:absolute;left:0;right:0;top:150px;text-align:center;display:none}
+.tchip span{display:inline-block;background:var(--red);color:#fff;font-family:Montserrat;font-weight:800;font-size:46px;letter-spacing:.01em;padding:10px 26px 12px;box-shadow:0 14px 30px -12px rgba(0,0,0,.4)}
+/* kartu harga */
+.pcard{position:absolute;background:#fff;border-radius:30px;box-shadow:0 40px 80px -30px rgba(26,24,21,.45),0 0 0 1px rgba(26,24,21,.07);text-align:center;padding:26px 20px 30px;opacity:0}
+.pcard.row2{display:flex;justify-content:space-between;align-items:center;padding:34px 50px}
+.pcard.row2 .lb{font-size:44px;white-space:nowrap}
+.pcard .lb{font-family:Montserrat;font-weight:800;font-size:40px;color:#5d564d;letter-spacing:.01em}
+.pcard .val{font-family:Montserrat;font-weight:900;color:var(--red);letter-spacing:-.03em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font-family:Montserrat;font-weight:900;font-size:32px;letter-spacing:.06em;padding:6px 18px;border-radius:10px;background:var(--ink);color:#fff;margin-bottom:10px}
+.sticker{position:absolute;font-family:Montserrat;font-weight:900;font-size:40px;padding:14px 26px;border-radius:16px;box-shadow:0 18px 34px -12px rgba(0,0,0,.4);white-space:nowrap;opacity:0;z-index:6}
+.stamp{position:absolute;font-family:Montserrat;font-weight:900;color:var(--green);border:12px solid var(--green);border-radius:26px;padding:6px 40px 14px;letter-spacing:.02em;opacity:0;background:rgba(255,255,255,.55)}
+.stamp.red{color:var(--red);border-color:var(--red)}
+/* struk */
+#receipt{position:absolute;left:70px;width:940px;top:1215px;height:600px;display:none;z-index:8}
+#rpaper{position:absolute;inset:0;background:#fff;box-shadow:0 40px 80px -30px rgba(26,24,21,.5);
+  -webkit-mask:linear-gradient(#000,#000) top/100% calc(100% - 22px) no-repeat,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/44px 22px repeat-x}
+#rhead{position:absolute;left:44px;right:44px;top:30px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:4px dashed #d7cfc2;padding-bottom:18px}
+#rhead b{font-family:Montserrat;font-weight:900;font-size:40px;color:var(--ink);letter-spacing:.02em}
+#rhead span{font-size:26px;color:#8a8278;font-weight:600}
+#rwin{position:absolute;left:44px;right:44px;top:122px;height:400px;overflow:hidden}
+#rrows{position:absolute;left:0;right:0;top:0}
+.row{height:100px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px dotted #e3dccf;font-size:38px;font-weight:600;color:#3b3631;opacity:0}
+.row .n{font-family:Montserrat;font-weight:900;color:#b4ab9e;width:64px;font-size:34px}
+.row .l{flex:1;white-space:nowrap}
+.row .v{font-family:Montserrat;font-weight:900;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.row .v.g{color:var(--green)} .row .v.q{color:var(--red)}
+.row.hl{background:linear-gradient(90deg,rgba(255,225,26,.0),rgba(255,225,26,.0))}
+/* struk penuh (adegan total) */
+.trow{display:flex;justify-content:space-between;font-size:38px;font-weight:600;color:#3b3631;padding:15px 0;border-bottom:2px dotted #e3dccf;opacity:0}
+.trow .v{font-family:Montserrat;font-weight:900;color:var(--ink);white-space:nowrap}
+.trow .v.g{color:var(--green)}.trow .v.q{color:var(--red)}
+#flash{position:absolute;inset:0;z-index:60;opacity:0;background:radial-gradient(ellipse at 50% 45%,#fffdf6 0%,#ffe9c9 60%,#ffb98a 100%)}
+.qm{position:absolute;font-family:Montserrat;font-weight:900;color:rgba(255,255,255,.12)}
+.coin{position:absolute;font-family:Montserrat;font-weight:900;color:rgba(200,16,46,.07);white-space:nowrap}
+.mini{position:absolute;background:#fff;border-radius:24px;padding:28px 40px;font-family:Montserrat;font-weight:800;font-size:58px;color:var(--ink);box-shadow:0 26px 50px -20px rgba(26,24,21,.45);opacity:0;white-space:nowrap}
+.mini i{font-style:normal;color:var(--red);margin-right:14px}
+.fine{position:absolute;left:60px;right:60px;text-align:center;font-size:28px;font-weight:600;color:#6b645b;line-height:1.4}
+</style></head>
+<body><div id="stage">
+
+<!-- ===== HOOK ===== -->
+<div class="scene" id="shook" style="background:#0b1120">
+  <img class="abs" id="hookimg" src="../../assets/landing/tokyo-night.jpg" style="width:1080px;height:1920px;object-fit:cover;object-position:52% 50%">
+  <div class="abs" style="inset:0;background:linear-gradient(180deg,rgba(8,10,18,.55) 0%,rgba(8,10,18,.35) 40%,rgba(8,10,18,.85) 100%)"></div>
+</div>
+<div class="scene bg-red" id="shook2"></div>
+
+<!-- ===== KONTEKS ===== -->
+<div class="scene bg-paper" id="sctx">
+  <div class="mini" id="m1" style="left:150px;top:820px"><i>01</i>belajar</div>
+  <div class="mini" id="m2" style="left:400px;top:1000px"><i>02</i>ujian</div>
+  <div class="mini" id="m3" style="left:560px;top:1180px"><i>03</i>dokumen</div>
+</div>
+
+<!-- ===== ITEM ===== -->
+<div class="scene bg-paper item" id="s1">
+  <div class="pcard row2" id="c1a" style="left:60px;top:500px;width:960px"><div class="lb">JFT-Basic</div><div class="val" style="font-size:92px" data-fmt="Rp{0}" data-n="550000">Rp550.000</div></div>
+  <div class="pcard row2" id="c1b" style="left:60px;top:760px;width:960px"><div class="lb">JLPT N4</div><div class="val" style="font-size:92px" data-fmt="Rp{0}" data-n="250000">Rp250.000</div></div>
+  <div class="abs" id="c1or" style="left:470px;top:672px;width:140px;height:140px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-family:Montserrat;font-weight:900;font-size:40px;z-index:4;opacity:0">ATAU</div>
+  <div class="sticker" id="k1" style="left:600px;top:925px;background:var(--yellow);color:#111">cuma 2× setahun</div>
+</div>
+<div class="scene bg-paper item" id="s2">
+  <div class="pcard" id="c2" style="left:60px;top:560px;width:960px"><div class="lb">sesuai bidang kerja</div><div class="val" style="font-size:88px" data-fmt="Rp{0}–{1}" data-n="220000,740000">Rp220.000–740.000</div></div>
+</div>
+<div class="scene bg-red" id="swarn">
+  <svg class="abs" id="warnico" viewBox="0 0 100 90" style="left:390px;top:330px;width:300px;height:270px"><path d="M50 4 L96 86 L4 86 Z" fill="#FFE11A" stroke="#111" stroke-width="5" stroke-linejoin="round"/><rect x="45" y="30" width="10" height="32" rx="4" fill="#111"/><circle cx="50" cy="73" r="6" fill="#111"/></svg>
+</div>
+<div class="scene bg-paper item" id="s3">
+  <div class="pcard row2" id="c3a" style="left:60px;top:520px;width:960px"><div class="lb" style="font-size:38px">Paspor biasa 10 th</div><div class="val" style="font-size:80px" data-fmt="Rp{0}" data-n="650000">Rp650.000</div></div>
+  <div class="pcard row2" id="c3b" style="left:60px;top:750px;width:960px"><div class="lb" style="font-size:38px">e-paspor 10 th</div><div class="val" style="font-size:80px" data-fmt="Rp{0}" data-n="950000">Rp950.000</div></div>
+</div>
+<div class="scene bg-paper item" id="s4">
+  <div class="pcard" id="c4" style="left:160px;top:560px;width:760px"><div class="lb">tarif resmi PNBP</div><div class="val" style="font-size:150px" data-fmt="Rp{0}" data-n="30000">Rp30.000</div></div>
+</div>
+<div class="scene bg-paper item" id="s5">
+  <div class="pcard" id="c5" style="left:110px;top:540px;width:860px"><div class="tag">MAKSIMAL</div><div class="val" style="font-size:150px" data-fmt="Rp{0}" data-n="550000">Rp550.000</div><div class="lb" style="font-size:34px;margin-top:4px">aturan BP2MI untuk SSW</div></div>
+  <div class="sticker" id="k5" style="left:250px;top:930px;background:var(--navy);color:#fff">psikolog terdaftar HIMPSI ✓</div>
+</div>
+<div class="scene bg-paper item" id="s6">
+  <div class="stamp" id="st6" style="left:190px;top:560px;font-size:170px">GRATIS</div>
+  <div class="sticker" id="k6" style="left:150px;top:930px;background:var(--yellow);color:#111">diminta bayar? hati-hati</div>
+</div>
+<div class="scene bg-paper item" id="s7">
+  <div class="pcard" id="c7" style="left:160px;top:560px;width:760px"><div class="lb">kontrak 24 bulan</div><div class="val" style="font-size:150px" data-fmt="Rp{0}" data-n="370000">Rp370.000</div></div>
+</div>
+<div class="scene bg-paper item" id="s8">
+  <div class="pcard" id="c8" style="left:60px;top:560px;width:960px"><div class="lb">sekali masuk</div><div class="val" style="font-size:136px" data-fmt="Rp{0}" data-n="1650000">Rp1.650.000</div></div>
+</div>
+<div class="scene bg-paper item" id="s9">
+  <div class="pcard" id="c9a" style="left:60px;top:680px;width:300px;padding:26px 10px"><div class="lb" style="font-size:36px">Medical<br>check-up</div><div class="val" style="font-size:90px">Rp ?</div></div>
+  <div class="pcard" id="c9b" style="left:390px;top:680px;width:300px;padding:26px 10px"><div class="lb" style="font-size:36px">Terjemahan<br>dokumen</div><div class="val" style="font-size:90px">Rp ?</div></div>
+  <div class="pcard" id="c9c" style="left:720px;top:680px;width:300px;padding:26px 10px"><div class="lb" style="font-size:36px">Tiket<br>pesawat</div><div class="val" style="font-size:90px">Rp ?</div></div>
+</div>
+
+<!-- ===== PENTING ===== -->
+<div class="scene bg-navy" id="sinfo"></div>
+
+<!-- ===== TOTAL ===== -->
+<div class="scene bg-paper" id="stotal">
+  <div class="abs" id="tpaper" style="left:90px;width:900px;top:250px;background:#fff;box-shadow:0 50px 90px -30px rgba(26,24,21,.5);padding:40px 50px 60px;
+    -webkit-mask:linear-gradient(#000,#000) top/100% calc(100% - 22px) no-repeat,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/44px 22px repeat-x">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:4px dashed #d7cfc2;padding-bottom:18px;margin-bottom:6px"><b style="font-family:Montserrat;font-weight:900;font-size:42px">STRUK TG MANDIRI</b><span style="font-size:26px;color:#8a8278;font-weight:600">per Okt 2026</span></div>
+    <div id="trows"></div>
+    <div id="ttotal" style="display:flex;justify-content:space-between;align-items:center;margin-top:24px;padding-top:22px;border-top:6px solid var(--ink);opacity:0">
+      <b style="font-family:Montserrat;font-weight:900;font-size:58px">TOTAL</b><b id="tnum" style="font-family:Montserrat;font-weight:900;font-size:80px;color:var(--red);font-variant-numeric:tabular-nums">???</b></div>
+  </div>
+  <div class="stamp red" id="tstamp" style="left:120px;top:1300px;font-size:80px;z-index:5;white-space:nowrap">BEDA TIAP ORANG</div>
+</div>
+
+<!-- ===== PENUTUP ===== -->
+<div class="scene bg-paper" id="send">
+  <div class="abs" id="esun" style="width:300px;height:300px;border-radius:50%;background:var(--red);left:700px;top:200px"></div>
+  <img class="abs" id="elogo" src="logo-a.png" style="width:860px;left:110px;top:300px">
+  <div class="abs" id="ecta" style="left:0;right:0;top:1330px;display:flex;justify-content:center;opacity:0">
+    <div style="position:relative;overflow:hidden;background:var(--red);color:#fff;font-family:Montserrat;font-size:50px;font-weight:800;padding:30px 56px;border-radius:20px;box-shadow:0 26px 60px -20px rgba(200,16,46,.65)">Konsultasi lewat link di bio
+      <div id="eshine" style="position:absolute;top:-20px;bottom:-20px;width:110px;left:-160px;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.6),rgba(255,255,255,0));transform:skewX(-20deg)"></div></div>
+  </div>
+  <div class="abs" id="eurl" style="left:0;right:0;top:1490px;text-align:center;font-family:Montserrat;font-weight:800;font-size:46px;color:var(--ink);opacity:0">eznihongo.com</div>
+  <div class="fine" id="efine" style="top:1700px;opacity:0">Tarif resmi per Oktober 2026 dan bisa berubah.<br>Cek lagi ke penyelenggara sebelum membayar.</div>
+</div>
+
+<!-- struk berjalan (lapisan atas adegan item) -->
+<div id="receipt"><div id="rpaper"></div>
+  <div id="rhead"><b>STRUK TG MANDIRI</b><span>tarif resmi · Okt 2026</span></div>
+  <div id="rwin"><div id="rrows"></div></div>
+</div>
+
+<div id="chips"></div>
+<div id="caps"></div>
+<div id="flash"></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const seg=(t,a,b)=>cl((t-a)/(b-a));
+const eo=x=>1-Math.pow(1-x,3), eo5=x=>1-Math.pow(1-x,5);
+const eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const eback=x=>{const c=1.6;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
+const lerp=(a,b,x)=>a+(b-a)*x;
+const shake=(t,a,amp)=>{const x=t-a; return x<0||x>.35?0:Math.sin(x*90)*amp*Math.exp(-x*12)};
+const rp=n=>Math.round(n).toLocaleString('id-ID');
+
+// ===================== JADWAL (detik) =====================
+// Tiap adegan mengikuti satu baris naskah voice-over (README.md).
+const T={hook:[0,3.4],hook2:[3.4,6],ctx:[6,12],s1:[12,21],s2:[21,27],warn:[27,32.5],s3:[32.5,37.5],s4:[37.5,41],
+  s5:[41,49.5],s6:[49.5,56.5],s7:[56.5,61.5],s8:[61.5,65.5],s9:[65.5,72.5],info:[72.5,84.5],total:[84.5,89.5],end:[89.5,95]};
+const DUR=95;
+const SCENES=[['shook','hook'],['shook2','hook2'],['sctx','ctx'],['s1','s1'],['s2','s2'],['swarn','warn'],['s3','s3'],['s4','s4'],
+  ['s5','s5'],['s6','s6'],['s7','s7'],['s8','s8'],['s9','s9'],['sinfo','info'],['stotal','total'],['send','end']];
+const FLASHES=Object.values(T).map(v=>v[0]).filter(x=>x>0);
+const CHIPS=[['01 · UJIAN BAHASA','s1'],['02 · UJIAN KETERAMPILAN','s2'],['03 · PASPOR','s3'],['04 · SKCK','s4'],['05 · PSIKOTES','s5'],
+  ['06 · e-KTKLN','s6'],['07 · BPJS PEKERJA MIGRAN','s7'],['08 · VISA JEPANG','s8'],['TANPA TARIF RESMI','s9'],['PENTING','info']]
+  .map(([txt,k])=>[txt,T[k][0]+.1,T[k][1]]);
+// caption: [mulai, selesai, top, tema, [[gaya, teks],...]]  gaya s kecil, b besar, m sedang, i serif miring; +r merah, +y kuning
+const CAPS=[
+  [0.1,1.75,780,'dark',[['s','berangkat Tokutei Ginou'],['b y','TANPA LPK']]],
+  [1.75,3.4,760,'dark',[['s','sebenarnya butuh'],['b','biaya'],['b y','berapa?']]],
+  [3.5,6,720,'onred',[['s','tonton'],['b','sampai'],['b','habis.'],['i','kita bedah satu per satu.']]],
+  [6.2,12,400,'light',[['b r','MANDIRI'],['i','artinya tanpa LPK.'],['s','kamu urus sendiri:']]],
+  [12.15,21,300,'light',[['m','Ujian bahasa'],['i','cukup lulus salah satu.']]],
+  [21.15,27,320,'light',[['m','Ujian keterampilan'],['i','tergantung bidang.']]],
+  [27.15,30,820,'onred',[['b','GAGAL?'],['m y','bayar lagi.']]],
+  [30,32.5,820,'onred',[['s','persiapan yang matang'],['m','paling hemat.']]],
+  [32.65,37.5,320,'light',[['m','Paspor'],['i','tarif resmi imigrasi.']]],
+  [37.65,41,320,'light',[['m','SKCK'],['i','dari kepolisian.']]],
+  [41.15,49.5,300,'light',[['m','Psikotes'],['i','wajib untuk pekerja migran.']]],
+  [49.65,56.5,300,'light',[['m','e-KTKLN'],['i','daftar online sendiri.']]],
+  [56.65,61.5,300,'light',[['m','BPJS Ketenagakerjaan'],['i','untuk pekerja migran.']]],
+  [61.65,65.5,320,'light',[['m','Visa Jepang'],['i','sejak 1 Juli 2026.']]],
+  [65.65,72.5,300,'light',[['m','Tidak ada'],['m r','tarif resmi'],['i','tanya langsung ke klinik & maskapai.']]],
+  [72.65,78,640,'onnavy',[['s','biaya dukungan SSW'],['b y','ditanggung'],['m','perusahaan,'],['i','bukan kamu.']]],
+  [78,84.5,560,'onnavy',[['s','sudah ditanggung perusahaan?'],['m','kamu tidak boleh'],['b y','ditagih'],['m','lagi.'],['i','cek penawaran kerja sebelum tanda tangan.']]],
+  [86.9,89.5,1600,'light',[['i','tergantung bidang, ujian,'],['i','dan kota asalmu.']]],
+  [90.4,95,960,'light',[['s','mau tahu langkah'],['m r','yang pas buatmu?']]],
+];
+// baris struk: [mulai, nomor, label, nilai, kelas]
+const ROWS=[[13.6,'01','Ujian bahasa (pilih 1)','Rp250rb–550rb',''],[22.6,'02','Ujian keterampilan','Rp220rb–740rb',''],
+  [34.6,'03','Paspor','Rp650rb–950rb',''],[39.0,'04','SKCK','Rp30rb',''],[43.6,'05','Psikotes','maks Rp550rb',''],
+  [51.6,'06','e-KTKLN','GRATIS','g'],[58.4,'07','BPJS PMI (24 bln)','Rp370rb',''],[63.3,'08','Visa Jepang','Rp1,65jt',''],
+  [68.6,'+','Medical, dokumen, tiket','?','q']];
+const RECEIPT_ON=[T.s1[0],T.warn[0]], RECEIPT_ON2=[T.s3[0],T.s9[1]];
+
+// kartu harga: [id, adegan, mulai-relatif]
+const CARDS=[['c1a',12.9],['c1b',13.25],['c2',21.9],['c3a',33.2],['c3b',33.7],['c4',38.2],['c5',41.9],['c7',57.3],['c8',62.2],['c9a',66.4],['c9b',66.75],['c9c',67.1]];
+const STICKERS=[['k1',17.4,-4],['k5',45.6,3],['k6',53.2,-3]];
+
+window.CUES=(()=>{ const c=[[0,'riser'],[0.12,'impact',0],[0.3,'boom'],[1.78,'impact',1],[3.4,'whoosh',1],[3.55,'impact',2],[6,'whoosh_soft',-1],[6.25,'pop',0]];
+  [[8.4,1],[8.9,2],[9.4,3]].forEach(([t,i])=>c.push([t,'pop',i]));
+  CHIPS.forEach(([,a])=>c.push([a,'pop',5]));
+  Object.entries(T).forEach(([k,[a]])=>{ if(a>6) c.push([a,k==='warn'||k==='info'?'whoosh':'whoosh_soft',k==='warn'?1:-1]); });
+  CARDS.forEach(([id,a])=>{ c.push([a,'lift']); if(!id.startsWith('c9')) c.push([a+.15,'count']); });
+  ROWS.forEach(([a])=>{ c.push([a,'click']); c.push([a+.05,'tick',2]); });
+  STICKERS.forEach(([,a])=>c.push([a,'pop',3]));
+  c.push([13.5,'pop',1],[27.2,'impact',1],[27.5,'strike'],[30.1,'punch'],[52.0,'punch'],[52.1,'correct'],[78.2,'impact',0],
+    [85.4,'type',1.4],[86.6,'punch'],[86.65,'impact',2],[89.5,'whoosh',1],[89.6,'boom'],[90.0,'shimmer'],[91.9,'pop',6],[93.2,'sparkle']);
+  return c.sort((a,b)=>a[0]-b[0]); })();
+
+// ===================== BANGUN DOM =====================
+CHIPS.forEach(c=>{ const d=document.createElement('div'); d.className='tchip'; d.innerHTML=`<span>${c[0]}</span>`; $('chips').appendChild(d); c.el=d; });
+const CAP_EL=CAPS.map(([a,b,top,theme,lines])=>{ const d=document.createElement('div'); d.className='cap '+theme; d.style.top=top+'px';
+  lines.forEach(([cls,txt])=>{ const ln=document.createElement('div'); ln.className='ln '+cls;
+    txt.split(' ').forEach((w,i)=>{ if(i) ln.appendChild(document.createTextNode(' ')); const s=document.createElement('span'); s.className='w'; s.textContent=w; ln.appendChild(s); });
+    d.appendChild(ln); });
+  $('caps').appendChild(d); return {el:d,a,b,words:[...d.querySelectorAll('.w')],lines:[...d.querySelectorAll('.ln')],fitted:false}; });
+function fit(c){ if(c.fitted) return; c.el.style.display='block';
+  c.lines.forEach(l=>{ const w=l.scrollWidth; if(w>1000){ const fs=parseFloat(getComputedStyle(l).fontSize); l.style.fontSize=(fs*1000/w)+'px'; } });
+  c.fitted=true; }
+const ROW_EL=ROWS.map(([a,n,l,v,k])=>{ const d=document.createElement('div'); d.className='row';
+  d.innerHTML=`<span class="n">${n}</span><span class="l">${l}</span><span class="v ${k}">${v}</span>`; $('rrows').appendChild(d); return {el:d,a}; });
+const TROW_EL=ROWS.map(([,n,l,v,k],i)=>{ const d=document.createElement('div'); d.className='trow';
+  d.innerHTML=`<span>${l}</span><span class="v ${k}">${v}</span>`; $('trows').appendChild(d); return {el:d,a:T.total[0]+.15+i*.13}; });
+CARDS.forEach(c=>{ c.el=$(c[0]); const v=c.el.querySelector('.val[data-n]'); if(v){ c.val=v; c.fmt=v.dataset.fmt; c.nums=v.dataset.n.split(',').map(Number); } });
+// latar: tanda tanya melayang (hook) dan "Rp" pudar (adegan kertas)
+const QM=[], COINS=[]; { let seed=5; const r=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  ['shook2'].forEach(id=>{ for(let i=0;i<14;i++){ const q=document.createElement('div'); q.className='qm'; q.textContent='?'; const sz=90+r()*220; q.style.fontSize=sz+'px';
+    $(id).appendChild(q); QM.push({el:q,x:r()*1000,y:r()*1920,v:40+sz*.5,rot:(r()-.5)*50,ph:r()*6}); } });
+  document.querySelectorAll('.item,#sctx,#stotal,#send').forEach(sc=>{ for(let i=0;i<9;i++){ const k=document.createElement('div'); k.className='coin';
+    k.textContent=r()<.5?'Rp':'¥'; const sz=70+r()*150; k.style.fontSize=sz+'px'; sc.insertBefore(k,sc.firstChild);
+    COINS.push({el:k,x:r()*1080,y:r()*1920,v:18+sz*.3,rot:(r()-.5)*40,ph:r()*6}); } }); }
+
+// ===================== RENDER =====================
+const env=(t,a,b,c,d)=>eo5(seg(t,a,b))*(1-eio(seg(t,c,d)));
+function pop(el,p,rot=0){ el.style.opacity=cl(p*1.8); el.style.transform=`scale(${lerp(.4,1,eback(p))}) rotate(${rot*(1-eo(p))}deg)`; }
+function render(t){
+  SCENES.forEach(([id,k])=>{ const [a,b]=T[k]; $(id).style.display=(t>=a&&t<b)?'block':'none'; });
+  let f=0; FLASHES.forEach(a=>{ const x=t-a; if(x>-.07&&x<.28) f=Math.max(f, x<0?(x+.07)/.07:1-eo(x/.28)); });
+  $('flash').style.opacity=f*.9;
+  // kotak judul
+  CHIPS.forEach(([,a,b,el])=>{ const c=CHIPS.find(x=>x[1]===a); const d=c.el; const on=t>=a&&t<b; d.style.display=on?'block':'none'; if(!on) return;
+    const p=eo5(seg(t,a,a+.3)); d.style.filter=`blur(${(1-p)*14}px)`; d.style.opacity=p; d.style.transform=`scale(${lerp(1.25,1,p)}) rotate(${Math.sin((t-a)*1.3)*.6}deg)`; });
+  // caption per kata blur→tajam
+  CAP_EL.forEach(c=>{ const on=t>=c.a&&t<c.b; if(!on){ c.el.style.display='none'; return; } fit(c); c.el.style.display='block';
+    const out=seg(t,c.b-.12,c.b);
+    c.words.forEach((w,i)=>{ const st=c.a+i*.08, p=seg(t,st,st+.3), e=eo5(p);
+      w.style.opacity=cl(p*2.5)*(1-out); w.style.filter=`blur(${(1-e)*16+out*10}px)`; w.style.transform=`translateY(${(1-e)*16}px) scale(${lerp(1.06,1,e)})`; });
+    c.el.style.transform=`scale(${lerp(1,1.03,seg(t,c.a,c.b))})`; });
+  // latar bergerak
+  QM.forEach(k=>{ const y=((k.y-t*k.v)%2200+2200)%2200-200; k.el.style.transform=`translate(${k.x+Math.sin(t*.9+k.ph)*30}px,${y}px) rotate(${k.rot+Math.sin(t*.6+k.ph)*10}deg)`; });
+  COINS.forEach(k=>{ const y=((k.y-t*k.v)%2100+2100)%2100-180; k.el.style.transform=`translate(${k.x+Math.sin(t*.7+k.ph)*26}px,${y}px) rotate(${k.rot+Math.sin(t*.5+k.ph)*8}deg)`; });
+
+  // ---------- HOOK ----------
+  if(t<T.hook[1]){ $('hookimg').style.transform=`scale(${lerp(1.25,1.08,eo(seg(t,0,3.4)))})`;
+    const sx=shake(t,.12,16)+shake(t,1.78,18); $('caps').style.transform=`translate(${sx}px,${shake(t+.01,.12,10)+shake(t+.01,1.78,12)}px)`; }
+  else if(t<T.hook2[1]) $('caps').style.transform=`translate(${shake(t,3.55,16)}px,${shake(t+.01,3.55,10)}px)`;
+  else $('caps').style.transform='';
+
+  // ---------- KONTEKS ----------
+  [['m1',8.4,-6],['m2',8.9,4],['m3',9.4,-3]].forEach(([id,a,rot])=>{ const p=seg(t,a,a+.4); pop($(id),p,rot*3);
+    if(p>0) $(id).style.transform+=` translateY(${Math.sin((t-a)*1.6)*6}px) rotate(${rot*.4}deg)`; });
+
+  // ---------- KARTU HARGA ----------
+  CARDS.forEach(c=>{ const a=c[1], p=seg(t,a,a+.55), e=eo5(p);
+    c.el.style.opacity=cl(p*2); c.el.style.filter=`blur(${(1-e)*14}px)`;
+    c.el.style.transform=`translateY(${(1-e)*70+Math.sin((t-a)*1.2)*5}px) scale(${lerp(1.1,1,e)})`;
+    if(c.val){ const k=eo(seg(t,a+.15,a+1.15)); let i=0;
+      c.val.textContent=c.fmt.replace(/\{(\d)\}/g,(_,j)=>{ const n=c.nums[+j]; return rp(Math.round(n*k/1000)*1000); });
+      c.val.style.transform=`scale(${1+.06*Math.sin(Math.PI*seg(t,a+1.1,a+1.4))})`; } });
+  { const p=seg(t,13.5,13.85); pop($('c1or'),p,-30); }
+  STICKERS.forEach(([id,a,rot])=>{ const p=seg(t,a,a+.4); pop($(id),p,rot*4); if(p>0) $(id).style.transform+=` rotate(${rot+Math.sin((t-a)*2)*1.2}deg)`; });
+  // stempel GRATIS
+  { const p=seg(t,51.9,52.2); const s=$('st6'); s.style.opacity=cl(p*3); s.style.transform=`rotate(-8deg) scale(${lerp(2.4,1,eo5(p))})`;
+    s.style.filter=`blur(${(1-eo5(p))*8}px)`; if(p>=1) s.style.transform+=` translate(${shake(t,52.2,6)}px,${shake(t+.01,52.2,4)}px)`; }
+
+  // ---------- PERINGATAN ----------
+  if(t>=T.warn[0]&&t<T.warn[1]){ const p=seg(t,27.15,27.5); const w=$('warnico');
+    w.style.transform=`scale(${lerp(.3,1,eback(p))}) rotate(${Math.sin((t-27)*7)*4*(1-seg(t,28,30))}deg)`; w.style.opacity=cl(p*2); }
+
+  // ---------- STRUK BERJALAN ----------
+  const rOn=(t>=RECEIPT_ON[0]&&t<RECEIPT_ON[1])||(t>=RECEIPT_ON2[0]&&t<RECEIPT_ON2[1]);
+  $('receipt').style.display=rOn?'block':'none';
+  if(rOn){ const enter=Math.max(seg(t,12.55,13.15),seg(t,32.75,33.2)); const e=t<RECEIPT_ON[1]?eo5(seg(t,12.55,13.15)):(t<33.3?eo5(seg(t,32.7,33.2)):1);
+    $('receipt').style.transform=`translateY(${(1-e)*620}px) rotate(${(1-e)*-4}deg)`;
+    let shown=0; ROW_EL.forEach(r=>{ const p=seg(t,r.a,r.a+.35); if(t>=r.a) shown++;
+      r.el.style.opacity=cl(p*2); r.el.style.transform=`translateX(${(1-eo5(p))*-60}px)`;
+      const hl=env(t,r.a,r.a+.2,r.a+1.4,r.a+2); r.el.style.background=`rgba(255,225,26,${hl*.45})`; });
+    // geser naik supaya baris terbaru selalu terlihat (jendela 4 baris)
+    let off=0; ROW_EL.forEach((r,i)=>{ if(i>=4) off+=eio(seg(t,r.a-.35,r.a))*100; });
+    $('rrows').style.transform=`translateY(${-off}px)`; }
+
+  // ---------- TOTAL ----------
+  if(t>=T.total[0]&&t<T.total[1]){ const p=eo5(seg(t,84.55,85.1)); $('tpaper').style.transform=`translateY(${(1-p)*400}px) rotate(${(1-p)*3}deg)`;
+    $('tpaper').style.opacity=cl(p*2);
+    TROW_EL.forEach(r=>{ const q=seg(t,r.a,r.a+.25); r.el.style.opacity=cl(q*2); r.el.style.transform=`translateX(${(1-eo5(q))*-40}px)`; });
+    const tt=seg(t,85.4,85.6); $('ttotal').style.opacity=tt;
+    const n=$('tnum'); if(t<86.6){ const k=Math.floor(t*22); n.textContent='Rp'+rp(((k*7919)%9000+1000)*1000); n.style.color='#b4ab9e'; }
+    else { n.textContent='???'; n.style.color='var(--red)'; }
+    n.style.transform=`scale(${1+.18*Math.sin(Math.PI*seg(t,86.6,86.9))})`;
+    const sp=seg(t,86.6,86.85), st=$('tstamp'); st.style.opacity=cl(sp*3);
+    st.style.transform=`rotate(-7deg) scale(${lerp(2.4,1,eo5(sp))}) translate(${shake(t,86.85,6)}px,${shake(t+.01,86.85,4)}px)`;
+    st.style.filter=`blur(${(1-eo5(sp))*8}px)`; }
+
+  // ---------- PENUTUP ----------
+  if(t>=T.end[0]){ const s=eo5(seg(t,89.55,90.4)); $('esun').style.transform=`translateY(${(1-s)*260}px) scale(${lerp(.6,1,s)})`; $('esun').style.opacity=s;
+    const l=eo5(seg(t,89.7,90.4)); $('elogo').style.opacity=l; $('elogo').style.filter=`blur(${(1-l)*16}px)`; $('elogo').style.transform=`scale(${lerp(1.12,1,l)})`;
+    const c=seg(t,91.9,92.3); $('ecta').style.opacity=cl(c*2); $('ecta').style.transform=`scale(${lerp(.6,1,eback(c))}) translateY(${Math.sin((t-91.9)*2)*5}px)`;
+    $('eshine').style.left=lerp(-160,1000,seg(t,92.6,93.4))+'px';
+    $('eurl').style.opacity=eo(seg(t,92.4,92.8)); $('efine').style.opacity=eo(seg(t,93,93.5)); }
+}
+window.render=render; window.DUR=DUR;
+render(0);
+</script>
+</body></html>
