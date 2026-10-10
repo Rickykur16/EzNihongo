@@ -102,8 +102,9 @@ const NOTE=(hd,ttl)=>`<div class="note"><div class="tape"></div><svg class="clip
 // Waktu mengikuti naskah ElevenLabs (13 paragraf, README.md). SEG = detik mulai tiap paragraf.
 // Angka sekarang PERKIRAAN (±15 huruf/detik + jeda 0,6 dtk); begitu MP3 ada, ganti SEG dengan
 // titik jeda dari audionya (ffmpeg silencedetect) dan semua adegan ikut bergeser.
-const SEG=[0,8.1,16.0,21.7,23.9,27.2,29.3,32.9,34.6,38.5,42.4,49.7,57.4];
-const DUR=63.3;
+// Dicocokkan dengan VO asli (Konten_10_oct_2026.mp3, ElevenLabs v4, 64,1 dtk) lewat silencedetect.
+const SEG=[0,9.28,19.07,24.09,26.60,29.51,31.93,35.22,37.88,41.95,45.66,52.96,60.91];
+const DUR=65.3;
 const segEnd=i=>i+1<SEG.length?SEG[i+1]:DUR, segDur=i=>segEnd(i)-SEG[i];
 // [paragraf, mulai relatif, selesai relatif (null = akhir paragraf), latar, isi, opsi]
 const SPEC=[];
@@ -113,42 +114,42 @@ const item=(i,n,title,bg,html,o={})=>{ const nd=Math.min(.8,segDur(i)*.36);
   shot(i,0,nd,'dark',NOTE(`BAGIAN ${String(n).padStart(2,'0')} / 09`,title),{note:1});
   shot(i,nd,null,bg,html,Object.assign({whip:1},o)); };
 
-const h1=segDur(0)*.36, h2=segDur(0)*.68;
+const h1=3.3, h2=6.93;
 shot(0,0,h1,'dark',`<img class="photo" data-zoom="1" src="../../assets/landing/tokyo-night.jpg" style="object-position:50% 50%"><div class="shade"></div>
-  ${L('kerja di Jepang',0,120,0.05,null,48)}${S('modal mulai',0,205,1.0,null,'font-size:42px')}
-  ${B('Rp8 JUTAAN',0,265,1.3,150)}`,{center:1,hit:[[1.35,'impact',1]]});
-shot(0,h1,h2,'dark',`${S('lewat jalur',0,150,0.05,null,'font-size:40px')}${B('SSW',0,200,0.2,190)}${L('Tokutei Ginou · tanpa LPK',0,405,0.6,null,44)}`,{center:1,whip:1,hit:[[0.25,'impact',2]]});
+  ${L('kerja di Jepang',0,120,0.05,null,48)}${S('modal mulai',0,205,1.1,null,'font-size:42px')}
+  ${B('Rp8 JUTAAN',0,265,1.8,150)}`,{center:1,hit:[[1.85,'impact',1]]});
+shot(0,h1,h2,'dark',`${S('lewat jalur',0,150,0.1,null,'font-size:40px')}${B('SSW',0,200,1.15,190)}${L('Tokutei Ginou · tanpa LPK',0,405,2.1,null,44)}`,{center:1,whip:1,hit:[[1.2,'impact',2]]});
 shot(0,h2,null,'dark',`${B('SINI AKU BEDAH',0,190,0.05,110)}${L('satu per satu',0,330,0.6,null,64)}`,{center:1,whip:1});
 item(1,1,'Ujian bahasa','dark',`<div class="strip" style="position:absolute;left:0;top:0;width:2160px;height:608px">
-     ${L('pilih salah satu',0,70,0.15)}
-     ${L('JFT-Basic',0,190,0.35)}${C('Rp{0}','550000',0,250,0.45,150,0,center)}
+     ${L('pilih salah satu',0,70,0.4)}
+     ${L('JFT-Basic',0,190,1.75)}${C('Rp{0}','550000',0,250,1.9,150,0,center)}
      <svg class="a" viewBox="0 0 400 120" style="left:820px;top:120px;width:520px;height:160px;overflow:visible"><path class="arrow" d="M10 100 C120 0 280 0 390 70" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" pathLength="1"/><path class="arrowh" d="M360 40 L392 72 L350 82" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/></svg>
-     <div class="a" style="left:1080px;top:0;width:1080px;height:608px">${L('JLPT N4',0,190,3.2)}${C('Rp{0}','250000',0,250,3.3,150,0,center)}${L('cuma 2× setahun',0,430,4.6,null,40)}</div>
-   </div>`,{center:1,strip:[2.6,3.3]});
-item(2,2,'Ujian keterampilan','dark',`${ico('clip',70,150,300,0.05)}${L('sesuai bidang kerja',420,110,0.2)}${C('Rp{0}','220000',420,175,0.35,104)}${S('sampai',424,300,0.9)}${C('Rp{0}','740000',420,345,1.1,104)}`);
-shot(3,0,null,'dark',`<div class="a" style="inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(224,32,47,.28),transparent 70%)"></div>${ico('warn',110,140,300,0.0,.6)}${B('GAGAL UJIAN?',450,190,0.1,82)}${L('bayar lagi.',454,310,0.75,null,64)}`,{shake:0.75,whip:1});
+     <div class="a" style="left:1080px;top:0;width:1080px;height:608px">${L('JLPT N4',0,190,5.0)}${C('Rp{0}','250000',0,250,5.15,150,0,center)}${L('cuma 2× setahun',0,430,7.0,null,40)}</div>
+   </div>`,{center:1,strip:[4.5,5.1]});
+item(2,2,'Ujian keterampilan','dark',`${ico('clip',70,150,300,0.05)}${L('sesuai bidang kerja',420,110,0.2)}${C('Rp{0}','220000',420,175,0.6,104)}${S('sampai',424,300,1.9)}${C('Rp{0}','740000',420,345,2.2,104)}`);
+shot(3,0,null,'dark',`<div class="a" style="inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(224,32,47,.28),transparent 70%)"></div>${ico('warn',110,140,300,0.0,.6)}${B('GAGAL UJIAN?',450,190,0.1,82)}${L('bayar lagi.',454,310,1.2,null,64)}`,{shake:1.2,whip:1});
 item(4,3,'Paspor','dark',`${ico('passport',70,140,300,0.05,.8)}${L('paspor biasa 10 th',430,95,0.1)}${C('Rp{0}','650000',430,155,0.2,112)}${L('e-paspor 10 th',430,315,1.1)}${C('Rp{0}','950000',430,375,1.2,112)}`);
-item(5,4,'SKCK','dark',`${ico('skck',90,140,300,0.0,.7)}${L('tarif resmi PNBP',450,190,0.05)}${C('Rp{0}','30000',450,255,0.15,124)}`);
+item(5,4,'SKCK','dark',`${ico('skck',90,140,300,0.0,.7)}${L('tarif resmi PNBP',450,190,0.05)}${C('Rp{0}','30000',450,255,0.4,124)}`);
 item(6,5,'Psikotes','dark',`${ico('head',70,140,300,0.05,.8)}${L('maksimal',430,150,0.1)}${C('Rp{0}','550000',430,210,0.2,108)}${S('aturan BP2MI untuk SSW',432,370,0.8)}${L('psikolog terdaftar HIMPSI',430,440,1.5)}`);
-item(7,6,'e-KTKLN','dark',`${ico('card',60,150,320,0.0,.6)}${B('GRATIS.',430,160,0.05,140)}${L('daftar online sendiri',436,330,0.45)}`,{hit:[[0.08,'punch'],[0.12,'correct']]});
-item(8,7,'BPJS pekerja migran','dark',`${ico('shield',70,140,300,0.05,.8)}${L('kontrak 24 bulan',450,190,0.1)}${C('Rp{0}','370000',450,255,0.2,110)}`);
-item(9,8,'Visa Jepang','dark',`${ico('visa',70,140,300,0.0,.8)}${L('sekali masuk',430,170,0.1)}${C('Rp{0}','1650000',430,235,0.2,94)}${S('sejak 1 Juli 2026',434,385,0.8)}`);
+item(7,6,'e-KTKLN','dark',`${ico('card',60,150,320,0.0,.6)}${B('GRATIS.',430,160,0.8,140)}${L('daftar online sendiri',436,330,1.2)}`,{hit:[[0.83,'punch'],[0.87,'correct']]});
+item(8,7,'BPJS pekerja migran','dark',`${ico('shield',70,140,300,0.05,.8)}${L('kontrak 24 bulan',450,190,0.1)}${C('Rp{0}','370000',450,255,1.35,110)}`);
+item(9,8,'Visa Jepang','dark',`${ico('visa',70,140,300,0.0,.8)}${L('sekali masuk',430,170,0.1)}${C('Rp{0}','1650000',430,235,0.3,94)}${S('sejak 1 Juli 2026',434,385,0.8)}`);
 item(10,9,'Medical & tiket','light',`<div class="a" style="width:1080px;left:0;top:34px;text-align:center" data-in="0.05"><span class="lbl">perkiraan, bukan tarif resmi</span></div>
    ${ico('steth',150,110,210,0.1)}${ico('plane',700,110,210,2.3)}
-   ${L('medical check-up',120,345,0.3)}${B('± Rp1,1 jt',120,405,0.45,72)}${S('beda tiap klinik',122,495,0.9)}
-   ${L('tiket pesawat',600,345,2.5)}${B('mulai ± Rp3,3 jt',600,410,2.65,52)}${S('Jakarta–Osaka, 28 Okt,',602,488,3.1)}${S('belum bagasi',602,526,3.3)}
+   ${L('medical check-up',120,345,0.2)}${B('± Rp1,1 jt',120,405,0.9,72)}${S('beda tiap klinik',122,495,1.4)}
+   ${L('tiket pesawat',600,345,2.45)}${B('mulai ± Rp3,3 jt',600,410,2.9,52)}${S('Jakarta–Osaka, 28 Okt,',602,488,3.5)}${S('belum bagasi',602,526,5.2)}
    <div class="a" style="left:539px;top:120px;width:2px;height:440px;background:#bbb8b1"></div>`);
-const recSplit=Math.min(2.6,segDur(11)*.36);
+const recSplit=1.6;
 shot(11,0,recSplit,'dark',`<div class="note" style="left:170px;top:22px;width:740px;height:566px"><div class="tape"></div>
    <div class="hd" style="top:34px"><span class="tw" data-in="0.05" data-cps="40" data-text="STRUK TG MANDIRI / OKT 2026"></span></div><div class="rule" style="top:74px"></div>
    <div class="mono" style="position:absolute;left:56px;right:56px;top:88px">${[
      ['Ujian bahasa','250rb–550rb'],['Ujian keterampilan','220rb–740rb'],['Paspor','650rb–950rb'],['SKCK','30rb'],['Psikotes','maks 550rb'],
      ['e-KTKLN','GRATIS'],['BPJS PMI 24 bln','370rb'],['Visa Jepang','1,65jt'],['Medical check-up','± 1,1jt'],['Tiket pesawat','mulai ± 3,3jt']]
-     .map(([l,v],i)=>`<div class="rrow fade" data-in="${(0.3+i*0.15).toFixed(2)}"><span>${l}</span><span${v==='GRATIS'?' style="color:#1f7a45"':''}>${v}</span></div>`).join('')}
-     <div class="rrow fade" data-in="1.9" style="border:0;border-top:3px solid #262626;margin-top:8px;padding-top:6px;font-size:30px;line-height:38px"><span>TOTAL</span><span style="color:var(--red)">???</span></div>
+     .map(([l,v],i)=>`<div class="rrow fade" data-in="${(0.2+i*0.1).toFixed(2)}"><span>${l}</span><span${v==='GRATIS'?' style="color:#1f7a45"':''}>${v}</span></div>`).join('')}
+     <div class="rrow fade" data-in="1.25" style="border:0;border-top:3px solid #262626;margin-top:8px;padding-top:6px;font-size:30px;line-height:38px"><span>TOTAL</span><span style="color:var(--red)">???</span></div>
    </div></div>`);
-shot(11,recSplit,null,'dark',`${L('jadi totalnya',0,110,0.05,null,44)}${C('± Rp{0}–{1} jt','8.1,9.2',0,190,0.2,132,1,'width:1080px;text-align:center')}
-   ${S('kalau semua ujian lulus sekali,',0,375,1.2)}${S('belum termasuk bagasi.',0,418,1.5)}`,{center:1,whip:1,hit:[[0.25,'impact',2]]});
+shot(11,recSplit,null,'dark',`${L('jadi totalnya',0,110,0.05,null,44)}${C('± Rp{0}–{1} jt','8.1,9.2',0,190,0.1,132,1,'width:1080px;text-align:center')}
+   ${S('kalau semua ujian lulus sekali,',0,375,2.1)}${S('belum termasuk bagasi.',0,418,4.5)}`,{center:1,whip:1,hit:[[0.15,'impact',2]]});
 shot(12,0,null,'dark',`<div class="note" style="left:200px;top:40px;width:680px;height:300px"><div class="tape"></div><img src="logo-a.png" data-in="0.15" class="a" style="left:90px;top:5px;width:500px"></div>
    ${L('cek link di bio',0,385,0.9,null,46)}${S('eznihongo.com',0,470,1.4)}
    <div class="a fine" data-in="2.0" style="${center};top:548px">Tarif resmi &amp; perkiraan per Oktober 2026, bisa berubah. Cek lagi sebelum membayar.</div>`,{center:1,end:1});

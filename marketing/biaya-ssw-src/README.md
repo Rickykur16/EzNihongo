@@ -1,9 +1,8 @@
-# Video "Biaya Tokutei Ginou mandiri" (9:16, ±63 detik)
+# Video "Biaya Tokutei Ginou mandiri" (9:16, ±65 detik)
 
-Hasil: `../biaya-tg-mandiri-9x16.mp4`, 1080×1920, 30 fps, H.264 + AAC. Belum ada suara narator,
-hanya efek suara + musik latar sintetis (`sfx.py`, tanpa sampel berlisensi). Voice-over
-direkam terpisah lalu ditaruh per adegan sesuai timestamp di bawah (mis. di CapCut);
-kecilkan musik latar ±-12 dB di bawah suara.
+Hasil: `../biaya-tg-mandiri-9x16.mp4`, 1080×1920, 30 fps, H.264 + AAC, ±65 detik. Audio = VO
+ElevenLabs (`vo.mp3`) + efek suara & musik latar sintetis (`sfx.py`, tanpa sampel berlisensi) di
+volume 0,22, dinormalisasi ke -14 LUFS.
 
 Gaya editing mengikuti video referensi dari pemilik produk (konten edukasi TikTok): kanvas hitam,
 judul di kotak merah atas ("BIAYA TOKUTEI GINOU MANDIRI / DIBEDAH SATU PER SATU"), panel 16:9 di
@@ -17,36 +16,37 @@ Referensi memakai presenter yang bicara di panel. Video ini tanpa presenter; kal
 rekaman wajah, panelnya bisa diisi rekaman itu. Subtitle kecil gaya referensi sebaiknya dibuat
 auto-caption CapCut SETELAH voice-over direkam (supaya pas dengan suaranya).
 
-## Naskah voice-over (ElevenLabs, model Eleven Multilingual v2)
+## Naskah voice-over (ElevenLabs Eleven v4, tanpa tag jeda)
 
-Tempel apa adanya. Jeda `<break>` dipakai untuk mencocokkan audio dengan adegan: setelah MP3
-jadi, deteksi jedanya (`ffmpeg -i vo.mp3 -af silencedetect=n=-35dB:d=0.4 -f null -`) lalu
-isi `SEG` di `video.html` dengan detik mulai tiap paragraf, dan `DUR` = panjang audio + ±1,5 dtk.
+VO final: `vo.mp3` (64,1 dtk). Waktu adegan (`SEG` di `video.html`) dicocokkan dengan jeda alami
+antar-paragraf: `ffmpeg -i vo.mp3 -af silencedetect=n=-38dB:d=0.18 -f null -`, lalu tiap jeda
+dipetakan ke kalimat naskah (v4 tidak membaca `<break>`; `[pause]` sengaja tidak dipakai).
+Kalau VO dibuat ulang, ulangi pemetaan ini dan sesuaikan juga detik kemunculan angka di tiap shot.
 
 ```
-Kerja di Jepang modal mulai delapan jutaan. Ini lewat jalur SSW, tanpa LPK. Sini aku bedah satu per satu. <break time="0.6s" />
+Kerja di Jepang modal mulai delapan jutaan. Ini lewat jalur SSW, tanpa LPK. Sini aku bedah satu per satu.
 
-Ujian bahasa, pilih salah satu. JFT-Basic lima ratus lima puluh ribu, atau JLPT N4 dua ratus lima puluh ribu. <break time="0.6s" />
+Ujian bahasa, pilih salah satu. JFT-Basic lima ratus lima puluh ribu, atau JLPT N4 dua ratus lima puluh ribu.
 
-Ujian keterampilan, dua ratus dua puluh sampai tujuh ratus empat puluh ribu. <break time="0.6s" />
+Ujian keterampilan, dua ratus dua puluh sampai tujuh ratus empat puluh ribu.
 
-Gagal ujian? Bayar lagi. <break time="0.6s" />
+Gagal ujian? Bayar lagi.
 
-Paspor, mulai enam ratus lima puluh ribu. <break time="0.6s" />
+Paspor, mulai enam ratus lima puluh ribu.
 
-SKCK, tiga puluh ribu. <break time="0.6s" />
+SKCK, tiga puluh ribu.
 
-Psikotes, maksimal lima ratus lima puluh ribu. <break time="0.6s" />
+Psikotes, maksimal lima ratus lima puluh ribu.
 
-e-KTKLN, gratis. <break time="0.6s" />
+e-KTKLN, gratis.
 
-BPJS pekerja migran, tiga ratus tujuh puluh ribu. <break time="0.6s" />
+BPJS pekerja migran, tiga ratus tujuh puluh ribu.
 
-Visa Jepang, satu juta enam ratus lima puluh ribu. <break time="0.6s" />
+Visa Jepang, satu juta enam ratus lima puluh ribu.
 
-Medical check-up sekitar satu koma satu juta. Tiket pesawat mulai tiga koma tiga juta, belum bagasi. <break time="0.6s" />
+Medical check-up sekitar satu koma satu juta. Tiket pesawat mulai tiga koma tiga juta, belum bagasi.
 
-Jadi totalnya delapan sampai sembilan jutaan, itu kalau semua ujian lulus sekali dan belum termasuk bagasi. <break time="0.6s" />
+Jadi totalnya delapan sampai sembilan jutaan, itu kalau semua ujian lulus sekali dan belum termasuk bagasi.
 
 Mau tahu langkah yang pas buatmu? Cek link di bio.
 ```
@@ -74,5 +74,5 @@ Angka HARDCODED di `video.html`. Kalau tarif berubah, ubah kartu (`data-n`), `RO
    Chromium sandbox menolak sertifikat proxy untuk fonts.googleapis.com (lihat `../brand-video-src`).
 3. Pratinjau frame: `FONT_DIR=… node render.mjs <dir> 10,24,52` → `<dir>/p_<t>.jpg`
 4. Frame penuh: `FONT_DIR=… node render.mjs <dir> full` (±1.850 JPEG)
-5. Audio: `node cues.mjs && DUR=63.3 python3 sfx.py cues.json sfx.wav`
-6. `ffmpeg -framerate 30 -i <dir>/f%04d.jpg -i sfx.wav -af loudnorm=I=-16:TP=-1.5 -c:v libx264 -crf 19 -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -movflags +faststart ../biaya-tg-mandiri-9x16.mp4`
+5. Audio: `node cues.mjs && DUR=65.3 python3 sfx.py cues.json sfx.wav`
+6. `ffmpeg -framerate 30 -i <dir>/f%04d.jpg -i vo.mp3 -i sfx.wav -filter_complex "[1:a]aresample=48000,apad=whole_dur=65.3[vo];[2:a]volume=0.22[bg];[vo][bg]amix=inputs=2:duration=longest:normalize=0,loudnorm=I=-14:TP=-1.5[a]" -map 0:v -map "[a]" -c:v libx264 -crf 19 -pix_fmt yuv420p -c:a aac -b:a 192k -t 65.3 -movflags +faststart ../biaya-tg-mandiri-9x16.mp4`
