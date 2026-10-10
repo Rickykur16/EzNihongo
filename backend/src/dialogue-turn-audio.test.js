@@ -1,6 +1,7 @@
 import test, {after, beforeEach, mock} from 'node:test';
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
+import {createHash} from 'node:crypto';
 import express from 'express';
 
 // The admin's "🔊 Tes giliran ini" / "↻ Buat ulang suara" and the student's
@@ -14,10 +15,13 @@ process.env.ADMIN_EMAILS = 'turn-admin@example.invalid';
 process.env.COMPANY_STAFF_ENABLED = 'false';
 process.env.ELEVENLABS_API_KEY = 'test-not-a-real-key';
 process.env.ELEVENLABS_VOICE_NARRATOR = 'narrator-voice';
+process.env.ELEVENLABS_MODEL = 'eleven_multilingual_v2';
+delete process.env.ELEVENLABS_DIALOGUE_MODEL;
+delete process.env.ELEVENLABS_LISTENING_MODEL;
 const {db} = await import('./db.js');
 const {signAccessToken} = await import('./auth.js');
 const {default: admin} = await import('./routes/admin.js');
-const {default: tts, ttsHashKey} = await import('./routes/tts.js');
+const {default: tts, ttsHashKey, TTS_DIALOGUE_MODEL, TTS_DIALOGUE_SETTINGS_VERSION} = await import('./routes/tts.js');
 
 const id = '22222222-2222-4222-8222-222222222222';
 const scene = () => ({schemaVersion: 1, enabled: true, backgroundKey: 'classroom', participants: [
@@ -57,8 +61,15 @@ mock.method(globalThis, 'fetch', async (url, options) => {
     const body = JSON.parse(options.body);
     // Real generations take seconds; the delay lets two first plays overlap.
     await new Promise(r => setTimeout(r, 15));
-    upstream.push({voice: decodeURIComponent(String(url).split('/text-to-speech/')[1].split('?')[0]), ...body});
-    return new Response(Buffer.from(`take-${++takes}|${body.text}`), {headers: {'Content-Type': 'audio/mpeg'}});
+    const format = new URL(url).searchParams.get('output_format');
+    upstream.push({voice: decodeURIComponent(String(url).split('/text-to-speech/')[1].split('?')[0]), format, ...body});
+    const take = ++takes;
+    if (format === 'pcm_24000') {
+      const pcm = Buffer.alloc(8);
+      for (let i = 0; i < pcm.length; i += 2) pcm.writeInt16LE(take, i);
+      return new Response(pcm, {headers: {'Content-Type': 'audio/pcm'}});
+    }
+    return new Response(Buffer.from(`take-${take}|${body.text}`), {headers: {'Content-Type': 'audio/mpeg'}});
   }
   return realFetch(url, options);
 });
@@ -83,15 +94,25 @@ async function student(text = savedText) {
   const body = await r.json();
   return {status: r.status, body, clips: r.ok ? body.segments.map(s => Buffer.from(s.audio_base64, 'base64').toString()) : null};
 }
-async function turn(turnIndex, {dialog = savedText, regenerate = false, auth = true, turnText, speaker, dialogScene = savedScene, dialogFurigana = savedFurigana} = {}) {
+async function turn(turnIndex, {dialog = savedText, regenerate = false, auth = true, turnText, speaker, dialogScene = savedScene, dialogFurigana = savedFurigana, listening} = {}) {
   const lines = dialog.split('\n');
   const [spk, ...rest] = lines[turnIndex] ? lines[turnIndex].split(': ') : ['', ''];
   const r = await fetch(`${base}/api/admin/tts/dialog-turn`, {
     method: 'POST',
     headers: {...(auth ? {Authorization: 'Bearer ' + token} : {}), 'Content-Type': 'application/json'},
-    body: JSON.stringify({dialog, turnIndex, speaker: speaker ?? spk, turnText: turnText ?? rest.join(': '), dialogScene, dialogFurigana, regenerate}),
+    body: JSON.stringify({dialog, turnIndex, speaker: speaker ?? spk, turnText: turnText ?? rest.join(': '), dialogScene, dialogFurigana, regenerate, listening}),
   });
-  return {status: r.status, type: r.headers.get('Content-Type'), text: r.ok ? Buffer.from(await r.arrayBuffer()).toString() : await r.json()};
+  const bytes = r.ok ? Buffer.from(await r.arrayBuffer()) : null;
+  return {status: r.status, type: r.headers.get('Content-Type'), cacheControl: r.headers.get('Cache-Control'), bytes,
+    text: r.ok ? bytes.toString() : await r.json()};
+}
+
+async function fullListening() {
+  const r = await fetch(`${base}/api/admin/tts/preview`, {
+    method: 'POST', headers: {Authorization: 'Bearer ' + token, 'Content-Type': 'application/json'},
+    body: JSON.stringify({text: savedText, dialogScene: savedScene, listening: true}),
+  });
+  return {status: r.status, type: r.headers.get('Content-Type'), bytes: Buffer.from(await r.arrayBuffer())};
 }
 
 test('the admin per-turn test plays exactly the take students hear, with no new generation', async () => {
@@ -99,7 +120,14 @@ test('the admin per-turn test plays exactly the take students hear, with no new 
   assert.equal(first.status, 200);
   assert.equal(first.clips.length, 3);
   assert.equal(upstream.length, 3, 'one generation per turn');
+  assert.equal(TTS_DIALOGUE_MODEL, 'eleven_v4', 'dialogue does not inherit the generic v2 model');
+  assert.equal(TTS_DIALOGUE_SETTINGS_VERSION, 'dialogue-v4-mp3-turn-v1');
   assert.deepEqual(upstream.map(u => u.voice), ['narrator-voice', 'anna-voice', 'hadi-voice']);
+  for (const request of upstream) {
+    assert.equal(request.model_id, 'eleven_v4', 'narrator and both characters use v4');
+    assert.equal(request.format, 'mp3_44100_128');
+    assert.deepEqual(Object.keys(request.voice_settings).sort(), ['similarity_boost', 'stability']);
+  }
   assert.ok(upstream.every(u => !/<break/.test(u.text)), 'clips carry no SSML break');
   for (const i of [0, 1, 2]) {
     const heard = await turn(i);
@@ -146,7 +174,7 @@ test('editing one line re-voices only that line', async () => {
   assert.notEqual(after.clips[2], before[2]);
 });
 
-test('takes from before per-turn caching are adopted without calling ElevenLabs — the admin-tested take first', async () => {
+test('v4 rejects legacy whole-dialogue, single-preview and per-turn takes from v2 and v3', async () => {
   savedText = 'N: ふたりがはなしています。\nA: こんにちは。\nB: はじめまして。';
   const ORIGINAL = savedText;
   const voices = ['narrator-voice', 'anna-voice', 'hadi-voice'];
@@ -155,34 +183,61 @@ test('takes from before per-turn caching are adopted without calling ElevenLabs 
   }))};
   cache.set(ttsHashKey('dialogsegs1\n' + ORIGINAL, voices), {audio: Buffer.from('whole-dialog'), alignment: legacy});
   cache.set(ttsHashKey('A: こんにちは。', ['anna-voice']), {audio: Buffer.from('admin-tested-1'), alignment: null});
+  for (const model of ['eleven_multilingual_v2', 'eleven_v3']) {
+    const key = createHash('sha256').update(`elevenlabs|hadi-voice|${model}|v6|dialogturn1\ndialogue\nはじめまして。`).digest('hex');
+    cache.set(key, {audio: Buffer.from('old-turn-' + model), alignment: null});
+  }
   const played = await student();
   assert.equal(played.status, 200);
-  assert.deepEqual(played.clips, ['legacy-0', 'admin-tested-1', 'legacy-2']);
-  assert.equal(upstream.length, 0);
-  assert.equal((await turn(2)).text, 'legacy-2');
-  assert.equal(upstream.length, 0);
+  assert.equal(upstream.length, 3, 'all three turns require their first v4 generation');
+  assert.ok(played.clips.every(clip => clip.startsWith('take-')));
+  assert.equal((await turn(2)).text, played.clips[2]);
+  assert.deepEqual((await student()).clips, played.clips);
+  assert.equal(upstream.length, 3, 'the new v4 cache is subsequently reused');
 });
 
-// Spaced material was voiced with a pause at every space; those takes are
-// not reused, and the new take is generated from the text without them.
-test('a spaced turn is re-voiced once without its word spaces, unspaced turns keep their take', async () => {
-  const voices = ['narrator-voice', 'anna-voice', 'hadi-voice'];
-  const legacy = {format: 'dialog-segments-v1', segments: ['N', 'A', 'B'].map((speaker, i) => ({
-    speaker, role: i ? 'dialogue' : 'narrator', content_type: 'audio/mpeg', audio_base64: Buffer.from(`legacy-${i}`).toString('base64'),
-  }))};
-  cache.set(ttsHashKey('dialogsegs1\n' + ORIGINAL, voices), {audio: Buffer.from('whole-dialog'), alignment: legacy});
-  cache.set(ttsHashKey('N: ふたりが はなしています。', ['narrator-voice']), {audio: Buffer.from('admin-tested-spaced'), alignment: null});
-  // A per-turn take stored before this change, keyed by the spaced text.
-  cache.set(ttsHashKey('dialogturn1\nnarrator\nふたりが はなしています。', ['narrator-voice']), {audio: Buffer.from('old-choppy'), alignment: null});
+test('v4 spaced and unspaced spellings reuse the same spoken take', async () => {
   const first = await student();
   assert.equal(first.status, 200);
-  assert.deepEqual(upstream.map(u => u.text), ['ふたりがはなしています。']);
-  assert.ok(first.clips[0].startsWith('take-'));
-  assert.deepEqual(first.clips.slice(1), ['legacy-1', 'legacy-2']);
+  assert.equal(upstream[0].text, 'ふたりがはなしています。');
+  savedText = 'N: ふたりがはなしています。\nA: こんにちは。\nB: はじめまして。';
   const again = await student();
-  assert.deepEqual(again.clips, first.clips, 'the re-voiced take is stored and reused');
-  assert.equal(upstream.length, 1);
+  assert.deepEqual(again.clips, first.clips);
+  assert.equal(upstream.length, 3, 'removing display spaces must not regenerate audio');
   assert.equal((await turn(0)).text, first.clips[0], 'admin hears the same take');
+});
+
+test('v4 keeps audio tags for narrator and characters but never sends authored SSML', async () => {
+  savedText = 'N: [calm] ふたりが はなしています。 <break time="1s" />\nA: [happy] こんにちは。\nB: <speak>はじめまして。</speak>';
+  const played = await student();
+  assert.equal(played.status, 200);
+  assert.equal(upstream[0].text, '[calm] ふたりがはなしています。');
+  assert.equal(upstream[1].text, '[happy] こんにちは。');
+  assert.equal(upstream[2].text, 'はじめまして。');
+  assert.ok(upstream.every(request => !/[<>]/.test(request.text)));
+});
+
+test('listening per-turn preview and regeneration feed the full WAV without changing grammar takes', async () => {
+  const grammar = await student();
+  const tested = await turn(1, {listening: true});
+  assert.equal(tested.status, 200); assert.equal(tested.type, 'audio/wav');
+  assert.equal(tested.cacheControl, 'private, no-store');
+  assert.equal(tested.bytes.length, 52, 'single PCM turn is wrapped in WAV without a trailing gap');
+  const first = await fullListening();
+  assert.equal(first.status, 200); assert.equal(first.type, 'audio/wav');
+  assert.equal(upstream.length, 6, 'grammar and listening each have their own three takes');
+  const secondOffset = 44 + 8 + 86400;
+  assert.deepEqual(first.bytes.subarray(secondOffset, secondOffset + 8), tested.bytes.subarray(44));
+  const regenerated = await turn(1, {listening: true, regenerate: true});
+  assert.equal(regenerated.status, 200);
+  assert.notDeepEqual(regenerated.bytes, tested.bytes);
+  const second = await fullListening();
+  assert.equal(upstream.length, 7, 'regeneration changes exactly one turn');
+  assert.deepEqual(second.bytes.subarray(secondOffset, secondOffset + 8), regenerated.bytes.subarray(44));
+  assert.deepEqual(second.bytes.subarray(0, secondOffset), first.bytes.subarray(0, secondOffset));
+  assert.deepEqual(second.bytes.subarray(secondOffset + 8), first.bytes.subarray(secondOffset + 8));
+  assert.deepEqual((await student()).clips, grammar.clips, 'listening regeneration leaves grammar cache unchanged');
+  assert.equal(upstream.length, 7);
 });
 
 // Kanji with furigana are spoken as their reading: a dialogue rewritten from
@@ -235,6 +290,7 @@ test('a changed voice is a different take; unsaved editor voices are keyed the s
 
 test('per-turn endpoint guardrails', async () => {
   assert.equal((await turn(1, {auth: false})).status, 401);
+  assert.equal((await turn(1, {listening: 'true'})).status, 400);
   assert.equal((await turn(5)).status, 400);
   assert.equal((await turn(0, {dialog: 'ただの ぶんです。'})).status, 400);
   const mismatch = await turn(1, {turnText: 'こんにちは。\nB: はい。'});

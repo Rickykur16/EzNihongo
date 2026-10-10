@@ -8,7 +8,7 @@ process.env.ELEVENLABS_VOICE_NARRATOR = 'narrator-voice';
 process.env.ELEVENLABS_MODEL = 'eleven_multilingual_v2';
 delete process.env.ELEVENLABS_LISTENING_MODEL;
 const { db } = await import('./db.js');
-const { renderTtsAudio, fetchElevenListeningPcm, listeningHashKey, ttsHashKey,
+const { renderTtsAudio, fetchElevenListeningPcm, listeningTurnKey, dialogTurnKey, resolveDialogTurns, parseDialog, voiceForSpeaker, ttsHashKey,
   TTS_LISTENING_MODEL, TTS_LISTENING_SETTINGS_VERSION } = await import('./routes/tts.js');
 after(() => db.end());
 const clip = n => Buffer.from([n, 0, n, 0]);
@@ -71,14 +71,16 @@ test('listening uses v4 for all turns, strips authored SSML, and sends only supp
   assert.equal(calls.length, 2);
 });
 
-test('namespaced listening cache varies with text, roles and ordered voices, without changing legacy hash', () => {
-  const text = 'N: 聞いてください。\nA: こんにちは。\nB: はい。';
-  const voices = ['n', 'a', 'b'].map((voiceId, i) => ({ voiceId, role: i ? 'dialogue' : 'narrator' }));
-  const key = listeningHashKey(text, voices);
-  assert.notEqual(key, ttsHashKey(text, voices.map(voice => voice.voiceId)));
-  assert.notEqual(key, listeningHashKey(text, [voices[0], voices[2], voices[1]]));
-  assert.notEqual(key, listeningHashKey(text, voices.map(voice => ({ ...voice, role: 'dialogue' }))));
-  assert.notEqual(key, listeningHashKey(text + 'はい。', voices));
+test('turn cache varies with profile, text, role and voice, while canonical speech shares a take', () => {
+  const text = '日本語を 聞いてください。', voice = { voiceId: 'voice-a', role: 'narrator' };
+  const key = listeningTurnKey(text, voice);
+  assert.notEqual(key, ttsHashKey(text, [voice.voiceId]));
+  assert.notEqual(key, dialogTurnKey(text, voice));
+  assert.notEqual(key, listeningTurnKey(text, { ...voice, voiceId: 'voice-b' }));
+  assert.notEqual(key, listeningTurnKey(text, { ...voice, role: 'dialogue' }));
+  assert.notEqual(key, listeningTurnKey(text + 'はい。', voice));
+  assert.equal(key, listeningTurnKey('日本語を聞いてください。 <break time="1s"/>', voice));
+  assert.equal(key, dialogTurnKey(text, voice, 'listening'));
   assert.match(TTS_LISTENING_SETTINGS_VERSION, /^listening-/);
 });
 
@@ -93,35 +95,86 @@ test('oversized streaming PCM is cancelled before allocating an unbounded respon
   assert.equal(cancelled, true); assert.equal(released, true);
 });
 
-test('simultaneous previews and student requests share one stored WAV, including cross-process cache winner', async t => {
-  let cache = new Map(), calls = 0, competing = null;
+function cacheFixture(t) {
+  const cache = new Map(), writes = [];
+  let competing = null;
   t.mock.method(db, 'query', async (sql, params = []) => {
     if (sql.includes('FROM dialogue_speakers')) return { rows: [] };
-    if (sql.startsWith('SELECT audio')) return { rows: cache.has(params[0]) ? [cache.get(params[0])] : [] };
+    if (sql.startsWith('SELECT text_hash, audio')) return { rows: params[0].filter(key => cache.has(key)).map(key => ({ text_hash: key, audio: cache.get(key) })) };
     if (sql.startsWith('UPDATE tts_cache')) return { rows: [] };
-    if (sql.startsWith('INSERT INTO tts_cache')) {
-      if (competing) { cache.set(params[0], { audio: competing, content_type: 'audio/wav' }); return { rows: [] }; }
-      assert.equal(params[3], 'eleven_v4'); assert.equal(params[6], TTS_LISTENING_SETTINGS_VERSION);
-      const row = { audio: params[4], content_type: 'audio/wav' }; cache.set(params[0], row); return { rows: [row] };
+    if (sql.includes('INSERT INTO tts_cache')) {
+      assert.equal(params[3], 'eleven_v4');
+      assert.equal(params[5], 'audio/pcm');
+      assert.equal(params[7], TTS_LISTENING_SETTINGS_VERSION);
+      writes.push(params[0]);
+      if (competing) cache.set(params[0], competing);
+      else if (!cache.has(params[0]) || sql.includes('UPDATE SET')) cache.set(params[0], params[4]);
+      return { rows: [] };
     }
     throw Error('Unexpected query: ' + sql);
   });
+  return { cache, writes, compete: audio => { competing = audio; } };
+}
+
+test('parallel full audio requests and per-turn preview use the committed PCM take, including another-process winner', async t => {
+  const state = cacheFixture(t); let calls = 0;
   t.mock.method(globalThis, 'fetch', async () => {
     const n = ++calls; await new Promise(resolve => setImmediate(resolve));
     return new Response(clip(n), { headers: { 'Content-Type': 'audio/pcm' } });
   });
   const text = 'N: 聞いてください。\nA: おはよう。\nB: おはようございます。';
-  cache.set(ttsHashKey(text, ['narrator-voice', 'shared-voice', 'shared-voice']), { audio: Buffer.from('old-v6'), content_type: 'audio/mpeg' });
+  const turns = parseDialog(text), turnVoices = turns.map((turn, i) => voiceForSpeaker(turn.speaker, i));
+  state.cache.set(ttsHashKey(text, turnVoices.map(v => v.voiceId)), Buffer.from('old-v6'));
+  state.cache.set('old-listening-full-wav', assembleListeningWav([clip(99)], [0]));
   const a = response(), b = response();
   await Promise.all([renderTtsAudio(text, a.res, { listening: true }), renderTtsAudio(text, b.res, { listening: true, privateResponse: true })]);
   assert.equal(calls, 3); assert.deepEqual(a.result.audio, b.result.audio);
   assert.equal(a.result.headers['Content-Type'], 'audio/wav');
   assert.equal(b.result.headers['Cache-Control'], 'private, no-store');
-  const repeat = response(); await renderTtsAudio(text, repeat.res, { listening: true });
-  assert.equal(calls, 3); assert.deepEqual(repeat.result.audio, a.result.audio);
-  cache = new Map(); competing = assembleListeningWav([clip(99)], [0]);
+  const preview = await resolveDialogTurns({ turns, turnVoices, indices: [1], profile: 'listening' });
+  assert.deepEqual(preview[0], clip(2));
+  assert.deepEqual(a.result.audio, assembleListeningWav([clip(1), preview[0], clip(3)], [1800, 1200, 0]));
+  assert.equal(calls, 3);
+  assert.equal(state.writes.length, 3, 'only turn rows are written, never a stale full WAV');
+  state.cache.clear(); state.compete(clip(99));
   const raced = response(); await renderTtsAudio(text, raced.res, { listening: true });
-  assert.deepEqual(raced.result.audio, competing, 'return the committed take, never the losing generation');
+  assert.deepEqual(raced.result.audio, assembleListeningWav([clip(99), clip(99), clip(99)], [1800, 1200, 0]), 'compose committed takes, never losing generations');
+});
+
+test('editing or regenerating one turn reuses all other takes and immediately changes full listening audio', async t => {
+  const { cache } = cacheFixture(t); let calls = 0;
+  t.mock.method(globalThis, 'fetch', async () => new Response(clip(++calls), { headers: { 'Content-Type': 'audio/pcm' } }));
+  const text = 'N: 聞いてください。\nA: おはよう。\nB: おはようございます。';
+  const turns = parseDialog(text), turnVoices = turns.map((turn, i) => voiceForSpeaker(turn.speaker, i));
+  // Testing a turn before full playback must generate that take only once.
+  const [tested] = await resolveDialogTurns({ turns, turnVoices, indices: [1], profile: 'listening' });
+  const first = response(); await renderTtsAudio(text, first.res, { listening: true });
+  assert.equal(calls, 3);
+  assert.deepEqual(first.result.audio, assembleListeningWav([clip(2), tested, clip(3)], [1800, 1200, 0]));
+  const editedText = text.replace('おはよう。', 'こんにちは。');
+  const edited = response(); await renderTtsAudio(editedText, edited.res, { listening: true });
+  assert.equal(calls, 4, 'editing one line generates one new clip');
+  assert.deepEqual(edited.result.audio, assembleListeningWav([clip(2), clip(4), clip(3)], [1800, 1200, 0]));
+  const [regenerated] = await resolveDialogTurns({ turns, turnVoices, indices: [1], profile: 'listening', regenerate: true });
+  assert.deepEqual(regenerated, clip(5));
+  const replay = response(); await renderTtsAudio(text, replay.res, { listening: true });
+  assert.equal(calls, 5, 'full playback makes no synthesis call after one-turn regeneration');
+  assert.deepEqual(replay.result.audio, assembleListeningWav([clip(2), clip(5), clip(3)], [1800, 1200, 0]));
+  assert.deepEqual(cache.get(listeningTurnKey(turns[0].text, turnVoices[0])), clip(2));
+});
+
+test('aggregate listening limit stops later paid turns, counting cached clips and deterministic gaps', async t => {
+  const { cache } = cacheFixture(t); let calls = 0;
+  t.mock.method(globalThis, 'fetch', async () => { calls++; return new Response(Buffer.alloc(48000), { headers: { 'Content-Type': 'audio/pcm' } }); });
+  const text = 'N: 聞いてください。\nA: はい。\nB: わかりました。';
+  const turns = parseDialog(text), turnVoices = turns.map((turn, i) => voiceForSpeaker(turn.speaker, i));
+  cache.set(listeningTurnKey(turns[0].text, turnVoices[0]), Buffer.alloc(48000 * 596));
+  await assert.rejects(resolveDialogTurns({ turns, turnVoices, profile: 'listening' }), /listening_audio_too_long/);
+  assert.equal(calls, 2, '596 seconds + 3 seconds gaps + 1 second A reaches the bound; B exceeds it');
+  cache.clear(); calls = 0;
+  cache.set(listeningTurnKey(turns[0].text, turnVoices[0]), Buffer.alloc(48000 * 597));
+  await assert.rejects(resolveDialogTurns({ turns, turnVoices, profile: 'listening' }), /listening_audio_too_long/);
+  assert.equal(calls, 1, 'overflow after A prevents any B synthesis');
 });
 
 test('invalid provider audio returns a retryable error and never creates a cache row', async t => {
