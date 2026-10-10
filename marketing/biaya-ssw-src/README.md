@@ -5,10 +5,17 @@ hanya efek suara + musik latar sintetis (`sfx.py`, tanpa sampel berlisensi). Voi
 direkam terpisah lalu ditaruh per adegan sesuai timestamp di bawah (mis. di CapCut);
 kecilkan musik latar ±-12 dB di bawah suara.
 
-Gaya mengikuti `../brand-video-src` (caption per kata blur→tajam, kotak judul merah, flash
-antar-adegan). Motif utama: "struk" yang terisi satu baris tiap item biaya, lalu TOTAL
-menghitung naik dan berhenti di "± Rp8,1–9,2 jt" + stempel "PERKIRAAN". Angka total dipakai atas
-keputusan pemilik produk untuk video ini (brief landing melarangnya; landing TIDAK diubah). Teks tanpa em dash.
+Gaya editing mengikuti video referensi dari pemilik produk (konten edukasi TikTok): kanvas hitam,
+judul di kotak merah atas ("BIAYA TOKUTEI GINOU MANDIRI / DIBEDAH SATU PER SATU"), panel 16:9 di
+tengah, kotak putih hook di bawah ("TANPA LPK, TOTALNYA BERAPA SIH ?!"). Isi panel: latar gelap /
+foto hitam-putih, ilustrasi sketsa garis (SVG, digambar saat muncul), kartu kertas mesin ketik
+"BAGIAN 0X / 09" sebelum tiap item, teks kapital putih + label merah, angka geser (JFT → JLPT),
+dan struk mesin ketik sebelum TOTAL "± Rp8,1–9,2 jt". Angka total dipakai atas keputusan pemilik
+produk untuk video ini (brief landing melarangnya; landing TIDAK diubah). Teks tanpa em dash.
+
+Referensi memakai presenter yang bicara di panel. Video ini tanpa presenter; kalau nanti ada
+rekaman wajah, panelnya bisa diisi rekaman itu. Subtitle kecil gaya referensi sebaiknya dibuat
+auto-caption CapCut SETELAH voice-over direkam (supaya pas dengan suaranya).
 
 ## Naskah voice-over per adegan
 
@@ -48,7 +55,7 @@ Angka HARDCODED di `video.html`. Kalau tarif berubah, ubah kartu (`data-n`), `RO
 ## Render ulang
 
 1. Sajikan root repo: `python3 -m http.server 8099 --bind 127.0.0.1`
-2. Font Google (Montserrat, Playfair Display, Inter; subset latin) diunduh ke satu folder berisi
+2. Font Google (Inter 500–900, Courier Prime 400/700; subset latin) diunduh ke satu folder berisi
    `fonts.css` (URL ditulis ulang ke `/__fonts/<file>`) + file woff2, lalu `FONT_DIR=<folder>`.
    Chromium sandbox menolak sertifikat proxy untuk fonts.googleapis.com (lihat `../brand-video-src`).
 3. Pratinjau frame: `FONT_DIR=… node render.mjs <dir> 10,24,52` → `<dir>/p_<t>.jpg`
