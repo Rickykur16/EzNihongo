@@ -56,7 +56,7 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:#000;font-family
 <body><div id="stage">
 <div class="bar" id="topbar"><span>Biaya Tokutei Ginou mandiri<br>dibedah satu per satu</span></div>
 <div id="panel"></div>
-<div class="bar" id="botbar"><span>Tanpa LPK, totalnya<br>8–9 jutaan ?!</span></div>
+<div class="bar" id="botbar"><span>Modal mulai 8 jutaan,<br>ini rinciannya !!</span></div>
 </div>
 <script>
 const $=id=>document.getElementById(id);
@@ -102,8 +102,8 @@ const NOTE=(hd,ttl)=>`<div class="note"><div class="tape"></div><svg class="clip
 // Waktu mengikuti naskah ElevenLabs (13 paragraf, README.md). SEG = detik mulai tiap paragraf.
 // Angka sekarang PERKIRAAN (±15 huruf/detik + jeda 0,6 dtk); begitu MP3 ada, ganti SEG dengan
 // titik jeda dari audionya (ffmpeg silencedetect) dan semua adegan ikut bergeser.
-const SEG=[0,9.7,17.6,23.3,25.5,28.8,30.9,34.5,36.2,40.1,44.0,51.3,59.0];
-const DUR=64.9;
+const SEG=[0,8.1,16.0,21.7,23.9,27.2,29.3,32.9,34.6,38.5,42.4,49.7,57.4];
+const DUR=63.3;
 const segEnd=i=>i+1<SEG.length?SEG[i+1]:DUR, segDur=i=>segEnd(i)-SEG[i];
 // [paragraf, mulai relatif, selesai relatif (null = akhir paragraf), latar, isi, opsi]
 const SPEC=[];
@@ -113,11 +113,12 @@ const item=(i,n,title,bg,html,o={})=>{ const nd=Math.min(.8,segDur(i)*.36);
   shot(i,0,nd,'dark',NOTE(`BAGIAN ${String(n).padStart(2,'0')} / 09`,title),{note:1});
   shot(i,nd,null,bg,html,Object.assign({whip:1},o)); };
 
-const hookSplit=segDur(0)*.56;
-shot(0,0,hookSplit,'dark',`<img class="photo" data-zoom="1" src="../../assets/landing/tokyo-night.jpg" style="object-position:50% 50%"><div class="shade"></div>
-  ${L('Berangkat Tokutei Ginou tanpa LPK',0,110,0.05)}${S('totalnya sekitar',0,200,1.5)}
-  ${C('± Rp{0}–{1} jt','8.1,9.2',0,250,1.9,140,1,'width:1080px;text-align:center')}`,{center:1,hit:[[1.95,'impact',1]]});
-shot(0,hookSplit,null,'dark',`${S('dari mana aja angka segitu?',0,160,0.05)}${B('KITA BEDAH',0,220,0.9,110)}${L('satu per satu',0,350,1.4,null,64)}`,{center:1,whip:1});
+const h1=segDur(0)*.36, h2=segDur(0)*.68;
+shot(0,0,h1,'dark',`<img class="photo" data-zoom="1" src="../../assets/landing/tokyo-night.jpg" style="object-position:50% 50%"><div class="shade"></div>
+  ${L('kerja di Jepang',0,120,0.05,null,48)}${S('modal mulai',0,205,1.0,null,'font-size:42px')}
+  ${B('Rp8 JUTAAN',0,265,1.3,150)}`,{center:1,hit:[[1.35,'impact',1]]});
+shot(0,h1,h2,'dark',`${S('lewat jalur',0,150,0.05,null,'font-size:40px')}${B('SSW',0,200,0.2,190)}${L('Tokutei Ginou · tanpa LPK',0,405,0.6,null,44)}`,{center:1,whip:1,hit:[[0.25,'impact',2]]});
+shot(0,h2,null,'dark',`${B('SINI AKU BEDAH',0,190,0.05,110)}${L('satu per satu',0,330,0.6,null,64)}`,{center:1,whip:1});
 item(1,1,'Ujian bahasa','dark',`<div class="strip" style="position:absolute;left:0;top:0;width:2160px;height:608px">
      ${L('pilih salah satu',0,70,0.15)}
      ${L('JFT-Basic',0,190,0.35)}${C('Rp{0}','550000',0,250,0.45,150,0,center)}

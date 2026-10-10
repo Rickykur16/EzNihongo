@@ -1,4 +1,4 @@
-# Video "Biaya Tokutei Ginou mandiri" (9:16, ±65 detik)
+# Video "Biaya Tokutei Ginou mandiri" (9:16, ±63 detik)
 
 Hasil: `../biaya-tg-mandiri-9x16.mp4`, 1080×1920, 30 fps, H.264 + AAC. Belum ada suara narator,
 hanya efek suara + musik latar sintetis (`sfx.py`, tanpa sampel berlisensi). Voice-over
@@ -7,7 +7,7 @@ kecilkan musik latar ±-12 dB di bawah suara.
 
 Gaya editing mengikuti video referensi dari pemilik produk (konten edukasi TikTok): kanvas hitam,
 judul di kotak merah atas ("BIAYA TOKUTEI GINOU MANDIRI / DIBEDAH SATU PER SATU"), panel 16:9 di
-tengah, kotak putih hook di bawah ("TANPA LPK, TOTALNYA BERAPA SIH ?!"). Isi panel: latar gelap /
+tengah, kotak putih hook di bawah ("MODAL MULAI 8 JUTAAN, / INI RINCIANNYA !!"). Isi panel: latar gelap /
 foto hitam-putih, ilustrasi sketsa garis (SVG, digambar saat muncul), kartu kertas mesin ketik
 "BAGIAN 0X / 09" sebelum tiap item, teks kapital putih + label merah, angka geser (JFT → JLPT),
 dan struk mesin ketik sebelum TOTAL "± Rp8,1–9,2 jt". Angka total dipakai atas keputusan pemilik
@@ -24,7 +24,7 @@ jadi, deteksi jedanya (`ffmpeg -i vo.mp3 -af silencedetect=n=-35dB:d=0.4 -f null
 isi `SEG` di `video.html` dengan detik mulai tiap paragraf, dan `DUR` = panjang audio + ±1,5 dtk.
 
 ```
-Berangkat Tokutei Ginou tanpa LPK, totalnya sekitar delapan sampai sembilan jutaan. Dari mana aja angka segitu? Kita bedah satu per satu. <break time="0.6s" />
+Kerja di Jepang modal mulai delapan jutaan. Ini lewat jalur SSW, tanpa LPK. Sini aku bedah satu per satu. <break time="0.6s" />
 
 Ujian bahasa, pilih salah satu. JFT-Basic lima ratus lima puluh ribu, atau JLPT N4 dua ratus lima puluh ribu. <break time="0.6s" />
 
@@ -73,6 +73,6 @@ Angka HARDCODED di `video.html`. Kalau tarif berubah, ubah kartu (`data-n`), `RO
    `fonts.css` (URL ditulis ulang ke `/__fonts/<file>`) + file woff2, lalu `FONT_DIR=<folder>`.
    Chromium sandbox menolak sertifikat proxy untuk fonts.googleapis.com (lihat `../brand-video-src`).
 3. Pratinjau frame: `FONT_DIR=… node render.mjs <dir> 10,24,52` → `<dir>/p_<t>.jpg`
-4. Frame penuh: `FONT_DIR=… node render.mjs <dir> full` (±1.950 JPEG)
-5. Audio: `node cues.mjs && DUR=64.9 python3 sfx.py cues.json sfx.wav`
+4. Frame penuh: `FONT_DIR=… node render.mjs <dir> full` (±1.850 JPEG)
+5. Audio: `node cues.mjs && DUR=63.3 python3 sfx.py cues.json sfx.wav`
 6. `ffmpeg -framerate 30 -i <dir>/f%04d.jpg -i sfx.wav -af loudnorm=I=-16:TP=-1.5 -c:v libx264 -crf 19 -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -movflags +faststart ../biaya-tg-mandiri-9x16.mp4`
