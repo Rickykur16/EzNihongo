@@ -78,8 +78,11 @@
   DIHAPUS) → `#jalur` (accordion `<details>` SSW / Gijinkoku / Ginou / Ryugaku, terbaca
   tanpa JS & tanpa login; tautan `#jalur-…` membuka accordion-nya) → `#biaya` (alur +
   komponen biaya) → `#program` bootcamp + preview dashboard → FAQ → CTA WhatsApp. **Ginou = 技能 Skilled Labor, BUKAN Ginou Jisshu**
-  (dikonfirmasi pemilik). Matching gratis lewat mitra TSK HANYA untuk SSW; jalur lain
-  ditulis jujur "mitra belum tersedia". Larangan brief: jangan sebut biaya penempatan,
+  (dikonfirmasi pemilik). Matching lewat mitra TSK HANYA untuk SSW, dan **TIDAK gratis** (user,
+  2026-10-11: "Matching job gratis dengan tsk mitra hapus dong engga gratis") — semua klaim
+  "gratis/tanpa biaya matching" dihapus, kartu 03 `#hemat` dihapus (grid 2 kolom
+  `.savings-grid--two`), FAQ "Apakah matching benar-benar gratis?" dihapus; jangan tulis
+  biaya matching (larangan biaya penempatan). Jalur lain ditulis jujur "mitra belum tersedia". Larangan brief: jangan sebut biaya penempatan,
   jangan angka total keberangkatan / perbandingan harga LPK, jangan janji
   kerja/ujian/visa/tanggal, jangan testimoni/alumni/logo mitra karangan. Harga & jadwal
   tetap dari CMS (`/api/courses`); fakta format kelas (24 pertemuan, 2x/minggu, ~1 jam,
