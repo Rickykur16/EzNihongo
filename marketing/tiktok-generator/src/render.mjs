@@ -18,7 +18,8 @@ function run(cmd, args) {
 async function writeFonts(dir, spec) {
   const chars = new Set(JSON.stringify(spec) + '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ?!…–—·.,:"\'()');
   const text = [...chars].filter((c) => c.codePointAt(0) < 0x1f000 && c.trim()).join('');
-  const url = `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@500;600;700;800;900&display=block&text=${encodeURIComponent(text)}`;
+  // Courier Prime untuk kartu kertas "mesin ketik" template fyp.
+  const url = `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@500;600;700;800;900&family=Courier+Prime:wght@700&display=block&text=${encodeURIComponent(text)}`;
   try {
     let css = await (await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0 Chrome/120' } })).text();
     const urls = [...css.matchAll(/url\((https:[^)]+)\)/g)].map((m) => m[1]);
@@ -64,7 +65,10 @@ export async function renderVideo({ spec, workDir, audioPath, outPath, fps = 30 
   const frames = path.join(dir, 'frames');
   await fs.rm(frames, { recursive: true, force: true });
   await fs.mkdir(frames, { recursive: true });
-  for (const f of ['index.html', 'logo_t.png', 'maneko.svg']) await fs.copyFile(path.join(TEMPLATE, f), path.join(dir, f));
+  // spec.layout 'fyp' = gaya video yang masuk FYP (template/fyp.html); selain itu template klasik.
+  const templatePage = spec.layout === 'fyp' ? 'fyp.html' : 'index.html';
+  await fs.copyFile(path.join(TEMPLATE, templatePage), path.join(dir, 'index.html'));
+  for (const f of ['logo_t.png', 'maneko.svg']) await fs.copyFile(path.join(TEMPLATE, f), path.join(dir, f));
   await writeFonts(dir, spec);
   spec = shrinkPhotos(spec, dir);
 

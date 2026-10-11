@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { SCRIPT_SCHEMA } from './schema.mjs';
+import { loadGuidance } from './guidance.mjs';
 
 // role 'script' = menulis naskah (CONTENT_MODEL). role 'research' = riset ide/berita
 // (RESEARCH_MODEL, jatuh ke CONTENT_MODEL bila kosong) supaya riset bisa memakai model lebih murah.
@@ -53,13 +54,13 @@ Aturan:
 - Tandai fakta yang hanya dari satu sumber lemah atau saling bertentangan.
 - Jangan menyimpulkan hal yang tidak tertulis di sumber (gaji, kuota, jaminan lolos, cara daftar).`;
 
-const SCRIPT_SYSTEM = `Kamu penulis naskah TikTok untuk EzNihongo (belajar bahasa Jepang, kelas N5/N4). Tulis naskah video vertikal ~25-35 detik dari catatan riset.
+const SCRIPT_SYSTEM = `Kamu penulis naskah TikTok untuk EzNihongo (belajar bahasa Jepang, kelas N5/N4). Tulis naskah video vertikal dari catatan riset. Durasi mengikuti catatan tim di bawah (saat ini 35-45 detik).
 
 Pelajaran dari analitik akun ini (wajib diikuti):
 - Separuh penonton pergi dalam 3-4 detik pertama. Adegan pertama WAJIB tipe "hook": kalimat paling mengejutkan/penting diucapkan di kalimat pertama (≤1,5 detik), dan teks layarnya langsung memuat inti itu.
 - Hook boleh berbentuk kaget/pertanyaan ("Magang ke Jepang… dihapus?!") tapi HARUS benar. Kalau berupa pertanyaan, adegan berikutnya langsung menjawabnya.
 - Video informatif yang disimpan & dibagikan bekerja baik. Nada: santai, natural, seperti ngobrol ("kamu", "nggak", "jujur…"), kalimat pendek.
-- Total 6-8 adegan; tiap vo 1-2 kalimat pendek.
+- Total 6-12 adegan; tiap vo 1-2 kalimat pendek.
 
 Kejujuran (tidak bisa ditawar):
 - Hanya fakta yang ada di catatan riset. Semua klaim masuk "facts" dengan source_url; yang tidak pasti diberi confidence "perlu_dicek".
@@ -73,11 +74,23 @@ Teknis:
 - Teks layar pendek: headline ≤ 28 karakter per baris, highlight ≤ 16 karakter.
 - "cues": frasa yang PERSIS ada di vo adegan itu, untuk memunculkan elemen tepat saat kata itu diucapkan.
 - Tipe adegan: hook (kicker + highlight + photo + stamp), statement (kicker/headline/highlight, tanpa foto), photo (headline/highlight + foto + badge), compare (foto + 2 items: lama→baru), list (headline + 2-3 items dengan photo_query), timeline (foto + 2 items: awal→tujuan), level (kicker + highlight + badge level + items[0].sub), cta (headline + highlight + badge berisi ajakan komentar).
-- photo_query dalam bahasa Inggris, spesifik dan mudah ditemukan di situs foto stok (Pixabay/Pexels).`;
+- photo_query dalam bahasa Inggris, spesifik dan mudah ditemukan di situs foto stok (Pixabay/Pexels).
+
+Gaya "fyp" (default, layout = "fyp"; terbukti masuk FYP — lihat catatan tim):
+- Kanvas hitam: title_bar (kotak merah atas) = topik video, hook_bar (kotak putih bawah) = klaim/pertanyaan yang memancing. Keduanya tampil sepanjang video, HURUF BIASA (template yang membuat kapital), 2 baris dipisah \n.
+  Contoh: title_bar "Biaya Tokutei Ginou mandiri\ndibedah satu per satu", hook_bar "Modal mulai 8 jutaan,\nini rinciannya !!".
+- Adegan pertama (hook): highlight = angka/klaim utama yang langsung terbaca di frame pertama (mis. "Rp8 JUTAAN"), kicker = label kecil (mis. "kerja di Jepang"), headline = keterangan pendek.
+- Tipe tambahan untuk format "dibedah satu per satu":
+  • section: kartu kertas sebelum tiap bagian. kicker "BAGIAN 01 / 05", headline = judul bagian. vo pendek ("Pertama, ujian bahasa.") atau digabung ke adegan berikutnya.
+  • price: kicker = label (mis. "JFT-Basic"), highlight = angka ("Rp550.000", "maks Rp550.000", "± Rp1,1 jt"), headline = keterangan sumber/syarat, badge = catatan opsional. Angka di highlight dihitung naik saat muncul.
+  • receipt: rekap sebelum penutup. items: label = komponen, sub = nilai; badge = total. Pakai hanya kalau semua angkanya ada di facts.
+- Foto di gaya fyp tampil hitam-putih sebagai latar; tidak wajib.
+- Gaya "klasik" (layout = "klasik", title_bar & hook_bar kosong) hanya kalau topiknya tidak cocok dengan format di atas.`;
 
 export async function plan(topic, { outRoot = 'out', idea = null } = {}) {
   const client = new Anthropic();
   console.log('▶ Riset…');
+  const guidance = await loadGuidance(outRoot);
   const research = await ask(client, {
     role: 'research',
     system: RESEARCH_SYSTEM,
@@ -88,7 +101,7 @@ export async function plan(topic, { outRoot = 'out', idea = null } = {}) {
 
   console.log('▶ Menulis naskah…');
   const scriptMsg = await ask(client, {
-    system: SCRIPT_SYSTEM,
+    system: SCRIPT_SYSTEM + guidance,
     output_config: { effort: 'high', format: { type: 'json_schema', schema: SCRIPT_SCHEMA } },
     messages: [{ role: 'user', content: `Topik: ${topic}${idea ? `\nHook yang disetujui: ${idea.hook}\nSudut pandang: ${idea.angle}` : ''}\n\nCatatan riset:\n${notes}` }],
   });
@@ -123,6 +136,18 @@ export function validateScript(s) {
     if (sc.type === 'compare' && sc.items.length !== 2) p.push(`Adegan ${i + 1} (compare) harus punya 2 item.`);
     if (sc.type === 'timeline' && sc.items.length !== 2) p.push(`Adegan ${i + 1} (timeline) harus punya 2 item.`);
     if (/\b(N[1-5]|SSW|20\d\d)\b/.test(sc.vo)) p.push(`Adegan ${i + 1}: vo masih memuat singkatan/angka (${sc.vo.match(/\b(N[1-5]|SSW|20\d\d)\b/)[0]}) — tulis sesuai cara baca.`);
+  });
+  if (s.layout === 'fyp') {
+    if (!s.title_bar || !s.hook_bar) p.push('Gaya fyp butuh title_bar dan hook_bar.');
+    for (const [k, max] of [['title_bar', 30], ['hook_bar', 26]]) {
+      const long = String(s[k] || '').split('\n').find((l) => l.length > max);
+      if (long) p.push(`${k}: baris "${long}" lebih dari ${max} karakter.`);
+    }
+    if (!s.scenes[0].highlight) p.push('Adegan pertama (hook) gaya fyp butuh highlight (angka/klaim utama di frame pertama).');
+  }
+  s.scenes.forEach((sc, i) => {
+    if (sc.type === 'price' && !/\d/.test(sc.highlight || '')) p.push(`Adegan ${i + 1} (price): highlight harus berisi angka.`);
+    if (sc.type === 'receipt' && (sc.items || []).length < 2) p.push(`Adegan ${i + 1} (receipt) butuh minimal 2 item.`);
   });
   const unverified = (s.facts || []).filter((f) => f.confidence !== 'terkonfirmasi');
   if (unverified.length) p.push(`${unverified.length} klaim berstatus "perlu_dicek".`);
