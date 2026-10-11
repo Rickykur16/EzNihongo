@@ -69,6 +69,12 @@ Token Telegram dan ElevenLabs tidak pernah keluar dari VPS. Yang perlu disiapkan
   `/var/www/eznihongo/marketing/tiktok-generator`.
 
 Kosongkan `GITHUB_RENDER_TOKEN` untuk kembali render di mesin bot (perilaku lama).
+
+**Disk VPS tidak terus terisi**: setiap video selesai dikirim ke Telegram, `render-job.tgz` dan
+sisa render dihapus, lalu folder video yang lebih tua dari `OUT_KEEP_DAYS` hari (default 14)
+dibuang file beratnya (suara, foto, video, cover). `script.json`, `review.md`, `research.md`,
+`caption.txt`, dan `credits.md` tetap disimpan sebagai arsip. Video lama tetap ada di Telegram;
+`/render` ulang folder yang sudah dibersihkan akan membuat suara baru (berbayar).
 Kuota menit Actions gratis terbatas per bulan; satu video ±30 detik kira-kira 5–10 menit runner.
 
 ## Isi folder hasil (`out/<tanggal-slug>/`)

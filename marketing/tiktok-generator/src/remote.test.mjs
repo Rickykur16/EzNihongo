@@ -63,3 +63,28 @@ test('dispatchRender memicu workflow tiktok-render.yml di main dengan input job'
     await assert.rejects(dispatchRender('../etc'), /tidak valid/);
   } finally { global.fetch = orig; }
 });
+
+test('cleanAfterDelivery membuang sisa render; pruneOld hanya membuang file berat folder lama', async () => {
+  const { cleanAfterDelivery, pruneOld } = await import('./cleanup.mjs');
+  const out = await fs.mkdtemp(path.join(os.tmpdir(), 'out-'));
+  const mk = async (rel, body = 'x') => { await fs.mkdir(path.dirname(path.join(out, rel)), { recursive: true }); await fs.writeFile(path.join(out, rel), body); };
+  const old = '2026-09-01-video-lama';
+  const fresh = '2026-10-11-video-baru';
+  for (const f of ['vo.mp3', 'vo-2.mp3', 'video.mp4', 'cover.png', 'render-job.tgz', 'photos/1.jpg', 'render/silent.mp4',
+    'script.json', 'review.md', 'research.md', 'caption.txt', 'credits.md', 'alignment.json']) {
+    await mk(`${old}/${f}`); await mk(`${fresh}/${f}`);
+  }
+  await mk('ideas/2026-09-01/ideas.md'); await mk('history.json');
+
+  await cleanAfterDelivery(path.join(out, fresh));
+  const freshLeft = await fs.readdir(path.join(out, fresh));
+  assert.ok(!freshLeft.includes('render-job.tgz') && !freshLeft.includes('render'));
+  assert.ok(freshLeft.includes('video.mp4') && freshLeft.includes('vo.mp3'), 'video baru tetap utuh (bisa /render ulang tanpa bayar suara)');
+
+  const freed = await pruneOld(out, { days: 14, now: Date.parse('2026-10-12T00:00:00Z') });
+  const oldLeft = (await fs.readdir(path.join(out, old))).sort();
+  assert.deepEqual(oldLeft, ['alignment.json', 'caption.txt', 'credits.md', 'research.md', 'review.md', 'script.json']);
+  assert.ok(freed.every((f) => f.startsWith(old)), 'folder baru tidak disentuh');
+  assert.ok((await fs.readdir(path.join(out, fresh))).includes('video.mp4'));
+  assert.ok((await fs.readdir(path.join(out, 'ideas/2026-09-01'))).includes('ideas.md'), 'folder ide tidak disentuh');
+});

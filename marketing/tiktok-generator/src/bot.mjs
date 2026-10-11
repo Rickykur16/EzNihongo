@@ -10,6 +10,7 @@ import { plan, validateScript } from './plan.mjs';
 import { scan, scanMessage } from './scan.mjs';
 import { build, prepare } from './build.mjs';
 import { dispatchRender, jobName, remoteRenderEnabled, writeJob } from './remote.mjs';
+import { cleanAfterDelivery, pruneOld } from './cleanup.mjs';
 import { adminChat, downloadFile, getUpdates, sendFile, sendText, telegramEnabled } from './telegram.mjs';
 import { photoSlots, photoStatus, pickSlot } from './photoslots.mjs';
 
@@ -33,6 +34,12 @@ export async function deliver(dir) {
   await sendFile(path.join(dir, 'cover.png'), { kind: 'photo', caption: 'Cover (frame pertama)' });
   await sendText(`📌 Komentar sematan:\n${script.pinned_comment}\n\nCek video sebelum posting, terutama fakta bertanda ⚠.`);
   await remember(OUT, script.title);
+  // Video sudah tersimpan di Telegram; jangan biarkan sisa render & file lama memenuhi disk VPS.
+  try {
+    await cleanAfterDelivery(dir);
+    const freed = await pruneOld(OUT);
+    if (freed.length) console.log(`  dibersihkan: ${freed.length} file/folder berat dari video lama`);
+  } catch (e) { console.warn(`  ⚠ bersih-bersih gagal: ${e.message}`); }
 }
 
 async function latest(name) {
