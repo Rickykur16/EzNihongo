@@ -1,0 +1,95 @@
+name: TikTok render (generator konten)
+
+# Render video generator TikTok (marketing/tiktok-generator) di runner GitHub, bukan di
+# VPS: render = Chromium per frame + x264, cukup berat untuk membuat eznihongo.com dan
+# backend siswa melambat kalau dijalankan di server yang sama.
+#
+# Dipicu oleh bot Telegram di VPS (/render) lewat API workflow_dispatch. Bahan render
+# (render-job.tgz: spec + suara + foto) diambil dari VPS lewat SSH, hasilnya dikirim balik
+# ke folder yang sama, lalu bot di VPS mengirim video ke Telegram. Token Telegram &
+# ElevenLabs tetap hanya ada di VPS; workflow ini cuma memakai VPS_SSH_KEY yang sudah ada.
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Nama folder hasil di out/ (YYYY-MM-DD-slug), diisi otomatis oleh bot
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Satu render pada satu waktu; TIDAK memakai lock deploy-vps karena render tidak
+# menyentuh checkout produksi (hanya out/ generator yang diabaikan git).
+concurrency:
+  group: tiktok-render
+  cancel-in-progress: false
+
+jobs:
+  render:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      JOB: ${{ inputs.job }}
+      VPS: root@168.144.107.34
+      GEN: /var/www/eznihongo/marketing/tiktok-generator
+    steps:
+      - name: Validate input
+        run: |
+          set -euo pipefail
+          [[ "$JOB" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]{1,60}$ ]] || { echo "FATAL: job harus YYYY-MM-DD-slug"; exit 1; }
+
+      - name: Prepare SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_vps && chmod 600 ~/.ssh/id_vps
+          ssh-keyscan -H 168.144.107.34 >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Fetch render job from VPS
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_vps "$VPS:$GEN/out/$JOB/render-job.tgz" job.tgz
+          mkdir job && tar -xzf job.tgz -C job
+          ls -la job
+
+      - uses: actions/checkout@v4
+        with:
+          path: repo
+          sparse-checkout: marketing/tiktok-generator
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: repo/marketing/tiktok-generator/package-lock.json
+
+      - name: Install generator, Chromium, ffmpeg
+        working-directory: repo/marketing/tiktok-generator
+        run: |
+          set -euo pipefail
+          npm ci
+          npx playwright install --with-deps chromium
+          command -v ffmpeg >/dev/null || { sudo apt-get update -q && sudo apt-get install -y -q ffmpeg; }
+
+      - name: Render
+        working-directory: repo/marketing/tiktok-generator
+        run: node src/cli.mjs render-job "$GITHUB_WORKSPACE/job" "$GITHUB_WORKSPACE/result"
+
+      - name: Send result back and deliver to Telegram
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_vps result/video.mp4 result/cover.png "$VPS:$GEN/out/$JOB/"
+          ssh -i ~/.ssh/id_vps "$VPS" "cd '$GEN' && chown --reference=out out/$JOB/video.mp4 out/$JOB/cover.png && node src/cli.mjs deliver out/$JOB && chown --reference=out out/history.json"
+
+      - name: Tell Telegram the render failed
+        if: failure()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [[ "$JOB" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]{1,60}$ ]] || exit 0
+          test -f ~/.ssh/id_vps || exit 0
+          ssh -i ~/.ssh/id_vps "$VPS" "cd '$GEN' && node src/cli.mjs render-failed out/$JOB '$RUN_URL'" || true

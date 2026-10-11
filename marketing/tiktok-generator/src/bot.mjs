@@ -8,7 +8,8 @@ import path from 'node:path';
 import { ideas, ideasMessage, loadIdea, remember } from './ideas.mjs';
 import { plan, validateScript } from './plan.mjs';
 import { scan, scanMessage } from './scan.mjs';
-import { build } from './build.mjs';
+import { build, prepare } from './build.mjs';
+import { dispatchRender, jobName, remoteRenderEnabled, writeJob } from './remote.mjs';
 import { adminChat, downloadFile, getUpdates, sendFile, sendText, telegramEnabled } from './telegram.mjs';
 import { photoSlots, photoStatus, pickSlot } from './photoslots.mjs';
 
@@ -23,6 +24,15 @@ export function reviewMessage(script, problems) {
   if (problems.length) L.push('', '❗ Masalah naskah:', ...problems.map((p) => `• ${p}`));
   L.push('', `Caption: ${script.caption}`, '', 'Balas /render kalau sudah oke. Mau ubah? Edit script.json di folder hasil, atau /buat <nomor> untuk ide lain.');
   return L.join('\n');
+}
+
+// Kirim hasil render (lokal maupun dari GitHub Actions) ke Telegram.
+export async function deliver(dir) {
+  const script = JSON.parse(await fs.readFile(path.join(dir, 'script.json'), 'utf8'));
+  await sendFile(path.join(dir, 'video.mp4'), { kind: 'video', caption: script.caption });
+  await sendFile(path.join(dir, 'cover.png'), { kind: 'photo', caption: 'Cover (frame pertama)' });
+  await sendText(`📌 Komentar sematan:\n${script.pinned_comment}\n\nCek video sebelum posting, terutama fakta bertanda ⚠.`);
+  await remember(OUT, script.title);
 }
 
 async function latest(name) {
@@ -64,13 +74,16 @@ const COMMANDS = {
   },
   async render() {
     const dir = await latest('latest-plan.txt');
+    if (remoteRenderEnabled()) {
+      const job = jobName(dir); // gagal lebih awal kalau nama folder tidak aman, sebelum bayar suara
+      await sendText(`🎬 Menyiapkan suara & foto untuk ${job}…`);
+      await writeJob(dir, await prepare(dir));
+      const runs = await dispatchRender(job);
+      return sendText(`☁️ Render berjalan di GitHub Actions (±10–15 menit). Video dikirim ke sini otomatis begitu selesai.\nPantau: ${runs}`);
+    }
     await sendText(`🎬 Membuat video dari ${path.basename(dir)} (suara, foto, render)…`);
-    const video = await build(dir);
-    const script = JSON.parse(await fs.readFile(path.join(dir, 'script.json'), 'utf8'));
-    await sendFile(video, { kind: 'video', caption: script.caption });
-    await sendFile(path.join(dir, 'cover.png'), { kind: 'photo', caption: 'Cover (frame pertama)' });
-    await sendText(`📌 Komentar sematan:\n${script.pinned_comment}\n\nCek video sebelum posting, terutama fakta bertanda ⚠.`);
-    await remember(OUT, script.title);
+    await build(dir);
+    await deliver(dir);
   },
   async berita() {
     await sendText('🔎 Cek berita besar 48 jam terakhir (1–3 menit)…');

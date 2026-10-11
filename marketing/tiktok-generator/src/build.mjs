@@ -77,7 +77,8 @@ export async function voice(dir, scenes) {
   }
 }
 
-export async function build(dir, { force = false } = {}) {
+// Suara + foto + spec render. Ringan (panggilan API + ffmpeg pada foto), aman di VPS.
+export async function prepare(dir, { force = false } = {}) {
   const script = JSON.parse(await fs.readFile(path.join(dir, 'script.json'), 'utf8'));
   const problems = validateScript(script).filter((p) => !p.includes('perlu_dicek'));
   if (problems.length && !force) {
@@ -101,11 +102,17 @@ export async function build(dir, { force = false } = {}) {
     scenes.push({ ...sc, photo, items, dur: timings[i].dur, cues: timings[i].cues });
   }
   if (credits.length) await fs.writeFile(path.join(dir, 'credits.md'), `# Foto stok\n\n${credits.join('\n')}\n`);
+  await fs.writeFile(path.join(dir, 'caption.txt'), `${script.caption}\n\nKomentar sematan: ${script.pinned_comment}\n`);
+  return { script, scenes, audioPath };
+}
 
+// Render di mesin ini (berat: Chromium per frame + x264). Untuk VPS kecil pakai
+// render GitHub Actions (lihat remote.mjs).
+export async function build(dir, opts = {}) {
+  const { scenes, audioPath } = await prepare(dir, opts);
   console.log('▶ Render…');
   const outPath = path.join(dir, 'video.mp4');
   const { total } = await renderVideo({ spec: { scenes }, workDir: dir, audioPath, outPath });
-  await fs.writeFile(path.join(dir, 'caption.txt'), `${script.caption}\n\nKomentar sematan: ${script.pinned_comment}\n`);
   console.log(`✔ Selesai: ${outPath} (${total.toFixed(1)} dtk). Cover: ${path.join(dir, 'cover.png')}`);
   return outPath;
 }
