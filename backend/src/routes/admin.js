@@ -40,13 +40,18 @@ import {
   fetchElevenVoices,
   elevenLabsEnabled,
   TTS_SETTINGS_VERSION,
+  TTS_ELEVEN_VOICE_ID,
   TTS_LISTENING_SETTINGS_VERSION,
   TTS_LISTENING_MODEL,
+  TTS_DIALOGUE_SETTINGS_VERSION,
+  TTS_DIALOGUE_MODEL,
   renderTtsAudio,
   loadSpeakerRegistry,
   voiceForSpeaker,
   resolveDialogTurns,
+  listeningTurnKey,
 } from './tts.js';
+import { assembleListeningWav } from '../listening-audio.js';
 import {
   loadCourseVocab,
   deriveCompounds,
@@ -6048,21 +6053,26 @@ router.post('/tts/preview', asyncHandler(async (req, res) => {
 }));
 
 // POST /api/admin/tts/dialog-turn — body { dialog, turnIndex, speaker,
-// turnText, dialogScene?, dialogFurigana?, regenerate? } → MP3 of ONE turn.
+// turnText, dialogScene?, dialogFurigana?, regenerate?, listening? } → ONE turn.
 // The 🎭 Dialog editor's "🔊 Tes giliran ini" and "↻ Buat ulang": plays (or
 // re-voices) the turn's take from the same per-turn cache students read
 // (resolveDialogTurns in tts.js), so the take heard here IS the take students
 // hear once this dialogue is saved. The whole dialogue comes along so the
-// voice resolves exactly as it will for students and an older whole-dialogue
-// take can be adopted instead of generating a new one. speaker+turnText must
+// voice resolves exactly as it will for students. Listening wraps the cached
+// PCM take in WAV; grammar returns the cached MP3. speaker+turnText must
 // equal that turn: an editor row whose text holds a labelled line break
 // would otherwise shift every index after it.
 router.post('/tts/dialog-turn', asyncHandler(async (req, res) => {
   const body = req.body || {};
+  if (body.listening !== undefined && typeof body.listening !== 'boolean') {
+    return res.status(400).json({ error: 'listening must be a boolean' });
+  }
+  const listening = body.listening === true;
   const dialog = String(body.dialog || '').trim();
   if (!dialog) return res.status(400).json({ error: 'dialog required' });
-  if (dialog.length > 1500) {
-    return res.status(400).json({ error: 'dialog_too_long', detail: 'Dialog maksimal 1500 karakter — lebih panjang dari itu siswa tidak bisa memutarnya.' });
+  const maxLength = listening ? 2000 : 1500;
+  if (dialog.length > maxLength) {
+    return res.status(400).json({ error: 'dialog_too_long', detail: `Dialog maksimal ${maxLength} karakter.` });
   }
   const turns = parseDialog(dialog);
   if (!turns) return res.status(400).json({ error: 'not_a_dialog', detail: 'Setiap baris harus diawali label pemeran.' });
@@ -6082,10 +6092,12 @@ router.post('/tts/dialog-turn', asyncHandler(async (req, res) => {
   try {
     [audio] = await resolveDialogTurns({
       turns, turnVoices, dialogText: dialog, indices: [index], scene, regenerate: body.regenerate === true,
+      profile: listening ? 'listening' : 'dialogue',
       // The editor's current furigana: kanji are voiced by their reading,
       // exactly as students hear them once the dialogue is saved.
-      furigana: body.dialogFurigana || null,
+      furigana: listening ? null : body.dialogFurigana || null,
     });
+    if (listening) audio = assembleListeningWav([audio], [0]);
   } catch (err) {
     if (err.code === 'tts_disabled') {
       return res.status(503).json({ error: 'tts_disabled', detail: 'ElevenLabs belum aktif atau suara pemeran belum diatur.' });
@@ -6093,7 +6105,7 @@ router.post('/tts/dialog-turn', asyncHandler(async (req, res) => {
     console.error('TTS dialog turn upstream:', err.message);
     return res.status(502).json({ error: 'tts_upstream', detail: err.message });
   }
-  res.set('Content-Type', 'audio/mpeg');
+  res.set('Content-Type', listening ? 'audio/wav' : 'audio/mpeg');
   res.set('Cache-Control', 'private, no-store');
   res.send(audio);
 }));
@@ -6258,20 +6270,43 @@ router.delete('/dialogue-art/:characterKey/:expressionKey', asyncHandler(async (
   res.json({ ok: true });
 }));
 
-// DELETE /api/admin/tts/cache — body { text } → cari cache entry yang
-// match text hash (semua variasi voice), hapus. Berguna kalau admin
-// tweak voice settings lalu mau force regen tertentu.
+// DELETE /api/admin/tts/cache — body { text, listening?, dialogScene? }.
+// Listening removes the current script's shared takes using the same voice
+// resolution as preview/student rendering. Generic previews keep text matching.
 router.delete('/tts/cache', asyncHandler(async (req, res) => {
-  const text = String((req.body || {}).text || '').trim();
+  const body = req.body || {};
+  const text = String(body.text || '').trim();
   if (!text) return res.status(400).json({ error: 'text required' });
+  if (body.listening !== undefined && typeof body.listening !== 'boolean') {
+    return res.status(400).json({ error: 'listening must be a boolean' });
+  }
+  if (body.listening === true) {
+    if (text.length > 2000) return res.status(400).json({ error: 'text too long (max 2000 char)' });
+    const parsed = parseDialog(text);
+    const turns = parsed || [{ speaker: '', text }];
+    let scene;
+    try {
+      scene = normalizeDialogScene(body.dialogScene);
+      if (scene && !parsed) throw new Error('Skrip audio harus memakai label pemeran.');
+    } catch (err) { return res.status(400).json({ error: err.message }); }
+    const registry = parsed ? await loadSpeakerRegistry() : null;
+    let voices;
+    try { voices = parsed
+      ? sceneTurnVoices(turns, scene, (turn, i) => voiceForSpeaker(turn.speaker, i, registry))
+      : [{ voiceId: TTS_ELEVEN_VOICE_ID, role: 'single' }]; }
+    catch (err) { return res.status(422).json({ error: 'dialog_voice_missing', detail: err.message }); }
+    const keys = turns.map((turn, i) => listeningTurnKey(turn.text, voices[i]));
+    const r = await query('DELETE FROM tts_cache WHERE text_hash = ANY($1::text[])', [keys]);
+    return res.json({ ok: true, deleted: r.rowCount });
+  }
   // Hapus by exact text match — coverage semua voice/model variasi.
   const r = await query(`DELETE FROM tts_cache WHERE text = $1`, [text]);
   res.json({ ok: true, deleted: r.rowCount });
 }));
 
 // GET /api/admin/tts/cache/stats — count + total size + breakdown
-// Both generic and listening profiles are active; neither is an orphan.
-const activeTtsVersions = [TTS_SETTINGS_VERSION, TTS_LISTENING_SETTINGS_VERSION];
+// Generic, listening turns, and grammar dialogue turns are all active.
+const activeTtsVersions = [TTS_SETTINGS_VERSION, TTS_LISTENING_SETTINGS_VERSION, TTS_DIALOGUE_SETTINGS_VERSION];
 router.get('/tts/cache/stats', asyncHandler(async (req, res) => {
   const r = await query(
     `SELECT COUNT(*)::int AS count,
@@ -6286,7 +6321,7 @@ router.get('/tts/cache/stats', asyncHandler(async (req, res) => {
     [activeTtsVersions]
   );
   res.json({ ...r.rows[0], current_version: TTS_SETTINGS_VERSION, current_versions: activeTtsVersions,
-    listening_model: TTS_LISTENING_MODEL });
+    listening_model: TTS_LISTENING_MODEL, dialogue_model: TTS_DIALOGUE_MODEL });
 }));
 
 // DELETE /api/admin/tts/cache/all — nuke all cache. Cost regenerate.

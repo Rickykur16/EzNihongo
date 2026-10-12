@@ -26,12 +26,21 @@ const ELEVEN_VOICE_FEMALE = process.env.ELEVENLABS_VOICE_FEMALE || ELEVEN_VOICE_
 const ELEVEN_VOICE_MALE = process.env.ELEVENLABS_VOICE_MALE || ELEVEN_VOICE_ID;
 const ELEVEN_MODEL = process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2';
 export const TTS_LISTENING_MODEL = process.env.ELEVENLABS_LISTENING_MODEL || 'eleven_v4';
-export const TTS_LISTENING_SETTINGS_VERSION = 'listening-v4-pcm-v1';
+export const TTS_LISTENING_SETTINGS_VERSION = 'listening-v4-pcm-turn-v1';
+export const TTS_DIALOGUE_MODEL = process.env.ELEVENLABS_DIALOGUE_MODEL || 'eleven_v4';
+export const TTS_DIALOGUE_SETTINGS_VERSION = 'dialogue-v4-mp3-turn-v1';
 const LISTENING_OUTPUT = 'pcm_24000';
 // V4 supports stability and similarity; speed/style/speaker boost and SSML
 // breaks belong to other models. Playback speed is a separate player control.
 const LISTENING_SETTINGS = Object.freeze({ stability: 0.6, similarity_boost: 0.8 });
-const listeningInFlight = new Map();
+const DIALOGUE_SETTINGS = Object.freeze({ stability: 0.6, similarity_boost: 0.8 });
+const turnInFlight = new Map();
+const TURN_PROFILES = Object.freeze({
+  dialogue: { version: TTS_DIALOGUE_SETTINGS_VERSION, model: TTS_DIALOGUE_MODEL,
+    output: 'mp3_44100_128', contentType: 'audio/mpeg', settings: DIALOGUE_SETTINGS },
+  listening: { version: TTS_LISTENING_SETTINGS_VERSION, model: TTS_LISTENING_MODEL,
+    output: LISTENING_OUTPUT, contentType: 'audio/pcm', settings: LISTENING_SETTINGS },
+});
 // Multi-turn dialog JLPT bisa 200-500 char. Naikin ke 1500 — whitelist DB
 // udah ngamanin set of generatable strings.
 const MAX_TEXT_LEN = 1500;
@@ -66,16 +75,6 @@ export function ttsHashKey(text, voices) {
 }
 // Backward alias buat code dalam file ini.
 const hashKey = ttsHashKey;
-
-export function listeningHashKey(text, turnVoices) {
-  const turns = parseDialog(text) || [{ speaker: '', text }];
-  return crypto.createHash('sha256').update(JSON.stringify({
-    profile: TTS_LISTENING_SETTINGS_VERSION, model: TTS_LISTENING_MODEL,
-    output: LISTENING_OUTPUT, container: 'wav', settings: LISTENING_SETTINGS,
-    turns: turns.map((turn, i) => ({ speaker: turn.speaker, voiceId: turnVoices[i].voiceId, role: turnVoices[i].role })),
-    gaps: listeningTurnGaps(turns, turnVoices), text,
-  })).digest('hex');
-}
 
 // Re-export helpers buat admin endpoints (test/cache management).
 export {
@@ -291,40 +290,51 @@ export async function fetchElevenListeningPcm(voiceId, text, retry = 0) {
   return validateListeningPcm(Buffer.concat(chunks, size), upstream.headers.get('content-type') || '');
 }
 
-async function renderListeningAudio(text, turns, turnVoices, scene, res, privateResponse) {
-  const key = listeningHashKey(text, turnVoices);
-  if (!listeningInFlight.has(key)) {
-    const pending = (async () => {
-      const cached = await query('SELECT audio, content_type FROM tts_cache WHERE text_hash = $1', [key]);
-      if (cached.rows[0]) {
-        query('UPDATE tts_cache SET last_used_at = NOW() WHERE text_hash = $1', [key]).catch(() => {});
-        return cached.rows[0];
-      }
-      if (!ELEVEN_API_KEY || turnVoices.some(voice => !voice.voiceId)) throw ttsError('tts_disabled');
-      await validateSceneVoices(scene, fetchElevenVoices);
-      const clips = [], gaps = listeningTurnGaps(turns, turnVoices);
-      let size = gaps.reduce((total, milliseconds) => total + milliseconds * 48, 0);
-      for (let i = 0; i < turns.length; i++) {
-        const clip = await fetchElevenListeningPcm(turnVoices[i].voiceId, turns[i].text);
-        size += clip.length;
-        if (size > MAX_LISTENING_PCM_BYTES) throw new Error('listening_audio_too_long');
-        clips.push(clip);
-      }
-      const audio = assembleListeningWav(clips, gaps);
-      const saved = await query(`INSERT INTO tts_cache (text_hash, text, provider, voice, model, audio, content_type, byte_size, settings_version)
-        VALUES ($1,$2,'elevenlabs',$3,$4,$5,'audio/wav',$6,$7)
-        ON CONFLICT (text_hash) DO NOTHING RETURNING audio, content_type`,
-      [key, text, turnVoices.map(voice => voice.voiceId).join(','), TTS_LISTENING_MODEL, audio, audio.length, TTS_LISTENING_SETTINGS_VERSION]);
-      // Across backend processes, the first committed take wins. Both admin
-      // preview and the student hear that take, even on simultaneous cache misses.
-      return saved.rows[0] || (await query('SELECT audio, content_type FROM tts_cache WHERE text_hash = $1', [key])).rows[0];
-    })();
-    listeningInFlight.set(key, pending);
-    pending.finally(() => { if (listeningInFlight.get(key) === pending) listeningInFlight.delete(key); }).catch(() => {});
+export async function fetchElevenDialogueMp3(voiceId, text, retry = 0) {
+  const spoken = speechText(stripListeningMarkup(text));
+  if (!spoken) throw new Error('dialogue_text_empty');
+  const upstream = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
+    { method: 'POST', headers: { 'xi-api-key': ELEVEN_API_KEY, 'Content-Type': 'application/json', 'Accept': 'audio/mpeg' },
+      body: JSON.stringify({ text: spoken, model_id: TTS_DIALOGUE_MODEL, voice_settings: DIALOGUE_SETTINGS }),
+      signal: AbortSignal.timeout(60000),
+    }
+  );
+  if (!upstream.ok) {
+    await upstream.body?.cancel();
+    if (retry < 3 && (upstream.status === 409 || upstream.status === 429 || upstream.status >= 500)) {
+      await new Promise(resolve => setTimeout(resolve, 500 * (retry + 1)));
+      return fetchElevenDialogueMp3(voiceId, text, retry + 1);
+    }
+    throw new Error(`dialogue_tts_upstream_${upstream.status}`);
   }
+  const type = (upstream.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  if (type && !['audio/mpeg', 'audio/mp3', 'application/octet-stream'].includes(type)) {
+    await upstream.body?.cancel();
+    throw new Error('dialogue_audio_content_type');
+  }
+  const chunks = []; let size = 0;
+  const reader = upstream.body.getReader();
   try {
-    const saved = await listeningInFlight.get(key);
-    return sendAudio(res, saved.audio, saved.content_type, privateResponse);
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > MAX_LISTENING_PCM_BYTES) throw new Error('dialogue_audio_too_long');
+      chunks.push(Buffer.from(value));
+    }
+  } catch (error) { await reader.cancel().catch(() => {}); throw error; }
+  finally { reader.releaseLock(); }
+  if (!size) throw new Error('dialogue_audio_empty');
+  return Buffer.concat(chunks, size);
+}
+
+async function renderListeningAudio(text, turns, turnVoices, scene, res, privateResponse) {
+  try {
+    // Compose the current stored takes each time. A regenerated admin turn
+    // must immediately replace that turn in every student's full recording.
+    const clips = await resolveDialogTurns({ turns, turnVoices, dialogText: text, scene, profile: 'listening' });
+    return sendAudio(res, assembleListeningWav(clips, listeningTurnGaps(turns, turnVoices)), 'audio/wav', privateResponse);
   } catch (error) {
     if (error.code === 'tts_disabled') return res.status(503).json({ error: 'tts_disabled' });
     console.error('Listening TTS:', error.message);
@@ -357,24 +367,23 @@ export async function fetchElevenVoices() {
   }));
 }
 
-// ── Dialogue turns: one cached take per turn, shared by admin and students ──
-// The dialogue player (chat bubbles, per-line play, the stage — see
-// /tts/dialog below and grammarKaraokePlay in welcome.html) plays each turn
-// as its own clip. ElevenLabs never returns the same take twice, so the ONLY
-// way the admin's "Tes giliran ini" can sound like what students hear is for
-// both to read the very same stored take. Each turn is therefore cached on
-// its own, keyed by exactly what shapes its audio — voice, role, turn text —
-// and not by the whole dialogue: editing one line re-voices only that line,
-// and "Buat ulang" (POST /admin/tts/dialog-turn) replaces one take for
-// everyone. Same generation call as /api/tts (fetchElevenAudio, no SSML
-// <break>: the player inserts its own gap between clips).
-const DIALOG_TURN_PREFIX = 'dialogturn1';
-// Keyed by what is spoken (spokenTurnText): a turn typed without spaces keeps
-// its stored take, a spaced one gets a new key and is re-voiced once without
-// the pauses, and kanji with furigana share the take of their kana spelling.
-export function dialogTurnKey(spoken, voice) {
-  return ttsHashKey(`${DIALOG_TURN_PREFIX}\n${voice.role}\n${spoken}`, [voice.voiceId]);
+// Dialogue and assessment turns share resolution, but each profile owns its
+// model/output namespace. Never adopt old v2/v3 takes into a v4 profile.
+function turnProfile(profile) {
+  const config = TURN_PROFILES[profile];
+  if (!config) throw ttsError('invalid_tts_profile');
+  return config;
 }
+
+export function dialogTurnKey(spoken, voice, profile = 'dialogue') {
+  const config = turnProfile(profile);
+  return crypto.createHash('sha256').update(JSON.stringify({
+    profile: config.version, model: config.model, output: config.output,
+    settings: config.settings, voiceId: voice.voiceId, role: voice.role,
+    spoken: speechText(stripListeningMarkup(spoken)),
+  })).digest('hex');
+}
+export const listeningTurnKey = (spoken, voice) => dialogTurnKey(spoken, voice, 'listening');
 
 async function selectTurnAudio(keys) {
   if (!keys.length) return new Map();
@@ -382,42 +391,16 @@ async function selectTurnAudio(keys) {
   return new Map(r.rows.map((row) => [row.text_hash, row.audio]));
 }
 
-async function storeTurnAudio(key, turn, voice, audio, replace) {
+async function storeTurnAudio(key, turn, voice, audio, replace, profile) {
+  const config = turnProfile(profile);
   await query(
     `INSERT INTO tts_cache (text_hash, text, provider, voice, model, audio, content_type, byte_size, settings_version)
-     VALUES ($1,$2,'elevenlabs',$3,$4,$5,'audio/mpeg',$6,$7)
+     VALUES ($1,$2,'elevenlabs',$3,$4,$5,$6,$7,$8)
      ON CONFLICT (text_hash) DO ${replace
-    ? 'UPDATE SET audio = EXCLUDED.audio, byte_size = EXCLUDED.byte_size, created_at = NOW(), last_used_at = NOW()'
-    : 'NOTHING'}`,
-    [key, turn.text, voice.voiceId, modelForRole(voice.role), audio, audio.length, SETTINGS_VERSION]
+     ? 'UPDATE SET audio = EXCLUDED.audio, content_type = EXCLUDED.content_type, byte_size = EXCLUDED.byte_size, created_at = NOW(), last_used_at = NOW()'
+     : 'NOTHING'}`,
+    [key, turn.text, voice.voiceId, config.model, audio, config.contentType, audio.length, config.version]
   );
-}
-
-// Takes generated before turns were cached one by one, adopted once so the
-// deploy neither re-bills ElevenLabs nor swaps voices without a reason. The
-// admin's own earlier "Tes giliran" take (the old /admin/tts/preview row for
-// that single "SPEAKER: text" line) wins over the student's whole-dialogue
-// take (old "dialogsegs1" row): it is the one a person actually listened to.
-async function adoptLegacyTakes(missingTurns, turns, turnVoices, keys, dialogText, spoken) {
-  // Legacy takes were voiced from the stored text as typed: spaces became
-  // pauses and kanji were read however ElevenLabs guessed.
-  const missing = missingTurns.filter((i) => spoken[i] === turns[i].text);
-  if (!missing.length) return;
-  const testedKeys = missing.map((i) => ttsHashKey(`${turns[i].speaker}: ${turns[i].text}`, [turnVoices[i].voiceId]));
-  const tested = await selectTurnAudio(testedKeys);
-  let segments = null;
-  if (dialogText && missing.some((_, n) => !tested.has(testedKeys[n]))) {
-    const r = await query(`SELECT alignment FROM tts_cache WHERE text_hash = $1`,
-      [ttsHashKey('dialogsegs1\n' + dialogText, turnVoices.map((v) => v.voiceId))]);
-    const segs = r.rows[0]?.alignment?.segments;
-    if (Array.isArray(segs) && segs.length === turns.length
-      && segs.every((seg, i) => seg?.speaker === turns[i].speaker && typeof seg.audio_base64 === 'string')) segments = segs;
-  }
-  for (let n = 0; n < missing.length; n++) {
-    const i = missing[n];
-    const audio = tested.get(testedKeys[n]) || (segments && Buffer.from(segments[i].audio_base64, 'base64'));
-    if (audio?.length) await storeTurnAudio(keys[i], turns[i], turnVoices[i], audio, false);
-  }
 }
 
 function ttsError(code, message) {
@@ -426,36 +409,60 @@ function ttsError(code, message) {
   return err;
 }
 
-// Audio for `indices` (default: every turn), in that order. Lookup order:
-// the turn's own row → a legacy take (above) → a fresh generation.
-// `regenerate` skips straight to generation and REPLACES the stored take.
-// Always answers with what the table holds afterwards, so two requests that
-// generate the same missing turn at once still settle on one take.
-// Throws code 'tts_disabled' (no key / a turn without a voice) or any
-// upstream/voice-catalog error.
-export async function resolveDialogTurns({ turns, turnVoices, dialogText = '', indices = null, scene = null, furigana = null, regenerate = false }) {
+// Share concurrent misses in this process. Explicit regenerations wait for an
+// earlier operation on the same key and then replace that take. A failed
+// generation leaves the prior take intact and never poisons future retries.
+async function generateTurn(key, turn, voice, spoken, regenerate, profile) {
+  const previous = turnInFlight.get(key);
+  if (previous && !regenerate) return previous;
+  const pending = (async () => {
+    if (previous) await previous.catch(() => {});
+    if (!regenerate) {
+      const cached = await selectTurnAudio([key]);
+      if (cached.has(key)) return cached.get(key);
+    }
+    const audio = profile === 'listening'
+      ? await fetchElevenListeningPcm(voice.voiceId, spoken)
+      : await fetchElevenDialogueMp3(voice.voiceId, spoken);
+    await storeTurnAudio(key, turn, voice, audio, regenerate, profile);
+    const winner = (await selectTurnAudio([key])).get(key);
+    if (!winner) throw ttsError('tts_upstream', 'turn audio missing after generation');
+    return winner;
+  })();
+  turnInFlight.set(key, pending);
+  try { return await pending; }
+  finally { if (turnInFlight.get(key) === pending) turnInFlight.delete(key); }
+}
+
+// Resolve only requested turns. Default dialogue returns v4 MP3 clips;
+// listening returns raw PCM24k clips, ready for a one-turn or full WAV.
+// Both the admin preview and students read back the committed cache winner.
+export async function resolveDialogTurns({ turns, turnVoices, dialogText = '', indices = null, scene = null, furigana = null, regenerate = false, profile = 'dialogue' }) {
+  turnProfile(profile);
   const want = indices || turns.map((_, i) => i);
-  const spoken = turns.map((turn, i) => spokenTurnText(turn, i, furigana));
-  const keys = spoken.map((text, i) => dialogTurnKey(text, turnVoices[i]));
+  const spoken = turns.map((turn, i) => speechText(stripListeningMarkup(spokenTurnText(turn, i, furigana))));
+  const keys = spoken.map((text, i) => dialogTurnKey(text, turnVoices[i], profile));
   const wantKeys = [...new Set(want.map((i) => keys[i]))];
   let found = regenerate ? new Map() : await selectTurnAudio(wantKeys);
-  let missing = want.filter((i) => !found.has(keys[i]));
-  if (!regenerate && missing.length) {
-    await adoptLegacyTakes(missing, turns, turnVoices, keys, dialogText, spoken);
-    found = await selectTurnAudio(wantKeys);
-    missing = want.filter((i) => !found.has(keys[i]));
-  }
+  const missing = want.filter((i) => !found.has(keys[i]));
+  let pcmSize = profile === 'listening' ? (indices ? 0
+    : listeningTurnGaps(turns, turnVoices).reduce((total, gap) => total + gap * 48, 0))
+      + want.reduce((total, i) => total + (found.get(keys[i])?.length || 0), 0) : 0;
+  if (pcmSize > MAX_LISTENING_PCM_BYTES) throw ttsError('listening_audio_too_long');
   if (missing.length) {
     if (!ELEVEN_API_KEY || missing.some((i) => !turnVoices[i].voiceId)) throw ttsError('tts_disabled');
     await validateSceneVoices(scene, fetchElevenVoices);
-    // Serial, not Promise.all: ElevenLabs answers 409/429 to parallel calls
-    // on one voice. A line said twice by the same voice is generated once.
+    // Serial generation avoids concurrent calls on one voice. Repeated lines
+    // with the same voice and role intentionally reuse the same stored take.
     const done = new Set();
     for (const i of missing) {
       if (done.has(keys[i])) continue;
       done.add(keys[i]);
-      const audio = await fetchElevenAudio(turnVoices[i].voiceId, spoken[i], turnVoices[i].role);
-      await storeTurnAudio(keys[i], turns[i], turnVoices[i], audio, regenerate);
+      const audio = await generateTurn(keys[i], turns[i], turnVoices[i], spoken[i], regenerate, profile);
+      if (profile === 'listening') {
+        pcmSize += audio.length * want.filter(j => keys[j] === keys[i]).length;
+        if (pcmSize > MAX_LISTENING_PCM_BYTES) throw ttsError('listening_audio_too_long');
+      }
     }
     found = await selectTurnAudio(wantKeys);
   }

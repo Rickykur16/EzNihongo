@@ -6,6 +6,24 @@ import { once } from 'node:events';
 import express from 'express';
 import pg from 'pg';
 
+async function seedListeningCache(control, text) {
+  const { listeningTurnKey, parseDialog, voiceForSpeaker } = await import('./routes/tts.js');
+  const { assembleListeningWav, listeningTurnGaps } = await import('./listening-audio.js');
+  const turns = parseDialog(text), voices = turns.map((turn, i) => voiceForSpeaker(turn.speaker, i));
+  const stored = new Map(), clips = [];
+  for (let i = 0; i < turns.length; i++) {
+    const key = listeningTurnKey(turns[i].text, voices[i]);
+    if (!stored.has(key)) {
+      const audio = Buffer.from([i + 1, 0, i + 1, 0]);
+      await control.query(`INSERT INTO tts_cache(text_hash,text,audio,content_type) VALUES ($1,$2,$3,'audio/pcm')
+        ON CONFLICT(text_hash) DO UPDATE SET audio=EXCLUDED.audio`, [key, turns[i].text, audio]);
+      stored.set(key, audio);
+    }
+    clips.push(stored.get(key));
+  }
+  return assembleListeningWav(clips, listeningTurnGaps(turns, voices));
+}
+
 test('versioned chapter assessment migration, grading and protected HTTP lifecycle', {
   skip: !process.env.TEST_DATABASE_URL && 'Set TEST_DATABASE_URL for PostgreSQL tests', timeout: 60000,
 }, async t => {
@@ -129,11 +147,7 @@ test('versioned chapter assessment migration, grading and protected HTTP lifecyc
     const denied=await call(path(n4lesson,suffix),null,'GET'); assert.equal(denied.status,403);
     // No paid audio generation in tests. The disabled provider yields an explicit retryable error, never a script.
     const own=await call(path(lessons[0],suffix),null,'GET'); assert.equal(own.status,503); assert.equal(own.body.error,'tts_disabled');
-    const {listeningHashKey,parseDialog,voiceForSpeaker}=await import('./routes/tts.js');
-    const voices=parseDialog(audio.audio_script).map((turn,i)=>voiceForSpeaker(turn.speaker,i));
-    const hash=listeningHashKey(audio.audio_script,voices);
-    const bytes=Buffer.from('isolated cached audio transport fixture');
-    await control.query(`INSERT INTO tts_cache(text_hash,text,audio,content_type) VALUES ($1,$2,$3,'audio/wav')`,[hash,audio.audio_script,bytes]);
+    const bytes=await seedListeningCache(control,audio.audio_script);
     const cached=await fetch(base+path(lessons[0],suffix),{headers:{Authorization:`Bearer ${token}`}});
     assert.equal(cached.status,200);assert.equal(cached.headers.get('Cache-Control'),'private, no-store');
     assert.equal(cached.headers.get('Content-Type'),'audio/wav');
@@ -184,10 +198,7 @@ test('versioned chapter assessment migration, grading and protected HTTP lifecyc
     const audio=rows[23];
     const audioPath=path(lessons[1],`quiz/audio/${audio.id}?attemptToken=${attemptToken}`);
     assert.equal((await call(audioPath,null,'GET',otherToken)).status,404);
-    const {listeningHashKey,parseDialog,voiceForSpeaker}=await import('./routes/tts.js');
-    const voices=parseDialog(audio.audio_script).map((turn,i)=>voiceForSpeaker(turn.speaker,i));
-    const bytes=Buffer.from('v3 numbered audio transport fixture');
-    await control.query("INSERT INTO tts_cache(text_hash,text,audio,content_type) VALUES($1,$2,$3,'audio/wav')",[listeningHashKey(audio.audio_script,voices),audio.audio_script,bytes]);
+    const bytes=await seedListeningCache(control,audio.audio_script);
     const response=await fetch(base+audioPath,{headers:{Authorization:`Bearer ${token}`}});
     assert.equal(response.status,200);assert.deepEqual(Buffer.from(await response.arrayBuffer()),bytes);
     const result=await call(path(lessons[1],'quiz-attempt'),{attemptToken,answers,draftRevision:1});
@@ -261,10 +272,7 @@ test('versioned chapter assessment migration, grading and protected HTTP lifecyc
     const retained=(await control.query('SELECT assessment_snapshot,draft_answers FROM quiz_attempts WHERE attempt_token=$1',[oldToken])).rows[0];
     assert.deepEqual(retained.assessment_snapshot,before);assert.deepEqual(retained.draft_answers,draft);
     const audio=rows[21];
-    const {listeningHashKey,parseDialog,voiceForSpeaker}=await import('./routes/tts.js');
-    const voices=parseDialog(audio.audio_script).map((turn,i)=>voiceForSpeaker(turn.speaker,i));
-    const bytes=Buffer.from('corrected v4 audio fixture');
-    await control.query("INSERT INTO tts_cache(text_hash,text,audio,content_type) VALUES($1,$2,$3,'audio/wav')",[listeningHashKey(audio.audio_script,voices),audio.audio_script,bytes]);
+    const bytes=await seedListeningCache(control,audio.audio_script);
     const audioResponse=await fetch(base+path(lessons[1],`quiz/audio/${audio.id}?attemptToken=${start.body.attemptToken}`),{headers:{Authorization:`Bearer ${token}`}});
     assert.equal(audioResponse.status,200);assert.deepEqual(Buffer.from(await audioResponse.arrayBuffer()),bytes);
     const answers=rows.map(q=>({questionId:q.id,optionId:q.options.find(o=>o.is_correct).id}));
