@@ -71,6 +71,11 @@
 
 ## Konvensi penting
 
+- **Video TikTok/Reels: WAJIB baca `marketing/catatan-video-tiktok.md` dulu** (hasil video
+  pertama yang FYP 10 Okt 2026, aturan hook/durasi/naskah/ElevenLabs v4, checklist, tabel
+  hasil per video). Template & cara render: `marketing/biaya-ssw-src/` (lihat README-nya).
+  Perbarui tabel hasil di catatan itu setiap pemilik mengirim analitik video baru.
+
 - **Landing page diposisikan ulang: "jalur persiapan kerja ke Jepang dengan biaya
   terjangkau", bahasa = bagian dari proses** (brief pemilik, 2026-10-07). Urutan:
   hero → `#hemat` (3 alasan lebih hemat; frame foto malam yang dulu pinned scroll-story
