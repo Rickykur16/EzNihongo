@@ -5,7 +5,9 @@ import path from 'node:path';
 import { plan } from './plan.mjs';
 import { build } from './build.mjs';
 import { ideas, ideasMessage, loadIdea, remember } from './ideas.mjs';
-import { runBot } from './bot.mjs';
+import { deliver, runBot } from './bot.mjs';
+import { readJob } from './remote.mjs';
+import { renderVideo } from './render.mjs';
 import { scan, scanMessage } from './scan.mjs';
 import { sendFile, sendText, telegramEnabled } from './telegram.mjs';
 
@@ -21,7 +23,10 @@ const USAGE = `Pemakaian:
   npm run plan -- "topik bebas"          naskah dari topik sendiri
   npm run build -- [folder]              suara + foto + render (default: naskah terakhir)
   npm run scan -- --notify               cek berita 48 jam terakhir; kirim ke Telegram HANYA bila ada berita besar
-  npm run bot                            bot Telegram: /ide, /buat <n>, /render`;
+  npm run bot                            bot Telegram: /ide, /buat <n>, /render
+  node src/cli.mjs render-job <job> <out>  (GitHub Actions) render isi render-job.tgz yang sudah diekstrak
+  node src/cli.mjs deliver <folder>        kirim video.mp4 + cover.png folder itu ke Telegram
+  node src/cli.mjs render-failed <folder> <url>  kabari Telegram bahwa render di GitHub gagal`;
 
 try {
   if (cmd === 'ideas') {
@@ -51,6 +56,16 @@ try {
     await build(dir, { force: flags.has('--force') });
     const script = JSON.parse(await fs.readFile(path.join(dir, 'script.json'), 'utf8'));
     await remember(OUT, script.title);
+  } else if (cmd === 'render-job' && args.length === 2) {
+    const [jobDir, outDir] = args;
+    const { spec, audioPath } = await readJob(jobDir);
+    await fs.mkdir(outDir, { recursive: true });
+    const { total } = await renderVideo({ spec, workDir: outDir, audioPath, outPath: path.join(outDir, 'video.mp4') });
+    console.log(`✔ Render selesai (${total.toFixed(1)} dtk)`);
+  } else if (cmd === 'deliver' && args[0]) {
+    await deliver(args[0]);
+  } else if (cmd === 'render-failed' && args.length === 2) {
+    await sendText(`✖ Render ${path.basename(args[0])} di GitHub Actions gagal. Log: ${args[1]}\nCoba /render lagi; suara tidak dibayar ulang selama naskahnya sama.`);
   } else if (cmd === 'bot') {
     await runBot();
   } else {

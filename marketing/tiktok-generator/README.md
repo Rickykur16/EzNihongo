@@ -46,6 +46,37 @@ Tidak ada jadwal otomatis: riset hanya berjalan bila disuruh, jadi biaya API han
 
 Ide yang sudah dibuat dicatat di `out/history.json` supaya riset berikutnya tidak mengulang.
 
+## Render di GitHub Actions (supaya VPS tidak berat)
+
+Render (Chromium per frame + x264) adalah bagian paling berat dan bisa membuat
+eznihongo.com melambat kalau berjalan di VPS yang sama. Dengan `GITHUB_RENDER_TOKEN` dan
+`GITHUB_RENDER_REPO` terisi di `.env`, `/render` berjalan begini:
+
+1. **VPS**: suara ElevenLabs + foto (ringan) → `out/<job>/render-job.tgz` → memicu workflow
+   `.github/workflows/tiktok-render.yml` lewat API (`workflow_dispatch`, input `job`).
+2. **GitHub Actions**: mengambil `render-job.tgz` dari VPS lewat SSH (`VPS_SSH_KEY`, secret yang
+   sudah dipakai deploy), render, mengirim `video.mp4` + `cover.png` balik ke `out/<job>/`, lalu
+   menjalankan `node src/cli.mjs deliver out/<job>` di VPS → video sampai ke Telegram.
+3. Kalau gagal, bot mengirim pesan berisi tautan log run-nya. `/render` ulang tidak membayar
+   suara lagi selama naskahnya sama.
+
+Token Telegram dan ElevenLabs tidak pernah keluar dari VPS. Yang perlu disiapkan sekali:
+
+- Token GitHub fine-grained untuk repo ini saja, izin **Actions: Read and write** → isi
+  `GITHUB_RENDER_TOKEN` di `.env` VPS, lalu restart bot (`systemctl restart tiktok-bot`).
+- Workflow hanya bisa dipicu setelah file workflow-nya ada di `main`.
+- Path generator di VPS ditulis di workflow (`GEN`); sesuaikan kalau bot tidak berjalan di
+  `/var/www/eznihongo/marketing/tiktok-generator`.
+
+Kosongkan `GITHUB_RENDER_TOKEN` untuk kembali render di mesin bot (perilaku lama).
+
+**Disk VPS tidak terus terisi**: setiap video selesai dikirim ke Telegram, `render-job.tgz` dan
+sisa render dihapus, lalu folder video yang lebih tua dari `OUT_KEEP_DAYS` hari (default 14)
+dibuang file beratnya (suara, foto, video, cover). `script.json`, `review.md`, `research.md`,
+`caption.txt`, dan `credits.md` tetap disimpan sebagai arsip. Video lama tetap ada di Telegram;
+`/render` ulang folder yang sudah dibersihkan akan membuat suara baru (berbayar).
+Kuota menit Actions gratis terbatas per bulan; satu video ±30 detik kira-kira 5–10 menit runner.
+
 ## Isi folder hasil (`out/<tanggal-slug>/`)
 
 | File | Isi |
