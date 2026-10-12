@@ -1,7 +1,7 @@
 // Skema naskah video. Dipakai sebagai structured output Claude dan sebagai
 // kontrak data untuk template render (template/index.html).
 
-export const SCENE_TYPES = ['hook', 'statement', 'photo', 'compare', 'list', 'timeline', 'level', 'cta'];
+export const SCENE_TYPES = ['hook', 'statement', 'photo', 'compare', 'list', 'timeline', 'level', 'cta', 'section', 'price', 'receipt'];
 export const CUE_TARGETS = ['kicker', 'headline', 'highlight', 'badge', 'photo', 'item0', 'item1', 'item2'];
 
 const str = (description) => ({ type: 'string', description });
@@ -30,7 +30,7 @@ const scene = {
     highlight: str('Bagian yang ditekankan (merah, besar).'),
     badge: str('Chip/label/bubble: tanggal, level (mis. "N5"), atau teks CTA (mis. Komen "N5" 👇).'),
     stamp: str('hook: teks Jepang pendek untuk cap di foto (mis. 技能実習). Boleh kosong.'),
-    items: { type: 'array', items: item, description: 'compare: tepat 2 (lama lalu baru). list: 2-3. timeline: tepat 2 (awal lalu tujuan). Tipe lain: kosong.' },
+    items: { type: 'array', items: item, description: 'compare: tepat 2 (lama lalu baru). list: 2-3. timeline: tepat 2 (awal lalu tujuan). receipt: 3-10 (label = komponen, sub = nilai). Tipe lain: kosong.' },
     photo_query: str('Kata kunci foto stok (bahasa Inggris, spesifik, mis. "japan factory worker"). Kosongkan untuk statement/cta.'),
     cues: {
       type: 'array',
@@ -48,9 +48,12 @@ const scene = {
 export const SCRIPT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['title', 'slug', 'scenes', 'caption', 'pinned_comment', 'facts', 'sources'],
+  required: ['title', 'slug', 'layout', 'title_bar', 'hook_bar', 'scenes', 'caption', 'pinned_comment', 'facts', 'sources'],
   properties: {
     title: str('Judul internal video.'),
+    layout: { type: 'string', enum: ['fyp', 'klasik'], description: 'fyp = gaya video yang terbukti masuk FYP (default). klasik = template lama berlatar kertas.' },
+    title_bar: str('fyp: judul di kotak merah atas, tampil sepanjang video. 2 baris dipisah \\n, tiap baris ≤ 30 karakter. klasik: kosong.'),
+    hook_bar: str('fyp: hook di kotak putih bawah, tampil sepanjang video. 2 baris dipisah \\n, tiap baris ≤ 26 karakter. klasik: kosong.'),
     slug: str('Nama folder: huruf kecil, angka, tanda hubung.'),
     scenes: { type: 'array', items: scene },
     caption: str('Caption TikTok, PENDEK (1-2 kalimat + 4-6 hashtag).'),

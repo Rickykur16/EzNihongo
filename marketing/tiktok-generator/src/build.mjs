@@ -103,16 +103,24 @@ export async function prepare(dir, { force = false } = {}) {
   }
   if (credits.length) await fs.writeFile(path.join(dir, 'credits.md'), `# Foto stok\n\n${credits.join('\n')}\n`);
   await fs.writeFile(path.join(dir, 'caption.txt'), `${script.caption}\n\nKomentar sematan: ${script.pinned_comment}\n`);
-  return { script, scenes, audioPath };
+  return { script, scenes, audioPath, meta: specMeta(script) };
 }
+
+// Data tingkat video untuk template (gaya + teks bar atas/bawah template fyp).
+// Naskah lama tanpa field ini tetap memakai template klasik.
+export const specMeta = (script) => ({
+  layout: script.layout === 'fyp' ? 'fyp' : 'klasik',
+  title_bar: script.title_bar || '',
+  hook_bar: script.hook_bar || '',
+});
 
 // Render di mesin ini (berat: Chromium per frame + x264). Untuk VPS kecil pakai
 // render GitHub Actions (lihat remote.mjs).
 export async function build(dir, opts = {}) {
-  const { scenes, audioPath } = await prepare(dir, opts);
+  const { scenes, audioPath, meta } = await prepare(dir, opts);
   console.log('▶ Render…');
   const outPath = path.join(dir, 'video.mp4');
-  const { total } = await renderVideo({ spec: { scenes }, workDir: dir, audioPath, outPath });
+  const { total } = await renderVideo({ spec: { ...meta, scenes }, workDir: dir, audioPath, outPath });
   console.log(`✔ Selesai: ${outPath} (${total.toFixed(1)} dtk). Cover: ${path.join(dir, 'cover.png')}`);
   return outPath;
 }

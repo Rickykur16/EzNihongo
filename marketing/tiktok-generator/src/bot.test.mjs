@@ -107,3 +107,22 @@ test('/topik tanpa isi dijawab petunjuk dan tidak menjalankan riset', async () =
   assert.equal(sent.length, 2);
   for (const s of sent) assert.match(s.text, /\/topik <topik bebas>/);
 });
+
+test('/hasil teks dicatat ke out/results.json dan dijawab', async () => {
+  const cwd = process.cwd();
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'bot-hasil-'));
+  process.chdir(tmp);
+  try {
+    await fs.mkdir('out');
+    await fs.writeFile('out/history.json', JSON.stringify([{ title: 'Biaya TG mandiri' }]));
+    sent.length = 0;
+    await handle(msg('/hasil 24rb tayangan, 31% ditonton, 973 simpan'));
+    const saved = JSON.parse(await fs.readFile('out/results.json', 'utf8'));
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].video, 'Biaya TG mandiri');
+    assert.match(saved[0].summary, /973 simpan/);
+    assert.match(sent.at(-1).text, /Hasil dicatat/);
+    await handle(msg('/hasil'));
+    assert.match(sent.at(-1).text, /Pakai: \/hasil/);
+  } finally { process.chdir(cwd); }
+});

@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { ask, textOf } from './plan.mjs';
+import { loadGuidance } from './guidance.mjs';
 
 export const IDEAS_SCHEMA = {
   type: 'object',
@@ -33,7 +34,7 @@ export const IDEAS_SCHEMA = {
 const IDEAS_SYSTEM = `Kamu ahli strategi konten TikTok untuk EzNihongo, platform belajar bahasa Jepang (kelas N5 & N4) untuk orang Indonesia.
 Audiens: orang Indonesia 18-35 tahun yang ingin kerja/kuliah di Jepang (SSW/Tokutei Ginou, Ikusei Shūrō, magang, JLPT/JFT).
 
-Tugas: riset dengan web search lalu usulkan 5 ide video pendek (25-35 detik) untuk minggu ini.
+Tugas: riset dengan web search lalu usulkan 5 ide video pendek untuk minggu ini (durasi & format mengikuti catatan tim di bawah).
 
 Yang terbukti bekerja di akun ini:
 - Video berita "Bank Kagawa (Jepang) wawancara pekerja di Jakarta & Solo" masuk FYP: 8,5 ribu tayangan, 76 disimpan, 51 dibagikan → berita konkret + relevan langsung bagi pencari kerja ke Jepang.
@@ -54,11 +55,12 @@ export async function ideas({ outRoot = 'out' } = {}) {
   const historyFile = path.join(outRoot, 'history.json');
   const history = JSON.parse(await fs.readFile(historyFile, 'utf8').catch(() => '[]'));
   const today = new Date().toISOString().slice(0, 10);
+  const system = IDEAS_SYSTEM + await loadGuidance(outRoot);
 
   console.log('▶ Riset ide…');
   const research = await ask(client, {
     role: 'research',
-    system: IDEAS_SYSTEM,
+    system,
     tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 12 }],
     messages: [{ role: 'user', content: `Tanggal hari ini: ${today}\nSudah pernah dibuat:\n${history.map((h) => `- ${h.title}`).join('\n') || '- (belum ada)'}\n\nRiset dulu, lalu tulis catatan singkat kandidat ide beserta sumbernya.` }],
   });
@@ -66,7 +68,7 @@ export async function ideas({ outRoot = 'out' } = {}) {
 
   const out = await ask(client, {
     role: 'research',
-    system: IDEAS_SYSTEM,
+    system,
     output_config: { effort: 'high', format: { type: 'json_schema', schema: IDEAS_SCHEMA } },
     messages: [{ role: 'user', content: `Tanggal hari ini: ${today}\n\nCatatan riset:\n${notes}\n\nPilih 5 ide terbaik.` }],
   });

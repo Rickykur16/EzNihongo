@@ -46,6 +46,27 @@ Tidak ada jadwal otomatis: riset hanya berjalan bila disuruh, jadi biaya API han
 
 Ide yang sudah dibuat dicatat di `out/history.json` supaya riset berikutnya tidak mengulang.
 
+## Agen yang belajar dari hasil video
+
+- **Catatan tim** `marketing/catatan-video-tiktok.md` (di git) disisipkan ke prompt riset ide (`/ide`) dan
+  penulisan naskah (`/buat`, `/topik`). Pelajaran baru cukup ditulis ke file itu lewat PR, tanpa mengubah kode.
+  Untuk format (hook, durasi, struktur) catatan menang atas aturan umum di prompt; aturan kejujuran tidak pernah.
+- **`/hasil`** di Telegram mencatat performa video ke `out/results.json` (hanya di VPS, tidak di git):
+  - teks: `/hasil 24rb tayangan, 31% ditonton, 973 simpan, banyak keluar di detik 2`
+  - atau kirim **screenshot analitik TikTok dengan caption `/hasil`**; Claude membaca angkanya.
+  12 hasil terakhir ikut disisipkan ke prompt ide & naskah. Video yang dimaksud = video terakhir yang
+  dibuat, atau tulis judulnya setelah `/hasil` di caption screenshot.
+
+## Gaya "fyp" (default) dan "klasik"
+
+Naskah memilih `layout`:
+
+- **`fyp`** (`template/fyp.html`): gaya video "Biaya TG mandiri" yang masuk FYP. Kanvas hitam, `title_bar`
+  di kotak merah atas, panel 16:9, `hook_bar` di kotak putih bawah, foto hitam-putih, teks kapital + label
+  merah. Frame pertama sudah berisi angka/klaim hook. Tipe adegan tambahan: `section` (kartu kertas
+  "BAGIAN 01 / 05"), `price` (angka besar yang dihitung naik), `receipt` (struk rekap + total).
+- **`klasik`** (`template/index.html`): template lama berlatar kertas. Naskah lama tanpa `layout` tetap klasik.
+
 ## Render di GitHub Actions (supaya VPS tidak berat)
 
 Render (Chromium per frame + x264) adalah bagian paling berat dan bisa membuat
@@ -111,7 +132,7 @@ Kalau model tidak mendukung timestamp, suara dibuat per adegan lalu disambung.
 
 ## Jenis adegan (template)
 
-`hook`, `statement`, `photo`, `compare`, `list`, `timeline`, `level`, `cta`.
+`hook`, `statement`, `photo`, `compare`, `list`, `timeline`, `level`, `cta`, dan (gaya fyp) `section`, `price`, `receipt`.
 Lihat `src/schema.mjs` untuk field tiap adegan dan `template/index.html` untuk tampilannya.
 
 ## Tes

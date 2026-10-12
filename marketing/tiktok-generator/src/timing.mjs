@@ -7,6 +7,14 @@
 export const SEP = '\n';
 const LEAD = 0.12;   // adegan mulai sedikit sebelum kata pertamanya terdengar
 const TAIL = 0.9;    // jeda setelah kata terakhir sebelum video selesai
+// Judul adegan wajib sudah tampil di awal adegan. Kalau cue-nya menunggu kata yang
+// baru diucapkan beberapa detik kemudian, layar kosong selama itu (terjadi di video
+// Ikusei Shūrō: ±3 dtk layar hanya berisi logo). Elemen lain tetap muncul sesuai cue.
+const OPENER_MAX = { kicker: 0.3, headline: 0.5 };
+const clampOpeners = (cues) => {
+  for (const [k, max] of Object.entries(OPENER_MAX)) if (k in cues) cues[k] = Math.min(cues[k], max);
+  return cues;
+};
 
 export function joinVo(scenes) {
   const offsets = [];
@@ -45,7 +53,7 @@ export function sceneTimings(scenes, alignment) {
       if (at < 0) continue; // frasa tidak ditemukan -> template memakai waktu bawaan
       cues[target] = Math.max(0, firstSpoken(offsets[i] + at, offsets[i] + s.vo.length) - start - 0.05);
     }
-    return { start, dur: +(end - start).toFixed(3), cues };
+    return { start, dur: +(end - start).toFixed(3), cues: clampOpeners(cues) };
   });
 }
 
@@ -60,7 +68,7 @@ export function timingsFromDurations(scenes, durations) {
       const at = s.vo.toLowerCase().indexOf(String(phrase).toLowerCase());
       if (at >= 0) cues[target] = (at / Math.max(1, s.vo.length)) * durations[i];
     }
-    const out = { start: t, dur: +dur.toFixed(3), cues };
+    const out = { start: t, dur: +dur.toFixed(3), cues: clampOpeners(cues) };
     t += dur;
     return out;
   });

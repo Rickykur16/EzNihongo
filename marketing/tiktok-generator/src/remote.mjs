@@ -33,7 +33,7 @@ const mapPhotos = (scenes, fn) => scenes.map((sc) => ({
   items: (sc.items || []).map((it) => ({ ...it, photo: it.photo ? fn(it.photo) : '' })),
 }));
 
-export async function writeJob(dir, { scenes, audioPath }) {
+export async function writeJob(dir, { scenes, audioPath, meta = {} }) {
   const job = path.join(dir, 'render-job');
   await fs.rm(job, { recursive: true, force: true });
   await fs.mkdir(path.join(job, 'photos'), { recursive: true });
@@ -44,7 +44,7 @@ export async function writeJob(dir, { scenes, audioPath }) {
   });
   for (const [abs, name] of copied) await fs.copyFile(abs, path.join(job, name));
   await fs.copyFile(audioPath, path.join(job, 'vo.mp3'));
-  await fs.writeFile(path.join(job, 'spec.json'), JSON.stringify({ scenes: rel }));
+  await fs.writeFile(path.join(job, 'spec.json'), JSON.stringify({ ...meta, scenes: rel }));
   const tgz = path.join(dir, 'render-job.tgz');
   execFileSync('tar', ['-czf', tgz, '-C', job, '.']);
   await fs.rm(job, { recursive: true, force: true });
@@ -59,7 +59,7 @@ export async function readJob(jobDir) {
     if (!abs.startsWith(root + path.sep)) throw new Error(`Path foto di luar folder job: ${rel}`);
     return abs;
   });
-  return { spec: { scenes }, audioPath: path.join(root, 'vo.mp3') };
+  return { spec: { ...spec, scenes }, audioPath: path.join(root, 'vo.mp3') };
 }
 
 export async function dispatchRender(job) {

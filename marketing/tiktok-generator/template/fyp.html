@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>EzNihongo TikTok (gaya FYP)</title>
+<link rel="stylesheet" href="fonts.css">
+<!--
+  Template "fyp": gaya video "Biaya TG mandiri" yang masuk FYP (10 Okt 2026, lihat
+  marketing/catatan-video-tiktok.md & marketing/biaya-ssw-src). Kanvas hitam, judul
+  di kotak merah atas (spec.title_bar), panel 16:9 di tengah, kotak putih hook di bawah
+  (spec.hook_bar). Kontrak data sama dengan template/index.html (window.__SPEC, layout(),
+  render(t), TOTAL) ditambah tipe adegan section/price/receipt.
+  Aturan dari analitik: frame 0 sudah penuh (bar + isi hook tampil tanpa animasi masuk).
+-->
+<style>
+  :root{--red:#E0202F;--ink:#141414;--paper:#ecebe6}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:1080px;height:1920px;overflow:hidden;background:#000}
+  body{font-family:'Noto Sans JP','Noto Sans',sans-serif;color:#fff}
+  #stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:#000}
+  .bar{position:absolute;left:40px;right:40px;text-align:center}
+  .bar span{display:inline-block;font-weight:900;font-size:56px;line-height:1.14;padding:10px 26px 12px;border-radius:12px;text-transform:uppercase;white-space:pre-line}
+  #top{top:395px}#top span{background:var(--red);color:#fff}
+  #bot{top:1338px}#bot span{background:#fff;color:#000}
+  #panel{position:absolute;left:0;top:650px;width:1080px;height:608px;overflow:hidden;background:#151515}
+  #prog{position:absolute;left:0;top:1258px;height:6px;background:var(--red);width:0}
+  .scene{position:absolute;inset:0;opacity:0;overflow:hidden}
+  .cam{position:absolute;inset:0}
+  .dark{background:radial-gradient(ellipse 85% 85% at 50% 45%,#2a2a2a 0%,#1a1a1a 60%,#0e0e0e 100%)}
+  .light{background:radial-gradient(ellipse 90% 90% at 50% 45%,#f0efec 0%,#e2e0dc 70%,#cfccc6 100%);color:var(--ink)}
+  .bgph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.05) brightness(.5)}
+  .shade{position:absolute;inset:0;background:radial-gradient(ellipse 80% 80% at 50% 45%,rgba(0,0,0,.05),rgba(0,0,0,.65))}
+  .c{position:absolute;left:60px;right:60px;top:0;bottom:0;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:18px}
+  .lbl{display:inline-block;background:var(--red);color:#fff;font-weight:900;text-transform:uppercase;font-size:36px;line-height:1.12;padding:5px 14px 7px;white-space:nowrap}
+  .big{font-weight:900;line-height:1;letter-spacing:-.02em;white-space:nowrap;text-shadow:0 6px 26px rgba(0,0,0,.45)}
+  .light .big{text-shadow:none}
+  .sm{font-weight:700;font-size:32px;line-height:1.2;color:#e6e6e6}
+  .light .sm{color:#3a3a3a}
+  .num{font-variant-numeric:tabular-nums}
+  .w{display:inline-block}
+  .row{display:flex;align-items:center;gap:24px;width:900px;padding:10px 0;border-bottom:2px solid rgba(255,255,255,.12);text-align:left}
+  .row .mk{width:64px;height:64px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:34px}
+  .row .th{width:96px;height:96px;flex:none;overflow:hidden;border-radius:10px;position:relative}
+  .row .th img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1)}
+  .row .l{font-weight:900;font-size:46px;line-height:1.1}
+  .row .s{font-weight:700;font-size:32px;color:#bdbdbd}
+  .note{position:absolute;left:150px;top:96px;width:780px;height:410px;background:linear-gradient(180deg,#f1f0ec,#e3e1db);box-shadow:0 30px 60px -20px rgba(0,0,0,.8);transform:rotate(-1.2deg);color:#262626}
+  .note:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(180deg,transparent 0 46px,rgba(0,0,0,.05) 46px 48px)}
+  .note .hd{position:absolute;left:56px;top:54px;font-family:'Courier Prime',monospace;font-weight:700;font-size:26px;color:var(--red);letter-spacing:.06em}
+  .note .rule{position:absolute;left:56px;right:56px;top:96px;height:2px;background:#9c9a94}
+  .note .ttl{position:absolute;left:56px;right:40px;top:140px;font-family:'Courier Prime',monospace;font-weight:700;font-size:66px;line-height:1.08;text-transform:uppercase}
+  .tape{position:absolute;left:-26px;top:22px;width:130px;height:40px;background:rgba(230,226,212,.75);transform:rotate(-24deg);box-shadow:0 2px 6px rgba(0,0,0,.2)}
+  .rrow{display:flex;justify-content:space-between;gap:20px;font-family:'Courier Prime',monospace;font-weight:700;font-size:26px;line-height:34px;border-bottom:1px dashed #b9b6ae}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="bar" id="top"><span></span></div>
+  <div id="panel"></div>
+  <div id="prog"></div>
+  <div class="bar" id="bot"><span></span></div>
+</div>
+<script>
+const SPEC = window.__SPEC;
+const $ = (q, r = document) => r.querySelector(q);
+const $$ = (q, r = document) => [...r.querySelectorAll(q)];
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const P = (t, a, b) => clamp((t - a) / (b - a));
+const eOut = x => 1 - Math.pow(1 - x, 3);
+const eOut5 = x => 1 - Math.pow(1 - x, 5);
+const eInOut = x => x < .5 ? 4*x*x*x : 1 - Math.pow(-2*x + 2, 3) / 2;
+const eBack = x => { const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const lerp = (a, b, k) => a + (b - a) * k;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const words = (s) => esc(s).split(' ').map(w => `<span class="w">${w}</span>`).join(' ');
+
+// Perkecil font sampai lebarnya muat.
+function fit(el, maxWidth = 960) {
+  if (!el) return;
+  let size = parseFloat(getComputedStyle(el).fontSize);
+  while (size > 28 && el.scrollWidth > maxWidth) { size -= 4; el.style.fontSize = size + 'px'; }
+}
+// Kemunculan: pop (skala + naik), per kata, dan hitung naik untuk angka.
+function pop(el, t, at, dur = .28) {
+  if (!el) return;
+  const k = P(t, at, at + dur);
+  el.style.opacity = clamp(k * 2.2);
+  el.style.scale = lerp(.82, 1, eBack(k));
+}
+function wordsIn(el, t, at) {
+  if (!el) return;
+  $$('.w', el).forEach((w, i) => {
+    const k = P(t, at + i * .09, at + i * .09 + .24);
+    w.style.opacity = clamp(k * 2.4); w.style.transform = `translateY(${(1 - eOut5(k)) * 22}px) scale(${lerp(.8, 1, eBack(k))})`;
+  });
+}
+// "Rp1.650.000" / "Rp220rb–740rb" / "± Rp1,1 jt" → angka dihitung naik, sisa teks tetap.
+function counter(el, t, at) {
+  if (!el) return;
+  const full = el.dataset.full ?? (el.dataset.full = el.textContent);
+  const k = eOut(P(t, at, at + .9));
+  el.textContent = k >= 1 ? full : full.replace(/\d[\d.]*(,\d+)?/g, (m) => {
+    const dec = m.includes(',') ? m.split(',')[1].length : 0;
+    const n = Number(m.replace(/\./g, '').replace(',', '.'));
+    if (!isFinite(n)) return m;
+    const v = n * k;
+    return dec ? v.toFixed(dec).replace('.', ',') : Math.round(v).toLocaleString('id-ID');
+  });
+}
+function typeIn(el, t, at, cps = 32) {
+  if (!el) return;
+  const full = el.dataset.full ?? (el.dataset.full = el.textContent);
+  const n = Math.floor(clamp((t - at) * cps, 0, full.length));
+  el.textContent = full.slice(0, n) + (n < full.length && t >= at ? '|' : '');
+}
+const bg = (sc) => sc.photo
+  ? `<img class="bgph" src="${esc(sc.photo)}"><div class="shade"></div>`
+  : '';
+const CHECK = '<svg width="38" height="38" viewBox="0 0 64 64"><path d="M12 34 L26 48 L52 16" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const CROSS = '<svg width="34" height="34" viewBox="0 0 60 60"><path d="M12 12 L48 48 M48 12 L12 48" stroke="#8a8378" stroke-width="10" stroke-linecap="round"/></svg>';
+
+// ---- builder per tipe adegan; tiap builder mengembalikan update(t, d, cue) ----
+const BUILD = {
+  hook(sc, root) { // frame pertama sudah penuh: tanpa animasi masuk
+    root.innerHTML = `${bg(sc)}<div class="c">
+      ${sc.kicker ? `<span class="lbl" data-k="kicker">${esc(sc.kicker)}</span>` : ''}
+      ${sc.highlight ? `<div class="big num" data-k="hi" style="font-size:150px">${esc(sc.highlight)}</div>` : ''}
+      ${sc.headline ? `<div class="sm" data-k="head" style="font-size:40px">${esc(sc.headline)}</div>` : ''}
+      ${sc.badge ? `<span class="lbl" data-k="badge" style="font-size:44px">${esc(sc.badge)}</span>` : ''}</div>`;
+    fit($('[data-k=hi]', root));
+    return (t, d) => {
+      const img = $('.bgph', root); if (img) img.style.transform = `scale(${lerp(1.12, 1.02, P(t, 0, d))})`;
+      const hi = $('[data-k=hi]', root); if (hi) hi.style.translate = `${t < .9 ? Math.sin(t * 50) * 8 * (1 - t / .9) : 0}px 0`;
+    };
+  },
+  statement(sc, root) {
+    root.innerHTML = `${bg(sc)}<div class="c">
+      ${sc.kicker ? `<div class="sm" data-k="kicker">${esc(sc.kicker)}</div>` : ''}
+      ${sc.headline ? `<div class="big" data-k="head" style="font-size:104px">${words(sc.headline)}</div>` : ''}
+      ${sc.highlight ? `<span class="lbl" data-k="hi" style="font-size:60px">${esc(sc.highlight)}</span>` : ''}</div>`;
+    fit($('[data-k=head]', root));
+    return (t, d, cue) => {
+      pop($('[data-k=kicker]', root), t, cue('kicker', .05));
+      wordsIn($('[data-k=head]', root), t, cue('headline', .3));
+      pop($('[data-k=hi]', root), t, cue('highlight', .8));
+    };
+  },
+  photo(sc, root) {
+    root.innerHTML = `${bg(sc)}<div class="c">
+      ${sc.kicker ? `<div class="sm" data-k="kicker">${esc(sc.kicker)}</div>` : ''}
+      ${sc.headline ? `<div class="big" data-k="head" style="font-size:96px">${words(sc.headline)}</div>` : ''}
+      ${sc.highlight ? `<span class="lbl" data-k="hi" style="font-size:54px">${esc(sc.highlight)}</span>` : ''}
+      ${sc.badge ? `<span class="lbl" data-k="badge" style="background:#fff;color:#000">${esc(sc.badge)}</span>` : ''}</div>`;
+    fit($('[data-k=head]', root));
+    return (t, d, cue) => {
+      const img = $('.bgph', root); if (img) img.style.transform = `scale(${lerp(1.14, 1.02, eOut(P(t, 0, d)))})`;
+      pop($('[data-k=kicker]', root), t, cue('kicker', .05));
+      wordsIn($('[data-k=head]', root), t, cue('headline', .2));
+      pop($('[data-k=hi]', root), t, cue('highlight', .7));
+      pop($('[data-k=badge]', root), t, cue('badge', 1.1));
+    };
+  },
+  compare(sc, root) {
+    const [a, b] = sc.items;
+    root.innerHTML = `<div class="c" style="gap:14px">
+      ${sc.headline ? `<span class="lbl" data-k="head">${esc(sc.headline)}</span>` : ''}
+      <div class="row" data-k="i0"><div class="mk" style="background:#3a3a3a">${CROSS}</div><div><div class="l" style="color:#9a9a9a;text-decoration:line-through">${esc(a?.label)}</div><div class="s">${esc(a?.sub)}</div></div></div>
+      <div class="row" data-k="i1" style="border:0"><div class="mk" style="background:var(--red)">${CHECK}</div><div><div class="l">${esc(b?.label)}</div><div class="s">${esc(b?.sub)}</div></div></div></div>`;
+    return (t, d, cue) => {
+      pop($('[data-k=head]', root), t, cue('headline', .05));
+      pop($('[data-k=i0]', root), t, cue('item0', .3));
+      pop($('[data-k=i1]', root), t, cue('item1', Math.min(2.5, d * .5)));
+    };
+  },
+  list(sc, root) {
+    root.innerHTML = `<div class="c" style="gap:8px">
+      ${sc.headline ? `<span class="lbl" data-k="head" style="margin-bottom:10px">${esc(sc.highlight ? sc.highlight + ' ' : '')}${esc(sc.headline)}</span>` : ''}
+      ${sc.items.map((it, i) => `<div class="row" data-k="i${i}">${it.photo ? `<div class="th"><img src="${esc(it.photo)}"></div>` : `<div class="mk" style="background:var(--red)">${i + 1}</div>`}
+        <div><div class="l">${esc(it.label)}</div><div class="s">${esc(it.sub)}</div></div></div>`).join('')}</div>`;
+    return (t, d, cue) => {
+      pop($('[data-k=head]', root), t, cue('headline', .05));
+      sc.items.forEach((_, i) => pop($(`[data-k=i${i}]`, root), t, cue('item' + i, .5 + i * 1.1)));
+    };
+  },
+  timeline(sc, root) { // angka/titik geser: item0 → panah → item1 (seperti "2027 → 2028")
+    const [a, b] = sc.items;
+    root.innerHTML = `<div data-k="strip" style="position:absolute;left:0;top:0;width:2160px;height:608px">
+      ${sc.headline ? `<div class="c" style="width:1080px;left:0;right:auto;justify-content:flex-start;padding-top:60px"><span class="lbl" data-k="head">${esc(sc.headline)}</span></div>` : ''}
+      <div class="c" style="width:1080px;left:0;right:auto"><div class="sm">${esc(a?.sub)}</div><div class="big num" data-k="a" style="font-size:150px">${esc(a?.label)}</div></div>
+      <svg style="position:absolute;left:820px;top:30px;width:520px;height:160px;overflow:visible" viewBox="0 0 400 120"><path data-k="arrow" d="M10 100 C120 0 280 0 390 70 M360 40 L392 72 L350 82" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1"/></svg>
+      <div class="c" style="width:1080px;left:1080px;right:auto"><div class="sm">${esc(b?.sub)}</div><div class="big num" data-k="b" style="font-size:150px;color:var(--red)">${esc(b?.label)}</div></div></div>`;
+    fit($('[data-k=a]', root)); fit($('[data-k=b]', root));
+    return (t, d, cue) => {
+      pop($('[data-k=head]', root), t, cue('headline', .05));
+      pop($('[data-k=a]', root), t, cue('item0', .2));
+      const at = cue('item1', Math.min(2.2, d * .5));
+      $('[data-k=arrow]', root).style.strokeDashoffset = 1 - eOut(P(t, at - .6, at + .1));
+      const m = eInOut(P(t, at - .2, at + .5));
+      const s = $('[data-k=strip]', root); s.style.transform = `translateX(${-m * 1080}px)`; s.style.filter = `blur(${Math.sin(Math.PI * m) * 8}px)`;
+    };
+  },
+  level(sc, root) {
+    const it = sc.items[0] || {};
+    root.innerHTML = `<div class="c">
+      ${sc.kicker ? `<div class="sm" data-k="kicker">${esc(sc.kicker)}</div>` : ''}
+      <div class="big" data-k="badge" style="font-size:190px;color:var(--red)">${esc(sc.badge)}</div>
+      ${sc.highlight ? `<span class="lbl" data-k="hi" style="font-size:48px">${esc(sc.highlight)}</span>` : ''}
+      <div class="sm" data-k="i0">${esc([it.label, it.sub].filter(Boolean).join(' · '))}</div></div>`;
+    return (t, d, cue) => {
+      pop($('[data-k=kicker]', root), t, cue('kicker', .05));
+      pop($('[data-k=badge]', root), t, cue('badge', .4));
+      pop($('[data-k=hi]', root), t, cue('highlight', 1));
+      pop($('[data-k=i0]', root), t, cue('item0', 1.5));
+    };
+  },
+  section(sc, root) { // kartu kertas mesin ketik: "BAGIAN 01 / 05" + judul
+    root.innerHTML = `<div class="note"><div class="tape"></div><div class="hd">${esc(sc.kicker)}</div><div class="rule"></div>
+      <div class="ttl" data-k="ttl">${esc(sc.headline)}</div></div>`;
+    return (t) => typeIn($('[data-k=ttl]', root), t, .06);
+  },
+  price(sc, root) { // label merah + angka besar yang dihitung naik + keterangan
+    root.innerHTML = `${bg(sc)}<div class="c">
+      ${sc.kicker ? `<span class="lbl" data-k="kicker">${esc(sc.kicker)}</span>` : ''}
+      <div class="big num" data-k="hi" style="font-size:140px">${esc(sc.highlight)}</div>
+      ${sc.headline ? `<div class="sm" data-k="head">${esc(sc.headline)}</div>` : ''}
+      ${sc.badge ? `<span class="lbl" data-k="badge" style="background:#fff;color:#000">${esc(sc.badge)}</span>` : ''}</div>`;
+    fit($('[data-k=hi]', root));
+    return (t, d, cue) => {
+      pop($('[data-k=kicker]', root), t, cue('kicker', .05));
+      const h = cue('highlight', .25); pop($('[data-k=hi]', root), t, h); counter($('[data-k=hi]', root), t, h);
+      pop($('[data-k=head]', root), t, cue('headline', h + .6));
+      pop($('[data-k=badge]', root), t, cue('badge', h + 1.4));
+    };
+  },
+  receipt(sc, root) { // struk: item (label … nilai) lalu TOTAL (badge)
+    root.innerHTML = `<div class="note" style="left:170px;top:22px;width:740px;height:566px"><div class="tape"></div>
+      <div class="hd" style="top:34px">${esc(sc.kicker || 'STRUK')}</div><div class="rule" style="top:74px"></div>
+      <div style="position:absolute;left:56px;right:56px;top:90px">
+        ${sc.items.map((it, i) => `<div class="rrow" data-k="i${i}"><span>${esc(it.label)}</span><span>${esc(it.sub)}</span></div>`).join('')}
+        ${sc.badge ? `<div class="rrow" data-k="tot" style="border:0;border-top:3px solid #262626;margin-top:8px;padding-top:6px;font-size:32px;line-height:40px"><span>TOTAL</span><span class="num" style="color:var(--red)">${esc(sc.badge)}</span></div>` : ''}
+      </div></div>`;
+    return (t, d, cue) => {
+      sc.items.forEach((_, i) => { const el = $(`[data-k=i${i}]`, root); const k = P(t, .2 + i * .12, .45 + i * .12); el.style.opacity = k; el.style.translate = `${(1 - eOut5(k)) * -14}px 0`; });
+      const tot = $('[data-k=tot]', root); const at = cue('badge', .4 + sc.items.length * .12);
+      if (tot) { tot.style.opacity = P(t, at, at + .2); counter($('.num', tot), t, at); }
+    };
+  },
+  cta(sc, root) {
+    root.innerHTML = `<div class="note" style="left:200px;top:40px;width:680px;height:260px"><div class="tape"></div><img src="logo_t.png" data-k="logo" style="position:absolute;left:140px;top:30px;width:400px"></div>
+      <div class="c" style="top:320px;justify-content:flex-start;gap:14px">
+        ${sc.headline ? `<div class="sm" data-k="head">${esc(sc.headline)}</div>` : ''}
+        ${sc.badge ? `<span class="lbl" data-k="badge" style="font-size:46px">${esc(sc.badge)}</span>` : ''}
+        ${sc.highlight ? `<div class="sm" data-k="hi">${esc(sc.highlight)}</div>` : ''}</div>`;
+    return (t, d, cue) => {
+      pop($('[data-k=logo]', root), t, .1);
+      pop($('[data-k=head]', root), t, cue('headline', .5));
+      pop($('[data-k=badge]', root), t, cue('badge', Math.min(1.6, d * .4)));
+      pop($('[data-k=hi]', root), t, cue('highlight', Math.min(2.2, d * .55)));
+    };
+  },
+};
+
+const scenes = SPEC.scenes;
+const START = []; let acc = 0; for (const s of scenes) { START.push(acc); acc += s.dur; }
+const TOTAL = acc; window.TOTAL = TOTAL;
+const updates = [];
+const roots = [];
+window.layout = () => {
+  $('#top span').textContent = SPEC.title_bar || '';
+  $('#bot span').textContent = SPEC.hook_bar || '';
+  $('#top').style.display = SPEC.title_bar ? '' : 'none';
+  $('#bot').style.display = SPEC.hook_bar ? '' : 'none';
+  ['#top span', '#bot span'].forEach((q) => fit($(q), 1000));
+  scenes.forEach((sc) => {
+    const root = document.createElement('section');
+    root.className = 'scene dark';
+    const cam = document.createElement('div'); cam.className = 'cam'; root.appendChild(cam);
+    $('#panel').appendChild(root); roots.push({ root, cam });
+    updates.push((BUILD[sc.type] || BUILD.statement)(sc, cam));
+  });
+};
+window.render = (T) => {
+  let i = START.findIndex((s, k) => T >= s && T < s + scenes[k].dur);
+  if (i < 0) i = scenes.length - 1;
+  const lt = T - START[i], d = scenes[i].dur;
+  const cues = scenes[i].cues || {};
+  const cue = (name, def) => Math.min(name in cues ? cues[name] : def, Math.max(0, d - .35));
+  roots.forEach(({ root, cam }, k) => {
+    if (k !== i) { root.style.opacity = 0; return; }
+    root.style.opacity = 1;
+    // potongan cepat: geser + blur dari kanan, lalu dorong pelan (adegan pertama tanpa masuk)
+    const pin = i === 0 ? 1 : eOut5(P(lt, 0, .3));
+    cam.style.transform = `translateX(${(1 - pin) * 170}px) scale(${lerp(1.06, 1, pin) * lerp(1, 1.03, P(lt, 0, d))})`;
+    cam.style.filter = pin < 1 ? `blur(${(1 - pin) * 10}px)` : '';
+  });
+  updates[i](lt, d, cue);
+  $('#prog').style.width = (T / TOTAL * 100) + '%';
+};
+</script>
+</body>
+</html>

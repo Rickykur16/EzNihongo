@@ -11,6 +11,8 @@ import { scan, scanMessage } from './scan.mjs';
 import { build, prepare } from './build.mjs';
 import { dispatchRender, jobName, remoteRenderEnabled, writeJob } from './remote.mjs';
 import { cleanAfterDelivery, pruneOld } from './cleanup.mjs';
+import { recordResult } from './guidance.mjs';
+import { summarizeScreenshot } from './analytics.mjs';
 import { adminChat, downloadFile, getUpdates, sendFile, sendText, telegramEnabled } from './telegram.mjs';
 import { photoSlots, photoStatus, pickSlot } from './photoslots.mjs';
 
@@ -92,22 +94,44 @@ const COMMANDS = {
     await build(dir);
     await deliver(dir);
   },
+  // Hasil video yang sudah tayang → out/results.json → dibaca agen saat riset ide & menulis naskah.
+  async hasil(arg) {
+    const video = await lastVideoTitle();
+    const n = await recordResult(OUT, { video, summary: arg });
+    return sendText(`📈 Hasil dicatat untuk "${video || 'video terakhir'}" (${n} catatan). Ide & naskah berikutnya ikut memakai data ini.`);
+  },
   async berita() {
     await sendText('🔎 Cek berita besar 48 jam terakhir (1–3 menit)…');
     const items = await scan({ outRoot: OUT });
     await sendText(items.length ? scanMessage(items) : '✅ Tidak ada berita besar baru dalam 48 jam terakhir.');
   },
   async status() {
-    return sendText(busy ? `⏳ Sedang: ${busy}` : '✅ Siap. Perintah: /ide, /berita, /buat <n>, /topik <teks>, /foto, /render — kirim foto ke sini untuk naskah terakhir');
+    return sendText(busy ? `⏳ Sedang: ${busy}` : '✅ Siap. Perintah: /ide, /berita, /buat <n>, /topik <teks>, /foto, /render, /hasil <angka> (atau screenshot analitik ber-caption /hasil) — kirim foto ke sini untuk naskah terakhir');
   },
 };
 COMMANDS.start = COMMANDS.bantuan = COMMANDS.help = COMMANDS.status;
 
 // Cek format argumen SEBELUM bot ditandai sibuk, supaya salah ketik tidak mengunci bot.
 const USAGE = {
+  hasil: (a) => (a.length >= 5 ? null : 'Pakai: /hasil <angka analitik>, mis. /hasil 24rb tayangan, 31% ditonton, 973 simpan, banyak keluar di detik 2\nAtau kirim screenshot analitik dengan caption /hasil'),
   buat: (a) => (/^\d+$/.test(a) && Number(a) >= 1 ? null : 'Pakai: /buat <nomor ide>, mis. /buat 2'),
   topik: (a) => (a.length >= 5 ? null : 'Pakai: /topik <topik bebas>, mis. /topik jadwal JLPT Desember 2026 di Indonesia'),
 };
+
+async function lastVideoTitle() {
+  const history = JSON.parse(await fs.readFile(path.join(OUT, 'history.json'), 'utf8').catch(() => '[]'));
+  return history.at(-1)?.title || '';
+}
+
+async function saveResultScreenshot(msg) {
+  const fileId = msg.photo ? msg.photo[msg.photo.length - 1].file_id : msg.document.file_id;
+  const { data, ext } = await downloadFile(fileId);
+  await sendText('🔎 Membaca screenshot analitik…');
+  const summary = await summarizeScreenshot(data, ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg');
+  const video = String(msg.caption || '').replace(/^\/hasil(@\w+)?/i, '').trim() || await lastVideoTitle();
+  const n = await recordResult(OUT, { video, summary });
+  return sendText(`📈 Dicatat (${n}) untuk "${video || 'video terakhir'}":\n${summary}`);
+}
 
 async function savePhoto(msg) {
   const dir = await latest('latest-plan.txt').catch(() => null);
@@ -129,17 +153,18 @@ export async function handle(msg) {
   if (String(msg.chat?.id) !== adminChat()) return; // abaikan orang lain
   const isImage = msg.photo?.length || /^image\//.test(msg.document?.mime_type || '');
   if (isImage) {
+    if (/^\/hasil\b/i.test(msg.caption || '')) return saveResultScreenshot(msg).catch((e) => sendText(`✖ Gagal membaca screenshot: ${e.message}`));
     if (busy) return sendText(`⏳ Masih mengerjakan: ${busy}. Kirim fotonya setelah selesai ya.`);
     return savePhoto(msg).catch((e) => sendText(`✖ Gagal menyimpan foto: ${e.message}`));
   }
   const m = /^\/(\w+)(?:@\w+)?\s*(.*)$/s.exec(msg.text || '');
-  if (!m || !COMMANDS[m[1]]) return sendText('Perintah: /ide, /berita, /buat <n>, /topik <teks>, /foto, /render, /status — atau kirim foto untuk naskah terakhir');
+  if (!m || !COMMANDS[m[1]]) return sendText('Perintah: /ide, /berita, /buat <n>, /topik <teks>, /foto, /render, /hasil <angka>, /status — atau kirim foto untuk naskah terakhir');
   const [, cmd, rawArg] = m;
   const arg = rawArg.trim();
   const wrong = USAGE[cmd]?.(arg);
   if (wrong) return sendText(wrong);
-  if (!['status', 'start', 'foto'].includes(cmd) && busy) return sendText(`⏳ Masih mengerjakan: ${busy}. Tunggu dulu ya.`);
-  if (['status', 'start', 'bantuan', 'help', 'foto'].includes(cmd)) return COMMANDS[cmd](arg).catch((e) => sendText(`✖ ${e.message}`));
+  if (!['status', 'start', 'foto', 'hasil'].includes(cmd) && busy) return sendText(`⏳ Masih mengerjakan: ${busy}. Tunggu dulu ya.`);
+  if (['status', 'start', 'bantuan', 'help', 'foto', 'hasil'].includes(cmd)) return COMMANDS[cmd](arg).catch((e) => sendText(`✖ ${e.message}`));
   busy = `/${cmd} ${arg}`.trim();
   // Dijalankan di latar supaya bot tetap menjawab /status.
   COMMANDS[cmd](arg.trim())

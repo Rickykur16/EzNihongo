@@ -81,3 +81,12 @@ test('modelConfig: riset memakai RESEARCH_MODEL bila ada, naskah selalu CONTENT_
   delete process.env.RESEARCH_MODEL;
   assert.throws(() => modelConfig('research'), /CONTENT_MODEL/);
 });
+
+test('judul adegan tidak menunggu kata yang diucapkan belakangan (layar kosong)', () => {
+  const sc = [{ vo: 'Jadi intinya, belajar bahasa itu bagian dari jalurnya.', cues: [
+    { target: 'headline', phrase: 'bagian dari jalurnya' }, { target: 'highlight', phrase: 'bagian dari jalurnya' }] }];
+  const t = sceneTimings(sc, fakeAlignment(joinVo(sc).text));
+  assert.ok(t[0].cues.headline <= 0.5, `judul muncul di ${t[0].cues.headline} dtk`);
+  assert.ok(t[0].cues.highlight > 1, 'elemen lain tetap ikut kata yang diucapkan');
+  assert.ok(timingsFromDurations(sc, [4])[0].cues.headline <= 0.5);
+});
