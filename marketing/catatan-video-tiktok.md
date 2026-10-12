@@ -81,6 +81,13 @@ Setelah detik 3, kurva retensi landai: orang yang lolos pembuka cenderung bertah
 - **Jelaskan jalurnya di frame kedua** (SSW / Tokutei Ginou, tanpa LPK). "Kerja di Jepang"
   saja terlalu luas: magang, Ryugaku, Gijinkoku biayanya beda.
 - **Selalu sebut syarat angka total:** lulus ujian sekali, belum bagasi, belum biaya belajar bahasa.
+- **Pakai istilah yang dikenal penonton, bukan nama resmi/singkatan.** Pemilik (12 Okt 2026):
+  "TITP itu kurang familiar". Calon pekerja menyebutnya **"magang Jepang"**. Judul, hook, dan
+  narasi pakai istilah awam; nama resmi cukup sekali sebagai teks kecil pendamping.
+  Contoh: "Program magang Jepang diganti mulai 2027" (kecil: TITP / Ginou Jisshu → Ikusei Shūrō
+  育成就労). Ikusei Shūrō juga asing: sebut "program pengganti magang" dulu, baru namanya.
+  Sama untuk istilah lain: SSW → "Tokutei Ginou / visa kerja berketerampilan", AP2LN, e-KTKLN, dst.
+  Uji: kalau orang yang belum pernah riset ke Jepang tidak paham kata itu, ganti.
 - **Kalimat pendek**, satu informasi per kalimat. Angka ditulis huruf ("tiga puluh ribu").
 - **Tanpa nada AI:** hindari em dash, titik koma, kalimat slogan berirama.
 
@@ -119,6 +126,8 @@ Setelah detik 3, kurva retensi landai: orang yang lolos pembuka cenderung bertah
 ## 7. Checklist sebelum posting
 
 - [ ] Frame 0 sudah menunjukkan klaim/angka utama, terbaca dalam 1 detik
+- [ ] Judul/hook pakai istilah awam ("magang Jepang", bukan "TITP")
+- [ ] Tidak ada frame kosong: tiap adegan sudah berisi judul sejak awal
 - [ ] Durasi ≤ 45 detik
 - [ ] Angka di hook = angka di akhir (tidak bertabrakan)
 - [ ] Jalur (SSW/Gijinkoku/dll.) disebut dalam 5 detik pertama
