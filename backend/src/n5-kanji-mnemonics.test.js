@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { n5KanjiSupportInventory } from '../content/n5-support/kanji-support.mjs';
+import { renderKanjiMemory } from '../content/n5-support/render-kanji-memory.mjs';
 
 const contentUrl = new URL('../content/n5-support/kanji-mnemonics.json', import.meta.url);
 const migrationUrl = new URL('../migrations/212_n5_visual_mnemonics.sql', import.meta.url);
@@ -14,7 +15,7 @@ for (const { chapter, characters } of n5KanjiSupportInventory) {
 }
 const loadContent = async () => JSON.parse(await readFile(contentUrl, 'utf8'));
 
-test('visual mnemonic catalog covers every existing N5 chapter kanji, including previously blank stories', async () => {
+test('component-first memory catalog covers every existing N5 chapter kanji, including previously blank stories', async () => {
   const stories = await loadContent();
   assert.equal(chapters.size, 103, 'existing class curriculum inventory');
   assert.equal(stories.length, chapters.size);
@@ -24,13 +25,57 @@ test('visual mnemonic catalog covers every existing N5 chapter kanji, including 
     assert.match(story.character, /^\p{Unified_Ideograph}$/u);
     assert.equal(typeof story.meaning, 'string', story.character);
     assert.ok(story.meaning.trim(), `${story.character}: a primary meaning`);
-    assert.equal(typeof story.mnemonic, 'string', story.character);
-    assert.equal(story.mnemonic, story.mnemonic.trim(), `${story.character}: no stray whitespace`);
-    assert.match(story.mnemonic, /^Bayangkan\b/u, `${story.character}: clearly marked imagined scene`);
-    assert.ok(story.mnemonic.length <= 320, `${story.character}: concise beginner story`);
-    assert.doesNotMatch(story.mnemonic, /piktogram|etimologi|asal[- ]usul|peminjaman bunyi/iu,
-      `${story.character}: mnemonic rather than a historical claim`);
+    for (const field of ['components', 'componentNote', 'shapeHint', 'mnemonic']) {
+      assert.ok(Object.hasOwn(story, field), `${story.character}: explicit ${field}`);
+      const value = story[field];
+      assert.ok(value === null || typeof value === 'string', `${story.character}: ${field} is text or null`);
+      if (value !== null) {
+        assert.equal(value, value.trim(), `${story.character}: ${field} has no stray whitespace`);
+        assert.ok(value.length > 0 && value.length <= 320, `${story.character}: concise nonempty ${field}`);
+      }
+    }
+    assert.ok(story.components || story.shapeHint, `${story.character}: components or a shape hint`);
+    if (story.mnemonic !== null) {
+      assert.match(story.mnemonic, /^Bayangkan\b/u, `${story.character}: clearly marked imagined scene`);
+      assert.doesNotMatch(story.mnemonic, /piktogram|etimologi|asal[- ]usul|peminjaman bunyi/iu,
+        `${story.character}: mnemonic rather than a historical claim`);
+    }
+    if (story.sources !== undefined) {
+      assert.ok(Array.isArray(story.sources), `${story.character}: source metadata is a list`);
+      for (const source of story.sources) {
+        assert.equal(typeof source, 'string', `${story.character}: source URL`);
+        const url = new URL(source);
+        assert.ok(['http:', 'https:'].includes(url.protocol), `${story.character}: web source`);
+      }
+    }
+    assert.ok(renderKanjiMemory(story).startsWith('<p>'), `${story.character}: renderable learning aid`);
   }
+});
+
+test('kanji memory renderer escapes every editorial field, orders explanations and omits source metadata', () => {
+  const html = renderKanjiMemory({
+    character: '<script>ignored</script>',
+    meaning: '<script>ignored</script>',
+    components: '木 <b>pohon</b> & 斤 "kapak"',
+    componentNote: "斤 berperan sebagai bunyi; 'bukan arti baru'.",
+    shapeHint: 'Bentuk <ujung> & goresan "kanan".',
+    mnemonic: 'Bayangkan <img src=x onerror=alert(1)> & "pohon".',
+    sources: ['https://metadata.invalid/never-render-this-source'],
+  });
+  assert.equal(html,
+    '<p><strong>Penyusun:</strong> 木 &lt;b&gt;pohon&lt;/b&gt; &amp; 斤 &quot;kapak&quot;</p>'
+    + '<p>斤 berperan sebagai bunyi; &#39;bukan arti baru&#39;.</p>'
+    + '<p><strong>Petunjuk bentuk:</strong> Bentuk &lt;ujung&gt; &amp; goresan &quot;kanan&quot;.</p>'
+    + '<p><strong>Cara ingat:</strong> Bayangkan &lt;img src=x onerror=alert(1)&gt; &amp; &quot;pohon&quot;.</p>');
+  assert.doesNotMatch(html, /<script|<img|<b>|metadata\.invalid|never-render-this-source/u);
+  assert.equal(renderKanjiMemory({ components: null, componentNote: null,
+    shapeHint: 'Tiga garis seperti aliran sungai.', mnemonic: null }),
+  '<p><strong>Petunjuk bentuk:</strong> Tiga garis seperti aliran sungai.</p>');
+  assert.equal(renderKanjiMemory({ components: '亻 (orang) + 木 (pohon)', componentNote: null,
+    shapeHint: null, mnemonic: null }),
+  '<p><strong>Penyusun:</strong> 亻 (orang) + 木 (pohon)</p>');
+  assert.throws(() => renderKanjiMemory({ components: null, shapeHint: null }), /components or a shape hint/u);
+  assert.throws(() => renderKanjiMemory({ components: 123, shapeHint: null }), /text or null/u);
 });
 
 test('N5 mnemonic migration updates all assigned stories, preserves catalog data and backs up original text once', {
@@ -97,8 +142,9 @@ test('N5 mnemonic migration updates all assigned stories, preserves catalog data
   const targetIds = new Set();
   const unchangedIds = new Set();
   const formerlyBlank = new Set([...'父母友足口目耳小少雨天空山川']);
-  for (const { character, mnemonic } of stories) {
-    const original = character === '木' ? mnemonic
+  for (const story of stories) {
+    const { character } = story;
+    const original = character === '木' ? renderKanjiMemory(story)
       : formerlyBlank.has(character) ? null : `Cerita lama ${character}`;
     const id = await insertKanji(character, lessons.get(chapters.get(character)), 'N5', original);
     targetIds.add(id);
@@ -138,7 +184,7 @@ test('N5 mnemonic migration updates all assigned stories, preserves catalog data
       assert.deepEqual(row, old, `${row.character}: unchanged or outside scope`);
     } else {
       assert.ok(targetIds.has(row.id));
-      assert.equal(row.mnemonic, byCharacter.get(row.character).mnemonic, row.character);
+      assert.equal(row.mnemonic, renderKanjiMemory(byCharacter.get(row.character)), row.character);
       assert.notEqual(row.updated_at, old.updated_at, `${row.character}: update recorded`);
       const { mnemonic: oldMnemonic, updated_at: oldUpdatedAt, ...oldCatalog } = old;
       const { mnemonic, updated_at, ...catalog } = row;
@@ -167,6 +213,6 @@ test('N5 mnemonic migration updates all assigned stories, preserves catalog data
   await client.query('UPDATE kanji_items SET mnemonic=$2 WHERE id=$1', [duplicateId, 'Intervening text']);
   await migrate();
   assert.equal((await client.query('SELECT mnemonic FROM kanji_items WHERE id=$1',
-    [duplicateId])).rows[0].mnemonic, byCharacter.get('休').mnemonic);
+    [duplicateId])).rows[0].mnemonic, renderKanjiMemory(byCharacter.get('休')));
   assert.deepEqual(await backupSnapshot(), backup, 'first backup survives a later repair');
 });

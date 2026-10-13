@@ -2,516 +2,891 @@
   {
     "character": "先",
     "meaning": "lebih dahulu",
-    "mnemonic": "Bayangkan dua kaki di bawah melangkah mengikuti penunjuk bercabang di atasnya. Orang yang membawa penunjuk itu bergerak lebih dahulu."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Bagian atas memiliki dua palang, satu batang tegak, dan goresan miring pendek di kiri atas. Dua goresan di bawah membuka seperti kaki yang melangkah lebih dahulu.",
+    "mnemonic": null
   },
   {
     "character": "生",
     "meaning": "hidup",
-    "mnemonic": "Bayangkan sebatang tanaman hidup. Garis bawah menjadi tanah, garis tegak menjadi batang, dan garis-garis atas menjadi daun yang tumbuh."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Garis bawah seperti tanah, batang tegak menjulang di tengah, dan garis-garis atas seperti daun tanaman yang hidup.",
+    "mnemonic": null
   },
   {
     "character": "学",
     "meaning": "belajar",
-    "mnemonic": "Bayangkan anak 子 belajar di bawah atap kecil. Tiga goresan di atasnya menjadi percikan ide saat ia memahami pelajaran."
+    "components": "⺍ (tiga goresan kecil, paling atas) + 冖 (penutup datar, tengah) + 子 (anak, bawah)",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan anak 子 belajar di bawah penutup 冖, dengan tiga percikan ide ⺍ di atasnya."
   },
   {
     "character": "校",
     "meaning": "sekolah",
-    "mnemonic": "Bayangkan pohon 木 di kiri sebagai penanda halaman sekolah. Di kanan, seorang murid bertopi merentangkan tangan dan menyilangkan kaki sambil menunggu bel masuk."
+    "components": "木 (pohon, kiri) + 交 (bersilang, unsur bunyi di kanan)",
+    "componentNote": "交 berperan sebagai unsur bunyi pada 校.",
+    "shapeHint": null,
+    "mnemonic": null,
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0002236900"
+    ]
   },
   {
     "character": "国",
     "meaning": "negara",
-    "mnemonic": "Bayangkan batu permata 玉 dilindungi tembok persegi di sekelilingnya. Seluruh wilayah di dalam tembok itu adalah sebuah negara."
+    "components": "囗 (bingkai yang mengelilingi) + 玉 (permata, di dalam)",
+    "componentNote": "Ini pembagian visual bentuk 国 modern, bukan penjelasan asal-usulnya.",
+    "shapeHint": "Bingkai 囗 mengelilingi seluruh 玉. Perhatikan titik kecil pada 玉 agar tidak tertukar dengan 王.",
+    "mnemonic": "Bayangkan negara berbentuk tembok 囗 yang mengelilingi batu permata 玉 untuk melindunginya.",
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0002372600"
+    ]
   },
   {
     "character": "名",
     "meaning": "nama",
-    "mnemonic": "Bayangkan bentuk bulan sabit di atas mulut 口. Dalam gelap, mulut itu menyebutkan nama agar orang lain mengenalinya."
+    "components": "夕 (senja, atas) + 口 (mulut, bawah)",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan mulut 口 menyebutkan nama saat senja 夕, ketika wajah mulai sulit terlihat."
   },
   {
     "character": "人",
     "meaning": "orang",
-    "mnemonic": "Bayangkan seseorang berdiri dengan kedua kaki terbuka. Dua garis yang bertemu di atas membentuk seorang manusia."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Dua goresan bertemu di atas lalu membuka ke bawah, seperti orang yang berdiri dengan kedua kaki terbuka.",
+    "mnemonic": null
   },
   {
     "character": "語",
     "meaning": "bahasa",
-    "mnemonic": "Bayangkan mulut 口 di kanan bawah mengucapkan lima 五 kata. Kata-katanya 言 berderet di kiri, membentuk sebuah bahasa."
+    "components": "言 (kata atau berkata, kiri) + 吾 (unsur bunyi, kanan)",
+    "componentNote": "言 berkaitan dengan kata dan bahasa. 吾 berperan sebagai unsur bunyi yang memberi petunjuk bacaan ゴ.",
+    "shapeHint": "Bentuk 吾 di kanan terdiri dari 五 di atas dan 口 di bawah.",
+    "mnemonic": null,
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0002110200"
+    ]
   },
   {
     "character": "何",
     "meaning": "apa",
-    "mnemonic": "Bayangkan orang 亻 di kiri menatap mulut 口 di kanan yang dinaungi garis berkait. Ia kebingungan lalu bertanya, 'Apa?'"
+    "components": "亻 (orang, kiri) + 可 (unsur bunyi, kanan)",
+    "componentNote": "可 menjadi unsur bunyi untuk bacaan on'yomi カ.",
+    "shapeHint": "Pada 可, kotak 口 berada di bawah garis mendatar dengan kait panjang di kanan.",
+    "mnemonic": null,
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0000641500"
+    ]
   },
   {
     "character": "魚",
     "meaning": "ikan",
-    "mnemonic": "Bayangkan seekor ikan berdiri tegak. Kepala kecilnya berada di atas, tubuh berpetak di tengah, dan empat sirip pendek berjajar di bawah."
+    "components": "⺈ (bentuk kepala berkait, atas) + 田 (kotak berpetak, tengah) + 灬 (empat titik, bawah)",
+    "componentNote": "Bagian-bagian ini dipakai sebagai petunjuk bentuk modern.",
+    "shapeHint": null,
+    "mnemonic": "Bayangkan ikan tegak dengan kepala berkait, tubuh berpetak, dan empat sirip pendek berjajar di bawah."
   },
   {
     "character": "本",
     "meaning": "buku atau pangkal",
-    "mnemonic": "Bayangkan pohon 木 dengan pangkal batang ditandai satu garis pendek. Kayu dari pohon itu dijadikan kertas untuk membuat buku."
+    "components": "木 (pohon, bentuk utama) + 一 (garis pendek di pangkal batang)",
+    "componentNote": null,
+    "shapeHint": "Garis pendek tambahan melintasi bagian bawah batang 木.",
+    "mnemonic": "Bayangkan pangkal pohon 木 ditandai garis pendek. Kayu dari pohon itu dijadikan kertas untuk membuat buku."
   },
   {
     "character": "花",
     "meaning": "bunga",
-    "mnemonic": "Bayangkan dua tunas 艹 di atas orang 亻 dan sendok berbentuk 匕. Ia menyiram tunas dengan sendok sampai tumbuh bunga."
+    "components": "艹 (rumput, atas) + 化 (berubah, bawah)",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan rumput 艹 di atas berubah 化 menjadi bunga saat disiram."
   },
   {
     "character": "一",
     "meaning": "satu",
-    "mnemonic": "Bayangkan sebatang lidi diletakkan mendatar. Hanya ada satu lidi."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Satu garis mendatar.",
+    "mnemonic": null
   },
   {
     "character": "二",
     "meaning": "dua",
-    "mnemonic": "Bayangkan dua batang lidi ditumpuk mendatar. Satu di atas dan satu di bawah, jumlahnya dua."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Dua garis mendatar. Garis bawah lebih panjang.",
+    "mnemonic": null
   },
   {
     "character": "三",
     "meaning": "tiga",
-    "mnemonic": "Bayangkan tiga batang lidi ditumpuk mendatar. Hitung dari atas ke bawah: satu, dua, tiga."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Tiga garis mendatar. Garis tengah paling pendek dan garis bawah paling panjang.",
+    "mnemonic": null
   },
   {
     "character": "四",
     "meaning": "empat",
-    "mnemonic": "Bayangkan jendela dengan empat sudut. Dua tirai terlipat berada di dalam bingkainya, mengingatkanmu untuk menghitung keempat sudut itu."
+    "components": "囗 (bingkai luar) + 儿 (dua goresan membuka, di dalam)",
+    "componentNote": null,
+    "shapeHint": "Bingkai memiliki empat sudut, dengan dua goresan terpisah di dalamnya.",
+    "mnemonic": null
   },
   {
     "character": "五",
     "meaning": "lima",
-    "mnemonic": "Bayangkan angka 5 dibuat kaku seperti rak. Bagian atas dan bawahnya mendatar, sedangkan bagian tengahnya berbelok untuk mengingatkanmu pada lima."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Garis mendatar di atas dan bawah mengapit penyangga yang berbelok di tengah.",
+    "mnemonic": null
   },
   {
     "character": "六",
     "meaning": "enam",
-    "mnemonic": "Bayangkan orang bertopi lebar sedang berlari dengan kedua kaki terbuka. Ia terburu-buru berangkat tepat pukul enam."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Satu titik di atas garis mendatar. Dua goresan bawah membuka ke kiri dan kanan.",
+    "mnemonic": null
   },
   {
     "character": "七",
     "meaning": "tujuh",
-    "mnemonic": "Bayangkan angka 7 berubah menjadi kait bertopi lebar. Garis mendatar menembus batangnya, lalu ujung bawahnya menekuk ke kanan."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Garis melintang menembus batang yang menekuk dan berkait ke kanan di bagian bawah.",
+    "mnemonic": null
   },
   {
     "character": "八",
     "meaning": "delapan",
-    "mnemonic": "Bayangkan dua kaki membuka seperti pintu masuk. Di antara keduanya, delapan anak sedang mengantre untuk lewat."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Dua goresan miring terpisah yang semakin menjauh ke bawah.",
+    "mnemonic": null
   },
   {
     "character": "九",
     "meaning": "sembilan",
-    "mnemonic": "Bayangkan sembilan pelari melewati gerbang kecil. Tiang kirinya miring, sedangkan tiang kanan menekuk dan berkait ke luar."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Satu garis miring turun ke kiri. Garis lainnya membelok ke bawah, lalu berkait ke kanan.",
+    "mnemonic": null
   },
   {
     "character": "十",
     "meaning": "sepuluh",
-    "mnemonic": "Bayangkan tanda tambah besar yang mempertemukan dua tangan. Masing-masing tangan punya lima jari, jadi jumlahnya sepuluh."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Satu garis mendatar dan satu garis tegak bersilangan seperti tanda tambah.",
+    "mnemonic": null
   },
   {
     "character": "安",
     "meaning": "murah atau tenang",
-    "mnemonic": "Bayangkan perempuan 女 berteduh dengan tenang di bawah atap 宀. Penginapannya murah, jadi ia bisa beristirahat tanpa cemas."
+    "components": "宀 (atap, atas) + 女 (perempuan, bawah)",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan perempuan 女 berteduh di bawah atap 宀 penginapan murah, lalu beristirahat dengan tenang."
   },
   {
     "character": "高",
     "meaning": "tinggi atau mahal",
-    "mnemonic": "Bayangkan gedung bertingkat dengan atap di puncak, jendela kotak di tengah, dan pintu kotak di bawah. Gedungnya tinggi, harga kamarnya pun mahal."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Bentuknya seperti gedung tinggi: penutup kecil di puncak, kotak kecil di tengah atas, lalu bingkai besar dengan kotak di bagian bawah.",
+    "mnemonic": null
   },
   {
     "character": "古",
     "meaning": "tua atau kuno",
-    "mnemonic": "Bayangkan kotak 口 tua dengan tanda silang 十 di atasnya. Tanda yang sudah berkarat itu memperingatkan bahwa barang di dalamnya sangat kuno."
+    "components": "十 (sepuluh, atas) + 口 (mulut, bawah)",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan peti berbentuk 口 dengan tanda silang 十 di atasnya. Peti itu berdebu dan sudah sangat tua."
   },
   {
     "character": "新",
     "meaning": "baru",
-    "mnemonic": "Bayangkan kapak 斤 di kanan menebang pohon 木 di kiri bawah. Dari kayunya dibuat papan nama baru yang berdiri tegak seperti 立 di kiri atas."
+    "components": "立 (berdiri, kiri atas) + 木 (pohon, kiri bawah) + 斤 (kapak, kanan)",
+    "componentNote": "Ini pembagian visual bentuk modern. Bagian kiri secara keseluruhan berperan sebagai unsur bunyi.",
+    "shapeHint": null,
+    "mnemonic": "Bayangkan kapak 斤 membentuk kayu 木 menjadi papan baru yang berdiri tegak seperti 立.",
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0003650300"
+    ]
   },
   {
     "character": "白",
     "meaning": "putih",
-    "mnemonic": "Bayangkan jendela berbentuk 日 tersorot seberkas cahaya dari kiri atas. Cahayanya begitu terang hingga seluruh jendela tampak putih."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Kotak tegak seperti 日 dengan satu goresan pendek miring di kiri atas. Goresan tambahan itu membedakan 白 dari 日.",
+    "mnemonic": null
   },
   {
     "character": "長",
     "meaning": "panjang",
-    "mnemonic": "Bayangkan rambut dengan beberapa helai mendatar di atas. Rambut itu menjuntai panjang ke bawah, lalu ujungnya melengkung ke kanan."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Bagian atas memiliki batang tegak dan deretan garis mendatar. Bagian bawah melebar, dengan ujung panjang yang menyapu ke kanan.",
+    "mnemonic": null
   },
   {
     "character": "男",
     "meaning": "laki-laki",
-    "mnemonic": "Bayangkan seorang laki-laki membawa papan kotak berpetak seperti 田. Di bawahnya, pegangan papan melengkung seperti 力."
+    "components": "田 (sawah, atas) + 力 (tenaga, bawah)",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan seorang laki-laki memakai tenaga 力 untuk bekerja di sawah 田.",
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0004638500"
+    ]
   },
   {
     "character": "女",
     "meaning": "perempuan",
-    "mnemonic": "Bayangkan seorang perempuan menyilangkan kaki sambil merentangkan lengan. Garis lengkung dan garis silang membentuk posenya."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Tiga goresan saling berpotongan: satu garis bertekuk, satu sapuan miring, dan satu garis mendatar yang melintas di tengah.",
+    "mnemonic": null
   },
   {
     "character": "気",
     "meaning": "energi atau perasaan",
-    "mnemonic": "Bayangkan embusan napas membentuk garis-garis di bagian atas. Di bawahnya ada pusaran kecil bersilang, seperti energi yang berputar di dalam tubuh."
+    "components": "气 (uap atau napas, bagian luar) + dua goresan bersilang (bagian dalam)",
+    "componentNote": "Perhatikan bentuk 気 yang dipakai sekarang: bagian dalamnya berupa silang, bukan 米 seperti pada bentuk lama 氣.",
+    "shapeHint": null,
+    "mnemonic": null,
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0001184900"
+    ]
   },
   {
     "character": "上",
     "meaning": "atas",
-    "mnemonic": "Bayangkan garis panjang di bawah sebagai lantai. Sebuah penunjuk berdiri di atasnya dengan lengan kecil mengarah ke kanan, mengajakmu melihat ke atas."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Garis mendatar panjang menjadi dasar; garis tegak dan satu cabang pendek berada di atasnya.",
+    "mnemonic": null
   },
   {
     "character": "下",
     "meaning": "bawah",
-    "mnemonic": "Bayangkan garis panjang di atas sebagai langit-langit. Penunjuk yang menggantung darinya mengarahkan pandangan ke bawah."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Garis mendatar panjang berada di atas; garis tegak dan satu goresan pendek turun di bawahnya.",
+    "mnemonic": null
   },
   {
     "character": "中",
     "meaning": "tengah atau dalam",
-    "mnemonic": "Bayangkan sebuah kotak ditembus garis tegak tepat di tengah. Garis itu menunjukkan bagian tengah di dalam kotak."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Sebuah kotak ditembus garis tegak tepat di tengah; garis itu memanjang melewati sisi atas dan bawah kotak.",
+    "mnemonic": null
   },
   {
     "character": "外",
     "meaning": "luar",
-    "mnemonic": "Bayangkan bentuk bulan sabit di kiri, di samping tiang bercabang kecil di kanan. Tiang itu menjadi penunjuk jalan ke luar pada malam hari."
+    "components": "夕 (petang, kiri) + 卜 (ramalan, kanan)",
+    "componentNote": "Perhatikan posisi: 夕 di kiri, 卜 di kanan. Cabang pendek 卜 berada di kanan garis tegaknya.",
+    "shapeHint": null,
+    "mnemonic": null
   },
   {
     "character": "左",
     "meaning": "kiri",
-    "mnemonic": "Bayangkan tangan di atas memegang penggaris berbentuk 工 di bawahnya. Kamu memakainya dengan tangan kiri."
+    "components": "𠂇 (dua goresan berupa garis mendatar dan sapuan ke kiri, atas) + 工 (kerja atau kerajinan, bawah)",
+    "componentNote": "Bedakan pasangan ini dari 右: bagian bawah 左 adalah 工.",
+    "shapeHint": null,
+    "mnemonic": null
   },
   {
     "character": "右",
     "meaning": "kanan",
-    "mnemonic": "Bayangkan tangan di atas menyuapkan makanan ke mulut 口 di bawahnya. Tangan yang dipakai adalah tangan kanan."
+    "components": "𠂇 (dua goresan berupa garis mendatar dan sapuan ke kiri, atas) + 口 (mulut, bawah)",
+    "componentNote": "Bedakan pasangan ini dari 左: bagian bawah 右 adalah 口.",
+    "shapeHint": null,
+    "mnemonic": null
   },
   {
     "character": "前",
     "meaning": "depan",
-    "mnemonic": "Bayangkan sepasang lampu di atas garis mendatar. Di bawahnya, jendela berpetak di kiri dan dua wiper tegak di kanan menandai bagian depan kendaraan."
+    "components": "䒑 (dua goresan pendek di atas garis mendatar, atas) + 月 (bentuk mirip bulan, kiri bawah) + 刂 (bentuk samping 刀, pisau, kanan bawah)",
+    "componentNote": "Bagian kiri bawah dipakai sebagai petunjuk bentuk yang menyerupai 月.",
+    "shapeHint": null,
+    "mnemonic": null
   },
   {
     "character": "後",
     "meaning": "belakang atau sesudah",
-    "mnemonic": "Bayangkan langkah kecil di kiri, tali terpilin di kanan atas, dan kaki yang menyeret di kanan bawah. Orang itu tertinggal di belakang rombongan."
+    "components": "彳 (dua sapuan pendek dan satu garis tegak, kiri) + 幺 (bentuk kecil bertekuk, kanan atas) + 夂 (tiga goresan seperti kaki, kanan bawah)",
+    "componentNote": "Di kanan, kenali 幺 di atas dan 夂 di bawah.",
+    "shapeHint": null,
+    "mnemonic": null
   },
   {
     "character": "間",
     "meaning": "antara atau sela",
-    "mnemonic": "Bayangkan sinar matahari 日 masuk di antara dua daun gerbang 門. Cahaya terlihat melalui celah di tengahnya."
+    "components": "門 (gerbang, luar) + 日 (matahari atau hari, dalam)",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan sinar matahari 日 masuk melalui sela di antara dua daun gerbang 門."
   },
   {
     "character": "車",
     "meaning": "kendaraan atau mobil",
-    "mnemonic": "Bayangkan kendaraan dengan badan kotak berpetak di tengah. Sebuah batang menembusnya dari atas ke bawah, dengan poros melintang di kedua ujung."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Perhatikan kotak berpetak di tengah, garis mendatar di atas dan bawahnya, serta garis tegak yang menembus semuanya.",
+    "mnemonic": null
   },
   {
     "character": "東",
     "meaning": "timur",
-    "mnemonic": "Bayangkan matahari 日 muncul di tengah pohon 木. Pagi dimulai saat matahari terbit dari timur."
+    "components": "木 (pohon, membentang dari atas ke bawah) + 日 (matahari, bertumpuk di tengah)",
+    "componentNote": "木 dan 日 saling bertumpuk dan berbagi garis. Pemecahan ini adalah bantuan visual untuk bentuk modern, bukan penjelasan asal-usul 東.",
+    "shapeHint": null,
+    "mnemonic": "Bayangkan matahari 日 terlihat di tengah pohon 木 saat terbit dari timur.",
+    "sources": [
+      "https://www.kanjicafe.jp/detail/6536.html"
+    ]
   },
   {
     "character": "西",
     "meaning": "barat",
-    "mnemonic": "Bayangkan jendela kotak dengan dua tirai terlipat di dalamnya dan garis atap di atas. Dari jendela yang menghadap barat itu, kamu melihat matahari terbenam."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Ada garis mendatar di atas kotak lebar. Di dalam kotak, satu goresan turun ke kiri dan satu goresan turun lalu bertekuk ke kanan.",
+    "mnemonic": null
   },
   {
     "character": "南",
     "meaning": "selatan",
-    "mnemonic": "Bayangkan kompas dengan pegangan berbentuk silang di atas. Bingkai di bawahnya berisi dua titik kecil dan jarum berpalang yang menunjuk ke selatan."
+    "components": "十 (bentuk silang, atas) + 冂 (bingkai terbuka ke bawah, luar bawah) + dua goresan pendek di atas dua palang yang ditembus garis tegak (dalam)",
+    "componentNote": "Bagian dalam dijelaskan dari garis yang terlihat; tidak perlu memberinya nama kanji lain.",
+    "shapeHint": null,
+    "mnemonic": null
   },
   {
     "character": "北",
     "meaning": "utara",
-    "mnemonic": "Bayangkan dua orang berdiri saling membelakangi, satu menghadap kiri dan satu menghadap kanan. Mereka sedang menahan angin dingin yang datang dari utara."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Dua bagian berdampingan: bagian kiri memiliki garis tegak dengan dua cabang ke kiri, sedangkan bagian kanan melengkung dan berkait ke kanan bawah.",
+    "mnemonic": null
   },
   {
     "character": "道",
     "meaning": "jalan",
-    "mnemonic": "Bayangkan kepala 首 melihat ke depan, ditemani jalur berkelok 辶 di kiri dan bawahnya. Ikuti jalur itu sebagai jalanmu."
+    "components": "辶 (bentuk jalan atau gerak, kiri dan bawah) + 首 (kepala, kanan atas)",
+    "componentNote": "辶 membentang sampai ke bawah 首; bentuknya bukan hanya goresan kecil di sisi kiri.",
+    "shapeHint": null,
+    "mnemonic": "Bayangkan kepala 首 menghadap ke depan sambil mengikuti jalan 辶."
   },
   {
     "character": "駅",
     "meaning": "stasiun",
-    "mnemonic": "Bayangkan kuda 馬 menunggu di kiri, di samping papan peron yang kakinya melebar ke kanan. Itulah tempat penumpang berkumpul, sebuah stasiun."
+    "components": "馬 (kuda, kiri) + 尺 (satuan panjang, kanan)",
+    "componentNote": "馬 di kiri tampak lebih sempit daripada saat berdiri sendiri. 尺 di kanan membantu mengenali bentuk modern 駅.",
+    "shapeHint": null,
+    "mnemonic": null
   },
   {
     "character": "行",
     "meaning": "pergi atau berjalan",
-    "mnemonic": "Bayangkan jejak langkah di kiri menuju palang penunjuk di kanan. Ikuti arah penunjuk itu dan mulailah berjalan."
+    "components": "彳 (dua sapuan pendek dan satu garis tegak, kiri) + 亍 (dua garis mendatar dan satu garis tegak berkait, kanan)",
+    "componentNote": "Ini pemisahan bentuk kiri dan kanan untuk latihan mengenali 行.",
+    "shapeHint": null,
+    "mnemonic": null
   },
   {
     "character": "電",
     "meaning": "listrik",
-    "mnemonic": "Bayangkan hujan 雨 turun di atas panel kotak berpetak. Dari panel itu menjulur kabel melengkung ke kanan, menyalurkan listrik."
+    "components": "雨 (hujan, atas) + bentuk mirip 田 dengan garis tengah memanjang dan berkait (bawah)",
+    "componentNote": "Bagian bawah tidak sama persis dengan 田: perhatikan ekor berkait yang keluar ke kanan.",
+    "shapeHint": null,
+    "mnemonic": null
   },
   {
     "character": "見",
     "meaning": "melihat",
-    "mnemonic": "Bayangkan mata 目 yang memiliki dua kaki di bawahnya. Mata itu berjalan mendekat agar bisa melihat dengan jelas."
+    "components": "目 (mata, atas) + 儿 (bentuk dua kaki, bawah)",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan mata 目 yang mempunyai dua kaki 儿 dan mendekat agar bisa melihat lebih jelas."
   },
   {
     "character": "読",
     "meaning": "membaca",
-    "mnemonic": "Bayangkan kata-kata 言 di kiri dipasang pada kios di kanan. Kios bertanda tambah di atas dan berkaki dua itu mengundangmu membaca pengumumannya."
+    "components": "言 (kata atau berkata, kiri) + 売 (menjual, kanan)",
+    "componentNote": "言 berkaitan dengan kata. 売 menjadi penanda bentuk bagian kanan pada kanji modern.",
+    "shapeHint": null,
+    "mnemonic": "Bayangkan kata-kata 言 pada papan barang yang dijual 売; kamu membacanya sebelum membeli.",
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0005324000"
+    ]
   },
   {
     "character": "書",
     "meaning": "menulis",
-    "mnemonic": "Bayangkan kuas tegak menembus deretan garis mendatar di bagian atas. Di bawahnya ada halaman kotak bergaris, tempatmu menulis."
+    "components": "聿 (kuas, atas) + 曰 (kotak bergaris, bawah)",
+    "componentNote": "Bagian bawahnya adalah 曰, berbentuk kotak mendatar dengan garis di dalam.",
+    "shapeHint": null,
+    "mnemonic": "Bayangkan kuas 聿 menulis pada bidang kotak bergaris di bawahnya.",
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0003288700"
+    ]
   },
   {
     "character": "年",
     "meaning": "tahun",
-    "mnemonic": "Bayangkan kalender tahunan bertiang panjang di tengah dan beberapa garis mendatar untuk menandai musim. Goresan miring kecil di kiri atas menandai awal tahun."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Perhatikan goresan miring pendek di kiri atas, susunan garis mendatar, satu garis pendek di kiri tengah, dan garis tegak panjang yang turun melewati palang bawah.",
+    "mnemonic": null
   },
   {
     "character": "百",
     "meaning": "seratus",
-    "mnemonic": "Bayangkan kotak putih 白 dengan garis tambahan sebagai tutup di atasnya. Pada tutup itu tertulis '100', karena isinya seratus koin."
+    "components": "一 (satu garis mendatar, atas) + 白 (putih, bawah)",
+    "componentNote": "白 berfungsi sebagai unsur bunyi. Kenali letaknya di bawah garis mendatar paling atas.",
+    "shapeHint": null,
+    "mnemonic": null,
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0005920000"
+    ]
   },
   {
     "character": "午",
     "meaning": "tengah hari",
-    "mnemonic": "Bayangkan dua palang mendatar ditembus tiang tegak, dengan ujung miring kecil di kiri atas. Tiang itu menjadi jam matahari yang menandakan tengah hari."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Dua palang mendatar ditembus garis tegak, dengan sapuan pendek di kiri atas. Garis tegaknya tidak melewati palang paling atas; ini membantu membedakannya dari 牛.",
+    "mnemonic": null
   },
   {
     "character": "半",
     "meaning": "setengah",
-    "mnemonic": "Bayangkan dua potongan kecil di atas tumpukan dua garis. Satu garis tegak membelah tumpukan tepat di tengah, membaginya menjadi setengah."
+    "components": "丷 (dua goresan pendek, atas) + 干 (dua garis mendatar ditembus garis tegak, bawah)",
+    "componentNote": "Perhatikan garis tegak di tengah yang membagi bentuk kiri dan kanan.",
+    "shapeHint": null,
+    "mnemonic": null
   },
   {
     "character": "週",
     "meaning": "minggu atau pekan",
-    "mnemonic": "Bayangkan jalur 辶 mengelilingi papan jadwal berbentuk kotak di kanan. Garis-garis dan kotak kecil di dalamnya menandai kegiatan yang berulang setiap minggu."
+    "components": "辶 (bentuk jalan atau gerak, kiri dan bawah) + 周 (keliling, kanan atas)",
+    "componentNote": "辶 berkaitan dengan gerak. 周 berperan dalam makna berkeliling sekaligus menjadi unsur bunyi untuk シュウ.",
+    "shapeHint": null,
+    "mnemonic": "Bayangkan satu putaran 周 pada jadwal perjalanan 辶 yang berulang setiap pekan.",
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0003129900"
+    ]
   },
   {
     "character": "万",
     "meaning": "sepuluh ribu",
-    "mnemonic": "Bayangkan satu garis mendatar menjadi meja bank. Dua kaki di bawahnya, satu miring dan satu berkait, menyangga uang sebanyak sepuluh ribu."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Tiga goresan: garis mendatar di atas, goresan bersudut dan berkait di kanan, serta sapuan panjang ke kiri bawah.",
+    "mnemonic": null
   },
   {
     "character": "千",
     "meaning": "seribu",
-    "mnemonic": "Bayangkan seribu batang lidi diikat pada tiang berbentuk 十. Ujung ikatannya terlihat sebagai garis miring pendek di bagian atas."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Bentuknya mirip 十 dengan satu sapuan pendek miring di bagian paling atas. Bedakan dari 午 yang memiliki dua palang mendatar.",
+    "mnemonic": null
   },
   {
     "character": "毎",
     "meaning": "setiap",
-    "mnemonic": "Bayangkan papan kotak bergaris di bawah dua goresan kecil di atas. Papan itu adalah jadwal yang kamu buka setiap hari."
+    "components": "𠂉 (sapuan pendek dan garis mendatar, atas) + 毋 (bingkai dengan garis melintang, bawah)",
+    "componentNote": "Bagian bawah bentuk modern 毎 adalah 毋, bukan 母. Perhatikan garis di tengahnya, bukan dua titik seperti pada 母.",
+    "shapeHint": null,
+    "mnemonic": null,
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0006531100"
+    ]
   },
   {
     "character": "食",
     "meaning": "makan; makanan",
-    "mnemonic": "Bayangkan tudung saji di bagian atas 食 menutupi wadah di bawahnya. Saat tudung dibuka, ada makanan yang siap kamu makan."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Bagian atas seperti tudung runcing. Di bawahnya ada wadah bertingkat dengan ujung bawah mencuat ke kanan.",
+    "mnemonic": "Bayangkan tudung saji menutupi wadah berisi makanan yang siap kamu makan.",
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0003539700"
+    ]
   },
   {
     "character": "飲",
     "meaning": "minum",
-    "mnemonic": "Bayangkan bagian kiri 飲 sebagai makanan di meja, dan 欠 di kanan sebagai orang yang membuka mulut. Setelah makan, ia meneguk air untuk minum."
+    "components": "飠 (bentuk 食, makanan, di kiri) + 欠 (orang membuka mulut, di kanan)",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan makanan 飠 di kiri dan orang membuka mulut 欠 di kanan. Setelah makan, ia minum air.",
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0000297300"
+    ]
   },
   {
     "character": "立",
     "meaning": "berdiri",
-    "mnemonic": "Bayangkan bagian atas 立 sebagai kepala dan bahu seseorang, dengan dua kaki di bawahnya. Kedua kakinya berpijak pada garis tanah: ia sedang berdiri."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Titik di atas, garis mendatar di bawahnya, lalu dua garis miring yang berpijak pada garis dasar. Bayangkan orang berdiri di atas tanah.",
+    "mnemonic": null
   },
   {
     "character": "休",
     "meaning": "istirahat",
-    "mnemonic": "Bayangkan orang 亻 di kiri bersandar pada pohon 木 di kanan setelah berjalan jauh. Ia sedang beristirahat."
+    "components": "亻 (bentuk 人, orang, di kiri) + 木 (pohon, di kanan)",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan orang 亻 bersandar pada pohon 木 untuk beristirahat."
   },
   {
     "character": "入",
     "meaning": "masuk",
-    "mnemonic": "Bayangkan dua garis 入 sebagai sisi pintu tenda yang terbuka di bawah. Kamu melewati celah itu untuk masuk ke tenda."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Dua garis membuka ke bawah. Garis kanan mulai sedikit lebih tinggi daripada titik pertemuannya dengan garis kiri. Perhatikan puncaknya agar tidak tertukar dengan 人.",
+    "mnemonic": "Bayangkan dua sisi pintu tenda yang kamu sibak untuk masuk."
   },
   {
     "character": "出",
     "meaning": "keluar",
-    "mnemonic": "Bayangkan garis tegak 出 sebagai tunas yang menembus dua lapis tanah berbentuk 凵. Ujung tunas itu akhirnya keluar ke permukaan."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Dua bingkai terbuka bertumpuk, dengan satu garis tegak menembus bagian tengah dan keluar di atas bingkai teratas.",
+    "mnemonic": null
   },
   {
     "character": "言",
     "meaning": "berkata; kata",
-    "mnemonic": "Bayangkan 口 di bawah 言 sebagai mulut yang berbicara. Garis-garis di atasnya adalah kata-kata yang keluar saat seseorang berkata sesuatu."
+    "components": "口 (mulut, di bawah) + deretan garis di atasnya",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan kata-kata keluar dari mulut 口 dan menjadi garis-garis di atasnya."
   },
   {
     "character": "話",
     "meaning": "berbicara; cerita",
-    "mnemonic": "Bayangkan kata-kata 言 di kiri keluar saat lidah 舌 di kanan bergerak. Kamu sedang berbicara untuk menceritakan sesuatu."
+    "components": "言 (kata atau ucapan, di kiri) + 舌 (lidah, di kanan)",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan lidah 舌 bergerak untuk mengucapkan kata-kata 言 saat berbicara."
   },
   {
     "character": "聞",
     "meaning": "mendengar; bertanya",
-    "mnemonic": "Bayangkan telinga 耳 di tengah gerbang 門. Seseorang menempelkan telinganya di sana untuk mendengar percakapan dari balik gerbang."
+    "components": "門 (gerbang, bagian luar) + 耳 (telinga, di dalam)",
+    "componentNote": "耳 memberi petunjuk makna mendengar. 門 berfungsi sebagai unsur bunyi.",
+    "shapeHint": null,
+    "mnemonic": "Bayangkan telinga 耳 mendengarkan percakapan dari balik gerbang 門.",
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0006190200"
+    ]
   },
   {
     "character": "買",
     "meaning": "membeli",
-    "mnemonic": "Bayangkan jaring 罒 di atas 買 menampung kerang 貝 di bawahnya. Kamu membawa kerang itu sebagai uang untuk membeli barang."
+    "components": "罒 (bentuk jaring, di atas) + 貝 (kerang, di bawah)",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan jaring 罒 berisi kerang 貝 yang kamu bawa sebagai uang untuk membeli barang."
   },
   {
     "character": "店",
     "meaning": "toko",
-    "mnemonic": "Bayangkan atap 广 menaungi papan ramalan 占. Di bawah atap itu, seorang peramal membuka toko kecilnya."
+    "components": "广 (atap bangunan, di luar) + 占 (bagian di bawah atap)",
+    "componentNote": "广 berkaitan dengan bangunan. 占 berfungsi sebagai unsur bunyi.",
+    "shapeHint": null,
+    "mnemonic": null,
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0005052100"
+    ]
   },
   {
     "character": "円",
     "meaning": "yen; bulat",
-    "mnemonic": "Bayangkan bingkai luar 円 sebagai loket penukaran uang, dengan sekat di dalamnya. Di loket itu, kamu menukar uang dengan koin yen yang bulat."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Bingkai luarnya terbuka di bawah. Di dalamnya ada satu garis mendatar dan satu garis tegak pendek dari atas.",
+    "mnemonic": "Bayangkan bingkai 円 sebagai loket tempat menukar uang dengan koin yen yang bulat."
   },
   {
     "character": "会",
     "meaning": "bertemu; pertemuan",
-    "mnemonic": "Bayangkan bagian atas 会 sebagai atap tempat orang berteduh. Bentuk 云 di bawahnya menjadi meja tempat mereka duduk dan bertemu."
+    "components": "人 (bentuk orang, di atas) + 云 (bagian bawah)",
+    "componentNote": "Pembagian ini membantu mengenali bentuk 会 modern.",
+    "shapeHint": null,
+    "mnemonic": "Bayangkan orang-orang bertemu dan berkumpul di bawah satu atap berbentuk 人.",
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0000756800"
+    ]
   },
   {
     "character": "社",
     "meaning": "perusahaan; kuil Shinto",
-    "mnemonic": "Bayangkan 礻di kiri sebagai papan nama dan 土 di kanan sebagai tanah tempat sebuah kantor dibangun. Papan itu menunjukkan nama perusahaan pemilik kantor."
+    "components": "礻 (bentuk 示, berkaitan dengan pemujaan, di kiri) + 土 (tanah, di kanan)",
+    "componentNote": "社 dipakai untuk tempat pemujaan dan kelompok atau organisasi, termasuk perusahaan dalam kata 会社.",
+    "shapeHint": null,
+    "mnemonic": null,
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0002966000"
+    ]
   },
   {
     "character": "日",
     "meaning": "matahari; hari",
-    "mnemonic": "Bayangkan bingkai 日 sebagai matahari kotak, dengan garis cahaya di tengahnya. Saat matahari itu terbit lagi, satu hari baru dimulai."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Bingkai tegak dengan satu garis mendatar di dalamnya. Ingat matahari yang menandai pergantian hari.",
+    "mnemonic": null
   },
   {
     "character": "月",
     "meaning": "bulan",
-    "mnemonic": "Bayangkan sisi melengkung 月 sebagai bulan sabit. Dua garis di dalamnya menjadi garis bayangan pada permukaan bulan."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Sisi kiri melengkung, sisi kanan tegak berkait, dan dua garis pendek di dalamnya. Bayangkan bulan sabit.",
+    "mnemonic": null
   },
   {
     "character": "火",
     "meaning": "api",
-    "mnemonic": "Bayangkan dua garis tengah 火 sebagai nyala api yang menjulang. Dua garis kecil di sisinya menjadi percikan api yang beterbangan."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Dua garis panjang di tengah seperti nyala api. Dua garis pendek di kiri dan kanan seperti percikan api.",
+    "mnemonic": null
   },
   {
     "character": "水",
     "meaning": "air",
-    "mnemonic": "Bayangkan garis tengah 水 sebagai aliran air utama. Garis-garis di kiri dan kanannya menjadi percikan air yang menyebar."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Garis panjang berkait di tengah, dengan cabang di kiri dan kanan. Bayangkan arus air yang memercik ke samping.",
+    "mnemonic": null
   },
   {
     "character": "木",
     "meaning": "pohon; kayu",
-    "mnemonic": "Bayangkan garis tegak 木 sebagai batang pohon, garis mendatar sebagai cabangnya, dan dua garis miring sebagai akarnya. Itulah pohon yang tumbuh di depanmu."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Satu garis tegak menjadi batang, garis mendatar menjadi cabang, dan dua garis miring membuka ke bawah seperti akar pohon.",
+    "mnemonic": null
   },
   {
     "character": "金",
     "meaning": "emas; uang; logam",
-    "mnemonic": "Bayangkan atap 金 menaungi tambang bertingkat tiga, dengan tiang tegak di tengah. Dua titik di kiri dan kanannya adalah butir emas yang akan dijadikan uang logam."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Bagian atas seperti atap. Di bawahnya ada tiga garis mendatar, satu garis tegak di tengah, dan dua goresan kecil di kiri dan kanan.",
+    "mnemonic": "Bayangkan dua goresan kecil sebagai butir emas dalam tambang bertingkat di bawah atap."
   },
   {
     "character": "土",
     "meaning": "tanah",
-    "mnemonic": "Bayangkan garis tegak 土 sebagai patok yang tertancap di tanah. Garis pendek menandai gundukan di sekitarnya, dan garis panjang di bawah menjadi permukaan tanah."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Satu garis tegak melewati dua garis mendatar. Garis bawah lebih panjang daripada garis atas, seperti permukaan tanah yang lebar.",
+    "mnemonic": null
   },
   {
     "character": "時",
     "meaning": "waktu; jam",
-    "mnemonic": "Bayangkan matahari 日 di kiri menyinari kuil 寺 di kanan. Kamu melihat jam di kuil itu untuk mengetahui waktu."
+    "components": "日 (matahari atau hari, di kiri) + 寺 (bagian di kanan)",
+    "componentNote": "日 berkaitan dengan hari dan waktu. 寺 berfungsi sebagai unsur bunyi.",
+    "shapeHint": null,
+    "mnemonic": null,
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0002876900"
+    ]
   },
   {
     "character": "分",
     "meaning": "membagi; menit",
-    "mnemonic": "Bayangkan pisau 刀 di bawah 分 membelah sesuatu menjadi dua bagian yang membuka seperti 八 di atasnya. Satu jam pun bisa dibagi menjadi bagian-bagian kecil bernama menit."
+    "components": "八 (dua sisi yang membuka, di atas) + 刀 (pisau, di bawah)",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan pisau 刀 membagi benda menjadi dua bagian yang membuka seperti 八."
   },
   {
     "character": "子",
     "meaning": "anak",
-    "mnemonic": "Bayangkan lengkungan atas 子 sebagai kepala anak. Garis mendatar menjadi dua lengannya yang terbuka, dan garis turun menjadi tubuhnya saat ia meminta dipeluk."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Lengkungan di atas seperti kepala anak. Garis mendatar menjadi dua lengan, dan garis turun berkait menjadi tubuhnya.",
+    "mnemonic": null
   },
   {
     "character": "父",
     "meaning": "ayah",
-    "mnemonic": "Bayangkan dua garis pendek di atas 父 sebagai alis ayah. Dua garis panjang yang bersilang di bawahnya menjadi kedua lengannya saat ayah menyilangkan tangan."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Dua garis pendek di atas dan dua garis panjang bersilang di bawah. Bayangkan alis ayah di atas kedua lengannya yang bersilang.",
+    "mnemonic": null
   },
   {
     "character": "母",
     "meaning": "ibu",
-    "mnemonic": "Bayangkan bingkai 母 sebagai tubuh ibu, dengan garis melintang sebagai sabuk bajunya. Dua titik di dalamnya menjadi dua kancing baju ibu saat ia memelukmu."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Bingkai miring dengan satu garis melintang dan dua titik di dalam. Bayangkan sabuk dan dua kancing pada baju ibu.",
+    "mnemonic": null
   },
   {
     "character": "友",
     "meaning": "teman",
-    "mnemonic": "Bayangkan garis miring dari bagian atas 友 sebagai lengan yang terulur. Bentuk 又 di bawahnya menjadi tangan teman yang menyambut untuk bersalaman."
+    "components": "𠂇 (bagian atas, seperti lengan terulur) + 又 (bagian bawah, seperti tangan)",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan dua tangan saling menyambut untuk bersalaman dengan teman."
   },
   {
     "character": "手",
     "meaning": "tangan",
-    "mnemonic": "Bayangkan garis-garis melintang 手 sebagai jari-jari yang terbuka. Garis panjang berkait di tengah menjadi pergelangan tanganmu."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Garis-garis melintang seperti jari yang terbuka. Garis panjang berkait menembus tengahnya, seperti pergelangan tangan.",
+    "mnemonic": null
   },
   {
     "character": "足",
     "meaning": "kaki; cukup",
-    "mnemonic": "Bayangkan kotak di atas 足 sebagai lutut dan bagian bawahnya sebagai tungkai dengan telapak yang menapak ke kanan. Itulah kaki yang siap melangkah."
+    "components": "口 (bentuk kotak, di atas) + bagian bawah seperti tungkai dan telapak",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan kotak atas sebagai lutut, lalu ikuti tungkai hingga telapak kaki yang mengarah ke kanan."
   },
   {
     "character": "口",
     "meaning": "mulut",
-    "mnemonic": "Bayangkan kotak 口 sebagai mulut yang terbuka lebar saat kamu berkata a. Lihat ruang kosong di tengah mulut itu."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Kotak kosong tanpa garis di dalamnya, seperti mulut yang terbuka.",
+    "mnemonic": null
   },
   {
     "character": "目",
     "meaning": "mata",
-    "mnemonic": "Bayangkan bingkai 目 sebagai mata yang diputar tegak. Dua garis di dalamnya membatasi bagian tengah tempat pupil mata berada."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Bingkai tegak dengan dua garis mendatar di dalamnya, seperti mata yang diputar tegak. Perhatikan dua garisnya untuk membedakan 目 dari 日.",
+    "mnemonic": null
   },
   {
     "character": "耳",
     "meaning": "telinga",
-    "mnemonic": "Bayangkan sisi panjang 耳 sebagai tepi telinga, dan garis-garis di dalamnya sebagai lipatan telinga. Dekatkan telinga itu untuk mendengar bisikan."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Dua sisi tegak dihubungkan garis-garis mendatar. Garis bawah menonjol ke samping, seperti lipatan pada telinga.",
+    "mnemonic": null
   },
   {
     "character": "大",
     "meaning": "besar",
-    "mnemonic": "Bayangkan orang 大 merentangkan kedua tangan dan kakinya selebar mungkin. Ia ingin menunjukkan sesuatu yang sangat besar."
+    "components": "人 (bentuk orang) + garis mendatar seperti lengan terbuka",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan orang 大 merentangkan tangan dan kaki lebar-lebar untuk menunjukkan ukuran besar."
   },
   {
     "character": "小",
     "meaning": "kecil",
-    "mnemonic": "Bayangkan garis tengah 小 sebagai tubuh anak kecil. Dua garis pendek di sisinya menjadi tangan mungil yang belum bisa merentang jauh."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Satu garis tegak berkait di tengah, diapit dua goresan pendek. Bayangkan tubuh kecil dengan dua tangan mungil.",
+    "mnemonic": null
   },
   {
     "character": "多",
     "meaning": "banyak",
-    "mnemonic": "Bayangkan dua potong melon berbentuk 夕 ditumpuk, satu di atas yang lain. Kamu terus menambah potongan sampai ada banyak melon."
+    "components": "夕 (bentuk yang muncul dua kali, atas dan bawah)",
+    "componentNote": "Gunakan pengulangan bentuk 夕 sebagai pengingat jumlah yang bertambah.",
+    "shapeHint": null,
+    "mnemonic": "Bayangkan potongan berbentuk 夕 ditumpuk lagi dan lagi sampai jumlahnya banyak.",
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0004396400"
+    ]
   },
   {
     "character": "少",
     "meaning": "sedikit",
-    "mnemonic": "Bayangkan 小 sebagai beberapa butir beras kecil, lalu garis miring di bawahnya sebagai sendok. Sendok itu hanya mendapat sedikit beras."
+    "components": "Bentuk seperti 小 (kecil, di atas) + satu garis miring panjang di bawah",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan bentuk kecil di atas sebagai beberapa butir beras. Garis miring menjadi sendok yang hanya mengambil sedikit beras."
   },
   {
     "character": "雨",
     "meaning": "hujan",
-    "mnemonic": "Bayangkan garis paling atas 雨 sebagai awan, lalu bingkai di bawahnya sebagai jendela dengan sekat tegak di tengah. Empat titik di dalam jendela menjadi tetes hujan yang turun."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Satu garis mendatar di atas bingkai, satu sekat tegak di tengah, dan empat titik di dalamnya. Bayangkan tetes hujan terlihat melalui jendela bersekat.",
+    "mnemonic": null
   },
   {
     "character": "天",
     "meaning": "langit",
-    "mnemonic": "Bayangkan orang 大 berdiri dengan tangan terbuka. Garis mendatar di atas kepalanya adalah langit yang membentang tinggi."
+    "components": "大 (bentuk orang) + satu garis mendatar di atasnya",
+    "componentNote": null,
+    "shapeHint": null,
+    "mnemonic": "Bayangkan orang 大 berdiri di bawah garis langit yang membentang di atas kepalanya."
   },
   {
     "character": "空",
     "meaning": "langit; kosong",
-    "mnemonic": "Bayangkan lubang 穴 di atas 空 sebagai jendela loteng, dan 工 di bawahnya sebagai penyangga. Melalui jendela kosong itu, kamu melihat langit luas."
+    "components": "穴 (lubang, di atas) + 工 (bagian di bawah)",
+    "componentNote": "穴 memberi petunjuk makna ruang kosong. 工 berfungsi sebagai unsur bunyi.",
+    "shapeHint": null,
+    "mnemonic": null,
+    "sources": [
+      "https://www.kanjipedia.jp/kanji/0001680900"
+    ]
   },
   {
     "character": "山",
     "meaning": "gunung",
-    "mnemonic": "Bayangkan tiga garis tegak 山 sebagai tiga puncak gunung yang terhubung di bawah. Puncak di tengah menjulang paling tinggi."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Tiga garis tegak terhubung di bawah. Garis tengah paling tinggi, seperti puncak gunung di antara dua puncak kecil.",
+    "mnemonic": null
   },
   {
     "character": "川",
     "meaning": "sungai",
-    "mnemonic": "Bayangkan tiga garis 川 sebagai aliran sungai yang bergerak berdampingan. Ikuti arusnya dari atas ke bawah."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Tiga garis panjang berdampingan, seperti arus sungai yang mengalir sejajar.",
+    "mnemonic": null
   },
   {
     "character": "来",
     "meaning": "datang",
-    "mnemonic": "Bayangkan 来 sebagai pohon kecil dengan dua buah di kiri dan kanan batangnya. Dua akar di bawah berubah menjadi kaki, lalu pohon itu datang menghampirimu."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Satu garis tegak di tengah, dua garis mendatar, dua goresan pendek di kiri dan kanan, serta dua garis miring membuka ke bawah.",
+    "mnemonic": "Bayangkan 来 sebagai pohon kecil dengan dua buah. Akarnya berubah menjadi kaki, lalu pohon itu datang menghampirimu."
   },
   {
     "character": "令",
     "meaning": "perintah",
-    "mnemonic": "Bayangkan bagian atas 令 sebagai atap runcing. Bentuk bersudut di bawahnya menjadi orang yang menunduk, siap menerima perintah."
+    "components": null,
+    "componentNote": null,
+    "shapeHint": "Bagian atas seperti atap runcing. Di bawahnya ada titik dan bentuk bersudut yang menekuk.",
+    "mnemonic": "Bayangkan seseorang di bawah atap menunduk untuk menerima perintah."
   }
 ]
