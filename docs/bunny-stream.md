@@ -17,6 +17,10 @@ Migrasi 209 memasang video Bab 3–9 pada pelajaran Video/Kana di modul
 `bunny_bab3_9_video_backup_209`.
 Migrasi 210 memasang video Bab 10 pada modul `n5-b10`; tautan lama
 dicadangkan di `bunny_bab10_video_backup_210`.
+Migrasi 211 menghapus 18 pelajaran intro N5 pada Bab 3–20. Pelajaran lain
+tetap memakai ID, urutan, dan sumber video yang sama. Data intro beserta
+progres/referensi yang terdampak dicadangkan di `curriculum_cleanup_archive`
+dengan kunci `211-n5-bab3-20-intros` untuk pemulihan database.
 ID pelajaran, progres, kuis, dan rentang waktu yang tersimpan tetap dipakai.
 Sumber YouTube lama tidak diubah, sehingga bab lain tetap bisa menggunakannya.
 Pilihan sumber/URL semula disimpan di `bunny_bab1_video_backup_206` dan
