@@ -15,6 +15,8 @@ Migrasi 208 memasang video Katakana untuk Bab 2 N5, modul `n5-b2`.
 Migrasi 209 memasang video Bab 3–9 pada pelajaran Video/Kana di modul
 `n5-b3` sampai `n5-b9`; tautan lama dicadangkan di
 `bunny_bab3_9_video_backup_209`.
+Migrasi 210 memasang video Bab 10 pada modul `n5-b10`; tautan lama
+dicadangkan di `bunny_bab10_video_backup_210`.
 ID pelajaran, progres, kuis, dan rentang waktu yang tersimpan tetap dipakai.
 Sumber YouTube lama tidak diubah, sehingga bab lain tetap bisa menggunakannya.
 Pilihan sumber/URL semula disimpan di `bunny_bab1_video_backup_206` dan
@@ -34,6 +36,7 @@ Video Bab 2: `69a9a519-d9c2-4430-a9b8-f887cbb4bd88`.
 | 7 | `194c12a4-8d66-495f-be92-d7baf50566d5` |
 | 8 | `78a336c3-8150-43cd-8890-6871434ebe1b` |
 | 9 | `2b746361-5ba3-4c08-9281-d6c503d74449` |
+| 10 | `7bc00772-2a2f-41c2-a5d9-df5274f533c3` |
 
 Izinkan domain website di pengaturan keamanan library Bunny. Pemutar mengirim
 origin melalui `strict-origin-when-cross-origin`. Jika server memakai CSP,

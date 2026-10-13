@@ -10,6 +10,8 @@ for (const { chapterSlug, migrations, externalId, backupName } of [
     backupName: 'bunny_bab1_video_backup_206' })),
   { chapterSlug: 'n5-b2', migrations: ['205_bunny_video_sources.sql', '208_n5_bab2_bunny_video.sql'],
     externalId: '770041/69a9a519-d9c2-4430-a9b8-f887cbb4bd88', backupName: 'bunny_bab2_video_backup_208' },
+  { chapterSlug: 'n5-b10', migrations: ['205_bunny_video_sources.sql', '210_n5_bab10_bunny_video.sql'],
+    externalId: '770041/7bc00772-2a2f-41c2-a5d9-df5274f533c3', backupName: 'bunny_bab10_video_backup_210' },
 ]) {
 test(`Bunny migration replaces only N5 ${chapterSlug} video/kana while preserving ranges and progress`,
   { skip: !process.env.TEST_DATABASE_URL && !process.env.TEST_PGLITE_URL }, async () => {
