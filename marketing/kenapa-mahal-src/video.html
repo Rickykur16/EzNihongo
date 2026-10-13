@@ -28,27 +28,27 @@ const OVERLAY = new URLSearchParams(location.search).has('overlay');
 if (OVERLAY) document.documentElement.style.background = document.body.style.background = 'transparent';
 // ---------------------------------------------------------------- naskah & waktu
 const VO = [
-  'Seratus lima puluh juta, cuma buat magang ke Jepang. Padahal ada jalur lain yang modalnya mulai delapan jutaan.',
+  'Seratus lima puluh juta, cuma buat magang ke Jepang. Jangan sampai kamu orang berikutnya.',
   'Nggak semua LPK semahal itu. Menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Yang bikin membengkak biasanya ulah oknum.',
   'Contohnya dana talangan. Ada yang pinjam delapan puluh juta, nyicilnya enam juta lebih sebulan, selama dua tahun.',
   'Ada juga yang diminta jaminan sertifikat rumah. Itu tanda bahaya.',
   'Jadi sebelum bayar, cek izinnya di Binalattas Kemnaker, dan minta rincian biaya tertulis.',
-  'Jalur lain yang tadi: SSW mandiri, tanpa LPK. Belajar bahasa dan ikut ujian sendiri, biaya resminya mulai delapan jutaan.',
-  'Mau dibimbing jalur SSW mandiri? Klik link di bio.',
+  'Atau pilih jalur lain: TG mandiri, tanpa LPK. Belajar bahasa dan ikut ujian sendiri, biaya resminya mulai delapan jutaan.',
+  'Mau dibimbing jalur TG mandiri? Klik link di bio.',
 ];
 // Teks caption = VO, kecuali angka yang dibaca huruf ditampilkan sebagai angka.
 const CAP = [
-  'Rp150 juta, cuma buat magang ke Jepang. padahal ada jalur lain yang modalnya mulai 8 jutaan',
+  'Rp150 juta, cuma buat magang ke Jepang. jangan sampai kamu orang berikutnya',
   'nggak semua LPK semahal itu. menurut Kemnaker, rata-ratanya Rp25–35 juta. yang bikin membengkak biasanya ulah oknum',
   'contohnya dana talangan. ada yang pinjam 80 juta, nyicilnya 6 juta lebih sebulan, selama 2 tahun',
   'ada juga yang diminta jaminan sertifikat rumah. itu tanda bahaya',
   'jadi sebelum bayar, cek izinnya di Binalattas Kemnaker, dan minta rincian biaya tertulis',
-  'jalur lain yang tadi: SSW mandiri, tanpa LPK. belajar bahasa dan ikut ujian sendiri, biaya resminya mulai 8 jutaan',
-  'mau dibimbing jalur SSW mandiri? klik link di bio',
+  'atau pilih jalur lain: TG mandiri, tanpa LPK. belajar bahasa dan ikut ujian sendiri, biaya resminya mulai 8 jutaan',
+  'mau dibimbing jalur TG mandiri? klik link di bio',
 ];
 // Sementara (perkiraan 2,7 kata/dtk). Ganti dengan jeda VO asli (silencedetect).
-let PARA = [0, 7.0, 15.1, 22.2, 26.3, 31.4, 38.8];
-let DUR = 42.2;
+let PARA = [0, 5.5, 14.0, 20.7, 24.7, 29.9, 37.3];
+let DUR = 41.2;
 // Adegan: paragraf + kata pemicu di paragraf itu (posisi huruf, sama dengan caption).
 const SCENES = [
   { p: 0, cue: null, f: hook },
@@ -374,7 +374,7 @@ function broker(lt, d) {
   }
 }
 
-// 6. Jalur lain: SSW mandiri tanpa LPK, tiga langkah, biaya resmi mulai 8 jutaan
+// 6. Jalur lain: TG (Tokutei Ginou / SSW) mandiri tanpa LPK, tiga langkah, biaya resmi mulai 8 jutaan
 // (angka dari video "Biaya TG mandiri", ../biaya-ssw-src).
 function mandiri(lt, d) {
   bgGlow('rgba(56,214,208,.42)', 'rgba(5,40,40,.4)', W / 2, 820, 1150);
@@ -382,8 +382,8 @@ function mandiri(lt, d) {
   dust(lt, 29, 'rgba(200,255,250,', 60);
   popIn(lt, 0, (s) => scaled(W / 2, 260, s, () => chip('JALUR LAIN', W / 2, 260, { px: 50, bg: '#fff', color: '#111' })), .28);
   const kt = P(lt, .15, .5);
-  scaled(W / 2, 400, .8 + .2 * back(kt), () => text('SSW MANDIRI', W / 2, 400, { w: 900, px: 120, color: TEAL, alpha: clamp(kt * 2), shadow: 30 }));
-  text('tanpa LPK', W / 2, 505, { w: 800, px: 52, alpha: P(lt, .5, .8), shadow: 16 });
+  scaled(W / 2, 400, .8 + .2 * back(kt), () => text('TG MANDIRI', W / 2, 400, { w: 900, px: 130, color: TEAL, alpha: clamp(kt * 2), shadow: 30 }));
+  text('Tokutei Ginou · tanpa LPK', W / 2, 505, { w: 800, px: 52, alpha: P(lt, .5, .8), shadow: 16 });
   const kb = cueTime(5, 'Belajar') - PARA[5];
   const steps = ['belajar bahasa sendiri', 'ujian bahasa (JFT / JLPT)', 'ujian keterampilan'];
   steps.forEach((st, i) => {
@@ -405,7 +405,7 @@ function mandiri(lt, d) {
   text('kalau ujian lulus sekali · tempat kerja tetap harus dicari', W / 2, 1345, { w: 600, px: 28, color: 'rgba(255,255,255,.75)', alpha: P(lt, km + .4, km + .7) });
 }
 
-// 7. Penutup: logo + ajakan bimbingan SSW mandiri lewat link di bio.
+// 7. Penutup: logo + ajakan bimbingan TG mandiri lewat link di bio.
 function cta(lt, d) {
   bgGlow('rgba(255,255,255,.12)', 'rgba(40,40,40,.25)', W / 2, 760, 1000);
   if (OVERLAY) { ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); } // footage Tokyo ramai: teks harus tetap terbaca
@@ -415,7 +415,7 @@ function cta(lt, d) {
   ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 40; ctx.fillStyle = CREAM; rrect(-330, -150, 660, 300, 18); ctx.fill(); ctx.shadowBlur = 0;
   const lg = document.getElementById('logo'); ctx.drawImage(lg, -260, -130, 520, 260); ctx.restore();
   popIn(lt, .3, (s) => scaled(W / 2, 880, s, () => text('bimbingan', W / 2, 880, { w: 800, px: 52 })));
-  popIn(lt, .5, (s) => scaled(W / 2, 970, s, () => text('SSW MANDIRI', W / 2, 970, { w: 900, px: 96, color: TEAL, shadow: 24 })));
+  popIn(lt, .5, (s) => scaled(W / 2, 970, s, () => text('TG MANDIRI', W / 2, 970, { w: 900, px: 104, color: TEAL, shadow: 24 })));
   const kl = cueTime(6, 'Klik') - PARA[6];
   popIn(lt, kl, (s) => scaled(W / 2, 1130, s, () => chip('KLIK LINK DI BIO', W / 2, 1130, { px: 80 })));
 }
