@@ -28,22 +28,22 @@ const OVERLAY = new URLSearchParams(location.search).has('overlay');
 if (OVERLAY) document.documentElement.style.background = document.body.style.background = 'transparent';
 // ---------------------------------------------------------------- naskah & waktu
 const VO = [
-  'Jangan buru-buru masuk LPK. Ada yang ngaku bayar sampai seratus lima puluh juta, cuma buat magang ke Jepang.',
-  'Nggak semua LPK begitu. Menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Yang bikin membengkak biasanya ulah oknum.',
+  'Seratus lima puluh juta, cuma buat magang ke Jepang. Padahal ada jalur lain yang modalnya mulai delapan jutaan.',
+  'Nggak semua LPK semahal itu. Menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Yang bikin membengkak biasanya ulah oknum.',
   'Contohnya dana talangan. Ada yang pinjam delapan puluh juta, nyicilnya enam juta lebih sebulan, selama dua tahun.',
   'Ada juga yang diminta jaminan sertifikat rumah. Itu tanda bahaya.',
   'Jadi sebelum bayar, cek izinnya di Binalattas Kemnaker, dan minta rincian biaya tertulis.',
-  'Atau pilih jalur lain: SSW mandiri, tanpa LPK. Belajar bahasa dan ikut ujian sendiri, biaya resminya mulai delapan jutaan.',
+  'Jalur lain yang tadi: SSW mandiri, tanpa LPK. Belajar bahasa dan ikut ujian sendiri, biaya resminya mulai delapan jutaan.',
   'Mau dibimbing jalur SSW mandiri? Klik link di bio.',
 ];
 // Teks caption = VO, kecuali angka yang dibaca huruf ditampilkan sebagai angka.
 const CAP = [
-  'jangan buru-buru masuk LPK. ada yang ngaku bayar sampai Rp150 juta, cuma buat magang ke Jepang',
-  'nggak semua LPK begitu. menurut Kemnaker, rata-ratanya Rp25–35 juta. yang bikin membengkak biasanya ulah oknum',
+  'Rp150 juta, cuma buat magang ke Jepang. padahal ada jalur lain yang modalnya mulai 8 jutaan',
+  'nggak semua LPK semahal itu. menurut Kemnaker, rata-ratanya Rp25–35 juta. yang bikin membengkak biasanya ulah oknum',
   'contohnya dana talangan. ada yang pinjam 80 juta, nyicilnya 6 juta lebih sebulan, selama 2 tahun',
   'ada juga yang diminta jaminan sertifikat rumah. itu tanda bahaya',
   'jadi sebelum bayar, cek izinnya di Binalattas Kemnaker, dan minta rincian biaya tertulis',
-  'atau pilih jalur lain: SSW mandiri, tanpa LPK. belajar bahasa dan ikut ujian sendiri, biaya resminya mulai 8 jutaan',
+  'jalur lain yang tadi: SSW mandiri, tanpa LPK. belajar bahasa dan ikut ujian sendiri, biaya resminya mulai 8 jutaan',
   'mau dibimbing jalur SSW mandiri? klik link di bio',
 ];
 // Sementara (perkiraan 2,7 kata/dtk). Ganti dengan jeda VO asli (silencedetect).

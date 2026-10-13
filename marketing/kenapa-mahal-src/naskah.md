@@ -6,14 +6,15 @@ supaya tidak terburu-buru masuk LPK dan tidak tertipu OKNUM LPK, bukan menyalahk
 "di akhirnya alternatif jalur mandiri aja"). Alur: masalah → penyebab (oknum: talangan, jaminan)
 → cara jaga diri (cek izin, rincian tertulis) → jalan keluar (mandiri) → ajakan bimbingan SSW mandiri lewat link di bio
 (pemilik: "Klik link di bio dong untuk bimbingan tg mandiri").
-Hook: screenshot komentar TikTok yang dikirim pemilik, muncul satu per satu dan menumpuk.
+Hook (dipilih pemilik): angka di kata pertama + janji jalan keluar yang dibayar di adegan
+mandiri ("jalur lain yang tadi"); angka 8 jutaan di hook = angka di akhir. Layar: screenshot komentar TikTok yang dikirim pemilik, muncul satu per satu dan menumpuk.
 
 ## Teks untuk ElevenLabs (Eleven v4, tanpa tag jeda, generate sekaligus)
 
 ```
-Jangan buru-buru masuk LPK. Ada yang ngaku bayar sampai seratus lima puluh juta, cuma buat magang ke Jepang.
+Seratus lima puluh juta, cuma buat magang ke Jepang. Padahal ada jalur lain yang modalnya mulai delapan jutaan.
 
-Nggak semua LPK begitu. Menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Yang bikin membengkak biasanya ulah oknum.
+Nggak semua LPK semahal itu. Menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Yang bikin membengkak biasanya ulah oknum.
 
 Contohnya dana talangan. Ada yang pinjam delapan puluh juta, nyicilnya enam juta lebih sebulan, selama dua tahun.
 
@@ -21,7 +22,7 @@ Ada juga yang diminta jaminan sertifikat rumah. Itu tanda bahaya.
 
 Jadi sebelum bayar, cek izinnya di Binalattas Kemnaker, dan minta rincian biaya tertulis.
 
-Atau pilih jalur lain: SSW mandiri, tanpa LPK. Belajar bahasa dan ikut ujian sendiri, biaya resminya mulai delapan jutaan.
+Jalur lain yang tadi: SSW mandiri, tanpa LPK. Belajar bahasa dan ikut ujian sendiri, biaya resminya mulai delapan jutaan.
 
 Mau dibimbing jalur SSW mandiri? Klik link di bio.
 ```
