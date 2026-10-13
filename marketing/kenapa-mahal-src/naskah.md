@@ -1,8 +1,11 @@
-# Naskah: "Jangan buru-buru masuk LPK" (±45 detik)
+# Naskah: "Jangan buru-buru masuk LPK" (±46 detik)
 
 Gaya: tanpa wajah. Suara ElevenLabs v4 + B-roll gerak sinematik + teks per kata di tengah
 (mengikuti video referensi pemilik, 13 Okt 2026). Arah isi (pemilik, 13 Okt 2026): himbauan
-supaya tidak terburu-buru masuk LPK dan tidak tertipu OKNUM LPK, bukan menyalahkan semua LPK.
+supaya tidak terburu-buru masuk LPK dan tidak tertipu OKNUM LPK, bukan menyalahkan semua LPK, dan DITUTUP dengan alternatif jalur SSW mandiri (pemilik:
+"di akhirnya alternatif jalur mandiri aja"). Alur: masalah → penyebab (oknum: talangan, jaminan)
+→ cara jaga diri (cek izin, rincian tertulis) → jalan keluar (mandiri) → rujuk video "Biaya TG
+mandiri".
 Hook: screenshot komentar TikTok yang dikirim pemilik, muncul satu per satu dan menumpuk.
 
 ## Teks untuk ElevenLabs (Eleven v4, tanpa tag jeda, generate sekaligus)
@@ -10,17 +13,17 @@ Hook: screenshot komentar TikTok yang dikirim pemilik, muncul satu per satu dan 
 ```
 Jangan buru-buru masuk LPK. Ada yang ngaku bayar sampai seratus lima puluh juta, cuma buat magang ke Jepang.
 
-Nggak semua LPK begitu. Menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Tapi oknumnya ada. Cek empat hal ini.
+Nggak semua LPK begitu. Menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Yang bikin membengkak biasanya ulah oknum.
 
-Satu, cek izinnya di situs Binalattas Kemnaker.
+Misalnya dana talangan. Ada yang ngaku pinjam delapan puluh juta, cuma terima lima puluh delapan, tapi nyicil enam juta lebih sebulan, dua tahun.
 
-Dua, minta rincian biaya tertulis. Jangan bayar besar di awal tanpa kontrak.
+Ada juga yang diminta jaminan sertifikat rumah. Itu tanda bahaya.
 
-Tiga, baca kontrak dana talangan. Ada yang ngaku pinjam delapan puluh juta, cuma terima lima puluh delapan, tapi nyicil enam juta lebih sebulan, dua tahun.
+Jadi sebelum bayar, cek izinnya di Binalattas Kemnaker, dan minta rincian biaya tertulis.
 
-Empat, jangan pernah serahkan sertifikat rumah sebagai jaminan.
+Atau pilih jalur lain: SSW mandiri, tanpa LPK. Belajar bahasa dan ikut ujian sendiri, biaya resminya mulai delapan jutaan.
 
-Sambil itu, mulai belajar bahasanya dari sekarang. Makin siap kamu, makin susah dibohongi. Simpan, dan kirim ke teman yang mau ke Jepang.
+Rinciannya ada di video sebelumnya. Simpan, dan kirim ke teman yang mau ke Jepang.
 ```
 
 ## Sumber & dasar klaim (dicek 13 Okt 2026)
@@ -40,10 +43,11 @@ Sambil itu, mulai belajar bahasanya dari sekarang. Makin siap kamu, makin susah 
   program magang Jepang (jatengprov.go.id, "Perhatian, Pendaftaran Magang di Jepang Program Pemprov
   Jateng segera Ditutup"). Hanya lembaga ber-izin SO yang boleh mengirim peserta magang ke Jepang.
   Layar "TERDAFTAR / TIDAK DITEMUKAN" adalah ilustrasi, nama lembaga sengaja diganti blok abu-abu.
-- Rincian tertulis & jangan bayar besar di awal tanpa kontrak: saran umum perlindungan konsumen,
-  bukan klaim angka. Pos di kertas rincian (pelatihan & asrama, paspor/visa/medical, dana talangan
-  & bunga, syarat kalau mundur) diambil dari komponen yang disebut artikel Kompas di atas dan dari
-  keluhan di komentar (denda mundur, bunga talangan).
+- "Minta rincian biaya tertulis": saran umum perlindungan konsumen, bukan klaim angka.
+- SSW mandiri "mulai delapan jutaan" = total struk video "Biaya TG mandiri"
+  (`../biaya-ssw-src/README.md`, Rp8,1–9,2 jt), asumsi lulus ujian sekali, belum bagasi. SSW BUKAN
+  program magang; layar menulis "kalau ujian lulus sekali · tempat kerja tetap harus dicari"
+  supaya tidak terbaca sebagai janji kerja/visa (larangan brief).
 
 ## Catatan larangan brief
 
