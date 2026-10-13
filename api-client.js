@@ -4,6 +4,7 @@
 const EZ_API_BASE = (typeof window !== 'undefined' && window.EZ_API_BASE) || '/api';
 let _ezAccessToken = null;
 let _ezRefreshPromise = null;
+let _ezGoogleLogin = null;
 let _ezAuthGeneration = 0;
 let _ezSessionUserId = null;
 let _ezLoggingOut = false;
@@ -112,27 +113,43 @@ async function ezRefresh() {
 // On first-ever signup, backend returns 400 { error: 'profile_required', googleName }.
 // Caller must then retry with fullName.
 async function ezLoginWithGoogle(credential, fullName) {
+  const body = fullName ? { credential, fullName } : { credential };
+  const key = JSON.stringify(body);
+  // Share only identical in-flight requests; never cache a completed login.
+  if (_ezGoogleLogin && _ezGoogleLogin.generation === _ezAuthGeneration) {
+    if (_ezGoogleLogin.key === key) return _ezGoogleLogin.promise;
+    throw new Error('Login sedang diproses. Tunggu sampai selesai.');
+  }
   _ezLoggingOut = false;
   const generation = _ezBeginAuthChange();
-  const body = fullName ? { credential, fullName } : { credential };
-  const res = await fetch(EZ_API_BASE + '/auth/google', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => ({}));
-  _ezCheckAuthGeneration(generation);
-  if (!res.ok) {
-    const err = new Error(data.message || data.error || 'login_failed');
-    err.code = data.error;
-    err.googleName = data.googleName;
-    err.credential = credential;
-    throw err;
-  }
-  _ezAccessToken = data.accessToken;
-  mirrorUserToLocal(data.user);
-  return data.user;
+  const pending = (async () => {
+    const res = await fetch(EZ_API_BASE + '/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    _ezCheckAuthGeneration(generation);
+    if (!res.ok) {
+      const retryAfter = Math.max(1, Math.ceil(Number(res.headers?.get('Retry-After')) || 60));
+      const message = res.status === 429
+        ? `Terlalu banyak percobaan masuk. Tunggu ${retryAfter} detik lalu coba lagi.`
+        : (data.message || data.error || 'login_failed');
+      const err = new Error(message);
+      err.code = data.error;
+      err.googleName = data.googleName;
+      err.credential = credential;
+      throw err;
+    }
+    _ezAccessToken = data.accessToken;
+    mirrorUserToLocal(data.user);
+    return data.user;
+  })();
+  const current = { key, promise: pending, generation };
+  _ezGoogleLogin = current;
+  try { return await pending; }
+  finally { if (_ezGoogleLogin === current) _ezGoogleLogin = null; }
 }
 
 // Email+password login (admin password-only / non-Google). On failure the

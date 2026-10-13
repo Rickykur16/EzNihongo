@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
+import { createAuthLimiters } from '../auth-limiters.js';
 import bcrypt from 'bcryptjs';
 import { query } from '../db.js';
 import {
@@ -14,20 +15,11 @@ import { requireAuth, asyncHandler } from '../middleware.js';
 
 const router = Router();
 
-// Per-IP throttle on auth endpoints. Prevents brute-forcing Google token
-// replay, refresh-cookie probing, and logout spam. Server trusts the first
-// proxy hop (app.set('trust proxy', 1) in server.js), so req.ip reflects the
-// real client IP behind nginx.
-const authLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  limit: 10,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  message: { error: 'Too many auth requests, slow down' },
-});
+// Per-IP counters are separate for login, refresh and logout.
+const authLimiters = createAuthLimiters();
 
 // Login password lebih sensitif (brute-force-able) → limit lebih ketat dari
-// authLimiter umum.
+// limiter Google.
 const loginLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 5,
@@ -99,7 +91,7 @@ async function issueSession(req, res, user) {
 // body: { credential: google_id_token, fullName?: string }
 // - If user exists: login, ignore fullName
 // - If new user: fullName REQUIRED (user-typed display name)
-router.post('/google', authLimiter, asyncHandler(async (req, res) => {
+router.post('/google', authLimiters.google, asyncHandler(async (req, res) => {
   const { credential, fullName } = req.body || {};
   if (!credential) return res.status(400).json({ error: 'Missing credential' });
 
@@ -169,7 +161,7 @@ router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
 }));
 
 // POST /api/auth/refresh — use refresh cookie to get new access token
-router.post('/refresh', authLimiter, asyncHandler(async (req, res) => {
+router.post('/refresh', authLimiters.refresh, asyncHandler(async (req, res) => {
   const token = req.cookies?.[REFRESH_COOKIE];
   if (!token) return res.status(401).json({ error: 'No refresh token' });
 
@@ -213,7 +205,7 @@ router.post('/refresh', authLimiter, asyncHandler(async (req, res) => {
 }));
 
 // POST /api/auth/logout — invalidate session
-router.post('/logout', authLimiter, asyncHandler(async (req, res) => {
+router.post('/logout', authLimiters.logout, asyncHandler(async (req, res) => {
   const token = req.cookies?.[REFRESH_COOKIE];
   if (token) {
     const tokenHash = hashToken(token);

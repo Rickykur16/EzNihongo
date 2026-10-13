@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
+import { createAuthLimiters } from '../auth-limiters.js';
 import { query } from '../db.js';
 import { verifyGoogleIdToken, hashToken } from '../auth.js';
 import {
@@ -16,13 +16,7 @@ import { asyncHandler } from '../middleware.js';
 
 const router = Router();
 
-const authLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  limit: 10,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  message: { error: 'Too many auth requests, slow down' },
-});
+const authLimiters = createAuthLimiters();
 
 const REFRESH_COOKIE = 'ez_kanji_refresh';
 const REFRESH_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -60,7 +54,7 @@ function userResponse(user) {
 // - If no row: fullName REQUIRED. On first login the user types their display
 //   name even if Google already supplied one, so the PWA gets its own
 //   editable copy isolated from the main site.
-router.post('/google', authLimiter, asyncHandler(async (req, res) => {
+router.post('/google', authLimiters.google, asyncHandler(async (req, res) => {
   const { credential, fullName } = req.body || {};
   if (!credential) return res.status(400).json({ error: 'Missing credential' });
 
@@ -134,7 +128,7 @@ router.post('/google', authLimiter, asyncHandler(async (req, res) => {
 }));
 
 // POST /api/kanji-auth/refresh — rotate access token from refresh cookie
-router.post('/refresh', authLimiter, asyncHandler(async (req, res) => {
+router.post('/refresh', authLimiters.refresh, asyncHandler(async (req, res) => {
   const token = req.cookies?.[REFRESH_COOKIE];
   if (!token) return res.status(401).json({ error: 'No refresh token' });
 
@@ -177,7 +171,7 @@ router.post('/refresh', authLimiter, asyncHandler(async (req, res) => {
 }));
 
 // POST /api/kanji-auth/logout — invalidate session
-router.post('/logout', authLimiter, asyncHandler(async (req, res) => {
+router.post('/logout', authLimiters.logout, asyncHandler(async (req, res) => {
   const token = req.cookies?.[REFRESH_COOKIE];
   if (token) {
     const tokenHash = hashToken(token);

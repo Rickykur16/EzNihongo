@@ -14,6 +14,7 @@ const EZ_API_BASE = (typeof window !== 'undefined' && window.EZ_API_BASE) || '/a
 const LOCAL_USER_KEY = 'ez_kanji_user';
 let _ezAccessToken = null;
 let _ezRefreshPromise = null;
+let _ezGoogleLogin = null;
 
 async function _ezFetch(path, opts = {}) {
   const headers = { ...(opts.headers || {}) };
@@ -62,23 +63,39 @@ async function ezRefresh() {
 // caller omits fullName and no row exists yet; UI should surface that form.
 async function ezLoginWithGoogle(credential, fullName) {
   const body = fullName ? { credential, fullName } : { credential };
-  const res = await fetch(EZ_API_BASE + '/kanji-auth/google', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const err = new Error(data.message || data.error || 'login_failed');
-    err.code = data.error;
-    err.googleName = data.googleName;
-    err.credential = credential;
-    throw err;
+  const key = JSON.stringify(body);
+  // Share only identical in-flight requests; never cache a completed login.
+  if (_ezGoogleLogin) {
+    if (_ezGoogleLogin.key === key) return _ezGoogleLogin.promise;
+    throw new Error('Login sedang diproses. Tunggu sampai selesai.');
   }
-  _ezAccessToken = data.accessToken;
-  mirrorUserToLocal(data.user);
-  return data.user;
+  const pending = (async () => {
+    const res = await fetch(EZ_API_BASE + '/kanji-auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const retryAfter = Math.max(1, Math.ceil(Number(res.headers?.get('Retry-After')) || 60));
+      const message = res.status === 429
+        ? `Terlalu banyak percobaan masuk. Tunggu ${retryAfter} detik lalu coba lagi.`
+        : (data.message || data.error || 'login_failed');
+      const err = new Error(message);
+      err.code = data.error;
+      err.googleName = data.googleName;
+      err.credential = credential;
+      throw err;
+    }
+    _ezAccessToken = data.accessToken;
+    mirrorUserToLocal(data.user);
+    return data.user;
+  })();
+  const current = { key, promise: pending };
+  _ezGoogleLogin = current;
+  try { return await pending; }
+  finally { if (_ezGoogleLogin === current) _ezGoogleLogin = null; }
 }
 
 async function ezLogout() {
