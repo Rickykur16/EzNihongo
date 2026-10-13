@@ -25,3 +25,16 @@ screenshot pemilik, identitas dipikselkan.
 4. Audio: `node cues.mjs && DUR=<durasi> python3 sfx.py cues.json sfx.wav` (efek kilatan/whoosh +
    musik latar gelap sintetis), lalu gabung dengan VO:
    `ffmpeg -framerate 30 -i <dir>/f%04d.jpg -i vo.mp3 -i sfx.wav -filter_complex "[1:a]aresample=48000,apad[vo];[2:a]volume=0.25[bg];[vo][bg]amix=inputs=2:duration=longest:normalize=0,loudnorm=I=-14:TP=-1.5[a]" -map 0:v -map "[a]" -c:v libx264 -crf 19 -pix_fmt yuv420p -c:a aac -b:a 192k -t <durasi> -movflags +faststart ../jangan-buru-buru-lpk-9x16.mp4`
+
+## Versi footage sinematik (permintaan pemilik, 13 Okt 2026)
+
+Latar kanvas bisa diganti B-roll video sungguhan. Daftar klip + kata kunci Pexels: `footage.md`
+(egress sandbox memblokir Pexels/Pixabay, jadi pemilik yang mengunduh, lewat Google Drive).
+
+1. Render grafik transparan: `OVERLAY=1 FONT_DIR=<fonts> node render.mjs <dir> full`
+   (PNG transparan + `scenes.json`; ±1,1 GB untuk 44 dtk, hapus setelah dipakai).
+2. Audio sama seperti di atas (`cues.mjs` + `sfx.py`).
+3. Gabung: `python3 compose.py <dir> <folder-footage> ../jangan-buru-buru-lpk-9x16.mp4 vo.mp3 sfx.wav`.
+   Footage `b1..b7` (.mp4/.mov/.jpg/.png) di-crop 9:16, di-grade gelap teal-oranye, didorong pelan;
+   vinyet + butiran film ditambahkan di sini. Diuji dengan klip sintetis (beda ukuran, klip lebih
+   pendek dari adegan, foto diam): 1320 frame, 44,0 dtk, ±4,5 menit.
