@@ -8803,9 +8803,13 @@ function moduleIntroTypeLabel(lesson) {
   if (currentState.course === 'n4' && type === 'video' && !lesson.videoUrl && !lesson.videoSource?.externalId) return 'Materi';
   return MODULE_INTRO_TYPE_LABELS[type] || 'Materi';
 }
-function moduleIntroStepMeta(lesson) {
+function moduleIntroQuizLabel(lesson, module) {
+  if (kanaPlacementMeta(lesson)) return 'Tes kemampuan';
+  return globalThis.EzFinalExam?.isFinalModule(module) ? 'Ujian akhir level' : 'Ujian akhir bab';
+}
+function moduleIntroStepMeta(lesson, module) {
   const type = String(lesson.type || 'text').toLowerCase();
-  const parts = [type === 'quiz' ? 'Ujian akhir bab' : moduleIntroTypeLabel(lesson)];
+  const parts = [type === 'quiz' ? moduleIntroQuizLabel(lesson, module) : moduleIntroTypeLabel(lesson)];
   if (type === 'deck' && (lesson.deck || []).length) parts.push(`${lesson.deck.length} kata`);
   if (type === 'kanji' && (lesson.kanji || []).length) parts.push(`${lesson.kanji.length} kanji`);
   if (type === 'kana' && (lesson.kana || []).length) parts.push(`${lesson.kana.length} huruf`);
@@ -8861,7 +8865,7 @@ function renderModuleIntro(module) {
   const nextNumber = nextLesson ? plan.steps.indexOf(plan.nextStep) + 1 : 0;
   const startLabel = allDone ? 'Tinjau ulang dari' : plan.completed ? 'Lanjut dari sini' : 'Pelajaran pertama';
   const startMeta = nextLesson
-    ? [`Materi ${nextNumber} dari ${plan.steps.length}`, moduleIntroStepMeta(nextLesson)].join(' · ')
+    ? [`Materi ${nextNumber} dari ${plan.steps.length}`, moduleIntroStepMeta(nextLesson, module)].join(' · ')
     : '';
 
   const placementBlock = kanaPlacement && !kanaAssessmentDone ? `
@@ -8992,7 +8996,7 @@ function renderModuleIntro(module) {
             onclick="${learningStepAction({ ...step, module })}" ${isNext ? 'aria-current="step"' : ''}>
           <span>
             <span class="module-path-title">${escapeHtml(lesson.title)}</span>
-            <span class="module-path-meta">${escapeHtml(moduleIntroStepMeta(lesson))}</span>
+            <span class="module-path-meta">${escapeHtml(moduleIntroStepMeta(lesson, module))}</span>
           </span>
           <span class="module-path-state">${state}</span>
         </button>`;

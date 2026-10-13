@@ -229,3 +229,18 @@ test('N5 summary hides CEFR and topic and uses the N5 grammar labels', () => {
   assert.doesNotMatch(output, /CEFR|Topik:/);
   assert.match(output, /<span class="p" lang="ja">N5 〜て、〜<\/span><span class="d">Arti Merangkai kegiatan\.<\/span>/);
 });
+
+test('quiz steps say whether they are a chapter exam, a level final or a kana placement test', () => {
+  const context = setupRenderer();
+  assert.match(context.renderModuleIntro(chapter), /module-path-meta">Ujian akhir bab</);
+
+  context.EzFinalExam = { isFinalModule: (module) => module.id === 'n5-final-exam' };
+  const final = context.renderModuleIntro({ id: 'n5-final-exam', num: '21', title: 'Ujian Akhir N5',
+    lessons: [{ id: 'final', type: 'quiz', title: 'Ujian Akhir N5' }] });
+  assert.match(final, /module-path-meta">Ujian akhir level</);
+  assert.doesNotMatch(final, /Ujian akhir bab/);
+
+  const kana = context.renderModuleIntro({ id: 'bab-1', num: '01', title: 'Hiragana',
+    lessons: [{ id: 'assignment-bab-1-hiragana', type: 'quiz', title: 'Tes Membaca Hiragana' }] });
+  assert.match(kana, /module-path-meta">Tes kemampuan</);
+});
