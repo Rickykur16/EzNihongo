@@ -13,20 +13,11 @@ mengikuti pemilik & video "Biaya TG mandiri"; layar menulis "Tokutei Ginou" seka
 ## Teks untuk ElevenLabs (Eleven v4, tanpa tag jeda, generate sekaligus)
 
 ```
-Seratus lima puluh juta, cuma buat magang ke Jepang. Jangan sampai kamu orang berikutnya.
-
-Nggak semua LPK semahal itu. Menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Yang bikin membengkak biasanya ulah oknum.
-
-Contohnya dana talangan. Ada yang pinjam delapan puluh juta, nyicilnya enam juta lebih sebulan, selama dua tahun.
-
-Ada juga yang diminta jaminan sertifikat rumah. Itu tanda bahaya.
-
-Jadi sebelum bayar, cek izinnya di Binalattas Kemnaker, dan minta rincian biaya tertulis.
-
-Atau pilih jalur lain: TG mandiri, tanpa LPK. Belajar bahasa dan ikut ujian sendiri, biaya resminya mulai delapan jutaan.
-
-Mau dibimbing jalur TG mandiri? Klik link di bio.
+Seratus lima puluh juta cuma buat magang ke Jepang?. Jangan sampai kamu jadi orang berikutnya. [short pause] Nggak semua LPK semahal itu. Menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Yang bikin membengkak biasanya ulah oknum. [thoughtful] Contohnya dana talangan. Ada yang pinjam delapan puluh juta, nyicilnya enam juta lebih sebulan, selama dua tahun. [annoyed] Ada juga yang diminta jaminan sertifikat rumah. Itu tanda bahaya! [serious] Jadi sebelum bayar, cek izinnya di Binalattas Kemnaker, dan minta rincian biaya tertulis. [informative] Atau pilih jalur lain: TG mandiri, tanpa LPK. Belajar bahasa dan ikut ujian sendiri, biaya resminya mulai delapan jutaan. [excited] Mau dibimbing jalur TG mandiri? Klik link di bio!
 ```
+
+Teks di atas = yang BENAR-BENAR dipakai pemilik untuk VO final (take ke-2, 48,2 dtk, dengan tag
+emosi Eleven v4). Tag `[..]` tidak terucap dan tidak masuk caption.
 
 ## Sumber & dasar klaim (dicek 13 Okt 2026)
 
